@@ -1,12 +1,13 @@
 # Gemmi Cif Parser
 
-C++11 header-only library for reading CIF and STAR files.
+C++11 header-only library for reading CIF and STAR files (ATM superset of CIF 1.1 but subset of STAR).
 
 ## What are STAR and CIF?
 
 (in case someone comes across this page when looking for serialization format)
 
-STAR is a human-readable data serialization format (think XML or YAML)
+STAR is a human-readable data serialization format
+(think XML or YAML, but also ASN.1)
 widely used in molecular-structure sciences.
 It is accompanied by a schema language called DDL.
 
@@ -78,11 +79,12 @@ and [CIF 2.0](http://journals.iucr.org/j/issues/2016/01/00/aj5269/) (2016).
 
 ## What is parsed?
 
-For now we test only:
+We test only:
 
 * mmCIF files (i.e. CIF 1.1)
 * DDL1 and DDL2 dictionaries (in particular `mmcif_pdbx_v40.dic`)
 * and monomer library a.k.a. Refmac dictionary
+* example files from COD
 
 Later on we'll make sure that all correct CIF 1.1 files from COD
 are handled properly.
@@ -94,7 +96,8 @@ The same goes for DDLm/dREL.
 The parser handles:
 
 * all constructs of CIF 1.1 (including *save frames*),
-* and the `global_` keyword from STAR as it is used in Refmac dictionary.
+* the `global_` and `stop_` keywords from STAR -- needed for Refmac
+  monomer library and `mmcif_nmr-star.dic`, respectively.
 
 Additionally:
 
