@@ -83,11 +83,8 @@ We test only:
 
 * mmCIF files (i.e. CIF 1.1)
 * DDL1 and DDL2 dictionaries (in particular `mmcif_pdbx_v40.dic`)
-* and monomer library a.k.a. Refmac dictionary
+* monomer library a.k.a. Refmac dictionary
 * example files from COD
-
-Later on we'll make sure that all correct CIF 1.1 files from COD
-are handled properly.
 
 The parser could be extended to handle the new features of CIF 2.0
 or even the full STAR format, but we don't have a good reason to do this yet.
@@ -105,12 +102,10 @@ Additionally:
 * unquoted strings cannot start with keywords (STAR spec is ambiguous
   about this -- see
   [StarTools doc](http://www.globalphasing.com/startools/) for details)
-* obviously, there needs to be a whitespace between the last tag and the
-  first value in a loop -- although it's omitted in the CIF 1.1 spec.
 
 TODO:
 
-* handling the EOL\;EOL long line convention
+* support the line wrapping convention (EOL;\EOL)
 
 Considered:
 
@@ -164,31 +159,24 @@ We decided rely on the C++ standard library where we can.
 Generally, storage of such data involves (in C++ terms) some containers
 and a union/variant type for storing values of mixed types.
 
-As the container we use primarily `std::vector`.
-In special cases we use `std::map` and `std::unordered_map`
-for quicker access.
-(Currently maps are used only as indexes for DDL dictionaries).
+We use primarily `std::vector` as a container,
+and `std::unordered_map` when quicker access is needed.
 
-We use `std::string`, althouth it may not be optimal for performance.
-`sizeof(std::string)` is typically 24 or 32 bytes, with SSO (short string
-optimization) for up to at least 15 characters.
-So at least the SSO covers most of the strings in the loops in mmCIF.
+Custom structures with (unrestricted) unions are used where variants
+are needed.
 
-We do not use std::variant as it is new in C++17.
-Instead, we use a custom structure with (unrestricted) union.
-(But switching to a third-party C++11 implementation of a variant
-could be considered.)
+Strings are stored in `std::string` and it is fast enough.
+Mainstream C++ standard libraries have short string optimization (SSO)
+for up to 15 or 22 characters, which covers most of the values in mmCIF files.
+
+Other files that we plan to use are much smaller than large mmCIF files.
+For example, the biggest dictionary (PDBx/mmCIF) is only 3.7MB and is parsed
+and indexed in less than 50ms. So we do not need to optimize for it.
 
 Many CIF readers do not store comments, as they are not part of the data.
 In our case we may want to read, manipulate and save mmCIF file preserving
 as much of the original file as possible. So we record the order of items,
 comments and line breaks (but for now not any other whitespaces).
-
-Such a data structure is far from optimal when reading DDL dictionaries.
-On the other hand, even the biggest one -  PDBx/mmCIF (3.7MB) - gets parsed
-and indexed in below 50ms. So we have no need to optimize it.
-
-(data structure details are still evolving)
 
 
 ## How to use it in own program
