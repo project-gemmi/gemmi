@@ -3,13 +3,12 @@
 #define GEMMI_CIF_HH_
 #include <cassert>
 #include <cstdint>
-#include <cstdlib> // strtod
+#include <cmath>
 #include <algorithm>
 #include <stdexcept>
 #include <string>
 #include <vector>
 #include <new>
-#include <unordered_map>
 #include <unordered_set>
 
 #include <pegtl.hh>
@@ -19,17 +18,84 @@
 
 namespace cif {
 
+// the numeric type in CIF is called numb - it's a number with optional
+// standard uncertainty in brackets: 1.23(8).
+namespace numb_rules {
+  using namespace pegtl;
+
+  struct sign : opt<one<'+', '-'>> {};
+  struct e : one<'e', 'E'> {};
+  struct exponent : seq<sign, plus<digit>> {};
+  struct uint_digit : digit {};
+  struct fraction : plus<digit> {};
+  struct base : if_then_else<one<'.'>, fraction,
+                                       seq<plus<uint_digit>,
+                                           opt<one<'.'>, opt<fraction>>>> {};
+  // Error in brackets ,as per CIF spec. We ignore the value for now.
+  struct err : seq<one<'('>, plus<digit>, one<')'>> {};
+  struct numb : seq<sign, base, opt<e, exponent>, opt<err>, eof> {};
+}
+
+// Actions for getting the number. For now we ignore s.u., so the actions
+// are equivalent to locale-independent std::stod().
+template<typename Rule> struct ActionNumb : pegtl::nothing<Rule> {};
+template<> struct ActionNumb<numb_rules::uint_digit> {
+  template<typename Input> static void apply(const Input& in, double& d) {
+      d = d * 10 + (*in.begin() - '0');
+  }
+};
+template<> struct ActionNumb<numb_rules::fraction> {
+  template<typename Input> static void apply(const Input& in, double& d) {
+    double mult = 0.1;
+    for (const auto* p = in.begin(); p != in.end(); ++p, mult *= 0.1)
+      d += mult * (*p - '0');
+  }
+};
+template<> struct ActionNumb<numb_rules::exponent> {
+  template<typename Input> static void apply(const Input& in, double& d) {
+    int n = 0;
+    bool neg = false;
+    const auto* p = in.begin();
+    if (*p == '-')
+      neg = true;
+    else if (*p != '+')
+      n = *p - '0';
+    for (++p; p != in.end(); ++p)
+      n = n * 10 + (*p - '0');
+    // We don't expect too many exponents in CIF files, let's have
+    // only this small LUT.
+    static const double e[] = { 1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8 };
+    double uexp = n <= 8 ? e[n] : std::pow(10, n);
+    if (neg)
+      d /= uexp;
+    else
+      d *= uexp;
+  }
+};
+template<> struct ActionNumb<numb_rules::numb> {
+  template<typename Input> static void apply(const Input& in, double& d) {
+    if (*in.begin() == '-')
+      d = -d;
+  }
+};
+
+inline bool is_numb(const std::string& s) {
+  return pegtl::parse_string<numb_rules::numb, pegtl::nothing>(s, "");
+}
+
+inline double as_number(const std::string& s) {
+  double d = 0;
+  if (pegtl::parse_string<numb_rules::numb, ActionNumb>(s, "", d))
+    return d;
+  return NAN;
+}
+
+
+
 // **** grammar rules, named similarly as in the CIF 1.1 spec ****
 namespace rules {
 
   using namespace pegtl;
-
-  struct after_eol {
-    using analyze_t = analysis::generic<analysis::rule_type::OPT>;
-    template<typename Input> static bool match(Input& in) {
-      return in.byte_in_line() == 0;
-    }
-  };
 
   // (letter) refers to sections in Table 2.2.7.1 in Vol.G of ITfC (2006).
 
@@ -62,7 +128,7 @@ namespace rules {
   template <typename Q> struct quoted : if_must<Q, quoted_tail<Q>> {};
   struct singlequoted : quoted<one<'\''>> {};
   struct doublequoted : quoted<one<'"'>> {};
-  struct field_sep : seq<after_eol, one<';'>> {};
+  struct field_sep : seq<bol, one<';'>> {};
   // CIF 2.0 requires whitespace after text field, so it'd be:
   // until<endq<field_sep>> instead of until<field_sep>.
   struct textfield : if_must<field_sep, until<field_sep>> {};
@@ -134,6 +200,17 @@ enum class ValueType : unsigned char {
   QuestionMark,
 };
 
+std::string value_type_to_str(ValueType v) {
+  switch (v) {
+    case ValueType::NotSet: return "n/a";
+    case ValueType::Char: return "char";
+    case ValueType::Numb: return "numb";
+    case ValueType::Dot: return "'.'";
+    case ValueType::QuestionMark: return "'?'";
+  }
+  return "";
+}
+
 inline std::string as_string(const std::string& value) {
   if (value.empty())
     return value;
@@ -155,7 +232,7 @@ struct LoopTag {
   ValueType valtype = ValueType::NotSet;
   int line_number = -1;
   std::string tag;
-  LoopTag(std::string&& t) : tag{t} {}
+  explicit LoopTag(std::string&& t) : tag{t} {}
 };
 
 struct Loop {
@@ -174,12 +251,46 @@ struct Loop {
   }
 };
 
+
+class StrideIter {
+public:
+  StrideIter() : cur_(nullptr), end_(nullptr), stride_(0) {}
+  StrideIter(const std::vector<std::string>& vec, size_t offset, int stride)
+    : cur_(vec.data() + std::min(offset, vec.size())),
+      end_(vec.data() + vec.size()),
+      stride_(stride) {}
+  void operator++() { cur_ = end_-cur_ > stride_ ? cur_+stride_ : end_; }
+  const std::string& operator*() const { return *cur_; };
+  bool operator!=(const StrideIter& other) const { return cur_ != other.cur_; }
+private:
+  const std::string* cur_;
+  const std::string* end_;
+  int stride_;
+};
+
+struct LoopIter {
+  const StrideIter begin_, end_;
+  LoopIter() {}
+  LoopIter(const Loop *loop, int idx)
+    : begin_(loop->values, idx, loop->tags.size()),
+      end_(loop->values, loop->values.size(), loop->tags.size()) {}
+  StrideIter begin() const { return begin_; }
+  StrideIter end() const { return end_; }
+};
+
+
 struct Item;
 
-struct Frame {
-  Frame(const std::string& t) : tag{t} {}
-  std::string tag;
+struct Block {
+  std::string name;
   std::vector<Item> items;
+
+  explicit Block(const std::string& name_) : name(name_) {}
+  Block() {}
+
+  const std::string* by_tag(const std::string& tag) const;
+  const Loop* by_loop_tag(const std::string& tag, int* idx) const;
+  LoopIter looped_values(const std::string& tag) const;
 };
 
 struct Item {
@@ -189,7 +300,7 @@ struct Item {
   union {
     TagValue tv;
     Loop loop;
-    Frame frame;
+    Block frame;
   };
 
   explicit Item(int)
@@ -219,7 +330,7 @@ struct Item {
     switch (type) {
       case ItemType::Value: tv.~TagValue(); break;
       case ItemType::Loop: loop.~Loop(); break;
-      case ItemType::Frame: frame.~Frame(); break;
+      case ItemType::Frame: frame.~Block(); break;
     }
   }
 
@@ -230,7 +341,7 @@ private:
     else if (o.type == ItemType::Loop)
       new (&loop) Loop(o.loop);
     else if (o.type == ItemType::Frame)
-      new (&frame) Frame(o.frame);
+      new (&frame) Block(o.frame);
   }
 
   void move_value(Item&& o) {
@@ -239,36 +350,10 @@ private:
     else if (o.type == ItemType::Loop)
       new (&loop) Loop(std::move(o.loop));
     else if (o.type == ItemType::Frame)
-      new (&frame) Frame(std::move(o.frame));
+      new (&frame) Block(std::move(o.frame));
   }
 };
 
-struct Block {
-  std::string name;
-  std::vector<Item> items;
-
-  Block(const std::string& name_) : name(name_) {}
-  Block() {}
-
-  const std::string* by_tag(const std::string& tag) const {
-    for (const Item& i : items)
-      if (i.type == ItemType::Value && i.tv.tag == tag)
-        return &i.tv.value;
-    return nullptr;
-  }
-  const Loop* by_loop_tag(const std::string& tag, int* idx) const {
-    for (const Item& i : items)
-      if (i.type == ItemType::Loop) {
-        int pos = i.loop.find_tag(tag);
-        if (pos != -1) {
-          if (idx)
-            *idx = pos;
-          return &i.loop;
-        }
-      }
-    return nullptr;
-  }
-};
 
 struct Comment {
   int line_number;
@@ -276,10 +361,78 @@ struct Comment {
   Comment(int line, std::string s) : line_number(line), text(s) {}
 };
 
+
+inline const std::string* Block::by_tag(const std::string& tag) const {
+  for (const Item& i : items)
+    if (i.type == ItemType::Value && i.tv.tag == tag)
+      return &i.tv.value;
+  return nullptr;
+}
+
+inline const Loop* Block::by_loop_tag(const std::string& tag, int* idx) const {
+  for (const Item& i : items)
+    if (i.type == ItemType::Loop) {
+      int pos = i.loop.find_tag(tag);
+      if (pos != -1) {
+        if (idx)
+          *idx = pos;
+        return &i.loop;
+      }
+    }
+  return nullptr;
+}
+
+inline LoopIter Block::looped_values(const std::string& tag) const {
+  int idx = 0;
+  const Loop* loop = by_loop_tag(tag, &idx);
+  return loop ? LoopIter(loop, idx) : LoopIter();
+}
+
+
+inline ValueType infer_valtype_of_string(const std::string& val) {
+  assert(!val.empty());
+  if (val == ".")
+    return ValueType::Dot;
+  else if (val == "?")
+    return ValueType::QuestionMark;
+  else if (is_numb(val))
+    return ValueType::Numb;
+  else
+    return ValueType::Char;
+}
+
+inline void infer_valtypes_in_items(std::vector<Item>& items) {
+  for (Item& item : items)
+      if (item.type == ItemType::Value) {
+        item.valtype = infer_valtype_of_string(item.tv.value);
+      } else if (item.type == ItemType::Loop) {
+        for (size_t i = 0; i != item.loop.tags.size(); ++i) {
+          ValueType& vt = item.loop.tags[i].valtype;
+          for (const std::string& v : LoopIter(&item.loop, i)) {
+            ValueType this_vt = infer_valtype_of_string(v);
+            if (this_vt != vt) {
+              // if we are here: vt != ValueType::Char
+              if (vt == ValueType::NotSet || this_vt == ValueType::Numb) {
+                vt = this_vt;
+              } else if (this_vt == ValueType::Char) {
+                vt = this_vt;
+                break;
+              }
+            }
+          }
+        }
+      } else if (item.type == ItemType::Frame) {
+        infer_valtypes_in_items(item.frame.items);
+      }
+}
+
 struct Document {
   Document() : items{nullptr} {}
   void parse_file(const std::string& filename);
-  void infer_valtypes();
+  void infer_valtypes() {
+    for (Block& block : blocks)
+      infer_valtypes_in_items(block.items);
+  }
 
   std::string source;
   std::vector<Block> blocks;
@@ -339,6 +492,7 @@ template<> struct Action<rules::loop_tag> {
     Item& last_item = out.items->back();
     assert(last_item.type == ItemType::Loop);
     last_item.loop.tags.emplace_back(in.string());
+    last_item.loop.tags.back().line_number = in.line();
   }
 };
 template<> struct Action<rules::loop_value> {
@@ -397,10 +551,10 @@ inline void check_no_name_dups(const Document& d) {
             throw_validation_err(d, block, item, "duplicate tag " + t.tag);
         }
       } else if (item.type == ItemType::Frame) {
-        bool success = frame_names.insert(item.frame.tag).second;
+        bool success = frame_names.insert(item.frame.name).second;
         if (!success)
           throw_validation_err(d, block, item,
-                               "duplicate save_" + item.frame.tag);
+                               "duplicate save_" + item.frame.name);
       }
     }
   }
@@ -410,40 +564,6 @@ inline void Document::parse_file(const std::string& filename) {
   pegtl::parse_file<rules::file, Action, Errors>(filename, *this);
   check_no_name_dups(*this);
   source = filename;
-}
-
-inline bool is_numb(const std::string& s) {
-  // TODO: fast locale-independent way
-  char *endptr;
-  std::strtod(s.c_str(), &endptr);
-  return *endptr == '\0' || *endptr == '(';
-}
-
-inline void Document::infer_valtypes() {
-  for (cif::Block& block : blocks)
-    for (Item& item : block.items)
-      if (item.type == ItemType::Value) {
-        const std::string& val = item.tv.value;
-        assert(!val.empty());
-        if (val == ".")
-          item.valtype = ValueType::Dot;
-        else if (val == "?")
-          item.valtype = ValueType::QuestionMark;
-        else if (is_numb(val))
-          item.valtype = ValueType::Numb;
-        else
-          item.valtype = ValueType::Char;
-      }
-}
-
-using frame_index_t = std::unordered_map<std::string, const std::vector<Item>*>;
-inline frame_index_t index_frames(const Block& block) {
-  frame_index_t m;
-  for (const Item& item : block.items) {
-    if (item.type == ItemType::Frame)
-      m.emplace(item.frame.tag, &item.frame.items);
-  }
-  return m;
 }
 
 inline bool check_file_syntax(const std::string& filename, std::string* msg) {

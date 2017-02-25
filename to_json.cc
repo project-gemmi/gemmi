@@ -43,7 +43,7 @@ void escape(std::ostream& os, const std::string& s) {
 
 class JsonWriter {
 public:
-  JsonWriter(std::ostream& os) : os_(os), linesep_("\n") {}
+  explicit JsonWriter(std::ostream& os) : os_(os), linesep_("\n") {}
   void write_json(const cif::Document& d);
 
 private:
@@ -81,7 +81,7 @@ private:
         break;
       }
       case cif::ItemType::Frame:
-        write_map(item.frame.tag, item.frame.items);
+        write_map(item.frame.name, item.frame.items);
         break;
     }
   }
