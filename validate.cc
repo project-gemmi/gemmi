@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
         if (type_breakdown)
           d.infer_valtypes();
         if (stats)
-          msg = "\n" + token_stats(d);
+          msg = token_stats(d);
         if (ddl_path) {
           ddl::DDL dict;
           dict.open_file(ddl_path);
@@ -112,7 +112,10 @@ int main(int argc, char **argv) {
         msg = e.what();
       }
     }
-    std::cout << (ok ? "OK" : "FAILED: ") << msg << std::endl;
+    if (!msg.empty())
+      std::cout << msg << std::endl;
+
+    std::cout << (ok ? "OK" : "FAILED") << std::endl;
   }
   return 0;
 }

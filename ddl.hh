@@ -76,7 +76,9 @@ private:
   std::unordered_map<std::string, const cif::Block*> name_index_;
   std::string dict_name_;
   std::string dict_version_;
-  std::string sep_; // "_" or "."
+  // "_" or ".", used to unify handling of DDL1 and DDL2, for example when
+  // reading _audit_conform_dict_version and _audit_conform.dict_version.
+  std::string sep_;
 };
 
 

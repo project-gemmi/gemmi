@@ -562,8 +562,8 @@ inline void check_no_name_dups(const Document& d) {
 
 inline void Document::parse_file(const std::string& filename) {
   pegtl::parse_file<rules::file, Action, Errors>(filename, *this);
-  check_no_name_dups(*this);
   source = filename;
+  check_no_name_dups(*this);
 }
 
 inline bool check_file_syntax(const std::string& filename, std::string* msg) {
