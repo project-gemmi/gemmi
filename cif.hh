@@ -17,6 +17,7 @@
 #endif
 
 namespace cif {
+  using std::size_t;
 
 // the numeric type in CIF is called numb - it's a number with optional
 // standard uncertainty in brackets: 1.23(8).
@@ -145,10 +146,10 @@ namespace rules {
   struct value: sor<singlequoted, doublequoted, textfield, unquoted> {};
   struct loop_tag : tag {};
   struct loop_value : value {};
-  struct loop: if_must<str_loop, plus<seq<whitespace, loop_tag>>,
-                                 star<seq<whitespace, loop_value>>,
+  struct loop: if_must<str_loop, plus<seq<whitespace, loop_tag, discard>>,
+                                 star<seq<whitespace, loop_value, discard>>,
                                  opt<seq<whitespace, str_stop>>> {};
-  struct dataitem: if_must<tag, whitespace, value> {};
+  struct dataitem: if_must<tag, whitespace, value, discard> {};
   struct framename : plus<nonblank_ch> {};
   struct endframe : str_save {};
   struct frame : if_must<str_save, framename, whitespace,
@@ -244,6 +245,13 @@ struct Loop {
     auto f = std::find_if(tags.begin(), tags.end(),
                           [&tag](const LoopTag& lt) { return lt.tag == tag; });
     return f == tags.end() ? -1 : f - tags.begin();
+  }
+  int must_find_tag(const std::string& tag) const {
+    auto f = std::find_if(tags.begin(), tags.end(),
+                          [&tag](const LoopTag& lt) { return lt.tag == tag; });
+    if (f == tags.end())
+      throw std::runtime_error("required tag not found: " + tag);
+    return f - tags.begin();
   }
   size_t length() const { return values.size() / tags.size(); }
   const std::string& val(size_t row, size_t col) const {
@@ -428,7 +436,11 @@ inline void infer_valtypes_in_items(std::vector<Item>& items) {
 
 struct Document {
   Document() : items{nullptr} {}
+
   void parse_file(const std::string& filename);
+  void parse_cstream(std::FILE *f, const char* name, size_t maximum);
+  void parse_istream(std::istream &is, const char* name, size_t maximum);
+
   void infer_valtypes() {
     for (Block& block : blocks)
       infer_valtypes_in_items(block.items);
@@ -565,6 +577,21 @@ inline void Document::parse_file(const std::string& filename) {
   source = filename;
   check_no_name_dups(*this);
 }
+
+inline void Document::parse_cstream(std::FILE *f, const char* name,
+                                    size_t maximum) {
+  pegtl::parse_cstream<rules::file, Action, Errors>(f, name, maximum, *this);
+  source = name;
+  check_no_name_dups(*this);
+}
+
+inline void Document::parse_istream(std::istream &is, const char* name,
+                                    size_t maximum) {
+  pegtl::parse_istream<rules::file, Action, Errors>(is, name, maximum, *this);
+  source = name;
+  check_no_name_dups(*this);
+}
+
 
 inline bool check_file_syntax(const std::string& filename, std::string* msg) {
   pegtl::file_parser fp(filename);

@@ -2,10 +2,13 @@
 #include "cif.hh"
 #include "ddl.hh"
 #include <cstring>
+#include <cstdio>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 //#include <pegtl/analyze.hh>
+#define CLARA_CONFIG_MAIN
+#include <clara.h>
 
 std::string format_7zd(size_t k) {
   char buf[64];
@@ -58,45 +61,67 @@ std::string token_stats(const cif::Document& d) {
   return info;
 }
 
-int main(int argc, char **argv) {
+struct Options {
+  std::string process_name;
+  bool help = false;
   bool quick = false;
   bool stats = false;
   bool type_breakdown = false;
-  const char* ddl_path = nullptr;
-  for (int i = 1; i < argc; ++i) {
-    if (std::strcmp(argv[i], "-q") == 0) {
-      quick = true;
-      continue;
-    }
-    if (std::strcmp(argv[i], "-s") == 0) {
-      stats = true;
-      continue;
-    }
-    if (std::strcmp(argv[i], "-t") == 0) {
-      type_breakdown = true;
-      continue;
-    }
-    if (std::strncmp(argv[i], "--ddl=", 6) == 0) {
-      ddl_path = argv[i] + 6;
-      continue;
-    }
+  std::string ddl_path;
+  std::vector<std::string> paths;
+  void add_path(const std::string& p) { paths.push_back(p); }
+};
+
+int main(int argc, char **argv) {
+  Clara::CommandLine<Options> cli;
+  cli["-?"]["-h"]["--help"].describe("display usage information")
+    .bind(&Options::help);
+  cli["-q"]["--quick"].describe("quick syntax-only check")
+    .bind(&Options::quick);
+  cli["-s"]["--stats"].describe("show token statistics")
+    .bind(&Options::stats);
+  cli["-t"]["--types"].describe("show type breakdown in token statistics")
+    .bind(&Options::type_breakdown);
+  cli["-d"]["--ddl"].describe("DDL for validation")
+    .bind(&Options::ddl_path, "file.dic");
+  cli[Clara::_].bind(&Options::add_path, "file");
+  cli.setThrowOnUnrecognisedTokens(true);
+  cli.bindProcessName(&Options::process_name);
+  Options options;
+  try {
+    cli.parseInto(Clara::argsToVector(argc, argv), options);
+  } catch (std::exception& e) {
+    std::cerr << "Error: " << e.what()
+              << "\nOption -h shows usage." << std::endl;
+    return 1;
+  }
+  if (options.help) {
+    cli.usage(std::cerr, options.process_name);
+    return 0;
+  }
+
+  for (const std::string& path : options.paths) {
     std::string msg;
     bool ok = true;
-    if (quick) {
-      ok = cif::check_file_syntax(argv[i], &msg);
+    if (options.quick) {
+      ok = cif::check_file_syntax(path, &msg);
     } else {
       //pegtl::analyze<cif::rules::file>();
       //pegtl::analyze<cif::numb_rules::numb>();
       cif::Document d;
       try {
-        d.parse_file(argv[i]);
-        if (type_breakdown)
+        if (path == "stdin") // temporary, Clara can't handle "-"
+          d.parse_cstream(stdin, "stdin", 16*1024);
+          //d.parse_istream(std::cin, "stdin", 16*1024);
+        else
+          d.parse_file(path);
+        if (options.type_breakdown)
           d.infer_valtypes();
-        if (stats)
+        if (options.stats)
           msg = token_stats(d);
-        if (ddl_path) {
+        if (!options.ddl_path.empty()) {
           ddl::DDL dict;
-          dict.open_file(ddl_path);
+          dict.open_file(options.ddl_path);
           std::string ver_msg;
           dict.check_audit_conform(d, &ver_msg);
           if (!ver_msg.empty())
