@@ -1,14 +1,18 @@
+// Copyright 2017 Global Phasing Ltd.
 
+#include <iostream>
 #include "cif.hh"
+#include "cifgz.hh"
 #include "ddl.hh"
 #include <cstring>
 #include <cstdio>
-#include <iostream>
 #include <stdexcept>
 #include <string>
 //#include <pegtl/analyze.hh>
 #define CLARA_CONFIG_MAIN
 #include <clara.h>
+
+namespace cif = gemmi::cif;
 
 std::string format_7zd(size_t k) {
   char buf[64];
@@ -64,7 +68,7 @@ std::string token_stats(const cif::Document& d) {
 struct Options {
   std::string process_name;
   bool help = false;
-  bool quick = false;
+  bool fast = false;
   bool stats = false;
   bool type_breakdown = false;
   std::string ddl_path;
@@ -74,10 +78,10 @@ struct Options {
 
 int main(int argc, char **argv) {
   Clara::CommandLine<Options> cli;
-  cli["-?"]["-h"]["--help"].describe("display usage information")
+  cli["-h"]["--help"].describe("display usage information")
     .bind(&Options::help);
-  cli["-q"]["--quick"].describe("quick syntax-only check")
-    .bind(&Options::quick);
+  cli["-f"]["--fast"].describe("fast syntax-only check")
+    .bind(&Options::fast);
   cli["-s"]["--stats"].describe("show token statistics")
     .bind(&Options::stats);
   cli["-t"]["--types"].describe("show type breakdown in token statistics")
@@ -103,24 +107,19 @@ int main(int argc, char **argv) {
   for (const std::string& path : options.paths) {
     std::string msg;
     bool ok = true;
-    if (options.quick) {
+    if (options.fast) {
       ok = cif::check_file_syntax(path, &msg);
     } else {
       //pegtl::analyze<cif::rules::file>();
       //pegtl::analyze<cif::numb_rules::numb>();
-      cif::Document d;
       try {
-        if (path == "stdin") // temporary, Clara can't handle "-"
-          d.parse_cstream(stdin, "stdin", 16*1024);
-          //d.parse_istream(std::cin, "stdin", 16*1024);
-        else
-          d.parse_file(path);
+        cif::Document d = cif::read_any(path);
         if (options.type_breakdown)
-          d.infer_valtypes();
+          cif::infer_valtypes(d);
         if (options.stats)
           msg = token_stats(d);
         if (!options.ddl_path.empty()) {
-          ddl::DDL dict;
+          cif::DDL dict;
           dict.open_file(options.ddl_path);
           std::string ver_msg;
           dict.check_audit_conform(d, &ver_msg);

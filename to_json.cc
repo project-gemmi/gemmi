@@ -1,7 +1,10 @@
+// Copyright 2017 Global Phasing Ltd.
 
 #include "cif.hh"
 #include <cassert>
 #include <iostream>
+
+namespace cif = gemmi::cif;
 
 // based on tao/json/internal/escape.hh
 void escape(std::ostream& os, const std::string& s) {
