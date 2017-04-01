@@ -123,7 +123,7 @@ int main(int argc, char **argv) {
   cif::Document d;
   try {
     d.parse_file(filename);
-  } catch (pegtl::parse_error& e) {
+  } catch (tao::pegtl::parse_error& e) {
     std::cerr << e.what() << std::endl;
     return 1;
   }

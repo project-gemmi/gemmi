@@ -8,7 +8,7 @@
 #include <cstdio>
 #include <stdexcept>
 #include <string>
-//#include <pegtl/analyze.hh>
+//#include <tao/pegtl/analyze.hpp>
 #define CLARA_CONFIG_MAIN
 #include <clara.h>
 
@@ -107,12 +107,12 @@ int main(int argc, char **argv) {
   for (const std::string& path : options.paths) {
     std::string msg;
     bool ok = true;
-    if (options.fast) {
-      ok = cif::check_file_syntax(path, &msg);
-    } else {
-      //pegtl::analyze<cif::rules::file>();
-      //pegtl::analyze<cif::numb_rules::numb>();
-      try {
+    try {
+      if (options.fast) {
+        ok = cif::check_file_syntax(path, &msg);
+      } else {
+        //tao::pegtl::analyze<cif::rules::file>();
+        //tao::pegtl::analyze<cif::numb_rules::numb>();
         cif::Document d = cif::read_any(path);
         if (options.type_breakdown)
           cif::infer_valtypes(d);
@@ -131,10 +131,10 @@ int main(int argc, char **argv) {
             std::cout << "Note: " << unknown.size() << " unknown tags"
                       << " - first one: " << unknown[0] << std::endl;
         }
-      } catch (std::runtime_error& e) {
-        ok = false;
-        msg = e.what();
       }
+    } catch (std::runtime_error& e) {
+      ok = false;
+      msg = e.what();
     }
     if (!msg.empty())
       std::cout << msg << std::endl;

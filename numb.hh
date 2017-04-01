@@ -9,11 +9,12 @@
 #define GEMMI_NUMB_HH_
 
 #include <cmath>  // for NAN
-#include <pegtl.hh>
+#include <tao/pegtl.hpp>
 
 namespace gemmi {
 namespace cif {
 using std::size_t;
+namespace pegtl = tao::pegtl;
 
 namespace numb_rules {
   using namespace pegtl;

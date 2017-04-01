@@ -16,14 +16,15 @@
 #include <new>
 #include <unordered_set>
 
-#include <pegtl.hh>
+#include <tao/pegtl.hpp>
 #ifdef CIF_VALIDATE_SHOW_TRACE
-#include <pegtl/trace.hh>
+#include <tao/pegtl/trace.hpp>
 #endif
 
 namespace gemmi {
 namespace cif {
 using std::size_t;
+namespace pegtl = tao::pegtl;
 
 
 // **** grammar rules, named similarly as in the CIF 1.1 spec ****
@@ -48,11 +49,11 @@ namespace rules {
   struct whitespace : plus<sor<one<' ','\n','\r','\t'>, comment>> {};
 
   // (b) Reserved words.
-  struct str_data : pegtl_istring_t("data_") {};
-  struct str_loop : pegtl_istring_t("loop_") {};
-  struct str_global : pegtl_istring_t("global_") {};
-  struct str_save : pegtl_istring_t("save_") {};
-  struct str_stop : pegtl_istring_t("stop_") {};
+  struct str_data : TAOCPP_PEGTL_ISTRING("data_") {};
+  struct str_loop : TAOCPP_PEGTL_ISTRING("loop_") {};
+  struct str_global : TAOCPP_PEGTL_ISTRING("global_") {};
+  struct str_save : TAOCPP_PEGTL_ISTRING("save_") {};
+  struct str_stop : TAOCPP_PEGTL_ISTRING("stop_") {};
   struct keyword : sor<str_data, str_loop, str_global, str_save, str_stop> {};
 
   // (e) Character strings and text fields.
@@ -230,6 +231,37 @@ struct LoopColumn {
   }
 };
 
+struct LoopTable {
+  const Loop *loop;
+  std::vector<int> cols;
+  struct Row {
+    const std::string* cur;
+    const std::vector<int>& col_indices;
+    const std::string& raw(int n) const { return cur[col_indices.at(n)]; }
+    const std::string& operator[](int n) const { return raw(n); }
+    std::string as_str(int n) const { return as_string(raw(n)); }
+    double as_num(int n) const { return as_number(raw(n)); }
+  };
+  struct Iter {
+    const std::string* cur;
+    const std::vector<int>* col_indices;
+    size_t stride;
+    void operator++() { cur += stride; }
+    Row operator*() const { return Row{cur, *col_indices}; }
+    bool operator!=(const Iter& other) const { return cur != other.cur; }
+    bool operator==(const Iter& other) const { return cur == other.cur; }
+  };
+  Iter begin() const {
+    return loop ? Iter{loop->values.data(), &cols, loop->width()}
+                : Iter{nullptr, nullptr, 0};
+  }
+  Iter end() const {
+    return loop ? Iter{loop->values.data() + loop->values.size(), &cols,
+                       loop->width()}
+                : Iter{nullptr, nullptr, 0};
+  }
+};
+
 struct Item;
 
 struct Block {
@@ -241,6 +273,8 @@ struct Block {
 
   const std::string* find_value(const std::string& tag) const;
   LoopColumn find_loop(const std::string& tag) const;
+  LoopTable find_loop_values(const std::string& prefix,
+                             const std::vector<std::string>& tags) const;
 };
 
 struct Item {
@@ -329,10 +363,29 @@ inline LoopColumn Block::find_loop(const std::string& tag) const {
   return LoopColumn{nullptr, 0};
 }
 
+inline LoopTable Block::find_loop_values(const std::string& prefix,
+    const std::vector<std::string>& tags) const {
+  if (tags.empty())
+    return LoopTable{nullptr, {}};
+  LoopColumn c0 = find_loop(prefix + tags[0]);
+  if (!c0.loop)
+    return LoopTable{nullptr, {}};
+  std::vector<int> indices;
+  indices.reserve(tags.size());
+  for (const std::string& tag : tags) {
+    int idx = c0.loop->find_tag(prefix + tag);
+    if (idx == -1)
+      return LoopTable{nullptr, {}};
+    indices.push_back(idx);
+  }
+  return LoopTable{c0.loop, indices};
+}
 
 struct Document {
   Document() : items_{nullptr} {}
-  Document(const std::string& path) : items_{nullptr} { parse_file(path); }
+  explicit Document(const std::string& path) : items_{nullptr} {
+    parse_file(path);
+  }
 
   void parse_file(const std::string& filename);
   void parse_memory(const char* data, const size_t size, const char* name);
