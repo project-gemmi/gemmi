@@ -1,4 +1,3 @@
 
-For now all the documentation is in
-the [Wiki](https://github.com/project-gemmi/gemmi/wiki).
+See the documenation on http://gemmi.readthedocs.io/en/latest/
 
