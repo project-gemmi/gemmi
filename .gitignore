@@ -1,3 +1,4 @@
 *.o
 to_json
 validate
+/docs/_build
