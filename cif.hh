@@ -236,11 +236,21 @@ struct LoopTable {
   std::vector<int> cols;
   struct Row {
     const std::string* cur;
-    const std::vector<int>& col_indices;
-    const std::string& raw(int n) const { return cur[col_indices.at(n)]; }
+    const std::vector<int>& icols;
+    const std::string& raw(int n) const { return cur[icols.at(n)]; }
     const std::string& operator[](int n) const { return raw(n); }
     std::string as_str(int n) const { return as_string(raw(n)); }
     double as_num(int n) const { return as_number(raw(n)); }
+    struct Iter {
+      const Row& parent;
+      const int* cur;
+      void operator++() { cur++; }
+      const std::string& operator*() const { return parent.cur[*cur]; }
+      bool operator!=(const Iter& other) const { return cur != other.cur; }
+      bool operator==(const Iter& other) const { return cur == other.cur; }
+    };
+    Iter begin() const { return Iter{*this, icols.data()}; }
+    Iter end() const { return Iter{*this, icols.data() + icols.size()}; }
   };
   struct Iter {
     const std::string* cur;
@@ -384,26 +394,32 @@ inline LoopTable Block::find_loop_values(const std::string& prefix,
 struct Document {
   Document() : items_{nullptr} {}
   explicit Document(const std::string& path) : items_{nullptr} {
-    parse_file(path);
+    read_file(path);
   }
 
-  void parse_file(const std::string& filename);
-  void parse_memory(const char* data, const size_t size, const char* name);
-  void parse_cstream(std::FILE *f, const char* name, size_t maximum);
-  void parse_istream(std::istream &is, const char* name, size_t maximum);
+  void read_file(const std::string& filename);
+  void read_string(const std::string& data, const std::string& name="string");
+  void read_memory(const char* data, const size_t size, const char* name);
+  void read_cstream(std::FILE *f, const char* name, size_t maximum);
+  void read_istream(std::istream &is, const char* name, size_t maximum);
 
   // returns blocks[0] if the document has exactly one block (like mmCIF)
   const Block& sole_block() const {
     if (blocks.size() > 1)
       throw std::runtime_error(std::to_string(blocks.size()) + " data blocks,"
-                               " not just one as expected");
+                               " a single block was expected");
     return blocks.at(0);
   }
 
   std::string source;
   std::vector<Block> blocks;
   std::vector<Comment> comments;
+
+  // implementation detail
   std::vector<Item>* items_; // items of the currently parsed block or frame
+
+private:
+  void after_read(const std::string& name);
 };
 
 // **** parsing actions that fill the storage ****
@@ -490,7 +506,8 @@ void throw_validation_err(const Document& d, const Block& b, const Item& item,
                            " in data_" + b.name + ": " + s);
 }
 
-inline void check_no_name_dups(const Document& d) {
+// Throw an error if any block name, frame name or tag is duplicated.
+inline void check_duplicates(const Document& d) {
   // check for duplicate block names (except empty "" which is global_)
   std::unordered_set<std::string> names;
   for (const Block& block : d.blocks) {
@@ -526,32 +543,39 @@ inline void check_no_name_dups(const Document& d) {
   }
 }
 
-inline void Document::parse_file(const std::string& filename) {
+inline void Document::read_file(const std::string& filename) {
   pegtl::parse_file<rules::file, Action, Errors>(filename, *this);
   //pegtl::read_parser(filename).parse<rules::file, Action, Errors>(*this);
-  source = filename;
-  check_no_name_dups(*this);
+  after_read(filename);
 }
 
-inline void Document::parse_memory(const char* data, const size_t size,
-                                   const char* name) {
+inline void Document::read_string(const std::string& data,
+                                  const std::string& name) {
+  pegtl::parse_string<rules::file, Action, Errors>(data, name, *this);
+  after_read(name);
+}
+
+inline void Document::read_memory(const char* data, const size_t size,
+                                  const char* name) {
   pegtl::parse_memory<rules::file, Action, Errors>(data, size, name, *this);
-  source = name;
-  check_no_name_dups(*this);
+  after_read(name);
 }
 
-inline void Document::parse_cstream(std::FILE *f, const char* name,
-                                    size_t maximum) {
+inline void Document::read_cstream(std::FILE *f, const char* name,
+                                   size_t maximum) {
   pegtl::parse_cstream<rules::file, Action, Errors>(f, name, maximum, *this);
-  source = name;
-  check_no_name_dups(*this);
+  after_read(name);
 }
 
-inline void Document::parse_istream(std::istream &is, const char* name,
-                                    size_t maximum) {
+inline void Document::read_istream(std::istream &is, const char* name,
+                                   size_t maximum) {
   pegtl::parse_istream<rules::file, Action, Errors>(is, name, maximum, *this);
+  after_read(name);
+}
+
+inline void Document::after_read(const std::string& name) {
   source = name;
-  check_no_name_dups(*this);
+  check_duplicates(*this);
 }
 
 

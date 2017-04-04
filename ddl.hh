@@ -21,7 +21,7 @@ namespace cif {
 class DDL {
 public:
   void open_file(const std::string& filename) {
-    ddl_.parse_file(filename);
+    ddl_.read_file(filename);
     version_ = (ddl_.blocks.size() > 1 ? 1 : 2);
     sep_ = version_ == 1 ? "_" : ".";
     if (version_ == 1)

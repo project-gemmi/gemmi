@@ -39,7 +39,7 @@ inline size_t estimate_uncompressed_size(const std::string& path) {
 }
 
 
-void gunzip_and_parse(Document& d, const std::string& path) {
+inline void gunzip_and_read(Document& d, const std::string& path) {
   size_t orig_size = estimate_uncompressed_size(path);
   if (orig_size == 0)
     throw std::runtime_error("Failed to open or read file: " + path);
@@ -60,18 +60,18 @@ void gunzip_and_parse(Document& d, const std::string& path) {
     }
   }
   gzclose(file);
-  d.parse_memory(mem.get(), orig_size, path.c_str());
+  d.read_memory(mem.get(), orig_size, path.c_str());
 }
 
 inline Document read_any(const std::string& path) {
   Document d;
   if (path == "stdin") { // temporary, Clara can't handle "-"
-    d.parse_cstream(stdin, "stdin", 16*1024);
-    //d.parse_istream(std::cin, "stdin", 16*1024);
+    d.read_cstream(stdin, "stdin", 16*1024);
+    //d.read_istream(std::cin, "stdin", 16*1024);
   } else if (path.size() > 3 && path.substr(path.size() - 3) == ".gz") {
-    cif::gunzip_and_parse(d, path);
+    cif::gunzip_and_read(d, path);
   } else {
-    d.parse_file(path);
+    d.read_file(path);
   }
   return d;
 };

@@ -113,28 +113,32 @@ Reading a file
 
 ``struct gemmi::cif::Document`` has a few functions that populate it::
 
-    void parse_file(const std::string& filename);
-    void parse_memory(const char* data, const size_t size, const char* name);
-    void parse_cstream(std::FILE *f, const char* name, size_t maximum);
-    void parse_istream(std::istream &is, const char* name, size_t maximum);
+    void read_file(const std::string& filename)
+    void read_memory(const char* data, const size_t size, const char* name)
+    void read_cstream(std::FILE *f, const char* name, size_t maximum)
+    void read_istream(std::istream &is, const char* name, size_t maximum)
 
 Parameter ``name`` is used only when reporting errors.
 Parameter ``maximum`` determines the buffer size and only affects performance.
 Regardless of the buffer size, the last two options are slower
-than ``parse_file()`` (they were not optimized for).
+than ``read_file()`` -- they were not optimized for.
 
 The constructor can take the filename as the argument::
 
-    gemmi::cif::Document doc("1mru.cif");
+    gemmi::cif::Document doc("1mru.cif")
 
 which is equivalent to::
 
     gemmi::cif::Document doc;
-    doc.parse_file("1mru.cif");
+    doc.read_file("1mru.cif");
 
-Additional header ``cifgz.hh`` has a function ``read_any`` that can
-transparently open a gzipped file (by uncompressing it first into a memory
-buffer). Convenient when working the a local copy of the PDB archive::
+Additional header ``cifgz.hh`` has a function::
+
+    inline Document read_any(const std::string& path)
+
+that can transparently open a gzipped file
+(by uncompressing it first into a memory buffer).
+Convenient when working with a local copy of the PDB archive::
     
     gemmi::cif::Document doc = read_any("mmCIF/pe/5pep.cif.gz");
 
@@ -158,15 +162,17 @@ to express the intention of accessing the only block in the file
 Block
 -----
 
-The API still evolves and for now we show only the most used functions.
+.. warning::
+    The API still evolves and for now this documentation lists only
+    the most used functions.
 
 Value corresponding to a particular tag can is read using::
 
     const std::string* find_value(const std::string& tag) const;
 
 which returns ``nullptr`` if there is no such tag in the block.
-The result is a raw string (possibly with quotes) that is to be read
-via ``as_string()`` or ``as_number()``.
+The result is a raw string (possibly with quotes) that can be fed into
+``as_string()`` or ``as_number()``.
 For example::
 
     const std::string *rf = block.find_value("_refine.ls_R_factor_R_free");
@@ -177,7 +183,7 @@ To read values from a single column for a loop (table) use::
 
     LoopColumn find_loop(const std::string& tag) const;
 
-The values can be then iterated over using a C++11 range-based ``for``::
+The values can be iterated over using a C++11 range-based ``for``::
 
     for (const std::string &s : block.find_loop("_atom_site.type_symbol"))
       std::cout << gemmi::cif::as_string(s) << std::endl;

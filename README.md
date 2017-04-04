@@ -1,3 +1,3 @@
 
-See the documenation on http://gemmi.readthedocs.io/en/latest/
+See the documentation on http://gemmi.readthedocs.io/en/latest/
 
