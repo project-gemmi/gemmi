@@ -1,0 +1,12 @@
+
+data_misc
+
+_noq str
+_singleq 'str' 
+_doubleq "str" 
+_in_next_line # comment
+str
+_with_hash s#t#r#
+_semicolonq
+;str
+;
