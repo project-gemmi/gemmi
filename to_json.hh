@@ -1,5 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
+//TODO: options to: 1) skip the leading underscore in _tags, 2) infer numbers
 #ifndef GEMMI_TO_JSON_HH_
 #define GEMMI_TO_JSON_HH_
 #include "cif.hh"
@@ -11,7 +12,7 @@ namespace cif {
 
 class JsonWriter {
 public:
-  explicit JsonWriter(std::ostream& os) : os_(os), linesep_("\n") {}
+  explicit JsonWriter(std::ostream& os) : os_(os), linesep_("\n ") {}
   void write_json(const cif::Document& d);
 
 private:
@@ -92,20 +93,41 @@ private:
     }
   }
 
+  void write_loop_tags(const Loop& loop) {
+    os_.put('[');
+    bool first = true;
+    for (const LoopTag& tag : loop.tags) {
+      if (!first)
+        os_ << ", ";
+      write_string(tag.tag);
+      first = false;
+    }
+    os_.put(']');
+  }
+
+  // works for both block and frame
   void write_map(const std::string& name, const std::vector<cif::Item>& items) {
-    os_ << linesep_;
     write_string(name);
     size_t n = linesep_.size();
-    os_ << ": {";
     linesep_.resize(n + 1, ' ');
+    os_ << ": {" << linesep_;
     for (const cif::Item& item : items) {
-      if (&item != &items[0])
-        os_.put(',');
-      os_ << linesep_;
       write_item(item);
+      os_ << ',' << linesep_;
     }
-    os_ << linesep_ << "}";
+    linesep_.resize(n + 2, ' ');
+    os_ << "\"loop tags\": [";
+    bool needs_comma = false;
+    for (const cif::Item& item : items)
+      if (item.type == cif::ItemType::Loop) {
+        if (needs_comma)
+          os_.put(',');
+        os_ << linesep_;
+        write_loop_tags(item.loop);
+        needs_comma = true;
+      }
     linesep_.resize(n);
+    os_ << linesep_ << " ]" << linesep_ << "}";
   }
 };
 
@@ -114,6 +136,7 @@ inline void JsonWriter::write_json(const cif::Document& d) {
   for (const cif::Block& block : d.blocks) {
     if (&block != &d.blocks[0])
       os_.put(',');
+    os_ << linesep_;
     write_map(block.name, block.items);
   }
   os_ << "\n}\n";
