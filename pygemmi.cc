@@ -2,6 +2,7 @@
 
 #include "cif.hh"
 #include "cifgz.hh"
+#include "write_cif.hh"
 #include "to_json.hh"
 #include <sstream>
 #include <pybind11/pybind11.h>
@@ -41,6 +42,7 @@ PYBIND11_PLUGIN(gemmi) {
          "Read a string as a CIF file")
     .def("sole_block", &Document::sole_block,
          "Returns the only block if there is exactly one")
+    .def("write_file", &write_to_file)
     .def("as_json", [](const Document& d) {
         std::ostringstream os;
         JsonWriter(os).write_json(d);

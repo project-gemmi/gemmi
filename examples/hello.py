@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys
-import gemmi as cif
+from gemmi import cif
 
 greeted = set()
 if len(sys.argv) != 2: sys.exit(1)

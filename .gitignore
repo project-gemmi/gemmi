@@ -1,4 +1,5 @@
 *.o
+*.py[co]
 to_json
 validate
 /docs/_build

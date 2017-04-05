@@ -495,6 +495,7 @@ template<> struct Action<rules::loop> {
 };
 template<> struct Action<rules::comment> {
   template<typename Input> static void apply(const Input& in, Document& out) {
+    // FIXME: should we ignore silly empty non-comments in mmCIFs from PDB?
     out.comments.emplace_back(in.line(), in.string());
   }
 };
@@ -637,6 +638,10 @@ inline void infer_valtypes(Document &d) {
     infer_valtypes_in_items(block.items);
 }
 
+inline bool is_text_field(const std::string& val) {
+  size_t len = val.size();
+  return len > 3 && val[0] == ';' && (val[len-2] == '\n' || val[len-2] == '\r');
+}
 
 } // namespace cif
 } // namespace gemmi

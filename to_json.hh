@@ -13,7 +13,7 @@ namespace cif {
 class JsonWriter {
 public:
   explicit JsonWriter(std::ostream& os) : os_(os), linesep_("\n ") {}
-  void write_json(const cif::Document& d);
+  void write_json(const Document& d);
 
 private:
   std::ostream& os_;
@@ -63,14 +63,14 @@ private:
     os_.put('"');
   }
 
-  void write_item(const cif::Item& item) {
+  void write_item(const Item& item) {
     switch (item.type) {
-      case cif::ItemType::Value:
+      case ItemType::Value:
         write_string(item.tv.tag);
         os_ << ": ";
-        write_string(cif::as_string(item.tv.value));
+        write_string(as_string(item.tv.value));
         break;
-      case cif::ItemType::Loop: {
+      case ItemType::Loop: {
         size_t ncol = item.loop.tags.size();
         const auto& vals = item.loop.values;
         for (size_t i = 0; i < ncol; i++) {
@@ -81,13 +81,13 @@ private:
           for (size_t j = i; j < vals.size(); j += ncol) {
             if (j != i)
               os_.put(',');
-            write_string(cif::as_string(vals[j]));
+            write_string(as_string(vals[j]));
           }
           os_.put(']');
         }
         break;
       }
-      case cif::ItemType::Frame:
+      case ItemType::Frame:
         write_map(item.frame.name, item.frame.items);
         break;
     }
@@ -106,20 +106,20 @@ private:
   }
 
   // works for both block and frame
-  void write_map(const std::string& name, const std::vector<cif::Item>& items) {
+  void write_map(const std::string& name, const std::vector<Item>& items) {
     write_string(name);
     size_t n = linesep_.size();
     linesep_.resize(n + 1, ' ');
     os_ << ": {" << linesep_;
-    for (const cif::Item& item : items) {
+    for (const Item& item : items) {
       write_item(item);
       os_ << ',' << linesep_;
     }
     linesep_.resize(n + 2, ' ');
     os_ << "\"loop tags\": [";
     bool needs_comma = false;
-    for (const cif::Item& item : items)
-      if (item.type == cif::ItemType::Loop) {
+    for (const Item& item : items)
+      if (item.type == ItemType::Loop) {
         if (needs_comma)
           os_.put(',');
         os_ << linesep_;
@@ -131,9 +131,9 @@ private:
   }
 };
 
-inline void JsonWriter::write_json(const cif::Document& d) {
+inline void JsonWriter::write_json(const Document& d) {
   os_.put('{');
-  for (const cif::Block& block : d.blocks) {
+  for (const Block& block : d.blocks) {
     if (&block != &d.blocks[0])
       os_.put(',');
     os_ << linesep_;
