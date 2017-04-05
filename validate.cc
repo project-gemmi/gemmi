@@ -71,6 +71,7 @@ struct Options {
   bool fast = false;
   bool stats = false;
   bool type_breakdown = false;
+  bool quiet = false;
   std::string ddl_path;
   std::vector<std::string> paths;
   void add_path(const std::string& p) { paths.push_back(p); }
@@ -86,6 +87,7 @@ int main(int argc, char **argv) {
     .bind(&Options::stats);
   cli["-t"]["--types"].describe("show type breakdown in token statistics")
     .bind(&Options::type_breakdown);
+  cli["-q"]["--quiet"].describe("show only errors").bind(&Options::quiet);
   cli["-d"]["--ddl"].describe("DDL for validation")
     .bind(&Options::ddl_path, "file.dic");
   cli[Clara::_].bind(&Options::add_path, "file");
@@ -139,7 +141,8 @@ int main(int argc, char **argv) {
     if (!msg.empty())
       std::cout << msg << std::endl;
 
-    std::cout << (ok ? "OK" : "FAILED") << std::endl;
+    if (!options.quiet)
+      std::cout << (ok ? "OK" : "FAILED") << std::endl;
   }
   return 0;
 }
