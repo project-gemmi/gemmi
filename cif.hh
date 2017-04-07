@@ -231,9 +231,15 @@ struct LoopColumn {
   }
 };
 
+// Some values can be given either in loop or as tag-value pairs.
+// The latter case is equivalent to a loop with a single row.
+// We optimized for loops, and in case of tag-values we copy the values
+// into the `values` vector.
 struct LoopTable {
   const Loop *loop;
   std::vector<int> cols;
+  std::vector<std::string> values;
+
   struct Row {
     const std::string* cur;
     const std::vector<int>& icols;
@@ -252,6 +258,7 @@ struct LoopTable {
     Iter begin() const { return Iter{*this, icols.data()}; }
     Iter end() const { return Iter{*this, icols.data() + icols.size()}; }
   };
+
   struct Iter {
     const std::string* cur;
     const std::vector<int>* col_indices;
@@ -261,14 +268,27 @@ struct LoopTable {
     bool operator!=(const Iter& other) const { return cur != other.cur; }
     bool operator==(const Iter& other) const { return cur == other.cur; }
   };
-  Iter begin() const {
-    return loop ? Iter{loop->values.data(), &cols, loop->width()}
-                : Iter{nullptr, nullptr, 0};
+
+  bool ok() const { return loop != nullptr || !values.empty(); }
+  size_t length() const {
+    return loop ? loop->length() : (values.empty() ? 0 : 1);
   }
+
+  Iter begin() const {
+    if (loop)
+      return Iter{loop->values.data(), &cols, loop->width()};
+    if (!values.empty())
+      return Iter{values.data(), &cols, values.size()};
+    return Iter{nullptr, nullptr, 0};
+  }
+
   Iter end() const {
-    return loop ? Iter{loop->values.data() + loop->values.size(), &cols,
-                       loop->width()}
-                : Iter{nullptr, nullptr, 0};
+    if (loop)
+      return Iter{loop->values.data() + loop->values.size(), &cols,
+                  loop->width()};
+    if (!values.empty())
+      return Iter{values.data() + values.size(), &cols, values.size()};
+    return Iter{nullptr, nullptr, 0};
   }
 };
 
@@ -283,8 +303,8 @@ struct Block {
 
   const std::string* find_value(const std::string& tag) const;
   LoopColumn find_loop(const std::string& tag) const;
-  LoopTable find_loop_values(const std::string& prefix,
-                             const std::vector<std::string>& tags) const;
+  LoopTable find_table(const std::string& prefix,
+                       const std::vector<std::string>& tags) const;
 };
 
 struct Item {
@@ -373,22 +393,39 @@ inline LoopColumn Block::find_loop(const std::string& tag) const {
   return LoopColumn{nullptr, 0};
 }
 
-inline LoopTable Block::find_loop_values(const std::string& prefix,
-    const std::vector<std::string>& tags) const {
-  if (tags.empty())
-    return LoopTable{nullptr, {}};
-  LoopColumn c0 = find_loop(prefix + tags[0]);
-  if (!c0.loop)
-    return LoopTable{nullptr, {}};
+inline LoopTable Block::find_table(const std::string& prefix,
+                                   const std::vector<std::string>& tags) const {
+  const Loop* loop = tags.empty() ? nullptr : find_loop(prefix + tags[0]).loop;
   std::vector<int> indices;
-  indices.reserve(tags.size());
-  for (const std::string& tag : tags) {
-    int idx = c0.loop->find_tag(prefix + tag);
-    if (idx == -1)
-      return LoopTable{nullptr, {}};
-    indices.push_back(idx);
+  std::vector<std::string> values;
+  if (loop) {
+    indices.reserve(tags.size());
+    for (const std::string& tag : tags) {
+      int idx = loop->find_tag(prefix + tag);
+      if (idx == -1) {
+        loop = nullptr;
+        indices.clear();
+        break;
+      }
+      indices.push_back(idx);
+    }
+  } else {
+    for (const std::string& tag : tags) {
+      const std::string* v = find_value(prefix + tag);
+      if (v == nullptr) {
+        indices.clear();
+        values.clear();
+        break;
+      }
+      if (indices.empty()) {
+        indices.reserve(tags.size());
+        values.reserve(tags.size());
+      }
+      indices.push_back(values.size());
+      values.push_back(*v);
+    }
   }
-  return LoopTable{c0.loop, indices};
+  return LoopTable{loop, indices, values};
 }
 
 struct Document {
@@ -579,6 +616,12 @@ inline void Document::after_read(const std::string& name) {
   check_duplicates(*this);
 }
 
+// convenience free function
+inline Document read_string(const std::string& data) {
+  Document doc;
+  doc.read_string(data);
+  return doc;
+}
 
 inline bool check_file_syntax(const std::string& filename, std::string* msg) {
   pegtl::file_parser fp(filename);

@@ -104,7 +104,7 @@ This code reads mmCIF file and shows weights of the chemical components::
     int main() {
       gemmi::cif::Document doc("1mru.cif");
       for (const gemmi::cif::Block& block : doc.blocks)
-        for (const auto& cc : block.find_loop_values("_chem_comp.", {"id", "formula_weight"}))
+        for (const auto& cc : block.find_table("_chem_comp.", {"id", "formula_weight"}))
           std::cout << cc.as_str(0) << " weights " << cc.as_num(1) << std::endl;
     }
 
@@ -188,12 +188,18 @@ The values can be iterated over using a C++11 range-based ``for``::
     for (const std::string &s : block.find_loop("_atom_site.type_symbol"))
       std::cout << gemmi::cif::as_string(s) << std::endl;
 
-More often, we want to read multiple columns from a table,
-and usually these columns have a common prefix::
+Most often, we want to access multiple (but not necessarily all) columns
+from a table. Conventionally, columns from the same loop have a common prefix.
+Additionally, some values can be given either in a loop or, if the loop
+would have only a single row, as tag-value pairs.
+So we want our access function to handle transparently both cases.
+These requirements led to a functions ``find_table``::
 
-    LoopTable find_loop_values(const std::string& prefix,
-                               const std::vector<std::string>& tags) const;
+    LoopTable find_table(const std::string& prefix,
+                         const std::vector<std::string>& tags) const;
 
+which returns a lightweight, iterable (by C++11 range-based ``for``) view
+of the data.
 The first example in this section shows how this function can be used.
 
 

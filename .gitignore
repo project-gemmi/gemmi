@@ -1,5 +1,6 @@
 *.o
 *.py[co]
+tags
+/docs/_build
 to_json
 validate
-/docs/_build

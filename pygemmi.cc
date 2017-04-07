@@ -34,39 +34,42 @@ PYBIND11_PLUGIN(gemmi) {
     .def(py::init<const std::string &>())
     .def("__len__", [](const Document& d) { return d.blocks.size(); })
     .def("__iter__", [](const Document& d) {
-        return py::make_iterator(d.blocks.begin(), d.blocks.end());
+        return py::make_iterator(d.blocks);
     }, py::keep_alive<0, 1>())
-    .def("read_file", &Document::read_file,
+    .def("read_file", &Document::read_file, py::arg("filename"),
          "Read file copying data into Document")
     .def("read_string", &Document::read_string,
+         py::arg("data"), py::arg("name")="string",
          "Read a string as a CIF file")
     .def("sole_block", &Document::sole_block,
          "Returns the only block if there is exactly one")
-    .def("write_file", &write_to_file)
+    .def("write_file", &write_to_file, py::arg("filename"),
+         "Write data to a CIF file.")
     .def("as_json", [](const Document& d) {
         std::ostringstream os;
         JsonWriter(os).write_json(d);
         return os.str();
-    });
+    }, "Returns JSON representation in a string.");
 
   py::class_<Block>(cif, "Block")
     .def(py::init<>())
     .def_readonly("name", &Block::name)
-    .def("find_value", &Block::find_value, py::return_value_policy::reference)
-    .def("find_loop", &Block::find_loop)
-    .def("find_loop_values", &Block::find_loop_values)
+    .def("find_value", &Block::find_value, py::arg("tag"),
+         py::return_value_policy::reference)
+    .def("find_loop", &Block::find_loop, py::arg("tag"))
+    .def("find_table", &Block::find_table, py::arg("prefix"), py::arg("tags"))
     .def("__repr__", [](const Block &self) {
         return "<gemmi.cif.Block " + self.name + ">";
     });
 
   py::class_<Loop>(cif, "Loop")
     .def(py::init<>())
-    .def("width", &Loop::width)
-    .def("length", &Loop::length)
+    .def("width", &Loop::width, "Returns number of columns")
+    .def("length", &Loop::length, "Returns number of rows")
     .def("__iter__", [](const Loop& self) {
-        return py::make_iterator(self.tags.begin(), self.tags.end());
+        return py::make_iterator(self.tags);
     }, py::keep_alive<0, 1>())
-    .def("val", &Loop::val)
+    .def("val", &Loop::val, py::arg("row"), py::arg("col"))
     .def("__repr__", [](const Loop &self) {
         return "<gemmi.cif.Loop " + std::to_string(self.length()) + "x" +
                                     std::to_string(self.width()) + ">";
@@ -77,7 +80,7 @@ PYBIND11_PLUGIN(gemmi) {
     .def_readonly("loop", &LoopColumn::loop)
     .def_readwrite("col", &LoopColumn::col)
     .def("__iter__", [](const LoopColumn& self) {
-        return py::make_iterator(self.begin(), self.end());
+        return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
     .def("__bool__", [](const LoopColumn &self) -> bool { return self.loop; })
     .def("__repr__", [](const LoopColumn &self) {
@@ -91,23 +94,29 @@ PYBIND11_PLUGIN(gemmi) {
     .def_readonly("loop", &LoopTable::loop)
     .def_readonly("cols", &LoopTable::cols)
     .def("__iter__", [](const LoopTable& self) {
-        return py::make_iterator(self.begin(), self.end());
+        return py::make_iterator(self, py::keep_alive<0, 1>());
     }, py::keep_alive<0, 1>())
-    .def("__bool__", [](const LoopTable &self) -> bool { return self.loop; })
-    .def("__repr__", [](const LoopTable &self) {
+    .def("__bool__", &LoopTable::ok)
+    .def("__repr__", [](const LoopTable& self) {
         return "<gemmi.cif.LoopTable " +
-        (self.loop ? std::to_string(self.loop->length()) + "x" +
+        (self.loop ? std::to_string(self.length()) + "x" +
                      std::to_string(self.cols.size()) : "nil") + ">";
     });
   py::class_<LoopTable::Row>(lt, "Row")
+    .def("__len__", [](const LoopTable::Row& r) { return r.icols.size(); })
     .def("raw", &LoopTable::Row::raw)
+    .def("__getitem__", &LoopTable::Row::raw)
     .def("as_str", &LoopTable::Row::as_str)
     .def("as_num", &LoopTable::Row::as_num)
-    .def("__repr__", [](const LoopTable::Row &self) {
+    .def("__iter__", [](const LoopTable::Row& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>())
+    .def("__repr__", [](const LoopTable::Row& self) {
         return "<gemmi.cif.LoopTable.Row: " + str_join(self, " ") + ">";
     });
 
   cif.def("read_any", &read_any, "Reads normal or gzipped cif file.");
+  cif.def("read_string", &read_string, "Reads a string string as a CIF file.");
 
   return mg.ptr();
 }
