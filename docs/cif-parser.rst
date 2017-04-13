@@ -104,7 +104,7 @@ This code reads mmCIF file and shows weights of the chemical components::
     int main() {
       gemmi::cif::Document doc("1mru.cif");
       for (const gemmi::cif::Block& block : doc.blocks)
-        for (const auto& cc : block.find_table("_chem_comp.", {"id", "formula_weight"}))
+        for (const auto& cc : block.find("_chem_comp.", {"id", "formula_weight"}))
           std::cout << cc.as_str(0) << " weights " << cc.as_num(1) << std::endl;
     }
 
@@ -159,6 +159,8 @@ we have a function::
 to express the intention of accessing the only block in the file
 (it throws an exception if the number of blocks is not one).
 
+At last, function ``clear()`` works in the same way as in C++ containers.
+
 Block
 -----
 
@@ -172,12 +174,22 @@ Value corresponding to a particular tag can is read using::
 
 which returns ``nullptr`` if there is no such tag in the block.
 The result is a raw string (possibly with quotes) that can be fed into
-``as_string()`` or ``as_number()``.
+``as_string()`` or ``as_number()`` or ``as_int()``.
 For example::
 
     const std::string *rf = block.find_value("_refine.ls_R_factor_R_free");
-    assert(rf != nullptr);
+    // here you may check for rf == nullptr, possibly also for "?" and "."
     double rfree = gemmi::cif::as_number(*rf); // NaN if '?' or '.'
+
+If you do not need to distinguish between missing tag, unknown (?)
+and n/a (.), we have convenience functions::
+
+    // returns empty string if not found or unknown or n/a.
+    const std::string& find_string(const std::string& tag) const;
+    // returns NaN if not found or unknown or n/a, throws if not numeric
+    double find_number(const std::string& tag) const;
+    // returns default_ if not found or unknown or n/a, throws if not int
+    int find_int(const std::string& tag, int default_) const;
 
 To read values from a single column for a loop (table) use::
 
@@ -189,17 +201,32 @@ The values can be iterated over using a C++11 range-based ``for``::
       std::cout << gemmi::cif::as_string(s) << std::endl;
 
 Most often, we want to access multiple (but not necessarily all) columns
-from a table. Conventionally, columns from the same loop have a common prefix.
+from a table.
 Additionally, some values can be given either in a loop or, if the loop
 would have only a single row, as tag-value pairs.
 So we want our access function to handle transparently both cases.
-These requirements led to a functions ``find_table``::
+These requirements led to a functions ``find``::
 
-    LoopTable find_table(const std::string& prefix,
-                         const std::vector<std::string>& tags) const;
+    TableView find(const std::string& tag) const;
+    TableView find(const std::vector<std::string>& tags) const;
 
 which returns a lightweight, iterable (by C++11 range-based ``for``) view
 of the data.
+
+As a rule, columns from the same loop have a common prefix,
+so we added a third overload::
+
+    TableView find(const std::string& prefix,
+                   const std::vector<std::string>& tags) const;
+
+so that one can write::
+
+    block.find("_entity_poly_seq.", {"entity_id", "num", "mon_id"})
+
+instead of::
+
+    block.find({"_entity_poly_seq.entity_id", "_entity_poly_seq.num", "_entity_poly_seq.mon_id"})
+
 The first example in this section shows how this function can be used.
 
 
@@ -215,28 +242,76 @@ Python bindings use `pybind11 <https://github.com/pybind/pybind11>`_.
 
 .. highlight:: python
 
-Example (says hello to each element found in mmCIF)::
+Example (says hello to each element found in mmCIF):
 
-    import sys
-    from gemmi import cif
-
-    greeted = set()
-    if len(sys.argv) != 2: sys.exit(1)
-    try:
-      doc = cif.Document(sys.argv[1])
-      block = doc.sole_block() # mmCIF has exactly one block
-      for s in block.find_loop("_atom_site.type_symbol"):
-        if s not in greeted:
-          print("Hello " + s)
-          greeted.add(s)
-    except Exception as e:
-      print("Oops. %s" % e)
-      sys.exit(1)
-
-
+.. literalinclude:: ../examples/aafreq.py
+   :lines: 2-
 
 TODO: documentation
 
+Examples
+========
+
+The examples here use Python, as it is the most popular language
+for this kind of tasks.
+The full code for lives in the examples__ directory.
+
+__ https://github.com/project-gemmi/gemmi/tree/master/examples
+
+Amino acid frequency
+--------------------
+
+Let say we see in a `paper <https://doi.org/10.1093/nar/gkw978>`_
+amino acid frequency averaged over 5000+ proteomes
+(Ala 8.76%, Cys 1.38%, Asp 5.49%, etc),
+and we want to compare it with the frequency in the PDB database.
+So we write a little script
+
+.. literalinclude:: ../examples/aafreq.py
+
+We can run this script on a
+`local copy <https://www.wwpdb.org/download/downloads>`_ of the PDB database
+in the mmCIF format (30GB+ gzipped, don't uncompress),
+and get such an output:
+
+.. code-block:: none
+
+    200L ALA:17 LEU:15 LYS:13 ARG:13 THR:12 ASN:12 GLY:11 ILE:10 ASP:10 VAL:9 GLU:8 SER:6 TYR:6 GLN:5 PHE:5 MET:5 PRO:3 TRP:3 HIS:1
+    ...
+    4ZZZ LEU:40 LYS:33 SER:30 ASP:25 GLY:25 ILE:25 VAL:23 ALA:19 PRO:18 GLU:18 ASN:17 THR:16 TYR:16 GLN:14 ARG:11 PHE:10 HIS:9 MET:9 CYS:2 TRP:2
+    TOTAL LEU:8.90% ALA:7.80% GLY:7.34% VAL:6.95% GLU:6.55% SER:6.29% LYS:6.18% ASP:5.55% THR:5.54% ILE:5.49% ARG:5.35% PRO:4.66% ASN:4.16% PHE:3.88% GLN:3.77% TYR:3.45% HIS:2.63% MET:2.14% CYS:1.38% TRP:1.35%
+
+On my laptop it takes about an hour, using a single core.
+Most of this hour is spent on tokenizing the CIF files and copying
+the content into a DOM structure, what could be largely avoided given
+that we use only sequences not atoms.
+But it is not worth to optimize one-off script.
+The same goes for using multiple core.
+
+Search PDB by elements
+----------------------
+
+Let say we want to be able to search PDB by specifying a set of elements
+present in the model. First we write down elements present in each
+PDB entry::
+
+    block = cif.read_any(path).sole_block()
+    elems = set(s for s in block.find_loop("_atom_site.type_symbol"))
+    print(name + ' ' + ' '.join(elems))
+
+This example ended up overdone a bit. The code resides in a
+`separate repository <https://github.com/project-gemmi/periodic-table>`_.
+
+Demo: `<https://project-gemmi.github.io/periodic-table/>`_
+
+Volume solvent vs resolution
+----------------------------
+
+Let say that we come across
+`MATTPROB <http://www.ruppweb.org/mattprob/default.html>`_
+on Bernhard Rupp's website and we want to verify the theory behind it.
+We want to re-calculate how volume solvent and Matthews coefficients
+correlate with the data resolution.
 
 Utilities
 =========

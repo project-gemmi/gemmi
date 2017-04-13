@@ -41,6 +41,7 @@ PYBIND11_PLUGIN(gemmi) {
     .def("read_string", &Document::read_string,
          py::arg("data"), py::arg("name")="string",
          "Read a string as a CIF file")
+    .def("clear", &Document::clear)
     .def("sole_block", &Document::sole_block,
          "Returns the only block if there is exactly one")
     .def("write_file", &write_to_file, py::arg("filename"),
@@ -56,8 +57,18 @@ PYBIND11_PLUGIN(gemmi) {
     .def_readonly("name", &Block::name)
     .def("find_value", &Block::find_value, py::arg("tag"),
          py::return_value_policy::reference)
+    .def("find_string", &Block::find_string, py::arg("tag"))
+    .def("find_number", &Block::find_number, py::arg("tag"))
+    .def("find_int", &Block::find_int, py::arg("tag"), py::arg("default"))
     .def("find_loop", &Block::find_loop, py::arg("tag"))
-    .def("find_table", &Block::find_table, py::arg("prefix"), py::arg("tags"))
+    .def("find", (TableView (Block::*)(const std::string&) const) &Block::find,
+         py::arg("tag"))
+    .def("find", (TableView (Block::*)(const std::string&,
+            const std::vector<std::string>&) const) &Block::find,
+         py::arg("prefix"), py::arg("tags"))
+    .def("find", (TableView (Block::*)(const std::vector<std::string>&) const)
+                 &Block::find,
+         py::arg("tags"))
     .def("__repr__", [](const Block &self) {
         return "<gemmi.cif.Block " + self.name + ">";
     });
@@ -89,34 +100,46 @@ PYBIND11_PLUGIN(gemmi) {
                      std::to_string(self.loop->length()) : "nil") + ">";
     });
 
-  py::class_<LoopTable> lt(cif, "LoopTable");
+  py::class_<TableView> lt(cif, "TableView");
   lt.def(py::init<>())
-    .def_readonly("loop", &LoopTable::loop)
-    .def_readonly("cols", &LoopTable::cols)
-    .def("__iter__", [](const LoopTable& self) {
+    .def_readonly("loop", &TableView::loop)
+    .def_readonly("cols", &TableView::cols)
+    .def("find_row", &TableView::find_row, py::keep_alive<0, 1>())
+    .def("__iter__", [](const TableView& self) {
         return py::make_iterator(self, py::keep_alive<0, 1>());
     }, py::keep_alive<0, 1>())
-    .def("__bool__", &LoopTable::ok)
-    .def("__repr__", [](const LoopTable& self) {
-        return "<gemmi.cif.LoopTable " +
-        (self.loop ? std::to_string(self.length()) + "x" +
-                     std::to_string(self.cols.size()) : "nil") + ">";
+    .def("__getitem__", &TableView::at, py::keep_alive<0, 1>())
+    .def("__bool__", &TableView::ok)
+    .def("__repr__", [](const TableView& self) {
+        return "<gemmi.cif.TableView " +
+               (self.ok() ? std::to_string(self.length()) + "x" +
+                            std::to_string(self.cols.size())
+                          : "nil") +
+               ">";
     });
-  py::class_<LoopTable::Row>(lt, "Row")
-    .def("__len__", [](const LoopTable::Row& r) { return r.icols.size(); })
-    .def("raw", &LoopTable::Row::raw)
-    .def("__getitem__", &LoopTable::Row::raw)
-    .def("as_str", &LoopTable::Row::as_str)
-    .def("as_num", &LoopTable::Row::as_num)
-    .def("__iter__", [](const LoopTable::Row& self) {
+
+  py::class_<TableView::Row>(lt, "Row")
+    .def("as_str", &TableView::Row::as_str)
+    .def("as_num", &TableView::Row::as_num)
+    .def("as_int", &TableView::Row::as_int)
+    .def("__len__", &TableView::Row::size)
+    .def("__getitem__", &TableView::Row::at)
+    .def("__iter__", [](const TableView::Row& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
-    .def("__repr__", [](const LoopTable::Row& self) {
-        return "<gemmi.cif.LoopTable.Row: " + str_join(self, " ") + ">";
+    .def("__repr__", [](const TableView::Row& self) {
+        return "<gemmi.cif.TableView.Row: " + str_join(self, " ") + ">";
     });
 
   cif.def("read_any", &read_any, "Reads normal or gzipped cif file.");
   cif.def("read_string", &read_string, "Reads a string string as a CIF file.");
+
+  cif.def("as_string", &as_string, py::arg("value"),
+          "Get string content (no quotes) from raw string.");
+  cif.def("as_number", &as_number, py::arg("value"),
+          "Get float number from string");
+  cif.def("as_int", &as_int, py::arg("value"),
+          "Get int number from string value.");
 
   return mg.ptr();
 }

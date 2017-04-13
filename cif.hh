@@ -235,18 +235,20 @@ struct LoopColumn {
 // The latter case is equivalent to a loop with a single row.
 // We optimized for loops, and in case of tag-values we copy the values
 // into the `values` vector.
-struct LoopTable {
+struct TableView {
   const Loop *loop;
   std::vector<int> cols;
-  std::vector<std::string> values;
+  std::vector<std::string> values_; // used only for non-loops
 
   struct Row {
     const std::string* cur;
     const std::vector<int>& icols;
-    const std::string& raw(int n) const { return cur[icols.at(n)]; }
-    const std::string& operator[](int n) const { return raw(n); }
-    std::string as_str(int n) const { return as_string(raw(n)); }
-    double as_num(int n) const { return as_number(raw(n)); }
+    const std::string& at(int n) const { return cur[icols.at(n)]; }
+    const std::string& operator[](int n) const { return cur[icols[n]]; }
+    size_t size() const { return icols.size(); }
+    std::string as_str(int n) const { return as_string(at(n)); }
+    double as_num(int n) const { return as_number(at(n)); }
+    int as_int(int n) const { return gemmi::cif::as_int(at(n)); }
     struct Iter {
       const Row& parent;
       const int* cur;
@@ -269,16 +271,40 @@ struct LoopTable {
     bool operator==(const Iter& other) const { return cur == other.cur; }
   };
 
-  bool ok() const { return loop != nullptr || !values.empty(); }
+  bool ok() const { return loop != nullptr || !values_.empty(); }
+  size_t width() const { return cols.size(); }
   size_t length() const {
-    return loop ? loop->length() : (values.empty() ? 0 : 1);
+    return loop ? loop->length() : (values_.empty() ? 0 : 1);
+  }
+
+  Row operator[](size_t n) const {
+    const std::string* c = loop ? loop->values.data() + loop->width() * n
+                                : values_.data() + values_.size() * n;
+    return Row{c, cols};
+  }
+
+  Row at(size_t n) const {
+    if (loop ? n >= loop->length() : n > 0 || values_.empty())
+      throw std::out_of_range("No row with index " + std::to_string(n));
+    return (*this)[n];
+  }
+
+  Row find_row(const std::string& s) const {
+    if (loop) {
+      for (size_t i = 0; i < loop->values.size(); i += loop->width())
+        if (as_string(loop->values[i]) == s)
+          return Row{loop->values.data() + i, cols};
+    } else if (!values_.empty() && as_string(values_[0]) == s) {
+      return Row{values_.data(), cols};
+    }
+    throw std::runtime_error("Not found in the first column: " + s);
   }
 
   Iter begin() const {
     if (loop)
       return Iter{loop->values.data(), &cols, loop->width()};
-    if (!values.empty())
-      return Iter{values.data(), &cols, values.size()};
+    if (!values_.empty())
+      return Iter{values_.data(), &cols, values_.size()};
     return Iter{nullptr, nullptr, 0};
   }
 
@@ -286,8 +312,8 @@ struct LoopTable {
     if (loop)
       return Iter{loop->values.data() + loop->values.size(), &cols,
                   loop->width()};
-    if (!values.empty())
-      return Iter{values.data() + values.size(), &cols, values.size()};
+    if (!values_.empty())
+      return Iter{values_.data() + values_.size(), &cols, values_.size()};
     return Iter{nullptr, nullptr, 0};
   }
 };
@@ -302,9 +328,27 @@ struct Block {
   Block() {}
 
   const std::string* find_value(const std::string& tag) const;
+  const std::string find_string(const std::string& tag) const {
+    const std::string *v = find_value(tag);
+    return v && *v != "?" && *v != "." ? as_string(*v) : "";
+  }
+  double find_number(const std::string& tag) const {
+    const std::string *v = find_value(tag);
+    return v && *v != "?" && *v != "." ? as_number(*v) : NAN;
+  }
+  double find_int(const std::string& tag, int default_) const {
+    const std::string *v = find_value(tag);
+    return v && *v != "?" && *v != "." ? as_int(*v) : default_;
+  }
   LoopColumn find_loop(const std::string& tag) const;
-  LoopTable find_table(const std::string& prefix,
-                       const std::vector<std::string>& tags) const;
+  TableView find(const std::string& prefix,
+                 const std::vector<std::string>& tags) const;
+  TableView find(const std::vector<std::string>& tags) const {
+    return find({}, tags);
+  }
+  TableView find(const std::string& tag) const {
+    return find({}, {tag});
+  }
 };
 
 struct Item {
@@ -393,9 +437,10 @@ inline LoopColumn Block::find_loop(const std::string& tag) const {
   return LoopColumn{nullptr, 0};
 }
 
-inline LoopTable Block::find_table(const std::string& prefix,
-                                   const std::vector<std::string>& tags) const {
+inline TableView Block::find(const std::string& prefix,
+                             const std::vector<std::string>& tags) const {
   const Loop* loop = tags.empty() ? nullptr : find_loop(prefix + tags[0]).loop;
+
   std::vector<int> indices;
   std::vector<std::string> values;
   if (loop) {
@@ -425,7 +470,7 @@ inline LoopTable Block::find_table(const std::string& prefix,
       values.push_back(*v);
     }
   }
-  return LoopTable{loop, indices, values};
+  return TableView{loop, indices, values};
 }
 
 struct Document {
@@ -439,6 +484,12 @@ struct Document {
   void read_memory(const char* data, const size_t size, const char* name);
   void read_cstream(std::FILE *f, const char* name, size_t maximum);
   void read_istream(std::istream &is, const char* name, size_t maximum);
+  void clear() noexcept {
+    source.clear();
+    blocks.clear();
+    comments.clear();
+    items_ = nullptr;
+  }
 
   // returns blocks[0] if the document has exactly one block (like mmCIF)
   const Block& sole_block() const {
