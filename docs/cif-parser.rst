@@ -37,7 +37,7 @@ Additionally:
 
 Not supported (yet):
 
-* the line wrapping convention (eol;\\eol)
+* the line wrapping convention (``eol;\eol``)
 
 * Greek letters (``\m`` -> µ), accented letters (``\'o`` -> ó),
   special alphabetic characters (``\%A`` -> Å) and some other codes
@@ -47,7 +47,6 @@ CIF parsers in the small-molecules field often face incorrect syntax.
 The papers about `iotbx.cif <https://doi.org/10.1107/S0021889811041161>`_
 and `COD::CIF::Parser <http://dx.doi.org/10.1107/S1600576715022396>`_
 enumerate 12 and 10 common error categories, respectively.
-
 As the MX community embraced the CIF format later, the problem may be less
 severe for us. So we start with relatively strict parser and will be
 pragmatically relaxing it when needed.
@@ -81,7 +80,7 @@ The hierarchy in the DOM reflects the structure of CIF 1.1:
 * Document contains blocks.
 * Block can contain name-value pairs, loops and frames.
 * Frame can contain name-value pairs and loops.
-* Loop (*m*×*n* table) contains *n* column names and *m*×*n* values.
+* Loop (*m*\ ×\ *n* table) contains *n* column names and *m*\ ×\ *n* values.
 
 Names are often called *tags*. The leading ``_`` is usually treated
 as part of the tag, not just a syntactic feature, so we store it in DOM
@@ -115,8 +114,8 @@ Reading a file
 
     void read_file(const std::string& filename)
     void read_memory(const char* data, const size_t size, const char* name)
-    void read_cstream(std::FILE *f, const char* name, size_t maximum)
-    void read_istream(std::istream &is, const char* name, size_t maximum)
+    void read_cstream(std::FILE *f, size_t maximum, const char* name)
+    void read_istream(std::istream &is, size_t maximum, const char* name)
 
 Parameter ``name`` is used only when reporting errors.
 Parameter ``maximum`` determines the buffer size and only affects performance.
@@ -242,106 +241,14 @@ Python bindings use `pybind11 <https://github.com/pybind/pybind11>`_.
 
 .. highlight:: python
 
-Example (says hello to each element found in mmCIF):
-
-.. literalinclude:: ../examples/aafreq.py
-   :lines: 2-
-
 TODO: documentation
 
-Examples
-========
+Example (says hello to each element found in mmCIF):
 
-The examples here use Python, as it is the most popular language
-for this kind of tasks.
-The full code for lives in the examples__ directory.
+.. literalinclude:: ../examples/hello.py
+   :lines: 2-
 
-__ https://github.com/project-gemmi/gemmi/tree/master/examples
-
-Amino acid frequency
---------------------
-
-Let say we see in a `paper <https://doi.org/10.1093/nar/gkw978>`_
-amino acid frequency averaged over 5000+ proteomes
-(Ala 8.76%, Cys 1.38%, Asp 5.49%, etc),
-and we want to compare it with the frequency in the PDB database.
-So we write a little script
-
-.. literalinclude:: ../examples/aafreq.py
-
-We can run this script on a
-`local copy <https://www.wwpdb.org/download/downloads>`_ of the PDB database
-in the mmCIF format (30GB+ gzipped, don't uncompress),
-and get such an output:
-
-.. code-block:: none
-
-    200L ALA:17 LEU:15 LYS:13 ARG:13 THR:12 ASN:12 GLY:11 ILE:10 ASP:10 VAL:9 GLU:8 SER:6 TYR:6 GLN:5 PHE:5 MET:5 PRO:3 TRP:3 HIS:1
-    ...
-    4ZZZ LEU:40 LYS:33 SER:30 ASP:25 GLY:25 ILE:25 VAL:23 ALA:19 PRO:18 GLU:18 ASN:17 THR:16 TYR:16 GLN:14 ARG:11 PHE:10 HIS:9 MET:9 CYS:2 TRP:2
-    TOTAL LEU:8.90% ALA:7.80% GLY:7.34% VAL:6.95% GLU:6.55% SER:6.29% LYS:6.18% ASP:5.55% THR:5.54% ILE:5.49% ARG:5.35% PRO:4.66% ASN:4.16% PHE:3.88% GLN:3.77% TYR:3.45% HIS:2.63% MET:2.14% CYS:1.38% TRP:1.35%
-
-On my laptop it takes about an hour, using a single core.
-Most of this hour is spent on tokenizing the CIF files and copying
-the content into a DOM structure, what could be largely avoided given
-that we use only sequences not atoms.
-But it is not worth to optimize one-off script.
-The same goes for using multiple core.
-
-Search PDB by elements
-----------------------
-
-Let say we want to be able to search PDB by specifying a set of elements
-present in the model. First we write down elements present in each
-PDB entry::
-
-    block = cif.read_any(path).sole_block()
-    elems = set(s for s in block.find_loop("_atom_site.type_symbol"))
-    print(name + ' ' + ' '.join(elems))
-
-This example ended up overdone a bit. The code resides in a
-`separate repository <https://github.com/project-gemmi/periodic-table>`_.
-
-Demo: `<https://project-gemmi.github.io/periodic-table/>`_
-
-Volume solvent vs resolution
-----------------------------
-
-Let say that we come across
-`MATTPROB <http://www.ruppweb.org/mattprob/default.html>`_
-on Bernhard Rupp's website and we want to verify the theory behind it.
-We want to re-calculate how volume solvent and Matthews coefficients
-correlate with the data resolution.
-
-Utilities
-=========
-
-This part of the Gemmi library is accompanied by two utilities.
-
-(the names are tentative and will be changed to gemmi-something,
-or perhaps we'll have a single executable ``gemmi`` with subcommands).
-
-validate
---------
-
-A validator that checks the syntax and, optionally, also ontology
-using a corresponding DDL1/DDL2 dictionary.
-(checking with DDL1 is mostly finished, DDL2 is only started).
-
-It has a few options, run ``validate -h`` for details.
-
-to_json
--------
-
-Converts CIF to JSON. It does not try to preserve all the information
-(like the converter included in cod-tools_),
-but rather aims for simple output (similar to the converter `in Jmol`_).
-It is useful for testing the parser.  Usage::
-
-    to_json my.cif > my.json
-
-.. _cod-tools: https://github.com/sauliusg/cod-tools
-.. _in Jmol: https://sourceforge.net/p/jmol/mailman/message/35622017/
+More complex examples are shown in the :ref:`cif_examples` section.
 
 Performance
 ===========

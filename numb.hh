@@ -76,12 +76,14 @@ template<> struct ActionNumb<numb_rules::numb> {
 };
 
 inline bool is_numb(const std::string& s) {
-  return pegtl::parse_string<numb_rules::numb, pegtl::nothing>(s, "");
+  pegtl::memory_input<> in(s, "");
+  return pegtl::parse<numb_rules::numb, pegtl::nothing>(in);
 }
 
 inline double as_number(const std::string& s) {
   double d = 0;
-  if (pegtl::parse_string<numb_rules::numb, ActionNumb>(s, "", d))
+  pegtl::memory_input<> in(s, "");
+  if (pegtl::parse<numb_rules::numb, ActionNumb>(in, d))
     return d;
   return NAN;
 }
@@ -109,7 +111,8 @@ template<> struct ActionInt<int_rules::int_> {
 
 inline int as_int(const std::string& s) {
   int n = 0;
-  if (pegtl::parse_string<int_rules::int_, ActionInt>(s, "", n))
+  pegtl::memory_input<> in(s, "");
+  if (pegtl::parse<int_rules::int_, ActionInt>(in, n))
     return n;
   throw std::runtime_error("not an integer number: " + s);
 }

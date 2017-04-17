@@ -66,8 +66,8 @@ inline void gunzip_and_read(Document& d, const std::string& path) {
 inline Document read_any(const std::string& path) {
   Document d;
   if (path == "stdin") { // temporary, Clara can't handle "-"
-    d.read_cstream(stdin, "stdin", 16*1024);
-    //d.read_istream(std::cin, "stdin", 16*1024);
+    d.read_cstream(stdin, 16*1024, "stdin");
+    //d.read_istream(std::cin, 16*1024, "stdin");
   } else if (path.size() > 3 && path.substr(path.size() - 3) == ".gz") {
     cif::gunzip_and_read(d, path);
   } else {

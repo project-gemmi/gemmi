@@ -18,7 +18,7 @@
 
 #include <tao/pegtl.hpp>
 #ifdef CIF_VALIDATE_SHOW_TRACE
-#include <tao/pegtl/trace.hpp>
+#include <tao/pegtl/tracer.hpp>
 #endif
 
 namespace gemmi {
@@ -479,11 +479,31 @@ struct Document {
     read_file(path);
   }
 
-  void read_file(const std::string& filename);
-  void read_string(const std::string& data, const std::string& name="string");
-  void read_memory(const char* data, const size_t size, const char* name);
-  void read_cstream(std::FILE *f, const char* name, size_t maximum);
-  void read_istream(std::istream &is, const char* name, size_t maximum);
+  void read_file(const std::string& filename) {
+    pegtl::file_input<> in(filename);
+    parse_input(in);
+  }
+
+  void read_string(const std::string& data, const std::string& name="string") {
+    pegtl::memory_input<> in(data, name);
+    parse_input(in);
+  }
+
+  void read_memory(const char* data, const size_t size, const char* name) {
+    pegtl::memory_input<> in(data, size, name);
+    parse_input(in);
+  }
+
+  void read_cstream(std::FILE *f, size_t maximum, const char* name) {
+    pegtl::cstream_input<> in(f, maximum, name);
+    parse_input(in);
+  }
+
+  void read_istream(std::istream &is, size_t maximum, const char* name) {
+    pegtl::istream_input<> in(is, maximum, name);
+    parse_input(in);
+  }
+
   void clear() noexcept {
     source.clear();
     blocks.clear();
@@ -507,7 +527,7 @@ struct Document {
   std::vector<Item>* items_; // items of the currently parsed block or frame
 
 private:
-  void after_read(const std::string& name);
+  template<typename Input> void parse_input(Input&& in);
 };
 
 // **** parsing actions that fill the storage ****
@@ -632,38 +652,9 @@ inline void check_duplicates(const Document& d) {
   }
 }
 
-inline void Document::read_file(const std::string& filename) {
-  pegtl::parse_file<rules::file, Action, Errors>(filename, *this);
-  //pegtl::read_parser(filename).parse<rules::file, Action, Errors>(*this);
-  after_read(filename);
-}
-
-inline void Document::read_string(const std::string& data,
-                                  const std::string& name) {
-  pegtl::parse_string<rules::file, Action, Errors>(data, name, *this);
-  after_read(name);
-}
-
-inline void Document::read_memory(const char* data, const size_t size,
-                                  const char* name) {
-  pegtl::parse_memory<rules::file, Action, Errors>(data, size, name, *this);
-  after_read(name);
-}
-
-inline void Document::read_cstream(std::FILE *f, const char* name,
-                                   size_t maximum) {
-  pegtl::parse_cstream<rules::file, Action, Errors>(f, name, maximum, *this);
-  after_read(name);
-}
-
-inline void Document::read_istream(std::istream &is, const char* name,
-                                   size_t maximum) {
-  pegtl::parse_istream<rules::file, Action, Errors>(is, name, maximum, *this);
-  after_read(name);
-}
-
-inline void Document::after_read(const std::string& name) {
-  source = name;
+template<typename Input> void Document::parse_input(Input&& in) {
+  pegtl::parse<rules::file, Action, Errors>(in, *this);
+  source = in.source();
   check_duplicates(*this);
 }
 
@@ -675,12 +666,12 @@ inline Document read_string(const std::string& data) {
 }
 
 inline bool check_file_syntax(const std::string& filename, std::string* msg) {
-  pegtl::file_parser fp(filename);
+  pegtl::file_input<> in(filename);
   try {
 #ifdef CIF_VALIDATE_SHOW_TRACE
-    return fp.parse<rules::file, pegtl::nothing, pegtl::tracer>();
+    return pegtl::parse<rules::file, pegtl::nothing, pegtl::tracer>(in);
 #else
-    return fp.parse<rules::file, pegtl::nothing, Errors>();
+    return pegtl::parse<rules::file, pegtl::nothing, Errors>(in);
 #endif
   } catch (pegtl::parse_error& e) {
     if (msg)

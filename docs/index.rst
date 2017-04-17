@@ -10,6 +10,7 @@ Gemmi - General MacroMolecular I/O
 
    cif-intro
    cif-parser
+   cif-utils
 
 .. toctree::
    :caption: mmCIF and PDB files
