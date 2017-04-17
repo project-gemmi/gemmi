@@ -199,6 +199,8 @@ The values can be iterated over using a C++11 range-based ``for``::
     for (const std::string &s : block.find_loop("_atom_site.type_symbol"))
       std::cout << gemmi::cif::as_string(s) << std::endl;
 
+TODO: document LoopColumn
+
 Most often, we want to access multiple (but not necessarily all) columns
 from a table.
 Additionally, some values can be given either in a loop or, if the loop
@@ -218,13 +220,16 @@ so we added a third overload::
     TableView find(const std::string& prefix,
                    const std::vector<std::string>& tags) const;
 
-so that one can write::
+so we can write::
 
     block.find("_entity_poly_seq.", {"entity_id", "num", "mon_id"})
 
 instead of::
 
     block.find({"_entity_poly_seq.entity_id", "_entity_poly_seq.num", "_entity_poly_seq.mon_id"})
+
+TODO: document TableView methods (``ok()``, ``width()``, ``length()``,
+``operator[](size_t)``, ``at(size_t)``, ``find_row(const std::string&)``.
 
 The first example in this section shows how this function can be used.
 

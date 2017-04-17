@@ -45,7 +45,7 @@ Examples
 
 The examples here use Python, as it is the most popular language
 for this kind of tasks.
-The code is kept in the examples__ directory.
+Full working code code can be found in the examples__ directory.
 
 __ https://github.com/project-gemmi/gemmi/tree/master/examples
 
@@ -164,7 +164,7 @@ caused by *group depositions*, which were introduced by PDB in 2016.
 As of Apr 2017 only a few groups have been deposited (it's just the beginning).
 They came from two European high-throughput beamlines and
 serve as an illustration of how automated software can analyze hundreds
-of similar samples and submit them quickly to the PDB.
+of similar samples (fragment screening) and submit them quickly to the PDB.
 
 We can easily filter out group depositions -- that is why we stored
 group IDs when reading mmCIF files.
