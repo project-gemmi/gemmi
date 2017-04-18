@@ -1,6 +1,5 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#include <iostream>
 #include "cif.hh"
 #include "cifgz.hh"
 #include "ddl.hh"
@@ -8,9 +7,10 @@
 #include <cstdio>
 #include <stdexcept>
 #include <string>
-//#include <tao/pegtl/analyze.hpp>
-#define CLARA_CONFIG_MAIN
-#include <clara.h>
+#ifdef ANALYZE_RULES
+# include <tao/pegtl/analyze.hpp>
+#endif
+#include <optionparser.h>
 
 namespace cif = gemmi::cif;
 
@@ -65,64 +65,67 @@ std::string token_stats(const cif::Document& d) {
   return info;
 }
 
-struct Options {
-  std::string process_name;
-  bool help = false;
-  bool fast = false;
-  bool stats = false;
-  bool type_breakdown = false;
-  bool quiet = false;
-  std::string ddl_path;
-  std::vector<std::string> paths;
-  void add_path(const std::string& p) { paths.push_back(p); }
+
+struct Arg: public option::Arg {
+  static option::ArgStatus Required(const option::Option& option, bool msg) {
+    if (option.arg != nullptr)
+      return option::ARG_OK;
+    if (msg)
+      std::cerr << "Option '" << option.name << "' requires an argument\n";
+    return option::ARG_ILLEGAL;
+  }
+};
+
+enum OptionIndex { Unknown, Help, Fast, Stat, Types, Quiet, Ddl };
+const option::Descriptor usage[] = {
+  { Unknown, 0, "", "", Arg::None, "Usage: validate [options] FILE [...]\n\n"
+                                   "Options:" },
+  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
+  { Fast, 0, "f", "fast", Arg::None, "  -f, --fast  \tSyntax-only check." },
+  { Stat, 0, "s", "stat", Arg::None, "  -s, --stat  \tShow token statistics" },
+  { Types, 0, "t", "types", Arg::None, "  -t, --types  \t"
+                                       "Break down token statistics by type." },
+  { Quiet, 0, "q", "quiet", Arg::None, "  -q, --quiet  \tShow only errors." },
+  { Ddl, 0, "d", "ddl", Arg::Required, "  -d, --ddl  \tDDL for validation." },
+  { 0, 0, 0, 0, 0, 0 }
 };
 
 int main(int argc, char **argv) {
-  Clara::CommandLine<Options> cli;
-  cli["-h"]["--help"].describe("display usage information")
-    .bind(&Options::help);
-  cli["-f"]["--fast"].describe("fast syntax-only check")
-    .bind(&Options::fast);
-  cli["-s"]["--stats"].describe("show token statistics")
-    .bind(&Options::stats);
-  cli["-t"]["--types"].describe("show type breakdown in token statistics")
-    .bind(&Options::type_breakdown);
-  cli["-q"]["--quiet"].describe("show only errors").bind(&Options::quiet);
-  cli["-d"]["--ddl"].describe("DDL for validation")
-    .bind(&Options::ddl_path, "file.dic");
-  cli[Clara::_].bind(&Options::add_path, "file");
-  cli.setThrowOnUnrecognisedTokens(true);
-  cli.bindProcessName(&Options::process_name);
-  Options options;
-  try {
-    cli.parseInto(Clara::argsToVector(argc, argv), options);
-  } catch (std::exception& e) {
-    std::cerr << "Error: " << e.what()
-              << "\nOption -h shows usage." << std::endl;
+#ifdef ANALYZE_RULES // for debugging only
+  tao::pegtl::analyze<cif::rules::file>();
+  tao::pegtl::analyze<cif::numb_rules::numb>();
+#endif
+  if (argc < 1)
+    return 2;
+  option::Stats stats(usage, argc-1, argv+1);
+  std::vector<option::Option> options(stats.options_max);
+  std::vector<option::Option> buffer(stats.buffer_max);
+  option::Parser parse(usage, argc-1, argv+1, options.data(), buffer.data());
+  if (parse.error() || options[Unknown]) {
+    option::printUsage(std::cerr, usage);
     return 1;
   }
-  if (options.help) {
-    cli.usage(std::cerr, options.process_name);
+  if (options[Help] || parse.nonOptionsCount() == 0) {
+    option::printUsage(std::cerr, usage);
     return 0;
   }
 
-  for (const std::string& path : options.paths) {
+  for (int i = 0; i < parse.nonOptionsCount(); ++i) {
+    const char* path = parse.nonOption(i);
     std::string msg;
     bool ok = true;
     try {
-      if (options.fast) {
+      if (options[Fast]) {
         ok = cif::check_file_syntax(path, &msg);
       } else {
-        //tao::pegtl::analyze<cif::rules::file>();
-        //tao::pegtl::analyze<cif::numb_rules::numb>();
         cif::Document d = cif::read_any(path);
-        if (options.type_breakdown)
+        if (options[Types])
           cif::infer_valtypes(d);
-        if (options.stats)
+        if (options[Stat])
           msg = token_stats(d);
-        if (!options.ddl_path.empty()) {
+        for (option::Option* ddl = options[Ddl]; ddl; ddl = ddl->next()) {
           cif::DDL dict;
-          dict.open_file(options.ddl_path);
+          dict.open_file(ddl->arg);
           std::string ver_msg;
           dict.check_audit_conform(d, &ver_msg);
           if (!ver_msg.empty())
@@ -141,7 +144,7 @@ int main(int argc, char **argv) {
     if (!msg.empty())
       std::cout << msg << std::endl;
 
-    if (!options.quiet)
+    if (!options[Quiet])
       std::cout << (ok ? "OK" : "FAILED") << std::endl;
   }
   return 0;

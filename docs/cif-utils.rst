@@ -27,14 +27,15 @@ to_json
 
 Converts CIF to JSON. It does not try to preserve all the information
 (like the converter included in cod-tools_),
-but rather aims for simple output (similar to the converter `in Jmol`_).
-It is useful for testing the parser.  Usage::
-
-    to_json my.cif > my.json
+but rather aims for simple output (similar to the converter `in Jmol`_
+and the `COMCIFS draft`_).
+It is useful for testing the parser.
 
 .. _cod-tools: https://github.com/sauliusg/cod-tools
 .. _in Jmol: https://sourceforge.net/p/jmol/mailman/message/35622017/
+.. _COMCIFS draft: http://comcifs.github.io/cif-json
 
+Run ``to_json -h`` for details.
 
 .. _cif_examples:
 

@@ -12,6 +12,7 @@ namespace cif {
 
 class JsonWriter {
 public:
+  bool use_bare_tags = false;
   explicit JsonWriter(std::ostream& os) : os_(os), linesep_("\n ") {}
   void write_json(const Document& d);
 
@@ -20,9 +21,9 @@ private:
   std::string linesep_;
 
   // based on tao/json/internal/escape.hh
-  static void escape(std::ostream& os, const std::string& s) {
+  static void escape(std::ostream& os, const std::string& s, size_t pos) {
     static const char* h = "0123456789abcdef";
-    const char* p = s.data();
+    const char* p = s.data() + pos;
     const char* l = p;
     const char* const e = s.data() + s.size();
     while (p != e) {
@@ -57,18 +58,31 @@ private:
     os.write(l, p - l);
   }
 
-  void write_string(const std::string& s) {
+  void write_string(const std::string& s, size_t pos=0) {
     os_.put('"');
-    escape(os_, s);
+    escape(os_, s, pos);
     os_.put('"');
+  }
+
+  void write_tag(const std::string& tag) {
+    write_string(tag, use_bare_tags ? 1 : 0);
+  }
+
+  void write_value(const std::string& value) {
+    if (value == "?")
+      os_ << "null";
+    else if (value == ".")
+      os_ << "null";
+    else
+      write_string(as_string(value));
   }
 
   void write_item(const Item& item) {
     switch (item.type) {
       case ItemType::Value:
-        write_string(item.tv.tag);
+        write_tag(item.tv.tag);
         os_ << ": ";
-        write_string(as_string(item.tv.value));
+        write_value(item.tv.value);
         break;
       case ItemType::Loop: {
         size_t ncol = item.loop.tags.size();
@@ -76,12 +90,12 @@ private:
         for (size_t i = 0; i < ncol; i++) {
           if (i != 0)
             os_ << "," << linesep_;
-          write_string(item.loop.tags[i].tag);
+          write_tag(item.loop.tags[i].tag);
           os_ << ": [";
           for (size_t j = i; j < vals.size(); j += ncol) {
             if (j != i)
               os_.put(',');
-            write_string(as_string(vals[j]));
+            write_value(vals[j]);
           }
           os_.put(']');
         }
@@ -99,7 +113,7 @@ private:
     for (const LoopTag& tag : loop.tags) {
       if (!first)
         os_ << ", ";
-      write_string(tag.tag);
+      write_tag(tag.tag);
       first = false;
     }
     os_.put(']');

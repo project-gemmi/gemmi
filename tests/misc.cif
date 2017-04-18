@@ -9,6 +9,8 @@ _with_hash s#t#r#
 _semicolonq
 ;str
 ;
+_na .
+_who_knows ?
 
 data_numbers
 _int 5
