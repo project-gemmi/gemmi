@@ -103,13 +103,12 @@ Solvent content vs resolution
 .. |Vs| replace:: *V*\ :sub:`S`
 .. |dmin| replace:: *d*\ :sub:`min`
 
-Let say that we come across one of the articles
-(`Acta Cryst D <https://www.ncbi.nlm.nih.gov/pubmed/24914969>`_
-or `CNN <http://www.phenix-online.org/newsletter/CCN_2015_01.pdf#page=14>`_)
+Let say that we would like to generate a plot of solvent content
+as a function of |dmin|, similar to the plots
 by C. X. Weichenberger and B. Rupp
-about solvent content probabilities as a function of |dmin|.
-We like the solvent-content-vs-resolution plot there
-and would like to make a more detailed version of it.
+in `Acta Cryst D <https://www.ncbi.nlm.nih.gov/pubmed/24914969>`_
+and `CNN <http://www.phenix-online.org/newsletter/CCN_2015_01.pdf#page=14>`_),
+but less smoothed and with duplicate entries included.
 
 In macromolecular crystallography solvent content is conventionally
 estimated as:
@@ -123,7 +122,8 @@ molecules in this volume).
 Weichenberger and Rupp calculated |Vs| themselves, but we will simply
 use the values present in mmCIF files.
 So first we extract |Vm|, |Vs| and |dmin|,
-as well as deposition date and group ID (which will be explained later).
+as well as number of DNA/RNA chains (protein-only entries will have 0 here),
+deposition date and group ID (which will be explained later).
 
 .. literalinclude:: ../examples/matthews.py
    :pyobject: gather_data
@@ -158,7 +158,6 @@ Or we could just smooth them out by changing parameters of this plot.
    plotted as intentionally undersmoothed kernel density estimate.
    The code used to produce this plot is in :file:`examples/matthews.py`.
 
-
 On the left side of the yellow egg you can see dark stripes
 caused by *group depositions*, which were introduced by PDB in 2016.
 As of Apr 2017 only a few groups have been deposited (it's just the beginning).
@@ -166,14 +165,15 @@ They came from two European high-throughput beamlines and
 serve as an illustration of how automated software can analyze hundreds
 of similar samples (fragment screening) and submit them quickly to the PDB.
 
-We can easily filter out group depositions -- that is why we stored
-group IDs when reading mmCIF files.
+We can easily filter out group depositions -- either using the group IDs
+that we extracted from mmCIF files or, like W&B, by excluding redundant
+entries based on unit cell and |Vm|.
 
-A systematic research of the same protein, with dozens PDB submissions,
-can also make a spot on our plot.
+Not all the dark spots are group depositions.
 For example, at |Vs|\ ≈66.5%, |dmin| 2.5-3A we can see the 20S proteasome
 studied by Huber *et al*.
-But this should not skew the final statistics significantly.
+A systematic research of the same important protein,
+with dozens PDB submissions.
 
 Entity weight
 -------------
