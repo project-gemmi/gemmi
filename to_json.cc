@@ -7,13 +7,15 @@ struct Arg: public option::Arg {
   // option checkers here
 };
 
-enum OptionIndex { Unknown, Help, Bare };
+enum OptionIndex { Unknown, Help, Bare, QuoteNum };
 static const option::Descriptor usage[] = {
   { Unknown, 0, "", "", Arg::None,
     "Usage: to_json [options] file.cif file.json\n\nOptions:" },
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
   { Bare, 0, "b", "--bare-tags", Arg::None,
     "  -b, --bare-tags  \tOutput tags without the first underscore." },
+  { QuoteNum, 0, "q", "--quote-numbers", Arg::None,
+    "  -q, --quote-numbers  \tOutput all numbers as strings." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -52,6 +54,7 @@ int main(int argc, char **argv) {
   }
   gemmi::cif::JsonWriter writer(os ? *os : std::cout);
   writer.use_bare_tags = options[Bare];
+  writer.quote_numbers = options[QuoteNum];
   writer.write_json(d);
   delete os;
   return 0;

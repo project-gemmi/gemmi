@@ -1,6 +1,5 @@
 // Copyright 2017 Global Phasing Ltd.
 
-//TODO: options to: 1) skip the leading underscore in _tags, 2) infer numbers
 #ifndef GEMMI_TO_JSON_HH_
 #define GEMMI_TO_JSON_HH_
 #include "cif.hh"
@@ -13,6 +12,7 @@ namespace cif {
 class JsonWriter {
 public:
   bool use_bare_tags = false;
+  bool quote_numbers = false;
   explicit JsonWriter(std::ostream& os) : os_(os), linesep_("\n ") {}
   void write_json(const Document& d);
 
@@ -68,11 +68,38 @@ private:
     write_string(tag, use_bare_tags ? 1 : 0);
   }
 
+  void write_as_number(const std::string& value) {
+    // if we are here, value is not empty
+    if (value[0] == '.') // in JSON numbers cannot start with dot
+      os_.put('0');
+    // in JSON the number cannot start with +
+    size_t pos = 0;
+    if (value[pos] == '+') {
+      pos = 1;
+    } else if (value[pos] == '-') { // make handling -001 easier
+      os_.put('-');
+      pos = 1;
+    }
+    // in JSON left-padding with 0s is not allowed
+    while (value[pos] == '0' && isdigit(value[pos+1]))
+      ++pos;
+    // in JSON dot must be followed by digit
+    size_t dotpos = value.find('.');
+    if (dotpos != std::string::npos && !isdigit(value[dotpos+1])) {
+      os_ << value.substr(pos, dotpos+1-pos) << '0' << value.substr(dotpos+1);
+    } else {
+      os_ << value.c_str() + pos;
+    }
+  }
+
   void write_value(const std::string& value) {
     if (value == "?")
       os_ << "null";
     else if (value == ".")
       os_ << "null";
+    else if (!quote_numbers && is_numb(value) &&
+             value.find('(') == std::string::npos)
+      write_as_number(value);
     else
       write_string(as_string(value));
   }
