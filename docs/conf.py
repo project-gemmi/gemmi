@@ -13,7 +13,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 project = u'Gemmi'
-copyright = u'2017, Global Phasing Ltd'
+copyright = u'2017 Global Phasing Ltd'
 author = u'Marcin Wojdyr'
 
 version = u'0.0'

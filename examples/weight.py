@@ -56,8 +56,8 @@ def check_chem_comp_formula_weight(block):
         calc_weight = sum(n * ELEMENT_MASS[e] for (e, n) in fdict.items())
         diff = calc_weight - cc.as_num(2)
         if not (abs(diff) < 0.1):  # also true if diff is NaN
-            print(u'%s %s  %-16s % 8s \u2260 %8.3f  \u0394 = %+.3f' %
-                  (block.name, cc[0], cc.as_str(1), cc[2], calc_weight, diff))
+            print('%s %s  %-16s % 9.3f - %9s = %+.3f' %
+                  (block.name, cc[0], cc.as_str(1), calc_weight, cc[2], diff))
 
 
 def check_entity_formula_weight(block):
@@ -90,7 +90,7 @@ def check_entity_formula_weight(block):
             weight -= PO2_MASS
         diff = weight - entity_weights[ent]
         if abs(diff) > max(0.1, 3e-5 * weight):
-            print(u'%4s %2s %10.2f \u2260 %10.2f  \u0394 = %+8.3f' %
+            print('%4s entity_id: %2s %10.2f - %10.2f = %+8.3f' %
                   (block.name, ent, weight, entity_weights[ent], diff))
 
 

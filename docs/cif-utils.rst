@@ -4,9 +4,6 @@ Utilities and Examples
 The CIF-handling part of the Gemmi library comes with a couple of utilities,
 and several examples that show how you can use the library in your scripts.
 
-Currently, all the examples perform PDB-wide analysis on a local copy
-of the mmCIF archive.
-
 Utilities
 =========
 
@@ -47,6 +44,9 @@ Examples
 The examples here use Python, as it is the most popular language
 for this kind of tasks.
 Full working code code can be found in the examples__ directory.
+Currently, all the examples perform PDB-wide analysis on a
+`local copy <https://www.wwpdb.org/download/downloads>`_ of the mmCIF
+archive (30GB+ gzipped, don't uncompress!).
 
 __ https://github.com/project-gemmi/gemmi/tree/master/examples
 
@@ -61,10 +61,8 @@ So we write a little script
 
 .. literalinclude:: ../examples/aafreq.py
 
-We can run this script on a
-`local copy <https://www.wwpdb.org/download/downloads>`_ of the PDB database
-in the mmCIF format (30GB+ gzipped, don't uncompress),
-and get such an output:
+We can run this script on our copy of the PDB database
+(mmCIF format) and get such an output:
 
 .. code-block:: none
 
@@ -77,13 +75,13 @@ On my laptop it takes about an hour, using a single core.
 Most of this hour is spent on tokenizing the CIF files and copying
 the content into a DOM structure, what could be largely avoided given
 that we use only sequences not atoms.
-But it is not worth to optimize one-off script.
+But it is not worth to optimize one-off scripts.
 The same goes for using multiple core.
 
 Search PDB by elements
 ----------------------
 
-Let say we want to be able to search PDB by specifying a set of elements
+Let say we want to be able to search the PDB by specifying a set of elements
 present in the model. First we write down elements present in each
 PDB entry::
 
@@ -91,10 +89,10 @@ PDB entry::
     elems = set(block.find_loop("_atom_site.type_symbol"))
     print(name + ' ' + ' '.join(elems))
 
-This example ended up overdone a bit. The code resides in a
+This example ended up overdone a bit and it was put into a
 `separate repository <https://github.com/project-gemmi/periodic-table>`_.
 
-Demo: `<https://project-gemmi.github.io/periodic-table/>`_
+Here is a demo: `<https://project-gemmi.github.io/periodic-table/>`_
 
 
 Solvent content vs resolution
@@ -168,15 +166,100 @@ of similar samples (fragment screening) and submit them quickly to the PDB.
 
 We can easily filter out group depositions -- either using the group IDs
 that we extracted from mmCIF files or, like W&B, by excluding redundant
-entries based on unit cell and |Vm|.
+entries based on the unit cell and |Vm|.
 
 Not all the dark spots are group depositions.
 For example, at |Vs|\ ≈66.5%, |dmin| 2.5-3A we can see the 20S proteasome
-studied by Huber *et al*.
-A systematic research of the same important protein,
+studied by Huber *et al* --
+a systematic research of the same important protein,
 with dozens PDB submissions.
 
-Entity weight
--------------
+Weights
+-------
 
-TODO
+Let say we would like to verify consistency of molecular weights.
+First, let us look at chem_comp tables:
+
+.. code-block:: none
+
+    loop_
+    _chem_comp.id
+    _chem_comp.type
+    _chem_comp.mon_nstd_flag
+    _chem_comp.name
+    _chem_comp.pdbx_synonyms
+    _chem_comp.formula
+    _chem_comp.formula_weight
+    ALA 'L-peptide linking' y ALANINE         ?                 'C3 H7 N O2'     89.093
+    ARG 'L-peptide linking' y ARGININE        ?                 'C6 H15 N4 O2 1' 175.209
+    ASN 'L-peptide linking' y ASPARAGINE      ?                 'C4 H8 N2 O3'    132.118
+    ASP 'L-peptide linking' y 'ASPARTIC ACID' ?                 'C4 H7 N O4'     133.103
+    CYS 'L-peptide linking' y CYSTEINE        ?                 'C3 H7 N O2 S'   121.158
+    EDO non-polymer         . 1,2-ETHANEDIOL  'ETHYLENE GLYCOL' 'C2 H6 O2'       62.068
+    ...
+
+We expect that by using molecular weights of elements and a simple arithmetic
+we can recalculate ``_chem_comp.formula_weight`` from ``_chem_comp.formula``.
+The full code is in :file:`examples/weights.py``.
+It includes a map of element weights (``ELEMENT_MASS``)
+and a function that converts ``'C2 H6 O2'`` to ``{C:2, H:6, O:2}``.
+Here we only show the few lines of code that sum the element weights
+and compare the result:
+
+.. literalinclude:: ../examples/weight.py
+   :pyobject: check_chem_comp_formula_weight
+
+This script prints differences above 0.1 u:
+
+.. code-block:: none
+
+    3A1R DOD  D2 O                20.028 -    18.015 = +2.013
+    5AI2 D8U  D 1                  2.014 -         ? = +nan
+    5AI2 DOD  D2 O                20.028 -    18.015 = +2.013
+    4AR3 D3O  O 1                 15.999 -    22.042 = -6.043
+    4AR4 D3O  O 1                 15.999 -    22.042 = -6.043
+    4AR5 DOD  D2 O                20.028 -    18.015 = +2.013
+    4AR6 DOD  D2 O                20.028 -    18.015 = +2.013
+    4B1A K3G  MO12 O40 P 1      1822.350 -  1822.230 = +0.120
+    4BVO E43  H2 O40 W12 6      2848.072 -  2848.192 = -0.120
+    ...
+    5FHW HFW  Hf O61 P2 W17     4341.681 -  4343.697 = -2.016
+    ...
+
+The differences are few and minor.
+We see a few PDB entries with the weight of D\ :sub:`2`\ O
+set to the weight H\ :sub:`2`\ O. The second line shows missing weight.
+The differences +0.12 and -0.12 next to Mo12 and W12 probably come from
+the 0.01u difference in the input masses of the elements.
+In two entries D3O is missing D in the formula, and -2.016 in HFW
+suggests two missing hydrogens.
+
+Now let us try to re-calculate ``_entity.formula_weight`` from the chem_comp
+weights and the sequence.
+The PDB software calculates it as a sum of components in the chain,
+minus the weight of N-1 waters.
+In case of nucleic acids also PO\ :sub:`2` is subtracted
+(why not PO\ :sub:`3`\ ? -- to be checked).
+And in case of microheterogeneity only the main conformer is taken into
+account. As the PDB software uses single precision for these computations,
+we ignore differences below 0.003%, which we checked to be enough to
+account for numerical errors.
+
+.. literalinclude:: ../examples/weight.py
+   :pyobject: check_entity_formula_weight
+
+Running this script on a local copy of the PDB database prints 26 lines,
+and the difference is always (except for 4PMN) the mass of PO\ :sub:`2`
+showing that we have not fully reproduced the rule when to subtract this group.
+
+.. code-block:: none
+
+    ...
+    4D67 entity_id: 44 1625855.77 - 1625917.62 =  -61.855
+    1HZS entity_id:  1    1733.88 -    1796.85 =  -62.973
+    2K4G entity_id:  1    2158.21 -    2221.18 =  -62.974
+    3MBS entity_id:  1    2261.35 -    2324.33 =  -62.974
+    1NR8 entity_id:  2    2883.07 -    2946.05 =  -62.974
+    3OK2 entity_id:  1    3417.14 -    3354.17 =  +62.968
+    ...
+
