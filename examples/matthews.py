@@ -14,9 +14,11 @@ import csv
 from gemmi import cif
 import util
 
+
 def parse_date(date_str):
     year, month, day = date_str.split('-')
     return datetime.date(int(year), int(month), int(day))
+
 
 def gather_data():
     "read mmCIF files and write down a few numbers (one file -> one line)"
@@ -33,6 +35,7 @@ def gather_data():
         oldest_date = min(parse_date(d[0]) for d in dates if d[0] not in '?.')
         group = block.find_string('_pdbx_deposit_group.group_id')
         writer.writerow([code, na, vs, vm, d_min, oldest_date, group])
+
 
 def plot(our_csv):
     from numpy import array
@@ -56,7 +59,7 @@ def plot(our_csv):
     print('Plotting kernel density estimation from', len(x), 'points.')
     sns.set_style("whitegrid")
     sns.set_context("notebook", font_scale=1.5, rc={"lines.linewidth": 1.5})
-    g = sns.JointGrid(array(x), array(y), space=0, xlim=(0,4.5), ylim=(20,90))
+    g = sns.JointGrid(array(x), array(y), space=0, xlim=(0, 4.5), ylim=(20, 90))
     # calculation time is proportional to gridsize^2; gridsize=100 is default
     g = g.plot_joint(sns.kdeplot, n_levels=30, bw=(0.05, 0.3), gridsize=300,
                      shade=True, shade_lowest=False, cmap="gnuplot2_r")
@@ -65,9 +68,10 @@ def plot(our_csv):
     sns.plt.sca(g.ax_marg_y)
     sns.kdeplot(g.y, shade=True, bw=0.2, gridsize=5000, vertical=True)
     g.ax_joint.set(xlabel=u'$d_{min}$ [Å]', ylabel='solvent volume [%]')
-    #g.annotate(lambda a,b: 0, template="1970s - 2014")
-    g.annotate(lambda a,b: 0, template="2015 - 4/2017")
+    #g.annotate(lambda a, b: 0, template="1970s - 2014")
+    g.annotate(lambda a, b: 0, template="2015 - 4/2017")
     sns.plt.show()
+
 
 # This function compares our data with the CSV file available from B.Rupp's
 # website. It also does some other checks on both our and BR's CSV.
@@ -101,7 +105,7 @@ def check_with_rupps_data(our_csv, rupps_csv):
             except (ValueError, ZeroDivisionError):
                 pass
             if rb:
-                try: # d_min can be absent in pdb data (NMR entries)
+                try:  # d_min can be absent in pdb data (NMR entries)
                     d_min = float(row['d_min'])
                 except ValueError:
                     continue
@@ -109,6 +113,7 @@ def check_with_rupps_data(our_csv, rupps_csv):
                 if abs(diff) > 0.01:
                     print('PDB and RB differ: ', row['code'], row['d_min'],
                           rb['reso'], '%+.2f' % diff)
+
 
 if sys.argv[1] == 'check':
     check_with_rupps_data(our_csv=sys.argv[2], rupps_csv=sys.argv[3])

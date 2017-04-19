@@ -5,6 +5,7 @@ import os
 import sys
 import argparse
 
+
 def get_file_paths_from_args():
     """\
     Process arguments as filenames or directories with .cif(.gz) files,
@@ -48,4 +49,3 @@ def get_file_paths_from_args():
                                arg.lower() + '.cif.gz')
         else:
             yield arg
-
