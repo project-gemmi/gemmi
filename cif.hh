@@ -202,18 +202,19 @@ struct Loop {
 class StrideIter {
 public:
   StrideIter() : cur_(nullptr), end_(nullptr), stride_(0) {}
-  StrideIter(const std::vector<std::string>& vec, size_t offset, int stride)
+  StrideIter(const std::vector<std::string>& vec, size_t offset,
+             unsigned stride)
     : cur_(vec.data() + std::min(offset, vec.size())),
       end_(vec.data() + vec.size()),
       stride_(stride) {}
   void operator++() { cur_ = end_-cur_ > stride_ ? cur_+stride_ : end_; }
-  const std::string& operator*() const { return *cur_; };
+  const std::string& operator*() const { return *cur_; }
   bool operator!=(const StrideIter& other) const { return cur_ != other.cur_; }
   bool operator==(const StrideIter& other) const { return cur_ == other.cur_; }
 private:
   const std::string* cur_;
   const std::string* end_;
-  unsigned int stride_;
+  unsigned stride_;
 };
 
 
@@ -609,6 +610,7 @@ template<> struct Action<rules::comment> {
 };
 
 
+[[noreturn]]
 void throw_validation_err(const Document& d, const Block& b, const Item& item,
                           const std::string& s) {
   throw std::runtime_error(d.source + ":" + std::to_string(item.line_number) +
