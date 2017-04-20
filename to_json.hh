@@ -11,8 +11,9 @@ namespace cif {
 
 class JsonWriter {
 public:
-  bool use_bare_tags = false;
-  bool quote_numbers = false;
+  bool use_bare_tags = false;  // "tag" instead of "_tag"
+  int quote_numbers = 1;  // 0=never (no s.u.), 1=mix, 2=always
+  std::string unknown = "null";  // how to convert '?' from CIF
   explicit JsonWriter(std::ostream& os) : os_(os), linesep_("\n ") {}
   void write_json(const Document& d);
 
@@ -21,7 +22,8 @@ private:
   std::string linesep_;
 
   // based on tao/json/internal/escape.hh
-  static void escape(std::ostream& os, const std::string& s, size_t pos) {
+  static void escape(std::ostream& os, const std::string& s, size_t pos,
+                     bool to_lower) {
     static const char* h = "0123456789abcdef";
     const char* p = s.data() + pos;
     const char* l = p;
@@ -47,6 +49,10 @@ private:
           case '\t': os << "\\t"; break;
           default: os << "\\u00" << h[(c & 0xf0) >> 4] << h[c & 0x0f];
         }
+      } else if (to_lower && c >= 'A' && c <= 'Z') {
+        os.write(l, p - l);
+        l = ++p;
+        os.put(c + 32);
       } else if (c == 127) {
         os.write(l, p - l);
         l = ++p;
@@ -58,14 +64,14 @@ private:
     os.write(l, p - l);
   }
 
-  void write_string(const std::string& s, size_t pos=0) {
+  void write_string(const std::string& s, size_t pos=0, bool to_lower=false) {
     os_.put('"');
-    escape(os_, s, pos);
+    escape(os_, s, pos, to_lower);
     os_.put('"');
   }
 
   void write_tag(const std::string& tag) {
-    write_string(tag, use_bare_tags ? 1 : 0);
+    write_string(tag, use_bare_tags ? 1 : 0, true);
   }
 
   void write_as_number(const std::string& value) {
@@ -86,19 +92,22 @@ private:
     // in JSON dot must be followed by digit
     size_t dotpos = value.find('.');
     if (dotpos != std::string::npos && !isdigit(value[dotpos+1])) {
-      os_ << value.substr(pos, dotpos+1-pos) << '0' << value.substr(dotpos+1);
-    } else {
-      os_ << value.c_str() + pos;
+      os_ << value.substr(pos, dotpos+1-pos) << '0';
+      pos = dotpos + 1;
     }
+    if (value.back() != ')')
+      os_ << value.c_str() + pos;
+    else
+      os_ << value.substr(pos, value.find('(', pos) - pos);
   }
 
   void write_value(const std::string& value) {
     if (value == "?")
-      os_ << "null";
+      os_ << unknown;
     else if (value == ".")
       os_ << "null";
-    else if (!quote_numbers && is_numb(value) &&
-             value.find('(') == std::string::npos)
+    else if (quote_numbers < 2 && is_numb(value) &&
+             (quote_numbers == 0 || value.back() != ')'))
       write_as_number(value);
     else
       write_string(as_string(value));
@@ -148,7 +157,7 @@ private:
 
   // works for both block and frame
   void write_map(const std::string& name, const std::vector<Item>& items) {
-    write_string(name);
+    write_string(name, 0, true);
     size_t n = linesep_.size();
     linesep_.resize(n + 1, ' ');
     os_ << ": {" << linesep_;

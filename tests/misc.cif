@@ -1,5 +1,5 @@
 # misc examples for testing the parser
-data_strings
+data_Strings
 _noq str
 _singleq 'str'
 _doubleq "str"
@@ -52,8 +52,8 @@ _c
 ;five
 ;
 save_
-save_another
-_a 1
+save_anoTHer
+_A 1
 _x 2
 save_
 _and item
