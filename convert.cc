@@ -35,12 +35,12 @@ static const option::Descriptor usage[] = {
   { Bare, 0, "b", "bare-tags", Arg::None,
     "  -b, --bare-tags  \tOutput tags without the first underscore." },
   { Numb, 0, "", "numb", Arg::NumbChoice,
-    "  --numb=quote|nosu|mix  \tConvert CIF numb type to one of (default: mix):"
-                             "\v  quote - strings in quotes,"
-                             "\v  nosu - numbers ignoring s.u.,"
-                             "\v  mix - quote only numbs with s.u." },
+    "  --numb=quote|nosu|mix  \tConvert the CIF numb type to one of:"
+                             "\v  quote - string in quotes,"
+                             "\v  nosu - number without s.u.,"
+                             "\v  mix (default) - quote only numbs with s.u." },
   { QMark, 0, "", "unknown", Arg::Required,
-    "  --unknown  \tJSON representation of CIF's '?' (default: null)." },
+    "  --unknown=STRING  \tJSON representation of CIF's '?' (default: null)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   if (options[Help]) {
-    option::printUsage(std::cerr, usage);
+    option::printUsage(std::cout, usage);
     return 0;
   }
   if (options[Unknown]) {

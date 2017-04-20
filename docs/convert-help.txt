@@ -1,0 +1,11 @@
+$ gemmi-convert -h
+Usage: to_json [options] file.cif file.json
+
+Options:
+  -h, --help             Print usage and exit.
+  -b, --bare-tags        Output tags without the first underscore.
+  --numb=quote|nosu|mix  Convert the CIF numb type to one of:
+                           quote - string in quotes,
+                           nosu - number without s.u.,
+                           mix (default) - quote only numbs with s.u.
+  --unknown=STRING       JSON representation of CIF's '?' (default: null).

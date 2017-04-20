@@ -1,0 +1,10 @@
+$ gemmi-validate -h
+Usage: validate [options] FILE [...]
+
+Options:
+  -h, --help      Print usage and exit.
+  -f, --fast      Syntax-only check.
+  -s, --stat      Show token statistics
+  -t, --types     Break down token statistics by type.
+  -q, --quiet     Show only errors.
+  -d, --ddl=PATH  DDL for validation.

@@ -86,7 +86,8 @@ const option::Descriptor usage[] = {
   { Types, 0, "t", "types", Arg::None, "  -t, --types  \t"
                                        "Break down token statistics by type." },
   { Quiet, 0, "q", "quiet", Arg::None, "  -q, --quiet  \tShow only errors." },
-  { Ddl, 0, "d", "ddl", Arg::Required, "  -d, --ddl  \tDDL for validation." },
+  { Ddl, 0, "d", "ddl", Arg::Required,
+                                   "  -d, --ddl=PATH  \tDDL for validation." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -106,7 +107,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   if (options[Help] || parse.nonOptionsCount() == 0) {
-    option::printUsage(std::cerr, usage);
+    option::printUsage(std::cout, usage);
     return 0;
   }
 

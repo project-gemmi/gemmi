@@ -7,32 +7,27 @@ and several examples that show how you can use the library in your scripts.
 Utilities
 =========
 
-(the names are tentative and will be changed to gemmi-something,
-or perhaps we'll have a single executable ``gemmi`` with subcommands).
-
-validate
---------
+gemmi-validate
+--------------
 
 A validator that checks the syntax and, optionally, also ontology
 using a corresponding DDL1/DDL2 dictionary.
 (checking with DDL1 is mostly finished, DDL2 is only started).
 
-It has a few options, run ``validate -h`` for details.
+.. literalinclude:: validate-help.txt
+   :language: console
 
-to_json
--------
+gemmi-convert
+-------------
 
-Converts CIF to JSON. It does not try to preserve all the information
-(like the converter included in cod-tools_),
-but rather aims for simple output (similar to the converter `in Jmol`_
-and the `COMCIFS draft`_).
-It is useful for testing the parser.
+Converts CIF to JSON, aiming to be compatible with the COMCIFS spec
+when `the draft`_ is finalized and agreed__ upon.
 
-.. _cod-tools: https://github.com/sauliusg/cod-tools
-.. _in Jmol: https://sourceforge.net/p/jmol/mailman/message/35622017/
-.. _COMCIFS draft: http://comcifs.github.io/cif-json
+.. _the draft: http://comcifs.github.io/cif-json
+__ http://www.iucr.org/iucr-top/lists/cif-developers/
 
-Run ``to_json -h`` for details.
+.. literalinclude:: convert-help.txt
+   :language: console
 
 .. _cif_examples:
 
