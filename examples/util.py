@@ -32,14 +32,9 @@ def get_file_paths_from_args():
                        if line.strip())
     for arg in args.path:
         if os.path.isdir(arg):
-            for root, dirs, files in os.walk(arg):
-                dirs.sort()
-                for name in sorted(files):
-                    for ext in ['.cif', '.cif.gz']:
-                        if name.endswith(ext):
-                            if not only or name[:-len(ext)].lower() in only:
-                                yield os.path.join(root, name)
-                                break
+            for root, name in sorted_cif_search(arg):
+                if not only or name[:-len(ext)].lower() in only:
+                    yield os.path.join(root, name)
         elif len(arg) == 4 and arg.isalnum():
             pdb_copy = os.getenv('PDB_COPY')
             if not pdb_copy:
@@ -48,6 +43,14 @@ def get_file_paths_from_args():
                                arg.lower() + '.cif.gz')
         else:
             yield arg
+
+
+def sorted_cif_search(top_dir):
+    for root, dirs, files in os.walk(top_dir):
+        dirs.sort()
+        for name in sorted(files):
+            if name.endswith('.cif') or name.endswith('.cif.gz'):
+                yield root, name
 
 
 def formula_to_dict(formula):

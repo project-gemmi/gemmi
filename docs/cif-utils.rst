@@ -39,7 +39,7 @@ Examples
 The examples here use Python, as it is the most popular language
 for this kind of tasks.
 Full working code code can be found in the examples__ directory.
-Currently, all the examples perform PDB-wide analysis on a
+The first few examples perform PDB-wide analysis on a
 `local copy <https://www.wwpdb.org/download/downloads>`_ of the mmCIF
 archive (30GB+ gzipped, don't uncompress!).
 
@@ -258,3 +258,20 @@ showing that we have not fully reproduced the rule when to subtract this group.
     3OK2 entity_id:  1    3417.14 -    3354.17 =  +62.968
     ...
 
+
+Chemical Component Dictionary
+-----------------------------
+
+For something a bit different, let us look at the data from
+`CCD <https://www.wwpdb.org/data/ccd>`_.
+The :file:`components.cif` file describes all the monomers (residues,
+ligands, solvent molecules) from the PDB entries.
+It contains information about bonds that is normally absent in the PDB
+entries. Macromolecular refinement programs need more detailed description
+of monomers (to derive restraints),
+so they have own dictionaries, such as Refmac dictionary (a.k.a. monomer
+library or cif files).
+
+:file:`examples/monomers.py` has a simple consistency checks
+between the CCD and Refmac dictionary. This example will be expanded
+after the coming revolution in the Refmac monomer library.

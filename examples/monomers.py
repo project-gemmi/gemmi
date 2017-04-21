@@ -15,12 +15,9 @@ def to_formula(cnt):
 
 def get_monomer_cifs(mon_path):
     'yield all files mon_path/?/*.cif in alphabetic order'
-    for d in sorted(s for s in os.listdir(mon_path) if len(s) == 1):
-        subdir_path = os.path.join(mon_path, d)
-        if os.path.isdir(subdir_path):
-            for name in sorted(os.listdir(subdir_path)):
-                if name.endswith('.cif'):
-                    yield os.path.join(subdir_path, name)
+    for root, name in util.sorted_cif_search(mon_path):
+        if '_' not in name:  # heuristic to skip weird things in $CLIBD_MON
+            yield os.path.join(root, name)
 
 
 def check_formulas(ccd):
@@ -40,6 +37,7 @@ def check_formulas(ccd):
 def compare_monlib_with_ccd(mon_path, ccd):
     'compare monomers from monomer library and CCD that have the same names'
     PRINT_MISSING_ENTRIES = False
+    cnt = 0
     for path in get_monomer_cifs(mon_path):
         mon = cif.read_any(path)
         for mb in mon:
@@ -50,27 +48,85 @@ def compare_monlib_with_ccd(mon_path, ccd):
             cb = ccd.find_block(name)
             if cb:
                 compare_chem_comp(mb, cb, name)
+                cnt += 1
             elif PRINT_MISSING_ENTRIES:
                 print('Not in CCD:', name)
+    print('Compared', cnt, 'monomers.')
+
+
+def get_heavy_atom_names(block):
+    cca = block.find('_chem_comp_atom.', ['atom_id', 'type_symbol'])
+    d = {a.as_str(0).upper(): a.as_str(1).upper() for a in cca if a[1] != 'H'}
+    assert len(d) == sum(a[1] != 'H' for a in cca), (d, cca)
+    return d
+
+
+def bond_info(id1, id2, order, aromatic):
+    if id1 > id2:
+        id1, id2 = id2, id1
+    order = order[:4].lower()
+    assert order in ['sing', 'doub', 'trip', 'arom', 'delo', '1.5'], order
+    aromatic = aromatic.upper()
+    assert aromatic in ('Y', 'N'), aromatic
+    return ((id1, id2), (order, aromatic))
+
+
+def bond_dict(block, ccb_names, atom_names):
+    table = block.find('_chem_comp_bond.', ccb_names)
+    return dict(bond_info(r.as_str(0), r.as_str(1), r.as_str(2), r.as_str(3))
+                for r in table
+                if r.as_str(0) in atom_names and r.as_str(1) in atom_names)
 
 
 def compare_chem_comp(mb, cb, name):
-    mon_atoms = Counter(a.as_str(0).upper() for a in
-                        mb.find('_chem_comp_atom.type_symbol'))
-    ccd_atoms = Counter(a.as_str(0).upper() for a in
-                        cb.find('_chem_comp_atom.type_symbol'))
-    del mon_atoms['H']
-    del ccd_atoms['H']
-    if mon_atoms != ccd_atoms and mon_atoms + Counter('O') != ccd_atoms:
-        print(name, ':', to_formula(mon_atoms), '<>', to_formula(ccd_atoms))
+    if verbose:
+        print('Comparing', name)
+    mon_names = get_heavy_atom_names(mb)
+    ccd_names = get_heavy_atom_names(cb)
+
+    # compare atom names (and counts)
+    if mon_names != ccd_names:
+        print('atom names differ in', name)
+        mon_atoms = Counter(mon_names.values())
+        ccd_atoms = Counter(ccd_names.values())
+        if mon_atoms != ccd_atoms:
+            # can be relaxed by: and mon_atoms + Counter('O') != ccd_atoms
+            print(name, to_formula(mon_atoms), '<>', to_formula(ccd_atoms))
+
+    # compare bonds
+    mbonds = bond_dict(mb, ['atom_id_1', 'atom_id_2', 'type', 'aromatic'],
+                       mon_names)
+    cbonds = bond_dict(cb, ['atom_id_1', 'atom_id_2', 'value_order',
+                            'pdbx_aromatic_flag'],
+                       ccd_names)
+    # TODO: ignore difference in rings:
+    # single - double - single - double - single - double
+    # vs
+    # double - single - double - single - double - single
+    if mbonds != cbonds:
+        print('Bonds differ in', name)
+        if set(mbonds) != set(cbonds):
+            print('  extra bonds in mon.lib.:',
+                  ' '.join('%s-%s' % p for p in set(mbonds) - set(cbonds)))
+            print('  extra bonds in CCD:',
+                  ' '.join('%s-%s' % p for p in set(cbonds) - set(mbonds)))
+        for apair in sorted(set(mbonds) & set(cbonds)):
+            if mbonds[apair] != cbonds[apair]:
+                print('  %s-%s: %s/%s <> CCD %s/%s' %
+                      (apair + mbonds[apair] + cbonds[apair]))
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('ccd_path', metavar='/path/to/components.cif[.gz]')
+    parser.add_argument('-f', action='store_true', help='check CCD formulas')
+    parser.add_argument('-v', action='store_true', help='verbose')
     args = parser.parse_args()
+    global verbose
+    verbose = args.v
     ccd = cif.read_any(args.ccd_path)
-    check_formulas(ccd)
+    if args.f:
+        check_formulas(ccd)
     mon_path = os.getenv('CLIBD_MON')
     if mon_path:
         compare_monlib_with_ccd(mon_path, ccd)

@@ -118,6 +118,7 @@ PYBIND11_PLUGIN(gemmi) {
     }, py::keep_alive<0, 1>())
     .def("__getitem__", &TableView::at, py::keep_alive<0, 1>())
     .def("__bool__", &TableView::ok)
+    .def("__len__", &TableView::length)
     .def("__repr__", [](const TableView& self) {
         return "<gemmi.cif.TableView " +
                (self.ok() ? std::to_string(self.length()) + "x" +
