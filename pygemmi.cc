@@ -36,6 +36,12 @@ PYBIND11_PLUGIN(gemmi) {
     .def("__iter__", [](const Document& d) {
         return py::make_iterator(d.blocks);
     }, py::keep_alive<0, 1>())
+    .def("__getitem__", [](const Document& d, const std::string& name) {
+        const Block* b = d.find_block(name);
+        if (!b)
+          throw py::key_error("block '" + name + "' does not exist");
+        return *b;
+    }, py::arg("name"), py::return_value_policy::reference)
     .def("read_file", &Document::read_file, py::arg("filename"),
          "Read file copying data into Document")
     .def("read_string", &Document::read_string,
@@ -44,6 +50,8 @@ PYBIND11_PLUGIN(gemmi) {
     .def("clear", &Document::clear)
     .def("sole_block", &Document::sole_block,
          "Returns the only block if there is exactly one")
+    .def("find_block", &Document::find_block, py::arg("name"),
+         py::return_value_policy::reference)
     .def("write_file", &write_to_file, py::arg("filename"),
          "Write data to a CIF file.")
     .def("as_json", [](const Document& d) {

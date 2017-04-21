@@ -520,6 +520,13 @@ struct Document {
     return blocks.at(0);
   }
 
+  const Block* find_block(const std::string& name) const {
+    for (const Block& b : blocks)
+      if (b.name == name)
+        return &b;
+    return nullptr;
+  }
+
   std::string source;
   std::vector<Block> blocks;
   std::vector<Comment> comments;
@@ -622,10 +629,8 @@ inline void check_duplicates(const Document& d) {
   // check for duplicate block names (except empty "" which is global_)
   std::unordered_set<std::string> names;
   for (const Block& block : d.blocks) {
-    if (block.name.empty())
-      continue;
     bool success = names.insert(block.name).second;
-    if (!success)
+    if (!success && !block.name.empty())
       throw std::runtime_error("duplicate block name: " + block.name);
   }
   // check for dups inside each block
