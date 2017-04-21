@@ -1,6 +1,5 @@
 "utilities that simplify examples"
 
-from __future__ import print_function
 import os
 import sys
 import argparse
@@ -49,3 +48,15 @@ def get_file_paths_from_args():
                                arg.lower() + '.cif.gz')
         else:
             yield arg
+
+
+def formula_to_dict(formula):
+    '"O4 P -3" -> {O:4, P:1}'
+    fdict = {}
+    for elnum in formula.split():
+        na = sum(e.isalpha() for e in elnum)
+        if na == len(elnum):
+            fdict[elnum] = 1
+        elif na != 0:
+            fdict[elnum[:na]] = int(elnum[na:])
+    return fdict

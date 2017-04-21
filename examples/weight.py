@@ -36,23 +36,11 @@ ELEMENT_MASS = {
 }
 
 
-def formula_to_dict(f):
-    fdict = {}
-    for elnum in f.split():
-        na = sum(e.isalpha() for e in elnum)
-        elnum = elnum.title()
-        if na == len(elnum):
-            fdict[elnum] = 1
-        elif na != 0:
-            fdict[elnum[:na]] = int(elnum[na:])
-    return fdict
-
-
 def check_chem_comp_formula_weight(block):
     for cc in block.find('_chem_comp.', ['id', 'formula', 'formula_weight']):
         if cc.as_str(0) in ('UNX', 'UNL'):  # unknown residue or ligand
             continue
-        fdict = formula_to_dict(cc.as_str(1))
+        fdict = util.formula_to_dict(cc.as_str(1).title())
         calc_weight = sum(n * ELEMENT_MASS[e] for (e, n) in fdict.items())
         diff = calc_weight - cc.as_num(2)
         if not (abs(diff) < 0.1):  # also true if diff is NaN
