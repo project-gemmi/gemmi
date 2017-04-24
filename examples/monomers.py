@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
 import os
+import sys
 import argparse
 from collections import Counter
 from gemmi import cif
@@ -47,7 +48,7 @@ def compare_monlib_with_ccd(mon_path, ccd):
             name = mb.name[5:]
             cb = ccd.find_block(name)
             if cb:
-                compare_chem_comp(mb, cb, name)
+                compare_chem_comp(mb, cb)
                 cnt += 1
             elif PRINT_MISSING_ENTRIES:
                 print('Not in CCD:', name)
@@ -68,6 +69,8 @@ def bond_info(id1, id2, order, aromatic):
     assert order in ['sing', 'doub', 'trip', 'arom', 'delo', '1.5'], order
     aromatic = aromatic.upper()
     assert aromatic in ('Y', 'N'), aromatic
+    if order in ('sing', 'doub') and aromatic == 'Y':
+        order = 'arom'
     return ((id1, id2), (order, aromatic))
 
 
@@ -78,20 +81,20 @@ def bond_dict(block, ccb_names, atom_names):
                 if r.as_str(0) in atom_names and r.as_str(1) in atom_names)
 
 
-def compare_chem_comp(mb, cb, name):
+def compare_chem_comp(mb, cb):
     if verbose:
-        print('Comparing', name)
+        print('Comparing', cb.name)
     mon_names = get_heavy_atom_names(mb)
     ccd_names = get_heavy_atom_names(cb)
 
     # compare atom names (and counts)
     if mon_names != ccd_names:
-        print('atom names differ in', name)
+        print('atom names differ in', cb.name)
         mon_atoms = Counter(mon_names.values())
         ccd_atoms = Counter(ccd_names.values())
         if mon_atoms != ccd_atoms:
             # can be relaxed by: and mon_atoms + Counter('O') != ccd_atoms
-            print(name, to_formula(mon_atoms), '<>', to_formula(ccd_atoms))
+            print(cb.name, to_formula(mon_atoms), '<>', to_formula(ccd_atoms))
 
     # compare bonds
     mbonds = bond_dict(mb, ['atom_id_1', 'atom_id_2', 'type', 'aromatic'],
@@ -99,12 +102,8 @@ def compare_chem_comp(mb, cb, name):
     cbonds = bond_dict(cb, ['atom_id_1', 'atom_id_2', 'value_order',
                             'pdbx_aromatic_flag'],
                        ccd_names)
-    # TODO: ignore difference in rings:
-    # single - double - single - double - single - double
-    # vs
-    # double - single - double - single - double - single
     if mbonds != cbonds:
-        print('Bonds differ in', name)
+        print('Bonds differ in', cb.name)
         if set(mbonds) != set(cbonds):
             print('  extra bonds in mon.lib.:',
                   ' '.join('%s-%s' % p for p in set(mbonds) - set(cbonds)))
@@ -119,19 +118,21 @@ def compare_chem_comp(mb, cb, name):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('ccd_path', metavar='/path/to/components.cif[.gz]')
+    parser.add_argument('-m', metavar='DIR',
+                        help='monomer library path (default: $CLIBD_MON)')
     parser.add_argument('-f', action='store_true', help='check CCD formulas')
     parser.add_argument('-v', action='store_true', help='verbose')
     args = parser.parse_args()
     global verbose
     verbose = args.v
+    mon_path = args.m or os.getenv('CLIBD_MON')
+    if not mon_path and not args.f:
+        sys.exit('Unknown monomer library path: use -m or set $CLIBD_MON.')
     ccd = cif.read_any(args.ccd_path)
     if args.f:
         check_formulas(ccd)
-    mon_path = os.getenv('CLIBD_MON')
     if mon_path:
         compare_monlib_with_ccd(mon_path, ccd)
-    else:
-        print('$CLIBD_MON not set!')
 
 
 main()
