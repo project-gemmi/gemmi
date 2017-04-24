@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <stdexcept>
 #include <string>
+#include <iostream>
 #ifdef ANALYZE_RULES
 # include <tao/pegtl/analyze.hpp>
 #endif

@@ -17,14 +17,14 @@ Some libraries (clipper) call it polymer - monomer - atom.
 PDBx/mmCIF uses more general (but not so obvious) terms:
 *entity* and *struct_asym* (structural component in asymetric unit)
 instead of chain,
-and *chem_comp* (chemical component) as a generalization of the "residue".
+and *chem_comp* (chemical component) for residue/monomer.
 
-Apart from the naming, the biggest differences between libraries is
-in presenting the disorder. The main options are:
+Apart from the naming, the biggest difference between libraries is
+how the disorder is presented. The main options are:
 
-* group atoms from the same conformer together (e.g. cctbx.iotbx)
+* group together atoms from the same conformer (e.g. cctbx.iotbx)
 
-* group alternatives together (e.g. BioPython)
+* group together alternative locations of the same atom (e.g. BioPython)
 
 * leave it to the user (e.g. mmdb and clipper).
 
@@ -35,4 +35,20 @@ documentation says that
 related to alternative conformations".
 
 to be continued...
+
+
+Model - Chain - Residue - Atom
+------------------------------
+
+TODO
+
+Sequence
+--------
+
+TODO
+
+Chemical Component
+------------------
+
+TODO
 
