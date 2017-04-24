@@ -39,9 +39,13 @@ Examples
 The examples here use Python, as it is the most popular language
 for this kind of tasks.
 Full working code code can be found in the examples__ directory.
-The first few examples perform PDB-wide analysis on a
+If you have the Python ``gemmi`` module installed you should also have
+the examples -- try ``python -m gemmi-examples`` if not sure where they are.
+
+We run the examples below on a
 `local copy <https://www.wwpdb.org/download/downloads>`_ of the mmCIF
-archive (30GB+ gzipped, don't uncompress!).
+archive (30GB+ gzipped, don't uncompress!) to perform PDB-wide analyses,
+but they can be run as well on any set of mmCIF files.
 
 __ https://github.com/project-gemmi/gemmi/tree/master/examples
 

@@ -105,6 +105,8 @@ setup(
     refinement restraints (monomer library), crystallographic reflections,
     and maybe more.''',
     ext_modules=ext_modules,
+    packages=['gemmi-examples'],
+    package_dir={'gemmi-examples': 'examples'},
     install_requires=['pybind11>=2.1'],
     cmdclass={'build_ext': BuildExt},
     zip_safe=False,
