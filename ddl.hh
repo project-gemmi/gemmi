@@ -122,7 +122,7 @@ enum class Trinary : char { Unset, Yes, No };
 inline bool validate_enumeration(const std::string& val,
                                  const std::vector<std::string>& en,
                                  std::string *msg) {
-  if (en.empty() || val == "." || val == "?" ||
+  if (en.empty() || is_null(val) ||
       std::find(en.begin(), en.end(), as_string(val)) != en.end())
     return true;
   // TODO: case-insensitive search when appropriate
@@ -170,7 +170,7 @@ public:
   bool validate_value(const std::string& value, std::string* msg) const {
     auto fail = [msg](std::string&& t) { if (msg) *msg = t; return false; };
     if (is_numb_ == Trinary::Yes) {
-      if (value != "." && value != "?" && !is_numb(value))
+      if (!is_null(value) && !is_numb(value))
         return fail("expected number");
       if (has_range_) {
         float x = as_number(value);

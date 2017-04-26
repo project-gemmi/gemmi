@@ -147,7 +147,7 @@ PYBIND11_PLUGIN(gemmi) {
 
   cif.def("as_string", &as_string, py::arg("value"),
           "Get string content (no quotes) from raw string.");
-  cif.def("as_number", &as_number, py::arg("value"),
+  cif.def("as_number", &as_number, py::arg("value"), py::arg("default")=NAN,
           "Get float number from string");
   cif.def("as_int", &as_int, py::arg("value"),
           "Get int number from string value.");

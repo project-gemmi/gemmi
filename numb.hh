@@ -80,12 +80,12 @@ inline bool is_numb(const std::string& s) {
   return pegtl::parse<numb_rules::numb, pegtl::nothing>(in);
 }
 
-inline double as_number(const std::string& s) {
+inline double as_number(const std::string& s, double nan=NAN) {
   double d = 0;
   pegtl::memory_input<> in(s, "");
   if (pegtl::parse<numb_rules::numb, ActionNumb>(in, d))
     return d;
-  return NAN;
+  return nan;
 }
 
 

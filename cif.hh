@@ -150,7 +150,13 @@ std::string value_type_to_str(ValueType v) {
   return "";
 }
 
+inline bool is_null(const std::string& value) {
+  return value == "?" || value == ".";
+}
+
 inline std::string as_string(const std::string& value) {
+  if (is_null(value))
+    return "";
   if (value.empty())
     return value;
   else if (value[0] == '"' || value[0] == '\'')
@@ -244,12 +250,14 @@ struct TableView {
   struct Row {
     const std::string* cur;
     const std::vector<int>& icols;
+
     const std::string& at(int n) const { return cur[icols.at(n)]; }
     const std::string& operator[](int n) const { return cur[icols[n]]; }
     size_t size() const { return icols.size(); }
     std::string as_str(int n) const { return as_string(at(n)); }
     double as_num(int n) const { return as_number(at(n)); }
     int as_int(int n) const { return gemmi::cif::as_int(at(n)); }
+    int is_null(int n) const { return gemmi::cif::is_null(at(n)); }
     struct Iter {
       const Row& parent;
       const int* cur;
@@ -331,15 +339,15 @@ struct Block {
   const std::string* find_value(const std::string& tag) const;
   const std::string find_string(const std::string& tag) const {
     const std::string *v = find_value(tag);
-    return v && *v != "?" && *v != "." ? as_string(*v) : "";
+    return v && !is_null(*v) ? as_string(*v) : "";
   }
   double find_number(const std::string& tag) const {
     const std::string *v = find_value(tag);
-    return v && *v != "?" && *v != "." ? as_number(*v) : NAN;
+    return v && !is_null(*v) ? as_number(*v) : NAN;
   }
   double find_int(const std::string& tag, int default_) const {
     const std::string *v = find_value(tag);
-    return v && *v != "?" && *v != "." ? as_int(*v) : default_;
+    return v && !is_null(*v) ? as_int(*v) : default_;
   }
   LoopColumn find_loop(const std::string& tag) const;
   TableView find(const std::string& prefix,
