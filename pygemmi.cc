@@ -4,6 +4,7 @@
 #include "cifgz.hh"
 #include "write_cif.hh"
 #include "to_json.hh"
+#include "elem.hh"
 #include <sstream>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -25,6 +26,7 @@ std::string str_join(const T &iterable, const std::string& sep) {
 
 PYBIND11_PLUGIN(gemmi) {
   using namespace gemmi::cif;
+  using namespace gemmi::mol;
 
   py::module mg("gemmi", "General MacroMolecular I/O");
   py::module cif = mg.def_submodule("cif", "CIF file format");
@@ -149,6 +151,17 @@ PYBIND11_PLUGIN(gemmi) {
           "Get float number from string");
   cif.def("as_int", &as_int, py::arg("value"),
           "Get int number from string value.");
+
+  py::module mol = mg.def_submodule("mol", "MacroMolecular models");
+  py::class_<Element>(mol, "Element")
+    .def(py::init<const std::string &>())
+    .def(py::init<int>())
+    .def_property_readonly("name", &Element::name)
+    .def_property_readonly("weight", &Element::weight)
+    .def_property_readonly("atomic_number", &Element::atomic_number)
+    .def("__repr__", [](const Element& self) {
+        return "<gemmi.mol.Element: " + std::string(self.name()) + ">";
+    });
 
   return mg.ptr();
 }

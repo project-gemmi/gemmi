@@ -17,13 +17,13 @@ gemmi-convert: convert.cc to_json.hh cif.hh write_cif.hh
 trace: validate.cc cif.hh
 	$(CXX) -DCIF_VALIDATE_SHOW_TRACE $(FLAGS) $< -o $@
 
-mmcif: mmcif.cc mmcif.hh cif.hh cifgz.hh numb.hh
+mmcif: mmcif.cc mmcif.hh cif.hh cifgz.hh numb.hh elem.hh
 	$(CXX) $(FLAGS) $< -o $@ -lz
 
 matthews: matthews.cc cif.hh cifgz.hh numb.hh
 	$(CXX) $(FLAGS) $< -o $@ -lz
 
-pygemmi.o: pygemmi.cc cif.hh to_json.hh numb.hh write_cif.hh
+pygemmi.o: pygemmi.cc cif.hh to_json.hh numb.hh write_cif.hh elem.hh
 	$(CXX) $(PYFLAGS) -I/usr/include/python2.7 -c $<
 
 gemmi.so: pygemmi.o

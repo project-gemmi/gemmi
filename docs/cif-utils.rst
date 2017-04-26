@@ -200,8 +200,7 @@ First, let us look at chem_comp tables:
 We expect that by using molecular weights of elements and a simple arithmetic
 we can recalculate ``_chem_comp.formula_weight`` from ``_chem_comp.formula``.
 The full code is in :file:`examples/weights.py``.
-It includes a map of element weights (``ELEMENT_MASS``)
-and a function that converts ``'C2 H6 O2'`` to ``{C:2, H:6, O:2}``.
+It includes a function that converts ``'C2 H6 O2'`` to ``{C:2, H:6, O:2}``.
 Here we only show the few lines of code that sum the element weights
 and compare the result:
 
