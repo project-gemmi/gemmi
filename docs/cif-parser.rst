@@ -258,6 +258,8 @@ C++ compiler (GCC 4.8+, Clang 3.4+, MSVC 2015+, ICC 16+)::
 
 TODO: documentation
 
+(in the meantime see ``pydoc gemmi.cif`` and examples)
+
 Example (says hello to each element found in mmCIF):
 
 .. literalinclude:: ../examples/hello.py

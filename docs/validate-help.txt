@@ -1,5 +1,5 @@
 $ gemmi-validate -h
-Usage: validate [options] FILE [...]
+Usage: gemmi-validate [options] FILE [...]
 
 Options:
   -h, --help      Print usage and exit.

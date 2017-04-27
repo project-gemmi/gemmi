@@ -1,11 +1,19 @@
 $ gemmi-convert -h
-Usage: to_json [options] file.cif file.json
+Usage:
+ gemmi-convert [options] file.cif file.json
+ gemmi-convert [options] file.cif file.pdb
 
-Options:
+General options:
   -h, --help             Print usage and exit.
+  -f json|cif            Output format (default: the file extension).
+
+CIF output options:
   -b, --bare-tags        Output tags without the first underscore.
   --numb=quote|nosu|mix  Convert the CIF numb type to one of:
                            quote - string in quotes,
                            nosu - number without s.u.,
                            mix (default) - quote only numbs with s.u.
   --unknown=STRING       JSON representation of CIF's '?' (default: null).
+
+When input file is -, read standard input.
+When output file is -, write to standard output.

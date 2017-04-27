@@ -79,8 +79,8 @@ struct Arg: public option::Arg {
 
 enum OptionIndex { Unknown, Help, Fast, Stat, Types, Quiet, Ddl };
 const option::Descriptor usage[] = {
-  { Unknown, 0, "", "", Arg::None, "Usage: validate [options] FILE [...]\n\n"
-                                   "Options:" },
+  { Unknown, 0, "", "", Arg::None, "Usage: gemmi-validate [options] FILE [...]"
+                                   "\n\nOptions:" },
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
   { Fast, 0, "f", "fast", Arg::None, "  -f, --fast  \tSyntax-only check." },
   { Stat, 0, "s", "stat", Arg::None, "  -s, --stat  \tShow token statistics" },
