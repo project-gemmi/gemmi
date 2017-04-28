@@ -10,8 +10,8 @@ all: gemmi-validate gemmi-convert gemmi.so
 
 gemmi-validate: validate.cc cif.hh ddl.hh cifgz.hh numb.hh
 	$(CXX) $(FLAGS) $< -o $@ -lz
-gemmi-convert: convert.cc to_json.hh cif.hh write_cif.hh
-	$(CXX) $(FLAGS) $< -o $@
+gemmi-convert: convert.cc to_json.hh cif.hh write_cif.hh to_pdb.hh
+	$(CXX) $(FLAGS) -Wno-strict-aliasing $< -o $@
 
 # for debugging only
 trace: validate.cc cif.hh

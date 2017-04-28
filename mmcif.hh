@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// Work in progress...
+// Read mmcif (PDBx/mmCIF) file into a Structure from model.hh.
 
 #ifndef GEMMI_MMCIF_HH_
 #define GEMMI_MMCIF_HH_
@@ -9,68 +9,10 @@
 #include <iostream> // temporary
 #include "cif.hh"
 #include "numb.hh"
-#include "elem.hh"
+#include "model.hh"
 
 namespace gemmi {
 namespace mol {
-
-struct Structure;
-struct Model;
-struct Chain;
-struct Residue;
-
-enum class EntityType { Unknown, Polymer, NonPolymer, Water };
-
-
-struct Atom {
-  std::string name;
-  char altloc;
-  signed char charge;  // [-8, +8]
-  Element element = El::X;
-  double x, y, z;
-  float occ;
-  float b_iso;
-  Residue* parent = nullptr;
-};
-
-struct Residue {
-  int seq_id = -1000;
-  char ins_code = '\0';
-  std::string name;
-  std::vector<Atom> atoms;
-  Chain* parent = nullptr;
-  Residue(int id, char ins, std::string rname) noexcept
-    : seq_id(id), ins_code(ins), name(rname) {}
-};
-
-struct Chain {
-  std::string name;
-  EntityType entity_type = EntityType::Unknown;
-  std::vector<Residue> residues;
-  Model* parent = nullptr;
-  explicit Chain(std::string cname) noexcept : name(cname) {}
-};
-
-struct Model {
-  std::string name;  // actually an integer number
-  std::vector<Chain> chains;
-  Structure* parent = nullptr;
-  explicit Model(std::string mname) noexcept : name(mname) {}
-};
-
-struct UnitCell {
-  double lengths[3];
-  double angles[3];
-};
-
-struct Structure {
-  std::string entry_id;
-  UnitCell cell;
-  int z;
-  std::string sg_hm;
-  std::vector<Model> models;
-  // std::vector<Ops> ncs;
-};
 
 template<typename T>
 T* find_or_add(std::vector<T>& vec, const std::string& name) {
@@ -142,7 +84,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     atom.element = Element(cif::as_string(row[kSymbol]));
     atom.x = cif::as_number(row[kX]);
     atom.y = cif::as_number(row[kY]);
-    atom.y = cif::as_number(row[kZ]);
+    atom.z = cif::as_number(row[kZ]);
     atom.occ = cif::as_number(row[kOcc], 1.0);
     atom.b_iso = cif::as_number(row[kBiso], 50.0);
     resi->atoms.emplace_back(atom);

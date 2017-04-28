@@ -1,9 +1,15 @@
 // Copyright 2017 Global Phasing Ltd.
 #include "to_json.hh"
+#define STB_SPRINTF_IMPLEMENTATION
+#include "to_pdb.hh"
 #include "write_cif.hh"
+#include "mmcif.hh"
 
 #include <cstring>
+#include <iostream>
 #include <optionparser.h>
+
+#define EXE_NAME "gemmi-convert"
 
 struct Arg: public option::Arg {
   static option::ArgStatus Required(const option::Option& option, bool msg) {
@@ -14,29 +20,39 @@ struct Arg: public option::Arg {
     return option::ARG_ILLEGAL;
   }
 
-  static option::ArgStatus NumbChoice(const option::Option& option, bool msg) {
+  static option::ArgStatus Choice(const option::Option& option, bool msg,
+                                  std::vector<const char*> choices) {
     if (Required(option, msg) == option::ARG_ILLEGAL)
       return option::ARG_ILLEGAL;
-    for (const char* a : {"quote", "nosu", "mix"})
+    for (const char* a : choices)
       if (strcmp(option.arg, a) == 0)
         return option::ARG_OK;
     if (msg)
-      std::cerr << "Invalid argument for " << option.name << ": "
+      std::cerr << "Invalid argument for "
+                << std::string(option.name, option.namelen) << ": "
                 << option.arg << "\n";
     return option::ARG_ILLEGAL;
   }
+
+  static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
+    return Arg::Choice(option, msg, {"json", "pdb", "cif"});
+  }
+
+  static option::ArgStatus NumbChoice(const option::Option& option, bool msg) {
+    return Arg::Choice(option, msg, {"quote", "nosu", "mix"});
+  }
 };
 
-enum OptionIndex { Unknown, Help, Format, Bare, Numb, QMark };
+enum OptionIndex { Unknown, Help, FormatOut, Bare, Numb, QMark };
 static const option::Descriptor usage[] = {
   { Unknown, 0, "", "", Arg::None,
     "Usage:"
-    "\n gemmi-convert [options] file.cif file.json"
-    "\n gemmi-convert [options] file.cif file.pdb"
+    "\n " EXE_NAME " [options] file.cif file.json"
+    "\n " EXE_NAME " [options] file.cif file.pdb"
     "\n\nGeneral options:" },
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
-  { Format, 0, "f", "", Arg::None,
-    "  -f json|cif  \tOutput format (default: the file extension)." },
+  { FormatOut, 0, "", "to", Arg::FileFormat,
+    "  --to=json|pdb  \tOutput format (default: the file extension)." },
   { Unknown, 0, "", "", Arg::None, "\nCIF output options:" },
   { Bare, 0, "b", "bare-tags", Arg::None,
     "  -b, --bare-tags  \tOutput tags without the first underscore." },
@@ -48,7 +64,6 @@ static const option::Descriptor usage[] = {
   { QMark, 0, "", "unknown", Arg::Required,
     "  --unknown=STRING  \tJSON representation of CIF's '?' (default: null)." },
   { Unknown, 0, "", "", Arg::None,
-    "\nWhen input file is -, read standard input."
     "\nWhen output file is -, write to standard output." },
   { 0, 0, 0, 0, 0, 0 }
 };
@@ -76,30 +91,36 @@ int main(int argc, char **argv) {
   if (parse.nonOptionsCount() != 2) {
     std::cerr << "This program requires 2 arguments (input and output), "
               << parse.nonOptionsCount() << " given.\n"
-                 "Try 'gemmi-convert --help' for more information.\n";
+                 "Try '" EXE_NAME " --help' for more information.\n";
     return 1;
   }
 
   const char* input = parse.nonOption(0);
   const char* output = parse.nonOption(1);
 
-  char output_format;
-  if (options[Format]) {
-    output_format = options[Format].arg[0];
+  char output_format = 0;
+  if (options[FormatOut]) {
+    output_format = options[FormatOut].arg[0];
   } else {
     const char* dot = std::strrchr(output, '.');
-    if (strcmp(dot, "pdb") == 0 || strcmp(dot, "PDB") == 0 ||
-        strcmp(dot, "ent") == 0 || strcmp(dot, "ENT") == 0) {
-      output_format = 'p';
-    } else if ((dot[1] == 'j' || dot[1] == 'J') &&
-               (dot[2] == 's' || dot[2] == 'S')) {  // .json, .js, .jswhatever
-      output_format = 'j';
-    } else {
-      std::cerr << "The output format cannot be determined from the output"
-                   " filename. Use option -f.\n";
+    if (dot) {
+      if (strcmp(dot+1, "pdb") == 0 || strcmp(dot+1, "PDB") == 0 ||
+          strcmp(dot+1, "ent") == 0 || strcmp(dot+1, "ENT") == 0) {
+        output_format = 'p';
+      } else if ((dot[1] == 'j' || dot[1] == 'J') &&
+                 (dot[2] == 's' || dot[2] == 'S')) { // .json, .js, .jswhatever
+        output_format = 'j';
+      } else if (strcmp(dot+1, "cif") == 0 || strcmp(dot+1, "CIF") == 0) {
+        output_format = 'c';
+      }
+    }
+    if (output_format == 0) {
+      std::cerr << "The output format cannot be determined from output"
+                   " filename. Use option --to.\n";
       return 1;
     }
   }
+
   gemmi::cif::Document d;
   try {
     d.read_file(input);
@@ -107,6 +128,7 @@ int main(int argc, char **argv) {
     std::cerr << e.what() << std::endl;
     return 1;
   }
+
   std::ostream* os;
   bool new_os = false;
   if (output != std::string("-")) {
@@ -121,6 +143,7 @@ int main(int argc, char **argv) {
   } else {
     os = &std::cout;
   }
+
   if (output_format == 'j') {
     gemmi::cif::JsonWriter writer(*os);
     writer.use_bare_tags = options[Bare];
@@ -135,8 +158,12 @@ int main(int argc, char **argv) {
       writer.unknown = options[QMark].arg;
     writer.write_json(d);
   } else if (output_format == 'p') {
-    //gemmi::mol::write_pdb(d, *os);
+    gemmi::mol::Structure st = gemmi::mol::read_atoms(d);
+    gemmi::mol::write_pdb(st, *os);
+  } else if (output_format == 'c') {
+    *os << d;
   }
+
   if (new_os)
     delete os;
   return 0;

@@ -4,7 +4,7 @@
 #define GEMMI_TO_JSON_HH_
 #include "cif.hh"
 #include <cassert>
-#include <iostream>
+#include <ostream>
 
 namespace gemmi {
 namespace cif {
@@ -195,5 +195,4 @@ inline void JsonWriter::write_json(const Document& d) {
 } // namespace cif
 } // namespace gemmi
 #endif
-
 // vim:sw=2:ts=2:et

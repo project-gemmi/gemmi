@@ -85,6 +85,27 @@ inline const char* element_name(El el) {
   return names[static_cast<int>(el)];
 }
 
+inline const char* element_uppercase_name(El el) {
+  constexpr const char* names[] = {
+    "X",  "H",  "HE", "LI", "BE", "B",  "C",  "N",  "O", "F", "NE",
+    "NA", "MG", "AL", "SI", "P",  "S",  "CL", "AR",
+    "K",  "CA", "SC", "TI", "V",  "CR", "MN", "FE", "CO",
+    "NI", "CU", "ZN", "GA", "GE", "AS", "SE", "BR", "KR",
+    "RB", "SR", "Y",  "ZR", "NB", "MO", "TC", "RU", "RH",
+    "PD", "AG", "CD", "IN", "SN", "SB", "TE", "I", "XE",
+    "CS", "BA", "LA", "CE", "PR", "ND", "PM", "SM", "EU",
+    "GD", "TB", "DY", "HO", "ER", "TM", "YB", "LU",
+    "HF", "TA", "W",  "RE", "OS", "IR", "PT", "AU", "HG",
+    "TL", "PB", "BI", "PO", "AT", "RN",
+    "FR", "RA", "AC", "TH", "PA", "U",  "NP", "PU", "AM",
+    "CM", "BK", "CF", "ES", "FM", "MD", "NO", "LR",
+    "RF", "DB", "SG", "BH", "HS", "MT", "DS", "RG", "CN",
+    "NH", "FL", "MC", "LV", "TS", "OG",
+    "D", nullptr
+  };
+  return names[static_cast<int>(el)];
+}
+
 
 inline El find_element(const char* symbol) {
   if (symbol == nullptr || symbol[0] == '\0')
@@ -151,6 +172,8 @@ struct Element {
   double weight() const { return molecular_weight(elem); }
   // return name such as Mg (not MG)
   const char* name() const { return element_name(elem); }
+  // return uppercase name such as MG
+  const char* uname() const { return element_uppercase_name(elem); }
 };
 
 } // namespace mol
