@@ -56,17 +56,23 @@ struct Model {
 };
 
 struct UnitCell {
-  double lengths[3];
-  double angles[3];
+  double a = 1.0, b = 1.0, c = 1.0;
+  double alpha = 90.0, beta = 90.0, gamma = 90.0;
 };
 
 struct Structure {
-  std::string entry_id;
   UnitCell cell;
-  int z;
   std::string sg_hm;
   std::vector<Model> models;
   // std::vector<Ops> ncs;
+
+  // Minimal metadata with keys being mmcif tags: _entry.id, _exptl.method, ...
+  std::map<std::string, std::string> info;
+
+  const char* get_info(const std::string& tag, const char* def=nullptr) const {
+    auto it = info.find(tag);
+    return it != info.end() ? it->second.c_str() : def;
+  }
 };
 
 } // namespace mol

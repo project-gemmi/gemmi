@@ -298,6 +298,13 @@ struct TableView {
     return (*this)[n];
   }
 
+  Row one() const {
+    if (length() != 1)
+      throw std::runtime_error("Expected one value, found " +
+                                std::to_string(length()));
+    return (*this)[0];
+  }
+
   Row find_row(const std::string& s) const {
     if (loop) {
       for (size_t i = 0; i < loop->values.size(); i += loop->width())

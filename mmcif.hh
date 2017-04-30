@@ -38,6 +38,38 @@ inline Residue* find_or_add(std::vector<Residue>& vec, int seq_id,
 
 inline Structure structure_from_cif_block(const cif::Block& block) {
   Structure st;
+
+  // unit cell and symmetry
+  cif::TableView cell = block.find("_cell.", {"length_a", "length_b",
+                      "length_c", "angle_alpha", "angle_beta", "angle_gamma"});
+  if (cell.ok()) {
+    auto c = cell.one();
+    st.cell.a = c.as_num(0);
+    st.cell.b = c.as_num(1);
+    st.cell.c = c.as_num(2);
+    st.cell.alpha = c.as_num(3);
+    st.cell.beta = c.as_num(4);
+    st.cell.gamma = c.as_num(5);
+  }
+  st.sg_hm = block.find("_symmetry.space_group_name_H-M").one().as_str(0);
+
+  auto add_info = [&](std::string tag) {
+    cif::TableView t = block.find(tag);
+    if (t.length() >= 1)
+      st.info[tag] = t[0].as_str(0);
+  };
+  add_info("_entry.id");
+  add_info("_cell.Z_PDB");
+  add_info("_struct.title");
+  add_info("_exptl.method");
+  add_info("_database_PDB_rev.date_original");
+  add_info("_struct_keywords.pdbx_keywords");
+  add_info("_struct_keywords.text");
+
+  // sequence
+  // TODO
+
+  // atom list
   enum { kSymbol=0, kAtomId, kAltId, kCompId, kAsymId, kSeqId, kInsCode,
          kX, kY, kZ, kOcc, kBiso, kCharge, kModelNum };
   cif::TableView atom_table = block.find("_atom_site.",
