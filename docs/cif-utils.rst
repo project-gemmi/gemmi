@@ -34,23 +34,76 @@ __ http://www.iucr.org/iucr-top/lists/cif-developers/
 Examples
 ========
 
-.. highlight:: python
-
-The examples here use Python, as it is the most popular language
-for this kind of tasks.
+The examples here use C++11 or Python 2.7/3.x.
 Full working code code can be found in the examples__ directory.
-If you have the Python ``gemmi`` module installed you should also have
-the examples -- try ``python -m gemmi-examples`` if not sure where they are.
 
-We run the examples below on a
+If you have the Python ``gemmi`` module installed you should also have
+the Python examples -- try ``python -m gemmi-examples`` if not sure
+where they are.
+
+The examples below can be run on one or more PDBx/mmCIF files.
+We normally run them on a
 `local copy <https://www.wwpdb.org/download/downloads>`_ of the mmCIF
 archive (30GB+ gzipped, don't uncompress!) to perform PDB-wide analyses,
-but they can be run as well on any set of mmCIF files.
 
 __ https://github.com/project-gemmi/gemmi/tree/master/examples
 
+auth vs label
+-------------
+
+When you look at the list of atoms in mmCIF files some columns
+seem to completely redundant. Are they?
+It is hard to manually find an example
+where ``_atom_site.auth_atom_id`` differs from ``_atom_site.label_atom_id``, or
+where ``_atom_site.auth_comp_id`` differs from ``_atom_site.label_comp_id``.
+So here is a small C++ program:
+
+.. literalinclude:: ../examples/auth_label.cc
+
+We compile it, run it, and come back after an hour:
+
+.. code-block:: none
+
+    $ g++-6 -O2 -I.. -Ithird_party examples/auth_label.cc -lstdc++fs -lz
+    $ ./a.out pdb_copy/mmCIF
+    3D3W: atom_id  O1 -> OD
+    1TNI: atom_id  HN2 -> HN3
+    1S01: comp_id  CA -> UNL
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    2KI7: atom_id  H -> H1
+    4E1U: atom_id  H101 -> H103
+    4WH8: atom_id  H3 -> H391
+    4WH8: atom_id  H4 -> H401
+    3V2I: atom_id  UNK -> UNL
+    1AGG: atom_id  H3 -> H
+    1AGG: atom_id  H3 -> H
+    1AGG: atom_id  H3 -> H
+
+So, as of April 2017, only a single autor's residue name was changed,
+and atom names were changed in 7 PDB entries.
+
 Amino acid frequency
 --------------------
+
+.. highlight:: python
 
 Let say we see in a `paper <https://doi.org/10.1093/nar/gkw978>`_
 amino acid frequency averaged over 5000+ proteomes
