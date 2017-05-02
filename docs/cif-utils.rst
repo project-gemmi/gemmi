@@ -48,6 +48,8 @@ archive (30GB+ gzipped, don't uncompress!) to perform PDB-wide analyses,
 
 __ https://github.com/project-gemmi/gemmi/tree/master/examples
 
+.. _auth_label_example:
+
 auth vs label
 -------------
 

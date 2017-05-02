@@ -5,7 +5,7 @@ Usage:
 
 General options:
   -h, --help             Print usage and exit.
-  -f json|cif            Output format (default: the file extension).
+  --to=json|pdb          Output format (default: the file extension).
 
 CIF output options:
   -b, --bare-tags        Output tags without the first underscore.
@@ -15,5 +15,4 @@ CIF output options:
                            mix (default) - quote only numbs with s.u.
   --unknown=STRING       JSON representation of CIF's '?' (default: null).
 
-When input file is -, read standard input.
 When output file is -, write to standard output.

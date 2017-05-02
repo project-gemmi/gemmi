@@ -16,4 +16,5 @@ Gemmi - General MacroMolecular I/O
    :caption: mmCIF and PDB files
 
    mmcif
+   mol-utils
 

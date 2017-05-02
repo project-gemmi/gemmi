@@ -1,6 +1,6 @@
 
 Macromolecular Models
-=====================
+#####################
 
 Reading mmCIF as a generic CIF file gives access
 to all the data as it is stored in in the file --
@@ -18,6 +18,22 @@ PDBx/mmCIF uses more general (but not so obvious) terms:
 *entity* and *struct_asym* (structural component in asymetric unit)
 instead of chain,
 and *chem_comp* (chemical component) for residue/monomer.
+
+The mmCIF format introduced two sets of names/numbers:
+*label* and *auth* (for "author").
+Let us first consider ``_atom_site.label_asym_id`` and
+``_atom_site.auth_asym_id``, which are two sets of chain IDs
+in the atom table.
+It is debatable which one should be used. While the latter is only
+an alternative ID according to the mmCIF spec, it is the one that is
+used in the PDB format so it may be preferred for consistency.
+The usual difference is that the ligands or waters from the author's
+"chain" are split into separate (label) "chains", but sometimes
+the names of polypeptide chains also change (e.g. C,A,B <-> A,B,C).
+Also frequently different are the sequence identifiers
+``auth_`` and ``label_seq_id``, analogically to the chain ID.
+The two other couples, ``atom_id`` and ``comp_id``, rarely differ,
+as we checked in the :ref:`auth_label_example` example.
 
 Apart from the naming, the biggest difference between libraries is
 how the disorder is presented. The main options are:
@@ -38,17 +54,17 @@ to be continued...
 
 
 Model - Chain - Residue - Atom
-------------------------------
+==============================
 
 TODO
 
 Sequence
---------
+========
 
 TODO
 
 Chemical Component
-------------------
+==================
 
 TODO
 
