@@ -109,6 +109,7 @@ template<> struct ActionInt<int_rules::int_> {
   }
 };
 
+// it has an overload in cif.hh that takes a second parameter (int for null)
 inline int as_int(const std::string& s) {
   int n = 0;
   pegtl::memory_input<> in(s, "");

@@ -148,9 +148,12 @@ PYBIND11_PLUGIN(gemmi) {
   cif.def("as_string", &as_string, py::arg("value"),
           "Get string content (no quotes) from raw string.");
   cif.def("as_number", &as_number, py::arg("value"), py::arg("default")=NAN,
-          "Get float number from string");
-  cif.def("as_int", &as_int, py::arg("value"),
-          "Get int number from string value.");
+          "Returns float number from string");
+  cif.def("as_int", (int (*)(const std::string&)) &as_int, py::arg("value"),
+          "Returns int number from string value.");
+  cif.def("as_int", (int (*)(const std::string&, int)) &as_int,
+          py::arg("value"), py::arg("default"),
+          "Returns int number from string value or the second arg if null.");
 
   py::module mol = mg.def_submodule("mol", "MacroMolecular models");
   py::class_<Element>(mol, "Element")

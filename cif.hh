@@ -168,6 +168,10 @@ inline std::string as_string(const std::string& value) {
     return value;
 }
 
+inline int as_int(const std::string& s, int default_) {
+  return is_null(s) ? default_ : as_int(s);
+}
+
 struct TagValue {
   std::string tag;
   std::string value;

@@ -51,6 +51,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
       WRITE("%-10s%-70s\n", "MODEL", model.name.c_str());
     for (const mol::Chain& chain : model.chains) {
       for (const mol::Residue& res : chain.residues) {
+        bool standard = res.has_standard_pdb_name();
         for (const mol::Atom& a : res.atoms) {
           //  1- 6  6s  record name
           //  7-11  5d  integer serial
@@ -76,13 +77,13 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
                 " %1s%4d%c"
                 "   %8.3f%8.3f%8.3f"
                 "%6.2f%6.2f          %2s%c%c\n",
-                "ATOM", //TODO: HETATM
+                standard ? "ATOM" : "HETATM",
                 ++serial,
                 empty13 ? ' ' : a.name[0],
                 a.name.c_str() + (empty13 || a.name.empty() ? 0 : 1),
                 a.altloc ? a.altloc : ' ',
                 res.name.c_str(),
-                chain.name.c_str(), res.seq_id,
+                chain.auth_name.c_str(), res.seq_id_for_pdb(),
                 res.ins_code ? res.ins_code : ' ',
                 a.x, a.y, a.z,
                 a.occ, a.b_iso, a.element.uname(),

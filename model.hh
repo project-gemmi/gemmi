@@ -5,6 +5,7 @@
 #ifndef GEMMI_MODEL_HH_
 #define GEMMI_MODEL_HH_
 
+#include <cstring>
 #include <vector>
 #include <string>
 #include "elem.hh"
@@ -31,17 +32,24 @@ struct Atom {
 };
 
 struct Residue {
-  int seq_id = -1000;
+  enum { UnknownId=-1000 };
+  int seq_id = UnknownId;
+  int auth_seq_id = UnknownId;
   char ins_code = '\0';
   std::string name;
   std::vector<Atom> atoms;
   Chain* parent = nullptr;
-  Residue(int id, char ins, std::string rname) noexcept
-    : seq_id(id), ins_code(ins), name(rname) {}
+  Residue(int id, std::string rname) noexcept : seq_id(id), name(rname) {}
+  int seq_id_for_pdb() const {
+    return auth_seq_id != UnknownId ? auth_seq_id : seq_id;
+  }
+  bool has_standard_pdb_name() const;
 };
 
 struct Chain {
   std::string name;
+  // Not guaranteed to be the same for the whole chain (?).
+  std::string auth_name;
   EntityType entity_type = EntityType::Unknown;
   std::vector<Residue> residues;
   Model* parent = nullptr;
@@ -74,6 +82,28 @@ struct Structure {
     return it != info.end() ? it->second.c_str() : def;
   }
 };
+
+inline bool Residue::has_standard_pdb_name() const {
+#define SR(s) int(#s[0] << 16 | #s[1] << 8 | #s[2])
+  const int standard_aa[24] = {
+    SR(ALA), SR(ARG), SR(ASN), SR(ASP), SR(ASX), SR(CYS), SR(GLN), SR(GLU),
+    SR(GLX), SR(GLY), SR(HIS), SR(ILE), SR(LEU), SR(LYS), SR(MET), SR(PHE),
+    SR(PRO), SR(SER), SR(THR), SR(TRP), SR(TYR), SR(UNK), SR(VAL), 0
+  };
+  if (name.size() == 3) {
+    int n = name[0] << 16 | name[1] << 8 | name[2];
+    for (int i = 0; i < 24; i++)
+      if (standard_aa[i] == n)
+        return true;
+    //return std::find(standard_aa, standard_aa + 24, name) != standard_aa + 24;
+  } else if (name.size() == 1) {
+    return std::strchr("ACGITU", name[0]) != nullptr;
+  } else if (name.size() == 2) {
+    return name[0] == '+' && std::strchr("ACGITU", name[1]) != nullptr;
+  }
+  return false;
+#undef SR
+}
 
 } // namespace mol
 } // namespace gemmi

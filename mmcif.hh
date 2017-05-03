@@ -26,13 +26,13 @@ T* find_or_add(std::vector<T>& vec, const std::string& name) {
 }
 
 inline Residue* find_or_add(std::vector<Residue>& vec, int seq_id,
-                            char ins_code, const std::string& name) {
+                            const std::string& name) {
   auto it = std::find_if(vec.begin(), vec.end(), [&](const Residue& r) {
-      return r.seq_id == seq_id && r.ins_code == ins_code && r.name == name;
+      return r.seq_id == seq_id && r.name == name;
   });
   if (it != vec.end())
     return &*it;
-  vec.emplace_back(seq_id, ins_code, name);
+  vec.emplace_back(seq_id, name);
   return &vec.back();
 }
 
@@ -71,7 +71,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
 
   // atom list
   enum { kSymbol=0, kAtomId, kAltId, kCompId, kAsymId, kSeqId, kInsCode,
-         kX, kY, kZ, kOcc, kBiso, kCharge, kModelNum };
+         kX, kY, kZ, kOcc, kBiso, kCharge, kAuthSeqId, kAuthAsymId, kModelNum };
   cif::TableView atom_table = block.find("_atom_site.",
                                          {"type_symbol",
                                           "label_atom_id",
@@ -86,6 +86,8 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
                                           "occupancy",
                                           "B_iso_or_equiv",
                                           "pdbx_formal_charge",
+                                          "auth_seq_id",
+                                          "auth_asym_id",
                                           "pdbx_PDB_model_num"});
   Model *model = nullptr;
   Chain *chain = nullptr;
@@ -97,17 +99,16 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     }
     if (!chain || row[kAsymId] != chain->name) {
       chain = find_or_add(model->chains, row[kAsymId]);
+      chain->auth_name = row.as_str(kAuthAsymId);
       resi = nullptr;
     }
-    int seq_id = row.is_null(kSeqId) ? 0 : row.as_int(kSeqId);
-    // let us assume that the insertion code is a single letter
-    assert(row[kInsCode].size() == 1);
-    char ins_code = row[kInsCode][0];
-    if (ins_code == '?' || ins_code == '.')
-      ins_code = '\0';
+    int seq_id = cif::as_int(row[kSeqId], Residue::UnknownId);
     if (!resi || seq_id != resi->seq_id || row[kCompId] != resi->name) {
-      resi = find_or_add(chain->residues,
-                         seq_id, ins_code, row.as_str(kCompId));
+      resi = find_or_add(chain->residues, seq_id, cif::as_string(row[kCompId]));
+      // we assume that the insertion code is a single letter
+      assert(row[kInsCode].size() == 1); // temporary - test this assumption
+      resi->ins_code = cif::as_string(row[kInsCode])[0];
+      resi->auth_seq_id = cif::as_int(row[kAuthSeqId], Residue::UnknownId);
     }
     Atom atom;
     atom.name = cif::as_string(row[kAtomId]);
