@@ -64,6 +64,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
         std::memset(buf+11, ' ', 6);
         std::memset(buf+30, ' ', 50);
         os.write(buf, 81);
+        prev_chain = 0;
       }
       for (const mol::Residue& res : chain.residues) {
         bool standard = res.has_standard_pdb_name();
