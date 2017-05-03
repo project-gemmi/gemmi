@@ -99,7 +99,7 @@ inline bool Residue::has_standard_pdb_name() const {
   } else if (name.size() == 1) {
     return std::strchr("ACGITU", name[0]) != nullptr;
   } else if (name.size() == 2) {
-    return name[0] == '+' && std::strchr("ACGITU", name[1]) != nullptr;
+    return (name[0] == '+' || name[0] == 'D') && std::strchr("ACGITU", name[1]) != nullptr;
   }
   return false;
 #undef SR
