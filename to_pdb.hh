@@ -44,12 +44,27 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
         st.cell.alpha, st.cell.beta, st.cell.gamma,
         st.sg_hm.c_str(), st.get_info("_cell.Z_PDB", ""));
   // TODO: SCALE
-  int serial = 0;
   //TODO: special handling of large structures (>62 chains or >=1M atoms)
   for (const mol::Model& model : st.models) {
+    int serial = 0;
     if (st.models.size() > 1)
       WRITE("%-10s%-70s\n", "MODEL", model.name.c_str());
+    char prev_chain = 0;
     for (const mol::Chain& chain : model.chains) {
+      if (chain.auth_name.empty())
+        throw std::runtime_error("empty chain name");
+      if (chain.auth_name.length() > 1)
+        throw std::runtime_error("long chain name: " + chain.auth_name);
+      // TODO: proper detection when polymer ends
+      if (prev_chain && (prev_chain != chain.auth_name[0] ||
+                         chain.residues[0].seq_id == mol::Residue::UnknownId)) {
+        // re-using part of the buffer in the middle, e.g.:
+        // TER    4153      LYS B 286
+        stbsp_sprintf(buf, "TER   %5d", ++serial);
+        std::memset(buf+11, ' ', 6);
+        std::memset(buf+30, ' ', 50);
+        os.write(buf, 81);
+      }
       for (const mol::Residue& res : chain.residues) {
         bool standard = res.has_standard_pdb_name();
         for (const mol::Atom& a : res.atoms) {
@@ -90,8 +105,9 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
                 a.charge >= 0 ? ' ' : '-',
                 a.charge != 0 ? a.charge + '0' : ' ');
         }
+        if (res.seq_id != mol::Residue::UnknownId)
+          prev_chain = chain.auth_name[0];
       }
-      //WRITE("%-80s\n", "TER");
     }
     if (st.models.size() > 1)
       WRITE("%-80s\n", "ENDMDL");
