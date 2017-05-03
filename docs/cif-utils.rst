@@ -53,8 +53,145 @@ __ https://github.com/project-gemmi/gemmi/tree/master/examples
 auth vs label
 -------------
 
-When you look at the list of atoms in mmCIF files some columns
-seem to completely redundant. Are they?
+When you look at the list of atoms (``_atom_site.*``) in mmCIF files
+some columns seem to be completely redundant. Are they?
+
+.. raw:: html
+
+    <table style="font-size:11px; border-spacing:5px 0; margin-top:60px; width:100%; border-collapse:separate;">
+    <colgroup>
+    <col span="3">
+    <col style="background-color:#fc8">
+    <col>
+    <col style="background-color:#ffa">
+    <col style="background-color:#aff">
+    <col>
+    <col style="background-color:#bd8">
+    <col span="12">
+    <col style="background-color:#bd8">
+    <col style="background-color:#ffa">
+    <col style="background-color:#aff">
+    <col style="background-color:#fc8">
+    <col>
+    </colgroup>
+    <tr style="font-size:10px;">
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">group_PDB</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">id</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">type_symbol</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">label_atom_id</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">label_alt_id</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">label_comp_id</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">label_asym_id</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">label_entity_id</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">label_seq_id</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">pdbx_PDB_ins_code</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">Cartn_x</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">Cartn_y</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">Cartn_z</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">occupancy</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">B_iso_or_equiv</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">Cartn_x_esd</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">Cartn_y_esd</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">Cartn_z_esd</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">occupancy_esd</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">B_iso_or_equiv_esd</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">pdbx_formal_charge</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">auth_seq_id</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">auth_comp_id</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">auth_asym_id</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">auth_atom_id</th>
+    <th style="max-width:12px; transform-origin:left; transform:rotate(315deg);">pdbx_PDB_model_num</th>
+    <tr>
+    <td>ATOM</td><td>1</td><td>N</td><td>N</td><td>.</td><td>GLY</td><td>A</td>
+    <td>1</td><td>1</td><td>?</td><td>-9.009</td><td>4.612</td><td>6.102</td>
+    <td>1.00</td><td>16.77</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>1</td><td>GLY</td><td>A</td><td>N</td><td>1</td>
+    </tr><tr>
+    <td>ATOM</td><td>2</td><td>C</td><td>CA</td><td>.</td><td>GLY</td><td>A</td>
+    <td>1</td><td>1</td><td>?</td><td>-9.052</td><td>4.207</td><td>4.651</td>
+    <td>1.00</td><td>16.57</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>1</td><td>GLY</td><td>A</td><td>CA</td><td>1</td>
+    </tr><tr>
+    <td>ATOM</td><td>3</td><td>C</td><td>C</td><td>.</td><td>GLY</td><td>A</td>
+    <td>1</td><td>1</td><td>?</td><td>-8.015</td><td>3.140</td><td>4.419</td>
+    <td>1.00</td><td>16.16</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>1</td><td>GLY</td><td>A</td><td>C</td><td>1</td>
+    </tr><tr>
+    <td>ATOM</td><td>4</td><td>O</td><td>O</td><td>.</td><td>GLY</td><td>A</td>
+    <td>1</td><td>1</td><td>?</td><td>-7.523</td><td>2.521</td><td>5.381</td>
+    <td>1.00</td><td>16.78</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>1</td><td>GLY</td><td>A</td><td>O</td><td>1</td>
+    </tr><tr>
+    <td>ATOM</td><td>5</td><td>N</td><td>N</td><td>.</td><td>ASN</td><td>A</td>
+    <td>1</td><td>2</td><td>?</td><td>-7.656</td><td>2.923</td><td>3.155</td>
+    <td>1.00</td><td>15.02</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>2</td><td>ASN</td><td>A</td><td>N</td><td>1</td>
+    </tr><tr>
+    <td>ATOM</td><td>6</td><td>C</td><td>CA</td><td>.</td><td>ASN</td><td>A</td>
+    <td>1</td><td>2</td><td>?</td><td>-6.522</td><td>2.038</td><td>2.831</td>
+    <td>1.00</td><td>14.10</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>2</td><td>ASN</td><td>A</td><td>CA</td><td>1</td>
+    </tr><tr>
+    <td>ATOM</td><td>7</td><td>C</td><td>C</td><td>.</td><td>ASN</td><td>A</td>
+    <td>1</td><td>2</td><td>?</td><td>-5.241</td><td>2.537</td><td>3.427</td>
+    <td>1.00</td><td>13.13</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>2</td><td>ASN</td><td>A</td><td>C</td><td>1</td>
+    </tr><tr>
+    <td>ATOM</td><td>8</td><td>O</td><td>O</td><td>.</td><td>ASN</td><td>A</td>
+    <td>1</td><td>2</td><td>?</td><td>-4.978</td><td>3.742</td><td>3.426</td>
+    <td>1.00</td><td>11.91</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>2</td><td>ASN</td><td>A</td><td>O</td><td>1</td>
+    </tr><tr>
+    <td>ATOM</td><td>9</td><td>C</td><td>CB</td><td>.</td><td>ASN</td><td>A</td>
+    <td>1</td><td>2</td><td>?</td><td>-6.346</td><td>1.881</td><td>1.341</td>
+    <td>1.00</td><td>15.38</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>2</td><td>ASN</td><td>A</td><td>CB</td><td>1</td>
+    </tr><tr>
+    <td>ATOM</td><td>10</td><td>C</td><td>CG</td><td>.</td><td>ASN</td><td>A</td>
+    <td>1</td><td>2</td><td>?</td><td>-7.584</td><td>1.342</td><td>0.692</td>
+    <td>1.00</td><td>14.08</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>2</td><td>ASN</td><td>A</td><td>CG</td><td>1</td>
+    </tr><tr>
+    <td>ATOM</td><td>11</td><td>O</td><td>OD1</td><td>.</td><td>ASN</td><td>A</td>
+    <td>1</td><td>2</td><td>?</td><td>-8.025</td><td>0.227</td><td>1.016</td>
+    <td>1.00</td><td>17.46</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>2</td><td>ASN</td><td>A</td><td>OD1</td><td>1</td>
+    </tr><tr>
+    <td>ATOM</td><td>12</td><td>N</td><td>ND2</td><td>.</td><td>ASN</td><td>A</td>
+    <td>1</td><td>2</td><td>?</td><td>-8.204</td><td>2.155</td><td>-0.169</td>
+    <td>1.00</td><td>11.72</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>2</td><td>ASN</td><td>A</td><td>ND2</td><td>1</td>
+    </tr><tr>
+    <td colspan="25">...</td>
+    </tr><tr>
+    <td>ATOM</td><td>58</td><td>O</td><td>OH</td><td>.</td><td>TYR</td><td>A</td>
+    <td>1</td><td>7</td><td>?</td><td>3.766</td><td>0.589</td><td>10.291</td>
+    <td>1.00</td><td>14.39</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>7</td><td>TYR</td><td>A</td><td>OH</td><td>1</td>
+    </tr><tr>
+    <td>ATOM</td><td>59</td><td>O</td><td>OXT</td><td>.</td><td>TYR</td><td>A</td>
+    <td>1</td><td>7</td><td>?</td><td>11.358</td><td>2.999</td><td>7.612</td>
+    <td>1.00</td><td>17.49</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>7</td><td>TYR</td><td>A</td><td>OXT</td><td>1</td>
+    </tr><tr>
+    <td>HETATM</td><td>60</td><td>O</td><td>O</td><td>.</td><td>HOH</td><td>B</td>
+    <td>2</td><td>.</td><td>?</td><td>-6.471</td><td>5.227</td><td>7.124</td>
+    <td>1.00</td><td>22.62</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>8</td><td>HOH</td><td>A</td><td>O</td><td>1</td>
+    </tr><tr>
+    <td>HETATM</td><td>61</td><td>O</td><td>O</td><td>.</td><td>HOH</td><td>B</td>
+    <td>2</td><td>.</td><td>?</td><td>10.431</td><td>1.858</td><td>3.216</td>
+    <td>1.00</td><td>19.71</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>9</td><td>HOH</td><td>A</td><td>O</td><td>1</td>
+    </tr><tr>
+    <td>HETATM</td><td>62</td><td>O</td><td>O</td><td>.</td><td>HOH</td><td>B</td>
+    <td>2</td><td>.</td><td>?</td><td>-11.286</td><td>1.756</td><td>-1.468</td>
+    <td>1.00</td><td>17.08</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+    <td>?</td><td>10</td><td>HOH</td><td>A</td><td>O</td><td>1</td>
+    </tr><tr>
+    </tr>
+    </table>
+
 It is hard to manually find an example
 where ``_atom_site.auth_atom_id`` differs from ``_atom_site.label_atom_id``, or
 where ``_atom_site.auth_comp_id`` differs from ``_atom_site.label_comp_id``.
