@@ -12,14 +12,11 @@ gemmi-validate: validate.cc cif.hh ddl.hh cifgz.hh numb.hh
 	$(CXX) $(FLAGS) $< -o $@ -lz
 gemmi-convert: convert.cc to_json.hh cif.hh write_cif.hh mmcif.hh model.hh \
                to_pdb.hh
-	$(CXX) $(FLAGS) -Wno-strict-aliasing $< -o $@
+	$(CXX) $(FLAGS) -Wno-strict-aliasing $< -o $@ -lz
 
 # for debugging only
 trace: validate.cc cif.hh
 	$(CXX) -DCIF_VALIDATE_SHOW_TRACE $(FLAGS) $< -o $@
-
-matthews: matthews.cc cif.hh cifgz.hh numb.hh
-	$(CXX) $(FLAGS) $< -o $@ -lz
 
 pygemmi.o: pygemmi.cc cif.hh to_json.hh numb.hh write_cif.hh elem.hh
 	$(CXX) $(PYFLAGS) -I/usr/include/python2.7 -c $<

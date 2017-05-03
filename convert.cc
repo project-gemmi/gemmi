@@ -3,6 +3,7 @@
 #define STB_SPRINTF_IMPLEMENTATION
 #include "to_pdb.hh"
 #include "write_cif.hh"
+#include "cifgz.hh"
 #include "mmcif.hh"
 
 #include <cstring>
@@ -123,7 +124,7 @@ int main(int argc, char **argv) {
 
   gemmi::cif::Document d;
   try {
-    d.read_file(input);
+    d = gemmi::cif::read_any(input);
   } catch (tao::pegtl::parse_error& e) {
     std::cerr << e.what() << std::endl;
     return 1;
@@ -158,8 +159,13 @@ int main(int argc, char **argv) {
       writer.unknown = options[QMark].arg;
     writer.write_json(d);
   } else if (output_format == 'p') {
-    gemmi::mol::Structure st = gemmi::mol::read_atoms(d);
-    gemmi::mol::write_pdb(st, *os);
+    try {
+      gemmi::mol::Structure st = gemmi::mol::read_atoms(d);
+      gemmi::mol::write_pdb(st, *os);
+    } catch (std::runtime_error& e) {
+      std::cerr << "ERROR: " << e.what() << std::endl;
+      return 2;
+    }
   } else if (output_format == 'c') {
     *os << d;
   }
