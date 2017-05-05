@@ -282,6 +282,7 @@ struct TableView {
     Row operator*() const { return Row{cur, *col_indices}; }
     bool operator!=(const Iter& other) const { return cur != other.cur; }
     bool operator==(const Iter& other) const { return cur == other.cur; }
+    const std::string& get(int n) const { return cur[col_indices->at(n)]; }
   };
 
   bool ok() const { return loop != nullptr || !values_.empty(); }

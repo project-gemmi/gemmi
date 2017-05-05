@@ -25,14 +25,15 @@ T* find_or_add(std::vector<T>& vec, const std::string& name) {
   return &vec.back();
 }
 
-inline Residue* find_or_add(std::vector<Residue>& vec, int seq_id,
-                            const std::string& name) {
+inline Residue* find_or_add_r(std::vector<Residue>& vec, int seq_id,
+                              int auth_seq_id, const std::string& name) {
   auto it = std::find_if(vec.begin(), vec.end(), [&](const Residue& r) {
-      return r.seq_id == seq_id && r.name == name;
+      return r.seq_id == seq_id && r.name == name &&
+             (r.seq_id != Residue::UnknownId || r.auth_seq_id == auth_seq_id);
   });
   if (it != vec.end())
     return &*it;
-  vec.emplace_back(seq_id, name);
+  vec.emplace_back(seq_id, auth_seq_id, name);
   return &vec.back();
 }
 
@@ -51,7 +52,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     st.cell.beta = c.as_num(4);
     st.cell.gamma = c.as_num(5);
   }
-  st.sg_hm = block.find("_symmetry.space_group_name_H-M").one().as_str(0);
+  st.sg_hm = block.find_string("_symmetry.space_group_name_H-M");
 
   auto add_info = [&](std::string tag) {
     cif::TableView t = block.find(tag);
@@ -70,10 +71,11 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   // TODO
 
   // atom list
-  enum { kSymbol=0, kAtomId, kAltId, kCompId, kAsymId, kSeqId, kInsCode,
+  enum { kId=0, kSymbol, kAtomId, kAltId, kCompId, kAsymId, kSeqId, kInsCode,
          kX, kY, kZ, kOcc, kBiso, kCharge, kAuthSeqId, kAuthAsymId, kModelNum };
   cif::TableView atom_table = block.find("_atom_site.",
-                                         {"type_symbol",
+                                         {"id",
+                                          "type_symbol",
                                           "label_atom_id",
                                           "label_alt_id",
                                           "label_comp_id",
@@ -89,6 +91,10 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
                                           "auth_seq_id",
                                           "auth_asym_id",
                                           "pdbx_PDB_model_num"});
+  cif::TableView aniso_tab = block.find("_atom_site_anisotrop.",
+                                        {"id", "U[1][1]", "U[2][2]", "U[3][3]",
+                                         "U[1][2]", "U[1][3]", "U[2][3]"});
+  auto aniso_iter = aniso_tab.begin();
   Model *model = nullptr;
   Chain *chain = nullptr;
   Residue *resi = nullptr;
@@ -103,12 +109,17 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
       resi = nullptr;
     }
     int seq_id = cif::as_int(row[kSeqId], Residue::UnknownId);
-    if (!resi || seq_id != resi->seq_id || row[kCompId] != resi->name) {
-      resi = find_or_add(chain->residues, seq_id, cif::as_string(row[kCompId]));
+    int auth_seq_id = cif::as_int(row[kAuthSeqId], Residue::UnknownId);
+    if (!resi || seq_id != resi->seq_id || row[kCompId] != resi->name ||
+        (seq_id == Residue::UnknownId && resi->auth_seq_id != auth_seq_id)) {
+      resi = find_or_add_r(chain->residues, seq_id, auth_seq_id,
+                           cif::as_string(row[kCompId]));
       // we assume that the insertion code is a single letter
       assert(row[kInsCode].size() == 1); // temporary - test this assumption
       resi->ins_code = cif::as_string(row[kInsCode])[0];
-      resi->auth_seq_id = cif::as_int(row[kAuthSeqId], Residue::UnknownId);
+      resi->auth_seq_id = auth_seq_id;
+    } else {
+      assert(resi->auth_seq_id == auth_seq_id);
     }
     Atom atom;
     atom.name = cif::as_string(row[kAtomId]);
@@ -120,6 +131,30 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     atom.z = cif::as_number(row[kZ]);
     atom.occ = cif::as_number(row[kOcc], 1.0);
     atom.b_iso = cif::as_number(row[kBiso], 50.0);
+
+    if (aniso_tab.ok()) {
+      bool found = false;
+      // normally both tables are in the same order
+      if (aniso_iter != aniso_tab.end() && aniso_iter.get(0) == row[kId]) {
+        found = true;
+      } else {
+        for (auto r : aniso_tab)
+          if (r[0] == row[kId]) {
+            found = true;
+            aniso_iter.cur = r.cur;
+            break;
+          }
+      }
+      if (found) {
+        atom.u11 = cif::as_number(aniso_iter.get(1));
+        atom.u22 = cif::as_number(aniso_iter.get(2));
+        atom.u33 = cif::as_number(aniso_iter.get(3));
+        atom.u12 = cif::as_number(aniso_iter.get(4));
+        atom.u13 = cif::as_number(aniso_iter.get(5));
+        atom.u23 = cif::as_number(aniso_iter.get(6));
+        ++aniso_iter;
+      }
+    }
     resi->atoms.emplace_back(atom);
   }
   return st;

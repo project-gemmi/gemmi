@@ -28,6 +28,7 @@ struct Atom {
   double x, y, z;
   float occ;
   float b_iso;
+  float u11=0, u22=0, u33=0, u12=0, u13=0, u23=0;
   Residue* parent = nullptr;
 };
 
@@ -39,7 +40,9 @@ struct Residue {
   std::string name;
   std::vector<Atom> atoms;
   Chain* parent = nullptr;
-  Residue(int id, std::string rname) noexcept : seq_id(id), name(rname) {}
+
+  Residue(int id, int auth_id, std::string rname) noexcept
+    : seq_id(id), auth_seq_id(auth_id), name(rname) {}
   int seq_id_for_pdb() const {
     return auth_seq_id != UnknownId ? auth_seq_id : seq_id;
   }
@@ -48,8 +51,7 @@ struct Residue {
 
 struct Chain {
   std::string name;
-  // Not guaranteed to be the same for the whole chain (?).
-  std::string auth_name;
+  std::string auth_name; // not guaranteed to be the same for the whole chain?
   EntityType entity_type = EntityType::Unknown;
   std::vector<Residue> residues;
   Model* parent = nullptr;
