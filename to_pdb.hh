@@ -38,17 +38,17 @@ const char* find_last_break(const char *str, int max_len) {
 }
 
 // Write record with possible continuation lines, with the format:
-// 1-6 record name, 8-10 continuation, 11-79 string.
+// 1-6 record name, 8-10 continuation, 11-lastcol string.
 inline void write_multiline(std::ostream& os, const char* record_name,
-                            const char* text) {
+                            const char* text, int lastcol) {
   if (text == nullptr)
     return;
   char buf[83];
-  const char *end = find_last_break(text, 70);
+  const char *end = find_last_break(text, lastcol-10);
   WRITEU("%-6s    %-70.*s\n", record_name, end-text, text);
   for (int n = 2; n < 1000 && *end != '\0'; ++n) {
     const char *start = end;
-    end = find_last_break(start, 69);
+    end = find_last_break(start, lastcol-11);
     WRITEU("%-6s %3d %-69.*s\n", record_name, n, end-start, start);
   }
 }
@@ -73,7 +73,8 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
          // "classification" in PDB == _struct_keywords.pdbx_keywords in mmCIF
          st.get_info("_struct_keywords.pdbx_keywords", ""),
          pdb_date.c_str(), st.get_info("_entry.id"));
-  write_multiline(os, "TITLE", st.get_info("_struct.title"));
+  write_multiline(os, "TITLE", st.get_info("_struct.title"), 80);
+  write_multiline(os, "KEYWDS", st.get_info("_struct_keywords.text"), 79);
   if (st.models.size() > 1)
     WRITE("NUMMDL    %-6jd %63s\n", st.models.size(), "");
   // TODO: SEQRES
@@ -83,6 +84,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
         st.sg_hm.empty() ? "P 1" : st.sg_hm.c_str(),
         st.get_info("_cell.Z_PDB", "1"));
   // TODO: SCALE
+  // TODO: MTRIXn
   //TODO: special handling of large structures (>62 chains or >=1M atoms)
   for (const mol::Model& model : st.models) {
     int serial = 0;

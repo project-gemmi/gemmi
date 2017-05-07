@@ -8,10 +8,20 @@
 set -eu
 cd `dirname $0`
 code=${1,,}
-pout="p/$code"
-gout="g/$code"
+tempd=/run/gemmi
+pout="$tempd/$code-p"
+gout="$tempd/$code-g"
 cif=${PDB_COPY:-/hdd}/mmCIF/${code:1:2}/${code}.cif.gz
-pdb=${PDB_COPY:-/hdd}/pdb/${code:1:2}/pdb${code}.ent.gz
+if [[ -d ${PDB_COPY:-/hdd}/pdb ]]; then
+  pdb=${PDB_COPY:-/hdd}/pdb/${code:1:2}/pdb${code}.ent.gz
+else
+  pdb=$tempd/pdb${code}.ent.gz
+  if [[ ! -e $pdb ]]; then
+      remote=http://ftp.ebi.ac.uk/pub/databases/rcsb/pdb-remediated/data/structures/divided/pdb/${code:1:2}/pdb${code}.ent.gz
+      curl $remote -o $pdb
+  fi
+fi
+
 ignore="\
 ^AUTHOR|\
 ^CISPEP|\
@@ -25,7 +35,6 @@ ignore="\
 ^HETNAM|\
 ^HETSYN|\
 ^JRNL  |\
-^KEYWDS|\
 ^LINK  |\
 ^MASTER|\
 ^MTRIX|\

@@ -87,17 +87,18 @@ struct Structure {
 
 inline bool Residue::has_standard_pdb_name() const {
 #define SR(s) int(#s[0] << 16 | #s[1] << 8 | #s[2])
-  const int standard_aa[24] = {
+  const int standard_aa[26] = {
     SR(ALA), SR(ARG), SR(ASN), SR(ASP), SR(ASX), SR(CYS), SR(GLN), SR(GLU),
     SR(GLX), SR(GLY), SR(HIS), SR(ILE), SR(LEU), SR(LYS), SR(MET), SR(PHE),
-    SR(PRO), SR(SER), SR(THR), SR(TRP), SR(TYR), SR(UNK), SR(VAL), 0
+    SR(PRO), SR(SER), SR(THR), SR(TRP), SR(TYR), SR(UNK), SR(VAL), SR(SEC),
+    SR(PYL), 0
   };
   if (name.size() == 3) {
     int n = name[0] << 16 | name[1] << 8 | name[2];
-    for (int i = 0; i < 24; i++)
+    for (int i = 0; i < 26; i++)
       if (standard_aa[i] == n)
         return true;
-    //return std::find(standard_aa, standard_aa + 24, name) != standard_aa + 24;
+    //return std::find(standard_aa, standard_aa + 26, name) != standard_aa + 26;
   } else if (name.size() == 1) {
     return std::strchr("ACGITU", name[0]) != nullptr;
   } else if (name.size() == 2) {
