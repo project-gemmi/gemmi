@@ -36,7 +36,8 @@ struct Arg: public option::Arg {
   }
 
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
-    return Arg::Choice(option, msg, {"json", "pdb", "cif"});
+    // the hidden option "none" is for testing only
+    return Arg::Choice(option, msg, {"json", "pdb", "cif", "none"});
   }
 
   static option::ArgStatus NumbChoice(const option::Option& option, bool msg) {
@@ -158,10 +159,15 @@ int main(int argc, char **argv) {
     if (options[QMark])
       writer.unknown = options[QMark].arg;
     writer.write_json(d);
-  } else if (output_format == 'p') {
+  } else if (output_format == 'p' || output_format == 'n') {
     try {
       gemmi::mol::Structure st = gemmi::mol::read_atoms(d);
-      gemmi::mol::write_pdb(st, *os);
+      if (st.models.empty())
+        throw std::runtime_error("No atoms in the input file. Is it mmCIF?");
+      if (output_format == 'p')
+        gemmi::mol::write_pdb(st, *os);
+      else
+        *os << "No (real) output. " << st.models.size() << "model(s).\n";
     } catch (std::runtime_error& e) {
       std::cerr << "ERROR: " << e.what() << std::endl;
       return 2;

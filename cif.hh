@@ -692,8 +692,7 @@ inline Document read_string(const std::string& data) {
   return doc;
 }
 
-inline bool check_file_syntax(const std::string& filename, std::string* msg) {
-  pegtl::file_input<> in(filename);
+template<typename Input> bool check_syntax(Input&& in, std::string* msg) {
   try {
 #ifdef CIF_VALIDATE_SHOW_TRACE
     return pegtl::parse<rules::file, pegtl::nothing, pegtl::tracer>(in);
