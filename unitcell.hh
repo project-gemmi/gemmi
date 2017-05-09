@@ -54,16 +54,16 @@ struct UnitCell {
     // Data Bank and most programs, is to align the a1 axis of the unit
     // cell with the Cartesian X_1 axis, and to align the a*_3 axis with the
     // Cartesian X_3 axis."
-    orth = Matrix33{a,  b * cos_gamma,  c * cos_beta,
-                    0., b * sin_gamma, -c * cos_alpha_star_sin_beta,
-                    0., 0.           ,  c * sb_s1rca2};
+    orth = {a,  b * cos_gamma,  c * cos_beta,
+            0., b * sin_gamma, -c * cos_alpha_star_sin_beta,
+            0., 0.           ,  c * sb_s1rca2};
 
     double o13 = -(cos_gamma * cos_alpha_star_sin_beta + cos_beta * sin_gamma)
                   / (sb_s1rca2 * sin_gamma * a);
     double o23 = cos_alpha_star / (s1rca2 * sin_gamma * b);
-    frac = Matrix33{1 / a,  -cos_gamma / (sin_gamma * a), o13,
-                    0.,     1 / (sin_gamma * b),          o23,
-                    0.,     0.,                           1 / (sb_s1rca2 * c)};
+    frac = {1 / a,  -cos_gamma / (sin_gamma * a), o13,
+            0.,     1 / (sin_gamma * b),          o23,
+            0.,     0.,                           1 / (sb_s1rca2 * c)};
   }
 
   void set(double a_, double b_, double c_,

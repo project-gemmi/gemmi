@@ -53,10 +53,6 @@ inline void write_multiline(std::ostream& os, const char* record_name,
   }
 }
 
-inline double avoid_neg_zero(double x, double prec) {
-  return x > 0 || x < -0.5 * prec ? x : 0.0;
-}
-
 inline void write_pdb(const Structure& st, std::ostream& os) {
   const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
   char buf[83] = {0};
@@ -83,15 +79,13 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
         cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma,
         st.sg_hm.empty() ? "P 1" : st.sg_hm.c_str(),
         st.get_info("_cell.Z_PDB", "1"));
+  // We add a small number to avoid negative 0.
   WRITE("SCALE1 %13.6f%10.6f%10.6f %14.5f %24s\n",
-        avoid_neg_zero(cell.frac.a11, 6), avoid_neg_zero(cell.frac.a12, 6),
-        avoid_neg_zero(cell.frac.a13, 6), 0.0, "");
+        cell.frac.a11+1e-15, cell.frac.a12+1e-15, cell.frac.a13+1e-15, 0.0, "");
   WRITE("SCALE2 %13.6f%10.6f%10.6f %14.5f %24s\n",
-        avoid_neg_zero(cell.frac.a21, 6), avoid_neg_zero(cell.frac.a22, 6),
-        avoid_neg_zero(cell.frac.a23, 6), 0.0, "");
+        cell.frac.a21+1e-15, cell.frac.a22+1e-15, cell.frac.a23+1e-15, 0.0, "");
   WRITE("SCALE3 %13.6f%10.6f%10.6f %14.5f %24s\n",
-        avoid_neg_zero(cell.frac.a31, 6), avoid_neg_zero(cell.frac.a32, 6),
-        avoid_neg_zero(cell.frac.a33, 6), 0.0, "");
+        cell.frac.a31+1e-15, cell.frac.a32+1e-15, cell.frac.a33+1e-15, 0.0, "");
 
   // TODO: MTRIXn
   //TODO: special handling of large structures (>62 chains or >=1M atoms)
@@ -140,24 +134,24 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
                 chain.auth_name.c_str(),
                 res.seq_id_for_pdb(),
                 res.ins_code ? res.ins_code : ' ',
-                avoid_neg_zero(a.pos.x, 1e-3),
-                avoid_neg_zero(a.pos.y, 1e-3),
-                avoid_neg_zero(a.pos.z, 1e-3),
-                a.occ, a.b_iso,
+                // We add a small number to avoid negative zero and to
+                // round up if the number is exactly between two numbers.
+                a.pos.x + 1e-11,
+                a.pos.y + 1e-11,
+                a.pos.z + 1e-11,
+                a.occ + 1e-6,
+                a.b_iso + 1e-6,
                 a.element.uname(),
-                // charge is written as 1+ or 2-, etc, or just empty space
+                // Charge is written as 1+ or 2-, etc, or just empty space.
+                // Sometimes PDB files have explicit 0; we ignore 0's for now.
                 a.charge ? a.charge > 0 ? '0'+a.charge : '0'-a.charge : ' ',
                 a.charge ? a.charge > 0 ? '+' : '-' : ' ');
           if (a.u11 != 0.0f) {
             // re-using part of the buffer
             memcpy(buf, "ANISOU", 6);
             stbsp_snprintf(buf+28, 43, "%7.0f%7.0f%7.0f%7.0f%7.0f%7.0f",
-                           avoid_neg_zero(a.u11*1e4, 0),
-                           avoid_neg_zero(a.u22*1e4, 0),
-                           avoid_neg_zero(a.u33*1e4, 0),
-                           avoid_neg_zero(a.u12*1e4, 0),
-                           avoid_neg_zero(a.u13*1e4, 0),
-                           avoid_neg_zero(a.u23*1e4, 0));
+                           a.u11*1e4 + 1e-6, a.u22*1e4 + 1e-6, a.u33*1e4 + 1e-6,
+                           a.u12*1e4 + 1e-6, a.u13*1e4 + 1e-6, a.u23*1e4 + 1e-6);
             buf[28+42] = ' ';
             os.write(buf, 81);
           }

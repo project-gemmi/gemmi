@@ -22,12 +22,19 @@ else
   fi
 fi
 
-ignore="\
+# TITLE, KEYWDS: line breaks can happen in different places
+# SCALE: numerical errors ~1e-6
+not_identical="\
+^TITLE|\
+^KEYWDS|\
+^XSCALE"
+absent="\
 ^AUTHOR|\
 ^CISPEP|\
+^CAVEAT|\
 ^COMPND|\
 ^CONECT|\
-^DBREF |\
+^DBREF|\
 ^EXPDTA|\
 ^FORMUL|\
 ^HELIX |\
@@ -50,11 +57,10 @@ ignore="\
 ^SOURCE|\
 ^SPRSDE|\
 ^SSBOND"
-#zgrep -v -f ignore "$pdb" > "$pout"
-zgrep -v -E "$ignore" "$pdb" > "$pout"
-../gemmi-convert --to=pdb "$cif" "$gout"
+zgrep -v -E "$not_identical|$absent" "$pdb" > "$pout"
+../gemmi-convert --to=pdb "$cif" - | grep -v -E $not_identical > "$gout"
 echo diff -u "$gout" "$pout"
-diff -u "$gout" "$pout" | diffstat -q
+diff -u "$gout" "$pout" ||: # diffstat -q
 
 # Add d or w as the second arg to show diff (using git diff for colors).
 [[ ${2:-} = d ]] && git_diff_opt=
