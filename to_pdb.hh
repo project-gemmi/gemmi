@@ -78,12 +78,21 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
   if (st.models.size() > 1)
     WRITE("NUMMDL    %-6jd %63s\n", st.models.size(), "");
   // TODO: SEQRES
+  const UnitCell& cell = st.cell;
   WRITE("CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11s%4s          \n",
-        st.cell.a, st.cell.b, st.cell.c,
-        st.cell.alpha, st.cell.beta, st.cell.gamma,
+        cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma,
         st.sg_hm.empty() ? "P 1" : st.sg_hm.c_str(),
         st.get_info("_cell.Z_PDB", "1"));
-  // TODO: SCALE
+  WRITE("SCALE1 %13.6f%10.6f%10.6f %14.5f %24s\n",
+        avoid_neg_zero(cell.frac.a11, 6), avoid_neg_zero(cell.frac.a12, 6),
+        avoid_neg_zero(cell.frac.a13, 6), 0.0, "");
+  WRITE("SCALE2 %13.6f%10.6f%10.6f %14.5f %24s\n",
+        avoid_neg_zero(cell.frac.a21, 6), avoid_neg_zero(cell.frac.a22, 6),
+        avoid_neg_zero(cell.frac.a23, 6), 0.0, "");
+  WRITE("SCALE3 %13.6f%10.6f%10.6f %14.5f %24s\n",
+        avoid_neg_zero(cell.frac.a31, 6), avoid_neg_zero(cell.frac.a32, 6),
+        avoid_neg_zero(cell.frac.a33, 6), 0.0, "");
+
   // TODO: MTRIXn
   //TODO: special handling of large structures (>62 chains or >=1M atoms)
   for (const mol::Model& model : st.models) {
@@ -131,9 +140,9 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
                 chain.auth_name.c_str(),
                 res.seq_id_for_pdb(),
                 res.ins_code ? res.ins_code : ' ',
-                avoid_neg_zero(a.x, 1e-3),
-                avoid_neg_zero(a.y, 1e-3),
-                avoid_neg_zero(a.z, 1e-3),
+                avoid_neg_zero(a.pos.x, 1e-3),
+                avoid_neg_zero(a.pos.y, 1e-3),
+                avoid_neg_zero(a.pos.z, 1e-3),
                 a.occ, a.b_iso,
                 a.element.uname(),
                 // charge is written as 1+ or 2-, etc, or just empty space

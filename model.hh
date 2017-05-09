@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 #include "elem.hh"
+#include "unitcell.hh"
 
 namespace gemmi {
 namespace mol {
@@ -25,7 +26,7 @@ struct Atom {
   char altloc;
   signed char charge;  // [-8, +8]
   Element element = El::X;
-  double x, y, z;
+  Position pos;
   float occ;
   float b_iso;
   float u11=0, u22=0, u33=0, u12=0, u13=0, u23=0;
@@ -63,11 +64,6 @@ struct Model {
   std::vector<Chain> chains;
   Structure* parent = nullptr;
   explicit Model(std::string mname) noexcept : name(mname) {}
-};
-
-struct UnitCell {
-  double a = 1.0, b = 1.0, c = 1.0;
-  double alpha = 90.0, beta = 90.0, gamma = 90.0;
 };
 
 struct Structure {

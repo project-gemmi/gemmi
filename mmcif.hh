@@ -41,16 +41,13 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   Structure st;
 
   // unit cell and symmetry
-  cif::TableView cell = block.find("_cell.", {"length_a", "length_b",
-                      "length_c", "angle_alpha", "angle_beta", "angle_gamma"});
+  cif::TableView cell = block.find("_cell.",
+                                   {"length_a", "length_b", "length_c",
+                                   "angle_alpha", "angle_beta", "angle_gamma"});
   if (cell.ok()) {
     auto c = cell.one();
-    st.cell.a = c.as_num(0);
-    st.cell.b = c.as_num(1);
-    st.cell.c = c.as_num(2);
-    st.cell.alpha = c.as_num(3);
-    st.cell.beta = c.as_num(4);
-    st.cell.gamma = c.as_num(5);
+    st.cell.set(c.as_num(0), c.as_num(1), c.as_num(2),
+                c.as_num(3), c.as_num(4), c.as_num(5));
   }
   st.sg_hm = block.find_string("_symmetry.space_group_name_H-M");
 
@@ -126,9 +123,9 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     atom.altloc = cif::as_string(row[kAltId])[0];
     atom.charge = cif::is_null(row[kCharge]) ? 0 : cif::as_int(row[kCharge]);
     atom.element = Element(cif::as_string(row[kSymbol]));
-    atom.x = cif::as_number(row[kX]);
-    atom.y = cif::as_number(row[kY]);
-    atom.z = cif::as_number(row[kZ]);
+    atom.pos.x = cif::as_number(row[kX]);
+    atom.pos.y = cif::as_number(row[kY]);
+    atom.pos.z = cif::as_number(row[kZ]);
     atom.occ = cif::as_number(row[kOcc], 1.0);
     atom.b_iso = cif::as_number(row[kBiso], 50.0);
 

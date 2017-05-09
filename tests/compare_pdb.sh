@@ -42,11 +42,11 @@ ignore="\
 ^ORIGX|\
 ^REMARK|\
 ^REVDAT|\
-^SCALE|\
 ^SEQADV|\
 ^SEQRES|\
 ^SHEET |\
 ^SITE  |\
+^SLTBRG|\
 ^SOURCE|\
 ^SPRSDE|\
 ^SSBOND"

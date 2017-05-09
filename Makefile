@@ -11,7 +11,7 @@ all: gemmi-validate gemmi-convert gemmi.so
 gemmi-validate: validate.cc cif.hh ddl.hh cifgz.hh numb.hh
 	$(CXX) $(FLAGS) $< -o $@ -lz
 gemmi-convert: convert.cc to_json.hh cif.hh write_cif.hh mmcif.hh model.hh \
-               to_pdb.hh
+               to_pdb.hh unitcell.hh
 	$(CXX) $(FLAGS) -Wno-strict-aliasing $< -o $@ -lz
 
 # for debugging only
