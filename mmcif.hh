@@ -64,6 +64,20 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   add_info("_struct_keywords.pdbx_keywords");
   add_info("_struct_keywords.text");
 
+  cif::TableView ncs_oper = block.find("_struct_ncs_oper.",
+             {"matrix[1][1]", "matrix[1][2]", "matrix[1][3]",
+              "matrix[2][1]", "matrix[2][2]", "matrix[2][3]",
+              "matrix[3][1]", "matrix[3][2]", "matrix[3][3]",
+              "vector[1]", "vector[2]", "vector[3]", "code"});
+  for (auto op : ncs_oper) {
+    Matrix33 mat{op.as_num(0), op.as_num(1), op.as_num(2),
+                 op.as_num(3), op.as_num(4), op.as_num(5),
+                 op.as_num(6), op.as_num(7), op.as_num(8)};
+    Position vec{op.as_num(9), op.as_num(10), op.as_num(11)};
+    bool given = (op.as_str(12) == "given");
+    st.ncs.push_back({given, mat, vec});
+  }
+
   // sequence
   // TODO
 
@@ -111,8 +125,8 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
         (seq_id == Residue::UnknownId && resi->auth_seq_id != auth_seq_id)) {
       resi = find_or_add_r(chain->residues, seq_id, auth_seq_id,
                            cif::as_string(row[kCompId]));
-      // we assume that the insertion code is a single letter
-      assert(row[kInsCode].size() == 1); // temporary - test this assumption
+      // the insertion code happens to be always a single letter
+      assert(row[kInsCode].size() == 1);
       resi->ins_code = cif::as_string(row[kInsCode])[0];
       resi->auth_seq_id = auth_seq_id;
     } else {

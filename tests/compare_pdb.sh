@@ -26,8 +26,7 @@ fi
 # SCALE: numerical errors ~1e-6
 not_identical="\
 ^TITLE|\
-^KEYWDS|\
-^XSCALE"
+^KEYWDS"
 absent="\
 ^AUTHOR|\
 ^CISPEP|\
@@ -44,7 +43,6 @@ absent="\
 ^JRNL  |\
 ^LINK  |\
 ^MASTER|\
-^MTRIX|\
 ^MODRES|\
 ^ORIGX|\
 ^REMARK|\
@@ -59,13 +57,17 @@ absent="\
 ^SSBOND"
 zgrep -v -E "$not_identical|$absent" "$pdb" > "$pout"
 ../gemmi-convert --to=pdb "$cif" - | grep -v -E $not_identical > "$gout"
-echo diff -u "$gout" "$pout"
-diff -u "$gout" "$pout" ||: # diffstat -q
+echo Comparing "$gout" and "$pout"
 
 # Add d or w as the second arg to show diff (using git diff for colors).
-[[ ${2:-} = d ]] && git_diff_opt=
-[[ ${2:-} = w ]] && git_diff_opt=--word-diff=color
-if [[ "${git_diff_opt+set}" ]]; then
-  echo git diff --no-index $git_diff_opt -- "$gout" "$pout"
-  git diff --no-index $git_diff_opt -- "$gout" "$pout"
+if [[ ${2:-} = d ]]; then
+    diff -u "$gout" "$pout"
+elif [[ ${2:-} = g ]]; then
+    git diff --no-index -- "$gout" "$pout"
+elif [[ ${2:-} = w ]]; then
+    git diff --no-index --word-diff=color -- "$gout" "$pout"
+elif [[ ${2:-} = n ]]; then
+    numdiff -V -r 1e-4 "$gout" "$pout"
+else
+    diff -u "$gout" "$pout" | diffstat -q
 fi

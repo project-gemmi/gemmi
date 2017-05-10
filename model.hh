@@ -66,11 +66,18 @@ struct Model {
   explicit Model(std::string mname) noexcept : name(mname) {}
 };
 
+struct NcsOp {
+  bool given;
+  // may be changed to tranformation matrix, or quaternion+vector
+  Matrix33 rot;
+  Position tran;
+};
+
 struct Structure {
   UnitCell cell;
   std::string sg_hm;
   std::vector<Model> models;
-  // std::vector<Ops> ncs;
+  std::vector<NcsOp> ncs;
 
   // Minimal metadata with keys being mmcif tags: _entry.id, _exptl.method, ...
   std::map<std::string, std::string> info;

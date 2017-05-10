@@ -87,8 +87,16 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
   WRITE("SCALE3 %13.6f%10.6f%10.6f %14.5f %24s\n",
         cell.frac.a31+1e-15, cell.frac.a32+1e-15, cell.frac.a33+1e-15, 0.0, "");
 
-  // TODO: MTRIXn
-  //TODO: special handling of large structures (>62 chains or >=1M atoms)
+  for (size_t i = 0; i != st.ncs.size(); i++) {
+    const NcsOp& op = st.ncs[i];
+    char g = op.given ? '1' : ' ';
+    WRITE("MTRIX%d %3jd%10.6f%10.6f%10.6f %14.5f    %-21c\n",
+          1, i+1, op.rot.a11, op.rot.a12, op.rot.a13, op.tran.x, g);
+    WRITE("MTRIX%d %3jd%10.6f%10.6f%10.6f %14.5f    %-21c\n",
+          2, i+1, op.rot.a21, op.rot.a22, op.rot.a23, op.tran.y, g);
+    WRITE("MTRIX%d %3jd%10.6f%10.6f%10.6f %14.5f    %-21c\n",
+          3, i+1, op.rot.a31, op.rot.a32, op.rot.a33, op.tran.z, g);
+  }
   for (const mol::Model& model : st.models) {
     int serial = 0;
     if (st.models.size() > 1)
@@ -101,6 +109,8 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
       for (const mol::Residue& res : chain.residues) {
         bool standard = res.has_standard_pdb_name();
         for (const mol::Atom& a : res.atoms) {
+          if (serial == 1000000)
+            throw std::runtime_error("Too many atoms for PDB file.");
           //  1- 6  6s  record name
           //  7-11  5d  integer serial
           // 12     1   -

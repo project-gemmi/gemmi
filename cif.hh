@@ -649,6 +649,7 @@ inline void check_duplicates(const Document& d) {
   // check for duplicate block names (except empty "" which is global_)
   std::unordered_set<std::string> names;
   for (const Block& block : d.blocks) {
+    // TODO: case-insensitive check
     bool success = names.insert(block.name).second;
     if (!success && !block.name.empty())
       throw std::runtime_error("duplicate block name: " + block.name);
