@@ -8,11 +8,19 @@
 #include <cstring>
 #include <algorithm>
 #include <ostream>
-#include <stb_sprintf.h>
+#ifdef USE_STD_SNPRINTF
+# include <cstdio>
+#else
+# include <stb_sprintf.h>
+#endif
 #include "model.hh"
 
 namespace gemmi {
 namespace mol {
+
+#ifdef USE_STD_SNPRINTF  // for benchmarking and testing only
+#define stbsp_snprintf  std::snprintf
+#endif
 
 #define WRITE(...) do { \
     stbsp_snprintf(buf, 82, __VA_ARGS__); \
@@ -43,19 +51,20 @@ inline void write_multiline(std::ostream& os, const char* record_name,
                             const char* text, int lastcol) {
   if (text == nullptr)
     return;
-  char buf[83];
+  char buf[88]; // a few bytes extra, just in case
   const char *end = find_last_break(text, lastcol-10);
-  WRITEU("%-6s    %-70.*s\n", record_name, end-text, text);
+  WRITEU("%-6s    %-70.*s\n", record_name, static_cast<int>(end-text), text);
   for (int n = 2; n < 1000 && *end != '\0'; ++n) {
     const char *start = end;
     end = find_last_break(start, lastcol-11);
-    WRITEU("%-6s %3d %-69.*s\n", record_name, n, end-start, start);
+    int len = end - start;
+    WRITEU("%-6s %3d %-69.*s\n", record_name, n, len, start);
   }
 }
 
 inline void write_pdb(const Structure& st, std::ostream& os) {
   const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
-  char buf[83] = {0};
+  char buf[88];
 
   const char* date = st.get_info("_database_PDB_rev.date_original");
   std::string pdb_date;
@@ -171,7 +180,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
       if (chain.residues.back().seq_id != mol::Residue::UnknownId) {
         // re-using part of the buffer in the middle, e.g.:
         // TER    4153      LYS B 286
-        stbsp_sprintf(buf, "TER   %5d", ++serial);
+        stbsp_snprintf(buf, 82, "TER   %5d", ++serial);
         std::memset(buf+11, ' ', 6);
         std::memset(buf+30, ' ', 50);
         os.write(buf, 81);
