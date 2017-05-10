@@ -26,7 +26,8 @@ fi
 # SCALE: numerical errors ~1e-6
 not_identical="\
 ^TITLE|\
-^KEYWDS"
+^KEYWDS|\
+^SCALE"
 absent="\
 ^AUTHOR|\
 ^CISPEP|\
@@ -43,6 +44,7 @@ absent="\
 ^JRNL  |\
 ^LINK  |\
 ^MASTER|\
+^MDLTYP|\
 ^MODRES|\
 ^ORIGX|\
 ^REMARK|\
@@ -71,3 +73,5 @@ elif [[ ${2:-} = n ]]; then
 else
     diff -u "$gout" "$pout" | diffstat -q
 fi
+
+[[ ${3:-} = c ]] && /bin/rm "$gout" "$pout"

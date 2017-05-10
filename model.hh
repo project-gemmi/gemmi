@@ -6,8 +6,9 @@
 #define GEMMI_MODEL_HH_
 
 #include <cstring>
-#include <vector>
+#include <algorithm>
 #include <string>
+#include <vector>
 #include "elem.hh"
 #include "unitcell.hh"
 
@@ -48,6 +49,19 @@ struct Residue {
     return auth_seq_id != UnknownId ? auth_seq_id : seq_id;
   }
   bool has_standard_pdb_name() const;
+
+  std::vector<const Atom*> sorted_by_altloc() const {
+    std::vector<const Atom*> pointers(atoms.size());
+    std::iota(pointers.begin(), pointers.end(), &atoms.front());
+    for (auto p = pointers.begin(); p != pointers.end(); ++p)
+      if ((*p)->altloc) {
+        std::stable_sort(p, pointers.end(), [](const Atom* a, const Atom* b) {
+            return a->altloc < b->altloc;
+        });
+        break;
+      }
+    return pointers;
+  }
 };
 
 struct Chain {

@@ -116,7 +116,8 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
       if (chain.auth_name.length() > 1)
         throw std::runtime_error("long chain name: " + chain.auth_name);
       for (const mol::Residue& res : chain.residues) {
-        bool standard = res.has_standard_pdb_name();
+        bool standard = chain.entity_type != EntityType::NonPolymer &&
+                        res.has_standard_pdb_name();
         for (const mol::Atom& a : res.atoms) {
           if (serial == 1000000)
             throw std::runtime_error("Too many atoms for PDB file.");
@@ -153,16 +154,19 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
                 chain.auth_name.c_str(),
                 res.seq_id_for_pdb(),
                 res.ins_code ? res.ins_code : ' ',
-                // We add a small number to avoid negative zero and to
-                // round up if the number is exactly between two numbers.
-                a.pos.x + 1e-11,
-                a.pos.y + 1e-11,
-                a.pos.z + 1e-11,
-                a.occ + 1e-6,
-                a.b_iso + 1e-6,
+                // We want to avoid negative zero and to round up
+                // if the number is exactly between two numbers.
+                a.pos.x > -5e-4 && a.pos.x < 0 ? 0 : a.pos.x + 1e-10,
+                a.pos.y > -5e-4 && a.pos.y < 0 ? 0 : a.pos.y + 1e-10,
+                a.pos.z > -5e-4 && a.pos.z < 0 ? 0 : a.pos.z + 1e-10,
+                a.occ + 1e-6, // stored as single prec and <= 1
+                // B is harder to get rounded right. It is stored as float,
+                // and may be given with more than single precision in mmCIF
+                // (see 5TIS). Let's assume it was originally as %.5f.
+                std::round(a.b_iso * 1e5) * 1e-5 + 1e-11,
                 a.element.uname(),
                 // Charge is written as 1+ or 2-, etc, or just empty space.
-                // Sometimes PDB files have explicit 0; we ignore 0's for now.
+                // Sometimes PDB files have explicit 0s (5M05); we ignore them.
                 a.charge ? a.charge > 0 ? '0'+a.charge : '0'-a.charge : ' ',
                 a.charge ? a.charge > 0 ? '+' : '-' : ' ');
           if (a.u11 != 0.0f) {
@@ -182,7 +186,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
         // TER    4153      LYS B 286
         stbsp_snprintf(buf, 82, "TER   %5d", ++serial);
         std::memset(buf+11, ' ', 6);
-        std::memset(buf+30, ' ', 50);
+        std::memset(buf+28, ' ', 52);
         os.write(buf, 81);
       }
     }

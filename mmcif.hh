@@ -168,6 +168,24 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     }
     resi->atoms.emplace_back(atom);
   }
+
+  auto chain_to_entity = block.find("_struct_asym.", {"id", "entity_id"});
+  auto entity_types = block.find("_entity.", {"id", "type"});
+  for (Model& mod : st.models)
+    for (Chain& ch : mod.chains)
+      try {
+        std::string ent = chain_to_entity.find_row(ch.name).as_str(1);
+        std::string type = entity_types.find_row(ent).as_str(1);
+        if (type == "polymer")
+          ch.entity_type = EntityType::Polymer;
+        else if (type == "non-polymer")
+          ch.entity_type = EntityType::NonPolymer;
+        else if (type == "water")
+          ch.entity_type = EntityType::Water;
+      } catch (std::runtime_error&) {
+        // EntityType left as Unknown
+      }
+
   return st;
 }
 
