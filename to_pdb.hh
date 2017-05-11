@@ -5,6 +5,7 @@
 #ifndef GEMMI_TO_PDB_HH_
 #define GEMMI_TO_PDB_HH_
 
+#include <cctype>
 #include <cstring>
 #include <algorithm>
 #include <ostream>
@@ -149,7 +150,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
                 ++serial,
                 empty13 ? ' ' : a.name[0],
                 a.name.c_str() + (empty13 || a.name.empty() ? 0 : 1),
-                a.altloc ? a.altloc : ' ',
+                a.altloc ? std::toupper(a.altloc) : ' ',
                 res.name.c_str(),
                 chain.auth_name.c_str(),
                 res.seq_id_for_pdb(),
