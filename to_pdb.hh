@@ -154,16 +154,18 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
                 chain.auth_name.c_str(),
                 res.seq_id_for_pdb(),
                 res.ins_code ? res.ins_code : ' ',
-                // We want to avoid negative zero and to round up
-                // if the number is exactly between two numbers.
+                // We want to avoid negative zero and round them numbers up
+                // if they originally had one digit more and that digit was 5.
                 a.pos.x > -5e-4 && a.pos.x < 0 ? 0 : a.pos.x + 1e-10,
                 a.pos.y > -5e-4 && a.pos.y < 0 ? 0 : a.pos.y + 1e-10,
                 a.pos.z > -5e-4 && a.pos.z < 0 ? 0 : a.pos.z + 1e-10,
-                a.occ + 1e-6, // stored as single prec and <= 1
+                // Occupancy is stored as single prec, but we know it's <= 1,
+                // so no precision is lost even if it had 6 digits after dot.
+                a.occ + 1e-6,
                 // B is harder to get rounded right. It is stored as float,
                 // and may be given with more than single precision in mmCIF
-                // (see 5TIS). Let's assume it was originally as %.5f.
-                std::round(a.b_iso * 1e5) * 1e-5 + 1e-11,
+                // If it was originally %.5f (5TIS) we need to add 0.5 * 10^-5.
+                a.b_iso + 0.5e-5,
                 a.element.uname(),
                 // Charge is written as 1+ or 2-, etc, or just empty space.
                 // Sometimes PDB files have explicit 0s (5M05); we ignore them.
