@@ -6,7 +6,6 @@
 #define GEMMI_MMCIF_HH_
 
 #include <string>
-#include <iostream> // temporary
 #include "cif.hh"
 #include "numb.hh"
 #include "model.hh"

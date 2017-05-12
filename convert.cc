@@ -5,6 +5,7 @@
 #include "write_cif.hh"
 #include "cifgz.hh"
 #include "mmcif.hh"
+#include "read_pdb.hh"
 
 #include <cstring>
 #include <iostream>
@@ -45,16 +46,18 @@ struct Arg: public option::Arg {
   }
 };
 
-enum OptionIndex { Unknown, Help, FormatOut, Bare, Numb, QMark };
+enum OptionIndex { Unknown, Help, FormatIn, FormatOut, Bare, Numb, QMark };
 static const option::Descriptor usage[] = {
   { Unknown, 0, "", "", Arg::None,
     "Usage:"
-    "\n " EXE_NAME " [options] file.cif file.json"
-    "\n " EXE_NAME " [options] file.cif file.pdb"
+    "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
+    "\n\nwith possible conversions: cif->json and cif<->pdb."
     "\n\nGeneral options:" },
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
+  { FormatIn, 0, "", "from", Arg::FileFormat,
+    "  --from=pdb|cif  \tInput format (default: from the file extension)." },
   { FormatOut, 0, "", "to", Arg::FileFormat,
-    "  --to=json|pdb  \tOutput format (default: the file extension)." },
+    "  --to=json|pdb  \tOutput format (default: from the file extension)." },
   { Unknown, 0, "", "", Arg::None, "\nCIF output options:" },
   { Bare, 0, "b", "bare-tags", Arg::None,
     "  -b, --bare-tags  \tOutput tags without the first underscore." },
@@ -69,6 +72,22 @@ static const option::Descriptor usage[] = {
     "\nWhen output file is -, write to standard output." },
   { 0, 0, 0, 0, 0, 0 }
 };
+
+
+char get_format_from_extension(const char* path) {
+  const char* dot = std::strrchr(path, '.');
+  if (dot) {
+    if (strcmp(dot+1, "pdb") == 0 || strcmp(dot+1, "PDB") == 0 ||
+        strcmp(dot+1, "ent") == 0 || strcmp(dot+1, "ENT") == 0)
+      return 'p';
+    if ((dot[1] == 'j' || dot[1] == 'J') &&
+        (dot[2] == 's' || dot[2] == 'S'))  // .json, .js, .jswhatever
+      return 'j';
+    if (strcmp(dot+1, "cif") == 0 || strcmp(dot+1, "CIF") == 0)
+      return 'c';
+  }
+  return 0;
+}
 
 int main(int argc, char **argv) {
   if (argc < 1)
@@ -100,46 +119,52 @@ int main(int argc, char **argv) {
   const char* input = parse.nonOption(0);
   const char* output = parse.nonOption(1);
 
-  char output_format = 0;
-  if (options[FormatOut]) {
-    output_format = options[FormatOut].arg[0];
-  } else {
-    const char* dot = std::strrchr(output, '.');
-    if (dot) {
-      if (strcmp(dot+1, "pdb") == 0 || strcmp(dot+1, "PDB") == 0 ||
-          strcmp(dot+1, "ent") == 0 || strcmp(dot+1, "ENT") == 0) {
-        output_format = 'p';
-      } else if ((dot[1] == 'j' || dot[1] == 'J') &&
-                 (dot[2] == 's' || dot[2] == 'S')) { // .json, .js, .jswhatever
-        output_format = 'j';
-      } else if (strcmp(dot+1, "cif") == 0 || strcmp(dot+1, "CIF") == 0) {
-        output_format = 'c';
-      }
-    }
-    if (output_format == 0) {
-      std::cerr << "The output format cannot be determined from output"
-                   " filename. Use option --to.\n";
-      return 1;
-    }
+  char input_format = options[FormatIn] ? options[FormatIn].arg[0]
+                                        : get_format_from_extension(input);
+  if (input_format == 0) // assuming mmCIF
+    input_format = 'c';
+
+  char output_format = options[FormatOut] ? options[FormatOut].arg[0]
+                                          : get_format_from_extension(output);
+  if (output_format == 0) {
+    std::cerr << "The output format cannot be determined from output"
+                 " filename. Use option --to.\n";
+    return 1;
   }
 
-  gemmi::cif::Document d;
-  try {
-    d = gemmi::cif::read_any(input);
-  } catch (tao::pegtl::parse_error& e) {
-    std::cerr << e.what() << std::endl;
+
+  gemmi::cif::Document cif_in;
+  gemmi::mol::Structure st;
+  if (input_format == 'c') {
+    try {
+      cif_in = gemmi::cif::read_any(input);
+    } catch (tao::pegtl::parse_error& e) {
+      std::cerr << e.what() << std::endl;
+      return 1;
+    }
+    if (output_format == 'p' || output_format == 'n')
+      try {
+        st = gemmi::mol::read_atoms(cif_in);
+        if (st.models.empty())
+          throw std::runtime_error("No atoms in the input file. Is it mmCIF?");
+      } catch (std::runtime_error& e) {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+        return 2;
+      }
+  } else if (input_format == 'p') {
+    // TODO: read PDB into st
+  } else {
+    std::cerr << "Unexpected input format.\n";
     return 1;
   }
 
   std::ostream* os;
-  bool new_os = false;
+  std::unique_ptr<std::ostream> os_deleter;
   if (output != std::string("-")) {
-    os = new std::ofstream(output);
-    if (*os) {
-      new_os = true;
-    } else {
+    os_deleter.reset(new std::ofstream(output));
+    os = os_deleter.get();
+    if (!os || !*os) {
       std::cerr << "Failed to open for writing: " << output;
-      delete os;
       return 1;
     }
   } else {
@@ -147,6 +172,10 @@ int main(int argc, char **argv) {
   }
 
   if (output_format == 'j') {
+    if (input_format != 'c') {
+      std::cerr << "Conversion to JSON is only from CIF\n";
+      return 1;
+    }
     gemmi::cif::JsonWriter writer(*os);
     writer.use_bare_tags = options[Bare];
     if (options[Numb]) {
@@ -158,12 +187,12 @@ int main(int argc, char **argv) {
     }
     if (options[QMark])
       writer.unknown = options[QMark].arg;
-    writer.write_json(d);
-  } else if (output_format == 'p' || output_format == 'n') {
+    writer.write_json(cif_in);
+    return 0;
+  }
+
+  if (output_format == 'p' || output_format == 'n') {
     try {
-      gemmi::mol::Structure st = gemmi::mol::read_atoms(d);
-      if (st.models.empty())
-        throw std::runtime_error("No atoms in the input file. Is it mmCIF?");
       if (output_format == 'p')
         gemmi::mol::write_pdb(st, *os);
       else
@@ -173,11 +202,8 @@ int main(int argc, char **argv) {
       return 2;
     }
   } else if (output_format == 'c') {
-    *os << d;
+    *os << cif_in;
   }
-
-  if (new_os)
-    delete os;
   return 0;
 }
 
