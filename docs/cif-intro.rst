@@ -1,3 +1,5 @@
+.. _cif_intro:
+
 What are STAR, CIF, DDL and mmCIF?
 ==================================
 
