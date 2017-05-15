@@ -78,7 +78,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
   WRITEU("HEADER    %-40s%-9s   %-18s\n",
          // "classification" in PDB == _struct_keywords.pdbx_keywords in mmCIF
          st.get_info("_struct_keywords.pdbx_keywords", ""),
-         pdb_date.c_str(), st.get_info("_entry.id"));
+         pdb_date.c_str(), st.get_info("_entry.id", ""));
   write_multiline(os, "TITLE", st.get_info("_struct.title"), 80);
   write_multiline(os, "KEYWDS", st.get_info("_struct_keywords.text"), 79);
   if (st.models.size() > 1)

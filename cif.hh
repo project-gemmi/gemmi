@@ -510,7 +510,7 @@ struct Document {
     parse_input(in);
   }
 
-  void read_memory(const char* data, const size_t size, const char* name) {
+  void read_memory(const char* data, size_t size, const char* name) {
     pegtl::memory_input<> in(data, size, name);
     parse_input(in);
   }

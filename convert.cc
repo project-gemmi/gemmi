@@ -152,7 +152,12 @@ int main(int argc, char **argv) {
         return 2;
       }
   } else if (input_format == 'p') {
-    // TODO: read PDB into st
+    try {
+      st = gemmi::mol::read_pdb(input);
+    } catch (std::runtime_error& e) {
+      std::cerr << "ERROR: " << e.what() << std::endl;
+      return 2;
+    }
   } else {
     std::cerr << "Unexpected input format.\n";
     return 1;
@@ -173,7 +178,7 @@ int main(int argc, char **argv) {
 
   if (output_format == 'j') {
     if (input_format != 'c') {
-      std::cerr << "Conversion to JSON is only from CIF\n";
+      std::cerr << "Conversion to JSON is possible only from CIF\n";
       return 1;
     }
     gemmi::cif::JsonWriter writer(*os);
