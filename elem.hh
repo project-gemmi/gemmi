@@ -110,6 +110,8 @@ inline const char* element_uppercase_name(El el) {
 inline El find_element(const char* symbol) {
   if (symbol == nullptr || symbol[0] == '\0')
     return El::X;
+  if (symbol[0] == ' ' && symbol[1] != '\0')
+    ++symbol;
   char first = symbol[0] & ~0x20;  // lower -> upper, space -> NUL
   if (symbol[1] == '\0')
 		// all the most common elements in the PDB are single-letter
@@ -131,9 +133,6 @@ inline El find_element(const char* symbol) {
       case 'D': return El::D;
 			default: return El::X;
     }
-
-  if (symbol[2] != '\0')
-    return El::X;
 
 #define EL(s) uint16_t(#s[0] << 8 | #s[1])
   const uint16_t ptable[119] = {

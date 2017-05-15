@@ -15,6 +15,21 @@
 namespace gemmi {
 namespace mol {
 
+namespace internal {
+
+template<typename T>
+T* find_or_add(std::vector<T>& vec, const std::string& name) {
+  auto it = std::find_if(vec.begin(), vec.end(), [&name](const T& m) {
+      return m.name == name;
+  });
+  if (it != vec.end())
+    return &*it;
+  vec.emplace_back(name);
+  return &vec.back();
+}
+
+} // namespace internal
+
 struct Structure;
 struct Model;
 struct Chain;
@@ -43,8 +58,8 @@ struct Residue {
   std::vector<Atom> atoms;
   Chain* parent = nullptr;
 
-  Residue(int id, int auth_id, std::string rname) noexcept
-    : seq_id(id), auth_seq_id(auth_id), name(rname) {}
+  Residue(int id, int auth_id, char ins, std::string rname) noexcept
+    : seq_id(id), auth_seq_id(auth_id), ins_code(ins), name(rname) {}
   int seq_id_for_pdb() const {
     return auth_seq_id != UnknownId ? auth_seq_id : seq_id;
   }
@@ -71,6 +86,9 @@ struct Chain {
   std::vector<Residue> residues;
   Model* parent = nullptr;
   explicit Chain(std::string cname) noexcept : name(cname) {}
+
+  Residue* find_or_add_res(int seq_id, int auth_seq_id, char ins_code,
+                           const std::string& name);
 };
 
 struct Model {
@@ -78,6 +96,10 @@ struct Model {
   std::vector<Chain> chains;
   Structure* parent = nullptr;
   explicit Model(std::string mname) noexcept : name(mname) {}
+
+  Chain* find_or_add_chain(const std::string& chain_name) {
+    return internal::find_or_add(chains, chain_name);
+  }
 };
 
 struct NcsOp {
@@ -100,7 +122,26 @@ struct Structure {
     auto it = info.find(tag);
     return it != info.end() ? it->second.c_str() : def;
   }
+  Model* find_or_add_model(const std::string& name) {
+    return internal::find_or_add(models, name);
+  }
 };
+
+
+inline Residue* Chain::find_or_add_res(int seq_id, int auth_seq_id,
+                                       char ins_code, const std::string& chem) {
+  auto it = std::find_if(residues.begin(), residues.end(),
+                         [&](const Residue& r) {
+      return r.seq_id == seq_id && r.name == chem &&
+             (r.seq_id != Residue::UnknownId ||
+              (r.auth_seq_id == auth_seq_id && r.ins_code == ins_code));
+  });
+  if (it != residues.end())
+    return &*it;
+  residues.emplace_back(seq_id, auth_seq_id, ins_code, chem);
+  return &residues.back();
+}
+
 
 inline bool Residue::has_standard_pdb_name() const {
 #define SR(s) int(#s[0] << 16 | #s[1] << 8 | #s[2])

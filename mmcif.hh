@@ -13,29 +13,6 @@
 namespace gemmi {
 namespace mol {
 
-template<typename T>
-T* find_or_add(std::vector<T>& vec, const std::string& name) {
-  auto it = std::find_if(vec.begin(), vec.end(), [&name](const T& m) {
-      return m.name == name;
-  });
-  if (it != vec.end())
-    return &*it;
-  vec.emplace_back(name);
-  return &vec.back();
-}
-
-inline Residue* find_or_add_r(std::vector<Residue>& vec, int seq_id,
-                              int auth_seq_id, const std::string& name) {
-  auto it = std::find_if(vec.begin(), vec.end(), [&](const Residue& r) {
-      return r.seq_id == seq_id && r.name == name &&
-             (r.seq_id != Residue::UnknownId || r.auth_seq_id == auth_seq_id);
-  });
-  if (it != vec.end())
-    return &*it;
-  vec.emplace_back(seq_id, auth_seq_id, name);
-  return &vec.back();
-}
-
 inline Structure structure_from_cif_block(const cif::Block& block) {
   Structure st;
 
@@ -110,26 +87,26 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   Residue *resi = nullptr;
   for (auto row : atom_table) {
     if (!model || row[kModelNum] != model->name) {
-      model = find_or_add(st.models, row[kModelNum]);
+      model = st.find_or_add_model(row[kModelNum]);
       chain = nullptr;
     }
     if (!chain || row[kAsymId] != chain->name) {
-      chain = find_or_add(model->chains, row[kAsymId]);
+      chain = model->find_or_add_chain(row.as_str(kAsymId));
       chain->auth_name = row.as_str(kAuthAsymId);
       resi = nullptr;
     }
     int seq_id = cif::as_int(row[kSeqId], Residue::UnknownId);
     int auth_seq_id = cif::as_int(row[kAuthSeqId], Residue::UnknownId);
+    char ins_code = cif::as_string(row[kInsCode])[0];
     if (!resi || seq_id != resi->seq_id || row[kCompId] != resi->name ||
-        (seq_id == Residue::UnknownId && resi->auth_seq_id != auth_seq_id)) {
-      resi = find_or_add_r(chain->residues, seq_id, auth_seq_id,
-                           cif::as_string(row[kCompId]));
+        (seq_id == Residue::UnknownId &&
+         (resi->auth_seq_id != auth_seq_id || resi->ins_code != ins_code))) {
       // the insertion code happens to be always a single letter
       assert(row[kInsCode].size() == 1);
-      resi->ins_code = cif::as_string(row[kInsCode])[0];
-      resi->auth_seq_id = auth_seq_id;
+      resi = chain->find_or_add_res(seq_id, auth_seq_id, ins_code,
+                                    cif::as_string(row[kCompId]));
     } else {
-      assert(resi->auth_seq_id == auth_seq_id);
+      assert(resi->auth_seq_id == auth_seq_id && resi->ins_code == ins_code);
     }
     Atom atom;
     atom.name = cif::as_string(row[kAtomId]);
