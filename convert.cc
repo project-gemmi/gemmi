@@ -85,6 +85,9 @@ char get_format_from_extension(const char* path) {
       return 'j';
     if (strcmp(dot+1, "cif") == 0 || strcmp(dot+1, "CIF") == 0)
       return 'c';
+  } else {
+    if (strcmp(path, "/dev/null") == 0)
+      return 'n';
   }
   return 0;
 }
@@ -121,8 +124,11 @@ int main(int argc, char **argv) {
 
   char input_format = options[FormatIn] ? options[FormatIn].arg[0]
                                         : get_format_from_extension(input);
-  if (input_format == 0) // assuming mmCIF
-    input_format = 'c';
+  if (input_format == 0) {
+    std::cerr << "The input format cannot be determined from input"
+                 " filename. Use option --from.\n";
+    return 1;
+  }
 
   char output_format = options[FormatOut] ? options[FormatOut].arg[0]
                                           : get_format_from_extension(output);
