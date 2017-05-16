@@ -74,21 +74,16 @@ static const option::Descriptor usage[] = {
 };
 
 
-char get_format_from_extension(const char* path) {
-  const char* dot = std::strrchr(path, '.');
-  if (dot) {
-    if (strcmp(dot+1, "pdb") == 0 || strcmp(dot+1, "PDB") == 0 ||
-        strcmp(dot+1, "ent") == 0 || strcmp(dot+1, "ENT") == 0)
-      return 'p';
-    if ((dot[1] == 'j' || dot[1] == 'J') &&
-        (dot[2] == 's' || dot[2] == 'S'))  // .json, .js, .jswhatever
-      return 'j';
-    if (strcmp(dot+1, "cif") == 0 || strcmp(dot+1, "CIF") == 0)
-      return 'c';
-  } else {
-    if (strcmp(path, "/dev/null") == 0)
-      return 'n';
-  }
+char get_format_from_extension(const std::string& path) {
+  using gemmi::iends_with;
+  if (iends_with(path, ".pdb") || iends_with(path, ".ent"))
+    return 'p';
+  if (iends_with(path, ".js") || iends_with(path, ".json"))
+    return 'j';
+  if (iends_with(path, ".cif") || iends_with(path, ".cif.gz"))
+    return 'c';
+  if (path == "/dev/null")
+    return 'n';
   return 0;
 }
 
