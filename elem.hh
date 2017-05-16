@@ -107,32 +107,37 @@ inline const char* element_uppercase_name(El el) {
 }
 
 
+// all the most common elements in the PDB are single-letter
+inline El find_single_letter_element(char c) {
+  switch (c) {
+    case 'H': return El::H;
+    case 'B': return El::B;
+    case 'C': return El::C;
+    case 'N': return El::N;
+    case 'O': return El::O;
+    case 'F': return El::F;
+    case 'P': return El::P;
+    case 'S': return El::S;
+    case 'K': return El::K;
+    case 'V': return El::V;
+    case 'Y': return El::Y;
+    case 'I': return El::I;
+    case 'W': return El::W;
+    case 'U': return El::U;
+    case 'D': return El::D;
+    default: return El::X;
+  }
+}
+
 inline El find_element(const char* symbol) {
   if (symbol == nullptr || symbol[0] == '\0')
     return El::X;
-  if (symbol[0] == ' ' && symbol[1] != '\0')
-    ++symbol;
   char first = symbol[0] & ~0x20;  // lower -> upper, space -> NUL
-  if (symbol[1] == '\0')
-		// all the most common elements in the PDB are single-letter
-    switch (first) {
-      case 'H': return El::H;
-      case 'B': return El::B;
-      case 'C': return El::C;
-      case 'N': return El::N;
-      case 'O': return El::O;
-      case 'F': return El::F;
-      case 'P': return El::P;
-      case 'S': return El::S;
-      case 'K': return El::K;
-      case 'V': return El::V;
-      case 'Y': return El::Y;
-      case 'I': return El::I;
-      case 'W': return El::W;
-      case 'U': return El::U;
-      case 'D': return El::D;
-			default: return El::X;
-    }
+  char second = symbol[1] & ~0x20;
+  if (first == '\0')
+    return find_single_letter_element(second);
+  if (second == '\0')
+    return find_single_letter_element(first);
 
 #define EL(s) uint16_t(#s[0] << 8 | #s[1])
   const uint16_t ptable[119] = {
@@ -151,9 +156,9 @@ inline El find_element(const char* symbol) {
     EL(RF), EL(DB), EL(SG), EL(BH), EL(HS), EL(MT), EL(D)
   };
 #undef EL
-  uint16_t sym16 = (first << 8) | (symbol[1] & ~0x20);
-  unsigned char offset = std::find(ptable, ptable + 119, sym16) - ptable;
-  return offset != 119 ? static_cast<El>(offset + 1) : El::X;
+  uint16_t sym16 = (first << 8) | second;
+  const uint16_t* r = std::find(std::begin(ptable), std::end(ptable), sym16);
+  return r != std::end(ptable) ? static_cast<El>(r - ptable + 1) : El::X;
 }
 
 struct Element {

@@ -116,10 +116,9 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
         throw std::runtime_error("empty chain name");
       if (chain.auth_name.length() > 1)
         throw std::runtime_error("long chain name: " + chain.auth_name);
-      bool standard = false;
       for (const mol::Residue& res : chain.residues) {
-        standard = chain.entity_type != EntityType::NonPolymer &&
-                   res.has_standard_pdb_name();
+        bool standard = chain.entity_type != EntityType::NonPolymer &&
+                        res.has_standard_pdb_name();
         for (const mol::Atom& a : res.atoms) {
           if (serial == 1000000)
             throw std::runtime_error("Too many atoms for PDB file.");
@@ -176,16 +175,16 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
           if (a.u11 != 0.0f) {
             // re-using part of the buffer
             memcpy(buf, "ANISOU", 6);
+            const double eps = 1e-6;
             stbsp_snprintf(buf+28, 43, "%7.0f%7.0f%7.0f%7.0f%7.0f%7.0f",
-                           a.u11*1e4 + 1e-6, a.u22*1e4 + 1e-6, a.u33*1e4 + 1e-6,
-                           a.u12*1e4 + 1e-6, a.u13*1e4 + 1e-6, a.u23*1e4 + 1e-6);
+                           a.u11*1e4 + eps, a.u22*1e4 + eps, a.u33*1e4 + eps,
+                           a.u12*1e4 + eps, a.u13*1e4 + eps, a.u23*1e4 + eps);
             buf[28+42] = ' ';
             os.write(buf, 81);
           }
         }
       }
-      // TODO: proper detection when polymer ends
-      if (chain.residues.back().seq_id != mol::Residue::UnknownId && standard) {
+      if (chain.entity_type == EntityType::Polymer) {
         // re-using part of the buffer in the middle, e.g.:
         // TER    4153      LYS B 286
         stbsp_snprintf(buf, 82, "TER   %5d", ++serial);

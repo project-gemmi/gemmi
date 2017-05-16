@@ -9,8 +9,8 @@ set -eu
 cd `dirname $0`
 code=${1,,}
 tempd=/run/gemmi
-pout="$tempd/$code-p"
-gout="$tempd/$code-g"
+pout="$tempd/$code-p.pdb"
+gout="$tempd/$code-g.pdb"
 cif=${PDB_COPY:-/hdd}/mmCIF/${code:1:2}/${code}.cif.gz
 if [[ -d ${PDB_COPY:-/hdd}/pdb ]]; then
   pdb=${PDB_COPY:-/hdd}/pdb/${code:1:2}/pdb${code}.ent.gz
@@ -58,8 +58,10 @@ absent="\
 ^SPRSDE|\
 ^SSBOND"
 zgrep -v -E "$not_identical|$absent" "$pdb" > "$pout"
-../gemmi-convert --to=pdb "$cif" - | grep -v -E $not_identical > "$gout"
-echo Comparing "$gout" and "$pout"
+inp="$cif"
+[[ ${FROM_PDB:-} = 1 ]] && inp="$pout"
+../gemmi-convert --to=pdb "$inp" - | grep -v -E $not_identical > "$gout"
+echo "Comparing ($(basename "$inp") ->) $gout vs $pout"
 
 # Add d or w as the second arg to show diff (using git diff for colors).
 if [[ ${2:-} = d ]]; then

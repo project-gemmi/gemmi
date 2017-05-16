@@ -103,8 +103,8 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
          (resi->auth_seq_id != auth_seq_id || resi->ins_code != ins_code))) {
       // the insertion code happens to be always a single letter
       assert(row[kInsCode].size() == 1);
-      resi = chain->find_or_add_res(seq_id, auth_seq_id, ins_code,
-                                    cif::as_string(row[kCompId]));
+      resi = chain->find_or_add_residue(seq_id, auth_seq_id, ins_code,
+                                        cif::as_string(row[kCompId]));
     } else {
       assert(resi->auth_seq_id == auth_seq_id && resi->ins_code == ins_code);
     }

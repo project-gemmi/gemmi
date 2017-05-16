@@ -18,12 +18,18 @@ namespace mol {
 namespace internal {
 
 template<typename T>
-T* find_or_add(std::vector<T>& vec, const std::string& name) {
+T* find_or_null(std::vector<T>& vec, const std::string& name) {
   auto it = std::find_if(vec.begin(), vec.end(), [&name](const T& m) {
       return m.name == name;
   });
-  if (it != vec.end())
-    return &*it;
+  return it != vec.end() ? &*it : nullptr;
+}
+
+template<typename T>
+T* find_or_add(std::vector<T>& vec, const std::string& name) {
+  T* ret = find_or_null(vec, name);
+  if (ret)
+    return ret;
   vec.emplace_back(name);
   return &vec.back();
 }
@@ -87,8 +93,10 @@ struct Chain {
   Model* parent = nullptr;
   explicit Chain(std::string cname) noexcept : name(cname) {}
 
-  Residue* find_or_add_res(int seq_id, int auth_seq_id, char ins_code,
-                           const std::string& name);
+  Residue* find_residue(int seq_id, int auth_seq_id, char icode,
+                        const std::string& chem);
+  Residue* find_or_add_residue(int seq_id, int auth_seq_id, char icode,
+                               const std::string& name);
 };
 
 struct Model {
@@ -97,6 +105,9 @@ struct Model {
   Structure* parent = nullptr;
   explicit Model(std::string mname) noexcept : name(mname) {}
 
+  Chain* find_chain(const std::string& chain_name) {
+    return internal::find_or_null(chains, chain_name);
+  }
   Chain* find_or_add_chain(const std::string& chain_name) {
     return internal::find_or_add(chains, chain_name);
   }
@@ -122,23 +133,32 @@ struct Structure {
     auto it = info.find(tag);
     return it != info.end() ? it->second.c_str() : def;
   }
+  Model* find_model(const std::string& name) {
+    return internal::find_or_null(models, name);
+  }
   Model* find_or_add_model(const std::string& name) {
     return internal::find_or_add(models, name);
   }
 };
 
 
-inline Residue* Chain::find_or_add_res(int seq_id, int auth_seq_id,
-                                       char ins_code, const std::string& chem) {
+inline Residue* Chain::find_residue(int seq_id, int auth_seq_id,
+                                    char icode, const std::string& chem) {
   auto it = std::find_if(residues.begin(), residues.end(),
                          [&](const Residue& r) {
       return r.seq_id == seq_id && r.name == chem &&
              (r.seq_id != Residue::UnknownId ||
-              (r.auth_seq_id == auth_seq_id && r.ins_code == ins_code));
+              (r.auth_seq_id == auth_seq_id && r.ins_code == icode));
   });
-  if (it != residues.end())
-    return &*it;
-  residues.emplace_back(seq_id, auth_seq_id, ins_code, chem);
+  return it != residues.end() ? &*it : nullptr;
+}
+
+inline Residue* Chain::find_or_add_residue(int seq_id, int auth_seq_id,
+                                         char icode, const std::string& chem) {
+  Residue* r = find_residue(seq_id, auth_seq_id, icode, chem);
+  if (r)
+    return r;
+  residues.emplace_back(seq_id, auth_seq_id, icode, chem);
   return &residues.back();
 }
 

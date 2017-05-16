@@ -6,9 +6,10 @@
 #ifndef GEMMI_READ_PDB_HH_
 #define GEMMI_READ_PDB_HH_
 
-#include <string>
+#include <cstdint>
 #include <cstdio>
 #include <memory>
+#include <string>
 #include "model.hh"
 #include <iostream> // temporary
 
@@ -105,6 +106,18 @@ inline bool is_record_type(const char* s, const char* record) {
           (record[0] << 24 | record[1] << 16 | record[2] << 8 | record[3]);
 }
 
+namespace internal {
+
+inline Atom* find_atom_by_serial(int serial, Residue& res) {
+  for (Atom& a : res.atoms)
+    if ((std::intptr_t) a.parent == serial)
+      return &a;
+  return nullptr;
+}
+
+}
+
+
 template<typename InputType>
 Structure read_pdb_from_input(InputType&& in) {
   auto wrong = [&in](const std::string& msg) {
@@ -124,18 +137,20 @@ Structure read_pdb_from_input(InputType&& in) {
       std::string chain_name = read_pdb_string(line+21, 1);
       if (!chain || chain_name != chain->auth_name) {
         chain = model->find_or_add_chain(chain_name);
+        // if this chain was TER'ed we use a separate chain for the rest.
+        if (chain->entity_type == EntityType::Polymer)
+          chain = model->find_or_add_chain(chain_name + "H");
         chain->auth_name = chain_name;
         resi = nullptr;
       }
 
-      int serial = read_pdb_int(line+6, 5);
       int seq_id = read_pdb_int(line+22, 4);
       char ins_code = line[26];
       std::string resi_name = read_pdb_string(line+17, 3);
 
       if (!resi || seq_id != resi->seq_id || seq_id == Residue::UnknownId ||
           resi_name != resi->name) {
-        resi = chain->find_or_add_res(seq_id, seq_id, ins_code, resi_name);
+        resi = chain->find_or_add_residue(seq_id, seq_id, ins_code, resi_name);
       }
 
       Atom atom;
@@ -154,10 +169,49 @@ Structure read_pdb_from_input(InputType&& in) {
       atom.pos.z = read_pdb_number(line+46, 8);
       atom.occ = read_pdb_number(line+54, 6);
       atom.b_iso = read_pdb_number(line+60, 6);
-      //TODO: store serial
+      // temporarily use parent to store the serial number
+      atom.parent = (Residue*) (std::intptr_t) read_pdb_int(line+6, 5);
       resi->atoms.emplace_back(atom);
 
     } else if (is_record_type(line, "ANISOU")) {
+      if (!model)
+        wrong("ANISOU between models");
+      int serial = read_pdb_int(line+6, 5);
+      Atom *a = nullptr;
+      if (chain && resi) {
+        // try the last atoms - works when ANISOU is directly after ATOM
+        if ((std::intptr_t) resi->atoms.back().parent == serial) {
+          a = &resi->atoms.back();
+        } else {
+          // search first in the last used residue
+          a = internal::find_atom_by_serial(serial, *resi);
+          // if not found, try the next residue
+          if (!a && resi != &chain->residues.back())
+            a = internal::find_atom_by_serial(serial, *++resi);
+        }
+      }
+      if (!a)
+        for (Chain& ch : model->chains) {
+          for (Residue& r : ch.residues) {
+            a = internal::find_atom_by_serial(serial, r);
+            if (a) {
+              resi = &r;
+              chain = &ch;
+              break;
+            }
+          }
+          if (a)
+            break;
+        }
+      if (!a)
+        wrong("Atom serial number not found: " + std::to_string(serial));
+      a->u11 = read_pdb_int(line+28, 7) * 1e-4;
+      a->u22 = read_pdb_int(line+35, 7) * 1e-4;
+      a->u33 = read_pdb_int(line+42, 7) * 1e-4;
+      a->u12 = read_pdb_int(line+49, 7) * 1e-4;
+      a->u13 = read_pdb_int(line+56, 7) * 1e-4;
+      a->u23 = read_pdb_int(line+63, 7) * 1e-4;
+
     } else if (is_record_type(line, "REMARK")) {
     } else if (is_record_type(line, "CONECT")) {
     } else if (is_record_type(line, "HEADER")) {
@@ -217,23 +271,17 @@ Structure read_pdb_from_input(InputType&& in) {
       chain = nullptr;
 
     } else if (is_record_type(line, "TER")) {
-      // Mark this chain as finished, to make other atoms with the same
-      // chain name go into a new mol::Chain.
-      if (chain && !chain->name.empty() && *chain->name.rbegin() != '$')
-        chain->name += "$";
+      // TER record finishes polymer chains.
+      if (chain)
+        chain->entity_type = EntityType::Polymer;
       chain = nullptr;
+
     } else if (is_record_type(line, "SCALEn")) {
 
     } else if (is_record_type(line, "END")) {  // NUL == ' ' & ~0x20
       break;
     }
   }
-
-  // remove temporary TER mark
-  for (Model& mod : st.models)
-    for (Chain& ch : mod.chains)
-      if (!ch.name.empty() && *ch.name.rbegin() == '$')
-        ch.name.resize(ch.name.size() - 1);
 
   return st;
 }
