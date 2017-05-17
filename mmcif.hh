@@ -162,6 +162,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
         // EntityType left as Unknown
       }
 
+  st.add_backlinks();
   return st;
 }
 

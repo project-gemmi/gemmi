@@ -283,6 +283,7 @@ Structure read_pdb_from_input(InputType&& in) {
     }
   }
 
+  st.add_backlinks();
   return st;
 }
 

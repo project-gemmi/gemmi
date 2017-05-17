@@ -34,6 +34,14 @@ T* find_or_add(std::vector<T>& vec, const std::string& name) {
   return &vec.back();
 }
 
+template<typename C, typename P>
+void add_backlinks(std::vector<C>& vec, P* parent) {
+  for (auto& child : vec) {
+    child.parent = parent;
+    child.add_backlinks();
+  }
+}
+
 } // namespace internal
 
 struct Structure;
@@ -83,6 +91,11 @@ struct Residue {
       }
     return pointers;
   }
+
+  void add_backlinks() {
+    for (Atom& atom : atoms)
+      atom.parent = this;
+  }
 };
 
 struct Chain {
@@ -97,6 +110,7 @@ struct Chain {
                         const std::string& chem);
   Residue* find_or_add_residue(int seq_id, int auth_seq_id, char icode,
                                const std::string& name);
+  void add_backlinks() { internal::add_backlinks(residues, this); }
 };
 
 struct Model {
@@ -111,6 +125,7 @@ struct Model {
   Chain* find_or_add_chain(const std::string& chain_name) {
     return internal::find_or_add(chains, chain_name);
   }
+  void add_backlinks() { internal::add_backlinks(chains, this); }
 };
 
 struct NcsOp {
@@ -139,6 +154,7 @@ struct Structure {
   Model* find_or_add_model(const std::string& name) {
     return internal::find_or_add(models, name);
   }
+  void add_backlinks() { internal::add_backlinks(models, this); }
 };
 
 
