@@ -1,7 +1,11 @@
 // Copyright 2017 Global Phasing Ltd.
 //
 // Read PDB format into a Structure from model.hh.
+// Based on the format spec:
 // https://www.wwpdb.org/documentation/file-format-content/format33/v3.3.html
+// + support for two-character chain IDs (columns 21 and 22)
+// + segment ID (columns 73-76)
+// + the hybrid-36 extension from cctbx
 
 #ifndef GEMMI_READ_PDB_HH_
 #define GEMMI_READ_PDB_HH_
@@ -29,6 +33,7 @@ public:
     if (len > 0 && line[len-1] != '\n')
       for (int c = fgetc(f_); c != 0 && c != '\n'; c = fgetc(f_))
         continue;
+    ++line_num_;
     return len;
   }
   size_t line_num() const { return line_num_; }
@@ -134,12 +139,12 @@ Structure read_pdb_from_input(InputType&& in) {
     if (len < 78)
       wrong("The line is too short to be correct:\n" + std::string(line));
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
-      std::string chain_name = read_pdb_string(line+21, 1);
+      std::string chain_name = read_pdb_string(line+20, 2);
       if (!chain || chain_name != chain->auth_name) {
         chain = model->find_or_add_chain(chain_name);
         // if this chain was TER'ed we use a separate chain for the rest.
         if (chain->entity_type == EntityType::Polymer)
-          chain = model->find_or_add_chain(chain_name + "H");
+          chain = model->find_or_add_chain(chain_name + "_H");
         chain->auth_name = chain_name;
         resi = nullptr;
       }
