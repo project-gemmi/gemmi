@@ -1,7 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#ifndef GEMMI_WRITECIF_HH_
-#define GEMMI_WRITECIF_HH_
+#ifndef GEMMI_TO_CIF_HH_
+#define GEMMI_TO_CIF_HH_
 
 #include <fstream>
 #include "cif.hh"

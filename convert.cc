@@ -2,7 +2,7 @@
 #include "to_json.hh"
 #define STB_SPRINTF_IMPLEMENTATION
 #include "to_pdb.hh"
-#include "write_cif.hh"
+#include "to_cif.hh"
 #include "cifgz.hh"
 #include "mmcif.hh"
 #include "read_pdb.hh"

@@ -2,7 +2,7 @@
 
 #include "cif.hh"
 #include "cifgz.hh"
-#include "write_cif.hh"
+#include "to_cif.hh"
 #include "to_json.hh"
 #include "elem.hh"
 #include <sstream>

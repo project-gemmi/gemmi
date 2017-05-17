@@ -10,7 +10,7 @@ all: gemmi-validate gemmi-convert gemmi.so
 
 gemmi-validate: validate.cc cif.hh ddl.hh cifgz.hh numb.hh
 	$(CXX) $(FLAGS) $< -o $@ -lz
-gemmi-convert: convert.cc to_json.hh cif.hh write_cif.hh mmcif.hh model.hh \
+gemmi-convert: convert.cc to_json.hh cif.hh to_cif.hh mmcif.hh model.hh \
                to_pdb.hh unitcell.hh read_pdb.hh elem.hh util.hh
 	$(CXX) $(FLAGS) -Wno-strict-aliasing $< -o $@ -lz
 
@@ -18,7 +18,7 @@ gemmi-convert: convert.cc to_json.hh cif.hh write_cif.hh mmcif.hh model.hh \
 trace: validate.cc cif.hh
 	$(CXX) -DCIF_VALIDATE_SHOW_TRACE $(FLAGS) $< -o $@
 
-pygemmi.o: pygemmi.cc cif.hh to_json.hh numb.hh write_cif.hh elem.hh
+pygemmi.o: pygemmi.cc cif.hh to_json.hh numb.hh to_cif.hh elem.hh
 	$(CXX) $(PYFLAGS) -I/usr/include/python2.7 -c $<
 
 gemmi.so: pygemmi.o
