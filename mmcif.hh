@@ -6,12 +6,30 @@
 #define GEMMI_MMCIF_HH_
 
 #include <string>
+#include <array>
+#include <unordered_map>
 #include "cif.hh"
 #include "numb.hh"
 #include "model.hh"
 
 namespace gemmi {
 namespace mol {
+
+inline std::unordered_map<std::string, std::array<float,6>>
+get_anisotropic_u(const cif::Block& block) {
+  cif::TableView aniso_tab = block.find("_atom_site_anisotrop.",
+                                        {"id", "U[1][1]", "U[2][2]", "U[3][3]",
+                                         "U[1][2]", "U[1][3]", "U[2][3]"});
+  std::unordered_map<std::string, std::array<float,6>> aniso_map;
+  for (auto ani : aniso_tab)
+    aniso_map[ani[0]] = {(float) cif::as_number(ani[1]),
+                         (float) cif::as_number(ani[2]),
+                         (float) cif::as_number(ani[3]),
+                         (float) cif::as_number(ani[4]),
+                         (float) cif::as_number(ani[5]),
+                         (float) cif::as_number(ani[6])};
+  return aniso_map;
+}
 
 inline Structure structure_from_cif_block(const cif::Block& block) {
   Structure st;
@@ -54,6 +72,8 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     st.ncs.push_back({given, mat, vec});
   }
 
+  auto aniso_map = get_anisotropic_u(block);
+
   // sequence
   // TODO
 
@@ -78,10 +98,6 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
                                           "auth_seq_id",
                                           "auth_asym_id",
                                           "pdbx_PDB_model_num"});
-  cif::TableView aniso_tab = block.find("_atom_site_anisotrop.",
-                                        {"id", "U[1][1]", "U[2][2]", "U[3][3]",
-                                         "U[1][2]", "U[1][3]", "U[2][3]"});
-  auto aniso_iter = aniso_tab.begin();
   Model *model = nullptr;
   Chain *chain = nullptr;
   Residue *resi = nullptr;
@@ -119,27 +135,15 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     atom.occ = cif::as_number(row[kOcc], 1.0);
     atom.b_iso = cif::as_number(row[kBiso], 50.0);
 
-    if (aniso_tab.ok()) {
-      bool found = false;
-      // normally both tables are in the same order
-      if (aniso_iter != aniso_tab.end() && aniso_iter.get(0) == row[kId]) {
-        found = true;
-      } else {
-        for (auto r : aniso_tab)
-          if (r[0] == row[kId]) {
-            found = true;
-            aniso_iter.cur = r.cur;
-            break;
-          }
-      }
-      if (found) {
-        atom.u11 = cif::as_number(aniso_iter.get(1));
-        atom.u22 = cif::as_number(aniso_iter.get(2));
-        atom.u33 = cif::as_number(aniso_iter.get(3));
-        atom.u12 = cif::as_number(aniso_iter.get(4));
-        atom.u13 = cif::as_number(aniso_iter.get(5));
-        atom.u23 = cif::as_number(aniso_iter.get(6));
-        ++aniso_iter;
+    if (!aniso_map.empty()) {
+      auto ani = aniso_map.find(row[kId]);
+      if (ani != aniso_map.end()) {
+        atom.u11 = ani->second[0];
+        atom.u22 = ani->second[1];
+        atom.u33 = ani->second[2];
+        atom.u12 = ani->second[3];
+        atom.u13 = ani->second[4];
+        atom.u23 = ani->second[5];
       }
     }
     resi->atoms.emplace_back(atom);
