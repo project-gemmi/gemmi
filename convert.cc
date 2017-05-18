@@ -202,7 +202,7 @@ int main(int argc, char **argv) {
       if (output_format == 'p')
         gemmi::mol::write_pdb(st, *os);
       else
-        *os << "No (real) output. " << st.models.size() << "model(s).\n";
+        *os << "No (real) output. " << st.models.size() << " model(s).\n";
     } catch (std::runtime_error& e) {
       std::cerr << "ERROR: " << e.what() << std::endl;
       return 2;
