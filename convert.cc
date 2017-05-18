@@ -87,6 +87,73 @@ char get_format_from_extension(const std::string& path) {
   return 0;
 }
 
+[[noreturn]]
+inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
+
+void convert(const char* input, char input_format,
+             const char* output, char output_format,
+             const std::vector<option::Option>& options) {
+  gemmi::cif::Document cif_in;
+  gemmi::mol::Structure st;
+  if (input_format == 'c') {
+    cif_in = gemmi::cif::read_any(input);
+    if (output_format == 'p' || output_format == 'n') {
+      st = gemmi::mol::read_atoms(cif_in);
+      if (st.models.empty())
+        fail("No atoms in the input file. Is it mmCIF?");
+    }
+  } else if (input_format == 'p') {
+    st = gemmi::mol::read_pdb(input);
+  } else {
+    fail("Unexpected input format.");
+  }
+
+  std::ostream* os;
+  std::unique_ptr<std::ostream> os_deleter;
+  if (output != std::string("-")) {
+    os_deleter.reset(new std::ofstream(output));
+    os = os_deleter.get();
+    if (!os || !*os)
+      fail("Failed to open for writing: " + std::string(output));
+  } else {
+    os = &std::cout;
+  }
+
+  if (output_format == 'j') {
+    if (input_format != 'c')
+      fail("Conversion to JSON is possible only from CIF");
+    gemmi::cif::JsonWriter writer(*os);
+    writer.use_bare_tags = options[Bare];
+    if (options[Numb]) {
+      char first_letter = options[Numb].arg[0];
+      if (first_letter == 'q')
+        writer.quote_numbers = 2;
+      else if (first_letter == 'n')
+        writer.quote_numbers = 0;
+    }
+    if (options[QMark])
+      writer.unknown = options[QMark].arg;
+    writer.write_json(cif_in);
+  }
+
+  else if (output_format == 'p' || output_format == 'n') {
+    if (output_format == 'p')
+      gemmi::mol::write_pdb(st, *os);
+    else {
+      *os << st.name << ": " << count_atom_sites(st) << " atom locations";
+      if (st.models.size() > 1)
+        *os << " (total in " << st.models.size() << " models)";
+      *os << ".\n";
+    }
+  } else if (output_format == 'c') {
+    if (input_format != 'c') { // i.e. not a cif to cif round trip
+      cif_in.blocks.resize(1);
+      gemmi::mol::update_block(st, cif_in.blocks[0]);
+    }
+    *os << cif_in;
+  }
+}
+
 int main(int argc, char **argv) {
   if (argc < 1)
     return 2;
@@ -133,86 +200,14 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-
-  gemmi::cif::Document cif_in;
-  gemmi::mol::Structure st;
-  if (input_format == 'c') {
-    try {
-      cif_in = gemmi::cif::read_any(input);
-    } catch (tao::pegtl::parse_error& e) {
-      std::cerr << e.what() << std::endl;
-      return 1;
-    }
-    if (output_format == 'p' || output_format == 'n')
-      try {
-        st = gemmi::mol::read_atoms(cif_in);
-        if (st.models.empty())
-          throw std::runtime_error("No atoms in the input file. Is it mmCIF?");
-      } catch (std::runtime_error& e) {
-        std::cerr << "ERROR: " << e.what() << std::endl;
-        return 2;
-      }
-  } else if (input_format == 'p') {
-    try {
-      st = gemmi::mol::read_pdb(input);
-    } catch (std::runtime_error& e) {
-      std::cerr << "ERROR: " << e.what() << std::endl;
-      return 2;
-    }
-  } else {
-    std::cerr << "Unexpected input format.\n";
+  try {
+    convert(input, input_format, output, output_format, options);
+  } catch (tao::pegtl::parse_error& e) {
+    std::cerr << e.what() << std::endl;
     return 1;
-  }
-
-  std::ostream* os;
-  std::unique_ptr<std::ostream> os_deleter;
-  if (output != std::string("-")) {
-    os_deleter.reset(new std::ofstream(output));
-    os = os_deleter.get();
-    if (!os || !*os) {
-      std::cerr << "Failed to open for writing: " << output;
-      return 1;
-    }
-  } else {
-    os = &std::cout;
-  }
-
-  if (output_format == 'j') {
-    if (input_format != 'c') {
-      std::cerr << "Conversion to JSON is possible only from CIF\n";
-      return 1;
-    }
-    gemmi::cif::JsonWriter writer(*os);
-    writer.use_bare_tags = options[Bare];
-    if (options[Numb]) {
-      char first_letter = options[Numb].arg[0];
-      if (first_letter == 'q')
-        writer.quote_numbers = 2;
-      else if (first_letter == 'n')
-        writer.quote_numbers = 0;
-    }
-    if (options[QMark])
-      writer.unknown = options[QMark].arg;
-    writer.write_json(cif_in);
-    return 0;
-  }
-
-  if (output_format == 'p' || output_format == 'n') {
-    try {
-      if (output_format == 'p')
-        gemmi::mol::write_pdb(st, *os);
-      else {
-        *os << st.name << ": " << count_atom_sites(st) << " atom locations";
-        if (st.models.size() > 1)
-          *os << " (total in " << st.models.size() << " models)";
-        *os << ".\n";
-      }
-    } catch (std::runtime_error& e) {
-      std::cerr << "ERROR: " << e.what() << std::endl;
-      return 2;
-    }
-  } else if (output_format == 'c') {
-    *os << cif_in;
+  } catch (std::runtime_error& e) {
+    std::cerr << "ERROR: " << e.what() << std::endl;
+    return 2;
   }
   return 0;
 }

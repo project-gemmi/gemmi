@@ -129,6 +129,7 @@ enum class ItemType : unsigned char {
   Value,
   Loop,
   Frame,
+  Erased,
 };
 
 enum class ValueType : unsigned char {
@@ -349,6 +350,7 @@ struct Block {
   Block() {}
 
   const std::string* find_value(const std::string& tag) const;
+  void update_value(const std::string& tag, std::string v);
   const std::string find_string(const std::string& tag) const {
     const std::string *v = find_value(tag);
     return v && !is_null(*v) ? as_string(*v) : "";
@@ -362,6 +364,7 @@ struct Block {
     return v && !is_null(*v) ? as_int(*v) : default_;
   }
   LoopColumn find_loop(const std::string& tag) const;
+  bool delete_loop(const std::string& tag);
   TableView find(const std::string& prefix,
                  const std::vector<std::string>& tags) const;
   TableView find(const std::vector<std::string>& tags) const {
@@ -410,7 +413,13 @@ struct Item {
       case ItemType::Value: tv.~TagValue(); break;
       case ItemType::Loop: loop.~Loop(); break;
       case ItemType::Frame: frame.~Block(); break;
+      case ItemType::Erased: break;
     }
+  }
+
+  void erase() {
+    this->~Item();
+    type = ItemType::Erased;
   }
 
 private:
@@ -448,6 +457,22 @@ inline const std::string* Block::find_value(const std::string& tag) const {
   return nullptr;
 }
 
+inline void Block::update_value(const std::string& tag, std::string v) {
+  for (Item& i : items) {
+    if (i.type == ItemType::Value && i.tv.tag == tag) {
+      i.tv.value = v;
+      return;
+    }
+    if (i.type == ItemType::Loop && i.loop.find_tag(tag) != -1) {
+      i.loop.~Loop();
+      i.type = ItemType::Value;
+      i.tv = { tag, v };
+      return;
+    }
+  }
+  items.emplace_back(tag, v);
+}
+
 inline LoopColumn Block::find_loop(const std::string& tag) const {
   for (const Item& i : items)
     if (i.type == ItemType::Loop) {
@@ -456,6 +481,15 @@ inline LoopColumn Block::find_loop(const std::string& tag) const {
         return LoopColumn{&i.loop, static_cast<size_t>(pos)};
     }
   return LoopColumn{nullptr, 0};
+}
+
+inline bool Block::delete_loop(const std::string& tag) {
+  for (Item& i : items)
+    if (i.type == ItemType::Loop && i.loop.find_tag(tag) != -1) {
+      i.erase();
+      return true;
+    }
+  return false;
 }
 
 inline TableView Block::find(const std::string& prefix,
@@ -638,8 +672,8 @@ template<> struct Action<rules::comment> {
 
 
 [[noreturn]]
-void throw_validation_err(const Document& d, const Block& b, const Item& item,
-                          const std::string& s) {
+inline void cif_fail(const Document& d, const Block& b, const Item& item,
+                     const std::string& s) {
   throw std::runtime_error(d.source + ":" + std::to_string(item.line_number) +
                            " in data_" + b.name + ": " + s);
 }
@@ -663,18 +697,17 @@ inline void check_duplicates(const Document& d) {
       if (item.type == ItemType::Value) {
         bool success = names.insert(item.tv.tag).second;
         if (!success)
-          throw_validation_err(d, block, item, "duplicate tag " + item.tv.tag);
+          cif_fail(d, block, item, "duplicate tag " + item.tv.tag);
       } else if (item.type == ItemType::Loop) {
         for (const LoopTag& t : item.loop.tags) {
           bool success = names.insert(t.tag).second;
           if (!success)
-            throw_validation_err(d, block, item, "duplicate tag " + t.tag);
+            cif_fail(d, block, item, "duplicate tag " + t.tag);
         }
       } else if (item.type == ItemType::Frame) {
         bool success = frame_names.insert(item.frame.name).second;
         if (!success)
-          throw_validation_err(d, block, item,
-                               "duplicate save_" + item.frame.name);
+          cif_fail(d, block, item, "duplicate save_" + item.frame.name);
       }
     }
   }
@@ -753,6 +786,20 @@ inline void infer_valtypes(Document &d) {
 inline bool is_text_field(const std::string& val) {
   size_t len = val.size();
   return len > 3 && val[0] == ';' && (val[len-2] == '\n' || val[len-2] == '\r');
+}
+
+inline std::string quote(std::string v) {
+  if (v.empty())
+    return "''";
+  if (std::strchr(v.c_str(), '\n'))
+    return ";" + v + "\n;";
+  if (std::all_of(v.begin(), v.end(), [](char c) { return std::isalpha(c); }))
+    return v;
+  if (std::strchr(v.c_str(), '\'') == nullptr)
+    return "'" + v + "'";
+  if (std::strchr(v.c_str(), '"') == nullptr)
+    return '"' + v + '"';
+  return ";" + v + "\n;";
 }
 
 } // namespace cif

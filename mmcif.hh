@@ -175,6 +175,40 @@ inline Structure read_atoms(const cif::Document& doc) {
   return structure_from_cif_block(doc.sole_block());
 }
 
+inline void update_block(const Structure& st, cif::Block& block) {
+  block.name = st.name;
+  auto e_id = st.info.find("_entry.id");
+  std::string id = cif::quote(e_id != st.info.end() ? e_id->second : st.name);
+  block.update_value("_entry.id", id);
+
+  // unit cell and symmetry
+  block.update_value("_cell.entry_id", id);
+  block.update_value("_cell.length_a", std::to_string(st.cell.a));
+  block.update_value("_cell.length_b", std::to_string(st.cell.b));
+  block.update_value("_cell.length_c", std::to_string(st.cell.c));
+  block.update_value("_cell.angle_alpha", std::to_string(st.cell.alpha));
+  block.update_value("_cell.angle_beta",  std::to_string(st.cell.beta));
+  block.update_value("_cell.angle_gamma", std::to_string(st.cell.gamma));
+  block.update_value("_symmetry.entry_id", id);
+  block.update_value("_symmetry.space_group_name_H-M", cif::quote(st.sg_hm));
+
+  // title, keywords, etc
+  auto title = st.info.find("_struct.title");
+  if (title != st.info.end()) {
+    block.update_value("_struct.entry_id", id);
+    block.update_value("_struct.title", cif::quote(title->second));
+  }
+  auto pdbx_keywords = st.info.find("_struct_keywords.pdbx_keywords");
+  auto keywords = st.info.find("_struct_keywords.text");
+  if (pdbx_keywords != st.info.end() || keywords != st.info.end())
+    block.update_value("_struct_keywords.entry_id", id);
+  if (pdbx_keywords != st.info.end())
+    block.update_value("_struct_keywords.pdbx_keywords",
+                       cif::quote(pdbx_keywords->second));
+  if (keywords != st.info.end())
+    block.update_value("_struct_keywords.text", cif::quote(keywords->second));
+}
+
 } // namespace mol
 } // namespace gemmi
 #endif

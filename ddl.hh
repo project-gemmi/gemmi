@@ -239,14 +239,14 @@ inline void DDL::validate(const Document& c,
           TypeCheckDDL1 tc;
           tc.from_block(*dict_block);
           if (tc.is_list() == Trinary::Yes)
-            throw_validation_err(c, b, item, item.tv.tag + " must be a list");
+            cif_fail(c, b, item, item.tv.tag + " must be a list");
           if (!tc.validate_value(item.tv.value, &msg))
-            throw_validation_err(c, b, item, msg);
+            cif_fail(c, b, item, msg);
         } else { // version_ == 2
           TypeCheckDDL2 tc;
           tc.from_block(*dict_block);
           if (!tc.validate_value(item.tv.value, &msg))
-            throw_validation_err(c, b, item, msg);
+            cif_fail(c, b, item, msg);
         }
       } else if (item.type == ItemType::Loop) {
         const int ncol = item.loop.tags.size();
@@ -262,16 +262,16 @@ inline void DDL::validate(const Document& c,
             TypeCheckDDL1 tc;
             tc.from_block(*dict_block);
             if (tc.is_list() == Trinary::No)
-              throw_validation_err(c, b, item, tag + " in list");
+              cif_fail(c, b, item, tag + " in list");
             for (size_t j = i; j < item.loop.values.size(); j += ncol)
               if (!tc.validate_value(item.loop.values[j], &msg))
-                throw_validation_err(c, b, item, msg);
+                cif_fail(c, b, item, msg);
           } else { // version_ == 2
             TypeCheckDDL2 tc;
             tc.from_block(*dict_block);
             for (size_t j = i; j < item.loop.values.size(); j += ncol)
               if (!tc.validate_value(item.loop.values[j], &msg))
-                throw_validation_err(c, b, item, msg);
+                cif_fail(c, b, item, msg);
           }
         }
       }
