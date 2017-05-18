@@ -4,10 +4,12 @@
 #ifndef TAOCPP_PEGTL_INCLUDE_CONFIG_HPP
 #define TAOCPP_PEGTL_INCLUDE_CONFIG_HPP
 
-#include "version.hpp"
-
 #ifndef TAOCPP_PEGTL_NAMESPACE
 #define TAOCPP_PEGTL_NAMESPACE pegtl
 #endif
+
+// Enable some improvements to the readability of
+// demangled type names under some circumstances.
+// #define TAOCPP_PEGTL_PRETTY_DEMANGLE
 
 #endif

@@ -1,8 +1,8 @@
 // Copyright (c) 2014-2017 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
-#ifndef TAOCPP_PEGTL_INCLUDE_TRACER_HPP
-#define TAOCPP_PEGTL_INCLUDE_TRACER_HPP
+#ifndef TAOCPP_PEGTL_INCLUDE_CONTRIB_TRACER_HPP
+#define TAOCPP_PEGTL_INCLUDE_CONTRIB_TRACER_HPP
 
 #include <cassert>
 #include <iomanip>
@@ -10,10 +10,10 @@
 #include <utility>
 #include <vector>
 
-#include "config.hpp"
-#include "normal.hpp"
+#include "../config.hpp"
+#include "../normal.hpp"
 
-#include "internal/demangle.hpp"
+#include "../internal/demangle.hpp"
 
 namespace tao
 {
@@ -71,34 +71,36 @@ namespace tao
             ts.stack.pop_back();
          }
 
-         template< template< typename... > class Action, typename... States >
-         static void apply0( States&&... st )
+         template< template< typename... > class Action, typename Input, typename... States >
+         static void apply0( const Input&, States&&... st )
          {
             std::cerr << "apply0 " << internal::demangle< Action< Rule > >() << std::endl;
             Action< Rule >::apply0( st... );
          }
 
-         template< template< typename... > class Action >
-         static void apply0( trace_state& ts )
+         template< template< typename... > class Action, typename Input >
+         static void apply0( const Input&, trace_state& ts )
          {
             std::cerr << std::setw( 6 ) << ++ts.line << "        " << internal::demangle< Action< Rule > >() << "::apply0()" << std::endl;
             Action< Rule >::apply0( ts );
          }
 
-         template< typename Input, template< typename... > class Action, typename Iterator, typename... States >
-         static void apply( const Iterator begin, const Iterator end, const char* source, States&&... st )
+         template< template< typename... > class Action, typename Iterator, typename Input, typename... States >
+         static void apply( const Iterator& begin, const Input& in, States&&... st )
          {
             std::cerr << "apply " << internal::demangle< Action< Rule > >() << std::endl;
-            const Input in( begin, end, source );
-            Action< Rule >::apply( in, st... );
+            using action_t = typename Input::action_t;
+            const action_t action_input( begin, in );
+            Action< Rule >::apply( action_input, st... );
          }
 
-         template< typename Input, template< typename... > class Action, typename Iterator >
-         static void apply( const Iterator begin, const Iterator end, const char* source, trace_state& ts )
+         template< template< typename... > class Action, typename Iterator, typename Input >
+         static void apply( const Iterator& begin, const Input& in, trace_state& ts )
          {
             std::cerr << std::setw( 6 ) << ++ts.line << "        " << internal::demangle< Action< Rule > >() << "::apply()" << std::endl;
-            const Input in( begin, end, source );
-            Action< Rule >::apply( in, ts );
+            using action_t = typename Input::action_t;
+            const action_t action_input( begin, in );
+            Action< Rule >::apply( action_input, ts );
          }
       };
 

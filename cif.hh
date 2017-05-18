@@ -611,7 +611,7 @@ template<> struct Action<rules::str_global> {
 template<> struct Action<rules::framename> {
   template<typename Input> static void apply(const Input& in, Document& out) {
     out.items_->emplace_back(in.string(), 0);
-    out.items_->back().line_number = in.line();
+    out.items_->back().line_number = in.iterator().line;
     out.items_ = &out.items_->back().frame.items;
   }
 };
@@ -623,7 +623,7 @@ template<> struct Action<rules::endframe> {
 template<> struct Action<rules::tag> {
   template<typename Input> static void apply(const Input& in, Document& out) {
     out.items_->emplace_back(in.string());
-    out.items_->back().line_number = in.line();
+    out.items_->back().line_number = in.iterator().line;
   }
 };
 template<> struct Action<rules::value> {
@@ -636,7 +636,7 @@ template<> struct Action<rules::value> {
 template<> struct Action<rules::str_loop> {
   template<typename Input> static void apply(const Input& in, Document& out) {
     out.items_->emplace_back(0);
-    out.items_->back().line_number = in.line();
+    out.items_->back().line_number = in.iterator().line;
   }
 };
 template<> struct Action<rules::loop_tag> {
@@ -644,7 +644,7 @@ template<> struct Action<rules::loop_tag> {
     Item& last_item = out.items_->back();
     assert(last_item.type == ItemType::Loop);
     last_item.loop.tags.emplace_back(in.string());
-    last_item.loop.tags.back().line_number = in.line();
+    last_item.loop.tags.back().line_number = in.iterator().line;
   }
 };
 template<> struct Action<rules::loop_value> {
@@ -666,7 +666,7 @@ template<> struct Action<rules::loop> {
 template<> struct Action<rules::comment> {
   template<typename Input> static void apply(const Input& in, Document& out) {
     // FIXME: should we ignore silly empty non-comments in mmCIFs from PDB?
-    out.comments.emplace_back(in.line(), in.string());
+    out.comments.emplace_back(in.iterator().line, in.string());
   }
 };
 
