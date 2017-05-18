@@ -201,8 +201,12 @@ int main(int argc, char **argv) {
     try {
       if (output_format == 'p')
         gemmi::mol::write_pdb(st, *os);
-      else
-        *os << "No (real) output. " << st.models.size() << " model(s).\n";
+      else {
+        *os << st.name << ": " << count_atom_sites(st) << " atom locations";
+        if (st.models.size() > 1)
+          *os << " (total in " << st.models.size() << " models)";
+        *os << ".\n";
+      }
     } catch (std::runtime_error& e) {
       std::cerr << "ERROR: " << e.what() << std::endl;
       return 2;

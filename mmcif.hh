@@ -33,6 +33,7 @@ get_anisotropic_u(const cif::Block& block) {
 
 inline Structure structure_from_cif_block(const cif::Block& block) {
   Structure st;
+  st.name = block.name;
 
   // unit cell and symmetry
   cif::TableView cell = block.find("_cell.",
@@ -166,7 +167,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
         // EntityType left as Unknown
       }
 
-  st.add_backlinks();
+  add_backlinks(st);
   return st;
 }
 

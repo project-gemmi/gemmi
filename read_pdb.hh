@@ -22,7 +22,8 @@ namespace mol {
 
 class CstreamLineInput {
 public:
-  CstreamLineInput(FILE* f) : f_(f) {}
+  std::string source;
+  CstreamLineInput(FILE* f, std::string src) : source(src), f_(f) {}
 
   size_t copy_line(char* line) {
     if (!fgets(line, 82, f_))
@@ -130,6 +131,7 @@ Structure read_pdb_from_input(InputType&& in) {
                              + ": " + msg);
   };
   Structure st;
+  st.name = gemmi::path_basename(in.source);
   Model *model = st.find_or_add_model("");
   Chain *chain = nullptr;
   Residue *resi = nullptr;
@@ -288,12 +290,12 @@ Structure read_pdb_from_input(InputType&& in) {
     }
   }
 
-  st.add_backlinks();
+  add_backlinks(st);
   return st;
 }
 
-inline Structure read_pdb_from_cstream(FILE* f) {
-  CstreamLineInput input(f);
+inline Structure read_pdb_from_cstream(FILE* f, std::string source) {
+  CstreamLineInput input(f, source);
   return read_pdb_from_input(input);
 }
 
@@ -315,7 +317,7 @@ inline Structure read_pdb(const std::string& path) {
                                                   &std::fclose);
   if (!f)
     throw std::runtime_error("Failed to open file: " + path);
-  return read_pdb_from_cstream(f.get());
+  return read_pdb_from_cstream(f.get(), path);
 }
 
 } // namespace mol

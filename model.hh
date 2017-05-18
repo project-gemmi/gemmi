@@ -34,15 +34,8 @@ T* find_or_add(std::vector<T>& vec, const std::string& name) {
   return &vec.back();
 }
 
-template<typename C, typename P>
-void add_backlinks(std::vector<C>& vec, P* parent) {
-  for (auto& child : vec) {
-    child.parent = parent;
-    child.add_backlinks();
-  }
-}
-
 } // namespace internal
+
 
 struct Structure;
 struct Model;
@@ -78,24 +71,8 @@ struct Residue {
     return auth_seq_id != UnknownId ? auth_seq_id : seq_id;
   }
   bool has_standard_pdb_name() const;
-
-  std::vector<const Atom*> sorted_by_altloc() const {
-    std::vector<const Atom*> pointers(atoms.size());
-    std::iota(pointers.begin(), pointers.end(), &atoms.front());
-    for (auto p = pointers.begin(); p != pointers.end(); ++p)
-      if ((*p)->altloc) {
-        std::stable_sort(p, pointers.end(), [](const Atom* a, const Atom* b) {
-            return a->altloc < b->altloc;
-        });
-        break;
-      }
-    return pointers;
-  }
-
-  void add_backlinks() {
-    for (Atom& atom : atoms)
-      atom.parent = this;
-  }
+  std::vector<Atom>& children() { return atoms; }
+  const std::vector<Atom>& children() const { return atoms; }
 };
 
 struct Chain {
@@ -110,7 +87,8 @@ struct Chain {
                         const std::string& chem);
   Residue* find_or_add_residue(int seq_id, int auth_seq_id, char icode,
                                const std::string& name);
-  void add_backlinks() { internal::add_backlinks(residues, this); }
+  std::vector<Residue>& children() { return residues; }
+  const std::vector<Residue>& children() const { return residues; }
 };
 
 struct Model {
@@ -125,7 +103,8 @@ struct Model {
   Chain* find_or_add_chain(const std::string& chain_name) {
     return internal::find_or_add(chains, chain_name);
   }
-  void add_backlinks() { internal::add_backlinks(chains, this); }
+  std::vector<Chain>& children() { return chains; }
+  const std::vector<Chain>& children() const { return chains; }
 };
 
 struct NcsOp {
@@ -136,6 +115,7 @@ struct NcsOp {
 };
 
 struct Structure {
+  std::string name;
   UnitCell cell;
   std::string sg_hm;
   std::vector<Model> models;
@@ -148,13 +128,14 @@ struct Structure {
     auto it = info.find(tag);
     return it != info.end() ? it->second.c_str() : def;
   }
-  Model* find_model(const std::string& name) {
-    return internal::find_or_null(models, name);
+  Model* find_model(const std::string& model_name) {
+    return internal::find_or_null(models, model_name);
   }
-  Model* find_or_add_model(const std::string& name) {
-    return internal::find_or_add(models, name);
+  Model* find_or_add_model(const std::string& model_name) {
+    return internal::find_or_add(models, model_name);
   }
-  void add_backlinks() { internal::add_backlinks(models, this); }
+  std::vector<Model>& children() { return models; }
+  const std::vector<Model>& children() const { return models; }
 };
 
 
@@ -201,6 +182,35 @@ inline bool Residue::has_standard_pdb_name() const {
   return false;
 #undef SR
 }
+
+
+template<class T> void add_backlinks(T& entity) {
+  for (auto& child : entity.children()) {
+    child.parent = &entity;
+    add_backlinks(child);
+  }
+}
+template<> void add_backlinks(Atom&) {}
+
+
+template<class T> size_t count_atom_sites(const T& entity) {
+  size_t sum = 0;
+  for (const auto& child : entity.children())
+    sum += count_atom_sites(child);
+  return sum;
+}
+template<> size_t count_atom_sites(const Residue& res) {
+  return res.atoms.size();
+}
+
+
+template<class T> double count_occupancies(const T& entity) {
+  double sum = 0;
+  for (const auto& child : entity.children())
+    sum += count_occupancies(child);
+  return sum;
+}
+template<> double count_occupancies(const Atom& atom) { return atom.occ; }
 
 } // namespace mol
 } // namespace gemmi
