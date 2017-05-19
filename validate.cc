@@ -62,7 +62,6 @@ std::string token_stats(const cif::Document& d) {
   }
   info += "\n";
   info += "        " + format_7zd(nloopvals) + " values\n";
-  info += "        " + format_7zd(d.comments.size()) + " comments\n";
   return info;
 }
 

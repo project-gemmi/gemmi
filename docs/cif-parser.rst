@@ -98,9 +98,6 @@ cases, it is the corresponding dictionary that specifies the type.
 Additionally, DDL2 dictionaries can specify subtypes of the standard CIF types,
 for example ``int`` and ``float`` are mmCIF subtypes of a generic CIF ``numb``.
 
-We also keep track of comments, so we can write them back when saving file,
-but they are in a separate list.
-
 Let us start with a simple example.
 This code reads mmCIF file and shows weights of the chemical components::
 
@@ -343,9 +340,4 @@ are needed.
 Strings are stored in ``std::string`` and it is fast enough.
 Mainstream C++ standard libraries have short string optimization (SSO)
 for up to 15 or 22 characters, which covers most of the values in mmCIF files.
-
-Many CIF readers do not store comments, as they are not part of the data.
-In our case we may want to read, manipulate and save mmCIF file preserving
-as much of the original file as possible. So we record the order of items,
-comments and line breaks (but for now not any other whitespaces).
 

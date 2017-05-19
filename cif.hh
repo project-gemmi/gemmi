@@ -18,7 +18,7 @@
 
 #include <tao/pegtl.hpp>
 #ifdef CIF_VALIDATE_SHOW_TRACE
-#include <tao/pegtl/tracer.hpp>
+#include <tao/pegtl/contrib/tracer.hpp>
 #endif
 
 namespace gemmi {
@@ -123,7 +123,7 @@ error_msg(rules::framename) = "unnamed save_ frame";
 template<typename T> const std::string Errors<T>::msg = "parse error";
 
 
-// **** data storage that preserves the order, comments, etc ****
+// **** data storage ****
 
 enum class ItemType : unsigned char {
   Value,
@@ -443,13 +443,6 @@ private:
 };
 
 
-struct Comment {
-  int line_number;
-  std::string text;
-  Comment(int line, std::string s) : line_number(line), text(s) {}
-};
-
-
 inline const std::string* Block::find_value(const std::string& tag) const {
   for (const Item& i : items)
     if (i.type == ItemType::Value && i.tv.tag == tag)
@@ -562,7 +555,6 @@ struct Document {
   void clear() noexcept {
     source.clear();
     blocks.clear();
-    comments.clear();
     items_ = nullptr;
   }
 
@@ -583,7 +575,6 @@ struct Document {
 
   std::string source;
   std::vector<Block> blocks;
-  std::vector<Comment> comments;
 
   // implementation detail
   std::vector<Item>* items_; // items of the currently parsed block or frame
@@ -661,12 +652,6 @@ template<> struct Action<rules::loop> {
     const Loop& loop = last_item.loop;
     if (loop.values.size() % loop.tags.size() != 0)
       throw pegtl::parse_error("Wrong number of values in the loop", in);
-  }
-};
-template<> struct Action<rules::comment> {
-  template<typename Input> static void apply(const Input& in, Document& out) {
-    // FIXME: should we ignore silly empty non-comments in mmCIFs from PDB?
-    out.comments.emplace_back(in.iterator().line, in.string());
   }
 };
 

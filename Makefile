@@ -16,7 +16,7 @@ gemmi-convert: convert.cc to_json.hh cif.hh to_cif.hh mmcif.hh model.hh \
 
 # for debugging only
 trace: validate.cc cif.hh
-	$(CXX) -DCIF_VALIDATE_SHOW_TRACE $(FLAGS) $< -o $@
+	$(CXX) -DCIF_VALIDATE_SHOW_TRACE $(FLAGS) $< -o $@ -lz
 
 pygemmi.o: pygemmi.cc cif.hh to_json.hh numb.hh to_cif.hh elem.hh
 	$(CXX) $(PYFLAGS) -I/usr/include/python2.7 -c $<
