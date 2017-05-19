@@ -35,7 +35,6 @@ absent="\
 ^COMPND|\
 ^CONECT|\
 ^DBREF|\
-^EXPDTA|\
 ^FORMUL|\
 ^HELIX |\
 ^HET   |\

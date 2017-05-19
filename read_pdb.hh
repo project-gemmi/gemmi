@@ -246,6 +246,10 @@ Structure read_pdb_from_input(InputType&& in) {
         st.info["_struct_keywords.text"] +=
                                     rtrimmed(std::string(line+10, len-10-1));
 
+    } else if (is_record_type(line, "EXPDTA")) {
+      if (len > 10)
+        st.info["_exptl.method"] += rtrimmed(std::string(line+10, len-10-1));
+
     } else if (is_record_type(line, "CRYST1")) {
       if (len > 54) {
         st.cell.a = read_pdb_number(line+6, 9);
