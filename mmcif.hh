@@ -7,6 +7,7 @@
 
 #include <string>
 #include <array>
+#include <set>
 #include <unordered_map>
 #include "cif.hh"
 #include "numb.hh"
@@ -53,8 +54,8 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   };
   add_info("_entry.id");
   add_info("_cell.Z_PDB");
-  add_info("_struct.title");
   add_info("_exptl.method");
+  add_info("_struct.title");
   add_info("_database_PDB_rev.date_original");
   add_info("_struct_keywords.pdbx_keywords");
   add_info("_struct_keywords.text");
@@ -156,6 +157,9 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     for (Chain& ch : mod.chains)
       try {
         std::string ent = chain_to_entity.find_row(ch.name).as_str(1);
+        try {
+          ch.entity_id = cif::as_int(ent);
+        } catch (std::runtime_error&) {}
         std::string type = entity_types.find_row(ent).as_str(1);
         if (type == "polymer")
           ch.entity_type = EntityType::Polymer;
@@ -164,10 +168,10 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
         else if (type == "water")
           ch.entity_type = EntityType::Water;
       } catch (std::runtime_error&) {
-        // EntityType left as Unknown
+        // left as EntityType::Unknown
       }
 
-  add_backlinks(st);
+  st.finish();
   return st;
 }
 
@@ -176,6 +180,8 @@ inline Structure read_atoms(const cif::Document& doc) {
 }
 
 inline void update_block(const Structure& st, cif::Block& block) {
+  if (st.models.empty())
+    return;
   block.name = st.name;
   auto e_id = st.info.find("_entry.id");
   std::string id = cif::quote(e_id != st.info.end() ? e_id->second : st.name);
@@ -189,24 +195,56 @@ inline void update_block(const Structure& st, cif::Block& block) {
   block.update_value("_cell.angle_alpha", std::to_string(st.cell.alpha));
   block.update_value("_cell.angle_beta",  std::to_string(st.cell.beta));
   block.update_value("_cell.angle_gamma", std::to_string(st.cell.gamma));
+  auto z_pdb = st.info.find("_cell.Z_PDB");
+  if (z_pdb != st.info.end())
+    block.update_value(z_pdb->first, z_pdb->second);
+  block.update_value("_cell.angle_gamma", std::to_string(st.cell.gamma));
   block.update_value("_symmetry.entry_id", id);
   block.update_value("_symmetry.space_group_name_H-M", cif::quote(st.sg_hm));
 
+  // _entity
+
+  cif::Loop& entity_loop = block.clear_or_add_loop("_entity.");
+  entity_loop.tags.emplace_back("_entity.id");
+  entity_loop.tags.emplace_back("_entity.type");
+  std::set<int> entity_ids;
+  for (auto chain : st.models[0].chains) {
+    if (chain.entity_id == 0 || entity_ids.insert(chain.entity_id).second) {
+      entity_loop.values.push_back(chain.entity_id == 0 ? "?"
+                                            : std::to_string(chain.entity_id));
+      entity_loop.values.push_back(entity_type_to_string(chain.entity_type));
+    }
+  }
+
   // title, keywords, etc
+  auto exptl_method = st.info.find("_exptl.method");
+  if (exptl_method != st.info.end()) {
+    block.update_value("_exptl.entry_id", id);
+    block.update_value(exptl_method->first, cif::quote(exptl_method->second));
+  }
   auto title = st.info.find("_struct.title");
   if (title != st.info.end()) {
     block.update_value("_struct.entry_id", id);
-    block.update_value("_struct.title", cif::quote(title->second));
+    block.update_value(title->first, cif::quote(title->second));
   }
   auto pdbx_keywords = st.info.find("_struct_keywords.pdbx_keywords");
   auto keywords = st.info.find("_struct_keywords.text");
   if (pdbx_keywords != st.info.end() || keywords != st.info.end())
     block.update_value("_struct_keywords.entry_id", id);
   if (pdbx_keywords != st.info.end())
-    block.update_value("_struct_keywords.pdbx_keywords",
-                       cif::quote(pdbx_keywords->second));
+    block.update_value(pdbx_keywords->first, cif::quote(pdbx_keywords->second));
   if (keywords != st.info.end())
-    block.update_value("_struct_keywords.text", cif::quote(keywords->second));
+    block.update_value(keywords->first, cif::quote(keywords->second));
+
+  // _struct_asym
+  //auto chain_to_entity = block.find("_struct_asym.", {"id", "entity_id"});
+
+  // matrices (scaling, NCS, etc)
+  // TODO
+
+  // atom list
+
+  // aniso U
 }
 
 } // namespace mol

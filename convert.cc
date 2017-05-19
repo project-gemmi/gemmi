@@ -95,9 +95,11 @@ void convert(const char* input, char input_format,
              const std::vector<option::Option>& options) {
   gemmi::cif::Document cif_in;
   gemmi::mol::Structure st;
+  // hidden feature for testing cif -> Structure -> cif
+  bool force_structure = gemmi::ends_with(output, ".ciF");
   if (input_format == 'c') {
     cif_in = gemmi::cif::read_any(input);
-    if (output_format == 'p' || output_format == 'n') {
+    if (output_format == 'p' || output_format == 'n' || force_structure) {
       st = gemmi::mol::read_atoms(cif_in);
       if (st.models.empty())
         fail("No atoms in the input file. Is it mmCIF?");
@@ -146,7 +148,9 @@ void convert(const char* input, char input_format,
       *os << ".\n";
     }
   } else if (output_format == 'c') {
-    if (input_format != 'c') { // i.e. not a cif to cif round trip
+    // cif to cif round trip is for testing only
+    if (input_format != 'c' || force_structure) {
+      cif_in.blocks.clear();  // temporary, for testing
       cif_in.blocks.resize(1);
       gemmi::mol::update_block(st, cif_in.blocks[0]);
     }

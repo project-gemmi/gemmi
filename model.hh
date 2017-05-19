@@ -44,6 +44,15 @@ struct Residue;
 
 enum class EntityType { Unknown, Polymer, NonPolymer, Water };
 
+inline std::string entity_type_to_string(EntityType et) {
+  switch (et) {
+    case EntityType::Polymer: return "polymer";
+    case EntityType::NonPolymer: return "non-polymer";
+    case EntityType::Water: return "water";
+    default /*EntityType::Unknown*/: return "?";
+  }
+}
+
 struct Atom {
   std::string name;
   char altloc;
@@ -79,16 +88,19 @@ struct Chain {
   std::string name;
   std::string auth_name; // not guaranteed to be the same for the whole chain?
   EntityType entity_type = EntityType::Unknown;
+  int entity_id = 0;
+  std::vector<std::string> seqres;
   std::vector<Residue> residues;
   Model* parent = nullptr;
-  explicit Chain(std::string cname) noexcept : name(cname) {}
 
+  explicit Chain(std::string cname) noexcept : name(cname) {}
   Residue* find_residue(int seq_id, int auth_seq_id, char icode,
                         const std::string& chem);
   Residue* find_or_add_residue(int seq_id, int auth_seq_id, char icode,
                                const std::string& name);
   std::vector<Residue>& children() { return residues; }
   const std::vector<Residue>& children() const { return residues; }
+  const std::vector<std::string>& get_seq() const;
 };
 
 struct Model {
@@ -136,6 +148,7 @@ struct Structure {
   }
   std::vector<Model>& children() { return models; }
   const std::vector<Model>& children() const { return models; }
+  void finish();
 };
 
 
@@ -157,6 +170,14 @@ inline Residue* Chain::find_or_add_residue(int seq_id, int auth_seq_id,
     return r;
   residues.emplace_back(seq_id, auth_seq_id, icode, chem);
   return &residues.back();
+}
+
+inline const std::vector<std::string>& Chain::get_seq() const {
+  if (seqres.empty() && parent && entity_id != 0)
+    for (const Chain& ch : parent->chains)
+      if (ch.entity_id == entity_id)
+        return ch.seqres;
+  return seqres;
 }
 
 
@@ -211,6 +232,19 @@ template<class T> double count_occupancies(const T& entity) {
   return sum;
 }
 template<> double count_occupancies(const Atom& atom) { return atom.occ; }
+
+inline void Structure::finish() {
+  add_backlinks(*this);
+  // if "entities" were not specifed, deduce them based on sequence
+  for (auto& m1 : models)
+    for (auto& c1: m1.chains)
+      if (c1.entity_id == 0 && !c1.seqres.empty())
+        for (auto c2 : models[0].chains)
+          if (c2.entity_id != 0 && c2.seqres == c1.seqres) {
+            c1.entity_id = c2.entity_id;
+            c1.seqres.clear();
+          }
+}
 
 } // namespace mol
 } // namespace gemmi

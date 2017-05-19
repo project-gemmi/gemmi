@@ -6,6 +6,7 @@
 #ifndef GEMMI_CIF_HH_
 #define GEMMI_CIF_HH_
 #include "numb.hh" // is_int() for infer_valtypes()
+#include "util.hh" // starts_with()
 #include <cassert>
 #include <cstdint>
 #include <cmath>
@@ -207,6 +208,7 @@ struct Loop {
   const std::string& val(size_t row, size_t col) const {
     return values[row * tags.size() + col];
   }
+  void clear() { tags.clear(); values.clear(); }
 };
 
 
@@ -373,6 +375,8 @@ struct Block {
   TableView find(const std::string& tag) const {
     return find({}, {tag});
   }
+  Loop& clear_or_add_loop(const std::string& prefix);
+  void delete_category(const std::string& prefix);
 };
 
 struct Item {
@@ -406,7 +410,7 @@ struct Item {
       : type(o.type), valtype(o.valtype), line_number(o.line_number) {
     copy_value(o);
   }
-  Item(Item& o) : Item(static_cast<const Item &>(o)) {}
+  Item(Item& o) : Item(static_cast<const Item&>(o)) {}
 
   ~Item() {
     switch (type) {
@@ -420,6 +424,12 @@ struct Item {
   void erase() {
     this->~Item();
     type = ItemType::Erased;
+  }
+
+  bool has_prefix(const std::string& prefix) {
+    return (type == ItemType::Value && gemmi::starts_with(tv.tag, prefix)) ||
+           (type == ItemType::Loop && !loop.tags.empty() &&
+            gemmi::starts_with(loop.tags[0].tag, prefix));
   }
 
 private:
@@ -483,6 +493,23 @@ inline bool Block::delete_loop(const std::string& tag) {
       return true;
     }
   return false;
+}
+
+inline void Block::delete_category(const std::string& prefix) {
+  for (Item& i : items)
+    if (i.has_prefix(prefix))
+      i.erase();
+}
+
+inline Loop& Block::clear_or_add_loop(const std::string& prefix) {
+  for (Item& i : items)
+    if (i.type == ItemType::Loop && i.has_prefix(prefix)) {
+      i.loop.clear();
+      return i.loop;
+    }
+  delete_category(prefix);
+  items.emplace_back(0);
+  return items.back().loop;
 }
 
 inline TableView Block::find(const std::string& prefix,

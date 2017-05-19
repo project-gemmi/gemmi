@@ -290,7 +290,7 @@ Structure read_pdb_from_input(InputType&& in) {
     }
   }
 
-  add_backlinks(st);
+  st.finish();
   return st;
 }
 
