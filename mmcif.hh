@@ -203,7 +203,6 @@ inline void update_block(const Structure& st, cif::Block& block) {
   block.update_value("_symmetry.space_group_name_H-M", cif::quote(st.sg_hm));
 
   // _entity
-
   cif::Loop& entity_loop = block.clear_or_add_loop("_entity.");
   entity_loop.tags.emplace_back("_entity.id");
   entity_loop.tags.emplace_back("_entity.type");
@@ -237,7 +236,14 @@ inline void update_block(const Structure& st, cif::Block& block) {
     block.update_value(keywords->first, cif::quote(keywords->second));
 
   // _struct_asym
-  //auto chain_to_entity = block.find("_struct_asym.", {"id", "entity_id"});
+  cif::Loop& struct_asym_loop = block.clear_or_add_loop("_struct_asym.");
+  struct_asym_loop.tags.emplace_back("_struct_asym.id");
+  struct_asym_loop.tags.emplace_back("_struct_asym.entity_id");
+  for (auto chain : st.models[0].chains) {
+    struct_asym_loop.values.push_back(chain.name);
+    struct_asym_loop.values.push_back(chain.entity_id == 0 ? "?"
+                                            : std::to_string(chain.entity_id));
+  }
 
   // matrices (scaling, NCS, etc)
   // TODO

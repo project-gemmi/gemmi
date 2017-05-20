@@ -236,14 +236,23 @@ template<> double count_occupancies(const Atom& atom) { return atom.occ; }
 inline void Structure::finish() {
   add_backlinks(*this);
   // if "entities" were not specifed, deduce them based on sequence
-  for (auto& m1 : models)
-    for (auto& c1: m1.chains)
-      if (c1.entity_id == 0 && !c1.seqres.empty())
-        for (auto c2 : models[0].chains)
-          if (c2.entity_id != 0 && c2.seqres == c1.seqres) {
-            c1.entity_id = c2.entity_id;
-            c1.seqres.clear();
-          }
+  if (models.empty())
+    return;
+  int next = 1;
+  for (auto& c: models[0].chains)
+    if (c.entity_id >= next)
+      next = c.entity_id + 1;
+  for (auto& c1: models[0].chains) {
+    if (c1.entity_id == 0 && !c1.seqres.empty())
+      for (auto c2 : models[0].chains)
+        if (c2.entity_id != 0 && c2.seqres == c1.seqres) {
+          c1.entity_id = c2.entity_id;
+          c1.seqres.clear();
+        }
+    if (c1.entity_id == 0)
+      c1.entity_id = next++;
+  }
+  // TODO: set entity_type
 }
 
 } // namespace mol
