@@ -29,6 +29,7 @@ ext_modules = [
     Extension('gemmi',
         ['pygemmi.cc'],
         include_dirs=[
+            'include',
             'third_party',
             # Path to pybind11 headers
             get_pybind_include(),

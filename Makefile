@@ -2,23 +2,25 @@
 #CXX=/home/wojdyr/local/clang40/bin/clang++ -L /home/wojdyr/local/clang40/lib -stdlib=libc++ -Wl,-rpath,/home/wojdyr/local/clang40/lib
 CXX=g++
 WFLAGS=-Wall -Wextra -Wdisabled-optimization -Wformat=2 -Wredundant-decls
-FLAGS=-O2 -g --std=c++11 $(WFLAGS) -Wshadow -Ithird_party #-DNDEBUG
-PYFLAGS=-O2 -g --std=c++14 $(WFLAGS) -Ithird_party -fvisibility=hidden \
-	-fwrapv -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fPIC
+FLAGS=-O2 -g --std=c++11 $(WFLAGS) -Wshadow -Iinclude -Ithird_party #-DNDEBUG
+PYFLAGS=-O2 -g --std=c++14 $(WFLAGS) -Iinclude -Ithird_party -fPIC \
+       -fvisibility=hidden -fwrapv -D_FORTIFY_SOURCE=2 -fstack-protector-strong
 
 all: gemmi-validate gemmi-convert gemmi.so
 
-gemmi-validate: validate.cc cif.hh ddl.hh cifgz.hh numb.hh
+gemmi-validate: validate.cc include/gemmi/cif.hh include/gemmi/ddl.hh \
+                include/gemmi/cifgz.hh include/gemmi/numb.hh
 	$(CXX) $(FLAGS) $< -o $@ -lz
-gemmi-convert: convert.cc to_json.hh cif.hh to_cif.hh mmcif.hh model.hh \
-               to_pdb.hh unitcell.hh read_pdb.hh elem.hh util.hh
+
+gemmi-convert: convert.cc include/gemmi/*.hh
 	$(CXX) $(FLAGS) -Wno-strict-aliasing $< -o $@ -lz
 
 # for debugging only
-trace: validate.cc cif.hh
+trace: validate.cc include/gemmi/cif.hh
 	$(CXX) -DCIF_VALIDATE_SHOW_TRACE $(FLAGS) $< -o $@ -lz
 
-pygemmi.o: pygemmi.cc cif.hh to_json.hh numb.hh to_cif.hh elem.hh
+pygemmi.o: pygemmi.cc include/gemmi/cif.hh include/gemmi/to_json.hh \
+           include/gemmi/numb.hh include/gemmi/to_cif.hh include/gemmi/elem.hh
 	$(CXX) $(PYFLAGS) -I/usr/include/python2.7 -c $<
 
 gemmi.so: pygemmi.o

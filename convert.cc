@@ -1,11 +1,11 @@
 // Copyright 2017 Global Phasing Ltd.
-#include "to_json.hh"
+#include "gemmi/to_json.hh"
 #define STB_SPRINTF_IMPLEMENTATION
-#include "to_pdb.hh"
-#include "to_cif.hh"
-#include "cifgz.hh"
-#include "mmcif.hh"
-#include "read_pdb.hh"
+#include "gemmi/to_pdb.hh"
+#include "gemmi/to_cif.hh"
+#include "gemmi/cifgz.hh"
+#include "gemmi/mmcif.hh"
+#include "gemmi/read_pdb.hh"
 
 #include <cstring>
 #include <iostream>
