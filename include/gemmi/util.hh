@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <string>
+#include <vector>
 #include <cctype>
 
 namespace gemmi {
@@ -32,6 +33,11 @@ inline bool iends_with(const std::string& str, const std::string& suffix) {
 inline std::string path_basename(const std::string& path) {
   size_t pos = path.find_last_of("\\/");
   return pos == std::string::npos ? path : path.substr(pos + 1);
+}
+
+template <class T>
+bool in_vector(const T& x, const std::vector<T>& v) {
+  return std::find(v.begin(), v.end(), x) != v.end();
 }
 
 } // namespace gemmi

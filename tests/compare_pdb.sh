@@ -49,7 +49,6 @@ absent="\
 ^REMARK|\
 ^REVDAT|\
 ^SEQADV|\
-^SEQRES|\
 ^SHEET |\
 ^SITE  |\
 ^SLTBRG|\

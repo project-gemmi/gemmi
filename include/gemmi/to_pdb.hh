@@ -84,7 +84,27 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
   write_multiline(os, "EXPDTA", st.get_info("_exptl.method"), 79);
   if (st.models.size() > 1)
     WRITE("NUMMDL    %-6jd %63s\n", st.models.size(), "");
-  // TODO: SEQRES
+
+  if (!st.models.empty())
+    for (const Chain& ch : st.models[0].chains)
+      if (ch.entity && ch.entity->type == EntityType::Polymer) {
+        int seq_len = ch.entity->sequence.size();
+        int row = 0;
+        int col = 0;
+        for (const std::string& res : ch.entity->sequence) {
+          if (col == 0)
+            stbsp_snprintf(buf, 82, "SEQRES%4d%2s%5d %62s\n",
+                           ++row, ch.auth_name.c_str(), seq_len, "");
+          memcpy(buf + 18 + 4*col + 4-res.length(), res.c_str(), res.length());
+          if (++col == 13) {
+            os.write(buf, 81);
+            col = 0;
+          }
+        }
+        if (col != 0)
+          os.write(buf, 81);
+      }
+
   const UnitCell& cell = st.cell;
   WRITE("CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11s%4s          \n",
         cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma,
@@ -108,19 +128,19 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
     WRITE("MTRIX%d %3jd%10.6f%10.6f%10.6f %14.5f    %-21c\n",
           3, i+1, op.rot.a31, op.rot.a32, op.rot.a33, op.tran.z, g);
   }
-  for (const mol::Model& model : st.models) {
+  for (const Model& model : st.models) {
     int serial = 0;
     if (st.models.size() > 1)
       WRITE("MODEL %8s %65s\n", model.name.c_str(), "");
-    for (const mol::Chain& chain : model.chains) {
+    for (const Chain& chain : model.chains) {
       if (chain.auth_name.empty())
         throw std::runtime_error("empty chain name");
       if (chain.auth_name.length() > 1)
         throw std::runtime_error("long chain name: " + chain.auth_name);
-      for (const mol::Residue& res : chain.residues) {
+      for (const Residue& res : chain.residues) {
         bool standard = res.has_standard_pdb_name() && !(chain.entity &&
                                  chain.entity->type == EntityType::NonPolymer);
-        for (const mol::Atom& a : res.atoms) {
+        for (const Atom& a : res.atoms) {
           if (serial == 1000000)
             throw std::runtime_error("Too many atoms for PDB file.");
           //  1- 6  6s  record name

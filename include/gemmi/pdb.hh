@@ -15,7 +15,7 @@
 #include <memory>
 #include <string>
 #include "model.hh"
-#include <iostream> // temporary
+#include "util.hh"
 
 namespace gemmi {
 namespace mol {
@@ -121,6 +121,47 @@ inline Atom* find_atom_by_serial(int serial, Residue& res) {
   return nullptr;
 }
 
+class EntitySetter {
+public:
+  EntitySetter(Structure& st) : st_(st) {}
+  Entity* set_for_chain(const std::string& chain_name, EntityType type) {
+    auto it = chain_to_ent_.find(chain_name);
+    if (it != chain_to_ent_.end())
+      return it->second;
+    Entity *ent = new Entity("", type);
+    st_.entities.emplace_back(ent);
+    chain_to_ent_[chain_name] = ent;
+    return ent;
+  }
+  void finalize(const std::vector<std::string>& has_ter) {
+    // PDB format has no equivalent of mmCIF entity. Here we assume that
+    // identical SEQRES means the same entity.
+    for (auto i = st_.entities.begin(); i != st_.entities.end(); ++i)
+      for (auto j = i + 1; j != st_.entities.end(); ++j)
+        if (!(*j)->sequence.empty() && (*j)->sequence == (*i)->sequence) {
+          for (auto& ce : chain_to_ent_)
+            if (ce.second == j->get())
+              ce.second = i->get();
+          j = st_.entities.erase(j) - 1;
+        }
+    // set all entity pointers in chains
+    for (Model& mod : st_.models)
+      for (Chain& ch : mod.chains) {
+        ch.entity = set_for_chain(ch.name, EntityType::Unknown);
+        if (gemmi::in_vector(ch.name, has_ter))
+          ch.entity->type = EntityType::Polymer;
+      }
+    // set unique IDs
+    int serial = 1;
+    for (auto& ent : st_.entities)
+      ent->id = std::to_string(serial++);
+  }
+
+private:
+  Structure& st_;
+  std::map<std::string, Entity*> chain_to_ent_;
+};
+
 }
 
 
@@ -136,17 +177,16 @@ Structure read_pdb_from_input(InputType&& in) {
   Model *model = st.find_or_add_model("");
   Chain *chain = nullptr;
   Residue *resi = nullptr;
+  internal::EntitySetter ent_setter(st);
   char line[88] = {0};
-  size_t len;
-  while ((len = in.copy_line(line))) {
+  while (size_t len = in.copy_line(line)) {
     if (len < 78)
       wrong("The line is too short to be correct:\n" + std::string(line));
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
       std::string chain_name = read_pdb_string(line+20, 2);
       if (!chain || chain_name != chain->auth_name) {
         // if this chain was TER'ed we use a separate chain for the rest.
-        bool ter = std::find(has_ter.begin(), has_ter.end(), chain_name)
-                   != has_ter.end();
+        bool ter = gemmi::in_vector(chain_name, has_ter);
         chain = model->find_or_add_chain(chain_name + (ter ? "_H" : ""));
         chain->auth_name = chain_name;
         resi = nullptr;
@@ -221,7 +261,20 @@ Structure read_pdb_from_input(InputType&& in) {
       a->u23 = read_pdb_int(line+63, 7) * 1e-4;
 
     } else if (is_record_type(line, "REMARK")) {
+      // ignore for now
+
     } else if (is_record_type(line, "CONECT")) {
+      // ignore for now
+
+    } else if (is_record_type(line, "SEQRES")) {
+      std::string chain_name = read_pdb_string(line+10, 2);
+      Entity* ent = ent_setter.set_for_chain(chain_name, EntityType::Polymer);
+      for (int i = 19; i < 68; i += 4) {
+        std::string res_name = read_pdb_string(line+i, 3);
+        if (!res_name.empty())
+          ent->sequence.emplace_back(res_name);
+      }
+
     } else if (is_record_type(line, "HEADER")) {
       if (len > 50)
         st.info["_struct_keywords.pdbx_keywords"] =
@@ -294,9 +347,7 @@ Structure read_pdb_from_input(InputType&& in) {
     }
   }
 
-  //  TODO: set/create Chain::entity
-  //  TODO: has_ter -> entity->type = EntityType::Polymer;
-
+  ent_setter.finalize(has_ter);
   st.finish();
   return st;
 }

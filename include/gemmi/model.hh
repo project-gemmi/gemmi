@@ -44,11 +44,12 @@ struct Chain;
 struct Residue;
 
 enum class EntityType { Unknown, Polymer, NonPolymer, Water };
+using Sequence = std::vector<std::string>;
 
 struct Entity {
   std::string id;  // it does not need to be number according to mmCIF spec
   EntityType type;
-  std::vector<std::string> sequence;
+  Sequence sequence;
 
   explicit Entity(const std::string& id_, EntityType t) : id(id_), type(t) {}
 
