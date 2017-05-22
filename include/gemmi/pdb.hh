@@ -7,8 +7,8 @@
 // + segment ID (columns 73-76)
 // + the hybrid-36 extension from cctbx
 
-#ifndef GEMMI_READ_PDB_HH_
-#define GEMMI_READ_PDB_HH_
+#ifndef GEMMI_PDB_HH_
+#define GEMMI_PDB_HH_
 
 #include <cstdint>
 #include <cstdio>
