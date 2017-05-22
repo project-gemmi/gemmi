@@ -132,6 +132,7 @@ Structure read_pdb_from_input(InputType&& in) {
   };
   Structure st;
   st.name = gemmi::path_basename(in.source);
+  std::vector<std::string> has_ter;
   Model *model = st.find_or_add_model("");
   Chain *chain = nullptr;
   Residue *resi = nullptr;
@@ -143,10 +144,10 @@ Structure read_pdb_from_input(InputType&& in) {
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
       std::string chain_name = read_pdb_string(line+20, 2);
       if (!chain || chain_name != chain->auth_name) {
-        chain = model->find_or_add_chain(chain_name);
         // if this chain was TER'ed we use a separate chain for the rest.
-        if (chain->entity && chain->entity->type == EntityType::Polymer)
-          chain = model->find_or_add_chain(chain_name + "_H");
+        bool ter = std::find(has_ter.begin(), has_ter.end(), chain_name)
+                   != has_ter.end();
+        chain = model->find_or_add_chain(chain_name + (ter ? "_H" : ""));
         chain->auth_name = chain_name;
         resi = nullptr;
       }
@@ -281,10 +282,9 @@ Structure read_pdb_from_input(InputType&& in) {
       model = st.find_or_add_model("");
       chain = nullptr;
 
-    } else if (is_record_type(line, "TER")) {
-      // TER record finishes polymer chains.
-      if (chain && chain->entity)
-        chain->entity->type = EntityType::Polymer;
+    } else if (is_record_type(line, "TER")) { // finishes polymer chains
+      if (chain)
+        has_ter.emplace_back(chain->name);
       chain = nullptr;
 
     } else if (is_record_type(line, "SCALEn")) {
@@ -293,6 +293,9 @@ Structure read_pdb_from_input(InputType&& in) {
       break;
     }
   }
+
+  //  TODO: set/create Chain::entity
+  //  TODO: has_ter -> entity->type = EntityType::Polymer;
 
   st.finish();
   return st;

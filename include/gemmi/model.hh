@@ -49,7 +49,6 @@ struct Entity {
   std::string id;  // it does not need to be number according to mmCIF spec
   EntityType type;
   std::vector<std::string> sequence;
-  std::vector<std::string> chains;
 
   explicit Entity(const std::string& id_, EntityType t) : id(id_), type(t) {}
 
