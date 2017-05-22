@@ -118,8 +118,8 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
       if (chain.auth_name.length() > 1)
         throw std::runtime_error("long chain name: " + chain.auth_name);
       for (const mol::Residue& res : chain.residues) {
-        bool standard = chain.entity_type != EntityType::NonPolymer &&
-                        res.has_standard_pdb_name();
+        bool standard = res.has_standard_pdb_name() && !(chain.entity &&
+                                 chain.entity->type == EntityType::NonPolymer);
         for (const mol::Atom& a : res.atoms) {
           if (serial == 1000000)
             throw std::runtime_error("Too many atoms for PDB file.");
@@ -185,7 +185,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
           }
         }
       }
-      if (chain.entity_type == EntityType::Polymer) {
+      if (chain.entity && chain.entity->type == EntityType::Polymer) {
         // re-using part of the buffer in the middle, e.g.:
         // TER    4153      LYS B 286
         stbsp_snprintf(buf, 82, "TER   %5d", ++serial);

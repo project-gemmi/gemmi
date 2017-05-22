@@ -145,7 +145,7 @@ Structure read_pdb_from_input(InputType&& in) {
       if (!chain || chain_name != chain->auth_name) {
         chain = model->find_or_add_chain(chain_name);
         // if this chain was TER'ed we use a separate chain for the rest.
-        if (chain->entity_type == EntityType::Polymer)
+        if (chain->entity && chain->entity->type == EntityType::Polymer)
           chain = model->find_or_add_chain(chain_name + "_H");
         chain->auth_name = chain_name;
         resi = nullptr;
@@ -283,8 +283,8 @@ Structure read_pdb_from_input(InputType&& in) {
 
     } else if (is_record_type(line, "TER")) {
       // TER record finishes polymer chains.
-      if (chain)
-        chain->entity_type = EntityType::Polymer;
+      if (chain && chain->entity)
+        chain->entity->type = EntityType::Polymer;
       chain = nullptr;
 
     } else if (is_record_type(line, "SCALEn")) {

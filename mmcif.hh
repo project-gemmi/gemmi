@@ -151,26 +151,21 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     resi->atoms.emplace_back(atom);
   }
 
+  for (const auto& row : block.find("_entity.", {"id", "type"})) {
+    std::string id = row.as_str(0);
+    EntityType etype = entity_type_from_string(row.as_str(1));
+    st.entities.emplace_back(new Entity(id, etype));
+  }
+
   auto chain_to_entity = block.find("_struct_asym.", {"id", "entity_id"});
-  auto entity_types = block.find("_entity.", {"id", "type"});
   for (Model& mod : st.models)
     for (Chain& ch : mod.chains)
       try {
-        std::string ent = chain_to_entity.find_row(ch.name).as_str(1);
-        try {
-          ch.entity_id = cif::as_int(ent);
-        } catch (std::runtime_error&) {}
-        std::string type = entity_types.find_row(ent).as_str(1);
-        if (type == "polymer")
-          ch.entity_type = EntityType::Polymer;
-        else if (type == "non-polymer")
-          ch.entity_type = EntityType::NonPolymer;
-        else if (type == "water")
-          ch.entity_type = EntityType::Water;
-      } catch (std::runtime_error&) {
-        // left as EntityType::Unknown
+        std::string ent_id = chain_to_entity.find_row(ch.name).as_str(1);
+        ch.entity = st.find_or_add_entity(ent_id);
+      } catch (std::runtime_error&) {  // maybe _struct_asym is missing
+        ch.entity = nullptr;
       }
-
   st.finish();
   return st;
 }
@@ -204,15 +199,10 @@ inline void update_block(const Structure& st, cif::Block& block) {
 
   // _entity
   cif::Loop& entity_loop = block.clear_or_add_loop("_entity.");
-  entity_loop.tags.emplace_back("_entity.id");
-  entity_loop.tags.emplace_back("_entity.type");
-  std::set<int> entity_ids;
-  for (auto chain : st.models[0].chains) {
-    if (chain.entity_id == 0 || entity_ids.insert(chain.entity_id).second) {
-      entity_loop.values.push_back(chain.entity_id == 0 ? "?"
-                                            : std::to_string(chain.entity_id));
-      entity_loop.values.push_back(entity_type_to_string(chain.entity_type));
-    }
+  entity_loop.tags = {cif::LoopTag("_entity.id"), cif::LoopTag("_entity.type")};
+  for (const auto& ent : st.entities) {
+    entity_loop.values.push_back(ent->id);
+    entity_loop.values.push_back(ent->type_as_string());
   }
 
   // title, keywords, etc
@@ -236,13 +226,12 @@ inline void update_block(const Structure& st, cif::Block& block) {
     block.update_value(keywords->first, cif::quote(keywords->second));
 
   // _struct_asym
-  cif::Loop& struct_asym_loop = block.clear_or_add_loop("_struct_asym.");
-  struct_asym_loop.tags.emplace_back("_struct_asym.id");
-  struct_asym_loop.tags.emplace_back("_struct_asym.entity_id");
-  for (auto chain : st.models[0].chains) {
-    struct_asym_loop.values.push_back(chain.name);
-    struct_asym_loop.values.push_back(chain.entity_id == 0 ? "?"
-                                            : std::to_string(chain.entity_id));
+  cif::Loop& asym_loop = block.clear_or_add_loop("_struct_asym.");
+  asym_loop.tags.emplace_back("_struct_asym.id");
+  asym_loop.tags.emplace_back("_struct_asym.entity_id");
+  for (auto ch : st.models[0].chains) {
+    asym_loop.values.push_back(ch.name);
+    asym_loop.values.push_back(ch.entity ? ch.entity->id : "?");
   }
 
   // matrices (scaling, NCS, etc)

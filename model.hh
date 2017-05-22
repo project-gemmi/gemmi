@@ -7,6 +7,7 @@
 
 #include <cstring>
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 #include "elem.hh"
@@ -44,13 +45,29 @@ struct Residue;
 
 enum class EntityType { Unknown, Polymer, NonPolymer, Water };
 
-inline std::string entity_type_to_string(EntityType et) {
-  switch (et) {
-    case EntityType::Polymer: return "polymer";
-    case EntityType::NonPolymer: return "non-polymer";
-    case EntityType::Water: return "water";
-    default /*EntityType::Unknown*/: return "?";
+struct Entity {
+  std::string id;  // it does not need to be number according to mmCIF spec
+  EntityType type;
+  std::vector<std::string> sequence;
+  std::vector<std::string> chains;
+
+  explicit Entity(const std::string& id_, EntityType t) : id(id_), type(t) {}
+
+  std::string type_as_string() {
+    switch (type) {
+      case EntityType::Polymer: return "polymer";
+      case EntityType::NonPolymer: return "non-polymer";
+      case EntityType::Water: return "water";
+      default /*EntityType::Unknown*/: return "?";
+    }
   }
+};
+
+EntityType entity_type_from_string(const std::string& t) {
+  if (t == "polymer")     return EntityType::Polymer;
+  if (t == "non-polymer") return EntityType::NonPolymer;
+  if (t == "water")       return EntityType::Water;
+  return EntityType::Unknown;
 }
 
 struct Atom {
@@ -87,10 +104,8 @@ struct Residue {
 struct Chain {
   std::string name;
   std::string auth_name; // not guaranteed to be the same for the whole chain?
-  EntityType entity_type = EntityType::Unknown;
-  int entity_id = 0;
-  std::vector<std::string> seqres;
   std::vector<Residue> residues;
+  Entity *entity = nullptr;
   Model* parent = nullptr;
 
   explicit Chain(std::string cname) noexcept : name(cname) {}
@@ -100,7 +115,6 @@ struct Chain {
                                const std::string& name);
   std::vector<Residue>& children() { return residues; }
   const std::vector<Residue>& children() const { return residues; }
-  const std::vector<std::string>& get_seq() const;
 };
 
 struct Model {
@@ -132,6 +146,7 @@ struct Structure {
   std::string sg_hm;
   std::vector<Model> models;
   std::vector<NcsOp> ncs;
+  std::vector<std::unique_ptr<Entity>> entities;
 
   // Minimal metadata with keys being mmcif tags: _entry.id, _exptl.method, ...
   std::map<std::string, std::string> info;
@@ -146,6 +161,22 @@ struct Structure {
   Model* find_or_add_model(const std::string& model_name) {
     return internal::find_or_add(models, model_name);
   }
+
+  Entity* find_entity(const std::string& ent_id) {
+    for (auto& ent : entities)
+      if (ent->id == ent_id)
+        return ent.get();
+    return nullptr;
+  }
+  Entity* find_or_add_entity(const std::string& ent_id) {
+    Entity* ent = find_entity(ent_id);
+    if (!ent) {
+      ent = new Entity(ent_id, EntityType::Unknown);
+      entities.emplace_back(ent);
+    }
+    return ent;
+  }
+
   std::vector<Model>& children() { return models; }
   const std::vector<Model>& children() const { return models; }
   void finish();
@@ -172,15 +203,6 @@ inline Residue* Chain::find_or_add_residue(int seq_id, int auth_seq_id,
   return &residues.back();
 }
 
-inline const std::vector<std::string>& Chain::get_seq() const {
-  if (seqres.empty() && parent && entity_id != 0)
-    for (const Chain& ch : parent->chains)
-      if (ch.entity_id == entity_id)
-        return ch.seqres;
-  return seqres;
-}
-
-
 inline bool Residue::has_standard_pdb_name() const {
 #define SR(s) int(#s[0] << 16 | #s[1] << 8 | #s[2])
   const int standard_aa[26] = {
@@ -205,18 +227,18 @@ inline bool Residue::has_standard_pdb_name() const {
 }
 
 
-template<class T> void add_backlinks(T& entity) {
-  for (auto& child : entity.children()) {
-    child.parent = &entity;
+template<class T> void add_backlinks(T& obj) {
+  for (auto& child : obj.children()) {
+    child.parent = &obj;
     add_backlinks(child);
   }
 }
 template<> void add_backlinks(Atom&) {}
 
 
-template<class T> size_t count_atom_sites(const T& entity) {
+template<class T> size_t count_atom_sites(const T& obj) {
   size_t sum = 0;
-  for (const auto& child : entity.children())
+  for (const auto& child : obj.children())
     sum += count_atom_sites(child);
   return sum;
 }
@@ -225,9 +247,9 @@ template<> size_t count_atom_sites(const Residue& res) {
 }
 
 
-template<class T> double count_occupancies(const T& entity) {
+template<class T> double count_occupancies(const T& obj) {
   double sum = 0;
-  for (const auto& child : entity.children())
+  for (const auto& child : obj.children())
     sum += count_occupancies(child);
   return sum;
 }
@@ -236,23 +258,6 @@ template<> double count_occupancies(const Atom& atom) { return atom.occ; }
 inline void Structure::finish() {
   add_backlinks(*this);
   // if "entities" were not specifed, deduce them based on sequence
-  if (models.empty())
-    return;
-  int next = 1;
-  for (auto& c: models[0].chains)
-    if (c.entity_id >= next)
-      next = c.entity_id + 1;
-  for (auto& c1: models[0].chains) {
-    if (c1.entity_id == 0 && !c1.seqres.empty())
-      for (auto c2 : models[0].chains)
-        if (c2.entity_id != 0 && c2.seqres == c1.seqres) {
-          c1.entity_id = c2.entity_id;
-          c1.seqres.clear();
-        }
-    if (c1.entity_id == 0)
-      c1.entity_id = next++;
-  }
-  // TODO: set entity_type
 }
 
 } // namespace mol
