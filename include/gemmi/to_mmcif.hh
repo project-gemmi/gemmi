@@ -156,10 +156,25 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   cif::Loop& asym_loop = block.clear_or_add_loop("_struct_asym.");
   asym_loop.tags.emplace_back("_struct_asym.id");
   asym_loop.tags.emplace_back("_struct_asym.entity_id");
-  for (auto ch : st.models[0].chains) {
+  const std::vector<Chain>& asym_chains = st.get_chains();
+  for (const auto& ch : asym_chains) {
     asym_loop.values.push_back(ch.name);
     asym_loop.values.push_back(ch.entity ? ch.entity->id : "?");
   }
+  // SEQRES from PDB doesn't record microheterogeneity, so if the resulting
+  // cif has unknown("?") _entity_poly_seq.num, it cannot be trusted.
+  cif::Loop& poly_loop = block.clear_or_add_loop("_entity_poly_seq.");
+  poly_loop.tags = {cif::LoopTag("_entity_poly_seq.entity_id"),
+                    cif::LoopTag("_entity_poly_seq.num"),
+                    cif::LoopTag("_entity_poly_seq.mon_id")};
+  for (const auto& ent : st.entities)
+    if (ent->type == EntityType::Polymer)
+      for (const SequenceItem& si : ent->sequence) {
+        poly_loop.values.emplace_back(ent->id);
+        poly_loop.values.emplace_back(si.num >= 0 ? std::to_string(si.num)
+                                                  : "?");
+        poly_loop.values.emplace_back(si.mon);
+      }
 
   // matrices (scaling, NCS, etc)
   // TODO
