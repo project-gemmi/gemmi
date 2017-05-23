@@ -12,7 +12,65 @@
 namespace gemmi {
 namespace mol {
 
-inline void update_block(const Structure& st, cif::Block& block) {
+inline std::string to_str(double d) {
+  return std::to_string(d);  // TODO: avoid locale-dependent std::to_string()
+}
+
+void add_cif_atoms(const Structure& st, cif::Block& block) {
+  // atom list
+  cif::Loop& atom_loop = block.clear_or_add_loop("_atom_site.");
+  atom_loop.tags = {cif::LoopTag("_atom_site.id"),
+                    cif::LoopTag("_atom_site.type_symbol"),
+                    cif::LoopTag("_atom_site.label_atom_id"),
+                    cif::LoopTag("_atom_site.label_alt_id"),
+                    cif::LoopTag("_atom_site.label_comp_id"),
+                    cif::LoopTag("_atom_site.label_asym_id"),
+                    cif::LoopTag("_atom_site.label_seq_id"),
+                    cif::LoopTag("_atom_site.pdbx_PDB_ins_code"),
+                    cif::LoopTag("_atom_site.Cartn_x"),
+                    cif::LoopTag("_atom_site.Cartn_y"),
+                    cif::LoopTag("_atom_site.Cartn_z"),
+                    cif::LoopTag("_atom_site.occupancy"),
+                    cif::LoopTag("_atom_site.B_iso_or_equiv"),
+                    cif::LoopTag("_atom_site.pdbx_formal_charge"),
+                    cif::LoopTag("_atom_site.auth_seq_id"),
+                    cif::LoopTag("_atom_site.auth_asym_id"),
+                    cif::LoopTag("_atom_site.pdbx_PDB_model_num")};
+  std::vector<std::string>& vv = atom_loop.values;
+  vv.reserve(count_atom_sites(st) * atom_loop.tags.size());
+  int serial = 0;
+  for (const Model& model : st.models) {
+    for (const Chain& chain : model.chains) {
+      for (const Residue& res : chain.residues) {
+        std::string seq_id = std::to_string(res.seq_id);
+        std::string auth_seq_id = std::to_string(res.auth_seq_id);
+        std::string ins_code(1, res.ins_code ? res.ins_code : '?');
+        for (const Atom& a : res.atoms) {
+          vv.emplace_back(std::to_string(++serial));
+          vv.emplace_back(a.element.uname());
+          vv.emplace_back(a.name);
+          vv.emplace_back(1, a.altloc ? a.altloc : '.');
+          vv.emplace_back(res.name);
+          vv.emplace_back(chain.name);
+          vv.emplace_back(seq_id);
+          vv.emplace_back(ins_code);
+          vv.emplace_back(to_str(a.pos.x));
+          vv.emplace_back(to_str(a.pos.y));
+          vv.emplace_back(to_str(a.pos.z));
+          vv.emplace_back(to_str(a.occ));
+          vv.emplace_back(to_str(a.b_iso));
+          vv.emplace_back(a.charge == 0 ? "?" : std::to_string(a.charge));
+          vv.emplace_back(auth_seq_id);
+          vv.emplace_back(chain.auth_name);
+          vv.emplace_back(model.name);
+        }
+      }
+    }
+  }
+  // TODO: aniso U
+}
+
+inline void update_cif_block(const Structure& st, cif::Block& block) {
   if (st.models.empty())
     return;
   block.name = st.name;
@@ -22,16 +80,15 @@ inline void update_block(const Structure& st, cif::Block& block) {
 
   // unit cell and symmetry
   block.update_value("_cell.entry_id", id);
-  block.update_value("_cell.length_a", std::to_string(st.cell.a));
-  block.update_value("_cell.length_b", std::to_string(st.cell.b));
-  block.update_value("_cell.length_c", std::to_string(st.cell.c));
-  block.update_value("_cell.angle_alpha", std::to_string(st.cell.alpha));
-  block.update_value("_cell.angle_beta",  std::to_string(st.cell.beta));
-  block.update_value("_cell.angle_gamma", std::to_string(st.cell.gamma));
+  block.update_value("_cell.length_a",    to_str(st.cell.a));
+  block.update_value("_cell.length_b",    to_str(st.cell.b));
+  block.update_value("_cell.length_c",    to_str(st.cell.c));
+  block.update_value("_cell.angle_alpha", to_str(st.cell.alpha));
+  block.update_value("_cell.angle_beta",  to_str(st.cell.beta));
+  block.update_value("_cell.angle_gamma", to_str(st.cell.gamma));
   auto z_pdb = st.info.find("_cell.Z_PDB");
   if (z_pdb != st.info.end())
     block.update_value(z_pdb->first, z_pdb->second);
-  block.update_value("_cell.angle_gamma", std::to_string(st.cell.gamma));
   block.update_value("_symmetry.entry_id", id);
   block.update_value("_symmetry.space_group_name_H-M", cif::quote(st.sg_hm));
 
@@ -75,9 +132,7 @@ inline void update_block(const Structure& st, cif::Block& block) {
   // matrices (scaling, NCS, etc)
   // TODO
 
-  // atom list
-
-  // aniso U
+  add_cif_atoms(st, block);
 }
 
 } // namespace mol

@@ -155,7 +155,7 @@ void convert(const char* input, char input_format,
     if (input_format != 'c' || force_structure) {
       cif_in.blocks.clear();  // temporary, for testing
       cif_in.blocks.resize(1);
-      gemmi::mol::update_block(st, cif_in.blocks[0]);
+      gemmi::mol::update_cif_block(st, cif_in.blocks[0]);
     }
     *os << cif_in;
   }
