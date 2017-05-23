@@ -1,6 +1,5 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#define STB_SPRINTF_IMPLEMENTATION  // must be set before to_pdb.hh
 #include <iostream> // temporary, for debugging
 #include "gemmi/cifgz.hh"
 #include "gemmi/mmcif.hh"
@@ -8,6 +7,8 @@
 #include "gemmi/to_cif.hh"
 #include "gemmi/to_json.hh"
 #include "gemmi/to_mmcif.hh"
+// set this before only one of stb_sprintf.h includes
+#define STB_SPRINTF_IMPLEMENTATION
 #include "gemmi/to_pdb.hh"
 
 #include <cstring>
