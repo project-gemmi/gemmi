@@ -88,13 +88,24 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
   if (!st.models.empty())
     for (const Chain& ch : st.models[0].chains)
       if (ch.entity && ch.entity->type == EntityType::Polymer) {
-        int seq_len = ch.entity->sequence.size();
+        int seq_len = 0;
+        int prev_seq_num = -1;
+        for (const SequenceItem& si : ch.entity->sequence)
+          if (si.num < 0 || si.num != prev_seq_num) {
+            ++seq_len;
+            prev_seq_num = si.num;
+          }
+        prev_seq_num = -1;
         int row = 0;
         int col = 0;
-        for (const std::string& res : ch.entity->sequence) {
+        for (const SequenceItem& si : ch.entity->sequence) {
+          if (si.num >= 0 && si.num == prev_seq_num)
+            continue;
+          prev_seq_num = si.num;
           if (col == 0)
             stbsp_snprintf(buf, 82, "SEQRES%4d%2s%5d %62s\n",
                            ++row, ch.auth_name.c_str(), seq_len, "");
+          const std::string& res = si.mon;
           memcpy(buf + 18 + 4*col + 4-res.length(), res.c_str(), res.length());
           if (++col == 13) {
             os.write(buf, 81);

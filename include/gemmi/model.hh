@@ -44,7 +44,15 @@ struct Chain;
 struct Residue;
 
 enum class EntityType { Unknown, Polymer, NonPolymer, Water };
-using Sequence = std::vector<std::string>;
+
+struct SequenceItem {
+  int num;
+  std::string mon;
+  SequenceItem(std::string m) noexcept : num(-1), mon(m) {}
+  SequenceItem(int n, std::string m) noexcept : num(n), mon(m) {}
+};
+
+using Sequence = std::vector<SequenceItem>;
 
 struct Entity {
   std::string id;  // it does not need to be number according to mmCIF spec

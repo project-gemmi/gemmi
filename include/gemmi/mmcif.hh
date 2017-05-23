@@ -157,6 +157,12 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     st.entities.emplace_back(new Entity(id, etype));
   }
 
+  for (const auto& row : block.find("_entity_poly_seq.",
+                                    {"entity_id", "num", "mon_id"})) {
+    Entity *ent = st.find_or_add_entity(row.as_str(0));
+    ent->sequence.push_back({row.as_int(1), row.as_str(2)});
+  }
+
   auto chain_to_entity = block.find("_struct_asym.", {"id", "entity_id"});
   for (Model& mod : st.models)
     for (Chain& ch : mod.chains)

@@ -133,12 +133,20 @@ public:
     chain_to_ent_[chain_name] = ent;
     return ent;
   }
+  // PDB format has no equivalent of mmCIF entity. Here we assume that
+  // identical SEQRES means the same entity.
+  bool same_entity(const Sequence& a, const Sequence& b) const {
+    if (a.empty() || a.size() != b.size())
+      return false;
+    for (size_t i = 0; i != a.size(); ++i)
+      if (a[i].mon != b[i].mon)
+        return false;
+    return true;
+  }
   void finalize(const std::vector<std::string>& has_ter) {
-    // PDB format has no equivalent of mmCIF entity. Here we assume that
-    // identical SEQRES means the same entity.
     for (auto i = st_.entities.begin(); i != st_.entities.end(); ++i)
       for (auto j = i + 1; j != st_.entities.end(); ++j)
-        if (!(*j)->sequence.empty() && (*j)->sequence == (*i)->sequence) {
+        if (same_entity((*j)->sequence, (*i)->sequence)) {
           for (auto& ce : chain_to_ent_)
             if (ce.second == j->get())
               ce.second = i->get();
