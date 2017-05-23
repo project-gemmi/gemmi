@@ -103,6 +103,12 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   auto e_id = st.info.find("_entry.id");
   std::string id = cif::quote(e_id != st.info.end() ? e_id->second : st.name);
   block.update_value("_entry.id", id);
+  auto initial_date =
+         st.info.find("_pdbx_database_status.recvd_initial_deposition_date");
+  if (initial_date != st.info.end()) {
+    block.update_value("_pdbx_database_status.entry_id", id);
+    block.update_value(initial_date->first, initial_date->second);
+  }
 
   // unit cell and symmetry
   block.update_value("_cell.entry_id", id);

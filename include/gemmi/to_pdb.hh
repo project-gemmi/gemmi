@@ -67,7 +67,8 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
   const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
   char buf[88];
 
-  const char* date = st.get_info("_database_PDB_rev.date_original");
+  const char* date =
+    st.get_info("_pdbx_database_status.recvd_initial_deposition_date");
   std::string pdb_date;
   if (date && std::strlen(date) == 10) {
     unsigned month_idx = 10 * (date[5] - '0') + date[6] - '0' - 1;

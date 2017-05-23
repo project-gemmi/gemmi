@@ -56,7 +56,14 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   add_info("_cell.Z_PDB");
   add_info("_exptl.method");
   add_info("_struct.title");
-  add_info("_database_PDB_rev.date_original");
+  // in pdbx/mmcif v5 date_original was replaced with a much longer tag
+  std::string old_date_tag = "_database_PDB_rev.date_original";
+  std::string new_date_tag
+                      = "_pdbx_database_status.recvd_initial_deposition_date";
+  add_info(old_date_tag);
+  add_info(new_date_tag);
+  if (st.info.count(old_date_tag) == 0 && st.info.count(new_date_tag) == 1)
+    st.info[old_date_tag] = st.info[new_date_tag];
   add_info("_struct_keywords.pdbx_keywords");
   add_info("_struct_keywords.text");
 

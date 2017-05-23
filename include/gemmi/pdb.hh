@@ -294,7 +294,7 @@ Structure read_pdb_from_input(InputType&& in) {
         const char months[] = "JAN01FEB02MAR03APR04MAY05JUN06"
                               "JUL07AUG08SEP09OCT10NOV11DEC122222";
         const char* m = strstr(months, date.substr(3, 3).c_str());
-        st.info["_database_PDB_rev.date_original"] =
+        st.info["_pdbx_database_status.recvd_initial_deposition_date"] =
           (date[7] > '6' ? "19" : "20") + date.substr(7, 2) + "-" +
           (m ? std::string(m+3, 2) : "??") + "-" + date.substr(0, 2);
       }
