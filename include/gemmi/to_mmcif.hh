@@ -6,6 +6,7 @@
 #define GEMMI_TO_MMCIF_HH_
 
 #include <string>
+#include <utility>  // std::pair
 #include "cif.hh"
 #include "model.hh"
 
@@ -38,6 +39,7 @@ void add_cif_atoms(const Structure& st, cif::Block& block) {
                     cif::LoopTag("_atom_site.pdbx_PDB_model_num")};
   std::vector<std::string>& vv = atom_loop.values;
   vv.reserve(count_atom_sites(st) * atom_loop.tags.size());
+  std::vector<std::pair<int, const Atom*>> aniso;
   int serial = 0;
   for (const Model& model : st.models) {
     for (const Chain& chain : model.chains) {
@@ -63,11 +65,35 @@ void add_cif_atoms(const Structure& st, cif::Block& block) {
           vv.emplace_back(auth_seq_id);
           vv.emplace_back(chain.auth_name);
           vv.emplace_back(model.name);
+          if (a.u11 != 0.f)
+            aniso.emplace_back(serial, &a);
         }
       }
     }
   }
-  // TODO: aniso U
+  if (aniso.empty()) {
+    block.delete_loop("_atom_site_anisotrop.id");
+  } else {
+    cif::Loop& aniso_loop = block.clear_or_add_loop("_atom_site_anisotrop.");
+    aniso_loop.tags = {cif::LoopTag("_atom_site_anisotrop.id"),
+                       cif::LoopTag("_atom_site_anisotrop.U[1][1]"),
+                       cif::LoopTag("_atom_site_anisotrop.U[2][2]"),
+                       cif::LoopTag("_atom_site_anisotrop.U[3][3]"),
+                       cif::LoopTag("_atom_site_anisotrop.U[1][2]"),
+                       cif::LoopTag("_atom_site_anisotrop.U[1][3]"),
+                       cif::LoopTag("_atom_site_anisotrop.U[2][3]")};
+    std::vector<std::string>& aniso_val = aniso_loop.values;
+    aniso_val.reserve(aniso_loop.tags.size() * aniso.size());
+    for (const auto& a : aniso) {
+      aniso_val.emplace_back(std::to_string(a.first));
+      aniso_val.emplace_back(to_str(a.second->u11));
+      aniso_val.emplace_back(to_str(a.second->u22));
+      aniso_val.emplace_back(to_str(a.second->u33));
+      aniso_val.emplace_back(to_str(a.second->u12));
+      aniso_val.emplace_back(to_str(a.second->u13));
+      aniso_val.emplace_back(to_str(a.second->u23));
+    }
+  }
 }
 
 inline void update_cif_block(const Structure& st, cif::Block& block) {

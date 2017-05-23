@@ -182,7 +182,7 @@ Structure read_pdb_from_input(InputType&& in) {
   Structure st;
   st.name = gemmi::path_basename(in.source);
   std::vector<std::string> has_ter;
-  Model *model = st.find_or_add_model("");
+  Model *model = st.find_or_add_model("1");
   Chain *chain = nullptr;
   Residue *resi = nullptr;
   internal::EntitySetter ent_setter(st);
@@ -193,6 +193,8 @@ Structure read_pdb_from_input(InputType&& in) {
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
       std::string chain_name = read_pdb_string(line+20, 2);
       if (!chain || chain_name != chain->auth_name) {
+        if (!model)
+          wrong("ATOM/HETATM between models");
         // if this chain was TER'ed we use a separate chain for the rest.
         bool ter = gemmi::in_vector(chain_name, has_ter);
         chain = model->find_or_add_chain(chain_name + (ter ? "_H" : ""));
@@ -201,7 +203,7 @@ Structure read_pdb_from_input(InputType&& in) {
       }
 
       int seq_id = read_pdb_int(line+22, 4);
-      char ins_code = line[26];
+      char ins_code = line[26] == ' ' ? '\0' : line[26];
       std::string resi_name = read_pdb_string(line+17, 3);
 
       if (!resi || seq_id != resi->seq_id || seq_id == Residue::UnknownId ||
@@ -211,7 +213,7 @@ Structure read_pdb_from_input(InputType&& in) {
 
       Atom atom;
       atom.name = read_pdb_string(line+12, 4);
-      atom.altloc = line[16];
+      atom.altloc = line[16] == ' ' ? '\0' : line[16];
       atom.charge = 0;
       if (len > 78 && line[78] >= '0' && line[78] <= '9') {
         char sign = line[79];
@@ -330,17 +332,16 @@ Structure read_pdb_from_input(InputType&& in) {
     } else if (is_record_type(line, "MTRIXn")) {
 
     } else if (is_record_type(line, "MODEL")) {
-      if (!model->name.empty())
+      if (model)
         wrong("MODEL without ENDMDL?");
-      model->name = std::to_string(read_pdb_int(line+10, 4));
-      if (st.find_or_add_model(model->name) != model)
-        wrong("duplicate or misformatted MODEL number: " + model->name);
+      std::string name = std::to_string(read_pdb_int(line+10, 4));
+      model = st.find_or_add_model(name);
+      if (!model->chains.empty())
+        wrong("duplicate MODEL number: " + name);
       chain = nullptr;
 
     } else if (is_record_type(line, "ENDMDL")) {
-      if (model->name.empty())
-        wrong("ENDMDL without MODEL?");
-      model = st.find_or_add_model("");
+      model = nullptr;
       chain = nullptr;
 
     } else if (is_record_type(line, "TER")) { // finishes polymer chains

@@ -76,9 +76,6 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
 
   auto aniso_map = get_anisotropic_u(block);
 
-  // sequence
-  // TODO
-
   // atom list
   enum { kId=0, kSymbol, kAtomId, kAltId, kCompId, kAsymId, kSeqId, kInsCode,
          kX, kY, kZ, kOcc, kBiso, kCharge, kAuthSeqId, kAuthAsymId, kModelNum };

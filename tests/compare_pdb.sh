@@ -11,6 +11,7 @@ code=${1,,}
 tempd=/run/gemmi
 pout="$tempd/$code-p.pdb"
 gout="$tempd/$code-g.pdb"
+cifout="$tempd/$code.cif"
 cif=${PDB_COPY:-/hdd}/mmCIF/${code:1:2}/${code}.cif.gz
 if [[ -d ${PDB_COPY:-/hdd}/pdb ]]; then
   pdb=${PDB_COPY:-/hdd}/pdb/${code:1:2}/pdb${code}.ent.gz
@@ -58,6 +59,7 @@ absent="\
 zgrep -v -E "$not_identical|$absent" "$pdb" > "$pout"
 inp="$cif"
 [[ ${FROM_PDB:-} = 1 ]] && inp="$pout"
+[[ ${PDB_BACK:-} = 1 ]] && ../gemmi-convert "$pout" "$cifout" && inp="$cifout"
 ../gemmi-convert --to=pdb "$inp" - | grep -v -E $not_identical > "$gout"
 echo "Comparing ($(basename "$inp") ->) $gout vs $pout"
 
