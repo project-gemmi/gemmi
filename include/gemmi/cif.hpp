@@ -217,16 +217,9 @@ struct Loop {
     const std::string& at(int n) const { return loop.values.at(offset+n); }
     const std::string& operator[](int n) const { return loop.values[offset+n]; }
     size_t size() const { return loop.width(); }
-    struct Iter {
-      const Span& parent;
-      size_t pos;
-      void operator++() { pos++; }
-      const std::string& operator*() const { return parent.at(pos); }
-      bool operator!=(const Iter& other) const { return pos != other.pos; }
-      bool operator==(const Iter& other) const { return pos == other.pos; }
-    };
-    Iter begin() const { return Iter{*this, 0}; }
-    Iter end() const { return Iter{*this, size()}; }
+    typedef std::vector<std::string>::const_iterator const_iterator;
+    const_iterator begin() const { return loop.values.begin() + offset; }
+    const_iterator end() const { return begin() + size(); }
   };
   struct Iter {
     const Loop& loop;

@@ -14,7 +14,6 @@ struct Position {
   double x, y, z;
 };
 
-// if we need more involved math we may switch to using a third-party lib
 struct Matrix33 {
   double a11, a12, a13,
          a21, a22, a23,
