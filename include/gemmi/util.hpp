@@ -2,8 +2,8 @@
 //
 // Utilities.
 
-#ifndef GEMMI_UTIL_HH_
-#define GEMMI_UTIL_HH_
+#ifndef GEMMI_UTIL_HPP_
+#define GEMMI_UTIL_HPP_
 
 #include <algorithm>
 #include <string>

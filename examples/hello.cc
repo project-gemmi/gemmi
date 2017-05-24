@@ -1,6 +1,6 @@
 #include <iostream>
 #include <set>
-#include <gemmi/cif.hh>
+#include <gemmi/cif.hpp>
 
 namespace cif = gemmi::cif;
 

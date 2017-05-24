@@ -1,15 +1,15 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// Read mmcif (PDBx/mmCIF) file into a Structure from model.hh.
+// mol::Structure -> cif::Document -> mmcif (PDBx/mmCIF) file
 
-#ifndef GEMMI_TO_MMCIF_HH_
-#define GEMMI_TO_MMCIF_HH_
+#ifndef GEMMI_TO_MMCIF_HPP_
+#define GEMMI_TO_MMCIF_HPP_
 
 #include <string>
 #include <utility>  // std::pair
-#include "cif.hh"
-#include "model.hh"
 #include <stb_sprintf.h>
+#include "cif.hpp"
+#include "model.hpp"
 
 namespace gemmi {
 namespace mol {

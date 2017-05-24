@@ -27,7 +27,7 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension('gemmi',
-        ['pygemmi.cc'],
+        ['pygemmi.cpp'],
         include_dirs=[
             'include',
             'third_party',

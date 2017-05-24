@@ -1,10 +1,10 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#ifndef GEMMI_TO_CIF_HH_
-#define GEMMI_TO_CIF_HH_
+#ifndef GEMMI_TO_CIF_HPP_
+#define GEMMI_TO_CIF_HPP_
 
 #include <fstream>
-#include "cif.hh"
+#include "cif.hpp"
 
 std::ostream& operator<<(std::ostream& os, const gemmi::cif::Item& item) {
   using namespace gemmi::cif;

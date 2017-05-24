@@ -5,8 +5,8 @@
 // standard uncertainty (s.u.) in brackets: 1.23(8).
 // mmcif file do not use s.u. though - they define own numeric categories.
 
-#ifndef GEMMI_NUMB_HH_
-#define GEMMI_NUMB_HH_
+#ifndef GEMMI_NUMB_HPP_
+#define GEMMI_NUMB_HPP_
 
 #include <cmath>  // for NAN
 #include <tao/pegtl.hpp>

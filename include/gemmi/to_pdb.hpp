@@ -1,9 +1,9 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// Writing PDB file format.
+// Writing PDB file format (mol::Structure -> pdb file).
 
-#ifndef GEMMI_TO_PDB_HH_
-#define GEMMI_TO_PDB_HH_
+#ifndef GEMMI_TO_PDB_HPP_
+#define GEMMI_TO_PDB_HPP_
 
 #include <cctype>
 #include <cstring>
@@ -14,7 +14,7 @@
 #else
 # include <stb_sprintf.h>
 #endif
-#include "model.hh"
+#include "model.hpp"
 
 namespace gemmi {
 namespace mol {

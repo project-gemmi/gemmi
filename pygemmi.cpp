@@ -1,10 +1,10 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#include "gemmi/cif.hh"
-#include "gemmi/cifgz.hh"
-#include "gemmi/to_cif.hh"
-#include "gemmi/to_json.hh"
-#include "gemmi/elem.hh"
+#include "gemmi/cif.hpp"
+#include "gemmi/cifgz.hpp"
+#include "gemmi/to_cif.hpp"
+#include "gemmi/to_json.hpp"
+#include "gemmi/elem.hpp"
 #include <sstream>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>

@@ -3,10 +3,10 @@
 // CIF parser (based on PEGTL), struct Document that represents the CIF file,
 // and a set of actions for the parser to prepare Document.
 
-#ifndef GEMMI_CIF_HH_
-#define GEMMI_CIF_HH_
-#include "numb.hh" // is_int() for infer_valtypes()
-#include "util.hh" // starts_with()
+#ifndef GEMMI_CIF_HPP_
+#define GEMMI_CIF_HPP_
+#include "numb.hpp" // is_int() for infer_valtypes()
+#include "util.hpp" // starts_with()
 #include <cassert>
 #include <cstdint>
 #include <cmath>

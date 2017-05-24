@@ -1,8 +1,8 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#ifndef GEMMI_TO_JSON_HH_
-#define GEMMI_TO_JSON_HH_
-#include "cif.hh"
+#ifndef GEMMI_TO_JSON_HPP_
+#define GEMMI_TO_JSON_HPP_
+#include "cif.hpp"
 #include <cassert>
 #include <ostream>
 
@@ -21,7 +21,7 @@ private:
   std::ostream& os_;
   std::string linesep_;
 
-  // based on tao/json/internal/escape.hh
+  // based on tao/json/internal/escape.hpp
   static void escape(std::ostream& os, const std::string& s, size_t pos,
                      bool to_lower) {
     static const char* h = "0123456789abcdef";

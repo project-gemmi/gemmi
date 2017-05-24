@@ -1,21 +1,21 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// Read PDB format into a Structure from model.hh.
+// Read PDB format into a Structure from model.hpp.
 // Based on the format spec:
 // https://www.wwpdb.org/documentation/file-format-content/format33/v3.3.html
 // + support for two-character chain IDs (columns 21 and 22)
 // + segment ID (columns 73-76)
 // + the hybrid-36 extension from cctbx
 
-#ifndef GEMMI_PDB_HH_
-#define GEMMI_PDB_HH_
+#ifndef GEMMI_PDB_HPP_
+#define GEMMI_PDB_HPP_
 
 #include <cstdint>
 #include <cstdio>
 #include <memory>
 #include <string>
-#include "model.hh"
-#include "util.hh"
+#include "model.hpp"
+#include "util.hpp"
 
 namespace gemmi {
 namespace mol {

@@ -1,15 +1,15 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include <iostream> // temporary, for debugging
-#include "gemmi/cifgz.hh"
-#include "gemmi/mmcif.hh"
-#include "gemmi/pdb.hh"
-#include "gemmi/to_cif.hh"
-#include "gemmi/to_json.hh"
-#include "gemmi/to_mmcif.hh"
+#include "gemmi/cifgz.hpp"
+#include "gemmi/mmcif.hpp"
+#include "gemmi/pdb.hpp"
+#include "gemmi/to_cif.hpp"
+#include "gemmi/to_json.hpp"
+#include "gemmi/to_pdb.hpp"
 // set this before only one of stb_sprintf.h includes
 #define STB_SPRINTF_IMPLEMENTATION
-#include "gemmi/to_pdb.hh"
+#include "gemmi/to_mmcif.hpp"
 
 #include <cstring>
 #include <iostream>
@@ -165,6 +165,7 @@ void convert(const char* input, char input_format,
 int main(int argc, char **argv) {
   if (argc < 1)
     return 2;
+  std::ios_base::sync_with_stdio(false);
   option::Stats stats(usage, argc-1, argv+1);
   std::vector<option::Option> options(stats.options_max);
   std::vector<option::Option> buffer(stats.buffer_max);

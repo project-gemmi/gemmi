@@ -1,8 +1,8 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#include "gemmi/cif.hh"
-#include "gemmi/cifgz.hh"
-#include "gemmi/ddl.hh"
+#include "gemmi/cif.hpp"
+#include "gemmi/cifgz.hpp"
+#include "gemmi/ddl.hpp"
 #include <cstring>
 #include <cstdio>
 #include <stdexcept>

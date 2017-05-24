@@ -2,16 +2,16 @@
 //
 // Data structures to keep macromolecular structure model.
 
-#ifndef GEMMI_MODEL_HH_
-#define GEMMI_MODEL_HH_
+#ifndef GEMMI_MODEL_HPP_
+#define GEMMI_MODEL_HPP_
 
 #include <cstring>
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
-#include "elem.hh"
-#include "unitcell.hh"
+#include "elem.hpp"
+#include "unitcell.hpp"
 
 namespace gemmi {
 namespace mol {

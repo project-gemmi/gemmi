@@ -2,8 +2,8 @@
 //
 // Unit cell.
 
-#ifndef GEMMI_UNITCELL_HH_
-#define GEMMI_UNITCELL_HH_
+#ifndef GEMMI_UNITCELL_HPP_
+#define GEMMI_UNITCELL_HPP_
 
 #include <cmath>
 

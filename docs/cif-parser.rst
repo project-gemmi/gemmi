@@ -55,7 +55,7 @@ pragmatically relaxing it when needed.
 How to use it from C++
 ======================
 
-The CIF parser is implemented in header files (``#include <gemmi/cif.hh>``),
+The CIF parser is implemented in header files (``#include <gemmi/cif.hpp>``),
 so you do not need to compile Gemmi.
 It has a single dependency: PEGTL (also header-only),
 which is included in the ``third_party`` directory.
@@ -69,7 +69,7 @@ For example:
     c++ -std=c++11 -I. -Igemmi/third_party -O2 my_program.cpp
 
 If you'd like Gemmi to uncompress gzipped (.cif.gz) files on the fly,
-add ``#include <gemmi/cifgz.hh>`` and link your program with the zlib library.
+add ``#include <gemmi/cifgz.hpp>`` and link your program with the zlib library.
 
 The CIF parsing functionality can be used in two ways that roughly
 correspond to DOM and SAX parsing:
@@ -78,7 +78,7 @@ correspond to DOM and SAX parsing:
    that can be easily accessed and manipulated.
 
 2. Define own `PEGTL Actions <https://github.com/taocpp/PEGTL/blob/master/doc/Actions-and-States.md>`_
-   corresponding to the grammar rules from ``cif.hh``.
+   corresponding to the grammar rules from ``cif.hpp``.
    These actions will be triggered while reading a CIF file.
 
 This documention focuses on the former (DOM parsing).
@@ -102,7 +102,7 @@ Let us start with a simple example.
 This code reads mmCIF file and shows weights of the chemical components::
 
     #include <iostream>
-    #include <gemmi/cif.hh>
+    #include <gemmi/cif.hpp>
 
     int main() {
       gemmi::cif::Document doc("1mru.cif");
@@ -135,7 +135,7 @@ which is equivalent to::
     gemmi::cif::Document doc;
     doc.read_file("1mru.cif");
 
-Additional header ``cifgz.hh`` has a function::
+Additional header ``cifgz.hpp`` has a function::
 
     inline Document read_any(const std::string& path)
 

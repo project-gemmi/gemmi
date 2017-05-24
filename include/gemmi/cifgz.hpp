@@ -2,10 +2,10 @@
 //
 // Functions for transparent reading of gzipped files. Uses zlib.
 
-#ifndef GEMMI_CIFGZ_HH_
-#define GEMMI_CIFGZ_HH_
-#include "cif.hh"
-#include "util.hh"  // ends_with
+#ifndef GEMMI_CIFGZ_HPP_
+#define GEMMI_CIFGZ_HPP_
+#include "cif.hpp"
+#include "util.hpp"  // ends_with
 #include <stdio.h>
 #include <zlib.h>
 

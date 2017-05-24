@@ -3,16 +3,16 @@
 // Class DDL that represents DDL1 or DDL2 dictionary (ontology).
 // Used to validate CIF files.
 
-#ifndef GEMMI_DDL_HH_
-#define GEMMI_DDL_HH_
+#ifndef GEMMI_DDL_HPP_
+#define GEMMI_DDL_HPP_
 
 #include <cassert>
 #include <cfloat>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
-#include "cif.hh"
-#include "numb.hh"
+#include "cif.hpp"
+#include "numb.hpp"
 
 namespace gemmi {
 namespace cif {

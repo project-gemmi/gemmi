@@ -1,6 +1,6 @@
 // Compare pairs of columns from the _atom_site table.
-// Compiled with: g++-6 -O2 -I.. -Ithird_party auth_label.cc -lstdc++fs -lz 
-#include <gemmi/cifgz.hh>
+// Compiled with: g++-6 -O2 -Iinclude -Ithird_party auth_label.cc -lstdc++fs -lz
+#include <gemmi/cifgz.hpp>
 #include <iostream>
 #include <experimental/filesystem>  // just <filesystem> in C++17
 

@@ -8,19 +8,20 @@ PYFLAGS=-O2 -g --std=c++14 $(WFLAGS) -Iinclude -Ithird_party -fPIC \
 
 all: gemmi-validate gemmi-convert gemmi.so
 
-gemmi-validate: validate.cc include/gemmi/cif.hh include/gemmi/ddl.hh \
-                include/gemmi/cifgz.hh include/gemmi/numb.hh
+gemmi-validate: validate.cpp include/gemmi/cif.hpp include/gemmi/ddl.hpp \
+                include/gemmi/cifgz.hpp include/gemmi/numb.hpp
 	$(CXX) $(FLAGS) $< -o $@ -lz
 
-gemmi-convert: convert.cc include/gemmi/*.hh
+gemmi-convert: convert.cpp include/gemmi/*.hpp
 	$(CXX) $(FLAGS) -Wno-strict-aliasing $< -o $@ -lz
 
 # for debugging only
-trace: validate.cc include/gemmi/cif.hh
+trace: validate.cpp include/gemmi/cif.hpp
 	$(CXX) -DCIF_VALIDATE_SHOW_TRACE $(FLAGS) $< -o $@ -lz
 
-pygemmi.o: pygemmi.cc include/gemmi/cif.hh include/gemmi/to_json.hh \
-           include/gemmi/numb.hh include/gemmi/to_cif.hh include/gemmi/elem.hh
+pygemmi.o: pygemmi.cpp include/gemmi/cif.hpp include/gemmi/to_json.hpp \
+           include/gemmi/numb.hpp include/gemmi/to_cif.hpp \
+	   include/gemmi/elem.hpp
 	$(CXX) $(PYFLAGS) -I/usr/include/python2.7 -c $<
 
 gemmi.so: pygemmi.o
