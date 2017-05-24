@@ -209,6 +209,37 @@ struct Loop {
     return values[row * tags.size() + col];
   }
   void clear() { tags.clear(); values.clear(); }
+
+  // iteration over rows
+  struct Span {
+    const Loop& loop;
+    const std::ptrdiff_t offset;
+    const std::string& at(int n) const { return loop.values.at(offset+n); }
+    const std::string& operator[](int n) const { return loop.values[offset+n]; }
+    size_t size() const { return loop.width(); }
+    struct Iter {
+      const Span& parent;
+      size_t pos;
+      void operator++() { pos++; }
+      const std::string& operator*() const { return parent.at(pos); }
+      bool operator!=(const Iter& other) const { return pos != other.pos; }
+      bool operator==(const Iter& other) const { return pos == other.pos; }
+    };
+    Iter begin() const { return Iter{*this, 0}; }
+    Iter end() const { return Iter{*this, size()}; }
+  };
+  struct Iter {
+    const Loop& loop;
+    std::vector<std::string>::const_iterator cur;
+    Iter(const Loop& loop_, std::vector<std::string>::const_iterator cur_)
+      : loop(loop_), cur(cur_) {}
+    void operator++() { cur += loop.width(); }
+    const Span operator*() const { return {loop, cur - loop.values.begin()}; }
+    bool operator!=(const Iter& o) const { return cur != o.cur; }
+    bool operator==(const Iter& o) const { return cur == o.cur; }
+  };
+  Iter begin() const { return Iter(*this, values.begin()); }
+  Iter end() const { return Iter(*this, values.end()); }
 };
 
 

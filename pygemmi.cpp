@@ -83,18 +83,29 @@ PYBIND11_PLUGIN(gemmi) {
         return "<gemmi.cif.Block " + self.name + ">";
     });
 
-  py::class_<Loop>(cif, "Loop")
-    .def(py::init<>())
+  py::class_<Loop> lp(cif, "Loop");
+  lp.def(py::init<>())
     .def("width", &Loop::width, "Returns number of columns")
     .def("length", &Loop::length, "Returns number of rows")
     .def("__iter__", [](const Loop& self) {
-        return py::make_iterator(self.tags);
+        return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
     .def("val", &Loop::val, py::arg("row"), py::arg("col"))
     .def("__repr__", [](const Loop &self) {
         return "<gemmi.cif.Loop " + std::to_string(self.length()) + "x" +
                                     std::to_string(self.width()) + ">";
     });
+
+  py::class_<Loop::Span>(lp, "Span")
+    .def("__len__", &Loop::Span::size)
+    .def("__getitem__", &Loop::Span::at)
+    .def("__iter__", [](const Loop::Span& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>())
+    .def("__repr__", [](const Loop::Span& self) {
+        return "<gemmi.cif.Loop.Span: " + str_join(self, " ") + ">";
+    });
+
 
   py::class_<LoopColumn>(cif, "LoopColumn")
     .def(py::init<>())
