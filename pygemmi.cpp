@@ -87,6 +87,7 @@ PYBIND11_PLUGIN(gemmi) {
   lp.def(py::init<>())
     .def("width", &Loop::width, "Returns number of columns")
     .def("length", &Loop::length, "Returns number of rows")
+    .def_readonly("tags", &Loop::tags)
     .def("__iter__", [](const Loop& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
@@ -95,6 +96,9 @@ PYBIND11_PLUGIN(gemmi) {
         return "<gemmi.cif.Loop " + std::to_string(self.length()) + "x" +
                                     std::to_string(self.width()) + ">";
     });
+
+  py::class_<LoopTag>(cif, "LoopTag")
+    .def_readonly("tag", &LoopTag::tag);
 
   py::class_<Loop::Span>(lp, "Span")
     .def("__len__", &Loop::Span::size)
