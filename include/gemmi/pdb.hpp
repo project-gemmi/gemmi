@@ -32,7 +32,7 @@ public:
     // We don't expect lines longer than 80 characters, but if one is found,
     // just discard the rest of the line.
     if (len > 0 && line[len-1] != '\n')
-      for (int c = fgetc(f_); c != 0 && c != '\n'; c = fgetc(f_))
+      for (int c = fgetc(f_); c != 0 && c != EOF && c != '\n'; c = fgetc(f_))
         continue;
     ++line_num_;
     return len;

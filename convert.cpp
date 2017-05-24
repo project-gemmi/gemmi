@@ -3,7 +3,7 @@
 #include <iostream> // temporary, for debugging
 #include "gemmi/cifgz.hpp"
 #include "gemmi/mmcif.hpp"
-#include "gemmi/pdb.hpp"
+#include "gemmi/pdbgz.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/to_pdb.hpp"
@@ -80,7 +80,8 @@ static const option::Descriptor usage[] = {
 
 char get_format_from_extension(const std::string& path) {
   using gemmi::iends_with;
-  if (iends_with(path, ".pdb") || iends_with(path, ".ent"))
+  if (iends_with(path, ".pdb") || iends_with(path, ".ent") ||
+      iends_with(path, ".pdb.gz") || iends_with(path, ".ent.gz"))
     return 'p';
   if (iends_with(path, ".js") || iends_with(path, ".json"))
     return 'j';
@@ -109,7 +110,7 @@ void convert(const char* input, char input_format,
         fail("No atoms in the input file. Is it mmCIF?");
     }
   } else if (input_format == 'p') {
-    st = gemmi::mol::read_pdb(input);
+    st = gemmi::mol::read_pdb_any(input);
   } else {
     fail("Unexpected input format.");
   }
