@@ -167,7 +167,24 @@ private:
   std::map<std::string, Entity*> chain_to_ent_;
 };
 
+
+// The standard charge format is 2+, but some files have +2.
+signed char read_charge(char digit, char sign) {
+  if (sign == ' ' && digit == ' ')  // by far the most common case
+    return 0;
+  if (sign >= '0' && sign <= '9')
+    std::swap(digit, sign);
+  if (digit >= '0' && digit <= '9') {
+    if (sign != '+' && sign != '-' && sign != '\0' && !std::isspace(sign))
+      throw std::runtime_error("Wrong format for charge: " +
+                               std::string(1, digit) + std::string(1, sign));
+    return (digit - '0') * (sign == '-' ? -1 : 1);
+  }
+  // if we are here the field should be blank, but maybe better not to check
+  return 0;
 }
+
+}  // namespace internal
 
 
 template<typename InputType>
@@ -211,13 +228,7 @@ Structure read_pdb_from_input(InputType&& in) {
       Atom atom;
       atom.name = read_pdb_string(line+12, 4);
       atom.altloc = line[16] == ' ' ? '\0' : line[16];
-      atom.charge = 0;
-      if (len > 78 && line[78] >= '0' && line[78] <= '9') {
-        char sign = line[79];
-        if (sign != '+' && sign != '-' && sign != 0 && !std::isspace(sign))
-          wrong("Sign expected at position 80, got: " + std::string(1, sign));
-        atom.charge = (line[78] - '0') * (sign == '-' ? -1 : 1);
-      }
+      atom.charge = (len > 78 ? internal::read_charge(line[78], line[79]) : 0);
       atom.element = Element(line+76);
       atom.pos.x = read_pdb_number(line+30, 8);
       atom.pos.y = read_pdb_number(line+38, 8);
