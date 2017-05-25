@@ -6,7 +6,7 @@
 #define GEMMI_CIFGZ_HPP_
 #include "cif.hpp"
 #include "util.hpp"  // ends_with
-#include <stdio.h>
+#include <cstdio>
 #include <zlib.h>
 
 namespace gemmi {

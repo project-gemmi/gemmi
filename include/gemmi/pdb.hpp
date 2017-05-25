@@ -143,7 +143,7 @@ public:
         return false;
     return true;
   }
-  void finalize(const std::vector<std::string>& has_ter) {
+  void finalize() {
     for (auto i = st_.entities.begin(); i != st_.entities.end(); ++i)
       for (auto j = i + 1; j != st_.entities.end(); ++j)
         if (same_entity((*j)->sequence, (*i)->sequence)) {
@@ -154,11 +154,8 @@ public:
         }
     // set all entity pointers in chains
     for (Model& mod : st_.models)
-      for (Chain& ch : mod.chains) {
+      for (Chain& ch : mod.chains)
         ch.entity = set_for_chain(ch.name, EntityType::Unknown);
-        if (gemmi::in_vector(ch.name, has_ter))
-          ch.entity->type = EntityType::Polymer;
-      }
     // set unique IDs
     int serial = 1;
     for (auto& ent : st_.entities)
@@ -196,7 +193,7 @@ Structure read_pdb_from_input(InputType&& in) {
         if (!model)
           wrong("ATOM/HETATM between models");
         // if this chain was TER'ed we use a separate chain for the rest.
-        bool ter = gemmi::in_vector(chain_name, has_ter);
+        bool ter = gemmi::in_vector(model->name + "/" + chain_name, has_ter);
         chain = model->find_or_add_chain(chain_name + (ter ? "_H" : ""));
         chain->auth_name = chain_name;
         resi = nullptr;
@@ -332,7 +329,7 @@ Structure read_pdb_from_input(InputType&& in) {
     } else if (is_record_type(line, "MTRIXn")) {
 
     } else if (is_record_type(line, "MODEL")) {
-      if (model)
+      if (model && chain)
         wrong("MODEL without ENDMDL?");
       std::string name = std::to_string(read_pdb_int(line+10, 4));
       model = st.find_or_add_model(name);
@@ -346,7 +343,7 @@ Structure read_pdb_from_input(InputType&& in) {
 
     } else if (is_record_type(line, "TER")) { // finishes polymer chains
       if (chain)
-        has_ter.emplace_back(chain->name);
+        has_ter.emplace_back(model->name + "/" + chain->name);
       chain = nullptr;
 
     } else if (is_record_type(line, "SCALEn")) {
@@ -356,7 +353,12 @@ Structure read_pdb_from_input(InputType&& in) {
     }
   }
 
-  ent_setter.finalize(has_ter);
+  ent_setter.finalize();
+  for (Model& mod : st.models)
+    for (Chain& ch : mod.chains) {
+      if (gemmi::in_vector(mod.name + "/" + ch.name, has_ter))
+        ch.entity->type = EntityType::Polymer;
+    }
   st.finish();
   return st;
 }
