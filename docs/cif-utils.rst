@@ -292,6 +292,11 @@ and then run it for an hour or so.
 Search PDB by elements
 ----------------------
 
+.. image:: img/periodic-table-thumb.png
+   :align: right
+   :scale: 100
+   :target: https://project-gemmi.github.io/periodic-table/
+
 Let say we want to be able to search the PDB by specifying a set of elements
 present in the model. First we write down elements present in each
 PDB entry::
