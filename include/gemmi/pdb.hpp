@@ -114,13 +114,6 @@ inline bool is_record_type(const char* s, const char* record) {
 
 namespace internal {
 
-inline Atom* find_atom_by_serial(int serial, Residue& res) {
-  for (Atom& a : res.atoms)
-    if ((std::intptr_t) a.parent == serial)
-      return &a;
-  return nullptr;
-}
-
 class EntitySetter {
 public:
   EntitySetter(Structure& st) : st_(st) {}
@@ -202,9 +195,9 @@ Structure read_pdb_from_input(InputType&& in) {
   internal::EntitySetter ent_setter(st);
   char line[88] = {0};
   while (size_t len = in.copy_line(line)) {
-    if (len < 78)
-      wrong("The line is too short to be correct:\n" + std::string(line));
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
+      if (len < 77) // should we allow missing element
+        wrong("The line is too short to be correct:\n" + std::string(line));
       std::string chain_name = read_pdb_string(line+20, 2);
       if (!chain || chain_name != chain->auth_name) {
         if (!model)
@@ -235,48 +228,22 @@ Structure read_pdb_from_input(InputType&& in) {
       atom.pos.z = read_pdb_number(line+46, 8);
       atom.occ = read_pdb_number(line+54, 6);
       atom.b_iso = read_pdb_number(line+60, 6);
-      // temporarily use parent to store the serial number
-      atom.parent = (Residue*) (std::intptr_t) read_pdb_int(line+6, 5);
       resi->atoms.emplace_back(atom);
 
     } else if (is_record_type(line, "ANISOU")) {
-      if (!model)
-        wrong("ANISOU between models");
-      int serial = read_pdb_int(line+6, 5);
-      Atom *a = nullptr;
-      if (chain && resi) {
-        // try the last atoms - works when ANISOU is directly after ATOM
-        if ((std::intptr_t) resi->atoms.back().parent == serial) {
-          a = &resi->atoms.back();
-        } else {
-          // search first in the last used residue
-          a = internal::find_atom_by_serial(serial, *resi);
-          // if not found, try the next residue
-          if (!a && resi != &chain->residues.back())
-            a = internal::find_atom_by_serial(serial, *++resi);
-        }
-      }
-      if (!a)
-        for (Chain& ch : model->chains) {
-          for (Residue& r : ch.residues) {
-            a = internal::find_atom_by_serial(serial, r);
-            if (a) {
-              resi = &r;
-              chain = &ch;
-              break;
-            }
-          }
-          if (a)
-            break;
-        }
-      if (!a)
-        wrong("Atom serial number not found: " + std::to_string(serial));
-      a->u11 = read_pdb_int(line+28, 7) * 1e-4;
-      a->u22 = read_pdb_int(line+35, 7) * 1e-4;
-      a->u33 = read_pdb_int(line+42, 7) * 1e-4;
-      a->u12 = read_pdb_int(line+49, 7) * 1e-4;
-      a->u13 = read_pdb_int(line+56, 7) * 1e-4;
-      a->u23 = read_pdb_int(line+63, 7) * 1e-4;
+      if (!model || !chain || !resi || resi->atoms.empty())
+        wrong("ANISOU record not directly after ATOM/HETATM.");
+      // We assume that ANISOU refers to the last atom.
+      // Can it not be the case?
+      Atom &atom = resi->atoms.back();
+      if (atom.u11 != 0.)
+        wrong("Duplicated ANISOU record or not directly after ATOM/HETATM.");
+      atom.u11 = read_pdb_int(line+28, 7) * 1e-4;
+      atom.u22 = read_pdb_int(line+35, 7) * 1e-4;
+      atom.u33 = read_pdb_int(line+42, 7) * 1e-4;
+      atom.u12 = read_pdb_int(line+49, 7) * 1e-4;
+      atom.u13 = read_pdb_int(line+56, 7) * 1e-4;
+      atom.u23 = read_pdb_int(line+63, 7) * 1e-4;
 
     } else if (is_record_type(line, "REMARK")) {
       // ignore for now
