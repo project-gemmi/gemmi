@@ -5,6 +5,7 @@
 #ifndef GEMMI_TO_PDB_HPP_
 #define GEMMI_TO_PDB_HPP_
 
+#include <cassert>
 #include <cctype>
 #include <cstring>
 #include <algorithm>
@@ -35,7 +36,30 @@ namespace mol {
     os.write(buf, 81); \
     } while(0)
 
-const char* find_last_break(const char *str, int max_len) {
+// works for non-negative values only
+inline char *base36_encode(char* buffer, int width, int value) {
+  const char base36[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  buffer[width] = '\0';
+  do {
+    buffer[--width] = base36[value % 36];
+    value /= 36;
+  } while (value != 0 && width != 0);
+  while (width != 0)
+    buffer[--width] = ' ';
+  return buffer;
+}
+
+// based on http://cci.lbl.gov/hybrid_36/
+inline char* encode_serial_in_hybrid36(char* str, int serial) {
+  assert(serial >= 0);
+  if (serial < 100000) {
+    stbsp_sprintf(str, "%5d", serial);
+    return str;
+  }
+  return base36_encode(str, 5, serial - 100000 + 10 * 36 * 36 * 36 * 36);
+}
+
+inline const char* find_last_break(const char *str, int max_len) {
   int last_break = 0;
   for (int i = 0; i < max_len; i++) {
     if (str[i] == '\0')
@@ -140,6 +164,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
     WRITE("MTRIX%d %3jd%10.6f%10.6f%10.6f %14.5f    %-21c\n",
           3, i+1, op.rot.a31, op.rot.a32, op.rot.a33, op.tran.z, g);
   }
+  char short_buf[8];
   for (const Model& model : st.models) {
     int serial = 0;
     if (st.models.size() > 1)
@@ -153,8 +178,6 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
         bool standard = res.has_standard_pdb_name() && !(chain.entity &&
                                  chain.entity->type == EntityType::NonPolymer);
         for (const Atom& a : res.atoms) {
-          if (serial == 1000000)
-            throw std::runtime_error("Too many atoms for PDB file.");
           //  1- 6  6s  record name
           //  7-11  5d  integer serial
           // 12     1   -
@@ -175,12 +198,12 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
           // 77-78  2s  element symbol, right-justified
           // 79-80  2s  charge
           bool empty13 = (a.element.uname()[1] == '\0' && a.name.size() < 4);
-          WRITE("%-6s%5d %c%-3s%c%3s"
+          WRITE("%-6s%5s %c%-3s%c%3s"
                 " %1s%4d%c"
                 "   %8.3f%8.3f%8.3f"
                 "%6.2f%6.2f          %2s%c%c\n",
                 standard ? "ATOM" : "HETATM",
-                ++serial,
+                encode_serial_in_hybrid36(short_buf, ++serial),
                 empty13 ? ' ' : a.name[0],
                 a.name.c_str() + (empty13 || a.name.empty() ? 0 : 1),
                 a.altloc ? std::toupper(a.altloc) : ' ',
@@ -220,7 +243,8 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
       if (chain.entity && chain.entity->type == EntityType::Polymer) {
         // re-using part of the buffer in the middle, e.g.:
         // TER    4153      LYS B 286
-        stbsp_snprintf(buf, 82, "TER   %5d", ++serial);
+        stbsp_snprintf(buf, 82, "TER   %5s",
+                       encode_serial_in_hybrid36(short_buf, ++serial));
         std::memset(buf+11, ' ', 6);
         std::memset(buf+28, ' ', 52);
         os.write(buf, 81);
