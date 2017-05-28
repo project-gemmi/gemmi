@@ -59,6 +59,15 @@ inline char* encode_serial_in_hybrid36(char* str, int serial) {
   return base36_encode(str, 5, serial - 100000 + 10 * 36 * 36 * 36 * 36);
 }
 
+// based on http://cci.lbl.gov/hybrid_36/
+inline char* encode_seq_id_in_hybrid36(char* str, int seq_id) {
+  if (seq_id > -1000 && seq_id < 10000) {
+    stbsp_sprintf(str, "%4d", seq_id);
+    return str;
+  }
+  return base36_encode(str, 4, seq_id - 10000 + 10 * 36 * 36 * 36);
+}
+
 inline const char* find_last_break(const char *str, int max_len) {
   int last_break = 0;
   for (int i = 0; i < max_len; i++) {
@@ -165,6 +174,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
           3, i+1, op.rot.a31, op.rot.a32, op.rot.a33, op.tran.z, g);
   }
   char short_buf[8];
+  char short_buf2[8];
   for (const Model& model : st.models) {
     int serial = 0;
     if (st.models.size() > 1)
@@ -199,7 +209,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
           // 79-80  2s  charge
           bool empty13 = (a.element.uname()[1] == '\0' && a.name.size() < 4);
           WRITE("%-6s%5s %c%-3s%c%3s"
-                " %1s%4d%c"
+                " %1s%4s%c"
                 "   %8.3f%8.3f%8.3f"
                 "%6.2f%6.2f          %2s%c%c\n",
                 standard ? "ATOM" : "HETATM",
@@ -209,7 +219,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
                 a.altloc ? std::toupper(a.altloc) : ' ',
                 res.name.c_str(),
                 chain.auth_name.c_str(),
-                res.seq_id_for_pdb(),
+                encode_seq_id_in_hybrid36(short_buf2, res.seq_id_for_pdb()),
                 res.ins_code ? res.ins_code : ' ',
                 // We want to avoid negative zero and round them numbers up
                 // if they originally had one digit more and that digit was 5.

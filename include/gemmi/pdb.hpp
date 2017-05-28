@@ -4,8 +4,9 @@
 // Based on the format spec:
 // https://www.wwpdb.org/documentation/file-format-content/format33/v3.3.html
 // + support for two-character chain IDs (columns 21 and 22)
-// + segment ID (columns 73-76)
-// + the hybrid-36 extension from cctbx
+// + read segment ID (columns 73-76)
+// + ignore atom serial number (compatible with the cctbx hybrid-36 extension)
+// + hybrid-36 sequence id for sequences longer than 9999 (no such examples)
 
 #ifndef GEMMI_PDB_HPP_
 #define GEMMI_PDB_HPP_
@@ -66,6 +67,12 @@ inline int read_pdb_int(const char* p, int field_length) {
     n = n * 10 + (p[i] - '0');
   }
   return sign * n;
+}
+
+template<int N> int read_base36(const char* p) {
+  char zstr[N+1] = {0};
+  std::memcpy(zstr, p, N);
+  return std::strtol(zstr, NULL, 36);
 }
 
 inline double read_pdb_number(const char* p, int field_length) {
@@ -209,7 +216,10 @@ Structure read_pdb_from_input(InputType&& in) {
         resi = nullptr;
       }
 
-      int seq_id = read_pdb_int(line+22, 4);
+      // We support hybrid-36 extension, although it is never used in practice
+      // as 9999 residues per chain are enough.
+      int seq_id = line[22] < 'A' ? read_pdb_int(line+22, 4)
+                                  : read_base36<4>(line+22) - 466560 + 10000;
       char ins_code = line[26] == ' ' ? '\0' : line[26];
       std::string resi_name = read_pdb_string(line+17, 3);
 
