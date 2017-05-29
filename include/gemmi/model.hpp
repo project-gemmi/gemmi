@@ -96,6 +96,9 @@ struct Residue {
   int seq_id = UnknownId;
   int auth_seq_id = UnknownId;
   char ins_code = '\0';
+  //bool in_main_conformer/is_point_mut
+  //uint32_t segment_id; // number or 4 characters
+  std::string segment; // normally up to 4 characters in the PDB file
   std::string name;
   std::vector<Atom> atoms;
   Chain* parent = nullptr;

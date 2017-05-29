@@ -205,14 +205,15 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
           // 47-54  8f  z
           // 55-60  6f  occupancy (6.2)
           // 61-66  6f  temperature factor (6.2)
-          // 67-76 10   -
+          // 67-76  6   -
+          // 73-76      segment identifier, left-justified (non-standard)
           // 77-78  2s  element symbol, right-justified
           // 79-80  2s  charge
           bool empty13 = (a.element.uname()[1] == '\0' && a.name.size() < 4);
           WRITE("%-6s%5s %c%-3s%c%3s"
                 " %1s%4s%c"
                 "   %8.3f%8.3f%8.3f"
-                "%6.2f%6.2f          %2s%c%c\n",
+                "%6.2f%6.2f      %-4s%2s%c%c\n",
                 standard ? "ATOM" : "HETATM",
                 encode_serial_in_hybrid36(short_buf, ++serial),
                 empty13 ? ' ' : a.name[0],
@@ -234,6 +235,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
                 // and may be given with more than single precision in mmCIF
                 // If it was originally %.5f (5TIS) we need to add 0.5 * 10^-5.
                 a.b_iso + 0.5e-5,
+                res.segment.c_str(),
                 a.element.uname(),
                 // Charge is written as 1+ or 2-, etc, or just empty space.
                 // Sometimes PDB files have explicit 0s (5M05); we ignore them.

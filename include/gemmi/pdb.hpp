@@ -226,6 +226,10 @@ Structure read_pdb_from_input(InputType&& in) {
       if (!resi || seq_id != resi->seq_id || seq_id == Residue::UnknownId ||
           resi_name != resi->name) {
         resi = chain->find_or_add_residue(seq_id, seq_id, ins_code, resi_name);
+        // Non-standard but widely used 4-character segment identifier.
+        // Left-justified, and may include a space in the middle.
+        // The segment may be a portion of a chain or a complete chain.
+        resi->segment = read_pdb_string(line+72, 4);
       }
 
       Atom atom;
