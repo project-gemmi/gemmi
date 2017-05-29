@@ -21,7 +21,8 @@ namespace gemmi {
 namespace mol {
 
 #ifdef USE_STD_SNPRINTF  // for benchmarking and testing only
-#define stbsp_snprintf  std::snprintf
+#define stbsp_snprintf std::snprintf
+#define stbsp_sprintf std::sprintf
 #endif
 
 #define WRITE(...) do { \

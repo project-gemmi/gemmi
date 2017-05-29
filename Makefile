@@ -1,7 +1,8 @@
 #CXX=clang++ -stdlib=libc++
 #CXX=/home/wojdyr/local/clang40/bin/clang++ -L /home/wojdyr/local/clang40/lib -stdlib=libc++ -Wl,-rpath,/home/wojdyr/local/clang40/lib
 CXX=g++
-WFLAGS=-Wall -Wextra -Wdisabled-optimization -Wformat=2 -Wredundant-decls
+WFLAGS=-Wall -Wextra -Wpedantic -Wdisabled-optimization -Wformat=2 \
+       -Wredundant-decls
 FLAGS=-O2 -g --std=c++11 $(WFLAGS) -Wshadow -Iinclude -Ithird_party #-DNDEBUG
 PYFLAGS=-O2 -g --std=c++14 $(WFLAGS) -Iinclude -Ithird_party -fPIC \
        -fvisibility=hidden -fwrapv -D_FORTIFY_SOURCE=2 -fstack-protector-strong
@@ -14,6 +15,9 @@ gemmi-validate: validate.cpp include/gemmi/cif.hpp include/gemmi/ddl.hpp \
 
 gemmi-convert: convert.cpp include/gemmi/*.hpp
 	$(CXX) $(FLAGS) -Wno-strict-aliasing $< -o $@ -lz
+
+gemmi-convert-snprintf: convert.cpp include/gemmi/*.hpp
+	$(CXX) -DUSE_STD_SNPRINTF $(FLAGS) $< -o $@ -lz
 
 # for debugging only
 trace: validate.cpp include/gemmi/cif.hpp

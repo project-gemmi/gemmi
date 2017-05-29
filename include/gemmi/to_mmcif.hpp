@@ -7,7 +7,12 @@
 
 #include <string>
 #include <utility>  // std::pair
-#include <stb_sprintf.h>
+#ifdef USE_STD_SNPRINTF
+# include <cstdio>
+# define stbsp_sprintf std::sprintf
+#else
+# include <stb_sprintf.h>
+#endif
 #include "cif.hpp"
 #include "model.hpp"
 
