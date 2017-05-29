@@ -56,7 +56,7 @@ inline Structure read_pdb_any(const std::string& path) {
   if (ends_with(path, ".gz"))
     return read_pdb_gz(path);
   return read_pdb(path);
-};
+}
 
 } // namespace mol
 } // namespace gemmi

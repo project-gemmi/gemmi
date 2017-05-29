@@ -74,7 +74,7 @@ inline Document read_any(const std::string& path) {
     d.read_file(path);
   }
   return d;
-};
+}
 
 } // namespace cif
 } // namespace gemmi
