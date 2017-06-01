@@ -399,6 +399,7 @@ struct Block {
   TableView find(const std::string& tag) const {
     return find({}, {tag});
   }
+  int add_field(TableView& table, const std::string& field) const;
   Loop& clear_or_add_loop(const std::string& prefix);
   void delete_category(const std::string& prefix);
 };
@@ -570,6 +571,24 @@ inline TableView Block::find(const std::string& prefix,
     }
   }
   return TableView{loop, indices, values};
+}
+
+inline
+int Block::add_field(TableView& table, const std::string& full_tag) const {
+  if (table.loop) {
+    int pos = table.loop->find_tag(full_tag);
+    if (pos != -1) {
+      table.cols.push_back(pos);
+      return (int) table.cols.size() - 1;
+    }
+  } else {
+    const std::string* v = find_value(full_tag);
+    if (v) {
+      table.cols.push_back(table.values_.size());
+      table.values_.push_back(*v);
+    }
+  }
+  return -1;
 }
 
 struct Document {
