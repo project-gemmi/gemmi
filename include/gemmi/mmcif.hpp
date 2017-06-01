@@ -32,6 +32,22 @@ get_anisotropic_u(const cif::Block& block) {
   return aniso_map;
 }
 
+inline cif::TableView find_transform(const cif::Block& block,
+                                     std::string category) {
+  return block.find(category, {
+      "matrix[1][1]", "matrix[1][2]", "matrix[1][3]",
+      "matrix[2][1]", "matrix[2][2]", "matrix[2][3]",
+      "matrix[3][1]", "matrix[3][2]", "matrix[3][3]",
+      "vector[1]", "vector[2]", "vector[3]"});
+}
+
+inline Mat4x4 get_transform_matrix(const cif::TableView::Row& r) {
+  return {{r.as_num(0), r.as_num(1), r.as_num(2), 0},
+          {r.as_num(3), r.as_num(4), r.as_num(5), 0},
+          {r.as_num(6), r.as_num(7), r.as_num(8), 0},
+          {r.as_num(9), r.as_num(10), r.as_num(11), 1}};
+}
+
 inline Structure structure_from_cif_block(const cif::Block& block) {
   Structure st;
   st.name = block.name;
@@ -66,19 +82,11 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     st.info[new_date_tag] = st.info[old_date_tag];
   add_info("_struct_keywords.pdbx_keywords");
   add_info("_struct_keywords.text");
-
-  cif::TableView ncs_oper = block.find("_struct_ncs_oper.",
-             {"matrix[1][1]", "matrix[1][2]", "matrix[1][3]",
-              "matrix[2][1]", "matrix[2][2]", "matrix[2][3]",
-              "matrix[3][1]", "matrix[3][2]", "matrix[3][3]",
-              "vector[1]", "vector[2]", "vector[3]", "code"});
+  cif::TableView ncs_oper = find_transform(block, "_struct_ncs_oper.");
+  int given_idx = block.add_field(ncs_oper, "_struct_ncs_oper.given");
   for (auto op : ncs_oper) {
-    Matrix33 mat{op.as_num(0), op.as_num(1), op.as_num(2),
-                 op.as_num(3), op.as_num(4), op.as_num(5),
-                 op.as_num(6), op.as_num(7), op.as_num(8)};
-    Position vec{op.as_num(9), op.as_num(10), op.as_num(11)};
-    bool given = (op.as_str(12) == "given");
-    st.ncs.push_back({given, mat, vec});
+    bool given = (given_idx > 0 && op.as_str(given_idx) == "given");
+    st.ncs.push_back({given, get_transform_matrix(op)});
   }
 
   auto aniso_map = get_anisotropic_u(block);

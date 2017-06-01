@@ -167,12 +167,11 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
   for (size_t i = 0; i != st.ncs.size(); i++) {
     const NcsOp& op = st.ncs[i];
     char g = op.given ? '1' : ' ';
-    WRITE("MTRIX%d %3jd%10.6f%10.6f%10.6f %14.5f    %-21c\n",
-          1, i+1, op.rot.a11, op.rot.a12, op.rot.a13, op.tran.x, g);
-    WRITE("MTRIX%d %3jd%10.6f%10.6f%10.6f %14.5f    %-21c\n",
-          2, i+1, op.rot.a21, op.rot.a22, op.rot.a23, op.tran.y, g);
-    WRITE("MTRIX%d %3jd%10.6f%10.6f%10.6f %14.5f    %-21c\n",
-          3, i+1, op.rot.a31, op.rot.a32, op.rot.a33, op.tran.z, g);
+    for (int j = 0; j < 3; ++j) {
+      auto r = op.transform.row(j);
+      WRITE("MTRIX%d %3jd%10.6f%10.6f%10.6f %14.5f    %-21c\n",
+            j+1, i+1, r.x, r.y, r.z, r.w, g);
+    }
   }
   char short_buf[8];
   char short_buf2[8];

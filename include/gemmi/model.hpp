@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <linalg.h>
 #include "elem.hpp"
 #include "unitcell.hpp"
 
@@ -54,6 +55,8 @@ struct SequenceItem {
 };
 
 using Sequence = std::vector<SequenceItem>;
+
+typedef linalg::mat<double,4,4> Mat4x4;
 
 struct Entity {
   std::string id;  // it does not need to be number according to mmCIF spec
@@ -147,9 +150,7 @@ struct Model {
 
 struct NcsOp {
   bool given;
-  // may be changed to tranformation matrix, or quaternion+vector
-  Matrix33 rot;
-  Position tran;
+  Mat4x4 transform;
 };
 
 struct Structure {
