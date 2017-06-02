@@ -24,11 +24,9 @@ else
 fi
 
 # TITLE, KEYWDS: line breaks can happen in different places
-# SCALE: numerical errors ~1e-6
 not_identical="\
 ^TITLE|\
-^KEYWDS|\
-^SCALE"
+^KEYWDS"
 absent="\
 ^AUTHOR|\
 ^CISPEP|\

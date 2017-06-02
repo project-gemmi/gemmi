@@ -48,6 +48,13 @@ inline Mat4x4 get_transform_matrix(const cif::TableView::Row& r) {
           {r.as_num(9), r.as_num(10), r.as_num(11), 1}};
 }
 
+inline Mat4x4 Matrix33_to_Mat4x4(const Matrix33& m) {
+  return {{m.a11, m.a21, m.a31, 0},
+          {m.a12, m.a22, m.a32, 0},
+          {m.a13, m.a23, m.a33, 0},
+          {    0,     0,     0, 1}};
+}
+
 inline Structure structure_from_cif_block(const cif::Block& block) {
   Structure st;
   st.name = block.name;
@@ -88,6 +95,27 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     bool given = (ncs_code_idx > 0 && op.as_str(ncs_code_idx) == "given");
     st.ncs.push_back({given, get_transform_matrix(op)});
   }
+
+  cif::TableView fract_tv = find_transform(block, "_atom_sites.fract_transf_");
+  if (fract_tv.length() > 0) {
+    Mat4x4 fract = get_transform_matrix(fract_tv[0]);
+    Mat4x4 diff = linalg::abs(fract - Matrix33_to_Mat4x4(st.cell.frac));
+    if (linalg::maxelem(diff.x) < 1e-6 &&
+        linalg::maxelem(diff.y) < 1e-6 &&
+        linalg::maxelem(diff.z) < 1e-6) {
+      st.cell.frac = {fract.x.x, fract.y.x, fract.z.x,
+                      fract.x.y, fract.y.y, fract.z.y,
+                      fract.x.z, fract.y.z, fract.z.z};
+      //TODO: st.cell.orth
+    } else {
+      // warning
+    }
+  }
+
+  // We ignore _database_PDB_matrix.scale* which is not used
+  // and is redundant with _atom_sites.fract_transf_*.
+  // _database_PDB_matrix.origx* is actually also redundant, but is used
+  // in PDB entries. TODO: multiply scale by origx.
 
   auto aniso_map = get_anisotropic_u(block);
 
