@@ -156,13 +156,14 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
         cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma,
         st.sg_hm.empty() ? "P 1" : st.sg_hm.c_str(),
         st.get_info("_cell.Z_PDB", "1"));
+  const Matrix33& frac = cell.frac;
   // We add a small number to avoid negative 0.
   WRITE("SCALE1 %13.6f%10.6f%10.6f %14.5f %24s\n",
-        cell.frac.a11+1e-15, cell.frac.a12+1e-15, cell.frac.a13+1e-15, 0.0, "");
+        frac.a11+1e-15, frac.a12+1e-15, frac.a13+1e-15, cell.shift.x+1e-15, "");
   WRITE("SCALE2 %13.6f%10.6f%10.6f %14.5f %24s\n",
-        cell.frac.a21+1e-15, cell.frac.a22+1e-15, cell.frac.a23+1e-15, 0.0, "");
+        frac.a21+1e-15, frac.a22+1e-15, frac.a23+1e-15, cell.shift.y+1e-15, "");
   WRITE("SCALE3 %13.6f%10.6f%10.6f %14.5f %24s\n",
-        cell.frac.a31+1e-15, cell.frac.a32+1e-15, cell.frac.a33+1e-15, 0.0, "");
+        frac.a31+1e-15, frac.a32+1e-15, frac.a33+1e-15, cell.shift.z+1e-15, "");
 
   for (size_t i = 0; i != st.ncs.size(); i++) {
     const NcsOp& op = st.ncs[i];

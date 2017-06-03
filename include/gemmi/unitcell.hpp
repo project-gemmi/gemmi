@@ -31,6 +31,7 @@ struct UnitCell {
   double alpha = 90.0, beta = 90.0, gamma = 90.0;
   Matrix33 orth = {1., 0., 0., 0., 1., 0., 0., 0., 1.};
   Matrix33 frac = {1., 0., 0., 0., 1., 0., 0., 0., 1.};
+  Position shift = {0., 0., 0.};
 
   void calculate_matrices() {
     double deg2rad = 3.1415926535897932384626433832795029 / 180.0;
