@@ -582,10 +582,10 @@ int Block::add_field(TableView& table, const std::string& full_tag) const {
       return (int) table.cols.size() - 1;
     }
   } else {
-    const std::string* v = find_value(full_tag);
-    if (v) {
+    if (const std::string* v = find_value(full_tag)) {
       table.cols.push_back(table.values_.size());
       table.values_.push_back(*v);
+      return (int) table.cols.size() - 1;
     }
   }
   return -1;
