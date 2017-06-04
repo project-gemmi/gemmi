@@ -175,6 +175,25 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
     asym_loop.values.push_back(ch.name);
     asym_loop.values.push_back(ch.entity ? ch.entity->id : "?");
   }
+
+  // _atom_sites
+  if (st.cell.explicit_matrices) {
+    block.update_value("_atom_sites.entry_id", id);
+    std::string prefix = "_atom_sites.fract_transf_";
+    block.update_value(prefix + "matrix[1][1]", to_str(st.cell.frac.a11));
+    block.update_value(prefix + "matrix[1][2]", to_str(st.cell.frac.a12));
+    block.update_value(prefix + "matrix[1][3]", to_str(st.cell.frac.a13));
+    block.update_value(prefix + "matrix[2][1]", to_str(st.cell.frac.a21));
+    block.update_value(prefix + "matrix[2][2]", to_str(st.cell.frac.a22));
+    block.update_value(prefix + "matrix[2][3]", to_str(st.cell.frac.a23));
+    block.update_value(prefix + "matrix[3][1]", to_str(st.cell.frac.a31));
+    block.update_value(prefix + "matrix[3][2]", to_str(st.cell.frac.a32));
+    block.update_value(prefix + "matrix[3][3]", to_str(st.cell.frac.a33));
+    block.update_value(prefix + "vector[1]",    to_str(st.cell.shift.x));
+    block.update_value(prefix + "vector[2]",    to_str(st.cell.shift.y));
+    block.update_value(prefix + "vector[3]",    to_str(st.cell.shift.z));
+  }
+
   // SEQRES from PDB doesn't record microheterogeneity, so if the resulting
   // cif has unknown("?") _entity_poly_seq.num, it cannot be trusted.
   cif::Loop& poly_loop = block.clear_or_add_loop("_entity_poly_seq.");

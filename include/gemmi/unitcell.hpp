@@ -6,6 +6,7 @@
 #define GEMMI_UNITCELL_HPP_
 
 #include <cmath>
+#include <linalg.h>
 
 namespace gemmi {
 namespace mol {
@@ -32,6 +33,7 @@ struct UnitCell {
   Matrix33 orth = {1., 0., 0., 0., 1., 0., 0., 0., 1.};
   Matrix33 frac = {1., 0., 0., 0., 1., 0., 0., 0., 1.};
   Position shift = {0., 0., 0.};
+  bool explicit_matrices = false;
 
   void calculate_matrices() {
     double deg2rad = 3.1415926535897932384626433832795029 / 180.0;
@@ -66,6 +68,18 @@ struct UnitCell {
             0.,     0.,                           1 / (sb_s1rca2 * c)};
   }
 
+  void set_matrices_from_fract(const linalg::mat<double,4,4>& fract) {
+    frac = {fract.x.x, fract.y.x, fract.z.x,
+            fract.x.y, fract.y.y, fract.z.y,
+            fract.x.z, fract.y.z, fract.z.z};
+    shift = {fract.w.x, fract.w.y, fract.w.z};
+    auto ortho = linalg::inverse(fract);
+    orth = {ortho.x.x, ortho.y.x, ortho.z.x,
+            ortho.x.y, ortho.y.y, ortho.z.y,
+            ortho.x.z, ortho.y.z, ortho.z.z};
+    explicit_matrices = true;
+  }
+
   void set(double a_, double b_, double c_,
            double alpha_, double beta_, double gamma_) {
     a = a_;
@@ -74,7 +88,8 @@ struct UnitCell {
     alpha = alpha_;
     beta = beta_;
     gamma = gamma_;
-    calculate_matrices();
+    if (!explicit_matrices)
+      calculate_matrices();
   }
 
   Position orthogonalize(const Position& f) const { return orth.multiply(f); }

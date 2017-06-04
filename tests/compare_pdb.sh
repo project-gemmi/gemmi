@@ -57,7 +57,11 @@ absent="\
 zgrep -v -E "$not_identical|$absent" "$pdb" > "$pout"
 inp="$cif"
 [[ ${FROM_PDB:-} = 1 ]] && inp="$pout"
-[[ ${PDB_BACK:-} = 1 ]] && ../gemmi-convert "$pout" "$cifout" && inp="$cifout"
+if [[ ${PDB_BACK:-} = 1 ]]; then
+    echo "$(basename "$pout") -> $(basename "$cifout")"
+    ../gemmi-convert "$pout" "$cifout"
+    inp="$cifout"
+fi
 ../gemmi-convert --to=pdb "$inp" - | grep -v -E $not_identical > "$gout"
 echo "Comparing ($(basename "$inp") ->) $gout vs $pout"
 

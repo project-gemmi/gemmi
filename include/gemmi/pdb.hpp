@@ -184,6 +184,19 @@ signed char read_charge(char digit, char sign) {
   return 0;
 }
 
+int read_matrix(Mat4x4& matrix, char* line, int len) {
+  if (len < 46)
+    return 0;
+  char n = line[5] - '0';
+  if (n >= 1 && n <= 3) {
+    matrix.x[n-1] = read_pdb_number(line+10, 10);
+    matrix.y[n-1] = read_pdb_number(line+20, 10);
+    matrix.z[n-1] = read_pdb_number(line+30, 10);
+    matrix.w[n-1] = read_pdb_number(line+45, 10);
+  }
+  return n;
+}
+
 }  // namespace internal
 
 
@@ -201,6 +214,7 @@ Structure read_pdb_from_input(InputType&& in) {
   Residue *resi = nullptr;
   internal::EntitySetter ent_setter(st);
   char line[88] = {0};
+  Mat4x4 matrix = identity4();
   while (size_t len = in.copy_line(line)) {
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
       if (len < 77) // should we allow missing element
@@ -319,7 +333,11 @@ Structure read_pdb_from_input(InputType&& in) {
         st.info["_cell.Z_PDB"] = read_pdb_string(line+66, 4);
 
     } else if (is_record_type(line, "MTRIXn")) {
-
+      if (internal::read_matrix(matrix, line, len) == 3) {
+        bool given = len > 59 && line[59] == '1';
+        st.ncs.push_back({given, matrix});
+        matrix = identity4();
+      }
     } else if (is_record_type(line, "MODEL")) {
       if (model && chain)
         wrong("MODEL without ENDMDL?");
@@ -339,6 +357,10 @@ Structure read_pdb_from_input(InputType&& in) {
       chain = nullptr;
 
     } else if (is_record_type(line, "SCALEn")) {
+      if (internal::read_matrix(matrix, line, len) == 3) {
+        st.cell.set_matrices_from_fract(matrix);
+        matrix = identity4();
+      }
 
     } else if (is_record_type(line, "END")) {  // NUL == ' ' & ~0x20
       break;

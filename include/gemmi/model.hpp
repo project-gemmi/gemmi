@@ -58,6 +58,10 @@ using Sequence = std::vector<SequenceItem>;
 
 typedef linalg::mat<double,4,4> Mat4x4;
 
+inline constexpr Mat4x4 identity4() {
+  return {{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1}};
+}
+
 struct Entity {
   std::string id;  // it does not need to be number according to mmCIF spec
   EntityType type;

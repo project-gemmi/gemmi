@@ -99,14 +99,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   cif::TableView fract_tv = find_transform(block, "_atom_sites.fract_transf_");
   if (fract_tv.length() > 0) {
     Mat4x4 fract = get_transform_matrix(fract_tv[0]);
-    st.cell.frac = {fract.x.x, fract.y.x, fract.z.x,
-                    fract.x.y, fract.y.y, fract.z.y,
-                    fract.x.z, fract.y.z, fract.z.z};
-    st.cell.shift = {fract.w.x, fract.w.y, fract.w.z};
-    Mat4x4 ortho = linalg::inverse(fract);
-    st.cell.orth = {ortho.x.x, ortho.y.x, ortho.z.x,
-                    ortho.x.y, ortho.y.y, ortho.z.y,
-                    ortho.x.z, ortho.y.z, ortho.z.z};
+    st.cell.set_matrices_from_fract(fract);
   }
 
   // We ignore _database_PDB_matrix.scale* which is not used
