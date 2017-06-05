@@ -214,7 +214,7 @@ Structure read_pdb_from_input(InputType&& in) {
   Residue *resi = nullptr;
   internal::EntitySetter ent_setter(st);
   char line[88] = {0};
-  Mat4x4 matrix = identity4();
+  Mat4x4 matrix = linalg::identity;
   while (size_t len = in.copy_line(line)) {
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
       if (len < 77) // should we allow missing element
@@ -336,7 +336,7 @@ Structure read_pdb_from_input(InputType&& in) {
       if (internal::read_matrix(matrix, line, len) == 3) {
         bool given = len > 59 && line[59] == '1';
         st.ncs.push_back({given, matrix});
-        matrix = identity4();
+        matrix = linalg::identity;
       }
     } else if (is_record_type(line, "MODEL")) {
       if (model && chain)
@@ -359,7 +359,7 @@ Structure read_pdb_from_input(InputType&& in) {
     } else if (is_record_type(line, "SCALEn")) {
       if (internal::read_matrix(matrix, line, len) == 3) {
         st.cell.set_matrices_from_fract(matrix);
-        matrix = identity4();
+        matrix = linalg::identity;
       }
 
     } else if (is_record_type(line, "END")) {  // NUL == ' ' & ~0x20
