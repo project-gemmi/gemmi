@@ -13,9 +13,12 @@
 
 #include <cstring>
 #include <iostream>
+#include <map>
 #include <optionparser.h>
 
 #define EXE_NAME "gemmi-convert"
+
+enum class FileType : char { Json, Pdb, Cif, Null, Unknown };
 
 struct Arg: public option::Arg {
   static option::ArgStatus Required(const option::Option& option, bool msg) {
@@ -50,7 +53,8 @@ struct Arg: public option::Arg {
   }
 };
 
-enum OptionIndex { Unknown, Help, FormatIn, FormatOut, Bare, Numb, QMark };
+enum OptionIndex { Unknown, Help, Verbose, FormatIn, FormatOut,
+                   Bare, Numb, QMark };
 static const option::Descriptor usage[] = {
   { Unknown, 0, "", "", Arg::None,
     "Usage:"
@@ -58,6 +62,7 @@ static const option::Descriptor usage[] = {
     "\n\nwith possible conversions: cif->json and cif<->pdb."
     "\n\nGeneral options:" },
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
+  { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { FormatIn, 0, "", "from", Arg::FileFormat,
     "  --from=pdb|cif  \tInput format (default: from the file extension)." },
   { FormatOut, 0, "", "to", Arg::FileFormat,
@@ -77,39 +82,39 @@ static const option::Descriptor usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-
-char get_format_from_extension(const std::string& path) {
+FileType get_format_from_extension(const std::string& path) {
   using gemmi::iends_with;
   if (iends_with(path, ".pdb") || iends_with(path, ".ent") ||
       iends_with(path, ".pdb.gz") || iends_with(path, ".ent.gz"))
-    return 'p';
+    return FileType::Pdb;
   if (iends_with(path, ".js") || iends_with(path, ".json"))
-    return 'j';
+    return FileType::Json;
   if (iends_with(path, ".cif") || iends_with(path, ".cif.gz"))
-    return 'c';
+    return FileType::Cif;
   if (path == "/dev/null")
-    return 'n';
-  return 0;
+    return FileType::Null;
+  return FileType::Unknown;
 }
 
 [[noreturn]]
 inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 
-void convert(const char* input, char input_format,
-             const char* output, char output_format,
+void convert(const char* input, FileType input_type,
+             const char* output, FileType output_type,
              const std::vector<option::Option>& options) {
   gemmi::cif::Document cif_in;
   gemmi::mol::Structure st;
   // hidden feature for testing cif -> Structure -> cif
   bool force_structure = gemmi::ends_with(output, ".ciF");
-  if (input_format == 'c') {
+  if (input_type == FileType::Cif) {
     cif_in = gemmi::cif::read_any(input);
-    if (output_format == 'p' || output_format == 'n' || force_structure) {
+    if (output_type == FileType::Pdb || output_type == FileType::Null ||
+        force_structure) {
       st = gemmi::mol::read_atoms(cif_in);
       if (st.models.empty())
         fail("No atoms in the input file. Is it mmCIF?");
     }
-  } else if (input_format == 'p') {
+  } else if (input_type == FileType::Pdb) {
     st = gemmi::mol::read_pdb_any(input);
   } else {
     fail("Unexpected input format.");
@@ -126,8 +131,8 @@ void convert(const char* input, char input_format,
     os = &std::cout;
   }
 
-  if (output_format == 'j') {
-    if (input_format != 'c')
+  if (output_type == FileType::Json) {
+    if (input_type != FileType::Cif)
       fail("Conversion to JSON is possible only from CIF");
     gemmi::cif::JsonWriter writer(*os);
     writer.use_bare_tags = options[Bare];
@@ -143,8 +148,8 @@ void convert(const char* input, char input_format,
     writer.write_json(cif_in);
   }
 
-  else if (output_format == 'p' || output_format == 'n') {
-    if (output_format == 'p')
+  else if (output_type == FileType::Pdb || output_type == FileType::Null) {
+    if (output_type == FileType::Pdb)
       gemmi::mol::write_pdb(st, *os);
     else {
       *os << st.name << ": " << count_atom_sites(st) << " atom locations";
@@ -152,9 +157,9 @@ void convert(const char* input, char input_format,
         *os << " (total in " << st.models.size() << " models)";
       *os << ".\n";
     }
-  } else if (output_format == 'c') {
+  } else if (output_type == FileType::Cif) {
     // cif to cif round trip is for testing only
-    if (input_format != 'c' || force_structure) {
+    if (input_type != FileType::Cif || force_structure) {
       cif_in.blocks.clear();  // temporary, for testing
       cif_in.blocks.resize(1);
       gemmi::mol::update_cif_block(st, cif_in.blocks[0]);
@@ -194,24 +199,31 @@ int main(int argc, char **argv) {
   const char* input = parse.nonOption(0);
   const char* output = parse.nonOption(1);
 
-  char input_format = options[FormatIn] ? options[FormatIn].arg[0]
-                                        : get_format_from_extension(input);
-  if (input_format == 0) {
+  std::map<std::string, FileType> filetypes {{"json", FileType::Json},
+                                             {"pdb", FileType::Pdb},
+                                             {"cif", FileType::Cif},
+                                             {"none", FileType::Null}};
+
+  FileType in_type = options[FormatIn] ? filetypes[options[FormatIn].arg]
+                                       : get_format_from_extension(input);
+  if (in_type == FileType::Unknown) {
     std::cerr << "The input format cannot be determined from input"
                  " filename. Use option --from.\n";
     return 1;
   }
 
-  char output_format = options[FormatOut] ? options[FormatOut].arg[0]
-                                          : get_format_from_extension(output);
-  if (output_format == 0) {
+  FileType out_type = options[FormatOut] ? filetypes[options[FormatOut].arg]
+                                         : get_format_from_extension(output);
+  if (out_type == FileType::Unknown) {
     std::cerr << "The output format cannot be determined from output"
                  " filename. Use option --to.\n";
     return 1;
   }
+  if (options[Verbose])
+    std::cerr << "Converting " << input << " ..." << std::endl;
 
   try {
-    convert(input, input_format, output, output_format, options);
+    convert(input, in_type, output, out_type, options);
   } catch (tao::pegtl::parse_error& e) {
     std::cerr << e.what() << std::endl;
     return 1;
