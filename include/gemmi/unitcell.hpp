@@ -82,6 +82,8 @@ struct UnitCell {
 
   void set(double a_, double b_, double c_,
            double alpha_, double beta_, double gamma_) {
+    if (gamma_ == 0.0)  // ignore empty/partial CRYST1 (example: 3iyp)
+      return;
     a = a_;
     b = b_;
     c = c_;

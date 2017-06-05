@@ -176,7 +176,20 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
     asym_loop.values.push_back(ch.entity ? ch.entity->id : "?");
   }
 
-  // _atom_sites
+  // _database_PDB_matrix (ORIGX)
+  if (st.origx != Mat4x4(linalg::identity)) {
+    block.update_value("_database_PDB_matrix.entry_id", id);
+    std::string prefix = "_database_PDB_matrix.origx";
+    for (int i = 0; i < 3; ++i) {
+      std::string s = "[" + std::to_string(i+1) + "]";
+      block.update_value(prefix + s + "[1]", to_str(st.origx.x[i]));
+      block.update_value(prefix + s + "[2]", to_str(st.origx.y[i]));
+      block.update_value(prefix + s + "[3]", to_str(st.origx.z[i]));
+      block.update_value(prefix + "_vector" + s, to_str(st.origx.w[i]));
+    }
+  }
+
+  // _atom_sites (SCALE)
   if (st.cell.explicit_matrices) {
     block.update_value("_atom_sites.entry_id", id);
     std::string prefix = "_atom_sites.fract_transf_";

@@ -44,7 +44,6 @@ absent="\
 ^MASTER|\
 ^MDLTYP|\
 ^MODRES|\
-^ORIGX|\
 ^REMARK|\
 ^REVDAT|\
 ^SEQADV|\

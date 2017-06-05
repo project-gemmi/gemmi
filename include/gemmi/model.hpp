@@ -161,6 +161,9 @@ struct Structure {
   std::vector<NcsOp> ncs;
   std::vector<std::unique_ptr<Entity>> entities;
 
+  // Store ORIGXn / _database_PDB_matrix.origx*
+  Mat4x4 origx = linalg::identity;
+
   // Minimal metadata with keys being mmcif tags: _entry.id, _exptl.method, ...
   std::map<std::string, std::string> info;
 

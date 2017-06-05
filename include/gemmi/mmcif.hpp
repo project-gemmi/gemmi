@@ -33,12 +33,14 @@ get_anisotropic_u(const cif::Block& block) {
 }
 
 inline cif::TableView find_transform(const cif::Block& block,
-                                     std::string category) {
+                                     std::string category,
+                                     std::string mstr="matrix",
+                                     std::string vstr="vector") {
   return block.find(category, {
-      "matrix[1][1]", "matrix[2][1]", "matrix[3][1]",
-      "matrix[1][2]", "matrix[2][2]", "matrix[3][2]",
-      "matrix[1][3]", "matrix[2][3]", "matrix[3][3]",
-      "vector[1]", "vector[2]", "vector[3]"});
+      mstr + "[1][1]", mstr + "[2][1]", mstr + "[3][1]",
+      mstr + "[1][2]", mstr + "[2][2]", mstr + "[3][2]",
+      mstr + "[1][3]", mstr + "[2][3]", mstr + "[3][3]",
+      vstr + "[1]",    vstr + "[2]",    vstr + "[3]"});
 }
 
 inline Mat4x4 get_transform_matrix(const cif::TableView::Row& r) {
@@ -96,16 +98,21 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     st.ncs.push_back({given, get_transform_matrix(op)});
   }
 
+  // PDBx/mmcif spec defines both _database_PDB_matrix.scale* and
+  // _atom_sites.fract_transf_* as equivalent of pdb SCALE, but the former
+  // is not used, so we ignore it.
   cif::TableView fract_tv = find_transform(block, "_atom_sites.fract_transf_");
   if (fract_tv.length() > 0) {
     Mat4x4 fract = get_transform_matrix(fract_tv[0]);
     st.cell.set_matrices_from_fract(fract);
   }
 
-  // We ignore _database_PDB_matrix.scale* which is not used
-  // and is redundant with _atom_sites.fract_transf_*.
-  // _database_PDB_matrix.origx* is actually also redundant, but is used
-  // in PDB entries. TODO: multiply scale by origx.
+  // We store origx just for completeness. It may never be useful
+  // for anything but writing it back to a file.
+  cif::TableView origx_tv = find_transform(block, "_database_PDB_matrix.origx",
+                                           "", "_vector");
+  if (origx_tv.length() > 0)
+    st.origx = get_transform_matrix(origx_tv[0]);
 
   auto aniso_map = get_anisotropic_u(block);
 

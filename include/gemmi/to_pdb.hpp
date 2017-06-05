@@ -156,6 +156,9 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
         cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma,
         st.sg_hm.empty() ? "P 1" : st.sg_hm.c_str(),
         st.get_info("_cell.Z_PDB", "1"));
+  for (int i = 0; i < 3; ++i)
+    WRITE("ORIGX%d %13.6f%10.6f%10.6f %14.5f %24s\n",
+          i+1, st.origx.x[i], st.origx.y[i], st.origx.z[i], st.origx.w[i], "");
   const Matrix33& frac = cell.frac;
   // We add a small number to avoid negative 0.
   WRITE("SCALE1 %13.6f%10.6f%10.6f %14.5f %24s\n",

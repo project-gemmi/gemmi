@@ -361,6 +361,10 @@ Structure read_pdb_from_input(InputType&& in) {
         matrix = linalg::identity;
       }
 
+    } else if (is_record_type(line, "ORIGX")) {
+      if (read_matrix(matrix, line, len) == 3)
+        st.origx = matrix;
+
     } else if (is_record_type(line, "END")) {  // NUL == ' ' & ~0x20
       break;
     }
