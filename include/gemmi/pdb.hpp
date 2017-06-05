@@ -21,6 +21,8 @@
 namespace gemmi {
 namespace mol {
 
+namespace pdb_impl {
+
 class CstreamLineInput {
 public:
   std::string source;
@@ -51,7 +53,7 @@ inline std::string rtrimmed(std::string s) {
   return s;
 }
 
-inline int read_pdb_int(const char* p, int field_length) {
+inline int read_int(const char* p, int field_length) {
   int sign = 1;
   int n = 0;
   int i = 0;
@@ -75,7 +77,7 @@ template<int N> int read_base36(const char* p) {
   return std::strtol(zstr, NULL, 36);
 }
 
-inline double read_pdb_number(const char* p, int field_length) {
+inline double read_double(const char* p, int field_length) {
   int sign = 1;
   double d = 0;
   int i = 0;
@@ -97,7 +99,7 @@ inline double read_pdb_number(const char* p, int field_length) {
   return sign * d;
 }
 
-inline std::string read_pdb_string(const char* p, int field_length) {
+inline std::string read_string(const char* p, int field_length) {
   // left trim
   while (std::isspace(*p)) {
     ++p;
@@ -118,8 +120,6 @@ inline bool is_record_type(const char* s, const char* record) {
   return ((s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]) & ~0x20202020) ==
           (record[0] << 24 | record[1] << 16 | record[2] << 8 | record[3]);
 }
-
-namespace internal {
 
 class EntitySetter {
 public:
@@ -189,19 +189,20 @@ int read_matrix(Mat4x4& matrix, char* line, int len) {
     return 0;
   char n = line[5] - '0';
   if (n >= 1 && n <= 3) {
-    matrix.x[n-1] = read_pdb_number(line+10, 10);
-    matrix.y[n-1] = read_pdb_number(line+20, 10);
-    matrix.z[n-1] = read_pdb_number(line+30, 10);
-    matrix.w[n-1] = read_pdb_number(line+45, 10);
+    matrix.x[n-1] = read_double(line+10, 10);
+    matrix.y[n-1] = read_double(line+20, 10);
+    matrix.z[n-1] = read_double(line+30, 10);
+    matrix.w[n-1] = read_double(line+45, 10);
   }
   return n;
 }
 
-}  // namespace internal
+}  // namespace pdb_impl
 
 
 template<typename InputType>
 Structure read_pdb_from_input(InputType&& in) {
+  using namespace pdb_impl;
   auto wrong = [&in](const std::string& msg) {
     throw std::runtime_error("Problem in line " + std::to_string(in.line_num())
                              + ": " + msg);
@@ -212,14 +213,14 @@ Structure read_pdb_from_input(InputType&& in) {
   Model *model = st.find_or_add_model("1");
   Chain *chain = nullptr;
   Residue *resi = nullptr;
-  internal::EntitySetter ent_setter(st);
+  EntitySetter ent_setter(st);
   char line[88] = {0};
   Mat4x4 matrix = linalg::identity;
   while (size_t len = in.copy_line(line)) {
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
       if (len < 77) // should we allow missing element
         wrong("The line is too short to be correct:\n" + std::string(line));
-      std::string chain_name = read_pdb_string(line+20, 2);
+      std::string chain_name = read_string(line+20, 2);
       if (!chain || chain_name != chain->auth_name) {
         if (!model)
           wrong("ATOM/HETATM between models");
@@ -232,10 +233,10 @@ Structure read_pdb_from_input(InputType&& in) {
 
       // We support hybrid-36 extension, although it is never used in practice
       // as 9999 residues per chain are enough.
-      int seq_id = line[22] < 'A' ? read_pdb_int(line+22, 4)
+      int seq_id = line[22] < 'A' ? read_int(line+22, 4)
                                   : read_base36<4>(line+22) - 466560 + 10000;
       char ins_code = line[26] == ' ' ? '\0' : line[26];
-      std::string resi_name = read_pdb_string(line+17, 3);
+      std::string resi_name = read_string(line+17, 3);
 
       if (!resi || seq_id != resi->seq_id || seq_id == Residue::UnknownId ||
           resi_name != resi->name) {
@@ -243,19 +244,19 @@ Structure read_pdb_from_input(InputType&& in) {
         // Non-standard but widely used 4-character segment identifier.
         // Left-justified, and may include a space in the middle.
         // The segment may be a portion of a chain or a complete chain.
-        resi->segment = read_pdb_string(line+72, 4);
+        resi->segment = read_string(line+72, 4);
       }
 
       Atom atom;
-      atom.name = read_pdb_string(line+12, 4);
+      atom.name = read_string(line+12, 4);
       atom.altloc = line[16] == ' ' ? '\0' : line[16];
-      atom.charge = (len > 78 ? internal::read_charge(line[78], line[79]) : 0);
+      atom.charge = (len > 78 ? read_charge(line[78], line[79]) : 0);
       atom.element = Element(line+76);
-      atom.pos.x = read_pdb_number(line+30, 8);
-      atom.pos.y = read_pdb_number(line+38, 8);
-      atom.pos.z = read_pdb_number(line+46, 8);
-      atom.occ = read_pdb_number(line+54, 6);
-      atom.b_iso = read_pdb_number(line+60, 6);
+      atom.pos.x = read_double(line+30, 8);
+      atom.pos.y = read_double(line+38, 8);
+      atom.pos.z = read_double(line+46, 8);
+      atom.occ = read_double(line+54, 6);
+      atom.b_iso = read_double(line+60, 6);
       resi->atoms.emplace_back(atom);
 
     } else if (is_record_type(line, "ANISOU")) {
@@ -266,12 +267,12 @@ Structure read_pdb_from_input(InputType&& in) {
       Atom &atom = resi->atoms.back();
       if (atom.u11 != 0.)
         wrong("Duplicated ANISOU record or not directly after ATOM/HETATM.");
-      atom.u11 = read_pdb_int(line+28, 7) * 1e-4;
-      atom.u22 = read_pdb_int(line+35, 7) * 1e-4;
-      atom.u33 = read_pdb_int(line+42, 7) * 1e-4;
-      atom.u12 = read_pdb_int(line+49, 7) * 1e-4;
-      atom.u13 = read_pdb_int(line+56, 7) * 1e-4;
-      atom.u23 = read_pdb_int(line+63, 7) * 1e-4;
+      atom.u11 = read_int(line+28, 7) * 1e-4;
+      atom.u22 = read_int(line+35, 7) * 1e-4;
+      atom.u33 = read_int(line+42, 7) * 1e-4;
+      atom.u12 = read_int(line+49, 7) * 1e-4;
+      atom.u13 = read_int(line+56, 7) * 1e-4;
+      atom.u23 = read_int(line+63, 7) * 1e-4;
 
     } else if (is_record_type(line, "REMARK")) {
       // ignore for now
@@ -280,10 +281,10 @@ Structure read_pdb_from_input(InputType&& in) {
       // ignore for now
 
     } else if (is_record_type(line, "SEQRES")) {
-      std::string chain_name = read_pdb_string(line+10, 2);
+      std::string chain_name = read_string(line+10, 2);
       Entity* ent = ent_setter.set_for_chain(chain_name, EntityType::Polymer);
       for (int i = 19; i < 68; i += 4) {
-        std::string res_name = read_pdb_string(line+i, 3);
+        std::string res_name = read_string(line+i, 3);
         if (!res_name.empty())
           ent->sequence.emplace_back(res_name);
       }
@@ -318,22 +319,20 @@ Structure read_pdb_from_input(InputType&& in) {
         st.info["_exptl.method"] += rtrimmed(std::string(line+10, len-10-1));
 
     } else if (is_record_type(line, "CRYST1")) {
-      if (len > 54) {
-        st.cell.a = read_pdb_number(line+6, 9);
-        st.cell.b = read_pdb_number(line+15, 9);
-        st.cell.c = read_pdb_number(line+24, 9);
-        st.cell.alpha = read_pdb_number(line+33, 7);
-        st.cell.beta = read_pdb_number(line+40, 7);
-        st.cell.gamma = read_pdb_number(line+47, 7);
-        st.cell.calculate_matrices();
-      }
+      if (len > 54)
+        st.cell.set(read_double(line+6, 9),
+                    read_double(line+15, 9),
+                    read_double(line+24, 9),
+                    read_double(line+33, 7),
+                    read_double(line+40, 7),
+                    read_double(line+47, 7));
       if (len > 56)
-        st.sg_hm = read_pdb_string(line+55, 11);
+        st.sg_hm = read_string(line+55, 11);
       if (len > 67)
-        st.info["_cell.Z_PDB"] = read_pdb_string(line+66, 4);
+        st.info["_cell.Z_PDB"] = read_string(line+66, 4);
 
     } else if (is_record_type(line, "MTRIXn")) {
-      if (internal::read_matrix(matrix, line, len) == 3) {
+      if (read_matrix(matrix, line, len) == 3) {
         bool given = len > 59 && line[59] == '1';
         st.ncs.push_back({given, matrix});
         matrix = linalg::identity;
@@ -341,7 +340,7 @@ Structure read_pdb_from_input(InputType&& in) {
     } else if (is_record_type(line, "MODEL")) {
       if (model && chain)
         wrong("MODEL without ENDMDL?");
-      std::string name = std::to_string(read_pdb_int(line+10, 4));
+      std::string name = std::to_string(read_int(line+10, 4));
       model = st.find_or_add_model(name);
       if (!model->chains.empty())
         wrong("duplicate MODEL number: " + name);
@@ -357,7 +356,7 @@ Structure read_pdb_from_input(InputType&& in) {
       chain = nullptr;
 
     } else if (is_record_type(line, "SCALEn")) {
-      if (internal::read_matrix(matrix, line, len) == 3) {
+      if (read_matrix(matrix, line, len) == 3) {
         st.cell.set_matrices_from_fract(matrix);
         matrix = linalg::identity;
       }
@@ -378,7 +377,7 @@ Structure read_pdb_from_input(InputType&& in) {
 }
 
 inline Structure read_pdb_from_cstream(FILE* f, std::string source) {
-  CstreamLineInput input(f, source);
+  pdb_impl::CstreamLineInput input(f, source);
   return read_pdb_from_input(input);
 }
 
