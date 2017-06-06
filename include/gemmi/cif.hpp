@@ -16,6 +16,7 @@
 #include <vector>
 #include <new>
 #include <unordered_set>
+#include <initializer_list>
 
 #include <tao/pegtl.hpp>
 #ifdef CIF_VALIDATE_SHOW_TRACE
@@ -400,7 +401,8 @@ struct Block {
     return find({}, {tag});
   }
   int add_field(TableView& table, const std::string& field) const;
-  Loop& clear_or_add_loop(const std::string& prefix);
+  Loop& clear_or_add_loop(const std::string& prefix,
+                          const std::initializer_list<const char*>& tags);
   void delete_category(const std::string& prefix);
 };
 
@@ -526,7 +528,8 @@ inline void Block::delete_category(const std::string& prefix) {
       i.erase();
 }
 
-inline Loop& Block::clear_or_add_loop(const std::string& prefix) {
+inline Loop& Block::clear_or_add_loop(const std::string& prefix,
+                              const std::initializer_list<const char*>& tags) {
   for (Item& i : items)
     if (i.type == ItemType::Loop && i.has_prefix(prefix)) {
       i.loop.clear();
@@ -534,7 +537,11 @@ inline Loop& Block::clear_or_add_loop(const std::string& prefix) {
     }
   delete_category(prefix);
   items.emplace_back(0);
-  return items.back().loop;
+  Loop& loop = items.back().loop;
+  loop.tags.reserve(tags.size());
+  for (const char* tag : tags)
+    loop.tags.emplace_back(prefix + tag);
+  return loop;
 }
 
 inline TableView Block::find(const std::string& prefix,

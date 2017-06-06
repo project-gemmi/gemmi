@@ -33,24 +33,24 @@ inline std::string to_str(float d) {
 
 void add_cif_atoms(const Structure& st, cif::Block& block) {
   // atom list
-  cif::Loop& atom_loop = block.clear_or_add_loop("_atom_site.");
-  atom_loop.tags = {cif::LoopTag("_atom_site.id"),
-                    cif::LoopTag("_atom_site.type_symbol"),
-                    cif::LoopTag("_atom_site.label_atom_id"),
-                    cif::LoopTag("_atom_site.label_alt_id"),
-                    cif::LoopTag("_atom_site.label_comp_id"),
-                    cif::LoopTag("_atom_site.label_asym_id"),
-                    cif::LoopTag("_atom_site.label_seq_id"),
-                    cif::LoopTag("_atom_site.pdbx_PDB_ins_code"),
-                    cif::LoopTag("_atom_site.Cartn_x"),
-                    cif::LoopTag("_atom_site.Cartn_y"),
-                    cif::LoopTag("_atom_site.Cartn_z"),
-                    cif::LoopTag("_atom_site.occupancy"),
-                    cif::LoopTag("_atom_site.B_iso_or_equiv"),
-                    cif::LoopTag("_atom_site.pdbx_formal_charge"),
-                    cif::LoopTag("_atom_site.auth_seq_id"),
-                    cif::LoopTag("_atom_site.auth_asym_id"),
-                    cif::LoopTag("_atom_site.pdbx_PDB_model_num")};
+  cif::Loop& atom_loop = block.clear_or_add_loop("_atom_site.", {
+      "id",
+      "type_symbol",
+      "label_atom_id",
+      "label_alt_id",
+      "label_comp_id",
+      "label_asym_id",
+      "label_seq_id",
+      "pdbx_PDB_ins_code",
+      "Cartn_x",
+      "Cartn_y",
+      "Cartn_z",
+      "occupancy",
+      "B_iso_or_equiv",
+      "pdbx_formal_charge",
+      "auth_seq_id",
+      "auth_asym_id",
+      "pdbx_PDB_model_num"});
   std::vector<std::string>& vv = atom_loop.values;
   vv.reserve(count_atom_sites(st) * atom_loop.tags.size());
   std::vector<std::pair<int, const Atom*>> aniso;
@@ -88,14 +88,9 @@ void add_cif_atoms(const Structure& st, cif::Block& block) {
   if (aniso.empty()) {
     block.delete_loop("_atom_site_anisotrop.id");
   } else {
-    cif::Loop& aniso_loop = block.clear_or_add_loop("_atom_site_anisotrop.");
-    aniso_loop.tags = {cif::LoopTag("_atom_site_anisotrop.id"),
-                       cif::LoopTag("_atom_site_anisotrop.U[1][1]"),
-                       cif::LoopTag("_atom_site_anisotrop.U[2][2]"),
-                       cif::LoopTag("_atom_site_anisotrop.U[3][3]"),
-                       cif::LoopTag("_atom_site_anisotrop.U[1][2]"),
-                       cif::LoopTag("_atom_site_anisotrop.U[1][3]"),
-                       cif::LoopTag("_atom_site_anisotrop.U[2][3]")};
+    cif::Loop& aniso_loop = block.clear_or_add_loop("_atom_site_anisotrop.", {
+                                    "id", "U[1][1]", "U[2][2]", "U[3][3]",
+                                    "U[1][2]", "U[1][3]", "U[2][3]"});
     std::vector<std::string>& aniso_val = aniso_loop.values;
     aniso_val.reserve(aniso_loop.tags.size() * aniso.size());
     for (const auto& a : aniso) {
@@ -139,8 +134,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   block.update_value("_symmetry.space_group_name_H-M", cif::quote(st.sg_hm));
 
   // _entity
-  cif::Loop& entity_loop = block.clear_or_add_loop("_entity.");
-  entity_loop.tags = {cif::LoopTag("_entity.id"), cif::LoopTag("_entity.type")};
+  cif::Loop& entity_loop = block.clear_or_add_loop("_entity.", {"id", "type"});
   for (const auto& ent : st.entities) {
     entity_loop.values.push_back(ent->id);
     entity_loop.values.push_back(ent->type_as_string());
@@ -168,16 +162,11 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
 
   // _struct_ncs_oper (MTRIX)
   if (!st.ncs.empty()) {
-    cif::Loop& ncs_oper = block.clear_or_add_loop("_struct_ncs_oper.");
-    ncs_oper.tags.emplace_back("_struct_ncs_oper.id");
-    ncs_oper.tags.emplace_back("_struct_ncs_oper.code");
-    for (int i = 0; i < 3; ++i) {
-      std::string s = "[" + std::to_string(i+1) + "]";
-      ncs_oper.tags.emplace_back("_struct_ncs_oper.matrix" + s + "[1]");
-      ncs_oper.tags.emplace_back("_struct_ncs_oper.matrix" + s + "[2]");
-      ncs_oper.tags.emplace_back("_struct_ncs_oper.matrix" + s + "[3]");
-      ncs_oper.tags.emplace_back("_struct_ncs_oper.vector" + s);
-    }
+    cif::Loop& ncs_oper = block.clear_or_add_loop("_struct_ncs_oper.",
+        {"id", "code",
+         "matrix[1][1]", "matrix[1][2]", "matrix[1][3]", "vector[1]",
+         "matrix[2][1]", "matrix[2][2]", "matrix[2][3]", "vector[2]",
+         "matrix[3][1]", "matrix[3][2]", "matrix[3][3]", "vector[3]"});
     int n = 1;
     for (const NcsOp& op : st.ncs) {
       ncs_oper.values.emplace_back(std::to_string(n++));
@@ -189,11 +178,9 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   }
 
   // _struct_asym
-  cif::Loop& asym_loop = block.clear_or_add_loop("_struct_asym.");
-  asym_loop.tags.emplace_back("_struct_asym.id");
-  asym_loop.tags.emplace_back("_struct_asym.entity_id");
-  const std::vector<Chain>& asym_chains = st.get_chains();
-  for (const auto& ch : asym_chains) {
+  cif::Loop& asym_loop = block.clear_or_add_loop("_struct_asym.",
+                                                 {"id", "entity_id"});
+  for (const auto& ch : st.get_chains()) {
     asym_loop.values.push_back(ch.name);
     asym_loop.values.push_back(ch.entity ? ch.entity->id : "?");
   }
@@ -231,10 +218,8 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
 
   // SEQRES from PDB doesn't record microheterogeneity, so if the resulting
   // cif has unknown("?") _entity_poly_seq.num, it cannot be trusted.
-  cif::Loop& poly_loop = block.clear_or_add_loop("_entity_poly_seq.");
-  poly_loop.tags = {cif::LoopTag("_entity_poly_seq.entity_id"),
-                    cif::LoopTag("_entity_poly_seq.num"),
-                    cif::LoopTag("_entity_poly_seq.mon_id")};
+  cif::Loop& poly_loop = block.clear_or_add_loop("_entity_poly_seq.", {
+                                      "entity_id", "num", "mon_id"});
   for (const auto& ent : st.entities)
     if (ent->type == EntityType::Polymer)
       for (const SequenceItem& si : ent->sequence) {
@@ -243,9 +228,6 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
                                                   : "?");
         poly_loop.values.emplace_back(si.mon);
       }
-
-  // matrices (scaling, NCS, etc)
-  // TODO
 
   add_cif_atoms(st, block);
 }
