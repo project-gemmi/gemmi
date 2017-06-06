@@ -166,6 +166,28 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   if (keywords != st.info.end())
     block.update_value(keywords->first, cif::quote(keywords->second));
 
+  // _struct_ncs_oper (MTRIX)
+  if (!st.ncs.empty()) {
+    cif::Loop& ncs_oper = block.clear_or_add_loop("_struct_ncs_oper.");
+    ncs_oper.tags.emplace_back("_struct_ncs_oper.id");
+    ncs_oper.tags.emplace_back("_struct_ncs_oper.code");
+    for (int i = 0; i < 3; ++i) {
+      std::string s = "[" + std::to_string(i+1) + "]";
+      ncs_oper.tags.emplace_back("_struct_ncs_oper.matrix" + s + "[1]");
+      ncs_oper.tags.emplace_back("_struct_ncs_oper.matrix" + s + "[2]");
+      ncs_oper.tags.emplace_back("_struct_ncs_oper.matrix" + s + "[3]");
+      ncs_oper.tags.emplace_back("_struct_ncs_oper.vector" + s);
+    }
+    int n = 1;
+    for (const NcsOp& op : st.ncs) {
+      ncs_oper.values.emplace_back(std::to_string(n++));
+      ncs_oper.values.emplace_back(op.given ? "given" : "generate");
+      for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 4; ++j)
+          ncs_oper.values.emplace_back(to_str(op.transform[j][i]));
+    }
+  }
+
   // _struct_asym
   cif::Loop& asym_loop = block.clear_or_add_loop("_struct_asym.");
   asym_loop.tags.emplace_back("_struct_asym.id");

@@ -91,6 +91,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     st.info[new_date_tag] = st.info[old_date_tag];
   add_info("_struct_keywords.pdbx_keywords");
   add_info("_struct_keywords.text");
+
   cif::TableView ncs_oper = find_transform(block, "_struct_ncs_oper.");
   int ncs_code_idx = block.add_field(ncs_oper, "_struct_ncs_oper.code");
   for (auto op : ncs_oper) {
