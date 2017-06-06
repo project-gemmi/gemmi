@@ -77,6 +77,9 @@ static const option::Descriptor usage[] = {
                              "\v  mix (default) - quote only numbs with s.u." },
   { QMark, 0, "", "unknown", Arg::Required,
     "  --unknown=STRING  \tJSON representation of CIF's '?' (default: null)." },
+  { Unknown, 0, "", "", Arg::None, "\nMacromolecular options:" },
+  { ExpandNcs, 0, "", "expand-ncs", Arg::None,
+    "  --expand-ncs  \tExpand NCS mates specified in MTRIXn or equivalent." },
   { Unknown, 0, "", "", Arg::None,
     "\nWhen output file is -, write to standard output." },
   { 0, 0, 0, 0, 0, 0 }
@@ -99,17 +102,58 @@ FileType get_format_from_extension(const std::string& path) {
 [[noreturn]]
 inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 
+static std::string get_chain_letter(const std::vector<Chain>& chains,
+                                    bool short_chain_names) {
+  if (short_chain_names) {
+    char symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                     "abcdefghijklmnopqrstuvwxyz01234567890";
+    for (char symbol : symbols)
+      if (find_if(chains.begin(), chains.end(),
+                  [&](const Chain& ch) { return ch.name == symbol; })
+          == std::end(symbols))
+        return std::string(1, symbol);
+  }
+}
+
+static void expand_ncs(Structure& st, bool short_chain_names) {
+  int n_ops = std::count_if(st.ncs.begin(), st.ncs.end(),
+                            [](NcsOp& op){ return !op.given; });
+  if (n_ops == 0)
+    return;
+  for (Model& model : st.models) {
+    size_t new_length = model.chains.size() * (n_ops + 1);
+    if (new_length >= 63)
+      short_chain_names = false;
+    std::string next_name;
+    model.chains.reserve(new_length);
+    for (const NcsOp& op : st.ncs)
+      if (!op.given)
+        for (chain : model.chains) {
+          model.chains.push_back(chain);
+          Chain& new_chain = model.chains.back();
+          new_chain.name = next_chain_letter(model.chains, short_chain_names)
+                                             : "2";
+          new_chain.auth_name = "";
+          for (Residue& res : new_chain.residues)
+            for (Atom& a : res.atoms) {
+              //TODO
+            }
+        }
+  for (NcsOp& op : st.ncs)
+    op.given = true;
+}
+
 void convert(const char* input, FileType input_type,
              const char* output, FileType output_type,
              const std::vector<option::Option>& options) {
   gemmi::cif::Document cif_in;
   gemmi::mol::Structure st;
-  // hidden feature for testing cif -> Structure -> cif
-  bool force_structure = gemmi::ends_with(output, ".ciF");
+  // for cif->cif we do either cif->DOM->Structure->DOM->cif or cif->DOM->cif
+  bool need_structure = options[ExpandNcs];
   if (input_type == FileType::Cif) {
     cif_in = gemmi::cif::read_any(input);
     if (output_type == FileType::Pdb || output_type == FileType::Null ||
-        force_structure) {
+        need_structure) {
       st = gemmi::mol::read_atoms(cif_in);
       if (st.models.empty())
         fail("No atoms in the input file. Is it mmCIF?");
@@ -119,6 +163,9 @@ void convert(const char* input, FileType input_type,
   } else {
     fail("Unexpected input format.");
   }
+
+  if (options[ExpandNcs])
+    expand_ncs(st);
 
   std::ostream* os;
   std::unique_ptr<std::ostream> os_deleter;
@@ -159,7 +206,7 @@ void convert(const char* input, FileType input_type,
     }
   } else if (output_type == FileType::Cif) {
     // cif to cif round trip is for testing only
-    if (input_type != FileType::Cif || force_structure) {
+    if (input_type != FileType::Cif || need_structure) {
       cif_in.blocks.clear();  // temporary, for testing
       cif_in.blocks.resize(1);
       gemmi::mol::update_cif_block(st, cif_in.blocks[0]);
