@@ -332,7 +332,8 @@ Structure read_pdb_from_input(InputType&& in) {
         st.info["_cell.Z_PDB"] = read_string(line+66, 4);
 
     } else if (is_record_type(line, "MTRIXn")) {
-      if (read_matrix(matrix, line, len) == 3) {
+      if (read_matrix(matrix, line, len) == 3 &&
+          matrix != Mat4x4(linalg::identity)) {
         bool given = len > 59 && line[59] == '1';
         st.ncs.push_back({given, matrix});
         matrix = linalg::identity;
