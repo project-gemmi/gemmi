@@ -97,7 +97,8 @@ inline void write_multiline(std::ostream& os, const char* record_name,
   }
 }
 
-inline void write_pdb(const Structure& st, std::ostream& os) {
+inline void write_pdb(const Structure& st, std::ostream& os,
+                      bool iotbx_compat=false) {
   const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
   char buf[88];
 
@@ -263,13 +264,17 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
         }
       }
       if (chain.entity && chain.entity->type == EntityType::Polymer) {
-        // re-using part of the buffer in the middle, e.g.:
-        // TER    4153      LYS B 286
-        stbsp_snprintf(buf, 82, "TER   %5s",
-                       encode_serial_in_hybrid36(short_buf, ++serial));
-        std::memset(buf+11, ' ', 6);
-        std::memset(buf+28, ' ', 52);
-        os.write(buf, 81);
+        if (iotbx_compat) {
+          WRITE("%-80s\n", "TER");
+        } else {
+          // re-using part of the buffer in the middle, e.g.:
+          // TER    4153      LYS B 286
+          stbsp_snprintf(buf, 82, "TER   %5s",
+                         encode_serial_in_hybrid36(short_buf, ++serial));
+          std::memset(buf+11, ' ', 6);
+          std::memset(buf+28, ' ', 52);
+          os.write(buf, 81);
+        }
       }
     }
     if (st.models.size() > 1)

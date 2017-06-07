@@ -54,7 +54,7 @@ struct Arg: public option::Arg {
 };
 
 enum OptionIndex { Unknown, Help, Verbose, FormatIn, FormatOut,
-                   Bare, Numb, QMark, ExpandNcs };
+                   Bare, Numb, QMark, ExpandNcs, IotbxCompat };
 static const option::Descriptor usage[] = {
   { Unknown, 0, "", "", Arg::None,
     "Usage:"
@@ -80,6 +80,8 @@ static const option::Descriptor usage[] = {
   { Unknown, 0, "", "", Arg::None, "\nMacromolecular options:" },
   { ExpandNcs, 0, "", "expand-ncs", Arg::None,
     "  --expand-ncs  \tExpand strict NCS specified in MTRIXn or equivalent." },
+  { IotbxCompat, 0, "", "iotbx-compat", Arg::None,
+    "  --iotbx-compat  \tLimited compatibility with iotbx (details in docs)." },
   { Unknown, 0, "", "", Arg::None,
     "\nWhen output file is -, write to standard output." },
   { 0, 0, 0, 0, 0, 0 }
@@ -208,7 +210,7 @@ void convert(const char* input, FileType input_type,
 
   else if (output_type == FileType::Pdb || output_type == FileType::Null) {
     if (output_type == FileType::Pdb)
-      gemmi::mol::write_pdb(st, *os);
+      gemmi::mol::write_pdb(st, *os, options[IotbxCompat]);
     else {
       *os << st.name << ": " << count_atom_sites(st) << " atom locations";
       if (st.models.size() > 1)
