@@ -123,6 +123,8 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
   if (!st.models.empty())
     for (const Chain& ch : st.models[0].chains)
       if (ch.entity && ch.entity->type == EntityType::Polymer) {
+        const std::string& chain_name = ch.auth_name.empty() ? ch.name
+                                                             : ch.auth_name;
         int seq_len = 0;
         int prev_seq_num = -1;
         for (const SequenceItem& si : ch.entity->sequence)
@@ -139,7 +141,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
           prev_seq_num = si.num;
           if (col == 0)
             stbsp_snprintf(buf, 82, "SEQRES%4d%2s%5d %62s\n",
-                           ++row, ch.auth_name.c_str(), seq_len, "");
+                           ++row, chain_name.c_str(), seq_len, "");
           const std::string& res = si.mon;
           memcpy(buf + 18 + 4*col + 4-res.length(), res.c_str(), res.length());
           if (++col == 13) {
@@ -171,10 +173,12 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
   for (size_t i = 0; i != st.ncs.size(); i++) {
     const NcsOp& op = st.ncs[i];
     char g = op.given ? '1' : ' ';
+    // We skip identity matrix which usually precedes not-given NCS in PDB.
+    int first_serial = st.ncs[0].given ? 1 : 2;
     for (int j = 0; j < 3; ++j) {
       auto r = op.transform.row(j);
       WRITE("MTRIX%d %3jd%10.6f%10.6f%10.6f %14.5f    %-21c\n",
-            j+1, i+1, r.x, r.y, r.z, r.w, g);
+            j + 1, i + first_serial, r.x, r.y, r.z, r.w, g);
     }
   }
   char short_buf[8];
@@ -184,10 +188,12 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
     if (st.models.size() > 1)
       WRITE("MODEL %8s %65s\n", model.name.c_str(), "");
     for (const Chain& chain : model.chains) {
-      if (chain.auth_name.empty())
+      const std::string& chain_name = chain.auth_name.empty() ? chain.name
+                                                              : chain.auth_name;
+      if (chain_name.empty())
         throw std::runtime_error("empty chain name");
-      if (chain.auth_name.length() > 1)
-        throw std::runtime_error("long chain name: " + chain.auth_name);
+      if (chain_name.length() > 2)
+        throw std::runtime_error("long chain name: " + chain_name);
       for (const Residue& res : chain.residues) {
         bool standard = res.has_standard_pdb_name() && !(chain.entity &&
                                  chain.entity->type == EntityType::NonPolymer);
@@ -214,7 +220,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
           // 79-80  2s  charge
           bool empty13 = (a.element.uname()[1] == '\0' && a.name.size() < 4);
           WRITE("%-6s%5s %c%-3s%c%3s"
-                " %1s%4s%c"
+                "%2s%4s%c"
                 "   %8.3f%8.3f%8.3f"
                 "%6.2f%6.2f      %-4s%2s%c%c\n",
                 standard ? "ATOM" : "HETATM",
@@ -223,7 +229,7 @@ inline void write_pdb(const Structure& st, std::ostream& os) {
                 a.name.c_str() + (empty13 || a.name.empty() ? 0 : 1),
                 a.altloc ? std::toupper(a.altloc) : ' ',
                 res.name.c_str(),
-                chain.auth_name.c_str(),
+                chain_name.c_str(),
                 encode_seq_id_in_hybrid36(short_buf2, res.seq_id_for_pdb()),
                 res.ins_code ? res.ins_code : ' ',
                 // We want to avoid negative zero and round them numbers up

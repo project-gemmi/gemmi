@@ -118,7 +118,7 @@ struct Residue {
 
 struct Chain {
   std::string name;
-  std::string auth_name; // not guaranteed to be the same for the whole chain?
+  std::string auth_name;
   std::vector<Residue> residues;
   Entity *entity = nullptr;
   Model* parent = nullptr;
