@@ -54,7 +54,7 @@ struct Arg: public option::Arg {
 };
 
 enum OptionIndex { Unknown, Help, Verbose, FormatIn, FormatOut,
-                   Bare, Numb, QMark };
+                   Bare, Numb, QMark, ExpandNcs };
 static const option::Descriptor usage[] = {
   { Unknown, 0, "", "", Arg::None,
     "Usage:"
@@ -79,7 +79,7 @@ static const option::Descriptor usage[] = {
     "  --unknown=STRING  \tJSON representation of CIF's '?' (default: null)." },
   { Unknown, 0, "", "", Arg::None, "\nMacromolecular options:" },
   { ExpandNcs, 0, "", "expand-ncs", Arg::None,
-    "  --expand-ncs  \tExpand NCS mates specified in MTRIXn or equivalent." },
+    "  --expand-ncs  \tExpand strict NCS specified in MTRIXn or equivalent." },
   { Unknown, 0, "", "", Arg::None,
     "\nWhen output file is -, write to standard output." },
   { 0, 0, 0, 0, 0, 0 }
@@ -102,44 +102,55 @@ FileType get_format_from_extension(const std::string& path) {
 [[noreturn]]
 inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 
-static std::string get_chain_letter(const std::vector<Chain>& chains,
-                                    bool short_chain_names) {
-  if (short_chain_names) {
-    char symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                     "abcdefghijklmnopqrstuvwxyz01234567890";
-    for (char symbol : symbols)
-      if (find_if(chains.begin(), chains.end(),
-                  [&](const Chain& ch) { return ch.name == symbol; })
-          == std::end(symbols))
-        return std::string(1, symbol);
-  }
-}
+static char symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                        "abcdefghijklmnopqrstuvwxyz01234567890";
 
-static void expand_ncs(Structure& st, bool short_chain_names) {
+static void expand_ncs(gemmi::mol::Structure& st, bool short_chain_names) {
+  namespace mol = gemmi::mol;
   int n_ops = std::count_if(st.ncs.begin(), st.ncs.end(),
-                            [](NcsOp& op){ return !op.given; });
+                            [](mol::NcsOp& op){ return !op.given; });
   if (n_ops == 0)
     return;
-  for (Model& model : st.models) {
+  for (mol::Model& model : st.models) {
     size_t new_length = model.chains.size() * (n_ops + 1);
     if (new_length >= 63)
       short_chain_names = false;
-    std::string next_name;
     model.chains.reserve(new_length);
-    for (const NcsOp& op : st.ncs)
-      if (!op.given)
-        for (chain : model.chains) {
+    for (const mol::Chain& chain : model.chains) {
+      int op_num = 0;
+      for (const mol::NcsOp& op : st.ncs)
+        if (!op.given) {
+          op_num++;
+          // the most difficult part - choosing names for new chains
+          std::string name;
+          if (short_chain_names) {
+            for (char symbol : symbols) {
+              name = std::string(1, symbol);
+              if (!model.find_chain(name))
+                break;
+            }
+          }
+          else {
+            name = chain.name + std::to_string(op_num+1);
+            while (model.find_chain(name))
+              name += "a";
+          }
+
           model.chains.push_back(chain);
-          Chain& new_chain = model.chains.back();
-          new_chain.name = next_chain_letter(model.chains, short_chain_names)
-                                             : "2";
+          mol::Chain& new_chain = model.chains.back();
+          new_chain.name = name;
           new_chain.auth_name = "";
-          for (Residue& res : new_chain.residues)
-            for (Atom& a : res.atoms) {
-              //TODO
+
+          for (mol::Residue& res : new_chain.residues)
+            for (mol::Atom& a : res.atoms) {
+              linalg::vec<double,4> pos = {a.pos.x, a.pos.y, a.pos.z,  1.0};
+              pos = linalg::mul(op.transform, pos);
+              a.pos = {pos.x, pos.y, pos.z};
             }
         }
-  for (NcsOp& op : st.ncs)
+    }
+  }
+  for (mol::NcsOp& op : st.ncs)
     op.given = true;
 }
 
@@ -165,7 +176,7 @@ void convert(const char* input, FileType input_type,
   }
 
   if (options[ExpandNcs])
-    expand_ncs(st);
+    expand_ncs(st, output_type == FileType::Pdb);
 
   std::ostream* os;
   std::unique_ptr<std::ostream> os_deleter;
