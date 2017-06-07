@@ -122,6 +122,7 @@ struct Chain {
   std::vector<Residue> residues;
   Entity *entity = nullptr;
   Model* parent = nullptr;
+  int force_pdb_serial = 0;
 
   explicit Chain(std::string cname) noexcept : name(cname) {}
   Residue* find_residue(int seq_id, int auth_seq_id, char icode,

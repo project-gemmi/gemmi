@@ -104,10 +104,12 @@ FileType get_format_from_extension(const std::string& path) {
 [[noreturn]]
 inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 
-static char symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                        "abcdefghijklmnopqrstuvwxyz01234567890";
+static const char symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                              "abcdefghijklmnopqrstuvwxyz01234567890";
 
-static void expand_ncs(gemmi::mol::Structure& st, bool short_chain_names) {
+enum class ChainNaming { Short, AddNum, Dup };
+
+static void expand_ncs(gemmi::mol::Structure& st, ChainNaming ch_naming) {
   namespace mol = gemmi::mol;
   int n_ops = std::count_if(st.ncs.begin(), st.ncs.end(),
                             [](mol::NcsOp& op){ return !op.given; });
@@ -115,42 +117,54 @@ static void expand_ncs(gemmi::mol::Structure& st, bool short_chain_names) {
     return;
   for (mol::Model& model : st.models) {
     size_t new_length = model.chains.size() * (n_ops + 1);
-    if (new_length >= 63)
-      short_chain_names = false;
+    if (new_length >= 63 && ch_naming == ChainNaming::Short)
+      ch_naming = ChainNaming::AddNum;
     model.chains.reserve(new_length);
-    for (const mol::Chain& chain : model.chains) {
-      int op_num = 0;
-      for (const mol::NcsOp& op : st.ncs)
-        if (!op.given) {
-          op_num++;
+    // for compatibility with iotbx we reset serial in the 'Dup' mode
+    if (ch_naming == ChainNaming::Dup && !model.chains.empty()) {
+      model.chains[0].force_pdb_serial = 1;
+      for (mol::Chain& chain : model.chains)
+        for (mol::Residue& res : chain.residues)
+          res.segment = "0";
+    }
+    int op_num = 0;
+    auto orig_end = model.chains.cend();
+    for (const mol::NcsOp& op : st.ncs)
+      if (!op.given) {
+        op_num++;
+        for (auto ch = model.chains.cbegin(); ch != orig_end; ++ch) {
           // the most difficult part - choosing names for new chains
           std::string name;
-          if (short_chain_names) {
+          if (ch_naming == ChainNaming::Short) {
             for (char symbol : symbols) {
               name = std::string(1, symbol);
               if (!model.find_chain(name))
                 break;
             }
-          }
-          else {
-            name = chain.name + std::to_string(op_num+1);
+          } else if (ch_naming == ChainNaming::AddNum) {
+            name = ch->name + std::to_string(op_num);
             while (model.find_chain(name))
               name += "a";
+          } else { // ChainNaming::Dup
+            name = ch->name;
           }
 
-          model.chains.push_back(chain);
+          model.chains.push_back(*ch);
           mol::Chain& new_chain = model.chains.back();
           new_chain.name = name;
           new_chain.auth_name = "";
 
-          for (mol::Residue& res : new_chain.residues)
+          for (mol::Residue& res : new_chain.residues) {
             for (mol::Atom& a : res.atoms) {
-              linalg::vec<double,4> pos = {a.pos.x, a.pos.y, a.pos.z,  1.0};
+              linalg::vec<double,4> pos = {a.pos.x, a.pos.y, a.pos.z, 1.0};
               pos = linalg::mul(op.transform, pos);
               a.pos = {pos.x, pos.y, pos.z};
             }
+            if (ch_naming == ChainNaming::Dup)
+              res.segment = std::to_string(op_num);
+          }
         }
-    }
+      }
   }
   for (mol::NcsOp& op : st.ncs)
     op.given = true;
@@ -177,8 +191,14 @@ void convert(const char* input, FileType input_type,
     fail("Unexpected input format.");
   }
 
-  if (options[ExpandNcs])
-    expand_ncs(st, output_type == FileType::Pdb);
+  if (options[ExpandNcs]) {
+    ChainNaming ch_naming = ChainNaming::AddNum;
+    if (options[IotbxCompat])
+     ch_naming = ChainNaming::Dup;
+    else if (output_type == FileType::Pdb)
+      ch_naming = ChainNaming::Short;
+    expand_ncs(st, ch_naming);
+  }
 
   std::ostream* os;
   std::unique_ptr<std::ostream> os_deleter;

@@ -121,7 +121,8 @@ inline void write_pdb(const Structure& st, std::ostream& os,
   if (st.models.size() > 1)
     WRITE("NUMMDL    %-6jd %63s\n", st.models.size(), "");
 
-  if (!st.models.empty())
+  // SEQRES
+  if (!st.models.empty() && !iotbx_compat)
     for (const Chain& ch : st.models[0].chains)
       if (ch.entity && ch.entity->type == EntityType::Polymer) {
         const std::string& chain_name = ch.auth_name.empty() ? ch.name
@@ -189,6 +190,8 @@ inline void write_pdb(const Structure& st, std::ostream& os,
     if (st.models.size() > 1)
       WRITE("MODEL %8s %65s\n", model.name.c_str(), "");
     for (const Chain& chain : model.chains) {
+      if (chain.force_pdb_serial)
+        serial = chain.force_pdb_serial - 1;
       const std::string& chain_name = chain.auth_name.empty() ? chain.name
                                                               : chain.auth_name;
       if (chain_name.empty())

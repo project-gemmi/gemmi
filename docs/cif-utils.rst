@@ -17,11 +17,14 @@ using a corresponding DDL1/DDL2 dictionary.
 .. literalinclude:: validate-help.txt
    :language: console
 
-gemmi-convert
--------------
+gemmi-convert (cif->json)
+-------------------------
 
 Converts CIF to JSON, aiming to be compatible with the COMCIFS spec
 when `the draft`_ is finalized and agreed__ upon.
+
+The same program can do other file conversion, so only part of the help
+message is relevant here.
 
 .. _the draft: http://comcifs.github.io/cif-json
 __ http://www.iucr.org/iucr-top/lists/cif-developers/
