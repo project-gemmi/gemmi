@@ -127,11 +127,9 @@ static void expand_ncs(gemmi::mol::Structure& st, ChainNaming ch_naming) {
         for (mol::Residue& res : chain.residues)
           res.segment = "0";
     }
-    int op_num = 0;
     auto orig_end = model.chains.cend();
     for (const mol::NcsOp& op : st.ncs)
-      if (!op.given) {
-        op_num++;
+      if (!op.given)
         for (auto ch = model.chains.cbegin(); ch != orig_end; ++ch) {
           // the most difficult part - choosing names for new chains
           std::string name;
@@ -142,7 +140,7 @@ static void expand_ncs(gemmi::mol::Structure& st, ChainNaming ch_naming) {
                 break;
             }
           } else if (ch_naming == ChainNaming::AddNum) {
-            name = ch->name + std::to_string(op_num);
+            name = ch->name + op.id;
             while (model.find_chain(name))
               name += "a";
           } else { // ChainNaming::Dup
@@ -161,10 +159,9 @@ static void expand_ncs(gemmi::mol::Structure& st, ChainNaming ch_naming) {
               a.pos = {pos.x, pos.y, pos.z};
             }
             if (ch_naming == ChainNaming::Dup)
-              res.segment = std::to_string(op_num);
+              res.segment = op.id;
           }
         }
-      }
   }
   for (mol::NcsOp& op : st.ncs)
     op.given = true;

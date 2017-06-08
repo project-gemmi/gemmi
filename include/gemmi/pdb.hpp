@@ -335,7 +335,7 @@ Structure read_pdb_from_input(InputType&& in) {
       if (read_matrix(matrix, line, len) == 3 &&
           matrix != Mat4x4(linalg::identity)) {
         bool given = len > 59 && line[59] == '1';
-        st.ncs.push_back({given, matrix});
+        st.ncs.push_back({read_string(line+7, 3), given, matrix});
         matrix = linalg::identity;
       }
     } else if (is_record_type(line, "MODEL")) {

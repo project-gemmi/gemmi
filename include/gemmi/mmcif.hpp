@@ -93,12 +93,16 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   add_info("_struct_keywords.text");
 
   cif::TableView ncs_oper = find_transform(block, "_struct_ncs_oper.");
+  int ncs_oper_id = block.add_field(ncs_oper, "_struct_ncs_oper.id");
   int ncs_code_idx = block.add_field(ncs_oper, "_struct_ncs_oper.code");
   for (auto op : ncs_oper) {
     bool given = (ncs_code_idx > 0 && op.as_str(ncs_code_idx) == "given");
+    std::string id;
+    if (ncs_oper_id)
+      id = op.as_str(ncs_oper_id);
     Mat4x4 mat = get_transform_matrix(op);
     if (mat != Mat4x4(linalg::identity))
-      st.ncs.push_back({given, mat});
+      st.ncs.push_back({id, given, mat});
   }
 
   // PDBx/mmcif spec defines both _database_PDB_matrix.scale* and

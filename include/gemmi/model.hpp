@@ -150,6 +150,7 @@ struct Model {
 };
 
 struct NcsOp {
+  std::string id;
   bool given;
   Mat4x4 transform;
 };

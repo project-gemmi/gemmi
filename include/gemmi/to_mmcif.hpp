@@ -167,9 +167,8 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
          "matrix[1][1]", "matrix[1][2]", "matrix[1][3]", "vector[1]",
          "matrix[2][1]", "matrix[2][2]", "matrix[2][3]", "vector[2]",
          "matrix[3][1]", "matrix[3][2]", "matrix[3][3]", "vector[3]"});
-    int n = 1;
     for (const NcsOp& op : st.ncs) {
-      ncs_oper.values.emplace_back(std::to_string(n++));
+      ncs_oper.values.emplace_back(op.id);
       ncs_oper.values.emplace_back(op.given ? "given" : "generate");
       for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 4; ++j)

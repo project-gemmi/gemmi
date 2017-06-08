@@ -172,17 +172,13 @@ inline void write_pdb(const Structure& st, std::ostream& os,
   WRITE("SCALE3 %13.6f%10.6f%10.6f %14.5f %24s\n",
         frac.a31+1e-15, frac.a32+1e-15, frac.a33+1e-15, cell.shift.z+1e-15, "");
 
-  for (size_t i = 0; i != st.ncs.size(); i++) {
-    const NcsOp& op = st.ncs[i];
-    char g = op.given ? '1' : ' ';
-    // We skip identity matrix which usually precedes not-given NCS in PDB.
-    int first_serial = st.ncs[0].given ? 1 : 2;
+  for (const NcsOp& op : st.ncs)
     for (int j = 0; j < 3; ++j) {
       auto r = op.transform.row(j);
-      WRITE("MTRIX%d %3jd%10.6f%10.6f%10.6f %14.5f    %-21c\n",
-            j + 1, i + first_serial, r.x, r.y, r.z, r.w, g);
+      WRITE("MTRIX%d %3.3s%10.6f%10.6f%10.6f %14.5f    %-21c\n",
+            j + 1, op.id.c_str(), r.x, r.y, r.z, r.w, op.given ? '1' : ' ');
     }
-  }
+
   char short_buf[8];
   char short_buf2[8];
   for (const Model& model : st.models) {
