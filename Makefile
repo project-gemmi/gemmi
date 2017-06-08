@@ -1,13 +1,16 @@
-#CXX=clang++ -stdlib=libc++
-#CXX=/home/wojdyr/local/clang40/bin/clang++ -L /home/wojdyr/local/clang40/lib -stdlib=libc++ -Wl,-rpath,/home/wojdyr/local/clang40/lib
+
 CXX=g++
+
 WFLAGS=-Wall -Wextra -Wpedantic -Wdisabled-optimization -Wformat=2 \
-       -Wredundant-decls
-FLAGS=-O2 -g --std=c++11 $(WFLAGS) -Wshadow -Iinclude -Ithird_party #-DNDEBUG
-PYFLAGS=-O2 -g --std=c++14 $(WFLAGS) -Iinclude -Ithird_party -fPIC \
+       -Wredundant-decls -Wshadow
+FLAGS=-O2 -g --std=c++11 $(WFLAGS) -Iinclude -Ithird_party #-DNDEBUG
+
+PYFLAGS=$(FLAGS) -Wno-shadow -fPIC \
        -fvisibility=hidden -fwrapv -D_FORTIFY_SOURCE=2 -fstack-protector-strong
 
-all: gemmi-validate gemmi-convert gemmi.so
+all: gemmi-validate gemmi-convert
+
+py: gemmi.so
 
 gemmi-validate: validate.cpp include/gemmi/cif.hpp include/gemmi/ddl.hpp \
                 include/gemmi/cifgz.hpp include/gemmi/numb.hpp
@@ -41,3 +44,5 @@ write-help: gemmi-validate gemmi-convert
 
 clean:
 	rm -f gemmi-validate gemmi-convert trace gemmi.so pygemmi.o
+
+.PHONY: all py clean write-help
