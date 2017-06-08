@@ -50,7 +50,7 @@ enum class EntityType { Unknown, Polymer, NonPolymer, Water };
 struct SequenceItem {
   int num;
   std::string mon;
-  SequenceItem(std::string m) noexcept : num(-1), mon(m) {}
+  explicit SequenceItem(std::string m) noexcept : num(-1), mon(m) {}
   SequenceItem(int n, std::string m) noexcept : num(n), mon(m) {}
 };
 

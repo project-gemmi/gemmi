@@ -17,7 +17,7 @@ namespace internal {
 class GzipLineInput {
 public:
   std::string source;
-  GzipLineInput(std::string path) : source(path) {
+  explicit GzipLineInput(std::string path) : source(path) {
     f_ = gzopen(source.c_str(), "rb");
     if (!f_)
       throw std::runtime_error("Failed to open file: " + path);

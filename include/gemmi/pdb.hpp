@@ -57,7 +57,7 @@ inline int read_int(const char* p, int field_length) {
   int sign = 1;
   int n = 0;
   int i = 0;
-  while (std::isspace(p[i]) && i < field_length)
+  while (i < field_length && std::isspace(p[i]))
     ++i;
   if (p[i] == '-') {
     ++i;
@@ -65,7 +65,7 @@ inline int read_int(const char* p, int field_length) {
   } else if (p[i] == '+') {
     ++i;
   }
-  for (; p[i] >= '0' && p[i] <= '9' && i < field_length; ++i) {
+  for (; i < field_length && p[i] >= '0' && p[i] <= '9'; ++i) {
     n = n * 10 + (p[i] - '0');
   }
   return sign * n;
@@ -81,7 +81,7 @@ inline double read_double(const char* p, int field_length) {
   int sign = 1;
   double d = 0;
   int i = 0;
-  while (std::isspace(p[i]) && i < field_length)
+  while (i < field_length && std::isspace(p[i]))
     ++i;
   if (p[i] == '-') {
     ++i;
@@ -123,7 +123,7 @@ inline bool is_record_type(const char* s, const char* record) {
 
 class EntitySetter {
 public:
-  EntitySetter(Structure& st) : st_(st) {}
+  explicit EntitySetter(Structure& st) : st_(st) {}
   Entity* set_for_chain(const std::string& chain_name, EntityType type) {
     auto it = chain_to_ent_.find(chain_name);
     if (it != chain_to_ent_.end())
@@ -132,16 +132,6 @@ public:
     st_.entities.emplace_back(ent);
     chain_to_ent_[chain_name] = ent;
     return ent;
-  }
-  // PDB format has no equivalent of mmCIF entity. Here we assume that
-  // identical SEQRES means the same entity.
-  bool same_entity(const Sequence& a, const Sequence& b) const {
-    if (a.empty() || a.size() != b.size())
-      return false;
-    for (size_t i = 0; i != a.size(); ++i)
-      if (a[i].mon != b[i].mon)
-        return false;
-    return true;
   }
   void finalize() {
     for (auto i = st_.entities.begin(); i != st_.entities.end(); ++i)
@@ -165,6 +155,17 @@ public:
 private:
   Structure& st_;
   std::map<std::string, Entity*> chain_to_ent_;
+
+  // PDB format has no equivalent of mmCIF entity. Here we assume that
+  // identical SEQRES means the same entity.
+  bool same_entity(const Sequence& a, const Sequence& b) const {
+    if (a.empty() || a.size() != b.size())
+      return false;
+    for (size_t i = 0; i != a.size(); ++i)
+      if (a[i].mon != b[i].mon)
+        return false;
+    return true;
+  }
 };
 
 
