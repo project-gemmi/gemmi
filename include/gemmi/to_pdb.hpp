@@ -159,7 +159,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
   WRITE("CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11s%4s          \n",
         cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma,
         st.sg_hm.empty() ? "P 1" : st.sg_hm.c_str(),
-        st.get_info("_cell.Z_PDB", "1"));
+        st.get_info("_cell.Z_PDB", ""));
   for (int i = 0; i < 3; ++i)
     WRITE("ORIGX%d %13.6f%10.6f%10.6f %14.5f %24s\n",
           i+1, st.origx.x[i], st.origx.y[i], st.origx.z[i], st.origx.w[i], "");

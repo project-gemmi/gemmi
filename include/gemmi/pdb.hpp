@@ -330,9 +330,11 @@ Structure read_pdb_from_input(InputType&& in) {
                     read_double(line+47, 7));
       if (len > 56)
         st.sg_hm = read_string(line+55, 11);
-      if (len > 67)
-        st.info["_cell.Z_PDB"] = read_string(line+66, 4);
-
+      if (len > 67) {
+        std::string z = read_string(line+66, 4);
+        if (!z.empty())
+          st.info["_cell.Z_PDB"] = z;
+      }
     } else if (is_record_type(line, "MTRIXn")) {
       if (read_matrix(matrix, line, len) == 3 &&
           matrix != Mat4x4(linalg::identity)) {

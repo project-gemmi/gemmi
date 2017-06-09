@@ -74,7 +74,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
 
   auto add_info = [&](std::string tag) {
     cif::TableView t = block.find(tag);
-    if (t.length() >= 1)
+    if (t.length() >= 1 && !cif::is_null(t[0][0]))
       st.info[tag] = t[0].as_str(0);
   };
   add_info("_entry.id");
