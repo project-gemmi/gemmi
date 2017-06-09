@@ -94,7 +94,9 @@ struct Atom {
   Residue* parent = nullptr;
 };
 
-struct Residue {
+struct ResidueId {
+  ResidueId(int id, int auth_id, char ins, std::string rname) noexcept
+    : seq_id(id), auth_seq_id(auth_id), ins_code(ins), name(rname) {}
   enum { UnknownId=-1000 };
   int seq_id = UnknownId;
   int auth_seq_id = UnknownId;
@@ -103,17 +105,20 @@ struct Residue {
   //uint32_t segment_id; // number or 4 characters
   std::string segment; // normally up to 4 characters in the PDB file
   std::string name;
+};
+
+struct Residue : public ResidueId {
   std::vector<Atom> atoms;
   Chain* parent = nullptr;
 
-  Residue(int id, int auth_id, char ins, std::string rname) noexcept
-    : seq_id(id), auth_seq_id(auth_id), ins_code(ins), name(rname) {}
+  Residue(const ResidueId& rid) noexcept : ResidueId(rid) {}
   int seq_id_for_pdb() const {
     return auth_seq_id != UnknownId ? auth_seq_id : seq_id;
   }
   bool has_standard_pdb_name() const;
   std::vector<Atom>& children() { return atoms; }
   const std::vector<Atom>& children() const { return atoms; }
+  bool matches(const ResidueId& rid) const;
 };
 
 struct Chain {
@@ -125,10 +130,8 @@ struct Chain {
   int force_pdb_serial = 0;
 
   explicit Chain(std::string cname) noexcept : name(cname) {}
-  Residue* find_residue(int seq_id, int auth_seq_id, char icode,
-                        const std::string& chem);
-  Residue* find_or_add_residue(int seq_id, int auth_seq_id, char icode,
-                               const std::string& name);
+  Residue* find_residue(const ResidueId& rid);
+  Residue* find_or_add_residue(const ResidueId& rid);
   std::vector<Residue>& children() { return residues; }
   const std::vector<Residue>& children() const { return residues; }
 };
@@ -206,23 +209,25 @@ struct Structure {
 };
 
 
-inline Residue* Chain::find_residue(int seq_id, int auth_seq_id,
-                                    char icode, const std::string& chem) {
+inline bool Residue::matches(const ResidueId& rid) const {
+  return seq_id == rid.seq_id &&
+         ((auth_seq_id == rid.auth_seq_id && ins_code == rid.ins_code)
+          || seq_id != Residue::UnknownId) &&
+         segment == rid.segment &&
+         name == rid.name;
+}
+
+inline Residue* Chain::find_residue(const ResidueId& rid) {
   auto it = std::find_if(residues.begin(), residues.end(),
-                         [&](const Residue& r) {
-      return r.seq_id == seq_id && r.name == chem &&
-             (r.seq_id != Residue::UnknownId ||
-              (r.auth_seq_id == auth_seq_id && r.ins_code == icode));
-  });
+                         [&](const Residue& r) { return r.matches(rid); });
   return it != residues.end() ? &*it : nullptr;
 }
 
-inline Residue* Chain::find_or_add_residue(int seq_id, int auth_seq_id,
-                                         char icode, const std::string& chem) {
-  Residue* r = find_residue(seq_id, auth_seq_id, icode, chem);
+inline Residue* Chain::find_or_add_residue(const ResidueId& rid) {
+  Residue* r = find_residue(rid);
   if (r)
     return r;
-  residues.emplace_back(seq_id, auth_seq_id, icode, chem);
+  residues.emplace_back(rid);
   return &residues.back();
 }
 

@@ -157,18 +157,17 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
       chain->auth_name = row.as_str(kAuthAsymId);
       resi = nullptr;
     }
-    int seq_id = cif::as_int(row[kSeqId], Residue::UnknownId);
-    int auth_seq_id = cif::as_int(row[kAuthSeqId], Residue::UnknownId);
-    char ins_code = cif::as_string(row[kInsCode])[0];
-    if (!resi || seq_id != resi->seq_id || row[kCompId] != resi->name ||
-        (seq_id == Residue::UnknownId &&
-         (resi->auth_seq_id != auth_seq_id || resi->ins_code != ins_code))) {
+    ResidueId rid(cif::as_int(row[kSeqId], Residue::UnknownId),
+                  cif::as_int(row[kAuthSeqId], Residue::UnknownId),
+                  cif::as_string(row[kInsCode])[0],
+                  cif::as_string(row[kCompId]));
+    if (!resi || !resi->matches(rid)) {
       // the insertion code happens to be always a single letter
       assert(row[kInsCode].size() == 1);
-      resi = chain->find_or_add_residue(seq_id, auth_seq_id, ins_code,
-                                        cif::as_string(row[kCompId]));
+      resi = chain->find_or_add_residue(rid);
     } else {
-      assert(resi->auth_seq_id == auth_seq_id && resi->ins_code == ins_code);
+      assert(resi->auth_seq_id == rid.auth_seq_id);
+      assert(resi->ins_code == rid.ins_code);
     }
     Atom atom;
     atom.name = cif::as_string(row[kAtomId]);

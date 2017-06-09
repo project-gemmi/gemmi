@@ -101,23 +101,19 @@ inline double read_double(const char* p, int field_length) {
 
 inline std::string read_string(const char* p, int field_length) {
   // left trim
-  while (std::isspace(*p)) {
+  while (field_length != 0 && std::isspace(*p)) {
     ++p;
     --field_length;
-    if (field_length == 0)
-      break;
   }
-  // right trim
-  while (field_length != 0 && std::isspace(p[field_length-1]))
-    --field_length;
-
-  // new lines are not expected here
-  for (int i = 0; i < field_length - 1; ++i)
+  // EOL/EOF ends the string
+  for (int i = 0; i < field_length; ++i)
     if (p[i] == '\n' || p[i] == '\r' || p[i] == '\0') {
       field_length = i;
       break;
     }
-
+  // right trim
+  while (field_length != 0 && std::isspace(p[field_length-1]))
+    --field_length;
   return std::string(p, field_length);
 }
 
@@ -245,15 +241,13 @@ Structure read_pdb_from_input(InputType&& in) {
                                   : read_base36<4>(line+22) - 466560 + 10000;
       char ins_code = line[26] == ' ' ? '\0' : line[26];
       std::string resi_name = read_string(line+17, 3);
-
-      if (!resi || seq_id != resi->seq_id || seq_id == Residue::UnknownId ||
-          resi_name != resi->name) {
-        resi = chain->find_or_add_residue(seq_id, seq_id, ins_code, resi_name);
-        // Non-standard but widely used 4-character segment identifier.
-        // Left-justified, and may include a space in the middle.
-        // The segment may be a portion of a chain or a complete chain.
-        resi->segment = read_string(line+72, 4);
-      }
+      ResidueId rid(seq_id, seq_id, ins_code, resi_name);
+      // Non-standard but widely used 4-character segment identifier.
+      // Left-justified, and may include a space in the middle.
+      // The segment may be a portion of a chain or a complete chain.
+      rid.segment = read_string(line+72, 4);
+      if (!resi || !resi->matches(rid))
+        resi = chain->find_or_add_residue(rid);
 
       Atom atom;
       atom.name = read_string(line+12, 4);
