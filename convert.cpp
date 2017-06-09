@@ -18,6 +18,9 @@
 
 #define EXE_NAME "gemmi-convert"
 
+namespace mol = gemmi::mol;
+namespace cif = gemmi::cif;
+
 enum class FileType : char { Json, Pdb, Cif, Null, Unknown };
 
 struct Arg: public option::Arg {
@@ -54,7 +57,7 @@ struct Arg: public option::Arg {
 };
 
 enum OptionIndex { Unknown, Help, Verbose, FormatIn, FormatOut,
-                   Bare, Numb, QMark, ExpandNcs, IotbxCompat };
+                   Bare, Numb, QMark, ExpandNcs, IotbxCompat, SegmentAsChain };
 static const option::Descriptor usage[] = {
   { Unknown, 0, "", "", Arg::None,
     "Usage:"
@@ -82,6 +85,8 @@ static const option::Descriptor usage[] = {
     "  --expand-ncs  \tExpand strict NCS specified in MTRIXn or equivalent." },
   { IotbxCompat, 0, "", "iotbx-compat", Arg::None,
     "  --iotbx-compat  \tLimited compatibility with iotbx (details in docs)." },
+  { SegmentAsChain, 0, "", "segment-as-chain", Arg::None,
+    "  --segment-as-chain \tAppend segment id to label_asym_id (chain name)." },
   { Unknown, 0, "", "", Arg::None,
     "\nWhen output file is -, write to standard output." },
   { 0, 0, 0, 0, 0, 0 }
@@ -109,8 +114,7 @@ static const char symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 enum class ChainNaming { Short, AddNum, Dup };
 
-static void expand_ncs(gemmi::mol::Structure& st, ChainNaming ch_naming) {
-  namespace mol = gemmi::mol;
+static void expand_ncs(mol::Structure& st, ChainNaming ch_naming) {
   int n_ops = std::count_if(st.ncs.begin(), st.ncs.end(),
                             [](mol::NcsOp& op){ return !op.given; });
   if (n_ops == 0)
@@ -167,23 +171,48 @@ static void expand_ncs(gemmi::mol::Structure& st, ChainNaming ch_naming) {
     op.given = true;
 }
 
+
+std::vector<mol::Chain> split_by_segments(mol::Chain& orig) {
+  std::vector<mol::Chain> chains;
+  std::vector<mol::Residue> orig_res;
+  orig_res.swap(orig.residues);
+  for (auto seg_start = orig_res.begin(); seg_start != orig_res.end(); ) {
+    const std::string& sn = seg_start->segment;
+    auto ch = std::find_if(chains.begin(), chains.end(), [&](mol::Chain& c) {
+                return !c.residues.empty() && c.residues[0].segment == sn; });
+    if (ch == chains.end()) {
+      chains.push_back(orig);
+      ch = chains.end() - 1;
+      // it's not clear how chain naming should be handled
+      ch->name += sn;
+      ch->auth_name += sn;
+    }
+    auto seg_end = std::find_if(seg_start, orig_res.end(),
+                            [&](mol::Residue& r) { return r.segment != sn; });
+    ch->residues.insert(ch->residues.end(), std::make_move_iterator(seg_start),
+                                            std::make_move_iterator(seg_end));
+    seg_start = seg_end;
+  }
+  return chains;
+}
+
 void convert(const char* input, FileType input_type,
              const char* output, FileType output_type,
              const std::vector<option::Option>& options) {
-  gemmi::cif::Document cif_in;
-  gemmi::mol::Structure st;
+  cif::Document cif_in;
+  mol::Structure st;
   // for cif->cif we do either cif->DOM->Structure->DOM->cif or cif->DOM->cif
   bool need_structure = options[ExpandNcs];
   if (input_type == FileType::Cif) {
-    cif_in = gemmi::cif::read_any(input);
+    cif_in = cif::read_any(input);
     if (output_type == FileType::Pdb || output_type == FileType::Null ||
         need_structure) {
-      st = gemmi::mol::read_atoms(cif_in);
+      st = mol::read_atoms(cif_in);
       if (st.models.empty())
         fail("No atoms in the input file. Is it mmCIF?");
     }
   } else if (input_type == FileType::Pdb) {
-    st = gemmi::mol::read_pdb_any(input);
+    st = mol::read_pdb_any(input);
   } else {
     fail("Unexpected input format.");
   }
@@ -196,6 +225,16 @@ void convert(const char* input, FileType input_type,
       ch_naming = ChainNaming::Short;
     expand_ncs(st, ch_naming);
   }
+
+  if (options[SegmentAsChain])
+    for (mol::Model& model : st.models) {
+      std::vector<mol::Chain> new_chains;
+      for (mol::Chain& chain : model.chains)
+        gemmi::vector_move_extend(new_chains, split_by_segments(chain));
+      model.chains = std::move(new_chains);
+      // We should also modify Entity instances, but for now we don't.
+      add_backlinks(model); // fix backlinks from Residue/Atom
+    }
 
   std::ostream* os;
   std::unique_ptr<std::ostream> os_deleter;
@@ -211,7 +250,7 @@ void convert(const char* input, FileType input_type,
   if (output_type == FileType::Json) {
     if (input_type != FileType::Cif)
       fail("Conversion to JSON is possible only from CIF");
-    gemmi::cif::JsonWriter writer(*os);
+    cif::JsonWriter writer(*os);
     writer.use_bare_tags = options[Bare];
     if (options[Numb]) {
       char first_letter = options[Numb].arg[0];
@@ -227,7 +266,7 @@ void convert(const char* input, FileType input_type,
 
   else if (output_type == FileType::Pdb || output_type == FileType::Null) {
     if (output_type == FileType::Pdb)
-      gemmi::mol::write_pdb(st, *os, options[IotbxCompat]);
+      mol::write_pdb(st, *os, options[IotbxCompat]);
     else {
       *os << st.name << ": " << count_atom_sites(st) << " atom locations";
       if (st.models.size() > 1)
@@ -239,7 +278,7 @@ void convert(const char* input, FileType input_type,
     if (input_type != FileType::Cif || need_structure) {
       cif_in.blocks.clear();  // temporary, for testing
       cif_in.blocks.resize(1);
-      gemmi::mol::update_cif_block(st, cif_in.blocks[0]);
+      mol::update_cif_block(st, cif_in.blocks[0]);
     }
     *os << cif_in;
   }
@@ -311,4 +350,4 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-// vim:sw=2:ts=2:et
+// vim:sw=2:ts=2:et:path^=include,third_party

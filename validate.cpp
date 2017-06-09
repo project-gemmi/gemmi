@@ -159,4 +159,4 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-// vim:sw=2:ts=2:et
+// vim:sw=2:ts=2:et:path^=include,third_party

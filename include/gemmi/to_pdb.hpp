@@ -222,7 +222,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
           WRITE("%-6s%5s %c%-3s%c%3s"
                 "%2s%4s%c"
                 "   %8.3f%8.3f%8.3f"
-                "%6.2f%6.2f      %-4s%2s%c%c\n",
+                "%6.2f%6.2f      %-4.4s%2s%c%c\n",
                 standard ? "ATOM" : "HETATM",
                 encode_serial_in_hybrid36(short_buf, ++serial),
                 empty13 ? ' ' : a.name[0],

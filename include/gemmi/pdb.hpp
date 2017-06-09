@@ -111,6 +111,13 @@ inline std::string read_string(const char* p, int field_length) {
   while (field_length != 0 && std::isspace(p[field_length-1]))
     --field_length;
 
+  // new lines are not expected here
+  for (int i = 0; i < field_length - 1; ++i)
+    if (p[i] == '\n' || p[i] == '\r' || p[i] == '\0') {
+      field_length = i;
+      break;
+    }
+
   return std::string(p, field_length);
 }
 

@@ -40,6 +40,15 @@ bool in_vector(const T& x, const std::vector<T>& v) {
   return std::find(v.begin(), v.end(), x) != v.end();
 }
 
+template <class T>
+void vector_move_extend(std::vector<T>& dst, std::vector<T>&& src) {
+  if (dst.empty())
+    dst = std::move(src);
+  else
+    dst.insert(dst.end(), std::make_move_iterator(src.begin()),
+                          std::make_move_iterator(src.end()));
+}
+
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et
