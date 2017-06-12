@@ -11,7 +11,8 @@ class TestElem(unittest.TestCase):
             self.assertEqual(el.name, name)
         self.assertEqual(mol.Element('AL').name, 'Al')
         self.assertEqual(mol.Element('al').name, 'Al')
-        self.assertEqual(mol.Element('alt').name, 'X')
+        # We check only the first two characters now.
+        self.assertEqual(mol.Element('alt').name, 'Al')
         self.assertEqual(mol.Element('Q').name, 'X')
         self.assertEqual(mol.Element('QQ').name, 'X')
         self.assertEqual(mol.Element('--').name, 'X')
