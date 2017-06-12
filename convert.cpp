@@ -21,7 +21,7 @@
 namespace mol = gemmi::mol;
 namespace cif = gemmi::cif;
 
-enum class FileType : char { Json, Pdb, Cif, Null, Unknown };
+enum class FileType : char { Json, Pdb, Cif, Crd, Null, Unknown };
 
 struct Arg: public option::Arg {
   static option::ArgStatus Required(const option::Option& option, bool msg) {
@@ -101,6 +101,8 @@ FileType get_format_from_extension(const std::string& path) {
     return FileType::Json;
   if (iends_with(path, ".cif") || iends_with(path, ".cif.gz"))
     return FileType::Cif;
+  if (iends_with(path, ".crd"))
+    return FileType::Crd;
   if (path == "/dev/null")
     return FileType::Null;
   return FileType::Unknown;
@@ -196,17 +198,169 @@ std::vector<mol::Chain> split_by_segments(mol::Chain& orig) {
   return chains;
 }
 
+// for Refmac, to be merged with update_cif_block()
+cif::Document make_crd(const mol::Structure& st) {
+  cif::Document crd;
+  if (st.models.empty())
+    return crd;
+  auto e_id = st.info.find("_entry.id");
+  std::string id = (e_id != st.info.end() ? e_id->second : st.name);
+  crd.blocks.emplace_back("structure_" + id);
+  cif::Block& block = crd.blocks[0];
+  auto& items = block.items;
+
+  items.emplace_back("_entry.id", id);
+  items.emplace_back("_database_2.code_PDB", id);
+  auto keywords = st.info.find("_struct_keywords.pdbx_keywords");
+  if (keywords != st.info.end())
+    items.emplace_back("_struct_keywords.text", cif::quote(keywords->second));
+  auto title = st.info.find("_struct.title");
+  if (title != st.info.end())
+    items.emplace_back(title->first, cif::quote(title->second));
+  auto initial_date =
+         st.info.find("_pdbx_database_status.recvd_initial_deposition_date");
+  if (initial_date != st.info.end())
+    items.emplace_back("_audit.creation_date", initial_date->second);
+
+  items.emplace_back(cif::CommentArg{"############\n"
+                                     "## ENTITY ##\n"
+                                     "############"});
+  cif::Loop& entity_loop = block.clear_or_add_loop("_entity.", {"id", "type"});
+  for (const auto& ent : st.entities) {
+    entity_loop.values.push_back(ent->id);
+    entity_loop.values.push_back(ent->type_as_string());
+  }
+  items.emplace_back(cif::CommentArg{"#####################\n"
+                                     "## ENTITY_POLY_SEQ ##\n"
+                                     "#####################"});
+  cif::Loop& poly_loop = block.clear_or_add_loop("_entity_poly_seq.", {
+              "mon_id", "ccp4_auth_seq_id", "entity_id",
+              "ccp4_back_connect_type", "ccp4_num_mon_back", "ccp4_mod_id"});
+  for (const auto& ent : st.entities)
+    if (ent->type == mol::EntityType::Polymer)
+      for (const mol::SequenceItem& si : ent->sequence) {
+        poly_loop.values.emplace_back(si.mon);
+        // TODO: real auth_seq_id
+        std::string auth_seq_id = si.num >= 0 ? std::to_string(si.num) : "?";
+        poly_loop.values.emplace_back(auth_seq_id);
+        poly_loop.values.emplace_back(ent->id);
+        poly_loop.values.emplace_back("?"); // ccp4_back_connect_type
+        poly_loop.values.emplace_back("?"); // ccp4_num_mon_back
+        poly_loop.values.emplace_back("?"); // ccp4_mod_id
+      }
+  items.emplace_back(cif::CommentArg{"##########\n"
+                                     "## CELL ##\n"
+                                     "##########"});
+  items.emplace_back("_cell.entry_id", id);
+  items.emplace_back("_cell.length_a",    mol::to_str(st.cell.a));
+  items.emplace_back("_cell.length_b",    mol::to_str(st.cell.b));
+  items.emplace_back("_cell.length_c",    mol::to_str(st.cell.c));
+  items.emplace_back("_cell.angle_alpha", mol::to_str(st.cell.alpha));
+  items.emplace_back("_cell.angle_beta",  mol::to_str(st.cell.beta));
+  items.emplace_back("_cell.angle_gamma", mol::to_str(st.cell.gamma));
+  items.emplace_back(cif::CommentArg{"##############################\n"
+                                     "## FRACTIONALISATION MATRIX ##\n"
+                                     "##############################"});
+  if (st.cell.explicit_matrices || st.cell.frac.a11 != 1.0) {
+    std::string prefix = "_atom_sites.fract_transf_";
+    items.emplace_back(prefix + "matrix[1][1]", mol::to_str(st.cell.frac.a11));
+    items.emplace_back(prefix + "matrix[1][2]", mol::to_str(st.cell.frac.a12));
+    items.emplace_back(prefix + "matrix[1][3]", mol::to_str(st.cell.frac.a13));
+    items.emplace_back(prefix + "matrix[2][1]", mol::to_str(st.cell.frac.a21));
+    items.emplace_back(prefix + "matrix[2][2]", mol::to_str(st.cell.frac.a22));
+    items.emplace_back(prefix + "matrix[2][3]", mol::to_str(st.cell.frac.a23));
+    items.emplace_back(prefix + "matrix[3][1]", mol::to_str(st.cell.frac.a31));
+    items.emplace_back(prefix + "matrix[3][2]", mol::to_str(st.cell.frac.a32));
+    items.emplace_back(prefix + "matrix[3][3]", mol::to_str(st.cell.frac.a33));
+    items.emplace_back(prefix + "vector[1]",    mol::to_str(st.cell.shift.x));
+    items.emplace_back(prefix + "vector[2]",    mol::to_str(st.cell.shift.y));
+    items.emplace_back(prefix + "vector[3]",    mol::to_str(st.cell.shift.z));
+  }
+  items.emplace_back(cif::CommentArg{"##############\n"
+                                     "## SYMMETRY ##\n"
+                                     "##############"});
+  items.emplace_back("_symmetry.entry_id", id);
+  items.emplace_back("_symmetry.space_group_name_H-M", cif::quote(st.sg_hm));
+  items.emplace_back(cif::CommentArg{"#################\n"
+                                     "## STRUCT_ASYM ##\n"
+                                     "#################"});
+  // _struct_asym
+  cif::Loop& asym_loop = block.clear_or_add_loop("_struct_asym.",
+                                                 {"id", "entity_id"});
+  for (const auto& ch : st.get_chains()) {
+    asym_loop.values.push_back(ch.name);
+    asym_loop.values.push_back(ch.entity ? ch.entity->id : "?");
+  }
+  items.emplace_back(cif::CommentArg{"###############\n"
+                                     "## ATOM_SITE ##\n"
+                                     "###############"});
+  cif::Loop& atom_loop = block.clear_or_add_loop("_atom_site.", {
+      "group_PDB",
+      "id",
+      "label_atom_id",
+      "label_alt_id",
+      "label_comp_id",
+      "label_asym_id",
+      "auth_seq_id",
+      //"pdbx_PDB_ins_code",
+      "Cartn_x",
+      "Cartn_y",
+      "Cartn_z",
+      "occupancy",
+      "B_iso_or_equiv",
+      "type_symbol",
+      "calc_flag",
+      "label_seg_id",
+      "auth_atom_id",
+      "label_chem_id"});
+  std::vector<std::string>& vv = atom_loop.values;
+  vv.reserve(count_atom_sites(st) * atom_loop.tags.size());
+  int serial = 0;
+  for (const mol::Model& model : st.models) {
+    for (const mol::Chain& chain : model.chains) {
+      for (const mol::Residue& res : chain.residues) {
+        //std::string seq_id = std::to_string(res.seq_id);
+        std::string auth_seq_id = std::to_string(res.auth_seq_id);
+        //std::string ins_code(1, res.ins_code ? res.ins_code : '?');
+        for (const mol::Atom& a : res.atoms) {
+          vv.emplace_back("ATOM");
+          vv.emplace_back(std::to_string(++serial));
+          vv.emplace_back(a.name);
+          vv.emplace_back(1, a.altloc ? a.altloc : '.');
+          vv.emplace_back(res.name);
+          vv.emplace_back(chain.name);
+          vv.emplace_back(auth_seq_id);
+          //vv.emplace_back(ins_code);
+          vv.emplace_back(mol::to_str(a.pos.x));
+          vv.emplace_back(mol::to_str(a.pos.y));
+          vv.emplace_back(mol::to_str(a.pos.z));
+          vv.emplace_back(mol::to_str(a.occ));
+          vv.emplace_back(mol::to_str(a.b_iso));
+          vv.emplace_back(a.element.uname());
+          vv.emplace_back("."); // calc_flag
+          vv.emplace_back("."); // label_seg_id
+          vv.emplace_back(a.name); // again
+          vv.emplace_back("?"); // label_chem_id
+        }
+      }
+    }
+  }
+  return crd;
+}
+
 void convert(const char* input, FileType input_type,
              const char* output, FileType output_type,
              const std::vector<option::Option>& options) {
   cif::Document cif_in;
   mol::Structure st;
   // for cif->cif we do either cif->DOM->Structure->DOM->cif or cif->DOM->cif
-  bool need_structure = options[ExpandNcs];
+  bool modify_structure = (options[ExpandNcs] || options[SegmentAsChain]);
   if (input_type == FileType::Cif) {
     cif_in = cif::read_any(input);
-    if (output_type == FileType::Pdb || output_type == FileType::Null ||
-        need_structure) {
+    if ((output_type == FileType::Json || output_type == FileType::Cif) &&
+        !modify_structure) {
+      // no need to interpret the structure
+    } else {
       st = mol::read_atoms(cif_in);
       if (st.models.empty())
         fail("No atoms in the input file. Is it mmCIF?");
@@ -262,9 +416,7 @@ void convert(const char* input, FileType input_type,
     if (options[QMark])
       writer.unknown = options[QMark].arg;
     writer.write_json(cif_in);
-  }
-
-  else if (output_type == FileType::Pdb || output_type == FileType::Null) {
+  } else if (output_type == FileType::Pdb || output_type == FileType::Null) {
     if (output_type == FileType::Pdb)
       mol::write_pdb(st, *os, options[IotbxCompat]);
     else {
@@ -275,12 +427,14 @@ void convert(const char* input, FileType input_type,
     }
   } else if (output_type == FileType::Cif) {
     // cif to cif round trip is for testing only
-    if (input_type != FileType::Cif || need_structure) {
+    if (input_type != FileType::Cif || modify_structure) {
       cif_in.blocks.clear();  // temporary, for testing
       cif_in.blocks.resize(1);
       mol::update_cif_block(st, cif_in.blocks[0]);
     }
     *os << cif_in;
+  } else if (output_type == FileType::Crd) {
+    *os << make_crd(st);
   }
 }
 
@@ -318,6 +472,7 @@ int main(int argc, char **argv) {
   std::map<std::string, FileType> filetypes {{"json", FileType::Json},
                                              {"pdb", FileType::Pdb},
                                              {"cif", FileType::Cif},
+                                             {"crd", FileType::Crd},
                                              {"none", FileType::Null}};
 
   FileType in_type = options[FormatIn] ? filetypes[options[FormatIn].arg]
