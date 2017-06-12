@@ -140,6 +140,8 @@ private:
       case ItemType::Frame:
         write_map(item.frame.name, item.frame.items);
         break;
+      case ItemType::Comment:
+        break;
       case ItemType::Erased:
         break;
     }

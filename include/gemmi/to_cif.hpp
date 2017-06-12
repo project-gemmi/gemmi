@@ -35,6 +35,9 @@ std::ostream& operator<<(std::ostream& os, const gemmi::cif::Item& item) {
         os << inner_item;
       os << "save_\n";
       break;
+    case ItemType::Comment:
+      os << item.tv.value << '\n';
+      break;
     case ItemType::Erased:
       break;
   }

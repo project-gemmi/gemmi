@@ -111,7 +111,7 @@ struct Residue : public ResidueId {
   std::vector<Atom> atoms;
   Chain* parent = nullptr;
 
-  Residue(const ResidueId& rid) noexcept : ResidueId(rid) {}
+  explicit Residue(const ResidueId& rid) noexcept : ResidueId(rid) {}
   int seq_id_for_pdb() const {
     return auth_seq_id != UnknownId ? auth_seq_id : seq_id;
   }

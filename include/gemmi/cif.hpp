@@ -131,6 +131,7 @@ enum class ItemType : unsigned char {
   Value,
   Loop,
   Frame,
+  Comment,
   Erased,
 };
 
@@ -179,6 +180,11 @@ struct TagValue {
   std::string tag;
   std::string value;
 };
+
+// used only as arguments when creating Item
+struct LoopArg {};
+struct FrameArg { std::string str; };
+struct CommentArg { std::string str; };
 
 struct LoopTag {
   ValueType valtype = ValueType::NotSet;
@@ -416,14 +422,16 @@ struct Item {
     Block frame;
   };
 
-  explicit Item(int)
+  explicit Item(LoopArg)
     : type{ItemType::Loop}, loop{} {}
   explicit Item(std::string&& t)
     : type{ItemType::Value}, tv{std::move(t), std::string()} {}
   Item(const std::string& t, const std::string& v)
     : type{ItemType::Value}, tv{t, v} {}
-  Item(const std::string& s, int)
-    : type{ItemType::Frame}, frame(s) {}
+  explicit Item(FrameArg&& frame_arg)
+    : type{ItemType::Frame}, frame(frame_arg.str) {}
+  explicit Item(CommentArg&& comment)
+    : type{ItemType::Comment}, tv{std::string(), std::move(comment.str)} {}
 
   Item(Item&& o) noexcept
       : type(o.type), valtype(o.valtype), line_number(o.line_number) {
@@ -444,6 +452,7 @@ struct Item {
       case ItemType::Value: tv.~TagValue(); break;
       case ItemType::Loop: loop.~Loop(); break;
       case ItemType::Frame: frame.~Block(); break;
+      case ItemType::Comment: tv.~TagValue(); break;
       case ItemType::Erased: break;
     }
   }
@@ -461,7 +470,7 @@ struct Item {
 
 private:
   void copy_value(const Item& o) {
-    if (o.type == ItemType::Value)
+    if (o.type == ItemType::Value || o.type == ItemType::Comment)
       new (&tv) TagValue(o.tv);
     else if (o.type == ItemType::Loop)
       new (&loop) Loop(o.loop);
@@ -470,7 +479,7 @@ private:
   }
 
   void move_value(Item&& o) {
-    if (o.type == ItemType::Value)
+    if (o.type == ItemType::Value || o.type == ItemType::Comment)
       new (&tv) TagValue(std::move(o.tv));
     else if (o.type == ItemType::Loop)
       new (&loop) Loop(std::move(o.loop));
@@ -536,7 +545,7 @@ inline Loop& Block::clear_or_add_loop(const std::string& prefix,
       return i.loop;
     }
   delete_category(prefix);
-  items.emplace_back(0);
+  items.emplace_back(LoopArg{});
   Loop& loop = items.back().loop;
   loop.tags.reserve(tags.size());
   for (const char* tag : tags)
@@ -678,7 +687,7 @@ template<> struct Action<rules::str_global> {
 };
 template<> struct Action<rules::framename> {
   template<typename Input> static void apply(const Input& in, Document& out) {
-    out.items_->emplace_back(in.string(), 0);
+    out.items_->emplace_back(FrameArg{in.string()});
     out.items_->back().line_number = in.iterator().line;
     out.items_ = &out.items_->back().frame.items;
   }
@@ -703,7 +712,7 @@ template<> struct Action<rules::value> {
 };
 template<> struct Action<rules::str_loop> {
   template<typename Input> static void apply(const Input& in, Document& out) {
-    out.items_->emplace_back(0);
+    out.items_->emplace_back(LoopArg{});
     out.items_->back().line_number = in.iterator().line;
   }
 };
