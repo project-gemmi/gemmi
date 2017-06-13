@@ -8,7 +8,7 @@ FLAGS=-O2 -g --std=c++11 $(WFLAGS) -Iinclude -Ithird_party #-DNDEBUG
 PYFLAGS=$(FLAGS) -Wno-shadow -fPIC \
        -fvisibility=hidden -fwrapv -D_FORTIFY_SOURCE=2 -fstack-protector-strong
 
-all: gemmi-validate gemmi-convert
+all: gemmi-validate gemmi-convert gemmi-grep
 
 py: gemmi.so
 
@@ -21,6 +21,9 @@ gemmi-convert: convert.cpp include/gemmi/*.hpp
 
 gemmi-convert-snprintf: convert.cpp include/gemmi/*.hpp
 	$(CXX) -DUSE_STD_SNPRINTF $(FLAGS) $< -o $@ -lz
+
+gemmi-grep: grep.cpp include/gemmi/cif.hpp include/gemmi/cifgz.hpp
+	$(CXX) $(FLAGS) $< -o $@ -lz
 
 # for debugging only
 trace: validate.cpp include/gemmi/cif.hpp
