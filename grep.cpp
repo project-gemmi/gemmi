@@ -3,6 +3,7 @@
 #include "gemmi/cif.hpp"
 #include "gemmi/cifgz.hpp"
 #include <cstdio>
+#include <cstring>
 #include <stdexcept>
 #include <string>
 #include <optionparser.h>
@@ -23,7 +24,7 @@ struct Arg: public option::Arg {
   }
 };
 
-enum OptionIndex { Unknown, Help, MaxCount, WithFileName, NoBlockName,
+enum OptionIndex { Unknown, Help, MaxCount, WithFileName, NoBlockName, WithTag,
                    Summarize, MatchingFiles, NonMatchingFiles, Count };
 
 const option::Descriptor usage[] = {
@@ -39,58 +40,152 @@ const option::Descriptor usage[] = {
     "  -H, --with-filename  \tprint the file name for each match" },
   { NoBlockName, 0, "b", "no-blockname", Arg::None,
     "  -b, --no-blockname  \tsuppress the block name on output" },
-  { Summarize, 0, "s", "summarize", Arg::None,
-    "  -s, --summarize  \tdisplay only statistics" },
+  { WithTag, 0, "t", "with-tag", Arg::None,
+    "  -t, --with-tag  \tprint the tag name for each match" },
   { MatchingFiles, 0, "l", "files-with-tag", Arg::None,
     "  -l, --files-with-tag  \tprint only names of files with the tag" },
   { NonMatchingFiles, 0, "L", "files-without-tag", Arg::None,
     "  -L, --files-without-tag  \tprint only names of files without the tag" },
   { Count, 0, "c", "count", Arg::None,
     "  -c, --count  \tprint only a count of matching lines per file" },
+  { Summarize, 0, "s", "summarize", Arg::None,
+    "  -s, --summarize  \tdisplay only statistics" },
   { 0, 0, 0, 0, 0, 0 }
 };
 
-struct ParsedOptions {
+struct Parameters {
+  std::string search_tag;
   int max_count = 10;
   bool with_filename = false;
   bool with_blockname = true;
+  bool with_tag = false;
   bool summarize = false;
   bool only_filenames = false;
   bool inverse = false;
-  bool count = false;
+  bool print_count = false;
+  // working parameters
+  const char* path = "";
+  std::string block_name;
+  bool match_value = false;
+  int match_column = -1;
+  int table_width = 0;
+  int column = 0;
+  int counter = 0;
 };
 
-static
-void grep_file(const std::string& tag, const char* path,
-               const ParsedOptions& opt) {
-  using namespace gemmi::cif;
-  Document d = read_any(path);
-  for (Block& block : d.blocks) {
-    TableView t = block.find(tag);
-    if (opt.only_filenames) {
-      if (t.ok() != opt.inverse)
-        printf("%s\n", path);
-      continue;
-    }
-    if (opt.count) {
-      if (opt.with_filename)
-        printf("%s: ", path);
-      if (opt.with_blockname)
-        printf("%s: ", block.name.c_str());
-      printf(" %d\n", (int) t.length());
-      continue;
-    }
-    int cnt = 0;
-    for (const TableView::Row& row : t) {
-      if (opt.with_filename)
-        printf("%s: ", path);
-      if (opt.with_blockname)
-        printf("%s: ", block.name.c_str());
-      printf("%s\n", row.as_str(0).c_str());
-      if (++cnt == opt.max_count)
-        break;
+static void process_match(const std::string& value, Parameters& par) {
+  //if (par.only_filenames)
+  //  throw ...
+  if (par.print_count) {
+    par.counter++;
+    return;
+  }
+  if (par.with_filename)
+    printf("%s: ", par.path);
+  if (par.with_blockname)
+    printf("%s: ", par.block_name.c_str());
+  if (par.with_tag)
+    printf("[%s] ", par.search_tag.c_str());
+  printf(" %s\n", value.c_str());
+  //if (++par.counter == par.max_count)
+  //  throw ...
+}
+
+static void finish_processing(Parameters& par) {
+  if (par.print_count) {
+    if (par.with_filename)
+      printf("%s: ", par.path);
+    if (par.with_blockname)
+      printf("%s: ", par.block_name.c_str());
+    printf(" %d\n", par.counter);
+    par.counter = 0;
+  }
+  // throw
+}
+
+namespace pegtl = tao::pegtl;
+namespace rules = gemmi::cif::rules;
+namespace cif = gemmi::cif;
+
+template<typename Rule> struct Search : pegtl::nothing<Rule> {};
+
+template<> struct Search<rules::datablockname> {
+  template<typename Input> static void apply(const Input& in, Parameters& p) {
+    p.block_name = in.string();
+  }
+};
+template<> struct Search<rules::str_global> {
+  template<typename Input> static void apply(const Input&, Parameters& p) {
+    p.block_name = "global_";
+  }
+};
+template<> struct Search<rules::tag> {
+  template<typename Input> static void apply(const Input& in, Parameters& p) {
+    if (p.search_tag == in.string())
+      p.match_value = true;
+  }
+};
+template<> struct Search<rules::value> {
+  template<typename Input> static void apply(const Input& in, Parameters& p) {
+    if (p.match_value) {
+      process_match(cif::as_string(in.string()), p);
+      finish_processing(p);
+      p.match_value = false;
     }
   }
+};
+template<> struct Search<rules::str_loop> {
+  template<typename Input> static void apply(const Input&, Parameters& p) {
+    p.table_width = 0;
+  }
+};
+template<> struct Search<rules::loop_tag> {
+  template<typename Input> static void apply(const Input& in, Parameters& p) {
+    if (p.search_tag == in.string()) {
+      p.match_column = p.table_width;
+      p.column = 0;
+    }
+    p.table_width++;
+  }
+};
+template<> struct Search<rules::loop_end> {
+  template<typename Input> static void apply(const Input&, Parameters& p) {
+    if (p.match_column != -1) {
+      finish_processing(p);
+      p.match_column = -1;
+    }
+  }
+};
+template<> struct Search<rules::loop_value> {
+  template<typename Input> static void apply(const Input& in, Parameters& p) {
+    if (p.match_column != -1) {
+      if (p.column == p.match_column)
+        process_match(cif::as_string(in.string()), p);
+      p.column++;
+      if (p.column == p.table_width)
+        p.column = 0;
+    }
+  }
+};
+
+
+static
+void grep_file(const std::string& tag, const char* path, Parameters& par) {
+  par.search_tag = tag;
+  par.path = path;
+  if (std::strcmp(path, "-") == 0) {
+    pegtl::cstream_input<> in(stdin, 16*1024, "stdin");
+    pegtl::parse<rules::file, Search, cif::Errors>(in, par);
+  } else if (gemmi::ends_with(path, ".gz")) {
+    size_t orig_size = cif::estimate_uncompressed_size(path);
+    std::unique_ptr<char[]> mem = cif::gunzip_to_memory(path, orig_size);
+    pegtl::memory_input<> in(mem.get(), orig_size, path);
+    pegtl::parse<rules::file, Search, cif::Errors>(in, par);
+  } else {
+    pegtl::file_input<> in(path);
+    pegtl::parse<rules::file, Search, cif::Errors>(in, par);
+  }
+  fflush(stdout);
 }
 
 int main(int argc, char **argv) {
@@ -110,30 +205,32 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  ParsedOptions parsed_options;
+  Parameters params;
   if (options[MaxCount])
-    parsed_options.max_count = std::strtol(options[MaxCount].arg, nullptr, 10);
+    params.max_count = std::strtol(options[MaxCount].arg, nullptr, 10);
   if (options[WithFileName])
-    parsed_options.with_filename = true;
+    params.with_filename = true;
   if (options[NoBlockName])
-    parsed_options.with_blockname = false;
+    params.with_blockname = false;
+  if (options[WithTag])
+    params.with_tag = true;
   if (options[Summarize])
-    parsed_options.summarize = true;
+    params.summarize = true;
   if (options[MatchingFiles])
-    parsed_options.only_filenames = true;
+    params.only_filenames = true;
   if (options[NonMatchingFiles]) {
-    parsed_options.only_filenames = true;
-    parsed_options.inverse = true;
+    params.only_filenames = true;
+    params.inverse = true;
   }
   if (options[Count])
-    parsed_options.count = true;
+    params.print_count = true;
 
   std::string tag = parse.nonOption(0);
 
   for (int i = 1; i < parse.nonOptionsCount(); ++i) {
     const char* path = parse.nonOption(i);
     try {
-      grep_file(tag, path, parsed_options);
+      grep_file(tag, path, params);
     } catch (std::runtime_error& e) {
       fprintf(stderr, "Error when parsing %s:\n\t%s\n", path, e.what());
       return 1;

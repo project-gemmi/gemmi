@@ -86,9 +86,10 @@ namespace rules {
   struct value: sor<simunq, singlequoted, doublequoted, textfield, unquoted> {};
   struct loop_tag : tag {};
   struct loop_value : value {};
+  struct loop_end : opt<seq<whitespace, str_stop>> {};
   struct loop: if_must<str_loop, plus<seq<whitespace, loop_tag, discard>>,
                                  star<seq<whitespace, loop_value, discard>>,
-                                 opt<seq<whitespace, str_stop>>> {};
+                                 loop_end> {};
   struct dataitem: if_must<tag, whitespace, value, discard> {};
   struct framename : plus<nonblank_ch> {};
   struct endframe : str_save {};
