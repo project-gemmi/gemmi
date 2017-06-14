@@ -76,6 +76,17 @@ inline Document read_any(const std::string& path) {
   return d;
 }
 
+inline bool check_syntax_any(const std::string& path, std::string* msg) {
+  if (gemmi::ends_with(path, ".gz")) {
+    size_t orig_size = cif::estimate_uncompressed_size(path);
+    std::unique_ptr<char[]> mem = cif::gunzip_to_memory(path, orig_size);
+    tao::pegtl::memory_input<> in(mem.get(), orig_size, path);
+    return cif::check_syntax(in, msg);
+  }
+  tao::pegtl::file_input<> in(path);
+  return cif::check_syntax(in, msg);
+}
+
 } // namespace cif
 } // namespace gemmi
 

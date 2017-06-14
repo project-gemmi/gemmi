@@ -117,15 +117,7 @@ int main(int argc, char **argv) {
     bool ok = true;
     try {
       if (options[Fast]) {
-        if (gemmi::ends_with(path, ".gz")) {
-          size_t orig_size = cif::estimate_uncompressed_size(path);
-          std::unique_ptr<char[]> mem = cif::gunzip_to_memory(path, orig_size);
-          tao::pegtl::memory_input<> in(mem.get(), orig_size, path);
-          ok = cif::check_syntax(in, &msg);
-        } else {
-          tao::pegtl::file_input<> in(path);
-          ok = cif::check_syntax(in, &msg);
-        }
+        ok = cif::check_syntax_any(path, &msg);
       } else {
         cif::Document d = cif::read_any(path);
         if (options[Types])
