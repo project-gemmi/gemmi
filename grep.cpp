@@ -26,7 +26,7 @@ struct Arg: public option::Arg {
 };
 
 enum OptionIndex { Unknown, Help, Version, MaxCount,
-                   WithFileName, NoBlockName, WithTag,
+                   WithFileName, NoBlockName, WithLineNumbers, WithTag,
                    Summarize, MatchingFiles, NonMatchingFiles, Count };
 
 const option::Descriptor usage[] = {
@@ -40,6 +40,8 @@ const option::Descriptor usage[] = {
     "  -V, --version  \tdisplay version information and exit" },
   { MaxCount, 0, "m", "max-count", Arg::Int,
     "  -m, --max-count=NUM  \tprint max NUM values per file (default: 10)" },
+  { WithLineNumbers, 0, "n", "line-number", Arg::None,
+    "  -n, --line-number  \tprint line number with output lines" },
   { WithFileName, 0, "H", "with-filename", Arg::None,
     "  -H, --with-filename  \tprint the file name for each match" },
   { NoBlockName, 0, "b", "no-blockname", Arg::None,
@@ -58,10 +60,12 @@ const option::Descriptor usage[] = {
 };
 
 struct Parameters {
+  // options
   std::string search_tag;
   int max_count = 10;
   bool with_filename = false;
   bool with_blockname = true;
+  bool with_line_numbers = false;
   bool with_tag = false;
   bool summarize = false;
   bool only_filenames = false;
@@ -77,7 +81,8 @@ struct Parameters {
   int counter = 0;
 };
 
-static void process_match(const std::string& value, Parameters& par) {
+template<typename Input>
+void process_match(const Input& in, Parameters& par) {
   //if (par.only_filenames)
   //  throw ...
   if (par.print_count) {
@@ -85,12 +90,14 @@ static void process_match(const std::string& value, Parameters& par) {
     return;
   }
   if (par.with_filename)
-    printf("%s: ", par.path);
+    printf("%s:", par.path);
   if (par.with_blockname)
-    printf("%s: ", par.block_name.c_str());
+    printf("%s:", par.block_name.c_str());
+  if (par.with_line_numbers)
+    printf("%jd:", in.iterator().line);
   if (par.with_tag)
     printf("[%s] ", par.search_tag.c_str());
-  printf(" %s\n", value.c_str());
+  printf("%s\n", gemmi::cif::as_string(in.string()).c_str());
   //if (++par.counter == par.max_count)
   //  throw ...
 }
@@ -132,7 +139,7 @@ template<> struct Search<rules::tag> {
 template<> struct Search<rules::value> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     if (p.match_value) {
-      process_match(cif::as_string(in.string()), p);
+      process_match(in, p);
       finish_processing(p);
       p.match_value = false;
     }
@@ -164,7 +171,7 @@ template<> struct Search<rules::loop_value> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     if (p.match_column != -1) {
       if (p.column == p.match_column)
-        process_match(cif::as_string(in.string()), p);
+        process_match(in, p);
       p.column++;
       if (p.column == p.table_width)
         p.column = 0;
@@ -220,6 +227,8 @@ int main(int argc, char **argv) {
     params.with_filename = true;
   if (options[NoBlockName])
     params.with_blockname = false;
+  if (options[WithLineNumbers])
+    params.with_line_numbers = true;
   if (options[WithTag])
     params.with_tag = true;
   if (options[Summarize])
