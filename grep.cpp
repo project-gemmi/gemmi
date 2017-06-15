@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string>
 #include <optionparser.h>
+#include <tinydir.h>
 
 #define EXE_NAME "gemmi-grep"
 
@@ -28,7 +29,7 @@ struct Arg: public option::Arg {
   }
 };
 
-enum OptionIndex { Unknown, Help, Version, MaxCount, OneBlock,
+enum OptionIndex { Unknown, Help, Version, Recurse, MaxCount, OneBlock,
                    WithFileName, NoBlockName, WithLineNumbers, WithTag,
                    Summarize, MatchingFiles, NonMatchingFiles, Count };
 
@@ -59,6 +60,8 @@ const option::Descriptor usage[] = {
     "  -L, --files-without-tag  \tprint only names of files without the tag" },
   { Count, 0, "c", "count", Arg::None,
     "  -c, --count  \tprint only a count of matching lines per file" },
+  { Recurse, 0, "r", "recursive", Arg::None,
+    "  -r, --recursive  \tignored (directories are always recursed)" },
   { Summarize, 0, "s", "summarize", Arg::None,
   nullptr }, // "  -s, --summarize  \tdisplay only statistics" },
   { 0, 0, 0, 0, 0, 0 }
@@ -89,12 +92,9 @@ struct Parameters {
 
 template<typename Input>
 void process_match(const Input& in, Parameters& par) {
-  if (par.only_filenames) {
-    if (!par.inverse)
-      printf("%s\n", par.path);
-    throw true;
-  }
   ++par.counter;
+  if (par.only_filenames)
+    throw true;
   if (par.print_count)
     return;
   if (par.with_filename)
@@ -108,15 +108,6 @@ void process_match(const Input& in, Parameters& par) {
   printf("%s\n", gemmi::cif::as_string(in.string()).c_str());
   if (par.counter == par.max_count)
     throw true;
-}
-
-static void print_counter(Parameters& par) {
-  if (par.with_filename)
-    printf("%s:", par.path);
-  if (par.with_blockname)
-    printf("%s:", par.block_name.c_str());
-  printf(" %d\n", par.counter);
-  par.counter = 0;
 }
 
 namespace pegtl = tao::pegtl;
@@ -146,8 +137,6 @@ template<> struct Search<rules::value> {
     if (p.match_value) {
       p.match_value = false;
       process_match(in, p);
-      if (p.print_count)
-        print_counter(p);
       if (p.last_block)
         throw true;
     }
@@ -171,8 +160,6 @@ template<> struct Search<rules::loop_end> {
   template<typename Input> static void apply(const Input&, Parameters& p) {
     if (p.match_column != -1) {
       p.match_column = -1;
-      if (p.print_count)
-        print_counter(p);
       if (p.last_block)
         throw true;
     }
@@ -198,24 +185,77 @@ void grep_file(const std::string& tag, const char* path, Parameters& par) {
   par.counter = 0;
   par.match_column = -1;
   par.match_value = false;
-  if (std::strcmp(path, "-") == 0) {
-    pegtl::cstream_input<> in(stdin, 16*1024, "stdin");
-    pegtl::parse<rules::file, Search, cif::Errors>(in, par);
-  } else if (gemmi::ends_with(path, ".gz")) {
-    size_t orig_size = cif::estimate_uncompressed_size(path);
-    std::unique_ptr<char[]> mem = cif::gunzip_to_memory(path, orig_size);
-    pegtl::memory_input<> in(mem.get(), orig_size, path);
-    pegtl::parse<rules::file, Search, cif::Errors>(in, par);
-  } else {
-    pegtl::file_input<> in(path);
-    pegtl::parse<rules::file, Search, cif::Errors>(in, par);
-  }
-  if (par.only_filenames && par.inverse)
+  try {
+    if (std::strcmp(path, "-") == 0) {
+      pegtl::cstream_input<> in(stdin, 16*1024, "stdin");
+      pegtl::parse<rules::file, Search, cif::Errors>(in, par);
+    } else if (gemmi::ends_with(path, ".gz")) {
+      size_t orig_size = cif::estimate_uncompressed_size(path);
+      std::unique_ptr<char[]> mem = cif::gunzip_to_memory(path, orig_size);
+      pegtl::memory_input<> in(mem.get(), orig_size, path);
+      pegtl::parse<rules::file, Search, cif::Errors>(in, par);
+    } else {
+      pegtl::file_input<> in(path);
+      pegtl::parse<rules::file, Search, cif::Errors>(in, par);
+    }
+  } catch (bool) {}
+  if (par.print_count) {
+    if (par.with_filename)
+      printf("%s:", par.path);
+    if (par.with_blockname)
+      printf("%s:", par.block_name.c_str());
+    printf("%d\n", par.counter);
+  } else if (par.only_filenames && par.inverse == (par.counter == 0)) {
     printf("%s\n", par.path);
-  else if (par.print_count)
-    print_counter(par);
+  }
   std::fflush(stdout);
 }
+
+
+class DirWalker {
+public:
+  explicit DirWalker(const char* path) {
+    if (tinydir_file_open(&file, path) == -1) {
+      //std::perror(nullptr);
+      throw std::runtime_error("Cannot open file or directory: " +
+                               std::string(path));
+    }
+    if (file.is_dir) {
+      opened_dirs.emplace_back();
+      if (tinydir_open_sorted(&opened_dirs[0], path) == -1)
+        throw std::runtime_error("Cannot open directory: " + std::string(path));
+      n_entries = opened_dirs[0].n_files;
+    } else {
+      n_entries = 1;
+    }
+  }
+  ~DirWalker() {
+    for (tinydir_dir& d : opened_dirs)
+      tinydir_close(&d);
+  }
+
+  int n_entries;
+  tinydir_file file;
+  std::vector<tinydir_dir> opened_dirs;
+
+  struct Iter {
+    DirWalker& walker;
+    int cur;
+    const tinydir_file& operator*() const {
+      assert(cur < walker.n_entries);
+      if (walker.file.is_dir) {
+        return walker.opened_dirs[0]._files[cur];
+      }
+      return walker.file;
+    }
+    void operator++() { cur++; }
+    bool operator!=(const Iter& o) const { return cur != o.cur; }
+    bool operator==(const Iter& o) const { return cur == o.cur; }
+  };
+
+  Iter begin() { return Iter{*this, 0}; }
+  Iter end() { return Iter{*this, n_entries}; }
+};
 
 int main(int argc, char **argv) {
   if (argc < 1)
@@ -267,9 +307,11 @@ int main(int argc, char **argv) {
   for (int i = 1; i < parse.nonOptionsCount(); ++i) {
     const char* path = parse.nonOption(i);
     try {
-      grep_file(tag, path, params);
-    } catch (bool) {
-      std::fflush(stdout);
+      DirWalker tdir(path);
+      for (const tinydir_file& f : tdir)
+        if (!f.is_dir || gemmi::ends_with(f.path, ".cif") ||
+                         gemmi::ends_with(f.path, ".cif.gz"))
+          grep_file(tag, f.path, params);
     } catch (std::runtime_error& e) {
       std::fflush(stdout);
       fprintf(stderr, "Error when parsing %s:\n\t%s\n", path, e.what());
