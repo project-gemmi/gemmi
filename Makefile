@@ -44,6 +44,8 @@ write-help: gemmi-validate gemmi-convert
 	./gemmi-validate -h >> docs/validate-help.txt
 	echo '$$ gemmi-convert -h' > docs/convert-help.txt
 	./gemmi-convert -h >> docs/convert-help.txt
+	echo '$$ gemmi-grep -h' > docs/grep-help.txt
+	./gemmi-grep -h >> docs/grep-help.txt
 
 clean:
 	rm -f gemmi-validate gemmi-convert trace gemmi.so pygemmi.o

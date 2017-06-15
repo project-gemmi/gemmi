@@ -32,6 +32,29 @@ __ http://www.iucr.org/iucr-top/lists/cif-developers/
 .. literalinclude:: convert-help.txt
    :language: console
 
+gemmi-grep
+----------
+
+Searches for a specified tag in CIF files and prints the associated values,
+one value per line.
+
+The command-line option are meant to be, where possible, similar to the
+options of GNU `grep`.
+
+.. literalinclude:: grep-help.txt
+   :language: console
+
+This is a minimalistic program designed to be used together with Unix
+text-processing utilities. For example, it cannot filter values itself,
+but one may use grep:
+
+.. code-block:: console
+
+    $ gemmi-grep _pdbx_database_related.db_name /pdb/mmCIF/aa/* | grep EMDB
+    4AAS:EMDB
+    5AA0:EMDB
+
+
 .. _cif_examples:
 
 Examples

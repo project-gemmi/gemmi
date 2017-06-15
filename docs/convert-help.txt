@@ -6,6 +6,7 @@ with possible conversions: cif->json and cif<->pdb.
 
 General options:
   -h, --help             Print usage and exit.
+  -V, --version          Print version and exit.
   --verbose              Verbose output.
   --from=pdb|cif         Input format (default: from the file extension).
   --to=json|pdb          Output format (default: from the file extension).
@@ -21,5 +22,6 @@ CIF output options:
 Macromolecular options:
   --expand-ncs           Expand strict NCS specified in MTRIXn or equivalent.
   --iotbx-compat         Limited compatibility with iotbx (details in docs).
+  --segment-as-chain     Append segment id to label_asym_id (chain name).
 
 When output file is -, write to standard output.

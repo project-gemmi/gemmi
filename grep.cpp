@@ -11,6 +11,9 @@
 
 #define EXE_NAME "gemmi-grep"
 
+using std::printf;
+using std::fprintf;
+
 struct Arg: public option::Arg {
   static option::ArgStatus Int(const option::Option& option, bool msg) {
     if (option.arg) {
@@ -25,7 +28,7 @@ struct Arg: public option::Arg {
   }
 };
 
-enum OptionIndex { Unknown, Help, Version, MaxCount,
+enum OptionIndex { Unknown, Help, Version, MaxCount, OneBlock,
                    WithFileName, NoBlockName, WithLineNumbers, WithTag,
                    Summarize, MatchingFiles, NonMatchingFiles, Count };
 
@@ -40,6 +43,8 @@ const option::Descriptor usage[] = {
     "  -V, --version  \tdisplay version information and exit" },
   { MaxCount, 0, "m", "max-count", Arg::Int,
     "  -m, --max-count=NUM  \tprint max NUM values per file (default: 10)" },
+  { OneBlock, 0, "O", "one-block", Arg::None,
+    "  -O, --one-block  \toptimize assuming one block per file" },
   { WithLineNumbers, 0, "n", "line-number", Arg::None,
     "  -n, --line-number  \tprint line number with output lines" },
   { WithFileName, 0, "H", "with-filename", Arg::None,
@@ -55,7 +60,7 @@ const option::Descriptor usage[] = {
   { Count, 0, "c", "count", Arg::None,
     "  -c, --count  \tprint only a count of matching lines per file" },
   { Summarize, 0, "s", "summarize", Arg::None,
-    "  -s, --summarize  \tdisplay only statistics" },
+  nullptr }, // "  -s, --summarize  \tdisplay only statistics" },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -69,7 +74,7 @@ struct Parameters {
   bool with_tag = false;
   bool summarize = false;
   bool only_filenames = false;
-  bool inverse = false;
+  bool inverse = false;  // for now it refers to only_filenames only
   bool print_count = false;
   // working parameters
   const char* path = "";
@@ -79,16 +84,19 @@ struct Parameters {
   int table_width = 0;
   int column = 0;
   int counter = 0;
+  bool last_block = false;
 };
 
 template<typename Input>
 void process_match(const Input& in, Parameters& par) {
-  //if (par.only_filenames)
-  //  throw ...
-  if (par.print_count) {
-    par.counter++;
-    return;
+  if (par.only_filenames) {
+    if (!par.inverse)
+      printf("%s\n", par.path);
+    throw true;
   }
+  ++par.counter;
+  if (par.print_count)
+    return;
   if (par.with_filename)
     printf("%s:", par.path);
   if (par.with_blockname)
@@ -98,20 +106,17 @@ void process_match(const Input& in, Parameters& par) {
   if (par.with_tag)
     printf("[%s] ", par.search_tag.c_str());
   printf("%s\n", gemmi::cif::as_string(in.string()).c_str());
-  //if (++par.counter == par.max_count)
-  //  throw ...
+  if (par.counter == par.max_count)
+    throw true;
 }
 
-static void finish_processing(Parameters& par) {
-  if (par.print_count) {
-    if (par.with_filename)
-      printf("%s: ", par.path);
-    if (par.with_blockname)
-      printf("%s: ", par.block_name.c_str());
-    printf(" %d\n", par.counter);
-    par.counter = 0;
-  }
-  // throw
+static void print_counter(Parameters& par) {
+  if (par.with_filename)
+    printf("%s:", par.path);
+  if (par.with_blockname)
+    printf("%s:", par.block_name.c_str());
+  printf(" %d\n", par.counter);
+  par.counter = 0;
 }
 
 namespace pegtl = tao::pegtl;
@@ -139,9 +144,12 @@ template<> struct Search<rules::tag> {
 template<> struct Search<rules::value> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     if (p.match_value) {
-      process_match(in, p);
-      finish_processing(p);
       p.match_value = false;
+      process_match(in, p);
+      if (p.print_count)
+        print_counter(p);
+      if (p.last_block)
+        throw true;
     }
   }
 };
@@ -162,8 +170,11 @@ template<> struct Search<rules::loop_tag> {
 template<> struct Search<rules::loop_end> {
   template<typename Input> static void apply(const Input&, Parameters& p) {
     if (p.match_column != -1) {
-      finish_processing(p);
       p.match_column = -1;
+      if (p.print_count)
+        print_counter(p);
+      if (p.last_block)
+        throw true;
     }
   }
 };
@@ -184,6 +195,9 @@ static
 void grep_file(const std::string& tag, const char* path, Parameters& par) {
   par.search_tag = tag;
   par.path = path;
+  par.counter = 0;
+  par.match_column = -1;
+  par.match_value = false;
   if (std::strcmp(path, "-") == 0) {
     pegtl::cstream_input<> in(stdin, 16*1024, "stdin");
     pegtl::parse<rules::file, Search, cif::Errors>(in, par);
@@ -196,7 +210,11 @@ void grep_file(const std::string& tag, const char* path, Parameters& par) {
     pegtl::file_input<> in(path);
     pegtl::parse<rules::file, Search, cif::Errors>(in, par);
   }
-  fflush(stdout);
+  if (par.only_filenames && par.inverse)
+    printf("%s\n", par.path);
+  else if (par.print_count)
+    print_counter(par);
+  std::fflush(stdout);
 }
 
 int main(int argc, char **argv) {
@@ -223,6 +241,8 @@ int main(int argc, char **argv) {
   Parameters params;
   if (options[MaxCount])
     params.max_count = std::strtol(options[MaxCount].arg, nullptr, 10);
+  if (options[OneBlock])
+    params.last_block = true;
   if (options[WithFileName])
     params.with_filename = true;
   if (options[NoBlockName])
@@ -248,7 +268,10 @@ int main(int argc, char **argv) {
     const char* path = parse.nonOption(i);
     try {
       grep_file(tag, path, params);
+    } catch (bool) {
+      std::fflush(stdout);
     } catch (std::runtime_error& e) {
+      std::fflush(stdout);
       fprintf(stderr, "Error when parsing %s:\n\t%s\n", path, e.what());
       return 1;
     }
