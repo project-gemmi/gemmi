@@ -2,6 +2,7 @@
 
 #include "gemmi/cif.hpp"
 #include "gemmi/cifgz.hpp"
+#include "gemmi/version.hpp"
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
@@ -24,7 +25,8 @@ struct Arg: public option::Arg {
   }
 };
 
-enum OptionIndex { Unknown, Help, MaxCount, WithFileName, NoBlockName, WithTag,
+enum OptionIndex { Unknown, Help, Version, MaxCount,
+                   WithFileName, NoBlockName, WithTag,
                    Summarize, MatchingFiles, NonMatchingFiles, Count };
 
 const option::Descriptor usage[] = {
@@ -33,9 +35,11 @@ const option::Descriptor usage[] = {
     "Search for TAG in CIF files."
     "\n\nOptions:" },
   { Help, 0, "h", "help", Arg::None,
-    "  -h, --help  \tprint usage and exit" },
+    "  -h, --help  \tdisplay this help and exit" },
+  { Version, 0, "V", "version", Arg::None,
+    "  -V, --version  \tdisplay version information and exit" },
   { MaxCount, 0, "m", "max-count", Arg::Int,
-    "  -m, --max-count=NUM  \tprint max NUM values per block (default: 10)" },
+    "  -m, --max-count=NUM  \tprint max NUM values per file (default: 10)" },
   { WithFileName, 0, "H", "with-filename", Arg::None,
     "  -H, --with-filename  \tprint the file name for each match" },
   { NoBlockName, 0, "b", "no-blockname", Arg::None,
@@ -196,12 +200,16 @@ int main(int argc, char **argv) {
   std::vector<option::Option> buffer(stats.buffer_max);
   option::Parser parse(usage, argc-1, argv+1, options.data(), buffer.data());
   if (parse.error() || options[Unknown] ||
-      (!options[Help] && parse.nonOptionsCount() < 2)) {
+      (!options[Help] && !options[Version] && parse.nonOptionsCount() < 2)) {
     option::printUsage(fwrite, stderr, usage);
     return 1;
   }
   if (options[Help]) {
     option::printUsage(fwrite, stdout, usage);
+    return 0;
+  }
+  if (options[Version]) {
+    printf("%s %s\n", EXE_NAME, GEMMI_VERSION);
     return 0;
   }
 

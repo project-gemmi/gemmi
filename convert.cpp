@@ -7,6 +7,7 @@
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/to_pdb.hpp"
+#include "gemmi/version.hpp"
 // set this before only one of stb_sprintf.h includes
 #define STB_SPRINTF_IMPLEMENTATION
 #include "gemmi/to_mmcif.hpp"
@@ -56,7 +57,7 @@ struct Arg: public option::Arg {
   }
 };
 
-enum OptionIndex { Unknown, Help, Verbose, FormatIn, FormatOut,
+enum OptionIndex { Unknown, Help, Version, Verbose, FormatIn, FormatOut,
                    Bare, Numb, QMark, ExpandNcs, IotbxCompat, SegmentAsChain };
 static const option::Descriptor usage[] = {
   { Unknown, 0, "", "", Arg::None,
@@ -65,6 +66,8 @@ static const option::Descriptor usage[] = {
     "\n\nwith possible conversions: cif->json and cif<->pdb."
     "\n\nGeneral options:" },
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
+  { Version, 0, "V", "version", Arg::None,
+    "  -V, --version  \tPrint version and exit." },
   { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { FormatIn, 0, "", "from", Arg::FileFormat,
     "  --from=pdb|cif  \tInput format (default: from the file extension)." },
@@ -452,6 +455,10 @@ int main(int argc, char **argv) {
   }
   if (options[Help]) {
     option::printUsage(std::cout, usage);
+    return 0;
+  }
+  if (options[Version]) {
+    std::cout << EXE_NAME " " GEMMI_VERSION "\n";
     return 0;
   }
   if (options[Unknown]) {

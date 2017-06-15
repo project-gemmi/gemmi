@@ -47,6 +47,22 @@ struct Residue;
 
 enum class EntityType { Unknown, Polymer, NonPolymer, Water };
 
+//enum class PolymerType {  };
+
+/*
+ values for _entity_poly.type (mmcif_pdbx_v50.dic)
+cyclic-pseudo-peptide
+peptide nucleic acid
+polydeoxyribonucleotide
+polydeoxyribonucleotide/polyribonucleotide hybrid
+polypeptide(D)
+polypeptide(L)
+polyribonucleotide
+polysaccharide(D)
+polysaccharide(L)
+other
+*/
+
 struct SequenceItem {
   int num;
   std::string mon;
