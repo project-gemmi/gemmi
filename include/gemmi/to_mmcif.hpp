@@ -145,12 +145,15 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
     if (ent->type == EntityType::Polymer)
       entity_poly_loop.append_row({ent->id, ent->polymer_type_as_string()});
 
-  // title, keywords, etc
+  // _exptl
+  cif::Loop& exptl_method_loop = block.clear_or_add_loop("_exptl.",
+                                                        {"entry_id", "method"});
   auto exptl_method = st.info.find("_exptl.method");
-  if (exptl_method != st.info.end()) {
-    block.update_value("_exptl.entry_id", id);
-    block.update_value(exptl_method->first, cif::quote(exptl_method->second));
-  }
+  if (exptl_method != st.info.end())
+    for (const std::string& m : gemmi::split_str(exptl_method->second, ','))
+      exptl_method_loop.append_row({id, cif::quote(m)});
+
+  // title, keywords
   auto title = st.info.find("_struct.title");
   if (title != st.info.end()) {
     block.update_value("_struct.entry_id", id);

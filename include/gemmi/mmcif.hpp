@@ -74,8 +74,18 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
 
   auto add_info = [&](std::string tag) {
     cif::TableView t = block.find(tag);
-    if (t.length() >= 1 && !cif::is_null(t[0][0]))
-      st.info[tag] = t[0].as_str(0);
+    if (t.length() >= 1) {
+      std::string value;
+      bool first = true;
+      for (const cif::TableView::Row &r : t)
+        if (!cif::is_null(r[0])) {
+          if (first)
+            st.info[tag] = cif::as_string(r[0]);
+          else
+            st.info[tag] += "," + cif::as_string(r[0]);
+          first = false;
+        }
+    }
   };
   add_info("_entry.id");
   add_info("_cell.Z_PDB");

@@ -30,6 +30,17 @@ inline bool iends_with(const std::string& str, const std::string& suffix) {
                     [](char c1, char c2) { return c1 == std::tolower(c2); });
 }
 
+std::vector<std::string> split_str(const std::string &str, char sep) {
+  std::vector<std::string> result;
+  std::size_t start = 0, end;
+  while ((end = str.find(sep, start)) != std::string::npos) {
+    result.emplace_back(str, start, end - start);
+    start = end + 1;
+  }
+  result.emplace_back(str, start);
+  return result;
+}
+
 inline std::string path_basename(const std::string& path) {
   size_t pos = path.find_last_of("\\/");
   return pos == std::string::npos ? path : path.substr(pos + 1);
