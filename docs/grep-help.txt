@@ -15,3 +15,5 @@ Options:
   -L, --files-without-tag  print only names of files without the tag
   -c, --count              print only a count of matching lines per file
   -r, --recursive          ignored (directories are always recursed)
+  -w, --raw                include '?', '.', and string quotes
+  -s, --summarize          display joint statistics for all files

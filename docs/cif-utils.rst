@@ -54,6 +54,24 @@ but one may use grep:
     4AAS:EMDB
     5AA0:EMDB
 
+If the searched tag is near the beginning of file, the option ``-O`` will make
+gemmi-grep much faster. Searching the whole compressed mmCIF archive from
+the PDB should take on an average computer between 10 and 30 minutes,
+depending where the searched tag is located.
+
+.. code-block:: console
+
+    $ gemmi-grep -O -b _entity_poly.type /pdb/mmCIF | sort | uniq -c
+	  1 cyclic-pseudo-peptide
+	  4 other
+	  2 peptide nucleic acid
+       9905 polydeoxyribonucleotide
+	156 polydeoxyribonucleotide/polyribonucleotide hybrid
+	 57 polypeptide(D)
+     168923 polypeptide(L)
+       4559 polyribonucleotide
+	 18 polysaccharide(D)
+
 
 .. _cif_examples:
 

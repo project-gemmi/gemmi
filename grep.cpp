@@ -1,5 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
+// TODO: better handling of multi-line text values
+
 #include "gemmi/cif.hpp"
 #include "gemmi/cifgz.hpp"
 #include "gemmi/version.hpp"
@@ -14,6 +16,10 @@
 
 using std::printf;
 using std::fprintf;
+namespace pegtl = tao::pegtl;
+namespace cif = gemmi::cif;
+namespace rules = gemmi::cif::rules;
+
 
 struct Arg: public option::Arg {
   static option::ArgStatus Int(const option::Option& option, bool msg) {
@@ -31,7 +37,7 @@ struct Arg: public option::Arg {
 
 enum OptionIndex { Unknown, Help, Version, Recurse, MaxCount, OneBlock,
                    WithFileName, NoBlockName, WithLineNumbers, WithTag,
-                   Summarize, MatchingFiles, NonMatchingFiles, Count };
+                   Summarize, MatchingFiles, NonMatchingFiles, Count, Raw };
 
 const option::Descriptor usage[] = {
   { Unknown, 0, "", "", Arg::None,
@@ -62,8 +68,10 @@ const option::Descriptor usage[] = {
     "  -c, --count  \tprint only a count of matching lines per file" },
   { Recurse, 0, "r", "recursive", Arg::None,
     "  -r, --recursive  \tignored (directories are always recursed)" },
+  { Raw, 0, "w", "raw", Arg::None,
+    "  -w, --raw  \tinclude '?', '.', and string quotes" },
   { Summarize, 0, "s", "summarize", Arg::None,
-  nullptr }, // "  -s, --summarize  \tdisplay only statistics" },
+    "  -s, --summarize  \tdisplay joint statistics for all files" },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -79,6 +87,7 @@ struct Parameters {
   bool only_filenames = false;
   bool inverse = false;  // for now it refers to only_filenames only
   bool print_count = false;
+  bool raw = false;
   // working parameters
   const char* path = "";
   std::string block_name;
@@ -92,6 +101,8 @@ struct Parameters {
 
 template<typename Input>
 void process_match(const Input& in, Parameters& par) {
+  if (cif::is_null(in.string()) && !par.raw)
+    return;
   ++par.counter;
   if (par.only_filenames)
     throw true;
@@ -105,14 +116,10 @@ void process_match(const Input& in, Parameters& par) {
     printf("%jd:", in.iterator().line);
   if (par.with_tag)
     printf("[%s] ", par.search_tag.c_str());
-  printf("%s\n", gemmi::cif::as_string(in.string()).c_str());
+  printf("%s\n", (par.raw ? in.string() : cif::as_string(in.string())).c_str());
   if (par.counter == par.max_count)
     throw true;
 }
-
-namespace pegtl = tao::pegtl;
-namespace rules = gemmi::cif::rules;
-namespace cif = gemmi::cif;
 
 template<typename Rule> struct Search : pegtl::nothing<Rule> {};
 
@@ -179,7 +186,7 @@ template<> struct Search<rules::loop_value> {
 
 
 static
-bool grep_file(const std::string& tag, const char* path, Parameters& par) {
+int grep_file(const std::string& tag, const char* path, Parameters& par) {
   par.search_tag = tag;
   par.path = path;
   par.counter = 0;
@@ -209,7 +216,7 @@ bool grep_file(const std::string& tag, const char* path, Parameters& par) {
     printf("%s\n", par.path);
   }
   std::fflush(stdout);
-  return par.counter != 0;
+  return par.counter;
 }
 
 
@@ -269,7 +276,7 @@ public:
         if (cur == get_dir().n_files)
           cur = walker.pop_dir() + 1;
         else if (is_special(get_dir()._files[cur].name))
-          ++cur;
+          cur++;
         else
           break;
       }
@@ -289,6 +296,11 @@ private:
   tinydir_file top_;
   std::vector<std::pair<int, tinydir_dir>> dirs_;
 };
+
+static bool is_cif_file(const tinydir_file& f) {
+  return !f.is_dir && (gemmi::ends_with(f.path, ".cif") ||
+                       gemmi::ends_with(f.path, ".cif.gz"));
+}
 
 int main(int argc, char **argv) {
   if (argc < 1)
@@ -334,6 +346,8 @@ int main(int argc, char **argv) {
   }
   if (options[Count])
     params.print_count = true;
+  if (options[Raw])
+    params.raw = true;
 
   std::string tag = parse.nonOption(0);
   if (tag.empty() || tag[0] != '_') {
@@ -341,19 +355,21 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  int found = 0;
+  size_t total_count = 0;
+  size_t file_count = 0;
   for (int i = 1; i < parse.nonOptionsCount(); ++i) {
     const char* path = parse.nonOption(i);
     try {
       if (std::strcmp(path, "-") == 0) {
-        found += grep_file(tag, path, params);
+        total_count += grep_file(tag, path, params);
+        file_count++;
       } else {
         DirWalker walker(path);
         for (const tinydir_file& f : walker) {
-          if (!f.is_dir && (walker.is_file() ||
-                            gemmi::ends_with(f.path, ".cif") ||
-                            gemmi::ends_with(f.path, ".cif.gz")))
-            found += grep_file(tag, f.path, params);
+          if (walker.is_file() || is_cif_file(f)) {
+            total_count += grep_file(tag, f.path, params);
+            file_count++;
+          }
         }
       }
     } catch (std::runtime_error& e) {
@@ -362,7 +378,9 @@ int main(int argc, char **argv) {
       return 2;
     }
   }
-  return found != 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+  if (options[Summarize])
+    printf("Total count in %jd files: %jd\n", file_count, total_count);
+  return total_count != 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 // vim:sw=2:ts=2:et:path^=include,third_party
