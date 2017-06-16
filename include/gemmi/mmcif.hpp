@@ -194,10 +194,16 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     resi->atoms.emplace_back(atom);
   }
 
+  cif::TableView polymer_types = block.find("_entity_poly.",
+                                            {"entity_id", "type"});
   for (const auto& row : block.find("_entity.", {"id", "type"})) {
     std::string id = row.as_str(0);
     EntityType etype = entity_type_from_string(row.as_str(1));
-    st.entities.emplace_back(new Entity(id, etype));
+    PolymerType ptype = PolymerType::NA;
+    try {
+      ptype = polymer_type_from_string(polymer_types.find_row(id).as_str(1));
+    } catch (std::runtime_error&) {}
+    st.entities.emplace_back(new Entity{id, etype, ptype, {}});
   }
 
   for (const auto& row : block.find("_entity_poly_seq.",

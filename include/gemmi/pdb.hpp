@@ -131,7 +131,7 @@ public:
     auto it = chain_to_ent_.find(chain_name);
     if (it != chain_to_ent_.end())
       return it->second;
-    Entity *ent = new Entity("", type);
+    Entity *ent = new Entity{"", type, PolymerType::NA, {}};
     st_.entities.emplace_back(ent);
     chain_to_ent_[chain_name] = ent;
     return ent;

@@ -217,6 +217,11 @@ struct Loop {
     return values[row * tags.size() + col];
   }
   void clear() { tags.clear(); values.clear(); }
+  void append_row(std::initializer_list<std::string>&& vv) {
+    assert(vv.size() == tags.size());
+    for (const std::string& v : vv)
+      values.emplace_back(v);
+  }
 
   // iteration over rows
   struct Span {

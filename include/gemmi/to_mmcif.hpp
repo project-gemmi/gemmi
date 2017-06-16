@@ -135,10 +135,15 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
 
   // _entity
   cif::Loop& entity_loop = block.clear_or_add_loop("_entity.", {"id", "type"});
-  for (const auto& ent : st.entities) {
-    entity_loop.values.push_back(ent->id);
-    entity_loop.values.push_back(ent->type_as_string());
-  }
+  for (const auto& ent : st.entities)
+    entity_loop.append_row({ent->id, ent->type_as_string()});
+
+  // _entity_poly
+  cif::Loop& entity_poly_loop = block.clear_or_add_loop("_entity_poly.",
+                                                        {"entity_id", "type"});
+  for (const auto& ent : st.entities)
+    if (ent->type == EntityType::Polymer)
+      entity_poly_loop.append_row({ent->id, ent->polymer_type_as_string()});
 
   // title, keywords, etc
   auto exptl_method = st.info.find("_exptl.method");
@@ -179,10 +184,8 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   // _struct_asym
   cif::Loop& asym_loop = block.clear_or_add_loop("_struct_asym.",
                                                  {"id", "entity_id"});
-  for (const auto& ch : st.get_chains()) {
-    asym_loop.values.push_back(ch.name);
-    asym_loop.values.push_back(ch.entity ? ch.entity->id : "?");
-  }
+  for (const auto& ch : st.get_chains())
+    asym_loop.append_row({ch.name, (ch.entity ? ch.entity->id : "?")});
 
   // _database_PDB_matrix (ORIGX)
   if (st.origx != Mat4x4(linalg::identity)) {
@@ -222,10 +225,9 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   for (const auto& ent : st.entities)
     if (ent->type == EntityType::Polymer)
       for (const SequenceItem& si : ent->sequence) {
-        poly_loop.values.emplace_back(ent->id);
-        poly_loop.values.emplace_back(si.num >= 0 ? std::to_string(si.num)
-                                                  : "?");
-        poly_loop.values.emplace_back(si.mon);
+        poly_loop.append_row({ent->id,
+                              (si.num >= 0 ? std::to_string(si.num) : "?"),
+                              si.mon});
       }
 
   add_cif_atoms(st, block);

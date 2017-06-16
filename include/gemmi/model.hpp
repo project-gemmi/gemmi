@@ -45,23 +45,33 @@ struct Model;
 struct Chain;
 struct Residue;
 
-enum class EntityType { Unknown, Polymer, NonPolymer, Water };
+enum class EntityType : unsigned char { Unknown, Polymer, NonPolymer, Water };
 
-//enum class PolymerType {  };
+// number of different _entity_poly.type values in the PDB in mid-2017:
+//   168923 polypeptide(L)
+//   9905   polydeoxyribonucleotide
+//   4559   polyribonucleotide
+//   156    polydeoxyribonucleotide/polyribonucleotide hybrid
+//   57     polypeptide(D)
+//   18     polysaccharide(D)
+//   4      other
+//   2      peptide nucleic acid
+//   1      cyclic-pseudo-peptide
+//   0      polysaccharide(L)  (never used but present in mmcif_pdbx_v50.dic)
+enum class PolymerType : unsigned char {
+  PeptideL,
+  PeptideD,
+  Dna,
+  Rna,
+  DnaRnaHybrid,
+  SaccharideD,
+  SaccharideL,
+  Pna, // artificial thing
+  CyclicPseudoPeptide,
+  Other,
+  NA // not applicable or not determined
+};
 
-/*
- values for _entity_poly.type (mmcif_pdbx_v50.dic)
-cyclic-pseudo-peptide
-peptide nucleic acid
-polydeoxyribonucleotide
-polydeoxyribonucleotide/polyribonucleotide hybrid
-polypeptide(D)
-polypeptide(L)
-polyribonucleotide
-polysaccharide(D)
-polysaccharide(L)
-other
-*/
 
 struct SequenceItem {
   int num;
@@ -77,9 +87,8 @@ typedef linalg::mat<double,4,4> Mat4x4;
 struct Entity {
   std::string id;  // it does not need to be number according to mmCIF spec
   EntityType type;
+  PolymerType polymer_type;
   Sequence sequence;
-
-  explicit Entity(const std::string& id_, EntityType t) : id(id_), type(t) {}
 
   std::string type_as_string() {
     switch (type) {
@@ -89,13 +98,44 @@ struct Entity {
       default /*EntityType::Unknown*/: return "?";
     }
   }
+  std::string polymer_type_as_string() {
+    switch (polymer_type) {
+      case PolymerType::PeptideL: return "polypeptide(L)";
+      case PolymerType::PeptideD: return "polypeptide(D)";
+      case PolymerType::Dna: return "polydeoxyribonucleotide";
+      case PolymerType::Rna: return "polyribonucleotide";
+      case PolymerType::DnaRnaHybrid:
+        return "polydeoxyribonucleotide/polyribonucleotide hybrid";
+      case PolymerType::SaccharideD: return "polysaccharide(D)";
+      case PolymerType::SaccharideL: return "polysaccharide(L)";
+      case PolymerType::Other: return "other";
+      case PolymerType::Pna: return "peptide nucleic acid";
+      case PolymerType::CyclicPseudoPeptide: return "cyclic-pseudo-peptide";
+      default /*PolymerType::NA*/: return "?";
+    }
+  }
 };
 
-EntityType entity_type_from_string(const std::string& t) {
+inline EntityType entity_type_from_string(const std::string& t) {
   if (t == "polymer")     return EntityType::Polymer;
   if (t == "non-polymer") return EntityType::NonPolymer;
   if (t == "water")       return EntityType::Water;
   return EntityType::Unknown;
+}
+
+inline PolymerType polymer_type_from_string(const std::string& t) {
+  if (t == "polypeptide(L)")          return PolymerType::PeptideL;
+  if (t == "polydeoxyribonucleotide") return PolymerType::Dna;
+  if (t == "polyribonucleotide")      return PolymerType::Rna;
+  if (t == "polydeoxyribonucleotide/polyribonucleotide hybrid")
+                                      return PolymerType::DnaRnaHybrid;
+  if (t == "polypeptide(D)")          return PolymerType::PeptideD;
+  if (t == "polysaccharide(D)")       return PolymerType::SaccharideD;
+  if (t == "other")                   return PolymerType::Other;
+  if (t == "peptide nucleic acid")    return PolymerType::Pna;
+  if (t == "cyclic-pseudo-peptide")   return PolymerType::CyclicPseudoPeptide;
+  if (t == "polysaccharide(L)")       return PolymerType::SaccharideL;
+  return PolymerType::NA;
 }
 
 struct Atom {
@@ -208,7 +248,7 @@ struct Structure {
   Entity* find_or_add_entity(const std::string& ent_id) {
     Entity* ent = find_entity(ent_id);
     if (!ent) {
-      ent = new Entity(ent_id, EntityType::Unknown);
+      ent = new Entity{ent_id, EntityType::Unknown, PolymerType::NA, {}};
       entities.emplace_back(ent);
     }
     return ent;
