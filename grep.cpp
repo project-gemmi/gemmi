@@ -179,7 +179,7 @@ template<> struct Search<rules::loop_value> {
 
 
 static
-void grep_file(const std::string& tag, const char* path, Parameters& par) {
+bool grep_file(const std::string& tag, const char* path, Parameters& par) {
   par.search_tag = tag;
   par.path = path;
   par.counter = 0;
@@ -209,52 +209,85 @@ void grep_file(const std::string& tag, const char* path, Parameters& par) {
     printf("%s\n", par.path);
   }
   std::fflush(stdout);
+  return par.counter != 0;
 }
 
 
 class DirWalker {
 public:
   explicit DirWalker(const char* path) {
-    if (tinydir_file_open(&file, path) == -1) {
+    if (tinydir_file_open(&top_, path) == -1) {
       //std::perror(nullptr);
       throw std::runtime_error("Cannot open file or directory: " +
                                std::string(path));
     }
-    if (file.is_dir) {
-      opened_dirs.emplace_back();
-      if (tinydir_open_sorted(&opened_dirs[0], path) == -1)
-        throw std::runtime_error("Cannot open directory: " + std::string(path));
-      n_entries = opened_dirs[0].n_files;
-    } else {
-      n_entries = 1;
-    }
   }
   ~DirWalker() {
-    for (tinydir_dir& d : opened_dirs)
-      tinydir_close(&d);
+    for (auto& d : dirs_)
+      tinydir_close(&d.second);
   }
-
-  int n_entries;
-  tinydir_file file;
-  std::vector<tinydir_dir> opened_dirs;
+  void push_dir(int cur_pos, const char* path) {
+    dirs_.emplace_back();
+    dirs_.back().first = cur_pos;
+    if (tinydir_open_sorted(&dirs_.back().second, path) == -1)
+      throw std::runtime_error("Cannot open directory: " + std::string(path));
+  }
+  int pop_dir() {
+    assert(!dirs_.empty());
+    int old_pos = dirs_.back().first;
+    tinydir_close(&dirs_.back().second);
+    dirs_.pop_back();
+    return old_pos;
+  }
 
   struct Iter {
     DirWalker& walker;
-    int cur;
+    size_t cur;
+
+    const tinydir_dir& get_dir() const { return walker.dirs_.back().second; }
+
     const tinydir_file& operator*() const {
-      assert(cur < walker.n_entries);
-      if (walker.file.is_dir) {
-        return walker.opened_dirs[0]._files[cur];
-      }
-      return walker.file;
+      if (walker.dirs_.empty())
+        return walker.top_;
+      assert(cur < get_dir().n_files);
+      return get_dir()._files[cur];
     }
-    void operator++() { cur++; }
-    bool operator!=(const Iter& o) const { return cur != o.cur; }
-    bool operator==(const Iter& o) const { return cur == o.cur; }
+
+    bool is_special(const char* name) const {
+      return strcmp(name, ".") == 0 || strcmp(name, "..") == 0;
+    }
+
+    void operator++() { // depth first
+      const tinydir_file& tf = **this;
+      if (tf.is_dir) {
+        walker.push_dir(cur, tf.path);
+        cur = 0;
+      } else {
+        cur++;
+      }
+      while (!walker.dirs_.empty()) {
+        if (cur == get_dir().n_files)
+          cur = walker.pop_dir() + 1;
+        else if (is_special(get_dir()._files[cur].name))
+          ++cur;
+        else
+          break;
+      }
+    }
+
+    bool operator!=(const Iter& o) const {
+      return !(walker.dirs_.empty() && cur == o.cur);
+    }
   };
 
   Iter begin() { return Iter{*this, 0}; }
-  Iter end() { return Iter{*this, n_entries}; }
+  Iter end() { return Iter{*this, 1}; }
+  bool is_file() { return !top_.is_dir; }
+
+private:
+  friend class Iter;
+  tinydir_file top_;
+  std::vector<std::pair<int, tinydir_dir>> dirs_;
 };
 
 int main(int argc, char **argv) {
@@ -267,7 +300,7 @@ int main(int argc, char **argv) {
   if (parse.error() || options[Unknown] ||
       (!options[Help] && !options[Version] && parse.nonOptionsCount() < 2)) {
     option::printUsage(fwrite, stderr, usage);
-    return 1;
+    return 2;
   }
   if (options[Help]) {
     option::printUsage(fwrite, stdout, usage);
@@ -303,22 +336,33 @@ int main(int argc, char **argv) {
     params.print_count = true;
 
   std::string tag = parse.nonOption(0);
+  if (tag.empty() || tag[0] != '_') {
+    fprintf(stderr, "CIF tags start with _; not a tag: %s\n", tag.c_str());
+    return 2;
+  }
 
+  int found = 0;
   for (int i = 1; i < parse.nonOptionsCount(); ++i) {
     const char* path = parse.nonOption(i);
     try {
-      DirWalker tdir(path);
-      for (const tinydir_file& f : tdir)
-        if (!f.is_dir || gemmi::ends_with(f.path, ".cif") ||
-                         gemmi::ends_with(f.path, ".cif.gz"))
-          grep_file(tag, f.path, params);
+      if (std::strcmp(path, "-") == 0) {
+        found += grep_file(tag, path, params);
+      } else {
+        DirWalker walker(path);
+        for (const tinydir_file& f : walker) {
+          if (!f.is_dir && (walker.is_file() ||
+                            gemmi::ends_with(f.path, ".cif") ||
+                            gemmi::ends_with(f.path, ".cif.gz")))
+            found += grep_file(tag, f.path, params);
+        }
+      }
     } catch (std::runtime_error& e) {
       std::fflush(stdout);
       fprintf(stderr, "Error when parsing %s:\n\t%s\n", path, e.what());
-      return 1;
+      return 2;
     }
   }
-  return 0;
+  return found != 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 // vim:sw=2:ts=2:et:path^=include,third_party
