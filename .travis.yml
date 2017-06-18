@@ -19,8 +19,10 @@ matrix:
     compiler: clang
     env: COMPILER=clang++
 
+install:
+  - pip install --user pybind11
 script:
   - make -j2 CXX=${COMPILER:-c++} EXTRA_WFLAGS="$WARN"
   - make write-help
-  - ${PYTHON:-python} setup.py install --user
+  - ${PYTHON:-python} setup.py install --user --prefix=
   - ${PYTHON:-python} -m unittest discover -s tests/
