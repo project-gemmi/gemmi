@@ -11,7 +11,7 @@ matrix:
     compiler: gcc
     env:
       - COMPILER=g++-4.8
-      - PYTHON=python3
+      - PYTHON=python
       - WARN="-Wno-missing-field-initializers -Wno-shadow"
 
   - os: osx
@@ -25,4 +25,4 @@ script:
   - make -j2 CXX=$COMPILER EXTRA_WFLAGS="$WARN"
   - make write-help
   - $PYTHON setup.py install --user --prefix=
-  - $PYTHON -m unittest discover -s tests/
+  - $PYTHON -m unittest discover -v -s tests/

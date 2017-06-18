@@ -12,7 +12,8 @@ class TestCifAsJson(unittest.TestCase):
     cif_doc = gemmi.cif.Document(basename + ".cif")
     json_str = cif_doc.as_json()
     json_from_cif = json.loads(json_str)
-    reference_json = json.load(open(basename + ".json"))
+    with open(basename + ".json") as f:
+      reference_json = json.load(f)
     self.assertEqual(json_from_cif, reference_json)
 
 if __name__ == '__main__':
