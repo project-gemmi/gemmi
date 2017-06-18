@@ -23,12 +23,12 @@ get_anisotropic_u(const cif::Block& block) {
                                          "U[1][2]", "U[1][3]", "U[2][3]"});
   std::unordered_map<std::string, std::array<float,6>> aniso_map;
   for (auto ani : aniso_tab)
-    aniso_map[ani[0]] = {(float) cif::as_number(ani[1]),
-                         (float) cif::as_number(ani[2]),
-                         (float) cif::as_number(ani[3]),
-                         (float) cif::as_number(ani[4]),
-                         (float) cif::as_number(ani[5]),
-                         (float) cif::as_number(ani[6])};
+    aniso_map[ani[0]] = {{(float) cif::as_number(ani[1]),
+                          (float) cif::as_number(ani[2]),
+                          (float) cif::as_number(ani[3]),
+                          (float) cif::as_number(ani[4]),
+                          (float) cif::as_number(ani[5]),
+                          (float) cif::as_number(ani[6])}};
   return aniso_map;
 }
 

@@ -1,11 +1,13 @@
 
+.SUFFIXES:
+
 #CXX=g++-7
 CXXSTD=-std=c++11
 PYTHON=python
 PYTHON_CONFIG=$(PYTHON)-config
 
 WFLAGS=-Wall -Wextra -Wpedantic -Wdisabled-optimization -Wformat=2 \
-       -Wredundant-decls -Wshadow
+       -Wredundant-decls -Wshadow $(EXTRA_WFLAGS)
 FLAGS=-O2 -g $(CXXSTD) $(WFLAGS) -Iinclude -Ithird_party #-DNDEBUG
 
 PYFLAGS=$(FLAGS) -Wno-shadow -fPIC \

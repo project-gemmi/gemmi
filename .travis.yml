@@ -9,15 +9,19 @@ matrix:
   - os: linux
     dist: trusty
     compiler: gcc
-    env: COMPILER=g++-4.8
+    env:
+      - COMPILER=g++-4.8
+      - PYTHON=python3
+      - WARN="-Wno-missing-field-initializers -Wno-shadow"
 
   - os: osx
     osx_image: xcode7.3
     compiler: clang
-    env: COMPILER=clang++PYTHON=2.7 CPP=14 CLANG
+    env: COMPILER=clang++
 
 script:
-  - make -j2 CXX=$COMPILER
+  - make -j2 CXX=${COMPILER:c++} PYTHON=${PYTHON:-python} EXTRA_WFLAGS="$WARN"
+    -Wno-missing-field-initializers -Wno-shadow"
   - make write-help
-# - make py
-# - python -m unittest discover -s tests/
+  - make py
+  - python -m unittest discover -s tests/
