@@ -1,9 +1,12 @@
 
-CXX=g++
+#CXX=g++-7
+CXXSTD=-std=c++11
+PYTHON=python
+PYTHON_CONFIG=$(PYTHON)-config
 
 WFLAGS=-Wall -Wextra -Wpedantic -Wdisabled-optimization -Wformat=2 \
        -Wredundant-decls -Wshadow
-FLAGS=-O2 -g --std=c++11 $(WFLAGS) -Iinclude -Ithird_party #-DNDEBUG
+FLAGS=-O2 -g $(CXXSTD) $(WFLAGS) -Iinclude -Ithird_party #-DNDEBUG
 
 PYFLAGS=$(FLAGS) -Wno-shadow -fPIC \
        -fvisibility=hidden -fwrapv -D_FORTIFY_SOURCE=2 -fstack-protector-strong
@@ -32,7 +35,7 @@ trace: validate.cpp include/gemmi/cif.hpp
 pygemmi.o: pygemmi.cpp include/gemmi/cif.hpp include/gemmi/to_json.hpp \
            include/gemmi/numb.hpp include/gemmi/to_cif.hpp \
 	   include/gemmi/elem.hpp
-	$(CXX) $(PYFLAGS) -I/usr/include/python2.7 -c $<
+	$(CXX) $(PYFLAGS) `$(PYTHON_CONFIG) --includes` -c $<
 
 gemmi.so: pygemmi.o
 	$(CXX) $(PYFLAGS) -shared \
