@@ -20,7 +20,7 @@ matrix:
     env: COMPILER=clang++
 
 script:
-  - make -j2 CXX=${COMPILER:-c++} PYTHON=${PYTHON:-python} EXTRA_WFLAGS="$WARN"
+  - make -j2 CXX=${COMPILER:-c++} EXTRA_WFLAGS="$WARN"
   - make write-help
-  - make py
-  - python -m unittest discover -s tests/
+  - ${PYTHON:-python} setup.py install --user
+  - ${PYTHON:-python} -m unittest discover -s tests/

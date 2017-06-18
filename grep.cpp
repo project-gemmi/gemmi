@@ -292,7 +292,7 @@ public:
   bool is_file() { return !top_.is_dir; }
 
 private:
-  friend class Iter;
+  friend struct Iter;
   tinydir_file top_;
   std::vector<std::pair<int, tinydir_dir>> dirs_;
 };

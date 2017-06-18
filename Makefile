@@ -11,7 +11,7 @@ WFLAGS=-Wall -Wextra -Wpedantic -Wdisabled-optimization -Wformat=2 \
 FLAGS=-O2 -g $(CXXSTD) $(WFLAGS) -Iinclude -Ithird_party #-DNDEBUG
 
 PYFLAGS=$(FLAGS) -Wno-shadow -fPIC \
-       -fvisibility=hidden -fwrapv -D_FORTIFY_SOURCE=2 -fstack-protector-strong
+       -fvisibility=hidden -fwrapv -D_FORTIFY_SOURCE=2
 
 all: gemmi-validate gemmi-convert gemmi-grep
 
