@@ -36,7 +36,18 @@ gemmi-grep
 ----------
 
 Searches for a specified tag in CIF files and prints the associated values,
-one value per line.
+one value per line:
+
+.. code-block:: console
+
+    $ gemmi-grep _refine.ls_R_factor_R_free 5fyi.cif.gz
+    5FYI:0.2358
+    $ gemmi-grep _refine.ls_R_factor_R_free 5moo.cif.gz
+    5MOO:0.1596
+    5MOO:0.1848
+    $ gemmi-grep -b _software.name 5fyi.cif.gz
+    DIMPLE
+    PHENIX
 
 The command-line option are meant to be, where possible, similar to the
 options of GNU `grep`.

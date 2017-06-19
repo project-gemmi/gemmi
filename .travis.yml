@@ -19,7 +19,7 @@ matrix:
   - os: osx
     osx_image: xcode6.4
     compiler: clang
-    env: COMPILER=clang++ PYTHON=python
+    env: COMPILER=clang++ PYTHON=python EXTRA_WFLAGS=-Wno-shorten-64-to-32
 
   - os: osx
     osx_image: xcode8.3
