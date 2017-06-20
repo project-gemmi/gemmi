@@ -206,3 +206,40 @@ Chemical Component
 
 TODO
 
+Local copy of the PDB archive
+=============================
+
+In examples that work with the Protein Data Bank archive
+we use a local copy of the archive. Like in BioJava,
+we assume that the ``$PDB_DIR`` environment variable
+points to a directory that contains ``structures/divided/mmCIF`` -- the same
+arrangement as on the
+`PDB's FTP <ftp://ftp.wwpdb.org/pub/pdb/data/structures/>`_ server.
+
+.. code-block:: console
+
+    $ cd $PDB_DIR
+    $ du -sh structures/*/*  # as of Jun 2017
+    34G    structures/divided/mmCIF
+    25G    structures/divided/pdb
+    101G   structures/divided/structure_factors
+    2.6G   structures/obsolete/mmCIF
+
+A traditional way to keep an up-to-date local archive is to rsync it
+once a week:
+
+.. code-block:: shell
+
+    #!/bin/sh -x
+    set -u  # PDB_DIR must be defined
+    rsync_subdir() {
+      mkdir -p "$PDB_DIR/$1"
+      # Using PDBe (UK) here, can be replaced with RCSB (USA) or PDBj (Japan),
+      # see https://www.wwpdb.org/download/downloads
+      rsync -rlpt -v -z --delete \
+	  rsync.ebi.ac.uk::pub/databases/pdb/data/$1/ "$PDB_DIR/$1/"
+    }
+    rsync_subdir structures/divided/mmCIF
+    #rsync_subdir structures/obsolete/mmCIF
+    #rsync_subdir structures/divided/pdb
+    #rsync_subdir structures/divided/structure_factors
