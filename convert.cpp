@@ -59,7 +59,7 @@ struct Arg: public option::Arg {
 
 enum OptionIndex { Unknown, Help, Version, Verbose, FormatIn, FormatOut,
                    Bare, Numb, QMark, ExpandNcs, IotbxCompat, SegmentAsChain };
-static const option::Descriptor usage[] = {
+static const option::Descriptor Usage[] = {
   { Unknown, 0, "", "", Arg::None,
     "Usage:"
     "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
@@ -445,16 +445,16 @@ int main(int argc, char **argv) {
   if (argc < 1)
     return 2;
   std::ios_base::sync_with_stdio(false);
-  option::Stats stats(usage, argc-1, argv+1);
+  option::Stats stats(Usage, argc-1, argv+1);
   std::vector<option::Option> options(stats.options_max);
   std::vector<option::Option> buffer(stats.buffer_max);
-  option::Parser parse(usage, argc-1, argv+1, options.data(), buffer.data());
+  option::Parser parse(Usage, argc-1, argv+1, options.data(), buffer.data());
   if (parse.error()) {
-    option::printUsage(std::cerr, usage);
+    option::printUsage(std::cerr, Usage);
     return 1;
   }
   if (options[Help]) {
-    option::printUsage(std::cout, usage);
+    option::printUsage(std::cout, Usage);
     return 0;
   }
   if (options[Version]) {
@@ -463,7 +463,7 @@ int main(int argc, char **argv) {
   }
   if (options[Unknown]) {
     std::cerr << "Invalid option.\n";
-    option::printUsage(std::cerr, usage);
+    option::printUsage(std::cerr, Usage);
     return 1;
   }
   if (parse.nonOptionsCount() != 2) {

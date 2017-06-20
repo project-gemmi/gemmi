@@ -77,7 +77,7 @@ struct Arg: public option::Arg {
 };
 
 enum OptionIndex { Unknown, Help, Fast, Stat, Types, Quiet, Ddl };
-const option::Descriptor usage[] = {
+const option::Descriptor Usage[] = {
   { Unknown, 0, "", "", Arg::None, "Usage: gemmi-validate [options] FILE [...]"
                                    "\n\nOptions:" },
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
@@ -98,16 +98,16 @@ int main(int argc, char **argv) {
 #endif
   if (argc < 1)
     return 2;
-  option::Stats stats(usage, argc-1, argv+1);
+  option::Stats stats(Usage, argc-1, argv+1);
   std::vector<option::Option> options(stats.options_max);
   std::vector<option::Option> buffer(stats.buffer_max);
-  option::Parser parse(usage, argc-1, argv+1, options.data(), buffer.data());
+  option::Parser parse(Usage, argc-1, argv+1, options.data(), buffer.data());
   if (parse.error() || options[Unknown]) {
-    option::printUsage(std::cerr, usage);
+    option::printUsage(std::cerr, Usage);
     return 1;
   }
   if (options[Help] || parse.nonOptionsCount() == 0) {
-    option::printUsage(std::cout, usage);
+    option::printUsage(std::cout, Usage);
     return 0;
   }
 

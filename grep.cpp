@@ -39,7 +39,7 @@ enum OptionIndex { Unknown, Help, Version, Recurse, MaxCount, OneBlock,
                    WithFileName, NoBlockName, WithLineNumbers, WithTag,
                    Summarize, MatchingFiles, NonMatchingFiles, Count, Raw };
 
-const option::Descriptor usage[] = {
+const option::Descriptor Usage[] = {
   { Unknown, 0, "", "", Arg::None,
     "Usage: " EXE_NAME " [options] TAG FILE_OR_DIR[...]\n"
     "Search for TAG in CIF files."
@@ -315,17 +315,17 @@ static bool is_cif_file(const tinydir_file& f) {
 int main(int argc, char **argv) {
   if (argc < 1)
     return 2;
-  option::Stats stats(usage, argc-1, argv+1);
+  option::Stats stats(Usage, argc-1, argv+1);
   std::vector<option::Option> options(stats.options_max);
   std::vector<option::Option> buffer(stats.buffer_max);
-  option::Parser parse(usage, argc-1, argv+1, options.data(), buffer.data());
+  option::Parser parse(Usage, argc-1, argv+1, options.data(), buffer.data());
   if (parse.error() || options[Unknown] ||
       (!options[Help] && !options[Version] && parse.nonOptionsCount() < 2)) {
-    option::printUsage(fwrite, stderr, usage);
+    option::printUsage(fwrite, stderr, Usage);
     return 2;
   }
   if (options[Help]) {
-    option::printUsage(fwrite, stdout, usage);
+    option::printUsage(fwrite, stdout, Usage);
     return 0;
   }
   if (options[Version]) {
