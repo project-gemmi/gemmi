@@ -45,7 +45,14 @@ struct Model;
 struct Chain;
 struct Residue;
 
-enum class EntityType : unsigned char { Unknown, Polymer, NonPolymer, Water };
+enum class EntityType : unsigned char {
+  Unknown,
+  Polymer,
+  NonPolymer,
+  // _entity.type macrolide is in PDBx/mmCIF, but no PDB entry uses it
+  //Macrolide,
+  Water
+};
 
 // number of different _entity_poly.type values in the PDB in mid-2017:
 //   168923 polypeptide(L)
