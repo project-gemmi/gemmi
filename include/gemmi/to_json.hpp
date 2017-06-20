@@ -147,41 +147,20 @@ private:
     }
   }
 
-  void write_loop_tags(const Loop& loop) {
-    os_.put('[');
-    bool first = true;
-    for (const LoopTag& tag : loop.tags) {
-      if (!first)
-        os_ << ", ";
-      write_tag(tag.tag);
-      first = false;
-    }
-    os_.put(']');
-  }
-
   // works for both block and frame
   void write_map(const std::string& name, const std::vector<Item>& items) {
     write_string(name, 0, true);
+    os_ << ": ";
     size_t n = linesep_.size();
     linesep_.resize(n + 1, ' ');
-    os_ << ": {" << linesep_;
+    char first = '{';
     for (const Item& item : items) {
+      os_ << first << linesep_;
       write_item(item);
-      os_ << ',' << linesep_;
+      first = ',';
     }
-    linesep_.resize(n + 2, ' ');
-    os_ << "\"loop tags\": [";
-    bool needs_comma = false;
-    for (const Item& item : items)
-      if (item.type == ItemType::Loop) {
-        if (needs_comma)
-          os_.put(',');
-        os_ << linesep_;
-        write_loop_tags(item.loop);
-        needs_comma = true;
-      }
     linesep_.resize(n);
-    os_ << linesep_ << " ]" << linesep_ << "}";
+    os_ << linesep_ << '}';
   }
 };
 

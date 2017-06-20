@@ -7,9 +7,7 @@
   "_with_hash": "s#t#r#",
   "_semicolonq": "str",
   "_na": null,
-  "_who_knows": null,
-  "loop tags": [
-  ]
+  "_who_knows": null
  },
  "numbers": {
   "_int": 5,
@@ -26,39 +24,25 @@
   "_dote": 3.0e08,
   "_zdote": 3.0E-08,
   "_with_su": "123.456(12)",
-  "_not_valid_numb": "1-0",
-  "loop tags": [
-  ]
+  "_not_valid_numb": "1-0"
  },
  "loops": {
   "_x": [1,4.1],
   "_y": [0,3.2],
   "_z": [1,2.0],
   "_single_tag_no_val": [],
-  "_single_tag": ["tomato","carrot","ginger"],
-  "loop tags": [
-   ["_x", "_y", "_z"],
-   ["_single_tag_no_val"],
-   ["_single_tag"]
-  ]
+  "_single_tag": ["tomato","carrot","ginger"]
  },
  "frames": {
   "fr": {
    "_a": 1,
    "_b": [2,3,4],
-   "_c": "five",
-   "loop tags": [
-    ["_b"]
-   ]
+   "_c": "five"
   },
   "another": {
    "_a": 1,
-   "_x": 2,
-   "loop tags": [
-   ]
+   "_x": 2
   },
-  "_and": "item",
-  "loop tags": [
-  ]
+  "_and": "item"
  }
 }
