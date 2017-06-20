@@ -49,7 +49,7 @@ const option::Descriptor usage[] = {
   { Version, 0, "V", "version", Arg::None,
     "  -V, --version  \tdisplay version information and exit" },
   { MaxCount, 0, "m", "max-count", Arg::Int,
-    "  -m, --max-count=NUM  \tprint max NUM values per file (default: 10)" },
+    "  -m, --max-count=NUM  \tprint max NUM values per file" },
   { OneBlock, 0, "O", "one-block", Arg::None,
     "  -O, --one-block  \toptimize assuming one block per file" },
   { WithLineNumbers, 0, "n", "line-number", Arg::None,
@@ -65,7 +65,7 @@ const option::Descriptor usage[] = {
   { NonMatchingFiles, 0, "L", "files-without-tag", Arg::None,
     "  -L, --files-without-tag  \tprint only names of files without the tag" },
   { Count, 0, "c", "count", Arg::None,
-    "  -c, --count  \tprint only a count of matching lines per file" },
+    "  -c, --count  \tprint only a count of values per block or file" },
   { Recurse, 0, "r", "recursive", Arg::None,
     "  -r, --recursive  \tignored (directories are always recursed)" },
   { Raw, 0, "w", "raw", Arg::None,
@@ -78,7 +78,7 @@ const option::Descriptor usage[] = {
 struct Parameters {
   // options
   std::string search_tag;
-  int max_count = 10;
+  int max_count = 0;
   bool with_filename = false;
   bool with_blockname = true;
   bool with_line_numbers = false;
@@ -96,6 +96,7 @@ struct Parameters {
   int table_width = 0;
   int column = 0;
   int counter = 0;
+  size_t total_count = 0;
   bool last_block = false;
 };
 
@@ -121,16 +122,30 @@ void process_match(const Input& in, Parameters& par) {
     throw true;
 }
 
+static void print_count(const Parameters& par) {
+  if (par.with_filename)
+    printf("%s:", par.path);
+  if (par.with_blockname)
+    printf("%s:", par.block_name.c_str());
+  printf("%d\n", par.counter);
+}
+
+
 template<typename Rule> struct Search : pegtl::nothing<Rule> {};
 
 template<> struct Search<rules::datablockname> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
+    if (!p.block_name.empty() && p.print_count && p.with_blockname) {
+      print_count(p);
+      p.total_count += p.counter;
+      p.counter = 0;
+    }
     p.block_name = in.string();
   }
 };
 template<> struct Search<rules::str_global> {
-  template<typename Input> static void apply(const Input&, Parameters& p) {
-    p.block_name = "global_";
+  template<typename Input> static void apply(const Input& in, Parameters& p) {
+    Search<rules::datablockname>::apply(in, p);
   }
 };
 template<> struct Search<rules::tag> {
@@ -184,9 +199,8 @@ template<> struct Search<rules::loop_value> {
   }
 };
 
-
 static
-int grep_file(const std::string& tag, const char* path, Parameters& par) {
+void grep_file(const std::string& tag, const char* path, Parameters& par) {
   par.search_tag = tag;
   par.path = path;
   par.counter = 0;
@@ -206,17 +220,13 @@ int grep_file(const std::string& tag, const char* path, Parameters& par) {
       pegtl::parse<rules::file, Search, cif::Errors>(in, par);
     }
   } catch (bool) {}
+  par.total_count += par.counter;
   if (par.print_count) {
-    if (par.with_filename)
-      printf("%s:", par.path);
-    if (par.with_blockname)
-      printf("%s:", par.block_name.c_str());
-    printf("%d\n", par.counter);
+    print_count(par);
   } else if (par.only_filenames && par.inverse == (par.counter == 0)) {
     printf("%s\n", par.path);
   }
   std::fflush(stdout);
-  return par.counter;
 }
 
 
@@ -355,19 +365,18 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  size_t total_count = 0;
   size_t file_count = 0;
   for (int i = 1; i < parse.nonOptionsCount(); ++i) {
     const char* path = parse.nonOption(i);
     try {
       if (std::strcmp(path, "-") == 0) {
-        total_count += grep_file(tag, path, params);
+        grep_file(tag, path, params);
         file_count++;
       } else {
         DirWalker walker(path);
         for (const tinydir_file& f : walker) {
           if (walker.is_file() || is_cif_file(f)) {
-            total_count += grep_file(tag, f.path, params);
+            grep_file(tag, f.path, params);
             file_count++;
           }
         }
@@ -379,8 +388,8 @@ int main(int argc, char **argv) {
     }
   }
   if (options[Summarize])
-    printf("Total count in %jd files: %jd\n", file_count, total_count);
-  return total_count != 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    printf("Total count in %jd files: %jd\n", file_count, params.total_count);
+  return params.total_count != 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 // vim:sw=2:ts=2:et:path^=include,third_party
