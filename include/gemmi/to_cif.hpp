@@ -15,6 +15,8 @@ std::ostream& operator<<(std::ostream& os, const gemmi::cif::Item& item) {
       os << item.tv.value << '\n';
       break;
     case ItemType::Loop: {
+      if (item.loop.values.empty())
+        break;
       os << "loop_";
       for (const LoopTag& tag : item.loop.tags)
         os << '\n' << tag.tag;
