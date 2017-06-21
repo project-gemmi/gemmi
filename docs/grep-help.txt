@@ -5,7 +5,7 @@ Search for TAG in CIF files.
 Options:
   -h, --help               display this help and exit
   -V, --version            display version information and exit
-  -m, --max-count=NUM      print max NUM values per file (default: 10)
+  -m, --max-count=NUM      print max NUM values per file
   -O, --one-block          optimize assuming one block per file
   -n, --line-number        print line number with output lines
   -H, --with-filename      print the file name for each match
@@ -13,7 +13,7 @@ Options:
   -t, --with-tag           print the tag name for each match
   -l, --files-with-tag     print only names of files with the tag
   -L, --files-without-tag  print only names of files without the tag
-  -c, --count              print only a count of matching lines per file
+  -c, --count              print only a count of values per block or file
   -r, --recursive          ignored (directories are always recursed)
   -w, --raw                include '?', '.', and string quotes
   -s, --summarize          display joint statistics for all files

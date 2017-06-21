@@ -194,7 +194,7 @@ private:
 
 inline void JsonWriter::write_json(const Document& d) {
   os_.put('{');
-  if (comcifs)
+  if (comcifs) {
     os_ << R"(
  "CIF-JSON": {
   "Metadata": {
@@ -203,7 +203,8 @@ inline void JsonWriter::write_json(const Document& d) {
    "schema-version": "1.0.0",
    "schema-uri": "http://www.iucr.org/resources/cif/cif-json.json"
   },)";
-  linesep_.resize(3, ' ');
+    linesep_.resize(3, ' ');
+  }
   for (const Block& block : d.blocks) {
     if (&block != &d.blocks[0])
       os_.put(',');
