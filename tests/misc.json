@@ -30,7 +30,6 @@
   "_x": [1,4.1],
   "_y": [0,3.2],
   "_z": [1,2.0],
-  "_single_tag_no_val": [],
   "_single_tag": ["tomato","carrot","ginger"]
  },
  "frames": {
@@ -40,7 +39,8 @@
     "_a": 1,
     "_b": [2,3,4],
     "_c": "five"
-   }"another": {
+   },
+   "another": {
     "_a": 1,
     "_x": 2
    }
