@@ -11,11 +11,19 @@ namespace cif {
 
 class JsonWriter {
 public:
+  bool comcifs = false;  // conform to the COMCIFS CIF-JSON draft
   bool use_bare_tags = false;  // "tag" instead of "_tag"
+  bool values_as_arrays = false;  // "_tag": ["value"]
   int quote_numbers = 1;  // 0=never (no s.u.), 1=mix, 2=always
-  std::string unknown = "null";  // how to convert '?' from CIF
+  std::string cif_dot = "null";  // how to convert '.' from CIF
   explicit JsonWriter(std::ostream& os) : os_(os), linesep_("\n ") {}
   void write_json(const Document& d);
+  void set_comcifs() {
+    comcifs = true;
+    values_as_arrays = true;
+    quote_numbers = 2;
+    cif_dot = "false";
+  }
 
 private:
   std::ostream& os_;
@@ -103,9 +111,9 @@ private:
 
   void write_value(const std::string& value) {
     if (value == "?")
-      os_ << unknown;
-    else if (value == ".")
       os_ << "null";
+    else if (value == ".")
+      os_ << cif_dot;
     else if (quote_numbers < 2 && is_numb(value) &&
              (quote_numbers == 0 || value.back() != ')'))
       write_as_number(value);
@@ -145,7 +153,11 @@ private:
           os_ << first << linesep_;
           write_tag(item.tv.tag);
           os_ << ": ";
+          if (values_as_arrays)
+            os_.put('[');
           write_value(item.tv.value);
+          if (values_as_arrays)
+            os_.put(']');
           first = ',';
           break;
         case ItemType::Loop:
@@ -163,12 +175,15 @@ private:
       }
     }
     if (has_frames) {  // usually, we don't have any frames
-      os_ << first << linesep_;
+      os_ << first << linesep_ << "\"Frames\": ";
       linesep_.resize(n + 2, ' ');
-      os_ << "\"Frames\": {" << linesep_;
+      first = '{';
       for (const Item& item : items)
-        if (item.type == ItemType::Frame)
+        if (item.type == ItemType::Frame) {
+          os_ << first << linesep_;
           write_map(item.frame.name, item.frame.items);
+          first = ',';
+        }
       linesep_.resize(n + 1);
       os_ << linesep_ << '}';
     }
@@ -179,12 +194,24 @@ private:
 
 inline void JsonWriter::write_json(const Document& d) {
   os_.put('{');
+  if (comcifs)
+    os_ << R"(
+ "CIF-JSON": {
+  "Metadata": {
+   "cif-version": "2.0",
+   "schema-name": "CIF-JSON",
+   "schema-version": "1.0.0",
+   "schema-uri": "http://www.iucr.org/resources/cif/cif-json.json"
+  },)";
+  linesep_.resize(3, ' ');
   for (const Block& block : d.blocks) {
     if (&block != &d.blocks[0])
       os_.put(',');
     os_ << linesep_;
     write_map(block.name, block.items);
   }
+  if (comcifs)
+    os_ << "\n }";
   os_ << "\n}\n";
 }
 

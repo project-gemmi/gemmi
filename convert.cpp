@@ -58,7 +58,8 @@ struct Arg: public option::Arg {
 };
 
 enum OptionIndex { Unknown, Help, Version, Verbose, FormatIn, FormatOut,
-                   Bare, Numb, QMark, ExpandNcs, IotbxCompat, SegmentAsChain };
+                   Comcifs, Bare, Numb, CifDot,
+                   ExpandNcs, IotbxCompat, SegmentAsChain };
 static const option::Descriptor Usage[] = {
   { Unknown, 0, "", "", Arg::None,
     "Usage:"
@@ -74,6 +75,8 @@ static const option::Descriptor Usage[] = {
   { FormatOut, 0, "", "to", Arg::FileFormat,
     "  --to=json|pdb  \tOutput format (default: from the file extension)." },
   { Unknown, 0, "", "", Arg::None, "\nCIF output options:" },
+  { Comcifs, 0, "c", "comcifs", Arg::None,
+    "  -c, --comcifs  \tConform to the COMCIFS CIF-JSON standard draft." },
   { Bare, 0, "b", "bare-tags", Arg::None,
     "  -b, --bare-tags  \tOutput tags without the first underscore." },
   { Numb, 0, "", "numb", Arg::NumbChoice,
@@ -81,8 +84,8 @@ static const option::Descriptor Usage[] = {
                              "\v  quote - string in quotes,"
                              "\v  nosu - number without s.u.,"
                              "\v  mix (default) - quote only numbs with s.u." },
-  { QMark, 0, "", "unknown", Arg::Required,
-    "  --unknown=STRING  \tJSON representation of CIF's '?' (default: null)." },
+  { CifDot, 0, "", "dot", Arg::Required,
+    "  --dot=STRING  \tJSON representation of CIF's '.' (default: null)." },
   { Unknown, 0, "", "", Arg::None, "\nMacromolecular options:" },
   { ExpandNcs, 0, "", "expand-ncs", Arg::None,
     "  --expand-ncs  \tExpand strict NCS specified in MTRIXn or equivalent." },
@@ -408,6 +411,8 @@ void convert(const char* input, FileType input_type,
     if (input_type != FileType::Cif)
       fail("Conversion to JSON is possible only from CIF");
     cif::JsonWriter writer(*os);
+    if (options[Comcifs])
+      writer.set_comcifs();
     writer.use_bare_tags = options[Bare];
     if (options[Numb]) {
       char first_letter = options[Numb].arg[0];
@@ -416,8 +421,8 @@ void convert(const char* input, FileType input_type,
       else if (first_letter == 'n')
         writer.quote_numbers = 0;
     }
-    if (options[QMark])
-      writer.unknown = options[QMark].arg;
+    if (options[CifDot])
+      writer.cif_dot = options[CifDot].arg;
     writer.write_json(cif_in);
   } else if (output_type == FileType::Pdb || output_type == FileType::Null) {
     if (output_type == FileType::Pdb)
