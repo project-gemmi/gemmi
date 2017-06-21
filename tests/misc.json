@@ -34,15 +34,16 @@
   "_single_tag": ["tomato","carrot","ginger"]
  },
  "frames": {
-  "fr": {
-   "_a": 1,
-   "_b": [2,3,4],
-   "_c": "five"
-  },
-  "another": {
-   "_a": 1,
-   "_x": 2
-  },
-  "_and": "item"
+  "_and": "item",
+  "Frames": {
+   "fr": {
+    "_a": 1,
+    "_b": [2,3,4],
+    "_c": "five"
+   }"another": {
+    "_a": 1,
+    "_x": 2
+   }
+  }
  }
 }

@@ -113,39 +113,23 @@ private:
       write_string(as_string(value));
   }
 
-  void write_item(const Item& item) {
-    switch (item.type) {
-      case ItemType::Value:
-        write_tag(item.tv.tag);
-        os_ << ": ";
-        write_value(item.tv.value);
-        break;
-      case ItemType::Loop: {
-        size_t ncol = item.loop.tags.size();
-        const auto& vals = item.loop.values;
-        for (size_t i = 0; i < ncol; i++) {
-          if (i != 0)
-            os_ << "," << linesep_;
-          write_tag(item.loop.tags[i].tag);
-          os_ << ": [";
-          for (size_t j = i; j < vals.size(); j += ncol) {
-            if (j != i)
-              os_.put(',');
-            write_value(vals[j]);
-          }
-          os_.put(']');
-        }
-        break;
+  void write_loop(const Loop& loop) {
+    size_t ncol = loop.tags.size();
+    const auto& vals = loop.values;
+    for (size_t i = 0; i < ncol; i++) {
+      if (i != 0)
+        os_ << "," << linesep_;
+      write_tag(loop.tags[i].tag);
+      os_ << ": [";
+      for (size_t j = i; j < vals.size(); j += ncol) {
+        if (j != i)
+          os_.put(',');
+        write_value(vals[j]);
       }
-      case ItemType::Frame:
-        write_map(item.frame.name, item.frame.items);
-        break;
-      case ItemType::Comment:
-        break;
-      case ItemType::Erased:
-        break;
+      os_.put(']');
     }
   }
+
 
   // works for both block and frame
   void write_map(const std::string& name, const std::vector<Item>& items) {
@@ -154,10 +138,39 @@ private:
     size_t n = linesep_.size();
     linesep_.resize(n + 1, ' ');
     char first = '{';
+    bool has_frames = false;
     for (const Item& item : items) {
+      switch (item.type) {
+        case ItemType::Value:
+          os_ << first << linesep_;
+          write_tag(item.tv.tag);
+          os_ << ": ";
+          write_value(item.tv.value);
+          first = ',';
+          break;
+        case ItemType::Loop:
+          os_ << first << linesep_;
+          write_loop(item.loop);
+          first = ',';
+          break;
+        case ItemType::Frame:
+          has_frames = true;
+          break;
+        case ItemType::Comment:
+          break;
+        case ItemType::Erased:
+          break;
+      }
+    }
+    if (has_frames) {  // usually, we don't have any frames
       os_ << first << linesep_;
-      write_item(item);
-      first = ',';
+      linesep_.resize(n + 2, ' ');
+      os_ << "\"Frames\": {" << linesep_;
+      for (const Item& item : items)
+        if (item.type == ItemType::Frame)
+          write_map(item.frame.name, item.frame.items);
+      linesep_.resize(n + 1);
+      os_ << linesep_ << '}';
     }
     linesep_.resize(n);
     os_ << linesep_ << '}';
