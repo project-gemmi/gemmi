@@ -118,23 +118,50 @@ bool DDL::check_audit_conform(const Document& doc, std::string* msg) const {
 
 enum class Trinary : char { Unset, Yes, No };
 
-inline bool validate_enumeration(const std::string& val,
-                                 const std::vector<std::string>& en,
-                                 std::string *msg) {
-  if (en.empty() || is_null(val) ||
-      std::find(en.begin(), en.end(), as_string(val)) != en.end())
-    return true;
-  // TODO: case-insensitive search when appropriate
-  if (msg) {
-    *msg = "'" + val + "' is not one of:";
-    for (const std::string& e : en)
-      *msg += " " + e + ",";
-    (*msg)[msg->size() - 1] = '.';
-  }
-  return false;
-}
+class TypeCheckCommon {
+protected:
+  bool range_inclusive_ = false;
+  std::vector<std::pair<double, double>> range_;
+  std::vector<std::string> enumeration_;
 
-class TypeCheckDDL1 {
+  bool validate_common(const std::string& value, std::string *msg) const {
+    if (is_null(value))
+      return true;
+    if (!range_.empty() && !validate_range(value, msg))
+      return false;
+    if (!enumeration_.empty() && !validate_enumeration(value, msg))
+      return false;
+    return true;
+  }
+
+private:
+  bool validate_range(const std::string& value, std::string *msg) const {
+    const double x = as_number(value);
+    for (const auto& r : range_)
+      if (r.first == r.second ? x == r.first
+                              : r.first < x && x < r.second)
+        return true;
+    if (msg)
+      *msg = "value out of expected range: " + value;
+    return false;
+  }
+
+  bool validate_enumeration(const std::string& val, std::string *msg) const {
+    if (std::find(enumeration_.begin(), enumeration_.end(), as_string(val))
+          != enumeration_.end())
+      return true;
+    // TODO: case-insensitive search when appropriate
+    if (msg) {
+      *msg = "'" + val + "' is not one of:";
+      for (const std::string& e : enumeration_)
+        *msg += " " + e + ",";
+      (*msg)[msg->size() - 1] = '.';
+    }
+    return false;
+  }
+};
+
+class TypeCheckDDL1 : public TypeCheckCommon {
 public:
   void from_block(const Block& b) {
     const std::string* list = b.find_value("_list");
@@ -153,32 +180,29 @@ public:
       has_su_ = (*conditions == "esd" || *conditions == "su");
     const std::string* range = b.find_value("_enumeration_range");
     if (range) {
-      has_range_ = true;
       size_t colon_pos = range->find(':');
-      if (colon_pos == std::string::npos)
-        return;
-      std::string low = range->substr(0, colon_pos);
-      std::string high = range->substr(colon_pos+1);
-      range_low_ = low.empty() ? -INFINITY : as_number(low);
-      range_high_ = high.empty() ? INFINITY : as_number(high);
+      if (colon_pos != std::string::npos) {
+        std::string low = range->substr(0, colon_pos);
+        std::string high = range->substr(colon_pos+1);
+        range_inclusive_ = true;
+        range_.emplace_back(low.empty() ? -INFINITY : as_number(low),
+                            high.empty() ? INFINITY : as_number(high));
+      }
     }
     for (const std::string& e : b.find_loop("_enumeration"))
       enumeration_.emplace_back(as_string(e));
   }
 
   bool validate_value(const std::string& value, std::string* msg) const {
-    auto fail = [msg](std::string&& t) { if (msg) *msg = t; return false; };
     if (is_numb_ == Trinary::Yes) {
-      if (!is_null(value) && !is_numb(value))
-        return fail("expected number");
-      if (has_range_) {
-        float x = as_number(value);
-        if (x < range_low_ || x > range_high_)
-          return fail("value out of expected range: " + value);
+      if (!is_null(value) && !is_numb(value)) {
+        if (msg)
+          *msg = "expected number";
+        return false;
       }
       // ignoring has_su_ - not sure if we should check it
     }
-    if (!validate_enumeration(value, enumeration_, msg))
+    if (!validate_common(value, msg))
       return false;
     return true;
   }
@@ -192,7 +216,6 @@ private:
   bool has_range_ = false; // _enumeration_range
   float range_low_;
   float range_high_;
-  std::vector<std::string> enumeration_; // loop_ _enumeration
   // type_construct regex - it is rarely used, ignore for now
   // type_conditions seq - seems to be never used, ignore it
   // For now we don't check at all relational attributes, i.e.
@@ -200,16 +223,19 @@ private:
 };
 
 
-class TypeCheckDDL2 {
+class TypeCheckDDL2 : public TypeCheckCommon {
 public:
   void from_block(const Block& b) {
+    for (const auto& row : b.find("_item_range.", {"minimum", "maximum"}))
+      range_.emplace_back(as_number(row[0], -INFINITY),
+                          as_number(row[1], +INFINITY));
     for (const std::string& e : b.find_loop("_item_enumeration.value"))
       enumeration_.emplace_back(as_string(e));
   }
 
   bool validate_value(const std::string& value, std::string* msg) const {
-    //auto fail = [msg](std::string&& t) { if (msg) *msg = t; return false; };
-    if (!validate_enumeration(value, enumeration_, msg))
+    // TODO: type check
+    if (!validate_common(value, msg))
       return false;
     return true;
   }
@@ -217,11 +243,7 @@ public:
   Trinary is_list() const { return Trinary::Unset; }
 
 private:
-  Trinary is_numb_ = Trinary::Unset; // _type numb
-  bool has_range_ = false; // _enumeration_range
-  float range_low_;
-  float range_high_;
-  std::vector<std::string> enumeration_; // loop_ _enumeration
+  //std::string type_code;
 };
 
 template <class Output>
