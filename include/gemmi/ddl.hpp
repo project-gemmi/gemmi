@@ -21,36 +21,31 @@ class DDL {
 public:
   void open_file(const std::string& filename) {
     ddl_.read_file(filename);
-    version_ = (ddl_.blocks.size() > 1 ? 1 : 2);
-    sep_ = version_ == 1 ? "_" : ".";
-    if (version_ == 1)
+    if (ddl_.blocks.size() > 1) {
+      version_ = 1;
+      sep_ = "_";
       read_ddl1();
-    else
+    } else {
+      version_ = 2;
+      sep_ = ".";
       read_ddl2();
+    }
   }
   // does the dictionary name/version correspond to _audit_conform_dict_*
-  bool check_audit_conform(const Document& c, std::string* msg) const;
-  void validate(const Document& c,
-                std::vector<std::string>* unknown_tags=nullptr) const;
+  bool check_audit_conform(const Document& doc, std::string* msg) const;
+  template <class Output>
+  bool validate(const Document& doc, Output& out, bool quiet) const;
 
 private:
-  const Block* find(const std::string& name) const {
+  const Block* find_rules(const std::string& name) const {
     auto iter = name_index_.find(name);
     return iter != name_index_.end() ? iter->second : nullptr;
   }
 
-  void add_to_index(const Block& b, const std::string& name_tag) {
-    const std::string* name = b.find_value(name_tag);
-    if (name)
-      name_index_.emplace(as_string(*name), &b);
-    else
-      for (const std::string& lname : b.find_loop(name_tag))
-        name_index_.emplace(as_string(lname), &b);
-  }
-
   void read_ddl1() {
     for (const Block& b : ddl_.blocks) {
-      add_to_index(b, "_name");
+      for (const TableView::Row& row : b.find("_name"))
+        name_index_.emplace(as_string(row[0]), &b);
       if (b.name == "on_this_dictionary") {
         const std::string* dic_name = b.find_value("_dictionary_name");
         if (dic_name)
@@ -66,7 +61,8 @@ private:
     for (const Block& block : ddl_.blocks) // a single block is expected
       for (const Item& item : block.items) {
         if (item.type == ItemType::Frame) {
-          add_to_index(item.frame, "_item.name");
+          for (const TableView::Row& row : item.frame.find("_item.name"))
+            name_index_.emplace(as_string(row[0]), &item.frame);
         } else if (item.type == ItemType::Value) {
           if (item.tv.tag == "_dictionary.title")
             dict_name_ = item.tv.value;
@@ -75,6 +71,9 @@ private:
         }
       }
   }
+
+  template <class Output, class TypeCheckDDL>
+  bool do_validate(const Document& doc, Output& out, bool quiet) const;
 
   int version_;
   Document ddl_;
@@ -89,9 +88,9 @@ private:
 
 
 inline
-bool DDL::check_audit_conform(const Document& c, std::string* msg) const {
+bool DDL::check_audit_conform(const Document& doc, std::string* msg) const {
   std::string audit_conform = "_audit_conform" + sep_;
-  for (const Block& b : c.blocks) {
+  for (const Block& b : doc.blocks) {
     const std::string* dict_name = b.find_value(audit_conform + "dict_name");
     if (!dict_name)
       continue;
@@ -215,6 +214,8 @@ public:
     return true;
   }
 
+  Trinary is_list() const { return Trinary::Unset; }
+
 private:
   Trinary is_numb_ = Trinary::Unset; // _type numb
   bool has_range_ = false; // _enumeration_range
@@ -223,60 +224,60 @@ private:
   std::vector<std::string> enumeration_; // loop_ _enumeration
 };
 
-inline void DDL::validate(const Document& c,
-                          std::vector<std::string>* unknown_tags) const {
+template <class Output>
+bool DDL::validate(const Document& doc, Output& out, bool quiet) const {
+  return version_ == 1 ? do_validate<Output, TypeCheckDDL1>(doc, out, quiet)
+                       : do_validate<Output, TypeCheckDDL2>(doc, out, quiet);
+}
+
+template <class Output, class TypeCheckDDL>
+bool DDL::do_validate(const Document& doc, Output& out, bool quiet) const {
   std::string msg;
-  for (const Block& b : c.blocks) {
+  bool ok = true;
+  auto err = [&](const Block& b, const Item& item, const std::string& s) {
+    ok = false;
+    out << doc.source << ":" << item.line_number
+        << " in data_" << b.name << ": " << s << "\n";
+  };
+  for (const Block& b : doc.blocks) {
     for (const Item& item : b.items) {
       if (item.type == ItemType::Value) {
-        const Block* dict_block = find(item.tv.tag);
+        const Block* dict_block = find_rules(item.tv.tag);
         if (!dict_block) {
-          if (unknown_tags)
-            unknown_tags->emplace_back(item.tv.tag);
+          if (!quiet)
+            out << "Note: unknown tag: " << item.tv.tag << "\n";
           continue;
         }
-        if (version_ == 1) {
-          TypeCheckDDL1 tc;
-          tc.from_block(*dict_block);
-          if (tc.is_list() == Trinary::Yes)
-            cif_fail(c, b, item, item.tv.tag + " must be a list");
-          if (!tc.validate_value(item.tv.value, &msg))
-            cif_fail(c, b, item, msg);
-        } else { // version_ == 2
-          TypeCheckDDL2 tc;
-          tc.from_block(*dict_block);
-          if (!tc.validate_value(item.tv.value, &msg))
-            cif_fail(c, b, item, msg);
-        }
+        TypeCheckDDL tc;
+        tc.from_block(*dict_block);
+        if (tc.is_list() == Trinary::Yes)
+          err(b, item, item.tv.tag + " must be a list");
+        if (!tc.validate_value(item.tv.value, &msg))
+          err(b, item, msg);
       } else if (item.type == ItemType::Loop) {
         const int ncol = item.loop.tags.size();
         for (int i = 0; i != ncol; i++) {
           const std::string& tag = item.loop.tags[i].tag;
-          const Block* dict_block = find(tag);
+          const Block* dict_block = find_rules(tag);
           if (!dict_block) {
-            if (unknown_tags)
-              unknown_tags->emplace_back(tag);
+            if (!quiet)
+              out << "Note: unknown tag: " << tag << "\n";
             continue;
           }
-          if (version_ == 1) {
-            TypeCheckDDL1 tc;
-            tc.from_block(*dict_block);
-            if (tc.is_list() == Trinary::No)
-              cif_fail(c, b, item, tag + " in list");
-            for (size_t j = i; j < item.loop.values.size(); j += ncol)
-              if (!tc.validate_value(item.loop.values[j], &msg))
-                cif_fail(c, b, item, msg);
-          } else { // version_ == 2
-            TypeCheckDDL2 tc;
-            tc.from_block(*dict_block);
-            for (size_t j = i; j < item.loop.values.size(); j += ncol)
-              if (!tc.validate_value(item.loop.values[j], &msg))
-                cif_fail(c, b, item, msg);
-          }
+          TypeCheckDDL tc;
+          tc.from_block(*dict_block);
+          if (tc.is_list() == Trinary::No)
+            err(b, item, tag + " in list");
+          for (size_t j = i; j < item.loop.values.size(); j += ncol)
+            if (!tc.validate_value(item.loop.values[j], &msg)) {
+              err(b, item, tag + ": " + msg);
+              break; // stop after first error to avoid clutter
+            }
         }
       }
     }
   }
+  return ok;
 }
 
 

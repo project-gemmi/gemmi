@@ -104,13 +104,15 @@ int main(int argc, char **argv) {
   option::Parser parse(Usage, argc-1, argv+1, options.data(), buffer.data());
   if (parse.error() || options[Unknown]) {
     option::printUsage(std::cerr, Usage);
-    return 1;
+    return 2;
   }
   if (options[Help] || parse.nonOptionsCount() == 0) {
     option::printUsage(std::cout, Usage);
     return 0;
   }
 
+  bool quiet = options[Quiet];
+  bool total_ok = true;
   for (int i = 0; i < parse.nonOptionsCount(); ++i) {
     const char* path = parse.nonOption(i);
     std::string msg;
@@ -124,18 +126,15 @@ int main(int argc, char **argv) {
           cif::infer_valtypes(d);
         if (options[Stat])
           msg = token_stats(d);
-        for (option::Option* ddl = options[Ddl]; ddl; ddl = ddl->next()) {
+        if (options[Ddl]) {
           cif::DDL dict;
-          dict.open_file(ddl->arg);
+          for (option::Option* ddl = options[Ddl]; ddl; ddl = ddl->next())
+            dict.open_file(ddl->arg);
           std::string ver_msg;
           dict.check_audit_conform(d, &ver_msg);
-          if (!ver_msg.empty())
+          if (!ver_msg.empty() && !quiet)
             std::cout << "Note: " << ver_msg << std::endl;
-          std::vector<std::string> unknown;
-          dict.validate(d, &unknown);
-          if (!unknown.empty())
-            std::cout << "Note: " << unknown.size() << " unknown tags"
-                      << " - first one: " << unknown[0] << std::endl;
+          ok = dict.validate(d, std::cout, quiet);
         }
       }
     } catch (std::runtime_error& e) {
@@ -145,10 +144,11 @@ int main(int argc, char **argv) {
     if (!msg.empty())
       std::cout << msg << std::endl;
 
-    if (!options[Quiet])
+    if (!quiet)
       std::cout << (ok ? "OK" : "FAILED") << std::endl;
+    total_ok = total_ok && ok;
   }
-  return 0;
+  return total_ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 // vim:sw=2:ts=2:et:path^=include,third_party
