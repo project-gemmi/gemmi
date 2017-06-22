@@ -117,20 +117,31 @@ bool DDL::check_audit_conform(const Document& doc, std::string* msg) const {
 }
 
 enum class Trinary : char { Unset, Yes, No };
+enum class ValType : char { Unset, Numb, Any };
 
 class TypeCheckCommon {
 protected:
+  ValType type_ = ValType::Unset;
+  bool has_su_ = false; // _type_conditions esd|su
   bool range_inclusive_ = false;
   std::vector<std::pair<double, double>> range_;
   std::vector<std::string> enumeration_;
 
-  bool validate_common(const std::string& value, std::string *msg) const {
+public:
+  bool validate_value(const std::string& value, std::string* msg) const {
     if (is_null(value))
       return true;
+    if (type_ == ValType::Numb && !is_numb(value)) {
+      if (msg)
+        *msg = "expected number, got: " + value;
+      return false;
+    }
+    // ignoring has_su_ - not sure if we should check it
     if (!range_.empty() && !validate_range(value, msg))
       return false;
     if (!enumeration_.empty() && !validate_enumeration(value, msg))
       return false;
+    return true;
     return true;
   }
 
@@ -164,8 +175,7 @@ private:
 class TypeCheckDDL1 : public TypeCheckCommon {
 public:
   void from_block(const Block& b) {
-    const std::string* list = b.find_value("_list");
-    if (list) {
+    if (const std::string* list = b.find_value("_list")) {
       if (*list == "yes")
         is_list_ = Trinary::Yes;
       else if (*list == "no")
@@ -173,7 +183,7 @@ public:
     }
     const std::string* type = b.find_value("_type");
     if (type)
-      is_numb_ = (*type == "numb" ? Trinary::Yes : Trinary::No);
+      type_ = (*type == "numb" ? ValType::Numb : ValType::Any);
     // Hypotetically _type_conditions could be a list, but it never is.
     const std::string* conditions = b.find_value("_type_conditions");
     if (conditions)
@@ -193,29 +203,10 @@ public:
       enumeration_.emplace_back(as_string(e));
   }
 
-  bool validate_value(const std::string& value, std::string* msg) const {
-    if (is_numb_ == Trinary::Yes) {
-      if (!is_null(value) && !is_numb(value)) {
-        if (msg)
-          *msg = "expected number";
-        return false;
-      }
-      // ignoring has_su_ - not sure if we should check it
-    }
-    if (!validate_common(value, msg))
-      return false;
-    return true;
-  }
-
   Trinary is_list() const { return is_list_; }
 
 private:
   Trinary is_list_ = Trinary::Unset; // _list yes
-  Trinary is_numb_ = Trinary::Unset; // _type numb
-  bool has_su_ = false; // _type_conditions esd|su
-  bool has_range_ = false; // _enumeration_range
-  float range_low_;
-  float range_high_;
   // type_construct regex - it is rarely used, ignore for now
   // type_conditions seq - seems to be never used, ignore it
   // For now we don't check at all relational attributes, i.e.
@@ -226,6 +217,11 @@ private:
 class TypeCheckDDL2 : public TypeCheckCommon {
 public:
   void from_block(const Block& b) {
+    if (const std::string* code = b.find_value("_item_type.code")) {
+      type_code_ = as_string(*code);
+      if (type_code_ == "float" || type_code_ == "int")
+        type_ = ValType::Numb;
+    }
     for (const auto& row : b.find("_item_range.", {"minimum", "maximum"}))
       range_.emplace_back(as_number(row[0], -INFINITY),
                           as_number(row[1], +INFINITY));
@@ -233,17 +229,10 @@ public:
       enumeration_.emplace_back(as_string(e));
   }
 
-  bool validate_value(const std::string& value, std::string* msg) const {
-    // TODO: type check
-    if (!validate_common(value, msg))
-      return false;
-    return true;
-  }
-
   Trinary is_list() const { return Trinary::Unset; }
 
 private:
-  //std::string type_code;
+  std::string type_code_;
 };
 
 template <class Output>
