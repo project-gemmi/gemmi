@@ -22,6 +22,13 @@ namespace rules = gemmi::cif::rules;
 
 
 struct Arg: public option::Arg {
+  static option::ArgStatus Required(const option::Option& option, bool msg) {
+    if (option.arg != nullptr)
+      return option::ARG_OK;
+    if (msg)
+      fprintf(stderr, "Option '%s' requires an argument\n", option.name);
+    return option::ARG_ILLEGAL;
+  }
   static option::ArgStatus Int(const option::Option& option, bool msg) {
     if (option.arg) {
       char* endptr = nullptr;
@@ -35,7 +42,8 @@ struct Arg: public option::Arg {
   }
 };
 
-enum OptionIndex { Unknown, Help, Version, Recurse, MaxCount, OneBlock,
+enum OptionIndex { Unknown, Help, Version,
+                   FromFile, Recurse, MaxCount, OneBlock,
                    WithFileName, NoBlockName, WithLineNumbers, WithTag,
                    Summarize, MatchingFiles, NonMatchingFiles, Count, Raw };
 
@@ -48,6 +56,8 @@ const option::Descriptor Usage[] = {
     "  -h, --help  \tdisplay this help and exit" },
   { Version, 0, "V", "version", Arg::None,
     "  -V, --version  \tdisplay version information and exit" },
+  { FromFile, 0, "f", "file", Arg::Required,
+    "  -f, --file=FILE  \tobtain file (or PDB ID) list from FILE" },
   { MaxCount, 0, "m", "max-count", Arg::Int,
     "  -m, --max-count=NUM  \tprint max NUM values per file" },
   { OneBlock, 0, "O", "one-block", Arg::None,
@@ -200,14 +210,15 @@ template<> struct Search<rules::loop_value> {
 };
 
 static
-void grep_file(const std::string& tag, const char* path, Parameters& par) {
+void grep_file(const std::string& tag, const std::string& path,
+               Parameters& par) {
   par.search_tag = tag;
-  par.path = path;
+  par.path = path.c_str();
   par.counter = 0;
   par.match_column = -1;
   par.match_value = false;
   try {
-    if (std::strcmp(path, "-") == 0) {
+    if (path == "-") {
       pegtl::cstream_input<> in(stdin, 16*1024, "stdin");
       pegtl::parse<rules::file, Search, cif::Errors>(in, par);
     } else if (gemmi::ends_with(path, ".gz")) {
@@ -312,6 +323,16 @@ static bool is_cif_file(const tinydir_file& f) {
                        gemmi::ends_with(f.path, ".cif.gz"));
 }
 
+static bool is_pdb_code(const std::string& str) {
+  return str.length() == 4 && std::isdigit(str[0]) && std::isalpha(str[1]) &&
+                              std::isalpha(str[2]) && std::isalpha(str[3]);
+}
+
+static std::string mmcif_subpath(const std::string& code) {
+  std::string lc = gemmi::to_lower(code);
+  return "/structures/divided/mmCIF/" + lc.substr(1, 2) + "/" + lc + ".cif.gz";
+}
+
 int main(int argc, char **argv) {
   if (argc < 1)
     return 2;
@@ -372,6 +393,16 @@ int main(int argc, char **argv) {
       if (std::strcmp(path, "-") == 0) {
         grep_file(tag, path, params);
         file_count++;
+      } else if (is_pdb_code(path)) {
+        if (const char* pdb_dir = getenv("PDB_DIR")) {
+          grep_file(tag, pdb_dir + mmcif_subpath(path), params);
+        } else {
+          fprintf(stderr,
+                  "The arguments %s is a PDB code, but $PDB_DIR is not set.\n"
+                  "To use a file or directory with such a name use: ./%s\n",
+                  path, path);
+          return 2;
+        }
       } else {
         DirWalker walker(path);
         for (const tinydir_file& f : walker) {

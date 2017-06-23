@@ -30,6 +30,13 @@ inline bool iends_with(const std::string& str, const std::string& suffix) {
                     [](char c1, char c2) { return c1 == std::tolower(c2); });
 }
 
+inline std::string to_lower(std::string str) {
+  for (char& c : str)
+    if (c >= 'A' && c < 'Z')
+      c |= 0x20;
+  return str;
+}
+
 std::vector<std::string> split_str(const std::string &str, char sep) {
   std::vector<std::string> result;
   std::size_t start = 0, end;
