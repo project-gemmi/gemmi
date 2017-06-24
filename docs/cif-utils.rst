@@ -35,10 +35,10 @@ __ http://www.iucr.org/iucr-top/lists/cif-developers/
 gemmi-grep
 ----------
 
-Searches for a specified tag in CIF files and prints the associated values,
-one value per line:
+.. highlight:: console
 
-.. code-block:: console
+Searches for a specified tag in CIF files and prints the associated values,
+one value per line::
 
     $ gemmi-grep _refine.ls_R_factor_R_free 5fyi.cif.gz
     5FYI:0.2358
@@ -57,9 +57,7 @@ options of GNU `grep`.
 
 This is a minimalistic program designed to be used together with Unix
 text-processing utilities. For example, it cannot filter values itself,
-but one may use grep:
-
-.. code-block:: console
+but one may use grep::
 
     $ gemmi-grep _pdbx_database_related.db_name /pdb/mmCIF/aa/* | grep EMDB
     4AAS:EMDB
@@ -68,21 +66,41 @@ but one may use grep:
 If the searched tag is near the beginning of file, the option ``-O`` will make
 gemmi-grep much faster. Searching the whole compressed mmCIF archive from
 the PDB should take on an average computer between 10 and 30 minutes,
-depending where the searched tag is located.
-
-.. code-block:: console
+depending where the searched tag is located::
 
     $ gemmi-grep -O -b _entity_poly.type /pdb/mmCIF | sort | uniq -c
-	  1 cyclic-pseudo-peptide
-	  4 other
-	  2 peptide nucleic acid
+          1 cyclic-pseudo-peptide
+          4 other
+          2 peptide nucleic acid
        9905 polydeoxyribonucleotide
-	156 polydeoxyribonucleotide/polyribonucleotide hybrid
-	 57 polypeptide(D)
+        156 polydeoxyribonucleotide/polyribonucleotide hybrid
+         57 polypeptide(D)
      168923 polypeptide(L)
        4559 polyribonucleotide
-	 18 polysaccharide(D)
+         18 polysaccharide(D)
 
+Programs in this section can work with any CIF files and have no features
+specific to mmCIF. Except that when :ref:`$PDB_DIR <pdb_dir>` is set
+one may use PDB codes: just ``5moo`` or ``5MOO`` instead of the path
+to ``5moo.cif.gz``. And for convenience, using PDB code implies
+option ``-O``.
+
+In many scenarios one is interested only in a subset of the PDB and has
+a list of PDB codes. Let say we want to look into group depositions.
+First we may make a list of pdb entries that were deposited in groups::
+
+    $ gemmi-grep -O _pdbx_deposit_group.group_title $PDB_DIR/structures | tee gid.out
+    5OYQ:G_1002001
+    5OYR:G_1002001
+    [...]
+
+And then, checking these (1238 as of Jun 2017) files takes only seconds::
+
+    $ gemmi-grep -b -f gid.out  _pdbx_deposit_group.group_title | uniq -c
+    364 High-Throughput Crystallography: Reliable and Efficient Identification of Fragment Hits.
+    8 Crystal structures of Tyrosine-protein kinase BTK in complex with inhibitors
+    860 PanDDA analysis group deposition
+    6 NS5B 1b
 
 .. _cif_examples:
 

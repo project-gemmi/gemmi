@@ -32,9 +32,19 @@ inline bool iends_with(const std::string& str, const std::string& suffix) {
 
 inline std::string to_lower(std::string str) {
   for (char& c : str)
-    if (c >= 'A' && c < 'Z')
+    if (c >= 'A' && c <= 'Z')
       c |= 0x20;
   return str;
+}
+
+std::string trim_str(const std::string& str)
+{
+  std::string ws = " \r\n\t";
+  std::string::size_type first = str.find_first_not_of(ws);
+  if (first == std::string::npos)
+    return std::string{};
+  std::string::size_type last = str.find_last_not_of(ws);
+  return str.substr(first, last - first + 1);
 }
 
 std::vector<std::string> split_str(const std::string &str, char sep) {

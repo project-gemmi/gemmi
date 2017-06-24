@@ -49,7 +49,8 @@ enum OptionIndex { Unknown, Help, Version,
 
 const option::Descriptor Usage[] = {
   { Unknown, 0, "", "", Arg::None,
-    "Usage: " EXE_NAME " [options] TAG FILE_OR_DIR[...]\n"
+    "Usage: " EXE_NAME " [options] TAG FILE_OR_DIR_OR_PDBID[...]\n"
+    "       " EXE_NAME " -f FILE [options] TAG\n"
     "Search for TAG in CIF files."
     "\n\nOptions:" },
   { Help, 0, "h", "help", Arg::None,
@@ -324,8 +325,8 @@ static bool is_cif_file(const tinydir_file& f) {
 }
 
 static bool is_pdb_code(const std::string& str) {
-  return str.length() == 4 && std::isdigit(str[0]) && std::isalpha(str[1]) &&
-                              std::isalpha(str[2]) && std::isalpha(str[3]);
+  return str.length() == 4 && std::isdigit(str[0]) && std::isalnum(str[1]) &&
+                              std::isalnum(str[2]) && std::isalnum(str[3]);
 }
 
 static std::string mmcif_subpath(const std::string& code) {
@@ -340,8 +341,7 @@ int main(int argc, char **argv) {
   std::vector<option::Option> options(stats.options_max);
   std::vector<option::Option> buffer(stats.buffer_max);
   option::Parser parse(Usage, argc-1, argv+1, options.data(), buffer.data());
-  if (parse.error() || options[Unknown] ||
-      (!options[Help] && !options[Version] && parse.nonOptionsCount() < 2)) {
+  if (parse.error() || options[Unknown]) {
     option::printUsage(fwrite, stderr, Usage);
     return 2;
   }
@@ -352,6 +352,11 @@ int main(int argc, char **argv) {
   if (options[Version]) {
     printf("%s %s\n", EXE_NAME, GEMMI_VERSION);
     return 0;
+  }
+  if (options[FromFile] ? parse.nonOptionsCount() != 1
+                        : parse.nonOptionsCount() < 2) {
+    option::printUsage(fwrite, stderr, Usage);
+    return 2;
   }
 
   Parameters params;
@@ -386,25 +391,48 @@ int main(int argc, char **argv) {
     return 2;
   }
 
+  std::vector<std::string> paths;
+  if (options[FromFile]) {
+    std::FILE *f = std::fopen(options[FromFile].arg, "r");
+    if (!f) {
+      std::perror(options[FromFile].arg);
+      return 2;
+    }
+    char buf[512];
+    while (std::fgets(buf, 512, f)) {
+      std::string s = gemmi::trim_str(buf);
+      if (s.length() >= 4 && std::strchr(" \t\r\n:,;|", s[4]) &&
+          is_pdb_code(s.substr(0, 4)))
+        s.resize(4);
+      if (!s.empty())
+        paths.emplace_back(s);
+    }
+    std::fclose(f);
+  } else {
+    for (int i = 1; i < parse.nonOptionsCount(); ++i)
+      paths.emplace_back(parse.nonOption(i));
+  }
+
   size_t file_count = 0;
-  for (int i = 1; i < parse.nonOptionsCount(); ++i) {
-    const char* path = parse.nonOption(i);
+  for (const std::string& path : paths) {
     try {
-      if (std::strcmp(path, "-") == 0) {
+      if (path == "-") {
         grep_file(tag, path, params);
         file_count++;
       } else if (is_pdb_code(path)) {
         if (const char* pdb_dir = getenv("PDB_DIR")) {
+          params.last_block = true;  // PDB code implies -O
           grep_file(tag, pdb_dir + mmcif_subpath(path), params);
+          params.last_block = options[OneBlock];
         } else {
           fprintf(stderr,
-                  "The arguments %s is a PDB code, but $PDB_DIR is not set.\n"
-                  "To use a file or directory with such a name use: ./%s\n",
-                  path, path);
+                  "The argument %s is a PDB code, but $PDB_DIR is not set.\n"
+                  "(To use a file or directory with such a name use: ./%s)\n",
+                  path.c_str(), path.c_str());
           return 2;
         }
       } else {
-        DirWalker walker(path);
+        DirWalker walker(path.c_str());
         for (const tinydir_file& f : walker) {
           if (walker.is_file() || is_cif_file(f)) {
             grep_file(tag, f.path, params);
@@ -414,7 +442,7 @@ int main(int argc, char **argv) {
       }
     } catch (std::runtime_error& e) {
       std::fflush(stdout);
-      fprintf(stderr, "Error when parsing %s:\n\t%s\n", path, e.what());
+      fprintf(stderr, "Error when parsing %s:\n\t%s\n", path.c_str(), e.what());
       return 2;
     }
   }

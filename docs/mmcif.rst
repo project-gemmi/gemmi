@@ -206,6 +206,8 @@ Chemical Component
 
 TODO
 
+.. _pdb_dir:
+
 Local copy of the PDB archive
 =============================
 
