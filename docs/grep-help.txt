@@ -1,10 +1,12 @@
 $ gemmi-grep -h
-Usage: gemmi-grep [options] TAG FILE_OR_DIR[...]
+Usage: gemmi-grep [options] TAG FILE_OR_DIR_OR_PDBID[...]
+       gemmi-grep -f FILE [options] TAG
 Search for TAG in CIF files.
 
 Options:
   -h, --help               display this help and exit
   -V, --version            display version information and exit
+  -f, --file=FILE          obtain file (or PDB ID) list from FILE
   -m, --max-count=NUM      print max NUM values per file
   -O, --one-block          optimize assuming one block per file
   -n, --line-number        print line number with output lines

@@ -66,7 +66,7 @@ For example:
 .. code-block:: none
 
     git clone https://github.com/project-gemmi/gemmi.git
-    c++ -std=c++11 -I. -Igemmi/third_party -O2 my_program.cpp
+    c++ -std=c++11 -Igemmi/include -Igemmi/third_party -O2 my_program.cpp
 
 If you'd like Gemmi to uncompress gzipped (.cif.gz) files on the fly,
 add ``#include <gemmi/cifgz.hpp>`` and link your program with the zlib library.
