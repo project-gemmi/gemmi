@@ -26,8 +26,8 @@ Installation
 
 .. highlight:: none
 
-For C++
--------
+C++ library
+-----------
 
 At this moment it is a header-only library, so you need to ensure that
 the ``include`` and ``third_party`` directories are in your include path
@@ -41,7 +41,7 @@ i.e. when you ``#include <gemmi/cifgz.hpp>`` or
 ``#include <gemmi/pdbgz.hpp>``,
 you will also need to link your program with the zlib library.
 
-For Python 2.7 or 3.x
+Python 2.7/3.x module
 ---------------------
 
 To install the gemmi module you need pip, git and not too old
@@ -52,3 +52,14 @@ C++ compiler (GCC 4.8+, Clang 3.4+, MSVC 2015+, ICC 16+)::
 (when the project is more mature and has regular releases, it will be simply
 ``pip install gemmi``).
 
+Utilities
+---------
+
+The library comes with a few of small programs.
+When the project is more mature we will provide binaries for Windows, Mac
+and Linux. At this moment the utilities are tested only Linux and Mac
+and need to be compiled from source::
+
+    git clone https://github.com/project-gemmi/gemmi.git
+    cd gemmi
+    make
