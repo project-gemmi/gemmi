@@ -5,18 +5,22 @@
 
 #ifndef GEMMI_CIF_HPP_
 #define GEMMI_CIF_HPP_
-#include "numb.hpp" // is_int() for infer_valtypes()
-#include "util.hpp" // starts_with()
+#include "numb.hpp"  // for as_int, as_number
+#include "util.hpp"  // for starts_with
+#include <algorithm> // for move, find_if, all_of, min
 #include <cassert>
-#include <cstdint>
-#include <cmath>
-#include <algorithm>
+#include <cctype>    // for isalpha
+#include <cmath>     // for NAN
+#include <cstdio>    // for FILE
+#include <cstring>   // for strchr
+#include <initializer_list>
+#include <iosfwd>    // for size_t, istream, ptrdiff_t
+#include <new>
 #include <stdexcept>
 #include <string>
-#include <vector>
-#include <new>
 #include <unordered_set>
-#include <initializer_list>
+#include <utility>   // for pair
+#include <vector>
 
 #include <tao/pegtl.hpp>
 #ifdef CIF_VALIDATE_SHOW_TRACE

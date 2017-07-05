@@ -2,9 +2,13 @@
 
 #ifndef GEMMI_TO_JSON_HPP_
 #define GEMMI_TO_JSON_HPP_
+#include <cctype>    // for isdigit
+#include <ostream>   // for ostream
+#include <set>       // for set
+#include <string>    // for string
+#include <vector>    // for vector
 #include "cif.hpp"
-#include <cassert>
-#include <ostream>
+#include "util.hpp"  // for starts_with
 
 namespace gemmi {
 namespace cif {
@@ -122,11 +126,11 @@ private:
       pos = 1;
     }
     // in JSON left-padding with 0s is not allowed
-    while (value[pos] == '0' && isdigit(value[pos+1]))
+    while (value[pos] == '0' && std::isdigit(value[pos+1]))
       ++pos;
     // in JSON dot must be followed by digit
     size_t dotpos = value.find('.');
-    if (dotpos != std::string::npos && !isdigit(value[dotpos+1])) {
+    if (dotpos != std::string::npos && !std::isdigit(value[dotpos+1])) {
       os_ << value.substr(pos, dotpos+1-pos) << '0';
       pos = dotpos + 1;
     }

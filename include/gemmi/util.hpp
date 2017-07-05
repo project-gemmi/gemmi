@@ -5,10 +5,11 @@
 #ifndef GEMMI_UTIL_HPP_
 #define GEMMI_UTIL_HPP_
 
-#include <algorithm>
+#include <algorithm>  // for equal, find
+#include <cctype>     // for tolower
+#include <iterator>   // for begin, end, make_move_iterator
 #include <string>
 #include <vector>
-#include <cctype>
 
 namespace gemmi {
 

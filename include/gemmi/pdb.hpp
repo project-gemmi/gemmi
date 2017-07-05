@@ -11,10 +11,17 @@
 #ifndef GEMMI_PDB_HPP_
 #define GEMMI_PDB_HPP_
 
-#include <cstdint>
-#include <cstdio>
-#include <memory>
-#include <string>
+#include <algorithm>  // for find_if_not, swap
+#include <cctype>     // for isspace
+#include <cstdio>     // for fclose, FILE, size_t, fgetc, fopen, fgets
+#include <cstdlib>    // for strtol
+#include <cstring>    // for memcpy, strlen, strstr
+#include <map>        // for map
+#include <memory>     // for unique_ptr
+#include <stdexcept>  // for runtime_error
+#include <string>     // for string
+#include <vector>     // for vector
+
 #include "model.hpp"
 #include "util.hpp"
 

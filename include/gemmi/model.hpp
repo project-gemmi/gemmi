@@ -5,12 +5,13 @@
 #ifndef GEMMI_MODEL_HPP_
 #define GEMMI_MODEL_HPP_
 
-#include <cstring>
-#include <algorithm>
-#include <map>
-#include <memory>
+#include <algorithm>  // for find_if
+#include <cstring>    // for strchr, size_t
+#include <map>        // for map
+#include <memory>     // for unique_ptr
 #include <string>
 #include <vector>
+
 #include <linalg.h>
 #include "elem.hpp"
 #include "unitcell.hpp"

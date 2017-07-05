@@ -8,7 +8,8 @@
 #ifndef GEMMI_NUMB_HPP_
 #define GEMMI_NUMB_HPP_
 
-#include <cmath>  // for NAN
+#include <cmath>   // for NAN
+#include <cstddef> // for size_t
 #include <tao/pegtl.hpp>
 
 namespace gemmi {

@@ -5,9 +5,8 @@
 #ifndef GEMMI_MMCIF_HPP_
 #define GEMMI_MMCIF_HPP_
 
-#include <string>
 #include <array>
-#include <set>
+#include <string>
 #include <unordered_map>
 #include "cif.hpp"
 #include "numb.hpp"

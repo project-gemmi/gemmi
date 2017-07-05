@@ -6,8 +6,7 @@
 #ifndef GEMMI_DDL_HPP_
 #define GEMMI_DDL_HPP_
 
-#include <cassert>
-#include <cfloat>
+#include <algorithm>  // for find
 #include <stdexcept>
 #include <string>
 #include <unordered_map>

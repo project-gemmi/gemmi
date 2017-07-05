@@ -8,7 +8,7 @@ PYTHON_CONFIG=$(PYTHON)-config
 
 WFLAGS=-Wall -Wextra -Wpedantic -Wdisabled-optimization -Wformat=2 \
        -Wredundant-decls -Wshadow $(EXTRA_WFLAGS)
-FLAGS=-O2 -g $(CXXSTD) $(WFLAGS) -Iinclude -Ithird_party #-DNDEBUG
+FLAGS=-O2 -g -pipe $(CXXSTD) $(WFLAGS) -Iinclude -Ithird_party #-DNDEBUG
 
 PYFLAGS=$(FLAGS) -Wno-shadow -fPIC \
        -fvisibility=hidden -fwrapv -D_FORTIFY_SOURCE=2

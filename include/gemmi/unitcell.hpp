@@ -5,7 +5,8 @@
 #ifndef GEMMI_UNITCELL_HPP_
 #define GEMMI_UNITCELL_HPP_
 
-#include <cmath>
+#include <stdexcept>  // for runtime_error
+#include <cmath>      // for cos, sin, sqrt
 #include <linalg.h>
 
 namespace gemmi {
