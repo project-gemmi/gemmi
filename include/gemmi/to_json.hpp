@@ -12,6 +12,8 @@ namespace cif {
 class JsonWriter {
 public:
   bool comcifs = false;  // conform to the COMCIFS CIF-JSON draft
+  bool group_ddl2_categories = false;  // for mmJSON
+  bool with_data_keyword = false;  // for mmJSON
   bool use_bare_tags = false;  // "tag" instead of "_tag"
   bool values_as_arrays = false;  // "_tag": ["value"]
   int quote_numbers = 1;  // 0=never (no s.u.), 1=mix, 2=always
@@ -24,10 +26,39 @@ public:
     quote_numbers = 2;
     cif_dot = "false";
   }
+  void set_mmjson() {
+    group_ddl2_categories = true;
+    with_data_keyword = true;
+    use_bare_tags = true;
+    values_as_arrays = true;
+    quote_numbers = 0;
+  }
 
 private:
   std::ostream& os_;
   std::string linesep_;
+
+  void change_indent(int n) { linesep_.resize(linesep_.size() + n, ' '); }
+
+  // returns category with trailing dot
+  std::string get_tag_category(const std::string& tag) {
+    if (!group_ddl2_categories)
+      return std::string{};
+    size_t pos = tag.find('.');
+    if (pos == std::string::npos)
+      return std::string{};
+    return tag.substr(0, pos + 1);
+  }
+
+  std::string get_loop_category(const Loop& loop) {
+    if (loop.tags.empty())
+      return std::string{};
+    std::string cat = get_tag_category(loop.tags[0].tag);
+    for (size_t i = 1; i < loop.tags.size(); ++i)
+      if (!starts_with(loop.tags[i].tag, cat))
+        return std::string{};
+    return cat;
+  }
 
   // based on tao/json/internal/escape.hpp
   static void escape(std::ostream& os, const std::string& s, size_t pos,
@@ -78,10 +109,6 @@ private:
     os_.put('"');
   }
 
-  void write_tag(const std::string& tag) {
-    write_string(tag, use_bare_tags ? 1 : 0, true);
-  }
-
   void write_as_number(const std::string& value) {
     // if we are here, value is not empty
     if (value[0] == '.') // in JSON numbers cannot start with dot
@@ -121,13 +148,34 @@ private:
       write_string(as_string(value));
   }
 
+  void open_cat(const std::string& cat, size_t* tag_pos) {
+    if (!cat.empty()) {
+      change_indent(+1);
+      write_string(cat.substr(0, cat.size() - 1), use_bare_tags ? 1 : 0, true);
+      os_ << ": {" << linesep_;
+      *tag_pos += cat.size() - 1;
+    }
+  }
+
+  void close_cat(std::string& cat, size_t* tag_pos) {
+    if (!cat.empty()) {
+      change_indent(-1);
+      os_ << linesep_ << '}';
+      *tag_pos -= cat.size() - 1;
+      cat.clear();
+    }
+  }
+
   void write_loop(const Loop& loop) {
     size_t ncol = loop.tags.size();
     const auto& vals = loop.values;
+    std::string cat = get_loop_category(loop);
+    size_t tag_pos = use_bare_tags ? 1 : 0;
+    open_cat(cat, &tag_pos);
     for (size_t i = 0; i < ncol; i++) {
       if (i != 0)
         os_ << "," << linesep_;
-      write_tag(loop.tags[i].tag);
+      write_string(loop.tags[i].tag, tag_pos, true);
       os_ << ": [";
       for (size_t j = i; j < vals.size(); j += ncol) {
         if (j != i)
@@ -136,6 +184,7 @@ private:
       }
       os_.put(']');
     }
+    close_cat(cat, &tag_pos);
   }
 
 
@@ -143,15 +192,25 @@ private:
   void write_map(const std::string& name, const std::vector<Item>& items) {
     write_string(name, 0, true);
     os_ << ": ";
-    size_t n = linesep_.size();
-    linesep_.resize(n + 1, ' ');
+    change_indent(+1);
     char first = '{';
     bool has_frames = false;
+    std::string cat;
+    size_t tag_pos = use_bare_tags ? 1 : 0;
+    // When grouping into categories, only consecutive tags are grouped.
+    std::set<std::string> seen_cats;
     for (const Item& item : items) {
       switch (item.type) {
         case ItemType::Value:
+          if (!cat.empty() && !starts_with(item.tv.tag, cat))
+            close_cat(cat, &tag_pos);
           os_ << first << linesep_;
-          write_tag(item.tv.tag);
+          if (group_ddl2_categories && cat.empty()) {
+            cat = get_tag_category(item.tv.tag);
+            if (seen_cats.insert(cat).second)
+              open_cat(cat, &tag_pos);
+          }
+          write_string(item.tv.tag, tag_pos, true);
           os_ << ": ";
           if (values_as_arrays)
             os_.put('[');
@@ -161,6 +220,7 @@ private:
           first = ',';
           break;
         case ItemType::Loop:
+          close_cat(cat, &tag_pos);
           os_ << first << linesep_;
           write_loop(item.loop);
           first = ',';
@@ -176,7 +236,7 @@ private:
     }
     if (has_frames) {  // usually, we don't have any frames
       os_ << first << linesep_ << "\"Frames\": ";
-      linesep_.resize(n + 2, ' ');
+      change_indent(+1);
       first = '{';
       for (const Item& item : items)
         if (item.type == ItemType::Frame) {
@@ -184,10 +244,11 @@ private:
           write_map(item.frame.name, item.frame.items);
           first = ',';
         }
-      linesep_.resize(n + 1);
+      change_indent(-1);
       os_ << linesep_ << '}';
     }
-    linesep_.resize(n);
+    close_cat(cat, &tag_pos);
+    change_indent(-1);
     os_ << linesep_ << '}';
   }
 };
@@ -203,13 +264,13 @@ inline void JsonWriter::write_json(const Document& d) {
    "schema-version": "1.0.0",
    "schema-uri": "http://www.iucr.org/resources/cif/cif-json.json"
   },)";
-    linesep_.resize(3, ' ');
+    change_indent(+1);
   }
   for (const Block& block : d.blocks) {
     if (&block != &d.blocks[0])
       os_.put(',');
     os_ << linesep_;
-    write_map(block.name, block.items);
+    write_map((with_data_keyword ? "data_" : "") + block.name, block.items);
   }
   if (comcifs)
     os_ << "\n }";

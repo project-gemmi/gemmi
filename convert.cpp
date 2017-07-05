@@ -58,7 +58,7 @@ struct Arg: public option::Arg {
 };
 
 enum OptionIndex { Unknown, Help, Version, Verbose, FormatIn, FormatOut,
-                   Comcifs, Bare, Numb, CifDot,
+                   Comcifs, Mmjson, Bare, Numb, CifDot,
                    ExpandNcs, IotbxCompat, SegmentAsChain };
 static const option::Descriptor Usage[] = {
   { Unknown, 0, "", "", Arg::None,
@@ -77,6 +77,8 @@ static const option::Descriptor Usage[] = {
   { Unknown, 0, "", "", Arg::None, "\nCIF output options:" },
   { Comcifs, 0, "c", "comcifs", Arg::None,
     "  -c, --comcifs  \tConform to the COMCIFS CIF-JSON standard draft." },
+  { Mmjson, 0, "m", "mmjson", Arg::None,
+    "  -m, --mmjson   \tCompatible with mmJSON from PDBj." },
   { Bare, 0, "b", "bare-tags", Arg::None,
     "  -b, --bare-tags  \tOutput tags without the first underscore." },
   { Numb, 0, "", "numb", Arg::NumbChoice,
@@ -413,7 +415,10 @@ void convert(const char* input, FileType input_type,
     cif::JsonWriter writer(*os);
     if (options[Comcifs])
       writer.set_comcifs();
-    writer.use_bare_tags = options[Bare];
+    if (options[Mmjson])
+      writer.set_mmjson();
+    if (options[Bare])
+      writer.use_bare_tags = true;
     if (options[Numb]) {
       char first_letter = options[Numb].arg[0];
       if (first_letter == 'q')
