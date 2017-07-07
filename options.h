@@ -5,6 +5,7 @@
 
 #include <cstdio>   // for fprintf
 #include <cstdlib>  // for strtol, strtod, exit
+#include <cstring>  // for strcmp
 #include <vector>
 #include <optionparser.h>
 #include "gemmi/version.hpp"
@@ -24,7 +25,7 @@ struct Arg: public option::Arg {
     if (Required(option, msg) == option::ARG_ILLEGAL)
       return option::ARG_ILLEGAL;
     for (const char* a : choices)
-      if (strcmp(option.arg, a) == 0)
+      if (std::strcmp(option.arg, a) == 0)
         return option::ARG_OK;
     if (msg)
       // option.name here is a string "--option=arg"
