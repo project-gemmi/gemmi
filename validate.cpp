@@ -11,7 +11,9 @@
 #ifdef ANALYZE_RULES
 # include <tao/pegtl/analyze.hpp>
 #endif
-#include <optionparser.h>
+
+#define EXE_NAME "gemmi-validate"
+#include "options.h"
 
 namespace cif = gemmi::cif;
 
@@ -66,21 +68,13 @@ std::string token_stats(const cif::Document& d) {
 }
 
 
-struct Arg: public option::Arg {
-  static option::ArgStatus Required(const option::Option& option, bool msg) {
-    if (option.arg != nullptr)
-      return option::ARG_OK;
-    if (msg)
-      std::cerr << "Option '" << option.name << "' requires an argument\n";
-    return option::ARG_ILLEGAL;
-  }
-};
-
-enum OptionIndex { Unknown, Help, Fast, Stat, Types, Quiet, Ddl };
+enum OptionIndex { Unknown, Fast, Stat, Types, Quiet, Ddl };
 const option::Descriptor Usage[] = {
-  { Unknown, 0, "", "", Arg::None, "Usage: gemmi-validate [options] FILE [...]"
+  { Unknown, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
                                    "\n\nOptions:" },
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
+  { Version, 0, "V", "version", Arg::None,
+    "  -V, --version  \tDisplay version information and exit." },
   { Fast, 0, "f", "fast", Arg::None, "  -f, --fast  \tSyntax-only check." },
   { Stat, 0, "s", "stat", Arg::None, "  -s, --stat  \tShow token statistics" },
   { Types, 0, "t", "types", Arg::None, "  -t, --types  \t"
@@ -96,17 +90,9 @@ int main(int argc, char **argv) {
   tao::pegtl::analyze<cif::rules::file>();
   tao::pegtl::analyze<cif::numb_rules::numb>();
 #endif
-  if (argc < 1)
-    return 2;
-  option::Stats stats(Usage, argc-1, argv+1);
-  std::vector<option::Option> options(stats.options_max);
-  std::vector<option::Option> buffer(stats.buffer_max);
-  option::Parser parse(Usage, argc-1, argv+1, options.data(), buffer.data());
-  if (parse.error() || options[Unknown]) {
-    option::printUsage(std::cerr, Usage);
-    return 2;
-  }
-  if (options[Help] || parse.nonOptionsCount() == 0) {
+  OptParser parse;
+  auto options = parse.simple_parse(argc, argv, Usage);
+  if (parse.nonOptionsCount() == 0) {
     option::printUsage(std::cout, Usage);
     return 0;
   }

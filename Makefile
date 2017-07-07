@@ -17,21 +17,25 @@ all: gemmi-validate gemmi-convert gemmi-grep
 
 py: gemmi.so
 
-gemmi-validate: validate.cpp include/gemmi/cif.hpp include/gemmi/ddl.hpp \
-                include/gemmi/cifgz.hpp include/gemmi/numb.hpp
+gemmi-validate: validate.cpp options.h include/gemmi/cif.hpp \
+                include/gemmi/ddl.hpp include/gemmi/cifgz.hpp \
+                include/gemmi/numb.hpp
 	$(CXX) $(FLAGS) $< -o $@ -lz
 
-gemmi-convert: convert.cpp include/gemmi/*.hpp
+gemmi-convert: convert.cpp options.h include/gemmi/*.hpp
 	$(CXX) $(FLAGS) -Wno-strict-aliasing $< -o $@ -lz
 
-gemmi-convert-snprintf: convert.cpp include/gemmi/*.hpp
+gemmi-convert-snprintf: convert.cpp options.h include/gemmi/*.hpp
 	$(CXX) -DUSE_STD_SNPRINTF $(FLAGS) $< -o $@ -lz
 
-gemmi-grep: grep.cpp include/gemmi/cif.hpp include/gemmi/cifgz.hpp
+gemmi-grep: grep.cpp options.h include/gemmi/cif.hpp include/gemmi/cifgz.hpp
+	$(CXX) $(FLAGS) $< -o $@ -lz
+
+gemmi-mask: mask.cpp options.h include/gemmi/grid.hpp include/gemmi/unitcell.hpp
 	$(CXX) $(FLAGS) $< -o $@ -lz
 
 # for debugging only
-trace: validate.cpp include/gemmi/cif.hpp
+trace: validate.cpp options.h include/gemmi/cif.hpp
 	$(CXX) -DCIF_VALIDATE_SHOW_TRACE $(FLAGS) $< -o $@ -lz
 
 pygemmi.o: pygemmi.cpp include/gemmi/cif.hpp include/gemmi/to_json.hpp \

@@ -4,15 +4,14 @@
 
 #include "gemmi/cif.hpp"
 #include "gemmi/cifgz.hpp"
-#include "gemmi/version.hpp"
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
 #include <string>
-#include <optionparser.h>
 #include <tinydir.h>
 
 #define EXE_NAME "gemmi-grep"
+#include "options.h"
 
 using std::printf;
 using std::fprintf;
@@ -21,29 +20,7 @@ namespace cif = gemmi::cif;
 namespace rules = gemmi::cif::rules;
 
 
-struct Arg: public option::Arg {
-  static option::ArgStatus Required(const option::Option& option, bool msg) {
-    if (option.arg != nullptr)
-      return option::ARG_OK;
-    if (msg)
-      fprintf(stderr, "Option '%s' requires an argument\n", option.name);
-    return option::ARG_ILLEGAL;
-  }
-  static option::ArgStatus Int(const option::Option& option, bool msg) {
-    if (option.arg) {
-      char* endptr = nullptr;
-      std::strtol(option.arg, &endptr, 10);
-      if (endptr != option.arg && *endptr == '\0')
-        return option::ARG_OK;
-    }
-    if (msg)
-      fprintf(stderr, "Option '%s' requires a numeric argument\n", option.name);
-    return option::ARG_ILLEGAL;
-  }
-};
-
-enum OptionIndex { Unknown, Help, Version,
-                   FromFile, Recurse, MaxCount, OneBlock,
+enum OptionIndex { Unknown, FromFile, Recurse, MaxCount, OneBlock,
                    WithFileName, NoBlockName, WithLineNumbers, WithTag,
                    Summarize, MatchingFiles, NonMatchingFiles, Count, Raw };
 
@@ -335,24 +312,8 @@ static std::string mmcif_subpath(const std::string& code) {
 }
 
 int main(int argc, char **argv) {
-  if (argc < 1)
-    return 2;
-  option::Stats stats(Usage, argc-1, argv+1);
-  std::vector<option::Option> options(stats.options_max);
-  std::vector<option::Option> buffer(stats.buffer_max);
-  option::Parser parse(Usage, argc-1, argv+1, options.data(), buffer.data());
-  if (parse.error() || options[Unknown]) {
-    option::printUsage(fwrite, stderr, Usage);
-    return 2;
-  }
-  if (options[Help]) {
-    option::printUsage(fwrite, stdout, Usage);
-    return 0;
-  }
-  if (options[Version]) {
-    printf("%s %s\n", EXE_NAME, GEMMI_VERSION);
-    return 0;
-  }
+  OptParser parse;
+  auto options = parse.simple_parse(argc, argv, Usage);
   if (options[FromFile] ? parse.nonOptionsCount() != 1
                         : parse.nonOptionsCount() < 2) {
     option::printUsage(fwrite, stderr, Usage);

@@ -7,7 +7,6 @@
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/to_pdb.hpp"
-#include "gemmi/version.hpp"
 // set this before only one of stb_sprintf.h includes
 #define STB_SPRINTF_IMPLEMENTATION
 #include "gemmi/to_mmcif.hpp"
@@ -15,38 +14,16 @@
 #include <cstring>
 #include <iostream>
 #include <map>
-#include <optionparser.h>
 
 #define EXE_NAME "gemmi-convert"
+#include "options.h"
 
 namespace mol = gemmi::mol;
 namespace cif = gemmi::cif;
 
 enum class FileType : char { Json, Pdb, Cif, Crd, Null, Unknown };
 
-struct Arg: public option::Arg {
-  static option::ArgStatus Required(const option::Option& option, bool msg) {
-    if (option.arg != nullptr)
-      return option::ARG_OK;
-    if (msg)
-      std::cerr << "Option '" << option.name << "' requires an argument\n";
-    return option::ARG_ILLEGAL;
-  }
-
-  static option::ArgStatus Choice(const option::Option& option, bool msg,
-                                  std::vector<const char*> choices) {
-    if (Required(option, msg) == option::ARG_ILLEGAL)
-      return option::ARG_ILLEGAL;
-    for (const char* a : choices)
-      if (strcmp(option.arg, a) == 0)
-        return option::ARG_OK;
-    if (msg)
-      std::cerr << "Invalid argument for "
-                << std::string(option.name, option.namelen) << ": "
-                << option.arg << "\n";
-    return option::ARG_ILLEGAL;
-  }
-
+struct ConvArg: public Arg {
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
     // the hidden option "none" is for testing only
     return Arg::Choice(option, msg, {"json", "pdb", "cif", "none"});
@@ -57,7 +34,7 @@ struct Arg: public option::Arg {
   }
 };
 
-enum OptionIndex { Unknown, Help, Version, Verbose, FormatIn, FormatOut,
+enum OptionIndex { Unknown, Verbose, FormatIn, FormatOut,
                    Comcifs, Mmjson, Bare, Numb, CifDot,
                    ExpandNcs, IotbxCompat, SegmentAsChain };
 static const option::Descriptor Usage[] = {
@@ -70,9 +47,9 @@ static const option::Descriptor Usage[] = {
   { Version, 0, "V", "version", Arg::None,
     "  -V, --version  \tPrint version and exit." },
   { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
-  { FormatIn, 0, "", "from", Arg::FileFormat,
+  { FormatIn, 0, "", "from", ConvArg::FileFormat,
     "  --from=pdb|cif  \tInput format (default: from the file extension)." },
-  { FormatOut, 0, "", "to", Arg::FileFormat,
+  { FormatOut, 0, "", "to", ConvArg::FileFormat,
     "  --to=json|pdb  \tOutput format (default: from the file extension)." },
   { Unknown, 0, "", "", Arg::None, "\nCIF output options:" },
   { Comcifs, 0, "c", "comcifs", Arg::None,
@@ -81,7 +58,7 @@ static const option::Descriptor Usage[] = {
     "  -m, --mmjson   \tCompatible with mmJSON from PDBj." },
   { Bare, 0, "b", "bare-tags", Arg::None,
     "  -b, --bare-tags  \tOutput tags without the first underscore." },
-  { Numb, 0, "", "numb", Arg::NumbChoice,
+  { Numb, 0, "", "numb", ConvArg::NumbChoice,
     "  --numb=quote|nosu|mix  \tConvert the CIF numb type to one of:"
                              "\v  quote - string in quotes,"
                              "\v  nosu - number without s.u.,"
@@ -452,36 +429,10 @@ void convert(const char* input, FileType input_type,
 }
 
 int main(int argc, char **argv) {
-  if (argc < 1)
-    return 2;
   std::ios_base::sync_with_stdio(false);
-  option::Stats stats(Usage, argc-1, argv+1);
-  std::vector<option::Option> options(stats.options_max);
-  std::vector<option::Option> buffer(stats.buffer_max);
-  option::Parser parse(Usage, argc-1, argv+1, options.data(), buffer.data());
-  if (parse.error()) {
-    option::printUsage(std::cerr, Usage);
-    return 1;
-  }
-  if (options[Help]) {
-    option::printUsage(std::cout, Usage);
-    return 0;
-  }
-  if (options[Version]) {
-    std::cout << EXE_NAME " " GEMMI_VERSION "\n";
-    return 0;
-  }
-  if (options[Unknown]) {
-    std::cerr << "Invalid option.\n";
-    option::printUsage(std::cerr, Usage);
-    return 1;
-  }
-  if (parse.nonOptionsCount() != 2) {
-    std::cerr << "This program requires 2 arguments (input and output), "
-              << parse.nonOptionsCount() << " given.\n"
-                 "Try '" EXE_NAME " --help' for more information.\n";
-    return 1;
-  }
+  OptParser parse;
+  auto options = parse.simple_parse(argc, argv, Usage);
+  parse.require_positional_args(2);
 
   const char* input = parse.nonOption(0);
   const char* output = parse.nonOption(1);
