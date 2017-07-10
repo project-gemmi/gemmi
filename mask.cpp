@@ -7,7 +7,9 @@
 #define EXE_NAME "gemmi-mask"
 #include "options.h"
 
-enum OptionIndex { Unknown, Verbose, FormatIn, Threshold, Radius};
+namespace mol = gemmi::mol;
+
+enum OptionIndex { Unknown, Verbose, FormatIn, Threshold, GridDims, Radius};
 
 struct MaskArg {
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
@@ -29,25 +31,12 @@ static const option::Descriptor Usage[] = {
   { Threshold, 0, "t", "threshold", Arg::Float,
     "  -t, --threshold  \tMask map below the threshold." },
   { Unknown, 0, "", "", Arg::None, "\nOptions for model masking:" },
+  { GridDims, 0, "g", "grid", Arg::Int3,
+    "  -g, --grid=NX,NY,NZ  \tGrid sampling (default: ~1A spacing)." },
   { Radius, 0, "r", "radius", Arg::Float,
     "  -r, --radius  \tRadius of atom spheres (default: 3.0A)." },
   { 0, 0, 0, 0, 0, 0 }
 };
-
-void map_to_mask(const char* input, const char* output, double threshold) {
-  gemmi::Grid<> grid;
-  grid.read_ccp4(input);
-  grid.write_ccp4_mask(output, threshold);
-}
-
-void mol_to_mask(const char* input, const char* output, double radius) {
-  gemmi::mol::Structure model = gemmi::mol::read_pdb(input);
-  gemmi::Grid<> grid;
-  grid.set_size(128, 128, 128);
-  grid.unit_cell = model.cell;
-  // TODO
-  grid.write_ccp4_mask(output, 0.5);
-}
 
 
 int main(int argc, char **argv) {
@@ -60,20 +49,37 @@ int main(int argc, char **argv) {
   if (options[Verbose])
     fprintf(stderr, "Converting %s ...\n", input);
 
+  gemmi::Grid<> grid;
+  double threshold = 0.5;
   try {
     if (gemmi::iends_with(input, ".pdb")) {
-      double radius = 3.0;
-      if (options[Radius])
-        radius = std::strtod(options[Radius].arg, nullptr);
-      mol_to_mask(input, output, radius);
+      double radius = (options[Radius]
+                       ? std::strtod(options[Radius].arg, nullptr)
+                       : 3.0);
+      mol::Structure st = mol::read_pdb(input);
+      grid.unit_cell = st.cell;
+      if (options[GridDims]) {
+        auto dims = parse_comma_separated_ints(options[GridDims].arg);
+        grid.set_size(dims[0], dims[1], dims[2]);
+      } else {
+        grid.set_spacing(1);
+      }
+      if (st.models.size() > 1)
+        fprintf(stderr, "Note: only the first model is used.\n");
+      for (const mol::Chain& chain : st.models[0].chains)
+        for (const mol::Residue& res : chain.residues)
+          for (const mol::Atom& atom : res.atoms)
+            grid.set_points_around(atom.pos, radius, 1);
+      grid.calculate_statistics();
     } else {
       if (!options[Threshold]) {
         fprintf(stderr, "You need to specify threshold (-t).\n");
         return 2;
       }
-      double threshold = std::strtod(options[Threshold].arg, nullptr);
-      map_to_mask(input, output, threshold);
+      threshold = std::strtod(options[Threshold].arg, nullptr);
+      grid.read_ccp4(input);
     }
+    grid.write_ccp4_mask(output, threshold);
   } catch (std::runtime_error& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;

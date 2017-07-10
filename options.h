@@ -12,6 +12,17 @@
 
 enum { Help=1001, Version=1002 };
 
+inline std::vector<int> parse_comma_separated_ints(const char* arg) {
+  std::vector<int> result;
+  char* endptr = nullptr;
+  do {
+    result.push_back(std::strtol(endptr ? endptr + 1 : arg, &endptr, 10));
+  } while (*endptr == ',');
+  if (*endptr != '\0')
+    result.clear();
+  return result;
+}
+
 struct Arg: public option::Arg {
   static option::ArgStatus Required(const option::Option& option, bool msg) {
     if (option.arg != nullptr)
@@ -46,6 +57,17 @@ struct Arg: public option::Arg {
               "Option '%s' requires an integer argument\n", option.name);
     return option::ARG_ILLEGAL;
   }
+
+  static option::ArgStatus Int3(const option::Option& option, bool msg) {
+    if (option.arg && parse_comma_separated_ints(option.arg).size() == 3)
+        return option::ARG_OK;
+    if (msg)
+      fprintf(stderr, "Option '%.*s' requires three comma-separated integers "
+                      "as an argument,\n for example: %.*s=11,12,13",
+                      option.namelen, option.name, option.namelen, option.name);
+    return option::ARG_ILLEGAL;
+  }
+
 
   static option::ArgStatus Float(const option::Option& option, bool msg) {
     if (option.arg) {

@@ -33,6 +33,36 @@ struct Grid {
     nu = u, nv = v, nw = w;
     data.resize(u * v * w);
   }
+  void set_spacing(double sp) {
+    set_size(iround(unit_cell.a / sp),
+             iround(unit_cell.b / sp),
+             iround(unit_cell.c / sp));
+  }
+
+  void set_points_around(const mol::Position& pos, double radius, T value) {
+    mol::Position corners[8];
+    int i = 0;
+    for (double x : {pos.x - radius, pos.x + radius})
+      for (double y : {pos.y - radius, pos.y + radius})
+        for (double z : {pos.z - radius, pos.z + radius})
+          corners[i++] = {x, y, z};
+    //TODO
+    int cnt = 0;
+    for (int u = 0; u < nu; ++u)
+      for (int v = 0; v < nv; ++v)
+        for (int w = 0; w < nw; ++w) {
+          mol::Position fr = {double(u) / nu, double(v) / nv, double(w) / nw};
+          mol::Position orth = unit_cell.orthogonalize(fr);
+          double dx = pos.x - orth.x;
+          double dy = pos.y - orth.y;
+          double dz = pos.z - orth.z;
+          if (dx*dx + dy*dy + dz*dz < radius*radius) {
+            ++cnt;
+            data[u*nv*nw + v*nw + w] = value;
+          }
+        }
+    fprintf(stderr, "radius: %g, points set: %d\n", radius, cnt);
+  }
 
   void calculate_statistics();
   void read_ccp4(const std::string& path);
@@ -67,16 +97,17 @@ template<typename T>
 std::vector<char> make_ccp4_header(const Grid<T>& grid, int mode) {
   int nsymbt = 0;
   std::vector<char> header(1024 + nsymbt, 0);
-  auto set_u32 = [&header](int word, uint32_t value) {
-    *reinterpret_cast<uint32_t*>(header.data() + 4 * (word - 1)) = value;
+  auto word_ptr = [&header](int w) { return header.data() + 4 * (w - 1); };
+  auto set_u32 = [&word_ptr](int word, uint32_t value) {
+    *reinterpret_cast<uint32_t*>(word_ptr(word)) = value;
   };
   auto set_tri_u32 = [&set_u32](int word, uint32_t x, uint32_t y, uint32_t z) {
     set_u32(word, x);
     set_u32(word+1, y);
     set_u32(word+2, z);
   };
-  auto set_float = [&header](int word, float value) {
-    *reinterpret_cast<float*>(header.data() + 4 * (word - 1)) = value;
+  auto set_float = [&word_ptr](int word, float value) {
+    *reinterpret_cast<float*>(word_ptr(word)) = value;
   };
   set_tri_u32(1, grid.nu, grid.nv, grid.nw); // NX, NY, NZ
   set_u32(4, mode);
@@ -94,10 +125,10 @@ std::vector<char> make_ccp4_header(const Grid<T>& grid, int mode) {
   set_float(22, grid.dmean);
   set_u32(23, 1); // ISPG
   set_u32(24, nsymbt);
-  std::memcpy(header.data()+27-1, "CCP4", 4); // EXTTYP
+  std::memcpy(word_ptr(27), "CCP4", 4); // EXTTYP
   //set_u32(28, nversion);
-  std::memcpy(header.data()+53-1, "MAP ", 4);
-  set_u32(54, 0x44440000); // MACHST for little endian (0x11110000 for BE)
+  std::memcpy(word_ptr(53), "MAP ", 4);
+  set_u32(54, 0x00004444); // MACHST for little endian (0x11110000 for BE)
   set_float(55, grid.rms);
   set_u32(56, 0); // labels
   return header;

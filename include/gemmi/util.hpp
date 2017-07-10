@@ -79,6 +79,8 @@ void vector_move_extend(std::vector<T>& dst, std::vector<T>&& src) {
                           std::make_move_iterator(src.end()));
 }
 
+inline int iround(double d) { return static_cast<int>(floor(d+0.5)); }
+
 [[noreturn]]
 inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 
