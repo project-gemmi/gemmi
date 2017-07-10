@@ -12,35 +12,35 @@ FLAGS=-O2 -g -pipe $(CXXSTD) $(WFLAGS) -Iinclude -Ithird_party #-DNDEBUG
 
 PYFLAGS=$(FLAGS) -Wno-shadow -fPIC \
        -fvisibility=hidden -fwrapv -D_FORTIFY_SOURCE=2
-
-all: gemmi-validate gemmi-convert gemmi-grep
+all: gemmi-mask gemmi-validate gemmi-convert gemmi-grep
 
 py: gemmi.so
 
-gemmi-validate: validate.cpp options.h include/gemmi/cif.hpp \
-                include/gemmi/ddl.hpp include/gemmi/cifgz.hpp \
-                include/gemmi/numb.hpp
+igdir=include/gemmi
+
+gemmi-validate: validate.cpp options.h $(igdir)/cif.hpp \
+                $(igdir)/ddl.hpp $(igdir)/cifgz.hpp $(igdir)/numb.hpp
 	$(CXX) $(FLAGS) $< -o $@ -lz
 
-gemmi-convert: convert.cpp options.h include/gemmi/*.hpp
+gemmi-convert: convert.cpp options.h $(igdir)/*.hpp
 	$(CXX) $(FLAGS) -Wno-strict-aliasing $< -o $@ -lz
 
-gemmi-convert-snprintf: convert.cpp options.h include/gemmi/*.hpp
+gemmi-convert-snprintf: convert.cpp options.h $(igdir)/*.hpp
 	$(CXX) -DUSE_STD_SNPRINTF $(FLAGS) $< -o $@ -lz
 
-gemmi-grep: grep.cpp options.h include/gemmi/cif.hpp include/gemmi/cifgz.hpp
+gemmi-grep: grep.cpp options.h $(igdir)/cif.hpp $(igdir)/cifgz.hpp
 	$(CXX) $(FLAGS) $< -o $@ -lz
 
-gemmi-mask: mask.cpp options.h include/gemmi/grid.hpp include/gemmi/unitcell.hpp
+gemmi-mask: mask.cpp options.h $(igdir)/grid.hpp $(igdir)/unitcell.hpp \
+            $(igdir)/pdb.hpp $(igdir)/model.hpp
 	$(CXX) $(FLAGS) $< -o $@ -lz
 
 # for debugging only
-trace: validate.cpp options.h include/gemmi/cif.hpp
+trace: validate.cpp options.h $(igdir)/cif.hpp
 	$(CXX) -DCIF_VALIDATE_SHOW_TRACE $(FLAGS) $< -o $@ -lz
 
-pygemmi.o: pygemmi.cpp include/gemmi/cif.hpp include/gemmi/to_json.hpp \
-           include/gemmi/numb.hpp include/gemmi/to_cif.hpp \
-	   include/gemmi/elem.hpp
+pygemmi.o: pygemmi.cpp $(igdir)/cif.hpp $(igdir)/to_json.hpp \
+           $(igdir)/numb.hpp $(igdir)/to_cif.hpp $(igdir)/elem.hpp
 	$(CXX) $(PYFLAGS) `$(PYTHON_CONFIG) --includes` -c $<
 
 gemmi.so: pygemmi.o
