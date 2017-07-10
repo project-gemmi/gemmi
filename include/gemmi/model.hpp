@@ -19,7 +19,7 @@
 namespace gemmi {
 namespace mol {
 
-namespace internal {
+namespace impl {
 
 template<typename T>
 T* find_or_null(std::vector<T>& vec, const std::string& name) {
@@ -38,7 +38,7 @@ T* find_or_add(std::vector<T>& vec, const std::string& name) {
   return &vec.back();
 }
 
-} // namespace internal
+} // namespace impl
 
 
 struct Structure;
@@ -207,10 +207,10 @@ struct Model {
   explicit Model(std::string mname) noexcept : name(mname) {}
 
   Chain* find_chain(const std::string& chain_name) {
-    return internal::find_or_null(chains, chain_name);
+    return impl::find_or_null(chains, chain_name);
   }
   Chain* find_or_add_chain(const std::string& chain_name) {
-    return internal::find_or_add(chains, chain_name);
+    return impl::find_or_add(chains, chain_name);
   }
   std::vector<Chain>& children() { return chains; }
   const std::vector<Chain>& children() const { return chains; }
@@ -241,10 +241,10 @@ struct Structure {
     return it != info.end() ? it->second.c_str() : def;
   }
   Model* find_model(const std::string& model_name) {
-    return internal::find_or_null(models, model_name);
+    return impl::find_or_null(models, model_name);
   }
   Model* find_or_add_model(const std::string& model_name) {
-    return internal::find_or_add(models, model_name);
+    return impl::find_or_add(models, model_name);
   }
 
   Entity* find_entity(const std::string& ent_id) {

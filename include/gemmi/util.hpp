@@ -8,6 +8,7 @@
 #include <algorithm>  // for equal, find
 #include <cctype>     // for tolower
 #include <iterator>   // for begin, end, make_move_iterator
+#include <stdexcept>  // for runtime_error
 #include <string>
 #include <vector>
 
@@ -77,6 +78,9 @@ void vector_move_extend(std::vector<T>& dst, std::vector<T>&& src) {
     dst.insert(dst.end(), std::make_move_iterator(src.begin()),
                           std::make_move_iterator(src.end()));
 }
+
+[[noreturn]]
+inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 
 } // namespace gemmi
 #endif

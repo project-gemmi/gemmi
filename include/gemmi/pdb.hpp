@@ -18,7 +18,6 @@
 #include <cstring>    // for memcpy, strlen, strstr
 #include <map>        // for map
 #include <memory>     // for unique_ptr
-#include <stdexcept>  // for runtime_error
 #include <string>     // for string
 #include <vector>     // for vector
 
@@ -187,8 +186,8 @@ signed char read_charge(char digit, char sign) {
     std::swap(digit, sign);
   if (digit >= '0' && digit <= '9') {
     if (sign != '+' && sign != '-' && sign != '\0' && !std::isspace(sign))
-      throw std::runtime_error("Wrong format for charge: " +
-                               std::string(1, digit) + std::string(1, sign));
+      fail("Wrong format for charge: " +
+           std::string(1, digit) + std::string(1, sign));
     return (digit - '0') * (sign == '-' ? -1 : 1);
   }
   // if we are here the field should be blank, but maybe better not to check
@@ -215,8 +214,7 @@ template<typename InputType>
 Structure read_pdb_from_input(InputType&& in) {
   using namespace pdb_impl;
   auto wrong = [&in](const std::string& msg) {
-    throw std::runtime_error("Problem in line " + std::to_string(in.line_num())
-                             + ": " + msg);
+    fail("Problem in line " + std::to_string(in.line_num()) + ": " + msg);
   };
   Structure st;
   st.name = gemmi::path_basename(in.source);
@@ -414,7 +412,7 @@ inline Structure read_pdb(const std::string& path) {
   std::unique_ptr<FILE, decltype(&std::fclose)> f(std::fopen(path.c_str(), "r"),
                                                   &std::fclose);
   if (!f)
-    throw std::runtime_error("Failed to open file: " + path);
+    fail("Failed to open file: " + path);
   return read_pdb_from_cstream(f.get(), path);
 }
 

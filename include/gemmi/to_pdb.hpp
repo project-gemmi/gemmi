@@ -16,6 +16,7 @@
 # include <stb_sprintf.h>
 #endif
 #include "model.hpp"
+#include "util.hpp"
 
 namespace gemmi {
 namespace mol {
@@ -191,9 +192,9 @@ inline void write_pdb(const Structure& st, std::ostream& os,
       const std::string& chain_name = chain.auth_name.empty() ? chain.name
                                                               : chain.auth_name;
       if (chain_name.empty())
-        throw std::runtime_error("empty chain name");
+        gemmi::fail("empty chain name");
       if (chain_name.length() > 2)
-        throw std::runtime_error("long chain name: " + chain_name);
+        gemmi::fail("long chain name: " + chain_name);
       for (const Residue& res : chain.residues) {
         bool standard = res.has_standard_pdb_name() && !(chain.entity &&
                                  chain.entity->type == EntityType::NonPolymer);

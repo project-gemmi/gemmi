@@ -22,20 +22,20 @@ inline size_t estimate_uncompressed_size(const std::string& path) {
 #else
   if ((file = std::fopen(path.c_str(), "rb")) == nullptr)
 #endif
-    throw std::runtime_error("Failed to open file: " + path);
+    fail("Failed to open file: " + path);
   std::unique_ptr<FILE, decltype(&fclose)> cleanup(file, &fclose);
   if (std::fseek(file, -4, SEEK_END) != 0)
-    throw std::runtime_error("fseek() failed (empty file?): " + path);
+    fail("fseek() failed (empty file?): " + path);
   long pos = std::ftell(file);
   if (pos <= 0)
-    throw std::runtime_error("ftell() failed on " + path);
+    fail("ftell() failed on " + path);
   size_t gzipped_size = pos + 4;
   unsigned char buf[4];
   if (std::fread(buf, 1, 4, file) != 4)
-    throw std::runtime_error("Failed to read last 4 bytes of: " + path);
+    fail("Failed to read last 4 bytes of: " + path);
   size_t orig_size = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
   if (orig_size < gzipped_size || orig_size > 10 * gzipped_size)
-    throw std::runtime_error("Cannot determine uncompressed size of " + path);
+    fail("Cannot determine uncompressed size of " + path);
   return orig_size;
 }
 
@@ -43,19 +43,18 @@ inline size_t estimate_uncompressed_size(const std::string& path) {
 inline std::unique_ptr<char[]> gunzip_to_memory(const std::string& path,
                                                 size_t orig_size) {
   if (orig_size > 500000000)
-    throw std::runtime_error("For now gz files above 500MB uncompressed"
-                             " are not supported.");
+    fail("For now gz files above 500MB uncompressed are not supported.");
   std::unique_ptr<char[]> mem(new char[orig_size]);
   gzFile file = gzopen(path.c_str(), "rb");
   if (!file)
-    throw std::runtime_error("Failed to gzopen: " + path);
+    fail("Failed to gzopen: " + path);
   int bytes_read = gzread(file, mem.get(), orig_size);
   if (bytes_read < (int) orig_size && !gzeof(file)) {
     int errnum;
     std::string err_str = gzerror(file, &errnum);
     if (errnum) {
       gzclose(file);
-      throw std::runtime_error("Error reading " + path + ": " + err_str);
+      fail("Error reading " + path + ": " + err_str);
     }
   }
   gzclose(file);

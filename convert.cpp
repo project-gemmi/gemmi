@@ -93,9 +93,6 @@ FileType get_format_from_extension(const std::string& path) {
   return FileType::Unknown;
 }
 
-[[noreturn]]
-inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
-
 static const char symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                               "abcdefghijklmnopqrstuvwxyz01234567890";
 
@@ -348,12 +345,12 @@ void convert(const char* input, FileType input_type,
     } else {
       st = mol::read_atoms(cif_in);
       if (st.models.empty())
-        fail("No atoms in the input file. Is it mmCIF?");
+        gemmi::fail("No atoms in the input file. Is it mmCIF?");
     }
   } else if (input_type == FileType::Pdb) {
     st = mol::read_pdb_any(input);
   } else {
-    fail("Unexpected input format.");
+    gemmi::fail("Unexpected input format.");
   }
 
   if (options[ExpandNcs]) {
@@ -381,14 +378,14 @@ void convert(const char* input, FileType input_type,
     os_deleter.reset(new std::ofstream(output));
     os = os_deleter.get();
     if (!os || !*os)
-      fail("Failed to open for writing: " + std::string(output));
+      gemmi::fail("Failed to open for writing: " + std::string(output));
   } else {
     os = &std::cout;
   }
 
   if (output_type == FileType::Json) {
     if (input_type != FileType::Cif)
-      fail("Conversion to JSON is possible only from CIF");
+      gemmi::fail("Conversion to JSON is possible only from CIF");
     cif::JsonWriter writer(*os);
     if (options[Comcifs])
       writer.set_comcifs();

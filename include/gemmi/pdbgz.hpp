@@ -5,14 +5,14 @@
 #ifndef GEMMI_PDBGZ_HPP_
 #define GEMMI_PDBGZ_HPP_
 #include "pdb.hpp"
-#include "util.hpp"  // ends_with
+#include "util.hpp"  // ends_with, fail
 #include <cstdio>
 #include <zlib.h>
 
 namespace gemmi {
 namespace mol {
 
-namespace internal {
+namespace impl {
 
 class GzipLineInput {
 public:
@@ -20,7 +20,7 @@ public:
   explicit GzipLineInput(std::string path) : source(path) {
     f_ = gzopen(source.c_str(), "rb");
     if (!f_)
-      throw std::runtime_error("Failed to open file: " + path);
+      gemmi::fail("Failed to open file: " + path);
     gzbuffer(f_, 64*1024);
   }
   ~GzipLineInput() { gzclose(f_); }
@@ -43,10 +43,10 @@ private:
   size_t line_num_ = 0;
 };
 
-} // namespace internal
+} // namespace impl
 
 inline Structure read_pdb_gz(const std::string& path) {
-  internal::GzipLineInput input(path);
+  impl::GzipLineInput input(path);
   return read_pdb_from_input(input);
 }
 

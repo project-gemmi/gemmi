@@ -5,9 +5,9 @@
 #ifndef GEMMI_UNITCELL_HPP_
 #define GEMMI_UNITCELL_HPP_
 
-#include <stdexcept>  // for runtime_error
 #include <cmath>      // for cos, sin, sqrt
 #include <linalg.h>
+#include "util.hpp"
 
 namespace gemmi {
 namespace mol {
@@ -45,7 +45,7 @@ struct UnitCell {
     double sin_beta = std::sin(deg2rad * beta);
     double sin_gamma = std::sin(deg2rad * gamma);
     if (sin_alpha == 0 || sin_beta == 0 || sin_gamma == 0)
-      throw std::runtime_error("Impossible angle - N*180deg.");
+      gemmi::fail("Impossible angle - N*180deg.");
     double cos_alpha_star_sin_beta = (cos_beta * cos_gamma - cos_alpha) /
                                       sin_gamma;
     double cos_alpha_star = cos_alpha_star_sin_beta / sin_beta;
