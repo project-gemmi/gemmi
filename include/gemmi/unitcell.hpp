@@ -35,38 +35,58 @@ struct UnitCell {
   Matrix33 frac = {1., 0., 0., 0., 1., 0., 0., 0., 1.};
   Position shift = {0., 0., 0.};
   bool explicit_matrices = false;
+  // volume and reciprocal parameters a*, b*, c*, alpha*, beta*, gamma*
+  double volume = 1.0;
+  double ar = 1.0, br = 1.0, cr = 1.0;
+  double cos_alphar = 0.0, cos_betar = 0.0, cos_gammar = 0.0;
 
-  void calculate_matrices() {
+  void calculate_properties() {
     double deg2rad = 3.1415926535897932384626433832795029 / 180.0;
-    double cos_alpha = std::cos(deg2rad * alpha);
-    double cos_beta = std::cos(deg2rad * beta);
-    double cos_gamma = std::cos(deg2rad * gamma);
-    double sin_alpha = std::sin(deg2rad * alpha);
-    double sin_beta = std::sin(deg2rad * beta);
-    double sin_gamma = std::sin(deg2rad * gamma);
+    // ensure exact values for right angles
+    double cos_alpha = alpha == 90. ? 0. : std::cos(deg2rad * alpha);
+    double cos_beta  = beta  == 90. ? 0. : std::cos(deg2rad * beta);
+    double cos_gamma = gamma == 90. ? 0. : std::cos(deg2rad * gamma);
+    double sin_alpha = alpha == 90. ? 1. : std::sin(deg2rad * alpha);
+    double sin_beta  = beta  == 90. ? 1. : std::sin(deg2rad * beta);
+    double sin_gamma = gamma == 90. ? 1. : std::sin(deg2rad * gamma);
     if (sin_alpha == 0 || sin_beta == 0 || sin_gamma == 0)
       gemmi::fail("Impossible angle - N*180deg.");
-    double cos_alpha_star_sin_beta = (cos_beta * cos_gamma - cos_alpha) /
-                                      sin_gamma;
-    double cos_alpha_star = cos_alpha_star_sin_beta / sin_beta;
-    double s1rca2 = std::sqrt(1.0 - cos_alpha_star * cos_alpha_star);
-    double sb_s1rca2 = sin_beta * s1rca2;
+
+		// volume - formula from Giacovazzo p.62
+    volume = a * b * c * sqrt(1 - cos_alpha * cos_alpha - cos_beta * cos_beta
+                              - cos_gamma * cos_gamma
+                              + 2 * cos_alpha * cos_beta * cos_gamma);
+
+    // reciprocal parameters a*, b*, ... (Giacovazzo, p. 64)
+    ar = b * c * sin_alpha / volume;
+    br = a * c * sin_beta / volume;
+    cr = a * b * sin_gamma / volume;
+    double cos_alphar_sin_beta = (cos_beta * cos_gamma - cos_alpha) / sin_gamma;
+    cos_alphar = cos_alphar_sin_beta / sin_beta;
+    //cos_alphar = (cos_beta * cos_gamma - cos_alpha) / (sin_beta * sin_gamma);
+    cos_betar = (cos_alpha * cos_gamma - cos_beta) / (sin_alpha * sin_gamma);
+    cos_gammar = (cos_alpha * cos_beta - cos_gamma) / (sin_alpha * sin_beta);
+
+    if (explicit_matrices)
+      return;
 
     // The orthogonalization matrix we use is described in ITfC B p.262:
     // "An alternative mode of orthogonalization, used by the Protein
     // Data Bank and most programs, is to align the a1 axis of the unit
     // cell with the Cartesian X_1 axis, and to align the a*_3 axis with the
     // Cartesian X_3 axis."
+    double sin_alphar = std::sqrt(1.0 - cos_alphar * cos_alphar);
     orth = {a,  b * cos_gamma,  c * cos_beta,
-            0., b * sin_gamma, -c * cos_alpha_star_sin_beta,
-            0., 0.           ,  c * sb_s1rca2};
+            0., b * sin_gamma, -c * cos_alphar_sin_beta,
+            0., 0.           ,  c * sin_beta * sin_alphar};
 
-    double o13 = -(cos_gamma * cos_alpha_star_sin_beta + cos_beta * sin_gamma)
-                  / (sb_s1rca2 * sin_gamma * a);
-    double o23 = cos_alpha_star / (s1rca2 * sin_gamma * b);
-    frac = {1 / a,  -cos_gamma / (sin_gamma * a), o13,
-            0.,     1 / (sin_gamma * b),          o23,
-            0.,     0.,                           1 / (sb_s1rca2 * c)};
+    double o12 = -cos_gamma / (sin_gamma * a);
+    double o13 = -(cos_gamma * cos_alphar_sin_beta + cos_beta * sin_gamma)
+                  / (sin_alphar * sin_beta * sin_gamma * a);
+    double o23 = cos_alphar / (sin_alphar * sin_gamma * b);
+    frac = {1 / a,  o12,           o13,
+            0.,     1 / orth.a22,  o23,
+            0.,     0.,            1 / orth.a33};
   }
 
   void set_matrices_from_fract(const linalg::mat<double,4,4>& fract) {
@@ -91,8 +111,7 @@ struct UnitCell {
     alpha = alpha_;
     beta = beta_;
     gamma = gamma_;
-    if (!explicit_matrices)
-      calculate_matrices();
+    calculate_properties();
   }
 
   Position orthogonalize(const Position& f) const { return orth.multiply(f); }

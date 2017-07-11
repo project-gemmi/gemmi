@@ -24,7 +24,8 @@ struct Grid {
   int nu, nv, nw;
   mol::UnitCell unit_cell;
   std::vector<T> data;
-  // statistics
+  double spacing[3];
+  // data statistics
   double dmin = NAN, dmax = NAN, dmean = NAN, rms = NAN;
   // stores raw headers if the grid was read from ccp4 map
   std::vector<char> ccp4_header;
@@ -32,6 +33,9 @@ struct Grid {
   void set_size(int u, int v, int w) {
     nu = u, nv = v, nw = w;
     data.resize(u * v * w);
+    spacing[0] = 1.0 / (nu * unit_cell.ar);
+    spacing[1] = 1.0 / (nv * unit_cell.br);
+    spacing[2] = 1.0 / (nw * unit_cell.cr);
   }
   void set_spacing(double sp) {
     set_size(iround(unit_cell.a / sp),
@@ -39,29 +43,65 @@ struct Grid {
              iround(unit_cell.c / sp));
   }
 
-  void set_points_around(const mol::Position& pos, double radius, T value) {
-    mol::Position corners[8];
-    int i = 0;
-    for (double x : {pos.x - radius, pos.x + radius})
-      for (double y : {pos.y - radius, pos.y + radius})
-        for (double z : {pos.z - radius, pos.z + radius})
-          corners[i++] = {x, y, z};
-    //TODO
-    int cnt = 0;
-    for (int u = 0; u < nu; ++u)
+  T& node(int u, int v, int w) {
+#if 1
+    if (u >= nu)
+      u -= nu;
+    else if (u < 0)
+      u += nu;
+    if (v >= nv)
+      v -= nv;
+    else if (v < 0)
+      v += nv;
+    if (w >= nw)
+      w -= nw;
+    else if (w < 0)
+      w += nw;
+#endif
+    int idx = w * nu * nv + v * nu + u;
+    return data[idx];
+  }
+
+  void set_points_around(const mol::Position& ctr, double radius, T value) {
+    mol::Position fctr = unit_cell.fractionalize(ctr);
+    fctr.x -= std::floor(fctr.x);
+    fctr.y -= std::floor(fctr.y);
+    fctr.z -= std::floor(fctr.z);
+#if 1
+    int du = (int) std::ceil(radius / spacing[0]);
+    int dv = (int) std::ceil(radius / spacing[1]);
+    int dw = (int) std::ceil(radius / spacing[2]);
+    int u0 = iround(fctr.x * nu);
+    int v0 = iround(fctr.y * nv);
+    int w0 = iround(fctr.z * nw);
+    for (int w = w0-dw; w <= w0+dw; ++w)
+      for (int v = v0-dv; v <= v0+dv; ++v)
+        for (int u = u0-du; u < u0+du; ++u) {
+#else
+    for (int w = 0; w < nw; ++w)
       for (int v = 0; v < nv; ++v)
-        for (int w = 0; w < nw; ++w) {
-          mol::Position fr = {double(u) / nu, double(v) / nv, double(w) / nw};
-          mol::Position orth = unit_cell.orthogonalize(fr);
-          double dx = pos.x - orth.x;
-          double dy = pos.y - orth.y;
-          double dz = pos.z - orth.z;
-          if (dx*dx + dy*dy + dz*dz < radius*radius) {
-            ++cnt;
-            data[u*nv*nw + v*nw + w] = value;
+        for (int u = 0; u < nu; ++u) {
+#endif
+          mol::Position fdelta = {fctr.x - double(u) / nu,
+                                  fctr.y - double(v) / nv,
+                                  fctr.z - double(w) / nw};
+          if (fdelta.x > 0.5)
+            fdelta.x -= 1.0;
+          else if (fdelta.x < -0.5)
+            fdelta.x += 1.0;
+          if (fdelta.y > 0.5)
+            fdelta.y -= 1.0;
+          else if (fdelta.y < -0.5)
+            fdelta.y += 1.0;
+          if (fdelta.z > 0.5)
+            fdelta.z -= 1.0;
+          else if (fdelta.z < -0.5)
+            fdelta.z += 1.0;
+          mol::Position d = unit_cell.orthogonalize(fdelta);
+          if (d.x*d.x + d.y*d.y + d.z*d.z < radius*radius) {
+            node(u, v, w) = value;
           }
         }
-    fprintf(stderr, "radius: %g, points set: %d\n", radius, cnt);
   }
 
   void calculate_statistics();
@@ -95,8 +135,8 @@ void write_arrays(const std::string& path, const std::vector<char>& header,
 
 template<typename T>
 std::vector<char> make_ccp4_header(const Grid<T>& grid, int mode) {
-  int nsymbt = 0;
-  std::vector<char> header(1024 + nsymbt, 0);
+  int nsym = 1;
+  std::vector<char> header(1024 + nsym * 80, 0);
   auto word_ptr = [&header](int w) { return header.data() + 4 * (w - 1); };
   auto set_u32 = [&word_ptr](int word, uint32_t value) {
     *reinterpret_cast<uint32_t*>(word_ptr(word)) = value;
@@ -124,13 +164,16 @@ std::vector<char> make_ccp4_header(const Grid<T>& grid, int mode) {
   set_float(21, grid.dmax);
   set_float(22, grid.dmean);
   set_u32(23, 1); // ISPG
-  set_u32(24, nsymbt);
+  set_u32(24, nsym * 80);
   std::memcpy(word_ptr(27), "CCP4", 4); // EXTTYP
   //set_u32(28, nversion);
   std::memcpy(word_ptr(53), "MAP ", 4);
-  set_u32(54, 0x00004444); // MACHST for little endian (0x11110000 for BE)
+  set_u32(54, 0x00004144); // MACHST for little endian (0x11110000 for BE)
   set_float(55, grid.rms);
-  set_u32(56, 0); // labels
+  set_u32(56, 1); // labels
+  memset(word_ptr(57), ' ', 800 + nsym * 80);
+  strcpy(word_ptr(57), "from unfinished GEMMI code");
+  memcpy(word_ptr(257), "X,  Y,  Z", 9);
   return header;
 }
 
@@ -153,6 +196,8 @@ void Grid<T>::calculate_statistics() {
   }
   dmean = sum / data.size();
   rms = std::sqrt(sq_sum / data.size() - dmean * dmean);
+  //fprintf(stderr, "grid stats: min=%g max=%g mean=%g rms=%g\n",
+  //        dmin, dmax, dmean, rms);
 }
 
 template<typename T>

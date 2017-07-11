@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
       for (const mol::Chain& chain : st.models[0].chains)
         for (const mol::Residue& res : chain.residues)
           for (const mol::Atom& atom : res.atoms)
-            grid.set_points_around(atom.pos, radius, 1);
+            grid.set_points_around(atom.pos, radius, 1.0);
       grid.calculate_statistics();
     } else {
       if (!options[Threshold]) {
@@ -79,7 +79,8 @@ int main(int argc, char **argv) {
       threshold = std::strtod(options[Threshold].arg, nullptr);
       grid.read_ccp4(input);
     }
-    grid.write_ccp4_mask(output, threshold);
+    //grid.write_ccp4_mask(output, threshold);
+    grid.write_ccp4_map(output);
   } catch (std::runtime_error& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
