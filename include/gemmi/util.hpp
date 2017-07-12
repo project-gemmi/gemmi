@@ -39,7 +39,7 @@ inline std::string to_lower(std::string str) {
   return str;
 }
 
-std::string trim_str(const std::string& str)
+inline std::string trim_str(const std::string& str)
 {
   std::string ws = " \r\n\t";
   std::string::size_type first = str.find_first_not_of(ws);
@@ -49,7 +49,7 @@ std::string trim_str(const std::string& str)
   return str.substr(first, last - first + 1);
 }
 
-std::vector<std::string> split_str(const std::string &str, char sep) {
+inline std::vector<std::string> split_str(const std::string &str, char sep) {
   std::vector<std::string> result;
   std::size_t start = 0, end;
   while ((end = str.find(sep, start)) != std::string::npos) {

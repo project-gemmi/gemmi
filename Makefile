@@ -25,11 +25,12 @@ gemmi-validate: validate.cpp options.h $(igdir)/cif.hpp \
                 $(igdir)/ddl.hpp $(igdir)/cifgz.hpp $(igdir)/numb.hpp
 	$(CXX) $(FLAGS) $< -o $@ -lz
 
-gemmi-convert: convert.cpp options.h $(igdir)/*.hpp
-	$(CXX) $(FLAGS) -Wno-strict-aliasing $< -o $@ -lz
+to_pdb.o: to_pdb.cpp $(igdir)/to_pdb.hpp $(igdir)/model.hpp \
+          $(igdir)/elem.hpp $(igdir)/unitcell.hpp
+	$(CXX) $(FLAGS) -Wno-strict-aliasing -c $<
 
-gemmi-convert-snprintf: convert.cpp options.h $(igdir)/*.hpp
-	$(CXX) -DUSE_STD_SNPRINTF $(FLAGS) $< -o $@ -lz
+gemmi-convert: convert.cpp options.h $(igdir)/*.hpp to_pdb.o
+	$(CXX) $(FLAGS) -Wno-strict-aliasing $< to_pdb.o -o $@ -lz
 
 gemmi-grep: grep.cpp options.h $(igdir)/cif.hpp $(igdir)/cifgz.hpp
 	$(CXX) $(FLAGS) $< -o $@ -lz

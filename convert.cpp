@@ -6,14 +6,15 @@
 #include "gemmi/pdbgz.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
-#include "gemmi/to_pdb.hpp"
-// set this before only one of stb_sprintf.h includes
-#define STB_SPRINTF_IMPLEMENTATION
 #include "gemmi/to_mmcif.hpp"
 
 #include <cstring>
 #include <iostream>
 #include <map>
+
+// to_pdb.cpp
+void write_pdb(const gemmi::mol::Structure& st, std::ostream& os,
+               bool iotbx_compat);
 
 #define EXE_NAME "gemmi-convert"
 #include "options.h"
@@ -404,9 +405,10 @@ void convert(const char* input, FileType input_type,
       writer.cif_dot = options[CifDot].arg;
     writer.write_json(cif_in);
   } else if (output_type == FileType::Pdb || output_type == FileType::Null) {
-    if (output_type == FileType::Pdb)
-      mol::write_pdb(st, *os, options[IotbxCompat]);
-    else {
+    if (output_type == FileType::Pdb) {
+      // call wrapper from to_pdb.cpp - to make building faster
+      write_pdb(st, *os, options[IotbxCompat]);
+    } else {
       *os << st.name << ": " << count_atom_sites(st) << " atom locations";
       if (st.models.size() > 1)
         *os << " (total in " << st.models.size() << " models)";

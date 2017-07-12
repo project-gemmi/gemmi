@@ -325,7 +325,7 @@ template<class T> void add_backlinks(T& obj) {
     add_backlinks(child);
   }
 }
-template<> void add_backlinks(Atom&) {}
+template<> inline void add_backlinks(Atom&) {}
 
 
 template<class T> size_t count_atom_sites(const T& obj) {
@@ -334,7 +334,7 @@ template<class T> size_t count_atom_sites(const T& obj) {
     sum += count_atom_sites(child);
   return sum;
 }
-template<> size_t count_atom_sites(const Residue& res) {
+template<> size_t inline count_atom_sites(const Residue& res) {
   return res.atoms.size();
 }
 
@@ -345,7 +345,9 @@ template<class T> double count_occupancies(const T& obj) {
     sum += count_occupancies(child);
   return sum;
 }
-template<> double count_occupancies(const Atom& atom) { return atom.occ; }
+template<> inline double count_occupancies(const Atom& atom) {
+  return atom.occ;
+}
 
 inline void Structure::finish() {
   add_backlinks(*this);
