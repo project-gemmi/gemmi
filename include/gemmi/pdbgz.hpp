@@ -21,7 +21,9 @@ public:
     f_ = gzopen(source.c_str(), "rb");
     if (!f_)
       gemmi::fail("Failed to open file: " + path);
+#if ZLIB_VERNUM >= 0x1235
     gzbuffer(f_, 64*1024);
+#endif
   }
   ~GzipLineInput() { gzclose(f_); }
 

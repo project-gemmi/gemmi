@@ -35,6 +35,7 @@ ext_modules = [
             get_pybind_include(),
             get_pybind_include(user=True)
         ],
+        libraries=['z'],
         language='c++'
     ),
 ]

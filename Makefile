@@ -7,12 +7,15 @@ PYTHON=python
 PYTHON_CONFIG=$(PYTHON)-config
 
 WFLAGS=-Wall -Wextra -Wpedantic -Wdisabled-optimization -Wformat=2 \
-       -Wredundant-decls -Wshadow $(EXTRA_WFLAGS)
+       -Wredundant-decls $(EXTRA_WFLAGS)
 FLAGS=-O2 -g -pipe $(CXXSTD) $(WFLAGS) -Iinclude -Ithird_party #-DNDEBUG
 
 PYFLAGS=$(FLAGS) -Wno-shadow -fPIC \
        -fvisibility=hidden -fwrapv -D_FORTIFY_SOURCE=2
-all: gemmi-mask gemmi-validate gemmi-convert gemmi-grep
+
+PROGRAMS=gemmi-mask gemmi-validate gemmi-convert gemmi-grep
+
+all: $(PROGRAMS)
 
 py: gemmi.so
 
@@ -57,6 +60,6 @@ write-help: gemmi-validate gemmi-convert
 	./gemmi-grep -h >> docs/grep-help.txt
 
 clean:
-	rm -f gemmi-validate gemmi-convert trace gemmi.so pygemmi.o
+	rm -f $(PROGRAMS) trace gemmi.so pygemmi.o
 
 .PHONY: all py clean write-help
