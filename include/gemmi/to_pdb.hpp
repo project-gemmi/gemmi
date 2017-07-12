@@ -120,7 +120,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
   write_multiline(os, "KEYWDS", st.get_info("_struct_keywords.text"), 79);
   write_multiline(os, "EXPDTA", st.get_info("_exptl.method"), 79);
   if (st.models.size() > 1)
-    WRITE("NUMMDL    %-6jd %63s\n", st.models.size(), "");
+    WRITE("NUMMDL    %-6zu %63s\n", st.models.size(), "");
 
   // SEQRES
   if (!st.models.empty() && !iotbx_compat)

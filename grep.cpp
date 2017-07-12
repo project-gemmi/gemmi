@@ -102,7 +102,7 @@ void process_match(const Input& in, Parameters& par) {
   if (par.with_blockname)
     printf("%s:", par.block_name.c_str());
   if (par.with_line_numbers)
-    printf("%jd:", in.iterator().line);
+    printf("%zu:", in.iterator().line);
   if (par.with_tag)
     printf("[%s] ", par.search_tag.c_str());
   printf("%s\n", (par.raw ? in.string() : cif::as_string(in.string())).c_str());
@@ -408,7 +408,7 @@ int main(int argc, char **argv) {
     }
   }
   if (options[Summarize])
-    printf("Total count in %jd files: %jd\n", file_count, params.total_count);
+    printf("Total count in %zu files: %zu\n", file_count, params.total_count);
   return params.total_count != 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
