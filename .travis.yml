@@ -33,7 +33,9 @@ install:
   - $PYTHON -m ensurepip --user
   - $PYTHON -m pip install --user pybind11
 script:
+  - pushd src
   - make -j2 CXX=$COMPILER EXTRA_WFLAGS="$WARN"
   - make write-help
+  - popd
   - $PYTHON setup.py install --user --prefix=
   - $PYTHON -m unittest discover -v -s tests/

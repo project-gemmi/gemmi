@@ -3,6 +3,7 @@ Usage: gemmi-validate [options] FILE [...]
 
 Options:
   -h, --help      Print usage and exit.
+  -V, --version   Display version information and exit.
   -f, --fast      Syntax-only check.
   -s, --stat      Show token statistics
   -t, --types     Break down token statistics by type.

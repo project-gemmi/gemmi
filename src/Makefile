@@ -51,14 +51,14 @@ gemmi.so: pygemmi.o
 	$(CXX) $(PYFLAGS) -shared \
 	-Wl,-O1 -Wl,-Bsymbolic-functions -Wl,-z,relro $< -o $@
 
-write-help: gemmi-validate gemmi-convert
-	./gemmi-convert tests/misc.cif tests/misc.json
-	echo '$$ gemmi-validate -h' > docs/validate-help.txt
-	./gemmi-validate -h >> docs/validate-help.txt
-	echo '$$ gemmi-convert -h' > docs/convert-help.txt
-	./gemmi-convert -h >> docs/convert-help.txt
-	echo '$$ gemmi-grep -h' > docs/grep-help.txt
-	./gemmi-grep -h >> docs/grep-help.txt
+write-help: $(PROGRAMS)
+	./gemmi-convert ../tests/misc.cif ../tests/misc.json
+	echo '$$ gemmi-validate -h' > ../docs/validate-help.txt
+	./gemmi-validate -h >> ../docs/validate-help.txt
+	echo '$$ gemmi-convert -h' > ../docs/convert-help.txt
+	./gemmi-convert -h >> ../docs/convert-help.txt
+	echo '$$ gemmi-grep -h' > ../docs/grep-help.txt
+	./gemmi-grep -h >> ../docs/grep-help.txt
 
 clean:
 	rm -f $(PROGRAMS) trace gemmi.so pygemmi.o
