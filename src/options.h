@@ -122,4 +122,4 @@ struct OptParser : option::Parser {
   std::vector<option::Option> buffer;
 };
 
-// vim:sw=2:ts=2:et
+// vim:sw=2:ts=2:et:path^=../include,../third_party

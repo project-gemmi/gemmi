@@ -8,7 +8,7 @@ PYTHON_CONFIG=$(PYTHON)-config
 
 WFLAGS=-Wall -Wextra -Wpedantic -Wdisabled-optimization -Wformat=2 \
        -Wredundant-decls $(EXTRA_WFLAGS)
-FLAGS=-O2 -g -pipe $(CXXSTD) $(WFLAGS) -Iinclude -Ithird_party #-DNDEBUG
+FLAGS=-O2 -g -pipe $(CXXSTD) $(WFLAGS) -I../include -I../third_party #-DNDEBUG
 
 PYFLAGS=$(FLAGS) -Wno-shadow -fPIC \
        -fvisibility=hidden -fwrapv -D_FORTIFY_SOURCE=2
@@ -19,7 +19,7 @@ all: $(PROGRAMS)
 
 py: gemmi.so
 
-igdir=include/gemmi
+igdir=../include/gemmi
 
 gemmi-validate: validate.cpp options.h $(igdir)/cif.hpp \
                 $(igdir)/ddl.hpp $(igdir)/cifgz.hpp $(igdir)/numb.hpp
@@ -43,7 +43,7 @@ gemmi-mask: mask.cpp options.h $(igdir)/grid.hpp $(igdir)/unitcell.hpp \
 trace: validate.cpp options.h $(igdir)/cif.hpp
 	$(CXX) -DCIF_VALIDATE_SHOW_TRACE $(FLAGS) $< -o $@ -lz
 
-pygemmi.o: pygemmi.cpp $(igdir)/cif.hpp $(igdir)/to_json.hpp \
+pygemmi.o: ../pygemmi.cpp $(igdir)/cif.hpp $(igdir)/to_json.hpp \
            $(igdir)/numb.hpp $(igdir)/to_cif.hpp $(igdir)/elem.hpp
 	$(CXX) $(PYFLAGS) `$(PYTHON_CONFIG) --includes` -c $<
 

@@ -10,4 +10,5 @@ void write_pdb(const gemmi::mol::Structure& st, std::ostream& os,
                bool iotbx_compat) {
   gemmi::mol::write_pdb(st, os, iotbx_compat);
 }
-// vim:sw=2:ts=2:et:path^=include,third_party
+
+// vim:sw=2:ts=2:et:path^=../include,../third_party
