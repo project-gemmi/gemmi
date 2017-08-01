@@ -18,8 +18,8 @@ for path in get_file_paths_from_args():
     # convert table with chain types (protein/DNA/RNA) to dict
     entity_types = dict(block.find('_entity_poly.', ['entity_id', 'type']))
     # and count these monomers that correspond to a protein chain
-    aa_counter = Counter(row.as_str(1) for row in seq
-                         if 'polypeptide' in entity_types[row.as_str(0)])
+    aa_counter = Counter(row.str(1) for row in seq
+                         if 'polypeptide' in entity_types[row.str(0)])
     totals += aa_counter
     # print residue counts for each file
     print(block.name, *('%s:%d' % c for c in aa_counter.most_common()))

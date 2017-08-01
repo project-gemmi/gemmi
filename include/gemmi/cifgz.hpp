@@ -62,17 +62,14 @@ inline std::unique_ptr<char[]> gunzip_to_memory(const std::string& path,
 }
 
 inline Document read_any(const std::string& path) {
-  Document d;
-  if (path == "-") {
-    d.read_cstream(stdin, 16*1024, "stdin");
-  } else if (ends_with(path, ".gz")) {
+  if (path == "-")
+    return read_cstream(stdin, 16*1024, "stdin");
+  if (ends_with(path, ".gz")) {
     size_t orig_size = estimate_uncompressed_size(path);
     std::unique_ptr<char[]> mem = cif::gunzip_to_memory(path, orig_size);
-    d.read_memory(mem.get(), orig_size, path.c_str());
-  } else {
-    d.read_file(path);
+    return read_memory(mem.get(), orig_size, path.c_str());
   }
-  return d;
+  return read_file(path);
 }
 
 inline bool check_syntax_any(const std::string& path, std::string* msg) {

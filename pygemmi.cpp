@@ -1,5 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
+#include "gemmi/numb.hpp"
 #include "gemmi/cif.hpp"
 #include "gemmi/cifgz.hpp"
 #include "gemmi/to_cif.hpp"
@@ -33,7 +34,6 @@ PYBIND11_PLUGIN(gemmi) {
 
   py::class_<Document>(cif, "Document")
     .def(py::init<>())
-    .def(py::init<const std::string &>())
     .def("__len__", [](const Document& d) { return d.blocks.size(); })
     .def("__iter__", [](const Document& d) {
         return py::make_iterator(d.blocks);
@@ -44,11 +44,6 @@ PYBIND11_PLUGIN(gemmi) {
           throw py::key_error("block '" + name + "' does not exist");
         return *b;
     }, py::arg("name"), py::return_value_policy::reference)
-    .def("read_file", &Document::read_file, py::arg("filename"),
-         "Read file copying data into Document")
-    .def("read_string", &Document::read_string,
-         py::arg("data"), py::arg("name")="string",
-         "Read a string as a CIF file")
     .def("clear", &Document::clear)
     .def("sole_block", &Document::sole_block,
          "Returns the only block if there is exactly one")
@@ -67,9 +62,6 @@ PYBIND11_PLUGIN(gemmi) {
     .def_readonly("name", &Block::name)
     .def("find_value", &Block::find_value, py::arg("tag"),
          py::return_value_policy::reference)
-    .def("find_string", &Block::find_string, py::arg("tag"))
-    .def("find_number", &Block::find_number, py::arg("tag"))
-    .def("find_int", &Block::find_int, py::arg("tag"), py::arg("default"))
     .def("find_loop", &Block::find_loop, py::arg("tag"))
     .def("find", (TableView (Block::*)(const std::string&) const) &Block::find,
          py::arg("tag"))
@@ -145,9 +137,7 @@ PYBIND11_PLUGIN(gemmi) {
     });
 
   py::class_<TableView::Row>(lt, "Row")
-    .def("as_str", &TableView::Row::as_str)
-    .def("as_num", &TableView::Row::as_num)
-    .def("as_int", &TableView::Row::as_int)
+    .def("str", &TableView::Row::str)
     .def("__len__", &TableView::Row::size)
     .def("__getitem__", &TableView::Row::at)
     .def("__iter__", [](const TableView::Row& self) {
@@ -157,11 +147,15 @@ PYBIND11_PLUGIN(gemmi) {
         return "<gemmi.cif.TableView.Row: " + str_join(self, " ") + ">";
     });
 
-  cif.def("read_any", &read_any, "Reads normal or gzipped cif file.");
-  cif.def("read_string", &read_string, "Reads a string string as a CIF file.");
+  cif.def("read_file", &read_file, py::arg("filename"),
+          "Reads a CIF file copying data into Document.");
+  cif.def("read_any", &read_any, py::arg("filename"),
+          "Reads normal or gzipped CIF file.");
+  cif.def("read_string", &read_string, py::arg("data"),
+          "Reads a string as a CIF file.");
 
-  cif.def("as_string", &as_string, py::arg("value"),
-          "Get string content (no quotes) from raw string.");
+  cif.def("as_string", (std::string (*)(const std::string&)) &as_string,
+          py::arg("value"), "Get string content (no quotes) from raw string.");
   cif.def("as_number", &as_number, py::arg("value"), py::arg("default")=NAN,
           "Returns float number from string");
   cif.def("as_int", (int (*)(const std::string&)) &as_int, py::arg("value"),

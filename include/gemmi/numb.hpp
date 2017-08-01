@@ -110,7 +110,9 @@ template<> struct ActionInt<int_rules::int_> {
   }
 };
 
-// it has an overload in cif.hh that takes a second parameter (int for null)
+
+// utility functions
+
 inline int as_int(const std::string& s) {
   int n = 0;
   pegtl::memory_input<> in(s, "");
@@ -118,6 +120,11 @@ inline int as_int(const std::string& s) {
     return n;
   throw std::runtime_error("not an integer number: " + s);
 }
+
+inline int as_int(const std::string& s, int default_) {
+  return s == "?" || s == "." ? default_ : as_int(s);
+}
+
 
 } // namespace cif
 } // namespace gemmi

@@ -67,6 +67,49 @@ std::string token_stats(const cif::Document& d) {
   return info;
 }
 
+// For now the infer_* functions are used only here, not sure where they belong
+inline cif::ValueType infer_valtype_of_string(const std::string& val) {
+  assert(!val.empty());
+  if (val == ".")
+    return cif::ValueType::Dot;
+  if (val == "?")
+    return cif::ValueType::QuestionMark;
+  if (cif::is_numb(val))
+    return cif::ValueType::Numb;
+  return cif::ValueType::Char;
+}
+
+inline void infer_valtypes_in_items(std::vector<cif::Item>& items) {
+  using namespace cif;
+  for (Item& item : items)
+      if (item.type == ItemType::Value) {
+        item.valtype = infer_valtype_of_string(item.tv.value);
+      } else if (item.type == ItemType::Loop) {
+        for (size_t i = 0; i != item.loop.tags.size(); ++i) {
+          ValueType& vt = item.loop.tags[i].valtype;
+          for (const std::string& v : LoopColumn{&item.loop, i}) {
+            ValueType this_vt = infer_valtype_of_string(v);
+            if (this_vt != vt) {
+              // if we are here: vt != ValueType::Char
+              if (vt == ValueType::NotSet || this_vt == ValueType::Numb) {
+                vt = this_vt;
+              } else if (this_vt == ValueType::Char) {
+                vt = this_vt;
+                break;
+              }
+            }
+          }
+        }
+      } else if (item.type == ItemType::Frame) {
+        infer_valtypes_in_items(item.frame.items);
+      }
+}
+
+inline void infer_valtypes(cif::Document &d) {
+  for (cif::Block& block : d.blocks)
+    infer_valtypes_in_items(block.items);
+}
+
 
 enum OptionIndex { Unknown, Fast, Stat, Types, Quiet, Ddl };
 const option::Descriptor Usage[] = {
@@ -84,6 +127,8 @@ const option::Descriptor Usage[] = {
                                    "  -d, --ddl=PATH  \tDDL for validation." },
   { 0, 0, 0, 0, 0, 0 }
 };
+
+
 
 int main(int argc, char **argv) {
 #ifdef ANALYZE_RULES // for debugging only
@@ -109,7 +154,7 @@ int main(int argc, char **argv) {
       } else {
         cif::Document d = cif::read_any(path);
         if (options[Types])
-          cif::infer_valtypes(d);
+          infer_valtypes(d);
         if (options[Stat])
           msg = token_stats(d);
         if (options[Ddl]) {

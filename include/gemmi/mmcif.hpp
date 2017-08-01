@@ -43,10 +43,11 @@ inline cif::TableView find_transform(const cif::Block& block,
 }
 
 inline Mat4x4 get_transform_matrix(const cif::TableView::Row& r) {
-  return {{r.as_num(0), r.as_num(1), r.as_num(2), 0},
-          {r.as_num(3), r.as_num(4), r.as_num(5), 0},
-          {r.as_num(6), r.as_num(7), r.as_num(8), 0},
-          {r.as_num(9), r.as_num(10), r.as_num(11), 1}};
+  auto num = [&r](int n) { return cif::as_number(r[n]); };
+  return {{num(0), num(1),  num(2),  0},
+          {num(3), num(4),  num(5),  0},
+          {num(6), num(7),  num(8),  0},
+          {num(9), num(10), num(11), 1}};
 }
 
 inline Mat4x4 Matrix33_to_Mat4x4(const Matrix33& m) {
@@ -57,6 +58,8 @@ inline Mat4x4 Matrix33_to_Mat4x4(const Matrix33& m) {
 }
 
 inline Structure structure_from_cif_block(const cif::Block& block) {
+  using cif::as_number;
+  using cif::as_string;
   Structure st;
   st.name = block.name;
 
@@ -66,10 +69,10 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
                                    "angle_alpha", "angle_beta", "angle_gamma"});
   if (cell.ok()) {
     auto c = cell.one();
-    st.cell.set(c.as_num(0), c.as_num(1), c.as_num(2),
-                c.as_num(3), c.as_num(4), c.as_num(5));
+    st.cell.set(as_number(c[0]), as_number(c[1]), as_number(c[2]),
+                as_number(c[3]), as_number(c[4]), as_number(c[5]));
   }
-  st.sg_hm = block.find_string("_symmetry.space_group_name_H-M");
+  st.sg_hm = as_string(block.find_value("_symmetry.space_group_name_H-M"));
 
   auto add_info = [&](std::string tag) {
     cif::TableView t = block.find(tag);
@@ -79,9 +82,9 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
       for (const cif::TableView::Row &r : t)
         if (!cif::is_null(r[0])) {
           if (first)
-            st.info[tag] = cif::as_string(r[0]);
+            st.info[tag] = as_string(r[0]);
           else
-            st.info[tag] += "," + cif::as_string(r[0]);
+            st.info[tag] += "," + as_string(r[0]);
           first = false;
         }
     }
@@ -105,10 +108,10 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   int ncs_oper_id = block.add_field(ncs_oper, "_struct_ncs_oper.id");
   int ncs_code_idx = block.add_field(ncs_oper, "_struct_ncs_oper.code");
   for (auto op : ncs_oper) {
-    bool given = (ncs_code_idx > 0 && op.as_str(ncs_code_idx) == "given");
+    bool given = (ncs_code_idx > 0 && op.str(ncs_code_idx) == "given");
     std::string id;
     if (ncs_oper_id)
-      id = op.as_str(ncs_oper_id);
+      id = op.str(ncs_oper_id);
     Mat4x4 mat = get_transform_matrix(op);
     if (mat != Mat4x4(linalg::identity))
       st.ncs.push_back({id, given, mat});
@@ -162,14 +165,14 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
       chain = nullptr;
     }
     if (!chain || row[kAsymId] != chain->name) {
-      chain = model->find_or_add_chain(row.as_str(kAsymId));
-      chain->auth_name = row.as_str(kAuthAsymId);
+      chain = model->find_or_add_chain(row.str(kAsymId));
+      chain->auth_name = row.str(kAuthAsymId);
       resi = nullptr;
     }
     ResidueId rid(cif::as_int(row[kSeqId], Residue::UnknownId),
                   cif::as_int(row[kAuthSeqId], Residue::UnknownId),
-                  cif::as_string(row[kInsCode])[0],
-                  cif::as_string(row[kCompId]));
+                  as_string(row[kInsCode])[0],
+                  as_string(row[kCompId]));
     if (!resi || !resi->matches(rid)) {
       // the insertion code happens to be always a single letter
       assert(row[kInsCode].size() == 1);
@@ -179,10 +182,10 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
       assert(resi->ins_code == rid.ins_code);
     }
     Atom atom;
-    atom.name = cif::as_string(row[kAtomId]);
-    atom.altloc = cif::as_string(row[kAltId])[0];
+    atom.name = as_string(row[kAtomId]);
+    atom.altloc = as_string(row[kAltId])[0];
     atom.charge = cif::is_null(row[kCharge]) ? 0 : cif::as_int(row[kCharge]);
-    atom.element = Element(cif::as_string(row[kSymbol]));
+    atom.element = Element(as_string(row[kSymbol]));
     atom.pos.x = cif::as_number(row[kX]);
     atom.pos.y = cif::as_number(row[kY]);
     atom.pos.z = cif::as_number(row[kZ]);
@@ -206,26 +209,26 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   cif::TableView polymer_types = block.find("_entity_poly.",
                                             {"entity_id", "type"});
   for (const auto& row : block.find("_entity.", {"id", "type"})) {
-    std::string id = row.as_str(0);
-    EntityType etype = entity_type_from_string(row.as_str(1));
+    std::string id = row.str(0);
+    EntityType etype = entity_type_from_string(row.str(1));
     PolymerType ptype = PolymerType::NA;
     try {
-      ptype = polymer_type_from_string(polymer_types.find_row(id).as_str(1));
+      ptype = polymer_type_from_string(polymer_types.find_row(id).str(1));
     } catch (std::runtime_error&) {}
     st.entities.emplace_back(new Entity{id, etype, ptype, {}});
   }
 
   for (const auto& row : block.find("_entity_poly_seq.",
                                     {"entity_id", "num", "mon_id"})) {
-    Entity *ent = st.find_or_add_entity(row.as_str(0));
-    ent->sequence.push_back({cif::as_int(row[1], -1), row.as_str(2)});
+    Entity *ent = st.find_or_add_entity(row.str(0));
+    ent->sequence.push_back({cif::as_int(row[1], -1), row.str(2)});
   }
 
   auto chain_to_entity = block.find("_struct_asym.", {"id", "entity_id"});
   for (Model& mod : st.models)
     for (Chain& ch : mod.chains)
       try {
-        std::string ent_id = chain_to_entity.find_row(ch.name).as_str(1);
+        std::string ent_id = chain_to_entity.find_row(ch.name).str(1);
         ch.entity = st.find_or_add_entity(ent_id);
       } catch (std::runtime_error&) {  // maybe _struct_asym is missing
         ch.entity = nullptr;

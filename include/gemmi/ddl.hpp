@@ -19,7 +19,7 @@ namespace cif {
 class DDL {
 public:
   void open_file(const std::string& filename) {
-    ddl_.read_file(filename);
+    ddl_ = read_file(filename);
     if (ddl_.blocks.size() > 1) {
       version_ = 1;
       sep_ = "_";

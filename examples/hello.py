@@ -5,7 +5,7 @@ from gemmi import cif
 greeted = set()
 for path in sys.argv[1:]:
     try:
-        doc = cif.Document(path)  # copy all the data from mmCIF file
+        doc = cif.read_file(path)  # copy all the data from mmCIF file
         block = doc.sole_block()  # mmCIF has exactly one block
         for s in block.find_loop("_atom_site.type_symbol"):
             if s not in greeted:

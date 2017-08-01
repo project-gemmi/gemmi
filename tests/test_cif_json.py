@@ -9,7 +9,7 @@ import gemmi
 class TestCifAsJson(unittest.TestCase):
   def test_misc(self):
     basename = os.path.join(os.path.dirname(__file__), "misc")
-    cif_doc = gemmi.cif.Document(basename + ".cif")
+    cif_doc = gemmi.cif.read_file(basename + ".cif")
     json_str = cif_doc.as_json()
     json_from_cif = json.loads(json_str)
     with open(basename + ".json") as f:

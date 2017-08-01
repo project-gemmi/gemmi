@@ -108,40 +108,32 @@ This code reads mmCIF file and shows weights of the chemical components::
       gemmi::cif::Document doc("1mru.cif");
       for (const gemmi::cif::Block& block : doc.blocks)
         for (const auto& cc : block.find("_chem_comp.", {"id", "formula_weight"}))
-          std::cout << cc.as_str(0) << " weights " << cc.as_num(1) << std::endl;
+          std::cout << cc[0] << " weights " << cc[1] << std::endl;
     }
 
 Reading a file
 --------------
 
-``struct gemmi::cif::Document`` has a few functions that populate it::
+The ``gemmi::cif`` namespace has a few functions that return Document::
 
-    void read_file(const std::string& filename)
-    void read_memory(const char* data, const size_t size, const char* name)
-    void read_cstream(std::FILE *f, size_t maximum, const char* name)
-    void read_istream(std::istream &is, size_t maximum, const char* name)
+    Document read_file(const std::string& filename)
+    Document read_memory(const char* data, const size_t size, const char* name)
+    Document read_cstream(std::FILE *f, size_t maximum, const char* name)
+    Document read_istream(std::istream &is, size_t maximum, const char* name)
 
 Parameter ``name`` is used only when reporting errors.
 Parameter ``maximum`` determines the buffer size and only affects performance.
 Regardless of the buffer size, the last two options are slower
 than ``read_file()`` -- they were not optimized for.
 
-The constructor can take the filename as the argument::
-
-    gemmi::cif::Document doc("1mru.cif")
-
-which is equivalent to::
-
-    gemmi::cif::Document doc;
-    doc.read_file("1mru.cif");
-
 Additional header ``cifgz.hpp`` has a function::
 
-    inline Document read_any(const std::string& path)
+    Document read_any(const std::string& path)
 
-that can transparently open a gzipped file
-(by uncompressing it first into a memory buffer).
-Convenient when working with a local copy of the PDB archive::
+that transparently opens a gzipped file
+(by uncompressing it first into a memory buffer) if the filename ends with
+``.gz``. And if ``-`` is given as the filename, it reads from stdin.
+Example::
     
     gemmi::cif::Document doc = read_any("mmCIF/pe/5pep.cif.gz");
 
