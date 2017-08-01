@@ -7,29 +7,12 @@
 
 #include <string>
 #include <utility>  // std::pair
-#ifdef USE_STD_SNPRINTF
-# include <cstdio>
-# define stbsp_sprintf std::sprintf
-#else
-# include <stb_sprintf.h>
-#endif
+#include "sprintf.hpp"
 #include "cifdoc.hpp"
 #include "model.hpp"
 
 namespace gemmi {
 namespace mol {
-
-inline std::string to_str(double d) {
-  char buf[24];
-  int len = stbsp_sprintf(buf, "%.9g", d);
-  return std::string(buf, len > 0 ? len : 0);
-}
-inline std::string to_str(float d) {
-  char buf[16];
-  int len = stbsp_sprintf(buf, "%.6g", d);
-  return std::string(buf, len > 0 ? len : 0);
-}
-
 
 inline void add_cif_atoms(const Structure& st, cif::Block& block) {
   // atom list

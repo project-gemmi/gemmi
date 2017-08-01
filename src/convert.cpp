@@ -1,18 +1,14 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#include <iostream> // temporary, for debugging
 #include "input.h"
+#include "output.h"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
-#include "gemmi/to_mmcif.hpp"
+#include "gemmi/sprintf.hpp"
 
 #include <cstring>
 #include <iostream>
 #include <map>
-
-// to_pdb.cpp
-void write_pdb(const gemmi::mol::Structure& st, std::ostream& os,
-               bool iotbx_compat);
 
 #define EXE_NAME "gemmi-convert"
 #include "options.h"
@@ -181,6 +177,7 @@ std::vector<mol::Chain> split_by_segments(mol::Chain& orig) {
 
 // for Refmac, to be merged with update_cif_block()
 cif::Document make_crd(const mol::Structure& st) {
+  using gemmi::to_str;
   cif::Document crd;
   if (st.models.empty())
     return crd;
@@ -233,29 +230,29 @@ cif::Document make_crd(const mol::Structure& st) {
                                      "## CELL ##\n"
                                      "##########"});
   items.emplace_back("_cell.entry_id", id);
-  items.emplace_back("_cell.length_a",    mol::to_str(st.cell.a));
-  items.emplace_back("_cell.length_b",    mol::to_str(st.cell.b));
-  items.emplace_back("_cell.length_c",    mol::to_str(st.cell.c));
-  items.emplace_back("_cell.angle_alpha", mol::to_str(st.cell.alpha));
-  items.emplace_back("_cell.angle_beta",  mol::to_str(st.cell.beta));
-  items.emplace_back("_cell.angle_gamma", mol::to_str(st.cell.gamma));
+  items.emplace_back("_cell.length_a",    to_str(st.cell.a));
+  items.emplace_back("_cell.length_b",    to_str(st.cell.b));
+  items.emplace_back("_cell.length_c",    to_str(st.cell.c));
+  items.emplace_back("_cell.angle_alpha", to_str(st.cell.alpha));
+  items.emplace_back("_cell.angle_beta",  to_str(st.cell.beta));
+  items.emplace_back("_cell.angle_gamma", to_str(st.cell.gamma));
   items.emplace_back(cif::CommentArg{"##############################\n"
                                      "## FRACTIONALISATION MATRIX ##\n"
                                      "##############################"});
   if (st.cell.explicit_matrices || st.cell.frac.a11 != 1.0) {
     std::string prefix = "_atom_sites.fract_transf_";
-    items.emplace_back(prefix + "matrix[1][1]", mol::to_str(st.cell.frac.a11));
-    items.emplace_back(prefix + "matrix[1][2]", mol::to_str(st.cell.frac.a12));
-    items.emplace_back(prefix + "matrix[1][3]", mol::to_str(st.cell.frac.a13));
-    items.emplace_back(prefix + "matrix[2][1]", mol::to_str(st.cell.frac.a21));
-    items.emplace_back(prefix + "matrix[2][2]", mol::to_str(st.cell.frac.a22));
-    items.emplace_back(prefix + "matrix[2][3]", mol::to_str(st.cell.frac.a23));
-    items.emplace_back(prefix + "matrix[3][1]", mol::to_str(st.cell.frac.a31));
-    items.emplace_back(prefix + "matrix[3][2]", mol::to_str(st.cell.frac.a32));
-    items.emplace_back(prefix + "matrix[3][3]", mol::to_str(st.cell.frac.a33));
-    items.emplace_back(prefix + "vector[1]",    mol::to_str(st.cell.shift.x));
-    items.emplace_back(prefix + "vector[2]",    mol::to_str(st.cell.shift.y));
-    items.emplace_back(prefix + "vector[3]",    mol::to_str(st.cell.shift.z));
+    items.emplace_back(prefix + "matrix[1][1]", to_str(st.cell.frac.a11));
+    items.emplace_back(prefix + "matrix[1][2]", to_str(st.cell.frac.a12));
+    items.emplace_back(prefix + "matrix[1][3]", to_str(st.cell.frac.a13));
+    items.emplace_back(prefix + "matrix[2][1]", to_str(st.cell.frac.a21));
+    items.emplace_back(prefix + "matrix[2][2]", to_str(st.cell.frac.a22));
+    items.emplace_back(prefix + "matrix[2][3]", to_str(st.cell.frac.a23));
+    items.emplace_back(prefix + "matrix[3][1]", to_str(st.cell.frac.a31));
+    items.emplace_back(prefix + "matrix[3][2]", to_str(st.cell.frac.a32));
+    items.emplace_back(prefix + "matrix[3][3]", to_str(st.cell.frac.a33));
+    items.emplace_back(prefix + "vector[1]",    to_str(st.cell.shift.x));
+    items.emplace_back(prefix + "vector[2]",    to_str(st.cell.shift.y));
+    items.emplace_back(prefix + "vector[3]",    to_str(st.cell.shift.z));
   }
   items.emplace_back(cif::CommentArg{"##############\n"
                                      "## SYMMETRY ##\n"
@@ -312,11 +309,11 @@ cif::Document make_crd(const mol::Structure& st) {
           vv.emplace_back(chain.name);
           vv.emplace_back(auth_seq_id);
           //vv.emplace_back(ins_code);
-          vv.emplace_back(mol::to_str(a.pos.x));
-          vv.emplace_back(mol::to_str(a.pos.y));
-          vv.emplace_back(mol::to_str(a.pos.z));
-          vv.emplace_back(mol::to_str(a.occ));
-          vv.emplace_back(mol::to_str(a.b_iso));
+          vv.emplace_back(to_str(a.pos.x));
+          vv.emplace_back(to_str(a.pos.y));
+          vv.emplace_back(to_str(a.pos.z));
+          vv.emplace_back(to_str(a.occ));
+          vv.emplace_back(to_str(a.b_iso));
           vv.emplace_back(a.element.uname());
           vv.emplace_back("."); // calc_flag
           vv.emplace_back("."); // label_seg_id
@@ -402,22 +399,20 @@ void convert(const char* input, FileType input_type,
     if (options[CifDot])
       writer.cif_dot = options[CifDot].arg;
     writer.write_json(cif_in);
-  } else if (output_type == FileType::Pdb || output_type == FileType::Null) {
-    if (output_type == FileType::Pdb) {
-      // call wrapper from to_pdb.cpp - to make building faster
-      write_pdb(st, *os, options[IotbxCompat]);
-    } else {
-      *os << st.name << ": " << count_atom_sites(st) << " atom locations";
-      if (st.models.size() > 1)
-        *os << " (total in " << st.models.size() << " models)";
-      *os << ".\n";
-    }
+  } else if (output_type == FileType::Pdb) {
+    // call wrapper from output.cpp - to make building faster
+    write_pdb(st, *os, options[IotbxCompat]);
+  } else if (output_type == FileType::Null) {
+    *os << st.name << ": " << count_atom_sites(st) << " atom locations";
+    if (st.models.size() > 1)
+      *os << " (total in " << st.models.size() << " models)";
+    *os << ".\n";
   } else if (output_type == FileType::Cif) {
     // cif to cif round trip is for testing only
     if (input_type != FileType::Cif || modify_structure) {
       cif_in.blocks.clear();  // temporary, for testing
       cif_in.blocks.resize(1);
-      mol::update_cif_block(st, cif_in.blocks[0]);
+      update_cif_block(st, cif_in.blocks[0]);
     }
     *os << cif_in;
   } else if (output_type == FileType::Crd) {

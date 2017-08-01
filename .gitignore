@@ -1,7 +1,14 @@
 *.o
 *.so
 *.py[co]
+/build
+/dist
+/gemmi.egg-info
 tags
 /docs/_build
-gemmi-convert
-gemmi-validate
+src/gemmi-convert
+src/gemmi-validate
+src/gemmi-grep
+src/gemmi-mask
+# local pybind11 is used for testing new versions, don't add to the repo
+third_party/pybind11

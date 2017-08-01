@@ -10,21 +10,12 @@
 #include <cstring>
 #include <algorithm>
 #include <ostream>
-#ifdef USE_STD_SNPRINTF
-# include <cstdio>
-#else
-# include <stb_sprintf.h>
-#endif
+#include "sprintf.hpp"
 #include "model.hpp"
 #include "util.hpp"
 
 namespace gemmi {
 namespace mol {
-
-#ifdef USE_STD_SNPRINTF  // for benchmarking and testing only
-#define stbsp_snprintf std::snprintf
-#define stbsp_sprintf std::sprintf
-#endif
 
 #define WRITE(...) do { \
     stbsp_snprintf(buf, 82, __VA_ARGS__); \

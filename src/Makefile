@@ -25,18 +25,24 @@ gemmi-validate: validate.cpp options.h $(igdir)/cif.hpp \
                 $(igdir)/ddl.hpp $(igdir)/cifgz.hpp $(igdir)/numb.hpp
 	$(CXX) $(FLAGS) $< -o $@ -lz
 
-to_pdb.o: to_pdb.cpp $(igdir)/to_pdb.hpp $(igdir)/model.hpp \
-          $(igdir)/elem.hpp $(igdir)/unitcell.hpp
-	$(CXX) $(FLAGS) -Wno-strict-aliasing -c $<
-
 input.o: input.cpp input.h $(igdir)/cifgz.hpp $(igdir)/cif.hpp \
          $(igdir)/numb.hpp $(igdir)/cifdoc.hpp $(igdir)/mmcif.hpp \
          $(igdir)/model.hpp $(igdir)/pdb.hpp $(igdir)/pdbgz.hpp \
 	 $(igdir)/util.hpp
 	$(CXX) $(FLAGS) -c $<
 
-gemmi-convert: convert.cpp options.h input.h $(igdir)/*.hpp to_pdb.o input.o
-	$(CXX) $(FLAGS) -Wno-strict-aliasing $< to_pdb.o input.o -o $@ -lz
+output.o: output.cpp output.h $(igdir)/to_pdb.hpp $(igdir)/model.hpp \
+          $(igdir)/elem.hpp $(igdir)/unitcell.hpp $(igdir)/to_mmcif.hpp \
+          $(igdir)/cifdoc.hpp $(igdir)/sprintf.hpp
+	$(CXX) $(FLAGS) -Wno-strict-aliasing -c $<
+
+convert.o: convert.cpp options.h input.h $(igdir)/to_cif.hpp \
+           $(igdir)/to_json.hpp $(igdir)/to_mmcif.hpp $(igdir)/cifdoc.hpp \
+           $(igdir)/util.hpp $(igdir)/numb.hpp $(igdir)/model.hpp
+	$(CXX) $(FLAGS) -Wno-strict-aliasing -c $<
+
+gemmi-convert: convert.o input.o output.o
+	$(CXX) $(FLAGS) $< input.o output.o -o $@ -lz
 
 gemmi-grep: grep.cpp options.h $(igdir)/cif.hpp $(igdir)/cifgz.hpp
 	$(CXX) $(FLAGS) $< -o $@ -lz
