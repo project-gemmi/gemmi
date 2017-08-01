@@ -29,8 +29,14 @@ to_pdb.o: to_pdb.cpp $(igdir)/to_pdb.hpp $(igdir)/model.hpp \
           $(igdir)/elem.hpp $(igdir)/unitcell.hpp
 	$(CXX) $(FLAGS) -Wno-strict-aliasing -c $<
 
-gemmi-convert: convert.cpp options.h $(igdir)/*.hpp to_pdb.o
-	$(CXX) $(FLAGS) -Wno-strict-aliasing $< to_pdb.o -o $@ -lz
+input.o: input.cpp input.h $(igdir)/cifgz.hpp $(igdir)/cif.hpp \
+         $(igdir)/numb.hpp $(igdir)/cifdoc.hpp $(igdir)/mmcif.hpp \
+         $(igdir)/model.hpp $(igdir)/pdb.hpp $(igdir)/pdbgz.hpp \
+	 $(igdir)/util.hpp
+	$(CXX) $(FLAGS) -c $<
+
+gemmi-convert: convert.cpp options.h input.h $(igdir)/*.hpp to_pdb.o input.o
+	$(CXX) $(FLAGS) -Wno-strict-aliasing $< to_pdb.o input.o -o $@ -lz
 
 gemmi-grep: grep.cpp options.h $(igdir)/cif.hpp $(igdir)/cifgz.hpp
 	$(CXX) $(FLAGS) $< -o $@ -lz
@@ -61,6 +67,6 @@ write-help: $(PROGRAMS)
 	./gemmi-grep -h >> ../docs/grep-help.txt
 
 clean:
-	rm -f $(PROGRAMS) trace gemmi.so pygemmi.o
+	rm -f $(PROGRAMS) trace *.so *.o
 
 .PHONY: all py clean write-help

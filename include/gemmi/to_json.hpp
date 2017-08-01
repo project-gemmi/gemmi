@@ -7,7 +7,8 @@
 #include <set>       // for set
 #include <string>    // for string
 #include <vector>    // for vector
-#include "cif.hpp"
+#include "cifdoc.hpp"
+#include "numb.hpp"  // for is_numb
 #include "util.hpp"  // for starts_with
 
 namespace gemmi {

@@ -4,7 +4,7 @@
 #define GEMMI_TO_CIF_HPP_
 
 #include <fstream>
-#include "cif.hpp"
+#include "cifdoc.hpp"
 
 inline
 std::ostream& operator<<(std::ostream& os, const gemmi::cif::Item& item) {

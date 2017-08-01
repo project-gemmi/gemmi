@@ -13,7 +13,7 @@
 #else
 # include <stb_sprintf.h>
 #endif
-#include "cif.hpp"
+#include "cifdoc.hpp"
 #include "model.hpp"
 
 namespace gemmi {

@@ -8,7 +8,7 @@
 #include <array>
 #include <string>
 #include <unordered_map>
-#include "cif.hpp"
+#include "cifdoc.hpp"
 #include "numb.hpp"
 #include "model.hpp"
 

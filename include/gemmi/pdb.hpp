@@ -179,7 +179,7 @@ private:
 
 
 // The standard charge format is 2+, but some files have +2.
-signed char read_charge(char digit, char sign) {
+inline signed char read_charge(char digit, char sign) {
   if (sign == ' ' && digit == ' ')  // by far the most common case
     return 0;
   if (sign >= '0' && sign <= '9')
@@ -194,7 +194,7 @@ signed char read_charge(char digit, char sign) {
   return 0;
 }
 
-int read_matrix(Mat4x4& matrix, char* line, int len) {
+inline int read_matrix(Mat4x4& matrix, char* line, int len) {
   if (len < 46)
     return 0;
   char n = line[5] - '0';

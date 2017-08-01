@@ -1,9 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include <iostream> // temporary, for debugging
-#include "gemmi/cifgz.hpp"
-#include "gemmi/mmcif.hpp"
-#include "gemmi/pdbgz.hpp"
+#include "input.h"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/to_mmcif.hpp"
@@ -339,17 +337,17 @@ void convert(const char* input, FileType input_type,
   // for cif->cif we do either cif->DOM->Structure->DOM->cif or cif->DOM->cif
   bool modify_structure = (options[ExpandNcs] || options[SegmentAsChain]);
   if (input_type == FileType::Cif) {
-    cif_in = cif::read_any(input);
+    cif_in = cif_read_any(input);
     if ((output_type == FileType::Json || output_type == FileType::Cif) &&
         !modify_structure) {
       // no need to interpret the structure
     } else {
-      st = mol::read_atoms(cif_in);
+      st = mmcif_read_atoms(cif_in);
       if (st.models.empty())
         gemmi::fail("No atoms in the input file. Is it mmCIF?");
     }
   } else if (input_type == FileType::Pdb) {
-    st = mol::read_pdb_any(input);
+    st = pdb_read_any(input);
   } else {
     gemmi::fail("Unexpected input format.");
   }
