@@ -31,7 +31,7 @@ inline std::string to_str(float d) {
 }
 
 
-void add_cif_atoms(const Structure& st, cif::Block& block) {
+inline void add_cif_atoms(const Structure& st, cif::Block& block) {
   // atom list
   cif::Loop& atom_loop = block.clear_or_add_loop("_atom_site.", {
       "id",

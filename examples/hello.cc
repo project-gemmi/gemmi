@@ -8,7 +8,7 @@ int main(int argc, char* argv[]) {
   std::set<std::string> greeted;
   if (argc != 2) return 1;
   try {
-    cif::Document doc(argv[1]); // open mmCIF file & copy all the data from it
+    cif::Document doc = cif::read_file(argv[1]);
     const cif::Block& block = doc.sole_block(); // mmCIF has exactly one block
     for (const std::string &s : block.find_loop("_atom_site.type_symbol"))
       if (greeted.insert(s).second) // insert() returns pair<iterator,bool>

@@ -26,15 +26,15 @@ def gather_data():
     writer.writerow(['code', 'na_chains', 'vs', 'vm', 'd_min', 'date', 'group'])
     for path in util.get_file_paths_from_args():
         block = cif.read_any(path).sole_block()
-        code = block.find_string('_entry.id')
+        code = cif.as_string(block.find_value('_entry.id'))
         na = sum('nucleotide' in t[0] for t in block.find('_entity_poly.type'))
         vs = block.find_value('_exptl_crystal.density_percent_sol')
         vm = block.find_value('_exptl_crystal.density_Matthews')
         d_min = block.find_value('_refine.ls_d_res_high')
-        dates = block.find('_database_PDB_rev.date_original')
-        oldest_date = min(parse_date(d[0]) for d in dates if d[0] not in '?.')
-        group = block.find_string('_pdbx_deposit_group.group_id')
-        writer.writerow([code, na, vs, vm, d_min, oldest_date, group])
+        dep_date_tag = '_pdbx_database_status.recvd_initial_deposition_date'
+        dep_date = parse_date(block.find(dep_date_tag)[0].str(0))
+        group = block.find_value('_pdbx_deposit_group.group_id')
+        writer.writerow([code, na, vs, vm, d_min, dep_date, group])
 
 
 def plot(our_csv):

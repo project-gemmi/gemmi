@@ -135,4 +135,5 @@ def main():
         compare_monlib_with_ccd(mon_path, ccd)
 
 
-main()
+if __name__ == '__main__':
+    main()

@@ -6,6 +6,7 @@
 #include <fstream>
 #include "cif.hpp"
 
+inline
 std::ostream& operator<<(std::ostream& os, const gemmi::cif::Item& item) {
   using namespace gemmi::cif;
   switch (item.type) {
@@ -46,6 +47,7 @@ std::ostream& operator<<(std::ostream& os, const gemmi::cif::Item& item) {
    return os;
 }
 
+inline
 std::ostream& operator<<(std::ostream& os, const gemmi::cif::Document& doc) {
   bool first = true;
   for (const gemmi::cif::Block& block : doc.blocks) {
@@ -61,7 +63,7 @@ std::ostream& operator<<(std::ostream& os, const gemmi::cif::Document& doc) {
 
 namespace gemmi {
 namespace cif {
-void write_to_file(const Document& doc, const std::string& filename) {
+inline void write_to_file(const Document& doc, const std::string& filename) {
   std::ofstream of(filename);
   if (!of)
     throw std::runtime_error("Failed to open " + filename);

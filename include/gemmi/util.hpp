@@ -7,6 +7,7 @@
 
 #include <algorithm>  // for equal, find
 #include <cctype>     // for tolower
+#include <cmath>      // for floor
 #include <iterator>   // for begin, end, make_move_iterator
 #include <stdexcept>  // for runtime_error
 #include <string>
@@ -79,7 +80,7 @@ void vector_move_extend(std::vector<T>& dst, std::vector<T>&& src) {
                           std::make_move_iterator(src.end()));
 }
 
-inline int iround(double d) { return static_cast<int>(floor(d+0.5)); }
+inline int iround(double d) { return static_cast<int>(std::floor(d+0.5)); }
 
 [[noreturn]]
 inline void fail(const std::string& msg) { throw std::runtime_error(msg); }

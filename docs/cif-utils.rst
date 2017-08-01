@@ -350,13 +350,13 @@ according to criteria that cannot be queried in RCSB/PDBe/PDBj web interfaces.
 For example, if for some reason we need PDB entries with large number
 of anisotropic B-factors, we may write a quick script:
 
-.. literalinclude:: ../examples/simple-search.py
+.. literalinclude:: ../examples/simple_search.py
 
 and then run it for an hour or so.
 
 .. code-block:: none
 
-    $ ./examples/simple-search.py pdb_copy/mmCIF
+    $ ./examples/simple_search.py pdb_copy/mmCIF
     5AEW 60155
     5AFI 98325
     3AIB 52592

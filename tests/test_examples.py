@@ -7,28 +7,31 @@ import unittest
 import gemmi
 
 TOP_DIR = os.path.join(os.path.dirname(__file__), "..")
-CIF_FILE = os.path.join(TOP_DIR, "1YJP.cif")
+CIF_FILE = os.path.join(TOP_DIR, "tests", "5i55.cif")
 EXAMPLE_DIR = os.path.join(TOP_DIR, "examples")
 sys.path.append(EXAMPLE_DIR)
 
-
 class TestExamples(unittest.TestCase):
+  def setUp(self):
+    sys.argv = ['example', CIF_FILE]
+    sys.stdout = open(os.devnull, 'w')
+  def tearDown(self):
+    sys.stdout = sys.__stdout__
   def test_aafreq(self):
-    sys.argv = ['aafreq.py', CIF_FILE]
     import aafreq
   def test_col_order(self):
-    pass
+    import col_order
   def test_hello(self):
-    sys.argv = ['hello.py', CIF_FILE]
     import hello
   def test_matthews(self):
-    pass
+    import matthews
   def test_monomers(self):
-    pass
+    import monomers  # nothing is run here, we only test import
   def test_simple_search(self):
-    pass
+    import simple_search
   def test_weight(self):
-    pass
+    import weight
+    weight.main()
 
 if __name__ == '__main__':
   unittest.main()
