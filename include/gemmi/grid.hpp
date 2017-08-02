@@ -43,6 +43,7 @@ struct Grid {
              iround(unit_cell.b / sp),
              iround(unit_cell.c / sp));
   }
+  int ccp4_mode() const { return -1; }
 
   T& node(int u, int v, int w) {
 #if 1
@@ -107,7 +108,7 @@ struct Grid {
 
   void calculate_statistics();
   void read_ccp4(const std::string& path);
-  void write_ccp4_map(const std::string& path, int mode=2) const;
+  void write_ccp4_map(const std::string& path, int mode=-1) const;
   void write_ccp4_mask(const std::string& path, double threshold) const;
 
 private:
@@ -124,14 +125,25 @@ namespace impl {
 
 typedef std::unique_ptr<FILE, decltype(&std::fclose)> fileptr_t;
 
-template<typename T>
+template<typename Out, typename In>
 void write_arrays(const std::string& path, const std::vector<char>& header,
-                  const std::vector<T>& content) {
+                  const std::vector<In>& content) {
   fileptr_t f(std::fopen(path.c_str(), "wb"), &std::fclose);
   if (!f)
     fail("Failed to open file for writing: " + path);
   std::fwrite(header.data(), sizeof(char), header.size(), f.get());
-  std::fwrite(content.data(), sizeof(T), content.size(), f.get());
+  if (typeid(In) == typeid(Out)) {
+    std::fwrite(content.data(), sizeof(Out), content.size(), f.get());
+  } else {
+    constexpr size_t chunk_size = 64 * 1024;
+    std::vector<Out> work(chunk_size);
+    for (size_t i = 0; i < content.size(); i += chunk_size) {
+      size_t len = std::min(chunk_size, content.size() - i);
+      for (size_t j = 0; j < len; ++j)
+        work[j] = static_cast<Out>(content[i+j]);
+      std::fwrite(work.data(), sizeof(Out), len, f.get());
+    }
+  }
 }
 
 template<typename T>
@@ -213,9 +225,10 @@ void Grid<T>::read_ccp4(const std::string& path) {
   if (ccp4_header[208] != 'M' || ccp4_header[209] != 'A' ||
       ccp4_header[210] != 'P' || ccp4_header[211] != ' ')
     fail("Not a CCP4 map: " + path);
-  uint32_t mode = header_u32(4);
-  if (mode != 2 && mode != 0)
-    fail("Only Mode 2 and Mode 0 of CCP4 map is supported.");
+  int mode = header_u32(4);
+  if (mode != ccp4_mode())
+    fail("The CCP4 map has mode " + std::to_string(mode) +
+         ", expected mode " + std::to_string(ccp4_mode()));
   uint32_t nsymbt = header_u32(24);
   if (nsymbt > 1000000)
     fail("Unexpectedly long extendended header: " + path);
@@ -233,23 +246,19 @@ void Grid<T>::read_ccp4(const std::string& path) {
 
 template<typename T>
 void Grid<T>::write_ccp4_map(const std::string& path, int mode) const {
-  if (mode == 2) {
-    if (typeid(T) == typeid(float)) {
-      impl::write_arrays(path, impl::make_ccp4_header(*this, mode), data);
-    } else {
-      std::vector<float> v(data.size());
-      for (size_t i = 0; i != data.size(); ++i)
-        v[i] = static_cast<float>(data[i]);
-      impl::write_arrays(path, impl::make_ccp4_header(*this, mode), v);
-    }
-  } else if (mode == 0) {
-    std::vector<signed char> v(data.size());
-    for (size_t i = 0; i != data.size(); ++i)
-      v[i] = data[i] == 0 ? 0 : 1; // TODO: scale data float->char
-    impl::write_arrays(path, impl::make_ccp4_header(*this, mode), v);
-  } else {
-    fail("Only modes 0 and 2 are supported.");
-  }
+  std::vector<char> header = impl::make_ccp4_header(*this, mode);
+  if (mode == -1)
+    impl::write_arrays<T>(path, header, data);
+  else if (mode == 0)
+    impl::write_arrays<signed char>(path, header, data);
+  else if (mode == 1)
+    impl::write_arrays<int16_t>(path, header, data);
+  else if (mode == 2)
+    impl::write_arrays<float>(path, header, data);
+  else if (mode == 6)
+    impl::write_arrays<uint16_t>(path, header, data);
+  else
+    fail("Only modes 0, 1, 2 and 6 are supported.");
 }
 
 template<typename T>
@@ -257,7 +266,7 @@ void Grid<T>::write_ccp4_mask(const std::string& path, double threshold) const {
   std::vector<signed char> v(data.size());
   for (size_t i = 0; i < data.size(); i++)
     v[i] = data[i] < threshold ? 0 : 1;
-  impl::write_arrays(path, impl::make_ccp4_header(*this, 0), v);
+  impl::write_arrays<signed char>(path, impl::make_ccp4_header(*this, 0), v);
 }
 
 } // namespace gemmi
