@@ -11,6 +11,7 @@
 #include <cstdio>    // for FILE
 #include <cstring>   // for memcpy
 #include <memory>    // for unique_ptr
+#include <typeinfo>  // for typeid
 #include <vector>
 #include "unitcell.hpp"
 #include "util.hpp"  // for fail
@@ -233,10 +234,18 @@ void Grid<T>::read_ccp4(const std::string& path) {
 template<typename T>
 void Grid<T>::write_ccp4_map(const std::string& path, int mode) const {
   if (mode == 2) {
-    impl::write_arrays(path, impl::make_ccp4_header(*this, mode), data);
+    if (typeid(T) == typeid(float)) {
+      impl::write_arrays(path, impl::make_ccp4_header(*this, mode), data);
+    } else {
+      std::vector<float> v(data.size());
+      for (size_t i = 0; i != data.size(); ++i)
+        v[i] = static_cast<float>(data[i]);
+      impl::write_arrays(path, impl::make_ccp4_header(*this, mode), v);
+    }
   } else if (mode == 0) {
     std::vector<signed char> v(data.size());
-    // TODO: scale data
+    for (size_t i = 0; i != data.size(); ++i)
+      v[i] = data[i] == 0 ? 0 : 1; // TODO: scale data float->char
     impl::write_arrays(path, impl::make_ccp4_header(*this, mode), v);
   } else {
     fail("Only modes 0 and 2 are supported.");

@@ -47,9 +47,9 @@ gemmi-convert: convert.o input.o output.o
 gemmi-grep: grep.cpp options.h $(igdir)/cif.hpp $(igdir)/cifgz.hpp
 	$(CXX) $(FLAGS) $< -o $@ -lz
 
-gemmi-mask: mask.cpp options.h $(igdir)/grid.hpp $(igdir)/unitcell.hpp \
-            $(igdir)/pdb.hpp $(igdir)/model.hpp
-	$(CXX) $(FLAGS) $< -o $@ -lz
+gemmi-mask: mask.cpp options.h input.h input.o $(igdir)/grid.hpp \
+            $(igdir)/unitcell.hpp $(igdir)/model.hpp
+	$(CXX) $(FLAGS) $< input.o -o $@ -lz
 
 # for debugging only
 trace: validate.cpp options.h $(igdir)/cif.hpp
