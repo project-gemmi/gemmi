@@ -38,6 +38,38 @@ int main(int argc, char **argv) {
       if (verbose)
         std::fprintf(stderr, "Reading %s ...\n", input);
       grid.read_ccp4(input);
+      //const std::vector<char>& h = grid.ccp4_header;
+      std::printf("Map mode: %d\n", grid.header_u32(4));
+      std::printf("Number of columns, rows, sections: %5d %5d %5d\n",
+                  grid.nu, grid.nv, grid.nw);
+      int u0 = grid.header_u32(5);
+      int v0 = grid.header_u32(6);
+      int w0 = grid.header_u32(7);
+      std::printf("                             from: %5d %5d %5d\n",
+                  u0, v0, w0);
+      std::printf("                               to: %5d %5d %5d\n",
+                  u0 + grid.nu - 1, v0 + grid.nv - 1, w0 + grid.nw - 1);
+      const char* xyz = "?XYZ";
+      std::printf("Fast, medium, slow axes: %c %c %c\n",
+                  xyz[grid.header_u32(17)],
+                  xyz[grid.header_u32(18)],
+                  xyz[grid.header_u32(19)]);
+      std::printf("Grid sampling on x, y, z: %5d %5d %5d\n",
+                  grid.header_u32(8), grid.header_u32(9), grid.header_u32(10));
+      const mol::UnitCell& cell = grid.unit_cell;
+      std::printf("Cell dimensions: %g %g %g  %g %g %g\n",
+                  cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma);
+
+      std::printf("\nSTATS from HEADER and DATA\n");
+      double dmin = grid.dmin;
+      double dmax = grid.dmax;
+      double dmean = grid.dmean;
+      double rms = grid.rms;
+      grid.calculate_statistics();
+      std::printf("Minimum: %8.5f   %8.5f\n", dmin, grid.dmin);
+      std::printf("Maximum: %8.5f   %8.5f\n", dmax, grid.dmax);
+      std::printf("Mean:    %8.5f   %8.5f\n", dmean, grid.dmean);
+      std::printf("RMS:     %8.5f   %8.5f\n", rms, grid.rms);
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());

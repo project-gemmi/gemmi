@@ -120,11 +120,11 @@ struct Grid {
   void write_ccp4_map(const std::string& path, int mode=2) const;
   void write_ccp4_mask(const std::string& path, double threshold) const;
 
-private:
+  // methods to access info from ccp4 headers, w is word number from the spec
   uint32_t header_u32(int w) {
     return *reinterpret_cast<uint32_t*>(ccp4_header.data() + 4 * (w - 1));
   }
-  uint32_t header_float(int w) {
+  float header_float(int w) {
     return *reinterpret_cast<float*>(ccp4_header.data() + 4 * (w - 1));
   }
 };
@@ -175,23 +175,23 @@ std::vector<char> make_ccp4_header(const Grid<T>& grid, int mode) {
   set_u32(4, mode);
   set_tri_u32(5, 0, 0, 0); // NXSTART, NYSTART, NZSTART
   set_tri_u32(8, grid.nu, grid.nv, grid.nw);  // MX, MY, MZ
-  set_float(11, grid.unit_cell.a);
-  set_float(12, grid.unit_cell.b);
-  set_float(13, grid.unit_cell.c);
-  set_float(14, grid.unit_cell.alpha);
-  set_float(15, grid.unit_cell.beta);
-  set_float(16, grid.unit_cell.gamma);
+  set_float(11, (float) grid.unit_cell.a);
+  set_float(12, (float) grid.unit_cell.b);
+  set_float(13, (float) grid.unit_cell.c);
+  set_float(14, (float) grid.unit_cell.alpha);
+  set_float(15, (float) grid.unit_cell.beta);
+  set_float(16, (float) grid.unit_cell.gamma);
   set_tri_u32(17, 1, 2, 3); // MAPC, MAPR, MAPS
-  set_float(20, grid.dmin);
-  set_float(21, grid.dmax);
-  set_float(22, grid.dmean);
+  set_float(20, (float) grid.dmin);
+  set_float(21, (float) grid.dmax);
+  set_float(22, (float) grid.dmean);
   set_u32(23, 1); // ISPG
   set_u32(24, nsym * 80);
   std::memcpy(word_ptr(27), "CCP4", 4); // EXTTYP
   //set_u32(28, nversion);
   std::memcpy(word_ptr(53), "MAP ", 4);
   set_u32(54, 0x00004144); // MACHST for little endian (0x11110000 for BE)
-  set_float(55, grid.rms);
+  set_float(55, (float) grid.rms);
   set_u32(56, 1); // labels
   memset(word_ptr(57), ' ', 800 + nsym * 80);
   strcpy(word_ptr(57), "from unfinished GEMMI code");
@@ -235,17 +235,31 @@ void Grid<T>::read_ccp4(const std::string& path) {
       ccp4_header[210] != 'P' || ccp4_header[211] != ' ')
     fail("Not a CCP4 map: " + path);
   int mode = header_u32(4);
-  if (mode != ccp4_mode())
+  if (ccp4_mode() != 2 && mode != ccp4_mode())
     fail("The CCP4 map has mode " + std::to_string(mode) +
          ", expected mode " + std::to_string(ccp4_mode()));
+  unit_cell.set(header_float(11), header_float(12), header_float(13),
+                header_float(14), header_float(15), header_float(16));
   uint32_t nsymbt = header_u32(24);
   if (nsymbt > 1000000)
     fail("Unexpectedly long extendended header: " + path);
   ccp4_header.resize(hsize + nsymbt);
   if (fread(ccp4_header.data() + hsize, 1, nsymbt, f.get()) != nsymbt)
     fail("Failed to read extended header: " + path);
+  nu = header_u32(1);
+  nv = header_u32(2);
+  nw = header_u32(3);
+  for (int i = 17; i < 20; ++i) {
+    int axis = header_u32(17);
+    if (axis < 1 || axis > 3)
+      fail("Unexpected axis value in word " + std::to_string(i));
+  }
+  dmin = header_float(20);
+  dmax = header_float(21);
+  dmean = header_float(22);
+  rms = header_float(55);
   if (mode == 2) {
-    size_t len = 16 ; // n_crs[0]*n_crs[1]*n_crs[2]
+    size_t len = nu * nv * nw;
     data.resize(len);
     //if (c-r-s in normal order)
       if (fread(data.data(), 4, len, f.get()) != len)

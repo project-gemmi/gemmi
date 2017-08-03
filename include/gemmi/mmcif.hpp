@@ -189,8 +189,8 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     atom.pos.x = cif::as_number(row[kX]);
     atom.pos.y = cif::as_number(row[kY]);
     atom.pos.z = cif::as_number(row[kZ]);
-    atom.occ = cif::as_number(row[kOcc], 1.0);
-    atom.b_iso = cif::as_number(row[kBiso], 50.0);
+    atom.occ = (float) cif::as_number(row[kOcc], 1.0);
+    atom.b_iso = (float) cif::as_number(row[kBiso], 50.0);
 
     if (!aniso_map.empty()) {
       auto ani = aniso_map.find(row[kId]);

@@ -262,8 +262,8 @@ Structure read_pdb_from_input(InputType&& in) {
       atom.pos.x = read_double(line+30, 8);
       atom.pos.y = read_double(line+38, 8);
       atom.pos.z = read_double(line+46, 8);
-      atom.occ = read_double(line+54, 6);
-      atom.b_iso = read_double(line+60, 6);
+      atom.occ = (float) read_double(line+54, 6);
+      atom.b_iso = (float) read_double(line+60, 6);
       resi->atoms.emplace_back(atom);
 
     } else if (is_record_type(line, "ANISOU")) {
@@ -274,12 +274,12 @@ Structure read_pdb_from_input(InputType&& in) {
       Atom &atom = resi->atoms.back();
       if (atom.u11 != 0.)
         wrong("Duplicated ANISOU record or not directly after ATOM/HETATM.");
-      atom.u11 = read_int(line+28, 7) * 1e-4;
-      atom.u22 = read_int(line+35, 7) * 1e-4;
-      atom.u33 = read_int(line+42, 7) * 1e-4;
-      atom.u12 = read_int(line+49, 7) * 1e-4;
-      atom.u13 = read_int(line+56, 7) * 1e-4;
-      atom.u23 = read_int(line+63, 7) * 1e-4;
+      atom.u11 = read_int(line+28, 7) * 1e-4f;
+      atom.u22 = read_int(line+35, 7) * 1e-4f;
+      atom.u33 = read_int(line+42, 7) * 1e-4f;
+      atom.u12 = read_int(line+49, 7) * 1e-4f;
+      atom.u13 = read_int(line+56, 7) * 1e-4f;
+      atom.u23 = read_int(line+63, 7) * 1e-4f;
 
     } else if (is_record_type(line, "REMARK")) {
       // ignore for now

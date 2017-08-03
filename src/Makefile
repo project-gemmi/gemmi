@@ -7,7 +7,7 @@ PYTHON=python
 PYTHON_CONFIG=$(PYTHON)-config
 
 WFLAGS=-Wall -Wextra -Wpedantic -Wdisabled-optimization -Wformat=2 \
-       -Wredundant-decls $(EXTRA_WFLAGS)
+       -Wredundant-decls -Wfloat-conversion $(EXTRA_WFLAGS)
 FLAGS=-O2 -g -pipe $(CXXSTD) $(WFLAGS) -I../include -I../third_party #-DNDEBUG
 
 PYFLAGS=$(FLAGS) -Wno-shadow -fPIC \
