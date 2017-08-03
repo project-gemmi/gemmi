@@ -19,7 +19,7 @@ struct MaskArg {
 static const option::Descriptor Usage[] = {
   { Unknown, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] INPUT output.msk"
-    "\n\nINPUT is either or a CCP4 map or (not yet) a coordinate file." },
+    "\n\nINPUT is either a CCP4 map or a coordinate file." },
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
   { Version, 0, "V", "version", Arg::None,
     "  -V, --version  \tPrint version and exit." },
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
   const char* output = parse.nonOption(1);
 
   if (options[Verbose])
-    fprintf(stderr, "Converting %s ...\n", input);
+    std::fprintf(stderr, "Converting %s ...\n", input);
 
   InputType in_type = InputType::Unknown;
   if (options[FormatIn]) {
@@ -71,16 +71,16 @@ int main(int argc, char **argv) {
       in_type = InputType::Ccp4;
   }
   if (in_type == InputType::Unknown) {
-      fprintf(stderr, "Cannot determine input type for extension."
-                      " Use --from=...");
-      return 1;
+    std::fprintf(stderr, "Cannot determine input type for extension."
+                         " Use --from=...");
+    return 1;
   }
 
   try {
     // map -> mask
     if (in_type == InputType::Ccp4) {
       if (!options[Threshold]) {
-        fprintf(stderr, "You need to specify threshold (-t).\n");
+        std::fprintf(stderr, "You need to specify threshold (-t).\n");
         return 2;
       }
       double threshold = std::strtod(options[Threshold].arg, nullptr);
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
         grid.set_spacing(1);
       }
       if (st.models.size() > 1)
-        fprintf(stderr, "Note: only the first model is used.\n");
+        std::fprintf(stderr, "Note: only the first model is used.\n");
       for (const mol::Chain& chain : st.models[0].chains)
         for (const mol::Residue& res : chain.residues)
           for (const mol::Atom& atom : res.atoms)
@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
       grid.write_ccp4_map(output);
     }
   } catch (std::runtime_error& e) {
-    fprintf(stderr, "ERROR: %s\n", e.what());
+    std::fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }
   return 0;

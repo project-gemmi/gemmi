@@ -13,7 +13,7 @@ FLAGS=-O2 -g -pipe $(CXXSTD) $(WFLAGS) -I../include -I../third_party #-DNDEBUG
 PYFLAGS=$(FLAGS) -Wno-shadow -fPIC \
        -fvisibility=hidden -fwrapv -D_FORTIFY_SOURCE=2
 
-PROGRAMS=gemmi-mask gemmi-validate gemmi-convert gemmi-grep
+PROGRAMS=gemmi-mask gemmi-map gemmi-validate gemmi-convert gemmi-grep
 
 all: $(PROGRAMS)
 
@@ -49,6 +49,10 @@ gemmi-grep: grep.cpp options.h $(igdir)/cif.hpp $(igdir)/cifgz.hpp
 
 gemmi-mask: mask.cpp options.h input.h input.o $(igdir)/grid.hpp \
             $(igdir)/unitcell.hpp $(igdir)/model.hpp
+	$(CXX) $(FLAGS) $< input.o -o $@ -lz
+
+gemmi-map: map.cpp options.h input.h input.o $(igdir)/grid.hpp \
+           $(igdir)/unitcell.hpp
 	$(CXX) $(FLAGS) $< input.o -o $@ -lz
 
 # for debugging only

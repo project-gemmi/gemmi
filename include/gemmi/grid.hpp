@@ -43,7 +43,16 @@ struct Grid {
              iround(unit_cell.b / sp),
              iround(unit_cell.c / sp));
   }
-  int ccp4_mode() const { return -1; }
+
+  int ccp4_mode() const {
+    if (typeid(T) == typeid(signed char) || typeid(T) == typeid(char))
+      return 0;
+    if (typeid(T) == typeid(int16_t))
+      return 1;
+    if (typeid(T) == typeid(uint16_t))
+      return 6;
+    return 2;
+  }
 
   T& node(int u, int v, int w) {
 #if 1
@@ -108,7 +117,7 @@ struct Grid {
 
   void calculate_statistics();
   void read_ccp4(const std::string& path);
-  void write_ccp4_map(const std::string& path, int mode=-1) const;
+  void write_ccp4_map(const std::string& path, int mode=2) const;
   void write_ccp4_mask(const std::string& path, double threshold) const;
 
 private:
@@ -247,9 +256,7 @@ void Grid<T>::read_ccp4(const std::string& path) {
 template<typename T>
 void Grid<T>::write_ccp4_map(const std::string& path, int mode) const {
   std::vector<char> header = impl::make_ccp4_header(*this, mode);
-  if (mode == -1)
-    impl::write_arrays<T>(path, header, data);
-  else if (mode == 0)
+  if (mode == 0)
     impl::write_arrays<signed char>(path, header, data);
   else if (mode == 1)
     impl::write_arrays<int16_t>(path, header, data);
