@@ -53,16 +53,6 @@ struct Grid {
              iround(unit_cell.c / sp));
   }
 
-  int ccp4_mode() const {
-    if (typeid(T) == typeid(signed char) || typeid(T) == typeid(char))
-      return 0;
-    if (typeid(T) == typeid(int16_t))
-      return 1;
-    if (typeid(T) == typeid(uint16_t))
-      return 6;
-    return 2;
-  }
-
   T& node(int u, int v, int w) {
 #if 1
     if (u >= nu)
@@ -130,15 +120,16 @@ struct Grid {
   void write_ccp4_mask(const std::string& path, double threshold) const;
 
   // methods to access info from ccp4 headers, w is word number from the spec
-  uint32_t header_u32(int w) const {
-    return *reinterpret_cast<const uint32_t*>(ccp4_header.data() + 4 * (w - 1));
+  int32_t header_i32(int w) const {
+    return *reinterpret_cast<const int32_t*>(ccp4_header.data() + 4 * (w - 1));
   }
   float header_float(int w) const {
     return *reinterpret_cast<const float*>(ccp4_header.data() + 4 * (w - 1));
   }
   // ccp4 map header has mostly 80-byte strings
-  std::string header_str(int w, int len=80) const {
-    return std::string(ccp4_header.data() + 4 * (w - 1), len);
+  std::string header_str(int w, size_t len=80) const {
+    return std::string(ccp4_header.data() + 4 * (w - 1),
+                       std::min(len, ccp4_header.size() - w));
   }
 };
 
@@ -147,6 +138,44 @@ namespace impl {
 
 typedef std::unique_ptr<FILE, decltype(&std::fclose)> fileptr_t;
 
+template<typename TFile, typename TMem>
+void read_data(FILE* f, std::vector<TMem>& content) {
+  if (typeid(TFile) == typeid(TMem)) {
+    size_t len = content.size();
+    if (fread(content.data(), sizeof(TMem), len, f) != len)
+      fail("Failed to read all the data from the map file.");
+  } else {
+    constexpr size_t chunk_size = 64 * 1024;
+    std::vector<TFile> work(chunk_size);
+    for (size_t i = 0; i < content.size(); i += chunk_size) {
+      size_t len = std::min(chunk_size, content.size() - i);
+      if (std::fread(work.data(), sizeof(TFile), len, f) != len)
+        fail("Failed to read all the data from the map file.");
+      for (size_t j = 0; j < len; ++j)
+        content[i+j] = static_cast<TMem>(work[j]);
+    }
+  }
+}
+
+template<typename TFile, typename TMem>
+void write_data(const std::vector<TMem>& content, FILE* f) {
+  if (typeid(TMem) == typeid(TFile)) {
+    size_t len = content.size();
+    if (std::fwrite(content.data(), sizeof(TFile), len, f) != len)
+      fail("Failed to write data to the map file.");
+  } else {
+    constexpr size_t chunk_size = 64 * 1024;
+    std::vector<TFile> work(chunk_size);
+    for (size_t i = 0; i < content.size(); i += chunk_size) {
+      size_t len = std::min(chunk_size, content.size() - i);
+      for (size_t j = 0; j < len; ++j)
+        work[j] = static_cast<TFile>(content[i+j]);
+      if (std::fwrite(work.data(), sizeof(TFile), len, f) != len)
+        fail("Failed to write data to the map file.");
+    }
+  }
+}
+
 template<typename Out, typename In>
 void write_arrays(const std::string& path, const std::vector<char>& header,
                   const std::vector<In>& content) {
@@ -154,18 +183,7 @@ void write_arrays(const std::string& path, const std::vector<char>& header,
   if (!f)
     fail("Failed to open file for writing: " + path);
   std::fwrite(header.data(), sizeof(char), header.size(), f.get());
-  if (typeid(In) == typeid(Out)) {
-    std::fwrite(content.data(), sizeof(Out), content.size(), f.get());
-  } else {
-    constexpr size_t chunk_size = 64 * 1024;
-    std::vector<Out> work(chunk_size);
-    for (size_t i = 0; i < content.size(); i += chunk_size) {
-      size_t len = std::min(chunk_size, content.size() - i);
-      for (size_t j = 0; j < len; ++j)
-        work[j] = static_cast<Out>(content[i+j]);
-      std::fwrite(work.data(), sizeof(Out), len, f.get());
-    }
-  }
+  write_data<Out>(content, f.get());
 }
 
 template<typename T>
@@ -173,39 +191,39 @@ std::vector<char> make_ccp4_header(const Grid<T>& grid, int mode) {
   int nsym = 1;
   std::vector<char> header(1024 + nsym * 80, 0);
   auto word_ptr = [&header](int w) { return header.data() + 4 * (w - 1); };
-  auto set_u32 = [&word_ptr](int word, uint32_t value) {
-    *reinterpret_cast<uint32_t*>(word_ptr(word)) = value;
+  auto set_i32 = [&word_ptr](int word, int32_t value) {
+    *reinterpret_cast<int32_t*>(word_ptr(word)) = value;
   };
-  auto set_tri_u32 = [&set_u32](int word, uint32_t x, uint32_t y, uint32_t z) {
-    set_u32(word, x);
-    set_u32(word+1, y);
-    set_u32(word+2, z);
+  auto set_tri_i32 = [&set_i32](int word, int32_t x, int32_t y, int32_t z) {
+    set_i32(word, x);
+    set_i32(word+1, y);
+    set_i32(word+2, z);
   };
   auto set_float = [&word_ptr](int word, float value) {
     *reinterpret_cast<float*>(word_ptr(word)) = value;
   };
-  set_tri_u32(1, grid.nu, grid.nv, grid.nw); // NX, NY, NZ
-  set_u32(4, mode);
-  set_tri_u32(5, 0, 0, 0); // NXSTART, NYSTART, NZSTART
-  set_tri_u32(8, grid.nu, grid.nv, grid.nw);  // MX, MY, MZ
+  set_tri_i32(1, grid.nu, grid.nv, grid.nw); // NX, NY, NZ
+  set_i32(4, mode);
+  set_tri_i32(5, 0, 0, 0); // NXSTART, NYSTART, NZSTART
+  set_tri_i32(8, grid.nu, grid.nv, grid.nw);  // MX, MY, MZ
   set_float(11, (float) grid.unit_cell.a);
   set_float(12, (float) grid.unit_cell.b);
   set_float(13, (float) grid.unit_cell.c);
   set_float(14, (float) grid.unit_cell.alpha);
   set_float(15, (float) grid.unit_cell.beta);
   set_float(16, (float) grid.unit_cell.gamma);
-  set_tri_u32(17, 1, 2, 3); // MAPC, MAPR, MAPS
+  set_tri_i32(17, 1, 2, 3); // MAPC, MAPR, MAPS
   set_float(20, (float) grid.stats.dmin);
   set_float(21, (float) grid.stats.dmax);
   set_float(22, (float) grid.stats.dmean);
-  set_u32(23, 1); // ISPG
-  set_u32(24, nsym * 80);
+  set_i32(23, 1); // ISPG
+  set_i32(24, nsym * 80);
   std::memcpy(word_ptr(27), "CCP4", 4); // EXTTYP
-  //set_u32(28, nversion);
+  //set_i32(28, nversion);
   std::memcpy(word_ptr(53), "MAP ", 4);
-  set_u32(54, is_little_endian() ? 0x00004144 : 0x11110000); // MACHST
+  set_i32(54, is_little_endian() ? 0x00004144 : 0x11110000); // MACHST
   set_float(55, (float) grid.stats.rms);
-  set_u32(56, 1); // labels
+  set_i32(56, 1); // labels
   memset(word_ptr(57), ' ', 800 + nsym * 80);
   strcpy(word_ptr(57), "from unfinished GEMMI code");
   memcpy(word_ptr(257), "X,  Y,  Z", 9);
@@ -249,23 +267,20 @@ void Grid<T>::read_ccp4(const std::string& path) {
   if (ccp4_header[208] != 'M' || ccp4_header[209] != 'A' ||
       ccp4_header[210] != 'P' || ccp4_header[211] != ' ')
     fail("Not a CCP4 map: " + path);
-  int mode = header_u32(4);
-  if (ccp4_mode() != 2 && mode != ccp4_mode())
-    fail("The CCP4 map has mode " + std::to_string(mode) +
-         ", expected mode " + std::to_string(ccp4_mode()));
+  int mode = header_i32(4);
   unit_cell.set(header_float(11), header_float(12), header_float(13),
                 header_float(14), header_float(15), header_float(16));
-  uint32_t nsymbt = header_u32(24);
+  size_t nsymbt = header_i32(24);
   if (nsymbt > 1000000)
     fail("Unexpectedly long extendended header: " + path);
   ccp4_header.resize(hsize + nsymbt);
   if (fread(ccp4_header.data() + hsize, 1, nsymbt, f.get()) != nsymbt)
     fail("Failed to read extended header: " + path);
-  nu = header_u32(1);
-  nv = header_u32(2);
-  nw = header_u32(3);
+  nu = header_i32(1);
+  nv = header_i32(2);
+  nw = header_i32(3);
   for (int i = 17; i < 20; ++i) {
-    int axis = header_u32(17);
+    int axis = header_i32(17);
     if (axis < 1 || axis > 3)
       fail("Unexpected axis value in word " + std::to_string(i));
   }
@@ -273,13 +288,22 @@ void Grid<T>::read_ccp4(const std::string& path) {
   stats.dmax = header_float(21);
   stats.dmean = header_float(22);
   stats.rms = header_float(55);
-  if (mode == 2) {
-    size_t len = nu * nv * nw;
-    data.resize(len);
-    //if (c-r-s in normal order)
-      if (fread(data.data(), 4, len, f.get()) != len)
-        fail("Failed to read all the data from: " + path);
-  }
+
+  data.resize(nu * nv * nw);
+  if (mode == 0)
+    impl::read_data<signed char>(f.get(), data);
+  else if (mode == 1)
+    impl::read_data<int16_t>(f.get(), data);
+  else if (mode == 2)
+    impl::read_data<float>(f.get(), data);
+  else if (mode == 6)
+    impl::read_data<uint16_t>(f.get(), data);
+  else
+    fail("Only modes 0, 1, 2 and 6 are supported.");
+#if 0
+  if (std::fgetc(f.get()) != EOF)
+    fail("The map file is longer then expected.");
+#endif
 }
 
 template<typename T>

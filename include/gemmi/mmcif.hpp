@@ -77,7 +77,6 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   auto add_info = [&](std::string tag) {
     cif::TableView t = block.find(tag);
     if (t.length() >= 1) {
-      std::string value;
       bool first = true;
       for (const cif::TableView::Row &r : t)
         if (!cif::is_null(r[0])) {

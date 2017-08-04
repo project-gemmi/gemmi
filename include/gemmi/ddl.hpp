@@ -141,7 +141,6 @@ public:
     if (!enumeration_.empty() && !validate_enumeration(value, msg))
       return false;
     return true;
-    return true;
   }
 
 private:
