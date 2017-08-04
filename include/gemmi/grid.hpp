@@ -2,8 +2,6 @@
 //
 // 3d grid for volume density. CCP4 format for maps and masks.
 
-// TODO: handle big-endian files
-
 #ifndef GEMMI_GRID_HH
 #define GEMMI_GRID_HH
 
@@ -18,6 +16,18 @@
 
 namespace gemmi {
 
+inline bool is_little_endian() {
+  uint32_t x = 1;
+  return *reinterpret_cast<char *>(&x) == 1;
+}
+
+struct GridStats {
+  double dmin = NAN;
+  double dmax = NAN;
+  double dmean = NAN;
+  double rms = NAN;
+};
+
 // For now, for simplicity, the grid covers whole unit cell
 // and space group is P1.
 template<typename T=float>
@@ -26,8 +36,7 @@ struct Grid {
   mol::UnitCell unit_cell;
   std::vector<T> data;
   double spacing[3];
-  // data statistics
-  double dmin = NAN, dmax = NAN, dmean = NAN, rms = NAN;
+  GridStats stats;
   // stores raw headers if the grid was read from ccp4 map
   std::vector<char> ccp4_header;
 
@@ -115,17 +124,21 @@ struct Grid {
         }
   }
 
-  void calculate_statistics();
+  GridStats calculate_statistics() const;
   void read_ccp4(const std::string& path);
   void write_ccp4_map(const std::string& path, int mode=2) const;
   void write_ccp4_mask(const std::string& path, double threshold) const;
 
   // methods to access info from ccp4 headers, w is word number from the spec
-  uint32_t header_u32(int w) {
-    return *reinterpret_cast<uint32_t*>(ccp4_header.data() + 4 * (w - 1));
+  uint32_t header_u32(int w) const {
+    return *reinterpret_cast<const uint32_t*>(ccp4_header.data() + 4 * (w - 1));
   }
-  float header_float(int w) {
-    return *reinterpret_cast<float*>(ccp4_header.data() + 4 * (w - 1));
+  float header_float(int w) const {
+    return *reinterpret_cast<const float*>(ccp4_header.data() + 4 * (w - 1));
+  }
+  // ccp4 map header has mostly 80-byte strings
+  std::string header_str(int w, int len=80) const {
+    return std::string(ccp4_header.data() + 4 * (w - 1), len);
   }
 };
 
@@ -182,16 +195,16 @@ std::vector<char> make_ccp4_header(const Grid<T>& grid, int mode) {
   set_float(15, (float) grid.unit_cell.beta);
   set_float(16, (float) grid.unit_cell.gamma);
   set_tri_u32(17, 1, 2, 3); // MAPC, MAPR, MAPS
-  set_float(20, (float) grid.dmin);
-  set_float(21, (float) grid.dmax);
-  set_float(22, (float) grid.dmean);
+  set_float(20, (float) grid.stats.dmin);
+  set_float(21, (float) grid.stats.dmax);
+  set_float(22, (float) grid.stats.dmean);
   set_u32(23, 1); // ISPG
   set_u32(24, nsym * 80);
   std::memcpy(word_ptr(27), "CCP4", 4); // EXTTYP
   //set_u32(28, nversion);
   std::memcpy(word_ptr(53), "MAP ", 4);
-  set_u32(54, 0x00004144); // MACHST for little endian (0x11110000 for BE)
-  set_float(55, (float) grid.rms);
+  set_u32(54, is_little_endian() ? 0x00004144 : 0x11110000); // MACHST
+  set_float(55, (float) grid.stats.rms);
   set_u32(56, 1); // labels
   memset(word_ptr(57), ' ', 800 + nsym * 80);
   strcpy(word_ptr(57), "from unfinished GEMMI code");
@@ -202,26 +215,28 @@ std::vector<char> make_ccp4_header(const Grid<T>& grid, int mode) {
 } // namespace impl
 
 template<typename T>
-void Grid<T>::calculate_statistics() {
+GridStats Grid<T>::calculate_statistics() const {
+  GridStats st;
   if (data.empty())
-    return;
+    return st;
   double sum = 0;
   double sq_sum = 0;
-  dmin = dmax = data[0];
+  st.dmin = st.dmax = data[0];
   for (float d : data) {
     sum += d;
     sq_sum += d * d;
-    if (d < dmin)
-      dmin = d;
-    if (d > dmax)
-      dmax = d;
+    if (d < st.dmin)
+      st.dmin = d;
+    if (d > st.dmax)
+      st.dmax = d;
   }
-  dmean = sum / data.size();
-  rms = std::sqrt(sq_sum / data.size() - dmean * dmean);
-  //fprintf(stderr, "grid stats: min=%g max=%g mean=%g rms=%g\n",
-  //        dmin, dmax, dmean, rms);
+  st.dmean = sum / data.size();
+  st.rms = std::sqrt(sq_sum / data.size() - st.dmean * st.dmean);
+  return st;
 }
 
+// This function was tested only on little-endian machines,
+// let us know if you need support for other architectures.
 template<typename T>
 void Grid<T>::read_ccp4(const std::string& path) {
   impl::fileptr_t f(std::fopen(path.c_str(), "rb"), &std::fclose);
@@ -254,10 +269,10 @@ void Grid<T>::read_ccp4(const std::string& path) {
     if (axis < 1 || axis > 3)
       fail("Unexpected axis value in word " + std::to_string(i));
   }
-  dmin = header_float(20);
-  dmax = header_float(21);
-  dmean = header_float(22);
-  rms = header_float(55);
+  stats.dmin = header_float(20);
+  stats.dmax = header_float(21);
+  stats.dmean = header_float(22);
+  stats.rms = header_float(55);
   if (mode == 2) {
     size_t len = nu * nv * nw;
     data.resize(len);
