@@ -9,7 +9,7 @@
 #define USE_UNICODE
 #ifdef USE_UNICODE
 #include <clocale>  // for setlocale
-#include <cwchar>  // for wchar_t
+#include <cwchar>  // for wint_t
 #endif
 #define EXE_NAME "gemmi-map"
 #include "options.h"
@@ -45,7 +45,7 @@ void print_histogram(const std::vector<T>& data, double min, double max) {
     for (int j = 0; j < 80; ++j) {
       double h = bins[j] / max_h * rows;
 #ifdef USE_UNICODE
-      wchar_t c = ' ';
+      wint_t c = ' ';
       if (h > i) {
         c = 0x2588; // 0x2581 = one eighth block, ..., 0x2588 = full block
       } else if (h > i - 1) {
