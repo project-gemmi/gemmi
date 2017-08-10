@@ -34,12 +34,12 @@ input.o: input.cpp input.h $(igdir)/cifgz.hpp $(igdir)/cif.hpp \
 output.o: output.cpp output.h $(igdir)/to_pdb.hpp $(igdir)/model.hpp \
           $(igdir)/elem.hpp $(igdir)/unitcell.hpp $(igdir)/to_mmcif.hpp \
           $(igdir)/cifdoc.hpp $(igdir)/sprintf.hpp
-	$(CXX) $(FLAGS) -Wno-strict-aliasing -c $<
+	$(CXX) $(FLAGS) -fno-strict-aliasing -c $<
 
 convert.o: convert.cpp options.h input.h $(igdir)/to_cif.hpp \
            $(igdir)/to_json.hpp $(igdir)/to_mmcif.hpp $(igdir)/cifdoc.hpp \
            $(igdir)/util.hpp $(igdir)/numb.hpp $(igdir)/model.hpp
-	$(CXX) $(FLAGS) -Wno-strict-aliasing -c $<
+	$(CXX) $(FLAGS) -c $<
 
 gemmi-convert: convert.o input.o output.o
 	$(CXX) $(FLAGS) $< input.o output.o -o $@ -lz
