@@ -333,7 +333,7 @@ void convert(const char* input, FileType input_type,
   mol::Structure st;
   // for cif->cif we do either cif->DOM->Structure->DOM->cif or cif->DOM->cif
   bool modify_structure = (options[ExpandNcs] || options[SegmentAsChain]);
-  if (input_type == FileType::Cif) {
+  if (input_type == FileType::Cif || input_type == FileType::Json) {
     cif_in = cif_read_any(input);
     if ((output_type == FileType::Json || output_type == FileType::Cif) &&
         !modify_structure) {
@@ -380,7 +380,7 @@ void convert(const char* input, FileType input_type,
   }
 
   if (output_type == FileType::Json) {
-    if (input_type != FileType::Cif)
+    if (input_type != FileType::Cif && input_type != FileType::Json)
       gemmi::fail("Conversion to JSON is possible only from CIF");
     cif::JsonWriter writer(*os);
     if (options[Comcifs])
@@ -408,8 +408,8 @@ void convert(const char* input, FileType input_type,
       *os << " (total in " << st.models.size() << " models)";
     *os << ".\n";
   } else if (output_type == FileType::Cif) {
-    // cif to cif round trip is for testing only
-    if (input_type != FileType::Cif || modify_structure) {
+    if ((input_type != FileType::Cif && input_type != FileType::Json)
+        || modify_structure) {
       cif_in.blocks.clear();  // temporary, for testing
       cif_in.blocks.resize(1);
       update_cif_block(st, cif_in.blocks[0]);

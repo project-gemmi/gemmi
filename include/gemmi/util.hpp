@@ -8,7 +8,9 @@
 #include <algorithm>  // for equal, find
 #include <cctype>     // for tolower
 #include <cmath>      // for floor
+#include <cstdio>     // for FILE, fopen, fclose
 #include <iterator>   // for begin, end, make_move_iterator
+#include <memory>     // for unique_ptr
 #include <stdexcept>  // for runtime_error
 #include <string>
 #include <vector>
@@ -84,6 +86,25 @@ inline int iround(double d) { return static_cast<int>(std::floor(d+0.5)); }
 
 [[noreturn]]
 inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
+
+
+// file operations
+typedef std::unique_ptr<FILE, decltype(&std::fclose)> fileptr_t;
+
+inline fileptr_t file_open(const char *path, const char *mode) {
+  return fileptr_t(std::fopen(path, mode), &std::fclose);
+}
+
+inline std::size_t file_size(FILE* f, const std::string& path) {
+  if (std::fseek(f, 0, SEEK_END) != 0)
+    fail(path + ": fseek failed");
+  long length = std::ftell(f);
+  if (length < 0)
+    fail(path + ": ftell failed");
+  if (std::fseek(f, 0, SEEK_SET) != 0)
+    fail(path + ": fseek failed");
+  return length;
+}
 
 } // namespace gemmi
 #endif

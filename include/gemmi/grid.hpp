@@ -8,11 +8,10 @@
 #include <cmath>     // for NAN, sqrt
 #include <cstdio>    // for FILE
 #include <cstring>   // for memcpy
-#include <memory>    // for unique_ptr
 #include <typeinfo>  // for typeid
 #include <vector>
 #include "unitcell.hpp"
-#include "util.hpp"  // for fail
+#include "util.hpp"  // for fail, file_open
 
 namespace gemmi {
 
@@ -136,8 +135,6 @@ struct Grid {
 
 namespace impl {
 
-typedef std::unique_ptr<FILE, decltype(&std::fclose)> fileptr_t;
-
 template<typename TFile, typename TMem>
 void read_data(FILE* f, std::vector<TMem>& content) {
   if (typeid(TFile) == typeid(TMem)) {
@@ -179,7 +176,7 @@ void write_data(const std::vector<TMem>& content, FILE* f) {
 template<typename Out, typename In>
 void write_arrays(const std::string& path, const std::vector<char>& header,
                   const std::vector<In>& content) {
-  fileptr_t f(std::fopen(path.c_str(), "wb"), &std::fclose);
+  gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "wb");
   if (!f)
     fail("Failed to open file for writing: " + path);
   std::fwrite(header.data(), sizeof(char), header.size(), f.get());
@@ -257,7 +254,7 @@ GridStats Grid<T>::calculate_statistics() const {
 // let us know if you need support for other architectures.
 template<typename T>
 void Grid<T>::read_ccp4(const std::string& path) {
-  impl::fileptr_t f(std::fopen(path.c_str(), "rb"), &std::fclose);
+  gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "rb");
   if (!f)
     fail("Failed to open file: " + path);
   const size_t hsize = 1024;

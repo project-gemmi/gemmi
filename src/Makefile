@@ -28,7 +28,7 @@ gemmi-validate: validate.cpp options.h $(igdir)/cif.hpp \
 input.o: input.cpp input.h $(igdir)/cifgz.hpp $(igdir)/cif.hpp \
          $(igdir)/numb.hpp $(igdir)/cifdoc.hpp $(igdir)/mmcif.hpp \
          $(igdir)/model.hpp $(igdir)/pdb.hpp $(igdir)/pdbgz.hpp \
-	 $(igdir)/util.hpp
+	 $(igdir)/util.hpp $(igdir)/json.hpp
 	$(CXX) $(FLAGS) -c $<
 
 output.o: output.cpp output.h $(igdir)/to_pdb.hpp $(igdir)/model.hpp \

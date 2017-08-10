@@ -40,7 +40,11 @@ void print_histogram(const std::vector<T>& data, double min, double max) {
     bins[n]++;
   }
   double max_h = *std::max_element(std::begin(bins), std::end(bins));
+#ifdef USE_UNICODE
+  const int rows = 12;
+#else
   const int rows = 24;
+#endif
   for (int i = rows; i > 0; --i) {
     for (int j = 0; j < 80; ++j) {
       double h = bins[j] / max_h * rows;
