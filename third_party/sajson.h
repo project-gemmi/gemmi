@@ -395,6 +395,7 @@ namespace sajson {
         }
 #endif
 
+#ifndef SAJSON_NUMBERS_AS_STRINGS
         // valid iff get_type() is TYPE_INTEGER
         int get_integer_value() const {
             assert_type(TYPE_INTEGER);
@@ -446,6 +447,7 @@ namespace sajson {
                 return false;
             }
         }
+#endif
 
         // valid iff get_type() is TYPE_STRING
         size_t get_string_length() const {
@@ -466,7 +468,11 @@ namespace sajson {
 #ifndef SAJSON_NO_STD_STRING
         // valid iff get_type() is TYPE_STRING
         std::string as_string() const {
+#ifndef SAJSON_NUMBERS_AS_STRINGS
             assert_type(TYPE_STRING);
+#else
+            assert_type_2(TYPE_STRING, TYPE_DOUBLE);
+#endif
             return std::string(text + payload[0], text + payload[1]);
         }
 #endif
@@ -1609,6 +1615,7 @@ namespace sajson {
             return constants[exponent + 323];
         }
 
+#ifndef SAJSON_NUMBERS_AS_STRINGS
         std::pair<char*, type> parse_number(char* p) {
             bool negative = false;
             if ('-' == *p) {
@@ -1761,6 +1768,100 @@ namespace sajson {
                 return std::make_pair(p, TYPE_INTEGER);
             }
         }
+#else
+        std::pair<char*, type> parse_number(char* p) {
+            size_t start = p - input.get_data();
+            if ('-' == *p) {
+                ++p;
+                if (SAJSON_UNLIKELY(at_eof(p))) {
+                    return std::make_pair(make_error(p, ERROR_UNEXPECTED_END), TYPE_NULL);
+                }
+            }
+            if (*p == '0') {
+                ++p;
+                if (SAJSON_UNLIKELY(at_eof(p))) {
+                    return std::make_pair(make_error(p, ERROR_UNEXPECTED_END), TYPE_NULL);
+                }
+            } else {
+                unsigned char c = *p;
+                if (c < '0' || c > '9') {
+                    return std::make_pair(make_error(p, ERROR_INVALID_NUMBER), TYPE_NULL);
+                }
+
+                do {
+                    ++p;
+                    if (SAJSON_UNLIKELY(at_eof(p))) {
+                        return std::make_pair(make_error(p, ERROR_UNEXPECTED_END), TYPE_NULL);
+                    }
+                    c = *p;
+                } while (c >= '0' && c <= '9');
+            }
+
+            if ('.' == *p) {
+                ++p;
+                if (SAJSON_UNLIKELY(at_eof(p))) {
+                    return std::make_pair(make_error(p, ERROR_UNEXPECTED_END), TYPE_NULL);
+                }
+                char c = *p;
+                if (c < '0' || c > '9') {
+                    return std::make_pair(make_error(p, ERROR_INVALID_NUMBER), TYPE_NULL);
+                }
+
+                do {
+                    ++p;
+                    if (SAJSON_UNLIKELY(at_eof(p))) {
+                        return std::make_pair(make_error(p, ERROR_UNEXPECTED_END), TYPE_NULL);
+                    }
+
+                    c = *p;
+                } while (c >= '0' && c <= '9');
+            }
+
+            char e = *p;
+            if ('e' == e || 'E' == e) {
+                ++p;
+                if (SAJSON_UNLIKELY(at_eof(p))) {
+                    return std::make_pair(make_error(p, ERROR_UNEXPECTED_END), TYPE_NULL);
+                }
+
+                if ('-' == *p) {
+                    ++p;
+                    if (SAJSON_UNLIKELY(at_eof(p))) {
+                        return std::make_pair(make_error(p, ERROR_UNEXPECTED_END), TYPE_NULL);
+                    }
+                } else if ('+' == *p) {
+                    ++p;
+                    if (SAJSON_UNLIKELY(at_eof(p))) {
+                        return std::make_pair(make_error(p, ERROR_UNEXPECTED_END), TYPE_NULL);
+                    }
+                }
+
+                char c = *p;
+                if (SAJSON_UNLIKELY(c < '0' || c > '9')) {
+                    return std::make_pair(make_error(p, ERROR_MISSING_EXPONENT), TYPE_NULL);
+                }
+                for (;;) {
+                    ++p;
+                    if (SAJSON_UNLIKELY(at_eof(p))) {
+                        return std::make_pair(make_error(p, ERROR_UNEXPECTED_END), TYPE_NULL);
+                    }
+
+                    c = *p;
+                    if (c < '0' || c > '9') {
+                        break;
+                    }
+                }
+            }
+
+            size_t* out = allocator.reserve(2);
+            if (allocator.has_allocation_error()) {
+                return std::make_pair(oom(p), TYPE_NULL);
+            }
+            out[0] = start;
+            out[1] = p - input.get_data();
+            return std::make_pair(p, TYPE_DOUBLE);
+        }
+#endif
 
         bool install_array(size_t* array_base, size_t* array_end) {
             const size_t length = array_end - array_base;

@@ -10,6 +10,7 @@
 #include <string>
 
 #define SAJSON_NO_SORT
+#define SAJSON_NUMBERS_AS_STRINGS
 #include <sajson.h>
 
 #include "cifdoc.hpp" // for Document, etc
@@ -22,10 +23,8 @@ using std::size_t;
 
 std::string as_cif_value(const sajson::value& val) {
   switch (val.get_type()) {
-    case sajson::TYPE_INTEGER:
-      return std::to_string(val.get_integer_value());
     case sajson::TYPE_DOUBLE:
-      return std::to_string(val.get_double_value());
+      return val.as_string();
     case sajson::TYPE_NULL:
       return "?";
     case sajson::TYPE_STRING:
