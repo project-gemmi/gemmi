@@ -20,6 +20,19 @@ namespace gemmi {
 namespace cif {
 using std::size_t;
 
+std::string json_type_as_string(sajson::type t) {
+  switch (t) {
+    case sajson::TYPE_INTEGER: return "<integer>";
+    case sajson::TYPE_DOUBLE:  return "<double>";
+    case sajson::TYPE_NULL:    return "<null>";
+    case sajson::TYPE_FALSE:   return "<false>";
+    case sajson::TYPE_TRUE:    return "<true>";
+    case sajson::TYPE_STRING:  return "<string>";
+    case sajson::TYPE_ARRAY:   return "<array>";
+    case sajson::TYPE_OBJECT:  return "<object>";
+    default:           return "<unknown type>";
+  }
+}
 
 std::string as_cif_value(const sajson::value& val) {
   switch (val.get_type()) {
@@ -27,10 +40,13 @@ std::string as_cif_value(const sajson::value& val) {
       return val.as_string();
     case sajson::TYPE_NULL:
       return "?";
+    case sajson::TYPE_FALSE:
+      return ".";
     case sajson::TYPE_STRING:
       return quote(val.as_string());
     default:
-      fail("...");
+      fail("Unexpected " + json_type_as_string(val.get_type()) + " in JSON.");
+      return "";
   }
 }
 
@@ -65,8 +81,11 @@ inline void fill_document_from_sajson(Document& d, const sajson::document& s) {
     for (size_t j = 0; j != cif_cols; ++j) {
       std::string tag = category_name + category.get_object_key(j).as_string();
       sajson::value arr = category.get_object_value(j);
-      if (arr.get_type() != sajson::TYPE_ARRAY || arr.get_length() != cif_rows)
-        fail("Expected array of certain length");
+      if (arr.get_type() != sajson::TYPE_ARRAY)
+        fail("Expected array, got " + json_type_as_string(arr.get_type()));
+      if (arr.get_length() != cif_rows)
+        fail("Expected array of length " + std::to_string(cif_rows) + " not "
+             + std::to_string(arr.get_length()));
       if (cif_rows == 1) {
         items.emplace_back(tag, as_cif_value(arr.get_array_element(0)));
       } else {
@@ -83,12 +102,11 @@ inline void fill_document_from_sajson(Document& d, const sajson::document& s) {
 inline Document read_mmjson_insitu(char* buffer, size_t size,
                                    const std::string& name="mmJSON") {
   Document doc;
-  // TODO: avoid parsing JSON numbers
-  // TODO: avoid sorting
   sajson::document json = sajson::parse(sajson::dynamic_allocation(),
                                     sajson::mutable_string_view(size, buffer));
   if (!json.is_valid())
-    fail(name + ": failed to parse JSON file.");
+    fail(name + ":" + std::to_string(json.get_error_line()) + " error: " +
+         json.get_error_message_as_string());
   fill_document_from_sajson(doc, json);
   doc.source = name;
   return doc;
