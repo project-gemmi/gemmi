@@ -19,8 +19,9 @@ public:
   bool comcifs = false;  // conform to the COMCIFS CIF-JSON draft
   bool group_ddl2_categories = false;  // for mmJSON
   bool with_data_keyword = false;  // for mmJSON
-  bool use_bare_tags = false;  // "tag" instead of "_tag"
+  bool bare_tags = false;  // "tag" instead of "_tag"
   bool values_as_arrays = false;  // "_tag": ["value"]
+  bool lc_names = true; // write case-insensitive names as lower case
   int quote_numbers = 1;  // 0=never (no s.u.), 1=mix, 2=always
   std::string cif_dot = "null";  // how to convert '.' from CIF
   explicit JsonWriter(std::ostream& os) : os_(os), linesep_("\n ") {}
@@ -34,8 +35,9 @@ public:
   void set_mmjson() {
     group_ddl2_categories = true;
     with_data_keyword = true;
-    use_bare_tags = true;
+    bare_tags = true;
     values_as_arrays = true;
+    lc_names = false;
     quote_numbers = 0;
   }
 
@@ -156,7 +158,7 @@ private:
   void open_cat(const std::string& cat, size_t* tag_pos) {
     if (!cat.empty()) {
       change_indent(+1);
-      write_string(cat.substr(0, cat.size() - 1), use_bare_tags ? 1 : 0, true);
+      write_string(cat.substr(0, cat.size() - 1), bare_tags ? 1 : 0, lc_names);
       os_ << ": {" << linesep_;
       *tag_pos += cat.size() - 1;
     }
@@ -175,12 +177,12 @@ private:
     size_t ncol = loop.tags.size();
     const auto& vals = loop.values;
     std::string cat = get_loop_category(loop);
-    size_t tag_pos = use_bare_tags ? 1 : 0;
+    size_t tag_pos = bare_tags ? 1 : 0;
     open_cat(cat, &tag_pos);
     for (size_t i = 0; i < ncol; i++) {
       if (i != 0)
         os_ << "," << linesep_;
-      write_string(loop.tags[i].tag, tag_pos, true);
+      write_string(loop.tags[i].tag, tag_pos, lc_names);
       os_ << ": [";
       for (size_t j = i; j < vals.size(); j += ncol) {
         if (j != i)
@@ -195,13 +197,13 @@ private:
 
   // works for both block and frame
   void write_map(const std::string& name, const std::vector<Item>& items) {
-    write_string(name, 0, true);
+    write_string(name, 0, lc_names);
     os_ << ": ";
     change_indent(+1);
     char first = '{';
     bool has_frames = false;
     std::string cat;
-    size_t tag_pos = use_bare_tags ? 1 : 0;
+    size_t tag_pos = bare_tags ? 1 : 0;
     // When grouping into categories, only consecutive tags are grouped.
     std::set<std::string> seen_cats;
     for (const Item& item : items) {
@@ -215,7 +217,7 @@ private:
             if (seen_cats.insert(cat).second)
               open_cat(cat, &tag_pos);
           }
-          write_string(item.tv.tag, tag_pos, true);
+          write_string(item.tv.tag, tag_pos, lc_names);
           os_ << ": ";
           if (values_as_arrays)
             os_.put('[');
