@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <tinydir.h>
+#include "input.h"  // for is_pdb_code, mmcif_subpath
 
 #define EXE_NAME "gemmi-grep"
 #include "options.h"
@@ -299,16 +300,6 @@ private:
 static bool is_cif_file(const tinydir_file& f) {
   return !f.is_dir && (gemmi::ends_with(f.path, ".cif") ||
                        gemmi::ends_with(f.path, ".cif.gz"));
-}
-
-static bool is_pdb_code(const std::string& str) {
-  return str.length() == 4 && std::isdigit(str[0]) && std::isalnum(str[1]) &&
-                              std::isalnum(str[2]) && std::isalnum(str[3]);
-}
-
-static std::string mmcif_subpath(const std::string& code) {
-  std::string lc = gemmi::to_lower(code);
-  return "/structures/divided/mmCIF/" + lc.substr(1, 2) + "/" + lc + ".cif.gz";
 }
 
 int main(int argc, char **argv) {

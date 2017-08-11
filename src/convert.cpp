@@ -326,8 +326,8 @@ cif::Document make_crd(const mol::Structure& st) {
   return crd;
 }
 
-void convert(const char* input, FileType input_type,
-             const char* output, FileType output_type,
+void convert(const std::string& input, FileType input_type,
+             const std::string& output, FileType output_type,
              const std::vector<option::Option>& options) {
   cif::Document cif_in;
   mol::Structure st;
@@ -370,11 +370,11 @@ void convert(const char* input, FileType input_type,
 
   std::ostream* os;
   std::unique_ptr<std::ostream> os_deleter;
-  if (output != std::string("-")) {
+  if (output != "-") {
     os_deleter.reset(new std::ofstream(output));
     os = os_deleter.get();
     if (!os || !*os)
-      gemmi::fail("Failed to open for writing: " + std::string(output));
+      gemmi::fail("Failed to open for writing: " + output);
   } else {
     os = &std::cout;
   }
@@ -426,7 +426,7 @@ int main(int argc, char **argv) {
   auto options = parse.simple_parse(argc, argv, Usage);
   parse.require_positional_args(2);
 
-  const char* input = parse.nonOption(0);
+  std::string input = parse.nonOption(0);
   const char* output = parse.nonOption(1);
 
   std::map<std::string, FileType> filetypes {{"json", FileType::Json},
@@ -437,6 +437,12 @@ int main(int argc, char **argv) {
 
   FileType in_type = options[FormatIn] ? filetypes[options[FormatIn].arg]
                                        : get_format_from_extension(input);
+  if (in_type == FileType::Unknown && is_pdb_code(input)) {
+    if (const char* pdb_dir = getenv("PDB_DIR")) {
+      in_type = FileType::Cif;
+      input = pdb_dir + mmcif_subpath(input);
+    }
+  }
   if (in_type == FileType::Unknown) {
     std::cerr << "The input format cannot be determined from input"
                  " filename. Use option --from.\n";
