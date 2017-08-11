@@ -25,7 +25,7 @@
 #pragma once
 
 #include <assert.h>
-#include <stdarg.h>
+#include <stdint.h>
 #include <stddef.h>
 #include <string.h>
 #include <math.h>
@@ -293,58 +293,46 @@ namespace sajson {
         bool owns;
     };
 
-    union integer_storage {
+    namespace integer_storage {
         enum {
             word_length = 1
         };
 
-        static void store(size_t* location, int value) {
-            integer_storage is;
-            is.i = value;
-            *location = is.u;
+        inline int load(const size_t* location) {
+            int value;
+            memcpy(&value, location, sizeof(value));
+            return value;
         }
 
-        int i;
-        size_t u;
-    };
-    static_assert(sizeof(integer_storage) == sizeof(size_t), "integer_storage must have same size as one structure slot");
+        inline void store(size_t* location, int value) {
+            // NOTE: Most modern compilers optimize away this constant-size
+            // memcpy into a single instruction. If any don't, and treat
+            // punning through a union as legal, they can be special-cased.
+            static_assert(
+                sizeof(value) <= sizeof(*location),
+                "size_t must not be smaller than int");
+            memcpy(location, &value, sizeof(value));
+        }
+    }
 
-    union double_storage {
+    namespace double_storage {
         enum {
             word_length = sizeof(double) / sizeof(size_t)
         };
 
-#if defined(_M_IX86) || defined(__i386__) || defined(_X86_)
-        static double load(const size_t* location) {
-            return *reinterpret_cast<const double*>(location);
-        }
-        static void store(size_t* location, double value) {
-            *reinterpret_cast<double*>(location) = value;
-        }
-#else
-        static double load(const size_t* location) {
-            double_storage s;
-            for (unsigned i = 0; i < double_storage::word_length; ++i) {
-                s.u[i] = location[i];
-            }
-            return s.d;
+        inline double load(const size_t* location) {
+            double value;
+            memcpy(&value, location, sizeof(double));
+            return value;
         }
 
-        static void store(size_t* location, double value) {
-            double_storage ns;
-            ns.d = value;
-
-            for (int i = 0; i < ns.word_length; ++i) {
-                location[i] = ns.u[i];
-            }
+        inline void store(size_t* location, double value) {
+            // NOTE: Most modern compilers optimize away this constant-size
+            // memcpy into a single instruction. If any don't, and treat
+            // punning through a union as legal, they can be special-cased.
+            memcpy(location, &value, sizeof(double));
         }
-
-        double d;
-        size_t u[word_length];
-#endif
-    };
-    // TODO: reinstate with c++03 implementation
-    //static_assert(sizeof(double_storage) == sizeof(double), "double_storage should have same size as double");
+    }
 
     class value {
     public:
@@ -408,9 +396,7 @@ namespace sajson {
         // valid iff get_type() is TYPE_INTEGER
         int get_integer_value() const {
             assert_type(TYPE_INTEGER);
-            integer_storage s;
-            s.u = payload[0];
-            return s.i;
+            return integer_storage::load(payload);
         }
 
         // valid iff get_type() is TYPE_DOUBLE
@@ -548,7 +534,8 @@ namespace sajson {
         ERROR_EXPECTED_NULL,
         ERROR_EXPECTED_FALSE,
         ERROR_EXPECTED_TRUE,
-        ERROR_MSSING_EXPONENT,
+        ERROR_INVALID_NUMBER,
+        ERROR_MISSING_EXPONENT,
         ERROR_ILLEGAL_CODEPOINT,
         ERROR_INVALID_UNICODE_ESCAPE,
         ERROR_UNEXPECTED_END_OF_UTF16,
@@ -663,7 +650,8 @@ namespace sajson {
                 case ERROR_EXPECTED_NULL: return  "expected 'null'";
                 case ERROR_EXPECTED_FALSE: return  "expected 'false'";
                 case ERROR_EXPECTED_TRUE: return  "expected 'true'";
-                case ERROR_MSSING_EXPONENT: return  "missing exponent";
+                case ERROR_INVALID_NUMBER: return "invalid number";
+                case ERROR_MISSING_EXPONENT: return  "missing exponent";
                 case ERROR_ILLEGAL_CODEPOINT: return  "illegal unprintable codepoint in string";
                 case ERROR_INVALID_UNICODE_ESCAPE: return  "invalid character in unicode escape";
                 case ERROR_UNEXPECTED_END_OF_UTF16: return  "unexpected end of input during UTF-16 surrogate pair";
@@ -1639,29 +1627,33 @@ namespace sajson {
                 if (SAJSON_UNLIKELY(at_eof(p))) {
                     return std::make_pair(make_error(p, ERROR_UNEXPECTED_END), TYPE_NULL);
                 }
-            } else for (;;) {
+            } else {
                 unsigned char c = *p;
                 if (c < '0' || c > '9') {
-                    break;
+                    return std::make_pair(make_error(p, ERROR_INVALID_NUMBER), TYPE_NULL);
                 }
 
-                ++p;
-                if (SAJSON_UNLIKELY(at_eof(p))) {
-                    return std::make_pair(make_error(p, ERROR_UNEXPECTED_END), TYPE_NULL);
-                }
+                do {
+                    ++p;
+                    if (SAJSON_UNLIKELY(at_eof(p))) {
+                        return std::make_pair(make_error(p, ERROR_UNEXPECTED_END), TYPE_NULL);
+                    }
 
-                unsigned char digit = c - '0';
+                    unsigned char digit = c - '0';
 
-                if (SAJSON_UNLIKELY(!try_double && i > INT_MAX / 10 - 9)) {
-                    // TODO: could split this into two loops
-                    try_double = true;
-                    d = i;
-                }
-                if (SAJSON_UNLIKELY(try_double)) {
-                    d = 10.0 * d + digit;
-                } else {
-                    i = 10 * i + digit;
-                }
+                    if (SAJSON_UNLIKELY(!try_double && i > INT_MAX / 10 - 9)) {
+                        // TODO: could split this into two loops
+                        try_double = true;
+                        d = i;
+                    }
+                    if (SAJSON_UNLIKELY(try_double)) {
+                        d = 10.0 * d + digit;
+                    } else {
+                        i = 10 * i + digit;
+                    }
+
+                    c = *p;
+                } while (c >= '0' && c <= '9');
             }
 
             int exponent = 0;
@@ -1675,19 +1667,21 @@ namespace sajson {
                 if (SAJSON_UNLIKELY(at_eof(p))) {
                     return std::make_pair(make_error(p, ERROR_UNEXPECTED_END), TYPE_NULL);
                 }
-                for (;;) {
-                    char c = *p;
-                    if (c < '0' || c > '9') {
-                        break;
-                    }
+                char c = *p;
+                if (c < '0' || c > '9') {
+                    return std::make_pair(make_error(p, ERROR_INVALID_NUMBER), TYPE_NULL);
+                }
 
+                do {
                     ++p;
                     if (SAJSON_UNLIKELY(at_eof(p))) {
                         return std::make_pair(make_error(p, ERROR_UNEXPECTED_END), TYPE_NULL);
                     }
                     d = d * 10 + (c - '0');
                     --exponent;
-                }
+
+                    c = *p;
+                } while (c >= '0' && c <= '9');
             }
 
             char e = *p;
@@ -1719,7 +1713,7 @@ namespace sajson {
 
                 char c = *p;
                 if (SAJSON_UNLIKELY(c < '0' || c > '9')) {
-                    return std::make_pair(make_error(p, ERROR_MSSING_EXPONENT), TYPE_NULL);
+                    return std::make_pair(make_error(p, ERROR_MISSING_EXPONENT), TYPE_NULL);
                 }
                 for (;;) {
                     exp = 10 * exp + (c - '0');
