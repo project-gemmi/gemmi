@@ -17,17 +17,18 @@ using a corresponding DDL1/DDL2 dictionary.
 .. literalinclude:: validate-help.txt
    :language: console
 
-gemmi-convert (cif->json)
--------------------------
+gemmi-convert (cif<->json)
+--------------------------
 
-Converts CIF to JSON, aiming to be compatible with the COMCIFS spec
-when `the draft`_ is finalized and agreed__ upon.
+Converts between CIF and JSON. The JSON representation of the CIF data
+can be customized. In particular we support CIF-JSON_ standard from COMCIFS
+and mmJSON_ standard from PDBj (the latter is specific to mmCIF files).
 
 The same program can do other file conversion, so only part of the help
 message is relevant here.
 
-.. _the draft: http://comcifs.github.io/cif-json
-__ http://www.iucr.org/iucr-top/lists/cif-developers/
+.. _CIF-JSON: http://comcifs.github.io/cif-json
+.. _mmJSON: https://pdbj.org/help/mmjson?lang=en
 
 .. literalinclude:: convert-help.txt
    :language: console

@@ -155,6 +155,23 @@ Python
 TODO
 
 
+mmJSON format
+=============
+
+The mmJSON_ format is a JSON representation of the mmCIF data.
+It is available from PDBj:
+
+.. code-block:: none
+
+    curl -o 5MOO.json.gz 'https://pdbj.org/rest/downloadPDBfile?id=5MOO&format=mmjson-all'
+
+Gemmi can read and write files in this format in a similar way as it reads
+and write mmCIF files.
+
+.. _mmJSON: https://pdbj.org/help/mmjson?lang=en
+
+TODO: examples
+
 Model - Chain - Residue - Atom
 ==============================
 
