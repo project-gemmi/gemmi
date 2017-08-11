@@ -373,6 +373,7 @@ namespace sajson {
             return value(get_element_type(element), payload + get_element_value(element), text);
         }
 
+#ifndef SAJSON_NO_SORT
         // valid iff get_type() is TYPE_OBJECT
         value get_value_of_key(const string& key) const {
             assert_type(TYPE_OBJECT);
@@ -392,6 +393,7 @@ namespace sajson {
                     && (i->key_end - i->key_start) == key.length()
                     && memcmp(key.data(), text + i->key_start, key.length()) == 0)? i - start : get_length();
         }
+#endif
 
         // valid iff get_type() is TYPE_INTEGER
         int get_integer_value() const {
@@ -1783,10 +1785,12 @@ namespace sajson {
         bool install_object(size_t* object_base, size_t* object_end) {
             assert((object_end - object_base) % 3 == 0);
             const size_t length_times_3 = object_end - object_base;
+#ifndef SAJSON_NO_SORT
             std::sort(
                 reinterpret_cast<object_key_record*>(object_base),
                 reinterpret_cast<object_key_record*>(object_end),
                 object_key_comparator(input.get_data()));
+#endif
 
             size_t* const new_base = allocator.reserve(length_times_3 + 1);
             if (SAJSON_UNLIKELY(allocator.has_allocation_error())) {

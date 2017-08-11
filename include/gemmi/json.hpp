@@ -9,6 +9,7 @@
 #include <cstdio>     // for FILE
 #include <string>
 
+#define SAJSON_NO_SORT
 #include <sajson.h>
 
 #include "cifdoc.hpp" // for Document, etc
