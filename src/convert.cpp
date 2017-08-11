@@ -388,7 +388,7 @@ void convert(const char* input, FileType input_type,
     if (options[Mmjson])
       writer.set_mmjson();
     if (options[Bare])
-      writer.use_bare_tags = true;
+      writer.bare_tags = true;
     if (options[Numb]) {
       char first_letter = options[Numb].arg[0];
       if (first_letter == 'q')
