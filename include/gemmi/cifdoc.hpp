@@ -10,7 +10,7 @@
 #include <cassert>
 #include <cctype>    // for isalpha
 #include <cmath>     // for NAN
-#include <cstring>   // for strchr
+#include <cstring>   // for memchr
 #include <initializer_list>
 #include <iosfwd>    // for size_t, istream, ptrdiff_t
 #include <new>
@@ -571,15 +571,16 @@ inline bool is_text_field(const std::string& val) {
 }
 
 inline std::string quote(std::string v) {
-  if (v.empty())
-    return "''";
-  if (std::strchr(v.c_str(), '\n'))
-    return ";" + v + "\n;";
-  if (std::all_of(v.begin(), v.end(), [](char c) { return std::isalpha(c); }))
+  // strings with '(' happen to be quoted in mmCIF files, so we do the same
+  if (v.find_first_of(" \t\r\n'\"()[]{}#") == std::string::npos &&
+      v[0] != '_' && v[0] != '$' && v[0] != '\0' &&
+      (v.size() > 1 || (v[0] != '.' && v[0] != '?')))
     return v;
-  if (std::strchr(v.c_str(), '\'') == nullptr)
+  if (std::memchr(v.c_str(), '\n', v.size()))
+    return ";" + v + "\n;";
+  if (std::memchr(v.c_str(), '\'', v.size()) == nullptr)
     return "'" + v + "'";
-  if (std::strchr(v.c_str(), '"') == nullptr)
+  if (std::memchr(v.c_str(), '"', v.size()) == nullptr)
     return '"' + v + '"';
   return ";" + v + "\n;";
 }
