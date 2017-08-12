@@ -177,8 +177,6 @@ template<typename Out, typename In>
 void write_arrays(const std::string& path, const std::vector<char>& header,
                   const std::vector<In>& content) {
   gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "wb");
-  if (!f)
-    fail("Failed to open file for writing: " + path);
   std::fwrite(header.data(), sizeof(char), header.size(), f.get());
   write_data<Out>(content, f.get());
 }
@@ -255,8 +253,6 @@ GridStats Grid<T>::calculate_statistics() const {
 template<typename T>
 void Grid<T>::read_ccp4(const std::string& path) {
   gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "rb");
-  if (!f)
-    fail("Failed to open file: " + path);
   const size_t hsize = 1024;
   ccp4_header.resize(hsize);
   if (fread(ccp4_header.data(), 1, hsize, f.get()) != hsize)

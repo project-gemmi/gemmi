@@ -23,7 +23,7 @@ inline size_t estimate_uncompressed_size(const std::string& path) {
   if ((file = std::fopen(path.c_str(), "rb")) == nullptr)
 #endif
     fail("Failed to open file: " + path);
-  std::unique_ptr<FILE, decltype(&fclose)> cleanup(file, &fclose);
+  std::unique_ptr<FILE, decltype(&std::fclose)> cleanup(file, &std::fclose);
   if (std::fseek(file, -4, SEEK_END) != 0)
     fail("fseek() failed (empty file?): " + path);
   long pos = std::ftell(file);

@@ -92,7 +92,14 @@ inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 typedef std::unique_ptr<FILE, decltype(&std::fclose)> fileptr_t;
 
 inline fileptr_t file_open(const char *path, const char *mode) {
-  return fileptr_t(std::fopen(path, mode), &std::fclose);
+  std::FILE* file;
+#ifdef _WIN32
+  if (::fopen_s(&file, path, mode) != 0)
+#else
+  if ((file = std::fopen(path, mode)) == nullptr)
+#endif
+    fail("Failed to open file: " + std::string(path));
+  return fileptr_t(file, &std::fclose);
 }
 
 inline std::size_t file_size(FILE* f, const std::string& path) {
