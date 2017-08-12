@@ -10,7 +10,7 @@
 #include <optionparser.h>
 #include "gemmi/version.hpp"
 
-enum { Help=1001, Version=1002 };
+enum { NoOp=0, Help=1, Version=2 };
 
 inline std::vector<int> parse_comma_separated_ints(const char* arg) {
   std::vector<int> result;
@@ -101,7 +101,7 @@ struct OptParser : option::Parser {
       printf("%s %s\n", EXE_NAME, GEMMI_VERSION);
       std::exit(0);
     }
-    if (options[0]) { // Unknown
+    if (options[NoOp]) {
       fprintf(stderr, "Invalid option.\n");
       option::printUsage(fwrite, stderr, usage);
       std::exit(2);

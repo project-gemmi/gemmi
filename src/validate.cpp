@@ -111,10 +111,10 @@ inline void infer_valtypes(cif::Document &d) {
 }
 
 
-enum OptionIndex { Unknown, Fast, Stat, Types, Quiet, Ddl };
+enum OptionIndex { Fast=3, Stat, Types, Quiet, Ddl };
 const option::Descriptor Usage[] = {
-  { Unknown, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
-                                   "\n\nOptions:" },
+  { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
+                                "\n\nOptions:" },
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
   { Version, 0, "V", "version", Arg::None,
     "  -V, --version  \tDisplay version information and exit." },

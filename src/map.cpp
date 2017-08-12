@@ -16,10 +16,10 @@
 
 namespace mol = gemmi::mol;
 
-enum OptionIndex { Unknown, Verbose, OutputMode };
+enum OptionIndex { Verbose=3, OutputMode };
 
 static const option::Descriptor Usage[] = {
-  { Unknown, 0, "", "", Arg::None,
+  { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] CCP4_MAP[...]\n" },
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
   { Version, 0, "V", "version", Arg::None,

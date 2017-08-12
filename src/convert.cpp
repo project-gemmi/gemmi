@@ -29,11 +29,11 @@ struct ConvArg: public Arg {
   }
 };
 
-enum OptionIndex { Unknown, Verbose, FormatIn, FormatOut,
+enum OptionIndex { Verbose=3, FormatIn, FormatOut,
                    Comcifs, Mmjson, Bare, Numb, CifDot,
                    ExpandNcs, IotbxCompat, SegmentAsChain };
 static const option::Descriptor Usage[] = {
-  { Unknown, 0, "", "", Arg::None,
+  { NoOp, 0, "", "", Arg::None,
     "Usage:"
     "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
     "\n\nwith possible conversions: cif->json and cif<->pdb."
@@ -46,7 +46,7 @@ static const option::Descriptor Usage[] = {
     "  --from=pdb|cif  \tInput format (default: from the file extension)." },
   { FormatOut, 0, "", "to", ConvArg::FileFormat,
     "  --to=json|pdb  \tOutput format (default: from the file extension)." },
-  { Unknown, 0, "", "", Arg::None, "\nCIF output options:" },
+  { NoOp, 0, "", "", Arg::None, "\nCIF output options:" },
   { Comcifs, 0, "c", "comcifs", Arg::None,
     "  -c, --comcifs  \tConform to the COMCIFS CIF-JSON standard draft." },
   { Mmjson, 0, "m", "mmjson", Arg::None,
@@ -60,14 +60,14 @@ static const option::Descriptor Usage[] = {
                              "\v  mix (default) - quote only numbs with s.u." },
   { CifDot, 0, "", "dot", Arg::Required,
     "  --dot=STRING  \tJSON representation of CIF's '.' (default: null)." },
-  { Unknown, 0, "", "", Arg::None, "\nMacromolecular options:" },
+  { NoOp, 0, "", "", Arg::None, "\nMacromolecular options:" },
   { ExpandNcs, 0, "", "expand-ncs", Arg::None,
     "  --expand-ncs  \tExpand strict NCS specified in MTRIXn or equivalent." },
   { IotbxCompat, 0, "", "iotbx-compat", Arg::None,
     "  --iotbx-compat  \tLimited compatibility with iotbx (details in docs)." },
   { SegmentAsChain, 0, "", "segment-as-chain", Arg::None,
     "  --segment-as-chain \tAppend segment id to label_asym_id (chain name)." },
-  { Unknown, 0, "", "", Arg::None,
+  { NoOp, 0, "", "", Arg::None,
     "\nWhen output file is -, write to standard output." },
   { 0, 0, 0, 0, 0, 0 }
 };

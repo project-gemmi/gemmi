@@ -8,7 +8,7 @@
 
 namespace mol = gemmi::mol;
 
-enum OptionIndex { Unknown, Verbose, FormatIn, Threshold, GridDims, Radius};
+enum OptionIndex { Verbose=3, FormatIn, Threshold, GridDims, Radius};
 
 struct MaskArg {
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
@@ -17,7 +17,7 @@ struct MaskArg {
 };
 
 static const option::Descriptor Usage[] = {
-  { Unknown, 0, "", "", Arg::None,
+  { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] INPUT output.msk"
     "\n\nINPUT is either a CCP4 map or a coordinate file." },
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
@@ -26,10 +26,10 @@ static const option::Descriptor Usage[] = {
   { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { FormatIn, 0, "", "from", MaskArg::FileFormat,
     "  --from=ccp4|pdb|cif  \tInput format (default: from file extension)." },
-  { Unknown, 0, "", "", Arg::None, "\nOptions for map to mask conversions:" },
+  { NoOp, 0, "", "", Arg::None, "\nOptions for map to mask conversions:" },
   { Threshold, 0, "t", "threshold", Arg::Float,
     "  -t, --threshold  \tMask map below the threshold." },
-  { Unknown, 0, "", "", Arg::None, "\nOptions for model masking:" },
+  { NoOp, 0, "", "", Arg::None, "\nOptions for model masking:" },
   { GridDims, 0, "g", "grid", Arg::Int3,
     "  -g, --grid=NX,NY,NZ  \tGrid sampling (default: ~1A spacing)." },
   { Radius, 0, "r", "radius", Arg::Float,

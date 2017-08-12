@@ -21,12 +21,12 @@ namespace cif = gemmi::cif;
 namespace rules = gemmi::cif::rules;
 
 
-enum OptionIndex { Unknown, FromFile, Recurse, MaxCount, OneBlock,
+enum OptionIndex { FromFile=3, Recurse, MaxCount, OneBlock,
                    WithFileName, NoBlockName, WithLineNumbers, WithTag,
                    Summarize, MatchingFiles, NonMatchingFiles, Count, Raw };
 
 const option::Descriptor Usage[] = {
-  { Unknown, 0, "", "", Arg::None,
+  { NoOp, 0, "", "", Arg::None,
     "Usage: " EXE_NAME " [options] TAG FILE_OR_DIR_OR_PDBID[...]\n"
     "       " EXE_NAME " -f FILE [options] TAG\n"
     "Search for TAG in CIF files."
