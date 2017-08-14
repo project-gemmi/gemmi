@@ -25,7 +25,7 @@ def gather_data():
     writer = csv.writer(sys.stdout, dialect='excel-tab')
     writer.writerow(['code', 'na_chains', 'vs', 'vm', 'd_min', 'date', 'group'])
     for path in util.get_file_paths_from_args():
-        block = cif.read_any(path).sole_block()
+        block = cif.read(path).sole_block()
         code = cif.as_string(block.find_value('_entry.id'))
         na = sum('nucleotide' in t[0] for t in block.find('_entity_poly.type'))
         vs = block.find_value('_exptl_crystal.density_percent_sol')

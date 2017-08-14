@@ -59,7 +59,7 @@ def check_entity_formula_weight(block):
 
 def main():
     for path in util.get_file_paths_from_args():
-        block = cif.read_any(path).sole_block()
+        block = cif.read(path).sole_block()
         check_chem_comp_formula_weight(block)
         check_entity_formula_weight(block)
 

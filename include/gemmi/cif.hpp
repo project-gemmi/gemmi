@@ -11,9 +11,7 @@
 #include <string>
 
 #include <tao/pegtl.hpp>
-#ifdef CIF_VALIDATE_SHOW_TRACE
-#include <tao/pegtl/contrib/tracer.hpp>
-#endif
+//#include <tao/pegtl/contrib/tracer.hpp>  // for debugging
 
 #include "cifdoc.hpp" // for Document, etc
 
@@ -118,7 +116,6 @@ error_msg(rules::datablockname) = "unnamed DataBlock";
 error_msg(rules::framename) = "unnamed save_ frame";
 #undef error_msg
 template<typename T> const std::string Errors<T>::msg = "parse error";
-
 
 // **** parsing actions that fill the storage ****
 
@@ -234,16 +231,35 @@ inline Document read_istream(std::istream &is,
 
 template<typename Input> bool check_syntax(Input&& in, std::string* msg) {
   try {
-#ifdef CIF_VALIDATE_SHOW_TRACE
-    return pegtl::parse<rules::file, pegtl::nothing, pegtl::tracer>(in);
-#else
     return pegtl::parse<rules::file, pegtl::nothing, Errors>(in);
-#endif
   } catch (pegtl::parse_error& e) {
     if (msg)
       *msg = e.what();
     return false;
   }
+}
+
+// A function for transparent reading of stdin and/or gzipped files
+// in addition to normal CIF files. For example, if used as:
+//   Document doc = read_any(MaybeStdin(argv[1]));
+// it reads from stdin if argv[1] is "-", or from a file otherwise.
+template<typename T>
+Document read_any(T&& input) {
+  if (input.is_stdin())
+    return read_cstream(stdin, 16*1024, "stdin");
+  if (std::unique_ptr<char[]> mem = input.memory())
+    return read_memory(mem.get(), input.mem_size(), input.path().c_str());
+  return read_file(input.path());
+}
+
+template<typename T>
+bool check_syntax_any(T&& input, std::string* msg) {
+  if (std::unique_ptr<char[]> mem = input.memory()) {
+    pegtl::memory_input<> in(mem.get(), input.mem_size(), input.path());
+    return check_syntax(in, msg);
+  }
+  pegtl::file_input<> in(input.path());
+  return check_syntax(in, msg);
 }
 
 } // namespace cif

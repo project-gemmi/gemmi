@@ -1,7 +1,7 @@
 
 .SUFFIXES:
 
-#CXX=g++-7
+CXX=g++-7
 CXXSTD=-std=c++11
 PYTHON=python
 PYTHON_CONFIG=$(PYTHON)-config
@@ -22,10 +22,10 @@ py: gemmi.so
 igdir=../include/gemmi
 
 gemmi-validate: validate.cpp options.h $(igdir)/cif.hpp \
-                $(igdir)/ddl.hpp $(igdir)/cifgz.hpp $(igdir)/numb.hpp
+                $(igdir)/ddl.hpp $(igdir)/gz.hpp $(igdir)/numb.hpp
 	$(CXX) $(FLAGS) $< -o $@ -lz
 
-input.o: input.cpp input.h $(igdir)/cifgz.hpp $(igdir)/cif.hpp \
+input.o: input.cpp input.h $(igdir)/gz.hpp $(igdir)/cif.hpp \
          $(igdir)/numb.hpp $(igdir)/cifdoc.hpp $(igdir)/mmcif.hpp \
          $(igdir)/model.hpp $(igdir)/pdb.hpp $(igdir)/pdbgz.hpp \
 	 $(igdir)/util.hpp $(igdir)/json.hpp
@@ -44,7 +44,7 @@ convert.o: convert.cpp options.h input.h $(igdir)/to_cif.hpp \
 gemmi-convert: convert.o input.o output.o
 	$(CXX) $(FLAGS) $< input.o output.o -o $@ -lz
 
-gemmi-grep: grep.cpp options.h $(igdir)/cif.hpp $(igdir)/cifgz.hpp
+gemmi-grep: grep.cpp options.h $(igdir)/cif.hpp $(igdir)/gz.hpp
 	$(CXX) $(FLAGS) $< -o $@ -lz
 
 gemmi-mask: mask.cpp options.h input.h input.o $(igdir)/grid.hpp \
@@ -54,10 +54,6 @@ gemmi-mask: mask.cpp options.h input.h input.o $(igdir)/grid.hpp \
 gemmi-map: map.cpp options.h input.h input.o $(igdir)/grid.hpp \
            $(igdir)/unitcell.hpp
 	$(CXX) $(FLAGS) $< input.o -o $@ -lz
-
-# for debugging only
-trace: validate.cpp options.h $(igdir)/cif.hpp
-	$(CXX) -DCIF_VALIDATE_SHOW_TRACE $(FLAGS) $< -o $@ -lz
 
 pygemmi.o: ../pygemmi.cpp $(igdir)/cif.hpp $(igdir)/to_json.hpp \
            $(igdir)/numb.hpp $(igdir)/to_cif.hpp $(igdir)/elem.hpp

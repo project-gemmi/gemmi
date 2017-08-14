@@ -1,6 +1,7 @@
 // Compare pairs of columns from the _atom_site table.
 // Compiled with: g++-6 -O2 -Iinclude -Ithird_party auth_label.cc -lstdc++fs -lz
-#include <gemmi/cifgz.hpp>
+#include <gemmi/gz.hpp>
+#include <gemmi/cif.hpp>
 #include <iostream>
 #include <experimental/filesystem>  // just <filesystem> in C++17
 
@@ -25,7 +26,7 @@ int main(int argc, char* argv[]) {
   for (auto& p : fs::recursive_directory_iterator(argv[1])) {
     std::string path = p.path().u8string();
     if (ends_with(path, ".cif") or ends_with(path, ".cif.gz")) {
-      const cif::Document doc = cif::read_any(path);
+      const cif::Document doc = cif::read_any(gemmi::MaybeGzipped(path));
       // What author's atom names were changed?
       print_differences(doc.sole_block(), "atom_id");
       // What author's residue names were changed?

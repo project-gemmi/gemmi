@@ -2,7 +2,8 @@
 
 // This file exists only to make compilation faster.
 
-#include "gemmi/cifgz.hpp"
+#include "gemmi/gz.hpp"
+#include "gemmi/cif.hpp"
 #include "gemmi/mmcif.hpp"
 #include "gemmi/pdbgz.hpp"
 #include "gemmi/json.hpp"
@@ -11,7 +12,7 @@
 gemmi::cif::Document cif_read_any(const std::string& path) {
   if (gemmi::ends_with(path, "json") || gemmi::ends_with(path, "js"))
     return gemmi::cif::read_mmjson(path);
-  return gemmi::cif::read_any(path);
+  return gemmi::cif::read_any(gemmi::MaybeGzipped(path));
 }
 
 gemmi::mol::Structure mmcif_read_atoms(const gemmi::cif::Document& doc) {

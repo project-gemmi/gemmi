@@ -113,6 +113,18 @@ inline std::size_t file_size(FILE* f, const std::string& path) {
   return length;
 }
 
+// for transparent handling of stdin along filenames
+class MaybeStdin {
+public:
+  explicit MaybeStdin(const std::string& path) : path_(path) {}
+  bool is_stdin() const { return path_ == "-"; };
+  const std::string& path() const { return path_; };
+  size_t mem_size() const { return 0; };
+  std::unique_ptr<char[]> memory() { return nullptr; }
+private:
+  std::string path_;
+};
+
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

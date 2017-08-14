@@ -2,15 +2,13 @@
 //
 // Functions for transparent reading of gzipped files. Uses zlib.
 
-#ifndef GEMMI_CIFGZ_HPP_
-#define GEMMI_CIFGZ_HPP_
-#include "cif.hpp"
-#include "util.hpp"  // ends_with
+#ifndef GEMMI_GZ_HPP_
+#define GEMMI_GZ_HPP_
+#include "util.hpp"  // ends_with, MaybeStdin
 #include <cstdio>
 #include <zlib.h>
 
 namespace gemmi {
-namespace cif {
 
 // Throws if the size is not found or if it is suspicious.
 // Anything outside of the arbitrary limits from 1 to 10x of the compressed
@@ -23,7 +21,7 @@ inline size_t estimate_uncompressed_size(const std::string& path) {
   if ((file = std::fopen(path.c_str(), "rb")) == nullptr)
 #endif
     fail("Failed to open file: " + path);
-  std::unique_ptr<FILE, decltype(&std::fclose)> cleanup(file, &std::fclose);
+  std::unique_ptr<FILE, decltype(&fclose)> cleanup(file, &fclose);
   if (std::fseek(file, -4, SEEK_END) != 0)
     fail("fseek() failed (empty file?): " + path);
   long pos = std::ftell(file);
@@ -61,29 +59,21 @@ inline std::unique_ptr<char[]> gunzip_to_memory(const std::string& path,
   return mem;
 }
 
-inline Document read_any(const std::string& path) {
-  if (path == "-")
-    return read_cstream(stdin, 16*1024, "stdin");
-  if (ends_with(path, ".gz")) {
-    size_t orig_size = estimate_uncompressed_size(path);
-    std::unique_ptr<char[]> mem = cif::gunzip_to_memory(path, orig_size);
-    return read_memory(mem.get(), orig_size, path.c_str());
+class MaybeGzipped : public MaybeStdin {
+public:
+  explicit MaybeGzipped(const std::string& path)
+    : MaybeStdin(path), mem_size_(0) {}
+  size_t mem_size() const { return mem_size_; };
+  std::unique_ptr<char[]> memory() {
+    if (!ends_with(path(), ".gz"))
+      return MaybeStdin::memory();
+    mem_size_ = estimate_uncompressed_size(path());
+    return gunzip_to_memory(path(), mem_size_);
   }
-  return read_file(path);
-}
+private:
+  size_t mem_size_;
+};
 
-inline bool check_syntax_any(const std::string& path, std::string* msg) {
-  if (gemmi::ends_with(path, ".gz")) {
-    size_t orig_size = cif::estimate_uncompressed_size(path);
-    std::unique_ptr<char[]> mem = cif::gunzip_to_memory(path, orig_size);
-    tao::pegtl::memory_input<> in(mem.get(), orig_size, path);
-    return cif::check_syntax(in, msg);
-  }
-  tao::pegtl::file_input<> in(path);
-  return cif::check_syntax(in, msg);
-}
-
-} // namespace cif
 } // namespace gemmi
 
 #endif

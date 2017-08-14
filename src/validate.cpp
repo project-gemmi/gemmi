@@ -1,7 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/cif.hpp"
-#include "gemmi/cifgz.hpp"
+#include "gemmi/gz.hpp"
 #include "gemmi/ddl.hpp"
 #include <cstring>
 #include <cstdio>
@@ -150,9 +150,9 @@ int main(int argc, char **argv) {
     bool ok = true;
     try {
       if (options[Fast]) {
-        ok = cif::check_syntax_any(path, &msg);
+        ok = cif::check_syntax_any(gemmi::MaybeGzipped(path), &msg);
       } else {
-        cif::Document d = cif::read_any(path);
+        cif::Document d = cif::read_any(gemmi::MaybeGzipped(path));
         if (options[Types])
           infer_valtypes(d);
         if (options[Stat])

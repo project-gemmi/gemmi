@@ -121,6 +121,19 @@ inline Document read_mmjson(const std::string& path) {
   return read_mmjson_insitu(buffer.data(), buffer.size(), path);
 }
 
+template<typename T>
+Document read_any_mmjson(const T& input) {
+  /*
+  if (input.is_stdin()) {
+    size_t size = 16*1024;
+    // getline + std::cin?
+    return read_mmjson_insitu(stdin, size, "stdin");
+  } */
+  if (std::unique_ptr<char[]> mem = input.memory())
+    return read_mmjson_insitu(mem.get(), input.mem_size(), input.path());
+  return read_mmjson(input.path());
+}
+
 } // namespace cif
 } // namespace gemmi
 #endif

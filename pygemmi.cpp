@@ -2,7 +2,8 @@
 
 #include "gemmi/numb.hpp"
 #include "gemmi/cifdoc.hpp"
-#include "gemmi/cifgz.hpp"
+#include "gemmi/gz.hpp"
+#include "gemmi/cif.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/elem.hpp"
@@ -149,8 +150,9 @@ PYBIND11_PLUGIN(gemmi) {
 
   cif.def("read_file", &read_file, py::arg("filename"),
           "Reads a CIF file copying data into Document.");
-  cif.def("read_any", &read_any, py::arg("filename"),
-          "Reads normal or gzipped CIF file.");
+  cif.def("read", [](const std::string& s) {
+      return read_any(gemmi::MaybeGzipped(s));
+    }, py::arg("filename"), "Reads normal or gzipped CIF file.");
   cif.def("read_string", &read_string, py::arg("data"),
           "Reads a string as a CIF file.");
 

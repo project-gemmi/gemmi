@@ -40,7 +40,7 @@ def compare_monlib_with_ccd(mon_path, ccd):
     PRINT_MISSING_ENTRIES = False
     cnt = 0
     for path in get_monomer_cifs(mon_path):
-        mon = cif.read_any(path)
+        mon = cif.read(path)
         for mb in mon:
             if mb.name in ('', 'comp_list'):
                 continue
@@ -128,7 +128,7 @@ def main():
     mon_path = args.m or os.getenv('CLIBD_MON')
     if not mon_path and not args.f:
         sys.exit('Unknown monomer library path: use -m or set $CLIBD_MON.')
-    ccd = cif.read_any(args.ccd_path)
+    ccd = cif.read(args.ccd_path)
     if args.f:
         check_formulas(ccd)
     if mon_path:

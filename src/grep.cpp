@@ -3,7 +3,7 @@
 // TODO: better handling of multi-line text values
 
 #include "gemmi/cif.hpp"
-#include "gemmi/cifgz.hpp"
+#include "gemmi/gz.hpp"
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
@@ -201,8 +201,8 @@ void grep_file(const std::string& tag, const std::string& path,
       pegtl::cstream_input<> in(stdin, 16*1024, "stdin");
       pegtl::parse<rules::file, Search, cif::Errors>(in, par);
     } else if (gemmi::ends_with(path, ".gz")) {
-      size_t orig_size = cif::estimate_uncompressed_size(path);
-      std::unique_ptr<char[]> mem = cif::gunzip_to_memory(path, orig_size);
+      size_t orig_size = gemmi::estimate_uncompressed_size(path);
+      std::unique_ptr<char[]> mem = gemmi::gunzip_to_memory(path, orig_size);
       pegtl::memory_input<> in(mem.get(), orig_size, path);
       pegtl::parse<rules::file, Search, cif::Errors>(in, par);
     } else {

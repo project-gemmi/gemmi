@@ -126,17 +126,13 @@ Parameter ``maximum`` determines the buffer size and only affects performance.
 Regardless of the buffer size, the last two options are slower
 than ``read_file()`` -- they were not optimized for.
 
-Additional header ``cifgz.hpp`` has a function::
+Additional header ``<gemmi/gz.hpp>`` is needed to transparently open
+a gzipped file (by uncompressing it first into a memory buffer)
+if the filename ends with ``.gz``::
 
-    Document read_any(const std::string& path)
+    gemmi::cif::Document doc = gemmi::cif::read_any(gemmi::MaybeGzipped(path));
 
-that transparently opens a gzipped file
-(by uncompressing it first into a memory buffer) if the filename ends with
-``.gz``. And if ``-`` is given as the filename, it reads from stdin.
-Example::
-    
-    gemmi::cif::Document doc = read_any("mmCIF/pe/5pep.cif.gz");
-
+And if the ``path`` above is ``-``, the standard input is read.
 
 Document
 --------

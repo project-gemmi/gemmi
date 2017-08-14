@@ -375,7 +375,7 @@ Let say we want to be able to search the PDB by specifying a set of elements
 present in the model. First we write down elements present in each
 PDB entry::
 
-    block = cif.read_any(path).sole_block()
+    block = cif.read(path).sole_block()
     elems = set(block.find_loop("_atom_site.type_symbol"))
     print(name + ' ' + ' '.join(elems))
 

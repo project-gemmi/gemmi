@@ -12,7 +12,7 @@ from util import get_file_paths_from_args
 totals = Counter()
 for path in get_file_paths_from_args():
     # read file (uncompressing on the fly) and get the only block
-    block = cif.read_any(path).sole_block()
+    block = cif.read(path).sole_block()
     # find table with the sequence
     seq = block.find('_entity_poly_seq.', ['entity_id', 'mon_id'])
     # convert table with chain types (protein/DNA/RNA) to dict

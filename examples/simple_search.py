@@ -6,7 +6,7 @@ from gemmi import cif
 from util import get_file_paths_from_args
 
 for path in get_file_paths_from_args():
-    block = cif.read_any(path).sole_block()
+    block = cif.read(path).sole_block()
     anis = block.find("_atom_site_anisotrop.id")
     if len(anis) > 50000:
         print(block.name, len(anis))
