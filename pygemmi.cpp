@@ -27,6 +27,7 @@ std::string str_join(const T &iterable, const std::string& sep) {
 }
 
 PYBIND11_PLUGIN(gemmi) {
+  using namespace gemmi;
   using namespace gemmi::cif;
   using namespace gemmi::mol;
 
@@ -150,9 +151,8 @@ PYBIND11_PLUGIN(gemmi) {
 
   cif.def("read_file", &read_file, py::arg("filename"),
           "Reads a CIF file copying data into Document.");
-  cif.def("read", [](const std::string& s) {
-      return read_any(gemmi::MaybeGzipped(s));
-    }, py::arg("filename"), "Reads normal or gzipped CIF file.");
+  cif.def("read", [](const std::string& s) { return read(MaybeGzipped(s)); },
+          py::arg("filename"), "Reads normal or gzipped CIF file.");
   cif.def("read_string", &read_string, py::arg("data"),
           "Reads a string as a CIF file.");
 

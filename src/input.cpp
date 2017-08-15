@@ -10,9 +10,10 @@
 #include "gemmi/util.hpp"
 
 gemmi::cif::Document cif_read_any(const std::string& path) {
-  if (gemmi::ends_with(path, "json") || gemmi::ends_with(path, "js"))
-    return gemmi::cif::read_mmjson(path);
-  return gemmi::cif::read_any(gemmi::MaybeGzipped(path));
+  if (gemmi::iends_with(path, "json") || gemmi::iends_with(path, "js") ||
+      gemmi::iends_with(path, "json.gz") || gemmi::iends_with(path, "js.gz"))
+    return gemmi::cif::read_mmjson(gemmi::MaybeGzipped(path));
+  return gemmi::cif::read(gemmi::MaybeGzipped(path));
 }
 
 gemmi::mol::Structure mmcif_read_atoms(const gemmi::cif::Document& doc) {

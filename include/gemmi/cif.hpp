@@ -241,10 +241,10 @@ template<typename Input> bool check_syntax(Input&& in, std::string* msg) {
 
 // A function for transparent reading of stdin and/or gzipped files
 // in addition to normal CIF files. For example, if used as:
-//   Document doc = read_any(MaybeStdin(argv[1]));
+//   Document doc = read(MaybeStdin(argv[1]));
 // it reads from stdin if argv[1] is "-", or from a file otherwise.
 template<typename T>
-Document read_any(T&& input) {
+Document read(T&& input) {
   if (input.is_stdin())
     return read_cstream(stdin, 16*1024, "stdin");
   if (std::unique_ptr<char[]> mem = input.memory())

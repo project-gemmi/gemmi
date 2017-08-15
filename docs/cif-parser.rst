@@ -130,7 +130,7 @@ Additional header ``<gemmi/gz.hpp>`` is needed to transparently open
 a gzipped file (by uncompressing it first into a memory buffer)
 if the filename ends with ``.gz``::
 
-    gemmi::cif::Document doc = gemmi::cif::read_any(gemmi::MaybeGzipped(path));
+    gemmi::cif::Document doc = gemmi::cif::read(gemmi::MaybeGzipped(path));
 
 And if the ``path`` above is ``-``, the standard input is read.
 

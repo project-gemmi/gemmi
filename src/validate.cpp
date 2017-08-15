@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
       if (options[Fast]) {
         ok = cif::check_syntax_any(gemmi::MaybeGzipped(path), &msg);
       } else {
-        cif::Document d = cif::read_any(gemmi::MaybeGzipped(path));
+        cif::Document d = cif::read(gemmi::MaybeGzipped(path));
         if (options[Types])
           infer_valtypes(d);
         if (options[Stat])

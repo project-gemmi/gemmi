@@ -122,7 +122,7 @@ inline Document read_mmjson(const std::string& path) {
 }
 
 template<typename T>
-Document read_any_mmjson(const T& input) {
+Document read_mmjson(T&& input) {
   /*
   if (input.is_stdin()) {
     size_t size = 16*1024;

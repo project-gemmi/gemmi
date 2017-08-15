@@ -200,7 +200,7 @@ void grep_file(const std::string& tag, const std::string& path,
     if (path == "-") {
       pegtl::cstream_input<> in(stdin, 16*1024, "stdin");
       pegtl::parse<rules::file, Search, cif::Errors>(in, par);
-    } else if (gemmi::ends_with(path, ".gz")) {
+    } else if (gemmi::iends_with(path, ".gz")) {
       size_t orig_size = gemmi::estimate_uncompressed_size(path);
       std::unique_ptr<char[]> mem = gemmi::gunzip_to_memory(path, orig_size);
       pegtl::memory_input<> in(mem.get(), orig_size, path);
@@ -298,8 +298,8 @@ private:
 };
 
 static bool is_cif_file(const tinydir_file& f) {
-  return !f.is_dir && (gemmi::ends_with(f.path, ".cif") ||
-                       gemmi::ends_with(f.path, ".cif.gz"));
+  return !f.is_dir && (gemmi::iends_with(f.path, ".cif") ||
+                       gemmi::iends_with(f.path, ".cif.gz"));
 }
 
 int main(int argc, char **argv) {

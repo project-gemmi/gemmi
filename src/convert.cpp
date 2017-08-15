@@ -77,7 +77,8 @@ FileType get_format_from_extension(const std::string& path) {
   if (iends_with(path, ".pdb") || iends_with(path, ".ent") ||
       iends_with(path, ".pdb.gz") || iends_with(path, ".ent.gz"))
     return FileType::Pdb;
-  if (iends_with(path, ".js") || iends_with(path, ".json"))
+  if (iends_with(path, ".js") || iends_with(path, ".json") ||
+      iends_with(path, ".js.gz") || iends_with(path, ".json.gz"))
     return FileType::Json;
   if (iends_with(path, ".cif") || iends_with(path, ".cif.gz"))
     return FileType::Cif;
