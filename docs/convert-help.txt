@@ -2,14 +2,15 @@ $ gemmi-convert -h
 Usage:
  gemmi-convert [options] INPUT_FILE OUTPUT_FILE
 
-with possible conversions: cif->json and cif<->pdb.
+with possible conversions CIF-JSON, and mmCIF-PDB-mmJSON.
+FORMAT can be specified as one of: cif, json, pdb.
 
 General options:
   -h, --help             Print usage and exit.
   -V, --version          Print version and exit.
   --verbose              Verbose output.
-  --from=pdb|cif         Input format (default: from the file extension).
-  --to=json|pdb          Output format (default: from the file extension).
+  --from=FORMAT          Input format (default: from the file extension).
+  --to=FORMAT            Output format (default: from the file extension).
 
 CIF output options:
   -c, --comcifs          Conform to the COMCIFS CIF-JSON standard draft.

@@ -1,0 +1,19 @@
+$ gemmi-mask -h
+Usage:
+ gemmi-mask [options] INPUT output.msk
+
+Makes a mask in the CCP4 format.
+If INPUT is a CCP4 map the mask is created by thresholding the map.
+If INPUT is a coordinate file (mmCIF, PDB, etc) the atoms are masked.
+  -h, --help           Print usage and exit.
+  -V, --version        Print version and exit.
+  --verbose            Verbose output.
+  --from=ccp4|pdb|cif  Input format (default: from file extension).
+
+Options for making a mask from a map:
+  -t, --threshold      The density cutoff value.
+  -f, --fraction       The volume fraction to be above the threshold.
+
+Options for masking a model:
+  -g, --grid=NX,NY,NZ  Grid sampling (default: ~1A spacing).
+  -r, --radius         Radius of atom spheres (default: 3.0A).

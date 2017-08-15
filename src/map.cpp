@@ -3,6 +3,7 @@
 #include "gemmi/grid.hpp"
 #include "gemmi/util.hpp"  // for trim_str
 #include "input.h"
+#include <cmath>     // for floor
 #include <cstdlib>   // for strtod
 #include <cstdio>    // for fprintf
 #include <algorithm> // for nth_element
@@ -36,8 +37,8 @@ void print_histogram(const std::vector<T>& data, double min, double max) {
   int bins[81] = {0};
   double delta = max - min;
   for (T d : data) {
-    int n = gemmi::iround((d - min) * (80 / delta));
-    bins[n]++;
+    int n = (int) std::floor((d - min) * (80 / delta));
+    bins[n >= 0 ? (n < 80 ? n : 79) : 0]++;
   }
   double max_h = *std::max_element(std::begin(bins), std::end(bins));
 #ifdef USE_UNICODE

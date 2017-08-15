@@ -1,0 +1,7 @@
+$ gemmi-map -h
+Usage:
+ gemmi-map [options] CCP4_MAP[...]
+
+  -h, --help     Print usage and exit.
+  -V, --version  Print version and exit.
+  --verbose      Verbose output.

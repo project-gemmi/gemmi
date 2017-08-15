@@ -1,7 +1,7 @@
 
 .SUFFIXES:
 
-CXX=g++-7
+#CXX=g++-7
 CXXSTD=-std=c++11
 PYTHON=python
 PYTHON_CONFIG=$(PYTHON)-config
@@ -71,6 +71,10 @@ write-help: $(PROGRAMS)
 	./gemmi-convert -h >> ../docs/convert-help.txt
 	echo '$$ gemmi-grep -h' > ../docs/grep-help.txt
 	./gemmi-grep -h >> ../docs/grep-help.txt
+	echo '$$ gemmi-map -h' > ../docs/map-help.txt
+	./gemmi-map -h >> ../docs/map-help.txt
+	echo '$$ gemmi-mask -h' > ../docs/mask-help.txt
+	./gemmi-mask -h >> ../docs/mask-help.txt
 
 clean:
 	rm -f $(PROGRAMS) trace *.so *.o

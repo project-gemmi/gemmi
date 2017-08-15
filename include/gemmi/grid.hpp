@@ -5,6 +5,7 @@
 #ifndef GEMMI_GRID_HH
 #define GEMMI_GRID_HH
 
+#include <cassert>
 #include <cmath>     // for NAN, sqrt
 #include <cstdio>    // for FILE
 #include <cstring>   // for memcpy
@@ -116,7 +117,7 @@ struct Grid {
   GridStats calculate_statistics() const;
   void read_ccp4(const std::string& path);
   void write_ccp4_map(const std::string& path, int mode=2) const;
-  void write_ccp4_mask(const std::string& path, double threshold) const;
+  size_t write_ccp4_mask(const std::string& path, double threshold) const;
 
   // methods to access info from ccp4 headers, w is word number from the spec
   int32_t header_i32(int w) const {
@@ -225,6 +226,29 @@ std::vector<char> make_ccp4_header(const Grid<T>& grid, int mode) {
   return header;
 }
 
+template<typename T>
+std::vector<char> update_ccp4_header(const Grid<T>& grid, int mode) {
+  if (grid.ccp4_header.empty())
+    return make_ccp4_header(grid, mode);
+  std::vector<char> header = grid.ccp4_header;
+  assert(header.size() >= 1024);
+  // selectively copy-pasted from make_ccp4_header()
+  auto word_ptr = [&header](int w) { return header.data() + 4 * (w - 1); };
+  auto set_i32 = [&word_ptr](int word, int32_t value) {
+    *reinterpret_cast<int32_t*>(word_ptr(word)) = value;
+  };
+  auto set_float = [&word_ptr](int word, float value) {
+    *reinterpret_cast<float*>(word_ptr(word)) = value;
+  };
+  set_i32(4, mode);
+  set_float(20, (float) grid.stats.dmin);
+  set_float(21, (float) grid.stats.dmax);
+  set_float(22, (float) grid.stats.dmean);
+  set_float(55, (float) grid.stats.rms);
+  // labels could be modified but it's not important
+  return header;
+}
+
 } // namespace impl
 
 template<typename T>
@@ -301,7 +325,7 @@ void Grid<T>::read_ccp4(const std::string& path) {
 
 template<typename T>
 void Grid<T>::write_ccp4_map(const std::string& path, int mode) const {
-  std::vector<char> header = impl::make_ccp4_header(*this, mode);
+  std::vector<char> header = impl::update_ccp4_header(*this, mode);
   if (mode == 0)
     impl::write_arrays<signed char>(path, header, data);
   else if (mode == 1)
@@ -315,11 +339,16 @@ void Grid<T>::write_ccp4_map(const std::string& path, int mode) const {
 }
 
 template<typename T>
-void Grid<T>::write_ccp4_mask(const std::string& path, double threshold) const {
+size_t Grid<T>::write_ccp4_mask(const std::string& path,
+                                double threshold) const {
+  size_t counter = 0;
   std::vector<signed char> v(data.size());
-  for (size_t i = 0; i < data.size(); i++)
-    v[i] = data[i] < threshold ? 0 : 1;
-  impl::write_arrays<signed char>(path, impl::make_ccp4_header(*this, 0), v);
+  for (size_t i = 0; i < data.size(); i++) {
+    v[i] = data[i] > threshold ? 1 : 0;
+    counter += v[i];
+  }
+  impl::write_arrays<signed char>(path, impl::update_ccp4_header(*this, 0), v);
+  return counter;
 }
 
 } // namespace gemmi

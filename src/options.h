@@ -106,7 +106,25 @@ struct OptParser : option::Parser {
       option::printUsage(fwrite, stderr, usage);
       std::exit(2);
     }
+    for (const auto& group : exclusive_groups) {
+      int first = 0;
+      for (int opt : group)
+        if (options[opt]) {
+          if (first == 0) {
+            first = opt;
+          } else {
+            fprintf(stderr, "Options -%s and -%s cannot be used together.\n",
+                    given_name(first), given_name(opt));
+            std::exit(2);
+          }
+        }
+    }
     return options;
+  }
+
+  const char* given_name(int opt) const {  // sans one dash
+    return options[opt].namelen > 1 ? options[opt].name + 1
+                                    : options[opt].desc->shortopt;
   }
 
   void require_positional_args(int n) {
@@ -120,6 +138,7 @@ struct OptParser : option::Parser {
 
   std::vector<option::Option> options;
   std::vector<option::Option> buffer;
+  std::vector<std::vector<int>> exclusive_groups;
 };
 
 // vim:sw=2:ts=2:et:path^=../include,../third_party

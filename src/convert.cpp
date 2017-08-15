@@ -36,16 +36,17 @@ static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
     "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
-    "\n\nwith possible conversions: cif->json and cif<->pdb."
+    "\n\nwith possible conversions CIF-JSON, and mmCIF-PDB-mmJSON."
+    "\nFORMAT can be specified as one of: cif, json, pdb."
     "\n\nGeneral options:" },
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
   { Version, 0, "V", "version", Arg::None,
     "  -V, --version  \tPrint version and exit." },
   { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { FormatIn, 0, "", "from", ConvArg::FileFormat,
-    "  --from=pdb|cif  \tInput format (default: from the file extension)." },
+    "  --from=FORMAT  \tInput format (default: from the file extension)." },
   { FormatOut, 0, "", "to", ConvArg::FileFormat,
-    "  --to=json|pdb  \tOutput format (default: from the file extension)." },
+    "  --to=FORMAT  \tOutput format (default: from the file extension)." },
   { NoOp, 0, "", "", Arg::None, "\nCIF output options:" },
   { Comcifs, 0, "c", "comcifs", Arg::None,
     "  -c, --comcifs  \tConform to the COMCIFS CIF-JSON standard draft." },
@@ -90,7 +91,7 @@ FileType get_format_from_extension(const std::string& path) {
 }
 
 static const char symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                              "abcdefghijklmnopqrstuvwxyz01234567890";
+                              "abcdefghijklmnopqrstuvwxyz0123456789";
 
 enum class ChainNaming { Short, AddNum, Dup };
 
