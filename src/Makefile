@@ -64,17 +64,7 @@ gemmi.so: pygemmi.o
 	-Wl,-O1 -Wl,-Bsymbolic-functions -Wl,-z,relro $< -o $@
 
 write-help: $(PROGRAMS)
-	./gemmi-convert ../tests/misc.cif ../tests/misc.json
-	echo '$$ gemmi-validate -h' > ../docs/validate-help.txt
-	./gemmi-validate -h >> ../docs/validate-help.txt
-	echo '$$ gemmi-convert -h' > ../docs/convert-help.txt
-	./gemmi-convert -h >> ../docs/convert-help.txt
-	echo '$$ gemmi-grep -h' > ../docs/grep-help.txt
-	./gemmi-grep -h >> ../docs/grep-help.txt
-	echo '$$ gemmi-map -h' > ../docs/map-help.txt
-	./gemmi-map -h >> ../docs/map-help.txt
-	echo '$$ gemmi-mask -h' > ../docs/mask-help.txt
-	./gemmi-mask -h >> ../docs/mask-help.txt
+	../tools/docs-help.sh
 
 clean:
 	rm -f $(PROGRAMS) trace *.so *.o
