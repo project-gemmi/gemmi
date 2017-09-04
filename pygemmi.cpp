@@ -26,12 +26,12 @@ std::string str_join(const T &iterable, const std::string& sep) {
   return r;
 }
 
-PYBIND11_PLUGIN(gemmi) {
+PYBIND11_MODULE(gemmi, mg) {
   using namespace gemmi;
   using namespace gemmi::cif;
   using namespace gemmi::mol;
 
-  py::module mg("gemmi", "General MacroMolecular I/O");
+  mg.doc() = "General MacroMolecular I/O";
   py::module cif = mg.def_submodule("cif", "CIF file format");
 
   py::class_<Document>(cif, "Document")
@@ -176,8 +176,6 @@ PYBIND11_PLUGIN(gemmi) {
     .def("__repr__", [](const Element& self) {
         return "<gemmi.mol.Element: " + std::string(self.name()) + ">";
     });
-
-  return mg.ptr();
 }
 
 // vim:sw=2:ts=2:et

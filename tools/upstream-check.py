@@ -8,7 +8,7 @@ import json
 import urllib
 
 TAGGED_REPOS = {
-    'pybind/pybind11': 'v2.1.1',
+    'pybind/pybind11': 'v2.2.0',
     'taocpp/PEGTL': '2.1.4',
     'cxong/tinydir': '1.2.3',
 }
