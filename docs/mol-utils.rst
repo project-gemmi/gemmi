@@ -44,14 +44,6 @@ gemmi-mask
 .. literalinclude:: mask-help.txt
    :language: console
 
-gemmi-map
----------
-
-(work in progress)
-
-.. literalinclude:: map-help.txt
-   :language: console
-
 Examples
 ========
 

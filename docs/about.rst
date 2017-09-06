@@ -37,8 +37,7 @@ when compiling your program. For example::
     c++ -std=c++11 -I. -Igemmi/third_party -O2 my_program.cpp
 
 If you'd like Gemmi to uncompress gzipped files on the fly,
-i.e. when you ``#include <gemmi/cifgz.hpp>`` or
-``#include <gemmi/pdbgz.hpp>``,
+i.e. when you ``#include <gemmi/gz.hpp>``,
 you will also need to link your program with the zlib library.
 
 Python 2.7/3.x module
@@ -61,5 +60,5 @@ and Linux. At this moment the utilities are tested only Linux and Mac
 and need to be compiled from source::
 
     git clone https://github.com/project-gemmi/gemmi.git
-    cd gemmi
+    cd gemmi/src
     make

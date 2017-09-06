@@ -1,6 +1,6 @@
 
-Macromolecular Models
-#####################
+mmCIF, PDB, etc.
+################
 
 This part of the Gemmi library can
 
@@ -13,7 +13,8 @@ Supported file formats:
 
 * mmCIF (PDBx/mmCIF),
 * PDB (with popular extensions),
-* one or two more to come.
+* mmJSON,
+* a binary format (MMTF, binary CIF, or own format) is to be considered.
 
 PDBx/mmCIF format
 =================
@@ -29,7 +30,7 @@ C++
 ::
 
     #include <gemmi/mmcif.hpp>     // to read
-    #include <gemmi/cifgz.hpp>     // to uncompress on the fly
+    #include <gemmi/gz.hpp>        // to uncompress on the fly
     #include <gemmi/to_mmcif.hpp>  // to write
 
 TODO

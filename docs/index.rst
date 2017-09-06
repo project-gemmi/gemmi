@@ -6,15 +6,19 @@ Gemmi - General MacroMolecular I/O
    about
 
 .. toctree::
-   :caption: CIF Files
+   :caption: CIF Parser
 
-   cif-intro
    cif-parser
    cif-utils
 
 .. toctree::
-   :caption: mmCIF and PDB files
+   :caption: Macromolecular models
 
-   mmcif
+   mol
    mol-utils
+
+.. toctree::
+   :caption: Crystallography
+
+   xtal
 
