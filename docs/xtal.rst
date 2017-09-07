@@ -1,14 +1,18 @@
 
-Maps (MRC/CCP4)
+Volumetric grid
 ###############
 
-Gemmi reads and writes MRC/CCP4 maps and masks in modes 0, 1, 2 and 6.
-This is a format with volumetric data on a grid.
-Modes 0, 1, 2 and 6 correspond C++ data types int8_t, int16_t, float and
-uint16_t.
-Maps usually represent electron density.
-Masks are used split the volume into two parts (for example: protein and
-solvent regions).
+TODO: describe data structure
+
+MRC/CCP4 maps
+=============
+
+Grid data can be read and written as MRC/CCP4 map file.
+Gemmi handles modes 0, 1, 2 and 6 of this format,
+which correspond to C++ data types int8_t, int16_t, float and uint16_t.
+Mode 2 (float) is usually used for the electron density,
+and mode 0 (int8_t) for masks, i.e. the 0/1 data that marks part of the volume
+(e.g. the solvent region).
 
 This part of the library is **not finished**.
 
@@ -32,10 +36,16 @@ gemmi-map
    :language: console
 
 
-Reflection files (MTZ)
-######################
+Reflection files
+################
 
 (to be done)
+
+SF mmCIF
+========
+
+MTZ
+===
 
 Symmetry
 ########
@@ -44,59 +54,107 @@ Gemmi/symmetry provides space-group related functionality
 needed in other parts of the library -- when working with coordinate
 files, electron density maps and reflections.
 
-Currently, it provides only a mapping between space group names
-and symmetry operations.
-
-Although the Gemmi project is primarily for handling macromolecular data
+Although the Gemmi project is developed for macromolecular crystallography
 (for which only 65 Sohncke space groups are relevant),
-just for completeness we include all 230 crystallographic space groups.
+we include all the 230 crystallographic space groups
+for the sake of completeness.
 
-Triplets and Seitz matrices
-===========================
+This part of Gemmi has no dependencies:
+it is all in a single C++ header `symmetry.hpp`.
+
+Space group notations
+=====================
+
+Gemmi tabulates 530 settings of the 230 crystallographic space groups,
+including the following informations:
+
+* space group numbers (1-230),
+* ccp4 numbers (extension of the conventional SG numbers that
+  assigns values above 1000 to selected non-standard settings),
+* extended Herman-Mauguin (H-M) symbols a.k.a. the international notation
+  (``I a -3 d``, ``C 1 2 1``),
+* short H-M symbols (``Ia-3d``, ``C2``),
+* Hall notation (``-I 4bd 2c 3``, ``C 2y``),
+* explicit symbols proposed by Shmueli_  and listed in ITfC Vol.B, ch.1.4
+  (``ICC$I3Q000$P4C393$P2D933``).
+
+Any of the above identifiers can be used to find a space group.
+
+Triplets and matrices
+=====================
+
+Crystallographic symmetry operations have a few notations.
+Gemmi undertands only coordinate triplets (``x,x-y,z+1/2``, sometimes
+it is called Jones' faithful representation).
+
+Operations can be expressed either as 3x3 rotation matrix + a translation
+vector, or as a single 4x4 transformation matrix (filled with 0,0,0,1 in the
+bottom row). In the field of crystallography such a 4x4 matrix is called
+*Seitz matrix*.
+
+In some uses, the triplets and matrices may represent operations that
+do not correspond to crystallographic symmetry. For example, they may
+describe generating of the biological assembly.
 
 Space groups and operations
 ===========================
 
-There is more than one reasonable way to map between space group names/numbers
-and symmetry operations. This is a trade-off between simplicity of the code
-and the amount of tabulated information.
+International Tables for Crystallography:
 
-Well-established software libraries use various approaches:
+* list all the operations for each of the 530 settings
+  (Vol.A, ch.2.3 in the 2016 edition),
+* and also provide two sets of computer-adapted symbols
+  (Vol.B, ch.1.4 in the 2010 edition)
+  designed to easily generate the operations:
 
-* SgInfo_, SgLite_ and sgtbx_ (part of cctbx): deduce operations from Hall
-  symbols.
-  The first two are C libraries written by from Ralf W. Grosse-Kunstleve.
-  They formed the foundation for the third one, which is a C++/Python project.
-  For long time SgInfo and SgLite were free for non-commercial use only,
-  but now they are all under the BSD license.
-  They tabulate space-group numbers and names (530 entries corresponding
-  to crystallographic settings from International Tables) and use ...
+  * the Hall symbols and
+  * the explicit symbols mentioned above.
 
-* csymlib (part of libccp4, license: LGPL3):
+For a software developer, the choice between having a list of all the
+operations and generating them from a smaller set of symbols
+is a trade-off between simplicity of the code
+and the amount of the tabulated data.
+
+Different libraries make different choice:
+
+* Gemmi generates the operations from the explicit symbols
+  (should we switch to the Hall symbols?),
+
+* SgInfo_ and SgLite_ (old C libraries from Ralf W. Grosse-Kunstleve,
+  recently re-licensed to BSD):
+  space-group numbers and names (530 settings) are tabulated in the code;
+  operations are generated from the Hall symbols.
+
+* sgtbx_ (part of cctbx, BSD): the same approach as this library is
+  a successor of SgInfo written in C++/Python.
+
+* csymlib_ (part of libccp4, LGPL3):
   the primary spacegroup information comes from the data file
-  :file:`syminfo.lib` (540 entries).
-  This is a popular file that can be found also in other projects.
-  It obsoleted :file:`symop.lib`, similar data file from CCP4 but with
-  less flexible format.
+  :file:`syminfo.lib` (540 entries) which replaced the previously used
+  :file:`symop.lib` file (both files are used also in other projects),
 
-* spglib_ -
+* spglib_ (C library, BSD): tabulates the symmetry operations
+  in :file:`spg_database.c` (530 settings),
 
-* CCP4 Clipper_ (crystallographic C++ library, license: LGPL2) -
+* CCP4 Clipper_ (crystallographic C++ library, LGPL2) -
+  Hall symbols are tabulated in :file:`spacegroup_data.cpp` and interpreted
+  in :file:`spacegroup.cpp`,
 
-* OpenBabel_ (chemical toolbox in C++, license: GPL2):
+* OpenBabel_ (chemical toolbox in C++, GPL2):
   space-group names and triplets are tabulated in :file:`space-groups.txt`
-  that currently contains 541 entries.
+  (currently 541 entries).
 
-Similar tables can be found in various programs. For example:
+And the same with different programs. To pick a few examples:
 
 * Mantid_: tabulates minimal number of triplets (:file:`SpaceGroupFactory.cpp`)
   and generates the rest, based on Shmueli_, Acta Cryst. A40, 559 (1984),
 
-* NGL_: data from CCP4 symop.lib encoded in :file:`symmetry-constants.js`,
+* NGL_: data from CCP4 :file:`symop.lib` encoded in
+  :file:`symmetry-constants.js`,
 
 * Fityk_: data generated by sgtbx encoded in :file:`sgtables.c`.
 
-Hmmm, the data tables tend to differ in some corners.
+(Hmmm, the data tables tend to differ in some corners.)
 
 .. _SgInfo: https://github.com/rwgk/sginfo
 .. _SgLite: https://github.com/rwgk/sglite
