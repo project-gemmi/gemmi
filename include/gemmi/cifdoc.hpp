@@ -5,7 +5,7 @@
 
 #ifndef GEMMI_CIFDOC_HPP_
 #define GEMMI_CIFDOC_HPP_
-#include "util.hpp"  // for starts_with
+#include "util.hpp"  // for starts_with, to_lower
 #include <algorithm> // for move, find_if, all_of, min
 #include <cassert>
 #include <cctype>    // for isalpha
@@ -535,9 +535,8 @@ inline void check_duplicates(const Document& d) {
   // check for duplicate block names (except empty "" which is global_)
   std::unordered_set<std::string> names;
   for (const Block& block : d.blocks) {
-    // TODO: case-insensitive check
-    bool success = names.insert(block.name).second;
-    if (!success && !block.name.empty())
+    bool ok = names.insert(gemmi::to_lower(block.name)).second;
+    if (!ok && !block.name.empty())
       throw std::runtime_error("duplicate block name: " + block.name);
   }
   // check for dups inside each block
@@ -547,18 +546,18 @@ inline void check_duplicates(const Document& d) {
     frame_names.clear();
     for (const Item& item : block.items) {
       if (item.type == ItemType::Value) {
-        bool success = names.insert(item.tv.tag).second;
-        if (!success)
+        bool ok = names.insert(gemmi::to_lower(item.tv.tag)).second;
+        if (!ok)
           cif_fail(d, block, item, "duplicate tag " + item.tv.tag);
       } else if (item.type == ItemType::Loop) {
         for (const LoopTag& t : item.loop.tags) {
-          bool success = names.insert(t.tag).second;
-          if (!success)
+          bool ok = names.insert(gemmi::to_lower(t.tag)).second;
+          if (!ok)
             cif_fail(d, block, item, "duplicate tag " + t.tag);
         }
       } else if (item.type == ItemType::Frame) {
-        bool success = frame_names.insert(item.frame.name).second;
-        if (!success)
+        bool ok = frame_names.insert(gemmi::to_lower(item.frame.name)).second;
+        if (!ok)
           cif_fail(d, block, item, "duplicate save_" + item.frame.name);
       }
     }
