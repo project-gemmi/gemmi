@@ -55,12 +55,12 @@ needed in other parts of the library -- when working with coordinate
 files, electron density maps and reflections.
 
 Although the Gemmi project is developed for macromolecular crystallography
-(for which only 65 Sohncke space groups are relevant),
+for which only 65 space groups are relevant,
 we include all the 230 crystallographic space groups
 for the sake of completeness.
 
 This part of Gemmi has no dependencies:
-it is all in a single C++ header `symmetry.hpp`.
+it is all in a single C++ header :file:`symmetry.hpp`.
 
 Space group notations
 =====================
@@ -75,8 +75,6 @@ including the following informations:
   (``I a -3 d``, ``C 1 2 1``),
 * short H-M symbols (``Ia-3d``, ``C2``),
 * Hall notation (``-I 4bd 2c 3``, ``C 2y``),
-* explicit symbols proposed by Shmueli_  and listed in ITfC Vol.B, ch.1.4
-  (``ICC$I3Q000$P4C393$P2D933``).
 
 Any of the above identifiers can be used to find a space group.
 
@@ -108,7 +106,7 @@ International Tables for Crystallography:
   designed to easily generate the operations:
 
   * the Hall symbols and
-  * the explicit symbols mentioned above.
+  * the explicit symbols introduced by Shmueli_ (``ICC$I3Q000$P4C393$P2D933``).
 
 For a software developer, the choice between having a list of all the
 operations and generating them from a smaller set of symbols
