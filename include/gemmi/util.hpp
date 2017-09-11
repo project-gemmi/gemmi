@@ -63,6 +63,20 @@ inline std::vector<std::string> split_str(const std::string &str, char sep) {
   return result;
 }
 
+template<typename T>
+std::string join_str(const T &iterable, const std::string& sep) {
+  std::string r;
+  bool first = true;
+  for (const std::string& i : iterable) {
+    if (!first)
+      r += sep;
+    r += i;
+    first = false;
+  }
+  return r;
+}
+
+
 inline std::string path_basename(const std::string& path) {
   size_t pos = path.find_last_of("\\/");
   return pos == std::string::npos ? path : path.substr(pos + 1);

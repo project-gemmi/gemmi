@@ -7,8 +7,14 @@ from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
 
-__version__ = '0.0.0'
+def read_version_from_header():
+    with open('include/gemmi/version.hpp') as f:
+        for line in f:
+            if line.startswith('#define GEMMI_VERSION '):
+                print(line)
+                return line.split()[2].strip('"dev')
 
+__version__ = read_version_from_header()
 
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path
@@ -27,7 +33,7 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension('gemmi',
-        ['pygemmi.cpp'],
+        ['python/gemmi.cpp', 'python/cif.cpp'],
         include_dirs=[
             'include',
             'third_party',

@@ -6,34 +6,15 @@
 #include "gemmi/cif.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
-#include "gemmi/elem.hpp"
-#include <sstream>
+
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
+using namespace gemmi;
+using namespace gemmi::cif;
 
-template<typename T>
-std::string str_join(const T &iterable, const std::string& sep) {
-  std::string r;
-  bool first = true;
-  for (const std::string& i : iterable) {
-    if (!first)
-      r += sep;
-    r += i;
-    first = false;
-  }
-  return r;
-}
-
-PYBIND11_MODULE(gemmi, mg) {
-  using namespace gemmi;
-  using namespace gemmi::cif;
-  using namespace gemmi::mol;
-
-  mg.doc() = "General MacroMolecular I/O";
-  py::module cif = mg.def_submodule("cif", "CIF file format");
-
+void init_cif(py::module& cif) {
   py::class_<Document>(cif, "Document")
     .def(py::init<>())
     .def("__len__", [](const Document& d) { return d.blocks.size(); })
@@ -101,7 +82,7 @@ PYBIND11_MODULE(gemmi, mg) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
     .def("__repr__", [](const Loop::Span& self) {
-        return "<gemmi.cif.Loop.Span: " + str_join(self, " ") + ">";
+        return "<gemmi.cif.Loop.Span: " + join_str(self, " ") + ">";
     });
 
 
@@ -146,7 +127,7 @@ PYBIND11_MODULE(gemmi, mg) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
     .def("__repr__", [](const TableView::Row& self) {
-        return "<gemmi.cif.TableView.Row: " + str_join(self, " ") + ">";
+        return "<gemmi.cif.TableView.Row: " + join_str(self, " ") + ">";
     });
 
   cif.def("read_file", &read_file, py::arg("filename"),
@@ -165,17 +146,4 @@ PYBIND11_MODULE(gemmi, mg) {
   cif.def("as_int", (int (*)(const std::string&, int)) &as_int,
           py::arg("value"), py::arg("default"),
           "Returns int number from string value or the second arg if null.");
-
-  py::module mol = mg.def_submodule("mol", "MacroMolecular models");
-  py::class_<Element>(mol, "Element")
-    .def(py::init<const std::string &>())
-    .def(py::init<int>())
-    .def_property_readonly("name", &Element::name)
-    .def_property_readonly("weight", &Element::weight)
-    .def_property_readonly("atomic_number", &Element::atomic_number)
-    .def("__repr__", [](const Element& self) {
-        return "<gemmi.mol.Element: " + std::string(self.name()) + ">";
-    });
 }
-
-// vim:sw=2:ts=2:et

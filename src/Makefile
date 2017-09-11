@@ -3,21 +3,14 @@
 
 #CXX=g++-7
 CXXSTD=-std=c++11
-PYTHON=python
-PYTHON_CONFIG=$(PYTHON)-config
 
 WFLAGS=-Wall -Wextra -Wpedantic -Wdisabled-optimization -Wformat=2 \
        -Wredundant-decls -Wfloat-conversion $(EXTRA_WFLAGS)
 FLAGS=-O2 -g -pipe $(CXXSTD) $(WFLAGS) -I../include -I../third_party #-DNDEBUG
 
-PYFLAGS=$(FLAGS) -Wno-shadow -fPIC \
-       -fvisibility=hidden -fwrapv -D_FORTIFY_SOURCE=2
-
 PROGRAMS=gemmi-mask gemmi-map gemmi-validate gemmi-convert gemmi-grep
 
 all: $(PROGRAMS)
-
-py: gemmi.so
 
 igdir=../include/gemmi
 
@@ -55,18 +48,10 @@ gemmi-map: map.cpp options.h input.h input.o $(igdir)/grid.hpp \
            $(igdir)/unitcell.hpp
 	$(CXX) $(FLAGS) $< input.o -o $@ -lz
 
-pygemmi.o: ../pygemmi.cpp $(igdir)/cif.hpp $(igdir)/to_json.hpp \
-           $(igdir)/numb.hpp $(igdir)/to_cif.hpp $(igdir)/elem.hpp
-	$(CXX) $(PYFLAGS) `$(PYTHON_CONFIG) --includes` -c $<
-
-gemmi.so: pygemmi.o
-	$(CXX) $(PYFLAGS) -shared \
-	-Wl,-O1 -Wl,-Bsymbolic-functions -Wl,-z,relro $< -o $@
-
 write-help: $(PROGRAMS)
 	../tools/docs-help.sh
 
 clean:
 	rm -f $(PROGRAMS) trace *.so *.o
 
-.PHONY: all py clean write-help
+.PHONY: all clean write-help
