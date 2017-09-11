@@ -8,11 +8,9 @@
 #include "util.hpp"  // for starts_with, to_lower
 #include <algorithm> // for move, find_if, all_of, min
 #include <cassert>
-#include <cctype>    // for isalpha
-#include <cmath>     // for NAN
 #include <cstring>   // for memchr
 #include <initializer_list>
-#include <iosfwd>    // for size_t, istream, ptrdiff_t
+#include <iosfwd>    // for size_t, ptrdiff_t
 #include <new>
 #include <stdexcept>
 #include <string>

@@ -7,8 +7,10 @@
 
 #include <cassert>
 #include <cmath>     // for NAN, sqrt
+#include <cstdint>   // for uint16_t, uint32_t
 #include <cstdio>    // for FILE
 #include <cstring>   // for memcpy
+#include <string>
 #include <typeinfo>  // for typeid
 #include <vector>
 #include "unitcell.hpp"
@@ -17,7 +19,7 @@
 namespace gemmi {
 
 inline bool is_little_endian() {
-  uint32_t x = 1;
+  std::uint32_t x = 1;
   return *reinterpret_cast<char *>(&x) == 1;
 }
 
@@ -314,7 +316,7 @@ void Grid<T>::read_ccp4(const std::string& path) {
   else if (mode == 2)
     impl::read_data<float>(f.get(), data);
   else if (mode == 6)
-    impl::read_data<uint16_t>(f.get(), data);
+    impl::read_data<std::uint16_t>(f.get(), data);
   else
     fail("Only modes 0, 1, 2 and 6 are supported.");
 #if 0
@@ -333,7 +335,7 @@ void Grid<T>::write_ccp4_map(const std::string& path, int mode) const {
   else if (mode == 2)
     impl::write_arrays<float>(path, header, data);
   else if (mode == 6)
-    impl::write_arrays<uint16_t>(path, header, data);
+    impl::write_arrays<std::uint16_t>(path, header, data);
   else
     fail("Only modes 0, 1, 2 and 6 are supported.");
 }

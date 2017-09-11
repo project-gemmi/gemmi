@@ -6,6 +6,8 @@
 #define GEMMI_GZ_HPP_
 #include "util.hpp"  // ends_with, MaybeStdin
 #include <cstdio>
+#include <memory>
+#include <string>
 #include <zlib.h>
 
 namespace gemmi {

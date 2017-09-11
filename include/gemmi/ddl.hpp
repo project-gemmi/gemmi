@@ -7,11 +7,15 @@
 #define GEMMI_DDL_HPP_
 
 #include <algorithm>  // for find
+#include <cmath>      // for INFINITY
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <utility>    // for pair
+#include <vector>
 #include "cifdoc.hpp"
 #include "numb.hpp"
+#include "cif.hpp"    // for read_file
 
 namespace gemmi {
 namespace cif {

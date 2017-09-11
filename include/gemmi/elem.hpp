@@ -4,6 +4,12 @@
 
 #ifndef GEMMI_ELEM_HH
 #define GEMMI_ELEM_HH
+
+#include <algorithm> // for find
+#include <cstdint>   // for uint16_t
+#include <iterator>  // begin, end
+#include <string>
+
 namespace gemmi {
 namespace mol {
 
@@ -139,8 +145,8 @@ inline El find_element(const char* symbol) {
   if (second == '\0')
     return find_single_letter_element(first);
 
-#define EL(s) uint16_t(#s[0] << 8 | #s[1])
-  const uint16_t ptable[119] = {
+#define EL(s) std::uint16_t(#s[0] << 8 | #s[1])
+  const std::uint16_t ptable[119] = {
     EL(H),  EL(HE), EL(LI), EL(BE), EL(B),  EL(C),  EL(N),  EL(O),  EL(F),
     EL(NE), EL(NA), EL(MG), EL(AL), EL(SI), EL(P),  EL(S),  EL(CL), EL(AR),
     EL(K),  EL(CA), EL(SC), EL(TI), EL(V),  EL(CR), EL(MN), EL(FE), EL(CO),
@@ -156,8 +162,8 @@ inline El find_element(const char* symbol) {
     EL(RF), EL(DB), EL(SG), EL(BH), EL(HS), EL(MT), EL(D)
   };
 #undef EL
-  uint16_t sym16 = (first << 8) | second;
-  const uint16_t* r = std::find(std::begin(ptable), std::end(ptable), sym16);
+  std::uint16_t sym16 = (first << 8) | second;
+  auto r = std::find(std::begin(ptable), std::end(ptable), sym16);
   return r != std::end(ptable) ? static_cast<El>(r - ptable + 1) : El::X;
 }
 

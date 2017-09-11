@@ -12,6 +12,7 @@
 #else
 # include <stb_sprintf.h>
 #endif
+#include <string>
 
 namespace gemmi {
 
