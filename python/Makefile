@@ -1,7 +1,7 @@
 
 .SUFFIXES:
 
-#CXX=g++-7
+CXX=g++-5
 CXXSTD=-std=c++11
 PYTHON=python
 PYTHON_CONFIG=$(PYTHON)-config
@@ -11,22 +11,30 @@ FLAGS=-O2 -g -pipe $(CXXSTD) -I../include -I../third_party -fPIC \
        -Wall -Wextra -Wpedantic -Wdisabled-optimization -Wformat=2 \
        -Wredundant-decls -Wfloat-conversion $(EXTRA_WFLAGS)
 
-py: gemmi.so
+all: gemmi.so
 
 igdir=../include/gemmi
 
-gemmi.o: gemmi.cpp $(igdir)/elem.hpp
+gemmi.o: gemmi.cpp
+	$(CXX) $(FLAGS) `$(PYTHON_CONFIG) --includes` -c $<
+
+mol.o: mol.cpp $(igdir)/elem.hpp
+	$(CXX) $(FLAGS) `$(PYTHON_CONFIG) --includes` -c $<
+
+sym.o: sym.cpp $(igdir)/symmetry.hpp
 	$(CXX) $(FLAGS) `$(PYTHON_CONFIG) --includes` -c $<
 
 cif.o: cif.cpp $(igdir)/cifdoc.hpp $(igdir)/cif.hpp $(igdir)/numb.hpp \
        $(igdir)/gz.hpp $(igdir)/to_json.hpp $(igdir)/to_cif.hpp
 	$(CXX) $(FLAGS) `$(PYTHON_CONFIG) --includes` -c $<
 
-gemmi.so: gemmi.o cif.o
+OBJ=gemmi.o mol.o sym.o cif.o
+
+gemmi.so: $(OBJ)
 	$(CXX) $(FLAGS) -shared \
-	-Wl,-O1 -Wl,-Bsymbolic-functions -Wl,-z,relro $< cif.o -o $@
+	-Wl,-O1 -Wl,-Bsymbolic-functions -Wl,-z,relro $(OBJ) -o $@
 
 clean:
 	rm -f *.so *.o
 
-.PHONY: all py clean
+.PHONY: all clean

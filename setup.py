@@ -33,7 +33,7 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension('gemmi',
-        ['python/gemmi.cpp', 'python/cif.cpp'],
+        ['python/%s.cpp' % name for name in ('gemmi', 'cif', 'sym', 'mol')],
         include_dirs=[
             'include',
             'third_party',
