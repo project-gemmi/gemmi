@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
+import random
 from gemmi import sym
 
 CANONICAL_SINGLES = {
@@ -67,10 +68,26 @@ class TestSymmetry(unittest.TestCase):
             calculated = sym.make_triplet_part(*row)
             self.assertEqual(calculated, single)
 
+    def test_triplet_roundtrip(self):
+        singles = CANONICAL_SINGLES.keys()
+        for i in range(4):
+            items = [random.choice(singles) for j in range(3)]
+            triplet = ",".join(items)
+            op = sym.parse_triplet(triplet)
+            self.assertEqual(op.triplet(), triplet)
 
-    def test_parse_triplet(self):
-        # randomly combine SINGLES
-        pass
+    def test_combine(self):
+        a = sym.Op("x+1/3,z,-y")
+        self.assertEqual(sym.combine(a, a).triplet(), 'x+2/3,-y,-z')
+        self.assertEqual(('x,-y,z' * sym.Op('-x,-y,z')).triplet(), '-x,y,z')
+        a = sym.Op('-y+1/4,x+3/4,z+1/4')
+        b = sym.Op('-x+1/2,y,-z')
+        self.assertEqual((a * b).triplet(), '-y+1/4,-x+1/4,-z+1/4')
+        c = '-y,-z,-x'
+        self.assertEqual((a * c).triplet(), 'z+1/4,-y+3/4,-x+1/4')
+        self.assertEqual((b * c).triplet(), 'y+1/2,-z,x')
+        self.assertEqual((c * b).triplet(), '-y,z,x-1/2')
+
 
 if __name__ == '__main__':
     unittest.main()

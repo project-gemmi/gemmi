@@ -10,22 +10,31 @@ using namespace gemmi;
 using namespace gemmi::sym;
 
 void init_sym(py::module& sym) {
-  py::class_<SymOp>(sym, "SymOp")
+  py::class_<Op>(sym, "Op")
     .def(py::init<>())
-    .def_readwrite("rot", &SymOp::rot)
-    .def_readwrite("tr", &SymOp::tr)
-    .def("compose", &SymOp::compose)
-    /*
-    .def("__repr__", [](const SymOp &self) {
-        return "<gemmi.sym.SymOp " + self.rot + self.tr + ">";
-    })
-    */
-    ;
+    .def(py::init(&parse_triplet))
+    .def_readwrite("rot", &Op::rot)
+    .def_readwrite("tran", &Op::tran)
+    .def("triplet", &Op::triplet)
+    .def("__mul__", [](const Op &a, const Op &b) { return combine(a, b); },
+         py::is_operator())
+    .def("__mul__", [](const Op &a, const std::string &b) {
+            return combine(a, parse_triplet(b));
+         }, py::is_operator())
+    .def("__rmul__", [](const Op &a, const std::string &b) {
+            return combine(parse_triplet(b), a);
+         }, py::is_operator())
+    .def("__repr__", [](const Op &self) {
+        return "<sym.Op(\"" + self.triplet() + "\")>";
+    });
 
-  sym.def("parse_triplet", &parse_triplet, py::arg("s"),
-          "Parse coordinate triplet into SymOp.");
+  sym.def("parse_triplet", &parse_triplet, py::arg("triplet"),
+          "Parse coordinate triplet into sym.Op.");
   sym.def("parse_triplet_part", &parse_triplet_part, py::arg("s"),
           "Parse one of the three parts of a triplet.");
   sym.def("make_triplet_part", &make_triplet_part,
+          py::arg("x"), py::arg("y"), py::arg("z"), py::arg("w"),
           "Make one of the three parts of a triplet.");
+  sym.def("combine", &combine, py::arg("a"), py::arg("b"),
+          "Combine two symmetry operations.");
 }

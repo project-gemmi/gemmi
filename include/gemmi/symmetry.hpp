@@ -18,45 +18,43 @@ namespace sym {
 
 // TRIPLET <-> SYM OP
 
-struct RotOp {
-  std::int8_t m[3][3]; // = {{0,0,0}, {0,0,0}, {0,0,0}};
-  RotOp compose(const RotOp& o) const {
-    RotOp r;
-    for (int i = 0; i != 3; ++i)
-      for (int j = 0; j != 3; ++j)
-        r.m[i][j] = m[i][0] * o.m[0][j] +
-                    m[i][1] * o.m[1][j] +
-                    m[i][2] * o.m[2][j];
-    return r;
+//using RotOp = std::array<std::array<std::int8_t, 3>, 3>;
+//using TranOp = std::array<std::int8_t, 3>;
+
+struct Op {
+  typedef std::array<std::array<std::int8_t, 3>, 3> Rot;
+  typedef std::array<std::int8_t, 3> Tran;
+  Rot rot;
+  Tran tran;
+
+  std::string triplet() const;
+
+  Op inv() const {
+    // TODO
+    return { rot, tran };
   }
 };
 
-struct TrOp {
-  std::int8_t v[3]; // = {0,0,0};
-  TrOp compose(const TrOp& o) const {
-    TrOp r;
-    for (int i = 0; i != 3; ++i) {
-      r.v[i] = v[i] + o.v[i];
-      if (r.v[i] > 12)
-        r.v[i] -= 12;
+inline Op combine(const Op& a, const Op& b) {
+  Op r;
+  for (int i = 0; i != 3; ++i) {
+    r.tran[i] = a.tran[i];
+    for (int j = 0; j != 3; ++j) {
+      r.rot[i][j] = a.rot[i][0] * b.rot[0][j] +
+                    a.rot[i][1] * b.rot[1][j] +
+                    a.rot[i][2] * b.rot[2][j];
+      r.tran[i] += a.rot[i][j] * b.tran[j];
     }
-    return r;
+    r.tran[i] %= 12;
   }
-};
-
-struct SymOp {
-  RotOp rot;
-  TrOp tr;
-  SymOp compose(const SymOp& o) const {
-    return { rot.compose(o.rot), tr.compose(o.tr) };
-  }
-};
+  return r;
+}
 
 [[noreturn]]
 inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 
-inline std::array<int8_t, 4> parse_triplet_part(const std::string& s) {
-  std::array<int8_t, 4> r = { 0, 0, 0, 0 };
+inline std::array<std::int8_t, 4> parse_triplet_part(const std::string& s) {
+  std::array<std::int8_t, 4> r = { 0, 0, 0, 0 };
   int sign = 1;
   for (const char* c = s.c_str(); c != s.c_str() + s.length(); ++c) {
     if (*c == '+' || *c == '-') {
@@ -90,11 +88,11 @@ inline std::array<int8_t, 4> parse_triplet_part(const std::string& s) {
     sign = 0;
   }
   if (sign != 0)
-    fail("trailing sign in: " + s + " " + std::to_string(sign));
+    fail("trailing sign in: " + s);
   return r;
 }
 
-inline SymOp parse_triplet(const std::string& s) {
+inline Op parse_triplet(const std::string& s) {
   if (std::count(s.begin(), s.end(), ',') != 2)
     fail("expected exactly two commas in triplet");
   size_t comma1 = s.find(',');
@@ -102,9 +100,9 @@ inline SymOp parse_triplet(const std::string& s) {
   auto a = parse_triplet_part(s.substr(0, comma1));
   auto b = parse_triplet_part(s.substr(comma1 + 1, comma2 - (comma1 + 1)));
   auto c = parse_triplet_part(s.substr(comma2 + 1));
-  RotOp rot = {a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]};
-  TrOp tr = {a[3], b[3], c[3]};
-  return { rot, tr };
+  Op::Rot rot = {a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]};
+  Op::Tran tran = {a[3], b[3], c[3]};
+  return { rot, tran };
 }
 
 inline std::string make_triplet_part(int x, int y, int z, int w) {
@@ -120,18 +118,17 @@ inline std::string make_triplet_part(int x, int y, int z, int w) {
         w /= factor;
       else
         denom *= factor;
-    s += (w > 0 ? "+" : "-") + std::to_string(w);
+    s += (w > 0 ? "+" : "") + std::to_string(w);
     if (denom != 1)
       s += "/" + std::to_string(denom);
   }
   return s;
 }
 
-inline std::string make_triplet(const SymOp& op) {
-  auto &m = op.rot.m;
-  return make_triplet_part(m[0][0], m[0][1], m[0][2], op.tr.v[0]) +
-   "," + make_triplet_part(m[1][0], m[1][1], m[1][2], op.tr.v[1]) +
-   "," + make_triplet_part(m[2][0], m[2][1], m[2][2], op.tr.v[2]);
+inline std::string Op::triplet() const {
+  return make_triplet_part(rot[0][0], rot[0][1], rot[0][2], tran[0]) +
+   "," + make_triplet_part(rot[1][0], rot[1][1], rot[1][2], tran[1]) +
+   "," + make_triplet_part(rot[2][0], rot[2][1], rot[2][2], tran[2]);
 }
 
 
