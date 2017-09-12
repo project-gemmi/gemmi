@@ -119,7 +119,7 @@ setup(
     cmdclass={'build_ext': BuildExt},
     zip_safe=False,
     license='MPL-2.0',
-    keywords='CIF, mmCIF, PDB, crystallography',
+    keywords='CIF, mmCIF, PDB, CCP4, structural biology, crystallography',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',

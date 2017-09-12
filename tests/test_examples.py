@@ -16,6 +16,7 @@ class TestExamples(unittest.TestCase):
     sys.argv = ['example', CIF_FILE]
     sys.stdout = open(os.devnull, 'w')
   def tearDown(self):
+    sys.stdout.close()
     sys.stdout = sys.__stdout__
   def test_aafreq(self):
     import aafreq

@@ -1,7 +1,7 @@
 
 .SUFFIXES:
 
-CXX=g++-5
+#CXX=g++-7
 CXXSTD=-std=c++11
 PYTHON=python
 PYTHON_CONFIG=$(PYTHON)-config

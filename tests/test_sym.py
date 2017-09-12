@@ -69,7 +69,7 @@ class TestSymmetry(unittest.TestCase):
             self.assertEqual(calculated, single)
 
     def test_triplet_roundtrip(self):
-        singles = CANONICAL_SINGLES.keys()
+        singles = list(CANONICAL_SINGLES.keys())
         for i in range(4):
             items = [random.choice(singles) for j in range(3)]
             triplet = ",".join(items)
