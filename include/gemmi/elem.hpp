@@ -66,7 +66,7 @@ inline double molecular_weight(El el) {
   return weights[static_cast<int>(el)];
 }
 
-typedef const char elname_t[4];
+typedef const char elname_t[3];
 
 inline const char* element_name(El el) {
   static constexpr elname_t names[] = {
