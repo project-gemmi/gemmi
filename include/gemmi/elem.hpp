@@ -66,8 +66,10 @@ inline double molecular_weight(El el) {
   return weights[static_cast<int>(el)];
 }
 
+typedef const char elname_t[4];
+
 inline const char* element_name(El el) {
-  constexpr const char* names[] = {
+  static constexpr elname_t names[] = {
     "X",  "H",  "He", "Li", "Be", "B",  "C",  "N",  "O", "F", "Ne",
     "Na", "Mg", "Al", "Si", "P",  "S",  "Cl", "Ar",
     "K",  "Ca", "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co",
@@ -82,7 +84,7 @@ inline const char* element_name(El el) {
     "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr",
     "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn",
     "Nh", "Fl", "Mc", "Lv", "Ts", "Og",
-    "D", nullptr
+    "D", ""
   };
   static_assert(static_cast<int>(El::Og) == 118, "Hmm");
   static_assert(names[118][0] == 'O', "Hmm");
@@ -91,8 +93,8 @@ inline const char* element_name(El el) {
   return names[static_cast<int>(el)];
 }
 
-inline const char* element_uppercase_name(El el) {
-  constexpr const char* names[] = {
+inline elname_t& element_uppercase_name(El el) {
+  static constexpr elname_t names[] = {
     "X",  "H",  "HE", "LI", "BE", "B",  "C",  "N",  "O", "F", "NE",
     "NA", "MG", "AL", "SI", "P",  "S",  "CL", "AR",
     "K",  "CA", "SC", "TI", "V",  "CR", "MN", "FE", "CO",
@@ -107,8 +109,9 @@ inline const char* element_uppercase_name(El el) {
     "CM", "BK", "CF", "ES", "FM", "MD", "NO", "LR",
     "RF", "DB", "SG", "BH", "HS", "MT", "DS", "RG", "CN",
     "NH", "FL", "MC", "LV", "TS", "OG",
-    "D", nullptr
+    "D", "", ""
   };
+  static_assert(sizeof(names) / sizeof(names[0]) == 122, "not 122");
   return names[static_cast<int>(el)];
 }
 
@@ -144,27 +147,12 @@ inline El find_element(const char* symbol) {
     return find_single_letter_element(second);
   if (second == '\0')
     return find_single_letter_element(first);
-
-#define EL(s) std::uint16_t(#s[0] << 8 | #s[1])
-  const std::uint16_t ptable[119] = {
-    EL(H),  EL(HE), EL(LI), EL(BE), EL(B),  EL(C),  EL(N),  EL(O),  EL(F),
-    EL(NE), EL(NA), EL(MG), EL(AL), EL(SI), EL(P),  EL(S),  EL(CL), EL(AR),
-    EL(K),  EL(CA), EL(SC), EL(TI), EL(V),  EL(CR), EL(MN), EL(FE), EL(CO),
-    EL(NI), EL(CU), EL(ZN), EL(GA), EL(GE), EL(AS), EL(SE), EL(BR), EL(KR),
-    EL(RB), EL(SR), EL(Y),  EL(ZR), EL(NB), EL(MO), EL(TC), EL(RU), EL(RH),
-    EL(PD), EL(AG), EL(CD), EL(IN), EL(SN), EL(SB), EL(TE), EL(I),  EL(XE),
-    EL(CS), EL(BA), EL(LA), EL(CE), EL(PR), EL(ND), EL(PM), EL(SM), EL(EU),
-    EL(GD), EL(TB), EL(DY), EL(HO), EL(ER), EL(TM), EL(YB), EL(LU),
-    EL(HF), EL(TA), EL(W),  EL(RE), EL(OS), EL(IR), EL(PT), EL(AU), EL(HG),
-    EL(TL), EL(PB), EL(BI), EL(PO), EL(AT), EL(RN),
-    EL(FR), EL(RA), EL(AC), EL(TH), EL(PA), EL(U),  EL(NP), EL(PU), EL(AM),
-    EL(CM), EL(BK), EL(CF), EL(ES), EL(FM), EL(MD), EL(NO), EL(LR),
-    EL(RF), EL(DB), EL(SG), EL(BH), EL(HS), EL(MT), EL(D)
-  };
-#undef EL
-  std::uint16_t sym16 = (first << 8) | second;
-  auto r = std::find(std::begin(ptable), std::end(ptable), sym16);
-  return r != std::end(ptable) ? static_cast<El>(r - ptable + 1) : El::X;
+  elname_t* names = &element_uppercase_name(El::X);
+  for (int i = 0; i != 120; ++i) {
+    if (names[i][0] == first && names[i][1] == second)
+      return static_cast<El>(i);
+  }
+  return El::X;
 }
 
 struct Element {
