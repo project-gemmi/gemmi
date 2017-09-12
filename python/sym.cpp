@@ -24,6 +24,11 @@ void init_sym(py::module& sym) {
     .def("__rmul__", [](const Op &a, const std::string &b) {
             return combine(parse_triplet(b), a);
          }, py::is_operator())
+    .def("__eq__", [](const Op &a, const Op &b) { return a == b; },
+         py::is_operator())
+    .def("__eq__", [](const Op &a, const std::string& b) {
+            return a == parse_triplet(b);
+         }, py::is_operator())
     .def("__repr__", [](const Op &self) {
         return "<sym.Op(\"" + self.triplet() + "\")>";
     });

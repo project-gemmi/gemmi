@@ -34,6 +34,10 @@ struct Op {
     return { rot, tran };
   }
 };
+inline bool operator==(const Op& a, const Op& b) {
+  return a.rot == b.rot && a.tran == b.tran;
+}
+inline bool operator!=(const Op& a, const Op& b) { return !(a == b); }
 
 inline Op combine(const Op& a, const Op& b) {
   Op r;
@@ -46,6 +50,8 @@ inline Op combine(const Op& a, const Op& b) {
       r.tran[i] += a.rot[i][j] * b.tran[j];
     }
     r.tran[i] %= 12;
+    if (r.tran[i] < 0)
+      r.tran[i] += 12;
   }
   return r;
 }
