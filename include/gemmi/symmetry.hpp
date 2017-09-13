@@ -16,10 +16,10 @@
 namespace gemmi {
 namespace sym {
 
-// TRIPLET <-> SYM OP
+[[noreturn]]
+inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 
-//using RotOp = std::array<std::array<std::int8_t, 3>, 3>;
-//using TranOp = std::array<std::int8_t, 3>;
+// TRIPLET <-> SYM OP
 
 struct Op {
   typedef std::array<std::array<std::int8_t, 3>, 3> Rot;
@@ -28,10 +28,12 @@ struct Op {
   Tran tran;
 
   std::string triplet() const;
-
-  Op inv() const {
-    // TODO
-    return { rot, tran };
+  std::string rot_triplet() const { return Op{rot, {0, 0, 0}}.triplet(); };
+  Op invert() const;
+  int det_rot() const { // should be 1 (rotation) or -1 (with inversion)
+    return rot[0][0] * (rot[1][1] * rot[2][2] - rot[1][2] * rot[2][1])
+         - rot[0][1] * (rot[1][0] * rot[2][2] - rot[1][2] * rot[2][0])
+         + rot[0][2] * (rot[1][0] * rot[2][1] - rot[1][1] * rot[2][0]);
   }
 };
 inline bool operator==(const Op& a, const Op& b) {
@@ -56,8 +58,26 @@ inline Op combine(const Op& a, const Op& b) {
   return r;
 }
 
-[[noreturn]]
-inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
+inline Op Op::invert() const {
+  int detr = det_rot();
+  if (detr != 1 && detr != -1)
+    fail("not a rotation/inversion: det|" + rot_triplet() + "|="
+         + std::to_string(detr));
+  Op inv;
+  inv.rot[0][0] = detr * (rot[1][1] * rot[2][2] - rot[2][1] * rot[1][2]);
+  inv.rot[0][1] = detr * (rot[0][2] * rot[2][1] - rot[0][1] * rot[2][2]);
+  inv.rot[0][2] = detr * (rot[0][1] * rot[1][2] - rot[0][2] * rot[1][1]);
+  inv.rot[1][0] = detr * (rot[1][2] * rot[2][0] - rot[1][0] * rot[2][2]);
+  inv.rot[1][1] = detr * (rot[0][0] * rot[2][2] - rot[0][2] * rot[2][0]);
+  inv.rot[1][2] = detr * (rot[1][0] * rot[0][2] - rot[0][0] * rot[1][2]);
+  inv.rot[2][0] = detr * (rot[1][0] * rot[2][1] - rot[2][0] * rot[1][1]);
+  inv.rot[2][1] = detr * (rot[2][0] * rot[0][1] - rot[0][0] * rot[2][1]);
+  inv.rot[2][2] = detr * (rot[0][0] * rot[1][1] - rot[1][0] * rot[0][1]);
+  inv.tran[0] = 0; // TODO
+  inv.tran[1] = 0; // TODO
+  inv.tran[2] = 0; // TODO
+  return inv;
+}
 
 inline std::array<std::int8_t, 4> parse_triplet_part(const std::string& s) {
   std::array<std::int8_t, 4> r = { 0, 0, 0, 0 };
