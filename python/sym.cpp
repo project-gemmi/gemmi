@@ -44,4 +44,13 @@ void init_sym(py::module& sym) {
           "Make one of the three parts of a triplet.");
   sym.def("combine", &combine, py::arg("a"), py::arg("b"),
           "Combine two symmetry operations.");
+
+  py::class_<SymOps>(sym, "SymOps")
+    .def(py::init<>())
+    .def_readwrite("centrosym", &SymOps::centrosym)
+    .def_readwrite("sym_ops", &SymOps::sym_ops)
+    .def_readwrite("cen_ops", &SymOps::cen_ops);
+
+  sym.def("symops_from_hall", &symops_from_hall, py::arg("hall"),
+          "Parse Hall notation.");
 }

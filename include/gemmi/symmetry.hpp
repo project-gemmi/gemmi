@@ -7,11 +7,14 @@
 
 #include <cstdint>
 #include <cstdlib>    // for strtol
-#include <cstring>    // for memchr
+#include <cstring>    // for memchr, strlen
 #include <array>
 #include <algorithm>  // for count
 #include <stdexcept>  // for runtime_error
 #include <string>
+#include <vector>
+
+#include <iostream> // debug
 
 namespace gemmi {
 namespace sym {
@@ -29,13 +32,35 @@ struct Op {
 
   std::string triplet() const;
   std::string rot_triplet() const { return Op{rot, {0, 0, 0}}.triplet(); };
+
   Op invert() const;
+
+  void normalize_tran() { // wrap the elements into [0,12)
+    for (int i = 0; i != 3; ++i) {
+      tran[i] %= 12;
+      if (tran[i] < 0)
+        tran[i] += 12;
+    }
+  }
+
+  void translate(const Tran& a) {
+    for (int i = 0; i != 3; ++i)
+      tran[i] += a[i];
+  }
+
+  void shift_origin(const Tran& a) {
+    // TODO
+  }
+
   int det_rot() const { // should be 1 (rotation) or -1 (with inversion)
     return rot[0][0] * (rot[1][1] * rot[2][2] - rot[1][2] * rot[2][1])
          - rot[0][1] * (rot[1][0] * rot[2][2] - rot[1][2] * rot[2][0])
          + rot[0][2] * (rot[1][0] * rot[2][1] - rot[1][1] * rot[2][0]);
   }
+
+  static Op identity() { return {{1,0,0, 0,1,0, 0,0,1}, {0,0,0}}; };
 };
+
 inline bool operator==(const Op& a, const Op& b) {
   return a.rot == b.rot && a.tran == b.tran;
 }
@@ -51,10 +76,8 @@ inline Op combine(const Op& a, const Op& b) {
                     a.rot[i][2] * b.rot[2][j];
       r.tran[i] += a.rot[i][j] * b.tran[j];
     }
-    r.tran[i] %= 12;
-    if (r.tran[i] < 0)
-      r.tran[i] += 12;
   }
+  r.normalize_tran();
   return r;
 }
 
@@ -181,6 +204,137 @@ const SpaceGroup Data_<Dummy>::arr[530] = {
   {1, 0, "P 1", "P 1"},
 };
 using data = Data_<void>;
+
+
+// INTERPRETING HALL SYMBOLS
+// based on http://cci.lbl.gov/sginfo/hall_symbols.html
+
+struct SymOps {
+  bool centrosym = false;
+  std::vector<Op> sym_ops;
+  std::vector<Op::Tran> cen_ops;
+
+  struct Iter {
+    const SymOps& parent;
+    unsigned inv, n_symop, n_cenop;
+    void operator++() {
+      if (++n_cenop == parent.cen_ops.size()) {
+        n_cenop = 0;
+        if (++n_symop = parent.sym_ops.size()) {
+          n_symop = 0;
+          if (inv == 0 && parent.centrosym)
+            inv = 1;
+          else
+            inv = 2;
+        }
+      }
+    }
+    Op operator*() const {
+      Op op = parent.sym_ops[n_symop];
+      if (inv)
+        ; //TODO op.change_signs();
+      op.translate(parent.cen_ops[n_cenop]);
+      return op;
+    }
+    bool operator==(const Iter& o) const {
+      return inv == o.inv && n_symop == o.n_symop && n_cenop == o.n_cenop;
+    }
+    bool operator!=(const Iter& o) const { return !(*this == o); }
+  };
+
+  Iter begin() const { return {*this, 0, 0, 0}; };
+  Iter end() const { return {*this, 2, 0, 0}; };
+};
+
+inline std::vector<Op::Tran> lattice_translations(char lattice_symbol) {
+  switch (lattice_symbol & ~0x20) {
+    case 'P': return {{0, 0, 0}};
+    case 'A': return {{0, 0, 0}, {0, 6, 6}};
+    case 'B': return {{0, 0, 0}, {6, 0, 6}};
+    case 'C': return {{0, 0, 0}, {6, 6, 0}};
+    case 'I': return {{0, 0, 0}, {6, 6, 6}};
+    case 'R': return {{0, 0, 0}, {8, 4, 4}, {4, 8, 8}};
+    case 'S': return {{0, 0, 0}, {4, 4, 8}, {8, 4, 8}};
+    case 'T': return {{0, 0, 0}, {4, 8, 4}, {8, 4, 8}};
+    case 'F': return {{0, 0, 0}, {0, 6, 6}, {6, 0, 6}, {6, 6, 0}};
+    default: fail("not a lattice symbol: " + std::string(1, lattice_symbol));
+  }
+}
+
+inline Op::Tran translation_from_symbol(char symbol) {
+  switch (symbol) {
+    case 'a': return {6, 0, 0};
+    case 'b': return {0, 6, 0};
+    case 'c': return {0, 0, 6};
+    case 'n': return {6, 6, 6};
+    case 'u': return {3, 0, 0};
+    case 'v': return {0, 3, 0};
+    case 'w': return {0, 0, 3};
+    case 'd': return {3, 3, 3};
+    default: fail("not a translation symbol: " + std::string(1, symbol));
+  }
+}
+
+inline const char* skip_blank(const char* p) {
+  if (p)
+    while (*p == ' ' || *p == '\t')
+      ++p;
+  return p;
+}
+
+inline Op hall_matrix_symbol(const char* start, const char* end) {
+  Op op;
+  // TODO
+  return op;
+}
+
+inline Op::Tran parse_translation(const char* start, const char* end) {
+  Op::Tran t;
+  char* endptr;
+  for (int i = 0; i != 3; ++i) {
+    t[i] = std::strtol(start, &endptr, 10) % 12;
+    start = endptr;
+  }
+  if (endptr != end)
+    fail("wrong format of translation: " + std::string(start, end));
+  return t;
+}
+
+inline const char* find_chr(const char* s, int c, const char* end) {
+  return static_cast<const char*>(std::memchr(s, c, end - s));
+}
+
+inline SymOps symops_from_hall(const char* hall) {
+  if (hall == nullptr)
+    fail("null");
+  hall = skip_blank(hall);
+  SymOps ops;
+  ops.centrosym = (hall[0] == '-');
+  ops.sym_ops.emplace_back(Op::identity());
+  const char* lat = skip_blank(ops.centrosym ? hall + 1 : hall);
+  ops.cen_ops = lattice_translations(*lat);
+  const char* part = skip_blank(lat + 1);
+  const char* end = part + std::strlen(part);
+  while (part && part != end) {
+    if (*part == '(') {
+      const char* rb = find_chr(part, ')', end);
+      if (!rb)
+        fail("missing ')': " + std::string(hall));
+      if (ops.sym_ops.empty())
+        fail("misplaced translation: " + std::string(hall));
+      Op::Tran tr = parse_translation(part + 1, rb);
+      ops.sym_ops.back().shift_origin(tr);
+      part = skip_blank(find_chr(rb + 1, ' ', end));
+    } else {
+      const char* space = find_chr(part, ' ', end);
+      Op op = hall_matrix_symbol(part, space ? space : end);
+      if (op != Op::identity())
+        ops.sym_ops.emplace_back(op);
+      part = skip_blank(space);
+    }
+  }
+  return ops;
+}
 
 
 } // namespace sym
