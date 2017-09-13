@@ -73,9 +73,10 @@ inline Op Op::invert() const {
   inv.rot[2][0] = detr * (rot[1][0] * rot[2][1] - rot[2][0] * rot[1][1]);
   inv.rot[2][1] = detr * (rot[2][0] * rot[0][1] - rot[0][0] * rot[2][1]);
   inv.rot[2][2] = detr * (rot[0][0] * rot[1][1] - rot[1][0] * rot[0][1]);
-  inv.tran[0] = 0; // TODO
-  inv.tran[1] = 0; // TODO
-  inv.tran[2] = 0; // TODO
+  for (int i = 0; i != 3; ++i)
+    inv.tran[i] = - tran[0] * inv.rot[i][0]
+                  - tran[1] * inv.rot[i][1]
+                  - tran[2] * inv.rot[i][2];
   return inv;
 }
 

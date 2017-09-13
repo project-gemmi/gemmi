@@ -89,6 +89,11 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(b * c, sym.Op('y+1/2,-z,x'))
         self.assertEqual(c * b, '-y,z,x+1/2')
 
+    def test_invert(self):
+        for xyz in ['-y,-x,-z+1/4', 'y,-x,z+3/4', 'y,x,-z', 'y+1/2,x,-z+1/3']:
+            op = sym.Op(xyz)
+            self.assertEqual(op * op.invert(), 'x,y,z')
+            self.assertEqual(op.invert().invert(), op)
 
 if __name__ == '__main__':
     unittest.main()
