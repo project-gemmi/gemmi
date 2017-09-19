@@ -17,7 +17,8 @@ void init_sym(py::module& sym) {
     .def_readwrite("tran", &Op::tran)
     .def("triplet", &Op::triplet)
     .def("det_rot", &Op::det_rot)
-    .def("invert", &Op::invert)
+    .def("inverted", &Op::inverted)
+    .def("negated", &Op::negated)
     .def("__mul__", [](const Op &a, const Op &b) { return combine(a, b); },
          py::is_operator())
     .def("__mul__", [](const Op &a, const std::string &b) {
@@ -47,7 +48,6 @@ void init_sym(py::module& sym) {
 
   py::class_<SymOps>(sym, "SymOps")
     .def(py::init<>())
-    .def_readwrite("centrosym", &SymOps::centrosym)
     .def_readwrite("sym_ops", &SymOps::sym_ops)
     .def_readwrite("cen_ops", &SymOps::cen_ops);
 

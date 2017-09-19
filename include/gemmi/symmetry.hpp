@@ -25,28 +25,41 @@ inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 // TRIPLET <-> SYM OP
 
 struct Op {
-  typedef std::array<std::array<std::int8_t, 3>, 3> Rot;
-  typedef std::array<std::int8_t, 3> Tran;
+  typedef int int_t;
+  typedef std::array<std::array<int_t, 3>, 3> Rot;
+  typedef std::array<int_t, 3> Tran;
   Rot rot;
   Tran tran;
 
   std::string triplet() const;
   std::string rot_triplet() const { return Op{rot, {0, 0, 0}}.triplet(); };
 
-  Op invert() const;
+  Op inverted() const;
 
-  void normalize_tran() { // wrap the elements into [0,12)
+  Op& normalize_tran() { // wrap the elements into [0,12)
     for (int i = 0; i != 3; ++i) {
       tran[i] %= 12;
       if (tran[i] < 0)
         tran[i] += 12;
     }
+    return *this;
   }
 
-  void translate(const Tran& a) {
+  Op& translate(const Tran& a) {
     for (int i = 0; i != 3; ++i)
       tran[i] += a[i];
+    return *this;
   }
+
+  Op translated(const Tran& a) { return Op(*this).translate(a); }
+
+  Rot negated_rot() const {
+    return { -rot[0][0], -rot[0][1], -rot[0][2],
+             -rot[1][0], -rot[1][1], -rot[1][2],
+             -rot[2][0], -rot[2][1], -rot[2][2] };
+  }
+
+  Op negated() { return { negated_rot(), { -tran[0], -tran[1], -tran[2] } }; }
 
   void shift_origin(const Tran& a) {
     // TODO
@@ -81,7 +94,7 @@ inline Op combine(const Op& a, const Op& b) {
   return r;
 }
 
-inline Op Op::invert() const {
+inline Op Op::inverted() const {
   int detr = det_rot();
   if (detr != 1 && detr != -1)
     fail("not a rotation/inversion: det|" + rot_triplet() + "|="
@@ -103,8 +116,8 @@ inline Op Op::invert() const {
   return inv;
 }
 
-inline std::array<std::int8_t, 4> parse_triplet_part(const std::string& s) {
-  std::array<std::int8_t, 4> r = { 0, 0, 0, 0 };
+inline std::array<Op::int_t, 4> parse_triplet_part(const std::string& s) {
+  std::array<Op::int_t, 4> r = { 0, 0, 0, 0 };
   int sign = 1;
   for (const char* c = s.c_str(); c != s.c_str() + s.length(); ++c) {
     if (*c == '+' || *c == '-') {
@@ -182,7 +195,7 @@ inline std::string Op::triplet() const {
 }
 
 
-// CRYSTALLOGRAPHIC SPACE GROUPS
+// LIST OF CRYSTALLOGRAPHIC SPACE GROUPS
 
 struct SpaceGroup {
   std::uint8_t number;
@@ -210,40 +223,31 @@ using data = Data_<void>;
 // based on http://cci.lbl.gov/sginfo/hall_symbols.html
 
 struct SymOps {
-  bool centrosym = false;
   std::vector<Op> sym_ops;
   std::vector<Op::Tran> cen_ops;
 
   struct Iter {
     const SymOps& parent;
-    unsigned inv, n_symop, n_cenop;
+    unsigned n_symop, n_cenop;
     void operator++() {
       if (++n_cenop == parent.cen_ops.size()) {
         n_cenop = 0;
-        if (++n_symop = parent.sym_ops.size()) {
-          n_symop = 0;
-          if (inv == 0 && parent.centrosym)
-            inv = 1;
-          else
-            inv = 2;
-        }
+        ++n_symop;
       }
     }
     Op operator*() const {
       Op op = parent.sym_ops[n_symop];
-      if (inv)
-        ; //TODO op.change_signs();
-      op.translate(parent.cen_ops[n_cenop]);
+      op.translate(parent.cen_ops[n_cenop]); // TODO
       return op;
     }
-    bool operator==(const Iter& o) const {
-      return inv == o.inv && n_symop == o.n_symop && n_cenop == o.n_cenop;
+    bool operator==(const Iter& other) const {
+      return n_symop == other.n_symop && n_cenop == other.n_cenop;
     }
-    bool operator!=(const Iter& o) const { return !(*this == o); }
+    bool operator!=(const Iter& other) const { return !(*this == other); }
   };
 
-  Iter begin() const { return {*this, 0, 0, 0}; };
-  Iter end() const { return {*this, 2, 0, 0}; };
+  Iter begin() const { return {*this, 0, 0}; };
+  Iter end() const { return {*this, (unsigned) sym_ops.size(), 0}; };
 };
 
 inline std::vector<Op::Tran> lattice_translations(char lattice_symbol) {
@@ -261,6 +265,16 @@ inline std::vector<Op::Tran> lattice_translations(char lattice_symbol) {
   }
 }
 
+inline Op::Rot rotation_around_z(int N) {
+  switch (N) {
+    case 1: return {1,0,0,  0,1,0,  0,0,1};
+    case 2: return {-1,0,0, 0,-1,0, 0,0,1};
+    case 3: return {0,-1,0, 1,-1,0, 0,0,1};
+    case 4: return {0,-1,0, 1,0,0,  0,0,1};
+    case 6: return {1,-1,0, 1,0,0,  0,0,1};
+    default: fail("wrong n-fold order: " + std::to_string(N));
+  }
+}
 inline Op::Tran translation_from_symbol(char symbol) {
   switch (symbol) {
     case 'a': return {6, 0, 0};
@@ -271,7 +285,7 @@ inline Op::Tran translation_from_symbol(char symbol) {
     case 'v': return {0, 3, 0};
     case 'w': return {0, 0, 3};
     case 'd': return {3, 3, 3};
-    default: fail("not a translation symbol: " + std::string(1, symbol));
+    default: fail("unknown symbol: " + std::string(1, symbol));
   }
 }
 
@@ -282,9 +296,68 @@ inline const char* skip_blank(const char* p) {
   return p;
 }
 
-inline Op hall_matrix_symbol(const char* start, const char* end) {
-  Op op;
-  // TODO
+inline Op hall_matrix_symbol(const char* start, const char* end,
+                             int pos, char first) {
+  Op op = Op::identity();
+  bool neg = (*start == '-');
+  const char* p = (neg ? start + 1 : start);
+  if (*p < '1' || *p == '5' || *p > '6')
+    fail("wrong n-fold order notation: " + std::string(start, end));
+  int N = *p++ - '0';
+  int fractional_tran = 0;
+  char principal_axis = '\0';
+  char diagonal_axis = '\0';
+  for (; p < end; ++p) {
+    if (*p >= '1' && *p <= '5') {
+      if (fractional_tran != '\0')
+        fail("two numeric subscripts");
+      fractional_tran = *p - '0';
+    } else if (*p == '\'' || *p == '"' || *p == '*') {
+      if (N != (*p == '*' ? 3 : 2))
+        fail("wrong symbol: " + std::string(start, end));
+      diagonal_axis = *p;
+    } else if (*p == 'x' || *p == 'y' || *p == 'z') {
+      principal_axis = *p;
+    } else {
+      op.translate(translation_from_symbol(*p));
+    }
+  }
+  // fill in implicit values
+  if (!principal_axis && !diagonal_axis) {
+    if (pos == 1) {
+      principal_axis = 'z';
+    } else if (pos == 2 && N == 2) {
+      if (first == '2' || first == '4')
+        principal_axis = 'x';
+      else if (first == '3' || first == '6')
+        diagonal_axis = '\'';
+    } else if (pos == 3 && N == 3) {
+      diagonal_axis = '*';
+    } else {
+      fail("missing axis");
+    }
+  }
+  // get the operation
+  switch (diagonal_axis) {
+    case '\0':  op.rot = rotation_around_z(N); break;
+    case  '\'': op.rot = {0,-1,0, -1,0,0, 0,0,-1}; break;
+    case  '"':  op.rot = {0,1,0, 1,0,0, 0,0,-1}; break;
+    case  '*':  op.rot = {0,0,1, 1,0,0, 0,1,0}; break;
+    default: fail("impossible");
+  }
+  if (neg)
+    op.rot = op.negated_rot();
+  if (fractional_tran)
+    op.tran[principal_axis - 'x'] += 12 / N * fractional_tran;
+  if (principal_axis == 'x') {
+    op.rot = { op.rot[2][2], op.rot[2][0], op.rot[2][1],
+               op.rot[0][2], op.rot[0][0], op.rot[0][1],
+               op.rot[1][2], op.rot[1][0], op.rot[1][1] };
+  } else if (principal_axis == 'y') {
+    op.rot = { op.rot[1][1], op.rot[1][2], op.rot[1][0],
+               op.rot[2][1], op.rot[2][2], op.rot[2][0],
+               op.rot[0][1], op.rot[0][2], op.rot[0][0] };
+  }
   return op;
 }
 
@@ -309,12 +382,18 @@ inline SymOps symops_from_hall(const char* hall) {
     fail("null");
   hall = skip_blank(hall);
   SymOps ops;
-  ops.centrosym = (hall[0] == '-');
   ops.sym_ops.emplace_back(Op::identity());
-  const char* lat = skip_blank(ops.centrosym ? hall + 1 : hall);
+  bool centrosym = (hall[0] == '-');
+  if (centrosym)
+    ops.sym_ops.emplace_back(Op::identity().negated());
+  const char* lat = skip_blank(centrosym ? hall + 1 : hall);
+  if (!lat)
+    fail("not a hall symbol: " + std::string(hall));
   ops.cen_ops = lattice_translations(*lat);
   const char* part = skip_blank(lat + 1);
   const char* end = part + std::strlen(part);
+  int counter = 0;
+  char first = '\0';
   while (part && part != end) {
     if (*part == '(') {
       const char* rb = find_chr(part, ')', end);
@@ -327,9 +406,13 @@ inline SymOps symops_from_hall(const char* hall) {
       part = skip_blank(find_chr(rb + 1, ' ', end));
     } else {
       const char* space = find_chr(part, ' ', end);
-      Op op = hall_matrix_symbol(part, space ? space : end);
-      if (op != Op::identity())
+      if (!first)
+        first = part[0];
+      ++counter;
+      if (part[0] != '1' || (part[1] != ' ' && part[1] != '\0')) {
+        Op op = hall_matrix_symbol(part, space ? space : end, counter, first);
         ops.sym_ops.emplace_back(op);
+      }
       part = skip_blank(space);
     }
   }
