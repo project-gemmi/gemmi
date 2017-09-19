@@ -92,8 +92,20 @@ class TestSymmetry(unittest.TestCase):
     def test_invert(self):
         for xyz in ['-y,-x,-z+1/4', 'y,-x,z+3/4', 'y,x,-z', 'y+1/2,x,-z+1/3']:
             op = sym.Op(xyz)
-            self.assertEqual(op * op.invert(), 'x,y,z')
-            self.assertEqual(op.invert().invert(), op)
+            self.assertEqual(op * op.inverted(), 'x,y,z')
+            self.assertEqual(op.inverted().inverted(), op)
+
+    def test_symops_from_hall(self):
+        # test on example matrices from
+        # http://cci.lbl.gov/sginfo/hall_symbols.html
+        self.assertEqual(sym.symops_from_hall('p -2xc').sym_ops,
+                         ['x,y,z', '-x,y,z+1/2'])
+        self.assertEqual(sym.symops_from_hall('p 3*').sym_ops,
+                         ['x,y,z', 'z,x,y'])
+        self.assertEqual(sym.symops_from_hall('p 4vw').sym_ops,
+                         ['x,y,z', '-y,x+1/4,z+1/4'])
+        self.assertEqual(sym.symops_from_hall('p 61 2 (0 0 -1)').sym_ops,
+                         ['x,y,z', 'x-y,x,z+1/6', '-y,-x,-z+5/6'])
 
 if __name__ == '__main__':
     unittest.main()

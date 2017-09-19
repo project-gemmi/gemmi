@@ -7,7 +7,7 @@
 
 #include <cstdint>
 #include <cstdlib>    // for strtol
-#include <cstring>    // for memchr, strlen
+#include <cstring>    // for memchr, strchr, strlen
 #include <array>
 #include <algorithm>  // for count
 #include <stdexcept>  // for runtime_error
@@ -38,9 +38,10 @@ struct Op {
 
   Op& normalize_tran() { // wrap the elements into [0,12)
     for (int i = 0; i != 3; ++i) {
-      tran[i] %= 12;
-      if (tran[i] < 0)
-        tran[i] += 12;
+      if (tran[i] >= 12)
+        tran[i] %= 12;
+      else if (tran[i] < 0)
+        tran[i] = (tran[i] % 12) + 12;
     }
     return *this;
   }
@@ -61,9 +62,7 @@ struct Op {
 
   Op negated() { return { negated_rot(), { -tran[0], -tran[1], -tran[2] } }; }
 
-  void shift_origin(const Tran& a) {
-    // TODO
-  }
+  Op shifted_origin(const Tran& a) const;
 
   int det_rot() const { // should be 1 (rotation) or -1 (with inversion)
     return rot[0][0] * (rot[1][1] * rot[2][2] - rot[1][2] * rot[2][1])
@@ -92,6 +91,11 @@ inline Op combine(const Op& a, const Op& b) {
   }
   r.normalize_tran();
   return r;
+}
+
+inline Op Op::shifted_origin(const Tran& a) const {
+  Op::Rot rid = Op::identity().rot;
+  return combine(combine(Op{rid, a}, *this), Op{rid, {-a[0], -a[1], -a[2]}});
 }
 
 inline Op Op::inverted() const {
@@ -220,7 +224,8 @@ using data = Data_<void>;
 
 
 // INTERPRETING HALL SYMBOLS
-// based on http://cci.lbl.gov/sginfo/hall_symbols.html
+// based on both ITfC vol.B ch.1.4 (2010)
+// and http://cci.lbl.gov/sginfo/hall_symbols.html
 
 struct SymOps {
   std::vector<Op> sym_ops;
@@ -237,7 +242,8 @@ struct SymOps {
     }
     Op operator*() const {
       Op op = parent.sym_ops[n_symop];
-      op.translate(parent.cen_ops[n_cenop]); // TODO
+      op.translate(parent.cen_ops[n_cenop]);
+      op.normalize_tran();
       return op;
     }
     bool operator==(const Iter& other) const {
@@ -250,6 +256,7 @@ struct SymOps {
   Iter end() const { return {*this, (unsigned) sym_ops.size(), 0}; };
 };
 
+// corresponds to Table A1.4.2.2 in ITfC vol.B (edition 2010)
 inline std::vector<Op::Tran> lattice_translations(char lattice_symbol) {
   switch (lattice_symbol & ~0x20) {
     case 'P': return {{0, 0, 0}};
@@ -258,21 +265,27 @@ inline std::vector<Op::Tran> lattice_translations(char lattice_symbol) {
     case 'C': return {{0, 0, 0}, {6, 6, 0}};
     case 'I': return {{0, 0, 0}, {6, 6, 6}};
     case 'R': return {{0, 0, 0}, {8, 4, 4}, {4, 8, 8}};
+    // hall_symbols.html has no H, ITfC 2010 has no S and T
     case 'S': return {{0, 0, 0}, {4, 4, 8}, {8, 4, 8}};
     case 'T': return {{0, 0, 0}, {4, 8, 4}, {8, 4, 8}};
+    case 'H': return {{0, 0, 0}, {8, 4, 0}, {4, 8, 0}};
     case 'F': return {{0, 0, 0}, {0, 6, 6}, {6, 0, 6}, {6, 6, 0}};
     default: fail("not a lattice symbol: " + std::string(1, lattice_symbol));
   }
 }
 
-inline Op::Rot rotation_around_z(int N) {
+// matrices for Nz from Table 3 and 4 from hall_symbols.html
+inline Op::Rot rotation_z(int N) {
   switch (N) {
     case 1: return {1,0,0,  0,1,0,  0,0,1};
     case 2: return {-1,0,0, 0,-1,0, 0,0,1};
     case 3: return {0,-1,0, 1,-1,0, 0,0,1};
     case 4: return {0,-1,0, 1,0,0,  0,0,1};
     case 6: return {1,-1,0, 1,0,0,  0,0,1};
-    default: fail("wrong n-fold order: " + std::to_string(N));
+    case '\'': return {0,-1,0, -1,0,0, 0,0,-1};
+    case '"':  return {0,1,0,   1,0,0, 0,0,-1};
+    case '*':  return {0,0,1,   1,0,0, 0,1,0};
+    default: fail("incorrect axis definition");
   }
 }
 inline Op::Tran translation_from_symbol(char symbol) {
@@ -289,11 +302,10 @@ inline Op::Tran translation_from_symbol(char symbol) {
   }
 }
 
-inline const char* skip_blank(const char* p) {
-  if (p)
-    while (*p == ' ' || *p == '\t')
-      ++p;
-  return p;
+inline Op::Rot alter_order(const Op::Rot& r, int i, int j, int k) {
+    return { r[i][i], r[i][j], r[i][k],
+             r[j][i], r[j][j], r[j][k],
+             r[k][i], r[k][j], r[k][k] };
 }
 
 inline Op hall_matrix_symbol(const char* start, const char* end,
@@ -338,26 +350,15 @@ inline Op hall_matrix_symbol(const char* start, const char* end,
     }
   }
   // get the operation
-  switch (diagonal_axis) {
-    case '\0':  op.rot = rotation_around_z(N); break;
-    case  '\'': op.rot = {0,-1,0, -1,0,0, 0,0,-1}; break;
-    case  '"':  op.rot = {0,1,0, 1,0,0, 0,0,-1}; break;
-    case  '*':  op.rot = {0,0,1, 1,0,0, 0,1,0}; break;
-    default: fail("impossible");
-  }
+  op.rot = rotation_z(diagonal_axis ? diagonal_axis : N);
   if (neg)
     op.rot = op.negated_rot();
+  if (principal_axis == 'x')
+    op.rot = alter_order(op.rot, 2, 0, 1);
+  else if (principal_axis == 'y')
+    op.rot = alter_order(op.rot, 1, 2, 0);
   if (fractional_tran)
     op.tran[principal_axis - 'x'] += 12 / N * fractional_tran;
-  if (principal_axis == 'x') {
-    op.rot = { op.rot[2][2], op.rot[2][0], op.rot[2][1],
-               op.rot[0][2], op.rot[0][0], op.rot[0][1],
-               op.rot[1][2], op.rot[1][0], op.rot[1][1] };
-  } else if (principal_axis == 'y') {
-    op.rot = { op.rot[1][1], op.rot[1][2], op.rot[1][0],
-               op.rot[2][1], op.rot[2][2], op.rot[2][0],
-               op.rot[0][1], op.rot[0][2], op.rot[0][0] };
-  }
   return op;
 }
 
@@ -373,8 +374,17 @@ inline Op::Tran parse_translation(const char* start, const char* end) {
   return t;
 }
 
-inline const char* find_chr(const char* s, int c, const char* end) {
-  return static_cast<const char*>(std::memchr(s, c, end - s));
+inline const char* find_blank(const char* p) {
+  while (*p != '\0' && *p != ' ' && *p != '\t' && *p != '_') // '_' == ' '
+    ++p;
+  return p;
+}
+
+inline const char* skip_blank(const char* p) {
+  if (p)
+    while (*p == ' ' || *p == '\t' || *p == '_') // '_' can be used as space
+      ++p;
+  return p;
 }
 
 inline SymOps symops_from_hall(const char* hall) {
@@ -390,27 +400,26 @@ inline SymOps symops_from_hall(const char* hall) {
   if (!lat)
     fail("not a hall symbol: " + std::string(hall));
   ops.cen_ops = lattice_translations(*lat);
-  const char* part = skip_blank(lat + 1);
-  const char* end = part + std::strlen(part);
   int counter = 0;
   char first = '\0';
-  while (part && part != end) {
+  for (const char* part = skip_blank(lat + 1); *part != '\0'; ) {
     if (*part == '(') {
-      const char* rb = find_chr(part, ')', end);
+      const char* rb = std::strchr(part, ')');
       if (!rb)
         fail("missing ')': " + std::string(hall));
       if (ops.sym_ops.empty())
         fail("misplaced translation: " + std::string(hall));
+      // TODO: full change of basis operation as per ITfC 2010
       Op::Tran tr = parse_translation(part + 1, rb);
-      ops.sym_ops.back().shift_origin(tr);
-      part = skip_blank(find_chr(rb + 1, ' ', end));
+      ops.sym_ops.back() = ops.sym_ops.back().shifted_origin(tr);
+      part = skip_blank(find_blank(rb + 1));
     } else {
-      const char* space = find_chr(part, ' ', end);
+      const char* space = find_blank(part);
       if (!first)
         first = part[0];
       ++counter;
       if (part[0] != '1' || (part[1] != ' ' && part[1] != '\0')) {
-        Op op = hall_matrix_symbol(part, space ? space : end, counter, first);
+        Op op = hall_matrix_symbol(part, space, counter, first);
         ops.sym_ops.emplace_back(op);
       }
       part = skip_blank(space);
