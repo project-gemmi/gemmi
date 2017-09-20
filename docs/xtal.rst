@@ -167,7 +167,9 @@ combined with up to 4 centering vectors.
   It is used in the SPGGEN_ program.
 
 * The Hall notation (``-I 4bd 2c 3``), first proposed by Sydney R. Hall
-  in 1981, is short (3-16 characters), unambiguous and looks nice.
+  in 1981, is short (up to 16 characters for all settings in ITfC,
+  up to 32 characters for full change-of-basis notation in :file:`syminfo.lib`),
+  unambiguous and looks nice.
   The notation can be interpreted by a few libraries:
 
   * SgInfo_ and SgLite_ (old C libraries from Ralf W. Grosse-Kunstleve
@@ -175,15 +177,14 @@ combined with up to 4 centering vectors.
   * sgtbx_ (successor of SgInfo written in C++/Python, part of cctbx),
   * CCP4 Clipper_ (in :file:`spacegroup.cpp`).
 
-  which makes it relatively popular.
+  and by many programs.
   On the bad side, the conciseness is achieved by complex
   `rules <http://cci.lbl.gov/sginfo/hall_symbols.html>`_ of interpreting
-  the symbols (including a few auxiliary tables), on the top of complexity
-  needed to generate all operations from the encoded generators.
-  (TODO: note about different versions of the Hall notation)
+  the symbols.
 
-In Gemmi we derive operations from the Hall symbols
-(despite of mixed feelings about the overly implicit notation).
+In Gemmi we derive operations from the Hall symbols.
+The choice of included generators is somewhat arbitrary and differs
+between editions of ITfC, and between sgtbx and :file:`syminfo.lib`.
 
 .. _SgInfo: https://github.com/rwgk/sginfo
 .. _SgLite: https://github.com/rwgk/sglite

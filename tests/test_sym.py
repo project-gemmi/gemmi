@@ -64,6 +64,8 @@ class TestSymmetry(unittest.TestCase):
             self.assertEqual(calculated, row)
 
     def test_make_triplet_part(self):
+        self.assertEqual(sym.make_triplet_part(0, 0, 0, 1),
+                         '1/%d' % sym.Op.TDEN)
         for single, row in CANONICAL_SINGLES.items():
             calculated = sym.make_triplet_part(*row)
             self.assertEqual(calculated, single)
@@ -72,12 +74,12 @@ class TestSymmetry(unittest.TestCase):
         singles = list(CANONICAL_SINGLES.keys())
         for i in range(4):
             items = [random.choice(singles) for j in range(3)]
-            triplet = ",".join(items)
+            triplet = ','.join(items)
             op = sym.parse_triplet(triplet)
             self.assertEqual(op.triplet(), triplet)
 
     def test_combine(self):
-        a = sym.Op("x+1/3,z,-y")
+        a = sym.Op('x+1/3,z,-y')
         self.assertEqual(sym.combine(a, a).triplet(), 'x+2/3,-y,-z')
         self.assertEqual('x,-y,z' * sym.Op('-x,-y,z'), '-x,y,z')
         a = sym.Op('-y+1/4,x+3/4,z+1/4')
@@ -95,16 +97,16 @@ class TestSymmetry(unittest.TestCase):
             self.assertEqual(op * op.inverted(), 'x,y,z')
             self.assertEqual(op.inverted().inverted(), op)
 
-    def test_symops_from_hall(self):
+    def test_generators_from_hall(self):
         # test on example matrices from
         # http://cci.lbl.gov/sginfo/hall_symbols.html
-        self.assertEqual(sym.symops_from_hall('p -2xc').sym_ops,
+        self.assertEqual(sym.generators_from_hall('p -2xc').sym_ops,
                          ['x,y,z', '-x,y,z+1/2'])
-        self.assertEqual(sym.symops_from_hall('p 3*').sym_ops,
+        self.assertEqual(sym.generators_from_hall('p 3*').sym_ops,
                          ['x,y,z', 'z,x,y'])
-        self.assertEqual(sym.symops_from_hall('p 4vw').sym_ops,
+        self.assertEqual(sym.generators_from_hall('p 4vw').sym_ops,
                          ['x,y,z', '-y,x+1/4,z+1/4'])
-        self.assertEqual(sym.symops_from_hall('p 61 2 (0 0 -1)').sym_ops,
+        self.assertEqual(sym.generators_from_hall('p 61 2 (0 0 -1)').sym_ops,
                          ['x,y,z', 'x-y,x,z+1/6', '-y,-x,-z+5/6'])
 
 if __name__ == '__main__':

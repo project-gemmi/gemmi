@@ -1,3 +1,5 @@
+# This makefile is redundant. It is useful during development, but users
+# are recommended to use the setup.py file from the top-level directory.
 
 .SUFFIXES:
 

@@ -13,6 +13,8 @@ void init_sym(py::module& sym) {
   py::class_<Op>(sym, "Op")
     .def(py::init<>())
     .def(py::init(&parse_triplet))
+    .def_property_readonly_static("TDEN",
+                                  [](py::object) -> int { return Op::TDEN; })
     .def_readwrite("rot", &Op::rot)
     .def_readwrite("tran", &Op::tran)
     .def("triplet", &Op::triplet)
@@ -51,6 +53,8 @@ void init_sym(py::module& sym) {
     .def_readwrite("sym_ops", &SymOps::sym_ops)
     .def_readwrite("cen_ops", &SymOps::cen_ops);
 
+  sym.def("generators_from_hall", &generators_from_hall, py::arg("hall"),
+          "Parse Hall notation.");
   sym.def("symops_from_hall", &symops_from_hall, py::arg("hall"),
           "Parse Hall notation.");
 }

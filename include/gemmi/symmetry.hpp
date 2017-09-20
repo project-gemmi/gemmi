@@ -25,9 +25,11 @@ inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 // TRIPLET <-> SYM OP
 
 struct Op {
+  enum { TDEN=12 };  // may be changed to 24 for change-of-basis ops
   typedef int int_t;
   typedef std::array<std::array<int_t, 3>, 3> Rot;
   typedef std::array<int_t, 3> Tran;
+
   Rot rot;
   Tran tran;
 
@@ -36,12 +38,13 @@ struct Op {
 
   Op inverted() const;
 
-  Op& normalize_tran() { // wrap the elements into [0,12)
+  // if the translation points outside of the unit cell, wrap it.
+  Op& unitize() {
     for (int i = 0; i != 3; ++i) {
-      if (tran[i] >= 12)
-        tran[i] %= 12;
+      if (tran[i] >= TDEN) // elements need to be in [0,TDEN)
+        tran[i] %= TDEN;
       else if (tran[i] < 0)
-        tran[i] = (tran[i] % 12) + 12;
+        tran[i] = (tran[i] % TDEN) + TDEN;
     }
     return *this;
   }
@@ -52,7 +55,7 @@ struct Op {
     return *this;
   }
 
-  Op translated(const Tran& a) { return Op(*this).translate(a); }
+  Op translated(const Tran& a) const { return Op(*this).translate(a); }
 
   Rot negated_rot() const {
     return { -rot[0][0], -rot[0][1], -rot[0][2],
@@ -63,6 +66,7 @@ struct Op {
   Op negated() { return { negated_rot(), { -tran[0], -tran[1], -tran[2] } }; }
 
   Op shifted_origin(const Tran& a) const;
+  Op changed_basis(const Op& cob) const;
 
   int det_rot() const { // should be 1 (rotation) or -1 (with inversion)
     return rot[0][0] * (rot[1][1] * rot[2][2] - rot[1][2] * rot[2][1])
@@ -89,7 +93,7 @@ inline Op combine(const Op& a, const Op& b) {
       r.tran[i] += a.rot[i][j] * b.tran[j];
     }
   }
-  r.normalize_tran();
+  r.unitize();
   return r;
 }
 
@@ -97,6 +101,11 @@ inline Op Op::shifted_origin(const Tran& a) const {
   Op::Rot rid = Op::identity().rot;
   return combine(combine(Op{rid, a}, *this), Op{rid, {-a[0], -a[1], -a[2]}});
 }
+
+inline Op Op::changed_basis(const Op& cob) const {
+  return combine(combine(cob, *this), cob.inverted());
+}
+
 
 inline Op Op::inverted() const {
   int detr = det_rot();
@@ -138,10 +147,10 @@ inline std::array<Op::int_t, 4> parse_triplet_part(const std::string& s) {
       int den = 1;
       if (*endptr == '/') {
         den = strtol(endptr + 1, &endptr, 10);
-        if (den != 1 && den != 2 && den != 3 && den != 4 && den != 6)
+        if (den < 1 || Op::TDEN % den != 0)
           fail("Unexpected denominator " + std::to_string(den) + " in: " + s);
       }
-      r[3] *= 12 / den;
+      r[3] *= Op::TDEN / den;
       c = endptr - 1;
     } else if (std::memchr("xXhHaA", *c, 6)) {
       r[0] += sign;
@@ -180,12 +189,12 @@ inline std::string make_triplet_part(int x, int y, int z, int w) {
       s += (xyz[i] < 0 ? "-" : s.empty() ? "" : "+") + std::string(1, 'x' + i);
   if (w != 0) {  // simplify w/12
     int denom = 1;
-    for (int factor : {2, 2, 3})
+    for (int factor : {2, 2, 3})  // for Op::TDEN == 12
       if (w % factor == 0)
         w /= factor;
       else
         denom *= factor;
-    s += (w > 0 ? "+" : "") + std::to_string(w);
+    s += (w > 0 && !s.empty() ? "+" : "") + std::to_string(w);
     if (denom != 1)
       s += "/" + std::to_string(denom);
   }
@@ -231,23 +240,29 @@ struct SymOps {
   std::vector<Op> sym_ops;
   std::vector<Op::Tran> cen_ops;
 
+  void add_missing_group_elements();
+
+  const Op* find_by_rotation(const Op::Rot& r) const {
+    for (const Op& op : sym_ops)
+      if (op.rot == r)
+        return &op;
+    return nullptr;
+  }
+
   struct Iter {
     const SymOps& parent;
-    unsigned n_symop, n_cenop;
+    unsigned n_sym, n_cen;
     void operator++() {
-      if (++n_cenop == parent.cen_ops.size()) {
-        n_cenop = 0;
-        ++n_symop;
+      if (++n_cen == parent.cen_ops.size()) {
+        ++n_sym;
+        n_cen = 0;
       }
     }
     Op operator*() const {
-      Op op = parent.sym_ops[n_symop];
-      op.translate(parent.cen_ops[n_cenop]);
-      op.normalize_tran();
-      return op;
+      return parent.sym_ops[n_sym].translated(parent.cen_ops[n_cen]).unitize();
     }
     bool operator==(const Iter& other) const {
-      return n_symop == other.n_symop && n_cenop == other.n_cenop;
+      return n_sym == other.n_sym && n_cen == other.n_cen;
     }
     bool operator!=(const Iter& other) const { return !(*this == other); }
   };
@@ -362,16 +377,41 @@ inline Op hall_matrix_symbol(const char* start, const char* end,
   return op;
 }
 
-inline Op::Tran parse_translation(const char* start, const char* end) {
-  Op::Tran t;
+inline Op parse_change_of_basis(const char* start, const char* end) {
+  if (memchr(start, ',', end - start) != nullptr) { // long symbol (x,y,z+1/12)
+    // note: we do not parse multipliers such as 1/2x
+    return parse_triplet(std::string(start, end));
+  }
+  // short symbol (0 0 1)
+  Op cob = Op::identity();
   char* endptr;
   for (int i = 0; i != 3; ++i) {
-    t[i] = std::strtol(start, &endptr, 10) % 12;
+    cob.tran[i] = std::strtol(start, &endptr, 10) % 12;
     start = endptr;
   }
   if (endptr != end)
-    fail("wrong format of translation: " + std::string(start, end));
-  return t;
+    fail("unexpected change-of-basis format: " + std::string(start, end));
+  return cob;
+}
+
+void SymOps::add_missing_group_elements() {
+  // Brute force. To be replaced with Dimino's algorithm
+  // see Luc Bourhis' answer https://physics.stackexchange.com/a/351400/95713
+  if (sym_ops.empty() || sym_ops[0] != Op::identity())
+    fail("oops");
+  size_t generator_count = sym_ops.size();
+  size_t prev_size = 0;
+  while (prev_size != sym_ops.size()) {
+    prev_size = sym_ops.size();
+    for (size_t i = 1; i != prev_size; ++i)
+      for (size_t j = 1; j != generator_count; ++j) {
+        Op new_op = combine(sym_ops[i], sym_ops[j]);
+        if (find_by_rotation(new_op.rot) == nullptr)
+          sym_ops.push_back(new_op);
+      }
+    if (sym_ops.size() > 1000)
+      fail("1000+ elements in the group should not happen");
+  }
 }
 
 inline const char* find_blank(const char* p) {
@@ -387,7 +427,7 @@ inline const char* skip_blank(const char* p) {
   return p;
 }
 
-inline SymOps symops_from_hall(const char* hall) {
+inline SymOps generators_from_hall(const char* hall) {
   if (hall == nullptr)
     fail("null");
   hall = skip_blank(hall);
@@ -402,30 +442,37 @@ inline SymOps symops_from_hall(const char* hall) {
   ops.cen_ops = lattice_translations(*lat);
   int counter = 0;
   char first = '\0';
-  for (const char* part = skip_blank(lat + 1); *part != '\0'; ) {
-    if (*part == '(') {
-      const char* rb = std::strchr(part, ')');
-      if (!rb)
-        fail("missing ')': " + std::string(hall));
-      if (ops.sym_ops.empty())
-        fail("misplaced translation: " + std::string(hall));
-      // TODO: full change of basis operation as per ITfC 2010
-      Op::Tran tr = parse_translation(part + 1, rb);
-      ops.sym_ops.back() = ops.sym_ops.back().shifted_origin(tr);
-      part = skip_blank(find_blank(rb + 1));
-    } else {
-      const char* space = find_blank(part);
-      if (!first)
-        first = part[0];
-      ++counter;
-      if (part[0] != '1' || (part[1] != ' ' && part[1] != '\0')) {
-        Op op = hall_matrix_symbol(part, space, counter, first);
-        ops.sym_ops.emplace_back(op);
-      }
-      part = skip_blank(space);
+  const char* part = skip_blank(lat + 1);
+  while (*part != '\0' && *part != '(') {
+    const char* space = find_blank(part);
+    if (!first)
+      first = part[0];
+    ++counter;
+    if (part[0] != '1' || (part[1] != ' ' && part[1] != '\0')) {
+      Op op = hall_matrix_symbol(part, space, counter, first);
+      ops.sym_ops.emplace_back(op);
     }
+    part = skip_blank(space);
+  }
+  if (*part == '(') {
+    const char* rb = std::strchr(part, ')');
+    if (!rb)
+      fail("missing ')': " + std::string(hall));
+    if (ops.sym_ops.empty())
+      fail("misplaced translation: " + std::string(hall));
+    Op cob = parse_change_of_basis(part + 1, rb);
+    for (auto op = ops.sym_ops.begin() + 1; op != ops.sym_ops.end(); ++op)
+      *op = op->changed_basis(cob);
+    if (*skip_blank(find_blank(rb + 1)) != '\0')
+      fail("unexpected characters after ')': " + std::string(hall));
   }
   return ops;
+}
+
+inline SymOps symops_from_hall(const char* hall) {
+  SymOps symops = generators_from_hall(hall);
+  symops.add_missing_group_elements();
+  return symops;
 }
 
 
