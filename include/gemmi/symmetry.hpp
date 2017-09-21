@@ -160,7 +160,7 @@ inline std::array<Op::int_t, 4> parse_triplet_part(const std::string& s) {
     } else if (std::memchr("zZlLcC", *c, 6)) {
       r[2] += sign;
     } else {
-      fail("unexpected character '" + std::string(1, *c) + "' in: " + s);
+      fail(std::string("unexpected character '") + *c + "' in: " + s);
     }
     sign = 0;
   }
@@ -186,8 +186,13 @@ inline std::string make_triplet_part(int x, int y, int z, int w) {
   std::string s;
   int xyz[] = { x, y, z };
   for (int i = 0; i != 3; ++i)
-    if (xyz[i] != 0)
-      s += (xyz[i] < 0 ? "-" : s.empty() ? "" : "+") + std::string(1, 'x' + i);
+    if (xyz[i] != 0) {
+      if (xyz[i] < 0)
+        s += '-';
+      else if (!s.empty())
+        s += '+';
+      s += char('x' + i);
+    }
   if (w != 0) {  // simplify w/12
     int denom = 1;
     for (int factor : {2, 2, 3})  // for Op::TDEN == 12
@@ -195,9 +200,11 @@ inline std::string make_triplet_part(int x, int y, int z, int w) {
         w /= factor;
       else
         denom *= factor;
-    s += (w > 0 && !s.empty() ? "+" : "") + std::to_string(w);
+    if (w > 0 && !s.empty())
+      s += '+';
+    s += std::to_string(w);
     if (denom != 1)
-      s += "/" + std::to_string(denom);
+      s += '/' + std::to_string(denom);
   }
   return s;
 }
@@ -287,7 +294,7 @@ inline std::vector<Op::Tran> lattice_translations(char lattice_symbol) {
     case 'T': return {{0, 0, 0}, {4, 8, 4}, {8, 4, 8}};
     case 'H': return {{0, 0, 0}, {8, 4, 0}, {4, 8, 0}};
     case 'F': return {{0, 0, 0}, {0, 6, 6}, {6, 0, 6}, {6, 6, 0}};
-    default: fail("not a lattice symbol: " + std::string(1, lattice_symbol));
+    default: fail(std::string("not a lattice symbol: ") + lattice_symbol);
   }
 }
 
@@ -315,7 +322,7 @@ inline Op::Tran translation_from_symbol(char symbol) {
     case 'v': return {0, 3, 0};
     case 'w': return {0, 0, 3};
     case 'd': return {3, 3, 3};
-    default: fail("unknown symbol: " + std::string(1, symbol));
+    default: fail(std::string("unknown symbol: ") + symbol);
   }
 }
 
@@ -464,6 +471,15 @@ inline Group generators_from_hall(const char* hall) {
     Op cob = parse_change_of_basis(part + 1, rb);
     for (auto op = ops.sym_ops.begin() + 1; op != ops.sym_ops.end(); ++op)
       *op = op->changed_basis(cob);
+    for (auto tr = ops.cen_ops.begin() + 1; tr != ops.cen_ops.end(); ++tr) {
+      /* TODO centering vectors also may need to be changed, but how?
+      Op op = Op::identity().translated(cob.tran);
+      op = op.changed_basis(cob);
+      if (op.rot != Op::identity().rot)
+        fail("not identity");
+      *tr = op.tran;
+      */
+    }
     if (*skip_blank(find_blank(rb + 1)) != '\0')
       fail("unexpected characters after ')': " + std::string(hall));
   }
