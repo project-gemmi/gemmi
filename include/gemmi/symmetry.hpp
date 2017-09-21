@@ -324,7 +324,7 @@ inline Op::Rot alter_order(const Op::Rot& r, int i, int j, int k) {
 }
 
 inline Op hall_matrix_symbol(const char* start, const char* end,
-                             int pos, char first) {
+                             int pos, int& prev) {
   Op op = Op::identity();
   bool neg = (*start == '-');
   const char* p = (neg ? start + 1 : start);
@@ -354,13 +354,13 @@ inline Op hall_matrix_symbol(const char* start, const char* end,
     if (pos == 1) {
       principal_axis = 'z';
     } else if (pos == 2 && N == 2) {
-      if (first == '2' || first == '4')
+      if (prev == 2 || prev == 4)
         principal_axis = 'x';
-      else if (first == '3' || first == '6')
+      else if (prev == 3 || prev == 6)
         diagonal_axis = '\'';
     } else if (pos == 3 && N == 3) {
       diagonal_axis = '*';
-    } else {
+    } else if (N != 1) {
       fail("missing axis");
     }
   }
@@ -374,6 +374,7 @@ inline Op hall_matrix_symbol(const char* start, const char* end,
     op.rot = alter_order(op.rot, 1, 2, 0);
   if (fractional_tran)
     op.tran[principal_axis - 'x'] += 12 / N * fractional_tran;
+  prev = N;
   return op;
 }
 
@@ -441,15 +442,13 @@ inline SymOps generators_from_hall(const char* hall) {
     fail("not a hall symbol: " + std::string(hall));
   ops.cen_ops = lattice_translations(*lat);
   int counter = 0;
-  char first = '\0';
+  int prev = 0;
   const char* part = skip_blank(lat + 1);
   while (*part != '\0' && *part != '(') {
     const char* space = find_blank(part);
-    if (!first)
-      first = part[0];
     ++counter;
     if (part[0] != '1' || (part[1] != ' ' && part[1] != '\0')) {
-      Op op = hall_matrix_symbol(part, space, counter, first);
+      Op op = hall_matrix_symbol(part, space, counter, prev);
       ops.sym_ops.emplace_back(op);
     }
     part = skip_blank(space);
