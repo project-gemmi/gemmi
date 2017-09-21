@@ -48,13 +48,13 @@ void init_sym(py::module& sym) {
   sym.def("combine", &combine, py::arg("a"), py::arg("b"),
           "Combine two symmetry operations.");
 
-  py::class_<Group>(sym, "Group")
+  py::class_<GroupOps>(sym, "GroupOps")
     .def(py::init<>())
-    .def("__iter__", [](const Group& self) {
+    .def("__iter__", [](const GroupOps& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
-    .def_readwrite("sym_ops", &Group::sym_ops)
-    .def_readwrite("cen_ops", &Group::cen_ops);
+    .def_readwrite("sym_ops", &GroupOps::sym_ops)
+    .def_readwrite("cen_ops", &GroupOps::cen_ops);
 
   sym.def("generators_from_hall", &generators_from_hall, py::arg("hall"),
           "Parse Hall notation.");

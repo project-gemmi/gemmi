@@ -66,16 +66,13 @@ struct Op {
 
   Op negated() { return { negated_rot(), { -tran[0], -tran[1], -tran[2] } }; }
 
-  Op shifted_origin(const Tran& a) const;
-  Op changed_basis(const Op& cob) const;
-
   int det_rot() const { // should be 1 (rotation) or -1 (with inversion)
     return rot[0][0] * (rot[1][1] * rot[2][2] - rot[1][2] * rot[2][1])
          - rot[0][1] * (rot[1][0] * rot[2][2] - rot[1][2] * rot[2][0])
          + rot[0][2] * (rot[1][0] * rot[2][1] - rot[1][1] * rot[2][0]);
   }
 
-  static Op identity() { return {{1,0,0, 0,1,0, 0,0,1}, {0,0,0}}; };
+  static constexpr Op identity() { return {{1,0,0, 0,1,0, 0,0,1}, {0,0,0}}; };
 };
 
 inline bool operator==(const Op& a, const Op& b) {
@@ -97,16 +94,6 @@ inline Op combine(const Op& a, const Op& b) {
   r.unitize();
   return r;
 }
-
-inline Op Op::shifted_origin(const Tran& a) const {
-  Op::Rot rid = Op::identity().rot;
-  return combine(combine(Op{rid, a}, *this), Op{rid, {-a[0], -a[1], -a[2]}});
-}
-
-inline Op Op::changed_basis(const Op& cob) const {
-  return combine(combine(cob, *this), cob.inverted());
-}
-
 
 inline Op Op::inverted() const {
   int detr = det_rot();
@@ -244,11 +231,11 @@ using data = Data_<void>;
 // based on both ITfC vol.B ch.1.4 (2010)
 // and http://cci.lbl.gov/sginfo/hall_symbols.html
 
-struct Group {
+struct GroupOps {
   std::vector<Op> sym_ops;
   std::vector<Op::Tran> cen_ops;
 
-  void add_missing_group_elements();
+  void add_missing_elements();
 
   const Op* find_by_rotation(const Op::Rot& r) const {
     for (const Op& op : sym_ops)
@@ -257,8 +244,19 @@ struct Group {
     return nullptr;
   }
 
+  void change_basis(const Op& cob) {
+    if (sym_ops.empty() || cen_ops.empty())
+      return;
+    Op cob_inv = cob.inverted();
+    // assuming the first items in sym_ops and cen_ops are identities
+    for (auto op = sym_ops.begin() + 1; op != sym_ops.end(); ++op)
+      *op = combine(combine(cob, *op), cob_inv);
+    for (auto tr = cen_ops.begin() + 1; tr != cen_ops.end(); ++tr)
+      *tr = combine(combine(cob, Op{Op::identity().rot, *tr}), cob_inv).tran;
+  }
+
   struct Iter {
-    const Group& parent;
+    const GroupOps& parent;
     unsigned n_sym, n_cen;
     void operator++() {
       if (++n_cen == parent.cen_ops.size()) {
@@ -404,7 +402,7 @@ inline Op parse_change_of_basis(const char* start, const char* end) {
   return cob;
 }
 
-void Group::add_missing_group_elements() {
+void GroupOps::add_missing_elements() {
   // Brute force. To be replaced with Dimino's algorithm
   // see Luc Bourhis' answer https://physics.stackexchange.com/a/351400/95713
   if (sym_ops.empty() || sym_ops[0] != Op::identity())
@@ -437,11 +435,11 @@ inline const char* skip_blank(const char* p) {
   return p;
 }
 
-inline Group generators_from_hall(const char* hall) {
+inline GroupOps generators_from_hall(const char* hall) {
   if (hall == nullptr)
     fail("null");
   hall = skip_blank(hall);
-  Group ops;
+  GroupOps ops;
   ops.sym_ops.emplace_back(Op::identity());
   bool centrosym = (hall[0] == '-');
   if (centrosym)
@@ -468,28 +466,18 @@ inline Group generators_from_hall(const char* hall) {
       fail("missing ')': " + std::string(hall));
     if (ops.sym_ops.empty())
       fail("misplaced translation: " + std::string(hall));
-    Op cob = parse_change_of_basis(part + 1, rb);
-    for (auto op = ops.sym_ops.begin() + 1; op != ops.sym_ops.end(); ++op)
-      *op = op->changed_basis(cob);
-    for (auto tr = ops.cen_ops.begin() + 1; tr != ops.cen_ops.end(); ++tr) {
-      /* TODO centering vectors also may need to be changed, but how?
-      Op op = Op::identity().translated(cob.tran);
-      op = op.changed_basis(cob);
-      if (op.rot != Op::identity().rot)
-        fail("not identity");
-      *tr = op.tran;
-      */
-    }
+    ops.change_basis(parse_change_of_basis(part + 1, rb));
+
     if (*skip_blank(find_blank(rb + 1)) != '\0')
       fail("unexpected characters after ')': " + std::string(hall));
   }
   return ops;
 }
 
-inline Group symops_from_hall(const char* hall) {
-  Group symops = generators_from_hall(hall);
-  symops.add_missing_group_elements();
-  return symops;
+inline GroupOps symops_from_hall(const char* hall) {
+  GroupOps ops = generators_from_hall(hall);
+  ops.add_missing_elements();
+  return ops;
 }
 
 } // namespace sym

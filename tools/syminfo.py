@@ -58,7 +58,7 @@ def main():
         given = set(s * c for s in entry['symops'] for c in entry['cenops'])
         #assert len(generated) == len(given)
         if given != generated:
-            print(hall)
+            print(entry['number'], hall, entry['xhm'], sep=' '*10)
             print('common:',  '  '.join(x.triplet() for x in given & generated))
             print('given:    ', '  '.join(x.triplet() for x in given - generated))
             print('generated:', '  '.join(x.triplet() for x in generated - given))
