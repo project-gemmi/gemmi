@@ -44,6 +44,7 @@ OTHER_SINGLES = {
  "-z-5/6": [ 0, 0,-1, -10],
 }
 
+
 class TestSymmetry(unittest.TestCase):
     def test_parse_triplet_part(self):
         for single, row in CANONICAL_SINGLES.items():
@@ -102,19 +103,21 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(sym.generators_from_hall('P -2 -2').sym_ops,
                          ['x,y,z', 'x,y,-z', '-x,y,z'])
 
+    def compare_hall_symops_with_sgtbx(self, hall):
+        cctbx_sg = sgtbx.space_group(hall)
+        cctbx_ops = set(m.as_xyz() for m in cctbx_sg.all_ops(mod=1))
+        gemmi_sg = sym.symops_from_hall(hall)
+        self.assertEqual(len(gemmi_sg.sym_ops), cctbx_sg.order_p())
+        self.assertEqual(len(gemmi_sg.cen_ops), cctbx_sg.n_ltr())
+        gemmi_ops = set(m.triplet() for m in gemmi_sg)
+        self.assertEqual(cctbx_ops, gemmi_ops)
+
     def test_with_sgtbx(self):
         if sgtbx is None:
             return
         for s in sgtbx.space_group_symbol_iterator():
-            hall = s.hall()
-            #print '-->', hall
-            cctbx_sg = sgtbx.space_group(hall)
-            cctbx_ops = set(m.as_xyz() for m in cctbx_sg.all_ops(mod=1))
-            gemmi_sg = sym.symops_from_hall(hall)
-            self.assertEqual(len(gemmi_sg.sym_ops), cctbx_sg.order_p())
-            self.assertEqual(len(gemmi_sg.cen_ops), cctbx_sg.n_ltr())
-            gemmi_ops = set(m.triplet() for m in gemmi_sg)
-            self.assertEqual(cctbx_ops, gemmi_ops)
+            self.compare_hall_symops_with_sgtbx(s.hall())
+        self.compare_hall_symops_with_sgtbx('C -4 -2b')
 
 if __name__ == '__main__':
     unittest.main()

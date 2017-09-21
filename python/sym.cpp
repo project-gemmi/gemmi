@@ -6,7 +6,6 @@
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
-using namespace gemmi;
 using namespace gemmi::sym;
 
 void init_sym(py::module& sym) {
@@ -34,6 +33,7 @@ void init_sym(py::module& sym) {
     .def("__eq__", [](const Op &a, const std::string& b) {
             return a == parse_triplet(b);
          }, py::is_operator())
+    .def("__hash__", [](const Op &self) { return std::hash<Op>()(self); })
     .def("__repr__", [](const Op &self) {
         return "<sym.Op(\"" + self.triplet() + "\")>";
     });
@@ -48,13 +48,13 @@ void init_sym(py::module& sym) {
   sym.def("combine", &combine, py::arg("a"), py::arg("b"),
           "Combine two symmetry operations.");
 
-  py::class_<SymOps>(sym, "SymOps")
+  py::class_<Group>(sym, "Group")
     .def(py::init<>())
-    .def("__iter__", [](const SymOps& self) {
+    .def("__iter__", [](const Group& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
-    .def_readwrite("sym_ops", &SymOps::sym_ops)
-    .def_readwrite("cen_ops", &SymOps::cen_ops);
+    .def_readwrite("sym_ops", &Group::sym_ops)
+    .def_readwrite("cen_ops", &Group::cen_ops);
 
   sym.def("generators_from_hall", &generators_from_hall, py::arg("hall"),
           "Parse Hall notation.");

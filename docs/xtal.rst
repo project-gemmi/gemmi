@@ -133,19 +133,21 @@ the operations and generating them from a smaller set of symbols is a
 trade-off between simplicity of the code and the amount of the tabulated data.
 
 The number of symmetry operations per space group is between 1 and 192,
-but in all the programs we've seen the centering vectors are kept separately,
-which leaves up to 48 symmetry operations (point group m-3m)
-combined with up to 4 centering vectors.
+but they can be split into symmetry operations (max. 48 for point group m-3m)
+and up to 4 centering vectors.
 
-* The simplest way of storing the operations is to list them in a text file.
+* The simplest way of storing the operations is to list them all (i.e. 192
+  triplets for #228) in a text file.
+  This approach is used by OpenBabel_ (chemical toolbox in C++, GPL2):
+  space-group names and triplets are tabulated in :file:`space-groups.txt`
+  (currently 541 entries, some look incorrect).
 
-  * The most popular such files are CCP4 :file:`syminfo.lib` (540 entries)
-    and its predecessor :file:`symop.lib`. :file:`syminfo.lib` is the primary
-    spacegroup information for csymlib_ (part of libccp4, LGPL3)
-    and a few other projects.
-  * The same approach is used by OpenBabel_ (chemical toolbox in C++, GPL2):
-    space-group names and triplets are tabulated in :file:`space-groups.txt`
-    (currently 541 entries).
+* The most popular files with symmetry operations are CCP4 :file:`syminfo.lib`
+  (540 entries) and its predecessor :file:`symop.lib`.
+  :file:`syminfo.lib` is the primary spacegroup information for csymlib_
+  (part of libccp4, LGPL3) and a few other projects. The file format
+  is more sophisticated than in Open Babel and the centering vectors
+  are kept separately.
 
 * The operations can be as well tabulated in the code.
   This approach is used (with one or two layers of indirection to reduce
@@ -159,7 +161,7 @@ combined with up to 4 centering vectors.
   (+inversion), at the expense of more complex code.
   This approach is used in Mantid_ (triplets are tabulated in
   :file:`SpaceGroupFactory.cpp`, although the code contains up to 5
-  generators per spacegroup).
+  generators per spacegroup (why?)).
 
 * Finally, one can use one of the two computer-adapted descriptions from ITfC.
   The so-called explicit notation (``ICC$I3Q000$P4C393$P2D933``) is the
@@ -185,6 +187,8 @@ combined with up to 4 centering vectors.
 In Gemmi we derive operations from the Hall symbols.
 The choice of included generators is somewhat arbitrary and differs
 between editions of ITfC, and between sgtbx and :file:`syminfo.lib`.
+
+To be continued..
 
 .. _SgInfo: https://github.com/rwgk/sginfo
 .. _SgLite: https://github.com/rwgk/sglite

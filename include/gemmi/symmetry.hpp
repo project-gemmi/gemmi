@@ -10,6 +10,7 @@
 #include <cstring>    // for memchr, strchr, strlen
 #include <array>
 #include <algorithm>  // for count
+#include <functional> // for hash
 #include <stdexcept>  // for runtime_error
 #include <string>
 #include <vector>
@@ -236,7 +237,7 @@ using data = Data_<void>;
 // based on both ITfC vol.B ch.1.4 (2010)
 // and http://cci.lbl.gov/sginfo/hall_symbols.html
 
-struct SymOps {
+struct Group {
   std::vector<Op> sym_ops;
   std::vector<Op::Tran> cen_ops;
 
@@ -250,7 +251,7 @@ struct SymOps {
   }
 
   struct Iter {
-    const SymOps& parent;
+    const Group& parent;
     unsigned n_sym, n_cen;
     void operator++() {
       if (++n_cen == parent.cen_ops.size()) {
@@ -396,7 +397,7 @@ inline Op parse_change_of_basis(const char* start, const char* end) {
   return cob;
 }
 
-void SymOps::add_missing_group_elements() {
+void Group::add_missing_group_elements() {
   // Brute force. To be replaced with Dimino's algorithm
   // see Luc Bourhis' answer https://physics.stackexchange.com/a/351400/95713
   if (sym_ops.empty() || sym_ops[0] != Op::identity())
@@ -429,11 +430,11 @@ inline const char* skip_blank(const char* p) {
   return p;
 }
 
-inline SymOps generators_from_hall(const char* hall) {
+inline Group generators_from_hall(const char* hall) {
   if (hall == nullptr)
     fail("null");
   hall = skip_blank(hall);
-  SymOps ops;
+  Group ops;
   ops.sym_ops.emplace_back(Op::identity());
   bool centrosym = (hall[0] == '-');
   if (centrosym)
@@ -469,14 +470,22 @@ inline SymOps generators_from_hall(const char* hall) {
   return ops;
 }
 
-inline SymOps symops_from_hall(const char* hall) {
-  SymOps symops = generators_from_hall(hall);
+inline Group symops_from_hall(const char* hall) {
+  Group symops = generators_from_hall(hall);
   symops.add_missing_group_elements();
   return symops;
 }
 
-
 } // namespace sym
 } // namespace gemmi
+
+namespace std {
+template<> struct hash<gemmi::sym::Op> {
+	size_t operator()(const gemmi::sym::Op& op) const {
+		return hash<string>()(op.triplet());  // rather slow
+	}
+};
+} // namespace std
+
 #endif
 // vim:sw=2:ts=2:et
