@@ -34,7 +34,7 @@ OBJ=gemmi.o mol.o sym.o cif.o
 
 gemmi.so: $(OBJ)
 	$(CXX) $(FLAGS) -shared \
-	-Wl,-O1 -Wl,-Bsymbolic-functions -Wl,-z,relro $(OBJ) -o $@
+	-Wl,-O1 -Wl,-Bsymbolic-functions -Wl,-z,relro $(OBJ) -lz -o $@
 
 clean:
 	rm -f *.so *.o

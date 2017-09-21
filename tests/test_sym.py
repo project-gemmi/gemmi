@@ -3,42 +3,32 @@
 import unittest
 import random
 from gemmi import sym
+try:
+    from cctbx import sgtbx
+    print('(w/ sgtbx)')
+except ImportError:
+    sgtbx = None
 
 CANONICAL_SINGLES = {
- # all crystallographic possibilities
  "x"     : [ 1, 0, 0,  0],
- "y"     : [ 0, 1, 0,  0],
  "z"     : [ 0, 0, 1,  0],
- "-x"    : [-1, 0, 0,  0],
  "-y"    : [ 0,-1, 0,  0],
  "-z"    : [ 0, 0,-1,  0],
  "x-y"   : [ 1,-1, 0,  0],
  "-x+y"  : [-1, 1, 0,  0],
  "x+1/2" : [ 1, 0, 0,  6],
- "x+1/4" : [ 1, 0, 0,  3],
- "x+3/4" : [ 1, 0, 0,  9],
- "y+1/2" : [ 0, 1, 0,  6],
  "y+1/4" : [ 0, 1, 0,  3],
- "y+3/4" : [ 0, 1, 0,  9],
- "z+1/2" : [ 0, 0, 1,  6],
+ "z+3/4" : [ 0, 0, 1,  9],
  "z+1/3" : [ 0, 0, 1,  4],
- "z+1/4" : [ 0, 0, 1,  3],
  "z+1/6" : [ 0, 0, 1,  2],
  "z+2/3" : [ 0, 0, 1,  8],
- "z+3/4" : [ 0, 0, 1,  9],
  "z+5/6" : [ 0, 0, 1, 10],
- "-x+1/2": [-1, 0, 0,  6],
  "-x+1/4": [-1, 0, 0,  3],
- "-x+3/4": [-1, 0, 0,  9],
  "-y+1/2": [ 0,-1, 0,  6],
- "-y+1/4": [ 0,-1, 0,  3],
  "-y+3/4": [ 0,-1, 0,  9],
- "-z+1/2": [ 0, 0,-1,  6],
  "-z+1/3": [ 0, 0,-1,  4],
- "-z+1/4": [ 0, 0,-1,  3],
  "-z+1/6": [ 0, 0,-1,  2],
  "-z+2/3": [ 0, 0,-1,  8],
- "-z+3/4": [ 0, 0,-1,  9],
  "-z+5/6": [ 0, 0,-1, 10],
 }
 
@@ -98,7 +88,7 @@ class TestSymmetry(unittest.TestCase):
             self.assertEqual(op.inverted().inverted(), op)
 
     def test_generators_from_hall(self):
-        # test on example matrices from
+        # first test on example matrices from
         # http://cci.lbl.gov/sginfo/hall_symbols.html
         self.assertEqual(sym.generators_from_hall('p -2xc').sym_ops,
                          ['x,y,z', '-x,y,z+1/2'])
@@ -108,6 +98,23 @@ class TestSymmetry(unittest.TestCase):
                          ['x,y,z', '-y,x+1/4,z+1/4'])
         self.assertEqual(sym.generators_from_hall('p 61 2 (0 0 -1)').sym_ops,
                          ['x,y,z', 'x-y,x,z+1/6', '-y,-x,-z+5/6'])
+        # then on examples from the 530 settings
+        self.assertEqual(sym.generators_from_hall('P -2 -2').sym_ops,
+                         ['x,y,z', 'x,y,-z', '-x,y,z'])
+
+    def test_with_sgtbx(self):
+        if sgtbx is None:
+            return
+        for s in sgtbx.space_group_symbol_iterator():
+            hall = s.hall()
+            #print '-->', hall
+            cctbx_sg = sgtbx.space_group(hall)
+            cctbx_ops = set(m.as_xyz() for m in cctbx_sg.all_ops(mod=1))
+            gemmi_sg = sym.symops_from_hall(hall)
+            self.assertEqual(len(gemmi_sg.sym_ops), cctbx_sg.order_p())
+            self.assertEqual(len(gemmi_sg.cen_ops), cctbx_sg.n_ltr())
+            gemmi_ops = set(m.triplet() for m in gemmi_sg)
+            self.assertEqual(cctbx_ops, gemmi_ops)
 
 if __name__ == '__main__':
     unittest.main()

@@ -50,6 +50,9 @@ void init_sym(py::module& sym) {
 
   py::class_<SymOps>(sym, "SymOps")
     .def(py::init<>())
+    .def("__iter__", [](const SymOps& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>())
     .def_readwrite("sym_ops", &SymOps::sym_ops)
     .def_readwrite("cen_ops", &SymOps::cen_ops);
 

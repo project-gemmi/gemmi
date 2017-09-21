@@ -8,7 +8,7 @@ import json
 import urllib
 
 TAGGED_REPOS = {
-    'pybind/pybind11': 'v2.2.0',
+    'pybind/pybind11': 'v2.2.1',
     'taocpp/PEGTL': '2.1.4',
     'cxong/tinydir': '1.2.3',
 }
@@ -44,7 +44,7 @@ def check_recent_commits():
         info = '-'
         if data:
             info = data[0]['commit']['committer']['date'][:10]
-        print('%-18s  modified: %s' % (repo, info))
+        print('%-18s  modified: %s' % (filename.split('/')[-1], info))
 
 try:
     check_tags()

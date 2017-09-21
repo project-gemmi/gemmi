@@ -259,7 +259,8 @@ struct SymOps {
       }
     }
     Op operator*() const {
-      return parent.sym_ops[n_sym].translated(parent.cen_ops[n_cen]).unitize();
+      return parent.sym_ops.at(n_sym).translated(parent.cen_ops.at(n_cen))
+                                     .unitize();
     }
     bool operator==(const Iter& other) const {
       return n_sym == other.n_sym && n_cen == other.n_cen;
