@@ -1,6 +1,7 @@
 *.o
 *.so
 *.py[co]
+a.out
 /build
 /dist
 /gemmi.egg-info

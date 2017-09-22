@@ -173,6 +173,18 @@ inline Op parse_triplet(const std::string& s) {
   return { rot, tran };
 }
 
+// much faster than s += std::to_string(n)
+inline void append_number_0_99(std::string& s, int n) {
+  // assert(n >= 0 && n <= 99);
+  if (n < 10) {
+    s += char('0' + n);
+  } else {
+    int tens = n / 10;
+    s += char('0' + tens);
+    s += char('0' + n - 10 * tens);
+  }
+}
+
 inline std::string make_triplet_part(int x, int y, int z, int w) {
   std::string s;
   int xyz[] = { x, y, z };
@@ -191,11 +203,18 @@ inline std::string make_triplet_part(int x, int y, int z, int w) {
         w /= factor;
       else
         denom *= factor;
-    if (w > 0 && !s.empty())
-      s += '+';
-    s += std::to_string(w);
-    if (denom != 1)
-      s += '/' + std::to_string(denom);
+    if (w > 0) {
+      if (!s.empty())
+        s += '+';
+      append_number_0_99(s, w);
+    } else {
+      s += '-';
+      append_number_0_99(s, -w);
+    }
+    if (denom != 1) {
+      s += '/';
+      append_number_0_99(s, denom);
+    }
   }
   return s;
 }
