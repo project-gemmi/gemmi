@@ -10,7 +10,7 @@ using namespace gemmi::sym;
 
 void init_sym(py::module& sym) {
   py::class_<Op>(sym, "Op")
-    .def(py::init<>())
+    .def(py::init<>(&Op::identity))
     .def(py::init(&parse_triplet))
     .def_property_readonly_static("TDEN",
                                   [](py::object) -> int { return Op::TDEN; })
@@ -20,6 +20,7 @@ void init_sym(py::module& sym) {
     .def("det_rot", &Op::det_rot)
     .def("inverted", &Op::inverted)
     .def("negated", &Op::negated)
+    .def("translated", &Op::translated)
     .def("__mul__", [](const Op &a, const Op &b) { return combine(a, b); },
          py::is_operator())
     .def("__mul__", [](const Op &a, const std::string &b) {
@@ -54,7 +55,8 @@ void init_sym(py::module& sym) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
     .def_readwrite("sym_ops", &GroupOps::sym_ops)
-    .def_readwrite("cen_ops", &GroupOps::cen_ops);
+    .def_readwrite("cen_ops", &GroupOps::cen_ops)
+    .def("change_basis", &GroupOps::change_basis);
 
   sym.def("generators_from_hall", &generators_from_hall, py::arg("hall"),
           "Parse Hall notation.");

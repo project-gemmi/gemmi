@@ -40,7 +40,7 @@ struct Op {
   Op inverted() const;
 
   // if the translation points outside of the unit cell, wrap it.
-  Op& unitize() {
+  Op& wrap() {
     for (int i = 0; i != 3; ++i) {
       if (tran[i] >= TDEN) // elements need to be in [0,TDEN)
         tran[i] %= TDEN;
@@ -91,7 +91,7 @@ inline Op combine(const Op& a, const Op& b) {
       r.tran[i] += a.rot[i][j] * b.tran[j];
     }
   }
-  r.unitize();
+  r.wrap();
   return r;
 }
 
@@ -121,14 +121,18 @@ inline std::array<Op::int_t, 4> parse_triplet_part(const std::string& s) {
   std::array<Op::int_t, 4> r = { 0, 0, 0, 0 };
   int sign = 1;
   for (const char* c = s.c_str(); c != s.c_str() + s.length(); ++c) {
-    if (*c == '+' || *c == '-') {
-      sign = (*c == '+' ? 1 : -1);
+    if (*c == '+') {
+      sign = 1;
+      continue;
+    }
+    if (*c == '-') {
+      sign = -1;
       continue;
     }
     if (*c == ' ' || *c == '\t')
       continue;
     if (sign == 0)
-      fail("wrong triplet format in: " + s);
+      fail("wrong or unsupported triplet format: " + s);
     if (*c >= '0' && *c <= '9') {
       char* endptr;
       r[3] = sign * strtol(c, &endptr, 10);
@@ -256,17 +260,16 @@ struct GroupOps {
   }
 
   struct Iter {
-    const GroupOps& parent;
+    const GroupOps& gops;
     unsigned n_sym, n_cen;
     void operator++() {
-      if (++n_cen == parent.cen_ops.size()) {
+      if (++n_cen == gops.cen_ops.size()) {
         ++n_sym;
         n_cen = 0;
       }
     }
     Op operator*() const {
-      return parent.sym_ops.at(n_sym).translated(parent.cen_ops.at(n_cen))
-                                     .unitize();
+      return gops.sym_ops.at(n_sym).translated(gops.cen_ops.at(n_cen)).wrap();
     }
     bool operator==(const Iter& other) const {
       return n_sym == other.n_sym && n_cen == other.n_cen;
@@ -417,7 +420,7 @@ void GroupOps::add_missing_elements() {
         if (find_by_rotation(new_op.rot) == nullptr)
           sym_ops.push_back(new_op);
       }
-    if (sym_ops.size() > 1000)
+    if (sym_ops.size() > 1023)
       fail("1000+ elements in the group should not happen");
   }
 }

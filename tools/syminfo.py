@@ -44,7 +44,6 @@ def parse_syminfo(path):
 
 def main():
     syminfo = parse_syminfo(sys.argv[1])
-    print(len(syminfo))
     for entry in syminfo:
         ccp4 = entry['ccp4']
         hall = entry['hall']
@@ -54,15 +53,15 @@ def main():
         except RuntimeError:  # a few entries with denominator 8 in basisop
             continue
         assert len(hall_ops.cen_ops) == len(entry['cenops'])
+        assert set(sym.Op().translated(tr) for tr in hall_ops.cen_ops) == \
+               set(entry['cenops'])
+        assert len(hall_ops.sym_ops) == len(entry['symops'])
+        # symops differ in about dozen cases but are the same modulo
+        # centering vectors
         generated = set(hall_ops)
         given = set(s * c for s in entry['symops'] for c in entry['cenops'])
-        #assert len(generated) == len(given)
-        if given != generated:
-            print(entry['number'], hall, entry['xhm'], sep=' '*10)
-            print('common:',  '  '.join(x.triplet() for x in given & generated))
-            print('given:    ', '  '.join(x.triplet() for x in given - generated))
-            print('generated:', '  '.join(x.triplet() for x in generated - given))
-            print()
+        assert len(generated) == len(given), entry
+    print('OK. %d entries.' % len(syminfo))
 
 
 main()
