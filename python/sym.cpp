@@ -18,7 +18,7 @@ void init_sym(py::module& sym) {
     .def_readwrite("tran", &Op::tran)
     .def("triplet", &Op::triplet)
     .def("det_rot", &Op::det_rot)
-    .def("inverted", &Op::inverted)
+    .def("inverted", [](const Op& self) { return self.inverted(); })
     .def("negated", &Op::negated)
     .def("translated", &Op::translated)
     .def("__mul__", [](const Op &a, const Op &b) { return combine(a, b); },

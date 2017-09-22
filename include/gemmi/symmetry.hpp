@@ -26,7 +26,7 @@ inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 // TRIPLET <-> SYM OP
 
 struct Op {
-  enum { TDEN=12 };  // may be changed to 24 for change-of-basis ops
+  enum { TDEN=24 };  // 24 to handle 1/8 in change-of-basis
   typedef int int_t;
   typedef std::array<std::array<int_t, 3>, 3> Rot;
   typedef std::array<int_t, 3> Tran;
@@ -37,7 +37,7 @@ struct Op {
   std::string triplet() const;
   std::string rot_triplet() const { return Op{rot, {0, 0, 0}}.triplet(); };
 
-  Op inverted() const;
+  Op inverted(int* mult=NULL) const;
 
   // if the translation points outside of the unit cell, wrap it.
   Op& wrap() {
@@ -95,11 +95,15 @@ inline Op combine(const Op& a, const Op& b) {
   return r;
 }
 
-inline Op Op::inverted() const {
+inline Op Op::inverted(int* mult) const {
   int detr = det_rot();
-  if (detr != 1 && detr != -1)
-    fail("not a rotation/inversion: det|" + rot_triplet() + "|="
-         + std::to_string(detr));
+  if (detr != 1 && detr != -1) {
+    if (detr == 0 || mult == nullptr)
+      fail("not a rotation/inversion: det|" + rot_triplet() + "|="
+           + std::to_string(detr));
+    *mult = detr > 0 ? detr : -detr;
+    detr = detr > 0 ? 1 : -1;
+  }
   Op inv;
   inv.rot[0][0] = detr * (rot[1][1] * rot[2][2] - rot[2][1] * rot[1][2]);
   inv.rot[0][1] = detr * (rot[0][2] * rot[2][1] - rot[0][1] * rot[2][2]);
@@ -196,9 +200,9 @@ inline std::string make_triplet_part(int x, int y, int z, int w) {
         s += '+';
       s += char('x' + i);
     }
-  if (w != 0) {  // simplify w/12
+  if (w != 0) { // reduce the w/TDEN fraction to lowest terms
     int denom = 1;
-    for (int factor : {2, 2, 3})  // for Op::TDEN == 12
+    for (int factor : {2, 2, 2, 3})  // for Op::TDEN == 24
       if (w % factor == 0)
         w /= factor;
       else
@@ -267,10 +271,21 @@ struct GroupOps {
     return nullptr;
   }
 
-  void change_basis(const Op& cob) {
+  void change_basis(Op cob) {
     if (sym_ops.empty() || cen_ops.empty())
       return;
     Op cob_inv = cob.inverted();
+    /*
+    int mult = 1;
+    Op cob_inv = cob.inverted(&mult);
+    if (mult != 1) {
+      for (auto& a : cob.rot)
+        for (auto& b : a)
+          b *= mult;
+      for (auto& a : cob.tran)
+        a *= mult;
+    }
+    */
     // assuming the first items in sym_ops and cen_ops are identities
     for (auto op = sym_ops.begin() + 1; op != sym_ops.end(); ++op)
       *op = combine(combine(cob, *op), cob_inv);
@@ -302,18 +317,21 @@ struct GroupOps {
 
 // corresponds to Table A1.4.2.2 in ITfC vol.B (edition 2010)
 inline std::vector<Op::Tran> lattice_translations(char lattice_symbol) {
+  constexpr int h = Op::TDEN / 2;
+  constexpr int t = Op::TDEN / 3;
+  constexpr int d = 2 * t;
   switch (lattice_symbol & ~0x20) {
     case 'P': return {{0, 0, 0}};
-    case 'A': return {{0, 0, 0}, {0, 6, 6}};
-    case 'B': return {{0, 0, 0}, {6, 0, 6}};
-    case 'C': return {{0, 0, 0}, {6, 6, 0}};
-    case 'I': return {{0, 0, 0}, {6, 6, 6}};
-    case 'R': return {{0, 0, 0}, {8, 4, 4}, {4, 8, 8}};
+    case 'A': return {{0, 0, 0}, {0, h, h}};
+    case 'B': return {{0, 0, 0}, {h, 0, h}};
+    case 'C': return {{0, 0, 0}, {h, h, 0}};
+    case 'I': return {{0, 0, 0}, {h, h, h}};
+    case 'R': return {{0, 0, 0}, {d, t, t}, {t, d, d}};
     // hall_symbols.html has no H, ITfC 2010 has no S and T
-    case 'S': return {{0, 0, 0}, {4, 4, 8}, {8, 4, 8}};
-    case 'T': return {{0, 0, 0}, {4, 8, 4}, {8, 4, 8}};
-    case 'H': return {{0, 0, 0}, {8, 4, 0}, {4, 8, 0}};
-    case 'F': return {{0, 0, 0}, {0, 6, 6}, {6, 0, 6}, {6, 6, 0}};
+    case 'S': return {{0, 0, 0}, {t, t, d}, {d, t, d}};
+    case 'T': return {{0, 0, 0}, {t, d, t}, {d, t, d}};
+    case 'H': return {{0, 0, 0}, {d, t, 0}, {t, d, 0}};
+    case 'F': return {{0, 0, 0}, {0, h, h}, {h, 0, h}, {h, h, 0}};
     default: fail(std::string("not a lattice symbol: ") + lattice_symbol);
   }
 }
@@ -333,15 +351,17 @@ inline Op::Rot rotation_z(int N) {
   }
 }
 inline Op::Tran translation_from_symbol(char symbol) {
+  constexpr int h = Op::TDEN / 2;
+  constexpr int q = Op::TDEN / 4;
   switch (symbol) {
-    case 'a': return {6, 0, 0};
-    case 'b': return {0, 6, 0};
-    case 'c': return {0, 0, 6};
-    case 'n': return {6, 6, 6};
-    case 'u': return {3, 0, 0};
-    case 'v': return {0, 3, 0};
-    case 'w': return {0, 0, 3};
-    case 'd': return {3, 3, 3};
+    case 'a': return {h, 0, 0};
+    case 'b': return {0, h, 0};
+    case 'c': return {0, 0, h};
+    case 'n': return {h, h, h};
+    case 'u': return {q, 0, 0};
+    case 'v': return {0, q, 0};
+    case 'w': return {0, 0, q};
+    case 'd': return {q, q, q};
     default: fail(std::string("unknown symbol: ") + symbol);
   }
 }
@@ -402,7 +422,7 @@ inline Op hall_matrix_symbol(const char* start, const char* end,
   else if (principal_axis == 'y')
     op.rot = alter_order(op.rot, 1, 2, 0);
   if (fractional_tran)
-    op.tran[principal_axis - 'x'] += 12 / N * fractional_tran;
+    op.tran[principal_axis - 'x'] += Op::TDEN / N * fractional_tran;
   prev = N;
   return op;
 }
@@ -416,7 +436,7 @@ inline Op parse_change_of_basis(const char* start, const char* end) {
   Op cob = Op::identity();
   char* endptr;
   for (int i = 0; i != 3; ++i) {
-    cob.tran[i] = std::strtol(start, &endptr, 10) % 12;
+    cob.tran[i] = std::strtol(start, &endptr, 10) % 12 * (Op::TDEN / 12);
     start = endptr;
   }
   if (endptr != end)

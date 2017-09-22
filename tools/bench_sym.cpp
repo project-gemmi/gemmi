@@ -62,12 +62,13 @@ static void bm_add_elements(benchmark::State& state) {
 BENCHMARK(bm_parse_triplet_all);
 //BENCHMARK(bm_make_triplet)->DenseRange(0, 9);
 BENCHMARK(bm_make_triplet_all);
-BENCHMARK(bm_generators_from_hall)->DenseRange(0, 5);
-BENCHMARK(bm_add_elements)->DenseRange(0, 5);
+BENCHMARK(bm_generators_from_hall)->DenseRange(0, 6);
+BENCHMARK(bm_add_elements)->DenseRange(0, 6);
 BENCHMARK_MAIN();
 
 // sym::parse_triplet(): 50-300 ns/triplet
 // sym::make_triplet(): 40-120 ns/triplet
-// sym::add_missing_elements():
+// sym::generators_from_hall(): 60-1000 ns
+// GroupOps::add_missing_elements(): 140-90,000 ns
 
 // vim:sw=2:ts=2:et:path^=../include,../third_party
