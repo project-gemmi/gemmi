@@ -48,11 +48,7 @@ def main():
         ccp4 = entry['ccp4']
         hall = entry['hall']
         assert ccp4 == 0 or ccp4 % 1000 == entry['number']
-        try:
-            hall_ops = sym.symops_from_hall(hall)
-        except RuntimeError as e:
-            print("Skip %s:" % hall, e)
-            continue
+        hall_ops = sym.symops_from_hall(hall)
         assert len(hall_ops.cen_ops) == len(entry['cenops'])
         assert set(sym.Op().translated(tr) for tr in hall_ops.cen_ops) == \
                set(entry['cenops'])

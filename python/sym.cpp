@@ -13,21 +13,26 @@ void init_sym(py::module& sym) {
     .def(py::init<>(&Op::identity))
     .def(py::init(&parse_triplet))
     .def_property_readonly_static("TDEN",
-                                  [](py::object) -> int { return Op::TDEN; })
-    .def_readwrite("rot", &Op::rot)
-    .def_readwrite("tran", &Op::tran)
-    .def("triplet", &Op::triplet)
-    .def("det_rot", &Op::det_rot)
-    .def("inverted", [](const Op& self) { return self.inverted(); })
-    .def("negated", &Op::negated)
-    .def("translated", &Op::translated)
-    .def("__mul__", [](const Op &a, const Op &b) { return combine(a, b); },
-         py::is_operator())
+            [](py::object) -> int { return Op::TDEN; },
+            "Denominator (integer) for the translation vector.")
+    .def_readwrite("rot", &Op::rot, "3x3 integer matrix.")
+    .def_readwrite("tran", &Op::tran,
+                   "Numerators (integers) of the translation vector.")
+    .def("triplet", &Op::triplet, "Returns coordinate triplet x,y,z.")
+    .def("det_rot", &Op::det_rot, "Determinant of the 3x3 matrix.")
+    .def("inverted", [](const Op& self) { return self.inverted(); },
+         "Returns inverted operator.")
+    .def("negated", &Op::negated, "Returns Op with all elements nagated")
+    .def("translated", &Op::translated, py::arg("a"), "Adds a to tran")
+    .def("wrap", &Op::wrap, "Wrap the translation part to [0,1)")
+    .def("__mul__", [](const Op &a, const Op &b) {
+            return combine(a, b).wrap();
+         }, py::is_operator())
     .def("__mul__", [](const Op &a, const std::string &b) {
-            return combine(a, parse_triplet(b));
+            return combine(a, parse_triplet(b)).wrap();
          }, py::is_operator())
     .def("__rmul__", [](const Op &a, const std::string &b) {
-            return combine(parse_triplet(b), a);
+            return combine(parse_triplet(b), a).wrap();
          }, py::is_operator())
     .def("__eq__", [](const Op &a, const Op &b) { return a == b; },
          py::is_operator())
@@ -54,9 +59,11 @@ void init_sym(py::module& sym) {
     .def("__iter__", [](const GroupOps& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
-    .def_readwrite("sym_ops", &GroupOps::sym_ops)
-    .def_readwrite("cen_ops", &GroupOps::cen_ops)
-    .def("change_basis", &GroupOps::change_basis);
+    .def_readwrite("sym_ops", &GroupOps::sym_ops,
+               "Symmetry operations (to be combined with centering vectors).")
+    .def_readwrite("cen_ops", &GroupOps::cen_ops, "Centering vectors.")
+    .def("change_basis", &GroupOps::change_basis, py::arg("cob"),
+         "Applies the change-of-basis operator (in place).");
 
   sym.def("generators_from_hall", &generators_from_hall, py::arg("hall"),
           "Parse Hall notation.");

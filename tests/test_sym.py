@@ -106,6 +106,11 @@ class TestSymmetry(unittest.TestCase):
         # then on examples from the 530 settings
         self.assertEqual(sym.generators_from_hall('P -2 -2').sym_ops,
                          ['x,y,z', 'x,y,-z', '-x,y,z'])
+        # the same operations in different notation
+        a = sym.generators_from_hall('P 3*')
+        b = sym.generators_from_hall('R 3 (-y+z,x+z,-x+y+z)')
+        self.assertEqual(a.sym_ops, b.sym_ops)
+        self.assertEqual(a.cen_ops, b.cen_ops)
 
     def compare_hall_symops_with_sgtbx(self, hall):
         cctbx_sg = sgtbx.space_group(hall)

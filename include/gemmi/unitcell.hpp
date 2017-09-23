@@ -41,7 +41,7 @@ struct UnitCell {
   double cos_alphar = 0.0, cos_betar = 0.0, cos_gammar = 0.0;
 
   void calculate_properties() {
-    double deg2rad = 3.1415926535897932384626433832795029 / 180.0;
+    constexpr double deg2rad = 3.1415926535897932384626433832795029 / 180.0;
     // ensure exact values for right angles
     double cos_alpha = alpha == 90. ? 0. : std::cos(deg2rad * alpha);
     double cos_beta  = beta  == 90. ? 0. : std::cos(deg2rad * beta);

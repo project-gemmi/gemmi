@@ -37,7 +37,7 @@ struct Op {
   std::string triplet() const;
   std::string rot_triplet() const { return Op{rot, {0, 0, 0}}.triplet(); };
 
-  Op inverted(int* mult=NULL) const;
+  Op inverted(int* denom=NULL) const;
 
   // if the translation points outside of the unit cell, wrap it.
   Op& wrap() {
@@ -91,29 +91,28 @@ inline Op combine(const Op& a, const Op& b) {
       r.tran[i] += a.rot[i][j] * b.tran[j];
     }
   }
-  r.wrap();
   return r;
 }
 
-inline Op Op::inverted(int* mult) const {
+inline Op Op::inverted(int* denom) const {
   int detr = det_rot();
+  int sign = detr >= 0 ? 1 : -1;
   if (detr != 1 && detr != -1) {
-    if (detr == 0 || mult == nullptr)
+    if (detr == 0 || denom == nullptr)
       fail("not a rotation/inversion: det|" + rot_triplet() + "|="
            + std::to_string(detr));
-    *mult = detr > 0 ? detr : -detr;
-    detr = detr > 0 ? 1 : -1;
+    *denom = detr * sign;
   }
   Op inv;
-  inv.rot[0][0] = detr * (rot[1][1] * rot[2][2] - rot[2][1] * rot[1][2]);
-  inv.rot[0][1] = detr * (rot[0][2] * rot[2][1] - rot[0][1] * rot[2][2]);
-  inv.rot[0][2] = detr * (rot[0][1] * rot[1][2] - rot[0][2] * rot[1][1]);
-  inv.rot[1][0] = detr * (rot[1][2] * rot[2][0] - rot[1][0] * rot[2][2]);
-  inv.rot[1][1] = detr * (rot[0][0] * rot[2][2] - rot[0][2] * rot[2][0]);
-  inv.rot[1][2] = detr * (rot[1][0] * rot[0][2] - rot[0][0] * rot[1][2]);
-  inv.rot[2][0] = detr * (rot[1][0] * rot[2][1] - rot[2][0] * rot[1][1]);
-  inv.rot[2][1] = detr * (rot[2][0] * rot[0][1] - rot[0][0] * rot[2][1]);
-  inv.rot[2][2] = detr * (rot[0][0] * rot[1][1] - rot[1][0] * rot[0][1]);
+  inv.rot[0][0] = sign * (rot[1][1] * rot[2][2] - rot[2][1] * rot[1][2]);
+  inv.rot[0][1] = sign * (rot[0][2] * rot[2][1] - rot[0][1] * rot[2][2]);
+  inv.rot[0][2] = sign * (rot[0][1] * rot[1][2] - rot[0][2] * rot[1][1]);
+  inv.rot[1][0] = sign * (rot[1][2] * rot[2][0] - rot[1][0] * rot[2][2]);
+  inv.rot[1][1] = sign * (rot[0][0] * rot[2][2] - rot[0][2] * rot[2][0]);
+  inv.rot[1][2] = sign * (rot[1][0] * rot[0][2] - rot[0][0] * rot[1][2]);
+  inv.rot[2][0] = sign * (rot[1][0] * rot[2][1] - rot[2][0] * rot[1][1]);
+  inv.rot[2][1] = sign * (rot[2][0] * rot[0][1] - rot[0][0] * rot[2][1]);
+  inv.rot[2][2] = sign * (rot[0][0] * rot[1][1] - rot[1][0] * rot[0][1]);
   for (int i = 0; i != 3; ++i)
     inv.tran[i] = - tran[0] * inv.rot[i][0]
                   - tran[1] * inv.rot[i][1]
@@ -178,14 +177,15 @@ inline Op parse_triplet(const std::string& s) {
 }
 
 // much faster than s += std::to_string(n)
-inline void append_number_0_99(std::string& s, int n) {
-  // assert(n >= 0 && n <= 99);
+inline void append_small_number(std::string& s, int n) {
   if (n < 10) {
     s += char('0' + n);
-  } else {
+  } else if (n < 100) {
     int tens = n / 10;
     s += char('0' + tens);
     s += char('0' + n - 10 * tens);
+  } else {
+    s += std::to_string(n);
   }
 }
 
@@ -198,6 +198,8 @@ inline std::string make_triplet_part(int x, int y, int z, int w) {
         s += '-';
       else if (!s.empty())
         s += '+';
+      if (xyz[i] != 1 && xyz[i] != -1)
+        append_small_number(s, xyz[i] < 0 ? -xyz[i] : xyz[i]);
       s += char('x' + i);
     }
   if (w != 0) { // reduce the w/TDEN fraction to lowest terms
@@ -210,14 +212,14 @@ inline std::string make_triplet_part(int x, int y, int z, int w) {
     if (w > 0) {
       if (!s.empty())
         s += '+';
-      append_number_0_99(s, w);
+      append_small_number(s, w);
     } else {
       s += '-';
-      append_number_0_99(s, -w);
+      append_small_number(s, -w);
     }
     if (denom != 1) {
       s += '/';
-      append_number_0_99(s, denom);
+      append_small_number(s, denom);
     }
   }
   return s;
@@ -274,23 +276,27 @@ struct GroupOps {
   void change_basis(Op cob) {
     if (sym_ops.empty() || cen_ops.empty())
       return;
-    Op cob_inv = cob.inverted();
-    /*
-    int mult = 1;
-    Op cob_inv = cob.inverted(&mult);
-    if (mult != 1) {
-      for (auto& a : cob.rot)
-        for (auto& b : a)
-          b *= mult;
-      for (auto& a : cob.tran)
-        a *= mult;
-    }
-    */
+    int den = 1;
+    Op cob_inv = cob.inverted(&den);
     // assuming the first items in sym_ops and cen_ops are identities
     for (auto op = sym_ops.begin() + 1; op != sym_ops.end(); ++op)
-      *op = combine(combine(cob, *op), cob_inv);
+      *op = combine(combine(cob, *op), cob_inv).wrap();
+    constexpr Op::Rot rid = Op::identity().rot;
     for (auto tr = cen_ops.begin() + 1; tr != cen_ops.end(); ++tr)
-      *tr = combine(combine(cob, Op{Op::identity().rot, *tr}), cob_inv).tran;
+      *tr = combine(combine(cob, Op{rid, *tr}), cob_inv).wrap().tran;
+    if (den > 1) {  // this part was tested only on R 3 :R -> :H
+      for (auto op = sym_ops.begin() + 1; op != sym_ops.end(); ++op)
+        for (auto& i : op->rot)
+          for (auto& j : i)
+            j /= den;
+      // the centering must have changed
+      for (int i = cen_ops.size() - 1; i >= 0; --i)
+        for (int j = i - 1; j >= 0; --j)
+          if (cen_ops[i] == cen_ops[j]) {
+            cen_ops.erase(cen_ops.begin() + i);
+            break;
+          }
+    }
   }
 
   struct Iter {
@@ -457,7 +463,7 @@ void GroupOps::add_missing_elements() {
       for (size_t j = 1; j != generator_count; ++j) {
         Op new_op = combine(sym_ops[i], sym_ops[j]);
         if (find_by_rotation(new_op.rot) == nullptr)
-          sym_ops.push_back(new_op);
+          sym_ops.push_back(new_op.wrap());
       }
     if (sym_ops.size() > 1023)
       fail("1000+ elements in the group should not happen");
