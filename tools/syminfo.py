@@ -33,7 +33,7 @@ def parse_syminfo(path):
             elif line.startswith('symbol ccp4 '):
                 cur['ccp4'] = int(line[12:])
             elif line.startswith('symbol xHM '):
-                cur['xhm'] = line[11:].strip(" '")
+                cur['xhm'] = line[11:].strip(" '").replace(' :', ':')
             elif line.startswith('symbol Hall '):
                 cur['hall'] = line[12:].strip(" '")
             elif line.startswith('symop '):
@@ -42,12 +42,37 @@ def parse_syminfo(path):
                 cur['cenops'].append(sym.Op(line[6:]))
     return data
 
+def read_ref():
+    hall_ref = {}
+    with open('../tools/hall-symbols.txt') as f:
+        for line in f:
+            hm = line[11:25].strip().replace(':r', ':R').replace(':h', ':H')
+            assert hm not in hall_ref
+            num = int(line[:11].split(':')[0])
+            hall_ref[hm] = (num, line[25:].strip())
+    return hall_ref
+
 def main():
     syminfo = parse_syminfo(sys.argv[1])
+    seen_nums = set()
     for entry in syminfo:
         ccp4 = entry['ccp4']
         hall = entry['hall']
-        assert ccp4 == 0 or ccp4 % 1000 == entry['number']
+        basisop = entry['basisop']
+        num = entry['number']
+        xhm = entry['xhm']
+        if num not in seen_nums:
+            seen_nums.add(num)
+            assert ccp4 == num
+            if basisop != 'x,y,z':
+                print(num, xhm, basisop)
+        assert ccp4 == 0 or ccp4 % 1000 == num
+        if ccp4 == num:
+            if basisop != 'x,y,z':
+                pass #print(ccp4, basisop)
+        if basisop != 'x,y,z':
+            if '(%s)' % basisop not in hall:
+                print('Hall symbol "%s" w/o basisop: %s' % (hall, basisop))
         hall_ops = sym.symops_from_hall(hall)
         assert len(hall_ops.cen_ops) == len(entry['cenops'])
         assert set(sym.Op().translated(tr) for tr in hall_ops.cen_ops) == \
@@ -57,8 +82,29 @@ def main():
         # centering vectors
         generated = set(hall_ops)
         given = set(s * c for s in entry['symops'] for c in entry['cenops'])
-        assert len(generated) == len(given), entry
+        assert generated == given, entry
     print('OK. %d entries.' % len(syminfo))
+
+    hall_ref = read_ref()
+    xhm_set = set()
+    for d in syminfo:
+        xhm = d['xhm']
+        if xhm and xhm in xhm_set:
+            print('dup xHM:', xhm)
+        xhm_set.add(xhm)
+        ref = hall_ref.get(xhm)
+        if ref is not None:
+            assert d['number'] == ref[0]
+            hall1 = d['hall']
+            hall2 = ref[1]
+            sym1 = sym.symops_from_hall(hall1)
+            sym2 = sym.symops_from_hall(hall2)
+            assert set(sym1) == set(sym2), (hall1, hall2)
+        else:
+            print('extra:', xhm, '  (%d)' % d['number'], d['hall'])
+    missing = set(hall_ref.keys()) - xhm_set
+    for d in sorted(missing, key=lambda m: hall_ref[m][0]):
+        print('missing:', d, '  (%d)' % hall_ref[d][0])
 
 
 main()
