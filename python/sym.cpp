@@ -17,7 +17,7 @@ void init_sym(py::module& sym) {
             "Denominator (integer) for the translation vector.")
     .def_readwrite("rot", &Op::rot, "3x3 integer matrix.")
     .def_readwrite("tran", &Op::tran,
-                   "Numerators (integers) of the translation vector.")
+       "Numerators (integers) of the translation vector. Denominator TDEN=24.")
     .def("triplet", &Op::triplet, "Returns coordinate triplet x,y,z.")
     .def("det_rot", &Op::det_rot, "Determinant of the 3x3 matrix.")
     .def("inverted", [](const Op& self) { return self.inverted(); },
