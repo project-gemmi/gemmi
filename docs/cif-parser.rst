@@ -8,12 +8,11 @@ What are STAR, CIF, DDL, mmCIF?
 
 (in case someone comes here when looking for a serialization format)
 
-STAR is a human-readable data serialization format
-(think XML or YAML, but also ASN.1)
-widely used in molecular-structure sciences.
+STAR is a human-readable data serialization format (think XML or JSON)
+that happens to be known and used only in molecular-structure sciences.
 
-CIF (Crystallographic Information File) -- a standard file format
-in crystallography -- is basically a restricted variant of STAR.
+CIF (Crystallographic Information File) -- a file format used
+in crystallography -- is a restricted derivative of STAR.
 It is restricted in features (to make implementation easier),
 but also imposes arbitrary limits -- for example on the line length.
 
@@ -24,7 +23,7 @@ We will be more specific in the following sections.
 
 The STAR/CIF syntax is relatively simple, but may be confusing at first.
 (Note that the initial version of STAR was published by Sydney Hall in 1991 --
-before XML and much before JSON and YAML, not to mention TOML).
+before XML and long before JSON and YAML, not to mention TOML).
 
 .. highlight:: default
 
@@ -76,10 +75,11 @@ Note: "STAR File" is trademarked by IUCr, and it used to be patented_.
 
 .. _patented: https://patents.google.com/patent/WO1991016682A1
 
-The mmCIF (a.k.a. PDBx/mmCIF) format
+The mmCIF format (by mmCIF we mean what is more formally called PDBx/mmCIF)
 is the CIF syntax + a huge dictionary (ontology/schema) in DDL2.
 The dictionary defines relations between columns in different tables,
-which makes it resemble a relational database.
+which makes it resemble a relational database (it was designed at the
+height of popularity of RDBMSs).
 
 **Where are the specs?**
 
@@ -358,28 +358,17 @@ More complex examples are shown in the :ref:`cif_examples` section.
 Performance
 ===========
 
-We owe the good performance to the excellent
-`PEGTL <https://github.com/taocpp/PEGTL/>`_ project.
+Gemmi CIF parser is based on `PEGTL <https://github.com/taocpp/PEGTL/>`_ --
+an excellent "parser combinator library".
 
-In my testing (with GCC 5 and Clang 3.8) Gemmi CIF parser is
+In my testing (with GCC 5 and Clang 3.8) our parser is
 3x faster than cif_api (``validate -f`` vs ``cif2_syncheck -f``),
 which in turn `is reported <https://doi.org/10.1107/S1600576715021883>`_
 to be several times faster than iotbx.cif (ucif).
 
-On the other hand the ChimeraX readcif library
-(which is not publicly available?) is likely even faster.
-`This benchmark <http://www.cgl.ucsf.edu/chimerax/docs/devel/core/atomic/readcif_cpp/docs/compare.html>`_
-reports that readcif run in the "tokenized" mode reads
-3j3q.cif (250MB) in 1.8 sec (20x faster than cifparse-obj and ucif).
-On my computer (with similar spec) Gemmi parses the same file in <2s
-in the validation-only mode,
-but in >4s when copying all the strings into a DOM structure.
-Doing the same what that benchmark does should be somewhere between 2 and 4s.
-
-While big (10x) differences between programs may be surprising,
-it is the same with
-`JSON parsers <https://github.com/miloyip/nativejson-benchmark>`_,
-and in many cases it does not matter.
+While further improvement would be possible (the fastest JSON parsers are
+`much faster <https://github.com/project-gemmi/benchmarking-json>`_),
+it is not a priority.
 
 
 Design rationale

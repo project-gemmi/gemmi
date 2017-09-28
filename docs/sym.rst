@@ -1,23 +1,23 @@
 Symmetry
 ########
 
-Gemmi/symmetry provides space-group related functionality
+The Gemmi symmetry module provides space-group related functionality
 needed in other parts of the library -- when working with coordinate
 files, electron density maps and reflections.
 
-Although the Gemmi project is developed for macromolecular crystallography
+Although the Gemmi project is developed for macromolecular crystallography,
 for which only 65 space groups are relevant,
-we include all the 230 crystallographic space groups
+we cover all the 230 crystallographic space groups
 for the sake of completeness.
 
 This part of Gemmi has no dependencies:
 it is all in a single C++ header :file:`symmetry.hpp`.
 
-Space group notations
-=====================
+Space group table
+=================
 
-Gemmi tabulates 530 settings of the 230 crystallographic space groups,
-including the following informations:
+Gemmi tabulates about 540 settings of the 230 crystallographic space groups,
+including:
 
 * space group numbers (1-230),
 * ccp4 numbers (numbers assigned to particular settings; modulo 1000
@@ -27,28 +27,41 @@ including the following informations:
   (``I a -3 d``, ``C 1 2 1``),
 * extensions to the H-M notations (none, ``1``, ``2``, ``H`` or ``R``)
   that make extended H-M symbols (``R 3:H``, ``P 4/n:1``),
-* short H-M symbols (``Ia-3d``, ``C2``),
-* and the Hall notation (``-I 4bd 2c 3``, ``C 2y``, ``P 32 2c (0 0 -1)``).
+* and the Hall symbols (``-I 4bd 2c 3``, ``C 2y``, ``P 32 2c (0 0 -1)``)
+  that are used to generate operations.
 
-Any of the above identifiers can be used to find a space group.
+This data is derived primarily from the CCP4 :file:`syminfo.lib` file,
+which in turn is based on the data from sgtbx_ that was augmented
+with the old data from a CCP4 file named :file:`symop.lib`.
+
+The data from sgtbx is also available in the older SgInfo_ library,
+as well as in the `International Tables <http://it.iucr.org/>`_
+for Crystallography Vol. B ch. 1.4 (in 2010 ed.). It has 530 entries
+including 3 duplicates (different names for the same settings)
+in space-group 68.
+
+We left out many other settings, and we may add more entries in the future,
+if needed. For example, the C- and F-centred tetragonal space groups
+that are featured in
+`Crystallographic Space Group Diagrams and Tables <http://img.chem.ucl.ac.uk/sgp/mainmenu.htm>`_
+by Jeremy Karl Cockcroft (an excellent educational resource),
+and which are also mentioned in the ITfC Vol.A (Table 1.5.4.4
+in the 2015 edition)
+
+We also tabulated alternative names.
+For now this only includes new standard names introduced in 1990's by the IUCr
+committee. For example, the space-group no. 39 is now officially, in the
+Volume A of the `International Tables <http://it.iucr.org/>`_,
+named Aem2 not Abm2.
+Most of the crystallographic software (as well as the Volume B of the Tables)
+still use the old names.
+(spglib_ uses new ones,
+sgtbx reads new names with the option ``ad_hoc_1992``).
+
+TODO: find_spacegroup_by_name, find_spacegroup_by_number
 
 TODO: example in C++ or Python
 
-The space group numbers, extended H-M symbols and Hall symbols are the
-same as in ...
-
-CCP4 numbers are taken from the CCP4 :file:`syminfo.lib` file.
-
-International Tables for Crystallography (ITfC) describe
-each of the 230 space groups in Volume A chapter 2.3.
-Additionally, Vol.B ch.1.4 (in 2010 ed.) has two tables with computer-adapted
-symbols:
-
-* the Hall symbols (530 entries corresponding to different settings of
-  the 230 groups),
-* and the explicit symbols introduced by Shmueli_ (306 entries).
-
-TODO: how it is related to other data tables: ITfC, syminfo.lib, sgtbx
 
 Triplets and matrices
 =====================
@@ -73,11 +86,12 @@ But when the operations are transformed (two operations are combined,
 or the inverse is calculated) they are assumed to be symmetry operations
 and the shift is reduced.
 
-(TODO: but do we need any functions working on non-symmetry operations,
-such as combining operators or inversion?).
+(TODO: write in details when the translation is wrapped)
 
 Space groups and operations
 ===========================
+
+Each space-group settings correspond to a unique set of operations.
 
 For a software developer, the choice between having an explicit list of all
 the operations and generating them from a smaller set of symbols is a
@@ -85,7 +99,7 @@ trade-off between simplicity of the code and the amount of the tabulated data.
 
 The number of symmetry operations per space group is between 1 and 192,
 but they can be split into symmetry operations (max. 48 for point group m-3m)
-and up to 4 centering vectors.
+and centering vectors (max. 4 for the face-centered lattice).
 
 * The simplest way of storing the operations is to list them all (i.e. 192
   triplets for #228) in a text file.
@@ -93,12 +107,9 @@ and up to 4 centering vectors.
   space-group names and triplets are tabulated in :file:`space-groups.txt`
   (currently 541 entries, some look incorrect).
 
-* The most popular files with symmetry operations are CCP4 :file:`syminfo.lib`
-  (540 entries) and its predecessor :file:`symop.lib`.
-  :file:`syminfo.lib` is the primary spacegroup information for csymlib_
-  (part of libccp4, LGPL3) and a few other projects. The file format
-  is more sophisticated than in Open Babel and the centering vectors
-  are kept separately.
+* The next simplest thing is to keep the centering vectors separately.
+  This is done in the CCP4 :file:`syminfo.lib` file (539 entries),
+  which is used by csymlib_ (part of libccp4) and a few other projects.
 
 * The operations can be as well tabulated in the code.
   This approach is used (with one or two layers of indirection to reduce
@@ -108,11 +119,10 @@ and up to 4 centering vectors.
   to reduce the maximum number of stored operations to 24+1.
   This is how the symmetry data is encoded in Fityk_.
 
-* All the operations can be generated from only up-to-3 operations
-  (+inversion), at the expense of more complex code.
+* Actually all the operations can be generated from only a few generators,
+  at the expense of more complex code.
   This approach is used in Mantid_ (triplets are tabulated in
-  :file:`SpaceGroupFactory.cpp`, although the code contains up to 5
-  generators per spacegroup (why?)).
+  :file:`SpaceGroupFactory.cpp`).
 
 * Finally, one can use one of the two computer-adapted descriptions from ITfC.
   The so-called explicit notation (``ICC$I3Q000$P4C393$P2D933``) is the
@@ -120,24 +130,23 @@ and up to 4 centering vectors.
   It is used in the SPGGEN_ program.
 
 * The Hall notation (``-I 4bd 2c 3``), first proposed by Sydney R. Hall
-  in 1981, is short (up to 16 characters for all settings in ITfC,
-  up to 32 characters for full change-of-basis notation in :file:`syminfo.lib`),
-  unambiguous and looks nice.
-  The notation can be interpreted by a few libraries:
+  in 1981, is shorter and more popular.
+  It can be interpreted by a few libraries:
 
   * SgInfo_ and SgLite_ (old C libraries from Ralf W. Grosse-Kunstleve
     recently re-licensed to BSD),
   * sgtbx_ (successor of SgInfo written in C++/Python, part of cctbx),
-  * CCP4 Clipper_ (in :file:`spacegroup.cpp`).
+  * CCP4 Clipper_,
 
   and by many programs.
   On the bad side, the conciseness is achieved by complex
   `rules <http://cci.lbl.gov/sginfo/hall_symbols.html>`_ of interpreting
-  the symbols.
+  the symbols; the choice of a Hall symbol for given settings
+  is not unambiguous and the symbols differ
+  between editions of ITfC, and between sgtbx and :file:`syminfo.lib`.
 
-In Gemmi we derive operations from the Hall symbols.
-The choice of included generators is somewhat arbitrary and differs
-between editions of ITfC, and between sgtbx and :file:`syminfo.lib`.
+After contemplating all the possible approches, we ended up with the last one:
+Hall symbols.
 
 To be continued..
 
