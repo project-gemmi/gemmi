@@ -1,5 +1,5 @@
 
-mmCIF, PDB, etc.
+Molecular models
 ################
 
 This part of the Gemmi library can
@@ -263,3 +263,11 @@ once a week:
     #rsync_subdir structures/obsolete/mmCIF
     #rsync_subdir structures/divided/pdb
     #rsync_subdir structures/divided/structure_factors
+
+Examples
+========
+
+B-factor analysis
+-----------------
+
+TODO

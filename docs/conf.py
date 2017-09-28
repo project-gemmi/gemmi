@@ -30,10 +30,11 @@ highlight_language = 'c++'
 
 import os
 if not os.environ.get('READTHEDOCS'):
-    #import guzzle_sphinx_theme
-    #html_theme_path = guzzle_sphinx_theme.html_theme_path()
-    #html_theme = 'guzzle_sphinx_theme'
     html_theme = 'sphinx_rtd_theme'
+    #import cloud_sptheme as csp
+    #html_theme = "cloud"
+    #html_theme_path = [csp.get_theme_dir()]
+    #html_theme = 'bizstyle'
     # html_theme_options = {}
 
 #html_static_path = ['_static']
