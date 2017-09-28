@@ -20,8 +20,17 @@
 namespace gemmi {
 namespace sym {
 
+// UTILS
+
 [[noreturn]]
 inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
+
+inline const char* skip_blank(const char* p) {
+  if (p)
+    while (*p == ' ' || *p == '\t' || *p == '_') // '_' can be used as space
+      ++p;
+  return p;
+}
 
 // TRIPLET <-> SYM OP
 
@@ -232,19 +241,303 @@ inline std::string Op::triplet() const {
 }
 
 
+// GROUPS OF OPERATIONS
+
+struct GroupOps {
+  std::vector<Op> sym_ops;
+  std::vector<Op::Tran> cen_ops;
+
+  void add_missing_elements();
+
+  const Op* find_by_rotation(const Op::Rot& r) const {
+    for (const Op& op : sym_ops)
+      if (op.rot == r)
+        return &op;
+    return nullptr;
+  }
+
+  void change_basis(Op cob) {
+    if (sym_ops.empty() || cen_ops.empty())
+      return;
+    int den = 1;
+    Op cob_inv = cob.inverted(&den);
+    // assuming the first items in sym_ops and cen_ops are identities
+    for (auto op = sym_ops.begin() + 1; op != sym_ops.end(); ++op)
+      *op = combine(combine(cob, *op), cob_inv).wrap();
+    constexpr Op::Rot rid = Op::identity().rot;
+    for (auto tr = cen_ops.begin() + 1; tr != cen_ops.end(); ++tr)
+      *tr = combine(combine(cob, Op{rid, *tr}), cob_inv).wrap().tran;
+    if (den > 1) {  // this part was tested only on R 3 :R -> :H
+      for (auto op = sym_ops.begin() + 1; op != sym_ops.end(); ++op)
+        for (auto& i : op->rot)
+          for (auto& j : i)
+            j /= den;
+      // the centering must have changed
+      for (int i = cen_ops.size() - 1; i >= 0; --i)
+        for (int j = i - 1; j >= 0; --j)
+          if (cen_ops[i] == cen_ops[j]) {
+            cen_ops.erase(cen_ops.begin() + i);
+            break;
+          }
+    }
+  }
+
+  bool is_same_as(const GroupOps& other) const {
+    if (cen_ops.size() != other.cen_ops.size() ||
+        sym_ops.size() != other.sym_ops.size())
+      return false;
+    if (cen_ops.size() == 2 && cen_ops[1] != other.cen_ops[1])
+      return false;
+    // TODO
+    // a = all combinations of this, sorted
+    // b = all combinations of other, sorted
+    // return a == b;
+    return false;
+  }
+
+  struct Iter {
+    const GroupOps& gops;
+    unsigned n_sym, n_cen;
+    void operator++() {
+      if (++n_cen == gops.cen_ops.size()) {
+        ++n_sym;
+        n_cen = 0;
+      }
+    }
+    Op operator*() const {
+      return gops.sym_ops.at(n_sym).translated(gops.cen_ops.at(n_cen)).wrap();
+    }
+    bool operator==(const Iter& other) const {
+      return n_sym == other.n_sym && n_cen == other.n_cen;
+    }
+    bool operator!=(const Iter& other) const { return !(*this == other); }
+  };
+
+  Iter begin() const { return {*this, 0, 0}; };
+  Iter end() const { return {*this, (unsigned) sym_ops.size(), 0}; };
+};
+
+void GroupOps::add_missing_elements() {
+  // Brute force. To be replaced with Dimino's algorithm
+  // see Luc Bourhis' answer https://physics.stackexchange.com/a/351400/95713
+  if (sym_ops.empty() || sym_ops[0] != Op::identity())
+    fail("oops");
+  size_t generator_count = sym_ops.size();
+  size_t prev_size = 0;
+  while (prev_size != sym_ops.size()) {
+    prev_size = sym_ops.size();
+    for (size_t i = 1; i != prev_size; ++i)
+      for (size_t j = 1; j != generator_count; ++j) {
+        Op new_op = combine(sym_ops[i], sym_ops[j]);
+        if (find_by_rotation(new_op.rot) == nullptr)
+          sym_ops.push_back(new_op.wrap());
+      }
+    if (sym_ops.size() > 1023)
+      fail("1000+ elements in the group should not happen");
+  }
+}
+
+
+// INTERPRETING HALL SYMBOLS
+// based on both ITfC vol.B ch.1.4 (2010)
+// and http://cci.lbl.gov/sginfo/hall_symbols.html
+
+// corresponds to Table A1.4.2.2 in ITfC vol.B (edition 2010)
+inline std::vector<Op::Tran> hall_lattice_translations(char lattice_symbol) {
+  constexpr int h = Op::TDEN / 2;
+  constexpr int t = Op::TDEN / 3;
+  constexpr int d = 2 * t;
+  switch (lattice_symbol & ~0x20) {
+    case 'P': return {{0, 0, 0}};
+    case 'A': return {{0, 0, 0}, {0, h, h}};
+    case 'B': return {{0, 0, 0}, {h, 0, h}};
+    case 'C': return {{0, 0, 0}, {h, h, 0}};
+    case 'I': return {{0, 0, 0}, {h, h, h}};
+    case 'R': return {{0, 0, 0}, {d, t, t}, {t, d, d}};
+    // hall_symbols.html has no H, ITfC 2010 has no S and T
+    case 'S': return {{0, 0, 0}, {t, t, d}, {d, t, d}};
+    case 'T': return {{0, 0, 0}, {t, d, t}, {d, t, d}};
+    case 'H': return {{0, 0, 0}, {d, t, 0}, {t, d, 0}};
+    case 'F': return {{0, 0, 0}, {0, h, h}, {h, 0, h}, {h, h, 0}};
+    default: fail(std::string("not a lattice symbol: ") + lattice_symbol);
+  }
+}
+
+// matrices for Nz from Table 3 and 4 from hall_symbols.html
+inline Op::Rot hall_rotation_z(int N) {
+  switch (N) {
+    case 1: return {1,0,0,  0,1,0,  0,0,1};
+    case 2: return {-1,0,0, 0,-1,0, 0,0,1};
+    case 3: return {0,-1,0, 1,-1,0, 0,0,1};
+    case 4: return {0,-1,0, 1,0,0,  0,0,1};
+    case 6: return {1,-1,0, 1,0,0,  0,0,1};
+    case '\'': return {0,-1,0, -1,0,0, 0,0,-1};
+    case '"':  return {0,1,0,   1,0,0, 0,0,-1};
+    case '*':  return {0,0,1,   1,0,0, 0,1,0};
+    default: fail("incorrect axis definition");
+  }
+}
+inline Op::Tran hall_translation_from_symbol(char symbol) {
+  constexpr int h = Op::TDEN / 2;
+  constexpr int q = Op::TDEN / 4;
+  switch (symbol) {
+    case 'a': return {h, 0, 0};
+    case 'b': return {0, h, 0};
+    case 'c': return {0, 0, h};
+    case 'n': return {h, h, h};
+    case 'u': return {q, 0, 0};
+    case 'v': return {0, q, 0};
+    case 'w': return {0, 0, q};
+    case 'd': return {q, q, q};
+    default: fail(std::string("unknown symbol: ") + symbol);
+  }
+}
+
+inline Op::Rot alter_order(const Op::Rot& r, int i, int j, int k) {
+    return { r[i][i], r[i][j], r[i][k],
+             r[j][i], r[j][j], r[j][k],
+             r[k][i], r[k][j], r[k][k] };
+}
+
+inline Op hall_matrix_symbol(const char* start, const char* end,
+                             int pos, int& prev) {
+  Op op = Op::identity();
+  bool neg = (*start == '-');
+  const char* p = (neg ? start + 1 : start);
+  if (*p < '1' || *p == '5' || *p > '6')
+    fail("wrong n-fold order notation: " + std::string(start, end));
+  int N = *p++ - '0';
+  int fractional_tran = 0;
+  char principal_axis = '\0';
+  char diagonal_axis = '\0';
+  for (; p < end; ++p) {
+    if (*p >= '1' && *p <= '5') {
+      if (fractional_tran != '\0')
+        fail("two numeric subscripts");
+      fractional_tran = *p - '0';
+    } else if (*p == '\'' || *p == '"' || *p == '*') {
+      if (N != (*p == '*' ? 3 : 2))
+        fail("wrong symbol: " + std::string(start, end));
+      diagonal_axis = *p;
+    } else if (*p == 'x' || *p == 'y' || *p == 'z') {
+      principal_axis = *p;
+    } else {
+      op.translate(hall_translation_from_symbol(*p));
+    }
+  }
+  // fill in implicit values
+  if (!principal_axis && !diagonal_axis) {
+    if (pos == 1) {
+      principal_axis = 'z';
+    } else if (pos == 2 && N == 2) {
+      if (prev == 2 || prev == 4)
+        principal_axis = 'x';
+      else if (prev == 3 || prev == 6)
+        diagonal_axis = '\'';
+    } else if (pos == 3 && N == 3) {
+      diagonal_axis = '*';
+    } else if (N != 1) {
+      fail("missing axis");
+    }
+  }
+  // get the operation
+  op.rot = hall_rotation_z(diagonal_axis ? diagonal_axis : N);
+  if (neg)
+    op.rot = op.negated_rot();
+  if (principal_axis == 'x')
+    op.rot = alter_order(op.rot, 2, 0, 1);
+  else if (principal_axis == 'y')
+    op.rot = alter_order(op.rot, 1, 2, 0);
+  if (fractional_tran)
+    op.tran[principal_axis - 'x'] += Op::TDEN / N * fractional_tran;
+  prev = N;
+  return op;
+}
+
+// Parses either short (0 0 1) or long notation (x,y,z+1/12)
+// but without multpliers (such as 1/2x) to keep things simple for now.
+inline Op parse_hall_change_of_basis(const char* start, const char* end) {
+  if (memchr(start, ',', end - start) != nullptr) // long symbol
+    return parse_triplet(std::string(start, end));
+  // short symbol (0 0 1)
+  Op cob = Op::identity();
+  char* endptr;
+  for (int i = 0; i != 3; ++i) {
+    cob.tran[i] = std::strtol(start, &endptr, 10) % 12 * (Op::TDEN / 12);
+    start = endptr;
+  }
+  if (endptr != end)
+    fail("unexpected change-of-basis format: " + std::string(start, end));
+  return cob;
+}
+
+inline const char* find_blank(const char* p) {
+  while (*p != '\0' && *p != ' ' && *p != '\t' && *p != '_') // '_' == ' '
+    ++p;
+  return p;
+}
+
+inline GroupOps generators_from_hall(const char* hall) {
+  if (hall == nullptr)
+    fail("null");
+  hall = skip_blank(hall);
+  GroupOps ops;
+  ops.sym_ops.emplace_back(Op::identity());
+  bool centrosym = (hall[0] == '-');
+  if (centrosym)
+    ops.sym_ops.emplace_back(Op::identity().negated());
+  const char* lat = skip_blank(centrosym ? hall + 1 : hall);
+  if (!lat)
+    fail("not a hall symbol: " + std::string(hall));
+  ops.cen_ops = hall_lattice_translations(*lat);
+  int counter = 0;
+  int prev = 0;
+  const char* part = skip_blank(lat + 1);
+  while (*part != '\0' && *part != '(') {
+    const char* space = find_blank(part);
+    ++counter;
+    if (part[0] != '1' || (part[1] != ' ' && part[1] != '\0')) {
+      Op op = hall_matrix_symbol(part, space, counter, prev);
+      ops.sym_ops.emplace_back(op);
+    }
+    part = skip_blank(space);
+  }
+  if (*part == '(') {
+    const char* rb = std::strchr(part, ')');
+    if (!rb)
+      fail("missing ')': " + std::string(hall));
+    if (ops.sym_ops.empty())
+      fail("misplaced translation: " + std::string(hall));
+    ops.change_basis(parse_hall_change_of_basis(part + 1, rb));
+
+    if (*skip_blank(find_blank(rb + 1)) != '\0')
+      fail("unexpected characters after ')': " + std::string(hall));
+  }
+  return ops;
+}
+
+inline GroupOps symops_from_hall(const char* hall) {
+  GroupOps ops = generators_from_hall(hall);
+  ops.add_missing_elements();
+  return ops;
+}
+
+
 // LIST OF CRYSTALLOGRAPHIC SPACE GROUPS
 
 struct SpaceGroup { // typically 40 bytes
   int number;
   int ccp4;
-  char HM[11];
+  char hm[11];
   char ext;
   char qualifier[5];
-  char Hall[15];
+  char hall[15];
+
+  GroupOps operations() const { return symops_from_hall(hall); }
 };
 
 struct AlternativeName {
-  char name[11];
+  char hm[11];
   char ext;
   int pos;
 };
@@ -254,12 +547,12 @@ struct AlternativeName {
 template<class Dummy>
 struct Data_
 {
-  static const SpaceGroup table[530];
-  static const AlternativeName alt_names[];
+  static const SpaceGroup table[539];
+  static const AlternativeName alt_names[27];
 };
 
 template<class Dummy>
-const SpaceGroup Data_<Dummy>::table[530] = {
+const SpaceGroup Data_<Dummy>::table[539] = {
   // This table was generated by tools/gen_sg_table.py.
   // First 530 entries in the same order as in SgInfo, sgtbx and ITB.
   // Note: spacegroup 68 has three duplicates with different H-M names.
@@ -806,7 +1099,7 @@ const SpaceGroup Data_<Dummy>::table[530] = {
 };
 
 template<class Dummy>
-const AlternativeName Data_<Dummy>::alt_names[530] = {
+const AlternativeName Data_<Dummy>::alt_names[27] = {
 	// In 1990's ITfC vol.A changed some of the standard names, introducing
 	// symbols 'e' and 'g'. sgtbx interprets these new symbols with
   // option ad_hoc_1992. spglib uses only the new symbols.
@@ -840,290 +1133,60 @@ const AlternativeName Data_<Dummy>::alt_names[530] = {
 };
 using data = Data_<void>;
 
+inline const SpaceGroup* find_spacegroup_by_number(int ccp4) {
+  for (const SpaceGroup& sg : data::table)
+    if (sg.ccp4 == ccp4)
+      return &sg;
+  return nullptr;
+}
 
-// INTERPRETING HALL SYMBOLS
-// based on both ITfC vol.B ch.1.4 (2010)
-// and http://cci.lbl.gov/sginfo/hall_symbols.html
-
-struct GroupOps {
-  std::vector<Op> sym_ops;
-  std::vector<Op::Tran> cen_ops;
-
-  void add_missing_elements();
-
-  const Op* find_by_rotation(const Op::Rot& r) const {
-    for (const Op& op : sym_ops)
-      if (op.rot == r)
-        return &op;
+inline const SpaceGroup* find_spacegroup_by_name(const std::string& name) {
+  const char* p = skip_blank(name.c_str());
+  if (*p >= '0' && *p <= '9') { // handle numbers
+    char *endptr;
+    long n = std::strtol(p, &endptr, 10);
+    return *endptr == '\0' ? find_spacegroup_by_number(n) : nullptr;
+  }
+  char first = *p & ~0x20; // to uppercase
+  if (first == '\0')
     return nullptr;
-  }
-
-  void change_basis(Op cob) {
-    if (sym_ops.empty() || cen_ops.empty())
-      return;
-    int den = 1;
-    Op cob_inv = cob.inverted(&den);
-    // assuming the first items in sym_ops and cen_ops are identities
-    for (auto op = sym_ops.begin() + 1; op != sym_ops.end(); ++op)
-      *op = combine(combine(cob, *op), cob_inv).wrap();
-    constexpr Op::Rot rid = Op::identity().rot;
-    for (auto tr = cen_ops.begin() + 1; tr != cen_ops.end(); ++tr)
-      *tr = combine(combine(cob, Op{rid, *tr}), cob_inv).wrap().tran;
-    if (den > 1) {  // this part was tested only on R 3 :R -> :H
-      for (auto op = sym_ops.begin() + 1; op != sym_ops.end(); ++op)
-        for (auto& i : op->rot)
-          for (auto& j : i)
-            j /= den;
-      // the centering must have changed
-      for (int i = cen_ops.size() - 1; i >= 0; --i)
-        for (int j = i - 1; j >= 0; --j)
-          if (cen_ops[i] == cen_ops[j]) {
-            cen_ops.erase(cen_ops.begin() + i);
-            break;
-          }
-    }
-  }
-
-  bool is_same_as(const GroupOps& other) const {
-    if (cen_ops.size() != other.cen_ops.size() ||
-        sym_ops.size() != other.sym_ops.size())
-      return false;
-    if (cen_ops.size() == 2 && cen_ops[1] != other.cen_ops[1])
-      return false;
-    // TODO
-    // a = all combinations of this, sorted
-    // b = all combinations of other, sorted
-    // return a == b;
-    return false;
-  }
-
-  struct Iter {
-    const GroupOps& gops;
-    unsigned n_sym, n_cen;
-    void operator++() {
-      if (++n_cen == gops.cen_ops.size()) {
-        ++n_sym;
-        n_cen = 0;
+  p = skip_blank(p+1);
+  for (const SpaceGroup& sg : data::table)
+    if (sg.hm[0] == first && sg.hm[2] == *p) {
+      const char* a = skip_blank(p + 1);
+      const char* b = skip_blank(sg.hm + 3);
+      while (*a == *b && *b != '\0') {
+        a = skip_blank(a+1);
+        b = skip_blank(b+1);
       }
-    }
-    Op operator*() const {
-      return gops.sym_ops.at(n_sym).translated(gops.cen_ops.at(n_cen)).wrap();
-    }
-    bool operator==(const Iter& other) const {
-      return n_sym == other.n_sym && n_cen == other.n_cen;
-    }
-    bool operator!=(const Iter& other) const { return !(*this == other); }
-  };
-
-  Iter begin() const { return {*this, 0, 0}; };
-  Iter end() const { return {*this, (unsigned) sym_ops.size(), 0}; };
-};
-
-// corresponds to Table A1.4.2.2 in ITfC vol.B (edition 2010)
-inline std::vector<Op::Tran> lattice_translations(char lattice_symbol) {
-  constexpr int h = Op::TDEN / 2;
-  constexpr int t = Op::TDEN / 3;
-  constexpr int d = 2 * t;
-  switch (lattice_symbol & ~0x20) {
-    case 'P': return {{0, 0, 0}};
-    case 'A': return {{0, 0, 0}, {0, h, h}};
-    case 'B': return {{0, 0, 0}, {h, 0, h}};
-    case 'C': return {{0, 0, 0}, {h, h, 0}};
-    case 'I': return {{0, 0, 0}, {h, h, h}};
-    case 'R': return {{0, 0, 0}, {d, t, t}, {t, d, d}};
-    // hall_symbols.html has no H, ITfC 2010 has no S and T
-    case 'S': return {{0, 0, 0}, {t, t, d}, {d, t, d}};
-    case 'T': return {{0, 0, 0}, {t, d, t}, {d, t, d}};
-    case 'H': return {{0, 0, 0}, {d, t, 0}, {t, d, 0}};
-    case 'F': return {{0, 0, 0}, {0, h, h}, {h, 0, h}, {h, h, 0}};
-    default: fail(std::string("not a lattice symbol: ") + lattice_symbol);
-  }
-}
-
-// matrices for Nz from Table 3 and 4 from hall_symbols.html
-inline Op::Rot rotation_z(int N) {
-  switch (N) {
-    case 1: return {1,0,0,  0,1,0,  0,0,1};
-    case 2: return {-1,0,0, 0,-1,0, 0,0,1};
-    case 3: return {0,-1,0, 1,-1,0, 0,0,1};
-    case 4: return {0,-1,0, 1,0,0,  0,0,1};
-    case 6: return {1,-1,0, 1,0,0,  0,0,1};
-    case '\'': return {0,-1,0, -1,0,0, 0,0,-1};
-    case '"':  return {0,1,0,   1,0,0, 0,0,-1};
-    case '*':  return {0,0,1,   1,0,0, 0,1,0};
-    default: fail("incorrect axis definition");
-  }
-}
-inline Op::Tran translation_from_symbol(char symbol) {
-  constexpr int h = Op::TDEN / 2;
-  constexpr int q = Op::TDEN / 4;
-  switch (symbol) {
-    case 'a': return {h, 0, 0};
-    case 'b': return {0, h, 0};
-    case 'c': return {0, 0, h};
-    case 'n': return {h, h, h};
-    case 'u': return {q, 0, 0};
-    case 'v': return {0, q, 0};
-    case 'w': return {0, 0, q};
-    case 'd': return {q, q, q};
-    default: fail(std::string("unknown symbol: ") + symbol);
-  }
-}
-
-inline Op::Rot alter_order(const Op::Rot& r, int i, int j, int k) {
-    return { r[i][i], r[i][j], r[i][k],
-             r[j][i], r[j][j], r[j][k],
-             r[k][i], r[k][j], r[k][k] };
-}
-
-inline Op hall_matrix_symbol(const char* start, const char* end,
-                             int pos, int& prev) {
-  Op op = Op::identity();
-  bool neg = (*start == '-');
-  const char* p = (neg ? start + 1 : start);
-  if (*p < '1' || *p == '5' || *p > '6')
-    fail("wrong n-fold order notation: " + std::string(start, end));
-  int N = *p++ - '0';
-  int fractional_tran = 0;
-  char principal_axis = '\0';
-  char diagonal_axis = '\0';
-  for (; p < end; ++p) {
-    if (*p >= '1' && *p <= '5') {
-      if (fractional_tran != '\0')
-        fail("two numeric subscripts");
-      fractional_tran = *p - '0';
-    } else if (*p == '\'' || *p == '"' || *p == '*') {
-      if (N != (*p == '*' ? 3 : 2))
-        fail("wrong symbol: " + std::string(start, end));
-      diagonal_axis = *p;
-    } else if (*p == 'x' || *p == 'y' || *p == 'z') {
-      principal_axis = *p;
-    } else {
-      op.translate(translation_from_symbol(*p));
-    }
-  }
-  // fill in implicit values
-  if (!principal_axis && !diagonal_axis) {
-    if (pos == 1) {
-      principal_axis = 'z';
-    } else if (pos == 2 && N == 2) {
-      if (prev == 2 || prev == 4)
-        principal_axis = 'x';
-      else if (prev == 3 || prev == 6)
-        diagonal_axis = '\'';
-    } else if (pos == 3 && N == 3) {
-      diagonal_axis = '*';
-    } else if (N != 1) {
-      fail("missing axis");
-    }
-  }
-  // get the operation
-  op.rot = rotation_z(diagonal_axis ? diagonal_axis : N);
-  if (neg)
-    op.rot = op.negated_rot();
-  if (principal_axis == 'x')
-    op.rot = alter_order(op.rot, 2, 0, 1);
-  else if (principal_axis == 'y')
-    op.rot = alter_order(op.rot, 1, 2, 0);
-  if (fractional_tran)
-    op.tran[principal_axis - 'x'] += Op::TDEN / N * fractional_tran;
-  prev = N;
-  return op;
-}
-
-inline Op parse_change_of_basis(const char* start, const char* end) {
-  if (memchr(start, ',', end - start) != nullptr) { // long symbol (x,y,z+1/12)
-    // note: we do not parse multipliers such as 1/2x
-    return parse_triplet(std::string(start, end));
-  }
-  // short symbol (0 0 1)
-  Op cob = Op::identity();
-  char* endptr;
-  for (int i = 0; i != 3; ++i) {
-    cob.tran[i] = std::strtol(start, &endptr, 10) % 12 * (Op::TDEN / 12);
-    start = endptr;
-  }
-  if (endptr != end)
-    fail("unexpected change-of-basis format: " + std::string(start, end));
-  return cob;
-}
-
-void GroupOps::add_missing_elements() {
-  // Brute force. To be replaced with Dimino's algorithm
-  // see Luc Bourhis' answer https://physics.stackexchange.com/a/351400/95713
-  if (sym_ops.empty() || sym_ops[0] != Op::identity())
-    fail("oops");
-  size_t generator_count = sym_ops.size();
-  size_t prev_size = 0;
-  while (prev_size != sym_ops.size()) {
-    prev_size = sym_ops.size();
-    for (size_t i = 1; i != prev_size; ++i)
-      for (size_t j = 1; j != generator_count; ++j) {
-        Op new_op = combine(sym_ops[i], sym_ops[j]);
-        if (find_by_rotation(new_op.rot) == nullptr)
-          sym_ops.push_back(new_op.wrap());
+      if (*b == '\0' &&
+          (*a == '\0' || (*a == ':' && *skip_blank(a+1) == sg.ext)))
+        return &sg;
+    } else if (sg.hm[0] == first && sg.hm[2] == '1' && sg.hm[3] == ' ' &&
+               sg.hm[4] != '1') {
+      // check monoclinic short names
+      const char* a = skip_blank(p);
+      const char* b = sg.hm + 4;
+      while (*a == *b && *b != ' ') {
+        a = skip_blank(a+1);
+        ++b;
       }
-    if (sym_ops.size() > 1023)
-      fail("1000+ elements in the group should not happen");
-  }
-}
-
-inline const char* find_blank(const char* p) {
-  while (*p != '\0' && *p != ' ' && *p != '\t' && *p != '_') // '_' == ' '
-    ++p;
-  return p;
-}
-
-inline const char* skip_blank(const char* p) {
-  if (p)
-    while (*p == ' ' || *p == '\t' || *p == '_') // '_' can be used as space
-      ++p;
-  return p;
-}
-
-inline GroupOps generators_from_hall(const char* hall) {
-  if (hall == nullptr)
-    fail("null");
-  hall = skip_blank(hall);
-  GroupOps ops;
-  ops.sym_ops.emplace_back(Op::identity());
-  bool centrosym = (hall[0] == '-');
-  if (centrosym)
-    ops.sym_ops.emplace_back(Op::identity().negated());
-  const char* lat = skip_blank(centrosym ? hall + 1 : hall);
-  if (!lat)
-    fail("not a hall symbol: " + std::string(hall));
-  ops.cen_ops = lattice_translations(*lat);
-  int counter = 0;
-  int prev = 0;
-  const char* part = skip_blank(lat + 1);
-  while (*part != '\0' && *part != '(') {
-    const char* space = find_blank(part);
-    ++counter;
-    if (part[0] != '1' || (part[1] != ' ' && part[1] != '\0')) {
-      Op op = hall_matrix_symbol(part, space, counter, prev);
-      ops.sym_ops.emplace_back(op);
+      if (*a == '\0' && *b == ' ')
+        return &sg;
     }
-    part = skip_blank(space);
-  }
-  if (*part == '(') {
-    const char* rb = std::strchr(part, ')');
-    if (!rb)
-      fail("missing ')': " + std::string(hall));
-    if (ops.sym_ops.empty())
-      fail("misplaced translation: " + std::string(hall));
-    ops.change_basis(parse_change_of_basis(part + 1, rb));
-
-    if (*skip_blank(find_blank(rb + 1)) != '\0')
-      fail("unexpected characters after ')': " + std::string(hall));
-  }
-  return ops;
-}
-
-inline GroupOps symops_from_hall(const char* hall) {
-  GroupOps ops = generators_from_hall(hall);
-  ops.add_missing_elements();
-  return ops;
+  for (const AlternativeName& sg : data::alt_names)
+    if (sg.hm[0] == first && sg.hm[2] == *p) {
+      const char* a = skip_blank(p + 1);
+      const char* b = skip_blank(sg.hm + 3);
+      while (*a == *b && *b != '\0') {
+        a = skip_blank(a+1);
+        b = skip_blank(b+1);
+      }
+      if (*b == '\0' &&
+          (*a == '\0' || (*a == ':' && *skip_blank(a+1) == sg.ext)))
+        return &data::table[sg.pos];
+    }
+  return nullptr;
 }
 
 } // namespace sym

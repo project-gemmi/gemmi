@@ -8,7 +8,7 @@ WFLAGS=-Wall -Wextra -Wpedantic -Wdisabled-optimization -Wformat=2 \
        -Wredundant-decls -Wfloat-conversion $(EXTRA_WFLAGS)
 FLAGS=-O2 -g -pipe $(CXXSTD) $(WFLAGS) -I../include -I../third_party #-DNDEBUG
 
-PROGRAMS=gemmi-mask gemmi-map gemmi-validate gemmi-convert gemmi-grep
+PROGRAMS=gemmi-mask gemmi-map gemmi-validate gemmi-convert gemmi-grep gemmi-sg
 
 all: $(PROGRAMS)
 
@@ -47,6 +47,9 @@ gemmi-mask: mask.cpp options.h input.h input.o $(igdir)/grid.hpp \
 gemmi-map: map.cpp options.h input.h input.o $(igdir)/grid.hpp \
            $(igdir)/unitcell.hpp
 	$(CXX) $(FLAGS) $< input.o -o $@ -lz
+
+gemmi-sg: sg.cpp $(igdir)/symmetry.hpp
+	$(CXX) $(FLAGS) $< -o $@
 
 write-help: $(PROGRAMS)
 	../tools/docs-help.sh
