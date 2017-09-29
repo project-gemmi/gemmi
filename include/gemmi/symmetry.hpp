@@ -297,11 +297,11 @@ struct GroupOps {
 
   struct Iter {
     const GroupOps& gops;
-    unsigned n_sym, n_cen;
+    int n_sym, n_cen;
     void operator++() {
-      if (++n_cen == gops.cen_ops.size()) {
-        ++n_sym;
-        n_cen = 0;
+      if (++n_sym == (int) gops.sym_ops.size()) {
+        ++n_cen;
+        n_sym = 0;
       }
     }
     Op operator*() const {
@@ -314,7 +314,7 @@ struct GroupOps {
   };
 
   Iter begin() const { return {*this, 0, 0}; };
-  Iter end() const { return {*this, (unsigned) sym_ops.size(), 0}; };
+  Iter end() const { return {*this, 0, (int) cen_ops.size()}; };
 };
 
 void GroupOps::add_missing_elements() {
@@ -528,7 +528,7 @@ inline GroupOps symops_from_hall(const char* hall) {
 struct SpaceGroup { // typically 40 bytes
   int number;
   int ccp4;
-  char hm[11];
+  char hm[11];  // Hermann–Mauguin (international) notation
   char ext;
   char qualifier[5];
   char hall[15];
