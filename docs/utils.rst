@@ -149,3 +149,7 @@ gemmi-mask
 .. literalinclude:: mask-help.txt
    :language: console
 
+gemmi-sg
+=========
+
+Prints information about given space group.
