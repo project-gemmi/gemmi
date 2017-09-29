@@ -16,6 +16,37 @@ Supported file formats:
 * mmJSON,
 * a binary format (MMTF, binary CIF, or own format) is to be considered.
 
+Elements
+========
+
+When working with molecular structures it is good to have a basic data
+from periodic table at hand.
+
+C++
+---
+
+::
+
+    #include <gemmi/elem.hpp>
+    gemmi::mol::Element el("Mg");
+    int its_number = el.atomic_number();
+    double its_weight = el.weight();
+    const char* its_name = el.name();
+
+Python
+------
+
+.. code-block:: pycon
+
+    >>> from gemmi import mol
+    >>> mol.Element('Mg').weight
+    24.305
+    >>> mol.Element(118).name
+    'Og'
+    >>> mol.Element('Mo').atomic_number
+    42
+
+
 PDBx/mmCIF format
 =================
 
@@ -40,7 +71,7 @@ Python
 
 .. code-block:: python
 
-    from gemmi import cif
+    from gemmi import mol
 
 TODO
 
@@ -212,6 +243,11 @@ related to alternative conformations".
 
 to be continued...
 
+
+Selections
+----------
+
+TODO
 
 
 Sequence

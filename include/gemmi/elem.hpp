@@ -28,7 +28,7 @@ enum class El : unsigned char {
 };
 
 inline double molecular_weight(El el) {
-  constexpr double weights[] = {
+  static constexpr double weights[] = {
     /*X*/ 0.0,
     /*H*/ 1.00794, /*He*/ 4.0026,
     /*Li*/ 6.941, /*Be*/ 9.012182, /*B*/ 10.811, /*C*/ 12.0107,

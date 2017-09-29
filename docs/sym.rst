@@ -11,7 +11,7 @@ we cover all the 230 crystallographic space groups
 for the sake of completeness.
 
 This part of Gemmi has no dependencies:
-it is all in a single C++ header :file:`symmetry.hpp`.
+all is in a single C++ header :file:`symmetry.hpp`.
 
 Space group table
 =================
@@ -88,7 +88,7 @@ and the shift is reduced.
 
 (TODO: write in details when the translation is wrapped)
 
-Space groups and operations
+Operations and Hall symbols
 ===========================
 
 Each space-group settings correspond to a unique set of operations.
@@ -102,21 +102,20 @@ but they can be split into symmetry operations (max. 48 for point group m-3m)
 and centering vectors (max. 4 for the face-centered lattice).
 
 * The simplest way of storing the operations is to list them all (i.e. 192
-  triplets for #228) in a text file.
-  This approach is used by OpenBabel_ (chemical toolbox in C++, GPL2):
-  space-group names and triplets are tabulated in :file:`space-groups.txt`
-  (currently 541 entries, some look incorrect).
+  triplets for no. 228) in a text file.
+  This approach is used by OpenBabel_ (in :file:`space-groups.txt`).
 
-* The next simplest thing is to keep the centering vectors separately.
+* It makes sense to keep the centering vectors separately
+  (192 becomes 48 + 4).
   This is done in the CCP4 :file:`syminfo.lib` file (539 entries),
   which is used by csymlib_ (part of libccp4) and a few other projects.
 
 * The operations can be as well tabulated in the code.
   This approach is used (with one or two layers of indirection to reduce
-  the data size) by spglib_ (C library, BSD) and NGL_.
+  the data size) by spglib_ (C library) and NGL_.
 
 * The inversion center (if applicable) can be kept separately,
-  to reduce the maximum number of stored operations to 24+1.
+  to reduce the maximum number of stored operations (48 -> 24+1).
   This is how the symmetry data is encoded in Fityk_.
 
 * Actually all the operations can be generated from only a few generators,
@@ -145,10 +144,10 @@ and centering vectors (max. 4 for the face-centered lattice).
   is not unambiguous and the symbols differ
   between editions of ITfC, and between sgtbx and :file:`syminfo.lib`.
 
-After contemplating all the possible approches, we ended up with the last one:
-Hall symbols.
+After contemplating all the possibilities we ended up implementing
+the most complex solution: Hall symbols.
 
-To be continued..
+TODO: benchmark results
 
 .. _SgInfo: https://github.com/rwgk/sginfo
 .. _SgLite: https://github.com/rwgk/sglite
