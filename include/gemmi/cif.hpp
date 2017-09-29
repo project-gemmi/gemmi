@@ -110,7 +110,7 @@ template<typename Rule> struct Errors : public pegtl::normal<Rule> {
 // TODO: error "expected data_ keyword
 error_msg(rules::quoted_tail<rules::one<'\''>>) = "unterminated 'string'";
 error_msg(rules::quoted_tail<rules::one<'"'>>) = "unterminated \"string\"";
-error_msg(rules::quoted_tail<rules::field_sep>) = "unterminated text field";
+error_msg(pegtl::until<rules::field_sep>) = "unterminated text field";
 error_msg(rules::value) = "expected value";
 error_msg(rules::datablockname) = "unnamed DataBlock";
 error_msg(rules::framename) = "unnamed save_ frame";
