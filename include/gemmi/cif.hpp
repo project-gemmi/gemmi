@@ -53,7 +53,10 @@ namespace rules {
   // (e) Character strings and text fields.
   template <typename Q>
   struct endq : seq<Q, at<sor<one<' ','\n','\r','\t','#'>, eof>>> {};
-  template <typename Q> struct quoted_tail : until<endq<Q>, anyprint_ch> {};
+  // strict rule would be:
+  // template <typename Q> struct quoted_tail : until<endq<Q>, anyprint_ch> {};
+  // but it was relaxed after PDB accepted 5q1h with non-ascii character
+  template <typename Q> struct quoted_tail : until<endq<Q>, not_one<'\n'>> {};
   template <typename Q> struct quoted : if_must<Q, quoted_tail<Q>> {};
   struct singlequoted : quoted<one<'\''>> {};
   struct doublequoted : quoted<one<'"'>> {};
