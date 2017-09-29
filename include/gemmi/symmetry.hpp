@@ -11,7 +11,7 @@
 #include <array>
 #include <algorithm>  // for count
 #include <functional> // for hash
-#include <stdexcept>  // for runtime_error
+#include <stdexcept>  // for runtime_error, invalid_argument
 #include <string>
 #include <vector>
 
@@ -533,6 +533,8 @@ struct SpaceGroup { // typically 40 bytes
   char qualifier[5];
   char hall[15];
 
+  std::string colon_ext() const { return ext ? std::string(":") + ext : ""; }
+  std::string xhm() const { return hm + colon_ext(); }
   GroupOps operations() const { return symops_from_hall(hall); }
 };
 
@@ -1133,14 +1135,23 @@ const AlternativeName Data_<Dummy>::alt_names[27] = {
 };
 using data = Data_<void>;
 
-inline const SpaceGroup* find_spacegroup_by_number(int ccp4) {
+inline const SpaceGroup* find_spacegroup_by_number(int ccp4) noexcept {
   for (const SpaceGroup& sg : data::table)
     if (sg.ccp4 == ccp4)
       return &sg;
   return nullptr;
 }
 
-inline const SpaceGroup* find_spacegroup_by_name(const std::string& name) {
+inline const SpaceGroup& get_spacegroup_by_number(int ccp4) {
+  const SpaceGroup* sg = find_spacegroup_by_number(ccp4);
+  if (sg == nullptr)
+    throw std::invalid_argument("Invalid space-group number: "
+                                + std::to_string(ccp4));
+  return *sg;
+}
+
+inline const SpaceGroup* find_spacegroup_by_name(const std::string& name)
+                                                                  noexcept {
   const char* p = skip_blank(name.c_str());
   if (*p >= '0' && *p <= '9') { // handle numbers
     char *endptr;
@@ -1187,6 +1198,13 @@ inline const SpaceGroup* find_spacegroup_by_name(const std::string& name) {
         return &data::table[sg.pos];
     }
   return nullptr;
+}
+
+inline const SpaceGroup& get_spacegroup_by_name(const std::string& name) {
+  const SpaceGroup* sg = find_spacegroup_by_name(name);
+  if (sg == nullptr)
+    throw std::invalid_argument("Unknown space-group name: " + name);
+  return *sg;
 }
 
 } // namespace sym

@@ -65,8 +65,33 @@ void init_sym(py::module& sym) {
     .def("change_basis", &GroupOps::change_basis, py::arg("cob"),
          "Applies the change-of-basis operator (in place).");
 
+  py::class_<SpaceGroup>(sym, "SpaceGroup")
+    .def(py::init<>())
+    .def(py::init([](int n) { return get_spacegroup_by_number(n); }),
+         py::arg("ccp4"), py::return_value_policy::reference)
+    .def(py::init([](const std::string& s) {return get_spacegroup_by_name(s);}),
+         py::arg("hm"), py::return_value_policy::reference)
+    //.def(py::init(&find_spacegroup_by_name))
+    .def("__repr__", [](const SpaceGroup &self) {
+        return "<sym.SpaceGroup(\"" + self.xhm() + "\")>";
+    })
+    .def_readonly("number", &SpaceGroup::number, "number 1-230.")
+    .def_readonly("ccp4", &SpaceGroup::ccp4, "ccp4 number")
+    .def_readonly("hm", &SpaceGroup::hm, "Hermann–Mauguin name")
+    .def_readonly("ext", &SpaceGroup::ext, "Extension (1, 2, H, R or none)")
+    .def_readonly("qualifier", &SpaceGroup::qualifier, "e.g. 'cab'")
+    .def_readonly("hall", &SpaceGroup::hm, "Hall symbol")
+    .def("xhm", &SpaceGroup::xhm, "extended Hermann-Mauguin name")
+    .def("operations", &SpaceGroup::operations, "Group of operations");
+
   sym.def("generators_from_hall", &generators_from_hall, py::arg("hall"),
           "Parse Hall notation.");
   sym.def("symops_from_hall", &symops_from_hall, py::arg("hall"),
           "Parse Hall notation.");
+  sym.def("find_spacegroup_by_number", &find_spacegroup_by_number,
+          py::arg("ccp4"), py::return_value_policy::reference,
+          "Returns space-group of given number.");
+  sym.def("find_spacegroup_by_name", &find_spacegroup_by_name, py::arg("hm"),
+          py::return_value_policy::reference,
+          "Returns space-group with given name.");
 }

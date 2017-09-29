@@ -128,5 +128,27 @@ class TestSymmetry(unittest.TestCase):
             self.compare_hall_symops_with_sgtbx(s.hall())
         self.compare_hall_symops_with_sgtbx('C -4 -2b')
 
+    def test_find_spacegroup(self):
+        self.assertEqual(sym.SpaceGroup('P21212').hm, 'P 21 21 2')
+        self.assertEqual(sym.find_spacegroup_by_name('P21').hm, 'P 1 21 1')
+        self.assertEqual(sym.find_spacegroup_by_name('P 2').hm, 'P 1 2 1')
+        def check_xhm(name, xhm):
+            self.assertEqual(sym.SpaceGroup(name).xhm(), xhm)
+        check_xhm('R 3 2', 'R 3 2:H')
+        check_xhm('R 3 2', 'R 3 2:H')
+        check_xhm('R32:H', 'R 3 2:H')
+        check_xhm('R 3 2:R', 'R 3 2:R')
+        check_xhm('P6', 'P 6')
+        check_xhm('P 6', 'P 6')
+        check_xhm('P65', 'P 65')
+        check_xhm('I1211', 'I 1 21 1')
+        check_xhm('Aem2', 'A b m 2')
+        check_xhm('C c c e', 'C c c a:1')
+        self.assertRaises(ValueError, sym.SpaceGroup, 'i1')
+        check_xhm('i2', 'I 1 2 1')
+        self.assertEqual(sym.find_spacegroup_by_number(5).hm, 'C 1 2 1')
+        self.assertEqual(sym.SpaceGroup(4005).hm, 'I 1 2 1')
+        self.assertIsNone(sym.find_spacegroup_by_name('abc'))
+
 if __name__ == '__main__':
     unittest.main()
