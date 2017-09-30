@@ -94,4 +94,7 @@ void init_sym(py::module& sym) {
   sym.def("find_spacegroup_by_name", &find_spacegroup_by_name, py::arg("hm"),
           py::return_value_policy::reference,
           "Returns space-group with given name.");
+  sym.def("find_spacegroup_by_ops", &find_spacegroup_by_ops,
+           py::arg("group_ops"), py::return_value_policy::reference,
+          "Returns space-group with identical operations.");
 }

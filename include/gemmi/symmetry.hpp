@@ -9,10 +9,11 @@
 #include <cstdlib>    // for strtol
 #include <cstring>    // for memchr, strchr, strlen
 #include <array>
-#include <algorithm>  // for count
+#include <algorithm>  // for count, sort
 #include <functional> // for hash
 #include <stdexcept>  // for runtime_error, invalid_argument
 #include <string>
+#include <tuple>      // for tie
 #include <vector>
 
 #include <iostream> // debug
@@ -82,6 +83,9 @@ struct Op {
   }
 
   static constexpr Op identity() { return {{1,0,0, 0,1,0, 0,0,1}, {0,0,0}}; };
+  bool operator<(const Op& rhs) const {
+    return std::tie(rot, tran) < std::tie(rhs.rot, rhs.tran);
+  }
 };
 
 inline bool operator==(const Op& a, const Op& b) {
@@ -282,17 +286,30 @@ struct GroupOps {
     }
   }
 
+  std::vector<Op> all_ops_sorted() const {
+    std::vector<Op> ops;
+    ops.reserve(sym_ops.size() * cen_ops.size());
+    for (const Op& so : sym_ops)
+      for (const Op::Tran& co : cen_ops)
+        ops.push_back(so.translated(co).wrap());
+    std::sort(ops.begin(), ops.end());
+    return ops;
+  }
+
   bool is_same_as(const GroupOps& other) const {
     if (cen_ops.size() != other.cen_ops.size() ||
         sym_ops.size() != other.sym_ops.size())
       return false;
     if (cen_ops.size() == 2 && cen_ops[1] != other.cen_ops[1])
       return false;
-    // TODO
-    // a = all combinations of this, sorted
-    // b = all combinations of other, sorted
-    // return a == b;
-    return false;
+    auto ops = all_ops_sorted();
+    //return ops == other.all_ops_sorted();
+    for (const Op& other_op : other) {
+      auto it = std::lower_bound(ops.begin(), ops.end(), other_op);
+      if (it == ops.end() || *it != other_op)
+        return false;
+    }
+    return true;
   }
 
   struct Iter {
@@ -1205,6 +1222,13 @@ inline const SpaceGroup& get_spacegroup_by_name(const std::string& name) {
   if (sg == nullptr)
     throw std::invalid_argument("Unknown space-group name: " + name);
   return *sg;
+}
+
+inline const SpaceGroup* find_spacegroup_by_ops(const GroupOps& gops) {
+  for (const SpaceGroup& sg : data::table)
+    if (gops.is_same_as(sg.operations()))
+        return &sg;
+  return nullptr;
 }
 
 } // namespace sym

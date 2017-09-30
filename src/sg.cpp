@@ -8,7 +8,14 @@ namespace sym = gemmi::sym;
 void process_arg(const char* arg) {
   const sym::SpaceGroup* sg = sym::find_spacegroup_by_name(arg);
   if (sg == nullptr) {
-    fprintf(stderr, "H-M name not found: %s\n", arg);
+    try {
+      sym::GroupOps ops = sym::symops_from_hall(arg);
+      sg = sym::find_spacegroup_by_ops(ops);
+    } catch (std::runtime_error&) {
+    }
+  }
+  if (sg == nullptr) {
+    fprintf(stderr, "Space group not found: %s\n", arg);
     return;
   }
   printf("Number: %d\n", sg->number);

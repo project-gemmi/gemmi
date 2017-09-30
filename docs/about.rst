@@ -10,11 +10,11 @@ Parts of the library may also be useful in structural bioinformatics
 and in other molecular-structure sciences that use CIF files
 (as we have the fastest open-source CIF parser).
 
-It is an open-source (MPL_), portable (Linux, Windows, MacOS) project,
-written in C++11, with Python (2 and 3) bindings,
+Gemmi is open-source (MPL_) and portable (Linux, Windows, MacOS).
+It is written in C++11, with Python (2 and 3) bindings,
 as well as with (soon-to-be-added) C and Fortran 2003 interface and
 (possibly in the future) with a subset of functionality translated to
-JavaScript.
+JavaScript for web applications.
 
 .. _MPL: https://www.mozilla.org/en-US/MPL/2.0/
 

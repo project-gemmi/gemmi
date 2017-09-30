@@ -150,5 +150,10 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(sym.SpaceGroup(4005).hm, 'I 1 2 1')
         self.assertIsNone(sym.find_spacegroup_by_name('abc'))
 
+    def test_operations(self):
+        gops = sym.symops_from_hall('-P 2a 2ac (z,x,y)')
+        self.assertEqual(set(sym.SpaceGroup('Pbaa').operations()), set(gops))
+        self.assertEqual(sym.find_spacegroup_by_ops(gops).hm, 'P b a a')
+
 if __name__ == '__main__':
     unittest.main()
