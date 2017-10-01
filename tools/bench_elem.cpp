@@ -41,7 +41,7 @@ BENCHMARK(pyridoxine_elements);
 BENCHMARK(common_elements);
 BENCHMARK(various_elements);
 BENCHMARK(heavy_elements);
-BENCHMARK_MAIN();
+BENCHMARK_MAIN()
 
 /* Output from my desktop:
 

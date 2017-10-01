@@ -64,7 +64,7 @@ BENCHMARK(bm_parse_triplet_all);
 BENCHMARK(bm_make_triplet_all);
 BENCHMARK(bm_generators_from_hall)->DenseRange(0, 6);
 BENCHMARK(bm_add_elements)->DenseRange(0, 6);
-BENCHMARK_MAIN();
+BENCHMARK_MAIN()
 
 // sym::parse_triplet(): 50-300 ns/triplet
 // sym::make_triplet(): 40-120 ns/triplet

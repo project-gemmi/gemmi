@@ -1,0 +1,43 @@
+cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
+project(gemmi C CXX)
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+find_package(ZLIB REQUIRED)
+find_package(benchmark)
+
+include_directories("${CMAKE_SOURCE_DIR}/include"
+                    "${CMAKE_SOURCE_DIR}/third_party")
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wformat=2")
+endif()
+
+add_library(input OBJECT src/input.cpp)
+
+add_executable(gemmi-validate src/validate.cpp)
+target_link_libraries(gemmi-validate ZLIB::ZLIB)
+
+add_executable(gemmi-grep src/grep.cpp)
+target_link_libraries(gemmi-grep ZLIB::ZLIB)
+
+add_executable(gemmi-convert src/convert.cpp src/output.cpp
+                             $<TARGET_OBJECTS:input>)
+target_link_libraries(gemmi-convert ZLIB::ZLIB)
+
+add_executable(gemmi-map src/map.cpp $<TARGET_OBJECTS:input>)
+target_link_libraries(gemmi-map ZLIB::ZLIB)
+
+add_executable(gemmi-mask src/mask.cpp $<TARGET_OBJECTS:input>)
+target_link_libraries(gemmi-mask ZLIB::ZLIB)
+
+add_executable(gemmi-sg src/sg.cpp)
+
+if (benchmark_FOUND)
+  foreach(b bench_elem bench_mod bench_sym)
+    add_executable(${b} tools/${b}.cpp)
+    target_link_libraries(${b} benchmark::benchmark)
+  endforeach()
+endif()

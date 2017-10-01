@@ -58,9 +58,20 @@ still use the old names.
 (spglib_ uses new ones,
 sgtbx reads new names with the option ``ad_hoc_1992``).
 
-TODO: find_spacegroup_by_name, find_spacegroup_by_number
+C++
+---
 
-TODO: example in C++ or Python
+TODO:
+sym::find_spacegroup_by_name
+example of a new name
+sym::find_spacegroup_by_number
+sym::find_spacegroup_by_ops
+iterating over all space groups
+
+Python
+------
+
+TODO
 
 
 Triplets and matrices

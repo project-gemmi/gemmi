@@ -334,7 +334,7 @@ struct GroupOps {
   Iter end() const { return {*this, 0, (int) cen_ops.size()}; };
 };
 
-void GroupOps::add_missing_elements() {
+inline void GroupOps::add_missing_elements() {
   // Brute force. To be replaced with Dimino's algorithm
   // see Luc Bourhis' answer https://physics.stackexchange.com/a/351400/95713
   if (sym_ops.empty() || sym_ops[0] != Op::identity())

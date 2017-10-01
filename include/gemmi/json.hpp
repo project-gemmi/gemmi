@@ -23,7 +23,7 @@ namespace gemmi {
 namespace cif {
 using std::size_t;
 
-std::string json_type_as_string(sajson::type t) {
+inline std::string json_type_as_string(sajson::type t) {
   switch (t) {
     case sajson::TYPE_INTEGER: return "<integer>";
     case sajson::TYPE_DOUBLE:  return "<double>";
@@ -37,7 +37,7 @@ std::string json_type_as_string(sajson::type t) {
   }
 }
 
-std::string as_cif_value(const sajson::value& val) {
+inline std::string as_cif_value(const sajson::value& val) {
   switch (val.get_type()) {
     case sajson::TYPE_DOUBLE:
       return val.as_string();
