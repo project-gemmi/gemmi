@@ -87,10 +87,10 @@ class TestSymmetry(unittest.TestCase):
     def test_invert(self):
         for xyz in ['-y,-x,-z+1/4', 'y,-x,z+3/4', 'y,x,-z', 'y+1/2,x,-z+1/3']:
             op = sym.Op(xyz)
-            self.assertEqual(op * op.inverted(), 'x,y,z')
-            self.assertEqual(op.inverted().inverted(), op)
+            self.assertEqual(op * op.inverse(), 'x,y,z')
+            self.assertEqual(op.inverse().inverse(), op)
         op = sym.Op("-y+z,x+z,-x+y+z") # det=3
-        self.assertRaises(RuntimeError, op.inverted)
+        self.assertRaises(RuntimeError, op.inverse)
 
     def test_generators_from_hall(self):
         # first test on example matrices from

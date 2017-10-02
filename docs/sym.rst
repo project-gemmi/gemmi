@@ -20,9 +20,9 @@ Gemmi tabulates about 540 settings of the 230 crystallographic space groups,
 including:
 
 * space group numbers (1-230),
-* ccp4 numbers (numbers assigned to particular settings; modulo 1000
+* ccp4 numbers (assigned to particular settings; modulo 1000
   they give space group number: 3 and 1003 correspond to
-  ``P 1 2 1`` and ``P 1 1 2``),
+  ``P 1 2 1`` and ``P 1 1 2``; 0 means none),
 * Herman-Mauguin (H-M) symbols a.k.a. the international notation
   (``I a -3 d``, ``C 1 2 1``),
 * extensions to the H-M notations (none, ``1``, ``2``, ``H`` or ``R``)
@@ -40,13 +40,13 @@ for Crystallography Vol. B ch. 1.4 (in 2010 ed.). It has 530 entries
 including 3 duplicates (different names for the same settings)
 in space-group 68.
 
-We left out many other settings, and we may add more entries in the future,
-if needed. For example, the C- and F-centred tetragonal space groups
-that are featured in
+We are aware that there are many other practical settings, and if needed we
+will add more entries in the future. For example, we do not include
+the C- and F-centred tetragonal space groups that are featured in
 `Crystallographic Space Group Diagrams and Tables <http://img.chem.ucl.ac.uk/sgp/mainmenu.htm>`_
-by Jeremy Karl Cockcroft (an excellent educational resource),
+by Jeremy Karl Cockcroft
 and which are also mentioned in the ITfC Vol.A (Table 1.5.4.4
-in the 2015 edition)
+in the 2015 edition).
 
 We also tabulated alternative names.
 For now this only includes new standard names introduced in 1990's by the IUCr
@@ -57,21 +57,6 @@ Most of the crystallographic software (as well as the Volume B of the Tables)
 still use the old names.
 (spglib_ uses new ones,
 sgtbx reads new names with the option ``ad_hoc_1992``).
-
-C++
----
-
-TODO:
-sym::find_spacegroup_by_name
-example of a new name
-sym::find_spacegroup_by_number
-sym::find_spacegroup_by_ops
-iterating over all space groups
-
-Python
-------
-
-TODO
 
 
 Triplets and matrices
@@ -88,16 +73,22 @@ The operations are equivalent to
 * or to a single 4x4 transformation matrix (which in crystallography
   is called *Seitz matrix*).
 
-TODO: example in Python
+.. code-block:: pycon
+
+    >>> sym.Op('x,-y,z+1/3').seitz()
+    [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 1, Fraction(1, 3)], [0, 0, 0, 1]]
+    >>> sym.Op('x,-y,z+1/3').float_seitz()
+    [[1.0, 0.0, 0.0, 0.0],
+     [0.0, -1.0, 0.0, 0.0],
+     [0.0, 0.0, 1.0, 0.3333333333333333],
+     [0.0, 0.0, 0.0, 1.0]]
 
 The triplets and matrices may not represent crystallographic symmetry,
 but for example, generation of the biological assembly.
 For this reason, ``x,y+1,z`` is not reduced to the identity.
-But when the operations are transformed (two operations are combined,
-or the inverse is calculated) they are assumed to be symmetry operations
-and the shift is reduced.
-
-(TODO: write in details when the translation is wrapped)
+But when the operations are transformed by the multiplication operator
+in C++ and Python they are assumed to be symmetry operations
+and the translation is wrapped to [0,1).
 
 Operations and Hall symbols
 ===========================
@@ -158,7 +149,12 @@ and centering vectors (max. 4 for the face-centered lattice).
 After contemplating all the possibilities we ended up implementing
 the most complex solution: Hall symbols.
 
-TODO: benchmark results
+Operations generated from a Hall symbol are stored in an object
+(``struct GroupOps``) with two lists: symmetry operations
+(rotation + translation) and centering vectors (translation only).
+``GroupOps`` has functions to iterate over all operations
+(symops combined with centering ops), to apply change-of-basis,
+to add missing group elements (if any), etc.
 
 .. _SgInfo: https://github.com/rwgk/sginfo
 .. _SgLite: https://github.com/rwgk/sglite
@@ -173,10 +169,57 @@ TODO: benchmark results
 .. _Fityk: https://github.com/wojdyr/fityk
 .. _SPGGEN: http://dx.doi.org/10.1107/S1600576716007330
 
+
 C++
 ===
 
 ::
 
+    #include <assert.h>
+    #include <iostream>
+
     #include <gemmi/symmetry.hpp>
+    namespace sym = gemmi::sym;
+
+    assert(sym::Op("").inverse() == sym::Op(""));
+
+    const SpaceGroup* c2 = sym::find_spacegroup_by_number(5);
+    assert(c2->xhm() == "C 1 2 1");
+
+    const SpaceGroup* i2 = sym::find_spacegroup_by_name("I2");
+    assert(i2->number == 5);
+    assert(i2->ccp4 == 5);
+    assert(i2->xhm() == "I 1 2 1");
+
+    GroupOps ops = i2->operations();
+    ops.change_basis(sym::Op("..."))
+    assert(sym::find_spacegroup_by_ops(ops) == c2);
+    for (const Op& op : ops)
+      std::cout << op.triplet() << std::endl;
+
+    assert(sym::find_spacegroup_by_name("C m m e") ==  // new names have 'e'
+           sym::find_spacegroup_by_name("C m m a"));
+
+    for (const SpaceGroup& sg : sym::tables::main) {
+        // iterates over all tabulated settings
+    }
+
+Python
+======
+
+.. code-block:: pycon
+
+    >>> from gemmi import sym
+    >>> sym.Op('...') * 'x,...'
+    >>> sym.Op('...') ** 3
+    >>> _.inverse()
+    >>> sym.find_spacegroup_by_number(5)
+    >>> sym.find_spacegroup_by_name('C m m e') # new names can have 'e' and 'g'
+    >>> # iterate over space-group
+
+    GroupOps ops = i2->operations();
+    ops.change_basis(sym::Op("..."))
+    assert(sym::find_spacegroup_by_ops(ops) == c2);
+    for (const Op& op : ops)
+      std::cout << op.triplet() << std::endl;
 

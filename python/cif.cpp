@@ -85,7 +85,6 @@ void init_cif(py::module& cif) {
         return "<gemmi.cif.Loop.Span: " + join_str(self, " ") + ">";
     });
 
-
   py::class_<LoopColumn>(cif, "LoopColumn")
     .def(py::init<>())
     .def_readonly("loop", &LoopColumn::loop)

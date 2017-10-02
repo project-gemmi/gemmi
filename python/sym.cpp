@@ -20,11 +20,29 @@ void init_sym(py::module& sym) {
        "Numerators (integers) of the translation vector. Denominator TDEN=24.")
     .def("triplet", &Op::triplet, "Returns coordinate triplet x,y,z.")
     .def("det_rot", &Op::det_rot, "Determinant of the 3x3 matrix.")
-    .def("inverted", [](const Op& self) { return self.inverted(); },
+    .def("inverse", [](const Op& self) { return self.inverse(); },
          "Returns inverted operator.")
     .def("negated", &Op::negated, "Returns Op with all elements nagated")
     .def("translated", &Op::translated, py::arg("a"), "Adds a to tran")
     .def("wrap", &Op::wrap, "Wrap the translation part to [0,1)")
+    .def("seitz", [](const Op& self) {
+            auto arr = self.seitz();
+            auto mat = py::list();
+            py::object fr = py::module::import("fractions").attr("Fraction");
+            for (int i = 0; i < 4; ++i) {
+              auto row = py::list();
+              for (int j = 0; j < 4; ++j) {
+                auto v = arr[i][j];
+                if (j == 3 && i != 3 && v != 0)
+                  row.append(fr(v, (int)Op::TDEN));
+                else
+                  row.append(v);
+              }
+              mat.append(row);
+            }
+            return mat;
+         }, "Returns Seitz matrix (integers and fractions)")
+    .def("float_seitz", &Op::float_seitz, "Returns Seitz matrix (floats)")
     .def("__mul__", [](const Op &a, const Op &b) {
             return combine(a, b).wrap();
          }, py::is_operator())
@@ -80,7 +98,7 @@ void init_sym(py::module& sym) {
     .def_readonly("hm", &SpaceGroup::hm, "Hermann–Mauguin name")
     .def_readonly("ext", &SpaceGroup::ext, "Extension (1, 2, H, R or none)")
     .def_readonly("qualifier", &SpaceGroup::qualifier, "e.g. 'cab'")
-    .def_readonly("hall", &SpaceGroup::hm, "Hall symbol")
+    .def_readonly("hall", &SpaceGroup::hall, "Hall symbol")
     .def("xhm", &SpaceGroup::xhm, "extended Hermann-Mauguin name")
     .def("operations", &SpaceGroup::operations, "Group of operations");
 
