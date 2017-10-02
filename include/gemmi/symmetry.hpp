@@ -18,6 +18,12 @@
 
 #include <iostream> // debug
 
+// we use brace elision with std:array's
+#ifdef __clang__
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wmissing-braces"
+#endif
+
 namespace gemmi {
 namespace sym {
 
@@ -1264,6 +1270,10 @@ template<> struct hash<gemmi::sym::Op> {
 	}
 };
 } // namespace std
+
+#ifdef __clang__
+# pragma clang diagnostic pop  // ignored -Wmissing-braces
+#endif
 
 #endif
 // vim:sw=2:ts=2:et
