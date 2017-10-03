@@ -128,6 +128,12 @@ class TestSymmetry(unittest.TestCase):
             self.compare_hall_symops_with_sgtbx(s.hall())
         self.compare_hall_symops_with_sgtbx('C -4 -2b')
 
+    def test_table(self):
+        for sg in sym.table():
+            if sg.ccp4 != 0:
+                self.assertEqual(sg.ccp4 % 1000, sg.number)
+
+
     def test_find_spacegroup(self):
         self.assertEqual(sym.SpaceGroup('P21212').hm, 'P 21 21 2')
         self.assertEqual(sym.find_spacegroup_by_name('P21').hm, 'P 1 21 1')

@@ -130,6 +130,8 @@ inline Op combine(const Op& a, const Op& b) {
   return r;
 }
 
+inline Op operator*(const Op& a, const Op& b) { return combine(a, b).wrap(); }
+
 inline Op Op::inverse(int* denom) const {
   int detr = det_rot();
   int sign = detr >= 0 ? 1 : -1;

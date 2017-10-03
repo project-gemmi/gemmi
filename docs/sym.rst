@@ -173,36 +173,8 @@ to add missing group elements (if any), etc.
 C++
 ===
 
-::
-
-    #include <assert.h>
-    #include <iostream>
-
-    #include <gemmi/symmetry.hpp>
-    namespace sym = gemmi::sym;
-
-    assert(sym::Op("").inverse() == sym::Op(""));
-
-    const SpaceGroup* c2 = sym::find_spacegroup_by_number(5);
-    assert(c2->xhm() == "C 1 2 1");
-
-    const SpaceGroup* i2 = sym::find_spacegroup_by_name("I2");
-    assert(i2->number == 5);
-    assert(i2->ccp4 == 5);
-    assert(i2->xhm() == "I 1 2 1");
-
-    GroupOps ops = i2->operations();
-    ops.change_basis(sym::Op("..."))
-    assert(sym::find_spacegroup_by_ops(ops) == c2);
-    for (const Op& op : ops)
-      std::cout << op.triplet() << std::endl;
-
-    assert(sym::find_spacegroup_by_name("C m m e") ==  // new names have 'e'
-           sym::find_spacegroup_by_name("C m m a"));
-
-    for (const SpaceGroup& sg : sym::tables::main) {
-        // iterates over all tabulated settings
-    }
+.. literalinclude:: sym_example.cpp
+   :language: cpp
 
 Python
 ======
@@ -210,16 +182,45 @@ Python
 .. code-block:: pycon
 
     >>> from gemmi import sym
-    >>> sym.Op('...') * 'x,...'
-    >>> sym.Op('...') ** 3
+    >>>
+    >>> # operators
+    >>> sym.Op('x-y,x,z+1/6') * '-x,-y,z+1/2'
+    <sym.Op("-x+y,-x,z+2/3")>
     >>> _.inverse()
+    <sym.Op("-y,x-y,z-2/3")>
+    >>> _.wrap()
+    <sym.Op("-y,x-y,z+1/3")>
+    >>>
+    >>> # Hall symbols
+    >>> list(sym.generators_from_hall("P 4w 2c"))  # no.93
+    [<sym.Op("x,y,z")>, <sym.Op("-y,x,z+1/4")>, <sym.Op("x,-y,-z+1/2")>]
+    >>> len(sym.symops_from_hall("P 4w 2c"))  # all combinations of the two ops
+    8
+    >>>
+    >>> # iterate over tabulated space-group settings
+    >>> for sg in sym.table():
+    ...   if sg.ccp4 != 0:
+    ...     assert sg.ccp4 % 1000 == sg.number
+    ...
+    >>> max(sg.ccp4 for sg in sym.table())
+    5005
+    >>>
+    >>> # select a space group
     >>> sym.find_spacegroup_by_number(5)
+    <sym.SpaceGroup("C 1 2 1")>
     >>> sym.find_spacegroup_by_name('C m m e') # new names can have 'e' and 'g'
-    >>> # iterate over space-group
-
-    GroupOps ops = i2->operations();
-    ops.change_basis(sym::Op("..."))
-    assert(sym::find_spacegroup_by_ops(ops) == c2);
-    for (const Op& op : ops)
-      std::cout << op.triplet() << std::endl;
+    <sym.SpaceGroup("C m m a")>
+    >>>
+    >>> ops = sym.find_spacegroup_by_name('I2').operations()
+    >>> for op in ops:
+    ...   print op.triplet()
+    ...
+    x,y,z
+    -x,y,-z
+    x+1/2,y+1/2,z+1/2
+    -x+1/2,y+1/2,-z+1/2
+    >>>
+    >>> ops.change_basis(sym.Op('x,y,x+z'))  # I2 -> C2
+    >>> sym.find_spacegroup_by_ops(ops)
+    <sym.SpaceGroup("C 1 2 1")>
 

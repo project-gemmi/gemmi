@@ -77,6 +77,12 @@ void init_sym(py::module& sym) {
     .def("__iter__", [](const GroupOps& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
+    .def("__eq__", [](const GroupOps &a, const GroupOps &b) {
+            return a.is_same_as(b);
+    }, py::is_operator())
+    .def("__len__", [](const GroupOps& g) {
+            return g.sym_ops.size() * g.cen_ops.size();
+    })
     .def_readwrite("sym_ops", &GroupOps::sym_ops,
                "Symmetry operations (to be combined with centering vectors).")
     .def_readwrite("cen_ops", &GroupOps::cen_ops, "Centering vectors.")
@@ -102,6 +108,9 @@ void init_sym(py::module& sym) {
     .def("xhm", &SpaceGroup::xhm, "extended Hermann-Mauguin name")
     .def("operations", &SpaceGroup::operations, "Group of operations");
 
+  sym.def("table", []() {
+            return py::make_iterator(tables::main);
+          }, py::return_value_policy::reference);
   sym.def("generators_from_hall", &generators_from_hall, py::arg("hall"),
           "Parse Hall notation.");
   sym.def("symops_from_hall", &symops_from_hall, py::arg("hall"),
