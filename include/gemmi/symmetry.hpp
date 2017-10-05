@@ -273,7 +273,7 @@ inline std::string Op::triplet() const {
 // GROUPS OF OPERATIONS
 
 // corresponds to Table A1.4.2.2 in ITfC vol.B (edition 2010)
-inline std::vector<Op::Tran> centering_vectors(char lattice_symbol) {
+inline std::vector<Op::Tran> centring_vectors(char lattice_symbol) {
   constexpr int h = Op::TDEN / 2;
   constexpr int t = Op::TDEN / 3;
   constexpr int d = 2 * t;
@@ -305,7 +305,7 @@ struct GroupOps {
     std::vector<Op::Tran> trans = cen_ops;
     std::sort(trans.begin(), trans.end());
     for (char c : {'A', 'B', 'C', 'I', 'F', 'R', 'S', 'T', 'H'})
-      if (trans == centering_vectors(c))
+      if (trans == centring_vectors(c))
         return c;
     return 0;
   }
@@ -540,7 +540,7 @@ inline GroupOps generators_from_hall(const char* hall) {
   const char* lat = skip_blank(centrosym ? hall + 1 : hall);
   if (!lat)
     fail("not a hall symbol: " + std::string(hall));
-  ops.cen_ops = centering_vectors(*lat);
+  ops.cen_ops = centring_vectors(*lat);
   int counter = 0;
   int prev = 0;
   const char* part = skip_blank(lat + 1);
@@ -1153,8 +1153,8 @@ const SpaceGroup Tables_<Dummy>::main[539] = {
 
 template<class Dummy>
 const AlternativeName Tables_<Dummy>::alt_names[27] = {
-	// In 1990's ITfC vol.A changed some of the standard names, introducing
-	// symbols 'e' and 'g'. sgtbx interprets these new symbols with
+  // In 1990's ITfC vol.A changed some of the standard names, introducing
+  // symbols 'e' and 'g'. sgtbx interprets these new symbols with
   // option ad_hoc_1992. spglib uses only the new symbols.
   {"A e m 2",   0, 190}, // A b m 2
   {"B m e 2",   0, 191}, // B m a 2
@@ -1272,7 +1272,7 @@ inline const SpaceGroup* find_spacegroup_by_ops(const GroupOps& gops) {
 
 namespace std {
 template<> struct hash<gemmi::sym::Op> {
-	size_t operator()(const gemmi::sym::Op& op) const {
+  size_t operator()(const gemmi::sym::Op& op) const {
     size_t h = 0;
     for (int i = 0; i != 3; ++i)
       for (int j = 0; j != 3; ++j)
@@ -1280,7 +1280,7 @@ template<> struct hash<gemmi::sym::Op> {
     for (int i = 0; i != 3; ++i)
       h = (h << 5) ^ op.tran[i];
     return h;
-	}
+  }
 };
 } // namespace std
 

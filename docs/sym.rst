@@ -101,13 +101,13 @@ trade-off between simplicity of the code and the amount of the tabulated data.
 
 The number of symmetry operations per space group is between 1 and 192,
 but they can be split into symmetry operations (max. 48 for point group m-3m)
-and centering vectors (max. 4 for the face-centered lattice).
+and so-called *centring vectors* (max. 4 for the face-centered lattice).
 
 * The simplest way of storing the operations is to list them all (i.e. 192
   triplets for no. 228) in a text file.
   This approach is used by OpenBabel_ (in :file:`space-groups.txt`).
 
-* It makes sense to keep the centering vectors separately
+* It makes sense to keep the centring vectors separately
   (192 becomes 48 + 4).
   This is done in the CCP4 :file:`syminfo.lib` file (539 entries),
   which is used by csymlib_ (part of libccp4) and a few other projects.
@@ -151,7 +151,7 @@ the most complex solution: Hall symbols.
 
 Operations generated from a Hall symbol are stored in an object
 (``struct GroupOps``) with two lists: symmetry operations
-(rotation + translation) and centering vectors (translation only).
+(rotation + translation) and centring vectors (translation only).
 ``GroupOps`` has functions to iterate over all operations
 (symops combined with centering ops), to apply change-of-basis,
 to add missing group elements (if any), etc.
