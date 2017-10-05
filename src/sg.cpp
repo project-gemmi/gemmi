@@ -5,12 +5,23 @@
 
 namespace sym = gemmi::sym;
 
+void print_symmetry_operations(const sym::GroupOps& ops) {
+  printf("%zu x %zu symmetry operations:\n",
+         ops.cen_ops.size(), ops.sym_ops.size());
+  for (const sym::Op& op : ops.all_ops_sorted())
+    printf("    %s\n", op.triplet().c_str());
+}
+
 void process_arg(const char* arg) {
   const sym::SpaceGroup* sg = sym::find_spacegroup_by_name(arg);
   if (sg == nullptr) {
     try {
       sym::GroupOps ops = sym::symops_from_hall(arg);
       sg = sym::find_spacegroup_by_ops(ops);
+      if (sg == nullptr) {
+        printf("Hall symbol: %s\n", arg);
+        print_symmetry_operations(ops);
+      }
     } catch (std::runtime_error&) {
     }
   }
@@ -23,9 +34,7 @@ void process_arg(const char* arg) {
   printf("Hermann–Mauguin: %s\n", sg->hm);
   printf("extended H-M: %s\n", sg->xhm().c_str());
   printf("Hall symbol: %s\n", sg->hall);
-  printf("Symmetry operations:\n");
-  for (const sym::Op& op : sg->operations())
-    printf("    %s\n", op.triplet().c_str());
+  print_symmetry_operations(sg->operations());
   printf("\n");
 }
 
