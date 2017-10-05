@@ -358,14 +358,7 @@ struct GroupOps {
     if (cen_ops.size() != other.cen_ops.size() ||
         sym_ops.size() != other.sym_ops.size())
       return false;
-    auto ops = all_ops_sorted();
-    //return ops == other.all_ops_sorted();
-    for (const Op& other_op : other) {
-      auto it = std::lower_bound(ops.begin(), ops.end(), other_op);
-      if (it == ops.end() || *it != other_op)
-        return false;
-    }
-    return true;
+    return all_ops_sorted() == other.all_ops_sorted();
   }
 
   struct Iter {
