@@ -53,3 +53,9 @@ if (benchmark_FOUND)
     target_link_libraries(${b} benchmark::benchmark)
   endforeach()
 endif()
+
+add_executable(hello examples/hello.cc)
+add_executable(sym_example docs/sym_example.cpp)
+# auth_label requires <experimental/filesystem> and -lstdc++fs
+#add_executable(examples/auth_label examples/auth_label.cc)
+#target_link_libraries(examples/auth_label ZLIB::ZLIB)
