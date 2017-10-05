@@ -57,6 +57,10 @@ void init_sym(py::module& sym) {
     .def("__eq__", [](const Op &a, const std::string& b) {
             return a == parse_triplet(b);
          }, py::is_operator())
+#if PY_MAJOR_VERSION < 3  // in Py3 != is inferred from ==
+    .def("__ne__", [](const Op &a, const Op &b) { return a != b; },
+         py::is_operator())
+#endif
     .def("__hash__", [](const Op &self) { return std::hash<Op>()(self); })
     .def("__repr__", [](const Op &self) {
         return "<sym.Op(\"" + self.triplet() + "\")>";
@@ -80,6 +84,11 @@ void init_sym(py::module& sym) {
     .def("__eq__", [](const GroupOps &a, const GroupOps &b) {
             return a.is_same_as(b);
     }, py::is_operator())
+#if PY_MAJOR_VERSION < 3  // in Py3 != is inferred from ==
+    .def("__ne__", [](const GroupOps &a, const GroupOps &b) {
+            return !a.is_same_as(b);
+    }, py::is_operator())
+#endif
     .def("__len__", [](const GroupOps& g) {
             return g.sym_ops.size() * g.cen_ops.size();
     })
@@ -101,7 +110,7 @@ void init_sym(py::module& sym) {
     })
     .def_readonly("number", &SpaceGroup::number, "number 1-230.")
     .def_readonly("ccp4", &SpaceGroup::ccp4, "ccp4 number")
-    .def_readonly("hm", &SpaceGroup::hm, "Hermann–Mauguin name")
+    .def_readonly("hm", &SpaceGroup::hm, "Hermann-Mauguin name")
     .def_readonly("ext", &SpaceGroup::ext, "Extension (1, 2, H, R or none)")
     .def_readonly("qualifier", &SpaceGroup::qualifier, "e.g. 'cab'")
     .def_readonly("hall", &SpaceGroup::hall, "Hall symbol")

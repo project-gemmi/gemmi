@@ -272,11 +272,43 @@ inline std::string Op::triplet() const {
 
 // GROUPS OF OPERATIONS
 
+// corresponds to Table A1.4.2.2 in ITfC vol.B (edition 2010)
+inline std::vector<Op::Tran> centering_vectors(char lattice_symbol) {
+  constexpr int h = Op::TDEN / 2;
+  constexpr int t = Op::TDEN / 3;
+  constexpr int d = 2 * t;
+  switch (lattice_symbol & ~0x20) {
+    case 'P': return {{0, 0, 0}};
+    case 'A': return {{0, 0, 0}, {0, h, h}};
+    case 'B': return {{0, 0, 0}, {h, 0, h}};
+    case 'C': return {{0, 0, 0}, {h, h, 0}};
+    case 'I': return {{0, 0, 0}, {h, h, h}};
+    case 'R': return {{0, 0, 0}, {t, d, d}, {d, t, t}};
+    // hall_symbols.html has no H, ITfC 2010 has no S and T
+    case 'S': return {{0, 0, 0}, {t, t, d}, {d, t, d}};
+    case 'T': return {{0, 0, 0}, {t, d, t}, {d, t, d}};
+    case 'H': return {{0, 0, 0}, {t, d, 0}, {d, t, 0}};
+    case 'F': return {{0, 0, 0}, {0, h, h}, {h, 0, h}, {h, h, 0}};
+    default: fail(std::string("not a lattice symbol: ") + lattice_symbol);
+  }
+}
+
 struct GroupOps {
   std::vector<Op> sym_ops;
   std::vector<Op::Tran> cen_ops;
 
   void add_missing_elements();
+
+  char find_centering() const {
+    if (cen_ops.size() == 1 && cen_ops[0] == Op::Tran{0, 0, 0})
+      return 'P';
+    std::vector<Op::Tran> trans = cen_ops;
+    std::sort(trans.begin(), trans.end());
+    for (char c : {'A', 'B', 'C', 'I', 'F', 'R', 'S', 'T', 'H'})
+      if (trans == centering_vectors(c))
+        return c;
+    return 0;
+  }
 
   const Op* find_by_rotation(const Op::Rot& r) const {
     for (const Op& op : sym_ops)
@@ -324,8 +356,6 @@ struct GroupOps {
   bool is_same_as(const GroupOps& other) const {
     if (cen_ops.size() != other.cen_ops.size() ||
         sym_ops.size() != other.sym_ops.size())
-      return false;
-    if (cen_ops.size() == 2 && cen_ops[1] != other.cen_ops[1])
       return false;
     auto ops = all_ops_sorted();
     //return ops == other.all_ops_sorted();
@@ -383,27 +413,6 @@ inline void GroupOps::add_missing_elements() {
 // INTERPRETING HALL SYMBOLS
 // based on both ITfC vol.B ch.1.4 (2010)
 // and http://cci.lbl.gov/sginfo/hall_symbols.html
-
-// corresponds to Table A1.4.2.2 in ITfC vol.B (edition 2010)
-inline std::vector<Op::Tran> hall_lattice_translations(char lattice_symbol) {
-  constexpr int h = Op::TDEN / 2;
-  constexpr int t = Op::TDEN / 3;
-  constexpr int d = 2 * t;
-  switch (lattice_symbol & ~0x20) {
-    case 'P': return {{0, 0, 0}};
-    case 'A': return {{0, 0, 0}, {0, h, h}};
-    case 'B': return {{0, 0, 0}, {h, 0, h}};
-    case 'C': return {{0, 0, 0}, {h, h, 0}};
-    case 'I': return {{0, 0, 0}, {h, h, h}};
-    case 'R': return {{0, 0, 0}, {d, t, t}, {t, d, d}};
-    // hall_symbols.html has no H, ITfC 2010 has no S and T
-    case 'S': return {{0, 0, 0}, {t, t, d}, {d, t, d}};
-    case 'T': return {{0, 0, 0}, {t, d, t}, {d, t, d}};
-    case 'H': return {{0, 0, 0}, {d, t, 0}, {t, d, 0}};
-    case 'F': return {{0, 0, 0}, {0, h, h}, {h, 0, h}, {h, h, 0}};
-    default: fail(std::string("not a lattice symbol: ") + lattice_symbol);
-  }
-}
 
 // matrices for Nz from Table 3 and 4 from hall_symbols.html
 inline Op::Rot hall_rotation_z(int N) {
@@ -531,7 +540,7 @@ inline GroupOps generators_from_hall(const char* hall) {
   const char* lat = skip_blank(centrosym ? hall + 1 : hall);
   if (!lat)
     fail("not a hall symbol: " + std::string(hall));
-  ops.cen_ops = hall_lattice_translations(*lat);
+  ops.cen_ops = centering_vectors(*lat);
   int counter = 0;
   int prev = 0;
   const char* part = skip_blank(lat + 1);
@@ -1250,9 +1259,11 @@ inline const SpaceGroup& get_spacegroup_by_name(const std::string& name) {
 }
 
 inline const SpaceGroup* find_spacegroup_by_ops(const GroupOps& gops) {
+  char c = gops.find_centering();
   for (const SpaceGroup& sg : tables::main)
-    if (gops.is_same_as(sg.operations()))
-        return &sg;
+    if ((c == sg.hall[0] || c == sg.hall[1]) &&
+        gops.is_same_as(sg.operations()))
+      return &sg;
   return nullptr;
 }
 
