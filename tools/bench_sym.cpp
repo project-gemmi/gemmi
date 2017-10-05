@@ -69,6 +69,7 @@ BENCHMARK_MAIN()
 // sym::parse_triplet(): 50-300 ns/triplet
 // sym::make_triplet(): 40-120 ns/triplet
 // sym::generators_from_hall(): 60-1000 ns
-// GroupOps::add_missing_elements(): 140-90,000 ns
+// GroupOps::add_missing_elements(): for P212121: ~500 ns
+//                                   for Fm-3m: 2700ns w/ Dimino, 28000 ns w/o
 
 // vim:sw=2:ts=2:et:path^=../include,../third_party

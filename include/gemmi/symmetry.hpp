@@ -131,6 +131,7 @@ inline Op combine(const Op& a, const Op& b) {
 }
 
 inline Op operator*(const Op& a, const Op& b) { return combine(a, b).wrap(); }
+inline Op& operator*=(Op& a, const Op& b) { a = a * b; return a; }
 
 inline Op Op::inverse(int* denom) const {
   int detr = det_rot();
@@ -390,10 +391,48 @@ struct GroupOps {
 };
 
 inline void GroupOps::add_missing_elements() {
-  // Brute force. To be replaced with Dimino's algorithm
-  // see Luc Bourhis' answer https://physics.stackexchange.com/a/351400/95713
+  // We always keep identity as sym_ops[0].
   if (sym_ops.empty() || sym_ops[0] != Op::identity())
     fail("oops");
+  if (sym_ops.size() == 1)
+    return;
+  auto check_size = [&]() {
+    if (sym_ops.size() > 1023)
+      fail("1000+ elements in the group should not happen");
+  };
+  // Below we assume that all centring vectors are already known (in cen_ops)
+  // so when checking for a new element we compare only the 3x3 matrix.
+#if 1 // Dimino's algorithm
+  // see Luc Bourhis' answer https://physics.stackexchange.com/a/351400/95713
+  std::vector<Op> gen(sym_ops.begin() + 1, sym_ops.end());
+  sym_ops.resize(2);
+  const Op::Rot idrot = Op::identity().rot;
+  for (Op g = sym_ops[1] * sym_ops[1]; g.rot != idrot; g *= sym_ops[1]) {
+    sym_ops.push_back(g);
+    check_size();
+  }
+  for (size_t i = 1; i < gen.size(); ++i) {
+    std::vector<Op> coset_repr(1, Op::identity());
+    size_t init_size = sym_ops.size();
+    for (;;) {
+      size_t len = coset_repr.size();
+      for (size_t j = 0; j != len; ++j) {
+        for (size_t n = 0; n != i + 1; ++n) {
+          Op sg = gen[n] * coset_repr[j];
+          if (find_by_rotation(sg.rot) == nullptr) {
+            sym_ops.push_back(sg);
+            for (size_t k = 1; k != init_size; ++k)
+              sym_ops.push_back(sg * sym_ops[k]);
+            coset_repr.push_back(sg);
+          }
+        }
+      }
+      if (len == coset_repr.size())
+        break;
+      check_size();
+    }
+  }
+#else // brute force
   size_t generator_count = sym_ops.size();
   size_t prev_size = 0;
   while (prev_size != sym_ops.size()) {
@@ -404,9 +443,9 @@ inline void GroupOps::add_missing_elements() {
         if (find_by_rotation(new_op.rot) == nullptr)
           sym_ops.push_back(new_op.wrap());
       }
-    if (sym_ops.size() > 1023)
-      fail("1000+ elements in the group should not happen");
+    check_size();
   }
+#endif
 }
 
 
