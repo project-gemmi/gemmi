@@ -6,7 +6,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(ZLIB REQUIRED)
-find_package(benchmark)
+find_package(benchmark QUIET)
+if (benchmark_FOUND)
+  message(STATUS "Found benchmark: ${benchmark_DIR}")
+else (NOT benchmark_FOUND)
+  message(STATUS "Benchmarks not configured.")
+endif()
 
 include_directories("${CMAKE_SOURCE_DIR}/include"
                     "${CMAKE_SOURCE_DIR}/third_party")
