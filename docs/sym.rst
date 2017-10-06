@@ -147,7 +147,12 @@ and so-called *centring vectors* (max. 4 for the face-centered lattice).
   between editions of ITfC, and between sgtbx and :file:`syminfo.lib`.
 
 After contemplating all the possibilities we ended up implementing
-the most complex solution: Hall symbols.
+the most complex solution: Hall symbols. The relative complexity
+does not mean it is slow: translating a Hall notation to generators
+takes less than a microsecond on a typical desktop machine.
+Closing a group is also below a microsecond for most of the groups,
+and up to a few microseconds for the highest symmetry group Fm3̅m
+(Gemmi uses Dimino's algorithm for this).
 
 Operations generated from a Hall symbol are stored in an object
 (``struct GroupOps``) with two lists: symmetry operations
@@ -173,7 +178,7 @@ to add missing group elements (if any), etc.
 C++
 ===
 
-.. literalinclude:: sym_example.cpp
+.. literalinclude:: doc_sym.cpp
    :language: cpp
 
 Python

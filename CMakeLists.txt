@@ -55,7 +55,7 @@ if (benchmark_FOUND)
 endif()
 
 add_executable(hello examples/hello.cc)
-add_executable(sym_example docs/sym_example.cpp)
+add_executable(doc_example docs/doc_sym.cpp docs/doc_elem.cpp)
 # auth_label requires <experimental/filesystem> and -lstdc++fs
 #add_executable(examples/auth_label examples/auth_label.cc)
 #target_link_libraries(examples/auth_label ZLIB::ZLIB)

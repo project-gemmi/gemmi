@@ -4,17 +4,15 @@ Molecular models
 
 This part of the Gemmi library can
 
-* read structural models of biomolecules from supported file formats,
-* present them as a hierarchy of objects (Model-Chain-Residue-Atom)
-  for easy access and manipulations,
-* and write them to one of the supported file formats.
+* read and write structural models of biomolecules in the following formats:
 
-Supported file formats:
+    * mmCIF (PDBx/mmCIF),
+    * PDB (with popular extensions),
+    * mmJSON,
+    * a binary format (MMTF, binary CIF, or own format) is to be considered,
 
-* mmCIF (PDBx/mmCIF),
-* PDB (with popular extensions),
-* mmJSON,
-* a binary format (MMTF, binary CIF, or own format) is to be considered.
+* analyse and manipulate the structures, working with the usual
+  Model-Chain-Residue-Atom hierarchy.
 
 Elements
 ========
@@ -25,13 +23,9 @@ from periodic table at hand.
 C++
 ---
 
-::
+.. literalinclude:: doc_elem.cpp
+   :language: cpp
 
-    #include <gemmi/elem.hpp>
-    gemmi::mol::Element el("Mg");
-    int its_number = el.atomic_number();
-    double its_weight = el.weight();
-    const char* its_name = el.name();
 
 Python
 ------
@@ -49,32 +43,6 @@ Python
 
 PDBx/mmCIF format
 =================
-
-All structural models from one file are stored inside an object
-called ``Structure``.
-Other details from mmCIF, such as literature citations,
-can be accessed through a generic CIF interface (``cif::Block``).
-
-C++
----
-
-::
-
-    #include <gemmi/mmcif.hpp>     // to read
-    #include <gemmi/gz.hpp>        // to uncompress on the fly
-    #include <gemmi/to_mmcif.hpp>  // to write
-
-TODO
-
-Python
-------
-
-.. code-block:: python
-
-    from gemmi import mol
-
-TODO
-
 
 Format details
 --------------
@@ -104,14 +72,15 @@ Here we focus on things specific to mmCIF/DDL2:
 * Any category (RDBMS table) can be written as a CIF loop (table).
   If such a table would have a single row it can be (and always is in wwPDB)
   written as key-value pairs.
-  So when accessing a value it is safer to use abstraction that hides this
-  syntactic detail (``cif::TableView`` in Gemmi).
+  So when accessing a value it is safer to use abstraction that hides the
+  difference between a loop and a key-value pair
+  (``cif::TableView`` in Gemmi).
 
 * Arguably, the mmCIF format is harder to parse than the old PDB format.
   Using ``grep`` and ``awk`` to extract atoms will work only with files
   written in a specific layout, usually by a particular software.
-  Sadly, the wwPDB FAQ encourages it, so one may expect portability
-  problems when using mmCIF.
+  It is unfortunate that the wwPDB FAQ encourages it, so one may expect
+  portability problems when using mmCIF.
 
 * Four columns in the atoms (``_atom_site``) table have "author defined
   alternatives" (``.auth_*`` instead of ``.label_*``).
@@ -137,13 +106,48 @@ as they are the ones used in the PDB format.
 
 In Gemmi, we split the model into chains based on the primary mmCIF
 chain name, but we keep both sets of names.
-Apart of chain renaming (when the original naming was not A, B, C ...),
+Apart from chain renaming (when the original naming was not A, B, C ...),
 it is common that ligands and waters are moved into separate *label* "chains"
 (structural units).
 
 Note that unlike the primary sequence numbers,
 *author* sequence numbers must be used together with the so-called
 PDB insertion code.
+
+Reading and writing
+-------------------
+
+CIF-based interface
+
+Structure-based interface
+
+combination of both
+
+Structural models from a file are stored in ``Structure``.
+
+Other details from mmCIF, such as literature citations,
+can be accessed through a generic CIF interface (``cif::Block``).
+
+C++
+---
+
+::
+
+    #include <gemmi/mmcif.hpp>     // to read
+    #include <gemmi/gz.hpp>        // to uncompress on the fly
+    #include <gemmi/to_mmcif.hpp>  // to write
+
+TODO
+
+Python
+------
+
+.. code-block:: python
+
+    from gemmi import mol
+
+TODO
+
 
 
 PDB format
@@ -182,7 +186,7 @@ Python
 
 .. code-block:: python
 
-    from gemmi import cif
+    from gemmi import mol
 
 TODO
 
@@ -202,7 +206,29 @@ and write mmCIF files.
 
 .. _mmJSON: https://pdbj.org/help/mmjson?lang=en
 
-TODO: examples
+C++
+---
+
+::
+
+    #include <gemmi/json.hpp>     // to read
+    #include <gemmi/gz.hpp>       // to uncompress on the fly
+    #include <gemmi/to_json.hpp>  // to write
+    namespace mol = gemmi::mol;
+
+    mol::Document = mol::read_mmjson(path);
+
+TODO
+
+Python
+------
+
+.. code-block:: python
+
+    from gemmi import mol
+
+TODO
+
 
 Model - Chain - Residue - Atom
 ==============================
@@ -243,9 +269,30 @@ related to alternative conformations".
 
 to be continued...
 
+C++
+---
+
+::
+
+    #include <gemmi/mm.hpp>     // to read/write all the supported formats
+    #include <gemmi/gz.hpp>     // to uncompress on the fly
+    namespace mol = gemmi::mol;
+
+    mol::Content = mol::read(path);
+
+TODO
+
+Python
+------
+
+.. code-block:: python
+
+    from gemmi import mol
+
+TODO
 
 Selections
-----------
+==========
 
 TODO
 
