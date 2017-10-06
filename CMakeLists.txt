@@ -25,7 +25,14 @@ include_directories("${CMAKE_SOURCE_DIR}/include"
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wformat=2")
+  # avoid "unused" warnings when compiling with -DNDEBUG
+  set(extra_release_flags "-Wno-unused-parameter -Wno-unused-variable")
 endif()
+
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO
+    "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${extra_release_flags}")
+set(CMAKE_CXX_FLAGS_RELEASE
+    "${CMAKE_CXX_FLAGS_RELEASE} ${extra_release_flags}")
 
 add_library(input OBJECT src/input.cpp)
 

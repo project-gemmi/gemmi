@@ -25,7 +25,7 @@ static void bm_parse_triplet_all(benchmark::State& state) {
       benchmark::DoNotOptimize(sym::parse_triplet(triplet));
 }
 
-static void bm_make_triplet(benchmark::State& state) {
+/*static*/ void bm_make_triplet(benchmark::State& state) {
   int n = state.range(0);
   sym::Op op = sym::parse_triplet(TRIPLETS[n]);
   while (state.KeepRunning())
