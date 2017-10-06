@@ -5,8 +5,8 @@
 #include "gemmi/gz.hpp"
 #include "gemmi/cif.hpp"
 #include "gemmi/mmcif.hpp"
-#include "gemmi/pdbgz.hpp"
 #include "gemmi/json.hpp"
+#include "gemmi/pdb.hpp"
 #include "gemmi/util.hpp"
 
 gemmi::cif::Document cif_read_any(const std::string& path) {
@@ -21,7 +21,7 @@ gemmi::mol::Structure mmcif_read_atoms(const gemmi::cif::Document& doc) {
 }
 
 gemmi::mol::Structure pdb_read_any(const std::string& path) {
-  return gemmi::mol::read_pdb_any(path);
+  return gemmi::mol::read_pdb(gemmi::MaybeGzipped(path));
 }
 
 // vim:sw=2:ts=2:et:path^=../include,../third_party

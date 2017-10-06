@@ -8,7 +8,8 @@
 #include <algorithm>  // for equal, find
 #include <cctype>     // for tolower
 #include <cmath>      // for floor
-#include <cstdio>     // for FILE, fopen, fclose
+#include <cstdio>     // for FILE, fopen, fclose, fgetc, fgets
+#include <cstring>    // for strlen
 #include <iterator>   // for begin, end, make_move_iterator
 #include <memory>     // for unique_ptr
 #include <stdexcept>  // for runtime_error
@@ -127,6 +128,29 @@ inline std::size_t file_size(FILE* f, const std::string& path) {
   return length;
 }
 
+// Line-oriented input. The same interface is implemented in GzipLineInput.
+class CstreamLineInput {
+public:
+  const std::string source;
+  CstreamLineInput(FILE* f, std::string src) : source(src), f_(f) {}
+
+  size_t copy_line(char* line, int size) {
+    if (!fgets(line, size, f_))
+      return 0;
+    size_t len = std::strlen(line);
+    // If a line is longer than size we discard the rest of it.
+    if (len > 0 && line[len-1] != '\n')
+      for (int c = fgetc(f_); c != 0 && c != EOF && c != '\n'; c = fgetc(f_))
+        continue;
+    ++line_num_;
+    return len;
+  }
+  size_t line_num() const { return line_num_; }
+private:
+  FILE* f_;
+  size_t line_num_ = 0;
+};
+
 // for transparent handling of stdin along filenames
 class MaybeStdin {
 public:
@@ -135,6 +159,8 @@ public:
   const std::string& path() const { return path_; };
   size_t mem_size() const { return 0; };
   std::unique_ptr<char[]> memory() { return nullptr; }
+  bool is_special() const { return false; }
+  bool line_input() const { return false; }
 private:
   std::string path_;
 };

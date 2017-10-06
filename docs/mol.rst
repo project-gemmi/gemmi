@@ -2,17 +2,22 @@
 Molecular models
 ################
 
-This part of the Gemmi library can
+This part of the Gemmi library is for handling structural models of
+biomolecules.
 
-* read and write structural models of biomolecules in the following formats:
+The first prerequisite for this is reading and writing popular file
+formats. Then we have functions to access and manipulate
+the structure in the usual Model-Chain-Residue-Atom hierarchy.
+Finally, with time we will grow a toolset of higher-level functionality:
+calculation of various metrics, ready-to-use complex operations, etc.
 
-    * mmCIF (PDBx/mmCIF),
-    * PDB (with popular extensions),
-    * mmJSON,
-    * a binary format (MMTF, binary CIF, or own format) is to be considered,
+Comparing with the usual tools rooted in bioinformatics:
 
-* analyse and manipulate the structures, working with the usual
-  Model-Chain-Residue-Atom hierarchy.
+* Gemmi focuses more on working with incomplete models
+  (on all stages before they are published and submitted to the PDB),
+* and Gemmi is aware of the neighbouring molecules that are implied by
+  the crystallographic and non-crystallographic symmetry.
+
 
 Elements
 ========
@@ -41,11 +46,32 @@ Python
     42
 
 
-PDBx/mmCIF format
-=================
+Coordinate files
+================
 
-Format details
+Gemmi support the following coordinate file formats:
+
+    * mmCIF (PDBx/mmCIF),
+    * PDB (with popular extensions),
+    * mmJSON,
+    * a binary format (MMTF, binary CIF, or own format) is to be considered.
+
+The next sections discuss details of the individual formats
+and functions specific to them.
+We also have a generic ``read`` and ``write`` functions that handle
+all the supported formats, with the format either specified
+or inferred from the file extension.
+
+Generic access
 --------------
+
+TODO
+
+The data read from a file is kept in a ``Structure``,
+which is documented :ref:`further on <mcra>`.
+
+PDBx/mmCIF format
+-----------------
 
 While this part of Gemmi provide higher-level API to work with
 molecular models, in some situation it is still necessary to understand
@@ -114,8 +140,9 @@ Note that unlike the primary sequence numbers,
 *author* sequence numbers must be used together with the so-called
 PDB insertion code.
 
-Reading and writing
--------------------
+
+C++
+~~~
 
 CIF-based interface
 
@@ -128,9 +155,6 @@ Structural models from a file are stored in ``Structure``.
 Other details from mmCIF, such as literature citations,
 can be accessed through a generic CIF interface (``cif::Block``).
 
-C++
----
-
 ::
 
     #include <gemmi/mmcif.hpp>     // to read
@@ -140,7 +164,7 @@ C++
 TODO
 
 Python
-------
+~~~~~~
 
 .. code-block:: python
 
@@ -151,7 +175,7 @@ TODO
 
 
 PDB format
-==========
+----------
 
 Gemmi parses a subset of records from the official
 `format specification`__.
@@ -171,18 +195,18 @@ in this spec:
 .. _hybrid-36: http://cci.lbl.gov/hybrid_36/
 
 C++
----
+~~~
 
 ::
 
     #include <gemmi/pdb.hpp>     // to read
-    #include <gemmi/pdbgz.hpp>   // to uncompress on the fly
+    #include <gemmi/gz.hpp>      // to uncompress on the fly
     #include <gemmi/to_pdb.hpp>  // to write
 
 TODO
 
 Python
-------
+~~~~~~
 
 .. code-block:: python
 
@@ -192,7 +216,7 @@ TODO
 
 
 mmJSON format
-=============
+-------------
 
 The mmJSON_ format is a JSON representation of the mmCIF data.
 It is available from PDBj:
@@ -207,7 +231,7 @@ and write mmCIF files.
 .. _mmJSON: https://pdbj.org/help/mmjson?lang=en
 
 C++
----
+~~~
 
 ::
 
@@ -216,12 +240,13 @@ C++
     #include <gemmi/to_json.hpp>  // to write
     namespace mol = gemmi::mol;
 
-    mol::Document = mol::read_mmjson(path);
+    mol::Document = mol::read_mmjson_file(path);
+    mol::Document = mol::read_mmjson(MaybeGzipped(path));
 
 TODO
 
 Python
-------
+~~~~~~
 
 .. code-block:: python
 
@@ -229,6 +254,7 @@ Python
 
 TODO
 
+.. _mcra:
 
 Model - Chain - Residue - Atom
 ==============================

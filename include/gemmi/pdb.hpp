@@ -13,9 +13,9 @@
 
 #include <algorithm>  // for find_if_not, swap
 #include <cctype>     // for isspace
-#include <cstdio>     // for fclose, FILE, size_t, fgetc, fopen, fgets
+#include <cstdio>     // for FILE, size_t
 #include <cstdlib>    // for strtol
-#include <cstring>    // for memcpy, strlen, strstr
+#include <cstring>    // for memcpy, strstr
 #include <map>        // for map
 #include <memory>     // for unique_ptr
 #include <string>     // for string
@@ -28,29 +28,6 @@ namespace gemmi {
 namespace mol {
 
 namespace pdb_impl {
-
-class CstreamLineInput {
-public:
-  std::string source;
-  CstreamLineInput(FILE* f, std::string src) : source(src), f_(f) {}
-
-  size_t copy_line(char* line) {
-    if (!fgets(line, 82, f_))
-      return 0;
-    size_t len = std::strlen(line);
-    // We don't expect lines longer than 80 characters, but if one is found,
-    // just discard the rest of the line.
-    if (len > 0 && line[len-1] != '\n')
-      for (int c = fgetc(f_); c != 0 && c != EOF && c != '\n'; c = fgetc(f_))
-        continue;
-    ++line_num_;
-    return len;
-  }
-  size_t line_num() const { return line_num_; }
-private:
-  FILE* f_;
-  size_t line_num_ = 0;
-};
 
 inline std::string rtrimmed(std::string s) {
   auto p = std::find_if_not(s.rbegin(), s.rend(),
@@ -211,7 +188,7 @@ inline int read_matrix(Mat4x4& matrix, char* line, int len) {
 
 
 template<typename InputType>
-Structure read_pdb_from_input(InputType&& in) {
+Structure read_pdb_from_line_input(InputType&& in) {
   using namespace pdb_impl;
   auto wrong = [&in](const std::string& msg) {
     fail("Problem in line " + std::to_string(in.line_num()) + ": " + msg);
@@ -225,7 +202,7 @@ Structure read_pdb_from_input(InputType&& in) {
   EntitySetter ent_setter(st);
   char line[88] = {0};
   Mat4x4 matrix = linalg::identity;
-  while (size_t len = in.copy_line(line)) {
+  while (size_t len = in.copy_line(line, 82)) {
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
       if (len < 77) // should we allow missing element
         wrong("The line is too short to be correct:\n" + std::string(line));
@@ -391,30 +368,38 @@ Structure read_pdb_from_input(InputType&& in) {
 }
 
 inline Structure read_pdb_from_cstream(FILE* f, std::string source) {
-  pdb_impl::CstreamLineInput input(f, source);
-  return read_pdb_from_input(input);
+  gemmi::CstreamLineInput input(f, source);
+  return read_pdb_from_line_input(input);
 }
 
 /*
 inline Structure read_pdb_from_istream(std::istream &is) {
   IstreamLineInput input(is);
-  return read_pdb_from_input(input);
+  return read_pdb_from_line_input(input);
 }
 
 inline Structure read_pdb_from_memory(const char* data, size_t size) {
   MemoryLineInput input(data, size);
-  return read_pdb_from_input(input);
+  return read_pdb_from_line_input(input);
 }
 */
 
 
-inline Structure read_pdb(const std::string& path) {
-  std::unique_ptr<FILE, decltype(&std::fclose)> f(std::fopen(path.c_str(), "r"),
-                                                  &std::fclose);
-  if (!f)
-    fail("Failed to open file: " + path);
+inline Structure read_pdb_file(const std::string& path) {
+  auto f = gemmi::file_open(path.c_str(), "r");
   return read_pdb_from_cstream(f.get(), path);
 }
+
+// A function for transparent reading of stdin and/or gzipped files.
+template<typename T>
+inline Structure read_pdb(T&& input) {
+  if (input.is_stdin())
+    return read_pdb_from_cstream(stdin, "stdin");
+  if (input.is_special())
+    return read_pdb_from_line_input(input.line_input());
+  return read_pdb_file(input.path());
+}
+
 
 } // namespace mol
 } // namespace gemmi

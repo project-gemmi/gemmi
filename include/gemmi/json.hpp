@@ -115,7 +115,7 @@ inline Document read_mmjson_insitu(char* buffer, size_t size,
   return doc;
 }
 
-inline Document read_mmjson(const std::string& path) {
+inline Document read_mmjson_file(const std::string& path) {
   gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "rb");
   size_t buf_size = gemmi::file_size(f.get(), path);
   std::vector<char> buffer(buf_size);
@@ -134,7 +134,7 @@ Document read_mmjson(T&& input) {
   } */
   if (std::unique_ptr<char[]> mem = input.memory())
     return read_mmjson_insitu(mem.get(), input.mem_size(), input.path());
-  return read_mmjson(input.path());
+  return read_mmjson_file(input.path());
 }
 
 } // namespace cif

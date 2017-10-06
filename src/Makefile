@@ -20,7 +20,7 @@ gemmi-validate: validate.cpp options.h $(igdir)/cif.hpp \
 
 input.o: input.cpp input.h $(igdir)/gz.hpp $(igdir)/cif.hpp \
          $(igdir)/numb.hpp $(igdir)/cifdoc.hpp $(igdir)/mmcif.hpp \
-         $(igdir)/model.hpp $(igdir)/pdb.hpp $(igdir)/pdbgz.hpp \
+         $(igdir)/model.hpp $(igdir)/pdb.hpp \
 	 $(igdir)/util.hpp $(igdir)/json.hpp
 	$(CXX) $(FLAGS) -c $<
 
