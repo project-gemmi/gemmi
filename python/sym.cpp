@@ -6,7 +6,7 @@
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
-using namespace gemmi::sym;
+using namespace gemmi;
 
 void init_sym(py::module& sym) {
   py::class_<Op>(sym, "Op")
@@ -25,6 +25,8 @@ void init_sym(py::module& sym) {
     .def("negated", &Op::negated, "Returns Op with all elements nagated")
     .def("translated", &Op::translated, py::arg("a"), "Adds a to tran")
     .def("wrap", &Op::wrap, "Wrap the translation part to [0,1)")
+    .def("combine", &Op::combine, py::arg("b"),
+         "Combine two symmetry operations.")
     .def("seitz", [](const Op& self) {
             auto arr = self.seitz();
             auto mat = py::list();
@@ -43,14 +45,13 @@ void init_sym(py::module& sym) {
             return mat;
          }, "Returns Seitz matrix (integers and fractions)")
     .def("float_seitz", &Op::float_seitz, "Returns Seitz matrix (floats)")
-    .def("__mul__", [](const Op &a, const Op &b) {
-            return combine(a, b).wrap();
-         }, py::is_operator())
+    .def("__mul__", [](const Op &a, const Op &b) { return a * b; },
+         py::is_operator())
     .def("__mul__", [](const Op &a, const std::string &b) {
-            return combine(a, parse_triplet(b)).wrap();
+            return a * parse_triplet(b);
          }, py::is_operator())
     .def("__rmul__", [](const Op &a, const std::string &b) {
-            return combine(parse_triplet(b), a).wrap();
+            return parse_triplet(b) * a;
          }, py::is_operator())
     .def("__eq__", [](const Op &a, const Op &b) { return a == b; },
          py::is_operator())
@@ -60,6 +61,9 @@ void init_sym(py::module& sym) {
 #if PY_MAJOR_VERSION < 3  // in Py3 != is inferred from ==
     .def("__ne__", [](const Op &a, const Op &b) { return a != b; },
          py::is_operator())
+    .def("__ne__", [](const Op &a, const std::string& b) {
+            return a != parse_triplet(b);
+         }, py::is_operator())
 #endif
     .def("__hash__", [](const Op &self) { return std::hash<Op>()(self); })
     .def("__repr__", [](const Op &self) {
@@ -73,8 +77,6 @@ void init_sym(py::module& sym) {
   sym.def("make_triplet_part", &make_triplet_part,
           py::arg("x"), py::arg("y"), py::arg("z"), py::arg("w"),
           "Make one of the three parts of a triplet.");
-  sym.def("combine", &combine, py::arg("a"), py::arg("b"),
-          "Combine two symmetry operations.");
 
   py::class_<GroupOps>(sym, "GroupOps")
     .def(py::init<>())
@@ -118,7 +120,7 @@ void init_sym(py::module& sym) {
     .def("operations", &SpaceGroup::operations, "Group of operations");
 
   sym.def("table", []() {
-            return py::make_iterator(tables::main);
+            return py::make_iterator(spacegroup_tables::main);
           }, py::return_value_policy::reference);
   sym.def("generators_from_hall", &generators_from_hall, py::arg("hall"),
           "Parse Hall notation.");

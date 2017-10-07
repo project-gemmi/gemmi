@@ -25,9 +25,10 @@
 #endif
 
 namespace gemmi {
-namespace sym {
 
 // UTILS
+
+namespace impl {
 
 [[noreturn]]
 inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
@@ -38,6 +39,8 @@ inline const char* skip_blank(const char* p) {
       ++p;
   return p;
 }
+
+} // namespace impl
 
 // TRIPLET <-> SYM OP
 
@@ -88,6 +91,20 @@ struct Op {
          + rot[0][2] * (rot[1][0] * rot[2][1] - rot[1][1] * rot[2][0]);
   }
 
+  Op combine(const Op& b) const {
+    Op r;
+    for (int i = 0; i != 3; ++i) {
+      r.tran[i] = tran[i];
+      for (int j = 0; j != 3; ++j) {
+        r.rot[i][j] = rot[i][0] * b.rot[0][j] +
+                      rot[i][1] * b.rot[1][j] +
+                      rot[i][2] * b.rot[2][j];
+        r.tran[i] += rot[i][j] * b.tran[j];
+      }
+    }
+    return r;
+  }
+
   std::array<std::array<int_t, 4>, 4> seitz() const {
     std::array<std::array<int_t, 4>, 4> t;
     for (int i = 0; i < 3; ++i)
@@ -116,21 +133,7 @@ inline bool operator==(const Op& a, const Op& b) {
 }
 inline bool operator!=(const Op& a, const Op& b) { return !(a == b); }
 
-inline Op combine(const Op& a, const Op& b) {
-  Op r;
-  for (int i = 0; i != 3; ++i) {
-    r.tran[i] = a.tran[i];
-    for (int j = 0; j != 3; ++j) {
-      r.rot[i][j] = a.rot[i][0] * b.rot[0][j] +
-                    a.rot[i][1] * b.rot[1][j] +
-                    a.rot[i][2] * b.rot[2][j];
-      r.tran[i] += a.rot[i][j] * b.tran[j];
-    }
-  }
-  return r;
-}
-
-inline Op operator*(const Op& a, const Op& b) { return combine(a, b).wrap(); }
+inline Op operator*(const Op& a, const Op& b) { return a.combine(b).wrap(); }
 inline Op& operator*=(Op& a, const Op& b) { a = a * b; return a; }
 
 inline Op Op::inverse(int* denom) const {
@@ -138,8 +141,8 @@ inline Op Op::inverse(int* denom) const {
   int sign = detr >= 0 ? 1 : -1;
   if (detr != 1 && detr != -1) {
     if (detr == 0 || denom == nullptr)
-      fail("not a rotation/inversion: det|" + rot_triplet() + "|="
-           + std::to_string(detr));
+      impl::fail("not a rotation/inversion: det|" + rot_triplet() + "|="
+                 + std::to_string(detr));
     *denom = detr * sign;
   }
   Op inv;
@@ -174,7 +177,7 @@ inline std::array<Op::int_t, 4> parse_triplet_part(const std::string& s) {
     if (*c == ' ' || *c == '\t')
       continue;
     if (sign == 0)
-      fail("wrong or unsupported triplet format: " + s);
+      impl::fail("wrong or unsupported triplet format: " + s);
     if (*c >= '0' && *c <= '9') {
       char* endptr;
       r[3] = sign * strtol(c, &endptr, 10);
@@ -182,7 +185,8 @@ inline std::array<Op::int_t, 4> parse_triplet_part(const std::string& s) {
       if (*endptr == '/') {
         den = strtol(endptr + 1, &endptr, 10);
         if (den < 1 || Op::TDEN % den != 0)
-          fail("Unexpected denominator " + std::to_string(den) + " in: " + s);
+          impl::fail("Unexpected denominator " + std::to_string(den) + " in: "
+                     + s);
       }
       r[3] *= Op::TDEN / den;
       c = endptr - 1;
@@ -193,18 +197,18 @@ inline std::array<Op::int_t, 4> parse_triplet_part(const std::string& s) {
     } else if (std::memchr("zZlLcC", *c, 6)) {
       r[2] += sign;
     } else {
-      fail(std::string("unexpected character '") + *c + "' in: " + s);
+      impl::fail(std::string("unexpected character '") + *c + "' in: " + s);
     }
     sign = 0;
   }
   if (sign != 0)
-    fail("trailing sign in: " + s);
+    impl::fail("trailing sign in: " + s);
   return r;
 }
 
 inline Op parse_triplet(const std::string& s) {
   if (std::count(s.begin(), s.end(), ',') != 2)
-    fail("expected exactly two commas in triplet");
+    impl::fail("expected exactly two commas in triplet");
   size_t comma1 = s.find(',');
   size_t comma2 = s.find(',', comma1 + 1);
   auto a = parse_triplet_part(s.substr(0, comma1));
@@ -215,21 +219,22 @@ inline Op parse_triplet(const std::string& s) {
   return { rot, tran };
 }
 
-// much faster than s += std::to_string(n), n is assumed to be >= 0.
-inline void append_small_number(std::string& s, int n) {
-  if (n < 10) {
-    s += char('0' + n);
-  } else if (n < 100) {
-    int tens = n / 10;
-    s += char('0' + tens);
-    s += char('0' + n - 10 * tens);
-  } else {
-    s += std::to_string(n);
-  }
-}
-
 inline std::string make_triplet_part(int x, int y, int z, int w) {
   std::string s;
+
+  // much faster than s += std::to_string(n), n is assumed to be >= 0.
+  auto append_small_number = [&s](int n) {
+    if (n < 10) {
+      s += char('0' + n);
+    } else if (n < 100) {
+      int tens = n / 10;
+      s += char('0' + tens);
+      s += char('0' + n - 10 * tens);
+    } else {
+      s += std::to_string(n);
+    }
+  };
+
   int xyz[] = { x, y, z };
   for (int i = 0; i != 3; ++i)
     if (xyz[i] != 0) {
@@ -238,7 +243,7 @@ inline std::string make_triplet_part(int x, int y, int z, int w) {
       else if (!s.empty())
         s += '+';
       if (xyz[i] != 1 && xyz[i] != -1)
-        append_small_number(s, xyz[i] < 0 ? -xyz[i] : xyz[i]);
+        append_small_number(xyz[i] < 0 ? -xyz[i] : xyz[i]);
       s += char('x' + i);
     }
   if (w != 0) { // reduce the w/TDEN fraction to lowest terms
@@ -251,14 +256,14 @@ inline std::string make_triplet_part(int x, int y, int z, int w) {
     if (w > 0) {
       if (!s.empty())
         s += '+';
-      append_small_number(s, w);
+      append_small_number(w);
     } else {
       s += '-';
-      append_small_number(s, -w);
+      append_small_number(-w);
     }
     if (denom != 1) {
       s += '/';
-      append_small_number(s, denom);
+      append_small_number(denom);
     }
   }
   return s;
@@ -290,7 +295,7 @@ inline std::vector<Op::Tran> centring_vectors(char lattice_symbol) {
     case 'T': return {{0, 0, 0}, {t, d, t}, {d, t, d}};
     case 'H': return {{0, 0, 0}, {t, d, 0}, {d, t, 0}};
     case 'F': return {{0, 0, 0}, {0, h, h}, {h, 0, h}, {h, h, 0}};
-    default: fail(std::string("not a lattice symbol: ") + lattice_symbol);
+    default: impl::fail(std::string("not a lattice symbol: ") + lattice_symbol);
   }
 }
 
@@ -325,10 +330,10 @@ struct GroupOps {
     Op cob_inv = cob.inverse(&den);
     // assuming the first items in sym_ops and cen_ops are identities
     for (auto op = sym_ops.begin() + 1; op != sym_ops.end(); ++op)
-      *op = combine(combine(cob, *op), cob_inv).wrap();
+      *op = cob.combine(*op).combine(cob_inv).wrap();
     constexpr Op::Rot rid = Op::identity().rot;
     for (auto tr = cen_ops.begin() + 1; tr != cen_ops.end(); ++tr)
-      *tr = combine(combine(cob, Op{rid, *tr}), cob_inv).wrap().tran;
+      *tr = cob.combine(Op{rid, *tr}).combine(cob_inv).wrap().tran;
     if (den > 1) {  // this part was tested only on R 3 :R -> :H
       for (auto op = sym_ops.begin() + 1; op != sym_ops.end(); ++op)
         for (auto& i : op->rot)
@@ -386,12 +391,12 @@ struct GroupOps {
 inline void GroupOps::add_missing_elements() {
   // We always keep identity as sym_ops[0].
   if (sym_ops.empty() || sym_ops[0] != Op::identity())
-    fail("oops");
+    impl::fail("oops");
   if (sym_ops.size() == 1)
     return;
   auto check_size = [&]() {
     if (sym_ops.size() > 1023)
-      fail("1000+ elements in the group should not happen");
+      impl::fail("1000+ elements in the group should not happen");
   };
   // Below we assume that all centring vectors are already known (in cen_ops)
   // so when checking for a new element we compare only the 3x3 matrix.
@@ -432,7 +437,7 @@ inline void GroupOps::add_missing_elements() {
     prev_size = sym_ops.size();
     for (size_t i = 1; i != prev_size; ++i)
       for (size_t j = 1; j != generator_count; ++j) {
-        Op new_op = combine(sym_ops[i], sym_ops[j]);
+        Op new_op = sym_ops[i].combine(sym_ops[j]);
         if (find_by_rotation(new_op.rot) == nullptr)
           sym_ops.push_back(new_op.wrap());
       }
@@ -457,7 +462,7 @@ inline Op::Rot hall_rotation_z(int N) {
     case '\'': return {0,-1,0, -1,0,0, 0,0,-1};
     case '"':  return {0,1,0,   1,0,0, 0,0,-1};
     case '*':  return {0,0,1,   1,0,0, 0,1,0};
-    default: fail("incorrect axis definition");
+    default: impl::fail("incorrect axis definition");
   }
 }
 inline Op::Tran hall_translation_from_symbol(char symbol) {
@@ -472,14 +477,8 @@ inline Op::Tran hall_translation_from_symbol(char symbol) {
     case 'v': return {0, q, 0};
     case 'w': return {0, 0, q};
     case 'd': return {q, q, q};
-    default: fail(std::string("unknown symbol: ") + symbol);
+    default: impl::fail(std::string("unknown symbol: ") + symbol);
   }
-}
-
-inline Op::Rot alter_order(const Op::Rot& r, int i, int j, int k) {
-    return { r[i][i], r[i][j], r[i][k],
-             r[j][i], r[j][j], r[j][k],
-             r[k][i], r[k][j], r[k][k] };
 }
 
 inline Op hall_matrix_symbol(const char* start, const char* end,
@@ -488,7 +487,7 @@ inline Op hall_matrix_symbol(const char* start, const char* end,
   bool neg = (*start == '-');
   const char* p = (neg ? start + 1 : start);
   if (*p < '1' || *p == '5' || *p > '6')
-    fail("wrong n-fold order notation: " + std::string(start, end));
+    impl::fail("wrong n-fold order notation: " + std::string(start, end));
   int N = *p++ - '0';
   int fractional_tran = 0;
   char principal_axis = '\0';
@@ -496,11 +495,11 @@ inline Op hall_matrix_symbol(const char* start, const char* end,
   for (; p < end; ++p) {
     if (*p >= '1' && *p <= '5') {
       if (fractional_tran != '\0')
-        fail("two numeric subscripts");
+        impl::fail("two numeric subscripts");
       fractional_tran = *p - '0';
     } else if (*p == '\'' || *p == '"' || *p == '*') {
       if (N != (*p == '*' ? 3 : 2))
-        fail("wrong symbol: " + std::string(start, end));
+        impl::fail("wrong symbol: " + std::string(start, end));
       diagonal_axis = *p;
     } else if (*p == 'x' || *p == 'y' || *p == 'z') {
       principal_axis = *p;
@@ -520,13 +519,18 @@ inline Op hall_matrix_symbol(const char* start, const char* end,
     } else if (pos == 3 && N == 3) {
       diagonal_axis = '*';
     } else if (N != 1) {
-      fail("missing axis");
+      impl::fail("missing axis");
     }
   }
   // get the operation
   op.rot = hall_rotation_z(diagonal_axis ? diagonal_axis : N);
   if (neg)
     op.rot = op.negated_rot();
+  auto alter_order = [](const Op::Rot& r, int i, int j, int k) {
+    return Op::Rot{ r[i][i], r[i][j], r[i][k],
+                    r[j][i], r[j][j], r[j][k],
+                    r[k][i], r[k][j], r[k][k] };
+  };
   if (principal_axis == 'x')
     op.rot = alter_order(op.rot, 2, 0, 1);
   else if (principal_axis == 'y')
@@ -550,32 +554,31 @@ inline Op parse_hall_change_of_basis(const char* start, const char* end) {
     start = endptr;
   }
   if (endptr != end)
-    fail("unexpected change-of-basis format: " + std::string(start, end));
+    impl::fail("unexpected change-of-basis format: " + std::string(start, end));
   return cob;
 }
 
-inline const char* find_blank(const char* p) {
-  while (*p != '\0' && *p != ' ' && *p != '\t' && *p != '_') // '_' == ' '
-    ++p;
-  return p;
-}
-
 inline GroupOps generators_from_hall(const char* hall) {
+  auto find_blank = [](const char* p) {
+    while (*p != '\0' && *p != ' ' && *p != '\t' && *p != '_') // '_' == ' '
+      ++p;
+    return p;
+  };
   if (hall == nullptr)
-    fail("null");
-  hall = skip_blank(hall);
+    impl::fail("null");
+  hall = impl::skip_blank(hall);
   GroupOps ops;
   ops.sym_ops.emplace_back(Op::identity());
   bool centrosym = (hall[0] == '-');
   if (centrosym)
     ops.sym_ops.emplace_back(Op::identity().negated());
-  const char* lat = skip_blank(centrosym ? hall + 1 : hall);
+  const char* lat = impl::skip_blank(centrosym ? hall + 1 : hall);
   if (!lat)
-    fail("not a hall symbol: " + std::string(hall));
+    impl::fail("not a hall symbol: " + std::string(hall));
   ops.cen_ops = centring_vectors(*lat);
   int counter = 0;
   int prev = 0;
-  const char* part = skip_blank(lat + 1);
+  const char* part = impl::skip_blank(lat + 1);
   while (*part != '\0' && *part != '(') {
     const char* space = find_blank(part);
     ++counter;
@@ -583,18 +586,18 @@ inline GroupOps generators_from_hall(const char* hall) {
       Op op = hall_matrix_symbol(part, space, counter, prev);
       ops.sym_ops.emplace_back(op);
     }
-    part = skip_blank(space);
+    part = impl::skip_blank(space);
   }
   if (*part == '(') {
     const char* rb = std::strchr(part, ')');
     if (!rb)
-      fail("missing ')': " + std::string(hall));
+      impl::fail("missing ')': " + std::string(hall));
     if (ops.sym_ops.empty())
-      fail("misplaced translation: " + std::string(hall));
+      impl::fail("misplaced translation: " + std::string(hall));
     ops.change_basis(parse_hall_change_of_basis(part + 1, rb));
 
-    if (*skip_blank(find_blank(rb + 1)) != '\0')
-      fail("unexpected characters after ')': " + std::string(hall));
+    if (*impl::skip_blank(find_blank(rb + 1)) != '\0')
+      impl::fail("unexpected characters after ')': " + std::string(hall));
   }
   return ops;
 }
@@ -621,7 +624,7 @@ struct SpaceGroup { // typically 40 bytes
   GroupOps operations() const { return symops_from_hall(hall); }
 };
 
-struct AlternativeName {
+struct SpaceGroupAltName {
   char hm[11];
   char ext;
   int pos;
@@ -629,11 +632,13 @@ struct AlternativeName {
 
 // the template here is only to substitute C++17 inline variables
 // https://stackoverflow.com/questions/38043442/how-do-inline-variables-work
+namespace impl {
+
 template<class Dummy>
 struct Tables_
 {
   static const SpaceGroup main[539];
-  static const AlternativeName alt_names[27];
+  static const SpaceGroupAltName alt_names[27];
 };
 
 template<class Dummy>
@@ -1184,7 +1189,7 @@ const SpaceGroup Tables_<Dummy>::main[539] = {
 };
 
 template<class Dummy>
-const AlternativeName Tables_<Dummy>::alt_names[27] = {
+const SpaceGroupAltName Tables_<Dummy>::alt_names[27] = {
   // In 1990's ITfC vol.A changed some of the standard names, introducing
   // symbols 'e' and 'g'. sgtbx interprets these new symbols with
   // option ad_hoc_1992. spglib uses only the new symbols.
@@ -1216,10 +1221,13 @@ const AlternativeName Tables_<Dummy>::alt_names[27] = {
   {"B b e b", '1', 329}, // B b c b
   {"B b e b", '2', 330}, // B b c b
 };
-using tables = Tables_<void>;
+
+} // namespace impl
+
+using spacegroup_tables = impl::Tables_<void>;
 
 inline const SpaceGroup* find_spacegroup_by_number(int ccp4) noexcept {
-  for (const SpaceGroup& sg : tables::main)
+  for (const SpaceGroup& sg : spacegroup_tables::main)
     if (sg.ccp4 == ccp4)
       return &sg;
   return nullptr;
@@ -1235,7 +1243,7 @@ inline const SpaceGroup& get_spacegroup_by_number(int ccp4) {
 
 inline const SpaceGroup* find_spacegroup_by_name(const std::string& name)
                                                                   noexcept {
-  const char* p = skip_blank(name.c_str());
+  const char* p = impl::skip_blank(name.c_str());
   if (*p >= '0' && *p <= '9') { // handle numbers
     char *endptr;
     long n = std::strtol(p, &endptr, 10);
@@ -1244,41 +1252,41 @@ inline const SpaceGroup* find_spacegroup_by_name(const std::string& name)
   char first = *p & ~0x20; // to uppercase
   if (first == '\0')
     return nullptr;
-  p = skip_blank(p+1);
-  for (const SpaceGroup& sg : tables::main)
+  p = impl::skip_blank(p+1);
+  for (const SpaceGroup& sg : spacegroup_tables::main)
     if (sg.hm[0] == first && sg.hm[2] == *p) {
-      const char* a = skip_blank(p + 1);
-      const char* b = skip_blank(sg.hm + 3);
+      const char* a = impl::skip_blank(p + 1);
+      const char* b = impl::skip_blank(sg.hm + 3);
       while (*a == *b && *b != '\0') {
-        a = skip_blank(a+1);
-        b = skip_blank(b+1);
+        a = impl::skip_blank(a+1);
+        b = impl::skip_blank(b+1);
       }
       if (*b == '\0' &&
-          (*a == '\0' || (*a == ':' && *skip_blank(a+1) == sg.ext)))
+          (*a == '\0' || (*a == ':' && *impl::skip_blank(a+1) == sg.ext)))
         return &sg;
     } else if (sg.hm[0] == first && sg.hm[2] == '1' && sg.hm[3] == ' ' &&
                sg.hm[4] != '1') {
       // check monoclinic short names
-      const char* a = skip_blank(p);
+      const char* a = impl::skip_blank(p);
       const char* b = sg.hm + 4;
       while (*a == *b && *b != ' ') {
-        a = skip_blank(a+1);
+        a = impl::skip_blank(a+1);
         ++b;
       }
       if (*a == '\0' && *b == ' ')
         return &sg;
     }
-  for (const AlternativeName& sg : tables::alt_names)
+  for (const SpaceGroupAltName& sg : spacegroup_tables::alt_names)
     if (sg.hm[0] == first && sg.hm[2] == *p) {
-      const char* a = skip_blank(p + 1);
-      const char* b = skip_blank(sg.hm + 3);
+      const char* a = impl::skip_blank(p + 1);
+      const char* b = impl::skip_blank(sg.hm + 3);
       while (*a == *b && *b != '\0') {
-        a = skip_blank(a+1);
-        b = skip_blank(b+1);
+        a = impl::skip_blank(a+1);
+        b = impl::skip_blank(b+1);
       }
       if (*b == '\0' &&
-          (*a == '\0' || (*a == ':' && *skip_blank(a+1) == sg.ext)))
-        return &tables::main[sg.pos];
+          (*a == '\0' || (*a == ':' && *impl::skip_blank(a+1) == sg.ext)))
+        return &spacegroup_tables::main[sg.pos];
     }
   return nullptr;
 }
@@ -1292,19 +1300,18 @@ inline const SpaceGroup& get_spacegroup_by_name(const std::string& name) {
 
 inline const SpaceGroup* find_spacegroup_by_ops(const GroupOps& gops) {
   char c = gops.find_centering();
-  for (const SpaceGroup& sg : tables::main)
+  for (const SpaceGroup& sg : spacegroup_tables::main)
     if ((c == sg.hall[0] || c == sg.hall[1]) &&
         gops.is_same_as(sg.operations()))
       return &sg;
   return nullptr;
 }
 
-} // namespace sym
 } // namespace gemmi
 
 namespace std {
-template<> struct hash<gemmi::sym::Op> {
-  size_t operator()(const gemmi::sym::Op& op) const {
+template<> struct hash<gemmi::Op> {
+  size_t operator()(const gemmi::Op& op) const {
     size_t h = 0;
     for (int i = 0; i != 3; ++i)
       for (int j = 0; j != 3; ++j)

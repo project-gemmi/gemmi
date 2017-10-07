@@ -8,7 +8,7 @@
 #include <cassert>
 #include <cmath>     // for NAN, sqrt
 #include <cstdint>   // for uint16_t, uint32_t
-#include <cstdio>    // for FILE
+#include <cstdio>    // for FILE, fread
 #include <cstring>   // for memcpy
 #include <string>
 #include <typeinfo>  // for typeid
@@ -142,7 +142,7 @@ template<typename TFile, typename TMem>
 void read_data(FILE* f, std::vector<TMem>& content) {
   if (typeid(TFile) == typeid(TMem)) {
     size_t len = content.size();
-    if (fread(content.data(), sizeof(TMem), len, f) != len)
+    if (std::fread(content.data(), sizeof(TMem), len, f) != len)
       fail("Failed to read all the data from the map file.");
   } else {
     constexpr size_t chunk_size = 64 * 1024;
@@ -281,7 +281,7 @@ void Grid<T>::read_ccp4(const std::string& path) {
   gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "rb");
   const size_t hsize = 1024;
   ccp4_header.resize(hsize);
-  if (fread(ccp4_header.data(), 1, hsize, f.get()) != hsize)
+  if (std::fread(ccp4_header.data(), 1, hsize, f.get()) != hsize)
     fail("Failed to read map header: " + path);
   if (ccp4_header[208] != 'M' || ccp4_header[209] != 'A' ||
       ccp4_header[210] != 'P' || ccp4_header[211] != ' ')
@@ -293,7 +293,7 @@ void Grid<T>::read_ccp4(const std::string& path) {
   if (nsymbt > 1000000)
     fail("Unexpectedly long extendended header: " + path);
   ccp4_header.resize(hsize + nsymbt);
-  if (fread(ccp4_header.data() + hsize, 1, nsymbt, f.get()) != nsymbt)
+  if (std::fread(ccp4_header.data() + hsize, 1, nsymbt, f.get()) != nsymbt)
     fail("Failed to read extended header: " + path);
   nu = header_i32(1);
   nv = header_i32(2);

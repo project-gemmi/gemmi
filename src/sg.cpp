@@ -3,21 +3,19 @@
 #include "gemmi/symmetry.hpp"
 #include <stdio.h>
 
-namespace sym = gemmi::sym;
-
-void print_symmetry_operations(const sym::GroupOps& ops) {
+void print_symmetry_operations(const gemmi::GroupOps& ops) {
   printf("%zu x %zu symmetry operations:\n",
          ops.cen_ops.size(), ops.sym_ops.size());
-  for (const sym::Op& op : ops.all_ops_sorted())
+  for (const gemmi::Op& op : ops.all_ops_sorted())
     printf("    %s\n", op.triplet().c_str());
 }
 
 void process_arg(const char* arg) {
-  const sym::SpaceGroup* sg = sym::find_spacegroup_by_name(arg);
+  const gemmi::SpaceGroup* sg = gemmi::find_spacegroup_by_name(arg);
   if (sg == nullptr) {
     try {
-      sym::GroupOps ops = sym::symops_from_hall(arg);
-      sg = sym::find_spacegroup_by_ops(ops);
+      gemmi::GroupOps ops = gemmi::symops_from_hall(arg);
+      sg = gemmi::find_spacegroup_by_ops(ops);
       if (sg == nullptr) {
         printf("Hall symbol: %s\n", arg);
         print_symmetry_operations(ops);

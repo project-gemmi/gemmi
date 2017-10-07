@@ -73,7 +73,7 @@ class TestSymmetry(unittest.TestCase):
 
     def test_combine(self):
         a = sym.Op('x+1/3,z,-y')
-        self.assertEqual(sym.combine(a, a).triplet(), 'x+2/3,-y,-z')
+        self.assertEqual(a.combine(a).triplet(), 'x+2/3,-y,-z')
         self.assertEqual('x,-y,z' * sym.Op('-x,-y,z'), '-x,y,z')
         a = sym.Op('-y+1/4,x+3/4,z+1/4')
         b = sym.Op('-x+1/2,y,-z')

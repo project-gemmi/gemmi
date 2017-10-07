@@ -7,8 +7,6 @@
 #include <benchmark/benchmark.h>
 #include <gemmi/symmetry.hpp>
 
-namespace sym = gemmi::sym;
-
 constexpr const char* TRIPLETS[10] = {
   "x,y,z", "-x,-y+1/2,z", "x+1/4,y+1/4,z", "x+1/4,y+1/4,-x+z-1/4",
   "1/2+X,1/2-Y,1/2+Z", "-Z,-X,Y", "Y+1/2,X+1/2,Z+1/2",
@@ -22,22 +20,22 @@ constexpr const char* HALL_SYMBOLS[] = {
 static void bm_parse_triplet_all(benchmark::State& state) {
   while (state.KeepRunning())
     for (const char* triplet : TRIPLETS)
-      benchmark::DoNotOptimize(sym::parse_triplet(triplet));
+      benchmark::DoNotOptimize(gemmi::parse_triplet(triplet));
 }
 
 /*static*/ void bm_make_triplet(benchmark::State& state) {
   int n = state.range(0);
-  sym::Op op = sym::parse_triplet(TRIPLETS[n]);
+  gemmi::Op op = gemmi::parse_triplet(TRIPLETS[n]);
   while (state.KeepRunning())
     benchmark::DoNotOptimize(op.triplet());
 }
 
 static void bm_make_triplet_all(benchmark::State& state) {
-  sym::Op ops[10];
+  gemmi::Op ops[10];
   for (int i = 0; i != 10; ++i)
-    ops[i] = sym::parse_triplet(TRIPLETS[i]);
+    ops[i] = gemmi::parse_triplet(TRIPLETS[i]);
   while (state.KeepRunning())
-    for (const sym::Op& op : ops)
+    for (const gemmi::Op& op : ops)
       benchmark::DoNotOptimize(op.triplet());
 }
 
@@ -45,15 +43,15 @@ static void bm_generators_from_hall(benchmark::State& state) {
   int n = state.range(0);
   const char* hall = HALL_SYMBOLS[n];
   while (state.KeepRunning())
-    benchmark::DoNotOptimize(sym::generators_from_hall(hall));
+    benchmark::DoNotOptimize(gemmi::generators_from_hall(hall));
 }
 
 static void bm_add_elements(benchmark::State& state) {
   int n = state.range(0);
   const char* hall = HALL_SYMBOLS[n];
-  sym::GroupOps gops = sym::generators_from_hall(hall);
+  gemmi::GroupOps gops = gemmi::generators_from_hall(hall);
   while (state.KeepRunning()) {
-    sym::GroupOps copy = gops;
+    gemmi::GroupOps copy = gops;
     copy.add_missing_elements();
     benchmark::DoNotOptimize(copy);
   }
@@ -66,9 +64,9 @@ BENCHMARK(bm_generators_from_hall)->DenseRange(0, 6);
 BENCHMARK(bm_add_elements)->DenseRange(0, 6);
 BENCHMARK_MAIN()
 
-// sym::parse_triplet(): 50-300 ns/triplet
-// sym::make_triplet(): 40-120 ns/triplet
-// sym::generators_from_hall(): 60-1000 ns
+// gemmi::parse_triplet(): 50-300 ns/triplet
+// gemmi::make_triplet(): 40-120 ns/triplet
+// gemmi::generators_from_hall(): 60-1000 ns
 // GroupOps::add_missing_elements(): for P212121: ~500 ns
 //                                   for Fm-3m: 2700ns w/ Dimino, 28000 ns w/o
 
