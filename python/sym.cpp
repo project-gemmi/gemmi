@@ -8,8 +8,8 @@
 namespace py = pybind11;
 using namespace gemmi;
 
-void init_sym(py::module& sym) {
-  py::class_<Op>(sym, "Op")
+void add_symmetry(py::module& m) {
+  py::class_<Op>(m, "Op")
     .def(py::init<>(&Op::identity))
     .def(py::init(&parse_triplet))
     .def_property_readonly_static("TDEN",
@@ -67,18 +67,18 @@ void init_sym(py::module& sym) {
 #endif
     .def("__hash__", [](const Op &self) { return std::hash<Op>()(self); })
     .def("__repr__", [](const Op &self) {
-        return "<sym.Op(\"" + self.triplet() + "\")>";
+        return "<gemmi.Op(\"" + self.triplet() + "\")>";
     });
 
-  sym.def("parse_triplet", &parse_triplet, py::arg("triplet"),
-          "Parse coordinate triplet into sym.Op.");
-  sym.def("parse_triplet_part", &parse_triplet_part, py::arg("s"),
-          "Parse one of the three parts of a triplet.");
-  sym.def("make_triplet_part", &make_triplet_part,
-          py::arg("x"), py::arg("y"), py::arg("z"), py::arg("w"),
-          "Make one of the three parts of a triplet.");
+  m.def("parse_triplet", &parse_triplet, py::arg("triplet"),
+        "Parse coordinate triplet into gemmi.Op.");
+  m.def("parse_triplet_part", &parse_triplet_part, py::arg("s"),
+        "Parse one of the three parts of a triplet.");
+  m.def("make_triplet_part", &make_triplet_part,
+        py::arg("x"), py::arg("y"), py::arg("z"), py::arg("w"),
+        "Make one of the three parts of a triplet.");
 
-  py::class_<GroupOps>(sym, "GroupOps")
+  py::class_<GroupOps>(m, "GroupOps")
     .def(py::init<>())
     .def("__iter__", [](const GroupOps& self) {
         return py::make_iterator(self);
@@ -100,7 +100,7 @@ void init_sym(py::module& sym) {
     .def("change_basis", &GroupOps::change_basis, py::arg("cob"),
          "Applies the change-of-basis operator (in place).");
 
-  py::class_<SpaceGroup>(sym, "SpaceGroup")
+  py::class_<SpaceGroup>(m, "SpaceGroup")
     .def(py::init<>())
     .def(py::init([](int n) { return get_spacegroup_by_number(n); }),
          py::arg("ccp4"), py::return_value_policy::reference)
@@ -108,7 +108,7 @@ void init_sym(py::module& sym) {
          py::arg("hm"), py::return_value_policy::reference)
     //.def(py::init(&find_spacegroup_by_name))
     .def("__repr__", [](const SpaceGroup &self) {
-        return "<sym.SpaceGroup(\"" + self.xhm() + "\")>";
+        return "<gemmi.SpaceGroup(\"" + self.xhm() + "\")>";
     })
     .def_readonly("number", &SpaceGroup::number, "number 1-230.")
     .def_readonly("ccp4", &SpaceGroup::ccp4, "ccp4 number")
@@ -119,20 +119,20 @@ void init_sym(py::module& sym) {
     .def("xhm", &SpaceGroup::xhm, "extended Hermann-Mauguin name")
     .def("operations", &SpaceGroup::operations, "Group of operations");
 
-  sym.def("table", []() {
+  m.def("table", []() {
             return py::make_iterator(spacegroup_tables::main);
-          }, py::return_value_policy::reference);
-  sym.def("generators_from_hall", &generators_from_hall, py::arg("hall"),
-          "Parse Hall notation.");
-  sym.def("symops_from_hall", &symops_from_hall, py::arg("hall"),
-          "Parse Hall notation.");
-  sym.def("find_spacegroup_by_number", &find_spacegroup_by_number,
-          py::arg("ccp4"), py::return_value_policy::reference,
-          "Returns space-group of given number.");
-  sym.def("find_spacegroup_by_name", &find_spacegroup_by_name, py::arg("hm"),
-          py::return_value_policy::reference,
-          "Returns space-group with given name.");
-  sym.def("find_spacegroup_by_ops", &find_spacegroup_by_ops,
-           py::arg("group_ops"), py::return_value_policy::reference,
-          "Returns space-group with identical operations.");
+        }, py::return_value_policy::reference);
+  m.def("generators_from_hall", &generators_from_hall, py::arg("hall"),
+        "Parse Hall notation.");
+  m.def("symops_from_hall", &symops_from_hall, py::arg("hall"),
+        "Parse Hall notation.");
+  m.def("find_spacegroup_by_number", &find_spacegroup_by_number,
+        py::arg("ccp4"), py::return_value_policy::reference,
+        "Returns space-group of given number.");
+  m.def("find_spacegroup_by_name", &find_spacegroup_by_name, py::arg("hm"),
+        py::return_value_policy::reference,
+        "Returns space-group with given name.");
+  m.def("find_spacegroup_by_ops", &find_spacegroup_by_ops,
+        py::arg("group_ops"), py::return_value_policy::reference,
+        "Returns space-group with identical operations.");
 }

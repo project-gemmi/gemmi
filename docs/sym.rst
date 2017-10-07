@@ -75,9 +75,9 @@ The operations are equivalent to
 
 .. code-block:: pycon
 
-    >>> sym.Op('x,-y,z+1/3').seitz()
+    >>> gemmi.Op('x,-y,z+1/3').seitz()
     [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 1, Fraction(1, 3)], [0, 0, 0, 1]]
-    >>> sym.Op('x,-y,z+1/3').float_seitz()
+    >>> gemmi.Op('x,-y,z+1/3').float_seitz()
     [[1.0, 0.0, 0.0, 0.0],
      [0.0, -1.0, 0.0, 0.0],
      [0.0, 0.0, 1.0, 0.3333333333333333],
@@ -186,37 +186,37 @@ Python
 
 .. code-block:: pycon
 
-    >>> from gemmi import sym
+    >>> import gemmi
     >>>
     >>> # operators
-    >>> sym.Op('x-y,x,z+1/6') * '-x,-y,z+1/2'
-    <sym.Op("-x+y,-x,z+2/3")>
+    >>> gemmi.Op('x-y,x,z+1/6') * '-x,-y,z+1/2'
+    <gemmi.Op("-x+y,-x,z+2/3")>
     >>> _.inverse()
-    <sym.Op("-y,x-y,z-2/3")>
+    <gemmi.Op("-y,x-y,z-2/3")>
     >>> _.wrap()
-    <sym.Op("-y,x-y,z+1/3")>
+    <gemmi.Op("-y,x-y,z+1/3")>
     >>>
     >>> # Hall symbols
-    >>> list(sym.generators_from_hall("P 4w 2c"))  # no.93
-    [<sym.Op("x,y,z")>, <sym.Op("-y,x,z+1/4")>, <sym.Op("x,-y,-z+1/2")>]
-    >>> len(sym.symops_from_hall("P 4w 2c"))  # all combinations of the two ops
+    >>> list(gemmi.generators_from_hall("P 4w 2c"))  # no.93
+    [<gemmi.Op("x,y,z")>, <gemmi.Op("-y,x,z+1/4")>, <gemmi.Op("x,-y,-z+1/2")>]
+    >>> len(gemmi.symops_from_hall("P 4w 2c"))
     8
     >>>
     >>> # iterate over tabulated space-group settings
-    >>> for sg in sym.table():
+    >>> for sg in gemmi.table():
     ...   if sg.ccp4 != 0:
     ...     assert sg.ccp4 % 1000 == sg.number
     ...
-    >>> max(sg.ccp4 for sg in sym.table())
+    >>> max(sg.ccp4 for sg in gemmi.table())
     5005
     >>>
     >>> # select a space group
-    >>> sym.find_spacegroup_by_number(5)
-    <sym.SpaceGroup("C 1 2 1")>
-    >>> sym.find_spacegroup_by_name('C m m e') # new names can have 'e' and 'g'
-    <sym.SpaceGroup("C m m a")>
+    >>> gemmi.find_spacegroup_by_number(5)
+    <gemmi.SpaceGroup("C 1 2 1")>
+    >>> gemmi.find_spacegroup_by_name('C m m e') # new names have 'e' and 'g'
+    <gemmi.SpaceGroup("C m m a")>
     >>>
-    >>> ops = sym.find_spacegroup_by_name('I2').operations()
+    >>> ops = gemmi.find_spacegroup_by_name('I2').operations()
     >>> for op in ops:
     ...   print op.triplet()
     ...
@@ -225,7 +225,7 @@ Python
     x+1/2,y+1/2,z+1/2
     -x+1/2,y+1/2,-z+1/2
     >>>
-    >>> ops.change_basis(sym.Op('x,y,x+z'))  # I2 -> C2
-    >>> sym.find_spacegroup_by_ops(ops)
-    <sym.SpaceGroup("C 1 2 1")>
+    >>> ops.change_basis(gemmi.Op('x,y,x+z'))  # I2 -> C2
+    >>> gemmi.find_spacegroup_by_ops(ops)
+    <gemmi.SpaceGroup("C 1 2 1")>
 

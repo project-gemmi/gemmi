@@ -5,9 +5,9 @@ import sys
 
 from cctbx import sgtbx
 try:
-    from gemmi import sym
+    import gemmi
 except ImportError:
-    sym = None
+    gemmi = None
 
 syminfo_path = sys.argv[1]
 
@@ -52,16 +52,17 @@ def parse_syminfo(path):
     return data
 
 def verify_hall_symbol(entry):
-    if not sym:
+    if not gemmi:
         return
-    hall_ops = sym.symops_from_hall(entry['hall'])
+    hall_ops = gemmi.symops_from_hall(entry['hall'])
     assert len(hall_ops.sym_ops) == len(entry['symops'])
     assert len(hall_ops.cen_ops) == len(entry['cenops'])
     # centering vectors are exactly the same
-    assert set(sym.Op().translated(tr) for tr in hall_ops.cen_ops) == \
-           set(sym.Op(e) for e in entry['cenops']), entry
+    assert set(gemmi.Op().translated(tr) for tr in hall_ops.cen_ops) == \
+           set(gemmi.Op(e) for e in entry['cenops']), entry
     # symops differ in some cases but are the same modulo centering vectors
-    given = set(sym.Op(s) * c for s in entry['symops'] for c in entry['cenops'])
+    given = set(gemmi.Op(s) * c for s in entry['symops']
+                for c in entry['cenops'])
     assert given == set(hall_ops), entry
 
 shorter_halls = {
@@ -98,9 +99,9 @@ for s in sgtbx.space_group_symbol_iterator():
         ext = "'%c'" % s.extension()
     info = syminfo_dict.pop(xhm)
     assert info['number'] == s.number()
-    if sym:
-        assert set(sym.symops_from_hall(s.hall())) == \
-               set(sym.symops_from_hall(info['hall'])), xhm
+    if gemmi:
+        assert set(gemmi.symops_from_hall(s.hall())) == \
+               set(gemmi.symops_from_hall(info['hall'])), xhm
     print fmt % (s.number(), info['ccp4'], quot(s.hermann_mauguin()),
                  ext, quot(s.qualifier()), quot(s.hall().strip()), counter)
     counter += 1
@@ -118,9 +119,9 @@ for info in syminfo_data:
             hm = hm.strip()
             ext = "'%c'" % ext
         hall = shorter_halls[info['hall']]
-        if sym:
-            assert set(sym.symops_from_hall(hall)) == \
-                   set(sym.symops_from_hall(info['hall'])), hm
+        if gemmi:
+            assert set(gemmi.symops_from_hall(hall)) == \
+                   set(gemmi.symops_from_hall(info['hall'])), hm
         print fmt % (info['number'], info['ccp4'], quot(hm), ext, '""',
                      quot(hall), counter)
         counter += 1

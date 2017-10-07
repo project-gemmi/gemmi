@@ -3,7 +3,7 @@
 
 from __future__ import print_function
 import sys
-from gemmi import sym
+import gemmi
 
 def parse_syminfo(path):
     data = []
@@ -37,9 +37,9 @@ def parse_syminfo(path):
             elif line.startswith('symbol Hall '):
                 cur['hall'] = line[12:].strip(" '")
             elif line.startswith('symop '):
-                cur['symops'].append(sym.Op(line[6:]))
+                cur['symops'].append(gemmi.Op(line[6:]))
             elif line.startswith('cenop '):
-                cur['cenops'].append(sym.Op(line[6:]))
+                cur['cenops'].append(gemmi.Op(line[6:]))
     return data
 
 def read_ref():
@@ -73,9 +73,9 @@ def main():
         if basisop != 'x,y,z':
             if '(%s)' % basisop not in hall:
                 print('Hall symbol "%s" w/o basisop: %s' % (hall, basisop))
-        hall_ops = sym.symops_from_hall(hall)
+        hall_ops = gemmi.symops_from_hall(hall)
         assert len(hall_ops.cen_ops) == len(entry['cenops'])
-        assert set(sym.Op().translated(tr) for tr in hall_ops.cen_ops) == \
+        assert set(gemmi.Op().translated(tr) for tr in hall_ops.cen_ops) == \
                set(entry['cenops'])
         assert len(hall_ops.sym_ops) == len(entry['symops'])
         # symops differ in about dozen cases but are the same modulo
@@ -97,8 +97,8 @@ def main():
             assert d['number'] == ref[0]
             hall1 = d['hall']
             hall2 = ref[1]
-            sym1 = sym.symops_from_hall(hall1)
-            sym2 = sym.symops_from_hall(hall2)
+            sym1 = gemmi.symops_from_hall(hall1)
+            sym2 = gemmi.symops_from_hall(hall2)
             assert set(sym1) == set(sym2), (hall1, hall2)
         else:
             print('extra:', xhm, '  (%d)' % d['number'], d['hall'])
