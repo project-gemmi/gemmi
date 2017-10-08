@@ -13,7 +13,6 @@
 #define EXE_NAME "gemmi-convert"
 #include "options.h"
 
-namespace mol = gemmi::mol;
 namespace cif = gemmi::cif;
 
 enum class FileType : char { Json, Pdb, Cif, Crd, Null, Unknown };
@@ -95,12 +94,12 @@ static const char symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 enum class ChainNaming { Short, AddNum, Dup };
 
-static void expand_ncs(mol::Structure& st, ChainNaming ch_naming) {
+static void expand_ncs(gemmi::Structure& st, ChainNaming ch_naming) {
   int n_ops = std::count_if(st.ncs.begin(), st.ncs.end(),
-                            [](mol::NcsOp& op){ return !op.given; });
+                            [](gemmi::NcsOp& op){ return !op.given; });
   if (n_ops == 0)
     return;
-  for (mol::Model& model : st.models) {
+  for (gemmi::Model& model : st.models) {
     size_t new_length = model.chains.size() * (n_ops + 1);
     if (new_length >= 63 && ch_naming == ChainNaming::Short)
       ch_naming = ChainNaming::AddNum;
@@ -108,12 +107,12 @@ static void expand_ncs(mol::Structure& st, ChainNaming ch_naming) {
     // for compatibility with iotbx we reset serial in the 'Dup' mode
     if (ch_naming == ChainNaming::Dup && !model.chains.empty()) {
       model.chains[0].force_pdb_serial = 1;
-      for (mol::Chain& chain : model.chains)
-        for (mol::Residue& res : chain.residues)
+      for (gemmi::Chain& chain : model.chains)
+        for (gemmi::Residue& res : chain.residues)
           res.segment = "0";
     }
     auto orig_end = model.chains.cend();
-    for (const mol::NcsOp& op : st.ncs)
+    for (const gemmi::NcsOp& op : st.ncs)
       if (!op.given)
         for (auto ch = model.chains.cbegin(); ch != orig_end; ++ch) {
           // the most difficult part - choosing names for new chains
@@ -133,12 +132,12 @@ static void expand_ncs(mol::Structure& st, ChainNaming ch_naming) {
           }
 
           model.chains.push_back(*ch);
-          mol::Chain& new_chain = model.chains.back();
+          gemmi::Chain& new_chain = model.chains.back();
           new_chain.name = name;
           new_chain.auth_name = "";
 
-          for (mol::Residue& res : new_chain.residues) {
-            for (mol::Atom& a : res.atoms) {
+          for (gemmi::Residue& res : new_chain.residues) {
+            for (gemmi::Atom& a : res.atoms) {
               linalg::vec<double,4> pos = {a.pos.x, a.pos.y, a.pos.z, 1.0};
               pos = linalg::mul(op.transform, pos);
               a.pos = {pos.x, pos.y, pos.z};
@@ -148,18 +147,18 @@ static void expand_ncs(mol::Structure& st, ChainNaming ch_naming) {
           }
         }
   }
-  for (mol::NcsOp& op : st.ncs)
+  for (gemmi::NcsOp& op : st.ncs)
     op.given = true;
 }
 
 
-std::vector<mol::Chain> split_by_segments(mol::Chain& orig) {
-  std::vector<mol::Chain> chains;
-  std::vector<mol::Residue> orig_res;
+std::vector<gemmi::Chain> split_by_segments(gemmi::Chain& orig) {
+  std::vector<gemmi::Chain> chains;
+  std::vector<gemmi::Residue> orig_res;
   orig_res.swap(orig.residues);
   for (auto seg_start = orig_res.begin(); seg_start != orig_res.end(); ) {
     const std::string& sn = seg_start->segment;
-    auto ch = std::find_if(chains.begin(), chains.end(), [&](mol::Chain& c) {
+    auto ch = std::find_if(chains.begin(), chains.end(), [&](gemmi::Chain& c) {
                 return !c.residues.empty() && c.residues[0].segment == sn; });
     if (ch == chains.end()) {
       chains.push_back(orig);
@@ -169,7 +168,7 @@ std::vector<mol::Chain> split_by_segments(mol::Chain& orig) {
       ch->auth_name += sn;
     }
     auto seg_end = std::find_if(seg_start, orig_res.end(),
-                            [&](mol::Residue& r) { return r.segment != sn; });
+                            [&](gemmi::Residue& r) { return r.segment != sn; });
     ch->residues.insert(ch->residues.end(), std::make_move_iterator(seg_start),
                                             std::make_move_iterator(seg_end));
     seg_start = seg_end;
@@ -178,7 +177,7 @@ std::vector<mol::Chain> split_by_segments(mol::Chain& orig) {
 }
 
 // for Refmac, to be merged with update_cif_block()
-cif::Document make_crd(const mol::Structure& st) {
+cif::Document make_crd(const gemmi::Structure& st) {
   using gemmi::to_str;
   cif::Document crd;
   if (st.models.empty())
@@ -217,8 +216,8 @@ cif::Document make_crd(const mol::Structure& st) {
               "mon_id", "ccp4_auth_seq_id", "entity_id",
               "ccp4_back_connect_type", "ccp4_num_mon_back", "ccp4_mod_id"});
   for (const auto& ent : st.entities)
-    if (ent->type == mol::EntityType::Polymer)
-      for (const mol::SequenceItem& si : ent->sequence) {
+    if (ent->type == gemmi::EntityType::Polymer)
+      for (const gemmi::SequenceItem& si : ent->sequence) {
         poly_loop.values.emplace_back(si.mon);
         // TODO: real auth_seq_id
         std::string auth_seq_id = si.num >= 0 ? std::to_string(si.num) : "?";
@@ -296,13 +295,13 @@ cif::Document make_crd(const mol::Structure& st) {
   std::vector<std::string>& vv = atom_loop.values;
   vv.reserve(count_atom_sites(st) * atom_loop.tags.size());
   int serial = 0;
-  for (const mol::Model& model : st.models) {
-    for (const mol::Chain& chain : model.chains) {
-      for (const mol::Residue& res : chain.residues) {
+  for (const gemmi::Model& model : st.models) {
+    for (const gemmi::Chain& chain : model.chains) {
+      for (const gemmi::Residue& res : chain.residues) {
         //std::string seq_id = std::to_string(res.seq_id);
         std::string auth_seq_id = std::to_string(res.auth_seq_id);
         //std::string ins_code(1, res.ins_code ? res.ins_code : '?');
-        for (const mol::Atom& a : res.atoms) {
+        for (const gemmi::Atom& a : res.atoms) {
           vv.emplace_back("ATOM");
           vv.emplace_back(std::to_string(++serial));
           vv.emplace_back(a.name);
@@ -332,7 +331,7 @@ void convert(const std::string& input, FileType input_type,
              const std::string& output, FileType output_type,
              const std::vector<option::Option>& options) {
   cif::Document cif_in;
-  mol::Structure st;
+  gemmi::Structure st;
   // for cif->cif we do either cif->DOM->Structure->DOM->cif or cif->DOM->cif
   bool modify_structure = (options[ExpandNcs] || options[SegmentAsChain]);
   if (input_type == FileType::Cif || input_type == FileType::Json) {
@@ -361,9 +360,9 @@ void convert(const std::string& input, FileType input_type,
   }
 
   if (options[SegmentAsChain])
-    for (mol::Model& model : st.models) {
-      std::vector<mol::Chain> new_chains;
-      for (mol::Chain& chain : model.chains)
+    for (gemmi::Model& model : st.models) {
+      std::vector<gemmi::Chain> new_chains;
+      for (gemmi::Chain& chain : model.chains)
         gemmi::vector_move_extend(new_chains, split_by_segments(chain));
       model.chains = std::move(new_chains);
       // We should also modify Entity instances, but for now we don't.

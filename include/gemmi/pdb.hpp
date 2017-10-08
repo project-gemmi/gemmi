@@ -25,7 +25,6 @@
 #include "util.hpp"
 
 namespace gemmi {
-namespace mol {
 
 namespace pdb_impl {
 
@@ -235,7 +234,7 @@ Structure read_pdb_from_line_input(InputType&& in) {
       atom.name = read_string(line+12, 4);
       atom.altloc = line[16] == ' ' ? '\0' : line[16];
       atom.charge = (len > 78 ? read_charge(line[78], line[79]) : 0);
-      atom.element = Element(line+76);
+      atom.element = gemmi::Element(line+76);
       atom.pos.x = read_double(line+30, 8);
       atom.pos.y = read_double(line+38, 8);
       atom.pos.z = read_double(line+46, 8);
@@ -400,8 +399,6 @@ inline Structure read_pdb(T&& input) {
   return read_pdb_file(input.path());
 }
 
-
-} // namespace mol
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

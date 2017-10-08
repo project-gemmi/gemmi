@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// mol::Structure -> cif::Document -> mmcif (PDBx/mmCIF) file
+// Structure -> cif::Document -> mmcif (PDBx/mmCIF) file
 
 #ifndef GEMMI_TO_MMCIF_HPP_
 #define GEMMI_TO_MMCIF_HPP_
@@ -12,7 +12,8 @@
 #include "model.hpp"
 
 namespace gemmi {
-namespace mol {
+
+namespace impl {
 
 inline void add_cif_atoms(const Structure& st, cif::Block& block) {
   // atom list
@@ -87,6 +88,8 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
     }
   }
 }
+
+} // namespace impl
 
 inline void update_cif_block(const Structure& st, cif::Block& block) {
   if (st.models.empty())
@@ -216,10 +219,9 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
                               si.mon});
       }
 
-  add_cif_atoms(st, block);
+  impl::add_cif_atoms(st, block);
 }
 
-} // namespace mol
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

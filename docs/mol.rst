@@ -37,12 +37,12 @@ Python
 
 .. code-block:: pycon
 
-    >>> from gemmi import mol
-    >>> mol.Element('Mg').weight
+    >>> import gemmi
+    >>> gemmi.Element('Mg').weight
     24.305
-    >>> mol.Element(118).name
+    >>> gemmi.Element(118).name
     'Og'
-    >>> mol.Element('Mo').atomic_number
+    >>> gemmi.Element('Mo').atomic_number
     42
 
 
@@ -168,7 +168,7 @@ Python
 
 .. code-block:: python
 
-    from gemmi import mol
+    import gemmi
 
 TODO
 
@@ -210,7 +210,7 @@ Python
 
 .. code-block:: python
 
-    from gemmi import mol
+    import gemmi
 
 TODO
 
@@ -238,10 +238,9 @@ C++
     #include <gemmi/json.hpp>     // to read
     #include <gemmi/gz.hpp>       // to uncompress on the fly
     #include <gemmi/to_json.hpp>  // to write
-    namespace mol = gemmi::mol;
 
-    mol::Document = mol::read_mmjson_file(path);
-    mol::Document = mol::read_mmjson(MaybeGzipped(path));
+    gemmi::Document = gemmi::read_mmjson_file(path);
+    gemmi::Document = gemmi::read_mmjson(MaybeGzipped(path));
 
 TODO
 
@@ -250,7 +249,7 @@ Python
 
 .. code-block:: python
 
-    from gemmi import mol
+    import gemmi
 
 TODO
 
@@ -300,11 +299,10 @@ C++
 
 ::
 
-    #include <gemmi/mm.hpp>     // to read/write all the supported formats
+    #include <gemmi/mmread.hpp> // to read/write all the supported formats
     #include <gemmi/gz.hpp>     // to uncompress on the fly
-    namespace mol = gemmi::mol;
 
-    mol::Content = mol::read(path);
+    gemmi::Structure = gemmi::read(path);
 
 TODO
 
@@ -313,7 +311,7 @@ Python
 
 .. code-block:: python
 
-    from gemmi import mol
+    import gemmi
 
 TODO
 

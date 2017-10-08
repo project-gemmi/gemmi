@@ -8,9 +8,9 @@
 
 gemmi::cif::Document cif_read_any(const std::string& path);
 
-gemmi::mol::Structure mmcif_read_atoms(const gemmi::cif::Document& doc);
+gemmi::Structure mmcif_read_atoms(const gemmi::cif::Document& doc);
 
-gemmi::mol::Structure pdb_read_any(const std::string& path);
+gemmi::Structure pdb_read_any(const std::string& path);
 
 inline bool is_pdb_code(const std::string& str) {
   return str.length() == 4 && std::isdigit(str[0]) && std::isalnum(str[1]) &&

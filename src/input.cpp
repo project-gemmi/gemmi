@@ -16,12 +16,12 @@ gemmi::cif::Document cif_read_any(const std::string& path) {
   return gemmi::cif::read(gemmi::MaybeGzipped(path));
 }
 
-gemmi::mol::Structure mmcif_read_atoms(const gemmi::cif::Document& doc) {
-  return gemmi::mol::read_atoms(doc);
+gemmi::Structure mmcif_read_atoms(const gemmi::cif::Document& doc) {
+  return gemmi::read_atoms(doc);
 }
 
-gemmi::mol::Structure pdb_read_any(const std::string& path) {
-  return gemmi::mol::read_pdb(gemmi::MaybeGzipped(path));
+gemmi::Structure pdb_read_any(const std::string& path) {
+  return gemmi::read_pdb(gemmi::MaybeGzipped(path));
 }
 
 // vim:sw=2:ts=2:et:path^=../include,../third_party

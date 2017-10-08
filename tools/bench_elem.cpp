@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
-// Microbenchmark of gemmi::mol::find_element().
+// Microbenchmark of gemmi::find_element().
 // Requires the google/benchmark library. It can be built manually:
 // c++ -Wall -O2 -I../include -I$GB/include bench_elem.cpp $GB/src/libbenchmark.a -pthread
 
@@ -10,7 +10,7 @@
 inline void run(benchmark::State& state, const char (&el)[10][3]) {
   while (state.KeepRunning())
     for (int i = 0; i != 10; ++i)
-      benchmark::DoNotOptimize(gemmi::mol::find_element(el[i]));
+      benchmark::DoNotOptimize(gemmi::find_element(el[i]));
 }
 
 static void pyridoxine_elements(benchmark::State& state) {

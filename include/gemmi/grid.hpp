@@ -35,7 +35,7 @@ struct GridStats {
 template<typename T=float>
 struct Grid {
   int nu, nv, nw;
-  mol::UnitCell unit_cell;
+  UnitCell unit_cell;
   std::vector<T> data;
   double spacing[3];
   GridStats stats;
@@ -74,8 +74,8 @@ struct Grid {
     return data[idx];
   }
 
-  void set_points_around(const mol::Position& ctr, double radius, T value) {
-    mol::Position fctr = unit_cell.fractionalize(ctr);
+  void set_points_around(const Position& ctr, double radius, T value) {
+    Position fctr = unit_cell.fractionalize(ctr);
     fctr.x -= std::floor(fctr.x);
     fctr.y -= std::floor(fctr.y);
     fctr.z -= std::floor(fctr.z);
@@ -94,9 +94,9 @@ struct Grid {
       for (int v = 0; v < nv; ++v)
         for (int u = 0; u < nu; ++u) {
 #endif
-          mol::Position fdelta = {fctr.x - double(u) / nu,
-                                  fctr.y - double(v) / nv,
-                                  fctr.z - double(w) / nw};
+          Position fdelta = {fctr.x - double(u) / nu,
+                             fctr.y - double(v) / nv,
+                             fctr.z - double(w) / nw};
           if (fdelta.x > 0.5)
             fdelta.x -= 1.0;
           else if (fdelta.x < -0.5)
@@ -109,7 +109,7 @@ struct Grid {
             fdelta.z -= 1.0;
           else if (fdelta.z < -0.5)
             fdelta.z += 1.0;
-          mol::Position d = unit_cell.orthogonalize(fdelta);
+          Position d = unit_cell.orthogonalize(fdelta);
           if (d.x*d.x + d.y*d.y + d.z*d.z < radius*radius) {
             node(u, v, w) = value;
           }

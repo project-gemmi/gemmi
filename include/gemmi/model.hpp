@@ -17,7 +17,6 @@
 #include "unitcell.hpp"
 
 namespace gemmi {
-namespace mol {
 
 namespace impl {
 
@@ -150,7 +149,7 @@ struct Atom {
   std::string name;
   char altloc;
   signed char charge;  // [-8, +8]
-  Element element = El::X;
+  gemmi::Element element = gemmi::El::X;
   Position pos;
   float occ;
   float b_iso;
@@ -224,7 +223,7 @@ struct NcsOp {
 
 struct Structure {
   std::string name;
-  UnitCell cell;
+  gemmi::UnitCell cell;
   std::string sg_hm;
   std::vector<Model> models;
   std::vector<NcsOp> ncs;
@@ -354,7 +353,6 @@ inline void Structure::finish() {
   // if "entities" were not specifed, deduce them based on sequence
 }
 
-} // namespace mol
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

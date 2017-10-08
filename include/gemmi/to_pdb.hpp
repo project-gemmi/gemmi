@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// Writing PDB file format (mol::Structure -> pdb file).
+// Writing PDB file format (Structure -> pdb file).
 
 #ifndef GEMMI_TO_PDB_HPP_
 #define GEMMI_TO_PDB_HPP_
@@ -15,7 +15,6 @@
 #include "util.hpp"
 
 namespace gemmi {
-namespace mol {
 
 #define WRITE(...) do { \
     stbsp_snprintf(buf, 82, __VA_ARGS__); \
@@ -28,6 +27,8 @@ namespace mol {
       if (buf[i_] >= 'a' && buf[i_] <= 'z') buf[i_] -= 0x20; \
     os.write(buf, 81); \
     } while(0)
+
+namespace impl {
 
 // works for non-negative values only
 inline char *base36_encode(char* buffer, int width, int value) {
@@ -89,6 +90,8 @@ inline void write_multiline(std::ostream& os, const char* record_name,
   }
 }
 
+} // namespace impl
+
 inline void write_pdb(const Structure& st, std::ostream& os,
                       bool iotbx_compat=false) {
   const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
@@ -107,9 +110,9 @@ inline void write_pdb(const Structure& st, std::ostream& os,
          // "classification" in PDB == _struct_keywords.pdbx_keywords in mmCIF
          st.get_info("_struct_keywords.pdbx_keywords", ""),
          pdb_date.c_str(), st.get_info("_entry.id", ""));
-  write_multiline(os, "TITLE", st.get_info("_struct.title"), 80);
-  write_multiline(os, "KEYWDS", st.get_info("_struct_keywords.text"), 79);
-  write_multiline(os, "EXPDTA", st.get_info("_exptl.method"), 79);
+  impl::write_multiline(os, "TITLE", st.get_info("_struct.title"), 80);
+  impl::write_multiline(os, "KEYWDS", st.get_info("_struct_keywords.text"), 79);
+  impl::write_multiline(os, "EXPDTA", st.get_info("_exptl.method"), 79);
   if (st.models.size() > 1)
     WRITE("NUMMDL    %-6zu %63s\n", st.models.size(), "");
 
@@ -171,8 +174,8 @@ inline void write_pdb(const Structure& st, std::ostream& os,
             j + 1, op.id.c_str(), r.x, r.y, r.z, r.w, op.given ? '1' : ' ');
     }
 
-  char short_buf[8];
-  char short_buf2[8];
+  char buf8[8];
+  char buf8a[8];
   for (const Model& model : st.models) {
     int serial = 0;
     if (st.models.size() > 1)
@@ -216,13 +219,13 @@ inline void write_pdb(const Structure& st, std::ostream& os,
                 "   %8.3f%8.3f%8.3f"
                 "%6.2f%6.2f      %-4.4s%2s%c%c\n",
                 standard ? "ATOM" : "HETATM",
-                encode_serial_in_hybrid36(short_buf, ++serial),
+                impl::encode_serial_in_hybrid36(buf8, ++serial),
                 empty13 ? ' ' : a.name[0],
                 a.name.c_str() + (empty13 || a.name.empty() ? 0 : 1),
                 a.altloc ? std::toupper(a.altloc) : ' ',
                 res.name.c_str(),
                 chain_name.c_str(),
-                encode_seq_id_in_hybrid36(short_buf2, res.seq_id_for_pdb()),
+                impl::encode_seq_id_in_hybrid36(buf8a, res.seq_id_for_pdb()),
                 res.ins_code ? res.ins_code : ' ',
                 // We want to avoid negative zero and round them numbers up
                 // if they originally had one digit more and that digit was 5.
@@ -261,7 +264,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
           // re-using part of the buffer in the middle, e.g.:
           // TER    4153      LYS B 286
           stbsp_snprintf(buf, 82, "TER   %5s",
-                         encode_serial_in_hybrid36(short_buf, ++serial));
+                         impl::encode_serial_in_hybrid36(buf8, ++serial));
           std::memset(buf+11, ' ', 6);
           std::memset(buf+28, ' ', 52);
           os.write(buf, 81);
@@ -276,7 +279,6 @@ inline void write_pdb(const Structure& st, std::ostream& os,
 
 #undef WRITE
 
-} // namespace mol
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

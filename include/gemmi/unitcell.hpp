@@ -10,7 +10,6 @@
 #include "util.hpp"
 
 namespace gemmi {
-namespace mol {
 
 struct Position {
   double x, y, z;
@@ -118,7 +117,6 @@ struct UnitCell {
   Position fractionalize(const Position& o) const { return frac.multiply(o); }
 };
 
-} // namespace mol
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

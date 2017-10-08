@@ -1,33 +1,33 @@
 #!/usr/bin/env python
 
 import unittest
-from gemmi import mol
+from gemmi import Element
 
 
 class TestElem(unittest.TestCase):
     def test_name(self):
         for name in ELEMENT_MASS:
-            el = mol.Element(name)
+            el = Element(name)
             self.assertEqual(el.name, name)
-        self.assertEqual(mol.Element('AL').name, 'Al')
-        self.assertEqual(mol.Element('al').name, 'Al')
+        self.assertEqual(Element('AL').name, 'Al')
+        self.assertEqual(Element('al').name, 'Al')
         # We check only the first two characters now.
-        self.assertEqual(mol.Element('alt').name, 'Al')
-        self.assertEqual(mol.Element('Q').name, 'X')
-        self.assertEqual(mol.Element('QQ').name, 'X')
-        self.assertEqual(mol.Element('--').name, 'X')
-        self.assertEqual(mol.Element('').name, 'X')
+        self.assertEqual(Element('alt').name, 'Al')
+        self.assertEqual(Element('Q').name, 'X')
+        self.assertEqual(Element('QQ').name, 'X')
+        self.assertEqual(Element('--').name, 'X')
+        self.assertEqual(Element('').name, 'X')
 
     def test_weight(self):
         for name, mass in ELEMENT_MASS.items():
-            self.assertAlmostEqual(mol.Element(name).weight, mass, delta=1e-3)
+            self.assertAlmostEqual(Element(name).weight, mass, delta=1e-3)
 
     def test_atomic_number(self):
-        self.assertEqual(mol.Element('O').atomic_number, 8)
-        self.assertEqual(mol.Element('D').atomic_number, 1)
-        self.assertEqual(mol.Element('X').atomic_number, 0)
+        self.assertEqual(Element('O').atomic_number, 8)
+        self.assertEqual(Element('D').atomic_number, 1)
+        self.assertEqual(Element('X').atomic_number, 0)
         for n in range(119):
-            self.assertEqual(mol.Element(n).atomic_number, n)
+            self.assertEqual(Element(n).atomic_number, n)
 
 
 ELEMENT_MASS = {

@@ -11,7 +11,6 @@
 #include <string>
 
 namespace gemmi {
-namespace mol {
 
 // elements
 enum class El : unsigned char {
@@ -116,6 +115,7 @@ inline elname_t& element_uppercase_name(El el) {
 }
 
 
+namespace impl {
 // all the most common elements in the PDB are single-letter
 inline El find_single_letter_element(char c) {
   switch (c) {
@@ -137,6 +137,7 @@ inline El find_single_letter_element(char c) {
     default: return El::X;
   }
 }
+} // namespace impl
 
 inline El find_element(const char* symbol) {
   if (symbol == nullptr || symbol[0] == '\0')
@@ -144,9 +145,9 @@ inline El find_element(const char* symbol) {
   char first = symbol[0] & ~0x20;  // lower -> upper, space -> NUL
   char second = symbol[1] & ~0x20;
   if (first == '\0')
-    return find_single_letter_element(second);
+    return impl::find_single_letter_element(second);
   if (second == '\0')
-    return find_single_letter_element(first);
+    return impl::find_single_letter_element(first);
   elname_t* names = &element_uppercase_name(El::X);
   for (int i = 0; i != 120; ++i) {
     if (names[i][0] == first && names[i][1] == second)
@@ -174,7 +175,6 @@ struct Element {
   const char* uname() const { return element_uppercase_name(elem); }
 };
 
-} // namespace mol
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

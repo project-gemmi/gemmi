@@ -6,8 +6,6 @@
 #define EXE_NAME "gemmi-mask"
 #include "options.h"
 
-namespace mol = gemmi::mol;
-
 enum OptionIndex { Verbose=3, FormatIn, Threshold, Fraction, GridDims, Radius};
 
 struct MaskArg {
@@ -116,7 +114,7 @@ int main(int argc, char **argv) {
                        ? std::strtod(options[Radius].arg, nullptr)
                        : 3.0);
 
-      mol::Structure st;
+      gemmi::Structure st;
       if (in_type == InputType::Pdb)
         st = pdb_read_any(input);
       else if (in_type == InputType::Mmcif)
@@ -131,9 +129,9 @@ int main(int argc, char **argv) {
       }
       if (st.models.size() > 1)
         std::fprintf(stderr, "Note: only the first model is used.\n");
-      for (const mol::Chain& chain : st.models[0].chains)
-        for (const mol::Residue& res : chain.residues)
-          for (const mol::Atom& atom : res.atoms)
+      for (const gemmi::Chain& chain : st.models[0].chains)
+        for (const gemmi::Residue& res : chain.residues)
+          for (const gemmi::Atom& atom : res.atoms)
             grid.set_points_around(atom.pos, radius, 1.0);
       grid.stats = grid.calculate_statistics();
       //grid.write_ccp4_mask(output, 0.5);

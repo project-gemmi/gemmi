@@ -15,8 +15,6 @@
 #define EXE_NAME "gemmi-map"
 #include "options.h"
 
-namespace mol = gemmi::mol;
-
 enum OptionIndex { Verbose=3, OutputMode };
 
 static const option::Descriptor Usage[] = {
@@ -86,7 +84,7 @@ void print_info(const gemmi::Grid<T>& grid) {
   int mz = grid.header_i32(10);
   std::printf("Grid sampling on x, y, z: %5d %5d %5d          %8s %d points\n",
               mx, my, mz, "->", mx * my * mz);
-  const mol::UnitCell& cell = grid.unit_cell;
+  const gemmi::UnitCell& cell = grid.unit_cell;
   std::printf("Space group number: %d\n", grid.header_i32(23));
   std::printf("Cell dimensions: %g %g %g  %g %g %g\n",
               cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma);

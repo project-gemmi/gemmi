@@ -13,7 +13,8 @@
 #include "model.hpp"
 
 namespace gemmi {
-namespace mol {
+
+namespace impl {
 
 inline std::unordered_map<std::string, std::array<float,6>>
 get_anisotropic_u(const cif::Block& block) {
@@ -184,7 +185,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     atom.name = as_string(row[kAtomId]);
     atom.altloc = as_string(row[kAltId])[0];
     atom.charge = cif::is_null(row[kCharge]) ? 0 : cif::as_int(row[kCharge]);
-    atom.element = Element(as_string(row[kSymbol]));
+    atom.element = gemmi::Element(as_string(row[kSymbol]));
     atom.pos.x = cif::as_number(row[kX]);
     atom.pos.y = cif::as_number(row[kY]);
     atom.pos.z = cif::as_number(row[kZ]);
@@ -236,11 +237,12 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   return st;
 }
 
+} // namespace impl
+
 inline Structure read_atoms(const cif::Document& doc) {
-  return structure_from_cif_block(doc.sole_block());
+  return impl::structure_from_cif_block(doc.sole_block());
 }
 
-} // namespace mol
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

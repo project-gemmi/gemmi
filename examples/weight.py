@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 import collections
 import itertools
-from gemmi import cif
-from gemmi.mol import Element
+from gemmi import cif, Element
 import util
 
 
