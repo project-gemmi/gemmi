@@ -20,14 +20,14 @@ gemmi-validate: validate.cpp options.h $(igdir)/cif.hpp \
 
 input.o: input.cpp input.h $(igdir)/gz.hpp $(igdir)/cif.hpp \
          $(igdir)/numb.hpp $(igdir)/cifdoc.hpp $(igdir)/mmcif.hpp \
-         $(igdir)/model.hpp $(igdir)/pdb.hpp \
+         $(igdir)/model.hpp $(igdir)/pdb.hpp $(igdir)/mmread.hpp \
 	 $(igdir)/util.hpp $(igdir)/json.hpp
 	$(CXX) $(FLAGS) -c $<
 
 output.o: output.cpp output.h $(igdir)/to_pdb.hpp $(igdir)/model.hpp \
           $(igdir)/elem.hpp $(igdir)/unitcell.hpp $(igdir)/to_mmcif.hpp \
           $(igdir)/cifdoc.hpp $(igdir)/sprintf.hpp
-	$(CXX) $(FLAGS) -fno-strict-aliasing -c $<
+	$(CXX) $(FLAGS) -c $<
 
 convert.o: convert.cpp options.h input.h $(igdir)/to_cif.hpp \
            $(igdir)/to_json.hpp $(igdir)/to_mmcif.hpp $(igdir)/cifdoc.hpp \

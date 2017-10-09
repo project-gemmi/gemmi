@@ -39,7 +39,7 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-enum class InputType : char { Pdb, Mmcif, Ccp4, Unknown };
+enum class InputType : char { Coordinates, Ccp4, Unknown };
 
 
 int main(int argc, char **argv) {
@@ -54,25 +54,27 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "Converting %s ...\n", input);
 
   InputType in_type = InputType::Unknown;
+  gemmi::CoorFormat in_subtype = gemmi::CoorFormat::Unknown;
   if (options[FormatIn]) {
     const char* arg = options[FormatIn].arg;
-    if (strcmp(arg, "pdb") == 0)
-      in_type = InputType::Pdb;
-    else if (strcmp(arg, "cif") == 0)
-      in_type = InputType::Mmcif;
-    else if (strcmp(arg, "ccp4") == 0)
+    if (strcmp(arg, "pdb") == 0) {
+      in_type = InputType::Coordinates;
+      in_subtype = gemmi::CoorFormat::Pdb;
+    } else if (strcmp(arg, "cif") == 0) {
+      in_type = InputType::Coordinates;
+      in_subtype = gemmi::CoorFormat::Cif;
+    } else if (strcmp(arg, "ccp4") == 0) {
       in_type = InputType::Ccp4;
+    }
   }
   if (in_type == InputType::Unknown) {
-    using gemmi::iends_with;
-    if (iends_with(input, ".pdb") || iends_with(input, ".ent") ||
-        iends_with(input, ".pdb.gz") || iends_with(input, ".ent.gz"))
-      in_type = InputType::Pdb;
-    else if (iends_with(input, ".cif") || iends_with(input, ".cif.gz") ||
-             iends_with(input, ".json") || iends_with(input, ".json.gz"))
-      in_type = InputType::Mmcif;
-    else if (iends_with(input, ".ccp4") || iends_with(input, ".map"))
+    in_subtype = coordinate_format_from_extension(input);
+    if (in_subtype != gemmi::CoorFormat::Unknown) {
+      in_type = InputType::Coordinates;
+    } else if (gemmi::iends_with(input, ".ccp4") ||
+               gemmi::iends_with(input, ".map")) {
       in_type = InputType::Ccp4;
+    }
   }
   if (in_type == InputType::Unknown) {
     std::fprintf(stderr, "Cannot determine input type for extension."
@@ -114,11 +116,7 @@ int main(int argc, char **argv) {
                        ? std::strtod(options[Radius].arg, nullptr)
                        : 3.0);
 
-      gemmi::Structure st;
-      if (in_type == InputType::Pdb)
-        st = pdb_read_any(input);
-      else if (in_type == InputType::Mmcif)
-        st = mmcif_read_atoms(cif_read_any(input));
+      gemmi::Structure st = read_structure(input);
       gemmi::Grid<> grid;
       grid.unit_cell = st.cell;
       if (options[GridDims]) {

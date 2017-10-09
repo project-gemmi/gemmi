@@ -45,6 +45,9 @@ struct Model;
 struct Chain;
 struct Residue;
 
+// File format with macromolecular model.
+enum class CoorFormat { Pdb, Cif, Json, Unknown };
+
 enum class EntityType : unsigned char {
   Unknown,
   Polymer,

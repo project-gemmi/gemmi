@@ -73,16 +73,14 @@ static const option::Descriptor Usage[] = {
 };
 
 FileType get_format_from_extension(const std::string& path) {
-  using gemmi::iends_with;
-  if (iends_with(path, ".pdb") || iends_with(path, ".ent") ||
-      iends_with(path, ".pdb.gz") || iends_with(path, ".ent.gz"))
+  gemmi::CoorFormat format = coordinate_format_from_extension(path);
+  if (format == gemmi::CoorFormat::Pdb)
     return FileType::Pdb;
-  if (iends_with(path, ".js") || iends_with(path, ".json") ||
-      iends_with(path, ".js.gz") || iends_with(path, ".json.gz"))
+  if (format == gemmi::CoorFormat::Json)
     return FileType::Json;
-  if (iends_with(path, ".cif") || iends_with(path, ".cif.gz"))
+  if (format == gemmi::CoorFormat::Cif)
     return FileType::Cif;
-  if (iends_with(path, ".crd"))
+  if (gemmi::iends_with(path, ".crd"))
     return FileType::Crd;
   if (path == "/dev/null")
     return FileType::Null;
@@ -345,7 +343,7 @@ void convert(const std::string& input, FileType input_type,
         gemmi::fail("No atoms in the input file. Is it mmCIF?");
     }
   } else if (input_type == FileType::Pdb) {
-    st = pdb_read_any(input);
+    st = read_structure(input, gemmi::CoorFormat::Pdb);
   } else {
     gemmi::fail("Unexpected input format.");
   }

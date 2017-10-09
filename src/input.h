@@ -10,7 +10,10 @@ gemmi::cif::Document cif_read_any(const std::string& path);
 
 gemmi::Structure mmcif_read_atoms(const gemmi::cif::Document& doc);
 
-gemmi::Structure pdb_read_any(const std::string& path);
+gemmi::Structure read_structure(const std::string& path,
+                    gemmi::CoorFormat format=gemmi::CoorFormat::Unknown);
+
+gemmi::CoorFormat coordinate_format_from_extension(const std::string& path);
 
 inline bool is_pdb_code(const std::string& str) {
   return str.length() == 4 && std::isdigit(str[0]) && std::isalnum(str[1]) &&
@@ -21,6 +24,5 @@ inline std::string mmcif_subpath(const std::string& code) {
   std::string lc = gemmi::to_lower(code);
   return "/structures/divided/mmCIF/" + lc.substr(1, 2) + "/" + lc + ".cif.gz";
 }
-
 
 // vim:sw=2:ts=2:et:path^=../include,../third_party
