@@ -197,13 +197,13 @@ void grep_file(const std::string& tag, const std::string& path,
   par.match_column = -1;
   par.match_value = false;
   try {
-    if (path == "-") {
+    gemmi::MaybeGzipped input(path);
+    if (input.is_stdin()) {
       pegtl::cstream_input<> in(stdin, 16*1024, "stdin");
       pegtl::parse<rules::file, Search, cif::Errors>(in, par);
-    } else if (gemmi::iends_with(path, ".gz")) {
-      size_t orig_size = gemmi::estimate_uncompressed_size(path);
-      std::unique_ptr<char[]> mem = gemmi::gunzip_to_memory(path, orig_size);
-      pegtl::memory_input<> in(mem.get(), orig_size, path);
+    } else if (input.is_compressed()) {
+      std::unique_ptr<char[]> mem = input.memory();
+      pegtl::memory_input<> in(mem.get(), input.mem_size(), path);
       pegtl::parse<rules::file, Search, cif::Errors>(in, par);
     } else {
       pegtl::file_input<> in(path);

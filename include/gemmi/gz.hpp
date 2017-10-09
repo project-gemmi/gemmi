@@ -34,74 +34,67 @@ inline size_t estimate_uncompressed_size(const std::string& path) {
 }
 
 
-inline std::unique_ptr<char[]> gunzip_to_memory(const std::string& path,
-                                                size_t orig_size) {
-  if (orig_size > 500000000)
-    fail("For now gz files above 500MB uncompressed are not supported.");
-  std::unique_ptr<char[]> mem(new char[orig_size]);
-  gzFile file = gzopen(path.c_str(), "rb");
-  if (!file)
-    fail("Failed to gzopen: " + path);
-  int bytes_read = gzread(file, mem.get(), orig_size);
-  if (bytes_read < (int) orig_size && !gzeof(file)) {
-    int errnum;
-    std::string err_str = gzerror(file, &errnum);
-    if (errnum) {
-      gzclose(file);
-      fail("Error reading " + path + ": " + err_str);
-    }
-  }
-  gzclose(file);
-  return mem;
+size_t copy_line_from_stream(char* line, int size, gzFile f) {
+  if (!gzgets(f, line, size))
+    return 0;
+  size_t len = std::strlen(line);
+  // If a line is longer than size we discard the rest of it.
+  if (len > 0 && line[len-1] != '\n')
+    for (int c = gzgetc(f); c != 0 && c != -1 && c != '\n'; c = gzgetc(f))
+      continue;
+  return len;
 }
-
-
-class GzipLineInput {
-public:
-  std::string source;
-  explicit GzipLineInput(std::string path) : source(path) {
-    f_ = gzopen(source.c_str(), "rb");
-    if (!f_)
-      gemmi::fail("Failed to open file: " + path);
-#if ZLIB_VERNUM >= 0x1235
-    gzbuffer(f_, 64*1024);
-#endif
-  }
-  ~GzipLineInput() { gzclose(f_); }
-
-  size_t copy_line(char* line, int size) {
-    if (!gzgets(f_, line, size))
-      return 0;
-    size_t len = std::strlen(line);
-    // If a line is longer than size we discard the rest of it.
-    if (len > 0 && line[len-1] != '\n')
-      for (int c = gzgetc(f_); c != 0 && c != -1 && c != '\n'; c = gzgetc(f_))
-        continue;
-    ++line_num_;
-    return len;
-  }
-  size_t line_num() const { return line_num_; }
-private:
-  gzFile f_;
-  size_t line_num_ = 0;
-};
 
 
 class MaybeGzipped : public MaybeStdin {
 public:
   explicit MaybeGzipped(const std::string& path)
-    : MaybeStdin(path), mem_size_(0) {}
-  bool is_special() const { return ends_with(path(), ".gz"); };
+    : MaybeStdin(path), mem_size_(0), file_(nullptr) {}
+  ~MaybeGzipped() {
+    if (file_)
+      gzclose(file_);
+  }
+
+  bool is_compressed() const { return ends_with(path(), ".gz"); };
   size_t mem_size() const { return mem_size_; };
+
   std::unique_ptr<char[]> memory() {
-    if (!is_special())
+    if (!is_compressed())
       return MaybeStdin::memory();
     mem_size_ = estimate_uncompressed_size(path());
-    return gunzip_to_memory(path(), mem_size_);
+    open();
+    if (mem_size_ > 500000000)
+      fail("For now gz files above 500MB uncompressed are not supported.");
+    std::unique_ptr<char[]> mem(new char[mem_size_]);
+    int bytes_read = gzread(file_, mem.get(), mem_size_);
+    if (bytes_read < (int) mem_size_ && !gzeof(file_)) {
+      int errnum;
+      std::string err_str = gzerror(file_, &errnum);
+      if (errnum)
+        fail("Error reading " + path() + ": " + err_str);
+    }
+    return mem;
   }
-  GzipLineInput line_input() { return GzipLineInput(path()); }
+
+  gzFile prepare_lines() {
+    if (!is_compressed())
+      return nullptr;
+    open();
+#if ZLIB_VERNUM >= 0x1235
+    gzbuffer(file_, 64*1024);
+#endif
+    return file_;
+  }
+
 private:
   size_t mem_size_;
+  gzFile file_;
+
+  void open() {
+    file_ = gzopen(path().c_str(), "rb");
+    if (!file_)
+      fail("Failed to gzopen: " + path());
+  }
 };
 
 } // namespace gemmi

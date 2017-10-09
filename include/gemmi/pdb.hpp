@@ -185,15 +185,27 @@ inline int read_matrix(Mat4x4& matrix, char* line, int len) {
 
 }  // namespace pdb_impl
 
+// overloaded for gzFile in gz.hpp
+size_t copy_line_from_stream(char* line, int size, FILE* f) {
+  if (!fgets(line, size, f))
+    return 0;
+  size_t len = std::strlen(line);
+  // If a line is longer than size we discard the rest of it.
+  if (len > 0 && line[len-1] != '\n')
+    for (int c = fgetc(f); c != 0 && c != EOF && c != '\n'; c = fgetc(f))
+      continue;
+  return len;
+}
 
-template<typename InputType>
-Structure read_pdb_from_line_input(InputType&& in) {
+template<typename Input>
+Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   using namespace pdb_impl;
-  auto wrong = [&in](const std::string& msg) {
-    fail("Problem in line " + std::to_string(in.line_num()) + ": " + msg);
+  int line_num = 0;
+  auto wrong = [&line_num](const std::string& msg) {
+    fail("Problem in line " + std::to_string(line_num) + ": " + msg);
   };
   Structure st;
-  st.name = gemmi::path_basename(in.source);
+  st.name = gemmi::path_basename(source);
   std::vector<std::string> has_ter;
   Model *model = st.find_or_add_model("1");
   Chain *chain = nullptr;
@@ -201,7 +213,8 @@ Structure read_pdb_from_line_input(InputType&& in) {
   EntitySetter ent_setter(st);
   char line[88] = {0};
   Mat4x4 matrix = linalg::identity;
-  while (size_t len = in.copy_line(line, 82)) {
+  while (size_t len = copy_line_from_stream(line, 82, infile)) {
+    ++line_num;
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
       if (len < 77) // should we allow missing element
         wrong("The line is too short to be correct:\n" + std::string(line));
@@ -366,36 +379,18 @@ Structure read_pdb_from_line_input(InputType&& in) {
   return st;
 }
 
-inline Structure read_pdb_from_cstream(FILE* f, std::string source) {
-  gemmi::CstreamLineInput input(f, source);
-  return read_pdb_from_line_input(input);
-}
-
-/*
-inline Structure read_pdb_from_istream(std::istream &is) {
-  IstreamLineInput input(is);
-  return read_pdb_from_line_input(input);
-}
-
-inline Structure read_pdb_from_memory(const char* data, size_t size) {
-  MemoryLineInput input(data, size);
-  return read_pdb_from_line_input(input);
-}
-*/
-
-
 inline Structure read_pdb_file(const std::string& path) {
   auto f = gemmi::file_open(path.c_str(), "r");
-  return read_pdb_from_cstream(f.get(), path);
+  return read_pdb_from_line_input(f.get(), path);
 }
 
 // A function for transparent reading of stdin and/or gzipped files.
 template<typename T>
 inline Structure read_pdb(T&& input) {
   if (input.is_stdin())
-    return read_pdb_from_cstream(stdin, "stdin");
-  if (input.is_special())
-    return read_pdb_from_line_input(input.line_input());
+    return read_pdb_from_line_input(stdin, "stdin");
+  if (auto line_input = input.prepare_lines())
+    return read_pdb_from_line_input(line_input, input.path());
   return read_pdb_file(input.path());
 }
 
