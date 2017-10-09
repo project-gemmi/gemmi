@@ -203,11 +203,11 @@ Python
     8
     >>>
     >>> # iterate over tabulated space-group settings
-    >>> for sg in gemmi.table():
+    >>> for sg in gemmi.spacegroup_table():
     ...   if sg.ccp4 != 0:
     ...     assert sg.ccp4 % 1000 == sg.number
     ...
-    >>> max(sg.ccp4 for sg in gemmi.table())
+    >>> max(sg.ccp4 for sg in gemmi.spacegroup_table())
     5005
     >>>
     >>> # select a space group

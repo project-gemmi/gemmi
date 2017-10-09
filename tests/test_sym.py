@@ -129,7 +129,7 @@ class TestSymmetry(unittest.TestCase):
         self.compare_hall_symops_with_sgtbx('C -4 -2b')
 
     def test_table(self):
-        for sg in gemmi.table():
+        for sg in gemmi.spacegroup_table():
             if sg.ccp4 != 0:
                 self.assertEqual(sg.ccp4 % 1000, sg.number)
 
@@ -143,6 +143,7 @@ class TestSymmetry(unittest.TestCase):
         check_xhm('R 3 2', 'R 3 2:H')
         check_xhm('R 3 2', 'R 3 2:H')
         check_xhm('R32:H', 'R 3 2:H')
+        check_xhm('H32', 'R 3 2:H')
         check_xhm('R 3 2:R', 'R 3 2:R')
         check_xhm('P6', 'P 6')
         check_xhm('P 6', 'P 6')
@@ -155,6 +156,23 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(gemmi.find_spacegroup_by_number(5).hm, 'C 1 2 1')
         self.assertEqual(gemmi.SpaceGroup(4005).hm, 'I 1 2 1')
         self.assertIsNone(gemmi.find_spacegroup_by_name('abc'))
+
+    def test_short_name(self):
+        for (longer, shorter) in [('P 21 2 21', 'P21221'),
+                                  ('P 1 2 1',   'P2'),
+                                  ('P 1',       'P1'),
+                                  ('R 3 2:R',   'R32'),
+                                  ('R 3 2:H',   'H32')]:
+            self.assertEqual(gemmi.SpaceGroup(longer).short_name(), shorter)
+
+    def compare_short_names_with_symop_lib():
+        for line in open('symop.lib'):
+            if line and not line[0].isspace():
+                fields = line.partition('!')[0].split(None, 6)
+                #spacegroups = shlex.split(fields[-1])
+                g = gemmi.find_spacegroup_by_number(int(fields[0]))
+                if fields[3] != g.short_name():
+                    print('[%s] %s %s' % (g.xhm(), g.short_name(), fields[3]))
 
     def test_operations(self):
         gops = gemmi.symops_from_hall('-P 2a 2ac (z,x,y)')

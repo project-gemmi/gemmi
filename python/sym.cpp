@@ -117,9 +117,11 @@ void add_symmetry(py::module& m) {
     .def_readonly("qualifier", &SpaceGroup::qualifier, "e.g. 'cab'")
     .def_readonly("hall", &SpaceGroup::hall, "Hall symbol")
     .def("xhm", &SpaceGroup::xhm, "extended Hermann-Mauguin name")
+    .def("short_name", &SpaceGroup::short_name,
+         "H-M name w/o spaces and with 1's removed in '1 ... 1'.")
     .def("operations", &SpaceGroup::operations, "Group of operations");
 
-  m.def("table", []() {
+  m.def("spacegroup_table", []() {
             return py::make_iterator(spacegroup_tables::main);
         }, py::return_value_policy::reference);
   m.def("generators_from_hall", &generators_from_hall, py::arg("hall"),

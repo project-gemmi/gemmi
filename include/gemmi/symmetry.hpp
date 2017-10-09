@@ -9,7 +9,7 @@
 #include <cstdlib>    // for strtol
 #include <cstring>    // for memchr, strchr, strlen
 #include <array>
-#include <algorithm>  // for count, sort
+#include <algorithm>  // for count, sort, remove
 #include <functional> // for hash
 #include <stdexcept>  // for runtime_error, invalid_argument
 #include <string>
@@ -621,6 +621,19 @@ struct SpaceGroup { // typically 40 bytes
 
   std::string colon_ext() const { return ext ? std::string(":") + ext : ""; }
   std::string xhm() const { return hm + colon_ext(); }
+
+  // P 1 2 1 -> P2, but P 1 1 2 -> P112. R 3:H -> H3.
+  std::string short_name() const {
+    std::string s(hm);
+    size_t len = s.size();
+    if (len > 6 && s[2] == '1' && s[len - 2] == ' ' && s[len - 1] == '1')
+      s = s[0] + s.substr(4, len - 4 - 2);
+    if (ext == 'H')
+      s[0] = 'H';
+    s.erase(std::remove(s.begin(), s.end(), ' '), s.end());
+    return s;
+  }
+
   GroupOps operations() const { return symops_from_hall(hall); }
 };
 
@@ -1241,8 +1254,9 @@ inline const SpaceGroup& get_spacegroup_by_number(int ccp4) {
   return *sg;
 }
 
-inline const SpaceGroup* find_spacegroup_by_name(const std::string& name)
-                                                                  noexcept {
+inline const SpaceGroup* find_spacegroup_by_name(std::string name) noexcept {
+  if (name[0] == 'H')
+    name[0] = 'R';
   const char* p = impl::skip_blank(name.c_str());
   if (*p >= '0' && *p <= '9') { // handle numbers
     char *endptr;
