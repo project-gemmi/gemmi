@@ -5,6 +5,7 @@ a.out
 /build
 /dist
 /gemmi.egg-info
+CMakeFiles
 tags
 /docs/_build
 src/gemmi-convert

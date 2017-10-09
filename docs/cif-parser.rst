@@ -202,17 +202,10 @@ Additionally, DDL2 dictionaries can specify subtypes of the standard CIF types,
 for example ``int`` and ``float`` are mmCIF subtypes of a generic CIF ``numb``.
 
 Let us start with a simple example.
-This code reads mmCIF file and shows weights of the chemical components::
+This code reads mmCIF file and shows weights of the chemical components:
 
-    #include <iostream>
-    #include <gemmi/cif.hpp>
-
-    int main() {
-      gemmi::cif::Document doc("1mru.cif");
-      for (const gemmi::cif::Block& block : doc.blocks)
-        for (const auto& cc : block.find("_chem_comp.", {"id", "formula_weight"}))
-          std::cout << cc[0] << " weights " << cc[1] << std::endl;
-    }
+.. literalinclude:: doc_cif_cc.cpp
+   :language: cpp
 
 Reading a file
 --------------
