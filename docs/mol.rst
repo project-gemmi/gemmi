@@ -35,7 +35,7 @@ C++
 Python
 ------
 
-.. code-block:: pycon
+.. doctest::
 
     >>> import gemmi
     >>> gemmi.Element('Mg').weight

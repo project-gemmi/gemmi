@@ -73,8 +73,10 @@ The operations are equivalent to
 * or to a single 4x4 transformation matrix (which in crystallography
   is called *Seitz matrix*).
 
-.. code-block:: pycon
+.. doctest::
+    :options: +NORMALIZE_WHITESPACE
 
+    >>> import gemmi
     >>> gemmi.Op('x,-y,z+1/3').seitz()
     [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 1, Fraction(1, 3)], [0, 0, 0, 1]]
     >>> gemmi.Op('x,-y,z+1/3').float_seitz()
@@ -184,7 +186,7 @@ C++
 Python
 ======
 
-.. code-block:: pycon
+.. doctest::
 
     >>> import gemmi
     >>>
@@ -218,7 +220,7 @@ Python
     >>>
     >>> ops = gemmi.find_spacegroup_by_name('I2').operations()
     >>> for op in ops:
-    ...   print op.triplet()
+    ...   print(op.triplet())
     ...
     x,y,z
     -x,y,-z

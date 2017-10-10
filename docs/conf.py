@@ -57,3 +57,12 @@ latex_documents = [
      u'Marcin Wojdyr', 'manual'),
 ]
 
+
+# monkey-patch doctest to set the language
+import sphinx.ext.doctest
+
+def DoctestDirective_run(self):
+    nodes = sphinx.ext.doctest.TestDirective.run(self)
+    nodes[0]['language'] = 'pycon'
+    return nodes
+sphinx.ext.doctest.DoctestDirective.run = DoctestDirective_run
