@@ -183,6 +183,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     }
     Atom atom;
     atom.name = as_string(row[kAtomId]);
+    atom.group = 0;
     atom.altloc = as_string(row[kAltId])[0];
     atom.charge = cif::is_null(row[kCharge]) ? 0 : cif::as_int(row[kCharge]);
     atom.element = gemmi::Element(as_string(row[kSymbol]));

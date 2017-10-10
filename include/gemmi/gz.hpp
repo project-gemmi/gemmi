@@ -33,21 +33,15 @@ inline size_t estimate_uncompressed_size(const std::string& path) {
   return orig_size;
 }
 
-
-size_t copy_line_from_stream(char* line, int size, gzFile f) {
-  if (!gzgets(f, line, size))
-    return 0;
-  size_t len = std::strlen(line);
-  // If a line is longer than size we discard the rest of it.
-  if (len > 0 && line[len-1] != '\n')
-    for (int c = gzgetc(f); c != 0 && c != -1 && c != '\n'; c = gzgetc(f))
-      continue;
-  return len;
-}
-
-
 class MaybeGzipped : public MaybeStdin {
 public:
+  struct GzInput {
+    gzFile f;
+    explicit operator bool() const { return f; }
+    char* gets(char* line, int size) { return gzgets(f, line, size); }
+    int getc() { return gzgetc(f); }
+  };
+
   explicit MaybeGzipped(const std::string& path)
     : MaybeStdin(path), mem_size_(0), file_(nullptr) {}
   ~MaybeGzipped() {
@@ -76,14 +70,14 @@ public:
     return mem;
   }
 
-  gzFile prepare_lines() {
+  GzInput get_line_stream() {
     if (!is_compressed())
-      return nullptr;
+      return GzInput{nullptr};
     open();
 #if ZLIB_VERNUM >= 0x1235
     gzbuffer(file_, 64*1024);
 #endif
-    return file_;
+    return GzInput{file_};
   }
 
 private:

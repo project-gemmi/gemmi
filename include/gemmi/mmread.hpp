@@ -6,6 +6,7 @@
 #define GEMMI_MMREAD_HPP_
 
 #include "model.hpp"
+#include "cif.hpp"
 #include "mmcif.hpp"
 #include "pdb.hpp"
 #include "json.hpp"  // mmJSON

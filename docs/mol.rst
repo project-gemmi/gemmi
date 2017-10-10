@@ -6,8 +6,9 @@ This part of the Gemmi library is for handling structural models of
 biomolecules.
 
 The first prerequisite for this is reading and writing popular file
-formats. Then we have functions to access and manipulate
-the structure in the usual Model-Chain-Residue-Atom hierarchy.
+formats. The content of a file is stored as a ``Structure`` object,
+with the usual Model-Chain-Residue-Atom hierarchy.
+Then we have functions to access and manipulate the structure.
 Finally, with time we will grow a toolset of higher-level functionality:
 calculation of various metrics, ready-to-use complex operations, etc.
 
@@ -23,7 +24,7 @@ Elements
 ========
 
 When working with molecular structures it is good to have a basic data
-from periodic table at hand.
+from the periodic table at hand.
 
 C++
 ---
@@ -58,17 +59,62 @@ Gemmi support the following coordinate file formats:
 
 The next sections discuss details of the individual formats
 and functions specific to them.
-We also have a generic ``read`` and ``write`` functions that handle
+We also have a generic read/write functions that handle
 all the supported formats, with the format either specified
 or inferred from the file extension.
 
 Generic access
 --------------
 
+C++
+~~~
+
+Any of the macromolecular coordinate files supported by Gemmi can be opened
+using::
+
+    #include <gemmi/mmread.hpp>
+    // ...
+    gemmi::Structure st = gemmi::read_structure_file(path);
+    std::cout << "This file has " << st.models.size() << " models.\n";
+
+``gemmi::Structure`` is documented :ref:`further on <mcra>`.
+
+The file format above is determined from the file extension.
+Alternatively, the format can be specified as the second argument
+of ``read_structure_file``, one of the enumeration values::
+
+    enum class CoorFormat { Unknown, Pdb, Cif, Json };
+
+Gemmi also has a templated function ``read_structure`` that you can use
+to customize how you provide the data (bytes) to the parsers.
+This function is used to uncompress gzipped files on the fly:
+
+.. literalinclude:: doc_maybegz.cpp
+   :language: cpp
+
+If you include the :file:`gz.hpp` header (as in the example above)
+the resulting program must be linked with the zlib library.
+
+.. code-block:: console
+
+    $ c++ -std=c++11 -Iinclude -Ithird_party example_above.cpp -lz
+    $ ./a.out 2cco.cif.gz
+    This file has 20 models.
+
+The :file:`gemmi/mmread.hpp` header includes many other headers
+and is relatively slow to compile. If this matters it is recommended
+to include this header in only one ``cpp`` file,
+and in other files use only :file:`gemmi/model.hpp`.
+
+TODO: generic write functions
+
+Python
+~~~~~~
+
 TODO
 
-The data read from a file is kept in a ``Structure``,
-which is documented :ref:`further on <mcra>`.
+``gemmi.Structure`` is documented :ref:`further on <mcra>`.
+
 
 PDBx/mmCIF format
 -----------------
@@ -144,24 +190,67 @@ PDB insertion code.
 C++
 ~~~
 
-CIF-based interface
-
-Structure-based interface
-
-combination of both
-
-Structural models from a file are stored in ``Structure``.
-
-Other details from mmCIF, such as literature citations,
-can be accessed through a generic CIF interface (``cif::Block``).
+Reading mmCIF files is done in two stages:
+file → ``cif::Document`` → ``Structure``.
+The same with writing: first a ``cif::Document`` is created or updated
+using the data from ``Structure``, and then it is written to disk.
 
 ::
 
-    #include <gemmi/mmcif.hpp>     // to read
-    #include <gemmi/gz.hpp>        // to uncompress on the fly
-    #include <gemmi/to_mmcif.hpp>  // to write
+    #include <gemmi/cif.hpp>       // file -> cif::Document
+    #include <gemmi/gz.hpp>        // uncompressing on the fly
+    #include <gemmi/mmcif.hpp>     // read_atoms(cif::Document&) -> Structure
+    #include <gemmi/to_mmcif.hpp>  // update_cif_block()
+    #include <gemmi/to_cif.hpp>    // cif::Document -> file
+
+    // TODO
+
+``cif::Document`` can be used to access meta-data,
+such as the details of the experiment or software used for data processing.
+The examples are provided in the :ref:`CIF parser <cif_examples>` section.
+
+Python
+~~~~~~
+
+.. code-block:: python
+
+    import gemmi
 
 TODO
+
+
+mmJSON format
+-------------
+
+The mmJSON_ format is a JSON representation of the mmCIF data.
+It is available from PDBj:
+
+.. code-block:: none
+
+    curl -o 5MOO.json.gz 'https://pdbj.org/rest/downloadPDBfile?id=5MOO&format=mmjson-all'
+
+Gemmi can read and write files in this format into ``cif::Document``,
+which then can be used to prepare ``Structure`` as described
+in the mmCIF section.
+
+.. _mmJSON: https://pdbj.org/help/mmjson?lang=en
+
+C++
+~~~
+
+::
+
+    #include <gemmi/json.hpp>     // to read
+    #include <gemmi/gz.hpp>       // to uncompress on the fly
+    #include <gemmi/to_json.hpp>  // to write
+
+    namespace cif = gemmi::cif;
+
+    cif::Document a = cif::read_mmjson_file(path_a);
+    cif::Document b = cif::read_mmjson(gemmi::MaybeGzipped(path_b));
+    // ... the next steps are the same as for mmCIF
+
+    // TODO: writing
 
 Python
 ~~~~~~
@@ -215,44 +304,6 @@ Python
 TODO
 
 
-mmJSON format
--------------
-
-The mmJSON_ format is a JSON representation of the mmCIF data.
-It is available from PDBj:
-
-.. code-block:: none
-
-    curl -o 5MOO.json.gz 'https://pdbj.org/rest/downloadPDBfile?id=5MOO&format=mmjson-all'
-
-Gemmi can read and write files in this format in a similar way as it reads
-and write mmCIF files.
-
-.. _mmJSON: https://pdbj.org/help/mmjson?lang=en
-
-C++
-~~~
-
-::
-
-    #include <gemmi/json.hpp>     // to read
-    #include <gemmi/gz.hpp>       // to uncompress on the fly
-    #include <gemmi/to_json.hpp>  // to write
-
-    gemmi::Document = gemmi::read_mmjson_file(path);
-    gemmi::Document = gemmi::read_mmjson(MaybeGzipped(path));
-
-TODO
-
-Python
-~~~~~~
-
-.. code-block:: python
-
-    import gemmi
-
-TODO
-
 .. _mcra:
 
 Model - Chain - Residue - Atom
@@ -292,17 +343,22 @@ documentation says that
 "about 90% of the development time invested into iotbx.pdb was in some form
 related to alternative conformations".
 
-to be continued...
+We have not made such a time investment yet.
+For now, gemmi simply provides the *altLoc* field and
+leaves handling of the alternative conformations
+to the applications.
 
 C++
 ---
 
-::
+Everything will be documented later on.
 
-    #include <gemmi/mmread.hpp> // to read/write all the supported formats
-    #include <gemmi/gz.hpp>     // to uncompress on the fly
+Here is a minimal example that shows the hierarchy and properties
+of each object.
 
-    gemmi::Structure = gemmi::read(path);
+.. literalinclude:: doc_structure.cpp
+   :language: cpp
+
 
 TODO
 
@@ -319,6 +375,10 @@ Selections
 ==========
 
 TODO
+
+MMDB selection language.
+
+And perhaps something else (selections used in JMol or PyMOL?)
 
 
 Sequence

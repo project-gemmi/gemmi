@@ -46,7 +46,7 @@ struct Chain;
 struct Residue;
 
 // File format with macromolecular model.
-enum class CoorFormat { Pdb, Cif, Json, Unknown };
+enum class CoorFormat { Unknown, Pdb, Cif, Json };
 
 enum class EntityType : unsigned char {
   Unknown,
@@ -150,6 +150,7 @@ inline PolymerType polymer_type_from_string(const std::string& t) {
 
 struct Atom {
   std::string name;
+  char group;
   char altloc;
   signed char charge;  // [-8, +8]
   gemmi::Element element = gemmi::El::X;

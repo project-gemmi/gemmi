@@ -136,6 +136,7 @@ public:
   const std::string& path() const { return path_; };
   size_t mem_size() const { return 0; };
   std::unique_ptr<char[]> memory() { return nullptr; }
+  bool get_line_stream() const { return false; }
 private:
   std::string path_;
 };

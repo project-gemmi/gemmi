@@ -183,16 +183,21 @@ inline int read_matrix(Mat4x4& matrix, char* line, int len) {
   return n;
 }
 
-}  // namespace pdb_impl
+struct FileInput {
+  std::FILE* f;
+  char* gets(char* line, int size) { return std::fgets(line, size, f); }
+  int getc() { return std::fgetc(f); }
+};
 
 // overloaded for gzFile in gz.hpp
-size_t copy_line_from_stream(char* line, int size, FILE* f) {
-  if (!fgets(line, size, f))
+template<typename Input>
+inline size_t copy_line_from_stream(char* line, int size, Input&& in) {
+  if (!in.gets(line, size))
     return 0;
   size_t len = std::strlen(line);
   // If a line is longer than size we discard the rest of it.
   if (len > 0 && line[len-1] != '\n')
-    for (int c = fgetc(f); c != 0 && c != EOF && c != '\n'; c = fgetc(f))
+    for (int c = in.getc(); c != 0 && c != EOF && c != '\n'; c = in.getc())
       continue;
   return len;
 }
@@ -245,6 +250,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
       Atom atom;
       atom.name = read_string(line+12, 4);
+      atom.group = line[0] & ~0x20;
       atom.altloc = line[16] == ' ' ? '\0' : line[16];
       atom.charge = (len > 78 ? read_charge(line[78], line[79]) : 0);
       atom.element = gemmi::Element(line+76);
@@ -379,18 +385,20 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   return st;
 }
 
+}  // namespace pdb_impl
+
 inline Structure read_pdb_file(const std::string& path) {
   auto f = gemmi::file_open(path.c_str(), "r");
-  return read_pdb_from_line_input(f.get(), path);
+  return read_pdb_from_line_input(pdb_impl::FileInput{f.get()}, path);
 }
 
 // A function for transparent reading of stdin and/or gzipped files.
 template<typename T>
 inline Structure read_pdb(T&& input) {
   if (input.is_stdin())
-    return read_pdb_from_line_input(stdin, "stdin");
-  if (auto line_input = input.prepare_lines())
-    return read_pdb_from_line_input(line_input, input.path());
+    return read_pdb_from_line_input(pdb_impl::FileInput{stdin}, "stdin");
+  if (auto line_input = input.get_line_stream())
+    return pdb_impl::read_pdb_from_line_input(line_input, input.path());
   return read_pdb_file(input.path());
 }
 
