@@ -21,7 +21,7 @@ namespace cif = gemmi::cif;
 namespace rules = gemmi::cif::rules;
 
 
-enum OptionIndex { FromFile=3, Recurse, MaxCount, OneBlock,
+enum OptionIndex { FromFile=3, Recurse, MaxCount, OneBlock, And,
                    WithFileName, NoBlockName, WithLineNumbers, WithTag,
                    Summarize, MatchingFiles, NonMatchingFiles, Count, Raw };
 
@@ -41,6 +41,8 @@ const option::Descriptor Usage[] = {
     "  -m, --max-count=NUM  \tprint max NUM values per file" },
   { OneBlock, 0, "O", "one-block", Arg::None,
     "  -O, --one-block  \toptimize assuming one block per file" },
+  { And, 0, "a", "and", Arg::Required,
+    "  -a, --and=tag  \tAppend separator ';' and the value of this tag" },
   { WithLineNumbers, 0, "n", "line-number", Arg::None,
     "  -n, --line-number  \tprint line number with output lines" },
   { WithFileName, 0, "H", "with-filename", Arg::None,
@@ -77,16 +79,19 @@ struct Parameters {
   bool inverse = false;  // for now it refers to only_filenames only
   bool print_count = false;
   bool raw = false;
+  std::vector<std::string> multi_tags;
   // working parameters
   const char* path = "";
   std::string block_name;
-  bool match_value = false;
+  int match_value = 0;
   int match_column = -1;
   int table_width = 0;
   int column = 0;
   int counter = 0;
   size_t total_count = 0;
   bool last_block = false;
+  std::vector<int> multi_match_columns;
+  std::vector<std::vector<std::string>> multi_values;
 };
 
 template<typename Input>
@@ -109,6 +114,36 @@ void process_match(const Input& in, Parameters& par) {
   printf("%s\n", (par.raw ? in.string() : cif::as_string(in.string())).c_str());
   if (par.counter == par.max_count)
     throw true;
+}
+
+void process_multi_match(Parameters& par) {
+  for (size_t i = 0; i != par.multi_values[0].size(); ++i) {
+    if (cif::is_null(par.multi_values[0][i]) && !par.raw)
+      continue;
+    ++par.counter;
+    if (par.only_filenames)
+      return;
+    if (par.print_count)
+      continue;
+    if (par.with_filename)
+      printf("%s:", par.path);
+    if (par.with_blockname)
+      printf("%s:", par.block_name.c_str());
+    if (par.with_tag)
+      printf("[%s] ", par.multi_tags[0].c_str());
+    for (size_t j = 0; j != par.multi_values.size(); ++j) {
+      if (j != 0)
+        std::putc(';', stdout);
+      const auto& v = par.multi_values[j];
+      if (!v.empty()) {
+        const std::string& s = v[i < v.size() ? i : 0];
+        printf("%s", (par.raw ? s : cif::as_string(s)).c_str());
+      }
+    }
+    std::putc('\n', stdout);
+    if (par.counter == par.max_count)
+      return;
+  }
 }
 
 static void print_count(const Parameters& par) {
@@ -140,13 +175,13 @@ template<> struct Search<rules::str_global> {
 template<> struct Search<rules::tag> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     if (p.search_tag == in.string())
-      p.match_value = true;
+      p.match_value = 1;
   }
 };
 template<> struct Search<rules::value> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     if (p.match_value) {
-      p.match_value = false;
+      p.match_value = 0;
       process_match(in, p);
       if (p.last_block)
         throw true;
@@ -188,28 +223,105 @@ template<> struct Search<rules::loop_value> {
   }
 };
 
+
+template<typename T> bool any_empty(const std::vector<T>& v) {
+  for (const T& a : v)
+    if (a.empty())
+      return false;
+  return true;
+}
+template<typename Rule> struct MultiSearch : Search<Rule> {};
+
+template<> struct MultiSearch<rules::tag> {
+  template<typename Input> static void apply(const Input& in, Parameters& p) {
+    const std::string s = in.string();
+    for (size_t i = 0; i != p.multi_tags.size(); ++i)
+      if (p.multi_tags[i] == s)
+        p.match_value = i + 1;
+  }
+};
+template<> struct MultiSearch<rules::value> {
+  template<typename Input> static void apply(const Input& in, Parameters& p) {
+    if (p.match_value) {
+      p.multi_values[p.match_value - 1].emplace_back(in.string());
+      p.match_value = 0;
+      if (p.last_block && !any_empty(p.multi_values))
+        throw true;
+    }
+  }
+};
+template<> struct MultiSearch<rules::loop_tag> {
+  template<typename Input> static void apply(const Input& in, Parameters& p) {
+    const std::string s = in.string();
+    for (size_t i = 0; i != p.multi_tags.size(); ++i)
+      if (p.multi_tags[i] == s) {
+        p.multi_match_columns[i] = p.table_width;
+        p.match_column = 0;
+        p.column = 0;
+      }
+    p.table_width++;
+  }
+};
+template<> struct MultiSearch<rules::loop_end> {
+  template<typename Input> static void apply(const Input&, Parameters& p) {
+    if (p.match_column == 0) {
+      p.match_column = -1;
+      for (int& c : p.multi_match_columns)
+        c = -1;
+      if (p.last_block && !any_empty(p.multi_values))
+        throw true;
+    }
+  }
+};
+template<> struct MultiSearch<rules::loop_value> {
+  template<typename Input> static void apply(const Input& in, Parameters& p) {
+    if (p.match_column == 0) {
+      for (size_t i = 0; i != p.multi_values.size(); ++i)
+        if (p.column == p.multi_match_columns[i]
+            // if it's not the loop with the main tag, we need only one value
+            && (p.multi_match_columns[0] != -1 || p.multi_values[i].empty()))
+          p.multi_values[i].emplace_back(in.string());
+      p.column++;
+      if (p.column == p.table_width)
+        p.column = 0;
+    }
+  }
+};
+
+template<typename Input>
+void run_parse(Input&& in, Parameters& par) {
+  if (par.multi_tags.empty())
+    pegtl::parse<rules::file, Search, cif::Errors>(in, par);
+  else
+    pegtl::parse<rules::file, MultiSearch, cif::Errors>(in, par);
+}
+
 static
-void grep_file(const std::string& tag, const std::string& path,
-               Parameters& par) {
-  par.search_tag = tag;
+void grep_file(const std::string& path, Parameters& par) {
   par.path = path.c_str();
   par.counter = 0;
   par.match_column = -1;
-  par.match_value = false;
+  par.match_value = 0;
+  par.multi_match_columns.clear();
+  par.multi_match_columns.resize(par.multi_tags.size(), -1);
+  par.multi_values.clear();
+  par.multi_values.resize(par.multi_tags.size());
   try {
     gemmi::MaybeGzipped input(path);
     if (input.is_stdin()) {
       pegtl::cstream_input<> in(stdin, 16*1024, "stdin");
-      pegtl::parse<rules::file, Search, cif::Errors>(in, par);
+      run_parse(in, par);
     } else if (input.is_compressed()) {
       std::unique_ptr<char[]> mem = input.memory();
       pegtl::memory_input<> in(mem.get(), input.mem_size(), path);
-      pegtl::parse<rules::file, Search, cif::Errors>(in, par);
+      run_parse(in, par);
     } else {
       pegtl::file_input<> in(path);
-      pegtl::parse<rules::file, Search, cif::Errors>(in, par);
+      run_parse(in, par);
     }
   } catch (bool) {}
+  if (!par.multi_values.empty() && !par.multi_values[0].empty())
+    process_multi_match(par);
   par.total_count += par.counter;
   if (par.print_count) {
     print_count(par);
@@ -303,51 +415,68 @@ static bool is_cif_file(const tinydir_file& f) {
 }
 
 int main(int argc, char **argv) {
-  OptParser parse;
-  auto options = parse.simple_parse(argc, argv, Usage);
-  if (options[FromFile] ? parse.nonOptionsCount() != 1
-                        : parse.nonOptionsCount() < 2) {
+  OptParser p;
+  p.simple_parse(argc, argv, Usage);
+  if (p.options[FromFile] ? p.nonOptionsCount() != 1
+                          : p.nonOptionsCount() < 2) {
     option::printUsage(fwrite, stderr, Usage);
     return 2;
   }
 
   Parameters params;
-  if (options[MaxCount])
-    params.max_count = std::strtol(options[MaxCount].arg, nullptr, 10);
-  if (options[OneBlock])
+  if (p.options[MaxCount])
+    params.max_count = std::strtol(p.options[MaxCount].arg, nullptr, 10);
+  if (p.options[OneBlock])
     params.last_block = true;
-  if (options[WithFileName])
+  if (p.options[WithFileName])
     params.with_filename = true;
-  if (options[NoBlockName])
+  if (p.options[NoBlockName])
     params.with_blockname = false;
-  if (options[WithLineNumbers])
+  if (p.options[WithLineNumbers]) {
+    if (p.options[And]) {
+      fprintf(stderr, "Options --line-number and --and do not work together\n");
+      return 2;
+    }
     params.with_line_numbers = true;
-  if (options[WithTag])
+  }
+  if (p.options[WithTag])
     params.with_tag = true;
-  if (options[Summarize])
+  if (p.options[Summarize])
     params.summarize = true;
-  if (options[MatchingFiles])
+  if (p.options[MatchingFiles])
     params.only_filenames = true;
-  if (options[NonMatchingFiles]) {
+  if (p.options[NonMatchingFiles]) {
     params.only_filenames = true;
     params.inverse = true;
   }
-  if (options[Count])
+  if (p.options[Count])
     params.print_count = true;
-  if (options[Raw])
+  if (p.options[Raw])
     params.raw = true;
 
-  std::string tag = parse.nonOption(0);
-  if (tag.empty() || tag[0] != '_') {
-    fprintf(stderr, "CIF tags start with _; not a tag: %s\n", tag.c_str());
+  const char* tag = p.nonOption(0);
+  if (tag[0] != '_') {
+    fprintf(stderr, "CIF tags start with _; not a tag: %s\n", tag);
     return 2;
+  }
+  if (p.options[And]) {
+    params.multi_tags.emplace_back(tag);
+    for (const option::Option* opt = p.options[And]; opt; opt = opt->next()) {
+      if (opt->arg[0] != '_') {
+        fprintf(stderr, "CIF tags start with _; not a tag: %s\n", opt->arg);
+        return 2;
+      }
+      params.multi_tags.emplace_back(opt->arg);
+    }
+  } else {
+    params.search_tag = tag;
   }
 
   std::vector<std::string> paths;
-  if (options[FromFile]) {
-    std::FILE *f = std::fopen(options[FromFile].arg, "r");
+  if (p.options[FromFile]) {
+    std::FILE *f = std::fopen(p.options[FromFile].arg, "r");
     if (!f) {
-      std::perror(options[FromFile].arg);
+      std::perror(p.options[FromFile].arg);
       return 2;
     }
     char buf[512];
@@ -361,21 +490,21 @@ int main(int argc, char **argv) {
     }
     std::fclose(f);
   } else {
-    for (int i = 1; i < parse.nonOptionsCount(); ++i)
-      paths.emplace_back(parse.nonOption(i));
+    for (int i = 1; i < p.nonOptionsCount(); ++i)
+      paths.emplace_back(p.nonOption(i));
   }
 
   size_t file_count = 0;
   for (const std::string& path : paths) {
     try {
       if (path == "-") {
-        grep_file(tag, path, params);
+        grep_file(path, params);
         file_count++;
       } else if (is_pdb_code(path)) {
         if (const char* pdb_dir = getenv("PDB_DIR")) {
           params.last_block = true;  // PDB code implies -O
-          grep_file(tag, pdb_dir + mmcif_subpath(path), params);
-          params.last_block = options[OneBlock];
+          grep_file(pdb_dir + mmcif_subpath(path), params);
+          params.last_block = p.options[OneBlock];
         } else {
           fprintf(stderr,
                   "The argument %s is a PDB code, but $PDB_DIR is not set.\n"
@@ -387,7 +516,7 @@ int main(int argc, char **argv) {
         DirWalker walker(path.c_str());
         for (const tinydir_file& f : walker) {
           if (walker.is_file() || is_cif_file(f)) {
-            grep_file(tag, f.path, params);
+            grep_file(f.path, params);
             file_count++;
           }
         }
@@ -398,7 +527,7 @@ int main(int argc, char **argv) {
       return 2;
     }
   }
-  if (options[Summarize])
+  if (p.options[Summarize])
     printf("Total count in %zu files: %zu\n", file_count, params.total_count);
   return params.total_count != 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

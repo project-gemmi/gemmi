@@ -43,20 +43,20 @@ enum class InputType : char { Coordinates, Ccp4, Unknown };
 
 
 int main(int argc, char **argv) {
-  OptParser parse;
-  parse.exclusive_groups.push_back({Threshold, Fraction});
-  auto options = parse.simple_parse(argc, argv, Usage);
-  parse.require_positional_args(2);
-  const char* input = parse.nonOption(0);
-  const char* output = parse.nonOption(1);
+  OptParser p;
+  p.exclusive_groups.push_back({Threshold, Fraction});
+  p.simple_parse(argc, argv, Usage);
+  p.require_positional_args(2);
+  const char* input = p.nonOption(0);
+  const char* output = p.nonOption(1);
 
-  if (options[Verbose])
+  if (p.options[Verbose])
     std::fprintf(stderr, "Converting %s ...\n", input);
 
   InputType in_type = InputType::Unknown;
   gemmi::CoorFormat in_subtype = gemmi::CoorFormat::Unknown;
-  if (options[FormatIn]) {
-    const char* arg = options[FormatIn].arg;
+  if (p.options[FormatIn]) {
+    const char* arg = p.options[FormatIn].arg;
     if (strcmp(arg, "pdb") == 0) {
       in_type = InputType::Coordinates;
       in_subtype = gemmi::CoorFormat::Pdb;
@@ -88,10 +88,10 @@ int main(int argc, char **argv) {
       double threshold;
       gemmi::Grid<> grid;
       grid.read_ccp4(input);
-      if (options[Threshold]) {
-        threshold = std::strtod(options[Threshold].arg, nullptr);
-      } else if (options[Fraction]) {
-        double fraction = std::strtod(options[Fraction].arg, nullptr);
+      if (p.options[Threshold]) {
+        threshold = std::strtod(p.options[Threshold].arg, nullptr);
+      } else if (p.options[Fraction]) {
+        double fraction = std::strtod(p.options[Fraction].arg, nullptr);
         if (fraction < 0) {
           std::fprintf(stderr, "Cannot use negative fraction.\n");
           return 2;
@@ -112,15 +112,15 @@ int main(int argc, char **argv) {
 
     // model -> mask
     } else {
-      double radius = (options[Radius]
-                       ? std::strtod(options[Radius].arg, nullptr)
+      double radius = (p.options[Radius]
+                       ? std::strtod(p.options[Radius].arg, nullptr)
                        : 3.0);
 
       gemmi::Structure st = read_structure(input);
       gemmi::Grid<> grid;
       grid.unit_cell = st.cell;
-      if (options[GridDims]) {
-        auto dims = parse_comma_separated_ints(options[GridDims].arg);
+      if (p.options[GridDims]) {
+        auto dims = parse_comma_separated_ints(p.options[GridDims].arg);
         grid.set_size(dims[0], dims[1], dims[2]);
       } else {
         grid.set_spacing(1);

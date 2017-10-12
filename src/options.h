@@ -83,11 +83,10 @@ struct Arg: public option::Arg {
 };
 
 struct OptParser : option::Parser {
-  const std::vector<option::Option>&
-      simple_parse(int argc, char** argv, const option::Descriptor usage[]) {
+  void simple_parse(int argc, char** argv, const option::Descriptor usage[]) {
     if (argc < 1)
       std::exit(2);
-    option::Stats stats(usage, argc-1, argv+1);
+    option::Stats stats(/*reordering*/true, usage, argc-1, argv+1);
     options.resize(stats.options_max);
     buffer.resize(stats.buffer_max);
     parse(usage, argc-1, argv+1, options.data(), buffer.data());
@@ -119,7 +118,6 @@ struct OptParser : option::Parser {
           }
         }
     }
-    return options;
   }
 
   const char* given_name(int opt) const {  // sans one dash

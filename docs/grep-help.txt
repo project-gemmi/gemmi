@@ -9,6 +9,7 @@ Options:
   -f, --file=FILE          obtain file (or PDB ID) list from FILE
   -m, --max-count=NUM      print max NUM values per file
   -O, --one-block          optimize assuming one block per file
+  -a, --and=tag            Append separator ';' and the value of this tag
   -n, --line-number        print line number with output lines
   -H, --with-filename      print the file name for each match
   -b, --no-blockname       suppress the block name on output

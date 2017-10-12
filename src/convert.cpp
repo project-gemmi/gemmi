@@ -421,12 +421,12 @@ void convert(const std::string& input, FileType input_type,
 
 int main(int argc, char **argv) {
   std::ios_base::sync_with_stdio(false);
-  OptParser parse;
-  auto options = parse.simple_parse(argc, argv, Usage);
-  parse.require_positional_args(2);
+  OptParser p;
+  p.simple_parse(argc, argv, Usage);
+  p.require_positional_args(2);
 
-  std::string input = parse.nonOption(0);
-  const char* output = parse.nonOption(1);
+  std::string input = p.nonOption(0);
+  const char* output = p.nonOption(1);
 
   std::map<std::string, FileType> filetypes {{"json", FileType::Json},
                                              {"pdb", FileType::Pdb},
@@ -434,8 +434,8 @@ int main(int argc, char **argv) {
                                              {"crd", FileType::Crd},
                                              {"none", FileType::Null}};
 
-  FileType in_type = options[FormatIn] ? filetypes[options[FormatIn].arg]
-                                       : get_format_from_extension(input);
+  FileType in_type = p.options[FormatIn] ? filetypes[p.options[FormatIn].arg]
+                                         : get_format_from_extension(input);
   if (in_type == FileType::Unknown && is_pdb_code(input)) {
     if (const char* pdb_dir = getenv("PDB_DIR")) {
       in_type = FileType::Cif;
@@ -448,18 +448,18 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  FileType out_type = options[FormatOut] ? filetypes[options[FormatOut].arg]
-                                         : get_format_from_extension(output);
+  FileType out_type = p.options[FormatOut] ? filetypes[p.options[FormatOut].arg]
+                                           : get_format_from_extension(output);
   if (out_type == FileType::Unknown) {
     std::cerr << "The output format cannot be determined from output"
                  " filename. Use option --to.\n";
     return 1;
   }
-  if (options[Verbose])
+  if (p.options[Verbose])
     std::cerr << "Converting " << input << " ..." << std::endl;
 
   try {
-    convert(input, in_type, output, out_type, options);
+    convert(input, in_type, output, out_type, p.options);
   } catch (tao::pegtl::parse_error& e) {
     std::cerr << e.what() << std::endl;
     return 1;

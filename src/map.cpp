@@ -124,18 +124,18 @@ void print_info(const gemmi::Grid<T>& grid) {
 }
 
 int main(int argc, char **argv) {
-  OptParser parse;
-  auto options = parse.simple_parse(argc, argv, Usage);
-  bool verbose = options[Verbose];
+  OptParser p;
+  p.simple_parse(argc, argv, Usage);
+  bool verbose = p.options[Verbose];
 
-  if (parse.nonOptionsCount() == 0) {
+  if (p.nonOptionsCount() == 0) {
     std::fprintf(stderr, "No input files. Nothing to do.\n");
     return 0;
   }
 
   try {
-    for (int i = 0; i < parse.nonOptionsCount(); ++i) {
-      const char* input = parse.nonOption(i);
+    for (int i = 0; i < p.nonOptionsCount(); ++i) {
+      const char* input = p.nonOption(i);
       gemmi::Grid<> grid;
       if (verbose)
         std::fprintf(stderr, "Reading %s ...\n", input);

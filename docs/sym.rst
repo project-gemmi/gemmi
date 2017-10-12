@@ -124,8 +124,7 @@ and so-called *centring vectors* (max. 4 for the face-centered lattice).
 
 * Actually all the operations can be generated from only a few generators,
   at the expense of more complex code.
-  This approach is used in Mantid_ (triplets are tabulated in
-  :file:`SpaceGroupFactory.cpp`).
+  Example: Mantid_ (:file:`SpaceGroupFactory.cpp`).
 
 * Finally, one can use one of the two computer-adapted descriptions from ITfC.
   The so-called explicit notation (``ICC$I3Q000$P4C393$P2D933``) is the

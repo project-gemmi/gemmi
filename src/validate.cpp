@@ -135,31 +135,31 @@ int main(int argc, char **argv) {
   tao::pegtl::analyze<cif::rules::file>();
   tao::pegtl::analyze<cif::numb_rules::numb>();
 #endif
-  OptParser parse;
-  auto options = parse.simple_parse(argc, argv, Usage);
-  if (parse.nonOptionsCount() == 0) {
+  OptParser p;
+  p.simple_parse(argc, argv, Usage);
+  if (p.nonOptionsCount() == 0) {
     option::printUsage(std::cout, Usage);
     return 0;
   }
 
-  bool quiet = options[Quiet];
+  bool quiet = p.options[Quiet];
   bool total_ok = true;
-  for (int i = 0; i < parse.nonOptionsCount(); ++i) {
-    const char* path = parse.nonOption(i);
+  for (int i = 0; i < p.nonOptionsCount(); ++i) {
+    const char* path = p.nonOption(i);
     std::string msg;
     bool ok = true;
     try {
-      if (options[Fast]) {
+      if (p.options[Fast]) {
         ok = cif::check_syntax_any(gemmi::MaybeGzipped(path), &msg);
       } else {
         cif::Document d = cif::read(gemmi::MaybeGzipped(path));
-        if (options[Types])
+        if (p.options[Types])
           infer_valtypes(d);
-        if (options[Stat])
+        if (p.options[Stat])
           msg = token_stats(d);
-        if (options[Ddl]) {
+        if (p.options[Ddl]) {
           cif::DDL dict;
-          for (option::Option* ddl = options[Ddl]; ddl; ddl = ddl->next())
+          for (option::Option* ddl = p.options[Ddl]; ddl; ddl = ddl->next())
             dict.open_file(ddl->arg);
           std::string ver_msg;
           dict.check_audit_conform(d, &ver_msg);

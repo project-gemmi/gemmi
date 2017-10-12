@@ -119,11 +119,11 @@ TODO
 PDBx/mmCIF format
 -----------------
 
-While this part of Gemmi provide higher-level API to work with
-molecular models, in some situation it is still necessary to understand
-the design of the underlying file format.
+Although the model-chain-residue-atom API abstracts details of
+the underlying files, sometimes one needs to know the quirks of the file
+format that is being used.
 
-The main characteristics of the syntax are described in the
+The main characteristics of the CIF syntax are described in the
 :ref:`CIF introduction <cif_intro>`.
 Here we focus on things specific to mmCIF/DDL2:
 
