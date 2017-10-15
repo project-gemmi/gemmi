@@ -164,6 +164,8 @@ struct Element {
   explicit Element(const std::string& s) noexcept : Element(s.c_str()) {}
   explicit Element(int number) noexcept
     : elem(static_cast<El>(number > 0 && number <= 118 ? number : 0)) {}
+  bool operator==(El e) const { return elem == e; }
+  bool operator!=(El e) const { return elem != e; }
 
   int atomic_number() const {
     return elem == El::D ? 1 : static_cast<int>(elem);

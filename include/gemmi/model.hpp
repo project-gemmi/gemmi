@@ -6,7 +6,7 @@
 #define GEMMI_MODEL_HPP_
 
 #include <algorithm>  // for find_if
-#include <cstring>    // for strchr, size_t
+#include <cstring>    // for size_t
 #include <map>        // for map
 #include <memory>     // for unique_ptr
 #include <string>
@@ -182,6 +182,9 @@ struct Residue : public ResidueId {
   int seq_id_for_pdb() const {
     return auth_seq_id != UnknownId ? auth_seq_id : seq_id;
   }
+  bool is_water() const {
+    return name == "HOH" || name == "WAT" || name == "H20";
+  }
   bool has_standard_pdb_name() const;
   std::vector<Atom>& children() { return atoms; }
   const std::vector<Atom>& children() const { return atoms; }
@@ -298,27 +301,31 @@ inline Residue* Chain::find_or_add_residue(const ResidueId& rid) {
   return &residues.back();
 }
 
+// PDB format has "standard" residues marked as ATOM, others as HETATM.
 inline bool Residue::has_standard_pdb_name() const {
 #define SR(s) int(#s[0] << 16 | #s[1] << 8 | #s[2])
-  const int standard_aa[26] = {
+  static const int standard_aa[26] = {
     SR(ALA), SR(ARG), SR(ASN), SR(ASP), SR(ASX), SR(CYS), SR(GLN), SR(GLU),
     SR(GLX), SR(GLY), SR(HIS), SR(ILE), SR(LEU), SR(LYS), SR(MET), SR(PHE),
     SR(PRO), SR(SER), SR(THR), SR(TRP), SR(TYR), SR(UNK), SR(VAL), SR(SEC),
     SR(PYL), 0
   };
+#undef SR
   if (name.size() == 3) {
     int n = name[0] << 16 | name[1] << 8 | name[2];
     for (int i = 0; i < 26; i++)
       if (standard_aa[i] == n)
         return true;
-    //return std::find(standard_aa, standard_aa + 26, name) != standard_aa + 26;
+    //return std::find(standard_aa, standard_aa + 26, n) != standard_aa + 26;
   } else if (name.size() == 1) {
-    return std::strchr("ACGITU", name[0]) != nullptr;
+    return name[0] == 'A' || name[0] == 'C' || name[0] == 'G' ||
+           name[0] == 'I' || name[0] == 'T' || name[0] == 'U';
   } else if (name.size() == 2) {
-    return (name[0] == '+' || name[0] == 'D') && std::strchr("ACGITU", name[1]) != nullptr;
+    return (name[0] == '+' || name[0] == 'D') &&
+           (name[1] == 'A' || name[1] == 'C' || name[1] == 'G' ||
+            name[1] == 'I' || name[1] == 'T' || name[1] == 'U');
   }
   return false;
-#undef SR
 }
 
 

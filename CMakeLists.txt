@@ -54,6 +54,9 @@ target_link_libraries(gemmi-mask ZLIB::ZLIB)
 
 add_executable(gemmi-sg src/sg.cpp)
 
+add_executable(gemmi-contents src/contents.cpp $<TARGET_OBJECTS:input>)
+target_link_libraries(gemmi-contents ZLIB::ZLIB)
+
 if (benchmark_FOUND)
   foreach(b bench_elem bench_mod bench_sym)
     add_executable(${b} tools/${b}.cpp)

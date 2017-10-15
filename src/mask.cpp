@@ -6,7 +6,7 @@
 #define EXE_NAME "gemmi-mask"
 #include "options.h"
 
-enum OptionIndex { Verbose=3, FormatIn, Threshold, Fraction, GridDims, Radius};
+enum OptionIndex { Verbose=3, FormatIn, Threshold, Fraction, GridDims, Radius };
 
 struct MaskArg {
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {

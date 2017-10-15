@@ -303,6 +303,8 @@ struct GroupOps {
   std::vector<Op> sym_ops;
   std::vector<Op::Tran> cen_ops;
 
+  int order() const { return sym_ops.size() * cen_ops.size(); }
+
   void add_missing_elements();
 
   char find_centering() const {
