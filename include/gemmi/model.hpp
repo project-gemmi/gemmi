@@ -168,7 +168,7 @@ struct ResidueInfo {
   // PDB format has non-standard residues (modified AA) marked as HETATM.
   bool pdb_standard;
   // rough count of hydrogens used to estimate mass with implicit hydrogens
-  short hyderogen_count;
+  short hydrogen_count;
 
   bool is_water() const { return kind == HOH; }
   bool is_nucleic() const { return kind & NA; }
@@ -214,6 +214,7 @@ inline const ResidueInfo find_tabulated_residue(const std::string& name) {
       case ID("H20"): return { ResidueInfo::HOH, false, 2 };
       case ID("HEM"): return { ResidueInfo::ELS, false,30 };
       case ID("SO4"): return { ResidueInfo::ELS, false, 0 };
+      case ID("SUL"): return { ResidueInfo::ELS, false, 0 };
     }
 #undef ID
   } else if (name.size() == 1) {
@@ -264,6 +265,12 @@ struct Residue : public ResidueId {
   std::vector<Atom>& children() { return atoms; }
   const std::vector<Atom>& children() const { return atoms; }
   bool matches(const ResidueId& rid) const;
+  const Atom* find_by_element(El el) const {
+    for (const Atom& a : atoms)
+      if (a.element == el)
+        return &a;
+    return nullptr;
+  }
 };
 
 struct Chain {

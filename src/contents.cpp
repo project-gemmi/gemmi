@@ -1,7 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 //
 // This program analyses PDB or mmCIF files, printing similar things
-// as CCP4 RWCONTENTS. For example: Matthews Coefficient.
+// as CCP4 RWCONTENTS: weight, Matthews coefficient, etc.
 
 #include <gemmi/symmetry.hpp>
 #include "input.h"
@@ -20,35 +20,66 @@ void analyse(const gemmi::Structure& st, bool verbose) {
   } else {
     std::fprintf(stderr, "Unrecognized space group name! Assuming P1.\n");
   }
+  int ncs = 1;
+  // TODO: strict NCS
+  printf(" Number of molecules: %8d\n", order * ncs);
   printf(" Cell volume: %20.3f\n", st.cell.volume);
   printf(" ASU volume:  %20.3f\n", st.cell.volume / order);
-  // TODO: strict NCS
   if (st.models.size() > 1)
     std::fprintf(stderr, "Warning: using only the first model out of %zu.\n",
                  st.models.size());
-  double weight = 0;
   double water_count = 0;
+  int h_count = 0;
+  double weight = 0;
+  double protein_weight = 0;
+  double atom_count = 0;
+  double protein_atom_count = 0;
   const Model& model = st.models.at(0);
   for (const Chain& chain : model.chains) {
     for (const Residue& res : chain.residues) {
+      ResidueInfo res_info = res.get_info();
+      if (res_info.is_water())
+        if (const Atom* oxygen = res.find_by_element(El::O))
+          water_count += oxygen->occ;
+      bool is_protein = false;
+      if (res_info.is_amino() || res_info.is_nucleic() ||
+          res.name == "HEM" || res.name == "SO4" || res.name == "SUL") {
+        is_protein = true;
+        h_count += res_info.hydrogen_count;
+      }
       for (const Atom& atom : res.atoms) {
         // skip hydrogens
         if (atom.element == El::H || atom.element == El::D)
           continue;
-        if (atom.element == El::O && res.get_info().is_water()) {
-          water_count += atom.occ;
-          break; // move to next residue
+        if (is_protein) {
+          protein_atom_count += atom.occ;
+          protein_weight += atom.occ * atom.element.weight();
         }
-        bool rwcontents_compat = true;
-        double w = rwcontents_compat ? 2 * atom.element.atomic_number()
-                                     : atom.element.weight();
-        weight += atom.occ * w;
+        atom_count += atom.occ;
+        weight += atom.occ * atom.element.weight();
       }
     }
   }
-  weight += 18 * water_count;
-  printf(" Water count: %5.1g\n", water_count);
-  printf(" Molecular Weight of all atoms: %20.3f\n", weight);
+  double h_weight = Element(El::H).weight();
+  weight += (2 * water_count + h_count) * h_weight;
+  protein_weight += h_count * h_weight;
+  printf(" Heavy (not H) atom count: %25.3f\n", + atom_count + water_count);
+  printf(" Estimate of the protein hydrogens: %12d\n", h_count);
+  printf(" Estimated total atom count (incl. H): %13.3f\n",
+                                atom_count + 3 * water_count + h_count);
+  printf(" Estimated protein atom count (incl. H): %11.3f\n",
+                                          protein_atom_count + h_count);
+  printf(" Water count: %38.3f\n", water_count);
+  printf(" Molecular weight of all atoms: %20.3f\n", weight);
+  printf(" Molecular weight of protein atoms: %16.3f\n", protein_weight);
+  double total_protein_weight = protein_weight * order * ncs;
+  double Vm = st.cell.volume / total_protein_weight;
+  printf(" Matthews coefficient: %29.3f\n", Vm);
+  double Na = 0.602214;
+  double ro = 1.34;
+  for (double ro : { 1.34, 1.33 })
+    printf(" Solvent %% (for protein density %g): %12.3f\n",
+           ro, 100. * (1 - 1 / (ro * Vm * Na)));
 }
 
 enum OptionIndex { Verbose=3 };
