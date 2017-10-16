@@ -190,7 +190,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
       if (chain_name.length() > 2)
         gemmi::fail("long chain name: " + chain_name);
       for (const Residue& res : chain.residues) {
-        bool standard = res.has_standard_pdb_name() && !(chain.entity &&
+        bool standard = res.get_info().pdb_standard && !(chain.entity &&
                                  chain.entity->type == EntityType::NonPolymer);
         for (const Atom& a : res.atoms) {
           //  1- 6  6s  record name

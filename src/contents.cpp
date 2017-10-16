@@ -35,7 +35,7 @@ void analyse(const gemmi::Structure& st, bool verbose) {
         // skip hydrogens
         if (atom.element == El::H || atom.element == El::D)
           continue;
-        if (atom.element == El::O && res.is_water()) {
+        if (atom.element == El::O && res.get_info().is_water()) {
           water_count += atom.occ;
           break; // move to next residue
         }
