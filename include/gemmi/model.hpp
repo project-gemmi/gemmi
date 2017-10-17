@@ -5,7 +5,7 @@
 #ifndef GEMMI_MODEL_HPP_
 #define GEMMI_MODEL_HPP_
 
-#include <algorithm>  // for find_if
+#include <algorithm>  // for find_if, count_if
 #include <cstring>    // for size_t
 #include <map>        // for map
 #include <memory>     // for unique_ptr
@@ -353,6 +353,12 @@ struct Structure {
     // We don't handle yet a corner case (ever happening?)
     // in which the first model is lacking a chain.
     return models.at(0).chains;
+  }
+
+  double get_ncs_multiplier() const {
+    int given = std::count_if(ncs.begin(), ncs.end(),
+                              [](const NcsOp& o) { return o.given; });
+    return (ncs.size() + 1.0) / (given + 1.0);  // +1 b/c identity not included
   }
 
   std::vector<Model>& children() { return models; }

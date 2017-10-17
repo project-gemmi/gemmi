@@ -109,12 +109,9 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   int ncs_code_idx = block.add_field(ncs_oper, "_struct_ncs_oper.code");
   for (auto op : ncs_oper) {
     bool given = (ncs_code_idx > 0 && op.str(ncs_code_idx) == "given");
-    std::string id;
-    if (ncs_oper_id)
-      id = op.str(ncs_oper_id);
     Mat4x4 mat = get_transform_matrix(op);
     if (mat != Mat4x4(linalg::identity))
-      st.ncs.push_back({id, given, mat});
+      st.ncs.push_back({ncs_oper_id ? op.str(ncs_oper_id) : "", given, mat});
   }
 
   // PDBx/mmcif spec defines both _database_PDB_matrix.scale* and

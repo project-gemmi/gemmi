@@ -9,7 +9,7 @@
 #include "options.h"
 #include <stdio.h>
 
-void analyse(const gemmi::Structure& st, bool verbose) {
+void analyse(const gemmi::Structure& st, bool /*verbose*/) {
   using namespace gemmi;
   printf(" Spacegroup   %s\n", st.sg_hm.c_str());
   int order = 1;
@@ -20,9 +20,8 @@ void analyse(const gemmi::Structure& st, bool verbose) {
   } else {
     std::fprintf(stderr, "Unrecognized space group name! Assuming P1.\n");
   }
-  int ncs = 1;
-  // TODO: strict NCS
-  printf(" Number of molecules: %8d\n", order * ncs);
+  double n_molecules = order * st.get_ncs_multiplier();;
+  printf(" Number of molecules: %8g\n", n_molecules);
   printf(" Cell volume: %20.3f\n", st.cell.volume);
   printf(" ASU volume:  %20.3f\n", st.cell.volume / order);
   if (st.models.size() > 1)
@@ -72,7 +71,7 @@ void analyse(const gemmi::Structure& st, bool verbose) {
   printf(" Water count: %38.3f\n", water_count);
   printf(" Molecular weight of all atoms: %20.3f\n", weight);
   printf(" Molecular weight of protein atoms: %16.3f\n", protein_weight);
-  double total_protein_weight = protein_weight * order * ncs;
+  double total_protein_weight = protein_weight * n_molecules;
   double Vm = st.cell.volume / total_protein_weight;
   printf(" Matthews coefficient: %29.3f\n", Vm);
   double Na = 0.602214;
