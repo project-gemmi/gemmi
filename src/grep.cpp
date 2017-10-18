@@ -21,7 +21,7 @@ namespace cif = gemmi::cif;
 namespace rules = gemmi::cif::rules;
 
 
-enum OptionIndex { FromFile=3, Recurse, MaxCount, OneBlock, And,
+enum OptionIndex { FromFile=3, Recurse, MaxCount, OneBlock, And, Delim,
                    WithFileName, NoBlockName, WithLineNumbers, WithTag,
                    Summarize, MatchingFiles, NonMatchingFiles, Count, Raw };
 
@@ -42,7 +42,9 @@ const option::Descriptor Usage[] = {
   { OneBlock, 0, "O", "one-block", Arg::None,
     "  -O, --one-block  \toptimize assuming one block per file" },
   { And, 0, "a", "and", Arg::Required,
-    "  -a, --and=tag  \tAppend separator ';' and the value of this tag" },
+    "  -a, --and=tag  \tAppend delimiter (default ';') and the tag value" },
+  { Delim, 0, "d", "delimiter", Arg::Required,
+    "  -d, --delimiter=DELIM  \tCSV-like output with specified delimiter" },
   { WithLineNumbers, 0, "n", "line-number", Arg::None,
     "  -n, --line-number  \tprint line number with output lines" },
   { WithFileName, 0, "H", "with-filename", Arg::None,
@@ -79,6 +81,7 @@ struct Parameters {
   bool inverse = false;  // for now it refers to only_filenames only
   bool print_count = false;
   bool raw = false;
+  std::string delim;
   std::vector<std::string> multi_tags;
   // working parameters
   const char* path = "";
@@ -103,12 +106,13 @@ void process_match(const Input& in, Parameters& par) {
     throw true;
   if (par.print_count)
     return;
+  const char* sep = par.delim.empty() ? ":" : par.delim.c_str();
   if (par.with_filename)
-    printf("%s:", par.path);
+    printf("%s%s", par.path, sep);
   if (par.with_blockname)
-    printf("%s:", par.block_name.c_str());
+    printf("%s%s", par.block_name.c_str(), sep);
   if (par.with_line_numbers)
-    printf("%zu:", in.iterator().line);
+    printf("%zu%s", in.iterator().line, sep);
   if (par.with_tag)
     printf("[%s] ", par.search_tag.c_str());
   printf("%s\n", (par.raw ? in.string() : cif::as_string(in.string())).c_str());
@@ -116,7 +120,22 @@ void process_match(const Input& in, Parameters& par) {
     throw true;
 }
 
-void process_multi_match(Parameters& par) {
+// Escape delim (which normally is a a single character) with backslash.
+static std::string escape(const std::string& s, const std::string& delim) {
+  size_t pos = s.find(delim);
+  std::string r = s.substr(0, pos);
+  while (pos != std::string::npos) {
+    r += '\\';   // "," -> "\,"
+    if (pos != 0 && s[pos - 1] == '\\') // corner case
+      r += '\\'; // -> "\," -> "\\\,";
+    size_t prev_pos = pos;
+    pos = s.find(delim, pos + delim.size());
+    r += s.substr(prev_pos, pos - prev_pos);
+  }
+  return r;
+}
+
+static void process_multi_match(Parameters& par) {
   for (size_t i = 0; i != par.multi_values[0].size(); ++i) {
     if (cif::is_null(par.multi_values[0][i]) && !par.raw)
       continue;
@@ -125,19 +144,24 @@ void process_multi_match(Parameters& par) {
       return;
     if (par.print_count)
       continue;
+    const char* sep = par.delim.empty() ? ":" : par.delim.c_str();
     if (par.with_filename)
-      printf("%s:", par.path);
+      printf("%s%s", par.path, sep);
     if (par.with_blockname)
-      printf("%s:", par.block_name.c_str());
+      printf("%s%s", par.block_name.c_str(), sep);
     if (par.with_tag)
       printf("[%s] ", par.multi_tags[0].c_str());
     for (size_t j = 0; j != par.multi_values.size(); ++j) {
       if (j != 0)
-        std::putc(';', stdout);
+        std::fputs(par.delim.empty() ? ";" : par.delim.c_str(), stdout);
       const auto& v = par.multi_values[j];
       if (!v.empty()) {
-        const std::string& s = v[i < v.size() ? i : 0];
-        printf("%s", (par.raw ? s : cif::as_string(s)).c_str());
+        const std::string& raw_str = v[i < v.size() ? i : 0];
+        std::string s = par.raw ? raw_str : cif::as_string(raw_str);
+        if (par.delim.empty() || s.find(par.delim) == std::string::npos)
+          printf("%s", s.c_str());
+        else
+          printf("%s", escape(s, par.delim).c_str());
       }
     }
     std::putc('\n', stdout);
@@ -414,6 +438,15 @@ static bool is_cif_file(const tinydir_file& f) {
                        gemmi::iends_with(f.path, ".cif.gz"));
 }
 
+static void replace_all(std::string &s,
+                        const std::string &old, const std::string &new_) {
+  std::string::size_type pos = 0;
+  while ((pos = s.find(old, pos)) != std::string::npos) {
+    s.replace(pos, old.size(), new_);
+    pos += new_.size();
+  }
+}
+
 int main(int argc, char **argv) {
   OptParser p;
   p.simple_parse(argc, argv, Usage);
@@ -453,6 +486,10 @@ int main(int argc, char **argv) {
     params.print_count = true;
   if (p.options[Raw])
     params.raw = true;
+  if (p.options[Delim]) {
+    params.delim = p.options[Delim].arg;
+    replace_all(params.delim, "\\t", "\t");
+  }
 
   const char* tag = p.nonOption(0);
   if (tag[0] != '_') {

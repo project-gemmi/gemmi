@@ -74,11 +74,11 @@ void analyse(const gemmi::Structure& st, bool /*verbose*/) {
   double total_protein_weight = protein_weight * n_molecules;
   double Vm = st.cell.volume / total_protein_weight;
   printf(" Matthews coefficient: %29.3f\n", Vm);
-  double Na = 0.602214;
-  double ro = 1.34;
-  for (double ro : { 1.34, 1.33 })
+  double Na = 0.602214;  // Avogadro number x 10^-24 (cm^3->A^3)
+  // rwcontents uses 1.34, Rupp's papers 1.35
+  for (double ro : { 1.35, 1.34 })
     printf(" Solvent %% (for protein density %g): %12.3f\n",
-           ro, 100. * (1 - 1 / (ro * Vm * Na)));
+           ro, 100. * (1. - 1. / (ro * Vm * Na)));
 }
 
 enum OptionIndex { Verbose=3 };
