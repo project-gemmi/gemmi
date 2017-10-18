@@ -436,11 +436,9 @@ int main(int argc, char **argv) {
 
   FileType in_type = p.options[FormatIn] ? filetypes[p.options[FormatIn].arg]
                                          : get_format_from_extension(input);
-  if (in_type == FileType::Unknown && is_pdb_code(input)) {
-    if (const char* pdb_dir = getenv("PDB_DIR")) {
-      in_type = FileType::Cif;
-      input = pdb_dir + mmcif_subpath(input);
-    }
+  if (in_type == FileType::Unknown && gemmi::is_pdb_code(input)) {
+    input = expand_pdb_code_to_path_or_fail(input);
+    in_type = FileType::Cif;
   }
   if (in_type == FileType::Unknown) {
     std::cerr << "The input format cannot be determined from input"

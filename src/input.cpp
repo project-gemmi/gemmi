@@ -2,12 +2,13 @@
 
 // This file exists only to make compilation faster.
 
+#include "input.h"
 #include "gemmi/gz.hpp"
 #include "gemmi/cif.hpp"
 #include "gemmi/mmcif.hpp"
 #include "gemmi/json.hpp"
 #include "gemmi/mmread.hpp"
-#include "gemmi/util.hpp"
+#include "gemmi/util.hpp"    // for iends_with
 
 gemmi::cif::Document cif_read_any(const std::string& path) {
   if (gemmi::iends_with(path, "json") || gemmi::iends_with(path, "js") ||

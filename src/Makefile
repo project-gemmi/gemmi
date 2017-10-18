@@ -38,7 +38,7 @@ convert.o: convert.cpp options.h input.h $(igdir)/to_cif.hpp \
 gemmi-convert: convert.o input.o output.o
 	$(CXX) $(FLAGS) $< input.o output.o -o $@ -lz
 
-gemmi-grep: grep.cpp options.h $(igdir)/cif.hpp $(igdir)/gz.hpp
+gemmi-grep: grep.cpp input.h options.h $(igdir)/cif.hpp $(igdir)/gz.hpp
 	$(CXX) $(FLAGS) $< -o $@ -lz
 
 gemmi-mask: mask.cpp options.h input.o $(igdir)/grid.hpp \

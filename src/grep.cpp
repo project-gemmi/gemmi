@@ -4,12 +4,13 @@
 
 #include "gemmi/cif.hpp"
 #include "gemmi/gz.hpp"
+#include "gemmi/util.hpp"  // for is_pdb_code
+#include "input.h"         // for expand_pdb_code_to_path_or_fail
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
 #include <string>
 #include <tinydir.h>
-#include "input.h"  // for is_pdb_code, mmcif_subpath
 
 #define EXE_NAME "gemmi-grep"
 #include "options.h"
@@ -520,7 +521,7 @@ int main(int argc, char **argv) {
     while (std::fgets(buf, 512, f)) {
       std::string s = gemmi::trim_str(buf);
       if (s.length() >= 4 && std::strchr(" \t\r\n:,;|", s[4]) &&
-          is_pdb_code(s.substr(0, 4)))
+          gemmi::is_pdb_code(s.substr(0, 4)))
         s.resize(4);
       if (!s.empty())
         paths.emplace_back(s);
@@ -537,18 +538,12 @@ int main(int argc, char **argv) {
       if (path == "-") {
         grep_file(path, params);
         file_count++;
-      } else if (is_pdb_code(path)) {
-        if (const char* pdb_dir = getenv("PDB_DIR")) {
-          params.last_block = true;  // PDB code implies -O
-          grep_file(pdb_dir + mmcif_subpath(path), params);
-          params.last_block = p.options[OneBlock];
-        } else {
-          fprintf(stderr,
-                  "The argument %s is a PDB code, but $PDB_DIR is not set.\n"
-                  "(To use a file or directory with such a name use: ./%s)\n",
-                  path.c_str(), path.c_str());
-          return 2;
-        }
+      } else if (gemmi::is_pdb_code(path)) {
+        std::string real_path = expand_pdb_code_to_path_or_fail(path);
+        params.last_block = true;  // PDB code implies -O
+        grep_file(real_path, params);
+        params.last_block = p.options[OneBlock];
+        file_count++;
       } else {
         DirWalker walker(path.c_str());
         for (const tinydir_file& f : walker) {

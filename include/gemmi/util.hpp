@@ -141,6 +141,11 @@ private:
   std::string path_;
 };
 
+inline bool is_pdb_code(const std::string& str) {
+  return str.length() == 4 && std::isdigit(str[0]) && std::isalnum(str[1]) &&
+                              std::isalnum(str[2]) && std::isalnum(str[3]);
+}
+
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

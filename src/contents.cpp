@@ -104,9 +104,11 @@ int main(int argc, char **argv) {
   }
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
-      const char* input = p.nonOption(i);
+      std::string input = p.nonOption(i);
+      if (gemmi::is_pdb_code(input))
+        input = expand_pdb_code_to_path_or_fail(input);
       if (verbose)
-        std::fprintf(stderr, "Reading %s ...\n", input);
+        std::fprintf(stderr, "Reading %s ...\n", input.c_str());
       gemmi::Structure st = read_structure(input);
       analyse(st, verbose);
     }
