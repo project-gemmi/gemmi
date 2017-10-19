@@ -116,27 +116,31 @@ void process_match(const Input& in, Parameters& par) {
     printf("%zu%s", in.iterator().line, sep);
   if (par.with_tag)
     printf("[%s] ", par.search_tag.c_str());
-  printf("%s\n", (par.raw ? in.string() : cif::as_string(in.string())).c_str());
+  std::string value = par.raw ? in.string() : cif::as_string(in.string());
+  printf("%s\n", value.c_str());
   if (par.counter == par.max_count)
     throw true;
 }
 
 // Escape delim (which normally is a a single character) with backslash.
-static std::string escape(const std::string& s, const std::string& delim) {
-  size_t pos = s.find(delim);
-  std::string r = s.substr(0, pos);
-  while (pos != std::string::npos) {
-    r += '\\';   // "," -> "\,"
-    if (pos != 0 && s[pos - 1] == '\\') // corner case
-      r += '\\'; // -> "\," -> "\\\,";
-    size_t prev_pos = pos;
-    pos = s.find(delim, pos + delim.size());
-    r += s.substr(prev_pos, pos - prev_pos);
+static std::string escape(const std::string& s, char delim) {
+  std::string r;
+  for (char c : s) {
+    if (c == '\n') {
+      r += "\\n";
+      continue;
+    }
+    if (c == '\\' || c == delim)
+      r += '\\';
+    r += c;
   }
   return r;
 }
 
 static void process_multi_match(Parameters& par) {
+  std::string need_escaping = "\n\\";
+  if (par.delim.size() < 2)
+    need_escaping += par.delim.empty() ? ';' : par.delim[0];
   for (size_t i = 0; i != par.multi_values[0].size(); ++i) {
     if (cif::is_null(par.multi_values[0][i]) && !par.raw)
       continue;
@@ -159,10 +163,9 @@ static void process_multi_match(Parameters& par) {
       if (!v.empty()) {
         const std::string& raw_str = v[i < v.size() ? i : 0];
         std::string s = par.raw ? raw_str : cif::as_string(raw_str);
-        if (par.delim.empty() || s.find(par.delim) == std::string::npos)
-          printf("%s", s.c_str());
-        else
-          printf("%s", escape(s, par.delim).c_str());
+        if (s.find_first_of(need_escaping) != std::string::npos)
+          s = escape(s, need_escaping[2]);
+        printf("%s", s.c_str());
       }
     }
     std::putc('\n', stdout);
@@ -252,8 +255,8 @@ template<> struct Search<rules::loop_value> {
 template<typename T> bool any_empty(const std::vector<T>& v) {
   for (const T& a : v)
     if (a.empty())
-      return false;
-  return true;
+      return true;
+  return false;
 }
 template<typename Rule> struct MultiSearch : Search<Rule> {};
 
