@@ -7,7 +7,7 @@ running a program is easier than calling a library function.
 gemmi-validate
 ==============
 
-A CIF validator.Apart from checking the syntax it can check rules
+A CIF validator. Apart from checking the syntax it can check most of the rules
 imposed by DDL1 and DDL2 dictionaries.
 
 .. literalinclude:: validate-help.txt
@@ -23,15 +23,18 @@ one value per line::
 
     $ gemmi-grep _refine.ls_R_factor_R_free 5fyi.cif.gz
     5FYI:0.2358
-    $ gemmi-grep _refine.ls_R_factor_R_free 5moo.cif.gz
+    $ gemmi-grep _refine.ls_R_factor_R_free mmCIF/mo/?moo.cif.gz
+    1MOO:0.177
+    3MOO:0.21283
+    4MOO:0.22371
     5MOO:0.1596
     5MOO:0.1848
     $ gemmi-grep -b _software.name 5fyi.cif.gz
     DIMPLE
     PHENIX
 
-The command-line option are meant to be, where possible, similar to the
-options of GNU `grep`.
+Some of the command-line options are the options of GNU grep (``-l``, ``-H``,
+``-n``). As with other utilities, option ``--help`` shows the usage:
 
 .. literalinclude:: grep-help.txt
    :language: console
@@ -44,10 +47,22 @@ but one may use grep::
     4AAS:EMDB
     5AA0:EMDB
 
-If the searched tag is near the beginning of file, the option ``-O`` will make
-gemmi-grep much faster. Searching the whole compressed mmCIF archive from
-the PDB should take on an average computer between 10 and 30 minutes,
-depending where the searched tag is located::
+Gemmi-grep tries to be simple to use like Unix grep, but at the same time
+it is aware of the CIF syntax rules. In particular, ``gemmi-grep _one``
+will give the same output for both ``_one 1`` and ``loop_ _one _two 1 2``.
+This is helpful in surprising corner cases. For example, when a PDB entry
+has two Rfree values (see the 5MOO example above).
+
+If the searched tag is near the beginning of the file, the option ``-O``
+makes gemmi-grep much faster. This option tells the program that the file
+has only a single block; when the tag is found the program does not need
+to parse the rest of the file.
+
+Searching the whole compressed mmCIF archive from the PDB
+(35GB of gzipped files) should take on an average computer
+between 10 and 30 minutes, depending where the searched tag is located.
+This is much faster than with other CIF parsers (to my best knowledge)
+and it makes the program useful for ad-hoc PDB statistics::
 
     $ gemmi-grep -O -b _entity_poly.type /pdb/mmCIF | sort | uniq -c
           1 cyclic-pseudo-peptide
@@ -60,29 +75,60 @@ depending where the searched tag is located::
        4559 polyribonucleotide
          18 polysaccharide(D)
 
-Programs in this section can work with any CIF files and have no features
-specific to mmCIF. Except that when :ref:`$PDB_DIR <pdb_dir>` is set
+Going back to moo, we may want to know to what method the Rfree values
+correspond::
+
+    $ gemmi-grep _refine.ls_R_factor_R_free -a _refine.pdbx_refine_id mmCIF/mo/?moo.cif.gz
+    1MOO:0.177;X-RAY DIFFRACTION
+    3MOO:0.21283;X-RAY DIFFRACTION
+    4MOO:0.22371;X-RAY DIFFRACTION
+    5MOO:0.1596;X-RAY DIFFRACTION
+    5MOO:0.1848;NEUTRON DIFFRACTION
+
+Option ``-a`` (``--and``) can be specified many times.
+If we would add ``-a _pdbx_database_status.recvd_initial_deposition_date``
+we would get the deposition date in each line. In this case it would be
+repeated for 5MOO::
+
+    5MOO:0.1596;X-RAY DIFFRACTION;2016-12-14
+    5MOO:0.1848;NEUTRON DIFFRACTION;2016-12-14
+
+The option ``-a`` can be used (with some further processing) to generate
+relatively sophisticated reports. Here is a little demo:
+https://project-gemmi.github.io/pdb-stats/
+
+The major limitation here is that gemmi-grep cannot match
+corresponding values from different tables (it is not possible to do this
+on the syntax level).
+In the example above we have two values from the same table (``_refine``)
+and a deposition date (a single value). This works well.
+But we are not able to add corresponding wavelengths from ``_diffrn_source``.
+If an extra tag (specified with ``-a``) is not in the same table
+as the main tag, gemmi-grep uses only the first value for this tag.
+
+Gemmi-grep can work with any CIF files but it has one feature
+specific to the PDB data. When :ref:`$PDB_DIR <pdb_dir>` is set
 one may use PDB codes: just ``5moo`` or ``5MOO`` instead of the path
-to ``5moo.cif.gz``. And for convenience, using PDB code implies
+to ``5moo.cif.gz``. And for convenience, using a PDB code implies
 option ``-O``.
 
-In many scenarios one is interested only in a subset of the PDB and has
-a list of PDB codes. Let say we want to look into group depositions.
-First we may make a list of pdb entries that were deposited in groups::
+The file paths or PDB codes can be read from a file.
+For example, if we want to analyse PDB data deposited in 2016
+we may first make a file that lists all such files::
 
-    $ gemmi-grep -O _pdbx_deposit_group.group_title $PDB_DIR/structures | tee gid.out
-    5OYQ:G_1002001
-    5OYR:G_1002001
-    [...]
+    $ gemmi-grep -H -O _pdbx_database_status.recvd_initial_deposition_date $PDB_DIR/structures/divided/mmCIF | \
+            grep 2016 >year2016.txt
 
-And then, checking these (1238 as of Jun 2017) files takes only seconds::
+The 2016.txt file file has lines that start with the filename::
 
-    $ gemmi-grep -b -f gid.out  _pdbx_deposit_group.group_title | uniq -c
-    364 High-Throughput Crystallography: Reliable and Efficient Identification of Fragment Hits.
-    8 Crystal structures of Tyrosine-protein kinase BTK in complex with inhibitors
-    860 PanDDA analysis group deposition
-    6 NS5B 1b
+    /hdd/structures/divided/mmCIF/ww/5ww9.cif.gz:5WW9:2016-12-31
+    /hdd/structures/divided/mmCIF/ww/5wwc.cif.gz:5WWC:2016-12-31
 
+and a command such as::
+
+    $ gemmi-grep -f year2016.out _diffrn.ambient_temp
+
+will grep only the listed cif files.
 
 gemmi-convert
 =============
@@ -99,7 +145,21 @@ Syntax-level conversion. The JSON representation of the CIF data
 can be customized. In particular we support CIF-JSON_ standard from COMCIFS
 and mmJSON_ standard from PDBj (the latter is specific to mmCIF files).
 
-TODO: table with all the differences between the two
+The major difference between the two is that CIF-JSON is dictionary-agnostic:
+it cannot recognize categories (mmJSON groups by categories),
+and it cannot recognize numbers (so it quotes the numbers).
+CIF-JSON adds also two extra objects: "CIF-JSON" and "Metadata".
+The minor differences are:
+
+ =========== =========== ===========
+    CIF        CIF-JSON    mmJSON
+ =========== =========== ===========
+  data_a      a           data_a
+  _tag        _tag        tag
+  .           false       null
+  ?           null        null
+ =========== =========== ===========
+
 
 .. _CIF-JSON: http://comcifs.github.io/cif-json
 .. _mmJSON: https://pdbj.org/help/mmjson?lang=en
