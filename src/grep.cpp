@@ -91,7 +91,7 @@ struct Parameters {
   int match_column = -1;
   int table_width = 0;
   int column = 0;
-  int counter = 0;
+  std::vector<int> counters;
   size_t total_count = 0;
   bool last_block = false;
   std::vector<int> multi_match_columns;
@@ -102,7 +102,7 @@ template<typename Input>
 void process_match(const Input& in, Parameters& par) {
   if (cif::is_null(in.string()) && !par.raw)
     return;
-  ++par.counter;
+  ++par.counters[0];
   if (par.only_filenames)
     throw true;
   if (par.print_count)
@@ -118,7 +118,7 @@ void process_match(const Input& in, Parameters& par) {
     printf("[%s] ", par.search_tag.c_str());
   std::string value = par.raw ? in.string() : cif::as_string(in.string());
   printf("%s\n", value.c_str());
-  if (par.counter == par.max_count)
+  if (par.counters[0] == par.max_count)
     throw true;
 }
 
@@ -144,7 +144,6 @@ static void process_multi_match(Parameters& par) {
   for (size_t i = 0; i != par.multi_values[0].size(); ++i) {
     if (cif::is_null(par.multi_values[0][i]) && !par.raw)
       continue;
-    ++par.counter;
     if (par.only_filenames)
       return;
     if (par.print_count)
@@ -169,7 +168,7 @@ static void process_multi_match(Parameters& par) {
       }
     }
     std::putc('\n', stdout);
-    if (par.counter == par.max_count)
+    if (par.counters[0] == par.max_count)
       return;
   }
 }
@@ -179,7 +178,14 @@ static void print_count(const Parameters& par) {
     printf("%s:", par.path);
   if (par.with_blockname)
     printf("%s:", par.block_name.c_str());
-  printf("%d\n", par.counter);
+  bool first = true;
+  for (int c : par.counters) {
+    if (!first)
+      std::fputs(par.delim.empty() ? ";" : par.delim.c_str(), stdout);
+    printf("%d", c);
+    first = false;
+  }
+  std::putc('\n', stdout);
 }
 
 
@@ -189,8 +195,9 @@ template<> struct Search<rules::datablockname> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     if (!p.block_name.empty() && p.print_count && p.with_blockname) {
       print_count(p);
-      p.total_count += p.counter;
-      p.counter = 0;
+      p.total_count += p.counters[0];
+      for (int& c : p.counters)
+        c = 0;
     }
     p.block_name = in.string();
   }
@@ -271,6 +278,8 @@ template<> struct MultiSearch<rules::tag> {
 template<> struct MultiSearch<rules::value> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     if (p.match_value) {
+      if (p.print_count && (p.raw || !cif::is_null(in.string())))
+        ++p.counters[p.match_value - 1];
       p.multi_values[p.match_value - 1].emplace_back(in.string());
       p.match_value = 0;
       if (p.last_block && !any_empty(p.multi_values))
@@ -305,10 +314,13 @@ template<> struct MultiSearch<rules::loop_value> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     if (p.match_column == 0) {
       for (size_t i = 0; i != p.multi_values.size(); ++i)
-        if (p.column == p.multi_match_columns[i]
-            // if it's not the loop with the main tag, we need only one value
-            && (p.multi_match_columns[0] != -1 || p.multi_values[i].empty()))
-          p.multi_values[i].emplace_back(in.string());
+        if (p.column == p.multi_match_columns[i]) {
+          if (p.print_count && (p.raw || !cif::is_null(in.string())))
+            ++p.counters[i];
+          // if it's not the loop with the main tag, we need only one value
+          if (p.multi_match_columns[0] != -1 || p.multi_values[i].empty())
+            p.multi_values[i].emplace_back(in.string());
+        }
       p.column++;
       if (p.column == p.table_width)
         p.column = 0;
@@ -327,13 +339,15 @@ void run_parse(Input&& in, Parameters& par) {
 static
 void grep_file(const std::string& path, Parameters& par) {
   par.path = path.c_str();
-  par.counter = 0;
+  par.counters.clear();
+  size_t n_multi = par.multi_tags.size();
+  par.counters.resize(n_multi == 0 ? 1 : n_multi, 0);
   par.match_column = -1;
   par.match_value = 0;
   par.multi_match_columns.clear();
-  par.multi_match_columns.resize(par.multi_tags.size(), -1);
+  par.multi_match_columns.resize(n_multi, -1);
   par.multi_values.clear();
-  par.multi_values.resize(par.multi_tags.size());
+  par.multi_values.resize(n_multi);
   try {
     gemmi::MaybeGzipped input(path);
     if (input.is_stdin()) {
@@ -350,10 +364,10 @@ void grep_file(const std::string& path, Parameters& par) {
   } catch (bool) {}
   if (!par.multi_values.empty() && !par.multi_values[0].empty())
     process_multi_match(par);
-  par.total_count += par.counter;
+  par.total_count += par.counters[0];
   if (par.print_count) {
     print_count(par);
-  } else if (par.only_filenames && par.inverse == (par.counter == 0)) {
+  } else if (par.only_filenames && par.inverse == (par.counters[0] == 0)) {
     printf("%s\n", par.path);
   }
   std::fflush(stdout);

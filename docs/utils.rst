@@ -156,6 +156,7 @@ The minor differences are:
  =========== =========== ===========
   data_a      a           data_a
   _tag        _tag        tag
+  _CasE       _case       CasE
   .           false       null
   ?           null        null
  =========== =========== ===========
