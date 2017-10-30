@@ -144,10 +144,6 @@ static void process_multi_match(Parameters& par) {
   for (size_t i = 0; i != par.multi_values[0].size(); ++i) {
     if (cif::is_null(par.multi_values[0][i]) && !par.raw)
       continue;
-    if (par.only_filenames)
-      return;
-    if (par.print_count)
-      continue;
     const char* sep = par.delim.empty() ? ":" : par.delim.c_str();
     if (par.with_filename)
       printf("%s%s", par.path, sep);
@@ -279,7 +275,7 @@ template<> struct MultiSearch<rules::tag> {
 template<> struct MultiSearch<rules::value> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     if (p.match_value) {
-      if (p.print_count && (p.raw || !cif::is_null(in.string())))
+      if (p.raw || !cif::is_null(in.string()))
         ++p.counters[p.match_value - 1];
       p.multi_values[p.match_value - 1].emplace_back(in.string());
       p.match_value = 0;
@@ -316,7 +312,7 @@ template<> struct MultiSearch<rules::loop_value> {
     if (p.match_column == 0) {
       for (size_t i = 0; i != p.multi_values.size(); ++i)
         if (p.column == p.multi_match_columns[i]) {
-          if (p.print_count && (p.raw || !cif::is_null(in.string())))
+          if (p.raw || !cif::is_null(in.string()))
             ++p.counters[i];
           // if it's not the loop with the main tag, we need only one value
           if (p.multi_match_columns[0] != -1 || p.multi_values[i].empty())
@@ -371,14 +367,15 @@ void grep_file(const std::string& path, Parameters& par, int& err_count) {
     err_count++;
     return;
   }
-  if (!par.multi_values.empty() && !par.multi_values[0].empty())
-    process_multi_match(par);
-  par.total_count += par.counters[0];
   if (par.print_count) {
     print_count(par);
-  } else if (par.only_filenames && par.inverse == (par.counters[0] == 0)) {
-    printf("%s\n", par.path);
+  } else if (par.only_filenames) {
+    if (par.inverse == (par.counters[0] == 0))
+      printf("%s\n", par.path);
+  } else if (!par.multi_values.empty() && !par.multi_values[0].empty()) {
+    process_multi_match(par);
   }
+  par.total_count += par.counters[0];
   std::fflush(stdout);
 }
 
