@@ -10,18 +10,16 @@
 #include "mmcif.hpp"
 #include "pdb.hpp"
 #include "json.hpp"  // mmJSON
-#include "util.hpp"  // for ends_with
+#include "util.hpp"  // for giends_with
 
 namespace gemmi {
 
 inline CoorFormat coordinate_format_from_extension(const std::string& path) {
-  if (iends_with(path, ".pdb") || iends_with(path, ".ent") ||
-      iends_with(path, ".pdb.gz") || iends_with(path, ".ent.gz"))
+  if (giends_with(path, ".pdb") || giends_with(path, ".ent"))
     return CoorFormat::Pdb;
-  if (iends_with(path, ".cif") || iends_with(path, ".cif.gz"))
+  if (giends_with(path, ".cif"))
     return CoorFormat::Cif;
-  if (iends_with(path, ".json") || iends_with(path, ".js") ||
-      iends_with(path, ".json.gz") || iends_with(path, ".js.gz"))
+  if (giends_with(path, ".json") || giends_with(path, ".js"))
     return CoorFormat::Json;
   return CoorFormat::Unknown;
 }

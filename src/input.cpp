@@ -8,11 +8,10 @@
 #include "gemmi/mmcif.hpp"
 #include "gemmi/json.hpp"
 #include "gemmi/mmread.hpp"
-#include "gemmi/util.hpp"    // for iends_with
+#include "gemmi/util.hpp"    // for giends_with
 
 gemmi::cif::Document cif_read_any(const std::string& path) {
-  if (gemmi::iends_with(path, "json") || gemmi::iends_with(path, "js") ||
-      gemmi::iends_with(path, "json.gz") || gemmi::iends_with(path, "js.gz"))
+  if (gemmi::giends_with(path, "json") || gemmi::giends_with(path, "js"))
     return gemmi::cif::read_mmjson(gemmi::MaybeGzipped(path));
   return gemmi::cif::read(gemmi::MaybeGzipped(path));
 }

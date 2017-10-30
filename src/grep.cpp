@@ -454,12 +454,10 @@ private:
 
 static bool is_cif_file(const tinydir_file& f) {
   return !f.is_dir && (
-      gemmi::iends_with(f.name, ".cif") ||
-      gemmi::iends_with(f.name, ".cif.gz") ||
+      gemmi::giends_with(f.name, ".cif") ||
       // the SF mmCIF files from PDB don't have the "cif" extension,
       // they have names such as divided/structure_factors/aa/r3aaasf.ent.gz
-      (f.name[0] == 'r' && (gemmi::iends_with(f.name, "sf.ent.gz") ||
-                            gemmi::iends_with(f.name, "sf.ent"))));
+      (f.name[0] == 'r' && gemmi::giends_with(f.name, "sf.ent")));
 }
 
 static void replace_all(std::string &s,

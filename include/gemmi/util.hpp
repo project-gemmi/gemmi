@@ -36,6 +36,10 @@ inline bool iends_with(const std::string& str, const std::string& suffix) {
                     [](char c1, char c2) { return c1 == std::tolower(c2); });
 }
 
+inline bool giends_with(const std::string& str, const std::string& suffix) {
+  return iends_with(str, suffix) || iends_with(str, suffix + ".gz");
+}
+
 inline std::string to_lower(std::string str) {
   for (char& c : str)
     if (c >= 'A' && c <= 'Z')
