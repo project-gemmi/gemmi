@@ -29,8 +29,10 @@ inline size_t estimate_uncompressed_size(const std::string& path) {
   if (std::fread(buf, 1, 4, f.get()) != 4)
     fail("Failed to read last 4 bytes of: " + path);
   size_t orig_size = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
-  if (orig_size < gzipped_size || orig_size > 10 * gzipped_size)
-    fail("Cannot determine uncompressed size of " + path);
+  if (orig_size < gzipped_size || orig_size > 100 * gzipped_size)
+    fail("Cannot determine uncompressed size of " + path +
+         "\nWould it be " + std::to_string(gzipped_size) + " -> " +
+         std::to_string(orig_size) + " bytes?");
   return orig_size;
 }
 
