@@ -174,10 +174,11 @@ static void process_multi_match(Parameters& par) {
 }
 
 static void print_count(const Parameters& par) {
+  const char* sep = par.delim.empty() ? ":" : par.delim.c_str();
   if (par.with_filename)
-    printf("%s:", par.path);
+    printf("%s%s", par.path, sep);
   if (par.with_blockname)
-    printf("%s:", par.block_name.c_str());
+    printf("%s%s", par.block_name.c_str(), sep);
   bool first = true;
   for (int c : par.counters) {
     if (!first)
@@ -452,8 +453,13 @@ private:
 };
 
 static bool is_cif_file(const tinydir_file& f) {
-  return !f.is_dir && (gemmi::iends_with(f.path, ".cif") ||
-                       gemmi::iends_with(f.path, ".cif.gz"));
+  return !f.is_dir && (
+      gemmi::iends_with(f.name, ".cif") ||
+      gemmi::iends_with(f.name, ".cif.gz") ||
+      // the SF mmCIF files from PDB don't have the "cif" extension,
+      // they have names such as divided/structure_factors/aa/r3aaasf.ent.gz
+      (f.name[0] == 'r' && (gemmi::iends_with(f.name, "sf.ent.gz") ||
+                            gemmi::iends_with(f.name, "sf.ent"))));
 }
 
 static void replace_all(std::string &s,
