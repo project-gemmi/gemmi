@@ -130,6 +130,10 @@ and a command such as::
 
 will grep only the listed cif files.
 
+Exit status of gemmi-grep has the same meaning as in GNU grep:
+0 if a line is selected, 1 if no lines were selected,
+and 2 if an error occurred.
+
 gemmi-convert
 =============
 

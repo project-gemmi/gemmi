@@ -338,8 +338,9 @@ void run_parse(Input&& in, Parameters& par) {
 }
 
 static
-void grep_file(const std::string& path, Parameters& par) {
+void grep_file(const std::string& path, Parameters& par, int& err_count) {
   par.path = path.c_str();
+  par.block_name.clear();
   par.counters.clear();
   size_t n_multi = par.multi_tags.size();
   par.counters.resize(n_multi == 0 ? 1 : n_multi, 0);
@@ -362,7 +363,14 @@ void grep_file(const std::string& path, Parameters& par) {
       pegtl::file_input<> in(path);
       run_parse(in, par);
     }
-  } catch (bool) {}
+  } catch (bool) {
+    // ok, "throw true" is used as goto
+  } catch (std::runtime_error& e) {
+    std::fflush(stdout);
+    fprintf(stderr, "Error when parsing %s:\n\t%s\n", path.c_str(), e.what());
+    err_count++;
+    return;
+  }
   if (!par.multi_values.empty() && !par.multi_values[0].empty())
     process_multi_match(par);
   par.total_count += par.counters[0];
@@ -554,34 +562,34 @@ int main(int argc, char **argv) {
   }
 
   size_t file_count = 0;
+  int err_count = 0;
   for (const std::string& path : paths) {
-    try {
-      if (path == "-") {
-        grep_file(path, params);
-        file_count++;
-      } else if (gemmi::is_pdb_code(path)) {
-        std::string real_path = expand_pdb_code_to_path_or_fail(path);
-        params.last_block = true;  // PDB code implies -O
-        grep_file(real_path, params);
-        params.last_block = p.options[OneBlock];
-        file_count++;
-      } else {
-        DirWalker walker(path.c_str());
-        for (const tinydir_file& f : walker) {
-          if (walker.is_file() || is_cif_file(f)) {
-            grep_file(f.path, params);
-            file_count++;
-          }
+    if (path == "-") {
+      grep_file(path, params, err_count);
+      file_count++;
+    } else if (gemmi::is_pdb_code(path)) {
+      std::string real_path = expand_pdb_code_to_path_or_fail(path);
+      params.last_block = true;  // PDB code implies -O
+      grep_file(real_path, params, err_count);
+      params.last_block = p.options[OneBlock];
+      file_count++;
+    } else {
+      DirWalker walker(path.c_str());
+      for (const tinydir_file& f : walker) {
+        if (walker.is_file() || is_cif_file(f)) {
+          grep_file(f.path, params, err_count);
+          file_count++;
         }
       }
-    } catch (std::runtime_error& e) {
-      std::fflush(stdout);
-      fprintf(stderr, "Error when parsing %s:\n\t%s\n", path.c_str(), e.what());
-      return 2;
     }
   }
-  if (p.options[Summarize])
+  if (p.options[Summarize]) {
     printf("Total count in %zu files: %zu\n", file_count, params.total_count);
+    if (err_count > 0)
+      printf("Errors encountered when reading %d files.\n", err_count);
+  }
+  if (err_count > 0)
+    return 2;
   return params.total_count != 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
