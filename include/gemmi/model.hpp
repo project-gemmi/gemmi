@@ -404,7 +404,7 @@ template<class T> size_t count_atom_sites(const T& obj) {
     sum += count_atom_sites(child);
   return sum;
 }
-template<> size_t inline count_atom_sites(const Residue& res) {
+template<> inline size_t count_atom_sites(const Residue& res) {
   return res.atoms.size();
 }
 
