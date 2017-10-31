@@ -106,6 +106,24 @@ But we are not able to add corresponding wavelengths from ``_diffrn_source``.
 If an extra tag (specified with ``-a``) is not in the same table
 as the main tag, gemmi-grep uses only the first value for this tag.
 
+Unless we just count the number of value. Counting works for any combination
+of tags::
+
+    $ gemmi-grep -c _refln.intensity_meas -a _diffrn_refln.intensity_net r5paysf.ent.gz
+    r5paysf:63611;0
+    r5payAsf:0;356684
+
+(The file used in this example is structure factor (SF) mmCIF.
+Strangely these files in the PDB have extension ``ent`` not ``cif``.)
+
+The first number in the output above is the number of specified intensities.
+If you would like to count in also values ``?`` and ``.`` specify
+the option ``--raw``::
+
+    $ gemmi-grep --raw -c _refln.intensity_meas r5paysf.ent.gz
+    r5paysf:63954
+    r5payAsf:0
+
 Gemmi-grep can work with any CIF files but it has one feature
 specific to the PDB data. When :ref:`$PDB_DIR <pdb_dir>` is set
 one may use PDB codes: just ``5moo`` or ``5MOO`` instead of the path
