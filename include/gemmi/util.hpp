@@ -57,12 +57,18 @@ inline std::string trim_str(const std::string& str)
   return str.substr(first, last - first + 1);
 }
 
-inline std::vector<std::string> split_str(const std::string &str, char sep) {
+namespace impl {
+inline size_t length(char) { return 1; }
+inline size_t length(const std::string& s) { return s.length(); }
+}
+
+template<typename S>
+inline std::vector<std::string> split_str(const std::string &str, S sep) {
   std::vector<std::string> result;
   std::size_t start = 0, end;
   while ((end = str.find(sep, start)) != std::string::npos) {
     result.emplace_back(str, start, end - start);
-    start = end + 1;
+    start = end + impl::length(sep);
   }
   result.emplace_back(str, start);
   return result;

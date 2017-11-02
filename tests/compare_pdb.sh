@@ -9,6 +9,7 @@ set -eu
 cd `dirname $0`
 code=${1,,}
 tempd=/run/gemmi
+[ -d "$tempd" ] || ls "$tempd" # ls just triggers error
 pout="$tempd/$code-p.pdb"
 gout="$tempd/$code-g.pdb"
 cifout="$tempd/$code.cif"

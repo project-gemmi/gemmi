@@ -81,7 +81,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
           if (first)
             st.info[tag] = as_string(r[0]);
           else
-            st.info[tag] += "," + as_string(r[0]);
+            st.info[tag] += "; " + as_string(r[0]);
           first = false;
         }
     }

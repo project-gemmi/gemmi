@@ -136,7 +136,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
                                                         {"entry_id", "method"});
   auto exptl_method = st.info.find("_exptl.method");
   if (exptl_method != st.info.end())
-    for (const std::string& m : gemmi::split_str(exptl_method->second, ','))
+    for (const std::string& m : gemmi::split_str(exptl_method->second, "; "))
       exptl_method_loop.append_row({id, cif::quote(m)});
 
   // title, keywords
