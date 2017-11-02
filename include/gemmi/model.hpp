@@ -228,7 +228,7 @@ inline const ResidueInfo find_tabulated_residue(const std::string& name) {
     }
   } else if (name.size() == 2) {
     if (name[0] == 'D' || name[0] == '+')
-      switch (name[0]) {
+      switch (name[1]) {
         case 'A': return { ResidueInfo::DNA, true, 13 };
         case 'C': return { ResidueInfo::DNA, true, 13 };
         case 'G': return { ResidueInfo::DNA, true, 13 };
