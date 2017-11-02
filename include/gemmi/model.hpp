@@ -243,6 +243,7 @@ inline const ResidueInfo find_tabulated_residue(const std::string& name) {
 struct ResidueId {
   ResidueId(int id, int auth_id, char ins, std::string rname) noexcept
     : seq_id(id), auth_seq_id(auth_id), ins_code(ins), name(rname) {}
+  ResidueId(int id, std::string rname) noexcept : seq_id(id), name(rname) {}
   enum { UnknownId=-1000 };
   int seq_id = UnknownId;
   int auth_seq_id = UnknownId;
@@ -254,6 +255,7 @@ struct ResidueId {
 };
 
 struct Residue : public ResidueId {
+  bool is_cis = false;
   std::vector<Atom> atoms;
   Chain* parent = nullptr;
 

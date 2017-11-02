@@ -55,6 +55,19 @@ inline Mat4x4 Matrix33_to_Mat4x4(const Matrix33& m) {
           {    0,     0,     0, 1}};
 }
 
+inline Residue* find_residue_from_label(Structure& st,
+                                        const cif::TableView::Row& row) {
+  for (const auto& item : row)
+    if (cif::is_null(item))
+      return nullptr;
+  ResidueId rid(cif::as_int(row[2]), row[3]);
+  if (Model* model = st.find_model(row[0]))
+    if (Chain* chain = model->find_chain(row[1]))
+      if (Residue* res = chain->find_residue(rid))
+        return res;
+  return nullptr;
+}
+
 inline Structure structure_from_cif_block(const cif::Block& block) {
   using cif::as_number;
   using cif::as_string;
@@ -230,8 +243,14 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
       } catch (std::runtime_error&) {  // maybe _struct_asym is missing
         ch.entity = nullptr;
       }
-
   st.finish();
+
+  for (const auto& row : block.find("_struct_mon_prot_cis.",
+                                    {"pdbx_PDB_model_num", "label_asym_id",
+                                     "label_seq_id", "label_comp_id"}))
+    if (Residue* res = find_residue_from_label(st, row))
+      res->is_cis = true;
+
   return st;
 }
 

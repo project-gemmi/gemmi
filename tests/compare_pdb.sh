@@ -2,7 +2,7 @@
 
 # Index with dates helps limit the testing given time span:
 #  ftp://ftp.wwpdb.org/pub/pdb/derived_data/index/entries.idx
-# tail -n +3 entries.idx | cut -f1,3 | grep "05/16$" |\
+# tail -n +3 entries.idx | cut -f1,3 | grep "05/../17$" |\
 # while read -r code date; do ./compare_pdb.sh $code; done
 
 set -eu
