@@ -32,15 +32,12 @@ get_anisotropic_u(const cif::Block& block) {
   return aniso_map;
 }
 
-inline cif::TableView find_transform(const cif::Block& block,
-                                     std::string category,
-                                     std::string mstr="matrix",
-                                     std::string vstr="vector") {
-  return block.find(category, {
-      mstr + "[1][1]", mstr + "[2][1]", mstr + "[3][1]",
-      mstr + "[1][2]", mstr + "[2][2]", mstr + "[3][2]",
-      mstr + "[1][3]", mstr + "[2][3]", mstr + "[3][3]",
-      vstr + "[1]",    vstr + "[2]",    vstr + "[3]"});
+inline
+std::vector<std::string> transform_tags(std::string mstr, std::string vstr) {
+  return {mstr + "[1][1]", mstr + "[2][1]", mstr + "[3][1]",
+          mstr + "[1][2]", mstr + "[2][2]", mstr + "[3][2]",
+          mstr + "[1][3]", mstr + "[2][3]", mstr + "[3][3]",
+          vstr + "[1]",    vstr + "[2]",    vstr + "[3]"};
 }
 
 inline Mat4x4 get_transform_matrix(const cif::TableView::Row& r) {
@@ -104,20 +101,22 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   add_info("_struct_keywords.pdbx_keywords");
   add_info("_struct_keywords.text");
 
-  cif::TableView ncs_oper = find_transform(block, "_struct_ncs_oper.");
-  int ncs_oper_id = block.add_field(ncs_oper, "_struct_ncs_oper.id");
-  int ncs_code_idx = block.add_field(ncs_oper, "_struct_ncs_oper.code");
+  std::vector<std::string> ncs_oper_tags = transform_tags("matrix", "vector");
+  ncs_oper_tags.push_back("id");  // 12
+  ncs_oper_tags.push_back("?code");  // 13
+  cif::TableView ncs_oper = block.find("_struct_ncs_oper.", ncs_oper_tags);
   for (auto op : ncs_oper) {
-    bool given = (ncs_code_idx > 0 && op.str(ncs_code_idx) == "given");
+    bool given = op.has(13) && op.str(13) == "given";
     Mat4x4 mat = get_transform_matrix(op);
     if (mat != Mat4x4(linalg::identity))
-      st.ncs.push_back({ncs_oper_id ? op.str(ncs_oper_id) : "", given, mat});
+      st.ncs.push_back({op.str(12), given, mat});
   }
 
   // PDBx/mmcif spec defines both _database_PDB_matrix.scale* and
   // _atom_sites.fract_transf_* as equivalent of pdb SCALE, but the former
   // is not used, so we ignore it.
-  cif::TableView fract_tv = find_transform(block, "_atom_sites.fract_transf_");
+  cif::TableView fract_tv = block.find("_atom_sites.fract_transf_",
+                                       transform_tags("matrix", "vector"));
   if (fract_tv.length() > 0) {
     Mat4x4 fract = get_transform_matrix(fract_tv[0]);
     st.cell.set_matrices_from_fract(fract);
@@ -125,8 +124,8 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
 
   // We store origx just for completeness. It may never be useful
   // for anything but writing it back to a file.
-  cif::TableView origx_tv = find_transform(block, "_database_PDB_matrix.origx",
-                                           "", "_vector");
+  cif::TableView origx_tv = block.find("_database_PDB_matrix.",
+                                       transform_tags("origx", "origx_vector"));
   if (origx_tv.length() > 0)
     st.origx = get_transform_matrix(origx_tv[0]);
 
@@ -231,6 +230,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
       } catch (std::runtime_error&) {  // maybe _struct_asym is missing
         ch.entity = nullptr;
       }
+
   st.finish();
   return st;
 }

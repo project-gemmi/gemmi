@@ -316,6 +316,8 @@ instead of::
 
     block.find({"_entity_poly_seq.entity_id", "_entity_poly_seq.num", "_entity_poly_seq.mon_id"})
 
+TODO: document optional tags: ``{"_required_tag", "?_optional_tag"}``
+
 TODO: document TableView methods (``ok()``, ``width()``, ``length()``,
 ``operator[](size_t)``, ``at(size_t)``, ``find_row(const std::string&)``.
 

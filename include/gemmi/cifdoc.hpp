@@ -185,7 +185,13 @@ struct TableView {
     const std::string* cur;
     const std::vector<int>& icols;
 
-    const std::string& at(int n) const { return cur[icols.at(n)]; }
+    const std::string& at(int n) const {
+      int pos = icols.at(n);
+      if (pos == -1)
+        throw std::out_of_range("Optional tag not found: " + std::to_string(n));
+      return cur[pos];
+    }
+    bool has(int n) const { return icols.at(n) >= 0; }
     const std::string& operator[](int n) const { return cur[icols[n]]; }
     size_t size() const { return icols.size(); }
     std::string str(int n) const { return as_string(at(n)); }
@@ -290,7 +296,6 @@ struct Block {
   // modifying functions
   void update_value(const std::string& tag, std::string v);
   bool delete_loop(const std::string& tag);
-  int add_field(TableView& table, const std::string& field) const;
   Loop& clear_or_add_loop(const std::string& prefix,
                           const std::initializer_list<const char*>& tags);
   void delete_category(const std::string& prefix);
@@ -446,8 +451,8 @@ inline TableView Block::find(const std::string& prefix,
   if (loop) {
     indices.reserve(tags.size());
     for (const std::string& tag : tags) {
-      int idx = loop->find_tag(prefix + tag);
-      if (idx == -1) {
+      int idx = loop->find_tag(prefix + (tag[0] != '?' ? tag : tag.substr(1)));
+      if (idx == -1 && tag[0] != '?') {
         loop = nullptr;
         indices.clear();
         break;
@@ -471,24 +476,6 @@ inline TableView Block::find(const std::string& prefix,
     }
   }
   return TableView{loop, indices, values};
-}
-
-inline
-int Block::add_field(TableView& table, const std::string& full_tag) const {
-  if (table.loop) {
-    int pos = table.loop->find_tag(full_tag);
-    if (pos != -1) {
-      table.cols.push_back(pos);
-      return (int) table.cols.size() - 1;
-    }
-  } else {
-    if (const std::string* v = find_value(full_tag)) {
-      table.cols.push_back(table.values_.size());
-      table.values_.push_back(*v);
-      return (int) table.cols.size() - 1;
-    }
-  }
-  return -1;
 }
 
 struct Document {
