@@ -193,14 +193,14 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   // _struct_mon_prot_cis
   cif::Loop& prot_cis_loop = block.clear_or_add_loop("_struct_mon_prot_cis.",
                              {"pdbx_id", "pdbx_PDB_model_num", "label_asym_id",
-                              "label_seq_id", "label_comp_id"});
+                              "label_seq_id", "label_comp_id", "label_alt_id"});
   for (const Model& model : st.models)
     for (const Chain& chain : model.chains)
         for (const Residue& res : chain.residues)
           if (res.is_cis)
             prot_cis_loop.append_row({to_string(prot_cis_loop.length()+1),
                                       model.name, chain.name,
-                                      to_string(res.seq_id), res.name});
+                                      to_string(res.seq_id), res.name, "."});
 
   // _atom_sites (SCALE)
   if (st.cell.explicit_matrices) {
