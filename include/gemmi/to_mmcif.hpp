@@ -92,6 +92,7 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
 } // namespace impl
 
 inline void update_cif_block(const Structure& st, cif::Block& block) {
+  using std::to_string;
   if (st.models.empty())
     return;
   block.name = st.name;
@@ -181,13 +182,25 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
     block.update_value("_database_PDB_matrix.entry_id", id);
     std::string prefix = "_database_PDB_matrix.origx";
     for (int i = 0; i < 3; ++i) {
-      std::string s = "[" + std::to_string(i+1) + "]";
+      std::string s = "[" + to_string(i+1) + "]";
       block.update_value(prefix + s + "[1]", to_str(st.origx.x[i]));
       block.update_value(prefix + s + "[2]", to_str(st.origx.y[i]));
       block.update_value(prefix + s + "[3]", to_str(st.origx.z[i]));
       block.update_value(prefix + "_vector" + s, to_str(st.origx.w[i]));
     }
   }
+
+  // _struct_mon_prot_cis
+  cif::Loop& prot_cis_loop = block.clear_or_add_loop("_struct_mon_prot_cis.",
+                             {"pdbx_id", "pdbx_PDB_model_num", "label_asym_id",
+                              "label_seq_id", "label_comp_id"});
+  for (const Model& model : st.models)
+    for (const Chain& chain : model.chains)
+        for (const Residue& res : chain.residues)
+          if (res.is_cis)
+            prot_cis_loop.append_row({to_string(prot_cis_loop.length()+1),
+                                      model.name, chain.name,
+                                      to_string(res.seq_id), res.name});
 
   // _atom_sites (SCALE)
   if (st.cell.explicit_matrices) {
@@ -215,7 +228,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
     if (ent->type == EntityType::Polymer)
       for (const SequenceItem& si : ent->sequence) {
         poly_loop.append_row({ent->id,
-                              (si.num >= 0 ? std::to_string(si.num) : "?"),
+                              (si.num >= 0 ? to_string(si.num) : "?"),
                               si.mon});
       }
 
