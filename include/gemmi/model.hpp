@@ -6,6 +6,7 @@
 #define GEMMI_MODEL_HPP_
 
 #include <algorithm>  // for find_if, count_if
+#include <cmath>      // for NAN
 #include <cstring>    // for size_t
 #include <map>        // for map
 #include <memory>     // for unique_ptr
@@ -161,6 +162,16 @@ struct Atom {
   Residue* parent = nullptr;
 };
 
+inline double calculate_distance_sq(const Atom* a, const Atom* b) {
+  if (!a || !b)
+    return NAN;
+  double dx = a->pos.x - b->pos.x;
+  double dy = a->pos.y - b->pos.y;
+  double dz = a->pos.z - b->pos.z;
+  return dx*dx + dy*dy + dz*dz;
+}
+
+
 struct ResidueInfo {
   // simple classification, ELS is something else
   enum Kind { UNKNOWN=0, AA=1, NA=2, RNA=(2|4), DNA=(2|8), HOH=16, ELS=32 };
@@ -255,7 +266,7 @@ struct ResidueId {
 };
 
 struct Residue : public ResidueId {
-  bool is_cis = false;
+  bool is_cis = false;  // bond to the next residue marked as cis
   std::vector<Atom> atoms;
   Chain* parent = nullptr;
 
@@ -273,6 +284,21 @@ struct Residue : public ResidueId {
         return &a;
     return nullptr;
   }
+  const Atom* find_by_name(const std::string& name) const {
+    for (const Atom& a : atoms)
+      if (a.name == name)
+        return &a;
+    return nullptr;
+  }
+  const Atom* get_ca() const {
+    static const std::string CA("CA");
+    if (const Atom* a = find_by_name(CA))
+      if (a->element == El::C)
+        return a;
+    return nullptr;
+  }
+  const Residue* next_bonded_aa() const;
+  double calculate_omega(const Residue& next) const;
 };
 
 struct Chain {
@@ -288,6 +314,9 @@ struct Chain {
   Residue* find_or_add_residue(const ResidueId& rid);
   std::vector<Residue>& children() { return residues; }
   const std::vector<Residue>& children() const { return residues; }
+  const std::string& name_for_pdb() const {
+    return auth_name.empty() ? name : auth_name;
+  }
 };
 
 struct Model {
@@ -375,6 +404,19 @@ inline bool Residue::matches(const ResidueId& rid) const {
           || seq_id != Residue::UnknownId) &&
          segment == rid.segment &&
          name == rid.name;
+}
+
+inline const Residue* Residue::next_bonded_aa() const {
+  const Residue* next = this + 1;
+  if (parent && next != parent->residues.data() + parent->residues.size() &&
+      calculate_distance_sq(get_ca(), next->get_ca()) < 6.0 * 6.0)
+    return next;
+  return nullptr;
+}
+
+inline double Residue::calculate_omega(const Residue& next) const {
+  //TODO
+  return 0;
 }
 
 inline Residue* Chain::find_residue(const ResidueId& rid) {

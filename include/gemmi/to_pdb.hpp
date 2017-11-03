@@ -62,6 +62,13 @@ inline char* encode_seq_id_in_hybrid36(char* str, int seq_id) {
   return base36_encode(str, 4, seq_id - 10000 + 10 * 36 * 36 * 36);
 }
 
+inline char* write_seq_id(char* str, const Residue& res) {
+  encode_seq_id_in_hybrid36(str, res.seq_id_for_pdb());
+  str[4] = res.ins_code ? res.ins_code : ' ';
+  str[5] = '\0';
+  return str;
+}
+
 inline const char* find_last_break(const char *str, int max_len) {
   int last_break = 0;
   for (int i = 0; i < max_len; i++) {
@@ -116,12 +123,11 @@ inline void write_pdb(const Structure& st, std::ostream& os,
   if (st.models.size() > 1)
     WRITE("NUMMDL    %-6zu %63s\n", st.models.size(), "");
 
-  // SEQRES
-  if (!st.models.empty() && !iotbx_compat)
+  if (!st.models.empty() && !iotbx_compat) {
+    // SEQRES
     for (const Chain& ch : st.models[0].chains)
       if (ch.entity && ch.entity->type == EntityType::Polymer) {
-        const std::string& chain_name = ch.auth_name.empty() ? ch.name
-                                                             : ch.auth_name;
+        const std::string& chain_name = ch.name_for_pdb();
         int seq_len = 0;
         int prev_seq_num = -1;
         for (const SequenceItem& si : ch.entity->sequence)
@@ -149,6 +155,25 @@ inline void write_pdb(const Structure& st, std::ostream& os,
         if (col != 0)
           os.write(buf, 81);
       }
+
+    // CISPEP
+    char buf8[8];
+    char buf8a[8];
+    int counter = 0;
+    for (const Model& model : st.models)
+      for (const Chain& chain : model.chains) {
+        const char* cname = chain.name_for_pdb().c_str();
+        for (const Residue& res : chain.residues)
+          if (res.is_cis)
+            if (const Residue* next = res.next_bonded_aa())
+              WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s\n",
+                  ++counter,
+                  res.name.c_str(), cname, impl::write_seq_id(buf8, res),
+                  next->name.c_str(), cname, impl::write_seq_id(buf8a, *next),
+                  st.models.size() > 1 ? model.name.c_str() : "0",
+                  res.calculate_omega(*next), "");
+      }
+  }
 
   const UnitCell& cell = st.cell;
   WRITE("CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11s%4s          \n",
@@ -183,8 +208,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
     for (const Chain& chain : model.chains) {
       if (chain.force_pdb_serial)
         serial = chain.force_pdb_serial - 1;
-      const std::string& chain_name = chain.auth_name.empty() ? chain.name
-                                                              : chain.auth_name;
+      const std::string& chain_name = chain.name_for_pdb();
       if (chain_name.empty())
         gemmi::fail("empty chain name");
       if (chain_name.length() > 2)
