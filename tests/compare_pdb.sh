@@ -1,18 +1,39 @@
 #!/bin/bash
 
+# This script converts and compares PDB entries, preferably using local copy
+# of both mmCIF and PDB files from the PDB.
+# By default it converts mmCIF to PDB and compares if the lines are identical
+# (apart from the not_identical and absent fields listed below).
+#
+# ./compare_pdb.sh 5moo    # entry 5moo, shows diffstat (if any)
+# ./compare_pdb.sh 5moo d  # shows "diff -u".
+# ./compare_pdb.sh 5moo g  # similar, but uses "git diff" for nicer output
+# ./compare_pdb.sh 5moo w  # similar, but with option --word-diff=color
+#
+# Two env. variables can be used for different conversion route:
+#
+# ./compare_pdb.sh 5moo                       # converts cif -> pdb
+# FROM_PDB=1 ./compare_pdb.sh 5moo            # converts pdb -> pdb
+# VIA_CIF=1  ./compare_pdb.sh 5moo            # converts cif -> cif -> pdb
+# FROM_PDB=1 VIA_CIF=1 ./compare_pdb.sh 5moo  # converts pdb -> cif -> pdb
+#
+# The final comparison is always between the PDB file from conversion
+# and the original PDB with selected records removed.
+#
 # Index with dates helps limit the testing given time span:
-#  ftp://ftp.wwpdb.org/pub/pdb/derived_data/index/entries.idx
+# wget ftp://ftp.wwpdb.org/pub/pdb/derived_data/index/entries.idx
 # tail -n +3 entries.idx | cut -f1,3 | grep "05/../17$" |\
 # while read -r code date; do ./compare_pdb.sh $code; done
 
 set -eu
 cd `dirname $0`
+PDB_COPY="$PDB_DIR/structures/divided"
 code=${1,,}
 tempd=/run/gemmi
 [ -d "$tempd" ] || ls "$tempd" # ls just triggers error
 pout="$tempd/$code-p.pdb"
 gout="$tempd/$code-g.pdb"
-cifout="$tempd/$code.cif"
+cifout="$tempd/$code.cif"  # used with VIA_CIF=1
 cif=${PDB_COPY:-/hdd}/mmCIF/${code:1:2}/${code}.cif.gz
 if [[ -d ${PDB_COPY:-/hdd}/pdb ]]; then
   pdb=${PDB_COPY:-/hdd}/pdb/${code:1:2}/pdb${code}.ent.gz
@@ -30,7 +51,6 @@ not_identical="\
 ^KEYWDS"
 absent="\
 ^AUTHOR|\
-^CISPEP|\
 ^CAVEAT|\
 ^COMPND|\
 ^CONECT|\
@@ -57,9 +77,9 @@ absent="\
 zgrep -v -E "$not_identical|$absent" "$pdb" > "$pout"
 inp="$cif"
 [[ ${FROM_PDB:-} = 1 ]] && inp="$pout"
-if [[ ${PDB_BACK:-} = 1 ]]; then
-    echo "$(basename "$pout") -> $(basename "$cifout")"
-    ../gemmi-convert "$pout" "$cifout"
+if [[ ${VIA_CIF:-} = 1 ]]; then
+    echo "$(basename "$inp") -> $(basename "$cifout")"
+    ../gemmi-convert "$inp" "$cifout"
     inp="$cifout"
 fi
 ../gemmi-convert --to=pdb "$inp" - | grep -v -E $not_identical > "$gout"
