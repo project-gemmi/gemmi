@@ -43,8 +43,8 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
     for (const Chain& chain : model.chains) {
       for (const Residue& res : chain.residues) {
         std::string seq_id = std::to_string(res.seq_id);
-        std::string auth_seq_id = std::to_string(res.auth_seq_id);
-        std::string ins_code(1, res.ins_code ? res.ins_code : '?');
+        std::string auth_seq_id = std::to_string(res.snic.seq_num);
+        std::string ins_code(1, res.snic.ins_code ? res.snic.ins_code : '?');
         for (const Atom& a : res.atoms) {
           vv.emplace_back(std::to_string(++serial));
           vv.emplace_back(a.element.uname());

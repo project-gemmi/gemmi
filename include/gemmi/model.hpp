@@ -251,14 +251,26 @@ inline const ResidueInfo find_tabulated_residue(const std::string& name) {
   return { ResidueInfo::UNKNOWN, false, 0 };
 }
 
+
 struct ResidueId {
-  ResidueId(int id, int auth_id, char ins, std::string rname) noexcept
-    : seq_id(id), auth_seq_id(auth_id), ins_code(ins), name(rname) {}
+  // traditional residue sequence numbers are coupled with insertion codes
+  struct SNIC {
+    int seq_num;
+    char ins_code;
+    bool operator==(const SNIC& o) const {
+      return seq_num == o.seq_num && ins_code == o.ins_code;
+    }
+    bool operator!=(const SNIC& o) const { return !operator==(o); }
+  };
+
+  ResidueId(int id, SNIC auth_id, std::string rname) noexcept
+    : seq_id(id), snic(auth_id), name(rname) {}
+  ResidueId(SNIC id, std::string rname) noexcept : snic(id), name(rname) {}
   ResidueId(int id, std::string rname) noexcept : seq_id(id), name(rname) {}
+
   enum { UnknownId=-1000 };
   int seq_id = UnknownId;
-  int auth_seq_id = UnknownId;
-  char ins_code = '\0';
+  SNIC snic = {UnknownId, '\0'};
   //bool in_main_conformer/is_point_mut
   //uint32_t segment_id; // number or 4 characters
   std::string segment; // normally up to 4 characters in the PDB file
@@ -272,7 +284,7 @@ struct Residue : public ResidueId {
 
   explicit Residue(const ResidueId& rid) noexcept : ResidueId(rid) {}
   int seq_id_for_pdb() const {
-    return auth_seq_id != UnknownId ? auth_seq_id : seq_id;
+    return snic.seq_num != UnknownId ? snic.seq_num : seq_id;
   }
   ResidueInfo get_info() const { return find_tabulated_residue(name); }
   std::vector<Atom>& children() { return atoms; }
@@ -400,8 +412,7 @@ struct Structure {
 
 inline bool Residue::matches(const ResidueId& rid) const {
   return seq_id == rid.seq_id &&
-         ((auth_seq_id == rid.auth_seq_id && ins_code == rid.ins_code)
-          || seq_id != Residue::UnknownId) &&
+         (seq_id != Residue::UnknownId || snic == rid.snic) &&
          segment == rid.segment &&
          name == rid.name;
 }

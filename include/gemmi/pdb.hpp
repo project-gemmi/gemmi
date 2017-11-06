@@ -183,6 +183,13 @@ inline int read_matrix(Mat4x4& matrix, char* line, int len) {
   return n;
 }
 
+inline ResidueId::SNIC read_snic(const char* s) {
+  // We support hybrid-36 extension, although it is never used in practice
+  // as 9999 residues per chain are enough.
+  return { s[0] < 'A' ? read_int(s, 4) : read_base36<4>(s) - 466560 + 10000,
+           s[4] == ' ' ? '\0' : s[4] };
+}
+
 struct FileInput {
   std::FILE* f;
   char* gets(char* line, int size) { return std::fgets(line, size, f); }
@@ -234,13 +241,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
         resi = nullptr;
       }
 
-      // We support hybrid-36 extension, although it is never used in practice
-      // as 9999 residues per chain are enough.
-      int seq_id = line[22] < 'A' ? read_int(line+22, 4)
-                                  : read_base36<4>(line+22) - 466560 + 10000;
-      char ins_code = line[26] == ' ' ? '\0' : line[26];
-      std::string resi_name = read_string(line+17, 3);
-      ResidueId rid(seq_id, seq_id, ins_code, resi_name);
+      ResidueId rid(read_snic(line+22), read_string(line+17, 3));
       // Non-standard but widely used 4-character segment identifier.
       // Left-justified, and may include a space in the middle.
       // The segment may be a portion of a chain or a complete chain.

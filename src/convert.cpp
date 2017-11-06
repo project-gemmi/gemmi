@@ -297,8 +297,8 @@ cif::Document make_crd(const gemmi::Structure& st) {
     for (const gemmi::Chain& chain : model.chains) {
       for (const gemmi::Residue& res : chain.residues) {
         //std::string seq_id = std::to_string(res.seq_id);
-        std::string auth_seq_id = std::to_string(res.auth_seq_id);
-        //std::string ins_code(1, res.ins_code ? res.ins_code : '?');
+        std::string auth_seq_id = std::to_string(res.snic.seq_num);
+        //std::string ins_code(1, res.snic.ins_code ? res.snic.ins_code : '?');
         for (const gemmi::Atom& a : res.atoms) {
           vv.emplace_back("ATOM");
           vv.emplace_back(std::to_string(++serial));

@@ -179,16 +179,17 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
       resi = nullptr;
     }
     ResidueId rid(cif::as_int(row[kSeqId], Residue::UnknownId),
-                  cif::as_int(row[kAuthSeqId], Residue::UnknownId),
-                  as_string(row[kInsCode])[0],
+                  ResidueId::SNIC{cif::as_int(row[kAuthSeqId],
+                                              Residue::UnknownId),
+                                  as_string(row[kInsCode])[0]},
                   as_string(row[kCompId]));
     if (!resi || !resi->matches(rid)) {
       // the insertion code happens to be always a single letter
       assert(row[kInsCode].size() == 1);
       resi = chain->find_or_add_residue(rid);
     } else {
-      assert(resi->auth_seq_id == rid.auth_seq_id);
-      assert(resi->ins_code == rid.ins_code);
+      assert(resi->snic.seq_num == rid.snic.seq_num);
+      assert(resi->snic.ins_code == rid.snic.ins_code);
     }
     Atom atom;
     atom.name = as_string(row[kAtomId]);
