@@ -219,6 +219,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   Structure st;
   st.name = gemmi::path_basename(source);
   std::vector<std::string> has_ter;
+  std::vector<std::string> cispep_records;
   Model *model = st.find_or_add_model("1");
   Chain *chain = nullptr;
   Residue *resi = nullptr;
@@ -371,6 +372,10 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       if (read_matrix(matrix, line, len) == 3)
         st.origx = matrix;
 
+    } else if (is_record_type(line, "CISPEP")) {
+      std::string record(line);
+      if (record.length() > 21)
+        cispep_records.emplace_back(record);
     } else if (is_record_type(line, "END")) {  // NUL == ' ' & ~0x20
       break;
     }
@@ -383,6 +388,16 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
         ch.entity->type = EntityType::Polymer;
     }
   st.finish();
+
+  for (const std::string& record : cispep_records) {
+    const char* r = record.c_str();
+    ResidueId rid(read_snic(r + 17), read_string(r + 11, 3));
+    for (Model& model : st.models)
+      if (Chain* chain = model.find_chain(read_string(r + 14, 2)))
+        if (Residue* res = chain->find_residue(rid))
+          res->is_cis = true;
+  }
+
   return st;
 }
 
