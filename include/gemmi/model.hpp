@@ -280,6 +280,8 @@ struct ResidueId {
 struct Residue : public ResidueId {
   bool is_cis = false;  // bond to the next residue marked as cis
   std::vector<Atom> atoms;
+  // Maps Connection::id (from Model::connections) to Atom::name.
+  std::map<std::string, std::string> conn;
   Chain* parent = nullptr;
 
   explicit Residue(const ResidueId& rid) noexcept : ResidueId(rid) {}
@@ -331,9 +333,23 @@ struct Chain {
   }
 };
 
+// A connection. Corresponds to _struct_conn.
+// Symmetry operators are not trusted and not stored.
+// We assume that the nearest symmetry mate is connected.
+struct Connection {
+  enum Type { Covale, CoveleBase, CovalePhosphate, CovaleSugar, Disulf,
+              Hydrog, MetalC, Mismat, ModRes, SaltBr };
+  std::string id;  // the id is refered by Residue::conn;
+  Type type;
+  // The pointers get invalidated by some changes to the model.
+  Residue* res1;
+  Residue* res2;
+};
+
 struct Model {
   std::string name;  // actually an integer number
   std::vector<Chain> chains;
+  std::vector<Connection> connections;
   Structure* parent = nullptr;
   explicit Model(std::string mname) noexcept : name(mname) {}
 

@@ -252,6 +252,10 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     if (Residue* res = find_residue_from_label(st, row))
       res->is_cis = true;
 
+  for (const auto& row : block.find("_struct_conn.", {"id", "conn_type_id"})) {
+    // TODO
+  }
+
   return st;
 }
 
