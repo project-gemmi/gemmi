@@ -103,6 +103,8 @@ inline void write_pdb(const Structure& st, std::ostream& os,
                       bool iotbx_compat=false) {
   const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
   char buf[88];
+  char buf8[8];
+  char buf8a[8];
 
   const char* date =
     st.get_info("_pdbx_database_status.recvd_initial_deposition_date");
@@ -156,9 +158,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
           os.write(buf, 81);
       }
 
-    // CISPEP
-    char buf8[8];
-    char buf8a[8];
+    // CISPEP (note: we use only the first conformation)
     int counter = 0;
     for (const Model& model : st.models)
       for (const Chain& chain : model.chains) {
@@ -171,7 +171,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
                   res.name.c_str(), cname, impl::write_seq_id(buf8, res),
                   next->name.c_str(), cname, impl::write_seq_id(buf8a, *next),
                   st.models.size() > 1 ? model.name.c_str() : "0",
-                  res.calculate_omega(*next), "");
+                  res.calculate_omega(*next) * (180. / M_PI), "");
       }
   }
 
@@ -199,8 +199,6 @@ inline void write_pdb(const Structure& st, std::ostream& os,
             j + 1, op.id.c_str(), r.x, r.y, r.z, r.w, op.given ? '1' : ' ');
     }
 
-  char buf8[8];
-  char buf8a[8];
   for (const Model& model : st.models) {
     int serial = 0;
     if (st.models.size() > 1)

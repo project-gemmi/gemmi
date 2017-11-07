@@ -27,6 +27,22 @@ struct Matrix33 {
   }
 };
 
+// discussion: https://stackoverflow.com/questions/20305272/
+inline double calculate_dihedral(const Position& p0, const Position& p1,
+                                 const Position& p2, const Position& p3) {
+  typedef linalg::vec<double,3> double3;
+  double3 b0(p0.x - p1.x, p0.y - p1.y, p0.z - p1.z);
+  double3 b1(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z);
+  double3 b2(p3.x - p2.x, p3.y - p2.y, p3.z - p2.z);
+  double3 b0xb1 = linalg::cross(b0, b1);
+  double3 b1xb2 = linalg::cross(b2, b1);
+  double3 b0xb1_x_b1xb2 = linalg::cross(b0xb1, b1xb2);
+  double y = linalg::dot(b0xb1_x_b1xb2, b1) / linalg::length(b1);
+  double x = linalg::dot(b0xb1, b1xb2);
+  return std::atan2(y, x);
+}
+
+
 struct UnitCell {
   double a = 1.0, b = 1.0, c = 1.0;
   double alpha = 90.0, beta = 90.0, gamma = 90.0;

@@ -304,12 +304,15 @@ struct Residue : public ResidueId {
         return &a;
     return nullptr;
   }
+  const Atom* find_by_name_and_elem(const std::string& name, El elem) const {
+    for (const Atom& a : atoms)
+      if (a.name == name && a.element == elem)
+        return &a;
+    return nullptr;
+  }
   const Atom* get_ca() const {
     static const std::string CA("CA");
-    if (const Atom* a = find_by_name(CA))
-      if (a->element == El::C)
-        return a;
-    return nullptr;
+    return find_by_name_and_elem(CA, El::C);
   }
   const Residue* next_bonded_aa() const;
   double calculate_omega(const Residue& next) const;
@@ -442,8 +445,13 @@ inline const Residue* Residue::next_bonded_aa() const {
 }
 
 inline double Residue::calculate_omega(const Residue& next) const {
-  //TODO
-  return 0;
+  const Atom* CA = get_ca();
+  const Atom* C = find_by_name_and_elem("C", El::C);
+  const Atom* nextN = next.find_by_name_and_elem("N", El::N);
+  const Atom* nextCA = next.get_ca();
+  if (CA && C && nextN && nextCA)
+    return calculate_dihedral(CA->pos, C->pos, nextN->pos, nextCA->pos);
+  return NAN;
 }
 
 inline Residue* Chain::find_residue(const ResidueId& rid) {
