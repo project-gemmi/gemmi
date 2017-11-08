@@ -63,8 +63,9 @@ Typically, long tables (loops) make most of the CIF content::
     5331 S SD  . MET C 238 ? 2.2952 2.3511 2.3275 -0.0895 0.0372  -0.0230
     5332 C CE  . MET C 238 ? 1.5699 1.6247 1.6108 -0.0907 0.0388  -0.0244
 
-The dot and question mark in the example above are two null types:
-``?`` = *unknown* and ``.`` = *not applicable*.
+The dot and question mark in the example above are two null types.
+In the CIF spec: ``?`` = *unknown* and ``.`` = *not applicable*.
+In mmCIF files ``.`` is used for mandatory items, ``?`` for not mandatory.
 
 The CIF syntax has a serious flaw resulting from historical trade-offs:
 a string that can be interpreted as a number does not need to be quoted.
