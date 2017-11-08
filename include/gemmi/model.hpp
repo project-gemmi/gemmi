@@ -152,7 +152,7 @@ inline PolymerType polymer_type_from_string(const std::string& t) {
 struct Atom {
   std::string name;
   char group;
-  char altloc;
+  char altloc; // 0 if not set
   signed char charge;  // [-8, +8]
   gemmi::Element element = gemmi::El::X;
   Position pos;
@@ -306,7 +306,8 @@ struct Residue : public ResidueId {
   }
   const Atom* find_by_name_and_elem(const std::string& name, El elem) const {
     for (const Atom& a : atoms)
-      if (a.name == name && a.element == elem)
+      if (a.name == name && a.element == elem &&
+          (a.altloc == 0 || a.altloc == 'A'))
         return &a;
     return nullptr;
   }
@@ -314,6 +315,7 @@ struct Residue : public ResidueId {
     static const std::string CA("CA");
     return find_by_name_and_elem(CA, El::C);
   }
+  const Residue* prev_bonded_aa() const;
   const Residue* next_bonded_aa() const;
   double calculate_omega(const Residue& next) const;
 };
@@ -434,6 +436,14 @@ inline bool Residue::matches(const ResidueId& rid) const {
          (seq_id != Residue::UnknownId || snic == rid.snic) &&
          segment == rid.segment &&
          name == rid.name;
+}
+
+// TODO: handle alternative conformations (point mutations)
+inline const Residue* Residue::prev_bonded_aa() const {
+  if (parent && this != parent->residues.data() &&
+      calculate_distance_sq(get_ca(), (this - 1)->get_ca()) < 6.0 * 6.0)
+    return this - 1;
+  return nullptr;
 }
 
 inline const Residue* Residue::next_bonded_aa() const {
