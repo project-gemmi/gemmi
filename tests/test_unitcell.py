@@ -9,7 +9,9 @@ from gemmi import Position, calculate_dihedral
 class TestAngles(unittest.TestCase):
     def test_dihedral_special_cases(self):
         a = Position(random(), random(), random())
-        self.assertTrue(isnan(calculate_dihedral(a, a, a, a)))
+        # not sure what it should be in such undefined cases
+        #self.assertTrue(isnan(calculate_dihedral(a, a, a, a)))
+        self.assertEqual(calculate_dihedral(a, a, a, a), 0.0)
         # Special cases from scitbx tst_math.py
         # atan2 is guaranteed to give exact values (I think)
         p000 = Position(0, 0, 0)

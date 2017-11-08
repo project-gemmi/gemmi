@@ -171,6 +171,13 @@ inline double calculate_distance_sq(const Atom* a, const Atom* b) {
   return dx*dx + dy*dy + dz*dz;
 }
 
+inline double calculate_dihedral_from_atoms(const Atom* a, const Atom* b,
+                                            const Atom* c, const Atom* d) {
+  if (a && b && c && d)
+    return calculate_dihedral(a->pos, b->pos, c->pos, d->pos);
+  return NAN;
+}
+
 
 struct ResidueInfo {
   // simple classification, ELS is something else
@@ -261,6 +268,7 @@ struct ResidueId {
       return seq_num == o.seq_num && ins_code == o.ins_code;
     }
     bool operator!=(const SNIC& o) const { return !operator==(o); }
+    char printable_ic() const { return ins_code ? ins_code : ' '; }
   };
 
   ResidueId(int id, SNIC auth_id, std::string rname) noexcept
@@ -318,6 +326,8 @@ struct Residue : public ResidueId {
   const Residue* prev_bonded_aa() const;
   const Residue* next_bonded_aa() const;
   double calculate_omega(const Residue& next) const;
+  // returns pointer to the next (bonded) residue
+  bool calculate_phi_psi_omega(double* phi, double* psi, double* omega) const;
 };
 
 struct Chain {
@@ -455,13 +465,32 @@ inline const Residue* Residue::next_bonded_aa() const {
 }
 
 inline double Residue::calculate_omega(const Residue& next) const {
-  const Atom* CA = get_ca();
   const Atom* C = find_by_name_and_elem("C", El::C);
   const Atom* nextN = next.find_by_name_and_elem("N", El::N);
-  const Atom* nextCA = next.get_ca();
-  if (CA && C && nextN && nextCA)
-    return calculate_dihedral(CA->pos, C->pos, nextN->pos, nextCA->pos);
-  return NAN;
+  return calculate_dihedral_from_atoms(get_ca(), C, nextN, next.get_ca());
+}
+
+inline bool Residue::calculate_phi_psi_omega(double* phi, double* psi,
+                                             double* omega) const {
+  const Atom* CA = get_ca();
+  if (!CA)
+    return false;
+  const Residue* prev = prev_bonded_aa();
+  const Residue* next = next_bonded_aa();
+  if (!prev && !next)
+    return false;
+  const Atom* C = find_by_name_and_elem("C", El::C);
+  const Atom* N = find_by_name_and_elem("N", El::N);
+  const Atom* prevC = prev ? prev->find_by_name_and_elem("C", El::C) : nullptr;
+  const Atom* nextN = next ? next->find_by_name_and_elem("N", El::N) : nullptr;
+  if (phi)
+    *phi = calculate_dihedral_from_atoms(prevC, N, CA, C);
+  if (psi)
+    *psi = calculate_dihedral_from_atoms(N, CA, C, nextN);
+  if (omega)
+    *omega = calculate_dihedral_from_atoms(CA, C, nextN,
+                                           next ? next->get_ca() : nullptr);
+  return true;
 }
 
 inline Residue* Chain::find_residue(const ResidueId& rid) {

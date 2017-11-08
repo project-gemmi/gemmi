@@ -9,8 +9,9 @@
 #include "options.h"
 #include <stdio.h>
 
-void analyse(const gemmi::Structure& st, bool /*verbose*/) {
-  using namespace gemmi;
+using namespace gemmi;
+
+void print_content_info(const Structure& st, bool /*verbose*/) {
   printf(" Spacegroup   %s\n", st.sg_hm.c_str());
   int order = 1;
   const SpaceGroup* sg = find_spacegroup_by_name(st.sg_hm);
@@ -81,7 +82,26 @@ void analyse(const gemmi::Structure& st, bool /*verbose*/) {
            ro, 100. * (1. - 1. / (ro * Vm * Na)));
 }
 
-enum OptionIndex { Verbose=3 };
+void print_dihedrals(const Structure& st) {
+  printf(" Chain Residue      Psi      Phi    Omega\n");
+  const Model& model = st.models.at(0);
+  double deg = 180.0 / M_PI;
+  for (const Chain& chain : model.chains) {
+    const char* cname = chain.name_for_pdb().c_str();
+    for (const Residue& res : chain.residues) {
+      double phi, psi, omega;
+      printf("%3s %4d%c %5s", cname, res.seq_id_for_pdb(),
+             res.snic.printable_ic(), res.name.c_str());
+      if (res.calculate_phi_psi_omega(&phi, &psi, &omega))
+        printf(" % 8.2f % 8.2f % 8.2f\n", phi * deg, psi * deg, omega * deg);
+      else
+        printf("\n");
+    }
+  }
+  printf("\n");
+}
+
+enum OptionIndex { Verbose=3, Dihedrals };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -91,6 +111,8 @@ static const option::Descriptor Usage[] = {
   { Version, 0, "V", "version", Arg::None,
     "  -V, --version  \tPrint version and exit." },
   { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  { Dihedrals, 0, "", "dihedrals", Arg::None,
+    "  --dihedrals  \tPrint peptide dihedral angles." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -105,12 +127,14 @@ int main(int argc, char **argv) {
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       std::string input = p.nonOption(i);
-      if (gemmi::is_pdb_code(input))
+      if (is_pdb_code(input))
         input = expand_pdb_code_to_path_or_fail(input);
       if (verbose)
         std::fprintf(stderr, "Reading %s ...\n", input.c_str());
-      gemmi::Structure st = read_structure(input);
-      analyse(st, verbose);
+      Structure st = read_structure(input);
+      if (p.options[Dihedrals])
+        print_dihedrals(st);
+      print_content_info(st, verbose);
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());

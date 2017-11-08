@@ -9,8 +9,8 @@
 namespace py = pybind11;
 using namespace gemmi;
 
-void add_mmread(py::module& mol) {
-  py::class_<Position>(mol, "Position")
+void add_mm(py::module& m) {
+  py::class_<Position>(m, "Position")
     .def(py::init<double,double,double>())
     .def_readwrite("x", &Position::x)
     .def_readwrite("y", &Position::y)
@@ -19,9 +19,9 @@ void add_mmread(py::module& mol) {
         return "<gemmi.Position(" + std::to_string(self.x) + "," +
                std::to_string(self.y) + "," + std::to_string(self.z) + ")>";
     });
-  mol.def("calculate_dihedral", &calculate_dihedral,
-          "Input: four points. Output: dihedral angle in radians.");
-  py::class_<Element>(mol, "Element")
+  m.def("calculate_dihedral", &calculate_dihedral,
+        "Input: four points. Output: dihedral angle in radians.");
+  py::class_<Element>(m, "Element")
     .def(py::init<const std::string &>())
     .def(py::init<int>())
     .def_property_readonly("name", &Element::name)
