@@ -147,7 +147,9 @@ public:
     : cur_(vec.data() + std::min(offset, vec.size())),
       end_(vec.data() + vec.size()),
       stride_(stride) {}
-  void operator++() { cur_ = end_-cur_ > stride_ ? cur_+stride_ : end_; }
+  void operator++() {
+    cur_ = unsigned(end_-cur_) > stride_ ? cur_+stride_ : end_;
+  }
   const std::string& operator*() const { return *cur_; }
   bool operator!=(const StrideIter& other) const { return cur_ != other.cur_; }
   bool operator==(const StrideIter& other) const { return cur_ == other.cur_; }

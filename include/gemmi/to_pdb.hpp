@@ -171,7 +171,8 @@ inline void write_pdb(const Structure& st, std::ostream& os,
                   res.name.c_str(), cname, impl::write_seq_id(buf8, res),
                   next->name.c_str(), cname, impl::write_seq_id(buf8a, *next),
                   st.models.size() > 1 ? model.name.c_str() : "0",
-                  res.calculate_omega(*next) * (180. / M_PI), "");
+                  res.calculate_omega(*next) * (180. / 3.14159265358979323846),
+                  "");
       }
   }
 

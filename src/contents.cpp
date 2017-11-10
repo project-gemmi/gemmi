@@ -85,7 +85,7 @@ void print_content_info(const Structure& st, bool /*verbose*/) {
 void print_dihedrals(const Structure& st) {
   printf(" Chain Residue      Psi      Phi    Omega\n");
   const Model& model = st.models.at(0);
-  double deg = 180.0 / M_PI;
+  double deg = 180.0 / 3.14159265358979323846264338327950288;
   for (const Chain& chain : model.chains) {
     const char* cname = chain.name_for_pdb().c_str();
     for (const Residue& res : chain.residues) {
