@@ -901,11 +901,24 @@ As an exercise, let us check heavy atoms in selenomethionine:
     >>> _.find_block('MSE')
     <gemmi.cif.Block MSE>
     >>> _.find('_chem_comp_atom.', ['atom_id', 'type_symbol'])
-    <gemmi.cif.TableView 20x2>
+    <gemmi.cif.TableView 20 x 2>
     >>> [':'.join(a) for a in _ if a[1] != 'H']
     ['N:N', 'CA:C', 'C:C', 'O:O', 'OXT:O', 'CB:C', 'CG:C', 'SE:SE', 'CE:C']
 
-One may wonder how many components the CCD has and which is the heaviest one:
+One may wonder what is the heaviest CCD component:
+
+.. doctest::
+
+    >>> from gemmi import cif
+    >>> ccd = cif.read('components.cif')
+    >>> max(ccd, key=lambda b: float(b.find_value('_chem_comp.formula_weight')))
+    <gemmi.cif.Block WO2>
+    >>> _.find_value('_chem_comp.formula')
+    '"O62 P2 W18"'
+
+The :file:`components.cif` file is big, so we may want to split it into
+multiple file. Here we write all components on letter A to a new file.
+Additionally, we remove the descriptor category:
 
 .. doctest::
 
@@ -913,28 +926,21 @@ One may wonder how many components the CCD has and which is the heaviest one:
     >>> ccd = cif.read('components.cif')
     >>> len(ccd)  #doctest: +SKIP
     25219
-    >>> max(ccd, key=lambda b: float(b.find_value('_chem_comp.formula_weight')))
-    <gemmi.cif.Block WO2>
-    >>> _.find_value('_chem_comp.formula')
-    '"O62 P2 W18"'
-
-The :file:`components.cif` file is big. Let say we want to copy components
-on letter A to a new file, and we don't want to have the descriptor category:
-
-.. doctest::
-
-    >>> from gemmi import cif
-    >>> ccd = cif.read('components.cif')
-    >>> # TODO: delete blocks that are not on letter A
+    >>> to_be_deleted = [n for n, block in enumerate(ccd) if block.name[0] != 'A']
+    >>> for index in reversed(to_be_deleted):
+    ...   del ccd[index]
+    ...
+    >>> len(ccd)  #doctest: +SKIP
+    991
     >>> for block in ccd:
     ...     block.delete_category('_pdbx_chem_comp_descriptor.')
     ...
     >>> ccd.write_file('A.cif')
 
 The examples here present low-level, generic handling of CCD as a CIF file.
-If we would like to look into coordinates, it would be better to use
+If we would need to look into coordinates, it would be better to use
 higher level representation of the chemical component, which is provided
-by `class ChemComp <chemcomp>`.
+by :ref:`gemmi::ChemComp <chemcomp>`.
 
 Monomer libraries
 -----------------

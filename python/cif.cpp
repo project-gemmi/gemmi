@@ -21,12 +21,23 @@ void init_cif(py::module& cif) {
     .def("__iter__", [](const Document& d) {
         return py::make_iterator(d.blocks);
     }, py::keep_alive<0, 1>())
-    .def("__getitem__", [](const Document& d, const std::string& name) {
+    .def("__getitem__", [](const Document& d, const std::string& name)
+                          -> const Block& {
         const Block* b = d.find_block(name);
         if (!b)
           throw py::key_error("block '" + name + "' does not exist");
         return *b;
     }, py::arg("name"), py::return_value_policy::reference_internal)
+    .def("__getitem__", [](const Document& d, int index) -> const Block& {
+        return d.blocks.at(index >= 0 ? index : index + d.blocks.size());
+    }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("__delitem__", [](Document &d, int index) {
+        if (index < 0)
+          index += d.blocks.size();
+        if (index < 0 || static_cast<size_t>(index) >= d.blocks.size())
+          throw py::index_error();
+        d.blocks.erase(d.blocks.begin() + index);
+    }, py::arg("index"))
     .def("clear", &Document::clear)
     .def("sole_block", &Document::sole_block,
          "Returns the only block if there is exactly one")
@@ -70,7 +81,7 @@ void init_cif(py::module& cif) {
     }, py::keep_alive<0, 1>())
     .def("val", &Loop::val, py::arg("row"), py::arg("col"))
     .def("__repr__", [](const Loop &self) {
-        return "<gemmi.cif.Loop " + std::to_string(self.length()) + "x" +
+        return "<gemmi.cif.Loop " + std::to_string(self.length()) + " x " +
                                     std::to_string(self.width()) + ">";
     });
 
@@ -114,7 +125,7 @@ void init_cif(py::module& cif) {
     .def("__len__", &TableView::length)
     .def("__repr__", [](const TableView& self) {
         return "<gemmi.cif.TableView " +
-               (self.ok() ? std::to_string(self.length()) + "x" +
+               (self.ok() ? std::to_string(self.length()) + " x " +
                             std::to_string(self.cols.size())
                           : "nil") +
                ">";
