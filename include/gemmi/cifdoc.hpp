@@ -296,6 +296,8 @@ struct Block {
   // modifying functions
   void update_value(const std::string& tag, std::string v);
   bool delete_loop(const std::string& tag);
+  // These functions delete all keys/loops that start with the prefix.
+  // For mmCIF the prefix should normally end with dot.
   Loop& clear_or_add_loop(const std::string& prefix,
                           const std::initializer_list<const char*>& tags);
   void delete_category(const std::string& prefix);

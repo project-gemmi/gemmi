@@ -26,12 +26,12 @@ void init_cif(py::module& cif) {
         if (!b)
           throw py::key_error("block '" + name + "' does not exist");
         return *b;
-    }, py::arg("name"), py::return_value_policy::reference)
+    }, py::arg("name"), py::return_value_policy::reference_internal)
     .def("clear", &Document::clear)
     .def("sole_block", &Document::sole_block,
          "Returns the only block if there is exactly one")
     .def("find_block", &Document::find_block, py::arg("name"),
-         py::return_value_policy::reference)
+         py::return_value_policy::reference_internal)
     .def("write_file", &write_to_file, py::arg("filename"),
          "Write data to a CIF file.")
     .def("as_json", [](const Document& d) {
@@ -54,6 +54,8 @@ void init_cif(py::module& cif) {
     .def("find", (TableView (Block::*)(const std::vector<std::string>&) const)
                  &Block::find,
          py::arg("tags"))
+    .def("delete_category", &Block::delete_category, py::arg("prefix"),
+         "End mmCIF category with the dot: block.delete_category('_exptl.')")
     .def("__repr__", [](const Block &self) {
         return "<gemmi.cif.Block " + self.name + ">";
     });
