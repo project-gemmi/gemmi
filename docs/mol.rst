@@ -386,6 +386,8 @@ Sequence
 
 TODO
 
+.. _chemcomp:
+
 Chemical Component
 ==================
 

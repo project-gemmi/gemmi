@@ -1,0 +1,155 @@
+# only a couple of entries from CCD - for doctest testing
+
+data_MSE
+# 
+_chem_comp.id                                    MSE 
+_chem_comp.name                                  SELENOMETHIONINE 
+_chem_comp.type                                  "L-PEPTIDE LINKING" 
+_chem_comp.pdbx_type                             ATOMP 
+_chem_comp.formula                               "C5 H11 N O2 Se" 
+_chem_comp.mon_nstd_parent_comp_id               MET 
+_chem_comp.pdbx_synonyms                         ? 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     1999-07-08 
+_chem_comp.pdbx_modified_date                    2011-06-04 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        196.106 
+_chem_comp.one_letter_code                       M 
+_chem_comp.three_letter_code                     MSE 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        ? 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        ? 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+MSE N   N   N  0 1 N N N 11.285 -7.474  19.929 1.869  0.121  -1.981 N   MSE 1  
+MSE CA  CA  C  0 1 N N S 10.307 -8.472  19.503 0.520  -0.459 -1.960 CA  MSE 2  
+MSE C   C   C  0 1 N N N 8.897  -8.150  19.998 -0.232 -0.028 -3.192 C   MSE 3  
+MSE O   O   O  0 1 N N N 8.742  -7.166  20.755 0.011  1.037  -3.706 O   MSE 4  
+MSE OXT OXT O  0 1 N Y N 7.964  -8.893  19.623 -1.173 -0.828 -3.717 OXT MSE 5  
+MSE CB  CB  C  0 1 N N N 10.721 -9.857  20.004 -0.222 0.023  -0.713 CB  MSE 6  
+MSE CG  CG  C  0 1 N N N 12.078 -10.319 19.497 0.541  -0.414 0.538  CG  MSE 7  
+MSE SE  SE  SE 0 0 N N N 12.537 -11.948 20.120 -0.410 0.204  2.135  SE  MSE 8  
+MSE CE  CE  C  0 1 N N N 13.416 -11.501 21.616 0.876  -0.552 3.405  CE  MSE 9  
+MSE H   1HN H  0 1 N N N 12.225 -7.688  19.598 1.753  1.123  -1.999 H   MSE 10 
+MSE HN2 2HN H  0 1 N Y N 11.269 -7.351  20.941 2.297  -0.105 -1.096 HN2 MSE 11 
+MSE HA  HA  H  0 1 N N N 10.286 -8.458  18.388 0.593  -1.547 -1.940 HA  MSE 12 
+MSE HXT HXT H  0 1 N Y N 7.087  -8.692  19.930 -1.656 -0.551 -4.508 HXT MSE 13 
+MSE HB2 1HB H  0 1 N N N 10.685 -9.896  21.117 -1.223 -0.408 -0.696 HB2 MSE 14 
+MSE HB3 2HB H  0 1 N N N 9.935  -10.611 19.762 -0.296 1.110  -0.732 HB3 MSE 15 
+MSE HG2 1HG H  0 1 N N N 12.119 -10.290 18.383 1.542  0.016  0.521  HG2 MSE 16 
+MSE HG3 2HG H  0 1 N N N 12.867 -9.566  19.726 0.614  -1.501 0.557  HG3 MSE 17 
+MSE HE1 1HE H  0 1 N N N 13.699 -12.508 22.001 0.554  -0.332 4.423  HE1 MSE 18 
+MSE HE2 2HE H  0 1 N N N 14.258 -10.783 21.481 0.931  -1.632 3.267  HE2 MSE 19 
+MSE HE3 3HE H  0 1 N N N 12.852 -10.855 22.329 1.858  -0.113 3.231  HE3 MSE 20 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+MSE N   CA  SING N N 1  
+MSE N   H   SING N N 2  
+MSE N   HN2 SING N N 3  
+MSE CA  C   SING N N 4  
+MSE CA  CB  SING N N 5  
+MSE CA  HA  SING N N 6  
+MSE C   O   DOUB N N 7  
+MSE C   OXT SING N N 8  
+MSE OXT HXT SING N N 9  
+MSE CB  CG  SING N N 10 
+MSE CB  HB2 SING N N 11 
+MSE CB  HB3 SING N N 12 
+MSE CG  SE  SING N N 13 
+MSE CG  HG2 SING N N 14 
+MSE CG  HG3 SING N N 15 
+MSE SE  CE  SING N N 16 
+MSE CE  HE1 SING N N 17 
+MSE CE  HE2 SING N N 18 
+MSE CE  HE3 SING N N 19 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+MSE SMILES           ACDLabs              10.04 "O=C(O)C(N)CC[Se]C"                                                        
+MSE SMILES_CANONICAL CACTVS               3.341 "C[Se]CC[C@H](N)C(O)=O"                                                    
+MSE SMILES           CACTVS               3.341 "C[Se]CC[CH](N)C(O)=O"                                                     
+MSE SMILES_CANONICAL "OpenEye OEToolkits" 1.5.0 "C[Se]CC[C@@H](C(=O)O)N"                                                   
+MSE SMILES           "OpenEye OEToolkits" 1.5.0 "C[Se]CCC(C(=O)O)N"                                                        
+MSE InChI            InChI                1.03  "InChI=1S/C5H11NO2Se/c1-9-3-2-4(6)5(7)8/h4H,2-3,6H2,1H3,(H,7,8)/t4-/m0/s1" 
+MSE InChIKey         InChI                1.03  RJFAYQIBOAGBLC-BYPYZUCNSA-N                                                
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+MSE "SYSTEMATIC NAME" ACDLabs              10.04 "(2S)-2-amino-4-(methylselanyl)butanoic acid" 
+MSE "SYSTEMATIC NAME" "OpenEye OEToolkits" 1.5.0 "(2S)-2-amino-4-methylselanyl-butanoic acid"  
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+MSE "Create component"  1999-07-08 RCSB 
+MSE "Modify descriptor" 2011-06-04 RCSB 
+# 
+data_WO2
+# 
+_chem_comp.id                                    WO2 
+_chem_comp.name                                  "OCTADECATUNGSTENYL DIPHOSPHATE" 
+_chem_comp.type                                  NON-POLYMER 
+_chem_comp.pdbx_type                             HETAIN 
+_chem_comp.formula                               "O62 P2 W18" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         ? 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     2000-01-20 
+_chem_comp.pdbx_modified_date                    2008-10-14 
+_chem_comp.pdbx_ambiguous_flag                   Y 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        4363.030 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     WO2 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        "Corina V3.40" 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   Y 
+_chem_comp.pdbx_model_coordinates_db_code        ? 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+# [cut] 

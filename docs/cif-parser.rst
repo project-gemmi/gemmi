@@ -118,7 +118,7 @@ We use it to read:
 * Chemical Component Dictionary from PDB
 * DDL1 and DDL2 dictionaries from IUCr and PDB
 * monomer library a.k.a. Refmac dictionary
-* a subset of COD
+* a subset of Crystallography Open Database (COD)
 
 The parser handles:
 
@@ -135,11 +135,14 @@ Additionally:
 * names and lines can have any length like in STAR
   (the CIF spec imposes the limit of 2048 characters, but some mmCIF files
   from PDB exceed it, e.g. 3j3q.cif),
+* quoted strings may contain non-ascii characters (we found in PDB byte A0
+  corresponding to non-breaking space)
 * unquoted strings cannot start with keywords (STAR spec is ambiguous
   about this -- see
   `StarTools doc <http://www.globalphasing.com/startools/>`_ for details)
 
-Not supported (yet):
+The parser does *not* interpret automatically CIF 1.1 conventions
+(that work around syntactic limitations):
 
 * the line wrapping convention (``eol;\eol``)
 
@@ -323,6 +326,12 @@ TODO: document TableView methods (``ok()``, ``width()``, ``length()``,
 ``operator[](size_t)``, ``at(size_t)``, ``find_row(const std::string&)``.
 
 The first example in this section shows how this function can be used.
+
+Editing
+-------
+
+TODO: describe how to create a new CIF file, how to modify cif::Document,
+and how to write it to file.
 
 
 Python Module
@@ -875,12 +884,65 @@ For something a bit different, let us look at the data from
 `CCD <https://www.wwpdb.org/data/ccd>`_.
 The :file:`components.cif` file describes all the monomers (residues,
 ligands, solvent molecules) from the PDB entries.
-It contains information about bonds that is normally absent in the PDB
-entries. Macromolecular refinement programs need more detailed description
-of monomers (to derive restraints),
-so they have own dictionaries, such as Refmac dictionary (a.k.a. monomer
-library or cif files).
+It contains information about bonds that is absent in the PDB entries
+(a well-known
+`problem <https://www.cgl.ucsf.edu/chimera/data/mmcif-oct2013/mmcif.html>`_,
+recently
+`mitigated <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5473584/#__tag_618683893>`_
+in the MMTF format).
 
+As an exercise, let us check heavy atoms in selenomethionine:
+
+.. doctest::
+
+    >>> from gemmi import cif
+    >>> cif.read('components.cif')  #doctest: +ELLIPSIS
+    <gemmi.cif.Document object at 0x...>
+    >>> _.find_block('MSE')
+    <gemmi.cif.Block MSE>
+    >>> _.find('_chem_comp_atom.', ['atom_id', 'type_symbol'])
+    <gemmi.cif.TableView 20x2>
+    >>> [':'.join(a) for a in _ if a[1] != 'H']
+    ['N:N', 'CA:C', 'C:C', 'O:O', 'OXT:O', 'CB:C', 'CG:C', 'SE:SE', 'CE:C']
+
+One may wonder how many components the CCD has and which is the heaviest one:
+
+.. doctest::
+
+    >>> from gemmi import cif
+    >>> ccd = cif.read('components.cif')
+    >>> len(ccd)  #doctest: +SKIP
+    25219
+    >>> max(ccd, key=lambda b: float(b.find_value('_chem_comp.formula_weight')))
+    <gemmi.cif.Block WO2>
+    >>> _.find_value('_chem_comp.formula')
+    '"O62 P2 W18"'
+
+The :file:`components.cif` file is big. Let say we want to copy components
+on letter A to a new file, and we don't want to have the descriptor category:
+
+.. doctest::
+
+    >>> from gemmi import cif
+    >>> ccd = cif.read('components.cif')
+    >>> # TODO: delete blocks that are not on letter A
+    >>> for block in ccd:
+    ...     block.delete_category('_pdbx_chem_comp_descriptor.')
+    ...
+    >>> ccd.write_file('A.cif')
+
+The examples here present low-level, generic handling of CCD as a CIF file.
+If we would like to look into coordinates, it would be better to use
+higher level representation of the chemical component, which is provided
+by `class ChemComp <chemcomp>`.
+
+Monomer libraries
+-----------------
+
+Macromolecular refinement programs need to know more about monomers
+than CCD can tell: they need to know how to restrain the structure.
+Therefore, they have own dictionaries, such as Refmac dictionary
+(a.k.a. monomer library or cif files).
 :file:`examples/monomers.py` has a simple consistency checks
 between the CCD and Refmac dictionary. This example will be expanded
 after the coming revolution in the Refmac monomer library.
