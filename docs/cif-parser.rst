@@ -784,8 +784,7 @@ entries based on the unit cell and |Vm|.
 
 Not all the dark spots are group depositions.
 For example, at |Vs|\ ≈66.5%, |dmin| 2.5-3A we can see the 20S proteasome
-studied by Huber *et al* --
-a systematic research of the same important protein,
+studied by Huber *et al* -- a systematic research of the same protein,
 with dozens PDB submissions.
 
 Weights

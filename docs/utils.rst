@@ -33,8 +33,9 @@ one value per line::
     DIMPLE
     PHENIX
 
-Some of the command-line options are the options of GNU grep (``-l``, ``-H``,
-``-n``). As with other utilities, option ``--help`` shows the usage:
+Some of the command-line options correspond to the options of GNU grep
+(``-c``, ``-l``, ``-H``, ``-n``).
+As with other utilities, option ``--help`` shows the usage:
 
 .. literalinclude:: grep-help.txt
    :language: console
@@ -75,8 +76,24 @@ and it makes the program useful for ad-hoc PDB statistics::
        4559 polyribonucleotide
          18 polysaccharide(D)
 
-Going back to moo, we may want to know to what method the Rfree values
-correspond::
+Option ``-c`` counts the values in each block or file. As an example
+we may check which entries have the biggest variety of chemical components
+(spoiler: ribosomes)::
+
+    $ gemmi-grep -O -c _chem_comp.id /pdb/mmCIF | sort -t: -k2 -nr | head
+    5J91:58
+    5J8A:58
+    5J7L:58
+    5J5B:58
+    4YBB:58
+    5JC9:57
+    5J88:57
+    5IT8:57
+    5IQR:50
+    5AFI:50
+
+Going back to moo, we may want to know to what experimental method
+the Rfree values correspond::
 
     $ gemmi-grep _refine.ls_R_factor_R_free -a _refine.pdbx_refine_id mmCIF/mo/?moo.cif.gz
     1MOO:0.177;X-RAY DIFFRACTION
