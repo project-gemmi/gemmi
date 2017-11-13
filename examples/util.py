@@ -12,11 +12,11 @@ def get_file_paths_from_args():
     Normally we first test our scripts on a few files:
       ./myscript 1mru.cif another.cif
     and then do pdb-wide analysis:
-      ./myscript /my/local/pdb_copy/mmCIF
+      ./myscript $PDB_DIR/structures/divided/mmCIF
     If we may have a list of PDB codes to analyze (one code per line, the code
     must be the first word, but may be followed by others), we do:
-      ./myscript -f my-list.txt /my/local/pdb_copy/mmCIF
-    Sometimes we want to check a specific PDB codes. If $PDB_COPY is set
+      ./myscript -f my-list.txt $PDB_DIR/structures/divided/mmCIF
+    Sometimes we want to check a specific PDB codes. If $PDB_DIR is set
     is is enough to do:
       ./myscript 1ABC 2def
     """
@@ -36,11 +36,11 @@ def get_file_paths_from_args():
                 if not only or name[:-len(ext)].lower() in only:
                     yield os.path.join(root, name)
         elif len(arg) == 4 and arg.isalnum():
-            pdb_copy = os.getenv('PDB_COPY')
-            if not pdb_copy:
-                sys.exit('Error: $PDB_COPY not set, where to look for ' + arg)
-            yield os.path.join(pdb_copy, 'mmCIF', arg[1:3].lower(),
-                               arg.lower() + '.cif.gz')
+            pdb_dir = os.getenv('PDB_DIR')
+            if not pdb_dir:
+                sys.exit('Error: $PDB_DIR not set, where to look for ' + arg)
+            yield os.path.join(pdb_dir, 'structures', 'divided', 'mmCIF',
+                               arg[1:3].lower(), arg.lower() + '.cif.gz')
         else:
             yield arg
 

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Usage:
-#  ./matthews.py $PDB_COPY/mmCIF | tee data.tsv
+#  ./matthews.py $PDB_DIR/structures/divided/mmCIF | tee data.tsv
 #  ./matthews.py plot data.tsv
 # Plotting uses numpy, statsmodels, pandas, matplotlib, seaborn.
 # There is also a "check" command that was used to estimate data quality.
