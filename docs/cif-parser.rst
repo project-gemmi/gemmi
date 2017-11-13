@@ -773,19 +773,19 @@ Or we could just smooth them out by changing parameters of this plot.
 
 On the left side of the yellow egg you can see dark stripes
 caused by *group depositions*, which were introduced by PDB in 2016.
-As of Apr 2017 only a few groups have been deposited (it's just the beginning).
 They came from two European high-throughput beamlines and
 serve as an illustration of how automated software can analyze hundreds
 of similar samples (fragment screening) and submit them quickly to the PDB.
 
 We can easily filter out group depositions -- either using the group IDs
-that we extracted from mmCIF files or, like W&B, by excluding redundant
-entries based on the unit cell and |Vm|.
+extracted from mmCIF files (we do this for pdb-stats_)
+or, like W&B, by excluding redundant entries based on the unit cell and |Vm|.
+
+.. _pdb-stats: https://project-gemmi.github.io/pdb-stats/
 
 Not all the dark spots are group depositions.
-For example, at |Vs|\ ≈66.5%, |dmin| 2.5-3A we can see the 20S proteasome
-studied by Huber *et al* -- a systematic research of the same protein,
-with dozens PDB submissions.
+For example, the one at |Vs|\ ≈66.5%, |dmin| 2.5-3A is proteasome 20S
+studied over years by Huber *et al*, with dozens PDB submissions.
 
 Weights
 -------
