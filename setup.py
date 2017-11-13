@@ -2,10 +2,13 @@
 # which is under a BSD-like license:
 # https://github.com/pybind/python_example/blob/master/LICENSE
 
+import setuptools
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
+import os
 import sys
-import setuptools
+
+USE_SYSTEM_ZLIB = False
 
 def read_version_from_header():
     with open('include/gemmi/version.hpp') as f:
@@ -30,18 +33,32 @@ class get_pybind_include(object):
         import pybind11
         return pybind11.get_include(self.user)
 
+if USE_SYSTEM_ZLIB:
+    zlib_library = 'z'
+    zlib_include_dirs = []
+    build_libs = []
+else:
+    zlib_library = 'gemmi_zlib'
+    zlib_include_dirs = ['third_party/zlib']
+    zlib_files = ['third_party/zlib/%s.c' % name for name in ['adler32',
+        'crc32', 'gzlib', 'gzread', 'inflate', 'inftrees', 'inffast', 'zutil']]
+    zlib_macros = [('NO_GZCOMPRESS', '1')]
+    if os.name != 'nt':
+        zlib_macros += [('Z_HAVE_UNISTD_H', '1')]
+    build_libs = [('gemmi_zlib', {'sources': zlib_files,
+                                  'macros': zlib_macros})]
 
 ext_modules = [
     Extension('gemmi',
-        ['python/%s.cpp' % name for name in ('gemmi', 'cif', 'sym', 'mm')],
-        include_dirs=[
+        ['python/%s.cpp' % name for name in ['gemmi', 'cif', 'sym', 'mm']],
+        include_dirs=zlib_include_dirs + [
             'include',
             'third_party',
             # Path to pybind11 headers
             get_pybind_include(),
             get_pybind_include(user=True)
         ],
-        libraries=['z'],
+        libraries=[zlib_library],
         language='c++'
     ),
 ]
@@ -109,9 +126,11 @@ setup(
     url='https://project-gemmi.github.io/',
     description='General MacroMolecular I/O',
     long_description='''\
-    A new (as of 2017) library, aiming to handle CIF, mmCIF and PDB files,
-    refinement restraints (monomer library), crystallographic reflections,
-    and maybe more.''',
+    Library for macromolecular crystallography and structural bioinformatics.
+    For working with coordinate files (mmCIF, PDB, mmJSON),
+    refinement restraints (monomer library), electron density maps
+    and crystallographic reflections.''',
+    libraries=build_libs,
     ext_modules=ext_modules,
     packages=['gemmi-examples'],
     package_dir={'gemmi-examples': 'examples'},

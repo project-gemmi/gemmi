@@ -49,7 +49,11 @@ public:
     : MaybeStdin(path), mem_size_(0), file_(nullptr) {}
   ~MaybeGzipped() {
     if (file_)
+#if ZLIB_VERNUM >= 0x1235
+      gzclose_r(file_);
+#else
       gzclose(file_);
+#endif
   }
 
   bool is_compressed() const { return ends_with(path(), ".gz"); };
