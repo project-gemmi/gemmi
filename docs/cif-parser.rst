@@ -259,28 +259,19 @@ Block
     The API still evolves and for now this documentation lists only
     the most used functions.
 
-Value corresponding to a particular tag can is read using::
+Value corresponding to a particular tag (not in a loop) can be read using::
 
     const std::string* find_value(const std::string& tag) const;
 
-which returns ``nullptr`` if there is no such tag in the block.
+which returns ``nullptr`` if the tag is not found.
 The result is a raw string (possibly with quotes) that can be fed into
 ``as_string()`` or ``as_number()`` or ``as_int()``.
+
 For example::
 
     const std::string *rf = block.find_value("_refine.ls_R_factor_R_free");
-    // here you may check for rf == nullptr, possibly also for "?" and "."
+    // here we should check for rf == nullptr, possibly also for "?" and "."
     double rfree = gemmi::cif::as_number(*rf); // NaN if '?' or '.'
-
-If you do not need to distinguish between missing tag, unknown (?)
-and n/a (.), we have convenience functions::
-
-    // returns empty string if not found or unknown or n/a.
-    const std::string& find_string(const std::string& tag) const;
-    // returns NaN if not found or unknown or n/a, throws if not numeric
-    double find_number(const std::string& tag) const;
-    // returns default_ if not found or unknown or n/a, throws if not int
-    int find_int(const std::string& tag, int default_) const;
 
 To read values from a single column for a loop (table) use::
 
@@ -288,47 +279,45 @@ To read values from a single column for a loop (table) use::
 
 The values can be iterated over using a C++11 range-based ``for``::
 
-    for (const std::string &s : block.find_loop("_atom_site.type_symbol"))
-      std::cout << gemmi::cif::as_string(s) << std::endl;
+    // in rare cases (PDB 5MOO) multiple Rfree values are listed in loop
+    for (const std::string &s : block.find_loop("_refine.ls_R_factor_R_free"))
+      std::cout << gemmi::cif::as_number(s) << std::endl;
 
 TODO: document LoopColumn
 
-Most often, we want to access multiple (but not necessarily all) columns
-from a table.
-Additionally, some values can be given either in a loop or, if the loop
-would have only a single row, as tag-value pairs.
-So we want our access function to handle transparently both cases.
-These requirements led to a functions ``find``::
+Since some values (and in mmCIF files -- all values) can be given
+either as a single item or in a loop, it is convenient to handle
+transparently both cases::
 
     TableView find(const std::string& tag) const;
+
+Additionally, we often want to access multiple columns from a table,
+so this functions can also be called with a list of tags::
+
     TableView find(const std::vector<std::string>& tags) const;
 
-which returns a lightweight, iterable (by C++11 range-based ``for``) view
-of the data.
-
-As a rule, columns from the same loop have a common prefix,
-so we added a third overload::
+Since columns from the same loop tend to have common prefix (category name),
+the library also provides a third overload::
 
     TableView find(const std::string& prefix,
                    const std::vector<std::string>& tags) const;
 
-so we can write::
-
-    block.find("_entity_poly_seq.", {"entity_id", "num", "mon_id"})
-
-instead of::
+These two calls are equivalent::
 
     block.find({"_entity_poly_seq.entity_id", "_entity_poly_seq.num", "_entity_poly_seq.mon_id"})
 
-Dictionaries group data items into categories, and the prefix will normally
-correspond to a category name. But the functions above are not aware
-of dictionary conventions. Therefore the category name should end
-with a separator (dot for mmCIF files, as shown above).
+    block.find("_entity_poly_seq.", {"entity_id", "num", "mon_id"})
 
-TODO: document optional tags: ``{"_required_tag", "?_optional_tag"}``
+Note that ``find`` is not aware of dictionaries and categories,
+therefore the category name should end with a separator
+(dot for mmCIF files, as shown above).
+
+``TableView`` above is a lightweight, iterable view of the data.
 
 TODO: document TableView methods (``ok()``, ``width()``, ``length()``,
 ``operator[](size_t)``, ``at(size_t)``, ``find_row(const std::string&)``.
+
+TODO: document optional tags: ``{"_required_tag", "?_optional_tag"}``
 
 The first example in this section shows how this function can be used.
 
