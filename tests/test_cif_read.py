@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import gc
+import os
 import unittest
 from gemmi import cif
 
@@ -24,6 +25,13 @@ class TestBlock(unittest.TestCase):
         rows = list(block.find('_nonloop_', ['a', 'b']))
         gc.collect()
         self.assertEqual([list(r) for r in rows], [['alpha', 'beta']])
+
+    def test_reading_gzipped_file(self):
+        path = os.path.join(os.path.dirname(__file__), "1pfe.cif.gz")
+        cif_doc = cif.read(path)
+        categories = cif_doc.sole_block().get_mmcif_category_names()
+        self.assertEqual(categories[0], '_entry.')
+        self.assertEqual(len(categories), 72)
 
 if __name__ == '__main__':
     unittest.main()
