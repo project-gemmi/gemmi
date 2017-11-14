@@ -179,7 +179,7 @@ struct LoopColumn {
 // We optimized for loops, and in case of tag-values we copy the values
 // into the `values` vector.
 struct TableView {
-  const Loop *loop;
+  const Loop* loop;
   std::vector<int> cols;
   std::vector<std::string> values_; // used only for non-loops
 
@@ -303,6 +303,8 @@ struct Block {
   Loop& clear_or_add_loop(const std::string& prefix,
                           const std::initializer_list<const char*>& tags);
   void delete_category(const std::string& prefix);
+
+  std::vector<std::string> get_mmcif_category_names() const;
 };
 
 struct Item {
@@ -428,6 +430,29 @@ inline void Block::delete_category(const std::string& prefix) {
   for (Item& i : items)
     if (i.has_prefix(prefix))
       i.erase();
+}
+
+inline std::vector<std::string> Block::get_mmcif_category_names() const {
+  std::vector<std::string> cats;
+  for (const Item& item : items) {
+    const std::string* tag = nullptr;
+    if (item.type == ItemType::Value)
+      tag = &item.tv.tag;
+    else if (item.type == ItemType::Loop && !item.loop.tags.empty())
+      tag = &item.loop.tags[0].tag;
+    if (tag)
+      for (auto j = cats.rbegin(); j != cats.rend(); ++j)
+        if (gemmi::starts_with(*tag, *j)) {
+          tag = nullptr;
+          break;
+        }
+    if (tag) {
+      size_t dot = tag->find('.');
+      if (dot != std::string::npos)
+        cats.emplace_back(*tag, 0, dot + 1);
+    }
+  }
+  return cats;
 }
 
 inline Loop& Block::clear_or_add_loop(const std::string& prefix,

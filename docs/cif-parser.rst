@@ -320,6 +320,11 @@ instead of::
 
     block.find({"_entity_poly_seq.entity_id", "_entity_poly_seq.num", "_entity_poly_seq.mon_id"})
 
+Dictionaries group data items into categories, and the prefix will normally
+correspond to a category name. But the functions above are not aware
+of dictionary conventions. Therefore the category name should end
+with a separator (dot for mmCIF files, as shown above).
+
 TODO: document optional tags: ``{"_required_tag", "?_optional_tag"}``
 
 TODO: document TableView methods (``ok()``, ``width()``, ``length()``,

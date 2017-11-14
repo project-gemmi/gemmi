@@ -67,6 +67,8 @@ void init_cif(py::module& cif) {
          py::arg("tags"))
     .def("delete_category", &Block::delete_category, py::arg("prefix"),
          "End mmCIF category with the dot: block.delete_category('_exptl.')")
+    .def("get_mmcif_category_names", &Block::get_mmcif_category_names,
+         "For mmCIF files only. Returns list of all category prefixes (_x.)")
     .def("__repr__", [](const Block &self) {
         return "<gemmi.cif.Block " + self.name + ">";
     });
