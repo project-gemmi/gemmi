@@ -16,7 +16,7 @@ USUAL_ORDER = ('group_PDB id type_symbol label_atom_id label_alt_id '
 counts = {}
 for path in get_file_paths_from_args():
     block = cif.read(path).sole_block()
-    loop_tags = block.find_loop("_atom_site.id").loop.tags
+    loop_tags = block.find_loop("_atom_site.id").get_loop().tags
     assert all(t.tag.startswith("_atom_site.") for t in loop_tags)
     tags = ' '.join(t.tag[11:] for t in loop_tags)
     if tags != USUAL_ORDER:

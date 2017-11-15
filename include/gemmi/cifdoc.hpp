@@ -141,36 +141,39 @@ struct Loop {
 
 class StrideIter {
 public:
-  StrideIter() : cur_(nullptr), end_(nullptr), stride_(0) {}
+  StrideIter(const std::string* str) : cur_(str), end_(nullptr), stride_(0) {}
   StrideIter(const std::vector<std::string>& vec, size_t offset,
              unsigned stride)
     : cur_(vec.data() + std::min(offset, vec.size())),
       end_(vec.data() + vec.size()),
       stride_(stride) {}
   void operator++() {
-    cur_ = unsigned(end_-cur_) > stride_ ? cur_+stride_ : end_;
+    cur_ = (end_ && unsigned(end_-cur_) > stride_ ? cur_+stride_ : end_);
   }
   const std::string& operator*() const { return *cur_; }
   bool operator!=(const StrideIter& other) const { return cur_ != other.cur_; }
   bool operator==(const StrideIter& other) const { return cur_ == other.cur_; }
+  StrideIter& to_end() { cur_ = end_; return *this; }
 private:
   const std::string* cur_;
   const std::string* end_;
   unsigned stride_;
 };
 
+struct Item;
 
 // Loop (can by null) with position (column) corresponding to the found value.
 struct LoopColumn {
-  const Loop *loop;
+  const Item* it;
   size_t col;
-  StrideIter begin() const {
-    return loop ? StrideIter(loop->values, col, loop->width())
-                : StrideIter();
-  }
-  StrideIter end() const {
-    return loop ? StrideIter(loop->values, loop->values.size(), loop->width())
-                : StrideIter();
+  StrideIter begin() const;
+  StrideIter end() const { return begin().to_end(); }
+  const Loop* get_loop() const;
+  const std::string* get_tag() const;
+  int length() const {
+    if (const Loop* loop = get_loop())
+      return loop->length();
+    return it ? 1 : 0;
   }
 };
 
@@ -274,8 +277,6 @@ struct TableView {
   }
 };
 
-struct Item;
-
 struct Block {
   std::string name;
   std::vector<Item> items;
@@ -286,6 +287,7 @@ struct Block {
   // access functions
   const std::string* find_value(const std::string& tag) const;
   LoopColumn find_loop(const std::string& tag) const;
+  LoopColumn find_values(const std::string& tag) const;
   TableView find(const std::string& prefix,
                  const std::vector<std::string>& tags) const;
   TableView find(const std::vector<std::string>& tags) const {
@@ -383,6 +385,24 @@ private:
   }
 };
 
+inline const std::string* LoopColumn::get_tag() const {
+  if (!it)
+    return nullptr;
+  if (const Loop* loop = get_loop())
+    return &loop->tags.at(col).tag;
+  return &it->tv.tag;
+}
+
+inline const Loop* LoopColumn:: get_loop() const {
+  return it && it->type == ItemType::Loop ? &it->loop : nullptr;
+}
+inline StrideIter LoopColumn::begin() const {
+  if (const Loop* loop = get_loop())
+    return StrideIter(loop->values, col, loop->width());
+  if (it && it->type == ItemType::Value)
+    return StrideIter(&it->tv.value);
+  return StrideIter(nullptr);
+}
 
 inline const std::string* Block::find_value(const std::string& tag) const {
   for (const Item& i : items)
@@ -408,11 +428,19 @@ inline void Block::update_value(const std::string& tag, std::string v) {
 }
 
 inline LoopColumn Block::find_loop(const std::string& tag) const {
+  LoopColumn c = find_values(tag);
+  return c.it && c.it->type == ItemType::Loop ? c : LoopColumn{nullptr, 0};
+}
+
+inline LoopColumn Block::find_values(const std::string& tag) const {
   for (const Item& i : items)
     if (i.type == ItemType::Loop) {
       int pos = i.loop.find_tag(tag);
       if (pos != -1)
-        return LoopColumn{&i.loop, static_cast<size_t>(pos)};
+        return LoopColumn{&i, static_cast<size_t>(pos)};
+    } else if (i.type == ItemType::Value) {
+      if (i.tv.tag == tag)
+        return LoopColumn{&i, 1};
     }
   return LoopColumn{nullptr, 0};
 }
@@ -473,7 +501,10 @@ inline Loop& Block::clear_or_add_loop(const std::string& prefix,
 
 inline TableView Block::find(const std::string& prefix,
                              const std::vector<std::string>& tags) const {
-  const Loop* loop = tags.empty() ? nullptr : find_loop(prefix + tags[0]).loop;
+  const Loop* loop = nullptr;
+  if (!tags.empty())
+    if (const Item* item = find_loop(prefix + tags[0]).it)
+      loop = &item->loop;
 
   std::vector<int> indices;
   std::vector<std::string> values;

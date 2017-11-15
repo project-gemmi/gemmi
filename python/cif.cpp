@@ -56,7 +56,10 @@ void init_cif(py::module& cif) {
     .def_readonly("name", &Block::name)
     .def("find_value", &Block::find_value, py::arg("tag"),
          py::return_value_policy::reference)
-    .def("find_loop", &Block::find_loop, py::arg("tag"))
+    .def("find_loop", &Block::find_loop, py::arg("tag"),
+         py::keep_alive<0, 1>())
+    .def("find_values", &Block::find_values, py::arg("tag"),
+         py::keep_alive<0, 1>())
     .def("find", (TableView (Block::*)(const std::string&) const) &Block::find,
          py::arg("tag"))
     .def("find", (TableView (Block::*)(const std::string&,
@@ -102,16 +105,18 @@ void init_cif(py::module& cif) {
 
   py::class_<LoopColumn>(cif, "LoopColumn")
     .def(py::init<>())
-    .def_readonly("loop", &LoopColumn::loop)
+    .def("get_loop", &LoopColumn::get_loop,
+         py::return_value_policy::reference_internal)
     .def_readwrite("col", &LoopColumn::col)
     .def("__iter__", [](const LoopColumn& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
-    .def("__bool__", [](const LoopColumn &self) -> bool { return self.loop; })
+    .def("__bool__", [](const LoopColumn &self) -> bool { return self.it; })
     .def("__repr__", [](const LoopColumn &self) {
-        return "<gemmi.cif.LoopColumn " +
-        (self.loop ? self.loop->tags[self.col].tag + " length " +
-                     std::to_string(self.loop->length()) : "nil") + ">";
+        std::string desc = "nil";
+        if (const std::string* tag = self.get_tag())
+          desc = *tag + " length " + std::to_string(self.length());
+        return "<gemmi.cif.LoopColumn " + desc + ">";
     });
 
   py::class_<TableView> lt(cif, "TableView");
