@@ -53,6 +53,9 @@ void init_cif(py::module& cif) {
 
   py::class_<Block>(cif, "Block")
     .def(py::init<>())
+    .def("__iter__", [](const Loop& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>())
     .def_readonly("name", &Block::name)
     .def("find_value", &Block::find_value, py::arg("tag"),
          py::return_value_policy::reference)
@@ -68,6 +71,7 @@ void init_cif(py::module& cif) {
     .def("find", (TableView (Block::*)(const std::vector<std::string>&) const)
                  &Block::find,
          py::arg("tags"))
+    .def("set_pair", &Block::set_pair, py::arg("tag"), py::arg("value"))
     .def("delete_category", &Block::delete_category, py::arg("prefix"),
          "End mmCIF category with the dot: block.delete_category('_exptl.')")
     .def("get_mmcif_category_names", &Block::get_mmcif_category_names,

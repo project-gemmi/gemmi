@@ -34,6 +34,16 @@ class TestBlock(unittest.TestCase):
         gc.collect()
         self.assertListEqual(list(v2), ['a', 'b'])
 
+    def test_set_pair(self):
+        doc = cif.read_string('data_a _a 1 _b 2 _c 3')
+        block = doc[0]
+        block.set_pair('_d', '9')
+        block.set_pair('_b', '8')
+        self.assertEqual(block.find_value('_a'), '1')
+        self.assertEqual(block.find_value('_b'), '8')
+        self.assertEqual(block.find_value('_c'), '3')
+        self.assertEqual(block.find_value('_d'), '9')
+
     def test_reading_gzipped_file(self):
         path = os.path.join(os.path.dirname(__file__), '1pfe.cif.gz')
         cif_doc = cif.read(path)

@@ -298,7 +298,7 @@ struct Block {
   }
 
   // modifying functions
-  void update_value(const std::string& tag, std::string v);
+  void set_pair(const std::string& tag, std::string v);
   bool delete_loop(const std::string& tag);
   // These functions delete all keys/loops that start with the prefix.
   // For mmCIF the prefix should normally end with dot.
@@ -411,7 +411,9 @@ inline const std::string* Block::find_value(const std::string& tag) const {
   return nullptr;
 }
 
-inline void Block::update_value(const std::string& tag, std::string v) {
+inline void Block::set_pair(const std::string& tag, std::string v) {
+  if (tag[0] != '_')
+    throw std::runtime_error("Tag should start with '_', got: " + tag);
   for (Item& i : items) {
     if (i.type == ItemType::Value && i.tv.tag == tag) {
       i.tv.value = v;

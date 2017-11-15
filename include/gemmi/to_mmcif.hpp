@@ -98,27 +98,27 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   block.name = st.name;
   auto e_id = st.info.find("_entry.id");
   std::string id = cif::quote(e_id != st.info.end() ? e_id->second : st.name);
-  block.update_value("_entry.id", id);
+  block.set_pair("_entry.id", id);
   auto initial_date =
          st.info.find("_pdbx_database_status.recvd_initial_deposition_date");
   if (initial_date != st.info.end()) {
-    block.update_value("_pdbx_database_status.entry_id", id);
-    block.update_value(initial_date->first, initial_date->second);
+    block.set_pair("_pdbx_database_status.entry_id", id);
+    block.set_pair(initial_date->first, initial_date->second);
   }
 
   // unit cell and symmetry
-  block.update_value("_cell.entry_id", id);
-  block.update_value("_cell.length_a",    to_str(st.cell.a));
-  block.update_value("_cell.length_b",    to_str(st.cell.b));
-  block.update_value("_cell.length_c",    to_str(st.cell.c));
-  block.update_value("_cell.angle_alpha", to_str(st.cell.alpha));
-  block.update_value("_cell.angle_beta",  to_str(st.cell.beta));
-  block.update_value("_cell.angle_gamma", to_str(st.cell.gamma));
+  block.set_pair("_cell.entry_id", id);
+  block.set_pair("_cell.length_a",    to_str(st.cell.a));
+  block.set_pair("_cell.length_b",    to_str(st.cell.b));
+  block.set_pair("_cell.length_c",    to_str(st.cell.c));
+  block.set_pair("_cell.angle_alpha", to_str(st.cell.alpha));
+  block.set_pair("_cell.angle_beta",  to_str(st.cell.beta));
+  block.set_pair("_cell.angle_gamma", to_str(st.cell.gamma));
   auto z_pdb = st.info.find("_cell.Z_PDB");
   if (z_pdb != st.info.end())
-    block.update_value(z_pdb->first, z_pdb->second);
-  block.update_value("_symmetry.entry_id", id);
-  block.update_value("_symmetry.space_group_name_H-M", cif::quote(st.sg_hm));
+    block.set_pair(z_pdb->first, z_pdb->second);
+  block.set_pair("_symmetry.entry_id", id);
+  block.set_pair("_symmetry.space_group_name_H-M", cif::quote(st.sg_hm));
 
   // _entity
   cif::Loop& entity_loop = block.clear_or_add_loop("_entity.", {"id", "type"});
@@ -143,17 +143,17 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   // title, keywords
   auto title = st.info.find("_struct.title");
   if (title != st.info.end()) {
-    block.update_value("_struct.entry_id", id);
-    block.update_value(title->first, cif::quote(title->second));
+    block.set_pair("_struct.entry_id", id);
+    block.set_pair(title->first, cif::quote(title->second));
   }
   auto pdbx_keywords = st.info.find("_struct_keywords.pdbx_keywords");
   auto keywords = st.info.find("_struct_keywords.text");
   if (pdbx_keywords != st.info.end() || keywords != st.info.end())
-    block.update_value("_struct_keywords.entry_id", id);
+    block.set_pair("_struct_keywords.entry_id", id);
   if (pdbx_keywords != st.info.end())
-    block.update_value(pdbx_keywords->first, cif::quote(pdbx_keywords->second));
+    block.set_pair(pdbx_keywords->first, cif::quote(pdbx_keywords->second));
   if (keywords != st.info.end())
-    block.update_value(keywords->first, cif::quote(keywords->second));
+    block.set_pair(keywords->first, cif::quote(keywords->second));
 
   // _struct_ncs_oper (MTRIX)
   if (!st.ncs.empty()) {
@@ -179,14 +179,14 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
 
   // _database_PDB_matrix (ORIGX)
   if (st.origx != Mat4x4(linalg::identity)) {
-    block.update_value("_database_PDB_matrix.entry_id", id);
+    block.set_pair("_database_PDB_matrix.entry_id", id);
     std::string prefix = "_database_PDB_matrix.origx";
     for (int i = 0; i < 3; ++i) {
       std::string s = "[" + to_string(i+1) + "]";
-      block.update_value(prefix + s + "[1]", to_str(st.origx.x[i]));
-      block.update_value(prefix + s + "[2]", to_str(st.origx.y[i]));
-      block.update_value(prefix + s + "[3]", to_str(st.origx.z[i]));
-      block.update_value(prefix + "_vector" + s, to_str(st.origx.w[i]));
+      block.set_pair(prefix + s + "[1]", to_str(st.origx.x[i]));
+      block.set_pair(prefix + s + "[2]", to_str(st.origx.y[i]));
+      block.set_pair(prefix + s + "[3]", to_str(st.origx.z[i]));
+      block.set_pair(prefix + "_vector" + s, to_str(st.origx.w[i]));
     }
   }
 
@@ -204,20 +204,20 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
 
   // _atom_sites (SCALE)
   if (st.cell.explicit_matrices) {
-    block.update_value("_atom_sites.entry_id", id);
+    block.set_pair("_atom_sites.entry_id", id);
     std::string prefix = "_atom_sites.fract_transf_";
-    block.update_value(prefix + "matrix[1][1]", to_str(st.cell.frac.a11));
-    block.update_value(prefix + "matrix[1][2]", to_str(st.cell.frac.a12));
-    block.update_value(prefix + "matrix[1][3]", to_str(st.cell.frac.a13));
-    block.update_value(prefix + "matrix[2][1]", to_str(st.cell.frac.a21));
-    block.update_value(prefix + "matrix[2][2]", to_str(st.cell.frac.a22));
-    block.update_value(prefix + "matrix[2][3]", to_str(st.cell.frac.a23));
-    block.update_value(prefix + "matrix[3][1]", to_str(st.cell.frac.a31));
-    block.update_value(prefix + "matrix[3][2]", to_str(st.cell.frac.a32));
-    block.update_value(prefix + "matrix[3][3]", to_str(st.cell.frac.a33));
-    block.update_value(prefix + "vector[1]",    to_str(st.cell.shift.x));
-    block.update_value(prefix + "vector[2]",    to_str(st.cell.shift.y));
-    block.update_value(prefix + "vector[3]",    to_str(st.cell.shift.z));
+    block.set_pair(prefix + "matrix[1][1]", to_str(st.cell.frac.a11));
+    block.set_pair(prefix + "matrix[1][2]", to_str(st.cell.frac.a12));
+    block.set_pair(prefix + "matrix[1][3]", to_str(st.cell.frac.a13));
+    block.set_pair(prefix + "matrix[2][1]", to_str(st.cell.frac.a21));
+    block.set_pair(prefix + "matrix[2][2]", to_str(st.cell.frac.a22));
+    block.set_pair(prefix + "matrix[2][3]", to_str(st.cell.frac.a23));
+    block.set_pair(prefix + "matrix[3][1]", to_str(st.cell.frac.a31));
+    block.set_pair(prefix + "matrix[3][2]", to_str(st.cell.frac.a32));
+    block.set_pair(prefix + "matrix[3][3]", to_str(st.cell.frac.a33));
+    block.set_pair(prefix + "vector[1]",    to_str(st.cell.shift.x));
+    block.set_pair(prefix + "vector[2]",    to_str(st.cell.shift.y));
+    block.set_pair(prefix + "vector[3]",    to_str(st.cell.shift.z));
   }
 
   // SEQRES from PDB doesn't record microheterogeneity, so if the resulting
