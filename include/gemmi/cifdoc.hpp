@@ -285,7 +285,11 @@ struct Block {
   Block() {}
 
   // access functions
-  const std::string* find_value(const std::string& tag) const;
+  const Pair* find_pair(const std::string& tag) const;
+  const std::string* find_value(const std::string& tag) const {
+    const Pair* pair = find_pair(tag);
+    return pair ? &pair->value : nullptr;
+  }
   Column find_loop(const std::string& tag) const;
   Column find_values(const std::string& tag) const;
   TableView find(const std::string& prefix,
@@ -404,10 +408,10 @@ inline StrideIter Column::begin() const {
   return StrideIter(nullptr);
 }
 
-inline const std::string* Block::find_value(const std::string& tag) const {
+inline const Pair* Block::find_pair(const std::string& tag) const {
   for (const Item& i : items)
     if (i.type == ItemType::Value && i.tv.tag == tag)
-      return &i.tv.value;
+      return &i.tv;
   return nullptr;
 }
 

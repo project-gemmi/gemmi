@@ -53,10 +53,9 @@ void init_cif(py::module& cif) {
 
   py::class_<Block>(cif, "Block")
     .def(py::init<>())
-    .def("__iter__", [](const Loop& self) {
-        return py::make_iterator(self);
-    }, py::keep_alive<0, 1>())
     .def_readonly("name", &Block::name)
+    .def("find_pair", &Block::find_pair, py::arg("tag"),
+         py::return_value_policy::reference_internal)
     .def("find_value", &Block::find_value, py::arg("tag"),
          py::return_value_policy::reference)
     .def("find_loop", &Block::find_loop, py::arg("tag"),
@@ -79,6 +78,16 @@ void init_cif(py::module& cif) {
     .def("__repr__", [](const Block &self) {
         return "<gemmi.cif.Block " + self.name + ">";
     });
+
+  py::class_<Pair>(cif, "Pair")
+    .def(py::init<>())
+    .def_readonly("tag", &Pair::tag)
+    .def_readonly("value", &Pair::value)
+    .def("__getitem__", [](const Pair& p, int index) -> const std::string& {
+        if (index == 0) return p.tag;
+        if (index == 1) return p.value;
+        throw py::index_error();
+    }, py::arg("index"), py::return_value_policy::reference_internal);
 
   py::class_<Loop> lp(cif, "Loop");
   lp.def(py::init<>())

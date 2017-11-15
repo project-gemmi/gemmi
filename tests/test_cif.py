@@ -39,7 +39,7 @@ class TestBlock(unittest.TestCase):
         block = doc[0]
         block.set_pair('_d', '9')
         block.set_pair('_b', '8')
-        self.assertEqual(block.find_value('_a'), '1')
+        self.assertEqual(tuple(block.find_pair('_a')), ('_a', '1'))
         self.assertEqual(block.find_value('_b'), '8')
         self.assertEqual(block.find_value('_c'), '3')
         self.assertEqual(block.find_value('_d'), '9')
