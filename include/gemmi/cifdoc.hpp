@@ -67,7 +67,7 @@ inline std::string as_string(const std::string* value) {
   return value ? as_string(*value) : std::string();
 }
 
-struct TagValue {
+struct Pair {
   std::string tag;
   std::string value;
 };
@@ -162,10 +162,10 @@ private:
 
 struct Item;
 
-// Loop (can by null) with position (column) corresponding to the found value.
-struct LoopColumn {
+// Accessor to a specific loop column, or to a single value from a Pair.
+struct Column {
   const Item* it;
-  size_t col;
+  size_t col;  // for loop it is a column index in it->loop
   StrideIter begin() const;
   StrideIter end() const { return begin().to_end(); }
   const Loop* get_loop() const;
@@ -286,8 +286,8 @@ struct Block {
 
   // access functions
   const std::string* find_value(const std::string& tag) const;
-  LoopColumn find_loop(const std::string& tag) const;
-  LoopColumn find_values(const std::string& tag) const;
+  Column find_loop(const std::string& tag) const;
+  Column find_values(const std::string& tag) const;
   TableView find(const std::string& prefix,
                  const std::vector<std::string>& tags) const;
   TableView find(const std::vector<std::string>& tags) const {
@@ -311,10 +311,10 @@ struct Block {
 
 struct Item {
   ItemType type;
-  ValueType valtype = ValueType::NotSet; // for TagValue only
+  ValueType valtype = ValueType::NotSet; // for Pair only
   int line_number = -1;
   union {
-    TagValue tv;
+    Pair tv;
     Loop loop;
     Block frame;
   };
@@ -346,10 +346,10 @@ struct Item {
 
   ~Item() {
     switch (type) {
-      case ItemType::Value: tv.~TagValue(); break;
+      case ItemType::Value: tv.~Pair(); break;
       case ItemType::Loop: loop.~Loop(); break;
       case ItemType::Frame: frame.~Block(); break;
-      case ItemType::Comment: tv.~TagValue(); break;
+      case ItemType::Comment: tv.~Pair(); break;
       case ItemType::Erased: break;
     }
   }
@@ -368,7 +368,7 @@ struct Item {
 private:
   void copy_value(const Item& o) {
     if (o.type == ItemType::Value || o.type == ItemType::Comment)
-      new (&tv) TagValue(o.tv);
+      new (&tv) Pair(o.tv);
     else if (o.type == ItemType::Loop)
       new (&loop) Loop(o.loop);
     else if (o.type == ItemType::Frame)
@@ -377,7 +377,7 @@ private:
 
   void move_value(Item&& o) {
     if (o.type == ItemType::Value || o.type == ItemType::Comment)
-      new (&tv) TagValue(std::move(o.tv));
+      new (&tv) Pair(std::move(o.tv));
     else if (o.type == ItemType::Loop)
       new (&loop) Loop(std::move(o.loop));
     else if (o.type == ItemType::Frame)
@@ -385,7 +385,7 @@ private:
   }
 };
 
-inline const std::string* LoopColumn::get_tag() const {
+inline const std::string* Column::get_tag() const {
   if (!it)
     return nullptr;
   if (const Loop* loop = get_loop())
@@ -393,10 +393,10 @@ inline const std::string* LoopColumn::get_tag() const {
   return &it->tv.tag;
 }
 
-inline const Loop* LoopColumn:: get_loop() const {
+inline const Loop* Column::get_loop() const {
   return it && it->type == ItemType::Loop ? &it->loop : nullptr;
 }
-inline StrideIter LoopColumn::begin() const {
+inline StrideIter Column::begin() const {
   if (const Loop* loop = get_loop())
     return StrideIter(loop->values, col, loop->width());
   if (it && it->type == ItemType::Value)
@@ -427,22 +427,22 @@ inline void Block::update_value(const std::string& tag, std::string v) {
   items.emplace_back(tag, v);
 }
 
-inline LoopColumn Block::find_loop(const std::string& tag) const {
-  LoopColumn c = find_values(tag);
-  return c.it && c.it->type == ItemType::Loop ? c : LoopColumn{nullptr, 0};
+inline Column Block::find_loop(const std::string& tag) const {
+  Column c = find_values(tag);
+  return c.it && c.it->type == ItemType::Loop ? c : Column{nullptr, 0};
 }
 
-inline LoopColumn Block::find_values(const std::string& tag) const {
+inline Column Block::find_values(const std::string& tag) const {
   for (const Item& i : items)
     if (i.type == ItemType::Loop) {
       int pos = i.loop.find_tag(tag);
       if (pos != -1)
-        return LoopColumn{&i, static_cast<size_t>(pos)};
+        return Column{&i, static_cast<size_t>(pos)};
     } else if (i.type == ItemType::Value) {
       if (i.tv.tag == tag)
-        return LoopColumn{&i, 1};
+        return Column{&i, 0};
     }
-  return LoopColumn{nullptr, 0};
+  return Column{nullptr, 0};
 }
 
 inline bool Block::delete_loop(const std::string& tag) {

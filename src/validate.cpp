@@ -87,7 +87,7 @@ inline void infer_valtypes_in_items(std::vector<cif::Item>& items) {
       } else if (item.type == ItemType::Loop) {
         for (size_t i = 0; i != item.loop.tags.size(); ++i) {
           ValueType& vt = item.loop.tags[i].valtype;
-          for (const std::string& v : LoopColumn{&item, i}) {
+          for (const std::string& v : Column{&item, i}) {
             ValueType this_vt = infer_valtype_of_string(v);
             if (this_vt != vt) {
               // if we are here: vt != ValueType::Char

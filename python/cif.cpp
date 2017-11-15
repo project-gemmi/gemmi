@@ -103,20 +103,19 @@ void init_cif(py::module& cif) {
         return "<gemmi.cif.Loop.Span: " + join_str(self, " ") + ">";
     });
 
-  py::class_<LoopColumn>(cif, "LoopColumn")
+  py::class_<Column>(cif, "Column")
     .def(py::init<>())
-    .def("get_loop", &LoopColumn::get_loop,
+    .def("get_loop", &Column::get_loop,
          py::return_value_policy::reference_internal)
-    .def_readwrite("col", &LoopColumn::col)
-    .def("__iter__", [](const LoopColumn& self) {
-        return py::make_iterator(self);
-    }, py::keep_alive<0, 1>())
-    .def("__bool__", [](const LoopColumn &self) -> bool { return self.it; })
-    .def("__repr__", [](const LoopColumn &self) {
+    .def_readwrite("col", &Column::col)
+    .def("__iter__", [](const Column& self) { return py::make_iterator(self); },
+         py::keep_alive<0, 1>())
+    .def("__bool__", [](const Column &self) -> bool { return self.it; })
+    .def("__repr__", [](const Column &self) {
         std::string desc = "nil";
         if (const std::string* tag = self.get_tag())
           desc = *tag + " length " + std::to_string(self.length());
-        return "<gemmi.cif.LoopColumn " + desc + ">";
+        return "<gemmi.cif.Column " + desc + ">";
     });
 
   py::class_<TableView> lt(cif, "TableView");

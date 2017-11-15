@@ -159,34 +159,19 @@ severe for us. So we start with relatively strict parser and will be
 pragmatically relaxing it when needed.
 
 
-C++ Library
+DOM and SAX
 ===========
-
-The CIF parser is implemented in header files (``#include <gemmi/cif.hpp>``),
-so you do not need to compile Gemmi.
-It has a single dependency: PEGTL (also header-only),
-which is included in the ``third_party`` directory.
-All you need is to make sure that Gemmi and PEGTL headers are in your
-project's include path, and compile your program as C++11 or later.
-For example:
-
-.. code-block:: none
-
-    git clone https://github.com/project-gemmi/gemmi.git
-    c++ -std=c++11 -Igemmi/include -Igemmi/third_party -O2 my_program.cpp
-
-If you'd like Gemmi to uncompress gzipped (.cif.gz) files on the fly,
-add ``#include <gemmi/gz.hpp>`` and link your program with the zlib library.
 
 The CIF parsing functionality can be used in two ways that roughly
 correspond to DOM and SAX parsing:
 
-1. Parse a file (or C++ stream or string) into a document
-   that can be easily accessed and manipulated.
+* The usual way is to parse a file or a string into a document (DOM)
+  that can be easily accessed and manipulated.
 
-2. Define own `PEGTL Actions <https://github.com/taocpp/PEGTL/blob/master/doc/Actions-and-States.md>`_
-   corresponding to the grammar rules from ``cif.hpp``.
-   These actions will be triggered while reading a CIF file.
+* Alternatively, from C++ only, one can define own
+  `PEGTL Actions <https://github.com/taocpp/PEGTL/blob/master/doc/Actions-and-States.md>`_
+  corresponding to the grammar rules from ``cif.hpp``.
+  These actions will be triggered while reading a CIF file.
 
 This documention focuses on the former (DOM parsing).
 The hierarchy in the DOM reflects the structure of CIF 1.1:
@@ -197,19 +182,52 @@ The hierarchy in the DOM reflects the structure of CIF 1.1:
 * Loop (*m*\ ×\ *n* table) contains *n* column names and *m*\ ×\ *n* values.
 
 Names are often called *tags*. The leading ``_`` is usually treated
-as part of the tag, not just a syntactic feature, so we store it in DOM
-as ``std::string`` with value ``_my_tag``.
+as part of the tag, not just a syntactic feature. So we store tag string
+with the underscore (``_my_tag``), and function that take tags as arguments
+expect strings starting with ``_``.
 
-Values have types, but while the type can be inferred correctly in almost all
-cases, it is the corresponding dictionary that specifies the type.
-Additionally, DDL2 dictionaries can specify subtypes of the standard CIF types,
-for example ``int`` and ``float`` are mmCIF subtypes of a generic CIF ``numb``.
+Values have types. CIF 1.1 defines four base types:
+
+* char (string)
+* uchar (ughh.. case-insensitive string)
+* numb (number that cannot be recognized as number on the syntax level)
+* null (one of two possible nulls: ``?`` and ``.``)
+
+Additionally, DDL2 dictionaries specify subtypes.
+For example, ``int`` and ``float`` are mmCIF subtypes of ``numb``.
+
+Since in general it is not possible to infer numeric type without
+a corresponding dictionary, the numbers are stored in the DOM as strings
+and they are converted to numeric values when they are read.
+
+Obviously, the case of all strings is preserved in the DOM.
+
+C++ Library
+===========
+
+.. highlight:: cpp
+
+The CIF parser is implemented in header files,
+so you do not need to compile Gemmi.
+It has a single dependency: PEGTL (also header-only),
+which is included in the ``third_party`` directory.
+All you need is to make sure that Gemmi and PEGTL headers are in your
+project's include path, and compile your program as C++11 or later.
 
 Let us start with a simple example.
-This code reads mmCIF file and shows weights of the chemical components:
+This little program reads mmCIF file and shows weights of the chemical
+components:
 
 .. literalinclude:: doc_cif_cc.cpp
    :language: cpp
+
+To compile it on Unix system you need to fetch Gemmi source code
+and run a compiler:
+
+.. code-block:: none
+
+    git clone https://github.com/project-gemmi/gemmi.git
+    c++ -std=c++11 -Igemmi/include -Igemmi/third_party -O2 my_program.cpp
 
 Reading a file
 --------------
@@ -231,6 +249,9 @@ a gzipped file (by uncompressing it first into a memory buffer)
 if the filename ends with ``.gz``::
 
     gemmi::cif::Document doc = gemmi::cif::read(gemmi::MaybeGzipped(path));
+
+If you use it, you must also link the program with zlib. On Unix systems
+it usually means adding ``-lz`` to the compiler invocation.
 
 And if the ``path`` above is ``-``, the standard input is read.
 
@@ -255,10 +276,6 @@ At last, function ``clear()`` works in the same way as in C++ containers.
 Block
 -----
 
-.. warning::
-    The API still evolves and for now this documentation lists only
-    the most used functions.
-
 Value corresponding to a particular tag (not in a loop) can be read using::
 
     const std::string* find_value(const std::string& tag) const;
@@ -269,32 +286,46 @@ The result is a raw string (possibly with quotes) that can be fed into
 
 For example::
 
-    const std::string *rf = block.find_value("_refine.ls_R_factor_R_free");
+    const std::string *rf = block.find_value("_refine_ls_R_factor_all");
     // here we should check for rf == nullptr, possibly also for "?" and "."
     double rfree = gemmi::cif::as_number(*rf); // NaN if '?' or '.'
 
 To read values from a single column for a loop (table) use::
 
-    LoopColumn find_loop(const std::string& tag) const;
+    Column find_loop(const std::string& tag) const;
 
 The values can be iterated over using a C++11 range-based ``for``::
 
-    // in rare cases (PDB 5MOO) multiple Rfree values are listed in loop
-    for (const std::string &s : block.find_loop("_refine.ls_R_factor_R_free"))
-      std::cout << gemmi::cif::as_number(s) << std::endl;
-
-TODO: document LoopColumn
+    for (const std::string &s : block.find_loop("_atom_site_type_symbol"))
+      std::cout << gemmi::cif::as_string(s) << std::endl;
 
 Since some values (and in mmCIF files -- all values) can be given
 either as a single item or in a loop, it is convenient to handle
 transparently both cases::
 
-    TableView find(const std::string& tag) const;
+    // mmCIF _chem_comp_atom is usually a table, but not always
+    for (const std::string &s : block.find_values("_chem_comp_atom.type_symbol"))
+      std::cout << s << std::endl;
 
-Additionally, we often want to access multiple columns from a table,
-so this functions can also be called with a list of tags::
+The ``find_values`` function also returns ``struct Column``,
+but unlike ``find_loop`` it will find also name-value pair.
+Apart from supporting iterators, ``Column`` has a few other functions::
+
+    // 0 if not found, 1 if name-value pair, >= 1 if loop
+    int length() const; 
+    // If tag was found it returns pointer to name of the tag in the DOM
+    // (the name is the same as argument to find_values())
+    const std::string* get_tag() const;
+    // Loop if the tag was found in a loop, otherwise nullptr.
+    const Loop* get_loop() const;
+
+We often want to access multiple columns at once,
+so another abstraction that can be used with multiple tags::
 
     TableView find(const std::vector<std::string>& tags) const;
+
+    // but it can be called with a single tag as well
+    TableView find(const std::string& tag) const;
 
 Since columns from the same loop tend to have common prefix (category name),
 the library also provides a third overload::
@@ -343,16 +374,55 @@ C++ compiler (GCC 4.8+, Clang 3.4+, MSVC 2015+, ICC 16+)::
 (when the project is more mature and has regular releases, it will be simply
 ``pip install gemmi``).
 
-TODO: documentation
+After installation ``pydoc gemmi.cif`` should list all classes and methods.
 
-(in the meantime see ``pydoc gemmi.cif`` and examples)
-
-Example (says hello to each element found in mmCIF):
+To start with a simple example, here is a program that says hello to each
+element found in mmCIF:
 
 .. literalinclude:: ../examples/hello.py
    :lines: 2-
 
 More complex examples are shown in the :ref:`cif_examples` section.
+
+Reading a file
+--------------
+
+.. doctest::
+
+  from gemmi import cif
+  # read and parse a CIF file
+  doc = read_file("components.cif")
+  # the same, but if the filename ends with .gz it is uncompressed on the fly
+  doc = read("../tests/1pfe.cif.gz")
+  # read content of a CIF file from string
+  doc = read_string("data_this _is valid _cif content")
+
+Document
+--------
+
+Functions in the previous section return object of class ``Document``
+that contains blocks with data.
+
+TODO: document Document
+
+* __len__
+* __iter__
+* __getitem__
+* __delitem__
+* sole_block()
+* find_block()
+* clear()
+
+
+Block
+-----
+
+TODO: document Block
+
+Editing
+-------
+
+TODO
 
 Performance
 ===========
