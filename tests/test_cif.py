@@ -12,7 +12,7 @@ class TestBlock(unittest.TestCase):
             _one 1 _two 2 _three 3
             _nonloop_a alpha
             _nonloop_b beta
-            loop_ _la _lb A B C D
+            loop_ _la _lb _ln A B 1 C D 2
         """).sole_block()
         gc.collect()
         rows = list(block.find('_la'))
@@ -26,6 +26,27 @@ class TestBlock(unittest.TestCase):
         rows = list(block.find('_nonloop_', ['a', 'b']))
         gc.collect()
         self.assertEqual([list(r) for r in rows], [['alpha', 'beta']])
+
+        tab = block.find(['_la', '_ln'])
+        self.assertEqual(tab.find_row('A')[1], '1')
+        self.assertRaises(RuntimeError, tab.find_row, 'B')
+        self.assertEqual(tab.find_row('C')[1], '2')
+
+        tab = block.find(['_lb', '_ln'])
+        self.assertRaises(RuntimeError, tab.find_row, 'A')
+        self.assertEqual(tab.find_row('B')[1], '1')
+        self.assertEqual(tab.find_row('D')[1], '2')
+
+        tab = block.find(['_la', '?_nop', '?_ln'])
+        self.assertEqual(len(tab), 2)
+        self.assertEqual(tab.width(), 3)
+        row = tab[0]
+        self.assertIsNotNone(row.get(0))
+        self.assertEqual(row[0], 'A')
+        self.assertIsNone(row.get(1))
+        self.assertEqual(row[2], '1')
+        self.assertTrue("None" in repr(row))
+
 
     def test_find_values(self):
         v1 = cif.read_string('data_a _v1 one')[0].find_values('_v1')

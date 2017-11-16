@@ -132,8 +132,7 @@ void init_cif(py::module& cif) {
     });
 
   py::class_<TableView> lt(cif, "TableView");
-  lt.def(py::init<>())
-    .def_readonly("loop", &TableView::loop)
+  lt.def_readonly("loop", &TableView::loop)
     .def("find_row", &TableView::find_row, py::keep_alive<0, 1>())
     .def("__iter__", [](const TableView& self) {
         return py::make_iterator(self, py::keep_alive<0, 1>());
@@ -141,6 +140,7 @@ void init_cif(py::module& cif) {
     .def("__getitem__", &TableView::at, py::keep_alive<0, 1>())
     .def("__bool__", &TableView::ok)
     .def("__len__", &TableView::length)
+    .def("width", &TableView::width)
     .def("__repr__", [](const TableView& self) {
         return "<gemmi.cif.TableView " +
                (self.ok() ? std::to_string(self.length()) + " x " +
@@ -153,11 +153,16 @@ void init_cif(py::module& cif) {
     .def("str", &TableView::Row::str)
     .def("__len__", &TableView::Row::size)
     .def("__getitem__", &TableView::Row::at)
+    .def("get", &TableView::Row::ptr_at,
+         py::arg("index"), py::return_value_policy::reference_internal)
     .def("__iter__", [](const TableView::Row& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
     .def("__repr__", [](const TableView::Row& self) {
-        return "<gemmi.cif.TableView.Row: " + join_str(self, " ") + ">";
+        std::string items;
+        for (size_t i = 0; i != self.size(); ++i)
+          items += " " + (self.has(i) ? self[i] : "None");
+        return "<gemmi.cif.TableView.Row:" + items + ">";
     });
 
   cif.def("read_file", &read_file, py::arg("filename"),

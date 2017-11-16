@@ -161,6 +161,7 @@ private:
 };
 
 struct Item;
+struct Block;
 
 // Accessor to a specific loop column, or to a single value from a Pair.
 struct Column {
@@ -183,60 +184,56 @@ struct Column {
 // into the `values` vector.
 struct TableView {
   const Loop* loop;
+  const Block& blo;
   std::vector<int> positions;
-  std::vector<std::string> values_; // used only for non-loops
 
   struct Row {
-    const std::string* cur;
-    const std::vector<int>& icols;
+    const TableView& tab;
+    size_t row_index;
 
+    const std::string& direct_at(int pos) const;
     const std::string& at(int n) const {
-      int pos = icols.at(n);
-      if (pos == -1)
-        throw std::out_of_range("Optional tag not found: " + std::to_string(n));
-      return cur[pos];
+      if (n < 0)
+        n += size();
+      return direct_at(tab.positions.at(n));
     }
-    bool has(int n) const { return icols.at(n) >= 0; }
-    const std::string& operator[](int n) const { return cur[icols[n]]; }
-    size_t size() const { return icols.size(); }
+    const std::string& operator[](int n) const {
+      return direct_at(tab.positions[n]);
+    }
+    const std::string* ptr_at(int n) const {
+      if (n < 0)
+        n += size();
+      int pos = tab.positions.at(n);
+      return pos >= 0 ? &direct_at(pos) : nullptr;
+    }
+    bool has(int n) const { return tab.has_column(n); }
+    size_t size() const { return tab.width(); }
     std::string str(int n) const { return as_string(at(n)); }
     struct Iter {
       const Row& parent;
-      const int* cur;
+      std::vector<int>::const_iterator cur; // points into positions
       void operator++() { cur++; }
-      const std::string& operator*() const { return parent.cur[*cur]; }
+      const std::string& operator*() const { return parent.direct_at(*cur); }
       bool operator!=(const Iter& other) const { return cur != other.cur; }
       bool operator==(const Iter& other) const { return cur == other.cur; }
     };
-    Iter begin() const { return Iter{*this, icols.data()}; }
-    Iter end() const { return Iter{*this, icols.data() + icols.size()}; }
+    Iter begin() const { return Iter{*this, tab.positions.begin()}; }
+    Iter end() const { return Iter{*this, tab.positions.end()}; }
   };
 
-  struct Iter {
-    const std::string* cur;
-    const std::vector<int>* col_indices;
-    size_t stride;
-    void operator++() { cur += stride; }
-    Row operator*() const { return Row{cur, *col_indices}; }
-    bool operator!=(const Iter& other) const { return cur != other.cur; }
-    bool operator==(const Iter& other) const { return cur == other.cur; }
-    const std::string& get(int n) const { return cur[col_indices->at(n)]; }
-  };
-
-  bool ok() const { return loop != nullptr || !values_.empty(); }
+  bool ok() const { return !positions.empty(); }
   size_t width() const { return positions.size(); }
   size_t length() const {
-    return loop ? loop->length() : (values_.empty() ? 0 : 1);
+    return loop ? loop->length() : (positions.empty() ? 0 : 1);
   }
+  bool has_column(int n) const { return positions.at(n) >= 0; }
 
-  Row operator[](size_t n) const {
-    const std::string* c = loop ? loop->values.data() + loop->width() * n
-                                : values_.data() + values_.size() * n;
-    return Row{c, positions};
-  }
+  Row operator[](size_t n) const { return Row{*this, n}; }
 
-  Row at(size_t n) const {
-    if (loop ? n >= loop->length() : n > 0 || values_.empty())
+  Row at(int n) const {
+    if (n < 0)
+      n += length();
+    if (n < 0 || static_cast<size_t>(n) >= length())
       throw std::out_of_range("No row with index " + std::to_string(n));
     return (*this)[n];
   }
@@ -248,33 +245,19 @@ struct TableView {
     return (*this)[0];
   }
 
-  Row find_row(const std::string& s) const {
-    if (loop) {
-      for (size_t i = 0; i < loop->values.size(); i += loop->width())
-        if (as_string(loop->values[i]) == s)
-          return Row{loop->values.data() + i, positions};
-    } else if (!values_.empty() && as_string(values_[0]) == s) {
-      return Row{values_.data(), positions};
-    }
-    throw std::runtime_error("Not found in the first column: " + s);
-  }
+  Row find_row(const std::string& s) const;
 
-  Iter begin() const {
-    if (loop)
-      return Iter{loop->values.data(), &positions, loop->width()};
-    if (!values_.empty())
-      return Iter{values_.data(), &positions, values_.size()};
-    return Iter{nullptr, nullptr, 0};
-  }
-
-  Iter end() const {
-    if (loop)
-      return Iter{loop->values.data() + loop->values.size(), &positions,
-                  loop->width()};
-    if (!values_.empty())
-      return Iter{values_.data() + values_.size(), &positions, values_.size()};
-    return Iter{nullptr, nullptr, 0};
-  }
+  struct Iter {
+    const TableView& parent;
+    size_t index;
+    void operator++() { index++; }
+    bool operator!=(const Iter& other) const { return index != other.index; }
+    bool operator==(const Iter& other) const { return index == other.index; }
+    Row operator*() const { return parent[index]; }
+    const std::string& get(int n) const { return parent[index].at(n); }
+  };
+  Iter begin() const { return Iter{*this, 0}; }
+  Iter end() const { return Iter{*this, length()}; }
 };
 
 struct Block {
@@ -285,6 +268,7 @@ struct Block {
   Block() {}
 
   // access functions
+  const Item* find_pair_item(const std::string& tag) const;
   const Pair* find_pair(const std::string& tag) const;
   const std::string* find_value(const std::string& tag) const {
     const Pair* pair = find_pair(tag);
@@ -408,6 +392,33 @@ inline StrideIter Column::begin() const {
   return StrideIter(nullptr);
 }
 
+inline const std::string& TableView::Row::direct_at(int pos) const {
+  if (pos == -1)
+    throw std::out_of_range("Cannot access missing optional tag.");
+  if (tab.loop)
+    return tab.loop->values.at(tab.loop->width() * row_index + pos);
+  return tab.blo.items[pos].tv.value;
+}
+
+inline TableView::Row TableView::find_row(const std::string& s) const {
+  int pos = positions.at(0);
+  if (loop) {
+    for (size_t i = 0; i < loop->values.size(); i += loop->width())
+      if (as_string(loop->values[i + pos]) == s)
+        return Row{*this, i / loop->width()};
+  } else if (as_string(blo.items[pos].tv.value) == s) {
+    return Row{*this, 0};
+  }
+  throw std::runtime_error("Not found in the first column: " + s);
+}
+
+inline const Item* Block::find_pair_item(const std::string& tag) const {
+  for (const Item& i : items)
+    if (i.type == ItemType::Value && i.tv.tag == tag)
+      return &i;
+  return nullptr;
+}
+
 inline const Pair* Block::find_pair(const std::string& tag) const {
   for (const Item& i : items)
     if (i.type == ItemType::Value && i.tv.tag == tag)
@@ -513,9 +524,8 @@ inline TableView Block::find(const std::string& prefix,
       loop = &item->loop;
 
   std::vector<int> indices;
-  std::vector<std::string> values;
+  indices.reserve(tags.size());
   if (loop) {
-    indices.reserve(tags.size());
     for (const std::string& tag : tags) {
       int idx = loop->find_tag(prefix + (tag[0] != '?' ? tag : tag.substr(1)));
       if (idx == -1 && tag[0] != '?') {
@@ -527,21 +537,16 @@ inline TableView Block::find(const std::string& prefix,
     }
   } else {
     for (const std::string& tag : tags) {
-      const std::string* v = find_value(prefix + tag);
-      if (v == nullptr) {
+      // TODO: ?optional_tag
+      if (const Item* p = find_pair_item(prefix + tag)) {
+        indices.push_back(p - items.data());
+      } else {
         indices.clear();
-        values.clear();
         break;
       }
-      if (indices.empty()) {
-        indices.reserve(tags.size());
-        values.reserve(tags.size());
-      }
-      indices.push_back(values.size());
-      values.push_back(*v);
     }
   }
-  return TableView{loop, indices, values};
+  return TableView{loop, *this, indices};
 }
 
 struct Document {
