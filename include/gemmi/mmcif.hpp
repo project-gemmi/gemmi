@@ -18,9 +18,9 @@ namespace impl {
 
 inline std::unordered_map<std::string, std::array<float,6>>
 get_anisotropic_u(const cif::Block& block) {
-  cif::TableView aniso_tab = block.find("_atom_site_anisotrop.",
-                                        {"id", "U[1][1]", "U[2][2]", "U[3][3]",
-                                         "U[1][2]", "U[1][3]", "U[2][3]"});
+  cif::Table aniso_tab = block.find("_atom_site_anisotrop.",
+                                    {"id", "U[1][1]", "U[2][2]", "U[3][3]",
+                                     "U[1][2]", "U[1][3]", "U[2][3]"});
   std::unordered_map<std::string, std::array<float,6>> aniso_map;
   for (auto ani : aniso_tab)
     aniso_map[ani[0]] = {{(float) cif::as_number(ani[1]),
@@ -40,7 +40,7 @@ std::vector<std::string> transform_tags(std::string mstr, std::string vstr) {
           vstr + "[1]",    vstr + "[2]",    vstr + "[3]"};
 }
 
-inline Mat4x4 get_transform_matrix(const cif::TableView::Row& r) {
+inline Mat4x4 get_transform_matrix(const cif::Table::Row& r) {
   auto num = [&r](int n) { return cif::as_number(r[n]); };
   return {{num(0), num(1),  num(2),  0},
           {num(3), num(4),  num(5),  0},
@@ -56,7 +56,7 @@ inline Mat4x4 Matrix33_to_Mat4x4(const Matrix33& m) {
 }
 
 inline Residue* find_residue_from_label(Structure& st,
-                                        const cif::TableView::Row& row) {
+                                        const cif::Table::Row& row) {
   for (const auto& item : row)
     if (cif::is_null(item))
       return nullptr;
@@ -75,9 +75,9 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   st.name = block.name;
 
   // unit cell and symmetry
-  cif::TableView cell = block.find("_cell.",
-                                   {"length_a", "length_b", "length_c",
-                                   "angle_alpha", "angle_beta", "angle_gamma"});
+  cif::Table cell = block.find("_cell.",
+                               {"length_a", "length_b", "length_c",
+                                "angle_alpha", "angle_beta", "angle_gamma"});
   if (cell.ok()) {
     auto c = cell.one();
     st.cell.set(as_number(c[0]), as_number(c[1]), as_number(c[2]),
@@ -86,10 +86,10 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   st.sg_hm = as_string(block.find_value("_symmetry.space_group_name_H-M"));
 
   auto add_info = [&](std::string tag) {
-    cif::TableView t = block.find(tag);
+    cif::Table t = block.find(tag);
     if (t.length() >= 1) {
       bool first = true;
-      for (const cif::TableView::Row &r : t)
+      for (const cif::Table::Row &r : t)
         if (!cif::is_null(r[0])) {
           if (first)
             st.info[tag] = as_string(r[0]);
@@ -117,7 +117,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   std::vector<std::string> ncs_oper_tags = transform_tags("matrix", "vector");
   ncs_oper_tags.push_back("id");  // 12
   ncs_oper_tags.push_back("?code");  // 13
-  cif::TableView ncs_oper = block.find("_struct_ncs_oper.", ncs_oper_tags);
+  cif::Table ncs_oper = block.find("_struct_ncs_oper.", ncs_oper_tags);
   for (auto op : ncs_oper) {
     bool given = op.has(13) && op.str(13) == "given";
     Mat4x4 mat = get_transform_matrix(op);
@@ -128,8 +128,8 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   // PDBx/mmcif spec defines both _database_PDB_matrix.scale* and
   // _atom_sites.fract_transf_* as equivalent of pdb SCALE, but the former
   // is not used, so we ignore it.
-  cif::TableView fract_tv = block.find("_atom_sites.fract_transf_",
-                                       transform_tags("matrix", "vector"));
+  cif::Table fract_tv = block.find("_atom_sites.fract_transf_",
+                                   transform_tags("matrix", "vector"));
   if (fract_tv.length() > 0) {
     Mat4x4 fract = get_transform_matrix(fract_tv[0]);
     st.cell.set_matrices_from_fract(fract);
@@ -137,8 +137,8 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
 
   // We store origx just for completeness. It may never be useful
   // for anything but writing it back to a file.
-  cif::TableView origx_tv = block.find("_database_PDB_matrix.",
-                                       transform_tags("origx", "origx_vector"));
+  cif::Table origx_tv = block.find("_database_PDB_matrix.",
+                                   transform_tags("origx", "origx_vector"));
   if (origx_tv.length() > 0)
     st.origx = get_transform_matrix(origx_tv[0]);
 
@@ -147,24 +147,24 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   // atom list
   enum { kId=0, kSymbol, kAtomId, kAltId, kCompId, kAsymId, kSeqId, kInsCode,
          kX, kY, kZ, kOcc, kBiso, kCharge, kAuthSeqId, kAuthAsymId, kModelNum };
-  cif::TableView atom_table = block.find("_atom_site.",
-                                         {"id",
-                                          "type_symbol",
-                                          "label_atom_id",
-                                          "label_alt_id",
-                                          "label_comp_id",
-                                          "label_asym_id",
-                                          "label_seq_id",
-                                          "pdbx_PDB_ins_code",
-                                          "Cartn_x",
-                                          "Cartn_y",
-                                          "Cartn_z",
-                                          "occupancy",
-                                          "B_iso_or_equiv",
-                                          "pdbx_formal_charge",
-                                          "auth_seq_id",
-                                          "auth_asym_id",
-                                          "pdbx_PDB_model_num"});
+  cif::Table atom_table = block.find("_atom_site.",
+                                     {"id",
+                                      "type_symbol",
+                                      "label_atom_id",
+                                      "label_alt_id",
+                                      "label_comp_id",
+                                      "label_asym_id",
+                                      "label_seq_id",
+                                      "pdbx_PDB_ins_code",
+                                      "Cartn_x",
+                                      "Cartn_y",
+                                      "Cartn_z",
+                                      "occupancy",
+                                      "B_iso_or_equiv",
+                                      "pdbx_formal_charge",
+                                      "auth_seq_id",
+                                      "auth_asym_id",
+                                      "pdbx_PDB_model_num"});
   Model *model = nullptr;
   Chain *chain = nullptr;
   Residue *resi = nullptr;
@@ -217,8 +217,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     resi->atoms.emplace_back(atom);
   }
 
-  cif::TableView polymer_types = block.find("_entity_poly.",
-                                            {"entity_id", "type"});
+  cif::Table polymer_types = block.find("_entity_poly.", {"entity_id", "type"});
   for (const auto& row : block.find("_entity.", {"id", "type"})) {
     std::string id = row.str(0);
     EntityType etype = entity_type_from_string(row.str(1));

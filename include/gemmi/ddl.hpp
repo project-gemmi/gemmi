@@ -47,7 +47,7 @@ private:
 
   void read_ddl1() {
     for (const Block& b : ddl_.blocks) {
-      for (const TableView::Row& row : b.find("_name"))
+      for (const Table::Row& row : b.find("_name"))
         name_index_.emplace(as_string(row[0]), &b);
       if (b.name == "on_this_dictionary") {
         const std::string* dic_name = b.find_value("_dictionary_name");
@@ -64,7 +64,7 @@ private:
     for (const Block& block : ddl_.blocks) // a single block is expected
       for (const Item& item : block.items) {
         if (item.type == ItemType::Frame) {
-          for (const TableView::Row& row : item.frame.find("_item.name"))
+          for (const Table::Row& row : item.frame.find("_item.name"))
             name_index_.emplace(as_string(row[0]), &item.frame);
         } else if (item.type == ItemType::Value) {
           if (item.tv.tag == "_dictionary.title")

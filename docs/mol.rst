@@ -146,7 +146,7 @@ Here we focus on things specific to mmCIF/DDL2:
   written as key-value pairs.
   So when accessing a value it is safer to use abstraction that hides the
   difference between a loop and a key-value pair
-  (``cif::TableView`` in Gemmi).
+  (``cif::Table`` in Gemmi).
 
 * Arguably, the mmCIF format is harder to parse than the old PDB format.
   Using ``grep`` and ``awk`` to extract atoms will work only with files

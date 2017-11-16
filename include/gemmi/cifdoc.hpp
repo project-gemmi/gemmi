@@ -182,13 +182,13 @@ struct Column {
 // The latter case is equivalent to a loop with a single row.
 // We optimized for loops, and in case of tag-values we copy the values
 // into the `values` vector.
-struct TableView {
+struct Table {
   const Loop* loop;
   const Block& blo;
   std::vector<int> positions;
 
   struct Row {
-    const TableView& tab;
+    const Table& tab;
     size_t row_index;
 
     const std::string& direct_at(int pos) const;
@@ -248,7 +248,7 @@ struct TableView {
   Row find_row(const std::string& s) const;
 
   struct Iter {
-    const TableView& parent;
+    const Table& parent;
     size_t index;
     void operator++() { index++; }
     bool operator!=(const Iter& other) const { return index != other.index; }
@@ -276,12 +276,12 @@ struct Block {
   }
   Column find_loop(const std::string& tag) const;
   Column find_values(const std::string& tag) const;
-  TableView find(const std::string& prefix,
-                 const std::vector<std::string>& tags) const;
-  TableView find(const std::vector<std::string>& tags) const {
+  Table find(const std::string& prefix,
+             const std::vector<std::string>& tags) const;
+  Table find(const std::vector<std::string>& tags) const {
     return find({}, tags);
   }
-  TableView find(const std::string& tag) const {
+  Table find(const std::string& tag) const {
     return find({}, {tag});
   }
 
@@ -296,7 +296,7 @@ struct Block {
 
   // mmCIF specific functions
   std::vector<std::string> get_mmcif_category_names() const;
-  TableView find_mmcif_category(std::string cat);
+  Table find_mmcif_category(std::string cat);
 };
 
 struct Item {
@@ -394,7 +394,7 @@ inline StrideIter Column::begin() const {
   return StrideIter(nullptr);
 }
 
-inline const std::string& TableView::Row::direct_at(int pos) const {
+inline const std::string& Table::Row::direct_at(int pos) const {
   if (pos == -1)
     throw std::out_of_range("Cannot access missing optional tag.");
   if (tab.loop)
@@ -402,7 +402,7 @@ inline const std::string& TableView::Row::direct_at(int pos) const {
   return tab.blo.items[pos].tv.value;
 }
 
-inline TableView::Row TableView::find_row(const std::string& s) const {
+inline Table::Row Table::find_row(const std::string& s) const {
   int pos = positions.at(0);
   if (loop) {
     for (size_t i = 0; i < loop->values.size(); i += loop->width())
@@ -518,8 +518,8 @@ inline Loop& Block::clear_or_add_loop(const std::string& prefix,
   return loop;
 }
 
-inline TableView Block::find(const std::string& prefix,
-                             const std::vector<std::string>& tags) const {
+inline Table Block::find(const std::string& prefix,
+                         const std::vector<std::string>& tags) const {
   const Loop* loop = nullptr;
   if (!tags.empty())
     if (const Item* item = find_loop(prefix + tags[0]).it)
@@ -548,10 +548,10 @@ inline TableView Block::find(const std::string& prefix,
       }
     }
   }
-  return TableView{loop, *this, indices};
+  return Table{loop, *this, indices};
 }
 
-inline TableView Block::find_mmcif_category(std::string cat) {
+inline Table Block::find_mmcif_category(std::string cat) {
   if (cat[0] != '_')
     throw std::runtime_error("Category should start with '_', got: " + cat);
   if (*(cat.end() - 1) != '.')
@@ -567,12 +567,12 @@ inline TableView Block::find_mmcif_category(std::string cat) {
           if (!starts_with(tag, cat))
             throw std::runtime_error("Tag " + tag + " in loop with " + cat);
         }
-        return TableView{&i.loop, *this, indices};
+        return Table{&i.loop, *this, indices};
       } else {
         indices.push_back(items.data() - &i);
       }
     }
-  return TableView{nullptr, *this, indices};
+  return Table{nullptr, *this, indices};
 }
 
 

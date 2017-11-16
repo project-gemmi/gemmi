@@ -322,16 +322,16 @@ Apart from supporting iterators, ``Column`` has a few other functions::
 We often want to access multiple columns at once,
 so another abstraction that can be used with multiple tags::
 
-    TableView find(const std::vector<std::string>& tags) const;
+    Table find(const std::vector<std::string>& tags) const;
 
     // but it can be called with a single tag as well
-    TableView find(const std::string& tag) const;
+    Table find(const std::string& tag) const;
 
 Since columns from the same loop tend to have common prefix (category name),
 the library also provides a third overload::
 
-    TableView find(const std::string& prefix,
-                   const std::vector<std::string>& tags) const;
+    Table find(const std::string& prefix,
+               const std::vector<std::string>& tags) const;
 
 These two calls are equivalent::
 
@@ -343,9 +343,9 @@ Note that ``find`` is not aware of dictionaries and categories,
 therefore the category name should end with a separator
 (dot for mmCIF files, as shown above).
 
-``TableView`` above is a lightweight, iterable view of the data.
+``Table`` above is a lightweight, iterable view of the data.
 
-TODO: document TableView methods (``ok()``, ``width()``, ``length()``,
+TODO: document Table methods (``ok()``, ``width()``, ``length()``,
 ``operator[](size_t)``, ``at(size_t)``, ``find_row(const std::string&)``.
 
 TODO: document optional tags: ``{"_required_tag", "?_optional_tag"}``
@@ -964,7 +964,7 @@ As an exercise, let us check heavy atoms in selenomethionine:
     >>> _.find_block('MSE')
     <gemmi.cif.Block MSE>
     >>> _.find('_chem_comp_atom.', ['atom_id', 'type_symbol'])
-    <gemmi.cif.TableView 20 x 2>
+    <gemmi.cif.Table 20 x 2>
     >>> [':'.join(a) for a in _ if a[1] != 'H']
     ['N:N', 'CA:C', 'C:C', 'O:O', 'OXT:O', 'CB:C', 'CG:C', 'SE:SE', 'CE:C']
 
