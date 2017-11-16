@@ -9,6 +9,7 @@ class TestBlock(unittest.TestCase):
     def test_find(self):
         block = cif.read_string("""
             data_test
+            _one 1 _two 2 _three 3
             _nonloop_a alpha
             _nonloop_b beta
             loop_ _la _lb A B C D

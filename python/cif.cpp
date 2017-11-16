@@ -134,7 +134,6 @@ void init_cif(py::module& cif) {
   py::class_<TableView> lt(cif, "TableView");
   lt.def(py::init<>())
     .def_readonly("loop", &TableView::loop)
-    .def_readonly("cols", &TableView::cols)
     .def("find_row", &TableView::find_row, py::keep_alive<0, 1>())
     .def("__iter__", [](const TableView& self) {
         return py::make_iterator(self, py::keep_alive<0, 1>());
@@ -145,7 +144,7 @@ void init_cif(py::module& cif) {
     .def("__repr__", [](const TableView& self) {
         return "<gemmi.cif.TableView " +
                (self.ok() ? std::to_string(self.length()) + " x " +
-                            std::to_string(self.cols.size())
+                            std::to_string(self.width())
                           : "nil") +
                ">";
     });

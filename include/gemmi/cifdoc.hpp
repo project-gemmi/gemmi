@@ -183,7 +183,7 @@ struct Column {
 // into the `values` vector.
 struct TableView {
   const Loop* loop;
-  std::vector<int> cols;
+  std::vector<int> positions;
   std::vector<std::string> values_; // used only for non-loops
 
   struct Row {
@@ -224,7 +224,7 @@ struct TableView {
   };
 
   bool ok() const { return loop != nullptr || !values_.empty(); }
-  size_t width() const { return cols.size(); }
+  size_t width() const { return positions.size(); }
   size_t length() const {
     return loop ? loop->length() : (values_.empty() ? 0 : 1);
   }
@@ -232,7 +232,7 @@ struct TableView {
   Row operator[](size_t n) const {
     const std::string* c = loop ? loop->values.data() + loop->width() * n
                                 : values_.data() + values_.size() * n;
-    return Row{c, cols};
+    return Row{c, positions};
   }
 
   Row at(size_t n) const {
@@ -252,27 +252,27 @@ struct TableView {
     if (loop) {
       for (size_t i = 0; i < loop->values.size(); i += loop->width())
         if (as_string(loop->values[i]) == s)
-          return Row{loop->values.data() + i, cols};
+          return Row{loop->values.data() + i, positions};
     } else if (!values_.empty() && as_string(values_[0]) == s) {
-      return Row{values_.data(), cols};
+      return Row{values_.data(), positions};
     }
     throw std::runtime_error("Not found in the first column: " + s);
   }
 
   Iter begin() const {
     if (loop)
-      return Iter{loop->values.data(), &cols, loop->width()};
+      return Iter{loop->values.data(), &positions, loop->width()};
     if (!values_.empty())
-      return Iter{values_.data(), &cols, values_.size()};
+      return Iter{values_.data(), &positions, values_.size()};
     return Iter{nullptr, nullptr, 0};
   }
 
   Iter end() const {
     if (loop)
-      return Iter{loop->values.data() + loop->values.size(), &cols,
+      return Iter{loop->values.data() + loop->values.size(), &positions,
                   loop->width()};
     if (!values_.empty())
-      return Iter{values_.data() + values_.size(), &cols, values_.size()};
+      return Iter{values_.data() + values_.size(), &positions, values_.size()};
     return Iter{nullptr, nullptr, 0};
   }
 };

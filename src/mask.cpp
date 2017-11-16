@@ -1,7 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/grid.hpp"
-#include "gemmi/crystal.hpp"
 #include "input.h"
 #include <cstdlib>  // for strtod
 #define EXE_NAME "gemmi-mask"
