@@ -294,7 +294,9 @@ struct Block {
                           const std::initializer_list<const char*>& tags);
   void delete_category(const std::string& prefix);
 
+  // mmCIF specific functions
   std::vector<std::string> get_mmcif_category_names() const;
+  TableView find_mmcif_category(std::string cat);
 };
 
 struct Item {
@@ -347,7 +349,7 @@ struct Item {
     type = ItemType::Erased;
   }
 
-  bool has_prefix(const std::string& prefix) {
+  bool has_prefix(const std::string& prefix) const {
     return (type == ItemType::Value && gemmi::starts_with(tv.tag, prefix)) ||
            (type == ItemType::Loop && !loop.tags.empty() &&
             gemmi::starts_with(loop.tags[0].tag, prefix));
@@ -548,6 +550,31 @@ inline TableView Block::find(const std::string& prefix,
   }
   return TableView{loop, *this, indices};
 }
+
+inline TableView Block::find_mmcif_category(std::string cat) {
+  if (cat[0] != '_')
+    throw std::runtime_error("Category should start with '_', got: " + cat);
+  if (*(cat.end() - 1) != '.')
+    cat += '.';
+  std::vector<int> indices;
+  for (const Item& i : items)
+    if (i.has_prefix(cat)) {
+      if (i.type == ItemType::Loop) {
+        std::vector<int> indices(i.loop.tags.size());
+        for (size_t j = 0; j != indices.size(); ++j) {
+          indices[j] = j;
+          const std::string& tag = i.loop.tags[j].tag;
+          if (!starts_with(tag, cat))
+            throw std::runtime_error("Tag " + tag + " in loop with " + cat);
+        }
+        return TableView{&i.loop, *this, indices};
+      } else {
+        indices.push_back(items.data() - &i);
+      }
+    }
+  return TableView{nullptr, *this, indices};
+}
+
 
 struct Document {
   std::string source;

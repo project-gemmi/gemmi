@@ -71,6 +71,8 @@ void init_cif(py::module& cif) {
                  &Block::find,
          py::arg("tags"))
     .def("set_pair", &Block::set_pair, py::arg("tag"), py::arg("value"))
+    .def("find_mmcif_category", &Block::find_mmcif_category,
+         py::arg("category"), "Returns Table with all items in the category.")
     .def("delete_category", &Block::delete_category, py::arg("prefix"),
          "End mmCIF category with the dot: block.delete_category('_exptl.')")
     .def("get_mmcif_category_names", &Block::get_mmcif_category_names,

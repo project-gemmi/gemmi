@@ -69,9 +69,22 @@ class TestBlock(unittest.TestCase):
     def test_reading_gzipped_file(self):
         path = os.path.join(os.path.dirname(__file__), '1pfe.cif.gz')
         cif_doc = cif.read(path)
-        categories = cif_doc.sole_block().get_mmcif_category_names()
+        block = cif_doc.sole_block()
+        categories = block.get_mmcif_category_names()
         self.assertEqual(categories[0], '_entry.')
         self.assertEqual(len(categories), 72)
+        exptl = block.find_mmcif_category('_exptl')
+        self.assertEqual(len(exptl), 1)
+        self.assertEqual(exptl.width(), 3)
+        exptl = block.find_mmcif_category('_exptl')
+        self.assertEqual(len(exptl), 1)
+        self.assertEqual(exptl.width(), 3)
+        struct_asym = block.find_mmcif_category('_struct_asym')
+        self.assertEqual(len(struct_asym), 7)
+        self.assertEqual(struct_asym.width(), 5)
+        nonexistent = block.find_mmcif_category('_nonexistent')
+        self.assertEqual(len(nonexistent), 0)
+        self.assertEqual(nonexistent.width(), 0)
 
 if __name__ == '__main__':
     unittest.main()
