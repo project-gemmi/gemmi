@@ -189,7 +189,7 @@ struct Table {
 
   struct Row {
     const Table& tab;
-    size_t row_index;
+    int row_index;
 
     const std::string& direct_at(int pos) const;
     const std::string& at(int n) const {
@@ -209,7 +209,7 @@ struct Table {
     bool has(int n) const { return tab.has_column(n); }
     size_t size() const { return tab.width(); }
     std::string str(int n) const { return as_string(at(n)); }
-    struct Iter {
+    struct Iter { // TODO: what should be done with absent optional tags?
       const Row& parent;
       std::vector<int>::const_iterator cur; // points into positions
       void operator++() { cur++; }
@@ -226,9 +226,10 @@ struct Table {
   size_t length() const {
     return loop ? loop->length() : (positions.empty() ? 0 : 1);
   }
+  Row tags() const { return Row{*this, -1}; }
   bool has_column(int n) const { return positions.at(n) >= 0; }
 
-  Row operator[](size_t n) const { return Row{*this, n}; }
+  Row operator[](int n) const { return Row{*this, n}; }
 
   Row at(int n) const {
     if (n < 0)
@@ -397,6 +398,11 @@ inline StrideIter Column::begin() const {
 inline const std::string& Table::Row::direct_at(int pos) const {
   if (pos == -1)
     throw std::out_of_range("Cannot access missing optional tag.");
+  if (row_index == -1) { // tags
+    if (tab.loop)
+      return tab.loop->tags.at(pos).tag;
+    return tab.blo.items[pos].tv.tag;
+  }
   if (tab.loop)
     return tab.loop->values.at(tab.loop->width() * row_index + pos);
   return tab.blo.items[pos].tv.value;
@@ -407,7 +413,7 @@ inline Table::Row Table::find_row(const std::string& s) const {
   if (loop) {
     for (size_t i = 0; i < loop->values.size(); i += loop->width())
       if (as_string(loop->values[i + pos]) == s)
-        return Row{*this, i / loop->width()};
+        return Row{*this, static_cast<int>(i / loop->width())};
   } else if (as_string(blo.items[pos].tv.value) == s) {
     return Row{*this, 0};
   }
@@ -569,7 +575,7 @@ inline Table Block::find_mmcif_category(std::string cat) {
         }
         return Table{&i.loop, *this, indices};
       } else {
-        indices.push_back(items.data() - &i);
+        indices.push_back(&i - items.data());
       }
     }
   return Table{nullptr, *this, indices};

@@ -66,6 +66,11 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(block.find_value('_c'), '3')
         self.assertEqual(block.find_value('_d'), '9')
 
+    def test_mmcif_file(self):
+        path = os.path.join(os.path.dirname(__file__), '5i55.cif')
+        block = cif.read(path).sole_block()
+        self.assertEqual(len(block.get_mmcif_category_names()), 54)
+
     def test_reading_gzipped_file(self):
         path = os.path.join(os.path.dirname(__file__), '1pfe.cif.gz')
         cif_doc = cif.read(path)
@@ -74,14 +79,18 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(categories[0], '_entry.')
         self.assertEqual(len(categories), 72)
         exptl = block.find_mmcif_category('_exptl')
+        self.assertEqual(list(exptl.tags),
+                ['_exptl.entry_id', '_exptl.method', '_exptl.crystals_number'])
         self.assertEqual(len(exptl), 1)
         self.assertEqual(exptl.width(), 3)
         exptl = block.find_mmcif_category('_exptl')
         self.assertEqual(len(exptl), 1)
         self.assertEqual(exptl.width(), 3)
+        self.assertEqual(exptl[0].str(1), 'X-RAY DIFFRACTION')
         struct_asym = block.find_mmcif_category('_struct_asym')
         self.assertEqual(len(struct_asym), 7)
         self.assertEqual(struct_asym.width(), 5)
+        self.assertListEqual(list(struct_asym[3]), ['D', 'N', 'N', '4', '?'])
         nonexistent = block.find_mmcif_category('_nonexistent')
         self.assertEqual(len(nonexistent), 0)
         self.assertEqual(nonexistent.width(), 0)

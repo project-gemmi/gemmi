@@ -387,15 +387,15 @@ More complex examples are shown in the :ref:`cif_examples` section.
 Reading a file
 --------------
 
-.. doctest::
+.. testcode::
 
   from gemmi import cif
   # read and parse a CIF file
-  doc = read_file("components.cif")
+  doc = cif.read_file("components.cif")
   # the same, but if the filename ends with .gz it is uncompressed on the fly
-  doc = read("../tests/1pfe.cif.gz")
+  doc = cif.read("../tests/1pfe.cif.gz")
   # read content of a CIF file from string
-  doc = read_string("data_this _is valid _cif content")
+  doc = cif.read_string("data_this _is valid _cif content")
 
 Document
 --------
@@ -418,6 +418,33 @@ Block
 -----
 
 TODO: document Block
+
+mmCIF files group data into categories.
+
+.. doctest::
+
+  >>> block = cif.read("../tests/1pfe.cif.gz").sole_block()
+  >>> block.get_mmcif_category_names()[:3]
+  ['_entry.', '_audit_conform.', '_database_2.']
+  >>> block.find_mmcif_category('_entry.')
+  <gemmi.cif.Table 1 x 1>
+  >>> _.tags[0], _[0][0]
+  ('_entry.id', '1PFE')
+  >>> cat = block.find_mmcif_category('_database_2.')
+  >>> cat
+  <gemmi.cif.Table 4 x 2>
+  >>> len(cat.tags)
+  2
+  >>> list(cat.tags)
+  ['_database_2.database_id', '_database_2.database_code']
+  >>> for row in cat:
+  ...   print('%s: %s' % tuple(row))
+  PDB: 1PFE
+  NDB: DD0057
+  RCSB: RCSB019291
+  WWPDB: D_1000019291
+  >>> cat[3][1]
+  'D_1000019291'
 
 Editing
 -------
