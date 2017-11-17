@@ -11,6 +11,7 @@
 #include <cstring>   // for memchr
 #include <initializer_list>
 #include <iosfwd>    // for size_t, ptrdiff_t
+#include <iterator>
 #include <new>
 #include <stdexcept>
 #include <string>
@@ -219,16 +220,28 @@ struct Table {
     bool has(int n) const { return tab.has_column(n); }
     size_t size() const { return tab.width(); }
     std::string str(int n) const { return as_string(at(n)); }
-    struct Iter { // TODO: what should be done with absent optional tags?
-      const Row& parent;
+    template <typename P, typename T>
+    struct Iter : std::iterator<std::forward_iterator_tag, T> {
+      Iter(P& p, std::vector<int>::const_iterator it) : parent(p), cur(it) {}
+      P& parent;
       std::vector<int>::const_iterator cur; // points into positions
-      void operator++() { cur++; }
-      const std::string& operator*() const { return parent.direct_at(*cur); }
+      Iter operator++() { cur++; return *this; }
+      void operator++(int) { cur++; }
+      T& operator*() const { return parent.direct_at(*cur); }
       bool operator!=(const Iter& other) const { return cur != other.cur; }
       bool operator==(const Iter& other) const { return cur == other.cur; }
+      // TODO: what should be done with absent optional tags?
     };
-    Iter begin() const { return Iter{*this, tab.positions.begin()}; }
-    Iter end() const { return Iter{*this, tab.positions.end()}; }
+    using const_iterator = Iter<const Row, const std::string>;
+    using iterator = Iter<Row, std::string>;
+    const_iterator begin() const {
+      return const_iterator(*this, tab.positions.begin());
+    }
+    const_iterator end() const {
+      return const_iterator(*this, tab.positions.end());
+    }
+    iterator begin() { return iterator(*this, tab.positions.begin()); }
+    iterator end() { return iterator(*this, tab.positions.end()); }
   };
 
   bool ok() const { return !positions.empty(); }
