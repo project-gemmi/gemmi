@@ -220,6 +220,7 @@ components:
 
 .. literalinclude:: doc_cif_cc.cpp
    :language: cpp
+   :lines: 1-11
 
 To compile it on Unix system you need to fetch Gemmi source code
 and run a compiler:
@@ -363,15 +364,63 @@ Note that ``find`` is not aware of dictionaries and categories,
 therefore the category name should end with a separator
 (dot for mmCIF files, as shown above).
 
-``Table`` above is, like ``Column``,  a lightweight, iterable view of the data.
-
-TODO: document Table methods (``ok()``, ``width()``, ``length()``,
-``operator[](size_t)``, ``at(size_t)``, ``find_row(const std::string&)``.
+If one or more of the tags is not found in the block, the returned
+``Table`` is empty.
 
 TODO: document optional tags: ``{"_required_tag", "?_optional_tag"}``
 
+The ``Table`` above is, like ``Column``,  a lightweight, iterable view
+of the data. It has functions to check the shape of the table::
+
+    bool ok() const;  // true if the table is not empty
+    size_t length() const;  // number of rows
+    size_t width() const;  // number of values in each row
+    bool has_column(int n) const; // for use with optional columns
+
+Most importantly, it provides access to rows (``Table::Row``)
+that in turn provide access to value strings (``std::string``)::
+
+    Row operator[](int n) const;  // access Row
+    Row at(int n) const;  // the same but with bounds checking
+    // and also begin() and end() to work in range-for.
+
+as well as to the tags::
+
+    Row tags() const;  // pseudo-row that contains tags
+
+Additionally, it has two convenience functions to access rows::
+
+    // Returns the first row that has the specified string in the first column.
+    Row find_row(const std::string& s) const;
+
+    // Make sure that the table has only one row and return it.
+    Row one() const;
+
+``Table::Row`` has as few basic functions::
+
+    size_t size() const;  // the width of the table
+
+    // Get raw value.
+    const std::string& operator[](int n) const;  // no bounds checking
+    const std::string& at(int n) const;          // with bounds checking
+
+    std::string str(int n) const; // short-cut for cif::as_string(row.at(n))
+    bool has(int n) const; // the same as Table::has_column(n)
+
+and also supports iterators. As an example, let us convert mmCIF
+to the `XYZ format <https://en.wikipedia.org/wiki/XYZ_file_format>`_:
+
+.. literalinclude:: doc_cif_cc.cpp
+   :language: cpp
+   :lines: 15-
+
+
 mmCIF categories
 ~~~~~~~~~~~~~~~~
+
+Block::get_mmcif_category_names()
+
+Block::find_mmcif_category()
 
 Editing
 -------
@@ -1023,12 +1072,17 @@ For something a bit different, let us look at the data from
 `CCD <https://www.wwpdb.org/data/ccd>`_.
 The :file:`components.cif` file describes all the monomers (residues,
 ligands, solvent molecules) from the PDB entries.
-It contains information about bonds that is absent in the PDB entries
-(a well-known
-`problem <https://www.cgl.ucsf.edu/chimera/data/mmcif-oct2013/mmcif.html>`_,
-recently
-`mitigated <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5473584/#__tag_618683893>`_
-in the MMTF format).
+It contains information about bonds that is absent in the PDB entries.
+
+.. note::
+
+    The absence of this information in mmCIF files is a
+    `well-known problem <https://www.cgl.ucsf.edu/chimera/data/mmcif-oct2013/mmcif.html>`_,
+    mitigated somewhat by PDBe which, in parallel to the PDB archive, keeps also
+    `mmCIF files with connectivity <https://doi.org/10.1093/nar/gkv1047>`_
+    and bond-order information;
+    and by RCSB which has this information in the
+    `MMTF format <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5473584/#__tag_618683893>`_.
 
 As an exercise, let us check heavy atoms in selenomethionine:
 
