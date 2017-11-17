@@ -86,18 +86,16 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   st.sg_hm = as_string(block.find_value("_symmetry.space_group_name_H-M"));
 
   auto add_info = [&](std::string tag) {
-    cif::Table t = block.find(tag);
-    if (t.length() >= 1) {
-      bool first = true;
-      for (const cif::Table::Row &r : t)
-        if (!cif::is_null(r[0])) {
-          if (first)
-            st.info[tag] = as_string(r[0]);
-          else
-            st.info[tag] += "; " + as_string(r[0]);
-          first = false;
-        }
-    }
+    cif::Column col = block.find_values(tag);
+    bool first = true;
+    for (const std::string& v : col)
+      if (!cif::is_null(v)) {
+        if (first)
+          st.info[tag] = as_string(v);
+        else
+          st.info[tag] += "; " + as_string(v);
+        first = false;
+      }
   };
   add_info("_entry.id");
   add_info("_cell.Z_PDB");

@@ -62,8 +62,6 @@ void init_cif(py::module& cif) {
          py::keep_alive<0, 1>())
     .def("find_values", &Block::find_values, py::arg("tag"),
          py::keep_alive<0, 1>())
-    .def("find", (Table (Block::*)(const std::string&) const) &Block::find,
-         py::arg("tag"))
     .def("find", (Table (Block::*)(const std::string&,
             const std::vector<std::string>&) const) &Block::find,
          py::arg("prefix"), py::arg("tags"))
@@ -127,6 +125,8 @@ void init_cif(py::module& cif) {
     .def("__iter__", [](const Column& self) { return py::make_iterator(self); },
          py::keep_alive<0, 1>())
     .def("__bool__", [](const Column &self) -> bool { return self.it; })
+    .def("__getitem__", &Column::at)
+    .def("str", &Column::str)
     .def("__repr__", [](const Column &self) {
         std::string desc = "nil";
         if (const std::string* tag = self.get_tag())

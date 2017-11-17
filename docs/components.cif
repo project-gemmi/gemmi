@@ -1,5 +1,33 @@
 # only a couple of entries from CCD - for doctest testing
 
+data_000
+# 
+_chem_comp.id                                    000 
+_chem_comp.name                                  "methyl hydrogen carbonate" 
+_chem_comp.type                                  NON-POLYMER 
+_chem_comp.pdbx_type                             ATOMP 
+_chem_comp.formula                               "C2 H4 O3" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         ? 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     2010-04-27 
+_chem_comp.pdbx_modified_date                    2011-06-04 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        76.051 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     000 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        Corina 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        3LIN 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+# [cut]
+
 data_AL
 _chem_comp.id AL
 _chem_comp.name "ALUMINUM ION"
@@ -225,6 +253,34 @@ _chem_comp.pdbx_model_coordinates_missing_flag   N
 _chem_comp.pdbx_ideal_coordinates_details        "Corina V3.40" 
 _chem_comp.pdbx_ideal_coordinates_missing_flag   Y 
 _chem_comp.pdbx_model_coordinates_db_code        ? 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+# [cut] 
+
+data_ZZZ
+# 
+_chem_comp.id                                    ZZZ 
+_chem_comp.name                                  6-FORMYLTETRAHYDROPTERIN 
+_chem_comp.type                                  NON-POLYMER 
+_chem_comp.pdbx_type                             HETAIN 
+_chem_comp.formula                               "C7 H9 N5 O2" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         "(6S)-2-AMINO-4-OXO-3,4,5,6,7,8-HEXAHYDROPTERIDINE-6-CARBALDEHYDE" 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     2006-02-21 
+_chem_comp.pdbx_modified_date                    2011-06-04 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        195.179 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     ZZZ 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        ? 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        2CFI 
 _chem_comp.pdbx_subcomponent_list                ? 
 _chem_comp.pdbx_processing_site                  RCSB 
 # [cut] 

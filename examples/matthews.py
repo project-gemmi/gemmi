@@ -32,7 +32,7 @@ def gather_data():
         vm = block.find_value('_exptl_crystal.density_Matthews')
         d_min = block.find_value('_refine.ls_d_res_high')
         dep_date_tag = '_pdbx_database_status.recvd_initial_deposition_date'
-        dep_date = parse_date(block.find(dep_date_tag)[0].str(0))
+        dep_date = parse_date(block.find_values(dep_date_tag).str(0))
         group = block.find_value('_pdbx_deposit_group.group_id')
         writer.writerow([code, na, vs, vm, d_min, dep_date, group])
 

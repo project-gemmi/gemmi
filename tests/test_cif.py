@@ -15,8 +15,8 @@ class TestBlock(unittest.TestCase):
             loop_ _la _lb _ln A B 1 C D 2
         """).sole_block()
         gc.collect()
-        rows = list(block.find('_la'))
-        self.assertEqual(list(rows[0]), ['A'])
+        values = block.find_values('_la')
+        self.assertEqual(list(values), ['A', 'C'])
 
         rows = list(block.find(['_lb', '_la']))  # changed order
         gc.collect()

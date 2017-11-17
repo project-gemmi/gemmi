@@ -176,6 +176,16 @@ struct Column {
       return loop->length();
     return it ? 1 : 0;
   }
+  const std::string& operator[](int n) const;
+  const std::string& at(int n) const {
+    if (n < 0)
+      n += length();
+    if (n < 0 || n >= length())
+      throw std::out_of_range("Cannot access element " + std::to_string(n) +
+          " in Column with length " + std::to_string(length()));
+    return operator[](n);
+  }
+  std::string str(int n) const { return as_string(at(n)); }
 };
 
 // Some values can be given either in loop or as tag-value pairs.
@@ -281,9 +291,6 @@ struct Block {
              const std::vector<std::string>& tags) const;
   Table find(const std::vector<std::string>& tags) const {
     return find({}, tags);
-  }
-  Table find(const std::string& tag) const {
-    return find({}, {tag});
   }
 
   // modifying functions
@@ -393,6 +400,12 @@ inline StrideIter Column::begin() const {
   if (it && it->type == ItemType::Value)
     return StrideIter(&it->tv.value);
   return StrideIter(nullptr);
+}
+
+inline const std::string& Column::operator[](int n) const {
+  if (const Loop* loop = get_loop())
+    return loop->values[n * loop->width() + col];
+  return it->tv.value;
 }
 
 inline const std::string& Table::Row::direct_at(int pos) const {

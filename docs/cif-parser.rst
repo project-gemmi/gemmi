@@ -114,11 +114,11 @@ Currently, it is available as:
 
 We use it to read:
 
-* mmCIF files
+* mmCIF files (both coordinates and structure factors)
+* CIF files from Crystallography Open Database (COD)
 * Chemical Component Dictionary from PDB
 * DDL1 and DDL2 dictionaries from IUCr and PDB
 * monomer library a.k.a. Refmac dictionary
-* a subset of Crystallography Open Database (COD)
 
 The parser handles:
 
@@ -198,16 +198,16 @@ For example, ``int`` and ``float`` are mmCIF subtypes of ``numb``.
 
 Since in general it is not possible to infer numeric type without
 a corresponding dictionary, the numbers are stored in the DOM as strings
-and they are converted to numeric values when they are read.
+and they are converted to numeric values later, if needed.
 
-Obviously, the case of all strings is preserved in the DOM.
+The case of all strings is preserved in the DOM.
 
 C++ Library
 ===========
 
 .. highlight:: cpp
 
-The CIF parser is implemented in header files,
+CIF parser is implemented in header files,
 so you do not need to compile Gemmi.
 It has a single dependency: PEGTL (also header-only),
 which is included in the ``third_party`` directory.
@@ -248,7 +248,8 @@ Additional header ``<gemmi/gz.hpp>`` is needed to transparently open
 a gzipped file (by uncompressing it first into a memory buffer)
 if the filename ends with ``.gz``::
 
-    gemmi::cif::Document doc = gemmi::cif::read(gemmi::MaybeGzipped(path));
+    // in this and all the next examples: namespace cif = gemmi::cif;
+    cif::Document doc = cif::read(gemmi::MaybeGzipped(path));
 
 If you use it, you must also link the program with zlib. On Unix systems
 it usually means adding ``-lz`` to the compiler invocation.
@@ -280,7 +281,7 @@ Value corresponding to a particular tag (not in a loop) can be read using::
 
     const std::string* find_value(const std::string& tag) const;
 
-which returns ``nullptr`` if the tag is not found.
+It returns ``nullptr`` if the tag is not found.
 The result is a raw string (possibly with quotes) that can be fed into
 ``as_string()`` or ``as_number()`` or ``as_int()``.
 
@@ -288,47 +289,66 @@ For example::
 
     const std::string *rf = block.find_value("_refine_ls_R_factor_all");
     // here we should check for rf == nullptr, possibly also for "?" and "."
-    double rfree = gemmi::cif::as_number(*rf); // NaN if '?' or '.'
+    double rfree = cif::as_number(*rf); // NaN if '?' or '.'
 
 To read values from a single column for a loop (table) use::
 
     Column find_loop(const std::string& tag) const;
 
-The values can be iterated over using a C++11 range-based ``for``::
+``Column`` is a lightweight class with a few functions::
+
+    // Number of rows in the loop. 0 means that the tag was not found.
+    int length() const;
+
+    // Returns pointer to the column name in the DOM.
+    // The name is the same as argument to find_loop() or find_values().
+    const std::string* get_tag() const;
+
+    // Returns pointer to the DOM structure containing the whole table.
+    const Loop* get_loop() const;
+
+    // Get raw value (no bounds checking).
+    const std::string& operator[](int n) const;
+
+    // Get raw value (after bounds checking).
+    const std::string& at(int n) const;
+
+    // Short-cut for cif::as_string(column.at(n)).
+    std::string str(int n) const;
+
+``Column`` also provides support for C++11 range-based ``for``::
 
     for (const std::string &s : block.find_loop("_atom_site_type_symbol"))
-      std::cout << gemmi::cif::as_string(s) << std::endl;
+      std::cout << cif::as_string(s) << std::endl;
 
 Since some values (and in mmCIF files -- all values) can be given
 either as a single item or in a loop, it is convenient to handle
-transparently both cases::
+transparently both cases. To to this, just replace ``find_loop`` with
+a similar function::
+
+    Column find_values(const std::string& tag) const;
+
+For example::
 
     // mmCIF _chem_comp_atom is usually a table, but not always
     for (const std::string &s : block.find_values("_chem_comp_atom.type_symbol"))
       std::cout << s << std::endl;
 
 The ``find_values`` function also returns ``struct Column``,
-but unlike ``find_loop`` it will find also name-value pair.
-Apart from supporting iterators, ``Column`` has a few other functions::
+but unlike ``find_loop`` it finds name-value pairs as well.
+In such case ``Column::get_length()`` returns 1
+and ``Column::get_loop()`` return ``nullptr``.
 
-    // 0 if not found, 1 if name-value pair, >= 1 if loop
-    int length() const; 
-    // If tag was found it returns pointer to name of the tag in the DOM
-    // (the name is the same as argument to find_values())
-    const std::string* get_tag() const;
-    // Loop if the tag was found in a loop, otherwise nullptr.
-    const Loop* get_loop() const;
 
-We often want to access multiple columns at once,
-so another abstraction that can be used with multiple tags::
+Often, we want to access multiple columns at once,
+so the library has another abstraction (``Table``)
+that can be used with multiple tags
+(this function was used in the first example in this section)::
 
     Table find(const std::vector<std::string>& tags) const;
 
-    // but it can be called with a single tag as well
-    Table find(const std::string& tag) const;
-
 Since columns from the same loop tend to have common prefix (category name),
-the library also provides a third overload::
+the library provides a second form::
 
     Table find(const std::string& prefix,
                const std::vector<std::string>& tags) const;
@@ -343,14 +363,15 @@ Note that ``find`` is not aware of dictionaries and categories,
 therefore the category name should end with a separator
 (dot for mmCIF files, as shown above).
 
-``Table`` above is a lightweight, iterable view of the data.
+``Table`` above is, like ``Column``,  a lightweight, iterable view of the data.
 
 TODO: document Table methods (``ok()``, ``width()``, ``length()``,
 ``operator[](size_t)``, ``at(size_t)``, ``find_row(const std::string&)``.
 
 TODO: document optional tags: ``{"_required_tag", "?_optional_tag"}``
 
-The first example in this section shows how this function can be used.
+mmCIF categories
+~~~~~~~~~~~~~~~~
 
 Editing
 -------
@@ -387,6 +408,8 @@ More complex examples are shown in the :ref:`cif_examples` section.
 Reading a file
 --------------
 
+The content of a CIF file is stored in class ``Document``.
+
 .. testcode::
 
   from gemmi import cif
@@ -400,24 +423,44 @@ Reading a file
 Document
 --------
 
-Functions in the previous section return object of class ``Document``
-that contains blocks with data.
+``Document`` contains blocks with data.
+It can be iterated, accessed by block index and by block name:
 
-TODO: document Document
+.. doctest::
 
-* __len__
-* __iter__
-* __getitem__
-* __delitem__
-* sole_block()
-* find_block()
-* clear()
+  >>> doc = cif.read_file("components.cif")
+  >>> len(doc)  #doctest: +SKIP
+  25219
+  >>> doc[0]
+  <gemmi.cif.Block 000>
+  >>> doc[-1]
+  <gemmi.cif.Block ZZZ>
+  >>> doc['MSE']
+  <gemmi.cif.Block MSE>
 
+  >>> # The function block.find_block(name) is like block[name] ...
+  >>> doc.find_block('MSE')
+  <gemmi.cif.Block MSE>
+  >>> # ... except when the block is not found:
+  >>> doc.find_block('no such thing')  # -> None
+  >>> # doc['no such thing'] # -> KeyError
+
+  # As many cif files (including mmCIF) have only a single block,
+  # we have a dedicated function that check if it is indeed a file with
+  # a single block (throws exception if not) and returns the block
+  >>> cif.read("../tests/1pfe.cif.gz").sole_block()
+  <gemmi.cif.Block 1PFE>
+
+Functions that modify the content of the block are described in the section
+"Editing" below.
 
 Block
 -----
 
 TODO: document Block
+
+mmCIF categories
+~~~~~~~~~~~~~~~~
 
 mmCIF files group data into categories.
 
@@ -450,6 +493,12 @@ Editing
 -------
 
 TODO
+
+* Document.__delitem__
+* Document.clear()
+* ...
+
+
 
 Performance
 ===========

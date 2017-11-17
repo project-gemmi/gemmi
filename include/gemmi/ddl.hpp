@@ -47,8 +47,8 @@ private:
 
   void read_ddl1() {
     for (const Block& b : ddl_.blocks) {
-      for (const Table::Row& row : b.find("_name"))
-        name_index_.emplace(as_string(row[0]), &b);
+      for (const std::string& name : b.find_values("_name"))
+        name_index_.emplace(as_string(name), &b);
       if (b.name == "on_this_dictionary") {
         const std::string* dic_name = b.find_value("_dictionary_name");
         if (dic_name)
@@ -64,8 +64,8 @@ private:
     for (const Block& block : ddl_.blocks) // a single block is expected
       for (const Item& item : block.items) {
         if (item.type == ItemType::Frame) {
-          for (const Table::Row& row : item.frame.find("_item.name"))
-            name_index_.emplace(as_string(row[0]), &item.frame);
+          for (const std::string& name : item.frame.find_values("_item.name"))
+            name_index_.emplace(as_string(name), &item.frame);
         } else if (item.type == ItemType::Value) {
           if (item.tv.tag == "_dictionary.title")
             dict_name_ = item.tv.value;
