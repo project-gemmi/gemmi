@@ -67,10 +67,10 @@ private:
           for (const std::string& name : item.frame.find_values("_item.name"))
             name_index_.emplace(as_string(name), &item.frame);
         } else if (item.type == ItemType::Value) {
-          if (item.tv.tag == "_dictionary.title")
-            dict_name_ = item.tv.value;
-          else if (item.tv.tag == "_dictionary.version")
-            dict_version_ = item.tv.value;
+          if (item.pair[0] == "_dictionary.title")
+            dict_name_ = item.pair[1];
+          else if (item.pair[0] == "_dictionary.version")
+            dict_version_ = item.pair[1];
         }
       }
   }
@@ -255,17 +255,17 @@ bool DDL::do_validate(const Document& doc, Output& out, bool quiet) const {
   for (const Block& b : doc.blocks) {
     for (const Item& item : b.items) {
       if (item.type == ItemType::Value) {
-        const Block* dict_block = find_rules(item.tv.tag);
+        const Block* dict_block = find_rules(item.pair[0]);
         if (!dict_block) {
           if (!quiet)
-            out << "Note: unknown tag: " << item.tv.tag << "\n";
+            out << "Note: unknown tag: " << item.pair[0] << "\n";
           continue;
         }
         TypeCheckDDL tc;
         tc.from_block(*dict_block);
         if (tc.is_list() == Trinary::Yes)
-          err(b, item, item.tv.tag + " must be a list");
-        if (!tc.validate_value(item.tv.value, &msg))
+          err(b, item, item.pair[0] + " must be a list");
+        if (!tc.validate_value(item.pair[1], &msg))
           err(b, item, msg);
       } else if (item.type == ItemType::Loop) {
         const int ncol = item.loop.tags.size();

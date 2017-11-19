@@ -11,9 +11,9 @@ std::ostream& operator<<(std::ostream& os, const gemmi::cif::Item& item) {
   using namespace gemmi::cif;
   switch (item.type) {
     case ItemType::Value:
-      os << item.tv.tag;
-      os.put(is_text_field(item.tv.value) ? '\n' : ' ');
-      os << item.tv.value << '\n';
+      os << item.pair[0];
+      os.put(is_text_field(item.pair[1]) ? '\n' : ' ');
+      os << item.pair[1] << '\n';
       break;
     case ItemType::Loop: {
       if (item.loop.values.empty())
@@ -39,7 +39,7 @@ std::ostream& operator<<(std::ostream& os, const gemmi::cif::Item& item) {
       os << "save_\n";
       break;
     case ItemType::Comment:
-      os << item.tv.value << '\n';
+      os << item.pair[1] << '\n';
       break;
     case ItemType::Erased:
       break;

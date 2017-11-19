@@ -83,7 +83,7 @@ inline void infer_valtypes_in_items(std::vector<cif::Item>& items) {
   using namespace cif;
   for (Item& item : items)
       if (item.type == ItemType::Value) {
-        item.valtype = infer_valtype_of_string(item.tv.value);
+        item.valtype = infer_valtype_of_string(item.pair[1]);
       } else if (item.type == ItemType::Loop) {
         for (size_t i = 0; i != item.loop.tags.size(); ++i) {
           ValueType& vt = item.loop.tags[i].valtype;

@@ -209,19 +209,19 @@ private:
     for (const Item& item : items) {
       switch (item.type) {
         case ItemType::Value:
-          if (!cat.empty() && !starts_with(item.tv.tag, cat))
+          if (!cat.empty() && !starts_with(item.pair[0], cat))
             close_cat(cat, &tag_pos);
           os_ << first << linesep_;
           if (group_ddl2_categories && cat.empty()) {
-            cat = get_tag_category(item.tv.tag);
+            cat = get_tag_category(item.pair[0]);
             if (seen_cats.insert(cat).second)
               open_cat(cat, &tag_pos);
           }
-          write_string(item.tv.tag, tag_pos, lc_names);
+          write_string(item.pair[0], tag_pos, lc_names);
           os_ << ": ";
           if (values_as_arrays)
             os_.put('[');
-          write_value(item.tv.value);
+          write_value(item.pair[1]);
           if (values_as_arrays)
             os_.put(']');
           first = ',';

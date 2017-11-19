@@ -7,11 +7,12 @@
 #define GEMMI_CIFDOC_HPP_
 #include "util.hpp"  // for starts_with, to_lower
 #include <algorithm> // for move, find_if, all_of, min
+#include <array>
 #include <cassert>
 #include <cstring>   // for memchr
 #include <initializer_list>
 #include <iosfwd>    // for size_t, ptrdiff_t
-#include <iterator>
+#include <iterator>  // for bidirectional_iterator_tag
 #include <new>
 #include <stdexcept>
 #include <string>
@@ -22,6 +23,14 @@ namespace gemmi {
 namespace cif {
 using std::size_t;
 
+// base for a BidirectionalIterator (std::iterator is deprecated in C++17)
+template <typename Value> struct IterBase {
+  typedef Value value_type;
+  typedef std::ptrdiff_t  difference_type;
+  typedef Value* pointer;
+  typedef Value& reference;
+  typedef std::bidirectional_iterator_tag iterator_category;
+};
 
 enum class ItemType : unsigned char {
   Value,
@@ -68,10 +77,7 @@ inline std::string as_string(const std::string* value) {
   return value ? as_string(*value) : std::string();
 }
 
-struct Pair {
-  std::string tag;
-  std::string value;
-};
+using Pair = std::array<std::string, 2>;
 
 // used only as arguments when creating Item
 struct LoopArg {};
@@ -113,51 +119,28 @@ struct Loop {
     for (const std::string& v : vv)
       values.emplace_back(v);
   }
-
-  // iteration over rows
-  struct Span {
-    const Loop& loop;
-    const std::ptrdiff_t offset;
-    const std::string& at(int n) const { return loop.values.at(offset+n); }
-    const std::string& operator[](int n) const { return loop.values[offset+n]; }
-    size_t size() const { return loop.width(); }
-    typedef std::vector<std::string>::const_iterator const_iterator;
-    const_iterator begin() const { return loop.values.begin() + offset; }
-    const_iterator end() const { return begin() + size(); }
-  };
-  struct Iter {
-    const Loop& loop;
-    std::vector<std::string>::const_iterator cur;
-    Iter(const Loop& loop_, std::vector<std::string>::const_iterator cur_)
-      : loop(loop_), cur(cur_) {}
-    void operator++() { cur += loop.width(); }
-    const Span operator*() const { return {loop, cur - loop.values.begin()}; }
-    bool operator!=(const Iter& o) const { return cur != o.cur; }
-    bool operator==(const Iter& o) const { return cur == o.cur; }
-  };
-  Iter begin() const { return Iter(*this, values.begin()); }
-  Iter end() const { return Iter(*this, values.end()); }
 };
 
 
-class StrideIter {
+template<typename T>
+class StrideIter : public IterBase<T> {
 public:
-  StrideIter(const std::string* str) : cur_(str), end_(nullptr), stride_(0) {}
-  StrideIter(const std::vector<std::string>& vec, size_t offset,
-             unsigned stride)
-    : cur_(vec.data() + std::min(offset, vec.size())),
-      end_(vec.data() + vec.size()),
-      stride_(stride) {}
-  void operator++() {
-    cur_ = (end_ && unsigned(end_-cur_) > stride_ ? cur_+stride_ : end_);
-  }
-  const std::string& operator*() const { return *cur_; }
-  bool operator!=(const StrideIter& other) const { return cur_ != other.cur_; }
+  StrideIter() : cur_(nullptr), offset_(0), stride_(0) {}
+  StrideIter(T* ptr, size_t offset, unsigned stride)
+    : cur_(ptr), offset_(offset), stride_(stride) {}
+  StrideIter& operator++() { cur_ += stride_; return *this; }
+  StrideIter& operator--() { cur_ -= stride_; return *this; }
+  StrideIter operator++(int) { auto t = *this; cur_ += stride_; return t; }
+  StrideIter operator--(int) { auto t = *this; cur_ -= stride_; return t; }
+  const T& operator*() const { return cur_[offset_]; }
+  const T* operator->() const { return cur_ + offset_; }
+  T& operator*() { return cur_[offset_]; }
+  T* operator->() { return cur_ + offset_; }
   bool operator==(const StrideIter& other) const { return cur_ == other.cur_; }
-  StrideIter& to_end() { cur_ = end_; return *this; }
+  bool operator!=(const StrideIter& other) const { return cur_ != other.cur_; }
 private:
-  const std::string* cur_;
-  const std::string* end_;
+  T* cur_;
+  unsigned offset_;
   unsigned stride_;
 };
 
@@ -168,8 +151,14 @@ struct Block;
 struct Column {
   const Item* it;
   size_t col;  // for loop it is a column index in it->loop
-  StrideIter begin() const;
-  StrideIter end() const { return begin().to_end(); }
+
+  using iterator = StrideIter<std::string>;
+  using const_iterator = StrideIter<const std::string>;
+  const_iterator begin() const;
+  const_iterator end() const;
+  //iterator begin();
+  //iterator end();
+
   const Loop* get_loop() const;
   const std::string* get_tag() const;
   int length() const {
@@ -220,28 +209,31 @@ struct Table {
     bool has(int n) const { return tab.has_column(n); }
     size_t size() const { return tab.width(); }
     std::string str(int n) const { return as_string(at(n)); }
-    template <typename P, typename T>
-    struct Iter : std::iterator<std::forward_iterator_tag, T> {
-      Iter(P& p, std::vector<int>::const_iterator it) : parent(p), cur(it) {}
-      P& parent;
+    struct iterator : IterBase<std::string> {
+      iterator() : parent(nullptr), cur(0) {}
+      iterator(const Row* p, std::vector<int>::const_iterator it)
+        : parent(p), cur(it) {}
+      const Row* parent;
       std::vector<int>::const_iterator cur; // points into positions
-      Iter operator++() { cur++; return *this; }
-      void operator++(int) { cur++; }
-      T& operator*() const { return parent.direct_at(*cur); }
-      bool operator!=(const Iter& other) const { return cur != other.cur; }
-      bool operator==(const Iter& other) const { return cur == other.cur; }
+      iterator& operator++() { ++cur; return *this; }
+      iterator& operator--() { --cur; return *this; }
+      iterator operator++(int) { auto t = *this; ++cur; return t; }
+      iterator operator--(int) { auto t = *this; --cur; return t; }
+      const std::string& operator*() const { return parent->direct_at(*cur); }
+      const std::string* operator->() const { return &(operator*()); }
+      bool operator==(const iterator& other) const { return cur == other.cur; }
+      bool operator!=(const iterator& other) const { return cur != other.cur; }
       // TODO: what should be done with absent optional tags?
     };
-    using const_iterator = Iter<const Row, const std::string>;
-    using iterator = Iter<Row, std::string>;
+    using const_iterator = iterator;
     const_iterator begin() const {
-      return const_iterator(*this, tab.positions.begin());
+      return const_iterator(this, tab.positions.begin());
     }
     const_iterator end() const {
-      return const_iterator(*this, tab.positions.end());
+      return const_iterator(this, tab.positions.end());
     }
-    iterator begin() { return iterator(*this, tab.positions.begin()); }
-    iterator end() { return iterator(*this, tab.positions.end()); }
+    iterator begin() { return iterator(this, tab.positions.begin()); }
+    iterator end() { return iterator(this, tab.positions.end()); }
   };
 
   bool ok() const { return !positions.empty(); }
@@ -270,18 +262,20 @@ struct Table {
   }
 
   Row find_row(const std::string& s) const;
+  // TODO: get_column(n), find_column(name)
 
-  struct Iter {
+  // It is not a proper input iterator, but just enough for using range-for.
+  struct iterator {
     const Table& parent;
     size_t index;
     void operator++() { index++; }
-    bool operator!=(const Iter& other) const { return index != other.index; }
-    bool operator==(const Iter& other) const { return index == other.index; }
+    bool operator==(const iterator& o) const { return index == o.index; }
+    bool operator!=(const iterator& o) const { return index != o.index; }
     Row operator*() const { return parent[index]; }
     const std::string& get(int n) const { return parent[index].at(n); }
   };
-  Iter begin() const { return Iter{*this, 0}; }
-  Iter end() const { return Iter{*this, length()}; }
+  iterator begin() const { return iterator{*this, 0}; }
+  iterator end() const { return iterator{*this, length()}; }
 };
 
 struct Block {
@@ -296,7 +290,7 @@ struct Block {
   const Pair* find_pair(const std::string& tag) const;
   const std::string* find_value(const std::string& tag) const {
     const Pair* pair = find_pair(tag);
-    return pair ? &pair->value : nullptr;
+    return pair ? &(*pair)[1] : nullptr;
   }
   Column find_loop(const std::string& tag) const;
   Column find_values(const std::string& tag) const;
@@ -325,7 +319,7 @@ struct Item {
   ValueType valtype = ValueType::NotSet; // for Pair only
   int line_number = -1;
   union {
-    Pair tv;
+    Pair pair;
     Loop loop;
     Block frame;
   };
@@ -333,13 +327,13 @@ struct Item {
   explicit Item(LoopArg)
     : type{ItemType::Loop}, loop{} {}
   explicit Item(std::string&& t)
-    : type{ItemType::Value}, tv{std::move(t), std::string()} {}
+    : type{ItemType::Value}, pair{std::move(t), std::string()} {}
   Item(const std::string& t, const std::string& v)
-    : type{ItemType::Value}, tv{t, v} {}
+    : type{ItemType::Value}, pair{t, v} {}
   explicit Item(FrameArg&& frame_arg)
     : type{ItemType::Frame}, frame(frame_arg.str) {}
   explicit Item(CommentArg&& comment)
-    : type{ItemType::Comment}, tv{std::string(), std::move(comment.str)} {}
+    : type{ItemType::Comment}, pair{std::string(), std::move(comment.str)} {}
 
   Item(Item&& o) noexcept
       : type(o.type), valtype(o.valtype), line_number(o.line_number) {
@@ -357,10 +351,10 @@ struct Item {
 
   ~Item() {
     switch (type) {
-      case ItemType::Value: tv.~Pair(); break;
+      case ItemType::Value: pair.~Pair(); break;
       case ItemType::Loop: loop.~Loop(); break;
       case ItemType::Frame: frame.~Block(); break;
-      case ItemType::Comment: tv.~Pair(); break;
+      case ItemType::Comment: pair.~Pair(); break;
       case ItemType::Erased: break;
     }
   }
@@ -371,7 +365,7 @@ struct Item {
   }
 
   bool has_prefix(const std::string& prefix) const {
-    return (type == ItemType::Value && gemmi::starts_with(tv.tag, prefix)) ||
+    return (type == ItemType::Value && gemmi::starts_with(pair[0], prefix)) ||
            (type == ItemType::Loop && !loop.tags.empty() &&
             gemmi::starts_with(loop.tags[0].tag, prefix));
   }
@@ -379,7 +373,7 @@ struct Item {
 private:
   void copy_value(const Item& o) {
     if (o.type == ItemType::Value || o.type == ItemType::Comment)
-      new (&tv) Pair(o.tv);
+      new (&pair) Pair(o.pair);
     else if (o.type == ItemType::Loop)
       new (&loop) Loop(o.loop);
     else if (o.type == ItemType::Frame)
@@ -388,7 +382,7 @@ private:
 
   void move_value(Item&& o) {
     if (o.type == ItemType::Value || o.type == ItemType::Comment)
-      new (&tv) Pair(std::move(o.tv));
+      new (&pair) Pair(std::move(o.pair));
     else if (o.type == ItemType::Loop)
       new (&loop) Loop(std::move(o.loop));
     else if (o.type == ItemType::Frame)
@@ -401,24 +395,33 @@ inline const std::string* Column::get_tag() const {
     return nullptr;
   if (const Loop* loop = get_loop())
     return &loop->tags.at(col).tag;
-  return &it->tv.tag;
+  return &it->pair[0];
 }
 
 inline const Loop* Column::get_loop() const {
   return it && it->type == ItemType::Loop ? &it->loop : nullptr;
 }
-inline StrideIter Column::begin() const {
+inline Column::const_iterator Column::begin() const {
   if (const Loop* loop = get_loop())
-    return StrideIter(loop->values, col, loop->width());
+    return const_iterator(loop->values.data(), col, loop->width());
   if (it && it->type == ItemType::Value)
-    return StrideIter(&it->tv.value);
-  return StrideIter(nullptr);
+    return const_iterator(&it->pair[1], 0, 1);
+  return const_iterator();
+}
+
+inline Column::const_iterator Column::end() const {
+  if (const Loop* loop = get_loop())
+    return const_iterator(loop->values.data() + loop->values.size(),
+                          col, loop->width());
+  if (it && it->type == ItemType::Value)
+    return const_iterator(&it->pair[1] + 1, 0, 1);
+  return const_iterator();
 }
 
 inline const std::string& Column::operator[](int n) const {
   if (const Loop* loop = get_loop())
     return loop->values[n * loop->width() + col];
-  return it->tv.value;
+  return it->pair[1];
 }
 
 inline const std::string& Table::Row::direct_at(int pos) const {
@@ -427,11 +430,11 @@ inline const std::string& Table::Row::direct_at(int pos) const {
   if (row_index == -1) { // tags
     if (tab.loop)
       return tab.loop->tags.at(pos).tag;
-    return tab.blo.items[pos].tv.tag;
+    return tab.blo.items[pos].pair[0];
   }
   if (tab.loop)
     return tab.loop->values.at(tab.loop->width() * row_index + pos);
-  return tab.blo.items[pos].tv.value;
+  return tab.blo.items[pos].pair[1];
 }
 
 inline Table::Row Table::find_row(const std::string& s) const {
@@ -440,7 +443,7 @@ inline Table::Row Table::find_row(const std::string& s) const {
     for (size_t i = 0; i < loop->values.size(); i += loop->width())
       if (as_string(loop->values[i + pos]) == s)
         return Row{*this, static_cast<int>(i / loop->width())};
-  } else if (as_string(blo.items[pos].tv.value) == s) {
+  } else if (as_string(blo.items[pos].pair[1]) == s) {
     return Row{*this, 0};
   }
   throw std::runtime_error("Not found in the first column: " + s);
@@ -448,15 +451,15 @@ inline Table::Row Table::find_row(const std::string& s) const {
 
 inline const Item* Block::find_pair_item(const std::string& tag) const {
   for (const Item& i : items)
-    if (i.type == ItemType::Value && i.tv.tag == tag)
+    if (i.type == ItemType::Value && i.pair[0] == tag)
       return &i;
   return nullptr;
 }
 
 inline const Pair* Block::find_pair(const std::string& tag) const {
   for (const Item& i : items)
-    if (i.type == ItemType::Value && i.tv.tag == tag)
-      return &i.tv;
+    if (i.type == ItemType::Value && i.pair[0] == tag)
+      return &i.pair;
   return nullptr;
 }
 
@@ -464,14 +467,14 @@ inline void Block::set_pair(const std::string& tag, std::string v) {
   if (tag[0] != '_')
     throw std::runtime_error("Tag should start with '_', got: " + tag);
   for (Item& i : items) {
-    if (i.type == ItemType::Value && i.tv.tag == tag) {
-      i.tv.value = v;
+    if (i.type == ItemType::Value && i.pair[0] == tag) {
+      i.pair[1] = v;
       return;
     }
     if (i.type == ItemType::Loop && i.loop.find_tag(tag) != -1) {
       i.loop.~Loop();
       i.type = ItemType::Value;
-      i.tv = { tag, v };
+      i.pair = { tag, v };
       return;
     }
   }
@@ -490,7 +493,7 @@ inline Column Block::find_values(const std::string& tag) const {
       if (pos != -1)
         return Column{&i, static_cast<size_t>(pos)};
     } else if (i.type == ItemType::Value) {
-      if (i.tv.tag == tag)
+      if (i.pair[0] == tag)
         return Column{&i, 0};
     }
   return Column{nullptr, 0};
@@ -516,7 +519,7 @@ inline std::vector<std::string> Block::get_mmcif_category_names() const {
   for (const Item& item : items) {
     const std::string* tag = nullptr;
     if (item.type == ItemType::Value)
-      tag = &item.tv.tag;
+      tag = &item.pair[0];
     else if (item.type == ItemType::Loop && !item.loop.tags.empty())
       tag = &item.loop.tags[0].tag;
     if (tag)
@@ -661,9 +664,9 @@ inline void check_duplicates(const Document& d) {
     frame_names.clear();
     for (const Item& item : block.items) {
       if (item.type == ItemType::Value) {
-        bool ok = names.insert(gemmi::to_lower(item.tv.tag)).second;
+        bool ok = names.insert(gemmi::to_lower(item.pair[0])).second;
         if (!ok)
-          cif_fail(d, block, item, "duplicate tag " + item.tv.tag);
+          cif_fail(d, block, item, "duplicate tag " + item.pair[0]);
       } else if (item.type == ItemType::Loop) {
         for (const LoopTag& t : item.loop.tags) {
           bool ok = names.insert(gemmi::to_lower(t.tag)).second;
