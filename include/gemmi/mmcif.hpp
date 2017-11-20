@@ -17,7 +17,7 @@ namespace gemmi {
 namespace impl {
 
 inline std::unordered_map<std::string, std::array<float,6>>
-get_anisotropic_u(const cif::Block& block) {
+get_anisotropic_u(cif::Block& block) {
   cif::Table aniso_tab = block.find("_atom_site_anisotrop.",
                                     {"id", "U[1][1]", "U[2][2]", "U[3][3]",
                                      "U[1][2]", "U[1][3]", "U[2][3]"});
@@ -55,9 +55,8 @@ inline Mat4x4 Matrix33_to_Mat4x4(const Matrix33& m) {
           {    0,     0,     0, 1}};
 }
 
-inline Residue* find_residue_from_label(Structure& st,
-                                        const cif::Table::Row& row) {
-  for (const auto& item : row)
+inline Residue* find_residue_with_label(Structure& st, cif::Table::Row& row) {
+  for (auto& item : row)
     if (cif::is_null(item))
       return nullptr;
   ResidueId rid(cif::as_int(row[2]), row[3]);
@@ -68,7 +67,7 @@ inline Residue* find_residue_from_label(Structure& st,
   return nullptr;
 }
 
-inline Structure structure_from_cif_block(const cif::Block& block) {
+inline Structure structure_from_cif_block(cif::Block& block) {
   using cif::as_number;
   using cif::as_string;
   Structure st;
@@ -216,7 +215,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
   }
 
   cif::Table polymer_types = block.find("_entity_poly.", {"entity_id", "type"});
-  for (const auto& row : block.find("_entity.", {"id", "type"})) {
+  for (auto row : block.find("_entity.", {"id", "type"})) {
     std::string id = row.str(0);
     EntityType etype = entity_type_from_string(row.str(1));
     PolymerType ptype = PolymerType::NA;
@@ -226,8 +225,8 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
     st.entities.emplace_back(new Entity{id, etype, ptype, {}});
   }
 
-  for (const auto& row : block.find("_entity_poly_seq.",
-                                    {"entity_id", "num", "mon_id"})) {
+  for (auto row : block.find("_entity_poly_seq.",
+                             {"entity_id", "num", "mon_id"})) {
     Entity *ent = st.find_or_add_entity(row.str(0));
     ent->sequence.push_back({cif::as_int(row[1], -1), row.str(2)});
   }
@@ -243,13 +242,13 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
       }
   st.finish();
 
-  for (const auto& row : block.find("_struct_mon_prot_cis.",
-                                    {"pdbx_PDB_model_num", "label_asym_id",
-                                     "label_seq_id", "label_comp_id"}))
-    if (Residue* res = find_residue_from_label(st, row))
+  for (auto row : block.find("_struct_mon_prot_cis.",
+                             {"pdbx_PDB_model_num", "label_asym_id",
+                              "label_seq_id", "label_comp_id"}))
+    if (Residue* res = find_residue_with_label(st, row))
       res->is_cis = true;
 
-  for (const auto& row : block.find("_struct_conn.", {"id", "conn_type_id"})) {
+  for (auto row : block.find("_struct_conn.", {"id", "conn_type_id"})) {
     // TODO
   }
 
@@ -258,7 +257,7 @@ inline Structure structure_from_cif_block(const cif::Block& block) {
 
 } // namespace impl
 
-inline Structure read_atoms(const cif::Document& doc) {
+inline Structure read_atoms(cif::Document doc) {
   return impl::structure_from_cif_block(doc.sole_block());
 }
 

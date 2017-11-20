@@ -37,17 +37,17 @@ public:
   // does the dictionary name/version correspond to _audit_conform_dict_*
   bool check_audit_conform(const Document& doc, std::string* msg) const;
   template <class Output>
-  bool validate(const Document& doc, Output& out, bool quiet) const;
+  bool validate(Document& doc, Output& out, bool quiet);
 
 private:
-  const Block* find_rules(const std::string& name) const {
+  Block* find_rules(const std::string& name) {
     auto iter = name_index_.find(name);
     return iter != name_index_.end() ? iter->second : nullptr;
   }
 
   void read_ddl1() {
-    for (const Block& b : ddl_.blocks) {
-      for (const std::string& name : b.find_values("_name"))
+    for (Block& b : ddl_.blocks) {
+      for (std::string& name : b.find_values("_name"))
         name_index_.emplace(as_string(name), &b);
       if (b.name == "on_this_dictionary") {
         const std::string* dic_name = b.find_value("_dictionary_name");
@@ -61,8 +61,8 @@ private:
   }
 
   void read_ddl2() {
-    for (const Block& block : ddl_.blocks) // a single block is expected
-      for (const Item& item : block.items) {
+    for (Block& block : ddl_.blocks) // a single block is expected
+      for (Item& item : block.items) {
         if (item.type == ItemType::Frame) {
           for (const std::string& name : item.frame.find_values("_item.name"))
             name_index_.emplace(as_string(name), &item.frame);
@@ -76,11 +76,11 @@ private:
   }
 
   template <class Output, class TypeCheckDDL>
-  bool do_validate(const Document& doc, Output& out, bool quiet) const;
+  bool do_validate(Document& doc, Output& out, bool quiet);
 
   int version_;
   Document ddl_;
-  std::unordered_map<std::string, const Block*> name_index_;
+  std::unordered_map<std::string, Block*> name_index_;
   std::string dict_name_;
   std::string dict_version_;
   // "_" or ".", used to unify handling of DDL1 and DDL2, for example when
@@ -176,7 +176,7 @@ private:
 
 class TypeCheckDDL1 : public TypeCheckCommon {
 public:
-  void from_block(const Block& b) {
+  void from_block(Block& b) {
     if (const std::string* list = b.find_value("_list")) {
       if (*list == "yes")
         is_list_ = Trinary::Yes;
@@ -218,13 +218,13 @@ private:
 
 class TypeCheckDDL2 : public TypeCheckCommon {
 public:
-  void from_block(const Block& b) {
+  void from_block(Block& b) {
     if (const std::string* code = b.find_value("_item_type.code")) {
       type_code_ = as_string(*code);
       if (type_code_ == "float" || type_code_ == "int")
         type_ = ValType::Numb;
     }
-    for (const auto& row : b.find("_item_range.", {"minimum", "maximum"}))
+    for (auto row : b.find("_item_range.", {"minimum", "maximum"}))
       range_.emplace_back(as_number(row[0], -INFINITY),
                           as_number(row[1], +INFINITY));
     for (const std::string& e : b.find_loop("_item_enumeration.value"))
@@ -238,13 +238,13 @@ private:
 };
 
 template <class Output>
-bool DDL::validate(const Document& doc, Output& out, bool quiet) const {
+bool DDL::validate(Document& doc, Output& out, bool quiet) {
   return version_ == 1 ? do_validate<Output, TypeCheckDDL1>(doc, out, quiet)
                        : do_validate<Output, TypeCheckDDL2>(doc, out, quiet);
 }
 
 template <class Output, class TypeCheckDDL>
-bool DDL::do_validate(const Document& doc, Output& out, bool quiet) const {
+bool DDL::do_validate(Document& doc, Output& out, bool quiet) {
   std::string msg;
   bool ok = true;
   auto err = [&](const Block& b, const Item& item, const std::string& s) {
@@ -252,10 +252,10 @@ bool DDL::do_validate(const Document& doc, Output& out, bool quiet) const {
     out << doc.source << ":" << item.line_number
         << " in data_" << b.name << ": " << s << "\n";
   };
-  for (const Block& b : doc.blocks) {
+  for (Block& b : doc.blocks) {
     for (const Item& item : b.items) {
       if (item.type == ItemType::Value) {
-        const Block* dict_block = find_rules(item.pair[0]);
+        Block* dict_block = find_rules(item.pair[0]);
         if (!dict_block) {
           if (!quiet)
             out << "Note: unknown tag: " << item.pair[0] << "\n";
@@ -271,7 +271,7 @@ bool DDL::do_validate(const Document& doc, Output& out, bool quiet) const {
         const int ncol = item.loop.tags.size();
         for (int i = 0; i != ncol; i++) {
           const std::string& tag = item.loop.tags[i].tag;
-          const Block* dict_block = find_rules(tag);
+          Block* dict_block = find_rules(tag);
           if (!dict_block) {
             if (!quiet)
               out << "Note: unknown tag: " << tag << "\n";

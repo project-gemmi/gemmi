@@ -6,6 +6,32 @@
 #include <gemmi/cif.hpp>
 namespace cif = gemmi::cif;
 
+template<typename T> void check_with_two_elements(T duo) {
+  typename T::const_iterator it;
+  it = duo.begin();
+  CHECK_EQ(it++, duo.begin());
+  CHECK_EQ(++it, duo.end());
+  CHECK_EQ(it--, duo.end());
+  CHECK_EQ(--it, duo.begin());
+  typename T::const_iterator cit;
+  const T& cduo = duo;
+  cit = cduo.end();
+  cit = it;
+  CHECK_EQ(cit == it, true);
+  CHECK_EQ(cit != it, false);
+  std::string first = duo[0];
+  std::string second = duo[1];
+  std::string rev[2];
+  std::reverse_copy(duo.begin(), duo.end(), rev);
+  CHECK_EQ(rev[0], second);
+  CHECK_EQ(rev[1], first);
+  std::reverse(duo.begin(), duo.end());
+  CHECK_EQ(duo[0], second);
+  CHECK_EQ(duo[1], first);
+  std::fill(duo.begin(), duo.end(), "filler");
+  CHECK_EQ(std::count(duo.begin(), duo.end(), "filler"), 2);
+}
+
 TEST_CASE("testing cif::Column iterators") {
   cif::Document doc = cif::read_string("data_1"
           " loop_ _a _b _c _d a1 b1 c1 d1 a2 b2 c2 d2"
@@ -13,23 +39,11 @@ TEST_CASE("testing cif::Column iterators") {
   cif::Block& block = doc.blocks[0];
   {
     cif::Column col_c = block.find_loop("_c");
-    cif::Column::const_iterator it;
-    it = col_c.begin();
-    CHECK_EQ(it++, col_c.begin());
-    CHECK_EQ(++it, col_c.end());
-    CHECK_EQ(it--, col_c.end());
-    CHECK_EQ(--it, col_c.begin());
     CHECK_EQ(col_c.length(), 2);
     CHECK_EQ(col_c.at(0), "c1");
     CHECK_EQ(col_c.at(1), "c2");
     CHECK_EQ(std::count(col_c.begin(), col_c.end(), "c2"), 1);
-    CHECK_EQ(std::count(col_c.begin(), col_c.end(), "a2"), 0);
-    std::string rev[2];
-    std::reverse_copy(col_c.begin(), col_c.end(), rev);
-    CHECK_EQ(rev[0], "c2");
-    CHECK_EQ(rev[1], "c1");
-    //std::fill(col_c.begin(), col_c.end(), "filler");
-    //std::reverse(col_c.begin(), col_c.end());
+    check_with_two_elements(col_c);
   }
   {
     cif::Table tab = block.find({"_b", "_d"});
@@ -38,22 +52,10 @@ TEST_CASE("testing cif::Column iterators") {
     CHECK_EQ(tab.at(0).at(0), "b1");
     CHECK_EQ(tab.at(1).at(1), "d2");
     cif::Table::Row row = tab.at(1);
-    cif::Table::Row::const_iterator it;
-    it = row.begin();
-    CHECK_EQ(it++, row.begin());
-    CHECK_EQ(++it, row.end());
-    CHECK_EQ(it--, row.end());
-    CHECK_EQ(--it, row.begin());
     CHECK_EQ(row.at(0), "b2");
     CHECK_EQ(row.at(1), "d2");
     CHECK_EQ(std::count(row.begin(), row.end(), "d2"), 1);
-    CHECK_EQ(std::count(row.begin(), row.end(), "c2"), 0);
-    std::string rev[2];
-    std::reverse_copy(row.begin(), row.end(), rev);
-    CHECK_EQ(rev[0], "d2");
-    CHECK_EQ(rev[1], "b2");
-    //std::fill(row.begin(), row.end(), "filler");
-    //std::reverse(row.begin(), row.end());
+    check_with_two_elements(row);
   }
 }
 

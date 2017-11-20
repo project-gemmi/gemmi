@@ -21,14 +21,13 @@ void init_cif(py::module& cif) {
     .def("__iter__", [](const Document& d) {
         return py::make_iterator(d.blocks);
     }, py::keep_alive<0, 1>())
-    .def("__getitem__", [](const Document& d, const std::string& name)
-                          -> const Block& {
-        const Block* b = d.find_block(name);
+    .def("__getitem__", [](Document& d, const std::string& name) -> Block& {
+        Block* b = d.find_block(name);
         if (!b)
           throw py::key_error("block '" + name + "' does not exist");
         return *b;
     }, py::arg("name"), py::return_value_policy::reference_internal)
-    .def("__getitem__", [](const Document& d, int index) -> const Block& {
+    .def("__getitem__", [](Document& d, int index) -> Block& {
         return d.blocks.at(index >= 0 ? index : index + d.blocks.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("__delitem__", [](Document &d, int index) {
@@ -63,9 +62,9 @@ void init_cif(py::module& cif) {
     .def("find_values", &Block::find_values, py::arg("tag"),
          py::keep_alive<0, 1>())
     .def("find", (Table (Block::*)(const std::string&,
-            const std::vector<std::string>&) const) &Block::find,
+            const std::vector<std::string>&)) &Block::find,
          py::arg("prefix"), py::arg("tags"))
-    .def("find", (Table (Block::*)(const std::vector<std::string>&) const)
+    .def("find", (Table (Block::*)(const std::vector<std::string>&))
                  &Block::find,
          py::arg("tags"))
     .def("set_pair", &Block::set_pair, py::arg("tag"), py::arg("value"))
@@ -98,11 +97,10 @@ void init_cif(py::module& cif) {
     .def(py::init<>())
     .def("get_loop", &Column::get_loop,
          py::return_value_policy::reference_internal)
-    .def_readwrite("col", &Column::col)
     .def("__iter__", [](const Column& self) { return py::make_iterator(self); },
          py::keep_alive<0, 1>())
-    .def("__bool__", [](const Column &self) -> bool { return self.it; })
-    .def("__getitem__", &Column::at)
+    .def("__bool__", [](const Column &self) -> bool { return self.item(); })
+    .def("__getitem__", (std::string& (Column::*)(int)) &Column::at)
     .def("str", &Column::str)
     .def("__repr__", [](const Column &self) {
         std::string desc = "nil";
@@ -114,7 +112,7 @@ void init_cif(py::module& cif) {
   py::class_<Table> lt(cif, "Table");
   lt.def_readonly("loop", &Table::loop)
     .def("find_row", &Table::find_row, py::keep_alive<0, 1>())
-    .def("__iter__", [](const Table& self) {
+    .def("__iter__", [](Table& self) {
         return py::make_iterator(self, py::keep_alive<0, 1>());
     }, py::keep_alive<0, 1>())
     .def("__getitem__", &Table::at, py::keep_alive<0, 1>())
@@ -134,7 +132,7 @@ void init_cif(py::module& cif) {
   py::class_<Table::Row>(lt, "Row")
     .def("str", &Table::Row::str)
     .def("__len__", &Table::Row::size)
-    .def("__getitem__", &Table::Row::at)
+    .def("__getitem__", (std::string& (Table::Row::*)(int)) &Table::Row::at)
     .def("get", &Table::Row::ptr_at,
          py::arg("index"), py::return_value_policy::reference_internal)
     .def("__iter__", [](const Table::Row& self) {

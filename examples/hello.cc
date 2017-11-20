@@ -9,7 +9,7 @@ int main(int argc, char* argv[]) {
   if (argc != 2) return 1;
   try {
     cif::Document doc = cif::read_file(argv[1]);
-    const cif::Block& block = doc.sole_block(); // mmCIF has exactly one block
+    cif::Block& block = doc.sole_block(); // mmCIF has exactly one block
     for (const std::string &s : block.find_loop("_atom_site.type_symbol"))
       if (greeted.insert(s).second) // insert() returns pair<iterator,bool>
         std::cout << "Hello " << s << std::endl;
