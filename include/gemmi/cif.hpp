@@ -172,7 +172,6 @@ template<> struct Action<rules::loop_tag> {
     Item& last_item = out.items_->back();
     assert(last_item.type == ItemType::Loop);
     last_item.loop.tags.emplace_back(in.string());
-    last_item.loop.tags.back().line_number = in.iterator().line;
   }
 };
 template<> struct Action<rules::loop_value> {

@@ -86,7 +86,6 @@ struct CommentArg { std::string str; };
 
 struct LoopTag {
   ValueType valtype = ValueType::NotSet;
-  int line_number = -1;
   std::string tag;
   explicit LoopTag(std::string&& t) : tag{t} {}
 };
