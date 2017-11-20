@@ -210,7 +210,7 @@ struct Table {
     size_t size() const { return tab.width(); }
     std::string str(int n) const { return as_string(at(n)); }
     struct iterator : IterBase<std::string> {
-      iterator() : parent(nullptr), cur(0) {}
+      iterator() : parent(nullptr) {}
       iterator(const Row* p, std::vector<int>::const_iterator it)
         : parent(p), cur(it) {}
       const Row* parent;
