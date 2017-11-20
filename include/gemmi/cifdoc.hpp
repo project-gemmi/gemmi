@@ -326,13 +326,13 @@ struct Item {
   explicit Item(LoopArg)
     : type{ItemType::Loop}, loop{} {}
   explicit Item(std::string&& t)
-    : type{ItemType::Value}, pair{std::move(t), std::string()} {}
+    : type{ItemType::Value}, pair{{std::move(t), std::string()}} {}
   Item(const std::string& t, const std::string& v)
-    : type{ItemType::Value}, pair{t, v} {}
+    : type{ItemType::Value}, pair{{t, v}} {}
   explicit Item(FrameArg&& frame_arg)
     : type{ItemType::Frame}, frame(frame_arg.str) {}
   explicit Item(CommentArg&& comment)
-    : type{ItemType::Comment}, pair{std::string(), std::move(comment.str)} {}
+    : type{ItemType::Comment}, pair{{std::string(), std::move(comment.str)}} {}
 
   Item(Item&& o) noexcept
       : type(o.type), valtype(o.valtype), line_number(o.line_number) {
@@ -473,7 +473,8 @@ inline void Block::set_pair(const std::string& tag, std::string v) {
     if (i.type == ItemType::Loop && i.loop.find_tag(tag) != -1) {
       i.loop.~Loop();
       i.type = ItemType::Value;
-      i.pair = { tag, v };
+      i.pair[0] = tag;
+      i.pair[1] = v;
       return;
     }
   }
