@@ -89,6 +89,8 @@ add_executable(gemmi-sg src/sg.cpp)
 add_executable(gemmi-contents src/contents.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-contents)
 
+add_executable(test_cif tests/cif.cpp)
+
 if (benchmark_FOUND)
   foreach(b bench_elem bench_mod bench_sym)
     add_executable(${b} tools/${b}.cpp)
@@ -104,3 +106,6 @@ support_gz(doc_maybegz)
 # auth_label requires <experimental/filesystem> and -lstdc++fs
 #add_executable(examples/auth_label examples/auth_label.cc)
 #support_gz(examples/auth_label)
+
+enable_testing()
+add_test(NAME cif COMMAND test_cif)
