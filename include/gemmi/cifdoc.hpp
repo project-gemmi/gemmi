@@ -84,27 +84,8 @@ enum class ItemType : unsigned char {
   Erased,
 };
 
-enum class ValueType : unsigned char {
-  NotSet,
-  Char, // Line/Text?
-  Numb, // Int/Float?
-  Dot,
-  QuestionMark,
-};
-
 inline bool is_null(const std::string& value) {
   return value == "?" || value == ".";
-}
-
-inline std::string value_type_to_str(ValueType v) {
-  switch (v) {
-    case ValueType::NotSet: return "n/a";
-    case ValueType::Char: return "char";
-    case ValueType::Numb: return "numb";
-    case ValueType::Dot: return "'.'";
-    case ValueType::QuestionMark: return "'?'";
-  }
-  return "";
 }
 
 inline std::string as_string(const std::string& value) {
@@ -129,7 +110,6 @@ struct FrameArg { std::string str; };
 struct CommentArg { std::string str; };
 
 struct LoopTag {
-  ValueType valtype = ValueType::NotSet;
   std::string tag;
   explicit LoopTag(std::string&& t) : tag{t} {}
 };
@@ -343,7 +323,6 @@ struct Block {
 
 struct Item {
   ItemType type;
-  ValueType valtype = ValueType::NotSet; // for Pair only
   int line_number = -1;
   union {
     Pair pair;
@@ -363,15 +342,15 @@ struct Item {
     : type{ItemType::Comment}, pair{{std::string(), std::move(comment.str)}} {}
 
   Item(Item&& o) noexcept
-      : type(o.type), valtype(o.valtype), line_number(o.line_number) {
+      : type(o.type), line_number(o.line_number) {
     move_value(std::move(o));
   }
   Item(const Item&& o)
-      : type(o.type), valtype(o.valtype), line_number(o.line_number) {
+      : type(o.type), line_number(o.line_number) {
     copy_value(o);
   }
   Item(const Item& o)
-      : type(o.type), valtype(o.valtype), line_number(o.line_number) {
+      : type(o.type), line_number(o.line_number) {
     copy_value(o);
   }
   Item(Item& o) : Item(static_cast<const Item&>(o)) {}

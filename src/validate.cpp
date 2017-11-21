@@ -5,6 +5,7 @@
 #include "gemmi/ddl.hpp"
 #include <cstring>
 #include <cstdio>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <iostream>
@@ -17,13 +18,44 @@
 
 namespace cif = gemmi::cif;
 
-std::string format_7zd(size_t k) {
+enum class ValueType : unsigned char {
+  NotSet,
+  Char, // Line/Text?
+  Numb, // Int/Float?
+  Dot,
+  QuestionMark,
+};
+
+inline std::string value_type_to_str(ValueType v) {
+  switch (v) {
+    case ValueType::NotSet: return "n/a";
+    case ValueType::Char: return "char";
+    case ValueType::Numb: return "numb";
+    case ValueType::Dot: return "'.'";
+    case ValueType::QuestionMark: return "'?'";
+  }
+  return "";
+}
+
+// For now the infer_* functions are used only here, not sure where they belong
+inline ValueType infer_value_type(const std::string& val) {
+  assert(!val.empty());
+  if (val == ".")
+    return ValueType::Dot;
+  if (val == "?")
+    return ValueType::QuestionMark;
+  if (cif::is_numb(val))
+    return ValueType::Numb;
+  return ValueType::Char;
+}
+
+static std::string format_7zd(size_t k) {
   char buf[64];
   snprintf(buf, 63, "%7zu", k);
   return buf;
 }
 
-std::string token_stats(const cif::Document& d) {
+std::string token_stats(const cif::Document& d, bool infer_types) {
   std::string info;
   size_t nframes = 0, nvals = 0, nloops = 0, nlooptags = 0, nloopvals = 0;
   size_t vals_by_type[5] = {0};
@@ -32,15 +64,37 @@ std::string token_stats(const cif::Document& d) {
     for (const cif::Item& item : block.items) {
       if (item.type == cif::ItemType::Value) {
         nvals++;
-        vals_by_type[static_cast<int>(item.valtype)]++;
+        if (infer_types) {
+          ValueType vt = infer_value_type(item.pair[1]);
+          vals_by_type[static_cast<int>(vt)]++;
+        }
       } else if (item.type == cif::ItemType::Frame) {
         nframes++;
       } else if (item.type == cif::ItemType::Loop) {
         nloops++;
-        nlooptags += item.loop.tags.size();
-        for (const cif::LoopTag& tag : item.loop.tags)
-          looptags_by_type[static_cast<int>(tag.valtype)]++;
+        size_t width = item.loop.width();
+        nlooptags += width;
         nloopvals += item.loop.values.size();
+        if (infer_types) {
+          for (size_t i = 0; i != width; ++i) {
+            ValueType vt = ValueType::NotSet;
+            // TODO: ConstColumn(const::Item*, ...)
+            const cif::Column col(const_cast<cif::Item*>(&item), i);
+            for (const std::string& v : col) {
+              ValueType this_vt = infer_value_type(v);
+              if (this_vt != vt) {
+                // if we are here: vt != ValueType::Char
+                if (vt == ValueType::NotSet || this_vt == ValueType::Numb) {
+                  vt = this_vt;
+                } else if (this_vt == ValueType::Char) {
+                  vt = this_vt;
+                  break;
+                }
+              }
+            }
+            looptags_by_type[static_cast<int>(vt)]++;
+          }
+        }
       }
     }
   }
@@ -51,7 +105,7 @@ std::string token_stats(const cif::Document& d) {
     info += " (run with -t for type breakdown)";
   } else {
     for (int i = 1; i != 5; ++i)
-      info += "  " + cif::value_type_to_str(static_cast<cif::ValueType>(i))
+      info += "  " + value_type_to_str(static_cast<ValueType>(i))
               + ":" + std::to_string(vals_by_type[i]);
   }
   info += "\n";
@@ -59,55 +113,12 @@ std::string token_stats(const cif::Document& d) {
   info += "        " + format_7zd(nlooptags) + " tags:";
   if (looptags_by_type[0] != nlooptags) {
     for (int i = 1; i != 5; ++i)
-      info += "  " + cif::value_type_to_str(static_cast<cif::ValueType>(i))
+      info += "  " + value_type_to_str(static_cast<ValueType>(i))
               + ":" + std::to_string(looptags_by_type[i]);
   }
   info += "\n";
   info += "        " + format_7zd(nloopvals) + " values\n";
   return info;
-}
-
-// For now the infer_* functions are used only here, not sure where they belong
-inline cif::ValueType infer_valtype_of_string(const std::string& val) {
-  assert(!val.empty());
-  if (val == ".")
-    return cif::ValueType::Dot;
-  if (val == "?")
-    return cif::ValueType::QuestionMark;
-  if (cif::is_numb(val))
-    return cif::ValueType::Numb;
-  return cif::ValueType::Char;
-}
-
-inline void infer_valtypes_in_items(std::vector<cif::Item>& items) {
-  using namespace cif;
-  for (Item& item : items)
-      if (item.type == ItemType::Value) {
-        item.valtype = infer_valtype_of_string(item.pair[1]);
-      } else if (item.type == ItemType::Loop) {
-        for (size_t i = 0; i != item.loop.tags.size(); ++i) {
-          ValueType& vt = item.loop.tags[i].valtype;
-          for (const std::string& v : Column{&item, i}) {
-            ValueType this_vt = infer_valtype_of_string(v);
-            if (this_vt != vt) {
-              // if we are here: vt != ValueType::Char
-              if (vt == ValueType::NotSet || this_vt == ValueType::Numb) {
-                vt = this_vt;
-              } else if (this_vt == ValueType::Char) {
-                vt = this_vt;
-                break;
-              }
-            }
-          }
-        }
-      } else if (item.type == ItemType::Frame) {
-        infer_valtypes_in_items(item.frame.items);
-      }
-}
-
-inline void infer_valtypes(cif::Document &d) {
-  for (cif::Block& block : d.blocks)
-    infer_valtypes_in_items(block.items);
 }
 
 
@@ -153,10 +164,8 @@ int main(int argc, char **argv) {
         ok = cif::check_syntax_any(gemmi::MaybeGzipped(path), &msg);
       } else {
         cif::Document d = cif::read(gemmi::MaybeGzipped(path));
-        if (p.options[Types])
-          infer_valtypes(d);
         if (p.options[Stat])
-          msg = token_stats(d);
+          msg = token_stats(d, p.options[Types]);
         if (p.options[Ddl]) {
           cif::DDL dict;
           for (option::Option* ddl = p.options[Ddl]; ddl; ddl = ddl->next())
