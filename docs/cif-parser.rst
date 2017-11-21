@@ -294,7 +294,7 @@ For example::
 
 To read values from a single column for a loop (table) use::
 
-    Column find_loop(const std::string& tag) const;
+    Column find_loop(const std::string& tag);
 
 ``Column`` is a lightweight class with a few functions::
 
@@ -303,16 +303,16 @@ To read values from a single column for a loop (table) use::
 
     // Returns pointer to the column name in the DOM.
     // The name is the same as argument to find_loop() or find_values().
-    const std::string* get_tag() const;
+    std::string* get_tag();
 
     // Returns pointer to the DOM structure containing the whole table.
-    const Loop* get_loop() const;
+    Loop* get_loop() const;
 
     // Get raw value (no bounds checking).
-    const std::string& operator[](int n) const;
+    std::string& operator[](int n);
 
     // Get raw value (after bounds checking).
-    const std::string& at(int n) const;
+    std::string& at(int n);
 
     // Short-cut for cif::as_string(column.at(n)).
     std::string str(int n) const;
@@ -327,7 +327,7 @@ either as a single item or in a loop, it is convenient to handle
 transparently both cases. To to this, just replace ``find_loop`` with
 a similar function::
 
-    Column find_values(const std::string& tag) const;
+    Column find_values(const std::string& tag);
 
 For example::
 
@@ -346,13 +346,12 @@ so the library has another abstraction (``Table``)
 that can be used with multiple tags
 (this function was used in the first example in this section)::
 
-    Table find(const std::vector<std::string>& tags) const;
+    Table find(const std::vector<std::string>& tags);
 
 Since columns from the same loop tend to have common prefix (category name),
 the library provides a second form::
 
-    Table find(const std::string& prefix,
-               const std::vector<std::string>& tags) const;
+    Table find(const std::string& prefix, const std::vector<std::string>& tags);
 
 These two calls are equivalent::
 
@@ -380,34 +379,44 @@ of the data. It has functions to check the shape of the table::
 Most importantly, it provides access to rows (``Table::Row``)
 that in turn provide access to value strings (``std::string``)::
 
-    Row operator[](int n) const;  // access Row
-    Row at(int n) const;  // the same but with bounds checking
+    Row operator[](int n);  // access Row
+    Row at(int n);  // the same but with bounds checking
     // and also begin() and end() to work in range-for.
 
 as well as to the tags::
 
-    Row tags() const;  // pseudo-row that contains tags
+    Row tags();  // pseudo-row that contains tags
 
 Additionally, it has two convenience functions to access rows::
 
     // Returns the first row that has the specified string in the first column.
-    Row find_row(const std::string& s) const;
+    Row find_row(const std::string& s);
 
     // Make sure that the table has only one row and return it.
-    Row one() const;
+    Row one();
 
 ``Table::Row`` has as few basic functions::
 
     size_t size() const;  // the width of the table
 
     // Get raw value.
-    const std::string& operator[](int n) const;  // no bounds checking
-    const std::string& at(int n) const;          // with bounds checking
+    std::string& operator[](int n);  // no bounds checking
+    std::string& at(int n);          // with bounds checking
 
     std::string str(int n) const; // short-cut for cif::as_string(row.at(n))
     bool has(int n) const; // the same as Table::has_column(n)
 
-and also supports iterators. As an example, let us convert mmCIF
+and also supports iterators.
+
+Both ``Column`` and ``Table::Row`` have functions ``begin()`` and ``end()``,
+in const and non-const variants, that return ``iterator`` and
+``const_iterator`` types, respectively. These types satisfy requirements
+of the BidirectionalIterator concept.
+But this is not true about about the iterator that goes through the rows
+of ``Table``, which is a minimalistic structure --
+just enough for the range-for to work.
+
+As an example, let us convert mmCIF
 to the `XYZ format <https://en.wikipedia.org/wiki/XYZ_file_format>`_:
 
 .. literalinclude:: doc_cif_cc.cpp
@@ -823,7 +832,7 @@ We compile it, run it, and come back after an hour:
     1AGG: atom_id  H3 -> H
     1AGG: atom_id  H3 -> H
 
-So, as of April 2017, only a single autor's residue name was changed,
+So, as of April 2017, only a single author's residue name was changed,
 and atom names were changed in 7 PDB entries.
 
 Amino acid frequency
@@ -854,7 +863,7 @@ Most of this hour is spent on tokenizing the CIF files and copying
 the content into a DOM structure, what could be largely avoided given
 that we use only sequences not atoms.
 But it is not worth to optimize one-off scripts.
-The same goes for using multiple core.
+The same goes for using multiple processor cores.
 
 Custom PDB search
 -----------------
