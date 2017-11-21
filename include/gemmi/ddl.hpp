@@ -270,7 +270,7 @@ bool DDL::do_validate(Document& doc, Output& out, bool quiet) {
       } else if (item.type == ItemType::Loop) {
         const int ncol = item.loop.tags.size();
         for (int i = 0; i != ncol; i++) {
-          const std::string& tag = item.loop.tags[i].tag;
+          const std::string& tag = item.loop.tags[i];
           Block* dict_block = find_rules(tag);
           if (!dict_block) {
             if (!quiet)

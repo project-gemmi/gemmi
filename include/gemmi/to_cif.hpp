@@ -19,8 +19,8 @@ std::ostream& operator<<(std::ostream& os, const gemmi::cif::Item& item) {
       if (item.loop.values.empty())
         break;
       os << "loop_";
-      for (const LoopTag& tag : item.loop.tags)
-        os << '\n' << tag.tag;
+      for (const std::string& tag : item.loop.tags)
+        os << '\n' << tag;
       size_t ncol = item.loop.tags.size();
       size_t col = 0;
       for (const std::string& val : item.loop.values) {

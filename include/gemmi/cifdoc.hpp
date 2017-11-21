@@ -109,24 +109,19 @@ struct LoopArg {};
 struct FrameArg { std::string str; };
 struct CommentArg { std::string str; };
 
-struct LoopTag {
-  std::string tag;
-  explicit LoopTag(std::string&& t) : tag{t} {}
-};
-
 struct Loop {
-  std::vector<LoopTag> tags;
+  std::vector<std::string> tags;
   std::vector<std::string> values;
 
   // search and access
   int find_tag(const std::string& tag) const {
     auto f = std::find_if(tags.begin(), tags.end(),
-                          [&tag](const LoopTag& lt) { return lt.tag == tag; });
+                          [&tag](const std::string& t) { return t == tag; });
     return f == tags.end() ? -1 : f - tags.begin();
   }
   int must_find_tag(const std::string& tag) const {
     auto f = std::find_if(tags.begin(), tags.end(),
-                          [&tag](const LoopTag& lt) { return lt.tag == tag; });
+                          [&tag](const std::string& t) { return t == tag; });
     if (f == tags.end())
       throw std::runtime_error("required tag not found: " + tag);
     return f - tags.begin();
@@ -373,7 +368,7 @@ struct Item {
   bool has_prefix(const std::string& prefix) const {
     return (type == ItemType::Value && gemmi::starts_with(pair[0], prefix)) ||
            (type == ItemType::Loop && !loop.tags.empty() &&
-            gemmi::starts_with(loop.tags[0].tag, prefix));
+            gemmi::starts_with(loop.tags[0], prefix));
   }
 
 private:
@@ -400,7 +395,7 @@ inline std::string* Column::get_tag() {
   if (!item_)
     return nullptr;
   if (Loop* loop = get_loop())
-    return &loop->tags.at(col_).tag;
+    return &loop->tags.at(col_);
   return &item_->pair[0];
 }
 
@@ -435,7 +430,7 @@ inline std::string& Table::Row::value_at(int pos) {
     throw std::out_of_range("Cannot access missing optional tag.");
   if (row_index == -1) { // tags
     if (tab.loop)
-      return tab.loop->tags.at(pos).tag;
+      return tab.loop->tags.at(pos);
     return tab.blo.items[pos].pair[0];
   }
   if (tab.loop)
@@ -526,7 +521,7 @@ inline std::vector<std::string> Block::get_mmcif_category_names() const {
     if (item.type == ItemType::Value)
       tag = &item.pair[0];
     else if (item.type == ItemType::Loop && !item.loop.tags.empty())
-      tag = &item.loop.tags[0].tag;
+      tag = &item.loop.tags[0];
     if (tag)
       for (auto j = cats.rbegin(); j != cats.rend(); ++j)
         if (gemmi::starts_with(*tag, *j)) {
@@ -603,7 +598,7 @@ inline Table Block::find_mmcif_category(std::string cat) {
         std::vector<int> indices(i.loop.tags.size());
         for (size_t j = 0; j != indices.size(); ++j) {
           indices[j] = j;
-          const std::string& tag = i.loop.tags[j].tag;
+          const std::string& tag = i.loop.tags[j];
           if (!starts_with(tag, cat))
             throw std::runtime_error("Tag " + tag + " in loop with " + cat);
         }
@@ -673,10 +668,10 @@ inline void check_duplicates(const Document& d) {
         if (!ok)
           cif_fail(d, block, item, "duplicate tag " + item.pair[0]);
       } else if (item.type == ItemType::Loop) {
-        for (const LoopTag& t : item.loop.tags) {
-          bool ok = names.insert(gemmi::to_lower(t.tag)).second;
+        for (const std::string& t : item.loop.tags) {
+          bool ok = names.insert(gemmi::to_lower(t)).second;
           if (!ok)
-            cif_fail(d, block, item, "duplicate tag " + t.tag);
+            cif_fail(d, block, item, "duplicate tag " + t);
         }
       } else if (item.type == ItemType::Frame) {
         bool ok = frame_names.insert(gemmi::to_lower(item.frame.name)).second;

@@ -60,9 +60,9 @@ private:
   std::string get_loop_category(const Loop& loop) {
     if (loop.tags.empty())
       return std::string{};
-    std::string cat = get_tag_category(loop.tags[0].tag);
+    std::string cat = get_tag_category(loop.tags[0]);
     for (size_t i = 1; i < loop.tags.size(); ++i)
-      if (!starts_with(loop.tags[i].tag, cat))
+      if (!starts_with(loop.tags[i], cat))
         return std::string{};
     return cat;
   }
@@ -182,7 +182,7 @@ private:
     for (size_t i = 0; i < ncol; i++) {
       if (i != 0)
         os_ << "," << linesep_;
-      write_string(loop.tags[i].tag, tag_pos, lc_names);
+      write_string(loop.tags[i], tag_pos, lc_names);
       os_ << ": [";
       for (size_t j = i; j < vals.size(); j += ncol) {
         if (j != i)

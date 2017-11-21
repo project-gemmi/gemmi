@@ -90,9 +90,6 @@ void init_cif(py::module& cif) {
                                     std::to_string(self.width()) + ">";
     });
 
-  py::class_<LoopTag>(cif, "LoopTag")
-    .def_readonly("tag", &LoopTag::tag);
-
   py::class_<Column>(cif, "Column")
     .def(py::init<>())
     .def("get_loop", &Column::get_loop,
