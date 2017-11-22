@@ -408,13 +408,18 @@ Additionally, it has two convenience functions to access rows::
 
 and also supports iterators.
 
-Both ``Column`` and ``Table::Row`` have functions ``begin()`` and ``end()``,
-in const and non-const variants, that return ``iterator`` and
+It is also possible to work with the table column-wise::
+
+    Column column(int n);
+    // alternatively, specify the full tag name or its unique ending 
+    Column find_column(const std::string& suffix);
+
+Both ``Column`` and ``Table::Row`` have functions ``begin()`` and ``end()``
+in const and non-const variants, returning ``iterator`` and
 ``const_iterator`` types, respectively. These types satisfy requirements
 of the BidirectionalIterator concept.
-But this is not true about about the iterator that goes through the rows
-of ``Table``, which is a minimalistic structure --
-just enough for the range-for to work.
+Conversely, the iterator over the rows of ``Table`` is a minimalistic
+structure -- just enough get the range-for work.
 
 As an example, let us convert mmCIF
 to the `XYZ format <https://en.wikipedia.org/wiki/XYZ_file_format>`_:
@@ -443,8 +448,7 @@ Python Module
 
 .. highlight:: python
 
-Both Python 2.7 and 3.x are supported (thanks to the excellent
-`pybind11 <https://github.com/pybind/pybind11>`_ project).
+Both Python 2.7 and 3.x are supported (PyPy has not been tested yet).
 To install the gemmi module you need pip, git and not too old
 C++ compiler (GCC 4.8+, Clang 3.4+, MSVC 2015+, ICC 16+)::
 
@@ -462,6 +466,9 @@ element found in mmCIF:
    :lines: 2-
 
 More complex examples are shown in the :ref:`cif_examples` section.
+
+Internally, Python bindings use
+`pybind11 <https://github.com/pybind/pybind11>`_.
 
 Reading a file
 --------------
@@ -515,7 +522,15 @@ Functions that modify the content of the block are described in the section
 Block
 -----
 
-TODO: document Block
+TODO: document Block, Column, Table, Row
+
+* name
+* find_pair()
+* find_value()
+* find_loop()
+* find_values()
+* find(tags)
+* find(prefix, tags)
 
 mmCIF categories
 ~~~~~~~~~~~~~~~~
@@ -554,7 +569,7 @@ TODO
 
 * Document.__delitem__
 * Document.clear()
-* ...
+* Block.set_pair()
 
 
 

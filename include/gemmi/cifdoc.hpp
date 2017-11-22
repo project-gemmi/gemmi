@@ -73,7 +73,7 @@ struct IndirectIter : IterBase<T> {
   operator IndirectIter<Redirect const, T const>() const {
     return IndirectIter<Redirect const, T const>(redir, cur);
   }
-  // TODO: what should be done with absent optional tags?
+  // TODO: what should be done with absent optional tags (*cur < 0)?
 };
 
 enum class ItemType : unsigned char {
@@ -196,7 +196,7 @@ private:
 // We optimized for loops, and in case of tag-values we copy the values
 // into the `values` vector.
 struct Table {
-  Loop* loop;
+  Item* loop_item;
   Block& blo;
   std::vector<int> positions;
 
@@ -243,9 +243,7 @@ struct Table {
 
   bool ok() const { return !positions.empty(); }
   size_t width() const { return positions.size(); }
-  size_t length() const {
-    return loop ? loop->length() : (positions.empty() ? 0 : 1);
-  }
+  size_t length() const;
   bool has_column(int n) const { return positions.at(n) >= 0; }
   Row tags() { return Row{*this, -1}; }
   Row operator[](int n) { return Row{*this, n}; }
@@ -266,7 +264,21 @@ struct Table {
   }
 
   Row find_row(const std::string& s);
-  // TODO: get_column(n), find_column(name)
+
+  Column column(int n);
+
+  // tries exact tag match first, looks for suffix later
+  Column find_column(const std::string& suffix) {
+    int w = width();
+    Row tag_row = tags();
+    for (int i = 0; i != w; ++i)
+      if (tag_row[i] == suffix)
+        return column(i);
+    for (int i = 0; i != w; ++i)
+      if (gemmi::ends_with(tag_row[i], suffix))
+        return column(i);
+    throw std::runtime_error("Column name or suffix not found: " + suffix);
+  }
 
   // It is not a proper input iterator, but just enough for using range-for.
   struct iterator {
@@ -429,25 +441,41 @@ inline std::string& Table::Row::value_at(int pos) {
   if (pos == -1)
     throw std::out_of_range("Cannot access missing optional tag.");
   if (row_index == -1) { // tags
-    if (tab.loop)
-      return tab.loop->tags.at(pos);
+    if (tab.loop_item)
+      return tab.loop_item->loop.tags.at(pos);
     return tab.blo.items[pos].pair[0];
   }
-  if (tab.loop)
-    return tab.loop->values.at(tab.loop->width() * row_index + pos);
+  if (tab.loop_item) {
+    Loop& loop = tab.loop_item->loop;
+    return loop.values.at(loop.width() * row_index + pos);
+  }
   return tab.blo.items[pos].pair[1];
+}
+
+inline size_t Table::length() const {
+  return loop_item ? loop_item->loop.length() : (positions.empty() ? 0 : 1);
 }
 
 inline Table::Row Table::find_row(const std::string& s) {
   int pos = positions.at(0);
-  if (loop) {
-    for (size_t i = 0; i < loop->values.size(); i += loop->width())
-      if (as_string(loop->values[i + pos]) == s)
-        return Row{*this, static_cast<int>(i / loop->width())};
+  if (loop_item) {
+    const Loop& loop = loop_item->loop;
+    for (size_t i = 0; i < loop.values.size(); i += loop.width())
+      if (as_string(loop.values[i + pos]) == s)
+        return Row{*this, static_cast<int>(i / loop.width())};
   } else if (as_string(blo.items[pos].pair[1]) == s) {
     return Row{*this, 0};
   }
   throw std::runtime_error("Not found in the first column: " + s);
+}
+
+inline Column Table::column(int n) {
+  int pos = positions.at(n);
+  if (pos == -1)
+    throw std::runtime_error("Cannot access absent column");
+  if (loop_item)
+    return Column(loop_item, pos);
+  return Column(&blo.items[pos], 0);
 }
 
 inline const Item* Block::find_pair_item(const std::string& tag) const {
@@ -555,18 +583,18 @@ inline Loop& Block::clear_or_add_loop(const std::string& prefix,
 
 inline Table Block::find(const std::string& prefix,
                          const std::vector<std::string>& tags) {
-  Loop* loop = nullptr;
+  Item* loop_item = nullptr;
   if (!tags.empty())
-    if (Item* item = find_loop(prefix + tags[0]).item())
-      loop = &item->loop;
+    loop_item = find_loop(prefix + tags[0]).item();
 
   std::vector<int> indices;
   indices.reserve(tags.size());
-  if (loop) {
+  if (loop_item) {
     for (const std::string& tag : tags) {
-      int idx = loop->find_tag(prefix + (tag[0] != '?' ? tag : tag.substr(1)));
+      std::string full_tag = prefix + (tag[0] != '?' ? tag : tag.substr(1));
+      int idx = loop_item->loop.find_tag(full_tag);
       if (idx == -1 && tag[0] != '?') {
-        loop = nullptr;
+        loop_item = nullptr;
         indices.clear();
         break;
       }
@@ -583,7 +611,7 @@ inline Table Block::find(const std::string& prefix,
       }
     }
   }
-  return Table{loop, *this, indices};
+  return Table{loop_item, *this, indices};
 }
 
 inline Table Block::find_mmcif_category(std::string cat) {
@@ -602,7 +630,7 @@ inline Table Block::find_mmcif_category(std::string cat) {
           if (!starts_with(tag, cat))
             throw std::runtime_error("Tag " + tag + " in loop with " + cat);
         }
-        return Table{&i.loop, *this, indices};
+        return Table{&i, *this, indices};
       } else {
         indices.push_back(&i - items.data());
       }

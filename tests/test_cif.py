@@ -31,6 +31,10 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(tab.find_row('A')[1], '1')
         self.assertRaises(RuntimeError, tab.find_row, 'B')
         self.assertEqual(tab.find_row('C')[1], '2')
+        self.assertEqual(tab.column(0)[1], 'C')
+        self.assertEqual(tab.column(1)[0], '1')
+        self.assertEqual(tab.find_column('a')[1], 'C')
+        self.assertEqual(tab.find_column('_ln')[0], '1')
 
         tab = block.find(['_lb', '_ln'])
         self.assertRaises(RuntimeError, tab.find_row, 'A')

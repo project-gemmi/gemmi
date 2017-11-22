@@ -51,11 +51,20 @@ TEST_CASE("testing cif::Column iterators") {
     CHECK_EQ(tab.width(), 2);
     CHECK_EQ(tab.at(0).at(0), "b1");
     CHECK_EQ(tab.at(1).at(1), "d2");
+    CHECK_EQ(tab.at(1).at(0), "b2");
+    CHECK_EQ(tab.column(0).at(1), "b2");
+    CHECK_EQ(tab.find_column("_d").at(0), "d1");
     cif::Table::Row row = tab.at(1);
     CHECK_EQ(row.at(0), "b2");
     CHECK_EQ(row.at(1), "d2");
     CHECK_EQ(std::count(row.begin(), row.end(), "d2"), 1);
     check_with_two_elements(row);
+  }
+  {
+    cif::Column col_a = block.find({"_a"}).column(0);
+    CHECK_EQ(col_a.at(0), "a1");
+    CHECK_EQ(col_a.at(1), "a2");
+    check_with_two_elements(col_a);
   }
 }
 

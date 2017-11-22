@@ -52,7 +52,7 @@ void init_cif(py::module& cif) {
 
   py::class_<Block>(cif, "Block")
     .def(py::init<>())
-    .def_readonly("name", &Block::name)
+    .def_readwrite("name", &Block::name)
     .def("find_pair", &Block::find_pair, py::arg("tag"),
          py::return_value_policy::reference_internal)
     .def("find_value", &Block::find_value, py::arg("tag"),
@@ -107,17 +107,19 @@ void init_cif(py::module& cif) {
     });
 
   py::class_<Table> lt(cif, "Table");
-  lt.def_readonly("loop", &Table::loop)
+  lt.def("width", &Table::width)
+    .def("column", &Table::column, py::arg("n"), py::keep_alive<0, 1>())
     .def("find_row", &Table::find_row, py::keep_alive<0, 1>())
+    .def("find_column", &Table::find_column, py::arg("suffix"),
+         py::keep_alive<0, 1>())
+    .def_property_readonly("tags",
+            py::cpp_function(&Table::tags, py::keep_alive<0, 1>()))
     .def("__iter__", [](Table& self) {
         return py::make_iterator(self, py::keep_alive<0, 1>());
     }, py::keep_alive<0, 1>())
     .def("__getitem__", &Table::at, py::keep_alive<0, 1>())
     .def("__bool__", &Table::ok)
     .def("__len__", &Table::length)
-    .def("width", &Table::width)
-    .def_property_readonly("tags",
-            py::cpp_function(&Table::tags, py::keep_alive<0, 1>()))
     .def("__repr__", [](const Table& self) {
         return "<gemmi.cif.Table " +
                (self.ok() ? std::to_string(self.length()) + " x " +
