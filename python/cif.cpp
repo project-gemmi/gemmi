@@ -44,6 +44,11 @@ void init_cif(py::module& cif) {
          py::return_value_policy::reference_internal)
     .def("write_file", &write_to_file, py::arg("filename"),
          "Write data to a CIF file.")
+    .def("as_string", [](const Document& d) {
+        std::ostringstream os;
+        os << d;
+        return os.str();
+    }, "Write data in a CIF format to a string.")
     .def("as_json", [](const Document& d) {
         std::ostringstream os;
         JsonWriter(os).write_json(d);

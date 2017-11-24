@@ -260,12 +260,17 @@ And if the ``path`` above is ``-``, the standard input is read.
 Document
 --------
 
-``Document`` has the following variables that can be accessed directly::
+``Document`` has the two member variables that can be accessed directly::
 
-  std::string source;  // filename or the explicitly provided name
+  std::string source;  // filename or the name passed to read_memory()
   std::vector<Block> blocks;
 
-As the mmCIF files are expected to have only a single block,
+Each ``Block`` corresponds to a data block in the CIF file and must have
+a unique name. To access a block with known name use::
+
+  Block* find_block(const std::string& name);
+
+As the coordinate mmCIF files are expected to have only a single block,
 we have a function::
 
   const Block& sole_block() const;
@@ -273,17 +278,33 @@ we have a function::
 to express the intention of accessing the only block in the file
 (it throws an exception if the number of blocks is not one).
 
-At last, function ``clear()`` works in the same way as in C++ containers.
+.. note::
+
+    We first cover only accessing the data. Making changes is described
+    later in the "Editing" subsection.
 
 Block
 -----
 
-Value corresponding to a particular tag (not in a loop) can be read using::
+Pair
+~~~~
+
+Name-value pairs from the CIF file are stored as Pair::
+
+    using Pair = std::array<std::string, 2>;
+
+A pair with a particular tag can be located using::
+
+    const Pair* find_pair(const std::string& tag) const;
+
+As a short-cut, the value of a pair can be read with function::
 
     const std::string* find_value(const std::string& tag) const;
 
-It returns ``nullptr`` if the tag is not found.
-The result is a raw string (possibly with quotes) that can be fed into
+Both functions return ``nullptr`` if the tag is not found (and they
+do not search in CIF loops).
+
+The value string is a raw string (possibly with quotes) that can be fed into
 ``as_string()`` or ``as_number()`` or ``as_int()``.
 
 For example::
@@ -291,6 +312,9 @@ For example::
     const std::string *rf = block.find_value("_refine_ls_R_factor_all");
     // here we should check for rf == nullptr, possibly also for "?" and "."
     double rfree = cif::as_number(*rf); // NaN if '?' or '.'
+
+Loop
+~~~~
 
 To read values from a single column for a loop (table) use::
 
@@ -321,6 +345,9 @@ To read values from a single column for a loop (table) use::
 
     for (const std::string &s : block.find_loop("_atom_site_type_symbol"))
       std::cout << cif::as_string(s) << std::endl;
+
+Pair or Loop
+~~~~~~~~~~~~
 
 Since some values (and in mmCIF files -- all values) can be given
 either as a single item or in a loop, it is convenient to handle
@@ -436,12 +463,44 @@ Block::get_mmcif_category_names()
 
 Block::find_mmcif_category()
 
+Frame
+~~~~~
+
+The named save frames (keyword ``save_``) from the STAR specification
+are used in CIF files only as sub-sections of a block.
+The only place where they are normally enountered are mmCIF dictionaries.
+
+TODO: document how to access save frames
+
 Editing
 -------
 
 TODO: describe how to create a new CIF file, how to modify cif::Document,
 and how to write it to file.
+(changing values using iterators,
+Document::clear(), Block::delete_loop(), Block::delete_category(),
+Block::set_pair(), ...)
 
+Writing
+-------
+
+The functions writing ``cif::Document`` to C++ stream or to a file
+are in a separate header file ``gemmi/to_cif.hpp``::
+
+    std::ostream& operator<<(std::ostream& os, const gemmi::cif::Document& doc);
+    void write_to_file(const Document& doc, const std::string& filename);
+
+JSON
+----
+
+Header ``gemmi/to_json.hpp`` provides code for serializing
+``cif::Document`` as JSON. It has a number of options for customizing
+the translation. In particular, both mmCIF and CIF-JSON flavours are supported.
+More details about the flavours are given in the description of
+:ref:`gemmi-convert <json>`.
+
+Such JSON files can be read back into the ``cif::Document`` structure
+using function from ``gemmi/json.hpp``.
 
 Python Module
 =============
@@ -519,6 +578,11 @@ It can be iterated, accessed by block index and by block name:
 Functions that modify the content of the block are described in the section
 "Editing" below.
 
+.. note::
+
+    We first cover only accessing the data. Making changes and writing
+    CIF files is described later in the "Editing" subsection.
+
 Block
 -----
 
@@ -570,6 +634,8 @@ TODO
 * Document.__delitem__
 * Document.clear()
 * Block.set_pair()
+* Row.__setitem__()
+* Column.__setitem__()
 
 
 

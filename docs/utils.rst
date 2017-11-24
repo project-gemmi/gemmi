@@ -177,6 +177,8 @@ gemmi-convert
 
 This programs combines a few functions.
 
+.. _json:
+
 CIF -- JSON
 -----------
 
