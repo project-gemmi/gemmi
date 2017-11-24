@@ -6,6 +6,9 @@ import unittest
 
 import gemmi
 
+def nonempty_lines(s):
+  return [line for line in s.splitlines() if line and line[0] != '#']
+
 class TestCifAsJson(unittest.TestCase):
   def setUp(self):
     self.basename = os.path.join(os.path.dirname(__file__), "misc")
@@ -18,8 +21,8 @@ class TestCifAsJson(unittest.TestCase):
     self.assertEqual(json_from_cif, reference_json)
 
   def test_cif_as_string(self):
-    with open(self.basename + ".cif") as f:
-      cif_orig = f.read()
+    with open(self.basename + ".cif", 'rb') as f:
+      cif_orig = f.read().decode('utf-8')
     cif_doc = gemmi.cif.read_string(cif_orig)
     formatting_changes = {
         '# comment\n': '',
@@ -30,11 +33,7 @@ class TestCifAsJson(unittest.TestCase):
     for k, v in formatting_changes.items():
       cif_orig = cif_orig.replace(k, v)
     cif_out = cif_doc.as_string()
-    orig_lines = [line.decode('utf-8') for line in cif_orig.splitlines()
-                  if line and line[0] != '#']
-    out_lines = [line for line in cif_out.splitlines()
-                 if line]
-    self.assertListEqual(out_lines, orig_lines)
+    self.assertListEqual(nonempty_lines(cif_orig), nonempty_lines(cif_out))
 
 if __name__ == '__main__':
   unittest.main()
