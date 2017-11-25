@@ -475,10 +475,9 @@ TODO: document how to access save frames
 Editing
 -------
 
-TODO: describe how to create a new CIF file, how to modify cif::Document,
-and how to write it to file.
+TODO: describe how to create a new cif::Document and modify existing one,
 (changing values using iterators,
-Document::clear(), Block::delete_loop(), Block::delete_category(),
+Document::clear(), Column::item().erase(), Table::erase(),
 Block::set_pair(), ...)
 
 Writing
@@ -634,6 +633,7 @@ TODO
 * Document.__delitem__
 * Document.clear()
 * Block.set_pair()
+* Table.erase()
 * Row.__setitem__()
 * Column.__setitem__()
 
@@ -1216,7 +1216,7 @@ Additionally, we remove the descriptor category:
     >>> len(ccd)  #doctest: +SKIP
     991
     >>> for block in ccd:
-    ...     block.delete_category('_pdbx_chem_comp_descriptor.')
+    ...     block.find_mmcif_category('_pdbx_chem_comp_descriptor.').erase()
     ...
     >>> ccd.write_file('A.cif')
 

@@ -70,7 +70,7 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
     }
   }
   if (aniso.empty()) {
-    block.delete_loop("_atom_site_anisotrop.id");
+    block.find_mmcif_category("_atom_site_anisotrop.").erase();
   } else {
     cif::Loop& aniso_loop = block.clear_or_add_loop("_atom_site_anisotrop.", {
                                     "id", "U[1][1]", "U[2][2]", "U[3][3]",

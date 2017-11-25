@@ -280,6 +280,8 @@ struct Table {
     throw std::runtime_error("Column name or suffix not found: " + suffix);
   }
 
+  void erase();
+
   // It is not a proper input iterator, but just enough for using range-for.
   struct iterator {
     Table& parent;
@@ -316,12 +318,10 @@ struct Block {
 
   // modifying functions
   void set_pair(const std::string& tag, std::string v);
-  bool delete_loop(const std::string& tag);
   // These functions delete all keys/loops that start with the prefix.
   // For mmCIF the prefix should normally end with dot.
   Loop& clear_or_add_loop(const std::string& prefix,
                           const std::initializer_list<const char*>& tags);
-  void delete_category(const std::string& prefix);
 
   // mmCIF specific functions
   std::vector<std::string> get_mmcif_category_names() const;
@@ -478,6 +478,14 @@ inline Column Table::column(int n) {
   return Column(&blo.items[pos], 0);
 }
 
+inline void Table::erase() {
+  if (loop_item)
+    loop_item->erase();
+  else
+    for (int pos : positions)
+      blo.items[pos].erase();
+}
+
 inline const Item* Block::find_pair_item(const std::string& tag) const {
   for (const Item& i : items)
     if (i.type == ItemType::Value && i.pair[0] == tag)
@@ -527,21 +535,6 @@ inline Column Block::find_values(const std::string& tag) {
   return Column{nullptr, 0};
 }
 
-inline bool Block::delete_loop(const std::string& tag) {
-  for (Item& i : items)
-    if (i.type == ItemType::Loop && i.loop.find_tag(tag) != -1) {
-      i.erase();
-      return true;
-    }
-  return false;
-}
-
-inline void Block::delete_category(const std::string& prefix) {
-  for (Item& i : items)
-    if (i.has_prefix(prefix))
-      i.erase();
-}
-
 inline std::vector<std::string> Block::get_mmcif_category_names() const {
   std::vector<std::string> cats;
   for (const Item& item : items) {
@@ -570,9 +563,9 @@ inline Loop& Block::clear_or_add_loop(const std::string& prefix,
   for (Item& i : items)
     if (i.type == ItemType::Loop && i.has_prefix(prefix)) {
       i.loop.clear();
-      return i.loop;
+      return i.loop;  //FIXME
     }
-  delete_category(prefix);
+  find_mmcif_category(prefix).erase();
   items.emplace_back(LoopArg{});
   Loop& loop = items.back().loop;
   loop.tags.reserve(tags.size());
@@ -580,6 +573,7 @@ inline Loop& Block::clear_or_add_loop(const std::string& prefix,
     loop.tags.emplace_back(prefix + tag);
   return loop;
 }
+
 
 inline Table Block::find(const std::string& prefix,
                          const std::vector<std::string>& tags) {
