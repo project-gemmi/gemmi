@@ -103,6 +103,9 @@ void init_cif(py::module& cif) {
          py::keep_alive<0, 1>())
     .def("__bool__", [](const Column &self) -> bool { return self.item(); })
     .def("__getitem__", (std::string& (Column::*)(int)) &Column::at)
+    .def("__setitem__", [](Column &self, int idx, std::string value) {
+        self.at(idx) = value;
+    })
     .def("str", &Column::str)
     .def("__repr__", [](const Column &self) {
         std::string desc = "nil";
@@ -137,6 +140,9 @@ void init_cif(py::module& cif) {
     .def("str", &Table::Row::str)
     .def("__len__", &Table::Row::size)
     .def("__getitem__", (std::string& (Table::Row::*)(int)) &Table::Row::at)
+    .def("__setitem__", [](Table::Row &self, int idx, std::string value) {
+        self.at(idx) = value;
+    })
     .def("get", &Table::Row::ptr_at,
          py::arg("index"), py::return_value_policy::reference_internal)
     .def("__iter__", [](const Table::Row& self) {

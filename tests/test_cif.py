@@ -70,6 +70,18 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(block.find_value('_c'), '3')
         self.assertEqual(block.find_value('_d'), '9')
 
+    def test_setitem(self):
+        block = cif.read_string('data_a _a 1 _b 2 _c 3')[0]
+        self.assertEqual(block.find_value('_b'), '2')
+        col_b = block.find_values('_b')
+        col_b[0] = '20'
+        self.assertEqual(block.find_value('_b'), '20')
+        bc = block.find(['_b', '_a'])
+        bc[0][0] = '30'
+        self.assertEqual(block.find_value('_b'), '30')
+        bc[0][1] = '40'
+        self.assertEqual(block.find_value('_a'), '40')
+
     def test_mmcif_file(self):
         path = os.path.join(os.path.dirname(__file__), '5i55.cif')
         block = cif.read(path).sole_block()
