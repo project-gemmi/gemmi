@@ -39,6 +39,7 @@ void init_cif(py::module& cif) {
     }, py::arg("index"))
     .def("clear", &Document::clear)
     .def("sole_block", &Document::sole_block,
+         py::return_value_policy::reference_internal,
          "Returns the only block if there is exactly one")
     .def("find_block", &Document::find_block, py::arg("name"),
          py::return_value_policy::reference_internal)
@@ -88,6 +89,8 @@ void init_cif(py::module& cif) {
     .def("length", &Loop::length, "Returns number of rows")
     .def_readonly("tags", &Loop::tags)
     .def("val", &Loop::val, py::arg("row"), py::arg("col"))
+    .def("add_row", &Loop::add_row<std::vector<std::string>>,
+         py::arg("new_values"), py::arg("pos")=-1)
     .def("__repr__", [](const Loop &self) {
         return "<gemmi.cif.Loop " + std::to_string(self.length()) + " x " +
                                     std::to_string(self.width()) + ">";

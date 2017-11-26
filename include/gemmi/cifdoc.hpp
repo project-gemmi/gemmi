@@ -131,11 +131,19 @@ struct Loop {
   const std::string& val(size_t row, size_t col) const {
     return values[row * tags.size() + col];
   }
+
   void clear() { tags.clear(); values.clear(); }
-  void append_row(std::initializer_list<std::string>&& vv) {
-    assert(vv.size() == tags.size());
-    for (const std::string& v : vv)
-      values.emplace_back(v);
+
+  template <typename T> void add_row(T new_values, int pos=-1) {
+    if (new_values.size() != tags.size())
+      throw std::runtime_error("add_row(): wrong row length.");
+    auto it = values.end();
+    if (pos >= 0 && pos * width() < values.size())
+      it = values.begin() + pos * tags.size();
+    values.insert(it, new_values.begin(), new_values.end());
+  }
+  void add_row(std::initializer_list<std::string> new_values, int pos=-1) {
+    add_row<std::initializer_list<std::string>>(new_values, pos);
   }
 };
 

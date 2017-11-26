@@ -82,6 +82,13 @@ class TestBlock(unittest.TestCase):
         bc[0][1] = '40'
         self.assertEqual(block.find_value('_a'), '40')
 
+    def test_add_row(self):
+        block = cif.read_string('data_a loop_ _x _y 1 2 3 4')[0]
+        loop = block.find_loop('_x').get_loop()
+        loop.add_row(['5', '6'])
+        loop.add_row(['?', '0'], 0)
+        self.assertEqual(list(block.find_values('_y')), '0 2 4 6'.split())
+
     def test_mmcif_file(self):
         path = os.path.join(os.path.dirname(__file__), '5i55.cif')
         block = cif.read(path).sole_block()

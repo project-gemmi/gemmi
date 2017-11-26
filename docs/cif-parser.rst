@@ -286,6 +286,17 @@ to express the intention of accessing the only block in the file
 Block
 -----
 
+Each block has a name and a list of items::
+
+    std::string name;
+    std::vector<Item> items;
+
+Item contains an unrestricted (C++11) union that holds one of:
+
+* name-value pair (Pair),
+* table/loop (Loop)
+* or save frame (also ``struct Block``).
+
 Pair
 ~~~~
 
@@ -459,9 +470,17 @@ to the `XYZ format <https://en.wikipedia.org/wiki/XYZ_file_format>`_:
 mmCIF categories
 ~~~~~~~~~~~~~~~~
 
-Block::get_mmcif_category_names()
+mmCIF files group data into categories. All mmCIF tags have a dot
+(e.g. ``_entry.id``) and the category name is the part before the dot.
 
-Block::find_mmcif_category()
+We have two functions to work with categories::
+
+    std::vector<std::string> get_mmcif_category_names() const;
+    Table find_mmcif_category(std::string cat);
+
+The first one returns a list of all categories in the block.
+The second one returns a Table described above, with all tags belonging
+the specified category.
 
 Frame
 ~~~~~
@@ -585,24 +604,64 @@ Functions that modify the content of the block are described in the section
 Block
 -----
 
-TODO: document Block, Column, Table, Row
+Each block has a name:
 
-* name
-* find_pair()
-* find_value()
-* find_loop()
-* find_values()
-* find(tags)
-* find(prefix, tags)
+.. doctest::
+
+  >>> doc = cif.read("../tests/1pfe.cif.gz")
+  >>> block = doc.sole_block()
+  >>> block.name
+  '1PFE'
+
+and a list of items. Each item corresponds to one of:
+
+* name-value pair (``cif.Pair``)
+* loop/table (``cif.Table``)
+* or save frame (also an instance of ``cif.Block``).
+
+We have functions to access name-value pairs:
+
+.. doctest::
+
+  >>> block.find_pair('_cell.length_a')
+  ['_cell.length_a', '39.374']
+  >>> block.find_value('_cell.length_b')
+  '39.374'
+  >>> print(block.find_value('_cell.length_y'))
+  None
+
+and values in loop:
+
+.. doctest::
+
+  >>> block.find_loop('_atom_type.symbol')
+  <gemmi.cif.Column _atom_type.symbol length 6>
+  >>> list(_)
+  ['C', 'CL', 'N', 'O', 'P', 'S']
+
+but it is often better to use functions that work with both pairs and loops:
+
+.. doctest::
+
+  >>> block.find_values('_cell.length_a')
+  <gemmi.cif.Column _cell.length_a length 1>
+  >>> block.find_values('_atom_type.symbol')
+  <gemmi.cif.Column _atom_type.symbol length 6>
+
+``Block.find_values()``
+
+TODO: document Column, Table, Row,
+Block.find(tags),
+Block.find(prefix, tags)
 
 mmCIF categories
 ~~~~~~~~~~~~~~~~
 
-mmCIF files group data into categories.
+mmCIF files group data into categories. All mmCIF tags have a dot
+(e.g. ``_entry.id``) and the category name is the part before the dot.
 
 .. doctest::
 
-  >>> block = cif.read("../tests/1pfe.cif.gz").sole_block()
   >>> block.get_mmcif_category_names()[:3]
   ['_entry.', '_audit_conform.', '_database_2.']
   >>> block.find_mmcif_category('_entry.')
@@ -628,16 +687,73 @@ mmCIF files group data into categories.
 Editing
 -------
 
+Both Column and Row implement ``__setitem__`` that can be used to change
+raw string values.
+As an example, we can shift all the atoms by 1A in the x direction:
+
+.. doctest::
+
+  >>> col_x = block.find_values('_atom_site.Cartn_x')
+  >>> for n, x in enumerate(col_x):
+  ...   col_x[n] = str(float(x) + 1)
+
+or swap two tag names (these two tend to have identical values, so no one
+will notice):
+
+.. doctest::
+
+  >>> tags = block.find('_atom_site.', ['label_atom_id', 'auth_atom_id']).tags
+  >>> tags[0], tags[1] = tags[1], tags[0]
+
+To add a name-value pair, replacing current item if it exists,
+use function ``set_pair``:
+
+.. doctest::
+
+  >>> block.set_pair('_tree', 'willow')
+
+To add a row to an existing table (loop) use ``add_row``:
+
+.. doctest::
+
+  >>> loop = block.find_loop('_atom_type.symbol').get_loop()
+  >>> loop.add_row(['Au'], pos=0)
+  >>> loop.add_row(['Zr'])  # appends
+  >>> list(block.find_loop('_atom_type.symbol'))
+  ['Au', 'C', 'CL', 'N', 'O', 'P', 'S', 'Zr']
+
+and to add a new table (replacing old one if it exists):
+
 TODO
+
+For working with mmCIF categories we have a variant of the above that
+makes sure that the block has no other tags in this category:
+
+TODO
+
+TODO: insert a column into cif.Table
+
+TODO:
 
 * Document.__delitem__
 * Document.clear()
-* Block.set_pair()
-* Table.erase()
-* Row.__setitem__()
-* Column.__setitem__()
+* Table.erase() (w/ example how to delete mmCIF category)
+* ...
+* delete a row
+* delete a column
 
 
+
+Writing
+-------
+
+The modifications can be written using function ``Document.write_file(path)``.
+Additionally, ``Document.as_string()`` returns the text that would be written,
+and ``Document.as_json()`` returns CIF document serialized to JSON string.
+
+.. doctest::
+
+  >>> doc.write_file('1pfe-modified.cif')
 
 Performance
 ===========
