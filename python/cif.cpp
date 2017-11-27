@@ -74,11 +74,16 @@ void init_cif(py::module& cif) {
                  &Block::find,
          py::arg("tags"))
     .def("set_pair", &Block::set_pair, py::arg("tag"), py::arg("value"))
+    .def("init_loop", &Block::init_loop, py::arg("prefix"), py::arg("tags"),
+         py::return_value_policy::reference_internal)
     .def("find_mmcif_category", &Block::find_mmcif_category,
          py::arg("category"), py::keep_alive<0, 1>(),
          "Returns Table with all items in the category.")
     .def("get_mmcif_category_names", &Block::get_mmcif_category_names,
          "For mmCIF files only. Returns list of all category prefixes (_x.)")
+    .def("init_mmcif_loop", &Block::init_mmcif_loop,
+         py::arg("cat"), py::arg("tags"),
+         py::return_value_policy::reference_internal)
     .def("__repr__", [](const Block &self) {
         return "<gemmi.cif.Block " + self.name + ">";
     });

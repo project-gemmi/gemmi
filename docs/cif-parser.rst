@@ -497,7 +497,7 @@ Editing
 TODO: describe how to create a new cif::Document and modify existing one,
 (changing values using iterators,
 Document::clear(), Column::item().erase(), Table::erase(),
-Block::set_pair(), ...)
+Block::set_pair(), Block::init_loop(), ...)
 
 Writing
 -------
@@ -724,14 +724,30 @@ To add a row to an existing table (loop) use ``add_row``:
 
 and to add a new table (replacing old one if it exists):
 
-TODO
+.. doctest::
 
-For working with mmCIF categories we have a variant of the above that
-makes sure that the block has no other tags in this category:
+  >>> loop = block.init_loop('_ocean_', ['id', 'name'])
+  >>> # empty table is invalid in CIF, we need to add something
+  >>> loop.add_row(['1', 'atlantic'])
 
-TODO
+In the above example, if the block already has tags ``_ocean_id``
+and/or ``_ocean_name`` and
 
-TODO: insert a column into cif.Table
+* they are in a table: the table will be cleared and re-used,
+* they are in name-value pairs: the pairs will be removed
+  and a table will be created at the position of the first pair.
+
+We also have a variant of ``init_loop`` for working with mmCIF categories:
+
+.. doctest::
+
+  >>> loop = block.init_mmcif_loop('_ocean.', ['id', 'name'])
+  >>> loop.add_row(['1', 'atlantic'])
+
+``init_mmcif_loop`` removes all the other entries in the same category
+(say, ``_ocean.depth 8.5``).
+
+Category name must include leading underscore; trailing dot is optional.
 
 TODO:
 
@@ -739,8 +755,9 @@ TODO:
 * Document.clear()
 * Table.erase() (w/ example how to delete mmCIF category)
 * ...
-* delete a row
-* delete a column
+* Table - delete a row
+* Table - delete a column
+* Table - insert a column
 
 
 

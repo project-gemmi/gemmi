@@ -32,7 +32,7 @@ template<typename T> void check_with_two_elements(T duo) {
   CHECK_EQ(std::count(duo.begin(), duo.end(), "filler"), 2);
 }
 
-TEST_CASE("testing cif::Column iterators") {
+TEST_CASE("cif::Column iterators") {
   cif::Document doc = cif::read_string("data_1"
           " loop_ _a _b _c _d a1 b1 c1 d1 a2 b2 c2 d2"
           " _pair 1");
@@ -66,6 +66,26 @@ TEST_CASE("testing cif::Column iterators") {
     CHECK_EQ(col_a.at(1), "a2");
     check_with_two_elements(col_a);
   }
+}
+
+TEST_CASE("cif::Block::init_loop") {
+  cif::Document doc = cif::read_string("data_1 _m.a 1 _m.b 2 _m.c 3 "
+                                       "loop_ _p.u _p.v _p.w 5 6 7");
+  cif::Block& block = doc.blocks[0];
+  block.init_loop("_x.", {"one", "two"}).add_row({"1", "2"});
+  CHECK_EQ(block.find_loop("_x.one").at(0), "1");
+  block.init_loop("_m.", {"b"}).add_row({"10"});
+  block.find({"_m.b"}).erase();
+  CHECK_EQ(block.find_values("_m.b").item(), nullptr);
+  CHECK_EQ(*block.find_value("_m.a"), "1");
+  block.init_mmcif_loop("_m.", {"c"}).add_row({"20"});
+  CHECK_EQ(block.find_value("_m.a"), nullptr);
+  block.init_loop("_p.", {"x"}).add_row({"10"});
+  CHECK_EQ(block.find_values("_p.x").at(0), "10");
+  CHECK_EQ(block.find_values("_p.u").at(0), "5");
+  block.set_pair("_p.v", "30");
+  CHECK_EQ(block.find_values("_p.u").item(), nullptr);
+  CHECK_EQ(block.find_values("_p.v").at(0), "30");
 }
 
 // vim:sw=2:ts=2:et:path^=../include,../third_party

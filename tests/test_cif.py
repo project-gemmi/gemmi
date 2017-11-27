@@ -70,6 +70,13 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(block.find_value('_c'), '3')
         self.assertEqual(block.find_value('_d'), '9')
 
+    def test_set_loop(self):
+        block = cif.read_string('data_a _c.a 1 _c.b 2 _c.c 3 loop_ _cx.b 3')[0]
+        block.init_loop('_cx.', ['b']).add_row(['x'])
+        self.assertEqual(block.find_value('_c.a'), '1')
+        block.init_mmcif_loop('_c.', ['c']).add_row(['y'])
+        self.assertEqual(block.find_value('_c.a'), None)
+
     def test_setitem(self):
         block = cif.read_string('data_a _a 1 _b 2 _c 3')[0]
         self.assertEqual(block.find_value('_b'), '2')

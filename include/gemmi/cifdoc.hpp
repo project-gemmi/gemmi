@@ -84,6 +84,18 @@ enum class ItemType : unsigned char {
   Erased,
 };
 
+inline void assert_tag(const std::string& tag) {
+  if (tag[0] != '_')
+    throw std::runtime_error("Tag should start with '_', got: " + tag);
+}
+
+inline void ensure_mmcif_category(std::string& cat) {
+  if (cat[0] != '_')
+    throw std::runtime_error("Category should start with '_', got: " + cat);
+  if (*(cat.end() - 1) != '.')
+    cat += '.';
+}
+
 inline bool is_null(const std::string& value) {
   return value == "?" || value == ".";
 }
@@ -192,6 +204,7 @@ public:
   std::string str(int n) const { return as_string(at(n)); }
   const Item* item() const { return item_; }
   Item* item() { return item_; }
+  size_t col() const { return col_; }
 
 private:
   Item* item_;
@@ -288,7 +301,7 @@ struct Table {
     throw std::runtime_error("Column name or suffix not found: " + suffix);
   }
 
-  Item* erase();
+  void erase();
 
   // It is not a proper input iterator, but just enough for using range-for.
   struct iterator {
@@ -323,14 +336,28 @@ struct Block {
   Table find(const std::string& prefix,
              const std::vector<std::string>& tags);
   Table find(const std::vector<std::string>& tags) { return find({}, tags); }
+  Table find_any(const std::string& prefix,
+                 const std::vector<std::string>& tags);
 
   // modifying functions
   void set_pair(const std::string& tag, std::string v);
-  Loop& init_loop(const std::string& prefix, std::vector<std::string> tags);
+
+  Loop& init_loop(const std::string& prefix, std::vector<std::string> tags) {
+    return setup_loop(find_any(prefix, tags), prefix, std::move(tags));
+  }
 
   // mmCIF specific functions
   std::vector<std::string> get_mmcif_category_names() const;
   Table find_mmcif_category(std::string cat);
+
+  Loop& init_mmcif_loop(std::string cat, std::vector<std::string> tags) {
+    ensure_mmcif_category(cat);
+    return setup_loop(find_mmcif_category(cat), cat, std::move(tags));
+  }
+
+private:
+  Loop& setup_loop(Table&& tab, const std::string& prefix,
+                   std::vector<std::string>&& tags);
 };
 
 struct Item {
@@ -388,6 +415,23 @@ struct Item {
             gemmi::starts_with(loop.tags[0], prefix));
   }
 
+  void set_value(Item&& o) {
+    if (type == o.type) {
+      switch (type) {
+        case ItemType::Value: pair = std::move(o.pair); break;
+        case ItemType::Loop: loop = std::move(o.loop); break;
+        case ItemType::Frame: frame = std::move(o.frame); break;
+        case ItemType::Comment: pair = std::move(o.pair); break;
+        case ItemType::Erased: break;
+      }
+    } else {
+      this->~Item();
+      type = o.type;
+      move_value(std::move(o));
+    }
+  }
+
+private:
   void copy_value(const Item& o) {
     if (o.type == ItemType::Value || o.type == ItemType::Comment)
       new (&pair) Pair(o.pair);
@@ -482,14 +526,12 @@ inline Column Table::column(int n) {
   return Column(&blo.items[pos], 0);
 }
 
-inline Item* Table::erase() {
-  if (loop_item) {
+inline void Table::erase() {
+  if (loop_item)
     loop_item->erase();
-    return loop_item;
-  }
-  for (int pos : positions)
-    blo.items[pos].erase();
-  return !positions.empty() ? &blo.items[0] : nullptr;
+  else
+    for (int pos : positions)
+      blo.items[pos].erase();
 }
 
 inline const Item* Block::find_pair_item(const std::string& tag) const {
@@ -505,16 +547,14 @@ inline const Pair* Block::find_pair(const std::string& tag) const {
 }
 
 inline void Block::set_pair(const std::string& tag, std::string v) {
-  if (tag[0] != '_')
-    throw std::runtime_error("Tag should start with '_', got: " + tag);
+  assert_tag(tag);
   for (Item& i : items) {
     if (i.type == ItemType::Value && i.pair[0] == tag) {
       i.pair[1] = v;
       return;
     }
     if (i.type == ItemType::Loop && i.loop.find_tag(tag) != -1) {
-      i.erase();
-      i.move_value(Item(tag, v));
+      i.set_value(Item(tag, v));
       return;
     }
   }
@@ -562,22 +602,27 @@ inline std::vector<std::string> Block::get_mmcif_category_names() const {
   return cats;
 }
 
-//TODO: now it does what init_mmcif_loop() should do
-inline Loop& Block::init_loop(const std::string& prefix,
-                              std::vector<std::string> tags) {
-  Item* item = find_mmcif_category(prefix).erase();
-  if (item) {
-    item->move_value(Item(LoopArg{}));
+inline Loop& Block::setup_loop(Table&& tab, const std::string& prefix,
+                               std::vector<std::string>&& tags) {
+  Item *item;
+  if (tab.loop_item) {
+    item = tab.loop_item;
+    item->loop.clear();
+  } else if (tab.ok()) {
+    item = &tab.blo.items.at(tab.positions[0]);
+    tab.erase();
+    item->set_value(Item(LoopArg{}));
   } else {
     items.emplace_back(LoopArg{});
     item = &items.back();
   }
-  for (std::string& tag : tags)
+  for (std::string& tag : tags) {
     tag.insert(0, prefix);
+    assert_tag(tag);
+  }
   item->loop.tags = std::move(tags);
   return item->loop;
 }
-
 
 inline Table Block::find(const std::string& prefix,
                          const std::vector<std::string>& tags) {
@@ -612,11 +657,34 @@ inline Table Block::find(const std::string& prefix,
   return Table{loop_item, *this, indices};
 }
 
+inline Table Block::find_any(const std::string& prefix,
+                             const std::vector<std::string>& tags) {
+  std::vector<int> indices;
+  for (auto tag = tags.begin(); tag != tags.end(); ++tag) {
+    Column column = find_values(prefix + *tag);
+    if (Item* item = column.item()) {
+      if (item->type == ItemType::Loop) {
+        indices.push_back(column.col());
+        while (++tag != tags.end()) {
+          int idx = item->loop.find_tag(prefix + *tag);
+          if (idx != -1)
+            indices.push_back(idx);
+        }
+        return Table{item, *this, indices};
+      } else {
+        indices.push_back(item - items.data());
+        while (++tag != tags.end())
+          if (const Item* p = find_pair_item(prefix + *tag))
+            indices.push_back(p - items.data());
+        return Table{nullptr, *this, indices};
+      }
+    }
+  }
+  return Table{nullptr, *this, indices};
+}
+
 inline Table Block::find_mmcif_category(std::string cat) {
-  if (cat[0] != '_')
-    throw std::runtime_error("Category should start with '_', got: " + cat);
-  if (*(cat.end() - 1) != '.')
-    cat += '.';
+  ensure_mmcif_category(cat);
   std::vector<int> indices;
   for (Item& i : items)
     if (i.has_prefix(cat)) {

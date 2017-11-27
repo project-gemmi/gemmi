@@ -202,7 +202,7 @@ cif::Document make_crd(const gemmi::Structure& st) {
   items.emplace_back(cif::CommentArg{"############\n"
                                      "## ENTITY ##\n"
                                      "############"});
-  cif::Loop& entity_loop = block.init_loop("_entity.", {"id", "type"});
+  cif::Loop& entity_loop = block.init_mmcif_loop("_entity.", {"id", "type"});
   for (const auto& ent : st.entities) {
     entity_loop.values.push_back(ent->id);
     entity_loop.values.push_back(ent->type_as_string());
@@ -210,7 +210,7 @@ cif::Document make_crd(const gemmi::Structure& st) {
   items.emplace_back(cif::CommentArg{"#####################\n"
                                      "## ENTITY_POLY_SEQ ##\n"
                                      "#####################"});
-  cif::Loop& poly_loop = block.init_loop("_entity_poly_seq.", {
+  cif::Loop& poly_loop = block.init_mmcif_loop("_entity_poly_seq.", {
               "mon_id", "ccp4_auth_seq_id", "entity_id",
               "ccp4_back_connect_type", "ccp4_num_mon_back", "ccp4_mod_id"});
   for (const auto& ent : st.entities)
@@ -262,7 +262,8 @@ cif::Document make_crd(const gemmi::Structure& st) {
                                      "## STRUCT_ASYM ##\n"
                                      "#################"});
   // _struct_asym
-  cif::Loop& asym_loop = block.init_loop("_struct_asym.", {"id", "entity_id"});
+  cif::Loop& asym_loop = block.init_mmcif_loop("_struct_asym.",
+                                               {"id", "entity_id"});
   for (const auto& ch : st.get_chains()) {
     asym_loop.values.push_back(ch.name);
     asym_loop.values.push_back(ch.entity ? ch.entity->id : "?");
@@ -270,7 +271,7 @@ cif::Document make_crd(const gemmi::Structure& st) {
   items.emplace_back(cif::CommentArg{"###############\n"
                                      "## ATOM_SITE ##\n"
                                      "###############"});
-  cif::Loop& atom_loop = block.init_loop("_atom_site.", {
+  cif::Loop& atom_loop = block.init_mmcif_loop("_atom_site.", {
       "group_PDB",
       "id",
       "label_atom_id",
