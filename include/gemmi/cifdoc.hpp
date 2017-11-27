@@ -288,7 +288,7 @@ struct Table {
     throw std::runtime_error("Column name or suffix not found: " + suffix);
   }
 
-  void erase();
+  Item* erase();
 
   // It is not a proper input iterator, but just enough for using range-for.
   struct iterator {
@@ -326,10 +326,7 @@ struct Block {
 
   // modifying functions
   void set_pair(const std::string& tag, std::string v);
-  // These functions delete all keys/loops that start with the prefix.
-  // For mmCIF the prefix should normally end with dot.
-  Loop& clear_or_add_loop(const std::string& prefix,
-                          const std::initializer_list<const char*>& tags);
+  Loop& init_loop(const std::string& prefix, std::vector<std::string> tags);
 
   // mmCIF specific functions
   std::vector<std::string> get_mmcif_category_names() const;
@@ -391,7 +388,6 @@ struct Item {
             gemmi::starts_with(loop.tags[0], prefix));
   }
 
-private:
   void copy_value(const Item& o) {
     if (o.type == ItemType::Value || o.type == ItemType::Comment)
       new (&pair) Pair(o.pair);
@@ -486,12 +482,14 @@ inline Column Table::column(int n) {
   return Column(&blo.items[pos], 0);
 }
 
-inline void Table::erase() {
-  if (loop_item)
+inline Item* Table::erase() {
+  if (loop_item) {
     loop_item->erase();
-  else
-    for (int pos : positions)
-      blo.items[pos].erase();
+    return loop_item;
+  }
+  for (int pos : positions)
+    blo.items[pos].erase();
+  return !positions.empty() ? &blo.items[0] : nullptr;
 }
 
 inline const Item* Block::find_pair_item(const std::string& tag) const {
@@ -515,10 +513,8 @@ inline void Block::set_pair(const std::string& tag, std::string v) {
       return;
     }
     if (i.type == ItemType::Loop && i.loop.find_tag(tag) != -1) {
-      i.loop.~Loop();
-      i.type = ItemType::Value;
-      i.pair[0] = tag;
-      i.pair[1] = v;
+      i.erase();
+      i.move_value(Item(tag, v));
       return;
     }
   }
@@ -566,20 +562,20 @@ inline std::vector<std::string> Block::get_mmcif_category_names() const {
   return cats;
 }
 
-inline Loop& Block::clear_or_add_loop(const std::string& prefix,
-                              const std::initializer_list<const char*>& tags) {
-  for (Item& i : items)
-    if (i.type == ItemType::Loop && i.has_prefix(prefix)) {
-      i.loop.clear();
-      return i.loop;  //FIXME
-    }
-  find_mmcif_category(prefix).erase();
-  items.emplace_back(LoopArg{});
-  Loop& loop = items.back().loop;
-  loop.tags.reserve(tags.size());
-  for (const char* tag : tags)
-    loop.tags.emplace_back(prefix + tag);
-  return loop;
+//TODO: now it does what init_mmcif_loop() should do
+inline Loop& Block::init_loop(const std::string& prefix,
+                              std::vector<std::string> tags) {
+  Item* item = find_mmcif_category(prefix).erase();
+  if (item) {
+    item->move_value(Item(LoopArg{}));
+  } else {
+    items.emplace_back(LoopArg{});
+    item = &items.back();
+  }
+  for (std::string& tag : tags)
+    tag.insert(0, prefix);
+  item->loop.tags = std::move(tags);
+  return item->loop;
 }
 
 

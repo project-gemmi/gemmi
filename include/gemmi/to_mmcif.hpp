@@ -17,7 +17,7 @@ namespace impl {
 
 inline void add_cif_atoms(const Structure& st, cif::Block& block) {
   // atom list
-  cif::Loop& atom_loop = block.clear_or_add_loop("_atom_site.", {
+  cif::Loop& atom_loop = block.init_loop("_atom_site.", {
       "id",
       "type_symbol",
       "label_atom_id",
@@ -72,7 +72,7 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
   if (aniso.empty()) {
     block.find_mmcif_category("_atom_site_anisotrop.").erase();
   } else {
-    cif::Loop& aniso_loop = block.clear_or_add_loop("_atom_site_anisotrop.", {
+    cif::Loop& aniso_loop = block.init_loop("_atom_site_anisotrop.", {
                                     "id", "U[1][1]", "U[2][2]", "U[3][3]",
                                     "U[1][2]", "U[1][3]", "U[2][3]"});
     std::vector<std::string>& aniso_val = aniso_loop.values;
@@ -121,20 +121,20 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   block.set_pair("_symmetry.space_group_name_H-M", cif::quote(st.sg_hm));
 
   // _entity
-  cif::Loop& entity_loop = block.clear_or_add_loop("_entity.", {"id", "type"});
+  cif::Loop& entity_loop = block.init_loop("_entity.", {"id", "type"});
   for (const auto& ent : st.entities)
     entity_loop.add_row({ent->id, ent->type_as_string()});
 
   // _entity_poly
-  cif::Loop& entity_poly_loop = block.clear_or_add_loop("_entity_poly.",
-                                                        {"entity_id", "type"});
+  cif::Loop& entity_poly_loop = block.init_loop("_entity_poly.",
+                                                {"entity_id", "type"});
   for (const auto& ent : st.entities)
     if (ent->type == EntityType::Polymer)
       entity_poly_loop.add_row({ent->id, ent->polymer_type_as_string()});
 
   // _exptl
-  cif::Loop& exptl_method_loop = block.clear_or_add_loop("_exptl.",
-                                                        {"entry_id", "method"});
+  cif::Loop& exptl_method_loop = block.init_loop("_exptl.",
+                                                 {"entry_id", "method"});
   auto exptl_method = st.info.find("_exptl.method");
   if (exptl_method != st.info.end())
     for (const std::string& m : gemmi::split_str(exptl_method->second, "; "))
@@ -157,7 +157,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
 
   // _struct_ncs_oper (MTRIX)
   if (!st.ncs.empty()) {
-    cif::Loop& ncs_oper = block.clear_or_add_loop("_struct_ncs_oper.",
+    cif::Loop& ncs_oper = block.init_loop("_struct_ncs_oper.",
         {"id", "code",
          "matrix[1][1]", "matrix[1][2]", "matrix[1][3]", "vector[1]",
          "matrix[2][1]", "matrix[2][2]", "matrix[2][3]", "vector[2]",
@@ -172,8 +172,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   }
 
   // _struct_asym
-  cif::Loop& asym_loop = block.clear_or_add_loop("_struct_asym.",
-                                                 {"id", "entity_id"});
+  cif::Loop& asym_loop = block.init_loop("_struct_asym.", {"id", "entity_id"});
   for (const auto& ch : st.get_chains())
     asym_loop.add_row({ch.name, (ch.entity ? ch.entity->id : "?")});
 
@@ -191,7 +190,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   }
 
   // _struct_mon_prot_cis
-  cif::Loop& prot_cis_loop = block.clear_or_add_loop("_struct_mon_prot_cis.",
+  cif::Loop& prot_cis_loop = block.init_loop("_struct_mon_prot_cis.",
                              {"pdbx_id", "pdbx_PDB_model_num", "label_asym_id",
                               "label_seq_id", "label_comp_id", "label_alt_id"});
   for (const Model& model : st.models)
@@ -222,8 +221,8 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
 
   // SEQRES from PDB doesn't record microheterogeneity, so if the resulting
   // cif has unknown("?") _entity_poly_seq.num, it cannot be trusted.
-  cif::Loop& poly_loop = block.clear_or_add_loop("_entity_poly_seq.", {
-                                      "entity_id", "num", "mon_id"});
+  cif::Loop& poly_loop = block.init_loop("_entity_poly_seq.",
+                                         {"entity_id", "num", "mon_id"});
   for (const auto& ent : st.entities)
     if (ent->type == EntityType::Polymer)
       for (const SequenceItem& si : ent->sequence) {
