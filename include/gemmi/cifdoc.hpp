@@ -131,13 +131,6 @@ struct Loop {
                           [&tag](const std::string& t) { return t == tag; });
     return f == tags.end() ? -1 : f - tags.begin();
   }
-  int must_find_tag(const std::string& tag) const {
-    auto f = std::find_if(tags.begin(), tags.end(),
-                          [&tag](const std::string& t) { return t == tag; });
-    if (f == tags.end())
-      throw std::runtime_error("required tag not found: " + tag);
-    return f - tags.begin();
-  }
   size_t width() const { return tags.size(); }
   size_t length() const { return values.size() / tags.size(); }
   const std::string& val(size_t row, size_t col) const {
