@@ -96,6 +96,7 @@ void init_cif(py::module& cif) {
     .def("val", &Loop::val, py::arg("row"), py::arg("col"))
     .def("add_row", &Loop::add_row<std::vector<std::string>>,
          py::arg("new_values"), py::arg("pos")=-1)
+    .def("set_all_values", &Loop::set_all_values, py::arg("columns"))
     .def("__repr__", [](const Loop &self) {
         return "<gemmi.cif.Loop " + std::to_string(self.length()) + " x " +
                                     std::to_string(self.width()) + ">";

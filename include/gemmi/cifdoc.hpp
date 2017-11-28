@@ -5,7 +5,7 @@
 
 #ifndef GEMMI_CIFDOC_HPP_
 #define GEMMI_CIFDOC_HPP_
-#include "util.hpp"  // for starts_with, to_lower
+#include "util.hpp"  // for starts_with, to_lower, fail
 #include <algorithm> // for move, find_if, all_of, min
 #include <array>
 #include <cassert>
@@ -22,6 +22,7 @@
 namespace gemmi {
 namespace cif {
 using std::size_t;
+using gemmi::fail;
 
 // base for a BidirectionalIterator (std::iterator is deprecated in C++17)
 template <typename Value> struct IterBase {
@@ -86,12 +87,12 @@ enum class ItemType : unsigned char {
 
 inline void assert_tag(const std::string& tag) {
   if (tag[0] != '_')
-    throw std::runtime_error("Tag should start with '_', got: " + tag);
+    fail("Tag should start with '_', got: " + tag);
 }
 
 inline void ensure_mmcif_category(std::string& cat) {
   if (cat[0] != '_')
-    throw std::runtime_error("Category should start with '_', got: " + cat);
+    fail("Category should start with '_', got: " + cat);
   if (*(cat.end() - 1) != '.')
     cat += '.';
 }
@@ -141,7 +142,7 @@ struct Loop {
 
   template <typename T> void add_row(T new_values, int pos=-1) {
     if (new_values.size() != tags.size())
-      throw std::runtime_error("add_row(): wrong row length.");
+      fail("add_row(): wrong row length.");
     auto it = values.end();
     if (pos >= 0 && pos * width() < values.size())
       it = values.begin() + pos * tags.size();
@@ -150,6 +151,8 @@ struct Loop {
   void add_row(std::initializer_list<std::string> new_values, int pos=-1) {
     add_row<std::initializer_list<std::string>>(new_values, pos);
   }
+
+  void set_all_values(std::vector<std::vector<std::string>> columns);
 };
 
 
@@ -272,8 +275,7 @@ struct Table {
 
   Row one() {
     if (length() != 1)
-      throw std::runtime_error("Expected one value, found " +
-                                std::to_string(length()));
+      fail("Expected one value, found " + std::to_string(length()));
     return (*this)[0];
   }
 
@@ -291,7 +293,7 @@ struct Table {
     for (int i = 0; i != w; ++i)
       if (gemmi::ends_with(tag_row[i], suffix))
         return column(i);
-    throw std::runtime_error("Column name or suffix not found: " + suffix);
+    fail("Column name or suffix not found: " + suffix);
   }
 
   void erase();
@@ -444,6 +446,23 @@ private:
   }
 };
 
+inline void Loop::set_all_values(std::vector<std::vector<std::string>> columns){
+  size_t w = columns.size();
+  if (w != width())
+    fail("set_all_values(): expected " + std::to_string(width()) +
+         " columns, got " + std::to_string(w));
+  if (w == 0)
+    return;
+  size_t h = columns[0].size();
+  for (auto& col : columns)
+    if (col.size() != h)
+      fail("set_all_values(): all columns must have the same length");
+  values.resize(w * h);
+  for (size_t i = 0; i != h; ++i)
+    for (size_t j = 0; j != w; ++j)
+      values[w * i + j] = std::move(columns[j][i]);
+}
+
 inline std::string* Column::get_tag() {
   if (!item_)
     return nullptr;
@@ -507,13 +526,13 @@ inline Table::Row Table::find_row(const std::string& s) {
   } else if (as_string(blo.items[pos].pair[1]) == s) {
     return Row{*this, 0};
   }
-  throw std::runtime_error("Not found in the first column: " + s);
+  fail("Not found in the first column: " + s);
 }
 
 inline Column Table::column(int n) {
   int pos = positions.at(n);
   if (pos == -1)
-    throw std::runtime_error("Cannot access absent column");
+    fail("Cannot access absent column");
   if (loop_item)
     return Column(loop_item, pos);
   return Column(&blo.items[pos], 0);
@@ -687,7 +706,7 @@ inline Table Block::find_mmcif_category(std::string cat) {
           indices[j] = j;
           const std::string& tag = i.loop.tags[j];
           if (!starts_with(tag, cat))
-            throw std::runtime_error("Tag " + tag + " in loop with " + cat);
+            fail("Tag " + tag + " in loop with " + cat);
         }
         return Table{&i, *this, indices};
       } else {
@@ -714,8 +733,7 @@ struct Document {
   // returns blocks[0] if the document has exactly one block (like mmCIF)
   Block& sole_block() {
     if (blocks.size() > 1)
-      throw std::runtime_error(std::to_string(blocks.size()) + " data blocks,"
-                               " a single block was expected");
+      fail("single data block expected, got " + std::to_string(blocks.size()));
     return blocks.at(0);
   }
 
@@ -731,8 +749,8 @@ struct Document {
 [[noreturn]]
 inline void cif_fail(const Document& d, const Block& b, const Item& item,
                      const std::string& s) {
-  throw std::runtime_error(d.source + ":" + std::to_string(item.line_number) +
-                           " in data_" + b.name + ": " + s);
+  fail(d.source + ":" + std::to_string(item.line_number) +
+       " in data_" + b.name + ": " + s);
 }
 
 // Throw an error if any block name, frame name or tag is duplicated.
@@ -742,7 +760,7 @@ inline void check_duplicates(const Document& d) {
   for (const Block& block : d.blocks) {
     bool ok = names.insert(gemmi::to_lower(block.name)).second;
     if (!ok && !block.name.empty())
-      throw std::runtime_error("duplicate block name: " + block.name);
+      fail("duplicate block name: " + block.name);
   }
   // check for dups inside each block
   std::unordered_set<std::string> frame_names;

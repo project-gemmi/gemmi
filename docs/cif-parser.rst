@@ -722,7 +722,19 @@ To add a row to an existing table (loop) use ``add_row``:
   >>> list(block.find_loop('_atom_type.symbol'))
   ['Au', 'C', 'CL', 'N', 'O', 'P', 'S', 'Zr']
 
-and to add a new table (replacing old one if it exists):
+To replace all the data in a table use ``set_all_values``:
+
+.. doctest::
+
+  >>> loop = block.find_loop('_citation_author.citation_id').get_loop()
+  >>> loop.tags
+  ['_citation_author.citation_id', '_citation_author.name', '_citation_author.ordinal']
+  >>> #loop.set_all_values([['primary']*2, ['Alice', 'Bob'], [1, 2]])
+  >>> #TODO loop.val(1, 1)
+  >>> #block.find_mmcif_category('_citation_author.')[0]
+      
+
+To add a new table (replacing old one if it exists) use ``init_loop``:
 
 .. doctest::
 
@@ -733,8 +745,8 @@ and to add a new table (replacing old one if it exists):
 In the above example, if the block already has tags ``_ocean_id``
 and/or ``_ocean_name`` and
 
-* they are in a table: the table will be cleared and re-used,
-* they are in name-value pairs: the pairs will be removed
+* if they are in a table: the table will be cleared and re-used,
+* if they are in name-value pairs: the pairs will be removed
   and a table will be created at the position of the first pair.
 
 We also have a variant of ``init_loop`` for working with mmCIF categories:
@@ -744,10 +756,12 @@ We also have a variant of ``init_loop`` for working with mmCIF categories:
   >>> loop = block.init_mmcif_loop('_ocean.', ['id', 'name'])
   >>> loop.add_row(['1', 'atlantic'])
 
-``init_mmcif_loop`` removes all the other entries in the same category
-(say, ``_ocean.depth 8.5``).
+The subtle difference is that if the block has other name-value pairs
+in the same category (say, ``_ocean.depth 8.5``)
+``init_loop`` leaves them untouched, but ``init_mmcif_loop`` removes them.
 
-Category name must include leading underscore; trailing dot is optional.
+Additionally, like in other ``_mmcif_`` functions, the trailing dot
+in the category name may be omitted (but the leading underscore is required).
 
 TODO:
 
