@@ -205,7 +205,6 @@ public:
 private:
   Item* item_;
   size_t col_;  // for loop this is a column index in item_->loop
-
 };
 
 // Some values can be given either in loop or as tag-value pairs.

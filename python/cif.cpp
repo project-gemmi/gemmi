@@ -108,11 +108,12 @@ void add_cif(py::module& cif) {
     .def("__iter__", [](const Column& self) { return py::make_iterator(self); },
          py::keep_alive<0, 1>())
     .def("__bool__", [](const Column &self) -> bool { return self.item(); })
+    .def("__len__", [](const Column &self) { return self.length(); })
     .def("__getitem__", (std::string& (Column::*)(int)) &Column::at)
     .def("__setitem__", [](Column &self, int idx, std::string value) {
         self.at(idx) = value;
     })
-    .def("str", &Column::str)
+    .def("str", &Column::str, py::arg("index"))
     .def("__repr__", [](const Column &self) {
         std::string desc = "nil";
         if (const std::string* tag = self.get_tag())

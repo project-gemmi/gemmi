@@ -487,9 +487,17 @@ Frame
 
 The named save frames (keyword ``save_``) from the STAR specification
 are used in CIF files only as sub-sections of a block.
-The only place where they are normally enountered are mmCIF dictionaries.
+The only place where they are enountered are mmCIF dictionaries.
+Because of this, we expect that few users will ever need to access
+frames and we do not have special function on this occasion.
+Still, one can easily work with save frames::
 
-TODO: document how to access save frames
+    for (cif::Item& item : block.items)
+      if (item.type == cif::ItemType::Frame)
+        // doing something with item.frame which is a (nested) Block
+        cif::Block& frame = item.frame;
+
+A full example is in the header ``gemmi/ddl.hpp``.
 
 Editing
 -------
@@ -648,11 +656,48 @@ but it is often better to use functions that work with both pairs and loops:
   >>> block.find_values('_atom_type.symbol')
   <gemmi.cif.Column _atom_type.symbol length 6>
 
-``Block.find_values()``
+Both ``find_loop()`` and ``find_values()`` return ``Column``.
+Column's special method ``__bool__`` tells if the tag was found.
+``__len__`` returns the number of corresponding values.
+``__iter__``,  ``__getitem__`` and ``__setitem__``
+get or set a raw string (i.e. string with quotes, if applicable).
+To get the actual string content one may use the method ``str``:
 
-TODO: document Column, Table, Row,
-Block.find(tags),
-Block.find(prefix, tags)
+.. doctest::
+
+  >>> column = block.find_values('_chem_comp.formula')
+  >>> column[7]
+  "'H2 O'"
+  >>> cif.as_string(column[7])
+  'H2 O'
+  >>> column.str(7)  # the same with less writing
+  'H2 O'
+
+If the tag was found in a loop, method ``get_loop`` returns a reference
+to this ``Loop`` in the DOM. Otherwise it returns ``None``.
+
+Table
+~~~~~
+
+Often, we want to access multiple columns at once,
+so the library has another abstraction (``Table``)
+that can be used with multiple tags:
+
+.. doctest::
+
+  >>> block.find(['_entity_poly_seq.entity_id', '_entity_poly_seq.num', '_entity_poly_seq.mon_id'])
+  <gemmi.cif.Table 18 x 3>
+
+Since tags in one loop tend to have a common prefix (category name),
+the library provides a second form that takes the common prefix as the first
+argument:
+
+.. doctest::
+
+  >>> block.find('_entity_poly_seq.', ['entity_id', 'num', 'mon_id'])
+  <gemmi.cif.Table 18 x 3>
+
+**TODO**: document Table and Row
 
 mmCIF categories
 ~~~~~~~~~~~~~~~~
@@ -768,9 +813,9 @@ in the category name may be omitted (but the leading underscore is required).
 
 TODO: Block.set_mmcif_category(string cat, py::dict data)
 
-TODO: deleting things (example in examples/CCD)
-* Document.__delitem__
-* Table.erase() (w/ example how to delete mmCIF category)
+If needed, one can remove a block from a document (``Document.__delitem__``),
+or delete a pair or a table from a block (``Table.erase()``).
+An example for this is provided in the :ref:`CCD section <ccd_example>` below.
 
 Lastly, the CIF file can be created from scratch.
 
@@ -1311,6 +1356,7 @@ showing that we have not fully reproduced the rule when to subtract this group.
     3OK2 entity_id:  1    3417.14 -    3354.17 =  +62.968
     ...
 
+.. _ccd_example:
 
 Chemical Component Dictionary
 -----------------------------
