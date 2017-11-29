@@ -724,6 +724,14 @@ struct Document {
   // implementation detail: items of the currently parsed block or frame
   std::vector<Item>* items_ = nullptr;
 
+  Block& add_new_block(const std::string& name, int pos=-1) {
+    if (find_block(name))
+      fail("Block with such name already exists: " + name);
+    if (pos > 0 && static_cast<size_t>(pos) > blocks.size())
+      throw std::out_of_range("add_new_block(): invalid position");
+    return *blocks.emplace(pos < 0 ? blocks.end() : blocks.begin() + pos, name);
+  }
+
   void clear() noexcept {
     source.clear();
     blocks.clear();

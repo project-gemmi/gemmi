@@ -33,6 +33,9 @@ void add_cif(py::module& cif) {
           throw py::index_error();
         d.blocks.erase(d.blocks.begin() + index);
     }, py::arg("index"))
+    .def("add_new_block", &Document::add_new_block,
+         py::arg("name"), py::arg("pos")=-1,
+         py::return_value_policy::reference_internal)
     .def("clear", &Document::clear)
     .def("sole_block", &Document::sole_block,
          py::return_value_policy::reference_internal,
@@ -53,7 +56,7 @@ void add_cif(py::module& cif) {
     }, "Returns JSON representation in a string.");
 
   py::class_<Block>(cif, "Block")
-    .def(py::init<>())
+    .def(py::init<const std::string &>())
     .def_readwrite("name", &Block::name)
     .def("find_pair", &Block::find_pair, py::arg("tag"),
          py::return_value_policy::reference_internal)

@@ -722,7 +722,8 @@ To add a row to an existing table (loop) use ``add_row``:
   >>> list(block.find_loop('_atom_type.symbol'))
   ['Au', 'C', 'CL', 'N', 'O', 'P', 'S', 'Zr']
 
-To replace all the data in a table use ``set_all_values``:
+``set_all_values`` sets all the data in a table. It takes as an argument
+a list of lists of string. The lists of strings correspond to columns.
 
 .. doctest::
 
@@ -765,16 +766,23 @@ in the same category (say, ``_ocean.depth 8.5``)
 Additionally, like in other ``_mmcif_`` functions, the trailing dot
 in the category name may be omitted (but the leading underscore is required).
 
-TODO:
+TODO: Block.set_mmcif_category(string cat, py::dict data)
 
+TODO: deleting things (example in examples/CCD)
 * Document.__delitem__
-* Document.clear()
 * Table.erase() (w/ example how to delete mmCIF category)
-* ...
-* Table - delete a row
-* Table - delete a column
-* Table - insert a column
 
+Lastly, the CIF file can be created from scratch.
+
+.. doctest::
+
+  >>> d = cif.Document()
+  >>> d.add_new_block('oak')
+  <gemmi.cif.Block oak>
+  >>> _.set_pair('_nut', 'acorn')
+  >>> print(d.as_string().strip())
+  data_oak
+  _nut acorn
 
 
 Writing
