@@ -74,7 +74,7 @@ TODO
 Utilities
 ---------
 
-The library comes with growing number of small command-line programs.
+The library comes with a growing number of small command-line programs.
 When the project is more mature we will provide binaries for Windows, Mac
 and Linux. At this moment the utilities are tested only Linux and Mac
 and need to be compiled from source::

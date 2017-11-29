@@ -83,6 +83,32 @@ void add_cif(py::module& cif) {
     .def("init_mmcif_loop", &Block::init_mmcif_loop,
          py::arg("cat"), py::arg("tags"),
          py::return_value_policy::reference_internal)
+    .def("set_mmcif_category",
+         [](Block &self, std::string name, py::dict data) {
+           size_t w = data.size();
+           std::vector<std::string> tags;
+           tags.reserve(w);
+           std::vector<py::list> values;
+           values.reserve(w);
+           for (auto item : data) {
+             tags.emplace_back(py::str(item.first));
+             values.emplace_back(item.second.cast<py::list>());
+             if (values.back().size() != values[0].size())
+               throw py::value_error("all columns must have equal length");
+           }
+           if (w == 0 || values[0].size() == 0)
+             throw py::value_error("data cannot be empty");
+           Loop& loop = self.init_mmcif_loop(std::move(name), std::move(tags));
+           loop.values.resize(w * values[0].size());
+           for (size_t col = 0; col != w; ++col) {
+             size_t idx = col;
+             for (auto it : values[col]) {
+               // FIXME: should we check the type of *it? Quote if necessary?
+               loop.values[idx] = py::str(*it);
+               idx += w;
+             }
+           }
+         }, py::arg("name"), py::arg("data"))
     .def("__repr__", [](const Block &self) {
         return "<gemmi.cif.Block " + self.name + ">";
     });

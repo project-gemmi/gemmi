@@ -1395,7 +1395,6 @@ One may wonder what is the heaviest CCD component:
 
 .. doctest::
 
-    >>> from gemmi import cif
     >>> ccd = cif.read('components.cif')
     >>> max(ccd, key=lambda b: float(b.find_value('_chem_comp.formula_weight')))
     <gemmi.cif.Block WO2>
@@ -1408,7 +1407,6 @@ Additionally, we remove the descriptor category:
 
 .. doctest::
 
-    >>> from gemmi import cif
     >>> ccd = cif.read('components.cif')
     >>> len(ccd)  #doctest: +SKIP
     25219
