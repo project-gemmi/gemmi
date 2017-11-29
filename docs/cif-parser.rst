@@ -729,9 +729,11 @@ To replace all the data in a table use ``set_all_values``:
   >>> loop = block.find_loop('_citation_author.citation_id').get_loop()
   >>> loop.tags
   ['_citation_author.citation_id', '_citation_author.name', '_citation_author.ordinal']
-  >>> #loop.set_all_values([['primary']*2, ['Alice', 'Bob'], [1, 2]])
-  >>> #TODO loop.val(1, 1)
-  >>> #block.find_mmcif_category('_citation_author.')[0]
+  >>> loop.set_all_values([['primary']*2, ['Alice', 'Bob'], ['1', '2']])
+  >>> for row in block.find_mmcif_category('_citation_author.'):
+  ...   print(list(row))
+  ['primary', 'Alice', '1']
+  ['primary', 'Bob', '2']
       
 
 To add a new table (replacing old one if it exists) use ``init_loop``:

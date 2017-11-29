@@ -26,11 +26,15 @@ mm.o: mm.cpp $(igdir)/elem.hpp
 sym.o: sym.cpp $(igdir)/symmetry.hpp
 	$(CXX) $(FLAGS) `$(PYTHON_CONFIG) --includes` -c $<
 
-cif.o: cif.cpp $(igdir)/cifdoc.hpp $(igdir)/cif.hpp $(igdir)/numb.hpp \
-       $(igdir)/gz.hpp $(igdir)/to_json.hpp $(igdir)/to_cif.hpp
+cif.o: cif.cpp $(igdir)/cifdoc.hpp \
+       $(igdir)/to_json.hpp $(igdir)/to_cif.hpp $(igdir)/util.hpp
 	$(CXX) $(FLAGS) `$(PYTHON_CONFIG) --includes` -c $<
 
-OBJ=gemmi.o mm.o sym.o cif.o
+cif_read.o: cif_read.cpp $(igdir)/cifdoc.hpp $(igdir)/cif.hpp \
+            $(igdir)/numb.hpp $(igdir)/gz.hpp $(igdir)/util.hpp
+	$(CXX) $(FLAGS) `$(PYTHON_CONFIG) --includes` -c $<
+
+OBJ=gemmi.o mm.o sym.o cif.o cif_read.o
 
 gemmi.so: $(OBJ)
 	$(CXX) $(FLAGS) -shared \

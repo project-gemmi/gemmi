@@ -1,9 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#include "gemmi/numb.hpp"
 #include "gemmi/cifdoc.hpp"
-#include "gemmi/gz.hpp"
-#include "gemmi/cif.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 
@@ -11,10 +8,9 @@
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
-using namespace gemmi;
 using namespace gemmi::cif;
 
-void init_cif(py::module& cif) {
+void add_cif(py::module& cif) {
   py::class_<Document>(cif, "Document")
     .def(py::init<>())
     .def("__len__", [](const Document& d) { return d.blocks.size(); })
@@ -162,21 +158,4 @@ void init_cif(py::module& cif) {
           items += " " + (self.has(i) ? self[i] : "None");
         return "<gemmi.cif.Table.Row:" + items + ">";
     });
-
-  cif.def("read_file", &read_file, py::arg("filename"),
-          "Reads a CIF file copying data into Document.");
-  cif.def("read", [](const std::string& s) { return read(MaybeGzipped(s)); },
-          py::arg("filename"), "Reads normal or gzipped CIF file.");
-  cif.def("read_string", &read_string, py::arg("data"),
-          "Reads a string as a CIF file.");
-
-  cif.def("as_string", (std::string (*)(const std::string&)) &as_string,
-          py::arg("value"), "Get string content (no quotes) from raw string.");
-  cif.def("as_number", &as_number, py::arg("value"), py::arg("default")=NAN,
-          "Returns float number from string");
-  cif.def("as_int", (int (*)(const std::string&)) &as_int, py::arg("value"),
-          "Returns int number from string value.");
-  cif.def("as_int", (int (*)(const std::string&, int)) &as_int,
-          py::arg("value"), py::arg("default"),
-          "Returns int number from string value or the second arg if null.");
 }
