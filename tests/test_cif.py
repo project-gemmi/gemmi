@@ -105,12 +105,23 @@ class TestBlock(unittest.TestCase):
         doc = cif.Document()
         block = doc.add_new_block('b')
         block.set_mmcif_category('_c', {
-            'one': ('aa', 'ab', ';text field\n;'),
-            'two': [-1, 4./3, '"double quoted"']})
+            'one': ('?', 'ab', ';text field\n;'),
+            'two': [-1, 4./3, '"double quoted"']}, raw=True)
+        self.assertEqual(block.find_values('_c.one')[0], '?')
         self.assertEqual(block.find_values('_c.one').str(1), 'ab')
         self.assertEqual(block.find_values('_c.one').str(2), 'text field')
         self.assertEqual(block.find_values('_c.two').str(0), '-1')
         self.assertEqual(block.find_values('_c.two').str(2), 'double quoted')
+        block.set_mmcif_category('_d', {
+            'one': (None, 'a b', 'text\nfield'),
+            'two': [-1, '?', False]})
+        self.assertEqual(block.find_values('_d.one')[0], '?')
+        self.assertEqual(block.find_values('_d.two').str(1), '?')
+        self.assertEqual(block.find_values('_d.one').str(1), 'a b')
+        self.assertEqual(block.find_values('_d.one').str(2), 'text\nfield')
+        self.assertEqual(block.find_values('_d.one')[2], ';text\nfield\n;')
+        self.assertEqual(block.find_values('_d.two').str(0), '-1')
+        self.assertEqual(block.find_values('_d.two')[2], '.')
 
     def test_mmcif_file(self):
         path = os.path.join(os.path.dirname(__file__), '5i55.cif')

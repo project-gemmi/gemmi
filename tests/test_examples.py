@@ -8,6 +8,7 @@ import gemmi
 
 TOP_DIR = os.path.join(os.path.dirname(__file__), "..")
 CIF_FILE = os.path.join(TOP_DIR, "tests", "5i55.cif")
+JSON_FILE = os.path.join(TOP_DIR, "tests", "1pfe.json")
 EXAMPLE_DIR = os.path.join(TOP_DIR, "examples")
 sys.path.append(EXAMPLE_DIR)
 
@@ -33,6 +34,10 @@ class TestExamples(unittest.TestCase):
   def test_weight(self):
     import weight
     weight.main()
+
+class TestFromJson(unittest.TestCase):
+    sys.argv = ['from_json.py', JSON_FILE, os.devnull]
+    import from_json
 
 if __name__ == '__main__':
   unittest.main()

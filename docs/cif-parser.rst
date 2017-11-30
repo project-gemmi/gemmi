@@ -732,6 +732,9 @@ mmCIF files group data into categories. All mmCIF tags have a dot
 Editing
 -------
 
+Changes in-place
+~~~~~~~~~~~~~~~~
+
 Both Column and Row implement ``__setitem__`` that can be used to change
 raw string values.
 As an example, we can shift all the atoms by 1A in the x direction:
@@ -750,12 +753,18 @@ will notice):
   >>> tags = block.find('_atom_site.', ['label_atom_id', 'auth_atom_id']).tags
   >>> tags[0], tags[1] = tags[1], tags[0]
 
+Pairs
+~~~~~
+
 To add a name-value pair, replacing current item if it exists,
 use function ``set_pair``:
 
 .. doctest::
 
   >>> block.set_pair('_tree', 'willow')
+
+Loops
+~~~~~
 
 To add a row to an existing table (loop) use ``add_row``:
 
@@ -788,7 +797,7 @@ To add a new table (replacing old one if it exists) use ``init_loop``:
 
   >>> loop = block.init_loop('_ocean_', ['id', 'name'])
   >>> # empty table is invalid in CIF, we need to add something
-  >>> loop.add_row(['1', 'atlantic'])
+  >>> loop.add_row(['1', 'Atlantic'])
 
 In the above example, if the block already has tags ``_ocean_id``
 and/or ``_ocean_name`` and
@@ -797,12 +806,15 @@ and/or ``_ocean_name`` and
 * if they are in name-value pairs: the pairs will be removed
   and a table will be created at the position of the first pair.
 
+mmCIF
+~~~~~
+
 We also have a variant of ``init_loop`` for working with mmCIF categories:
 
 .. doctest::
 
   >>> loop = block.init_mmcif_loop('_ocean.', ['id', 'name'])
-  >>> loop.add_row(['1', 'atlantic'])
+  >>> loop.add_row(['1', 'Atlantic'])
 
 The subtle difference is that if the block has other name-value pairs
 in the same category (say, ``_ocean.depth 8.5``)
@@ -811,10 +823,36 @@ in the same category (say, ``_ocean.depth 8.5``)
 Additionally, like in other ``_mmcif_`` functions, the trailing dot
 in the category name may be omitted (but the leading underscore is required).
 
-TODO: Block.set_mmcif_category(string cat, py::dict data)
+Python programs often keep mmCIF data in dictionaries.
+Thus we have a function that takes a category name and a dictionary
+mapping tags to lists, and creates (or replaces) a corresponding category:
 
-If needed, one can remove a block from a document (``Document.__delitem__``),
-or delete a pair or a table from a block (``Table.erase()``).
+.. doctest::
+
+  >>> ocean_data = {'id': [1, 2, 3], 'name': ['Atlantic', 'Pacific', 'Indian']}
+  >>> block.set_mmcif_category('_ocean', ocean_data)
+
+This function has a third parameter ``raw`` with default value False.
+Specify ``raw=True`` if the values are already quoted, otherwise
+they will be quoted twice.
+
+.. doctest::
+
+  >>> block.set_mmcif_category('_raw', {'a': ['?', '.', "'a b'"]}, raw=True)
+  >>> list(block.find_values('_raw.a'))
+  ['?', '.', "'a b'"]
+  >>> block.set_mmcif_category('_nop', {'a': ['?', '.', "'a b'"]}, raw=False)
+  >>> list(block.find_values('_nop.a'))
+  ["'?'", "'.'", '"\'a b\'"']
+  >>> block.set_mmcif_category('_ok', {'a': [None, False, 'a b']}, raw=False)
+  >>> list(block.find_values('_ok.a'))
+  ['?', '.', "'a b'"]
+
+Creating and deleting
+~~~~~~~~~~~~~~~~~~~~~
+
+If needed, one can remove block from a document (``Document.__delitem__``),
+or delete pair or table from a block (``Table.erase()``).
 An example for this is provided in the :ref:`CCD section <ccd_example>` below.
 
 Lastly, the CIF file can be created from scratch.
@@ -1355,6 +1393,16 @@ showing that we have not fully reproduced the rule when to subtract this group.
     1NR8 entity_id:  2    2883.07 -    2946.05 =  -62.974
     3OK2 entity_id:  1    3417.14 -    3354.17 =  +62.968
     ...
+
+mmJSON-like data
+----------------
+
+Gemmi has a built-in support for mmJSON and comes with
+a :ref:`converter <json>` utility, but just as an excercise
+let us convert mmJSON to mmCIF in Python:
+
+.. literalinclude:: ../examples/from_json.py
+   :lines: 6-
 
 .. _ccd_example:
 

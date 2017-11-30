@@ -84,7 +84,7 @@ void add_cif(py::module& cif) {
          py::arg("cat"), py::arg("tags"),
          py::return_value_policy::reference_internal)
     .def("set_mmcif_category",
-         [](Block &self, std::string name, py::dict data) {
+         [](Block &self, std::string name, py::dict data, bool raw) {
            size_t w = data.size();
            std::vector<std::string> tags;
            tags.reserve(w);
@@ -102,13 +102,24 @@ void add_cif(py::module& cif) {
            loop.values.resize(w * values[0].size());
            for (size_t col = 0; col != w; ++col) {
              size_t idx = col;
-             for (auto it : values[col]) {
-               // FIXME: should we check the type of *it? Quote if necessary?
-               loop.values[idx] = py::str(*it);
+             for (auto handle : values[col]) {
+               std::string& val = loop.values[idx];
+               PyObject* ptr = handle.ptr();
+               if (handle.is_none()) {
+                 val = "?";
+               } else if (ptr == Py_False) {
+                 val = ".";
+               } else if (ptr == Py_True) {
+                 throw py::value_error("unexpected value True");
+               } else if (raw || PyFloat_Check(ptr) || PyLong_Check(ptr)) {
+                 val = py::str(handle);
+               } else {
+                 val = quote(py::str(handle));
+               }
                idx += w;
              }
            }
-         }, py::arg("name"), py::arg("data"))
+         }, py::arg("name"), py::arg("data"), py::arg("raw")=false)
     .def("__repr__", [](const Block &self) {
         return "<gemmi.cif.Block " + self.name + ">";
     });
