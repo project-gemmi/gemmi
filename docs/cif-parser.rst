@@ -879,6 +879,15 @@ and ``Document.as_json()`` returns CIF document serialized to JSON string.
 
   >>> doc.write_file('1pfe-modified.cif')
 
+Files in wwPDB have a peculiar formatting with empty comments (``#``)
+between categories. Sometimes it may be helpful to mimick this formatting,
+for example when one is checking modifications with
+``diff --ignore-space-change``. So we have an option for this:
+
+.. doctest::
+
+  >>> doc.write_file('1pfe-styled.cif', cif.Style.Pdbx)
+
 Performance
 ===========
 

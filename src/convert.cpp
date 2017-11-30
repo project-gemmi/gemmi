@@ -29,7 +29,7 @@ struct ConvArg: public Arg {
 };
 
 enum OptionIndex { Verbose=3, FormatIn, FormatOut,
-                   Comcifs, Mmjson, Bare, Numb, CifDot,
+                   Comcifs, Mmjson, Bare, Numb, CifDot, PdbxStyle,
                    ExpandNcs, IotbxCompat, SegmentAsChain };
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -46,7 +46,7 @@ static const option::Descriptor Usage[] = {
     "  --from=FORMAT  \tInput format (default: from the file extension)." },
   { FormatOut, 0, "", "to", ConvArg::FileFormat,
     "  --to=FORMAT  \tOutput format (default: from the file extension)." },
-  { NoOp, 0, "", "", Arg::None, "\nCIF output options:" },
+  { NoOp, 0, "", "", Arg::None, "\nJSON output options:" },
   { Comcifs, 0, "c", "comcifs", Arg::None,
     "  -c, --comcifs  \tConform to the COMCIFS CIF-JSON standard draft." },
   { Mmjson, 0, "m", "mmjson", Arg::None,
@@ -60,6 +60,9 @@ static const option::Descriptor Usage[] = {
                              "\v  mix (default) - quote only numbs with s.u." },
   { CifDot, 0, "", "dot", Arg::Required,
     "  --dot=STRING  \tJSON representation of CIF's '.' (default: null)." },
+  { NoOp, 0, "", "", Arg::None, "\nCIF output options:" },
+  { PdbxStyle, 0, "", "pdbx-style", Arg::None,
+    "  --pdbx-style  \tSimilar styling (formatting) as in wwPDB." },
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular options:" },
   { ExpandNcs, 0, "", "expand-ncs", Arg::None,
     "  --expand-ncs  \tExpand strict NCS specified in MTRIXn or equivalent." },
@@ -413,7 +416,8 @@ void convert(const std::string& input, FileType input_type,
       cif_in.blocks.resize(1);
       update_cif_block(st, cif_in.blocks[0]);
     }
-    *os << cif_in;
+    auto style = options[PdbxStyle] ? cif::Style::Pdbx : cif::Style::Simple;
+    write_out_document(*os, cif_in, style);
   } else if (output_type == FileType::Crd) {
     *os << make_crd(st);
   }

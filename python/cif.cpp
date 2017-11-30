@@ -11,6 +11,9 @@ namespace py = pybind11;
 using namespace gemmi::cif;
 
 void add_cif(py::module& cif) {
+  py::enum_<Style>(cif, "Style")
+    .value("Simple", Style::Simple)
+    .value("Pdbx", Style::Pdbx);
   py::class_<Document>(cif, "Document")
     .def(py::init<>())
     .def("__len__", [](const Document& d) { return d.blocks.size(); })
@@ -42,7 +45,8 @@ void add_cif(py::module& cif) {
          "Returns the only block if there is exactly one")
     .def("find_block", &Document::find_block, py::arg("name"),
          py::return_value_policy::reference_internal)
-    .def("write_file", &write_to_file, py::arg("filename"),
+    .def("write_file", &write_to_file,
+         py::arg("filename"), py::arg("style")=Style::Simple,
          "Write data to a CIF file.")
     .def("as_string", [](const Document& d) {
         std::ostringstream os;
