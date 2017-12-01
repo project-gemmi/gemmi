@@ -513,8 +513,20 @@ Writing
 The functions writing ``cif::Document`` to C++ stream or to a file
 are in a separate header file ``gemmi/to_cif.hpp``::
 
+    void write_to_file(const Document& doc, const std::string& filename,
+                       Style style=Style::Simple);
+
+    void write_out_document(std::ostream& os, const Document& doc, Style style);
+
+    // the same as write_out_document() with Style::Simple
     std::ostream& operator<<(std::ostream& os, const gemmi::cif::Document& doc);
-    void write_to_file(const Document& doc, const std::string& filename);
+
+Three "styles" are supported:
+
+* ``Style::Simple`` simply writes out the DOM structure,
+* ``Style::PreferPairs`` writes single-row loops as pairs,
+* ``Style::Pdbx`` additionally puts ``#`` (empty comments) between categories,
+  mimicking the official PDBx/mmCIF files from wwPDB.
 
 JSON
 ----
@@ -872,21 +884,34 @@ Writing
 -------
 
 The modifications can be written using function ``Document.write_file(path)``.
-Additionally, ``Document.as_string()`` returns the text that would be written,
-and ``Document.as_json()`` returns CIF document serialized to JSON string.
 
 .. doctest::
 
   >>> doc.write_file('1pfe-modified.cif')
 
-Files in wwPDB have a peculiar formatting with empty comments (``#``)
-between categories. Sometimes it may be helpful to mimick this formatting,
-for example when one is checking modifications with
-``diff --ignore-space-change``. So we have an option for this:
+The formatting of the output can be customized to some degree.
+Currently, we have an option to write single-row loops as pairs:
+
+.. doctest::
+
+  >>> doc.write_file('1pfe-modified.cif', cif.Style.PreferPairs)
+
+
+and to, additionally, put ``#`` (empty comments) between mmCIF categories:
 
 .. doctest::
 
   >>> doc.write_file('1pfe-styled.cif', cif.Style.Pdbx)
+
+This mimicks the peculiar formatting of PDBx/mmCIF files in the official
+wwPDB archive, and it is helpful when diff-ing original and modified
+files (you also need diff option ``--ignore-space-change``).
+
+Other functions:
+
+* ``Document.as_string()`` -- returns the text that
+  would be written by ``write_file()``,
+* ``Document.as_json()`` -- returns the document serialized to JSON string.
 
 Performance
 ===========
