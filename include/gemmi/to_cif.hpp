@@ -46,7 +46,7 @@ inline void write_out_loop(std::ostream& os, const Loop& loop, Style style) {
 
 inline void write_out_item(std::ostream& os, const Item& item, Style style) {
   switch (item.type) {
-    case ItemType::Value:
+    case ItemType::Pair:
       write_out_pair(os, item.pair[0], item.pair[1]);
       break;
     case ItemType::Loop:
@@ -69,7 +69,7 @@ inline void write_out_item(std::ostream& os, const Item& item, Style style) {
 inline bool should_be_separted_(const Item& a, const Item& b) {
   if (a.type == ItemType::Comment || b.type == ItemType::Comment)
     return false;
-  if (a.type != ItemType::Value || b.type != ItemType::Value)
+  if (a.type != ItemType::Pair || b.type != ItemType::Pair)
     return true;
   // check if we have mmcif-like tags from different categories
   auto adot = a.pair[0].find('.');

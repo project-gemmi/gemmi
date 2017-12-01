@@ -66,7 +66,7 @@ private:
         if (item.type == ItemType::Frame) {
           for (const std::string& name : item.frame.find_values("_item.name"))
             name_index_.emplace(as_string(name), &item.frame);
-        } else if (item.type == ItemType::Value) {
+        } else if (item.type == ItemType::Pair) {
           if (item.pair[0] == "_dictionary.title")
             dict_name_ = item.pair[1];
           else if (item.pair[0] == "_dictionary.version")
@@ -254,7 +254,7 @@ bool DDL::do_validate(Document& doc, Output& out, bool quiet) {
   };
   for (Block& b : doc.blocks) {
     for (const Item& item : b.items) {
-      if (item.type == ItemType::Value) {
+      if (item.type == ItemType::Pair) {
         Block* dict_block = find_rules(item.pair[0]);
         if (!dict_block) {
           if (!quiet)

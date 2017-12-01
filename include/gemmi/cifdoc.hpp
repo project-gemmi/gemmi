@@ -78,7 +78,7 @@ struct IndirectIter : IterBase<T> {
 };
 
 enum class ItemType : unsigned char {
-  Value,
+  Pair,
   Loop,
   Frame,
   Comment,
@@ -366,9 +366,9 @@ struct Item {
   explicit Item(LoopArg)
     : type{ItemType::Loop}, loop{} {}
   explicit Item(std::string&& t)
-    : type{ItemType::Value}, pair{{std::move(t), std::string()}} {}
+    : type{ItemType::Pair}, pair{{std::move(t), std::string()}} {}
   Item(const std::string& t, const std::string& v)
-    : type{ItemType::Value}, pair{{t, v}} {}
+    : type{ItemType::Pair}, pair{{t, v}} {}
   explicit Item(FrameArg&& frame_arg)
     : type{ItemType::Frame}, frame(frame_arg.str) {}
   explicit Item(CommentArg&& comment)
@@ -390,7 +390,7 @@ struct Item {
 
   ~Item() {
     switch (type) {
-      case ItemType::Value: pair.~Pair(); break;
+      case ItemType::Pair: pair.~Pair(); break;
       case ItemType::Loop: loop.~Loop(); break;
       case ItemType::Frame: frame.~Block(); break;
       case ItemType::Comment: pair.~Pair(); break;
@@ -404,7 +404,7 @@ struct Item {
   }
 
   bool has_prefix(const std::string& prefix) const {
-    return (type == ItemType::Value && gemmi::starts_with(pair[0], prefix)) ||
+    return (type == ItemType::Pair && gemmi::starts_with(pair[0], prefix)) ||
            (type == ItemType::Loop && !loop.tags.empty() &&
             gemmi::starts_with(loop.tags[0], prefix));
   }
@@ -412,7 +412,7 @@ struct Item {
   void set_value(Item&& o) {
     if (type == o.type) {
       switch (type) {
-        case ItemType::Value: pair = std::move(o.pair); break;
+        case ItemType::Pair: pair = std::move(o.pair); break;
         case ItemType::Loop: loop = std::move(o.loop); break;
         case ItemType::Frame: frame = std::move(o.frame); break;
         case ItemType::Comment: pair = std::move(o.pair); break;
@@ -427,7 +427,7 @@ struct Item {
 
 private:
   void copy_value(const Item& o) {
-    if (o.type == ItemType::Value || o.type == ItemType::Comment)
+    if (o.type == ItemType::Pair || o.type == ItemType::Comment)
       new (&pair) Pair(o.pair);
     else if (o.type == ItemType::Loop)
       new (&loop) Loop(o.loop);
@@ -436,7 +436,7 @@ private:
   }
 
   void move_value(Item&& o) {
-    if (o.type == ItemType::Value || o.type == ItemType::Comment)
+    if (o.type == ItemType::Pair || o.type == ItemType::Comment)
       new (&pair) Pair(std::move(o.pair));
     else if (o.type == ItemType::Loop)
       new (&loop) Loop(std::move(o.loop));
@@ -476,7 +476,7 @@ inline Loop* Column::get_loop() const {
 inline Column::iterator Column::begin() {
   if (Loop* loop = get_loop())
     return iterator(loop->values.data(), col_, loop->width());
-  if (item_ && item_->type == ItemType::Value)
+  if (item_ && item_->type == ItemType::Pair)
     return iterator(&item_->pair[1], 0, 1);
   return iterator();
 }
@@ -485,7 +485,7 @@ inline Column::iterator Column::end() {
   if (Loop* loop = get_loop())
     return iterator(loop->values.data() + loop->values.size(),
                     col_, loop->width());
-  if (item_ && item_->type == ItemType::Value)
+  if (item_ && item_->type == ItemType::Pair)
     return iterator(&item_->pair[1] + 1, 0, 1);
   return iterator();
 }
@@ -547,7 +547,7 @@ inline void Table::erase() {
 
 inline const Item* Block::find_pair_item(const std::string& tag) const {
   for (const Item& i : items)
-    if (i.type == ItemType::Value && i.pair[0] == tag)
+    if (i.type == ItemType::Pair && i.pair[0] == tag)
       return &i;
   return nullptr;
 }
@@ -560,7 +560,7 @@ inline const Pair* Block::find_pair(const std::string& tag) const {
 inline void Block::set_pair(const std::string& tag, std::string v) {
   assert_tag(tag);
   for (Item& i : items) {
-    if (i.type == ItemType::Value && i.pair[0] == tag) {
+    if (i.type == ItemType::Pair && i.pair[0] == tag) {
       i.pair[1] = v;
       return;
     }
@@ -583,7 +583,7 @@ inline Column Block::find_values(const std::string& tag) {
       int pos = i.loop.find_tag(tag);
       if (pos != -1)
         return Column{&i, static_cast<size_t>(pos)};
-    } else if (i.type == ItemType::Value) {
+    } else if (i.type == ItemType::Pair) {
       if (i.pair[0] == tag)
         return Column{&i, 0};
     }
@@ -594,7 +594,7 @@ inline std::vector<std::string> Block::get_mmcif_category_names() const {
   std::vector<std::string> cats;
   for (const Item& item : items) {
     const std::string* tag = nullptr;
-    if (item.type == ItemType::Value)
+    if (item.type == ItemType::Pair)
       tag = &item.pair[0];
     else if (item.type == ItemType::Loop && !item.loop.tags.empty())
       tag = &item.loop.tags[0];
@@ -775,7 +775,7 @@ inline void check_duplicates(const Document& d) {
     names.clear();
     frame_names.clear();
     for (const Item& item : block.items) {
-      if (item.type == ItemType::Value) {
+      if (item.type == ItemType::Pair) {
         bool ok = names.insert(gemmi::to_lower(item.pair[0])).second;
         if (!ok)
           cif_fail(d, block, item, "duplicate tag " + item.pair[0]);

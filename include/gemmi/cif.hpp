@@ -157,7 +157,7 @@ template<> struct Action<rules::tag> {
 template<> struct Action<rules::value> {
   template<typename Input> static void apply(const Input& in, Document& out) {
     Item& last_item = out.items_->back();
-    assert(last_item.type == ItemType::Value);
+    assert(last_item.type == ItemType::Pair);
     last_item.pair[1] = in.string();
   }
 };

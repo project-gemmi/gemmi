@@ -62,7 +62,7 @@ std::string token_stats(const cif::Document& d, bool infer_types) {
   size_t looptags_by_type[5] = {0};
   for (const cif::Block& block : d.blocks) {
     for (const cif::Item& item : block.items) {
-      if (item.type == cif::ItemType::Value) {
+      if (item.type == cif::ItemType::Pair) {
         nvals++;
         if (infer_types) {
           ValueType vt = infer_value_type(item.pair[1]);

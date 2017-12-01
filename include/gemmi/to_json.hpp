@@ -208,7 +208,7 @@ private:
     std::set<std::string> seen_cats;
     for (const Item& item : items) {
       switch (item.type) {
-        case ItemType::Value:
+        case ItemType::Pair:
           if (!cat.empty() && !starts_with(item.pair[0], cat))
             close_cat(cat, &tag_pos);
           os_ << first << linesep_;
