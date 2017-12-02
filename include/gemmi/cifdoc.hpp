@@ -106,8 +106,10 @@ inline std::string as_string(const std::string& value) {
     return "";
   if (value[0] == '"' || value[0] == '\'')
     return std::string(value.begin() + 1, value.end() - 1);
-  if (value[0] == ';' && value.size() > 2 && *(value.end() - 2) == '\n')
-    return std::string(value.begin() + 1, value.end() - 2);
+  if (value[0] == ';' && value.size() > 2 && *(value.end() - 2) == '\n') {
+    bool crlf = *(value.end() - 3) == '\r';
+    return std::string(value.begin() + 1, value.end() - (crlf ? 3 : 2));
+  }
   return value;
 }
 

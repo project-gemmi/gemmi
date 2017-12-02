@@ -30,7 +30,7 @@ namespace numb_rules {
                                            opt<one<'.'>, opt<fraction>>>> {};
   // Error in brackets ,as per CIF spec. We ignore the value for now.
   struct err : seq<one<'('>, plus<digit>, one<')'>> {};
-  struct numb : seq<sign, base, opt<e, exponent>, opt<err>, eof> {};
+  struct numb : seq<sign, base, opt<e, exponent>, opt<err>, pegtl::eof> {};
 }
 
 // Actions for getting the number. For now we ignore s.u., so the actions
@@ -95,7 +95,7 @@ inline double as_number(const std::string& s, double nan=NAN) {
 namespace int_rules {
   using namespace pegtl;
   struct sign : opt<one<'+', '-'>> {};
-  struct int_ : seq<sign, plus<digit>, eof> {};
+  struct int_ : seq<sign, plus<digit>, pegtl::eof> {};
 }
 template<typename Rule> struct ActionInt : pegtl::nothing<Rule> {};
 template<> struct ActionInt<pegtl::digit> {

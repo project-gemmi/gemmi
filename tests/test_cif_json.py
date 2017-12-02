@@ -22,7 +22,7 @@ class TestCifAsJson(unittest.TestCase):
 
   def test_cif_as_string(self):
     with open(self.basename + ".cif", 'rb') as f:
-      cif_orig = f.read().decode('utf-8')
+      cif_orig = f.read().decode('utf-8').replace('\r\n', '\n')
     cif_doc = gemmi.cif.read_string(cif_orig)
     formatting_changes = {
         '# comment\n': '',

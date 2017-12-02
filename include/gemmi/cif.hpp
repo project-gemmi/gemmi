@@ -52,7 +52,7 @@ namespace rules {
 
   // (e) Character strings and text fields.
   template <typename Q>
-  struct endq : seq<Q, at<sor<one<' ','\n','\r','\t','#'>, eof>>> {};
+  struct endq : seq<Q, at<sor<one<' ','\n','\r','\t','#'>, pegtl::eof>>> {};
   // strict rule would be:
   // template <typename Q> struct quoted_tail : until<endq<Q>, anyprint_ch> {};
   // but it was relaxed after PDB accepted 5q1h with non-ascii character
@@ -94,7 +94,7 @@ namespace rules {
   struct datablock : seq<datablockheading,
                          star<whitespace, sor<dataitem, loop, frame>>> {};
   struct file : must<opt<whitespace>,
-                     until<eof, list_tail<datablock, whitespace>>> {};
+                     until<pegtl::eof, list_tail<datablock, whitespace>>> {};
 
 } // namespace rules
 

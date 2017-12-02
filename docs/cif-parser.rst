@@ -135,8 +135,8 @@ Additionally:
 * names and lines can have any length like in STAR
   (the CIF spec imposes the limit of 2048 characters, but some mmCIF files
   from PDB exceed it, e.g. 3j3q.cif),
-* quoted strings may contain non-ascii characters (we found in PDB byte A0
-  corresponding to non-breaking space)
+* quoted strings may contain non-ascii characters (if nothing has changed
+  one entry in the PDB has byte A0 corresponding to non-breaking space)
 * unquoted strings cannot start with keywords (STAR spec is ambiguous
   about this -- see
   `StarTools doc <http://www.globalphasing.com/startools/>`_ for details)
