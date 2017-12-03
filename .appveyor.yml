@@ -20,8 +20,6 @@ build_script:
 - py -3 setup.py sdist
 - py -3 -m pip install .
 - py -2 -c "import sys; print(sys.version+'\n'+sys.executable)"
-- set PY_PYTHON=3.4
-- py -c "import sys; print(sys.version+'\n'+sys.executable)"
 
 test_script:
 - py -m unittest discover -v -s tests/
