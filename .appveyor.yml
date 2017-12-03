@@ -7,6 +7,7 @@ environment:
       CMAKE_GENERATOR: Visual Studio 14 2015
       CMAKE_CONFIG: Debug
       PY_PYTHON3: 3.5-32
+      PY_PYTHON2: 2.7-32
     - arch: x64
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_GENERATOR: Visual Studio 15 2017 Win64
@@ -16,11 +17,11 @@ build_script:
 - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (del "C:\Program Files (x86)\MSBuild\14.0\Microsoft.Common.targets\ImportAfter\Xamarin.Common.targets")
 - cmake -G "%CMAKE_GENERATOR%" .
 - cmake --build . --config %CMAKE_CONFIG%
-- py -3 -c "import sys; print(sys.version+'\n'+sys.executable)"
-- py -3 setup.py sdist
-- py -3 -m pip install .
 - py -2 -c "import sys; print(sys.version+'\n'+sys.executable)"
+- py -3 -c "import sys; print(sys.version+'\n'+sys.executable)"
+- py -3 -m pip install .
+- py -2 setup.py sdist
 
 test_script:
-- py -m unittest discover -v -s tests/
+- py -3 -m unittest discover -v -s tests/
 - ctest -C "%CMAKE_CONFIG%" --output-on-failure
