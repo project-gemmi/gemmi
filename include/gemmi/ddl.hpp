@@ -268,8 +268,8 @@ bool DDL::do_validate(Document& doc, Output& out, bool quiet) {
         if (!tc.validate_value(item.pair[1], &msg))
           err(b, item, msg);
       } else if (item.type == ItemType::Loop) {
-        const int ncol = item.loop.tags.size();
-        for (int i = 0; i != ncol; i++) {
+        const size_t ncol = item.loop.tags.size();
+        for (size_t i = 0; i != ncol; i++) {
           const std::string& tag = item.loop.tags[i];
           Block* dict_block = find_rules(tag);
           if (!dict_block) {

@@ -267,7 +267,7 @@ template<typename Rule> struct MultiSearch : Search<Rule> {};
 template<> struct MultiSearch<rules::tag> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     const std::string s = in.string();
-    for (size_t i = 0; i != p.multi_tags.size(); ++i)
+    for (int i = 0; i < static_cast<int>(p.multi_tags.size()); ++i)
       if (p.multi_tags[i] == s)
         p.match_value = i + 1;
   }

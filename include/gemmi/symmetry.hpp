@@ -303,7 +303,7 @@ struct GroupOps {
   std::vector<Op> sym_ops;
   std::vector<Op::Tran> cen_ops;
 
-  int order() const { return sym_ops.size() * cen_ops.size(); }
+  int order() const { return static_cast<int>(sym_ops.size()*cen_ops.size()); }
 
   void add_missing_elements();
 
@@ -342,7 +342,7 @@ struct GroupOps {
           for (auto& j : i)
             j /= den;
       // the centering must have changed
-      for (int i = cen_ops.size() - 1; i >= 0; --i)
+      for (int i = static_cast<int>(cen_ops.size()) - 1; i >= 0; --i)
         for (int j = i - 1; j >= 0; --j)
           if (cen_ops[i] == cen_ops[j]) {
             cen_ops.erase(cen_ops.begin() + i);
