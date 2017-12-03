@@ -16,9 +16,10 @@ environment:
 build_script:
 - cmake -G "%CMAKE_GENERATOR" .
 - cmake --build . --config %CMAKE_CONFIG%
-- %PYEXE% python setup.py sdist
-- %PYEXE% -m pip install --verbose dist\gemmi-*.tar.gz
+- ps: |
+    $env:PYEXE setup.py sdist
+    $env:PYEXE -m pip install --verbose dist\gemmi-*.tar.gz
 
 test_script:
-- %PYEXE% -m unittest discover -v -s tests/
+- ps: $env:PYEXE -m unittest discover -v -s tests/
 - cmake --build . --config %CMAKE_CONFIG% --target test
