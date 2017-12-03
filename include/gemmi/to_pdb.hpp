@@ -165,7 +165,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
         const char* cname = chain.name_for_pdb().c_str();
         for (const Residue& res : chain.residues)
           if (res.is_cis)
-            if (const Residue* next = res.next_bonded_aa())
+            if (const Residue* next = res.next_bonded_aa()) {
               WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s\n",
                   ++counter,
                   res.name.c_str(), cname, impl::write_seq_id(buf8, res),
@@ -173,6 +173,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
                   st.models.size() > 1 ? model.name.c_str() : "0",
                   res.calculate_omega(*next) * (180. / 3.14159265358979323846),
                   "");
+            }
       }
   }
 

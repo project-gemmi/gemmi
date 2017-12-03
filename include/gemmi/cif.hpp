@@ -15,6 +15,14 @@
 
 #include "cifdoc.hpp" // for Document, etc
 
+#if defined(_MSC_VER)
+#pragma warning(push)
+// warning C4244: an integer type is converted to a smaller integer type
+#pragma warning(disable: 4244)
+// warning C4267: conversion from 'size_t' to 'type', possible loss of data
+#pragma warning(disable: 4267)
+#endif
+
 namespace gemmi {
 namespace cif {
 using std::size_t;
@@ -263,6 +271,10 @@ bool check_syntax_any(T&& input, std::string* msg) {
   pegtl::file_input<> in(input.path());
   return check_syntax(in, msg);
 }
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 } // namespace cif
 } // namespace gemmi

@@ -18,11 +18,12 @@ build_script:
 - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (del "C:\Program Files (x86)\MSBuild\14.0\Microsoft.Common.targets\ImportAfter\Xamarin.Common.targets")
 - cmake -G "%CMAKE_GENERATOR%" .
 - cmake --build . --config %CMAKE_CONFIG%
-- py -m pip install .
 - py --version
-- ps: |
-    "$env:PYEXE" setup.py sdist
-    "$env:PYEXE" -m pip install --verbose dist\gemmi-*.tar.gz
+- py -c "import sys; print(sys.executable)"
+- py setup.py sdist
+- py -m pip install --verbose dist\gemmi-*.tar.gz
+- py -2 --version
+- py -2 -c "import sys; print(sys.executable)"
 
 test_script:
 - py -m unittest discover -v -s tests/
