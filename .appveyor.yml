@@ -14,7 +14,7 @@ environment:
       PYEXE: C:\Python36-x64\python.exe
 
 build_script:
-- cmake -G "%CMAKE_GENERATOR" .
+- cmake -G "%CMAKE_GENERATOR%" .
 - cmake --build . --config %CMAKE_CONFIG%
 - ps: |
     $env:PYEXE setup.py sdist
