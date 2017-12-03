@@ -1,0 +1,24 @@
+version: '{branch}-{build}'
+
+environment:
+  matrix:
+    - arch: x86
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+      CMAKE_GENERATOR: Visual Studio 14 2015
+      CMAKE_CONFIG: Debug
+      PYEXE: C:\Python36\python.exe
+    - arch: x64
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      CMAKE_GENERATOR: Visual Studio 15 2017 Win64
+      CMAKE_CONFIG: Release
+      PYEXE: C:\Python36-x64\python.exe
+
+build_script:
+- cmake -G "%CMAKE_GENERATOR" .
+- cmake --build . --config %CMAKE_CONFIG%
+- %PYEXE% python setup.py sdist
+- %PYEXE% -m pip install --verbose dist\gemmi-*.tar.gz
+
+test_script:
+- %PYEXE% -m unittest discover -v -s tests/
+- cmake --build . --config %CMAKE_CONFIG% --target test
