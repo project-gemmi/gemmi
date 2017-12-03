@@ -233,13 +233,14 @@ inline Structure structure_from_cif_block(cif::Block& block) {
 
   auto chain_to_entity = block.find("_struct_asym.", {"id", "entity_id"});
   for (Model& mod : st.models)
-    for (Chain& ch : mod.chains)
+    for (Chain& ch : mod.chains) {
       try {
         std::string ent_id = chain_to_entity.find_row(ch.name).str(1);
         ch.entity = st.find_or_add_entity(ent_id);
       } catch (std::runtime_error&) {  // maybe _struct_asym is missing
         ch.entity = nullptr;
       }
+    }
   st.finish();
 
   for (auto row : block.find("_struct_mon_prot_cis.",

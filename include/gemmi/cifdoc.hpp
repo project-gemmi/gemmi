@@ -19,6 +19,14 @@
 #include <unordered_set>
 #include <vector>
 
+#if defined(_MSC_VER)
+#pragma warning(push)
+// warning C4244: an integer type is converted to a smaller integer type
+#pragma warning(disable: 4244)
+// warning C4267: conversion from 'size_t' to 'type', possible loss of data
+#pragma warning(disable: 4267)
+#endif
+
 namespace gemmi {
 namespace cif {
 using std::size_t;
@@ -815,6 +823,10 @@ inline std::string quote(std::string v) {
     return '"' + v + '"';
   return ";" + v + "\n;";
 }
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 } // namespace cif
 } // namespace gemmi
