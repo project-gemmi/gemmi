@@ -104,6 +104,10 @@ class BuildExt(build_ext):
 
     if sys.platform == 'darwin':
         c_opts['unix'] += ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+    elif sys.platform == 'win32' and sys.version_info[0] == 2:
+        # without these variables distutils insist on using VS 2008
+        os.environ['DISTUTILS_USE_SDK'] = '1'
+        os.environ['MSSdk'] = '1'
 
     def build_extensions(self):
         ct = self.compiler.compiler_type
