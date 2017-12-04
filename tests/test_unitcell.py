@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
-from math import pi, isnan
+from math import pi  # , isnan
 from random import random
 from gemmi import Position, calculate_dihedral
 
@@ -28,14 +28,14 @@ class TestAngles(unittest.TestCase):
 
     def test_dihedral(self):
         # based on from https://stackoverflow.com/questions/20305272/
-        p0 = Position(24.969, 13.428, 30.692) # N
-        p1 = Position(24.044, 12.661, 29.808) # CA
-        p2 = Position(22.785, 13.482, 29.543) # C
-        p3 = Position(21.951, 13.670, 30.431) # O
-        p4 = Position(23.672, 11.328, 30.466) # CB
-        p5 = Position(22.881, 10.326, 29.620) # CG
-        p6 = Position(23.691,  9.935, 28.389) # CD1
-        p7 = Position(22.557,  9.096, 30.459) # CD2
+        p0 = Position(24.969, 13.428, 30.692)  # N
+        p1 = Position(24.044, 12.661, 29.808)  # CA
+        p2 = Position(22.785, 13.482, 29.543)  # C
+        p3 = Position(21.951, 13.670, 30.431)  # O
+        p4 = Position(23.672, 11.328, 30.466)  # CB
+        p5 = Position(22.881, 10.326, 29.620)  # CG
+        p6 = Position(23.691,  9.935, 28.389)  # CD1
+        p7 = Position(22.557,  9.096, 30.459)  # CD2
         def check_dihedral(a, b, c, d, angle):
             deg = calculate_dihedral(a, b, c, d) * 180 / pi
             self.assertAlmostEqual(deg, angle, places=4)

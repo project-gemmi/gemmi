@@ -51,7 +51,6 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(row[2], '1')
         self.assertTrue("None" in repr(row))
 
-
     def test_find_values(self):
         v1 = cif.read_string('data_a _v1 one')[0].find_values('_v1')
         gc.collect()
@@ -136,8 +135,8 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(categories[0], '_entry.')
         self.assertEqual(len(categories), 72)
         exptl = block.find_mmcif_category('_exptl')
-        self.assertEqual(list(exptl.tags),
-                ['_exptl.entry_id', '_exptl.method', '_exptl.crystals_number'])
+        self.assertEqual(list(exptl.tags), ['_exptl.entry_id', '_exptl.method',
+                                            '_exptl.crystals_number'])
         self.assertEqual(len(exptl), 1)
         self.assertEqual(exptl.width(), 3)
         exptl = block.find_mmcif_category('_exptl')

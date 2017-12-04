@@ -69,14 +69,14 @@ def main():
         assert ccp4 == 0 or ccp4 % 1000 == num
         if ccp4 == num:
             if basisop != 'x,y,z':
-                pass #print(ccp4, basisop)
+                pass  # print(ccp4, basisop)
         if basisop != 'x,y,z':
             if '(%s)' % basisop not in hall:
                 print('Hall symbol "%s" w/o basisop: %s' % (hall, basisop))
         hall_ops = gemmi.symops_from_hall(hall)
         assert len(hall_ops.cen_ops) == len(entry['cenops'])
-        assert set(gemmi.Op().translated(tr) for tr in hall_ops.cen_ops) == \
-               set(entry['cenops'])
+        assert (set(gemmi.Op().translated(tr) for tr in hall_ops.cen_ops) ==
+                set(entry['cenops']))
         assert len(hall_ops.sym_ops) == len(entry['symops'])
         # symops differ in about dozen cases but are the same modulo
         # centering vectors

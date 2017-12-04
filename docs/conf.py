@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 
 # -- General configuration ------------------------------------------------
 
@@ -28,7 +29,6 @@ highlight_language = 'c++'
 
 # -- Options for HTML output ----------------------------------------------
 
-import os
 if not os.environ.get('READTHEDOCS'):
     html_theme = 'sphinx_rtd_theme'
     #import cloud_sptheme as csp
@@ -59,7 +59,7 @@ latex_documents = [
 
 
 # monkey-patch doctest to set the language
-import sphinx.ext.doctest
+import sphinx.ext.doctest  # noqa: E402
 
 def DoctestDirective_run(self):
     nodes = sphinx.ext.doctest.TestDirective.run(self)

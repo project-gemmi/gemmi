@@ -52,8 +52,7 @@ def plot(our_csv):
             # skip entries with inconsistent Vs and Vm
             if vm == 0 or abs(vs - 100 * (1 - 1.23 / vm)) > 1.0:
                 continue
-            #if row['date'] < '2015-01-01':
-            if row['date'] >= '2015-01-01': # and not row['group']:
+            if row['date'] >= '2015-01-01':  # and not row['group']:
                 x.append(d_min)
                 y.append(vs)
     print('Plotting kernel density estimation from', len(x), 'points.')

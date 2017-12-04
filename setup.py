@@ -40,8 +40,9 @@ if USE_SYSTEM_ZLIB:
 else:
     zlib_library = 'gemmi_zlib'
     zlib_include_dirs = ['third_party/zlib']
-    zlib_files = ['third_party/zlib/%s.c' % name for name in ['adler32',
-        'crc32', 'gzlib', 'gzread', 'inflate', 'inftrees', 'inffast', 'zutil']]
+    zlib_files = ['third_party/zlib/%s.c' % name for name in
+                  ['adler32', 'crc32', 'gzlib', 'gzread', 'inflate',
+                   'inftrees', 'inffast', 'zutil']]
     zlib_macros = [('NO_GZCOMPRESS', '1')]
     if os.name != 'nt':
         zlib_macros += [('Z_HAVE_UNISTD_H', '1')]
@@ -50,18 +51,17 @@ else:
 
 ext_modules = [
     Extension('gemmi',
-        ['python/%s.cpp' % name for name in
-            ['gemmi', 'cif', 'cif_read', 'sym', 'mm']],
-        include_dirs=zlib_include_dirs + [
-            'include',
-            'third_party',
-            # Path to pybind11 headers
-            get_pybind_include(),
-            get_pybind_include(user=True)
-        ],
-        libraries=[zlib_library],
-        language='c++'
-    ),
+              ['python/%s.cpp' % name for name in
+                  ['gemmi', 'cif', 'cif_read', 'sym', 'mm']],
+              include_dirs=zlib_include_dirs + [
+                  'include',
+                  'third_party',
+                  # Path to pybind11 headers
+                  get_pybind_include(),
+                  get_pybind_include(user=True)
+              ],
+              libraries=[zlib_library],
+              language='c++'),
 ]
 
 
@@ -114,7 +114,8 @@ class BuildExt(build_ext):
             if has_flag(self.compiler, '-fvisibility=hidden'):
                 opts.append('-fvisibility=hidden')
         elif ct == 'msvc':
-            opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
+            opts.append('/DVERSION_INFO=\\"%s\\"' %
+                        self.distribution.get_version())
         for ext in self.extensions:
             ext.extra_compile_args = opts
         build_ext.build_extensions(self)

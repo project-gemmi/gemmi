@@ -12,38 +12,38 @@ except ImportError:
 TDEN = gemmi.Op.TDEN
 
 CANONICAL_SINGLES = {
- "x"     : [ 1, 0, 0, 0],
- "z"     : [ 0, 0, 1, 0],
- "-y"    : [ 0,-1, 0, 0],
- "-z"    : [ 0, 0,-1, 0],
- "x-y"   : [ 1,-1, 0, 0],
- "-x+y"  : [-1, 1, 0, 0],
- "x+1/2" : [ 1, 0, 0, TDEN//2],
- "y+1/4" : [ 0, 1, 0, TDEN//4],
- "z+3/4" : [ 0, 0, 1, TDEN*3//4],
- "z+1/3" : [ 0, 0, 1, TDEN*1//3],
- "z+1/6" : [ 0, 0, 1, TDEN//6],
- "z+2/3" : [ 0, 0, 1, TDEN*2//3],
- "z+5/6" : [ 0, 0, 1, TDEN*5//6],
- "-x+1/4": [-1, 0, 0, TDEN//4],
- "-y+1/2": [ 0,-1, 0, TDEN//2],
- "-y+3/4": [ 0,-1, 0, TDEN*3//4],
- "-z+1/3": [ 0, 0,-1, TDEN//3],
- "-z+1/6": [ 0, 0,-1, TDEN//6],
- "-z+2/3": [ 0, 0,-1, TDEN*2//3],
- "-z+5/6": [ 0, 0,-1, TDEN*5//6],
+    "x"     : [ 1, 0, 0, 0],
+    "z"     : [ 0, 0, 1, 0],
+    "-y"    : [ 0,-1, 0, 0],
+    "-z"    : [ 0, 0,-1, 0],
+    "x-y"   : [ 1,-1, 0, 0],
+    "-x+y"  : [-1, 1, 0, 0],
+    "x+1/2" : [ 1, 0, 0, TDEN//2],
+    "y+1/4" : [ 0, 1, 0, TDEN//4],
+    "z+3/4" : [ 0, 0, 1, TDEN*3//4],
+    "z+1/3" : [ 0, 0, 1, TDEN*1//3],
+    "z+1/6" : [ 0, 0, 1, TDEN//6],
+    "z+2/3" : [ 0, 0, 1, TDEN*2//3],
+    "z+5/6" : [ 0, 0, 1, TDEN*5//6],
+    "-x+1/4": [-1, 0, 0, TDEN//4],
+    "-y+1/2": [ 0,-1, 0, TDEN//2],
+    "-y+3/4": [ 0,-1, 0, TDEN*3//4],
+    "-z+1/3": [ 0, 0,-1, TDEN//3],
+    "-z+1/6": [ 0, 0,-1, TDEN//6],
+    "-z+2/3": [ 0, 0,-1, TDEN*2//3],
+    "-z+5/6": [ 0, 0,-1, TDEN*5//6],
 }
 
 OTHER_SINGLES = {
- # order and letter case may vary
- "Y-x"   : [-1, 1, 0,  0],
- "-X"    : [-1, 0, 0,  0],
- "-1/2+Y": [ 0, 1, 0, -TDEN//2],
- # we want to handle non-crystallographic translations
- "x+3"   : [ 1, 0, 0,  TDEN*3],
- "1+Y"   : [ 0, 1, 0,  TDEN],
- "-2+Y"  : [ 0, 1, 0, -TDEN*2],
- "-z-5/6": [ 0, 0,-1, -TDEN*5//6],
+    # order and letter case may vary
+    "Y-x"   : [-1, 1, 0,  0],
+    "-X"    : [-1, 0, 0,  0],
+    "-1/2+Y": [ 0, 1, 0, -TDEN//2],
+    # we want to handle non-crystallographic translations
+    "x+3"   : [ 1, 0, 0,  TDEN*3],
+    "1+Y"   : [ 0, 1, 0,  TDEN],
+    "-2+Y"  : [ 0, 1, 0, -TDEN*2],
+    "-z-5/6": [ 0, 0,-1, -TDEN*5//6],
 }
 
 
@@ -89,7 +89,7 @@ class TestSymmetry(unittest.TestCase):
             op = gemmi.Op(xyz)
             self.assertEqual(op * op.inverse(), 'x,y,z')
             self.assertEqual(op.inverse().inverse(), op)
-        op = gemmi.Op("-y+z,x+z,-x+y+z") # det=3
+        op = gemmi.Op("-y+z,x+z,-x+y+z")  # det=3
         self.assertRaises(RuntimeError, op.inverse)
 
     def test_generators_from_hall(self):
@@ -132,7 +132,6 @@ class TestSymmetry(unittest.TestCase):
         for sg in gemmi.spacegroup_table():
             if sg.ccp4 != 0:
                 self.assertEqual(sg.ccp4 % 1000, sg.number)
-
 
     def test_find_spacegroup(self):
         self.assertEqual(gemmi.SpaceGroup('P21212').hm, 'P 21 21 2')

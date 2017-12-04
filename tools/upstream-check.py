@@ -38,7 +38,7 @@ def check_recent_commits():
     since = datetime.datetime.now() - datetime.timedelta(days=30)
     for repo, filename in NOT_TAGGED_REPOS.items():
         url = 'https://api.github.com/repos/%s/commits?path=%s&since=%s' % (
-                repo, filename, since)
+              repo, filename, since)
         response = urllib.urlopen(url)
         data = json.load(response)
         info = '-'
