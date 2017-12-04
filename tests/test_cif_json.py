@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import io
 import json
 import unittest
 
@@ -11,17 +12,17 @@ def nonempty_lines(s):
 
 class TestCifAsJson(unittest.TestCase):
   def setUp(self):
-    self.basename = os.path.join(os.path.dirname(__file__), "misc")
+    self.basename = os.path.join(os.path.dirname(__file__), 'misc')
   def test_misc(self):
-    cif_doc = gemmi.cif.read_file(self.basename + ".cif")
+    cif_doc = gemmi.cif.read_file(self.basename + '.cif')
     json_str = cif_doc.as_json()
     json_from_cif = json.loads(json_str)
-    with open(self.basename + ".json") as f:
+    with io.open(self.basename + '.json', encoding='utf-8') as f:
       reference_json = json.load(f)
     self.assertEqual(json_from_cif, reference_json)
 
   def test_cif_as_string(self):
-    with open(self.basename + ".cif", 'rb') as f:
+    with open(self.basename + '.cif', 'rb') as f:
       cif_orig = f.read().decode('utf-8').replace('\r\n', '\n')
     cif_doc = gemmi.cif.read_string(cif_orig)
     formatting_changes = {
