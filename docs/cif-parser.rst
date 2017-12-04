@@ -545,15 +545,9 @@ Python Module
 
 .. highlight:: python
 
-Both Python 2.7 and 3.x are supported (PyPy has not been tested yet).
-To install the gemmi module you need pip, git and not too old
-C++ compiler (GCC 4.8+, Clang 3.4+, MSVC 2015+, ICC 16+)::
-
-    pip install git+https://github.com/project-gemmi/gemmi.git
-
-(when the project is more mature and has regular releases, it will be simply
-``pip install gemmi``).
-
+Python module for Python 2.7 and 3.x (PyPy is yet to be tested)
+can be installed with pip, as described in the
+:ref:`Installation <install_py>` section.
 After installation ``pydoc gemmi.cif`` should list all classes and methods.
 
 To start with a simple example, here is a program that says hello to each

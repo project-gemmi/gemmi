@@ -55,6 +55,8 @@ If you want Gemmi to uncompress gzipped files on the fly
 (i.e. if you ``#include <gemmi/gz.hpp>``)
 you will also need to link your program with the zlib library.
 
+.. _install_py:
+
 Python 2.7/3.x module
 ---------------------
 
@@ -65,6 +67,21 @@ C++ compiler (GCC 4.8+, Clang 3.4+, MSVC 2015+, ICC 16+)::
 
 (when the project is more mature and has regular releases, it will be simply
 ``pip install gemmi``).
+
+Alternatively, clone the `project <https://github.com/project-gemmi/gemmi/>`_
+or download a zip file, and from the top-level directory do::
+
+    pip install .
+
+On Windows Python 3.5+ should automatically find an appropriate compiler
+(MSVC 2015+) . If the compiler is not installed, pip shows a message
+with a download link.
+For Python 2.7 pip prefers MSVC 2008, which is too old to compile gemmi.
+You may still use MSVC 2015 or 2017, but before invoking pip you need to
+set the compiler environment with one of these commands::
+
+    "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" x64
+    "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat"
 
 Fortran 2003+
 -------------
