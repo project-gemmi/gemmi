@@ -571,12 +571,17 @@ int main(int argc, char **argv) {
       params.last_block = p.options[OneBlock];
       file_count++;
     } else {
-      DirWalker walker(path.c_str());
-      for (const tinydir_file& f : walker) {
-        if (walker.is_file() || is_cif_file(f)) {
-          grep_file(f.path, params, err_count);
-          file_count++;
+      try {
+        DirWalker walker(path.c_str());
+        for (const tinydir_file& f : walker) {
+          if (walker.is_file() || is_cif_file(f)) {
+            grep_file(f.path, params, err_count);
+            file_count++;
+          }
         }
+      } catch (std::runtime_error &e) {
+        fprintf(stderr, "Error: %s\n", e.what());
+        return 2;
       }
     }
   }
