@@ -21,7 +21,10 @@ build_script:
 - py -3 -c "import sys; print(sys.version+'\n'+sys.executable)"
 - py -3 -m pip install .
 - py -2 setup.py sdist
+- cmd: '"%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
+- py -2 -m pip install .
 
 test_script:
-- py -3 -m unittest discover -v -s tests/
 - ctest -C "%CMAKE_CONFIG%" --output-on-failure
+- py -3 -m unittest discover -v -s tests/
+- py -2 -m unittest discover -v -s tests/
