@@ -50,7 +50,7 @@ class TestSpecialFilename(unittest.TestCase):
         doc = cif.read_file(path)
         self.assertEqual(doc[0].find_value('_tricky'), 'filename')
     def test_open_json(self):
-        if os.name == 'nt': return
+        #if os.name == 'nt': return
         path = os.path.join(os.path.dirname(__file__), u'3≈π.json')
         doc = cif.read_mmjson(path)
         self.assertEqual(doc[0].find_value('_cat.one'), '1')

@@ -16,6 +16,11 @@
 #include <string>
 #include <vector>
 
+#if defined(_WIN32) && defined(GEMMI_WINDOWS_PATHS_IN_UTF8)
+#include <locale>
+#include <codecvt>
+#endif
+
 namespace gemmi {
 
 inline bool ends_with(const std::string& str, const std::string& suffix) {
@@ -118,8 +123,11 @@ typedef std::unique_ptr<FILE, decltype(&std::fclose)> fileptr_t;
 
 inline fileptr_t file_open(const char *path, const char *mode) {
   std::FILE* file;
-#ifdef _WIN32
-  if (::fopen_s(&file, path, mode) != 0)
+#if defined(_WIN32) && defined(GEMMI_WINDOWS_PATHS_IN_UTF8)
+  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> convert;
+  std::wstring wpath = convert.from_bytes(path);
+  std::wstring wmode = convert.from_bytes(mode);
+  if ((file = ::_wfopen(wpath.c_str(), wmode.c_str())) == nullptr)
 #else
   if ((file = std::fopen(path, mode)) == nullptr)
 #endif
