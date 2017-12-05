@@ -17,12 +17,11 @@ build_script:
 - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (del "C:\Program Files (x86)\MSBuild\14.0\Microsoft.Common.targets\ImportAfter\Xamarin.Common.targets")
 - cmake -G "%CMAKE_GENERATOR%" .
 - cmake --build . --config %CMAKE_CONFIG%
-- py -2 -c "import sys; print(sys.version+'\n'+sys.executable)"
 - py -3 -c "import sys; print(sys.version+'\n'+sys.executable)"
-- py -3 -m pip install .
-- py -2 setup.py sdist
+- py -3 -m pip install --upgrade .
 - cmd: '"%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
-- py -2 -m pip install .
+- py -2 -c "import sys; print(sys.version+'\n'+sys.executable)"
+- py -2 -m pip install --upgrade .
 
 test_script:
 - ctest -C "%CMAKE_CONFIG%" --output-on-failure
