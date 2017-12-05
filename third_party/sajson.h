@@ -528,7 +528,7 @@ namespace sajson {
     };
 
     enum error {
-        ERROR_SUCCESS,
+        ERROR_SUCCESS_,
         ERROR_OUT_OF_MEMORY,
         ERROR_UNEXPECTED_END,
         ERROR_MISSING_ROOT_ELEMENT,
@@ -562,7 +562,7 @@ namespace sajson {
             , root(root)
             , error_line(0)
             , error_column(0)
-            , error_code(ERROR_SUCCESS)
+            , error_code(ERROR_SUCCESS_)
             , error_arg(0)
         {
             formatted_error_message[0] = 0;
@@ -644,7 +644,7 @@ namespace sajson {
         /// WARNING: Internal function which is subject to change
         const char* _internal_get_error_text() const {
             switch (error_code) {
-                case ERROR_SUCCESS: return "no error";
+                case ERROR_SUCCESS_: return "no error";
                 case ERROR_OUT_OF_MEMORY: return  "out of memory";
                 case ERROR_UNEXPECTED_END: return  "unexpected end of input";
                 case ERROR_MISSING_ROOT_ELEMENT: return  "missing root element";
