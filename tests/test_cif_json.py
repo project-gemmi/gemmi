@@ -37,12 +37,23 @@ class TestCifAsJson(unittest.TestCase):
         cif_out = cif_doc.as_string()
         self.assertListEqual(nonempty_lines(cif_orig), nonempty_lines(cif_out))
 
+class TestMmjson(unittest.TestCase):
+    def test_read(self):
+        path = os.path.join(os.path.dirname(__file__), '1pfe.json')
+        doc = cif.read_mmjson(path)
+        self.assertEqual(doc[0].find_value('_entry.id'), '1PFE')
+
 class TestSpecialFilename(unittest.TestCase):
-    def test_open(self):
+    def test_open_cif(self):
         if os.name == 'nt': return
         path = os.path.join(os.path.dirname(__file__), u'gęś¼.cif')
         doc = cif.read_file(path)
         self.assertEqual(doc[0].find_value('_tricky'), 'filename')
+    def test_open_json(self):
+        if os.name == 'nt': return
+        path = os.path.join(os.path.dirname(__file__), u'3≈π.json')
+        doc = cif.read_mmjson(path)
+        self.assertEqual(doc[0].find_value('_cat.one'), '1')
 
 if __name__ == '__main__':
     unittest.main()

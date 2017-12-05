@@ -4,6 +4,7 @@
 #include "gemmi/cifdoc.hpp"
 #include "gemmi/gz.hpp"
 #include "gemmi/cif.hpp"
+#include "gemmi/json.hpp"
 
 #include <pybind11/pybind11.h>
 
@@ -16,6 +17,9 @@ void add_cif_read(py::module& cif) {
           "Reads a CIF file copying data into Document.");
   cif.def("read", [](const std::string& s) { return read(MaybeGzipped(s)); },
           py::arg("filename"), "Reads normal or gzipped CIF file.");
+  cif.def("read_mmjson", [](const std::string& s) {
+              return read_mmjson(MaybeGzipped(s));
+          }, py::arg("filename"), "Reads normal or gzipped CIF file.");
   cif.def("read_string", &read_string, py::arg("data"),
           "Reads a string as a CIF file.");
 
