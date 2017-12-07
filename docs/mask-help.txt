@@ -15,5 +15,6 @@ Options for making a mask from a map:
   -f, --fraction       The volume fraction to be above the threshold.
 
 Options for masking a model:
-  -g, --grid=NX,NY,NZ  Grid sampling (default: ~1A spacing).
+  -s, --spacing=D      Max. sampling for the grid (default: 1A).
+  -g, --grid=NX,NY,NZ  Grid sampling.
   -r, --radius         Radius of atom spheres (default: 3.0A).

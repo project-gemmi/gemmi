@@ -1326,6 +1326,10 @@ inline const SpaceGroup& get_spacegroup_by_name(const std::string& name) {
   return *sg;
 }
 
+inline const SpaceGroup& get_spacegroup_p1() {
+  return spacegroup_tables::main[0];
+}
+
 inline const SpaceGroup* find_spacegroup_by_ops(const GroupOps& gops) {
   char c = gops.find_centering();
   for (const SpaceGroup& sg : spacegroup_tables::main)

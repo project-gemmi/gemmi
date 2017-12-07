@@ -45,6 +45,7 @@ inline double calculate_dihedral(const Position& p0, const Position& p1,
 struct UnitCell {
   double a = 1.0, b = 1.0, c = 1.0;
   double alpha = 90.0, beta = 90.0, gamma = 90.0;
+  constexpr double operator[](int i) const { return (&a)[i]; }
   Matrix33 orth = {1., 0., 0., 0., 1., 0., 0., 0., 1.};
   Matrix33 frac = {1., 0., 0., 0., 1., 0., 0., 0., 1.};
   Position shift = {0., 0., 0.};

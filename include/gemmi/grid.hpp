@@ -14,6 +14,7 @@
 #include <typeinfo>  // for typeid
 #include <vector>
 #include "unitcell.hpp"
+#include "symmetry.hpp"
 #include "util.hpp"  // for fail, file_open
 
 namespace gemmi {
@@ -30,29 +31,55 @@ struct GridStats {
   double rms = NAN;
 };
 
+inline bool has_small_factorization(int n) {
+  for (int k : {2, 3, 5})
+    while (n % k == 0)
+      n /= k;
+  return n == 1 || n == -1;
+}
+
 // For now, for simplicity, the grid covers whole unit cell
 // and space group is P1.
 template<typename T=float>
 struct Grid {
   int nu, nv, nw;
   UnitCell unit_cell;
+  const SpaceGroup* space_group;
   std::vector<T> data;
   double spacing[3];
   GridStats stats;
   // stores raw headers if the grid was read from ccp4 map
   std::vector<char> ccp4_header;
 
-  void set_size(int u, int v, int w) {
+  void set_size_without_checking(int u, int v, int w) {
     nu = u, nv = v, nw = w;
     data.resize(u * v * w);
     spacing[0] = 1.0 / (nu * unit_cell.ar);
     spacing[1] = 1.0 / (nv * unit_cell.br);
     spacing[2] = 1.0 / (nw * unit_cell.cr);
   }
-  void set_spacing(double sp) {
-    set_size(iround(unit_cell.a / sp),
-             iround(unit_cell.b / sp),
-             iround(unit_cell.c / sp));
+
+  void set_size(int u, int v, int w) {
+    if (space_group) {
+      auto factors = space_group->operations().find_grid_factors();
+      if (u % factors[0] != 0 || v % factors[1] != 0 || w % factors[2] != 0)
+        fail("Grid not compatible with the space group " + space_group->xhm());
+    }
+    set_size_without_checking(u, v, w);
+  }
+
+  void set_spacing(double max_spacing) {
+    const SpaceGroup& sg = space_group ? *space_group : get_spacegroup_p1();
+    std::array<int, 3> sg_fac = sg.operations().find_grid_factors();
+    int m[3];
+    for (int i = 0; i != 3; ++i) {
+      int f = std::max(2, sg_fac[i]);
+      int n = int(std::ceil(unit_cell[i] / (max_spacing * f)));
+      while (!has_small_factorization(n))
+        ++n;
+      m[i] = n * f;
+    }
+    set_size_without_checking(m[0], m[1], m[2]);
   }
 
   T& node(int u, int v, int w) {

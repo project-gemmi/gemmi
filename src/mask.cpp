@@ -1,12 +1,14 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/grid.hpp"
+#include "gemmi/symmetry.hpp"
 #include "input.h"
 #include <cstdlib>  // for strtod
 #define EXE_NAME "gemmi-mask"
 #include "options.h"
 
-enum OptionIndex { Verbose=3, FormatIn, Threshold, Fraction, GridDims, Radius };
+enum OptionIndex { Verbose=3, FormatIn, Threshold, Fraction, GridSpac,
+                   GridDims, Radius };
 
 struct MaskArg {
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
@@ -32,8 +34,10 @@ static const option::Descriptor Usage[] = {
   { Fraction, 0, "f", "fraction", Arg::Float,
     "  -f, --fraction  \tThe volume fraction to be above the threshold." },
   { NoOp, 0, "", "", Arg::None, "\nOptions for masking a model:" },
+  { GridSpac, 0, "s", "spacing", Arg::Float,
+    "  -s, --spacing=D  \tMax. sampling for the grid (default: 1A)." },
   { GridDims, 0, "g", "grid", Arg::Int3,
-    "  -g, --grid=NX,NY,NZ  \tGrid sampling (default: ~1A spacing)." },
+    "  -g, --grid=NX,NY,NZ  \tGrid sampling." },
   { Radius, 0, "r", "radius", Arg::Float,
     "  -r, --radius  \tRadius of atom spheres (default: 3.0A)." },
   { 0, 0, 0, 0, 0, 0 }
@@ -81,6 +85,10 @@ int main(int argc, char **argv) {
                          " Use --from=...");
     return 1;
   }
+  if (p.options[GridDims] && p.options[GridSpac]) {
+    std::fprintf(stderr, "Options --grid and --spacing are exclusive.");
+    return 1;
+  }
 
   try {
     // map -> mask
@@ -115,15 +123,37 @@ int main(int argc, char **argv) {
       double radius = (p.options[Radius]
                        ? std::strtod(p.options[Radius].arg, nullptr)
                        : 3.0);
-
       gemmi::Structure st = read_structure(input);
       gemmi::Grid<> grid;
       grid.unit_cell = st.cell;
+      grid.space_group = gemmi::find_spacegroup_by_name(st.sg_hm);
       if (p.options[GridDims]) {
         auto dims = parse_comma_separated_ints(p.options[GridDims].arg);
         grid.set_size(dims[0], dims[1], dims[2]);
       } else {
-        grid.set_spacing(1);
+        double spac = 1;
+        if (p.options[GridSpac])
+          spac = std::strtod(p.options[GridSpac].arg, nullptr);
+        grid.set_spacing(spac);
+      }
+      if (p.options[Verbose]) {
+        std::fprintf(stderr, "Grid: %d x %d x %d\n", grid.nu, grid.nv, grid.nw);
+        std::fprintf(stderr, "Spacing along axes: %.3f, %.3f, %.3f\n",
+                              st.cell.a / grid.nu, st.cell.b / grid.nv,
+                              st.cell.c / grid.nw);
+        int np = grid.data.size();
+        double vol = st.cell.volume;
+        std::fprintf(stderr, "Total points: %d\n", np);
+        std::fprintf(stderr, "Unit cell volume: %.1f A^3\n", vol);
+        std::fprintf(stderr, "Volume per point: %.3f A^3\n", vol / np);
+        if (grid.space_group) {
+          std::fprintf(stderr, "Spacegroup: %s\n", grid.space_group->hm);
+          int na = grid.space_group->operations().order();
+          std::fprintf(stderr, "ASU volume: %.1f A^3\n", vol / na);
+          std::fprintf(stderr, "Points per ASU: %d\n", np / na);
+        } else {
+          std::fprintf(stderr, "No spacegroup\n");
+        }
       }
       if (st.models.size() > 1)
         std::fprintf(stderr, "Note: only the first model is used.\n");
