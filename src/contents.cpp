@@ -21,7 +21,7 @@ void print_content_info(const Structure& st, bool /*verbose*/) {
   } else {
     std::fprintf(stderr, "Unrecognized space group name! Assuming P1.\n");
   }
-  double n_molecules = order * st.get_ncs_multiplier();;
+  double n_molecules = order * st.get_ncs_multiplier();
   printf(" Number of molecules: %8g\n", n_molecules);
   printf(" Cell volume: %20.3f\n", st.cell.volume);
   printf(" ASU volume:  %20.3f\n", st.cell.volume / order);
