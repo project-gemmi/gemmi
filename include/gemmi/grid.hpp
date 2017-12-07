@@ -82,8 +82,11 @@ struct Grid {
     set_size_without_checking(m[0], m[1], m[2]);
   }
 
-  T& node(int u, int v, int w) {
-#if 1
+  int index(int u, int v, int w) {
+    return w * nu * nv + v * nu + u;
+  }
+
+  int wrapped_index(int u, int v, int w) {
     if (u >= nu)
       u -= nu;
     else if (u < 0)
@@ -96,9 +99,12 @@ struct Grid {
       w -= nw;
     else if (w < 0)
       w += nw;
-#endif
-    int idx = w * nu * nv + v * nu + u;
-    return data[idx];
+    return index(u, v, w);
+  }
+
+  int symmetric_index(int u, int v, int w, const Op& op) {
+    //TODO apply symmetry to u v w
+    return wrapped_index(u, v, w);
   }
 
   void set_points_around(const Position& ctr, double radius, T value) {
@@ -138,7 +144,7 @@ struct Grid {
             fdelta.z += 1.0;
           Position d = unit_cell.orthogonalize(fdelta);
           if (d.x*d.x + d.y*d.y + d.z*d.z < radius*radius) {
-            node(u, v, w) = value;
+            data[wrapped_index(u, v, w)] = value;
           }
         }
   }
@@ -146,6 +152,40 @@ struct Grid {
   void make_zeros_and_ones(double threshold) {
     for (auto& d : data)
       d = d > threshold ? 1 : 0;
+  }
+
+  void apply_max_to_symmetric_points() {
+    if (!space_group)
+      return;
+    std::vector<Op> ops;
+    GroupOps group_ops = space_group->operations();
+    for (Op op : space_group->operations())
+      ops.emplace_back(op);
+    int n_mates = ops.size();
+    int len = data.size();
+    std::vector<int> mates(n_mates, 0);
+    std::vector<bool> visited(len, false);
+    int idx = -1;
+    for (int w = 0; w != nw; ++w)
+      for (int v = 0; v != nv; ++v)
+        for (int u = 0; u != nu; ++u) {
+          ++idx;
+          assert(idx == index(u, v, w));
+          if (visited[idx])
+            continue;
+          mates[0] = idx;
+          for (int k = 1; k != n_mates; ++k)
+            mates[k] = symmetric_index(u, v, w, ops[k]);
+          T value = data[idx];
+          for (int k : mates) {
+            assert(!visited[k]);
+            visited[k] = true;
+            if (data[k] > value)
+              value = data[k];
+          }
+          for (int k : mates)
+            data[k] = value;
+        }
   }
 
   GridStats calculate_statistics() const;
