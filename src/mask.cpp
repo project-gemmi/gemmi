@@ -113,10 +113,12 @@ int main(int argc, char **argv) {
         std::fprintf(stderr, "You need to specify threshold (-t or -f).\n");
         return 2;
       }
-      size_t count = grid.write_ccp4_mask(output, threshold);
+      grid.make_zeros_and_ones(threshold);
+      size_t count = std::count(grid.data.begin(), grid.data.end(), 1);
       std::fprintf(stderr, "Masked %zu of %zu points (%.1f%%) above %g\n",
                    count, grid.data.size(), 100.0 * count / grid.data.size(),
                    threshold);
+      grid.write_ccp4_map(output, 0);
 
     // model -> mask
     } else {
@@ -162,8 +164,7 @@ int main(int argc, char **argv) {
           for (const gemmi::Atom& atom : res.atoms)
             grid.set_points_around(atom.pos, radius, 1.0);
       grid.stats = grid.calculate_statistics();
-      //grid.write_ccp4_mask(output, 0.5);
-      grid.write_ccp4_map(output);
+      grid.write_ccp4_map(output, 0);
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());

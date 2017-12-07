@@ -143,10 +143,15 @@ struct Grid {
         }
   }
 
+  void make_zeros_and_ones(double threshold) {
+    for (auto& d : data)
+      d = d > threshold ? 1 : 0;
+  }
+
   GridStats calculate_statistics() const;
   void read_ccp4(const std::string& path);
-  void write_ccp4_map(const std::string& path, int mode=2) const;
-  size_t write_ccp4_mask(const std::string& path, double threshold) const;
+  void write_ccp4_map(const std::string& path, int mode=2,
+                      bool only_asu=true) const;
 
   // methods to access info from ccp4 headers, w is word number from the spec
   int32_t header_i32(int w) const {
@@ -201,14 +206,6 @@ void write_data(const std::vector<TMem>& content, FILE* f) {
         fail("Failed to write data to the map file.");
     }
   }
-}
-
-template<typename Out, typename In>
-void write_arrays(const std::string& path, const std::vector<char>& header,
-                  const std::vector<In>& content) {
-  gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "wb");
-  std::fwrite(header.data(), sizeof(char), header.size(), f.get());
-  write_data<Out>(content, f.get());
 }
 
 template<typename T>
@@ -339,7 +336,7 @@ void Grid<T>::read_ccp4(const std::string& path) {
   if (mode == 0)
     impl::read_data<signed char>(f.get(), data);
   else if (mode == 1)
-    impl::read_data<int16_t>(f.get(), data);
+    impl::read_data<std::int16_t>(f.get(), data);
   else if (mode == 2)
     impl::read_data<float>(f.get(), data);
   else if (mode == 6)
@@ -353,31 +350,21 @@ void Grid<T>::read_ccp4(const std::string& path) {
 }
 
 template<typename T>
-void Grid<T>::write_ccp4_map(const std::string& path, int mode) const {
-  std::vector<char> header = impl::update_ccp4_header(*this, mode);
-  if (mode == 0)
-    impl::write_arrays<signed char>(path, header, data);
-  else if (mode == 1)
-    impl::write_arrays<int16_t>(path, header, data);
-  else if (mode == 2)
-    impl::write_arrays<float>(path, header, data);
-  else if (mode == 6)
-    impl::write_arrays<std::uint16_t>(path, header, data);
-  else
+void Grid<T>::write_ccp4_map(const std::string& path, int mode,
+                             bool only_asu) const {
+  if (mode != 0 && mode != 1 && mode != 2 && mode != 6)
     fail("Only modes 0, 1, 2 and 6 are supported.");
-}
-
-template<typename T>
-size_t Grid<T>::write_ccp4_mask(const std::string& path,
-                                double threshold) const {
-  size_t counter = 0;
-  std::vector<signed char> v(data.size());
-  for (size_t i = 0; i < data.size(); i++) {
-    v[i] = data[i] > threshold ? 1 : 0;
-    counter += v[i];
-  }
-  impl::write_arrays<signed char>(path, impl::update_ccp4_header(*this, 0), v);
-  return counter;
+  std::vector<char> header = impl::update_ccp4_header(*this, mode);
+  gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "wb");
+  std::fwrite(header.data(), sizeof(char), header.size(), f.get());
+  if (mode == 0)
+    impl::write_data<signed char>(data, f.get());
+  else if (mode == 1)
+    impl::write_data<std::int16_t>(data, f.get());
+  else if (mode == 2)
+    impl::write_data<float>(data, f.get());
+  else if (mode == 6)
+    impl::write_data<std::uint16_t>(data, f.get());
 }
 
 } // namespace gemmi
