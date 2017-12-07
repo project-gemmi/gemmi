@@ -178,5 +178,11 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(set(gemmi.SpaceGroup('Pbaa').operations()), set(gops))
         self.assertEqual(gemmi.find_spacegroup_by_ops(gops).hm, 'P b a a')
 
+    def test_find_grid_factors(self):
+        def fact(name):
+            return gemmi.SpaceGroup(name).operations().find_grid_factors()
+        self.assertEqual(fact('P21'), [1, 2, 1])
+        self.assertEqual(fact('P61'), [1, 1, 6])
+
 if __name__ == '__main__':
     unittest.main()

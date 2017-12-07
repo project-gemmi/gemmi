@@ -368,6 +368,18 @@ struct GroupOps {
     return all_ops_sorted() == other.all_ops_sorted();
   }
 
+  // minimal multiplicity for real-space grid in each direction
+  // examples: 1,2,1 for P21, 1,1,6 for P61
+  std::array<int, 3> find_grid_factors() {
+    const int T = Op::TDEN;
+    int r[3] = {T, T, T};
+    for (const Op& op : *this)
+      for (int i = 0; i != 3; ++i)
+        if (op.tran[i] != 0 && op.tran[i] < r[i])
+          r[i] = op.tran[i];
+    return {T / r[0], T / r[1], T / r[2]};
+  }
+
   struct Iter {
     const GroupOps& gops;
     int n_sym, n_cen;

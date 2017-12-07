@@ -9,3 +9,4 @@ PYTHONPATH=python python -m unittest discover -s tests
 # Where python 2 and 3 output differ, the docs have output from v3.
 # So 'make doctest' works only if sphinx-build was installed for python3.
 (cd docs && make doctest SPHINXOPTS="-q -n")
+flake8
