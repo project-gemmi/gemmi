@@ -31,21 +31,20 @@ template<typename T>
 void print_histogram(const std::vector<T>& data, double min, double max) {
 #ifdef USE_UNICODE
   std::setlocale(LC_ALL, "");
+  constexpr int rows = 12;
+#else
+  constexpr int rows = 24;
 #endif
-  int bins[81] = {0};
+  const int cols = 80; // TODO: use $COLUMNS
+  std::vector<int> bins(cols+1, 0);
   double delta = max - min;
   for (T d : data) {
-    int n = (int) std::floor((d - min) * (80 / delta));
-    bins[n >= 0 ? (n < 80 ? n : 79) : 0]++;
+    int n = (int) std::floor((d - min) * (cols / delta));
+    bins[n >= 0 ? (n < cols ? n : cols - 1) : 0]++;
   }
   double max_h = *std::max_element(std::begin(bins), std::end(bins));
-#ifdef USE_UNICODE
-  const int rows = 12;
-#else
-  const int rows = 24;
-#endif
   for (int i = rows; i > 0; --i) {
-    for (int j = 0; j < 80; ++j) {
+    for (int j = 0; j < cols; ++j) {
       double h = bins[j] / max_h * rows;
 #ifdef USE_UNICODE
       wint_t c = ' ';
@@ -106,7 +105,10 @@ void print_info(const gemmi::Grid<T>& grid) {
   size_t mpos = data.size() / 2;
   std::nth_element(data.begin(), data.begin() + mpos, data.end());
   std::printf("Median:                %12.5f\n", data[mpos]);
-  print_histogram(data, st.dmin, st.dmax);
+  bool mask = std::all_of(data.begin(), data.end(),
+                          [&st](T x) { return x == st.dmin || x == st.dmax; });
+  double margin = mask ? 7 * (st.dmax - st.dmin) : 0;
+  print_histogram(data, st.dmin - margin, st.dmax + margin);
   int nlabl = grid.header_i32(56);
   if (nlabl != 0)
     std::printf("\n");
