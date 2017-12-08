@@ -7,5 +7,6 @@ Gemmi - General MacroMolecular I/O
    cif-parser
    sym
    mol
-   xtal
+   grid
+   hkl
    utils

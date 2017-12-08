@@ -82,11 +82,9 @@ struct Grid {
     set_size_without_checking(m[0], m[1], m[2]);
   }
 
-  int index(int u, int v, int w) {
-    return w * nu * nv + v * nu + u;
-  }
+  int index(int u, int v, int w) const { return w * nu * nv + v * nu + u; }
 
-  int wrapped_index(int u, int v, int w) {
+  int wrapped_index(int u, int v, int w) const {
     if (u >= nu)
       u -= nu;
     else if (u < 0)
@@ -102,7 +100,7 @@ struct Grid {
     return index(u, v, w);
   }
 
-  int symmetric_index(int u, int v, int w, const Op& op) {
+  int symmetric_index(int u, int v, int w, const Op& op) const {
     //TODO apply symmetry to u v w
     return wrapped_index(u, v, w);
   }
@@ -374,7 +372,7 @@ void Grid<T>::read_ccp4(const std::string& path) {
 
   data.resize(nu * nv * nw);
   if (mode == 0)
-    impl::read_data<signed char>(f.get(), data);
+    impl::read_data<std::int8_t>(f.get(), data);
   else if (mode == 1)
     impl::read_data<std::int16_t>(f.get(), data);
   else if (mode == 2)
@@ -398,7 +396,7 @@ void Grid<T>::write_ccp4_map(const std::string& path, int mode,
   gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "wb");
   std::fwrite(header.data(), sizeof(char), header.size(), f.get());
   if (mode == 0)
-    impl::write_data<signed char>(data, f.get());
+    impl::write_data<std::int8_t>(data, f.get());
   else if (mode == 1)
     impl::write_data<std::int16_t>(data, f.get());
   else if (mode == 2)
