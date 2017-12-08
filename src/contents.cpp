@@ -22,9 +22,9 @@ void print_content_info(const Structure& st, bool /*verbose*/) {
     std::fprintf(stderr, "Unrecognized space group name! Assuming P1.\n");
   }
   double n_molecules = order * st.get_ncs_multiplier();
-  printf(" Number of molecules: %8g\n", n_molecules);
-  printf(" Cell volume: %20.3f\n", st.cell.volume);
-  printf(" ASU volume:  %20.3f\n", st.cell.volume / order);
+  printf(" Number of images (symmetry * strict NCS): %5g\n", n_molecules);
+  printf(" Cell volume [A^3]: %30.1f\n", st.cell.volume);
+  printf(" ASU volume [A^3]:  %30.1f\n", st.cell.volume / order);
   if (st.models.size() > 1)
     std::fprintf(stderr, "Warning: using only the first model out of %zu.\n",
                  st.models.size());
@@ -78,7 +78,7 @@ void print_content_info(const Structure& st, bool /*verbose*/) {
   double Na = 0.602214;  // Avogadro number x 10^-24 (cm^3->A^3)
   // rwcontents uses 1.34, Rupp's papers 1.35
   for (double ro : { 1.35, 1.34 })
-    printf(" Solvent %% (for protein density %g): %12.3f\n",
+    printf(" Solvent %% (for protein density %g): %13.3f\n",
            ro, 100. * (1. - 1. / (ro * Vm * Na)));
 }
 
@@ -129,8 +129,10 @@ int main(int argc, char **argv) {
       std::string input = p.nonOption(i);
       if (is_pdb_code(input))
         input = expand_pdb_code_to_path_or_fail(input);
-      if (verbose)
-        std::fprintf(stderr, "Reading %s ...\n", input.c_str());
+      if (i > 0)
+        std::printf("\n");
+      if (verbose || p.nonOptionsCount() > 1)
+        std::printf("File: %s\n", input.c_str());
       Structure st = read_structure(input);
       if (p.options[Dihedrals])
         print_dihedrals(st);
