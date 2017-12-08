@@ -5,7 +5,7 @@
 #ifndef GEMMI_UNITCELL_HPP_
 #define GEMMI_UNITCELL_HPP_
 
-#include <cmath>      // for cos, sin, sqrt
+#include <cmath>      // for cos, sin, sqrt, floor
 #include <linalg.h>
 #include "util.hpp"
 
@@ -13,6 +13,14 @@ namespace gemmi {
 
 struct Position {
   double x, y, z;
+  constexpr double operator[](int i) const { return (&x)[i]; }
+  double& operator[](int i) { return (&x)[i]; }
+  Position& wrap_to_unit() {
+    x -= std::floor(x);
+    y -= std::floor(y);
+    z -= std::floor(z);
+    return *this;
+  }
 };
 
 struct Matrix33 {
@@ -49,11 +57,11 @@ struct UnitCell {
   Matrix33 orth = {1., 0., 0., 0., 1., 0., 0., 0., 1.};
   Matrix33 frac = {1., 0., 0., 0., 1., 0., 0., 0., 1.};
   Position shift = {0., 0., 0.};
-  bool explicit_matrices = false;
   // volume and reciprocal parameters a*, b*, c*, alpha*, beta*, gamma*
   double volume = 1.0;
   double ar = 1.0, br = 1.0, cr = 1.0;
   double cos_alphar = 0.0, cos_betar = 0.0, cos_gammar = 0.0;
+  bool explicit_matrices = false;
 
   void calculate_properties() {
     constexpr double deg2rad = 3.1415926535897932384626433832795029 / 180.0;

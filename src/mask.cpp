@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
         double spac = 1;
         if (p.options[GridSpac])
           spac = std::strtod(p.options[GridSpac].arg, nullptr);
-        grid.set_spacing(spac);
+        grid.set_size_from_max_spacing(spac);
       }
       if (p.options[Verbose]) {
         std::fprintf(stderr, "Grid: %d x %d x %d\n", grid.nu, grid.nv, grid.nw);
@@ -163,7 +163,7 @@ int main(int argc, char **argv) {
         for (const gemmi::Residue& res : chain.residues)
           for (const gemmi::Atom& atom : res.atoms)
             grid.set_points_around(atom.pos, radius, 1.0);
-      grid.stats = grid.calculate_statistics();
+      grid.hstats = grid.calculate_statistics();
       grid.write_ccp4_map(output, 0);
     }
   } catch (std::runtime_error& e) {

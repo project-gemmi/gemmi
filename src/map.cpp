@@ -2,6 +2,7 @@
 
 #include "gemmi/grid.hpp"
 #include "gemmi/util.hpp"  // for trim_str
+#include "gemmi/symmetry.hpp"
 #include "input.h"
 #include <cmath>     // for floor
 #include <cstdlib>   // for strtod
@@ -73,18 +74,16 @@ void print_info(const gemmi::Grid<T>& grid) {
   std::printf("                             from: %5d %5d %5d\n", u0, v0, w0);
   std::printf("                               to: %5d %5d %5d\n",
               u0 + grid.nu - 1, v0 + grid.nv - 1, w0 + grid.nw - 1);
-  const char* xyz = "?XYZ";
   std::printf("Fast, medium, slow axes: %c %c %c\n",
-              xyz[grid.header_i32(17)],
-              xyz[grid.header_i32(18)],
-              xyz[grid.header_i32(19)]);
+              grid.axes[0], grid.axes[1], grid.axes[2]);
   int mx = grid.header_i32(8);
   int my = grid.header_i32(9);
   int mz = grid.header_i32(10);
   std::printf("Grid sampling on x, y, z: %5d %5d %5d          %8s %d points\n",
               mx, my, mz, "->", mx * my * mz);
   const gemmi::UnitCell& cell = grid.unit_cell;
-  std::printf("Space group number: %d\n", grid.header_i32(23));
+  const gemmi::SpaceGroup* sg = grid.space_group;
+  std::printf("Space group: %d  (%s)\n", sg->ccp4, sg ? sg->hm : "unknown");
   std::printf("Cell dimensions: %g %g %g  %g %g %g\n",
               cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma);
   int origin[3] = {
@@ -97,10 +96,10 @@ void print_info(const gemmi::Grid<T>& grid) {
 
   std::printf("\nStatistics from HEADER and DATA\n");
   gemmi::GridStats st = grid.calculate_statistics();
-  std::printf("Minimum: %12.5f  %12.5f\n", grid.stats.dmin, st.dmin);
-  std::printf("Maximum: %12.5f  %12.5f\n", grid.stats.dmax, st.dmax);
-  std::printf("Mean:    %12.5f  %12.5f\n", grid.stats.dmean, st.dmean);
-  std::printf("RMS:     %12.5f  %12.5f\n", grid.stats.rms, st.rms);
+  std::printf("Minimum: %12.5f  %12.5f\n", grid.hstats.dmin, st.dmin);
+  std::printf("Maximum: %12.5f  %12.5f\n", grid.hstats.dmax, st.dmax);
+  std::printf("Mean:    %12.5f  %12.5f\n", grid.hstats.dmean, st.dmean);
+  std::printf("RMS:     %12.5f  %12.5f\n", grid.hstats.rms, st.rms);
   std::vector<T> data = grid.data;
   size_t mpos = data.size() / 2;
   std::nth_element(data.begin(), data.begin() + mpos, data.end());

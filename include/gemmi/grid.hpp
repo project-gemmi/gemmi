@@ -44,10 +44,12 @@ template<typename T=float>
 struct Grid {
   int nu, nv, nw;
   UnitCell unit_cell;
+  char axes[3];  // fast, medium, slow axes as permutation of {'X', 'Y', 'Z'}
+  bool full_canonical; // grid for the whole unit cell with X,Y,Z order
   const SpaceGroup* space_group;
   std::vector<T> data;
   double spacing[3];
-  GridStats stats;
+  GridStats hstats;  // data statistics read from / written to ccp4 map
   // stores raw headers if the grid was read from ccp4 map
   std::vector<char> ccp4_header;
 
@@ -57,6 +59,8 @@ struct Grid {
     spacing[0] = 1.0 / (nu * unit_cell.ar);
     spacing[1] = 1.0 / (nv * unit_cell.br);
     spacing[2] = 1.0 / (nw * unit_cell.cr);
+    memcpy(axes, "XYZ", 3);
+    full_canonical = true;
   }
 
   void set_size(int u, int v, int w) {
@@ -68,7 +72,7 @@ struct Grid {
     set_size_without_checking(u, v, w);
   }
 
-  void set_spacing(double max_spacing) {
+  void set_size_from_max_spacing(double max_spacing) {
     const SpaceGroup& sg = space_group ? *space_group : get_spacegroup_p1();
     std::array<int, 3> sg_fac = sg.operations().find_grid_factors();
     int m[3];
@@ -84,33 +88,21 @@ struct Grid {
 
   int index(int u, int v, int w) const { return w * nu * nv + v * nu + u; }
 
-  int wrapped_index(int u, int v, int w) const {
-    if (u >= nu)
-      u -= nu;
-    else if (u < 0)
-      u += nu;
-    if (v >= nv)
-      v -= nv;
-    else if (v < 0)
-      v += nv;
-    if (w >= nw)
-      w -= nw;
-    else if (w < 0)
-      w += nw;
+  // quick-wrap assumes (for efficiency) that the index is not far from [0,nu).
+  int quick_wrapped_index(int u, int v, int w) const {
+    if (u >= nu) u -= nu; else if (u < 0) u += nu;
+    if (v >= nv) v -= nv; else if (v < 0) v += nv;
+    if (w >= nw) w -= nw; else if (w < 0) w += nw;
     return index(u, v, w);
   }
 
   int symmetric_index(int u, int v, int w, const Op& op) const {
     //TODO apply symmetry to u v w
-    return wrapped_index(u, v, w);
+    return quick_wrapped_index(u, v, w);
   }
 
   void set_points_around(const Position& ctr, double radius, T value) {
-    Position fctr = unit_cell.fractionalize(ctr);
-    fctr.x -= std::floor(fctr.x);
-    fctr.y -= std::floor(fctr.y);
-    fctr.z -= std::floor(fctr.z);
-#if 1
+    Position fctr = unit_cell.fractionalize(ctr).wrap_to_unit();
     int du = (int) std::ceil(radius / spacing[0]);
     int dv = (int) std::ceil(radius / spacing[1]);
     int dw = (int) std::ceil(radius / spacing[2]);
@@ -120,29 +112,17 @@ struct Grid {
     for (int w = w0-dw; w <= w0+dw; ++w)
       for (int v = v0-dv; v <= v0+dv; ++v)
         for (int u = u0-du; u < u0+du; ++u) {
-#else
-    for (int w = 0; w < nw; ++w)
-      for (int v = 0; v < nv; ++v)
-        for (int u = 0; u < nu; ++u) {
-#endif
-          Position fdelta = {fctr.x - double(u) / nu,
-                             fctr.y - double(v) / nv,
-                             fctr.z - double(w) / nw};
-          if (fdelta.x > 0.5)
-            fdelta.x -= 1.0;
-          else if (fdelta.x < -0.5)
-            fdelta.x += 1.0;
-          if (fdelta.y > 0.5)
-            fdelta.y -= 1.0;
-          else if (fdelta.y < -0.5)
-            fdelta.y += 1.0;
-          if (fdelta.z > 0.5)
-            fdelta.z -= 1.0;
-          else if (fdelta.z < -0.5)
-            fdelta.z += 1.0;
+          Position fdelta{fctr.x - u * (1.0 / nu),
+                          fctr.y - v * (1.0 / nv),
+                          fctr.z - w * (1.0 / nw)};
+          for (int i = 0; i < 3; ++i)
+            if (fdelta[i] > 0.5)
+              fdelta[i] -= 1.0;
+            else if (fdelta[i] < -0.5)
+              fdelta[i] += 1.0;
           Position d = unit_cell.orthogonalize(fdelta);
           if (d.x*d.x + d.y*d.y + d.z*d.z < radius*radius) {
-            data[wrapped_index(u, v, w)] = value;
+            data[quick_wrapped_index(u, v, w)] = value;
           }
         }
   }
@@ -153,16 +133,11 @@ struct Grid {
   }
 
   void apply_max_to_symmetric_points() {
-    if (!space_group)
+    if (!space_group || !full_canonical)
       return;
-    std::vector<Op> ops;
-    GroupOps group_ops = space_group->operations();
-    for (Op op : space_group->operations())
-      ops.emplace_back(op);
-    int n_mates = ops.size();
-    int len = data.size();
-    std::vector<int> mates(n_mates, 0);
-    std::vector<bool> visited(len, false);
+    std::vector<Op> ops = space_group->operations().all_ops_sorted();
+    std::vector<int> mates(ops.size(), 0);
+    std::vector<bool> visited(data.size(), false);
     int idx = -1;
     for (int w = 0; w != nw; ++w)
       for (int v = 0; v != nv; ++v)
@@ -172,7 +147,7 @@ struct Grid {
           if (visited[idx])
             continue;
           mates[0] = idx;
-          for (int k = 1; k != n_mates; ++k)
+          for (size_t k = 1; k < ops.size(); ++k)
             mates[k] = symmetric_index(u, v, w, ops[k]);
           T value = data[idx];
           for (int k : mates) {
@@ -184,10 +159,11 @@ struct Grid {
           for (int k : mates)
             data[k] = value;
         }
+    assert(idx == (int) data.size());
   }
 
   GridStats calculate_statistics() const;
-  void read_ccp4(const std::string& path);
+  void read_ccp4(const std::string& path, bool expand=false);
   void write_ccp4_map(const std::string& path, int mode=2,
                       bool only_asu=true) const;
 
@@ -263,6 +239,7 @@ std::vector<char> make_ccp4_header(const Grid<T>& grid, int mode) {
     *reinterpret_cast<float*>(word_ptr(word)) = value;
   };
   set_tri_i32(1, grid.nu, grid.nv, grid.nw); // NX, NY, NZ
+  //TODO: call update_ccp4_header() instead
   set_i32(4, mode);
   set_tri_i32(5, 0, 0, 0); // NXSTART, NYSTART, NZSTART
   set_tri_i32(8, grid.nu, grid.nv, grid.nw);  // MX, MY, MZ
@@ -272,17 +249,18 @@ std::vector<char> make_ccp4_header(const Grid<T>& grid, int mode) {
   set_float(14, (float) grid.unit_cell.alpha);
   set_float(15, (float) grid.unit_cell.beta);
   set_float(16, (float) grid.unit_cell.gamma);
+  //TODO: use axes[]
   set_tri_i32(17, 1, 2, 3); // MAPC, MAPR, MAPS
-  set_float(20, (float) grid.stats.dmin);
-  set_float(21, (float) grid.stats.dmax);
-  set_float(22, (float) grid.stats.dmean);
+  set_float(20, (float) grid.hstats.dmin);
+  set_float(21, (float) grid.hstats.dmax);
+  set_float(22, (float) grid.hstats.dmean);
   set_i32(23, 1); // ISPG
   set_i32(24, nsym * 80);
   std::memcpy(word_ptr(27), "CCP4", 4); // EXTTYP
   //set_i32(28, nversion);
   std::memcpy(word_ptr(53), "MAP ", 4);
   set_i32(54, is_little_endian() ? 0x00004144 : 0x11110000); // MACHST
-  set_float(55, (float) grid.stats.rms);
+  set_float(55, (float) grid.hstats.rms);
   set_i32(56, 1); // labels
   memset(word_ptr(57), ' ', 800 + nsym * 80);
   strcpy(word_ptr(57), "from unfinished GEMMI code");
@@ -305,10 +283,11 @@ std::vector<char> update_ccp4_header(const Grid<T>& grid, int mode) {
     *reinterpret_cast<float*>(word_ptr(word)) = value;
   };
   set_i32(4, mode);
-  set_float(20, (float) grid.stats.dmin);
-  set_float(21, (float) grid.stats.dmax);
-  set_float(22, (float) grid.stats.dmean);
-  set_float(55, (float) grid.stats.rms);
+  // TODO: interpret axes
+  set_float(20, (float) grid.hstats.dmin);
+  set_float(21, (float) grid.hstats.dmax);
+  set_float(22, (float) grid.hstats.dmean);
+  set_float(55, (float) grid.hstats.rms);
   // labels could be modified but it's not important
   return header;
 }
@@ -339,7 +318,7 @@ GridStats Grid<T>::calculate_statistics() const {
 // This function was tested only on little-endian machines,
 // let us know if you need support for other architectures.
 template<typename T>
-void Grid<T>::read_ccp4(const std::string& path) {
+void Grid<T>::read_ccp4(const std::string& path, bool expand) {
   gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "rb");
   const size_t hsize = 1024;
   ccp4_header.resize(hsize);
@@ -360,15 +339,28 @@ void Grid<T>::read_ccp4(const std::string& path) {
   nu = header_i32(1);
   nv = header_i32(2);
   nw = header_i32(3);
-  for (int i = 17; i < 20; ++i) {
-    int axis = header_i32(17);
+  for (int i = 0; i < 3; ++i) {
+    int axis = header_i32(17 + i);
     if (axis < 1 || axis > 3)
-      fail("Unexpected axis value in word " + std::to_string(i));
+      fail("Unexpected axis value in word " + std::to_string(17 + i));
+    axes[i] = "?XYZ"[axis];
   }
-  stats.dmin = header_float(20);
-  stats.dmax = header_float(21);
-  stats.dmean = header_float(22);
-  stats.rms = header_float(55);
+  hstats.dmin = header_float(20);
+  hstats.dmax = header_float(21);
+  hstats.dmean = header_float(22);
+  hstats.rms = header_float(55);
+  space_group = find_spacegroup_by_number(header_i32(23));
+
+  bool axes_xyz = (axes[0] == 'X' && axes[1] == 'Y' && axes[2] == 'Z');
+  bool full_cell = (header_i32(5)  == 0  &&  // NXSTART
+                    header_i32(6)  == 0  &&  // NYSTART
+                    header_i32(7)  == 0  &&  // NZSTART
+                    header_i32(8)  == nu &&  // MX == NX
+                    header_i32(9)  == nv &&  // MY == NY
+                    header_i32(10) == nw &&  // MZ == NZ
+                    header_i32(50) == 0  &&  // ORIGIN
+                    header_i32(51) == 0  &&  // ORIGIN
+                    header_i32(52) == 0);    // ORIGIN
 
   data.resize(nu * nv * nw);
   if (mode == 0)
@@ -381,10 +373,19 @@ void Grid<T>::read_ccp4(const std::string& path) {
     impl::read_data<std::uint16_t>(f.get(), data);
   else
     fail("Only modes 0, 1, 2 and 6 are supported.");
-#if 0
-  if (std::fgetc(f.get()) != EOF)
-    fail("The map file is longer then expected.");
-#endif
+  //if (std::fgetc(f.get()) != EOF)
+  //  fail("The map file is longer then expected.");
+  if (expand) {
+    if (!axes_xyz) {
+      //TODO transpose(); modify axes[]
+      //axes_xyz = true;
+    }
+    if (full_cell) {
+      //TODO expand to full unit cell
+      //full_cell = true;
+    }
+  }
+  full_canonical = (axes_xyz && full_cell);
 }
 
 template<typename T>

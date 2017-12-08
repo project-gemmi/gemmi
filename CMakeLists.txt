@@ -31,6 +31,7 @@ include_directories("${CMAKE_SOURCE_DIR}/include"
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wformat=2")
+  message(STATUS "Flags set to: ${CMAKE_CXX_FLAGS}")
   # avoid "unused" warnings when compiling with -DNDEBUG
   set(extra_release_flags "-Wno-unused-parameter -Wno-unused-variable")
 endif()
