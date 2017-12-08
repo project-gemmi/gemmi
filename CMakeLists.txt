@@ -104,8 +104,9 @@ add_executable(doc_example2 docs/doc_cif_cc.cpp)
 add_executable(doc_maybegz docs/doc_maybegz.cpp docs/doc_structure.cpp)
 support_gz(doc_maybegz)
 # auth_label requires <experimental/filesystem> and -lstdc++fs
-#add_executable(examples/auth_label examples/auth_label.cc)
-#support_gz(examples/auth_label)
+add_executable(auth_label EXCLUDE_FROM_ALL examples/auth_label.cc)
+target_link_libraries(auth_label stdc++fs)
+support_gz(auth_label)
 
 enable_testing()
 add_test(NAME cif COMMAND test_cif)

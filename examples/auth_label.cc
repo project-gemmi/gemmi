@@ -8,7 +8,7 @@
 namespace fs = std::experimental::filesystem;
 namespace cif = gemmi::cif;
 
-void print_differences(const cif::Block& block, const std::string& name) {
+void print_differences(cif::Block& block, const std::string& name) {
   for (auto row : block.find("_atom_site.", {"auth_" + name, "label_" + name}))
     if (row[0] != row[1])
       std::cout << block.name << ": " << name << "  "
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
   for (auto& p : fs::recursive_directory_iterator(argv[1])) {
     std::string path = p.path().u8string();
     if (ends_with(path, ".cif") or ends_with(path, ".cif.gz")) {
-      const cif::Document doc = cif::read(gemmi::MaybeGzipped(path));
+      cif::Document doc = cif::read(gemmi::MaybeGzipped(path));
       // What author's atom names were changed?
       print_differences(doc.sole_block(), "atom_id");
       // What author's residue names were changed?
