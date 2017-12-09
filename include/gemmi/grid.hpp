@@ -31,6 +31,28 @@ struct GridStats {
   double rms = NAN;
 };
 
+template<typename T>
+GridStats calculate_grid_statistics(const std::vector<T>& data) {
+  GridStats st;
+  if (data.empty())
+    return st;
+  double sum = 0;
+  double sq_sum = 0;
+  st.dmin = st.dmax = data[0];
+  for (float d : data) {
+    sum += d;
+    sq_sum += d * d;
+    if (d < st.dmin)
+      st.dmin = d;
+    if (d > st.dmax)
+      st.dmax = d;
+  }
+  st.dmean = sum / data.size();
+  st.rms = std::sqrt(sq_sum / data.size() - st.dmean * st.dmean);
+  return st;
+}
+
+
 inline bool has_small_factorization(int n) {
   for (int k : {2, 3, 5})
     while (n % k == 0)
@@ -87,6 +109,8 @@ struct Grid {
   }
 
   int index(int u, int v, int w) const { return w * nu * nv + v * nu + u; }
+
+  T get_value(int u, int v, int w) const { return data[index(u, v, w)]; }
 
   // quick-wrap assumes (for efficiency) that the index is not far from [0,nu).
   int quick_wrapped_index(int u, int v, int w) const {
@@ -162,7 +186,6 @@ struct Grid {
     assert(idx == (int) data.size());
   }
 
-  GridStats calculate_statistics() const;
   void read_ccp4(const std::string& path, bool expand=false);
   void write_ccp4_map(const std::string& path, int mode=2,
                       bool only_asu=true) const;
@@ -293,27 +316,6 @@ std::vector<char> update_ccp4_header(const Grid<T>& grid, int mode) {
 }
 
 } // namespace impl
-
-template<typename T>
-GridStats Grid<T>::calculate_statistics() const {
-  GridStats st;
-  if (data.empty())
-    return st;
-  double sum = 0;
-  double sq_sum = 0;
-  st.dmin = st.dmax = data[0];
-  for (float d : data) {
-    sum += d;
-    sq_sum += d * d;
-    if (d < st.dmin)
-      st.dmin = d;
-    if (d > st.dmax)
-      st.dmax = d;
-  }
-  st.dmean = sum / data.size();
-  st.rms = std::sqrt(sq_sum / data.size() - st.dmean * st.dmean);
-  return st;
-}
 
 // This function was tested only on little-endian machines,
 // let us know if you need support for other architectures.

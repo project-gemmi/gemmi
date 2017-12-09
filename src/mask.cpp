@@ -163,7 +163,7 @@ int main(int argc, char **argv) {
         for (const gemmi::Residue& res : chain.residues)
           for (const gemmi::Atom& atom : res.atoms)
             grid.set_points_around(atom.pos, radius, 1.0);
-      grid.hstats = grid.calculate_statistics();
+      grid.hstats = gemmi::calculate_grid_statistics(grid.data);
       grid.write_ccp4_map(output, 0);
     }
   } catch (std::runtime_error& e) {

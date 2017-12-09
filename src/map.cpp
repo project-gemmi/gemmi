@@ -16,7 +16,7 @@
 #define EXE_NAME "gemmi-map"
 #include "options.h"
 
-enum OptionIndex { Verbose=3, OutputMode };
+enum OptionIndex { Verbose=3, Deltas };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -25,6 +25,8 @@ static const option::Descriptor Usage[] = {
   { Version, 0, "V", "version", Arg::None,
     "  -V, --version  \tPrint version and exit." },
   { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  { Deltas, 0, "", "deltas", Arg::None,
+    "  --deltas  \tStatistics of dx, dy and dz." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -64,7 +66,7 @@ void print_histogram(const std::vector<T>& data, double min, double max) {
 }
 
 template<typename T>
-void print_info(const gemmi::Grid<T>& grid) {
+gemmi::GridStats print_info(const gemmi::Grid<T>& grid) {
   std::printf("Map mode: %d\n", grid.header_i32(4));
   std::printf("Number of columns, rows, sections: %5d %5d %5d %8s %d points\n",
               grid.nu, grid.nv, grid.nw, "->", grid.nu * grid.nv * grid.nw);
@@ -95,12 +97,12 @@ void print_info(const gemmi::Grid<T>& grid) {
     std::printf("Non-zero origin: %d %d %d\n", origin[0], origin[1], origin[2]);
 
   std::printf("\nStatistics from HEADER and DATA\n");
-  gemmi::GridStats st = grid.calculate_statistics();
+  gemmi::GridStats st = gemmi::calculate_grid_statistics(grid.data);
   std::printf("Minimum: %12.5f  %12.5f\n", grid.hstats.dmin, st.dmin);
   std::printf("Maximum: %12.5f  %12.5f\n", grid.hstats.dmax, st.dmax);
   std::printf("Mean:    %12.5f  %12.5f\n", grid.hstats.dmean, st.dmean);
   std::printf("RMS:     %12.5f  %12.5f\n", grid.hstats.rms, st.rms);
-  std::vector<T> data = grid.data;
+  std::vector<T> data = grid.data;  // copy b/c nth_element() reorders data
   size_t mpos = data.size() / 2;
   std::nth_element(data.begin(), data.begin() + mpos, data.end());
   std::printf("Median:                %12.5f\n", data[mpos]);
@@ -122,6 +124,27 @@ void print_info(const gemmi::Grid<T>& grid) {
     std::string symop = grid.header_str(256 + i * 20 /*words not bytes*/, 80);
     std::printf("Sym op #%d: %s\n", i + 1, gemmi::trim_str(symop).c_str());
   }
+  return st;
+}
+
+template<typename T>
+void print_deltas(const gemmi::Grid<T>& g, double dmin, double dmax) {
+  std::vector<double> deltas;
+  deltas.reserve(g.data.size());
+  for (int i = 0; i < 3; ++i) {
+    int f[3] = {0, 0, 0};
+    f[i] = 1;
+    for (int w = f[2]; w < g.nw; ++w)
+      for (int v = f[1]; v < g.nv; ++v)
+        for (int u = f[0]; u < g.nu; ++u)
+          deltas.push_back(g.get_value(u, v, w) -
+                           g.get_value(u - f[0], v - f[1], w - f[2]));
+    gemmi::GridStats st = gemmi::calculate_grid_statistics(deltas);
+    std::printf("\nd%c: min: %.5f  max: %.5f  mean: %.5f  std.dev: %.5f\n",
+                "XYZ"[i], st.dmin, st.dmax, st.dmean, st.rms);
+    print_histogram(deltas, dmin, dmax);
+    deltas.clear();
+  }
 }
 
 int main(int argc, char **argv) {
@@ -141,7 +164,9 @@ int main(int argc, char **argv) {
       if (verbose)
         std::fprintf(stderr, "Reading %s ...\n", input);
       grid.read_ccp4(input);
-      print_info(grid);
+      gemmi::GridStats stats = print_info(grid);
+      if (p.options[Deltas])
+        print_deltas(grid, stats.dmin, stats.dmax);
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());
