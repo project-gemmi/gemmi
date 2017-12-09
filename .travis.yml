@@ -12,7 +12,9 @@ matrix:
     dist: trusty
     compiler: gcc
     env:
-      - COMPILER=g++-4.8 PYTHON=python EXTRA_WFLAGS="-Wno-missing-field-initializers"
+      - COMPILER=g++-4.8
+      - PYTHON=python
+      - EXTRA_WFLAGS="-Wno-missing-field-initializers"
 
   - os: osx
     osx_image: xcode6.4
@@ -28,7 +30,7 @@ matrix:
       - brew install $PYTHON
 
 install:
-  - $PYTHON -m ensurepip --user
+  - $PYTHON -m ensurepip --user ||:
   - $PYTHON -m pip install --user pybind11
 script:
   - CXX=$COMPILER cmake .
