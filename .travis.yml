@@ -30,8 +30,9 @@ matrix:
       - brew install $PYTHON
 
 install:
-  - $PYTHON -m ensurepip --user ||:
-  - $PYTHON -m pip install --user pybind11
+- |
+  $PYTHON -m pip --version || $PYTHON -m ensurepip --user
+  $PYTHON -m pip install --user pybind11
 script:
   - CXX=$COMPILER cmake .
   - make -j2
