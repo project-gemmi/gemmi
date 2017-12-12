@@ -19,6 +19,8 @@
 
 namespace gemmi {
 
+using std::int32_t;
+
 inline bool is_little_endian() {
   std::uint32_t x = 1;
   return *reinterpret_cast<char *>(&x) == 1;
@@ -39,7 +41,7 @@ GridStats calculate_grid_statistics(const std::vector<T>& data) {
   double sum = 0;
   double sq_sum = 0;
   st.dmin = st.dmax = data[0];
-  for (float d : data) {
+  for (double d : data) {
     sum += d;
     sq_sum += d * d;
     if (d < st.dmin)
@@ -66,14 +68,13 @@ template<typename T=float>
 struct Grid {
   int nu, nv, nw;
   UnitCell unit_cell;
-  char axes[3];  // fast, medium, slow axes as permutation of {'X', 'Y', 'Z'}
   bool full_canonical; // grid for the whole unit cell with X,Y,Z order
   const SpaceGroup* space_group;
   std::vector<T> data;
   double spacing[3];
   GridStats hstats;  // data statistics read from / written to ccp4 map
   // stores raw headers if the grid was read from ccp4 map
-  std::vector<char> ccp4_header;
+  std::vector<int32_t> ccp4_header;
 
   void set_size_without_checking(int u, int v, int w) {
     nu = u, nv = v, nw = w;
@@ -81,7 +82,6 @@ struct Grid {
     spacing[0] = 1.0 / (nu * unit_cell.ar);
     spacing[1] = 1.0 / (nv * unit_cell.br);
     spacing[2] = 1.0 / (nw * unit_cell.cr);
-    memcpy(axes, "XYZ", 3);
     full_canonical = true;
   }
 
@@ -187,20 +187,81 @@ struct Grid {
   }
 
   void read_ccp4(const std::string& path, bool expand=false);
-  void write_ccp4_map(const std::string& path, int mode=2,
-                      bool only_asu=true) const;
+  void write_ccp4_map(const std::string& path) const;
 
   // methods to access info from ccp4 headers, w is word number from the spec
-  int32_t header_i32(int w) const {
-    return *reinterpret_cast<const int32_t*>(ccp4_header.data() + 4 * (w - 1));
-  }
+  int32_t* header_word(int w) { return &ccp4_header.at(w - 1); }
+  const int32_t* header_word(int w) const { return &ccp4_header.at(w - 1); }
+
+  int32_t header_i32(int w) const { return *header_word(w); }
   float header_float(int w) const {
-    return *reinterpret_cast<const float*>(ccp4_header.data() + 4 * (w - 1));
+    float f;
+    std::memcpy(&f, header_word(w), 4);
+    return f;
   }
   // ccp4 map header has mostly 80-byte strings
   std::string header_str(int w, size_t len=80) const {
-    return std::string(ccp4_header.data() + 4 * (w - 1),
-                       std::min(len, ccp4_header.size() - w));
+    if (4 * ccp4_header.size() < 4 * (w - 1) + len)
+      fail("invalid end of string");
+    return std::string(reinterpret_cast<const char*>(header_word(w)), len);
+  }
+  void set_header_i32(int w, int32_t value) {
+    *header_word(w) = value;
+  };
+  void set_header_3i32(int w, int32_t x, int32_t y, int32_t z) {
+    set_header_i32(w, x);
+    set_header_i32(w+1, y);
+    set_header_i32(w+2, z);
+  };
+  void set_header_float(int w, float value) {
+    std::memcpy(header_word(w), &value, 4);
+  };
+  void set_header_str(int w, const std::string& str) {
+    // TODO: should the written string be null-terminated? probably not
+    std::memcpy(header_word(w), str.c_str(), str.size() + 1);
+  }
+
+  void make_ccp4_header(int mode) {
+    int nsym = 1;
+    ccp4_header.clear();
+    ccp4_header.resize(256 + nsym * 20, 0);
+    set_header_3i32(1, nu, nv, nw); // NX, NY, NZ
+    set_header_3i32(5, 0, 0, 0); // NXSTART, NYSTART, NZSTART
+    set_header_3i32(8, nu, nv, nw);  // MX, MY, MZ
+    set_header_float(11, (float) unit_cell.a);
+    set_header_float(12, (float) unit_cell.b);
+    set_header_float(13, (float) unit_cell.c);
+    set_header_float(14, (float) unit_cell.alpha);
+    set_header_float(15, (float) unit_cell.beta);
+    set_header_float(16, (float) unit_cell.gamma);
+    set_header_3i32(17, 1, 2, 3); // MAPC, MAPR, MAPS
+    set_header_i32(23, 1); // ISPG
+    set_header_i32(24, nsym * 80);
+    std::memcpy(header_word(27), "CCP4", 4); // EXTTYP
+    //set_header_i32(28, nversion);
+    std::memcpy(header_word(53), "MAP ", 4);
+    // MACHST
+    set_header_i32(54, is_little_endian() ? 0x00004144 : 0x11110000);
+    set_header_i32(56, 1); // labels
+    std::memset(header_word(57), ' ', 800 + nsym * 80);
+    set_header_str(57, "written by GEMMI");
+    std::memcpy(header_word(257), "X,  Y,  Z", 9);
+    update_ccp4_header(mode);
+  }
+
+  void update_ccp4_header(int mode) {
+    if (mode != 0 && mode != 1 && mode != 2 && mode != 6)
+      fail("Only modes 0, 1, 2 and 6 are supported.");
+    if (ccp4_header.empty())
+      return make_ccp4_header(mode);
+    assert(ccp4_header.size() >= 256);
+    // selectively copy-pasted from make_ccp4_header()
+    set_header_i32(4, mode);
+    set_header_float(20, (float) hstats.dmin);
+    set_header_float(21, (float) hstats.dmax);
+    set_header_float(22, (float) hstats.dmean);
+    set_header_float(55, (float) hstats.rms);
+    // labels could be modified but it's not important
   }
 };
 
@@ -245,76 +306,6 @@ void write_data(const std::vector<TMem>& content, FILE* f) {
   }
 }
 
-template<typename T>
-std::vector<char> make_ccp4_header(const Grid<T>& grid, int mode) {
-  int nsym = 1;
-  std::vector<char> header(1024 + nsym * 80, 0);
-  auto word_ptr = [&header](int w) { return header.data() + 4 * (w - 1); };
-  auto set_i32 = [&word_ptr](int word, int32_t value) {
-    *reinterpret_cast<int32_t*>(word_ptr(word)) = value;
-  };
-  auto set_tri_i32 = [&set_i32](int word, int32_t x, int32_t y, int32_t z) {
-    set_i32(word, x);
-    set_i32(word+1, y);
-    set_i32(word+2, z);
-  };
-  auto set_float = [&word_ptr](int word, float value) {
-    *reinterpret_cast<float*>(word_ptr(word)) = value;
-  };
-  set_tri_i32(1, grid.nu, grid.nv, grid.nw); // NX, NY, NZ
-  //TODO: call update_ccp4_header() instead
-  set_i32(4, mode);
-  set_tri_i32(5, 0, 0, 0); // NXSTART, NYSTART, NZSTART
-  set_tri_i32(8, grid.nu, grid.nv, grid.nw);  // MX, MY, MZ
-  set_float(11, (float) grid.unit_cell.a);
-  set_float(12, (float) grid.unit_cell.b);
-  set_float(13, (float) grid.unit_cell.c);
-  set_float(14, (float) grid.unit_cell.alpha);
-  set_float(15, (float) grid.unit_cell.beta);
-  set_float(16, (float) grid.unit_cell.gamma);
-  //TODO: use axes[]
-  set_tri_i32(17, 1, 2, 3); // MAPC, MAPR, MAPS
-  set_float(20, (float) grid.hstats.dmin);
-  set_float(21, (float) grid.hstats.dmax);
-  set_float(22, (float) grid.hstats.dmean);
-  set_i32(23, 1); // ISPG
-  set_i32(24, nsym * 80);
-  std::memcpy(word_ptr(27), "CCP4", 4); // EXTTYP
-  //set_i32(28, nversion);
-  std::memcpy(word_ptr(53), "MAP ", 4);
-  set_i32(54, is_little_endian() ? 0x00004144 : 0x11110000); // MACHST
-  set_float(55, (float) grid.hstats.rms);
-  set_i32(56, 1); // labels
-  memset(word_ptr(57), ' ', 800 + nsym * 80);
-  strcpy(word_ptr(57), "from unfinished GEMMI code");
-  memcpy(word_ptr(257), "X,  Y,  Z", 9);
-  return header;
-}
-
-template<typename T>
-std::vector<char> update_ccp4_header(const Grid<T>& grid, int mode) {
-  if (grid.ccp4_header.empty())
-    return make_ccp4_header(grid, mode);
-  std::vector<char> header = grid.ccp4_header;
-  assert(header.size() >= 1024);
-  // selectively copy-pasted from make_ccp4_header()
-  auto word_ptr = [&header](int w) { return header.data() + 4 * (w - 1); };
-  auto set_i32 = [&word_ptr](int word, int32_t value) {
-    *reinterpret_cast<int32_t*>(word_ptr(word)) = value;
-  };
-  auto set_float = [&word_ptr](int word, float value) {
-    *reinterpret_cast<float*>(word_ptr(word)) = value;
-  };
-  set_i32(4, mode);
-  // TODO: interpret axes
-  set_float(20, (float) grid.hstats.dmin);
-  set_float(21, (float) grid.hstats.dmax);
-  set_float(22, (float) grid.hstats.dmean);
-  set_float(55, (float) grid.hstats.rms);
-  // labels could be modified but it's not important
-  return header;
-}
-
 } // namespace impl
 
 // This function was tested only on little-endian machines,
@@ -322,30 +313,31 @@ std::vector<char> update_ccp4_header(const Grid<T>& grid, int mode) {
 template<typename T>
 void Grid<T>::read_ccp4(const std::string& path, bool expand) {
   gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "rb");
-  const size_t hsize = 1024;
+  const size_t hsize = 256;
   ccp4_header.resize(hsize);
-  if (std::fread(ccp4_header.data(), 1, hsize, f.get()) != hsize)
+  if (std::fread(ccp4_header.data(), 4, hsize, f.get()) != hsize)
     fail("Failed to read map header: " + path);
-  if (ccp4_header[208] != 'M' || ccp4_header[209] != 'A' ||
-      ccp4_header[210] != 'P' || ccp4_header[211] != ' ')
+  if (header_str(53, 4) != "MAP ")
     fail("Not a CCP4 map: " + path);
   int mode = header_i32(4);
   unit_cell.set(header_float(11), header_float(12), header_float(13),
                 header_float(14), header_float(15), header_float(16));
-  size_t nsymbt = header_i32(24);
-  if (nsymbt > 1000000)
+  size_t ext_w = header_i32(24) / 4;  // nsymbt in words
+  if (ext_w > 1000000)
     fail("Unexpectedly long extendended header: " + path);
-  ccp4_header.resize(hsize + nsymbt);
-  if (std::fread(ccp4_header.data() + hsize, 1, nsymbt, f.get()) != nsymbt)
+  ccp4_header.resize(hsize + ext_w);
+  if (std::fread(ccp4_header.data() + hsize, 4, ext_w, f.get()) != ext_w)
     fail("Failed to read extended header: " + path);
   nu = header_i32(1);
   nv = header_i32(2);
   nw = header_i32(3);
+  bool axes_xyz = true;
   for (int i = 0; i < 3; ++i) {
     int axis = header_i32(17 + i);
     if (axis < 1 || axis > 3)
       fail("Unexpected axis value in word " + std::to_string(17 + i));
-    axes[i] = "?XYZ"[axis];
+    if (axis != i + 1)
+      axes_xyz = false;
   }
   hstats.dmin = header_float(20);
   hstats.dmax = header_float(21);
@@ -353,7 +345,6 @@ void Grid<T>::read_ccp4(const std::string& path, bool expand) {
   hstats.rms = header_float(55);
   space_group = find_spacegroup_by_number(header_i32(23));
 
-  bool axes_xyz = (axes[0] == 'X' && axes[1] == 'Y' && axes[2] == 'Z');
   bool full_cell = (header_i32(5)  == 0  &&  // NXSTART
                     header_i32(6)  == 0  &&  // NYSTART
                     header_i32(7)  == 0  &&  // NZSTART
@@ -379,8 +370,8 @@ void Grid<T>::read_ccp4(const std::string& path, bool expand) {
   //  fail("The map file is longer then expected.");
   if (expand) {
     if (!axes_xyz) {
-      //TODO transpose(); modify axes[]
-      //axes_xyz = true;
+      //TODO transpose();
+      axes_xyz = true;
     }
     if (full_cell) {
       //TODO expand to full unit cell
@@ -391,13 +382,10 @@ void Grid<T>::read_ccp4(const std::string& path, bool expand) {
 }
 
 template<typename T>
-void Grid<T>::write_ccp4_map(const std::string& path, int mode,
-                             bool only_asu) const {
-  if (mode != 0 && mode != 1 && mode != 2 && mode != 6)
-    fail("Only modes 0, 1, 2 and 6 are supported.");
-  std::vector<char> header = impl::update_ccp4_header(*this, mode);
+void Grid<T>::write_ccp4_map(const std::string& path) const {
   gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "wb");
-  std::fwrite(header.data(), sizeof(char), header.size(), f.get());
+  std::fwrite(ccp4_header.data(), 4, ccp4_header.size(), f.get());
+  int mode = header_i32(4);
   if (mode == 0)
     impl::write_data<std::int8_t>(data, f.get());
   else if (mode == 1)

@@ -16,7 +16,7 @@
 #define EXE_NAME "gemmi-map"
 #include "options.h"
 
-enum OptionIndex { Verbose=3, Deltas };
+enum OptionIndex { Verbose=3, Deltas, Reorder };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -27,6 +27,8 @@ static const option::Descriptor Usage[] = {
   { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { Deltas, 0, "", "deltas", Arg::None,
     "  --deltas  \tStatistics of dx, dy and dz." },
+  { Reorder, 0, "", "write-xyz", Arg::Required,
+    "  --write-xyz=FILE  \tWrite ccp4 map with fast axis X and slow axis Z." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -77,7 +79,9 @@ gemmi::GridStats print_info(const gemmi::Grid<T>& grid) {
   std::printf("                               to: %5d %5d %5d\n",
               u0 + grid.nu - 1, v0 + grid.nv - 1, w0 + grid.nw - 1);
   std::printf("Fast, medium, slow axes: %c %c %c\n",
-              grid.axes[0], grid.axes[1], grid.axes[2]);
+              'X' + grid.header_i32(17) - 1,
+              'X' + grid.header_i32(18) - 1,
+              'X' + grid.header_i32(19) - 1);
   int mx = grid.header_i32(8);
   int my = grid.header_i32(9);
   int mz = grid.header_i32(10);
@@ -147,6 +151,37 @@ void print_deltas(const gemmi::Grid<T>& g, double dmin, double dmax) {
   }
 }
 
+template<typename T>
+void reorder_map(gemmi::Grid<T>& grid) {
+  auto& data = grid.data;
+  std::vector<T> new_data(data.size());
+  int n_crs[3] = { grid.nu, grid.nv, grid.nw };
+  int pos[3] = { -1, -1, -1 };
+  for (int i = 0; i != 3; ++i) {
+    int mapi = grid.header_i32(17 + i);
+    if (mapi <= 0 || mapi > 3 || pos[mapi - 1] != -1)
+      gemmi::fail("Incorrect MAPC/MAPR/MAPS records");
+    pos[mapi - 1] = i;
+  }
+  int n_xyz[3] = { n_crs[pos[0]], n_crs[pos[1]], n_crs[pos[2]] };
+  int idx = 0;
+  int xyz[3];
+  for (xyz[2] = 0; xyz[2] != n_xyz[2]; ++xyz[2])
+    for (xyz[1] = 0; xyz[1] != n_xyz[1]; ++xyz[1])
+      for (xyz[0] = 0; xyz[0] != n_xyz[0]; ++xyz[0]) {
+        int orig_index = grid.index(xyz[pos[0]], xyz[pos[1]], xyz[pos[2]]);
+        new_data[idx++] = data[orig_index];
+      }
+  grid.nu = n_xyz[0];
+  grid.nv = n_xyz[1];
+  grid.nw = n_xyz[2];
+  grid.set_header_3i32(1, grid.nu, grid.nv, grid.nw);
+  int start[3] = {grid.header_i32(5), grid.header_i32(6), grid.header_i32(7)};
+  grid.set_header_3i32(5, start[pos[0]], start[pos[1]], start[pos[2]]);
+  grid.set_header_3i32(17, 1, 2, 3); // axes (MAPC, MAPR, MAPS)
+  grid.data = new_data;
+}
+
 int main(int argc, char **argv) {
   OptParser p;
   p.simple_parse(argc, argv, Usage);
@@ -154,7 +189,12 @@ int main(int argc, char **argv) {
 
   if (p.nonOptionsCount() == 0) {
     std::fprintf(stderr, "No input files. Nothing to do.\n");
-    return 0;
+  }
+
+  if (p.nonOptionsCount() > 1 && p.options[Reorder]) {
+    std::fprintf(stderr, "Option --write-reordered can be only used "
+                         "with a single input file.\n");
+    return 1;
   }
 
   try {
@@ -167,6 +207,10 @@ int main(int argc, char **argv) {
       gemmi::GridStats stats = print_info(grid);
       if (p.options[Deltas])
         print_deltas(grid, stats.dmin, stats.dmax);
+      if (p.options[Reorder]) {
+        reorder_map(grid);
+        grid.write_ccp4_map(p.options[Reorder].arg);
+      }
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());
