@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
     if (in_type == InputType::Ccp4) {
       double threshold;
       gemmi::Grid<> grid;
-      grid.read_ccp4(input);
+      grid.read_ccp4_map(input);
       if (p.options[Threshold]) {
         threshold = std::strtod(p.options[Threshold].arg, nullptr);
       } else if (p.options[Fraction]) {

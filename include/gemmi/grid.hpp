@@ -186,7 +186,7 @@ struct Grid {
     assert(idx == (int) data.size());
   }
 
-  void read_ccp4(const std::string& path, bool expand=false);
+  void read_ccp4_map(const std::string& path, bool expand=false);
   void write_ccp4_map(const std::string& path) const;
 
   // methods to access info from ccp4 headers, w is word number from the spec
@@ -311,7 +311,7 @@ void write_data(const std::vector<TMem>& content, FILE* f) {
 // This function was tested only on little-endian machines,
 // let us know if you need support for other architectures.
 template<typename T>
-void Grid<T>::read_ccp4(const std::string& path, bool expand) {
+void Grid<T>::read_ccp4_map(const std::string& path, bool expand) {
   gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "rb");
   const size_t hsize = 256;
   ccp4_header.resize(hsize);

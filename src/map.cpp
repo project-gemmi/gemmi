@@ -203,7 +203,7 @@ int main(int argc, char **argv) {
       gemmi::Grid<> grid;
       if (verbose)
         std::fprintf(stderr, "Reading %s ...\n", input);
-      grid.read_ccp4(input);
+      grid.read_ccp4_map(input);
       gemmi::GridStats stats = print_info(grid);
       if (p.options[Deltas])
         print_deltas(grid, stats.dmin, stats.dmax);
