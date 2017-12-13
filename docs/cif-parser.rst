@@ -545,7 +545,7 @@ Python Module
 
 .. highlight:: python
 
-Python module for Python 2.7 and 3.x (PyPy is yet to be tested)
+Python module for Python 2.7 and 3.x
 can be installed with pip, as described in the
 :ref:`Installation <install_py>` section.
 After installation ``pydoc gemmi.cif`` should list all classes and methods.

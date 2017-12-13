@@ -46,6 +46,9 @@ set the compiler environment with one of these commands::
     "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" x64
     "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat"
 
+If you'd like to use PyPy instead of CPython
+we support PyPy2.7 >= 5.7 (although we test it only occasionally).
+
 Fortran 2003+
 -------------
 
