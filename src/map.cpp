@@ -16,7 +16,7 @@
 #define EXE_NAME "gemmi-map"
 #include "options.h"
 
-enum OptionIndex { Verbose=3, Deltas, Reorder };
+enum OptionIndex { Verbose=3, Deltas, Reorder, Full };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -28,7 +28,9 @@ static const option::Descriptor Usage[] = {
   { Deltas, 0, "", "deltas", Arg::None,
     "  --deltas  \tStatistics of dx, dy and dz." },
   { Reorder, 0, "", "write-xyz", Arg::Required,
-    "  --write-xyz=FILE  \tWrite ccp4 map with fast axis X and slow axis Z." },
+    "  --write-xyz=FILE  \tWrite transposed map with fast X axis and slow Z." },
+  { Full, 0, "", "write-xyz", Arg::Required,
+    "  --write-full=FILE  \tWrite map expanded to cover the unit cell." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -151,37 +153,6 @@ void print_deltas(const gemmi::Grid<T>& g, double dmin, double dmax) {
   }
 }
 
-template<typename T>
-void reorder_map(gemmi::Grid<T>& grid) {
-  auto& data = grid.data;
-  std::vector<T> new_data(data.size());
-  int n_crs[3] = { grid.nu, grid.nv, grid.nw };
-  int pos[3] = { -1, -1, -1 };
-  for (int i = 0; i != 3; ++i) {
-    int mapi = grid.header_i32(17 + i);
-    if (mapi <= 0 || mapi > 3 || pos[mapi - 1] != -1)
-      gemmi::fail("Incorrect MAPC/MAPR/MAPS records");
-    pos[mapi - 1] = i;
-  }
-  int n_xyz[3] = { n_crs[pos[0]], n_crs[pos[1]], n_crs[pos[2]] };
-  int idx = 0;
-  int xyz[3];
-  for (xyz[2] = 0; xyz[2] != n_xyz[2]; ++xyz[2])
-    for (xyz[1] = 0; xyz[1] != n_xyz[1]; ++xyz[1])
-      for (xyz[0] = 0; xyz[0] != n_xyz[0]; ++xyz[0]) {
-        int orig_index = grid.index(xyz[pos[0]], xyz[pos[1]], xyz[pos[2]]);
-        new_data[idx++] = data[orig_index];
-      }
-  grid.nu = n_xyz[0];
-  grid.nv = n_xyz[1];
-  grid.nw = n_xyz[2];
-  grid.set_header_3i32(1, grid.nu, grid.nv, grid.nw);
-  int start[3] = {grid.header_i32(5), grid.header_i32(6), grid.header_i32(7)};
-  grid.set_header_3i32(5, start[pos[0]], start[pos[1]], start[pos[2]]);
-  grid.set_header_3i32(17, 1, 2, 3); // axes (MAPC, MAPR, MAPS)
-  grid.data = new_data;
-}
-
 int main(int argc, char **argv) {
   OptParser p;
   p.simple_parse(argc, argv, Usage);
@@ -208,8 +179,12 @@ int main(int argc, char **argv) {
       if (p.options[Deltas])
         print_deltas(grid, stats.dmin, stats.dmax);
       if (p.options[Reorder]) {
-        reorder_map(grid);
+        grid.setup(gemmi::GridSetup::ReorderOnly);
         grid.write_ccp4_map(p.options[Reorder].arg);
+      }
+      if (p.options[Full]) {
+        grid.setup(gemmi::GridSetup::FullCheck);
+        grid.write_ccp4_map(p.options[Full].arg);
       }
     }
   } catch (std::runtime_error& e) {
