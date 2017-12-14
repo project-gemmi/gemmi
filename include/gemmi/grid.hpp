@@ -134,7 +134,7 @@ struct GridMeta {
     set_header_float(15, (float) unit_cell.beta);
     set_header_float(16, (float) unit_cell.gamma);
     set_header_3i32(17, 1, 2, 3); // MAPC, MAPR, MAPS
-    set_header_i32(23, 1); // ISPG
+    set_header_i32(23, space_group ? space_group->ccp4 : 1); // ISPG
     set_header_i32(24, nsym * 80);
     std::memcpy(header_word(27), "CCP4", 4); // EXTTYP
     //set_header_i32(28, nversion);
@@ -256,6 +256,7 @@ struct Grid : GridMeta {
         ++n;
       m[i] = n * f;
     }
+    // TODO: for space groups with a=b or a=b=c check that m is also equal
     set_size_without_checking(m[0], m[1], m[2]);
   }
 
@@ -273,11 +274,6 @@ struct Grid : GridMeta {
 
   int wrapped_index(int u, int v, int w) const {
     return index(modulo(u, nu), modulo(v, nv), modulo(w, nw));
-  }
-
-  int symmetric_index(int u, int v, int w, const Op& op) const {
-    //TODO apply symmetry to u v w
-    return quick_wrapped_index(u, v, w);
   }
 
   void set_points_around(const Position& ctr, double radius, T value) {
@@ -313,36 +309,50 @@ struct Grid : GridMeta {
       d = d > threshold ? 1 : 0;
   }
 
+  // Use provided function to reduce values of all symmetry mates of each
+  // grid points, then assign the result to all the points.
   void symmetrize(std::function<T(T, T)> func) {
-    if (!space_group || space_group->number == 1 || !full_canonical)
+    if (!space_group || space_group->number == 1 || full_canonical)
       return;
     std::vector<Op> ops = space_group->operations().all_ops_sorted();
+    auto id = std::find(ops.begin(), ops.end(), Op::identity());
+    if (id != ops.end())
+      ops.erase(id);
+    for (Op& op : ops) {
+      op.tran[0] = op.tran[0] * nu / Op::TDEN;
+      op.tran[1] = op.tran[1] * nv / Op::TDEN;
+      op.tran[2] = op.tran[2] * nw / Op::TDEN;
+    }
     std::vector<int> mates(ops.size(), 0);
     std::vector<bool> visited(data.size(), false);
-    int idx = -1;
+    int idx = 0;
     for (int w = 0; w != nw; ++w)
       for (int v = 0; v != nv; ++v)
-        for (int u = 0; u != nu; ++u) {
-          ++idx;
+        for (int u = 0; u != nu; ++u, ++idx) {
           assert(idx == index(u, v, w));
           if (visited[idx])
             continue;
-          mates[0] = idx;
-          for (size_t k = 1; k < ops.size(); ++k)
-            mates[k] = symmetric_index(u, v, w, ops[k]);
+          for (size_t k = 0; k < ops.size(); ++k) {
+            int tu = u, tv = v, tw = w;
+            ops[k].apply_in_place_mult(tu, tv, tw, 1);
+            mates[k] = quick_wrapped_index(tu, tv, tw);
+          }
           T value = data[idx];
           for (int k : mates) {
             assert(!visited[k]);
-            visited[k] = true;
             value = func(value, data[k]);
           }
-          for (int k : mates)
+          data[idx] = value;
+          visited[idx] = true;
+          for (int k : mates) {
             data[k] = value;
+            visited[k] = true;
+          }
         }
     assert(idx == (int) data.size());
   }
 
-  void setup(GridSetup mode);
+  double setup(GridSetup mode);
 
   void read_ccp4_map(const std::string& path);
   void write_ccp4_map(const std::string& path) const;
@@ -413,10 +423,18 @@ void Grid<T>::read_ccp4_map(const std::string& path) {
   //  fail("The map file is longer then expected.");
 }
 
+namespace impl {
+template<typename T> void check_diff(T a, T b, double* max_error) {
+  if (a < b || a > b)
+    *max_error = std::max(*max_error, std::fabs(double(a - b)));
+}
+}
+
 template<typename T>
-void Grid<T>::setup(GridSetup mode) {
+double Grid<T>::setup(GridSetup mode) {
+  double max_error = 0.0;
   if (full_canonical || ccp4_header.empty())
-    return;
+    return max_error;
   // cell sampling does not change
   int sampl[3] = { header_i32(8), header_i32(9), header_i32(10) };
   // get old metadata
@@ -451,22 +469,20 @@ void Grid<T>::setup(GridSetup mode) {
       for (it[0] = start[0]; it[0] < end[0]; it[0]++) { // cols
         T val = data[idx++];
         int new_index = wrapped_index(it[pos[0]], it[pos[1]], it[pos[2]]);
-        if (mode == GridSetup::FullCheck &&
-            !std::isnan(full[new_index]) && full[new_index] != val)
-          fail("inconsistent data for the same point: " + std::to_string(val) +
-               " != " + std::to_string(full[new_index]));
+        if (mode == GridSetup::FullCheck)
+          impl::check_diff(full[new_index], val, &max_error);
         full[new_index] = val;
       }
   data = full;
   if (mode == GridSetup::Full)
     symmetrize([](T a, T b) { return std::isnan(a) ? b : a; });
   else if (mode == GridSetup::FullCheck)
-    symmetrize([](T a, T b) {
-        if (!std::isnan(a) && !std::isnan(b) && a != b)
-          fail("map values do not preserve symmetry: " + std::to_string(a) +
-               " != " + std::to_string(b));
+    symmetrize([&max_error](T a, T b) {
+        impl::check_diff(a, b, &max_error);
         return std::isnan(a) ? b : a;
     });
+  full_canonical = pos[0] == 0 && pos[1] == 1 && pos[2] == 2 && full_cell();
+  return max_error;
 }
 
 template<typename T>

@@ -7,7 +7,7 @@
 #include <cmath>     // for floor
 #include <cstdlib>   // for strtod
 #include <cstdio>    // for fprintf
-#include <algorithm> // for nth_element
+#include <algorithm> // for nth_element, count_if
 #define USE_UNICODE
 #ifdef USE_UNICODE
 #include <clocale>  // for setlocale
@@ -29,8 +29,8 @@ static const option::Descriptor Usage[] = {
     "  --deltas  \tStatistics of dx, dy and dz." },
   { Reorder, 0, "", "write-xyz", Arg::Required,
     "  --write-xyz=FILE  \tWrite transposed map with fast X axis and slow Z." },
-  { Full, 0, "", "write-xyz", Arg::Required,
-    "  --write-full=FILE  \tWrite map expanded to cover the unit cell." },
+  { Full, 0, "", "write-full", Arg::Required,
+    "  --write-full=FILE  \tWrite map extended to cover whole unit cell." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -72,7 +72,7 @@ void print_histogram(const std::vector<T>& data, double min, double max) {
 template<typename T>
 gemmi::GridStats print_info(const gemmi::Grid<T>& grid) {
   std::printf("Map mode: %d\n", grid.header_i32(4));
-  std::printf("Number of columns, rows, sections: %5d %5d %5d %8s %d points\n",
+  std::printf("Number of columns, rows, sections: %5d %5d %5d %6s %d points\n",
               grid.nu, grid.nv, grid.nw, "->", grid.nu * grid.nv * grid.nw);
   int u0 = grid.header_i32(5);
   int v0 = grid.header_i32(6);
@@ -87,11 +87,15 @@ gemmi::GridStats print_info(const gemmi::Grid<T>& grid) {
   int mx = grid.header_i32(8);
   int my = grid.header_i32(9);
   int mz = grid.header_i32(10);
-  std::printf("Grid sampling on x, y, z: %5d %5d %5d          %8s %d points\n",
+  std::printf("Grid sampling on x, y, z: %5d %5d %5d    %12s %d points/cell\n",
               mx, my, mz, "->", mx * my * mz);
   const gemmi::UnitCell& cell = grid.unit_cell;
   const gemmi::SpaceGroup* sg = grid.space_group;
-  std::printf("Space group: %d  (%s)\n", sg->ccp4, sg ? sg->hm : "unknown");
+  std::printf("Space group: %d  (%s)\n",
+              sg ? sg->ccp4 : 0, sg ? sg->hm : "unknown");
+  int order = sg ? sg->operations().order() : 1;
+  std::printf("SG order: %-3d      %40s %d points/ASU\n",
+               order, "->", mx * my * mz / order);
   std::printf("Cell dimensions: %g %g %g  %g %g %g\n",
               cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma);
   int origin[3] = {
@@ -183,7 +187,14 @@ int main(int argc, char **argv) {
         grid.write_ccp4_map(p.options[Reorder].arg);
       }
       if (p.options[Full]) {
-        grid.setup(gemmi::GridSetup::FullCheck);
+        double err = grid.setup(gemmi::GridSetup::FullCheck);
+        size_t nn = std::count_if(grid.data.begin(), grid.data.end(),
+                                  [](float x) { return std::isnan(x); });
+        if (err != 0.0)
+          std::fprintf(stderr, "WARNING: different values for equivalent "
+                               "points, max diff: %g\n", err);
+        if (nn != 0)
+          std::fprintf(stderr, "WARNING: %zu unknown values set to NAN\n", nn);
         grid.write_ccp4_map(p.options[Full].arg);
       }
     }

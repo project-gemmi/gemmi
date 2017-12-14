@@ -105,6 +105,21 @@ struct Op {
     return r;
   }
 
+  template<typename T>
+  void apply_in_place_mult(T& x, T& y, T& z, T mult) const {
+    T ret[3];
+    for (int i = 0; i != 3; ++i)
+      ret[i] = rot[i][0] * x + rot[i][1] * y + rot[i][2] * z + tran[i] * mult;
+    x = ret[0];
+    y = ret[1];
+    z = ret[2];
+  }
+
+  template<typename T>
+  void apply_in_place(T& x, T& y, T& z) const {
+    apply_in_place_mult(x, y, z, 1.0 / Op::TDEN);
+  }
+
   std::array<std::array<int_t, 4>, 4> seitz() const {
     std::array<std::array<int_t, 4>, 4> t;
     for (int i = 0; i < 3; ++i)
