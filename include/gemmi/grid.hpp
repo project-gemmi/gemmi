@@ -117,14 +117,15 @@ struct GridMeta {
     std::memcpy(header_word(w), &value, 4);
   };
   void set_header_str(int w, const std::string& str) {
-    // TODO: should the written string be null-terminated? probably not
-    std::memcpy(header_word(w), str.c_str(), str.size() + 1);
+    std::memcpy(header_word(w), str.c_str(), str.size());
   }
 
   void make_ccp4_header(int mode) {
-    int nsym = 1;
+    GroupOps ops;
+    if (space_group)
+      ops = space_group->operations();
     ccp4_header.clear();
-    ccp4_header.resize(256 + nsym * 20, 0);
+    ccp4_header.resize(256 + ops.order() * 20, 0);
     set_header_3i32(1, nu, nv, nw); // NX, NY, NZ
     set_header_3i32(5, 0, 0, 0); // NXSTART, NYSTART, NZSTART
     set_header_3i32(8, nu, nv, nw);  // MX, MY, MZ
@@ -136,16 +137,19 @@ struct GridMeta {
     set_header_float(16, (float) unit_cell.gamma);
     set_header_3i32(17, 1, 2, 3); // MAPC, MAPR, MAPS
     set_header_i32(23, space_group ? space_group->ccp4 : 1); // ISPG
-    set_header_i32(24, nsym * 80);
-    std::memcpy(header_word(27), "CCP4", 4); // EXTTYP
-    //set_header_i32(28, nversion);
-    std::memcpy(header_word(53), "MAP ", 4);
-    // MACHST
-    set_header_i32(54, is_little_endian() ? 0x00004144 : 0x11110000);
+    set_header_i32(24, ops.order() * 80);  // NSYMBT
+    set_header_str(27, "CCP4"); // EXTTYP
+    set_header_i32(28, 20140);  // NVERSION
+    set_header_str(53, "MAP ");
+    set_header_i32(54, is_little_endian() ? 0x00004144 : 0x11110000); // MACHST
     set_header_i32(56, 1); // labels
-    std::memset(header_word(57), ' ', 800 + nsym * 80);
+    std::memset(header_word(57), ' ', 800 + ops.order() * 80);
     set_header_str(57, "written by GEMMI");
-    std::memcpy(header_word(257), "X,  Y,  Z", 9);
+    int n = 257;
+    for (const Op& op : ops) {
+      set_header_str(n, op.triplet());
+      n += 20;
+    }
     update_ccp4_header(mode);
   }
 
@@ -198,7 +202,7 @@ struct GridMeta {
       fail("Not a CCP4 map: " + path);
     unit_cell.set(header_float(11), header_float(12), header_float(13),
                   header_float(14), header_float(15), header_float(16));
-    size_t ext_w = header_i32(24) / 4;  // nsymbt in words
+    size_t ext_w = header_i32(24) / 4;  // NSYMBT in words
     if (ext_w > 1000000)
       fail("Unexpectedly long extendended header: " + path);
     ccp4_header.resize(hsize + ext_w);

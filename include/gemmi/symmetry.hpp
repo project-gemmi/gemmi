@@ -340,7 +340,7 @@ struct GroupOps {
     return nullptr;
   }
 
-  void change_basis(Op cob) {
+  void change_basis(const Op& cob) {
     if (sym_ops.empty() || cen_ops.empty())
       return;
     int den = 1;
