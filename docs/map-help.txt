@@ -6,5 +6,6 @@ Usage:
   -V, --version      Print version and exit.
   --verbose          Verbose output.
   --deltas           Statistics of dx, dy and dz.
+  --check-symmetry   Compare the values of symmetric points.
   --write-xyz=FILE   Write transposed map with fast X axis and slow Z.
   --write-full=FILE  Write map extended to cover whole unit cell.

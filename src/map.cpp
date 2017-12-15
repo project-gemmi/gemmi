@@ -16,7 +16,7 @@
 #define EXE_NAME "gemmi-map"
 #include "options.h"
 
-enum OptionIndex { Verbose=3, Deltas, Reorder, Full };
+enum OptionIndex { Verbose=3, Deltas, CheckSym, Reorder, Full };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -27,6 +27,8 @@ static const option::Descriptor Usage[] = {
   { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { Deltas, 0, "", "deltas", Arg::None,
     "  --deltas  \tStatistics of dx, dy and dz." },
+  { CheckSym, 0, "", "check-symmetry", Arg::None,
+    "  --check-symmetry  \tCompare the values of symmetric points." },
   { Reorder, 0, "", "write-xyz", Arg::Required,
     "  --write-xyz=FILE  \tWrite transposed map with fast X axis and slow Z." },
   { Full, 0, "", "write-full", Arg::Required,
@@ -185,6 +187,26 @@ int main(int argc, char **argv) {
       if (p.options[Reorder]) {
         grid.setup(gemmi::GridSetup::ReorderOnly);
         grid.write_ccp4_map(p.options[Reorder].arg);
+      }
+      if (p.options[CheckSym]) {
+        // TODO check labels vs group numbers
+        double max_err = grid.setup(gemmi::GridSetup::ResizeOnly);
+        if (max_err != 0.0)
+          std::printf("Max. difference for point images in P1: %g\n", max_err);
+        const double eps = 0.01;
+        max_err = 0;
+        grid.symmetrize([&](float a, float b) {
+            if (a < b || a > b) {
+              double diff = std::fabs(a - b);
+              if (diff > eps)
+                std::printf("Difference in symmetry-equivalent points: "
+                            "%g ! = %g (diff: %g\n", a, b, diff);
+              max_err = std::max(max_err, diff);
+            }
+            return std::isnan(a) ? b : a;
+        });
+        if (max_err != 0.0)
+          std::printf("Max. difference in symmetry images: %g\n", max_err);
       }
       if (p.options[Full]) {
         double err = grid.setup(gemmi::GridSetup::FullCheck);

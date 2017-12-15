@@ -25,6 +25,7 @@ using std::int32_t;
 // options for Grid<>::setup
 enum class GridSetup {
   ReorderOnly,  // reorder axes to X, Y, Z
+  ResizeOnly,   // reorder and resize to the whole cell, but no symmetry ops
   Full,         // reorder and expand to the whole unit cell
   FullCheck     // additionally consistency of redundant data
 };
@@ -38,7 +39,7 @@ int modulo(int a, int n) {
   if (a >= n)
     a %= n;
   else if (a < 0)
-    a = a % n + n;
+    a = (a + 1) % n + n - 1;
   return a;
 }
 
@@ -442,12 +443,7 @@ double Grid<T>::setup(GridSetup mode) {
   int start[3] = { header_i32(5), header_i32(6), header_i32(7) };
   int end[3] = { start[0] + nu, start[1] + nv, start[2] + nw };
   // set new metadata
-  if (mode != GridSetup::ReorderOnly) {
-    nu = sampl[0];
-    nv = sampl[1];
-    nw = sampl[2];
-    set_header_3i32(5, 0, 0, 0); // start
-  } else {
+  if (mode == GridSetup::ReorderOnly) {
     set_header_3i32(5, start[pos[0]], start[pos[1]], start[pos[2]]);
     for (int i = 0; i < 3; ++i) {
       end[i] -= start[i];
@@ -457,6 +453,11 @@ double Grid<T>::setup(GridSetup mode) {
     nu = crs[pos[0]];
     nv = crs[pos[1]];
     nw = crs[pos[2]];
+  } else {
+    nu = sampl[0];
+    nv = sampl[1];
+    nw = sampl[2];
+    set_header_3i32(5, 0, 0, 0); // start
   }
   set_header_3i32(1, nu, nv, nw); // NX, NY, NZ
   set_header_3i32(17, 1, 2, 3); // axes (MAPC, MAPR, MAPS)
@@ -469,7 +470,7 @@ double Grid<T>::setup(GridSetup mode) {
       for (it[0] = start[0]; it[0] < end[0]; it[0]++) { // cols
         T val = data[idx++];
         int new_index = wrapped_index(it[pos[0]], it[pos[1]], it[pos[2]]);
-        if (mode == GridSetup::FullCheck)
+        if (mode == GridSetup::FullCheck || mode == GridSetup::ResizeOnly)
           impl::check_diff(full[new_index], val, &max_error);
         full[new_index] = val;
       }
