@@ -64,7 +64,7 @@ struct Op {
       if (tran[i] >= TDEN) // elements need to be in [0,TDEN)
         tran[i] %= TDEN;
       else if (tran[i] < 0)
-        tran[i] = (tran[i] % TDEN) + TDEN;
+        tran[i] = ((tran[i] + 1) % TDEN) + TDEN - 1;
     }
     return *this;
   }

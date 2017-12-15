@@ -6,6 +6,7 @@
 
 #include <climits>
 #include <cmath>
+#include <cstdio>
 #include <benchmark/benchmark.h>
 
 static const int n = 12;
@@ -15,7 +16,7 @@ static int positive_modulo1(int i) {
 }
 
 static int positive_modulo2(int i) {
-  return i >= 0 ? i % n : i % n + n;
+  return i >= 0 ? i % n : ((i + 1) % n + n - 1);
 }
 
 static int positive_modulo3(int i) {
@@ -24,14 +25,15 @@ static int positive_modulo3(int i) {
 }
 
 static int positive_modulo4(int i) {
-  return i % n + (i < 0) * n;
+  int j = i % n;
+  return j < 0 ? j + n : j;
 }
 
 static int positive_modulo5(int i) {
   if (i >= n)
-    return i % 12;
+    return i % n;
   else if (i < 0)
-    return (i % 12) + 12;
+    return ((i+1) % n) + (n - 1);
   else
     return i;
 }
@@ -42,6 +44,9 @@ inline void run(benchmark::State& state, int(*func)(int)) {
     i = std::rand() % 10 == 0 ? -i : i;
     //i += std::rand() % 1000 - 500;
   }
+  for (int i = -30; i < 30; ++i)
+    if ((*func)(i) != positive_modulo1(i))
+      std::printf("ERROR: %d != %d modulo %d\n", (*func)(i), i, n);
   while (state.KeepRunning())
     for (int i : divident)
       benchmark::DoNotOptimize((*func)(i));
