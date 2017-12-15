@@ -168,8 +168,8 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "No input files. Nothing to do.\n");
   }
 
-  if (p.nonOptionsCount() > 1 && p.options[Reorder]) {
-    std::fprintf(stderr, "Option --write-reordered can be only used "
+  if (p.nonOptionsCount() > 1 && (p.options[Reorder] || p.options[Full])) {
+    std::fprintf(stderr, "Option --write-... can be only used "
                          "with a single input file.\n");
     return 1;
   }
@@ -178,6 +178,8 @@ int main(int argc, char **argv) {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       const char* input = p.nonOption(i);
       gemmi::Grid<> grid;
+      if (i != 0)
+        std::printf("\n\n");
       if (verbose)
         std::fprintf(stderr, "Reading %s ...\n", input);
       grid.read_ccp4_map(input);
@@ -199,8 +201,8 @@ int main(int argc, char **argv) {
             if (a < b || a > b) {
               double diff = std::fabs(a - b);
               if (diff > eps)
-                std::printf("Difference in symmetry-equivalent points: "
-                            "%g ! = %g (diff: %g\n", a, b, diff);
+                std::printf("Symmetry-equivalent values differ: "
+                            "%g != %g  diff: %g\n", a, b, diff);
               max_err = std::max(max_err, diff);
             }
             return std::isnan(a) ? b : a;
