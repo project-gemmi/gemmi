@@ -83,7 +83,7 @@ struct GridMeta {
   int nu, nv, nw;
   UnitCell unit_cell;
   bool full_canonical; // grid for the whole unit cell with X,Y,Z order
-  const SpaceGroup* space_group;
+  const SpaceGroup* space_group = nullptr;
   double spacing[3];
   GridStats hstats;  // data statistics read from / written to ccp4 map
   // stores raw headers if the grid was read from ccp4 map
@@ -232,12 +232,16 @@ template<typename T=float>
 struct Grid : GridMeta {
   std::vector<T> data;
 
-  void set_size_without_checking(int u, int v, int w) {
-    nu = u, nv = v, nw = w;
-    data.resize(u * v * w);
+  void calculate_spacing() {
     spacing[0] = 1.0 / (nu * unit_cell.ar);
     spacing[1] = 1.0 / (nv * unit_cell.br);
     spacing[2] = 1.0 / (nw * unit_cell.cr);
+  }
+
+  void set_size_without_checking(int u, int v, int w) {
+    nu = u, nv = v, nw = w;
+    data.resize(u * v * w);
+    calculate_spacing();
     full_canonical = true;
   }
 
@@ -263,6 +267,12 @@ struct Grid : GridMeta {
     }
     // TODO: for space groups with a=b or a=b=c check that m is also equal
     set_size_without_checking(m[0], m[1], m[2]);
+  }
+
+  void set_unit_cell(double a, double b, double c,
+                     double alpha, double beta, double gamma) {
+    unit_cell.set(a, b, c, alpha, beta, gamma);
+    calculate_spacing();
   }
 
   int index(int u, int v, int w) const { return w * nu * nv + v * nu + u; }
@@ -307,6 +317,10 @@ struct Grid : GridMeta {
             data[quick_wrapped_index(u, v, w)] = value;
           }
         }
+  }
+
+  void mask_atom(double x, double y, double z, double radius) {
+    set_points_around(Position{x, y, z}, radius, 1);
   }
 
   void make_zeros_and_ones(double threshold) {
