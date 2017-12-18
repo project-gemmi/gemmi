@@ -60,7 +60,7 @@ int GroupOps_order(cGroupOps* ops) {
   return as_cpp(ops)->order();
 }
 
-int GroupOps_free(cGroupOps* ops) {
+void GroupOps_free(cGroupOps* ops) {
   delete as_cpp(ops);
 }
 

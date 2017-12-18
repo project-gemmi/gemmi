@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
-project(gemmi C CXX)
+project(gemmi C CXX Fortran)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -67,6 +67,11 @@ else()
   endmacro()
 endif()
 
+add_library(cgemmi STATIC fortran/grid.cpp fortran/symmetry.cpp)
+add_executable(ctest fortran/ctest.c)
+target_link_libraries(ctest cgemmi)
+
+add_executable(ftest fortran/ftest.f90 fortran/gemmi.f90)
 
 add_library(input OBJECT src/input.cpp)
 

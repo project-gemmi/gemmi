@@ -13,4 +13,4 @@ const char* SpaceGroup_hall(const cSpaceGroup* sg);
 void SpaceGroup_short_name(const cSpaceGroup* sg, char* dest);
 cGroupOps* SpaceGroup_operations(const cSpaceGroup* sg);
 int GroupOps_order(cGroupOps* ops);
-int GroupOps_free(cGroupOps* ops);
+void GroupOps_free(cGroupOps* ops);

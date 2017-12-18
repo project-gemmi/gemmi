@@ -49,6 +49,15 @@ set the compiler environment with one of these commands::
 If you'd like to use PyPy instead of CPython
 we support PyPy2.7 >= 5.7 (although we test it only occasionally).
 
+C bindings
+----------
+
+For now C bindings are used only when making Fortan bindings,
+but they should be usable on their own.
+If you use cmake to build the project,
+you get a static library ``libcgemmi.a`` that can be used from C,
+together with the :file:`fortran/*.h` headers.
+
 Fortran 2003+
 -------------
 
