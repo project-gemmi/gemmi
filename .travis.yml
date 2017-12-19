@@ -4,7 +4,7 @@ git:
 sudo: false
 addons:
   apt:
-    packages: [libz-dev]
+    packages: [libz-dev, gfortran]
 
 matrix:
   include:
@@ -13,6 +13,7 @@ matrix:
     compiler: gcc
     env:
       - COMPILER=g++-4.8
+      - FC=gfortran-4.8
       - PYTHON=python
       - EXTRA_WFLAGS="-Wno-missing-field-initializers"
 
