@@ -1,16 +1,16 @@
 
 
-struct cSpaceGroup;
-struct cGroupOps;
-typedef struct cSpaceGroup cSpaceGroup;
-typedef struct cGroupOps cGroupOps;
+struct geSpaceGroup;
+struct geGroupOps;
+typedef struct geSpaceGroup geSpaceGroup;
+typedef struct geGroupOps geGroupOps;
 
-const cSpaceGroup* find_spacegroup_by_name(const char* name);
-const cSpaceGroup* find_spacegroup_by_number(int n);
-int SpaceGroup_number(const cSpaceGroup* sg);
-const char* SpaceGroup_hm(const cSpaceGroup* sg);
-const char* SpaceGroup_hall(const cSpaceGroup* sg);
-void SpaceGroup_short_name(const cSpaceGroup* sg, char* dest);
-cGroupOps* SpaceGroup_operations(const cSpaceGroup* sg);
-int GroupOps_order(cGroupOps* ops);
-void GroupOps_free(cGroupOps* ops);
+const geSpaceGroup* find_spacegroup_by_name(const char* name);
+const geSpaceGroup* find_spacegroup_by_number(int n);
+int geSpaceGroup_number(const geSpaceGroup* sg);
+const char* geSpaceGroup_hm(const geSpaceGroup* sg);
+const char* geSpaceGroup_hall(const geSpaceGroup* sg);
+void geSpaceGroup_short_name(const geSpaceGroup* sg, char* dest);
+geGroupOps* geSpaceGroup_operations(const geSpaceGroup* sg);
+int geGroupOps_order(geGroupOps* ops);
+void geGroupOps_free(geGroupOps* ops);

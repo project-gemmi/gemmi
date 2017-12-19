@@ -35,10 +35,19 @@ include_directories("${CMAKE_SOURCE_DIR}/include"
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   set(CMAKE_CXX_FLAGS
    "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wformat=2 $ENV{EXTRA_WFLAGS}")
-  message(STATUS "Flags set to: ${CMAKE_CXX_FLAGS}")
+  message(STATUS "C++ flags set to: ${CMAKE_CXX_FLAGS}")
   # avoid "unused" warnings when compiling with -DNDEBUG
   set(extra_release_flags "-Wno-unused-parameter -Wno-unused-variable")
 endif()
+
+if (DEFINED ENV{FC})
+  if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
+    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -std=f2003 -fimplicit-none -Wall -Wextra -pedantic")
+    message(STATUS "Fortran flags set to: ${CMAKE_Fortran_FLAGS}")
+    set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} -fbounds-check")
+  endif()
+endif()
+
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO
     "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${extra_release_flags}")
@@ -76,6 +85,7 @@ target_link_libraries(ctest cgemmi)
 
 if (DEFINED ENV{FC})
   add_executable(ftest fortran/ftest.f90 fortran/gemmi.f90)
+  target_link_libraries(ftest cgemmi)
 endif()
 
 add_library(input OBJECT src/input.cpp)
