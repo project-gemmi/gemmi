@@ -3,10 +3,12 @@ module gemmi
   use, intrinsic :: iso_c_binding
   implicit none
   private
-  public :: spacegroup, groupops, find_spacegroup_by_name, &
+  public :: spacegroup, groupops, grid0, find_spacegroup_by_name, &
             find_spacegroup_by_number
 
   interface
+    ! functions from symmetry.h
+
     ! const geSpaceGroup* find_spacegroup_by_name(const char* name);
     type(c_ptr) function c_find_spacegroup_by_name(name) &
     bind(C, name="find_spacegroup_by_name")
@@ -70,6 +72,72 @@ module gemmi
       type(c_ptr), intent(in), value :: ops
     end subroutine
 
+    ! functions from grid.h
+
+    !geGrid0* geGrid0_init(int nx, int ny, int nz);
+    type(c_ptr) function c_grid0_init(nx, ny, nz) &
+    bind(C, name="geGrid0_init")
+      use iso_c_binding
+      integer(c_int), intent(in), value :: nx, ny, nz
+    end function
+
+    !void geGrid0_set_unit_cell(geGrid0* grid, double a, double b, double c,
+    !                           double alpha, double beta, double gamma);
+    subroutine c_grid0_set_unit_cell(grid, a, b, c, alpha, beta, gamma) &
+    bind(C, name="geGrid0_set_unit_cell")
+      use iso_c_binding
+      type(c_ptr), intent(in), value :: grid
+      real(c_double), intent(in), value :: a, b, c, alpha, beta, gamma
+    end subroutine
+
+    !void geGrid0_mask_atom(geGrid0* grid, double x, double y, double z,
+    !                       double radius);
+    subroutine c_grid0_mask_atom(grid, x, y, z, radius) &
+    bind(C, name="geGrid0_mask_atom")
+      use iso_c_binding
+      type(c_ptr), intent(in), value :: grid
+      real(c_double), intent(in), value :: x, y, z, radius
+    end subroutine
+
+    !void geGrid0_apply_space_group(geGrid0* grid, int ccp4_num);
+    subroutine c_grid0_apply_space_group(grid, ccp4_num) &
+    bind(C, name="geGrid0_apply_space_group")
+      use iso_c_binding
+      type(c_ptr), intent(in), value :: grid
+      integer(c_int), value :: ccp4_num
+    end subroutine
+
+    !int8_t* geGrid0_data(geGrid0* grid);
+    type(c_ptr) function c_grid0_data(grid) bind(C, name="geGrid0_data")
+      use iso_c_binding
+      type(c_ptr), intent(in), value :: grid
+    end function
+
+    !void geGrid0_free(geGrid0* grid);
+    subroutine c_grid0_free(grid) bind(C, name="geGrid0_free")
+      use iso_c_binding
+      type(c_ptr), intent(in), value :: grid
+    end subroutine
+
+    !void geGrid0_prepare_ccp4_header(geGrid0* grid, int n);
+    subroutine c_grid0_prepare_ccp4_header(grid, mode) &
+    bind(C, name="geGrid0_prepare_ccp4_header")
+      use iso_c_binding
+      type(c_ptr), intent(in), value :: grid
+      integer(c_int), value :: mode
+    end subroutine
+
+    !void geGrid0_write_ccp4_map(geGrid0* grid, const char* path);
+    subroutine c_grid0_write_ccp4_map(grid, path) &
+    bind(C, name="geGrid0_write_ccp4_map")
+      use iso_c_binding
+      type(c_ptr), intent(in), value :: grid
+      character(kind=c_char), intent(in) :: path(*)
+    end subroutine
+
+    ! C runtime functions
+
+    ! size_t strlen(const char *s);
     integer(c_size_t) function strlen(s) bind(C, name='strlen')
       use iso_c_binding
       type(c_ptr), intent(in), value :: s
@@ -93,6 +161,20 @@ module gemmi
   contains
     procedure :: order => groupops_order
     procedure :: free => groupops_free
+  end type
+
+  type grid0
+    private
+    type(c_ptr) :: ptr = c_null_ptr
+  contains
+    procedure :: init => grid0_init
+    procedure :: set_unit_cell => grid0_set_unit_cell
+    procedure :: mask_atom => grid0_mask_atom
+    procedure :: apply_space_group => grid0_apply_space_group
+    procedure :: data => grid0_data
+    procedure :: free => grid0_free
+    procedure :: prepare_ccp4_header => grid0_prepare_ccp4_header
+    procedure :: write_ccp4_map => grid0_write_ccp4_map
   end type
 
 contains
@@ -147,10 +229,57 @@ contains
   end function
 
   subroutine groupops_free(this)
-    implicit none
     class(groupops) :: this
     call c_groupops_free(this%ptr)
     this%ptr = c_null_ptr
+  end subroutine
+
+
+  subroutine grid0_init(this, nx, ny, nz)
+    class(grid0) :: this
+    integer, intent(in) :: nx, ny, nz
+    this%ptr = c_grid0_init(nx, ny, nz)
+  end subroutine
+
+  subroutine grid0_set_unit_cell(this, a, b, c, alpha, beta, gamma)
+    class(grid0) :: this
+    double precision, intent(in) :: a, b, c, alpha, beta, gamma
+    call c_grid0_set_unit_cell(this%ptr, a, b, c, alpha, beta, gamma)
+  end subroutine
+
+  subroutine grid0_mask_atom(this, x, y, z, radius)
+    class(grid0) :: this
+    double precision, intent(in) :: x, y, z, radius
+    call c_grid0_mask_atom(this%ptr, x, y, z, radius)
+  end subroutine
+
+  subroutine grid0_apply_space_group(this, ccp4_num)
+    class(grid0) :: this
+    integer, intent(in) :: ccp4_num
+    call c_grid0_apply_space_group(this%ptr, ccp4_num)
+  end subroutine
+
+  type(c_ptr) function grid0_data(this)
+    class(grid0), intent(in) :: this
+    grid0_data = c_grid0_data(this%ptr)
+  end function
+
+  subroutine grid0_free(this)
+    class(grid0) :: this
+    call c_grid0_free(this%ptr)
+    this%ptr = c_null_ptr
+  end subroutine
+
+  subroutine grid0_prepare_ccp4_header(this, mode)
+    class(grid0) :: this
+    integer, intent(in) :: mode
+    call c_grid0_prepare_ccp4_header(this%ptr, mode)
+  end subroutine
+
+  subroutine grid0_write_ccp4_map(this, path)
+    class(grid0), intent(in) :: this
+    character(len=*), intent(in) :: path
+    call c_grid0_write_ccp4_map(this%ptr, path//c_null_char)
   end subroutine
 
 end module gemmi

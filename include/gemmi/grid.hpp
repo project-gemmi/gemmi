@@ -120,7 +120,7 @@ struct GridMeta {
     std::memcpy(header_word(w), str.c_str(), str.size());
   }
 
-  void make_ccp4_header(int mode) {
+  void prepare_ccp4_header(int mode) {
     GroupOps ops;
     if (space_group)
       ops = space_group->operations();
@@ -157,9 +157,9 @@ struct GridMeta {
     if (mode != 0 && mode != 1 && mode != 2 && mode != 6)
       fail("Only modes 0, 1, 2 and 6 are supported.");
     if (ccp4_header.empty())
-      return make_ccp4_header(mode);
+      return prepare_ccp4_header(mode);
     assert(ccp4_header.size() >= 256);
-    // selectively copy-pasted from make_ccp4_header()
+    // selectively copy-pasted from prepare_ccp4_header()
     set_header_i32(4, mode);
     set_header_float(20, (float) hstats.dmin);
     set_header_float(21, (float) hstats.dmax);
@@ -506,6 +506,7 @@ double Grid<T>::setup(GridSetup mode) {
 
 template<typename T>
 void Grid<T>::write_ccp4_map(const std::string& path) const {
+  assert(ccp4_header.size() >= 256);
   gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "wb");
   std::fwrite(ccp4_header.data(), 4, ccp4_header.size(), f.get());
   int mode = header_i32(4);

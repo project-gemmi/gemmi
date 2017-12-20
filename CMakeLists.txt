@@ -86,6 +86,8 @@ target_link_libraries(ctest cgemmi)
 if (DEFINED ENV{FC})
   add_executable(ftest fortran/ftest.f90 fortran/gemmi.f90)
   target_link_libraries(ftest cgemmi)
+  add_executable(ftest_grid fortran/ftest_grid.f90 fortran/gemmi.f90)
+  target_link_libraries(ftest_grid cgemmi)
 endif()
 
 add_library(input OBJECT src/input.cpp)
