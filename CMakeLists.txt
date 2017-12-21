@@ -1,7 +1,20 @@
 cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
 project(gemmi C CXX)
+
+option(USE_FORTRAN "Build Fortran bindings" OFF)
+
 if (DEFINED ENV{FC})
+  set(USE_FORTRAN ON)
+endif()
+if (CMAKE_Fortran_COMPILER)
+  set(USE_FORTRAN ON)
+endif()
+
+if (USE_FORTRAN)
   enable_language(Fortran)
+else()
+  message(STATUS
+          "Skipping Fortran bindings. If you need them add -D USE_FORTRAN=1")
 endif()
 
 set(CMAKE_CXX_STANDARD 11)
@@ -40,7 +53,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   set(extra_release_flags "-Wno-unused-parameter -Wno-unused-variable")
 endif()
 
-if (DEFINED ENV{FC})
+if (USE_FORTRAN)
   if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
     set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -std=f2003 -fimplicit-none -Wall -Wextra -pedantic")
     message(STATUS "Fortran flags set to: ${CMAKE_Fortran_FLAGS}")
@@ -83,7 +96,7 @@ add_library(cgemmi STATIC fortran/grid.cpp fortran/symmetry.cpp)
 add_executable(ctest fortran/ctest.c)
 target_link_libraries(ctest cgemmi)
 
-if (DEFINED ENV{FC})
+if (USE_FORTRAN)
   add_executable(ftest fortran/ftest.f90 fortran/gemmi.f90)
   target_link_libraries(ftest cgemmi)
   add_executable(ftest_grid fortran/ftest_grid.f90 fortran/gemmi.f90)

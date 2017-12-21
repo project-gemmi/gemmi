@@ -61,7 +61,12 @@ together with the :file:`fortran/*.h` headers.
 Fortran 2003+
 -------------
 
-TODO
+The fortran bindings are in early stage are are not documented.
+You may see the ``fortran/`` directory to know what to expect.
+The bindings and usage examples can be compiled with CMake::
+
+    cmake -D USE_FORTRAN=1 .
+    make
 
 Utilities
 ---------

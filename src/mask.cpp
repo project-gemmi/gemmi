@@ -164,14 +164,16 @@ int main(int argc, char **argv) {
         for (const gemmi::Residue& res : chain.residues)
           for (const gemmi::Atom& atom : res.atoms)
             grid.set_points_around(atom.pos, radius, 1);
-      if (p.options[Verbose])
-        std::fprintf(stderr, "Points masked by model: %ld\n",
-                     std::count(grid.data.begin(), grid.data.end(), 1));
+      if (p.options[Verbose]) {
+        int n = std::count(grid.data.begin(), grid.data.end(), 1);
+        std::fprintf(stderr, "Points masked by model: %d\n", n);
+      }
       grid.symmetrize(
           [](signed char a, signed char b) { return std::max(a,b); });
-      if (p.options[Verbose])
-        std::fprintf(stderr, "After symmetrizing: %ld\n",
-                     std::count(grid.data.begin(), grid.data.end(), 1));
+      if (p.options[Verbose]) {
+        int n = std::count(grid.data.begin(), grid.data.end(), 1);
+        std::fprintf(stderr, "After symmetrizing: %d\n", n);
+      }
       grid.hstats = gemmi::calculate_grid_statistics(grid.data);
       grid.update_ccp4_header(0);
       grid.write_ccp4_map(output);

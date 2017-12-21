@@ -13,7 +13,7 @@ int main(int argc, char* argv[]) {
       geSpaceGroup_short_name(sg, buffer);
       printf("space group %d  %s  or  %s    order: %d\n",
              geSpaceGroup_number(sg), geSpaceGroup_hm(sg), buffer, n);
-      for (int j = 0; j < n; ++j) {
+      for (j = 0; j < n; ++j) {
           geOp* op = geGroupOps_get_op(ops, j);
           geOp_triplet(op, buffer);
           geOp_free(op);
