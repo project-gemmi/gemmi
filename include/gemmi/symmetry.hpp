@@ -77,6 +77,8 @@ struct Op {
 
   Op translated(const Tran& a) const { return Op(*this).translate(a); }
 
+  Op add_centering(const Tran& a) const { return translated(a).wrap(); }
+
   Rot negated_rot() const {
     return { -rot[0][0], -rot[0][1], -rot[0][2],
              -rot[1][0], -rot[1][1], -rot[1][2],
@@ -314,6 +316,7 @@ inline std::vector<Op::Tran> centring_vectors(char lattice_symbol) {
   }
 }
 
+
 struct GroupOps {
   std::vector<Op> sym_ops;
   std::vector<Op::Tran> cen_ops;
@@ -371,9 +374,15 @@ struct GroupOps {
     ops.reserve(sym_ops.size() * cen_ops.size());
     for (const Op& so : sym_ops)
       for (const Op::Tran& co : cen_ops)
-        ops.push_back(so.translated(co).wrap());
+        ops.push_back(so.add_centering(co));
     std::sort(ops.begin(), ops.end());
     return ops;
+  }
+
+  Op get_op(int n) const {
+    int n_cen = n / sym_ops.size();
+    int n_sym = n % sym_ops.size();
+    return sym_ops.at(n_sym).add_centering(cen_ops.at(n_cen));
   }
 
   bool is_same_as(const GroupOps& other) const {

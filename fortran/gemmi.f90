@@ -3,7 +3,7 @@ module gemmi
   use, intrinsic :: iso_c_binding
   implicit none
   private
-  public :: spacegroup, groupops, grid0, find_spacegroup_by_name, &
+  public :: spacegroup, groupops, op, grid0, find_spacegroup_by_name, &
             find_spacegroup_by_number
 
   interface
@@ -11,14 +11,14 @@ module gemmi
 
     ! const geSpaceGroup* find_spacegroup_by_name(const char* name);
     type(c_ptr) function c_find_spacegroup_by_name(name) &
-    bind(C, name="find_spacegroup_by_name")
+    bind(C, name="ge_find_spacegroup_by_name")
       use iso_c_binding
       character(kind=c_char), intent(in) :: name(*)
     end function
 
     ! const geSpaceGroup* find_spacegroup_by_number(int n);
     type(c_ptr) function c_find_spacegroup_by_number(n) &
-    bind(C, name="find_spacegroup_by_number")
+    bind(C, name="ge_find_spacegroup_by_number")
       use iso_c_binding
       integer(c_int), value :: n
     end function
@@ -66,10 +66,31 @@ module gemmi
       type(c_ptr), intent(in), value :: ops
     end function
 
+    ! geOp* geGroupOps_get_op(geGroupOps* ops, int n);
+    type(c_ptr) function c_groupops_get_op(ops, n) &
+    bind(C, name="geGroupOps_get_op")
+      use iso_c_binding
+      type(c_ptr), intent(in), value :: ops
+      integer(c_int), intent(in), value :: n
+    end function
+
     ! void geGroupOps_free(geGroupOps* ops);
     subroutine c_groupops_free(ops) bind(C, name="geGroupOps_free")
       use iso_c_binding
       type(c_ptr), intent(in), value :: ops
+    end subroutine
+
+    ! void geOp_triplet(geOp* op, char* dest);
+    subroutine c_op_triplet(op, dest) bind(C, name="geOp_triplet")
+      use iso_c_binding
+      type(c_ptr), intent(in), value :: op
+      character(kind=c_char), intent(out) :: dest(*)
+    end subroutine
+
+    ! void geOp_free(geOp* op);
+    subroutine c_op_free(op) bind(C, name="geOp_free")
+      use iso_c_binding
+      type(c_ptr), intent(in), value :: op
     end subroutine
 
     ! functions from grid.h
@@ -160,7 +181,16 @@ module gemmi
     type(c_ptr) :: ptr = c_null_ptr
   contains
     procedure :: order => groupops_order
+    procedure :: get_op => groupops_get_op
     procedure :: free => groupops_free
+  end type
+
+  type op
+    private
+    type(c_ptr) :: ptr = c_null_ptr
+  contains
+    procedure :: triplet => op_triplet
+    procedure :: free => op_free
   end type
 
   type grid0
@@ -214,7 +244,6 @@ contains
     class(spacegroup), intent(in) :: this
     character(len=16, kind=c_char) :: string
     call c_spacegroup_short_name(this%ptr, string)
-    ! TODO fix it
     spacegroup_short_name = string
   end function
 
@@ -228,9 +257,28 @@ contains
     groupops_order = c_groupops_order(this%ptr)
   end function
 
+  type(op) function groupops_get_op(this, n)
+    class(groupops), intent(in) :: this
+    integer, intent(in), value :: n
+    groupops_get_op%ptr = c_groupops_get_op(this%ptr, n-1)
+  end function
+
   subroutine groupops_free(this)
     class(groupops) :: this
     call c_groupops_free(this%ptr)
+    this%ptr = c_null_ptr
+  end subroutine
+
+  character(32) function op_triplet(this)
+    class(op), intent(in) :: this
+    character(len=32, kind=c_char) :: string
+    call c_op_triplet(this%ptr, string)
+    op_triplet = string
+  end function
+
+  subroutine op_free(this)
+    class(op) :: this
+    call c_op_free(this%ptr)
     this%ptr = c_null_ptr
   end subroutine
 

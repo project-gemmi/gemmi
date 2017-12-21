@@ -36,7 +36,7 @@ void geGrid0_apply_space_group(geGrid0* grid, int ccp4_num) {
   g->symmetrize([](std::int8_t a, std::int8_t b) { return a > b ? a : b; });
 }
 
-std::int8_t* geGrid0_data(geGrid0* grid) {
+int8_t* geGrid0_data(geGrid0* grid) {
   return as_cpp(grid)->data.data();
 }
 
