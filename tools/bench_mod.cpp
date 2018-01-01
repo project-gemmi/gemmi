@@ -32,10 +32,9 @@ static int positive_modulo4(int i) {
 static int positive_modulo5(int i) {
   if (i >= n)
     return i % n;
-  else if (i < 0)
+  if (i < 0)
     return ((i+1) % n) + (n - 1);
-  else
-    return i;
+  return i;
 }
 
 inline void run(benchmark::State& state, int(*func)(int)) {

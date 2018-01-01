@@ -1,21 +1,21 @@
 #include <iostream>
 #include <gemmi/model.hpp>
 
-using namespace std;
+using std::cout;
 
 void iterate_over_everything(gemmi::Structure& st) {
-  cout << "Unit cell: " << st.cell.a << " " << st.cell.b /*etc.*/ << endl;
+  cout << "Unit cell: " << st.cell.a << " " << st.cell.b /*etc.*/ << '\n';
   for (const gemmi::Model& model : st.models) {
-    cout << "Model #" << model.name << endl;
+    cout << "Model #" << model.name << '\n';
     for (const gemmi::Chain& chain : model.chains) {
-      cout << " Chain " << chain.name << endl;
+      cout << " Chain " << chain.name << '\n';
       for (const gemmi::Residue& res : chain.residues) {
         cout << "  Residue " << res.name          // string
                       << " " << res.seq_id        // int
                       << " " << res.snic.seq_num  // int
                       << " " << res.snic.ins_code // char
                       << " " << res.segment       // string
-             << endl;
+             << '\n';
         for (const gemmi::Atom& atom : res.atoms) {
           // atom.group is 'A' for ATOM, 'H' for HETATM, or 0 if not set
           cout << "   " << (atom.group == 'H' ? "HETA" : "ATOM")
@@ -28,7 +28,7 @@ void iterate_over_everything(gemmi::Structure& st) {
                  << " " << atom.b_iso          // isotropic B
                  // anisotropic ADP: u11 u22 u33 u12 u13 u23
                  << " " << atom.u11 // (0 if not set)
-                 << endl;
+                 << '\n';
         }
       }
     }

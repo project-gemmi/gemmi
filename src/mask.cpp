@@ -12,7 +12,7 @@ enum OptionIndex { Verbose=3, FormatIn, Threshold, Fraction, GridSpac,
 
 struct MaskArg {
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
-    return Arg::Choice(option, msg, {"ccp4", "pdb", "cif", "none"});
+    return Arg::Choice(option, msg, {"coor", "map", "none"});
   }
 };
 
@@ -27,7 +27,7 @@ static const option::Descriptor Usage[] = {
     "  -V, --version  \tPrint version and exit." },
   { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { FormatIn, 0, "", "from", MaskArg::FileFormat,
-    "  --from=ccp4|pdb|cif  \tInput format (default: from file extension)." },
+    "  --from=coor|map  \tInput type (default: from file extension)." },
   { NoOp, 0, "", "", Arg::None, "\nOptions for making a mask from a map:" },
   { Threshold, 0, "t", "threshold", Arg::Float,
     "  -t, --threshold  \tThe density cutoff value." },
@@ -58,22 +58,15 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "Converting %s ...\n", input);
 
   InputType in_type = InputType::Unknown;
-  gemmi::CoorFormat in_subtype = gemmi::CoorFormat::Unknown;
   if (p.options[FormatIn]) {
     const char* arg = p.options[FormatIn].arg;
-    if (strcmp(arg, "pdb") == 0) {
+    if (strcmp(arg, "coor") == 0)
       in_type = InputType::Coordinates;
-      in_subtype = gemmi::CoorFormat::Pdb;
-    } else if (strcmp(arg, "cif") == 0) {
-      in_type = InputType::Coordinates;
-      in_subtype = gemmi::CoorFormat::Cif;
-    } else if (strcmp(arg, "ccp4") == 0) {
+    else if (strcmp(arg, "map") == 0)
       in_type = InputType::Ccp4;
-    }
   }
   if (in_type == InputType::Unknown) {
-    in_subtype = coordinate_format_from_extension(input);
-    if (in_subtype != gemmi::CoorFormat::Unknown) {
+    if (coordinate_format_from_extension(input) != gemmi::CoorFormat::Unknown) {
       in_type = InputType::Coordinates;
     } else if (gemmi::iends_with(input, ".ccp4") ||
                gemmi::iends_with(input, ".map")) {

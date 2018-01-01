@@ -8,7 +8,7 @@ If INPUT is a coordinate file (mmCIF, PDB, etc) the atoms are masked.
   -h, --help           Print usage and exit.
   -V, --version        Print version and exit.
   --verbose            Verbose output.
-  --from=ccp4|pdb|cif  Input format (default: from file extension).
+  --from=coor|map      Input type (default: from file extension).
 
 Options for making a mask from a map:
   -t, --threshold      The density cutoff value.
