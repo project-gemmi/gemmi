@@ -149,8 +149,8 @@ void print_deltas(const gemmi::Grid<T>& g, double dmin, double dmax) {
     for (int w = f[2]; w < g.nw; ++w)
       for (int v = f[1]; v < g.nv; ++v)
         for (int u = f[0]; u < g.nu; ++u)
-          deltas.push_back(g.get_value(u, v, w) -
-                           g.get_value(u - f[0], v - f[1], w - f[2]));
+          deltas.push_back(g.get_value_q(u, v, w) -
+                           g.get_value_q(u - f[0], v - f[1], w - f[2]));
     gemmi::GridStats st = gemmi::calculate_grid_statistics(deltas);
     std::printf("\nd%c: min: %.5f  max: %.5f  mean: %.5f  std.dev: %.5f\n",
                 "XYZ"[i], st.dmin, st.dmax, st.dmean, st.rms);

@@ -134,6 +134,22 @@ module gemmi
       type(c_ptr), intent(in), value :: grid
     end function
 
+    !int8_t geGrid0_get_value_q(geGrid0* grid, int u, int v, int w);
+    integer(c_int8_t) function c_grid0_get_value_q(grid, u, v, w) &
+    bind(C, name="geGrid0_get_value_q")
+      use iso_c_binding
+      type(c_ptr), intent(in), value :: grid
+      integer(c_int), value :: u, v, w
+    end function
+
+    !int8_t geGrid0_get_value_s(geGrid0* grid, int u, int v, int w);
+    integer(c_int8_t) function c_grid0_get_value_s(grid, u, v, w) &
+    bind(C, name="geGrid0_get_value_s")
+      use iso_c_binding
+      type(c_ptr), intent(in), value :: grid
+      integer(c_int), value :: u, v, w
+    end function
+
     !void geGrid0_free(geGrid0* grid);
     subroutine c_grid0_free(grid) bind(C, name="geGrid0_free")
       use iso_c_binding
@@ -202,6 +218,8 @@ module gemmi
     procedure :: mask_atom => grid0_mask_atom
     procedure :: apply_space_group => grid0_apply_space_group
     procedure :: data => grid0_data
+    procedure :: get_value_q => grid0_get_value_q
+    procedure :: get_value_s => grid0_get_value_s
     procedure :: free => grid0_free
     procedure :: prepare_ccp4_header => grid0_prepare_ccp4_header
     procedure :: write_ccp4_map => grid0_write_ccp4_map
@@ -310,6 +328,18 @@ contains
   type(c_ptr) function grid0_data(this)
     class(grid0), intent(in) :: this
     grid0_data = c_grid0_data(this%ptr)
+  end function
+
+  integer function grid0_get_value_q(this, u, v, w)
+    class(grid0), intent(in) :: this
+    integer, intent(in) :: u, v, w
+    grid0_get_value_q = c_grid0_get_value_q(this%ptr, u, v, w)
+  end function
+
+  integer function grid0_get_value_s(this, u, v, w)
+    class(grid0), intent(in) :: this
+    integer, intent(in) :: u, v, w
+    grid0_get_value_s = c_grid0_get_value_s(this%ptr, u, v, w)
   end function
 
   subroutine grid0_free(this)

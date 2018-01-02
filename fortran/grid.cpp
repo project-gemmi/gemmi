@@ -40,6 +40,14 @@ int8_t* geGrid0_data(geGrid0* grid) {
   return as_cpp(grid)->data.data();
 }
 
+int8_t geGrid0_get_value_q(geGrid0* grid, int u, int v, int w) {
+  return as_cpp(grid)->get_value_q(u, v, w);
+}
+
+int8_t geGrid0_get_value_s(geGrid0* grid, int u, int v, int w) {
+  return as_cpp(grid)->get_value_s(u, v, w);
+}
+
 void geGrid0_free(geGrid0* grid) {
   delete as_cpp(grid);
 }

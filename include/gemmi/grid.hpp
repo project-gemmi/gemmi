@@ -275,20 +275,27 @@ struct Grid : GridMeta {
     calculate_spacing();
   }
 
-  int index(int u, int v, int w) const { return w * nu * nv + v * nu + u; }
+  // Quick but unsafe. assumes (for efficiency) that 0 <= u < nu, etc.
+  int index_q(int u, int v, int w) const { return w * nu * nv + v * nu + u; }
 
-  T get_value(int u, int v, int w) const { return data[index(u, v, w)]; }
-
-  // quick-wrap assumes (for efficiency) that the index is not far from [0,nu).
-  int quick_wrapped_index(int u, int v, int w) const {
+  // Assumes (for efficiency) that -nu <= u < 2*nu, etc.
+  int index_n(int u, int v, int w) const {
     if (u >= nu) u -= nu; else if (u < 0) u += nu;
     if (v >= nv) v -= nv; else if (v < 0) v += nv;
     if (w >= nw) w -= nw; else if (w < 0) w += nw;
-    return index(u, v, w);
+    return index_q(u, v, w);
   }
 
-  int wrapped_index(int u, int v, int w) const {
-    return index(modulo(u, nu), modulo(v, nv), modulo(w, nw));
+  // Safe but slower.
+  int index_s(int u, int v, int w) const {
+    return index_q(modulo(u, nu), modulo(v, nv), modulo(w, nw));
+  }
+
+  T get_value_q(int u, int v, int w) const { return data[index_q(u, v, w)]; }
+
+  // _s stands for safe
+  T get_value_s(int u, int v, int w) const {
+    return data[index_s(u, v, w)];
   }
 
   void set_points_around(const Position& ctr, double radius, T value) {
@@ -303,7 +310,7 @@ struct Grid : GridMeta {
     int w0 = iround(fctr.z * nw);
     for (int w = w0-dw; w <= w0+dw; ++w)
       for (int v = v0-dv; v <= v0+dv; ++v)
-        for (int u = u0-du; u < u0+du; ++u) {
+        for (int u = u0-du; u <= u0+du; ++u) {
           Position fdelta{fctr.x - u * (1.0 / nu),
                           fctr.y - v * (1.0 / nv),
                           fctr.z - w * (1.0 / nw)};
@@ -314,7 +321,7 @@ struct Grid : GridMeta {
               fdelta[i] += 1.0;
           Position d = unit_cell.orthogonalize(fdelta);
           if (d.x*d.x + d.y*d.y + d.z*d.z < radius*radius) {
-            data[quick_wrapped_index(u, v, w)] = value;
+            data[index_n(u, v, w)] = value;
           }
         }
   }
@@ -331,7 +338,7 @@ struct Grid : GridMeta {
   // Use provided function to reduce values of all symmetry mates of each
   // grid points, then assign the result to all the points.
   void symmetrize(std::function<T(T, T)> func) {
-    if (!space_group || space_group->number == 1 || full_canonical)
+    if (!space_group || space_group->number == 1 || !full_canonical)
       return;
     std::vector<Op> ops = space_group->operations().all_ops_sorted();
     auto id = std::find(ops.begin(), ops.end(), Op::identity());
@@ -348,13 +355,13 @@ struct Grid : GridMeta {
     for (int w = 0; w != nw; ++w)
       for (int v = 0; v != nv; ++v)
         for (int u = 0; u != nu; ++u, ++idx) {
-          assert(idx == index(u, v, w));
+          assert(idx == index_q(u, v, w));
           if (visited[idx])
             continue;
           for (size_t k = 0; k < ops.size(); ++k) {
             int tu = u, tv = v, tw = w;
             ops[k].apply_in_place_mult(tu, tv, tw, 1);
-            mates[k] = quick_wrapped_index(tu, tv, tw);
+            mates[k] = index_n(tu, tv, tw);
           }
           T value = data[idx];
           for (int k : mates) {
@@ -371,7 +378,7 @@ struct Grid : GridMeta {
     assert(idx == (int) data.size());
   }
 
-  double setup(GridSetup mode);
+  double setup(GridSetup mode = GridSetup::Full);
 
   void read_ccp4_map(const std::string& path);
   void write_ccp4_map(const std::string& path) const;
@@ -487,7 +494,7 @@ double Grid<T>::setup(GridSetup mode) {
     for (it[1] = start[1]; it[1] < end[1]; it[1]++) // rows
       for (it[0] = start[0]; it[0] < end[0]; it[0]++) { // cols
         T val = data[idx++];
-        int new_index = wrapped_index(it[pos[0]], it[pos[1]], it[pos[2]]);
+        int new_index = index_s(it[pos[0]], it[pos[1]], it[pos[2]]);
         if (mode == GridSetup::FullCheck || mode == GridSetup::ResizeOnly)
           impl::check_diff(full[new_index], val, &max_error);
         full[new_index] = val;

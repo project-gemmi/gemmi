@@ -11,11 +11,13 @@ program main
   ! do i=1,natoms
   !   grid%mask_atom(atom_x, atom_y, atom_z, 3.0)
   ! end do
-  call grid%mask_atom(30d0, 40d0, 55d0, 3.0d0)
+  call grid%mask_atom(30d0, 40d0, 55d0, 0.5d0)
 
   call grid%apply_space_group(180)
 
   values = grid%data()
+
+  print *, grid%get_value_q(0, 0, 0), grid%get_value_q(119, 103, 131)
 
   ! for testing
   call grid%prepare_ccp4_header(0) ! arg is mode: 0 or 2

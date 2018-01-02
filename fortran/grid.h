@@ -13,6 +13,8 @@ void geGrid0_mask_atom(geGrid0* grid, double x, double y, double z,
                        double radius);
 void geGrid0_apply_space_group(geGrid0* grid, int ccp4_num);
 int8_t* geGrid0_data(geGrid0* grid);
+int8_t geGrid0_get_value_q(geGrid0* grid, int u, int v, int w);
+int8_t geGrid0_get_value_s(geGrid0* grid, int u, int v, int w);
 void geGrid0_free(geGrid0* grid);
 void geGrid0_prepare_ccp4_header(geGrid0* grid, int n);
 void geGrid0_write_ccp4_map(geGrid0* grid, const char* path);
