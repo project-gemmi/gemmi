@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2017 Dr. Colin Hirsch and Daniel Frey
+// Copyright (c) 2014-2018 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
 #ifndef TAOCPP_PEGTL_INCLUDE_INTERNAL_STATE_HPP
@@ -32,7 +32,8 @@ namespace tao
                       template< typename... > class Control,
                       typename Input,
                       typename... States >
-            static auto success( State& s, const Input& in, States&&... st ) -> decltype( s.template success< A, M, Action, Control >( in, st... ), void() )
+            static auto success( State& s, const Input& in, States&&... st )
+               -> decltype( s.template success< A, M, Action, Control >( in, st... ), void() )
             {
                s.template success< A, M, Action, Control >( in, st... );
             }
@@ -46,7 +47,8 @@ namespace tao
                       typename Input,
                       typename... States,
                       int = 0 >
-            static auto success( State& s, const Input& in, States&&... st ) -> decltype( s.success( in, st... ), void() )
+            static auto success( State& s, const Input& in, States&&... st )
+               -> decltype( s.success( in, st... ), void() )
             {
                s.success( in, st... );
             }
@@ -59,7 +61,7 @@ namespace tao
                       typename... States >
             static bool match( Input& in, States&&... st )
             {
-               State s( const_cast< const Input& >( in ), st... );
+               State s( static_cast< const Input& >( in ), st... );
 
                if( duseltronik< seq< Rules... >, A, M, Action, Control >::match( in, s ) ) {
                   success< A, M, Action, Control >( s, in, st... );

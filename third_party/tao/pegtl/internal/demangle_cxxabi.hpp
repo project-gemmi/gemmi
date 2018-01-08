@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2017 Dr. Colin Hirsch and Daniel Frey
+// Copyright (c) 2014-2018 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
 #ifndef TAOCPP_PEGTL_INCLUDE_INTERNAL_DEMANGLE_CXXABI_HPP
@@ -27,7 +27,7 @@ namespace tao
             }
             std::string result( demangled.get() );
 #ifdef TAOCPP_PEGTL_PRETTY_DEMANGLE
-            demangle_sanitise_chars( result );
+            demangle_sanitise_chars( result );  // LCOV_EXCL_LINE
 #endif
             return result;
          }

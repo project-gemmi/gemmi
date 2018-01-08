@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2017 Dr. Colin Hirsch and Daniel Frey
+// Copyright (c) 2014-2018 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
 #ifndef TAOCPP_PEGTL_INCLUDE_INTERNAL_PLUS_HPP
@@ -43,7 +43,7 @@ namespace tao
                       typename... States >
             static bool match( Input& in, States&&... st )
             {
-               return duseltronik< seq< Rule, Rules... >, A, M, Action, Control >::match( in, st... ) && duseltronik< star< Rule, Rules... >, A, M, Action, Control >::match( in, st... );
+               return seq< Rule, Rules... >::template match< A, M, Action, Control >( in, st... ) && star< Rule, Rules... >::template match< A, M, Action, Control >( in, st... );
             }
          };
 
