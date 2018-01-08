@@ -106,14 +106,11 @@ one). For this we have a function::
 
 To write a map to a file::
 
-    // if min/max/mean values in the map header are to be updated
-    grid.hstats = gemmi::calculate_grid_statistics(grid.data);
+    // the file header needs to be prepared/updated with an explicit call
+    int mode = 2; // ccp4 file mode: 2 for floating-point data, 0 for masks
+    bool update_stats = true; // update min/max/mean/rms values in the header
+    grid.update_ccp4_header(mode, update_stats);
 
-    // if the header needs to be updated
-    int mode = 2;
-    grid.update_ccp4_header(mode);
-
-    // finally, write the map to a file
     grid.write_ccp4_map(filename);
 
 Data and symmetry

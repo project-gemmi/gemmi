@@ -167,8 +167,7 @@ int main(int argc, char **argv) {
         int n = std::count(grid.data.begin(), grid.data.end(), 1);
         std::fprintf(stderr, "After symmetrizing: %d\n", n);
       }
-      grid.hstats = gemmi::calculate_grid_statistics(grid.data);
-      grid.update_ccp4_header(0);
+      grid.update_ccp4_header(0, true);
       grid.write_ccp4_map(output);
     }
   } catch (std::runtime_error& e) {

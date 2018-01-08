@@ -159,7 +159,6 @@ struct GridMeta {
     if (ccp4_header.empty())
       return prepare_ccp4_header(mode);
     assert(ccp4_header.size() >= 256);
-    // selectively copy-pasted from prepare_ccp4_header()
     set_header_i32(4, mode);
     set_header_float(20, (float) hstats.dmin);
     set_header_float(21, (float) hstats.dmax);
@@ -380,6 +379,11 @@ struct Grid : GridMeta {
 
   double setup(GridSetup mode = GridSetup::Full);
 
+  void update_ccp4_header(int mode, bool update_stats=false) {
+    if (update_stats)
+      hstats = calculate_grid_statistics(data);
+    GridMeta::update_ccp4_header(mode);
+  }
   void read_ccp4_map(const std::string& path);
   void write_ccp4_map(const std::string& path) const;
 };
