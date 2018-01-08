@@ -17,7 +17,7 @@ program main
 
   values = grid%data()
 
-  print *, grid%get_value_q(0, 0, 0), grid%get_value_q(119, 103, 131)
+  print *, grid%get_value(0, 0, 0), grid%get_value(119, 103, 131)
 
   ! for testing
   call grid%prepare_ccp4_header(0) ! arg is mode: 0 or 2
