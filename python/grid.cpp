@@ -25,10 +25,9 @@ void add_grid_methods(py::class_<Gr>& cl) {
     .def("set_header_i32", &Gr::set_header_i32)
     .def("set_header_float", &Gr::set_header_float)
     .def("set_header_str", &Gr::set_header_str)
-    .def("get_value_q", &Gr::get_value_q) // to be timed
-    .def("get_value_s", &Gr::get_value_s)
-    .def_readwrite("space_group", &Gr::space_group)
+    .def("get_value", &Gr::get_value_s)
     .def("set_value", &Gr::set_value_s)
+    .def_readwrite("space_group", &Gr::space_group)
     .def_readonly("unit_cell", &Gr::unit_cell)
     .def("set_unit_cell", (void (Gr::*)(const UnitCell&)) &Gr::set_unit_cell)
     .def("set_points_around", &Gr::set_points_around)

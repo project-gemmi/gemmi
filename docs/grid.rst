@@ -64,20 +64,33 @@ Almost all programs read the reflection data and calculate maps internally.
 C++
 ---
 
-To read a map from a file::
+Reading
+~~~~~~~
+
+All the functionality related to grids is contained in a single header file::
 
     #include <gemmi/grid.hpp>
 
-    gemmi::Grid<float> grid;
-    grid.read_ccp4_map(filename);
+There we have a templated ``struct Grid``::
 
-To work with the mask data (``int8_t``, but typically only values 0 and 1
-are used) use ``int8_t`` instead of ``float``::
+    template<typename T=float> struct Grid;
+
+We normally use float type when reading a map file::
+
+    gemmi::Grid<float> grid;
+    grid.read_ccp4_map("my_map.ccp4");
+
+and int8_t when reading a mask (mask typically has only values 0 and 1,
+but in principle it can have values from -127 to 128)::
 
     gemmi::Grid<int8_t> grid;
+    grid.read_ccp4_map("my_mask.ccp4");
 
-If the grid data type does not match the file data type, the library
+But if the grid data type does not match the file data type, the library
 will attempt to convert the data when reading.
+
+Header
+~~~~~~
 
 The CCP4 map header is organised as 56 words followed by space for ten
 80-character text labels.
@@ -98,6 +111,9 @@ For example::
     int mode = grid.header_i32(4);
     float x = grid.header_float(11);
 
+setup()
+~~~~~~~
+
 ``read_ccp4_map()`` stores the data as it is written in the file.
 In many situation, it is convenient to have the data expanded to the whole
 unit cell, with axes in a specific order (X, Y, Z is the most conventional
@@ -107,6 +123,8 @@ one). For this we have a function::
 
 (Some of the functions described later in this section require this call.)
 
+Writing
+~~~~~~~
 
 To write a map to a file::
 
@@ -150,11 +168,23 @@ as in the C++ version.
     >>> m.header_str(57, 80).strip()
     'Created by MAPMAN V. 080625/7.8.5 at Wed Jan 3 12:57:38 2018 for A. Nonymous'
 
+TODO: writing
+
 Data and symmetry
 =================
 
 The actual data is a 3d array with dimensions ``nu``, ``nv`` and ``nw``,
-internally kept in a grid member ``std::vector<T> data``.
+internally kept in a C++ grid member ``std::vector<T> data``.
+
+TODO: space_group
+
+TODO: unit_cell
+
+C++
+---
+
+TODO: how to get/set size
+
 The data can be accessed in two ways::
 
     // quick: for 0<=u<nu, 0<=v<nv, 0<=w<nw.
@@ -163,34 +193,44 @@ The data can be accessed in two ways::
     // safe: u, v, and w and wrapped using modulo function (u mod nu, etc.)
     T get_value_s(int u, int v, int w) const;
 
-TODO
+TODO: setting value
 
-(how to set space group, unit cell, size)
+TODO: space_group
 
-Functions
-=========
-
-TODO: Higher-level functions. set_points_around()
-
-C++
-===
-
-In C++ all functionality related to grids is contained in a single header
-file::
-
-    #include <gemmi/grid.hpp>
-
-There we have a templated ``struct Grid``::
-
-
-    template<typename T=float> struct Grid;
-
-TODO
+TODO: unit_cell
 
 Python
-======
+------
 
-TODO
+.. doctest::
+
+   >>> grid = gemmi.FloatGrid(12, 12, 12)
+   >>> # in real work we do not expect handling of individual values
+   >>> grid.set_value(1, 1, 1, 7.0)
+   >>> grid.get_value(1, 1, 1)
+   7.0
+   >>> # we can test wrapping of indices (a.k.a. periodic boundary conditions)
+   >>> grid.get_value(-11, 13, 25)
+   7.0
+
+It is a clever 3D array that understands crystallographic symmetry.
+
+.. doctest::
+
+   >>> grid.space_group = gemmi.find_spacegroup_by_name('P2')
+   >>> grid.set_value(0, 0, 0, 0.125)  # a special position
+   >>> sum(grid)  # for now only two points: 7.0 + 0.125
+   7.125
+   >>> grid.symmetrize_max()  # applying symmetry
+   >>> sum(grid)  # one point gets duplicated, the other doesn't
+   14.125
+
+TODO: unit cell and everything else
+
+Toolbox
+=======
+
+TODO: Higher-level functions. set_points_around()
 
 Fortran
 =======
