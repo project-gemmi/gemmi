@@ -3,6 +3,7 @@
 #include "gemmi/elem.hpp"
 #include "gemmi/unitcell.hpp"
 
+#include <cstdio>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
@@ -19,6 +20,24 @@ void add_mm(py::module& m) {
         return "<gemmi.Position(" + std::to_string(self.x) + "," +
                std::to_string(self.y) + "," + std::to_string(self.z) + ")>";
     });
+  py::class_<UnitCell>(m, "UnitCell")
+    .def(py::init<>())
+    // TODO: init(a,b,c,alpha,beta,gamma)
+    .def_readonly("a", &UnitCell::a)
+    .def_readonly("b", &UnitCell::b)
+    .def_readonly("c", &UnitCell::c)
+    .def_readonly("alpha", &UnitCell::alpha)
+    .def_readonly("beta", &UnitCell::beta)
+    .def_readonly("gamma", &UnitCell::gamma)
+    .def_readonly("volume", &UnitCell::volume)
+    .def("set", &UnitCell::set)
+    .def("__repr__", [](const UnitCell& self) {
+        char buf[256];
+        std::snprintf(buf, 256, "<gemmi.UnitCell(%.9g, %.9g, %.9g, %.9g, %.9g, %.9g)>",
+                self.a, self.b, self.c, self.alpha, self.beta, self.gamma);
+        return std::string(buf);
+    });
+
   m.def("calculate_dihedral", &calculate_dihedral,
         "Input: four points. Output: dihedral angle in radians.");
   py::class_<Element>(m, "Element")

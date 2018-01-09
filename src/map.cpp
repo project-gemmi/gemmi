@@ -187,12 +187,12 @@ int main(int argc, char **argv) {
       if (p.options[Deltas])
         print_deltas(grid, stats.dmin, stats.dmax);
       if (p.options[Reorder]) {
-        grid.setup(gemmi::GridSetup::ReorderOnly);
+        grid.setup(gemmi::GridSetup::ReorderOnly, NAN);
         grid.write_ccp4_map(p.options[Reorder].arg);
       }
       if (p.options[CheckSym]) {
         // TODO check labels vs group numbers
-        double max_err = grid.setup(gemmi::GridSetup::ResizeOnly);
+        double max_err = grid.setup(gemmi::GridSetup::ResizeOnly, NAN);
         if (max_err != 0.0)
           std::printf("Max. difference for point images in P1: %g\n", max_err);
         const double eps = 0.01;
@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
           std::printf("Max. difference in symmetry images: %g\n", max_err);
       }
       if (p.options[Full]) {
-        double err = grid.setup(gemmi::GridSetup::FullCheck);
+        double err = grid.setup(gemmi::GridSetup::FullCheck, NAN);
         size_t nn = std::count_if(grid.data.begin(), grid.data.end(),
                                   [](float x) { return std::isnan(x); });
         if (err != 0.0)

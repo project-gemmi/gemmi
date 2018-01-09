@@ -20,6 +20,10 @@ igdir=../include/gemmi
 gemmi.o: gemmi.cpp
 	$(CXX) $(FLAGS) `$(PYTHON_CONFIG) --includes` -c $<
 
+grid.o: grid.cpp $(igdir)/grid.hpp $(igdir)/unitcell.hpp \
+       $(igdir)/symmetry.hpp $(igdir)/util.hpp
+	$(CXX) $(FLAGS) `$(PYTHON_CONFIG) --includes` -c $<
+
 mm.o: mm.cpp $(igdir)/elem.hpp
 	$(CXX) $(FLAGS) `$(PYTHON_CONFIG) --includes` -c $<
 
@@ -34,7 +38,7 @@ cif_read.o: cif_read.cpp $(igdir)/cifdoc.hpp $(igdir)/cif.hpp \
             $(igdir)/numb.hpp $(igdir)/gz.hpp $(igdir)/util.hpp
 	$(CXX) $(FLAGS) `$(PYTHON_CONFIG) --includes` -c $<
 
-OBJ=gemmi.o mm.o sym.o cif.o cif_read.o
+OBJ=gemmi.o grid.o mm.o sym.o cif.o cif_read.o
 
 gemmi.so: $(OBJ)
 	$(CXX) $(FLAGS) -shared \

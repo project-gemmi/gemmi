@@ -192,6 +192,10 @@ struct GridMeta {
     return pos;
   }
 
+  double header_rfloat(int w) const { // rounded to 5 digits
+    return std::round(1e5 * header_float(w)) / 1e5;
+  }
+
   void read_ccp4_header(FILE* f, const std::string& path) {
     const size_t hsize = 256;
     ccp4_header.resize(hsize);
@@ -199,8 +203,8 @@ struct GridMeta {
       fail("Failed to read map header: " + path);
     if (header_str(53, 4) != "MAP ")
       fail("Not a CCP4 map: " + path);
-    unit_cell.set(header_float(11), header_float(12), header_float(13),
-                  header_float(14), header_float(15), header_float(16));
+    unit_cell.set(header_rfloat(11), header_rfloat(12), header_rfloat(13),
+                  header_rfloat(14), header_rfloat(15), header_rfloat(16));
     size_t ext_w = header_i32(24) / 4;  // NSYMBT in words
     if (ext_w > 1000000)
       fail("Unexpectedly long extendended header: " + path);
@@ -274,6 +278,11 @@ struct Grid : GridMeta {
     calculate_spacing();
   }
 
+  void set_unit_cell(const UnitCell& cell) {
+    unit_cell = cell;
+    calculate_spacing();
+  }
+
   // Quick but unsafe. assumes (for efficiency) that 0 <= u < nu, etc.
   int index_q(int u, int v, int w) const { return w * nu * nv + v * nu + u; }
 
@@ -293,9 +302,11 @@ struct Grid : GridMeta {
   T get_value_q(int u, int v, int w) const { return data[index_q(u, v, w)]; }
 
   // _s stands for safe
-  T get_value_s(int u, int v, int w) const {
-    return data[index_s(u, v, w)];
-  }
+  T get_value_s(int u, int v, int w) const { return data[index_s(u, v, w)]; }
+
+  void set_value_s(int u, int v, int w, T x) { data[index_s(u, v, w)] = x; }
+
+  void fill(T value) { std::fill(data.begin(), data.end(), value); }
 
   void set_points_around(const Position& ctr, double radius, T value) {
     int du = (int) std::ceil(radius / spacing[0]);
@@ -377,7 +388,11 @@ struct Grid : GridMeta {
     assert(idx == (int) data.size());
   }
 
-  double setup(GridSetup mode = GridSetup::Full);
+  // two most common symmetrize functions
+  void symmetrize_min() { symmetrize([](T a, T b) { return a < b ? a : b; }); }
+  void symmetrize_max() { symmetrize([](T a, T b) { return a > b ? a : b; }); }
+
+  double setup(GridSetup mode, T default_value);
 
   void update_ccp4_header(int mode, bool update_stats=false) {
     if (update_stats)
@@ -461,7 +476,7 @@ template<typename T> void check_diff(T a, T b, double* max_error) {
 }
 
 template<typename T>
-double Grid<T>::setup(GridSetup mode) {
+double Grid<T>::setup(GridSetup mode, T default_value) {
   double max_error = 0.0;
   if (full_canonical || ccp4_header.empty())
     return max_error;
@@ -491,7 +506,7 @@ double Grid<T>::setup(GridSetup mode) {
   set_header_3i32(1, nu, nv, nw); // NX, NY, NZ
   set_header_3i32(17, 1, 2, 3); // axes (MAPC, MAPR, MAPS)
   // now set the data
-  std::vector<T> full(nu * nv * nw, NAN);
+  std::vector<T> full(nu * nv * nw, default_value);
   int it[3];
   int idx = 0;
   for (it[2] = start[2]; it[2] < end[2]; it[2]++) // sections
