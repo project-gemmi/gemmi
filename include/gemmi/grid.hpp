@@ -473,6 +473,13 @@ template<typename T> void check_diff(T a, T b, double* max_error) {
   if (a < b || a > b)
     *max_error = std::max(*max_error, std::fabs(double(a - b)));
 }
+
+// MSVC does not accept std::int8_t etc. as an argument to std::isnan()
+template<typename T> bool is_nan(T a) { return std::isnan(a); }
+template<> bool is_nan(std::int8_t) { return false; }
+template<> bool is_nan(std::int16_t) { return false; }
+template<> bool is_nan(std::uint16_t) { return false; }
+template<> bool is_nan(int) { return false; }
 }
 
 template<typename T>
@@ -520,11 +527,11 @@ double Grid<T>::setup(GridSetup mode, T default_value) {
       }
   data = full;
   if (mode == GridSetup::Full)
-    symmetrize([](T a, T b) { return std::isnan(a) ? b : a; });
+    symmetrize([](T a, T b) { return impl::is_nan(a) ? b : a; });
   else if (mode == GridSetup::FullCheck)
     symmetrize([&max_error](T a, T b) {
         impl::check_diff(a, b, &max_error);
-        return std::isnan(a) ? b : a;
+        return impl::is_nan(a) ? b : a;
     });
   full_canonical = pos[0] == 0 && pos[1] == 1 && pos[2] == 2 && full_cell();
   return max_error;
