@@ -55,6 +55,10 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   set(extra_release_flags "-Wno-unused-parameter -Wno-unused-variable")
 endif()
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+endif()
+
 if (USE_FORTRAN)
   if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
     set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -std=f2003 -fimplicit-none -Wall -Wextra -pedantic")

@@ -32,9 +32,10 @@ void add_mm(py::module& m) {
     .def_readonly("volume", &UnitCell::volume)
     .def("set", &UnitCell::set)
     .def("__repr__", [](const UnitCell& self) {
+        using namespace std;  // VS2015/17 doesn't like std::snprintf
         char buf[256];
-        std::snprintf(buf, 256, "<gemmi.UnitCell(%.9g, %.9g, %.9g, %.9g, %.9g, %.9g)>",
-                self.a, self.b, self.c, self.alpha, self.beta, self.gamma);
+        snprintf(buf, 256, "<gemmi.UnitCell(%g, %g, %g, %g, %g, %g)>",
+                 self.a, self.b, self.c, self.alpha, self.beta, self.gamma);
         return std::string(buf);
     });
 
