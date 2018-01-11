@@ -245,6 +245,8 @@ inline Structure structure_from_cif_block(cif::Block& block) {
   for (auto row : block.find("_struct_conn.", {"id", "conn_type_id",
         "ptnr1_label_asym_id", "ptnr1_label_seq_id", "ptnr1_label_comp_id",
         "ptnr2_label_asym_id", "ptnr2_label_seq_id", "ptnr2_label_comp_id"})) {
+    if (cif::is_null(row[3]) || cif::is_null(row[6]))
+      continue;
     Connection c;
     c.id = row.str(0);
     std::string type = row.str(1);
