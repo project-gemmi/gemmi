@@ -288,8 +288,8 @@ struct ResidueId {
 struct Residue : public ResidueId {
   bool is_cis = false;  // bond to the next residue marked as cis
   std::vector<Atom> atoms;
-  // Maps Connection::id (from Model::connections) to Atom::name.
-  std::map<std::string, std::string> conn;
+  // Connection::id (from Model::connections)
+  std::vector<std::string> conn;
   Chain* parent = nullptr;
 
   explicit Residue(const ResidueId& rid) noexcept : ResidueId(rid) {}
@@ -353,13 +353,23 @@ struct Chain {
 // We assume that the nearest symmetry mate is connected.
 struct Connection {
   enum Type { Covale, CoveleBase, CovalePhosphate, CovaleSugar, Disulf,
-              Hydrog, MetalC, Mismat, ModRes, SaltBr };
+              Hydrog, MetalC, Mismat, ModRes, SaltBr, None };
   std::string id;  // the id is refered by Residue::conn;
-  Type type;
+  Type type = None;
   // The pointers get invalidated by some changes to the model.
-  Residue* res1;
-  Residue* res2;
+  Residue* res1 = nullptr;
+  Residue* res2 = nullptr;
+  // _struct_conn.ptnr[12]_label_atom_id, only for LINK not for SSBOND
+  std::string atom1;
+  std::string atom2;
 };
+
+inline const char* get_mmcif_connection_type_id(Connection::Type t) {
+  static constexpr const char* type_ids[] = {
+    "covale", "covale_base", "covale_phosphate", "covale_sugar", "disulf",
+    "hydrog", "metalc", "mismat", "modres", "saltbr", nullptr };
+  return type_ids[t];
+}
 
 struct Model {
   std::string name;  // actually an integer number
@@ -373,6 +383,13 @@ struct Model {
   }
   Chain* find_or_add_chain(const std::string& chain_name) {
     return impl::find_or_add(chains, chain_name);
+  }
+  Residue* find_residue_with_label(const std::string& chain_name, int seq_id,
+                                   const std::string& res_name) {
+    if (Chain* chain = find_chain(chain_name))
+      if (Residue* res = chain->find_residue(ResidueId(seq_id, res_name)))
+        return res;
+    return nullptr;
   }
   std::vector<Chain>& children() { return chains; }
   const std::vector<Chain>& children() const { return chains; }

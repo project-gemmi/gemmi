@@ -253,6 +253,7 @@ struct Table {
       return pos >= 0 ? &value_at(pos) : nullptr;
     }
     bool has(int n) const { return tab.has_column(n); }
+    bool has2(int n) const { return has(n) && !cif::is_null(operator[](n)); }
     size_t size() const { return tab.width(); }
     std::string str(int n) const { return as_string(at(n)); }
     using iterator = IndirectIter<Row, std::string>;

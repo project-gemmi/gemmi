@@ -158,8 +158,33 @@ inline void write_pdb(const Structure& st, std::ostream& os,
           os.write(buf, 81);
       }
 
-    // CISPEP (note: we use only the first conformation)
+    // SSBOND  (note: we use only the first model)
     int counter = 0;
+    /*
+    for (const Connection& con : st.models[0].connections)
+      if (con.type == Connection::Disulf) {
+        const Residue* res1 = con.res1;
+        if (!res1) {
+          // TODO: find it
+          continue;
+        }
+        const Residue* res2 = con.res2;
+        if (!res2) {
+          // TODO: find it
+          continue;
+        }
+        WRITE("SSBOND%4d  %3s%2s %5s   %3s%2s %5s %29s %6s %5.2f  \n",
+           ++counter,
+           res1->name.c_str(), res1->parent->name_for_pdb().c_str(),
+           impl::write_seq_id(buf8, *con.res1),
+           res2->name.c_str(), res2->parent->name_for_pdb().c_str(),
+           impl::write_seq_id(buf8, *con.res2),
+           "1555", "1555", 1.0);
+      }
+    */
+
+    // CISPEP (note: we use only the first conformation)
+    counter = 0;
     for (const Model& model : st.models)
       for (const Chain& chain : model.chains) {
         const char* cname = chain.name_for_pdb().c_str();

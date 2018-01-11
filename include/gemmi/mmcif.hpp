@@ -55,18 +55,6 @@ inline Mat4x4 Matrix33_to_Mat4x4(const Matrix33& m) {
           {    0,     0,     0, 1}};
 }
 
-inline Residue* find_residue_with_label(Structure& st, cif::Table::Row& row) {
-  for (auto& item : row)
-    if (cif::is_null(item))
-      return nullptr;
-  ResidueId rid(cif::as_int(row[2]), row[3]);
-  if (Model* model = st.find_model(row[0]))
-    if (Chain* chain = model->find_chain(row[1]))
-      if (Residue* res = chain->find_residue(rid))
-        return res;
-  return nullptr;
-}
-
 inline Structure structure_from_cif_block(cif::Block& block) {
   using cif::as_number;
   using cif::as_string;
@@ -245,12 +233,38 @@ inline Structure structure_from_cif_block(cif::Block& block) {
 
   for (auto row : block.find("_struct_mon_prot_cis.",
                              {"pdbx_PDB_model_num", "label_asym_id",
-                              "label_seq_id", "label_comp_id"}))
-    if (Residue* res = find_residue_with_label(st, row))
-      res->is_cis = true;
+                              "label_seq_id", "label_comp_id"})) {
+    if (row.has2(0) && row.has2(1) && row.has2(2) && row.has2(3))
+      if (Model* model = st.find_model(row[0])) {
+        int seq = cif::as_int(row[2]);
+        if (Residue* res = model->find_residue_with_label(row[1], seq, row[3]))
+          res->is_cis = true;
+      }
+  }
 
-  for (auto row : block.find("_struct_conn.", {"id", "conn_type_id"})) {
-    // TODO
+  for (auto row : block.find("_struct_conn.", {"id", "conn_type_id",
+        "ptnr1_label_asym_id", "ptnr1_label_seq_id", "ptnr1_label_comp_id",
+        "ptnr2_label_asym_id", "ptnr2_label_seq_id", "ptnr2_label_comp_id"})) {
+    Connection c;
+    c.id = row.str(0);
+    std::string type = row.str(1);
+    for (int i = 0; i != Connection::None; ++i)
+      if (get_mmcif_connection_type_id(Connection::Type(i)) == type) {
+        c.type = Connection::Type(i);
+        break;
+      }
+    for (Model& model : st.models) {
+      c.res1 = model.find_residue_with_label(row.str(2),
+                                             cif::as_int(row[3]), row.str(4));
+      c.res2 = model.find_residue_with_label(row.str(5),
+                                             cif::as_int(row[6]), row.str(7));
+      if (c.res1 && c.res2) {
+        c.res1->conn.push_back(c.id);
+        c.res2->conn.push_back(c.id);
+        model.connections.push_back(c);
+      }
+      // TODO atom name
+    }
   }
 
   return st;
