@@ -209,6 +209,38 @@ inline size_t copy_line_from_stream(char* line, int size, Input&& in) {
   return len;
 }
 
+void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
+  int disulf_count = 0;
+  for (const std::string& record : conn_records) {
+    const char* r = record.c_str();
+    ResidueId rid(read_snic(r + 17), read_string(r + 11, 3));
+    if (*r == 'S' || *r == 's') { // SSBOND
+      ResidueId rid2(read_snic(r + 31), read_string(r + 25, 3));
+      for (Model& model : st.models) {
+        Chain* chain1 = model.find_chain(read_string(r + 14, 2));
+        Chain* chain2 = model.find_chain(read_string(r + 28, 2));
+        if (chain1 && chain2) {
+          Connection c;
+          c.id = "disulf" + std::to_string(++disulf_count);
+          c.type = Connection::Disulf;
+          c.res1 = chain1->find_residue(rid);
+          c.res2 = chain2->find_residue(rid2);
+          if (c.res1 && c.res2) {
+            c.res1->conn.push_back("1 " + c.id);
+            c.res2->conn.push_back("2 " + c.id);
+            model.connections.emplace_back(c);
+          }
+        }
+      }
+    } else if (*r == 'C' || *r == 'c') { // CISPEP
+      for (Model& model : st.models)
+        if (Chain* chain = model.find_chain(read_string(r + 14, 2)))
+          if (Residue* res = chain->find_residue(rid))
+            res->is_cis = true;
+    }
+  }
+}
+
 template<typename Input>
 Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   using namespace pdb_impl;
@@ -394,33 +426,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     }
   st.finish();
 
-  int disulf_count = 0;
-  for (const std::string& record : conn_records) {
-    const char* r = record.c_str();
-    ResidueId rid(read_snic(r + 17), read_string(r + 11, 3));
-    if (*r == 'S' || *r == 's') { // SSBOND
-      ResidueId rid2(read_snic(r + 31), read_string(r + 25, 3));
-      for (Model& model : st.models)
-        if (Chain* chain1 = model.find_chain(read_string(r + 14, 2)))
-          if (Chain* chain2 = model.find_chain(read_string(r + 28, 2))) {
-            Connection c;
-            c.id = "disulf" + std::to_string(++disulf_count);
-            c.type = Connection::Disulf;
-            c.res1 = chain->find_residue(rid);
-            c.res2 = chain->find_residue(rid2);
-            if (c.res1 && c.res2) {
-              c.res1->conn.push_back(c.id);
-              c.res2->conn.push_back(c.id);
-              model.connections.emplace_back(c);
-            }
-          }
-    } else if (*r == 'C' || *r == 'c') { // CISPEP
-      for (Model& model : st.models)
-        if (Chain* chain = model.find_chain(read_string(r + 14, 2)))
-          if (Residue* res = chain->find_residue(rid))
-            res->is_cis = true;
-    }
-  }
+  process_conn(st, conn_records);
 
   return st;
 }

@@ -16,6 +16,21 @@
 
 namespace gemmi {
 
+struct NearestImage {
+  double dist_sq;
+  int sym_id = 1;
+  int ix = 0;
+  int iy = 0;
+  int iz = 0;
+};
+NearestImage find_nearest_image(const Position& a, const Position& b,
+                                bool non_ident) {
+  NearestImage near;
+  near.dist_sq = a.dist_sq(b);
+  return near;
+}
+
+
 #define WRITE(...) do { \
     stbsp_snprintf(buf, 82, __VA_ARGS__); \
     os.write(buf, 81); \
@@ -158,24 +173,29 @@ inline void write_pdb(const Structure& st, std::ostream& os,
           os.write(buf, 81);
       }
 
-    // SSBOND  (note: we use only the first model)
+    // SSBOND  (note: we use only the first model and primary conformation)
     int counter = 0;
     for (const Connection& con : st.models[0].connections)
       if (con.type == Connection::Disulf) {
         if (!con.res1 || !con.res2)
           continue;
+        if ((con.altloc1 != ' ' && con.altloc1 != 'A') ||
+            (con.altloc2 != ' ' && con.altloc2 != 'A'))
+          continue;
         const Atom* cg1 = con.res1->find_by_name_and_elem("SG", El::S);
         const Atom* cg2 = con.res2->find_by_name_and_elem("SG", El::S);
         if (!cg1 || !cg2)
           continue;
-        // TODO: cg2 = find image of cg2 nearest to cg1
-        WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  \n",
+        bool non_ident = con.res1 == con.res2;
+        NearestImage near = find_nearest_image(cg1->pos, cg2->pos, non_ident);
+        WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %3d%d%d%d %5.2f  \n",
            ++counter,
            con.res1->name.c_str(), con.res1->parent->name_for_pdb().c_str(),
            impl::write_seq_id(buf8, *con.res1),
            con.res2->name.c_str(), con.res2->parent->name_for_pdb().c_str(),
            impl::write_seq_id(buf8a, *con.res2),
-           "1555", /*TODO*/"1555", cg1->pos.dist(cg2->pos));
+           "1555", near.sym_id, 5+near.ix, 5+near.iy, 5+near.iz,
+           std::sqrt(near.dist_sq));
       }
 
     // CISPEP (note: we use only the first conformation)

@@ -160,6 +160,7 @@ struct Atom {
   float b_iso;
   float u11=0, u22=0, u33=0, u12=0, u13=0, u23=0;
   Residue* parent = nullptr;
+  bool is_first_conformation() const { return altloc == 0 || altloc == 'A'; }
 };
 
 inline double calculate_distance_sq(const Atom* a, const Atom* b) {
@@ -314,8 +315,14 @@ struct Residue : public ResidueId {
   }
   const Atom* find_by_name_and_elem(const std::string& name, El elem) const {
     for (const Atom& a : atoms)
-      if (a.name == name && a.element == elem &&
-          (a.altloc == 0 || a.altloc == 'A'))
+      if (a.name == name && a.element == elem && a.is_first_conformation())
+        return &a;
+    return nullptr;
+  }
+  const Atom* find_by_name_altloc_elem(const std::string& name, char altloc,
+                                       El elem) const {
+    for (const Atom& a : atoms)
+      if (a.name == name && a.element == elem && a.altloc == altloc)
         return &a;
     return nullptr;
   }
@@ -356,6 +363,8 @@ struct Connection {
               Hydrog, MetalC, Mismat, ModRes, SaltBr, None };
   std::string id;  // the id is refered by Residue::conn;
   Type type = None;
+  char altloc1 = ' ';
+  char altloc2 = ' ';
   // The pointers get invalidated by some changes to the model.
   Residue* res1 = nullptr;
   Residue* res2 = nullptr;
