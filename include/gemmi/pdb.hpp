@@ -219,7 +219,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   Structure st;
   st.name = gemmi::path_basename(source);
   std::vector<std::string> has_ter;
-  std::vector<std::string> cispep_records;
+  std::vector<std::string> conn_records;
   Model *model = st.find_or_add_model("1");
   Chain *chain = nullptr;
   Residue *resi = nullptr;
@@ -372,10 +372,15 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       if (read_matrix(matrix, line, len) == 3)
         st.origx = matrix;
 
+    } else if (is_record_type(line, "SSBOND")) {
+      std::string record(line);
+      if (record.length() > 34)
+        conn_records.emplace_back(record);
+
     } else if (is_record_type(line, "CISPEP")) {
       std::string record(line);
       if (record.length() > 21)
-        cispep_records.emplace_back(record);
+        conn_records.emplace_back(record);
     } else if (is_record_type(line, "END")) {  // NUL == ' ' & ~0x20
       break;
     }
@@ -389,13 +394,32 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     }
   st.finish();
 
-  for (const std::string& record : cispep_records) {
+  int disulf_count = 0;
+  for (const std::string& record : conn_records) {
     const char* r = record.c_str();
     ResidueId rid(read_snic(r + 17), read_string(r + 11, 3));
-    for (Model& model : st.models)
-      if (Chain* chain = model.find_chain(read_string(r + 14, 2)))
-        if (Residue* res = chain->find_residue(rid))
-          res->is_cis = true;
+    if (*r == 'S' || *r == 's') { // SSBOND
+      ResidueId rid2(read_snic(r + 31), read_string(r + 25, 3));
+      for (Model& model : st.models)
+        if (Chain* chain1 = model.find_chain(read_string(r + 14, 2)))
+          if (Chain* chain2 = model.find_chain(read_string(r + 28, 2))) {
+            Connection c;
+            c.id = "disulf" + std::to_string(++disulf_count);
+            c.type = Connection::Disulf;
+            c.res1 = chain->find_residue(rid);
+            c.res2 = chain->find_residue(rid2);
+            if (c.res1 && c.res2) {
+              c.res1->conn.push_back(c.id);
+              c.res2->conn.push_back(c.id);
+              model.connections.emplace_back(c);
+            }
+          }
+    } else if (*r == 'C' || *r == 'c') { // CISPEP
+      for (Model& model : st.models)
+        if (Chain* chain = model.find_chain(read_string(r + 14, 2)))
+          if (Residue* res = chain->find_residue(rid))
+            res->is_cis = true;
+    }
   }
 
   return st;

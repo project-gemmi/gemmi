@@ -160,28 +160,23 @@ inline void write_pdb(const Structure& st, std::ostream& os,
 
     // SSBOND  (note: we use only the first model)
     int counter = 0;
-    /*
     for (const Connection& con : st.models[0].connections)
       if (con.type == Connection::Disulf) {
-        const Residue* res1 = con.res1;
-        if (!res1) {
-          // TODO: find it
+        if (!con.res1 || !con.res2)
           continue;
-        }
-        const Residue* res2 = con.res2;
-        if (!res2) {
-          // TODO: find it
+        const Atom* cg1 = con.res1->find_by_name_and_elem("SG", El::S);
+        const Atom* cg2 = con.res2->find_by_name_and_elem("SG", El::S);
+        if (!cg1 || !cg2)
           continue;
-        }
-        WRITE("SSBOND%4d  %3s%2s %5s   %3s%2s %5s %29s %6s %5.2f  \n",
+        // TODO: cg2 = find image of cg2 nearest to cg1
+        WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  \n",
            ++counter,
-           res1->name.c_str(), res1->parent->name_for_pdb().c_str(),
+           con.res1->name.c_str(), con.res1->parent->name_for_pdb().c_str(),
            impl::write_seq_id(buf8, *con.res1),
-           res2->name.c_str(), res2->parent->name_for_pdb().c_str(),
-           impl::write_seq_id(buf8, *con.res2),
-           "1555", "1555", 1.0);
+           con.res2->name.c_str(), con.res2->parent->name_for_pdb().c_str(),
+           impl::write_seq_id(buf8a, *con.res2),
+           "1555", /*TODO*/"1555", cg1->pos.dist(cg2->pos));
       }
-    */
 
     // CISPEP (note: we use only the first conformation)
     counter = 0;

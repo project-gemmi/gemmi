@@ -21,6 +21,12 @@ struct Position {
     z -= std::floor(z);
     return *this;
   }
+  Position operator-(const Position& o) const { return {x-o.x, y-o.y, z-o.z}; }
+  double dist_sq(const Position& other) const {
+    Position d = (*this) - other;
+    return d.x * d.x + d.y * d.y + d.z * d.z;
+  }
+  double dist(const Position& other) const { return std::sqrt(dist_sq(other)); }
 };
 
 struct Matrix33 {

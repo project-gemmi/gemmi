@@ -28,6 +28,8 @@
 set -eu
 cd `dirname $0`
 PDB_COPY="$PDB_DIR/structures/divided"
+BIN=..
+#BIN=../build
 code=${1,,}
 tempd=/run/gemmi
 [ -d "$tempd" ] || ls "$tempd" # ls just triggers error
@@ -72,17 +74,16 @@ absent="\
 ^SITE  |\
 ^SLTBRG|\
 ^SOURCE|\
-^SPRSDE|\
-^SSBOND"
+^SPRSDE"
 zgrep -v -E "$not_identical|$absent" "$pdb" > "$pout"
 inp="$cif"
 [[ ${FROM_PDB:-} = 1 ]] && inp="$pout"
 if [[ ${VIA_CIF:-} = 1 ]]; then
     echo "$(basename "$inp") -> $(basename "$cifout")"
-    ../gemmi-convert "$inp" "$cifout"
+    $BIN/gemmi-convert "$inp" "$cifout"
     inp="$cifout"
 fi
-../gemmi-convert --to=pdb "$inp" - | grep -v -E $not_identical > "$gout"
+$BIN/gemmi-convert --to=pdb "$inp" - | grep -v -E $not_identical > "$gout"
 echo "Comparing ($(basename "$inp") ->) $gout vs $pout"
 
 # Add d or w as the second arg to show diff (using git diff for colors).
