@@ -112,7 +112,6 @@ inline void write_to_file(const Document& doc, const std::string& filename,
   if (!of)
     throw std::runtime_error("Failed to open " + filename);
   write_out_document(of, doc, s);
-  of << doc;
   of.close();
 }
 
