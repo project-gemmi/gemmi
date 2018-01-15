@@ -67,8 +67,9 @@ inline Structure structure_from_cif_block(cif::Block& block) {
                                 "angle_alpha", "angle_beta", "angle_gamma"});
   if (cell.ok()) {
     auto c = cell.one();
-    st.cell.set(as_number(c[0]), as_number(c[1]), as_number(c[2]),
-                as_number(c[3]), as_number(c[4]), as_number(c[5]));
+    if (!cif::is_null(c[0]) && !cif::is_null(c[1]) && !cif::is_null(c[2]))
+      st.cell.set(as_number(c[0]), as_number(c[1]), as_number(c[2]),
+                  as_number(c[3]), as_number(c[4]), as_number(c[5]));
   }
   st.sg_hm = as_string(block.find_value("_symmetry.space_group_name_H-M"));
 
