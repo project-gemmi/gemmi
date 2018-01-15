@@ -16,6 +16,7 @@
 #include <linalg.h>
 #include "elem.hpp"
 #include "unitcell.hpp"
+#include "symmetry.hpp"
 
 namespace gemmi {
 
@@ -412,7 +413,7 @@ struct NcsOp {
 
 struct Structure {
   std::string name;
-  gemmi::UnitCell cell;
+  gemmi::UnitCellWithSymmetry cell;
   std::string sg_hm;
   std::vector<Model> models;
   std::vector<NcsOp> ncs;
@@ -565,7 +566,23 @@ template<> inline double count_occupancies(const Atom& atom) {
 
 inline void Structure::finish() {
   add_backlinks(*this);
-  // if "entities" were not specifed, deduce them based on sequence
+  // TODO: if "entities" were not specifed, deduce them based on sequence
+
+  if (const SpaceGroup* sg = find_spacegroup_by_name(sg_hm)) {
+    for (Op op : sg->operations()) {
+      // TODO strict NCS
+      if (op == Op::identity())
+        continue;
+      Matrix33 rot = {
+        double(op.rot[0][0]), double(op.rot[0][1]), double(op.rot[0][2]),
+        double(op.rot[1][0]), double(op.rot[1][1]), double(op.rot[1][2]),
+        double(op.rot[2][0]), double(op.rot[2][1]), double(op.rot[2][2]) };
+      Position tran;
+      for (int i = 0; i != 3; ++i)
+        op.tran[i] = double(op.tran[0]) / Op::TDEN;
+      cell.images.push_back(SymmetryOp{rot, tran});
+    }
+  }
 }
 
 } // namespace gemmi

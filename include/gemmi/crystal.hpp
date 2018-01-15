@@ -47,7 +47,7 @@ struct Bounds {
 };
 
 struct Crystal : Structure {
-  SpaceGroup sg;
+  SpaceGroup space_group;
 
   Bounds calculate_xyz_bounds() const {
     Bounds b;

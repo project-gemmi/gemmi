@@ -13,6 +13,7 @@ namespace gemmi {
 
 struct Position {
   double x, y, z;
+  // FIXME: it may be UB, switch to array and x(), y(), z()
   constexpr double operator[](int i) const { return (&x)[i]; }
   double& operator[](int i) { return (&x)[i]; }
   Position& wrap_to_unit() {
@@ -27,6 +28,13 @@ struct Position {
     return d.x * d.x + d.y * d.y + d.z * d.z;
   }
   double dist(const Position& other) const { return std::sqrt(dist_sq(other)); }
+};
+
+// Result of find_nearest_image
+struct NearestImage {
+  double dist_sq;
+  int box[3];
+  int sym_id;
 };
 
 struct Matrix33 {
@@ -145,6 +153,54 @@ struct UnitCell {
 
   Position orthogonalize(const Position& f) const { return orth.multiply(f); }
   Position fractionalize(const Position& o) const { return frac.multiply(o); }
+};
+
+
+struct SymmetryOp {
+  Matrix33 rot;
+  Position tran;
+  Position apply(const Position& p) const {
+    return p;
+    // TODO
+  }
+};
+
+struct UnitCellWithSymmetry : UnitCell {
+  std::vector<SymmetryOp> images;
+
+  NearestImage find_nearest_image(const Position& ref, const Position& pos,
+                                  bool non_ident) const {
+    NearestImage image;
+    image.sym_id = 0;
+    Position fref = fractionalize(ref);
+    Position fpos = fractionalize(pos);
+    Position diff = fref - fpos;
+    for (int i = 0; i < 3; ++i) {
+      image.box[i] = iround(diff[i]);
+      diff[i] -= image.box[i];
+    }
+    Position orth = orthogonalize(diff);
+    image.dist_sq = orth[0] * orth[0] + orth[1] * orth[1] + orth[2] * orth[2];
+    if (image.dist_sq == 0 && non_ident)
+      image.dist_sq = 1e100;
+    for (int n = 0; n != static_cast<int>(images.size()); ++n) {
+      diff = fref - images[n].apply(fpos);
+      int box[3];
+      for (int i = 0; i < 3; ++i) {
+        box[i] = iround(diff[i]);
+        diff[i] -= box[i];
+      }
+      orth = orthogonalize(diff);
+      double dsq = orth[0] * orth[0] + orth[1] * orth[1] + orth[2] * orth[2];
+      if (dsq < image.dist_sq) {
+        image.dist_sq = dsq;
+        image.sym_id = n + 1;
+        for (int j = 0; j < 3; ++j)
+          image.box[j] = box[j];
+      }
+    }
+    return image;
+  }
 };
 
 } // namespace gemmi

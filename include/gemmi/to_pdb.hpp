@@ -16,21 +16,6 @@
 
 namespace gemmi {
 
-struct NearestImage {
-  double dist_sq;
-  int sym_id = 1;
-  int ix = 0;
-  int iy = 0;
-  int iz = 0;
-};
-NearestImage find_nearest_image(const Position& a, const Position& b,
-                                bool non_ident) {
-  NearestImage near;
-  near.dist_sq = a.dist_sq(b);
-  return near;
-}
-
-
 #define WRITE(...) do { \
     stbsp_snprintf(buf, 82, __VA_ARGS__); \
     os.write(buf, 81); \
@@ -187,14 +172,15 @@ inline void write_pdb(const Structure& st, std::ostream& os,
         if (!cg1 || !cg2)
           continue;
         bool non_ident = con.res1 == con.res2;
-        NearestImage near = find_nearest_image(cg1->pos, cg2->pos, non_ident);
+        NearestImage near = st.cell.find_nearest_image(cg1->pos, cg2->pos,
+                                                       non_ident);
         WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %3d%d%d%d %5.2f  \n",
            ++counter,
            con.res1->name.c_str(), con.res1->parent->name_for_pdb().c_str(),
            impl::write_seq_id(buf8, *con.res1),
            con.res2->name.c_str(), con.res2->parent->name_for_pdb().c_str(),
            impl::write_seq_id(buf8a, *con.res2),
-           "1555", near.sym_id, 5+near.ix, 5+near.iy, 5+near.iz,
+           "1555", 1+near.sym_id, 5+near.box[0], 5+near.box[1], 5+near.box[2],
            std::sqrt(near.dist_sq));
       }
 
