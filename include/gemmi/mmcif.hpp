@@ -208,9 +208,11 @@ inline Structure structure_from_cif_block(cif::Block& block) {
     std::string id = row.str(0);
     EntityType etype = entity_type_from_string(row.str(1));
     PolymerType ptype = PolymerType::NA;
-    try {
-      ptype = polymer_type_from_string(polymer_types.find_row(id).str(1));
-    } catch (std::runtime_error&) {}
+    if (polymer_types.ok()) {
+      try {
+        ptype = polymer_type_from_string(polymer_types.find_row(id).str(1));
+      } catch (std::runtime_error&) {}
+    }
     st.entities.emplace_back(new Entity{id, etype, ptype, {}});
   }
 
