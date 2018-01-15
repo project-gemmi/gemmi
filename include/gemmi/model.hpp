@@ -579,7 +579,7 @@ inline void Structure::finish() {
         double(op.rot[2][0]), double(op.rot[2][1]), double(op.rot[2][2]) };
       Position tran;
       for (int i = 0; i != 3; ++i)
-        op.tran[i] = double(op.tran[0]) / Op::TDEN;
+        tran[i] = double(op.tran[i]) / Op::TDEN;
       cell.images.push_back(SymmetryOp{rot, tran});
     }
   }

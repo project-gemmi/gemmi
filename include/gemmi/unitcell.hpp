@@ -13,7 +13,7 @@ namespace gemmi {
 
 struct Position {
   double x, y, z;
-  // FIXME: it may be UB, switch to array and x(), y(), z()
+  // FIXME: it may be UB, switch to array and references x, y, z
   constexpr double operator[](int i) const { return (&x)[i]; }
   double& operator[](int i) { return (&x)[i]; }
   Position& wrap_to_unit() {
@@ -23,6 +23,7 @@ struct Position {
     return *this;
   }
   Position operator-(const Position& o) const { return {x-o.x, y-o.y, z-o.z}; }
+  Position operator+(const Position& o) const { return {x+o.x, y+o.y, z+o.z}; }
   double dist_sq(const Position& other) const {
     Position d = (*this) - other;
     return d.x * d.x + d.y * d.y + d.z * d.z;
@@ -159,10 +160,7 @@ struct UnitCell {
 struct SymmetryOp {
   Matrix33 rot;
   Position tran;
-  Position apply(const Position& p) const {
-    return p;
-    // TODO
-  }
+  Position apply(const Position& p) const { return rot.multiply(p) + tran; }
 };
 
 struct UnitCellWithSymmetry : UnitCell {
