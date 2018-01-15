@@ -34,8 +34,8 @@ struct Position {
 // Result of find_nearest_image
 struct NearestImage {
   double dist_sq;
-  int box[3];
-  int sym_id;
+  int box[3] = { 0, 0, 0 };
+  int sym_id = 0;
 };
 
 struct Matrix33 {
@@ -77,6 +77,9 @@ struct UnitCell {
   double ar = 1.0, br = 1.0, cr = 1.0;
   double cos_alphar = 0.0, cos_betar = 0.0, cos_gammar = 0.0;
   bool explicit_matrices = false;
+
+  // non-crystalline (for example NMR) structures use fake unit cell 1x1x1.
+  bool is_crystal() const { return volume != 1.0; }
 
   void calculate_properties() {
     constexpr double deg2rad = 3.1415926535897932384626433832795029 / 180.0;
@@ -169,7 +172,10 @@ struct UnitCellWithSymmetry : UnitCell {
   NearestImage find_nearest_image(const Position& ref, const Position& pos,
                                   bool non_ident) const {
     NearestImage image;
-    image.sym_id = 0;
+    if (!is_crystal()) {
+      image.dist_sq = ref.dist_sq(pos);
+      return image;
+    }
     Position fref = fractionalize(ref);
     Position fpos = fractionalize(pos);
     Position diff = fref - fpos;
