@@ -19,7 +19,8 @@ void print_content_info(const Structure& st, bool /*verbose*/) {
     order = sg->operations().order();
     printf("   Group no. %d with %d operations.\n", sg->number, order);
   } else {
-    std::fprintf(stderr, "Unrecognized space group name! Assuming P1.\n");
+    std::fprintf(stderr, "%s space group name! Assuming P1.\n",
+                 st.sg_hm.empty() ? "No" : "Unrecognized");
   }
   double n_molecules = order * st.get_ncs_multiplier();
   printf(" Number of images (symmetry * strict NCS): %5g\n", n_molecules);
