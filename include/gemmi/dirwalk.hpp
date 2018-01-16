@@ -23,6 +23,9 @@
 #include <string>
 #include <vector>
 
+#if defined(_MSC_VER) && !defined(NOMINMAX)
+# define NOMINMAX
+#endif
 #include <tinydir.h>
 
 namespace gemmi {
