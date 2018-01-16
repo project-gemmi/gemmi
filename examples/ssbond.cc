@@ -1,15 +1,13 @@
 // check disulfide bonds
-// Compiled with: g++-6 -O2 -Iinclude -Ithird_party auth_label.cc -lstdc++fs -lz
 #include <gemmi/util.hpp> // for giends_with
 #include <gemmi/gz.hpp>   // for MaybeGzipped
 #include <gemmi/cif.hpp>
 #include <gemmi/numb.hpp> // for as_number
 #include <gemmi/mmcif.hpp>
+#include <gemmi/dirwalk.hpp> // for CifWalk
 #include <cstdio>
 #include <map>
-#include <experimental/filesystem>  // just <filesystem> in C++17
 
-namespace fs = std::experimental::filesystem;
 using namespace gemmi;
 
 void check_ssbond(gemmi::cif::Block& block) {
@@ -44,14 +42,11 @@ int main(int argc, char* argv[]) {
   if (argc != 2)
     return 1;
   int counter = 0;
-  for (auto& p : fs::recursive_directory_iterator(argv[1])) {
-    std::string path = p.path().u8string();
-    if (gemmi::giends_with(path, ".cif")) {
+  for (const char* path : CifWalk(argv[1])) {
       cif::Document doc = cif::read(gemmi::MaybeGzipped(path));
       check_ssbond(doc.sole_block());
       if (++counter % 1000 == 0)
         std::printf("[progress: %d files]\n", counter);
-    }
   }
   return 0;
 }

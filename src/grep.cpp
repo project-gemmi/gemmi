@@ -4,13 +4,13 @@
 
 #include "gemmi/cif.hpp"
 #include "gemmi/gz.hpp"
+#include "gemmi/dirwalk.hpp"
 #include "gemmi/util.hpp"  // for is_pdb_code
 #include "input.h"         // for expand_pdb_code_to_path_or_fail
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
 #include <string>
-#include <tinydir.h>
 
 #define EXE_NAME "gemmi-grep"
 #include "options.h"
@@ -380,91 +380,6 @@ void grep_file(const std::string& path, Parameters& par, int& err_count) {
 }
 
 
-class DirWalker {
-public:
-  explicit DirWalker(const char* path) {
-    if (tinydir_file_open(&top_, path) == -1) {
-      //std::perror(nullptr);
-      throw std::runtime_error("Cannot open file or directory: " +
-                               std::string(path));
-    }
-  }
-  ~DirWalker() {
-    for (auto& d : dirs_)
-      tinydir_close(&d.second);
-  }
-  void push_dir(int cur_pos, const char* path) {
-    dirs_.emplace_back();
-    dirs_.back().first = cur_pos;
-    if (tinydir_open_sorted(&dirs_.back().second, path) == -1)
-      throw std::runtime_error("Cannot open directory: " + std::string(path));
-  }
-  int pop_dir() {
-    assert(!dirs_.empty());
-    int old_pos = dirs_.back().first;
-    tinydir_close(&dirs_.back().second);
-    dirs_.pop_back();
-    return old_pos;
-  }
-
-  struct Iter {
-    DirWalker& walker;
-    size_t cur;
-
-    const tinydir_dir& get_dir() const { return walker.dirs_.back().second; }
-
-    const tinydir_file& operator*() const {
-      if (walker.dirs_.empty())
-        return walker.top_;
-      assert(cur < get_dir().n_files);
-      return get_dir()._files[cur];
-    }
-
-    bool is_special(const char* name) const {
-      return strcmp(name, ".") == 0 || strcmp(name, "..") == 0;
-    }
-
-    void operator++() { // depth first
-      const tinydir_file& tf = **this;
-      if (tf.is_dir) {
-        walker.push_dir(cur, tf.path);
-        cur = 0;
-      } else {
-        cur++;
-      }
-      while (!walker.dirs_.empty()) {
-        if (cur == get_dir().n_files)
-          cur = walker.pop_dir() + 1;
-        else if (is_special(get_dir()._files[cur].name))
-          cur++;
-        else
-          break;
-      }
-    }
-
-    bool operator!=(const Iter& o) const {
-      return !(walker.dirs_.empty() && cur == o.cur);
-    }
-  };
-
-  Iter begin() { return Iter{*this, 0}; }
-  Iter end() { return Iter{*this, 1}; }
-  bool is_single_file() { return !top_.is_dir; }
-
-private:
-  friend struct Iter;
-  tinydir_file top_;
-  std::vector<std::pair<int, tinydir_dir>> dirs_;
-};
-
-static bool is_cif_file(const tinydir_file& f) {
-  return !f.is_dir && (
-      gemmi::giends_with(f.name, ".cif") ||
-      // the SF mmCIF files from PDB don't have the "cif" extension,
-      // they have names such as divided/structure_factors/aa/r3aaasf.ent.gz
-      (f.name[0] == 'r' && gemmi::giends_with(f.name, "sf.ent")));
-}
-
 static void replace_all(std::string &s,
                         const std::string &old, const std::string &new_) {
   std::string::size_type pos = 0;
@@ -572,12 +487,9 @@ int main(int argc, char **argv) {
       file_count++;
     } else {
       try {
-        DirWalker walker(path.c_str());
-        for (const tinydir_file& f : walker) {
-          if (walker.is_single_file() || is_cif_file(f)) {
-            grep_file(f.path, params, err_count);
-            file_count++;
-          }
+        for (const char* file : gemmi::CifWalk(path)) {
+          grep_file(file, params, err_count);
+          file_count++;
         }
       } catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());

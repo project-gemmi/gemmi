@@ -922,6 +922,27 @@ While further improvement would be possible (the fastest JSON parsers are
 `much faster <https://github.com/project-gemmi/benchmarking-json>`_),
 it is not a priority.
 
+Directory walking
+=================
+
+Many of the utilities and examples developed for this project
+work with archives of CIF files such as wwPDB or COD.
+To make it easier to iterate over all CIF files in a directory tree
+we provide a C++11 ``CifWalk`` class with a simple API:
+
+.. code-block:: cpp
+
+  #include <gemmi/dirwalk.hpp>
+
+  // ...
+  // throws std::runtime_error if top_dir doesn't exist
+  for (const char* cif_file : gemmi::CifWalk(top_dir)) {
+    cif::Document doc = cif::read(gemmi::MaybeGzipped(cif_file));
+    // ...
+  }
+
+This header file contains also a more general ``DirWalk`` class.
+Both are based on the `tinydir <https://github.com/cxong/tinydir>`_ library.
 
 Design rationale
 ================
@@ -958,7 +979,7 @@ Data structures
 ---------------
 
 The next thing is how we store the data read from file.
-We decided rely on the C++ standard library where we can.
+We decided to rely on the C++ standard library where we can.
 
 Generally, storage of such data involves (in C++ terms) some containers
 and a union/variant type for storing values of mixed types.
@@ -966,8 +987,8 @@ and a union/variant type for storing values of mixed types.
 We use primarily ``std::vector`` as a container,
 and ``std::unordered_map`` when quicker access is needed.
 
-Custom structures with (unrestricted) unions are used where variants
-are needed.
+A custom structure ``Item`` with (unrestricted) union is used as
+a variant-like class.
 
 Strings are stored in ``std::string`` and it is fast enough.
 Mainstream C++ standard libraries have short string optimization (SSO)
