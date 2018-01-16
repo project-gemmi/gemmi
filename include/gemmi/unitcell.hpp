@@ -24,9 +24,9 @@ struct Position {
   }
   Position operator-(const Position& o) const { return {x-o.x, y-o.y, z-o.z}; }
   Position operator+(const Position& o) const { return {x+o.x, y+o.y, z+o.z}; }
+  double length_sq() const { return x * x + y * y + z * z; }
   double dist_sq(const Position& other) const {
-    Position d = (*this) - other;
-    return d.x * d.x + d.y * d.y + d.z * d.z;
+    return (*this - other).length_sq();
   }
   double dist(const Position& other) const { return std::sqrt(dist_sq(other)); }
 };
@@ -169,40 +169,39 @@ struct SymmetryOp {
 struct UnitCellWithSymmetry : UnitCell {
   std::vector<SymmetryOp> images;
 
+  // Helper function. PBC = periodic boundary conditions.
+  void search_pbc_images(Position&& fdiff, NearestImage& image, int id) const {
+    int box[3];
+    for (int i = 0; i < 3; ++i) {
+      box[i] = iround(fdiff[i]);
+      fdiff[i] -= box[i];
+    }
+    Position orth = orthogonalize(fdiff);
+    double dsq = orth.length_sq();
+    if (dsq < image.dist_sq) {
+      image.dist_sq = dsq;
+      for (int j = 0; j < 3; ++j)
+        image.box[j] = box[j];
+      image.sym_id = id;
+    }
+    //std::fprintf(stderr, " [%d] d = %g  %d %d %d\n", id, std::sqrt(dsq),
+    //                     box[0], box[1], box[2]);
+  }
+
   NearestImage find_nearest_image(const Position& ref, const Position& pos,
                                   bool non_ident) const {
     NearestImage image;
-    if (!is_crystal()) {
-      image.dist_sq = ref.dist_sq(pos);
+    image.dist_sq = ref.dist_sq(pos);
+    if (!is_crystal())
       return image;
-    }
-    Position fref = fractionalize(ref);
     Position fpos = fractionalize(pos);
-    Position diff = fref - fpos;
-    for (int i = 0; i < 3; ++i) {
-      image.box[i] = iround(diff[i]);
-      diff[i] -= image.box[i];
-    }
-    Position orth = orthogonalize(diff);
-    image.dist_sq = orth[0] * orth[0] + orth[1] * orth[1] + orth[2] * orth[2];
-    if (image.dist_sq == 0 && non_ident)
+    Position fref = fractionalize(ref);
+    search_pbc_images(fpos - fref, image, 0);
+    if (non_ident && image.dist_sq == 0 &&
+        image.box[0] == 0 && image.box[1] == 0 && image.box[2] == 0)
       image.dist_sq = 1e100;
-    for (int n = 0; n != static_cast<int>(images.size()); ++n) {
-      diff = fref - images[n].apply(fpos);
-      int box[3];
-      for (int i = 0; i < 3; ++i) {
-        box[i] = iround(diff[i]);
-        diff[i] -= box[i];
-      }
-      orth = orthogonalize(diff);
-      double dsq = orth[0] * orth[0] + orth[1] * orth[1] + orth[2] * orth[2];
-      if (dsq < image.dist_sq) {
-        image.dist_sq = dsq;
-        image.sym_id = n + 1;
-        for (int j = 0; j < 3; ++j)
-          image.box[j] = box[j];
-      }
-    }
+    for (int n = 0; n != static_cast<int>(images.size()); ++n)
+      search_pbc_images(images[n].apply(fpos) - fref, image, n+1);
     return image;
   }
 };

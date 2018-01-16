@@ -449,7 +449,7 @@ public:
 
   Iter begin() { return Iter{*this, 0}; }
   Iter end() { return Iter{*this, 1}; }
-  bool is_file() { return !top_.is_dir; }
+  bool is_single_file() { return !top_.is_dir; }
 
 private:
   friend struct Iter;
@@ -574,7 +574,7 @@ int main(int argc, char **argv) {
       try {
         DirWalker walker(path.c_str());
         for (const tinydir_file& f : walker) {
-          if (walker.is_file() || is_cif_file(f)) {
+          if (walker.is_single_file() || is_cif_file(f)) {
             grep_file(f.path, params, err_count);
             file_count++;
           }

@@ -299,6 +299,14 @@ struct Residue : public ResidueId {
     return snic.seq_num != UnknownId ? snic.seq_num : seq_id;
   }
   ResidueInfo get_info() const { return find_tabulated_residue(name); }
+
+  // convenience method: ins_code as string instead of char
+  std::string ins_code_string() const {
+    return snic.ins_code ? std::string(1, snic.ins_code) : "";
+  }
+
+  std::string ident() const;
+
   std::vector<Atom>& children() { return atoms; }
   const std::vector<Atom>& children() const { return atoms; }
   bool matches(const ResidueId& rid) const;
@@ -467,6 +475,10 @@ struct Structure {
   void finish();
 };
 
+inline std::string Residue::ident() const {
+  return (parent ? parent->name_for_pdb() + "/" : "")
+        + std::to_string(seq_id_for_pdb()) + ins_code_string();
+}
 
 inline bool Residue::matches(const ResidueId& rid) const {
   return seq_id == rid.seq_id &&

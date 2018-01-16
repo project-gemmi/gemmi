@@ -280,6 +280,10 @@ inline Structure structure_from_cif_block(cif::Block& block) {
 
 } // namespace impl
 
+inline Structure read_atoms_from_block(cif::Block& block) {
+  return impl::structure_from_cif_block(block);
+}
+
 inline Structure read_atoms(cif::Document doc) {
   return impl::structure_from_cif_block(doc.sole_block());
 }
