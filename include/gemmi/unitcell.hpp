@@ -176,8 +176,8 @@ struct UnitCellWithSymmetry : UnitCell {
       box[i] = iround(fdiff[i]);
       fdiff[i] -= box[i];
     }
-    Position orth = orthogonalize(fdiff);
-    double dsq = orth.length_sq();
+    Position orth_diff = orthogonalize(fdiff);
+    double dsq = orth_diff.length_sq();
     if (dsq < image.dist_sq) {
       image.dist_sq = dsq;
       for (int j = 0; j < 3; ++j)

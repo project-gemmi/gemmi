@@ -711,7 +711,8 @@ inline Table Block::find_mmcif_category(std::string cat) {
   for (Item& i : items)
     if (i.has_prefix(cat)) {
       if (i.type == ItemType::Loop) {
-        std::vector<int> indices(i.loop.tags.size());
+        indices.clear();
+        indices.resize(i.loop.tags.size());
         for (size_t j = 0; j != indices.size(); ++j) {
           indices[j] = j;
           const std::string& tag = i.loop.tags[j];

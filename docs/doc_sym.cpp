@@ -24,8 +24,8 @@ int main() {
   assert(i2->xhm() == "I 1 2 1");
 
   gemmi::GroupOps ops = i2->operations();
-  for (const gemmi::Op& op : ops)
-    std::cout << "   " << op.triplet();
+  for (const gemmi::Op& operation : ops)
+    std::cout << "   " << operation.triplet();
   // output:   x,y,z   -x,y,-z   x+1/2,y+1/2,z+1/2   -x+1/2,y+1/2,-z+1/2
   ops.change_basis(gemmi::parse_triplet("x,y,x+z"));
   assert(gemmi::find_spacegroup_by_ops(ops) == c2);
