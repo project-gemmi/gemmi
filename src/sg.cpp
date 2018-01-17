@@ -6,7 +6,7 @@
 void print_symmetry_operations(const gemmi::GroupOps& ops) {
   printf("%zu x %zu symmetry operations:\n",
          ops.cen_ops.size(), ops.sym_ops.size());
-  for (const gemmi::Op& op : ops.all_ops_sorted())
+  for (const gemmi::Op& op : ops)
     printf("    %s\n", op.triplet().c_str());
 }
 
