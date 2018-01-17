@@ -98,7 +98,7 @@ struct UnitCell {
   bool explicit_matrices = false;
 
   // non-crystalline (for example NMR) structures use fake unit cell 1x1x1.
-  bool is_crystal() const { return volume != 1.0; }
+  bool is_crystal() const { return a != 1.0; }
 
   void calculate_properties() {
     constexpr double deg2rad = 3.1415926535897932384626433832795029 / 180.0;
