@@ -138,8 +138,8 @@ namespace sajson {
 
     class string {
     public:
-        string(const char* text, size_t length)
-            : text(text)
+        string(const char* text_, size_t length)
+            : text(text_)
             , _length(length)
         {}
 
@@ -166,8 +166,8 @@ namespace sajson {
 
     class literal : public string {
     public:
-        explicit literal(const char* text)
-            : string(text, strlen(text))
+        explicit literal(const char* text_)
+            : string(text_, strlen(text_))
         {}
     };
 
@@ -250,9 +250,9 @@ namespace sajson {
             , owns(false)
         {}
 
-        mutable_string_view(size_t length, char* data)
+        mutable_string_view(size_t length, char* data_)
             : length_(length)
-            , data(data)
+            , data(data_)
             , owns(false)
         {}
 
@@ -336,10 +336,10 @@ namespace sajson {
 
     class value {
     public:
-        explicit value(type value_type, const size_t* payload, const char* text)
-            : value_type(value_type)
-            , payload(payload)
-            , text(text)
+        explicit value(type value_type_, const size_t* payload_, const char* text_)
+            : value_type(value_type_)
+            , payload(payload_)
+            , text(text_)
         {}
 
         type get_type() const {
@@ -506,13 +506,13 @@ namespace sajson {
         ownership(const ownership&) = delete;
         void operator=(const ownership&) = delete;
 
-        explicit ownership(size_t* p)
-            : p(p)
+        explicit ownership(size_t* p_)
+            : p(p_)
         {}
 
-        ownership(ownership&& p)
-        : p(p.p) {
-            p.p = 0;
+        ownership(ownership&& p_)
+        : p(p_.p) {
+            p_.p = 0;
         }
 
         ~ownership() {
@@ -555,11 +555,11 @@ namespace sajson {
 
     class document {
     public:
-        explicit document(const mutable_string_view& input, ownership&& structure, type root_type, const size_t* root)
-            : input(input)
-            , structure(std::move(structure))
-            , root_type(root_type)
-            , root(root)
+        explicit document(const mutable_string_view& input_, ownership&& structure_, type root_type_, const size_t* root_)
+            : input(input_)
+            , structure(std::move(structure_))
+            , root_type(root_type_)
+            , root(root_)
             , error_line(0)
             , error_column(0)
             , error_code(ERROR_SUCCESS_)
@@ -568,15 +568,15 @@ namespace sajson {
             formatted_error_message[0] = 0;
         }
 
-        explicit document(const mutable_string_view& input, size_t error_line, size_t error_column, const error error_code, int error_arg)
-            : input(input)
+        explicit document(const mutable_string_view& input_, size_t error_line_, size_t error_column_, const error error_code_, int error_arg_)
+            : input(input_)
             , structure(0)
             , root_type(TYPE_NULL)
             , root(0)
-            , error_line(error_line)
-            , error_column(error_column)
-            , error_code(error_code)
-            , error_arg(error_arg)
+            , error_line(error_line_)
+            , error_column(error_column_)
+            , error_code(error_code_)
+            , error_arg(error_arg_)
         {
             formatted_error_message[ERROR_BUFFER_LENGTH - 1] = 0;
             int written = has_significant_error_arg()
@@ -774,11 +774,11 @@ namespace sajson {
             allocator(const allocator&) = delete;
             void operator=(const allocator&) = delete;
 
-            explicit allocator(size_t* buffer, size_t input_size, bool should_deallocate)
+            explicit allocator(size_t* buffer, size_t input_size, bool should_deallocate_)
                 : structure(buffer)
                 , structure_end(buffer ? buffer + input_size : 0)
                 , write_cursor(structure_end)
-                , should_deallocate(should_deallocate)
+                , should_deallocate(should_deallocate_)
             {}
 
             explicit allocator(std::nullptr_t)
@@ -862,10 +862,10 @@ namespace sajson {
         /// Write the AST into an existing buffer.  Will fail with an out of
         /// memory error if the buffer is not guaranteed to be big enough for
         /// the document.
-        single_allocation(size_t* existing_buffer, size_t size_in_words)
+        single_allocation(size_t* existing_buffer_, size_t size_in_words_)
             : has_existing_buffer(true)
-            , existing_buffer(existing_buffer)
-            , existing_buffer_size(size_in_words)
+            , existing_buffer(existing_buffer_)
+            , existing_buffer_size(size_in_words_)
         {}
 
         allocator make_allocator(size_t input_document_size_in_bytes, bool* succeeded) const {
@@ -1004,11 +1004,11 @@ namespace sajson {
             allocator(const allocator&) = delete;
             void operator=(const allocator&) = delete;
 
-            explicit allocator(size_t* buffer, size_t current_capacity, size_t initial_stack_capacity)
+            explicit allocator(size_t* buffer, size_t current_capacity, size_t initial_stack_capacity_)
                 : ast_buffer_bottom(buffer)
                 , ast_buffer_top(buffer + current_capacity)
                 , ast_write_head(ast_buffer_top)
-                , initial_stack_capacity(initial_stack_capacity)
+                , initial_stack_capacity(initial_stack_capacity_)
             {}
 
             explicit allocator(std::nullptr_t)
@@ -1109,9 +1109,9 @@ namespace sajson {
             size_t initial_stack_capacity;
         };
 
-        dynamic_allocation(size_t initial_ast_capacity = 0, size_t initial_stack_capacity = 0)
-            : initial_ast_capacity(initial_ast_capacity)
-            , initial_stack_capacity(initial_stack_capacity)
+        dynamic_allocation(size_t initial_ast_capacity_ = 0, size_t initial_stack_capacity_ = 0)
+            : initial_ast_capacity(initial_ast_capacity_)
+            , initial_stack_capacity(initial_stack_capacity_)
         {}
 
         allocator make_allocator(size_t input_document_size_in_bytes, bool* succeeded) const {
@@ -1145,10 +1145,10 @@ namespace sajson {
     template<typename Allocator>
     class parser {
     public:
-        parser(const mutable_string_view& msv, Allocator&& allocator)
+        parser(const mutable_string_view& msv, Allocator&& allocator_)
             : input(msv)
             , input_end(input.get_data() + input.length())
-            , allocator(std::move(allocator))
+            , allocator(std::move(allocator_))
             , root_type(TYPE_NULL)
             , error_line(0)
             , error_column(0)
