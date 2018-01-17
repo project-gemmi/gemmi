@@ -29,6 +29,12 @@ struct Position {
     return (*this - other).length_sq();
   }
   double dist(const Position& other) const { return std::sqrt(dist_sq(other)); }
+  std::string str() const {
+    using namespace std;
+    char buf[64] = {0};
+    snprintf(buf, 63, "[%g %g %g]", x, y, z);
+    return buf;
+  }
 };
 
 // Result of find_nearest_image
@@ -36,6 +42,12 @@ struct NearestImage {
   double dist_sq;
   int box[3] = { 0, 0, 0 };
   int sym_id = 0;
+  std::string pdb_symbol(bool underscore) const {
+    char nnn[4] = "555";
+    for (int i = 0; i < 3; ++i)
+      nnn[i] += box[0];
+    return std::to_string(sym_id + 1) + (underscore ? "_" : "") + nnn;
+  }
 };
 
 struct Matrix33 {
@@ -43,10 +55,17 @@ struct Matrix33 {
          a21, a22, a23,
          a31, a32, a33;
 
+  // in orthogonalization and fractionalization matrices some terms are 0
   Position multiply(const Position& p) const {
     return {a11 * p.x  + a12 * p.y  + a13 * p.z,
           /*a21 * p.x*/+ a22 * p.y  + a23 * p.z,
           /*a31 * p.x  + a32 * p.y*/+ a33 * p.z};
+  }
+
+  Position mult_full(const Position& p) const {
+    return {a11 * p.x  + a12 * p.y  + a13 * p.z,
+            a21 * p.x  + a22 * p.y  + a23 * p.z,
+            a31 * p.x  + a32 * p.y  + a33 * p.z};
   }
 };
 
@@ -163,7 +182,7 @@ struct UnitCell {
 struct SymmetryOp {
   Matrix33 rot;
   Position tran;
-  Position apply(const Position& p) const { return rot.multiply(p) + tran; }
+  Position apply(const Position& p) const { return rot.mult_full(p) + tran; }
 };
 
 struct UnitCellWithSymmetry : UnitCell {

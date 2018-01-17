@@ -316,22 +316,22 @@ struct Residue : public ResidueId {
         return &a;
     return nullptr;
   }
-  const Atom* find_by_name(const std::string& name) const {
+  const Atom* find_by_name(const std::string& atom_name) const {
     for (const Atom& a : atoms)
-      if (a.name == name)
+      if (a.name == atom_name)
         return &a;
     return nullptr;
   }
-  const Atom* find_by_name_and_elem(const std::string& name, El elem) const {
+  const Atom* find_by_name_and_elem(const std::string& aname, El elem) const {
     for (const Atom& a : atoms)
-      if (a.name == name && a.element == elem && a.is_first_conformation())
+      if (a.name == aname && a.element == elem && a.is_first_conformation())
         return &a;
     return nullptr;
   }
-  const Atom* find_by_name_altloc_elem(const std::string& name, char altloc,
+  const Atom* find_by_name_altloc_elem(const std::string& aname, char altloc,
                                        El elem) const {
     for (const Atom& a : atoms)
-      if (a.name == name && a.element == elem && a.altloc == altloc)
+      if (a.name == aname && a.element == elem && a.altloc == altloc)
         return &a;
     return nullptr;
   }
@@ -372,14 +372,11 @@ struct Connection {
               Hydrog, MetalC, Mismat, ModRes, SaltBr, None };
   std::string id;  // the id is refered by Residue::conn;
   Type type = None;
-  char altloc1 = ' ';
-  char altloc2 = ' ';
+  char altloc[2] = {'\0', '\0'};
   // The pointers get invalidated by some changes to the model.
-  Residue* res1 = nullptr;
-  Residue* res2 = nullptr;
+  Residue* res[2] = {nullptr, nullptr};
   // _struct_conn.ptnr[12]_label_atom_id, only for LINK not for SSBOND
-  std::string atom1;
-  std::string atom2;
+  std::string atom[2];
 };
 
 inline const char* get_mmcif_connection_type_id(Connection::Type t) {

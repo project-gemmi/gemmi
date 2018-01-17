@@ -223,11 +223,11 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
           Connection c;
           c.id = "disulf" + std::to_string(++disulf_count);
           c.type = Connection::Disulf;
-          c.res1 = chain1->find_residue(rid);
-          c.res2 = chain2->find_residue(rid2);
-          if (c.res1 && c.res2) {
-            c.res1->conn.push_back("1 " + c.id);
-            c.res2->conn.push_back("2 " + c.id);
+          c.res[0] = chain1->find_residue(rid);
+          c.res[1] = chain2->find_residue(rid2);
+          if (c.res[0] && c.res[1]) {
+            c.res[0]->conn.push_back("1 " + c.id);
+            c.res[1]->conn.push_back("2 " + c.id);
             model.connections.emplace_back(c);
           }
         }

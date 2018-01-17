@@ -97,6 +97,14 @@ inline void write_multiline(std::ostream& os, const char* record_name,
   }
 }
 
+inline const Atom* find_ssbond_atom(const Connection& con, int n) {
+  if (!con.res[n])
+    return nullptr;
+  if (con.altloc[n] != '\0' && con.altloc[n] != 'A')
+    return nullptr;
+  return con.res[n]->find_by_name_and_elem("SG", El::S);
+}
+
 } // namespace impl
 
 inline void write_pdb(const Structure& st, std::ostream& os,
@@ -162,26 +170,18 @@ inline void write_pdb(const Structure& st, std::ostream& os,
     int counter = 0;
     for (const Connection& con : st.models[0].connections)
       if (con.type == Connection::Disulf) {
-        if (!con.res1 || !con.res2)
+        const Atom* a1 = impl::find_ssbond_atom(con, 0);
+        const Atom* a2 = impl::find_ssbond_atom(con, 1);
+        if (!a1 || !a2)
           continue;
-        if ((con.altloc1 != ' ' && con.altloc1 != 'A') ||
-            (con.altloc2 != ' ' && con.altloc2 != 'A'))
-          continue;
-        const Atom* cg1 = con.res1->find_by_name_and_elem("SG", El::S);
-        const Atom* cg2 = con.res2->find_by_name_and_elem("SG", El::S);
-        if (!cg1 || !cg2)
-          continue;
-        bool non_ident = con.res1 == con.res2;
-        NearestImage near = st.cell.find_nearest_image(cg1->pos, cg2->pos,
-                                                       non_ident);
-        WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %3d%d%d%d %5.2f  \n",
+        NearestImage near = st.cell.find_nearest_image(a1->pos, a2->pos, true);
+        WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  \n",
            ++counter,
-           con.res1->name.c_str(), con.res1->parent->name_for_pdb().c_str(),
-           impl::write_seq_id(buf8, *con.res1),
-           con.res2->name.c_str(), con.res2->parent->name_for_pdb().c_str(),
-           impl::write_seq_id(buf8a, *con.res2),
-           "1555", 1+near.sym_id, 5+near.box[0], 5+near.box[1], 5+near.box[2],
-           std::sqrt(near.dist_sq));
+           con.res[0]->name.c_str(), con.res[0]->parent->name_for_pdb().c_str(),
+           impl::write_seq_id(buf8, *con.res[0]),
+           con.res[1]->name.c_str(), con.res[1]->parent->name_for_pdb().c_str(),
+           impl::write_seq_id(buf8a, *con.res[1]),
+           "1555", near.pdb_symbol(false).c_str(), std::sqrt(near.dist_sq));
       }
 
     // CISPEP (note: we use only the first conformation)
