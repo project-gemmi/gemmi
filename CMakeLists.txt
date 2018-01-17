@@ -25,8 +25,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(CheckIncludeFile)
 
-# Set default build mode (copied from CMake FAQ)
-if(NOT CMAKE_BUILD_TYPE)
+# Set default build mode (based on CMake FAQ)
+if(NOT CMAKE_BUILD_TYPE AND NOT DEFINED ENV{CXXFLAGS})
   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
       "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
       FORCE)
@@ -152,8 +152,8 @@ support_gz(doc_maybegz)
 add_executable(auth_label EXCLUDE_FROM_ALL examples/auth_label.cc)
 target_link_libraries(auth_label stdc++fs)
 support_gz(auth_label)
+
 add_executable(ssbond EXCLUDE_FROM_ALL examples/ssbond.cc)
-target_link_libraries(ssbond stdc++fs)
 support_gz(ssbond)
 
 enable_testing()
