@@ -55,14 +55,7 @@ struct Matrix33 {
          a21, a22, a23,
          a31, a32, a33;
 
-  // in orthogonalization and fractionalization matrices some terms are 0
   Position multiply(const Position& p) const {
-    return {a11 * p.x  + a12 * p.y  + a13 * p.z,
-          /*a21 * p.x*/+ a22 * p.y  + a23 * p.z,
-          /*a31 * p.x  + a32 * p.y*/+ a33 * p.z};
-  }
-
-  Position mult_full(const Position& p) const {
     return {a11 * p.x  + a12 * p.y  + a13 * p.z,
             a21 * p.x  + a22 * p.y  + a23 * p.z,
             a31 * p.x  + a32 * p.y  + a33 * p.z};
@@ -174,6 +167,8 @@ struct UnitCell {
     calculate_properties();
   }
 
+  // we could also apply shift for the few special cases that have
+  // SCALEn with non-zero vector
   Position orthogonalize(const Position& f) const { return orth.multiply(f); }
   Position fractionalize(const Position& o) const { return frac.multiply(o); }
 };
@@ -182,7 +177,7 @@ struct UnitCell {
 struct SymmetryOp {
   Matrix33 rot;
   Position tran;
-  Position apply(const Position& p) const { return rot.mult_full(p) + tran; }
+  Position apply(const Position& p) const { return rot.multiply(p) + tran; }
 };
 
 struct UnitCellWithSymmetry : UnitCell {
