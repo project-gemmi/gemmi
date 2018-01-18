@@ -13,6 +13,8 @@ imposed by DDL1 and DDL2 dictionaries.
 .. literalinclude:: validate-help.txt
    :language: console
 
+.. _grep:
+
 gemmi-grep
 ==========
 

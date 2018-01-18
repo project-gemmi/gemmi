@@ -10,6 +10,8 @@
 
 using namespace gemmi;
 
+int verbose = false;
+
 inline const Atom* find_ssbond_atom(Connection& con, int n) {
   if (!con.res[n])
     return nullptr;
@@ -21,6 +23,7 @@ void check_ssbond(gemmi::cif::Block& block) {
                                                         "ptnr2_symmetry",
                                                         "pdbx_dist_value" });
   Structure st = read_atoms_from_block(block);
+  //TODO: check that no atom is in 2 connections?
   for (Connection& con : st.models[0].connections)
     if (con.type == Connection::Disulf) {
       const Atom* atom[2];
@@ -39,7 +42,7 @@ void check_ssbond(gemmi::cif::Block& block) {
       assert(row.str(1) == "disulf");
       std::string ref_sym = row.str(2);
       double ref_dist = cif::as_number(row[3]);
-      if (std::abs(dist - ref_dist) > 0.002) {
+      if (verbose || std::abs(dist - ref_dist) > 0.002) {
         std::printf("%s %s  im:%s  %.3f != %.3f (%s)\n",
                     block.name.c_str(), con.id.c_str(),
                     near.pdb_symbol(true).c_str(), dist,
@@ -49,11 +52,13 @@ void check_ssbond(gemmi::cif::Block& block) {
 }
 
 int main(int argc, char* argv[]) {
-  if (argc != 2)
+  if (argc == 3 && argv[1] == std::string("-v"))
+    verbose = true;
+  else if (argc != 2)
     return 1;
   int counter = 0;
   try {
-    for (const char* path : CifWalk(argv[1])) {
+    for (const char* path : CifWalk(argv[argc-1])) {
       cif::Document doc = cif::read(gemmi::MaybeGzipped(path));
       check_ssbond(doc.sole_block());
       if (++counter % 1000 == 0) {

@@ -1443,6 +1443,89 @@ showing that we have not fully reproduced the rule when to subtract this group.
     3OK2 entity_id:  1    3417.14 -    3354.17 =  +62.968
     ...
 
+Disulfide bonds
+---------------
+
+If we were curious what residues take part in disulfide bonds we could
+write a little script that inspects annotation in the _struct_conn category.
+But to show something else, here we will use ``gemmi-grep``, a little
+utility that is documented in a :ref:`separate section <grep>`.
+
+First we try how to extract interesting data from a single entry:
+
+.. code-block:: console
+
+    $ ./gemmi-grep --delimiter=' ' _struct_conn.conn_type_id \
+    > -a _struct_conn.ptnr1_label_comp_id -a _struct_conn.ptnr1_label_atom_id \
+    > -a _struct_conn.ptnr2_label_comp_id -a _struct_conn.ptnr2_label_atom_id \
+    > 5CBL
+    5CBL disulf CYS SG BME S2
+    5CBL covale ILE CD1 BME C2
+
+Next we will use traditional Unix shell utilities to process the text.
+``| grep disulf`` limits the output to the disulfide bonds.
+Then we add ``| awk '{ print $3, $4 "\n" $5, $6 }'`` to change the first
+line of the output above into two lines:
+
+.. code-block:: none
+
+    CYS SG
+    BME S2
+
+Then we run it on the whole PDB archive, sort, count and print the
+statistics. The complete command is:
+
+.. code-block:: console
+
+    $ ./gemmi-grep --delimiter=' ' _struct_conn.conn_type_id \
+    > -a _struct_conn.ptnr1_label_comp_id -a _struct_conn.ptnr1_label_atom_id \
+    > -a _struct_conn.ptnr2_label_comp_id -a _struct_conn.ptnr2_label_atom_id \
+    > /hdd/mmCIF \
+    > | grep disulf | awk '{ print $3, $4 "\n" $5, $6 }' \
+    > | sort | uniq -c | sort -nr
+       367980 CYS SG
+        274 DCY SG
+         28 BME S2
+         23 SO4 S
+         19 CY3 SG
+         14 MET SD
+         13 MTN S1
+         12 V1A S3
+         10 MPT SG
+          8 NCY SG
+          7 LE1 SG
+          7 CSX SG
+          6 CSO SG
+          5 GSH SG2
+          5 DTT S1
+          4 SC2 SG
+          4 MRG S24
+          3 H2S S
+          3 DTT S4
+          3 1WD S7
+          2 P8S S1
+          2 MTE S2'
+          2 MTE S1'
+          2 EPE S
+          2 DHL SG
+          2 DCD S1
+          2 CSD SG
+          2 COM S1
+          2 6LN S2
+          2 6LN S1
+          2 4K3 S4
+          2 3C7 S01
+          2 2ON S2
+          1 SCN S
+          1 RXR SD
+          1 RXR S10
+          1 MEE S
+          1 G47 SG
+          1 COA S1P
+          1 6ML S1
+          1 5O8 SBH
+
+
 mmJSON-like data
 ----------------
 
