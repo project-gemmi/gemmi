@@ -586,7 +586,7 @@ inline void Structure::finish() {
         double(op.rot[0][0]), double(op.rot[0][1]), double(op.rot[0][2]),
         double(op.rot[1][0]), double(op.rot[1][1]), double(op.rot[1][2]),
         double(op.rot[2][0]), double(op.rot[2][1]), double(op.rot[2][2]) };
-      Position tran;
+      Vec3 tran;
       for (int i = 0; i != 3; ++i)
         tran[i] = double(op.tran[i]) / Op::TDEN;
       cell.images.push_back(SymmetryOp{rot, tran});

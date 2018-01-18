@@ -11,29 +11,55 @@
 
 namespace gemmi {
 
-struct Position {
+struct Vec3 {
   double x, y, z;
   // FIXME: it may be UB, switch to array and references x, y, z
   constexpr double operator[](int i) const { return (&x)[i]; }
   double& operator[](int i) { return (&x)[i]; }
-  Position& wrap_to_unit() {
-    x -= std::floor(x);
-    y -= std::floor(y);
-    z -= std::floor(z);
-    return *this;
-  }
-  Position operator-(const Position& o) const { return {x-o.x, y-o.y, z-o.z}; }
-  Position operator+(const Position& o) const { return {x+o.x, y+o.y, z+o.z}; }
+  Vec3 operator-(const Vec3& o) const { return {x-o.x, y-o.y, z-o.z}; }
+  Vec3 operator+(const Vec3& o) const { return {x+o.x, y+o.y, z+o.z}; }
   double length_sq() const { return x * x + y * y + z * z; }
-  double dist_sq(const Position& other) const {
+  double dist_sq(const Vec3& other) const {
     return (*this - other).length_sq();
   }
-  double dist(const Position& other) const { return std::sqrt(dist_sq(other)); }
+  double dist(const Vec3& other) const { return std::sqrt(dist_sq(other)); }
   std::string str() const {
     using namespace std;
     char buf[64] = {0};
     snprintf(buf, 63, "[%g %g %g]", x, y, z);
     return buf;
+  }
+};
+
+// coordinates in Angstroms (a.k.a. orthogonal coordinates)
+struct Position : Vec3 {
+  Position() = default;
+  Position(double x_, double y_, double z_) : Vec3{x_, y_, z_} {}
+  explicit Position(Vec3&& v) : Vec3(v) {}
+  Position operator-(const Position& o) const {
+    return Position(Vec3::operator-(o));
+  }
+  Position operator+(const Position& o) const {
+    return Position(Vec3::operator+(o));
+  }
+};
+
+// fractional coordinates
+struct Fractional : Vec3 {
+  Fractional() = default;
+  Fractional(double x_, double y_, double z_) : Vec3{x_, y_, z_} {}
+  explicit Fractional(Vec3&& v) : Vec3(v) {}
+  Fractional operator-(const Fractional& o) const {
+    return Fractional(Vec3::operator-(o));
+  }
+  Fractional operator+(const Fractional& o) const {
+    return Fractional(Vec3::operator+(o));
+  }
+  Fractional& wrap_to_unit() {
+    x -= std::floor(x);
+    y -= std::floor(y);
+    z -= std::floor(z);
+    return *this;
   }
 };
 
@@ -55,10 +81,44 @@ struct Matrix33 {
          a21, a22, a23,
          a31, a32, a33;
 
-  Position multiply(const Position& p) const {
+  Vec3 multiply(const Vec3& p) const {
     return {a11 * p.x  + a12 * p.y  + a13 * p.z,
             a21 * p.x  + a22 * p.y  + a23 * p.z,
             a31 * p.x  + a32 * p.y  + a33 * p.z};
+  }
+};
+
+struct Matrix44 {
+  double a[4][4] = { {1,0,0,0}, {0,1,0,0}, {0,0,1,0}, {0,0,0,1} };
+  bool is_identity() const {
+    return a[0][0] == 1 && a[0][1] == 0 && a[0][2] == 0 && a[0][3] == 0 &&
+           a[1][0] == 0 && a[1][1] == 1 && a[1][2] == 0 && a[1][3] == 0 &&
+           a[2][0] == 0 && a[2][1] == 0 && a[2][2] == 1 && a[2][3] == 0 &&
+           a[3][0] == 0 && a[3][1] == 0 && a[3][2] == 0 && a[3][3] == 1;
+  }
+  Matrix33 mat33() const {
+    return {a[0][0], a[0][1], a[0][2],
+            a[1][0], a[1][1], a[1][2],
+            a[2][0], a[2][1], a[2][2]};
+  }
+  Vec3 shift() const { return { a[3][0], a[3][1], a[3][2] }; }
+  double determinant() {
+      return a[0][0]*(a[1][1]*a[2][2]*a[3][3] + a[3][1]*a[1][2]*a[2][3] +
+                      a[2][1]*a[3][2]*a[1][3] - a[1][1]*a[3][2]*a[2][3] -
+                      a[2][1]*a[1][2]*a[3][3] - a[3][1]*a[2][2]*a[1][3]) +
+             a[0][1]*(a[1][2]*a[3][3]*a[2][0] + a[2][2]*a[1][3]*a[3][0] +
+                      a[3][2]*a[2][3]*a[1][0] - a[1][2]*a[2][3]*a[3][0] -
+                      a[3][2]*a[1][3]*a[2][0] - a[2][2]*a[3][3]*a[1][0]) +
+             a[0][2]*(a[1][3]*a[2][0]*a[3][1] + a[3][3]*a[1][0]*a[2][1] +
+                      a[2][3]*a[3][0]*a[1][1] - a[1][3]*a[3][0]*a[2][1] -
+                      a[2][3]*a[1][0]*a[3][1] - a[3][3]*a[2][0]*a[1][1]) +
+             a[0][3]*(a[1][0]*a[3][1]*a[2][2] + a[2][0]*a[1][1]*a[3][2] +
+                      a[3][0]*a[2][1]*a[1][2] - a[1][0]*a[2][1]*a[3][2] -
+                      a[3][0]*a[1][1]*a[2][2] - a[2][0]*a[3][1]*a[1][2]);
+  }
+  Matrix44 inverse() const {
+    // TODO
+    return *this;
   }
 };
 
@@ -83,7 +143,7 @@ struct UnitCell {
   constexpr double operator[](int i) const { return (&a)[i]; }
   Matrix33 orth = {1., 0., 0., 0., 1., 0., 0., 0., 1.};
   Matrix33 frac = {1., 0., 0., 0., 1., 0., 0., 0., 1.};
-  Position shift = {0., 0., 0.};
+  Vec3 shift = {0., 0., 0.};
   // volume and reciprocal parameters a*, b*, c*, alpha*, beta*, gamma*
   double volume = 1.0;
   double ar = 1.0, br = 1.0, cr = 1.0;
@@ -154,6 +214,13 @@ struct UnitCell {
     explicit_matrices = true;
   }
 
+  void set_matrices_from_fract(const Matrix44& f) {
+    frac = f.mat33();
+    shift = f.shift();
+    orth = f.inverse().mat33();
+    explicit_matrices = true;
+  }
+
   void set(double a_, double b_, double c_,
            double alpha_, double beta_, double gamma_) {
     if (gamma_ == 0.0)  // ignore empty/partial CRYST1 (example: 3iyp)
@@ -169,28 +236,34 @@ struct UnitCell {
 
   // we could also apply shift for the few special cases that have
   // SCALEn with non-zero vector
-  Position orthogonalize(const Position& f) const { return orth.multiply(f); }
-  Position fractionalize(const Position& o) const { return frac.multiply(o); }
+  Position orthogonalize(const Fractional& f) const {
+    return Position(orth.multiply(f));
+  }
+  Fractional fractionalize(const Position& o) const {
+    return Fractional(frac.multiply(o));
+  }
 };
 
 
 struct SymmetryOp {
   Matrix33 rot;
-  Position tran;
-  Position apply(const Position& p) const { return rot.multiply(p) + tran; }
+  Vec3 tran;
+  Fractional apply(const Fractional& p) const {
+    return Fractional(rot.multiply(p) + tran);
+  }
 };
 
 struct UnitCellWithSymmetry : UnitCell {
   std::vector<SymmetryOp> images;
 
   // Helper function. PBC = periodic boundary conditions.
-  void search_pbc_images(Position&& fdiff, NearestImage& image, int id) const {
+  void search_pbc_images(Fractional&& diff, NearestImage& image, int id) const {
     int box[3];
     for (int i = 0; i < 3; ++i) {
-      box[i] = iround(fdiff[i]);
-      fdiff[i] -= box[i];
+      box[i] = iround(diff[i]);
+      diff[i] -= box[i];
     }
-    Position orth_diff = orthogonalize(fdiff);
+    Position orth_diff = orthogonalize(diff);
     double dsq = orth_diff.length_sq();
     if (dsq < image.dist_sq) {
       image.dist_sq = dsq;
@@ -208,8 +281,8 @@ struct UnitCellWithSymmetry : UnitCell {
     image.dist_sq = ref.dist_sq(pos);
     if (!is_crystal())
       return image;
-    Position fpos = fractionalize(pos);
-    Position fref = fractionalize(ref);
+    Fractional fpos = fractionalize(pos);
+    Fractional fref = fractionalize(ref);
     search_pbc_images(fpos - fref, image, 0);
     if (non_ident && image.dist_sq == 0 &&
         image.box[0] == 0 && image.box[1] == 0 && image.box[2] == 0)

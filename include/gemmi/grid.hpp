@@ -314,16 +314,16 @@ struct Grid : GridMeta {
     int dw = (int) std::ceil(radius / spacing[2]);
     if (du > nu || dv > nv || dw > nw)
       fail("Masking radius bigger than the unit cell?");
-    Position fctr = unit_cell.fractionalize(ctr).wrap_to_unit();
+    Fractional fctr = unit_cell.fractionalize(ctr).wrap_to_unit();
     int u0 = iround(fctr.x * nu);
     int v0 = iround(fctr.y * nv);
     int w0 = iround(fctr.z * nw);
     for (int w = w0-dw; w <= w0+dw; ++w)
       for (int v = v0-dv; v <= v0+dv; ++v)
         for (int u = u0-du; u <= u0+du; ++u) {
-          Position fdelta{fctr.x - u * (1.0 / nu),
-                          fctr.y - v * (1.0 / nv),
-                          fctr.z - w * (1.0 / nw)};
+          Fractional fdelta{fctr.x - u * (1.0 / nu),
+                            fctr.y - v * (1.0 / nv),
+                            fctr.z - w * (1.0 / nw)};
           for (int i = 0; i < 3; ++i)
             if (fdelta[i] > 0.5)
               fdelta[i] -= 1.0;
@@ -337,7 +337,7 @@ struct Grid : GridMeta {
   }
 
   void mask_atom(double x, double y, double z, double radius) {
-    set_points_around(Position{x, y, z}, radius, 1);
+    set_points_around(Position(x, y, z), radius, 1);
   }
 
   void make_zeros_and_ones(double threshold) {

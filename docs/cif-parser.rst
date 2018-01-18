@@ -1551,7 +1551,7 @@ It contains information about bonds that is absent in the PDB entries.
 
     The absence of this information in mmCIF files is a
     `well-known problem <https://www.cgl.ucsf.edu/chimera/data/mmcif-oct2013/mmcif.html>`_,
-    mitigated somewhat by PDBe which, in parallel to the PDB archive, keeps also
+    mitigated somewhat by PDBe which in parallel to the wwPDB archive has also
     `mmCIF files with connectivity <https://doi.org/10.1093/nar/gkv1047>`_
     and bond-order information;
     and by RCSB which has this information in the
