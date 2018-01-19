@@ -667,9 +667,11 @@ inline Table Block::find(const std::string& prefix,
     }
   } else {
     for (const std::string& tag : tags) {
-      // TODO: ?optional_tag
-      if (const Item* p = find_pair_item(prefix + tag)) {
+      std::string full_tag = prefix + (tag[0] != '?' ? tag : tag.substr(1));
+      if (const Item* p = find_pair_item(full_tag)) {
         indices.push_back(p - items.data());
+      } else if (tag[0] == '?') {
+        indices.push_back(-1);
       } else {
         indices.clear();
         break;
