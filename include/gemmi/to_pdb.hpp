@@ -211,20 +211,17 @@ inline void write_pdb(const Structure& st, std::ostream& os,
   for (int i = 0; i < 3; ++i)
     WRITE("ORIGX%d %13.6f%10.6f%10.6f %14.5f %24s\n",
           i+1, st.origx.x[i], st.origx.y[i], st.origx.z[i], st.origx.w[i], "");
-  const Matrix33& frac = cell.frac;
-  // We add a small number to avoid negative 0.
-  WRITE("SCALE1 %13.6f%10.6f%10.6f %14.5f %24s\n",
-        frac.a11+1e-15, frac.a12+1e-15, frac.a13+1e-15, cell.shift.x+1e-15, "");
-  WRITE("SCALE2 %13.6f%10.6f%10.6f %14.5f %24s\n",
-        frac.a21+1e-15, frac.a22+1e-15, frac.a23+1e-15, cell.shift.y+1e-15, "");
-  WRITE("SCALE3 %13.6f%10.6f%10.6f %14.5f %24s\n",
-        frac.a31+1e-15, frac.a32+1e-15, frac.a33+1e-15, cell.shift.z+1e-15, "");
+  for (int i = 0; i < 3; ++i)
+    // We add a small number to avoid negative 0.
+    WRITE("SCALE%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
+          cell.frac.a[i][0] + 1e-15, cell.frac.a[i][1] + 1e-15,
+          cell.frac.a[i][2] + 1e-15, cell.shift[i] + 1e-15, "");
 
   for (const NcsOp& op : st.ncs)
-    for (int j = 0; j < 3; ++j) {
-      auto r = op.transform.row(j);
+    for (int i = 0; i < 3; ++i) {
+      auto r = op.transform.row(i);
       WRITE("MTRIX%d %3.3s%10.6f%10.6f%10.6f %14.5f    %-21c\n",
-            j + 1, op.id.c_str(), r.x, r.y, r.z, r.w, op.given ? '1' : ' ');
+            i + 1, op.id.c_str(), r.x, r.y, r.z, r.w, op.given ? '1' : ' ');
     }
 
   for (const Model& model : st.models) {

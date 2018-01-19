@@ -206,18 +206,14 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   if (st.cell.explicit_matrices) {
     block.set_pair("_atom_sites.entry_id", id);
     std::string prefix = "_atom_sites.fract_transf_";
-    block.set_pair(prefix + "matrix[1][1]", to_str(st.cell.frac.a11));
-    block.set_pair(prefix + "matrix[1][2]", to_str(st.cell.frac.a12));
-    block.set_pair(prefix + "matrix[1][3]", to_str(st.cell.frac.a13));
-    block.set_pair(prefix + "matrix[2][1]", to_str(st.cell.frac.a21));
-    block.set_pair(prefix + "matrix[2][2]", to_str(st.cell.frac.a22));
-    block.set_pair(prefix + "matrix[2][3]", to_str(st.cell.frac.a23));
-    block.set_pair(prefix + "matrix[3][1]", to_str(st.cell.frac.a31));
-    block.set_pair(prefix + "matrix[3][2]", to_str(st.cell.frac.a32));
-    block.set_pair(prefix + "matrix[3][3]", to_str(st.cell.frac.a33));
-    block.set_pair(prefix + "vector[1]",    to_str(st.cell.shift.x));
-    block.set_pair(prefix + "vector[2]",    to_str(st.cell.shift.y));
-    block.set_pair(prefix + "vector[3]",    to_str(st.cell.shift.z));
+    for (int i = 0; i < 3; ++i) {
+      std::string idx = "[" + std::to_string(i + 1) + "]";
+      const auto& a = st.cell.frac.a;
+      block.set_pair(prefix + "matrix" + idx + "[1]", to_str(a[i][0]));
+      block.set_pair(prefix + "matrix" + idx + "[2]", to_str(a[i][1]));
+      block.set_pair(prefix + "matrix" + idx + "[3]", to_str(a[i][2]));
+      block.set_pair(prefix + "vector" + idx, to_str(st.cell.shift[i]));
+    }
   }
 
   // SEQRES from PDB doesn't record microheterogeneity, so if the resulting

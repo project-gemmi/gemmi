@@ -49,10 +49,10 @@ inline Mat4x4 get_transform_matrix(const cif::Table::Row& r) {
 }
 
 inline Mat4x4 Matrix33_to_Mat4x4(const Matrix33& m) {
-  return {{m.a11, m.a21, m.a31, 0},
-          {m.a12, m.a22, m.a32, 0},
-          {m.a13, m.a23, m.a33, 0},
-          {    0,     0,     0, 1}};
+  return {{m.a[0][0], m.a[0][1], m.a[0][2], 0},
+          {m.a[1][0], m.a[1][1], m.a[1][2], 0},
+          {m.a[2][0], m.a[2][1], m.a[2][2], 0},
+          {        0,         0,         0, 1}};
 }
 
 inline void read_connectivity(cif::Block& block, Structure& st) {

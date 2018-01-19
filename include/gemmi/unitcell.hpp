@@ -23,6 +23,11 @@ struct Vec3 {
     return (*this - other).length_sq();
   }
   double dist(const Vec3& other) const { return std::sqrt(dist_sq(other)); }
+  bool approx(const Vec3& other, double epsilon) const {
+    return std::fabs(x - other.x) <= epsilon &&
+           std::fabs(y - other.y) <= epsilon &&
+           std::fabs(z - other.z) <= epsilon;
+  }
   std::string str() const {
     using namespace std;
     char buf[64] = {0};
@@ -77,19 +82,30 @@ struct NearestImage {
 };
 
 struct Matrix33 {
-  double a11, a12, a13,
-         a21, a22, a23,
-         a31, a32, a33;
+  double a[3][3] = { {1.,0.,0.}, {0.,1.,0.}, {0.,0.,1.} };
+
+  Matrix33() = default;
+  Matrix33(double a1, double a2, double a3, double b1, double b2, double b3,
+           double c1, double c2, double c3)
+  : a{{a1, a2, a3}, {b1, b2, b3}, {c1, c2, c3}} {}
 
   Vec3 multiply(const Vec3& p) const {
-    return {a11 * p.x  + a12 * p.y  + a13 * p.z,
-            a21 * p.x  + a22 * p.y  + a23 * p.z,
-            a31 * p.x  + a32 * p.y  + a33 * p.z};
+    return {a[0][0] * p.x  + a[0][1] * p.y  + a[0][2] * p.z,
+            a[1][0] * p.x  + a[1][1] * p.y  + a[1][2] * p.z,
+            a[2][0] * p.x  + a[2][1] * p.y  + a[2][2] * p.z};
+  }
+
+  bool approx(const Matrix33& other, double epsilon) const {
+    for (int i = 0; i < 3; ++i)
+      for (int j = 0; j < 3; ++j)
+        if (std::fabs(a[i][j] - other.a[i][j]) > epsilon)
+          return false;
+    return true;
   }
 };
 
 struct Matrix44 {
-  double a[4][4] = { {1,0,0,0}, {0,1,0,0}, {0,0,1,0}, {0,0,0,1} };
+  double a[4][4] = {{1.,0.,0.,0.}, {0.,1.,0.,0.}, {0.,0.,1.,0.}, {0.,0.,0.,1.}};
   bool is_identity() const {
     return a[0][0] == 1 && a[0][1] == 0 && a[0][2] == 0 && a[0][3] == 0 &&
            a[1][0] == 0 && a[1][1] == 1 && a[1][2] == 0 && a[1][3] == 0 &&
@@ -97,9 +113,9 @@ struct Matrix44 {
            a[3][0] == 0 && a[3][1] == 0 && a[3][2] == 0 && a[3][3] == 1;
   }
   Matrix33 mat33() const {
-    return {a[0][0], a[0][1], a[0][2],
-            a[1][0], a[1][1], a[1][2],
-            a[2][0], a[2][1], a[2][2]};
+    return Matrix33(a[0][0], a[0][1], a[0][2],
+                    a[1][0], a[1][1], a[1][2],
+                    a[2][0], a[2][1], a[2][2]);
   }
   Vec3 shift() const { return { a[3][0], a[3][1], a[3][2] }; }
   double determinant() const {
@@ -141,8 +157,8 @@ struct UnitCell {
   double a = 1.0, b = 1.0, c = 1.0;
   double alpha = 90.0, beta = 90.0, gamma = 90.0;
   constexpr double operator[](int i) const { return (&a)[i]; }
-  Matrix33 orth = {1., 0., 0., 0., 1., 0., 0., 0., 1.};
-  Matrix33 frac = {1., 0., 0., 0., 1., 0., 0., 0., 1.};
+  Matrix33 orth;
+  Matrix33 frac;
   Vec3 shift = {0., 0., 0.};
   // volume and reciprocal parameters a*, b*, c*, alpha*, beta*, gamma*
   double volume = 1.0;
@@ -197,20 +213,28 @@ struct UnitCell {
     double o13 = -(cos_gamma * cos_alphar_sin_beta + cos_beta * sin_gamma)
                   / (sin_alphar * sin_beta * sin_gamma * a);
     double o23 = cos_alphar / (sin_alphar * sin_gamma * b);
-    frac = {1 / a,  o12,           o13,
-            0.,     1 / orth.a22,  o23,
-            0.,     0.,            1 / orth.a33};
+    frac = {1 / a,  o12,               o13,
+            0.,     1 / orth.a[1][1],  o23,
+            0.,     0.,                1 / orth.a[2][2]};
   }
 
   void set_matrices_from_fract(const linalg::mat<double,4,4>& fract) {
-    frac = {fract.x.x, fract.y.x, fract.z.x,
-            fract.x.y, fract.y.y, fract.z.y,
-            fract.x.z, fract.y.z, fract.z.z};
-    shift = {fract.w.x, fract.w.y, fract.w.z};
+    // mmCIF _atom_sites.fract_transf_* and PDB SCALEn records usually
+    // have less significant digits than unit cell parameters, and should
+    // be ignored unless we have non-standard settings.
+    Matrix33 f;
+    for (int i = 0; i < 3; ++i)
+      for (int j = 0; j < 3; ++j)
+        f.a[i][j] = fract[j][i];
+    Vec3 s = {fract.w.x, fract.w.y, fract.w.z};
+    if (f.approx(frac, 1e-6) && s.approx(shift, 1e-6))
+      return;
+    frac = f;
+    shift = s;
     auto ortho = linalg::inverse(fract);
-    orth = {ortho.x.x, ortho.y.x, ortho.z.x,
-            ortho.x.y, ortho.y.y, ortho.z.y,
-            ortho.x.z, ortho.y.z, ortho.z.z};
+    for (int i = 0; i < 3; ++i)
+      for (int j = 0; j < 3; ++j)
+        orth.a[i][j] = ortho[j][i];
     explicit_matrices = true;
   }
 
