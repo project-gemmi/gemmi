@@ -102,7 +102,7 @@ inline const Atom* find_ssbond_atom(const Connection& con, int n) {
     return nullptr;
   if (con.altloc[n] != '\0' && con.altloc[n] != 'A')
     return nullptr;
-  return con.res[n]->find_by_name_and_elem("SG", El::S);
+  return con.res[n]->find_by_name_and_elem(con.atom[n], El::S);
 }
 
 } // namespace impl
@@ -174,14 +174,14 @@ inline void write_pdb(const Structure& st, std::ostream& os,
         const Atom* a2 = impl::find_ssbond_atom(con, 1);
         if (!a1 || !a2)
           continue;
-        NearestImage near = st.cell.find_nearest_image(a1->pos, a2->pos, true);
+        NearestImage im = st.cell.find_nearest_image(a1->pos, a2->pos, true);
         WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  \n",
            ++counter,
            con.res[0]->name.c_str(), con.res[0]->parent->name_for_pdb().c_str(),
            impl::write_seq_id(buf8, *con.res[0]),
            con.res[1]->name.c_str(), con.res[1]->parent->name_for_pdb().c_str(),
            impl::write_seq_id(buf8a, *con.res[1]),
-           "1555", near.pdb_symbol(false).c_str(), std::sqrt(near.dist_sq));
+           "1555", im.pdb_symbol(false).c_str(), std::sqrt(im.dist_sq));
       }
 
     // CISPEP (note: we use only the first conformation)

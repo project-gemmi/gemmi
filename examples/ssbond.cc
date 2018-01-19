@@ -15,7 +15,8 @@ int verbose = false;
 inline const Atom* find_ssbond_atom(Connection& con, int n) {
   if (!con.res[n])
     return nullptr;
-  return con.res[n]->find_by_name_altloc_elem("SG", con.altloc[n], El::S);
+  return con.res[n]->find_by_name_altloc_elem(con.atom[n], con.altloc[n],
+                                              El::S);
 }
 
 void check_ssbond(gemmi::cif::Block& block) {
@@ -30,14 +31,14 @@ void check_ssbond(gemmi::cif::Block& block) {
       for (int n : {0, 1}) {
         atom[n] = find_ssbond_atom(con, n);
         if (!atom[n])
-          std::printf("%s: no SG atom in %s\n", block.name.c_str(),
+          std::printf("%s: atom not found in %s\n", block.name.c_str(),
                       con.res[n]->ident().c_str());
       }
       if (!atom[0] || !atom[1])
         continue;
-      NearestImage near = st.cell.find_nearest_image(atom[0]->pos,
-                                                     atom[1]->pos, true);
-      double dist = std::sqrt(near.dist_sq);
+      NearestImage im = st.cell.find_nearest_image(atom[0]->pos,
+                                                   atom[1]->pos, true);
+      double dist = std::sqrt(im.dist_sq);
       cif::Table::Row row = struct_conn.find_row(con.id);
       assert(row.str(1) == "disulf");
       std::string ref_sym = row.str(2);
@@ -45,7 +46,7 @@ void check_ssbond(gemmi::cif::Block& block) {
       if (verbose || std::abs(dist - ref_dist) > 0.002) {
         std::printf("%s %s  im:%s  %.3f != %.3f (%s)\n",
                     block.name.c_str(), con.id.c_str(),
-                    near.pdb_symbol(true).c_str(), dist,
+                    im.pdb_symbol(true).c_str(), dist,
                     ref_dist, ref_sym.c_str());
       }
     }

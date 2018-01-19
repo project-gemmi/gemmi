@@ -226,6 +226,14 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
           c.res[0] = chain1->find_residue(rid);
           c.res[1] = chain2->find_residue(rid2);
           if (c.res[0] && c.res[1]) {
+            for (int i : {0, 1}) {
+              const Atom* at = c.res[i]->find_by_name("SG");
+              // in a few cases the atom has different name
+              if (!at)
+                at = c.res[i]->find_by_element(El::S);
+              if (at)
+                c.atom[i] = at->name;
+            }
             c.res[0]->conn.push_back("1 " + c.id);
             c.res[1]->conn.push_back("2 " + c.id);
             model.connections.emplace_back(c);

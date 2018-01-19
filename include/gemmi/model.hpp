@@ -278,9 +278,9 @@ struct ResidueId {
   ResidueId(SNIC id, std::string rname) noexcept : snic(id), name(rname) {}
   ResidueId(int id, std::string rname) noexcept : seq_id(id), name(rname) {}
 
-  enum { UnknownId=-1000 };
-  int seq_id = UnknownId;
-  SNIC snic = {UnknownId, '\0'};
+  enum { NoId=-1000 };
+  int seq_id = NoId;
+  SNIC snic = {NoId, '\0'};
   //bool in_main_conformer/is_point_mut
   //uint32_t segment_id; // number or 4 characters
   std::string segment; // normally up to 4 characters in the PDB file
@@ -296,7 +296,7 @@ struct Residue : public ResidueId {
 
   explicit Residue(const ResidueId& rid) noexcept : ResidueId(rid) {}
   int seq_id_for_pdb() const {
-    return snic.seq_num != UnknownId ? snic.seq_num : seq_id;
+    return snic.seq_num != NoId ? snic.seq_num : seq_id;
   }
   ResidueInfo get_info() const { return find_tabulated_residue(name); }
 
@@ -399,10 +399,10 @@ struct Model {
   Chain* find_or_add_chain(const std::string& chain_name) {
     return impl::find_or_add(chains, chain_name);
   }
-  Residue* find_residue_with_label(const std::string& chain_name, int seq_id,
-                                   const std::string& res_name) {
+  Residue* find_residue_with_label(const std::string& chain_name,
+                                   const ResidueId& res_id) {
     if (Chain* chain = find_chain(chain_name))
-      if (Residue* res = chain->find_residue(ResidueId(seq_id, res_name)))
+      if (Residue* res = chain->find_residue(res_id))
         return res;
     return nullptr;
   }
@@ -478,10 +478,10 @@ inline std::string Residue::ident() const {
 }
 
 inline bool Residue::matches(const ResidueId& rid) const {
-  return seq_id == rid.seq_id &&
-         (seq_id != Residue::UnknownId || snic == rid.snic) &&
-         segment == rid.segment &&
-         name == rid.name;
+  if (rid.seq_id == Residue::NoId && rid.snic.seq_num != Residue::NoId &&
+      snic != rid.snic)
+    return false;
+  return seq_id == rid.seq_id && segment == rid.segment && name == rid.name;
 }
 
 // TODO: handle alternative conformations (point mutations)

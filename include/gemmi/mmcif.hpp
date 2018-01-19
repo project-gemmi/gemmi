@@ -55,6 +55,39 @@ inline Mat4x4 Matrix33_to_Mat4x4(const Matrix33& m) {
           {    0,     0,     0, 1}};
 }
 
+inline void read_connectivity(cif::Block& block, Structure& st) {
+  for (auto row : block.find("_struct_conn.", {"id", "conn_type_id", // 0-1
+        "ptnr1_label_asym_id", "ptnr1_label_seq_id",  // 2-3
+        "ptnr1_label_comp_id", "ptnr1_label_atom_id", // 4-5
+        "ptnr2_label_asym_id", "ptnr2_label_seq_id",  // 6-7
+        "ptnr2_label_comp_id", "ptnr2_label_atom_id", // 8-9
+        "?pdbx_ptnr1_label_alt_id", "?pdbx_ptnr2_label_alt_id"})) {
+    Connection c;
+    c.id = row.str(0);
+    std::string type = row.str(1);
+    for (int i = 0; i != Connection::None; ++i)
+      if (get_mmcif_connection_type_id(Connection::Type(i)) == type) {
+        c.type = Connection::Type(i);
+        break;
+      }
+    c.atom[0] = row.str(5);
+    c.atom[1] = row.str(9);
+    c.altloc[0] = row.has2(10) ? row.str(10)[0] : '\0';
+    c.altloc[1] = row.has2(11) ? row.str(11)[0] : '\0';
+    ResidueId rid1(cif::as_int(row[3], Residue::NoId), row.str(4));
+    ResidueId rid2(cif::as_int(row[7], Residue::NoId), row.str(8));
+    for (Model& mdl : st.models) {
+      c.res[0] = mdl.find_residue_with_label(row.str(2), rid1);
+      c.res[1] = mdl.find_residue_with_label(row.str(6), rid2);
+      if (c.res[0] && c.res[1]) {
+        c.res[0]->conn.push_back("1" + std::string(1, c.altloc[0]) + c.id);
+        c.res[1]->conn.push_back("2" + std::string(1, c.altloc[1]) + c.id);
+        mdl.connections.push_back(c);
+      }
+    }
+  }
+}
+
 inline Structure structure_from_cif_block(cif::Block& block) {
   using cif::as_number;
   using cif::as_string;
@@ -164,9 +197,8 @@ inline Structure structure_from_cif_block(cif::Block& block) {
       chain->auth_name = row.str(kAuthAsymId);
       resi = nullptr;
     }
-    ResidueId rid(cif::as_int(row[kSeqId], Residue::UnknownId),
-                  ResidueId::SNIC{cif::as_int(row[kAuthSeqId],
-                                              Residue::UnknownId),
+    ResidueId rid(cif::as_int(row[kSeqId], Residue::NoId),
+                  ResidueId::SNIC{cif::as_int(row[kAuthSeqId], Residue::NoId),
                                   as_string(row[kInsCode])[0]},
                   as_string(row[kCompId]));
     if (!resi || !resi->matches(rid)) {
@@ -234,46 +266,19 @@ inline Structure structure_from_cif_block(cif::Block& block) {
     }
   st.finish();
 
+  // CISPEP
   for (auto row : block.find("_struct_mon_prot_cis.",
                              {"pdbx_PDB_model_num", "label_asym_id",
                               "label_seq_id", "label_comp_id"})) {
     if (row.has2(0) && row.has2(1) && row.has2(2) && row.has2(3))
       if (Model* mdl = st.find_model(row[0])) {
         int seq = cif::as_int(row[2]);
-        if (Residue* res = mdl->find_residue_with_label(row[1], seq, row[3]))
+        if (Residue* res = mdl->find_residue_with_label(row[1], {seq, row[3]}))
           res->is_cis = true;
       }
   }
 
-  for (auto row : block.find("_struct_conn.", {"id", "conn_type_id",
-        "ptnr1_label_asym_id", "ptnr1_label_seq_id", "ptnr1_label_comp_id",
-        "ptnr2_label_asym_id", "ptnr2_label_seq_id", "ptnr2_label_comp_id",
-        "?pdbx_ptnr1_label_alt_id", "?pdbx_ptnr2_label_alt_id"})) {
-    if (cif::is_null(row[3]) || cif::is_null(row[6]))
-      continue;
-    Connection c;
-    c.id = row.str(0);
-    std::string type = row.str(1);
-    for (int i = 0; i != Connection::None; ++i)
-      if (get_mmcif_connection_type_id(Connection::Type(i)) == type) {
-        c.type = Connection::Type(i);
-        break;
-      }
-    c.altloc[0] = row.has2(8) ? row.str(8)[0] : '\0';
-    c.altloc[1] = row.has2(9) ? row.str(9)[0] : '\0';
-    for (Model& mdl : st.models) {
-      c.res[0] = mdl.find_residue_with_label(row.str(2),
-                                             cif::as_int(row[3]), row.str(4));
-      c.res[1] = mdl.find_residue_with_label(row.str(5),
-                                             cif::as_int(row[6]), row.str(7));
-      if (c.res[0] && c.res[1]) {
-        c.res[0]->conn.push_back("1" + std::string(1, c.altloc[0]) + c.id);
-        c.res[1]->conn.push_back("2" + std::string(1, c.altloc[1]) + c.id);
-        mdl.connections.push_back(c);
-      }
-      // TODO atom name
-    }
-  }
+  read_connectivity(block, st);
 
   return st;
 }
