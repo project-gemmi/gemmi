@@ -221,7 +221,7 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
         Chain* chain2 = model.find_chain(read_string(r + 28, 2));
         if (chain1 && chain2) {
           Connection c;
-          c.id = "disulf" + std::to_string(++disulf_count);
+          c.name = "disulf" + std::to_string(++disulf_count);
           c.type = Connection::Disulf;
           c.res[0] = chain1->find_residue(rid);
           c.res[1] = chain2->find_residue(rid2);
@@ -234,8 +234,8 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
               if (at)
                 c.atom[i] = at->name;
             }
-            c.res[0]->conn.push_back("1 " + c.id);
-            c.res[1]->conn.push_back("2 " + c.id);
+            c.res[0]->conn.push_back("1 " + c.name);
+            c.res[1]->conn.push_back("2 " + c.name);
             model.connections.emplace_back(c);
           }
         }

@@ -63,7 +63,7 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
         "ptnr2_label_comp_id", "ptnr2_label_atom_id", // 8-9
         "?pdbx_ptnr1_label_alt_id", "?pdbx_ptnr2_label_alt_id"})) {
     Connection c;
-    c.id = row.str(0);
+    c.name = row.str(0);
     std::string type = row.str(1);
     for (int i = 0; i != Connection::None; ++i)
       if (get_mmcif_connection_type_id(Connection::Type(i)) == type) {
@@ -80,8 +80,8 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
       c.res[0] = mdl.find_residue_with_label(row.str(2), rid1);
       c.res[1] = mdl.find_residue_with_label(row.str(6), rid2);
       if (c.res[0] && c.res[1]) {
-        c.res[0]->conn.push_back("1" + std::string(1, c.altloc[0]) + c.id);
-        c.res[1]->conn.push_back("2" + std::string(1, c.altloc[1]) + c.id);
+        c.res[0]->conn.push_back("1" + std::string(1, c.altloc[0]) + c.name);
+        c.res[1]->conn.push_back("2" + std::string(1, c.altloc[1]) + c.name);
         mdl.connections.push_back(c);
       }
     }

@@ -39,17 +39,23 @@ void check_ssbond(gemmi::cif::Block& block) {
       NearestImage im = st.cell.find_nearest_image(atom[0]->pos,
                                                    atom[1]->pos, true);
       double dist = std::sqrt(im.dist_sq);
-      cif::Table::Row row = struct_conn.find_row(con.id);
+      cif::Table::Row row = struct_conn.find_row(con.name);
       assert(row.str(1) == "disulf");
       std::string ref_sym = row.str(2);
       double ref_dist = cif::as_number(row[3]);
-      if (verbose || std::abs(dist - ref_dist) > 0.002) {
-        std::printf("%s %s  im:%s  %.3f != %.3f (%s)\n",
-                    block.name.c_str(), con.id.c_str(),
-                    im.pdb_symbol(true).c_str(), dist,
+      bool differs = std::abs(dist - ref_dist) > 0.002;
+      if (verbose ||  differs) {
+        std::printf("%s %s  im:%s  %.3f %c= %.3f (%s)\n",
+                    block.name.c_str(), con.name.c_str(),
+                    im.pdb_symbol(true).c_str(), dist, (differs ? '!' : '='),
                     ref_dist, ref_sym.c_str());
       }
     }
+  for (cif::Table::Row row : struct_conn)
+    if (row.str(1) == "disulf" &&
+        st.models[0].find_connection_by_name(row.str(0)) == nullptr)
+      std::printf("%s: connection not read: %s\n", block.name.c_str(),
+                  row.str(0).c_str());
 }
 
 int main(int argc, char* argv[]) {

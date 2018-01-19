@@ -290,7 +290,7 @@ struct ResidueId {
 struct Residue : public ResidueId {
   bool is_cis = false;  // bond to the next residue marked as cis
   std::vector<Atom> atoms;
-  // Connection::id (from Model::connections)
+  // Connection::name (from Model::connections)
   std::vector<std::string> conn;
   Chain* parent = nullptr;
 
@@ -370,7 +370,7 @@ struct Chain {
 struct Connection {
   enum Type { Covale, CoveleBase, CovalePhosphate, CovaleSugar, Disulf,
               Hydrog, MetalC, Mismat, ModRes, SaltBr, None };
-  std::string id;  // the id is refered by Residue::conn;
+  std::string name;  // the id is refered by Residue::conn;
   Type type = None;
   char altloc[2] = {'\0', '\0'};
   // The pointers get invalidated by some changes to the model.
@@ -405,6 +405,9 @@ struct Model {
       if (Residue* res = chain->find_residue(res_id))
         return res;
     return nullptr;
+  }
+  Connection* find_connection_by_name(const std::string& conn_name) {
+    return impl::find_or_null(connections, conn_name);
   }
   std::vector<Chain>& children() { return chains; }
   const std::vector<Chain>& children() const { return chains; }
