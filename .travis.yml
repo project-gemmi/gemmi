@@ -37,6 +37,6 @@ install:
 script:
   - CXX=$COMPILER cmake .
   - make -j2
-  - make test
+  - make check -j2
   - $PYTHON setup.py install --user --prefix=
   - $PYTHON -m unittest discover -v -s tests/

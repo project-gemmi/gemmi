@@ -99,16 +99,10 @@ else()
 endif()
 
 add_library(cgemmi STATIC fortran/grid.cpp fortran/symmetry.cpp)
-add_executable(ctest fortran/ctest.c)
-target_link_libraries(ctest cgemmi)
 
 if (USE_FORTRAN)
   add_library(fgemmi STATIC fortran/gemmi.f90)
   target_link_libraries(fgemmi cgemmi)
-  add_executable(ftest fortran/ftest.f90)
-  target_link_libraries(ftest fgemmi)
-  add_executable(ftest_grid fortran/ftest_grid.f90)
-  target_link_libraries(ftest_grid fgemmi)
 endif()
 
 add_library(input OBJECT src/input.cpp)
@@ -134,20 +128,21 @@ add_executable(gemmi-sg src/sg.cpp)
 add_executable(gemmi-contents src/contents.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-contents)
 
-add_executable(test_cif tests/cif.cpp)
 
-if (benchmark_FOUND)
-  foreach(b bench_elem bench_mod bench_sym bench_round)
-    add_executable(${b} tools/${b}.cpp)
-    target_link_libraries(${b} benchmark::benchmark)
-  endforeach()
-endif()
+### tests and examples ###
 
-add_executable(hello examples/hello.cc)
-add_executable(doc_example docs/doc_sym.cpp docs/doc_elem.cpp)
-add_executable(doc_example2 docs/doc_cif_cc.cpp)
-add_executable(doc_maybegz docs/doc_maybegz.cpp docs/doc_structure.cpp)
+add_executable(ctest EXCLUDE_FROM_ALL fortran/ctest.c)
+target_link_libraries(ctest cgemmi)
+
+add_executable(test_cif EXCLUDE_FROM_ALL tests/cif.cpp)
+
+add_executable(hello EXCLUDE_FROM_ALL examples/hello.cc)
+add_executable(doc_example EXCLUDE_FROM_ALL docs/doc_sym.cpp docs/doc_elem.cpp)
+add_executable(doc_example2 EXCLUDE_FROM_ALL docs/doc_cif_cc.cpp)
+add_executable(doc_maybegz EXCLUDE_FROM_ALL
+               docs/doc_maybegz.cpp docs/doc_structure.cpp)
 support_gz(doc_maybegz)
+
 # auth_label requires <experimental/filesystem> and -lstdc++fs
 add_executable(auth_label EXCLUDE_FROM_ALL examples/auth_label.cc)
 target_link_libraries(auth_label stdc++fs)
@@ -157,4 +152,27 @@ add_executable(ssbond EXCLUDE_FROM_ALL examples/ssbond.cc)
 support_gz(ssbond)
 
 enable_testing()
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 add_test(NAME cif COMMAND test_cif)
+
+add_dependencies(check
+    ctest test_cif hello doc_example doc_example2 doc_maybegz ssbond)
+
+if (USE_FORTRAN)
+  add_executable(ftest EXCLUDE_FROM_ALL fortran/ftest.f90)
+  target_link_libraries(ftest fgemmi)
+  add_executable(ftest_grid EXCLUDE_FROM_ALL fortran/ftest_grid.f90)
+  target_link_libraries(ftest_grid fgemmi)
+  add_dependencies(check ftest ftest_grid)
+endif()
+
+### benchmarks ###
+
+if (benchmark_FOUND)
+  foreach(b bench_elem bench_mod bench_sym bench_round)
+    add_executable(${b} EXCLUDE_FROM_ALL tools/${b}.cpp)
+    target_link_libraries(${b} benchmark::benchmark)
+    add_dependencies(check ${b})
+  endforeach()
+endif()
+
