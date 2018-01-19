@@ -45,10 +45,11 @@ void check_ssbond(gemmi::cif::Block& block) {
       double ref_dist = cif::as_number(row[3]);
       bool differs = std::abs(dist - ref_dist) > 0.002;
       if (verbose ||  differs) {
-        std::printf("%s %s  im:%s  %.3f %c= %.3f (%s)\n",
+        std::printf("%s %s  im:%s  %.3f %c= %.3f (%s)%s\n",
                     block.name.c_str(), con.name.c_str(),
                     im.pdb_symbol(true).c_str(), dist, (differs ? '!' : '='),
-                    ref_dist, ref_sym.c_str());
+                    ref_dist, ref_sym.c_str(),
+                    st.cell.explicit_matrices ? "  {fract}" : "");
       }
     }
   for (cif::Table::Row row : struct_conn)
