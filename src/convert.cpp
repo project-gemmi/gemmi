@@ -238,24 +238,6 @@ cif::Document make_crd(const gemmi::Structure& st) {
   items.emplace_back("_cell.angle_alpha", to_str(st.cell.alpha));
   items.emplace_back("_cell.angle_beta",  to_str(st.cell.beta));
   items.emplace_back("_cell.angle_gamma", to_str(st.cell.gamma));
-  items.emplace_back(cif::CommentArg{"##############################\n"
-                                     "## FRACTIONALISATION MATRIX ##\n"
-                                     "##############################"});
-  if (st.cell.explicit_matrices || st.cell.frac.a11 != 1.0) {
-    std::string prefix = "_atom_sites.fract_transf_";
-    items.emplace_back(prefix + "matrix[1][1]", to_str(st.cell.frac.a11));
-    items.emplace_back(prefix + "matrix[1][2]", to_str(st.cell.frac.a12));
-    items.emplace_back(prefix + "matrix[1][3]", to_str(st.cell.frac.a13));
-    items.emplace_back(prefix + "matrix[2][1]", to_str(st.cell.frac.a21));
-    items.emplace_back(prefix + "matrix[2][2]", to_str(st.cell.frac.a22));
-    items.emplace_back(prefix + "matrix[2][3]", to_str(st.cell.frac.a23));
-    items.emplace_back(prefix + "matrix[3][1]", to_str(st.cell.frac.a31));
-    items.emplace_back(prefix + "matrix[3][2]", to_str(st.cell.frac.a32));
-    items.emplace_back(prefix + "matrix[3][3]", to_str(st.cell.frac.a33));
-    items.emplace_back(prefix + "vector[1]",    to_str(st.cell.shift.x));
-    items.emplace_back(prefix + "vector[2]",    to_str(st.cell.shift.y));
-    items.emplace_back(prefix + "vector[3]",    to_str(st.cell.shift.z));
-  }
   items.emplace_back(cif::CommentArg{"##############\n"
                                      "## SYMMETRY ##\n"
                                      "##############"});
