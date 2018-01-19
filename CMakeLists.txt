@@ -152,7 +152,7 @@ add_executable(ssbond EXCLUDE_FROM_ALL examples/ssbond.cc)
 support_gz(ssbond)
 
 enable_testing()
-add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION>)
 add_test(NAME cif COMMAND test_cif)
 
 add_dependencies(check
