@@ -12,21 +12,25 @@
 namespace gemmi {
 
 struct Vec3 {
+  //Vec3() {}
+  //Vec3(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
   double x, y, z;
   // FIXME: it may be UB, switch to array and references x, y, z
   constexpr double operator[](int i) const { return (&x)[i]; }
   double& operator[](int i) { return (&x)[i]; }
   Vec3 operator-(const Vec3& o) const { return {x-o.x, y-o.y, z-o.z}; }
   Vec3 operator+(const Vec3& o) const { return {x+o.x, y+o.y, z+o.z}; }
-  double length_sq() const { return x * x + y * y + z * z; }
-  double dist_sq(const Vec3& other) const {
-    return (*this - other).length_sq();
+  double dot(const Vec3& o) const { return x*o.x + y*o.x + z*o.z; }
+  Vec3 cross(const Vec3& o) const {
+    return {y*o.z - z*o.y, z*o.x - x*o.z, x*o.y - y*o.x};
   }
-  double dist(const Vec3& other) const { return std::sqrt(dist_sq(other)); }
-  bool approx(const Vec3& other, double epsilon) const {
-    return std::fabs(x - other.x) <= epsilon &&
-           std::fabs(y - other.y) <= epsilon &&
-           std::fabs(z - other.z) <= epsilon;
+  double length_sq() const { return x * x + y * y + z * z; }
+  double dist_sq(const Vec3& o) const { return (*this - o).length_sq(); }
+  double dist(const Vec3& o) const { return std::sqrt(dist_sq(o)); }
+  bool approx(const Vec3& o, double epsilon) const {
+    return std::fabs(x - o.x) <= epsilon &&
+           std::fabs(y - o.y) <= epsilon &&
+           std::fabs(z - o.z) <= epsilon;
   }
   std::string str() const {
     using namespace std;
@@ -141,14 +145,13 @@ struct Matrix44 {
 // discussion: https://stackoverflow.com/questions/20305272/
 inline double calculate_dihedral(const Position& p0, const Position& p1,
                                  const Position& p2, const Position& p3) {
-  typedef linalg::vec<double,3> double3;
-  double3 b0(p1.x - p0.x, p1.y - p0.y, p1.z - p0.z);
-  double3 b1(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z);
-  double3 b2(p3.x - p2.x, p3.y - p2.y, p3.z - p2.z);
-  double3 u = linalg::cross(b1, b0);
-  double3 w = linalg::cross(b2, b1);
-  double y = linalg::dot(linalg::cross(u, w), b1);
-  double x = linalg::dot(u, w) * linalg::length(b1);
+  Vec3 b0 = p1 - p0;
+  Vec3 b1 = p2 - p1;
+  Vec3 b2 = p3 - p2;
+  Vec3 u = b1.cross(b0);
+  Vec3 w = b2.cross(b1);
+  double y = u.cross(w).dot(b1);
+  double x = u.dot(w) * std::sqrt(b1.length_sq());
   return std::atan2(y, x);
 }
 
