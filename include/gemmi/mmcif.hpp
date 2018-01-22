@@ -34,25 +34,19 @@ get_anisotropic_u(cif::Block& block) {
 
 inline
 std::vector<std::string> transform_tags(std::string mstr, std::string vstr) {
-  return {mstr + "[1][1]", mstr + "[2][1]", mstr + "[3][1]",
-          mstr + "[1][2]", mstr + "[2][2]", mstr + "[3][2]",
-          mstr + "[1][3]", mstr + "[2][3]", mstr + "[3][3]",
-          vstr + "[1]",    vstr + "[2]",    vstr + "[3]"};
+  return {mstr + "[1][1]", mstr + "[1][2]", mstr + "[1][3]", vstr + "[1]",
+          mstr + "[2][1]", mstr + "[2][2]", mstr + "[2][3]", vstr + "[2]",
+          mstr + "[3][1]", mstr + "[3][2]", mstr + "[3][3]", vstr + "[3]"};
 }
 
-inline Mat4x4 get_transform_matrix(const cif::Table::Row& r) {
-  auto num = [&r](int n) { return cif::as_number(r[n]); };
-  return {{num(0), num(1),  num(2),  0},
-          {num(3), num(4),  num(5),  0},
-          {num(6), num(7),  num(8),  0},
-          {num(9), num(10), num(11), 1}};
-}
-
-inline Mat4x4 Matrix33_to_Mat4x4(const Matrix33& m) {
-  return {{m.a[0][0], m.a[0][1], m.a[0][2], 0},
-          {m.a[1][0], m.a[1][1], m.a[1][2], 0},
-          {m.a[2][0], m.a[2][1], m.a[2][2], 0},
-          {        0,         0,         0, 1}};
+inline Transform get_transform_matrix(const cif::Table::Row& r) {
+  Transform t;
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j)
+      t.mat[i][j] = cif::as_number(r[4*i+j]);
+    t.vec[i] = cif::as_number(r[4*i+3]);
+  }
+  return t;
 }
 
 inline void read_connectivity(cif::Block& block, Structure& st) {
@@ -139,9 +133,9 @@ inline Structure structure_from_cif_block(cif::Block& block) {
   cif::Table ncs_oper = block.find("_struct_ncs_oper.", ncs_oper_tags);
   for (auto op : ncs_oper) {
     bool given = op.has(13) && op.str(13) == "given";
-    Mat4x4 mat = get_transform_matrix(op);
-    if (mat != Mat4x4(linalg::identity))
-      st.ncs.push_back({op.str(12), given, mat});
+    Transform tr = get_transform_matrix(op);
+    if (!tr.is_identity())
+      st.ncs.push_back({op.str(12), given, tr});
   }
 
   // PDBx/mmcif spec defines both _database_PDB_matrix.scale* and
@@ -150,7 +144,7 @@ inline Structure structure_from_cif_block(cif::Block& block) {
   cif::Table fract_tv = block.find("_atom_sites.fract_transf_",
                                    transform_tags("matrix", "vector"));
   if (fract_tv.length() > 0) {
-    Mat4x4 fract = get_transform_matrix(fract_tv[0]);
+    Transform fract = get_transform_matrix(fract_tv[0]);
     st.cell.set_matrices_from_fract(fract);
   }
 

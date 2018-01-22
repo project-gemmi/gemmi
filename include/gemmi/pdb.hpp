@@ -170,15 +170,15 @@ inline signed char read_charge(char digit, char sign) {
   return 0;
 }
 
-inline int read_matrix(Mat4x4& matrix, char* line, int len) {
+inline int read_matrix(Transform& t, char* line, int len) {
   if (len < 46)
     return 0;
   char n = line[5] - '0';
   if (n >= 1 && n <= 3) {
-    matrix.x[n-1] = read_double(line+10, 10);
-    matrix.y[n-1] = read_double(line+20, 10);
-    matrix.z[n-1] = read_double(line+30, 10);
-    matrix.w[n-1] = read_double(line+45, 10);
+    t.mat[n-1][0] = read_double(line+10, 10);
+    t.mat[n-1][1] = read_double(line+20, 10);
+    t.mat[n-1][2] = read_double(line+30, 10);
+    t.vec[n-1] = read_double(line+45, 10);
   }
   return n;
 }
@@ -265,7 +265,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   Residue *resi = nullptr;
   EntitySetter ent_setter(st);
   char line[88] = {0};
-  Mat4x4 matrix = linalg::identity;
+  Transform matrix;
   while (size_t len = copy_line_from_stream(line, 82, infile)) {
     ++line_num;
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
@@ -378,11 +378,11 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
           st.info["_cell.Z_PDB"] = z;
       }
     } else if (is_record_type(line, "MTRIXn")) {
-      if (read_matrix(matrix, line, len) == 3 &&
-          matrix != Mat4x4(linalg::identity)) {
+      if (read_matrix(matrix, line, len) == 3 && !matrix.is_identity()) {
+        std::string id = read_string(line+7, 3);
         bool given = len > 59 && line[59] == '1';
-        st.ncs.push_back({read_string(line+7, 3), given, matrix});
-        matrix = linalg::identity;
+        st.ncs.push_back({id, given, matrix});
+        matrix.set_identity();
       }
     } else if (is_record_type(line, "MODEL")) {
       if (model && chain)
@@ -405,12 +405,11 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     } else if (is_record_type(line, "SCALEn")) {
       if (read_matrix(matrix, line, len) == 3) {
         st.cell.set_matrices_from_fract(matrix);
-        matrix = linalg::identity;
+        matrix.set_identity();
       }
 
     } else if (is_record_type(line, "ORIGX")) {
-      if (read_matrix(matrix, line, len) == 3)
-        st.origx = matrix;
+      read_matrix(st.origx, line, len);
 
     } else if (is_record_type(line, "SSBOND")) {
       std::string record(line);

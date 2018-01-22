@@ -6,20 +6,23 @@
 #define GEMMI_UNITCELL_HPP_
 
 #include <cmath>      // for cos, sin, sqrt, floor
-#include <linalg.h>
 #include "util.hpp"
 
 namespace gemmi {
 
 struct Vec3 {
-  //Vec3() {}
-  //Vec3(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
   double x, y, z;
+
+  Vec3() : x(0), y(0), z(0) {}
+  Vec3(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
+
   // FIXME: it may be UB, switch to array and references x, y, z
-  constexpr double operator[](int i) const { return (&x)[i]; }
+  double operator[](int i) const { return (&x)[i]; }
   double& operator[](int i) { return (&x)[i]; }
+
   Vec3 operator-(const Vec3& o) const { return {x-o.x, y-o.y, z-o.z}; }
   Vec3 operator+(const Vec3& o) const { return {x+o.x, y+o.y, z+o.z}; }
+  Vec3 negated() const { return {-x, -y, -z}; }
   double dot(const Vec3& o) const { return x*o.x + y*o.x + z*o.z; }
   Vec3 cross(const Vec3& o) const {
     return {y*o.z - z*o.y, z*o.x - x*o.z, x*o.y - y*o.x};
@@ -88,6 +91,11 @@ struct NearestImage {
 struct Matrix33 {
   double a[3][3] = { {1.,0.,0.}, {0.,1.,0.}, {0.,0.,1.} };
 
+  // make it accessible with ".a"
+  typedef double row_t[3];
+  const row_t& operator[](int i) const { return a[i]; }
+  row_t& operator[](int i) { return a[i]; }
+
   Matrix33() = default;
   Matrix33(double a1, double a2, double a3, double b1, double b2, double b3,
            double c1, double c2, double c3)
@@ -106,40 +114,44 @@ struct Matrix33 {
           return false;
     return true;
   }
+  double determinant() const {
+    return a[0][0] * (a[1][1]*a[2][2] - a[2][1]*a[1][2]) +
+           a[0][1] * (a[1][2]*a[2][0] - a[2][2]*a[1][0]) +
+           a[0][2] * (a[1][0]*a[2][1] - a[2][0]*a[1][1]);
+  }
+  Matrix33 inverse() const {
+    Matrix33 inv;
+    double inv_det = 1.0 / determinant();
+    inv[0][0] = inv_det * (a[1][1] * a[2][2] - a[2][1] * a[1][2]);
+    inv[0][1] = inv_det * (a[0][2] * a[2][1] - a[0][1] * a[2][2]);
+    inv[0][2] = inv_det * (a[0][1] * a[1][2] - a[0][2] * a[1][1]);
+    inv[1][0] = inv_det * (a[1][2] * a[2][0] - a[1][0] * a[2][2]);
+    inv[1][1] = inv_det * (a[0][0] * a[2][2] - a[0][2] * a[2][0]);
+    inv[1][2] = inv_det * (a[1][0] * a[0][2] - a[0][0] * a[1][2]);
+    inv[2][0] = inv_det * (a[1][0] * a[2][1] - a[2][0] * a[1][1]);
+    inv[2][1] = inv_det * (a[2][0] * a[0][1] - a[0][0] * a[2][1]);
+    inv[2][2] = inv_det * (a[0][0] * a[1][1] - a[1][0] * a[0][1]);
+    return inv;
+  }
+  bool is_identity() const {
+    return a[0][0] == 1 && a[0][1] == 0 && a[0][2] == 0 &&
+           a[1][0] == 0 && a[1][1] == 1 && a[1][2] == 0 &&
+           a[2][0] == 0 && a[2][1] == 0 && a[2][2] == 1;
+  }
 };
 
-struct Matrix44 {
-  double a[4][4] = {{1.,0.,0.,0.}, {0.,1.,0.,0.}, {0.,0.,1.,0.}, {0.,0.,0.,1.}};
+struct Transform {
+  Matrix33 mat;
+  Vec3 vec;
+  Transform inverse() const {
+    Matrix33 minv = mat.inverse();
+    return {minv, minv.multiply(vec).negated()};
+  }
+  Vec3 apply(const Vec3& x) const { return mat.multiply(x) + vec; }
   bool is_identity() const {
-    return a[0][0] == 1 && a[0][1] == 0 && a[0][2] == 0 && a[0][3] == 0 &&
-           a[1][0] == 0 && a[1][1] == 1 && a[1][2] == 0 && a[1][3] == 0 &&
-           a[2][0] == 0 && a[2][1] == 0 && a[2][2] == 1 && a[2][3] == 0 &&
-           a[3][0] == 0 && a[3][1] == 0 && a[3][2] == 0 && a[3][3] == 1;
+    return mat.is_identity() && vec[0] == 0. && vec[1] == 0. && vec[2] == 0.;
   }
-  Matrix33 mat33() const {
-    return Matrix33(a[0][0], a[0][1], a[0][2],
-                    a[1][0], a[1][1], a[1][2],
-                    a[2][0], a[2][1], a[2][2]);
-  }
-  Vec3 shift() const { return { a[3][0], a[3][1], a[3][2] }; }
-  double determinant() const {
-      return a[0][0]*(a[1][1]*a[2][2]*a[3][3] + a[3][1]*a[1][2]*a[2][3] +
-                      a[2][1]*a[3][2]*a[1][3] - a[1][1]*a[3][2]*a[2][3] -
-                      a[2][1]*a[1][2]*a[3][3] - a[3][1]*a[2][2]*a[1][3]) +
-             a[0][1]*(a[1][2]*a[3][3]*a[2][0] + a[2][2]*a[1][3]*a[3][0] +
-                      a[3][2]*a[2][3]*a[1][0] - a[1][2]*a[2][3]*a[3][0] -
-                      a[3][2]*a[1][3]*a[2][0] - a[2][2]*a[3][3]*a[1][0]) +
-             a[0][2]*(a[1][3]*a[2][0]*a[3][1] + a[3][3]*a[1][0]*a[2][1] +
-                      a[2][3]*a[3][0]*a[1][1] - a[1][3]*a[3][0]*a[2][1] -
-                      a[2][3]*a[1][0]*a[3][1] - a[3][3]*a[2][0]*a[1][1]) +
-             a[0][3]*(a[1][0]*a[3][1]*a[2][2] + a[2][0]*a[1][1]*a[3][2] +
-                      a[3][0]*a[2][1]*a[1][2] - a[1][0]*a[2][1]*a[3][2] -
-                      a[3][0]*a[1][1]*a[2][2] - a[2][0]*a[3][1]*a[1][2]);
-  }
-  Matrix44 inverse() const {
-    // TODO
-    return *this;
-  }
+  void set_identity() { mat = Matrix33(); vec = Vec3(); }
 };
 
 // discussion: https://stackoverflow.com/questions/20305272/
@@ -159,10 +171,9 @@ inline double calculate_dihedral(const Position& p0, const Position& p1,
 struct UnitCell {
   double a = 1.0, b = 1.0, c = 1.0;
   double alpha = 90.0, beta = 90.0, gamma = 90.0;
-  constexpr double operator[](int i) const { return (&a)[i]; }
-  Matrix33 orth;
-  Matrix33 frac;
-  Vec3 shift = {0., 0., 0.};
+  double operator[](int i) const { return (&a)[i]; } // is it legal?
+  Transform orth;
+  Transform frac;
   // volume and reciprocal parameters a*, b*, c*, alpha*, beta*, gamma*
   double volume = 1.0;
   double ar = 1.0, br = 1.0, cr = 1.0;
@@ -208,43 +219,29 @@ struct UnitCell {
     // cell with the Cartesian X_1 axis, and to align the a*_3 axis with the
     // Cartesian X_3 axis."
     double sin_alphar = std::sqrt(1.0 - cos_alphar * cos_alphar);
-    orth = {a,  b * cos_gamma,  c * cos_beta,
-            0., b * sin_gamma, -c * cos_alphar_sin_beta,
-            0., 0.           ,  c * sin_beta * sin_alphar};
+    orth.mat = {a,  b * cos_gamma,  c * cos_beta,
+                0., b * sin_gamma, -c * cos_alphar_sin_beta,
+                0., 0.           ,  c * sin_beta * sin_alphar};
+    orth.vec = {0., 0., 0.};
 
     double o12 = -cos_gamma / (sin_gamma * a);
     double o13 = -(cos_gamma * cos_alphar_sin_beta + cos_beta * sin_gamma)
                   / (sin_alphar * sin_beta * sin_gamma * a);
     double o23 = cos_alphar / (sin_alphar * sin_gamma * b);
-    frac = {1 / a,  o12,               o13,
-            0.,     1 / orth.a[1][1],  o23,
-            0.,     0.,                1 / orth.a[2][2]};
+    frac.mat = {1 / a,  o12,                 o13,
+                0.,     1 / orth.mat[1][1],  o23,
+                0.,     0.,                  1 / orth.mat[2][2]};
+    frac.vec = {0., 0., 0.};
   }
 
-  void set_matrices_from_fract(const linalg::mat<double,4,4>& fract) {
+  void set_matrices_from_fract(const Transform& f) {
     // mmCIF _atom_sites.fract_transf_* and PDB SCALEn records usually
     // have less significant digits than unit cell parameters, and should
     // be ignored unless we have non-standard settings.
-    Matrix33 f;
-    for (int i = 0; i < 3; ++i)
-      for (int j = 0; j < 3; ++j)
-        f.a[i][j] = fract[j][i];
-    Vec3 s = {fract.w.x, fract.w.y, fract.w.z};
-    if (f.approx(frac, 1e-6) && s.approx(shift, 1e-6))
+    if (f.mat.approx(frac.mat, 1e-6) && f.vec.approx(frac.vec, 1e-6))
       return;
     frac = f;
-    shift = s;
-    auto ortho = linalg::inverse(fract);
-    for (int i = 0; i < 3; ++i)
-      for (int j = 0; j < 3; ++j)
-        orth.a[i][j] = ortho[j][i];
-    explicit_matrices = true;
-  }
-
-  void set_matrices_from_fract(const Matrix44& f) {
-    frac = f.mat33();
-    shift = f.shift();
-    orth = f.inverse().mat33();
+    orth = f.inverse();
     explicit_matrices = true;
   }
 
@@ -264,20 +261,17 @@ struct UnitCell {
   // we could also apply shift for the few special cases that have
   // SCALEn with non-zero vector
   Position orthogonalize(const Fractional& f) const {
-    return Position(orth.multiply(f));
+    return Position(orth.apply(f));
   }
   Fractional fractionalize(const Position& o) const {
-    return Fractional(frac.multiply(o));
+    return Fractional(frac.apply(o));
   }
 };
 
 
 struct SymmetryOp {
-  Matrix33 rot;
-  Vec3 tran;
-  Fractional apply(const Fractional& p) const {
-    return Fractional(rot.multiply(p) + tran);
-  }
+  Transform t;
+  Fractional apply(const Fractional& p) const { return Fractional(t.apply(p)); }
 };
 
 struct UnitCellWithSymmetry : UnitCell {

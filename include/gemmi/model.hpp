@@ -13,7 +13,6 @@
 #include <string>
 #include <vector>
 
-#include <linalg.h>
 #include "elem.hpp"
 #include "unitcell.hpp"
 #include "symmetry.hpp"
@@ -93,8 +92,6 @@ struct SequenceItem {
 };
 
 using Sequence = std::vector<SequenceItem>;
-
-typedef linalg::mat<double,4,4> Mat4x4;
 
 struct Entity {
   std::string id;  // it does not need to be number according to mmCIF spec
@@ -416,7 +413,8 @@ struct Model {
 struct NcsOp {
   std::string id;
   bool given;
-  Mat4x4 transform;
+  Transform tr;
+  Position apply(const Position& p) const { return Position(tr.apply(p)); }
 };
 
 struct Structure {
@@ -428,7 +426,7 @@ struct Structure {
   std::vector<std::unique_ptr<Entity>> entities;
 
   // Store ORIGXn / _database_PDB_matrix.origx*
-  Mat4x4 origx = linalg::identity;
+  Transform origx;
 
   // Minimal metadata with keys being mmcif tags: _entry.id, _exptl.method, ...
   std::map<std::string, std::string> info;

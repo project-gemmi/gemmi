@@ -138,11 +138,8 @@ static void expand_ncs(gemmi::Structure& st, ChainNaming ch_naming) {
           new_chain.auth_name = "";
 
           for (gemmi::Residue& res : new_chain.residues) {
-            for (gemmi::Atom& a : res.atoms) {
-              linalg::vec<double,4> pos = {a.pos.x, a.pos.y, a.pos.z, 1.0};
-              pos = linalg::mul(op.transform, pos);
-              a.pos = {pos.x, pos.y, pos.z};
-            }
+            for (gemmi::Atom& a : res.atoms)
+              a.pos = op.apply(a.pos);
             if (ch_naming == ChainNaming::Dup)
               res.segment = op.id;
           }

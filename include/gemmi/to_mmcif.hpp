@@ -165,9 +165,11 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
     for (const NcsOp& op : st.ncs) {
       ncs_oper.values.emplace_back(op.id);
       ncs_oper.values.emplace_back(op.given ? "given" : "generate");
-      for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 4; ++j)
-          ncs_oper.values.emplace_back(to_str(op.transform[j][i]));
+      for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j)
+          ncs_oper.values.emplace_back(to_str(op.tr.mat[i][j]));
+        ncs_oper.values.emplace_back(to_str(op.tr.vec[i]));
+      }
     }
   }
 
@@ -178,15 +180,15 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
     asym_loop.add_row({ch.name, (ch.entity ? ch.entity->id : "?")});
 
   // _database_PDB_matrix (ORIGX)
-  if (st.origx != Mat4x4(linalg::identity)) {
+  if (!st.origx.is_identity()) {
     block.set_pair("_database_PDB_matrix.entry_id", id);
     std::string prefix = "_database_PDB_matrix.origx";
     for (int i = 0; i < 3; ++i) {
       std::string s = "[" + to_string(i+1) + "]";
-      block.set_pair(prefix + s + "[1]", to_str(st.origx.x[i]));
-      block.set_pair(prefix + s + "[2]", to_str(st.origx.y[i]));
-      block.set_pair(prefix + s + "[3]", to_str(st.origx.z[i]));
-      block.set_pair(prefix + "_vector" + s, to_str(st.origx.w[i]));
+      block.set_pair(prefix + s + "[1]", to_str(st.origx.mat[i][0]));
+      block.set_pair(prefix + s + "[2]", to_str(st.origx.mat[i][1]));
+      block.set_pair(prefix + s + "[3]", to_str(st.origx.mat[i][2]));
+      block.set_pair(prefix + "_vector" + s, to_str(st.origx.vec[i]));
     }
   }
 
@@ -208,11 +210,11 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
     std::string prefix = "_atom_sites.fract_transf_";
     for (int i = 0; i < 3; ++i) {
       std::string idx = "[" + std::to_string(i + 1) + "]";
-      const auto& a = st.cell.frac.a;
-      block.set_pair(prefix + "matrix" + idx + "[1]", to_str(a[i][0]));
-      block.set_pair(prefix + "matrix" + idx + "[2]", to_str(a[i][1]));
-      block.set_pair(prefix + "matrix" + idx + "[3]", to_str(a[i][2]));
-      block.set_pair(prefix + "vector" + idx, to_str(st.cell.shift[i]));
+      const auto& frac = st.cell.frac;
+      block.set_pair(prefix + "matrix" + idx + "[1]", to_str(frac.mat[i][0]));
+      block.set_pair(prefix + "matrix" + idx + "[2]", to_str(frac.mat[i][1]));
+      block.set_pair(prefix + "matrix" + idx + "[3]", to_str(frac.mat[i][2]));
+      block.set_pair(prefix + "vector" + idx, to_str(frac.vec[i]));
     }
   }
 

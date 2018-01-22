@@ -209,20 +209,20 @@ inline void write_pdb(const Structure& st, std::ostream& os,
         st.sg_hm.empty() ? "P 1" : st.sg_hm.c_str(),
         st.get_info("_cell.Z_PDB", ""));
   for (int i = 0; i < 3; ++i)
-    WRITE("ORIGX%d %13.6f%10.6f%10.6f %14.5f %24s\n",
-          i+1, st.origx.x[i], st.origx.y[i], st.origx.z[i], st.origx.w[i], "");
+    WRITE("ORIGX%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
+          st.origx.mat[i][0], st.origx.mat[i][1], st.origx.mat[i][2],
+          st.origx.vec[i], "");
   for (int i = 0; i < 3; ++i)
     // We add a small number to avoid negative 0.
     WRITE("SCALE%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
-          cell.frac.a[i][0] + 1e-15, cell.frac.a[i][1] + 1e-15,
-          cell.frac.a[i][2] + 1e-15, cell.shift[i] + 1e-15, "");
+          cell.frac.mat[i][0] + 1e-15, cell.frac.mat[i][1] + 1e-15,
+          cell.frac.mat[i][2] + 1e-15, cell.frac.vec[i] + 1e-15, "");
 
   for (const NcsOp& op : st.ncs)
-    for (int i = 0; i < 3; ++i) {
-      auto r = op.transform.row(i);
-      WRITE("MTRIX%d %3.3s%10.6f%10.6f%10.6f %14.5f    %-21c\n",
-            i + 1, op.id.c_str(), r.x, r.y, r.z, r.w, op.given ? '1' : ' ');
-    }
+    for (int i = 0; i < 3; ++i)
+      WRITE("MTRIX%d %3.3s%10.6f%10.6f%10.6f %14.5f    %-21c\n", i+1,
+            op.id.c_str(), op.tr.mat[i][0], op.tr.mat[i][1], op.tr.mat[i][2],
+            op.tr.vec[i], op.given ? '1' : ' ');
 
   for (const Model& model : st.models) {
     int serial = 0;
