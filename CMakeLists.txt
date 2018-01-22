@@ -134,7 +134,7 @@ support_gz(gemmi-contents)
 add_executable(ctest EXCLUDE_FROM_ALL fortran/ctest.c)
 target_link_libraries(ctest cgemmi)
 
-add_executable(test_cif EXCLUDE_FROM_ALL tests/cif.cpp)
+add_executable(cpptest EXCLUDE_FROM_ALL tests/main.cpp tests/cif.cpp)
 
 add_executable(hello EXCLUDE_FROM_ALL examples/hello.cc)
 add_executable(doc_example EXCLUDE_FROM_ALL docs/doc_sym.cpp docs/doc_elem.cpp)
@@ -153,10 +153,10 @@ support_gz(ssbond)
 
 enable_testing()
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION>)
-add_test(NAME cif COMMAND test_cif)
+add_test(NAME cpptest COMMAND cpptest)
 
 add_dependencies(check
-    ctest test_cif hello doc_example doc_example2 doc_maybegz ssbond)
+    ctest cpptest hello doc_example doc_example2 doc_maybegz ssbond)
 
 if (USE_FORTRAN)
   add_executable(ftest EXCLUDE_FROM_ALL fortran/ftest.f90)
