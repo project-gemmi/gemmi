@@ -24,7 +24,7 @@ grid.o: grid.cpp $(igdir)/grid.hpp $(igdir)/unitcell.hpp \
        $(igdir)/symmetry.hpp $(igdir)/util.hpp
 	$(CXX) $(FLAGS) `$(PYTHON_CONFIG) --includes` -c $<
 
-mm.o: mm.cpp $(igdir)/elem.hpp
+mm.o: mm.cpp $(igdir)/elem.hpp $(igdir)/unitcell.hpp
 	$(CXX) $(FLAGS) `$(PYTHON_CONFIG) --includes` -c $<
 
 sym.o: sym.cpp $(igdir)/symmetry.hpp
