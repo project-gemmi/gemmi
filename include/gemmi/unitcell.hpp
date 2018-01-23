@@ -237,7 +237,7 @@ struct UnitCell {
     // mmCIF _atom_sites.fract_transf_* and PDB SCALEn records usually
     // have less significant digits than unit cell parameters, and should
     // be ignored unless we have non-standard settings.
-    if (f.mat.approx(frac.mat, 1e-6) && f.vec.approx(frac.vec, 1e-6))
+    if (f.mat.approx(frac.mat, 2e-6) && f.vec.approx(frac.vec, 1e-6))
       return;
     frac = f;
     orth = f.inverse();
