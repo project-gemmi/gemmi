@@ -403,8 +403,8 @@ struct Model {
   Chain* find_or_add_chain(const std::string& chain_name) {
     return impl::find_or_add(chains, chain_name);
   }
-  Residue* find_residue_with_label(const std::string& chain_name,
-                                   const ResidueId& res_id) {
+  Residue* find_chain_residue(const std::string& chain_name,
+                              const ResidueId& res_id) {
     if (Chain* chain = find_chain(chain_name))
       if (Residue* res = chain->find_residue(res_id))
         return res;

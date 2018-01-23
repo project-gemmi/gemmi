@@ -71,8 +71,8 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
     ResidueId rid1(cif::as_int(row[3], Residue::NoId), row.str(4));
     ResidueId rid2(cif::as_int(row[7], Residue::NoId), row.str(8));
     for (Model& mdl : st.models) {
-      c.res[0] = mdl.find_residue_with_label(row.str(2), rid1);
-      c.res[1] = mdl.find_residue_with_label(row.str(6), rid2);
+      c.res[0] = mdl.find_chain_residue(row.str(2), rid1);
+      c.res[1] = mdl.find_chain_residue(row.str(6), rid2);
       if (c.res[0] && c.res[1]) {
         c.res[0]->conn.push_back("1" + std::string(1, c.altloc[0]) + c.name);
         c.res[1]->conn.push_back("2" + std::string(1, c.altloc[1]) + c.name);
@@ -267,7 +267,7 @@ inline Structure structure_from_cif_block(cif::Block& block) {
     if (row.has2(0) && row.has2(1) && row.has2(2) && row.has2(3))
       if (Model* mdl = st.find_model(row[0])) {
         int seq = cif::as_int(row[2]);
-        if (Residue* res = mdl->find_residue_with_label(row[1], {seq, row[3]}))
+        if (Residue* res = mdl->find_chain_residue(row[1], {seq, row[3]}))
           res->is_cis = true;
       }
   }
