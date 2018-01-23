@@ -219,10 +219,11 @@ inline void write_pdb(const Structure& st, std::ostream& os,
           cell.frac.mat[i][2] + 1e-15, cell.frac.vec[i] + 1e-15, "");
 
   for (const NcsOp& op : st.ncs)
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < 3; ++i) {
       WRITE("MTRIX%d %3.3s%10.6f%10.6f%10.6f %14.5f    %-21c\n", i+1,
             op.id.c_str(), op.tr.mat[i][0], op.tr.mat[i][1], op.tr.mat[i][2],
             op.tr.vec[i], op.given ? '1' : ' ');
+    }
 
   for (const Model& model : st.models) {
     int serial = 0;

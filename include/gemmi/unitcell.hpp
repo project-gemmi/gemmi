@@ -171,7 +171,6 @@ inline double calculate_dihedral(const Position& p0, const Position& p1,
 struct UnitCell {
   double a = 1.0, b = 1.0, c = 1.0;
   double alpha = 90.0, beta = 90.0, gamma = 90.0;
-  double operator[](int i) const { return (&a)[i]; } // is it legal?
   Transform orth;
   Transform frac;
   // volume and reciprocal parameters a*, b*, c*, alpha*, beta*, gamma*

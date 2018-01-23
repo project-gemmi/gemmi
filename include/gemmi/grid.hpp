@@ -261,9 +261,10 @@ struct Grid : GridMeta {
     const SpaceGroup& sg = space_group ? *space_group : get_spacegroup_p1();
     std::array<int, 3> sg_fac = sg.operations().find_grid_factors();
     int m[3];
+    double abc[3] = {unit_cell.a, unit_cell.b, unit_cell.c};
     for (int i = 0; i != 3; ++i) {
       int f = std::max(2, sg_fac[i]);
-      int n = int(std::ceil(unit_cell[i] / (max_spacing * f)));
+      int n = int(std::ceil(abc[i] / (max_spacing * f)));
       while (!has_small_factorization(n))
         ++n;
       m[i] = n * f;

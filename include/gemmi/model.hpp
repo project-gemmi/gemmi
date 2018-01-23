@@ -590,7 +590,7 @@ inline void Structure::finish() {
       Vec3 tran;
       for (int i = 0; i != 3; ++i)
         tran[i] = double(op.tran[i]) / Op::TDEN;
-      cell.images.push_back(SymmetryOp{rot, tran});
+      cell.images.push_back(SymmetryOp{{rot, tran}});
     }
   }
 }
