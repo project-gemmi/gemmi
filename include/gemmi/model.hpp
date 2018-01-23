@@ -313,9 +313,16 @@ struct Residue : public ResidueId {
         return &a;
     return nullptr;
   }
+  // FIXME too many find_by_ functions
   const Atom* find_by_name(const std::string& atom_name) const {
     for (const Atom& a : atoms)
       if (a.name == atom_name)
+        return &a;
+    return nullptr;
+  }
+  const Atom* find_by_name_altloc(const std::string& aname, char altloc) const {
+    for (const Atom& a : atoms)
+      if (a.name == aname && a.altloc == altloc)
         return &a;
     return nullptr;
   }

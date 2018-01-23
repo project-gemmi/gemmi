@@ -148,15 +148,15 @@ add_executable(auth_label EXCLUDE_FROM_ALL examples/auth_label.cc)
 target_link_libraries(auth_label stdc++fs)
 support_gz(auth_label)
 
-add_executable(ssbond EXCLUDE_FROM_ALL examples/ssbond.cc)
-support_gz(ssbond)
+add_executable(check_conn EXCLUDE_FROM_ALL examples/check_conn.cc)
+support_gz(check_conn)
 
 enable_testing()
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION>)
 add_test(NAME cpptest COMMAND cpptest)
 
 add_dependencies(check
-    ctest cpptest hello doc_example doc_example2 doc_maybegz ssbond)
+    ctest cpptest hello doc_example doc_example2 doc_maybegz check_conn)
 
 if (USE_FORTRAN)
   add_executable(ftest EXCLUDE_FROM_ALL fortran/ftest.f90)
