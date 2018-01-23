@@ -178,7 +178,7 @@ inline int read_matrix(Transform& t, char* line, int len) {
     t.mat[n-1][0] = read_double(line+10, 10);
     t.mat[n-1][1] = read_double(line+20, 10);
     t.mat[n-1][2] = read_double(line+30, 10);
-    t.vec[n-1] = read_double(line+45, 10);
+    t.vec.at(n-1) = read_double(line+45, 10);
   }
   return n;
 }

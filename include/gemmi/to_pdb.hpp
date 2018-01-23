@@ -211,18 +211,18 @@ inline void write_pdb(const Structure& st, std::ostream& os,
   for (int i = 0; i < 3; ++i)
     WRITE("ORIGX%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
           st.origx.mat[i][0], st.origx.mat[i][1], st.origx.mat[i][2],
-          st.origx.vec[i], "");
+          st.origx.vec.at(i), "");
   for (int i = 0; i < 3; ++i)
     // We add a small number to avoid negative 0.
     WRITE("SCALE%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
           cell.frac.mat[i][0] + 1e-15, cell.frac.mat[i][1] + 1e-15,
-          cell.frac.mat[i][2] + 1e-15, cell.frac.vec[i] + 1e-15, "");
+          cell.frac.mat[i][2] + 1e-15, cell.frac.vec.at(i) + 1e-15, "");
 
   for (const NcsOp& op : st.ncs)
     for (int i = 0; i < 3; ++i) {
       WRITE("MTRIX%d %3.3s%10.6f%10.6f%10.6f %14.5f    %-21c\n", i+1,
             op.id.c_str(), op.tr.mat[i][0], op.tr.mat[i][1], op.tr.mat[i][2],
-            op.tr.vec[i], op.given ? '1' : ' ');
+            op.tr.vec.at(i), op.given ? '1' : ' ');
     }
 
   for (const Model& model : st.models) {

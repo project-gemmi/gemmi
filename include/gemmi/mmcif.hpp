@@ -44,7 +44,7 @@ inline Transform get_transform_matrix(const cif::Table::Row& r) {
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j)
       t.mat[i][j] = cif::as_number(r[4*i+j]);
-    t.vec[i] = cif::as_number(r[4*i+3]);
+    t.vec.at(i) = cif::as_number(r[4*i+3]);
   }
   return t;
 }

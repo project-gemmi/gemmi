@@ -168,7 +168,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
       for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j)
           ncs_oper.values.emplace_back(to_str(op.tr.mat[i][j]));
-        ncs_oper.values.emplace_back(to_str(op.tr.vec[i]));
+        ncs_oper.values.emplace_back(to_str(op.tr.vec.at(i)));
       }
     }
   }
@@ -188,7 +188,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
       block.set_pair(prefix + s + "[1]", to_str(st.origx.mat[i][0]));
       block.set_pair(prefix + s + "[2]", to_str(st.origx.mat[i][1]));
       block.set_pair(prefix + s + "[3]", to_str(st.origx.mat[i][2]));
-      block.set_pair(prefix + "_vector" + s, to_str(st.origx.vec[i]));
+      block.set_pair(prefix + "_vector" + s, to_str(st.origx.vec.at(i)));
     }
   }
 
@@ -214,7 +214,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
       block.set_pair(prefix + "matrix" + idx + "[1]", to_str(frac.mat[i][0]));
       block.set_pair(prefix + "matrix" + idx + "[2]", to_str(frac.mat[i][1]));
       block.set_pair(prefix + "matrix" + idx + "[3]", to_str(frac.mat[i][2]));
-      block.set_pair(prefix + "vector" + idx, to_str(frac.vec[i]));
+      block.set_pair(prefix + "vector" + idx, to_str(frac.vec.at(i)));
     }
   }
 

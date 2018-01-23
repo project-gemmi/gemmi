@@ -13,7 +13,7 @@ TEST_CASE("Matrix44::determinant") {
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j)
       tr.mat[i][j] = m44[i][j] = 10.0 * std::rand() / RAND_MAX - 5;
-    tr.vec[i] = m44[i][3] = 10.0 * std::rand() / RAND_MAX - 5;
+    tr.vec.at(i) = m44[i][3] = 10.0 * std::rand() / RAND_MAX - 5;
   }
   linalg::mat<double,4,4> inv_m44 = linalg::inverse(m44);
   gemmi::Transform inv_tr = tr.inverse();
@@ -21,7 +21,7 @@ TEST_CASE("Matrix44::determinant") {
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j)
       CHECK_EQ(inv_tr.mat[i][j], doctest::Approx(inv_m44[i][j]));
-    CHECK_EQ(inv_tr.vec[i], doctest::Approx(inv_m44[i][3]));
+    CHECK_EQ(inv_tr.vec.at(i), doctest::Approx(inv_m44[i][3]));
     CHECK_EQ(inv_m44[3][i], 0);
   }
 }

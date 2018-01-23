@@ -325,11 +325,7 @@ struct Grid : GridMeta {
           Fractional fdelta{fctr.x - u * (1.0 / nu),
                             fctr.y - v * (1.0 / nv),
                             fctr.z - w * (1.0 / nw)};
-          for (int i = 0; i < 3; ++i)
-            if (fdelta[i] > 0.5)
-              fdelta[i] -= 1.0;
-            else if (fdelta[i] < -0.5)
-              fdelta[i] += 1.0;
+          fdelta.move_toward_zero_by_one();
           Position d = unit_cell.orthogonalize(fdelta);
           if (d.x*d.x + d.y*d.y + d.z*d.z < radius*radius) {
             data[index_n(u, v, w)] = value;

@@ -16,12 +16,19 @@ struct Vec3 {
   Vec3() : x(0), y(0), z(0) {}
   Vec3(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
 
-  // FIXME: it may be UB, switch to array and references x, y, z
-  double operator[](int i) const { return (&x)[i]; }
-  double& operator[](int i) { return (&x)[i]; }
+  double& at(int i) {
+    switch (i) {
+      case 0: return x;
+      case 1: return y;
+      case 2: return z;
+      default: throw std::out_of_range("Vec3 index must be 0, 1 or 2.");
+    }
+  }
+  double at(int i) const { return const_cast<Vec3*>(this)->at(i); }
 
   Vec3 operator-(const Vec3& o) const { return {x-o.x, y-o.y, z-o.z}; }
   Vec3 operator+(const Vec3& o) const { return {x+o.x, y+o.y, z+o.z}; }
+
   Vec3 negated() const { return {-x, -y, -z}; }
   double dot(const Vec3& o) const { return x*o.x + y*o.y + z*o.z; }
   Vec3 cross(const Vec3& o) const {
@@ -72,6 +79,11 @@ struct Fractional : Vec3 {
     y -= std::floor(y);
     z -= std::floor(z);
     return *this;
+  }
+  void move_toward_zero_by_one() {
+    if (x > 0.5) x -= 1.0; else if (x < -0.5) x += 1.0;
+    if (y > 0.5) y -= 1.0; else if (y < -0.5) y += 1.0;
+    if (z > 0.5) z -= 1.0; else if (z < -0.5) z += 1.0;
   }
 };
 
@@ -149,7 +161,7 @@ struct Transform {
   }
   Vec3 apply(const Vec3& x) const { return mat.multiply(x) + vec; }
   bool is_identity() const {
-    return mat.is_identity() && vec[0] == 0. && vec[1] == 0. && vec[2] == 0.;
+    return mat.is_identity() && vec.x == 0. && vec.y == 0. && vec.z == 0.;
   }
   void set_identity() { mat = Matrix33(); vec = Vec3(); }
 };
@@ -278,11 +290,10 @@ struct UnitCellWithSymmetry : UnitCell {
 
   // Helper function. PBC = periodic boundary conditions.
   void search_pbc_images(Fractional&& diff, NearestImage& image, int id) const {
-    int box[3];
-    for (int i = 0; i < 3; ++i) {
-      box[i] = iround(diff[i]);
-      diff[i] -= box[i];
-    }
+    int box[3] = { iround(diff.x), iround(diff.y), iround(diff.z) };
+    diff.x -= box[0];
+    diff.y -= box[1];
+    diff.z -= box[2];
     Position orth_diff = orthogonalize(diff);
     double dsq = orth_diff.length_sq();
     if (dsq < image.dist_sq) {
