@@ -1525,6 +1525,16 @@ statistics. The complete command is:
           1 6ML S1
           1 5O8 SBH
 
+And what other bond types are annotated in ``_struct_conn``?
+
+.. code-block:: console
+
+    $ ./gemmi-grep -O -b _struct_conn.conn_type_id /hdd/mmCIF/ | sort | uniq -c
+     501851 covale
+     184231 disulf
+    4035115 hydrog
+    1394732 metalc
+
 
 mmJSON-like data
 ----------------
