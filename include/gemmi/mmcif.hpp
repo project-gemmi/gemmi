@@ -55,7 +55,13 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
         "ptnr1_label_comp_id", "ptnr1_label_atom_id", // 4-5
         "ptnr2_label_asym_id", "ptnr2_label_seq_id",  // 6-7
         "ptnr2_label_comp_id", "ptnr2_label_atom_id", // 8-9
-        "?pdbx_ptnr1_label_alt_id", "?pdbx_ptnr2_label_alt_id"})) {
+        "?pdbx_ptnr1_label_alt_id", "?pdbx_ptnr2_label_alt_id", // 10-11
+        // the label_ atom identifiers are not sufficient for HOH:
+        // waters have null as label_seq_id so the "main" identifier cannot
+        // distinguish waters in the same chain. So we use "alternative"
+        // identifier if available.
+        "ptnr1_auth_seq_id", "pdbx_ptnr1_PDB_ins_code", // 12-13
+        "ptnr2_auth_seq_id", "pdbx_ptnr2_PDB_ins_code"}/*14-15*/)) {
     Connection c;
     c.name = row.str(0);
     std::string type = row.str(1);

@@ -270,11 +270,6 @@ struct ResidueId {
     char printable_ic() const { return ins_code ? ins_code : ' '; }
   };
 
-  ResidueId(int id, SNIC auth_id, std::string rname) noexcept
-    : seq_id(id), snic(auth_id), name(rname) {}
-  ResidueId(SNIC id, std::string rname) noexcept : snic(id), name(rname) {}
-  ResidueId(int id, std::string rname) noexcept : seq_id(id), name(rname) {}
-
   enum { NoId=-1000 };
   int seq_id = NoId;
   SNIC snic = {NoId, '\0'};
@@ -282,6 +277,12 @@ struct ResidueId {
   //uint32_t segment_id; // number or 4 characters
   std::string segment; // normally up to 4 characters in the PDB file
   std::string name;
+
+  ResidueId() noexcept = default;
+  ResidueId(int id, SNIC auth_id, std::string rname) noexcept
+    : seq_id(id), snic(auth_id), name(rname) {}
+  ResidueId(SNIC id, std::string rname) noexcept : snic(id), name(rname) {}
+  ResidueId(int id, std::string rname) noexcept : seq_id(id), name(rname) {}
 };
 
 struct Residue : public ResidueId {
@@ -377,6 +378,7 @@ struct Connection {
   std::string name;  // the id is refered by Residue::conn;
   Type type = None;
   char altloc[2] = {'\0', '\0'};
+  ResidueId res_id[2];
   // The pointers get invalidated by some changes to the model.
   Residue* res[2] = {nullptr, nullptr};
   // _struct_conn.ptnr[12]_label_atom_id, only for LINK not for SSBOND
