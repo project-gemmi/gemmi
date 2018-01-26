@@ -37,6 +37,9 @@ void check_struct_conn(gemmi::cif::Block& block) {
     if (!starts_with(con.name, row.str(1)))
       std::printf("%s: Unexpected connection name: %s for %s\n",
                   block.name.c_str(), con.name.c_str(), row.str(1).c_str());
+    if (dist > 5)
+      std::printf("%s: Long connection %s: %g\n",
+                  block.name.c_str(), con.name.c_str(), dist);
     std::string ref_sym = row.str(2);
     double ref_dist = cif::as_number(row[3]);
     bool differs = std::abs(dist - ref_dist) > 0.002;
