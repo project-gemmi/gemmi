@@ -373,8 +373,7 @@ struct Chain {
 // Symmetry operators are not trusted and not stored.
 // We assume that the nearest symmetry mate is connected.
 struct Connection {
-  enum Type { Covale, CoveleBase, CovalePhosphate, CovaleSugar, Disulf,
-              Hydrog, MetalC, Mismat, ModRes, SaltBr, None };
+  enum Type { Covale, Disulf, Hydrog, MetalC, None };
   std::string name;  // the id is refered by Residue::conn;
   Type type = None;
   SymmetryImage image = SymmetryImage::Unspecified;
@@ -388,8 +387,7 @@ struct Connection {
 
 inline const char* get_mmcif_connection_type_id(Connection::Type t) {
   static constexpr const char* type_ids[] = {
-    "covale", "covale_base", "covale_phosphate", "covale_sugar", "disulf",
-    "hydrog", "metalc", "mismat", "modres", "saltbr", nullptr };
+    "covale", "disulf", "hydrog", "metalc" };
   return type_ids[t];
 }
 
