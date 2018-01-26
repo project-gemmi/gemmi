@@ -19,7 +19,6 @@ void check_struct_conn(gemmi::cif::Block& block) {
                                                         "ptnr2_symmetry",
                                                         "pdbx_dist_value" });
   Structure st = read_atoms_from_block(block);
-  //TODO: check that no atom is in 2 connections?
   for (Connection& con : st.models[0].connections) {
     const Atom* atom[2] = {nullptr, nullptr};
     for (int n : {0, 1}) {
@@ -31,8 +30,8 @@ void check_struct_conn(gemmi::cif::Block& block) {
     }
     if (!atom[0] || !atom[1])
       continue;
-    NearestImage im = st.cell.find_nearest_image(atom[0]->pos,
-                                                 atom[1]->pos, true);
+    NearbyImage im = st.cell.find_nearest_image(atom[0]->pos,
+                                                atom[1]->pos, con.image);
     double dist = std::sqrt(im.dist_sq);
     cif::Table::Row row = struct_conn.find_row(con.name);
     if (!starts_with(con.name, row.str(1)))

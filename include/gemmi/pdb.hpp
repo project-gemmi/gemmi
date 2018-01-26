@@ -223,6 +223,12 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
           Connection c;
           c.name = "disulf" + std::to_string(++disulf_count);
           c.type = Connection::Disulf;
+          if (record.size() > 71) {
+            if (read_string(r + 59, 6) == read_string(r + 66, 6))
+              c.image = SymmetryImage::Same;
+            else
+              c.image = SymmetryImage::Different;
+          }
           c.res_id[0] = rid;
           c.res_id[1] = rid2;
           c.res[0] = chain1->find_residue(rid);

@@ -61,7 +61,8 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
         // distinguish waters in the same chain. So we use "alternative"
         // identifier if available.
         "?ptnr1_auth_seq_id", "?ptnr2_auth_seq_id", // 12-13
-        "?pdbx_ptnr1_PDB_ins_code", "?pdbx_ptnr2_PDB_ins_code"}/*14-15*/)) {
+        "?pdbx_ptnr1_PDB_ins_code", "?pdbx_ptnr2_PDB_ins_code", // 14-15
+        "?ptnr1_symmetry", "?ptnr2_symmetry"/*16-17*/})) {
     Connection c;
     c.name = row.str(0);
     std::string type = row.str(1);
@@ -70,6 +71,12 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
         c.type = Connection::Type(i);
         break;
       }
+    if (row.has2(16) && row.has2(17)) {
+      if (row.str(16) == row.str(17))
+        c.image = SymmetryImage::Same;
+      else
+        c.image = SymmetryImage::Different;
+    }
     for (int i = 0; i < 2; ++i) {
       c.altloc[i] = row.has2(10+i) ? row.str(10+i)[0] : '\0';
       c.res_id[i] = ResidueId(cif::as_int(row[4+i], Residue::NoId),

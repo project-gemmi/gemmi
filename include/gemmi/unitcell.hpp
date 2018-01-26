@@ -87,8 +87,10 @@ struct Fractional : Vec3 {
   }
 };
 
+enum class SymmetryImage : char { Same, Different, Unspecified };
+
 // Result of find_nearest_image
-struct NearestImage {
+struct NearbyImage {
   double dist_sq;
   int box[3] = { 0, 0, 0 };
   int sym_id = 0;
@@ -289,7 +291,7 @@ struct UnitCellWithSymmetry : UnitCell {
   std::vector<SymmetryOp> images;
 
   // Helper function. PBC = periodic boundary conditions.
-  void search_pbc_images(Fractional&& diff, NearestImage& image, int id) const {
+  bool search_pbc_images(Fractional&& diff, NearbyImage& image) const {
     int box[3] = { iround(diff.x), iround(diff.y), iround(diff.z) };
     diff.x -= box[0];
     diff.y -= box[1];
@@ -300,26 +302,26 @@ struct UnitCellWithSymmetry : UnitCell {
       image.dist_sq = dsq;
       for (int j = 0; j < 3; ++j)
         image.box[j] = box[j];
-      image.sym_id = id;
+      return true;
     }
-    //std::fprintf(stderr, " [%d] d = %g  %d %d %d\n", id, std::sqrt(dsq),
-    //                     box[0], box[1], box[2]);
+    return false;
   }
 
-  NearestImage find_nearest_image(const Position& ref, const Position& pos,
-                                  bool non_ident) const {
-    NearestImage image;
+  NearbyImage find_nearest_image(const Position& ref, const Position& pos,
+                                 SymmetryImage sym_image) const {
+    NearbyImage image;
     image.dist_sq = ref.dist_sq(pos);
-    if (!is_crystal())
+    if (sym_image == SymmetryImage::Same || !is_crystal())
       return image;
     Fractional fpos = fractionalize(pos);
     Fractional fref = fractionalize(ref);
-    search_pbc_images(fpos - fref, image, 0);
-    if (non_ident && image.dist_sq == 0 &&
+    search_pbc_images(fpos - fref, image);
+    if ((sym_image == SymmetryImage::Different || image.dist_sq == 0.0) &&
         image.box[0] == 0 && image.box[1] == 0 && image.box[2] == 0)
       image.dist_sq = 1e100;
     for (int n = 0; n != static_cast<int>(images.size()); ++n)
-      search_pbc_images(images[n].apply(fpos) - fref, image, n+1);
+      if (search_pbc_images(images[n].apply(fpos) - fref, image))
+        image.sym_id = n + 1;
     return image;
   }
 };

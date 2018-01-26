@@ -377,6 +377,7 @@ struct Connection {
               Hydrog, MetalC, Mismat, ModRes, SaltBr, None };
   std::string name;  // the id is refered by Residue::conn;
   Type type = None;
+  SymmetryImage image = SymmetryImage::Unspecified;
   char altloc[2] = {'\0', '\0'};
   ResidueId res_id[2];
   // The pointers get invalidated by some changes to the model.

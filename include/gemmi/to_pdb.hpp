@@ -174,7 +174,8 @@ inline void write_pdb(const Structure& st, std::ostream& os,
         const Atom* a2 = impl::find_ssbond_atom(con, 1);
         if (!a1 || !a2)
           continue;
-        NearestImage im = st.cell.find_nearest_image(a1->pos, a2->pos, true);
+        NearbyImage im = st.cell.find_nearest_image(a1->pos, a2->pos,
+                                                    con.image);
         WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  \n",
            ++counter,
            con.res[0]->name.c_str(), con.res[0]->parent->name_for_pdb().c_str(),
