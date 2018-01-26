@@ -278,7 +278,7 @@ struct ResidueId {
   std::string segment; // normally up to 4 characters in the PDB file
   std::string name;
 
-  ResidueId() noexcept = default;
+  ResidueId() = default;
   ResidueId(int id, SNIC auth_id, std::string rname) noexcept
     : seq_id(id), snic(auth_id), name(rname) {}
   ResidueId(SNIC id, std::string rname) noexcept : snic(id), name(rname) {}

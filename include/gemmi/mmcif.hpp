@@ -51,17 +51,17 @@ inline Transform get_transform_matrix(const cif::Table::Row& r) {
 
 inline void read_connectivity(cif::Block& block, Structure& st) {
   for (auto row : block.find("_struct_conn.", {"id", "conn_type_id", // 0-1
-        "ptnr1_label_asym_id", "ptnr1_label_seq_id",  // 2-3
-        "ptnr1_label_comp_id", "ptnr1_label_atom_id", // 4-5
-        "ptnr2_label_asym_id", "ptnr2_label_seq_id",  // 6-7
-        "ptnr2_label_comp_id", "ptnr2_label_atom_id", // 8-9
+        "ptnr1_label_asym_id", "ptnr2_label_asym_id", // 2-3
+        "ptnr1_label_seq_id", "ptnr2_label_seq_id",   // 4-5
+        "ptnr1_label_comp_id", "ptnr2_label_comp_id", // 6-7
+        "ptnr1_label_atom_id", "ptnr2_label_atom_id", // 8-9
         "?pdbx_ptnr1_label_alt_id", "?pdbx_ptnr2_label_alt_id", // 10-11
         // the label_ atom identifiers are not sufficient for HOH:
         // waters have null as label_seq_id so the "main" identifier cannot
         // distinguish waters in the same chain. So we use "alternative"
         // identifier if available.
-        "ptnr1_auth_seq_id", "pdbx_ptnr1_PDB_ins_code", // 12-13
-        "ptnr2_auth_seq_id", "pdbx_ptnr2_PDB_ins_code"}/*14-15*/)) {
+        "?ptnr1_auth_seq_id", "?ptnr2_auth_seq_id", // 12-13
+        "?pdbx_ptnr1_PDB_ins_code", "?pdbx_ptnr2_PDB_ins_code"}/*14-15*/)) {
     Connection c;
     c.name = row.str(0);
     std::string type = row.str(1);
@@ -70,15 +70,17 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
         c.type = Connection::Type(i);
         break;
       }
-    c.atom[0] = row.str(5);
-    c.atom[1] = row.str(9);
-    c.altloc[0] = row.has2(10) ? row.str(10)[0] : '\0';
-    c.altloc[1] = row.has2(11) ? row.str(11)[0] : '\0';
-    ResidueId rid1(cif::as_int(row[3], Residue::NoId), row.str(4));
-    ResidueId rid2(cif::as_int(row[7], Residue::NoId), row.str(8));
+    for (int i = 0; i < 2; ++i) {
+      c.altloc[i] = row.has2(10+i) ? row.str(10+i)[0] : '\0';
+      c.res_id[i] = ResidueId(cif::as_int(row[4+i], Residue::NoId),
+                              row.str(6+i));
+      if (row.has2(12+i) && row.has(14+i))
+        c.res_id[i].snic = {cif::as_int(row[12+i]), row.str(14+i)[0]};
+      c.atom[i] = row.str(8+i);
+    }
     for (Model& mdl : st.models) {
-      c.res[0] = mdl.find_chain_residue(row.str(2), rid1);
-      c.res[1] = mdl.find_chain_residue(row.str(6), rid2);
+      c.res[0] = mdl.find_chain_residue(row.str(2), c.res_id[0]);
+      c.res[1] = mdl.find_chain_residue(row.str(3), c.res_id[1]);
       if (c.res[0] && c.res[1]) {
         c.res[0]->conn.push_back("1" + std::string(1, c.altloc[0]) + c.name);
         c.res[1]->conn.push_back("2" + std::string(1, c.altloc[1]) + c.name);

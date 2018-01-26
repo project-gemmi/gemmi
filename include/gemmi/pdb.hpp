@@ -223,6 +223,8 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
           Connection c;
           c.name = "disulf" + std::to_string(++disulf_count);
           c.type = Connection::Disulf;
+          c.res_id[0] = rid;
+          c.res_id[1] = rid2;
           c.res[0] = chain1->find_residue(rid);
           c.res[1] = chain2->find_residue(rid2);
           if (c.res[0] && c.res[1]) {
