@@ -176,3 +176,15 @@ if (benchmark_FOUND)
   endforeach()
 endif()
 
+### Python bindings ###
+# Note: setup.py is the primary way to build Python bindings.
+# Here we build it only for convenience and only in certain configuration.
+if (EXISTS "${CMAKE_SOURCE_DIR}/third_party/pybind11/CMakeLists.txt")
+  message(STATUS "The python module will be built.")
+  add_subdirectory(third_party/pybind11)
+  pybind11_add_module(gemmi python/gemmi.cpp python/grid.cpp
+                            python/mm.cpp python/sym.cpp
+                            python/cif.cpp python/cif_read.cpp)
+else()
+  message(STATUS "Note: The python module can be built with setup.py.")
+endif()
