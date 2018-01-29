@@ -84,6 +84,7 @@ struct Parameters {
   bool raw = false;
   std::string delim;
   std::vector<std::string> multi_tags;
+  bool globbing = false;
   // working parameters
   const char* path = "";
   std::string block_name;
@@ -99,7 +100,7 @@ struct Parameters {
 };
 
 template<typename Input>
-void process_match(const Input& in, Parameters& par) {
+void process_match(const Input& in, Parameters& par, int n) {
   if (cif::is_null(in.string()) && !par.raw)
     return;
   ++par.counters[0];
@@ -115,7 +116,7 @@ void process_match(const Input& in, Parameters& par) {
   if (par.with_line_numbers)
     printf("%zu%s", in.iterator().line, sep);
   if (par.with_tag)
-    printf("[%s] ", par.search_tag.c_str());
+    printf("[%s] ", (n < 0 ? par.search_tag : par.multi_tags[n]).c_str());
   std::string value = par.raw ? in.string() : cif::as_string(in.string());
   printf("%s\n", value.c_str());
   if (par.counters[0] == par.max_count)
@@ -135,6 +136,34 @@ static std::string escape(const std::string& s, char delim) {
     r += c;
   }
   return r;
+}
+
+// linear-time glob matching: https://research.swtch.com/glob
+bool glob_match(const std::string& pattern, const std::string& str) {
+  size_t pat_next = 0;
+  size_t str_next = std::string::npos;
+  size_t pat_pos = 0;
+  size_t str_pos = 0;
+  while (pat_pos < pattern.size() || str_pos < str.size()) {
+    if (pat_pos < pattern.size()) {
+      char c = pattern[pat_pos];
+      if (c == '*') {
+        pat_next = pat_pos;
+        str_next = str_pos + 1;
+        pat_pos++;
+        continue;
+      } else if (str_pos < str.size() && (c == '?' || c == str[str_pos])) {
+        pat_pos++;
+        str_pos++;
+        continue;
+      }
+    }
+    if (str_next > str.size())
+      return false;
+    pat_pos = pat_next;
+    str_pos = str_next;
+  }
+  return true;
 }
 
 static void process_multi_match(Parameters& par) {
@@ -206,15 +235,24 @@ template<> struct Search<rules::str_global> {
 };
 template<> struct Search<rules::tag> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
-    if (p.search_tag == in.string())
-      p.match_value = 1;
+    if (!p.globbing) {
+      if (p.search_tag == in.string())
+        p.match_value = 1;
+    } else {
+      if (glob_match(p.search_tag, in.string())) {
+        p.multi_tags.resize(1);
+        p.multi_tags[0] = in.string();
+        p.match_value = 1;
+      }
+    }
   }
 };
+
 template<> struct Search<rules::value> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     if (p.match_value) {
       p.match_value = 0;
-      process_match(in, p);
+      process_match(in, p, p.globbing ? 0 : -1);
       if (p.last_block)
         throw true;
     }
@@ -223,17 +261,29 @@ template<> struct Search<rules::value> {
 template<> struct Search<rules::str_loop> {
   template<typename Input> static void apply(const Input&, Parameters& p) {
     p.table_width = 0;
+    p.multi_tags.clear();
+    p.multi_match_columns.clear();
   }
 };
 template<> struct Search<rules::loop_tag> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
-    if (p.search_tag == in.string()) {
-      p.match_column = p.table_width;
-      p.column = 0;
+    if (!p.globbing) {
+      if (p.search_tag == in.string()) {
+        p.match_column = p.table_width;
+        p.column = 0;
+      }
+    } else {
+      if (glob_match(p.search_tag, in.string())) {
+        p.multi_tags.emplace_back(in.string());
+        p.multi_match_columns.emplace_back(p.table_width);
+        p.match_column = 0;
+        p.column = 0;
+      }
     }
     p.table_width++;
   }
 };
+
 template<> struct Search<rules::loop_end> {
   template<typename Input> static void apply(const Input&, Parameters& p) {
     if (p.match_column != -1) {
@@ -245,13 +295,19 @@ template<> struct Search<rules::loop_end> {
 };
 template<> struct Search<rules::loop_value> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
-    if (p.match_column != -1) {
+    if (p.match_column == -1)
+      return;
+    if (!p.globbing) {
       if (p.column == p.match_column)
-        process_match(in, p);
-      p.column++;
-      if (p.column == p.table_width)
-        p.column = 0;
+        process_match(in, p, -1);
+    } else {
+      for (size_t i = 0; i != p.multi_match_columns.size(); ++i)
+        if (p.column == p.multi_match_columns[i])
+          process_match(in, p, i);
     }
+    p.column++;
+    if (p.column == p.table_width)
+      p.column = 0;
   }
 };
 
@@ -262,6 +318,7 @@ template<typename T> bool any_empty(const std::vector<T>& v) {
       return true;
   return false;
 }
+
 template<typename Rule> struct MultiSearch : Search<Rule> {};
 
 template<> struct MultiSearch<rules::tag> {
@@ -327,7 +384,7 @@ template<> struct MultiSearch<rules::loop_value> {
 
 template<typename Input>
 void run_parse(Input&& in, Parameters& par) {
-  if (par.multi_tags.empty())
+  if (par.multi_values.empty())
     pegtl::parse<rules::file, Search, cif::Errors>(in, par);
   else
     pegtl::parse<rules::file, MultiSearch, cif::Errors>(in, par);
@@ -435,7 +492,7 @@ int main(int argc, char **argv) {
 
   const char* tag = p.nonOption(0);
   if (tag[0] != '_') {
-    fprintf(stderr, "CIF tags start with _; not a tag: %s\n", tag);
+    fprintf(stderr, "CIF tag must start with \"_\": %s\n", tag);
     return 2;
   }
   if (p.options[And]) {
@@ -447,8 +504,15 @@ int main(int argc, char **argv) {
       }
       params.multi_tags.emplace_back(opt->arg);
     }
+    for (const std::string& t : params.multi_tags)
+      if (t.find_first_of("?*") != std::string::npos) {
+        fprintf(stderr, "Glob patterns are not supported together with -a.\n");
+        return 2;
+      }
   } else {
     params.search_tag = tag;
+    if (params.search_tag.find_first_of("?*") != std::string::npos)
+      params.globbing = true;
   }
 
   std::vector<std::string> paths;

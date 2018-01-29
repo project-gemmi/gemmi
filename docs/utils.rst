@@ -56,10 +56,23 @@ will give the same output for both ``_one 1`` and ``loop_ _one _two 1 2``.
 This is helpful in surprising corner cases. For example, when a PDB entry
 has two Rfree values (see the 5MOO example above).
 
+Gemmi-grep does not support regular expression, only globbing (wildcards):
+``?`` represents any single character, ``*`` represents any number of
+characters (including zero). When using wildcards you may also want
+to use the ``-t`` option which prints the tag::
+
+    $ gemmi-grep -t _*free 3gem.cif
+    3GEM:[_refine.ls_R_factor_R_free] 0.182
+    3GEM:[_refine.ls_percent_reflns_R_free] 5.000
+    3GEM:[_refine.ls_number_reflns_R_free] 3951
+    3GEM:[_refine.correlation_coeff_Fo_to_Fc_free] 0.952
+    3GEM:[_refine_ls_shell.R_factor_R_free] 0.272
+    3GEM:[_refine_ls_shell.number_reflns_R_free] 253
+
 If the searched tag is near the beginning of the file, the option ``-O``
 makes gemmi-grep much faster. This option tells the program that the file
-has only a single block; when the tag is found the program does not need
-to parse the rest of the file.
+has only a single block; when the tag is found (and wildcards are not used)
+the program does not need to parse the rest of the file.
 
 Searching the whole compressed mmCIF archive from the PDB
 (35GB of gzipped files) should take on an average computer
