@@ -163,8 +163,7 @@ inline Structure structure_from_cif_block(cif::Block& block) {
     st.cell.set_matrices_from_fract(fract);
   }
 
-  // We store origx just for completeness. It may never be useful
-  // for anything but writing it back to a file.
+  // We read/write origx just for completeness, it's not used anywhere.
   cif::Table origx_tv = block.find("_database_PDB_matrix.",
                                    transform_tags("origx", "origx_vector"));
   if (origx_tv.length() > 0)

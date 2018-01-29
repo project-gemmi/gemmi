@@ -267,7 +267,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
                 "%2s%4s%c"
                 "   %8.3f%8.3f%8.3f"
                 "%6.2f%6.2f      %-4.4s%2s%c%c\n",
-                standard ? "ATOM" : "HETATM",
+                a.group == 'A' || (!a.group && standard) ? "ATOM" : "HETATM",
                 impl::encode_serial_in_hybrid36(buf8, ++serial),
                 empty13 ? ' ' : a.name[0],
                 a.name.c_str() + (empty13 || a.name.empty() ? 0 : 1),

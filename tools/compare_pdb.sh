@@ -29,7 +29,7 @@ set -eu
 cd `dirname $0`
 PDB_COPY="$PDB_DIR/structures/divided"
 BIN=..
-#BIN=../build
+[ -e ../build ] && BIN=../build ||:
 code=${1,,}
 tempd=/run/gemmi
 [ -d "$tempd" ] || ls "$tempd" # ls just triggers error
