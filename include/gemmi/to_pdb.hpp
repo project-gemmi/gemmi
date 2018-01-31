@@ -239,8 +239,11 @@ inline void write_pdb(const Structure& st, std::ostream& os,
       if (chain_name.length() > 2)
         gemmi::fail("long chain name: " + chain_name);
       for (const Residue& res : chain.residues) {
-        bool standard = res.get_info().pdb_standard && !(chain.entity &&
-                                 chain.entity->type == EntityType::NonPolymer);
+        const char* record = res.het_flag == 'A' ||
+                             (res.het_flag != 'H' &&
+                              res.get_info().pdb_standard && !(chain.entity &&
+                                chain.entity->type == EntityType::NonPolymer))
+                              ? "ATOM" : "HETATM";
         for (const Atom& a : res.atoms) {
           //  1- 6  6s  record name
           //  7-11  5d  integer serial
@@ -267,7 +270,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
                 "%2s%4s%c"
                 "   %8.3f%8.3f%8.3f"
                 "%6.2f%6.2f      %-4.4s%2s%c%c\n",
-                a.group == 'A' || (!a.group && standard) ? "ATOM" : "HETATM",
+                record,
                 impl::encode_serial_in_hybrid36(buf8, ++serial),
                 empty13 ? ' ' : a.name[0],
                 a.name.c_str() + (empty13 || a.name.empty() ? 0 : 1),

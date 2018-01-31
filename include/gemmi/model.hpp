@@ -149,7 +149,6 @@ inline PolymerType polymer_type_from_string(const std::string& t) {
 
 struct Atom {
   std::string name;
-  char group;
   char altloc; // 0 if not set
   signed char charge;  // [-8, +8]
   gemmi::Element element = gemmi::El::X;
@@ -286,6 +285,7 @@ struct ResidueId {
 
 struct Residue : public ResidueId {
   bool is_cis = false;  // bond to the next residue marked as cis
+  char het_flag = '\0';  // 'A' = ATOM, 'H' = HETATM, 0 = unspecified
   std::vector<Atom> atoms;
   // Connection::name (from Model::connections)
   std::vector<std::string> conn;

@@ -295,12 +295,13 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       // Left-justified, and may include a space in the middle.
       // The segment may be a portion of a chain or a complete chain.
       rid.segment = read_string(line+72, 4);
-      if (!resi || !resi->matches(rid))
+      if (!resi || !resi->matches(rid)) {
         resi = chain->find_or_add_residue(rid);
+        resi->het_flag = line[0] & ~0x20;
+      }
 
       Atom atom;
       atom.name = read_string(line+12, 4);
-      atom.group = line[0] & ~0x20;
       atom.altloc = line[16] == ' ' ? '\0' : line[16];
       atom.charge = (len > 78 ? read_charge(line[78], line[79]) : 0);
       atom.element = gemmi::Element(line+76);
