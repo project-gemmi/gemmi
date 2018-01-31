@@ -14,7 +14,7 @@ using namespace gemmi;
 
 int verbose = false;
 
-void check_struct_conn(gemmi::cif::Block& block) {
+void check_struct_conn(cif::Block& block) {
   cif::Table struct_conn = block.find("_struct_conn.", {"id", "conn_type_id",
                                                         "ptnr2_symmetry",
                                                         "pdbx_dist_value" });
@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
   int counter = 0;
   try {
     for (const char* path : CifWalk(argv[argc-1])) {
-      cif::Document doc = cif::read(gemmi::MaybeGzipped(path));
+      cif::Document doc = cif::read(MaybeGzipped(path));
       check_struct_conn(doc.sole_block());
       if (++counter % 1000 == 0) {
         std::printf("[progress: %d files]\n", counter);

@@ -22,6 +22,7 @@
 #include <stdexcept>  // for runtime_error
 #include <string>
 #include <vector>
+#include <cassert>
 
 #if defined(_MSC_VER) && !defined(NOMINMAX)
 # define NOMINMAX
@@ -110,26 +111,38 @@ private:
   std::vector<std::pair<int, tinydir_dir>> dirs_;
 };
 
-
-class CifWalk : public DirWalk {
-public:
-  explicit CifWalk(const char* path) : DirWalk(path) {}
-  explicit CifWalk(const std::string& path) : CifWalk(path.c_str()) {}
-
-  static bool is_cif_file(const tinydir_file& f) {
-    return !f.is_dir && (
-        gemmi::giends_with(f.name, ".cif") ||
+struct IsCifFile {
+  static bool is_ok(const std::string& filename) {
+    return gemmi::giends_with(filename, ".cif") ||
         // the SF mmCIF files from PDB don't have the "cif" extension,
         // they have names such as divided/structure_factors/aa/r3aaasf.ent.gz
-        (f.name[0] == 'r' && gemmi::giends_with(f.name, "sf.ent")));
+        (filename[0] == 'r' && gemmi::giends_with(filename, "sf.ent"));
   }
+};
+
+struct IsPdbFile {
+  static bool is_ok(const std::string& filename) {
+    return gemmi::giends_with(filename, ".pdb") ||
+           (gemmi::giends_with(filename, ".ent") &&
+            !(filename[0] == 'r' && gemmi::giends_with(filename, "sf.ent")));
+  }
+};
+
+
+template<typename Check>
+class FileWalk : public DirWalk {
+public:
+  explicit FileWalk(const char* path) : DirWalk(path) {}
+  explicit FileWalk(const std::string& path) : FileWalk(path.c_str()) {}
 
   struct CifIter : Iter {
     CifIter(Iter&& iter) : Iter(iter) {}
     void operator++() {
       for (;;) {
         Iter::operator++();
-        if (CifWalk::is_cif_file(Iter::operator*()) || walk.is_single_file()
+        const tinydir_file& f = Iter::operator*();
+        if ((!f.is_dir && Check::is_ok(f.name))
+            || walk.is_single_file()
             || (depth() == 0 && cur == 1))
           break;
       }
@@ -144,6 +157,9 @@ public:
   }
   CifIter end() { return DirWalk::end(); }
 };
+
+using CifWalk = FileWalk<IsCifFile>;
+using PdbWalk = FileWalk<IsPdbFile>;
 
 } // namespace gemmi
 #endif
