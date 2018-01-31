@@ -23,7 +23,7 @@ void check_struct_conn(gemmi::cif::Block& block) {
     const Atom* atom[2] = {nullptr, nullptr};
     for (int n : {0, 1}) {
       if (con.res[n])
-        atom[n] = con.res[n]->find_by_name_altloc(con.atom[n], con.altloc[n]);
+        atom[n] = con.res[n]->find_atom(con.atom[n], con.altloc[n]);
       if (!atom[n])
         std::printf("%s: %s atom not found in %s\n", block.name.c_str(),
                     con.name.c_str(), con.res[n]->ident().c_str());

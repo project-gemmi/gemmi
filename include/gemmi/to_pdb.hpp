@@ -102,7 +102,7 @@ inline const Atom* find_ssbond_atom(const Connection& con, int n) {
     return nullptr;
   if (con.altloc[n] != '\0' && con.altloc[n] != 'A')
     return nullptr;
-  return con.res[n]->find_by_name_and_elem(con.atom[n], El::S);
+  return con.res[n]->find_atom(con.atom[n], '*', El::S);
 }
 
 } // namespace impl

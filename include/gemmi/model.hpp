@@ -158,7 +158,6 @@ struct Atom {
   float b_iso;
   float u11=0, u22=0, u33=0, u12=0, u13=0, u23=0;
   Residue* parent = nullptr;
-  bool is_first_conformation() const { return altloc == 0 || altloc == 'A'; }
 };
 
 inline double calculate_distance_sq(const Atom* a, const Atom* b) {
@@ -308,46 +307,33 @@ struct Residue : public ResidueId {
   std::vector<Atom>& children() { return atoms; }
   const std::vector<Atom>& children() const { return atoms; }
   bool matches(const ResidueId& rid) const;
+
   const Atom* find_by_element(El el) const {
     for (const Atom& a : atoms)
       if (a.element == el)
         return &a;
     return nullptr;
   }
-  // FIXME too many find_by_ functions
-  const Atom* find_by_name(const std::string& atom_name) const {
+
+  // default values accept anything
+  const Atom* find_atom(const std::string& atom_name, char altloc='*',
+                        El elem=El::X) const {
     for (const Atom& a : atoms)
-      if (a.name == atom_name)
+      if (a.name == atom_name && (altloc == '*' || a.altloc == altloc)
+          && (elem == El::X || a.element == elem))
         return &a;
     return nullptr;
   }
-  const Atom* find_by_name_altloc(const std::string& aname, char altloc) const {
-    for (const Atom& a : atoms)
-      if (a.name == aname && a.altloc == altloc)
-        return &a;
-    return nullptr;
-  }
-  const Atom* find_by_name_and_elem(const std::string& aname, El elem) const {
-    for (const Atom& a : atoms)
-      if (a.name == aname && a.element == elem && a.is_first_conformation())
-        return &a;
-    return nullptr;
-  }
-  const Atom* find_by_name_altloc_elem(const std::string& aname, char altloc,
-                                       El elem) const {
-    for (const Atom& a : atoms)
-      if (a.name == aname && a.element == elem && a.altloc == altloc)
-        return &a;
-    return nullptr;
-  }
+
   const Atom* get_ca() const {
     static const std::string CA("CA");
-    return find_by_name_and_elem(CA, El::C);
+    return find_atom(CA, '*', El::C);
   }
+
   const Residue* prev_bonded_aa() const;
   const Residue* next_bonded_aa() const;
+
   double calculate_omega(const Residue& next) const;
-  // returns pointer to the next (bonded) residue
   bool calculate_phi_psi_omega(double* phi, double* psi, double* omega) const;
 };
 
@@ -510,8 +496,8 @@ inline const Residue* Residue::next_bonded_aa() const {
 }
 
 inline double Residue::calculate_omega(const Residue& next) const {
-  const Atom* C = find_by_name_and_elem("C", El::C);
-  const Atom* nextN = next.find_by_name_and_elem("N", El::N);
+  const Atom* C = find_atom("C", '*', El::C);
+  const Atom* nextN = next.find_atom("N", '*', El::N);
   return calculate_dihedral_from_atoms(get_ca(), C, nextN, next.get_ca());
 }
 
@@ -524,10 +510,10 @@ inline bool Residue::calculate_phi_psi_omega(double* phi, double* psi,
   const Residue* next = next_bonded_aa();
   if (!prev && !next)
     return false;
-  const Atom* C = find_by_name_and_elem("C", El::C);
-  const Atom* N = find_by_name_and_elem("N", El::N);
-  const Atom* prevC = prev ? prev->find_by_name_and_elem("C", El::C) : nullptr;
-  const Atom* nextN = next ? next->find_by_name_and_elem("N", El::N) : nullptr;
+  const Atom* C = find_atom("C", '*', El::C);
+  const Atom* N = find_atom("N", '*', El::N);
+  const Atom* prevC = prev ? prev->find_atom("C", '*', El::C) : nullptr;
+  const Atom* nextN = next ? next->find_atom("N", '*', El::N) : nullptr;
   if (phi)
     *phi = calculate_dihedral_from_atoms(prevC, N, CA, C);
   if (psi)

@@ -235,7 +235,7 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
           c.res[1] = chain2->find_residue(rid2);
           if (c.res[0] && c.res[1]) {
             for (int i : {0, 1}) {
-              const Atom* at = c.res[i]->find_by_name("SG");
+              const Atom* at = c.res[i]->find_atom("SG");
               // in a few cases the atom has different name
               if (!at)
                 at = c.res[i]->find_by_element(El::S);
