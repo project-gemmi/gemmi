@@ -3,7 +3,39 @@
 import unittest
 from math import pi  # , isnan
 from random import random
-from gemmi import Position, calculate_dihedral
+from gemmi import Position, Fractional, UnitCell, calculate_dihedral
+
+class TestUnitCell(unittest.TestCase):
+    def test_dummy_cell(self):
+        cell = UnitCell()
+        self.assertEqual([cell.a, cell.b, cell.c], [1, 1, 1])
+        self.assertEqual([cell.alpha, cell.beta, cell.gamma], [90, 90, 90])
+        self.assertEqual(cell.volume, 1.0)
+
+    def test_ortho_cell(self):
+        cell = UnitCell(25.14, 39.50, 45.07, 90, 90, 90)
+        pos = Position(5, -6, 7)
+        frac = cell.fractionalize(pos)
+        self.assertAlmostEqual(frac.x, 0.198886, delta=1e-6)
+        self.assertAlmostEqual(frac.y, -0.151899, delta=1e-6)
+        self.assertAlmostEqual(frac.z, 0.155314, delta=1e-6)
+        pos2 = cell.orthogonalize(frac)
+        self.assertAlmostEqual(pos.x, pos2.x, delta=1e-12)
+        self.assertAlmostEqual(pos.y, pos2.y, delta=1e-12)
+        self.assertAlmostEqual(pos.z, pos2.z, delta=1e-12)
+        corner = cell.orthogonalize(Fractional(1, 1, 1))
+        self.assertAlmostEqual(corner.x, cell.a, delta=1e-12)
+        self.assertAlmostEqual(corner.y, cell.b, delta=1e-12)
+        self.assertAlmostEqual(corner.z, cell.c, delta=1e-12)
+
+    def test_triclinic_cell(self):
+        cell = UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
+        pos = Position(-15, -17, 190)
+        frac = cell.fractionalize(pos)
+        pos2 = cell.orthogonalize(frac)
+        self.assertAlmostEqual(pos.x, pos2.x, delta=1e-12)
+        self.assertAlmostEqual(pos.y, pos2.y, delta=1e-12)
+        self.assertAlmostEqual(pos.z, pos2.z, delta=1e-12)
 
 
 class TestAngles(unittest.TestCase):

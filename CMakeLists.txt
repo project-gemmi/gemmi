@@ -185,6 +185,9 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/third_party/pybind11/CMakeLists.txt")
   pybind11_add_module(gemmi python/gemmi.cpp python/grid.cpp
                             python/mm.cpp python/sym.cpp
                             python/cif.cpp python/cif_read.cpp)
+  if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
+    target_compile_options(gemmi PRIVATE "-Wno-shadow")
+  endif()
 else()
   message(STATUS "Note: The python module can be built with setup.py.")
 endif()

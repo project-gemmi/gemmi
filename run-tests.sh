@@ -3,7 +3,7 @@
 set -eu
 cd "$(dirname "$0")"
 (cd src && make -j4 all write-help)
-BUILD_DIR="."
+BUILD_DIR=$(pwd)
 [ -e build ] && BUILD_DIR=build
 (cd $BUILD_DIR && make -j4 all check)
 (cd docs && make -j4 html SPHINXOPTS="-q -n")

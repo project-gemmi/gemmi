@@ -46,6 +46,40 @@ Python
     >>> gemmi.Element('Mo').atomic_number
     42
 
+Unit Cell
+=========
+
+We will also need to switch between orthogonal and fractional coordinates.
+
+C++
+---
+
+TODO
+
+Python
+------
+
+.. doctest::
+
+    >>> cell = gemmi.UnitCell(25.14, 39.50, 45.07, 90, 90, 90)
+    >>> cell
+    <gemmi.UnitCell(25.14, 39.5, 45.07, 90, 90, 90)>
+    >>> cell.a, cell.b, cell.c
+    (25.14, 39.5, 45.07)
+    >>> cell.alpha, cell.beta, cell.gamma
+    (90.0, 90.0, 90.0)
+    >>> cell.volume
+    44755.8621
+    >>> cell.fractionalize(gemmi.Position(10, 10, 10))
+    <gemmi.Fractional(0.397772, 0.253165, 0.221877)>
+    >>> cell.orthogonalize(gemmi.Fractional(0.5, 0.5, 0.5))
+    <gemmi.Position(12.57, 19.75, 22.535)>
+
+When the unit cell is created by reading a coordinate file
+it gets information about symmetry transformations and it can do
+a few other things, such as finding symmetry images of a point,
+or determining if the given coordinates are close to a special position.
+This will be covered later on.
 
 Coordinate files
 ================
