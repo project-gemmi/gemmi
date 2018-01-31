@@ -168,6 +168,15 @@ struct Transform {
   void set_identity() { mat = Matrix33(); vec = Vec3(); }
 };
 
+// for the sake of type safety, a variant that has apply() expecting Fractional
+struct FTransform : Transform {
+  FTransform(Matrix33 m, Vec3 v) : Transform{m, v} {}
+  Fractional apply(const Fractional& p) const {
+    return Fractional(Transform::apply(p));
+  }
+};
+
+
 // discussion: https://stackoverflow.com/questions/20305272/
 inline double calculate_dihedral(const Position& p0, const Position& p1,
                                  const Position& p2, const Position& p3) {
@@ -192,6 +201,7 @@ struct UnitCell {
   double ar = 1.0, br = 1.0, cr = 1.0;
   double cos_alphar = 0.0, cos_betar = 0.0, cos_gammar = 0.0;
   bool explicit_matrices = false;
+  std::vector<FTransform> images;
 
   // non-crystalline (for example NMR) structures use fake unit cell 1x1x1.
   bool is_crystal() const { return a != 1.0; }
@@ -279,16 +289,6 @@ struct UnitCell {
   Fractional fractionalize(const Position& o) const {
     return Fractional(frac.apply(o));
   }
-};
-
-
-struct SymmetryOp {
-  Transform t;
-  Fractional apply(const Fractional& p) const { return Fractional(t.apply(p)); }
-};
-
-struct UnitCellWithSymmetry : UnitCell {
-  std::vector<SymmetryOp> images;
 
   // Helper function. PBC = periodic boundary conditions.
   bool search_pbc_images(Fractional&& diff, NearbyImage& image) const {
