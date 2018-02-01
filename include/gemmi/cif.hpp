@@ -117,7 +117,13 @@ template<typename Rule> struct Errors : public pegtl::normal<Rule> {
     throw pegtl::parse_error(msg, in);
   }
 };
-#define error_msg(x) template<> const std::string Errors<x>::msg
+#if defined(_MSC_VER)
+# define error_msg(x) \
+  template<> __declspec(selectany) const std::string Errors<x>::msg
+#else
+# define error_msg(x) \
+  template<> const std::string Errors<x>::msg __attribute__((weak))
+#endif
 // TODO: error "expected data_ keyword
 error_msg(rules::quoted_tail<rules::one<'\''>>) = "unterminated 'string'";
 error_msg(rules::quoted_tail<rules::one<'"'>>) = "unterminated \"string\"";
