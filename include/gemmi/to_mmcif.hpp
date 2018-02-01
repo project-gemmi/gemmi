@@ -123,14 +123,14 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   // _entity
   cif::Loop& entity_loop = block.init_mmcif_loop("_entity.", {"id", "type"});
   for (const auto& ent : st.entities)
-    entity_loop.add_row({ent->id, ent->type_as_string()});
+    entity_loop.add_row({ent.first, ent.second.type_as_string()});
 
   // _entity_poly
-  cif::Loop& entity_poly_loop = block.init_mmcif_loop("_entity_poly.",
-                                                      {"entity_id", "type"});
+  cif::Loop& ent_poly_loop = block.init_mmcif_loop("_entity_poly.",
+                                                   {"entity_id", "type"});
   for (const auto& ent : st.entities)
-    if (ent->type == EntityType::Polymer)
-      entity_poly_loop.add_row({ent->id, ent->polymer_type_as_string()});
+    if (ent.second.type == EntityType::Polymer)
+      ent_poly_loop.add_row({ent.first, ent.second.polymer_type_as_string()});
 
   // _exptl
   cif::Loop& exptl_method_loop = block.init_mmcif_loop("_exptl.",
@@ -177,7 +177,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   cif::Loop& asym_loop = block.init_mmcif_loop("_struct_asym.",
                                                {"id", "entity_id"});
   for (const auto& ch : st.get_chains())
-    asym_loop.add_row({ch.name, (ch.entity ? ch.entity->id : "?")});
+    asym_loop.add_row({ch.name, (ch.entity_id.empty() ? "?" : ch.entity_id)});
 
   // _database_PDB_matrix (ORIGX)
   if (!st.origx.is_identity()) {
@@ -223,10 +223,10 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   cif::Loop& poly_loop = block.init_mmcif_loop("_entity_poly_seq.",
                                          {"entity_id", "num", "mon_id"});
   for (const auto& ent : st.entities)
-    if (ent->type == EntityType::Polymer)
-      for (const SequenceItem& si : ent->sequence) {
+    if (ent.second.type == EntityType::Polymer)
+      for (const SequenceItem& si : ent.second.sequence) {
         std::string num = si.num >= 0 ? to_string(si.num) : "?";
-        poly_loop.add_row({ent->id, num, si.mon});
+        poly_loop.add_row({ent.first, num, si.mon});
       }
 
   impl::add_cif_atoms(st, block);

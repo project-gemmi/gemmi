@@ -245,30 +245,31 @@ inline Structure structure_from_cif_block(cif::Block& block) {
   cif::Table polymer_types = block.find("_entity_poly.", {"entity_id", "type"});
   for (auto row : block.find("_entity.", {"id", "type"})) {
     std::string id = row.str(0);
-    EntityType etype = entity_type_from_string(row.str(1));
-    PolymerType ptype = PolymerType::NA;
+    Entity ent;
+    ent.type = entity_type_from_string(row.str(1));
+    ent.polymer_type = PolymerType::NA;
     if (polymer_types.ok()) {
       try {
-        ptype = polymer_type_from_string(polymer_types.find_row(id).str(1));
+        std::string poly_type = polymer_types.find_row(id).str(1);
+        ent.polymer_type = polymer_type_from_string(poly_type);
       } catch (std::runtime_error&) {}
     }
-    st.entities.emplace_back(new Entity{id, etype, ptype, {}});
+    st.entities.emplace(id, ent);
   }
 
   for (auto row : block.find("_entity_poly_seq.",
                              {"entity_id", "num", "mon_id"})) {
-    Entity *ent = st.find_or_add_entity(row.str(0));
-    ent->sequence.push_back({cif::as_int(row[1], -1), row.str(2)});
+    Entity& ent = st.find_or_add_entity(row.str(0));
+    ent.sequence.push_back({cif::as_int(row[1], -1), row.str(2)});
   }
 
   auto chain_to_entity = block.find("_struct_asym.", {"id", "entity_id"});
   for (Model& mod : st.models)
     for (Chain& ch : mod.chains) {
       try {
-        std::string ent_id = chain_to_entity.find_row(ch.name).str(1);
-        ch.entity = st.find_or_add_entity(ent_id);
-      } catch (std::runtime_error&) {  // maybe _struct_asym is missing
-        ch.entity = nullptr;
+        ch.entity_id = chain_to_entity.find_row(ch.name).str(1);
+      } catch (std::runtime_error&) {
+        // maybe _struct_asym is missing
       }
     }
   st.finish();

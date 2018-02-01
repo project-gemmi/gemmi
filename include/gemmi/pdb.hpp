@@ -106,53 +106,33 @@ inline bool is_record_type(const char* s, const char* record) {
           (record[0] << 24 | record[1] << 16 | record[2] << 8 | record[3]);
 }
 
-class EntitySetter {
-public:
-  explicit EntitySetter(Structure& st) : st_(st) {}
-  Entity* set_for_chain(const std::string& chain_name, EntityType type) {
-    auto it = chain_to_ent_.find(chain_name);
-    if (it != chain_to_ent_.end())
-      return it->second;
-    Entity *ent = new Entity{"", type, PolymerType::NA, {}};
-    st_.entities.emplace_back(ent);
-    chain_to_ent_[chain_name] = ent;
-    return ent;
+inline void set_entity_ids_for_chains(Structure& st) {
+  // make sure each chain has corresponding entity
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains) {
+      chain.entity_id = chain.name;
+      Entity& ent = st.find_or_add_entity(chain.entity_id);
+      if (chain.force_pdb_serial == -1)
+        ent.type = EntityType::Polymer;
+      chain.force_pdb_serial = 0;
+    }
+  // de-duplicate
+  for (auto i = st.entities.begin(); i != st.entities.end(); ++i) {
+    if (i->second.sequence.empty())
+      continue;
+    auto j = i;
+    for (++j; j != st.entities.end(); )
+      if (j->second.sequence == i->second.sequence) {
+        for (Model& mod : st.models)
+          for (Chain& ch : mod.chains)
+            if (ch.entity_id == j->first)
+              ch.entity_id = i->first;
+        j = st.entities.erase(j);
+      } else {
+        ++j;
+      }
   }
-  void finalize() {
-    for (auto i = st_.entities.begin(); i != st_.entities.end(); ++i)
-      for (auto j = i + 1; j != st_.entities.end(); ++j)
-        if (same_entity((*j)->sequence, (*i)->sequence)) {
-          for (auto& ce : chain_to_ent_)
-            if (ce.second == j->get())
-              ce.second = i->get();
-          j = st_.entities.erase(j) - 1;
-        }
-    // set all entity pointers in chains
-    for (Model& mod : st_.models)
-      for (Chain& ch : mod.chains)
-        ch.entity = set_for_chain(ch.name, EntityType::Unknown);
-    // set unique IDs
-    int serial = 1;
-    for (auto& ent : st_.entities)
-      ent->id = std::to_string(serial++);
-  }
-
-private:
-  Structure& st_;
-  std::map<std::string, Entity*> chain_to_ent_;
-
-  // PDB format has no equivalent of mmCIF entity. Here we assume that
-  // identical SEQRES means the same entity.
-  bool same_entity(const Sequence& a, const Sequence& b) const {
-    if (a.empty() || a.size() != b.size())
-      return false;
-    for (size_t i = 0; i != a.size(); ++i)
-      if (a[i].mon != b[i].mon)
-        return false;
-    return true;
-  }
-};
-
+}
 
 // The standard charge format is 2+, but some files have +2.
 inline signed char read_charge(char digit, char sign) {
@@ -266,12 +246,10 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   };
   Structure st;
   st.name = gemmi::path_basename(source);
-  std::vector<std::string> has_ter;
   std::vector<std::string> conn_records;
   Model *model = st.find_or_add_model("1");
   Chain *chain = nullptr;
   Residue *resi = nullptr;
-  EntitySetter ent_setter(st);
   char line[88] = {0};
   Transform matrix;
   while (size_t len = copy_line_from_stream(line, 82, infile)) {
@@ -283,9 +261,10 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       if (!chain || chain_name != chain->auth_name) {
         if (!model)
           wrong("ATOM/HETATM between models");
+        chain = model->find_or_add_chain(chain_name);
         // if this chain was TER'ed we use a separate chain for the rest.
-        bool ter = gemmi::in_vector(model->name + "/" + chain_name, has_ter);
-        chain = model->find_or_add_chain(chain_name + (ter ? "_H" : ""));
+        if (chain->force_pdb_serial == -1)
+          chain = model->find_or_add_chain(chain_name + "_H");
         chain->auth_name = chain_name;
         resi = nullptr;
       }
@@ -335,11 +314,12 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
     } else if (is_record_type(line, "SEQRES")) {
       std::string chain_name = read_string(line+10, 2);
-      Entity* ent = ent_setter.set_for_chain(chain_name, EntityType::Polymer);
+      Entity& ent = st.find_or_add_entity(chain_name);
+      ent.type = EntityType::Polymer;
       for (int i = 19; i < 68; i += 4) {
         std::string res_name = read_string(line+i, 3);
         if (!res_name.empty())
-          ent->sequence.emplace_back(res_name);
+          ent.sequence.emplace_back(res_name);
       }
 
     } else if (is_record_type(line, "HEADER")) {
@@ -408,7 +388,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
     } else if (is_record_type(line, "TER")) { // finishes polymer chains
       if (chain)
-        has_ter.emplace_back(model->name + "/" + chain->name);
+        chain->force_pdb_serial = -1;  // re-using it as a working flag
       chain = nullptr;
 
     } else if (is_record_type(line, "SCALEn")) {
@@ -434,12 +414,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     }
   }
 
-  ent_setter.finalize();
-  for (Model& mod : st.models)
-    for (Chain& ch : mod.chains) {
-      if (gemmi::in_vector(mod.name + "/" + ch.name, has_ter))
-        ch.entity->type = EntityType::Polymer;
-    }
+  set_entity_ids_for_chains(st);
   st.finish();
 
   process_conn(st, conn_records);

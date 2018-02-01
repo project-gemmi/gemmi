@@ -9,7 +9,6 @@
 #include <cmath>      // for NAN
 #include <cstring>    // for size_t
 #include <map>        // for map
-#include <memory>     // for unique_ptr
 #include <string>
 #include <vector>
 
@@ -89,17 +88,19 @@ struct SequenceItem {
   std::string mon;
   explicit SequenceItem(std::string m) noexcept : num(-1), mon(m) {}
   SequenceItem(int n, std::string m) noexcept : num(n), mon(m) {}
+  bool operator==(const SequenceItem& o) const {
+    return num == o.num && mon == o.mon;
+  }
 };
 
 using Sequence = std::vector<SequenceItem>;
 
 struct Entity {
-  std::string id;  // it does not need to be number according to mmCIF spec
-  EntityType type;
-  PolymerType polymer_type;
+  EntityType type = EntityType::Unknown;
+  PolymerType polymer_type = PolymerType::NA;
   Sequence sequence;
 
-  std::string type_as_string() {
+  std::string type_as_string() const {
     switch (type) {
       case EntityType::Polymer: return "polymer";
       case EntityType::NonPolymer: return "non-polymer";
@@ -107,7 +108,7 @@ struct Entity {
       default /*EntityType::Unknown*/: return "?";
     }
   }
-  std::string polymer_type_as_string() {
+  std::string polymer_type_as_string() const {
     switch (polymer_type) {
       case PolymerType::PeptideL: return "polypeptide(L)";
       case PolymerType::PeptideD: return "polypeptide(D)";
@@ -335,13 +336,23 @@ struct Residue : public ResidueId {
 
   double calculate_omega(const Residue& next) const;
   bool calculate_phi_psi_omega(double* phi, double* psi, double* omega) const;
+
+  bool use_hetatm(const Entity* entity) const {
+    if (het_flag == 'H')
+      return true;
+    if (het_flag == 'A')
+      return false;
+    if (entity && entity->type == EntityType::NonPolymer)
+      return true;
+    return !get_info().pdb_standard;
+  }
 };
 
 struct Chain {
   std::string name;
   std::string auth_name;
   std::vector<Residue> residues;
-  Entity *entity = nullptr;
+  std::string entity_id;
   Model* parent = nullptr;
   int force_pdb_serial = 0;
 
@@ -417,7 +428,7 @@ struct Structure {
   std::string sg_hm;
   std::vector<Model> models;
   std::vector<NcsOp> ncs;
-  std::vector<std::unique_ptr<Entity>> entities;
+  std::map<std::string, Entity> entities;
 
   // Store ORIGXn / _database_PDB_matrix.origx*
   Transform origx;
@@ -437,18 +448,20 @@ struct Structure {
   }
 
   Entity* find_entity(const std::string& ent_id) {
-    for (auto& ent : entities)
-      if (ent->id == ent_id)
-        return ent.get();
-    return nullptr;
+    auto ent = entities.find(ent_id);
+    return ent == entities.end() ? nullptr : &ent->second;
   }
-  Entity* find_or_add_entity(const std::string& ent_id) {
-    Entity* ent = find_entity(ent_id);
-    if (!ent) {
-      ent = new Entity{ent_id, EntityType::Unknown, PolymerType::NA, {}};
-      entities.emplace_back(ent);
-    }
-    return ent;
+  const Entity* find_entity(const std::string& ent_id) const {
+    auto ent = entities.find(ent_id);
+    return ent == entities.end() ? nullptr : &ent->second;
+  }
+
+
+  Entity& find_or_add_entity(const std::string& ent_id) {
+    auto ent = entities.find(ent_id);
+    if (ent == entities.end())
+      ent = entities.emplace(ent_id, Entity()).first;
+    return ent->second;
   }
   const std::vector<Chain>& get_chains() const {
     // We don't handle yet a corner case (ever happening?)
@@ -570,8 +583,10 @@ template<> inline double count_occupancies(const Atom& atom) {
 
 inline void Structure::finish() {
   add_backlinks(*this);
+
   // TODO: if "entities" were not specifed, deduce them based on sequence
 
+  // fill UnitCell::images
   if (const SpaceGroup* sg = find_spacegroup_by_name(sg_hm)) {
     for (Op op : sg->operations()) {
       // TODO strict NCS

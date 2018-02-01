@@ -135,12 +135,13 @@ inline void write_pdb(const Structure& st, std::ostream& os,
 
   if (!st.models.empty() && !iotbx_compat) {
     // SEQRES
-    for (const Chain& ch : st.models[0].chains)
-      if (ch.entity && ch.entity->type == EntityType::Polymer) {
+    for (const Chain& ch : st.models[0].chains) {
+      const Entity* entity = st.find_entity(ch.entity_id);
+      if (entity && entity->type == EntityType::Polymer) {
         const std::string& chain_name = ch.name_for_pdb();
         int seq_len = 0;
         int prev_seq_num = -1;
-        for (const SequenceItem& si : ch.entity->sequence)
+        for (const SequenceItem& si : entity->sequence)
           if (si.num < 0 || si.num != prev_seq_num) {
             ++seq_len;
             prev_seq_num = si.num;
@@ -148,7 +149,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
         prev_seq_num = -1;
         int row = 0;
         int col = 0;
-        for (const SequenceItem& si : ch.entity->sequence) {
+        for (const SequenceItem& si : entity->sequence) {
           if (si.num >= 0 && si.num == prev_seq_num)
             continue;
           prev_seq_num = si.num;
@@ -165,6 +166,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
         if (col != 0)
           os.write(buf, 81);
       }
+    }
 
     // SSBOND  (note: we use only the first model and primary conformation)
     int counter = 0;
@@ -231,6 +233,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
     if (st.models.size() > 1)
       WRITE("MODEL %8s %65s\n", model.name.c_str(), "");
     for (const Chain& chain : model.chains) {
+      const Entity* entity = st.find_entity(chain.entity_id);
       if (chain.force_pdb_serial)
         serial = chain.force_pdb_serial - 1;
       const std::string& chain_name = chain.name_for_pdb();
@@ -239,11 +242,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
       if (chain_name.length() > 2)
         gemmi::fail("long chain name: " + chain_name);
       for (const Residue& res : chain.residues) {
-        const char* record = res.het_flag == 'A' ||
-                             (res.het_flag != 'H' &&
-                              res.get_info().pdb_standard && !(chain.entity &&
-                                chain.entity->type == EntityType::NonPolymer))
-                              ? "ATOM" : "HETATM";
+        bool as_het = res.use_hetatm(entity);
         for (const Atom& a : res.atoms) {
           //  1- 6  6s  record name
           //  7-11  5d  integer serial
@@ -270,7 +269,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
                 "%2s%4s%c"
                 "   %8.3f%8.3f%8.3f"
                 "%6.2f%6.2f      %-4.4s%2s%c%c\n",
-                record,
+                as_het ? "HETATM" : "ATOM",
                 impl::encode_serial_in_hybrid36(buf8, ++serial),
                 empty13 ? ' ' : a.name[0],
                 a.name.c_str() + (empty13 || a.name.empty() ? 0 : 1),
@@ -309,7 +308,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
           }
         }
       }
-      if (chain.entity && chain.entity->type == EntityType::Polymer) {
+      if (entity && entity->type == EntityType::Polymer) {
         if (iotbx_compat) {
           WRITE("%-80s\n", "TER");
         } else {

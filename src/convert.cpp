@@ -204,8 +204,8 @@ cif::Document make_crd(const gemmi::Structure& st) {
                                      "############"});
   cif::Loop& entity_loop = block.init_mmcif_loop("_entity.", {"id", "type"});
   for (const auto& ent : st.entities) {
-    entity_loop.values.push_back(ent->id);
-    entity_loop.values.push_back(ent->type_as_string());
+    entity_loop.values.push_back(ent.first);
+    entity_loop.values.push_back(ent.second.type_as_string());
   }
   items.emplace_back(cif::CommentArg{"#####################\n"
                                      "## ENTITY_POLY_SEQ ##\n"
@@ -214,13 +214,13 @@ cif::Document make_crd(const gemmi::Structure& st) {
               "mon_id", "ccp4_auth_seq_id", "entity_id",
               "ccp4_back_connect_type", "ccp4_num_mon_back", "ccp4_mod_id"});
   for (const auto& ent : st.entities)
-    if (ent->type == gemmi::EntityType::Polymer)
-      for (const gemmi::SequenceItem& si : ent->sequence) {
+    if (ent.second.type == gemmi::EntityType::Polymer)
+      for (const gemmi::SequenceItem& si : ent.second.sequence) {
         poly_loop.values.emplace_back(si.mon);
         // TODO: real auth_seq_id
         std::string auth_seq_id = si.num >= 0 ? std::to_string(si.num) : "?";
         poly_loop.values.emplace_back(auth_seq_id);
-        poly_loop.values.emplace_back(ent->id);
+        poly_loop.values.emplace_back(ent.first);
         poly_loop.values.emplace_back("?"); // ccp4_back_connect_type
         poly_loop.values.emplace_back("?"); // ccp4_num_mon_back
         poly_loop.values.emplace_back("?"); // ccp4_mod_id
@@ -248,7 +248,7 @@ cif::Document make_crd(const gemmi::Structure& st) {
                                                {"id", "entity_id"});
   for (const auto& ch : st.get_chains()) {
     asym_loop.values.push_back(ch.name);
-    asym_loop.values.push_back(ch.entity ? ch.entity->id : "?");
+    asym_loop.values.push_back(ch.entity_id.empty() ? "?" : ch.entity_id);
   }
   items.emplace_back(cif::CommentArg{"###############\n"
                                      "## ATOM_SITE ##\n"
