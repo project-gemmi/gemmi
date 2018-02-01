@@ -1,12 +1,14 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// Two class for iterating files in a directory tree, top-down,
+// Classes for iterating files in a directory tree, top-down,
 // in an alphabetical order.  It wraps the tinydir library (as we cannot
 // depend on C++17 <filesystem> yet).
 // DirWalk iterates through all files and directories.
 // CifWalk yields only cif files (either files that end with .cif or .cif.gz,
 // or files that look like SF mmCIF files from wwPDB, e.g. r3aaasf.ent.gz).
 // It's good for traversing a local copy of the wwPDB archive.
+// PdbWalk: .pdb or .ent (optionally with .gz) except r????sf.ent
+// CoorFileWalk: .cif, .pdb or .ent (optionally with .gz) except r????sf.ent
 //
 // Usage:
 //   for (tinydir_file& file : gemmi::DirWalk(top_dir))
@@ -111,20 +113,31 @@ private:
   std::vector<std::pair<int, tinydir_dir>> dirs_;
 };
 
+// the SF mmCIF files from PDB have names such as
+// divided/structure_factors/aa/r3aaasf.ent.gz
+inline bool is_sf_mmcif_filename(const std::string& filename) {
+  return filename[0] == 'r' && giends_with(filename, "sf.ent")
+         && filename.find('.') >= 4;
+}
+
 struct IsCifFile {
-  static bool is_ok(const std::string& filename) {
-    return gemmi::giends_with(filename, ".cif") ||
-        // the SF mmCIF files from PDB don't have the "cif" extension,
-        // they have names such as divided/structure_factors/aa/r3aaasf.ent.gz
-        (filename[0] == 'r' && gemmi::giends_with(filename, "sf.ent"));
+  static bool check(const std::string& filename) {
+    return giends_with(filename, ".cif") || is_sf_mmcif_filename(filename);
   }
 };
 
 struct IsPdbFile {
-  static bool is_ok(const std::string& filename) {
-    return gemmi::giends_with(filename, ".pdb") ||
-           (gemmi::giends_with(filename, ".ent") &&
-            !(filename[0] == 'r' && gemmi::giends_with(filename, "sf.ent")));
+  static bool check(const std::string& filename) {
+    return giends_with(filename, ".pdb") ||
+           (giends_with(filename, ".ent") && !is_sf_mmcif_filename(filename));
+  }
+};
+
+struct IsCoordinateFile {
+  static bool check(const std::string& filename) {
+    return giends_with(filename, ".cif") ||
+           giends_with(filename, ".pdb") ||
+           (giends_with(filename, ".ent") && !is_sf_mmcif_filename(filename));
   }
 };
 
@@ -141,7 +154,7 @@ public:
       for (;;) {
         Iter::operator++();
         const tinydir_file& f = Iter::operator*();
-        if ((!f.is_dir && Check::is_ok(f.name))
+        if ((!f.is_dir && Check::check(f.name))
             || walk.is_single_file()
             || (depth() == 0 && cur == 1))
           break;
@@ -160,6 +173,7 @@ public:
 
 using CifWalk = FileWalk<IsCifFile>;
 using PdbWalk = FileWalk<IsPdbFile>;
+using CoorFileWalk = FileWalk<IsCoordinateFile>;
 
 } // namespace gemmi
 #endif
