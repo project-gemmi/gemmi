@@ -2,6 +2,7 @@
 
 #include "gemmi/elem.hpp"
 #include "gemmi/unitcell.hpp"
+#include "gemmi/model.hpp"
 
 #include <cstdio>
 #include <pybind11/pybind11.h>
@@ -69,4 +70,10 @@ void add_mol(py::module& m) {
     .def("__repr__", [](const Element& self) {
         return "<gemmi.Element: " + std::string(self.name()) + ">";
     });
+
+  py::class_<Structure>(m, "Structure")
+    .def(py::init<>())
+    .def_readwrite("name", &Structure::name)
+    .def_readwrite("cell", &Structure::cell)
+    .def_readwrite("sg_hm", &Structure::sg_hm);
 }
