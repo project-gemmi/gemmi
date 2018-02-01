@@ -8,7 +8,8 @@ namespace py = pybind11;
 
 void add_symmetry(py::module& m); // sym.cpp
 void add_grid(py::module& m); // grid.cpp
-void add_mm(py::module& m); // mm.cpp
+void add_mol(py::module& m); // mol.cpp
+void add_mmread(py::module& m); // mmread.cpp
 void add_cif(py::module& cif); // cif.cpp
 void add_cif_read(py::module& cif); // cif_read.cpp
 
@@ -16,7 +17,8 @@ PYBIND11_MODULE(gemmi, mg) {
   mg.doc() = "General MacroMolecular I/O";
   add_symmetry(mg);
   add_grid(mg);
-  add_mm(mg);
+  add_mol(mg);
+  add_mmread(mg);
   py::module cif = mg.def_submodule("cif", "CIF file format");
   add_cif(cif);
   add_cif_read(cif);

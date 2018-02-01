@@ -17,7 +17,7 @@ static std::string triple(double x, double y, double z) {
   return std::string(buf);
 }
 
-void add_mm(py::module& m) {
+void add_mol(py::module& m) {
   py::class_<Position>(m, "Position")
     .def(py::init<double,double,double>())
     .def_readwrite("x", &Position::x)
