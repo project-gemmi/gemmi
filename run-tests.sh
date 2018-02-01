@@ -3,8 +3,8 @@
 set -eu
 cd "$(dirname "$0")"
 (cd src && make -j4 all write-help)
-BUILD_DIR=$(pwd)
-[ -e build ] && BUILD_DIR=build
+BUILD_DIR="$(pwd)"
+[ -e build ] && BUILD_DIR="$(pwd)/build"
 (cd $BUILD_DIR && make -j4 all check)
 (cd docs && make -j4 html SPHINXOPTS="-q -n")
 export PYTHONPATH=$BUILD_DIR

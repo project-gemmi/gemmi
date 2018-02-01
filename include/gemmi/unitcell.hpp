@@ -315,7 +315,8 @@ struct UnitCell {
       return image;
     Fractional fpos = fractionalize(pos);
     Fractional fref = fractionalize(ref);
-    search_pbc_images(fpos - fref, image);
+    if (sym_image == SymmetryImage::Unspecified)
+      search_pbc_images(fpos - fref, image);
     if ((sym_image == SymmetryImage::Different || image.dist_sq == 0.0) &&
         image.box[0] == 0 && image.box[1] == 0 && image.box[2] == 0)
       image.dist_sq = 1e100;
@@ -323,6 +324,17 @@ struct UnitCell {
       if (search_pbc_images(images[n].apply(fpos) - fref, image))
         image.sym_id = n + 1;
     return image;
+  }
+
+  // return number of nearby symmetry mates (0 = none, 3 = 4-fold axis, etc)
+  int is_special_position(const Position& pos, double max_dist = 0.8) const {
+    const double max_dist_sq = max_dist * max_dist;
+    int n = 0;
+    Fractional fpos = fractionalize(pos);
+    for (const FTransform& image : images)
+      if (orthogonalize(image.apply(fpos) - fpos).length_sq() < max_dist_sq)
+        ++n;
+    return n;
   }
 };
 
