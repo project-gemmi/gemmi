@@ -86,6 +86,8 @@ void add_mol(py::module& m) {
     .def("__getitem__", [](Structure& st, int index) -> Model& {
         return st.models.at(index >= 0 ? index : index + st.models.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("find_or_add_model", &Structure::find_or_add_model,
+         py::arg("name"), py::return_value_policy::reference_internal)
     .def("write_pdb", [](const Structure& st, const std::string& path) {
        std::ofstream f(path.c_str());
        write_pdb(st, f);
@@ -108,7 +110,9 @@ void add_mol(py::module& m) {
         if (!ch)
           throw py::key_error("chain '" + name + "' does not exist");
         return *ch;
-    }, py::arg("name"), py::return_value_policy::reference_internal);
+    }, py::arg("name"), py::return_value_policy::reference_internal)
+    .def("find_or_add_chain", &Model::find_or_add_chain,
+         py::arg("name"), py::return_value_policy::reference_internal);
 
   py::class_<Chain>(m, "Chain")
     .def(py::init<std::string>())
@@ -118,6 +122,7 @@ void add_mol(py::module& m) {
     .def("__iter__", [](const Chain& ch) {
         return py::make_iterator(ch.residues);
     }, py::keep_alive<0, 1>())
+    .def("append_residues", &Chain::append_residues)
     // we need __getitem__ here, but what should be the argument?
     // label_seq_id+label_comp_id or seq-num+icode+resname
     ;

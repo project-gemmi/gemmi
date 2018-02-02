@@ -197,11 +197,11 @@ inline Structure structure_from_cif_block(cif::Block& block) {
   Residue *resi = nullptr;
   for (auto row : atom_table) {
     if (!model || row[kModelNum] != model->name) {
-      model = st.find_or_add_model(row[kModelNum]);
+      model = &st.find_or_add_model(row[kModelNum]);
       chain = nullptr;
     }
     if (!chain || row[kAsymId] != chain->name) {
-      chain = model->find_or_add_chain(row.str(kAsymId));
+      chain = &model->find_or_add_chain(row.str(kAsymId));
       chain->auth_name = row.str(kAuthAsymId);
       resi = nullptr;
     }

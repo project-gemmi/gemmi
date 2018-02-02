@@ -247,7 +247,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   Structure st;
   st.name = gemmi::path_basename(source);
   std::vector<std::string> conn_records;
-  Model *model = st.find_or_add_model("1");
+  Model *model = &st.find_or_add_model("1");
   Chain *chain = nullptr;
   Residue *resi = nullptr;
   char line[88] = {0};
@@ -261,10 +261,10 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       if (!chain || chain_name != chain->auth_name) {
         if (!model)
           wrong("ATOM/HETATM between models");
-        chain = model->find_or_add_chain(chain_name);
+        chain = &model->find_or_add_chain(chain_name);
         // if this chain was TER'ed we use a separate chain for the rest.
         if (chain->force_pdb_serial == -1)
-          chain = model->find_or_add_chain(chain_name + "_H");
+          chain = &model->find_or_add_chain(chain_name + "_H");
         chain->auth_name = chain_name;
         resi = nullptr;
       }
@@ -377,7 +377,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       if (model && chain)
         wrong("MODEL without ENDMDL?");
       std::string name = std::to_string(read_int(line+10, 4));
-      model = st.find_or_add_model(name);
+      model = &st.find_or_add_model(name);
       if (!model->chains.empty())
         wrong("duplicate MODEL number: " + name);
       chain = nullptr;

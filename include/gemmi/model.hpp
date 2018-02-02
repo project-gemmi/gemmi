@@ -29,12 +29,12 @@ T* find_or_null(std::vector<T>& vec, const std::string& name) {
 }
 
 template<typename T>
-T* find_or_add(std::vector<T>& vec, const std::string& name) {
+T& find_or_add(std::vector<T>& vec, const std::string& name) {
   T* ret = find_or_null(vec, name);
   if (ret)
-    return ret;
+    return *ret;
   vec.emplace_back(name);
-  return &vec.back();
+  return vec.back();
 }
 
 } // namespace impl
@@ -318,12 +318,16 @@ struct Residue : public ResidueId {
 
   // default values accept anything
   const Atom* find_atom(const std::string& atom_name, char altloc='*',
-                        El elem=El::X) const {
+                        El el=El::X) const {
     for (const Atom& a : atoms)
       if (a.name == atom_name && (altloc == '*' || a.altloc == altloc)
-          && (elem == El::X || a.element == elem))
+          && (el == El::X || a.element == el))
         return &a;
     return nullptr;
+  }
+  Atom* find_atom(const std::string& atom_name, char altloc='*', El el=El::X) {
+    const Residue* const_this = this;
+    return const_cast<Atom*>(const_this->find_atom(atom_name, altloc, el));
   }
 
   const Atom* get_ca() const {
@@ -359,6 +363,7 @@ struct Chain {
   explicit Chain(std::string cname) noexcept : name(cname) {}
   Residue* find_residue(const ResidueId& rid);
   Residue* find_or_add_residue(const ResidueId& rid);
+  void append_residues(std::vector<Residue> new_resi);
   std::vector<Residue>& children() { return residues; }
   const std::vector<Residue>& children() const { return residues; }
   const std::string& name_for_pdb() const {
@@ -398,7 +403,7 @@ struct Model {
   Chain* find_chain(const std::string& chain_name) {
     return impl::find_or_null(chains, chain_name);
   }
-  Chain* find_or_add_chain(const std::string& chain_name) {
+  Chain& find_or_add_chain(const std::string& chain_name) {
     return impl::find_or_add(chains, chain_name);
   }
   Residue* find_chain_residue(const std::string& chain_name,
@@ -411,6 +416,11 @@ struct Model {
   Connection* find_connection_by_name(const std::string& conn_name) {
     return impl::find_or_null(connections, conn_name);
   }
+  void invalidate_connection_pointers() {
+    for (Connection& conn : connections)
+      conn.res[0] = conn.res[1] = nullptr;
+  }
+
   std::vector<Chain>& children() { return chains; }
   const std::vector<Chain>& children() const { return chains; }
 };
@@ -443,7 +453,7 @@ struct Structure {
   Model* find_model(const std::string& model_name) {
     return impl::find_or_null(models, model_name);
   }
-  Model* find_or_add_model(const std::string& model_name) {
+  Model& find_or_add_model(const std::string& model_name) {
     return impl::find_or_add(models, model_name);
   }
 
@@ -559,6 +569,20 @@ template<class T> void add_backlinks(T& obj) {
 }
 template<> inline void add_backlinks(Atom&) {}
 
+inline void Chain::append_residues(std::vector<Residue> new_resi) {
+  size_t init_capacity = residues.capacity();
+  int seqnum = 0;
+  for (const Residue& res : residues)
+    seqnum = std::max({seqnum, res.seq_id, res.snic.seq_num});
+  for (Residue& res : new_resi) {
+    res.seq_id = res.snic.seq_num = ++seqnum;
+    res.snic.ins_code = '\0';
+  }
+  std::move(new_resi.begin(), new_resi.end(), std::back_inserter(residues));
+  add_backlinks(*this);
+  if (parent && residues.capacity() != init_capacity)
+    parent->invalidate_connection_pointers();
+}
 
 template<class T> size_t count_atom_sites(const T& obj) {
   size_t sum = 0;
