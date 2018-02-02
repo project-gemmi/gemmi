@@ -118,6 +118,8 @@ void add_mol(py::module& m) {
     .def("__iter__", [](const Chain& ch) {
         return py::make_iterator(ch.residues);
     }, py::keep_alive<0, 1>())
+    // we need __getitem__ here, but what should be the argument?
+    // label_seq_id+label_comp_id or seq-num+icode+resname
     ;
 
   py::class_<Residue>(m, "Residue")
@@ -127,7 +129,12 @@ void add_mol(py::module& m) {
     .def("__iter__", [](const Residue& res) {
         return py::make_iterator(res.atoms);
     }, py::keep_alive<0, 1>())
-    ;
+    .def("__getitem__", [](Residue& res, const std::string& name) -> Atom& {
+        Atom* atom = res.find_atom(name);
+        if (!atom)
+          throw py::key_error("residue has no atom '" + name + "'");
+        return *atom;
+    }, py::arg("name"), py::return_value_policy::reference_internal);
 
   py::class_<Atom>(m, "Atom")
     .def(py::init<>())
@@ -137,6 +144,5 @@ void add_mol(py::module& m) {
     .def_readwrite("element", &Atom::element)
     .def_readwrite("pos", &Atom::pos)
     .def_readwrite("occ", &Atom::occ)
-    .def_readwrite("b_iso", &Atom::b_iso)
-    ;
+    .def_readwrite("b_iso", &Atom::b_iso);
 }
