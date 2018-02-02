@@ -3,8 +3,11 @@
 #include "gemmi/elem.hpp"
 #include "gemmi/unitcell.hpp"
 #include "gemmi/model.hpp"
+#define STB_SPRINTF_IMPLEMENTATION
+#include "gemmi/to_pdb.hpp"
 
 #include <cstdio>
+#include <fstream>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
@@ -75,5 +78,65 @@ void add_mol(py::module& m) {
     .def(py::init<>())
     .def_readwrite("name", &Structure::name)
     .def_readwrite("cell", &Structure::cell)
-    .def_readwrite("sg_hm", &Structure::sg_hm);
+    .def_readwrite("sg_hm", &Structure::sg_hm)
+    .def("__len__", [](const Structure& st) { return st.models.size(); })
+    .def("__iter__", [](const Structure& st) {
+        return py::make_iterator(st.models);
+    }, py::keep_alive<0, 1>())
+    .def("__getitem__", [](Structure& st, int index) -> Model& {
+        return st.models.at(index >= 0 ? index : index + st.models.size());
+    }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("write_pdb", [](const Structure& st, const std::string& path) {
+       std::ofstream f(path.c_str());
+       write_pdb(st, f);
+    }, py::arg("path"))
+    .def("write_minimal_pdb",
+         [](const Structure& st, const std::string& path, const char* chain) {
+       std::ofstream f(path.c_str());
+       write_minimal_pdb(st, f, chain);
+    }, py::arg("path"), py::arg("chain")=nullptr);
+
+  py::class_<Model>(m, "Model")
+    .def(py::init<std::string>())
+    .def_readwrite("name", &Model::name)
+    .def("__len__", [](const Model& mdl) { return mdl.chains.size(); })
+    .def("__iter__", [](const Model& mdl) {
+        return py::make_iterator(mdl.chains);
+    }, py::keep_alive<0, 1>())
+    .def("__getitem__", [](Model& mdl, const std::string& name) -> Chain& {
+        Chain* ch = mdl.find_chain(name);
+        if (!ch)
+          throw py::key_error("chain '" + name + "' does not exist");
+        return *ch;
+    }, py::arg("name"), py::return_value_policy::reference_internal);
+
+  py::class_<Chain>(m, "Chain")
+    .def(py::init<std::string>())
+    .def_readwrite("name", &Chain::name)
+    .def_readwrite("auth_name", &Chain::auth_name)
+    .def("__len__", [](const Chain& ch) { return ch.residues.size(); })
+    .def("__iter__", [](const Chain& ch) {
+        return py::make_iterator(ch.residues);
+    }, py::keep_alive<0, 1>())
+    ;
+
+  py::class_<Residue>(m, "Residue")
+    //.def(py::init<>())
+    .def_readwrite("name", &Residue::name)
+    .def("__len__", [](const Residue& res) { return res.atoms.size(); })
+    .def("__iter__", [](const Residue& res) {
+        return py::make_iterator(res.atoms);
+    }, py::keep_alive<0, 1>())
+    ;
+
+  py::class_<Atom>(m, "Atom")
+    .def(py::init<>())
+    .def_readwrite("name", &Atom::name)
+    .def_readwrite("altloc", &Atom::altloc)
+    .def_readwrite("charge", &Atom::charge)
+    .def_readwrite("element", &Atom::element)
+    .def_readwrite("pos", &Atom::pos)
+    .def_readwrite("occ", &Atom::occ)
+    .def_readwrite("b_iso", &Atom::b_iso)
+    ;
 }

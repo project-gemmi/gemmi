@@ -5,6 +5,7 @@
 #include "gemmi/gz.hpp"
 #include "gemmi/cif.hpp"
 #include "gemmi/json.hpp"
+#include "gemmi/mmread.hpp"
 
 #include <pybind11/pybind11.h>
 
@@ -32,4 +33,11 @@ void add_cif_read(py::module& cif) {
   cif.def("as_int", (int (*)(const std::string&, int)) &as_int,
           py::arg("value"), py::arg("default"),
           "Returns int number from string value or the second arg if null.");
+}
+
+void add_read_structure(py::module& m) {
+  m.def("read_structure", [](const std::string& path) {
+          return gemmi::read_structure(MaybeGzipped(path));
+        }, py::arg("path"),
+        "Reads a coordinate file into Structure.");
 }

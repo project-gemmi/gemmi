@@ -182,9 +182,8 @@ endif()
 if (EXISTS "${CMAKE_SOURCE_DIR}/third_party/pybind11/CMakeLists.txt")
   message(STATUS "The python module will be built.")
   add_subdirectory(third_party/pybind11)
-  pybind11_add_module(gemmi python/gemmi.cpp python/grid.cpp
-                            python/mol.cpp python/mmread.cpp python/sym.cpp
-                            python/cif.cpp python/cif_read.cpp)
+  pybind11_add_module(gemmi python/gemmi.cpp python/grid.cpp python/cif.cpp
+                            python/mol.cpp python/read.cpp python/sym.cpp)
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
     target_compile_options(gemmi PRIVATE "-Wno-shadow")
   endif()
