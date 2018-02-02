@@ -105,142 +105,45 @@ inline const Atom* find_ssbond_atom(const Connection& con, int n) {
   return con.res[n]->find_atom(con.atom[n], '*', El::S);
 }
 
-} // namespace impl
-
-inline void write_pdb(const Structure& st, std::ostream& os,
-                      bool iotbx_compat=false) {
-  const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
+inline void write_cryst1(const Structure& st, std::ostream& os) {
   char buf[88];
-  char buf8[8];
-  char buf8a[8];
-
-  const char* date =
-    st.get_info("_pdbx_database_status.recvd_initial_deposition_date");
-  std::string pdb_date;
-  if (date && std::strlen(date) == 10) {
-    unsigned month_idx = 10 * (date[5] - '0') + date[6] - '0' - 1;
-    pdb_date = std::string(date + 8, 2) + "-" +
-               std::string(months + 3 * std::min(month_idx, 13u), 3) +
-               "-" + std::string(date + 2, 2);
-  }
-  WRITEU("HEADER    %-40s%-9s   %-18s\n",
-         // "classification" in PDB == _struct_keywords.pdbx_keywords in mmCIF
-         st.get_info("_struct_keywords.pdbx_keywords", ""),
-         pdb_date.c_str(), st.get_info("_entry.id", ""));
-  impl::write_multiline(os, "TITLE", st.get_info("_struct.title"), 80);
-  impl::write_multiline(os, "KEYWDS", st.get_info("_struct_keywords.text"), 79);
-  impl::write_multiline(os, "EXPDTA", st.get_info("_exptl.method"), 79);
-  if (st.models.size() > 1)
-    WRITE("NUMMDL    %-6zu %63s\n", st.models.size(), "");
-
-  if (!st.models.empty() && !iotbx_compat) {
-    // SEQRES
-    for (const Chain& ch : st.models[0].chains) {
-      const Entity* entity = st.find_entity(ch.entity_id);
-      if (entity && entity->type == EntityType::Polymer) {
-        const std::string& chain_name = ch.name_for_pdb();
-        int seq_len = 0;
-        int prev_seq_num = -1;
-        for (const SequenceItem& si : entity->sequence)
-          if (si.num < 0 || si.num != prev_seq_num) {
-            ++seq_len;
-            prev_seq_num = si.num;
-          }
-        prev_seq_num = -1;
-        int row = 0;
-        int col = 0;
-        for (const SequenceItem& si : entity->sequence) {
-          if (si.num >= 0 && si.num == prev_seq_num)
-            continue;
-          prev_seq_num = si.num;
-          if (col == 0)
-            stbsp_snprintf(buf, 82, "SEQRES%4d%2s%5d %62s\n",
-                           ++row, chain_name.c_str(), seq_len, "");
-          const std::string& res = si.mon;
-          memcpy(buf + 18 + 4*col + 4-res.length(), res.c_str(), res.length());
-          if (++col == 13) {
-            os.write(buf, 81);
-            col = 0;
-          }
-        }
-        if (col != 0)
-          os.write(buf, 81);
-      }
-    }
-
-    // SSBOND  (note: we use only the first model and primary conformation)
-    int counter = 0;
-    for (const Connection& con : st.models[0].connections)
-      if (con.type == Connection::Disulf) {
-        const Atom* a1 = impl::find_ssbond_atom(con, 0);
-        const Atom* a2 = impl::find_ssbond_atom(con, 1);
-        if (!a1 || !a2)
-          continue;
-        NearbyImage im = st.cell.find_nearest_image(a1->pos, a2->pos,
-                                                    con.image);
-        WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  \n",
-           ++counter,
-           con.res[0]->name.c_str(), con.res[0]->parent->name_for_pdb().c_str(),
-           impl::write_seq_id(buf8, *con.res[0]),
-           con.res[1]->name.c_str(), con.res[1]->parent->name_for_pdb().c_str(),
-           impl::write_seq_id(buf8a, *con.res[1]),
-           "1555", im.pdb_symbol(false).c_str(), std::sqrt(im.dist_sq));
-      }
-
-    // CISPEP (note: we use only the first conformation)
-    counter = 0;
-    for (const Model& model : st.models)
-      for (const Chain& chain : model.chains) {
-        const char* cname = chain.name_for_pdb().c_str();
-        for (const Residue& res : chain.residues)
-          if (res.is_cis)
-            if (const Residue* next = res.next_bonded_aa()) {
-              WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s\n",
-                  ++counter,
-                  res.name.c_str(), cname, impl::write_seq_id(buf8, res),
-                  next->name.c_str(), cname, impl::write_seq_id(buf8a, *next),
-                  st.models.size() > 1 ? model.name.c_str() : "0",
-                  res.calculate_omega(*next) * (180. / 3.14159265358979323846),
-                  "");
-            }
-      }
-  }
-
   const UnitCell& cell = st.cell;
   WRITE("CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11s%4s          \n",
         cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma,
         st.sg_hm.empty() ? "P 1" : st.sg_hm.c_str(),
         st.get_info("_cell.Z_PDB", ""));
-  for (int i = 0; i < 3; ++i)
-    WRITE("ORIGX%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
-          st.origx.mat[i][0], st.origx.mat[i][1], st.origx.mat[i][2],
-          st.origx.vec.at(i), "");
-  for (int i = 0; i < 3; ++i)
-    // We add a small number to avoid negative 0.
-    WRITE("SCALE%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
-          cell.frac.mat[i][0] + 1e-15, cell.frac.mat[i][1] + 1e-15,
-          cell.frac.mat[i][2] + 1e-15, cell.frac.vec.at(i) + 1e-15, "");
+}
 
+inline void write_ncs(const Structure& st, std::ostream& os) {
+  char buf[88];
   for (const NcsOp& op : st.ncs)
     for (int i = 0; i < 3; ++i) {
       WRITE("MTRIX%d %3.3s%10.6f%10.6f%10.6f %14.5f    %-21c\n", i+1,
             op.id.c_str(), op.tr.mat[i][0], op.tr.mat[i][1], op.tr.mat[i][2],
             op.tr.vec.at(i), op.given ? '1' : ' ');
     }
+}
 
+inline void write_atoms(const Structure& st, std::ostream& os,
+                        bool iotbx_compat, const char* chain_auth) {
+  char buf[88];
+  char buf8[8];
+  char buf8a[8];
   for (const Model& model : st.models) {
     int serial = 0;
     if (st.models.size() > 1)
       WRITE("MODEL %8s %65s\n", model.name.c_str(), "");
     for (const Chain& chain : model.chains) {
-      const Entity* entity = st.find_entity(chain.entity_id);
       if (chain.force_pdb_serial)
         serial = chain.force_pdb_serial - 1;
       const std::string& chain_name = chain.name_for_pdb();
+      if (chain_auth && chain_name != chain_auth)
+        continue;
       if (chain_name.empty())
         gemmi::fail("empty chain name");
       if (chain_name.length() > 2)
         gemmi::fail("long chain name: " + chain_name);
+      const Entity* entity = st.find_entity(chain.entity_id);
       for (const Residue& res : chain.residues) {
         bool as_het = res.use_hetatm(entity);
         for (const Atom& a : res.atoms) {
@@ -325,7 +228,129 @@ inline void write_pdb(const Structure& st, std::ostream& os,
     if (st.models.size() > 1)
       WRITE("%-80s\n", "ENDMDL");
   }
+}
+
+} // namespace impl
+
+inline void write_pdb(const Structure& st, std::ostream& os,
+                      bool iotbx_compat=false) {
+  const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
+  const char* date =
+    st.get_info("_pdbx_database_status.recvd_initial_deposition_date");
+  std::string pdb_date;
+  if (date && std::strlen(date) == 10) {
+    unsigned month_idx = 10 * (date[5] - '0') + date[6] - '0' - 1;
+    pdb_date = std::string(date + 8, 2) + "-" +
+               std::string(months + 3 * std::min(month_idx, 13u), 3) +
+               "-" + std::string(date + 2, 2);
+  }
+  char buf[88];
+  WRITEU("HEADER    %-40s%-9s   %-18s\n",
+         // "classification" in PDB == _struct_keywords.pdbx_keywords in mmCIF
+         st.get_info("_struct_keywords.pdbx_keywords", ""),
+         pdb_date.c_str(), st.get_info("_entry.id", ""));
+  impl::write_multiline(os, "TITLE", st.get_info("_struct.title"), 80);
+  impl::write_multiline(os, "KEYWDS", st.get_info("_struct_keywords.text"), 79);
+  impl::write_multiline(os, "EXPDTA", st.get_info("_exptl.method"), 79);
+  if (st.models.size() > 1)
+    WRITE("NUMMDL    %-6zu %63s\n", st.models.size(), "");
+
+  if (!st.models.empty() && !iotbx_compat) {
+    // SEQRES
+    for (const Chain& ch : st.models[0].chains) {
+      const Entity* entity = st.find_entity(ch.entity_id);
+      if (entity && entity->type == EntityType::Polymer) {
+        const std::string& chain_name = ch.name_for_pdb();
+        int seq_len = 0;
+        int prev_seq_num = -1;
+        for (const SequenceItem& si : entity->sequence)
+          if (si.num < 0 || si.num != prev_seq_num) {
+            ++seq_len;
+            prev_seq_num = si.num;
+          }
+        prev_seq_num = -1;
+        int row = 0;
+        int col = 0;
+        for (const SequenceItem& si : entity->sequence) {
+          if (si.num >= 0 && si.num == prev_seq_num)
+            continue;
+          prev_seq_num = si.num;
+          if (col == 0)
+            stbsp_snprintf(buf, 82, "SEQRES%4d%2s%5d %62s\n",
+                           ++row, chain_name.c_str(), seq_len, "");
+          const std::string& res = si.mon;
+          memcpy(buf + 18 + 4*col + 4-res.length(), res.c_str(), res.length());
+          if (++col == 13) {
+            os.write(buf, 81);
+            col = 0;
+          }
+        }
+        if (col != 0)
+          os.write(buf, 81);
+      }
+    }
+
+    // SSBOND  (note: we use only the first model and primary conformation)
+    int counter = 0;
+    char buf8[8];
+    char buf8a[8];
+    for (const Connection& con : st.models[0].connections)
+      if (con.type == Connection::Disulf) {
+        const Atom* a1 = impl::find_ssbond_atom(con, 0);
+        const Atom* a2 = impl::find_ssbond_atom(con, 1);
+        if (!a1 || !a2)
+          continue;
+        NearbyImage im = st.cell.find_nearest_image(a1->pos, a2->pos,
+                                                    con.image);
+        WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  \n",
+           ++counter,
+           con.res[0]->name.c_str(), con.res[0]->parent->name_for_pdb().c_str(),
+           impl::write_seq_id(buf8, *con.res[0]),
+           con.res[1]->name.c_str(), con.res[1]->parent->name_for_pdb().c_str(),
+           impl::write_seq_id(buf8a, *con.res[1]),
+           "1555", im.pdb_symbol(false).c_str(), std::sqrt(im.dist_sq));
+      }
+
+    // CISPEP (note: we use only the first conformation)
+    counter = 0;
+    for (const Model& model : st.models)
+      for (const Chain& chain : model.chains) {
+        const char* cname = chain.name_for_pdb().c_str();
+        for (const Residue& res : chain.residues)
+          if (res.is_cis)
+            if (const Residue* next = res.next_bonded_aa()) {
+              WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s\n",
+                  ++counter,
+                  res.name.c_str(), cname, impl::write_seq_id(buf8, res),
+                  next->name.c_str(), cname, impl::write_seq_id(buf8a, *next),
+                  st.models.size() > 1 ? model.name.c_str() : "0",
+                  res.calculate_omega(*next) * (180. / 3.14159265358979323846),
+                  "");
+            }
+      }
+  }
+
+  impl::write_cryst1(st, os);
+  for (int i = 0; i < 3; ++i)
+    WRITE("ORIGX%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
+          st.origx.mat[i][0], st.origx.mat[i][1], st.origx.mat[i][2],
+          st.origx.vec.at(i), "");
+  for (int i = 0; i < 3; ++i)
+    // We add a small number to avoid negative 0.
+    WRITE("SCALE%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
+          st.cell.frac.mat[i][0] + 1e-15, st.cell.frac.mat[i][1] + 1e-15,
+          st.cell.frac.mat[i][2] + 1e-15, st.cell.frac.vec.at(i) + 1e-15, "");
+  impl::write_ncs(st, os);
+
+  impl::write_atoms(st, os, iotbx_compat, nullptr);
   WRITE("%-80s\n", "END");
+}
+
+inline void write_minimal_pdb(const Structure& st, std::ostream& os,
+                              const char* chain_auth=nullptr) {
+  impl::write_cryst1(st, os);
+  impl::write_ncs(st, os);
+  impl::write_atoms(st, os, false, chain_auth);
 }
 
 #undef WRITE
