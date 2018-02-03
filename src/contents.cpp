@@ -102,6 +102,27 @@ void print_dihedrals(const Structure& st) {
   printf("\n");
 }
 
+void print_atoms_on_special_positions(const Structure& st) {
+  printf(" Atoms on special positions:");
+  bool found = false;
+  for (const Chain& chain : st.models.at(0).chains)
+    for (const Residue& res : chain.residues)
+      for (const Atom& atom : res.atoms)
+        if (int n = st.cell.is_special_position(atom.pos)) {
+          found = true;
+          NearbyImage im = st.cell.find_nearest_image(atom.pos, atom.pos,
+                                                      SymmetryImage::Different);
+          printf("\n    %s %4d %3s %-3s %c fold=%d  occ=%.2f  d_image=%.4f",
+                 chain.name_for_pdb().c_str(),
+                 res.seq_id_for_pdb(), res.name.c_str(),
+                 atom.name.c_str(), (atom.altloc | 0x20),
+                 n+1, atom.occ, std::sqrt(im.dist_sq));
+        }
+  if (!found)
+    printf(" none");
+  printf("\n");
+}
+
 enum OptionIndex { Verbose=3, Dihedrals };
 
 static const option::Descriptor Usage[] = {
@@ -137,6 +158,7 @@ int main(int argc, char **argv) {
       Structure st = read_structure(input);
       if (p.options[Dihedrals])
         print_dihedrals(st);
+      print_atoms_on_special_positions(st);
       print_content_info(st, verbose);
     }
   } catch (std::runtime_error& e) {
