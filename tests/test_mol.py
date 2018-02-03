@@ -36,5 +36,14 @@ class TestMol(unittest.TestCase):
         self.assertAlmostEqual(atom_cl.occ, 0.17)
         self.assertEqual(atom_cl.element.name, 'Cl')
 
+    def test_read_1orc(self):
+        path = os.path.join(os.path.dirname(__file__), '1orc.pdb')
+        st = gemmi.read_structure(path)
+        self.assertAlmostEqual(st.cell.a, 34.77)
+        self.assertEqual(st.cell.alpha, 90)
+        model = st[0]
+        self.assertEqual(len(model), 2)
+        self.assertTrue(all(res.name == 'HOH' for res in model['A_H']))
+
 if __name__ == '__main__':
     unittest.main()
