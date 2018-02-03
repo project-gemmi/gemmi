@@ -130,6 +130,8 @@ void add_mol(py::module& m) {
   py::class_<Residue>(m, "Residue")
     //.def(py::init<>())
     .def_readwrite("name", &Residue::name)
+    // TODO: seq_num, ins_code, seq_id (seq, ins, label_seq)
+    .def_readwrite("segment", &Residue::segment)
     .def("__len__", [](const Residue& res) { return res.atoms.size(); })
     .def("__iter__", [](const Residue& res) {
         return py::make_iterator(res.atoms);
@@ -139,7 +141,13 @@ void add_mol(py::module& m) {
         if (!atom)
           throw py::key_error("residue has no atom '" + name + "'");
         return *atom;
-    }, py::arg("name"), py::return_value_policy::reference_internal);
+    }, py::arg("name"), py::return_value_policy::reference_internal)
+    .def("__repr__", [](const Residue& self) {
+        std::string r = "<gemmi.Residue " + self.name + " " + self.snic.str();
+        if (self.has_seq_id())
+          r += " (" + std::to_string(self.seq_id) + ")";
+        return r + " with " + std::to_string(self.atoms.size()) + " atoms>";
+    });
 
   py::class_<Atom>(m, "Atom")
     .def(py::init<>())

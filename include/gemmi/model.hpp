@@ -258,6 +258,8 @@ inline const ResidueInfo find_tabulated_residue(const std::string& name) {
 
 
 struct ResidueId {
+  enum { NoId=-1000 };
+
   // traditional residue sequence numbers are coupled with insertion codes
   struct SNIC {
     int seq_num;
@@ -266,10 +268,16 @@ struct ResidueId {
       return seq_num == o.seq_num && ins_code == o.ins_code;
     }
     bool operator!=(const SNIC& o) const { return !operator==(o); }
+    explicit operator bool() const { return seq_num != NoId; }
     char printable_ic() const { return ins_code ? ins_code : ' '; }
+    std::string str() const {
+      std::string r = (seq_num != NoId ? std::to_string(seq_num) : "?");
+      if (ins_code)
+        r += ins_code;
+      return r;
+    }
   };
 
-  enum { NoId=-1000 };
   int seq_id = NoId;
   SNIC snic = {NoId, '\0'};
   //bool in_main_conformer/is_point_mut
@@ -293,9 +301,9 @@ struct Residue : public ResidueId {
   Chain* parent = nullptr;
 
   explicit Residue(const ResidueId& rid) noexcept : ResidueId(rid) {}
-  int seq_id_for_pdb() const {
-    return snic.seq_num != NoId ? snic.seq_num : seq_id;
-  }
+
+  bool has_seq_id() const { return seq_id != NoId; }
+  int seq_id_for_pdb() const { return snic ? snic.seq_num : seq_id; }
   ResidueInfo get_info() const { return find_tabulated_residue(name); }
 
   // convenience method: ins_code as string instead of char
@@ -491,8 +499,8 @@ struct Structure {
 };
 
 inline std::string Residue::ident() const {
-  return (parent ? parent->name_for_pdb() + "/" : "")
-        + std::to_string(seq_id_for_pdb()) + ins_code_string();
+  return (parent ? parent->name_for_pdb() + "/" : "") +
+         (snic ? snic.str() : std::to_string(seq_id));
 }
 
 inline bool Residue::matches(const ResidueId& rid) const {
