@@ -261,8 +261,10 @@ template<> struct Search<rules::value> {
 template<> struct Search<rules::str_loop> {
   template<typename Input> static void apply(const Input&, Parameters& p) {
     p.table_width = 0;
-    p.multi_tags.clear();
-    p.multi_match_columns.clear();
+    if (p.globbing) {
+      p.multi_tags.clear();
+      p.multi_match_columns.clear();
+    }
   }
 };
 template<> struct Search<rules::loop_tag> {
