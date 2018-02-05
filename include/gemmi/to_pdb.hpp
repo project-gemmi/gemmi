@@ -64,7 +64,7 @@ inline char* encode_seq_id_in_hybrid36(char* str, int seq_id) {
 
 inline char* write_seq_id(char* str, const Residue& res) {
   encode_seq_id_in_hybrid36(str, res.seq_id_for_pdb());
-  str[4] = res.snic.ins_code ? res.snic.ins_code : ' ';
+  str[4] = res.snic.icode ? res.snic.icode : ' ';
   str[5] = '\0';
   return str;
 }
@@ -180,7 +180,7 @@ inline void write_atoms(const Structure& st, std::ostream& os,
                 res.name.c_str(),
                 chain_name.c_str(),
                 impl::encode_seq_id_in_hybrid36(buf8a, res.seq_id_for_pdb()),
-                res.snic.ins_code ? res.snic.ins_code : ' ',
+                res.snic.icode ? res.snic.icode : ' ',
                 // We want to avoid negative zero and round them numbers up
                 // if they originally had one digit more and that digit was 5.
                 a.pos.x > -5e-4 && a.pos.x < 0 ? 0 : a.pos.x + 1e-10,

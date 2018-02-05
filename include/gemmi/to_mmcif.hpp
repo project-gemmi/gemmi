@@ -42,9 +42,9 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
   for (const Model& model : st.models) {
     for (const Chain& chain : model.chains) {
       for (const Residue& res : chain.residues) {
-        std::string seq_id = std::to_string(res.seq_id);
+        std::string label_seq_id = std::to_string(res.label_seq);
         std::string auth_seq_id = std::to_string(res.snic.seq_num);
-        std::string ins_code(1, res.snic.ins_code ? res.snic.ins_code : '?');
+        std::string icode(1, res.snic.icode ? res.snic.icode : '?');
         for (const Atom& a : res.atoms) {
           vv.emplace_back(std::to_string(++serial));
           vv.emplace_back(a.element.uname());
@@ -52,8 +52,8 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
           vv.emplace_back(1, a.altloc ? a.altloc : '.');
           vv.emplace_back(res.name);
           vv.emplace_back(chain.name);
-          vv.emplace_back(seq_id);
-          vv.emplace_back(ins_code);
+          vv.emplace_back(label_seq_id);
+          vv.emplace_back(icode);
           vv.emplace_back(to_str(a.pos.x));
           vv.emplace_back(to_str(a.pos.y));
           vv.emplace_back(to_str(a.pos.z));
@@ -202,7 +202,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
           if (res.is_cis)
             prot_cis_loop.add_row({to_string(prot_cis_loop.length()+1),
                                    model.name, chain.name,
-                                   to_string(res.seq_id), res.name, "."});
+                                   to_string(res.label_seq), res.name, "."});
 
   // _atom_sites (SCALE)
   if (st.cell.explicit_matrices) {

@@ -11,9 +11,9 @@ void iterate_over_everything(gemmi::Structure& st) {
       cout << " Chain " << chain.name << '\n';
       for (const gemmi::Residue& res : chain.residues) {
         cout << "  Residue " << res.name          // string
-                      << " " << res.seq_id        // int
+                      << " " << res.label_seq     // int
                       << " " << res.snic.seq_num  // int
-                      << " " << res.snic.ins_code // char
+                      << " " << res.snic.icode    // char
                       << " " << res.segment       // string
                       << " " << (res.het_flag == 'H' ? "HETA" : "ATOM")
              << '\n';

@@ -280,7 +280,7 @@ cif::Document make_crd(const gemmi::Structure& st) {
       for (const gemmi::Residue& res : chain.residues) {
         //std::string seq_id = std::to_string(res.seq_id);
         std::string auth_seq_id = std::to_string(res.snic.seq_num);
-        //std::string ins_code(1, res.snic.ins_code ? res.snic.ins_code : '?');
+        //std::string ins_code(1, res.snic.icode ? res.snic.icode : '?');
         for (const gemmi::Atom& a : res.atoms) {
           vv.emplace_back("ATOM");
           vv.emplace_back(std::to_string(++serial));

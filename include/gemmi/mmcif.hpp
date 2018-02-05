@@ -215,7 +215,7 @@ inline Structure structure_from_cif_block(cif::Block& block) {
       resi = chain->find_or_add_residue(rid);
     } else {
       assert(resi->snic.seq_num == rid.snic.seq_num);
-      assert(resi->snic.ins_code == rid.snic.ins_code);
+      assert(resi->snic.icode == rid.snic.icode);
     }
     Atom atom;
     atom.name = as_string(row[kAtomId]);
