@@ -167,6 +167,8 @@ bool glob_match(const std::string& pattern, const std::string& str) {
 }
 
 static void process_multi_match(Parameters& par) {
+  if (par.multi_values.empty())
+    return;
   std::string need_escaping = "\n\\";
   if (par.delim.size() < 2)
     need_escaping += par.delim.empty() ? ';' : par.delim[0];
@@ -194,8 +196,10 @@ static void process_multi_match(Parameters& par) {
     }
     std::putc('\n', stdout);
     if (par.counters[0] == par.max_count)
-      return;
+      break;
   }
+  for (auto& mv : par.multi_values)
+    mv.clear();
 }
 
 static void print_count(const Parameters& par) {
@@ -219,6 +223,7 @@ template<typename Rule> struct Search : pegtl::nothing<Rule> {};
 
 template<> struct Search<rules::datablockname> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
+    process_multi_match(p);
     if (!p.block_name.empty() && p.print_count && p.with_blockname) {
       print_count(p);
       p.total_count += p.counters[0];
@@ -231,6 +236,17 @@ template<> struct Search<rules::datablockname> {
 template<> struct Search<rules::str_global> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     Search<rules::datablockname>::apply(in, p);
+  }
+};
+template<> struct Search<rules::framename> {
+  template<typename Input> static void apply(const Input& in, Parameters& p) {
+    p.block_name += " " + in.string();
+  }
+};
+template<> struct Search<rules::endframe> {
+  template<typename Input> static void apply(const Input& in, Parameters& p) {
+    process_multi_match(p);
+    p.block_name.erase(p.block_name.rfind(' '));
   }
 };
 template<> struct Search<rules::tag> {
@@ -431,7 +447,7 @@ void grep_file(const std::string& path, Parameters& par, int& err_count) {
   } else if (par.only_filenames) {
     if (par.inverse == (par.counters[0] == 0))
       printf("%s\n", par.path);
-  } else if (!par.multi_values.empty() && !par.multi_values[0].empty()) {
+  } else {
     process_multi_match(par);
   }
   par.total_count += par.counters[0];
