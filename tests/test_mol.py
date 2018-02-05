@@ -44,6 +44,8 @@ class TestMol(unittest.TestCase):
         model = st[0]
         self.assertEqual(len(model), 2)
         self.assertTrue(all(res.name == 'HOH' for res in model['A_H']))
+        self.assertEqual([res.seq_num for res in model['A'] if res.icode],
+                         [56] * 5)
 
 if __name__ == '__main__':
     unittest.main()

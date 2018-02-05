@@ -91,8 +91,8 @@ void print_dihedrals(const Structure& st) {
     const char* cname = chain.name_for_pdb().c_str();
     for (const Residue& res : chain.residues) {
       double phi, psi, omega;
-      printf("%3s %4d%c %5s", cname, res.seq_id_for_pdb(),
-             res.snic.printable_ic(), res.name.c_str());
+      printf("%3s %4d%c %5s", cname, res.seq_num_for_pdb(),
+             res.printable_icode(), res.name.c_str());
       if (res.calculate_phi_psi_omega(&phi, &psi, &omega))
         printf(" % 8.2f % 8.2f % 8.2f\n", phi * deg, psi * deg, omega * deg);
       else
@@ -114,7 +114,7 @@ void print_atoms_on_special_positions(const Structure& st) {
                                                       SymmetryImage::Different);
           printf("\n    %s %4d %3s %-3s %c fold=%d  occ=%.2f  d_image=%.4f",
                  chain.name_for_pdb().c_str(),
-                 res.seq_id_for_pdb(), res.name.c_str(),
+                 res.seq_num_for_pdb(), res.name.c_str(),
                  atom.name.c_str(), (atom.altloc | 0x20),
                  n+1, atom.occ, std::sqrt(im.dist_sq));
         }

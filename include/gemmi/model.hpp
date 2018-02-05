@@ -260,36 +260,31 @@ inline const ResidueInfo find_tabulated_residue(const std::string& name) {
 struct ResidueId {
   enum { NoId=-1000 };
 
-  // traditional residue sequence numbers are coupled with insertion codes
-  struct SNIC {
-    int seq_num; // sequence number
-    char icode;  // insertion code
-    bool operator==(const SNIC& o) const {
-      return seq_num == o.seq_num && icode == o.icode;
-    }
-    bool operator!=(const SNIC& o) const { return !operator==(o); }
-    explicit operator bool() const { return seq_num != NoId; }
-    char printable_ic() const { return icode ? icode : ' '; }
-    std::string str() const {
-      std::string r = (seq_num != NoId ? std::to_string(seq_num) : "?");
-      if (icode)
-        r += icode;
-      return r;
-    }
-  };
-
   int label_seq = NoId;  // mmCIF _atom_site.label_seq_id
-  SNIC snic = {NoId, '\0'};
+
+  // traditional residue sequence numbers are coupled with insertion codes
+  int seq_num = NoId; // sequence number
+  char icode = '\0';  // insertion code
+
   //bool in_main_conformer/is_point_mut
   //uint32_t segment_id; // number or 4 characters
   std::string segment; // normally up to 4 characters in the PDB file
   std::string name;
 
-  ResidueId() = default;
-  ResidueId(int id, SNIC auth_id, std::string rname) noexcept
-    : label_seq(id), snic(auth_id), name(rname) {}
-  ResidueId(SNIC id, std::string rname) noexcept : snic(id), name(rname) {}
-  ResidueId(int id, std::string rname) noexcept : label_seq(id), name(rname) {}
+  bool has_label_seq() const { return label_seq != NoId; }
+  bool has_seq_num() const { return seq_num != NoId; }
+  char printable_icode() const { return icode ? icode : ' '; }
+  bool same_seq_id(const ResidueId& o) const {
+    return seq_num == o.seq_num && icode == o.icode;
+  }
+  int seq_num_for_pdb() const { return has_seq_num() ? seq_num : label_seq; }
+  std::string seq_id() const {
+    std::string r = (seq_num != NoId ? std::to_string(seq_num) : "?");
+    if (icode)
+      r += icode;
+    return r;
+  }
+  ResidueInfo get_info() const { return find_tabulated_residue(name); }
 };
 
 struct Residue : public ResidueId {
@@ -301,15 +296,6 @@ struct Residue : public ResidueId {
   Chain* parent = nullptr;
 
   explicit Residue(const ResidueId& rid) noexcept : ResidueId(rid) {}
-
-  bool has_label_seq() const { return label_seq != NoId; }
-  int seq_id_for_pdb() const { return snic ? snic.seq_num : label_seq; }
-  ResidueInfo get_info() const { return find_tabulated_residue(name); }
-
-  // convenience method: icode as string instead of char
-  std::string ins_code_string() const {
-    return snic.icode ? std::string(1, snic.icode) : "";
-  }
 
   std::string ident() const;
 
@@ -414,13 +400,6 @@ struct Model {
   Chain& find_or_add_chain(const std::string& chain_name) {
     return impl::find_or_add(chains, chain_name);
   }
-  Residue* find_chain_residue(const std::string& chain_name,
-                              const ResidueId& res_id) {
-    if (Chain* chain = find_chain(chain_name))
-      if (Residue* res = chain->find_residue(res_id))
-        return res;
-    return nullptr;
-  }
   Connection* find_connection_by_name(const std::string& conn_name) {
     return impl::find_or_null(connections, conn_name);
   }
@@ -500,14 +479,16 @@ struct Structure {
 
 inline std::string Residue::ident() const {
   return (parent ? parent->name_for_pdb() + "/" : "") +
-         (snic ? snic.str() : std::to_string(label_seq));
+         (has_seq_num() ? seq_id() : std::to_string(label_seq));
 }
 
 inline bool Residue::matches(const ResidueId& rid) const {
-  if (rid.label_seq == Residue::NoId && rid.snic.seq_num != Residue::NoId &&
-      snic != rid.snic)
+  if (rid.label_seq == Residue::NoId && rid.seq_num != Residue::NoId &&
+      !same_seq_id(rid))
     return false;
-  return label_seq == rid.label_seq && segment == rid.segment && name == rid.name;
+  return label_seq == rid.label_seq &&
+         segment == rid.segment &&
+         name == rid.name;
 }
 
 // TODO: handle alternative conformations (point mutations)
@@ -581,10 +562,10 @@ inline void Chain::append_residues(std::vector<Residue> new_resi) {
   size_t init_capacity = residues.capacity();
   int seqnum = 0;
   for (const Residue& res : residues)
-    seqnum = std::max({seqnum, res.label_seq, res.snic.seq_num});
+    seqnum = std::max({seqnum, res.label_seq, res.seq_num});
   for (Residue& res : new_resi) {
-    res.label_seq = res.snic.seq_num = ++seqnum;
-    res.snic.icode = '\0';
+    res.label_seq = res.seq_num = ++seqnum;
+    res.icode = '\0';
   }
   std::move(new_resi.begin(), new_resi.end(), std::back_inserter(residues));
   add_backlinks(*this);

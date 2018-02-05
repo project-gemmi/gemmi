@@ -163,11 +163,15 @@ inline int read_matrix(Transform& t, char* line, int len) {
   return n;
 }
 
-inline ResidueId::SNIC read_snic(const char* s) {
+inline ResidueId read_res_id(const char* seq_id, const char* name) {
+  ResidueId rid;
   // We support hybrid-36 extension, although it is never used in practice
   // as 9999 residues per chain are enough.
-  return { s[0] < 'A' ? read_int(s, 4) : read_base36<4>(s) - 466560 + 10000,
-           s[4] == ' ' ? '\0' : s[4] };
+  rid.seq_num = seq_id[0] < 'A' ? read_int(seq_id, 4)
+                                : read_base36<4>(seq_id) - 466560 + 10000;
+  rid.icode = seq_id[4] == ' ' ? '\0' : seq_id[4];
+  rid.name = read_string(name, 3);
+  return rid;
 }
 
 struct FileInput {
@@ -193,9 +197,9 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
   int disulf_count = 0;
   for (const std::string& record : conn_records) {
     const char* r = record.c_str();
-    ResidueId rid(read_snic(r + 17), read_string(r + 11, 3));
+    ResidueId rid = read_res_id(r + 17, r + 11);
     if (*r == 'S' || *r == 's') { // SSBOND
-      ResidueId rid2(read_snic(r + 31), read_string(r + 25, 3));
+      ResidueId rid2 = read_res_id(r + 31, r + 25);
       for (Model& model : st.models) {
         Chain* chain1 = model.find_chain(read_string(r + 14, 2));
         Chain* chain2 = model.find_chain(read_string(r + 28, 2));
@@ -269,7 +273,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
         resi = nullptr;
       }
 
-      ResidueId rid(read_snic(line+22), read_string(line+17, 3));
+      ResidueId rid = read_res_id(line+22, line+17);
       // Non-standard but widely used 4-character segment identifier.
       // Left-justified, and may include a space in the middle.
       // The segment may be a portion of a chain or a complete chain.

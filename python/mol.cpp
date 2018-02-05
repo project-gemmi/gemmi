@@ -131,7 +131,10 @@ void add_mol(py::module& m) {
     //.def(py::init<>())
     .def_readwrite("name", &Residue::name)
     .def_readwrite("label_seq", &Residue::label_seq)
-    .def_readwrite("snic", &Residue::snic)
+    .def_readwrite("seq_num", &Residue::seq_num)
+    .def_property("icode",
+        [](const Residue& r) { return r.icode ? std::string(1, r.icode) : ""; },
+        [](Residue& r, const char* c) { r.icode = c ? *c : '\0'; })
     .def_readwrite("segment", &Residue::segment)
     .def("__len__", [](const Residue& res) { return res.atoms.size(); })
     .def("__iter__", [](const Residue& res) {
@@ -144,15 +147,11 @@ void add_mol(py::module& m) {
         return *atom;
     }, py::arg("name"), py::return_value_policy::reference_internal)
     .def("__repr__", [](const Residue& self) {
-        std::string r = "<gemmi.Residue " + self.name + " " + self.snic.str();
+        std::string r = "<gemmi.Residue " + self.name + " " + self.seq_id();
         if (self.has_label_seq())
           r += " (" + std::to_string(self.label_seq) + ")";
         return r + " with " + std::to_string(self.atoms.size()) + " atoms>";
     });
-
-  py::class_<ResidueId::SNIC>(m, "SNIC")
-    .def_readwrite("seq_num", &ResidueId::SNIC::seq_num)
-    .def_readwrite("icode", &ResidueId::SNIC::icode);
 
   py::class_<Atom>(m, "Atom")
     .def(py::init<>())

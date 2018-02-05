@@ -10,11 +10,11 @@ void iterate_over_everything(gemmi::Structure& st) {
     for (const gemmi::Chain& chain : model.chains) {
       cout << " Chain " << chain.name << '\n';
       for (const gemmi::Residue& res : chain.residues) {
-        cout << "  Residue " << res.name          // string
-                      << " " << res.label_seq     // int
-                      << " " << res.snic.seq_num  // int
-                      << " " << res.snic.icode    // char
-                      << " " << res.segment       // string
+        cout << "  Residue " << res.name       // string
+                      << " " << res.label_seq  // int
+                      << " " << res.seq_num    // int
+                      << " " << res.icode      // char
+                      << " " << res.segment    // string
                       << " " << (res.het_flag == 'H' ? "HETA" : "ATOM")
              << '\n';
         for (const gemmi::Atom& atom : res.atoms) {

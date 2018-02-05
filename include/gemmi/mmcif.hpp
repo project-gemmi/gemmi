@@ -49,6 +49,14 @@ inline Transform get_transform_matrix(const cif::Table::Row& r) {
   return t;
 }
 
+Residue* find_chain_residue(Model& model, const std::string& chain_name,
+                            const ResidueId& res_id) {
+  if (Chain* chain = model.find_chain(chain_name))
+    if (Residue* res = chain->find_residue(res_id))
+      return res;
+  return nullptr;
+}
+
 inline void read_connectivity(cif::Block& block, Structure& st) {
   for (auto row : block.find("_struct_conn.", {"id", "conn_type_id", // 0-1
         "ptnr1_label_asym_id", "ptnr2_label_asym_id", // 2-3
@@ -79,15 +87,17 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
     }
     for (int i = 0; i < 2; ++i) {
       c.altloc[i] = row.has2(10+i) ? row.str(10+i)[0] : '\0';
-      c.res_id[i] = ResidueId(cif::as_int(row[4+i], Residue::NoId),
-                              row.str(6+i));
-      if (row.has2(12+i) && row.has(14+i))
-        c.res_id[i].snic = {cif::as_int(row[12+i]), row.str(14+i)[0]};
+      c.res_id[i].label_seq = cif::as_int(row[4+i], Residue::NoId);
+      c.res_id[i].name = row.str(6+i);
+      if (row.has2(12+i))
+        c.res_id[i].seq_num = cif::as_int(row[12+i]);
+      if (row.has(14+i))
+        c.res_id[i].icode = row.str(14+i)[0];
       c.atom[i] = row.str(8+i);
     }
     for (Model& mdl : st.models) {
-      c.res[0] = mdl.find_chain_residue(row.str(2), c.res_id[0]);
-      c.res[1] = mdl.find_chain_residue(row.str(3), c.res_id[1]);
+      c.res[0] = impl::find_chain_residue(mdl, row.str(2), c.res_id[0]);
+      c.res[1] = impl::find_chain_residue(mdl, row.str(3), c.res_id[1]);
       if (c.res[0] && c.res[1]) {
         c.res[0]->conn.push_back("1" + std::string(1, c.altloc[0]) + c.name);
         c.res[1]->conn.push_back("2" + std::string(1, c.altloc[1]) + c.name);
@@ -205,17 +215,18 @@ inline Structure structure_from_cif_block(cif::Block& block) {
       chain->auth_name = row.str(kAuthAsymId);
       resi = nullptr;
     }
-    ResidueId rid(cif::as_int(row[kSeqId], Residue::NoId),
-                  ResidueId::SNIC{cif::as_int(row[kAuthSeqId], Residue::NoId),
-                                  as_string(row[kInsCode])[0]},
-                  as_string(row[kCompId]));
+    ResidueId rid;
+    rid.label_seq = cif::as_int(row[kSeqId], Residue::NoId);
+    rid.seq_num = cif::as_int(row[kAuthSeqId], Residue::NoId);
+    rid.icode = as_string(row[kInsCode])[0];
+    rid.name = as_string(row[kCompId]);
     if (!resi || !resi->matches(rid)) {
       // the insertion code happens to be always a single letter
       assert(row[kInsCode].size() == 1);
       resi = chain->find_or_add_residue(rid);
     } else {
-      assert(resi->snic.seq_num == rid.snic.seq_num);
-      assert(resi->snic.icode == rid.snic.icode);
+      assert(resi->seq_num == rid.seq_num);
+      assert(resi->icode == rid.icode);
     }
     Atom atom;
     atom.name = as_string(row[kAtomId]);
@@ -280,8 +291,10 @@ inline Structure structure_from_cif_block(cif::Block& block) {
                               "label_seq_id", "label_comp_id"})) {
     if (row.has2(0) && row.has2(1) && row.has2(2) && row.has2(3))
       if (Model* mdl = st.find_model(row[0])) {
-        int seq = cif::as_int(row[2]);
-        if (Residue* res = mdl->find_chain_residue(row[1], {seq, row[3]}))
+        ResidueId rid;
+        rid.label_seq = cif::as_int(row[2]);
+        rid.name = row.str(3);
+        if (Residue* res = impl::find_chain_residue(*mdl, row[1], rid))
           res->is_cis = true;
       }
   }
