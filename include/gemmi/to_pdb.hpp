@@ -12,6 +12,7 @@
 #include <ostream>
 #include "sprintf.hpp"
 #include "model.hpp"
+#include "resinfo.hpp"
 #include "util.hpp"
 
 namespace gemmi {
@@ -29,6 +30,16 @@ namespace gemmi {
     } while(0)
 
 namespace impl {
+
+bool use_hetatm(const Residue& res, const Entity* entity) {
+  if (res.het_flag == 'H')
+    return true;
+  if (res.het_flag == 'A')
+    return false;
+  if (entity && entity->type == EntityType::NonPolymer)
+    return true;
+  return !find_tabulated_residue(res.name).pdb_standard;
+}
 
 // works for non-negative values only
 inline char *base36_encode(char* buffer, int width, int value) {
@@ -145,7 +156,7 @@ inline void write_atoms(const Structure& st, std::ostream& os,
         gemmi::fail("long chain name: " + chain_name);
       const Entity* entity = st.find_entity(chain.entity_id);
       for (const Residue& res : chain.residues) {
-        bool as_het = res.use_hetatm(entity);
+        bool as_het = use_hetatm(res, entity);
         for (const Atom& a : res.atoms) {
           //  1- 6  6s  record name
           //  7-11  5d  integer serial

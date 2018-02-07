@@ -4,6 +4,7 @@
 // as CCP4 RWCONTENTS: weight, Matthews coefficient, etc.
 
 #include <gemmi/symmetry.hpp>
+#include <gemmi/resinfo.hpp>
 #include "input.h"
 #define EXE_NAME "gemmi-contents"
 #include "options.h"
@@ -38,7 +39,7 @@ void print_content_info(const Structure& st, bool /*verbose*/) {
   const Model& model = st.models.at(0);
   for (const Chain& chain : model.chains) {
     for (const Residue& res : chain.residues) {
-      ResidueInfo res_info = res.get_info();
+      ResidueInfo res_info = find_tabulated_residue(res.name);
       if (res_info.is_water())
         if (const Atom* oxygen = res.find_by_element(El::O))
           water_count += oxygen->occ;
