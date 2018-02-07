@@ -87,7 +87,7 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
     }
     for (int i = 0; i < 2; ++i) {
       c.altloc[i] = row.has2(10+i) ? row.str(10+i)[0] : '\0';
-      c.res_id[i].label_seq = cif::as_int(row[4+i], Residue::NoId);
+      c.res_id[i].label_seq = cif::as_int(row[4+i], Residue::OptionalNum::None);
       c.res_id[i].name = row.str(6+i);
       if (row.has2(12+i))
         c.res_id[i].seq_num = cif::as_int(row[12+i]);
@@ -216,8 +216,8 @@ inline Structure structure_from_cif_block(cif::Block& block) {
       resi = nullptr;
     }
     ResidueId rid;
-    rid.label_seq = cif::as_int(row[kSeqId], Residue::NoId);
-    rid.seq_num = cif::as_int(row[kAuthSeqId], Residue::NoId);
+    rid.label_seq = cif::as_int(row[kSeqId], Residue::OptionalNum::None);
+    rid.seq_num = cif::as_int(row[kAuthSeqId], Residue::OptionalNum::None);
     rid.icode = as_string(row[kInsCode])[0];
     rid.name = as_string(row[kCompId]);
     if (!resi || !resi->matches(rid)) {

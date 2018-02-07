@@ -5,6 +5,19 @@ import unittest
 import gemmi
 
 class TestMol(unittest.TestCase):
+    def test_residue(self):
+        res = gemmi.Residue()
+        self.assertEqual(res.label_seq, None)
+        self.assertEqual(res.seq_num, None)
+        res.label_seq = 1
+        self.assertEqual(res.label_seq, 1)
+        res.seq_num = 2
+        self.assertEqual(res.seq_num, 2)
+        res.label_seq = None
+        self.assertEqual(res.label_seq, None)
+        res.seq_num = None
+        self.assertEqual(res.seq_num, None)
+
     def test_read_5i55(self):
         path = os.path.join(os.path.dirname(__file__), '5i55.cif')
         cell = gemmi.read_structure(path).cell

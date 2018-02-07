@@ -21,6 +21,12 @@ static std::string triple(double x, double y, double z) {
   return std::string(buf);
 }
 
+namespace pybind11 { namespace detail {
+  template<> struct type_caster<ResidueId::OptionalNum>
+    : optional_caster<ResidueId::OptionalNum> {};
+}} // namespace pybind11::detail
+
+
 void add_mol(py::module& m) {
   py::class_<Position>(m, "Position")
     .def(py::init<double,double,double>())
@@ -128,7 +134,7 @@ void add_mol(py::module& m) {
     ;
 
   py::class_<Residue>(m, "Residue")
-    //.def(py::init<>())
+    .def(py::init<>())
     .def_readwrite("name", &Residue::name)
     .def_readwrite("label_seq", &Residue::label_seq)
     .def_readwrite("seq_num", &Residue::seq_num)
@@ -148,8 +154,8 @@ void add_mol(py::module& m) {
     }, py::arg("name"), py::return_value_policy::reference_internal)
     .def("__repr__", [](const Residue& self) {
         std::string r = "<gemmi.Residue " + self.name + " " + self.seq_id();
-        if (self.has_label_seq())
-          r += " (" + std::to_string(self.label_seq) + ")";
+        if (self.label_seq)
+          r += " (" + self.label_seq.str() + ")";
         return r + " with " + std::to_string(self.atoms.size()) + " atoms>";
     });
 

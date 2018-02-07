@@ -258,12 +258,29 @@ inline const ResidueInfo find_tabulated_residue(const std::string& name) {
 
 
 struct ResidueId {
-  enum { NoId=-1000 };
+  struct OptionalNum {
+    enum { None=-10000 };
+    int value = None;
+    bool has_value() const { return value != None; }
+    std::string str() const {
+      return has_value() ? std::to_string(value) : "?";
+    }
+    OptionalNum& operator=(int n) { value = n; return *this; }
+    bool operator==(const OptionalNum& o) const { return value == o.value; }
+    bool operator==(int n) const { return value == n; }
+    explicit operator int() const { return value; }
+    explicit operator bool() const { return has_value(); }
+    // these are defined for partial compatibility with C++17 std::optional
+    using value_type = int;
+    int& operator*() { return value; }
+    const int& operator*() const { return value; }
+    int& emplace(int n) { value = n; return value; }
+  };
 
-  int label_seq = NoId;  // mmCIF _atom_site.label_seq_id
+  OptionalNum label_seq;  // mmCIF _atom_site.label_seq_id
 
   // traditional residue sequence numbers are coupled with insertion codes
-  int seq_num = NoId; // sequence number
+  OptionalNum seq_num; // sequence number
   char icode = '\0';  // insertion code
 
   //bool in_main_conformer/is_point_mut
@@ -271,15 +288,13 @@ struct ResidueId {
   std::string segment; // normally up to 4 characters in the PDB file
   std::string name;
 
-  bool has_label_seq() const { return label_seq != NoId; }
-  bool has_seq_num() const { return seq_num != NoId; }
   char printable_icode() const { return icode ? icode : ' '; }
   bool same_seq_id(const ResidueId& o) const {
     return seq_num == o.seq_num && icode == o.icode;
   }
-  int seq_num_for_pdb() const { return has_seq_num() ? seq_num : label_seq; }
+  int seq_num_for_pdb() const { return int(seq_num ? seq_num : label_seq); }
   std::string seq_id() const {
-    std::string r = (seq_num != NoId ? std::to_string(seq_num) : "?");
+    std::string r = seq_num.str();
     if (icode)
       r += icode;
     return r;
@@ -295,6 +310,7 @@ struct Residue : public ResidueId {
   std::vector<std::string> conn;
   Chain* parent = nullptr;
 
+  Residue() = default;
   explicit Residue(const ResidueId& rid) noexcept : ResidueId(rid) {}
 
   std::string ident() const;
@@ -479,12 +495,11 @@ struct Structure {
 
 inline std::string Residue::ident() const {
   return (parent ? parent->name_for_pdb() + "/" : "") +
-         (has_seq_num() ? seq_id() : std::to_string(label_seq));
+         (seq_num ? seq_id() : label_seq.str());
 }
 
 inline bool Residue::matches(const ResidueId& rid) const {
-  if (rid.label_seq == Residue::NoId && rid.seq_num != Residue::NoId &&
-      !same_seq_id(rid))
+  if (!rid.label_seq && rid.seq_num && !same_seq_id(rid))
     return false;
   return label_seq == rid.label_seq &&
          segment == rid.segment &&
@@ -562,7 +577,7 @@ inline void Chain::append_residues(std::vector<Residue> new_resi) {
   size_t init_capacity = residues.capacity();
   int seqnum = 0;
   for (const Residue& res : residues)
-    seqnum = std::max({seqnum, res.label_seq, res.seq_num});
+    seqnum = std::max({seqnum, int(res.label_seq), int(res.seq_num)});
   for (Residue& res : new_resi) {
     res.label_seq = res.seq_num = ++seqnum;
     res.icode = '\0';

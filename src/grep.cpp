@@ -244,7 +244,7 @@ template<> struct Search<rules::framename> {
   }
 };
 template<> struct Search<rules::endframe> {
-  template<typename Input> static void apply(const Input& in, Parameters& p) {
+  template<typename Input> static void apply(const Input&, Parameters& p) {
     process_multi_match(p);
     p.block_name.erase(p.block_name.rfind(' '));
   }
