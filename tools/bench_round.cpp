@@ -24,7 +24,7 @@ inline void run(benchmark::State& state, double(*func)(double)) {
     x = std::rand() % 10 == 0 ? -x : x;
   }
   while (state.KeepRunning())
-    for (int x : numbers)
+    for (double x : numbers)
       benchmark::DoNotOptimize((*func)(x));
 }
 
@@ -33,19 +33,19 @@ inline void run2(benchmark::State& state, long(*func)(double)) {
     x = std::rand() % 10 == 0 ? -x : x;
   }
   while (state.KeepRunning())
-    for (int x : numbers)
+    for (double x : numbers)
       benchmark::DoNotOptimize((*func)(x));
 }
 
 
 BENCHMARK_CAPTURE(run, round, use_round);
 BENCHMARK_CAPTURE(run, floor, use_floor);
-BENCHMARK_CAPTURE(run, neabyint, use_nearbyint);
+BENCHMARK_CAPTURE(run, nearbyint, use_nearbyint);
 BENCHMARK_CAPTURE(run, rint, use_rint);
 BENCHMARK_CAPTURE(run2, lrint, use_lrint);
 BENCHMARK_CAPTURE(run2, round, use2_round);
 BENCHMARK_CAPTURE(run2, floor, use2_floor);
-BENCHMARK_CAPTURE(run2, neabyint, use2_nearbyint);
+BENCHMARK_CAPTURE(run2, nearbyint, use2_nearbyint);
 BENCHMARK_CAPTURE(run2, rint, use2_rint);
 BENCHMARK_MAIN()
 
@@ -53,15 +53,15 @@ BENCHMARK_MAIN()
 -----------------------------------------------------
 Benchmark              Time           CPU Iterations
 -----------------------------------------------------
-run/round              8 ns          8 ns   86728922
-run/floor             25 ns         25 ns   27625341
-run/neabyint           8 ns          8 ns   87853604
-run/rint               8 ns          8 ns   88405267
-run2/lrint            18 ns         18 ns   38545176
-run2/round             5 ns          5 ns  139178181
-run2/floor            18 ns         18 ns   38108709
-run2/neabyint          5 ns          5 ns  135124876
-run2/rint              5 ns          5 ns  143791413
+run/round             26 ns         26 ns   23927270
+run/floor             18 ns         18 ns   37953966
+run/nearbyint         18 ns         18 ns   38603220
+run/rint              13 ns         13 ns   53661537
+run2/lrint            18 ns         18 ns   38754555
+run2/round            27 ns         27 ns   26094020
+run2/floor            18 ns         18 ns   38176320
+run2/nearbyint        16 ns         16 ns   43588313
+run2/rint             13 ns         13 ns   53491145
 */
 
 // vim:sw=2:ts=2:et:path^=../include,../third_party

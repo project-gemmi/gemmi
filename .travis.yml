@@ -15,7 +15,6 @@ matrix:
       - COMPILER=g++-4.8
       - FC=gfortran-4.8
       - PYTHON=python
-      - EXTRA_WFLAGS="-Wno-missing-field-initializers"
 
   - os: osx
     osx_image: xcode6.4
