@@ -2,10 +2,10 @@
 
 set -eu
 cd "$(dirname "$0")"
-(cd src && make -j4 all write-help)
 BUILD_DIR="$(pwd)"
 [ -e build ] && BUILD_DIR="$(pwd)/build"
 (cd $BUILD_DIR && make -j4 all check)
+./tools/docs-help.sh
 (cd docs && make -j4 html SPHINXOPTS="-q -n")
 export PYTHONPATH=$BUILD_DIR
 python3 -m unittest discover -s tests
