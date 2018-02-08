@@ -47,7 +47,7 @@ endif()
 include_directories("${CMAKE_SOURCE_DIR}/include"
                     "${CMAKE_SOURCE_DIR}/third_party")
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" AND DEFINED $ENV{EXTRA_WFLAGS})
   set(CMAKE_CXX_FLAGS
    "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wformat=2 $ENV{EXTRA_WFLAGS}")
   message(STATUS "C++ flags set to: ${CMAKE_CXX_FLAGS}")
