@@ -1591,6 +1591,16 @@ One may wonder what is the heaviest CCD component:
     >>> _.find_value('_chem_comp.formula')
     '"O62 P2 W18"'
 
+Or which one has most of heavy atoms:
+
+.. doctest::
+
+    >>> el_tag = '_chem_comp_atom.type_symbol'
+    >>> max(ccd, key=lambda b: sum(el != 'H' for el in b.find_values(el_tag)))
+    <gemmi.cif.Block X12>
+    >>> _.find_value('_chem_comp.formula')
+    '"C96 H153 N31 O25"'
+
 The :file:`components.cif` file is big, so we may want to split it into
 multiple file. Here we write all components on letter A to a new file.
 Additionally, we remove the descriptor category:
