@@ -21,6 +21,26 @@ namespace gemmi {
 
 namespace impl {
 
+// Optional int value. N is a special value that means not-set.
+template<int N> struct OptionalInt {
+  enum { None=N };
+  int value = None;
+  bool has_value() const { return value != None; }
+  std::string str() const {
+    return has_value() ? std::to_string(value) : "?";
+  }
+  OptionalInt& operator=(int n) { value = n; return *this; }
+  bool operator==(const OptionalInt& o) const { return value == o.value; }
+  bool operator==(int n) const { return value == n; }
+  explicit operator int() const { return value; }
+  explicit operator bool() const { return has_value(); }
+  // these are defined for partial compatibility with C++17 std::optional
+  using value_type = int;
+  int& operator*() { return value; }
+  const int& operator*() const { return value; }
+  int& emplace(int n) { value = n; return value; }
+};
+
 template<typename T>
 T* find_or_null(std::vector<T>& vec, const std::string& name) {
   auto it = std::find_if(vec.begin(), vec.end(), [&name](const T& m) {
@@ -179,24 +199,7 @@ inline double calculate_dihedral_from_atoms(const Atom* a, const Atom* b,
 
 
 struct ResidueId {
-  struct OptionalNum {
-    enum { None=-10000 };
-    int value = None;
-    bool has_value() const { return value != None; }
-    std::string str() const {
-      return has_value() ? std::to_string(value) : "?";
-    }
-    OptionalNum& operator=(int n) { value = n; return *this; }
-    bool operator==(const OptionalNum& o) const { return value == o.value; }
-    bool operator==(int n) const { return value == n; }
-    explicit operator int() const { return value; }
-    explicit operator bool() const { return has_value(); }
-    // these are defined for partial compatibility with C++17 std::optional
-    using value_type = int;
-    int& operator*() { return value; }
-    const int& operator*() const { return value; }
-    int& emplace(int n) { value = n; return value; }
-  };
+  using OptionalNum = impl::OptionalInt<-10000>;
 
   OptionalNum label_seq;  // mmCIF _atom_site.label_seq_id
 
