@@ -140,13 +140,14 @@ setup(
     ext_modules=ext_modules,
     packages=['gemmi-examples'],
     package_dir={'gemmi-examples': 'examples'},
-    install_requires=['pybind11>=2.2.1'],
+    install_requires=['pybind11>=2.2.2'],
     cmdclass={'build_ext': BuildExt},
     zip_safe=False,
     license='MPL-2.0',
-    keywords='CIF, mmCIF, PDB, CCP4, structural biology, crystallography',
+    keywords=('structural bioinformatics, structural biology, crystallography,'
+              ' CIF, mmCIF, PDB, CCP4'),
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)',
