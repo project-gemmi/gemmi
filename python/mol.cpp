@@ -129,9 +129,29 @@ void add_mol(py::module& m) {
         return py::make_iterator(ch.residues);
     }, py::keep_alive<0, 1>())
     .def("append_residues", &Chain::append_residues)
-    // we need __getitem__ here, but what should be the argument?
-    // label_seq_id+label_comp_id or seq-num+icode+resname
-    ;
+    .def("__getitem__", &Chain::find_by_seqid,
+         py::arg("pdb_seqid"), py::keep_alive<0, 1>())
+    .def("__getitem__", &Chain::find_by_label_seqid,
+         py::arg("mmcif_seqid"), py::keep_alive<0, 1>())
+    .def("__repr__", [](const Chain& self) {
+        return "<gemmi.Chain " + self.name + " (" + self.auth_name +
+               ") with " + std::to_string(self.residues.size()) + " res>";
+    });
+
+  py::class_<ResidueGroup>(m, "ResidueGroup")
+    .def("__len__", &ResidueGroup::size)
+    .def("__iter__", [](ResidueGroup& g) { return py::make_iterator(g); },
+         py::keep_alive<0, 1>())
+    .def("__bool__", [](const ResidueGroup &g) -> bool { return !g.empty(); })
+    .def("__getitem__", [](ResidueGroup& g, int index) -> Residue& {
+        return g.at(index >= 0 ? index : index + g.size());
+    }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("__repr__", [](const ResidueGroup& self) {
+        std::string r = "<gemmi.ResidueGroup [ ";
+        for (const Residue& res : self)
+          r += res.seq_id() + "/" + res.name + " ";
+        return r + "]>";
+    });
 
   py::class_<Residue>(m, "Residue")
     .def(py::init<>())

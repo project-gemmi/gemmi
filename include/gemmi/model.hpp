@@ -7,9 +7,11 @@
 
 #include <algorithm>  // for find_if, count_if
 #include <cmath>      // for NAN
+#include <cstdlib>    // for strtol
 #include <cstring>    // for size_t
 #include <iterator>   // for back_inserter
 #include <map>        // for map
+#include <stdexcept>  // for out_of_range
 #include <string>
 #include <vector>
 
@@ -275,6 +277,34 @@ struct Residue : public ResidueId {
   bool calculate_phi_psi_omega(double* phi, double* psi, double* omega) const;
 };
 
+// ResidueGroup represents residues with the same sequence number and insertion
+// code, but different residue names. I.e. microheterogeneity.
+// Usually, there is only one residue in the group.
+// The residues must be consecutive.
+struct ResidueGroup {
+  using iterator = std::vector<Residue>::iterator;
+  using const_iterator = std::vector<Residue>::const_iterator;
+
+  iterator begin_, end_;
+
+  const_iterator begin() const { return begin_; }
+  const_iterator end() const { return end_; }
+  iterator begin() { return begin_; }
+  iterator end() { return end_; }
+  int size() const { return end_ - begin_; }
+  const Residue& operator[](int i) const { return *(begin_ + i); }
+  Residue& operator[](int i) { return *(begin_ + i); }
+  const Residue& at(int i) const { return *(begin_ + i); }
+  Residue& at(int i) {
+    if (i >= size())
+      throw std::out_of_range("ResidueGroup: no item " + std::to_string(i));
+    return *(begin_ + i);
+  }
+  bool empty() const { return begin_ == end_; }
+  explicit operator bool() const { return begin_ != end_; }
+};
+
+
 struct Chain {
   std::string name;
   std::string auth_name;
@@ -284,6 +314,7 @@ struct Chain {
   int force_pdb_serial = 0;
 
   explicit Chain(std::string cname) noexcept : name(cname) {}
+  ResidueGroup find_residue_group(int seqnum, char icode='\0');
   Residue* find_residue(const ResidueId& rid);
   Residue* find_or_add_residue(const ResidueId& rid);
   void append_residues(std::vector<Residue> new_resi);
@@ -292,6 +323,14 @@ struct Chain {
   const std::string& name_for_pdb() const {
     return auth_name.empty() ? name : auth_name;
   }
+  ResidueGroup find_by_seqid(const std::string& seqid) {
+    char* endptr;
+    int seqnum = std::strtol(seqid.c_str(), &endptr, 10);
+    if (endptr == seqid.c_str() || (*endptr != '\0'  && endptr[1] != '\0'))
+      throw std::invalid_argument("Not a seqid: " + seqid);
+    return find_residue_group(seqnum, *endptr);
+  }
+  ResidueGroup find_by_label_seqid(int label_seq);
 };
 
 // A connection. Corresponds to _struct_conn.
@@ -462,6 +501,22 @@ inline bool Residue::calculate_phi_psi_omega(double* phi, double* psi,
     *omega = calculate_dihedral_from_atoms(CA, C, nextN,
                                            next ? next->get_ca() : nullptr);
   return true;
+}
+
+inline ResidueGroup Chain::find_residue_group(int seqnum, char icode) {
+  auto match = [&](const Residue& r) {
+    return r.seq_num == seqnum && (r.icode | 0x20) == (icode | 0x20);
+  };
+  auto begin_ = std::find_if(residues.begin(), residues.end(), match);
+  auto end_ = std::find_if_not(begin_, residues.end(), match);
+  return ResidueGroup{begin_, end_};
+}
+
+inline ResidueGroup Chain::find_by_label_seqid(int label_seq) {
+  auto match = [&](const Residue& r) { return r.label_seq == label_seq; };
+  auto begin_ = std::find_if(residues.begin(), residues.end(), match);
+  auto end_ = std::find_if_not(begin_, residues.end(), match);
+  return ResidueGroup{begin_, end_};
 }
 
 inline Residue* Chain::find_residue(const ResidueId& rid) {

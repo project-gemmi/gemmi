@@ -40,6 +40,15 @@ class TestMol(unittest.TestCase):
         label_name_to_auth_name = {ch.name: ch.auth_name for ch in st[0]}
         self.assertEqual(label_name_to_auth_name,
                          dict(A='A', B='B', C='A', D='B', E='B', F='A', G='B'))
+        self.assertEqual(len(st[0]['A'][1]), 1)
+        chain_a = st[0]['A']
+        self.assertEqual(chain_a[1][0].label_seq, 1)
+        self.assertEqual(chain_a['1'][0].seq_num, 1)
+        b3 = st[0]['B']['3']
+        self.assertEqual(repr(b3), repr(st[0]['B'][3]))
+        self.assertEqual(len(b3), 2)
+        self.assertEqual(b3[0].name, 'N2C')
+        self.assertEqual(b3[-1].name, 'NCY')
         chain_c = st[0]['C']
         self.assertEqual(len(chain_c), 1)
         res_cl = list(chain_c)[0]
@@ -57,8 +66,15 @@ class TestMol(unittest.TestCase):
         model = st[0]
         self.assertEqual(len(model), 2)
         self.assertTrue(all(res.name == 'HOH' for res in model['A_H']))
-        self.assertEqual([res.seq_num for res in model['A'] if res.icode],
-                         [56] * 5)
+        A = model['A']
+        self.assertTrue(A['3'])
+        self.assertFalse(A[3])
+        self.assertEqual([res.seq_num for res in A if res.icode], [56] * 5)
+        self.assertEqual(len(A['55']), 1)
+        self.assertEqual(len(A['55B']), 0)
+        self.assertEqual(len(A['56B']), 1)
+        self.assertEqual(A['56'][0].icode, '')
+        self.assertEqual(A['56c'][0].icode, 'C')
 
 if __name__ == '__main__':
     unittest.main()
