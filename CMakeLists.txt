@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
 project(gemmi C CXX)
 
 option(USE_FORTRAN "Build Fortran bindings" OFF)
+option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 
 if (DEFINED ENV{FC})
   set(USE_FORTRAN ON)
@@ -15,6 +16,10 @@ if (USE_FORTRAN)
 else()
   message(STATUS
           "Skipping Fortran bindings. If you need them add -D USE_FORTRAN=1")
+endif()
+
+if (DEFINED ENV{EXTRA_WFLAGS})
+    set(EXTRA_WARNINGS ON)
 endif()
 
 set(CMAKE_CXX_STANDARD 11)
@@ -47,12 +52,12 @@ endif()
 include_directories("${CMAKE_SOURCE_DIR}/include"
                     "${CMAKE_SOURCE_DIR}/third_party")
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" AND DEFINED $ENV{EXTRA_WFLAGS})
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" AND EXTRA_WARNINGS)
   set(CMAKE_CXX_FLAGS
-   "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wformat=2 $ENV{EXTRA_WFLAGS}")
+      "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wformat=2 -Wredundant-decls -Wfloat-conversion -Wdisabled-optimization -Wshadow $ENV{EXTRA_WFLAGS}")
   message(STATUS "C++ flags set to: ${CMAKE_CXX_FLAGS}")
   # avoid "unused" warnings when compiling with -DNDEBUG
-  set(extra_release_flags "-Wno-unused-parameter -Wno-unused-variable")
+  set(wno_unused_flags "-Wno-unused-parameter -Wno-unused-variable")
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
@@ -67,11 +72,6 @@ if (USE_FORTRAN)
   endif()
 endif()
 
-
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO
-    "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${extra_release_flags}")
-set(CMAKE_CXX_FLAGS_RELEASE
-    "${CMAKE_CXX_FLAGS_RELEASE} ${extra_release_flags}")
 
 if (ZLIB_FOUND)
   macro(support_gz exe)
@@ -142,6 +142,7 @@ add_executable(doc_example2 EXCLUDE_FROM_ALL docs/doc_cif_cc.cpp)
 add_executable(doc_maybegz EXCLUDE_FROM_ALL
                docs/doc_maybegz.cpp docs/doc_structure.cpp)
 support_gz(doc_maybegz)
+target_compile_options(doc_example PRIVATE ${wno_unused_flags})
 
 # auth_label requires <experimental/filesystem> and -lstdc++fs
 add_executable(auth_label EXCLUDE_FROM_ALL examples/auth_label.cc)
