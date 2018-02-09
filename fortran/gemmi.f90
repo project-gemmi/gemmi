@@ -148,12 +148,13 @@ module gemmi
       type(c_ptr), intent(in), value :: grid
     end subroutine
 
-    !void geGrid0_prepare_ccp4_header(geGrid0* grid, int n);
-    subroutine c_grid0_prepare_ccp4_header(grid, mode) &
-    bind(C, name="geGrid0_prepare_ccp4_header")
+    !void geGrid0_update_ccp4_header(geGrid0* grid, int mode, int update_stats);
+    subroutine c_grid0_update_ccp4_header(grid, mode, update_stats) &
+    bind(C, name="geGrid0_update_ccp4_header")
       use iso_c_binding
       type(c_ptr), intent(in), value :: grid
       integer(c_int), value :: mode
+      logical(c_bool), value :: update_stats
     end subroutine
 
     !void geGrid0_write_ccp4_map(geGrid0* grid, const char* path);
@@ -212,7 +213,7 @@ module gemmi
     procedure :: data => grid0_data
     procedure :: get_value => grid0_get_value
     procedure :: free => grid0_free
-    procedure :: prepare_ccp4_header => grid0_prepare_ccp4_header
+    procedure :: update_ccp4_header => grid0_update_ccp4_header
     procedure :: write_ccp4_map => grid0_write_ccp4_map
   end type
 
@@ -333,10 +334,12 @@ contains
     this%ptr = c_null_ptr
   end subroutine
 
-  subroutine grid0_prepare_ccp4_header(this, mode)
+  subroutine grid0_update_ccp4_header(this, mode, update_stats)
     class(grid0) :: this
     integer, intent(in) :: mode
-    call c_grid0_prepare_ccp4_header(this%ptr, mode)
+    logical, intent(in) :: update_stats
+    call c_grid0_update_ccp4_header(this%ptr, mode, &
+      logical(update_stats .eqv. .true., kind=c_bool))
   end subroutine
 
   subroutine grid0_write_ccp4_map(this, path)

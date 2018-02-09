@@ -48,8 +48,8 @@ void geGrid0_free(geGrid0* grid) {
   delete as_cpp(grid);
 }
 
-void geGrid0_prepare_ccp4_header(geGrid0* grid, int n) {
-  as_cpp(grid)->prepare_ccp4_header(n);
+void geGrid0_update_ccp4_header(geGrid0* grid, int mode, bool update_stats) {
+  as_cpp(grid)->update_ccp4_header(mode, update_stats);
 }
 
 void geGrid0_write_ccp4_map(geGrid0* grid, const char* path) {

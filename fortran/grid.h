@@ -15,5 +15,5 @@ void geGrid0_apply_space_group(geGrid0* grid, int ccp4_num);
 int8_t* geGrid0_data(geGrid0* grid);
 int8_t geGrid0_get_value(geGrid0* grid, int u, int v, int w);
 void geGrid0_free(geGrid0* grid);
-void geGrid0_prepare_ccp4_header(geGrid0* grid, int n);
+void geGrid0_update_ccp4_header(geGrid0* grid, int mode, bool update_stats);
 void geGrid0_write_ccp4_map(geGrid0* grid, const char* path);

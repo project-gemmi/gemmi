@@ -20,7 +20,7 @@ program main
   print *, grid%get_value(0, 0, 0), grid%get_value(119, 103, 131)
 
   ! for testing
-  call grid%prepare_ccp4_header(0) ! arg is mode: 0 or 2
+  call grid%update_ccp4_header(0, .true.) ! args: mode (0 or 2), update_stats
   call grid%write_ccp4_map("test.map")
 
   call grid%free()
