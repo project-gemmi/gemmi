@@ -57,7 +57,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" AND EXTRA_WARNINGS)
       "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wformat=2 -Wredundant-decls -Wfloat-conversion -Wdisabled-optimization -Wshadow $ENV{EXTRA_WFLAGS}")
   message(STATUS "C++ flags set to: ${CMAKE_CXX_FLAGS}")
   # avoid "unused" warnings when compiling with -DNDEBUG
-  set(wno_unused_flags "-Wno-unused-parameter -Wno-unused-variable")
+  set(wno_unused_flags -Wno-unused-parameter -Wno-unused-variable)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")

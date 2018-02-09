@@ -66,8 +66,8 @@ namespace linalg
     {
         T                           x,y;
         constexpr                   vec()                               : x(), y() {}
-        constexpr                   vec(T x_, T y_)                     : x(x_), y(y_) {}
-        constexpr explicit          vec(T s)                            : vec(s, s) {}
+        constexpr                   vec(const T & x_, const T & y_)     : x(x_), y(y_) {}
+        constexpr explicit          vec(const T & s)                    : vec(s, s) {}
         constexpr explicit          vec(const T * p)                    : vec(p[0], p[1]) {}
         template<class U>
         constexpr explicit          vec(const vec<U,2> & v)             : vec(static_cast<T>(v.x), static_cast<T>(v.y)) {}
@@ -78,9 +78,11 @@ namespace linalg
     {
         T                           x,y,z;
         constexpr                   vec()                               : x(), y(), z() {}
-        constexpr                   vec(T x_, T y_, T z_)               : x(x_), y(y_), z(z_) {}
-        constexpr                   vec(const vec<T,2> & xy, T z_)      : vec(xy.x, xy.y, z_) {}
-        constexpr explicit          vec(T s)                            : vec(s, s, s) {}
+        constexpr                   vec(const T & x_, const T & y_, 
+                                        const T & z_)                   : x(x_), y(y_), z(z_) {}
+        constexpr                   vec(const vec<T,2> & xy,
+                                        const T & z_)                   : vec(xy.x, xy.y, z_) {}
+        constexpr explicit          vec(const T & s)                    : vec(s, s, s) {}
         constexpr explicit          vec(const T * p)                    : vec(p[0], p[1], p[2]) {}
         template<class U>
         constexpr explicit          vec(const vec<U,3> & v)             : vec(static_cast<T>(v.x), static_cast<T>(v.y), static_cast<T>(v.z)) {}
@@ -93,10 +95,13 @@ namespace linalg
     {
         T                           x,y,z,w;
         constexpr                   vec()                               : x(), y(), z(), w() {}
-        constexpr                   vec(T x_, T y_, T z_, T w_)         : x(x_), y(y_), z(z_), w(w_) {}
-        constexpr                   vec(const vec<T,2> & xy, T z_, T w_): vec(xy.x, xy.y, z_, w_) {}
-        constexpr                   vec(const vec<T,3> & xyz, T w_)     : vec(xyz.x, xyz.y, xyz.z, w_) {}
-        constexpr explicit          vec(T s)                            : vec(s, s, s, s) {}
+        constexpr                   vec(const T & x_, const T & y_,
+                                        const T & z_, const T & w_)     : x(x_), y(y_), z(z_), w(w_) {}
+        constexpr                   vec(const vec<T,2> & xy, 
+                                        const T & z_, const T & w_)     : vec(xy.x, xy.y, z_, w_) {}
+        constexpr                   vec(const vec<T,3> & xyz,
+                                        const T & w_)                   : vec(xyz.x, xyz.y, xyz.z, w_) {}
+        constexpr explicit          vec(const T & s)                    : vec(s, s, s, s) {}
         constexpr explicit          vec(const T * p)                    : vec(p[0], p[1], p[2], p[3]) {}
         template<class U> 
         constexpr explicit          vec(const vec<U,4> & v)             : vec(static_cast<T>(v.x), static_cast<T>(v.y), static_cast<T>(v.z), static_cast<T>(v.w)) {}
@@ -115,8 +120,8 @@ namespace linalg
         typedef vec<T,M>            V;
         V                           x,y;
         constexpr                   mat()                               : x(), y() {}
-        constexpr                   mat(V x_, V y_)                     : x(x_), y(y_) {}
-        constexpr explicit          mat(T s)                            : x(s), y(s) {}
+        constexpr                   mat(const V & x_, const V & y_)     : x(x_), y(y_) {}
+        constexpr explicit          mat(const T & s)                    : x(s), y(s) {}
         constexpr explicit          mat(const T * p)                    : x(p+M*0), y(p+M*1) {}
         template<class U> 
         constexpr explicit          mat(const mat<U,M,2> & m)           : mat(V(m.x), V(m.y)) {}
@@ -129,8 +134,9 @@ namespace linalg
         typedef vec<T,M>            V;
         V                           x,y,z;
         constexpr                   mat()                               : x(), y(), z() {}
-        constexpr                   mat(V x_, V y_, V z_)               : x(x_), y(y_), z(z_) {}
-        constexpr explicit          mat(T s)                            : x(s), y(s), z(s) {}
+        constexpr                   mat(const V & x_, const V & y_, 
+                                        const V & z_)                   : x(x_), y(y_), z(z_) {}
+        constexpr explicit          mat(const T & s)                    : x(s), y(s), z(s) {}
         constexpr explicit          mat(const T * p)                    : x(p+M*0), y(p+M*1), z(p+M*2) {}
         template<class U> 
         constexpr explicit          mat(const mat<U,M,3> & m)           : mat(V(m.x), V(m.y), V(m.z)) {}
@@ -143,8 +149,9 @@ namespace linalg
         typedef vec<T,M>            V;
         V                           x,y,z,w;
         constexpr                   mat()                               : x(), y(), z(), w() {}
-        constexpr                   mat(V x_, V y_, V z_, V w_)         : x(x_), y(y_), z(z_), w(w_) {}
-        constexpr explicit          mat(T s)                            : x(s), y(s), z(s), w(s) {}
+        constexpr                   mat(const V & x_, const V & y_,
+                                        const V & z_, const V & w_)     : x(x_), y(y_), z(z_), w(w_) {}
+        constexpr explicit          mat(const T & s)                    : x(s), y(s), z(s), w(s) {}
         constexpr explicit          mat(const T * p)                    : x(p+M*0), y(p+M*1), z(p+M*2), w(p+M*3) {}
         template<class U> 
         constexpr explicit          mat(const mat<U,M,4> & m)           : mat(V(m.x), V(m.y), V(m.z), V(m.w)) {}
@@ -341,7 +348,7 @@ namespace linalg
     template<class T> constexpr vec<T,3>   qzdir (const vec<T,4> & q)                          { return {(q.z*q.x+q.y*q.w)*2, (q.y*q.z-q.x*q.w)*2, q.w*q.w-q.x*q.x-q.y*q.y+q.z*q.z}; }
     template<class T> constexpr mat<T,3,3> qmat  (const vec<T,4> & q)                          { return {qxdir(q), qydir(q), qzdir(q)}; }
     template<class T> constexpr vec<T,3>   qrot  (const vec<T,4> & q, const vec<T,3> & v)      { return qxdir(q)*v.x + qydir(q)*v.y + qzdir(q)*v.z; }
-    template<class T> T                    qangle(const vec<T,4> & q)                          { return std::acos(q.w)*2; }
+    template<class T> T                    qangle(const vec<T,4> & q)                          { return std::atan2(length(q.xyz()), q.w)*2; }
     template<class T> vec<T,3>             qaxis (const vec<T,4> & q)                          { return normalize(q.xyz()); }
     template<class T> vec<T,4>             qnlerp(const vec<T,4> & a, const vec<T,4> & b, T t) { return nlerp(a, dot(a,b) < 0 ? -b : b, t); }
     template<class T> vec<T,4>             qslerp(const vec<T,4> & a, const vec<T,4> & b, T t) { return slerp(a, dot(a,b) < 0 ? -b : b, t); }
