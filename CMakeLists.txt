@@ -4,11 +4,8 @@ project(gemmi C CXX)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 
-if (DEFINED ENV{FC})
-  set(USE_FORTRAN ON)
-endif()
-if (CMAKE_Fortran_COMPILER)
-  set(USE_FORTRAN ON)
+if (DEFINED ENV{FC} OR CMAKE_Fortran_COMPILER)
+  set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
 endif()
 
 if (USE_FORTRAN)
@@ -56,8 +53,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" AND EXTRA_WARNINGS)
   set(CMAKE_CXX_FLAGS
       "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wformat=2 -Wredundant-decls -Wfloat-conversion -Wdisabled-optimization -Wshadow $ENV{EXTRA_WFLAGS}")
   message(STATUS "C++ flags set to: ${CMAKE_CXX_FLAGS}")
-  # avoid "unused" warnings when compiling with -DNDEBUG
-  set(wno_unused_flags -Wno-unused-parameter -Wno-unused-variable)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
@@ -142,7 +137,11 @@ add_executable(doc_example2 EXCLUDE_FROM_ALL docs/doc_cif_cc.cpp)
 add_executable(doc_maybegz EXCLUDE_FROM_ALL
                docs/doc_maybegz.cpp docs/doc_structure.cpp)
 support_gz(doc_maybegz)
-target_compile_options(doc_example PRIVATE ${wno_unused_flags})
+
+# always compile these tests with assertions enabled
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU|Intel")
+  target_compile_options(doc_example PRIVATE -UNDEBUG)
+endif()
 
 # auth_label requires <experimental/filesystem> and -lstdc++fs
 add_executable(auth_label EXCLUDE_FROM_ALL examples/auth_label.cc)
