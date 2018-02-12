@@ -153,8 +153,8 @@ inline Structure structure_from_cif_block(cif::Block& block) {
   add_info("_struct_keywords.text");
 
   std::vector<std::string> ncs_oper_tags = transform_tags("matrix", "vector");
-  ncs_oper_tags.push_back("id");  // 12
-  ncs_oper_tags.push_back("?code");  // 13
+  ncs_oper_tags.emplace_back("id");  // 12
+  ncs_oper_tags.emplace_back("?code");  // 13
   cif::Table ncs_oper = block.find("_struct_ncs_oper.", ncs_oper_tags);
   for (auto op : ncs_oper) {
     bool given = op.has(13) && op.str(13) == "given";

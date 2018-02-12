@@ -56,7 +56,7 @@ inline int read_int(const char* p, int field_length) {
 template<int N> int read_base36(const char* p) {
   char zstr[N+1] = {0};
   std::memcpy(zstr, p, N);
-  return std::strtol(zstr, NULL, 36);
+  return std::strtol(zstr, nullptr, 36);
 }
 
 inline double read_double(const char* p, int field_length) {

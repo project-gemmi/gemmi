@@ -56,7 +56,7 @@ struct Op {
   std::string triplet() const;
   std::string rot_triplet() const { return Op{rot, {0, 0, 0}}.triplet(); };
 
-  Op inverse(int* denom=NULL) const;
+  Op inverse(int* denom=nullptr) const;
 
   // if the translation points outside of the unit cell, wrap it.
   Op& wrap() {

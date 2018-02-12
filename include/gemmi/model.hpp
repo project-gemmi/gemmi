@@ -594,7 +594,7 @@ inline void Structure::finish() {
         double(op.rot[2][0]), double(op.rot[2][1]), double(op.rot[2][2]) };
       double mult = 1.0 / Op::TDEN;
       Vec3 tran(mult * op.tran[0], mult * op.tran[1], mult * op.tran[2]);
-      cell.images.push_back(FTransform{rot, tran});
+      cell.images.push_back({rot, tran});
     }
   }
 }
