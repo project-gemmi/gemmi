@@ -49,6 +49,7 @@ namespace rules {
   // (f) White space and comments.
   struct comment : if_must<one<'#'>, until<eolf>> {};
   struct whitespace : plus<sor<one<' ','\n','\r','\t'>, comment>> {};
+  struct ws_or_eof : sor<whitespace, pegtl::eof> {};
 
   // (b) Reserved words.
   struct str_data : TAOCPP_PEGTL_ISTRING("data_") {};
@@ -89,20 +90,22 @@ namespace rules {
   struct value: sor<simunq, singlequoted, doublequoted, textfield, unquoted> {};
   struct loop_tag : tag {};
   struct loop_value : value {};
-  struct loop_end : opt<seq<whitespace, str_stop>> {};
-  struct loop: if_must<str_loop, plus<seq<whitespace, loop_tag, discard>>,
-                                 plus<seq<whitespace, loop_value, discard>>,
+  struct loop_end : opt<str_stop, ws_or_eof> {};
+  struct loop: if_must<str_loop, whitespace,
+                                 plus<seq<loop_tag, whitespace, discard>>,
+                                 sor<plus<seq<loop_value, ws_or_eof, discard>>,
+                                     // handle incorrect CIF with empty loop
+                                     at<sor<str_loop, pegtl::eof>>>,
                                  loop_end> {};
-  struct dataitem: if_must<tag, whitespace, value, discard> {};
+  struct dataitem : if_must<tag, whitespace, value, ws_or_eof, discard> {};
   struct framename : plus<nonblank_ch> {};
   struct endframe : str_save {};
   struct frame : if_must<str_save, framename, whitespace,
-                         star<sor<dataitem, loop>, whitespace>,
-                         endframe> {};
-  struct datablock : seq<datablockheading,
-                         star<whitespace, sor<dataitem, loop, frame>>> {};
-  struct file : must<opt<whitespace>,
-                     until<pegtl::eof, list_tail<datablock, whitespace>>> {};
+                         star<sor<dataitem, loop>>,
+                         endframe, ws_or_eof> {};
+  struct datablock : seq<datablockheading, ws_or_eof,
+                         star<sor<dataitem, loop, frame>>> {};
+  struct file : must<opt<whitespace>, star<datablock>, pegtl::eof> {};
 
 } // namespace rules
 
