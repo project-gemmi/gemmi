@@ -252,7 +252,7 @@ template<> struct Search<rules::endframe> {
 template<> struct Search<rules::tag> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     if (!p.globbing) {
-      if (p.search_tag == in.string())
+      if (p.search_tag.size() == in.size() && p.search_tag == in.string())
         p.match_value = 1;
     } else {
       if (glob_match(p.search_tag, in.string())) {

@@ -34,10 +34,47 @@ namespace rules {
 
   using namespace pegtl;
 
+  inline uint8_t lookup_table(char c) {
+    static const uint8_t table[256] = {
+     // 0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 2, 0, 0, // 0
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 1
+        2, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, // 2
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, // 3
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 4
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, // 5
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 6
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, // 7
+     // 128-255
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    };
+    return table[static_cast<unsigned char>(c)];
+  }
+
+  template<int TableVal> struct lookup_char {
+    using analyze_t = analysis::generic<analysis::rule_type::ANY>;
+    template<typename Input> static bool match(Input& in) {
+      if (!in.empty() && lookup_table(in.peek_char()) == TableVal) {
+        if (TableVal == 2)  // this set includes new-line
+          in.bump(1);
+        else
+          in.bump_in_this_line(1);
+        return true;
+      }
+      return false;
+    }
+  };
+
   // (letter) refers to sections in Table 2.2.7.1 in Vol.G of ITfC (2006).
 
   // (g) Character sets.
   // OrdinaryCharacter: ! % &  ()*+,-./0-9:  <=>?@A-Z[]  \ ^  `a-z{|}~
+  using ordinary_char = lookup_char<1>;
+
+  using ws_char = lookup_char<2>;
 
   // !"#$%&'()*+,-./0-9:;<=>?@A-Z[\]^_`a-z{|}~
   struct nonblank_ch : range<'!', '~'> {};
@@ -48,7 +85,7 @@ namespace rules {
 
   // (f) White space and comments.
   struct comment : if_must<one<'#'>, until<eolf>> {};
-  struct whitespace : plus<sor<one<' ','\n','\r','\t'>, comment>> {};
+  struct whitespace : plus<sor<ws_char, comment>> {};
   struct ws_or_eof : sor<whitespace, pegtl::eof> {};
 
   // (b) Reserved words.
@@ -60,13 +97,13 @@ namespace rules {
   struct keyword : sor<str_data, str_loop, str_global, str_save, str_stop> {};
 
   // (e) Character strings and text fields.
-  template <typename Q>
+  template<typename Q>
   struct endq : seq<Q, at<sor<one<' ','\n','\r','\t','#'>, pegtl::eof>>> {};
   // strict rule would be:
   // template <typename Q> struct quoted_tail : until<endq<Q>, anyprint_ch> {};
   // but it was relaxed after PDB accepted 5q1h with non-ascii character
-  template <typename Q> struct quoted_tail : until<endq<Q>, not_one<'\n'>> {};
-  template <typename Q> struct quoted : if_must<Q, quoted_tail<Q>> {};
+  template<typename Q> struct quoted_tail : until<endq<Q>, not_one<'\n'>> {};
+  template<typename Q> struct quoted : if_must<Q, quoted_tail<Q>> {};
   struct singlequoted : quoted<one<'\''>> {};
   struct doublequoted : quoted<one<'"'>> {};
   struct field_sep : seq<bol, one<';'>> {};
@@ -83,10 +120,9 @@ namespace rules {
   struct datablockheading : sor<if_must<str_data, datablockname>,
                                 str_global> {};
   struct tag : seq<one<'_'>, plus<nonblank_ch>> {};
-  // simple unquoted value - for a typical mmCIF file it is faster
-  // to check first this risking backtracking.
-  struct simunq : seq<plus<ranges<'(', ':', '<', 'Z', 'a', 'z'>>,
-                      at<one<' ','\n','\r','\t'>>> {};
+  // unquoted value made of ordinary characters only - for a typical mmCIF file
+  // it is faster to check it first even if we backtrack on some values_.
+  struct simunq : seq<plus<ordinary_char>, at<ws_char>> {};
   struct value: sor<simunq, singlequoted, doublequoted, textfield, unquoted> {};
   struct loop_tag : tag {};
   struct loop_value : value {};
