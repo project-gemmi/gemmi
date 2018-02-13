@@ -401,9 +401,10 @@ struct Structure {
   // Minimal metadata with keys being mmcif tags: _entry.id, _exptl.method, ...
   std::map<std::string, std::string> info;
 
-  const char* get_info(const std::string& tag, const char* def=nullptr) const {
+  const std::string& get_info(const std::string& tag) const {
+    static const std::string empty;
     auto it = info.find(tag);
-    return it != info.end() ? it->second.c_str() : def;
+    return it != info.end() ? it->second : empty;
   }
   Model* find_model(const std::string& model_name) {
     return impl::find_or_null(models, model_name);

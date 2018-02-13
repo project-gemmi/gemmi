@@ -85,6 +85,8 @@ void add_mol(py::module& m) {
     .def_readwrite("name", &Structure::name)
     .def_readwrite("cell", &Structure::cell)
     .def_readwrite("sg_hm", &Structure::sg_hm)
+    .def("get_info", &Structure::get_info, py::arg("tag"),
+         py::return_value_policy::copy)
     .def("__len__", [](const Structure& st) { return st.models.size(); })
     .def("__iter__", [](const Structure& st) {
         return py::make_iterator(st.models);

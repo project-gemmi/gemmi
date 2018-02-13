@@ -94,14 +94,15 @@ inline const char* find_last_break(const char *str, int max_len) {
 // Write record with possible continuation lines, with the format:
 // 1-6 record name, 8-10 continuation, 11-lastcol string.
 inline void write_multiline(std::ostream& os, const char* record_name,
-                            const char* text, int lastcol) {
-  if (text == nullptr)
+                            const std::string& text, int lastcol) {
+  if (text.empty())
     return;
   char buf[88]; // a few bytes extra, just in case
-  const char *end = find_last_break(text, lastcol-10);
-  WRITEU("%-6s    %-70.*s\n", record_name, static_cast<int>(end-text), text);
+  const char *start = text.c_str();
+  const char *end = find_last_break(start, lastcol-10);
+  WRITEU("%-6s    %-70.*s\n", record_name, static_cast<int>(end-start), start);
   for (int n = 2; n < 1000 && *end != '\0'; ++n) {
-    const char *start = end;
+    start = end;
     end = find_last_break(start, lastcol-11);
     int len = end - start;
     WRITEU("%-6s %3d %-69.*s\n", record_name, n, len, start);
@@ -122,7 +123,7 @@ inline void write_cryst1(const Structure& st, std::ostream& os) {
   WRITE("CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11s%4s          \n",
         cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma,
         st.sg_hm.empty() ? "P 1" : st.sg_hm.c_str(),
-        st.get_info("_cell.Z_PDB", ""));
+        st.get_info("_cell.Z_PDB").c_str());
 }
 
 inline void write_ncs(const Structure& st, std::ostream& os) {
@@ -247,7 +248,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
                       bool iotbx_compat=false) {
   const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
   const char* date =
-    st.get_info("_pdbx_database_status.recvd_initial_deposition_date");
+    st.get_info("_pdbx_database_status.recvd_initial_deposition_date").c_str();
   std::string pdb_date;
   if (date && std::strlen(date) == 10) {
     unsigned month_idx = 10 * (date[5] - '0') + date[6] - '0' - 1;
@@ -258,8 +259,8 @@ inline void write_pdb(const Structure& st, std::ostream& os,
   char buf[88];
   WRITEU("HEADER    %-40s%-9s   %-18s\n",
          // "classification" in PDB == _struct_keywords.pdbx_keywords in mmCIF
-         st.get_info("_struct_keywords.pdbx_keywords", ""),
-         pdb_date.c_str(), st.get_info("_entry.id", ""));
+         st.get_info("_struct_keywords.pdbx_keywords").c_str(),
+         pdb_date.c_str(), st.get_info("_entry.id").c_str());
   impl::write_multiline(os, "TITLE", st.get_info("_struct.title"), 80);
   impl::write_multiline(os, "KEYWDS", st.get_info("_struct_keywords.text"), 79);
   impl::write_multiline(os, "EXPDTA", st.get_info("_exptl.method"), 79);
