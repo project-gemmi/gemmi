@@ -339,7 +339,7 @@ contains
     integer, intent(in) :: mode
     logical, intent(in) :: update_stats
     call c_grid0_update_ccp4_header(this%ptr, mode, &
-      logical(update_stats .eqv. .true., kind=c_bool))
+                                    logical(update_stats, kind=c_bool))
   end subroutine
 
   subroutine grid0_write_ccp4_map(this, path)
