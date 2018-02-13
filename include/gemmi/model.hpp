@@ -119,12 +119,12 @@ struct SequenceItem {
 using Sequence = std::vector<SequenceItem>;
 
 struct Entity {
-  EntityType type = EntityType::Unknown;
+  EntityType entity_type = EntityType::Unknown;
   PolymerType polymer_type = PolymerType::NA;
   Sequence sequence;
 
   std::string type_as_string() const {
-    switch (type) {
+    switch (entity_type) {
       case EntityType::Polymer: return "polymer";
       case EntityType::NonPolymer: return "non-polymer";
       case EntityType::Water: return "water";
@@ -237,8 +237,6 @@ struct Residue : public ResidueId {
 
   Residue() = default;
   explicit Residue(const ResidueId& rid) noexcept : ResidueId(rid) {}
-
-  std::string ident() const;
 
   std::vector<Atom>& children() { return atoms; }
   const std::vector<Atom>& children() const { return atoms; }
@@ -443,13 +441,9 @@ struct Structure {
 
   std::vector<Model>& children() { return models; }
   const std::vector<Model>& children() const { return models; }
-  void finish();
+  void setup_cell_images();
+  void setup_pointers();
 };
-
-inline std::string Residue::ident() const {
-  return (parent ? parent->name_for_pdb() + "/" : "") +
-         (seq_num ? seq_id() : label_seq.str());
-}
 
 inline bool Residue::matches(const ResidueId& rid) const {
   if (!rid.label_seq && rid.seq_num && !same_seq_id(rid))
@@ -578,12 +572,14 @@ template<> inline double count_occupancies(const Atom& atom) {
   return atom.occ;
 }
 
-inline void Structure::finish() {
+inline void Structure::setup_pointers() {
   add_backlinks(*this);
+  // TODO what with pointers in Model::connections
+}
 
-  // TODO: if "entities" were not specifed, deduce them based on sequence
+// TODO: if "entities" were not specifed, deduce them based on sequence
 
-  // fill UnitCell::images
+inline void Structure::setup_cell_images() {
   if (const SpaceGroup* sg = find_spacegroup_by_name(sg_hm)) {
     for (Op op : sg->operations()) {
       // TODO strict NCS

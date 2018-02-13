@@ -28,6 +28,20 @@ class TestMol(unittest.TestCase):
         self.assertAlmostEqual(cell.beta, 111.98)
         self.assertEqual(cell.gamma, 90)
 
+    def test_read_5i55_again(self):
+        path = os.path.join(os.path.dirname(__file__), '5i55.cif')
+        st = gemmi.read_structure(path)
+        a, b, c, d = st[0]
+        ent_a = st.find_entity(a.entity_id)
+        self.assertEqual(ent_a.entity_type, gemmi.EntityType.Polymer)
+        self.assertEqual(ent_a.polymer_type, gemmi.PolymerType.PeptideL)
+        ent_b = st.find_entity(b.entity_id)
+        self.assertEqual(ent_b.entity_type, gemmi.EntityType.NonPolymer)
+        self.assertEqual(ent_b.polymer_type, gemmi.PolymerType.NA)
+        ent_d = st.find_entity(d.entity_id)
+        self.assertEqual(ent_d.entity_type, gemmi.EntityType.Water)
+        self.assertEqual(ent_d.polymer_type, gemmi.PolymerType.NA)
+
     def test_read_1pfe(self):
         path = os.path.join(os.path.dirname(__file__), '1pfe.cif.gz')
         st = gemmi.read_structure(path)

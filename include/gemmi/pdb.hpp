@@ -113,7 +113,7 @@ inline void set_entity_ids_for_chains(Structure& st) {
       chain.entity_id = chain.name;
       Entity& ent = st.find_or_add_entity(chain.entity_id);
       if (chain.force_pdb_serial == -1)
-        ent.type = EntityType::Polymer;
+        ent.entity_type = EntityType::Polymer;
       chain.force_pdb_serial = 0;
     }
   // de-duplicate
@@ -319,7 +319,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     } else if (is_record_type(line, "SEQRES")) {
       std::string chain_name = read_string(line+10, 2);
       Entity& ent = st.find_or_add_entity(chain_name);
-      ent.type = EntityType::Polymer;
+      ent.entity_type = EntityType::Polymer;
       for (int i = 19; i < 68; i += 4) {
         std::string res_name = read_string(line+i, 3);
         if (!res_name.empty())
@@ -419,7 +419,8 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   }
 
   set_entity_ids_for_chains(st);
-  st.finish();
+  st.setup_cell_images();
+  st.setup_pointers();
 
   process_conn(st, conn_records);
 

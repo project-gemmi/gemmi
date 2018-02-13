@@ -25,8 +25,8 @@ void check_struct_conn(cif::Block& block) {
       if (con.res[n])
         atom[n] = con.res[n]->find_atom(con.atom[n], con.altloc[n]);
       if (!atom[n])
-        std::printf("%s: %s atom not found in %s\n", block.name.c_str(),
-                    con.name.c_str(), con.res[n]->ident().c_str());
+        std::printf("%s: %s atom not found in res. %s\n", block.name.c_str(),
+                    con.name.c_str(), con.res[n]->seq_id().c_str());
     }
     if (!atom[0] || !atom[1])
       continue;

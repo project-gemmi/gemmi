@@ -36,7 +36,7 @@ bool use_hetatm(const Residue& res, const Entity* entity) {
     return true;
   if (res.het_flag == 'A')
     return false;
-  if (entity && entity->type == EntityType::NonPolymer)
+  if (entity && entity->entity_type == EntityType::NonPolymer)
     return true;
   return !find_tabulated_residue(res.name).pdb_standard;
 }
@@ -223,7 +223,7 @@ inline void write_atoms(const Structure& st, std::ostream& os,
           }
         }
       }
-      if (entity && entity->type == EntityType::Polymer) {
+      if (entity && entity->entity_type == EntityType::Polymer) {
         if (iotbx_compat) {
           WRITE("%-80s\n", "TER");
         } else {
@@ -271,7 +271,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
     // SEQRES
     for (const Chain& ch : st.models[0].chains) {
       const Entity* entity = st.find_entity(ch.entity_id);
-      if (entity && entity->type == EntityType::Polymer) {
+      if (entity && entity->entity_type == EntityType::Polymer) {
         const std::string& chain_name = ch.name_for_pdb();
         int seq_len = 0;
         int prev_seq_num = -1;

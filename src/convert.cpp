@@ -214,7 +214,7 @@ cif::Document make_crd(const gemmi::Structure& st) {
               "mon_id", "ccp4_auth_seq_id", "entity_id",
               "ccp4_back_connect_type", "ccp4_num_mon_back", "ccp4_mod_id"});
   for (const auto& ent : st.entities)
-    if (ent.second.type == gemmi::EntityType::Polymer)
+    if (ent.second.entity_type == gemmi::EntityType::Polymer)
       for (const gemmi::SequenceItem& si : ent.second.sequence) {
         poly_loop.values.emplace_back(si.mon);
         // TODO: real auth_seq_id

@@ -46,10 +46,29 @@ Python
     >>> gemmi.Element('Mo').atomic_number
     42
 
+Chemical Components
+===================
+
+Atoms form residues (monomers) and small molecule components
+that the PDB calls chemical components.
+The components are described in:
+
+* the Chemical Component Dictionary maintained by the PDB,
+* and in so-called CIF files (that often do not conform to the IUCr CIF
+  syntax): in the Refmac monomer library (maintained by CCP4)
+  and in other libraries.
+
+Gemmi can read the dictionaries, but it also has a built-in database
+of popular components.
+
+TODO
+
 Unit Cell
 =========
 
-We will also need to switch between orthogonal and fractional coordinates.
+When working with a structural models in a crystal, we need to work
+with a unit cell, and in particular we need to be able to switch between
+orthogonal and fractional coordinates.
 
 C++
 ---
@@ -77,7 +96,7 @@ Python
 
 When the unit cell is created by reading a coordinate file
 it gets information about symmetry transformations and it can do
-a few other things, such as finding symmetry images of a point,
+a few other things, such as finding symmetry images of a point
 or determining if the given coordinates are close to a special position.
 This will be covered later on.
 

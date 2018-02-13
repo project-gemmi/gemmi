@@ -10,8 +10,8 @@
 #include <pybind11/pybind11.h>
 
 namespace py = pybind11;
+using namespace gemmi;
 using namespace gemmi::cif;
-using gemmi::MaybeGzipped;
 
 void add_cif_read(py::module& cif) {
   cif.def("read_file", &read_file, py::arg("filename"),
@@ -37,7 +37,7 @@ void add_cif_read(py::module& cif) {
 
 void add_read_structure(py::module& m) {
   m.def("read_structure", [](const std::string& path) {
-          return gemmi::read_structure(MaybeGzipped(path));
+          return new Structure(read_structure(MaybeGzipped(path)));
         }, py::arg("path"),
         "Reads a coordinate file into Structure.");
 }

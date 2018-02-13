@@ -257,7 +257,7 @@ inline Structure structure_from_cif_block(cif::Block& block) {
   for (auto row : block.find("_entity.", {"id", "type"})) {
     std::string id = row.str(0);
     Entity ent;
-    ent.type = entity_type_from_string(row.str(1));
+    ent.entity_type = entity_type_from_string(row.str(1));
     ent.polymer_type = PolymerType::NA;
     if (polymer_types.ok()) {
       try {
@@ -283,7 +283,8 @@ inline Structure structure_from_cif_block(cif::Block& block) {
         // maybe _struct_asym is missing
       }
     }
-  st.finish();
+  st.setup_cell_images();
+  st.setup_pointers();
 
   // CISPEP
   for (auto row : block.find("_struct_mon_prot_cis.",

@@ -70,6 +70,7 @@ void add_mol(py::module& m) {
 
   m.def("calculate_dihedral", &calculate_dihedral,
         "Input: four points. Output: dihedral angle in radians.");
+
   py::class_<Element>(m, "Element")
     .def(py::init<const std::string &>())
     .def(py::init<int>())
@@ -80,6 +81,30 @@ void add_mol(py::module& m) {
         return "<gemmi.Element: " + std::string(self.name()) + ">";
     });
 
+  py::enum_<EntityType>(m, "EntityType")
+    .value("Unknown", EntityType::Unknown)
+    .value("Polymer", EntityType::Polymer)
+    .value("NonPolymer", EntityType::NonPolymer)
+    .value("Water", EntityType::Water);
+
+  py::enum_<PolymerType>(m, "PolymerType")
+    .value("PeptideL", PolymerType::PeptideL)
+    .value("PeptideD", PolymerType::PeptideD)
+    .value("Dna", PolymerType::Dna)
+    .value("Rna", PolymerType::Rna)
+    .value("DnaRnaHybrid", PolymerType::DnaRnaHybrid)
+    .value("SaccharideD", PolymerType::SaccharideD)
+    .value("SaccharideL", PolymerType::SaccharideL)
+    .value("Pna", PolymerType::Pna)
+    .value("CyclicPseudoPeptide", PolymerType::CyclicPseudoPeptide)
+    .value("Other", PolymerType::Other)
+    .value("NA", PolymerType::NA);
+
+  py::class_<Entity>(m, "Entity")
+    .def(py::init<>())
+    .def_readwrite("entity_type", &Entity::entity_type)
+    .def_readwrite("polymer_type", &Entity::polymer_type);
+
   py::class_<Structure>(m, "Structure")
     .def(py::init<>())
     .def_readwrite("name", &Structure::name)
@@ -87,6 +112,9 @@ void add_mol(py::module& m) {
     .def_readwrite("sg_hm", &Structure::sg_hm)
     .def("get_info", &Structure::get_info, py::arg("tag"),
          py::return_value_policy::copy)
+    .def("find_entity",
+         (Entity* (Structure::*)(const std::string&)) &Structure::find_entity,
+         py::arg("entity_id"), py::return_value_policy::reference_internal)
     .def("__len__", [](const Structure& st) { return st.models.size(); })
     .def("__iter__", [](const Structure& st) {
         return py::make_iterator(st.models);
@@ -126,6 +154,7 @@ void add_mol(py::module& m) {
     .def(py::init<std::string>())
     .def_readwrite("name", &Chain::name)
     .def_readwrite("auth_name", &Chain::auth_name)
+    .def_readwrite("entity_id", &Chain::entity_id)
     .def("__len__", [](const Chain& ch) { return ch.residues.size(); })
     .def("__iter__", [](const Chain& ch) {
         return py::make_iterator(ch.residues);

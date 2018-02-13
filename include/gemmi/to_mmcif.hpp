@@ -128,7 +128,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   cif::Loop& ent_poly_loop = block.init_mmcif_loop("_entity_poly.",
                                                    {"entity_id", "type"});
   for (const auto& ent : st.entities)
-    if (ent.second.type == EntityType::Polymer)
+    if (ent.second.entity_type == EntityType::Polymer)
       ent_poly_loop.add_row({ent.first, ent.second.polymer_type_as_string()});
 
   // _exptl
@@ -222,7 +222,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   cif::Loop& poly_loop = block.init_mmcif_loop("_entity_poly_seq.",
                                          {"entity_id", "num", "mon_id"});
   for (const auto& ent : st.entities)
-    if (ent.second.type == EntityType::Polymer)
+    if (ent.second.entity_type == EntityType::Polymer)
       for (const SequenceItem& si : ent.second.sequence) {
         std::string num = si.num >= 0 ? to_string(si.num) : "?";
         poly_loop.add_row({ent.first, num, si.mon});
