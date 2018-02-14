@@ -290,6 +290,8 @@ struct UnitCell {
     return Fractional(frac.apply(o));
   }
 
+  double volume_per_image() const { return volume / (1 + images.size()); }
+
   // Helper function. PBC = periodic boundary conditions.
   bool search_pbc_images(Fractional&& diff, NearbyImage& image) const {
     int box[3] = { iround(diff.x), iround(diff.y), iround(diff.z) };

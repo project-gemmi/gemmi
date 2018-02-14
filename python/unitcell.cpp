@@ -51,6 +51,7 @@ void add_unitcell(py::module& m) {
     .def("set", &UnitCell::set)
     .def("fractionalize", &UnitCell::fractionalize)
     .def("orthogonalize", &UnitCell::orthogonalize)
+    .def("volume_per_image", &UnitCell::volume_per_image)
     .def("__repr__", [](const UnitCell& self) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
              + ", " + triple(self.alpha, self.beta, self.gamma) + ")>";
