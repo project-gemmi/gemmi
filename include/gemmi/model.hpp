@@ -398,6 +398,8 @@ struct Structure {
 
   // Minimal metadata with keys being mmcif tags: _entry.id, _exptl.method, ...
   std::map<std::string, std::string> info;
+  // simplistic resolution value from/for REMARK 2
+  double resolution = 0;
 
   const std::string& get_info(const std::string& tag) const {
     static const std::string empty;

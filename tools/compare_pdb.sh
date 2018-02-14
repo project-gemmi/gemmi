@@ -67,7 +67,7 @@ absent="\
 ^MASTER|\
 ^MDLTYP|\
 ^MODRES|\
-^REMARK|\
+^REMARK...[^2]|\
 ^REVDAT|\
 ^SEQADV|\
 ^SHEET |\

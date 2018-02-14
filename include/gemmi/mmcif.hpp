@@ -152,6 +152,12 @@ inline Structure structure_from_cif_block(cif::Block& block) {
   add_info("_struct_keywords.pdbx_keywords");
   add_info("_struct_keywords.text");
 
+  for (const std::string& d : block.find_values("_refine.ls_d_res_high")) {
+    double resol = cif::as_number(d);
+    if (resol > 0 && (st.resolution == 0 || resol < st.resolution))
+      st.resolution = resol;
+  }
+
   std::vector<std::string> ncs_oper_tags = transform_tags("matrix", "vector");
   ncs_oper_tags.emplace_back("id");  // 12
   ncs_oper_tags.emplace_back("?code");  // 13

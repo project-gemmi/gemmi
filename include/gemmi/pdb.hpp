@@ -311,7 +311,17 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       atom.u23 = read_int(line+63, 7) * 1e-4f;
 
     } else if (is_record_type(line, "REMARK")) {
-      // ignore for now
+      if (len > 11) {
+        switch (read_int(line + 7, 3)) {
+          case 2:
+            if (strstr(line, "ANGSTROM"))
+              st.resolution = read_double(line + 23, 7);
+            break;
+          default:
+            // ignore all other REMARKs for now
+            break;
+        }
+      }
 
     } else if (is_record_type(line, "CONECT")) {
       // ignore for now

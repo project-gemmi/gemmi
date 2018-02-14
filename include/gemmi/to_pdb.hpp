@@ -267,6 +267,11 @@ inline void write_pdb(const Structure& st, std::ostream& os,
   if (st.models.size() > 1)
     WRITE("NUMMDL    %-6zu %63s\n", st.models.size(), "");
 
+  if (st.resolution > 0) {
+    WRITE("%-80s\n", "REMARK   2");
+    WRITE("REMARK   2 RESOLUTION. %7.2f %-49s\n", st.resolution, "ANGSTROMS.");
+  }
+
   if (!st.models.empty() && !iotbx_compat) {
     // SEQRES
     for (const Chain& ch : st.models[0].chains) {

@@ -58,6 +58,7 @@ void add_mol(py::module& m) {
     .def_readwrite("name", &Structure::name)
     .def_readwrite("cell", &Structure::cell)
     .def_readwrite("sg_hm", &Structure::sg_hm)
+    .def_readwrite("resolution", &Structure::resolution)
     .def("get_info", &Structure::get_info, py::arg("tag"),
          py::return_value_policy::copy)
     .def("find_entity",
