@@ -290,7 +290,9 @@ struct UnitCell {
     return Fractional(frac.apply(o));
   }
 
-  double volume_per_image() const { return volume / (1 + images.size()); }
+  double volume_per_image() const {
+    return is_crystal() ? volume / (1 + images.size()) : NAN;
+  }
 
   // Helper function. PBC = periodic boundary conditions.
   bool search_pbc_images(Fractional&& diff, NearbyImage& image) const {
