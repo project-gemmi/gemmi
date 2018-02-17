@@ -1,8 +1,18 @@
 #!/usr/bin/env python
 
 import os
+import tempfile
 import unittest
 import gemmi
+
+def is_written_to_pdb(line):
+    if line[:6] in [b'COMPND', b'SOURCE', b'AUTHOR', b'REVDAT', b'JRNL  ',
+                    b'DBREF ', b'SEQADV', b'FORMUL', b'HELIX ', b'SHEET ',
+                    b'MASTER']:
+        return False
+    if line[:6] == b'REMARK' and line[6:10] != b'   2':
+        return False
+    return True
 
 class TestMol(unittest.TestCase):
     def test_residue(self):
@@ -89,6 +99,16 @@ class TestMol(unittest.TestCase):
         self.assertEqual(len(A['56B']), 1)
         self.assertEqual(A['56'][0].icode, '')
         self.assertEqual(A['56c'][0].icode, 'C')
+
+    def test_read_write(self):
+        path = os.path.join(os.path.dirname(__file__), '1orc.pdb')
+        st = gemmi.read_structure(path)
+        with open(path, 'rb') as f:
+            expected_lines = [line for line in f if is_written_to_pdb(line)]
+        with tempfile.NamedTemporaryFile() as f:
+            out = st.write_pdb(f.name)
+            out_lines = f.readlines()
+        self.assertEqual(expected_lines, out_lines)
 
 if __name__ == '__main__':
     unittest.main()
