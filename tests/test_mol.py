@@ -6,11 +6,11 @@ import unittest
 import gemmi
 
 def is_written_to_pdb(line):
-    if line[:6] in [b'COMPND', b'SOURCE', b'AUTHOR', b'REVDAT', b'JRNL  ',
-                    b'DBREF ', b'SEQADV', b'FORMUL', b'HELIX ', b'SHEET ',
-                    b'MASTER']:
+    if line[:6] in ['COMPND', 'SOURCE', 'AUTHOR', 'REVDAT', 'JRNL  ',
+                    'DBREF ', 'SEQADV', 'FORMUL', 'HELIX ', 'SHEET ',
+                    'MASTER']:
         return False
-    if line[:6] == b'REMARK' and line[6:10] != b'   2':
+    if line[:6] == 'REMARK' and line[6:10] != '   2':
         return False
     return True
 
@@ -103,11 +103,14 @@ class TestMol(unittest.TestCase):
     def test_read_write(self):
         path = os.path.join(os.path.dirname(__file__), '1orc.pdb')
         st = gemmi.read_structure(path)
-        with open(path, 'rb') as f:
+        with open(path) as f:
             expected_lines = [line for line in f if is_written_to_pdb(line)]
-        with tempfile.NamedTemporaryFile() as f:
-            out = st.write_pdb(f.name)
+        handle, out_name = tempfile.mkstemp()
+        os.close(handle)
+        st.write_pdb(out_name)
+        with open(out_name) as f:
             out_lines = f.readlines()
+        os.remove(out_name)
         self.assertEqual(expected_lines, out_lines)
 
 if __name__ == '__main__':
