@@ -52,8 +52,8 @@ class TestMol(unittest.TestCase):
         self.assertEqual(ent_d.entity_type, gemmi.EntityType.Water)
         self.assertEqual(ent_d.polymer_type, gemmi.PolymerType.NA)
 
-    def test_read_1pfe(self):
-        path = os.path.join(os.path.dirname(__file__), '1pfe.cif.gz')
+    def read_1pfe(self, filename):
+        path = os.path.join(os.path.dirname(__file__), filename)
         st = gemmi.read_structure(path)
         self.assertAlmostEqual(st.cell.a, 39.374)
         self.assertEqual(st.cell.gamma, 120)
@@ -81,6 +81,12 @@ class TestMol(unittest.TestCase):
         atom_cl = res_cl['CL']
         self.assertAlmostEqual(atom_cl.occ, 0.17)
         self.assertEqual(atom_cl.element.name, 'Cl')
+
+    def test_read_1pfe_cif(self):
+        self.read_1pfe('1pfe.cif.gz')
+
+    def test_read_1pfe_json(self):
+        self.read_1pfe('1pfe.json')
 
     def test_read_1orc(self):
         path = os.path.join(os.path.dirname(__file__), '1orc.pdb')
