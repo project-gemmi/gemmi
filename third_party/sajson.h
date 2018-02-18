@@ -62,8 +62,44 @@
 #define SAJSON_snprintf snprintf
 #endif
 
+/**
+ * sajson Public API
+ */
 namespace sajson {
+
+    /// Tag indicating a JSON value's type.
+    enum type: uint8_t {
+        TYPE_INTEGER = 0,
+        TYPE_DOUBLE = 1,
+        TYPE_NULL = 2,
+        TYPE_FALSE = 3,
+        TYPE_TRUE = 4,
+        TYPE_STRING = 5,
+        TYPE_ARRAY = 6,
+        TYPE_OBJECT = 7,
+    };
+    
     namespace internal {
+        static const size_t TYPE_BITS = 3;
+        static const size_t TYPE_MASK = (1 << TYPE_BITS) - 1;
+        static const size_t VALUE_MASK = size_t(-1) >> TYPE_BITS;
+    
+        static const size_t ROOT_MARKER = VALUE_MASK;
+    
+        inline type get_element_type(size_t s) {
+            return static_cast<type>(s & TYPE_MASK);
+        }
+    
+        inline size_t get_element_value(size_t s) {
+            return s >> TYPE_BITS;
+        }
+    
+        inline size_t make_element(type t, size_t value) {
+            //assert((value & ~VALUE_MASK) == 0);
+            //value &= VALUE_MASK;
+            return static_cast<size_t>(t) | (value << TYPE_BITS);
+        }
+            
         // This template utilizes the One Definition Rule to create global arrays in a header.
         // This trick courtesy of Rich Geldreich's Purple JSON parser.
         template<typename unused=void>
@@ -103,39 +139,82 @@ namespace sajson {
             //return c == '\r' || c == '\n' || c == '\t' || c == ' ';
             return (globals::parse_flags[static_cast<unsigned char>(c)] & 2) != 0;
         }
+
+        class allocated_buffer {
+        public:
+            allocated_buffer()
+                : memory(0)
+            {}
+
+            explicit allocated_buffer(size_t length) {
+                // throws std::bad_alloc upon allocation failure
+                void* buffer = operator new(sizeof(size_t) + length);
+                memory = static_cast<layout*>(buffer);
+                memory->refcount = 1;
+            }
+
+            allocated_buffer(const allocated_buffer& that)
+                : memory(that.memory)
+            {
+                incref();
+            }
+
+            allocated_buffer(allocated_buffer&& that)
+                : memory(that.memory)
+            {
+                that.memory = 0;
+            }
+
+            ~allocated_buffer() {
+                decref();
+            }
+
+            allocated_buffer& operator=(const allocated_buffer& that) {
+                if (this != &that) {
+                    decref();
+                    memory = that.memory;
+                    incref();
+                }
+                return *this;
+            }
+
+            allocated_buffer& operator=(allocated_buffer&& that) {
+                if (this != &that) {
+                    decref();
+                    memory = that.memory;
+                    that.memory = 0;
+                }
+                return *this;
+            }
+
+            char* get_data() const {
+                return memory ? memory->data : 0;
+            }
+
+        private:
+            void incref() const {
+                if (memory) {
+                    ++(memory->refcount);
+                }
+            }
+
+            void decref() const {
+                if (memory && --(memory->refcount) == 0) {
+                    operator delete(memory);
+                }
+            }
+
+            struct layout {
+                size_t refcount;
+                char* data;
+            };
+
+            layout* memory;
+        };
     }
 
-    enum type: uint8_t {
-        TYPE_INTEGER = 0,
-        TYPE_DOUBLE = 1,
-        TYPE_NULL = 2,
-        TYPE_FALSE = 3,
-        TYPE_TRUE = 4,
-        TYPE_STRING = 5,
-        TYPE_ARRAY = 6,
-        TYPE_OBJECT = 7,
-    };
-
-    static const size_t TYPE_BITS = 3;
-    static const size_t TYPE_MASK = (1 << TYPE_BITS) - 1;
-    static const size_t VALUE_MASK = size_t(-1) >> TYPE_BITS;
-
-    static const size_t ROOT_MARKER = VALUE_MASK;
-
-    inline type get_element_type(size_t s) {
-        return static_cast<type>(s & TYPE_MASK);
-    }
-
-    inline size_t get_element_value(size_t s) {
-        return s >> TYPE_BITS;
-    }
-
-    inline size_t make_element(type t, size_t value) {
-        //assert((value & ~VALUE_MASK) == 0);
-        //value &= VALUE_MASK;
-        return static_cast<size_t>(t) | (value << TYPE_BITS);
-    }
-
+    /// A simple type encoding a pointer to some memory and a length (in bytes).
+    /// Does not maintain any memory.
     class string {
     public:
         string(const char* text_, size_t length)
@@ -164,6 +243,8 @@ namespace sajson {
         string(); /*=delete*/
     };
 
+    /// A convenient way to parse JSON from a string literal.  The string ends
+    /// at its first NUL character.
     class literal : public string {
     public:
         explicit literal(const char* text_)
@@ -171,111 +252,84 @@ namespace sajson {
         {}
     };
 
-    struct object_key_record {
-        size_t key_start;
-        size_t key_end;
-        size_t value;
-    };
-
-    struct object_key_comparator {
-        object_key_comparator(const char* object_data)
-            : data(object_data)
-        {}
-
-        bool operator()(const object_key_record& lhs, const string& rhs) const {
-            const size_t lhs_length = lhs.key_end - lhs.key_start;
-            const size_t rhs_length = rhs.length();
-            if (lhs_length < rhs_length) {
-                return true;
-            } else if (lhs_length > rhs_length) {
-                return false;
-            }
-            return memcmp(data + lhs.key_start, rhs.data(), lhs_length) < 0;
-        }
-
-        bool operator()(const string& lhs, const object_key_record& rhs) const {
-            return !(*this)(rhs, lhs);
-        }
-
-        bool operator()(const object_key_record& lhs, const
-                object_key_record& rhs)
-        {
-            const size_t lhs_length = lhs.key_end - lhs.key_start;
-            const size_t rhs_length = rhs.key_end - rhs.key_start;
-            if (lhs_length < rhs_length) {
-                return true;
-            } else if (lhs_length > rhs_length) {
-                return false;
-            }
-            return memcmp(data + lhs.key_start, data + rhs.key_start,
-                    lhs_length) < 0;
-        }
-
-        const char* data;
-    };
-
-    class refcount {
-    public:
-        refcount()
-            : pn(new size_t(1))
-        {}
-
-        refcount(const refcount& rc)
-            : pn(rc.pn)
-        {
-            ++*pn;
-        }
-
-        ~refcount() {
-            if (--*pn == 0) {
-                delete pn;
-            }
-        }
-
-        size_t count() const {
-            return *pn;
-        }
-
-    private:
-        size_t* pn;
-
-        refcount& operator=(const refcount&) = delete;
-    };
-
+    /// A pointer to a mutable buffer, its size in bytes, and strong ownership of any
+    /// copied memory.
     class mutable_string_view {
     public:
+        /// Creates an empty, zero-sized view.
         mutable_string_view()
             : length_(0)
             , data(0)
-            , owns(false)
+            , buffer()
         {}
 
+        /// Given a length in bytes and a pointer, constructs a view
+        /// that does not allocate a copy of the data or maintain its life.
+        /// The given pointer must stay valid for the duration of the parse and the
+        /// resulting \ref document's life.
         mutable_string_view(size_t length, char* data_)
             : length_(length)
             , data(data_)
-            , owns(false)
+            , buffer()
         {}
 
+        /// Allocates a copy of the given \ref literal string and exposes a
+        /// mutable view into it.  Throws std::bad_alloc if allocation fails.
         mutable_string_view(const literal& s)
             : length_(s.length())
-            , owns(true)
+            , buffer(length_)
         {
-            data = new char[length_];
+            data = buffer.get_data();
             memcpy(data, s.data(), length_);
         }
 
+        /// Allocates a copy of the given \ref string and exposes a mutable view
+        /// into it.  Throws std::bad_alloc if allocation fails.
         mutable_string_view(const string& s)
             : length_(s.length())
-            , owns(true)
+            , buffer(length_)
         {
-            data = new char[length_];
+            data = buffer.get_data();
             memcpy(data, s.data(), length_);
         }
 
-        ~mutable_string_view() {
-            if (uses.count() == 1 && owns) {
-                delete[] data;
+        /// Copies a mutable_string_view.  If any backing memory has been
+        /// allocated, its refcount is incremented - both views can safely
+        /// use the memory.
+        mutable_string_view(const mutable_string_view& that)
+            : length_(that.length_)
+            , data(that.data)
+            , buffer(that.buffer)
+        {}
+
+        /// Move constructor - neuters the old mutable_string_view.
+        mutable_string_view(mutable_string_view&& that)
+            : length_(that.length_)
+            , data(that.data)
+            , buffer(std::move(that.buffer))
+        {
+            that.length_ = 0;
+            that.data = 0;
+        }
+
+        mutable_string_view& operator=(mutable_string_view&& that) {
+            if (this != &that) {
+                length_ = that.length_;
+                data = that.data;
+                buffer = std::move(that.buffer);
+                that.length_ = 0;
+                that.data = 0;
             }
+            return *this;
+        }
+
+        mutable_string_view& operator=(const mutable_string_view& that) {
+            if (this != &that) {
+                length_ = that.length_;
+                data = that.data;
+                buffer = that.buffer;
+            }
+            return *this;
         }
 
         size_t length() const {
@@ -287,11 +341,59 @@ namespace sajson {
         }
 
     private:
-        refcount uses;
         size_t length_;
         char* data;
-        bool owns;
+        internal::allocated_buffer buffer; // may not be allocated
     };
+
+    namespace internal {
+        struct object_key_record {
+            size_t key_start;
+            size_t key_end;
+            size_t value;
+        };
+
+        struct object_key_comparator {
+            object_key_comparator(const char* object_data)
+                : data(object_data)
+            {}
+
+            bool operator()(const object_key_record& lhs, const string& rhs) const {
+                const size_t lhs_length = lhs.key_end - lhs.key_start;
+                const size_t rhs_length = rhs.length();
+                if (lhs_length < rhs_length) {
+                    return true;
+                } else if (lhs_length > rhs_length) {
+                    return false;
+                }
+                return memcmp(data + lhs.key_start, rhs.data(), lhs_length) < 0;
+            }
+
+            bool operator()(const string& lhs, const object_key_record& rhs) const {
+                return !(*this)(rhs, lhs);
+            }
+
+            bool operator()(
+                const object_key_record& lhs,
+                const object_key_record& rhs
+            ) {
+                const size_t lhs_length = lhs.key_end - lhs.key_start;
+                const size_t rhs_length = rhs.key_end - rhs.key_start;
+                if (lhs_length < rhs_length) {
+                    return true;
+                } else if (lhs_length > rhs_length) {
+                    return false;
+                }
+                return memcmp(
+                    data + lhs.key_start,
+                    data + rhs.key_start,
+                    lhs_length
+                ) < 0;
+            }
+
+            const char* data;
+        };
+    }
 
     namespace integer_storage {
         enum {
@@ -334,81 +436,106 @@ namespace sajson {
         }
     }
 
+    /// Represents a JSON value.  First, call get_type() to check its type,
+    /// which determines which methods are available.
+    ///
+    /// Note that \ref value does not maintain any backing memory, only the
+    /// corresponding \ref document does.  It is illegal to access a \ref value
+    /// after its \ref document has been destroyed.
     class value {
     public:
-        explicit value(type value_type_, const size_t* payload_, const char* text_)
-            : value_type(value_type_)
-            , payload(payload_)
-            , text(text_)
-        {}
-
+        /// Returns the JSON value's \ref type.
         type get_type() const {
             return value_type;
         }
 
-        // valid iff get_type() is TYPE_ARRAY or TYPE_OBJECT
+        /// Returns the length of the object or array.
+        /// Only legal if get_type() is TYPE_ARRAY or TYPE_OBJECT.
         size_t get_length() const {
             assert_type_2(TYPE_ARRAY, TYPE_OBJECT);
             return payload[0];
         }
 
-        // valid iff get_type() is TYPE_ARRAY
+        /// Returns the nth element of an array.  Calling with an out-of-bound
+        /// index is undefined behavior.
+        /// Only legal if get_type() is TYPE_ARRAY.
         value get_array_element(size_t index) const {
+            using namespace internal;
             assert_type(TYPE_ARRAY);
             size_t element = payload[1 + index];
             return value(get_element_type(element), payload + get_element_value(element), text);
         }
 
-        // valid iff get_type() is TYPE_OBJECT
+        /// Returns the nth key of an object.  Calling with an out-of-bound
+        /// index is undefined behavior.
+        /// Only legal if get_type() is TYPE_OBJECT.
         string get_object_key(size_t index) const {
             assert_type(TYPE_OBJECT);
             const size_t* s = payload + 1 + index * 3;
             return string(text + s[0], s[1] - s[0]);
         }
 
-        // valid iff get_type() is TYPE_OBJECT
+        /// Returns the nth value of an object.  Calling with an out-of-bound
+        /// index is undefined behavior.  Only legal if get_type() is TYPE_OBJECT.
         value get_object_value(size_t index) const {
+            using namespace internal;
             assert_type(TYPE_OBJECT);
             size_t element = payload[3 + index * 3];
             return value(get_element_type(element), payload + get_element_value(element), text);
         }
 
-#ifndef SAJSON_NO_SORT
-        // valid iff get_type() is TYPE_OBJECT
+        /// Given a string key, returns the value with that key or a null value
+        /// if the key is not found.  Running time is O(lg N).
+        /// Only legal if get_type() is TYPE_OBJECT.
         value get_value_of_key(const string& key) const {
             assert_type(TYPE_OBJECT);
             size_t i = find_object_key(key);
-            assert_in_bounds(i);
-            return get_object_value(i);
+            if (i < get_length()) {
+                return get_object_value(i);
+            } else {
+                return value(TYPE_NULL, 0, 0);
+            }
         }
 
-        // valid iff get_type() is TYPE_OBJECT
-        // return get_length() if there is no such key
+        /// Given a string key, returns the index of the associated value if
+        /// one exists.  Returns get_length() if there is no such key.
+        /// Note: sajson sorts object keys, so the running time is O(lg N).
+        /// Only legal if get_type() is TYPE_OBJECT
         size_t find_object_key(const string& key) const {
+            using namespace internal;
             assert_type(TYPE_OBJECT);
             const object_key_record* start = reinterpret_cast<const object_key_record*>(payload + 1);
             const object_key_record* end = start + get_length();
+#ifdef SAJSON_UNSORTED_OBJECT_KEYS
+            for (const object_key_record* i = start; i != end; ++i)
+#else
             const object_key_record* i = std::lower_bound(start, end, key, object_key_comparator(text));
-            return (i != end
-                    && (i->key_end - i->key_start) == key.length()
-                    && memcmp(key.data(), text + i->key_start, key.length()) == 0)? i - start : get_length();
-        }
 #endif
+            if (i != end
+                    && (i->key_end - i->key_start) == key.length()
+                    && memcmp(key.data(), text + i->key_start, key.length()) == 0) {
+                return i - start;
+            }
+            return get_length();
+        }
 
 #ifndef SAJSON_NUMBERS_AS_STRINGS
-        // valid iff get_type() is TYPE_INTEGER
+        /// If a numeric value was parsed as a 32-bit integer, returns it.
+        /// Only legal if get_type() is TYPE_INTEGER. 
         int get_integer_value() const {
             assert_type(TYPE_INTEGER);
             return integer_storage::load(payload);
         }
 
-        // valid iff get_type() is TYPE_DOUBLE
+        /// If a numeric value was parsed as a double, returns it.
+        /// Only legal if get_type() is TYPE_DOUBLE.
         double get_double_value() const {
             assert_type(TYPE_DOUBLE);
             return double_storage::load(payload);
         }
 
-        // valid iff get_type() is TYPE_INTEGER or TYPE_DOUBLE
+        /// Returns a numeric value as a double-precision float.
+        /// Only legal if get_type() is TYPE_INTEGER or TYPE_DOUBLE.
         double get_number_value() const {
             assert_type_2(TYPE_INTEGER, TYPE_DOUBLE);
             if (get_type() == TYPE_INTEGER) {
@@ -418,10 +545,13 @@ namespace sajson {
             }
         }
 
-        // valid iff get_type() is TYPE_INTEGER or TYPE_DOUBLE
-        // returns true if out is modified written.
-        // returns false if the value is a non-integral double
-        // or out of range of a 53-bit integer.
+        /// Returns true and writes to the output argument if the numeric value
+        /// fits in a 53-bit integer.  This is useful for timestamps and other
+        /// situations where integral values with greater than 32-bit precision
+        /// are used, as 64-bit values are not understood by all JSON
+        /// implementations or languages.
+        /// Returns false if the value is not an integer or not in range.
+        /// Only legal if get_type() is TYPE_INTEGER or TYPE_DOUBLE.
         bool get_int53_value(int64_t* out) const {
             // Make sure the output variable is always defined to avoid any
             // possible situation like
@@ -449,24 +579,27 @@ namespace sajson {
         }
 #endif
 
-        // valid iff get_type() is TYPE_STRING
+        /// Returns the length of the string.
+        /// Only legal if get_type() is TYPE_STRING.
         size_t get_string_length() const {
             assert_type(TYPE_STRING);
             return payload[1] - payload[0];
         }
 
-        // valid iff get_type() is TYPE_STRING
-        // WARNING: calling this function and using the return value as a
-        // C-style string (that is, without also using get_string_length())
-        // will cause the string to appear truncated if the string has
-        // embedded NULs.
+        /// Returns a pointer to the beginning of a string value's data.
+        /// WARNING: Calling this function and using the return value as a
+        /// C-style string (that is, without also using get_string_length())
+        /// will cause the string to appear truncated if the string has
+        /// embedded NULs.
+        /// Only legal if get_type() is TYPE_STRING.
         const char* as_cstring() const {
             assert_type(TYPE_STRING);
             return text + payload[0];
         }
 
 #ifndef SAJSON_NO_STD_STRING
-        // valid iff get_type() is TYPE_STRING
+        /// Returns a string's value as a std::string.
+        /// Only legal if get_type() is TYPE_STRING.
         std::string as_string() const {
 #ifndef SAJSON_NUMBERS_AS_STRINGS
             assert_type(TYPE_STRING);
@@ -477,12 +610,19 @@ namespace sajson {
         }
 #endif
 
+        /// \cond INTERNAL
         const size_t* _internal_get_payload() const {
             return payload;
         }
-
+        /// \endcond
 
     private:
+        explicit value(type value_type_, const size_t* payload_, const char* text_)
+            : value_type(value_type_)
+            , payload(payload_)
+            , text(text_)
+        {}
+
         void assert_type(type expected) const {
             (void) expected;
             assert(expected == get_type());
@@ -502,37 +642,13 @@ namespace sajson {
         const type value_type;
         const size_t* const payload;
         const char* const text;
+
+        friend class document;
     };
 
-    class ownership {
-    public:
-        ownership() = delete;
-        ownership(const ownership&) = delete;
-        void operator=(const ownership&) = delete;
-
-        explicit ownership(size_t* p_)
-            : p(p_)
-        {}
-
-        ownership(ownership&& p_)
-        : p(p_.p) {
-            p_.p = 0;
-        }
-
-        ~ownership() {
-            delete[] p;
-        }
-
-        bool is_valid() const {
-            return !!p;
-        }
-
-    private:
-        size_t* p;
-    };
-
+    /// Error code indicating why parse failed.
     enum error {
-        ERROR_SUCCESS_,
+        ERROR_NO_ERROR,
         ERROR_OUT_OF_MEMORY,
         ERROR_UNEXPECTED_END,
         ERROR_MISSING_ROOT_ELEMENT,
@@ -557,98 +673,37 @@ namespace sajson {
         ERROR_INVALID_UTF8,
     };
 
-    class document {
-    public:
-        explicit document(const mutable_string_view& input_, ownership&& structure_, type root_type_, const size_t* root_)
-            : input(input_)
-            , structure(std::move(structure_))
-            , root_type(root_type_)
-            , root(root_)
-            , error_line(0)
-            , error_column(0)
-            , error_code(ERROR_SUCCESS_)
-            , error_arg(0)
-        {
-            formatted_error_message[0] = 0;
-        }
+    namespace internal {
+        class ownership {
+        public:
+            ownership() = delete;
+            ownership(const ownership&) = delete;
+            void operator=(const ownership&) = delete;
+    
+            explicit ownership(size_t* p_)
+                : p(p_)
+            {}
+    
+            ownership(ownership&& p_)
+            : p(p_.p) {
+                p_.p = 0;
+            }
+    
+            ~ownership() {
+                delete[] p;
+            }
+    
+            bool is_valid() const {
+                return !!p;
+            }
+    
+        private:
+            size_t* p;
+        };
 
-        explicit document(const mutable_string_view& input_, size_t error_line_, size_t error_column_, const error error_code_, int error_arg_)
-            : input(input_)
-            , structure(0)
-            , root_type(TYPE_NULL)
-            , root(0)
-            , error_line(error_line_)
-            , error_column(error_column_)
-            , error_code(error_code_)
-            , error_arg(error_arg_)
-        {
-            formatted_error_message[ERROR_BUFFER_LENGTH - 1] = 0;
-            int written = has_significant_error_arg()
-                ? SAJSON_snprintf(formatted_error_message, ERROR_BUFFER_LENGTH - 1, "%s: %d", _internal_get_error_text(), error_arg)
-                : SAJSON_snprintf(formatted_error_message, ERROR_BUFFER_LENGTH - 1, "%s", _internal_get_error_text());
-            (void)written;
-            assert(written >= 0 && written < ERROR_BUFFER_LENGTH);
-        }
-
-        document(const document&) = delete;
-        void operator=(const document&) = delete;
-
-        document(document&& rhs)
-            : input(rhs.input)
-            , structure(std::move(rhs.structure))
-            , root_type(rhs.root_type)
-            , root(rhs.root)
-            , error_line(rhs.error_line)
-            , error_column(rhs.error_column)
-            , error_code(rhs.error_code)
-            , error_arg(rhs.error_arg)
-        {
-            // Yikes... but strcpy is okay here because formatted_error is
-            // guaranteed to be null-terminated.
-            strcpy(formatted_error_message, rhs.formatted_error_message);
-            // should rhs's fields be zeroed too?
-        }
-
-        bool is_valid() const {
-            return root_type == TYPE_ARRAY || root_type == TYPE_OBJECT;
-        }
-
-        value get_root() const {
-            return value(root_type, root, input.get_data());
-        }
-
-        size_t get_error_line() const {
-            return error_line;
-        }
-
-        size_t get_error_column() const {
-            return error_column;
-        }
-
-#ifndef SAJSON_NO_STD_STRING
-        std::string get_error_message_as_string() const {
-            return formatted_error_message;
-        }
-#endif
-
-        const char* get_error_message_as_cstring() const {
-            return formatted_error_message;
-        }
-
-        /// WARNING: Internal function which is subject to change
-        error _internal_get_error_code() const {
-            return error_code;
-        }
-
-        /// WARNING: Internal function which is subject to change
-        int _internal_get_error_argument() const {
-            return error_arg;
-        }
-
-        /// WARNING: Internal function which is subject to change
-        const char* _internal_get_error_text() const {
+        inline const char* get_error_text(error error_code) {
             switch (error_code) {
-                case ERROR_SUCCESS_: return "no error";
+                case ERROR_NO_ERROR: return "no error";
                 case ERROR_OUT_OF_MEMORY: return  "out of memory";
                 case ERROR_UNEXPECTED_END: return  "unexpected end of input";
                 case ERROR_MISSING_ROOT_ELEMENT: return  "missing root element";
@@ -675,28 +730,147 @@ namespace sajson {
 
             SAJSON_UNREACHABLE();
         }
+    }
 
-        /// WARNING: Internal function exposed only for high-performance language bindings.
+    /**
+     * Represents the result of a JSON parse: either is_valid() and the document
+     * contains a root value or parse error information is available.
+     *
+     * Note that the document holds a strong reference to any memory allocated:
+     * any mutable copy of the input text and any memory allocated for the
+     * AST data structure.  Thus, the document must not be deallocated while any
+     * \ref value is in use.
+     */
+    class document {
+    public:
+        document(document&& rhs)
+            : input(rhs.input)
+            , structure(std::move(rhs.structure))
+            , root_type(rhs.root_type)
+            , root(rhs.root)
+            , error_line(rhs.error_line)
+            , error_column(rhs.error_column)
+            , error_code(rhs.error_code)
+            , error_arg(rhs.error_arg)
+        {
+            // Yikes... but strcpy is okay here because formatted_error is
+            // guaranteed to be null-terminated.
+            strcpy(formatted_error_message, rhs.formatted_error_message);
+            // should rhs's fields be zeroed too?
+        }
+
+        /**
+         * Returns true if the document was parsed successfully.
+         * If true, call get_root() to access the document's root value.
+         * If false, call get_error_line(), get_error_column(), and
+         * get_error_message_as_cstring() to see why the parse failed.
+         */
+        bool is_valid() const {
+            return root_type == TYPE_ARRAY || root_type == TYPE_OBJECT;
+        }
+
+        /// If is_valid(), returns the document's root \ref value.
+        value get_root() const {
+            return value(root_type, root, input.get_data());
+        }
+
+        /// If not is_valid(), returns the one-based line number where the parse failed.
+        size_t get_error_line() const {
+            return error_line;
+        }
+
+        /// If not is_valid(), returns the one-based column number where the parse failed.
+        size_t get_error_column() const {
+            return error_column;
+        }
+
+#ifndef SAJSON_NO_STD_STRING
+        /// If not is_valid(), returns a std::string indicating why the parse failed.
+        std::string get_error_message_as_string() const {
+            return formatted_error_message;
+        }
+#endif
+
+        /// If not is_valid(), returns a null-terminated C string indicating why the parse failed.
+        const char* get_error_message_as_cstring() const {
+            return formatted_error_message;
+        }
+
+        /// \cond INTERNAL
+
+        // WARNING: Internal function which is subject to change
+        error _internal_get_error_code() const {
+            return error_code;
+        }
+
+        // WARNING: Internal function which is subject to change
+        int _internal_get_error_argument() const {
+            return error_arg;
+        }
+
+        // WARNING: Internal function which is subject to change
+        const char* _internal_get_error_text() const {
+            return internal::get_error_text(error_code);
+        }
+
+        // WARNING: Internal function exposed only for high-performance language bindings.
         type _internal_get_root_type() const {
             return root_type;
         }
 
-        /// WARNING: Internal function exposed only for high-performance language bindings.
+        // WARNING: Internal function exposed only for high-performance language bindings.
         const size_t* _internal_get_root() const {
             return root;
         }
 
+        // WARNING: Internal function exposed only for high-performance language bindings.
         const mutable_string_view& _internal_get_input() const {
             return input;
         }
 
+        /// \endcond
+
     private:
+        document(const document&) = delete;
+        void operator=(const document&) = delete;
+
+        explicit document(const mutable_string_view& input_, internal::ownership&& structure_, type root_type_, const size_t* root_)
+            : input(input_)
+            , structure(std::move(structure_))
+            , root_type(root_type_)
+            , root(root_)
+            , error_line(0)
+            , error_column(0)
+            , error_code(ERROR_NO_ERROR)
+            , error_arg(0)
+        {
+            formatted_error_message[0] = 0;
+        }
+
+        explicit document(const mutable_string_view& input_, size_t error_line_, size_t error_column_, const error error_code_, int error_arg_)
+            : input(input_)
+            , structure(0)
+            , root_type(TYPE_NULL)
+            , root(0)
+            , error_line(error_line_)
+            , error_column(error_column_)
+            , error_code(error_code_)
+            , error_arg(error_arg_)
+        {
+            formatted_error_message[ERROR_BUFFER_LENGTH - 1] = 0;
+            int written = has_significant_error_arg()
+                ? SAJSON_snprintf(formatted_error_message, ERROR_BUFFER_LENGTH - 1, "%s: %d", _internal_get_error_text(), error_arg)
+                : SAJSON_snprintf(formatted_error_message, ERROR_BUFFER_LENGTH - 1, "%s", _internal_get_error_text());
+            (void)written;
+            assert(written >= 0 && written < ERROR_BUFFER_LENGTH);
+        }
+
         bool has_significant_error_arg() const {
             return error_code == ERROR_ILLEGAL_CODEPOINT;
         }
 
         mutable_string_view input;
-        ownership structure;
+        internal::ownership structure;
         const type root_type;
         const size_t* const root;
         const size_t error_line;
@@ -706,10 +880,20 @@ namespace sajson {
 
         enum { ERROR_BUFFER_LENGTH = 128 };
         char formatted_error_message[ERROR_BUFFER_LENGTH];
+
+        template<typename AllocationStrategy, typename StringType>
+        friend document parse(const AllocationStrategy& strategy, const StringType& string);
+        template<typename Allocator>
+        friend class parser;
     };
 
+    /// Allocation policy that allocates one large buffer guaranteed to hold the
+    /// resulting AST.  This allocation policy is the fastest since it requires
+    /// no conditionals to see if more memory must be allocated.
     class single_allocation {
     public:
+        /// \cond INTERNAL
+
         class stack_head {
         public:
             stack_head(stack_head&& other)
@@ -717,19 +901,15 @@ namespace sajson {
                 , stack_top(other.stack_top)
             {}
 
-            bool has_allocation_error() {
-                return false;
-            }
-
-            // check has_allocation_error() immediately after calling
-            void push(size_t element) {
+            bool push(size_t element) {
                 *stack_top++ = element;
+                return true;
             }
 
-            // check has_allocation_error() immediately after calling
-            size_t* reserve(size_t amount) {
+            size_t* reserve(size_t amount, bool* success) {
                 size_t* rv = stack_top;
                 stack_top += amount;
+                *success = true;
                 return rv;
             }
 
@@ -810,7 +990,8 @@ namespace sajson {
                 }
             }
 
-            stack_head get_stack_head() {
+            stack_head get_stack_head(bool* success) {
+                *success = true;
                 return stack_head(structure);
             }
 
@@ -822,12 +1003,8 @@ namespace sajson {
                 return structure_end - v;
             }
 
-            bool has_allocation_error() {
-                return false;
-            }
-
-            // check has_allocation_error immediately after calling
-            size_t* reserve(size_t size) {
+            size_t* reserve(size_t size, bool* success) {
+                *success = true;
                 write_cursor -= size;
                 return write_cursor;
             }
@@ -836,15 +1013,15 @@ namespace sajson {
                 return write_cursor;
             }
 
-            ownership transfer_ownership() {
+            internal::ownership transfer_ownership() {
                 auto p = structure;
                 structure = 0;
                 structure_end = 0;
                 write_cursor = 0;
                 if (should_deallocate) {
-                    return ownership(p);
+                    return internal::ownership(p);
                 } else {
-                    return ownership(0);
+                    return internal::ownership(0);
                 }
             }
 
@@ -854,6 +1031,8 @@ namespace sajson {
             size_t* write_cursor;
             bool should_deallocate;
         };
+
+        /// \endcond
 
         /// Allocate a single worst-case AST buffer with one word per byte in
         /// the input document.
@@ -865,12 +1044,22 @@ namespace sajson {
 
         /// Write the AST into an existing buffer.  Will fail with an out of
         /// memory error if the buffer is not guaranteed to be big enough for
-        /// the document.
-        single_allocation(size_t* existing_buffer_, size_t size_in_words_)
+        /// the document.  The caller must guarantee the memory is valid for
+        /// the duration of the parse and the AST traversal.
+        single_allocation(size_t* existing_buffer_, size_t size_in_words)
             : has_existing_buffer(true)
             , existing_buffer(existing_buffer_)
-            , existing_buffer_size(size_in_words_)
+            , existing_buffer_size(size_in_words)
         {}
+
+        /// Convenience wrapper for single_allocation(size_t*, size_t) that
+        /// automatically infers the length of a given array.
+        template<size_t N>
+        explicit single_allocation(size_t (&existing_buffer_)[N])
+            : single_allocation(existing_buffer_, N)
+        {}
+
+        /// \cond INTERNAL
 
         allocator make_allocator(size_t input_document_size_in_bytes, bool* succeeded) const {
             if (has_existing_buffer) {
@@ -891,14 +1080,21 @@ namespace sajson {
             }
         }
 
+        /// \endcond
+
     private:
         bool has_existing_buffer;
         size_t* existing_buffer;
         size_t existing_buffer_size;
     };
 
+    /// Allocation policy that uses dynamically-growing buffers for both the
+    /// parse stack and the AST.  This allocation policy minimizes peak memory
+    /// usage at the cost of some allocation and copying churn.
     class dynamic_allocation {
     public:
+        /// \cond INTERNAL
+
         class stack_head {
         public:
             stack_head(stack_head&& other)
@@ -915,24 +1111,23 @@ namespace sajson {
                 delete[] stack_bottom;
             }
 
-            bool has_allocation_error() {
-                return !stack_bottom;
-            }
-
-            // check has_allocation_error() immediately after calling
-            void push(size_t element) {
+            bool push(size_t element) {
                 if (can_grow(1)) {
                     *stack_top++ = element;
+                    return true;
+                } else {
+                    return false;
                 }
             }
 
-            // check has_allocation_error() immediately after calling
-            size_t* reserve(size_t amount) {
+            size_t* reserve(size_t amount, bool* success) {
                 if (can_grow(amount)) {
                     size_t* rv = stack_top;
                     stack_top += amount;
+                    *success = true;
                     return rv;
                 } else {
+                    *success = false;
                     return 0;
                 }
             }
@@ -957,7 +1152,7 @@ namespace sajson {
             stack_head(const stack_head&) = delete;
             void operator=(const stack_head&) = delete;
 
-            explicit stack_head(size_t initial_capacity) {
+            explicit stack_head(size_t initial_capacity, bool* success) {
                 assert(initial_capacity);
                 stack_bottom = new(std::nothrow) size_t[initial_capacity];
                 stack_top = stack_bottom;
@@ -966,6 +1161,7 @@ namespace sajson {
                 } else {
                     stack_limit = 0;
                 }
+                *success = !!stack_bottom;
             }
 
             bool can_grow(size_t amount) {
@@ -1008,9 +1204,9 @@ namespace sajson {
             allocator(const allocator&) = delete;
             void operator=(const allocator&) = delete;
 
-            explicit allocator(size_t* buffer, size_t current_capacity, size_t initial_stack_capacity_)
-                : ast_buffer_bottom(buffer)
-                , ast_buffer_top(buffer + current_capacity)
+            explicit allocator(size_t* buffer_, size_t current_capacity, size_t initial_stack_capacity_)
+                : ast_buffer_bottom(buffer_)
+                , ast_buffer_top(buffer_ + current_capacity)
                 , ast_write_head(ast_buffer_top)
                 , initial_stack_capacity(initial_stack_capacity_)
             {}
@@ -1037,8 +1233,8 @@ namespace sajson {
                 delete[] ast_buffer_bottom;
             }
 
-            stack_head get_stack_head() {
-                return stack_head(initial_stack_capacity);
+            stack_head get_stack_head(bool* success) {
+                return stack_head(initial_stack_capacity, success);
             }
 
             size_t get_write_offset() {
@@ -1049,16 +1245,13 @@ namespace sajson {
                 return ast_buffer_top - v;
             }
 
-            bool has_allocation_error() {
-                return !ast_buffer_bottom;
-            }
-
-            // check has_allocation_error immediately after calling
-            size_t* reserve(size_t size) {
+            size_t* reserve(size_t size, bool* success) {
                 if (can_grow(size)) {
                     ast_write_head -= size;
+                    *success = true;
                     return ast_write_head;
                 } else {
+                    *success = false;
                     return 0;
                 }
             }
@@ -1067,12 +1260,12 @@ namespace sajson {
                 return ast_write_head;
             }
 
-            ownership transfer_ownership() {
+            internal::ownership transfer_ownership() {
                 auto p = ast_buffer_bottom;
                 ast_buffer_bottom = 0;
                 ast_buffer_top = 0;
                 ast_write_head = 0;
-                return ownership(p);
+                return internal::ownership(p);
             }
 
         private:
@@ -1113,16 +1306,21 @@ namespace sajson {
             size_t initial_stack_capacity;
         };
 
+        /// \endcond
+
+        /// Creates a dynamic_allocation policy with the given initial AST
+        /// and stack buffer sizes.
         dynamic_allocation(size_t initial_ast_capacity_ = 0, size_t initial_stack_capacity_ = 0)
             : initial_ast_capacity(initial_ast_capacity_)
             , initial_stack_capacity(initial_stack_capacity_)
         {}
 
-        allocator make_allocator(size_t input_document_size_in_bytes, bool* succeeded) const {
+        /// \cond INTERNAL
+
+        allocator make_allocator(size_t /*input_document_size_in_bytes*/, bool* succeeded) const {
             size_t capacity = initial_ast_capacity;
             if (!capacity) {
                 // TODO: guess based on input document size
-                (void) input_document_size_in_bytes;
                 capacity = 1024;
             }
 
@@ -1140,12 +1338,191 @@ namespace sajson {
             *succeeded = true;
             return allocator(buffer, capacity, stack_capacity);
         }
+    
+        /// \endcond
 
     private:
         size_t initial_ast_capacity;
         size_t initial_stack_capacity;
     };
 
+    /// Allocation policy that attempts to fit the parsed AST into an existing
+    /// memory buffer.  This allocation policy is useful when using sajson in
+    /// a zero-allocation context or when there are constraints on the amount
+    // of memory that can be used.
+    class bounded_allocation {
+    public:
+        /// \cond INTERNAL
+
+        class allocator;
+
+        class stack_head {
+        public:
+            stack_head(stack_head&& other)
+                : source_allocator(other.source_allocator)
+            {
+                other.source_allocator = 0;
+            }
+
+            bool push(size_t element) {
+                if (SAJSON_LIKELY(source_allocator->can_grow(1))) {
+                    *(source_allocator->stack_top)++ = element;
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+
+            size_t* reserve(size_t amount, bool* success) {
+                if (SAJSON_LIKELY(source_allocator->can_grow(amount))) {
+                    size_t* rv = source_allocator->stack_top;
+                    source_allocator->stack_top += amount;
+                    *success = true;
+                    return rv;
+                } else {
+                    *success = false;
+                    return 0;
+                }
+            }
+
+            void reset(size_t new_top) {
+                source_allocator->stack_top = source_allocator->structure + new_top;
+            }
+
+            size_t get_size() {
+                return source_allocator->stack_top - source_allocator->structure;
+            }
+
+            size_t* get_top() {
+                return source_allocator->stack_top;
+            }
+
+            size_t* get_pointer_from_offset(size_t offset) {
+                return source_allocator->structure + offset;
+            }
+
+        private:
+            stack_head(const stack_head&) = delete;
+            void operator=(const stack_head&) = delete;
+
+            explicit stack_head(allocator* source_allocator_)
+                : source_allocator(source_allocator_)
+            {}
+
+            allocator* source_allocator;
+
+            friend class bounded_allocation;
+        };
+
+        class allocator {
+        public:
+            allocator() = delete;
+            allocator(const allocator&) = delete;
+            void operator=(const allocator&) = delete;
+
+            explicit allocator(size_t* existing_buffer, size_t existing_buffer_size)
+                : structure(existing_buffer)
+                , structure_end(existing_buffer + existing_buffer_size)
+                , write_cursor(structure_end)
+                , stack_top(structure)
+            {}
+
+            allocator(allocator&& other)
+                : structure(other.structure)
+                , structure_end(other.structure_end)
+                , write_cursor(other.write_cursor)
+                , stack_top(other.stack_top)
+            {
+                other.structure = 0;
+                other.structure_end = 0;
+                other.write_cursor = 0;
+                other.stack_top = 0;
+            }
+
+            stack_head get_stack_head(bool* success) {
+                *success = true;
+                return stack_head(this);
+            }
+
+            size_t get_write_offset() {
+                return structure_end - write_cursor;
+            }
+
+            size_t* get_write_pointer_of(size_t v) {
+                return structure_end - v;
+            }
+
+            size_t* reserve(size_t size, bool* success) {
+                if (can_grow(size)) {
+                    write_cursor -= size;
+                    *success = true;
+                    return write_cursor;
+                } else {
+                    *success = false;
+                    return 0;
+                }
+            }
+
+            size_t* get_ast_root() {
+                return write_cursor;
+            }
+
+            internal::ownership transfer_ownership() {
+                structure = 0;
+                structure_end = 0;
+                write_cursor = 0;
+                return internal::ownership(0);
+            }
+
+        private:
+            bool can_grow(size_t amount) {
+                // invariant: stack_top <= write_cursor
+                // thus: write_cursor - stack_top is positive
+                return static_cast<size_t>(write_cursor - stack_top) >= amount;
+            }
+
+            size_t* structure;
+            size_t* structure_end;
+            size_t* write_cursor;
+            size_t* stack_top;
+
+            friend class bounded_allocation;
+        };
+
+        /// \endcond
+
+        /// Uses an existing buffer to hold the parsed AST, if it fits.  The
+        /// specified buffer must not be deallocated until after the document
+        /// is parsed and the AST traversed.
+        bounded_allocation(size_t* existing_buffer_, size_t size_in_words)
+            : existing_buffer(existing_buffer_)
+            , existing_buffer_size(size_in_words)
+        {}
+
+        /// Convenience wrapper for bounded_allocation(size_t*, size) that
+        /// automatically infers the size of the given array.
+        template<size_t N>
+        explicit bounded_allocation(size_t (&existing_buffer_)[N])
+            : bounded_allocation(existing_buffer_, N)
+        {}
+
+        /// \cond INTERNAL
+
+        allocator make_allocator(size_t /*input_document_size_in_bytes*/, bool* succeeded) const {
+            *succeeded = true;
+            return allocator(existing_buffer, existing_buffer_size);
+        }
+
+        /// \endcond
+
+    private:
+        size_t* existing_buffer;
+        size_t existing_buffer_size;
+    };
+
+    // I thought about putting parser in the internal namespace but I don't
+    // want to indent it further...
+    /// \cond INTERNAL
     template<typename Allocator>
     class parser {
     public:
@@ -1245,11 +1622,14 @@ namespace sajson {
         }
 
         bool parse() {
+            using namespace internal;
+
             // p points to the character currently being parsed
             char* p = input.get_data();
 
-            auto stack = allocator.get_stack_head();
-            if (SAJSON_UNLIKELY(stack.has_allocation_error())) {
+            bool success;
+            auto stack = allocator.get_stack_head(&success);
+            if (SAJSON_UNLIKELY(!success)) {
                 return oom(p);
             }
 
@@ -1263,15 +1643,15 @@ namespace sajson {
             type current_structure_type;
             if (*p == '[') {
                 current_structure_type = TYPE_ARRAY;
-                stack.push(make_element(current_structure_type, ROOT_MARKER));
-                if (SAJSON_UNLIKELY(stack.has_allocation_error())) {
+                bool s = stack.push(make_element(current_structure_type, ROOT_MARKER));
+                if (SAJSON_UNLIKELY(!s)) {
                     return oom(p);
                 }
                 goto array_close_or_element;
             } else if (*p == '{') {
                 current_structure_type = TYPE_OBJECT;
-                stack.push(make_element(current_structure_type, ROOT_MARKER));
-                if (SAJSON_UNLIKELY(stack.has_allocation_error())) {
+                bool s = stack.push(make_element(current_structure_type, ROOT_MARKER));
+                if (SAJSON_UNLIKELY(!s)) {
                     return oom(p);
                 }
                 goto object_close_or_element;
@@ -1373,8 +1753,9 @@ namespace sajson {
                 if (SAJSON_UNLIKELY(*p != '"')) {
                     return make_error(p, ERROR_MISSING_OBJECT_KEY);
                 }
-                size_t* out = stack.reserve(2);
-                if (SAJSON_UNLIKELY(stack.has_allocation_error())) {
+                bool success_;
+                size_t* out = stack.reserve(2, &success_);
+                if (SAJSON_UNLIKELY(!success_)) {
                     return oom(p);
                 }
                 p = parse_string(p, out);
@@ -1441,8 +1822,9 @@ namespace sajson {
                         break;
                     }
                     case '"': {
-                        size_t* string_tag = allocator.reserve(2);
-                        if (allocator.has_allocation_error()) {
+                        bool success_;
+                        size_t* string_tag = allocator.reserve(2, &success_);
+                        if (SAJSON_UNLIKELY(!success_)) {
                             return oom(p);
                         }
                         p = parse_string(p, string_tag);
@@ -1456,8 +1838,8 @@ namespace sajson {
                     case '[': {
                         size_t previous_base = current_base;
                         current_base = stack.get_size();
-                        stack.push(make_element(current_structure_type, previous_base));
-                        if (stack.has_allocation_error()) {
+                        bool s = stack.push(make_element(current_structure_type, previous_base));
+                        if (SAJSON_UNLIKELY(!s)) {
                             return oom(p);
                         }
                         current_structure_type = TYPE_ARRAY;
@@ -1466,8 +1848,8 @@ namespace sajson {
                     case '{': {
                         size_t previous_base = current_base;
                         current_base = stack.get_size();
-                        stack.push(make_element(current_structure_type, previous_base));
-                        if (stack.has_allocation_error()) {
+                        bool s = stack.push(make_element(current_structure_type, previous_base));
+                        if (SAJSON_UNLIKELY(!s)) {
                             return oom(p);
                         }
                         current_structure_type = TYPE_OBJECT;
@@ -1496,8 +1878,10 @@ namespace sajson {
                         return make_error(p, ERROR_EXPECTED_VALUE);
                 }
 
-                stack.push(make_element(value_type_result, allocator.get_write_offset()));
-                if (SAJSON_UNLIKELY(stack.has_allocation_error())) {
+                bool s = stack.push(make_element(
+                    value_type_result,
+                    allocator.get_write_offset()));
+                if (SAJSON_UNLIKELY(!s)) {
                     return oom(p);
                 }
 
@@ -1757,15 +2141,17 @@ namespace sajson {
                 }
             }
             if (try_double) {
-                size_t* out = allocator.reserve(double_storage::word_length);
-                if (allocator.has_allocation_error()) {
+                bool success;
+                size_t* out = allocator.reserve(double_storage::word_length, &success);
+                if (SAJSON_UNLIKELY(!success)) {
                     return std::make_pair(oom(p), TYPE_NULL);
                 }
                 double_storage::store(out, d);
                 return std::make_pair(p, TYPE_DOUBLE);
             } else {
-                size_t* out = allocator.reserve(integer_storage::word_length);
-                if (allocator.has_allocation_error()) {
+                bool success;
+                size_t* out = allocator.reserve(integer_storage::word_length, &success);
+                if (SAJSON_UNLIKELY(!success)) {
                     return std::make_pair(oom(p), TYPE_NULL);
                 }
                 integer_storage::store(out, i);
@@ -1857,8 +2243,9 @@ namespace sajson {
                 }
             }
 
-            size_t* out = allocator.reserve(2);
-            if (allocator.has_allocation_error()) {
+            bool success;
+            size_t* out = allocator.reserve(2, &success);
+            if (SAJSON_UNLIKELY(!success)) {
                 return std::make_pair(oom(p), TYPE_NULL);
             }
             out[0] = start;
@@ -1868,9 +2255,12 @@ namespace sajson {
 #endif
 
         bool install_array(size_t* array_base, size_t* array_end) {
+            using namespace sajson::internal;
+
             const size_t length = array_end - array_base;
-            size_t* const new_base = allocator.reserve(length + 1);
-            if (SAJSON_UNLIKELY(allocator.has_allocation_error())) {
+            bool success;
+            size_t* const new_base = allocator.reserve(length + 1, &success);
+            if (SAJSON_UNLIKELY(!success)) {
                 return false;
             }
             size_t* out = new_base + length + 1;
@@ -1888,17 +2278,20 @@ namespace sajson {
         }
 
         bool install_object(size_t* object_base, size_t* object_end) {
+            using namespace internal;
+
             assert((object_end - object_base) % 3 == 0);
             const size_t length_times_3 = object_end - object_base;
-#ifndef SAJSON_NO_SORT
+#ifndef SAJSON_UNSORTED_OBJECT_KEYS
             std::sort(
                 reinterpret_cast<object_key_record*>(object_base),
                 reinterpret_cast<object_key_record*>(object_end),
                 object_key_comparator(input.get_data()));
 #endif
 
-            size_t* const new_base = allocator.reserve(length_times_3 + 1);
-            if (SAJSON_UNLIKELY(allocator.has_allocation_error())) {
+            bool success;
+            size_t* const new_base = allocator.reserve(length_times_3 + 1, &success);
+            if (SAJSON_UNLIKELY(!success)) {
                 return false;
             }
             size_t* out = new_base + length_times_3 + 1;
@@ -1919,14 +2312,16 @@ namespace sajson {
         }
 
         char* parse_string(char* p, size_t* tag) {
+            using namespace internal;
+
             ++p; // "
             size_t start = p - input.get_data();
             char* input_end_local = input_end;
             while (input_end_local - p >= 4) {
-                if (!internal::is_plain_string_character(p[0])) { goto found; }
-                if (!internal::is_plain_string_character(p[1])) { p += 1; goto found; }
-                if (!internal::is_plain_string_character(p[2])) { p += 2; goto found; }
-                if (!internal::is_plain_string_character(p[3])) { p += 3; goto found; }
+                if (!is_plain_string_character(p[0])) { goto found; }
+                if (!is_plain_string_character(p[1])) { p += 1; goto found; }
+                if (!is_plain_string_character(p[2])) { p += 2; goto found; }
+                if (!is_plain_string_character(p[3])) { p += 3; goto found; }
                 p += 4;
             }
             for (;;) {
@@ -1934,7 +2329,7 @@ namespace sajson {
                     return make_error(p, ERROR_UNEXPECTED_END);
                 }
 
-                if (!internal::is_plain_string_character(*p)) {
+                if (!is_plain_string_character(*p)) {
                     break;
                 }
 
@@ -2149,7 +2544,19 @@ namespace sajson {
         error error_code;
         int error_arg; // optional argument for the error
     };
+    /// \endcond
 
+    /**
+     * Parses a string of JSON bytes into a \ref document, given an allocation
+     * strategy instance.  Any kind of string type is valid as long as a
+     * mutable_string_view can be constructed from it.
+     *
+     * Valid allocation strategies are \ref single_allocation,
+     * \ref dynamic_allocation, and \ref bounded_allocation.
+     *
+     * A \ref document is returned whether or not the parse succeeds: success
+     * state is available by calling document::is_valid().
+     */
     template<typename AllocationStrategy, typename StringType>
     document parse(const AllocationStrategy& strategy, const StringType& string) {
         mutable_string_view input(string);

@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-#define SAJSON_NO_SORT
+#define SAJSON_UNSORTED_OBJECT_KEYS
 #define SAJSON_NUMBERS_AS_STRINGS
 #include <sajson.h>
 
