@@ -23,11 +23,12 @@ _sci 2.1e12
 _dotfirst .75
 _dotfirstsci .7e+3
 _dotlast 85.
-_zeros 00000000000
 _dote 3.e08
-_zdote 03.E-08
 _with_su 123.456(12)
 _not_valid_numb 1-0
+# these are valid CIF numbers, but probably were meant as strings
+_zeros 00000000000
+_zdote 03.E-08
 
 data_loops
 loop_

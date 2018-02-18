@@ -149,6 +149,8 @@ private:
     else if (value == ".")
       os_ << cif_dot;
     else if (quote_numbers < 2 && is_numb(value) &&
+             // exception: 012 (but not 0.12) is assumed to be a string
+             (value[0] != '0' || value[1] == '.' || value[1] == '\0') &&
              (quote_numbers == 0 || value.back() != ')'))
       write_as_number(value);
     else

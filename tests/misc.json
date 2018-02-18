@@ -20,11 +20,11 @@
   "_dotfirst": 0.75,
   "_dotfirstsci": 0.7e+3,
   "_dotlast": 85.0,
-  "_zeros": 0,
   "_dote": 3.0e08,
-  "_zdote": 3.0E-08,
   "_with_su": "123.456(12)",
-  "_not_valid_numb": "1-0"
+  "_not_valid_numb": "1-0",
+  "_zeros": "00000000000",
+  "_zdote": "03.E-08"
  },
  "loops": {
   "_x": [1,4.1],
