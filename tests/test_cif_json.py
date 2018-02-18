@@ -42,6 +42,21 @@ class TestMmjson(unittest.TestCase):
         path = os.path.join(os.path.dirname(__file__), '1pfe.json')
         doc = cif.read_mmjson(path)
         self.assertEqual(doc[0].find_value('_entry.id'), '1PFE')
+        output_json = json.loads(doc.as_json(True))
+        with io.open(path, encoding='utf-8') as f:
+            input_json = json.load(f)
+        # We don't preserve the type information from json and some strings
+        # are written back as numbers.
+        # Here we convert them to strings before comparison.
+        for category_name, category in output_json["data_1PFE"].items():
+            ref_category = input_json["data_1PFE"][category_name]
+            for tag, values in category.items():
+                ref_values = ref_category[tag]
+                if ref_values != values:
+                    for n, value in enumerate(values):
+                        if value is not None:
+                            values[n] = str(value)
+        self.assertEqual(output_json, input_json)
 
 if __name__ == '__main__':
     unittest.main()

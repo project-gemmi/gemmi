@@ -54,11 +54,14 @@ void add_cif(py::module& cif) {
         os << d;
         return os.str();
     }, "Write data in a CIF format to a string.")
-    .def("as_json", [](const Document& d) {
+    .def("as_json", [](const Document& d, bool mmjson) {
         std::ostringstream os;
-        JsonWriter(os).write_json(d);
+        JsonWriter writer(os);
+        if (mmjson)
+          writer.set_mmjson();
+        writer.write_json(d);
         return os.str();
-    }, "Returns JSON representation in a string.");
+    }, py::arg("mmjson")=false, "Returns JSON representation in a string.");
 
   py::class_<Block>(cif, "Block")
     .def(py::init<const std::string &>())
