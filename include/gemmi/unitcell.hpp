@@ -319,8 +319,7 @@ struct UnitCell {
       return image;
     Fractional fpos = fractionalize(pos);
     Fractional fref = fractionalize(ref);
-    if (sym_image == SymmetryImage::Unspecified)
-      search_pbc_images(fpos - fref, image);
+    search_pbc_images(fpos - fref, image);
     if ((sym_image == SymmetryImage::Different || image.dist_sq == 0.0) &&
         image.box[0] == 0 && image.box[1] == 0 && image.box[2] == 0)
       image.dist_sq = 1e100;

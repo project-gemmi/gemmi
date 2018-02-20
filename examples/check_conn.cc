@@ -42,7 +42,7 @@ void check_struct_conn(cif::Block& block) {
     std::string ref_sym = row.str(2);
     double ref_dist = cif::as_number(row[3]);
     bool differs = std::abs(dist - ref_dist) > 0.002;
-    if (verbose ||  differs) {
+    if (verbose || differs) {
       std::printf("%s %s  im:%s  %.3f %c= %.3f (%s)%s\n",
                   block.name.c_str(), con.name.c_str(),
                   im.pdb_symbol(true).c_str(), dist, (differs ? '!' : '='),
