@@ -231,8 +231,6 @@ struct Residue : public ResidueId {
   bool is_cis = false;  // bond to the next residue marked as cis
   char het_flag = '\0';  // 'A' = ATOM, 'H' = HETATM, 0 = unspecified
   std::vector<Atom> atoms;
-  // Connection::name (from Model::connections)
-  std::vector<std::string> conn;
   Chain* parent = nullptr;
 
   Residue() = default;
@@ -331,6 +329,35 @@ struct Chain {
   ResidueGroup find_by_label_seqid(int label_seq);
 };
 
+struct AtomAddress {
+  std::string chain_name;
+  ResidueId res_id;
+  std::string atom_name;
+  char altloc = '\0';
+
+  std::string str() const {
+    std::string r = chain_name + "/" + res_id.name + " " +
+                    res_id.seq_id() + "/" + atom_name;
+    if (altloc) {
+      r += '.';
+      r += altloc;
+    }
+    return r;
+  }
+};
+
+struct CRA {
+  Chain* chain;
+  Residue* residue;
+  Atom* atom;
+};
+
+struct const_CRA {
+  const Chain* chain;
+  const Residue* residue;
+  const Atom* atom;
+};
+
 // A connection. Corresponds to _struct_conn.
 // Symmetry operators are not trusted and not stored.
 // We assume that the nearest symmetry mate is connected.
@@ -339,12 +366,7 @@ struct Connection {
   std::string name;  // the id is refered by Residue::conn;
   Type type = None;
   SymmetryImage image = SymmetryImage::Unspecified;
-  char altloc[2] = {'\0', '\0'};
-  ResidueId res_id[2];
-  // The pointers get invalidated by some changes to the model.
-  Residue* res[2] = {nullptr, nullptr};
-  // _struct_conn.ptnr[12]_label_atom_id, only for LINK not for SSBOND
-  std::string atom[2];
+  AtomAddress atom[2];
 };
 
 inline const char* get_mmcif_connection_type_id(Connection::Type t) {
@@ -369,10 +391,22 @@ struct Model {
   Connection* find_connection_by_name(const std::string& conn_name) {
     return impl::find_or_null(connections, conn_name);
   }
-  void invalidate_connection_pointers() {
-    for (Connection& conn : connections)
-      conn.res[0] = conn.res[1] = nullptr;
+  void invalidate_pointer_cache() {}
+
+  CRA find_cra(const AtomAddress& address) {
+    Chain* chain = find_chain(address.chain_name);
+    Residue* res = chain ? chain->find_residue(address.res_id) : nullptr;
+    Atom* at = res ? res->find_atom(address.atom_name, address.altloc): nullptr;
+    return {chain, res, at};
   }
+
+  const_CRA find_cra(const AtomAddress& address) const {
+    CRA cra = const_cast<Model*>(this)->find_cra(address);
+    return {cra.chain, cra.residue, cra.atom};
+  }
+
+
+  Atom* find_atom(const AtomAddress& address) { return find_cra(address).atom; }
 
   std::vector<Chain>& children() { return chains; }
   const std::vector<Chain>& children() const { return chains; }
@@ -550,7 +584,7 @@ inline void Chain::append_residues(std::vector<Residue> new_resi) {
   std::move(new_resi.begin(), new_resi.end(), std::back_inserter(residues));
   add_backlinks(*this);
   if (parent && residues.capacity() != init_capacity)
-    parent->invalidate_connection_pointers();
+    parent->invalidate_pointer_cache();
 }
 
 template<class T> size_t count_atom_sites(const T& obj) {

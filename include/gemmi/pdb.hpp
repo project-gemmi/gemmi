@@ -197,42 +197,30 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
   int disulf_count = 0;
   for (const std::string& record : conn_records) {
     const char* r = record.c_str();
-    ResidueId rid = read_res_id(r + 17, r + 11);
     if (*r == 'S' || *r == 's') { // SSBOND
-      ResidueId rid2 = read_res_id(r + 31, r + 25);
-      for (Model& model : st.models) {
-        Chain* chain1 = model.find_chain(read_string(r + 14, 2));
-        Chain* chain2 = model.find_chain(read_string(r + 28, 2));
-        if (chain1 && chain2) {
-          Connection c;
-          c.name = "disulf" + std::to_string(++disulf_count);
-          c.type = Connection::Disulf;
-          if (record.size() > 71) {
-            if (read_string(r + 59, 6) == read_string(r + 66, 6))
-              c.image = SymmetryImage::Same;
-            else
-              c.image = SymmetryImage::Different;
-          }
-          c.res_id[0] = rid;
-          c.res_id[1] = rid2;
-          c.res[0] = chain1->find_residue(rid);
-          c.res[1] = chain2->find_residue(rid2);
-          if (c.res[0] && c.res[1]) {
-            for (int i : {0, 1}) {
-              const Atom* at = c.res[i]->find_atom("SG");
-              // in a few cases the atom has different name
-              if (!at)
-                at = c.res[i]->find_by_element(El::S);
-              if (at)
-                c.atom[i] = at->name;
-            }
-            c.res[0]->conn.push_back("1 " + c.name);
-            c.res[1]->conn.push_back("2 " + c.name);
-            model.connections.emplace_back(c);
-          }
-        }
+      Connection c;
+      c.name = "disulf" + std::to_string(++disulf_count);
+      c.type = Connection::Disulf;
+      // We assume here that the residue is before TER and it's not
+      // in the chain with added _H.
+      c.atom[0].chain_name = read_string(r + 14, 2);
+      c.atom[0].res_id = read_res_id(r + 17, r + 11);
+      c.atom[1].chain_name = read_string(r + 28, 2);
+      c.atom[1].res_id = read_res_id(r + 31, r + 25);
+      // Neither atom name (not all disulfide bonds must be between cysteines)
+      // nor altloc is specified in PDB files.
+      for (int i : {0, 1})
+        c.atom[i].atom_name = "SG";
+      if (record.size() > 71) {
+        if (read_string(r + 59, 6) == read_string(r + 66, 6))
+          c.image = SymmetryImage::Same;
+        else
+          c.image = SymmetryImage::Different;
       }
+      for (Model& mdl : st.models)
+        mdl.connections.emplace_back(c);
     } else if (*r == 'C' || *r == 'c') { // CISPEP
+      ResidueId rid = read_res_id(r + 17, r + 11);
       for (Model& model : st.models)
         if (Chain* chain = model.find_chain(read_string(r + 14, 2)))
           if (Residue* res = chain->find_residue(rid))

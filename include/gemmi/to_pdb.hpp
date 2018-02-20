@@ -109,14 +109,6 @@ inline void write_multiline(std::ostream& os, const char* record_name,
   }
 }
 
-inline const Atom* find_ssbond_atom(const Connection& con, int n) {
-  if (!con.res[n])
-    return nullptr;
-  if (con.altloc[n] != '\0' && con.altloc[n] != 'A')
-    return nullptr;
-  return con.res[n]->find_atom(con.atom[n], '*', El::S);
-}
-
 inline void write_cryst1(const Structure& st, std::ostream& os) {
   char buf[88];
   const UnitCell& cell = st.cell;
@@ -313,18 +305,18 @@ inline void write_pdb(const Structure& st, std::ostream& os,
     char buf8a[8];
     for (const Connection& con : st.models[0].connections)
       if (con.type == Connection::Disulf) {
-        const Atom* a1 = impl::find_ssbond_atom(con, 0);
-        const Atom* a2 = impl::find_ssbond_atom(con, 1);
-        if (!a1 || !a2)
+        const_CRA cra1 = st.models[0].find_cra(con.atom[0]);
+        const_CRA cra2 = st.models[0].find_cra(con.atom[1]);
+        if (!cra1.atom || !cra2.atom)
           continue;
-        NearbyImage im = st.cell.find_nearest_image(a1->pos, a2->pos,
-                                                    con.image);
+        NearbyImage im = st.cell.find_nearest_image(cra1.atom->pos,
+                                                    cra2.atom->pos, con.image);
         WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  \n",
            ++counter,
-           con.res[0]->name.c_str(), con.res[0]->parent->name_for_pdb().c_str(),
-           impl::write_seq_id(buf8, *con.res[0]),
-           con.res[1]->name.c_str(), con.res[1]->parent->name_for_pdb().c_str(),
-           impl::write_seq_id(buf8a, *con.res[1]),
+           cra1.residue->name.c_str(), cra1.chain->name_for_pdb().c_str(),
+           impl::write_seq_id(buf8, *cra1.residue),
+           cra2.residue->name.c_str(), cra2.chain->name_for_pdb().c_str(),
+           impl::write_seq_id(buf8a, *cra2.residue),
            "1555", im.pdb_symbol(false).c_str(), std::sqrt(im.dist_sq));
       }
 

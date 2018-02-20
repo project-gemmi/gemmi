@@ -49,14 +49,6 @@ inline Transform get_transform_matrix(const cif::Table::Row& r) {
   return t;
 }
 
-Residue* find_chain_residue(Model& model, const std::string& chain_name,
-                            const ResidueId& res_id) {
-  if (Chain* chain = model.find_chain(chain_name))
-    if (Residue* res = chain->find_residue(res_id))
-      return res;
-  return nullptr;
-}
-
 inline void read_connectivity(cif::Block& block, Structure& st) {
   for (auto row : block.find("_struct_conn.", {"id", "conn_type_id", // 0-1
         "ptnr1_label_asym_id", "ptnr2_label_asym_id", // 2-3
@@ -86,24 +78,19 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
         c.image = SymmetryImage::Different;
     }
     for (int i = 0; i < 2; ++i) {
-      c.altloc[i] = row.has2(10+i) ? row.str(10+i)[0] : '\0';
-      c.res_id[i].label_seq = cif::as_int(row[4+i], Residue::OptionalNum::None);
-      c.res_id[i].name = row.str(6+i);
+      AtomAddress& a = c.atom[i];
+      a.chain_name = row.str(2+i);
+      a.res_id.label_seq = cif::as_int(row[4+i], Residue::OptionalNum::None);
+      a.res_id.name = row.str(6+i);
       if (row.has2(12+i))
-        c.res_id[i].seq_num = cif::as_int(row[12+i]);
+        a.res_id.seq_num = cif::as_int(row[12+i]);
       if (row.has(14+i))
-        c.res_id[i].icode = row.str(14+i)[0];
-      c.atom[i] = row.str(8+i);
+        a.res_id.icode = row.str(14+i)[0];
+      a.atom_name = row.str(8+i);
+      a.altloc = row.has2(10+i) ? row.str(10+i)[0] : '\0';
     }
-    for (Model& mdl : st.models) {
-      c.res[0] = impl::find_chain_residue(mdl, row.str(2), c.res_id[0]);
-      c.res[1] = impl::find_chain_residue(mdl, row.str(3), c.res_id[1]);
-      if (c.res[0] && c.res[1]) {
-        c.res[0]->conn.push_back("1" + std::string(1, c.altloc[0]) + c.name);
-        c.res[1]->conn.push_back("2" + std::string(1, c.altloc[1]) + c.name);
-        mdl.connections.push_back(c);
-      }
-    }
+    for (Model& mdl : st.models)
+      mdl.connections.emplace_back(c);
   }
 }
 
@@ -301,8 +288,9 @@ inline Structure structure_from_cif_block(cif::Block& block) {
         ResidueId rid;
         rid.label_seq = cif::as_int(row[2]);
         rid.name = row.str(3);
-        if (Residue* res = impl::find_chain_residue(*mdl, row[1], rid))
-          res->is_cis = true;
+        if (Chain* ch = mdl->find_chain(row[1]))
+          if (Residue* res = ch->find_residue(rid))
+            res->is_cis = true;
       }
   }
 
