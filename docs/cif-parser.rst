@@ -136,7 +136,9 @@ Additionally:
   (the CIF spec imposes the limit of 2048 characters, but some mmCIF files
   from PDB exceed it, e.g. 3j3q.cif),
 * quoted strings may contain non-ascii characters (if nothing has changed
-  one entry in the PDB has byte A0 corresponding to non-breaking space)
+  one entry in the PDB has byte A0 corresponding to non-breaking space),
+* a table (loop) can have no values if it is followed by another loop
+  or block end (because Refmac monomer library),
 * unquoted strings cannot start with keywords (STAR spec is ambiguous
   about this -- see
   `StarTools doc <http://www.globalphasing.com/startools/>`_ for details)
