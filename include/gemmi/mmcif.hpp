@@ -49,6 +49,19 @@ inline Transform get_transform_matrix(const cif::Table::Row& r) {
   return t;
 }
 
+inline int parse_auth_seqid(const std::string& seqid, char& ins_code) {
+  // old mmCIF files have auth_seq_id as number + icode (e.g. 15A)
+  if (!seqid.empty() && seqid.back() >= 'A') {
+    if (ins_code != seqid.back()) {
+      if (ins_code != '\0')
+        fail("Inconsistent insertion code in " + seqid);
+      ins_code = seqid.back();
+    }
+    return cif::as_int(seqid.substr(0, seqid.size() - 1));
+  }
+  return cif::as_int(seqid, Residue::OptionalNum::None);
+}
+
 inline void read_connectivity(cif::Block& block, Structure& st) {
   for (auto row : block.find("_struct_conn.", {"id", "conn_type_id", // 0-1
         "ptnr1_label_asym_id", "ptnr2_label_asym_id", // 2-3
@@ -82,10 +95,10 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
       a.chain_name = row.str(2+i);
       a.res_id.label_seq = cif::as_int(row[4+i], Residue::OptionalNum::None);
       a.res_id.name = row.str(6+i);
-      if (row.has2(12+i))
-        a.res_id.seq_num = cif::as_int(row[12+i]);
       if (row.has(14+i))
         a.res_id.icode = row.str(14+i)[0];
+      if (row.has2(12+i))
+        a.res_id.seq_num = parse_auth_seqid(row[12+i], a.res_id.icode);
       a.atom_name = row.str(8+i);
       a.altloc = row.has2(10+i) ? row.str(10+i)[0] : '\0';
     }
@@ -210,8 +223,8 @@ inline Structure structure_from_cif_block(cif::Block& block) {
     }
     ResidueId rid;
     rid.label_seq = cif::as_int(row[kSeqId], Residue::OptionalNum::None);
-    rid.seq_num = cif::as_int(row[kAuthSeqId], Residue::OptionalNum::None);
     rid.icode = as_string(row[kInsCode])[0];
+    rid.seq_num = parse_auth_seqid(row[kAuthSeqId], rid.icode);
     rid.name = as_string(row[kCompId]);
     if (!resi || !resi->matches(rid)) {
       // the insertion code happens to be always a single letter
