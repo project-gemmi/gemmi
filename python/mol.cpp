@@ -13,7 +13,7 @@
 namespace py = pybind11;
 using namespace gemmi;
 
-PYBIND11_MAKE_OPAQUE(std::vector<NcsOp>);
+PYBIND11_MAKE_OPAQUE(std::vector<NcsOp>)
 
 namespace pybind11 { namespace detail {
   template<> struct type_caster<ResidueId::OptionalNum>

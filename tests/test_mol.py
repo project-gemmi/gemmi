@@ -2,6 +2,7 @@
 
 import gzip
 import os
+import sys
 import tempfile
 import unittest
 import gemmi
@@ -126,7 +127,8 @@ class TestMol(unittest.TestCase):
 
     def test_read_write_1lzh(self):
         path = full_path('1lzh.pdb.gz')
-        with gzip.open(path, mode='rt') as f:
+        mode = 'rt' if sys.version_info >= (3,) else 'r'
+        with gzip.open(path, mode=mode) as f:
             expected_lines = [line for line in f if is_written_to_pdb(line)]
         out_lines = self.write_back_and_compare(path)
         self.assertEqual(expected_lines[0], out_lines[0])
