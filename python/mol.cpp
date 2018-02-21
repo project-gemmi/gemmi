@@ -8,9 +8,12 @@
 #include <fstream>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/stl_bind.h>
 
 namespace py = pybind11;
 using namespace gemmi;
+
+PYBIND11_MAKE_OPAQUE(std::vector<NcsOp>);
 
 namespace pybind11 { namespace detail {
   template<> struct type_caster<ResidueId::OptionalNum>
@@ -53,11 +56,19 @@ void add_mol(py::module& m) {
     .def_readwrite("entity_type", &Entity::entity_type)
     .def_readwrite("polymer_type", &Entity::polymer_type);
 
+  py::class_<NcsOp>(m, "NcsOp")
+    .def_readwrite("id", &NcsOp::id)
+    .def_readwrite("given", &NcsOp::given)
+    .def("apply", &NcsOp::apply);
+
+  py::bind_vector<std::vector<NcsOp>>(m, "VectorNcsOp");
+
   py::class_<Structure>(m, "Structure")
     .def(py::init<>())
     .def_readwrite("name", &Structure::name)
     .def_readwrite("cell", &Structure::cell)
     .def_readwrite("sg_hm", &Structure::sg_hm)
+    .def_readwrite("ncs", &Structure::ncs)
     .def_readwrite("resolution", &Structure::resolution)
     .def("get_info", &Structure::get_info, py::arg("tag"),
          py::return_value_policy::copy)
@@ -167,5 +178,17 @@ void add_mol(py::module& m) {
     .def_readwrite("element", &Atom::element)
     .def_readwrite("pos", &Atom::pos)
     .def_readwrite("occ", &Atom::occ)
-    .def_readwrite("b_iso", &Atom::b_iso);
+    .def_readwrite("b_iso", &Atom::b_iso)
+    .def("__repr__", [](const Atom& self) {
+        std::string r = "<gemmi.Atom " + self.name;
+        if (self.altloc) {
+            r += '.';
+            r += self.altloc;
+        }
+        using namespace std;  // VS2015/17 doesn't like std::snprintf
+        char buf[128];
+        snprintf(buf, 128, " at (%.1f, %.1f, %.1f)>",
+                 self.pos.x, self.pos.y, self.pos.z);
+        return r + buf;
+    });
 }

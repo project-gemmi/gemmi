@@ -21,6 +21,9 @@ void add_unitcell(py::module& m) {
     .def_readwrite("x", &Position::x)
     .def_readwrite("y", &Position::y)
     .def_readwrite("z", &Position::z)
+    .def("dist", [](const Position& self, const Position& other) {
+        return self.dist(other);
+    })
     .def("__repr__", [](const Position& self) {
         return "<gemmi.Position(" + triple(self.x, self.y, self.z) + ")>";
     });

@@ -1,18 +1,22 @@
 #!/usr/bin/env python
 
+import gzip
 import os
 import tempfile
 import unittest
 import gemmi
 
 def is_written_to_pdb(line):
-    if line[:6] in ['COMPND', 'SOURCE', 'AUTHOR', 'REVDAT', 'JRNL  ',
-                    'DBREF ', 'SEQADV', 'FORMUL', 'HELIX ', 'SHEET ',
-                    'MASTER']:
+    if line[:6] in ['COMPND', 'SOURCE', 'MDLTYP', 'AUTHOR', 'REVDAT', 'JRNL  ',
+                    'DBREF ', 'SEQADV', 'HET   ', 'HETNAM', 'FORMUL', 'HELIX ',
+                    'SHEET ', 'SITE  ', 'MASTER']:
         return False
     if line[:6] == 'REMARK' and line[6:10] != '   2':
         return False
     return True
+
+def full_path(filename):
+    return os.path.join(os.path.dirname(__file__), filename)
 
 class TestMol(unittest.TestCase):
     def test_residue(self):
@@ -29,8 +33,7 @@ class TestMol(unittest.TestCase):
         self.assertEqual(res.seq_num, None)
 
     def test_read_5i55(self):
-        path = os.path.join(os.path.dirname(__file__), '5i55.cif')
-        cell = gemmi.read_structure(path).cell
+        cell = gemmi.read_structure(full_path('5i55.cif')).cell
         self.assertAlmostEqual(cell.a, 29.46)
         self.assertAlmostEqual(cell.b, 10.51)
         self.assertAlmostEqual(cell.c, 29.71)
@@ -39,8 +42,7 @@ class TestMol(unittest.TestCase):
         self.assertEqual(cell.gamma, 90)
 
     def test_read_5i55_again(self):
-        path = os.path.join(os.path.dirname(__file__), '5i55.cif')
-        st = gemmi.read_structure(path)
+        st = gemmi.read_structure(full_path('5i55.cif'))
         a, b, c, d = st[0]
         ent_a = st.find_entity(a.entity_id)
         self.assertEqual(ent_a.entity_type, gemmi.EntityType.Polymer)
@@ -53,8 +55,7 @@ class TestMol(unittest.TestCase):
         self.assertEqual(ent_d.polymer_type, gemmi.PolymerType.NA)
 
     def read_1pfe(self, filename):
-        path = os.path.join(os.path.dirname(__file__), filename)
-        st = gemmi.read_structure(path)
+        st = gemmi.read_structure(full_path(filename))
         self.assertAlmostEqual(st.cell.a, 39.374)
         self.assertEqual(st.cell.gamma, 120)
         self.assertEqual(st.name, '1PFE')
@@ -89,10 +90,10 @@ class TestMol(unittest.TestCase):
         self.read_1pfe('1pfe.json')
 
     def test_read_1orc(self):
-        path = os.path.join(os.path.dirname(__file__), '1orc.pdb')
-        st = gemmi.read_structure(path)
+        st = gemmi.read_structure(full_path('1orc.pdb'))
         self.assertAlmostEqual(st.cell.a, 34.77)
         self.assertEqual(st.cell.alpha, 90)
+        self.assertEqual(len(st.ncs), 0)
         model = st[0]
         self.assertEqual(len(model), 2)
         self.assertTrue(all(res.name == 'HOH' for res in model['A_H']))
@@ -106,18 +107,41 @@ class TestMol(unittest.TestCase):
         self.assertEqual(A['56'][0].icode, '')
         self.assertEqual(A['56c'][0].icode, 'C')
 
-    def test_read_write(self):
-        path = os.path.join(os.path.dirname(__file__), '1orc.pdb')
+    def write_back_and_compare(self, path):
         st = gemmi.read_structure(path)
-        with open(path) as f:
-            expected_lines = [line for line in f if is_written_to_pdb(line)]
         handle, out_name = tempfile.mkstemp()
         os.close(handle)
         st.write_pdb(out_name)
         with open(out_name) as f:
             out_lines = f.readlines()
         os.remove(out_name)
+        return out_lines
+
+    def test_read_write_1orc(self):
+        path = full_path('1orc.pdb')
+        with open(path) as f:
+            expected_lines = [line for line in f if is_written_to_pdb(line)]
+        out_lines = self.write_back_and_compare(path)
         self.assertEqual(expected_lines, out_lines)
+
+    def test_read_write_1lzh(self):
+        path = full_path('1lzh.pdb.gz')
+        with gzip.open(path, mode='rt') as f:
+            expected_lines = [line for line in f if is_written_to_pdb(line)]
+        out_lines = self.write_back_and_compare(path)
+        self.assertEqual(expected_lines[0], out_lines[0])
+        # TITLE lines differ because the text is broken at different word
+        self.assertEqual(expected_lines[3:], out_lines[3:])
+
+    def test_ncs_in_1lzh(self):
+        st = gemmi.read_structure(full_path('1lzh.pdb.gz'))
+        self.assertEqual(len(st.ncs), 1)
+        A, B = st[0]
+        for ra, rb in zip(A, B):
+            pa = ra['CA'].pos
+            pb = rb['CA'].pos
+            image_of_pb = st.ncs[0].apply(pb)
+            self.assertTrue(pa.dist(image_of_pb) < 0.01)
 
 if __name__ == '__main__':
     unittest.main()
