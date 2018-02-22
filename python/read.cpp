@@ -40,4 +40,7 @@ void add_read_structure(py::module& m) {
           return new Structure(read_structure(MaybeGzipped(path)));
         }, py::arg("path"),
         "Reads a coordinate file into Structure.");
+  m.def("read_pdb_string", [](const std::string& s) {
+          return new Structure(read_pdb_string(s, "string"));
+        }, py::arg("s"), "Reads a string as PDB file.");
 }

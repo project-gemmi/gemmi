@@ -56,8 +56,8 @@ public:
 #endif
   }
 
-  bool is_compressed() const { return ends_with(path(), ".gz"); };
-  size_t mem_size() const { return mem_size_; };
+  bool is_compressed() const { return ends_with(path(), ".gz"); }
+  size_t mem_size() const { return mem_size_; }
 
   std::unique_ptr<char[]> memory() {
     if (!is_compressed())

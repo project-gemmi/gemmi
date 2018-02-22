@@ -180,7 +180,21 @@ struct FileInput {
   int getc() { return std::fgetc(f); }
 };
 
-// overloaded for gzFile in gz.hpp
+struct MemoryInput {
+  const char* start;
+  const char* end;
+  char* gets(char* line, int size) {
+    if (start >= end)
+      return nullptr;
+    const char* nl = (const char*) std::memchr(start, '\n', end - start);
+    size_t len = nl && nl - start < size ? nl - start : size;
+    std::memcpy(line, start, len);
+    start += len;
+    return line;
+  }
+  int getc() { return start < end ? *++start : EOF; }
+};
+
 template<typename Input>
 inline size_t copy_line_from_stream(char* line, int size, Input&& in) {
   if (!in.gets(line, size))
@@ -430,6 +444,16 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 inline Structure read_pdb_file(const std::string& path) {
   auto f = gemmi::file_open(path.c_str(), "r");
   return read_pdb_from_line_input(pdb_impl::FileInput{f.get()}, path);
+}
+
+inline Structure read_pdb_from_memory(const char* data, size_t size,
+                                      const std::string& name) {
+  return read_pdb_from_line_input(pdb_impl::MemoryInput{data, data+size}, name);
+}
+
+inline Structure read_pdb_string(const std::string& str,
+                                 const std::string& name) {
+  return read_pdb_from_memory(str.c_str(), str.length(), name);
 }
 
 // A function for transparent reading of stdin and/or gzipped files.
