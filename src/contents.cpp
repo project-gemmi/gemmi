@@ -117,7 +117,7 @@ void print_atoms_on_special_positions(const Structure& st) {
                  chain.name_for_pdb().c_str(),
                  res.seq_num_for_pdb(), res.name.c_str(),
                  atom.name.c_str(), (atom.altloc | 0x20),
-                 n+1, atom.occ, std::sqrt(im.dist_sq));
+                 n+1, atom.occ, im.dist());
         }
   if (!found)
     printf(" none");

@@ -35,6 +35,20 @@ void add_unitcell(py::module& m) {
     .def("__repr__", [](const Fractional& self) {
         return "<gemmi.Fractional(" + triple(self.x, self.y, self.z) + ")>";
     });
+
+  py::enum_<SymmetryImage>(m, "SymmetryImage")
+    .value("Same", SymmetryImage::Same)
+    .value("Different", SymmetryImage::Different)
+    .value("Unspecified", SymmetryImage::Unspecified);
+
+  py::class_<NearbyImage>(m, "NearbyImage")
+    .def("dist", &NearbyImage::dist)
+    .def("__repr__", [](const NearbyImage& self) {
+        return "<gemmi.NearbyImage cell:[" +
+          triple(self.box[0], self.box[1], self.box[2]) +
+          "] sym:" + std::to_string(self.sym_id) + ">";
+    });
+
   py::class_<UnitCell>(m, "UnitCell")
     .def(py::init<>())
     .def(py::init([](double a, double b, double c,
@@ -55,6 +69,9 @@ void add_unitcell(py::module& m) {
     .def("fractionalize", &UnitCell::fractionalize)
     .def("orthogonalize", &UnitCell::orthogonalize)
     .def("volume_per_image", &UnitCell::volume_per_image)
+    .def("find_nearest_image", &UnitCell::find_nearest_image,
+        py::arg("ref"), py::arg("pos"),
+        py::arg("sym_image")=SymmetryImage::Unspecified)
     .def("__repr__", [](const UnitCell& self) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
              + ", " + triple(self.alpha, self.beta, self.gamma) + ")>";

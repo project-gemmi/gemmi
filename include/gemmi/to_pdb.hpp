@@ -317,7 +317,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
            impl::write_seq_id(buf8, *cra1.residue),
            cra2.residue->name.c_str(), cra2.chain->name_for_pdb().c_str(),
            impl::write_seq_id(buf8a, *cra2.residue),
-           "1555", im.pdb_symbol(false).c_str(), std::sqrt(im.dist_sq));
+           "1555", im.pdb_symbol(false).c_str(), im.dist());
       }
 
     // CISPEP (note: we use only the first conformation)

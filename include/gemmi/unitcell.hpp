@@ -94,6 +94,7 @@ struct NearbyImage {
   double dist_sq;
   int box[3] = { 0, 0, 0 };
   int sym_id = 0;
+  double dist() const { return std::sqrt(dist_sq); }
   std::string pdb_symbol(bool underscore) const {
     char nnn[4] = "555";
     for (int i = 0; i < 3; ++i)
