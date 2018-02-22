@@ -154,5 +154,18 @@ class TestMol(unittest.TestCase):
             self.assertEqual(mg_atom.element.name, 'Mg')
             self.assertAlmostEqual(mg_atom.b_iso, 67.64, delta=1e-6)
 
+    def test_ncs(self):
+        st = gemmi.read_structure(full_path('5cvz_final.pdb'))
+        chain = st[0]['A']
+        first_atom = chain['17'][0]['N']
+        ne2 = chain['63'][0]['NE2']
+        direct_dist = first_atom.pos.dist(ne2.pos)
+        self.assertAlmostEqual(direct_dist, 34.89, delta=1e-2)
+        nearest_image = st.cell.find_nearest_image(first_atom.pos, ne2.pos)
+        nearest_dist = nearest_image.dist()
+        #print(nearest_dist)
+        #self.assertAlmostEqual(nearest_dist, 8.02, delta=1e-2)
+        # nearest: GLN 63 NE2 8.016867343295639
+
 if __name__ == '__main__':
     unittest.main()

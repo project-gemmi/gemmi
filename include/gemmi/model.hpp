@@ -618,7 +618,6 @@ inline void Structure::setup_pointers() {
 inline void Structure::setup_cell_images() {
   if (const SpaceGroup* sg = find_spacegroup_by_name(sg_hm)) {
     for (Op op : sg->operations()) {
-      // TODO strict NCS
       if (op == Op::identity())
         continue;
       Matrix33 rot = {
@@ -629,6 +628,17 @@ inline void Structure::setup_cell_images() {
       Vec3 tran(mult * op.tran[0], mult * op.tran[1], mult * op.tran[2]);
       cell.images.push_back({rot, tran});
     }
+  }
+  // Strict NCS from MTRIXn.
+  size_t n = cell.images.size();
+  for (const NcsOp& op : ncs) {
+    if (op.given)
+      continue;
+    // We need it to operates on fractional, not orthogonal coordinates.
+    // frtr = frac x op.tr x orth
+    //cell.images.push_back(frtr);
+    //for (size_t i = 0; i < n; ++i)
+    //  cell.images.push_back(cell.images[i] x frtr);
   }
 }
 
