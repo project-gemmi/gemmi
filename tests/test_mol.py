@@ -16,10 +16,6 @@ def is_written_to_pdb(line):
         return False
     return True
 
-pdb_fragment = """\
-HETATM 4154 MG    MG A 341       1.384  19.340  11.968  1.00 67.64          MG
-"""
-
 def full_path(filename):
     return os.path.join(os.path.dirname(__file__), filename)
 
@@ -150,10 +146,13 @@ class TestMol(unittest.TestCase):
             self.assertTrue(pa.dist(image_of_pb) < 0.01)
 
     def test_pdb_fragment(self):
-        st = gemmi.read_pdb_string(pdb_fragment)
-        res_mg = st[0]['A']['341'][0]
-        self.assertEqual(res_mg.name, 'MG')
-        self.assertAlmostEqual(res_mg['MG'].b_iso, 67.64, delta=1e-6)
+        pdb_line = "HETATM 4154 MG    MG A 341       1.384  19.340  11.968" \
+                   "  1.00 67.64          MG"
+        for line in [pdb_line, pdb_line.strip(' MG')]:
+            st = gemmi.read_pdb_string(pdb_line)
+            mg_atom = st[0]['A']['341'][0]['MG']
+            self.assertEqual(mg_atom.element.name, 'Mg')
+            self.assertAlmostEqual(mg_atom.b_iso, 67.64, delta=1e-6)
 
 if __name__ == '__main__':
     unittest.main()

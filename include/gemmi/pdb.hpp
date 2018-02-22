@@ -261,7 +261,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   while (size_t len = copy_line_from_stream(line, 82, infile)) {
     ++line_num;
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
-      if (len < 77) // should we allow missing element
+      if (len < 66)
         wrong("The line is too short to be correct:\n" + std::string(line));
       std::string chain_name = read_string(line+20, 2);
       if (!chain || chain_name != chain->auth_name) {
@@ -279,7 +279,8 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       // Non-standard but widely used 4-character segment identifier.
       // Left-justified, and may include a space in the middle.
       // The segment may be a portion of a chain or a complete chain.
-      rid.segment = read_string(line+72, 4);
+      if (len > 72)
+        rid.segment = read_string(line+72, 4);
       if (!resi || !resi->matches(rid)) {
         resi = chain->find_or_add_residue(rid);
         resi->het_flag = line[0] & ~0x20;
@@ -288,13 +289,13 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       Atom atom;
       atom.name = read_string(line+12, 4);
       atom.altloc = line[16] == ' ' ? '\0' : line[16];
-      atom.charge = (len > 78 ? read_charge(line[78], line[79]) : 0);
-      atom.element = gemmi::Element(line+76);
       atom.pos.x = read_double(line+30, 8);
       atom.pos.y = read_double(line+38, 8);
       atom.pos.z = read_double(line+46, 8);
       atom.occ = (float) read_double(line+54, 6);
       atom.b_iso = (float) read_double(line+60, 6);
+      atom.element = gemmi::Element(line + (len > 76 ? 76 : 12));
+      atom.charge = (len > 78 ? read_charge(line[78], line[79]) : 0);
       resi->atoms.emplace_back(atom);
 
     } else if (is_record_type(line, "ANISOU")) {
