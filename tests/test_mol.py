@@ -163,9 +163,7 @@ class TestMol(unittest.TestCase):
         self.assertAlmostEqual(direct_dist, 34.89, delta=1e-2)
         nearest_image = st.cell.find_nearest_image(first_atom.pos, ne2.pos)
         nearest_dist = nearest_image.dist()
-        #print(nearest_dist)
-        #self.assertAlmostEqual(nearest_dist, 8.02, delta=1e-2)
-        # nearest: GLN 63 NE2 8.016867343295639
+        self.assertAlmostEqual(nearest_dist, 8.02, delta=1e-2)
 
 if __name__ == '__main__':
     unittest.main()

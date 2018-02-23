@@ -610,7 +610,6 @@ template<> inline double count_occupancies(const Atom& atom) {
 
 inline void Structure::setup_pointers() {
   add_backlinks(*this);
-  // TODO what with pointers in Model::connections
 }
 
 // TODO: if "entities" were not specifed, deduce them based on sequence
@@ -626,20 +625,19 @@ inline void Structure::setup_cell_images() {
         double(op.rot[2][0]), double(op.rot[2][1]), double(op.rot[2][2]) };
       double mult = 1.0 / Op::TDEN;
       Vec3 tran(mult * op.tran[0], mult * op.tran[1], mult * op.tran[2]);
-      cell.images.push_back({rot, tran});
+      cell.images.emplace_back(rot, tran);
     }
   }
   // Strict NCS from MTRIXn.
   size_t n = cell.images.size();
-  for (const NcsOp& op : ncs) {
-    if (op.given)
-      continue;
-    // We need it to operates on fractional, not orthogonal coordinates.
-    // frtr = frac x op.tr x orth
-    //cell.images.push_back(frtr);
-    //for (size_t i = 0; i < n; ++i)
-    //  cell.images.push_back(cell.images[i] x frtr);
-  }
+  for (const NcsOp& op : ncs)
+    if (!op.given) {
+      // We need it to operates on fractional, not orthogonal coordinates.
+      FTransform f = cell.frac.combine(op.tr.combine(cell.orth));
+      cell.images.emplace_back(f);
+      for (size_t i = 0; i < n; ++i)
+        cell.images.emplace_back(cell.images[i].combine(f));
+    }
 }
 
 } // namespace gemmi

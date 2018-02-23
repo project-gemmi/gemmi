@@ -121,6 +121,13 @@ struct Matrix33 {
             a[1][0] * p.x  + a[1][1] * p.y  + a[1][2] * p.z,
             a[2][0] * p.x  + a[2][1] * p.y  + a[2][2] * p.z};
   }
+  Matrix33 multiply(const Matrix33& b) const {
+    Matrix33 r;
+    for (int i = 0; i != 3; ++i)
+      for (int j = 0; j != 3; ++j)
+        r[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j];
+    return r;
+  }
 
   bool approx(const Matrix33& other, double epsilon) const {
     for (int i = 0; i < 3; ++i)
@@ -158,11 +165,18 @@ struct Matrix33 {
 struct Transform {
   Matrix33 mat;
   Vec3 vec;
+
   Transform inverse() const {
     Matrix33 minv = mat.inverse();
     return {minv, minv.multiply(vec).negated()};
   }
+
   Vec3 apply(const Vec3& x) const { return mat.multiply(x) + vec; }
+
+  Transform combine(const Transform& b) const {
+    return {mat.multiply(b.mat), vec + mat.multiply(b.vec)};
+  }
+
   bool is_identity() const {
     return mat.is_identity() && vec.x == 0. && vec.y == 0. && vec.z == 0.;
   }
@@ -171,6 +185,8 @@ struct Transform {
 
 // for the sake of type safety, a variant that has apply() expecting Fractional
 struct FTransform : Transform {
+  FTransform(const Transform& t) : Transform(t) {}
+  FTransform(Transform&& t) : Transform(t) {}
   FTransform(Matrix33 m, Vec3 v) : Transform{m, v} {}
   Fractional apply(const Fractional& p) const {
     return Fractional(Transform::apply(p));
