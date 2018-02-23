@@ -339,7 +339,7 @@ struct UnitCell {
     search_pbc_images(fpos - fref, image);
     if ((sym_image == SymmetryImage::Different || image.dist_sq == 0.0) &&
         image.box[0] == 0 && image.box[1] == 0 && image.box[2] == 0)
-      image.dist_sq = 1e100;
+      image.dist_sq = INFINITY;
     for (int n = 0; n != static_cast<int>(images.size()); ++n)
       if (search_pbc_images(images[n].apply(fpos) - fref, image))
         image.sym_id = n + 1;

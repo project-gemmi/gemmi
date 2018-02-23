@@ -106,11 +106,11 @@ inline void ensure_mmcif_category(std::string& cat) {
 }
 
 inline bool is_null(const std::string& value) {
-  return value == "?" || value == ".";
+  return value.size() == 1 && (value[0] == '?' || value[0] == '.');
 }
 
 inline std::string as_string(const std::string& value) {
-  if (value.empty() || value == "?" || value == ".")
+  if (value.empty() || is_null(value))
     return "";
   if (value[0] == '"' || value[0] == '\'')
     return std::string(value.begin() + 1, value.end() - 1);

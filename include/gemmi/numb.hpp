@@ -11,6 +11,7 @@
 #include <cmath>   // for NAN
 #include <cstddef> // for size_t
 #include <tao/pegtl.hpp>
+#include "cifdoc.hpp" // for is_null
 
 namespace gemmi {
 namespace cif {
@@ -122,7 +123,7 @@ inline int as_int(const std::string& s) {
 }
 
 inline int as_int(const std::string& s, int default_) {
-  return s == "?" || s == "." ? default_ : as_int(s);
+  return is_null(s) ? default_ : as_int(s);
 }
 
 
