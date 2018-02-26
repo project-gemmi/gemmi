@@ -433,7 +433,6 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
   set_entity_ids_for_chains(st);
   st.setup_cell_images();
-  st.setup_pointers();
 
   process_conn(st, conn_records);
 

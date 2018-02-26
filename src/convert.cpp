@@ -346,8 +346,6 @@ void convert(const std::string& input, FileType input_type,
       for (gemmi::Chain& chain : model.chains)
         gemmi::vector_move_extend(new_chains, split_by_segments(chain));
       model.chains = std::move(new_chains);
-      // We should also modify Entity instances, but for now we don't.
-      add_backlinks(model); // fix backlinks from Residue/Atom
     }
 
   std::ostream* os;

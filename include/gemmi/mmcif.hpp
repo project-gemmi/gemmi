@@ -290,7 +290,6 @@ inline Structure structure_from_cif_block(cif::Block& block) {
       }
     }
   st.setup_cell_images();
-  st.setup_pointers();
 
   // CISPEP
   for (auto row : block.find("_struct_mon_prot_cis.",

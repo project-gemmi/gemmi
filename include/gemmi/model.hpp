@@ -180,7 +180,6 @@ struct Atom {
   float occ;
   float b_iso;
   float u11=0, u22=0, u33=0, u12=0, u13=0, u23=0;
-  Residue* parent = nullptr;
 };
 
 
@@ -215,7 +214,6 @@ struct Residue : public ResidueId {
   bool is_cis = false;  // bond to the next residue marked as cis
   char het_flag = '\0';  // 'A' = ATOM, 'H' = HETATM, 0 = unspecified
   std::vector<Atom> atoms;
-  Chain* parent = nullptr;
 
   Residue() = default;
   explicit Residue(const ResidueId& rid) noexcept : ResidueId(rid) {}
@@ -307,7 +305,6 @@ struct Chain {
   std::string auth_name;
   std::vector<Residue> residues;
   std::string entity_id;
-  Model* parent = nullptr;
   int force_pdb_serial = 0;
 
   explicit Chain(std::string cname) noexcept : name(cname) {}
@@ -421,7 +418,6 @@ struct Model {
   std::string name;  // actually an integer number
   std::vector<Chain> chains;
   std::vector<Connection> connections;
-  Structure* parent = nullptr;
   explicit Model(std::string mname) noexcept : name(mname) {}
 
   Chain* find_chain(const std::string& chain_name) {
@@ -433,7 +429,6 @@ struct Model {
   Connection* find_connection_by_name(const std::string& conn_name) {
     return impl::find_or_null(connections, conn_name);
   }
-  void invalidate_pointer_cache() {}
 
   CRA find_cra(const AtomAddress& address) {
     Chain* chain = find_chain(address.chain_name);
@@ -520,7 +515,6 @@ struct Structure {
   std::vector<Model>& children() { return models; }
   const std::vector<Model>& children() const { return models; }
   void setup_cell_images();
-  void setup_pointers();
 };
 
 inline bool Residue::matches(const ResidueId& rid) const {
@@ -561,16 +555,7 @@ inline Residue* Chain::find_or_add_residue(const ResidueId& rid) {
   return &residues.back();
 }
 
-template<class T> void add_backlinks(T& obj) {
-  for (auto& child : obj.children()) {
-    child.parent = &obj;
-    add_backlinks(child);
-  }
-}
-template<> inline void add_backlinks(Atom&) {}
-
 inline void Chain::append_residues(std::vector<Residue> new_resi) {
-  size_t init_capacity = residues.capacity();
   int seqnum = 0;
   for (const Residue& res : residues)
     seqnum = std::max({seqnum, int(res.label_seq), int(res.seq_num)});
@@ -579,13 +564,6 @@ inline void Chain::append_residues(std::vector<Residue> new_resi) {
     res.icode = '\0';
   }
   std::move(new_resi.begin(), new_resi.end(), std::back_inserter(residues));
-  add_backlinks(*this);
-  if (parent && residues.capacity() != init_capacity)
-    parent->invalidate_pointer_cache();
-}
-
-inline void Structure::setup_pointers() {
-  add_backlinks(*this);
 }
 
 // TODO: if "entities" were not specifed, deduce them based on sequence
