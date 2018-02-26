@@ -125,8 +125,18 @@ repeated for 5MOO::
     5MOO:0.1596;X-RAY DIFFRACTION;2016-12-14
     5MOO:0.1848;NEUTRON DIFFRACTION;2016-12-14
 
-The option ``-a`` can be used (with some further processing) to generate
-relatively sophisticated reports. Here is a little demo:
+To output TSV (tab-separated values) specifying ``--delimiter='\t'``.
+What are the heaviest chains?
+
+::
+
+   $ gemmi-grep --delimiter='\t' _entity.formula_weight -a _entity.pdbx_description /hdd/mmCIF/ | sort -nrk2 | head -3
+   6EK0    1641906.750     28S ribosomal RNA
+   5T2C    1640238.125     28S rRNA
+   5LKS    1640238.125     28S ribosomal RNA
+
+With some further processing the option ``-a`` can be used to generate
+quite sophisticated reports. Here is a little demo:
 https://project-gemmi.github.io/pdb-stats/
 
 The major limitation here is that gemmi-grep cannot match
