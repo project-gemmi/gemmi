@@ -2,6 +2,7 @@
 
 #include "gemmi/elem.hpp"
 #include "gemmi/model.hpp"
+#include "gemmi/calculate.hpp"
 #define STB_SPRINTF_IMPLEMENTATION
 #include "gemmi/to_pdb.hpp"
 
@@ -195,4 +196,7 @@ void add_mol(py::module& m) {
                  self.pos.x, self.pos.y, self.pos.z);
         return r + buf;
     });
+
+  m.def("calculate_dihedral", &calculate_dihedral,
+        "Input: four points. Output: dihedral angle in radians.");
 }

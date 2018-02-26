@@ -183,22 +183,6 @@ struct Atom {
   Residue* parent = nullptr;
 };
 
-inline double calculate_distance_sq(const Atom* a, const Atom* b) {
-  if (!a || !b)
-    return NAN;
-  double dx = a->pos.x - b->pos.x;
-  double dy = a->pos.y - b->pos.y;
-  double dz = a->pos.z - b->pos.z;
-  return dx*dx + dy*dy + dz*dz;
-}
-
-inline double calculate_dihedral_from_atoms(const Atom* a, const Atom* b,
-                                            const Atom* c, const Atom* d) {
-  if (a && b && c && d)
-    return calculate_dihedral(a->pos, b->pos, c->pos, d->pos);
-  return NAN;
-}
-
 
 struct ResidueId {
   using OptionalNum = impl::OptionalInt<-10000>;
@@ -261,16 +245,33 @@ struct Residue : public ResidueId {
     return const_cast<Atom*>(const_this->find_atom(atom_name, altloc, el));
   }
 
+  // get peptide backbone atoms
   const Atom* get_ca() const {
     static const std::string CA("CA");
     return find_atom(CA, '*', El::C);
   }
+  const Atom* get_c() const {
+    static const std::string C("C");
+    return find_atom(C, '*', El::C);
+  }
+  const Atom* get_n() const {
+    static const std::string N("N");
+    return find_atom(N, '*', El::N);
+  }
 
-  const Residue* prev_bonded_aa() const;
-  const Residue* next_bonded_aa() const;
+  bool same_conformer(const Residue& other) const {
+    return atoms.empty() || other.atoms.empty() ||
+           atoms[0].altloc == '\0' || other.atoms[0].altloc == '\0' ||
+           atoms[0].altloc == other.atoms[0].altloc ||
+           other.find_atom(other.atoms[0].name, atoms[0].altloc) != nullptr;
+  }
 
-  double calculate_omega(const Residue& next) const;
-  bool calculate_phi_psi_omega(double* phi, double* psi, double* omega) const;
+  bool has_peptide_bond_to(const Residue& next) const {
+    // TODO use N-C distance?
+    const Atom* ca1 = get_ca();
+    const Atom* ca2 = next.get_ca();
+    return ca1 && ca2 && ca1->pos.dist_sq(ca2->pos) < 6.0 * 6.0;
+  }
 };
 
 // ResidueGroup represents residues with the same sequence number and insertion
@@ -319,6 +320,7 @@ struct Chain {
   const std::string& name_for_pdb() const {
     return auth_name.empty() ? name : auth_name;
   }
+
   ResidueGroup find_by_seqid(const std::string& seqid) {
     char* endptr;
     int seqnum = std::strtol(seqid.c_str(), &endptr, 10);
@@ -326,7 +328,47 @@ struct Chain {
       throw std::invalid_argument("Not a seqid: " + seqid);
     return find_residue_group(seqnum, *endptr);
   }
+
   ResidueGroup find_by_label_seqid(int label_seq);
+
+  // Returns the previous residue or nullptr.
+  // Got complicated by handling of multi-conformations / microheterogeneity.
+  const Residue* previous_residue(const Residue& res) const {
+    const Residue* start = residues.data();
+    for (const Residue* p = &res; p != start; )
+      if (!res.same_seq_id(*--p)) {
+        while (p != start && p->same_seq_id(*(p-1)) && !res.same_conformer(*p))
+          --p;
+        return p;
+      }
+    return nullptr;
+  }
+
+  // Returns the next residue or nullptr.
+  const Residue* next_residue(const Residue& res) const {
+    const Residue* end = residues.data() + residues.size();
+    for (const Residue* p = &res + 1; p != end; ++p)
+      if (!res.same_seq_id(*p)) {
+        while (p+1 != end && p->same_seq_id(*(p+1)) && !res.same_conformer(*p))
+          ++p;
+        return p;
+      }
+    return nullptr;
+  }
+
+  const Residue* prev_bonded_aa(const Residue& res) const {
+    if (const Residue* prev = previous_residue(res))
+      if (prev->has_peptide_bond_to(res))
+        return prev;
+    return nullptr;
+  }
+
+  const Residue* next_bonded_aa(const Residue& res) const {
+    if (const Residue* next = next_residue(res))
+      if (res.has_peptide_bond_to(*next))
+        return next;
+    return nullptr;
+  }
 };
 
 struct AtomAddress {
@@ -489,51 +531,6 @@ inline bool Residue::matches(const ResidueId& rid) const {
          name == rid.name;
 }
 
-// TODO: handle alternative conformations (point mutations)
-inline const Residue* Residue::prev_bonded_aa() const {
-  if (parent && this != parent->residues.data() &&
-      calculate_distance_sq(get_ca(), (this - 1)->get_ca()) < 6.0 * 6.0)
-    return this - 1;
-  return nullptr;
-}
-
-inline const Residue* Residue::next_bonded_aa() const {
-  const Residue* next = this + 1;
-  if (parent && next != parent->residues.data() + parent->residues.size() &&
-      calculate_distance_sq(get_ca(), next->get_ca()) < 6.0 * 6.0)
-    return next;
-  return nullptr;
-}
-
-inline double Residue::calculate_omega(const Residue& next) const {
-  const Atom* C = find_atom("C", '*', El::C);
-  const Atom* nextN = next.find_atom("N", '*', El::N);
-  return calculate_dihedral_from_atoms(get_ca(), C, nextN, next.get_ca());
-}
-
-inline bool Residue::calculate_phi_psi_omega(double* phi, double* psi,
-                                             double* omega) const {
-  const Atom* CA = get_ca();
-  if (!CA)
-    return false;
-  const Residue* prev = prev_bonded_aa();
-  const Residue* next = next_bonded_aa();
-  if (!prev && !next)
-    return false;
-  const Atom* C = find_atom("C", '*', El::C);
-  const Atom* N = find_atom("N", '*', El::N);
-  const Atom* prevC = prev ? prev->find_atom("C", '*', El::C) : nullptr;
-  const Atom* nextN = next ? next->find_atom("N", '*', El::N) : nullptr;
-  if (phi)
-    *phi = calculate_dihedral_from_atoms(prevC, N, CA, C);
-  if (psi)
-    *psi = calculate_dihedral_from_atoms(N, CA, C, nextN);
-  if (omega)
-    *omega = calculate_dihedral_from_atoms(CA, C, nextN,
-                                           next ? next->get_ca() : nullptr);
-  return true;
-}
-
 inline ResidueGroup Chain::find_residue_group(int seqnum, char icode) {
   auto match = [&](const Residue& r) {
     return r.seq_num == seqnum && (r.icode | 0x20) == (icode | 0x20);
@@ -585,27 +582,6 @@ inline void Chain::append_residues(std::vector<Residue> new_resi) {
   add_backlinks(*this);
   if (parent && residues.capacity() != init_capacity)
     parent->invalidate_pointer_cache();
-}
-
-template<class T> size_t count_atom_sites(const T& obj) {
-  size_t sum = 0;
-  for (const auto& child : obj.children())
-    sum += count_atom_sites(child);
-  return sum;
-}
-template<> inline size_t count_atom_sites(const Residue& res) {
-  return res.atoms.size();
-}
-
-
-template<class T> double count_occupancies(const T& obj) {
-  double sum = 0;
-  for (const auto& child : obj.children())
-    sum += count_occupancies(child);
-  return sum;
-}
-template<> inline double count_occupancies(const Atom& atom) {
-  return atom.occ;
 }
 
 inline void Structure::setup_pointers() {

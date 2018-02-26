@@ -5,6 +5,7 @@
 
 #include <gemmi/symmetry.hpp>
 #include <gemmi/resinfo.hpp>
+#include <gemmi/calculate.hpp>
 #include "input.h"
 #define EXE_NAME "gemmi-contents"
 #include "options.h"
@@ -87,15 +88,19 @@ void print_content_info(const Structure& st, bool /*verbose*/) {
 void print_dihedrals(const Structure& st) {
   printf(" Chain Residue      Psi      Phi    Omega\n");
   const Model& model = st.models.at(0);
-  double deg = 180.0 / 3.14159265358979323846264338327950288;
   for (const Chain& chain : model.chains) {
     const char* cname = chain.name_for_pdb().c_str();
     for (const Residue& res : chain.residues) {
-      double phi, psi, omega;
       printf("%3s %4d%c %5s", cname, res.seq_num_for_pdb(),
              res.printable_icode(), res.name.c_str());
-      if (res.calculate_phi_psi_omega(&phi, &psi, &omega))
-        printf(" % 8.2f % 8.2f % 8.2f\n", phi * deg, psi * deg, omega * deg);
+      const Residue* prev = chain.prev_bonded_aa(res);
+      const Residue* next = chain.next_bonded_aa(res);
+      double omega = next ? gemmi::calculate_omega(res, *next) : NAN;
+      auto phi_psi = gemmi::calculate_phi_psi(prev, res, next);
+      if (prev || next)
+        printf(" % 8.2f % 8.2f % 8.2f\n",
+               gemmi::deg(phi_psi[0]), gemmi::deg(phi_psi[1]),
+               gemmi::deg(omega));
       else
         printf("\n");
     }

@@ -10,6 +10,7 @@
 #include "sprintf.hpp"
 #include "cifdoc.hpp"
 #include "model.hpp"
+#include "calculate.hpp"  // for count_atom_sites
 
 namespace gemmi {
 

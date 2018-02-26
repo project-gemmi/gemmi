@@ -76,7 +76,4 @@ void add_unitcell(py::module& m) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
              + ", " + triple(self.alpha, self.beta, self.gamma) + ")>";
     });
-
-  m.def("calculate_dihedral", &calculate_dihedral,
-        "Input: four points. Output: dihedral angle in radians.");
 }

@@ -194,20 +194,6 @@ struct FTransform : Transform {
 };
 
 
-// discussion: https://stackoverflow.com/questions/20305272/
-inline double calculate_dihedral(const Position& p0, const Position& p1,
-                                 const Position& p2, const Position& p3) {
-  Vec3 b0 = p1 - p0;
-  Vec3 b1 = p2 - p1;
-  Vec3 b2 = p3 - p2;
-  Vec3 u = b1.cross(b0);
-  Vec3 w = b2.cross(b1);
-  double y = u.cross(w).dot(b1);
-  double x = u.dot(w) * std::sqrt(b1.length_sq());
-  return std::atan2(y, x);
-}
-
-
 struct UnitCell {
   double a = 1.0, b = 1.0, c = 1.0;
   double alpha = 90.0, beta = 90.0, gamma = 90.0;
