@@ -45,13 +45,13 @@ class TestMol(unittest.TestCase):
     def test_read_5i55_again(self):
         st = gemmi.read_structure(full_path('5i55.cif'))
         a, b, c, d = st[0]
-        ent_a = st.find_entity(a.entity_id)
+        ent_a = st.get_entity_of(a)
         self.assertEqual(ent_a.entity_type, gemmi.EntityType.Polymer)
         self.assertEqual(ent_a.polymer_type, gemmi.PolymerType.PeptideL)
-        ent_b = st.find_entity(b.entity_id)
+        ent_b = st.get_entity_of(b)
         self.assertEqual(ent_b.entity_type, gemmi.EntityType.NonPolymer)
         self.assertEqual(ent_b.polymer_type, gemmi.PolymerType.NA)
-        ent_d = st.find_entity(d.entity_id)
+        ent_d = st.entities[d.entity_id]
         self.assertEqual(ent_d.entity_type, gemmi.EntityType.Water)
         self.assertEqual(ent_d.polymer_type, gemmi.PolymerType.NA)
 

@@ -15,6 +15,8 @@ namespace py = pybind11;
 using namespace gemmi;
 
 PYBIND11_MAKE_OPAQUE(std::vector<NcsOp>)
+using entity_map_type = std::map<std::string, Entity>;
+PYBIND11_MAKE_OPAQUE(entity_map_type)
 
 namespace pybind11 { namespace detail {
   template<> struct type_caster<ResidueId::OptionalNum>
@@ -55,7 +57,16 @@ void add_mol(py::module& m) {
   py::class_<Entity>(m, "Entity")
     .def(py::init<>())
     .def_readwrite("entity_type", &Entity::entity_type)
-    .def_readwrite("polymer_type", &Entity::polymer_type);
+    .def_readwrite("polymer_type", &Entity::polymer_type)
+    .def("__repr__", [](const Entity& self) {
+        std::string r = "<gemmi.Entity " + self.type_as_string();
+        if (self.polymer_type != PolymerType::NA)
+          r += " / " + self.polymer_type_as_string();
+        using namespace std;  // VS2015/17 doesn't like std::snprintf
+        char buf[64];
+        snprintf(buf, 64, " object at %p>", (void*)&self);
+        return r + buf;
+    });
 
   py::class_<NcsOp>(m, "NcsOp")
     .def_readwrite("id", &NcsOp::id)
@@ -63,6 +74,7 @@ void add_mol(py::module& m) {
     .def("apply", &NcsOp::apply);
 
   py::bind_vector<std::vector<NcsOp>>(m, "VectorNcsOp");
+  py::bind_map<entity_map_type>(m, "EntityMap");
 
   py::class_<Structure>(m, "Structure")
     .def(py::init<>())
@@ -71,11 +83,12 @@ void add_mol(py::module& m) {
     .def_readwrite("sg_hm", &Structure::sg_hm)
     .def_readwrite("ncs", &Structure::ncs)
     .def_readwrite("resolution", &Structure::resolution)
+    .def_readwrite("entities", &Structure::entities)
     .def("get_info", &Structure::get_info, py::arg("tag"),
          py::return_value_policy::copy)
-    .def("find_entity",
-         (Entity* (Structure::*)(const std::string&)) &Structure::find_entity,
-         py::arg("entity_id"), py::return_value_policy::reference_internal)
+    .def("get_entity_of",
+         (Entity* (Structure::*)(const Chain&)) &Structure::get_entity_of,
+         py::arg("chain"), py::return_value_policy::reference_internal)
     .def("__len__", [](const Structure& st) { return st.models.size(); })
     .def("__iter__", [](const Structure& st) {
         return py::make_iterator(st.models);

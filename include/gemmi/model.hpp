@@ -484,15 +484,21 @@ struct Structure {
     return impl::find_or_add(models, model_name);
   }
 
-  Entity* find_entity(const std::string& ent_id) {
+  Entity* get_entity(const std::string& ent_id) {
     auto ent = entities.find(ent_id);
     return ent == entities.end() ? nullptr : &ent->second;
   }
-  const Entity* find_entity(const std::string& ent_id) const {
+  const Entity* get_entity(const std::string& ent_id) const {
     auto ent = entities.find(ent_id);
     return ent == entities.end() ? nullptr : &ent->second;
   }
 
+  Entity* get_entity_of(const Chain& chain) {
+    return get_entity(chain.entity_id);
+  }
+  const Entity* get_entity_of(const Chain& chain) const {
+    return get_entity(chain.entity_id);
+  }
 
   Entity& find_or_add_entity(const std::string& ent_id) {
     auto ent = entities.find(ent_id);

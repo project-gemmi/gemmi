@@ -148,7 +148,7 @@ inline void write_atoms(const Structure& st, std::ostream& os,
         gemmi::fail("empty chain name");
       if (chain_name.length() > 2)
         gemmi::fail("long chain name: " + chain_name);
-      const Entity* entity = st.find_entity(chain.entity_id);
+      const Entity* entity = st.get_entity_of(chain);
       for (const Residue& res : chain.residues) {
         bool as_het = use_hetatm(res, entity);
         for (const Atom& a : res.atoms) {
@@ -268,7 +268,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
   if (!st.models.empty() && !iotbx_compat) {
     // SEQRES
     for (const Chain& ch : st.models[0].chains) {
-      const Entity* entity = st.find_entity(ch.entity_id);
+      const Entity* entity = st.get_entity_of(ch);
       if (entity && entity->entity_type == EntityType::Polymer) {
         const std::string& chain_name = ch.name_for_pdb();
         int seq_len = 0;
