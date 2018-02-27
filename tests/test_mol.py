@@ -44,6 +44,7 @@ class TestMol(unittest.TestCase):
 
     def test_read_5i55_again(self):
         st = gemmi.read_structure(full_path('5i55.cif'))
+        self.assertEqual(st.info['_entry.id'], '5I55')
         a, b, c, d = st[0]
         ent_a = st.get_entity_of(a)
         self.assertEqual(ent_a.entity_type, gemmi.EntityType.Polymer)
@@ -61,6 +62,8 @@ class TestMol(unittest.TestCase):
         self.assertEqual(st.cell.gamma, 120)
         self.assertEqual(st.name, '1PFE')
         self.assertEqual(st.sg_hm, 'P 63 2 2')
+        self.assertEqual(st.info['_entry.id'], '1PFE')
+        self.assertEqual(st.info['_exptl.method'], 'X-RAY DIFFRACTION')
         self.assertEqual(len(st), 1)
         self.assertEqual(len(st[0]), 7)
         label_name_to_auth_name = {ch.name: ch.auth_name for ch in st[0]}

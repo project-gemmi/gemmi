@@ -17,6 +17,8 @@ using namespace gemmi;
 PYBIND11_MAKE_OPAQUE(std::vector<NcsOp>)
 using entity_map_type = std::map<std::string, Entity>;
 PYBIND11_MAKE_OPAQUE(entity_map_type)
+using info_map_type = std::map<std::string, std::string>;
+PYBIND11_MAKE_OPAQUE(info_map_type)
 
 namespace pybind11 { namespace detail {
   template<> struct type_caster<ResidueId::OptionalNum>
@@ -75,6 +77,7 @@ void add_mol(py::module& m) {
 
   py::bind_vector<std::vector<NcsOp>>(m, "VectorNcsOp");
   py::bind_map<entity_map_type>(m, "EntityMap");
+  py::bind_map<info_map_type>(m, "InfoMap");
 
   py::class_<Structure>(m, "Structure")
     .def(py::init<>())
@@ -84,8 +87,7 @@ void add_mol(py::module& m) {
     .def_readwrite("ncs", &Structure::ncs)
     .def_readwrite("resolution", &Structure::resolution)
     .def_readwrite("entities", &Structure::entities)
-    .def("get_info", &Structure::get_info, py::arg("tag"),
-         py::return_value_policy::copy)
+    .def_readwrite("info", &Structure::info)
     .def("get_entity_of",
          (Entity* (Structure::*)(const Chain&)) &Structure::get_entity_of,
          py::arg("chain"), py::return_value_policy::reference_internal)
