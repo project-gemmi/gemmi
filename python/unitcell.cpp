@@ -21,6 +21,7 @@ void add_unitcell(py::module& m) {
     .def_readwrite("x", &Position::x)
     .def_readwrite("y", &Position::y)
     .def_readwrite("z", &Position::z)
+    .def("__getitem__", (double (Position::*)(int) const) &Position::at)
     .def("dist", [](const Position& self, const Position& other) {
         return self.dist(other);
     })
@@ -32,6 +33,7 @@ void add_unitcell(py::module& m) {
     .def_readwrite("x", &Fractional::x)
     .def_readwrite("y", &Fractional::y)
     .def_readwrite("z", &Fractional::z)
+    .def("__getitem__", (double (Fractional::*)(int) const) &Fractional::at)
     .def("__repr__", [](const Fractional& self) {
         return "<gemmi.Fractional(" + triple(self.x, self.y, self.z) + ")>";
     });
@@ -66,6 +68,7 @@ void add_unitcell(py::module& m) {
     .def_readonly("gamma", &UnitCell::gamma)
     .def_readonly("volume", &UnitCell::volume)
     .def("set", &UnitCell::set)
+    .def("is_crystal", &UnitCell::is_crystal)
     .def("fractionalize", &UnitCell::fractionalize)
     .def("orthogonalize", &UnitCell::orthogonalize)
     .def("volume_per_image", &UnitCell::volume_per_image)

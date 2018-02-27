@@ -25,11 +25,12 @@
 #include <string>
 #include <vector>
 #include <cassert>
-
 #if defined(_MSC_VER) && !defined(NOMINMAX)
 # define NOMINMAX
 #endif
 #include <tinydir.h>
+
+#include "util.hpp"  // for giends_with
 
 namespace gemmi {
 
@@ -97,10 +98,9 @@ public:
           break;
       }
     }
-
-    bool operator!=(const Iter& o) const {  // it's only for "!= end()"
-      return !(depth() == 0 && cur == o.cur);
-    }
+    // == and != is used only to compare with end()
+    bool operator==(const Iter& o) const { return depth()==0 && cur == o.cur; }
+    bool operator!=(const Iter& o) const { return !operator==(o); }
   };
 
   Iter begin() { return Iter{*this, 0}; }

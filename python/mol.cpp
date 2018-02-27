@@ -168,6 +168,9 @@ void add_mol(py::module& m) {
           throw py::key_error("residue has no atom '" + name + "'");
         return *atom;
     }, py::arg("name"), py::return_value_policy::reference_internal)
+    .def("__getitem__", [](Residue& self, int index) -> Atom& {
+        return self.atoms.at(index >= 0 ? index : index + self.atoms.size());
+    }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("__repr__", [](const Residue& self) {
         std::string r = "<gemmi.Residue " + self.name + " " + self.seq_id();
         if (self.label_seq)

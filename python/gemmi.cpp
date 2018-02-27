@@ -3,6 +3,7 @@
 #include <sstream>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include "gemmi/dirwalk.hpp"
 
 namespace py = pybind11;
 
@@ -24,6 +25,12 @@ PYBIND11_MODULE(gemmi, mg) {
   py::module cif = mg.def_submodule("cif", "CIF file format");
   add_cif(cif);
   add_cif_read(cif);
+
+  py::class_<gemmi::CoorFileWalk>(mg, "CoorFileWalk")
+    .def(py::init<const char*>())
+    .def("__iter__", [](gemmi::CoorFileWalk& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>());
 }
 
 // vim:sw=2:ts=2:et
