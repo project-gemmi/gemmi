@@ -6,7 +6,7 @@
 #include "gemmi/to_json.hpp"
 #include "gemmi/sprintf.hpp"
 #include "gemmi/calculate.hpp"  // for count_atom_sites
-#include "gemmi/modify.hpp"     // for remove_hydrogens
+#include "gemmi/modify.hpp"     // for remove_hydrogens, ...
 
 #include <cstring>
 #include <iostream>
@@ -32,7 +32,8 @@ struct ConvArg: public Arg {
 
 enum OptionIndex { Verbose=3, FormatIn, FormatOut,
                    Comcifs, Mmjson, Bare, Numb, CifDot, PdbxStyle,
-                   ExpandNcs, RemoveH, IotbxCompat, SegmentAsChain };
+                   ExpandNcs, RemoveH, RemoveWaters, RemoveLigWat,
+                   IotbxCompat, SegmentAsChain };
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
@@ -70,6 +71,10 @@ static const option::Descriptor Usage[] = {
     "  --expand-ncs  \tExpand strict NCS specified in MTRIXn or equivalent." },
   { RemoveH, 0, "", "remove-h", Arg::None,
     "  --remove-h  \tRemove hydrogens." },
+  { RemoveWaters, 0, "", "remove-waters", Arg::None,
+    "  --remove-waters  \tRemove waters." },
+  { RemoveLigWat, 0, "", "remove-lig-wat", Arg::None,
+    "  --remove-lig-wat  \tRemove ligands and waters." },
   { IotbxCompat, 0, "", "iotbx-compat", Arg::None,
     "  --iotbx-compat  \tLimited compatibility with iotbx (details in docs)." },
   { SegmentAsChain, 0, "", "segment-as-chain", Arg::None,
@@ -346,6 +351,16 @@ void convert(const std::string& input, FileType input_type,
 
   if (options[RemoveH])
     remove_hydrogens(st);
+
+  if (options[RemoveWaters]) {
+    remove_waters(st);
+    remove_empty_chains(st);
+  }
+
+  if (options[RemoveLigWat]) {
+    remove_ligands_and_waters(st);
+    remove_empty_chains(st);
+  }
 
   if (options[SegmentAsChain])
     for (gemmi::Model& model : st.models) {

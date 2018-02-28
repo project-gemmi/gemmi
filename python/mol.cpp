@@ -3,6 +3,7 @@
 #include "gemmi/elem.hpp"
 #include "gemmi/model.hpp"
 #include "gemmi/calculate.hpp"
+#include "gemmi/modify.hpp"
 #define STB_SPRINTF_IMPLEMENTATION
 #include "gemmi/to_pdb.hpp"
 
@@ -108,23 +109,38 @@ void add_mol(py::module& m) {
          [](const Structure& st, const std::string& path, const char* chain) {
        std::ofstream f(path.c_str());
        write_minimal_pdb(st, f, chain);
-    }, py::arg("path"), py::arg("chain")=nullptr);
+    }, py::arg("path"), py::arg("chain")=nullptr)
+    .def("remove_hydrogens", remove_hydrogens<Structure>)
+    .def("remove_waters", remove_waters<Structure>)
+    .def("remove_ligands_and_waters",
+         (void (*)(Structure&)) &remove_ligands_and_waters)
+    .def("remove_empty_chains", (void (*)(Structure&)) &remove_empty_chains)
+    .def("__repr__", [](const Structure& self) {
+        return "<gemmi.Structure " + self.name + " with " +
+               std::to_string(self.models.size()) + " model(s)>";
+    });
 
   py::class_<Model>(m, "Model")
     .def(py::init<std::string>())
     .def_readwrite("name", &Model::name)
-    .def("__len__", [](const Model& mdl) { return mdl.chains.size(); })
-    .def("__iter__", [](const Model& mdl) {
-        return py::make_iterator(mdl.chains);
+    .def("__len__", [](const Model& self) { return self.chains.size(); })
+    .def("__iter__", [](const Model& self) {
+        return py::make_iterator(self.chains);
     }, py::keep_alive<0, 1>())
-    .def("__getitem__", [](Model& mdl, const std::string& name) -> Chain& {
-        Chain* ch = mdl.find_chain(name);
+    .def("__getitem__", [](Model& self, const std::string& name) -> Chain& {
+        Chain* ch = self.find_chain(name);
         if (!ch)
           throw py::key_error("chain '" + name + "' does not exist");
         return *ch;
     }, py::arg("name"), py::return_value_policy::reference_internal)
     .def("find_or_add_chain", &Model::find_or_add_chain,
-         py::arg("name"), py::return_value_policy::reference_internal);
+         py::arg("name"), py::return_value_policy::reference_internal)
+    .def("count_atom_sites", &count_atom_sites<Model>)
+    .def("count_occupancies", &count_occupancies<Model>)
+    .def("__repr__", [](const Model& self) {
+        return "<gemmi.Model " + self.name + " with " +
+               std::to_string(self.chains.size()) + " chain(s)>";
+    });
 
   py::class_<Chain>(m, "Chain")
     .def(py::init<std::string>())
@@ -135,11 +151,13 @@ void add_mol(py::module& m) {
     .def("__iter__", [](const Chain& ch) {
         return py::make_iterator(ch.residues);
     }, py::keep_alive<0, 1>())
-    .def("append_residues", &Chain::append_residues)
     .def("__getitem__", &Chain::find_by_seqid,
          py::arg("pdb_seqid"), py::keep_alive<0, 1>())
     .def("__getitem__", &Chain::find_by_label_seqid,
          py::arg("mmcif_seqid"), py::keep_alive<0, 1>())
+    .def("append_residues", &Chain::append_residues)
+    .def("count_atom_sites", &count_atom_sites<Chain>)
+    .def("count_occupancies", &count_occupancies<Chain>)
     .def("__repr__", [](const Chain& self) {
         return "<gemmi.Chain " + self.name + " (" + self.auth_name +
                ") with " + std::to_string(self.residues.size()) + " res>";
@@ -153,6 +171,8 @@ void add_mol(py::module& m) {
     .def("__getitem__", [](ResidueGroup& g, int index) -> Residue& {
         return g.at(index >= 0 ? index : index + g.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("__getitem__", &ResidueGroup::by_resname,
+         py::arg("name"), py::return_value_policy::reference_internal)
     .def("__repr__", [](const ResidueGroup& self) {
         std::string r = "<gemmi.ResidueGroup [ ";
         for (const Residue& res : self)

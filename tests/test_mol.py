@@ -56,6 +56,35 @@ class TestMol(unittest.TestCase):
         self.assertEqual(ent_d.entity_type, gemmi.EntityType.Water)
         self.assertEqual(ent_d.polymer_type, gemmi.PolymerType.NA)
 
+    def test_5i55_removals(self, clear_entities=False):
+        st = gemmi.read_structure(full_path('5i55.cif'))
+        if clear_entities:
+            self.assertEqual(len(st.entities), 4)
+            for k in st.entities:
+                del st.entities[k]
+            self.assertEqual(len(st.entities), 0)
+        lys12 = st[0]['A'][12]['LYS']
+        count_b = sum(a.altloc == 'B' for a in lys12)
+        model = st[0]
+        self.assertEqual(len(model), 4)  # 4 chains: AA, 2 x ligand, waters
+        n_waters = len(model['D'])
+        n_sites = model.count_atom_sites()
+        occ_sum = model.count_occupancies()
+        self.assertEqual(n_sites, occ_sum + count_b)
+        st.remove_waters()
+        self.assertEqual(len(model), 4)
+        self.assertEqual(model.count_atom_sites(), n_sites - n_waters)
+        self.assertEqual(model.count_occupancies(), occ_sum - n_waters)
+        st.remove_empty_chains()
+        self.assertEqual(len(model), 3)
+        st.remove_ligands_and_waters()
+        self.assertEqual(len(model), 3)
+        st.remove_empty_chains()
+        self.assertEqual(len(model), 1)
+
+    def test_5i55_removals2(self):
+        self.test_5i55_removals(clear_entities=True)
+
     def read_1pfe(self, filename):
         st = gemmi.read_structure(full_path(filename))
         self.assertAlmostEqual(st.cell.a, 39.374)

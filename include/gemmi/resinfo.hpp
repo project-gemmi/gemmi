@@ -11,7 +11,7 @@
 namespace gemmi {
 
 struct ResidueInfo {
-  // simple classification, ELS is something else
+  // Simple approximate classification. ELS is something else (ligand).
   enum Kind : char {
     UNKNOWN=0, AA=1, NA=2, RNA=(2|4), DNA=(2|8), SOL=16, HOH=(16|32), ELS=64
   };
@@ -27,7 +27,7 @@ struct ResidueInfo {
 };
 
 // hyderogen_count needs to be verified
-inline const ResidueInfo find_tabulated_residue(const std::string& name) {
+inline ResidueInfo find_tabulated_residue(const std::string& name) {
   if (name.size() == 3) {
 #define ID(s) (s[0] << 16 | s[1] << 8 | s[2])
     switch (ID(name.c_str())) {
