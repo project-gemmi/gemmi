@@ -1,13 +1,11 @@
 // Copyright (c) 2014-2018 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
-#ifndef TAOCPP_PEGTL_INCLUDE_CONTRIB_COUNTER_HPP
-#define TAOCPP_PEGTL_INCLUDE_CONTRIB_COUNTER_HPP
+#ifndef TAO_PEGTL_CONTRIB_COUNTER_HPP
+#define TAO_PEGTL_CONTRIB_COUNTER_HPP
 
-#include <cassert>
 #include <map>
 #include <string>
-#include <utility>
 
 #include "../config.hpp"
 #include "../normal.hpp"
@@ -16,7 +14,7 @@
 
 namespace tao
 {
-   namespace TAOCPP_PEGTL_NAMESPACE
+   namespace TAO_PEGTL_NAMESPACE
    {
       struct counter_data
       {
@@ -53,7 +51,7 @@ namespace tao
          }
       };
 
-   }  // namespace TAOCPP_PEGTL_NAMESPACE
+   }  // namespace TAO_PEGTL_NAMESPACE
 
 }  // namespace tao
 

@@ -1,8 +1,8 @@
 // Copyright (c) 2016-2018 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
-#ifndef TAOCPP_PEGTL_INCLUDE_INTERNAL_MINUS_HPP
-#define TAOCPP_PEGTL_INCLUDE_INTERNAL_MINUS_HPP
+#ifndef TAO_PEGTL_INTERNAL_MINUS_HPP
+#define TAO_PEGTL_INTERNAL_MINUS_HPP
 
 #include "../config.hpp"
 
@@ -14,7 +14,7 @@
 
 namespace tao
 {
-   namespace TAOCPP_PEGTL_NAMESPACE
+   namespace TAO_PEGTL_NAMESPACE
    {
       namespace internal
       {
@@ -62,7 +62,7 @@ namespace tao
 
       }  // namespace internal
 
-   }  // namespace TAOCPP_PEGTL_NAMESPACE
+   }  // namespace TAO_PEGTL_NAMESPACE
 
 }  // namespace tao
 

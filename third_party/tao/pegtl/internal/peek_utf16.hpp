@@ -1,22 +1,24 @@
 // Copyright (c) 2014-2018 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
-#ifndef TAOCPP_PEGTL_INCLUDE_INTERNAL_PEEK_UTF16_HPP
-#define TAOCPP_PEGTL_INCLUDE_INTERNAL_PEEK_UTF16_HPP
+#ifndef TAO_PEGTL_INTERNAL_PEEK_UTF16_HPP
+#define TAO_PEGTL_INTERNAL_PEEK_UTF16_HPP
 
 #include <type_traits>
 
 #include "../config.hpp"
 
+#include "endian.hpp"
 #include "input_pair.hpp"
 
 namespace tao
 {
-   namespace TAOCPP_PEGTL_NAMESPACE
+   namespace TAO_PEGTL_NAMESPACE
    {
       namespace internal
       {
-         struct peek_utf16
+         template< typename R >
+         struct peek_utf16_impl
          {
             using data_t = char32_t;
             using pair_t = input_pair< char32_t >;
@@ -31,11 +33,11 @@ namespace tao
             {
                const std::size_t s = in.size( 4 );
                if( s >= 2 ) {
-                  const char32_t t = *static_cast< const short_t* >( static_cast< const void* >( in.current() ) );
+                  const char32_t t = R::read( in.current() );
                   if( ( t < 0xd800 ) || ( t > 0xdbff ) || ( s < 4 ) ) {
                      return { t, 2 };
                   }
-                  const char32_t u = *static_cast< const short_t* >( static_cast< const void* >( in.current() + 2 ) );
+                  const char32_t u = R::read( in.current() + 2 );
                   if( ( u < 0xdc00 ) || ( u > 0xdfff ) ) {
                      return { t, 2 };
                   }
@@ -45,9 +47,30 @@ namespace tao
             }
          };
 
+         struct read_utf16_be
+         {
+            static std::uint16_t read( const void* d ) noexcept
+            {
+               return be_to_h< std::uint16_t >( d );
+            }
+         };
+
+         struct read_utf16_le
+         {
+            static std::uint16_t read( const void* d ) noexcept
+            {
+               return le_to_h< std::uint16_t >( d );
+            }
+         };
+
+         using peek_utf16_be = peek_utf16_impl< read_utf16_be >;
+         using peek_utf16_le = peek_utf16_impl< read_utf16_le >;
+
+         using peek_utf16 = peek_utf16_le;
+
       }  // namespace internal
 
-   }  // namespace TAOCPP_PEGTL_NAMESPACE
+   }  // namespace TAO_PEGTL_NAMESPACE
 
 }  // namespace tao
 

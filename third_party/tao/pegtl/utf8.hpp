@@ -1,8 +1,8 @@
 // Copyright (c) 2014-2018 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
-#ifndef TAOCPP_PEGTL_INCLUDE_UTF8_HPP
-#define TAOCPP_PEGTL_INCLUDE_UTF8_HPP
+#ifndef TAO_PEGTL_UTF8_HPP
+#define TAO_PEGTL_UTF8_HPP
 
 #include "config.hpp"
 
@@ -12,7 +12,7 @@
 
 namespace tao
 {
-   namespace TAOCPP_PEGTL_NAMESPACE
+   namespace TAO_PEGTL_NAMESPACE
    {
       namespace utf8
       {
@@ -29,7 +29,7 @@ namespace tao
 
       }  // namespace utf8
 
-   }  // namespace TAOCPP_PEGTL_NAMESPACE
+   }  // namespace TAO_PEGTL_NAMESPACE
 
 }  // namespace tao
 

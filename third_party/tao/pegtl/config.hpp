@@ -1,15 +1,20 @@
 // Copyright (c) 2017-2018 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
-#ifndef TAOCPP_PEGTL_INCLUDE_CONFIG_HPP
-#define TAOCPP_PEGTL_INCLUDE_CONFIG_HPP
+#ifndef TAO_PEGTL_CONFIG_HPP
+#define TAO_PEGTL_CONFIG_HPP
 
-#ifndef TAOCPP_PEGTL_NAMESPACE
-#define TAOCPP_PEGTL_NAMESPACE pegtl
+// Compatibility, remove with 3.0
+#ifdef TAOCPP_PEGTL_NAMESPACE
+#define TAO_PEGTL_NAMESPACE TAOCPP_PEGTL_NAMESPACE
+#endif
+
+#ifndef TAO_PEGTL_NAMESPACE
+#define TAO_PEGTL_NAMESPACE pegtl
 #endif
 
 // Enable some improvements to the readability of
 // demangled type names under some circumstances.
-// #define TAOCPP_PEGTL_PRETTY_DEMANGLE
+// #define TAO_PEGTL_PRETTY_DEMANGLE
 
 #endif

@@ -1,16 +1,16 @@
 // Copyright (c) 2015-2018 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
-#ifndef TAOCPP_PEGTL_INCLUDE_CONTRIB_ALPHABET_HPP
-#define TAOCPP_PEGTL_INCLUDE_CONTRIB_ALPHABET_HPP
+#ifndef TAO_PEGTL_CONTRIB_ALPHABET_HPP
+#define TAO_PEGTL_CONTRIB_ALPHABET_HPP
 
 #include "../config.hpp"
 
 namespace tao
 {
-   namespace TAOCPP_PEGTL_NAMESPACE
+   namespace TAO_PEGTL_NAMESPACE
    {
-      inline namespace alphabet
+      namespace alphabet
       {
          static const int a = 'a';
          static const int b = 'b';
@@ -68,7 +68,7 @@ namespace tao
 
       }  // namespace alphabet
 
-   }  // namespace TAOCPP_PEGTL_NAMESPACE
+   }  // namespace TAO_PEGTL_NAMESPACE
 
 }  // namespace tao
 

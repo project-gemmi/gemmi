@@ -1,13 +1,14 @@
 // Copyright (c) 2014-2018 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
-#ifndef TAOCPP_PEGTL_INCLUDE_ANALYSIS_ANALYZE_CYCLES_HPP
-#define TAOCPP_PEGTL_INCLUDE_ANALYSIS_ANALYZE_CYCLES_HPP
+#ifndef TAO_PEGTL_ANALYSIS_ANALYZE_CYCLES_HPP
+#define TAO_PEGTL_ANALYSIS_ANALYZE_CYCLES_HPP
 
 #include <cassert>
 
 #include <map>
 #include <set>
+#include <stdexcept>
 
 #include <iostream>
 #include <utility>
@@ -19,7 +20,7 @@
 
 namespace tao
 {
-   namespace TAOCPP_PEGTL_NAMESPACE
+   namespace TAO_PEGTL_NAMESPACE
    {
       namespace analysis
       {
@@ -84,7 +85,7 @@ namespace tao
                         return m_cache[ start->first ] = a;
                      }
                   }
-                  throw std::runtime_error( "code should be unreachable" );  // NOLINT, LCOV_EXCL_LINE
+                  throw std::logic_error( "code should be unreachable: invalid rule_type value" );  // NOLINT, LCOV_EXCL_LINE
                }
                if( !accum ) {
                   ++m_problems;
@@ -127,7 +128,7 @@ namespace tao
 
       }  // namespace analysis
 
-   }  // namespace TAOCPP_PEGTL_NAMESPACE
+   }  // namespace TAO_PEGTL_NAMESPACE
 
 }  // namespace tao
 

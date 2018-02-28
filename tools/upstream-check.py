@@ -9,7 +9,7 @@ import urllib
 
 TAGGED_REPOS = {
     'pybind/pybind11': 'v2.2.2',
-    'taocpp/PEGTL': '2.3.4',
+    'taocpp/PEGTL': '2.4.0',
     'cxong/tinydir': '1.2.3',
 }
 

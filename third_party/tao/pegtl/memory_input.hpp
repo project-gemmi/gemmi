@@ -1,8 +1,8 @@
 // Copyright (c) 2014-2018 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
-#ifndef TAOCPP_PEGTL_INCLUDE_MEMORY_INPUT_HPP
-#define TAOCPP_PEGTL_INCLUDE_MEMORY_INPUT_HPP
+#ifndef TAO_PEGTL_MEMORY_INPUT_HPP
+#define TAO_PEGTL_MEMORY_INPUT_HPP
 
 #include <cstddef>
 #include <cstring>
@@ -22,7 +22,7 @@
 
 namespace tao
 {
-   namespace TAOCPP_PEGTL_NAMESPACE
+   namespace TAO_PEGTL_NAMESPACE
    {
       namespace internal
       {
@@ -99,9 +99,9 @@ namespace tao
                internal::bump_to_next_line( m_current, in_count );
             }
 
-            TAOCPP_PEGTL_NAMESPACE::position position( const iterator_t& it ) const
+            TAO_PEGTL_NAMESPACE::position position( const iterator_t& it ) const
             {
-               return TAOCPP_PEGTL_NAMESPACE::position( it, m_source );
+               return TAO_PEGTL_NAMESPACE::position( it, m_source );
             }
 
          protected:
@@ -172,11 +172,11 @@ namespace tao
                m_current += in_count;
             }
 
-            TAOCPP_PEGTL_NAMESPACE::position position( const iterator_t it ) const
+            TAO_PEGTL_NAMESPACE::position position( const iterator_t it ) const
             {
                internal::iterator c( m_begin );
                internal::bump( c, std::size_t( it - m_begin.data ), Eol::ch );
-               return TAOCPP_PEGTL_NAMESPACE::position( c, m_source );
+               return TAO_PEGTL_NAMESPACE::position( c, m_source );
             }
 
          protected:
@@ -215,6 +215,9 @@ namespace tao
             : memory_input( in_string.data(), in_string.size(), std::forward< T >( in_source ) )
          {
          }
+
+         template< typename T >
+         memory_input( std::string&&, T&& ) = delete;
 
          template< typename T >
          memory_input( const char* in_begin, T&& in_source ) noexcept( std::is_nothrow_constructible< Source, T&& >::value )
@@ -273,7 +276,7 @@ namespace tao
 
          using internal::memory_input_base< P, Eol, Source >::position;
 
-         TAOCPP_PEGTL_NAMESPACE::position position() const
+         TAO_PEGTL_NAMESPACE::position position() const
          {
             return position( iterator() );
          }
@@ -293,7 +296,7 @@ namespace tao
          }
       };
 
-   }  // namespace TAOCPP_PEGTL_NAMESPACE
+   }  // namespace TAO_PEGTL_NAMESPACE
 
 }  // namespace tao
 
