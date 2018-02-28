@@ -60,8 +60,7 @@ class TestMol(unittest.TestCase):
         st = gemmi.read_structure(full_path('5i55.cif'))
         if clear_entities:
             self.assertEqual(len(st.entities), 4)
-            for k in st.entities:
-                del st.entities[k]
+            st.entities = gemmi.EntityMap()
             self.assertEqual(len(st.entities), 0)
         lys12 = st[0]['A'][12]['LYS']
         count_b = sum(a.altloc == 'B' for a in lys12)
