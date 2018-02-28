@@ -175,7 +175,7 @@ struct Atom {
   std::string name;
   char altloc; // 0 if not set
   signed char charge;  // [-8, +8]
-  gemmi::Element element = gemmi::El::X;
+  Element element = El::X;
   Position pos;
   float occ;
   float b_iso;
@@ -458,7 +458,7 @@ struct NcsOp {
 
 struct Structure {
   std::string name;
-  gemmi::UnitCell cell;
+  UnitCell cell;
   std::string sg_hm;
   std::vector<Model> models;
   std::vector<NcsOp> ncs;

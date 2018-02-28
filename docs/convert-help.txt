@@ -27,6 +27,7 @@ CIF output options:
 
 Macromolecular options:
   --expand-ncs           Expand strict NCS specified in MTRIXn or equivalent.
+  --remove-h             Remove hydrogens.
   --iotbx-compat         Limited compatibility with iotbx (details in docs).
   --segment-as-chain     Append segment id to label_asym_id (chain name).
 

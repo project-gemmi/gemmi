@@ -58,7 +58,7 @@ The components are described in:
   syntax): in the Refmac monomer library (maintained by CCP4)
   and in other libraries.
 
-Gemmi can read the dictionaries, but it also has a built-in database
+Gemmi can read the dictionaries, but it also has a built-in mini-database
 of popular components.
 
 TODO
@@ -110,14 +110,12 @@ Gemmi support the following coordinate file formats:
     * mmJSON,
     * a binary format (MMTF, binary CIF, or own format) is to be considered.
 
-The next sections discuss details of the individual formats
-and functions specific to them.
-We also have a generic read/write functions that handle
-all the supported formats, with the format either specified
-or inferred from the file extension.
+In this section we first show how to read any of the supported formats,
+then we go into details of the individual formats,
+and finally we show what can be done with the structural model.
 
-Generic access
---------------
+Any format
+----------
 
 C++
 ~~~
@@ -378,8 +376,17 @@ PDBx/mmCIF uses more general (but not so obvious) terms:
 instead of chain,
 and *chem_comp* (chemical component) for residue/monomer.
 
+Structure
+---------
+
+Model
+-----
+
+Chain
+-----
+
 Disorder (altloc)
------------------
+~~~~~~~~~~~~~~~~~
 
 Apart from the naming, the biggest difference between libraries is
 how the disorder is presented. The main options are:
@@ -396,10 +403,16 @@ documentation says that
 "about 90% of the development time invested into iotbx.pdb was in some form
 related to alternative conformations".
 
-We have not made such a time investment yet.
-For now, gemmi simply provides the *altLoc* field and
-leaves handling of the alternative conformations
-to the applications.
+In Gemmi we expose the *altLoc* field to the user (like mmdb),
+and on top of it we offer simple utilities that make working with conformers
+easier (similarly to BioPython).
+
+
+Residue
+-------
+
+Atom
+----
 
 C++
 ---

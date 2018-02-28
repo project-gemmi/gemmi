@@ -6,6 +6,7 @@
 #include "gemmi/to_json.hpp"
 #include "gemmi/sprintf.hpp"
 #include "gemmi/calculate.hpp"  // for count_atom_sites
+#include "gemmi/modify.hpp"     // for remove_hydrogens
 
 #include <cstring>
 #include <iostream>
@@ -31,7 +32,7 @@ struct ConvArg: public Arg {
 
 enum OptionIndex { Verbose=3, FormatIn, FormatOut,
                    Comcifs, Mmjson, Bare, Numb, CifDot, PdbxStyle,
-                   ExpandNcs, IotbxCompat, SegmentAsChain };
+                   ExpandNcs, RemoveH, IotbxCompat, SegmentAsChain };
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
@@ -67,6 +68,8 @@ static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular options:" },
   { ExpandNcs, 0, "", "expand-ncs", Arg::None,
     "  --expand-ncs  \tExpand strict NCS specified in MTRIXn or equivalent." },
+  { RemoveH, 0, "", "remove-h", Arg::None,
+    "  --remove-h  \tRemove hydrogens." },
   { IotbxCompat, 0, "", "iotbx-compat", Arg::None,
     "  --iotbx-compat  \tLimited compatibility with iotbx (details in docs)." },
   { SegmentAsChain, 0, "", "segment-as-chain", Arg::None,
@@ -314,7 +317,8 @@ void convert(const std::string& input, FileType input_type,
   cif::Document cif_in;
   gemmi::Structure st;
   // for cif->cif we do either cif->DOM->Structure->DOM->cif or cif->DOM->cif
-  bool modify_structure = (options[ExpandNcs] || options[SegmentAsChain]);
+  bool modify_structure = (options[ExpandNcs] || options[RemoveH] ||
+                           options[SegmentAsChain]);
   if (input_type == FileType::Cif || input_type == FileType::Json) {
     cif_in = cif_read_any(input);
     if ((output_type == FileType::Json || output_type == FileType::Cif) &&
@@ -339,6 +343,9 @@ void convert(const std::string& input, FileType input_type,
       ch_naming = ChainNaming::Short;
     expand_ncs(st, ch_naming);
   }
+
+  if (options[RemoveH])
+    remove_hydrogens(st);
 
   if (options[SegmentAsChain])
     for (gemmi::Model& model : st.models) {
