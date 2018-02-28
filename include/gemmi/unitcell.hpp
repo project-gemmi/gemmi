@@ -207,7 +207,7 @@ struct UnitCell {
   std::vector<FTransform> images;
 
   // non-crystalline (for example NMR) structures use fake unit cell 1x1x1.
-  bool is_crystal() const { return a != 1.0; }
+  bool is_crystal() const { return frac.mat[0][0] != 1.0; }
 
   void calculate_properties() {
     constexpr double deg2rad = 3.1415926535897932384626433832795029 / 180.0;
@@ -265,6 +265,10 @@ struct UnitCell {
     // have less significant digits than unit cell parameters, and should
     // be ignored unless we have non-standard settings.
     if (f.mat.approx(frac.mat, 5e-6) && f.vec.approx(frac.vec, 1e-6))
+      return;
+    // The SCALE record is sometimes incorrect. Here we only catch cases
+    // when CRYST1 is set as for non-crystal and SCALE is very suspicious.
+    if (frac.mat[0][0] == 1.0 && (f.mat[0][0] == 0.0 || f.mat[0][0] > 1.0))
       return;
     frac = f;
     orth = f.inverse();
