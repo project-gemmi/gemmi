@@ -16,8 +16,6 @@
 #include <tuple>      // for tie
 #include <vector>
 
-#include <iostream> // debug
-
 // we use brace elision with std:array's
 #ifdef __clang__
 # pragma clang diagnostic push

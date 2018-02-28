@@ -364,6 +364,7 @@ inline void write_minimal_pdb(const Structure& st, std::ostream& os,
 }
 
 #undef WRITE
+#undef WRITEU
 
 } // namespace gemmi
 #endif
