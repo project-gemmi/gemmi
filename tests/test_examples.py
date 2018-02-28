@@ -5,6 +5,7 @@ import sys
 import unittest
 
 TOP_DIR = os.path.join(os.path.dirname(__file__), "..")
+PDB_FILE = os.path.join(TOP_DIR, "tests", "1orc.pdb")
 CIF_FILE = os.path.join(TOP_DIR, "tests", "5i55.cif")
 JSON_FILE = os.path.join(TOP_DIR, "tests", "1pfe.json")
 EXAMPLE_DIR = os.path.join(TOP_DIR, "examples")
@@ -32,6 +33,10 @@ class TestExamples(unittest.TestCase):
     def test_weight(self):
         import weight
         weight.main()
+    def test_long_geom(self):
+        import long_geom
+        self.assertEqual(long_geom.run(PDB_FILE), 0)
+        self.assertEqual(long_geom.run(CIF_FILE), 1)
 
 class TestFromJson(unittest.TestCase):
     sys.argv = ['from_json.py', JSON_FILE, os.devnull]

@@ -15,10 +15,10 @@ void iterate_over_everything(gemmi::Structure& st) {
                       << " " << res.seq_num.str()    // optional int
                       << " " << res.icode            // char
                       << " " << res.segment          // string
+                      // het_flag: 'A' = ATOM, 'H' = HETATM, 0 = not set
                       << " " << (res.het_flag == 'H' ? "HETA" : "ATOM")
              << '\n';
         for (const gemmi::Atom& atom : res.atoms) {
-          // atom.group is 'A' for ATOM, 'H' for HETATM, or 0 if not set
           cout << "   " << atom.name
                  << " " << atom.element.name() // Element
                  << " " << atom.altloc         // char
