@@ -80,6 +80,9 @@ class TestMol(unittest.TestCase):
         self.assertEqual(len(model), 3)
         st.remove_empty_chains()
         self.assertEqual(len(model), 1)
+        model['A'].trim_to_alanine()
+        expected_atom_count = sum(4 + (r.name != 'GLY') for r in model['A'])
+        self.assertEqual(model.count_occupancies(), expected_atom_count)
 
     def test_5i55_removals2(self):
         self.test_5i55_removals(clear_entities=True)

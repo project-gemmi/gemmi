@@ -73,6 +73,23 @@ inline void remove_empty_chains(Structure& st) {
     remove_empty_chains(model);
 }
 
+// Trim to alanine.
+inline void trim_to_alanine(Chain& chain) {
+  static const std::pair<std::string, El> ala_atoms[5] = {
+    {"N", El::N}, {"CA", El::C}, {"C", El::C}, {"O", El::O}, {"CB", El::C}
+  };
+  for (Residue& res : chain.residues) {
+    if (res.get_ca() == nullptr)
+      return;  // we leave it; should we rather remove such residues?
+    impl::remove(res.atoms, [](const Atom& a) {
+        for (const auto& name_el : ala_atoms)
+          if (a.name == name_el.first && a.element == name_el.second)
+            return false;
+        return true;
+    });
+  }
+}
+
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

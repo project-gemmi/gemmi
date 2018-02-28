@@ -32,7 +32,7 @@ struct ConvArg: public Arg {
 
 enum OptionIndex { Verbose=3, FormatIn, FormatOut,
                    Comcifs, Mmjson, Bare, Numb, CifDot, PdbxStyle,
-                   ExpandNcs, RemoveH, RemoveWaters, RemoveLigWat,
+                   ExpandNcs, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
                    IotbxCompat, SegmentAsChain };
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -75,6 +75,8 @@ static const option::Descriptor Usage[] = {
     "  --remove-waters  \tRemove waters." },
   { RemoveLigWat, 0, "", "remove-lig-wat", Arg::None,
     "  --remove-lig-wat  \tRemove ligands and waters." },
+  { TrimAla, 0, "", "trim-to-ala", Arg::None,
+    "  --trim-to-ala  \tTrim aminoacids to alanine." },
   { IotbxCompat, 0, "", "iotbx-compat", Arg::None,
     "  --iotbx-compat  \tLimited compatibility with iotbx (details in docs)." },
   { SegmentAsChain, 0, "", "segment-as-chain", Arg::None,
@@ -322,8 +324,9 @@ void convert(const std::string& input, FileType input_type,
   cif::Document cif_in;
   gemmi::Structure st;
   // for cif->cif we do either cif->DOM->Structure->DOM->cif or cif->DOM->cif
-  bool modify_structure = (options[ExpandNcs] || options[RemoveH] ||
-                           options[SegmentAsChain]);
+  bool modify_structure = (
+      options[ExpandNcs] || options[RemoveH] || options[RemoveWaters] ||
+      options[RemoveLigWat] || options[TrimAla] || options[SegmentAsChain]);
   if (input_type == FileType::Cif || input_type == FileType::Json) {
     cif_in = cif_read_any(input);
     if ((output_type == FileType::Json || output_type == FileType::Cif) &&
@@ -361,6 +364,12 @@ void convert(const std::string& input, FileType input_type,
     remove_ligands_and_waters(st);
     remove_empty_chains(st);
   }
+
+  if (options[TrimAla])
+    for (gemmi::Model& model : st.models)
+      for (gemmi::Chain& chain : model.chains)
+        trim_to_alanine(chain);
+
 
   if (options[SegmentAsChain])
     for (gemmi::Model& model : st.models) {

@@ -158,6 +158,7 @@ void add_mol(py::module& m) {
     .def("append_residues", &Chain::append_residues)
     .def("count_atom_sites", &count_atom_sites<Chain>)
     .def("count_occupancies", &count_occupancies<Chain>)
+    .def("trim_to_alanine", &trim_to_alanine)
     .def("__repr__", [](const Chain& self) {
         return "<gemmi.Chain " + self.name + " (" + self.auth_name +
                ") with " + std::to_string(self.residues.size()) + " res>";
