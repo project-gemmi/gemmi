@@ -289,11 +289,19 @@ struct ResidueGroup {
   int size() const { return end_ - begin_; }
   const Residue& operator[](int i) const { return *(begin_ + i); }
   Residue& operator[](int i) { return *(begin_ + i); }
-  const Residue& at(int i) const { return *(begin_ + i); }
   Residue& at(int i) {
     if (i >= size())
       throw std::out_of_range("ResidueGroup: no item " + std::to_string(i));
     return *(begin_ + i);
+  }
+  const Residue& at(int i) const {
+    return const_cast<ResidueGroup*>(this)->at(i);
+  }
+  Residue& by_resname(const std::string& name) {
+    for (auto it = begin_; it != end_; ++it)
+      if (it->name == name)
+        return *it;
+    throw std::invalid_argument("ResidueGroup has no residue " + name);
   }
   bool empty() const { return begin_ == end_; }
   explicit operator bool() const { return begin_ != end_; }
