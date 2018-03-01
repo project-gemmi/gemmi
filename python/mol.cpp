@@ -101,6 +101,7 @@ void add_mol(py::module& m) {
     }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("find_or_add_model", &Structure::find_or_add_model,
          py::arg("name"), py::return_value_policy::reference_internal)
+    .def("make_pdb_headers", &make_pdb_headers)
     .def("write_pdb", [](const Structure& st, const std::string& path) {
        std::ofstream f(path.c_str());
        write_pdb(st, f);

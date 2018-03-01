@@ -10,6 +10,7 @@
 #include <cstring>
 #include <algorithm>
 #include <ostream>
+#include <sstream>
 #include "sprintf.hpp"
 #include "model.hpp"
 #include "calculate.hpp"  // for calculate_omega
@@ -235,28 +236,29 @@ inline void write_atoms(const Structure& st, std::ostream& os,
   }
 }
 
-} // namespace impl
 
-inline void write_pdb(const Structure& st, std::ostream& os,
-                      bool iotbx_compat=false) {
-  const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
-  const char* date =
-    st.get_info("_pdbx_database_status.recvd_initial_deposition_date").c_str();
-  std::string pdb_date;
-  if (date && std::strlen(date) == 10) {
-    unsigned month_idx = 10 * (date[5] - '0') + date[6] - '0' - 1;
-    pdb_date = std::string(date + 8, 2) + "-" +
-               std::string(months + 3 * std::min(month_idx, 13u), 3) +
-               "-" + std::string(date + 2, 2);
-  }
+inline void write_header(const Structure& st, std::ostream& os,
+                         bool iotbx_compat) {
   char buf[88];
-  WRITEU("HEADER    %-40s%-9s   %-18s\n",
-         // "classification" in PDB == _struct_keywords.pdbx_keywords in mmCIF
-         st.get_info("_struct_keywords.pdbx_keywords").c_str(),
-         pdb_date.c_str(), st.get_info("_entry.id").c_str());
-  impl::write_multiline(os, "TITLE", st.get_info("_struct.title"), 80);
-  impl::write_multiline(os, "KEYWDS", st.get_info("_struct_keywords.text"), 79);
-  impl::write_multiline(os, "EXPDTA", st.get_info("_exptl.method"), 79);
+  { // header line
+    const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
+    const char* date =
+      st.get_info("_pdbx_database_status.recvd_initial_deposition_date").c_str();
+    std::string pdb_date;
+    if (date && std::strlen(date) == 10) {
+      unsigned month_idx = 10 * (date[5] - '0') + date[6] - '0' - 1;
+      pdb_date = std::string(date + 8, 2) + "-" +
+                 std::string(months + 3 * std::min(month_idx, 13u), 3) +
+                 "-" + std::string(date + 2, 2);
+    }
+    WRITEU("HEADER    %-40s%-9s   %-18s\n",
+           // "classification" in PDB == _struct_keywords.pdbx_keywords in mmCIF
+           st.get_info("_struct_keywords.pdbx_keywords").c_str(),
+           pdb_date.c_str(), st.get_info("_entry.id").c_str());
+  }
+  write_multiline(os, "TITLE", st.get_info("_struct.title"), 80);
+  write_multiline(os, "KEYWDS", st.get_info("_struct_keywords.text"), 79);
+  write_multiline(os, "EXPDTA", st.get_info("_exptl.method"), 79);
   if (st.models.size() > 1)
     WRITE("NUMMDL    %-6zu %63s\n", st.models.size(), "");
 
@@ -315,9 +317,9 @@ inline void write_pdb(const Structure& st, std::ostream& os,
         WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  \n",
            ++counter,
            cra1.residue->name.c_str(), cra1.chain->name_for_pdb().c_str(),
-           impl::write_seq_id(buf8, *cra1.residue),
+           write_seq_id(buf8, *cra1.residue),
            cra2.residue->name.c_str(), cra2.chain->name_for_pdb().c_str(),
-           impl::write_seq_id(buf8a, *cra2.residue),
+           write_seq_id(buf8a, *cra2.residue),
            "1555", im.pdb_symbol(false).c_str(), im.dist());
       }
 
@@ -331,8 +333,8 @@ inline void write_pdb(const Structure& st, std::ostream& os,
             if (const Residue* next = chain.next_bonded_aa(res)) {
               WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s\n",
                   ++counter,
-                  res.name.c_str(), cname, impl::write_seq_id(buf8, res),
-                  next->name.c_str(), cname, impl::write_seq_id(buf8a, *next),
+                  res.name.c_str(), cname, write_seq_id(buf8, res),
+                  next->name.c_str(), cname, write_seq_id(buf8a, *next),
                   st.models.size() > 1 ? model.name.c_str() : "0",
                   deg(calculate_omega(res, *next)),
                   "");
@@ -340,7 +342,7 @@ inline void write_pdb(const Structure& st, std::ostream& os,
       }
   }
 
-  impl::write_cryst1(st, os);
+  write_cryst1(st, os);
   for (int i = 0; i < 3; ++i)
     WRITE("ORIGX%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
           st.origx.mat[i][0], st.origx.mat[i][1], st.origx.mat[i][2],
@@ -350,12 +352,26 @@ inline void write_pdb(const Structure& st, std::ostream& os,
     WRITE("SCALE%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
           st.cell.frac.mat[i][0] + 1e-15, st.cell.frac.mat[i][1] + 1e-15,
           st.cell.frac.mat[i][2] + 1e-15, st.cell.frac.vec.at(i) + 1e-15, "");
-  impl::write_ncs(st, os);
+  write_ncs(st, os);
+}
 
+} // namespace impl
+
+inline std::string make_pdb_headers(const Structure& st) {
+  std::ostringstream os;
+  impl::write_header(st, os, false);
+  return os.str();
+}
+
+inline void write_pdb(const Structure& st, std::ostream& os,
+                      bool iotbx_compat=false) {
+  impl::write_header(st, os, iotbx_compat);
   impl::write_atoms(st, os, iotbx_compat, nullptr);
+  char buf[88];
   WRITE("%-80s\n", "END");
 }
 
+// If chain_auth is specified it outputs only this chain.
 inline void write_minimal_pdb(const Structure& st, std::ostream& os,
                               const char* chain_auth=nullptr) {
   impl::write_cryst1(st, os);

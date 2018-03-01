@@ -16,6 +16,9 @@ def is_written_to_pdb(line):
         return False
     return True
 
+DISULF_FRAG = """\
+"""
+
 def full_path(filename):
     return os.path.join(os.path.dirname(__file__), filename)
 
@@ -199,6 +202,11 @@ class TestMol(unittest.TestCase):
         nearest_image = st.cell.find_nearest_image(first_atom.pos, ne2.pos)
         nearest_dist = nearest_image.dist()
         self.assertAlmostEqual(nearest_dist, 8.02, delta=1e-2)
+
+    def test_ssbond(self):
+        return
+        st = gemmi.read_pdb_string(DISULF_FRAG)
+        out = st.make_pdb_header()
 
 if __name__ == '__main__':
     unittest.main()
