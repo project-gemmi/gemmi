@@ -66,3 +66,4 @@ def DoctestDirective_run(self):
     nodes[0]['language'] = 'python'
     return nodes
 sphinx.ext.doctest.DoctestDirective.run = DoctestDirective_run
+sphinx.ext.doctest.TestcodeDirective.run = DoctestDirective_run

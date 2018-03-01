@@ -360,8 +360,8 @@ TODO
 Model - Chain - Residue - Atom
 ==============================
 
-Naming
-------
+Hierarchy
+---------
 
 The most useful representation for working with macromolecular models
 is a hierarchy of objects.
@@ -375,6 +375,42 @@ PDBx/mmCIF uses more general (but not so obvious) terms:
 *entity* and *struct_asym* (structural component in asymetric unit)
 instead of chain,
 and *chem_comp* (chemical component) for residue/monomer.
+
+The object of type Structure that we get from reading a PDB or mmCIF file
+may contain multiple models. This adds one more level to the hierarchy.
+At this point it may be good how an example code.
+Let us mutate all methionine residues (MET) to selenomethionine (MSE).
+
+**C++**
+
+.. literalinclude:: doc_mutate.cpp
+   :language: cpp
+
+**Python**
+
+.. testcode::
+
+  import gemmi
+
+  def met_to_mse(st: gemmi.Structure) -> None:
+      for model in st:
+          for chain in model:
+              for residue in chain:
+                  if residue.name == 'MET':
+                      s_atom = residue['SD']
+                      residue.name = 'MSE'
+                      s_atom.name = 'SE'
+                      s_atom.element = gemmi.Element('Se')
+
+.. doctest::
+  :hide:
+
+  >>> st = gemmi.read_structure('../tests/1orc.pdb')
+  >>> st[0]['A']['12']
+  <gemmi.ResidueGroup [ 12/MET ]>
+  >>> met_to_mse(st)
+  >>> st[0]['A']['12']
+  <gemmi.ResidueGroup [ 12/MSE ]>
 
 Structure
 ---------
