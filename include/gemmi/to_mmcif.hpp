@@ -176,7 +176,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   // _struct_asym
   cif::Loop& asym_loop = block.init_mmcif_loop("_struct_asym.",
                                                {"id", "entity_id"});
-  for (const auto& ch : st.get_chains())
+  for (const auto& ch : st.models.at(0).chains)
     asym_loop.add_row({ch.name, (ch.entity_id.empty() ? "?" : ch.entity_id)});
 
   // _database_PDB_matrix (ORIGX)

@@ -398,7 +398,7 @@ and *chem_comp* (chemical component) for residue/monomer.
 
 The object of type Structure that we get from reading a PDB or mmCIF file
 may contain multiple models. This adds one more level to the hierarchy.
-At this point it may be good how an example code.
+At this point it may be good to show an example code.
 Let us mutate all methionine residues (MET) to selenomethionine (MSE).
 
 **C++**

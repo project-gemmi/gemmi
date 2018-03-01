@@ -514,11 +514,6 @@ struct Structure {
       ent = entities.emplace(ent_id, Entity()).first;
     return ent->second;
   }
-  const std::vector<Chain>& get_chains() const {
-    // We don't handle yet a corner case (ever happening?)
-    // in which the first model is lacking a chain.
-    return models.at(0).chains;
-  }
 
   double get_ncs_multiplier() const {
     int given = std::count_if(ncs.begin(), ncs.end(),

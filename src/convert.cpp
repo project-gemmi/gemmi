@@ -257,7 +257,7 @@ cif::Document make_crd(const gemmi::Structure& st) {
   // _struct_asym
   cif::Loop& asym_loop = block.init_mmcif_loop("_struct_asym.",
                                                {"id", "entity_id"});
-  for (const auto& ch : st.get_chains()) {
+  for (const auto& ch : st.models.at(0).chains) {
     asym_loop.values.push_back(ch.name);
     asym_loop.values.push_back(ch.entity_id.empty() ? "?" : ch.entity_id);
   }
