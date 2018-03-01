@@ -132,10 +132,13 @@ target_link_libraries(ctest cgemmi)
 add_executable(cpptest EXCLUDE_FROM_ALL tests/main.cpp tests/cif.cpp)
 
 add_executable(hello EXCLUDE_FROM_ALL examples/hello.cc)
-add_executable(doc_example EXCLUDE_FROM_ALL docs/doc_sym.cpp docs/doc_elem.cpp)
-add_executable(doc_example2 EXCLUDE_FROM_ALL docs/doc_cif_cc.cpp)
+add_executable(doc_example EXCLUDE_FROM_ALL
+               docs/code/sym.cpp docs/code/elem.cpp docs/code/resinfo.cpp
+               docs/code/cell.cpp)
+add_executable(doc_example2 EXCLUDE_FROM_ALL docs/code/cif_cc.cpp)
 add_executable(doc_maybegz EXCLUDE_FROM_ALL
-               docs/doc_maybegz.cpp docs/doc_structure.cpp docs/doc_mutate.cpp)
+               docs/code/maybegz.cpp docs/code/structure.cpp
+               docs/code/mutate.cpp)
 support_gz(doc_maybegz)
 
 # always compile these tests with assertions enabled

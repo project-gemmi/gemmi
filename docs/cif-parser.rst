@@ -220,7 +220,7 @@ Let us start with a simple example.
 This little program reads mmCIF file and shows weights of the chemical
 components:
 
-.. literalinclude:: doc_cif_cc.cpp
+.. literalinclude:: code/cif_cc.cpp
    :language: cpp
    :lines: 1-11
 
@@ -464,7 +464,7 @@ structure -- just enough get the range-for work.
 As an example, let us convert mmCIF
 to the `XYZ format <https://en.wikipedia.org/wiki/XYZ_file_format>`_:
 
-.. literalinclude:: doc_cif_cc.cpp
+.. literalinclude:: code/cif_cc.cpp
    :language: cpp
    :lines: 15-
 

@@ -195,6 +195,11 @@ struct FTransform : Transform {
 
 
 struct UnitCell {
+  UnitCell() = default;
+  UnitCell(double a_, double b_, double c_,
+           double alpha_, double beta_, double gamma_) {
+    set(a_, b_, c_, alpha_, beta_, gamma_);
+  }
   double a = 1.0, b = 1.0, c = 1.0;
   double alpha = 90.0, beta = 90.0, gamma = 90.0;
   Transform orth;

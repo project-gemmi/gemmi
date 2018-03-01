@@ -1,6 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/elem.hpp"
+#include "gemmi/resinfo.hpp"
 #include "gemmi/model.hpp"
 #include "gemmi/calculate.hpp"
 #include "gemmi/modify.hpp"
@@ -37,6 +38,16 @@ void add_mol(py::module& m) {
     .def("__repr__", [](const Element& self) {
         return "<gemmi.Element: " + std::string(self.name()) + ">";
     });
+
+  py::class_<ResidueInfo>(m, "ResidueInfo")
+    .def_readonly("pdb_standard", &ResidueInfo::pdb_standard)
+    .def_readonly("hydrogen_count", &ResidueInfo::hydrogen_count)
+    .def("is_water", &ResidueInfo::is_water)
+    .def("is_nucleic", &ResidueInfo::is_nucleic)
+    .def("is_amino", &ResidueInfo::is_amino);
+
+  m.def("find_tabulated_residue", &find_tabulated_residue, py::arg("name"),
+        "Find chemical component information in the internal table.");
 
   py::enum_<EntityType>(m, "EntityType")
     .value("Unknown", EntityType::Unknown)

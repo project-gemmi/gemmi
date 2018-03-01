@@ -179,7 +179,7 @@ to add missing group elements (if any), etc.
 C++
 ===
 
-.. literalinclude:: doc_sym.cpp
+.. literalinclude:: code/sym.cpp
    :language: cpp
 
 Python

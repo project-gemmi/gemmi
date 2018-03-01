@@ -26,15 +26,13 @@ Elements
 When working with molecular structures it is good to have a basic data
 from the periodic table at hand.
 
-C++
----
+**C++**
 
-.. literalinclude:: doc_elem.cpp
+.. literalinclude:: code/elem.cpp
    :language: cpp
 
 
-Python
-------
+**Python**
 
 .. doctest::
 
@@ -58,8 +56,31 @@ The components are described in:
   syntax): in the Refmac monomer library (maintained by CCP4)
   and in other libraries.
 
-Gemmi can read the dictionaries, but it also has a built-in mini-database
-of popular components.
+Gemmi has a built-in mini-database of popular components that is often
+sufficient.
+
+**C++**
+
+.. literalinclude:: code/resinfo.cpp
+   :language: cpp
+
+**Python**
+
+.. doctest::
+
+    >>> gemmi.find_tabulated_residue('ALA').is_amino()
+    True
+    >>> gemmi.find_tabulated_residue('DOD').is_water()
+    True
+    >>> # PDB marks "non-standard" residues as HETATM.
+    >>> # Pyrrolysine is now standard - some microbes have it.
+    >>> gemmi.find_tabulated_residue('PYL').pdb_standard
+    True
+    >>> gemmi.find_tabulated_residue('MSE').pdb_standard
+    False
+
+To get more complete information we need to first read either the CCD
+or a monomer library.
 
 TODO
 
@@ -70,13 +91,12 @@ When working with a structural models in a crystal, we need to work
 with a unit cell, and in particular we need to be able to switch between
 orthogonal and fractional coordinates.
 
-C++
----
+**C++**
 
-TODO
+.. literalinclude:: code/cell.cpp
+   :language: cpp
 
-Python
-------
+**Python**
 
 .. doctest::
 
@@ -140,7 +160,7 @@ Gemmi also has a templated function ``read_structure`` that you can use
 to customize how you provide the data (bytes) to the parsers.
 This function is used to uncompress gzipped files on the fly:
 
-.. literalinclude:: doc_maybegz.cpp
+.. literalinclude:: code/maybegz.cpp
    :language: cpp
 
 If you include the :file:`gz.hpp` header (as in the example above)
@@ -383,7 +403,7 @@ Let us mutate all methionine residues (MET) to selenomethionine (MSE).
 
 **C++**
 
-.. literalinclude:: doc_mutate.cpp
+.. literalinclude:: code/mutate.cpp
    :language: cpp
 
 **Python**
@@ -458,7 +478,7 @@ Everything will be documented later on.
 Here is a minimal example that shows the hierarchy and properties
 of each object.
 
-.. literalinclude:: doc_structure.cpp
+.. literalinclude:: code/structure.cpp
    :language: cpp
 
 
@@ -537,6 +557,54 @@ once a week:
 
 Examples
 ========
+
+Chain longer than cell
+----------------------
+
+Is it possible for a single chain to exceed the size of the unit cell
+in one of the directions? How much longer can it be than the cell?
+
+.. literalinclude:: ../examples/long_geom.py
+   :language: python
+   :lines: 2-
+
+When run on the PDB database (on a local copy of either pdb or mmCIF files)
+this script prints too many lines to show here.
+
+.. code-block:: console
+
+  $ ./examples/long_geom.py $PDB_DIR/structures/divided/pdb/
+  105M   chain:A   deltaY = 1.225
+  208L   chain:A   deltaZ = 1.203
+  11BA   chain:A   deltaX = 1.227
+  11BA   chain:B   deltaX = 1.202
+  ...
+  3NWH   chain:A   deltaX = 3.893
+  3NWH   chain:B   deltaX = 3.955
+  3NWH   chain:C   deltaX = 4.093
+  3NWH   chain:D   deltaX = 3.472
+  ...
+  5XG2   chain:A   deltaX = 4.267
+  5XG2   chain:A   deltaZ = 1.467
+  ...
+
+How the chains that span over 5 unit cells in one direction look like?
+For example, here is 3NWH -- a homo-4-mer in P2
+(4 x 2 chains per unit cell) -- colored by chain id in NGL:
+
+.. image:: img/3nwh.png
+    :align: center
+    :scale: 100
+    :target: https://www.rcsb.org/3d-view/3NWH/
+
+5XG2 is a monomer in P21, also a coiled coil.
+Here each chain is rainbow-colored:
+
+.. image:: img/5xg2.png
+    :align: center
+    :scale: 100
+    :target: https://www.rcsb.org/3d-view/5XG2/
+
 
 B-factor analysis
 -----------------
