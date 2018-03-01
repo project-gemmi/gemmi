@@ -75,8 +75,9 @@ inline void remove_empty_chains(Structure& st) {
 
 // Trim to alanine.
 inline void trim_to_alanine(Chain& chain) {
-  static const std::pair<std::string, El> ala_atoms[5] = {
-    {"N", El::N}, {"CA", El::C}, {"C", El::C}, {"O", El::O}, {"CB", El::C}
+  static const std::pair<std::string, El> ala_atoms[6] = {
+    {"N", El::N}, {"CA", El::C}, {"C", El::C}, {"O", El::O}, {"CB", El::C},
+    {"OXT", El::O}
   };
   for (Residue& res : chain.residues) {
     if (res.get_ca() == nullptr)
