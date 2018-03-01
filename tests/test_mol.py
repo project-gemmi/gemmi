@@ -16,8 +16,19 @@ def is_written_to_pdb(line):
         return False
     return True
 
-DISULF_FRAG = """\
-"""
+# $ zgrep -P '(^HEADER|CRYST1|SSBOND|ATOM.*SG)' pdb5cfg.ent.gz
+SSBOND_FRAGMENT = """\
+HEADER    LYASE                                   08-JUL-15   5CFG              
+SSBOND   1 CYS A  138    CYS A  138                          1555   2555  2.48  
+CRYST1   86.530   45.120   77.980  90.00 105.15  90.00 C 1 2 1       4          
+ATOM    166  SG  CYS A  65      17.771 -16.223 -10.059  1.00 39.15           S  
+ATOM    396  SG  CYS A  93      10.163 -20.624 -11.577  1.00 25.81           S  
+ATOM    444  SG  CYS A  99      12.757 -34.484  -2.237  1.00 44.66           S  
+ATOM    744  SG  CYS A 138       0.524 -16.872  -1.123  1.00 38.43           S  
+ATOM   1309  SG  CYS A 208      10.668 -20.500 -14.891  1.00 25.60           S  
+ATOM   2024  SG  CYS A 296      14.668  -4.407 -16.359  1.00 25.70           S  
+ATOM   2128  SG  CYS A 310      24.141 -22.158 -17.213  1.00 20.07           S  
+"""  # noqa: W291 - trailing whitespace
 
 def full_path(filename):
     return os.path.join(os.path.dirname(__file__), filename)
@@ -204,9 +215,9 @@ class TestMol(unittest.TestCase):
         self.assertAlmostEqual(nearest_dist, 8.02, delta=1e-2)
 
     def test_ssbond(self):
-        return
-        st = gemmi.read_pdb_string(DISULF_FRAG)
-        out = st.make_pdb_header()
+        st = gemmi.read_pdb_string(SSBOND_FRAGMENT)
+        out = st.make_pdb_headers()
+        self.assertEqual(out.splitlines(), SSBOND_FRAGMENT.splitlines()[:3])
 
 if __name__ == '__main__':
     unittest.main()

@@ -187,7 +187,7 @@ struct MemoryInput {
     if (start >= end)
       return nullptr;
     const char* nl = (const char*) std::memchr(start, '\n', end - start);
-    size_t len = nl && nl - start < size ? nl - start : size;
+    size_t len = nl && nl + 1 - start < size ? nl + 1 - start : size;
     std::memcpy(line, start, len);
     start += len;
     return line;

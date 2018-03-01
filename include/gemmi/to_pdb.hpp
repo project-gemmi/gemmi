@@ -238,7 +238,7 @@ inline void write_atoms(const Structure& st, std::ostream& os,
 
 
 inline void write_header(const Structure& st, std::ostream& os,
-                         bool iotbx_compat) {
+                         bool iotbx_compat, bool all_matrices) {
   char buf[88];
   { // header line
     const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
@@ -343,15 +343,17 @@ inline void write_header(const Structure& st, std::ostream& os,
   }
 
   write_cryst1(st, os);
-  for (int i = 0; i < 3; ++i)
-    WRITE("ORIGX%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
-          st.origx.mat[i][0], st.origx.mat[i][1], st.origx.mat[i][2],
-          st.origx.vec.at(i), "");
-  for (int i = 0; i < 3; ++i)
-    // We add a small number to avoid negative 0.
-    WRITE("SCALE%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
-          st.cell.frac.mat[i][0] + 1e-15, st.cell.frac.mat[i][1] + 1e-15,
-          st.cell.frac.mat[i][2] + 1e-15, st.cell.frac.vec.at(i) + 1e-15, "");
+  if (st.cell.explicit_matrices || all_matrices) {
+    for (int i = 0; i < 3; ++i)
+      WRITE("ORIGX%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
+            st.origx.mat[i][0], st.origx.mat[i][1], st.origx.mat[i][2],
+            st.origx.vec.at(i), "");
+    for (int i = 0; i < 3; ++i)
+      // We add a small number to avoid negative 0.
+      WRITE("SCALE%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
+            st.cell.frac.mat[i][0] + 1e-15, st.cell.frac.mat[i][1] + 1e-15,
+            st.cell.frac.mat[i][2] + 1e-15, st.cell.frac.vec.at(i) + 1e-15, "");
+  }
   write_ncs(st, os);
 }
 
@@ -359,13 +361,13 @@ inline void write_header(const Structure& st, std::ostream& os,
 
 inline std::string make_pdb_headers(const Structure& st) {
   std::ostringstream os;
-  impl::write_header(st, os, false);
+  impl::write_header(st, os, false, false);
   return os.str();
 }
 
 inline void write_pdb(const Structure& st, std::ostream& os,
                       bool iotbx_compat=false) {
-  impl::write_header(st, os, iotbx_compat);
+  impl::write_header(st, os, iotbx_compat, true);
   impl::write_atoms(st, os, iotbx_compat, nullptr);
   char buf[88];
   WRITE("%-80s\n", "END");
