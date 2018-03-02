@@ -35,7 +35,7 @@ inline bool is_little_endian() {
   return *reinterpret_cast<char *>(&x) == 1;
 }
 
-int modulo(int a, int n) {
+inline int modulo(int a, int n) {
   if (a >= n)
     a %= n;
   else if (a < 0)
@@ -473,10 +473,10 @@ template<typename T> void check_diff(T a, T b, double* max_error) {
 
 // MSVC does not accept std::int8_t etc. as an argument to std::isnan()
 template<typename T> bool is_nan(T a) { return std::isnan(a); }
-template<> bool is_nan(std::int8_t) { return false; }
-template<> bool is_nan(std::int16_t) { return false; }
-template<> bool is_nan(std::uint16_t) { return false; }
-template<> bool is_nan(int) { return false; }
+template<> inline bool is_nan(std::int8_t) { return false; }
+template<> inline bool is_nan(std::int16_t) { return false; }
+template<> inline bool is_nan(std::uint16_t) { return false; }
+template<> inline bool is_nan(int) { return false; }
 }
 
 template<typename T>
