@@ -294,7 +294,9 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       atom.pos.z = read_double(line+46, 8);
       atom.occ = (float) read_double(line+54, 6);
       atom.b_iso = (float) read_double(line+60, 6);
-      atom.element = gemmi::Element(line + (len > 76 ? 76 : 12));
+      bool has_elem = len > 76 && (std::isalpha(line[76]) ||
+                                   std::isalpha(line[77]));
+      atom.element = gemmi::Element(line + (has_elem ? 76 : 12));
       atom.charge = (len > 78 ? read_charge(line[78], line[79]) : 0);
       resi->atoms.emplace_back(atom);
 

@@ -197,8 +197,8 @@ class TestMol(unittest.TestCase):
     def test_pdb_fragment(self):
         pdb_line = "HETATM 4154 MG    MG A 341       1.384  19.340  11.968" \
                    "  1.00 67.64          MG"
-        for line in [pdb_line, pdb_line.strip(' MG')]:
-            st = gemmi.read_pdb_string(pdb_line)
+        for line in [pdb_line, pdb_line.strip(' MG'), pdb_line[:-2] + '  ']:
+            st = gemmi.read_pdb_string(line)
             mg_atom = st[0]['A']['341'][0]['MG']
             self.assertEqual(mg_atom.element.name, 'Mg')
             self.assertAlmostEqual(mg_atom.b_iso, 67.64, delta=1e-6)
