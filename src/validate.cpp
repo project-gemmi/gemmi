@@ -13,10 +13,27 @@
 # include <tao/pegtl/analyze.hpp>
 #endif
 
-#define EXE_NAME "gemmi-validate"
+#define GEMMI_PROG validate
 #include "options.h"
 
 namespace cif = gemmi::cif;
+
+enum OptionIndex { Fast=3, Stat, Types, Quiet, Ddl };
+const option::Descriptor Usage[] = {
+  { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
+                                "\n\nOptions:" },
+  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
+  { Version, 0, "V", "version", Arg::None,
+    "  -V, --version  \tDisplay version information and exit." },
+  { Fast, 0, "f", "fast", Arg::None, "  -f, --fast  \tSyntax-only check." },
+  { Stat, 0, "s", "stat", Arg::None, "  -s, --stat  \tShow token statistics" },
+  { Types, 0, "t", "types", Arg::None, "  -t, --types  \t"
+                                       "Break down token statistics by type." },
+  { Quiet, 0, "q", "quiet", Arg::None, "  -q, --quiet  \tShow only errors." },
+  { Ddl, 0, "d", "ddl", Arg::Required,
+                                   "  -d, --ddl=PATH  \tDDL for validation." },
+  { 0, 0, 0, 0, 0, 0 }
+};
 
 enum class ValueType : unsigned char {
   NotSet,
@@ -55,7 +72,7 @@ static std::string format_7zd(size_t k) {
   return buf;
 }
 
-std::string token_stats(const cif::Document& d, bool infer_types) {
+static std::string token_stats(const cif::Document& d, bool infer_types) {
   std::string info;
   size_t nframes = 0, nvals = 0, nloops = 0, nlooptags = 0, nloopvals = 0;
   size_t vals_by_type[5] = {0};
@@ -122,26 +139,7 @@ std::string token_stats(const cif::Document& d, bool infer_types) {
 }
 
 
-enum OptionIndex { Fast=3, Stat, Types, Quiet, Ddl };
-const option::Descriptor Usage[] = {
-  { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
-                                "\n\nOptions:" },
-  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
-  { Version, 0, "V", "version", Arg::None,
-    "  -V, --version  \tDisplay version information and exit." },
-  { Fast, 0, "f", "fast", Arg::None, "  -f, --fast  \tSyntax-only check." },
-  { Stat, 0, "s", "stat", Arg::None, "  -s, --stat  \tShow token statistics" },
-  { Types, 0, "t", "types", Arg::None, "  -t, --types  \t"
-                                       "Break down token statistics by type." },
-  { Quiet, 0, "q", "quiet", Arg::None, "  -q, --quiet  \tShow only errors." },
-  { Ddl, 0, "d", "ddl", Arg::Required,
-                                   "  -d, --ddl=PATH  \tDDL for validation." },
-  { 0, 0, 0, 0, 0, 0 }
-};
-
-
-
-int main(int argc, char **argv) {
+int GEMMI_MAIN(int argc, char **argv) {
 #ifdef ANALYZE_RULES // for debugging only
   tao::pegtl::analyze<cif::rules::file>();
   tao::pegtl::analyze<cif::numb_rules::numb>();

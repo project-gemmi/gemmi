@@ -4,7 +4,8 @@
 #include "gemmi/symmetry.hpp"
 #include "input.h"
 #include <cstdlib>  // for strtod
-#define EXE_NAME "gemmi-mask"
+
+#define GEMMI_PROG mask
 #include "options.h"
 
 enum OptionIndex { Verbose=3, FormatIn, Threshold, Fraction, GridSpac,
@@ -46,7 +47,7 @@ static const option::Descriptor Usage[] = {
 enum class InputType : char { Coordinates, Ccp4, Unknown };
 
 
-int main(int argc, char **argv) {
+int GEMMI_MAIN(int argc, char **argv) {
   OptParser p;
   p.exclusive_groups.push_back({Threshold, Fraction});
   p.simple_parse(argc, argv, Usage);

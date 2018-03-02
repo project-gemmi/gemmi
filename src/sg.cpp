@@ -3,14 +3,30 @@
 #include "gemmi/symmetry.hpp"
 #include <stdio.h>
 
-void print_symmetry_operations(const gemmi::GroupOps& ops) {
+#define GEMMI_PROG sg
+#include "options.h"
+
+// enum OptionIndex { Verbose=3 };
+
+static const option::Descriptor Usage[] = {
+  { NoOp, 0, "", "", Arg::None,
+    "Usage:\n " EXE_NAME " [options] SPACEGROUP[...]"
+    "\nPrints information about the space group."},
+  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
+  { Version, 0, "V", "version", Arg::None,
+    "  -V, --version  \tPrint version and exit." },
+  //{ Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  { 0, 0, 0, 0, 0, 0 }
+};
+
+static void print_symmetry_operations(const gemmi::GroupOps& ops) {
   printf("%zu x %zu symmetry operations:\n",
          ops.cen_ops.size(), ops.sym_ops.size());
   for (const gemmi::Op& op : ops)
     printf("    %s\n", op.triplet().c_str());
 }
 
-void process_arg(const char* arg) {
+static void process_arg(const char* arg) {
   const gemmi::SpaceGroup* sg = gemmi::find_spacegroup_by_name(arg);
   if (sg == nullptr) {
     try {
@@ -36,9 +52,11 @@ void process_arg(const char* arg) {
   printf("\n");
 }
 
-int main(int argc, char **argv) {
-  for (int i = 1; i < argc; ++i)
-    process_arg(argv[i]);
+int GEMMI_MAIN(int argc, char **argv) {
+  OptParser p;
+  p.simple_parse(argc, argv, Usage);
+  for (int i = 0; i < p.nonOptionsCount(); ++i)
+    process_arg(p.nonOption(i));
   return 0;
 }
 

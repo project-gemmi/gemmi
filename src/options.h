@@ -10,6 +10,22 @@
 #include <optionparser.h>
 #include "gemmi/version.hpp"
 
+#ifndef GEMMI_PROG
+# error "define GEMMI_PROG before including options.h"
+#endif
+
+#define GEMMI_XSTRINGIZE(s) GEMMI_STRINGIZE(s)
+#define GEMMI_STRINGIZE(s) #s
+#define GEMMI_XCONCAT(a, b) GEMMI_CONCAT(a, b)
+#define GEMMI_CONCAT(a, b) a##b
+#ifdef GEMMI_ALL_IN_ONE  // GEMMI_MAIN=foo_main EXE_NAME="gemmi foo"
+# define GEMMI_MAIN GEMMI_XCONCAT(GEMMI_PROG, _main)
+# define EXE_NAME "gemmi " GEMMI_XSTRINGIZE(GEMMI_PROG)
+#else                    // GEMMI_MAIN=main     EXE_NAME="gemmi-foo"
+# define GEMMI_MAIN main
+# define EXE_NAME "gemmi-" GEMMI_XSTRINGIZE(GEMMI_PROG)
+#endif
+
 enum { NoOp=0, Help=1, Version=2 };
 
 inline std::vector<int> parse_comma_separated_ints(const char* arg) {

@@ -7,13 +7,28 @@
 #include <gemmi/resinfo.hpp>
 #include <gemmi/calculate.hpp>
 #include "input.h"
-#define EXE_NAME "gemmi-contents"
+#define GEMMI_PROG contents
 #include "options.h"
 #include <stdio.h>
 
 using namespace gemmi;
 
-void print_content_info(const Structure& st, bool /*verbose*/) {
+enum OptionIndex { Verbose=3, Dihedrals };
+
+static const option::Descriptor Usage[] = {
+  { NoOp, 0, "", "", Arg::None,
+    "Usage:\n " EXE_NAME " [options] INPUT[...]"
+    "\nAnalyses content of a PDB or mmCIF."},
+  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
+  { Version, 0, "V", "version", Arg::None,
+    "  -V, --version  \tPrint version and exit." },
+  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  { Dihedrals, 0, "", "dihedrals", Arg::None,
+    "  --dihedrals  \tPrint peptide dihedral angles." },
+  { 0, 0, 0, 0, 0, 0 }
+};
+
+static void print_content_info(const Structure& st, bool /*verbose*/) {
   printf(" Spacegroup   %s\n", st.sg_hm.c_str());
   int order = 1;
   const SpaceGroup* sg = find_spacegroup_by_name(st.sg_hm);
@@ -85,7 +100,7 @@ void print_content_info(const Structure& st, bool /*verbose*/) {
            ro, 100. * (1. - 1. / (ro * Vm * Na)));
 }
 
-void print_dihedrals(const Structure& st) {
+static void print_dihedrals(const Structure& st) {
   printf(" Chain Residue      Psi      Phi    Omega\n");
   const Model& model = st.models.at(0);
   for (const Chain& chain : model.chains) {
@@ -108,7 +123,7 @@ void print_dihedrals(const Structure& st) {
   printf("\n");
 }
 
-void print_atoms_on_special_positions(const Structure& st) {
+static void print_atoms_on_special_positions(const Structure& st) {
   printf(" Atoms on special positions:");
   bool found = false;
   for (const Chain& chain : st.models.at(0).chains)
@@ -129,22 +144,7 @@ void print_atoms_on_special_positions(const Structure& st) {
   printf("\n");
 }
 
-enum OptionIndex { Verbose=3, Dihedrals };
-
-static const option::Descriptor Usage[] = {
-  { NoOp, 0, "", "", Arg::None,
-    "Usage:\n " EXE_NAME " [options] INPUT[...]"
-    "\nAnalyses content of a PDB or mmCIF."},
-  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
-  { Version, 0, "V", "version", Arg::None,
-    "  -V, --version  \tPrint version and exit." },
-  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
-  { Dihedrals, 0, "", "dihedrals", Arg::None,
-    "  --dihedrals  \tPrint peptide dihedral angles." },
-  { 0, 0, 0, 0, 0, 0 }
-};
-
-int main(int argc, char **argv) {
+int GEMMI_MAIN(int argc, char **argv) {
   OptParser p;
   p.simple_parse(argc, argv, Usage);
   bool verbose = p.options[Verbose];

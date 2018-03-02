@@ -12,7 +12,7 @@
 #include <iostream>
 #include <map>
 
-#define EXE_NAME "gemmi-convert"
+#define GEMMI_PROG convert
 #include "options.h"
 
 namespace cif = gemmi::cif;
@@ -186,7 +186,7 @@ std::vector<gemmi::Chain> split_by_segments(gemmi::Chain& orig) {
 }
 
 // for Refmac, to be merged with update_cif_block()
-cif::Document make_crd(const gemmi::Structure& st) {
+static cif::Document make_crd(const gemmi::Structure& st) {
   using gemmi::to_str;
   cif::Document crd;
   if (st.models.empty())
@@ -318,9 +318,9 @@ cif::Document make_crd(const gemmi::Structure& st) {
   return crd;
 }
 
-void convert(const std::string& input, FileType input_type,
-             const std::string& output, FileType output_type,
-             const std::vector<option::Option>& options) {
+static void convert(const std::string& input, FileType input_type,
+                    const std::string& output, FileType output_type,
+                    const std::vector<option::Option>& options) {
   cif::Document cif_in;
   gemmi::Structure st;
   // for cif->cif we do either cif->DOM->Structure->DOM->cif or cif->DOM->cif
@@ -432,7 +432,7 @@ void convert(const std::string& input, FileType input_type,
   }
 }
 
-int main(int argc, char **argv) {
+int GEMMI_MAIN(int argc, char **argv) {
   std::ios_base::sync_with_stdio(false);
   OptParser p;
   p.simple_parse(argc, argv, Usage);

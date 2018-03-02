@@ -12,7 +12,7 @@
 #include <stdexcept>
 #include <string>
 
-#define EXE_NAME "gemmi-grep"
+#define GEMMI_PROG grep
 #include "options.h"
 
 using std::printf;
@@ -26,7 +26,7 @@ enum OptionIndex { FromFile=3, Recurse, MaxCount, OneBlock, And, Delim,
                    WithFileName, NoBlockName, WithLineNumbers, WithTag,
                    Summarize, MatchingFiles, NonMatchingFiles, Count, Raw };
 
-const option::Descriptor Usage[] = {
+static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage: " EXE_NAME " [options] TAG FILE_OR_DIR_OR_PDBID[...]\n"
     "       " EXE_NAME " -f FILE [options] TAG\n"
@@ -139,7 +139,7 @@ static std::string escape(const std::string& s, char delim) {
 }
 
 // linear-time glob matching: https://research.swtch.com/glob
-bool glob_match(const std::string& pattern, const std::string& str) {
+static bool glob_match(const std::string& pattern, const std::string& str) {
   size_t pat_next = 0;
   size_t str_next = std::string::npos;
   size_t pat_pos = 0;
@@ -464,7 +464,7 @@ static void replace_all(std::string &s,
   }
 }
 
-int main(int argc, char **argv) {
+int GEMMI_MAIN(int argc, char **argv) {
   OptParser p;
   p.simple_parse(argc, argv, Usage);
   if (p.options[FromFile] ? p.nonOptionsCount() != 1

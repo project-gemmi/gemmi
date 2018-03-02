@@ -13,7 +13,7 @@
 #include <clocale>  // for setlocale
 #include <cwchar>  // for wint_t
 #endif
-#define EXE_NAME "gemmi-map"
+#define GEMMI_PROG map
 #include "options.h"
 
 enum OptionIndex { Verbose=3, Deltas, CheckSym, Reorder, Full };
@@ -159,7 +159,7 @@ void print_deltas(const gemmi::Grid<T>& g, double dmin, double dmax) {
   }
 }
 
-int main(int argc, char **argv) {
+int GEMMI_MAIN(int argc, char **argv) {
   OptParser p;
   p.simple_parse(argc, argv, Usage);
   bool verbose = p.options[Verbose];
