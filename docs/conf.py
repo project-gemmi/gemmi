@@ -17,8 +17,10 @@ project = u'Gemmi'
 copyright = u'2017 Global Phasing Ltd'
 author = u'Marcin Wojdyr'
 
-# TODO: get version from include/gemmi/version.hpp
-version = u'0.1.0dev'
+with open('../include/gemmi/version.hpp') as _f:
+    for _line in _f:
+        if _line.startswith('#define GEMMI_VERSION '):
+            version = _line.split()[2].strip('"')
 release = version
 
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']

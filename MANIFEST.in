@@ -1,0 +1,7 @@
+recursive-include include/gemmi *.hpp
+include third_party/sajson.h
+include third_party/stb_sprintf.h
+graft   third_party/tao
+include third_party/tinydir.h
+include third_party/zlib/*
+include LICENSE.txt README.md

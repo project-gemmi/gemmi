@@ -588,17 +588,19 @@ this script prints too many lines to show here.
   5XG2   chain:A   deltaZ = 1.467
   ...
 
-How the chains that span over 5 unit cells in one direction look like?
+As we see, a single chain may be even longer than four unit cells in one
+of the directions.  How such chains look like?
+
 For example, here is 3NWH -- a homo-4-mer in P2
-(4 x 2 chains per unit cell) -- colored by chain id in NGL:
+(4 x 2 chains per unit cell) -- colored by chain id:
 
 .. image:: img/3nwh.png
     :align: center
     :scale: 100
     :target: https://www.rcsb.org/3d-view/3NWH/
 
-5XG2 is a monomer in P21, also a coiled coil.
-Here each chain is rainbow-colored:
+And here is 5XG2 -- a monomer in P21 -- with two copies of the
+rainbow-colored chain:
 
 .. image:: img/5xg2.png
     :align: center

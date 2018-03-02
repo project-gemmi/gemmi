@@ -26,13 +26,14 @@ Python 2.7/3.x module
 To install the gemmi module you need pip, git and not too old
 C++ compiler (GCC 4.8+, Clang 3.4+, MSVC 2015+, ICC 16+)::
 
+    pip install gemmi
+
+Alternatively, to install the latest version directly from the repository::
+
     pip install git+https://github.com/project-gemmi/gemmi.git
 
-(when the project is more mature and has regular releases, it will be simply
-``pip install gemmi``).
-
-Alternatively, clone the `project <https://github.com/project-gemmi/gemmi/>`_
-or download a zip file, and from the top-level directory do::
+or clone the `project <https://github.com/project-gemmi/gemmi/>`_
+(or download a zip file) and from the top-level directory do::
 
     pip install .
 
