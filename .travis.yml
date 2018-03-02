@@ -27,7 +27,7 @@ matrix:
     env: COMPILER=clang++ PYTHON=python3
     before_install:
       - brew update
-      - brew install $PYTHON
+      - brew install $PYTHON || brew upgrade $PYTHON
 
 install:
 - |
