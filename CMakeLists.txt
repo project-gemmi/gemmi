@@ -112,6 +112,10 @@ add_executable(gemmi-convert src/convert.cpp src/output.cpp
                              $<TARGET_OBJECTS:input>)
 support_gz(gemmi-convert)
 
+add_executable(gemmi-crdrst src/crdrst.cpp src/output.cpp
+                            $<TARGET_OBJECTS:input>)
+support_gz(gemmi-crdrst)
+
 add_executable(gemmi-grep src/grep.cpp)
 support_gz(gemmi-grep)
 
