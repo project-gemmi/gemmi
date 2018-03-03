@@ -16,13 +16,11 @@
 #include "options.h"
 
 namespace cif = gemmi::cif;
-
-enum class FileType : char { Json, Pdb, Cif, Null, Unknown };
+using gemmi::CoorFormat;
 
 struct ConvArg: public Arg {
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
-    // the hidden option "none" is for testing only
-    return Arg::Choice(option, msg, {"json", "pdb", "cif", "none"});
+    return Arg::Choice(option, msg, {"json", "pdb", "cif"});
   }
 
   static option::ArgStatus NumbChoice(const option::Option& option, bool msg) {
@@ -85,19 +83,6 @@ static const option::Descriptor Usage[] = {
     "\nWhen output file is -, write to standard output." },
   { 0, 0, 0, 0, 0, 0 }
 };
-
-FileType get_format_from_extension(const std::string& path) {
-  gemmi::CoorFormat format = coordinate_format_from_extension(path);
-  if (format == gemmi::CoorFormat::Pdb)
-    return FileType::Pdb;
-  if (format == gemmi::CoorFormat::Json)
-    return FileType::Json;
-  if (format == gemmi::CoorFormat::Cif)
-    return FileType::Cif;
-  if (path == "/dev/null")
-    return FileType::Null;
-  return FileType::Unknown;
-}
 
 static const char symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                               "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -184,8 +169,8 @@ std::vector<gemmi::Chain> split_by_segments(gemmi::Chain& orig) {
 }
 
 
-static void convert(const std::string& input, FileType input_type,
-                    const std::string& output, FileType output_type,
+static void convert(const std::string& input, CoorFormat input_type,
+                    const std::string& output, CoorFormat output_type,
                     const std::vector<option::Option>& options) {
   cif::Document cif_in;
   gemmi::Structure st;
@@ -193,9 +178,9 @@ static void convert(const std::string& input, FileType input_type,
   bool modify_structure = (
       options[ExpandNcs] || options[RemoveH] || options[RemoveWaters] ||
       options[RemoveLigWat] || options[TrimAla] || options[SegmentAsChain]);
-  if (input_type == FileType::Cif || input_type == FileType::Json) {
+  if (input_type == CoorFormat::Cif || input_type == CoorFormat::Json) {
     cif_in = cif_read_any(input);
-    if ((output_type == FileType::Json || output_type == FileType::Cif) &&
+    if ((output_type == CoorFormat::Json || output_type == CoorFormat::Cif) &&
         !modify_structure) {
       // no need to interpret the structure
     } else {
@@ -203,8 +188,8 @@ static void convert(const std::string& input, FileType input_type,
       if (st.models.empty())
         gemmi::fail("No atoms in the input file. Is it mmCIF?");
     }
-  } else if (input_type == FileType::Pdb) {
-    st = read_structure(input, gemmi::CoorFormat::Pdb);
+  } else if (input_type == CoorFormat::Pdb) {
+    st = read_structure(input, CoorFormat::Pdb);
   } else {
     gemmi::fail("Unexpected input format.");
   }
@@ -213,7 +198,7 @@ static void convert(const std::string& input, FileType input_type,
     ChainNaming ch_naming = ChainNaming::AddNum;
     if (options[IotbxCompat])
      ch_naming = ChainNaming::Dup;
-    else if (output_type == FileType::Pdb)
+    else if (output_type == CoorFormat::Pdb)
       ch_naming = ChainNaming::Short;
     expand_ncs(st, ch_naming);
   }
@@ -256,8 +241,8 @@ static void convert(const std::string& input, FileType input_type,
     os = &std::cout;
   }
 
-  if (output_type == FileType::Json) {
-    if (input_type != FileType::Cif && input_type != FileType::Json)
+  if (output_type == CoorFormat::Json) {
+    if (input_type != CoorFormat::Cif && input_type != CoorFormat::Json)
       gemmi::fail("Conversion to JSON is possible only from CIF");
     cif::JsonWriter writer(*os);
     if (options[Comcifs])
@@ -276,16 +261,11 @@ static void convert(const std::string& input, FileType input_type,
     if (options[CifDot])
       writer.cif_dot = options[CifDot].arg;
     writer.write_json(cif_in);
-  } else if (output_type == FileType::Pdb) {
+  } else if (output_type == CoorFormat::Pdb) {
     // call wrapper from output.cpp - to make building faster
     write_pdb(st, *os, options[IotbxCompat]);
-  } else if (output_type == FileType::Null) {
-    *os << st.name << ": " << count_atom_sites(st) << " atom locations";
-    if (st.models.size() > 1)
-      *os << " (total in " << st.models.size() << " models)";
-    *os << ".\n";
-  } else if (output_type == FileType::Cif) {
-    if ((input_type != FileType::Cif && input_type != FileType::Json)
+  } else if (output_type == CoorFormat::Cif) {
+    if ((input_type != CoorFormat::Cif && input_type != CoorFormat::Json)
         || modify_structure) {
       cif_in.blocks.clear();  // temporary, for testing
       cif_in.blocks.resize(1);
@@ -305,26 +285,27 @@ int GEMMI_MAIN(int argc, char **argv) {
   std::string input = p.nonOption(0);
   const char* output = p.nonOption(1);
 
-  std::map<std::string, FileType> filetypes {{"json", FileType::Json},
-                                             {"pdb", FileType::Pdb},
-                                             {"cif", FileType::Cif},
-                                             {"none", FileType::Null}};
+  std::map<std::string, CoorFormat> filetypes {{"json", CoorFormat::Json},
+                                               {"pdb", CoorFormat::Pdb},
+                                               {"cif", CoorFormat::Cif}};
 
-  FileType in_type = p.options[FormatIn] ? filetypes[p.options[FormatIn].arg]
-                                         : get_format_from_extension(input);
-  if (in_type == FileType::Unknown && gemmi::is_pdb_code(input)) {
+  CoorFormat in_type = p.options[FormatIn]
+    ? filetypes[p.options[FormatIn].arg]
+    : coordinate_format_from_extension(input);
+  if (in_type == CoorFormat::Unknown && gemmi::is_pdb_code(input)) {
     input = expand_pdb_code_to_path_or_fail(input);
-    in_type = FileType::Cif;
+    in_type = CoorFormat::Cif;
   }
-  if (in_type == FileType::Unknown) {
+  if (in_type == CoorFormat::Unknown) {
     std::cerr << "The input format cannot be determined from input"
                  " filename. Use option --from.\n";
     return 1;
   }
 
-  FileType out_type = p.options[FormatOut] ? filetypes[p.options[FormatOut].arg]
-                                           : get_format_from_extension(output);
-  if (out_type == FileType::Unknown) {
+  CoorFormat out_type = p.options[FormatOut]
+    ? filetypes[p.options[FormatOut].arg]
+    : coordinate_format_from_extension(output);
+  if (out_type == CoorFormat::Unknown) {
     std::cerr << "The output format cannot be determined from output"
                  " filename. Use option --to.\n";
     return 1;
