@@ -49,6 +49,7 @@ static cif::Document make_crd(const gemmi::Structure& st) {
          st.info.find("_pdbx_database_status.recvd_initial_deposition_date");
   if (initial_date != st.info.end())
     items.emplace_back("_audit.creation_date", initial_date->second);
+  items.emplace_back("_software.name", "gemmi");
 
   items.emplace_back(cif::CommentArg{"############\n"
                                      "## ENTITY ##\n"
@@ -86,11 +87,31 @@ static cif::Document make_crd(const gemmi::Structure& st) {
   items.emplace_back("_cell.angle_alpha", to_str(st.cell.alpha));
   items.emplace_back("_cell.angle_beta",  to_str(st.cell.beta));
   items.emplace_back("_cell.angle_gamma", to_str(st.cell.gamma));
+  bool write_fract_matrix = true;
+  if (write_fract_matrix) {
+    items.emplace_back(cif::CommentArg{"##############################\n"
+                                       "## FRACTIONALISATION MATRIX ##\n"
+                                       "##############################"});
+    std::string prefix = "_atom_sites.fract_transf_";
+    for (int i = 0; i < 3; ++i) {
+      std::string start = prefix + "matrix[" + std::to_string(i+1) + "][";
+      const auto& row = st.cell.frac.mat[i];
+      for (int j = 0; j < 3; ++j)
+        items.emplace_back(start + std::to_string(j+1) + "]", to_str(row[j]));
+    }
+    for (int i = 0; i < 3; ++i)
+      items.emplace_back(prefix + "vector[" + std::to_string(i + 1) + "]",
+                         to_str(st.cell.frac.vec.at(i)));
+  }
+
   items.emplace_back(cif::CommentArg{"##############\n"
                                      "## SYMMETRY ##\n"
                                      "##############"});
   items.emplace_back("_symmetry.entry_id", id);
   items.emplace_back("_symmetry.space_group_name_H-M", cif::quote(st.sg_hm));
+  if (const gemmi::SpaceGroup* sg = gemmi::find_spacegroup_by_name(st.sg_hm))
+    items.emplace_back("_symmetry.Int_Tables_number",
+                       std::to_string(sg->number));
   items.emplace_back(cif::CommentArg{"#################\n"
                                      "## STRUCT_ASYM ##\n"
                                      "#################"});
