@@ -11,6 +11,7 @@ TAGGED_REPOS = {
     'pybind/pybind11': 'v2.2.2',
     'taocpp/PEGTL': '2.4.0',
     'cxong/tinydir': '1.2.3',
+    'madler/zlib': 'v1.2.11',
 }
 
 NOT_TAGGED_REPOS = {

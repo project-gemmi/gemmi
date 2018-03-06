@@ -1937,10 +1937,10 @@ namespace sajson {
             return p + 4;
         }
 
-        static double pow10(int exponent) {
-            if (exponent > 308) {
+        static double pow10(int64_t exponent) {
+            if (SAJSON_UNLIKELY(exponent > 308)) {
                 return std::numeric_limits<double>::infinity();
-            } else if (exponent < -323) {
+            } else if (SAJSON_UNLIKELY(exponent < -323)) {
                 return 0.0;
             }
             static const double constants[] = {
@@ -2053,7 +2053,7 @@ namespace sajson {
                 } while (c >= '0' && c <= '9');
             }
 
-            int exponent = 0;
+            int64_t exponent = 0;
 
             if ('.' == *p) {
                 if (!try_double) {
@@ -2075,6 +2075,13 @@ namespace sajson {
                         return std::make_pair(make_error(p, ERROR_UNEXPECTED_END), TYPE_NULL);
                     }
                     d = d * 10 + (c - '0');
+                    // One option to avoid underflow would be to clamp
+                    // to INT_MIN, but int64 subtraction is cheap and
+                    // in the absurd case of parsing 2 GB of digits
+                    // with an extremely high exponent, this will
+                    // produce accurate results.  Instead, we just
+                    // leave exponent as int64_t and it will never
+                    // underflow.
                     --exponent;
 
                     c = *p;
@@ -2113,7 +2120,16 @@ namespace sajson {
                     return std::make_pair(make_error(p, ERROR_MISSING_EXPONENT), TYPE_NULL);
                 }
                 for (;;) {
-                    exp = 10 * exp + (c - '0');
+                    // c guaranteed to be between '0' and '9', inclusive
+                    unsigned char digit = c - '0';
+                    if (exp > (INT_MAX - digit) / 10) {
+                        // The exponent overflowed.  Keep parsing, but
+                        // it will definitely be out of range when
+                        // pow10 is called.
+                        exp = INT_MAX;
+                    } else {
+                        exp = 10 * exp + digit;
+                    }
 
                     ++p;
                     if (SAJSON_UNLIKELY(at_eof(p))) {
@@ -2125,12 +2141,17 @@ namespace sajson {
                         break;
                     }
                 }
+                static_assert(-INT_MAX >= INT_MIN, "exp can be negated without loss or UB");
                 exponent += (negativeExponent ? -exp : exp);
             }
 
             if (exponent) {
                 assert(try_double);
-                d *= pow10(exponent);
+                // If d is zero but the exponent is huge, don't
+                // multiply zero by inf which gives nan.
+                if (d != 0.0) {
+                    d *= pow10(exponent);
+                }
             }
 
             if (negative) {

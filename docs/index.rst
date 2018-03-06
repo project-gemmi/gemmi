@@ -33,7 +33,7 @@ Source code repository: https://github.com/project-gemmi/gemmi
 
 .. important::
 
-    As of 2017 the library is under intensive development and not
+    As of 2018 the library is under intensive development and not
     everything is documented yet. Just ask questions.
 
 Contents
