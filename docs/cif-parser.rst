@@ -523,9 +523,11 @@ are in a separate header file ``gemmi/to_cif.hpp``::
     // the same as write_out_document() with Style::Simple
     std::ostream& operator<<(std::ostream& os, const gemmi::cif::Document& doc);
 
-Three "styles" are supported:
+The following "styles" are supported:
 
-* ``Style::Simple`` simply writes out the DOM structure,
+* ``Style::Simple`` writes out the DOM structure adding blank lines between
+  categories,
+* ``Style::NoBlankLines`` does not add blank lines,
 * ``Style::PreferPairs`` writes single-row loops as pairs,
 * ``Style::Pdbx`` additionally puts ``#`` (empty comments) between categories,
   mimicking the official PDBx/mmCIF files from wwPDB.

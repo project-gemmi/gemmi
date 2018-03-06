@@ -11,6 +11,7 @@ namespace cif {
 
 enum class Style {
   Simple,
+  NoBlankLines,
   PreferPairs,  // write single-row loops as pairs
   Pdbx,         // PreferPairs + put '#' (empty comments) between categories
 };
@@ -90,7 +91,8 @@ inline void write_out_document(std::ostream& os, const Document& doc, Style s) {
     const Item* prev = nullptr;
     for (const Item& item : block.items)
       if (item.type != ItemType::Erased) {
-        if (prev && should_be_separted_(*prev, item))
+        if (prev && s != Style::NoBlankLines &&
+            should_be_separted_(*prev, item))
           os << (s == Style::Pdbx ? "#\n" : "\n");
         write_out_item(os, item, s);
         prev = &item;

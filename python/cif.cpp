@@ -13,6 +13,7 @@ using namespace gemmi::cif;
 void add_cif(py::module& cif) {
   py::enum_<Style>(cif, "Style")
     .value("Simple", Style::Simple)
+    .value("NoBlankLines", Style::NoBlankLines)
     .value("PreferPairs", Style::PreferPairs)
     .value("Pdbx", Style::Pdbx);
   py::class_<Document>(cif, "Document")

@@ -168,7 +168,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     gemmi::Structure st = read_structure(input);
     cif::Document doc = make_crd(st);
-    write_to_file(doc, output, cif::Style::Simple);
+    write_to_file(doc, output, cif::Style::NoBlankLines);
   } catch (std::runtime_error& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
