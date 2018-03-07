@@ -431,9 +431,16 @@ struct Model {
   Chain* find_chain(const std::string& chain_name) {
     return impl::find_or_null(chains, chain_name);
   }
+  Chain& add_chain(const std::string& chain_name) {
+    if (Chain* ch = find_chain(chain_name))
+      throw std::runtime_error("The chain '" + chain_name + "' already exists");
+    chains.emplace_back(name);
+    return chains.back();
+  }
   Chain& find_or_add_chain(const std::string& chain_name) {
     return impl::find_or_add(chains, chain_name);
   }
+
   Connection* find_connection_by_name(const std::string& conn_name) {
     return impl::find_or_null(connections, conn_name);
   }

@@ -146,7 +146,7 @@ class TestMol(unittest.TestCase):
         self.assertEqual(len(st.ncs), 0)
         model = st[0]
         self.assertEqual(len(model), 2)
-        self.assertTrue(all(res.name == 'HOH' for res in model['A_H']))
+        self.assertTrue(all(res.name == 'HOH' for res in model['A_w']))
         A = model['A']
         self.assertTrue(A['3'])
         self.assertFalse(A[3])

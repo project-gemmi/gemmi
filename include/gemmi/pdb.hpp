@@ -28,6 +28,13 @@ namespace gemmi {
 
 namespace pdb_impl {
 
+inline bool is_water(const std::string& name) {
+  return name.size() == 3 && (memcmp(name.c_str(), "HOH", 3) == 0 ||
+                              memcmp(name.c_str(), "H2O", 3) == 0 ||
+                              memcmp(name.c_str(), "WAT", 3) == 0 ||
+                              memcmp(name.c_str(), "DOD", 3) == 0);
+}
+
 inline std::string rtrimmed(std::string s) {
   auto p = std::find_if_not(s.rbegin(), s.rend(),
                             [](int c) { return std::isspace(c); });
@@ -106,17 +113,7 @@ inline bool is_record_type(const char* s, const char* record) {
           (record[0] << 24 | record[1] << 16 | record[2] << 8 | record[3]);
 }
 
-inline void set_entity_ids_for_chains(Structure& st) {
-  // make sure each chain has corresponding entity
-  for (Model& model : st.models)
-    for (Chain& chain : model.chains) {
-      chain.entity_id = chain.name;
-      Entity& ent = st.find_or_add_entity(chain.entity_id);
-      if (chain.force_pdb_serial == -1)
-        ent.entity_type = EntityType::Polymer;
-      chain.force_pdb_serial = 0;
-    }
-  // de-duplicate
+inline void deduplicate_entities(Structure& st) {
   for (auto i = st.entities.begin(); i != st.entities.end(); ++i) {
     if (i->second.sequence.empty())
       continue;
@@ -216,7 +213,7 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       c.name = "disulf" + std::to_string(++disulf_count);
       c.type = Connection::Disulf;
       // We assume here that the residue is before TER and it's not
-      // in the chain with added _H.
+      // in the chain with added '_' + postfix.
       c.atom[0].chain_name = read_string(r + 14, 2);
       c.atom[0].res_id = read_res_id(r + 17, r + 11);
       c.atom[1].chain_name = read_string(r + 28, 2);
@@ -257,6 +254,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   Chain *chain = nullptr;
   Residue *resi = nullptr;
   char line[88] = {0};
+  bool water = false;
   Transform matrix;
   while (size_t len = copy_line_from_stream(line, 82, infile)) {
     ++line_num;
@@ -264,18 +262,33 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       if (len < 66)
         wrong("The line is too short to be correct:\n" + std::string(line));
       std::string chain_name = read_string(line+20, 2);
-      if (!chain || chain_name != chain->auth_name) {
+      ResidueId rid = read_res_id(line+22, line+17);
+      bool res_water = pdb_impl::is_water(rid.name);
+      if (!chain || chain_name != chain->auth_name || res_water != water) {
         if (!model)
           wrong("ATOM/HETATM between models");
-        chain = &model->find_or_add_chain(chain_name);
-        // if this chain was TER'ed we use a separate chain for the rest.
-        if (chain->force_pdb_serial == -1)
-          chain = &model->find_or_add_chain(chain_name + "_H");
+        if (res_water) {
+          chain = &model->find_or_add_chain(chain_name + "_w");
+          if (chain->entity_id.empty()) {
+            chain->entity_id = "water";
+            Entity& ent = st.find_or_add_entity(chain->entity_id);
+            ent.entity_type = EntityType::Water;
+          }
+        } else {
+          chain = &model->find_or_add_chain(chain_name);
+          // if this chain was TER'ed we use a separate chains for the rest.
+          if (chain->force_pdb_serial) {
+            chain = &model->add_chain(chain_name + "_" +
+                                    std::to_string(chain->force_pdb_serial++));
+            chain->entity_id = rid.name;
+            Entity& ent = st.find_or_add_entity(chain->entity_id);
+            ent.entity_type = EntityType::NonPolymer;;
+          }
+        }
+        water = res_water;
         chain->auth_name = chain_name;
         resi = nullptr;
       }
-
-      ResidueId rid = read_res_id(line+22, line+17);
       // Non-standard but widely used 4-character segment identifier.
       // Left-justified, and may include a space in the middle.
       // The segment may be a portion of a chain or a complete chain.
@@ -407,7 +420,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
     } else if (is_record_type(line, "TER")) { // finishes polymer chains
       if (chain)
-        chain->force_pdb_serial = -1;  // re-using it as a working flag
+        chain->force_pdb_serial = 1;  // re-using it as a working flag
       chain = nullptr;
 
     } else if (is_record_type(line, "SCALEn")) {
@@ -433,7 +446,17 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     }
   }
 
-  set_entity_ids_for_chains(st);
+  for (Model& mdl : st.models)
+    for (Chain& ch : mdl.chains) {
+      if (ch.entity_id.empty())
+        ch.entity_id = ch.name;
+        Entity& ent = st.find_or_add_entity(ch.entity_id);
+        if (ch.force_pdb_serial != 0) {
+          ent.entity_type = EntityType::Polymer;
+          ch.force_pdb_serial = 0;
+        }
+    }
+  deduplicate_entities(st);
   st.setup_cell_images();
 
   process_conn(st, conn_records);
