@@ -231,11 +231,13 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       for (Model& mdl : st.models)
         mdl.connections.emplace_back(c);
     } else if (*r == 'C' || *r == 'c') { // CISPEP
+      std::string cname = read_string(r + 14, 2);
       ResidueId rid = read_res_id(r + 17, r + 11);
       for (Model& model : st.models)
-        if (Chain* chain = model.find_chain(read_string(r + 14, 2)))
-          if (Residue* res = chain->find_residue(rid))
-            res->is_cis = true;
+        for (Chain& chain : model.chains)
+          if (chain.auth_name == cname)
+            if (Residue* res = chain.find_residue(rid))
+              res->is_cis = true;
     }
   }
 }
@@ -254,7 +256,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   Chain *chain = nullptr;
   Residue *resi = nullptr;
   char line[88] = {0};
-  bool water = false;
+  bool prev_water = false;
   Transform matrix;
   while (size_t len = copy_line_from_stream(line, 82, infile)) {
     ++line_num;
@@ -264,28 +266,27 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       std::string chain_name = read_string(line+20, 2);
       ResidueId rid = read_res_id(line+22, line+17);
       bool res_water = pdb_impl::is_water(rid.name);
-      if (!chain || chain_name != chain->auth_name || res_water != water) {
+      if (!chain || chain_name != chain->auth_name || res_water != prev_water) {
         if (!model)
           wrong("ATOM/HETATM between models");
         if (res_water) {
           chain = &model->find_or_add_chain(chain_name + "_w");
           if (chain->entity_id.empty()) {
             chain->entity_id = "water";
-            Entity& ent = st.find_or_add_entity(chain->entity_id);
-            ent.entity_type = EntityType::Water;
+            //Entity& ent = st.find_or_add_entity(chain->entity_id);
+            //ent.entity_type = EntityType::Water;
           }
         } else {
-          chain = &model->find_or_add_chain(chain_name);
-          // if this chain was TER'ed we use a separate chains for the rest.
-          if (chain->force_pdb_serial) {
-            chain = &model->add_chain(chain_name + "_" +
-                                    std::to_string(chain->force_pdb_serial++));
-            chain->entity_id = rid.name;
-            Entity& ent = st.find_or_add_entity(chain->entity_id);
-            ent.entity_type = EntityType::NonPolymer;;
-          }
+          int n = std::count_if(model->chains.begin(), model->chains.end(),
+                  [&](const Chain& ch) { return ch.auth_name == chain_name; });
+          chain = &model->add_chain(chain_name + std::to_string(n));
+          if (n == 0)
+          chain->entity_id = (n == 0 ? chain_name : chain->name);
+          //chain->entity_id = "_" + rid.name;
+          //Entity& ent = st.find_or_add_entity(chain->entity_id);
+          //ent.entity_type = EntityType::NonPolymer;
         }
-        water = res_water;
+        prev_water = res_water;
         chain->auth_name = chain_name;
         resi = nullptr;
       }
@@ -419,8 +420,10 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       chain = nullptr;
 
     } else if (is_record_type(line, "TER")) { // finishes polymer chains
-      if (chain)
-        chain->force_pdb_serial = 1;  // re-using it as a working flag
+      if (chain) {
+        Entity& ent = st.find_or_add_entity(chain->entity_id);
+        ent.entity_type = EntityType::Polymer;
+      }
       chain = nullptr;
 
     } else if (is_record_type(line, "SCALEn")) {
@@ -446,15 +449,13 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     }
   }
 
+  // TODO redo setup of entities
+  // TODO categorize polymers
   for (Model& mdl : st.models)
     for (Chain& ch : mdl.chains) {
       if (ch.entity_id.empty())
         ch.entity_id = ch.name;
-        Entity& ent = st.find_or_add_entity(ch.entity_id);
-        if (ch.force_pdb_serial != 0) {
-          ent.entity_type = EntityType::Polymer;
-          ch.force_pdb_serial = 0;
-        }
+      //Entity& ent = st.find_or_add_entity(ch.entity_id);
     }
   deduplicate_entities(st);
   st.setup_cell_images();

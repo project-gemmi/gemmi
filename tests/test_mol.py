@@ -147,7 +147,7 @@ class TestMol(unittest.TestCase):
         model = st[0]
         self.assertEqual(len(model), 2)
         self.assertTrue(all(res.name == 'HOH' for res in model['A_w']))
-        A = model['A']
+        A = model['A0']
         self.assertTrue(A['3'])
         self.assertFalse(A[3])
         self.assertEqual([res.seq_num for res in A if res.icode], [56] * 5)
@@ -199,13 +199,13 @@ class TestMol(unittest.TestCase):
                    "  1.00 67.64          MG"
         for line in [pdb_line, pdb_line.strip(' MG'), pdb_line[:-2] + '  ']:
             st = gemmi.read_pdb_string(line)
-            mg_atom = st[0]['A']['341'][0]['MG']
+            mg_atom = st[0]['A0']['341'][0]['MG']
             self.assertEqual(mg_atom.element.name, 'Mg')
             self.assertAlmostEqual(mg_atom.b_iso, 67.64, delta=1e-6)
 
     def test_ncs(self):
         st = gemmi.read_structure(full_path('5cvz_final.pdb'))
-        chain = st[0]['A']
+        chain = st[0]['A0']
         first_atom = chain['17'][0]['N']
         ne2 = chain['63'][0]['NE2']
         direct_dist = first_atom.pos.dist(ne2.pos)

@@ -313,7 +313,6 @@ struct Chain {
   std::string auth_name;
   std::vector<Residue> residues;
   std::string entity_id;
-  int force_pdb_serial = 0;
 
   explicit Chain(std::string cname) noexcept : name(cname) {}
   ResidueGroup find_residue_group(int seqnum, char icode='\0');
@@ -381,6 +380,7 @@ struct AtomAddress {
   ResidueId res_id;
   std::string atom_name;
   char altloc = '\0';
+  bool use_auth_name = true;
 
   std::string str() const {
     std::string r = chain_name + "/" + res_id.name + " " +
@@ -432,9 +432,9 @@ struct Model {
     return impl::find_or_null(chains, chain_name);
   }
   Chain& add_chain(const std::string& chain_name) {
-    if (Chain* ch = find_chain(chain_name))
+    if (find_chain(chain_name))
       throw std::runtime_error("The chain '" + chain_name + "' already exists");
-    chains.emplace_back(name);
+    chains.emplace_back(chain_name);
     return chains.back();
   }
   Chain& find_or_add_chain(const std::string& chain_name) {
@@ -446,10 +446,14 @@ struct Model {
   }
 
   CRA find_cra(const AtomAddress& address) {
-    Chain* chain = find_chain(address.chain_name);
-    Residue* res = chain ? chain->find_residue(address.res_id) : nullptr;
-    Atom* at = res ? res->find_atom(address.atom_name, address.altloc): nullptr;
-    return {chain, res, at};
+    for (Chain& chain : chains)
+      if ((address.use_auth_name ? chain.auth_name : chain.name) ==
+          address.chain_name)
+        if (Residue* res = chain.find_residue(address.res_id)) {
+          Atom *at = res->find_atom(address.atom_name, address.altloc);
+          return {&chain, res, at};
+        }
+    return {nullptr, nullptr, nullptr};
   }
 
   const_CRA find_cra(const AtomAddress& address) const {

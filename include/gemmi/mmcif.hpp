@@ -93,6 +93,7 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
     for (int i = 0; i < 2; ++i) {
       AtomAddress& a = c.atom[i];
       a.chain_name = row.str(2+i);
+      a.use_auth_name = false;
       a.res_id.label_seq = cif::as_int(row[4+i], Residue::OptionalNum::None);
       a.res_id.name = row.str(6+i);
       if (row.has(14+i))

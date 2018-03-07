@@ -99,13 +99,10 @@ static void expand_ncs(gemmi::Structure& st, ChainNaming ch_naming) {
     if (new_length >= 63 && ch_naming == ChainNaming::Short)
       ch_naming = ChainNaming::AddNum;
     model.chains.reserve(new_length);
-    // for compatibility with iotbx we reset serial in the 'Dup' mode
-    if (ch_naming == ChainNaming::Dup && !model.chains.empty()) {
-      model.chains[0].force_pdb_serial = 1;
+    if (ch_naming == ChainNaming::Dup)
       for (gemmi::Chain& chain : model.chains)
         for (gemmi::Residue& res : chain.residues)
           res.segment = "0";
-    }
     auto orig_end = model.chains.cend();
     for (const gemmi::NcsOp& op : st.ncs)
       if (!op.given)

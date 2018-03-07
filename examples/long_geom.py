@@ -10,7 +10,8 @@ def run(path):
     st = gemmi.read_structure(path)
     if st.cell.is_crystal():
         for chain in st[0]:
-            if st.get_entity_of(chain).entity_type == gemmi.EntityType.Polymer:
+            entity = st.get_entity_of(chain)
+            if entity and entity.entity_type == gemmi.EntityType.Polymer:
                 low_bounds = [float('+inf')] * 3
                 high_bounds = [float('-inf')] * 3
                 for residue in chain:

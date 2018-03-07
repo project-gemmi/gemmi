@@ -140,8 +140,6 @@ inline void write_atoms(const Structure& st, std::ostream& os,
     if (st.models.size() > 1)
       WRITE("MODEL %8s %65s\n", model.name.c_str(), "");
     for (const Chain& chain : model.chains) {
-      if (chain.force_pdb_serial)
-        serial = chain.force_pdb_serial - 1;
       const std::string& chain_name = chain.name_for_pdb();
       if (chain_auth && chain_name != chain_auth)
         continue;
