@@ -65,10 +65,10 @@ class TestMol(unittest.TestCase):
         self.assertEqual(ent_a.polymer_type, gemmi.PolymerType.PeptideL)
         ent_b = st.get_entity_of(b)
         self.assertEqual(ent_b.entity_type, gemmi.EntityType.NonPolymer)
-        self.assertEqual(ent_b.polymer_type, gemmi.PolymerType.NA)
+        self.assertEqual(ent_b.polymer_type, gemmi.PolymerType.Unknown)
         ent_d = st.entities[d.entity_id]
         self.assertEqual(ent_d.entity_type, gemmi.EntityType.Water)
-        self.assertEqual(ent_d.polymer_type, gemmi.PolymerType.NA)
+        self.assertEqual(ent_d.polymer_type, gemmi.PolymerType.Unknown)
 
     def test_5i55_removals(self, clear_entities=False):
         st = gemmi.read_structure(full_path('5i55.cif'))

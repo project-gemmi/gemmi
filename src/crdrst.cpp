@@ -115,12 +115,30 @@ static cif::Document make_crd(const gemmi::Structure& st) {
   items.emplace_back(cif::CommentArg{"#################\n"
                                      "## STRUCT_ASYM ##\n"
                                      "#################"});
-  // _struct_asym
   cif::Loop& asym_loop = block.init_mmcif_loop("_struct_asym.",
                                                {"id", "entity_id"});
   for (const auto& ch : st.models.at(0).chains) {
     asym_loop.values.push_back(ch.name);
     asym_loop.values.push_back(ch.entity_id.empty() ? "?" : ch.entity_id);
+  }
+  const auto& connections = st.models.at(0).connections;
+  if (!connections.empty()) {
+    items.emplace_back(cif::CommentArg{"#################\n"
+                                       "## STRUCT_CONN ##\n"
+                                       "#################"});
+    cif::Loop& con_loop = block.init_mmcif_loop("_struct_conn.", {
+        "id", "conn_type_id",
+        "ptnr1_label_atom_id", "pdbx_ptnr1_label_alt_id", "ptnr1_label_seq_id",
+        "ptnr1_label_comp_id", "ptnr1_label_asym_id", "ptnr1_symmetry",
+        "ptnr2_label_atom_id", "pdbx_ptnr2_label_alt_id", "ptnr2_label_seq_id",
+        "ptnr2_label_comp_id", "ptnr2_label_asym_id", "ptnr2_symmetry",
+        "dist"});
+    for (const gemmi::Connection& con : connections) {
+      con_loop.values.push_back(con.name);
+      con_loop.values.push_back(gemmi::get_mmcif_connection_type_id(con.type));
+      for (size_t i = 2; i != con_loop.tags.size(); ++i)
+        con_loop.values.push_back(".");
+    }
   }
   items.emplace_back(cif::CommentArg{"###############\n"
                                      "## ATOM_SITE ##\n"

@@ -23,16 +23,14 @@
 
 #include "model.hpp"
 #include "util.hpp"
+#include "resinfo.hpp"
 
 namespace gemmi {
 
 namespace pdb_impl {
 
-inline bool is_water(const std::string& name) {
-  return name.size() == 3 && (memcmp(name.c_str(), "HOH", 3) == 0 ||
-                              memcmp(name.c_str(), "H2O", 3) == 0 ||
-                              memcmp(name.c_str(), "WAT", 3) == 0 ||
-                              memcmp(name.c_str(), "DOD", 3) == 0);
+inline ResidueInfo rinfo(const ResidueId& rid) {
+  return find_tabulated_residue(rid.name);
 }
 
 inline std::string rtrimmed(std::string s) {
@@ -111,6 +109,70 @@ inline std::string read_string(const char* p, int field_length) {
 inline bool is_record_type(const char* s, const char* record) {
   return ((s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]) & ~0x20202020) ==
           (record[0] << 24 | record[1] << 16 | record[2] << 8 | record[3]);
+}
+
+PolymerType check_polymer_type(const std::vector<Residue>& rr) {
+  size_t aa = 0;
+  size_t dna = 0;
+  size_t rna = 0;
+  size_t na = 0;
+  for (const Residue& r : rr)
+    switch (rinfo(r).kind) {
+      case ResidueInfo::AA: ++aa; break;
+      case ResidueInfo::DNA: ++dna; break;
+      case ResidueInfo::RNA: ++rna; break;
+      case ResidueInfo::UNKNOWN:
+        if (r.get_ca())
+          ++aa;
+        else if (r.get_p())
+          ++na;
+        break;
+      default: break;
+    }
+  if (aa == rr.size())
+    return PolymerType::PeptideL;
+  if (rna + dna + na == rr.size()) {
+    if (dna == 0)
+      return PolymerType::Rna;
+    else if (rna == 0)
+      return PolymerType::Dna;
+    else
+      return PolymerType::DnaRnaHybrid;
+  }
+  return PolymerType::Unknown;
+}
+
+inline void categories_entities(Structure& st) {
+  const static std::string WAT = "water";
+  bool has_water = false;
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains) {
+      if (chain.entity_id == WAT) {
+        has_water = true;
+        continue;
+      }
+      assert(!chain.name.empty());
+      if (chain.residues.size() == 1 && st.get_entity_of(chain) == nullptr)
+        chain.entity_id = "_" + chain.residues[0].name;
+      Entity& ent = st.find_or_add_entity(chain.entity_id);
+      if (chain.residues.size() == 1) {
+        if (ent.entity_type == EntityType::Unknown)
+          ent.entity_type = EntityType::NonPolymer;
+      } else {
+        PolymerType pt = check_polymer_type(chain.residues);
+        if (pt != PolymerType::Unknown) {
+          ent.entity_type = EntityType::Polymer;
+          ent.polymer_type = pt;
+        }
+      }
+    }
+  if (has_water) {
+    Entity& ent = st.find_or_add_entity(WAT);
+    ent.entity_type = EntityType::Water;
+  }
+  //chain->entity_id = "_" + rid.name;
+  //Entity& ent = st.find_or_add_entity(chain->entity_id);
+  //ent.entity_type = EntityType::NonPolymer;
 }
 
 inline void deduplicate_entities(Structure& st) {
@@ -265,26 +327,20 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
         wrong("The line is too short to be correct:\n" + std::string(line));
       std::string chain_name = read_string(line+20, 2);
       ResidueId rid = read_res_id(line+22, line+17);
-      bool res_water = pdb_impl::is_water(rid.name);
+      bool res_water = rinfo(rid).is_water();
       if (!chain || chain_name != chain->auth_name || res_water != prev_water) {
         if (!model)
           wrong("ATOM/HETATM between models");
         if (res_water) {
           chain = &model->find_or_add_chain(chain_name + "_w");
-          if (chain->entity_id.empty()) {
+          if (chain->entity_id.empty())
             chain->entity_id = "water";
-            //Entity& ent = st.find_or_add_entity(chain->entity_id);
-            //ent.entity_type = EntityType::Water;
-          }
         } else {
           int n = std::count_if(model->chains.begin(), model->chains.end(),
                   [&](const Chain& ch) { return ch.auth_name == chain_name; });
           chain = &model->add_chain(chain_name + std::to_string(n));
           if (n == 0)
           chain->entity_id = (n == 0 ? chain_name : chain->name);
-          //chain->entity_id = "_" + rid.name;
-          //Entity& ent = st.find_or_add_entity(chain->entity_id);
-          //ent.entity_type = EntityType::NonPolymer;
         }
         prev_water = res_water;
         chain->auth_name = chain_name;
@@ -449,14 +505,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     }
   }
 
-  // TODO redo setup of entities
-  // TODO categorize polymers
-  for (Model& mdl : st.models)
-    for (Chain& ch : mdl.chains) {
-      if (ch.entity_id.empty())
-        ch.entity_id = ch.name;
-      //Entity& ent = st.find_or_add_entity(ch.entity_id);
-    }
+  categories_entities(st);
   deduplicate_entities(st);
   st.setup_cell_images();
 

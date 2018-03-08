@@ -265,7 +265,7 @@ inline Structure structure_from_cif_block(cif::Block& block) {
     std::string id = row.str(0);
     Entity ent;
     ent.entity_type = entity_type_from_string(row.str(1));
-    ent.polymer_type = PolymerType::NA;
+    ent.polymer_type = PolymerType::Unknown;
     if (polymer_types.ok()) {
       try {
         std::string poly_type = polymer_types.find_row(id).str(1);

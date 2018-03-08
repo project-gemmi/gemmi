@@ -66,7 +66,7 @@ void add_mol(py::module& m) {
     .value("Pna", PolymerType::Pna)
     .value("CyclicPseudoPeptide", PolymerType::CyclicPseudoPeptide)
     .value("Other", PolymerType::Other)
-    .value("NA", PolymerType::NA);
+    .value("Unknown", PolymerType::Unknown);
 
   py::class_<Entity>(m, "Entity")
     .def(py::init<>())
@@ -74,7 +74,7 @@ void add_mol(py::module& m) {
     .def_readwrite("polymer_type", &Entity::polymer_type)
     .def("__repr__", [](const Entity& self) {
         std::string r = "<gemmi.Entity " + self.type_as_string();
-        if (self.polymer_type != PolymerType::NA)
+        if (self.polymer_type != PolymerType::Unknown)
           r += " / " + self.polymer_type_as_string();
         using namespace std;  // VS2015/17 doesn't like std::snprintf
         char buf[64];

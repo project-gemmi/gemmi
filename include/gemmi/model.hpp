@@ -92,6 +92,7 @@ enum class EntityType : unsigned char {
 //   1      cyclic-pseudo-peptide
 //   0      polysaccharide(L)  (never used but present in mmcif_pdbx_v50.dic)
 enum class PolymerType : unsigned char {
+  Unknown, // unknown or not applicable
   PeptideL,
   PeptideD,
   Dna,
@@ -102,7 +103,6 @@ enum class PolymerType : unsigned char {
   Pna, // artificial thing
   CyclicPseudoPeptide,
   Other,
-  NA // not applicable or not determined
 };
 
 
@@ -120,7 +120,7 @@ using Sequence = std::vector<SequenceItem>;
 
 struct Entity {
   EntityType entity_type = EntityType::Unknown;
-  PolymerType polymer_type = PolymerType::NA;
+  PolymerType polymer_type = PolymerType::Unknown;
   Sequence sequence;
 
   std::string type_as_string() const {
@@ -144,7 +144,7 @@ struct Entity {
       case PolymerType::Other: return "other";
       case PolymerType::Pna: return "peptide nucleic acid";
       case PolymerType::CyclicPseudoPeptide: return "cyclic-pseudo-peptide";
-      default /*PolymerType::NA*/: return "?";
+      default /*PolymerType::Unknown*/: return "?";
     }
   }
 };
@@ -168,7 +168,7 @@ inline PolymerType polymer_type_from_string(const std::string& t) {
   if (t == "peptide nucleic acid")    return PolymerType::Pna;
   if (t == "cyclic-pseudo-peptide")   return PolymerType::CyclicPseudoPeptide;
   if (t == "polysaccharide(L)")       return PolymerType::SaccharideL;
-  return PolymerType::NA;
+  return PolymerType::Unknown;
 }
 
 struct Atom {
@@ -255,6 +255,12 @@ struct Residue : public ResidueId {
   const Atom* get_n() const {
     static const std::string N("N");
     return find_atom(N, '*', El::N);
+  }
+
+  // get nucleic acid P atom
+  const Atom* get_p() const {
+    static const std::string P("P");
+    return find_atom(P, '*', El::P);
   }
 
   bool same_conformer(const Residue& other) const {
@@ -410,7 +416,7 @@ struct const_CRA {
 // We assume that the nearest symmetry mate is connected.
 struct Connection {
   enum Type { Covale, Disulf, Hydrog, MetalC, None };
-  std::string name;  // the id is refered by Residue::conn;
+  std::string name;
   Type type = None;
   SymmetryImage image = SymmetryImage::Unspecified;
   AtomAddress atom[2];
