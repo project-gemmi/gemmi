@@ -426,10 +426,10 @@ Let us mutate all methionine residues (MET) to selenomethionine (MSE).
   :hide:
 
   >>> st = gemmi.read_structure('../tests/1orc.pdb')
-  >>> st[0]['A']['12']
+  >>> st[0].residues('A', 12, ' ')
   <gemmi.ResidueGroup [ 12/MET ]>
   >>> met_to_mse(st)
-  >>> st[0]['A']['12']
+  >>> st[0].residues('A', 12, ' ')
   <gemmi.ResidueGroup [ 12/MSE ]>
 
 Structure

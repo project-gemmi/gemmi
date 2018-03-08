@@ -441,6 +441,29 @@ struct Model {
     return impl::find_or_add(chains, chain_name);
   }
 
+  ResidueGroup residues(const std::string& auth_chain, int resnum, char icode) {
+    ResidueGroup rg;
+    for (Chain& chain : chains)
+      if (chain.auth_name == auth_chain) {
+        rg = chain.find_residue_group(resnum, icode);
+        if (rg)
+          break;
+      }
+    return rg;
+  }
+
+  Residue& residue(const std::string& auth_chain, int resnum, char icode) {
+    ResidueGroup rg = residues(auth_chain, resnum, icode);
+    if (rg.size() != 1) {
+      std::string err = rg.empty() ? "No residue " : "Multiple residues ";
+      err += auth_chain + " " + std::to_string(resnum);
+      if (icode)
+        err += icode;
+      throw std::runtime_error(err);
+    }
+    return rg[0];
+  }
+
   Connection* find_connection_by_name(const std::string& conn_name) {
     return impl::find_or_null(connections, conn_name);
   }

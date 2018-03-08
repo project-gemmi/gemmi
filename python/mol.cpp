@@ -145,6 +145,12 @@ void add_mol(py::module& m) {
           throw py::key_error("chain '" + name + "' does not exist");
         return *ch;
     }, py::arg("name"), py::return_value_policy::reference_internal)
+    .def("residues", &Model::residues,
+         py::arg("auth_chain"), py::arg("resnum"), py::arg("icode"),
+         py::return_value_policy::reference_internal)
+    .def("residue", &Model::residue,
+         py::arg("auth_chain"), py::arg("resnum"), py::arg("icode"),
+         py::return_value_policy::reference_internal)
     .def("find_or_add_chain", &Model::find_or_add_chain,
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("count_atom_sites", &count_atom_sites<Model>)
