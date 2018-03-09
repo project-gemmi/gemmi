@@ -194,6 +194,49 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
     }
   }
 
+  // _struct_conn
+  // example:
+  // disulf1 disulf A CYS 3  SG ? 3 ? 1_555 A CYS 18 SG ? 18 ?  1_555 ? 2.045
+  cif::Loop& conn_loop = block.init_mmcif_loop("_struct_conn.",
+      {"id", "conn_type_id",
+       "ptnr1_label_asym_id", "ptnr1_label_comp_id", "ptnr1_label_seq_id",
+       "ptnr1_label_atom_id", "pdbx_ptnr1_label_alt_id",
+       "ptnr1_auth_seq_id", "pdbx_ptnr1_PDB_ins_code", "ptnr1_symmetry",
+       "ptnr2_label_asym_id", "ptnr2_label_comp_id", "ptnr2_label_seq_id",
+       "ptnr2_label_atom_id", "pdbx_ptnr2_label_alt_id",
+       "ptnr2_auth_seq_id", "pdbx_ptnr2_PDB_ins_code", "ptnr2_symmetry",
+       "details", "pdbx_dist_value"});
+  for (const Connection& con : st.models.at(0).connections) {
+    const_CRA cra1 = st.models[0].find_cra(con.atom[0]);
+    const_CRA cra2 = st.models[0].find_cra(con.atom[1]);
+    if (!cra1.atom || !cra2.atom)
+      continue;
+    NearbyImage im = st.cell.find_nearest_image(cra1.atom->pos,
+                                                cra2.atom->pos, con.image);
+    conn_loop.add_row({
+        con.name,                               // id
+        get_mmcif_connection_type_id(con.type), // conn_type_id
+        con.atom[0].chain_name,                 // ptnr1_label_asym_id
+        con.atom[0].res_id.name,                // ptnr1_label_comp_id
+        con.atom[0].res_id.label_seq.str(),     // ptnr1_label_seq_id
+        con.atom[0].atom_name,                  // ptnr1_label_atom_id
+        std::string(1, con.atom[0].altloc ? con.atom[0].altloc : '?'),
+        con.atom[0].res_id.seq_num.str(),       // ptnr1_auth_seq_id
+        con.atom[0].res_id.pdbx_icode(),        // ptnr1_PDB_ins_code
+        "1_555",                                // ptnr1_symmetry
+        con.atom[1].chain_name,                 // ptnr2_label_asym_id
+        con.atom[1].res_id.name,                // ptnr2_label_comp_id
+        con.atom[1].res_id.label_seq.str(),     // ptnr2_label_seq_id
+        con.atom[1].atom_name,                  // ptnr2_label_atom_id
+        std::string(1, con.atom[1].altloc ? con.atom[1].altloc : '?'),
+        con.atom[1].res_id.seq_num.str(),       // ptnr2_auth_seq_id
+        con.atom[1].res_id.pdbx_icode(),        // ptnr2_PDB_ins_code
+        im.pdb_symbol(true),                    // ptnr2_symmetry
+        "?",                                    // details
+        to_str(im.dist())                       // pdbx_dist_value
+    });
+  }
+
   // _struct_mon_prot_cis
   cif::Loop& prot_cis_loop = block.init_mmcif_loop("_struct_mon_prot_cis.",
                              {"pdbx_id", "pdbx_PDB_model_num", "label_asym_id",
