@@ -219,5 +219,13 @@ class TestMol(unittest.TestCase):
         out = st.make_pdb_headers()
         self.assertEqual(out.splitlines(), SSBOND_FRAGMENT.splitlines()[:3])
 
+    def test_ssbond_again(self):
+        st = gemmi.read_pdb_string(SSBOND_FRAGMENT)
+        doc = st.make_mmcif_document()
+        #doc.write_file('aaaaa')
+        st2 = gemmi.make_structure_from_block(doc[0])
+        out = st2.make_pdb_headers()
+        #self.assertEqual(out.splitlines(), SSBOND_FRAGMENT.splitlines()[:3])
+
 if __name__ == '__main__':
     unittest.main()

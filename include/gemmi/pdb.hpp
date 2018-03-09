@@ -153,7 +153,7 @@ inline void categories_entities(Structure& st) {
       }
       assert(!chain.name.empty());
       if (chain.residues.size() == 1 && st.get_entity_of(chain) == nullptr)
-        chain.entity_id = "_" + chain.residues[0].name;
+        chain.entity_id = "=" + chain.residues[0].name;
       Entity& ent = st.find_or_add_entity(chain.entity_id);
       if (chain.residues.size() == 1) {
         if (ent.entity_type == EntityType::Unknown)
@@ -170,9 +170,6 @@ inline void categories_entities(Structure& st) {
     Entity& ent = st.find_or_add_entity(WAT);
     ent.entity_type = EntityType::Water;
   }
-  //chain->entity_id = "_" + rid.name;
-  //Entity& ent = st.find_or_add_entity(chain->entity_id);
-  //ent.entity_type = EntityType::NonPolymer;
 }
 
 inline void deduplicate_entities(Structure& st) {

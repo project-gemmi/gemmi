@@ -7,6 +7,7 @@
 #include "gemmi/modify.hpp"
 #define STB_SPRINTF_IMPLEMENTATION
 #include "gemmi/to_pdb.hpp"
+#include "gemmi/to_mmcif.hpp"
 
 #include <fstream>
 #include <pybind11/pybind11.h>
@@ -122,6 +123,7 @@ void add_mol(py::module& m) {
        std::ofstream f(path.c_str());
        write_minimal_pdb(st, f, chain);
     }, py::arg("path"), py::arg("chain")=nullptr)
+    .def("make_mmcif_document", &make_mmcif_document)
     .def("remove_hydrogens", remove_hydrogens<Structure>)
     .def("remove_waters", remove_waters<Structure>)
     .def("remove_ligands_and_waters",

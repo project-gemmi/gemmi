@@ -277,6 +277,13 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   impl::add_cif_atoms(st, block);
 }
 
+inline cif::Document make_mmcif_document(const Structure& st) {
+  cif::Document doc;
+  doc.blocks.resize(1);
+  gemmi::update_cif_block(st, doc.blocks[0]);
+  return doc;
+}
+
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

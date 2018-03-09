@@ -18,7 +18,7 @@ void check_struct_conn(cif::Block& block) {
   cif::Table struct_conn = block.find("_struct_conn.", {"id", "conn_type_id",
                                                         "ptnr2_symmetry",
                                                         "pdbx_dist_value" });
-  Structure st = read_atoms_from_block(block);
+  Structure st = make_structure_from_block(block);
   for (Connection& con : st.models[0].connections) {
     const Atom* atom[2] = {nullptr, nullptr};
     for (int n : {0, 1}) {
