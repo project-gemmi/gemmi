@@ -149,7 +149,8 @@ class TestMol(unittest.TestCase):
         self.assertTrue(all(res.name == 'HOH' for res in model['A_w']))
         A = model['A0']
         self.assertTrue(A['3'])
-        self.assertFalse(A[3])
+        self.assertTrue(A[3])
+        self.assertFalse(A[0])
         self.assertEqual([res.seq_num for res in A if res.icode], [56] * 5)
         self.assertEqual(len(A['55']), 1)
         self.assertEqual(len(A['55B']), 0)
@@ -199,15 +200,14 @@ class TestMol(unittest.TestCase):
                    "  1.00 67.64          MG"
         for line in [pdb_line, pdb_line.strip(' MG'), pdb_line[:-2] + '  ']:
             st = gemmi.read_pdb_string(line)
-            mg_atom = st[0]['A0']['341'][0]['MG']
+            mg_atom = st[0].residue('A', 341, ' ')['MG']
             self.assertEqual(mg_atom.element.name, 'Mg')
             self.assertAlmostEqual(mg_atom.b_iso, 67.64, delta=1e-6)
 
     def test_ncs(self):
         st = gemmi.read_structure(full_path('5cvz_final.pdb'))
-        chain = st[0]['A0']
-        first_atom = chain['17'][0]['N']
-        ne2 = chain['63'][0]['NE2']
+        first_atom = st[0].residue('A', 17, ' ')['N']
+        ne2 = st[0].residue('A', 63, ' ')['NE2']
         direct_dist = first_atom.pos.dist(ne2.pos)
         self.assertAlmostEqual(direct_dist, 34.89, delta=1e-2)
         nearest_image = st.cell.find_nearest_image(first_atom.pos, ne2.pos)

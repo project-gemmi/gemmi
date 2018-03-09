@@ -352,7 +352,16 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       if (len > 72)
         rid.segment = read_string(line+72, 4);
       if (!resi || !resi->matches(rid)) {
+        Residue* prev = resi;
         resi = chain->find_or_add_residue(rid);
+        if (!resi->label_seq) {
+          if (prev)
+            // seq_id is the same in case of microheterogeneity
+            resi->label_seq = *prev->label_seq +
+                              (prev->same_seq_id(rid) ? 0 : 1);
+          else
+            resi->label_seq = 1;
+        }
         resi->het_flag = line[0] & ~0x20;
       }
 

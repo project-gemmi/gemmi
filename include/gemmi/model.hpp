@@ -567,9 +567,7 @@ struct Structure {
 };
 
 inline bool Residue::matches(const ResidueId& rid) const {
-  if (!rid.label_seq && rid.seq_num && !same_seq_id(rid))
-    return false;
-  return label_seq == rid.label_seq &&
+  return (rid.label_seq ? label_seq == rid.label_seq : same_seq_id(rid)) &&
          segment == rid.segment &&
          name == rid.name;
 }
@@ -614,8 +612,6 @@ inline void Chain::append_residues(std::vector<Residue> new_resi) {
   }
   std::move(new_resi.begin(), new_resi.end(), std::back_inserter(residues));
 }
-
-// TODO: if "entities" were not specifed, deduce them based on sequence
 
 inline void Structure::setup_cell_images() {
   if (const SpaceGroup* sg = find_spacegroup_by_name(sg_hm)) {
