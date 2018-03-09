@@ -151,6 +151,38 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
       case ID("HEM"): return { ResidueInfo::ELS, false, 30 };
       case ID("SO4"): return { ResidueInfo::ELS, false,  0 };
       case ID("SUL"): return { ResidueInfo::ELS, false,  0 };
+      case ID("GOL"): return { ResidueInfo::ELS, false,  8 };
+      case ID("EDO"): return { ResidueInfo::ELS, false,  6 };
+      case ID("NAG"): return { ResidueInfo::ELS, false, 15 }; // pyranose
+      case ID("PO4"): return { ResidueInfo::ELS, false,  0 };
+      case ID("ACT"): return { ResidueInfo::ELS, false,  3 };
+      case ID("PEG"): return { ResidueInfo::ELS, false, 10 };
+      case ID("MAN"): return { ResidueInfo::ELS, false, 12 }; // pyranose
+      case ID("FAD"): return { ResidueInfo::ELS, false, 33 };
+      case ID("BMA"): return { ResidueInfo::ELS, false, 12 }; // pyranose
+      case ID("ADP"): return { ResidueInfo::ELS, false, 15 };
+      case ID("DMS"): return { ResidueInfo::ELS, false,  6 };
+      // ACE is a non-polymer that occurs primarily in polymers
+      case ID("ACE"): return { ResidueInfo::ELS, false,  4 };
+      case ID("MPD"): return { ResidueInfo::ELS, false, 14 };
+      case ID("MES"): return { ResidueInfo::ELS, false, 13 };
+      case ID("NAD"): return { ResidueInfo::ELS, false, 27 };
+      case ID("NAP"): return { ResidueInfo::ELS, false, 28 };
+      case ID("TRS"): return { ResidueInfo::ELS, false, 12 };
+      case ID("ATP"): return { ResidueInfo::ELS, false, 16 };
+      case ID("PG4"): return { ResidueInfo::ELS, false, 18 };
+      case ID("GDP"): return { ResidueInfo::ELS, false, 15 }; // RNA in CCD
+      case ID("FUC"): return { ResidueInfo::ELS, false, 12 }; // pyranose
+      case ID("FMT"): return { ResidueInfo::ELS, false,  2 };
+      case ID("NH2"): return { ResidueInfo::ELS, false,  2 }; // ?
+      case ID("GAL"): return { ResidueInfo::ELS, false, 12 }; // pyranose
+      case ID("PGE"): return { ResidueInfo::ELS, false, 14 };
+      case ID("FMN"): return { ResidueInfo::ELS, false, 21 };
+      case ID("PLP"): return { ResidueInfo::ELS, false, 10 };
+      case ID("EPE"): return { ResidueInfo::ELS, false, 18 };
+      case ID("SF4"): return { ResidueInfo::ELS, false,  0 };
+      case ID("BME"): return { ResidueInfo::ELS, false,  6 };
+      case ID("CIT"): return { ResidueInfo::ELS, false,  8 };
     }
 #undef ID
   } else if (name.size() == 1) {
@@ -160,6 +192,8 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
       case 'G': return { ResidueInfo::RNA, true, 14 };
       case 'I': return { ResidueInfo::RNA, true, 13 };
       case 'U': return { ResidueInfo::RNA, true, 13 };
+
+      case 'K': return { ResidueInfo::ELS, false, 0 };
     }
   } else if (name.size() == 2) {
     if (name[0] == 'D' || name[0] == '+')
@@ -171,6 +205,27 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
         case 'T': return { ResidueInfo::DNA, true, 15 };
         case 'U': return { ResidueInfo::DNA, true, 13 };
       }
+    else
+#define ID(s) (s[0] << 8 | s[1])
+      switch (ID(name.c_str())) {
+        case ID("ZN"): return { ResidueInfo::ELS, false, 0 };
+        case ID("MG"): return { ResidueInfo::ELS, false, 0 };
+        case ID("CL"): return { ResidueInfo::ELS, false, 0 };
+        case ID("CA"): return { ResidueInfo::ELS, false, 0 };
+        case ID("NA"): return { ResidueInfo::ELS, false, 0 };
+        case ID("MN"): return { ResidueInfo::ELS, false, 0 };
+        case ID("FE"): return { ResidueInfo::ELS, false, 0 };
+        case ID("NI"): return { ResidueInfo::ELS, false, 0 };
+        case ID("CU"): return { ResidueInfo::ELS, false, 0 };
+        case ID("CD"): return { ResidueInfo::ELS, false, 0 };
+        case ID("CO"): return { ResidueInfo::ELS, false, 0 };
+        case ID("HG"): return { ResidueInfo::ELS, false, 0 };
+        case ID("BR"): return { ResidueInfo::ELS, false, 0 };
+        case ID("BA"): return { ResidueInfo::ELS, false, 0 };
+        case ID("SR"): return { ResidueInfo::ELS, false, 0 };
+        case ID("NO"): return { ResidueInfo::ELS, false, 0 };
+      }
+#undef ID
   }
   return { ResidueInfo::UNKNOWN, false, 0 };
 }
