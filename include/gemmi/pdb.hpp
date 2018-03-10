@@ -287,8 +287,13 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
         else
           c.image = SymmetryImage::Different;
       }
-      for (Model& mdl : st.models)
+      for (Model& mdl : st.models) {
+        for (AtomAddress& ad : c.atom)
+          if (ResidueGroup rg = mdl.residues(ad.chain_name, *ad.res_id.seq_num,
+                                             ad.res_id.icode))
+            ad.res_id.label_seq = rg[0].label_seq;
         mdl.connections.emplace_back(c);
+      }
     } else if (*r == 'C' || *r == 'c') { // CISPEP
       std::string cname = read_string(r + 14, 2);
       ResidueId rid = read_res_id(r + 17, r + 11);
@@ -336,7 +341,6 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
           int n = std::count_if(model->chains.begin(), model->chains.end(),
                   [&](const Chain& ch) { return ch.auth_name == chain_name; });
           chain = &model->add_chain(chain_name + std::to_string(n));
-          if (n == 0)
           chain->entity_id = (n == 0 ? chain_name : chain->name);
         }
         prev_water = res_water;
@@ -350,14 +354,15 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
         rid.segment = read_string(line+72, 4);
       if (!resi || !resi->matches(rid)) {
         Residue* prev = resi;
-        resi = chain->find_or_add_residue(rid);
-        if (!resi->label_seq) {
+        resi = chain->find_residue(rid);
+        if (!resi) {
           if (prev)
             // seq_id is the same in case of microheterogeneity
-            resi->label_seq = *prev->label_seq +
-                              (prev->same_seq_id(rid) ? 0 : 1);
+            rid.label_seq = *prev->label_seq + (prev->same_seq_id(rid) ? 0 : 1);
           else
-            resi->label_seq = 1;
+            rid.label_seq = 1;
+          chain->residues.emplace_back(rid);
+          resi = &chain->residues.back();
         }
         resi->het_flag = line[0] & ~0x20;
       }

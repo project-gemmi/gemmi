@@ -216,7 +216,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
     conn_loop.add_row({
         con.name,                               // id
         get_mmcif_connection_type_id(con.type), // conn_type_id
-        con.atom[0].chain_name,                 // ptnr1_label_asym_id
+        cra1.chain->name,                       // ptnr1_label_asym_id
         con.atom[0].res_id.name,                // ptnr1_label_comp_id
         con.atom[0].res_id.label_seq.str(),     // ptnr1_label_seq_id
         con.atom[0].atom_name,                  // ptnr1_label_atom_id
@@ -224,7 +224,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
         con.atom[0].res_id.seq_num.str(),       // ptnr1_auth_seq_id
         con.atom[0].res_id.pdbx_icode(),        // ptnr1_PDB_ins_code
         "1_555",                                // ptnr1_symmetry
-        con.atom[1].chain_name,                 // ptnr2_label_asym_id
+        cra2.chain->name,                       // ptnr2_label_asym_id
         con.atom[1].res_id.name,                // ptnr2_label_comp_id
         con.atom[1].res_id.label_seq.str(),     // ptnr2_label_seq_id
         con.atom[1].atom_name,                  // ptnr2_label_atom_id

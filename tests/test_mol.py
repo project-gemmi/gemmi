@@ -7,12 +7,12 @@ import tempfile
 import unittest
 import gemmi
 
-def is_written_to_pdb(line):
+def is_written_to_pdb(line, via_cif):
     if line[:6] in ['COMPND', 'SOURCE', 'MDLTYP', 'AUTHOR', 'REVDAT', 'JRNL  ',
                     'DBREF ', 'SEQADV', 'HET   ', 'HETNAM', 'FORMUL', 'HELIX ',
                     'SHEET ', 'SITE  ', 'MASTER']:
         return False
-    if line[:6] == 'REMARK' and line[6:10] != '   2':
+    if line[:6] == 'REMARK' and (via_cif or line[6:10] != '   2'):
         return False
     return True
 
@@ -158,8 +158,11 @@ class TestMol(unittest.TestCase):
         self.assertEqual(A['56'][0].icode, '')
         self.assertEqual(A['56c'][0].icode, 'C')
 
-    def write_back_and_compare(self, path):
+    def write_back_and_compare(self, path, via_cif):
         st = gemmi.read_structure(path)
+        if via_cif:
+            doc = st.make_mmcif_document()
+            st = gemmi.make_structure_from_block(doc[0])
         handle, out_name = tempfile.mkstemp()
         os.close(handle)
         st.write_pdb(out_name)
@@ -168,22 +171,28 @@ class TestMol(unittest.TestCase):
         os.remove(out_name)
         return out_lines
 
-    def test_read_write_1orc(self):
+    def test_read_write_1orc(self, via_cif=False):
         path = full_path('1orc.pdb')
         with open(path) as f:
-            expected_lines = [line for line in f if is_written_to_pdb(line)]
-        out_lines = self.write_back_and_compare(path)
-        self.assertEqual(expected_lines, out_lines)
+            expected = [line for line in f if is_written_to_pdb(line, via_cif)]
+        out_lines = self.write_back_and_compare(path, via_cif)
+        self.assertEqual(expected, out_lines)
 
-    def test_read_write_1lzh(self):
+    def test_read_write_1orc_via_cif(self):
+        self.test_read_write_1orc(via_cif=True)
+
+    def test_read_write_1lzh(self, via_cif=False):
         path = full_path('1lzh.pdb.gz')
         mode = 'rt' if sys.version_info >= (3,) else 'r'
         with gzip.open(path, mode=mode) as f:
-            expected_lines = [line for line in f if is_written_to_pdb(line)]
-        out_lines = self.write_back_and_compare(path)
-        self.assertEqual(expected_lines[0], out_lines[0])
+            expected = [line for line in f if is_written_to_pdb(line, via_cif)]
+        out_lines = self.write_back_and_compare(path, via_cif)
+        self.assertEqual(expected[0], out_lines[0])
         # TITLE lines differ because the text is broken at different word
-        self.assertEqual(expected_lines[3:], out_lines[3:])
+        self.assertEqual(expected[3:], out_lines[3:])
+
+    def test_read_write_1lzh_via_cif(self):
+        self.test_read_write_1lzh(via_cif=True)
 
     def test_ncs_in_1lzh(self):
         st = gemmi.read_structure(full_path('1lzh.pdb.gz'))
@@ -222,10 +231,9 @@ class TestMol(unittest.TestCase):
     def test_ssbond_again(self):
         st = gemmi.read_pdb_string(SSBOND_FRAGMENT)
         doc = st.make_mmcif_document()
-        #doc.write_file('aaaaa')
         st2 = gemmi.make_structure_from_block(doc[0])
         out = st2.make_pdb_headers()
-        #self.assertEqual(out.splitlines(), SSBOND_FRAGMENT.splitlines()[:3])
+        self.assertEqual(out.splitlines(), SSBOND_FRAGMENT.splitlines()[:3])
 
 if __name__ == '__main__':
     unittest.main()
