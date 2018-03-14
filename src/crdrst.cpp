@@ -25,6 +25,38 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
+static std::string get_link_type(const gemmi::Residue& res,
+                                 const gemmi::Residue* prev,
+                                 gemmi::PolymerType ptype) {
+  using gemmi::PolymerType;
+  if (!prev)
+    return ".";
+  if (ptype == PolymerType::PeptideL || ptype == PolymerType::PeptideD) {
+    std::string link = res.is_cis ? "CIS" : "TRANS";
+    if (res.name == "PRO")
+      link = "P" + link;
+    return link;
+  }
+  if (ptype == PolymerType::Dna || ptype == PolymerType::Rna)
+    return "p";
+  return "?";
+}
+
+static std::string get_modification(const gemmi::Chain& chain,
+                                    const gemmi::Residue& res,
+                                    gemmi::PolymerType ptype) {
+  using gemmi::PolymerType;
+  if (&res == &chain.residues.back())
+    return "TERMINUS";
+  if (&res == &chain.residues.front()) {
+    if (ptype == PolymerType::PeptideL || ptype == PolymerType::PeptideD)
+      return "NH3";
+    if (ptype == PolymerType::Dna || ptype == PolymerType::Rna)
+      return "5*END";
+  }
+  return ".";
+}
+
 static cif::Document make_crd(const gemmi::Structure& st) {
   // consider update_cif_block()
   using gemmi::to_str;
@@ -65,18 +97,21 @@ static cif::Document make_crd(const gemmi::Structure& st) {
   cif::Loop& poly_loop = block.init_mmcif_loop("_entity_poly_seq.", {
               "mon_id", "ccp4_auth_seq_id", "entity_id",
               "ccp4_back_connect_type", "ccp4_num_mon_back", "ccp4_mod_id"});
-  for (const auto& ent : st.entities)
-    if (ent.second.entity_type == gemmi::EntityType::Polymer)
-      for (const gemmi::SequenceItem& si : ent.second.sequence) {
-        poly_loop.values.emplace_back(si.mon);
-        // TODO: real auth_seq_id
-        std::string auth_seq_id = si.num >= 0 ? std::to_string(si.num) : "?";
-        poly_loop.values.emplace_back(auth_seq_id);
-        poly_loop.values.emplace_back(ent.first);
-        poly_loop.values.emplace_back("?"); // ccp4_back_connect_type
-        poly_loop.values.emplace_back("?"); // ccp4_num_mon_back
-        poly_loop.values.emplace_back("?"); // ccp4_mod_id
-      }
+  for (const gemmi::Chain& chain : st.models[0].chains) {
+    const gemmi::Entity* ent = st.get_entity_of(chain);
+    if (!ent || ent->entity_type != gemmi::EntityType::Polymer)
+      continue;
+    const gemmi::Residue* prev = nullptr;
+    for (const gemmi::Residue& res : chain.residues) {
+      poly_loop.add_row({res.name,
+                         res.seq_id(),
+                         chain.entity_id,
+                         get_link_type(res, prev, ent->polymer_type),
+                         prev ? prev->seq_id() : "n/a",
+                         get_modification(chain, res, ent->polymer_type)});
+      prev = &res;
+    }
+  }
   items.emplace_back(cif::CommentArg{"##########\n"
                                      "## CELL ##\n"
                                      "##########"});
@@ -126,20 +161,9 @@ static cif::Document make_crd(const gemmi::Structure& st) {
     items.emplace_back(cif::CommentArg{"#################\n"
                                        "## STRUCT_CONN ##\n"
                                        "#################"});
-    cif::Loop& con_loop = block.init_mmcif_loop("_struct_conn.", {
-        "id", "conn_type_id",
-        "ptnr1_label_atom_id", "pdbx_ptnr1_label_alt_id", "ptnr1_label_seq_id",
-        "ptnr1_label_comp_id", "ptnr1_label_asym_id", "ptnr1_symmetry",
-        "ptnr2_label_atom_id", "pdbx_ptnr2_label_alt_id", "ptnr2_label_seq_id",
-        "ptnr2_label_comp_id", "ptnr2_label_asym_id", "ptnr2_symmetry",
-        "dist"});
-    for (const gemmi::Connection& con : connections) {
-      con_loop.values.push_back(con.name);
-      con_loop.values.push_back(gemmi::get_mmcif_connection_type_id(con.type));
-      for (size_t i = 2; i != con_loop.tags.size(); ++i)
-        con_loop.values.push_back(".");
-    }
+    gemmi::impl::write_struct_conn(st, block);
   }
+
   items.emplace_back(cif::CommentArg{"###############\n"
                                      "## ATOM_SITE ##\n"
                                      "###############"});
