@@ -12,8 +12,9 @@ namespace gemmi {
 
 struct ResidueInfo {
   // Simple approximate classification. ELS is something else (ligand).
-  enum Kind : char {
-    UNKNOWN=0, AA=1, NA=2, RNA=(2|4), DNA=(2|8), SOL=16, HOH=(16|32), ELS=64
+  enum Kind : unsigned char {
+    UNKNOWN=0, AA=1, NA=2, RNA=(2|4), DNA=(2|8), SOL=16, HOH=(16|32),
+    PYR=64, ELS=128
   };
   Kind kind;
   // PDB format has non-standard residues (modified AA) marked as HETATM.
@@ -54,6 +55,7 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
       case ID("PRO"): return { ResidueInfo::AA,  true,   7 };
       case ID("SER"): return { ResidueInfo::AA,  true,   5 };
       case ID("THR"): return { ResidueInfo::AA,  true,   7 };
+      case ID("TRY"): // fall-through - synonym for TRP
       case ID("TRP"): return { ResidueInfo::AA,  true,  10 };
       case ID("TYR"): return { ResidueInfo::AA,  true,   9 };
       case ID("UNK"): return { ResidueInfo::AA,  true,   7 };
@@ -144,22 +146,22 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
       case ID("BRU"): return { ResidueInfo::DNA, false, 12 };
       case ID("CBR"): return { ResidueInfo::DNA, false, 13 };
 
+      case ID("H2O"): // fall-through - synonym for HOH
+      case ID("WAT"): // fall-through - synonym for HOH
       case ID("HOH"): return { ResidueInfo::HOH, false,  2 };
-      case ID("WAT"): return { ResidueInfo::HOH, false,  2 };
-      case ID("H20"): return { ResidueInfo::HOH, false,  2 };
       case ID("DOD"): return { ResidueInfo::HOH, false,  2 };
       case ID("HEM"): return { ResidueInfo::ELS, false, 30 };
+      case ID("SUL"): // fall-through - synonym for SO4
       case ID("SO4"): return { ResidueInfo::ELS, false,  0 };
-      case ID("SUL"): return { ResidueInfo::ELS, false,  0 };
       case ID("GOL"): return { ResidueInfo::ELS, false,  8 };
       case ID("EDO"): return { ResidueInfo::ELS, false,  6 };
-      case ID("NAG"): return { ResidueInfo::ELS, false, 15 }; // pyranose
+      case ID("NAG"): return { ResidueInfo::PYR, false, 15 };
       case ID("PO4"): return { ResidueInfo::ELS, false,  0 };
       case ID("ACT"): return { ResidueInfo::ELS, false,  3 };
       case ID("PEG"): return { ResidueInfo::ELS, false, 10 };
-      case ID("MAN"): return { ResidueInfo::ELS, false, 12 }; // pyranose
+      case ID("MAN"): return { ResidueInfo::PYR, false, 12 };
       case ID("FAD"): return { ResidueInfo::ELS, false, 33 };
-      case ID("BMA"): return { ResidueInfo::ELS, false, 12 }; // pyranose
+      case ID("BMA"): return { ResidueInfo::PYR, false, 12 };
       case ID("ADP"): return { ResidueInfo::ELS, false, 15 };
       case ID("DMS"): return { ResidueInfo::ELS, false,  6 };
       // ACE is a non-polymer that occurs primarily in polymers
@@ -172,10 +174,10 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
       case ID("ATP"): return { ResidueInfo::ELS, false, 16 };
       case ID("PG4"): return { ResidueInfo::ELS, false, 18 };
       case ID("GDP"): return { ResidueInfo::ELS, false, 15 }; // RNA in CCD
-      case ID("FUC"): return { ResidueInfo::ELS, false, 12 }; // pyranose
+      case ID("FUC"): return { ResidueInfo::PYR, false, 12 };
       case ID("FMT"): return { ResidueInfo::ELS, false,  2 };
       case ID("NH2"): return { ResidueInfo::ELS, false,  2 }; // ?
-      case ID("GAL"): return { ResidueInfo::ELS, false, 12 }; // pyranose
+      case ID("GAL"): return { ResidueInfo::PYR, false, 12 };
       case ID("PGE"): return { ResidueInfo::ELS, false, 14 };
       case ID("FMN"): return { ResidueInfo::ELS, false, 21 };
       case ID("PLP"): return { ResidueInfo::ELS, false, 10 };
