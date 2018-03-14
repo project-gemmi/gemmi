@@ -69,10 +69,26 @@ to use the ``-t`` option which prints the tag::
     3GEM:[_refine_ls_shell.R_factor_R_free] 0.272
     3GEM:[_refine_ls_shell.number_reflns_R_free] 253
 
-If the searched tag is near the beginning of the file, the option ``-O``
-makes gemmi-grep much faster. This option tells the program that the file
-has only a single block; when the tag is found (and wildcards are not used)
-the program does not need to parse the rest of the file.
+Let say we want to find extreme unit cell angles in the PDB.
+``_cell.angle_*a`` will match _cell.angle_alpha as well as beta and gamma,
+but not _cell.angle_alpha_esd etc.
+
+::
+
+   $ gemmi-grep -d' ' _cell.angle_*a /pdb/mmCIF/ | awk '$2 < 50 || $2 > 140 { print $0; }'
+   4AL2 144.28
+   2EX3 45.40
+   2GMV 145.09
+   4NX1 140.060
+   4OVP 140.070
+   1SPG 141.90
+   2W1I 146.58
+
+The option ``-O`` is used to make gemmi-grep faster.
+With this option the program finds only the first occurence of the tag
+in file. Note that if the file has only one block (like mmCIF coordinate
+files) and the tag is specified without wildcards then we cannot have
+more than one match anyway.
 
 Searching the whole compressed mmCIF archive from the PDB
 (35GB of gzipped files) should take on an average computer
