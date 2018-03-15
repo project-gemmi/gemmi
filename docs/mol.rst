@@ -257,6 +257,22 @@ Note that unlike the primary sequence numbers,
 *author* sequence numbers must be used together with the so-called
 PDB insertion code.
 
+Example lines from a PDB file (3B9F):
+
+.. code-block:: none
+
+    ATOM   1033  OE2 GLU H  77      -9.804  19.834 -55.805  1.00 25.54           O
+    ATOM   1034  N  AARG H  77A     -4.657  24.646 -55.236  0.11 20.46           N
+    ATOM   1035  N  BARG H  77A     -4.641  24.646 -55.195  0.82 22.07           N
+
+and corresponding lines from mmCIF:
+
+.. code-block:: none
+
+    ATOM   1032 O OE2 . GLU B 2  72  ? -9.804  19.834  -55.805 1.00 25.54 ? 77   GLU H OE2 1
+    ATOM   1033 N N   A ARG B 2  73  A -4.657  24.646  -55.236 0.11 20.46 ? 77   ARG H N   1
+    ATOM   1034 N N   B ARG B 2  73  A -4.641  24.646  -55.195 0.82 22.07 ? 77   ARG H N   1
+
 
 C++
 ~~~
