@@ -238,10 +238,40 @@ Here we focus on things specific to mmCIF/DDL2:
   dictionary. The latter is built upon the former. So we have
   the ``pdbx_`` prefix in otherwise random places.
 
-As described above, the mmCIF format has two sets of names/numbers:
+Here are example lines from a PDB file (3B9F) with the fields
+numbered at the bottom:
+
+.. code-block:: none
+
+    ATOM   1033  OE2 GLU H  77      -9.804  19.834 -55.805  1.00 25.54           O
+    ATOM   1034  N  AARG H  77A     -4.657  24.646 -55.236  0.11 20.46           N
+    ATOM   1035  N  BARG H  77A     -4.641  24.646 -55.195  0.82 22.07           N
+     |       |   |  | |  |  | |       |       |       |      |     |             | |
+     1       2   3  4 5  6  7 8       9       10      11     12    13           14 15
+
+and the corresponding lines from PDBx/mmCIF v5 (as served by the PDB in 2018):
+
+.. code-block:: none
+
+    ATOM   1032 O OE2 . GLU B 2  72  ? -9.804  19.834  -55.805 1.00 25.54 ? 77   GLU H OE2 1
+    ATOM   1033 N N   A ARG B 2  73  A -4.657  24.646  -55.236 0.11 20.46 ? 77   ARG H N   1
+    ATOM   1034 N N   B ARG B 2  73  A -4.641  24.646  -55.195 0.82 22.07 ? 77   ARG H N   1
+     |       |  | |   |  |  | |   |  |    |       |       |     |    |    |  |    |  | |   |
+     1       2 14 N   4  N  N N   N  8    9       10      11    12   13   15 7    5  6 3   N
+     |       |  | |   |  label_comp_id    Cartn_x |       |     |    B_iso_or_equiv  | auth_atom_id
+     |       id | |   label_alt_id|  pdbx_PDB_ins_code    |     occupancy |  |    |  auth_asym_id
+     group_PDB  | label_atom_id   label_seq_id    |       Cartn_z         |  |    auth_comp_id
+                type_symbol | label_entity_id     Cartn_y                 |  auth_seq_id   pdbx_PDB_model_num
+                            label_asym_id                                 pdbx_formal_charge
+
+``N`` marks columns not present in the PDB file.
+Numbers in column 2 differ because in the PDB file TER records (that mark
+end of a polymer) are also assigned a number.
+
+As mentioned above, the mmCIF format has two sets of names/numbers:
 *label* and *auth* (for "author").
 ``atom_id`` and ``comp_id`` almost never differ, so
-Gemmi ignores author-defined alternatives.
+Gemmi ignores author-defined ones.
 
 On the other hand, chain names (``asym_id``) and sequence numbers often
 differ and usually the author-defined names should be presented to the user,
@@ -250,28 +280,12 @@ as they are the ones used in the PDB format.
 In Gemmi, we split the model into chains based on the primary mmCIF
 chain name, but we keep both sets of names.
 Apart from chain renaming (when the original naming was not A, B, C ...),
-it is common that ligands and waters are moved into separate *label* "chains"
-(structural units).
+ligands and waters are moved into separate *label* "chains" (structural units).
 
 Note that unlike the primary sequence numbers,
 *author* sequence numbers must be used together with the so-called
-PDB insertion code.
-
-Example lines from a PDB file (3B9F):
-
-.. code-block:: none
-
-    ATOM   1033  OE2 GLU H  77      -9.804  19.834 -55.805  1.00 25.54           O
-    ATOM   1034  N  AARG H  77A     -4.657  24.646 -55.236  0.11 20.46           N
-    ATOM   1035  N  BARG H  77A     -4.641  24.646 -55.195  0.82 22.07           N
-
-and corresponding lines from mmCIF:
-
-.. code-block:: none
-
-    ATOM   1032 O OE2 . GLU B 2  72  ? -9.804  19.834  -55.805 1.00 25.54 ? 77   GLU H OE2 1
-    ATOM   1033 N N   A ARG B 2  73  A -4.657  24.646  -55.236 0.11 20.46 ? 77   ARG H N   1
-    ATOM   1034 N N   B ARG B 2  73  A -4.641  24.646  -55.195 0.82 22.07 ? 77   ARG H N   1
+PDB insertion code. Confusingly, in the mmCIF file the insertion code
+is placed next to the *label* (not *author*) sequence numbers.
 
 
 C++
