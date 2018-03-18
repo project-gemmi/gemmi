@@ -48,7 +48,7 @@ enum class InputType : char { Coordinates, Ccp4, Unknown };
 
 
 int GEMMI_MAIN(int argc, char **argv) {
-  OptParser p;
+  OptParser p(EXE_NAME);
   p.exclusive_groups.push_back({Threshold, Fraction});
   p.simple_parse(argc, argv, Usage);
   p.require_positional_args(2);

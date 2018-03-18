@@ -275,7 +275,7 @@ static void convert(const std::string& input, CoorFormat input_type,
 
 int GEMMI_MAIN(int argc, char **argv) {
   std::ios_base::sync_with_stdio(false);
-  OptParser p;
+  OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   p.require_positional_args(2);
 

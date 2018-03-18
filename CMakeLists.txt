@@ -105,38 +105,41 @@ endif()
 
 add_library(input OBJECT src/input.cpp)
 
-add_executable(gemmi-contents src/contents.cpp $<TARGET_OBJECTS:input>)
+add_executable(gemmi-contents EXCLUDE_FROM_ALL
+               src/contents.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-contents)
 
-add_executable(gemmi-convert src/convert.cpp src/output.cpp
-                             $<TARGET_OBJECTS:input>)
+add_executable(gemmi-convert EXCLUDE_FROM_ALL
+               src/convert.cpp src/output.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-convert)
 
-add_executable(gemmi-crdrst src/crdrst.cpp src/output.cpp
-                            $<TARGET_OBJECTS:input>)
+add_executable(gemmi-crdrst EXCLUDE_FROM_ALL
+               src/crdrst.cpp src/output.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-crdrst)
 
-add_executable(gemmi-grep src/grep.cpp)
+add_executable(gemmi-grep EXCLUDE_FROM_ALL src/grep.cpp)
 support_gz(gemmi-grep)
 
-add_executable(gemmi-map src/map.cpp $<TARGET_OBJECTS:input>)
+add_executable(gemmi-map EXCLUDE_FROM_ALL
+               src/map.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-map)
 
-add_executable(gemmi-mask src/mask.cpp $<TARGET_OBJECTS:input>)
+add_executable(gemmi-mask EXCLUDE_FROM_ALL
+               src/mask.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-mask)
 
-add_executable(gemmi-sg src/sg.cpp)
+add_executable(gemmi-sg EXCLUDE_FROM_ALL src/sg.cpp)
 
-add_executable(gemmi-validate src/validate.cpp)
+add_executable(gemmi-validate EXCLUDE_FROM_ALL src/validate.cpp)
 support_gz(gemmi-validate)
 
-add_executable(gemmi-all EXCLUDE_FROM_ALL
+add_executable(gemmi-prog
                src/input.cpp src/contents.cpp src/convert.cpp src/output.cpp
                src/grep.cpp src/main.cpp src/map.cpp src/mask.cpp src/sg.cpp
                src/validate.cpp)
-support_gz(gemmi-all)
-target_compile_definitions(gemmi-all PRIVATE GEMMI_ALL_IN_ONE=1)
-set_target_properties(gemmi-all PROPERTIES OUTPUT_NAME gemmi)
+support_gz(gemmi-prog)
+target_compile_definitions(gemmi-prog PRIVATE GEMMI_ALL_IN_ONE=1)
+set_target_properties(gemmi-prog PROPERTIES OUTPUT_NAME gemmi)
 
 ### tests and examples ###
 

@@ -1,6 +1,6 @@
-$ gemmi-map -h
+$ gemmi map -h
 Usage:
- gemmi-map [options] CCP4_MAP[...]
+ gemmi map [options] CCP4_MAP[...]
 
   -h, --help         Print usage and exit.
   -V, --version      Print version and exit.

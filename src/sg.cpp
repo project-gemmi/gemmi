@@ -53,7 +53,7 @@ static void process_arg(const char* arg) {
 }
 
 int GEMMI_MAIN(int argc, char **argv) {
-  OptParser p;
+  OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   for (int i = 0; i < p.nonOptionsCount(); ++i)
     process_arg(p.nonOption(i));

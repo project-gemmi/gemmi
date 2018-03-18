@@ -285,7 +285,7 @@ ligands and waters are moved into separate *label* "chains" (structural units).
 Note that unlike the primary sequence numbers,
 *author* sequence numbers must be used together with the so-called
 PDB insertion code. Confusingly, in the mmCIF file the insertion code
-is placed next to the *label* (not *author*) sequence numbers.
+is placed next to the *label* (not *author*) sequence number.
 
 
 C++

@@ -145,7 +145,7 @@ static void print_atoms_on_special_positions(const Structure& st) {
 }
 
 int GEMMI_MAIN(int argc, char **argv) {
-  OptParser p;
+  OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   bool verbose = p.options[Verbose];
   if (p.nonOptionsCount() == 0) {

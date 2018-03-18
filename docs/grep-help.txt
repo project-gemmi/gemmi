@@ -1,6 +1,6 @@
-$ gemmi-grep -h
-Usage: gemmi-grep [options] TAG FILE_OR_DIR_OR_PDBID[...]
-       gemmi-grep -f FILE [options] TAG
+$ gemmi grep -h
+Usage: gemmi grep [options] TAG FILE_OR_DIR_OR_PDBID[...]
+       gemmi grep -f FILE [options] TAG
 Search for TAG in CIF files.
 
 Options:

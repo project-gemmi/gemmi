@@ -1,0 +1,11 @@
+$ gemmi -h
+Usage: gemmi [--version] [--help] <command> [<args>]
+
+Commands:
+ contents      info about content of a coordinate file (pdb, mmCIF, ...)
+ convert       convert file (CIF - JSON, mmCIF - PDB) or modify structure
+ grep          search for tags in CIF file(s)
+ map           print info or modify a CCP4 map
+ mask          make mask in the CCP4 format
+ sg            info about space groups
+ validate      validate CIF 1.1 syntax

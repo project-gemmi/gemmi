@@ -1,0 +1,6 @@
+$ gemmi sg -h
+Usage:
+ gemmi sg [options] SPACEGROUP[...]
+Prints information about the space group.
+  -h, --help     Print usage and exit.
+  -V, --version  Print version and exit.

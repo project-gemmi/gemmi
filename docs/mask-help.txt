@@ -1,6 +1,6 @@
-$ gemmi-mask -h
+$ gemmi mask -h
 Usage:
- gemmi-mask [options] INPUT output.msk
+ gemmi mask [options] INPUT output.msk
 
 Makes a mask in the CCP4 format.
 If INPUT is a CCP4 map the mask is created by thresholding the map.

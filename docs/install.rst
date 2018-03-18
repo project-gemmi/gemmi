@@ -50,33 +50,28 @@ set the compiler environment with one of these commands::
 If you'd like to use PyPy instead of CPython
 we support PyPy2.7 >= 5.7 (although we test it only occasionally).
 
-C bindings
-----------
+Fortran and C bindings
+----------------------
 
-For now C bindings are used only when making Fortan bindings,
-but they should be usable on their own.
-If you use cmake to build the project,
-you get a static library ``libcgemmi.a`` that can be used from C,
-together with the :file:`fortran/*.h` headers.
-
-Fortran 2003+
--------------
-
-The fortran bindings are in early stage are are not documented.
+The Fortran bindings are in early stage and are not documented yet.
+They use the ISO_C_BINDING module introduced in Fortran 2003.
 You may see the ``fortran/`` directory to know what to expect.
 The bindings and usage examples can be compiled with CMake::
 
     cmake -D USE_FORTRAN=1 .
     make
 
-Utilities
----------
+The C bindings are used only for making Fortan bindings,
+but they should be usable on their own.
+If you use cmake to build the project
+you get a static library ``libcgemmi.a`` that can be used from C,
+together with the :file:`fortran/*.h` headers.
 
-The library comes with a growing number of small command-line programs.
-When the project is more mature we will provide binaries for Windows, Mac
-and Linux. At this moment the utilities are tested only Linux and Mac
-and need to be compiled from source::
+Gemmi program
+-------------
+
+The library comes with a command-line program. To build it from source::
 
     git clone https://github.com/project-gemmi/gemmi.git
-    cd gemmi/src
+    cmake .
     make

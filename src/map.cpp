@@ -160,7 +160,7 @@ void print_deltas(const gemmi::Grid<T>& g, double dmin, double dmax) {
 }
 
 int GEMMI_MAIN(int argc, char **argv) {
-  OptParser p;
+  OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   bool verbose = p.options[Verbose];
 

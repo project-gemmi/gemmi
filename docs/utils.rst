@@ -1,11 +1,16 @@
-Utilities
-#########
+Gemmi program
+#############
 
-The library comes with a few small command-line programs;
+The library comes with a command-line program which is also called gemmi;
 running a program is easier than calling a library function.
 
-gemmi-validate
-==============
+The program has a few subcommands, each of them is a separate utility:
+
+.. literalinclude:: gemmi-help.txt
+   :language: console
+
+validate
+========
 
 A CIF validator. Apart from checking the syntax it can check most of the rules
 imposed by DDL1 and DDL2 dictionaries.
@@ -15,23 +20,23 @@ imposed by DDL1 and DDL2 dictionaries.
 
 .. _grep:
 
-gemmi-grep
-==========
+grep
+====
 
 .. highlight:: console
 
 Searches for a specified tag in CIF files and prints the associated values,
 one value per line::
 
-    $ gemmi-grep _refine.ls_R_factor_R_free 5fyi.cif.gz
+    $ gemmi grep _refine.ls_R_factor_R_free 5fyi.cif.gz
     5FYI:0.2358
-    $ gemmi-grep _refine.ls_R_factor_R_free mmCIF/mo/?moo.cif.gz
+    $ gemmi grep _refine.ls_R_factor_R_free mmCIF/mo/?moo.cif.gz
     1MOO:0.177
     3MOO:0.21283
     4MOO:0.22371
     5MOO:0.1596
     5MOO:0.1848
-    $ gemmi-grep -b _software.name 5fyi.cif.gz
+    $ gemmi grep -b _software.name 5fyi.cif.gz
     DIMPLE
     PHENIX
 
@@ -46,12 +51,12 @@ This is a minimalistic program designed to be used together with Unix
 text-processing utilities. For example, it cannot filter values itself,
 but one may use grep::
 
-    $ gemmi-grep _pdbx_database_related.db_name /pdb/mmCIF/aa/* | grep EMDB
+    $ gemmi grep _pdbx_database_related.db_name /pdb/mmCIF/aa/* | grep EMDB
     4AAS:EMDB
     5AA0:EMDB
 
 Gemmi-grep tries to be simple to use like Unix grep, but at the same time
-it is aware of the CIF syntax rules. In particular, ``gemmi-grep _one``
+it is aware of the CIF syntax rules. In particular, ``gemmi grep _one``
 will give the same output for both ``_one 1`` and ``loop_ _one _two 1 2``.
 This is helpful in surprising corner cases. For example, when a PDB entry
 has two Rfree values (see the 5MOO example above).
@@ -61,7 +66,7 @@ Gemmi-grep does not support regular expression, only globbing (wildcards):
 characters (including zero). When using wildcards you may also want
 to use the ``-t`` option which prints the tag::
 
-    $ gemmi-grep -t _*free 3gem.cif
+    $ gemmi grep -t _*free 3gem.cif
     3GEM:[_refine.ls_R_factor_R_free] 0.182
     3GEM:[_refine.ls_percent_reflns_R_free] 5.000
     3GEM:[_refine.ls_number_reflns_R_free] 3951
@@ -75,7 +80,7 @@ but not _cell.angle_alpha_esd etc.
 
 ::
 
-   $ gemmi-grep -d' ' _cell.angle_*a /pdb/mmCIF/ | awk '$2 < 50 || $2 > 140 { print $0; }'
+   $ gemmi grep -d' ' _cell.angle_*a /pdb/mmCIF/ | awk '$2 < 50 || $2 > 140 { print $0; }'
    4AL2 144.28
    2EX3 45.40
    2GMV 145.09
@@ -96,7 +101,7 @@ between 10 and 30 minutes, depending where the searched tag is located.
 This is much faster than with other CIF parsers (to my best knowledge)
 and it makes the program useful for ad-hoc PDB statistics::
 
-    $ gemmi-grep -O -b _entity_poly.type /pdb/mmCIF | sort | uniq -c
+    $ gemmi grep -O -b _entity_poly.type /pdb/mmCIF | sort | uniq -c
           1 cyclic-pseudo-peptide
           4 other
           2 peptide nucleic acid
@@ -111,7 +116,7 @@ Option ``-c`` counts the values in each block or file. As an example
 we may check which entries have the biggest variety of chemical components
 (spoiler: ribosomes)::
 
-    $ gemmi-grep -O -c _chem_comp.id /pdb/mmCIF | sort -t: -k2 -nr | head
+    $ gemmi grep -O -c _chem_comp.id /pdb/mmCIF | sort -t: -k2 -nr | head
     5J91:58
     5J8A:58
     5J7L:58
@@ -126,7 +131,7 @@ we may check which entries have the biggest variety of chemical components
 Going back to moo, we may want to know to what experimental method
 the Rfree values correspond::
 
-    $ gemmi-grep _refine.ls_R_factor_R_free -a _refine.pdbx_refine_id mmCIF/mo/?moo.cif.gz
+    $ gemmi grep _refine.ls_R_factor_R_free -a _refine.pdbx_refine_id mmCIF/mo/?moo.cif.gz
     1MOO:0.177;X-RAY DIFFRACTION
     3MOO:0.21283;X-RAY DIFFRACTION
     4MOO:0.22371;X-RAY DIFFRACTION
@@ -146,7 +151,7 @@ What are the heaviest chains?
 
 ::
 
-   $ gemmi-grep --delimiter='\t' _entity.formula_weight -a _entity.pdbx_description /hdd/mmCIF/ | sort -nrk2 | head -3
+   $ gemmi grep --delimiter='\t' _entity.formula_weight -a _entity.pdbx_description /hdd/mmCIF/ | sort -nrk2 | head -3
    6EK0    1641906.750     28S ribosomal RNA
    5T2C    1640238.125     28S rRNA
    5LKS    1640238.125     28S ribosomal RNA
@@ -167,7 +172,7 @@ as the main tag, gemmi-grep uses only the first value for this tag.
 Unless we just count the number of value. Counting works for any combination
 of tags::
 
-    $ gemmi-grep -c _refln.intensity_meas -a _diffrn_refln.intensity_net r5paysf.ent.gz
+    $ gemmi grep -c _refln.intensity_meas -a _diffrn_refln.intensity_net r5paysf.ent.gz
     r5paysf:63611;0
     r5payAsf:0;356684
 
@@ -178,7 +183,7 @@ The first number in the output above is the number of specified intensities.
 If you would like to count in also values ``?`` and ``.`` specify
 the option ``--raw``::
 
-    $ gemmi-grep --raw -c _refln.intensity_meas r5paysf.ent.gz
+    $ gemmi grep --raw -c _refln.intensity_meas r5paysf.ent.gz
     r5paysf:63954
     r5payAsf:0
 
@@ -192,7 +197,7 @@ The file paths or PDB codes can be read from a file.
 For example, if we want to analyse PDB data deposited in 2016
 we may first make a file that lists all such files::
 
-    $ gemmi-grep -H -O _pdbx_database_status.recvd_initial_deposition_date $PDB_DIR/structures/divided/mmCIF | \
+    $ gemmi grep -H -O _pdbx_database_status.recvd_initial_deposition_date $PDB_DIR/structures/divided/mmCIF | \
             grep 2016 >year2016.txt
 
 The 2016.txt file file has lines that start with the filename::
@@ -202,7 +207,7 @@ The 2016.txt file file has lines that start with the filename::
 
 and a command such as::
 
-    $ gemmi-grep -f year2016.out _diffrn.ambient_temp
+    $ gemmi grep -f year2016.out _diffrn.ambient_temp
 
 will grep only the listed cif files.
 
@@ -210,8 +215,8 @@ Exit status of gemmi-grep has the same meaning as in GNU grep:
 0 if a line is selected, 1 if no lines were selected,
 and 2 if an error occurred.
 
-gemmi-convert
-=============
+convert
+=======
 
 .. literalinclude:: convert-help.txt
    :language: console
@@ -274,8 +279,8 @@ the program mimicks ``iotbx.pdb.expand_ncs`` and leaves the same chain names
 while adding distinct segment IDs.
 
 
-gemmi-map
-=========
+map
+===
 
 (work in progress)
 
@@ -283,15 +288,24 @@ gemmi-map
    :language: console
 
 
-gemmi-mask
-==========
+mask
+====
 
 (work in progress)
 
 .. literalinclude:: mask-help.txt
    :language: console
 
-gemmi-sg
-=========
+sg
+==
 
 Prints information about given space group.
+
+.. literalinclude:: sg-help.txt
+   :language: console
+
+contents
+========
+
+.. literalinclude:: contents-help.txt
+   :language: console

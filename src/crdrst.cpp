@@ -223,7 +223,7 @@ static cif::Document make_crd(const gemmi::Structure& st) {
 
 
 int GEMMI_MAIN(int argc, char **argv) {
-  OptParser p;
+  OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   p.require_positional_args(2);
   std::string input = p.nonOption(0);

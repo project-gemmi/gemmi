@@ -99,6 +99,10 @@ struct Arg: public option::Arg {
 };
 
 struct OptParser : option::Parser {
+  const char* program_name;
+
+  OptParser(const char* prog) : program_name(prog) {}
+
   void simple_parse(int argc, char** argv, const option::Descriptor usage[]) {
     if (argc < 1)
       std::exit(2);
@@ -113,7 +117,7 @@ struct OptParser : option::Parser {
       std::exit(0);
     }
     if (options[Version]) {
-      printf("%s %s\n", EXE_NAME, GEMMI_VERSION);
+      printf("%s %s\n", program_name, GEMMI_VERSION);
       std::exit(0);
     }
     if (options[NoOp]) {
@@ -143,9 +147,9 @@ struct OptParser : option::Parser {
 
   void require_positional_args(int n) {
     if (nonOptionsCount() != n) {
-      fprintf(stderr, EXE_NAME " requires %d arguments but got %d.\n"
-                      "Try '" EXE_NAME " --help' for more information.\n",
-                      n, nonOptionsCount());
+      fprintf(stderr, "%s requires %d arguments but got %d.\n"
+                      "Try '%s --help' for more information.\n",
+                      program_name, n, nonOptionsCount(), program_name);
       std::exit(2);
     }
   }

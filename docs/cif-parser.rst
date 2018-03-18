@@ -539,7 +539,7 @@ Header ``gemmi/to_json.hpp`` provides code for serializing
 ``cif::Document`` as JSON. It has a number of options for customizing
 the translation. In particular, both mmCIF and CIF-JSON flavours are supported.
 More details about the flavours are given in the description of
-:ref:`gemmi-convert <json>`.
+:ref:`gemmi convert <json>`.
 
 Such JSON files can be read back into the ``cif::Document`` structure
 using function from ``gemmi/json.hpp``.
@@ -1452,14 +1452,14 @@ Disulfide bonds
 
 If we were curious what residues take part in disulfide bonds we could
 write a little script that inspects annotation in the _struct_conn category.
-But to show something else, here we will use ``gemmi-grep``, a little
+But to show something else, here we will use ``gemmi grep``, a little
 utility that is documented in a :ref:`separate section <grep>`.
 
 First we try how to extract interesting data from a single entry:
 
 .. code-block:: console
 
-    $ ./gemmi-grep --delimiter=' ' _struct_conn.conn_type_id \
+    $ gemmi grep --delimiter=' ' _struct_conn.conn_type_id \
     > -a _struct_conn.ptnr1_label_comp_id -a _struct_conn.ptnr1_label_atom_id \
     > -a _struct_conn.ptnr2_label_comp_id -a _struct_conn.ptnr2_label_atom_id \
     > 5CBL
@@ -1481,7 +1481,7 @@ statistics. The complete command is:
 
 .. code-block:: console
 
-    $ ./gemmi-grep --delimiter=' ' _struct_conn.conn_type_id \
+    $ gemmi grep --delimiter=' ' _struct_conn.conn_type_id \
     > -a _struct_conn.ptnr1_label_comp_id -a _struct_conn.ptnr1_label_atom_id \
     > -a _struct_conn.ptnr2_label_comp_id -a _struct_conn.ptnr2_label_atom_id \
     > /hdd/mmCIF \
@@ -1533,7 +1533,7 @@ And what other bond types are annotated in ``_struct_conn``?
 
 .. code-block:: console
 
-    $ ./gemmi-grep -O -b _struct_conn.conn_type_id /hdd/mmCIF/ | sort | uniq -c
+    $ gemmi grep -O -b _struct_conn.conn_type_id /hdd/mmCIF/ | sort | uniq -c
      501851 covale
      184231 disulf
     4035115 hydrog

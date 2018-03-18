@@ -144,7 +144,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   tao::pegtl::analyze<cif::rules::file>();
   tao::pegtl::analyze<cif::numb_rules::numb>();
 #endif
-  OptParser p;
+  OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   if (p.nonOptionsCount() == 0) {
     option::printUsage(std::cout, Usage);
