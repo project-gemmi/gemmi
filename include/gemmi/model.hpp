@@ -244,7 +244,7 @@ struct Residue : public ResidueId {
     return const_cast<Atom*>(const_this->find_atom(atom_name, altloc, el));
   }
 
-  // get peptide backbone atoms
+  // short-cuts to access peptide backbone atoms
   const Atom* get_ca() const {
     static const std::string CA("CA");
     return find_atom(CA, '*', El::C);
@@ -258,10 +258,14 @@ struct Residue : public ResidueId {
     return find_atom(N, '*', El::N);
   }
 
-  // get nucleic acid P atom
+  // short-cuts to access nucleic acid atoms
   const Atom* get_p() const {
     static const std::string P("P");
     return find_atom(P, '*', El::P);
+  }
+  const Atom* get_o3prim() const {
+    static const std::string P("O3'");
+    return find_atom(P, '*', El::O);
   }
 
   bool same_conformer(const Residue& other) const {
@@ -272,10 +276,9 @@ struct Residue : public ResidueId {
   }
 
   bool has_peptide_bond_to(const Residue& next) const {
-    // TODO use N-C distance?
-    const Atom* ca1 = get_ca();
-    const Atom* ca2 = next.get_ca();
-    return ca1 && ca2 && ca1->pos.dist_sq(ca2->pos) < 6.0 * 6.0;
+    const Atom* a1 = get_c();
+    const Atom* a2 = next.get_n();
+    return a1 && a2 && a1->pos.dist_sq(a2->pos) < 2.0 * 2.0;
   }
 };
 
