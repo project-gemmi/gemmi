@@ -1,8 +1,8 @@
 program main
-  use gemmi
+  use gemmi, only : mask
   use, intrinsic :: iso_c_binding, only : c_ptr
   implicit none
-  type(grid0) :: grid
+  type(mask) :: grid
   type(c_ptr) :: values
 
   call grid%init(180, 180, 480)

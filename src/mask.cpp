@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#include "gemmi/grid.hpp"
+#include "gemmi/ccp4.hpp"
 #include "gemmi/symmetry.hpp"
 #include "input.h"
 #include <cstdlib>  // for strtod
@@ -88,8 +88,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     // map -> mask
     if (in_type == InputType::Ccp4) {
       double threshold;
-      gemmi::Grid<signed char> grid;
-      grid.read_ccp4_map(input);
+      gemmi::Ccp4<signed char> mask;
+      mask.read_ccp4_map(input);
       if (p.options[Threshold]) {
         threshold = std::strtod(p.options[Threshold].arg, nullptr);
       } else if (p.options[Fraction]) {
@@ -98,7 +98,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           std::fprintf(stderr, "Cannot use negative fraction.\n");
           return 2;
         }
-        auto data = grid.data;  // making a copy for nth_element()
+        auto data = mask.grid.data;  // making a copy for nth_element()
         size_t n = std::min(static_cast<size_t>(data.size() * fraction),
                             data.size() - 1);
         std::nth_element(data.begin(), data.begin() + n, data.end());
@@ -107,13 +107,13 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::fprintf(stderr, "You need to specify threshold (-t or -f).\n");
         return 2;
       }
-      grid.make_zeros_and_ones(threshold);
-      size_t count = std::count(grid.data.begin(), grid.data.end(), 1);
+      mask.grid.make_zeros_and_ones(threshold);
+      size_t ones = std::count(mask.grid.data.begin(), mask.grid.data.end(), 1);
+      size_t all = mask.grid.data.size();
       std::fprintf(stderr, "Masked %zu of %zu points (%.1f%%) above %g\n",
-                   count, grid.data.size(), 100.0 * count / grid.data.size(),
-                   threshold);
-      grid.update_ccp4_header(0);
-      grid.write_ccp4_map(output);
+                   ones, all, 100.0 * ones / all, threshold);
+      mask.update_ccp4_header(0);
+      mask.write_ccp4_map(output);
 
     // model -> mask
     } else {
@@ -121,31 +121,33 @@ int GEMMI_MAIN(int argc, char **argv) {
                        ? std::strtod(p.options[Radius].arg, nullptr)
                        : 3.0);
       gemmi::Structure st = read_structure(input);
-      gemmi::Grid<signed char> grid;
-      grid.unit_cell = st.cell;
-      grid.space_group = gemmi::find_spacegroup_by_name(st.sg_hm);
+      gemmi::Ccp4<signed char> mask;
+      mask.grid.unit_cell = st.cell;
+      mask.grid.space_group = gemmi::find_spacegroup_by_name(st.sg_hm);
       if (p.options[GridDims]) {
         auto dims = parse_comma_separated_ints(p.options[GridDims].arg);
-        grid.set_size(dims[0], dims[1], dims[2]);
+        mask.grid.set_size(dims[0], dims[1], dims[2]);
       } else {
         double spac = 1;
         if (p.options[GridSpac])
           spac = std::strtod(p.options[GridSpac].arg, nullptr);
-        grid.set_size_from_max_spacing(spac);
+        mask.grid.set_size_from_max_spacing(spac);
       }
       if (p.options[Verbose]) {
-        std::fprintf(stderr, "Grid: %d x %d x %d\n", grid.nu, grid.nv, grid.nw);
+        std::fprintf(stderr, "Grid: %d x %d x %d\n",
+                     mask.grid.nu, mask.grid.nv, mask.grid.nw);
         std::fprintf(stderr, "Spacing along axes: %.3f, %.3f, %.3f\n",
-                              st.cell.a / grid.nu, st.cell.b / grid.nv,
-                              st.cell.c / grid.nw);
-        int np = grid.data.size();
+                              st.cell.a / mask.grid.nu,
+                              st.cell.b / mask.grid.nv,
+                              st.cell.c / mask.grid.nw);
+        int np = mask.grid.data.size();
         double vol = st.cell.volume;
         std::fprintf(stderr, "Total points: %d\n", np);
         std::fprintf(stderr, "Unit cell volume: %.1f A^3\n", vol);
         std::fprintf(stderr, "Volume per point: %.3f A^3\n", vol / np);
-        if (grid.space_group) {
-          std::fprintf(stderr, "Spacegroup: %s\n", grid.space_group->hm);
-          int na = grid.space_group->operations().order();
+        if (mask.grid.space_group) {
+          std::fprintf(stderr, "Spacegroup: %s\n", mask.grid.space_group->hm);
+          int na = mask.grid.space_group->operations().order();
           std::fprintf(stderr, "ASU volume: %.1f A^3\n", vol / na);
           std::fprintf(stderr, "Points per ASU: %d\n", np / na);
         } else {
@@ -157,19 +159,19 @@ int GEMMI_MAIN(int argc, char **argv) {
       for (const gemmi::Chain& chain : st.models[0].chains)
         for (const gemmi::Residue& res : chain.residues)
           for (const gemmi::Atom& atom : res.atoms)
-            grid.set_points_around(atom.pos, radius, 1);
+            mask.grid.set_points_around(atom.pos, radius, 1);
       if (p.options[Verbose]) {
-        int n = std::count(grid.data.begin(), grid.data.end(), 1);
+        int n = std::count(mask.grid.data.begin(), mask.grid.data.end(), 1);
         std::fprintf(stderr, "Points masked by model: %d\n", n);
       }
-      grid.symmetrize(
+      mask.grid.symmetrize(
           [](signed char a, signed char b) { return std::max(a,b); });
       if (p.options[Verbose]) {
-        int n = std::count(grid.data.begin(), grid.data.end(), 1);
+        int n = std::count(mask.grid.data.begin(), mask.grid.data.end(), 1);
         std::fprintf(stderr, "After symmetrizing: %d\n", n);
       }
-      grid.update_ccp4_header(0, true);
-      grid.write_ccp4_map(output);
+      mask.update_ccp4_header(0, true);
+      mask.write_ccp4_map(output);
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());

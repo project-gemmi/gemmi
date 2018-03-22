@@ -3,7 +3,7 @@ module gemmi
   use, intrinsic :: iso_c_binding
   implicit none
   private
-  public :: spacegroup, groupops, op, grid0, find_spacegroup_by_name, &
+  public :: spacegroup, groupops, op, mask, find_spacegroup_by_name, &
             find_spacegroup_by_number
 
   interface
@@ -95,73 +95,73 @@ module gemmi
 
     ! functions from grid.h
 
-    !geGrid0* geGrid0_init(int nx, int ny, int nz);
-    type(c_ptr) function c_grid0_init(nx, ny, nz) &
-    bind(C, name="geGrid0_init")
+    !geMask* geMask_init(int nx, int ny, int nz);
+    type(c_ptr) function c_mask_init(nx, ny, nz) &
+    bind(C, name="geMask_init")
       use iso_c_binding
       integer(c_int), intent(in), value :: nx, ny, nz
     end function
 
-    !void geGrid0_set_unit_cell(geGrid0* grid, double a, double b, double c,
+    !void geMask_set_unit_cell(geMask* mask, double a, double b, double c,
     !                           double alpha, double beta, double gamma);
-    subroutine c_grid0_set_unit_cell(grid, a, b, c, alpha, beta, gamma) &
-    bind(C, name="geGrid0_set_unit_cell")
+    subroutine c_mask_set_unit_cell(mask, a, b, c, alpha, beta, gamma) &
+    bind(C, name="geMask_set_unit_cell")
       use iso_c_binding
-      type(c_ptr), intent(in), value :: grid
+      type(c_ptr), intent(in), value :: mask
       real(c_double), intent(in), value :: a, b, c, alpha, beta, gamma
     end subroutine
 
-    !void geGrid0_mask_atom(geGrid0* grid, double x, double y, double z,
+    !void geMask_mask_atom(geMask* mask, double x, double y, double z,
     !                       double radius);
-    subroutine c_grid0_mask_atom(grid, x, y, z, radius) &
-    bind(C, name="geGrid0_mask_atom")
+    subroutine c_mask_mask_atom(mask, x, y, z, radius) &
+    bind(C, name="geMask_mask_atom")
       use iso_c_binding
-      type(c_ptr), intent(in), value :: grid
+      type(c_ptr), intent(in), value :: mask
       real(c_double), intent(in), value :: x, y, z, radius
     end subroutine
 
-    !void geGrid0_apply_space_group(geGrid0* grid, int ccp4_num);
-    subroutine c_grid0_apply_space_group(grid, ccp4_num) &
-    bind(C, name="geGrid0_apply_space_group")
+    !void geMask_apply_space_group(geMask* mask, int ccp4_num);
+    subroutine c_mask_apply_space_group(mask, ccp4_num) &
+    bind(C, name="geMask_apply_space_group")
       use iso_c_binding
-      type(c_ptr), intent(in), value :: grid
+      type(c_ptr), intent(in), value :: mask
       integer(c_int), value :: ccp4_num
     end subroutine
 
-    !int8_t* geGrid0_data(geGrid0* grid);
-    type(c_ptr) function c_grid0_data(grid) bind(C, name="geGrid0_data")
+    !int8_t* geMask_data(geMask* mask);
+    type(c_ptr) function c_mask_data(mask) bind(C, name="geMask_data")
       use iso_c_binding
-      type(c_ptr), intent(in), value :: grid
+      type(c_ptr), intent(in), value :: mask
     end function
 
-    !int8_t geGrid0_get_value(geGrid0* grid, int u, int v, int w);
-    integer(c_int8_t) function c_grid0_get_value(grid, u, v, w) &
-    bind(C, name="geGrid0_get_value")
+    !int8_t geMask_get_value(geMask* mask, int u, int v, int w);
+    integer(c_int8_t) function c_mask_get_value(mask, u, v, w) &
+    bind(C, name="geMask_get_value")
       use iso_c_binding
-      type(c_ptr), intent(in), value :: grid
+      type(c_ptr), intent(in), value :: mask
       integer(c_int), value :: u, v, w
     end function
 
-    !void geGrid0_free(geGrid0* grid);
-    subroutine c_grid0_free(grid) bind(C, name="geGrid0_free")
+    !void geMask_free(geMask* mask);
+    subroutine c_mask_free(mask) bind(C, name="geMask_free")
       use iso_c_binding
-      type(c_ptr), intent(in), value :: grid
+      type(c_ptr), intent(in), value :: mask
     end subroutine
 
-    !void geGrid0_update_ccp4_header(geGrid0* grid, int mode, int update_stats);
-    subroutine c_grid0_update_ccp4_header(grid, mode, update_stats) &
-    bind(C, name="geGrid0_update_ccp4_header")
+    !void geMask_update_ccp4_header(geMask* mask, int mode, int update_stats);
+    subroutine c_mask_update_ccp4_header(mask, mode, update_stats) &
+    bind(C, name="geMask_update_ccp4_header")
       use iso_c_binding
-      type(c_ptr), intent(in), value :: grid
+      type(c_ptr), intent(in), value :: mask
       integer(c_int), value :: mode
       logical(c_bool), value :: update_stats
     end subroutine
 
-    !void geGrid0_write_ccp4_map(geGrid0* grid, const char* path);
-    subroutine c_grid0_write_ccp4_map(grid, path) &
-    bind(C, name="geGrid0_write_ccp4_map")
+    !void geMask_write_ccp4_map(geMask* mask, const char* path);
+    subroutine c_mask_write_ccp4_map(mask, path) &
+    bind(C, name="geMask_write_ccp4_map")
       use iso_c_binding
-      type(c_ptr), intent(in), value :: grid
+      type(c_ptr), intent(in), value :: mask
       character(kind=c_char), intent(in) :: path(*)
     end subroutine
 
@@ -202,19 +202,19 @@ module gemmi
     procedure :: free => op_free
   end type
 
-  type grid0
+  type mask
     private
     type(c_ptr) :: ptr = c_null_ptr
   contains
-    procedure :: init => grid0_init
-    procedure :: set_unit_cell => grid0_set_unit_cell
-    procedure :: mask_atom => grid0_mask_atom
-    procedure :: apply_space_group => grid0_apply_space_group
-    procedure :: data => grid0_data
-    procedure :: get_value => grid0_get_value
-    procedure :: free => grid0_free
-    procedure :: update_ccp4_header => grid0_update_ccp4_header
-    procedure :: write_ccp4_map => grid0_write_ccp4_map
+    procedure :: init => mask_init
+    procedure :: set_unit_cell => mask_set_unit_cell
+    procedure :: mask_atom => mask_mask_atom
+    procedure :: apply_space_group => mask_apply_space_group
+    procedure :: data => mask_data
+    procedure :: get_value => mask_get_value
+    procedure :: free => mask_free
+    procedure :: update_ccp4_header => mask_update_ccp4_header
+    procedure :: write_ccp4_map => mask_write_ccp4_map
   end type
 
 contains
@@ -293,59 +293,59 @@ contains
   end subroutine
 
 
-  subroutine grid0_init(this, nx, ny, nz)
-    class(grid0) :: this
+  subroutine mask_init(this, nx, ny, nz)
+    class(mask) :: this
     integer, intent(in) :: nx, ny, nz
-    this%ptr = c_grid0_init(nx, ny, nz)
+    this%ptr = c_mask_init(nx, ny, nz)
   end subroutine
 
-  subroutine grid0_set_unit_cell(this, a, b, c, alpha, beta, gamma)
-    class(grid0) :: this
+  subroutine mask_set_unit_cell(this, a, b, c, alpha, beta, gamma)
+    class(mask) :: this
     double precision, intent(in) :: a, b, c, alpha, beta, gamma
-    call c_grid0_set_unit_cell(this%ptr, a, b, c, alpha, beta, gamma)
+    call c_mask_set_unit_cell(this%ptr, a, b, c, alpha, beta, gamma)
   end subroutine
 
-  subroutine grid0_mask_atom(this, x, y, z, radius)
-    class(grid0) :: this
+  subroutine mask_mask_atom(this, x, y, z, radius)
+    class(mask) :: this
     double precision, intent(in) :: x, y, z, radius
-    call c_grid0_mask_atom(this%ptr, x, y, z, radius)
+    call c_mask_mask_atom(this%ptr, x, y, z, radius)
   end subroutine
 
-  subroutine grid0_apply_space_group(this, ccp4_num)
-    class(grid0) :: this
+  subroutine mask_apply_space_group(this, ccp4_num)
+    class(mask) :: this
     integer, intent(in) :: ccp4_num
-    call c_grid0_apply_space_group(this%ptr, ccp4_num)
+    call c_mask_apply_space_group(this%ptr, ccp4_num)
   end subroutine
 
-  type(c_ptr) function grid0_data(this)
-    class(grid0), intent(in) :: this
-    grid0_data = c_grid0_data(this%ptr)
+  type(c_ptr) function mask_data(this)
+    class(mask), intent(in) :: this
+    mask_data = c_mask_data(this%ptr)
   end function
 
-  integer function grid0_get_value(this, u, v, w)
-    class(grid0), intent(in) :: this
+  integer function mask_get_value(this, u, v, w)
+    class(mask), intent(in) :: this
     integer, intent(in) :: u, v, w
-    grid0_get_value = c_grid0_get_value(this%ptr, u, v, w)
+    mask_get_value = c_mask_get_value(this%ptr, u, v, w)
   end function
 
-  subroutine grid0_free(this)
-    class(grid0) :: this
-    call c_grid0_free(this%ptr)
+  subroutine mask_free(this)
+    class(mask) :: this
+    call c_mask_free(this%ptr)
     this%ptr = c_null_ptr
   end subroutine
 
-  subroutine grid0_update_ccp4_header(this, mode, update_stats)
-    class(grid0) :: this
+  subroutine mask_update_ccp4_header(this, mode, update_stats)
+    class(mask) :: this
     integer, intent(in) :: mode
     logical, intent(in) :: update_stats
-    call c_grid0_update_ccp4_header(this%ptr, mode, &
+    call c_mask_update_ccp4_header(this%ptr, mode, &
                                     logical(update_stats, kind=c_bool))
   end subroutine
 
-  subroutine grid0_write_ccp4_map(this, path)
-    class(grid0), intent(in) :: this
+  subroutine mask_write_ccp4_map(this, path)
+    class(mask), intent(in) :: this
     character(len=*), intent(in) :: path
-    call c_grid0_write_ccp4_map(this%ptr, path//c_null_char)
+    call c_mask_write_ccp4_map(this%ptr, path//c_null_char)
   end subroutine
 
 end module gemmi

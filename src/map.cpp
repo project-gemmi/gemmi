@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#include "gemmi/grid.hpp"
+#include "gemmi/ccp4.hpp"
 #include "gemmi/util.hpp"  // for trim_str
 #include "gemmi/symmetry.hpp"
 #include "input.h"
@@ -72,23 +72,24 @@ void print_histogram(const std::vector<T>& data, double min, double max) {
 }
 
 template<typename T>
-gemmi::GridStats print_info(const gemmi::Grid<T>& grid) {
-  std::printf("Map mode: %d\n", grid.header_i32(4));
+gemmi::GridStats print_info(const gemmi::Ccp4<T>& map) {
+  const gemmi::Grid<T>& grid = map.grid;
+  std::printf("Map mode: %d\n", map.header_i32(4));
   std::printf("Number of columns, rows, sections: %5d %5d %5d %6s %d points\n",
               grid.nu, grid.nv, grid.nw, "->", grid.nu * grid.nv * grid.nw);
-  int u0 = grid.header_i32(5);
-  int v0 = grid.header_i32(6);
-  int w0 = grid.header_i32(7);
+  int u0 = map.header_i32(5);
+  int v0 = map.header_i32(6);
+  int w0 = map.header_i32(7);
   std::printf("                             from: %5d %5d %5d\n", u0, v0, w0);
   std::printf("                               to: %5d %5d %5d\n",
               u0 + grid.nu - 1, v0 + grid.nv - 1, w0 + grid.nw - 1);
   std::printf("Fast, medium, slow axes: %c %c %c\n",
-              'X' + grid.header_i32(17) - 1,
-              'X' + grid.header_i32(18) - 1,
-              'X' + grid.header_i32(19) - 1);
-  int mx = grid.header_i32(8);
-  int my = grid.header_i32(9);
-  int mz = grid.header_i32(10);
+              'X' + map.header_i32(17) - 1,
+              'X' + map.header_i32(18) - 1,
+              'X' + map.header_i32(19) - 1);
+  int mx = map.header_i32(8);
+  int my = map.header_i32(9);
+  int mz = map.header_i32(10);
   std::printf("Grid sampling on x, y, z: %5d %5d %5d    %12s %d points/cell\n",
               mx, my, mz, "->", mx * my * mz);
   const gemmi::UnitCell& cell = grid.unit_cell;
@@ -101,19 +102,19 @@ gemmi::GridStats print_info(const gemmi::Grid<T>& grid) {
   std::printf("Cell dimensions: %g %g %g  %g %g %g\n",
               cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma);
   int origin[3] = {
-    grid.header_i32(50),
-    grid.header_i32(51),
-    grid.header_i32(52)
+    map.header_i32(50),
+    map.header_i32(51),
+    map.header_i32(52)
   };
   if (origin[0] != 0 || origin[1] != 0 || origin[2] != 0)
     std::printf("Non-zero origin: %d %d %d\n", origin[0], origin[1], origin[2]);
 
   std::printf("\nStatistics from HEADER and DATA\n");
   gemmi::GridStats st = gemmi::calculate_grid_statistics(grid.data);
-  std::printf("Minimum: %12.5f  %12.5f\n", grid.hstats.dmin, st.dmin);
-  std::printf("Maximum: %12.5f  %12.5f\n", grid.hstats.dmax, st.dmax);
-  std::printf("Mean:    %12.5f  %12.5f\n", grid.hstats.dmean, st.dmean);
-  std::printf("RMS:     %12.5f  %12.5f\n", grid.hstats.rms, st.rms);
+  std::printf("Minimum: %12.5f  %12.5f\n", map.hstats.dmin, st.dmin);
+  std::printf("Maximum: %12.5f  %12.5f\n", map.hstats.dmax, st.dmax);
+  std::printf("Mean:    %12.5f  %12.5f\n", map.hstats.dmean, st.dmean);
+  std::printf("RMS:     %12.5f  %12.5f\n", map.hstats.rms, st.rms);
   std::vector<T> data = grid.data;  // copy b/c nth_element() reorders data
   size_t mpos = data.size() / 2;
   std::nth_element(data.begin(), data.begin() + mpos, data.end());
@@ -122,35 +123,35 @@ gemmi::GridStats print_info(const gemmi::Grid<T>& grid) {
                           [&st](T x) { return x == st.dmin || x == st.dmax; });
   double margin = mask ? 7 * (st.dmax - st.dmin) : 0;
   print_histogram(data, st.dmin - margin, st.dmax + margin);
-  int nlabl = grid.header_i32(56);
+  int nlabl = map.header_i32(56);
   if (nlabl != 0)
     std::printf("\n");
   for (int i = 0; i < nlabl && i < 10; ++i) {
-    std::string label = gemmi::trim_str(grid.header_str(57 + i * 20));
+    std::string label = gemmi::trim_str(map.header_str(57 + i * 20));
     std::printf("Label #%d\n%s\n", i, label.c_str());
   }
-  int nsymbt = grid.header_i32(24);
+  int nsymbt = map.header_i32(24);
   if (nsymbt != 0)
     std::printf("\n");
   for (int i = 0; i * 80 < nsymbt; i++) {
-    std::string symop = grid.header_str(256 + i * 20 /*words not bytes*/, 80);
+    std::string symop = map.header_str(256 + i * 20 /*words not bytes*/, 80);
     std::printf("Sym op #%d: %s\n", i + 1, gemmi::trim_str(symop).c_str());
   }
   return st;
 }
 
 template<typename T>
-void print_deltas(const gemmi::Grid<T>& g, double dmin, double dmax) {
+void print_deltas(const gemmi::Grid<T>& grid, double dmin, double dmax) {
   std::vector<double> deltas;
-  deltas.reserve(g.data.size());
+  deltas.reserve(grid.data.size());
   for (int i = 0; i < 3; ++i) {
     int f[3] = {0, 0, 0};
     f[i] = 1;
-    for (int w = f[2]; w < g.nw; ++w)
-      for (int v = f[1]; v < g.nv; ++v)
-        for (int u = f[0]; u < g.nu; ++u)
-          deltas.push_back(g.get_value_q(u, v, w) -
-                           g.get_value_q(u - f[0], v - f[1], w - f[2]));
+    for (int w = f[2]; w < grid.nw; ++w)
+      for (int v = f[1]; v < grid.nv; ++v)
+        for (int u = f[0]; u < grid.nu; ++u)
+          deltas.push_back(grid.get_value_q(u, v, w) -
+                           grid.get_value_q(u - f[0], v - f[1], w - f[2]));
     gemmi::GridStats st = gemmi::calculate_grid_statistics(deltas);
     std::printf("\nd%c: min: %.5f  max: %.5f  mean: %.5f  std.dev: %.5f\n",
                 "XYZ"[i], st.dmin, st.dmax, st.dmean, st.rms);
@@ -177,27 +178,27 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       const char* input = p.nonOption(i);
-      gemmi::Grid<> grid;
+      gemmi::Ccp4<> map;
       if (i != 0)
         std::printf("\n\n");
       if (verbose)
         std::fprintf(stderr, "Reading %s ...\n", input);
-      grid.read_ccp4_map(input);
-      gemmi::GridStats stats = print_info(grid);
+      map.read_ccp4_map(input);
+      gemmi::GridStats stats = print_info(map);
       if (p.options[Deltas])
-        print_deltas(grid, stats.dmin, stats.dmax);
+        print_deltas(map.grid, stats.dmin, stats.dmax);
       if (p.options[Reorder]) {
-        grid.setup(gemmi::GridSetup::ReorderOnly, NAN);
-        grid.write_ccp4_map(p.options[Reorder].arg);
+        map.setup(gemmi::GridSetup::ReorderOnly, NAN);
+        map.write_ccp4_map(p.options[Reorder].arg);
       }
       if (p.options[CheckSym]) {
         // TODO check labels vs group numbers
-        double max_err = grid.setup(gemmi::GridSetup::ResizeOnly, NAN);
+        double max_err = map.setup(gemmi::GridSetup::ResizeOnly, NAN);
         if (max_err != 0.0)
           std::printf("Max. difference for point images in P1: %g\n", max_err);
         const double eps = 0.01;
         max_err = 0;
-        grid.symmetrize([&](float a, float b) {
+        map.grid.symmetrize([&](float a, float b) {
             if (a < b || a > b) {
               double diff = std::fabs(a - b);
               if (diff > eps)
@@ -211,15 +212,15 @@ int GEMMI_MAIN(int argc, char **argv) {
           std::printf("Max. difference in symmetry images: %g\n", max_err);
       }
       if (p.options[Full]) {
-        double err = grid.setup(gemmi::GridSetup::FullCheck, NAN);
-        size_t nn = std::count_if(grid.data.begin(), grid.data.end(),
+        double err = map.setup(gemmi::GridSetup::FullCheck, NAN);
+        size_t nn = std::count_if(map.grid.data.begin(), map.grid.data.end(),
                                   [](float x) { return std::isnan(x); });
         if (err != 0.0)
           std::fprintf(stderr, "WARNING: different values for equivalent "
                                "points, max diff: %g\n", err);
         if (nn != 0)
           std::fprintf(stderr, "WARNING: %zu unknown values set to NAN\n", nn);
-        grid.write_ccp4_map(p.options[Full].arg);
+        map.write_ccp4_map(p.options[Full].arg);
       }
     }
   } catch (std::runtime_error& e) {

@@ -8,20 +8,20 @@ class TestFloatGrid(unittest.TestCase):
     def test_reading(self):
         path = os.path.join(os.path.dirname(__file__), '5i55_tiny.ccp4')
         m = gemmi.read_ccp4_map(path)
-        self.assertEqual(m.nu, 8)
-        self.assertEqual(m.nv, 6)
-        self.assertEqual(m.nw, 10)
+        self.assertEqual(m.grid.nu, 8)
+        self.assertEqual(m.grid.nv, 6)
+        self.assertEqual(m.grid.nw, 10)
         self.assertEqual(m.header_i32(28), 0)
         m.set_header_i32(28, 20140)  # set NVERSION
         self.assertEqual(m.header_i32(28), 20140)
         dmax = m.header_float(21)
-        self.assertEqual(dmax, max(m))
+        self.assertEqual(dmax, max(m.grid))
         m.setup()
-        self.assertEqual(m.nu, 60)
-        self.assertEqual(m.nv, 24)
-        self.assertEqual(m.nw, 60)
+        self.assertEqual(m.grid.nu, 60)
+        self.assertEqual(m.grid.nv, 24)
+        self.assertEqual(m.grid.nw, 60)
         self.assertEqual(m.header_float(14), 90.0)  # 14 - alpha angle
-        self.assertEqual(m.unit_cell.alpha, 90.0)
+        self.assertEqual(m.grid.unit_cell.alpha, 90.0)
 
     def test_new(self):
         N = 24

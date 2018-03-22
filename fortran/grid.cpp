@@ -1,59 +1,57 @@
 
 #include <cstring>
-#include "gemmi/grid.hpp"
+#include "gemmi/ccp4.hpp"
 
 extern "C" {
 #include "grid.h"
 }
 
-using gemmi::Grid;
-
-using Grid0 = Grid<std::int8_t>;
-static geGrid0* as_c(Grid0* sg) { return reinterpret_cast<geGrid0*>(sg); }
-static Grid0* as_cpp(geGrid0* sg) { return reinterpret_cast<Grid0*>(sg); }
+using Mask = gemmi::Ccp4<std::int8_t>;
+static geMask* as_c(Mask* sg) { return reinterpret_cast<geMask*>(sg); }
+static Mask* as_cpp(geMask* sg) { return reinterpret_cast<Mask*>(sg); }
 
 extern "C" {
 
-geGrid0* geGrid0_init(int nx, int ny, int nz) {
-  Grid0* grid = new Grid0;
-  grid->set_size(nx, ny, nz);
-  return as_c(grid);
+geMask* geMask_init(int nx, int ny, int nz) {
+  Mask* mask = new Mask;
+  mask->grid.set_size(nx, ny, nz);
+  return as_c(mask);
 }
 
-void geGrid0_set_unit_cell(geGrid0* grid, double a, double b, double c,
-                           double alpha, double beta, double gamma) {
-  as_cpp(grid)->set_unit_cell(a, b, c, alpha, beta, gamma);
+void geMask_set_unit_cell(geMask* mask, double a, double b, double c,
+                          double alpha, double beta, double gamma) {
+  as_cpp(mask)->grid.set_unit_cell(a, b, c, alpha, beta, gamma);
 }
 
-void geGrid0_mask_atom(geGrid0* grid, double x, double y, double z,
-                       double radius) {
-  as_cpp(grid)->mask_atom(x, y, z, radius);
+void geMask_mask_atom(geMask* mask, double x, double y, double z,
+                      double radius) {
+  as_cpp(mask)->grid.mask_atom(x, y, z, radius);
 }
 
-void geGrid0_apply_space_group(geGrid0* grid, int ccp4_num) {
-  Grid0* g = as_cpp(grid);
-  g->space_group = gemmi::find_spacegroup_by_number(ccp4_num);
-  g->symmetrize([](std::int8_t a, std::int8_t b) { return a > b ? a : b; });
+void geMask_apply_space_group(geMask* mask, int ccp4_num) {
+  gemmi::Grid<std::int8_t>& g = as_cpp(mask)->grid;
+  g.space_group = gemmi::find_spacegroup_by_number(ccp4_num);
+  g.symmetrize([](std::int8_t a, std::int8_t b) { return a > b ? a : b; });
 }
 
-int8_t* geGrid0_data(geGrid0* grid) {
-  return as_cpp(grid)->data.data();
+int8_t* geMask_data(geMask* mask) {
+  return as_cpp(mask)->grid.data.data();
 }
 
-int8_t geGrid0_get_value(geGrid0* grid, int u, int v, int w) {
-  return as_cpp(grid)->get_value_s(u, v, w);
+int8_t geMask_get_value(geMask* mask, int u, int v, int w) {
+  return as_cpp(mask)->grid.get_value_s(u, v, w);
 }
 
-void geGrid0_free(geGrid0* grid) {
-  delete as_cpp(grid);
+void geMask_free(geMask* mask) {
+  delete as_cpp(mask);
 }
 
-void geGrid0_update_ccp4_header(geGrid0* grid, int mode, bool update_stats) {
-  as_cpp(grid)->update_ccp4_header(mode, update_stats);
+void geMask_update_ccp4_header(geMask* mask, int mode, bool update_stats) {
+  as_cpp(mask)->update_ccp4_header(mode, update_stats);
 }
 
-void geGrid0_write_ccp4_map(geGrid0* grid, const char* path) {
-  as_cpp(grid)->write_ccp4_map(path);
+void geMask_write_ccp4_map(geMask* mask, const char* path) {
+  as_cpp(mask)->write_ccp4_map(path);
 }
 
 }
