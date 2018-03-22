@@ -1,6 +1,9 @@
 
+Grids and maps
+##############
+
 Volumetric grid
-###############
+===============
 
 When working with macromolecular models we often use
 3D data on an evenly spaced, rectangular grid.
@@ -13,18 +16,79 @@ different types of data: floating point numbers, integers or boolean masks.
 These classes also store:
 
 * unit cell dimensions (so the grid nodes can be assigned atomic coordinates),
-* crystallographic symmetry (that determines which points on the grid
-  are equivalent under the symmetry),
-* and the header of the MRC/CCP4 file format if the data comes from a file.
+* and crystallographic symmetry (that determines which points on the grid
+  are equivalent under the symmetry).
 
 If the symmetry is not set (or is set to P1)
 then we effectively have a box with periodic boundary conditions.
+
+C++
+---
+
+The templated ``struct Grid``::
+
+    template<typename T=float> struct Grid;
+
+is defined in the header file ``gemmi/grid.hpp``.
+
+The actual data is a 3d array with dimensions ``nu``, ``nv`` and ``nw``,
+internally kept as ``std::vector<T> data``.
+
+TODO: space_group
+
+TODO: unit_cell
+
+TODO: how to get/set size
+
+The data can be accessed in two ways::
+
+    // quick: for 0<=u<nu, 0<=v<nv, 0<=w<nw.
+    T get_value_q(int u, int v, int w) const;
+
+    // safe: u, v, and w and wrapped using modulo function (u mod nu, etc.)
+    T get_value_s(int u, int v, int w) const;
+
+TODO: setting value
+
+
+Python
+------
+
+.. doctest::
+
+   >>> import gemmi
+   >>>
+   >>> grid = gemmi.FloatGrid(12, 12, 12)
+   >>> # in real work we do not expect handling of individual values
+   >>> grid.set_value(1, 1, 1, 7.0)
+   >>> grid.get_value(1, 1, 1)
+   7.0
+   >>> # we can test wrapping of indices (a.k.a. periodic boundary conditions)
+   >>> grid.get_value(-11, 13, 25)
+   7.0
+
+It is a clever 3D array that understands crystallographic symmetry.
+
+.. doctest::
+
+   >>> grid.space_group = gemmi.find_spacegroup_by_name('P2')
+   >>> grid.set_value(0, 0, 0, 0.125)  # a special position
+   >>> sum(grid)  # for now only two points: 7.0 + 0.125
+   7.125
+   >>> grid.symmetrize_max()  # applying symmetry
+   >>> sum(grid)  # one point gets duplicated, the other doesn't
+   14.125
+
+TODO: unit cell and everything else
 
 MRC/CCP4 maps
 =============
 
 We support one file format for storing the grid data on disk: MRC/CCP4 map.
-This format has a few different modes that correspond to different data types.
+The content of the map file is stored in a class that contains
+both the Grid class and all the meta-data from the CCP4 file header.
+
+CCP4 format has a few different modes that correspond to different data types.
 Gemmi supports:
 
 * mode 0 -- which correspond to the C++ type int8_t,
@@ -67,26 +131,22 @@ C++
 Reading
 ~~~~~~~
 
-All the functionality related to grids is contained in a single header file::
+To read and write CCP4 maps you need::
 
-    #include <gemmi/grid.hpp>
-
-There we have a templated ``struct Grid``::
-
-    template<typename T=float> struct Grid;
+    #include <gemmi/ccp4.hpp>
 
 We normally use float type when reading a map file::
 
-    gemmi::Grid<float> grid;
-    grid.read_ccp4_map("my_map.ccp4");
+    gemmi::Ccp4<float> map;
+    map.read_ccp4_map("my_map.ccp4");
 
 and int8_t when reading a mask (mask typically has only values 0 and 1,
 but in principle it can have values from -127 to 128)::
 
-    gemmi::Grid<int8_t> grid;
-    grid.read_ccp4_map("my_mask.ccp4");
+    gemmi::Ccp4<int8_t> mask;
+    mask.read_ccp4_map("my_mask.ccp4");
 
-But if the grid data type does not match the file data type, the library
+If the grid data type does not match the file data type, the library
 will attempt to convert the data when reading.
 
 Header
@@ -119,7 +179,7 @@ In many situation, it is convenient to have the data expanded to the whole
 unit cell, with axes in a specific order (X, Y, Z is the most conventional
 one). For this we have a function::
 
-    grid.setup(GridSetup::Full, NAN);  // unknown values are set to NAN
+    map.setup(GridSetup::Full, NAN);  // unknown values are set to NAN
 
 (Some of the functions described later in this section require this call.)
 
@@ -142,18 +202,18 @@ The Python API is similar.
 
 .. doctest::
 
-    >>> import gemmi
-    >>>
     >>> m = gemmi.read_ccp4_map('../tests/5i55_tiny.ccp4')
-    >>> m.nu, m.nv, m.nw  # small numbers as it is a toy example
-    (8, 6, 10)
-    >>> m.space_group
+    >>> m
+    <gemmi.Ccp4Map with grid (8, 6, 10) in SG #4>
+    >>> m.grid  # tiny grid as it is a toy example
+    <gemmi.FloatGrid(8, 6, 10)>
+    >>> m.grid.space_group
     <gemmi.SpaceGroup("P 1 21 1")>
-    >>> m.unit_cell
+    >>> m.grid.unit_cell
     <gemmi.UnitCell(29.45, 10.5, 29.7, 90, 111.975, 90)>
     >>> m.setup()
-    >>> m.nu, m.nv, m.nw
-    (60, 24, 60)
+    >>> m.grid
+    <gemmi.FloatGrid(60, 24, 60)>
 
 The low-level header access has three getters and three setters,
 as in the C++ version.
@@ -169,63 +229,6 @@ as in the C++ version.
     'Created by MAPMAN V. 080625/7.8.5 at Wed Jan 3 12:57:38 2018 for A. Nonymous'
 
 TODO: writing
-
-Data and symmetry
-=================
-
-The actual data is a 3d array with dimensions ``nu``, ``nv`` and ``nw``,
-internally kept in a C++ grid member ``std::vector<T> data``.
-
-TODO: space_group
-
-TODO: unit_cell
-
-C++
----
-
-TODO: how to get/set size
-
-The data can be accessed in two ways::
-
-    // quick: for 0<=u<nu, 0<=v<nv, 0<=w<nw.
-    T get_value_q(int u, int v, int w) const;
-
-    // safe: u, v, and w and wrapped using modulo function (u mod nu, etc.)
-    T get_value_s(int u, int v, int w) const;
-
-TODO: setting value
-
-TODO: space_group
-
-TODO: unit_cell
-
-Python
-------
-
-.. doctest::
-
-   >>> grid = gemmi.FloatGrid(12, 12, 12)
-   >>> # in real work we do not expect handling of individual values
-   >>> grid.set_value(1, 1, 1, 7.0)
-   >>> grid.get_value(1, 1, 1)
-   7.0
-   >>> # we can test wrapping of indices (a.k.a. periodic boundary conditions)
-   >>> grid.get_value(-11, 13, 25)
-   7.0
-
-It is a clever 3D array that understands crystallographic symmetry.
-
-.. doctest::
-
-   >>> grid.space_group = gemmi.find_spacegroup_by_name('P2')
-   >>> grid.set_value(0, 0, 0, 0.125)  # a special position
-   >>> sum(grid)  # for now only two points: 7.0 + 0.125
-   7.125
-   >>> grid.symmetrize_max()  # applying symmetry
-   >>> sum(grid)  # one point gets duplicated, the other doesn't
-   14.125
-
-TODO: unit cell and everything else
 
 Toolbox
 =======

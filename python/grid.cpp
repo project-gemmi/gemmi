@@ -39,8 +39,8 @@ void add_grid(py::module& m, const char* name) {
     .def("__iter__", [](const Gr& self) {
         return py::make_iterator(self.data);
     }, py::keep_alive<0, 1>())
-    .def("__repr__", [&name](const Gr& self) {
-        return std::string("<gemmi.") + name + "(" + grid_dim_str(self) + ")>";
+    .def("__repr__", [=](const Gr& self) {
+        return "<gemmi." + std::string(name) + "(" + grid_dim_str(self) + ")>";
     });
 }
 
@@ -59,9 +59,11 @@ py::class_<T> add_ccp4(py::module& m, const char* name) {
     .def("update_ccp4_header", &Map::update_ccp4_header,
          py::arg("mode"), py::arg("update_stats"))
     .def("write_ccp4_map", &Map::write_ccp4_map, py::arg("filename"))
-    .def("__repr__", [&name](const Map& self) {
-        return std::string("<gemmi.") + name + " with grid (" +
-               grid_dim_str(self.grid) + ")>";
+    .def("__repr__", [=](const Map& self) {
+        const SpaceGroup* sg = self.grid.space_group;
+        std::string sg_str = sg ?  std::to_string(sg->ccp4) : "?";
+        return "<gemmi." + std::string(name) + " with grid (" +
+               grid_dim_str(self.grid) + ") in SG #" + sg_str + ">";
     });
 }
 
