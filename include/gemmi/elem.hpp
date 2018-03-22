@@ -2,8 +2,8 @@
 //
 // Elements from the periodic table.
 
-#ifndef GEMMI_ELEM_HH
-#define GEMMI_ELEM_HH
+#ifndef GEMMI_ELEM_HPP_
+#define GEMMI_ELEM_HPP_
 
 #include <algorithm> // for find
 #include <cstdint>   // for uint16_t

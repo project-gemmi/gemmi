@@ -2,8 +2,8 @@
 //
 // CCP4 format for maps and masks.
 
-#ifndef GEMMI_CCP4_HH
-#define GEMMI_CCP4_HH
+#ifndef GEMMI_CCP4_HPP_
+#define GEMMI_CCP4_HPP_
 
 #include <cassert>
 #include <cmath>     // for NAN, sqrt

@@ -2,8 +2,8 @@
 //
 // 3d grid used by CCP4 maps and cell-method search.
 
-#ifndef GEMMI_GRID_HH
-#define GEMMI_GRID_HH
+#ifndef GEMMI_GRID_HPP_
+#define GEMMI_GRID_HPP_
 
 #include <cassert>
 #include <functional> // for function
