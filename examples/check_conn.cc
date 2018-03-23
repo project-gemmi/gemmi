@@ -6,6 +6,7 @@
 #include <gemmi/cif.hpp>
 #include <gemmi/numb.hpp> // for as_number
 #include <gemmi/mmcif.hpp>
+#include <gemmi/conn.hpp>
 #include <gemmi/dirwalk.hpp> // for CifWalk
 #include <cstdio>
 #include <map>
@@ -54,6 +55,35 @@ void check_struct_conn(cif::Block& block) {
     if (st.models[0].find_connection_by_name(row.str(0)) == nullptr)
       std::printf("%s: connection not read: %s\n", block.name.c_str(),
                   row.str(0).c_str());
+  auto ssbonds = find_disulfide_bonds(st.models[0], st.cell);
+  if (verbose) {
+    std::printf("\nSearch for disulfide bonds gives:\n");
+    for (const Connection& con : ssbonds) {
+      bool in_file = false;
+      for (Connection& fc : st.models[0].connections) {
+        if (fc.type == Connection::Disulf &&
+            ((fc.atom[0] == con.atom[0] && fc.atom[1] == con.atom[1]) ||
+             (fc.atom[0] == con.atom[1] && fc.atom[1] == con.atom[0]))) {
+          in_file = true;
+          break;
+        }
+      }
+      if (!in_file)
+        std::printf("Connection not in the file.\n");
+      const Atom* a1 = st.models[0].find_atom(con.atom[0]);
+      const Atom* a2 = st.models[0].find_atom(con.atom[1]);
+      if (!a1 || !a2) {
+        std::printf("Ooops, cannot find atom.\n");
+        continue;
+      }
+      NearbyImage im = st.cell.find_nearest_image(a1->pos, a2->pos, con.image);
+      std::printf("%s  %s  im:%s  %.3f\n",
+                  con.atom[0].str().c_str(), con.atom[1].str().c_str(),
+                  im.pdb_symbol(true).c_str(), im.dist());
+    }
+    if (ssbonds.empty())
+      std::printf("nothing\n");
+  }
 }
 
 int main(int argc, char* argv[]) {

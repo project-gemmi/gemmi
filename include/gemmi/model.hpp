@@ -180,6 +180,10 @@ struct Atom {
   float occ;
   float b_iso;
   float u11=0, u22=0, u33=0, u12=0, u13=0, u23=0;
+
+  bool same_conformer(const Atom& other) const {
+    return altloc == '\0' || other.altloc == '\0' || altloc == other.altloc;
+  }
 };
 
 
@@ -209,6 +213,7 @@ struct ResidueId {
       r += icode;
     return r;
   }
+  bool matches(const ResidueId& rid) const;
 };
 
 struct Residue : public ResidueId {
@@ -221,7 +226,6 @@ struct Residue : public ResidueId {
 
   std::vector<Atom>& children() { return atoms; }
   const std::vector<Atom>& children() const { return atoms; }
-  bool matches(const ResidueId& rid) const;
 
   const Atom* find_by_element(El el) const {
     for (const Atom& a : atoms)
@@ -270,8 +274,7 @@ struct Residue : public ResidueId {
 
   bool same_conformer(const Residue& other) const {
     return atoms.empty() || other.atoms.empty() ||
-           atoms[0].altloc == '\0' || other.atoms[0].altloc == '\0' ||
-           atoms[0].altloc == other.atoms[0].altloc ||
+           atoms[0].same_conformer(other.atoms[0]) ||
            other.find_atom(other.atoms[0].name, atoms[0].altloc) != nullptr;
   }
 
@@ -391,6 +394,17 @@ struct AtomAddress {
   std::string atom_name;
   char altloc = '\0';
   bool use_auth_name = true;
+
+  AtomAddress() = default;
+  AtomAddress(const Chain& ch, const Residue& res, const Atom& at)
+    : chain_name(ch.name), res_id(res), atom_name(at.name), altloc(at.altloc),
+      use_auth_name(false) {}
+
+  bool operator==(const AtomAddress& o) const {
+    return chain_name == o.chain_name && res_id.matches(o.res_id) &&
+           atom_name == o.atom_name && altloc == o.altloc &&
+           use_auth_name == o.use_auth_name;
+  }
 
   std::string str() const {
     std::string r = chain_name + "/" + res_id.name + " " +
@@ -570,7 +584,7 @@ struct Structure {
   void setup_cell_images();
 };
 
-inline bool Residue::matches(const ResidueId& rid) const {
+inline bool ResidueId::matches(const ResidueId& rid) const {
   return (rid.label_seq ? label_seq == rid.label_seq : same_seq_id(rid)) &&
          segment == rid.segment &&
          name == rid.name;
