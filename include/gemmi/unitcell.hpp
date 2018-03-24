@@ -330,8 +330,11 @@ struct UnitCell {
                                  SymmetryImage sym_image) const {
     NearbyImage image;
     image.dist_sq = ref.dist_sq(pos);
-    if (sym_image == SymmetryImage::Same || !is_crystal())
+    if (sym_image == SymmetryImage::Same || !is_crystal()) {
+      if (sym_image == SymmetryImage::Different || image.dist_sq == 0.0)
+        image.dist_sq = INFINITY;
       return image;
+    }
     Fractional fpos = fractionalize(pos);
     Fractional fref = fractionalize(ref);
     search_pbc_images(fpos - fref, image);

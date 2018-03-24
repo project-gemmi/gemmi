@@ -26,12 +26,14 @@ std::vector<Connection> find_disulfide_bonds(const Model& model,
   std::vector<Connection> ret;
   for (size_t i = 0; i < atoms.size(); ++i) {
     const Atom* a1 = atoms[i].atom;
-    for (size_t j = 0; j < i; ++j) {
+    for (size_t j = 0; j <= i; ++j) {
       const Atom* a2 = atoms[j].atom;
       if (a1->same_conformer(*a2)) {
-        NearbyImage im = cell.find_nearest_image(a1->pos, a2->pos,
-                                                 SymmetryImage::Unspecified);
-        if (im.dist_sq < max_dist * max_dist) {
+        SymmetryImage sym = (i != j ? SymmetryImage::Unspecified
+                                    : SymmetryImage::Different);
+        NearbyImage im = cell.find_nearest_image(a1->pos, a2->pos, sym);
+        // if i == j and the image is nearby the atom is on special position
+        if (im.dist_sq < max_dist * max_dist && (i != j || im.dist_sq > 1.0)) {
           Connection c;
           c.name = "disulf" + std::to_string(ret.size() + 1);
           c.type = Connection::Disulf;
