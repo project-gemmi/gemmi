@@ -15,7 +15,7 @@ enum OptionIndex { Verbose=3 };
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
-    "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
+    "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_BASENAME"
     "\n\nMake intermediate files from one of PDB, mmCIF or mmJSON formats."
     "\n\nOptions:" },
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
@@ -54,8 +54,11 @@ static std::string get_link_type(const gemmi::Residue& res,
     return "gap";
   if (ptype == PolymerType::PeptideL || ptype == PolymerType::PeptideD) {
     std::string link = res.is_cis ? "CIS" : "TRANS";
-    if (res.name == "PRO")
+    if (res.name == "PRO") {
       link = "P" + link;
+    } else if (false /*check if is mpeptide*/) {
+      link = "NM" + link;
+    }
     return link;
   }
   if (ptype == PolymerType::Dna || ptype == PolymerType::Rna)
@@ -79,11 +82,8 @@ static std::string get_modification(const gemmi::Chain& chain,
 }
 
 static cif::Document make_crd(const gemmi::Structure& st) {
-  // consider update_cif_block()
   using gemmi::to_str;
   cif::Document crd;
-  if (st.models.empty())
-    return crd;
   auto e_id = st.info.find("_entry.id");
   std::string id = (e_id != st.info.end() ? e_id->second : st.name);
   crd.blocks.emplace_back("structure_" + id);
@@ -243,6 +243,23 @@ static cif::Document make_crd(const gemmi::Structure& st) {
   return crd;
 }
 
+static cif::Document make_rst(const gemmi::Structure& st) {
+  cif::Document doc;
+  doc.blocks.emplace_back("restraints");
+  cif::Block& block = doc.blocks[0];
+  cif::Loop& restr_loop = block.init_mmcif_loop("_restr.", {
+              "record", "number", "label", "period",
+              "atom_id_1", "atom_id_2", "atom_id_3", "atom_id_4",
+              "value", "dev", "val_obs", "dist", "dist_dev", "econst"});
+  for (const gemmi::Chain& chain : st.models[0].chains) {
+    for (const gemmi::Residue& res : chain.residues) {
+      restr_loop.add_row({"MONO", ".", "L-peptid", ".",
+                          ".", ".", ".", ".", ".", ".", ".", ".", ".", "."});
+    }
+  }
+  return doc;
+}
+
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
@@ -252,8 +269,12 @@ int GEMMI_MAIN(int argc, char **argv) {
   std::string output = p.nonOption(1);
   try {
     gemmi::Structure st = read_structure(input);
-    cif::Document doc = make_crd(st);
-    write_to_file(doc, output, cif::Style::NoBlankLines);
+    if (st.models.empty())
+      return 1;
+    cif::Document crd = make_crd(st);
+    write_to_file(crd, output + ".rst", cif::Style::NoBlankLines);
+    cif::Document rst = make_rst(st);
+    write_to_file(rst, output + ".crd", cif::Style::NoBlankLines);
   } catch (std::runtime_error& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
