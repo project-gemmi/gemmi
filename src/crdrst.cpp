@@ -1,6 +1,9 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include <stdio.h>
+#include <cstdlib>
+#include <cctype>
+#include <set>
 #include "input.h"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_mmcif.hpp"
@@ -10,7 +13,7 @@
 
 namespace cif = gemmi::cif;
 
-enum OptionIndex { Verbose=3 };
+enum OptionIndex { Verbose=3, Monomers };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -22,8 +25,65 @@ static const option::Descriptor Usage[] = {
   { Version, 0, "V", "version", Arg::None,
     "  -V, --version  \tPrint version and exit." },
   { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  { Monomers, 0, "", "monomers", Arg::Required,
+    "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
   { 0, 0, 0, 0, 0, 0 }
 };
+
+struct ChemComp {
+  ChemComp(std::string group_, cif::Block block_)
+    : block(block_),
+      group(group_),
+      atom(block.find("_chem_comp_atom.",
+                      {"atom_id", "type_symbol", "type_energy"})),
+      tree(block.find_mmcif_category("_chem_comp_tree.")),
+      bond(block.find_mmcif_category("_chem_comp_bond.")),
+      angle(block.find_mmcif_category("_chem_comp_angle.")),
+      tor(block.find_mmcif_category("_chem_comp_tor.")),
+      chir(block.find_mmcif_category("_chem_comp_chir.")),
+      plane(block.find_mmcif_category("_chem_comp_plane.")),
+      descriptor(block.find_mmcif_category("_pdbx_chem_comp_descriptor."))
+  {}
+
+  cif::Block block;
+  std::string group;
+  cif::Table atom;
+  cif::Table tree;
+  cif::Table bond;
+  cif::Table angle;
+  cif::Table tor;
+  cif::Table chir;
+  cif::Table plane;
+  cif::Table descriptor;
+};
+
+struct MonLib {
+  cif::Document mon_lib_list;
+  std::map<std::string, ChemComp> monomers;
+};
+
+static MonLib read_monomers(std::string monomer_dir,
+                            const std::set<std::string>& resnames) {
+  assert(!monomer_dir.empty());
+  if (monomer_dir.back() != '/' && monomer_dir.back() != '\\')
+    monomer_dir += '/';
+  cif::Document doc = cif_read_any(monomer_dir + "list/mon_lib_list.cif");
+  std::map<std::string, ChemComp> monomers;
+  for (auto& name : resnames) {
+    std::string dir = monomer_dir;
+    dir += std::tolower(name[0]);
+    dir += '/';
+    cif::Document mon = cif_read_any(dir + name + ".cif");
+    std::string group;
+    for (cif::Block& block : mon.blocks)
+      if (cif::Column col = block.find_values("_chem_comp.group")) {
+        group = col.str(0);
+        break;
+      }
+    monomers.emplace(name, ChemComp(group, std::move(mon.blocks.at(1))));
+  }
+  return {doc, monomers};
+}
 
 static double sq(double x) { return x * x; }
 
@@ -81,7 +141,7 @@ static std::string get_modification(const gemmi::Chain& chain,
   return ".";
 }
 
-static cif::Document make_crd(const gemmi::Structure& st) {
+static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib) {
   using gemmi::to_str;
   cif::Document crd;
   auto e_id = st.info.find("_entry.id");
@@ -217,6 +277,7 @@ static cif::Document make_crd(const gemmi::Structure& st) {
         //std::string label_seq = res.label_seq.str();
         std::string auth_seq_id = res.seq_num.str();
         //std::string ins_code(1, res.icode ? res.icode : '?');
+        cif::Table &cca = monlib.monomers.at(res.name).atom;
         for (const gemmi::Atom& a : res.atoms) {
           vv.emplace_back("ATOM");
           vv.emplace_back(std::to_string(++serial));
@@ -235,7 +296,8 @@ static cif::Document make_crd(const gemmi::Structure& st) {
           vv.emplace_back("."); // calc_flag
           vv.emplace_back("."); // label_seg_id
           vv.emplace_back(a.name); // again
-          vv.emplace_back("?"); // label_chem_id
+          printf("---- %s %s\n", res.name.c_str(), a.name.c_str());
+          vv.emplace_back(cca.find_row(a.name)[2]); // label_chem_id
         }
       }
     }
@@ -243,7 +305,7 @@ static cif::Document make_crd(const gemmi::Structure& st) {
   return crd;
 }
 
-static cif::Document make_rst(const gemmi::Structure& st) {
+static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
   cif::Document doc;
   doc.blocks.emplace_back("restraints");
   cif::Block& block = doc.blocks[0];
@@ -253,7 +315,8 @@ static cif::Document make_rst(const gemmi::Structure& st) {
               "value", "dev", "val_obs", "dist", "dist_dev", "econst"});
   for (const gemmi::Chain& chain : st.models[0].chains) {
     for (const gemmi::Residue& res : chain.residues) {
-      restr_loop.add_row({"MONO", ".", "L-peptid", ".",
+        ChemComp &cc = monlib.monomers.at(res.name);
+      restr_loop.add_row({"MONO", ".", cif::quote(cc.group), ".",
                           ".", ".", ".", ".", ".", ".", ".", ".", ".", "."});
     }
   }
@@ -265,16 +328,31 @@ int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   p.require_positional_args(2);
+  const char* monomer_dir = p.options[Monomers] ? p.options[Monomers].arg
+                                                : std::getenv("CLIBD_MON");
+  if (monomer_dir == nullptr || *monomer_dir == '\0') {
+    fprintf(stderr, "Set $CLIBD_MON or use option --monomers.\n");
+    return 1;
+  }
   std::string input = p.nonOption(0);
   std::string output = p.nonOption(1);
   try {
     gemmi::Structure st = read_structure(input);
     if (st.models.empty())
       return 1;
-    cif::Document crd = make_crd(st);
-    write_to_file(crd, output + ".rst", cif::Style::NoBlankLines);
-    cif::Document rst = make_rst(st);
-    write_to_file(rst, output + ".crd", cif::Style::NoBlankLines);
+    std::set<std::string> resnames;
+    for (const gemmi::Chain& chain : st.models[0].chains)
+      for (const gemmi::Residue& res : chain.residues)
+        resnames.insert(res.name);
+    MonLib monlib = read_monomers(monomer_dir, resnames);
+    cif::Document crd = make_crd(st, monlib);
+    if (p.options[Verbose])
+      printf("Writing coordinates to: %s.crd\n", output.c_str());
+    write_to_file(crd, output + ".crd", cif::Style::NoBlankLines);
+    cif::Document rst = make_rst(st, monlib);
+    if (p.options[Verbose])
+      printf("Writing restraints to: %s.rst\n", output.c_str());
+    write_to_file(rst, output + ".rst", cif::Style::NoBlankLines);
   } catch (std::runtime_error& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;

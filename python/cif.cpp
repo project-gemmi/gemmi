@@ -45,7 +45,9 @@ void add_cif(py::module& cif) {
     .def("sole_block", &Document::sole_block,
          py::return_value_policy::reference_internal,
          "Returns the only block if there is exactly one")
-    .def("find_block", &Document::find_block, py::arg("name"),
+    .def("find_block",
+         (Block* (Document::*)(const std::string&)) &Document::find_block,
+         py::arg("name"),
          py::return_value_policy::reference_internal)
     .def("write_file", &write_to_file,
          py::arg("filename"), py::arg("style")=Style::Simple,

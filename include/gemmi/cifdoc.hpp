@@ -195,6 +195,7 @@ public:
       return loop->length();
     return item_ ? 1 : 0;
   }
+  explicit operator bool() const { return item_ != nullptr ; }
   std::string& operator[](int n);
   std::string& at(int n) {
     if (n < 0)
@@ -763,6 +764,9 @@ struct Document {
       if (b.name == name)
         return &b;
     return nullptr;
+  }
+  const Block* find_block(const std::string& name) const {
+    return const_cast<Document*>(this)->find_block(name);
   }
 };
 
