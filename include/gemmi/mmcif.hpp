@@ -112,6 +112,7 @@ inline Structure structure_from_cif_block(cif::Block& block) {
   using cif::as_number;
   using cif::as_string;
   Structure st;
+  st.input_format = CoorFormat::Cif;
   st.name = block.name;
 
   // unit cell and symmetry

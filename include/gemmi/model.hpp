@@ -538,6 +538,8 @@ struct Structure {
   // simplistic resolution value from/for REMARK 2
   double resolution = 0;
 
+  CoorFormat input_format = CoorFormat::Unknown;
+
   const std::string& get_info(const std::string& tag) const {
     static const std::string empty;
     auto it = info.find(tag);

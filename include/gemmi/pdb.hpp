@@ -111,7 +111,7 @@ inline bool is_record_type(const char* s, const char* record) {
           (record[0] << 24 | record[1] << 16 | record[2] << 8 | record[3]);
 }
 
-PolymerType check_polymer_type(const std::vector<Residue>& rr) {
+inline PolymerType check_polymer_type(const std::vector<Residue>& rr) {
   size_t aa = 0;
   size_t dna = 0;
   size_t rna = 0;
@@ -142,7 +142,7 @@ PolymerType check_polymer_type(const std::vector<Residue>& rr) {
   return PolymerType::Unknown;
 }
 
-inline void categories_entities(Structure& st) {
+inline void setup_entities(Structure& st) {
   const static std::string WAT = "water";
   bool has_water = false;
   for (Model& model : st.models)
@@ -160,7 +160,9 @@ inline void categories_entities(Structure& st) {
           ent.entity_type = EntityType::NonPolymer;
       } else {
         PolymerType pt = check_polymer_type(chain.residues);
-        if (pt != PolymerType::Unknown) {
+        if (pt == PolymerType::Unknown) {
+          ent.entity_type = EntityType::NonPolymer;
+        } else {
           ent.entity_type = EntityType::Polymer;
           ent.polymer_type = pt;
         }
@@ -263,6 +265,7 @@ inline size_t copy_line_from_stream(char* line, int size, Input&& in) {
   return len;
 }
 
+inline
 void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
   int disulf_count = 0;
   for (const std::string& record : conn_records) {
@@ -314,6 +317,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     fail("Problem in line " + std::to_string(line_num) + ": " + msg);
   };
   Structure st;
+  st.input_format = CoorFormat::Pdb;
   st.name = gemmi::path_basename(source);
   std::vector<std::string> conn_records;
   Model *model = &st.find_or_add_model("1");
@@ -516,7 +520,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     }
   }
 
-  categories_entities(st);
+  setup_entities(st);
   deduplicate_entities(st);
   st.setup_cell_images();
 
@@ -550,6 +554,39 @@ inline Structure read_pdb(T&& input) {
   if (auto line_input = input.get_line_stream())
     return pdb_impl::read_pdb_from_line_input(line_input, input.path());
   return read_pdb_file(input.path());
+}
+
+// mmCIF files have each non-polymer residue in a separate "chain".
+// This function does the same.
+inline void split_nonpolymers(Structure& st) {
+  for (Model& model : st.models) {
+    std::vector<Chain> old_chains;
+    old_chains.swap(model.chains);
+    for (Chain& ch : old_chains) {
+      int num = 0;
+      const Entity* ent = st.get_entity(ch.entity_id);
+      if (!ent || ent->entity_type != EntityType::NonPolymer ||
+          ch.residues.size() < 2) {
+        ch.name = ch.auth_name + std::to_string(num++);
+        while (model.find_chain(ch.name) != nullptr)
+          ch.name = ch.auth_name + std::to_string(num++);
+        model.chains.emplace_back(std::move(ch));
+      } else {
+        for (Residue& res : ch.residues) {
+          std::string name = ch.auth_name + std::to_string(num++);
+          while (model.find_chain(name) != nullptr)
+            name = ch.auth_name + std::to_string(num++);
+          model.chains.emplace_back(name);
+          model.chains.back().auth_name = ch.auth_name;
+          model.chains.back().entity_id = res.name + "!";
+          model.chains.back().residues.emplace_back(std::move(res));
+        }
+      }
+    }
+  }
+  st.entities.clear();
+  pdb_impl::setup_entities(st);
+  pdb_impl::deduplicate_entities(st);
 }
 
 } // namespace gemmi

@@ -9,6 +9,7 @@
 #include "gemmi/chemcomp.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_mmcif.hpp"
+#include "gemmi/pdb.hpp"  // for split_nonpolymers
 
 #define GEMMI_PROG crdrst
 #include "options.h"
@@ -308,6 +309,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   std::string output = p.nonOption(1);
   try {
     gemmi::Structure st = read_structure(input);
+    if (st.input_format == gemmi::CoorFormat::Pdb)
+      gemmi::split_nonpolymers(st);
     if (st.models.empty())
       return 1;
     std::set<std::string> resnames;
