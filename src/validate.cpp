@@ -138,6 +138,20 @@ static std::string token_stats(const cif::Document& d, bool infer_types) {
   return info;
 }
 
+// Empty loop is not a valid CIF syntax, but we parse it to accommodate
+// some broken CIF files. Only validation shows an error.
+void check_empty_loops(const cif::Block& block) {
+  for (const cif::Item& item : block.items) {
+    if (item.type == cif::ItemType::Loop) {
+      if (item.loop.values.empty() && !item.loop.tags.empty())
+        throw std::runtime_error("Empty loop in block " + block.name +
+                                 ": " + item.loop.tags[0]);
+    } else if (item.type == cif::ItemType::Frame) {
+      check_empty_loops(item.frame);
+    }
+  }
+}
+
 
 int GEMMI_MAIN(int argc, char **argv) {
 #ifdef ANALYZE_RULES // for debugging only
@@ -162,6 +176,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         ok = cif::check_syntax_any(gemmi::MaybeGzipped(path), &msg);
       } else {
         cif::Document d = cif::read(gemmi::MaybeGzipped(path));
+        for (const cif::Block& block : d.blocks)
+          check_empty_loops(block);
         if (p.options[Stat])
           msg = token_stats(d, p.options[Types]);
         if (p.options[Ddl]) {
