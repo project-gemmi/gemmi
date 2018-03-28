@@ -1,10 +1,12 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include <stdio.h>
-#include <cstdlib>
-#include <cctype>
+#include <cstdlib> // for getenv
+#include <cctype>  // for tolower
 #include <set>
+#include <stdexcept>
 #include "input.h"
+#include "gemmi/chemcomp.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_mmcif.hpp"
 
@@ -30,57 +32,26 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-struct ChemComp {
-  ChemComp(std::string group_, cif::Block block_)
-    : block(block_),
-      group(group_),
-      atom(block.find("_chem_comp_atom.",
-                      {"atom_id", "type_symbol", "type_energy"})),
-      tree(block.find_mmcif_category("_chem_comp_tree.")),
-      bond(block.find_mmcif_category("_chem_comp_bond.")),
-      angle(block.find_mmcif_category("_chem_comp_angle.")),
-      tor(block.find_mmcif_category("_chem_comp_tor.")),
-      chir(block.find_mmcif_category("_chem_comp_chir.")),
-      plane(block.find_mmcif_category("_chem_comp_plane.")),
-      descriptor(block.find_mmcif_category("_pdbx_chem_comp_descriptor."))
-  {}
-
-  cif::Block block;
-  std::string group;
-  cif::Table atom;
-  cif::Table tree;
-  cif::Table bond;
-  cif::Table angle;
-  cif::Table tor;
-  cif::Table chir;
-  cif::Table plane;
-  cif::Table descriptor;
-};
 
 struct MonLib {
   cif::Document mon_lib_list;
-  std::map<std::string, ChemComp> monomers;
+  std::map<std::string, gemmi::ChemComp> monomers;
 };
 
-static MonLib read_monomers(std::string monomer_dir,
+inline MonLib read_monomers(std::string monomer_dir,
                             const std::set<std::string>& resnames) {
   assert(!monomer_dir.empty());
   if (monomer_dir.back() != '/' && monomer_dir.back() != '\\')
     monomer_dir += '/';
   cif::Document doc = cif_read_any(monomer_dir + "list/mon_lib_list.cif");
-  std::map<std::string, ChemComp> monomers;
-  for (auto& name : resnames) {
-    std::string dir = monomer_dir;
-    dir += std::tolower(name[0]);
-    dir += '/';
-    cif::Document mon = cif_read_any(dir + name + ".cif");
-    std::string group;
-    for (cif::Block& block : mon.blocks)
-      if (cif::Column col = block.find_values("_chem_comp.group")) {
-        group = col.str(0);
-        break;
-      }
-    monomers.emplace(name, ChemComp(group, std::move(mon.blocks.at(1))));
+  std::map<std::string, gemmi::ChemComp> monomers;
+  for (const std::string& name : resnames) {
+    std::string path = monomer_dir;
+    path += std::tolower(name[0]);
+    path += '/';
+    path += name + ".cif";
+    monomers.emplace(name,
+                     gemmi::make_chemcomp_from_cif(name, cif_read_any(path)));
   }
   return {doc, monomers};
 }
@@ -277,7 +248,7 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib) {
         //std::string label_seq = res.label_seq.str();
         std::string auth_seq_id = res.seq_num.str();
         //std::string ins_code(1, res.icode ? res.icode : '?');
-        cif::Table &cca = monlib.monomers.at(res.name).atom;
+        gemmi::ChemComp& cc = monlib.monomers.at(res.name);
         for (const gemmi::Atom& a : res.atoms) {
           vv.emplace_back("ATOM");
           vv.emplace_back(std::to_string(++serial));
@@ -296,8 +267,7 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib) {
           vv.emplace_back("."); // calc_flag
           vv.emplace_back("."); // label_seg_id
           vv.emplace_back(a.name); // again
-          printf("---- %s %s\n", res.name.c_str(), a.name.c_str());
-          vv.emplace_back(cca.find_row(a.name)[2]); // label_chem_id
+          vv.emplace_back(cc.get_atom(a.name).chem_type); // label_chem_id
         }
       }
     }
@@ -315,7 +285,7 @@ static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
               "value", "dev", "val_obs", "dist", "dist_dev", "econst"});
   for (const gemmi::Chain& chain : st.models[0].chains) {
     for (const gemmi::Residue& res : chain.residues) {
-        ChemComp &cc = monlib.monomers.at(res.name);
+      gemmi::ChemComp &cc = monlib.monomers.at(res.name);
       restr_loop.add_row({"MONO", ".", cif::quote(cc.group), ".",
                           ".", ".", ".", ".", ".", ".", ".", ".", ".", "."});
     }

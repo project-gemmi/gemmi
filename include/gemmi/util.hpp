@@ -23,17 +23,22 @@
 
 namespace gemmi {
 
-inline bool ends_with(const std::string& str, const std::string& suffix) {
-  size_t sl = suffix.length();
-  return str.length() >= sl && str.compare(str.length() - sl, sl, suffix) == 0;
-}
-
 inline bool starts_with(const std::string& str, const std::string& prefix) {
   size_t sl = prefix.length();
   return str.length() >= sl && str.compare(0, sl, prefix) == 0;
 }
 
-// Case-insensitive version. Assumes the suffix is lowercase and ascii.
+inline bool ends_with(const std::string& str, const std::string& suffix) {
+  size_t sl = suffix.length();
+  return str.length() >= sl && str.compare(str.length() - sl, sl, suffix) == 0;
+}
+
+// Case-insensitive version. Assumes the prefix/suffix is lowercase and ascii.
+inline bool istarts_with(const std::string& str, const std::string& prefix) {
+  return str.length() >= prefix.length() &&
+         std::equal(std::begin(prefix), std::end(prefix), str.begin(),
+                    [](char c1, char c2) { return c1 == std::tolower(c2); });
+}
 inline bool iends_with(const std::string& str, const std::string& suffix) {
   size_t sl = suffix.length();
   return str.length() >= sl &&
