@@ -242,7 +242,6 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib) {
       "label_chem_id"});
   std::vector<std::string>& vv = atom_loop.values;
   vv.reserve(count_atom_sites(st) * atom_loop.tags.size());
-  int serial = 0;
   for (const gemmi::Model& model : st.models) {
     for (const gemmi::Chain& chain : model.chains) {
       for (const gemmi::Residue& res : chain.residues) {
@@ -252,7 +251,7 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib) {
         gemmi::ChemComp& cc = monlib.monomers.at(res.name);
         for (const gemmi::Atom& a : res.atoms) {
           vv.emplace_back("ATOM");
-          vv.emplace_back(std::to_string(++serial));
+          vv.emplace_back(std::to_string(a.custom));
           vv.emplace_back(a.name);
           vv.emplace_back(1, a.altloc ? a.altloc : '.');
           vv.emplace_back(res.name);
@@ -276,21 +275,49 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib) {
   return crd;
 }
 
+static std::string bond_type_to_string(gemmi::ChemComp::BondType btype) {
+  switch (btype) {
+    case gemmi::ChemComp::Single: return "single";
+    case gemmi::ChemComp::Double: return "double";
+    case gemmi::ChemComp::Triple: return "triple";
+    case gemmi::ChemComp::Aromatic: return "aromatic";
+    case gemmi::ChemComp::Deloc: return "deloc";
+    case gemmi::ChemComp::Metal: return "metal";
+    default: return "???";
+  }
+}
+
 static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
+  using gemmi::to_str;
   cif::Document doc;
   doc.blocks.emplace_back("restraints");
   cif::Block& block = doc.blocks[0];
   cif::Loop& restr_loop = block.init_mmcif_loop("_restr.", {
               "record", "number", "label", "period",
               "atom_id_1", "atom_id_2", "atom_id_3", "atom_id_4",
-              "value", "dev", "val_obs", "dist", "dist_dev", "econst"});
-  for (const gemmi::Chain& chain : st.models[0].chains) {
+              "value", "dev", "val_obs"});
+  int bond_cnt = 0;
+  int angle_cnt = 0;
+  for (const gemmi::Chain& chain : st.models[0].chains)
     for (const gemmi::Residue& res : chain.residues) {
       gemmi::ChemComp &cc = monlib.monomers.at(res.name);
-      restr_loop.add_row({"MONO", ".", cif::quote(cc.group), ".",
-                          ".", ".", ".", ".", ".", ".", ".", ".", ".", "."});
+      std::string comment = "# monomer " + chain.name + " " +
+                            res.seq_id() + " " + res.name;
+      restr_loop.add_row({comment + "\nMONO", ".", cif::quote(cc.group), ".",
+                          ".", ".", ".", ".", ".", ".", "."});
+      for (const gemmi::ChemComp::Bond& bond : cc.bonds)
+        if (const gemmi::Atom* at1 = res.find_atom(bond.id1))
+          if (const gemmi::Atom* at2 = res.find_atom(bond.id2)) {
+            std::string dist = gemmi::to_str_prec<3>(at1->pos.dist(at2->pos));
+            dist += " # " + at1->name + " " + at2->name;
+            restr_loop.add_row({"BOND", std::to_string(++bond_cnt),
+                                bond_type_to_string(bond.type), ".",
+                                std::to_string(at1->custom),
+                                std::to_string(at2->custom),
+                                ".", ".",
+                                to_str(bond.value), to_str(bond.esd), dist});
+          }
     }
-  }
   return doc;
 }
 
@@ -317,6 +344,14 @@ int GEMMI_MAIN(int argc, char **argv) {
     for (const gemmi::Chain& chain : st.models[0].chains)
       for (const gemmi::Residue& res : chain.residues)
         resnames.insert(res.name);
+
+    int serial = 0;
+    for (gemmi::Model& model : st.models)
+      for (gemmi::Chain& chain : model.chains)
+        for (gemmi::Residue& res : chain.residues)
+          for (gemmi::Atom& atom : res.atoms)
+            atom.custom = ++serial;
+
     MonLib monlib = read_monomers(monomer_dir, resnames);
     cif::Document crd = make_crd(st, monlib);
     if (p.options[Verbose])

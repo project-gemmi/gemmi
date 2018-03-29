@@ -176,6 +176,7 @@ struct Atom {
   char altloc; // 0 if not set
   signed char charge;  // [-8, +8]
   Element element = El::X;
+  int custom = 0;
   Position pos;
   float occ;
   float b_iso;

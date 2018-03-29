@@ -28,6 +28,16 @@ inline std::string to_str(float d) {
   return std::string(buf, len > 0 ? len : 0);
 }
 
+template<int Prec>
+std::string to_str_prec(double d) {
+  static_assert(Prec >= 0 && Prec < 7, "unsupported precision");
+  char buf[16];
+  int len = d > -1e8 && d < 1e8 ? stbsp_sprintf(buf, "%.*f", Prec, d)
+                                : stbsp_sprintf(buf, "%g", d);
+  return std::string(buf, len > 0 ? len : 0);
+}
+
+
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

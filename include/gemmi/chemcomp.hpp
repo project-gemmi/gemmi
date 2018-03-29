@@ -79,6 +79,8 @@ ChemComp::BondType bond_type_from_string(const std::string& s) {
     return ChemComp::Deloc;
   if (istarts_with(s, "metal"))
     return ChemComp::Metal;
+  if (s == "1.5")
+    return ChemComp::Deloc;
   throw std::out_of_range("Unexpected bond type: " + s);
 }
 
