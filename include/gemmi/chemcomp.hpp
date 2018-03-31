@@ -34,6 +34,7 @@ struct ChemComp {
     double esd;
   };
   struct Torsion {
+    std::string name;
     std::string id1, id2, id3, id4;
     double value;
     double esd;
@@ -114,6 +115,19 @@ ChemComp make_chemcomp_from_cif(const std::string& name, cif::Document doc) {
                                          row.has2(3) && row[3] == "y",
                                          cif::as_number(row[4]),
                                          cif::as_number(row[5])});
+  for (auto row : block->find("_chem_comp_angle.",
+                              {"atom_id_1", "atom_id_2", "atom_id_3",
+                               "value_angle", "value_angle_esd"}))
+    cc.angles.emplace_back(ChemComp::Angle{row.str(0), row.str(1), row.str(2),
+                                           cif::as_number(row[3]),
+                                           cif::as_number(row[4])});
+  for (auto row : block->find("_chem_comp_tor.",
+                              {"id", "atom_id_1", "atom_id_2",
+                                     "atom_id_3", "atom_id_4",
+                               "value_angle", "value_angle_esd", "period"}))
+    cc.torsions.emplace_back(ChemComp::Torsion{
+        row.str(0), row.str(1), row.str(2), row.str(3), row.str(4),
+        cif::as_number(row[5]), cif::as_number(row[6]), cif::as_int(row[7])});
   return cc;
 }
 

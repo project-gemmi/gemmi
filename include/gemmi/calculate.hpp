@@ -35,6 +35,12 @@ template<> inline double count_occupancies(const Atom& atom) {
   return atom.occ;
 }
 
+inline double calculate_angle(const Position& p0, const Position& p1,
+                              const Position& p2) {
+  Vec3 a = p0 - p1;
+  Vec3 b = p2 - p1;
+  return std::acos(a.dot(b) / std::sqrt(a.length_sq() * b.length_sq()));
+}
 
 // discussion: https://stackoverflow.com/questions/20305272/
 inline double calculate_dihedral(const Position& p0, const Position& p1,

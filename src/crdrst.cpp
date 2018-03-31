@@ -10,6 +10,7 @@
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_mmcif.hpp"
 #include "gemmi/pdb.hpp"  // for split_nonpolymers
+#include "gemmi/calculate.hpp"  // for calculate_angle
 
 #define GEMMI_PROG crdrst
 #include "options.h"
@@ -308,14 +309,29 @@ static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
       for (const gemmi::ChemComp::Bond& bond : cc.bonds)
         if (const gemmi::Atom* at1 = res.find_atom(bond.id1))
           if (const gemmi::Atom* at2 = res.find_atom(bond.id2)) {
-            std::string dist = gemmi::to_str_prec<3>(at1->pos.dist(at2->pos));
-            dist += " # " + at1->name + " " + at2->name;
+            std::string obs = gemmi::to_str_prec<3>(at1->pos.dist(at2->pos));
+            obs += " # " + at1->name + " " + at2->name;
             restr_loop.add_row({"BOND", std::to_string(++bond_cnt),
                                 bond_type_to_string(bond.type), ".",
                                 std::to_string(at1->custom),
                                 std::to_string(at2->custom),
                                 ".", ".",
-                                to_str(bond.value), to_str(bond.esd), dist});
+                                to_str(bond.value), to_str(bond.esd), obs});
+          }
+      for (const gemmi::ChemComp::Angle& angle : cc.angles)
+        if (const gemmi::Atom* at1 = res.find_atom(angle.id1))
+          if (const gemmi::Atom* at2 = res.find_atom(angle.id2))
+            if (const gemmi::Atom* at3 = res.find_atom(angle.id3)) {
+              double a = gemmi::calculate_angle(at1->pos, at2->pos, at3->pos);
+              std::string obs = gemmi::to_str_prec<3>(gemmi::deg(a));
+              obs += " # " + at1->name + " " + at2->name + " " + at3->name;
+              restr_loop.add_row({"ANGL", std::to_string(++angle_cnt),
+                                  ".", ".",
+                                  std::to_string(at1->custom),
+                                  std::to_string(at2->custom),
+                                  std::to_string(at3->custom),
+                                  ".",
+                                  to_str(angle.value), to_str(angle.esd), obs});
           }
     }
   return doc;
