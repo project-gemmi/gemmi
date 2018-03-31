@@ -108,9 +108,11 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
   }
 }
 
-inline Structure structure_from_cif_block(cif::Block& block) {
+inline Structure structure_from_cif_block(const cif::Block& block_) {
   using cif::as_number;
   using cif::as_string;
+  // find() and Table don't have const variants, but we don't change anything.
+  cif::Block& block = const_cast<cif::Block&>(block_);
   Structure st;
   st.input_format = CoorFormat::Cif;
   st.name = block.name;
@@ -128,9 +130,8 @@ inline Structure structure_from_cif_block(cif::Block& block) {
   st.sg_hm = as_string(block.find_value("_symmetry.space_group_name_H-M"));
 
   auto add_info = [&](std::string tag) {
-    cif::Column col = block.find_values(tag);
     bool first = true;
-    for (const std::string& v : col)
+    for (const std::string& v : block.find_values(tag))
       if (!cif::is_null(v)) {
         if (first)
           st.info[tag] = as_string(v);
@@ -315,12 +316,12 @@ inline Structure structure_from_cif_block(cif::Block& block) {
 
 } // namespace impl
 
-inline Structure make_structure_from_block(cif::Block& block) {
+inline Structure make_structure_from_block(const cif::Block& block) {
   return impl::structure_from_cif_block(block);
 }
 
 // the name of this function may change
-inline Structure read_atoms(cif::Document doc) {
+inline Structure read_atoms(const cif::Document& doc) {
   return impl::structure_from_cif_block(doc.sole_block());
 }
 

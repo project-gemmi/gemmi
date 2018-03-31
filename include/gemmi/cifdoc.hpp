@@ -758,6 +758,9 @@ struct Document {
       fail("single data block expected, got " + std::to_string(blocks.size()));
     return blocks.at(0);
   }
+  const Block& sole_block() const {
+    return const_cast<Document*>(this)->sole_block();
+  }
 
   Block* find_block(const std::string& name) {
     for (Block& b : blocks)

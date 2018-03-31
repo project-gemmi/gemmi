@@ -42,7 +42,7 @@ void add_cif(py::module& cif) {
          py::arg("name"), py::arg("pos")=-1,
          py::return_value_policy::reference_internal)
     .def("clear", &Document::clear)
-    .def("sole_block", &Document::sole_block,
+    .def("sole_block", (Block& (Document::*)()) &Document::sole_block,
          py::return_value_policy::reference_internal,
          "Returns the only block if there is exactly one")
     .def("find_block",
