@@ -185,6 +185,15 @@ struct Atom {
   bool same_conformer(const Atom& other) const {
     return altloc == '\0' || other.altloc == '\0' || altloc == other.altloc;
   }
+  // Name as a string left-padded like in the PDB format:
+  // the first two characters make the element name.
+  std::string padded_name() const {
+    std::string s;
+    if (element.uname()[1] == '\0' && name.size() < 4)
+      s += ' ';
+    s += name;
+    return s;
+  }
 };
 
 

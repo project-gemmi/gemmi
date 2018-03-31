@@ -63,7 +63,6 @@ absent="\
 ^HETNAM|\
 ^HETSYN|\
 ^JRNL  |\
-^LINK  |\
 ^MASTER|\
 ^MDLTYP|\
 ^MODRES|\
@@ -80,10 +79,10 @@ inp="$cif"
 [[ ${FROM_PDB:-} = 1 ]] && inp="$pout"
 if [[ ${VIA_CIF:-} = 1 ]]; then
     echo "$(basename "$inp") -> $(basename "$cifout")"
-    $BIN/gemmi-convert "$inp" "$cifout"
+    $BIN/gemmi convert "$inp" "$cifout"
     inp="$cifout"
 fi
-$BIN/gemmi-convert --to=pdb "$inp" - | grep -v -E $not_identical > "$gout"
+$BIN/gemmi convert --to=pdb "$inp" - | grep -v -E $not_identical > "$gout"
 echo "Comparing ($(basename "$inp") ->) $gout vs $pout"
 
 # Add d or w as the second arg to show diff (using git diff for colors).

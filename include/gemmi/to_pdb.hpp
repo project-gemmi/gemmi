@@ -171,15 +171,13 @@ inline void write_atoms(const Structure& st, std::ostream& os,
           // 73-76      segment identifier, left-justified (non-standard)
           // 77-78  2s  element symbol, right-justified
           // 79-80  2s  charge
-          bool empty13 = (a.element.uname()[1] == '\0' && a.name.size() < 4);
-          WRITE("%-6s%5s %c%-3s%c%3s"
+          WRITE("%-6s%5s %-4s%c%3s"
                 "%2s%4s%c"
                 "   %8.3f%8.3f%8.3f"
                 "%6.2f%6.2f      %-4.4s%2s%c%c\n",
                 as_het ? "HETATM" : "ATOM",
                 impl::encode_serial_in_hybrid36(buf8, ++serial),
-                empty13 ? ' ' : a.name[0],
-                a.name.c_str() + (empty13 || a.name.empty() ? 0 : 1),
+                a.padded_name().c_str(),
                 a.altloc ? std::toupper(a.altloc) : ' ',
                 res.name.c_str(),
                 chain_name.c_str(),
@@ -300,7 +298,7 @@ inline void write_header(const Structure& st, std::ostream& os,
       }
     }
 
-    // SSBOND  (note: we use only the first model and primary conformation)
+    // SSBOND  (note: uses only the first model and primary conformation)
     int counter = 0;
     char buf8[8];
     char buf8a[8];
@@ -321,7 +319,32 @@ inline void write_header(const Structure& st, std::ostream& os,
            "1555", im.pdb_symbol(false).c_str(), im.dist());
       }
 
-    // CISPEP (note: we use only the first conformation)
+    // LINK  (note: uses only the first model and primary conformation)
+    for (const Connection& con : st.models[0].connections)
+      if (con.type == Connection::Covale || con.type == Connection::Hydrog ||
+          con.type == Connection::MetalC) {
+        const_CRA cra1 = st.models[0].find_cra(con.atom[0]);
+        const_CRA cra2 = st.models[0].find_cra(con.atom[1]);
+        if (!cra1.atom || !cra2.atom)
+          continue;
+        NearbyImage im = st.cell.find_nearest_image(cra1.atom->pos,
+                                                    cra2.atom->pos, con.image);
+        WRITE("LINK        %-4s%c%3s%2s%5s   "
+              "            %-4s%c%3s%2s%5s  %6s %6s %5.2f  \n",
+              cra1.atom->padded_name().c_str(),
+              cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
+              cra1.residue->name.c_str(),
+              cra1.chain->name_for_pdb().c_str(),
+              write_seq_id(buf8, *cra1.residue),
+              cra2.atom->padded_name().c_str(),
+              cra2.atom->altloc ? std::toupper(cra2.atom->altloc) : ' ',
+              cra2.residue->name.c_str(),
+              cra2.chain->name_for_pdb().c_str(),
+              write_seq_id(buf8a, *cra2.residue),
+              "1555", im.pdb_symbol(false).c_str(), im.dist());
+      }
+
+    // CISPEP (note: uses only the first conformation)
     counter = 0;
     for (const Model& model : st.models)
       for (const Chain& chain : model.chains) {
