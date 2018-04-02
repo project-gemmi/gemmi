@@ -299,6 +299,7 @@ static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
               "value", "dev", "val_obs"});
   int bond_cnt = 0;
   int angle_cnt = 0;
+  int tor_cnt = 0;
   for (const gemmi::Chain& chain : st.models[0].chains)
     for (const gemmi::Residue& res : chain.residues) {
       gemmi::ChemComp &cc = monlib.monomers.at(res.name);
@@ -332,6 +333,24 @@ static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
                                   std::to_string(at3->custom),
                                   ".",
                                   to_str(angle.value), to_str(angle.esd), obs});
+          }
+      for (const gemmi::ChemComp::Torsion& tor : cc.torsions)
+        if (const gemmi::Atom* at1 = res.find_atom(tor.id1))
+          if (const gemmi::Atom* at2 = res.find_atom(tor.id2))
+            if (const gemmi::Atom* at3 = res.find_atom(tor.id3))
+              if (const gemmi::Atom* at4 = res.find_atom(tor.id4)) {
+                double d = gemmi::calculate_dihedral(at1->pos, at2->pos,
+                                                     at3->pos, at4->pos);
+                std::string obs = gemmi::to_str_prec<3>(gemmi::deg(d));
+                obs += " # " + at1->name + " " + at2->name +
+                       " " + at3->name + " " + at4->name;
+                restr_loop.add_row({"TORS", std::to_string(++tor_cnt),
+                                    tor.label, std::to_string(tor.period),
+                                    std::to_string(at1->custom),
+                                    std::to_string(at2->custom),
+                                    std::to_string(at3->custom),
+                                    std::to_string(at4->custom),
+                                    to_str(tor.value), to_str(tor.esd), obs});
           }
     }
   return doc;

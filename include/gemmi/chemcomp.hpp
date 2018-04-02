@@ -35,7 +35,7 @@ struct ChemComp {
     double esd;
   };
   struct Torsion {
-    std::string name;
+    std::string label;
     std::string id1, id2, id3, id4;
     double value;
     double esd;
