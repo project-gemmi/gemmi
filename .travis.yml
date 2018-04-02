@@ -17,17 +17,17 @@ matrix:
       - PYTHON=python
 
   - os: osx
-    osx_image: xcode6.4
-    compiler: clang
-    env: COMPILER=clang++ PYTHON=python EXTRA_WFLAGS=-Wno-shorten-64-to-32
-
-  - os: osx
     osx_image: xcode8.3
     compiler: clang
     env: COMPILER=clang++ PYTHON=python3
     before_install:
       - brew update
       - brew install $PYTHON || brew upgrade $PYTHON
+
+# - os: osx
+#   osx_image: xcode6.4
+#   compiler: clang
+#   env: COMPILER=clang++ PYTHON=python EXTRA_WFLAGS=-Wno-shorten-64-to-32
 
 install:
 - |
