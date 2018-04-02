@@ -361,14 +361,17 @@ int GEMMI_MAIN(int argc, char **argv) {
       for (const gemmi::Residue& res : chain.residues)
         resnames.insert(res.name);
 
+    MonLib monlib = read_monomers(monomer_dir, resnames);
     int serial = 0;
     for (gemmi::Model& model : st.models)
       for (gemmi::Chain& chain : model.chains)
-        for (gemmi::Residue& res : chain.residues)
+        for (gemmi::Residue& res : chain.residues) {
+          const gemmi::ChemComp &cc = monlib.monomers.at(res.name);
+          cc.reorder_atoms(res.atoms);
           for (gemmi::Atom& atom : res.atoms)
             atom.custom = ++serial;
+        }
 
-    MonLib monlib = read_monomers(monomer_dir, resnames);
     cif::Document crd = make_crd(st, monlib);
     if (p.options[Verbose])
       printf("Writing coordinates to: %s.crd\n", output.c_str());

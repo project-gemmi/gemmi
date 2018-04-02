@@ -6,6 +6,7 @@
 #ifndef GEMMI_CHEMCOMP_HPP_
 #define GEMMI_CHEMCOMP_HPP_
 
+#include <cassert>
 #include <string>
 #include <vector>
 #include "cifdoc.hpp"
@@ -65,6 +66,20 @@ struct ChemComp {
     throw std::out_of_range("Chemical componenent " + name + " has no atom "
                             + atom_id);
   }
+
+  template<typename T>
+  void reorder_atoms(std::vector<T>& alist) const {
+    for (const T& a : alist)
+      get_atom(a.name); // check that all atoms exists in _chem_comp_atom
+    std::vector<T> ordered;
+    ordered.reserve(alist.size());
+    for (const Atom& cca : atoms)
+      for (const T& a : alist)
+        if (a.name == cca.id)
+          ordered.push_back(a);
+    assert(alist.size() == ordered.size());
+    alist.swap(ordered);
+  }
 };
 
 ChemComp::BondType bond_type_from_string(const std::string& s) {
@@ -102,9 +117,9 @@ ChemComp make_chemcomp_from_cif(const std::string& name, cif::Document doc) {
     cc.group = group_col.str(0);
   for (auto row : block->find("_chem_comp_atom.",
                               {"atom_id", "type_symbol", "type_energy"}))
-      cc.atoms.emplace_back(ChemComp::Atom{row.str(0),
-                                           Element(row.str(1)),
-                                           row.str(2)});
+    cc.atoms.emplace_back(ChemComp::Atom{row.str(0),
+                                         Element(row.str(1)),
+                                         row.str(2)});
   for (auto row : block->find("_chem_comp_bond.",
                               {"atom_id_1", "atom_id_2",
                                "type", "?aromatic",
