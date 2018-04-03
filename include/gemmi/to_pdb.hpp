@@ -321,8 +321,8 @@ inline void write_header(const Structure& st, std::ostream& os,
 
     // LINK  (note: uses only the first model and primary conformation)
     for (const Connection& con : st.models[0].connections)
-      if (con.type == Connection::Covale || con.type == Connection::Hydrog ||
-          con.type == Connection::MetalC) {
+      if (con.type == Connection::Covale || con.type == Connection::MetalC ||
+          con.type == Connection::None) {
         const_CRA cra1 = st.models[0].find_cra(con.atom[0]);
         const_CRA cra2 = st.models[0].find_cra(con.atom[1]);
         if (!cra1.atom || !cra2.atom)
