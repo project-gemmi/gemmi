@@ -265,39 +265,69 @@ inline size_t copy_line_from_stream(char* line, int size, Input&& in) {
   return len;
 }
 
+inline SymmetryImage compare_link_symops(const std::string& record) {
+  if (record.size() < 72)
+    return SymmetryImage::Unspecified;  // it could also mean Same
+  if (read_string(&record[59], 6) == read_string(&record[66], 6))
+    return SymmetryImage::Same;
+  return SymmetryImage::Different;
+}
+
 inline
 void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
   int disulf_count = 0;
+  int link_count = 0;
   for (const std::string& record : conn_records) {
-    const char* r = record.c_str();
-    if (*r == 'S' || *r == 's') { // SSBOND
+    if (record[0] == 'S' || record[0] == 's') { // SSBOND
+      if (record.length() < 35)
+        continue;
       Connection c;
       c.name = "disulf" + std::to_string(++disulf_count);
       c.type = Connection::Disulf;
-      // We assume here that the residue is before TER and it's not
-      // in the chain with added '_' + postfix.
+      const char* r = record.c_str();
       c.atom[0].chain_name = read_string(r + 14, 2);
       c.atom[0].res_id = read_res_id(r + 17, r + 11);
+      c.atom[0].atom_name = "SG";
       c.atom[1].chain_name = read_string(r + 28, 2);
       c.atom[1].res_id = read_res_id(r + 31, r + 25);
-      // Neither atom name (not all disulfide bonds must be between cysteines)
-      // nor altloc is specified in PDB files.
-      for (int i : {0, 1})
-        c.atom[i].atom_name = "SG";
-      if (record.size() > 71) {
-        if (read_string(r + 59, 6) == read_string(r + 66, 6))
-          c.image = SymmetryImage::Same;
-        else
-          c.image = SymmetryImage::Different;
-      }
+      c.atom[1].atom_name = "SG";
+      c.image = compare_link_symops(record);
       for (Model& mdl : st.models) {
-        for (AtomAddress& ad : c.atom)
-          if (ResidueGroup rg = mdl.residues(ad.chain_name, *ad.res_id.seq_num,
-                                             ad.res_id.icode))
-            ad.res_id.label_seq = rg[0].label_seq;
+        for (AtomAddress& ad : c.atom) {
+          CRA cra = mdl.find_cra(ad);
+          if (cra.residue) {
+            ad.res_id.label_seq = cra.residue->label_seq;
+            // Atom name and altloc are not provided in the SSBOND record.
+            // Usually it is SG (cysteine), but other disulfide bonds
+            // are also possible, so if it's not CYS and SG is absent
+            // we pick the first sulfur atom in the residue.
+            if (!cra.atom && ad.res_id.name != "CYS")
+              if (const Atom* a = cra.residue->find_by_element(El::S))
+                ad.atom_name = a->name;
+          }
+        }
         mdl.connections.emplace_back(c);
       }
-    } else if (*r == 'C' || *r == 'c') { // CISPEP
+    } else if (record[0] == 'L' || record[0] == 'l') { // LINK
+      if (record.length() < 57)
+        continue;
+      Connection c;
+      c.name = "link" + std::to_string(++link_count);
+      c.type = Connection::None;
+      for (int i : {0, 1}) {
+        const char* t = record.c_str() + 30 * i;
+        c.atom[i].chain_name = read_string(t + 20, 2);
+        c.atom[i].res_id = read_res_id(t + 22, t + 17);
+        c.atom[i].atom_name = read_string(t + 12, 4);
+        c.atom[i].altloc = (t[16] == ' ' ? '\0' : t[16]);
+      }
+      c.image = compare_link_symops(record);
+      for (Model& mdl : st.models)
+        mdl.connections.emplace_back(c);
+    } else if (record[0] == 'C' || record[0] == 'c') { // CISPEP
+      if (record.length() < 22)
+        continue;
+      const char* r = record.c_str();
       std::string cname = read_string(r + 14, 2);
       ResidueId rid = read_res_id(r + 17, r + 11);
       for (Model& model : st.models)
@@ -506,15 +536,11 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     } else if (is_record_type(line, "ORIGX")) {
       read_matrix(st.origx, line, len);
 
-    } else if (is_record_type(line, "SSBOND")) {
-      std::string record(line);
-      if (record.length() > 34)
-        conn_records.emplace_back(record);
+    } else if (is_record_type(line, "SSBOND") ||
+               is_record_type(line, "LINK") ||
+               is_record_type(line, "CISPEP")) {
+      conn_records.emplace_back(line);
 
-    } else if (is_record_type(line, "CISPEP")) {
-      std::string record(line);
-      if (record.length() > 21)
-        conn_records.emplace_back(record);
     } else if (is_record_type(line, "END")) {  // NUL == ' ' & ~0x20
       break;
     }

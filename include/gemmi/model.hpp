@@ -452,7 +452,7 @@ struct Connection {
 
 inline const char* get_mmcif_connection_type_id(Connection::Type t) {
   static constexpr const char* type_ids[] = {
-    "covale", "disulf", "hydrog", "metalc" };
+    "covale", "disulf", "hydrog", "metalc", "." };
   return type_ids[t];
 }
 
