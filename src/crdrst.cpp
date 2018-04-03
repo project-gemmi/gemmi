@@ -288,6 +288,15 @@ static std::string bond_type_to_string(gemmi::ChemComp::BondType btype) {
   }
 }
 
+static std::string chirality_to_string(gemmi::ChemComp::ChiralityType ctype) {
+  switch (ctype) {
+    case gemmi::ChemComp::Positive: return "positive";
+    case gemmi::ChemComp::Negative: return "negative";
+    case gemmi::ChemComp::Both: return "both";
+    default: return "???";
+  }
+}
+
 static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
   using gemmi::to_str;
   cif::Document doc;
@@ -300,12 +309,14 @@ static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
   int bond_cnt = 0;
   int angle_cnt = 0;
   int tor_cnt = 0;
+  int chir_cnt = 0;
   for (const gemmi::Chain& chain : st.models[0].chains)
     for (const gemmi::Residue& res : chain.residues) {
       gemmi::ChemComp &cc = monlib.monomers.at(res.name);
-      std::string comment = "# monomer " + chain.name + " " +
-                            res.seq_id() + " " + res.name;
-      restr_loop.add_row({comment + "\nMONO", ".", cif::quote(cc.group), ".",
+      // comments are added relying on how cif writing works
+      std::string res_info = "# monomer " + chain.name + " " +
+                             res.seq_id() + " " + res.name;
+      restr_loop.add_row({res_info + "\nMONO", ".", cif::quote(cc.group), ".",
                           ".", ".", ".", ".", ".", ".", "."});
       for (const gemmi::ChemComp::Bond& bond : cc.bonds)
         if (const gemmi::Atom* at1 = res.find_atom(bond.id1))
@@ -352,6 +363,21 @@ static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
                                     std::to_string(at4->custom),
                                     to_str(tor.value), to_str(tor.esd), obs});
           }
+      for (const gemmi::ChemComp::Chirality& chir : cc.chirs)
+        if (const gemmi::Atom* at1 = res.find_atom(chir.id_ctr))
+          if (const gemmi::Atom* at2 = res.find_atom(chir.id1))
+            if (const gemmi::Atom* at3 = res.find_atom(chir.id2))
+              if (const gemmi::Atom* at4 = res.find_atom(chir.id3)) {
+                std::string comment = " # " + at1->name + " " + at2->name
+                                      + " " + at3->name + " " + at4->name;
+                restr_loop.add_row({"CHIR", std::to_string(++chir_cnt),
+                                    chirality_to_string(chir.chir), ".",
+                                    std::to_string(at1->custom),
+                                    std::to_string(at2->custom),
+                                    std::to_string(at3->custom),
+                                    std::to_string(at4->custom),
+                                    "?", "0.020", "?" + comment});
+              }
     }
   return doc;
 }

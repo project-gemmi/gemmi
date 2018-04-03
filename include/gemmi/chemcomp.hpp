@@ -17,6 +17,7 @@ namespace gemmi {
 
 struct ChemComp {
   enum BondType { Single, Double, Triple, Aromatic, Deloc, Metal };
+  enum ChiralityType { Positive, Negative, Both };
   struct Atom {
     std::string id;
     Element el;
@@ -43,7 +44,7 @@ struct ChemComp {
   };
   struct Chirality {
     std::string id_ctr, id1, id2, id3;
-    bool positive;
+    ChiralityType chir;
   };
   struct Plane {
     std::vector<std::string> ids;
@@ -82,7 +83,7 @@ struct ChemComp {
   }
 };
 
-ChemComp::BondType bond_type_from_string(const std::string& s) {
+inline ChemComp::BondType bond_type_from_string(const std::string& s) {
   if (istarts_with(s, "sing"))
     return ChemComp::Single;
   if (istarts_with(s, "doub"))
@@ -98,6 +99,16 @@ ChemComp::BondType bond_type_from_string(const std::string& s) {
   if (s == "1.5")
     return ChemComp::Deloc;
   throw std::out_of_range("Unexpected bond type: " + s);
+}
+
+// it doesn't handle crossN types from the monomer library
+inline ChemComp::ChiralityType chirality_from_string(const std::string& s) {
+  switch (s[0] | 0x20) {
+    case 'p': return ChemComp::Positive;
+    case 'n': return ChemComp::Negative;
+    case 'b': return ChemComp::Both;
+    default: throw std::out_of_range("Unexpected chirality: " + s);
+  }
 }
 
 inline
@@ -143,6 +154,12 @@ ChemComp make_chemcomp_from_cif(const std::string& name, cif::Document doc) {
     cc.torsions.emplace_back(ChemComp::Torsion{
         row.str(0), row.str(1), row.str(2), row.str(3), row.str(4),
         cif::as_number(row[5]), cif::as_number(row[6]), cif::as_int(row[7])});
+  for (auto row : block->find("_chem_comp_chir.",
+                              {"atom_id_centre", "atom_id_1",
+                               "atom_id_2", "atom_id_3", "volume_sign"}))
+    cc.chirs.emplace_back(ChemComp::Chirality{
+        row.str(0), row.str(1), row.str(2), row.str(3),
+        chirality_from_string(row[4])});
   return cc;
 }
 
