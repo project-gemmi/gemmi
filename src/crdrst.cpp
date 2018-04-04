@@ -368,15 +368,19 @@ static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
           if (const gemmi::Atom* at2 = res.find_atom(chir.id1))
             if (const gemmi::Atom* at3 = res.find_atom(chir.id2))
               if (const gemmi::Atom* at4 = res.find_atom(chir.id3)) {
-                std::string comment = " # " + at1->name + " " + at2->name
-                                      + " " + at3->name + " " + at4->name;
+                double vol = cc.chiral_abs_volume(chir);
+                double obs_vol = gemmi::calculate_chiral_volume(
+                                      at1->pos, at2->pos, at3->pos, at4->pos);
+                std::string obs = gemmi::to_str_prec<3>(obs_vol)
+                                  + " # " + at1->name + " " + at2->name
+                                  + " " + at3->name + " " + at4->name;
                 restr_loop.add_row({"CHIR", std::to_string(++chir_cnt),
                                     chirality_to_string(chir.chir), ".",
                                     std::to_string(at1->custom),
                                     std::to_string(at2->custom),
                                     std::to_string(at3->custom),
                                     std::to_string(at4->custom),
-                                    "?", "0.020", "?" + comment});
+                                    gemmi::to_str_prec<3>(vol), "0.020", obs});
               }
     }
   return doc;

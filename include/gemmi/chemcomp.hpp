@@ -68,6 +68,31 @@ struct ChemComp {
                             + atom_id);
   }
 
+  Bond& get_bond(const std::string& a1, const std::string& a2) {
+    for (Bond& b : bonds)
+      if ((b.id1 == a1 && b.id2 == a2) || (b.id1 == a2 && b.id2 == a1))
+        return b;
+    throw std::out_of_range("Chemical componenent " + name + " has no bond "
+                            + a1 + "-" + a2);
+  }
+  const Bond& get_bond(const std::string& a1, const std::string& a2) const {
+    return const_cast<ChemComp*>(this)->get_bond(a1, a2);
+  }
+
+  Angle& get_angle(const std::string& atom1, const std::string& atom2,
+                   const std::string& atom3) {
+    for (Angle& a : angles)
+      if (a.id2 == atom2 && ((a.id1 == atom1 && a.id3 == atom3) ||
+                             (a.id1 == atom3 && a.id3 == atom1)))
+        return a;
+    throw std::out_of_range("Chemical componenent " + name + " has no angle "
+                            + atom1 + "-" + atom2 + "-" + atom3);
+  }
+  const Angle& get_angle(const std::string& a1, const std::string& a2,
+                         const std::string& a3) const {
+    return const_cast<ChemComp*>(this)->get_angle(a1, a2, a3);
+  }
+
   template<typename T>
   void reorder_atoms(std::vector<T>& alist) const {
     for (const T& a : alist)
@@ -81,7 +106,29 @@ struct ChemComp {
     assert(alist.size() == ordered.size());
     alist.swap(ordered);
   }
+
+  double chiral_abs_volume(const Chirality& ch) const {
+    double mult = get_bond(ch.id_ctr, ch.id1).value *
+                  get_bond(ch.id_ctr, ch.id2).value *
+                  get_bond(ch.id_ctr, ch.id3).value;
+    double x = 1;
+    double y = 2;
+    for (double a : {get_angle(ch.id1, ch.id_ctr, ch.id2).value,
+                     get_angle(ch.id2, ch.id_ctr, ch.id3).value,
+                     get_angle(ch.id3, ch.id_ctr, ch.id1).value}) {
+      constexpr double deg2rad = 3.1415926535897932384626433832795029 / 180.0;
+      double cosine = a == 90. ? 0. : std::cos(deg2rad * a);
+      x -= cosine * cosine;
+      y *= cosine;
+    }
+    return mult * std::sqrt(x + y);
+  }
 };
+
+inline double calculate_chiral_volume(const Position& actr, const Position& a1,
+                                      const Position& a2, const Position& a3) {
+  return (a1 - actr).dot((a2 - actr).cross(a3 - actr));
+}
 
 inline ChemComp::BondType bond_type_from_string(const std::string& s) {
   if (istarts_with(s, "sing"))
