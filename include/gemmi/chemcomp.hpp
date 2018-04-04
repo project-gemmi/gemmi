@@ -48,7 +48,7 @@ struct ChemComp {
   };
   struct Plane {
     std::vector<std::string> ids;
-    double esd;
+    double esd = 0.02;
   };
 
   std::string name;
@@ -58,7 +58,7 @@ struct ChemComp {
   std::vector<Angle> angles;
   std::vector<Torsion> torsions;
   std::vector<Chirality> chirs;
-  std::vector<Plane> planes;
+  std::map<std::string, Plane> planes;
 
   const Atom& get_atom(const std::string& atom_id) const {
     for (const Atom& a : atoms)
@@ -207,6 +207,10 @@ ChemComp make_chemcomp_from_cif(const std::string& name, cif::Document doc) {
     cc.chirs.emplace_back(ChemComp::Chirality{
         row.str(0), row.str(1), row.str(2), row.str(3),
         chirality_from_string(row[4])});
+  for (auto row : block->find("_chem_comp_plane_atom.",
+                              {"plane_id", "atom_id" /*, "dist_esd"*/}))
+    // at the moment dist_esd is ignored by Refmac and it is assumed 0.02
+    cc.planes[row.str(0)].ids.emplace_back(row.str(1));
   return cc;
 }
 

@@ -298,7 +298,8 @@ static std::string chirality_to_string(gemmi::ChemComp::ChiralityType ctype) {
 }
 
 static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
-  using gemmi::to_str;
+  //using gemmi::to_str;
+  const auto& to_str = gemmi::to_str_prec<3>; // to make comparisons easier
   cif::Document doc;
   doc.blocks.emplace_back("restraints");
   cif::Block& block = doc.blocks[0];
@@ -310,14 +311,16 @@ static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
   int angle_cnt = 0;
   int tor_cnt = 0;
   int chir_cnt = 0;
+  int plan_cnt = 0;
   for (const gemmi::Chain& chain : st.models[0].chains)
     for (const gemmi::Residue& res : chain.residues) {
       gemmi::ChemComp &cc = monlib.monomers.at(res.name);
       // comments are added relying on how cif writing works
       std::string res_info = "# monomer " + chain.name + " " +
                              res.seq_id() + " " + res.name;
-      restr_loop.add_row({res_info + "\nMONO", ".", cif::quote(cc.group), ".",
-                          ".", ".", ".", ".", ".", ".", "."});
+      restr_loop.add_row({res_info + "\nMONO", ".",
+                          cif::quote(cc.group.substr(0, 8)),
+                          ".", ".", ".", ".", ".", ".", ".", "."});
       for (const gemmi::ChemComp::Bond& bond : cc.bonds)
         if (const gemmi::Atom* at1 = res.find_atom(bond.id1))
           if (const gemmi::Atom* at2 = res.find_atom(bond.id2)) {
@@ -382,6 +385,22 @@ static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
                                     std::to_string(at4->custom),
                                     gemmi::to_str_prec<3>(vol), "0.020", obs});
               }
+      for (const auto& item : cc.planes) {
+        const gemmi::ChemComp::Plane& plane = item.second;
+        std::vector<const gemmi::Atom*> atoms;
+        for (const std::string& id : plane.ids)
+          if (const gemmi::Atom* atom = res.find_atom(id))
+            atoms.push_back(atom);
+        if (atoms.size() < 4)
+          continue;
+        ++plan_cnt;
+        for (const gemmi::Atom* atom : atoms) {
+          std::string obs = ". # " + atom->name;
+          restr_loop.add_row({"PLAN", std::to_string(plan_cnt), item.first,
+                              ".", std::to_string(atom->custom), ".", ".", ".",
+                              to_str(plane.esd), ".", obs});
+        }
+      }
     }
   return doc;
 }
@@ -430,6 +449,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       printf("Writing restraints to: %s.rst\n", output.c_str());
     write_to_file(rst, output + ".rst", cif::Style::NoBlankLines);
   } catch (std::runtime_error& e) {
+    fprintf(stderr, "ERROR: %s\n", e.what());
+    return 1;
+  } catch (std::out_of_range& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }
