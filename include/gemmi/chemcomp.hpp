@@ -215,30 +215,6 @@ ChemComp make_chemcomp_from_cif(const std::string& name, cif::Document doc) {
   return cc;
 }
 
-/*
-inline std::pair<Vec3, double> find_best_plane(std::vector<Position>& pp) {
-  Vec3 sum;
-  for (const Position& p : pp)
-    sum += p;
-  double inv_n = 1.0 / pp.size();
-  Vec3 mean(inv_n * sum.x, inv_n * sum.y, inv_n * sum.z);
-  Matrix33 m(0, 0, 0, 0, 0, 0, 0, 0, 0);
-  for (Position& p : pp) {
-    p -= mean;
-    m[0][0] += p.x * p.x;
-    m[0][1] += p.x * p.y;
-    m[0][2] += p.x * p.z;
-    m[1][1] += p.y * p.y;
-    m[1][2] += p.y * p.z;
-    m[2][2] += p.z * p.z;
-  }
-  m[1][0] = m[0][1];
-  m[2][0] = m[0][2];
-  m[2][1] = m[1][2];
-  double eig = m.smallest_eigenvalue();
-}
-*/
-
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

@@ -51,10 +51,23 @@ TEST_CASE("Transform::combine") {
 }
 
 TEST_CASE("Matrix33::smallest_eigenvalue") {
-  gemmi::Matrix33 m1(3, 2, 4, 2, 0, 2, 4, 2, 3);
-  CHECK_EQ(m1.smallest_eigenvalue(), doctest::Approx(-1));
+  auto ev = gemmi::Matrix33(3, 2, 4, 2, 0, 2, 4, 2, 3).calculate_eigenvalues();
+  CHECK_EQ(ev[0], doctest::Approx(8));
+  CHECK_EQ(ev[1], doctest::Approx(-1));
+  CHECK_EQ(ev[2], doctest::Approx(-1));
   gemmi::Matrix33 m2(3, 1, -1, 1, 3, -1, -1, -1, 5);
-  CHECK_EQ(m2.smallest_eigenvalue(), doctest::Approx(2));
+  auto ev2 = m2.calculate_eigenvalues();
+  CHECK_EQ(ev2[0], doctest::Approx(6));
+  CHECK_EQ(ev2[1], doctest::Approx(3));
+  CHECK_EQ(ev2[2], doctest::Approx(2));
+  gemmi::Vec3 evec0 = m2.calculate_eigenvector(ev2[0]);
+  CHECK_EQ(evec0.x, doctest::Approx(-std::sqrt(1./6)));
+  CHECK_EQ(evec0.y, doctest::Approx(-std::sqrt(1./6)));
+  CHECK_EQ(evec0.z, doctest::Approx(std::sqrt(4./6)));
+  gemmi::Vec3 evec2 = m2.calculate_eigenvector(ev2[2]);
+  CHECK_EQ(evec2.length_sq(), doctest::Approx(1.0));
+  CHECK_EQ(evec2.y, doctest::Approx(-evec2.x));
+  CHECK_EQ(evec2.z, doctest::Approx(0));
 }
 
 // vim:sw=2:ts=2:et:path^=../include,../third_party

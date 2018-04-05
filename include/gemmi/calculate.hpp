@@ -83,6 +83,36 @@ inline std::array<double, 2> calculate_phi_psi(const Residue* prev,
   return phi_psi;
 }
 
+inline
+std::array<double, 4> find_best_plane(const std::vector<const Atom*>& atoms) {
+  Vec3 mean;
+  for (const Atom* atom : atoms)
+    mean += atom->pos;
+  mean /= atoms.size();
+  Matrix33 m(0, 0, 0, 0, 0, 0, 0, 0, 0);
+  for (const Atom* atom : atoms) {
+    Vec3 p = Vec3(atom->pos) - mean;
+    m[0][0] += p.x * p.x;
+    m[0][1] += p.x * p.y;
+    m[0][2] += p.x * p.z;
+    m[1][1] += p.y * p.y;
+    m[1][2] += p.y * p.z;
+    m[2][2] += p.z * p.z;
+  }
+  m[1][0] = m[0][1];
+  m[2][0] = m[0][2];
+  m[2][1] = m[1][2];
+  auto eig = m.calculate_eigenvalues();
+  double smallest = eig[0];
+  for (double d : {eig[1], eig[2]})
+    if (fabs(d) < fabs(smallest))
+      smallest = d;
+  Vec3 eigvec = m.calculate_eigenvector(smallest);
+  if (eigvec.x < 0)
+    eigvec *= -1;
+  return {{eigvec.x, eigvec.y, eigvec.z, -eigvec.dot(mean)}};
+}
+
 
 } // namespace gemmi
 #endif

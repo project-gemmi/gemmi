@@ -6,6 +6,7 @@
 #define GEMMI_UNITCELL_HPP_
 
 #include <cmath>      // for cos, sin, sqrt, floor
+#include <array>
 #include "util.hpp"
 
 namespace gemmi {
@@ -30,8 +31,12 @@ struct Vec3 {
 
   Vec3 operator-(const Vec3& o) const { return {x-o.x, y-o.y, z-o.z}; }
   Vec3 operator+(const Vec3& o) const { return {x+o.x, y+o.y, z+o.z}; }
+  Vec3 operator*(double d) const { return {x*d, y*d, z*d}; }
+  Vec3 operator/(double d) const { return *this * (1.0/d); }
   Vec3& operator-=(const Vec3& o) { *this = *this - o; return *this; }
   Vec3& operator+=(const Vec3& o) { *this = *this + o; return *this; }
+  Vec3& operator*=(double d) { *this = *this * d; return *this; }
+  Vec3& operator/=(double d) { return operator*=(1.0/d); }
 
   Vec3 negated() const { return {-x, -y, -z}; }
   double dot(const Vec3& o) const { return x*o.x + y*o.y + z*o.z; }
@@ -167,12 +172,12 @@ struct Matrix33 {
            a[1][0] == 0 && a[1][1] == 1 && a[1][2] == 0 &&
            a[2][0] == 0 && a[2][1] == 0 && a[2][2] == 1;
   }
-  // calculate the smallest eigenvalue for symmetric matrix
-  // based on https://en.wikipedia.org/wiki/Eigenvalue_algorithm
-  double smallest_eigenvalue() const {
+  // Calculate eigenvalues of **symmetric** matrix.
+  // Based on https://en.wikipedia.org/wiki/Eigenvalue_algorithm
+  std::array<double, 3> calculate_eigenvalues() const {
     double p1 = a[0][1] * a[0][1] + a[0][2] * a[0][2] + a[1][2] * a[1][2];
 		if (p1 == 0)
-      return std::min(a[0][0], std::min(a[1][1], a[2][2]));
+      return {{a[0][0], a[1][1], a[2][2]}};
     double q = (1./3.) * (a[0][0] + a[1][1] + a[2][2]);
     Matrix33 b(a[0][0] - q, a[0][1], a[0][2],
                a[1][0], a[1][1] - q, a[1][2],
@@ -181,11 +186,35 @@ struct Matrix33 {
                 + 2 * p1;
     double p = std::sqrt((1./6.) * p2);
     double r = b.determinant() / ((1./3.) * p2 * p);
+    double phi = 0;
     if (r <= -1)
-      return q - 2 * p;
-    if (r >= 1)
-      return q - p;
-    return q + 2 * p * std::cos((1./3.) * (std::acos(r) + 2 * pi()));
+      phi = (1./3.) * pi();
+    else if (r < 1)
+      phi = (1./3.) * std::acos(r);
+    double eig1 = q + 2 * p * std::cos(phi);
+    double eig3 = q + 2 * p * std::cos(phi + 2./3.*pi());
+    return {{eig1, 3 * q - eig1 - eig3, eig3}};
+  }
+
+  // Assumes symmetric matrix and one of the eigenvalue calculate above.
+  // May not work if eigenvalues are not distinct.
+  Vec3 calculate_eigenvector(double eigenvalue) const {
+    Vec3 r0(a[0][0] - eigenvalue, a[0][1], a[0][2]);
+    Vec3 r1(a[1][0], a[1][1] - eigenvalue, a[1][2]);
+    Vec3 r2(a[2][0], a[2][1], a[2][2] - eigenvalue);
+    Vec3 cr[3] = {r0.cross(r1), r0.cross(r2), r1.cross(r2)};
+    int idx = 0;
+    double lensq = 0;
+    for (int i = 0; i < 3; ++i) {
+      double tmp = cr[i].length_sq();
+      if (tmp > lensq) {
+        idx = i;
+        lensq = tmp;
+      }
+    }
+    if (lensq == 0)
+      return Vec3(0, 0, 1); // an arbitrary choice for the special case
+    return cr[idx] / std::sqrt(lensq);
   }
 };
 
