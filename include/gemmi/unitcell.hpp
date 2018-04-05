@@ -10,6 +10,8 @@
 
 namespace gemmi {
 
+constexpr double pi() { return 3.1415926535897932384626433832795029; }
+
 struct Vec3 {
   double x, y, z;
 
@@ -28,6 +30,8 @@ struct Vec3 {
 
   Vec3 operator-(const Vec3& o) const { return {x-o.x, y-o.y, z-o.z}; }
   Vec3 operator+(const Vec3& o) const { return {x+o.x, y+o.y, z+o.z}; }
+  Vec3& operator-=(const Vec3& o) { *this = *this - o; return *this; }
+  Vec3& operator+=(const Vec3& o) { *this = *this + o; return *this; }
 
   Vec3 negated() const { return {-x, -y, -z}; }
   double dot(const Vec3& o) const { return x*o.x + y*o.y + z*o.z; }
@@ -163,6 +167,26 @@ struct Matrix33 {
            a[1][0] == 0 && a[1][1] == 1 && a[1][2] == 0 &&
            a[2][0] == 0 && a[2][1] == 0 && a[2][2] == 1;
   }
+  // calculate the smallest eigenvalue for symmetric matrix
+  // based on https://en.wikipedia.org/wiki/Eigenvalue_algorithm
+  double smallest_eigenvalue() const {
+    double p1 = a[0][1] * a[0][1] + a[0][2] * a[0][2] + a[1][2] * a[1][2];
+		if (p1 == 0)
+      return std::min(a[0][0], std::min(a[1][1], a[2][2]));
+    double q = (1./3.) * (a[0][0] + a[1][1] + a[2][2]);
+    Matrix33 b(a[0][0] - q, a[0][1], a[0][2],
+               a[1][0], a[1][1] - q, a[1][2],
+               a[2][0], a[2][1], a[2][2] - q);
+    double p2 = b[0][0] * b[0][0] + b[1][1] * b[1][1] + b[2][2] * b[2][2]
+                + 2 * p1;
+    double p = std::sqrt((1./6.) * p2);
+    double r = b.determinant() / ((1./3.) * p2 * p);
+    if (r <= -1)
+      return q - 2 * p;
+    if (r >= 1)
+      return q - p;
+    return q + 2 * p * std::cos((1./3.) * (std::acos(r) + 2 * pi()));
+  }
 };
 
 struct Transform {
@@ -218,7 +242,7 @@ struct UnitCell {
   bool is_crystal() const { return frac.mat[0][0] != 1.0; }
 
   void calculate_properties() {
-    constexpr double deg2rad = 3.1415926535897932384626433832795029 / 180.0;
+    constexpr double deg2rad = pi() / 180.0;
     // ensure exact values for right angles
     double cos_alpha = alpha == 90. ? 0. : std::cos(deg2rad * alpha);
     double cos_beta  = beta  == 90. ? 0. : std::cos(deg2rad * beta);

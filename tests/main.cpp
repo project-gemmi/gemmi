@@ -50,4 +50,11 @@ TEST_CASE("Transform::combine") {
     CHECK_EQ(result1.at(i), doctest::Approx(result2.at(i)));
 }
 
+TEST_CASE("Matrix33::smallest_eigenvalue") {
+  gemmi::Matrix33 m1(3, 2, 4, 2, 0, 2, 4, 2, 3);
+  CHECK_EQ(m1.smallest_eigenvalue(), doctest::Approx(-1));
+  gemmi::Matrix33 m2(3, 1, -1, 1, 3, -1, -1, -1, 5);
+  CHECK_EQ(m2.smallest_eigenvalue(), doctest::Approx(2));
+}
+
 // vim:sw=2:ts=2:et:path^=../include,../third_party
