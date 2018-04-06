@@ -6,9 +6,7 @@
 #define GEMMI_MODEL_HPP_
 
 #include <algorithm>  // for find_if, count_if
-#include <cmath>      // for NAN
 #include <cstdlib>    // for strtol
-#include <cstring>    // for size_t
 #include <iterator>   // for back_inserter
 #include <map>        // for map
 #include <stdexcept>  // for out_of_range
@@ -62,11 +60,6 @@ T& find_or_add(std::vector<T>& vec, const std::string& name) {
 
 } // namespace impl
 
-
-struct Structure;
-struct Model;
-struct Chain;
-struct Residue;
 
 // File format with macromolecular model.
 enum class CoorFormat { Unknown, Pdb, Cif, Json };

@@ -3,10 +3,11 @@
 #include "doctest.h"
 
 #include <cstdlib>  // for rand
-#include <gemmi/unitcell.hpp>
+#include <gemmi/math.hpp>
 #include <linalg.h>
 
 static double draw() { return 10.0 * std::rand() / RAND_MAX - 5; }
+
 static gemmi::Transform random_transform() {
   gemmi::Transform a;
   for (int i = 0; i < 3; ++i) {

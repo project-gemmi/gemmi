@@ -5,7 +5,6 @@
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/sprintf.hpp"
-#include "gemmi/calculate.hpp"  // for count_atom_sites
 #include "gemmi/modify.hpp"     // for remove_hydrogens, ...
 
 #include <cstring>

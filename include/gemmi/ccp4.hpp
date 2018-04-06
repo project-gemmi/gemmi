@@ -10,10 +10,10 @@
 #include <cstdint>   // for uint16_t, uint32_t
 #include <cstdio>    // for FILE, fread
 #include <cstring>   // for memcpy
+#include <array>
 #include <string>
 #include <typeinfo>  // for typeid
 #include <vector>
-#include "unitcell.hpp"
 #include "symmetry.hpp"
 #include "util.hpp"  // for fail, file_open
 #include "grid.hpp"

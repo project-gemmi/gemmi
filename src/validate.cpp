@@ -3,9 +3,7 @@
 #include "gemmi/cif.hpp"
 #include "gemmi/gz.hpp"
 #include "gemmi/ddl.hpp"
-#include <cstring>
 #include <cstdio>
-#include <map>
 #include <stdexcept>
 #include <string>
 #include <iostream>

@@ -10,10 +10,6 @@
 
 namespace gemmi {
 
-inline double deg(double angle) {
- return angle * (180.0 / 3.14159265358979323846264338327950288);
-}
-
 template<class T> size_t count_atom_sites(const T& obj) {
   size_t sum = 0;
   for (const auto& child : obj.children())
@@ -65,6 +61,11 @@ inline double calculate_dihedral_from_atoms(const Atom* a, const Atom* b,
 inline double calculate_omega(const Residue& res, const Residue& next) {
   return calculate_dihedral_from_atoms(res.get_ca(), res.get_c(),
                                        next.get_n(), next.get_ca());
+}
+
+inline double calculate_chiral_volume(const Position& actr, const Position& a1,
+                                      const Position& a2, const Position& a3) {
+  return (a1 - actr).dot((a2 - actr).cross(a3 - actr));
 }
 
 inline std::array<double, 2> calculate_phi_psi(const Residue* prev,

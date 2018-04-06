@@ -3,9 +3,7 @@
 #include "gemmi/ccp4.hpp"
 #include "gemmi/util.hpp"  // for trim_str
 #include "gemmi/symmetry.hpp"
-#include "input.h"
 #include <cmath>     // for floor
-#include <cstdlib>   // for strtod
 #include <cstdio>    // for fprintf
 #include <algorithm> // for nth_element, count_if
 #define USE_UNICODE

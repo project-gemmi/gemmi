@@ -6,7 +6,6 @@
 #ifndef GEMMI_JSON_HPP_
 #define GEMMI_JSON_HPP_
 #include <algorithm>  // for move
-#include <cassert>
 #include <cstdio>     // for FILE
 #include <memory>     // for unique_ptr
 #include <string>

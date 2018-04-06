@@ -5,9 +5,6 @@
 #ifndef GEMMI_ELEM_HPP_
 #define GEMMI_ELEM_HPP_
 
-#include <algorithm> // for find
-#include <cstdint>   // for uint16_t
-#include <iterator>  // begin, end
 #include <string>
 
 namespace gemmi {

@@ -12,7 +12,7 @@
 #include "cifdoc.hpp"
 #include "elem.hpp"  // for Element
 #include "numb.hpp"  // for as_number
-#include "unitcell.hpp"  // for Matrix33
+#include "util.hpp"  // for istarts_with
 
 namespace gemmi {
 
@@ -125,11 +125,6 @@ struct ChemComp {
     return mult * std::sqrt(x + y);
   }
 };
-
-inline double calculate_chiral_volume(const Position& actr, const Position& a1,
-                                      const Position& a2, const Position& a3) {
-  return (a1 - actr).dot((a2 - actr).cross(a3 - actr));
-}
 
 inline ChemComp::BondType bond_type_from_string(const std::string& s) {
   if (istarts_with(s, "sing"))

@@ -8,7 +8,6 @@
 #include "util.hpp"  // for starts_with, to_lower, fail
 #include <algorithm> // for move, find_if, all_of, min
 #include <array>
-#include <cassert>
 #include <cstring>   // for memchr
 #include <initializer_list>
 #include <iosfwd>    // for size_t, ptrdiff_t

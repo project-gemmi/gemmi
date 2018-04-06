@@ -8,7 +8,6 @@
 
 #include <algorithm>  // for find
 #include <cmath>      // for INFINITY
-#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>    // for pair

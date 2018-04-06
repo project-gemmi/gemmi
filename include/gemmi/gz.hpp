@@ -7,7 +7,6 @@
 #include "util.hpp"  // ends_with, MaybeStdin
 #include <cstdio>    // fseek, ftell, fread
 #include <cstdlib>   // getenv
-#include <cstring>   // strlen
 #include <memory>
 #include <string>
 #include <zlib.h>
