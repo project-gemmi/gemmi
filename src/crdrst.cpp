@@ -39,24 +39,31 @@ static const option::Descriptor Usage[] = {
 struct MonLib {
   cif::Document mon_lib_list;
   std::map<std::string, gemmi::ChemComp> monomers;
+  std::map<std::string, gemmi::ChemLink> links;
+
+  const gemmi::ChemLink* find_link(const std::string& name) const {
+    auto link = links.find(name);
+    return link != links.end() ? &link->second : nullptr;
+  }
 };
 
 inline MonLib read_monomers(std::string monomer_dir,
                             const std::set<std::string>& resnames) {
+  MonLib monlib;
   assert(!monomer_dir.empty());
   if (monomer_dir.back() != '/' && monomer_dir.back() != '\\')
     monomer_dir += '/';
-  cif::Document doc = cif_read_any(monomer_dir + "list/mon_lib_list.cif");
-  std::map<std::string, gemmi::ChemComp> monomers;
+  monlib.mon_lib_list = cif_read_any(monomer_dir + "list/mon_lib_list.cif");
   for (const std::string& name : resnames) {
     std::string path = monomer_dir;
     path += std::tolower(name[0]);
     path += '/';
     path += name + ".cif";
-    monomers.emplace(name,
-                     gemmi::make_chemcomp_from_cif(name, cif_read_any(path)));
+    auto cc = gemmi::make_chemcomp_from_cif(name, cif_read_any(path));
+    monlib.monomers.emplace(name, cc);
   }
-  return {doc, monomers};
+  monlib.links = gemmi::read_chemlinks(monlib.mon_lib_list);
+  return monlib;
 }
 
 static double sq(double x) { return x * x; }
@@ -277,18 +284,6 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib) {
   return crd;
 }
 
-static std::string bond_type_to_string(Restraints::Bond::Type btype) {
-  switch (btype) {
-    case Restraints::Bond::Single: return "single";
-    case Restraints::Bond::Double: return "double";
-    case Restraints::Bond::Triple: return "triple";
-    case Restraints::Bond::Aromatic: return "aromatic";
-    case Restraints::Bond::Deloc: return "deloc";
-    case Restraints::Bond::Metal: return "metal";
-    default: return "???";
-  }
-}
-
 static std::string chirality_to_string(Restraints::Chirality::Type ctype) {
   switch (ctype) {
     case Restraints::Chirality::Positive: return "positive";
@@ -298,15 +293,17 @@ static std::string chirality_to_string(Restraints::Chirality::Type ctype) {
   }
 }
 
-static void add_restraints(const Restraints& rt, const gemmi::Residue& res,
-                           cif::Loop& restr_loop, int (&counters)[5]) {
+static
+void add_restraints(const Restraints& rt,
+                    const gemmi::Residue& res, const gemmi::Residue* res2,
+                    cif::Loop& restr_loop, int (&counters)[5]) {
   //using gemmi::to_str;
   const auto& to_str = gemmi::to_str_prec<3>; // to make comparisons easier
   const auto& to_str3 = gemmi::to_str_prec<3>;
 
   for (const Restraints::Bond& bond : rt.bonds)
-    if (const gemmi::Atom* at1 = res.find_atom(bond.id1.atom))
-      if (const gemmi::Atom* at2 = res.find_atom(bond.id2.atom)) {
+    if (const gemmi::Atom* at1 = bond.id1.get_from(res, res2))
+      if (const gemmi::Atom* at2 = bond.id2.get_from(res, res2)) {
         std::string obs = to_str3(at1->pos.dist(at2->pos));
         obs += " # " + at1->name + " " + at2->name;
         restr_loop.add_row({"BOND", std::to_string(++counters[0]),
@@ -317,9 +314,9 @@ static void add_restraints(const Restraints& rt, const gemmi::Residue& res,
                             to_str(bond.value), to_str(bond.esd), obs});
       }
   for (const Restraints::Angle& angle : rt.angles)
-    if (const gemmi::Atom* at1 = res.find_atom(angle.id1.atom))
-      if (const gemmi::Atom* at2 = res.find_atom(angle.id2.atom))
-        if (const gemmi::Atom* at3 = res.find_atom(angle.id3.atom)) {
+    if (const gemmi::Atom* at1 = angle.id1.get_from(res, res2))
+      if (const gemmi::Atom* at2 = angle.id2.get_from(res, res2))
+        if (const gemmi::Atom* at3 = angle.id3.get_from(res, res2)) {
           double a = gemmi::calculate_angle(at1->pos, at2->pos, at3->pos);
           std::string obs = to_str3(gemmi::deg(a));
           obs += " # " + at1->name + " " + at2->name + " " + at3->name;
@@ -332,10 +329,10 @@ static void add_restraints(const Restraints& rt, const gemmi::Residue& res,
                               to_str(angle.value), to_str(angle.esd), obs});
       }
   for (const Restraints::Torsion& tor : rt.torsions)
-    if (const gemmi::Atom* at1 = res.find_atom(tor.id1.atom))
-      if (const gemmi::Atom* at2 = res.find_atom(tor.id2.atom))
-        if (const gemmi::Atom* at3 = res.find_atom(tor.id3.atom))
-          if (const gemmi::Atom* at4 = res.find_atom(tor.id4.atom)) {
+    if (const gemmi::Atom* at1 = tor.id1.get_from(res, res2))
+      if (const gemmi::Atom* at2 = tor.id2.get_from(res, res2))
+        if (const gemmi::Atom* at3 = tor.id3.get_from(res, res2))
+          if (const gemmi::Atom* at4 = tor.id4.get_from(res, res2)) {
             double d = gemmi::calculate_dihedral(at1->pos, at2->pos,
                                                  at3->pos, at4->pos);
             std::string obs = to_str3(gemmi::deg(d));
@@ -350,10 +347,10 @@ static void add_restraints(const Restraints& rt, const gemmi::Residue& res,
                                 to_str(tor.value), to_str(tor.esd), obs});
       }
   for (const Restraints::Chirality& chir : rt.chirs)
-    if (const gemmi::Atom* at1 = res.find_atom(chir.id_ctr.atom))
-      if (const gemmi::Atom* at2 = res.find_atom(chir.id1.atom))
-        if (const gemmi::Atom* at3 = res.find_atom(chir.id2.atom))
-          if (const gemmi::Atom* at4 = res.find_atom(chir.id3.atom)) {
+    if (const gemmi::Atom* at1 = chir.id_ctr.get_from(res, res2))
+      if (const gemmi::Atom* at2 = chir.id1.get_from(res, res2))
+        if (const gemmi::Atom* at3 = chir.id2.get_from(res, res2))
+          if (const gemmi::Atom* at4 = chir.id3.get_from(res, res2)) {
             double vol = rt.chiral_abs_volume(chir);
             double obs_vol = gemmi::calculate_chiral_volume(
                                   at1->pos, at2->pos, at3->pos, at4->pos);
@@ -372,7 +369,7 @@ static void add_restraints(const Restraints& rt, const gemmi::Residue& res,
     const Restraints::Plane& plane = item.second;
     std::vector<const gemmi::Atom*> atoms;
     for (const Restraints::AtomId& id : plane.ids)
-      if (const gemmi::Atom* atom = res.find_atom(id.atom))
+      if (const gemmi::Atom* atom = id.get_from(res, res2))
         atoms.push_back(atom);
     if (atoms.size() < 4)
       continue;
@@ -398,8 +395,22 @@ static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
               "atom_id_1", "atom_id_2", "atom_id_3", "atom_id_4",
               "value", "dev", "val_obs"});
   int counters[5] = {0, 0, 0, 0, 0};
-  for (const gemmi::Chain& chain : st.models[0].chains)
+  for (const gemmi::Chain& chain : st.models[0].chains) {
+    const gemmi::Entity* ent = st.get_entity_of(chain);
+    // For now it won't work with microheterogeneity.
+    const gemmi::Residue* prev = nullptr;
     for (const gemmi::Residue& res : chain.residues) {
+      if (ent && ent->entity_type == gemmi::EntityType::Polymer && prev) {
+        std::string link_name = get_link_type(res, prev, ent->polymer_type);
+        // comments are added relying on how cif writing works
+        std::string comment = "# link " + link_name + " " +
+                               prev->seq_id() + " " + prev->name + " - " +
+                               res.seq_id() + " " + res.name;
+        restr_loop.add_row({comment + "\nLINK", ".", cif::quote(link_name),
+                            ".", ".", ".", ".", ".", ".", ".", "."});
+        if (const gemmi::ChemLink* link = monlib.find_link(link_name))
+          add_restraints(link->rt, *prev, &res, restr_loop, counters);
+      }
       gemmi::ChemComp &cc = monlib.monomers.at(res.name);
       // comments are added relying on how cif writing works
       std::string res_info = "# monomer " + chain.name + " " +
@@ -407,8 +418,10 @@ static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
       restr_loop.add_row({res_info + "\nMONO", ".",
                           cif::quote(cc.group.substr(0, 8)),
                           ".", ".", ".", ".", ".", ".", ".", "."});
-      add_restraints(cc.rt, res, restr_loop, counters);
+      add_restraints(cc.rt, res, nullptr, restr_loop, counters);
+      prev = &res;
     }
+  }
   return doc;
 }
 

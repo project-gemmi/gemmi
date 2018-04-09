@@ -7,12 +7,14 @@
 #define GEMMI_CHEMCOMP_HPP_
 
 #include <cassert>
+#include <map>
 #include <string>
 #include <vector>
 #include "cifdoc.hpp"
 #include "elem.hpp"  // for Element
 #include "numb.hpp"  // for as_number
 #include "util.hpp"  // for istarts_with
+#include "model.hpp" // for Residue, Atom
 
 namespace gemmi {
 
@@ -25,10 +27,18 @@ struct Restraints {
       return comp == o.comp && atom == o.atom;
     }
     bool operator!=(const AtomId& o) const { return !operator==(o); }
+
+    const Atom* get_from(const Residue& res, const Residue* res2) const {
+      if (comp == 1 || res2 == nullptr)
+        return res.find_atom(atom);
+      else if (comp == 2)
+        return res2->find_atom(atom);
+      throw std::out_of_range("Unexpected component ID");
+    }
   };
 
   struct Bond {
-    enum Type { Single, Double, Triple, Aromatic, Deloc, Metal };
+    enum Type { Unspec, Single, Double, Triple, Aromatic, Deloc, Metal };
     AtomId id1, id2;
     Type type;
     bool aromatic;
@@ -162,13 +172,25 @@ inline Restraints::Bond::Type bond_type_from_string(const std::string& s) {
     return Restraints::Bond::Triple;
   if (istarts_with(s, "arom"))
     return Restraints::Bond::Aromatic;
-  if (istarts_with(s, "delo"))
-    return Restraints::Bond::Deloc;
   if (istarts_with(s, "metal"))
     return Restraints::Bond::Metal;
-  if (s == "1.5")
+  if (istarts_with(s, "delo") || s == "1.5")
     return Restraints::Bond::Deloc;
+  if (cif::is_null(s))
+    return Restraints::Bond::Unspec;
   throw std::out_of_range("Unexpected bond type: " + s);
+}
+
+inline std::string bond_type_to_string(Restraints::Bond::Type btype) {
+  switch (btype) {
+    case Restraints::Bond::Unspec: return ".";
+    case Restraints::Bond::Single: return "single";
+    case Restraints::Bond::Double: return "double";
+    case Restraints::Bond::Triple: return "triple";
+    case Restraints::Bond::Aromatic: return "aromatic";
+    case Restraints::Bond::Deloc: return "deloc";
+    case Restraints::Bond::Metal: return "metal";
+  }
 }
 
 // it doesn't handle crossN types from the monomer library
@@ -181,16 +203,17 @@ inline Restraints::Chirality::Type chirality_from_string(const std::string& s) {
   }
 }
 
-inline
-ChemComp make_chemcomp_from_cif(const std::string& name, cif::Document doc) {
+inline ChemComp make_chemcomp_from_cif(const std::string& name,
+                                       const cif::Document& doc) {
   ChemComp cc;
   cc.name = name;
-  cif::Block* block = doc.find_block("comp_" + name);
-  if (!block)
-    block = doc.find_block(name);
-  if (!block)
+  const cif::Block* block_ = doc.find_block("comp_" + name);
+  if (!block_)
+    block_ = doc.find_block(name);
+  if (!block_)
     throw std::runtime_error("data_comp_" + name + " not in the cif file");
-  cif::Block* aux_block = doc.find_block("comp_list");
+  cif::Block* block = const_cast<cif::Block*>(block_);
+  cif::Block* aux_block = const_cast<cif::Block*>(doc.find_block("comp_list"));
   cif::Column group_col = block->find_values("_chem_comp.group");
   if (!group_col && aux_block)
     group_col = aux_block->find_values("_chem_comp.group");
@@ -238,11 +261,12 @@ ChemComp make_chemcomp_from_cif(const std::string& name, cif::Document doc) {
   return cc;
 }
 
-inline Restraints read_link_restraints(cif::Block& block) {
+inline Restraints read_link_restraints(const cif::Block& block_) {
   auto read_aid = [](cif::Table::Row& row, int n) {
     return Restraints::AtomId{cif::as_int(row[n]), row.str(n+1)};
   };
   Restraints rt;
+  cif::Block& block = const_cast<cif::Block&>(block_);
   for (auto row : block.find("_chem_link_bond.",
                              {"atom_1_comp_id", "atom_id_1",
                               "atom_2_comp_id", "atom_id_2",
@@ -287,6 +311,31 @@ inline Restraints read_link_restraints(cif::Block& block) {
   return rt;
 }
 
+inline std::map<std::string,ChemLink> read_chemlinks(cif::Document& doc) {
+  std::map<std::string, gemmi::ChemLink> links;
+  const cif::Block* list_block = doc.find_block("link_list");
+  if (!list_block)
+    throw std::runtime_error("data_link_list not in the cif file");
+  for (auto row : const_cast<cif::Block*>(list_block)->find("_chem_link.",
+                                 {"id", "name",
+                                  "comp_id_1", "mod_id_1", "group_comp_1",
+                                  "comp_id_2", "mod_id_2", "group_comp_2"})) {
+    ChemLink link;
+    link.id = row.str(0);
+    link.name = row.str(1);
+    for (int i : {0, 1}) {
+      link.comp[i] = row.str(2 + i * 3);
+      link.mod[i] = row.str(3 + i * 3);
+      link.group[i] = row.str(4 + i * 3);
+    }
+    const cif::Block* block = doc.find_block("link_" + link.id);
+    if (!block)
+      throw std::runtime_error("inconsisted data_link_list");
+    link.rt = read_link_restraints(*block);
+    links.emplace(link.id, link);
+  }
+  return links;
+}
 
 } // namespace gemmi
 #endif
