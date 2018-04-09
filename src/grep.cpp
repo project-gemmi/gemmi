@@ -413,6 +413,8 @@ void grep_file(const std::string& path, Parameters& par, int& err_count) {
   par.path = path.c_str();
   par.block_name.clear();
   par.counters.clear();
+  if (par.globbing)
+    par.multi_tags.clear();
   size_t n_multi = par.multi_tags.size();
   par.counters.resize(n_multi == 0 ? 1 : n_multi, 0);
   par.match_column = -1;
@@ -520,13 +522,12 @@ int GEMMI_MAIN(int argc, char **argv) {
         fprintf(stderr, "CIF tags start with _; not a tag: %s\n", opt->arg);
         return 2;
       }
-      params.multi_tags.emplace_back(opt->arg);
-    }
-    for (const std::string& t : params.multi_tags)
-      if (t.find_first_of("?*") != std::string::npos) {
+      if (strchr(opt->arg, '?') || strchr(opt->arg, '*')) {
         fprintf(stderr, "Glob patterns are not supported together with -a.\n");
         return 2;
       }
+      params.multi_tags.emplace_back(opt->arg);
+    }
   } else {
     params.search_tag = tag;
     if (params.search_tag.find_first_of("?*") != std::string::npos)
