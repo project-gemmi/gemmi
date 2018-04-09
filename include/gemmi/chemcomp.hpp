@@ -68,7 +68,7 @@ struct Restraints {
 
   struct Plane {
     std::vector<AtomId> ids;
-    double esd = 0.02;
+    double esd = 0.0;
   };
 
   std::vector<Bond> bonds;
@@ -255,9 +255,12 @@ inline ChemComp make_chemcomp_from_cif(const std::string& name,
                            {1, row.str(1)}, {1, row.str(2)}, {1, row.str(3)},
                            chirality_from_string(row[4])});
   for (auto row : block->find("_chem_comp_plane_atom.",
-                              {"plane_id", "atom_id" /*, "dist_esd"*/}))
-    // at the moment dist_esd is ignored by Refmac and it is assumed 0.02
-    cc.rt.planes[row.str(0)].ids.push_back({1, row.str(1)});
+                              {"plane_id", "atom_id" , "dist_esd"})) {
+    Restraints::Plane& plane = cc.rt.planes[row.str(0)];
+    if (plane.esd == 0.0)
+      plane.esd = cif::as_number(row[2]);
+    plane.ids.push_back({1, row.str(1)});
+  }
   return cc;
 }
 
@@ -305,9 +308,13 @@ inline Restraints read_link_restraints(const cif::Block& block_) {
                         read_aid(row, 4), read_aid(row, 6),
                         chirality_from_string(row[8])});
   for (auto row : block.find("_chem_link_plane.",
-                             {"plane_id", "atom_comp_id", "atom_id"
-                               /*, "dist_esd"*/}))
-    rt.planes[row.str(0)].ids.push_back(read_aid(row, 1));
+                             {"plane_id", "atom_comp_id", "atom_id",
+                              "dist_esd"})) {
+    Restraints::Plane& plane = rt.planes[row.str(0)];
+    if (plane.esd == 0.0)
+      plane.esd = cif::as_number(row[3]);
+    plane.ids.push_back(read_aid(row, 1));
+  }
   return rt;
 }
 
