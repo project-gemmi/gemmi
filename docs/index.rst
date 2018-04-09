@@ -1,3 +1,5 @@
+.. meta::
+   :google-site-verification: LsEfb1rjo2RL8WOSZGigV11Kgyhtk9v1Vb-6GZFnHKo
 
 GEMMI - GEneral MacroMolecular I/O
 ==================================
