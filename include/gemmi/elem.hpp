@@ -23,6 +23,45 @@ enum class El : unsigned char {
   END
 };
 
+// somewhat arbitrary division into metals and non-metals
+inline bool is_metal(El el) {
+  static constexpr bool table[] = {
+    // X     H     He
+    false, false, false,
+    // Li  Be     B      C      N      O      F     Ne
+    true, true, false, false, false, false, false, false,
+    // Na  Mg    Al     Si     P      S      Cl     Ar
+    true, true, true, false, false, false, false, false,
+    // K   Ca    Sc    Ti    V     Cr    Mn    Fe    Co    Ni    Cu    Zn
+    true, true, true, true, true, true, true, true, true, true, true, true,
+    // Ga  Ge    As     Se     Br     Kr
+    true, true, false, false, false, false,
+    // Rb  Sr    Y     Zr    Nb    Mo    Tc    Ru    Rh    Pd    Ag    Cd
+    true, true, true, true, true, true, true, true, true, true, true, true,
+    // In  Sn    Sb    Te      I     Xe
+    true, true, true, false, false, false,
+    // Cs  Ba    La    Ce    Pr    Nd    Pm    Sm    Eu    Gd    Tb    Dy
+    true, true, true, true, true, true, true, true, true, true, true, true,
+    // Ho  Er    Tm    Yb    Lu    Hf    Ta    W     Re    Os    Ir    Pt
+    true, true, true, true, true, true, true, true, true, true, true, true,
+    // Au  Hg    Tl    Pb    Bi    Po    At     Rn
+    true, true, true, true, true, true, false, false,
+    // Fr  Ra    Ac    Th    Pa    U     Np    Pu    Am    Cm    Bk    Cf
+    true, true, true, true, true, true, true, true, true, true, true, true,
+    // Es  Fm    Md    No    Lr    Rf    Db    Sg    Bh    Hs    Mt    Ds
+    true, true, true, true, true, true, true, true, true, true, true, true,
+    // Rg  Cn    Nh    Fl    Mc    Lv    Ts     Og
+    true, true, true, true, true, true, false, false,
+    // D    END
+    false, false
+  };
+  static_assert(table[static_cast<int>(El::D)] == false, "Hmm");
+  static_assert(sizeof(table) / sizeof(table[0]) ==
+                static_cast<int>(El::END) + 1, "Hmm");
+  return table[static_cast<int>(el)];
+}
+
+
 inline double molecular_weight(El el) {
   static constexpr double weights[] = {
     /*X*/ 0.0,

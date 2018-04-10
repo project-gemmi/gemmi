@@ -277,7 +277,8 @@ inline SymmetryImage compare_link_symops(const std::string& record) {
 inline
 void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
   int disulf_count = 0;
-  int link_count = 0;
+  int covale_count = 0;
+  int metalc_count = 0;
   for (const std::string& record : conn_records) {
     if (record[0] == 'S' || record[0] == 's') { // SSBOND
       if (record.length() < 35)
@@ -313,8 +314,15 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       if (record.length() < 57)
         continue;
       Connection c;
-      c.name = "link" + std::to_string(++link_count);
-      c.type = Connection::None;
+      // emulating names used in wwPDB mmCIFs (covaleN and metalcN)
+      if (is_metal(find_element(&record[12])) ||
+          is_metal(find_element(&record[42]))) {
+        c.name = "metalc" + std::to_string(++metalc_count);
+        c.type = Connection::MetalC;
+      } else {
+        c.name = "covale" + std::to_string(++covale_count);
+        c.type = Connection::Covale;
+      }
       for (int i : {0, 1}) {
         const char* t = record.c_str() + 30 * i;
         c.atom[i].chain_name = read_string(t + 20, 2);
