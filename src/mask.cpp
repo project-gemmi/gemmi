@@ -131,23 +131,21 @@ int GEMMI_MAIN(int argc, char **argv) {
         double spac = 1;
         if (p.options[GridSpac])
           spac = std::strtod(p.options[GridSpac].arg, nullptr);
-        mask.grid.set_size_from_max_spacing(spac);
+        mask.grid.set_size_from_spacing(spac, true);
       }
       if (p.options[Verbose]) {
-        std::fprintf(stderr, "Grid: %d x %d x %d\n",
-                     mask.grid.nu, mask.grid.nv, mask.grid.nw);
-        std::fprintf(stderr, "Spacing along axes: %.3f, %.3f, %.3f\n",
-                              st.cell.a / mask.grid.nu,
-                              st.cell.b / mask.grid.nv,
-                              st.cell.c / mask.grid.nw);
-        int np = mask.grid.data.size();
+        const auto& g = mask.grid;
+        std::fprintf(stderr, "Grid: %d x %d x %d\n", g.nu, g.nv, g.nw);
+        std::fprintf(stderr, "Spacing: %.3f, %.3f, %.3f\n",
+                             g.spacing[0], g.spacing[1], g.spacing[2]);
+        int np = g.data.size();
         double vol = st.cell.volume;
         std::fprintf(stderr, "Total points: %d\n", np);
         std::fprintf(stderr, "Unit cell volume: %.1f A^3\n", vol);
         std::fprintf(stderr, "Volume per point: %.3f A^3\n", vol / np);
-        if (mask.grid.space_group) {
-          std::fprintf(stderr, "Spacegroup: %s\n", mask.grid.space_group->hm);
-          int na = mask.grid.space_group->operations().order();
+        if (g.space_group) {
+          std::fprintf(stderr, "Spacegroup: %s\n", g.space_group->hm);
+          int na = g.space_group->operations().order();
           std::fprintf(stderr, "ASU volume: %.1f A^3\n", vol / na);
           std::fprintf(stderr, "Points per ASU: %d\n", np / na);
         } else {
