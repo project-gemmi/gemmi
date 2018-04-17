@@ -138,9 +138,9 @@ add_executable(gemmi-validate EXCLUDE_FROM_ALL src/validate.cpp)
 support_gz(gemmi-validate)
 
 add_executable(gemmi-prog
-               src/input.cpp src/contents.cpp src/convert.cpp src/output.cpp
-               src/grep.cpp src/main.cpp src/map.cpp src/mask.cpp src/sg.cpp
-               src/validate.cpp)
+               src/input.cpp src/contact.cpp src/contents.cpp src/convert.cpp
+               src/output.cpp src/grep.cpp src/main.cpp src/map.cpp
+               src/mask.cpp src/sg.cpp src/validate.cpp)
 support_gz(gemmi-prog)
 target_compile_definitions(gemmi-prog PRIVATE GEMMI_ALL_IN_ONE=1)
 set_target_properties(gemmi-prog PROPERTIES OUTPUT_NAME gemmi)

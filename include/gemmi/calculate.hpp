@@ -114,6 +114,22 @@ std::array<double, 4> find_best_plane(const std::vector<const Atom*>& atoms) {
   return {{eigvec.x, eigvec.y, eigvec.z, -eigvec.dot(mean)}};
 }
 
+inline bool are_connected(const gemmi::Residue& r1, const gemmi::Residue& r2,
+                          gemmi::PolymerType ptype) {
+  using gemmi::PolymerType;
+  if (ptype == PolymerType::PeptideL || ptype == PolymerType::PeptideD) {
+    // similar to has_peptide_bond_to()
+    const gemmi::Atom* a1 = r1.get_c();
+    const gemmi::Atom* a2 = r2.get_n();
+    return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(1.341 * 1.5);
+  }
+  if (ptype == PolymerType::Dna || ptype == PolymerType::Rna) {
+    const gemmi::Atom* a1 = r1.get_o3prim();
+    const gemmi::Atom* a2 = r2.get_p();
+    return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(1.6 * 1.5);
+  }
+  return false;
+}
 
 } // namespace gemmi
 #endif

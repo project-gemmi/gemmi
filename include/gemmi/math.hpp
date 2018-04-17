@@ -17,6 +17,9 @@ constexpr double pi() { return 3.1415926535897932384626433832795029; }
 
 inline double deg(double angle) { return 180.0 / pi() * angle; }
 
+inline float sq(float x) { return x * x; }
+inline double sq(double x) { return x * x; }
+
 inline int iround(double d) { return static_cast<int>(std::round(d)); }
 
 struct Vec3 {
