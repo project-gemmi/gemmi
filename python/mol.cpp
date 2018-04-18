@@ -155,6 +155,7 @@ void add_mol(py::module& m) {
          py::return_value_policy::reference_internal)
     .def("find_or_add_chain", &Model::find_or_add_chain,
          py::arg("name"), py::return_value_policy::reference_internal)
+    .def("remove_chain", &Model::remove_chain, py::arg("name"))
     .def("count_atom_sites", &count_atom_sites<Model>)
     .def("count_occupancies", &count_occupancies<Model>)
     .def("__repr__", [](const Model& self) {

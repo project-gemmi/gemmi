@@ -473,6 +473,17 @@ struct Model {
     return impl::find_or_add(chains, chain_name);
   }
 
+  void remove_chain(const std::string& chain_name) {
+    Chain* chain = find_chain(chain_name);
+    if (!chain) {
+      std::string s = "Chain " + chain_name + " not in the model ([";
+      for (const Chain& c : chains)
+        s += " " + c.name;
+      throw std::invalid_argument(s + " ])");
+    }
+    chains.erase(chains.begin() + (chain - chains.data()));
+  }
+
   ResidueGroup residues(const std::string& auth_chain, int resnum, char icode) {
     ResidueGroup rg;
     for (Chain& chain : chains)
