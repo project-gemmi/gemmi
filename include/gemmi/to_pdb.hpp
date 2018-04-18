@@ -238,19 +238,20 @@ inline void write_header(const Structure& st, std::ostream& os,
   char buf[88];
   { // header line
     const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
-    const char* date =
-      st.get_info("_pdbx_database_status.recvd_initial_deposition_date").c_str();
+    const std::string& date =
+      st.get_info("_pdbx_database_status.recvd_initial_deposition_date");
     std::string pdb_date;
-    if (date && std::strlen(date) == 10) {
+    if (date.size() == 10) {
       unsigned month_idx = 10 * (date[5] - '0') + date[6] - '0' - 1;
-      pdb_date = std::string(date + 8, 2) + "-" +
-                 std::string(months + 3 * std::min(month_idx, 13u), 3) +
-                 "-" + std::string(date + 2, 2);
+      std::string month(months + 3 * std::min(month_idx, 13u), 3);
+      pdb_date = date.substr(8, 2) + "-" + month + "-" + date.substr(2, 2);
     }
-    WRITEU("HEADER    %-40s%-9s   %-18s\n",
-           // "classification" in PDB == _struct_keywords.pdbx_keywords in mmCIF
-           st.get_info("_struct_keywords.pdbx_keywords").c_str(),
-           pdb_date.c_str(), st.get_info("_entry.id").c_str());
+    // "classification" in PDB == _struct_keywords.pdbx_keywords in mmCIF
+    const std::string& keywords = st.get_info("_struct_keywords.pdbx_keywords");
+    const std::string& id = st.get_info("_entry.id");
+    if (!pdb_date.empty() || !keywords.empty() || !id.empty())
+      WRITEU("HEADER    %-40s%-9s   %-18s\n",
+             keywords.c_str(), pdb_date.c_str(), id.c_str());
   }
   write_multiline(os, "TITLE", st.get_info("_struct.title"), 80);
   write_multiline(os, "KEYWDS", st.get_info("_struct_keywords.text"), 79);
