@@ -7,6 +7,7 @@
 
 #include "unitcell.hpp"
 #include "model.hpp"
+#include "subcells.hpp"
 
 namespace gemmi {
 
@@ -46,6 +47,43 @@ std::vector<Connection> find_disulfide_bonds(const Model& model,
       }
     }
   }
+  return ret;
+}
+
+std::vector<Connection> find_disulfide_bonds2(const Structure& st) {
+  const double max_dist = 3.0;
+  SubCells sc(st, 5.0);
+  const Model& model = st.models.at(0);
+  const std::string sg = "SG";
+  std::vector<Connection> ret;
+  for (const Chain& chain : model.chains)
+    for (const Residue& res : chain.residues)
+      for (const Atom& atom : res.atoms)
+        if (atom.element == El::S && atom.name == sg) {
+          auto indices = model.get_indices(&chain, &res, &atom);
+          sc.for_each(atom.pos, atom.altloc, max_dist,
+                      [&](const SubCells::AtomImage& a, float dist_sq) {
+              if (a.element != El::S ||
+                  indices[0] > a.chain_idx ||
+                  (indices[0] == a.chain_idx && indices[1] > a.residue_idx) ||
+                  (indices[0] == a.chain_idx && indices[1] == a.residue_idx &&
+                   dist_sq < 1))
+                return;
+              const Chain& chain2 = model.chains[a.chain_idx];
+              const Residue& res2 = chain2.residues[a.residue_idx];
+              const Atom& atom2 = res2.atoms[a.atom_idx];
+              if (atom2.name != sg)
+                return;
+              Connection c;
+              //c.name = "disulf" + std::to_string(ret.size() + 1);
+              c.type = Connection::Disulf;
+              c.image = a.image_idx == -1 ? SymmetryImage::Same
+                                          : SymmetryImage::Different;
+              c.atom[0] = AtomAddress(chain, res, atom);
+              c.atom[1] = AtomAddress(chain2, res2, atom2);
+              ret.push_back(c);
+          });
+        }
   return ret;
 }
 

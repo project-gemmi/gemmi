@@ -6,6 +6,7 @@
 #define GEMMI_MODEL_HPP_
 
 #include <algorithm>  // for find_if, count_if
+#include <array>
 #include <cstdlib>    // for strtol
 #include <iterator>   // for back_inserter
 #include <map>        // for map
@@ -164,6 +165,10 @@ inline PolymerType polymer_type_from_string(const std::string& t) {
   return PolymerType::Unknown;
 }
 
+inline bool is_same_conformer(char altloc1, char altloc2) {
+  return altloc1 == '\0' || altloc2 == '\0' || altloc1 == altloc2;
+}
+
 struct Atom {
   std::string name;
   char altloc; // 0 if not set
@@ -176,7 +181,7 @@ struct Atom {
   float u11=0, u22=0, u33=0, u12=0, u13=0, u23=0;
 
   bool same_conformer(const Atom& other) const {
-    return altloc == '\0' || other.altloc == '\0' || altloc == other.altloc;
+    return is_same_conformer(altloc, other.altloc);
   }
   // Name as a string left-padded like in the PDB format:
   // the first two characters make the element name.
@@ -513,6 +518,13 @@ struct Model {
 
 
   Atom* find_atom(const AtomAddress& address) { return find_cra(address).atom; }
+
+  std::array<int, 3> get_indices(const Chain* c, const Residue* r,
+                                 const Atom* a) const {
+    return {{ c      ? static_cast<int>(c - chains.data()) : -1,
+              c && r ? static_cast<int>(r - c->residues.data()) : -1,
+              r && a ? static_cast<int>(a - r->atoms.data()) : -1 }};
+  }
 
   std::vector<Chain>& children() { return chains; }
   const std::vector<Chain>& children() const { return chains; }

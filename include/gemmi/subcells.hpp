@@ -16,13 +16,15 @@ struct SubCells {
   struct AtomImage {
     float pos[3];
     char altloc;
+    El element;
     int image_idx;
     int chain_idx;
     int residue_idx;
     int atom_idx;
 
-    AtomImage(const Position& p, char alt, int im, int chain, int res, int atom)
-    : pos{(float)p.x, (float)p.y, (float)p.z}, altloc(alt),
+    AtomImage(const Position& p, char alt, El el, int im,
+              int chain, int res, int atom)
+    : pos{(float)p.x, (float)p.y, (float)p.z}, altloc(alt), element(el),
       image_idx(im), chain_idx(chain), residue_idx(res), atom_idx(atom) {}
   };
 
@@ -43,7 +45,8 @@ struct SubCells {
 
   std::vector<AtomImage*> find(const Position& pos, char alt, float radius) {
     std::vector<AtomImage*> out;
-    for_each(pos, alt, radius, [&out](AtomImage& a) { out.push_back(&a); });
+    for_each(pos, alt, radius,
+             [&out](AtomImage& a, float) { out.push_back(&a); });
     return out;
   }
 };
@@ -64,13 +67,14 @@ inline SubCells::SubCells(const Structure& st, double max_radius) {
       const Residue& res = chain.residues[n_res];
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
         const Atom& atom = res.atoms[n_atom];
-        char al = atom.altloc;
         Fractional frac = st.cell.fractionalize(atom.pos);
-        get_subcell(frac).emplace_back(atom.pos, al, 0, n_ch, n_res, n_atom);
+        get_subcell(frac).emplace_back(atom.pos, atom.altloc, atom.element.elem,
+                                       0, n_ch, n_res, n_atom);
         for (int n_im = 0; n_im != (int) st.cell.images.size(); ++n_im) {
           Fractional ifrac = st.cell.images[n_im].apply(frac).wrap_to_unit();
           Position pos = st.cell.orthogonalize(ifrac);
-          get_subcell(ifrac).emplace_back(pos, al, n_im+1, n_ch, n_res, n_atom);
+          get_subcell(ifrac).emplace_back(pos, atom.altloc, atom.element.elem,
+                                          n_im + 1, n_ch, n_res, n_atom);
         }
       }
     }
@@ -97,12 +101,11 @@ void SubCells::for_each(const Position& pos, char alt, float radius,
                                                              fr.y + dv,
                                                              fr.z + dw));
         for (AtomImage& a : grid.data[idx]) {
-          float dx = (float) p.x - a.pos[0];
-          float dy = (float) p.y - a.pos[1];
-          float dz = (float) p.z - a.pos[2];
-          if (sq(dx) + sq(dy) + sq(dz) < sq(radius) &&
-              (alt == 0 || a.altloc == 0 || alt == a.altloc))
-            func(a);
+          float dist_sq = (float) p.x - a.pos[0] +
+                          (float) p.y - a.pos[1] +
+                          (float) p.z - a.pos[2];
+          if (dist_sq < sq(radius) && is_same_conformer(alt, a.altloc))
+            func(a, dist_sq);
         }
       }
     }

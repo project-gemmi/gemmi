@@ -8,6 +8,7 @@
 #include <gemmi/mmcif.hpp>
 #include <gemmi/conn.hpp>
 #include <gemmi/dirwalk.hpp> // for CifWalk
+#include <gemmi/mmread.hpp> // for read_structure
 #include <cstdio>
 #include <map>
 
@@ -104,6 +105,18 @@ static void check_struct_conn(cif::Block& block) {
   }
 }
 
+static void check_disulf(const char* start) {
+  for (const char* path : CoorFileWalk(start)) {
+    Structure st = read_structure(MaybeGzipped(path));
+    if (!st.cell.is_crystal())
+      continue;
+    const Model& model = st.models.at(0);
+    std::vector<Connection> c1 = find_disulfide_bonds(model, st.cell);
+    std::vector<Connection> c2 = find_disulfide_bonds2(st);
+    printf("%10s  %zu %zu\n", st.name.c_str(), c1.size(), c2.size());
+  }
+}
+
 int main(int argc, char* argv[]) {
   if (argc == 3 && argv[1] == std::string("-v"))
     verbose = true;
@@ -111,6 +124,8 @@ int main(int argc, char* argv[]) {
     return 1;
   int counter = 0;
   try {
+    check_disulf(argv[argc-1]);
+    return 0;
     for (const char* path : CifWalk(argv[argc-1])) {
       cif::Document doc = cif::read(MaybeGzipped(path));
       check_struct_conn(doc.sole_block());
