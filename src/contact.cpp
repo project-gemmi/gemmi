@@ -30,7 +30,7 @@ static const option::Descriptor Usage[] = {
 };
 
 static void print_contacts(const Structure& st, float max_dist, bool verbose) {
-  SubCells sc(st, 5);
+  SubCells sc(st, std::max(5.0f, max_dist));
 
   if (verbose) {
     printf(" Cell grid: %d x %d x %d\n", sc.grid.nu, sc.grid.nv, sc.grid.nw);
@@ -55,7 +55,8 @@ static void print_contacts(const Structure& st, float max_dist, bool verbose) {
       const Residue& res = chain.residues[n_res];
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
         const Atom& atom = res.atoms[n_atom];
-        sc.for_each(atom.pos, max_dist, [&](const SubCells::AtomImage& a) {
+        sc.for_each(atom.pos, atom.altloc, max_dist,
+                    [&](const SubCells::AtomImage& a) {
             if (a.image_idx == 0 && a.chain_idx == n_ch &&
                 (a.residue_idx == n_res ||
                  are_connected(res, chain.residues[a.residue_idx], pt) ||

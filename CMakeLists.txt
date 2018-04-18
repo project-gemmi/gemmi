@@ -16,7 +16,7 @@ else()
 endif()
 
 if (DEFINED ENV{EXTRA_WFLAGS})
-    set(EXTRA_WARNINGS ON)
+  set(EXTRA_WARNINGS ON CACHE BOOL "Set extra warning flags" FORCE)
 endif()
 
 set(CMAKE_CXX_STANDARD 11)
