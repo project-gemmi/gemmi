@@ -111,6 +111,10 @@ void add_mol(py::module& m) {
     .def("__getitem__", [](Structure& st, int index) -> Model& {
         return st.models.at(index >= 0 ? index : index + st.models.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("__getitem__", [](Structure& st, const std::string& name) -> Model& {
+        return *impl::find_iter(st.models, name);
+    }, py::arg("name"), py::return_value_policy::reference_internal)
+    .def("__delitem__", &Structure::remove_model, py::arg("name"))
     .def("find_or_add_model", &Structure::find_or_add_model,
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("make_pdb_headers", &make_pdb_headers)
@@ -142,10 +146,7 @@ void add_mol(py::module& m) {
         return py::make_iterator(self.chains);
     }, py::keep_alive<0, 1>())
     .def("__getitem__", [](Model& self, const std::string& name) -> Chain& {
-        Chain* ch = self.find_chain(name);
-        if (!ch)
-          throw py::key_error("chain '" + name + "' does not exist");
-        return *ch;
+        return *impl::find_iter(self.chains, name);
     }, py::arg("name"), py::return_value_policy::reference_internal)
     .def("residues", &Model::residues,
          py::arg("auth_chain"), py::arg("resnum"), py::arg("icode"),
@@ -220,11 +221,10 @@ void add_mol(py::module& m) {
     .def("__iter__", [](const Residue& res) {
         return py::make_iterator(res.atoms);
     }, py::keep_alive<0, 1>())
+    // TODO: should it return a list of items with this name
+    //       or should altloc be specified as part of the name ('CA.A')
     .def("__getitem__", [](Residue& res, const std::string& name) -> Atom& {
-        Atom* atom = res.find_atom(name);
-        if (!atom)
-          throw py::key_error("residue has no atom '" + name + "'");
-        return *atom;
+        return *impl::find_iter(res.atoms, name);
     }, py::arg("name"), py::return_value_policy::reference_internal)
     .def("__getitem__", [](Residue& self, int index) -> Atom& {
         return self.atoms.at(index >= 0 ? index : index + self.atoms.size());

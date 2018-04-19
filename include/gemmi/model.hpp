@@ -44,24 +44,29 @@ template<int N> struct OptionalInt {
 
 template<typename T>
 T* find_or_null(std::vector<T>& vec, const std::string& name) {
-  auto it = std::find_if(vec.begin(), vec.end(), [&name](const T& m) {
-      return m.name == name;
-  });
+  auto it = std::find_if(vec.begin(), vec.end(),
+                         [&name](const T& m) { return m.name == name; });
   return it != vec.end() ? &*it : nullptr;
 }
 
 template<typename T>
 T& find_or_add(std::vector<T>& vec, const std::string& name) {
-  T* ret = find_or_null(vec, name);
-  if (ret)
+  if (T* ret = find_or_null(vec, name))
     return *ret;
   vec.emplace_back(name);
   return vec.back();
 }
 
-template<typename T>
-std::string name_list(const std::vector<T>& vec) {
-  return join_str(vec, ' ', [](const T& item) { return item.name; });
+template<typename T> typename std::vector<T>::iterator
+find_iter(std::vector<T>& vec, const std::string& name) {
+  auto it = std::find_if(vec.begin(), vec.end(),
+                         [&name](const T& m) { return m.name == name; });
+  if (it == vec.end())
+    throw std::invalid_argument(
+        T::what() + (" " + name) + " not found (only [" +
+        join_str(vec, ' ', [](const T& x) { return x.name; }) +
+        "])");
+  return it;
 }
 
 } // namespace impl
@@ -175,6 +180,7 @@ inline bool is_same_conformer(char altloc1, char altloc2) {
 }
 
 struct Atom {
+  static const char* what() { return "Atom"; }
   std::string name;
   char altloc; // 0 if not set
   signed char charge;  // [-8, +8]
@@ -263,13 +269,8 @@ struct Residue : public ResidueId {
   }
 
   void remove_atom(const std::string& atom_name) {
-    Atom* atom = find_atom(atom_name);
-    if (!atom)
-      throw std::invalid_argument("No atom " + atom_name + " in " + str() +
-                                  " ([" + impl::name_list(atoms) + "])");
-    atoms.erase(atoms.begin() + (atom - atoms.data()));
+    atoms.erase(impl::find_iter(atoms, atom_name));
   }
-
 
   // short-cuts to access peptide backbone atoms
   const Atom* get_ca() const {
@@ -345,6 +346,7 @@ struct ResidueGroup {
 
 
 struct Chain {
+  static const char* what() { return "Chain"; }
   std::string name;
   std::string auth_name;
   std::vector<Residue> residues;
@@ -470,6 +472,7 @@ inline const char* get_mmcif_connection_type_id(Connection::Type t) {
 }
 
 struct Model {
+  static const char* what() { return "Model"; }
   std::string name;  // actually an integer number
   std::vector<Chain> chains;
   std::vector<Connection> connections;
@@ -478,6 +481,7 @@ struct Model {
   Chain* find_chain(const std::string& chain_name) {
     return impl::find_or_null(chains, chain_name);
   }
+
   Chain& add_chain(const std::string& chain_name) {
     if (find_chain(chain_name))
       throw std::runtime_error("The chain '" + chain_name + "' already exists");
@@ -489,11 +493,7 @@ struct Model {
   }
 
   void remove_chain(const std::string& chain_name) {
-    Chain* chain = find_chain(chain_name);
-    if (!chain)
-      throw std::invalid_argument("No chain " + chain_name + " in the model (["
-                                  + impl::name_list(chains) + "])");
-    chains.erase(chains.begin() + (chain - chains.data()));
+    chains.erase(impl::find_iter(chains, chain_name));
   }
 
   ResidueGroup residues(const std::string& auth_chain, int resnum, char icode) {
@@ -563,7 +563,7 @@ struct NcsOp {
 struct Structure {
   std::string name;
   UnitCell cell;
-  std::string sg_hm;
+  std::string sg_hm; // spacegroup H-M name - FIXME: rename it?
   std::vector<Model> models;
   std::vector<NcsOp> ncs;
   std::map<std::string, Entity> entities;
@@ -588,6 +588,10 @@ struct Structure {
   }
   Model& find_or_add_model(const std::string& model_name) {
     return impl::find_or_add(models, model_name);
+  }
+
+  void remove_model(const std::string& model_name) {
+    models.erase(impl::find_iter(models, model_name));
   }
 
   Entity* get_entity(const std::string& ent_id) {

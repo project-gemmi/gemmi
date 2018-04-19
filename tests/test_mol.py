@@ -241,6 +241,10 @@ class TestMol(unittest.TestCase):
         self.assertEqual(len(res), 1)
         del res['SG']
         self.assertEqual(len(res), 0)
+        self.assertEqual(len(st), 1)
+        self.assertEqual(st[0].name, '1')
+        del st['1']
+        self.assertEqual(len(st), 0)
 
 if __name__ == '__main__':
     unittest.main()
