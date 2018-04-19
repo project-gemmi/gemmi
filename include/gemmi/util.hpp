@@ -71,7 +71,7 @@ inline size_t length(const std::string& s) { return s.length(); }
 }
 
 template<typename S>
-inline std::vector<std::string> split_str(const std::string &str, S sep) {
+inline std::vector<std::string> split_str(const std::string& str, S sep) {
   std::vector<std::string> result;
   std::size_t start = 0, end;
   while ((end = str.find(sep, start)) != std::string::npos) {
@@ -82,19 +82,23 @@ inline std::vector<std::string> split_str(const std::string &str, S sep) {
   return result;
 }
 
-template<typename T>
-std::string join_str(const T &iterable, const std::string& sep) {
+template<typename T, typename S, typename F>
+std::string join_str(const T& iterable, const S& sep, const F& getter) {
   std::string r;
   bool first = true;
-  for (const std::string& i : iterable) {
+  for (const auto& item : iterable) {
     if (!first)
       r += sep;
-    r += i;
+    r += getter(item);
     first = false;
   }
   return r;
 }
 
+template<typename T, typename S>
+std::string join_str(const T& iterable, const S& sep) {
+  return join_str(iterable, sep, [](const std::string& t) { return t; });
+}
 
 inline std::string path_basename(const std::string& path) {
   size_t pos = path.find_last_of("\\/");
