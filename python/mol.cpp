@@ -156,6 +156,7 @@ void add_mol(py::module& m) {
     .def("find_or_add_chain", &Model::find_or_add_chain,
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("remove_chain", &Model::remove_chain, py::arg("name"))
+    .def("__delitem__", &Model::remove_chain, py::arg("name"))
     .def("count_atom_sites", &count_atom_sites<Model>)
     .def("count_occupancies", &count_occupancies<Model>)
     .def("__repr__", [](const Model& self) {
@@ -228,6 +229,7 @@ void add_mol(py::module& m) {
     .def("__getitem__", [](Residue& self, int index) -> Atom& {
         return self.atoms.at(index >= 0 ? index : index + self.atoms.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("__delitem__", &Residue::remove_atom, py::arg("name"))
     .def("__repr__", [](const Residue& self) {
         std::string r = "<gemmi.Residue " + self.name + " " + self.seq_id();
         if (self.label_seq)

@@ -70,7 +70,7 @@ class TestMol(unittest.TestCase):
         self.assertEqual(ent_d.entity_type, gemmi.EntityType.Water)
         self.assertEqual(ent_d.polymer_type, gemmi.PolymerType.Unknown)
 
-    def test_5i55_removals(self, clear_entities=False):
+    def test_5i55_predefined_removals(self, clear_entities=False):
         st = gemmi.read_structure(full_path('5i55.cif'))
         if clear_entities:
             self.assertEqual(len(st.entities), 4)
@@ -99,8 +99,8 @@ class TestMol(unittest.TestCase):
         expected_count = sum(4 + (r.name != 'GLY') for r in model['A']) + 1
         self.assertEqual(model.count_occupancies(), expected_count)
 
-    def test_5i55_removals2(self):
-        self.test_5i55_removals(clear_entities=True)
+    def test_5i55_predefined_removals2(self):
+        self.test_5i55_predefined_removals(clear_entities=True)
 
     def read_1pfe(self, filename):
         st = gemmi.read_structure(full_path(filename))
@@ -234,6 +234,13 @@ class TestMol(unittest.TestCase):
         st2 = gemmi.make_structure_from_block(doc[0])
         out = st2.make_pdb_headers()
         self.assertEqual(out.splitlines(), SSBOND_FRAGMENT.splitlines()[:3])
+
+    def test_remove_atom(self):
+        st = gemmi.read_pdb_string(SSBOND_FRAGMENT)
+        res = st[0].residue('A', 310, ' ')
+        self.assertEqual(len(res), 1)
+        del res['SG']
+        self.assertEqual(len(res), 0)
 
 if __name__ == '__main__':
     unittest.main()

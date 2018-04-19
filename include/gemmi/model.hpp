@@ -59,6 +59,11 @@ T& find_or_add(std::vector<T>& vec, const std::string& name) {
   return vec.back();
 }
 
+template<typename T>
+std::string name_list(const std::vector<T>& vec) {
+  return join_str(vec, ' ', [](const T& item) { return item.name; });
+}
+
 } // namespace impl
 
 
@@ -221,6 +226,7 @@ struct ResidueId {
       r += icode;
     return r;
   }
+  std::string str() const { return name + " " + seq_id(); }
   bool matches(const ResidueId& rid) const;
 };
 
@@ -255,6 +261,15 @@ struct Residue : public ResidueId {
     const Residue* const_this = this;
     return const_cast<Atom*>(const_this->find_atom(atom_name, altloc, el));
   }
+
+  void remove_atom(const std::string& atom_name) {
+    Atom* atom = find_atom(atom_name);
+    if (!atom)
+      throw std::invalid_argument("No atom " + atom_name + " in " + str() +
+                                  " ([" + impl::name_list(atoms) + "])");
+    atoms.erase(atoms.begin() + (atom - atoms.data()));
+  }
+
 
   // short-cuts to access peptide backbone atoms
   const Atom* get_ca() const {
@@ -475,12 +490,9 @@ struct Model {
 
   void remove_chain(const std::string& chain_name) {
     Chain* chain = find_chain(chain_name);
-    if (!chain) {
-      std::string s = "Chain " + chain_name + " not in the model ([";
-      for (const Chain& c : chains)
-        s += " " + c.name;
-      throw std::invalid_argument(s + " ])");
-    }
+    if (!chain)
+      throw std::invalid_argument("No chain " + chain_name + " in the model (["
+                                  + impl::name_list(chains) + "])");
     chains.erase(chains.begin() + (chain - chains.data()));
   }
 
