@@ -123,7 +123,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::Structure st = read_structure(input);
       gemmi::Ccp4<signed char> mask;
       mask.grid.unit_cell = st.cell;
-      mask.grid.space_group = gemmi::find_spacegroup_by_name(st.sg_hm);
+      mask.grid.space_group = gemmi::find_spacegroup_by_name(st.spacegroup_hm);
       if (p.options[GridDims]) {
         auto dims = parse_comma_separated_ints(p.options[GridDims].arg);
         mask.grid.set_size(dims[0], dims[1], dims[2]);

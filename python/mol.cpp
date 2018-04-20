@@ -96,7 +96,7 @@ void add_mol(py::module& m) {
     .def(py::init<>())
     .def_readwrite("name", &Structure::name)
     .def_readwrite("cell", &Structure::cell)
-    .def_readwrite("sg_hm", &Structure::sg_hm)
+    .def_readwrite("spacegroup_hm", &Structure::spacegroup_hm)
     .def_readwrite("ncs", &Structure::ncs)
     .def_readwrite("resolution", &Structure::resolution)
     .def_readwrite("entities", &Structure::entities)

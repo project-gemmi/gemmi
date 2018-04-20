@@ -127,7 +127,8 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
       st.cell.set(as_number(c[0]), as_number(c[1]), as_number(c[2]),
                   as_number(c[3]), as_number(c[4]), as_number(c[5]));
   }
-  st.sg_hm = as_string(block.find_value("_symmetry.space_group_name_H-M"));
+  st.spacegroup_hm =
+                as_string(block.find_value("_symmetry.space_group_name_H-M"));
 
   auto add_info = [&](std::string tag) {
     bool first = true;

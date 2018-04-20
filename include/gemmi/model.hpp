@@ -563,7 +563,7 @@ struct NcsOp {
 struct Structure {
   std::string name;
   UnitCell cell;
-  std::string sg_hm; // spacegroup H-M name - FIXME: rename it?
+  std::string spacegroup_hm;
   std::vector<Model> models;
   std::vector<NcsOp> ncs;
   std::map<std::string, Entity> entities;
@@ -676,7 +676,7 @@ inline void Chain::append_residues(std::vector<Residue> new_resi) {
 }
 
 inline void Structure::setup_cell_images() {
-  if (const SpaceGroup* sg = find_spacegroup_by_name(sg_hm)) {
+  if (const SpaceGroup* sg = find_spacegroup_by_name(spacegroup_hm)) {
     for (Op op : sg->operations()) {
       if (op == Op::identity())
         continue;

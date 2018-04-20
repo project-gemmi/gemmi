@@ -503,7 +503,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
                     read_double(line+40, 7),
                     read_double(line+47, 7));
       if (len > 56)
-        st.sg_hm = read_string(line+55, 11);
+        st.spacegroup_hm = read_string(line+55, 11);
       if (len > 67) {
         std::string z = read_string(line+66, 4);
         if (!z.empty())

@@ -29,15 +29,15 @@ static const option::Descriptor Usage[] = {
 };
 
 static void print_content_info(const Structure& st, bool /*verbose*/) {
-  printf(" Spacegroup   %s\n", st.sg_hm.c_str());
+  printf(" Spacegroup   %s\n", st.spacegroup_hm.c_str());
   int order = 1;
-  const SpaceGroup* sg = find_spacegroup_by_name(st.sg_hm);
+  const SpaceGroup* sg = find_spacegroup_by_name(st.spacegroup_hm);
   if (sg) {
     order = sg->operations().order();
     printf("   Group no. %d with %d operations.\n", sg->number, order);
   } else {
     std::fprintf(stderr, "%s space group name! Assuming P1.\n",
-                 st.sg_hm.empty() ? "No" : "Unrecognized");
+                 st.spacegroup_hm.empty() ? "No" : "Unrecognized");
   }
   double n_molecules = order * st.get_ncs_multiplier();
   printf(" Number of images (symmetry * strict NCS): %5g\n", n_molecules);

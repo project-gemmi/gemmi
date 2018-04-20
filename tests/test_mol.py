@@ -107,7 +107,7 @@ class TestMol(unittest.TestCase):
         self.assertAlmostEqual(st.cell.a, 39.374)
         self.assertEqual(st.cell.gamma, 120)
         self.assertEqual(st.name, '1PFE')
-        self.assertEqual(st.sg_hm, 'P 63 2 2')
+        self.assertEqual(st.spacegroup_hm, 'P 63 2 2')
         self.assertEqual(st.info['_entry.id'], '1PFE')
         self.assertEqual(st.info['_exptl.method'], 'X-RAY DIFFRACTION')
         self.assertEqual(len(st), 1)

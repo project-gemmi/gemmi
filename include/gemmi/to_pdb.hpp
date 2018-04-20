@@ -116,7 +116,7 @@ inline void write_cryst1(const Structure& st, std::ostream& os) {
   const UnitCell& cell = st.cell;
   WRITE("CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11s%4s          \n",
         cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma,
-        st.sg_hm.empty() ? "P 1" : st.sg_hm.c_str(),
+        st.spacegroup_hm.empty() ? "P 1" : st.spacegroup_hm.c_str(),
         st.get_info("_cell.Z_PDB").c_str());
 }
 

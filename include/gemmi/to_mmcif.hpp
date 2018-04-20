@@ -162,8 +162,9 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   if (z_pdb != st.info.end())
     block.set_pair(z_pdb->first, z_pdb->second);
   block.set_pair("_symmetry.entry_id", id);
-  block.set_pair("_symmetry.space_group_name_H-M", cif::quote(st.sg_hm));
-  if (const SpaceGroup* sg = find_spacegroup_by_name(st.sg_hm))
+  block.set_pair("_symmetry.space_group_name_H-M",
+                 cif::quote(st.spacegroup_hm));
+  if (const SpaceGroup* sg = find_spacegroup_by_name(st.spacegroup_hm))
     block.set_pair("_symmetry.Int_Tables_number", to_string(sg->number));
 
   // _entity

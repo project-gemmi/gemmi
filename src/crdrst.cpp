@@ -187,8 +187,9 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib) {
                                      "## SYMMETRY ##\n"
                                      "##############"});
   items.emplace_back("_symmetry.entry_id", id);
-  items.emplace_back("_symmetry.space_group_name_H-M", cif::quote(st.sg_hm));
-  if (const gemmi::SpaceGroup* sg = gemmi::find_spacegroup_by_name(st.sg_hm))
+  const std::string& hm = st.spacegroup_hm;
+  items.emplace_back("_symmetry.space_group_name_H-M", cif::quote(hm));
+  if (const gemmi::SpaceGroup* sg = gemmi::find_spacegroup_by_name(hm))
     items.emplace_back("_symmetry.Int_Tables_number",
                        std::to_string(sg->number));
   items.emplace_back(cif::CommentArg{"#################\n"
