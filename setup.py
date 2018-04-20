@@ -14,7 +14,6 @@ def read_version_from_header():
     with open('include/gemmi/version.hpp') as f:
         for line in f:
             if line.startswith('#define GEMMI_VERSION '):
-                print(line)
                 return line.split()[2].strip('"dev')
 
 __version__ = read_version_from_header()
@@ -30,7 +29,16 @@ class get_pybind_include(object):
         self.user = user
 
     def __str__(self):
-        import pybind11
+        # We should have pybind11 installed by now, but old pip
+        # before https://github.com/pypa/pip/pull/2616
+        # would not handle dependencies properly.
+        # So in such case at least hint a workaround to the user.
+        try:
+            import pybind11
+        except ImportError:
+            print('\n' + 50*'*')
+            print('*****  Please try to install pybind11 first  *****')
+            print(50*'*' + '\n')
         return pybind11.get_include(self.user)
 
 if USE_SYSTEM_ZLIB:
