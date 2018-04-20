@@ -96,8 +96,11 @@ struct UnitCell {
   bool explicit_matrices = false;
   std::vector<FTransform> images;
 
-  // non-crystalline (for example NMR) structures use fake unit cell 1x1x1.
-  bool is_crystal() const { return frac.mat[0][0] != 1.0; }
+  // Non-crystalline (for example NMR) structures are supposed to use fake
+  // unit cell 1x1x1, but sometimes they don't. A number of non-crystalline
+  // entries in the PDB has incorrectly set unit cell or fract. matrix,
+  // that is why we check both.
+  bool is_crystal() const { return a != 1.0 && frac.mat[0][0] != 1.0; }
 
   void calculate_properties() {
     constexpr double deg2rad = pi() / 180.0;
