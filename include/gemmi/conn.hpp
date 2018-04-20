@@ -77,8 +77,8 @@ std::vector<Connection> find_disulfide_bonds2(const Structure& st) {
               Connection c;
               //c.name = "disulf" + std::to_string(ret.size() + 1);
               c.type = Connection::Disulf;
-              c.image = a.image_idx == -1 ? SymmetryImage::Same
-                                          : SymmetryImage::Different;
+              c.image = a.image_idx == 0 ? SymmetryImage::Same
+                                         : SymmetryImage::Different;
               c.atom[0] = AtomAddress(chain, res, atom);
               c.atom[1] = AtomAddress(chain2, res2, atom2);
               ret.push_back(c);

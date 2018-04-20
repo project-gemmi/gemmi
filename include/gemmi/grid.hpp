@@ -86,8 +86,11 @@ struct Grid {
           ++n;
       } else {
         n = int(std::floor(abc[i] / (approx_spacing * f)));
-        while (n > 1 && !has_small_factorization(n))
-          --n;
+        if (n > 1)
+          while (!has_small_factorization(n))
+            --n;
+        else
+          n = 1;
       }
       m[i] = n * f;
     }

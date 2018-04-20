@@ -56,10 +56,13 @@ inline SubCells::SubCells(const Structure& st, double max_radius) {
   if (st.cell.is_crystal()) {
     grid.set_unit_cell(st.cell);
   } else {
-    // TODO:
+    // TODO: determine boundaries and add 2 empty cells as a margin
     fail("not a crystal");
   }
   grid.set_size_from_spacing(max_radius, false);
+  if (grid.nu < 3 || grid.nv < 3 || grid.nw < 3)
+    grid.set_size_without_checking(std::max(grid.nu, 3), std::max(grid.nv, 3),
+                                   std::max(grid.nw, 3));
   const Model& model = st.models.at(0);
   for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
     const Chain& chain = model.chains[n_ch];
@@ -67,9 +70,12 @@ inline SubCells::SubCells(const Structure& st, double max_radius) {
       const Residue& res = chain.residues[n_res];
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
         const Atom& atom = res.atoms[n_atom];
-        Fractional frac = st.cell.fractionalize(atom.pos);
-        get_subcell(frac).emplace_back(atom.pos, atom.altloc, atom.element.elem,
-                                       0, n_ch, n_res, n_atom);
+        Fractional frac = st.cell.fractionalize(atom.pos).wrap_to_unit();
+        {
+          Position pos = st.cell.orthogonalize(frac);
+          get_subcell(frac).emplace_back(pos, atom.altloc, atom.element.elem,
+                                         0, n_ch, n_res, n_atom);
+        }
         for (int n_im = 0; n_im != (int) st.cell.images.size(); ++n_im) {
           Fractional ifrac = st.cell.images[n_im].apply(frac).wrap_to_unit();
           Position pos = st.cell.orthogonalize(ifrac);
@@ -88,11 +94,11 @@ void SubCells::for_each(const Position& pos, char alt, float radius,
   int u0 = int(fr.x * grid.nu);
   int v0 = int(fr.y * grid.nv);
   int w0 = int(fr.z * grid.nw);
-  for (int w = w0 - 1; w < w0 - 1 + std::min(3, grid.nw); ++w) {
+  for (int w = w0 - 1; w < w0 + 2; ++w) {
     int dw = w >= grid.nw ? -1 : w < 0 ? 1 : 0;
-    for (int v = v0 - 1; v < v0 - 1 + std::min(3, grid.nv); ++v) {
+    for (int v = v0 - 1; v < v0 + 2; ++v) {
       int dv = v >= grid.nv ? -1 : v < 0 ? 1 : 0;
-      for (int u = u0 - 1; u < u0 - 1 + std::min(3, grid.nu); ++u) {
+      for (int u = u0 - 1; u < u0 + 2; ++u) {
         int du = u >= grid.nu ? -1 : u < 0 ? 1 : 0;
         int idx = grid.index_q(u + du * grid.nu,
                                v + dv * grid.nv,
@@ -101,9 +107,9 @@ void SubCells::for_each(const Position& pos, char alt, float radius,
                                                              fr.y + dv,
                                                              fr.z + dw));
         for (AtomImage& a : grid.data[idx]) {
-          float dist_sq = (float) p.x - a.pos[0] +
-                          (float) p.y - a.pos[1] +
-                          (float) p.z - a.pos[2];
+          float dist_sq = sq((float) p.x - a.pos[0]) +
+                          sq((float) p.y - a.pos[1]) +
+                          sq((float) p.z - a.pos[2]);
           if (dist_sq < sq(radius) && is_same_conformer(alt, a.altloc))
             func(a, dist_sq);
         }
