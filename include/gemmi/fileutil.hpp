@@ -5,11 +5,12 @@
 #ifndef GEMMI_FILEUTIL_HPP_
 #define GEMMI_FILEUTIL_HPP_
 
-#include <cctype>     // for isdigit, isalnum
-#include <cstdio>     // for FILE, fopen, fclose
-#include <memory>     // for unique_ptr
+#include <cctype>    // for isdigit, isalnum
+#include <cstdio>    // for FILE, fopen, fclose
+#include <cstdlib>   // getenv
+#include <memory>    // for unique_ptr
 #include <string>
-#include "util.hpp"   // for fail, to_lower
+#include "util.hpp"  // for fail, to_lower
 
 #if defined(_WIN32) && defined(GEMMI_WINDOWS_PATHS_IN_UTF8)
 #include <locale>
