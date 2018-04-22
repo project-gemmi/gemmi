@@ -5,6 +5,7 @@
 #include <gemmi/subcells.hpp>
 #include <gemmi/calculate.hpp>  // for are_connected
 #include <gemmi/pdb.hpp>  // for split_nonpolymers
+#include <gemmi/fileutil.hpp>  // for expand_if_pdb_code
 #include "input.h"
 #define GEMMI_PROG contact
 #include "options.h"
@@ -47,7 +48,7 @@ static void print_contacts(const Structure& st, float max_dist, bool verbose) {
   const Model& model = st.models.at(0);
 	for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
     const Chain& chain = model.chains[n_ch];
-    const gemmi::Entity* ent = st.get_entity_of(chain);
+    const Entity* ent = st.get_entity_of(chain);
     PolymerType pt = PolymerType::Unknown;
     if (ent)
       pt = ent->polymer_type;
@@ -107,15 +108,13 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
-      std::string input = p.nonOption(i);
-      if (is_pdb_code(input))
-        input = expand_pdb_code_to_path_or_fail(input);
+      std::string input = expand_if_pdb_code(p.nonOption(i));
       if (i > 0)
         std::printf("\n");
       if (verbose || p.nonOptionsCount() > 1)
         std::printf("File: %s\n", input.c_str());
       Structure st = read_structure(input);
-      if (st.input_format == gemmi::CoorFormat::Pdb)
+      if (st.input_format == CoorFormat::Pdb)
         split_nonpolymers(st);
       print_contacts(st, max_dist, verbose);
     }

@@ -4,7 +4,8 @@
 
 #ifndef GEMMI_GZ_HPP_
 #define GEMMI_GZ_HPP_
-#include "util.hpp"  // ends_with, MaybeStdin
+#include "util.hpp"  // ends_with
+#include "fileutil.hpp"  // MaybeStdin, file_open
 #include <cstdio>    // fseek, ftell, fread
 #include <cstdlib>   // getenv
 #include <memory>
@@ -96,18 +97,6 @@ private:
       fail("Failed to gzopen: " + path());
   }
 };
-
-
-// Call it after checking the code with gemmi::is_pdb_code(code).
-// The convention for $PDB_DIR is the same as in BioJava, see the docs.
-inline std::string expand_pdb_code_to_path(const std::string& code) {
-  if (const char* pdb_dir = std::getenv("PDB_DIR")) {
-    std::string lc = to_lower(code);
-    return std::string(pdb_dir) + "/structures/divided/mmCIF/" +
-           lc.substr(1, 2) + "/" + lc + ".cif.gz";
-  }
-  return std::string{};
-}
 
 } // namespace gemmi
 

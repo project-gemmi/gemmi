@@ -5,7 +5,8 @@
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/sprintf.hpp"
-#include "gemmi/modify.hpp"     // for remove_hydrogens, ...
+#include "gemmi/fileutil.hpp"  // for expand_if_pdb_code
+#include "gemmi/modify.hpp"  // for remove_hydrogens, ...
 
 #include <cstring>
 #include <iostream>
@@ -289,7 +290,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     ? filetypes[p.options[FormatIn].arg]
     : coordinate_format_from_extension(input);
   if (in_type == CoorFormat::Unknown && gemmi::is_pdb_code(input)) {
-    input = expand_pdb_code_to_path_or_fail(input);
+    input = gemmi::expand_if_pdb_code(input);
     in_type = CoorFormat::Cif;
   }
   if (in_type == CoorFormat::Unknown) {

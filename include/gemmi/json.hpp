@@ -15,8 +15,9 @@
 #define SAJSON_NUMBERS_AS_STRINGS
 #include <sajson.h>
 
-#include "cifdoc.hpp" // for Document, etc
-#include "util.hpp"   // for fail, file_open
+#include "cifdoc.hpp"   // for Document, etc
+#include "util.hpp"     // for fail
+#include "fileutil.hpp" // for file_open
 
 namespace gemmi {
 namespace cif {

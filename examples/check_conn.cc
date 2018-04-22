@@ -106,7 +106,7 @@ static void check_struct_conn(cif::Block& block) {
 }
 
 static void check_disulf(const char* start) {
-  for (const char* path : CoorFileWalk(start)) {
+  for (const char* path : CoorFileWalk(expand_if_pdb_code(start))) {
     Structure st = read_structure(MaybeGzipped(path));
     if (!st.cell.is_crystal())
       continue;
@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
   try {
     check_disulf(argv[argc-1]);
     return 0;
-    for (const char* path : CifWalk(argv[argc-1])) {
+    for (const char* path : CifWalk(expand_if_pdb_code(argv[argc-1]))) {
       cif::Document doc = cif::read(MaybeGzipped(path));
       check_struct_conn(doc.sole_block());
       if (++counter % 1000 == 0) {

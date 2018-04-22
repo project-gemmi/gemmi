@@ -13,3 +13,6 @@ python3 -m unittest discover -s tests
 # So 'make doctest' works only if sphinx-build was installed for python3.
 (cd docs && make doctest SPHINXOPTS="-q -n")
 flake8 docs/ examples/ tests/ tools/ setup.py
+
+# check if each header can be compiled on its own
+#for f in include/gemmi/*.hpp; do gcc-7 -Ithird_party -c -fsyntax-only $f; done

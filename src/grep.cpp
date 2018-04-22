@@ -6,7 +6,7 @@
 #include "gemmi/gz.hpp"
 #include "gemmi/dirwalk.hpp"
 #include "gemmi/util.hpp"  // for is_pdb_code
-#include "input.h"         // for expand_pdb_code_to_path_or_fail
+#include "gemmi/fileutil.hpp"  // for expand_if_pdb_code
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
@@ -563,7 +563,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       grep_file(path, params, err_count);
       file_count++;
     } else if (gemmi::is_pdb_code(path)) {
-      std::string real_path = expand_pdb_code_to_path_or_fail(path);
+      std::string real_path = gemmi::expand_if_pdb_code(path);
       params.last_block = true;  // PDB code implies -O
       grep_file(real_path, params, err_count);
       params.last_block = p.options[OneBlock];

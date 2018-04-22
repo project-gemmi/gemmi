@@ -10,7 +10,7 @@
 #include <vector>
 #include "unitcell.hpp"
 #include "symmetry.hpp"
-#include "util.hpp"  // for fail, file_open
+#include "util.hpp"  // for fail
 
 namespace gemmi {
 

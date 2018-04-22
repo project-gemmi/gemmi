@@ -6,6 +6,7 @@
 #include <gemmi/symmetry.hpp>
 #include <gemmi/resinfo.hpp>
 #include <gemmi/calculate.hpp>
+#include <gemmi/fileutil.hpp>  // for expand_if_pdb_code
 #include "input.h"
 #define GEMMI_PROG contents
 #include "options.h"
@@ -110,12 +111,11 @@ static void print_dihedrals(const Structure& st) {
              res.printable_icode(), res.name.c_str());
       const Residue* prev = chain.prev_bonded_aa(res);
       const Residue* next = chain.next_bonded_aa(res);
-      double omega = next ? gemmi::calculate_omega(res, *next) : NAN;
-      auto phi_psi = gemmi::calculate_phi_psi(prev, res, next);
+      double omega = next ? calculate_omega(res, *next) : NAN;
+      auto phi_psi = calculate_phi_psi(prev, res, next);
       if (prev || next)
         printf(" % 8.2f % 8.2f % 8.2f\n",
-               gemmi::deg(phi_psi[0]), gemmi::deg(phi_psi[1]),
-               gemmi::deg(omega));
+               deg(phi_psi[0]), deg(phi_psi[1]), deg(omega));
       else
         printf("\n");
     }
@@ -154,9 +154,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
-      std::string input = p.nonOption(i);
-      if (is_pdb_code(input))
-        input = expand_pdb_code_to_path_or_fail(input);
+      std::string input = expand_if_pdb_code(p.nonOption(i));
       if (i > 0)
         std::printf("\n");
       if (verbose || p.nonOptionsCount() > 1)

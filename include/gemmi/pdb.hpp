@@ -18,12 +18,12 @@
 #include <cstdlib>    // for strtol
 #include <cstring>    // for memcpy, strstr
 #include <map>        // for map
-#include <memory>     // for unique_ptr
 #include <string>     // for string
 #include <vector>     // for vector
 
 #include "model.hpp"
 #include "util.hpp"
+#include "fileutil.hpp" // for path_basename, file_open
 #include "resinfo.hpp"
 
 namespace gemmi {
@@ -357,7 +357,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   };
   Structure st;
   st.input_format = CoorFormat::Pdb;
-  st.name = gemmi::path_basename(source);
+  st.name = path_basename(source);
   std::vector<std::string> conn_records;
   Model *model = &st.find_or_add_model("1");
   Chain *chain = nullptr;
@@ -420,7 +420,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       atom.b_iso = (float) read_double(line+60, 6);
       bool has_elem = len > 76 && (std::isalpha(line[76]) ||
                                    std::isalpha(line[77]));
-      atom.element = gemmi::Element(line + (has_elem ? 76 : 12));
+      atom.element = Element(line + (has_elem ? 76 : 12));
       atom.charge = (len > 78 ? read_charge(line[78], line[79]) : 0);
       resi->atoms.emplace_back(atom);
 
@@ -567,7 +567,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 }  // namespace pdb_impl
 
 inline Structure read_pdb_file(const std::string& path) {
-  auto f = gemmi::file_open(path.c_str(), "r");
+  auto f = file_open(path.c_str(), "r");
   return read_pdb_from_line_input(pdb_impl::FileInput{f.get()}, path);
 }
 

@@ -113,12 +113,19 @@ private:
   std::vector<std::pair<int, tinydir_dir>> dirs_;
 };
 
+namespace impl {
 // the SF mmCIF files from PDB have names such as
 // divided/structure_factors/aa/r3aaasf.ent.gz
 inline bool is_sf_mmcif_filename(const std::string& filename) {
   return filename[0] == 'r' && giends_with(filename, "sf.ent")
          && filename.find('.') >= 4;
 }
+
+struct IsMmCifFile { // actually we don't know what kind of cif file it is
+  static bool check(const std::string& filename) {
+    return giends_with(filename, ".cif");
+  }
+};
 
 struct IsCifFile {
   static bool check(const std::string& filename) {
@@ -135,11 +142,10 @@ struct IsPdbFile {
 
 struct IsCoordinateFile {
   static bool check(const std::string& filename) {
-    return giends_with(filename, ".cif") ||
-           giends_with(filename, ".pdb") ||
-           (giends_with(filename, ".ent") && !is_sf_mmcif_filename(filename));
+    return IsMmCifFile::check(filename) || IsPdbFile::check(filename);
   }
 };
+} // namespace impl
 
 
 template<typename Check>
@@ -171,9 +177,10 @@ public:
   CifIter end() { return DirWalk::end(); }
 };
 
-using CifWalk = FileWalk<IsCifFile>;
-using PdbWalk = FileWalk<IsPdbFile>;
-using CoorFileWalk = FileWalk<IsCoordinateFile>;
+using CifWalk = FileWalk<impl::IsCifFile>;
+using MmCifWalk = FileWalk<impl::IsMmCifFile>;
+using PdbWalk = FileWalk<impl::IsPdbFile>;
+using CoorFileWalk = FileWalk<impl::IsCoordinateFile>;
 
 } // namespace gemmi
 #endif

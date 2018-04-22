@@ -15,7 +15,8 @@
 #include <typeinfo>  // for typeid
 #include <vector>
 #include "symmetry.hpp"
-#include "util.hpp"  // for fail, file_open
+#include "util.hpp"      // for fail
+#include "fileutil.hpp"  // for file_open
 #include "grid.hpp"
 
 namespace gemmi {

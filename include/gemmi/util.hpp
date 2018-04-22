@@ -7,17 +7,10 @@
 
 #include <algorithm>  // for equal, find
 #include <cctype>     // for tolower
-#include <cstdio>     // for FILE, fopen, fclose, fgetc, fgets
 #include <iterator>   // for begin, end, make_move_iterator
-#include <memory>     // for unique_ptr
 #include <stdexcept>  // for runtime_error
 #include <string>
 #include <vector>
-
-#if defined(_WIN32) && defined(GEMMI_WINDOWS_PATHS_IN_UTF8)
-#include <locale>
-#include <codecvt>
-#endif
 
 namespace gemmi {
 
@@ -100,11 +93,6 @@ std::string join_str(const T& iterable, const S& sep) {
   return join_str(iterable, sep, [](const std::string& t) { return t; });
 }
 
-inline std::string path_basename(const std::string& path) {
-  size_t pos = path.find_last_of("\\/");
-  return pos == std::string::npos ? path : path.substr(pos + 1);
-}
-
 template <class T>
 bool in_vector(const T& x, const std::vector<T>& v) {
   return std::find(v.begin(), v.end(), x) != v.end();
@@ -121,53 +109,6 @@ void vector_move_extend(std::vector<T>& dst, std::vector<T>&& src) {
 
 [[noreturn]]
 inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
-
-
-// file operations
-typedef std::unique_ptr<FILE, decltype(&std::fclose)> fileptr_t;
-
-inline fileptr_t file_open(const char *path, const char *mode) {
-  std::FILE* file;
-#if defined(_WIN32) && defined(GEMMI_WINDOWS_PATHS_IN_UTF8)
-  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> convert;
-  std::wstring wpath = convert.from_bytes(path);
-  std::wstring wmode = convert.from_bytes(mode);
-  if ((file = ::_wfopen(wpath.c_str(), wmode.c_str())) == nullptr)
-#else
-  if ((file = std::fopen(path, mode)) == nullptr)
-#endif
-    fail("Failed to open file: " + std::string(path));
-  return fileptr_t(file, &std::fclose);
-}
-
-inline std::size_t file_size(FILE* f, const std::string& path) {
-  if (std::fseek(f, 0, SEEK_END) != 0)
-    fail(path + ": fseek failed");
-  long length = std::ftell(f);
-  if (length < 0)
-    fail(path + ": ftell failed");
-  if (std::fseek(f, 0, SEEK_SET) != 0)
-    fail(path + ": fseek failed");
-  return length;
-}
-
-// for transparent handling of stdin along filenames
-class MaybeStdin {
-public:
-  explicit MaybeStdin(const std::string& path) : path_(path) {}
-  bool is_stdin() const { return path_ == "-"; };
-  const std::string& path() const { return path_; };
-  size_t mem_size() const { return 0; };
-  std::unique_ptr<char[]> memory() { return nullptr; }
-  bool get_line_stream() const { return false; }
-private:
-  std::string path_;
-};
-
-inline bool is_pdb_code(const std::string& str) {
-  return str.length() == 4 && std::isdigit(str[0]) && std::isalnum(str[1]) &&
-                              std::isalnum(str[2]) && std::isalnum(str[3]);
-}
 
 } // namespace gemmi
 #endif

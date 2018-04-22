@@ -17,16 +17,4 @@ gemmi::Structure read_structure(const std::string& path,
 
 gemmi::CoorFormat coordinate_format_from_extension(const std::string& path);
 
-inline std::string expand_pdb_code_to_path_or_fail(const std::string& code) {
-  std::string path = gemmi::expand_pdb_code_to_path(code);
-  if (path.empty()) {
-    std::fprintf(stderr,
-        "The argument %s is a PDB code, but $PDB_DIR is not set.\n"
-        "(To use a file or directory with such a name use: ./%s)\n",
-        path.c_str(), path.c_str());
-    std::exit(2);
-  }
-  return path;
-}
-
 // vim:sw=2:ts=2:et:path^=../include,../third_party
