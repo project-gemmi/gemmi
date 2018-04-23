@@ -30,10 +30,15 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-static void print_contacts(const Structure& st, float max_dist, bool verbose) {
+static void print_contacts(const Structure& st, float max_dist, int verbose) {
   SubCells sc(st, std::max(5.0f, max_dist));
 
-  if (verbose) {
+  if (verbose > 0) {
+    if (verbose > 1) {
+      if (st.cell.explicit_matrices)
+        printf(" Using fractionalization matrix from the file.\n");
+      printf(" Each atom has %zu extra images.\n", st.cell.images.size());
+    }
     printf(" Cell grid: %d x %d x %d\n", sc.grid.nu, sc.grid.nv, sc.grid.nw);
     size_t min_count = SIZE_MAX, max_count = 0, total_count = 0;
     for (const auto& el : sc.grid.data) {
@@ -98,7 +103,7 @@ static void print_contacts(const Structure& st, float max_dist, bool verbose) {
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
-  bool verbose = p.options[Verbose];
+  int verbose = p.options[Verbose].count();
   float max_dist = 3.0;
   if (p.options[MaxDist])
     max_dist = std::strtod(p.options[MaxDist].arg, nullptr);
@@ -111,7 +116,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       std::string input = expand_if_pdb_code(p.nonOption(i));
       if (i > 0)
         std::printf("\n");
-      if (verbose || p.nonOptionsCount() > 1)
+      if (verbose > 0 || p.nonOptionsCount() > 1)
         std::printf("File: %s\n", input.c_str());
       Structure st = read_structure(input);
       if (st.input_format == CoorFormat::Pdb)
