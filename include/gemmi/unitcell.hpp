@@ -72,7 +72,7 @@ struct NearbyImage {
 struct FTransform : Transform {
   FTransform(const Transform& t) : Transform(t) {}
   FTransform(Transform&& t) : Transform(t) {}
-  FTransform(Matrix33 m, Vec3 v) : Transform{m, v} {}
+  FTransform(Mat33 m, Vec3 v) : Transform{m, v} {}
   Fractional apply(const Fractional& p) const {
     return Fractional(Transform::apply(p));
   }

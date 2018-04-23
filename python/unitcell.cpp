@@ -48,19 +48,17 @@ void add_unitcell(py::module& m) {
     .def("__repr__", [](const Vec3& self) {
         return "<gemmi.Vec3(" + triple(self.x, self.y, self.z) + ")>";
     });
-  py::class_<Matrix33>(m, "Matrix33")
-    .def("determinant", &Matrix33::determinant)
-    .def("inverse", &Matrix33::inverse)
-    .def("transpose", &Matrix33::transpose)
-    .def("multiply",
-         (Matrix33 (Matrix33::*)(const Matrix33&) const) &Matrix33::multiply)
-    .def("multiply",
-         (Vec3 (Matrix33::*)(const Vec3&) const) &Matrix33::multiply)
-    .def("__repr__", [](const Matrix33& self) {
+  py::class_<Mat33>(m, "Mat33")
+    .def("determinant", &Mat33::determinant)
+    .def("inverse", &Mat33::inverse)
+    .def("transpose", &Mat33::transpose)
+    .def("multiply", (Mat33 (Mat33::*)(const Mat33&) const) &Mat33::multiply)
+    .def("multiply", (Vec3 (Mat33::*)(const Vec3&) const) &Mat33::multiply)
+    .def("__repr__", [](const Mat33& self) {
         const auto& a = self.a;
-        return "<gemmi.Matrix33 [" + triple(a[0][0], a[0][1], a[0][2]) + "]\n"
-               "                [" + triple(a[1][0], a[1][1], a[1][2]) + "]\n"
-               "                [" + triple(a[2][0], a[2][1], a[2][2]) + "]";
+        return "<gemmi.Mat33 [" + triple(a[0][0], a[0][1], a[0][2]) + "]\n"
+               "             [" + triple(a[1][0], a[1][1], a[1][2]) + "]\n"
+               "             [" + triple(a[2][0], a[2][1], a[2][2]) + "]";
     });
 
   py::class_<FTransform>(m, "FTransform")

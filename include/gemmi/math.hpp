@@ -68,7 +68,7 @@ struct Vec3 {
   }
 };
 
-struct Matrix33 {
+struct Mat33 {
   double a[3][3] = { {1.,0.,0.}, {0.,1.,0.}, {0.,0.,1.} };
 
   // make it accessible with ".a"
@@ -76,9 +76,9 @@ struct Matrix33 {
   const row_t& operator[](int i) const { return a[i]; }
   row_t& operator[](int i) { return a[i]; }
 
-  Matrix33() = default;
-  Matrix33(double a1, double a2, double a3, double b1, double b2, double b3,
-           double c1, double c2, double c3)
+  Mat33() = default;
+  Mat33(double a1, double a2, double a3, double b1, double b2, double b3,
+        double c1, double c2, double c3)
   : a{{a1, a2, a3}, {b1, b2, b3}, {c1, c2, c3}} {}
 
   Vec3 multiply(const Vec3& p) const {
@@ -86,20 +86,20 @@ struct Matrix33 {
             a[1][0] * p.x  + a[1][1] * p.y  + a[1][2] * p.z,
             a[2][0] * p.x  + a[2][1] * p.y  + a[2][2] * p.z};
   }
-  Matrix33 multiply(const Matrix33& b) const {
-    Matrix33 r;
+  Mat33 multiply(const Mat33& b) const {
+    Mat33 r;
     for (int i = 0; i != 3; ++i)
       for (int j = 0; j != 3; ++j)
         r[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j];
     return r;
   }
-  Matrix33 transpose() const {
-    return Matrix33(a[0][0], a[1][0], a[2][0],
-                    a[0][1], a[1][1], a[2][1],
-                    a[0][2], a[1][2], a[2][2]);
+  Mat33 transpose() const {
+    return Mat33(a[0][0], a[1][0], a[2][0],
+                 a[0][1], a[1][1], a[2][1],
+                 a[0][2], a[1][2], a[2][2]);
   }
 
-  bool approx(const Matrix33& other, double epsilon) const {
+  bool approx(const Mat33& other, double epsilon) const {
     for (int i = 0; i < 3; ++i)
       for (int j = 0; j < 3; ++j)
         if (std::fabs(a[i][j] - other.a[i][j]) > epsilon)
@@ -111,8 +111,8 @@ struct Matrix33 {
            a[0][1] * (a[1][2]*a[2][0] - a[2][2]*a[1][0]) +
            a[0][2] * (a[1][0]*a[2][1] - a[2][0]*a[1][1]);
   }
-  Matrix33 inverse() const {
-    Matrix33 inv;
+  Mat33 inverse() const {
+    Mat33 inv;
     double inv_det = 1.0 / determinant();
     inv[0][0] = inv_det * (a[1][1] * a[2][2] - a[2][1] * a[1][2]);
     inv[0][1] = inv_det * (a[0][2] * a[2][1] - a[0][1] * a[2][2]);
@@ -137,9 +137,9 @@ struct Matrix33 {
 		if (p1 == 0)
       return {{a[0][0], a[1][1], a[2][2]}};
     double q = (1./3.) * (a[0][0] + a[1][1] + a[2][2]);
-    Matrix33 b(a[0][0] - q, a[0][1], a[0][2],
-               a[1][0], a[1][1] - q, a[1][2],
-               a[2][0], a[2][1], a[2][2] - q);
+    Mat33 b(a[0][0] - q, a[0][1], a[0][2],
+            a[1][0], a[1][1] - q, a[1][2],
+            a[2][0], a[2][1], a[2][2] - q);
     double p2 = b[0][0] * b[0][0] + b[1][1] * b[1][1] + b[2][2] * b[2][2]
                 + 2 * p1;
     double p = std::sqrt((1./6.) * p2);
@@ -177,11 +177,11 @@ struct Matrix33 {
 };
 
 struct Transform {
-  Matrix33 mat;
+  Mat33 mat;
   Vec3 vec;
 
   Transform inverse() const {
-    Matrix33 minv = mat.inverse();
+    Mat33 minv = mat.inverse();
     return {minv, minv.multiply(vec).negated()};
   }
 
@@ -194,7 +194,7 @@ struct Transform {
   bool is_identity() const {
     return mat.is_identity() && vec.x == 0. && vec.y == 0. && vec.z == 0.;
   }
-  void set_identity() { mat = Matrix33(); vec = Vec3(); }
+  void set_identity() { mat = Mat33(); vec = Vec3(); }
 };
 
 } // namespace gemmi

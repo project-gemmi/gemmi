@@ -90,7 +90,7 @@ std::array<double, 4> find_best_plane(const std::vector<const Atom*>& atoms) {
   for (const Atom* atom : atoms)
     mean += atom->pos;
   mean /= atoms.size();
-  Matrix33 m(0, 0, 0, 0, 0, 0, 0, 0, 0);
+  Mat33 m(0, 0, 0, 0, 0, 0, 0, 0, 0);
   for (const Atom* atom : atoms) {
     Vec3 p = Vec3(atom->pos) - mean;
     m[0][0] += p.x * p.x;
