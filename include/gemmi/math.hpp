@@ -93,6 +93,11 @@ struct Matrix33 {
         r[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j];
     return r;
   }
+  Matrix33 transpose() const {
+    return Matrix33(a[0][0], a[1][0], a[2][0],
+                    a[0][1], a[1][1], a[2][1],
+                    a[0][2], a[1][2], a[2][2]);
+  }
 
   bool approx(const Matrix33& other, double epsilon) const {
     for (int i = 0; i < 3; ++i)

@@ -4,6 +4,7 @@
 
 #include <cstdio>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 namespace py = pybind11;
 using namespace gemmi;
@@ -38,6 +39,35 @@ void add_unitcell(py::module& m) {
         return "<gemmi.Fractional(" + triple(self.x, self.y, self.z) + ")>";
     });
 
+  py::class_<Vec3>(m, "Vec3")
+    .def(py::init<double,double,double>())
+    .def_readwrite("x", &Vec3::x)
+    .def_readwrite("y", &Vec3::y)
+    .def_readwrite("z", &Vec3::z)
+    .def("__getitem__", (double (Vec3::*)(int) const) &Vec3::at)
+    .def("__repr__", [](const Vec3& self) {
+        return "<gemmi.Vec3(" + triple(self.x, self.y, self.z) + ")>";
+    });
+  py::class_<Matrix33>(m, "Matrix33")
+    .def("determinant", &Matrix33::determinant)
+    .def("inverse", &Matrix33::inverse)
+    .def("transpose", &Matrix33::transpose)
+    .def("multiply",
+         (Matrix33 (Matrix33::*)(const Matrix33&) const) &Matrix33::multiply)
+    .def("multiply",
+         (Vec3 (Matrix33::*)(const Vec3&) const) &Matrix33::multiply)
+    .def("__repr__", [](const Matrix33& self) {
+        const auto& a = self.a;
+        return "<gemmi.Matrix33 [" + triple(a[0][0], a[0][1], a[0][2]) + "]\n"
+               "                [" + triple(a[1][0], a[1][1], a[1][2]) + "]\n"
+               "                [" + triple(a[2][0], a[2][1], a[2][2]) + "]";
+    });
+
+  py::class_<FTransform>(m, "FTransform")
+    .def_readonly("mat", &FTransform::mat)
+    .def_readonly("vec", &FTransform::vec)
+    .def("apply", &FTransform::apply);
+
   py::enum_<SymmetryImage>(m, "SymmetryImage")
     .value("Same", SymmetryImage::Same)
     .value("Different", SymmetryImage::Different)
@@ -67,6 +97,7 @@ void add_unitcell(py::module& m) {
     .def_readonly("beta", &UnitCell::beta)
     .def_readonly("gamma", &UnitCell::gamma)
     .def_readonly("volume", &UnitCell::volume)
+    .def_readonly("images", &UnitCell::images)
     .def("set", &UnitCell::set)
     .def("is_crystal", &UnitCell::is_crystal)
     .def("fractionalize", &UnitCell::fractionalize)
