@@ -4,6 +4,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include "gemmi/dirwalk.hpp"
+#include "gemmi/fileutil.hpp"  // for expand_if_pdb_code
 
 namespace py = pybind11;
 
@@ -31,6 +32,7 @@ PYBIND11_MODULE(gemmi, mg) {
     .def("__iter__", [](gemmi::CoorFileWalk& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
+  mg.def("expand_if_pdb_code", &gemmi::expand_if_pdb_code);
 }
 
 // vim:sw=2:ts=2:et

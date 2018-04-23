@@ -84,6 +84,55 @@ or a monomer library.
 
 TODO
 
+Transformation matrices
+=======================
+
+We also need a tiny bit of linear algebra to work with 3D transformations,
+such as crystallographic symmetry and NCS operations,
+or fractionalization and orthogonalization of coordinates.
+
+A tranformation is represented by class ``Transform`` that has two member
+variables: ``mat`` (of type ``Mat33``) and ``vec`` (of type ``Vec3``).
+In C++ these types are defined in ``gemmi/math.hpp``.
+
+Coordinates are represented by classes derived from ``Vec3``:
+
+* ``Position`` for coordinates in Angstroms (orthogonal coordinates),
+* ``Fractional`` for coordinates relative to the unit cell
+  (fractional coordinates).
+
+The only reason to have separate types is to prevent functions that
+expect fractional coordinates from accepting orthogonal ones, and vice versa.
+
+For the same reason gemmi also has a ``FTransform``, which is like
+``Transform`` but can be applied only to ``Fractional`` coordinates.
+
+**Python**
+
+.. doctest::
+
+    >>> # get NCS transformation from an example pdb file 
+    >>> ncs_op = gemmi.read_structure('../tests/1lzh.pdb.gz').ncs[0].tr
+    >>> type(ncs_op)
+    <class 'gemmi.Transform'>
+    >>> ncs_op.mat
+    <gemmi.Mat33 [0.97571, -0.2076, 0.06998]
+                 [0.2156, 0.96659, -0.13867]
+                 [-0.03885, 0.15039, 0.98786]>
+    >>> _.determinant()
+    1.000003887799667
+    >>> ncs_op.vec
+    <gemmi.Vec3(-14.1959, 0.72997, -30.5229)>
+    >>> # is the 3x3 matrix above orthogonal?
+    >>> mat = ncs_op.mat
+    >>> identity = gemmi.Mat33()
+    >>> mat.multiply(mat.transpose()).approx(identity, epsilon=1e-5)
+    True
+    >>> ncs_op.apply(gemmi.Vec3(20, 30, 40))
+    <gemmi.Vec3(1.8895, 28.4929, 12.7262)>
+    >>> ncs_op.inverse().apply(_)
+    <gemmi.Vec3(20, 30, 40)>
+
 Unit Cell
 =========
 

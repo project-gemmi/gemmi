@@ -53,6 +53,7 @@ struct Vec3 {
     return {y*o.z - z*o.y, z*o.x - x*o.z, x*o.y - y*o.x};
   }
   double length_sq() const { return x * x + y * y + z * z; }
+  double length() const { return std::sqrt(length_sq()); }
   double dist_sq(const Vec3& o) const { return (*this - o).length_sq(); }
   double dist(const Vec3& o) const { return std::sqrt(dist_sq(o)); }
   bool approx(const Vec3& o, double epsilon) const {

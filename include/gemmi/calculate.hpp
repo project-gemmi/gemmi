@@ -47,7 +47,7 @@ inline double calculate_dihedral(const Position& p0, const Position& p1,
   Vec3 u = b1.cross(b0);
   Vec3 w = b2.cross(b1);
   double y = u.cross(w).dot(b1);
-  double x = u.dot(w) * std::sqrt(b1.length_sq());
+  double x = u.dot(w) * b1.length();
   return std::atan2(y, x);
 }
 

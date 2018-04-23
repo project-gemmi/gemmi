@@ -86,7 +86,13 @@ void add_mol(py::module& m) {
   py::class_<NcsOp>(m, "NcsOp")
     .def_readwrite("id", &NcsOp::id)
     .def_readwrite("given", &NcsOp::given)
-    .def("apply", &NcsOp::apply);
+    .def_readonly("tr", &NcsOp::tr)
+    .def("apply", &NcsOp::apply)
+    .def("__repr__", [](const NcsOp& self) {
+        return "<gemmi.NcsOp " + self.id +
+               " |shift|=" + std::to_string(self.tr.vec.length()) +
+               (self.given ? " (" : " (not ") + "given)>";
+    });
 
   py::bind_vector<std::vector<NcsOp>>(m, "VectorNcsOp");
   py::bind_map<entity_map_type>(m, "EntityMap");
