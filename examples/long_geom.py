@@ -33,7 +33,7 @@ def run(path):
 
 def main():
     for arg in sys.argv[1:]:
-        for path in gemmi.CoorFileWalk(sys.argv[1]):
+        for path in gemmi.CoorFileWalk(arg):
             run(path)
 
 if __name__ == '__main__':
