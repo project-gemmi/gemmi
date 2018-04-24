@@ -102,7 +102,7 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
       case ID("YCM"): return { ResidueInfo::AA,  'C', false,  8 };
       case ID("NRQ"): return { ResidueInfo::AA,  'M', false, 15 };
       case ID("CGU"): return { ResidueInfo::AA,  'E', false,  7 };
-      case ID("0TD"): return { ResidueInfo::AA,  ' ', false,  7 };
+      case ID("0TD"): return { ResidueInfo::AA,  'D', false,  7 };
       case ID("MLE"): return { ResidueInfo::AA,  'L', false, 13 };
       case ID("DAS"): return { ResidueInfo::AA,  'D', false,  5 };
       case ID("DTR"): return { ResidueInfo::AA,  'W', false, 10 };
@@ -134,7 +134,7 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
       case ID("MA6"): return { ResidueInfo::RNA, 'A', false, 18 };
       case ID("M2G"): return { ResidueInfo::RNA, 'G', false, 18 };
       case ID("1MA"): return { ResidueInfo::RNA, 'A', false, 16 };
-      case ID("6MZ"): return { ResidueInfo::RNA, 'N', false, 16 };
+      case ID("6MZ"): return { ResidueInfo::RNA, 'A', false, 16 };
       case ID("CCC"): return { ResidueInfo::RNA, 'C', false, 13 };
       case ID("2MA"): return { ResidueInfo::RNA, 'A', false, 16 };
       case ID("1MG"): return { ResidueInfo::RNA, 'G', false, 16 };
@@ -143,7 +143,7 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
       case ID("DOC"): return { ResidueInfo::DNA, 'C', false, 14 };
       case ID("8OG"): return { ResidueInfo::DNA, 'G', false, 14 };
       case ID("5CM"): return { ResidueInfo::DNA, 'C', false, 16 };
-      case ID("3DR"): return { ResidueInfo::DNA, 'N', false, 11 };
+      case ID("3DR"): return { ResidueInfo::DNA, ' ', false, 11 };
       case ID("BRU"): return { ResidueInfo::DNA, 'U', false, 12 };
       case ID("CBR"): return { ResidueInfo::DNA, 'C', false, 13 };
 
@@ -190,23 +190,23 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
 #undef ID
   } else if (name.size() == 1) {
     switch (name[0]) {
-      case 'A': return { ResidueInfo::RNA, ' ', true, 14 };
-      case 'C': return { ResidueInfo::RNA, ' ', true, 14 };
-      case 'G': return { ResidueInfo::RNA, ' ', true, 14 };
-      case 'I': return { ResidueInfo::RNA, ' ', true, 13 };
-      case 'U': return { ResidueInfo::RNA, ' ', true, 13 };
+      case 'A': return { ResidueInfo::RNA, 'A', true, 14 };
+      case 'C': return { ResidueInfo::RNA, 'C', true, 14 };
+      case 'G': return { ResidueInfo::RNA, 'G', true, 14 };
+      case 'I': return { ResidueInfo::RNA, 'I', true, 13 };
+      case 'U': return { ResidueInfo::RNA, 'U', true, 13 };
 
       case 'K': return { ResidueInfo::ELS, ' ', false, 0 };
     }
   } else if (name.size() == 2) {
     if (name[0] == 'D' || name[0] == '+')
       switch (name[1]) {
-        case 'A': return { ResidueInfo::DNA, ' ', true, 14 };
-        case 'C': return { ResidueInfo::DNA, ' ', true, 14 };
-        case 'G': return { ResidueInfo::DNA, ' ', true, 14 };
-        case 'I': return { ResidueInfo::DNA, ' ', true, 13 };
-        case 'T': return { ResidueInfo::DNA, ' ', true, 15 };
-        case 'U': return { ResidueInfo::DNA, ' ', true, 13 };
+        case 'A': return { ResidueInfo::DNA, 'A', true, 14 };
+        case 'C': return { ResidueInfo::DNA, 'C', true, 14 };
+        case 'G': return { ResidueInfo::DNA, 'G', true, 14 };
+        case 'I': return { ResidueInfo::DNA, 'I', true, 13 };
+        case 'T': return { ResidueInfo::DNA, 'T', true, 15 };
+        case 'U': return { ResidueInfo::DNA, 'U', true, 13 };
       }
     else
 #define ID(s) (s[0] << 8 | s[1])
