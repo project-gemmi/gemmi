@@ -114,7 +114,7 @@ static void check_disulf(const char* start) {
     std::vector<Connection> c1 = find_disulfide_bonds(model, st.cell);
     std::vector<Connection> c2 = find_disulfide_bonds2(st);
     printf("%10s  %zu %zu\n", st.name.c_str(), c1.size(), c2.size());
-    if (c1.size() != c2.size()) {
+    if (c1.size() != c2.size() || verbose) {
       for (const Connection& con : c1)
         print_connection(con, st);
       printf("---\n");
@@ -125,20 +125,25 @@ static void check_disulf(const char* start) {
 }
 
 int main(int argc, char* argv[]) {
-  if (argc == 3 && argv[1] == std::string("-v"))
+  int pos = 1;
+  if (argc >= 3 && argv[1] == std::string("-v")) {
+    ++pos;
     verbose = true;
-  else if (argc != 2)
+  } else if (argc < 2) {
     return 1;
+  }
   int counter = 0;
   try {
-    check_disulf(argv[argc-1]);
-    return 0;
-    for (const char* path : CifWalk(expand_if_pdb_code(argv[argc-1]))) {
-      cif::Document doc = cif::read(MaybeGzipped(path));
-      check_struct_conn(doc.sole_block());
-      if (++counter % 1000 == 0) {
-        std::printf("[progress: %d files]\n", counter);
-        std::fflush(stdout);
+    for (; pos != argc; ++pos) {
+      check_disulf(argv[pos]);
+      continue;
+      for (const char* path : CifWalk(expand_if_pdb_code(argv[pos]))) {
+        cif::Document doc = cif::read(MaybeGzipped(path));
+        check_struct_conn(doc.sole_block());
+        if (++counter % 1000 == 0) {
+          std::printf("[progress: %d files]\n", counter);
+          std::fflush(stdout);
+        }
       }
     }
   } catch (std::runtime_error& err) {
