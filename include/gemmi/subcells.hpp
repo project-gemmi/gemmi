@@ -70,17 +70,18 @@ inline SubCells::SubCells(const Structure& st, double max_radius) {
       const Residue& res = chain.residues[n_res];
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
         const Atom& atom = res.atoms[n_atom];
-        Fractional frac = st.cell.fractionalize(atom.pos).wrap_to_unit();
+        Fractional frac0 = st.cell.fractionalize(atom.pos);
         {
+          Fractional frac = frac0.wrap_to_unit();
           Position pos = st.cell.orthogonalize(frac);
           get_subcell(frac).emplace_back(pos, atom.altloc, atom.element.elem,
                                          0, n_ch, n_res, n_atom);
         }
         for (int n_im = 0; n_im != (int) st.cell.images.size(); ++n_im) {
-          Fractional ifrac = st.cell.images[n_im].apply(frac).wrap_to_unit();
-          Position pos = st.cell.orthogonalize(ifrac);
-          get_subcell(ifrac).emplace_back(pos, atom.altloc, atom.element.elem,
-                                          n_im + 1, n_ch, n_res, n_atom);
+          Fractional frac = st.cell.images[n_im].apply(frac0).wrap_to_unit();
+          Position pos = st.cell.orthogonalize(frac);
+          get_subcell(frac).emplace_back(pos, atom.altloc, atom.element.elem,
+                                         n_im + 1, n_ch, n_res, n_atom);
         }
       }
     }

@@ -35,11 +35,8 @@ struct Fractional : Vec3 {
   Fractional operator+(const Fractional& o) const {
     return Fractional(Vec3::operator+(o));
   }
-  Fractional& wrap_to_unit() {
-    x -= std::floor(x);
-    y -= std::floor(y);
-    z -= std::floor(z);
-    return *this;
+  Fractional wrap_to_unit() const {
+    return {x - std::floor(x), y - std::floor(y), z - std::floor(z)};
   }
   void move_toward_zero_by_one() {
     if (x > 0.5) x -= 1.0; else if (x < -0.5) x += 1.0;
