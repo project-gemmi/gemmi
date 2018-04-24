@@ -193,10 +193,12 @@ endif()
 ### benchmarks ###
 
 if (benchmark_FOUND)
-  foreach(b bench_elem bench_mod bench_sym bench_round)
-    add_executable(${b} EXCLUDE_FROM_ALL tools/${b}.cpp)
-    target_link_libraries(${b} benchmark::benchmark)
-    add_dependencies(check ${b})
+  foreach(b elem mod resinfo round sym)
+    add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp)
+    target_link_libraries(${b}-bm benchmark::benchmark)
+    set_target_properties(${b}-bm PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                             "${CMAKE_BINARY_DIR}/benchmarks")
+    add_dependencies(check ${b}-bm)
   endforeach()
 endif()
 

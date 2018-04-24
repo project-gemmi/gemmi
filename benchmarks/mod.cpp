@@ -7,6 +7,7 @@
 #include <climits>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>  // for rand
 #include <benchmark/benchmark.h>
 
 static const int n = 12;
