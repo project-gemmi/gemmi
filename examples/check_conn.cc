@@ -112,7 +112,7 @@ static void check_disulf(const char* start) {
       continue;
     const Model& model = st.models.at(0);
     std::vector<Connection> c1 = find_disulfide_bonds(model, st.cell);
-    std::vector<Connection> c2 = find_disulfide_bonds2(st);
+    std::vector<Connection> c2 = find_disulfide_bonds2(model, st.cell);
     printf("%10s  %zu %zu\n", st.name.c_str(), c1.size(), c2.size());
     if (c1.size() != c2.size() || verbose) {
       for (const Connection& con : c1)

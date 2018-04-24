@@ -50,10 +50,10 @@ std::vector<Connection> find_disulfide_bonds(const Model& model,
   return ret;
 }
 
-std::vector<Connection> find_disulfide_bonds2(const Structure& st) {
+std::vector<Connection> find_disulfide_bonds2(const Model& model,
+                                              const UnitCell& cell) {
   const double max_dist = 3.0;
-  SubCells sc(st, 5.0);
-  const Model& model = st.models.at(0);
+  SubCells sc(model, cell, 5.0);
   const std::string sg = "SG";
   std::vector<Connection> ret;
   for (const Chain& chain : model.chains)

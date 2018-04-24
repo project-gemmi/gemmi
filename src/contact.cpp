@@ -31,7 +31,7 @@ static const option::Descriptor Usage[] = {
 };
 
 static void print_contacts(const Structure& st, float max_dist, int verbose) {
-  SubCells sc(st, std::max(5.0f, max_dist));
+  SubCells sc(st.models.at(0), st.cell, std::max(5.0f, max_dist));
 
   if (verbose > 0) {
     if (verbose > 1) {

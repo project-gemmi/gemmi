@@ -31,7 +31,7 @@ struct SubCells {
   using item_type = std::vector<AtomImage>;
   Grid<item_type> grid;
 
-  SubCells(const Structure& st, double max_radius);
+  SubCells(const Model& model, const UnitCell& cell, double max_radius);
 
   // assumes data in [0, 1), but uses index_n to handle numeric deviations
   item_type& get_subcell(const Fractional& fr) {
@@ -52,9 +52,10 @@ struct SubCells {
 };
 
 
-inline SubCells::SubCells(const Structure& st, double max_radius) {
-  if (st.cell.is_crystal()) {
-    grid.set_unit_cell(st.cell);
+inline SubCells::SubCells(const Model& model, const UnitCell& cell,
+                          double max_radius) {
+  if (cell.is_crystal()) {
+    grid.set_unit_cell(cell);
   } else {
     // TODO: determine boundaries and add 2 empty cells as a margin
     fail("not a crystal");
@@ -63,23 +64,22 @@ inline SubCells::SubCells(const Structure& st, double max_radius) {
   if (grid.nu < 3 || grid.nv < 3 || grid.nw < 3)
     grid.set_size_without_checking(std::max(grid.nu, 3), std::max(grid.nv, 3),
                                    std::max(grid.nw, 3));
-  const Model& model = st.models.at(0);
   for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
     const Chain& chain = model.chains[n_ch];
     for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
       const Residue& res = chain.residues[n_res];
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
         const Atom& atom = res.atoms[n_atom];
-        Fractional frac0 = st.cell.fractionalize(atom.pos);
+        Fractional frac0 = cell.fractionalize(atom.pos);
         {
           Fractional frac = frac0.wrap_to_unit();
-          Position pos = st.cell.orthogonalize(frac);
+          Position pos = cell.orthogonalize(frac);
           get_subcell(frac).emplace_back(pos, atom.altloc, atom.element.elem,
                                          0, n_ch, n_res, n_atom);
         }
-        for (int n_im = 0; n_im != (int) st.cell.images.size(); ++n_im) {
-          Fractional frac = st.cell.images[n_im].apply(frac0).wrap_to_unit();
-          Position pos = st.cell.orthogonalize(frac);
+        for (int n_im = 0; n_im != (int) cell.images.size(); ++n_im) {
+          Fractional frac = cell.images[n_im].apply(frac0).wrap_to_unit();
+          Position pos = cell.orthogonalize(frac);
           get_subcell(frac).emplace_back(pos, atom.altloc, atom.element.elem,
                                          n_im + 1, n_ch, n_res, n_atom);
         }

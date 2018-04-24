@@ -39,7 +39,7 @@ static void subcells_ctor(benchmark::State& state) {
   using namespace gemmi;
   Structure st = read_pdb_file(path);
   while (state.KeepRunning()) {
-    SubCells sc(st, 5.0);
+    SubCells sc(st.models.at(0), st.cell, 5.0);
     benchmark::DoNotOptimize(sc);
   }
 }
@@ -49,7 +49,7 @@ static void subcells_find(benchmark::State& state) {
   Structure st = read_pdb_file(path);
   const Model& model = st.models[0];
   Position ref = model.chains.at(0).residues.at(2).atoms.at(0).pos;
-  SubCells sc(st, 5.0);
+  SubCells sc(st.models.at(0), st.cell, 5.0);
   while (state.KeepRunning()) {
     auto r = sc.find(ref, '\0', 4);
     benchmark::DoNotOptimize(r);
@@ -61,7 +61,7 @@ static void subcells_for_each(benchmark::State& state) {
   Structure st = read_pdb_file(path);
   const Model& model = st.models[0];
   Position ref = model.chains.at(0).residues.at(2).atoms.at(0).pos;
-  SubCells sc(st, 5.0);
+  SubCells sc(st.models.at(0), st.cell, 5.0);
   while (state.KeepRunning()) {
     double sum = 0;
     sc.for_each(ref, '\0', 4,

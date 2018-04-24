@@ -1,6 +1,7 @@
 // Copyright 2018 Global Phasing Ltd.
 
 #include "gemmi/ccp4.hpp"
+#include "gemmi/subcells.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -87,4 +88,12 @@ void add_ccp4_and_grid(py::module& m) {
           return grid;
         }, py::arg("path"), py::return_value_policy::move,
         "Reads a CCP4 file, mode 0 (int8_t data, usually 0/1 masks).");
+  py::class_<SubCells>(m, "SubCells")
+    .def(py::init<const Model&, const UnitCell&, double>(),
+         py::arg("model"), py::arg("cell"), py::arg("max_radius"))
+    .def("find", &SubCells::find,
+         py::arg("pos"), py::arg("alt"), py::arg("radius"))
+    .def("__repr__", [](const SubCells& self) {
+        return "<gemmi.SubCells with grid " + grid_dim_str(self.grid) + ">";
+    });
 }

@@ -43,5 +43,25 @@ class TestFloatGrid(unittest.TestCase):
         self.assertEqual(sum(m), 2 * N * N * N - 2 * 12)
 
 
+# In 5a11 applying NCS causes atom clashing
+FRAGMENT_5A11 = """\
+CRYST1   48.367   89.613   83.842  90.00 101.08  90.00 P 1 21 1      4          
+MTRIX1   1 -0.999980  0.006670  0.000050       13.74419                         
+MTRIX2   1  0.006260  0.941760 -0.336220       35.56956                         
+MTRIX3   1 -0.002290 -0.336210 -0.941780      205.34927                         
+ATOM    256  SG  CYS A  37      -1.002 -31.125  88.394  1.00 14.38           S  
+ATOM   2969  SG  CYS B  37      14.582 -23.455 132.554  1.00 18.14           S  
+"""  # noqa: W291 - trailing whitespace
+
+class TestSubCells(unittest.TestCase):
+    def test_5a11(self):
+        st = gemmi.read_pdb_string(FRAGMENT_5A11)
+        a1 = st[0].residue('A', 37, ' ')[0]
+        a2 = st[0].residue('B', 37, ' ')[0]
+        subcells = gemmi.SubCells(st[0], st.cell, 5)
+        # TODO
+        #atom_images = subcells.find(a1.pos, '\0', 2)
+        self.assertNotEqual(a1, a2)
+
 if __name__ == '__main__':
     unittest.main()
