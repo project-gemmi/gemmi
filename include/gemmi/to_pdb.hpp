@@ -309,8 +309,8 @@ inline void write_header(const Structure& st, std::ostream& os,
         const_CRA cra2 = st.models[0].find_cra(con.atom[1]);
         if (!cra1.atom || !cra2.atom)
           continue;
-        NearbyImage im = st.cell.find_nearest_image(cra1.atom->pos,
-                                                    cra2.atom->pos, con.image);
+        SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
+                                                 cra2.atom->pos, con.asu);
         WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  \n",
            ++counter,
            cra1.residue->name.c_str(), cra1.chain->name_for_pdb().c_str(),
@@ -328,8 +328,8 @@ inline void write_header(const Structure& st, std::ostream& os,
         const_CRA cra2 = st.models[0].find_cra(con.atom[1]);
         if (!cra1.atom || !cra2.atom)
           continue;
-        NearbyImage im = st.cell.find_nearest_image(cra1.atom->pos,
-                                                    cra2.atom->pos, con.image);
+        SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
+                                                 cra2.atom->pos, con.asu);
         WRITE("LINK        %-4s%c%3s%2s%5s   "
               "            %-4s%c%3s%2s%5s  %6s %6s %5.2f  \n",
               cra1.atom->padded_name().c_str(),

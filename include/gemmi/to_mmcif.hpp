@@ -106,8 +106,8 @@ inline void write_struct_conn(const Structure& st, cif::Block& block) {
     const_CRA cra2 = st.models[0].find_cra(con.atom[1]);
     if (!cra1.atom || !cra2.atom)
       continue;
-    NearbyImage im = st.cell.find_nearest_image(cra1.atom->pos,
-                                                cra2.atom->pos, con.image);
+    SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
+                                             cra2.atom->pos, con.asu);
     conn_loop.add_row({
         con.name,                               // id
         get_mmcif_connection_type_id(con.type), // conn_type_id

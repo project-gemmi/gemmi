@@ -71,8 +71,8 @@ static void print_contacts(const Structure& st, float max_dist, int verbose) {
             const Chain& chain2 = model.chains[a.chain_idx];
             const Residue& res2 = chain2.residues[a.residue_idx];
             const Atom& atom2 = res2.atoms[a.atom_idx];
-            NearbyImage im = sc.grid.unit_cell.find_nearest_image(
-                              atom.pos, atom2.pos, SymmetryImage::Unspecified);
+            SymImage im = sc.grid.unit_cell.find_nearest_image(
+                                          atom.pos, atom2.pos, SameAsu::Any);
             /*
             printf(" %4s %4s %4s %4s - %4s %4s %4s %4s  %.2f\n",
                    chain.name.c_str(), res.name.c_str(),

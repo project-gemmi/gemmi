@@ -131,8 +131,8 @@ static void print_atoms_on_special_positions(const Structure& st) {
       for (const Atom& atom : res.atoms)
         if (int n = st.cell.is_special_position(atom.pos)) {
           found = true;
-          NearbyImage im = st.cell.find_nearest_image(atom.pos, atom.pos,
-                                                      SymmetryImage::Different);
+          SymImage im = st.cell.find_nearest_image(atom.pos, atom.pos,
+                                                   SameAsu::No);
           printf("\n    %s %4d %3s %-3s %c fold=%d  occ=%.2f  d_image=%.4f",
                  chain.name_for_pdb().c_str(),
                  res.seq_num_for_pdb(), res.name.c_str(),

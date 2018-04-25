@@ -45,15 +45,15 @@ struct Fractional : Vec3 {
   }
 };
 
-enum class SymmetryImage : char { Same, Different, Unspecified };
+enum class SameAsu : char { Yes, No, Any };
 
 // Result of find_nearest_image
-struct NearbyImage {
+struct SymImage {
   double dist_sq;
   int box[3] = { 0, 0, 0 };
   int sym_id = 0;
   double dist() const { return std::sqrt(dist_sq); }
-  bool same_image() const {
+  bool same_asu() const {
     return box[0] == 0 && box[1] == 0 && box[2] == 0 && sym_id == 0;
   }
   std::string pdb_symbol(bool underscore) const {
@@ -192,7 +192,7 @@ struct UnitCell {
   }
 
   // Helper function. PBC = periodic boundary conditions.
-  bool search_pbc_images(Fractional&& diff, NearbyImage& image) const {
+  bool search_pbc_images(Fractional&& diff, SymImage& image) const {
     int box[3] = { iround(diff.x), iround(diff.y), iround(diff.z) };
     diff.x -= box[0];
     diff.y -= box[1];
@@ -208,19 +208,19 @@ struct UnitCell {
     return false;
   }
 
-  NearbyImage find_nearest_image(const Position& ref, const Position& pos,
-                                 SymmetryImage sym_image) const {
-    NearbyImage image;
-    image.dist_sq = ref.dist_sq(pos);
-    if (sym_image == SymmetryImage::Same || !is_crystal()) {
-      if (sym_image == SymmetryImage::Different || image.dist_sq == 0.0)
-        image.dist_sq = INFINITY;
+  SymImage find_nearest_image(const Position& ref, const Position& pos,
+                              SameAsu asu) const {
+    SymImage image;
+    if (asu == SameAsu::No)
+      image.dist_sq = INFINITY;
+    else
+      image.dist_sq = ref.dist_sq(pos);
+    if (asu == SameAsu::Yes || !is_crystal())
       return image;
-    }
     Fractional fpos = fractionalize(pos);
     Fractional fref = fractionalize(ref);
     search_pbc_images(fpos - fref, image);
-    if ((sym_image == SymmetryImage::Different || image.dist_sq == 0.0) &&
+    if ((asu == SameAsu::No || image.dist_sq == 0.0) &&
         image.box[0] == 0 && image.box[1] == 0 && image.box[2] == 0)
       image.dist_sq = INFINITY;
     for (int n = 0; n != static_cast<int>(images.size()); ++n)

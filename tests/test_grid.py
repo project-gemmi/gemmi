@@ -53,6 +53,14 @@ ATOM    256  SG  CYS A  37      -1.002 -31.125  88.394  1.00 14.38           S
 ATOM   2969  SG  CYS B  37      14.582 -23.455 132.554  1.00 18.14           S  
 """  # noqa: W291 - trailing whitespace
 
+# In 1gtv two different chains (with partial occupancy) are exactly in the
+# same place
+FRAGMENT_1GTV = """\
+CRYST1   76.353   76.353  134.815  90.00  90.00 120.00 P 65 2 2     24
+ATOM    635  SG  CYS A  85      42.948   6.483  17.913  0.48 23.86           S
+ATOM   2293  SG  CYS B  85      42.948   6.483  17.913  0.52 23.86           S
+"""
+
 class TestSubCells(unittest.TestCase):
     def test_5a11(self):
         st = gemmi.read_pdb_string(FRAGMENT_5A11)

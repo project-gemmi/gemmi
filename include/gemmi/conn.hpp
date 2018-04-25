@@ -30,16 +30,14 @@ std::vector<Connection> find_disulfide_bonds(const Model& model,
     for (size_t j = 0; j <= i; ++j) {
       const Atom* a2 = atoms[j].atom;
       if (a1->same_conformer(*a2)) {
-        SymmetryImage sym = (i != j ? SymmetryImage::Unspecified
-                                    : SymmetryImage::Different);
-        NearbyImage im = cell.find_nearest_image(a1->pos, a2->pos, sym);
+        SameAsu asu = (i != j ? SameAsu::Any : SameAsu::No);
+        SymImage im = cell.find_nearest_image(a1->pos, a2->pos, asu);
         // if i == j and the image is nearby the atom is on special position
         if (im.dist_sq < max_dist * max_dist && (i != j || im.dist_sq > 1.0)) {
           Connection c;
           c.name = "disulf" + std::to_string(ret.size() + 1);
           c.type = Connection::Disulf;
-          c.image = im.same_image() ? SymmetryImage::Same
-                                    : SymmetryImage::Different;
+          c.asu = im.same_asu() ? SameAsu::Yes : SameAsu::No;
           c.atom[0] = AtomAddress(*atoms[i].chain, *atoms[i].residue, *a1);
           c.atom[1] = AtomAddress(*atoms[j].chain, *atoms[j].residue, *a2);
           ret.push_back(c);
@@ -77,8 +75,7 @@ std::vector<Connection> find_disulfide_bonds2(const Model& model,
               Connection c;
               //c.name = "disulf" + std::to_string(ret.size() + 1);
               c.type = Connection::Disulf;
-              c.image = a.image_idx == 0 ? SymmetryImage::Same
-                                         : SymmetryImage::Different;
+              c.asu = a.image_idx == 0 ? SameAsu::Yes : SameAsu::No;
               c.atom[0] = AtomAddress(chain, res, atom);
               c.atom[1] = AtomAddress(chain2, res2, atom2);
               ret.push_back(c);

@@ -20,8 +20,8 @@ int verbose = false;
 static bool has_connection(std::vector<Connection> vec, const Connection& con) {
   for (const Connection& item : vec)
     if (item.type == con.type &&
-        (item.image == con.image || item.image == SymmetryImage::Unspecified ||
-                                    con.image == SymmetryImage::Unspecified) &&
+        (item.asu == con.asu || item.asu == SameAsu::Any ||
+                                con.asu == SameAsu::Any) &&
         ((item.atom[0] == con.atom[0] && item.atom[1] == con.atom[1]) ||
          (item.atom[0] == con.atom[1] && item.atom[1] == con.atom[0])))
       return true;
@@ -32,7 +32,7 @@ static void print_connection(const Connection& con, Structure& st) {
   const Atom* a1 = st.models[0].find_atom(con.atom[0]);
   const Atom* a2 = st.models[0].find_atom(con.atom[1]);
   if (a1 && a2) {
-    NearbyImage im = st.cell.find_nearest_image(a1->pos, a2->pos, con.image);
+    SymImage im = st.cell.find_nearest_image(a1->pos, a2->pos, con.asu);
     std::printf("%s - %s  im:%s  %.3f\n",
                 con.atom[0].str().c_str(), con.atom[1].str().c_str(),
                 im.pdb_symbol(true).c_str(), im.dist());
@@ -57,8 +57,8 @@ static void check_struct_conn(cif::Block& block) {
     }
     if (!atom[0] || !atom[1])
       continue;
-    NearbyImage im = st.cell.find_nearest_image(atom[0]->pos,
-                                                atom[1]->pos, con.image);
+    SymImage im = st.cell.find_nearest_image(atom[0]->pos,
+                                             atom[1]->pos, con.asu);
     double dist = std::sqrt(im.dist_sq);
     cif::Table::Row row = struct_conn.find_row(con.name);
     if (!starts_with(con.name, row.str(1)))

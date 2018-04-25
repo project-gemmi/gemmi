@@ -461,7 +461,7 @@ struct Connection {
   enum Type { Covale, Disulf, Hydrog, MetalC, None };
   std::string name;
   Type type = None;
-  SymmetryImage image = SymmetryImage::Unspecified;
+  SameAsu asu = SameAsu::Any;
   AtomAddress atom[2];
 };
 

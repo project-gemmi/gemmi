@@ -70,18 +70,19 @@ void add_unitcell(py::module& m) {
   py::class_<FTransform, Transform>(m, "FTransform")
     .def("apply", &FTransform::apply);
 
-  py::enum_<SymmetryImage>(m, "SymmetryImage")
-    .value("Same", SymmetryImage::Same)
-    .value("Different", SymmetryImage::Different)
-    .value("Unspecified", SymmetryImage::Unspecified);
 
-  py::class_<NearbyImage>(m, "NearbyImage")
-    .def("dist", &NearbyImage::dist)
-    .def("__repr__", [](const NearbyImage& self) {
-        return "<gemmi.NearbyImage cell:[" +
+  py::class_<SymImage> symimage(m, "SymImage");
+  symimage
+    .def("dist", &SymImage::dist)
+    .def("__repr__", [](const SymImage& self) {
+        return "<gemmi.SymImage cell:[" +
           triple(self.box[0], self.box[1], self.box[2]) +
           "] sym:" + std::to_string(self.sym_id) + ">";
     });
+  py::enum_<SameAsu>(symimage, "Asu")
+    .value("Same", SameAsu::Yes)
+    .value("Different", SameAsu::No)
+    .value("Any", SameAsu::Any);
 
   py::class_<UnitCell>(m, "UnitCell")
     .def(py::init<>())
@@ -106,8 +107,7 @@ void add_unitcell(py::module& m) {
     .def("orthogonalize", &UnitCell::orthogonalize)
     .def("volume_per_image", &UnitCell::volume_per_image)
     .def("find_nearest_image", &UnitCell::find_nearest_image,
-        py::arg("ref"), py::arg("pos"),
-        py::arg("sym_image")=SymmetryImage::Unspecified)
+        py::arg("ref"), py::arg("pos"), py::arg("asu")=SameAsu::Any)
     .def("__repr__", [](const UnitCell& self) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
              + ", " + triple(self.alpha, self.beta, self.gamma) + ")>";

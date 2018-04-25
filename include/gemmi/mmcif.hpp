@@ -85,10 +85,7 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
         break;
       }
     if (row.has2(16) && row.has2(17)) {
-      if (row.str(16) == row.str(17))
-        c.image = SymmetryImage::Same;
-      else
-        c.image = SymmetryImage::Different;
+      c.asu = (row.str(16) == row.str(17) ? SameAsu::Yes : SameAsu::No);
     }
     for (int i = 0; i < 2; ++i) {
       AtomAddress& a = c.atom[i];

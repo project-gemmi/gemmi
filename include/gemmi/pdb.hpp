@@ -266,12 +266,12 @@ inline size_t copy_line_from_stream(char* line, int size, Input&& in) {
   return len;
 }
 
-inline SymmetryImage compare_link_symops(const std::string& record) {
+inline SameAsu compare_link_symops(const std::string& record) {
   if (record.size() < 72)
-    return SymmetryImage::Unspecified;  // it could also mean Same
+    return SameAsu::Any;  // it could be interpreted as Yes
   if (read_string(&record[59], 6) == read_string(&record[66], 6))
-    return SymmetryImage::Same;
-  return SymmetryImage::Different;
+    return SameAsu::Yes;
+  return SameAsu::No;
 }
 
 inline
@@ -293,7 +293,7 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       c.atom[1].chain_name = read_string(r + 28, 2);
       c.atom[1].res_id = read_res_id(r + 31, r + 25);
       c.atom[1].atom_name = "SG";
-      c.image = compare_link_symops(record);
+      c.asu = compare_link_symops(record);
       for (Model& mdl : st.models) {
         for (AtomAddress& ad : c.atom) {
           CRA cra = mdl.find_cra(ad);
@@ -330,7 +330,7 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
         c.atom[i].atom_name = read_string(t + 12, 4);
         c.atom[i].altloc = (t[16] == ' ' ? '\0' : t[16]);
       }
-      c.image = compare_link_symops(record);
+      c.asu = compare_link_symops(record);
       for (Model& mdl : st.models)
         mdl.connections.emplace_back(c);
     } else if (record[0] == 'C' || record[0] == 'c') { // CISPEP
