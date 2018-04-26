@@ -9,7 +9,7 @@ PDB_FILE = os.path.join(TOP_DIR, "tests", "1orc.pdb")
 CIF_FILE = os.path.join(TOP_DIR, "tests", "5i55.cif")
 JSON_FILE = os.path.join(TOP_DIR, "tests", "1pfe.json")
 EXAMPLE_DIR = os.path.join(TOP_DIR, "examples")
-sys.path.append(EXAMPLE_DIR)
+sys.path.insert(0, EXAMPLE_DIR)
 
 class TestExamples(unittest.TestCase):
     def setUp(self):
