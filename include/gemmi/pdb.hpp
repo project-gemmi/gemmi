@@ -130,9 +130,10 @@ inline PolymerType check_polymer_type(const std::vector<Residue>& rr) {
         break;
       default: break;
     }
-  if (aa == rr.size())
+  if (aa == rr.size() || (aa > 10 && 2 * aa > rr.size()))
     return PolymerType::PeptideL;
-  if (rna + dna + na == rr.size()) {
+  na += dna + rna;
+  if (na == rr.size() || (na > 10 && 2 * na > rr.size())) {
     if (dna == 0)
       return PolymerType::Rna;
     else if (rna == 0)

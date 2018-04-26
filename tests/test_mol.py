@@ -102,6 +102,26 @@ class TestMol(unittest.TestCase):
     def test_5i55_predefined_removals2(self):
         self.test_5i55_predefined_removals(clear_entities=True)
 
+    def test_rnase_predefined_removals(self, clear_entities=False):
+        st = gemmi.read_structure(full_path('rnase_frag.pdb'))
+        if clear_entities:
+            self.assertEqual(len(st.entities), 3)
+            st.entities = gemmi.EntityMap()
+            self.assertEqual(len(st.entities), 0)
+        model = st[0]
+        nres_a = len(model['A0'])
+        nres_b = len(model['B0'])
+        st.remove_ligands_and_waters()  # removes SO4 from each chain
+        self.assertEqual(len(model['A0']), nres_a - 1)
+        self.assertEqual(len(model['B0']), nres_b - 1)
+        self.assertEqual(len(model['W_w']), 0)
+        self.assertEqual(len(model), 3)
+        st.remove_empty_chains()
+        self.assertEqual(len(model), 2)
+
+    def test_rnase_predefined_removals2(self):
+        self.test_rnase_predefined_removals(clear_entities=True)
+
     def read_1pfe(self, filename):
         st = gemmi.read_structure(full_path(filename))
         self.assertAlmostEqual(st.cell.a, 39.374)

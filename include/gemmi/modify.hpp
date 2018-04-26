@@ -43,13 +43,25 @@ template<> inline void remove_waters(Chain& ch) {
 // Remove ligands and waters. It may leave empty chains.
 inline void remove_ligands_and_waters(Chain& ch,
                                       EntityType etype=EntityType::Unknown) {
-  if (etype == EntityType::NonPolymer || etype == EntityType::Water) {
-    ch.residues.clear();
-  } else if (etype == EntityType::Unknown) {
-    impl::remove(ch.residues, [](const Residue& res) {
-        ResidueInfo info = find_tabulated_residue(res.name);
-        return !info.is_nucleic() && !info.is_amino();
-    });
+  switch (etype) {
+    case EntityType::NonPolymer:
+    case EntityType::Water:
+      ch.residues.clear();
+      break;
+    case EntityType::Polymer:
+      impl::remove(ch.residues, [](const Residue& res) {
+          // TODO: check polymer_type
+          ResidueInfo info = find_tabulated_residue(res.name);
+          // TODO: if residue is unknown, use get_ca / get_p to guess
+          return !info.is_nucleic() && !info.is_amino();
+      });
+      break;
+    case EntityType::Unknown:
+      impl::remove(ch.residues, [](const Residue& res) {
+          ResidueInfo info = find_tabulated_residue(res.name);
+          return !info.is_nucleic() && !info.is_amino();
+      });
+      break;
   }
 }
 inline void remove_ligands_and_waters(Structure& st) {
