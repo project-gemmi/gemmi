@@ -40,6 +40,10 @@ static void print_content_info(const Structure& st, bool /*verbose*/) {
     std::fprintf(stderr, "%s space group name! Assuming P1.\n",
                  st.spacegroup_hm.empty() ? "No" : "Unrecognized");
   }
+  if (!st.origx.is_identity())
+    printf("   The ORIGX matrix is not identity.\n");
+  if (st.cell.explicit_matrices)
+    printf("   Non-standard fractionalization matrix is given.\n");
   double n_molecules = order * st.get_ncs_multiplier();
   printf(" Number of images (symmetry * strict NCS): %5g\n", n_molecules);
   printf(" Cell volume [A^3]: %30.1f\n", st.cell.volume);

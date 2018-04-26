@@ -178,13 +178,18 @@ struct UnitCell {
     calculate_properties();
   }
 
-  // we could also apply shift for the few special cases that have
-  // SCALEn with non-zero vector
   Position orthogonalize(const Fractional& f) const {
     return Position(orth.apply(f));
   }
   Fractional fractionalize(const Position& o) const {
     return Fractional(frac.apply(o));
+  }
+
+  // orthogonalize_difference(a-b) == orthogonalize(a) - orthogonalize(b)
+  // The shift (fract.vec) can be non-zero in non-standard settings,
+  // just do not apply it here.
+  Position orthogonalize_difference(const Fractional& delta) const {
+    return Position(orth.mat.multiply(delta));
   }
 
   double volume_per_image() const {
@@ -197,7 +202,7 @@ struct UnitCell {
     diff.x -= box[0];
     diff.y -= box[1];
     diff.z -= box[2];
-    Position orth_diff = orthogonalize(diff);
+    Position orth_diff = orthogonalize_difference(diff);
     double dsq = orth_diff.length_sq();
     if (dsq < image.dist_sq) {
       image.dist_sq = dsq;
@@ -220,7 +225,7 @@ struct UnitCell {
     Fractional fpos = fractionalize(pos);
     Fractional fref = fractionalize(ref);
     search_pbc_images(fpos - fref, image);
-    if ((asu == SameAsu::No || image.dist_sq == 0.0) &&
+    if (asu == SameAsu::No &&
         image.box[0] == 0 && image.box[1] == 0 && image.box[2] == 0)
       image.dist_sq = INFINITY;
     for (int n = 0; n != static_cast<int>(images.size()); ++n)
@@ -235,7 +240,8 @@ struct UnitCell {
     int n = 0;
     Fractional fpos = fractionalize(pos);
     for (const FTransform& image : images)
-      if (orthogonalize(image.apply(fpos) - fpos).length_sq() < max_dist_sq)
+      if (orthogonalize_difference(image.apply(fpos) - fpos).length_sq()
+          < max_dist_sq)
         ++n;
     return n;
   }
