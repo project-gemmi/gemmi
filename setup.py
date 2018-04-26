@@ -39,6 +39,7 @@ class get_pybind_include(object):
             print('\n' + 50*'*')
             print('*****  Please try to install pybind11 first  *****')
             print(50*'*' + '\n')
+            sys.exit(1)
         return pybind11.get_include(self.user)
 
 if USE_SYSTEM_ZLIB:
