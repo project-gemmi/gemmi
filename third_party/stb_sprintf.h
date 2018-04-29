@@ -1,6 +1,8 @@
 // stb_sprintf - v1.05 - public domain snprintf() implementation
 // originally by Jeff Roberts / RAD Game Tools, 2015/10/20
 // http://github.com/nothings/stb
+// Modified to avoid UB and warnings at the cost of dependency on strings.h
+// and possibly slower string copying.
 //
 // allowed types:  sc uidBboXx p AaGgEef n
 // lengths      :  h ll j z t I64 I32 I
@@ -136,7 +138,7 @@ PERFORMANCE vs MSVC 2008 32-/64-bit (GCC is even slower than MSVC):
 "...512 char string..." ( 35.0x/32.5x faster!)
 */
 
-#if defined(__has_feature)
+#if 0 // defined(__has_feature)
    #if __has_feature(address_sanitizer)
       #define STBI__ASAN __attribute__((no_sanitize("address")))
    #endif
@@ -159,6 +161,7 @@ PERFORMANCE vs MSVC 2008 32-/64-bit (GCC is even slower than MSVC):
 #endif
 
 #include <stdarg.h> // for va_list()
+#include <string.h> // for memcpy(), strlen()
 
 #ifndef STB_SPRINTF_MIN
 #define STB_SPRINTF_MIN 512 // how many characters per callback
@@ -307,6 +310,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
          }
 
       // fast copy everything up to the next % (or end of string)
+#if 0
       for (;;) {
          while (((stbsp__uintptr)f) & 3) {
          schk1:
@@ -324,7 +328,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
             // Using the 'hasless' trick:
             // https://graphics.stanford.edu/~seander/bithacks.html#HasLessInWord
             stbsp__uint32 v, c;
-            v = *(stbsp__uint32 *)f;
+            v = *(stbsp__uint32 *)f;  // f is aligned
             c = (~v) & 0x80808080;
             if (((v ^ 0x25252525) - 0x01010101) & c)
                goto schk1;
@@ -333,12 +337,20 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
             if (callback)
                if ((STB_SPRINTF_MIN - (int)(bf - buf)) < 4)
                   goto schk1;
-            *(stbsp__uint32 *)bf = v;
+            memcpy(bf, &v, 4);  // bf may not be aligned
             bf += 4;
             f += 4;
          }
       }
    scandd:
+#else
+      while (f[0] != '%') {
+         if (f[0] == '\0')
+            goto endfmt;
+         stbsp__chk_cb_buf(1);
+         *bf++ = *f++;
+      }
+#endif
 
       ++f;
 
@@ -492,6 +504,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
          if (s == 0)
             s = (char *)"null";
          // get the length
+#if 0
          sn = s;
          for (;;) {
             if ((((stbsp__uintptr)sn) & 3) == 0)
@@ -509,7 +522,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
             n = ((stbsp__uint32)(pr - n)) >> 2;
          }
          while (n) {
-            stbsp__uint32 v = *(stbsp__uint32 *)sn;
+            stbsp__uint32 v = *(stbsp__uint32 *)sn;  // sn is aligned
             if ((v - 0x01010101) & (~v) & 0x80808080UL)
                goto lchk;
             sn += 4;
@@ -519,6 +532,9 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
       ld:
 
          l = (stbsp__uint32)(sn - s);
+#else
+         l = strlen(s);
+#endif
          // clamp to precision
          if (l > (stbsp__uint32)pr)
             l = pr;
@@ -782,7 +798,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
                --i;
             }
             while (i >= 4) {
-               *(stbsp__uint32 *)s = 0x30303030;
+               *(stbsp__uint32 *)s = 0x30303030;  // s is aligned
                s += 4;
                i -= 4;
             }
@@ -825,7 +841,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
                         --n;
                      }
                      while (n >= 4) {
-                        *(stbsp__uint32 *)s = 0x30303030;
+                        *(stbsp__uint32 *)s = 0x30303030;  // s is aligned
                         s += 4;
                         n -= 4;
                      }
@@ -1031,7 +1047,9 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
             if ((fl & STBSP__TRIPLET_COMMA) == 0) {
                do {
                   s -= 2;
-                  *(stbsp__uint16 *)s = *(stbsp__uint16 *)&stbsp__digitpair[(n % 100) * 2];
+                  // s is normally aligned to 2, but to avoid GCC 5 warning
+                  // (-Wstrict-aliasing) use memcpy here.
+                  memcpy(s, &stbsp__digitpair[(n % 100) * 2], 2);
                   n /= 100;
                } while (n);
             }
@@ -1111,7 +1129,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
                      --i;
                   }
                   while (i >= 4) {
-                     *(stbsp__uint32 *)bf = 0x20202020;
+                     *(stbsp__uint32 *)bf = 0x20202020;  // bf is aligned
                      bf += 4;
                      i -= 4;
                   }
@@ -1149,7 +1167,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
                      --i;
                   }
                   while (i >= 4) {
-                     *(stbsp__uint32 *)bf = 0x30303030;
+                     *(stbsp__uint32 *)bf = 0x30303030;  // bf is aligned
                      bf += 4;
                      i -= 4;
                   }
@@ -1186,7 +1204,6 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
             stbsp__cb_buf_clamp(i, n);
             n -= i;
             STBSP__UNALIGNED(while (i >= 4) {
-               //*(stbsp__uint32 *)bf = *(stbsp__uint32 *)s;
                memcpy(bf, s, 4);
                bf += 4;
                s += 4;
@@ -1211,7 +1228,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
                --i;
             }
             while (i >= 4) {
-               *(stbsp__uint32 *)bf = 0x30303030;
+               *(stbsp__uint32 *)bf = 0x30303030;  // bf is aligned
                bf += 4;
                i -= 4;
             }
@@ -1249,7 +1266,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
                      --i;
                   }
                   while (i >= 4) {
-                     *(stbsp__uint32 *)bf = 0x20202020;
+                     *(stbsp__uint32 *)bf = 0x20202020;  // bf is aligned
                      bf += 4;
                      i -= 4;
                   }
@@ -1346,8 +1363,9 @@ static char *stbsp__clamp_callback(char *buf, void *user, int len)
    return (c->count >= STB_SPRINTF_MIN) ? c->buf : c->tmp; // go direct into buffer if you can
 }
 
-static char * stbsp__count_clamp_callback( char *, void * user, int len )
+static char * stbsp__count_clamp_callback( char * buf, void * user, int len )
 {
+   (void) buf;
    stbsp__context * c = (stbsp__context*)user;
 
    c->count += len;
@@ -1750,7 +1768,9 @@ static stbsp__int32 stbsp__real_to_str(char const **start, stbsp__uint32 *len, c
       }
       while (n) {
          out -= 2;
-         *(stbsp__uint16 *)out = *(stbsp__uint16 *)&stbsp__digitpair[(n % 100) * 2];
+         // out is normally aligned to 2, but to avoid GCC 5 warning
+         // (-Wstrict-aliasing) use memcpy here.
+         memcpy(out, &stbsp__digitpair[(n % 100) * 2], 2);
          n /= 100;
          e += 2;
       }
