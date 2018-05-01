@@ -168,6 +168,9 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU|Intel")
   target_compile_options(doc_example PRIVATE -UNDEBUG)
 endif()
 
+add_executable(test_disulf EXCLUDE_FROM_ALL tests/disulf.cpp)
+support_gz(test_disulf)
+
 # auth_label requires <experimental/filesystem> and -lstdc++fs
 add_executable(auth_label EXCLUDE_FROM_ALL examples/auth_label.cc)
 target_link_libraries(auth_label stdc++fs)
@@ -181,7 +184,8 @@ add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION>)
 add_test(NAME cpptest COMMAND cpptest)
 
 add_dependencies(check
-    ctest cpptest hello doc_example doc_example2 doc_maybegz check_conn)
+    ctest cpptest hello doc_example doc_example2 doc_maybegz
+    test_disulf check_conn)
 
 if (USE_FORTRAN)
   add_executable(ftest EXCLUDE_FROM_ALL fortran/ftest.f90)

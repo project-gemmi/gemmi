@@ -4,7 +4,6 @@
 #pragma once
 #include "gemmi/cifdoc.hpp" // for Document
 #include "gemmi/model.hpp"  // for Structure
-#include "gemmi/gz.hpp"     // for expand_pdb_code_to_path
 #include <cstdlib>          // for exit
 #include <cstdio>           // for fprintf
 

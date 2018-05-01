@@ -105,25 +105,6 @@ static void check_struct_conn(cif::Block& block) {
   }
 }
 
-static void check_disulf(const char* start) {
-  for (const char* path : CoorFileWalk(expand_if_pdb_code(start))) {
-    Structure st = read_structure(MaybeGzipped(path));
-    if (!st.cell.is_crystal())
-      continue;
-    const Model& model = st.models.at(0);
-    std::vector<Connection> c1 = find_disulfide_bonds(model, st.cell);
-    std::vector<Connection> c2 = find_disulfide_bonds2(model, st.cell);
-    printf("%10s  %zu %zu\n", st.name.c_str(), c1.size(), c2.size());
-    if (c1.size() != c2.size() || verbose) {
-      for (const Connection& con : c1)
-        print_connection(con, st);
-      printf("---\n");
-      for (const Connection& con : c2)
-        print_connection(con, st);
-    }
-  }
-}
-
 int main(int argc, char* argv[]) {
   int pos = 1;
   if (argc >= 3 && argv[1] == std::string("-v")) {
@@ -135,8 +116,6 @@ int main(int argc, char* argv[]) {
   int counter = 0;
   try {
     for (; pos != argc; ++pos) {
-      check_disulf(argv[pos]);
-      continue;
       for (const char* path : CifWalk(expand_if_pdb_code(argv[pos]))) {
         cif::Document doc = cif::read(MaybeGzipped(path));
         check_struct_conn(doc.sole_block());
