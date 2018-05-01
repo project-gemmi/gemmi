@@ -198,6 +198,17 @@ struct Transform {
   void set_identity() { mat = Mat33(); vec = Vec3(); }
 };
 
+struct BoundingBox {
+  Vec3 low = Vec3(INFINITY, INFINITY, INFINITY);
+  Vec3 high = Vec3(-INFINITY, -INFINITY, -INFINITY);
+  void add(const Vec3& p) {
+    if (p.x < low.x) low.x = p.x; if (p.x > high.x) high.x = p.x;
+    if (p.y < low.y) low.y = p.y; if (p.y > high.y) high.y = p.y;
+    if (p.z < low.z) low.z = p.z; if (p.z > high.z) high.z = p.z;
+  }
+  Vec3 get_size() const { return high - low; }
+};
+
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

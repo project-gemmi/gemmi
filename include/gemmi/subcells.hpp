@@ -7,6 +7,7 @@
 #define GEMMI_SUBCELLS_HPP_
 
 #include <vector>
+#include <cmath>  // for INFINITY
 #include "grid.hpp"
 #include "model.hpp"
 
@@ -57,29 +58,36 @@ inline SubCells::SubCells(const Model& model, const UnitCell& cell,
   if (cell.is_crystal()) {
     grid.set_unit_cell(cell);
   } else {
-    // TODO: determine boundaries and add 2 empty cells as a margin
-    fail("not a crystal");
+    BoundingBox box;
+    for (const Chain& chain : model.chains)
+      for (const Residue& res : chain.residues)
+        for (const Atom& atom : res.atoms)
+          box.add(atom.pos);
+    double margin = 4 * max_radius;
+    Vec3 size = box.get_size() + Vec3(margin, margin, margin);
+    grid.set_unit_cell(size.x, size.y, size.z, 90, 90, 90);
   }
   grid.set_size_from_spacing(max_radius, false);
   if (grid.nu < 3 || grid.nv < 3 || grid.nw < 3)
     grid.set_size_without_checking(std::max(grid.nu, 3), std::max(grid.nv, 3),
                                    std::max(grid.nw, 3));
+  const UnitCell& gcell = grid.unit_cell;
   for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
     const Chain& chain = model.chains[n_ch];
     for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
       const Residue& res = chain.residues[n_res];
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
         const Atom& atom = res.atoms[n_atom];
-        Fractional frac0 = cell.fractionalize(atom.pos);
+        Fractional frac0 = gcell.fractionalize(atom.pos);
         {
           Fractional frac = frac0.wrap_to_unit();
-          Position pos = cell.orthogonalize(frac);
+          Position pos = gcell.orthogonalize(frac);
           get_subcell(frac).emplace_back(pos, atom.altloc, atom.element.elem,
                                          0, n_ch, n_res, n_atom);
         }
-        for (int n_im = 0; n_im != (int) cell.images.size(); ++n_im) {
-          Fractional frac = cell.images[n_im].apply(frac0).wrap_to_unit();
-          Position pos = cell.orthogonalize(frac);
+        for (int n_im = 0; n_im != (int) gcell.images.size(); ++n_im) {
+          Fractional frac = gcell.images[n_im].apply(frac0).wrap_to_unit();
+          Position pos = gcell.orthogonalize(frac);
           get_subcell(frac).emplace_back(pos, atom.altloc, atom.element.elem,
                                          n_im + 1, n_ch, n_res, n_atom);
         }
