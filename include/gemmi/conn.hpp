@@ -27,7 +27,7 @@ std::vector<Connection> find_disulfide_bonds(const Model& model,
   std::vector<Connection> ret;
   for (size_t i = 0; i < atoms.size(); ++i) {
     const Atom* a1 = atoms[i].atom;
-    for (size_t j = 0; j <= i; ++j) {
+    for (size_t j = i; j < atoms.size(); ++j) {
       const Atom* a2 = atoms[j].atom;
       if (a1->same_conformer(*a2)) {
         SameAsu asu = (i != j ? SameAsu::Any : SameAsu::No);

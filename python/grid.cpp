@@ -101,7 +101,8 @@ void add_grid(py::module& m) {
     .def_readonly("residue_idx", &SubCells::Mark::residue_idx)
     .def_readonly("atom_idx", &SubCells::Mark::atom_idx)
     .def("pos", &SubCells::Mark::pos)
-    .def("to_cra", &SubCells::Mark::to_cra)
+    .def("to_cra",
+         (CRA (SubCells::Mark::*)(Model&) const) &SubCells::Mark::to_cra)
     .def("__repr__", [](const SubCells::Mark& self) {
         return "<gemmi.SubCells.Mark " +
                std::string(element_name(self.element)) + " of atom " +

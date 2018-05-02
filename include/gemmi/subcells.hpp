@@ -36,6 +36,12 @@ struct SubCells {
       Atom& a = r.atoms.at(atom_idx);
       return {&c, &r, &a};
     }
+    const_CRA to_cra(const Model& model) const {
+      const Chain& c = model.chains.at(chain_idx);
+      const Residue& r = c.residues.at(residue_idx);
+      const Atom& a = r.atoms.at(atom_idx);
+      return {&c, &r, &a};
+    }
 
     float dist_sq(const Position& p) const {
       return sq((float)p.x - x) + sq((float)p.y - y) + sq((float)p.z - z);
