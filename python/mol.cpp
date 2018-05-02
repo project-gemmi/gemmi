@@ -144,6 +144,11 @@ void add_mol(py::module& m) {
                std::to_string(self.models.size()) + " model(s)>";
     });
 
+  py::class_<CRA>(m, "CRA")
+    .def_readonly("chain", &CRA::chain)
+    .def_readonly("residue", &CRA::residue)
+    .def_readonly("atom", &CRA::atom);
+
   py::class_<Model>(m, "Model")
     .def(py::init<std::string>())
     .def_readwrite("name", &Model::name)

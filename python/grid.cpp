@@ -68,7 +68,7 @@ py::class_<T> add_ccp4(py::module& m, const char* name) {
     });
 }
 
-void add_ccp4_and_grid(py::module& m) {
+void add_grid(py::module& m) {
   add_grid<float>(m, "FloatGrid");
   add_grid<int8_t>(m, "Int8Grid");
   add_ccp4<float>(m, "Ccp4Map")
@@ -88,11 +88,33 @@ void add_ccp4_and_grid(py::module& m) {
           return grid;
         }, py::arg("path"), py::return_value_policy::move,
         "Reads a CCP4 file, mode 0 (int8_t data, usually 0/1 masks).");
-  py::class_<SubCells>(m, "SubCells")
+
+  py::class_<SubCells> subcells(m, "SubCells");
+  py::class_<SubCells::Mark>(subcells, "Mark")
+    .def_readonly("x", &SubCells::Mark::x)
+    .def_readonly("y", &SubCells::Mark::y)
+    .def_readonly("z", &SubCells::Mark::z)
+    .def_readonly("altloc", &SubCells::Mark::altloc)
+    .def_readonly("element", &SubCells::Mark::element)
+    .def_readonly("image_idx", &SubCells::Mark::image_idx)
+    .def_readonly("chain_idx", &SubCells::Mark::chain_idx)
+    .def_readonly("residue_idx", &SubCells::Mark::residue_idx)
+    .def_readonly("atom_idx", &SubCells::Mark::atom_idx)
+    .def("pos", &SubCells::Mark::pos)
+    .def("to_cra", &SubCells::Mark::to_cra)
+    .def("__repr__", [](const SubCells::Mark& self) {
+        return "<gemmi.SubCells.Mark " +
+               std::string(element_name(self.element)) + " of atom " +
+               std::to_string(self.chain_idx) + "/" +
+               std::to_string(self.residue_idx) + "/" +
+               std::to_string(self.atom_idx) + ">";
+    });
+  subcells
     .def(py::init<const Model&, const UnitCell&, double>(),
          py::arg("model"), py::arg("cell"), py::arg("max_radius"))
-    .def("find", &SubCells::find,
+    .def("find_atoms", &SubCells::find_atoms,
          py::arg("pos"), py::arg("alt"), py::arg("radius"))
+    .def("dist", &SubCells::dist)
     .def("__repr__", [](const SubCells& self) {
         return "<gemmi.SubCells with grid " + grid_dim_str(self.grid) + ">";
     });

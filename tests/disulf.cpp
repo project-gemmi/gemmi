@@ -29,7 +29,7 @@ static std::vector<Connection> find_disulfide_bonds_cl(const Model& model,
         if (atom.element == El::S && atom.name == sg) {
           auto indices = model.get_indices(&chain, &res, &atom);
           sc.for_each(atom.pos, atom.altloc, max_dist,
-                      [&](const SubCells::AtomImage& a, float dist_sq) {
+                      [&](const SubCells::Mark& a, float dist_sq) {
               if (a.element != El::S ||
                   indices[0] > a.chain_idx ||
                   (indices[0] == a.chain_idx && indices[1] > a.residue_idx) ||

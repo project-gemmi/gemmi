@@ -7,15 +7,16 @@
 #define GEMMI_SUBCELLS_HPP_
 
 #include <vector>
-#include <cmath>  // for INFINITY
+#include <cmath>  // for INFINITY, sqrt
 #include "grid.hpp"
 #include "model.hpp"
 
 namespace gemmi {
 
 struct SubCells {
-  struct AtomImage {
-    float pos[3];
+
+  struct Mark {
+    float x, y, z;
     char altloc;
     El element;
     int image_idx;
@@ -23,13 +24,25 @@ struct SubCells {
     int residue_idx;
     int atom_idx;
 
-    AtomImage(const Position& p, char alt, El el, int im,
-              int chain, int res, int atom)
-    : pos{(float)p.x, (float)p.y, (float)p.z}, altloc(alt), element(el),
-      image_idx(im), chain_idx(chain), residue_idx(res), atom_idx(atom) {}
+    Mark(const Position& p, char alt, El el, int im, int ch, int res, int atom)
+    : x(p.x), y(p.y), z(p.z), altloc(alt), element(el),
+      image_idx(im), chain_idx(ch), residue_idx(res), atom_idx(atom) {}
+
+    Position pos() const { return {x, y, z}; }
+
+    CRA to_cra(Model& model) const {
+      Chain& c = model.chains.at(chain_idx);
+      Residue& r = c.residues.at(residue_idx);
+      Atom& a = r.atoms.at(atom_idx);
+      return {&c, &r, &a};
+    }
+
+    float dist_sq(const Position& p) const {
+      return sq((float)p.x - x) + sq((float)p.y - y) + sq((float)p.z - z);
+    }
   };
 
-  using item_type = std::vector<AtomImage>;
+  using item_type = std::vector<Mark>;
   Grid<item_type> grid;
 
   SubCells(const Model& model, const UnitCell& cell, double max_radius);
@@ -44,11 +57,19 @@ struct SubCells {
   template<typename T>
   void for_each(const Position& pos, char alt, float radius, const T& func);
 
-  std::vector<AtomImage*> find(const Position& pos, char alt, float radius) {
-    std::vector<AtomImage*> out;
-    for_each(pos, alt, radius,
-             [&out](AtomImage& a, float) { out.push_back(&a); });
+  std::vector<Mark*> find_atoms(const Position& pos, char alt, float radius) {
+    std::vector<Mark*> out;
+    for_each(pos, alt, radius, [&out](Mark& a, float) { out.push_back(&a); });
     return out;
+  }
+
+  float dist_sq(const Position& pos1, const Position& pos2) const {
+    const UnitCell& cell = grid.unit_cell;
+    Fractional diff = cell.fractionalize(pos1) - cell.fractionalize(pos2);
+    return cell.orthogonalize_difference(diff.wrap_to_zero()).length_sq();
+  }
+  float dist(const Position& pos1, const Position& pos2) const {
+    return std::sqrt(dist_sq(pos1, pos2));
   }
 };
 
@@ -115,11 +136,9 @@ void SubCells::for_each(const Position& pos, char alt, float radius,
         Position p = grid.unit_cell.orthogonalize(Fractional(fr.x + du,
                                                              fr.y + dv,
                                                              fr.z + dw));
-        for (AtomImage& a : grid.data[idx]) {
-          float dist_sq = sq((float) p.x - a.pos[0]) +
-                          sq((float) p.y - a.pos[1]) +
-                          sq((float) p.z - a.pos[2]);
-          if (dist_sq < sq(radius) && is_same_conformer(alt, a.altloc))
+        for (Mark& a : grid.data[idx]) {
+          float dist_sq = a.dist_sq(p);
+          if (a.dist_sq(p) < sq(radius) && is_same_conformer(alt, a.altloc))
             func(a, dist_sq);
         }
       }

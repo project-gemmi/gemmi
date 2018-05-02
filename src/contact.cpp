@@ -62,7 +62,7 @@ static void print_contacts(const Structure& st, float max_dist, int verbose) {
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
         const Atom& atom = res.atoms[n_atom];
         sc.for_each(atom.pos, atom.altloc, max_dist,
-                    [&](const SubCells::AtomImage& a, float) {
+                    [&](const SubCells::Mark& a, float) {
             if (a.image_idx == 0 && a.chain_idx == n_ch &&
                 (a.residue_idx == n_res ||
                  are_connected(res, chain.residues[a.residue_idx], pt) ||

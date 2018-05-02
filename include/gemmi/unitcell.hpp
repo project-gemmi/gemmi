@@ -38,6 +38,9 @@ struct Fractional : Vec3 {
   Fractional wrap_to_unit() const {
     return {x - std::floor(x), y - std::floor(y), z - std::floor(z)};
   }
+  Fractional wrap_to_zero() const {
+    return {x - std::round(x), y - std::round(y), z - std::round(z)};
+  }
   void move_toward_zero_by_one() {
     if (x > 0.5) x -= 1.0; else if (x < -0.5) x += 1.0;
     if (y > 0.5) y -= 1.0; else if (y < -0.5) y += 1.0;

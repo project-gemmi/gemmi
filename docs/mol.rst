@@ -44,6 +44,8 @@ from the periodic table at hand.
     >>> gemmi.Element('Mo').atomic_number
     42
 
+.. _chemcomp:
+
 Chemical Components
 ===================
 
@@ -429,7 +431,7 @@ in this spec:
 * segment ID (columns 73-76)
 * hybrid-36_ encoding of sequence IDs for sequences longer than 9999
   (although we are yet to find an examples for this)
-* hybrid-36_ encoding of serial numbers for 99,999+ atoms.
+* hybrid-36_ encoding of serial numbers for more than 99,999 atoms.
 
 .. _hybrid-36: http://cci.lbl.gov/hybrid_36/
 
@@ -572,6 +574,19 @@ Python
 
 TODO
 
+Neighbor search
+===============
+
+Fixed-radius near neighbor search is usually implemented using
+a `cell lists <https://en.wikipedia.org/wiki/Cell_lists>`_ method,
+also known as binning, bucketing or cell technique.
+It has been used in the context of macromolecular structures
+since 1960's (in 1966 it was
+`described <https://web.stanford.edu/class/sbio228/public/readings/Molecular_Simulation_I_Lecture4/Levinthal_SCIAM_66_Protein_folding.pdf>`_
+under the name cubing). Here it is implemented in a class named ``SubCells``.
+
+TODO: continue
+
 Selections
 ==========
 
@@ -584,13 +599,6 @@ And perhaps something else (selections used in JMol or PyMOL?)
 
 Sequence
 ========
-
-TODO
-
-.. _chemcomp:
-
-Chemical Component
-==================
 
 TODO
 

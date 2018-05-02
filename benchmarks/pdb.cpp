@@ -50,7 +50,7 @@ static void subcells_find(benchmark::State& state) {
   Position ref = model.chains.at(0).residues.at(2).atoms.at(0).pos;
   SubCells sc(st.models.at(0), st.cell, 5.0);
   while (state.KeepRunning()) {
-    auto r = sc.find(ref, '\0', 4);
+    auto r = sc.find_atoms(ref, '\0', 4);
     benchmark::DoNotOptimize(r);
   }
 }
@@ -63,8 +63,7 @@ static void subcells_for_each(benchmark::State& state) {
   SubCells sc(st.models.at(0), st.cell, 5.0);
   while (state.KeepRunning()) {
     double sum = 0;
-    sc.for_each(ref, '\0', 4,
-                [&sum](SubCells::AtomImage&, float d) { sum += d; });
+    sc.for_each(ref, '\0', 4, [&sum](SubCells::Mark&, float d) { sum += d; });
     benchmark::DoNotOptimize(sum);
   }
 }
