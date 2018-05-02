@@ -146,7 +146,7 @@ repeated for 5MOO::
     5MOO:0.1596;X-RAY DIFFRACTION;2016-12-14
     5MOO:0.1848;NEUTRON DIFFRACTION;2016-12-14
 
-To output TSV (tab-separated values) specifying ``--delimiter='\t'``.
+To output TSV (tab-separated values) add ``--delimiter='\t'``.
 What are the heaviest chains?
 
 ::
@@ -161,10 +161,10 @@ quite sophisticated reports. Here is a little demo:
 https://project-gemmi.github.io/pdb-stats/
 
 The major limitation here is that gemmi-grep cannot match
-corresponding values from different tables (it is not possible to do this
+corresponding values from different tables (it is not possible
 on the syntax level).
 In the example above we have two values from the same table (``_refine``)
-and a deposition date (a single value). This works well.
+and a deposition date (single value). This works well.
 But we are not able to add corresponding wavelengths from ``_diffrn_source``.
 If an extra tag (specified with ``-a``) is not in the same table
 as the main tag, gemmi-grep uses only the first value for this tag.
@@ -214,6 +214,44 @@ will grep only the listed cif files.
 Exit status of gemmi-grep has the same meaning as in GNU grep:
 0 if a line is selected, 1 if no lines were selected,
 and 2 if an error occurred.
+
+Examples
+--------
+
+comp_id check
+~~~~~~~~~~~~~
+
+The monomer library (Refmac dictionary) has tags such as
+``_chem_comp_atom.comp_id``, ``_chem_comp_bond.comp_id`` that are expected
+to be consistent with the block name::
+
+    $ gemmi grep _*.comp_id $CLIBD_MON/a/ASN.cif
+    comp_ASN:ASN
+    [repeated 106 times]
+
+We can quickly check if the names are always consistent by filtering
+the output above with awk, for all monomer files, to print only lines
+where the block name and comp_id differ::
+
+    $ gemmi grep _*.comp_id $CLIBD_MON/? | awk -F: 'substr($1, 6) != $2'
+    comp_M43:N09
+    ...
+
+planarity
+~~~~~~~~~
+
+The monomer library includes planarity restraints.
+Each row in the ``_chem_comp_plane_atom`` table with the same ``plane_id``
+represents atom belonging to the same plane.
+What is the maximum number of atoms in one plane?
+
+::
+
+    $ gemmi grep _chem_comp_plane_atom.plane_id $CLIBD_MON/? | uniq -c | sort -nr | head -3
+     38 comp_LG8:plan-1
+     36 comp_UCM:plan-1
+     36 comp_SA3:plan-1
+
 
 convert
 =======

@@ -169,6 +169,11 @@ static bool glob_match(const std::string& pattern, const std::string& str) {
 static void process_multi_match(Parameters& par) {
   if (par.multi_values.empty())
     return;
+  if (par.print_count || par.only_filenames) {
+    for (auto& mv : par.multi_values)
+      mv.clear();
+    return;
+  }
   std::string need_escaping = "\n\\";
   if (par.delim.size() < 2)
     need_escaping += par.delim.empty() ? ';' : par.delim[0];
