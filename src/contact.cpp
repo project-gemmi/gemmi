@@ -62,25 +62,15 @@ static void print_contacts(const Structure& st, float max_dist, int verbose) {
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
         const Atom& atom = res.atoms[n_atom];
         sc.for_each(atom.pos, atom.altloc, max_dist,
-                    [&](const SubCells::Mark& a, float) {
-            if (a.image_idx == 0 && a.chain_idx == n_ch &&
-                (a.residue_idx == n_res ||
-                 are_connected(res, chain.residues[a.residue_idx], pt) ||
-                 are_connected(chain.residues[a.residue_idx], res, pt)))
+                    [&](const SubCells::Mark& m, float) {
+            if (m.image_idx == 0 && m.chain_idx == n_ch &&
+                (m.residue_idx == n_res ||
+                 are_connected(res, chain.residues[m.residue_idx], pt) ||
+                 are_connected(chain.residues[m.residue_idx], res, pt)))
               return;
-            const Chain& chain2 = model.chains[a.chain_idx];
-            const Residue& res2 = chain2.residues[a.residue_idx];
-            const Atom& atom2 = res2.atoms[a.atom_idx];
-            SymImage im = sc.grid.unit_cell.find_nearest_image(
-                                          atom.pos, atom2.pos, SameAsu::Any);
-            /*
-            printf(" %4s %4s %4s %4s - %4s %4s %4s %4s  %.2f\n",
-                   chain.name.c_str(), res.name.c_str(),
-                   res.seq_id().c_str(), atom.name.c_str(),
-                   chain2.name.c_str(), res2.name.c_str(),
-                   res2.seq_id().c_str(), atom2.name.c_str(),
-                   im.dist());
-            */
+            const_CRA cra = m.to_cra(model);
+            SymImage im = st.cell.find_nearest_pbc_image(
+                                        atom.pos, cra.atom->pos, m.image_idx);
             printf("            %-4s%c%3s%2s%5s   "
                    "            %-4s%c%3s%2s%5s  %6s %6s %5.2f\n",
                    atom.padded_name().c_str(),
@@ -88,11 +78,11 @@ static void print_contacts(const Structure& st, float max_dist, int verbose) {
                    res.name.c_str(),
                    chain.name_for_pdb().c_str(),
                    res.seq_id().c_str(),
-                   atom2.padded_name().c_str(),
-                   atom2.altloc ? std::toupper(atom2.altloc) : ' ',
-                   res2.name.c_str(),
-                   chain2.name_for_pdb().c_str(),
-                   res2.seq_id().c_str(),
+                   cra.atom->padded_name().c_str(),
+                   cra.atom->altloc ? std::toupper(cra.atom->altloc) : ' ',
+                   cra.residue->name.c_str(),
+                   cra.chain->name_for_pdb().c_str(),
+                   cra.residue->seq_id().c_str(),
                    "1555", im.pdb_symbol(false).c_str(), im.dist());
         });
       }

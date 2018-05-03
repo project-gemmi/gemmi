@@ -237,6 +237,18 @@ struct UnitCell {
     return image;
   }
 
+  SymImage find_nearest_pbc_image(const Position& ref, const Position& pos,
+                                  int image_idx) const {
+    SymImage image;
+    image.dist_sq = INFINITY;
+    image.sym_id = image_idx;
+    Fractional fpos = fractionalize(pos);
+    if (image_idx > 0)
+      fpos = images.at(image_idx - 1).apply(fpos);
+    search_pbc_images(fpos - fractionalize(ref), image);
+    return image;
+  }
+
   // return number of nearby symmetry mates (0 = none, 3 = 4-fold axis, etc)
   int is_special_position(const Position& pos, double max_dist = 0.8) const {
     const double max_dist_sq = max_dist * max_dist;

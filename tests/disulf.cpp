@@ -76,14 +76,9 @@ static void check_disulf(const char* path) {
       AtomAddress a1(*bi.ref.chain, *bi.ref.residue, *bi.ref.atom);
       CRA cra = bi.mark.to_cra(st.models[0]);
       AtomAddress a2(*cra.chain, *cra.residue, *cra.atom);
-      SymImage im;
-      im.dist_sq = INFINITY;
-      im.sym_id = bi.mark.image_idx;
-      Fractional f1 = st.cell.fractionalize(bi.ref.atom->pos);
-      Fractional f2 = st.cell.fractionalize(cra.atom->pos);
-      if (im.sym_id > 0)
-        f2 = st.cell.images.at(im.sym_id - 1).apply(f2);
-      st.cell.search_pbc_images(f2 - f1, im);
+      SymImage im = st.cell.find_nearest_pbc_image(bi.ref.atom->pos,
+                                                   cra.atom->pos,
+                                                   bi.mark.image_idx);
       assert(fabs(bi.dist_sq - im.dist_sq) < 1e-3);
       print_connection(a1, a2, im);
     }

@@ -583,9 +583,31 @@ also known as binning, bucketing or cell technique.
 It has been used in the context of macromolecular structures
 since 1960's (in 1966 it was
 `described <https://web.stanford.edu/class/sbio228/public/readings/Molecular_Simulation_I_Lecture4/Levinthal_SCIAM_66_Protein_folding.pdf>`_
-under the name cubing). Here it is implemented in a class named ``SubCells``.
+under the name cubing).
 
-TODO: continue
+In Gemmi it is implemented in a class named ``SubCells``.
+The implementation works with both crystal and non-crystal system and:
+
+* handles crystallographic symmetry (including non-standard settings with
+  origin shift that are present in a couple hundreds of PDB entries),
+* handles strict NCS (MTRIX record in the PDB format that is not "given";
+  in mmCIF it is the _struct_ncs_oper category),
+* can find neighbors any number of unit cells apart; surprisingly,
+  molecules from different and not neighboring unit cells can be
+  in contact, either because of shape (a single chain can be
+  :ref:`longer then four unit cells <long_chain>`) or because of
+  non-optimal choice of symmetric images in the model
+  (some PDB entries have even links between chains more than
+  10 unit cells away which cannot be expressed in the 1555 type of notation).
+
+Note that while an atom can be bonded with its own symmetric image,
+it sometimes happens that an atom meant to be on a special position
+is slightly off, and its symmetric images represent the same atom
+(so we may have four nearby images each with occupancy 0.25).
+Such images will be returned by the SubCells class as neighbors
+and need to be filtered out by the users.
+
+TODO
 
 Selections
 ==========
@@ -644,6 +666,8 @@ once a week:
 
 Examples
 ========
+
+.. _long_chain:
 
 Chain longer than cell
 ----------------------
