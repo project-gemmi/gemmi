@@ -40,10 +40,15 @@ struct MonLib {
   cif::Document mon_lib_list;
   std::map<std::string, gemmi::ChemComp> monomers;
   std::map<std::string, gemmi::ChemLink> links;
+  std::map<std::string, gemmi::ChemMod> modifications;
 
   const gemmi::ChemLink* find_link(const std::string& name) const {
     auto link = links.find(name);
     return link != links.end() ? &link->second : nullptr;
+  }
+  const gemmi::ChemMod* find_mod(const std::string& name) const {
+    auto modif = modifications.find(name);
+    return modif != modifications.end() ? &modif->second : nullptr;
   }
 };
 
@@ -63,8 +68,27 @@ inline MonLib read_monomers(std::string monomer_dir,
     monlib.monomers.emplace(name, cc);
   }
   monlib.links = gemmi::read_chemlinks(monlib.mon_lib_list);
+  monlib.modifications = gemmi::read_chemmods(monlib.mon_lib_list);
   return monlib;
 }
+
+struct Linkage {
+  struct ResInfo {
+    const gemmi::Residue* res;
+    std::string prev_link;
+    ResInfo* prev;
+    std::vector<std::string> modifs;
+  };
+  struct ChainInfo {
+    std::string name;
+    std::string entity_id;
+    bool polymer;
+    std::vector<ResInfo> residues;
+  };
+
+  std::vector<ChainInfo> chains;
+  std::vector<gemmi::Connection> extra;
+};
 
 static std::string get_link_type(const gemmi::Residue& res,
                                  const gemmi::Residue* prev,
@@ -100,10 +124,38 @@ static std::string get_modification(const gemmi::Chain& chain,
     if (ptype == PolymerType::Dna || ptype == PolymerType::Rna)
       return "5*END";
   }
-  return ".";
+  return "";
 }
 
-static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib) {
+Linkage::ChainInfo determine_linkage(const gemmi::Chain& chain,
+                                    const gemmi::Entity* ent) {
+  Linkage::ChainInfo lc;
+  lc.residues.reserve(chain.residues.size());
+  lc.name = chain.name;
+  lc.entity_id = chain.entity_id;
+  lc.polymer = ent && ent->entity_type == gemmi::EntityType::Polymer;
+  if (lc.polymer) {
+    // For now we ignore microheterogeneity.
+    Linkage::ResInfo* prev = nullptr;
+    for (const gemmi::Residue& res : chain.residues) {
+      Linkage::ResInfo lr;
+      lr.res = &res;
+      lr.prev_link = get_link_type(res, (prev ? prev->res : nullptr),
+                                   ent->polymer_type);
+      lr.prev = prev;
+      lr.modifs.push_back(get_modification(chain, res, ent->polymer_type));
+      lc.residues.push_back(lr);
+      prev = &lc.residues.back();
+    }
+  } else {
+    for (const gemmi::Residue& res : chain.residues)
+      lc.residues.push_back({&res, "", nullptr, {}});
+  }
+  return lc;
+}
+
+static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
+                              const Linkage& linkage) {
   using gemmi::to_str;
   cif::Document crd;
   auto e_id = st.info.find("_entry.id");
@@ -140,20 +192,16 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib) {
   cif::Loop& poly_loop = block.init_mmcif_loop("_entity_poly_seq.", {
               "mon_id", "ccp4_auth_seq_id", "entity_id",
               "ccp4_back_connect_type", "ccp4_num_mon_back", "ccp4_mod_id"});
-  for (const gemmi::Chain& chain : st.models[0].chains) {
-    const gemmi::Entity* ent = st.get_entity_of(chain);
-    if (!ent || ent->entity_type != gemmi::EntityType::Polymer)
+  for (const Linkage::ChainInfo& ci : linkage.chains) {
+    if (!ci.polymer)
       continue;
-    // For now it won't work with microheterogeneity.
-    const gemmi::Residue* prev = nullptr;
-    for (const gemmi::Residue& res : chain.residues) {
-      poly_loop.add_row({res.name,
-                         res.seq_id(),
-                         chain.entity_id,
-                         get_link_type(res, prev, ent->polymer_type),
-                         prev ? prev->seq_id() : "n/a",
-                         get_modification(chain, res, ent->polymer_type)});
-      prev = &res;
+    for (const Linkage::ResInfo& ri : ci.residues) {
+      std::string prev = ri.prev ? ri.prev->res->seq_id() : "n/a";
+      std::string mod = ri.modifs.at(0);
+      if (mod.empty())
+        mod += '.';
+      poly_loop.add_row({ri.res->name, ri.res->seq_id(), ci.entity_id,
+                         ri.prev_link, prev, mod});
     }
   }
   items.emplace_back(cif::CommentArg{"##########\n"
@@ -368,7 +416,7 @@ void add_restraints(const Restraints& rt,
   }
 }
 
-static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
+static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
   cif::Document doc;
   doc.blocks.emplace_back("restraints");
   cif::Block& block = doc.blocks[0];
@@ -377,31 +425,35 @@ static cif::Document make_rst(const gemmi::Structure& st, MonLib& monlib) {
               "atom_id_1", "atom_id_2", "atom_id_3", "atom_id_4",
               "value", "dev", "val_obs"});
   int counters[5] = {0, 0, 0, 0, 0};
-  for (const gemmi::Chain& chain : st.models[0].chains) {
-    const gemmi::Entity* ent = st.get_entity_of(chain);
-    // For now it won't work with microheterogeneity.
-    const gemmi::Residue* prev = nullptr;
-    for (const gemmi::Residue& res : chain.residues) {
-      if (ent && ent->entity_type == gemmi::EntityType::Polymer && prev) {
-        std::string link_name = get_link_type(res, prev, ent->polymer_type);
-        // comments are added relying on how cif writing works
-        std::string comment = "# link " + link_name + " " +
+  for (const Linkage::ChainInfo& ci : linkage.chains) {
+    for (const Linkage::ResInfo& ri : ci.residues) {
+      if (ri.prev) {
+        const gemmi::Residue* prev = ri.prev->res;
+        std::string comment = "# link " + ri.prev_link + " " +
                                prev->seq_id() + " " + prev->name + " - " +
-                               res.seq_id() + " " + res.name;
-        restr_loop.add_row({comment + "\nLINK", ".", cif::quote(link_name),
+                               ri.res->seq_id() + " " + ri.res->name;
+        restr_loop.add_row({comment + "\nLINK", ".", cif::quote(ri.prev_link),
                             ".", ".", ".", ".", ".", ".", ".", "."});
-        if (const gemmi::ChemLink* link = monlib.find_link(link_name))
-          add_restraints(link->rt, *prev, &res, restr_loop, counters);
+        if (const gemmi::ChemLink* link = monlib.find_link(ri.prev_link))
+          add_restraints(link->rt, *prev, ri.res, restr_loop, counters);
       }
-      gemmi::ChemComp &cc = monlib.monomers.at(res.name);
+      gemmi::ChemComp cc = monlib.monomers.at(ri.res->name);
+      for (const std::string& modif : ri.modifs) {
+        if (modif.empty())
+          continue;
+        if (const gemmi::ChemMod* m = monlib.find_mod(modif)) {
+          // TODO: apply modification
+        } else {
+          printf("Modification not found: %s\n", modif.c_str());
+        }
+      }
       // comments are added relying on how cif writing works
-      std::string res_info = "# monomer " + chain.name + " " +
-                             res.seq_id() + " " + res.name;
+      std::string res_info = "# monomer " + ci.name + " " +
+                             ri.res->seq_id() + " " + ri.res->name;
       restr_loop.add_row({res_info + "\nMONO", ".",
                           cif::quote(cc.group.substr(0, 8)),
                           ".", ".", ".", ".", ".", ".", ".", "."});
-      add_restraints(cc.rt, res, nullptr, restr_loop, counters);
-      prev = &res;
+      add_restraints(cc.rt, *ri.res, nullptr, restr_loop, counters);
     }
   }
   return doc;
@@ -442,11 +494,27 @@ int GEMMI_MAIN(int argc, char **argv) {
             atom.custom = ++serial;
         }
 
-    cif::Document crd = make_crd(st, monlib);
+    Linkage linkage;
+    linkage.chains.reserve(st.models[0].chains.size());
+    for (gemmi::Chain& chain : st.models[0].chains) {
+      const gemmi::Entity* ent = st.get_entity_of(chain);
+      linkage.chains.push_back(determine_linkage(chain, ent));
+    }
+    // add modifications from links
+    for (Linkage::ChainInfo& ci : linkage.chains)
+      for (Linkage::ResInfo& ri : ci.residues)
+        if (const gemmi::ChemLink* link = monlib.find_link(ri.prev_link)) {
+          if (!link->mod[0].empty())
+            ri.prev->modifs.push_back(link->mod[0]);
+          if (!link->mod[1].empty())
+            ri.modifs.push_back(link->mod[1]);
+        }
+
+    cif::Document crd = make_crd(st, monlib, linkage);
     if (p.options[Verbose])
       printf("Writing coordinates to: %s.crd\n", output.c_str());
     write_to_file(crd, output + ".crd", cif::Style::NoBlankLines);
-    cif::Document rst = make_rst(st, monlib);
+    cif::Document rst = make_rst(linkage, monlib);
     if (p.options[Verbose])
       printf("Writing restraints to: %s.rst\n", output.c_str());
     write_to_file(rst, output + ".rst", cif::Style::NoBlankLines);

@@ -163,6 +163,13 @@ struct ChemLink {
   Restraints rt;
 };
 
+struct ChemMod {
+  std::string id;
+  std::string name;
+  std::string comp_id;
+  std::string group_id;
+};
+
 inline Restraints::Bond::Type bond_type_from_string(const std::string& s) {
   if (istarts_with(s, "sing"))
     return Restraints::Bond::Single;
@@ -342,6 +349,27 @@ inline std::map<std::string,ChemLink> read_chemlinks(cif::Document& doc) {
     links.emplace(link.id, link);
   }
   return links;
+}
+
+inline std::map<std::string,ChemMod> read_chemmods(cif::Document& doc) {
+  std::map<std::string, gemmi::ChemMod> mods;
+  const cif::Block* list_block = doc.find_block("mod_list");
+  if (!list_block)
+    throw std::runtime_error("data_mod_list not in the cif file");
+  for (auto row : const_cast<cif::Block*>(list_block)->find("_chem_mod.",
+                                 {"id", "name", "comp_id", "group_id"})) {
+    ChemMod mod;
+    mod.id = row.str(0);
+    mod.name = row.str(1);
+    mod.comp_id = row.str(2);
+    mod.group_id = row.str(3);
+    const cif::Block* block = doc.find_block("mod_" + mod.id);
+    if (!block)
+      throw std::runtime_error("inconsisted data_mod_list");
+    //TODO read actual modifications
+    mods.emplace(mod.id, mod);
+  }
+  return mods;
 }
 
 } // namespace gemmi
