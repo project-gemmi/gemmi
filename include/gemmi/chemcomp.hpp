@@ -164,10 +164,22 @@ struct ChemLink {
 };
 
 struct ChemMod {
+  struct AtomChange {
+    int func;
+    std::string old_id;
+    std::string new_id;
+    Element el;
+    std::string chem_type;
+  };
+
   std::string id;
   std::string name;
   std::string comp_id;
   std::string group_id;
+  std::vector<AtomChange> atom_changes;
+  Restraints rt;
+
+  void apply_to(ChemComp& cc) const;
 };
 
 inline Restraints::Bond::Type bond_type_from_string(const std::string& s) {
@@ -329,7 +341,7 @@ inline std::map<std::string,ChemLink> read_chemlinks(cif::Document& doc) {
   std::map<std::string, gemmi::ChemLink> links;
   const cif::Block* list_block = doc.find_block("link_list");
   if (!list_block)
-    throw std::runtime_error("data_link_list not in the cif file");
+    fail("data_link_list not in the cif file");
   for (auto row : const_cast<cif::Block*>(list_block)->find("_chem_link.",
                                  {"id", "name",
                                   "comp_id_1", "mod_id_1", "group_comp_1",
@@ -351,6 +363,27 @@ inline std::map<std::string,ChemLink> read_chemlinks(cif::Document& doc) {
   return links;
 }
 
+// Helper function. str is one of "add", "delete", "change".
+inline int chem_mod_type(const std::string& str) {
+  char c = str[0] | 0x20;
+  if (c != 'a' && c != 'd' && c != 'c')
+    fail("Unexpected value of _chem_mod_*.function: " + str);
+  return c;
+}
+
+inline Restraints read_restraint_modifications(const cif::Block& block_) {
+  Restraints rt;
+  cif::Block& block = const_cast<cif::Block&>(block_);
+  for (auto row : block.find("_chem_mod_bond.",
+                             {"function", "atom_id_1", "atom_id_2",
+                              "new_type",
+                              "new_value_dist", "new_value_dist_esd"}))
+    rt.bonds.push_back({{chem_mod_type(row[0]), row.str(1)}, {1, row.str(2)},
+                        bond_type_from_string(row[3]), false,
+                        cif::as_number(row[4]), cif::as_number(row[5])});
+  return rt;
+}
+
 inline std::map<std::string,ChemMod> read_chemmods(cif::Document& doc) {
   std::map<std::string, gemmi::ChemMod> mods;
   const cif::Block* list_block = doc.find_block("mod_list");
@@ -366,10 +399,61 @@ inline std::map<std::string,ChemMod> read_chemmods(cif::Document& doc) {
     const cif::Block* block = doc.find_block("mod_" + mod.id);
     if (!block)
       throw std::runtime_error("inconsisted data_mod_list");
-    //TODO read actual modifications
+    for (auto ra : const_cast<cif::Block*>(block)->find("_chem_mod_atom.",
+                                {"function", "atom_id", "new_atom_id",
+                                 "new_type_symbol", "new_type_energy"}))
+      mod.atom_changes.push_back({chem_mod_type(ra[0]), ra.str(1), ra.str(2),
+                                  Element(ra.str(3)), ra.str(4)});
+    mod.rt = read_restraint_modifications(*block);
     mods.emplace(mod.id, mod);
   }
   return mods;
+}
+
+inline void ChemMod::apply_to(ChemComp& cc) const {
+  // _chem_mod_atom
+  for (const AtomChange& change : atom_changes) {
+    if (change.func == 'a') {
+      // TODO: warning if atom with this name exists
+      cc.atoms.push_back({change.new_id, change.el, change.chem_type});
+    } else {
+      for (auto i = cc.atoms.begin(); i != cc.atoms.end(); ++i)
+        if (i->id == change.old_id) {
+          if (change.func == 'd') {
+            cc.atoms.erase(i);
+          } else if (change.func == 'c') {
+            if (!change.new_id.empty())
+              i->id = change.new_id;
+            if (change.el != El::X)
+              i->el = change.el;
+            if (!change.chem_type.empty())
+              i->chem_type = change.chem_type;
+          }
+          break;
+        }
+    }
+  }
+  // _chem_mod_bond
+  for (const Restraints::Bond& change : rt.bonds) {
+    auto b = cc.rt.bonds.begin();
+    for (; b != cc.rt.bonds.end(); ++b)
+      if ((b->id1.atom == change.id1.atom && b->id2.atom == change.id2.atom) ||
+          (b->id1.atom == change.id2.atom && b->id2.atom == change.id1.atom))
+        break;
+    if (change.id1.comp == 'c') {
+      // TODO b->type
+      if (!std::isnan(change.value))
+        b->value = change.value;
+      if (!std::isnan(change.esd))
+        b->esd = change.esd;
+    }
+  }
+  // _chem_mod_angle
+  for (const Restraints::Angle& change : rt.angles) {
+  }
+  // _chem_mod_tor
+  // _chem_mod_chir
+  // _chem_mod_plane_atom
 }
 
 } // namespace gemmi

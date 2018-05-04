@@ -77,7 +77,7 @@ struct Linkage {
     const gemmi::Residue* res;
     std::string prev_link;
     ResInfo* prev;
-    std::vector<std::string> modifs;
+    std::vector<std::string> mods;
   };
   struct ChainInfo {
     std::string name;
@@ -143,7 +143,7 @@ Linkage::ChainInfo determine_linkage(const gemmi::Chain& chain,
       lr.prev_link = get_link_type(res, (prev ? prev->res : nullptr),
                                    ent->polymer_type);
       lr.prev = prev;
-      lr.modifs.push_back(get_modification(chain, res, ent->polymer_type));
+      lr.mods.push_back(get_modification(chain, res, ent->polymer_type));
       lc.residues.push_back(lr);
       prev = &lc.residues.back();
     }
@@ -197,7 +197,7 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
       continue;
     for (const Linkage::ResInfo& ri : ci.residues) {
       std::string prev = ri.prev ? ri.prev->res->seq_id() : "n/a";
-      std::string mod = ri.modifs.at(0);
+      std::string mod = ri.mods.at(0);
       if (mod.empty())
         mod += '.';
       poly_loop.add_row({ri.res->name, ri.res->seq_id(), ci.entity_id,
@@ -438,13 +438,17 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
           add_restraints(link->rt, *prev, ri.res, restr_loop, counters);
       }
       gemmi::ChemComp cc = monlib.monomers.at(ri.res->name);
-      for (const std::string& modif : ri.modifs) {
-        if (modif.empty())
-          continue;
-        if (const gemmi::ChemMod* m = monlib.find_mod(modif)) {
-          // TODO: apply modification
-        } else {
-          printf("Modification not found: %s\n", modif.c_str());
+      for (const std::string& modif : ri.mods) {
+        if (!modif.empty()) {
+          if (const gemmi::ChemMod* m = monlib.find_mod(modif))
+            try {
+              m->apply_to(cc);
+            } catch(std::out_of_range& e) {
+              printf("Failed to modify restraints for %s: %s\n",
+                     ri.res->name.c_str(), e.what());
+            }
+          else
+            printf("Modification not found: %s\n", modif.c_str());
         }
       }
       // comments are added relying on how cif writing works
@@ -505,9 +509,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       for (Linkage::ResInfo& ri : ci.residues)
         if (const gemmi::ChemLink* link = monlib.find_link(ri.prev_link)) {
           if (!link->mod[0].empty())
-            ri.prev->modifs.push_back(link->mod[0]);
+            ri.prev->mods.push_back(link->mod[0]);
           if (!link->mod[1].empty())
-            ri.modifs.push_back(link->mod[1]);
+            ri.mods.push_back(link->mod[1]);
         }
 
     cif::Document crd = make_crd(st, monlib, linkage);
