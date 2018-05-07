@@ -192,16 +192,16 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
   cif::Loop& poly_loop = block.init_mmcif_loop("_entity_poly_seq.", {
               "mon_id", "ccp4_auth_seq_id", "entity_id",
               "ccp4_back_connect_type", "ccp4_num_mon_back", "ccp4_mod_id"});
-  for (const Linkage::ChainInfo& ci : linkage.chains) {
-    if (!ci.polymer)
+  for (const Linkage::ChainInfo& chain_info : linkage.chains) {
+    if (!chain_info.polymer)
       continue;
-    for (const Linkage::ResInfo& ri : ci.residues) {
-      std::string prev = ri.prev ? ri.prev->res->seq_id() : "n/a";
-      std::string mod = ri.mods.at(0);
+    for (const Linkage::ResInfo& res_info : chain_info.residues) {
+      std::string prev = res_info.prev ? res_info.prev->res->seq_id() : "n/a";
+      std::string mod = res_info.mods.at(0);
       if (mod.empty())
         mod += '.';
-      poly_loop.add_row({ri.res->name, ri.res->seq_id(), ci.entity_id,
-                         ri.prev_link, prev, mod});
+      poly_loop.add_row({res_info.res->name, res_info.res->seq_id(),
+                         chain_info.entity_id, res_info.prev_link, prev, mod});
     }
   }
   items.emplace_back(cif::CommentArg{"##########\n"
@@ -425,8 +425,8 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
               "atom_id_1", "atom_id_2", "atom_id_3", "atom_id_4",
               "value", "dev", "val_obs"});
   int counters[5] = {0, 0, 0, 0, 0};
-  for (const Linkage::ChainInfo& ci : linkage.chains) {
-    for (const Linkage::ResInfo& ri : ci.residues) {
+  for (const Linkage::ChainInfo& chain_info : linkage.chains) {
+    for (const Linkage::ResInfo& ri : chain_info.residues) {
       if (ri.prev) {
         const gemmi::Residue* prev = ri.prev->res;
         std::string comment = "# link " + ri.prev_link + " " +
@@ -437,27 +437,27 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
         if (const gemmi::ChemLink* link = monlib.find_link(ri.prev_link))
           add_restraints(link->rt, *prev, ri.res, restr_loop, counters);
       }
-      gemmi::ChemComp cc = monlib.monomers.at(ri.res->name);
+      gemmi::ChemComp chem_comp = monlib.monomers.at(ri.res->name);
       for (const std::string& modif : ri.mods) {
         if (!modif.empty()) {
-          if (const gemmi::ChemMod* m = monlib.find_mod(modif))
+          if (const gemmi::ChemMod* chem_mod = monlib.find_mod(modif))
             try {
-              m->apply_to(cc);
-            } catch(std::out_of_range& e) {
-              printf("Failed to modify restraints for %s: %s\n",
-                     ri.res->name.c_str(), e.what());
+              chem_mod->apply_to(chem_comp);
+            } catch(std::runtime_error& e) {
+              printf("Failed to apply modification %s to %s: %s\n",
+                     chem_mod->id.c_str(), ri.res->name.c_str(), e.what());
             }
           else
             printf("Modification not found: %s\n", modif.c_str());
         }
       }
       // comments are added relying on how cif writing works
-      std::string res_info = "# monomer " + ci.name + " " +
+      std::string res_info = "# monomer " + chain_info.name + " " +
                              ri.res->seq_id() + " " + ri.res->name;
       restr_loop.add_row({res_info + "\nMONO", ".",
-                          cif::quote(cc.group.substr(0, 8)),
+                          cif::quote(chem_comp.group.substr(0, 8)),
                           ".", ".", ".", ".", ".", ".", ".", "."});
-      add_restraints(cc.rt, *ri.res, nullptr, restr_loop, counters);
+      add_restraints(chem_comp.rt, *ri.res, nullptr, restr_loop, counters);
     }
   }
   return doc;
@@ -505,8 +505,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       linkage.chains.push_back(determine_linkage(chain, ent));
     }
     // add modifications from links
-    for (Linkage::ChainInfo& ci : linkage.chains)
-      for (Linkage::ResInfo& ri : ci.residues)
+    for (Linkage::ChainInfo& chain_info : linkage.chains)
+      for (Linkage::ResInfo& ri : chain_info.residues)
         if (const gemmi::ChemLink* link = monlib.find_link(ri.prev_link)) {
           if (!link->mod[0].empty())
             ri.prev->mods.push_back(link->mod[0]);

@@ -28,6 +28,9 @@ struct Restraints {
     }
     bool operator!=(const AtomId& o) const { return !operator==(o); }
 
+    bool operator==(const std::string& name) const { return atom == name; }
+    bool operator!=(const std::string& name) const { return atom != name; }
+
     const Atom* get_from(const Residue& res, const Residue* res2) const {
       if (comp == 1 || res2 == nullptr)
         return res.find_atom(atom);
@@ -77,28 +80,52 @@ struct Restraints {
   std::vector<Chirality> chirs;
   std::map<std::string, Plane> planes;
 
-  Bond& get_bond(const AtomId& a1, const AtomId& a2) {
-    for (Bond& b : bonds)
-      if ((b.id1 == a1 && b.id2 == a2) || (b.id1 == a2 && b.id2 == a1))
-        return b;
-    throw std::out_of_range("Bond restraint not found: " +
-                            a1.atom + "-" + a2.atom);
+  template<typename T>
+  std::vector<Bond>::iterator find_bond(const T& a1, const T& a2) {
+    return std::find_if(bonds.begin(), bonds.end(), [&](const Bond& b) {
+        return (b.id1 == a1 && b.id2 == a2) || (b.id1 == a2 && b.id2 == a1);
+    });
   }
   const Bond& get_bond(const AtomId& a1, const AtomId& a2) const {
-    return const_cast<Restraints*>(this)->get_bond(a1, a2);
+    auto it = const_cast<Restraints*>(this)->find_bond(a1, a2);
+    if (it == bonds.end())
+      fail("Bond restraint not found: " + a1.atom + "-" + a2.atom);
+    return *it;
   }
 
-  Angle& get_angle(const AtomId& a1, const AtomId& a2, const AtomId& a3) {
-    for (Angle& ang : angles)
-      if (ang.id2 == a2 && ((ang.id1 == a1 && ang.id3 == a3) ||
-                            (ang.id1 == a3 && ang.id3 == a1)))
-        return ang;
-    throw std::out_of_range("Angle restraint not found: " +
-                            a1.atom + "-" + a2.atom + "-" + a3.atom);
+  template<typename T>
+  std::vector<Angle>::iterator find_angle(const T& a, const T& b, const T& c) {
+    return std::find_if(angles.begin(), angles.end(), [&](const Angle& ang) {
+        return ang.id2 == b && ((ang.id1 == a && ang.id3 == c) ||
+                                (ang.id1 == c && ang.id3 == a));
+    });
   }
-  const Angle& get_angle(const AtomId& a1, const AtomId& a2,
-                         const AtomId& a3) const {
-    return const_cast<Restraints*>(this)->get_angle(a1, a2, a3);
+  const Angle& get_angle(const AtomId& a, const AtomId& b, const AtomId& c)
+                                                                        const {
+    auto it = const_cast<Restraints*>(this)->find_angle(a, b, c);
+    if (it == angles.end())
+      fail("Angle restraint not found: " + a.atom + "-" + b.atom + "-"+c.atom);
+    return *it;
+  }
+
+  template<typename T>
+  std::vector<Torsion>::iterator find_torsion(const T& a, const T& b,
+                                              const T& c, const T& d) {
+    return std::find_if(torsions.begin(), torsions.end(),
+                        [&](const Torsion& t) {
+        return (t.id1 == a && t.id2 == b && t.id3 == c && t.id4 == d) ||
+               (t.id1 == d && t.id2 == c && t.id3 == b && t.id4 == a);
+    });
+  }
+
+  template<typename T>
+  std::vector<Chirality>::iterator find_chir(const T& ctr, const T& a,
+                                             const T& b, const T& c) {
+    return std::find_if(chirs.begin(), chirs.end(), [&](const Chirality& t) {
+        return t.id_ctr == ctr && ((t.id1 == a && t.id2 == b && t.id3 == c) ||
+                                   (t.id1 == b && t.id2 == c && t.id3 == a) ||
+                                   (t.id1 == c && t.id2 == a && t.id3 == b));
+    });
   }
 
   double chiral_abs_volume(const Restraints::Chirality& ch) const {
@@ -131,12 +158,16 @@ struct ChemComp {
   std::vector<Atom> atoms;
   Restraints rt;
 
+  std::vector<Atom>::iterator find_atom(const std::string& atom_id) {
+    return std::find_if(atoms.begin(), atoms.end(),
+                        [&](const Atom& a) { return (a.id == atom_id); });
+  }
+
   const Atom& get_atom(const std::string& atom_id) const {
-    for (const Atom& a : atoms)
-      if (a.id == atom_id)
-        return a;
-    throw std::out_of_range("Chemical componenent " + name + " has no atom "
-                            + atom_id);
+    auto it = const_cast<ChemComp*>(this)->find_atom(atom_id);
+    if (it == atoms.end())
+      fail("Chemical componenent " + name + " has no atom " + atom_id);
+    return *it;
   }
 
   template<typename T>
@@ -164,7 +195,7 @@ struct ChemLink {
 };
 
 struct ChemMod {
-  struct AtomChange {
+  struct AtomMod {
     int func;
     std::string old_id;
     std::string new_id;
@@ -176,7 +207,7 @@ struct ChemMod {
   std::string name;
   std::string comp_id;
   std::string group_id;
-  std::vector<AtomChange> atom_changes;
+  std::vector<AtomMod> atom_mods;
   Restraints rt;
 
   void apply_to(ChemComp& cc) const;
@@ -381,6 +412,37 @@ inline Restraints read_restraint_modifications(const cif::Block& block_) {
     rt.bonds.push_back({{chem_mod_type(row[0]), row.str(1)}, {1, row.str(2)},
                         bond_type_from_string(row[3]), false,
                         cif::as_number(row[4]), cif::as_number(row[5])});
+  for (auto row : block.find("_chem_mod_angle.",
+                             {"function", "atom_id_1",
+                              "atom_id_2", "atom_id_3",
+                              "new_value_angle", "new_value_angle_esd"}))
+    rt.angles.push_back({{chem_mod_type(row[0]), row.str(1)},
+                         {1, row.str(2)}, {1, row.str(3)},
+                         cif::as_number(row[4]), cif::as_number(row[5])});
+  for (auto row : block.find("_chem_mod_tor.",
+                              {"function", "id", "atom_id_1",
+                               "atom_id_2", "atom_id_3", "atom_id_4",
+                               "new_value_angle", "new_value_angle_esd",
+                               "new_period"}))
+    rt.torsions.push_back({row.str(1), {chem_mod_type(row[0]), row.str(2)},
+                           {1, row.str(3)}, {1, row.str(4)}, {1, row.str(5)},
+                           cif::as_number(row[6]), cif::as_number(row[7]),
+                           cif::as_int(row[8])});
+  for (auto row : block.find("_chem_mod_chir.",
+                             {"function", "atom_id_centre", "atom_id_1",
+                              "atom_id_2", "atom_id_3",
+                              "new_volume_sign"}))
+    rt.chirs.push_back({{1, row.str(1)}, {chem_mod_type(row[0]), row.str(2)},
+                        {1, row.str(3)}, {1, row.str(4)},
+                        chirality_from_string(row[5])});
+  for (auto row : block.find("_chem_mod_plane_atom.",
+                             {"function", "plane_id", "atom_id" ,
+                              "new_dist_esd"})) {
+    Restraints::Plane& plane = rt.planes[row.str(1)];
+    if (plane.esd == 0.0)
+      plane.esd = cif::as_number(row[3]);
+    plane.ids.push_back({chem_mod_type(row[0]), row.str(2)});
+  }
   return rt;
 }
 
@@ -402,58 +464,166 @@ inline std::map<std::string,ChemMod> read_chemmods(cif::Document& doc) {
     for (auto ra : const_cast<cif::Block*>(block)->find("_chem_mod_atom.",
                                 {"function", "atom_id", "new_atom_id",
                                  "new_type_symbol", "new_type_energy"}))
-      mod.atom_changes.push_back({chem_mod_type(ra[0]), ra.str(1), ra.str(2),
-                                  Element(ra.str(3)), ra.str(4)});
+      mod.atom_mods.push_back({chem_mod_type(ra[0]), ra.str(1), ra.str(2),
+                               Element(ra.str(3)), ra.str(4)});
     mod.rt = read_restraint_modifications(*block);
     mods.emplace(mod.id, mod);
   }
   return mods;
 }
 
-inline void ChemMod::apply_to(ChemComp& cc) const {
+inline void ChemMod::apply_to(ChemComp& chemcomp) const {
   // _chem_mod_atom
-  for (const AtomChange& change : atom_changes) {
-    if (change.func == 'a') {
-      // TODO: warning if atom with this name exists
-      cc.atoms.push_back({change.new_id, change.el, change.chem_type});
-    } else {
-      for (auto i = cc.atoms.begin(); i != cc.atoms.end(); ++i)
-        if (i->id == change.old_id) {
-          if (change.func == 'd') {
-            cc.atoms.erase(i);
-          } else if (change.func == 'c') {
-            if (!change.new_id.empty())
-              i->id = change.new_id;
-            if (change.el != El::X)
-              i->el = change.el;
-            if (!change.chem_type.empty())
-              i->chem_type = change.chem_type;
-          }
-          break;
-        }
-    }
-  }
-  // _chem_mod_bond
-  for (const Restraints::Bond& change : rt.bonds) {
-    auto b = cc.rt.bonds.begin();
-    for (; b != cc.rt.bonds.end(); ++b)
-      if ((b->id1.atom == change.id1.atom && b->id2.atom == change.id2.atom) ||
-          (b->id1.atom == change.id2.atom && b->id2.atom == change.id1.atom))
+  for (const AtomMod& mod : atom_mods) {
+    auto it = chemcomp.find_atom(mod.old_id);
+    switch (mod.func) {
+      case 'a':
+        if (chemcomp.find_atom(mod.new_id) == chemcomp.atoms.end())
+          chemcomp.atoms.push_back({mod.new_id, mod.el, mod.chem_type});
+        // else fail("Atom exists and cannot be added: " + mod.new_id);
         break;
-    if (change.id1.comp == 'c') {
-      // TODO b->type
-      if (!std::isnan(change.value))
-        b->value = change.value;
-      if (!std::isnan(change.esd))
-        b->esd = change.esd;
+      case 'd':
+        if (it != chemcomp.atoms.end())
+          chemcomp.atoms.erase(it);
+        break;
+      case 'c':
+        if (it != chemcomp.atoms.end()) {
+          if (!mod.new_id.empty())
+            it->id = mod.new_id;
+          if (mod.el != El::X)
+            it->el = mod.el;
+          if (!mod.chem_type.empty())
+            it->chem_type = mod.chem_type;
+        }
+        break;
     }
   }
-  // _chem_mod_angle
-  for (const Restraints::Angle& change : rt.angles) {
+
+  // _chem_mod_bond
+  for (const Restraints::Bond& mod : rt.bonds) {
+    auto it = chemcomp.rt.find_bond(mod.id1.atom, mod.id2.atom);
+    switch (mod.id1.comp) {
+      case 'a':
+        if (it != chemcomp.rt.bonds.end())
+          fail("Bond exists and cannot be added: " + mod.id1.atom +
+               "-" + mod.id2.atom);
+        chemcomp.rt.bonds.push_back(mod);
+        chemcomp.rt.bonds.back().id1.comp = 1;
+        break;
+      case 'd':
+        if (it != chemcomp.rt.bonds.end())
+          chemcomp.rt.bonds.erase(it);
+        break;
+      case 'c':
+        if (it != chemcomp.rt.bonds.end()) {
+          if (mod.type != Restraints::Bond::Unspec)
+            it->type = mod.type;
+          if (!std::isnan(mod.value))
+            it->value = mod.value;
+          if (!std::isnan(mod.esd))
+            it->esd = mod.esd;
+        }
+        break;
+    }
   }
+
+  // _chem_mod_angle
+  for (const Restraints::Angle& mod : rt.angles) {
+    auto it = chemcomp.rt.find_angle(mod.id1.atom, mod.id2.atom, mod.id3.atom);
+    switch (mod.id1.comp) {
+      case 'a':
+        if (it != chemcomp.rt.angles.end())
+          fail("Angle exists and cannot be added: " + mod.id1.atom +
+               "-" + mod.id2.atom + "-" + mod.id3.atom);
+        chemcomp.rt.angles.push_back(mod);
+        chemcomp.rt.angles.back().id1.comp = 1;
+        break;
+      case 'd':
+        if (it != chemcomp.rt.angles.end())
+          chemcomp.rt.angles.erase(it);
+        break;
+      case 'c':
+        if (it != chemcomp.rt.angles.end()) {
+          if (!std::isnan(mod.value))
+            it->value = mod.value;
+          if (!std::isnan(mod.esd))
+            it->esd = mod.esd;
+        }
+        break;
+    }
+  }
+
   // _chem_mod_tor
+  for (const Restraints::Torsion& mod : rt.torsions) {
+    auto it = chemcomp.rt.find_torsion(mod.id1.atom, mod.id2.atom,
+                                       mod.id3.atom, mod.id4.atom);
+    switch (mod.id1.comp) {
+      case 'a':
+        if (it != chemcomp.rt.torsions.end())
+          fail("Torsion angle exists and cannot be added: " + mod.id1.atom +
+               "-" + mod.id2.atom + "-" + mod.id3.atom + "-" + mod.id4.atom);
+        chemcomp.rt.torsions.push_back(mod);
+        chemcomp.rt.torsions.back().id1.comp = 1;
+        break;
+      case 'd':
+        if (it != chemcomp.rt.torsions.end())
+          chemcomp.rt.torsions.erase(it);
+        break;
+      case 'c':
+        if (it != chemcomp.rt.torsions.end()) {
+          if (!mod.label.empty())
+            it->label = mod.label;
+          if (!std::isnan(mod.value))
+            it->value = mod.value;
+          if (!std::isnan(mod.esd))
+            it->esd = mod.esd;
+          if (mod.period != -1)
+            it->period = mod.period;
+        }
+        break;
+    }
+  }
+
   // _chem_mod_chir
+  for (const Restraints::Chirality& mod : rt.chirs) {
+    auto it = chemcomp.rt.find_chir(mod.id_ctr.atom, mod.id1.atom,
+                                    mod.id2.atom, mod.id3.atom);
+    switch (mod.id1.comp) {
+      case 'a':
+        if (it != chemcomp.rt.chirs.end())
+          fail("Chirality exists and cannot be added: " + mod.id_ctr.atom +
+               "," + mod.id1.atom + "," + mod.id2.atom + "," + mod.id3.atom);
+        chemcomp.rt.chirs.push_back(mod);
+        chemcomp.rt.chirs.back().id1.comp = 1;
+        break;
+      case 'd':
+        if (it != chemcomp.rt.chirs.end())
+          chemcomp.rt.chirs.erase(it);
+        break;
+      case 'c':
+        if (it != chemcomp.rt.chirs.end())
+          it->chir = mod.chir;
+        break;
+    }
+  }
+
   // _chem_mod_plane_atom
+  for (const auto& mod : rt.planes)
+    for (const Restraints::AtomId& atom_id : mod.second.ids)
+      if (atom_id.comp == 'a') {
+        Restraints::Plane& plane = chemcomp.rt.planes[mod.first];
+        if (plane.esd == 0.0 && !std::isnan(mod.second.esd))
+          plane.esd = mod.second.esd;
+        plane.ids.push_back({1, atom_id.atom});
+      } else if (atom_id.comp == 'd') {
+        auto it = chemcomp.rt.planes.find(mod.first);
+        if (it != chemcomp.rt.planes.end()) {
+          std::vector<Restraints::AtomId>& ids = it->second.ids;
+          auto item = std::find(ids.begin(), ids.end(), atom_id.atom);
+          if (item != ids.end())
+            ids.erase(item);
+        }
+      }
 }
 
 } // namespace gemmi
