@@ -347,3 +347,9 @@ contents
 
 .. literalinclude:: contents-help.txt
    :language: console
+
+contact
+=======
+
+.. literalinclude:: contact-help.txt
+   :language: console

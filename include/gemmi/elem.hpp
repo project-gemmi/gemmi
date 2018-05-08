@@ -23,6 +23,8 @@ enum class El : unsigned char {
   END
 };
 
+inline bool is_hydrogen(El el) { return el == El::H || el == El::D; }
+
 // somewhat arbitrary division into metals and non-metals
 inline bool is_metal(El el) {
   static constexpr bool table[] = {
@@ -200,6 +202,7 @@ struct Element {
   explicit Element(const std::string& s) noexcept : Element(s.c_str()) {}
   explicit Element(int number) noexcept
     : elem(static_cast<El>(number > 0 && number <= 118 ? number : 0)) {}
+  /*implicit*/ operator El() const { return elem; }
   bool operator==(El e) const { return elem == e; }
   bool operator!=(El e) const { return elem != e; }
 

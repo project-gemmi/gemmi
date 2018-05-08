@@ -6,6 +6,7 @@
 #include <gemmi/calculate.hpp>  // for are_connected
 #include <gemmi/pdb.hpp>  // for split_nonpolymers
 #include <gemmi/fileutil.hpp>  // for expand_if_pdb_code
+#include <gemmi/elem.hpp>  // for is_hydrogen
 #include "input.h"
 #define GEMMI_PROG contact
 #include "options.h"
@@ -15,7 +16,7 @@
 
 using namespace gemmi;
 
-enum OptionIndex { Verbose=3, MaxDist };
+enum OptionIndex { Verbose=3, MaxDist, Occ, Any, NoH, Count };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -26,15 +27,33 @@ static const option::Descriptor Usage[] = {
     "  -V, --version  \tPrint version and exit." },
   { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { MaxDist, 0, "d", "maxdist", Arg::Float,
-    "  -d, --maxdist  \tMaximal distance in A (default 4.0)" },
+    "  -d, --maxdist=D  \tMaximal distance in A (default 3.0)" },
+  { Occ, 0, "", "occsum", Arg::Float,
+    "  --occsum=MIN  \tIgnore atom pairs with summed occupancies < MIN." },
+  { Any, 0, "", "any", Arg::None,
+    "  --any  \tOutput any atom pair, even from the same residue." },
+  { NoH, 0, "", "noh", Arg::None,
+    "  --noh  \tIgnore hydrogen (and deuterium) atoms." },
+  { Count, 0, "", "count", Arg::None,
+    "  --count  \tPrint only a count of atom pairs." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
-static void print_contacts(const Structure& st, float max_dist, int verbose) {
-  SubCells sc(st.models.at(0), st.cell, std::max(5.0f, max_dist));
+struct Parameters {
+  float max_dist;
+  float occ_sum;
+  bool any;
+  bool print_count;
+  bool no_hydrogens;
+  int verbose;
+};
 
-  if (verbose > 0) {
-    if (verbose > 1) {
+static void print_contacts(const Structure& st, const Parameters& params) {
+  const float special_pos_cutoff = 0.8f;
+  SubCells sc(st.models.at(0), st.cell, std::max(5.0f, params.max_dist));
+
+  if (params.verbose > 0) {
+    if (params.verbose > 1) {
       if (st.cell.explicit_matrices)
         printf(" Using fractionalization matrix from the file.\n");
       printf(" Each atom has %zu extra images.\n", st.cell.images.size());
@@ -50,6 +69,7 @@ static void print_contacts(const Structure& st, float max_dist, int verbose) {
            min_count, max_count, double(total_count) / sc.grid.data.size());
   }
 
+  int counter = 0;
   const Model& model = st.models.at(0);
 	for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
     const Chain& chain = model.chains[n_ch];
@@ -61,14 +81,30 @@ static void print_contacts(const Structure& st, float max_dist, int verbose) {
       const Residue& res = chain.residues[n_res];
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
         const Atom& atom = res.atoms[n_atom];
-        sc.for_each(atom.pos, atom.altloc, max_dist,
-                    [&](const SubCells::Mark& m, float) {
-            if (m.image_idx == 0 && m.chain_idx == n_ch &&
-                (m.residue_idx == n_res ||
-                 are_connected(res, chain.residues[m.residue_idx], pt) ||
-                 are_connected(chain.residues[m.residue_idx], res, pt)))
+        if (params.no_hydrogens && is_hydrogen(atom.element))
+          continue;
+        double min_occ = params.occ_sum - atom.occ;
+        sc.for_each(atom.pos, atom.altloc, params.max_dist,
+                    [&](const SubCells::Mark& m, float dist_sq) {
+            if (!params.any) {
+              if (m.image_idx == 0 && m.chain_idx == n_ch &&
+                  (m.residue_idx == n_res ||
+                   are_connected(res, chain.residues[m.residue_idx], pt) ||
+                   are_connected(chain.residues[m.residue_idx], res, pt)))
+                return;
+            }
+            if (m.chain_idx == n_ch && m.residue_idx == n_res &&
+                m.atom_idx == n_atom && (m.image_idx == 0 ||
+                                         dist_sq < sq(special_pos_cutoff)))
+              return;
+            if (params.no_hydrogens && is_hydrogen(m.element))
               return;
             const_CRA cra = m.to_cra(model);
+            if (cra.atom->occ < min_occ)
+              return;
+            ++counter;
+            if (params.print_count)
+              return;
             SymImage im = st.cell.find_nearest_pbc_image(
                                         atom.pos, cra.atom->pos, m.image_idx);
             printf("            %-4s%c%3s%2s%5s   "
@@ -88,15 +124,24 @@ static void print_contacts(const Structure& st, float max_dist, int verbose) {
       }
     }
   }
+  if (params.print_count)
+    printf("%s:%g\n", st.name.c_str(), 0.5 * counter);
 }
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
-  int verbose = p.options[Verbose].count();
-  float max_dist = 3.0;
+  Parameters params;
+  params.verbose = p.options[Verbose].count();
+  params.max_dist = 3.0;
   if (p.options[MaxDist])
-    max_dist = std::strtod(p.options[MaxDist].arg, nullptr);
+    params.max_dist = std::strtod(p.options[MaxDist].arg, nullptr);
+  params.occ_sum = 0;
+  if (p.options[Occ])
+    params.occ_sum = std::strtod(p.options[Occ].arg, nullptr);
+  params.any = p.options[Any];
+  params.print_count = p.options[Count];
+  params.no_hydrogens = p.options[NoH];
   if (p.nonOptionsCount() == 0) {
     std::fprintf(stderr, "No input files. Nothing to do.\n");
     return 0;
@@ -104,14 +149,13 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       std::string input = expand_if_pdb_code(p.nonOption(i));
-      if (i > 0)
-        std::printf("\n");
-      if (verbose > 0 || p.nonOptionsCount() > 1)
-        std::printf("File: %s\n", input.c_str());
+      if (params.verbose > 0 ||
+          (p.nonOptionsCount() > 1 && !params.print_count))
+        std::printf("%sFile: %s\n", (i > 0 ? "\n" : ""), input.c_str());
       Structure st = read_structure(input);
       if (st.input_format == CoorFormat::Pdb)
         split_nonpolymers(st);
-      print_contacts(st, max_dist, verbose);
+      print_contacts(st, params);
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());
