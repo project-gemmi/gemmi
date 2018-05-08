@@ -259,7 +259,13 @@ inline void write_header(const Structure& st, std::ostream& os,
   if (st.models.size() > 1)
     WRITE("NUMMDL    %-6zu %63s\n", st.models.size(), "");
 
-  if (st.resolution > 0) {
+  if (!st.raw_remarks.empty()) {
+    for (const std::string& line : st.raw_remarks) {
+      os << line;
+      if (line.empty() || line.back() != '\n')
+        os << '\n';
+    }
+  } else if (st.resolution > 0) {
     WRITE("%-80s\n", "REMARK   2");
     WRITE("REMARK   2 RESOLUTION. %7.2f %-49s\n", st.resolution, "ANGSTROMS.");
   }

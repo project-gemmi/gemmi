@@ -441,6 +441,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       atom.u23 = read_int(line+63, 7) * 1e-4f;
 
     } else if (is_record_type(line, "REMARK")) {
+      st.raw_remarks.push_back(line);
       if (len > 11) {
         switch (read_int(line + 7, 3)) {
           case 2:

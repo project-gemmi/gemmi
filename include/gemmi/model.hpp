@@ -573,6 +573,8 @@ struct Structure {
 
   // Minimal metadata with keys being mmcif tags: _entry.id, _exptl.method, ...
   std::map<std::string, std::string> info;
+  // original REMARK records stored if the file was read from the PDB format
+  std::vector<std::string> raw_remarks;
   // simplistic resolution value from/for REMARK 2
   double resolution = 0;
 
