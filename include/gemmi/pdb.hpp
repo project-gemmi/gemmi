@@ -30,10 +30,6 @@ namespace gemmi {
 
 namespace pdb_impl {
 
-inline ResidueInfo rinfo(const ResidueId& rid) {
-  return find_tabulated_residue(rid.name);
-}
-
 inline std::string rtrimmed(std::string s) {
   auto p = std::find_if_not(s.rbegin(), s.rend(),
                             [](int c) { return std::isspace(c); });
@@ -118,7 +114,7 @@ inline PolymerType check_polymer_type(const std::vector<Residue>& rr) {
   size_t rna = 0;
   size_t na = 0;
   for (const Residue& r : rr)
-    switch (rinfo(r).kind) {
+    switch (find_tabulated_residue(r.name).kind) {
       case ResidueInfo::AA: ++aa; break;
       case ResidueInfo::DNA: ++dna; break;
       case ResidueInfo::RNA: ++rna; break;
@@ -373,7 +369,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
         wrong("The line is too short to be correct:\n" + std::string(line));
       std::string chain_name = read_string(line+20, 2);
       ResidueId rid = read_res_id(line+22, line+17);
-      bool res_water = rinfo(rid).is_water();
+      bool res_water = find_tabulated_residue(rid.name).is_water();
       if (!chain || chain_name != chain->auth_name || res_water != prev_water) {
         if (!model)
           wrong("ATOM/HETATM between models");

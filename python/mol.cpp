@@ -161,6 +161,9 @@ void add_mol(py::module& m) {
     .def("__getitem__", [](Model& self, const std::string& name) -> Chain& {
         return *impl::find_iter(self.chains, name);
     }, py::arg("name"), py::return_value_policy::reference_internal)
+    .def("__getitem__", [](Model& self, int index) -> Chain& {
+        return self.chains.at(index >= 0 ? index : index + self.chains.size());
+    }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("residues", &Model::residues,
          py::arg("auth_chain"), py::arg("resnum"), py::arg("icode"),
          py::return_value_policy::reference_internal)

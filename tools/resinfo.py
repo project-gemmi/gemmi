@@ -41,5 +41,6 @@ for line in open('include/gemmi/resinfo.hpp'):
         obj = re.search(r'\bH(\d+)\b', formula)
         if obj:
             nh = int(obj.group(1))
-            line = line[:m.end(2)] + ("', %3d" % nh) + line[m.end(3):]
+            if nh != old_nh:
+                line = line[:m.end(2)] + ("', %3d" % nh) + line[m.end(3):]
     print(line, end='')
