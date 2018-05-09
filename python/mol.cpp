@@ -41,8 +41,10 @@ void add_mol(py::module& m) {
     });
 
   py::class_<ResidueInfo>(m, "ResidueInfo")
-    .def_readonly("pdb_standard", &ResidueInfo::pdb_standard)
+    .def_readonly("one_letter_code", &ResidueInfo::one_letter_code)
     .def_readonly("hydrogen_count", &ResidueInfo::hydrogen_count)
+    .def("found", &ResidueInfo::found)
+    .def("is_standard", &ResidueInfo::is_standard)
     .def("is_water", &ResidueInfo::is_water)
     .def("is_nucleic", &ResidueInfo::is_nucleic)
     .def("is_amino", &ResidueInfo::is_amino);

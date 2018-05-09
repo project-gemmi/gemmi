@@ -68,7 +68,7 @@ static void print_content_info(const Structure& st, bool /*verbose*/) {
       if (res_info.is_amino() || res_info.is_nucleic() ||
           res.name == "HEM" || res.name == "SO4" || res.name == "SUL") {
         is_protein = true;
-        h_count += res_info.hydrogen_count;
+        h_count += res_info.hydrogen_count - 2;
       }
       for (const Atom& atom : res.atoms) {
         // skip hydrogens

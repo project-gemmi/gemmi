@@ -40,7 +40,7 @@ bool use_hetatm(const Residue& res, const Entity* entity) {
     return false;
   if (entity && entity->entity_type == EntityType::NonPolymer)
     return true;
-  return !find_tabulated_residue(res.name).pdb_standard;
+  return !find_tabulated_residue(res.name).is_standard();
 }
 
 // works for non-negative values only

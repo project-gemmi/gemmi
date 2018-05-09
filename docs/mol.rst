@@ -76,9 +76,9 @@ sufficient.
     True
     >>> # PDB marks "non-standard" residues as HETATM.
     >>> # Pyrrolysine is now standard - some microbes have it.
-    >>> gemmi.find_tabulated_residue('PYL').pdb_standard
+    >>> gemmi.find_tabulated_residue('PYL').is_standard()
     True
-    >>> gemmi.find_tabulated_residue('MSE').pdb_standard
+    >>> gemmi.find_tabulated_residue('MSE').is_standard()
     False
 
 To get more complete information we need to first read either the CCD
