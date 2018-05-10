@@ -21,13 +21,12 @@ struct BidirIterator : Policy {
   typedef std::bidirectional_iterator_tag iterator_category;
 
   BidirIterator() = default;
-  template<typename... Args>
-  BidirIterator(Args&&... args) : Policy(std::forward<Args>(args)...) {}
+  BidirIterator(Policy&& p) : Policy(p) {}
 
   BidirIterator &operator++() { Policy::increment(); return *this; }
-  BidirIterator operator++(int) { auto x = *this; ++*this; return x; }
+  BidirIterator operator++(int) { BidirIterator x = *this; ++*this; return x; }
   BidirIterator &operator--() { Policy::decrement(); return *this; }
-  BidirIterator operator--(int) { auto x = *this; --*this; return x; }
+  BidirIterator operator--(int) { BidirIterator x = *this; --*this; return x; }
   bool operator==(const BidirIterator &o) const { return Policy::equal(o); }
   bool operator!=(const BidirIterator &o) const { return !Policy::equal(o); }
   reference operator*() { return Policy::dereference(); }

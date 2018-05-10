@@ -124,12 +124,8 @@ public:
   iterator begin();
   iterator end();
   using const_iterator = StrideIter<const std::string>;
-  const_iterator begin() const {
-    return const_cast<Column*>(this)->begin();
-  }
-  const_iterator end() const {
-    return const_cast<Column*>(this)->end();
-  }
+  const_iterator begin() const { return const_cast<Column*>(this)->begin(); }
+  const_iterator end() const { return const_cast<Column*>(this)->end(); }
 
   Loop* get_loop() const;
   std::string* get_tag();
@@ -205,13 +201,13 @@ struct Table {
     std::string str(int n) const { return as_string(at(n)); }
     using iterator = IndirectIter<Row, std::string>;
     using const_iterator = IndirectIter<const Row, const std::string>;
-    iterator begin() { return iterator(this, tab.positions.begin()); }
-    iterator end() { return iterator(this, tab.positions.end()); }
+    iterator begin() { return iterator({this, tab.positions.begin()}); }
+    iterator end() { return iterator({this, tab.positions.end()}); }
     const_iterator begin() const {
-      return const_iterator(this, tab.positions.begin());
+      return const_iterator({this, tab.positions.begin()});
     }
     const_iterator end() const {
-      return const_iterator(this, tab.positions.end());
+      return const_iterator({this, tab.positions.end()});
     }
   };
 
@@ -433,18 +429,18 @@ inline Loop* Column::get_loop() const {
 }
 inline Column::iterator Column::begin() {
   if (Loop* loop = get_loop())
-    return iterator(loop->values.data(), col_, loop->width());
+    return iterator({loop->values.data(), col_, (unsigned) loop->width()});
   if (item_ && item_->type == ItemType::Pair)
-    return iterator(&item_->pair[1], 0, 1);
+    return iterator({&item_->pair[1], 0, 1});
   return iterator();
 }
 
 inline Column::iterator Column::end() {
   if (Loop* loop = get_loop())
-    return iterator(loop->values.data() + loop->values.size(),
-                    col_, loop->width());
+    return iterator({loop->values.data() + loop->values.size(),
+                    col_, (unsigned) loop->width()});
   if (item_ && item_->type == ItemType::Pair)
-    return iterator(&item_->pair[1] + 1, 0, 1);
+    return iterator({&item_->pair[1] + 1, 0, 1});
   return iterator();
 }
 
