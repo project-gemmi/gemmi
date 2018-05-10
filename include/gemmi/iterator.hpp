@@ -12,12 +12,12 @@ namespace gemmi {
 namespace cif {
 
 // implements concept BidirectionalIterator
-template <typename Value, typename Policy>
+template <typename Policy>
 struct BidirIterator : Policy {
-  typedef Value value_type;
+  typedef typename Policy::value_type value_type;
   typedef std::ptrdiff_t difference_type;
-  typedef Value* pointer;
-  typedef Value& reference;
+  typedef value_type* pointer;
+  typedef value_type& reference;
   typedef std::bidirectional_iterator_tag iterator_category;
 
   BidirIterator() = default;
@@ -30,13 +30,18 @@ struct BidirIterator : Policy {
   BidirIterator operator--(int) { auto x = *this; --*this; return x; }
   bool operator==(const BidirIterator &o) const { return Policy::equal(o); }
   bool operator!=(const BidirIterator &o) const { return !Policy::equal(o); }
-  Value& operator*() { return Policy::dereference(); }
-  Value* operator->() { return &Policy::dereference(); }
+  reference operator*() { return Policy::dereference(); }
+  pointer operator->() { return &Policy::dereference(); }
+  using const_variant = BidirIterator<typename Policy::const_policy>;
+  operator const_variant() const {
+    return const_variant(static_cast<const Policy&>(*this));
+  }
 };
 
 template<typename Value>
 class StrideIterPolicy {
 public:
+  typedef Value value_type;
   StrideIterPolicy() : cur_(nullptr), offset_(0), stride_(0) {}
   StrideIterPolicy(Value* ptr, std::size_t offset, unsigned stride)
     : cur_(ptr), offset_(offset), stride_(stride) {}
@@ -44,21 +49,21 @@ public:
   void decrement() { cur_ -= stride_; }
   bool equal(const StrideIterPolicy& o) const { return cur_ == o.cur_; }
   Value& dereference() { return cur_[offset_]; }
-  operator StrideIterPolicy<Value const>() const {
-    return StrideIterPolicy<Value const>(cur_, offset_, stride_);
-  }
+  using const_policy = StrideIterPolicy<Value const>;
+  operator const_policy() const { return const_policy(cur_, offset_, stride_); }
 private:
   Value* cur_;
   unsigned offset_;
   unsigned stride_;
 };
 template<typename Value>
-using StrideIter = BidirIterator<Value, StrideIterPolicy<Value>>;
+using StrideIter = BidirIterator<StrideIterPolicy<Value>>;
 
 
 template<typename Redirect, typename Value>
 class IndirectIterPolicy {
 public:
+  typedef Value value_type;
   IndirectIterPolicy() : redir_(nullptr) {}
   IndirectIterPolicy(Redirect* redir, std::vector<int>::const_iterator cur)
     : redir_(redir), cur_(cur) {}
@@ -66,16 +71,15 @@ public:
   void decrement() { --cur_; }
   bool equal(const IndirectIterPolicy& o) const { return cur_ == o.cur_; }
   Value& dereference() { return redir_->value_at(*cur_); }
-  operator IndirectIterPolicy<Redirect const, Value const>() const {
-    return IndirectIterPolicy<Redirect const, Value const>(redir_, cur_);
-  }
+  using const_policy = IndirectIterPolicy<Redirect const, Value const>;
+  operator const_policy() const { return const_policy(redir_, cur_); }
   // TODO: what should be done with absent optional tags (*cur_ < 0)?
 private:
   Redirect* redir_;
   std::vector<int>::const_iterator cur_; // points into positions
 };
-template<typename Redirect, typename Val>
-using IndirectIter = BidirIterator<Val, IndirectIterPolicy<Redirect, Val>>;
+template<typename Redirect, typename Value>
+using IndirectIter = BidirIterator<IndirectIterPolicy<Redirect, Value>>;
 
 } // namespace cif
 } // namespace gemmi
