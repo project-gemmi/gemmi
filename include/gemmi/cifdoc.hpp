@@ -6,12 +6,12 @@
 #ifndef GEMMI_CIFDOC_HPP_
 #define GEMMI_CIFDOC_HPP_
 #include "util.hpp"  // for starts_with, to_lower, fail
+#include "iterator.hpp"  // for StrideIter, IndirectIter
 #include <algorithm> // for move, find_if, all_of, min
 #include <array>
 #include <cstring>   // for memchr
 #include <initializer_list>
 #include <iosfwd>    // for size_t, ptrdiff_t
-#include <iterator>  // for bidirectional_iterator_tag
 #include <new>
 #include <stdexcept>
 #include <string>
@@ -30,59 +30,6 @@ namespace gemmi {
 namespace cif {
 using std::size_t;
 using gemmi::fail;
-
-// base for a BidirectionalIterator (std::iterator is deprecated in C++17)
-template <typename Value> struct IterBase {
-  typedef Value value_type;
-  typedef std::ptrdiff_t  difference_type;
-  typedef Value* pointer;
-  typedef Value& reference;
-  typedef std::bidirectional_iterator_tag iterator_category;
-};
-
-template<typename T>
-class StrideIter : public IterBase<T> {
-public:
-  StrideIter() : cur_(nullptr), offset_(0), stride_(0) {}
-  StrideIter(T* ptr, std::size_t offset, unsigned stride)
-    : cur_(ptr), offset_(offset), stride_(stride) {}
-  StrideIter& operator++() { cur_ += stride_; return *this; }
-  StrideIter& operator--() { cur_ -= stride_; return *this; }
-  StrideIter operator++(int) { auto t = *this; cur_ += stride_; return t; }
-  StrideIter operator--(int) { auto t = *this; cur_ -= stride_; return t; }
-  T& operator*() { return cur_[offset_]; }
-  T* operator->() { return cur_ + offset_; }
-  bool operator==(const StrideIter& other) const { return cur_ == other.cur_; }
-  bool operator!=(const StrideIter& other) const { return cur_ != other.cur_; }
-  operator StrideIter<T const>() const {
-    return StrideIter<T const>(cur_, offset_, stride_);
-  }
-private:
-  T* cur_;
-  unsigned offset_;
-  unsigned stride_;
-};
-
-template<typename Redirect, typename T>
-struct IndirectIter : IterBase<T> {
-  IndirectIter() : redir(nullptr) {}
-  IndirectIter(Redirect* p, std::vector<int>::const_iterator it)
-    : redir(p), cur(it) {}
-  Redirect* redir;
-  std::vector<int>::const_iterator cur; // points into positions
-  IndirectIter& operator++() { ++cur; return *this; }
-  IndirectIter& operator--() { --cur; return *this; }
-  IndirectIter operator++(int) { auto t = *this; ++cur; return t; }
-  IndirectIter operator--(int) { auto t = *this; --cur; return t; }
-  T& operator*() { return redir->value_at(*cur); }
-  T* operator->() { return &(operator*()); }
-  bool operator==(const IndirectIter& other) const { return cur == other.cur; }
-  bool operator!=(const IndirectIter& other) const { return cur != other.cur; }
-  operator IndirectIter<Redirect const, T const>() const {
-    return IndirectIter<Redirect const, T const>(redir, cur);
-  }
-  // TODO: what should be done with absent optional tags (*cur < 0)?
-};
 
 enum class ItemType : unsigned char {
   Pair,
