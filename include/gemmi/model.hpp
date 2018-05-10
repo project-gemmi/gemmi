@@ -17,6 +17,7 @@
 #include "elem.hpp"
 #include "unitcell.hpp"
 #include "symmetry.hpp"
+#include "iterator.hpp"
 
 namespace gemmi {
 
@@ -234,6 +235,8 @@ struct ResidueId {
   }
   std::string str() const { return name + " " + seq_id(); }
   bool matches(const ResidueId& rid) const;
+  // for first_conformation iterators
+  bool same_group(const ResidueId& o) const { return same_seq_id(o); }
 };
 
 struct Residue : public ResidueId {
@@ -411,6 +414,17 @@ struct Chain {
         return next;
     return nullptr;
   }
+
+  /*
+  struct {
+    using iterator = UniqIter<Residue>;
+    using const_iterator = UniqIter<Residue const>;
+    const_iterator begin() const { return {&residues, 0}; }
+    const_iterator end() const { return {&residues, residues.size()}; }
+    iterator begin() { return {&residues, 0}; }
+    iterator end() { return return {&residues, residues.size()}; }
+  } first_conformation;
+  */
 };
 
 struct AtomAddress {

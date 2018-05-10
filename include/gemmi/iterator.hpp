@@ -9,7 +9,6 @@
 #include <vector>
 
 namespace gemmi {
-namespace cif {
 
 // implements concept BidirectionalIterator
 template <typename Policy>
@@ -80,7 +79,27 @@ private:
 template<typename Redirect, typename Value>
 using IndirectIter = BidirIterator<IndirectIterPolicy<Redirect, Value>>;
 
-} // namespace cif
+
+template<typename Value>
+class UniqIterPolicy {
+public:
+  typedef Value value_type;
+  UniqIterPolicy() : vec_(nullptr), pos_(0) {}
+  UniqIterPolicy(std::vector<Value>* vec, std::size_t pos)
+    : vec_(vec), pos_(pos) {}
+  void increment() { ++pos_; } // TODO
+  void decrement() { --pos_; }
+  bool equal(const UniqIterPolicy& o) const { return pos_ == o.pos_; }
+  Value& dereference() { return vec_[pos_]; }
+  using const_policy = UniqIterPolicy<Value const>;
+  operator const_policy() const { return const_policy(vec_, pos_); }
+private:
+  std::vector<Value>* vec_;
+  std::size_t pos_;
+};
+template<typename Value>
+using UniqIter = BidirIterator<UniqIterPolicy<Value>>;
+
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et
