@@ -22,6 +22,8 @@ for line in open('include/gemmi/resinfo.hpp'):
     if m:
         name = m.group(1)
         block = ccd[name]
+
+        # modify one letter code
         olc = block.find_value('_chem_comp.one_letter_code')
         if olc != '?':
             code = olc[0]
@@ -36,6 +38,8 @@ for line in open('include/gemmi/resinfo.hpp'):
             parent_olc = ccd[parent].find_value('_chem_comp.one_letter_code')
             if parent_olc != olc:
                 print(name, olc, '<>', parent, parent_olc, file=stderr)
+
+        # modify hydrogen count
         old_nh = int(m.group(3))
         formula = cif.as_string(block.find_value('_chem_comp.formula'))
         obj = re.search(r'\bH(\d+)\b', formula)
@@ -43,4 +47,14 @@ for line in open('include/gemmi/resinfo.hpp'):
             nh = int(obj.group(1))
             if nh != old_nh:
                 line = line[:m.end(2)] + ("', %3d" % nh) + line[m.end(3):]
+
+        # check residue type
+        res_type = cif.as_string(block.find_value('_chem_comp.type')).upper()
+        has_AAD = 'ResidueInfo::AAD' in line
+        expected_AAD = res_type.startswith('D-PEPTIDE')
+        if expected_AAD and not has_AAD:
+            print('D-PEPTIDE:', name, file=stderr)
+        if not expected_AAD and has_AAD:
+            print('not D-PEPTIDE:', name, file=stderr)
+
     print(line, end='')

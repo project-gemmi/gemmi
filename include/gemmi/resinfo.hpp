@@ -13,13 +13,15 @@ namespace gemmi {
 struct ResidueInfo {
   // Simple approximate classification.
   // AA - aminoacid
+  // AAD - D-aminoacid
   // RNA, DNA - nucleic acids
   // HOH - water or heavy water
   // PYR - pyranose according to the refmac dictionary
   // BUF - agent from crystallization buffer according to PISA agents.dat
   // ELS - something else (ligand).
   enum Kind : char {
-    UNKNOWN=0, AA, RNA, DNA, BUF, HOH, PYR, ELS
+    // when changing this list update check_polymer_type()
+    UNKNOWN=0, AA, AAD, RNA, DNA, BUF, HOH, PYR, ELS
   };
   Kind kind;
   // one-letter code or space (uppercase iff it is a standard residues)
@@ -32,7 +34,7 @@ struct ResidueInfo {
   bool is_dna() const { return kind == DNA; }
   bool is_rna() const { return kind == RNA; }
   bool is_nucleic() const { return is_dna() || is_rna(); }
-  bool is_amino() const { return kind == AA; }
+  bool is_amino() const { return kind == AA || kind == AAD; }
   // PDB format has non-standard residues (modified AA) marked as HETATM.
   bool is_standard() const { return (one_letter_code & 0x20) == 0; }
 };
@@ -83,7 +85,7 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
       case ID("LLP"): return { ResidueInfo::AA,  'k',  22 };
       case ID("CME"): return { ResidueInfo::AA,  'c',  11 };
       case ID("MLY"): return { ResidueInfo::AA,  'k',  18 };
-      case ID("DAL"): return { ResidueInfo::AA,  'a',   7 };
+      case ID("DAL"): return { ResidueInfo::AAD, 'a',   7 };
       case ID("TYS"): return { ResidueInfo::AA,  'y',  11 };
       case ID("OCS"): return { ResidueInfo::AA,  'c',   7 };
       case ID("M3L"): return { ResidueInfo::AA,  'k',  21 };
@@ -93,49 +95,49 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
       case ID("CAS"): return { ResidueInfo::AA,  'c',  12 };
       case ID("CRO"): return { ResidueInfo::AA,  't',  17 };
       case ID("CSX"): return { ResidueInfo::AA,  'c',   7 };
-      case ID("DPR"): return { ResidueInfo::AA,  'p',   9 };  // also BUF
-      case ID("DGL"): return { ResidueInfo::AA,  'e',   9 };
-      case ID("DVA"): return { ResidueInfo::AA,  'v',  11 };
+      case ID("DPR"): return { ResidueInfo::AAD, 'p',   9 };  // also BUF
+      case ID("DGL"): return { ResidueInfo::AAD, 'e',   9 };
+      case ID("DVA"): return { ResidueInfo::AAD, 'v',  11 };
       case ID("CSS"): return { ResidueInfo::AA,  'c',   7 };
-      case ID("DPN"): return { ResidueInfo::AA,  'f',  11 };
-      case ID("DSN"): return { ResidueInfo::AA,  's',   7 };
-      case ID("DLE"): return { ResidueInfo::AA,  'l',  13 };
+      case ID("DPN"): return { ResidueInfo::AAD, 'f',  11 };
+      case ID("DSN"): return { ResidueInfo::AAD, 's',   7 };
+      case ID("DLE"): return { ResidueInfo::AAD, 'l',  13 };
       case ID("HIC"): return { ResidueInfo::AA,  'h',  11 };
       case ID("NLE"): return { ResidueInfo::AA,  'l',  13 };
       case ID("MVA"): return { ResidueInfo::AA,  'v',  13 };
       case ID("MLZ"): return { ResidueInfo::AA,  'k',  16 };
       case ID("CR2"): return { ResidueInfo::AA,  'g',  13 };
       case ID("SAR"): return { ResidueInfo::AA,  'g',   7 };
-      case ID("DAR"): return { ResidueInfo::AA,  'r',  15 };
-      case ID("DLY"): return { ResidueInfo::AA,  'k',  14 };
+      case ID("DAR"): return { ResidueInfo::AAD, 'r',  15 };
+      case ID("DLY"): return { ResidueInfo::AAD, 'k',  14 };
       case ID("YCM"): return { ResidueInfo::AA,  'c',  10 };
       case ID("NRQ"): return { ResidueInfo::AA,  'm',  17 };
       case ID("CGU"): return { ResidueInfo::AA,  'e',   9 };
       case ID("0TD"): return { ResidueInfo::AA,  'd',   9 };
       case ID("MLE"): return { ResidueInfo::AA,  'l',  15 };
-      case ID("DAS"): return { ResidueInfo::AA,  'd',   7 };
-      case ID("DTR"): return { ResidueInfo::AA,  'w',  12 };
+      case ID("DAS"): return { ResidueInfo::AAD, 'd',   7 };
+      case ID("DTR"): return { ResidueInfo::AAD, 'w',  12 };
       case ID("CXM"): return { ResidueInfo::AA,  'm',  11 };
       case ID("TPQ"): return { ResidueInfo::AA,  'y',   9 };
-      case ID("DCY"): return { ResidueInfo::AA,  'c',   7 };
-      case ID("DSG"): return { ResidueInfo::AA,  'n',   8 };
-      case ID("DTY"): return { ResidueInfo::AA,  'y',  11 };
-      case ID("DHI"): return { ResidueInfo::AA,  'h',  10 };
+      case ID("DCY"): return { ResidueInfo::AAD, 'c',   7 };
+      case ID("DSG"): return { ResidueInfo::AAD, 'n',   8 };
+      case ID("DTY"): return { ResidueInfo::AAD, 'y',  11 };
+      case ID("DHI"): return { ResidueInfo::AAD, 'h',  10 };
       case ID("MEN"): return { ResidueInfo::AA,  'n',  10 };
-      case ID("DTH"): return { ResidueInfo::AA,  't',   9 };
+      case ID("DTH"): return { ResidueInfo::AAD, 't',   9 };
       case ID("SAC"): return { ResidueInfo::AA,  's',   9 };
-      case ID("DGN"): return { ResidueInfo::AA,  'q',  10 };
+      case ID("DGN"): return { ResidueInfo::AAD, 'q',  10 };
       case ID("AIB"): return { ResidueInfo::AA,  'a',   9 };
       case ID("SMC"): return { ResidueInfo::AA,  'c',   9 };
       case ID("IAS"): return { ResidueInfo::AA,  'd',   7 };
       case ID("CIR"): return { ResidueInfo::AA,  'r',  13 };
       case ID("BMT"): return { ResidueInfo::AA,  't',  19 };
-      case ID("DIL"): return { ResidueInfo::AA,  'i',  13 };
+      case ID("DIL"): return { ResidueInfo::AAD, 'i',  13 };
       case ID("FGA"): return { ResidueInfo::AA,  'e',   9 };
       case ID("PHI"): return { ResidueInfo::AA,  'f',  10 };
       case ID("CRQ"): return { ResidueInfo::AA,  'q',  16 };
       case ID("SME"): return { ResidueInfo::AA,  'm',  11 };
-      case ID("GHP"): return { ResidueInfo::AA,  'g',   9 };
+      case ID("GHP"): return { ResidueInfo::AAD, 'g',   9 };
       case ID("MHO"): return { ResidueInfo::AA,  'm',  11 };
       case ID("NEP"): return { ResidueInfo::AA,  'h',  10 };
       case ID("TRQ"): return { ResidueInfo::AA,  'w',  10 };
@@ -156,18 +158,18 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
       case ID("0AF"): return { ResidueInfo::AA,  'w',  12 };
       case ID("SNN"): return { ResidueInfo::AA,  'n',   6 };
       case ID("MHS"): return { ResidueInfo::AA,  'h',  11 };
-      case ID("MLU"): return { ResidueInfo::AA,  ' ',  15 };
+      case ID("MLU"): return { ResidueInfo::AAD, ' ',  15 };
       case ID("SNC"): return { ResidueInfo::AA,  'c',   6 };
       case ID("PHD"): return { ResidueInfo::AA,  'd',   8 };
       case ID("B3E"): return { ResidueInfo::AA,  'e',  11 };
       case ID("MEA"): return { ResidueInfo::AA,  'f',  13 };
-      case ID("MED"): return { ResidueInfo::AA,  'm',  11 };
+      case ID("MED"): return { ResidueInfo::AAD, 'm',  11 };
       case ID("OAS"): return { ResidueInfo::AA,  's',   9 };
       case ID("GL3"): return { ResidueInfo::AA,  'g',   5 };
       case ID("FVA"): return { ResidueInfo::AA,  'v',  11 };
       case ID("PHL"): return { ResidueInfo::AA,  'f',  13 };
       case ID("CRF"): return { ResidueInfo::AA,  't',  18 };
-      case ID("OMZ"): return { ResidueInfo::AA,  ' ',  10 };
+      case ID("OMZ"): return { ResidueInfo::AAD, ' ',  10 };
       case ID("BFD"): return { ResidueInfo::AA,  'd',   6 };
       case ID("MEQ"): return { ResidueInfo::AA,  'q',  12 };
       case ID("DAB"): return { ResidueInfo::AA,  'a',  10 };

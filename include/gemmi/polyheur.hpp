@@ -5,10 +5,8 @@
 #ifndef GEMMI_POLYHEUR_HPP_
 #define GEMMI_POLYHEUR_HPP_
 
-//#include <vector>     // for vector
-
+#include <vector>
 #include "model.hpp"
-//#include "util.hpp"
 #include "resinfo.hpp"
 
 namespace gemmi {
@@ -17,30 +15,29 @@ namespace gemmi {
 // It returns PolymerType which corresponds to _entity_poly.type,
 // but here we use only PeptideL, Rna, Dna, DnaRnaHybrid and Unknown.
 inline PolymerType check_polymer_type(const std::vector<Residue>& rr) {
+  size_t counts[9] = {0};
   size_t aa = 0;
-  size_t dna = 0;
-  size_t rna = 0;
   size_t na = 0;
-  for (const Residue& r : rr)
-    switch (find_tabulated_residue(r.name).kind) {
-      case ResidueInfo::AA: ++aa; break;
-      case ResidueInfo::DNA: ++dna; break;
-      case ResidueInfo::RNA: ++rna; break;
-      case ResidueInfo::UNKNOWN:
-        if (r.get_ca())
-          ++aa;
-        else if (r.get_p())
-          ++na;
-        break;
-      default: break;
+  for (const Residue& r : rr) {
+    ResidueInfo info = find_tabulated_residue(r.name);
+    if  (info.found()) {
+      counts[info.kind]++;
+    } else {
+      if (r.get_ca())
+        ++aa;
+      else if (r.get_p())
+        ++na;
     }
+  }
+  aa += counts[ResidueInfo::AA] + counts[ResidueInfo::AAD];
+  na += counts[ResidueInfo::RNA] + counts[ResidueInfo::DNA];
   if (aa == rr.size() || (aa > 10 && 2 * aa > rr.size()))
-    return PolymerType::PeptideL;
-  na += dna + rna;
+    return counts[ResidueInfo::AA] >= counts[ResidueInfo::AAD]
+           ? PolymerType::PeptideL : PolymerType::PeptideD;
   if (na == rr.size() || (na > 10 && 2 * na > rr.size())) {
-    if (dna == 0)
+    if (counts[ResidueInfo::DNA] == 0)
       return PolymerType::Rna;
-    else if (rna == 0)
+    else if (counts[ResidueInfo::RNA] == 0)
       return PolymerType::Dna;
     else
       return PolymerType::DnaRnaHybrid;
@@ -53,15 +50,16 @@ inline bool is_polymer_residue(const Residue& res, PolymerType ptype) {
   ResidueInfo info = find_tabulated_residue(res.name);
   switch (ptype) {
     case PolymerType::PeptideL:
+      return info.found() ? info.kind == ResidueInfo::AA : !!res.get_ca();
     case PolymerType::PeptideD:
-      // for now we don't differentiate L and D
-      return info.found() ? info.is_amino() : (res.get_ca() != nullptr);
+      // D-peptide can contain AA in addition AAD (for example GLY)
+      return info.found() ? info.is_amino() : !!res.get_ca();
     case PolymerType::Dna:
-      return info.found() ? info.is_dna() : (res.get_p() != nullptr);
+      return info.found() ? info.is_dna() : !!res.get_p();
     case PolymerType::Rna:
-      return info.found() ? info.is_rna() : (res.get_p() != nullptr);
+      return info.found() ? info.is_rna() : !!res.get_p();
     case PolymerType::DnaRnaHybrid:
-      return info.found() ? info.is_nucleic() : (res.get_p() != nullptr);
+      return info.found() ? info.is_nucleic() : !!res.get_p();
     default:
       return false;
   }
