@@ -5,7 +5,6 @@
 #ifndef GEMMI_ITERBASE_HPP_
 #define GEMMI_ITERBASE_HPP_
 #include <iterator>  // for bidirectional_iterator_tag
-#include <utility>  // for forward
 #include <vector>
 
 namespace gemmi {
@@ -80,25 +79,47 @@ template<typename Redirect, typename Value>
 using IndirectIter = BidirIterator<IndirectIterPolicy<Redirect, Value>>;
 
 
-template<typename Value>
+template<typename Vector, typename Value>
 class UniqIterPolicy {
 public:
   typedef Value value_type;
   UniqIterPolicy() : vec_(nullptr), pos_(0) {}
-  UniqIterPolicy(std::vector<Value>* vec, std::size_t pos)
-    : vec_(vec), pos_(pos) {}
-  void increment() { ++pos_; } // TODO
-  void decrement() { --pos_; }
+  UniqIterPolicy(Vector* vec, std::size_t pos) : vec_(vec), pos_(pos) {}
+  void increment() {
+    std::size_t old = pos_++;
+    while (pos_ != vec_->size() && (*vec_)[old].same_group((*vec_)[pos_]))
+        ++pos_;
+  }
+  void decrement() {
+    --pos_;
+    while (pos_ != 0 && (*vec_)[pos_ - 1].same_group((*vec_)[pos_]))
+        --pos_;
+  }
   bool equal(const UniqIterPolicy& o) const { return pos_ == o.pos_; }
-  Value& dereference() { return vec_[pos_]; }
-  using const_policy = UniqIterPolicy<Value const>;
+  Value& dereference() { return (*vec_)[pos_]; }
+  using const_policy = UniqIterPolicy<Vector const, Value const>;
   operator const_policy() const { return const_policy(vec_, pos_); }
 private:
-  std::vector<Value>* vec_;
+  Vector* vec_;
   std::size_t pos_;
 };
+template<typename Vector, typename Value>
+using UniqIter = BidirIterator<UniqIterPolicy<Vector, Value>>;
+
 template<typename Value>
-using UniqIter = BidirIterator<UniqIterPolicy<Value>>;
+struct UniqProxy {
+  std::vector<Value>& vec;
+  using iterator = UniqIter<std::vector<Value>, Value>;
+  iterator begin() { return {{&vec, 0}}; }
+  iterator end() { return {{&vec, vec.size()}}; }
+};
+template<typename Value, typename Vector=std::vector<Value>>
+struct ConstUniqProxy {
+  const std::vector<Value>& vec;
+  using iterator = UniqIter<const std::vector<Value>, const Value>;
+  iterator begin() const { return {{&vec, 0}}; }
+  iterator end() const { return {{&vec, vec.size()}}; }
+};
 
 } // namespace gemmi
 #endif

@@ -195,6 +195,7 @@ struct Atom {
   bool same_conformer(const Atom& other) const {
     return is_same_conformer(altloc, other.altloc);
   }
+  bool same_group(const Atom& other) const { return name == other.name; }
   // Name as a string left-padded like in the PDB format:
   // the first two characters make the element name.
   std::string padded_name() const {
@@ -310,6 +311,11 @@ struct Residue : public ResidueId {
     const Atom* a2 = next.get_n();
     return a1 && a2 && a1->pos.dist_sq(a2->pos) < 2.0 * 2.0;
   }
+
+  // Iterators that in case of multiple conformations (alt. locations)
+  // skip all but the first conformation.
+  UniqProxy<Atom> first_conformer() { return {atoms}; }
+  ConstUniqProxy<Atom> first_conformer() const { return {atoms}; }
 };
 
 // ResidueGroup represents residues with the same sequence number and insertion
@@ -415,16 +421,10 @@ struct Chain {
     return nullptr;
   }
 
-  /*
-  struct {
-    using iterator = UniqIter<Residue>;
-    using const_iterator = UniqIter<Residue const>;
-    const_iterator begin() const { return {&residues, 0}; }
-    const_iterator end() const { return {&residues, residues.size()}; }
-    iterator begin() { return {&residues, 0}; }
-    iterator end() { return return {&residues, residues.size()}; }
-  } first_conformation;
-  */
+  // Iterators that in case of multiple conformations (microheterogeneity)
+  // skip all but the first conformation.
+  UniqProxy<Residue> first_conformer() { return {residues}; }
+  ConstUniqProxy<Residue> first_conformer() const { return {residues}; }
 };
 
 struct AtomAddress {

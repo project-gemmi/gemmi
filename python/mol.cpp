@@ -181,6 +181,11 @@ void add_mol(py::module& m) {
                std::to_string(self.chains.size()) + " chain(s)>";
     });
 
+  py::class_<UniqProxy<Residue>>(m, "FirstConformerRes")
+    .def("__iter__", [](UniqProxy<Residue>& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>());
+
   py::class_<Chain>(m, "Chain")
     .def(py::init<std::string>())
     .def_readwrite("name", &Chain::name)
@@ -198,6 +203,8 @@ void add_mol(py::module& m) {
     .def("count_atom_sites", &count_atom_sites<Chain>)
     .def("count_occupancies", &count_occupancies<Chain>)
     .def("trim_to_alanine", &trim_to_alanine)
+    .def("first_conformer",
+         (UniqProxy<Residue> (Chain::*)()) &Chain::first_conformer)
     .def("__repr__", [](const Chain& self) {
         return "<gemmi.Chain " + self.name + " (" + self.auth_name +
                ") with " + std::to_string(self.residues.size()) + " res>";
@@ -219,6 +226,11 @@ void add_mol(py::module& m) {
           r += res.seq_id() + "/" + res.name + " ";
         return r + "]>";
     });
+
+  py::class_<UniqProxy<Atom>>(m, "FirstConformerAtoms")
+    .def("__iter__", [](UniqProxy<Atom>& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>());
 
   py::class_<Residue>(m, "Residue")
     .def(py::init<>())
@@ -246,6 +258,8 @@ void add_mol(py::module& m) {
         return self.atoms.at(index >= 0 ? index : index + self.atoms.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("__delitem__", &Residue::remove_atom, py::arg("name"))
+    .def("first_conformer",
+         (UniqProxy<Atom> (Residue::*)()) &Residue::first_conformer)
     .def("__repr__", [](const Residue& self) {
         std::string r = "<gemmi.Residue " + self.name + " " + self.seq_id();
         if (self.label_seq)

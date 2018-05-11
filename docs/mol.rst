@@ -528,9 +528,10 @@ Disorder (altloc)
 Apart from the naming, the biggest difference between libraries is
 how the disorder is presented. The main options are:
 
-* group together atoms from the same conformer (e.g. cctbx.iotbx)
+* group together atoms from the same conformer
 
-* group together alternative locations of the same atom (e.g. BioPython)
+* group together alternative locations of the same atom
+  (cctbx.iotbx has residue-groups and atom-groups)
 
 * leave it to the user (e.g. mmdb and clipper).
 
@@ -540,10 +541,38 @@ documentation says that
 "about 90% of the development time invested into iotbx.pdb was in some form
 related to alternative conformations".
 
-In Gemmi we expose the *altLoc* field to the user (like mmdb),
+In Gemmi we expose the *altloc* field to the user (like mmdb),
 and on top of it we offer simple utilities that make working with conformers
 easier (similarly to BioPython).
 
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
+  >>> chain_b = st[0]['B']
+  >>> # iteration goes through all residues and atom sites
+  >>> [res.name for res in chain_b]
+  ['DSN', 'ALA', 'N2C', 'NCY', 'MVA', 'DSN', 'ALA', 'NCY', 'N2C', 'MVA']
+  >>> # The two pairs N2C/NCY above are alternative conformations.
+  >>> # Sometimes we want to ignore alternative conformations:
+  >>> [res.name for res in chain_b.first_conformer()]
+  ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
+  >>>
+  >>> chain_a = st[0]['A']
+  >>> # the first residue has sequence id '1', but since one sequence id
+  >>> # may belong to more than one residue (microheterogeneity)
+  >>> # this getter returns ResidueGroup:
+  >>> chain_a['1']
+  <gemmi.ResidueGroup [ 1/DG ]>
+  >>> first_residue = _[0]
+  >>> first_residue
+  <gemmi.Residue DG 1 (1) with 23 atoms>
+  >>> sum(atom.altloc == 'B' for atom in first_residue)
+  4
+  >>> # first_conformer() is for iteration only
+  >>> first_residue.first_conformer()  #doctest: +ELLIPSIS
+  <gemmi.FirstConformerAtoms object at 0x...>
+  >>> len(list(_))  # 23 - 4
+  19
 
 Residue
 -------
