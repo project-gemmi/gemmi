@@ -176,6 +176,18 @@ inline PolymerType polymer_type_from_string(const std::string& t) {
   return PolymerType::Unknown;
 }
 
+// sometimes a name shorter than "polydeoxyribonucleotide" is more readable
+inline const char* polymer_type_abbr(PolymerType ptype) {
+  switch (ptype) {
+    case PolymerType::PeptideL: return "AAL";
+    case PolymerType::PeptideD: return "AAD";
+    case PolymerType::Dna: return "DNA";
+    case PolymerType::Rna: return "RNA";
+    case PolymerType::DnaRnaHybrid: return "xNA";
+    default: return "";
+  }
+}
+
 inline bool is_same_conformer(char altloc1, char altloc2) {
   return altloc1 == '\0' || altloc2 == '\0' || altloc1 == altloc2;
 }

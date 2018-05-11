@@ -25,6 +25,7 @@
 #include "util.hpp"
 #include "fileutil.hpp" // for path_basename, file_open
 #include "resinfo.hpp"
+#include "polyheur.hpp" // for check_polymer_type
 
 namespace gemmi {
 
@@ -106,38 +107,6 @@ inline std::string read_string(const char* p, int field_length) {
 inline bool is_record_type(const char* s, const char* record) {
   return ((s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]) & ~0x20202020) ==
           (record[0] << 24 | record[1] << 16 | record[2] << 8 | record[3]);
-}
-
-inline PolymerType check_polymer_type(const std::vector<Residue>& rr) {
-  size_t aa = 0;
-  size_t dna = 0;
-  size_t rna = 0;
-  size_t na = 0;
-  for (const Residue& r : rr)
-    switch (find_tabulated_residue(r.name).kind) {
-      case ResidueInfo::AA: ++aa; break;
-      case ResidueInfo::DNA: ++dna; break;
-      case ResidueInfo::RNA: ++rna; break;
-      case ResidueInfo::UNKNOWN:
-        if (r.get_ca())
-          ++aa;
-        else if (r.get_p())
-          ++na;
-        break;
-      default: break;
-    }
-  if (aa == rr.size() || (aa > 10 && 2 * aa > rr.size()))
-    return PolymerType::PeptideL;
-  na += dna + rna;
-  if (na == rr.size() || (na > 10 && 2 * na > rr.size())) {
-    if (dna == 0)
-      return PolymerType::Rna;
-    else if (rna == 0)
-      return PolymerType::Dna;
-    else
-      return PolymerType::DnaRnaHybrid;
-  }
-  return PolymerType::Unknown;
 }
 
 inline void setup_entities(Structure& st) {

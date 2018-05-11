@@ -29,7 +29,9 @@ struct ResidueInfo {
 
   bool found() const { return kind != UNKNOWN; }
   bool is_water() const { return kind == HOH; }
-  bool is_nucleic() const { return kind == RNA || kind == DNA; }
+  bool is_dna() const { return kind == DNA; }
+  bool is_rna() const { return kind == RNA; }
+  bool is_nucleic() const { return is_dna() || is_rna(); }
   bool is_amino() const { return kind == AA; }
   // PDB format has non-standard residues (modified AA) marked as HETATM.
   bool is_standard() const { return (one_letter_code & 0x20) == 0; }

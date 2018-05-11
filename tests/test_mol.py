@@ -268,5 +268,13 @@ class TestMol(unittest.TestCase):
         del st['1']
         self.assertEqual(len(st), 0)
 
+    def test_extract_sequence_info(self):
+        chain = gemmi.read_structure(full_path('5cvz_final.pdb'))[0][0]
+        expected = ('AAL:AAATSLVYDTCYVTLTERATTSFQRQSFPTLKGMGDRAFQVVAFTIQGVS'
+                    'AAPLMYNARLYNPGDTDSVHATGVQLMGTVPRTVRLTPRVGQNNWFFGNTEEAE'
+                    'TILAIDGLVSTKGANAPSNTVIVTGCFRLAPSELQSS')
+        self.assertEqual(chain.extract_sequence_info(), expected)
+
+
 if __name__ == '__main__':
     unittest.main()

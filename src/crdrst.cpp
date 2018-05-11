@@ -11,6 +11,7 @@
 #include "gemmi/to_mmcif.hpp"
 #include "gemmi/pdb.hpp"  // for split_nonpolymers
 #include "gemmi/calculate.hpp"  // for calculate_angle, find_best_plane
+#include "gemmi/polyheur.hpp"  // for are_connected
 
 #define GEMMI_PROG crdrst
 #include "options.h"

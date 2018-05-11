@@ -3,7 +3,7 @@
 // Searches for contacts -- neighbouring atoms.
 
 #include <gemmi/subcells.hpp>
-#include <gemmi/calculate.hpp>  // for are_connected
+#include <gemmi/polyheur.hpp>  // for are_connected
 #include <gemmi/pdb.hpp>  // for split_nonpolymers
 #include <gemmi/fileutil.hpp>  // for expand_if_pdb_code
 #include <gemmi/elem.hpp>  // for is_hydrogen

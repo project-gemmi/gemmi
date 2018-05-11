@@ -5,6 +5,7 @@
 #include "gemmi/model.hpp"
 #include "gemmi/calculate.hpp"
 #include "gemmi/modify.hpp"
+#include "gemmi/polyheur.hpp"  // for extract_sequence_info
 #define STB_SPRINTF_IMPLEMENTATION
 #include "gemmi/to_pdb.hpp"
 #include "gemmi/to_mmcif.hpp"
@@ -203,6 +204,7 @@ void add_mol(py::module& m) {
     .def("count_atom_sites", &count_atom_sites<Chain>)
     .def("count_occupancies", &count_occupancies<Chain>)
     .def("trim_to_alanine", &trim_to_alanine)
+    .def("extract_sequence_info", &extract_sequence_info)
     .def("first_conformer",
          (UniqProxy<Residue> (Chain::*)()) &Chain::first_conformer)
     .def("__repr__", [](const Chain& self) {
