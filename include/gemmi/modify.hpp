@@ -53,13 +53,13 @@ inline void remove_ligands_and_waters(Chain& ch,
           // TODO: check polymer_type
           ResidueInfo info = find_tabulated_residue(res.name);
           // TODO: if residue is unknown, use get_ca / get_p to guess
-          return !info.is_nucleic() && !info.is_amino();
+          return !info.is_nucleic_acid() && !info.is_amino_acid();
       });
       break;
     case EntityType::Unknown:
       impl::remove(ch.residues, [](const Residue& res) {
           ResidueInfo info = find_tabulated_residue(res.name);
-          return !info.is_nucleic() && !info.is_amino();
+          return !info.is_nucleic_acid() && !info.is_amino_acid();
       });
       break;
   }

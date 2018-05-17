@@ -47,8 +47,8 @@ void add_mol(py::module& m) {
     .def("found", &ResidueInfo::found)
     .def("is_standard", &ResidueInfo::is_standard)
     .def("is_water", &ResidueInfo::is_water)
-    .def("is_nucleic", &ResidueInfo::is_nucleic)
-    .def("is_amino", &ResidueInfo::is_amino);
+    .def("is_nucleic_acid", &ResidueInfo::is_nucleic_acid)
+    .def("is_amino_acid", &ResidueInfo::is_amino_acid);
 
   m.def("find_tabulated_residue", &find_tabulated_residue, py::arg("name"),
         "Find chemical component information in the internal table.");

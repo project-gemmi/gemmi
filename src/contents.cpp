@@ -65,7 +65,7 @@ static void print_content_info(const Structure& st, bool /*verbose*/) {
         if (const Atom* oxygen = res.find_by_element(El::O))
           water_count += oxygen->occ;
       bool is_protein = false;
-      if (res_info.is_amino() || res_info.is_nucleic() ||
+      if (res_info.is_amino_acid() || res_info.is_nucleic_acid() ||
           res.name == "HEM" || res.name == "SO4" || res.name == "SUL") {
         is_protein = true;
         h_count += res_info.hydrogen_count - 2;

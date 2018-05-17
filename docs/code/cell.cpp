@@ -2,7 +2,7 @@
 
 // UnitCell has:
 // * directly set properties a, b, c, alpha, beta, gamma,
-// * calculated properties such as ar, br, ... (a*, b*, ...), volume,
+// * calculated properties such as ar (a*), br (b*), ..., volume,
 // * fractionalization and orthogonalization matrices,
 // * a list of images (symmetry or NCS mates) that is set externally
 //   when reading a file.

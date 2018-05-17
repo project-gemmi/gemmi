@@ -53,13 +53,13 @@ inline bool is_polymer_residue(const Residue& res, PolymerType ptype) {
       return info.found() ? info.kind == ResidueInfo::AA : !!res.get_ca();
     case PolymerType::PeptideD:
       // D-peptide can contain AA in addition AAD (for example GLY)
-      return info.found() ? info.is_amino() : !!res.get_ca();
+      return info.found() ? info.is_amino_acid() : !!res.get_ca();
     case PolymerType::Dna:
       return info.found() ? info.is_dna() : !!res.get_p();
     case PolymerType::Rna:
       return info.found() ? info.is_rna() : !!res.get_p();
     case PolymerType::DnaRnaHybrid:
-      return info.found() ? info.is_nucleic() : !!res.get_p();
+      return info.found() ? info.is_nucleic_acid() : !!res.get_p();
     default:
       return false;
   }
