@@ -182,8 +182,8 @@ With this list we can use:
   Non-zero only for atoms on special positions.
   For example, returns 3 for an atom on 4-fold symmetry axis.
 
-Coordinate files
-================
+Reading coordinate files
+========================
 
 Gemmi support the following coordinate file formats:
 
@@ -193,14 +193,11 @@ Gemmi support the following coordinate file formats:
     * a binary format (MMTF, binary CIF, or own format) is to be considered.
 
 In this section we first show how to read any of the supported formats,
-then we go into details of the individual formats,
+then in the next sections we go into details of the individual formats,
 and finally we show what can be done with the structural model.
 
-Any format
-----------
-
 C++
-~~~
+---
 
 Any of the macromolecular coordinate files supported by Gemmi can be opened
 using::
@@ -240,7 +237,7 @@ to include this header in only one ``cpp`` file,
 and in other files use only :file:`gemmi/model.hpp`.
 
 Python
-~~~~~~
+------
 
 Any of the macromolecular coordinate files supported by Gemmi (gzipped
 or not) can be opened using:
@@ -260,14 +257,13 @@ or not) can be opened using:
 
 
 PDB format
-----------
+==========
 
-The PDB format evolved over decades, but now as the PDB organisation
-switched to PDBx/mmCIF the PDB format specification is frozen
-and it has not changed since 2012.
-While Gemmi supports files adhering to the official format specification_,
-it aims to handle also common deviations from the standard as well
-as popular extensions:
+The PDB format evolved between 1970's and 2012. Nowadays the PDB organization
+uses PDBx/mmCIF as the primary format and the legacy PDB format is frozen.
+Gemmi aims to support files adhering to the official format specification_,
+as well as files with commonly present deviations from the standard.
+In particular, we support the following extensions:
 
 * two-character chain IDs (columns 21 and 22)
 * segment ID (columns 73-76)
@@ -284,24 +280,77 @@ as popular extensions:
    For example: the REVDAT record is mandatory, but using it makes sense
    only for the entries released by the PDB.
    Therefore no software generates files conforming to the specification
-   (the software used by the wwPDB is the most conforming one, but it writes
-   ``1555`` in the LINK record for the identity operator
+   exept the software used by the wwPDB (and even this one is not strictly
+   conforming: it writes ``1555`` in the LINK record for the identity operator
    while the specifications requires leaving these fields blank).
    So do not read too much into the specification.
 
 The PDB format is well-documented and widely used, nonetheless some of its
-features can be easily overlooked.
+features can be easily overlooked. Feel free to skip the rest of this
+section if you are not interested in such details.
 
-TODO: altlocs, insertion codes, atoms on special positions,
-      aligning of atom names,
+Let us start with the the list of atoms:
+
+.. code-block:: none
+
+   HETATM    8  CE  MSE A   1       8.081   3.884  27.398  1.00 35.65           C
+   ATOM      9  N   GLU A   2       2.464   5.718  24.671  1.00 14.40           N
+   ATOM     10  CA  GLU A   2       1.798   5.810  23.368  1.00 13.26           C
+
+Standard residues of protein, DNA or RNA are marked as ATOM. Solvent,
+ligands, metals, carbohydrates and everything else is marked as HETATM.
+Non-standard residues of protein, DNA or RNA are HETATM according to
+the wwPDB (so it is not a good idea to remove all HETATM records when one
+wants to only remove ligands and solvent),
+but are written as ATOM records by many popular programs.
+
+The next field is the serial number of an atom. The wwPDB spec limits
+the serial numbers to the range 1--99,999, but the popular extension
+called hybrid-36_ allows to have much more atoms in the file.
+We just need to use this fields as it was a string not a number.
+
+Columns 13-27 describe the atom's place in the hierarchy.
+In the example above they are simply:
+
+.. code-block:: none
+
+   1      2
+   345678901234567
+    CE  MSE A   1
+    N   GLU A   2
+    CA  GLU A   2
+
+The CE atom is in chain A, in residue MSE with ID 1.
+
+The first detail not visible here is the alignment of the atom names
+(columns 13-16). The rule is that the atom name starts with the element
+name and the first two columns contain just the element name.
+Therefore CA (Cα) and CA (Calcium ion) are aligned differently:
+
+.. code-block:: none
+
+   1      2
+   345678901234567
+    CA  GLU A   2
+   CA    CA A 101
+
+except when the atom name has four characters and no space is left
+for padding:
+
+.. code-block:: none
+
+   HETATM 6495  CAX R58 A 502      17.143 -29.934   7.180  1.00 58.54           C
+   HETATM 6496 CAX3 R58 A 502      16.438 -31.175   6.663  1.00 57.68           C
+
+TODO: insertion codes, altlocs, atoms on special positions,
       MTRIX, problematic SCALE, HETATM for modified residues,
-      non-standard segments, extensions, HETATM and ATOM with the ids.
+      non-standard segments
 
 .. _specification: https://www.wwpdb.org/documentation/file-format-content/format33/v3.3.html
 .. _hybrid-36: http://cci.lbl.gov/hybrid_36/
 
 C++
-~~~
+---
 
 ::
 
@@ -312,7 +361,7 @@ C++
 TODO
 
 Python
-~~~~~~
+------
 
 .. code-block:: python
 
@@ -322,7 +371,7 @@ TODO
 
 
 PDBx/mmCIF format
------------------
+=================
 
 Although the model-chain-residue-atom API abstracts details of
 the underlying files, sometimes one needs to know the quirks of the file
@@ -423,7 +472,7 @@ is placed next to the *label* (not *author*) sequence number.
 
 
 C++
-~~~
+---
 
 Reading mmCIF files is done in two stages:
 file → ``cif::Document`` → ``Structure``.
@@ -445,7 +494,7 @@ such as the details of the experiment or software used for data processing.
 The examples are provided in the :ref:`CIF parser <cif_examples>` section.
 
 Python
-~~~~~~
+------
 
 .. code-block:: python
 
@@ -455,7 +504,7 @@ TODO
 
 
 mmJSON format
--------------
+=============
 
 The mmJSON_ format is a JSON representation of the mmCIF data.
 It is available from PDBj:
@@ -471,7 +520,7 @@ in the mmCIF section.
 .. _mmJSON: https://pdbj.org/help/mmjson?lang=en
 
 C++
-~~~
+---
 
 ::
 
@@ -488,7 +537,7 @@ C++
     // TODO: writing
 
 Python
-~~~~~~
+------
 
 .. code-block:: python
 
