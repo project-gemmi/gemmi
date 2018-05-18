@@ -30,8 +30,8 @@ inline Structure read_structure_file(const std::string& path,
     format = coordinate_format_from_extension(path);
   switch (format) {
     case CoorFormat::Pdb:  return read_pdb_file(path);
-    case CoorFormat::Cif:  return read_atoms(cif::read_file(path));
-    case CoorFormat::Json: return read_atoms(cif::read_mmjson_file(path));
+    case CoorFormat::Cif:  return make_structure(cif::read_file(path));
+    case CoorFormat::Json: return make_structure(cif::read_mmjson_file(path));
     case CoorFormat::Unknown: fail("Unknown format.");
   }
 }
@@ -42,8 +42,8 @@ Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown) {
     format = coordinate_format_from_extension(input.path());
   switch (format) {
     case CoorFormat::Pdb:  return read_pdb(input);
-    case CoorFormat::Cif:  return read_atoms(cif::read(input));
-    case CoorFormat::Json: return read_atoms(cif::read_mmjson(input));
+    case CoorFormat::Cif:  return make_structure(cif::read(input));
+    case CoorFormat::Json: return make_structure(cif::read_mmjson(input));
     case CoorFormat::Unknown: fail("Unknown format.");
   }
   fail(""); // avoid GCC5 warning

@@ -319,7 +319,7 @@ inline Structure make_structure_from_block(const cif::Block& block) {
 }
 
 // the name of this function may change
-inline Structure read_atoms(const cif::Document& doc) {
+inline Structure make_structure(const cif::Document& doc) {
   return impl::structure_from_cif_block(doc.sole_block());
 }
 

@@ -181,7 +181,7 @@ static void convert(const std::string& input, CoorFormat input_type,
         !modify_structure) {
       // no need to interpret the structure
     } else {
-      st = mmcif_read_atoms(cif_in);
+      st = make_structure(cif_in);
       if (st.models.empty())
         gemmi::fail("No atoms in the input file. Is it mmCIF?");
     }

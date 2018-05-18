@@ -9,7 +9,7 @@
 
 gemmi::cif::Document cif_read_any(const std::string& path);
 
-gemmi::Structure mmcif_read_atoms(const gemmi::cif::Document& doc);
+gemmi::Structure make_structure(const gemmi::cif::Document& doc);
 
 gemmi::Structure read_structure(const std::string& path,
                     gemmi::CoorFormat format=gemmi::CoorFormat::Unknown);
