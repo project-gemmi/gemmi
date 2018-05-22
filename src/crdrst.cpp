@@ -287,7 +287,7 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
       for (const gemmi::Residue& res : chain.residues) {
         //std::string label_seq = res.label_seq.str();
         std::string auth_seq_id = res.seq_num.str();
-        //std::string ins_code(1, res.icode ? res.icode : '?');
+        //std::string ins_code(1, res.icode != ' ' ? res.icode : '?');
         gemmi::ChemComp& cc = monlib.monomers.at(res.name);
         for (const gemmi::Atom& a : res.atoms) {
           vv.emplace_back("ATOM");

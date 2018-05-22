@@ -227,22 +227,22 @@ struct ResidueId {
 
   // traditional residue sequence numbers are coupled with insertion codes
   OptionalNum seq_num; // sequence number
-  char icode = '\0';  // insertion code
+  char icode = ' ';  // insertion code
 
   //bool in_main_conformer/is_point_mut
   //uint32_t segment_id; // number or 4 characters
   std::string segment; // normally up to 4 characters in the PDB file
   std::string name;
 
-  char printable_icode() const { return icode ? icode : ' '; }
-  std::string pdbx_icode() const { return std::string(1, icode ? icode : '?'); }
+  char has_icode() const { return icode != ' '; }
+  std::string pdbx_icode() const { return {1, has_icode() ? icode : '?'}; }
   bool same_seq_id(const ResidueId& o) const {
     return seq_num == o.seq_num && icode == o.icode;
   }
   int seq_num_for_pdb() const { return int(seq_num ? seq_num : label_seq); }
   std::string seq_id() const {
     std::string r = seq_num.str();
-    if (icode)
+    if (has_icode())
       r += icode;
     return r;
   }
@@ -374,7 +374,7 @@ struct Chain {
   std::string entity_id;
 
   explicit Chain(std::string cname) noexcept : name(cname) {}
-  ResidueGroup find_residue_group(int seqnum, char icode='\0');
+  ResidueGroup find_residue_group(int seqnum, char icode=' ');
   Residue* find_residue(const ResidueId& rid);
   Residue* find_or_add_residue(const ResidueId& rid);
   void append_residues(std::vector<Residue> new_resi);
@@ -538,7 +538,7 @@ struct Model {
     if (rg.size() != 1) {
       std::string err = rg.empty() ? "No residue " : "Multiple residues ";
       err += auth_chain + " " + std::to_string(resnum);
-      if (icode)
+      if (icode != ' ')
         err += icode;
       throw std::runtime_error(err);
     }
@@ -698,7 +698,7 @@ inline void Chain::append_residues(std::vector<Residue> new_resi) {
     seqnum = std::max({seqnum, int(res.label_seq), int(res.seq_num)});
   for (Residue& res : new_resi) {
     res.label_seq = res.seq_num = ++seqnum;
-    res.icode = '\0';
+    res.icode = ' ';
   }
   std::move(new_resi.begin(), new_resi.end(), std::back_inserter(residues));
 }

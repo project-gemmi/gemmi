@@ -77,7 +77,7 @@ inline char* encode_seq_num_in_hybrid36(char* str, int seq_id) {
 
 inline char* write_seq_id(char* str, const Residue& res) {
   encode_seq_num_in_hybrid36(str, res.seq_num_for_pdb());
-  str[4] = res.printable_icode();
+  str[4] = res.icode;
   str[5] = '\0';
   return str;
 }
@@ -172,8 +172,7 @@ inline void write_atoms(const Structure& st, std::ostream& os,
           // 77-78  2s  element symbol, right-justified
           // 79-80  2s  charge
           WRITE("%-6s%5s %-4s%c%3s"
-                "%2s%4s%c"
-                "   %8.3f%8.3f%8.3f"
+                "%2s%5s   %8.3f%8.3f%8.3f"
                 "%6.2f%6.2f      %-4.4s%2s%c%c\n",
                 as_het ? "HETATM" : "ATOM",
                 impl::encode_serial_in_hybrid36(buf8, ++serial),
@@ -181,8 +180,7 @@ inline void write_atoms(const Structure& st, std::ostream& os,
                 a.altloc ? std::toupper(a.altloc) : ' ',
                 res.name.c_str(),
                 chain_name.c_str(),
-                impl::encode_seq_num_in_hybrid36(buf8a, res.seq_num_for_pdb()),
-                res.printable_icode(),
+                impl::write_seq_id(buf8a, res),
                 // We want to avoid negative zero and round them numbers up
                 // if they originally had one digit more and that digit was 5.
                 a.pos.x > -5e-4 && a.pos.x < 0 ? 0 : a.pos.x + 1e-10,

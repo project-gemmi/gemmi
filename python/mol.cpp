@@ -240,9 +240,7 @@ void add_mol(py::module& m) {
     .def_readwrite("label_seq", &Residue::label_seq)
     .def_readwrite("seq_num", &Residue::seq_num)
     .def("seq_id", &Residue::seq_id)
-    .def_property("icode",
-        [](const Residue& r) { return r.icode ? std::string(1, r.icode) : ""; },
-        [](Residue& r, const char* c) { r.icode = c ? *c : '\0'; })
+    .def_readwrite("icode", &Residue::icode)
     .def_readwrite("segment", &Residue::segment)
     .def("__len__", [](const Residue& res) { return res.atoms.size(); })
     .def("__contains__", [](const Residue& res, const std::string& name) {

@@ -111,8 +111,8 @@ static void print_dihedrals(const Structure& st) {
   for (const Chain& chain : model.chains) {
     const char* cname = chain.name_for_pdb().c_str();
     for (const Residue& res : chain.residues) {
-      printf("%3s %4d%c %5s", cname, res.seq_num_for_pdb(),
-             res.printable_icode(), res.name.c_str());
+      printf("%3s %4d%c %5s",
+             cname, res.seq_num_for_pdb(), res.icode, res.name.c_str());
       const Residue* prev = chain.prev_bonded_aa(res);
       const Residue* next = chain.next_bonded_aa(res);
       double omega = next ? calculate_omega(res, *next) : NAN;

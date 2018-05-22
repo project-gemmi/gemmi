@@ -173,11 +173,12 @@ class TestMol(unittest.TestCase):
         self.assertTrue(A['3'])
         self.assertTrue(A[3])
         self.assertFalse(A[0])
-        self.assertEqual([res.seq_num for res in A if res.icode], [56] * 5)
+        self.assertEqual([res.seq_num for res in A if res.icode != ' '],
+                         [56] * 5)
         self.assertEqual(len(A['55']), 1)
         self.assertEqual(len(A['55B']), 0)
         self.assertEqual(len(A['56B']), 1)
-        self.assertEqual(A['56'][0].icode, '')
+        self.assertEqual(A['56'][0].icode, ' ')
         self.assertEqual(A['56c'][0].icode, 'C')
 
     def write_back_and_compare(self, path, via_cif):

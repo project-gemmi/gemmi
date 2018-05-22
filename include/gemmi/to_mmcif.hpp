@@ -53,7 +53,7 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
           vv.emplace_back(res.name);
           vv.emplace_back(chain.name);
           vv.emplace_back(label_seq_id);
-          vv.emplace_back(1, res.icode ? res.icode : '?');
+          vv.emplace_back(1, res.has_icode() ? res.icode : '?');
           vv.emplace_back(to_str(a.pos.x));
           vv.emplace_back(to_str(a.pos.y));
           vv.emplace_back(to_str(a.pos.z));
