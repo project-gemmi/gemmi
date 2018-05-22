@@ -516,8 +516,10 @@ with the insertion code).
 
 As mentioned above, the mmCIF format has two sets of names/numbers:
 *label* and *auth* (for "author").
-``atom_id`` and ``comp_id`` almost never differ, so
-Gemmi ignores author-defined ones.
+``label_atom_id`` and ``auth_atom_id`` almost never differ, the same
+about ``label_comp_id`` and ``auth_comp_id``.
+Gemmi uses author-defined atom and component IDs if they are present,
+otherwise it uses *label* ones.
 
 On the other hand, chain names (``asym_id``) and sequence numbers often
 differ and usually the author-defined names should be presented to the user,

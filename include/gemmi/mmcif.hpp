@@ -189,9 +189,9 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
   auto aniso_map = get_anisotropic_u(block);
 
   // atom list
-  enum { kId=0, kSymbol, kAtomId, kAltId, kCompId, kAsymId, kLabelSeqId,
-         kInsCode,
-         kX, kY, kZ, kOcc, kBiso, kCharge, kAuthSeqId, kAuthAsymId, kModelNum };
+  enum { kId=0, kSymbol, kLabelAtomId, kAltId, kLabelCompId, kAsymId,
+         kLabelSeqId, kInsCode, kX, kY, kZ, kOcc, kBiso, kCharge,
+         kAuthSeqId, kAuthCompId, kAuthAsymId, kAuthAtomId, kModelNum };
   cif::Table atom_table = block.find("_atom_site.",
                                      {"id",
                                       "type_symbol",
@@ -208,8 +208,14 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
                                       "B_iso_or_equiv",
                                       "pdbx_formal_charge",
                                       "auth_seq_id",
+                                      "?auth_comp_id",
                                       "auth_asym_id",
+                                      "?auth_atom_id",
                                       "pdbx_PDB_model_num"});
+  const int kCompId = atom_table.has_column(kAuthCompId) ? kAuthCompId
+                                                         : kLabelCompId;
+  const int kAtomId = atom_table.has_column(kAuthAtomId) ? kAuthAtomId
+                                                         : kLabelAtomId;
   Model *model = nullptr;
   Chain *chain = nullptr;
   Residue *resi = nullptr;
@@ -226,7 +232,7 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
     ResidueId rid;
     rid.label_seq = cif::as_int(row[kLabelSeqId], Residue::OptionalNum::None);
     if (!cif::is_null(row[kInsCode]))
-      rid.icode = row.str(kInsCode)[0];
+      rid.icode = as_string(row[kInsCode])[0];
     rid.seq_num = parse_auth_seqid(row.str(kAuthSeqId), rid.icode);
     rid.name = as_string(row[kCompId]);
     if (!resi || !resi->matches(rid)) {
