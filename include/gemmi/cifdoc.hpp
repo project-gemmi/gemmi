@@ -71,6 +71,17 @@ inline std::string as_string(const std::string* value) {
   return value ? as_string(*value) : std::string();
 }
 
+inline char as_char(const std::string& value, char null) {
+  if (is_null(value))
+    return null;
+  if (value.size() < 2)
+    return value[0];
+  const std::string s = as_string(value);
+  if (s.size() < 2)
+    return s[0];
+  fail("Not a single character: " + value);
+}
+
 using Pair = std::array<std::string, 2>;
 
 // used only as arguments when creating Item

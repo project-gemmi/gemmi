@@ -94,11 +94,11 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
       a.res_id.label_seq = cif::as_int(row[4+i], Residue::OptionalNum::None);
       a.res_id.name = row.str(6+i);
       if (row.has2(14+i))
-        a.res_id.icode = row.str(14+i)[0];
+        a.res_id.icode = cif::as_char(row[14+i], ' ');
       if (row.has2(12+i))
         a.res_id.seq_num = parse_auth_seqid(row.str(12+i), a.res_id.icode);
       a.atom_name = row.str(8+i);
-      a.altloc = row.has2(10+i) ? row.str(10+i)[0] : '\0';
+      a.altloc = row.has2(10+i) ? cif::as_char(row[10+i], '\0') : '\0';
     }
     for (Model& mdl : st.models)
       mdl.connections.emplace_back(c);
@@ -231,13 +231,11 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
     }
     ResidueId rid;
     rid.label_seq = cif::as_int(row[kLabelSeqId], Residue::OptionalNum::None);
-    if (!cif::is_null(row[kInsCode]))
-      rid.icode = as_string(row[kInsCode])[0];
+    // the insertion code happens to be always a single letter
+    rid.icode = cif::as_char(row[kInsCode], ' ');
     rid.seq_num = parse_auth_seqid(row.str(kAuthSeqId), rid.icode);
     rid.name = as_string(row[kCompId]);
     if (!resi || !resi->matches(rid)) {
-      // the insertion code happens to be always a single letter
-      assert(row[kInsCode].size() == 1);
       resi = chain->find_or_add_residue(rid);
     } else {
       assert(resi->seq_num == rid.seq_num);
@@ -245,7 +243,8 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
     }
     Atom atom;
     atom.name = as_string(row[kAtomId]);
-    atom.altloc = as_string(row[kAltId])[0];
+    // altloc is always a single letter (not guaranteed by the mmCIF spec)
+    atom.altloc = cif::as_char(row[kAltId], '\0');
     atom.charge = cif::is_null(row[kCharge]) ? 0 : cif::as_int(row[kCharge]);
     atom.element = gemmi::Element(as_string(row[kSymbol]));
     atom.pos.x = cif::as_number(row[kX]);
