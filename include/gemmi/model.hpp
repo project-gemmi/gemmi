@@ -391,8 +391,6 @@ struct Chain {
     return find_residue_group(seqnum, *endptr);
   }
 
-  ResidueGroup find_by_label_seqid(int label_seq);
-
   // Returns the previous residue or nullptr.
   // Got complicated by handling of multi-conformations / microheterogeneity.
   const Residue* previous_residue(const Residue& res) const {
@@ -665,13 +663,6 @@ inline ResidueGroup Chain::find_residue_group(int seqnum, char icode) {
   auto match = [&](const Residue& r) {
     return r.seq_num == seqnum && (r.icode | 0x20) == (icode | 0x20);
   };
-  auto begin_ = std::find_if(residues.begin(), residues.end(), match);
-  auto end_ = std::find_if_not(begin_, residues.end(), match);
-  return ResidueGroup{begin_, end_};
-}
-
-inline ResidueGroup Chain::find_by_label_seqid(int label_seq) {
-  auto match = [&](const Residue& r) { return r.label_seq == label_seq; };
   auto begin_ = std::find_if(residues.begin(), residues.end(), match);
   auto end_ = std::find_if_not(begin_, residues.end(), match);
   return ResidueGroup{begin_, end_};

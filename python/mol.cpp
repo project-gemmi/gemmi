@@ -198,8 +198,9 @@ void add_mol(py::module& m) {
     }, py::keep_alive<0, 1>())
     .def("__getitem__", &Chain::find_by_seqid,
          py::arg("pdb_seqid"), py::keep_alive<0, 1>())
-    .def("__getitem__", &Chain::find_by_label_seqid,
-         py::arg("mmcif_seqid"), py::keep_alive<0, 1>())
+    .def("__getitem__", [](Chain& ch, int index) -> Residue& {
+        return ch.residues.at(index >= 0 ? index : index + ch.residues.size());
+    }, py::arg("index"), py::keep_alive<0, 1>())
     .def("append_residues", &Chain::append_residues)
     .def("count_atom_sites", &count_atom_sites<Chain>)
     .def("count_occupancies", &count_occupancies<Chain>)

@@ -78,7 +78,7 @@ class TestMol(unittest.TestCase):
             self.assertEqual(len(st.entities), 4)
             st.entities = gemmi.EntityMap()
             self.assertEqual(len(st.entities), 0)
-        lys12 = st[0]['A'][12]['LYS']
+        lys12 = st[0]['A']['12']['LYS']
         count_b = sum(a.altloc == 'B' for a in lys12)
         model = st[0]
         self.assertEqual(len(model), 4)  # 4 chains: AA, 2 x ligand, waters
@@ -137,13 +137,13 @@ class TestMol(unittest.TestCase):
         label_name_to_auth_name = {ch.name: ch.auth_name for ch in st[0]}
         self.assertEqual(label_name_to_auth_name,
                          dict(A='A', B='B', C='A', D='B', E='B', F='A', G='B'))
-        self.assertEqual(len(st[0]['A'][1]), 1)
+        self.assertEqual(len(st[0]['A']['1']), 1)
         chain_a = st[0]['A']
-        self.assertEqual(chain_a[1][0].label_seq, 1)
+        self.assertEqual(chain_a[0].label_seq, 1)
         self.assertEqual(chain_a['1'][0].seq_num, 1)
         b3 = st[0]['B']['3']
-        self.assertEqual(repr(b3), repr(st[0]['B'][3]))
         self.assertEqual(len(b3), 2)
+        self.assertEqual(repr(b3[0]), repr(st[0]['B'][2]))
         self.assertEqual(b3[0].name, 'N2C')
         self.assertEqual(b3[-1].name, 'NCY')
         chain_c = st[0]['C']
@@ -171,8 +171,7 @@ class TestMol(unittest.TestCase):
         self.assertTrue(all(res.name == 'HOH' for res in model['A_w']))
         A = model['A0']
         self.assertTrue(A['3'])
-        self.assertTrue(A[3])
-        self.assertFalse(A[0])
+        self.assertFalse(A['0'])
         self.assertEqual([res.seq_num for res in A if res.icode != ' '],
                          [56] * 5)
         self.assertEqual(len(A['55']), 1)
