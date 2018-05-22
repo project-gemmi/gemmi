@@ -16,6 +16,10 @@ namespace gemmi {
 
 namespace impl {
 
+inline std::string pdbx_icode(const ResidueId& rid) {
+  return std::string(1, rid.has_icode() ? rid.icode : '?');
+}
+
 inline void add_cif_atoms(const Structure& st, cif::Block& block) {
   // atom list
   cif::Loop& atom_loop = block.init_mmcif_loop("_atom_site.", {
@@ -53,7 +57,7 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
           vv.emplace_back(res.name);
           vv.emplace_back(chain.name);
           vv.emplace_back(label_seq_id);
-          vv.emplace_back(1, res.has_icode() ? res.icode : '?');
+          vv.emplace_back(pdbx_icode(res));
           vv.emplace_back(to_str(a.pos.x));
           vv.emplace_back(to_str(a.pos.y));
           vv.emplace_back(to_str(a.pos.z));
@@ -117,7 +121,7 @@ inline void write_struct_conn(const Structure& st, cif::Block& block) {
         con.atom[0].atom_name,                  // ptnr1_label_atom_id
         std::string(1, con.atom[0].altloc ? con.atom[0].altloc : '?'),
         con.atom[0].res_id.seq_num.str(),       // ptnr1_auth_seq_id
-        con.atom[0].res_id.pdbx_icode(),        // ptnr1_PDB_ins_code
+        pdbx_icode(con.atom[0].res_id),         // ptnr1_PDB_ins_code
         "1_555",                                // ptnr1_symmetry
         cra2.chain->name,                       // ptnr2_label_asym_id
         con.atom[1].res_id.name,                // ptnr2_label_comp_id
@@ -125,7 +129,7 @@ inline void write_struct_conn(const Structure& st, cif::Block& block) {
         con.atom[1].atom_name,                  // ptnr2_label_atom_id
         std::string(1, con.atom[1].altloc ? con.atom[1].altloc : '?'),
         con.atom[1].res_id.seq_num.str(),       // ptnr2_auth_seq_id
-        con.atom[1].res_id.pdbx_icode(),        // ptnr2_PDB_ins_code
+        pdbx_icode(con.atom[1].res_id),         // ptnr2_PDB_ins_code
         im.pdb_symbol(true),                    // ptnr2_symmetry
         "?",                                    // details
         to_str(im.dist())                       // pdbx_dist_value

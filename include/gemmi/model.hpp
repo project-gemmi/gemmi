@@ -235,7 +235,6 @@ struct ResidueId {
   std::string name;
 
   char has_icode() const { return icode != ' '; }
-  std::string pdbx_icode() const { return {1, has_icode() ? icode : '?'}; }
   bool same_seq_id(const ResidueId& o) const {
     return seq_num == o.seq_num && icode == o.icode;
   }
