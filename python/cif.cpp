@@ -199,7 +199,7 @@ void add_cif(py::module& cif) {
     .def("__setitem__", [](Table::Row &self, int idx, std::string value) {
         self.at(idx) = value;
     })
-    .def("get", &Table::Row::ptr_at,
+    .def("get", (std::string* (Table::Row::*)(int)) &Table::Row::ptr_at,
          py::arg("index"), py::return_value_policy::reference_internal)
     .def("__iter__", [](const Table::Row& self) {
         return py::make_iterator(self);

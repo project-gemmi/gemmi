@@ -223,8 +223,6 @@ struct Atom {
 struct ResidueId {
   using OptionalNum = impl::OptionalInt<-999>;
 
-  OptionalNum label_seq;  // mmCIF _atom_site.label_seq_id
-
   // traditional residue sequence numbers are coupled with insertion codes
   OptionalNum seq_num; // sequence number
   char icode = ' ';  // insertion code
@@ -244,13 +242,14 @@ struct ResidueId {
       r += icode;
     return r;
   }
-  std::string str() const { return name + " " + seq_id(); }
+  std::string str() const { return seq_id() + "(" + name + ")"; }
   bool matches(const ResidueId& rid) const;
   // for first_conformation iterators
   bool same_group(const ResidueId& o) const { return same_seq_id(o); }
 };
 
 struct Residue : public ResidueId {
+  OptionalNum label_seq;  // mmCIF _atom_site.label_seq_id
   bool is_cis = false;  // bond to the next residue marked as cis
   char het_flag = '\0';  // 'A' = ATOM, 'H' = HETATM, 0 = unspecified
   std::vector<Atom> atoms;
@@ -653,9 +652,7 @@ struct Structure {
 };
 
 inline bool ResidueId::matches(const ResidueId& rid) const {
-  return (rid.label_seq ? label_seq == rid.label_seq : same_seq_id(rid)) &&
-         segment == rid.segment &&
-         name == rid.name;
+  return same_seq_id(rid) && segment == rid.segment && name == rid.name;
 }
 
 inline ResidueGroup Chain::find_residue_group(int seqnum, char icode) {

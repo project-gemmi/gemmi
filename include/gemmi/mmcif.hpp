@@ -49,33 +49,39 @@ inline Transform get_transform_matrix(const cif::Table::Row& r) {
   return t;
 }
 
-inline int parse_auth_seqid(const std::string& seqid, char& ins_code) {
+inline ResidueId make_resid(const std::string& name,
+                            const std::string& seqid,
+                            const std::string* icode) {
+  ResidueId rid;
+  rid.name = name;
+  if (icode)
+    // the insertion code happens to be always a single letter
+    rid.icode = cif::as_char(*icode, ' ');
   // old mmCIF files have auth_seq_id as number + icode (e.g. 15A)
   if (!seqid.empty() && seqid.back() >= 'A') {
-    if (ins_code == ' ')
-      ins_code = seqid.back();
-    else if (ins_code != seqid.back())
+    if (rid.icode == ' ')
+      rid.icode = seqid.back();
+    else if (rid.icode != seqid.back())
       fail("Inconsistent insertion code in " + seqid);
-    return cif::as_int(seqid.substr(0, seqid.size() - 1));
+    rid.seq_num = cif::as_int(seqid.substr(0, seqid.size() - 1));
+  } else {
+    rid.seq_num = cif::as_int(seqid, Residue::OptionalNum::None);
   }
-  return cif::as_int(seqid, Residue::OptionalNum::None);
+  return rid;
 }
 
 inline void read_connectivity(cif::Block& block, Structure& st) {
   for (const auto row : block.find("_struct_conn.", {
         "id", "conn_type_id", // 0-1
         "ptnr1_label_asym_id", "ptnr2_label_asym_id", // 2-3
-        "ptnr1_label_seq_id", "ptnr2_label_seq_id",   // 4-5
-        "ptnr1_label_comp_id", "ptnr2_label_comp_id", // 6-7
-        "ptnr1_label_atom_id", "ptnr2_label_atom_id", // 8-9
-        "?pdbx_ptnr1_label_alt_id", "?pdbx_ptnr2_label_alt_id", // 10-11
-        // the label_ atom identifiers are not sufficient for HOH:
-        // waters have null as label_seq_id so the "main" identifier cannot
-        // distinguish waters in the same chain. So we use "alternative"
-        // identifier if available.
-        "?ptnr1_auth_seq_id", "?ptnr2_auth_seq_id", // 12-13
-        "?pdbx_ptnr1_PDB_ins_code", "?pdbx_ptnr2_PDB_ins_code", // 14-15
-        "?ptnr1_symmetry", "?ptnr2_symmetry"/*16-17*/})) {
+        "ptnr1_label_comp_id", "ptnr2_label_comp_id", // 4-5
+        "ptnr1_label_atom_id", "ptnr2_label_atom_id", // 6-7
+        "?pdbx_ptnr1_label_alt_id", "?pdbx_ptnr2_label_alt_id", // 8-9
+        // label_seq_id identifiers are not sufficient for HOH:
+        // waters have null label_seq_id so we use auth_seq_id+icode.
+        "ptnr1_auth_seq_id", "ptnr2_auth_seq_id", // 10-11
+        "?pdbx_ptnr1_PDB_ins_code", "?pdbx_ptnr2_PDB_ins_code", // 12-13
+        "?ptnr1_symmetry", "?ptnr2_symmetry"/*14-15*/})) {
     Connection c;
     c.name = row.str(0);
     std::string type = row.str(1);
@@ -84,21 +90,18 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
         c.type = Connection::Type(i);
         break;
       }
-    if (row.has2(16) && row.has2(17)) {
-      c.asu = (row.str(16) == row.str(17) ? SameAsu::Yes : SameAsu::No);
+    if (row.has2(14) && row.has2(15)) {
+      c.asu = (row.str(14) == row.str(15) ? SameAsu::Yes : SameAsu::No);
     }
     for (int i = 0; i < 2; ++i) {
       AtomAddress& a = c.atom[i];
       a.chain_name = row.str(2+i);
       a.use_auth_name = false;
-      a.res_id.label_seq = cif::as_int(row[4+i], Residue::OptionalNum::None);
-      a.res_id.name = row.str(6+i);
-      if (row.has2(14+i))
-        a.res_id.icode = cif::as_char(row[14+i], ' ');
       if (row.has2(12+i))
-        a.res_id.seq_num = parse_auth_seqid(row.str(12+i), a.res_id.icode);
-      a.atom_name = row.str(8+i);
-      a.altloc = row.has2(10+i) ? cif::as_char(row[10+i], '\0') : '\0';
+        a.res_id.icode = cif::as_char(row[12+i], ' ');
+      a.res_id = make_resid(row.str(4+i), row.str(10+i), row.ptr_at(12+i));
+      a.atom_name = row.str(6+i);
+      a.altloc = row.has2(8+i) ? cif::as_char(row[8+i], '\0') : '\0';
     }
     for (Model& mdl : st.models)
       mdl.connections.emplace_back(c);
@@ -199,7 +202,7 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
                                       "label_alt_id",
                                       "label_comp_id",
                                       "label_asym_id",
-                                      "label_seq_id",
+                                      "?label_seq_id",
                                       "pdbx_PDB_ins_code",
                                       "Cartn_x",
                                       "Cartn_y",
@@ -229,14 +232,12 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
       chain->auth_name = row.str(kAuthAsymId);
       resi = nullptr;
     }
-    ResidueId rid;
-    rid.label_seq = cif::as_int(row[kLabelSeqId], Residue::OptionalNum::None);
-    // the insertion code happens to be always a single letter
-    rid.icode = cif::as_char(row[kInsCode], ' ');
-    rid.seq_num = parse_auth_seqid(row.str(kAuthSeqId), rid.icode);
-    rid.name = as_string(row[kCompId]);
+    ResidueId rid = make_resid(as_string(row[kCompId]),
+                               as_string(row[kAuthSeqId]), &row[kInsCode]);
     if (!resi || !resi->matches(rid)) {
       resi = chain->find_or_add_residue(rid);
+      if (row.has2(kLabelSeqId))
+        resi->label_seq = cif::as_int(row[kLabelSeqId]);
     } else {
       assert(resi->seq_num == rid.seq_num);
       assert(resi->icode == rid.icode);
@@ -302,12 +303,11 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
   // CISPEP
   for (auto row : block.find("_struct_mon_prot_cis.",
                              {"pdbx_PDB_model_num", "label_asym_id",
-                              "label_seq_id", "label_comp_id"})) {
-    if (row.has2(0) && row.has2(1) && row.has2(2) && row.has2(3))
+                              "auth_seq_id", "?pdbx_PDB_ins_code",
+                              "auth_comp_id"})) {
+    if (row.has2(0) && row.has2(1) && row.has2(2) && row.has2(4))
       if (Model* mdl = st.find_model(row[0])) {
-        ResidueId rid;
-        rid.label_seq = cif::as_int(row[2]);
-        rid.name = row.str(3);
+        ResidueId rid = make_resid(row.str(4), row.str(2), row.ptr_at(3));
         if (Chain* ch = mdl->find_chain(row[1]))
           if (Residue* res = ch->find_residue(rid))
             res->is_cis = true;

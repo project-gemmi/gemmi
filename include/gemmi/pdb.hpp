@@ -264,7 +264,6 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
         for (AtomAddress& ad : c.atom) {
           CRA cra = mdl.find_cra(ad);
           if (cra.residue) {
-            ad.res_id.label_seq = cra.residue->label_seq;
             // Atom name and altloc are not provided in the SSBOND record.
             // Usually it is SG (cysteine), but other disulfide bonds
             // are also possible, so if it's not CYS and SG is absent
@@ -362,14 +361,8 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       if (len > 72)
         rid.segment = read_string(line+72, 4);
       if (!resi || !resi->matches(rid)) {
-        Residue* prev = resi;
         resi = chain->find_residue(rid);
         if (!resi) {
-          if (prev)
-            // seq_id is the same in case of microheterogeneity
-            rid.label_seq = *prev->label_seq + (prev->same_seq_id(rid) ? 0 : 1);
-          else
-            rid.label_seq = 1;
           chain->residues.emplace_back(rid);
           resi = &chain->residues.back();
         }

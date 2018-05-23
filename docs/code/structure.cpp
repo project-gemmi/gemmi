@@ -11,7 +11,6 @@ void iterate_over_everything(gemmi::Structure& st) {
       cout << " Chain " << chain.name << '\n';
       for (const gemmi::Residue& res : chain.residues) {
         cout << "  Residue " << res.name             // string
-                      << " " << res.label_seq.str()  // optional int
                       << " " << res.seq_num.str()    // optional int
                       << " " << res.icode            // char
                       << " " << res.segment          // string

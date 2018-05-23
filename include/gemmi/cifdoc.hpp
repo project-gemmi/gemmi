@@ -206,6 +206,9 @@ struct Table {
       int pos = tab.positions.at(n);
       return pos >= 0 ? &value_at(pos) : nullptr;
     }
+    const std::string* ptr_at(int n) const {
+      return const_cast<Row*>(this)->ptr_at(n);
+    }
     bool has(int n) const { return tab.has_column(n); }
     bool has2(int n) const { return has(n) && !cif::is_null(operator[](n)); }
     size_t size() const { return tab.width(); }

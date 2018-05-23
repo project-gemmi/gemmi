@@ -117,7 +117,7 @@ inline void write_struct_conn(const Structure& st, cif::Block& block) {
         get_mmcif_connection_type_id(con.type), // conn_type_id
         cra1.chain->name,                       // ptnr1_label_asym_id
         con.atom[0].res_id.name,                // ptnr1_label_comp_id
-        con.atom[0].res_id.label_seq.str(),     // ptnr1_label_seq_id
+        ".",                                    // ptnr1_label_seq_id
         con.atom[0].atom_name,                  // ptnr1_label_atom_id
         std::string(1, con.atom[0].altloc ? con.atom[0].altloc : '?'),
         con.atom[0].res_id.seq_num.str(),       // ptnr1_auth_seq_id
@@ -125,7 +125,7 @@ inline void write_struct_conn(const Structure& st, cif::Block& block) {
         "1_555",                                // ptnr1_symmetry
         cra2.chain->name,                       // ptnr2_label_asym_id
         con.atom[1].res_id.name,                // ptnr2_label_comp_id
-        con.atom[1].res_id.label_seq.str(),     // ptnr2_label_seq_id
+        ".",                                    // ptnr2_label_seq_id
         con.atom[1].atom_name,                  // ptnr2_label_atom_id
         std::string(1, con.atom[1].altloc ? con.atom[1].altloc : '?'),
         con.atom[1].res_id.seq_num.str(),       // ptnr2_auth_seq_id
@@ -247,15 +247,17 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
 
   // _struct_mon_prot_cis
   cif::Loop& prot_cis_loop = block.init_mmcif_loop("_struct_mon_prot_cis.",
-                             {"pdbx_id", "pdbx_PDB_model_num", "label_asym_id",
-                              "label_seq_id", "label_comp_id", "label_alt_id"});
+      {"pdbx_id", "pdbx_PDB_model_num", "label_asym_id", "label_seq_id",
+       "auth_seq_id", "pdbx_PDB_ins_code",
+       "label_comp_id", "auth_comp_id", "label_alt_id"});
   for (const Model& model : st.models)
     for (const Chain& chain : model.chains)
         for (const Residue& res : chain.residues)
           if (res.is_cis)
             prot_cis_loop.add_row({to_string(prot_cis_loop.length()+1),
-                                   model.name, chain.name,
-                                   res.label_seq.str(), res.name, "."});
+                                   model.name, chain.name, res.label_seq.str(),
+                                   res.seq_num.str(), impl::pdbx_icode(res),
+                                   res.name, res.name, "."});
 
   // _atom_sites (SCALE)
   if (st.cell.explicit_matrices) {

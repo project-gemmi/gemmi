@@ -735,10 +735,10 @@ Let us mutate all methionine residues (MET) to selenomethionine (MSE).
 
   >>> st = gemmi.read_structure('../tests/1orc.pdb')
   >>> st[0].residues('A', 12, ' ')
-  <gemmi.ResidueGroup [ 12/MET ]>
+  <gemmi.ResidueGroup [12(MET)]>
   >>> met_to_mse(st)
   >>> st[0].residues('A', 12, ' ')
-  <gemmi.ResidueGroup [ 12/MSE ]>
+  <gemmi.ResidueGroup [12(MSE)]>
 
 Model
 -----
@@ -763,10 +763,10 @@ Chain
   >>> # may belong to more than one residue (microheterogeneity)
   >>> # this getter returns ResidueGroup:
   >>> chain_a['1']
-  <gemmi.ResidueGroup [ 1/DG ]>
+  <gemmi.ResidueGroup [1(DG)]>
   >>> first_residue = _[0]
   >>> first_residue
-  <gemmi.Residue DG 1 (1) with 23 atoms>
+  <gemmi.Residue 1(DG) with 23 atoms>
   >>> sum(atom.altloc == 'B' for atom in first_residue)
   4
   >>> # first_conformer() is for iteration only

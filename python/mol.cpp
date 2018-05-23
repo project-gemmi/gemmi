@@ -224,10 +224,9 @@ void add_mol(py::module& m) {
     .def("__getitem__", &ResidueGroup::by_resname,
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("__repr__", [](const ResidueGroup& self) {
-        std::string r = "<gemmi.ResidueGroup [ ";
-        for (const Residue& res : self)
-          r += res.seq_id() + "/" + res.name + " ";
-        return r + "]>";
+        return "<gemmi.ResidueGroup [" +
+               join_str(self, ' ', [](const Residue& r) { return r.str(); }) +
+               "]>";
     });
 
   py::class_<UniqProxy<Atom>>(m, "FirstConformerAtoms")
@@ -262,10 +261,8 @@ void add_mol(py::module& m) {
     .def("first_conformer",
          (UniqProxy<Atom> (Residue::*)()) &Residue::first_conformer)
     .def("__repr__", [](const Residue& self) {
-        std::string r = "<gemmi.Residue " + self.name + " " + self.seq_id();
-        if (self.label_seq)
-          r += " (" + self.label_seq.str() + ")";
-        return r + " with " + std::to_string(self.atoms.size()) + " atoms>";
+        return "<gemmi.Residue " + self.str() +
+               " with " + std::to_string(self.atoms.size()) + " atoms>";
     });
 
   py::class_<Atom>(m, "Atom")
