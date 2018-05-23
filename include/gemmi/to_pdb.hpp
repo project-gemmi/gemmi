@@ -76,7 +76,7 @@ inline char* encode_seq_num_in_hybrid36(char* str, int seq_id) {
 }
 
 inline char* write_seq_id(char* str, const Residue& res) {
-  encode_seq_num_in_hybrid36(str, res.seq_num_for_pdb());
+  encode_seq_num_in_hybrid36(str, *res.seq_num);
   str[4] = res.icode;
   str[5] = '\0';
   return str;

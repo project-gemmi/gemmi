@@ -111,8 +111,7 @@ static void print_dihedrals(const Structure& st) {
   for (const Chain& chain : model.chains) {
     const char* cname = chain.name_for_pdb().c_str();
     for (const Residue& res : chain.residues) {
-      printf("%3s %4d%c %5s",
-             cname, res.seq_num_for_pdb(), res.icode, res.name.c_str());
+      printf("%3s %4d%c %5s", cname, *res.seq_num, res.icode, res.name.c_str());
       const Residue* prev = chain.prev_bonded_aa(res);
       const Residue* next = chain.next_bonded_aa(res);
       double omega = next ? calculate_omega(res, *next) : NAN;
@@ -139,7 +138,7 @@ static void print_atoms_on_special_positions(const Structure& st) {
                                                    SameAsu::No);
           printf("\n    %s %4d %3s %-3s %c fold=%d  occ=%.2f  d_image=%.4f",
                  chain.name_for_pdb().c_str(),
-                 res.seq_num_for_pdb(), res.name.c_str(),
+                 *res.seq_num, res.name.c_str(),
                  atom.name.c_str(), (atom.altloc | 0x20),
                  n+1, atom.occ, im.dist());
         }

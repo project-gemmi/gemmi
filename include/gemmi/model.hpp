@@ -221,7 +221,7 @@ struct Atom {
 
 
 struct ResidueId {
-  using OptionalNum = impl::OptionalInt<-10000>;
+  using OptionalNum = impl::OptionalInt<-999>;
 
   OptionalNum label_seq;  // mmCIF _atom_site.label_seq_id
 
@@ -238,7 +238,6 @@ struct ResidueId {
   bool same_seq_id(const ResidueId& o) const {
     return seq_num == o.seq_num && icode == o.icode;
   }
-  int seq_num_for_pdb() const { return int(seq_num ? seq_num : label_seq); }
   std::string seq_id() const {
     std::string r = seq_num.str();
     if (has_icode())
