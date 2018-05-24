@@ -287,7 +287,7 @@ molecular models.
    For example: the REVDAT record is mandatory, but using it makes sense
    only for the entries released by the PDB.
    Therefore no software generates files conforming to the specification
-   exept the software used by the wwPDB (and even this one is not strictly
+   except from the wwPDB software (and even this one is not strictly
    conforming: it writes ``1555`` in the LINK record for the identity operator
    while the specifications requires leaving these fields blank).
    So do not read too much into the specification.
@@ -306,30 +306,31 @@ Non-standard residues of protein, DNA or RNA are HETATM according to
 the wwPDB (so it is not a good idea to remove all HETATM records when one
 wants to only remove ligands and solvent),
 but many programs and crystallographers prefer to mark them as ATOM.
+It is better to not rely on any of the two conventions.
 
 The second field is the serial number of an atom. The wwPDB spec limits
 the serial numbers to the range 1--99,999, but the popular extension
 called hybrid-36_ allows to have more atoms in the file by using
 also letters in this field. If you do not need to interpret the CONECT
-records the serial number can be just ignored.
+records the serial number can be simply ignored.
 
 Columns 13-27 describe the atom's place in the hierarchy.
-In the example above they are simply:
+In the example above they are:
 
 .. code-block:: none
 
    1      2
    345678901234567
+
     CE  MSE A   1
     N   GLU A   2
     CA  GLU A   2
 
-The CE atom is in chain A, in residue MSE with sequence ID 1.
+Here the CE atom is in chain A, in residue MSE with sequence ID 1.
 
-The first detail not visible here is the alignment of the atom names
-(columns 13-16). The rule is that the atom name starts with the element
-name and the first two columns contain just the element name.
-Therefore CA (Cα) and CA (Calcium ion) are aligned differently:
+The atom names (columns 13-16) starts with the element name,
+and as a rule columns 13-14 contain only the element name.
+Therefore Cα and calcium ion, both named CA, are aligned differently:
 
 .. code-block:: none
 
@@ -338,16 +339,16 @@ Therefore CA (Cα) and CA (Calcium ion) are aligned differently:
     CA  GLU A   2
    CA    CA A 101
 
-except when the atom name has four characters and no space is left
-for padding:
+This rule has an exception: when the atom name has four characters
+it starts in column 13 even if it has a one-letter element code:
 
 .. code-block:: none
 
    HETATM 6495  CAX R58 A 502      17.143 -29.934   7.180  1.00 58.54           C
    HETATM 6496 CAX3 R58 A 502      16.438 -31.175   6.663  1.00 57.68           C
 
-The sequence ID consists of a number and, optionally,
-also an insertion code (A-Z) right after the number (column 27):
+Columns 23-27 contain a sequence ID. It consists of a number (columns 23-26)
+and, optionally, also an insertion code (A-Z) in column 27:
 
 .. code-block:: none
 
@@ -361,26 +362,31 @@ The insertion codes are the opposite of gaps in the numbering;
 both are used to make the numbering consistent with a reference sequence
 (and for the same reason the sequence number can be negative).
 
-And just before the residue name we can have altloc -- a letter marking
-alternative conformation:
+Another fields that is blank for most of the atoms is altloc.
+It is a letter marking an alternative conformation
+(columns 17, just before the residue name):
 
 .. code-block:: none
 
    HETATM  557  O  AHOH A 301      13.464  41.125   8.469  0.50 20.23           O
    HETATM  558  O  BHOH A 301      12.554  42.700   8.853  0.50 26.40           O
 
-Alternative conformations make everything much more complex, but this
-is covered later in this documentation.
+Handling alternative conformations adds a lot of complexity,
+as it will be described later on in this documentation.
+These were all tricky things in the atom list.
 
-The PDB file contains a number of matrices. Two of them cannot be ignored:
+One more thing that is sometimes forgotten. In most of the PDB entries
+reading the CRYST1 record and the list of atoms is all that is needed
+to construct the crystal structure. But to read correctly all PDB files
+we also need to read two other records:
 
 * MTRIX -- if marked as not-given it defines operations needed to reconstruct
   the asymmetric unit,
 * SCALE -- provides fractionalization matrix. The format of this entry
-  is unfortunate: for large unit cells the precision of numbers is too small.
-  If coordinates are given in standard settings it is better to calculate
-  the fractionalization matrix from the unit cell dimensions.
-  But the record needs to be read to check if the settings are
+  is unfortunate: for large unit cells the relative precision of numbers is
+  too small. So if coordinates are given in standard settings it is better
+  to calculate the fractionalization matrix from the unit cell dimensions.
+  But the SCALE record needs to be checked to see if the settings are
   the standard ones.
 
 .. _specification: https://www.wwpdb.org/documentation/file-format-content/format33/v3.3.html
@@ -474,8 +480,10 @@ Here we focus on things specific to mmCIF:
   the author's version). This may lead to funny situations.
 
 * There is a formal distinction between mmCIF and PDBx/mmCIF
-  dictionary. The latter is built upon the former. So we have
-  the ``pdbx_`` prefix in otherwise random places.
+  dictionaries (they are controlled by separate committees).
+  The latter is built upon the former. So we have
+  the ``pdbx_`` prefix in otherwise random places, to mark tags
+  that are not in the vanilla mmCIF.
 
 Here are example lines from a PDB file (3B9F) with the fields
 numbered at the bottom:
@@ -522,8 +530,16 @@ Gemmi uses author-defined atom and component IDs if they are present,
 otherwise it uses *label* ones.
 
 On the other hand, chain names (``asym_id``) and sequence numbers often
-differ and usually the author-defined names should be presented to the user,
-for consistency with the PDB format.
+differ and in the user interface it is better to use the author-defined
+names, for consistency with the PDB format and with the literature.
+
+While this is not guaranteed by the specification, in all PDB entries
+each ``auth_asym_id`` "chain" is split into one or more ``label_asym_id``
+"chains"; let us call them *subchains*.
+Polymer (residues before the TER record in the PDB format) goes into
+one subchain, all waters go into another one, and all the other non-polymer
+residues are put into separate single-residue subchains.
+Non-linear polymers (sugars) are treated as a set of non-polymers.
 
 .. note::
 
@@ -536,12 +552,19 @@ for consistency with the PDB format.
    or _struct_site_gen) the label_* identifier is ambiguous,
    so it is necessary to use the auth_* identifier anyway.
 
+This all is quite confusing and lacks a proper documentation.
+So once again, now in a color-coded version. Each atom site
+has three independent sets of identifiers:
 
-In Gemmi, we split the model into chains based on the primary mmCIF
-chain name, but we keep both sets of names.
-Apart from chain renaming (when the original naming was not A, B, C ...),
-ligands and waters are moved into separate *label* "chains" (structural units).
+.. raw:: html
 
+ <div class="highlight"><pre>
+ ATOM   <span style="color:#808">1032</span> O <span style="color:#2d2">OE2 <span style="color:#e33">.</span> GLU B</span> 2  <span style="color:#2d2">72</span>  <span style="color:#33f">?</span> -9.804  19.834  -55.805 1.00 25.54 ? <span style="color:#33f">77   GLU H OE2</span> 1
+ ATOM   <span style="color:#808">1033</span> N <span style="color:#2d2">N   <span style="color:#e33">A</span> ARG B</span> 2  <span style="color:#2d2">73</span>  <span style="color:#33f">A</span> -4.657  24.646  -55.236 0.11 20.46 ? <span style="color:#33f">77   ARG H N  </span> 1
+ ATOM   <span style="color:#808">1034</span> N <span style="color:#2d2">N   <span style="color:#e33">B</span> ARG B</span> 2  <span style="color:#2d2">73</span>  <span style="color:#33f">A</span> -4.641  24.646  -55.195 0.82 22.07 ? <span style="color:#33f">77   ARG H N  </span> 1
+ </pre></div>
+
+TBC
 
 C++
 ---
