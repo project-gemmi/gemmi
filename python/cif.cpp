@@ -54,7 +54,7 @@ void add_cif(py::module& cif) {
          "Write data to a CIF file.")
     .def("as_string", [](const Document& d) {
         std::ostringstream os;
-        os << d;
+        write_out_document(os, d, Style::Simple);
         return os.str();
     }, "Write data in a CIF format to a string.")
     .def("as_json", [](const Document& d, bool mmjson) {

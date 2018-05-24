@@ -103,11 +103,6 @@ inline void write_out_document(std::ostream& os, const Document& doc, Style s) {
   }
 }
 
-inline std::ostream& operator<<(std::ostream& os, const Document& doc) {
-  write_out_document(os, doc, Style::Simple);
-  return os;
-}
-
 inline void write_to_file(const Document& doc, const std::string& filename,
                           Style s=Style::Simple) {
   std::ofstream of(filename);
