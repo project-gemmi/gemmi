@@ -177,7 +177,7 @@ private:
 // into the `values` vector.
 struct Table {
   Item* loop_item;
-  Block& blo;
+  Block& bloc;
   std::vector<int> positions;
 
   struct Row {
@@ -189,21 +189,15 @@ struct Table {
       return const_cast<Row*>(this)->value_at(pos);
     }
     std::string& at(int n) {
-      if (n < 0)
-        n += size();
-      return value_at(tab.positions.at(n));
+      return value_at(tab.positions.at(n < 0 ? n + size() : n));
     }
     const std::string& at(int n) const { return const_cast<Row*>(this)->at(n); }
-    std::string& operator[](int n) {
-      return value_at(tab.positions[n]);
-    }
+    std::string& operator[](int n);
     const std::string& operator[](int n) const {
       return const_cast<Row*>(this)->operator[](n);
     }
     std::string* ptr_at(int n) {
-      if (n < 0)
-        n += size();
-      int pos = tab.positions.at(n);
+      int pos = tab.positions.at(n < 0 ? n + size() : n);
       return pos >= 0 ? &value_at(pos) : nullptr;
     }
     const std::string* ptr_at(int n) const {
@@ -464,19 +458,30 @@ inline std::string& Column::operator[](int n) {
   return item_->pair[1];
 }
 
+inline std::string& Table::Row::operator[](int n) {
+  int pos = tab.positions[n];
+  if (tab.loop_item) {
+    Loop& loop = tab.loop_item->loop;
+    if (row_index == -1) // tags
+      return loop.tags[pos];
+    return loop.values[loop.width() * row_index + pos];
+  }
+  return tab.bloc.items[pos].pair[row_index == -1 ? 0 : 1];
+}
+
 inline std::string& Table::Row::value_at(int pos) {
   if (pos == -1)
     throw std::out_of_range("Cannot access missing optional tag.");
   if (row_index == -1) { // tags
     if (tab.loop_item)
       return tab.loop_item->loop.tags.at(pos);
-    return tab.blo.items[pos].pair[0];
+    return tab.bloc.items[pos].pair[0];
   }
   if (tab.loop_item) {
     Loop& loop = tab.loop_item->loop;
     return loop.values.at(loop.width() * row_index + pos);
   }
-  return tab.blo.items[pos].pair[1];
+  return tab.bloc.items[pos].pair[1];
 }
 
 inline size_t Table::length() const {
@@ -490,7 +495,7 @@ inline Table::Row Table::find_row(const std::string& s) {
     for (size_t i = 0; i < loop.values.size(); i += loop.width())
       if (as_string(loop.values[i + pos]) == s)
         return Row{*this, static_cast<int>(i / loop.width())};
-  } else if (as_string(blo.items[pos].pair[1]) == s) {
+  } else if (as_string(bloc.items[pos].pair[1]) == s) {
     return Row{*this, 0};
   }
   fail("Not found in the first column: " + s);
@@ -502,7 +507,7 @@ inline Column Table::column(int n) {
     fail("Cannot access absent column");
   if (loop_item)
     return Column(loop_item, pos);
-  return Column(&blo.items[pos], 0);
+  return Column(&bloc.items[pos], 0);
 }
 
 inline void Table::erase() {
@@ -510,7 +515,7 @@ inline void Table::erase() {
     loop_item->erase();
   else
     for (int pos : positions)
-      blo.items[pos].erase();
+      bloc.items[pos].erase();
 }
 
 inline const Item* Block::find_pair_item(const std::string& tag) const {
@@ -588,7 +593,7 @@ inline Loop& Block::setup_loop(Table&& tab, const std::string& prefix,
     item = tab.loop_item;
     item->loop.clear();
   } else if (tab.ok()) {
-    item = &tab.blo.items.at(tab.positions[0]);
+    item = &tab.bloc.items.at(tab.positions[0]);
     tab.erase();
     item->set_value(Item(LoopArg{}));
   } else {
