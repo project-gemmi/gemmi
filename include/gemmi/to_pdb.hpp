@@ -232,7 +232,7 @@ inline void write_atoms(const Structure& st, std::ostream& os,
 
 
 inline void write_header(const Structure& st, std::ostream& os,
-                         bool iotbx_compat, bool all_matrices) {
+                         bool iotbx_compat) {
   char buf[88];
   { // header line
     const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
@@ -369,7 +369,7 @@ inline void write_header(const Structure& st, std::ostream& os,
   }
 
   write_cryst1(st, os);
-  if (st.cell.explicit_matrices || all_matrices) {
+  if (st.has_origx || st.cell.explicit_matrices) {
     for (int i = 0; i < 3; ++i)
       WRITE("ORIGX%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
             st.origx.mat[i][0], st.origx.mat[i][1], st.origx.mat[i][2],
@@ -387,13 +387,13 @@ inline void write_header(const Structure& st, std::ostream& os,
 
 inline std::string make_pdb_headers(const Structure& st) {
   std::ostringstream os;
-  impl::write_header(st, os, false, false);
+  impl::write_header(st, os, false);
   return os.str();
 }
 
 inline void write_pdb(const Structure& st, std::ostream& os,
                       bool iotbx_compat=false) {
-  impl::write_header(st, os, iotbx_compat, true);
+  impl::write_header(st, os, iotbx_compat);
   impl::write_atoms(st, os, iotbx_compat, nullptr);
   char buf[88];
   WRITE("%-80s\n", "END");

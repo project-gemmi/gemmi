@@ -186,8 +186,10 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
   // We read/write origx just for completeness, it's not used anywhere.
   cif::Table origx_tv = block.find("_database_PDB_matrix.",
                                    transform_tags("origx", "origx_vector"));
-  if (origx_tv.length() > 0)
+  if (origx_tv.length() > 0) {
+    st.has_origx = true;
     st.origx = get_transform_matrix(origx_tv[0]);
+  }
 
   auto aniso_map = get_anisotropic_u(block);
 

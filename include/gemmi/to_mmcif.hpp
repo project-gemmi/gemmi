@@ -231,7 +231,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
     asym_loop.add_row({ch.name, (ch.entity_id.empty() ? "?" : ch.entity_id)});
 
   // _database_PDB_matrix (ORIGX)
-  if (!st.origx.is_identity()) {
+  if (st.has_origx) {
     block.set_pair("_database_PDB_matrix.entry_id", id);
     std::string prefix = "_database_PDB_matrix.origx";
     for (int i = 0; i < 3; ++i) {
@@ -260,7 +260,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
                                    res.name, res.name, "."});
 
   // _atom_sites (SCALE)
-  if (st.cell.explicit_matrices) {
+  if (st.has_origx || st.cell.explicit_matrices) {
     block.set_pair("_atom_sites.entry_id", id);
     std::string prefix = "_atom_sites.fract_transf_";
     for (int i = 0; i < 3; ++i) {

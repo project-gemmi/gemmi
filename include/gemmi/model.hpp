@@ -590,6 +590,7 @@ struct Structure {
   std::map<std::string, Entity> entities;
 
   // Store ORIGXn / _database_PDB_matrix.origx*
+  bool has_origx = false;
   Transform origx;
 
   // Minimal metadata with keys being mmcif tags: _entry.id, _exptl.method, ...

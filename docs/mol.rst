@@ -245,7 +245,7 @@ or not) can be opened using:
 .. doctest::
   :hide:
 
-  >>> path =  '../tests/5i55.pdb'
+  >>> path =  '../tests/1orc.pdb'
 
 
 .. doctest::

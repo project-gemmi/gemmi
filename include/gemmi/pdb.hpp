@@ -503,6 +503,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       }
 
     } else if (is_record_type(line, "ORIGX")) {
+      st.has_origx = true;
       read_matrix(st.origx, line, len);
 
     } else if (is_record_type(line, "SSBOND") ||
