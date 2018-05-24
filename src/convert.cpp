@@ -238,38 +238,38 @@ static void convert(const std::string& input, CoorFormat input_type,
     os = &std::cout;
   }
 
-  if (output_type == CoorFormat::Mmjson) {
-    if (input_type != CoorFormat::Mmcif && input_type != CoorFormat::Mmjson)
-      gemmi::fail("Conversion to JSON is possible only from CIF");
-    cif::JsonWriter writer(*os);
-    if (options[Comcifs])
-      writer.set_comcifs();
-    if (options[Mmjson])
-      writer.set_mmjson();
-    if (options[Bare])
-      writer.bare_tags = true;
-    if (options[Numb]) {
-      char first_letter = options[Numb].arg[0];
-      if (first_letter == 'q')
-        writer.quote_numbers = 2;
-      else if (first_letter == 'n')
-        writer.quote_numbers = 0;
-    }
-    if (options[CifDot])
-      writer.cif_dot = options[CifDot].arg;
-    writer.write_json(cif_in);
-  } else if (output_type == CoorFormat::Pdb) {
-    // call wrapper from output.cpp - to make building faster
-    write_pdb(st, *os, options[IotbxCompat]);
-  } else if (output_type == CoorFormat::Mmcif) {
+  if (output_type == CoorFormat::Mmcif || output_type == CoorFormat::Mmjson) {
     if ((input_type != CoorFormat::Mmcif && input_type != CoorFormat::Mmjson)
         || modify_structure) {
       cif_in.blocks.clear();  // temporary, for testing
       cif_in.blocks.resize(1);
       update_cif_block(st, cif_in.blocks[0]);
     }
-    auto style = options[PdbxStyle] ? cif::Style::Pdbx : cif::Style::Simple;
-    write_out_document(*os, cif_in, style);
+    if (output_type == CoorFormat::Mmcif) {
+      auto style = options[PdbxStyle] ? cif::Style::Pdbx : cif::Style::Simple;
+      write_out_document(*os, cif_in, style);
+    } else /*output_type == CoorFormat::Mmjson*/ {
+      cif::JsonWriter writer(*os);
+      if (options[Comcifs])
+        writer.set_comcifs();
+      if (options[Mmjson])
+        writer.set_mmjson();
+      if (options[Bare])
+        writer.bare_tags = true;
+      if (options[Numb]) {
+        char first_letter = options[Numb].arg[0];
+        if (first_letter == 'q')
+          writer.quote_numbers = 2;
+        else if (first_letter == 'n')
+          writer.quote_numbers = 0;
+      }
+      if (options[CifDot])
+        writer.cif_dot = options[CifDot].arg;
+      writer.write_json(cif_in);
+    }
+  } else if (output_type == CoorFormat::Pdb) {
+    // call wrapper from output.cpp - to make building faster
+    write_pdb(st, *os, options[IotbxCompat]);
   }
 }
 
@@ -282,6 +282,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   std::string input = p.nonOption(0);
   const char* output = p.nonOption(1);
 
+  // CoorFormat::Mmcif here stands for any CIF files,
+  // CoorFormat::Mmjson may not be strictly mmJSON, but also CIF-JSON.
   std::map<std::string, CoorFormat> filetypes {{"json", CoorFormat::Mmjson},
                                                {"pdb", CoorFormat::Pdb},
                                                {"cif", CoorFormat::Mmcif}};
