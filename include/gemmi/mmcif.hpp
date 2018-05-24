@@ -114,7 +114,7 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
   // find() and Table don't have const variants, but we don't change anything.
   cif::Block& block = const_cast<cif::Block&>(block_);
   Structure st;
-  st.input_format = CoorFormat::Cif;
+  st.input_format = CoorFormat::Mmcif;
   st.name = block.name;
 
   // unit cell and symmetry

@@ -175,10 +175,10 @@ static void convert(const std::string& input, CoorFormat input_type,
   bool modify_structure = (
       options[ExpandNcs] || options[RemoveH] || options[RemoveWaters] ||
       options[RemoveLigWat] || options[TrimAla] || options[SegmentAsChain]);
-  if (input_type == CoorFormat::Cif || input_type == CoorFormat::Json) {
+  if (input_type == CoorFormat::Mmcif || input_type == CoorFormat::Mmjson) {
     cif_in = cif_read_any(input);
-    if ((output_type == CoorFormat::Json || output_type == CoorFormat::Cif) &&
-        !modify_structure) {
+    if ((output_type == CoorFormat::Mmjson || output_type == CoorFormat::Mmcif)
+        && !modify_structure) {
       // no need to interpret the structure
     } else {
       st = make_structure(cif_in);
@@ -238,8 +238,8 @@ static void convert(const std::string& input, CoorFormat input_type,
     os = &std::cout;
   }
 
-  if (output_type == CoorFormat::Json) {
-    if (input_type != CoorFormat::Cif && input_type != CoorFormat::Json)
+  if (output_type == CoorFormat::Mmjson) {
+    if (input_type != CoorFormat::Mmcif && input_type != CoorFormat::Mmjson)
       gemmi::fail("Conversion to JSON is possible only from CIF");
     cif::JsonWriter writer(*os);
     if (options[Comcifs])
@@ -261,8 +261,8 @@ static void convert(const std::string& input, CoorFormat input_type,
   } else if (output_type == CoorFormat::Pdb) {
     // call wrapper from output.cpp - to make building faster
     write_pdb(st, *os, options[IotbxCompat]);
-  } else if (output_type == CoorFormat::Cif) {
-    if ((input_type != CoorFormat::Cif && input_type != CoorFormat::Json)
+  } else if (output_type == CoorFormat::Mmcif) {
+    if ((input_type != CoorFormat::Mmcif && input_type != CoorFormat::Mmjson)
         || modify_structure) {
       cif_in.blocks.clear();  // temporary, for testing
       cif_in.blocks.resize(1);
@@ -282,16 +282,16 @@ int GEMMI_MAIN(int argc, char **argv) {
   std::string input = p.nonOption(0);
   const char* output = p.nonOption(1);
 
-  std::map<std::string, CoorFormat> filetypes {{"json", CoorFormat::Json},
+  std::map<std::string, CoorFormat> filetypes {{"json", CoorFormat::Mmjson},
                                                {"pdb", CoorFormat::Pdb},
-                                               {"cif", CoorFormat::Cif}};
+                                               {"cif", CoorFormat::Mmcif}};
 
   CoorFormat in_type = p.options[FormatIn]
     ? filetypes[p.options[FormatIn].arg]
     : coordinate_format_from_extension(input);
   if (in_type == CoorFormat::Unknown && gemmi::is_pdb_code(input)) {
     input = gemmi::expand_if_pdb_code(input);
-    in_type = CoorFormat::Cif;
+    in_type = CoorFormat::Mmcif;
   }
   if (in_type == CoorFormat::Unknown) {
     std::cerr << "The input format cannot be determined from input"

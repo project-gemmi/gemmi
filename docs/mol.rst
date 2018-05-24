@@ -213,7 +213,7 @@ The file format above is determined from the file extension.
 Alternatively, the format can be specified as the second argument
 of ``read_structure_file``, one of the enumeration values::
 
-    enum class CoorFormat { Unknown, Pdb, Cif, Json };
+    enum class CoorFormat { Unknown, Pdb, Mmcif, Mmjson };
 
 Gemmi also has a templated function ``read_structure`` that you can use
 to customize how you provide the data (bytes) to the parsers.
