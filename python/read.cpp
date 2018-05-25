@@ -20,7 +20,7 @@ void add_cif_read(py::module& cif) {
           py::arg("filename"), "Reads normal or gzipped CIF file.");
   cif.def("read_mmjson", [](const std::string& s) {
               return read_mmjson(MaybeGzipped(s));
-          }, py::arg("filename"), "Reads normal or gzipped CIF file.");
+          }, py::arg("filename"), "Reads normal or gzipped mmJSON file.");
   cif.def("read_string", &read_string, py::arg("data"),
           "Reads a string as a CIF file.");
 

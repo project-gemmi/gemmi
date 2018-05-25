@@ -517,11 +517,11 @@ int GEMMI_MAIN(int argc, char **argv) {
     cif::Document crd = make_crd(st, monlib, linkage);
     if (p.options[Verbose])
       printf("Writing coordinates to: %s.crd\n", output.c_str());
-    write_to_file(crd, output + ".crd", cif::Style::NoBlankLines);
+    write_cif_to_file(crd, output + ".crd", cif::Style::NoBlankLines);
     cif::Document rst = make_rst(linkage, monlib);
     if (p.options[Verbose])
       printf("Writing restraints to: %s.rst\n", output.c_str());
-    write_to_file(rst, output + ".rst", cif::Style::NoBlankLines);
+    write_cif_to_file(rst, output + ".rst", cif::Style::NoBlankLines);
   } catch (std::runtime_error& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;

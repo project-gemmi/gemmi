@@ -247,7 +247,7 @@ static void convert(const std::string& input, CoorFormat input_type,
     }
     if (output_type == CoorFormat::Mmcif) {
       auto style = options[PdbxStyle] ? cif::Style::Pdbx : cif::Style::Simple;
-      write_out_document(*os, cif_in, style);
+      write_cif_to_stream(*os, cif_in, style);
     } else /*output_type == CoorFormat::Mmjson*/ {
       cif::JsonWriter writer(*os);
       if (options[Comcifs])

@@ -553,18 +553,46 @@ Non-linear polymers (sugars) are treated as a set of non-polymers.
    so it is necessary to use the auth_* identifier anyway.
 
 This all is quite confusing and lacks a proper documentation.
-So once again, now in a color-coded version. Each atom site
-has three independent sets of identifiers:
+So once again, now in a color-coded version:
 
 .. raw:: html
 
- <div class="highlight"><pre>
- ATOM   <span style="color:#808">1032</span> O <span style="color:#2d2">OE2 <span style="color:#e33">.</span> GLU B</span> 2  <span style="color:#2d2">72</span>  <span style="color:#33f">?</span> -9.804  19.834  -55.805 1.00 25.54 ? <span style="color:#33f">77   GLU H OE2</span> 1
- ATOM   <span style="color:#808">1033</span> N <span style="color:#2d2">N   <span style="color:#e33">A</span> ARG B</span> 2  <span style="color:#2d2">73</span>  <span style="color:#33f">A</span> -4.657  24.646  -55.236 0.11 20.46 ? <span style="color:#33f">77   ARG H N  </span> 1
- ATOM   <span style="color:#808">1034</span> N <span style="color:#2d2">N   <span style="color:#e33">B</span> ARG B</span> 2  <span style="color:#2d2">73</span>  <span style="color:#33f">A</span> -4.641  24.646  -55.195 0.82 22.07 ? <span style="color:#33f">77   ARG H N  </span> 1
+ <div class="highlight"><pre style="color:#444">
+ ATOM   <b>1032</b> O <span style="color:#d50">OE2 <span style="background-color:#ace">.</span> GLU B</span> 2  <span style="color:#d50">72</span>  <span style="background-color:#ace">?</span> -9.804  19.834  -55.805 1.00 25.54 ? <span style="background-color:#ace">77   GLU H OE2</span> 1
+ ATOM   <b>1033</b> N <span style="color:#d50">N   <span style="background-color:#ace">A</span> ARG B</span> 2  <span style="color:#d50">73</span>  <span style="background-color:#ace">A</span> -4.657  24.646  -55.236 0.11 20.46 ? <span style="background-color:#ace">77   ARG H N  </span> 1
+ ATOM   <b>1034</b> N <span style="color:#d50">N   <span style="background-color:#ace">B</span> ARG B</span> 2  <span style="color:#d50">73</span>  <span style="background-color:#ace">A</span> -4.641  24.646  -55.195 0.82 22.07 ? <span style="background-color:#ace">77   ARG H N  </span> 1
  </pre></div>
 
-TBC
+and a couple lines for another file (6any):
+
+.. raw:: html
+
+ <div class="highlight"><pre style="color:#444">
+ ATOM   <b>1   </b> N <span style="color:#d50">N   <span style="background-color:#ace">.</span> PHE A</span> 1 <span style="color:#d50">1  </span> <span style="background-color:#ace">?</span> 21.855 30.874 0.439  1.00 29.16 ? <span style="background-color:#ace">17  PHE A N  </span> 1 
+ ATOM   <b>2   </b> C <span style="color:#d50">CA  <span style="background-color:#ace">.</span> PHE A</span> 1 <span style="color:#d50">1  </span> <span style="background-color:#ace">?</span> 20.634 31.728 0.668  1.00 26.60 ? <span style="background-color:#ace">17  PHE A CA </span> 1
+
+ ATOM   <b>1630</b> C <span style="color:#d50">CD2 <span style="background-color:#ace">.</span> LEU A</span> 1 <span style="color:#d50">206</span> <span style="background-color:#ace">?</span> 23.900 18.559 1.006  1.00 16.97 ? <span style="background-color:#ace">222 LEU A CD2</span> 1 
+ HETATM <b>1631</b> C <span style="color:#d50">C1  <span style="background-color:#ace">.</span> NAG B</span> 2 <span style="color:#d50">.  </span> <span style="background-color:#ace">?</span> 5.126  22.623 37.322 1.00 30.00 ? <span style="background-color:#ace">301 NAG A C1 </span> 1 
+ HETATM <b>1632</b> C <span style="color:#d50">C2  <span style="background-color:#ace">.</span> NAG B</span> 2 <span style="color:#d50">.  </span> <span style="background-color:#ace">?</span> 5.434  21.608 38.417 1.00 30.00 ? <span style="background-color:#ace">301 NAG A C2 </span> 1
+
+ HETATM <b>1709</b> O <span style="color:#d50">O   <span style="background-color:#ace">.</span> HOH I</span> 6 <span style="color:#d50">.  </span> <span style="background-color:#ace">?</span> -4.171 14.902 2.395  1.00 33.96 ? <span style="background-color:#ace">401 HOH A O  </span> 1 
+ HETATM <b>1710</b> O <span style="color:#d50">O   <span style="background-color:#ace">.</span> HOH I</span> 6 <span style="color:#d50">.  </span> <span style="background-color:#ace">?</span> 9.162  43.925 8.545  1.00 21.30 ? <span style="background-color:#ace">402 HOH A O  </span> 1
+ </pre></div>
+
+Each atom site has three independent identifiers:
+
+1. The number in bold is a short and simple one (it does not need to
+   be a number according to the mmCIF spec).
+2. The hierarchical identifier from the PDB format (blue background)
+   is what people usually use. Unfortunately, the arbitrary ordering
+   of columns makes it harder to interpret.
+3. The new mmCIF identifier (orange) is confusingly similar to 2,
+   but it cannot uniquely identify water atoms,
+   so it cannot be used in every context.
+
+How other tables in the mmCIF file refer to atom sites?
+Some use both 2 and 3 (e.g. _struct_conn), some use only 2 (e.g. _struct_site),
+and _atom_site_anisotrop uses all 1, 2 and 3.
 
 C++
 ---
@@ -591,7 +619,7 @@ and then it is written to disk::
     #include <gemmi/to_mmcif.hpp>  // Structure -> cif::Document
     #include <gemmi/to_cif.hpp>    // cif::Document -> file
 
-    gemmi::write_to_file(structure.make_mmcif_document(), "new.cif");
+    gemmi::write_cif_to_file(gemmi::make_mmcif_document(structure), "new.cif");
 
 ``cif::Document`` can be used to access meta-data,
 such as the details of the experiment or software used for data processing.
@@ -626,19 +654,19 @@ mmJSON format
 
 The mmJSON_ format is a JSON representation of the mmCIF data.
 This format can be easily parsed with any JSON parser (Gemmi uses sajson).
-A good alternative to PDBML -- easier to parse and twice smaller (gzipped).
+It is a good alternative to PDBML -- easier to parse
+and twice smaller (gzipped).
 
-It is available from PDBj:
+.. _mmJSON: https://pdbj.org/help/mmjson?lang=en
+
+Files in this format are available from PDBj:
 
 .. code-block:: none
 
     curl -o 5MOO.json.gz 'https://pdbj.org/rest/downloadPDBfile?id=5MOO&format=mmjson-all'
 
-Gemmi can read and write files in this format into ``cif::Document``,
-which then can be used to prepare ``Structure`` as described
-in the mmCIF section.
-
-.. _mmJSON: https://pdbj.org/help/mmjson?lang=en
+Gemmi can reads mmJSON files into ``cif::Document``,
+as it does with mmCIF files.
 
 C++
 ---
@@ -646,6 +674,7 @@ C++
 Reading::
 
     #include <gemmi/json.hpp>     // JSON -> cif::Document
+    #include <gemmi/mmcif.hpp>    // cif::Document -> Structure
     #include <gemmi/gz.hpp>       // to uncompress on the fly
 
     namespace cif = gemmi::cif;
@@ -653,25 +682,36 @@ Reading::
     cif::Document doc = cif::read_mmjson_file(path);
     // or, to handle gzipped files:
     cif::Document doc = cif::read_mmjson(gemmi::MaybeGzipped(path));
-    // ... the next steps are the same as for mmCIF
+    // and then:
+    gemmi::Structure structure =  gemmi::make_structure(doc);
 
 Writing::
 
     #include <gemmi/to_json.hpp>  // to write
 
-    cif::JsonWriter writer(ostream);
-    writer.set_mmjson();
-    writer.write_json(doc);
+    // cif::Document doc = gemmi::make_mmcif_document(structure); 
+    gemmi::write_mmjson_to_stream(ostream, doc);
 
 Python
 ------
 
-.. code-block:: python
+.. doctest::
+  :hide:
 
-    import gemmi
+  >>> mmjson_path =  '../tests/1pfe.json'
 
-TODO
 
+.. doctest::
+
+  >>> # just use interface common for all file formats
+  >>> structure = gemmi.read_structure(mmjson_path)
+  >>>
+  >>> # but you can do it in two steps if you wish
+  >>> cif_block = gemmi.cif.read_mmjson(mmjson_path)[0]
+  >>> structure = gemmi.make_structure_from_block(cif_block)
+  >>>
+  >>> # similarly, Structure -> mmJSON can also be done in two stages
+  >>> json_str = structure.make_mmcif_document().as_json(mmjson=True)
 
 
 .. _mcra:

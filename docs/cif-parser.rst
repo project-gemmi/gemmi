@@ -515,13 +515,11 @@ Writing
 The functions writing ``cif::Document`` to C++ stream or to a file
 are in a separate header file ``gemmi/to_cif.hpp``::
 
-    void write_to_file(const Document& doc, const std::string& filename,
-                       Style style=Style::Simple);
+    void write_cif_to_file(const Document& doc, const std::string& filename,
+                           Style style=Style::Simple);
 
-    void write_out_document(std::ostream& os, const Document& doc, Style style);
+    void write_cif_to_stream(std::ostream& os, const Document& doc, Style style);
 
-    // the same as write_out_document() with Style::Simple
-    std::ostream& operator<<(std::ostream& os, const gemmi::cif::Document& doc);
 
 The following "styles" are supported:
 

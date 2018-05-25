@@ -49,12 +49,12 @@ void add_cif(py::module& cif) {
          (Block* (Document::*)(const std::string&)) &Document::find_block,
          py::arg("name"),
          py::return_value_policy::reference_internal)
-    .def("write_file", &write_to_file,
+    .def("write_file", &write_cif_to_file,
          py::arg("filename"), py::arg("style")=Style::Simple,
          "Write data to a CIF file.")
     .def("as_string", [](const Document& d) {
         std::ostringstream os;
-        write_out_document(os, d, Style::Simple);
+        write_cif_to_stream(os, d, Style::Simple);
         return os.str();
     }, "Write data in a CIF format to a string.")
     .def("as_json", [](const Document& d, bool mmjson) {

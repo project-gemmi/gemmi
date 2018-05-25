@@ -80,7 +80,8 @@ inline bool should_be_separted_(const Item& a, const Item& b) {
   return adot != bdot || a.pair[0].compare(0, adot, b.pair[0], 0, adot) != 0;
 }
 
-inline void write_out_document(std::ostream& os, const Document& doc, Style s) {
+inline void write_cif_to_stream(std::ostream& os, const Document& doc,
+                                Style s) {
   bool first = true;
   for (const Block& block : doc.blocks) {
     if (!first)
@@ -103,12 +104,12 @@ inline void write_out_document(std::ostream& os, const Document& doc, Style s) {
   }
 }
 
-inline void write_to_file(const Document& doc, const std::string& filename,
+inline void write_cif_to_file(const Document& doc, const std::string& filename,
                           Style s=Style::Simple) {
   std::ofstream of(filename);
   if (!of)
     throw std::runtime_error("Failed to open " + filename);
-  write_out_document(of, doc, s);
+  write_cif_to_stream(of, doc, s);
   of.close();
 }
 

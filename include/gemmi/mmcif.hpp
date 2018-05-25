@@ -9,7 +9,7 @@
 #include <string>
 #include <unordered_map>
 #include "cifdoc.hpp"
-#include "numb.hpp"
+#include "numb.hpp"  // for as_number
 #include "model.hpp"
 
 namespace gemmi {

@@ -286,6 +286,12 @@ inline void JsonWriter::write_json(const Document& d) {
   os_ << "\n}\n";
 }
 
+inline void write_mmjson_to_stream(std::ostream& os, const Document& doc) {
+  cif::JsonWriter writer(os);
+  writer.set_mmjson();
+  writer.write_json(doc);
+}
+
 } // namespace cif
 } // namespace gemmi
 #endif
