@@ -265,10 +265,10 @@ Gemmi aims to support files adhering to the official format specification_,
 as well as files with commonly present deviations from the standard.
 In particular, we support the following extensions:
 
-* two-character chain IDs (columns 21 and 22)
-* segment ID (columns 73-76)
+* two-character chain IDs (columns 21 and 22),
+* segment ID (columns 73-76) from PDB v2,
 * hybrid-36_ encoding of sequence IDs for sequences longer than 9999
-  (although we are yet to find an examples for this)
+  (although we are yet to find an examples for this),
 * hybrid-36_ encoding of serial numbers for more than 99,999 atoms.
 
 The PDB format is well-documented and widely used, nonetheless some of its

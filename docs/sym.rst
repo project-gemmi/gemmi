@@ -16,8 +16,8 @@ all is in a single C++ header :file:`symmetry.hpp`.
 Space group table
 =================
 
-Gemmi tabulates about 540 settings of the 230 crystallographic space groups,
-including:
+Gemmi tabulates 550+ settings of the 230 crystallographic space groups.
+Each entry includes:
 
 * space group numbers (1-230),
 * ccp4 numbers (assigned to particular settings; modulo 1000
@@ -40,13 +40,13 @@ for Crystallography Vol. B ch. 1.4 (in 2010 ed.). It has 530 entries
 including 3 duplicates (different names for the same settings)
 in space-group 68.
 
-We are aware that there are many other practical settings, and if needed we
-will add more entries in the future. For example, we do not include
-the C- and F-centred tetragonal space groups that are featured in
+Gemmi includes also settings from OpenBabel_ that are absent in
+:file:`syminfo.lib`. If needed we will add more entries in the future.
+For example, we do not include all
+the C- and F-centred tetragonal space groups featured in
 `Crystallographic Space Group Diagrams and Tables <http://img.chem.ucl.ac.uk/sgp/mainmenu.htm>`_
 by Jeremy Karl Cockcroft
-and which are also mentioned in the ITfC Vol.A (Table 1.5.4.4
-in the 2015 edition).
+(they are also mentioned in the 2015 edition of ITfC Vol.A, Table 1.5.4.4).
 
 We also tabulated alternative names.
 For now this only includes new standard names introduced in 1990's by the IUCr

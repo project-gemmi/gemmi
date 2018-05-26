@@ -25,3 +25,7 @@ for d in data:
         print('common:',  '  '.join(x.triplet() for x in given & generated))
         print('given:    ', '  '.join(x.triplet() for x in given - generated))
         print('generated:', '  '.join(x.triplet() for x in generated - given))
+for d in data:
+    names = d['xhm'].split(',')
+    if all(gemmi.find_spacegroup_by_name(name) is None for name in names):
+        print('not in gemmi:', names)
