@@ -73,5 +73,6 @@ Gemmi program
 The library comes with a command-line program. To build it from source::
 
     git clone https://github.com/project-gemmi/gemmi.git
+    cd gemmi
     cmake .
     make

@@ -914,14 +914,11 @@ Performance
 
 Gemmi CIF parser is based on `PEGTL <https://github.com/taocpp/PEGTL/>`_ --
 an excellent "parser combinator library".
-
-In my testing (with GCC 5 and Clang 3.8) our parser is
-3x faster than cif_api (``validate -f`` vs ``cif2_syncheck -f``),
-which in turn `is reported <https://doi.org/10.1107/S1600576715021883>`_
-to be several times faster than iotbx.cif (ucif).
-
-While further improvement would be possible (the fastest JSON parsers are
-`much faster <https://github.com/project-gemmi/benchmarking-json>`_),
+It is `the fastest <https://github.com/project-gemmi/mmcif-benchmark>`_
+open-source CIF parser (at least in the hands of the author).
+While further improvement would be possible (some JSON parsers are
+`much faster <https://github.com/project-gemmi/benchmarking-json>`_
+and parsing CIF and JSON is not that different),
 it is not a priority.
 
 Directory walking
