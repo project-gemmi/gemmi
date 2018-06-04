@@ -209,6 +209,52 @@ struct BoundingBox {
   Vec3 get_size() const { return high - low; }
 };
 
+// popular single-pass algorithm for calculating variance and mean
+struct Variance {
+  int n = 0;
+  double sum_sq = 0.;
+  double mean_x = 0.;
+
+  void add_point(double x) {
+    double dx = x - mean_x;
+    mean_x += dx / ++n;
+    sum_sq += dx * (x - mean_x);
+  }
+  double for_sample() const { return sum_sq / (n - 1); }
+  double for_population() const { return sum_sq / n; }
+};
+
+struct Covariance : Variance {
+  double mean_y = 0.;
+  void add_point(double x, double y) {
+    double dx = x - mean_x;
+    mean_x += dx / ++n;
+    mean_y += (y - mean_y) / n;
+    sum_sq += dx * (y - mean_y);
+  }
+};
+
+struct Correlation {
+  int n = 0;
+  double sum_xx = 0.;
+  double sum_yy = 0.;
+  double sum_xy = 0.;
+  double mean_x = 0.;
+  double mean_y = 0.;
+  void add_point(double x, double y) {
+    ++n;
+    double weight = (n - 1.0) / n;
+    double dx = x - mean_x;
+    double dy = y - mean_y;
+    sum_xx += weight * dx * dx;
+    sum_yy += weight * dy * dy;
+    sum_xy += weight * dx * dy;
+    mean_x += dx / n;
+    mean_y += dy / n;
+  }
+  double coefficient() const { return sum_xy / std::sqrt(sum_xx * sum_yy); }
+};
+
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

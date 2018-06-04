@@ -71,4 +71,40 @@ TEST_CASE("Mat33::smallest_eigenvalue") {
   CHECK_EQ(evec2.z, doctest::Approx(0));
 }
 
+TEST_CASE("Variance") {
+  gemmi::Variance v;
+  for (double x : {0.14, 0.08, 0.16, 0.12, 0.04})
+    v.add_point(x);
+  CHECK_EQ(v.for_sample(), 0.00232);
+  CHECK_EQ(v.n, 5);
+  CHECK_EQ(v.mean_x, 0.108);
+}
+
+TEST_CASE("Covariance") {
+  gemmi::Covariance cov;
+  cov.add_point(2.1, 8);
+  cov.add_point(2.5, 12);
+  cov.add_point(4.0, 14);
+  cov.add_point(3.6, 10);
+  CHECK_EQ(cov.n, 4);
+  CHECK_EQ(cov.mean_x, 3.05);
+  CHECK_EQ(cov.mean_y, 11);
+  CHECK_EQ(cov.for_population(), doctest::Approx(1.15));
+  CHECK_EQ(cov.for_sample(), doctest::Approx(1.53333));
+}
+
+TEST_CASE("Correlation") {
+  gemmi::Correlation cor;
+  cor.add_point(2.1, 8);
+  cor.add_point(2.5, 12);
+  CHECK_EQ(cor.n, 2);
+  CHECK_EQ(cor.coefficient(), 1.0);
+  cor.add_point(4.0, 14);
+  cor.add_point(3.6, 10);
+  CHECK_EQ(cor.n, 4);
+  CHECK_EQ(cor.mean_x, 3.05);
+  CHECK_EQ(cor.mean_y, 11);
+  CHECK_EQ(cor.coefficient(), doctest::Approx(0.66257388));
+}
+
 // vim:sw=2:ts=2:et:path^=../include,../third_party
