@@ -539,27 +539,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       params.globbing = true;
   }
 
-  std::vector<std::string> paths;
-  if (p.options[FromFile]) {
-    std::FILE *f = std::fopen(p.options[FromFile].arg, "r");
-    if (!f) {
-      std::perror(p.options[FromFile].arg);
-      return 2;
-    }
-    char buf[512];
-    while (std::fgets(buf, 512, f)) {
-      std::string s = gemmi::trim_str(buf);
-      if (s.length() >= 4 && std::strchr(" \t\r\n:,;|", s[4]) &&
-          gemmi::is_pdb_code(s.substr(0, 4)))
-        s.resize(4);
-      if (!s.empty())
-        paths.emplace_back(s);
-    }
-    std::fclose(f);
-  } else {
-    for (int i = 1; i < p.nonOptionsCount(); ++i)
-      paths.emplace_back(p.nonOption(i));
-  }
+  std::vector<std::string> paths = p.paths_from_args_or_file(FromFile, false);
 
   size_t file_count = 0;
   int err_count = 0;

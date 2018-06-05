@@ -47,6 +47,7 @@ struct OptParser : option::Parser {
   void require_input_files_as_args();
   // returns the nth arg except that a PDB code gets replaced by $PDB_DIR/...
   std::string coordinate_input_file(int n);
+  std::vector<std::string> paths_from_args_or_file(int opt, bool expand);
   const char* given_name(int opt) const {  // sans one dash
     return options[opt].namelen > 1 ? options[opt].name + 1
                                     : options[opt].desc->shortopt;

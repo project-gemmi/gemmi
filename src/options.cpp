@@ -2,11 +2,12 @@
 
 #define GEMMI_PROG na
 #include "options.h"
-#include <cstdio>   // for fprintf
+#include <cstdio>   // for fprintf, fopen
 #include <cstdlib>  // for strtol, strtod, exit
-#include <cstring>  // for strcmp
+#include <cstring>  // for strcmp, strchr
 #include <gemmi/fileutil.hpp>  // for expand_if_pdb_code
 #include <gemmi/version.hpp>   // for GEMMI_VERSION
+#include <gemmi/util.hpp>   // for trim_str
 
 using std::fprintf;
 
@@ -135,4 +136,35 @@ void OptParser::require_input_files_as_args() {
 std::string OptParser::coordinate_input_file(int n) {
   return gemmi::expand_if_pdb_code(nonOption(n));
 }
+
+std::vector<std::string>
+OptParser::paths_from_args_or_file(int opt, bool expand) {
+  std::vector<std::string> paths;
+  const option::Option& file_option = options[opt];
+  if (file_option) {
+    std::FILE *f = std::fopen(file_option.arg, "r");
+    if (!f) {
+      std::perror(file_option.arg);
+      std::exit(2);
+    }
+    char buf[512];
+    while (std::fgets(buf, 512, f)) {
+      std::string s = gemmi::trim_str(buf);
+      if (s.length() > 4 && std::strchr(" \t\r\n:,;|", s[4]) &&
+          gemmi::is_pdb_code(s.substr(0, 4)))
+        s.resize(4);
+      if (!s.empty())
+        paths.emplace_back(s);
+    }
+    std::fclose(f);
+  } else {
+    for (int i = 1; i < nonOptionsCount(); ++i)
+      paths.emplace_back(nonOption(i));
+  }
+  if (expand)
+    for (std::string& path : paths)
+      path = gemmi::expand_if_pdb_code(path);
+  return paths;
+}
+
 // vim:sw=2:ts=2:et:path^=../include,../third_party
