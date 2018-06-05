@@ -161,11 +161,8 @@ void print_deltas(const gemmi::Grid<T>& grid, double dmin, double dmax) {
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
+  p.require_input_files_as_args();
   bool verbose = p.options[Verbose];
-
-  if (p.nonOptionsCount() == 0) {
-    std::fprintf(stderr, "No input files. Nothing to do.\n");
-  }
 
   if (p.nonOptionsCount() > 1 && (p.options[Reorder] || p.options[Full])) {
     std::fprintf(stderr, "Option --write-... can be only used "

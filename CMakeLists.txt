@@ -104,44 +104,48 @@ endif()
 ### programs from src/ ###
 
 add_library(input OBJECT src/input.cpp)
+add_library(options OBJECT src/options.cpp)
 
-add_executable(gemmi-contact EXCLUDE_FROM_ALL
+add_executable(gemmi-contact EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/contact.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-contact)
 
-add_executable(gemmi-contents EXCLUDE_FROM_ALL
+add_executable(gemmi-contents EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/contents.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-contents)
 
-add_executable(gemmi-convert EXCLUDE_FROM_ALL
+add_executable(gemmi-convert EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/convert.cpp src/output.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-convert)
 
-add_executable(gemmi-crdrst EXCLUDE_FROM_ALL
+add_executable(gemmi-crdrst EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/crdrst.cpp src/output.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-crdrst)
 
-add_executable(gemmi-grep EXCLUDE_FROM_ALL src/grep.cpp)
+add_executable(gemmi-grep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/grep.cpp)
 support_gz(gemmi-grep)
 
-add_executable(gemmi-map EXCLUDE_FROM_ALL
+add_executable(gemmi-map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/map.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-map)
 
-add_executable(gemmi-mask EXCLUDE_FROM_ALL
+add_executable(gemmi-mask EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/mask.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-mask)
 
-add_executable(gemmi-sg EXCLUDE_FROM_ALL src/sg.cpp)
+add_executable(gemmi-sg EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/sg.cpp)
 
-add_executable(gemmi-validate EXCLUDE_FROM_ALL src/validate.cpp)
+add_executable(gemmi-validate EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/validate.cpp)
 support_gz(gemmi-validate)
 
 add_executable(gemmi-prog
                src/contact.cpp src/contents.cpp src/convert.cpp
                src/output.cpp src/grep.cpp src/main.cpp src/map.cpp
                src/mask.cpp src/sg.cpp src/validate.cpp
-               $<TARGET_OBJECTS:input>)
+               $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:options>)
 support_gz(gemmi-prog)
 target_compile_definitions(gemmi-prog PRIVATE GEMMI_ALL_IN_ONE=1)
 set_target_properties(gemmi-prog PROPERTIES OUTPUT_NAME gemmi)

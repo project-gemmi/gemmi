@@ -6,7 +6,6 @@
 #include <gemmi/symmetry.hpp>
 #include <gemmi/resinfo.hpp>
 #include <gemmi/calculate.hpp>
-#include <gemmi/fileutil.hpp>  // for expand_if_pdb_code
 #include "input.h"
 #define GEMMI_PROG contents
 #include "options.h"
@@ -150,14 +149,11 @@ static void print_atoms_on_special_positions(const Structure& st) {
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
+  p.require_input_files_as_args();
   bool verbose = p.options[Verbose];
-  if (p.nonOptionsCount() == 0) {
-    std::fprintf(stderr, "No input files. Nothing to do.\n");
-    return 0;
-  }
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
-      std::string input = expand_if_pdb_code(p.nonOption(i));
+      std::string input = p.coordinate_input_file(i);
       if (i > 0)
         std::printf("\n");
       if (verbose || p.nonOptionsCount() > 1)

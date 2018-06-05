@@ -5,7 +5,6 @@
 #include <gemmi/subcells.hpp>
 #include <gemmi/polyheur.hpp>  // for are_connected
 #include <gemmi/pdb.hpp>  // for split_nonpolymers
-#include <gemmi/fileutil.hpp>  // for expand_if_pdb_code
 #include <gemmi/elem.hpp>  // for is_hydrogen
 #include "input.h"
 #define GEMMI_PROG contact
@@ -131,6 +130,7 @@ static void print_contacts(const Structure& st, const Parameters& params) {
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
+  p.require_input_files_as_args();
   Parameters params;
   params.verbose = p.options[Verbose].count();
   params.max_dist = 3.0;
@@ -142,13 +142,9 @@ int GEMMI_MAIN(int argc, char **argv) {
   params.any = p.options[Any];
   params.print_count = p.options[Count];
   params.no_hydrogens = p.options[NoH];
-  if (p.nonOptionsCount() == 0) {
-    std::fprintf(stderr, "No input files. Nothing to do.\n");
-    return 0;
-  }
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
-      std::string input = expand_if_pdb_code(p.nonOption(i));
+      std::string input = p.coordinate_input_file(i);
       if (params.verbose > 0 ||
           (p.nonOptionsCount() > 1 && !params.print_count))
         std::printf("%sFile: %s\n", (i > 0 ? "\n" : ""), input.c_str());
