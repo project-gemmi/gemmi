@@ -106,6 +106,10 @@ endif()
 add_library(input OBJECT src/input.cpp)
 add_library(options OBJECT src/options.cpp)
 
+add_executable(gemmi-btest EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/btest.cpp $<TARGET_OBJECTS:input>)
+support_gz(gemmi-btest)
+
 add_executable(gemmi-contact EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/contact.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-contact)
