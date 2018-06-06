@@ -117,19 +117,23 @@ void OptParser::simple_parse(int argc, char** argv,
   }
 }
 
+void OptParser::print_try_help_and_exit() {
+  fprintf(stderr, "Try '%s --help' for more information.\n", program_name);
+  std::exit(2);
+}
+
 void OptParser::require_positional_args(int n) {
   if (nonOptionsCount() != n) {
-    fprintf(stderr, "%s requires %d arguments but got %d.\n"
-                    "Try '%s --help' for more information.\n",
-                    program_name, n, nonOptionsCount(), program_name);
-    std::exit(2);
+    fprintf(stderr, "%s requires %d arguments but got %d.\n",
+                    program_name, n, nonOptionsCount());
+    print_try_help_and_exit();
   }
 }
 
-void OptParser::require_input_files_as_args() {
-  if (nonOptionsCount() == 0) {
+void OptParser::require_input_files_as_args(int other_args) {
+  if (nonOptionsCount() <= other_args) {
     std::fprintf(stderr, "No input files. Nothing to do.\n");
-    std::exit(0);
+    print_try_help_and_exit();
   }
 }
 
@@ -138,10 +142,14 @@ std::string OptParser::coordinate_input_file(int n) {
 }
 
 std::vector<std::string>
-OptParser::paths_from_args_or_file(int opt, bool expand) {
+OptParser::paths_from_args_or_file(int opt, int other, bool expand) {
   std::vector<std::string> paths;
   const option::Option& file_option = options[opt];
   if (file_option) {
+    if (nonOptionsCount() > other) {
+      std::fprintf(stderr, "Error: Positional args together with option -f.\n");
+      print_try_help_and_exit();
+    }
     std::FILE *f = std::fopen(file_option.arg, "r");
     if (!f) {
       std::perror(file_option.arg);
@@ -158,7 +166,8 @@ OptParser::paths_from_args_or_file(int opt, bool expand) {
     }
     std::fclose(f);
   } else {
-    for (int i = 1; i < nonOptionsCount(); ++i)
+    require_input_files_as_args(other);
+    for (int i = other; i < nonOptionsCount(); ++i)
       paths.emplace_back(nonOption(i));
   }
   if (expand)

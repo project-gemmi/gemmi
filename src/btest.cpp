@@ -53,6 +53,15 @@ Correlation calculate_correlation(const std::vector<T>& a,
   return cc;
 }
 
+void normalize(std::vector<double>& values) {
+  Variance variance;
+  for (double x : values)
+    variance.add_point(x);
+  double stddev = std::sqrt(variance.for_population());
+  for (double& x : values)
+    x = (x - variance.mean_x) / stddev;
+}
+
 struct Result {
   int n;
   double b_mean;
@@ -64,7 +73,7 @@ struct Result {
 // from B. Halle (2002) http://www.pnas.org/content/99/3/1274
 static Result test_bfactor_models(const Structure& st) {
   const float min_dist = 0.8f;
-  const float max_dist = 12.0f;
+  const float max_dist = 15.0f;
   SubCells sc(st.models.at(0), st.cell, max_dist);
   const Model& model = st.models.at(0);
   std::vector<double> b_exper;
@@ -93,8 +102,8 @@ static Result test_bfactor_models(const Structure& st) {
                   //  density += occ;
                   //density += occ * std::erfc(0.5 * (std::sqrt(dist_sq) - 7.0f)) / 2;
                   //density += occ * std::erfc(0.2 * (std::sqrt(dist_sq) - 4.0f)) / 2;
-                  //density += occ / dist_sq;
-                  density += occ / pow(dist_sq, 2.3/2.0);
+                  density += occ / dist_sq;
+                  //density += occ / pow(dist_sq, 2.3/2.0);
                   //density += occ * std::exp(-std::sqrt(dist_sq) / 3.0f);
                   //density += occ * (1 - std::sqrt(dist_sq) / max_dist);
                   //density += occ / std::sqrt(dist_sq);
@@ -108,6 +117,8 @@ static Result test_bfactor_models(const Structure& st) {
         }
     }
   }
+  //normalize(b_exper);
+  //normalize(b_predict);
   Correlation cc = calculate_correlation(b_exper, b_predict);
   Correlation rank_cc = calculate_correlation(get_ranks(b_exper),
                                               get_ranks(b_predict));
@@ -122,14 +133,8 @@ static Result test_bfactor_models(const Structure& st) {
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
-  if (!p.options[FromFile]) {
-    p.require_input_files_as_args();
-  } else if (p.nonOptionsCount() != 0) {
-    std::fprintf(stderr, "Error: Positional args together with option -f.\n");
-    return 2;
-  }
 
-  std::vector<std::string> paths = p.paths_from_args_or_file(FromFile, true);
+  std::vector<std::string> paths = p.paths_from_args_or_file(FromFile, 0, true);
   bool verbose = p.options[Verbose].count();
   double sum_cc = 0;
   double sum_rank_cc = 0;
@@ -144,8 +149,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       sum_cc += r.cc;
       sum_rank_cc += r.rank_cc;
     }
-    printf("average                          CC=%#.4g  rankCC=%#.4g\n",
-           sum_cc / paths.size(), sum_rank_cc / paths.size());
+    if (paths.size() > 1)
+      printf("average of %4zu files             CC=%#.4g  rankCC=%#.4g\n",
+             paths.size(), sum_cc / paths.size(), sum_rank_cc / paths.size());
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;

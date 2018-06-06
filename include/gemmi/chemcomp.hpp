@@ -210,7 +210,7 @@ struct ChemMod {
   std::vector<AtomMod> atom_mods;
   Restraints rt;
 
-  void apply_to(ChemComp& cc) const;
+  void apply_to(ChemComp& cc, bool strict=false) const;
 };
 
 inline Restraints::Bond::Type bond_type_from_string(const std::string& s) {
@@ -472,7 +472,7 @@ inline std::map<std::string,ChemMod> read_chemmods(cif::Document& doc) {
   return mods;
 }
 
-inline void ChemMod::apply_to(ChemComp& chemcomp) const {
+inline void ChemMod::apply_to(ChemComp& chemcomp, bool strict) const {
   // _chem_mod_atom
   for (const AtomMod& mod : atom_mods) {
     auto it = chemcomp.find_atom(mod.old_id);
@@ -480,7 +480,8 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
       case 'a':
         if (chemcomp.find_atom(mod.new_id) == chemcomp.atoms.end())
           chemcomp.atoms.push_back({mod.new_id, mod.el, mod.chem_type});
-        // else fail("Atom exists and cannot be added: " + mod.new_id);
+        else if (strict)
+          fail("Atom exists and cannot be added: " + mod.new_id);
         break;
       case 'd':
         if (it != chemcomp.atoms.end())
@@ -504,11 +505,13 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
     auto it = chemcomp.rt.find_bond(mod.id1.atom, mod.id2.atom);
     switch (mod.id1.comp) {
       case 'a':
-        if (it != chemcomp.rt.bonds.end())
+        if (it == chemcomp.rt.bonds.end()) {
+          chemcomp.rt.bonds.push_back(mod);
+          chemcomp.rt.bonds.back().id1.comp = 1;
+        } else if (strict) {
           fail("Bond exists and cannot be added: " + mod.id1.atom +
                "-" + mod.id2.atom);
-        chemcomp.rt.bonds.push_back(mod);
-        chemcomp.rt.bonds.back().id1.comp = 1;
+        }
         break;
       case 'd':
         if (it != chemcomp.rt.bonds.end())
@@ -532,11 +535,13 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
     auto it = chemcomp.rt.find_angle(mod.id1.atom, mod.id2.atom, mod.id3.atom);
     switch (mod.id1.comp) {
       case 'a':
-        if (it != chemcomp.rt.angles.end())
+        if (it == chemcomp.rt.angles.end()) {
+          chemcomp.rt.angles.push_back(mod);
+          chemcomp.rt.angles.back().id1.comp = 1;
+        } else if (strict) {
           fail("Angle exists and cannot be added: " + mod.id1.atom +
                "-" + mod.id2.atom + "-" + mod.id3.atom);
-        chemcomp.rt.angles.push_back(mod);
-        chemcomp.rt.angles.back().id1.comp = 1;
+        }
         break;
       case 'd':
         if (it != chemcomp.rt.angles.end())
@@ -559,11 +564,13 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
                                        mod.id3.atom, mod.id4.atom);
     switch (mod.id1.comp) {
       case 'a':
-        if (it != chemcomp.rt.torsions.end())
+        if (it == chemcomp.rt.torsions.end()) {
+          chemcomp.rt.torsions.push_back(mod);
+          chemcomp.rt.torsions.back().id1.comp = 1;
+        } else if (strict) {
           fail("Torsion angle exists and cannot be added: " + mod.id1.atom +
                "-" + mod.id2.atom + "-" + mod.id3.atom + "-" + mod.id4.atom);
-        chemcomp.rt.torsions.push_back(mod);
-        chemcomp.rt.torsions.back().id1.comp = 1;
+        }
         break;
       case 'd':
         if (it != chemcomp.rt.torsions.end())
@@ -590,11 +597,13 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
                                     mod.id2.atom, mod.id3.atom);
     switch (mod.id1.comp) {
       case 'a':
-        if (it != chemcomp.rt.chirs.end())
+        if (it == chemcomp.rt.chirs.end()) {
+          chemcomp.rt.chirs.push_back(mod);
+          chemcomp.rt.chirs.back().id1.comp = 1;
+        } else if (strict) {
           fail("Chirality exists and cannot be added: " + mod.id_ctr.atom +
                "," + mod.id1.atom + "," + mod.id2.atom + "," + mod.id3.atom);
-        chemcomp.rt.chirs.push_back(mod);
-        chemcomp.rt.chirs.back().id1.comp = 1;
+        }
         break;
       case 'd':
         if (it != chemcomp.rt.chirs.end())
@@ -614,7 +623,9 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
         Restraints::Plane& plane = chemcomp.rt.planes[mod.first];
         if (plane.esd == 0.0 && !std::isnan(mod.second.esd))
           plane.esd = mod.second.esd;
-        plane.ids.push_back({1, atom_id.atom});
+        Restraints::AtomId new_id{1, atom_id.atom};
+        if (in_vector(new_id, plane.ids))
+          plane.ids.push_back(new_id);
       } else if (atom_id.comp == 'd') {
         auto it = chemcomp.rt.planes.find(mod.first);
         if (it != chemcomp.rt.planes.end()) {

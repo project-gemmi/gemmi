@@ -539,7 +539,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       params.globbing = true;
   }
 
-  std::vector<std::string> paths = p.paths_from_args_or_file(FromFile, false);
+  auto paths = p.paths_from_args_or_file(FromFile, 1, false);
 
   size_t file_count = 0;
   int err_count = 0;

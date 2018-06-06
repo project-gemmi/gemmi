@@ -44,10 +44,12 @@ struct OptParser : option::Parser {
   OptParser(const char* prog) : program_name(prog) {}
   void simple_parse(int argc, char** argv, const option::Descriptor usage[]);
   void require_positional_args(int n);
-  void require_input_files_as_args();
+  void require_input_files_as_args(int other_args=0);
   // returns the nth arg except that a PDB code gets replaced by $PDB_DIR/...
   std::string coordinate_input_file(int n);
-  std::vector<std::string> paths_from_args_or_file(int opt, bool expand);
+  std::vector<std::string> paths_from_args_or_file(int opt, int other,
+                                                   bool expand);
+  [[noreturn]] void print_try_help_and_exit();
   const char* given_name(int opt) const {  // sans one dash
     return options[opt].namelen > 1 ? options[opt].name + 1
                                     : options[opt].desc->shortopt;
