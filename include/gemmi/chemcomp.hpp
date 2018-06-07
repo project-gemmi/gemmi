@@ -80,6 +80,11 @@ struct Restraints {
   std::vector<Chirality> chirs;
   std::map<std::string, Plane> planes;
 
+  bool empty() const {
+    return bonds.empty() && angles.empty() && torsions.empty() &&
+           chirs.empty() && planes.empty();
+  }
+
   template<typename T>
   std::vector<Bond>::iterator find_bond(const T& a1, const T& a2) {
     return std::find_if(bonds.begin(), bonds.end(), [&](const Bond& b) {

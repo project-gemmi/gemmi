@@ -427,17 +427,22 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
   int counters[5] = {0, 0, 0, 0, 0};
   for (const Linkage::ChainInfo& chain_info : linkage.chains) {
     for (const Linkage::ResInfo& ri : chain_info.residues) {
+      // write link
       if (ri.prev) {
-        const gemmi::Residue* prev = ri.prev->res;
-        std::string comment = "# link " + ri.prev_link + " " +
-                               prev->seq_id() + " " + prev->name + " - " +
-                               ri.res->seq_id() + " " + ri.res->name;
-        restr_loop.add_row({comment + "\nLINK", ".", cif::quote(ri.prev_link),
-                            ".", ".", ".", ".", ".", ".", ".", "."});
-        if (const gemmi::ChemLink* link = monlib.find_link(ri.prev_link))
+        const gemmi::ChemLink* link = monlib.find_link(ri.prev_link);
+        if (link && !link->rt.empty()) {
+          const gemmi::Residue* prev = ri.prev->res;
+          std::string comment = "# link " + ri.prev_link + " " +
+                                 prev->seq_id() + " " + prev->name + " - " +
+                                 ri.res->seq_id() + " " + ri.res->name;
+          restr_loop.add_row({comment + "\nLINK", ".", cif::quote(ri.prev_link),
+                              ".", ".", ".", ".", ".", ".", ".", "."});
           add_restraints(link->rt, *prev, ri.res, restr_loop, counters);
+        }
       }
+
       gemmi::ChemComp chem_comp = monlib.monomers.at(ri.res->name);
+      // apply modifications
       for (const std::string& modif : ri.mods) {
         if (!modif.empty()) {
           if (const gemmi::ChemMod* chem_mod = monlib.find_mod(modif))
@@ -451,13 +456,16 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
             printf("Modification not found: %s\n", modif.c_str());
         }
       }
-      // comments are added relying on how cif writing works
-      std::string res_info = "# monomer " + chain_info.name + " " +
-                             ri.res->seq_id() + " " + ri.res->name;
-      restr_loop.add_row({res_info + "\nMONO", ".",
-                          cif::quote(chem_comp.group.substr(0, 8)),
-                          ".", ".", ".", ".", ".", ".", ".", "."});
-      add_restraints(chem_comp.rt, *ri.res, nullptr, restr_loop, counters);
+      // write monomer
+      if (!chem_comp.rt.empty()) {
+        // comments are added relying on how cif writing works
+        std::string res_info = "# monomer " + chain_info.name + " " +
+                               ri.res->seq_id() + " " + ri.res->name;
+        restr_loop.add_row({res_info + "\nMONO", ".",
+                            cif::quote(chem_comp.group.substr(0, 8)),
+                            ".", ".", ".", ".", ".", ".", ".", "."});
+        add_restraints(chem_comp.rt, *ri.res, nullptr, restr_loop, counters);
+      }
     }
   }
   return doc;
