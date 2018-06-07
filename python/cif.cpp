@@ -79,10 +79,10 @@ void add_cif(py::module& cif) {
          py::keep_alive<0, 1>())
     .def("find", (Table (Block::*)(const std::string&,
             const std::vector<std::string>&)) &Block::find,
-         py::arg("prefix"), py::arg("tags"))
+         py::arg("prefix"), py::arg("tags"), py::keep_alive<0, 1>())
     .def("find", (Table (Block::*)(const std::vector<std::string>&))
                  &Block::find,
-         py::arg("tags"))
+         py::arg("tags"), py::keep_alive<0, 1>())
     .def("set_pair", &Block::set_pair, py::arg("tag"), py::arg("value"))
     .def("init_loop", &Block::init_loop, py::arg("prefix"), py::arg("tags"),
          py::return_value_policy::reference_internal)
