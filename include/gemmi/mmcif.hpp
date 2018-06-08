@@ -81,7 +81,7 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
         // waters have null label_seq_id so we use auth_seq_id+icode.
         "ptnr1_auth_seq_id", "ptnr2_auth_seq_id", // 10-11
         "?pdbx_ptnr1_PDB_ins_code", "?pdbx_ptnr2_PDB_ins_code", // 12-13
-        "?ptnr1_symmetry", "?ptnr2_symmetry"/*14-15*/})) {
+        "?ptnr1_symmetry", "?ptnr2_symmetry", "?pdbx_dist_value"/*14-16*/})) {
     Connection c;
     c.name = row.str(0);
     std::string type = row.str(1);
@@ -93,6 +93,8 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
     if (row.has2(14) && row.has2(15)) {
       c.asu = (row.str(14) == row.str(15) ? SameAsu::Yes : SameAsu::No);
     }
+    if (row.has2(16))
+      c.reported_distance = cif::as_number(row[16]);
     for (int i = 0; i < 2; ++i) {
       AtomAddress& a = c.atom[i];
       a.chain_name = row.str(2+i);

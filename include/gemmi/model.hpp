@@ -484,6 +484,7 @@ struct Connection {
   Type type = None;
   SameAsu asu = SameAsu::Any;
   AtomAddress atom[2];
+  double reported_distance = 0.0;
 };
 
 inline const char* get_mmcif_connection_type_id(Connection::Type t) {

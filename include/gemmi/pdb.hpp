@@ -260,6 +260,8 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       c.atom[1].res_id = read_res_id(r + 31, r + 25);
       c.atom[1].atom_name = "SG";
       c.asu = compare_link_symops(record);
+      if (record.length() > 73)
+        c.reported_distance = read_double(r + 73, 5);
       for (Model& mdl : st.models) {
         for (AtomAddress& ad : c.atom) {
           CRA cra = mdl.find_cra(ad);
@@ -296,6 +298,8 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
         c.atom[i].altloc = (t[16] == ' ' ? '\0' : t[16]);
       }
       c.asu = compare_link_symops(record);
+      if (record.length() > 73)
+        c.reported_distance = read_double(&record[73], 5);
       for (Model& mdl : st.models)
         mdl.connections.emplace_back(c);
     } else if (record[0] == 'C' || record[0] == 'c') { // CISPEP
