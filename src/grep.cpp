@@ -474,11 +474,6 @@ static void replace_all(std::string &s,
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
-  if (p.options[FromFile] ? p.nonOptionsCount() != 1
-                          : p.nonOptionsCount() < 2) {
-    option::printUsage(fwrite, stderr, Usage);
-    return 2;
-  }
 
   Parameters params;
   if (p.options[MaxCount])
@@ -515,6 +510,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     replace_all(params.delim, "\\t", "\t");
   }
 
+  auto paths = p.paths_from_args_or_file(FromFile, 1, false);
   const char* tag = p.nonOption(0);
   if (tag[0] != '_') {
     fprintf(stderr, "CIF tag must start with \"_\": %s\n", tag);
@@ -538,8 +534,6 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (params.search_tag.find_first_of("?*") != std::string::npos)
       params.globbing = true;
   }
-
-  auto paths = p.paths_from_args_or_file(FromFile, 1, false);
 
   size_t file_count = 0;
   int err_count = 0;

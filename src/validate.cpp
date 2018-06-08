@@ -146,10 +146,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 #endif
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
-  if (p.nonOptionsCount() == 0) {
-    option::printUsage(std::cout, Usage);
-    return 0;
-  }
+  p.require_input_files_as_args();
 
   bool quiet = p.options[Quiet];
   bool total_ok = true;
