@@ -38,21 +38,35 @@ def main():
     else:
         print('LINK count differs:', link_count_1, link_count_2)
     # compare up to the first major difference
-    def nums_differ(a, b, eps=0.002):
-        return a != b and abs(float(a) - float(a)) > eps
+    def same_nums(a, b, eps=0.003, mod360=False):
+        if a == b:
+            return True
+        abs_diff = abs(float(a) - float(b))
+        return abs_diff < eps or (mod360 and abs(abs_diff - 360) < eps)
     for n, (a, b) in enumerate(zip(r1, r2)):
-        if a[0] != b[0] or a[1] != b[1]:
+        if a[:2] != b[:2]:
             print('item', n, 'differs:', a[:2], 'vs', b[:2])
-            if a[0] != b[0] or a[1] != '.':
+            if a[0] != b[0] or (a[0] == 'mono' and a[1] != '.'):
                 print('stop')
                 break
         if len(a[2]) != len(b[2]):
             print('item %d: %d vs %d restr.' % (n, len(a[2]), len(b[2])))
         else:
-            for m, (restr1, restr2) in enumerate(zip(a[2], b[2])):
-                if restr1[:8] != restr2[:8] or \
-                   any(nums_differ(restr1[i], restr2[i]) for i in (8, 9, 10)):
+            for m, (rst1, rst2) in enumerate(zip(a[2], b[2])):
+                is_tors = (rst1.record == 'tors')
+                if rst1[:8] != rst2[:8]:
                     print('Different restraint %d:%d:\n%s\nvs\n%s\n' %
-                          (n, m, restr1, restr2))
+                          (n, m, rst1, rst2))
+                elif not same_nums(rst1.value, rst2.value):
+                    print('Different value for %d:%d (%s vs %s) in:\n%s\n' %
+                          (n, m, rst1.value, rst2.value, rst1))
+                elif not same_nums(rst1.dev, rst2.dev):
+                    print('Different dev for %d:%d (%s vs %s) in:\n%s\n' %
+                          (n, m, rst1.dev, rst2.dev, rst1))
+                elif not same_nums(rst1.val_obs, rst2.val_obs,
+                                   eps=(0.1 if is_tors else 0.003),
+                                   mod360=is_tors):
+                    print('Different val_obs for %d:%d (%s vs %s) in:\n%s\n' %
+                          (n, m, rst1.val_obs, rst2.val_obs, rst1))
 
 main()

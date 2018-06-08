@@ -43,8 +43,8 @@ struct MonLib {
   std::map<std::string, gemmi::ChemLink> links;
   std::map<std::string, gemmi::ChemMod> modifications;
 
-  const gemmi::ChemLink* find_link(const std::string& name) const {
-    auto link = links.find(name);
+  const gemmi::ChemLink* find_link(const std::string& link_id) const {
+    auto link = links.find(link_id);
     return link != links.end() ? &link->second : nullptr;
   }
   const gemmi::ChemMod* find_mod(const std::string& name) const {
@@ -60,14 +60,22 @@ inline MonLib read_monomers(std::string monomer_dir,
   if (monomer_dir.back() != '/' && monomer_dir.back() != '\\')
     monomer_dir += '/';
   monlib.mon_lib_list = cif_read_any(monomer_dir + "list/mon_lib_list.cif");
+  std::string error;
   for (const std::string& name : resnames) {
     std::string path = monomer_dir;
     path += std::tolower(name[0]);
     path += '/';
     path += name + ".cif";
-    auto cc = gemmi::make_chemcomp_from_cif(name, cif_read_any(path));
-    monlib.monomers.emplace(name, cc);
+    try {
+      cif::Document doc = cif_read_any(path);
+      auto cc = gemmi::make_chemcomp_from_cif(name, doc);
+      monlib.monomers.emplace(name, cc);
+    } catch(std::runtime_error& err) {
+      error += "The monomer " + name + " could not be read.\n";
+    }
   }
+  if (!error.empty())
+    gemmi::fail(error + "Please create definitions for missing monomers.");
   monlib.links = gemmi::read_chemlinks(monlib.mon_lib_list);
   monlib.modifications = gemmi::read_chemmods(monlib.mon_lib_list);
   return monlib;
@@ -472,16 +480,35 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
         add_restraints(chem_comp.rt, *ri.res, nullptr, restr_loop, counters);
       }
     }
-    // explicit links
-    for (const Linkage::ExtraLink& link : linkage.extra) {
-      std::string link_name;
-      std::string comment = "# link " + link_name;
-      restr_loop.add_row({comment + "\nLINK", ".", cif::quote(link_name),
-                          ".", ".", ".", ".", ".", ".", ".", "."});
-      add_restraints(link.link.rt, *link.res1, link.res2, restr_loop, counters);
-    }
+  }
+  // explicit links
+  for (const Linkage::ExtraLink& link : linkage.extra) {
+    std::string link_name = link.res1->name + "-" + link.res2->name;
+    std::string comment = "# link " + link_name;
+    restr_loop.add_row({comment + "\nLINK", ".", cif::quote(link_name),
+                        ".", ".", ".", ".", ".", ".", ".", "."});
+    add_restraints(link.link.rt, *link.res1, link.res2, restr_loop, counters);
   }
   return doc;
+}
+
+static
+gemmi::ChemLink connection_to_chemlink(const gemmi::Connection& conn,
+                                       const gemmi::Residue& res1,
+                                       const gemmi::Residue& res2) {
+  gemmi::ChemLink link;
+  link.id = res1.name + "-" + res2.name;
+  link.comp[0] = res1.name;
+  link.comp[1] = res2.name;
+  gemmi::Restraints::Bond bond;
+  bond.id1 = Restraints::AtomId{1, conn.atom[0].atom_name};
+  bond.id2 = Restraints::AtomId{2, conn.atom[1].atom_name};
+  bond.type = gemmi::Restraints::Bond::Unspec;
+  bond.aromatic = false;
+  bond.value = conn.reported_distance;
+  bond.esd = 0.02;
+  link.rt.bonds.push_back(bond);
+  return link;
 }
 
 
@@ -495,7 +522,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     fprintf(stderr, "Set $CLIBD_MON or use option --monomers.\n");
     return 1;
   }
-  std::string input = p.nonOption(0);
+  std::string input = p.coordinate_input_file(0);
   std::string output = p.nonOption(1);
   try {
     gemmi::Structure st = read_structure(input);
@@ -537,11 +564,13 @@ int GEMMI_MAIN(int argc, char **argv) {
         }
     // add extra links
     for (const gemmi::Connection& conn : model0.connections) {
-      Linkage::ExtraLink link;
-      link.res1 = model0.find_cra(conn.atom[0]).residue;
-      link.res2 = model0.find_cra(conn.atom[1]).residue;
-      // TODO
-      linkage.extra.push_back(link);
+      Linkage::ExtraLink extra;
+      extra.res1 = model0.find_cra(conn.atom[0]).residue;
+      extra.res2 = model0.find_cra(conn.atom[1]).residue;
+      if (extra.res1 && extra.res2) {
+        extra.link = connection_to_chemlink(conn, *extra.res1, *extra.res2);
+        linkage.extra.push_back(extra);
+      }
     }
 
     cif::Document crd = make_crd(st, monlib, linkage);
