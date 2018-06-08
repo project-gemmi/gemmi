@@ -86,9 +86,14 @@ struct Linkage {
     bool polymer;
     std::vector<ResInfo> residues;
   };
+  struct ExtraLink {
+    const gemmi::Residue* res1;
+    const gemmi::Residue* res2;
+    gemmi::ChemLink link;
+  };
 
   std::vector<ChainInfo> chains;
-  std::vector<gemmi::Connection> extra;
+  std::vector<ExtraLink> extra;
 };
 
 static std::string get_link_type(const gemmi::Residue& res,
@@ -467,6 +472,14 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
         add_restraints(chem_comp.rt, *ri.res, nullptr, restr_loop, counters);
       }
     }
+    // explicit links
+    for (const Linkage::ExtraLink& link : linkage.extra) {
+      std::string link_name;
+      std::string comment = "# link " + link_name;
+      restr_loop.add_row({comment + "\nLINK", ".", cif::quote(link_name),
+                          ".", ".", ".", ".", ".", ".", ".", "."});
+      add_restraints(link.link.rt, *link.res1, link.res2, restr_loop, counters);
+    }
   }
   return doc;
 }
@@ -490,8 +503,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::split_nonpolymers(st);
     if (st.models.empty())
       return 1;
+    gemmi::Model& model0 = st.models[0];
     std::set<std::string> resnames;
-    for (const gemmi::Chain& chain : st.models[0].chains)
+    for (const gemmi::Chain& chain : model0.chains)
       for (const gemmi::Residue& res : chain.residues)
         resnames.insert(res.name);
 
@@ -507,12 +521,12 @@ int GEMMI_MAIN(int argc, char **argv) {
         }
 
     Linkage linkage;
-    linkage.chains.reserve(st.models[0].chains.size());
-    for (gemmi::Chain& chain : st.models[0].chains) {
+    linkage.chains.reserve(model0.chains.size());
+    for (const gemmi::Chain& chain : model0.chains) {
       const gemmi::Entity* ent = st.get_entity_of(chain);
       linkage.chains.push_back(determine_linkage(chain, ent));
     }
-    // add modifications from links
+    // add modifications from standard links
     for (Linkage::ChainInfo& chain_info : linkage.chains)
       for (Linkage::ResInfo& ri : chain_info.residues)
         if (const gemmi::ChemLink* link = monlib.find_link(ri.prev_link)) {
@@ -521,6 +535,14 @@ int GEMMI_MAIN(int argc, char **argv) {
           if (!link->mod[1].empty())
             ri.mods.push_back(link->mod[1]);
         }
+    // add extra links
+    for (const gemmi::Connection& conn : model0.connections) {
+      Linkage::ExtraLink link;
+      link.res1 = model0.find_cra(conn.atom[0]).residue;
+      link.res2 = model0.find_cra(conn.atom[1]).residue;
+      // TODO
+      linkage.extra.push_back(link);
+    }
 
     cif::Document crd = make_crd(st, monlib, linkage);
     if (p.options[Verbose])
