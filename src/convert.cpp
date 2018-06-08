@@ -5,7 +5,6 @@
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/sprintf.hpp"
-#include "gemmi/fileutil.hpp"  // for expand_if_pdb_code
 #include "gemmi/modify.hpp"  // for remove_hydrogens, ...
 
 #include <cstring>
@@ -279,7 +278,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.simple_parse(argc, argv, Usage);
   p.require_positional_args(2);
 
-  std::string input = p.nonOption(0);
+  std::string input = p.coordinate_input_file(0);
   const char* output = p.nonOption(1);
 
   // CoorFormat::Mmcif here stands for any CIF files,
@@ -291,10 +290,6 @@ int GEMMI_MAIN(int argc, char **argv) {
   CoorFormat in_type = p.options[FormatIn]
     ? filetypes[p.options[FormatIn].arg]
     : coordinate_format_from_extension(input);
-  if (in_type == CoorFormat::Unknown && gemmi::is_pdb_code(input)) {
-    input = gemmi::expand_if_pdb_code(input);
-    in_type = CoorFormat::Mmcif;
-  }
   if (in_type == CoorFormat::Unknown) {
     std::cerr << "The input format cannot be determined from input"
                  " filename. Use option --from.\n";
