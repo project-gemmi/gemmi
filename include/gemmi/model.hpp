@@ -271,7 +271,8 @@ struct Residue : public ResidueId {
   const Atom* find_atom(const std::string& atom_name, char altloc='*',
                         El el=El::X) const {
     for (const Atom& a : atoms)
-      if (a.name == atom_name && (altloc == '*' || a.altloc == altloc)
+      if (a.name == atom_name
+          && (altloc == '*' || a.altloc == '\0' || a.altloc == altloc)
           && (el == El::X || a.element == el))
         return &a;
     return nullptr;
