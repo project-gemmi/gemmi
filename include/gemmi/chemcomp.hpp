@@ -31,11 +31,12 @@ struct Restraints {
     bool operator==(const std::string& name) const { return atom == name; }
     bool operator!=(const std::string& name) const { return atom != name; }
 
-    const Atom* get_from(const Residue& res, const Residue* res2) const {
+    const Atom* get_from(const Residue& res, const Residue* res2,
+                         char altloc) const {
       if (comp == 1 || res2 == nullptr)
-        return res.find_atom(atom);
+        return res.find_atom(atom, altloc);
       else if (comp == 2)
-        return res2->find_atom(atom);
+        return res2->find_atom(atom, altloc);
       throw std::out_of_range("Unexpected component ID");
     }
   };

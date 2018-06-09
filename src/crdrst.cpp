@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <cstdlib> // for getenv
 #include <cctype>  // for tolower
+#include <numeric>  // for accumulate
 #include <set>
 #include <stdexcept>
 #include "input.h"
@@ -113,7 +114,7 @@ static std::string get_link_type(const gemmi::Residue& res,
   if (!are_connected(*prev, res, ptype))
     return "gap";
   if (ptype == PolymerType::PeptideL || ptype == PolymerType::PeptideD) {
-    std::string link = res.is_cis ? "CIS" : "TRANS";
+    std::string link = prev->is_cis ? "CIS" : "TRANS";
     if (res.name == "PRO") {
       link = "P" + link;
     } else if (false /*check if is mpeptide*/) {
@@ -157,7 +158,13 @@ Linkage::ChainInfo determine_linkage(const gemmi::Chain& chain,
       lr.prev_link = get_link_type(res, (prev ? prev->res : nullptr),
                                    ent->polymer_type);
       lr.prev = prev;
-      lr.mods.push_back(get_modification(chain, res, ent->polymer_type));
+
+      // we try to get exactly the same numbers that makecif produces
+      if (ent->polymer_type == gemmi::PolymerType::PeptideL)
+        lr.mods.push_back("AA-STAND");
+      else
+        lr.mods.push_back(get_modification(chain, res, ent->polymer_type));
+
       lc.residues.push_back(lr);
       prev = &lc.residues.back();
     }
@@ -336,97 +343,127 @@ static std::string chirality_to_string(Restraints::Chirality::Type ctype) {
   }
 }
 
-static
-void add_restraints(const Restraints& rt,
-                    const gemmi::Residue& res, const gemmi::Residue* res2,
-                    cif::Loop& restr_loop, int (&counters)[5]) {
+static int add_restraints(const Restraints& rt,
+                          const gemmi::Residue& res, const gemmi::Residue* res2,
+                          cif::Loop& restr_loop, int (&counters)[5]) {
   //using gemmi::to_str;
   const auto& to_str = gemmi::to_str_prec<3>; // to make comparisons easier
   const auto& to_str3 = gemmi::to_str_prec<3>;
 
+  int init_count = std::accumulate(counters, counters + 5, 0);
+
+  // find all distinct altlocs
+  std::string altlocs;
+  for (const gemmi::Atom& atom : res.atoms)
+    if (atom.altloc && altlocs.find(atom.altloc) == std::string::npos)
+      altlocs += atom.altloc;
+  if (res2)
+    for (const gemmi::Atom& atom : res2->atoms)
+      if (atom.altloc && altlocs.find(atom.altloc) == std::string::npos)
+        altlocs += atom.altloc;
+  if (altlocs.empty())
+    altlocs += '*';
+
   for (const Restraints::Bond& bond : rt.bonds)
-    if (const gemmi::Atom* at1 = bond.id1.get_from(res, res2))
-      if (const gemmi::Atom* at2 = bond.id2.get_from(res, res2)) {
-        std::string obs = to_str3(at1->pos.dist(at2->pos));
-        obs += " # " + at1->name + " " + at2->name;
-        restr_loop.add_row({"BOND", std::to_string(++counters[0]),
-                            bond_type_to_string(bond.type), ".",
-                            std::to_string(at1->custom),
-                            std::to_string(at2->custom),
-                            ".", ".",
-                            to_str(bond.value), to_str(bond.esd), obs});
-      }
-  for (const Restraints::Angle& angle : rt.angles)
-    if (const gemmi::Atom* at1 = angle.id1.get_from(res, res2))
-      if (const gemmi::Atom* at2 = angle.id2.get_from(res, res2))
-        if (const gemmi::Atom* at3 = angle.id3.get_from(res, res2)) {
-          double a = gemmi::calculate_angle(at1->pos, at2->pos, at3->pos);
-          std::string obs = to_str3(gemmi::deg(a));
-          obs += " # " + at1->name + " " + at2->name + " " + at3->name;
-          restr_loop.add_row({"ANGL", std::to_string(++counters[1]),
-                              ".", ".",
+    for (char alt : altlocs)
+      if (const gemmi::Atom* at1 = bond.id1.get_from(res, res2, alt))
+        if (const gemmi::Atom* at2 = bond.id2.get_from(res, res2, alt)) {
+          std::string obs = to_str3(at1->pos.dist(at2->pos));
+          obs += " # " + at1->name + " " + at2->name;
+          restr_loop.add_row({"BOND", std::to_string(++counters[0]),
+                              bond_type_to_string(bond.type), ".",
                               std::to_string(at1->custom),
                               std::to_string(at2->custom),
-                              std::to_string(at3->custom),
-                              ".",
-                              to_str(angle.value), to_str(angle.esd), obs});
-      }
-  for (const Restraints::Torsion& tor : rt.torsions)
-    if (const gemmi::Atom* at1 = tor.id1.get_from(res, res2))
-      if (const gemmi::Atom* at2 = tor.id2.get_from(res, res2))
-        if (const gemmi::Atom* at3 = tor.id3.get_from(res, res2))
-          if (const gemmi::Atom* at4 = tor.id4.get_from(res, res2)) {
-            double d = gemmi::calculate_dihedral(at1->pos, at2->pos,
-                                                 at3->pos, at4->pos);
-            std::string obs = to_str3(gemmi::deg(d));
-            obs += " # " + at1->name + " " + at2->name +
-                   " " + at3->name + " " + at4->name;
-            restr_loop.add_row({"TORS", std::to_string(++counters[2]),
-                                tor.label, std::to_string(tor.period),
+                              ".", ".",
+                              to_str(bond.value), to_str(bond.esd), obs});
+          if (!at1->altloc && !at2->altloc)
+            break;
+        }
+  for (const Restraints::Angle& angle : rt.angles)
+    for (char alt : altlocs)
+      if (const gemmi::Atom* at1 = angle.id1.get_from(res, res2, alt))
+        if (const gemmi::Atom* at2 = angle.id2.get_from(res, res2, alt))
+          if (const gemmi::Atom* at3 = angle.id3.get_from(res, res2, alt)) {
+            double a = gemmi::calculate_angle(at1->pos, at2->pos, at3->pos);
+            std::string obs = to_str3(gemmi::deg(a));
+            obs += " # " + at1->name + " " + at2->name + " " + at3->name;
+            restr_loop.add_row({"ANGL", std::to_string(++counters[1]),
+                                ".", ".",
                                 std::to_string(at1->custom),
                                 std::to_string(at2->custom),
                                 std::to_string(at3->custom),
-                                std::to_string(at4->custom),
-                                to_str(tor.value), to_str(tor.esd), obs});
-      }
-  for (const Restraints::Chirality& chir : rt.chirs)
-    if (const gemmi::Atom* at1 = chir.id_ctr.get_from(res, res2))
-      if (const gemmi::Atom* at2 = chir.id1.get_from(res, res2))
-        if (const gemmi::Atom* at3 = chir.id2.get_from(res, res2))
-          if (const gemmi::Atom* at4 = chir.id3.get_from(res, res2)) {
-            double vol = rt.chiral_abs_volume(chir);
-            double obs_vol = gemmi::calculate_chiral_volume(
-                                  at1->pos, at2->pos, at3->pos, at4->pos);
-            std::string obs = to_str3(obs_vol)
-                              + " # " + at1->name + " " + at2->name
-                              + " " + at3->name + " " + at4->name;
-            restr_loop.add_row({"CHIR", std::to_string(++counters[3]),
-                                chirality_to_string(chir.chir), ".",
-                                std::to_string(at1->custom),
-                                std::to_string(at2->custom),
-                                std::to_string(at3->custom),
-                                std::to_string(at4->custom),
-                                to_str3(vol), "0.020", obs});
+                                ".",
+                                to_str(angle.value), to_str(angle.esd), obs});
+            if (!at1->altloc && !at2->altloc && !at3->altloc)
+              break;
           }
-  for (const auto& item : rt.planes) {
-    const Restraints::Plane& plane = item.second;
-    std::vector<const gemmi::Atom*> atoms;
-    for (const Restraints::AtomId& id : plane.ids)
-      if (const gemmi::Atom* atom = id.get_from(res, res2))
-        atoms.push_back(atom);
-    if (atoms.size() < 4)
-      continue;
-    ++counters[4];
-    auto coeff = find_best_plane(atoms);
-    for (const gemmi::Atom* atom : atoms) {
-      double dist = coeff[0] * atom->pos.x + coeff[1] * atom->pos.y +
-                    coeff[2] * atom->pos.z + coeff[3];
-      std::string obs = to_str3(dist) + " # " + atom->name;
-      restr_loop.add_row({"PLAN", std::to_string(counters[4]), item.first,
-                          ".", std::to_string(atom->custom), ".", ".", ".",
-                          to_str(plane.esd), ".", obs});
+  for (const Restraints::Torsion& tor : rt.torsions)
+    for (char alt : altlocs)
+      if (const gemmi::Atom* at1 = tor.id1.get_from(res, res2, alt))
+        if (const gemmi::Atom* at2 = tor.id2.get_from(res, res2, alt))
+          if (const gemmi::Atom* at3 = tor.id3.get_from(res, res2, alt))
+            if (const gemmi::Atom* at4 = tor.id4.get_from(res, res2, alt)) {
+              double d = gemmi::calculate_dihedral(at1->pos, at2->pos,
+                                                   at3->pos, at4->pos);
+              std::string obs = to_str3(gemmi::deg(d));
+              obs += " # " + at1->name + " " + at2->name +
+                     " " + at3->name + " " + at4->name;
+              restr_loop.add_row({"TORS", std::to_string(++counters[2]),
+                                  tor.label, std::to_string(tor.period),
+                                  std::to_string(at1->custom),
+                                  std::to_string(at2->custom),
+                                  std::to_string(at3->custom),
+                                  std::to_string(at4->custom),
+                                  to_str(tor.value), to_str(tor.esd), obs});
+              if (!at1->altloc && !at2->altloc && !at3->altloc && !at4->altloc)
+                break;
+        }
+  for (const Restraints::Chirality& chir : rt.chirs)
+    for (char alt : altlocs)
+      if (const gemmi::Atom* at1 = chir.id_ctr.get_from(res, res2, alt))
+        if (const gemmi::Atom* at2 = chir.id1.get_from(res, res2, alt))
+          if (const gemmi::Atom* at3 = chir.id2.get_from(res, res2, alt))
+            if (const gemmi::Atom* at4 = chir.id3.get_from(res, res2, alt)) {
+              double vol = rt.chiral_abs_volume(chir);
+              double obs_vol = gemmi::calculate_chiral_volume(
+                                    at1->pos, at2->pos, at3->pos, at4->pos);
+              std::string obs = to_str3(obs_vol)
+                                + " # " + at1->name + " " + at2->name
+                                + " " + at3->name + " " + at4->name;
+              restr_loop.add_row({"CHIR", std::to_string(++counters[3]),
+                                  chirality_to_string(chir.chir), ".",
+                                  std::to_string(at1->custom),
+                                  std::to_string(at2->custom),
+                                  std::to_string(at3->custom),
+                                  std::to_string(at4->custom),
+                                  to_str3(vol), "0.020", obs});
+              if (!at1->altloc && !at2->altloc && !at3->altloc && !at4->altloc)
+                break;
+            }
+  for (const auto& item : rt.planes)
+    for (char alt : altlocs) {
+      const Restraints::Plane& plane = item.second;
+      std::vector<const gemmi::Atom*> atoms;
+      for (const Restraints::AtomId& id : plane.ids)
+        if (const gemmi::Atom* atom = id.get_from(res, res2, alt))
+          atoms.push_back(atom);
+      if (atoms.size() < 4)
+        continue;
+      ++counters[4];
+      auto coeff = find_best_plane(atoms);
+      for (const gemmi::Atom* atom : atoms) {
+        double dist = coeff[0] * atom->pos.x + coeff[1] * atom->pos.y +
+                      coeff[2] * atom->pos.z + coeff[3];
+        std::string obs = to_str3(dist) + " # " + atom->name;
+        restr_loop.add_row({"PLAN", std::to_string(counters[4]), item.first,
+                            ".", std::to_string(atom->custom), ".", ".", ".",
+                            to_str(plane.esd), ".", obs});
+      }
+      if (std::all_of(atoms.begin(), atoms.end(),
+                      [](const gemmi::Atom* a) { return !a->altloc; }))
+        break;
     }
-  }
+  return std::accumulate(counters, counters + 5, 0) - init_count;
 }
 
 static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
@@ -450,7 +487,9 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
                                  ri.res->seq_id() + " " + ri.res->name;
           restr_loop.add_row({comment + "\nLINK", ".", cif::quote(ri.prev_link),
                               ".", ".", ".", ".", ".", ".", ".", "."});
-          add_restraints(link->rt, *prev, ri.res, restr_loop, counters);
+          int n = add_restraints(link->rt, *prev, ri.res, restr_loop, counters);
+          if (n == 0)
+            restr_loop.pop_row();  // remove the LINK line
         }
       }
 
@@ -477,7 +516,10 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
         restr_loop.add_row({res_info + "\nMONO", ".",
                             cif::quote(chem_comp.group.substr(0, 8)),
                             ".", ".", ".", ".", ".", ".", ".", "."});
-        add_restraints(chem_comp.rt, *ri.res, nullptr, restr_loop, counters);
+        int n = add_restraints(chem_comp.rt, *ri.res, nullptr,
+                               restr_loop, counters);
+        if (n == 0)
+          restr_loop.pop_row();  // remove the MONO line
       }
     }
   }

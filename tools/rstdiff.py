@@ -3,6 +3,7 @@
 # Usage: ./rstdiff.py first.rst second.rst
 
 import sys
+import difflib
 from gemmi import cif
 from collections import namedtuple
 
@@ -50,7 +51,12 @@ def main():
                 print('stop')
                 break
         if len(a[2]) != len(b[2]):
-            print('item %d: %d vs %d restr.' % (n, len(a[2]), len(b[2])))
+            print('Item %d has different restr count: %d vs %d' %
+                  (n, len(a[2]), len(b[2])))
+            for line in difflib.unified_diff(
+                    [' '.join(s or '.' for s in x[:10]) for x in a[2]],
+                    [' '.join(s or '.' for s in x[:10]) for x in b[2]]):
+                print(line)
         else:
             for m, (rst1, rst2) in enumerate(zip(a[2], b[2])):
                 is_tors = (rst1.record == 'tors')
@@ -64,7 +70,7 @@ def main():
                     print('Different dev for %d:%d (%s vs %s) in:\n%s\n' %
                           (n, m, rst1.dev, rst2.dev, rst1))
                 elif not same_nums(rst1.val_obs, rst2.val_obs,
-                                   eps=(0.1 if is_tors else 0.003),
+                                   eps=(0.15 if is_tors else 0.003),
                                    mod360=is_tors):
                     print('Different val_obs for %d:%d (%s vs %s) in:\n%s\n' %
                           (n, m, rst1.val_obs, rst2.val_obs, rst1))

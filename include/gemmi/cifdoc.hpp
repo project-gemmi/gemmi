@@ -118,6 +118,11 @@ struct Loop {
   void add_row(std::initializer_list<std::string> new_values, int pos=-1) {
     add_row<std::initializer_list<std::string>>(new_values, pos);
   }
+  void pop_row() {
+    if (values.size() < tags.size())
+      fail("pop_row() called on empty Loop");
+    values.resize(values.size() - tags.size());
+  }
 
   void set_all_values(std::vector<std::vector<std::string>> columns);
 };
