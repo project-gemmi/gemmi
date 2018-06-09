@@ -181,10 +181,15 @@ struct ChemComp {
       get_atom(a.name); // check that all atoms exists in _chem_comp_atom
     std::vector<T> ordered;
     ordered.reserve(alist.size());
-    for (const Atom& cca : atoms)
+    for (const Atom& cca : atoms) {
+      size_t size = ordered.size();
       for (const T& a : alist)
         if (a.name == cca.id)
           ordered.push_back(a);
+      if (ordered.size() - size > 1)
+        std::sort(ordered.begin() + size, ordered.end(),
+                  [](const T& a, const T& b) { return a.altloc < b.altloc; });
+    }
     assert(alist.size() == ordered.size());
     alist.swap(ordered);
   }
