@@ -122,7 +122,8 @@ static std::string get_link_type(const gemmi::Residue& res,
     return "gap";
   if (ptype == PolymerType::PeptideL || ptype == PolymerType::PeptideD) {
     std::string link = prev->is_cis ? "CIS" : "TRANS";
-    if (res.name == "PRO") {
+    if (res.name == "PRO" &&
+        link == "TRANS" /* TODO: remove when we don't need makecif compat*/) {
       link = "P" + link;
     } else if (false /*check if is mpeptide*/) {
       link = "NM" + link;
@@ -169,8 +170,7 @@ Linkage::ChainInfo determine_linkage(const gemmi::Chain& chain,
       // we try to get exactly the same numbers that makecif produces
       if (ent->polymer_type == gemmi::PolymerType::PeptideL)
         lr.mods.push_back("AA-STAND");
-      else
-        lr.mods.push_back(get_modification(chain, res, ent->polymer_type));
+      lr.mods.push_back(get_modification(chain, res, ent->polymer_type));
 
       lc.residues.push_back(lr);
       prev = &lc.residues.back();

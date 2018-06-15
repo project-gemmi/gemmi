@@ -2,7 +2,7 @@
 # Show differences between two Refmac intermediate files.
 # Usage: ./rstdiff.py first.rst second.rst
 
-import sys
+import argparse
 import difflib
 from gemmi import cif
 from collections import namedtuple
@@ -22,10 +22,31 @@ def read_rst(path):
             result[-1][2].append(data)
     return result
 
+def compare_crd(crd1, crd2):
+    items = ['id', 'label_atom_id', 'label_alt_id', 'label_comp_id']
+    atoms1 = list(cif.read(crd1).sole_block().find('_atom_site.', items))
+    atoms2 = list(cif.read(crd2).sole_block().find('_atom_site.', items))
+    if len(atoms1) != len(atoms2):
+        print('_atom_site count differs:', len(atoms1), 'vs', len(atoms2))
+    for a1, a2 in zip(atoms1, atoms2):
+        if list(a1) != list(a2):
+            print('First difference:')
+            print('ATOM %s %s %s %s' % (a1[0], a1[1], a1[2], a1[3]))
+            print('ATOM %s %s %s %s' % (a2[0], a2[1], a2[2], a2[3]))
+            print()
+            break
+
 def main():
-    file1, file2 = sys.argv[1:]
-    r1 = read_rst(file1)
-    r2 = read_rst(file2)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--crd', action='store_true',
+                        help='check also corresponding crd files')
+    parser.add_argument('file1_rst', metavar='file1.rst')
+    parser.add_argument('file2_rst', metavar='file2.rst')
+    args = parser.parse_args()
+    if args.crd:
+        compare_crd(args.file1_rst[:-4] + '.crd', args.file2_rst[:-4] + '.crd')
+    r1 = read_rst(args.file1_rst)
+    r2 = read_rst(args.file2_rst)
     mono_count_1 = sum(t[0] == 'mono' for t in r1)
     mono_count_2 = sum(t[0] == 'mono' for t in r2)
     if mono_count_1 == mono_count_2:
