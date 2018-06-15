@@ -52,6 +52,13 @@ struct MonLib {
     auto modif = modifications.find(name);
     return modif != modifications.end() ? &modif->second : nullptr;
   }
+  const gemmi::ChemLink* match_link(const gemmi::ChemLink& link) const {
+    for (auto& ml : links)
+      if (link.matches(ml.second))
+        return &ml.second;
+    return nullptr;
+  }
+
 };
 
 inline MonLib read_monomers(std::string monomer_dir,
@@ -466,6 +473,14 @@ static int add_restraints(const Restraints& rt,
   return std::accumulate(counters, counters + 5, 0) - init_count;
 }
 
+static void make_unique_link_name(std::string& name, const MonLib& monlib) {
+  size_t orig_len = name.size();
+  for (int n = 1; monlib.find_link(name) != nullptr; ++n) {
+    name.resize(orig_len);
+    name += std::to_string(n);
+  }
+}
+
 static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
   cif::Document doc;
   doc.blocks.emplace_back("restraints");
@@ -525,11 +540,19 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
   }
   // explicit links
   for (const Linkage::ExtraLink& link : linkage.extra) {
-    std::string link_name = link.res1->name + "-" + link.res2->name;
-    std::string comment = "# link " + link_name;
-    restr_loop.add_row({comment + "\nLINK", ".", cif::quote(link_name),
+    const gemmi::ChemLink* chem_link = monlib.match_link(link.link);
+    if (!chem_link) {
+      std::string link_name = link.res1->name + "-" + link.res2->name;
+      make_unique_link_name(link_name, monlib);
+      gemmi::ChemLink& v = monlib.links[link_name];
+      v = link.link;
+      v.id = link_name;
+      chem_link = &v;
+    }
+    std::string comment = "# link " + chem_link->id;
+    restr_loop.add_row({comment + "\nLINK", ".", cif::quote(chem_link->id),
                         ".", ".", ".", ".", ".", ".", ".", "."});
-    add_restraints(link.link.rt, *link.res1, link.res2, restr_loop, counters);
+    add_restraints(chem_link->rt, *link.res1, link.res2, restr_loop, counters);
   }
   return doc;
 }
