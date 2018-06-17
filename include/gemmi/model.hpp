@@ -195,10 +195,11 @@ inline bool is_same_conformer(char altloc1, char altloc2) {
 struct Atom {
   static const char* what() { return "Atom"; }
   std::string name;
-  char altloc; // 0 if not set
-  signed char charge;  // [-8, +8]
+  char altloc = '\0'; // 0 if not set
+  signed char charge = 0;  // [-8, +8]
   Element element = El::X;
-  int custom = 0;
+  char flag = '\0'; // custom flag
+  int custom = 0; // for now it's primarily used as a serial number
   Position pos;
   float occ;
   float b_iso;

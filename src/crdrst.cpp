@@ -330,8 +330,8 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
           vv.emplace_back(to_str(a.occ));
           vv.emplace_back(to_str(a.b_iso));
           vv.emplace_back(a.element.uname());
-          vv.emplace_back("."); // calc_flag
-          vv.emplace_back("."); // label_seg_id
+          vv.emplace_back(1, a.flag ? a.flag : '.'); // calc_flag
+          vv.emplace_back(1, '.'); // label_seg_id
           vv.emplace_back(a.name); // again
           vv.emplace_back(cc.get_atom(a.name).chem_type); // label_chem_id
         }
@@ -607,7 +607,17 @@ int GEMMI_MAIN(int argc, char **argv) {
       for (gemmi::Chain& chain : model.chains)
         for (gemmi::Residue& res : chain.residues) {
           const gemmi::ChemComp &cc = monlib.monomers.at(res.name);
-          cc.reorder_atoms(res.atoms);
+          for (gemmi::Atom& atom : res.atoms) {
+            auto it = cc.find_atom(atom.name);
+            if (it == cc.atoms.end())
+              gemmi::fail("No atom " + atom.name + " expected in " + res.name);
+            atom.custom = it - cc.atoms.begin();
+          }
+          std::sort(res.atoms.begin(), res.atoms.end(),
+                    [](const gemmi::Atom& a, const gemmi::Atom& b) {
+                      return a.custom != b.custom ? a.custom < b.custom
+                                                  : a.altloc < b.altloc;
+                    });
           for (gemmi::Atom& atom : res.atoms)
             atom.custom = ++serial;
         }

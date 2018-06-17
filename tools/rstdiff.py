@@ -7,10 +7,12 @@ import difflib
 from gemmi import cif
 from collections import namedtuple
 
-COLUMNS = ['record', 'number', 'label', 'period', 'atom_id_1', 'atom_id_2',
-           'atom_id_3', 'atom_id_4', 'value', 'dev', 'val_obs']
+COLUMNS = ['record', 'number', 'label', 'period',
+           'atom_id_1', 'atom_id_2', 'atom_id_3', 'atom_id_4',
+           'value', 'dev', 'val_obs']
 
 Restraint = namedtuple('Restraint', COLUMNS)
+Crd = namedtuple('Crd', ['atoms', 'real_serial'])
 
 def read_rst(path):
     result = []
@@ -22,29 +24,37 @@ def read_rst(path):
             result[-1][2].append(data)
     return result
 
-def compare_crd(crd1, crd2):
-    items = ['id', 'label_atom_id', 'label_alt_id', 'label_comp_id']
-    atoms1 = list(cif.read(crd1).sole_block().find('_atom_site.', items))
-    atoms2 = list(cif.read(crd2).sole_block().find('_atom_site.', items))
-    if len(atoms1) != len(atoms2):
-        print('_atom_site count differs:', len(atoms1), 'vs', len(atoms2))
-    for a1, a2 in zip(atoms1, atoms2):
-        if list(a1) != list(a2):
-            print('First difference:')
-            print('ATOM %s %s %s %s' % (a1[0], a1[1], a1[2], a1[3]))
-            print('ATOM %s %s %s %s' % (a2[0], a2[1], a2[2], a2[3]))
-            print()
-            break
+def read_crd(path):
+    block = cif.read(path).sole_block()
+    sites = block.find('_atom_site.', ['id', 'label_atom_id', 'label_alt_id',
+                                       'label_comp_id', 'calc_flag'])
+    atoms = [a for a in sites if a[-1] != 'M']
+    real_serial = {None: None, '.': '.'}
+    for a in atoms:
+        real_serial[a[0]] = len(real_serial)
+    return Crd(atoms, real_serial)
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--crd', action='store_true',
-                        help='check also corresponding crd files')
+    #parser.add_argument('--crd', action='store_true',
+    #                    help='check also corresponding crd files')
     parser.add_argument('file1_rst', metavar='file1.rst')
     parser.add_argument('file2_rst', metavar='file2.rst')
     args = parser.parse_args()
-    if args.crd:
-        compare_crd(args.file1_rst[:-4] + '.crd', args.file2_rst[:-4] + '.crd')
+
+    crd1 = read_crd(args.file1_rst[:-4] + '.crd')
+    crd2 = read_crd(args.file2_rst[:-4] + '.crd')
+    if len(crd1.atoms) != len(crd2.atoms):
+        print('_atom_site count differs: %d vs %d' %
+              (len(crd1.atoms), len(crd2.atoms)))
+    for a1, a2 in zip(crd1.atoms, crd2.atoms):
+        if any(a1.str(i) != a2.str(i) for i in range(1, 5)):
+            print('First difference:')
+            print('ATOM %s %s %s %s' % (a1[0], a1.str(1), a1[2], a1[3]))
+            print('ATOM %s %s %s %s' % (a2[0], a2.str(1), a2[2], a2[3]))
+            print()
+            break
+
     r1 = read_rst(args.file1_rst)
     r2 = read_rst(args.file2_rst)
     mono_count_1 = sum(t[0] == 'mono' for t in r1)
@@ -81,19 +91,24 @@ def main():
         else:
             for m, (rst1, rst2) in enumerate(zip(a[2], b[2])):
                 is_tors = (rst1.record == 'tors')
-                if rst1[:8] != rst2[:8]:
-                    print('Different restraint %d:%d:\n%s\nvs\n%s\n' %
-                          (n, m, rst1, rst2))
+                r_str = '%s/%s restraint %d:%d' % (b[0], b[1], n, m)
+                if rst1[:4] != rst2[:4]:
+                    print('Different %s:\n%s\nvs\n%s\n' %
+                          (r_str, rst1, rst2))
+                if not all(crd1.real_serial[u] == crd2.real_serial[v]
+                           for u, v in zip(rst1[4:8],rst2[4:8])):
+                    print('Different atom id in %s:\n%s\nvs\n%s\n' %
+                          (r_str, rst1, rst2))
                 elif not same_nums(rst1.value, rst2.value):
-                    print('Different value for %d:%d (%s vs %s) in:\n%s\n' %
-                          (n, m, rst1.value, rst2.value, rst1))
+                    print('Different value for %s (%s vs %s) in:\n%s\n' %
+                          (r_str, rst1.value, rst2.value, rst1))
                 elif not same_nums(rst1.dev, rst2.dev):
-                    print('Different dev for %d:%d (%s vs %s) in:\n%s\n' %
-                          (n, m, rst1.dev, rst2.dev, rst1))
+                    print('Different dev for %s (%s vs %s) in:\n%s\n' %
+                          (r_str, rst1.dev, rst2.dev, rst1))
                 elif not same_nums(rst1.val_obs, rst2.val_obs,
                                    eps=(0.15 if is_tors else 0.003),
                                    mod360=is_tors):
-                    print('Different val_obs for %d:%d (%s vs %s) in:\n%s\n' %
-                          (n, m, rst1.val_obs, rst2.val_obs, rst1))
+                    print('Different val_obs for %s (%s vs %s) in:\n%s\n' %
+                          (r_str, rst1.val_obs, rst2.val_obs, rst1))
 
 main()

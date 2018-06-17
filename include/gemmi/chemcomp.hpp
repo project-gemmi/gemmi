@@ -31,13 +31,17 @@ struct Restraints {
     bool operator==(const std::string& name) const { return atom == name; }
     bool operator!=(const std::string& name) const { return atom != name; }
 
-    const Atom* get_from(const Residue& res, const Residue* res2,
+    const Atom* get_from(const Residue& res1, const Residue* res2,
                          char altloc) const {
+      const Residue* residue;
       if (comp == 1 || res2 == nullptr)
-        return res.find_atom(atom, altloc);
+        residue = &res1;
       else if (comp == 2)
-        return res2->find_atom(atom, altloc);
-      throw std::out_of_range("Unexpected component ID");
+        residue = res2;
+      else
+        throw std::out_of_range("Unexpected component ID");
+      const Atom* ret = residue->find_atom(atom, altloc);
+      return ret && ret->flag != 'M' ? ret : nullptr;
     }
   };
 
@@ -157,6 +161,16 @@ struct ChemComp {
     std::string id;
     Element el;
     std::string chem_type;
+
+    gemmi::Atom to_full_atom() const {
+      gemmi::Atom atom;
+      atom.name = id;
+      atom.flag = 'M'; // refmac convention for "modelled" missing atoms
+      atom.occ = 0.0f;
+      atom.b_iso = 0.0f;
+      atom.element = el;
+      return atom;
+    }
   };
 
   std::string name;
@@ -166,33 +180,17 @@ struct ChemComp {
 
   std::vector<Atom>::iterator find_atom(const std::string& atom_id) {
     return std::find_if(atoms.begin(), atoms.end(),
-                        [&](const Atom& a) { return (a.id == atom_id); });
+                        [&](const Atom& a) { return a.id == atom_id; });
+  }
+  std::vector<Atom>::const_iterator find_atom(const std::string& atom_id) const{
+    return const_cast<ChemComp*>(this)->find_atom(atom_id);
   }
 
   const Atom& get_atom(const std::string& atom_id) const {
-    auto it = const_cast<ChemComp*>(this)->find_atom(atom_id);
+    auto it = find_atom(atom_id);
     if (it == atoms.end())
       fail("Chemical componenent " + name + " has no atom " + atom_id);
     return *it;
-  }
-
-  template<typename T>
-  void reorder_atoms(std::vector<T>& alist) const {
-    for (const T& a : alist)
-      get_atom(a.name); // check that all atoms exists in _chem_comp_atom
-    std::vector<T> ordered;
-    ordered.reserve(alist.size());
-    for (const Atom& cca : atoms) {
-      size_t size = ordered.size();
-      for (const T& a : alist)
-        if (a.name == cca.id)
-          ordered.push_back(a);
-      if (ordered.size() - size > 1)
-        std::sort(ordered.begin() + size, ordered.end(),
-                  [](const T& a, const T& b) { return a.altloc < b.altloc; });
-    }
-    assert(alist.size() == ordered.size());
-    alist.swap(ordered);
   }
 };
 
