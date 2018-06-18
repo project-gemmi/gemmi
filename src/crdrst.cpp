@@ -140,7 +140,7 @@ static std::string get_modification(const gemmi::Chain& chain,
                                     gemmi::PolymerType ptype) {
   using gemmi::PolymerType;
   if (&res == &chain.residues.back())
-    return "TERMINUS";
+    return "COO";
   if (&res == &chain.residues.front()) {
     if (ptype == PolymerType::PeptideL || ptype == PolymerType::PeptideD)
       return "NH3";
@@ -447,9 +447,8 @@ static int add_restraints(const Restraints& rt,
               if (!at1->altloc && !at2->altloc && !at3->altloc && !at4->altloc)
                 break;
             }
-  for (const auto& item : rt.planes)
+  for (const Restraints::Plane& plane : rt.planes)
     for (char alt : altlocs) {
-      const Restraints::Plane& plane = item.second;
       std::vector<const gemmi::Atom*> atoms;
       for (const Restraints::AtomId& id : plane.ids)
         if (const gemmi::Atom* atom = id.get_from(res, res2, alt))
@@ -462,7 +461,7 @@ static int add_restraints(const Restraints& rt,
         double dist = coeff[0] * atom->pos.x + coeff[1] * atom->pos.y +
                       coeff[2] * atom->pos.z + coeff[3];
         std::string obs = to_str3(dist) + " # " + atom->name;
-        restr_loop.add_row({"PLAN", std::to_string(counters[4]), item.first,
+        restr_loop.add_row({"PLAN", std::to_string(counters[4]), plane.label,
                             ".", std::to_string(atom->custom), ".", ".", ".",
                             to_str(plane.esd), ".", obs});
       }
