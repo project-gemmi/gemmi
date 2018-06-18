@@ -5,7 +5,7 @@
 #ifndef GEMMI_UTIL_HPP_
 #define GEMMI_UTIL_HPP_
 
-#include <algorithm>  // for equal, find
+#include <algorithm>  // for equal, find, remove_if
 #include <cctype>     // for tolower
 #include <iterator>   // for begin, end, make_move_iterator
 #include <stdexcept>  // for runtime_error
@@ -105,6 +105,12 @@ void vector_move_extend(std::vector<T>& dst, std::vector<T>&& src) {
   else
     dst.insert(dst.end(), std::make_move_iterator(src.begin()),
                           std::make_move_iterator(src.end()));
+}
+
+// wrapper around the erase-remove idiom
+template <class T, typename F>
+void vector_remove_if(std::vector<T>& v, F&& condition) {
+  v.erase(std::remove_if(v.begin(), v.end(), condition), v.end());
 }
 
 [[noreturn]]

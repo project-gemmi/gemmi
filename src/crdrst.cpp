@@ -139,13 +139,16 @@ static std::string get_modification(const gemmi::Chain& chain,
                                     const gemmi::Residue& res,
                                     gemmi::PolymerType ptype) {
   using gemmi::PolymerType;
-  if (&res == &chain.residues.back())
-    return "COO";
-  if (&res == &chain.residues.front()) {
-    if (ptype == PolymerType::PeptideL || ptype == PolymerType::PeptideD)
+  if (ptype == PolymerType::PeptideL || ptype == PolymerType::PeptideD) {
+    if (&res == &chain.residues.front())
       return "NH3";
-    if (ptype == PolymerType::Dna || ptype == PolymerType::Rna)
+    else if (&res == &chain.residues.back())
+      return res.find_atom("OXT") ? "COO" : "TERMINUS";
+  } else if (ptype == PolymerType::Dna || ptype == PolymerType::Rna) {
+    if (&res == &chain.residues.front())
       return "5*END";
+    else if (&res == &chain.residues.back())
+      return "TERMINUS";
   }
   return "";
 }

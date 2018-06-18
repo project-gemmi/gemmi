@@ -69,12 +69,32 @@ def main():
         print('LINK count same:', link_count_1)
     else:
         print('LINK count differs:', link_count_1, link_count_2)
-    # compare up to the first major difference
+
     def same_nums(a, b, eps=0.003, mod360=False):
         if a == b:
             return True
         abs_diff = abs(float(a) - float(b))
         return abs_diff < eps or (mod360 and abs(abs_diff - 360) < eps)
+
+    def fmt_atom_id(atom_id, n):
+        if atom_id is None:
+            return '.'
+        crd = (crd1 if n == 1 else crd2)
+        idx = crd.real_serial[atom_id] - 1
+        atom = crd.atoms[idx]
+        alt = ''
+        if atom[2] != '.':
+            alt = '.' + atom[2]
+        return '%s(%s %s%s)' % (atom_id, atom[3], atom[1], alt)
+
+    def fmt(r, n=1):
+        return '%s %s %s %s  %s : %s : %s : %s   %s ± %s  (%s)' % (
+                r.record, r.number, r.label or '.', r.period or '.',
+                fmt_atom_id(r.atom_id_1, n), fmt_atom_id(r.atom_id_2, n),
+                fmt_atom_id(r.atom_id_3, n), fmt_atom_id(r.atom_id_4, n),
+                r.value, r.dev, r.val_obs)
+
+    # compare up to the first major difference
     for n, (a, b) in enumerate(zip(r1, r2)):
         if a[:2] != b[:2]:
             print('item', n, 'differs:', a[:2], 'vs', b[:2])
@@ -94,21 +114,29 @@ def main():
                 r_str = '%s/%s restraint %d:%d' % (b[0], b[1], n, m)
                 if rst1[:4] != rst2[:4]:
                     print('Different %s:\n%s\nvs\n%s\n' %
-                          (r_str, rst1, rst2))
-                if not all(crd1.real_serial[u] == crd2.real_serial[v]
-                           for u, v in zip(rst1[4:8],rst2[4:8])):
+                          (r_str, fmt(rst1), fmt(rst2, 2)))
+                elif not all(crd1.real_serial[u] == crd2.real_serial[v]
+                             for u, v in zip(rst1[4:8],rst2[4:8])):
                     print('Different atom id in %s:\n%s\nvs\n%s\n' %
-                          (r_str, rst1, rst2))
+                          (r_str, fmt(rst1), fmt(rst2, 2)))
                 elif not same_nums(rst1.value, rst2.value):
                     print('Different value for %s (%s vs %s) in:\n%s\n' %
-                          (r_str, rst1.value, rst2.value, rst1))
+                          (r_str, rst1.value, rst2.value, fmt(rst1)))
                 elif not same_nums(rst1.dev, rst2.dev):
                     print('Different dev for %s (%s vs %s) in:\n%s\n' %
-                          (r_str, rst1.dev, rst2.dev, rst1))
+                          (r_str, rst1.dev, rst2.dev, fmt(rst1)))
                 elif not same_nums(rst1.val_obs, rst2.val_obs,
-                                   eps=(0.15 if is_tors else 0.003),
+                                   eps=val_obs_eps(rst1.record),
                                    mod360=is_tors):
                     print('Different val_obs for %s (%s vs %s) in:\n%s\n' %
-                          (r_str, rst1.val_obs, rst2.val_obs, rst1))
+                          (r_str, rst1.val_obs, rst2.val_obs, fmt(rst1)))
+
+def val_obs_eps(record):
+    if record == 'tors':
+        return 0.15
+    elif record == 'plan':
+        return 0.010
+    else:
+        return 0.003
 
 main()
