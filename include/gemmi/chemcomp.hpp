@@ -339,9 +339,10 @@ inline ChemComp make_chemcomp_from_cif(const std::string& name,
                               {"atom_id_centre",
                                "atom_id_1", "atom_id_2", "atom_id_3",
                                "volume_sign"}))
-    cc.rt.chirs.push_back({{1, row.str(0)},
-                           {1, row.str(1)}, {1, row.str(2)}, {1, row.str(3)},
-                           chirality_from_string(row[4])});
+    if (row[4][0] != 'c') // ignore crossN
+      cc.rt.chirs.push_back({{1, row.str(0)},
+                             {1, row.str(1)}, {1, row.str(2)}, {1, row.str(3)},
+                             chirality_from_string(row[4])});
   for (auto row : block->find("_chem_comp_plane_atom.",
                               {"plane_id", "atom_id" , "dist_esd"})) {
     Restraints::Plane& plane = cc.rt.get_or_add_plane(row.str(0));
@@ -392,9 +393,10 @@ inline Restraints read_link_restraints(const cif::Block& block_) {
                               "atom_2_comp_id", "atom_id_2",
                               "atom_3_comp_id", "atom_id_3",
                               "volume_sign"}))
-    rt.chirs.push_back({read_aid(row, 0), read_aid(row, 2),
-                        read_aid(row, 4), read_aid(row, 6),
-                        chirality_from_string(row[8])});
+    if (row[4][0] != 'c') // ignore crossN
+      rt.chirs.push_back({read_aid(row, 0), read_aid(row, 2),
+                          read_aid(row, 4), read_aid(row, 6),
+                          chirality_from_string(row[8])});
   for (auto row : block.find("_chem_link_plane.",
                              {"plane_id", "atom_comp_id", "atom_id",
                               "dist_esd"})) {
