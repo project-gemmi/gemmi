@@ -270,9 +270,11 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
             // Usually it is SG (cysteine), but other disulfide bonds
             // are also possible, so if it's not CYS and SG is absent
             // we pick the first sulfur atom in the residue.
-            if (!cra.atom && ad.res_id.name != "CYS")
-              if (const Atom* a = cra.residue->find_by_element(El::S))
+            if (!cra.atom)
+              if (const Atom* a = cra.residue->find_by_element(El::S)) {
                 ad.atom_name = a->name;
+                ad.altloc = a->altloc;
+              }
           }
         }
         mdl.connections.emplace_back(c);

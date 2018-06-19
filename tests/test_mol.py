@@ -235,6 +235,19 @@ class TestMol(unittest.TestCase):
             self.assertEqual(mg_atom.element.name, 'Mg')
             self.assertAlmostEqual(mg_atom.b_iso, 67.64, delta=1e-6)
 
+    def test_4hhh_frag(self):
+        path = full_path('4hhh_frag.pdb')
+        with open(path) as f:
+            frag = f.read()
+        st = gemmi.read_pdb_string(frag)
+        in_headers = frag.splitlines()
+        out_headers = st.make_pdb_headers().splitlines()
+        self.assertEqual(in_headers[0], out_headers[0])
+        # the difference 4555 vs 2555 doesn't matter for us
+        self.assertEqual(in_headers[1], out_headers[1].replace(' 4555 ',
+                                                               ' 2555 '))
+        self.assertEqual(in_headers[2], out_headers[2])
+
     def test_ncs(self):
         st = gemmi.read_structure(full_path('5cvz_final.pdb'))
         first_atom = st[0].residue('A', 17, ' ')['N']
