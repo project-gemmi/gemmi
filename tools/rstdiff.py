@@ -3,9 +3,9 @@
 # Usage: ./rstdiff.py first.rst second.rst
 
 import argparse
-import difflib
-from gemmi import cif
 from collections import namedtuple
+from itertools import zip_longest
+from gemmi import cif
 
 COLUMNS = ['record', 'number', 'label', 'period',
            'atom_id_1', 'atom_id_2', 'atom_id_3', 'atom_id_4',
@@ -22,7 +22,7 @@ def read_rst(path):
         else:
             data = Restraint(*[x.lower() if x != '.' else None for x in row])
             result[-1][2].append(data)
-    return result
+    return [r for r in result if r[2]]
 
 def read_crd(path):
     block = cif.read(path).sole_block()
@@ -31,7 +31,7 @@ def read_crd(path):
     atoms = [a for a in sites if a[-1] != 'M']
     real_serial = {None: None, '.': '.'}
     for a in atoms:
-        real_serial[a[0]] = len(real_serial)
+        real_serial[a[0]] = len(real_serial) - 1
     return Crd(atoms, real_serial)
 
 def main():
@@ -89,10 +89,10 @@ def main():
 
     def fmt(r, n=1):
         return '%s %s %s %s  %s : %s : %s : %s   %s ± %s  (%s)' % (
-                r.record, r.number, r.label or '.', r.period or '.',
-                fmt_atom_id(r.atom_id_1, n), fmt_atom_id(r.atom_id_2, n),
-                fmt_atom_id(r.atom_id_3, n), fmt_atom_id(r.atom_id_4, n),
-                r.value, r.dev, r.val_obs)
+               r.record, r.number, r.label or '.', r.period or '.',
+               fmt_atom_id(r.atom_id_1, n), fmt_atom_id(r.atom_id_2, n),
+               fmt_atom_id(r.atom_id_3, n), fmt_atom_id(r.atom_id_4, n),
+               r.value, r.dev, r.val_obs)
 
     # compare up to the first major difference
     for n, (a, b) in enumerate(zip(r1, r2)):
@@ -104,32 +104,38 @@ def main():
         if len(a[2]) != len(b[2]):
             print('Item %d has different restr count: %d vs %d' %
                   (n, len(a[2]), len(b[2])))
-            for line in difflib.unified_diff(
-                    [' '.join(s or '.' for s in x[:10]) for x in a[2]],
-                    [' '.join(s or '.' for s in x[:10]) for x in b[2]]):
-                print(line)
-        else:
-            for m, (rst1, rst2) in enumerate(zip(a[2], b[2])):
-                is_tors = (rst1.record == 'tors')
-                r_str = '%s/%s restraint %d:%d' % (b[0], b[1], n, m)
-                if rst1[:4] != rst2[:4]:
-                    print('Different %s:\n%s\nvs\n%s\n' %
-                          (r_str, fmt(rst1), fmt(rst2, 2)))
-                elif not all(crd1.real_serial[u] == crd2.real_serial[v]
-                             for u, v in zip(rst1[4:8],rst2[4:8])):
-                    print('Different atom id in %s:\n%s\nvs\n%s\n' %
-                          (r_str, fmt(rst1), fmt(rst2, 2)))
-                elif not same_nums(rst1.value, rst2.value):
-                    print('Different value for %s (%s vs %s) in:\n%s\n' %
-                          (r_str, rst1.value, rst2.value, fmt(rst1)))
-                elif not same_nums(rst1.dev, rst2.dev):
-                    print('Different dev for %s (%s vs %s) in:\n%s\n' %
-                          (r_str, rst1.dev, rst2.dev, fmt(rst1)))
-                elif not same_nums(rst1.val_obs, rst2.val_obs,
-                                   eps=val_obs_eps(rst1.record),
-                                   mod360=is_tors):
-                    print('Different val_obs for %s (%s vs %s) in:\n%s\n' %
-                          (r_str, rst1.val_obs, rst2.val_obs, fmt(rst1)))
+        fillvalue = Restraint(*[None]*11)
+        for m, (rst1, rst2) in enumerate(zip_longest(a[2], b[2],
+                                                     fillvalue=fillvalue)):
+            r_str = '%s/%s restraint %d:%d' % (b[0], b[1], n, m)
+            if rst1.record != rst2.record:
+                print('Different records %s:\n%s\nvs\n%s\n' %
+                      (r_str, rst1[1], rst2[1]))
+            elif (rst1.label != rst2.label if rst1.record != 'chir'
+                  else rst1.label[0] != rst2.label[0]):
+                print('Different labels in %s: %s -> %s' %
+                      (r_str, rst1[1], rst2[1]))
+            elif rst1.period != rst2.period:
+                print('Different period in %s:\n%s\nvs\n%s\n' %
+                      (r_str, fmt(rst1), fmt(rst2, 2)))
+            elif rst1.number != rst2.number:
+                print('Different number of %s: %s -> %s' %
+                      (r_str, rst1[1], rst2[1]))
+            elif not all(crd1.real_serial[u] == crd2.real_serial[v]
+                         for u, v in zip(rst1[4:8],rst2[4:8])):
+                print('Different atom id in %s:\n%s\nvs\n%s\n' %
+                      (r_str, fmt(rst1), fmt(rst2, 2)))
+            elif not same_nums(rst1.value, rst2.value):
+                print('Different value for %s (%s vs %s) in:\n%s\n' %
+                      (r_str, rst1.value, rst2.value, fmt(rst1)))
+            elif not same_nums(rst1.dev, rst2.dev):
+                print('Different dev for %s (%s vs %s) in:\n%s\n' %
+                      (r_str, rst1.dev, rst2.dev, fmt(rst1)))
+            elif not same_nums(rst1.val_obs, rst2.val_obs,
+                               eps=val_obs_eps(rst1.record),
+                               mod360=(rst1.record == 'tors')):
+                print('Different val_obs for %s (%s vs %s) in:\n%s\n' %
+                      (r_str, rst1.val_obs, rst2.val_obs, fmt(rst1)))
 
 def val_obs_eps(record):
     if record == 'tors':

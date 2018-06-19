@@ -105,6 +105,8 @@ struct Linkage {
   struct ExtraLink {
     const gemmi::Residue* res1;
     const gemmi::Residue* res2;
+    char alt1 = '\0';
+    char alt2 = '\0';
     gemmi::ChemLink link;
   };
 
@@ -355,24 +357,27 @@ static std::string chirality_to_string(Restraints::Chirality::Type ctype) {
 
 static int add_restraints(const Restraints& rt,
                           const gemmi::Residue& res, const gemmi::Residue* res2,
-                          cif::Loop& restr_loop, int (&counters)[5]) {
+                          cif::Loop& restr_loop, int (&counters)[5],
+                          char altloc='*') {
   //using gemmi::to_str;
   const auto& to_str = gemmi::to_str_prec<3>; // to make comparisons easier
   const auto& to_str3 = gemmi::to_str_prec<3>;
 
   int init_count = std::accumulate(counters, counters + 5, 0);
 
-  // find all distinct altlocs
   std::string altlocs;
-  for (const gemmi::Atom& atom : res.atoms)
-    if (atom.altloc && altlocs.find(atom.altloc) == std::string::npos)
-      altlocs += atom.altloc;
-  if (res2)
-    for (const gemmi::Atom& atom : res2->atoms)
+  if (altloc == '*') {
+    // find all distinct altlocs
+    for (const gemmi::Atom& atom : res.atoms)
       if (atom.altloc && altlocs.find(atom.altloc) == std::string::npos)
         altlocs += atom.altloc;
+    if (res2)
+      for (const gemmi::Atom& atom : res2->atoms)
+        if (atom.altloc && altlocs.find(atom.altloc) == std::string::npos)
+          altlocs += atom.altloc;
+  }
   if (altlocs.empty())
-    altlocs += '*';
+    altlocs += altloc;
 
   for (const Restraints::Bond& bond : rt.bonds)
     for (char alt : altlocs)
@@ -554,7 +559,12 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
     std::string comment = "# link " + chem_link->id;
     restr_loop.add_row({comment + "\nLINK", ".", cif::quote(chem_link->id),
                         ".", ".", ".", ".", ".", ".", ".", "."});
-    add_restraints(chem_link->rt, *link.res1, link.res2, restr_loop, counters);
+    char altloc = link.alt1 ? link.alt1 : (link.alt2 ? link.alt2 : '*');
+    if (link.alt1 && link.alt2 && link.alt1 != link.alt2)
+      printf("Warning: LINK between different conformers %c and %c.",
+             link.alt1, link.alt2);
+    add_restraints(chem_link->rt, *link.res1, link.res2, restr_loop, counters,
+                   altloc);
   }
   return doc;
 }
@@ -644,6 +654,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       Linkage::ExtraLink extra;
       extra.res1 = model0.find_cra(conn.atom[0]).residue;
       extra.res2 = model0.find_cra(conn.atom[1]).residue;
+      extra.alt1 = conn.atom[0].altloc;
+      extra.alt2 = conn.atom[1].altloc;
       if (extra.res1 && extra.res2) {
         extra.link = connection_to_chemlink(conn, *extra.res1, *extra.res2);
         linkage.extra.push_back(extra);
