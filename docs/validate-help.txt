@@ -6,5 +6,6 @@ Options:
   -V, --version   Display version information and exit.
   -f, --fast      Syntax-only check.
   -s, --stat      Show token statistics
+  --verbose       Verbose output.
   -q, --quiet     Show only errors.
   -d, --ddl=PATH  DDL for validation.

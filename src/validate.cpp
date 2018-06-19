@@ -16,7 +16,7 @@
 
 namespace cif = gemmi::cif;
 
-enum OptionIndex { Fast=3, Stat, Quiet, Ddl };
+enum OptionIndex { Fast=3, Stat, Verbose, Quiet, Ddl };
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
                                 "\n\nOptions:" },
@@ -25,6 +25,7 @@ const option::Descriptor Usage[] = {
     "  -V, --version  \tDisplay version information and exit." },
   { Fast, 0, "f", "fast", Arg::None, "  -f, --fast  \tSyntax-only check." },
   { Stat, 0, "s", "stat", Arg::None, "  -s, --stat  \tShow token statistics" },
+  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { Quiet, 0, "q", "quiet", Arg::None, "  -q, --quiet  \tShow only errors." },
   { Ddl, 0, "d", "ddl", Arg::Required,
                                    "  -d, --ddl=PATH  \tDDL for validation." },
@@ -181,7 +182,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (!msg.empty())
       std::cout << msg << std::endl;
 
-    if (!quiet)
+    if (p.options[Verbose])
       std::cout << (ok ? "OK" : "FAILED") << std::endl;
     total_ok = total_ok && ok;
   }
