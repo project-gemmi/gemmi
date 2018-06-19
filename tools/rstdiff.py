@@ -110,7 +110,7 @@ def main():
             r_str = '%s/%s restraint %d:%d' % (b[0], b[1], n, m)
             if rst1.record != rst2.record:
                 print('Different records %s:\n%s\nvs\n%s\n' %
-                      (r_str, rst1[1], rst2[1]))
+                      (r_str, fmt(rst1), fmt(rst2, 2)))
             elif (rst1.label != rst2.label if rst1.record != 'chir'
                   else rst1.label[0] != rst2.label[0]):
                 print('Different labels in %s: %s -> %s' %
@@ -141,7 +141,7 @@ def val_obs_eps(record):
     if record == 'tors':
         return 0.15
     elif record == 'plan':
-        return 0.010
+        return 0.015
     else:
         return 0.003
 

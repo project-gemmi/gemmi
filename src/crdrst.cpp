@@ -231,6 +231,8 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
     for (const Linkage::ResInfo& res_info : chain_info.residues) {
       std::string prev = res_info.prev ? res_info.prev->res->seq_id() : "n/a";
       std::string mod = res_info.mods.at(0);
+      if (mod == "AA-STAND")
+        mod = res_info.mods.at(1);
       if (mod.empty())
         mod += '.';
       poly_loop.add_row({res_info.res->name, res_info.res->seq_id(),
