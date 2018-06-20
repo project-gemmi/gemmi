@@ -13,6 +13,7 @@
 #include "gemmi/pdb.hpp"  // for split_nonpolymers
 #include "gemmi/calculate.hpp"  // for calculate_angle, find_best_plane
 #include "gemmi/polyheur.hpp"  // for are_connected
+#include "gemmi/modify.hpp"  // for remove_hydrogens
 
 #define GEMMI_PROG crdrst
 #include "options.h"
@@ -20,7 +21,7 @@
 namespace cif = gemmi::cif;
 using gemmi::Restraints;
 
-enum OptionIndex { Verbose=3, Monomers };
+enum OptionIndex { Verbose=3, Monomers, NoHydrogens };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -34,6 +35,8 @@ static const option::Descriptor Usage[] = {
   { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { Monomers, 0, "", "monomers", Arg::Required,
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
+  { NoHydrogens, 0, "H", "no-hydrogens", Arg::None,
+    "  -H, --no-hydrogens  \tRemove or do not add hydrogens." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -116,6 +119,7 @@ struct Linkage {
 
 static std::string get_link_type(const gemmi::Residue& res,
                                  const gemmi::Residue* prev,
+                                 const std::string& residue_group,
                                  gemmi::PolymerType ptype) {
   using gemmi::PolymerType;
   if (!prev)
@@ -124,10 +128,10 @@ static std::string get_link_type(const gemmi::Residue& res,
     return "gap";
   if (ptype == PolymerType::PeptideL || ptype == PolymerType::PeptideD) {
     std::string link = prev->is_cis ? "CIS" : "TRANS";
-    if (res.name == "PRO" &&
+    if ((res.name == "PRO" || residue_group == "P-peptide") &&
         link == "TRANS" /* TODO: remove when we don't need makecif compat*/) {
       link = "P" + link;
-    } else if (false /*check if is mpeptide*/) {
+    } else if (residue_group == "M-peptide") {
       link = "NM" + link;
     }
     return link;
@@ -156,7 +160,8 @@ static std::string get_modification(const gemmi::Chain& chain,
 }
 
 Linkage::ChainInfo determine_linkage(const gemmi::Chain& chain,
-                                    const gemmi::Entity* ent) {
+                                     const MonLib& monlib,
+                                     const gemmi::Entity* ent) {
   Linkage::ChainInfo lc;
   lc.residues.reserve(chain.residues.size());
   lc.name = chain.name;
@@ -168,8 +173,9 @@ Linkage::ChainInfo determine_linkage(const gemmi::Chain& chain,
     for (const gemmi::Residue& res : chain.residues) {
       Linkage::ResInfo lr;
       lr.res = &res;
+      const gemmi::ChemComp& cc = monlib.monomers.at(res.name);
       lr.prev_link = get_link_type(res, (prev ? prev->res : nullptr),
-                                   ent->polymer_type);
+                                   cc.group, ent->polymer_type);
       lr.prev = prev;
 
       // we try to get exactly the same numbers that makecif produces
@@ -275,16 +281,17 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
   if (const gemmi::SpaceGroup* sg = gemmi::find_spacegroup_by_name(hm))
     items.emplace_back("_symmetry.Int_Tables_number",
                        std::to_string(sg->number));
+  const gemmi::Model& model0 = st.models.at(0);
   items.emplace_back(cif::CommentArg{"#################\n"
                                      "## STRUCT_ASYM ##\n"
                                      "#################"});
   cif::Loop& asym_loop = block.init_mmcif_loop("_struct_asym.",
                                                {"id", "entity_id"});
-  for (const auto& ch : st.models.at(0).chains) {
+  for (const auto& ch : model0.chains) {
     asym_loop.values.push_back(ch.name);
     asym_loop.values.push_back(ch.entity_id.empty() ? "?" : ch.entity_id);
   }
-  const auto& connections = st.models.at(0).connections;
+  const auto& connections = model0.connections;
   if (!connections.empty()) {
     items.emplace_back(cif::CommentArg{"#################\n"
                                        "## STRUCT_CONN ##\n"
@@ -316,32 +323,30 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
       "label_chem_id"});
   std::vector<std::string>& vv = atom_loop.values;
   vv.reserve(count_atom_sites(st) * atom_loop.tags.size());
-  for (const gemmi::Model& model : st.models) {
-    for (const gemmi::Chain& chain : model.chains) {
-      for (const gemmi::Residue& res : chain.residues) {
-        std::string auth_seq_id = res.seq_num.str();
-        //std::string ins_code(1, res.icode != ' ' ? res.icode : '?');
-        gemmi::ChemComp& cc = monlib.monomers.at(res.name);
-        for (const gemmi::Atom& a : res.atoms) {
-          vv.emplace_back("ATOM");
-          vv.emplace_back(std::to_string(a.custom));
-          vv.emplace_back(a.name);
-          vv.emplace_back(1, a.altloc ? a.altloc : '.');
-          vv.emplace_back(res.name);
-          vv.emplace_back(chain.name);
-          vv.emplace_back(auth_seq_id);
-          //vv.emplace_back(ins_code);
-          vv.emplace_back(to_str(a.pos.x));
-          vv.emplace_back(to_str(a.pos.y));
-          vv.emplace_back(to_str(a.pos.z));
-          vv.emplace_back(to_str(a.occ));
-          vv.emplace_back(to_str(a.b_iso));
-          vv.emplace_back(a.element.uname());
-          vv.emplace_back(1, a.flag ? a.flag : '.'); // calc_flag
-          vv.emplace_back(1, '.'); // label_seg_id
-          vv.emplace_back(a.name); // again
-          vv.emplace_back(cc.get_atom(a.name).chem_type); // label_chem_id
-        }
+  for (const gemmi::Chain& chain : model0.chains) {
+    for (const gemmi::Residue& res : chain.residues) {
+      std::string auth_seq_id = res.seq_num.str();
+      //std::string ins_code(1, res.icode != ' ' ? res.icode : '?');
+      gemmi::ChemComp& cc = monlib.monomers.at(res.name);
+      for (const gemmi::Atom& a : res.atoms) {
+        vv.emplace_back("ATOM");
+        vv.emplace_back(std::to_string(a.custom));
+        vv.emplace_back(a.name);
+        vv.emplace_back(1, a.altloc ? a.altloc : '.');
+        vv.emplace_back(res.name);
+        vv.emplace_back(chain.name);
+        vv.emplace_back(auth_seq_id);
+        //vv.emplace_back(ins_code);
+        vv.emplace_back(to_str(a.pos.x));
+        vv.emplace_back(to_str(a.pos.y));
+        vv.emplace_back(to_str(a.pos.z));
+        vv.emplace_back(to_str(a.occ));
+        vv.emplace_back(to_str(a.b_iso));
+        vv.emplace_back(a.element.uname());
+        vv.emplace_back(1, a.flag ? a.flag : '.'); // calc_flag
+        vv.emplace_back(1, '.'); // label_seg_id
+        vv.emplace_back(a.name); // again
+        vv.emplace_back(cc.get_atom(a.name).chem_type); // label_chem_id
       }
     }
   }
@@ -537,8 +542,13 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
         // comments are added relying on how cif writing works
         std::string res_info = "# monomer " + chain_info.name + " " +
                                ri.res->seq_id() + " " + ri.res->name;
-        restr_loop.add_row({res_info + "\nMONO", ".",
-                            cif::quote(chem_comp.group.substr(0, 8)),
+
+        // need to revisit it later on
+        std::string group = cif::quote(chem_comp.group.substr(0, 8));
+        if (group == "peptide")
+          group = "L-peptid";
+
+        restr_loop.add_row({res_info + "\nMONO", ".", group,
                             ".", ".", ".", ".", ".", ".", ".", "."});
         int n = add_restraints(chem_comp.rt, *ri.res, nullptr,
                                restr_loop, counters);
@@ -610,6 +620,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (st.models.empty())
       return 1;
     gemmi::Model& model0 = st.models[0];
+    if (p.options[NoHydrogens])
+      gemmi::remove_hydrogens(model0);
     std::set<std::string> resnames;
     for (const gemmi::Chain& chain : model0.chains)
       for (const gemmi::Residue& res : chain.residues)
@@ -617,30 +629,29 @@ int GEMMI_MAIN(int argc, char **argv) {
 
     MonLib monlib = read_monomers(monomer_dir, resnames);
     int serial = 0;
-    for (gemmi::Model& model : st.models)
-      for (gemmi::Chain& chain : model.chains)
-        for (gemmi::Residue& res : chain.residues) {
-          const gemmi::ChemComp &cc = monlib.monomers.at(res.name);
-          for (gemmi::Atom& atom : res.atoms) {
-            auto it = cc.find_atom(atom.name);
-            if (it == cc.atoms.end())
-              gemmi::fail("No atom " + atom.name + " expected in " + res.name);
-            atom.custom = it - cc.atoms.begin();
-          }
-          std::sort(res.atoms.begin(), res.atoms.end(),
-                    [](const gemmi::Atom& a, const gemmi::Atom& b) {
-                      return a.custom != b.custom ? a.custom < b.custom
-                                                  : a.altloc < b.altloc;
-                    });
-          for (gemmi::Atom& atom : res.atoms)
-            atom.custom = ++serial;
+    for (gemmi::Chain& chain : model0.chains)
+      for (gemmi::Residue& res : chain.residues) {
+        const gemmi::ChemComp &cc = monlib.monomers.at(res.name);
+        for (gemmi::Atom& atom : res.atoms) {
+          auto it = cc.find_atom(atom.name);
+          if (it == cc.atoms.end())
+            gemmi::fail("No atom " + atom.name + " expected in " + res.name);
+          atom.custom = it - cc.atoms.begin();
         }
+        std::sort(res.atoms.begin(), res.atoms.end(),
+                  [](const gemmi::Atom& a, const gemmi::Atom& b) {
+                    return a.custom != b.custom ? a.custom < b.custom
+                                                : a.altloc < b.altloc;
+                  });
+        for (gemmi::Atom& atom : res.atoms)
+          atom.custom = ++serial;
+      }
 
     Linkage linkage;
     linkage.chains.reserve(model0.chains.size());
     for (const gemmi::Chain& chain : model0.chains) {
       const gemmi::Entity* ent = st.get_entity_of(chain);
-      linkage.chains.push_back(determine_linkage(chain, ent));
+      linkage.chains.push_back(determine_linkage(chain, monlib, ent));
     }
     // add modifications from standard links
     for (Linkage::ChainInfo& chain_info : linkage.chains)

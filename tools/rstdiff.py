@@ -36,8 +36,7 @@ def read_crd(path):
 
 def main():
     parser = argparse.ArgumentParser()
-    #parser.add_argument('--crd', action='store_true',
-    #                    help='check also corresponding crd files')
+    parser.add_argument('-v', action='store_true', help='verbose output')
     parser.add_argument('file1_rst', metavar='file1.rst')
     parser.add_argument('file2_rst', metavar='file2.rst')
     args = parser.parse_args()
@@ -94,13 +93,15 @@ def main():
                fmt_atom_id(r.atom_id_3, n), fmt_atom_id(r.atom_id_4, n),
                r.value, r.dev, r.val_obs)
 
-    # compare up to the first major difference
-    for n, (a, b) in enumerate(zip(r1, r2)):
+    for n, (a, b) in enumerate(zip_longest(r1, r2, fillvalue=[None, None, []])):
         if a[:2] != b[:2]:
             print('item', n, 'differs:', a[:2], 'vs', b[:2])
-            if a[0] != b[0] or (a[0] == 'mono' and a[1] != '.'):
+            if a[0] != b[0]:
                 print('stop')
                 break
+        else:
+            if args.v:
+                print('---', n, a[0], a[1])
         if len(a[2]) != len(b[2]):
             print('Item %d has different restr count: %d vs %d' %
                   (n, len(a[2]), len(b[2])))
@@ -113,13 +114,13 @@ def main():
                       (r_str, fmt(rst1), fmt(rst2, 2)))
             elif (rst1.label != rst2.label if rst1.record != 'chir'
                   else rst1.label[0] != rst2.label[0]):
-                print('Different labels in %s: %s -> %s' %
-                      (r_str, rst1[1], rst2[1]))
+                print('Different labels in %s:\n%s\nvs\n%s\n' %
+                      (r_str, fmt(rst1), fmt(rst2, 2)))
             elif rst1.period != rst2.period:
                 print('Different period in %s:\n%s\nvs\n%s\n' %
                       (r_str, fmt(rst1), fmt(rst2, 2)))
             elif rst1.number != rst2.number:
-                print('Different number of %s: %s -> %s' %
+                print('Serial number differs in %s: %s -> %s' %
                       (r_str, rst1[1], rst2[1]))
             elif not all(crd1.real_serial[u] == crd2.real_serial[v]
                          for u, v in zip(rst1[4:8],rst2[4:8])):
@@ -143,6 +144,6 @@ def val_obs_eps(record):
     elif record == 'plan':
         return 0.015
     else:
-        return 0.003
+        return 0.004
 
 main()
