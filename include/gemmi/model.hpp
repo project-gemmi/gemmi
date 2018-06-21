@@ -436,6 +436,30 @@ struct Chain {
   ConstUniqProxy<Residue> first_conformer() const { return {residues}; }
 };
 
+inline std::string atom_str(const std::string& chain_name,
+                            const ResidueId& res_id,
+                            const std::string& atom_name,
+                            char altloc) {
+  std::string r = chain_name;
+  r += '/';
+  r += res_id.name;
+  r += ' ';
+  r += res_id.seq_id();
+  r += '/';
+  r += atom_name;
+  if (altloc) {
+    r += '.';
+    r += altloc;
+  }
+  return r;
+}
+
+inline std::string atom_str(const Chain& chain,
+                            const ResidueId& res_id,
+                            const Atom& atom) {
+  return atom_str(chain.name, res_id, atom.name, atom.altloc);
+}
+
 struct AtomAddress {
   std::string chain_name;
   ResidueId res_id;
@@ -455,13 +479,7 @@ struct AtomAddress {
   }
 
   std::string str() const {
-    std::string r = chain_name + "/" + res_id.name + " " +
-                    res_id.seq_id() + "/" + atom_name;
-    if (altloc) {
-      r += '.';
-      r += altloc;
-    }
-    return r;
+    return atom_str(chain_name, res_id, atom_name, altloc);
   }
 };
 

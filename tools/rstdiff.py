@@ -119,9 +119,6 @@ def main():
             elif rst1.period != rst2.period:
                 print('Different period in %s:\n%s\nvs\n%s\n' %
                       (r_str, fmt(rst1), fmt(rst2, 2)))
-            elif rst1.number != rst2.number:
-                print('Serial number differs in %s: %s -> %s' %
-                      (r_str, rst1[1], rst2[1]))
             elif not all(crd1.real_serial[u] == crd2.real_serial[v]
                          for u, v in zip(rst1[4:8],rst2[4:8])):
                 print('Different atom id in %s:\n%s\nvs\n%s\n' %
@@ -137,6 +134,9 @@ def main():
                                mod360=(rst1.record == 'tors')):
                 print('Different val_obs for %s (%s vs %s) in:\n%s\n' %
                       (r_str, rst1.val_obs, rst2.val_obs, fmt(rst1)))
+            elif rst1.number != rst2.number:
+                print('Serial number differs in %s: %s -> %s' %
+                      (r_str, rst1[1], rst2[1]))
 
 def val_obs_eps(record):
     if record == 'tors':

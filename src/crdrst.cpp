@@ -21,7 +21,7 @@
 namespace cif = gemmi::cif;
 using gemmi::Restraints;
 
-enum OptionIndex { Verbose=3, Monomers, NoHydrogens };
+enum OptionIndex { Verbose=3, Monomers, NoHydrogens, NoZeroOccRestr };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -37,6 +37,8 @@ static const option::Descriptor Usage[] = {
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
   { NoHydrogens, 0, "H", "no-hydrogens", Arg::None,
     "  -H, --no-hydrogens  \tRemove or do not add hydrogens." },
+  { NoZeroOccRestr, 0, "", "no-zero-occ", Arg::None,
+    "  -H, --no-hydrogens  \tNo restraints for zero-occupancy atoms." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -679,6 +681,18 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (p.options[Verbose])
       printf("Writing coordinates to: %s.crd\n", output.c_str());
     write_cif_to_file(crd, output + ".crd", cif::Style::NoBlankLines);
+
+    if (p.options[NoZeroOccRestr])
+      for (gemmi::Chain& chain : model0.chains)
+        for (gemmi::Residue& res : chain.residues)
+          for (gemmi::Atom& atom : res.atoms)
+            if (atom.occ <= 0) {
+              if (p.options[Verbose])
+                printf("Atom with zero occupancy: %s\n",
+                       gemmi::atom_str(chain, res, atom).c_str());
+              atom.name += '?';  // hide the atom by mangling the name
+            }
+
     cif::Document rst = make_rst(linkage, monlib);
     if (p.options[Verbose])
       printf("Writing restraints to: %s.rst\n", output.c_str());
