@@ -289,7 +289,7 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
 
   for (auto row : block.find("_entity_poly_seq.",
                              {"entity_id", "num", "mon_id"})) {
-    Entity& ent = st.find_or_add_entity(row.str(0));
+    Entity& ent = st.entities[row.str(0)];
     ent.sequence.push_back({cif::as_int(row[1], -1), row.str(2)});
   }
 

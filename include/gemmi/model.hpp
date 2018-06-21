@@ -637,13 +637,6 @@ struct Structure {
     return get_entity(chain.entity_id);
   }
 
-  Entity& find_or_add_entity(const std::string& ent_id) {
-    auto ent = entities.find(ent_id);
-    if (ent == entities.end())
-      ent = entities.emplace(ent_id, Entity()).first;
-    return ent->second;
-  }
-
   double get_ncs_multiplier() const {
     int given = std::count_if(ncs.begin(), ncs.end(),
                               [](const NcsOp& o) { return o.given; });

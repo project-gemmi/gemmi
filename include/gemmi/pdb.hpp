@@ -121,7 +121,7 @@ inline void setup_entities(Structure& st) {
       assert(!chain.name.empty());
       if (chain.residues.size() == 1 && st.get_entity_of(chain) == nullptr)
         chain.entity_id = chain.residues[0].name + "!";
-      Entity& ent = st.find_or_add_entity(chain.entity_id);
+      Entity& ent = st.entities[chain.entity_id];
       if (chain.residues.size() == 1) {
         if (ent.entity_type == EntityType::Unknown)
           ent.entity_type = EntityType::NonPolymer;
@@ -135,10 +135,8 @@ inline void setup_entities(Structure& st) {
         }
       }
     }
-  if (has_water) {
-    Entity& ent = st.find_or_add_entity(WAT);
-    ent.entity_type = EntityType::Water;
-  }
+  if (has_water)
+    st.entities[WAT].entity_type = EntityType::Water;
 }
 
 inline void deduplicate_entities(Structure& st) {
@@ -423,7 +421,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
     } else if (is_record_type(line, "SEQRES")) {
       std::string chain_name = read_string(line+10, 2);
-      Entity& ent = st.find_or_add_entity(chain_name);
+      Entity& ent = st.entities[chain_name];
       ent.entity_type = EntityType::Polymer;
       for (int i = 19; i < 68; i += 4) {
         std::string res_name = read_string(line+i, 3);
@@ -496,10 +494,8 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       chain = nullptr;
 
     } else if (is_record_type(line, "TER")) { // finishes polymer chains
-      if (chain) {
-        Entity& ent = st.find_or_add_entity(chain->entity_id);
-        ent.entity_type = EntityType::Polymer;
-      }
+      if (chain)
+        st.entities[chain->entity_id].entity_type = EntityType::Polymer;
       chain = nullptr;
 
     } else if (is_record_type(line, "SCALEn")) {
