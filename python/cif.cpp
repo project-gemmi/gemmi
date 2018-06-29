@@ -131,6 +131,25 @@ void add_cif(py::module& cif) {
              }
            }
          }, py::arg("name"), py::arg("data"), py::arg("raw")=false)
+    .def("get_mmcif_category",
+         [](Block &self, std::string name) {
+           ensure_mmcif_category(name);
+           py::dict data;
+           Table table = self.find_mmcif_category(name);
+           int len = table.length();
+           for (const std::string& tag : table.tags()) {
+             assert(tag.size() >= name.size());
+             Column col = table.column(data.size());
+             py::list new_list(len);
+             for (int i = 0; i != len; ++i)
+               if (is_null(col[i]))
+                 new_list[i] = py::none().inc_ref();
+               else
+                 new_list[i] = col[i];
+             data[tag.c_str() + name.size()] = new_list;
+           }
+           return data;
+         }, py::arg("name"))
     .def("__repr__", [](const Block &self) {
         return "<gemmi.cif.Block " + self.name + ">";
     });

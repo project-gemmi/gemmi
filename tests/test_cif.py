@@ -126,6 +126,15 @@ class TestBlock(unittest.TestCase):
         path = os.path.join(os.path.dirname(__file__), '5i55.cif')
         block = cif.read(path).sole_block()
         self.assertEqual(len(block.get_mmcif_category_names()), 54)
+        entry_cat = block.get_mmcif_category('_entry')
+        self.assertEqual(entry_cat, {'id': ['5I55']})
+        drw_cat = block.get_mmcif_category('_diffrn_radiation_wavelength.')
+        self.assertEqual(drw_cat, {'id': ['1', '2', '3'],
+                                   'wavelength': ['0.9792', '0.9794', '0.9796'],
+                                   'wt': ['1.0']*3})
+        cc_cat = block.get_mmcif_category('_chem_comp.')
+        self.assertEqual(cc_cat['mon_nstd_flag'][:2], [None, 'y'])
+        self.assertEqual(cc_cat['pdbx_synonyms'][:2], [None, None])
 
     def test_reading_gzipped_file(self):
         path = os.path.join(os.path.dirname(__file__), '1pfe.cif.gz')
