@@ -132,7 +132,7 @@ void add_cif(py::module& cif) {
            }
          }, py::arg("name"), py::arg("data"), py::arg("raw")=false)
     .def("get_mmcif_category",
-         [](Block &self, std::string name) {
+         [](Block &self, std::string name, bool raw) {
            ensure_mmcif_category(name);
            py::dict data;
            Table table = self.find_mmcif_category(name);
@@ -142,14 +142,20 @@ void add_cif(py::module& cif) {
              Column col = table.column(data.size());
              py::list new_list(len);
              for (int i = 0; i != len; ++i)
-               if (is_null(col[i]))
-                 new_list[i] = py::none().inc_ref();
-               else
+               if (raw) {
                  new_list[i] = col[i];
+               } else if (is_null(col[i])) {
+                 if (col[i][0] == '?')
+                   new_list[i] = py::none().inc_ref();
+                 else
+                   new_list[i] = py::handle(Py_False).inc_ref();
+               } else {
+                 new_list[i] = col.str(i);
+               }
              data[tag.c_str() + name.size()] = new_list;
            }
            return data;
-         }, py::arg("name"))
+         }, py::arg("name"), py::arg("raw")=false)
     .def("__repr__", [](const Block &self) {
         return "<gemmi.cif.Block " + self.name + ">";
     });

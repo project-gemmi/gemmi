@@ -114,13 +114,30 @@ class TestBlock(unittest.TestCase):
         block.set_mmcif_category('_d', {
             'one': (None, 'a b', 'text\nfield'),
             'two': [-1, '?', False]})
-        self.assertEqual(block.find_values('_d.one')[0], '?')
-        self.assertEqual(block.find_values('_d.two').str(1), '?')
-        self.assertEqual(block.find_values('_d.one').str(1), 'a b')
-        self.assertEqual(block.find_values('_d.one').str(2), 'text\nfield')
-        self.assertEqual(block.find_values('_d.one')[2], ';text\nfield\n;')
-        self.assertEqual(block.find_values('_d.two').str(0), '-1')
-        self.assertEqual(block.find_values('_d.two')[2], '.')
+        def check_d():
+            self.assertEqual(block.find_values('_d.one')[0], '?')
+            self.assertEqual(block.find_values('_d.one').str(1), 'a b')
+            self.assertEqual(block.find_values('_d.one').str(2), 'text\nfield')
+            self.assertEqual(block.find_values('_d.one')[2], ';text\nfield\n;')
+            self.assertEqual(block.find_values('_d.two').str(0), '-1')
+            self.assertEqual(block.find_values('_d.two').str(1), '?')
+            self.assertEqual(block.find_values('_d.two')[2], '.')
+        check_d()
+        block.set_mmcif_category('_d', {
+            'one': ('?', "'a b'", ';text\nfield\n;'),
+            'two': ['-1', "'?'", '.']},
+            raw=True)
+        check_d()
+        block.set_mmcif_category('_d', {
+            'one': (None, "'a b'", ';text\nfield\n;'),
+            'two': [-1, "'?'", False]},
+            raw=True)
+        check_d()
+        block.set_mmcif_category('_d', block.get_mmcif_category('_d'))
+        check_d()
+        block.set_mmcif_category('_d', block.get_mmcif_category('_d', raw=True),
+                                 raw=True)
+        check_d()
 
     def test_mmcif_file(self):
         path = os.path.join(os.path.dirname(__file__), '5i55.cif')
@@ -133,7 +150,7 @@ class TestBlock(unittest.TestCase):
                                    'wavelength': ['0.9792', '0.9794', '0.9796'],
                                    'wt': ['1.0']*3})
         cc_cat = block.get_mmcif_category('_chem_comp.')
-        self.assertEqual(cc_cat['mon_nstd_flag'][:2], [None, 'y'])
+        self.assertEqual(cc_cat['mon_nstd_flag'][:2], [False, 'y'])
         self.assertEqual(cc_cat['pdbx_synonyms'][:2], [None, None])
 
     def test_reading_gzipped_file(self):
