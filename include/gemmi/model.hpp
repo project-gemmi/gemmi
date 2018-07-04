@@ -323,6 +323,15 @@ struct Residue : public ResidueId {
     return a1 && a2 && a1->pos.dist_sq(a2->pos) < 2.0 * 2.0;
   }
 
+  // convenience function that duplicates functionality from resinfo.hpp
+  bool is_water() const {
+    if (name.length() != 3)
+      return false;
+    int id = ialpha4_id(name.c_str());
+    return id == ialpha4_id("HOH") || id == ialpha4_id("DOD") ||
+           id == ialpha4_id("WAT") || id == ialpha4_id("H2O");
+  }
+
   // Iterators that in case of multiple conformations (alt. locations)
   // skip all but the first conformation.
   UniqProxy<Atom> first_conformer() { return {atoms}; }

@@ -48,6 +48,12 @@ inline std::string to_lower(std::string str) {
   return str;
 }
 
+// Numeric ID used for case-insensitive comparison of 4 letters.
+// s must have 4 chars or 3 chars + NUL, ' ' and NUL are equivalent in s.
+inline int ialpha4_id(const char* s) {
+  return (s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]) & ~0x20202020;
+}
+
 inline std::string trim_str(const std::string& str)
 {
   std::string ws = " \r\n\t";

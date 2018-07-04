@@ -105,8 +105,7 @@ inline std::string read_string(const char* p, int field_length) {
 // Compare the first 4 letters of s, ignoring case, with uppercase record.
 // Both args must have at least 3+1 chars. ' ' and NUL are equivalent in s.
 inline bool is_record_type(const char* s, const char* record) {
-  return ((s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]) & ~0x20202020) ==
-          (record[0] << 24 | record[1] << 16 | record[2] << 8 | record[3]);
+  return ialpha4_id(s) == ialpha4_id(record);
 }
 
 inline void setup_entities(Structure& st) {

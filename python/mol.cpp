@@ -260,6 +260,7 @@ void add_mol(py::module& m) {
     .def("__delitem__", &Residue::remove_atom, py::arg("name"))
     .def("first_conformer",
          (UniqProxy<Atom> (Residue::*)()) &Residue::first_conformer)
+    .def("is_water", &Residue::is_water)
     .def("__repr__", [](const Residue& self) {
         return "<gemmi.Residue " + self.str() +
                " with " + std::to_string(self.atoms.size()) + " atoms>";

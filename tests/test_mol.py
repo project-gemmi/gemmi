@@ -48,6 +48,12 @@ class TestMol(unittest.TestCase):
         self.assertEqual(res.label_seq, None)
         res.seq_num = None
         self.assertEqual(res.seq_num, None)
+        for name in ['HOH', 'hoh', 'DOD', 'h2o', 'H2O', 'WAT']:
+            res.name = name
+            self.assertTrue(res.is_water())
+        for name in ['SO4', '', 'HO', 'hoho', 'oho']:
+            res.name = name
+            self.assertFalse(res.is_water())
 
     def test_read_5i55(self):
         cell = gemmi.read_structure(full_path('5i55.cif')).cell
