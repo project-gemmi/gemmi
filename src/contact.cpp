@@ -72,10 +72,7 @@ static void print_contacts(const Structure& st, const Parameters& params) {
   const Model& model = st.models.at(0);
 	for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
     const Chain& chain = model.chains[n_ch];
-    const Entity* ent = st.get_entity_of(chain);
-    PolymerType pt = PolymerType::Unknown;
-    if (ent)
-      pt = ent->polymer_type;
+    PolymerType pt = check_polymer_type(chain.get_polymer());
     for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
       const Residue& res = chain.residues[n_res];
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
@@ -111,12 +108,12 @@ static void print_contacts(const Structure& st, const Parameters& params) {
                    atom.padded_name().c_str(),
                    atom.altloc ? std::toupper(atom.altloc) : ' ',
                    res.name.c_str(),
-                   chain.name_for_pdb().c_str(),
+                   chain.name.c_str(),
                    res.seq_id().c_str(),
                    cra.atom->padded_name().c_str(),
                    cra.atom->altloc ? std::toupper(cra.atom->altloc) : ' ',
                    cra.residue->name.c_str(),
-                   cra.chain->name_for_pdb().c_str(),
+                   cra.chain->name.c_str(),
                    cra.residue->seq_id().c_str(),
                    "1555", im.pdb_symbol(false).c_str(), im.dist());
         });
@@ -149,8 +146,6 @@ int GEMMI_MAIN(int argc, char **argv) {
           (p.nonOptionsCount() > 1 && !params.print_count))
         std::printf("%sFile: %s\n", (i > 0 ? "\n" : ""), input.c_str());
       Structure st = read_structure(input);
-      if (st.input_format == CoorFormat::Pdb)
-        split_nonpolymers(st);
       print_contacts(st, params);
     }
   } catch (std::runtime_error& e) {

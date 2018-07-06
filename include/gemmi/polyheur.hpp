@@ -1,40 +1,45 @@
-// Copyright 2017 Global Phasing Ltd.
+// Copyright 2017-2018 Global Phasing Ltd.
 //
-// Heuristics for working with polymers.
+// Heuristic methods for working with chains and polymers.
+// Includes also a few well-defined functions, such as removal of hydrogens.
 
 #ifndef GEMMI_POLYHEUR_HPP_
 #define GEMMI_POLYHEUR_HPP_
 
 #include <vector>
 #include "model.hpp"
-#include "resinfo.hpp"
+#include "resinfo.hpp"  // for find_tabulated_residue
+#include "entstr.hpp"   // for polymer_type_abbr
+#include "util.hpp"     // for vector_remove_if
 
 namespace gemmi {
 
 // A simplistic classification. It may change in the future.
 // It returns PolymerType which corresponds to _entity_poly.type,
 // but here we use only PeptideL, Rna, Dna, DnaRnaHybrid and Unknown.
-inline PolymerType check_polymer_type(const std::vector<Residue>& rr) {
+inline PolymerType check_polymer_type(const ResidueSpan& residues) {
+  if (residues.size() < 2)
+    return PolymerType::Unknown;
   size_t counts[9] = {0};
   size_t aa = 0;
   size_t na = 0;
-  for (const Residue& r : rr) {
-    ResidueInfo info = find_tabulated_residue(r.name);
-    if  (info.found()) {
-      counts[info.kind]++;
-    } else {
-      if (r.get_ca())
+  for (const Residue& r : residues)
+    if (r.entity_type == EntityType::Unknown ||
+        r.entity_type == EntityType::Polymer) {
+      ResidueInfo info = find_tabulated_residue(r.name);
+      if (info.found())
+        counts[info.kind]++;
+      else if (r.get_ca())
         ++aa;
       else if (r.get_p())
         ++na;
     }
-  }
   aa += counts[ResidueInfo::AA] + counts[ResidueInfo::AAD];
   na += counts[ResidueInfo::RNA] + counts[ResidueInfo::DNA];
-  if (aa == rr.size() || (aa > 10 && 2 * aa > rr.size()))
+  if (aa == residues.size() || (aa > 10 && 2 * aa > residues.size()))
     return counts[ResidueInfo::AA] >= counts[ResidueInfo::AAD]
            ? PolymerType::PeptideL : PolymerType::PeptideD;
-  if (na == rr.size() || (na > 10 && 2 * na > rr.size())) {
+  if (na == residues.size() || (na > 10 && 2 * na > residues.size())) {
     if (counts[ResidueInfo::DNA] == 0)
       return PolymerType::Rna;
     else if (counts[ResidueInfo::RNA] == 0)
@@ -50,9 +55,8 @@ inline bool is_polymer_residue(const Residue& res, PolymerType ptype) {
   ResidueInfo info = find_tabulated_residue(res.name);
   switch (ptype) {
     case PolymerType::PeptideL:
-      return info.found() ? info.kind == ResidueInfo::AA : !!res.get_ca();
     case PolymerType::PeptideD:
-      // D-peptide can contain AA in addition AAD (for example GLY)
+      // here we don't mind mixing D- and L- peptides
       return info.found() ? info.is_amino_acid() : !!res.get_ca();
     case PolymerType::Dna:
       return info.found() ? info.is_dna() : !!res.get_p();
@@ -99,28 +103,208 @@ inline bool are_connected2(const Residue& r1, const Residue& r2,
   return false;
 }
 
-inline std::string make_one_letter_sequence(const std::vector<Residue>& rr,
-                                            PolymerType ptype) {
+inline std::string make_one_letter_sequence(const ResidueSpan& residue_span) {
   std::string seq;
   const Residue* prev = nullptr;
-  for (const Residue& residue : rr)
-    if (is_polymer_residue(residue, ptype)) {
-      ResidueInfo info = find_tabulated_residue(residue.name);
-      if (prev && !are_connected2(*prev, residue, ptype))
-        seq += '-';
-      seq += (info.one_letter_code != ' ' ? info.one_letter_code : 'X');
-      prev = &residue;
-    }
+  PolymerType ptype = check_polymer_type(residue_span);
+  for (const Residue& residue : residue_span) {
+    ResidueInfo info = find_tabulated_residue(residue.name);
+    if (prev && !are_connected2(*prev, residue, ptype))
+      seq += '-';
+    seq += (info.one_letter_code != ' ' ? info.one_letter_code : 'X');
+    prev = &residue;
+  }
   return seq;
 }
 
+// TODO: remove this function, too specialized.
 // returns a string such as AAL:GSHMTTPSHLSDRYEL
 inline std::string extract_sequence_info(const Chain& chain) {
-  PolymerType ptype = check_polymer_type(chain.residues);
-  std::string info = polymer_type_abbr(ptype);
+  const ResidueSpan span = chain.get_polymer();
+  std::string info = polymer_type_abbr(check_polymer_type(span));
   info += ':';
-  info += make_one_letter_sequence(chain.residues, ptype);
+  info += make_one_letter_sequence(span);
   return info;
+}
+
+/*
+int count_unknown_entity_type(const Chain& chain) {
+  return std::count_if(chain.residues.begin(), chain.residues.end(),
+      [](const Residue& r) { return r.entity_type == EntityType::Unknown; });
+}
+*/
+
+inline bool has_subchains_assigned(const Chain& chain) {
+  return std::all_of(chain.residues.begin(), chain.residues.end(),
+                     [](const Residue& r) { return !r.subchain.empty(); });
+}
+
+inline void add_entity_types(Chain& chain, bool overwrite) {
+  PolymerType ptype = check_polymer_type(chain.whole());
+  auto it = chain.residues.begin();
+  for (; it != chain.residues.end(); ++it)
+    if (overwrite || it->entity_type == EntityType::Unknown) {
+      if (!is_polymer_residue(*it, ptype))
+        break;
+      it->entity_type = EntityType::Polymer;
+    } else if (it->entity_type != EntityType::Polymer) {
+      break;
+    }
+  for (; it != chain.residues.end(); ++it)
+    if (overwrite || it->entity_type == EntityType::Unknown)
+      it->entity_type = it->is_water() ? EntityType::Water
+                                       : EntityType::NonPolymer;
+}
+
+inline void add_entity_types(Structure& st, bool overwrite) {
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      add_entity_types(chain, overwrite);
+}
+
+// The subchain field in the residue is where we store_atom_site.label_asym_id
+// from mmCIF files. As of 2018 wwPDB software splits author's chains
+// (auth_asym_id) into label_asym_id units:
+// * linear polymer,
+// * non-polymers (each residue has different separate label_asym_id),
+// * and waters.
+// Refmac/makecif is doing similar thing but using different naming and
+// somewhat different rules (it was written in 1990's before PDBx/mmCIF).
+//
+// Here we use naming and rules different from both wwPDB and makecif.
+inline void assign_subchains(Chain& chain) {
+  add_entity_types(chain, false);
+  int nonpoly_number = 0;
+  for (Residue& res : chain.residues) {
+    res.subchain = chain.name + ":";
+    if (res.entity_type == EntityType::Polymer)
+      res.subchain += 'P';
+    else if (res.entity_type == EntityType::NonPolymer)
+      res.subchain += std::to_string(++nonpoly_number);
+    else if (res.entity_type == EntityType::Water)
+      res.subchain += 'W';
+  }
+}
+
+inline void assign_subchains(Structure& st, bool force) {
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      if (force || !has_subchains_assigned(chain))
+        assign_subchains(chain);
+}
+
+inline void ensure_entities(Structure& st) {
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      for (SubChain sub : chain.subchains()) {
+        Entity* ent = st.get_entity_of(sub);
+        if (!ent) {
+          EntityType etype = sub[0].entity_type;
+          std::string name;
+          if (etype == EntityType::Polymer)
+            name = chain.name;
+          else if (etype == EntityType::NonPolymer)
+            name = sub[0].name + "!";
+          else if (etype == EntityType::Water)
+            name = "water";
+          if (!name.empty()) {
+            ent = &impl::find_or_add(st.entities, name);
+            ent->entity_type = etype;
+            ent->subchains.push_back(sub.name());
+          }
+        }
+        // ensure we have polymer_type set where needed
+        if (ent && ent->entity_type == EntityType::Polymer &&
+            ent->polymer_type == PolymerType::Unknown)
+          ent->polymer_type = check_polymer_type(sub);
+      }
+}
+
+
+inline void deduplicate_entities(Structure& st) {
+  for (auto i = st.entities.begin(); i != st.entities.end(); ++i)
+    if (!i->sequence.empty())
+      for (auto j = i + 1; j != st.entities.end(); ++j)
+        if (j->polymer_type == i->polymer_type && j->sequence == i->sequence) {
+          vector_move_extend(i->subchains, std::move(j->subchains));
+          st.entities.erase(j--);
+        }
+}
+
+
+// Remove hydrogens.
+template<class T> void remove_hydrogens(T& obj) {
+  for (auto& child : obj.children())
+    remove_hydrogens(child);
+}
+template<> inline void remove_hydrogens(Residue& res) {
+  vector_remove_if(res.atoms, [](const Atom& a) {
+    return a.element == El::H || a.element == El::D;
+  });
+}
+
+// Remove waters. It may leave empty chains.
+template<class T> void remove_waters(T& obj) {
+  for (auto& child : obj.children())
+    remove_waters(child);
+}
+template<> inline void remove_waters(Chain& ch) {
+  vector_remove_if(ch.residues,
+                   [](const Residue& res) { return res.is_water(); });
+}
+
+// Remove ligands and waters. It may leave empty chains.
+inline void remove_ligands_and_waters(Chain& ch) {
+  int aa_count = 0;
+  int na_count = 0;
+  vector_remove_if(ch.residues, [&](const Residue& res) {
+      if (res.entity_type == EntityType::Unknown) {
+        ResidueInfo info = find_tabulated_residue(res.name);
+        if (info.is_amino_acid())
+          ++aa_count;
+        if (info.is_nucleic_acid())
+          ++na_count;
+        if (info.found())
+          return !(info.is_amino_acid() || info.is_nucleic_acid());
+        // TODO: check connectivity
+        return aa_count >= na_count ? !res.get_ca() : !res.get_p();
+      }
+      return res.entity_type != EntityType::Polymer;
+  });
+}
+
+inline void remove_ligands_and_waters(Structure& st) {
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      remove_ligands_and_waters(chain);
+}
+
+// Remove empty chains.
+inline void remove_empty_chains(Model& m) {
+  vector_remove_if(m.chains,
+                   [](const Chain& chain) { return chain.residues.empty(); });
+}
+inline void remove_empty_chains(Structure& st) {
+  for (Model& model : st.models)
+    remove_empty_chains(model);
+}
+
+// Trim to alanine.
+inline void trim_to_alanine(Chain& chain) {
+  static const std::pair<std::string, El> ala_atoms[6] = {
+    {"N", El::N}, {"CA", El::C}, {"C", El::C}, {"O", El::O}, {"CB", El::C},
+    {"OXT", El::O}
+  };
+  for (Residue& res : chain.residues) {
+    if (res.get_ca() == nullptr)
+      return;  // we leave it; should we rather remove such residues?
+    vector_remove_if(res.atoms, [](const Atom& a) {
+        for (const auto& name_el : ala_atoms)
+          if (a.name == name_el.first && a.element == name_el.second)
+            return false;
+        return true;
+    });
+  }
 }
 
 } // namespace gemmi

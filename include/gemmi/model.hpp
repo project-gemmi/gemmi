@@ -33,7 +33,9 @@ template<int N> struct OptionalInt {
   }
   OptionalInt& operator=(int n) { value = n; return *this; }
   bool operator==(const OptionalInt& o) const { return value == o.value; }
+  bool operator!=(const OptionalInt& o) const { return value != o.value; }
   bool operator==(int n) const { return value == n; }
+  bool operator!=(int n) const { return value != n; }
   explicit operator int() const { return value; }
   explicit operator bool() const { return has_value(); }
   // these are defined for partial compatibility with C++17 std::optional
@@ -110,10 +112,9 @@ enum class PolymerType : unsigned char {
   Other,
 };
 
-
 struct SequenceItem {
-  int num;
-  std::string mon;
+  int num;  // _entity_poly_seq.num or -1 if from SEQRES
+  std::string mon;  // _entity_poly_seq.mon_id or resName from SEQRES
   explicit SequenceItem(std::string m) noexcept : num(-1), mon(m) {}
   SequenceItem(int n, std::string m) noexcept : num(n), mon(m) {}
   bool operator==(const SequenceItem& o) const {
@@ -121,72 +122,33 @@ struct SequenceItem {
   }
 };
 
-using Sequence = std::vector<SequenceItem>;
-
 struct Entity {
+  std::string name;
+  std::vector<std::string> subchains;
   EntityType entity_type = EntityType::Unknown;
   PolymerType polymer_type = PolymerType::Unknown;
-  Sequence sequence;
+  std::vector<SequenceItem> sequence;
 
-  std::string type_as_string() const {
-    switch (entity_type) {
-      case EntityType::Polymer: return "polymer";
-      case EntityType::NonPolymer: return "non-polymer";
-      case EntityType::Water: return "water";
-      default /*EntityType::Unknown*/: return "?";
-    }
+  explicit Entity(std::string name_) noexcept : name(name_) {}
+
+  //ConstUniqProxy<SequenceItem>
+  //seq_first_conformer() const { return {sequence}; }
+
+  // TODO: is it worth to use first_conformer UniqProxy
+  bool is_seq_first_conformer(int idx) const {
+    int num = sequence[idx].num;
+    return num < 0 || idx == 0 || num != sequence[idx-1].num;
   }
-  std::string polymer_type_as_string() const {
-    switch (polymer_type) {
-      case PolymerType::PeptideL: return "polypeptide(L)";
-      case PolymerType::PeptideD: return "polypeptide(D)";
-      case PolymerType::Dna: return "polydeoxyribonucleotide";
-      case PolymerType::Rna: return "polyribonucleotide";
-      case PolymerType::DnaRnaHybrid:
-        return "polydeoxyribonucleotide/polyribonucleotide hybrid";
-      case PolymerType::SaccharideD: return "polysaccharide(D)";
-      case PolymerType::SaccharideL: return "polysaccharide(L)";
-      case PolymerType::Other: return "other";
-      case PolymerType::Pna: return "peptide nucleic acid";
-      case PolymerType::CyclicPseudoPeptide: return "cyclic-pseudo-peptide";
-      default /*PolymerType::Unknown*/: return "?";
-    }
+
+  // handles point mutations, unlike sequence.size()
+  int seq_length() const {
+    int len = 0;
+    for (size_t i = 0; i != sequence.size(); ++i)
+      if (is_seq_first_conformer(i))
+        ++len;
+    return len;
   }
 };
-
-inline EntityType entity_type_from_string(const std::string& t) {
-  if (t == "polymer")     return EntityType::Polymer;
-  if (t == "non-polymer") return EntityType::NonPolymer;
-  if (t == "water")       return EntityType::Water;
-  return EntityType::Unknown;
-}
-
-inline PolymerType polymer_type_from_string(const std::string& t) {
-  if (t == "polypeptide(L)")          return PolymerType::PeptideL;
-  if (t == "polydeoxyribonucleotide") return PolymerType::Dna;
-  if (t == "polyribonucleotide")      return PolymerType::Rna;
-  if (t == "polydeoxyribonucleotide/polyribonucleotide hybrid")
-                                      return PolymerType::DnaRnaHybrid;
-  if (t == "polypeptide(D)")          return PolymerType::PeptideD;
-  if (t == "polysaccharide(D)")       return PolymerType::SaccharideD;
-  if (t == "other")                   return PolymerType::Other;
-  if (t == "peptide nucleic acid")    return PolymerType::Pna;
-  if (t == "cyclic-pseudo-peptide")   return PolymerType::CyclicPseudoPeptide;
-  if (t == "polysaccharide(L)")       return PolymerType::SaccharideL;
-  return PolymerType::Unknown;
-}
-
-// sometimes a name shorter than "polydeoxyribonucleotide" is more readable
-inline const char* polymer_type_abbr(PolymerType ptype) {
-  switch (ptype) {
-    case PolymerType::PeptideL: return "AAL";
-    case PolymerType::PeptideD: return "AAD";
-    case PolymerType::Dna: return "DNA";
-    case PolymerType::Rna: return "RNA";
-    case PolymerType::DnaRnaHybrid: return "xNA";
-    default: return "";
-  }
-}
 
 inline bool is_same_conformer(char altloc1, char altloc2) {
   return altloc1 == '\0' || altloc2 == '\0' || altloc1 == altloc2;
@@ -220,39 +182,49 @@ struct Atom {
   }
 };
 
+// TODO
+/*
+struct SeqId {
+  using OptionalNum = impl::OptionalInt<-999>;
 
+  OptionalNum seq_num; // sequence number
+  char icode = ' ';  // insertion code
+};
+*/
+
+// Sequence ID (sequence number + insertion code) + residue name + segment ID
 struct ResidueId {
   using OptionalNum = impl::OptionalInt<-999>;
 
-  // traditional residue sequence numbers are coupled with insertion codes
   OptionalNum seq_num; // sequence number
   char icode = ' ';  // insertion code
 
-  //bool in_main_conformer/is_point_mut
-  //uint32_t segment_id; // number or 4 characters
-  std::string segment; // normally up to 4 characters in the PDB file
+  std::string segment; // segid - up to 4 characters in the PDB file
   std::string name;
 
   char has_icode() const { return icode != ' '; }
-  bool same_seq_id(const ResidueId& o) const {
+  // checks for equality of sequence ID; used for first_conformation iterators
+  bool same_group(const ResidueId& o) const {
     return seq_num == o.seq_num && icode == o.icode;
+  }
+  bool matches(const ResidueId& o) const {
+    return same_group(o) && segment == o.segment && name == o.name;
   }
   std::string seq_id() const {
     std::string r = seq_num.str();
-    if (has_icode())
+    if (icode != ' ')
       r += icode;
     return r;
   }
   std::string str() const { return seq_id() + "(" + name + ")"; }
-  bool matches(const ResidueId& rid) const;
-  // for first_conformation iterators
-  bool same_group(const ResidueId& o) const { return same_seq_id(o); }
 };
 
 struct Residue : public ResidueId {
+  std::string subchain;   // mmCIF _atom_site.label_asym_id
   OptionalNum label_seq;  // mmCIF _atom_site.label_seq_id
-  bool is_cis = false;  // bond to the next residue marked as cis
-  char het_flag = '\0';  // 'A' = ATOM, 'H' = HETATM, 0 = unspecified
+  EntityType entity_type = EntityType::Unknown;
+  char het_flag = '\0';   // 'A' = ATOM, 'H' = HETATM, 0 = unspecified
+  bool is_cis = false;    // bond to the next residue marked as cis
   std::vector<Atom> atoms;
 
   Residue() = default;
@@ -338,64 +310,142 @@ struct Residue : public ResidueId {
   ConstUniqProxy<Atom> first_conformer() const { return {atoms}; }
 };
 
-// ResidueGroup represents residues with the same sequence number and insertion
+// ResidueSpan represents residues with the same sequence number and insertion
 // code, but different residue names. I.e. microheterogeneity.
 // Usually, there is only one residue in the group.
 // The residues must be consecutive.
-struct ResidueGroup {
+struct ResidueSpan {
   using iterator = std::vector<Residue>::iterator;
   using const_iterator = std::vector<Residue>::const_iterator;
 
-  iterator begin_, end_;
+  iterator begin_;
+  std::size_t size_ = 0;
+
+  ResidueSpan() = default;
+  ResidueSpan(iterator begin, std::size_t n) : begin_(begin), size_(n) {}
 
   const_iterator begin() const { return begin_; }
-  const_iterator end() const { return end_; }
+  const_iterator end() const { return begin_ + size_; }
   iterator begin() { return begin_; }
-  iterator end() { return end_; }
-  int size() const { return end_ - begin_; }
-  const Residue& operator[](int i) const { return *(begin_ + i); }
-  Residue& operator[](int i) { return *(begin_ + i); }
-  Residue& at(int i) {
+  iterator end() { return begin_ + size_; }
+  Residue& front() { return *begin_; }
+  const Residue& front() const { return *begin_; }
+  Residue& back() { return *(begin_ + size_ - 1); }
+  const Residue& back() const { return *(begin_ + size_ - 1); }
+  std::size_t size() const { return size_; }
+  const Residue& operator[](std::size_t i) const { return *(begin_ + i); }
+  Residue& operator[](std::size_t i) { return *(begin_ + i); }
+  Residue& at(std::size_t i) {
     if (i >= size())
-      throw std::out_of_range("ResidueGroup: no item " + std::to_string(i));
+      throw std::out_of_range("ResidueSpan: no item " + std::to_string(i));
     return *(begin_ + i);
   }
-  const Residue& at(int i) const {
-    return const_cast<ResidueGroup*>(this)->at(i);
+  const Residue& at(std::size_t i) const {
+    return const_cast<ResidueSpan*>(this)->at(i);
   }
+  bool empty() const { return size_ == 0; }
+  explicit operator bool() const { return size_ != 0; }
+};
+
+// returned by find_residue_group()
+struct ResidueGroup : ResidueSpan {
+  ResidueGroup() = default;
+  ResidueGroup(ResidueSpan&& span) : ResidueSpan(std::move(span)) {}
   Residue& by_resname(const std::string& name) {
-    for (auto it = begin_; it != end_; ++it)
+    for (auto it = begin_; it != begin_ + size_; ++it)
       if (it->name == name)
         return *it;
     throw std::invalid_argument("ResidueGroup has no residue " + name);
   }
-  bool empty() const { return begin_ == end_; }
-  explicit operator bool() const { return begin_ != end_; }
+};
+
+// returned by find_residue_group()
+struct SubChain : ResidueSpan {
+  SubChain() = default;
+  SubChain(ResidueSpan&& span) : ResidueSpan(std::move(span)) {}
+  //SubChain(iterator begin, std::size_t size) : ResidueSpan{begin, size} {}
+  // useful for ResidueSpan returned by subchains()
+  const std::string& name() const {
+    const static std::string empty_name = "n/a";
+    return empty() ? empty_name : begin_->subchain;
+  }
+  // the same as Chain::first_conformer()
+  /* TODO
+  UniqProxy<Residue> first_conformer() {
+  }
+  ConstUniqProxy<Residue> first_conformer() const {
+  }
+  */
 };
 
 
 struct Chain {
   static const char* what() { return "Chain"; }
   std::string name;
-  std::string auth_name;
   std::vector<Residue> residues;
-  std::string entity_id;
 
   explicit Chain(std::string cname) noexcept : name(cname) {}
-  ResidueGroup find_residue_group(int seqnum, char icode=' ');
+
+  template<typename T> ResidueSpan get_residue_span(T&& func) {
+    auto begin = std::find_if(residues.begin(), residues.end(), func);
+    auto size = std::find_if_not(begin, residues.end(), func) - begin;
+    return ResidueSpan(begin, size);
+  }
+
+  ResidueSpan whole() { return ResidueSpan(residues.begin(), residues.size()); }
+  const ResidueSpan whole() const { return const_cast<Chain*>(this)->whole(); }
+
+  SubChain get_polymer() {
+    return get_residue_span([](const Residue& r) {
+        return r.entity_type == EntityType::Polymer;
+    });
+  }
+  const SubChain get_polymer() const {
+    return const_cast<Chain*>(this)->get_polymer();
+  }
+
+  SubChain get_waters() {
+    return get_residue_span([](const Residue& r) {
+        return r.entity_type == EntityType::Water;
+    });
+  }
+  const SubChain get_waters() const {
+    return const_cast<Chain*>(this)->get_waters();
+  }
+
+  SubChain get_subchain(const std::string& s) {
+    return get_residue_span([&](const Residue& r) { return r.subchain == s; });
+  }
+  const SubChain get_subchain(const std::string& s) const {
+    return const_cast<Chain*>(this)->get_subchain(s);
+  }
+
+  // TODO: use generator with iterators
+  std::vector<SubChain> subchains() {
+    std::vector<SubChain> v;
+    for (auto i = residues.begin(); i != residues.end(); i += v.back().size())
+      v.emplace_back(get_residue_span([&](const Residue& r) {
+            return r.subchain == i->subchain;
+      }));
+    return v;
+  }
+
+  ResidueGroup find_residue_group(int seqnum, char icode=' ') {
+    return get_residue_span([&](const Residue& r) {
+        return r.seq_num == seqnum && (r.icode | 0x20) == (icode | 0x20);
+    });
+  }
+
   Residue* find_residue(const ResidueId& rid);
   Residue* find_or_add_residue(const ResidueId& rid);
   void append_residues(std::vector<Residue> new_resi);
   std::vector<Residue>& children() { return residues; }
   const std::vector<Residue>& children() const { return residues; }
-  const std::string& name_for_pdb() const {
-    return auth_name.empty() ? name : auth_name;
-  }
 
   ResidueGroup find_by_seqid(const std::string& seqid) {
     char* endptr;
     int seqnum = std::strtol(seqid.c_str(), &endptr, 10);
-    if (endptr == seqid.c_str() || (*endptr != '\0'  && endptr[1] != '\0'))
+    if (endptr == seqid.c_str() || (*endptr != '\0' && endptr[1] != '\0'))
       throw std::invalid_argument("Not a seqid: " + seqid);
     return find_residue_group(seqnum, *endptr);
   }
@@ -405,8 +455,8 @@ struct Chain {
   const Residue* previous_residue(const Residue& res) const {
     const Residue* start = residues.data();
     for (const Residue* p = &res; p != start; )
-      if (!res.same_seq_id(*--p)) {
-        while (p != start && p->same_seq_id(*(p-1)) && !res.same_conformer(*p))
+      if (!res.same_group(*--p)) {
+        while (p != start && p->same_group(*(p-1)) && !res.same_conformer(*p))
           --p;
         return p;
       }
@@ -417,8 +467,8 @@ struct Chain {
   const Residue* next_residue(const Residue& res) const {
     const Residue* end = residues.data() + residues.size();
     for (const Residue* p = &res + 1; p != end; ++p)
-      if (!res.same_seq_id(*p)) {
-        while (p+1 != end && p->same_seq_id(*(p+1)) && !res.same_conformer(*p))
+      if (!res.same_group(*p)) {
+        while (p+1 != end && p->same_group(*(p+1)) && !res.same_conformer(*p))
           ++p;
         return p;
       }
@@ -474,17 +524,15 @@ struct AtomAddress {
   ResidueId res_id;
   std::string atom_name;
   char altloc = '\0';
-  bool use_auth_name = true;
 
   AtomAddress() = default;
   AtomAddress(const Chain& ch, const Residue& res, const Atom& at)
-    : chain_name(ch.name), res_id(res), atom_name(at.name), altloc(at.altloc),
-      use_auth_name(false) {}
+    : chain_name(ch.name), res_id(res), atom_name(at.name), altloc(at.altloc)
+  {}
 
   bool operator==(const AtomAddress& o) const {
     return chain_name == o.chain_name && res_id.matches(o.res_id) &&
-           atom_name == o.atom_name && altloc == o.altloc &&
-           use_auth_name == o.use_auth_name;
+           atom_name == o.atom_name && altloc == o.altloc;
   }
 
   std::string str() const {
@@ -533,6 +581,12 @@ struct Model {
     return impl::find_or_null(chains, chain_name);
   }
 
+  Residue* find_residue(const std::string& chain_name, const ResidueId& rid) {
+    if (Chain* chain = find_chain(chain_name))
+      return chain->find_residue(rid);
+    return nullptr;
+  }
+
   Chain& add_chain(const std::string& chain_name) {
     if (find_chain(chain_name))
       throw std::runtime_error("The chain '" + chain_name + "' already exists");
@@ -547,27 +601,33 @@ struct Model {
     chains.erase(impl::find_iter(chains, chain_name));
   }
 
-  ResidueGroup residues(const std::string& auth_chain, int resnum, char icode) {
-    ResidueGroup rg;
+  SubChain get_subchain(const std::string& sub_name) {
     for (Chain& chain : chains)
-      if (chain.auth_name == auth_chain) {
-        rg = chain.find_residue_group(resnum, icode);
-        if (rg)
-          break;
-      }
-    return rg;
+      if (SubChain sub = chain.get_subchain(sub_name))
+        return sub;
+    return SubChain();
+  }
+  const SubChain get_subchain(const std::string& sub_name) const {
+    return const_cast<Model*>(this)->get_subchain(sub_name);
   }
 
-  Residue& residue(const std::string& auth_chain, int resnum, char icode) {
-    ResidueGroup rg = residues(auth_chain, resnum, icode);
-    if (rg.size() != 1) {
-      std::string err = rg.empty() ? "No residue " : "Multiple residues ";
-      err += auth_chain + " " + std::to_string(resnum);
-      if (icode != ' ')
-        err += icode;
-      throw std::runtime_error(err);
-    }
-    return rg[0];
+  std::vector<SubChain> subchains() {
+    std::vector<SubChain> v;
+    for (Chain& chain : chains)
+      vector_move_extend(v, chain.subchains());
+    return v;
+  }
+
+  Residue& sole_residue(const std::string& chain_name, int resnum, char icode) {
+    Chain* chain = find_chain(chain_name);
+    if (!chain)
+      fail("No chain " + chain_name);
+    ResidueSpan rr = chain->find_residue_group(resnum, icode);
+    if (rr.size() != 1)
+      fail((rr.empty() ? "No residue " : "Multiple residues ") +
+           chain_name + " " + // TODO SeqId
+           std::to_string(resnum) + std::string(1, icode));
+    return rr[0];
   }
 
   Connection* find_connection_by_name(const std::string& conn_name) {
@@ -576,8 +636,7 @@ struct Model {
 
   CRA find_cra(const AtomAddress& address) {
     for (Chain& chain : chains)
-      if ((address.use_auth_name ? chain.auth_name : chain.name) ==
-          address.chain_name)
+      if (chain.name == address.chain_name)
         if (Residue* res = chain.find_residue(address.res_id)) {
           Atom *at = res->find_atom(address.atom_name, address.altloc);
           return {&chain, res, at};
@@ -617,7 +676,7 @@ struct Structure {
   std::string spacegroup_hm;
   std::vector<Model> models;
   std::vector<NcsOp> ncs;
-  std::map<std::string, Entity> entities;
+  std::vector<Entity> entities;
 
   // Store ORIGXn / _database_PDB_matrix.origx*
   bool has_origx = false;
@@ -649,19 +708,23 @@ struct Structure {
   }
 
   Entity* get_entity(const std::string& ent_id) {
-    auto ent = entities.find(ent_id);
-    return ent == entities.end() ? nullptr : &ent->second;
+    return impl::find_or_null(entities, ent_id);
   }
   const Entity* get_entity(const std::string& ent_id) const {
-    auto ent = entities.find(ent_id);
-    return ent == entities.end() ? nullptr : &ent->second;
+    return const_cast<Structure*>(this)->get_entity(ent_id);
   }
 
-  Entity* get_entity_of(const Chain& chain) {
-    return get_entity(chain.entity_id);
+  const Entity* get_entity_of(const SubChain& sub) const {
+    if (sub.empty() || sub.name().empty())
+      return nullptr;
+    for (const Entity& ent : entities)
+      if (in_vector(sub.name(), ent.subchains))
+        return &ent;
+    return nullptr;
   }
-  const Entity* get_entity_of(const Chain& chain) const {
-    return get_entity(chain.entity_id);
+  Entity* get_entity_of(const SubChain& sub) {
+    const Structure* const_this = this;
+    return const_cast<Entity*>(const_this->get_entity_of(sub));
   }
 
   double get_ncs_multiplier() const {
@@ -674,19 +737,6 @@ struct Structure {
   const std::vector<Model>& children() const { return models; }
   void setup_cell_images();
 };
-
-inline bool ResidueId::matches(const ResidueId& rid) const {
-  return same_seq_id(rid) && segment == rid.segment && name == rid.name;
-}
-
-inline ResidueGroup Chain::find_residue_group(int seqnum, char icode) {
-  auto match = [&](const Residue& r) {
-    return r.seq_num == seqnum && (r.icode | 0x20) == (icode | 0x20);
-  };
-  auto begin_ = std::find_if(residues.begin(), residues.end(), match);
-  auto end_ = std::find_if_not(begin_, residues.end(), match);
-  return ResidueGroup{begin_, end_};
-}
 
 inline Residue* Chain::find_residue(const ResidueId& rid) {
   auto it = std::find_if(residues.begin(), residues.end(),

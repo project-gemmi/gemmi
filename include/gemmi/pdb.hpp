@@ -24,8 +24,6 @@
 #include "model.hpp"
 #include "util.hpp"
 #include "fileutil.hpp" // for path_basename, file_open
-#include "resinfo.hpp"
-#include "polyheur.hpp" // for check_polymer_type
 
 namespace gemmi {
 
@@ -106,54 +104,6 @@ inline std::string read_string(const char* p, int field_length) {
 // Both args must have at least 3+1 chars. ' ' and NUL are equivalent in s.
 inline bool is_record_type(const char* s, const char* record) {
   return ialpha4_id(s) == ialpha4_id(record);
-}
-
-inline void setup_entities(Structure& st) {
-  const static std::string WAT = "water";
-  bool has_water = false;
-  for (Model& model : st.models)
-    for (Chain& chain : model.chains) {
-      if (chain.entity_id == WAT) {
-        has_water = true;
-        continue;
-      }
-      assert(!chain.name.empty());
-      if (chain.residues.size() == 1 && st.get_entity_of(chain) == nullptr)
-        chain.entity_id = chain.residues[0].name + "!";
-      Entity& ent = st.entities[chain.entity_id];
-      if (chain.residues.size() == 1) {
-        if (ent.entity_type == EntityType::Unknown)
-          ent.entity_type = EntityType::NonPolymer;
-      } else {
-        PolymerType pt = check_polymer_type(chain.residues);
-        if (pt == PolymerType::Unknown) {
-          ent.entity_type = EntityType::NonPolymer;
-        } else {
-          ent.entity_type = EntityType::Polymer;
-          ent.polymer_type = pt;
-        }
-      }
-    }
-  if (has_water)
-    st.entities[WAT].entity_type = EntityType::Water;
-}
-
-inline void deduplicate_entities(Structure& st) {
-  for (auto i = st.entities.begin(); i != st.entities.end(); ++i) {
-    if (i->second.sequence.empty())
-      continue;
-    auto j = i;
-    for (++j; j != st.entities.end(); )
-      if (j->second.sequence == i->second.sequence) {
-        for (Model& mod : st.models)
-          for (Chain& ch : mod.chains)
-            if (ch.entity_id == j->first)
-              ch.entity_id = i->first;
-        j = st.entities.erase(j);
-      } else {
-        ++j;
-      }
-  }
 }
 
 // The standard charge format is 2+, but some files have +2.
@@ -308,10 +258,8 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       std::string cname = read_string(r + 14, 2);
       ResidueId rid = read_res_id(r + 17, r + 11);
       for (Model& model : st.models)
-        for (Chain& chain : model.chains)
-          if (chain.auth_name == cname)
-            if (Residue* res = chain.find_residue(rid))
-              res->is_cis = true;
+        if (Residue* res = model.find_residue(cname, rid))
+          res->is_cis = true;
     }
   }
 }
@@ -331,7 +279,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   Chain *chain = nullptr;
   Residue *resi = nullptr;
   char line[88] = {0};
-  bool prev_water = false;
+  bool after_ter = false;
   Transform matrix;
   while (size_t len = copy_line_from_stream(line, 82, infile)) {
     ++line_num;
@@ -340,22 +288,13 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
         wrong("The line is too short to be correct:\n" + std::string(line));
       std::string chain_name = read_string(line+20, 2);
       ResidueId rid = read_res_id(line+22, line+17);
-      bool res_water = find_tabulated_residue(rid.name).is_water();
-      if (!chain || chain_name != chain->auth_name || res_water != prev_water) {
+
+      if (!chain || chain_name != chain->name) {
         if (!model)
           wrong("ATOM/HETATM between models");
-        if (res_water) {
-          chain = &model->find_or_add_chain(chain_name + "_w");
-          if (chain->entity_id.empty())
-            chain->entity_id = "water";
-        } else {
-          int n = std::count_if(model->chains.begin(), model->chains.end(),
-                  [&](const Chain& ch) { return ch.auth_name == chain_name; });
-          chain = &model->add_chain(chain_name + std::to_string(n));
-          chain->entity_id = (n == 0 ? chain_name : chain->name);
-        }
-        prev_water = res_water;
-        chain->auth_name = chain_name;
+        chain = &model->find_or_add_chain(chain_name);
+        after_ter = !chain->residues.empty() &&
+                    chain->residues[0].entity_type == EntityType::Polymer;
         resi = nullptr;
       }
       // Non-standard but widely used 4-character segment identifier.
@@ -368,8 +307,11 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
         if (!resi) {
           chain->residues.emplace_back(rid);
           resi = &chain->residues.back();
+          resi->het_flag = line[0] & ~0x20;
+          if (after_ter)
+            resi->entity_type = resi->is_water() ? EntityType::Water
+                                                 : EntityType::NonPolymer;
         }
-        resi->het_flag = line[0] & ~0x20;
       }
 
       Atom atom;
@@ -420,7 +362,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
     } else if (is_record_type(line, "SEQRES")) {
       std::string chain_name = read_string(line+10, 2);
-      Entity& ent = st.entities[chain_name];
+      Entity& ent = impl::find_or_add(st.entities, chain_name);
       ent.entity_type = EntityType::Polymer;
       for (int i = 19; i < 68; i += 4) {
         std::string res_name = read_string(line+i, 3);
@@ -493,10 +435,12 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       chain = nullptr;
 
     } else if (is_record_type(line, "TER")) { // finishes polymer chains
-      if (chain)
-        st.entities[chain->entity_id].entity_type = EntityType::Polymer;
-      chain = nullptr;
-
+      // we don't expect more than one TER record in one chain
+      if (!chain || after_ter)
+        continue;
+      for (Residue& res : chain->residues)
+        res.entity_type = EntityType::Polymer;
+      after_ter = true;
     } else if (is_record_type(line, "SCALEn")) {
       if (read_matrix(matrix, line, len) == 3) {
         st.cell.set_matrices_from_fract(matrix);
@@ -517,8 +461,6 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     }
   }
 
-  setup_entities(st);
-  deduplicate_entities(st);
   st.setup_cell_images();
 
   process_conn(st, conn_records);
@@ -551,39 +493,6 @@ inline Structure read_pdb(T&& input) {
   if (auto line_input = input.get_line_stream())
     return pdb_impl::read_pdb_from_line_input(line_input, input.path());
   return read_pdb_file(input.path());
-}
-
-// mmCIF files have each non-polymer residue in a separate "chain".
-// This function does the same.
-inline void split_nonpolymers(Structure& st) {
-  for (Model& model : st.models) {
-    std::vector<Chain> old_chains;
-    old_chains.swap(model.chains);
-    for (Chain& ch : old_chains) {
-      int num = 0;
-      const Entity* ent = st.get_entity(ch.entity_id);
-      if (!ent || ent->entity_type != EntityType::NonPolymer ||
-          ch.residues.size() < 2) {
-        ch.name = ch.auth_name + std::to_string(num++);
-        while (model.find_chain(ch.name) != nullptr)
-          ch.name = ch.auth_name + std::to_string(num++);
-        model.chains.emplace_back(std::move(ch));
-      } else {
-        for (Residue& res : ch.residues) {
-          std::string name = ch.auth_name + std::to_string(num++);
-          while (model.find_chain(name) != nullptr)
-            name = ch.auth_name + std::to_string(num++);
-          model.chains.emplace_back(name);
-          model.chains.back().auth_name = ch.auth_name;
-          model.chains.back().entity_id = res.name + "!";
-          model.chains.back().residues.emplace_back(std::move(res));
-        }
-      }
-    }
-  }
-  st.entities.clear();
-  pdb_impl::setup_entities(st);
-  pdb_impl::deduplicate_entities(st);
 }
 
 } // namespace gemmi

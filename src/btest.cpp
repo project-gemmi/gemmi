@@ -79,12 +79,6 @@ static Result test_bfactor_models(const Structure& st) {
   std::vector<double> b_exper;
   std::vector<double> b_predict;
 	for (const Chain& chain : model.chains) {
-    /*
-    const Entity* ent = st.get_entity_of(chain);
-    PolymerType pt = PolymerType::Unknown;
-    if (ent)
-      pt = ent->polymer_type;
-    */
     for (const Residue& res : chain.residues) {
       if (!find_tabulated_residue(res.name).is_amino_acid())
         continue;

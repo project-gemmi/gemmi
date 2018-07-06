@@ -38,9 +38,10 @@ class TestExamples(unittest.TestCase):
         self.assertEqual(long_geom.run(PDB_FILE), 0)
         self.assertEqual(long_geom.run(CIF_FILE), 1)
 
-class TestFromJson(unittest.TestCase):
-    sys.argv = ['from_json.py', JSON_FILE, os.devnull]
-    import from_json
+class TestExamples2(unittest.TestCase):
+    def test_from_json(self):
+        sys.argv = ['from_json.py', JSON_FILE, os.devnull]
+        import from_json  # noqa: E401
 
 if __name__ == '__main__':
     unittest.main()

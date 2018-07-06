@@ -5,7 +5,7 @@
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/sprintf.hpp"
-#include "gemmi/modify.hpp"  // for remove_hydrogens, ...
+#include "gemmi/polyheur.hpp"  // for remove_hydrogens, ...
 
 #include <cstring>
 #include <iostream>
@@ -125,11 +125,12 @@ static void expand_ncs(gemmi::Structure& st, ChainNaming ch_naming) {
           model.chains.push_back(*ch);
           gemmi::Chain& new_chain = model.chains.back();
           new_chain.name = name;
-          new_chain.auth_name = "";
 
           for (gemmi::Residue& res : new_chain.residues) {
             for (gemmi::Atom& a : res.atoms)
               a.pos = op.apply(a.pos);
+            if (!res.subchain.empty())
+              res.subchain = name + ":" + res.subchain;
             if (ch_naming == ChainNaming::Dup)
               res.segment = op.id;
           }
@@ -153,7 +154,6 @@ std::vector<gemmi::Chain> split_by_segments(gemmi::Chain& orig) {
       ch = chains.end() - 1;
       // it's not clear how chain naming should be handled
       ch->name += sn;
-      ch->auth_name += sn;
     }
     auto seg_end = std::find_if(seg_start, orig_res.end(),
                             [&](gemmi::Residue& r) { return r.segment != sn; });

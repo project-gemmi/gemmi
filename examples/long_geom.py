@@ -9,12 +9,13 @@ def run(path):
     counter = 0
     st = gemmi.read_structure(path)
     if st.cell.is_crystal():
+        st.add_entity_types()
         for chain in st[0]:
-            entity = st.get_entity_of(chain)
-            if entity and entity.entity_type == gemmi.EntityType.Polymer:
+            polymer = chain.get_polymer()
+            if polymer:
                 low_bounds = [float('+inf')] * 3
                 high_bounds = [float('-inf')] * 3
-                for residue in chain:
+                for residue in polymer:
                     for atom in residue:
                         pos = st.cell.fractionalize(atom.pos)
                         for i in range(3):

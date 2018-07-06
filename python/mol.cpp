@@ -4,8 +4,7 @@
 #include "gemmi/resinfo.hpp"
 #include "gemmi/model.hpp"
 #include "gemmi/calculate.hpp"
-#include "gemmi/modify.hpp"
-#include "gemmi/polyheur.hpp"  // for extract_sequence_info
+#include "gemmi/polyheur.hpp"
 #define STB_SPRINTF_IMPLEMENTATION
 #include "gemmi/to_pdb.hpp"
 #include "gemmi/to_mmcif.hpp"
@@ -19,8 +18,7 @@ namespace py = pybind11;
 using namespace gemmi;
 
 PYBIND11_MAKE_OPAQUE(std::vector<NcsOp>)
-using entity_map_type = std::map<std::string, Entity>;
-PYBIND11_MAKE_OPAQUE(entity_map_type)
+PYBIND11_MAKE_OPAQUE(std::vector<Entity>)
 using info_map_type = std::map<std::string, std::string>;
 PYBIND11_MAKE_OPAQUE(info_map_type)
 
@@ -73,13 +71,16 @@ void add_mol(py::module& m) {
     .value("Unknown", PolymerType::Unknown);
 
   py::class_<Entity>(m, "Entity")
-    .def(py::init<>())
+    .def(py::init<std::string>())
+    .def_readwrite("name", &Entity::name)
+    .def_readwrite("subchains", &Entity::subchains)
     .def_readwrite("entity_type", &Entity::entity_type)
     .def_readwrite("polymer_type", &Entity::polymer_type)
     .def("__repr__", [](const Entity& self) {
-        std::string r = "<gemmi.Entity " + self.type_as_string();
+        std::string r = "<gemmi.Entity ";
+        r += entity_type_to_string(self.entity_type);
         if (self.polymer_type != PolymerType::Unknown)
-          r += " / " + self.polymer_type_as_string();
+          r += " / " + polymer_type_to_string(self.polymer_type);
         using namespace std;  // VS2015/17 doesn't like std::snprintf
         char buf[64];
         snprintf(buf, 64, " object at %p>", (void*)&self);
@@ -98,7 +99,7 @@ void add_mol(py::module& m) {
     });
 
   py::bind_vector<std::vector<NcsOp>>(m, "VectorNcsOp");
-  py::bind_map<entity_map_type>(m, "EntityMap");
+  py::bind_vector<std::vector<Entity>>(m, "VectorEntity");
   py::bind_map<info_map_type>(m, "InfoMap");
 
   py::class_<Structure>(m, "Structure")
@@ -110,9 +111,12 @@ void add_mol(py::module& m) {
     .def_readwrite("resolution", &Structure::resolution)
     .def_readwrite("entities", &Structure::entities)
     .def_readwrite("info", &Structure::info)
+    .def("get_entity",
+         (Entity* (Structure::*)(const std::string&)) &Structure::get_entity,
+         py::arg("subchain"), py::return_value_policy::reference_internal)
     .def("get_entity_of",
-         (Entity* (Structure::*)(const Chain&)) &Structure::get_entity_of,
-         py::arg("chain"), py::return_value_policy::reference_internal)
+         (Entity* (Structure::*)(const SubChain&)) &Structure::get_entity_of,
+         py::arg("subchain"), py::return_value_policy::reference_internal)
     .def("__len__", [](const Structure& st) { return st.models.size(); })
     .def("__iter__", [](const Structure& st) {
         return py::make_iterator(st.models);
@@ -132,11 +136,17 @@ void add_mol(py::module& m) {
        write_pdb(st, f);
     }, py::arg("path"))
     .def("write_minimal_pdb",
-         [](const Structure& st, const std::string& path, const char* chain) {
+         [](const Structure& st, const std::string& path) {
        std::ofstream f(path.c_str());
-       write_minimal_pdb(st, f, chain);
-    }, py::arg("path"), py::arg("chain")=nullptr)
+       write_minimal_pdb(st, f);
+    }, py::arg("path"))
     .def("make_mmcif_document", &make_mmcif_document)
+    .def("add_entity_types", (void (*)(Structure&, bool)) &add_entity_types,
+         py::arg("overwrite")=false)
+    .def("assign_subchains", (void (*)(Structure&, bool)) &assign_subchains,
+         py::arg("overwrite")=false)
+    .def("ensure_entities", &ensure_entities)
+    .def("deduplicate_entities", &deduplicate_entities)
     .def("remove_hydrogens", remove_hydrogens<Structure>)
     .def("remove_waters", remove_waters<Structure>)
     .def("remove_ligands_and_waters",
@@ -165,11 +175,13 @@ void add_mol(py::module& m) {
     .def("__getitem__", [](Model& self, int index) -> Chain& {
         return self.chains.at(index >= 0 ? index : index + self.chains.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
-    .def("residues", &Model::residues,
-         py::arg("auth_chain"), py::arg("resnum"), py::arg("icode"),
+    .def("get_subchain",
+         (SubChain (Model::*)(const std::string&)) &Model::get_subchain,
+         py::arg("name"), py::return_value_policy::reference_internal)
+    .def("subchains", &Model::subchains,
          py::return_value_policy::reference_internal)
-    .def("residue", &Model::residue,
-         py::arg("auth_chain"), py::arg("resnum"), py::arg("icode"),
+    .def("sole_residue", &Model::sole_residue,
+         py::arg("chain"), py::arg("resnum"), py::arg("icode"),
          py::return_value_policy::reference_internal)
     .def("find_or_add_chain", &Model::find_or_add_chain,
          py::arg("name"), py::return_value_policy::reference_internal)
@@ -190,8 +202,6 @@ void add_mol(py::module& m) {
   py::class_<Chain>(m, "Chain")
     .def(py::init<std::string>())
     .def_readwrite("name", &Chain::name)
-    .def_readwrite("auth_name", &Chain::auth_name)
-    .def_readwrite("entity_id", &Chain::entity_id)
     .def("__len__", [](const Chain& ch) { return ch.residues.size(); })
     .def("__iter__", [](const Chain& ch) {
         return py::make_iterator(ch.residues);
@@ -201,6 +211,11 @@ void add_mol(py::module& m) {
     .def("__getitem__", [](Chain& ch, int index) -> Residue& {
         return ch.residues.at(index >= 0 ? index : index + ch.residues.size());
     }, py::arg("index"), py::keep_alive<0, 1>())
+    .def("subchains", &Chain::subchains)
+    .def("whole", (ResidueSpan (Chain::*)()) &Chain::whole)
+    .def("get_polymer", (SubChain (Chain::*)()) &Chain::get_polymer)
+    .def("get_waters", (SubChain (Chain::*)()) &Chain::get_waters)
+    .def("has_subchains_assigned", &has_subchains_assigned)
     .def("append_residues", &Chain::append_residues)
     .def("count_atom_sites", &count_atom_sites<Chain>)
     .def("count_occupancies", &count_occupancies<Chain>)
@@ -209,25 +224,37 @@ void add_mol(py::module& m) {
     .def("first_conformer",
          (UniqProxy<Residue> (Chain::*)()) &Chain::first_conformer)
     .def("__repr__", [](const Chain& self) {
-        return "<gemmi.Chain " + self.name + " (" + self.auth_name +
-               ") with " + std::to_string(self.residues.size()) + " res>";
+        return "<gemmi.Chain " + self.name +
+               " with " + std::to_string(self.residues.size()) + " res>";
     });
 
-  py::class_<ResidueGroup>(m, "ResidueGroup")
-    .def("__len__", &ResidueGroup::size)
-    .def("__iter__", [](ResidueGroup& g) { return py::make_iterator(g); },
+  py::class_<ResidueSpan> residue_span(m, "ResidueSpan");
+  residue_span
+    .def("__len__", &ResidueSpan::size)
+    .def("__iter__", [](ResidueSpan& g) { return py::make_iterator(g); },
          py::keep_alive<0, 1>())
-    .def("__bool__", [](const ResidueGroup &g) -> bool { return !g.empty(); })
+    .def("__bool__", [](const ResidueSpan &g) -> bool { return !g.empty(); })
+    .def("__getitem__", [](ResidueSpan& g, int index) -> Residue& {
+        return g.at(index >= 0 ? index : index + g.size());
+    }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("__repr__", [](const ResidueSpan& self) {
+        return "<gemmi.ResidueSpan [" +
+               join_str(self, ' ', [](const Residue& r) { return r.str(); }) +
+               "]>";
+    });
+
+  py::class_<ResidueGroup>(m, "ResidueGroup", residue_span)
+    // need to duplicate it so it is visible
     .def("__getitem__", [](ResidueGroup& g, int index) -> Residue& {
         return g.at(index >= 0 ? index : index + g.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("__getitem__", &ResidueGroup::by_resname,
          py::arg("name"), py::return_value_policy::reference_internal)
-    .def("__repr__", [](const ResidueGroup& self) {
-        return "<gemmi.ResidueGroup [" +
-               join_str(self, ' ', [](const Residue& r) { return r.str(); }) +
-               "]>";
-    });
+  ;
+
+  py::class_<SubChain>(m, "SubChain", residue_span)
+    .def("name", &SubChain::name)
+  ;
 
   py::class_<UniqProxy<Atom>>(m, "FirstConformerAtoms")
     .def("__iter__", [](UniqProxy<Atom>& self) {
@@ -237,11 +264,12 @@ void add_mol(py::module& m) {
   py::class_<Residue>(m, "Residue")
     .def(py::init<>())
     .def_readwrite("name", &Residue::name)
-    .def_readwrite("label_seq", &Residue::label_seq)
     .def_readwrite("seq_num", &Residue::seq_num)
-    .def("seq_id", &Residue::seq_id)
     .def_readwrite("icode", &Residue::icode)
     .def_readwrite("segment", &Residue::segment)
+    .def_readwrite("subchain", &Residue::subchain)
+    .def_readwrite("label_seq", &Residue::label_seq)
+    .def("seq_id", &Residue::seq_id)
     .def("__len__", [](const Residue& res) { return res.atoms.size(); })
     .def("__contains__", [](const Residue& res, const std::string& name) {
         return res.find_atom(name) != nullptr;

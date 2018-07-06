@@ -11,6 +11,7 @@
 #include "cifdoc.hpp"
 #include "numb.hpp"  // for as_number
 #include "model.hpp"
+#include "entstr.hpp" // for entity_type_from_string, polymer_type_from_string
 
 namespace gemmi {
 
@@ -71,14 +72,15 @@ inline ResidueId make_resid(const std::string& name,
 }
 
 inline void read_connectivity(cif::Block& block, Structure& st) {
+  // label_ identifiers are not sufficient for HOH:
+  // waters have null label_seq_id so we need auth_seq_id+icode.
+  // And since we need auth_seq_id, we also use auth_asym_id for consistency.
   for (const auto row : block.find("_struct_conn.", {
         "id", "conn_type_id", // 0-1
-        "ptnr1_label_asym_id", "ptnr2_label_asym_id", // 2-3
+        "ptnr1_auth_asym_id", "ptnr2_auth_asym_id", // 2-3
         "ptnr1_label_comp_id", "ptnr2_label_comp_id", // 4-5
         "ptnr1_label_atom_id", "ptnr2_label_atom_id", // 6-7
         "?pdbx_ptnr1_label_alt_id", "?pdbx_ptnr2_label_alt_id", // 8-9
-        // label_seq_id identifiers are not sufficient for HOH:
-        // waters have null label_seq_id so we use auth_seq_id+icode.
         "ptnr1_auth_seq_id", "ptnr2_auth_seq_id", // 10-11
         "?pdbx_ptnr1_PDB_ins_code", "?pdbx_ptnr2_PDB_ins_code", // 12-13
         "?ptnr1_symmetry", "?ptnr2_symmetry", "?pdbx_dist_value"/*14-16*/})) {
@@ -98,7 +100,6 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
     for (int i = 0; i < 2; ++i) {
       AtomAddress& a = c.atom[i];
       a.chain_name = row.str(2+i);
-      a.use_auth_name = false;
       if (row.has2(12+i))
         a.res_id.icode = cif::as_char(row[12+i], ' ');
       a.res_id = make_resid(row.str(4+i), row.str(10+i), row.ptr_at(12+i));
@@ -196,7 +197,7 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
   auto aniso_map = get_anisotropic_u(block);
 
   // atom list
-  enum { kId=0, kSymbol, kLabelAtomId, kAltId, kLabelCompId, kAsymId,
+  enum { kId=0, kSymbol, kLabelAtomId, kAltId, kLabelCompId, kLabelAsymId,
          kLabelSeqId, kInsCode, kX, kY, kZ, kOcc, kBiso, kCharge,
          kAuthSeqId, kAuthCompId, kAuthAsymId, kAuthAtomId, kModelNum };
   cif::Table atom_table = block.find("_atom_site.",
@@ -231,20 +232,21 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
       model = &st.find_or_add_model(row[kModelNum]);
       chain = nullptr;
     }
-    if (!chain || row[kAsymId] != chain->name) {
-      chain = &model->find_or_add_chain(row.str(kAsymId));
-      chain->auth_name = row.str(kAuthAsymId);
+    if (!chain || row[kAuthAsymId] != chain->name) {
+      chain = &model->find_or_add_chain(row.str(kAuthAsymId));
       resi = nullptr;
     }
     ResidueId rid = make_resid(as_string(row[kCompId]),
                                as_string(row[kAuthSeqId]), &row[kInsCode]);
     if (!resi || !resi->matches(rid)) {
       resi = chain->find_or_add_residue(rid);
-      if (row.has2(kLabelSeqId))
-        resi->label_seq = cif::as_int(row[kLabelSeqId]);
-    } else {
-      assert(resi->seq_num == rid.seq_num);
-      assert(resi->icode == rid.icode);
+      if (resi->atoms.empty()) {
+        if (row.has2(kLabelSeqId))
+          resi->label_seq = cif::as_int(row[kLabelSeqId]);
+        resi->subchain = row.str(kLabelAsymId);
+      }
+    } else if (resi->seq_num != rid.seq_num || resi->icode != rid.icode) {
+      fail("Inconsistent sequence ID: " + resi->str() + " / " + rid.str());
     }
     Atom atom;
     atom.name = as_string(row[kAtomId]);
@@ -274,34 +276,27 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
 
   cif::Table polymer_types = block.find("_entity_poly.", {"entity_id", "type"});
   for (auto row : block.find("_entity.", {"id", "type"})) {
-    std::string id = row.str(0);
-    Entity ent;
+    Entity ent(row.str(0));
     ent.entity_type = entity_type_from_string(row.str(1));
     ent.polymer_type = PolymerType::Unknown;
     if (polymer_types.ok()) {
       try {
-        std::string poly_type = polymer_types.find_row(id).str(1);
+        std::string poly_type = polymer_types.find_row(ent.name).str(1);
         ent.polymer_type = polymer_type_from_string(poly_type);
       } catch (std::runtime_error&) {}
     }
-    st.entities.emplace(id, ent);
+    st.entities.push_back(ent);
   }
 
   for (auto row : block.find("_entity_poly_seq.",
-                             {"entity_id", "num", "mon_id"})) {
-    Entity& ent = st.entities[row.str(0)];
-    ent.sequence.push_back({cif::as_int(row[1], -1), row.str(2)});
-  }
+                             {"entity_id", "num", "mon_id"}))
+    if (Entity* ent = st.get_entity(row.str(0)))
+      ent->sequence.push_back({cif::as_int(row[1], -1), row.str(2)});
 
-  auto chain_to_entity = block.find("_struct_asym.", {"id", "entity_id"});
-  for (Model& mod : st.models)
-    for (Chain& ch : mod.chains) {
-      try {
-        ch.entity_id = chain_to_entity.find_row(ch.name).str(1);
-      } catch (std::runtime_error&) {
-        // maybe _struct_asym is missing
-      }
-    }
+  for (auto row : block.find("_struct_asym.", {"id", "entity_id"}))
+    if (Entity* ent = st.get_entity(row.str(1)))
+      ent->subchains.push_back(row.str(0));
+
   st.setup_cell_images();
 
   // CISPEP

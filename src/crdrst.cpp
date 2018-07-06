@@ -12,8 +12,7 @@
 #include "gemmi/to_mmcif.hpp"
 #include "gemmi/pdb.hpp"  // for split_nonpolymers
 #include "gemmi/calculate.hpp"  // for calculate_angle, find_best_plane
-#include "gemmi/polyheur.hpp"  // for are_connected
-#include "gemmi/modify.hpp"  // for remove_hydrogens
+#include "gemmi/polyheur.hpp"  // for are_connected, remove_hydrogens
 
 #define GEMMI_PROG crdrst
 #include "options.h"
@@ -143,36 +142,36 @@ static std::string get_link_type(const gemmi::Residue& res,
   return "?";
 }
 
-static std::string get_modification(const gemmi::Chain& chain,
+static std::string get_modification(const gemmi::SubChain& subchain,
                                     const gemmi::Residue& res,
                                     gemmi::PolymerType ptype) {
   using gemmi::PolymerType;
   if (ptype == PolymerType::PeptideL || ptype == PolymerType::PeptideD) {
-    if (&res == &chain.residues.front())
+    if (&res == &subchain.front())
       return "NH3";
-    else if (&res == &chain.residues.back())
+    else if (&res == &subchain.back())
       return res.find_atom("OXT") ? "COO" : "TERMINUS";
   } else if (ptype == PolymerType::Dna || ptype == PolymerType::Rna) {
-    if (&res == &chain.residues.front())
+    if (&res == &subchain.front())
       return "5*END";
-    else if (&res == &chain.residues.back())
+    else if (&res == &subchain.back())
       return "TERMINUS";
   }
   return "";
 }
 
-Linkage::ChainInfo determine_linkage(const gemmi::Chain& chain,
+Linkage::ChainInfo determine_linkage(const gemmi::SubChain& subchain,
                                      const MonLib& monlib,
                                      const gemmi::Entity* ent) {
   Linkage::ChainInfo lc;
-  lc.residues.reserve(chain.residues.size());
-  lc.name = chain.name;
-  lc.entity_id = chain.entity_id;
+  lc.residues.reserve(subchain.size());
+  lc.name = subchain.name();
+  lc.entity_id = ent->name;
   lc.polymer = ent && ent->entity_type == gemmi::EntityType::Polymer;
   if (lc.polymer) {
     // For now we ignore microheterogeneity.
     Linkage::ResInfo* prev = nullptr;
-    for (const gemmi::Residue& res : chain.residues) {
+    for (const gemmi::Residue& res : subchain) {
       Linkage::ResInfo lr;
       lr.res = &res;
       const gemmi::ChemComp& cc = monlib.monomers.at(res.name);
@@ -183,13 +182,13 @@ Linkage::ChainInfo determine_linkage(const gemmi::Chain& chain,
       // we try to get exactly the same numbers that makecif produces
       if (ent->polymer_type == gemmi::PolymerType::PeptideL)
         lr.mods.push_back("AA-STAND");
-      lr.mods.push_back(get_modification(chain, res, ent->polymer_type));
+      lr.mods.push_back(get_modification(subchain, res, ent->polymer_type));
 
       lc.residues.push_back(lr);
       prev = &lc.residues.back();
     }
   } else {
-    for (const gemmi::Residue& res : chain.residues)
+    for (const gemmi::Residue& res : subchain)
       lc.residues.push_back({&res, "", nullptr, {}});
   }
   return lc;
@@ -223,10 +222,8 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
                                      "## ENTITY ##\n"
                                      "############"});
   cif::Loop& entity_loop = block.init_mmcif_loop("_entity.", {"id", "type"});
-  for (const auto& ent : st.entities) {
-    entity_loop.values.push_back(ent.first);
-    entity_loop.values.push_back(ent.second.type_as_string());
-  }
+  for (const gemmi::Entity& ent : st.entities)
+    entity_loop.add_row({ent.name, entity_type_to_string(ent.entity_type)});
   items.emplace_back(cif::CommentArg{"#####################\n"
                                      "## ENTITY_POLY_SEQ ##\n"
                                      "#####################"});
@@ -289,10 +286,12 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
                                      "#################"});
   cif::Loop& asym_loop = block.init_mmcif_loop("_struct_asym.",
                                                {"id", "entity_id"});
-  for (const auto& ch : model0.chains) {
-    asym_loop.values.push_back(ch.name);
-    asym_loop.values.push_back(ch.entity_id.empty() ? "?" : ch.entity_id);
-  }
+  for (const gemmi::Chain& chain : model0.chains)
+    for (gemmi::SubChain sub : const_cast<gemmi::Chain&>(chain).subchains())
+      if (!sub.name().empty()) {
+        const gemmi::Entity* ent = st.get_entity_of(sub);
+        asym_loop.add_row({sub.name(), (ent ? ent->name : "?")});
+      }
   const auto& connections = model0.connections;
   if (!connections.empty()) {
     items.emplace_back(cif::CommentArg{"#################\n"
@@ -617,8 +616,10 @@ int GEMMI_MAIN(int argc, char **argv) {
   std::string output = p.nonOption(1);
   try {
     gemmi::Structure st = read_structure(input);
+    /* TODO
     if (st.input_format == gemmi::CoorFormat::Pdb)
       gemmi::split_nonpolymers(st);
+      */
     if (st.models.empty())
       return 1;
     gemmi::Model& model0 = st.models[0];
@@ -650,11 +651,12 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
 
     Linkage linkage;
-    linkage.chains.reserve(model0.chains.size());
-    for (const gemmi::Chain& chain : model0.chains) {
-      const gemmi::Entity* ent = st.get_entity_of(chain);
-      linkage.chains.push_back(determine_linkage(chain, monlib, ent));
-    }
+    for (const gemmi::Chain& chain : model0.chains)
+      for (gemmi::SubChain sub : const_cast<gemmi::Chain&>(chain).subchains()) {
+        assert(!sub.name().empty());
+        const gemmi::Entity* ent = st.get_entity_of(sub);
+        linkage.chains.push_back(determine_linkage(sub, monlib, ent));
+      }
     // add modifications from standard links
     for (Linkage::ChainInfo& chain_info : linkage.chains)
       for (Linkage::ResInfo& ri : chain_info.residues)

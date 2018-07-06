@@ -9,7 +9,8 @@ from gemmi import cif
 
 file_in, file_out = sys.argv[1:]
 
-json_data = json.load(open(file_in))
+with open(file_in) as f:
+    json_data = json.load(f)
 assert len(json_data) == 1  # data_1ABC
 (block_name, block_data), = json_data.items()
 assert block_name.startswith('data_')

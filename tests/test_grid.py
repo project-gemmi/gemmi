@@ -64,7 +64,7 @@ ATOM   2293  SG  CYS B  85      42.948   6.483  17.913  0.52 23.86           S
 class TestSubCells(unittest.TestCase):
     def test_5a11(self):
         st = gemmi.read_pdb_string(FRAGMENT_5A11)
-        a1 = st[0].residue('A', 37, ' ')[0]
+        a1 = st[0].sole_residue('A', 37, ' ')[0]
         sc = gemmi.SubCells(st[0], st.cell, 5)
         marks = sc.find_atoms(a1.pos, a1.altloc, 3)
         marks.sort(key=lambda m: sc.dist(a1.pos, m.pos()))
@@ -72,13 +72,13 @@ class TestSubCells(unittest.TestCase):
         self.assertAlmostEqual(sc.dist(a1.pos, m1.pos()), 0, delta=5e-6)
         self.assertAlmostEqual(sc.dist(a1.pos, m2.pos()), 0.13, delta=5e-3)
         cra2 = m2.to_cra(st[0])
-        self.assertEqual(cra2.chain.auth_name, 'B')
+        self.assertEqual(cra2.chain.name, 'B')
         self.assertEqual(cra2.residue.seq_id(), '37')
         self.assertEqual(cra2.atom.name, 'SG')
 
     def test_1gtv(self):
         st = gemmi.read_pdb_string(FRAGMENT_1GTV)
-        a1 = st[0].residue('A', 85, ' ')[0]
+        a1 = st[0].sole_residue('A', 85, ' ')[0]
         subcells = gemmi.SubCells(st[0], st.cell, 5)
         marks = subcells.find_atoms(a1.pos, a1.altloc, 3)
         self.assertEqual(len(marks), 2)

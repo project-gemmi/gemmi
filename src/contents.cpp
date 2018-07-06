@@ -64,6 +64,8 @@ static void print_content_info(const Structure& st, bool /*verbose*/) {
         if (const Atom* oxygen = res.find_by_element(El::O))
           water_count += oxygen->occ;
       bool is_protein = false;
+      // This code was initially written to reproduce results from
+      // CCP4 rwcontents. The logic here should be re-designed.
       if (res_info.is_amino_acid() || res_info.is_nucleic_acid() ||
           res.name == "HEM" || res.name == "SO4" || res.name == "SUL") {
         is_protein = true;
@@ -108,9 +110,9 @@ static void print_dihedrals(const Structure& st) {
   printf(" Chain Residue      Psi      Phi    Omega\n");
   const Model& model = st.models.at(0);
   for (const Chain& chain : model.chains) {
-    const char* cname = chain.name_for_pdb().c_str();
     for (const Residue& res : chain.residues) {
-      printf("%3s %4d%c %5s", cname, *res.seq_num, res.icode, res.name.c_str());
+      printf("%3s %4d%c %5s",
+             chain.name.c_str(), *res.seq_num, res.icode, res.name.c_str());
       const Residue* prev = chain.prev_bonded_aa(res);
       const Residue* next = chain.next_bonded_aa(res);
       double omega = next ? calculate_omega(res, *next) : NAN;
@@ -136,8 +138,7 @@ static void print_atoms_on_special_positions(const Structure& st) {
           SymImage im = st.cell.find_nearest_image(atom.pos, atom.pos,
                                                    SameAsu::No);
           printf("\n    %s %4d %3s %-3s %c fold=%d  occ=%.2f  d_image=%.4f",
-                 chain.name_for_pdb().c_str(),
-                 *res.seq_num, res.name.c_str(),
+                 chain.name.c_str(), *res.seq_num, res.name.c_str(),
                  atom.name.c_str(), (atom.altloc | 0x20),
                  n+1, atom.occ, im.dist());
         }

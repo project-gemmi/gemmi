@@ -33,12 +33,13 @@ namespace gemmi {
 
 namespace impl {
 
-bool use_hetatm(const Residue& res, const Entity* entity) {
+bool use_hetatm(const Residue& res) {
   if (res.het_flag == 'H')
     return true;
   if (res.het_flag == 'A')
     return false;
-  if (entity && entity->entity_type == EntityType::NonPolymer)
+  if (res.entity_type == EntityType::NonPolymer ||
+      res.entity_type == EntityType::Water)
     return true;
   return !find_tabulated_residue(res.name).is_standard();
 }
@@ -130,106 +131,108 @@ inline void write_ncs(const Structure& st, std::ostream& os) {
     }
 }
 
-inline void write_atoms(const Structure& st, std::ostream& os,
-                        bool iotbx_compat, const char* chain_auth) {
+inline void write_chain_atoms(const Chain& chain, std::ostream& os,
+                              int& serial, bool iotbx_compat) {
   char buf[88];
   char buf8[8];
   char buf8a[8];
+  if (chain.name.empty())
+    gemmi::fail("empty chain name");
+  if (chain.name.length() > 2)
+    gemmi::fail("long chain name: " + chain.name);
+  for (const Residue& res : chain.residues) {
+    bool as_het = use_hetatm(res);
+    for (const Atom& a : res.atoms) {
+      //  1- 6  6s  record name
+      //  7-11  5d  integer serial
+      // 12     1   -
+      // 13-16  4s  atom name (from 13 only if 4-char or 2-char symbol)
+      // 17     1c  altloc
+      // 18-20  3s  residue name
+      // 21     1   -
+      // 22     1s  chain
+      // 23-26  4d  integer residue sequence number
+      // 27     1c  insertion code
+      // 28-30  3   -
+      // 31-38  8f  x (8.3)
+      // 39-46  8f  y
+      // 47-54  8f  z
+      // 55-60  6f  occupancy (6.2)
+      // 61-66  6f  temperature factor (6.2)
+      // 67-76  6   -
+      // 73-76      segment identifier, left-justified (non-standard)
+      // 77-78  2s  element symbol, right-justified
+      // 79-80  2s  charge
+      WRITE("%-6s%5s %-4s%c%3s"
+            "%2s%5s   %8.3f%8.3f%8.3f"
+            "%6.2f%6.2f      %-4.4s%2s%c%c\n",
+            as_het ? "HETATM" : "ATOM",
+            impl::encode_serial_in_hybrid36(buf8, ++serial),
+            a.padded_name().c_str(),
+            a.altloc ? std::toupper(a.altloc) : ' ',
+            res.name.c_str(),
+            chain.name.c_str(),
+            impl::write_seq_id(buf8a, res),
+            // We want to avoid negative zero and round them numbers up
+            // if they originally had one digit more and that digit was 5.
+            a.pos.x > -5e-4 && a.pos.x < 0 ? 0 : a.pos.x + 1e-10,
+            a.pos.y > -5e-4 && a.pos.y < 0 ? 0 : a.pos.y + 1e-10,
+            a.pos.z > -5e-4 && a.pos.z < 0 ? 0 : a.pos.z + 1e-10,
+            // Occupancy is stored as single prec, but we know it's <= 1,
+            // so no precision is lost even if it had 6 digits after dot.
+            a.occ + 1e-6,
+            // B is harder to get rounded right. It is stored as float,
+            // and may be given with more than single precision in mmCIF
+            // If it was originally %.5f (5TIS) we need to add 0.5 * 10^-5.
+            a.b_iso + 0.5e-5,
+            res.segment.c_str(),
+            a.element.uname(),
+            // Charge is written as 1+ or 2-, etc, or just empty space.
+            // Sometimes PDB files have explicit 0s (5M05); we ignore them.
+            a.charge ? a.charge > 0 ? '0'+a.charge : '0'-a.charge : ' ',
+            a.charge ? a.charge > 0 ? '+' : '-' : ' ');
+      if (a.u11 != 0.0f) {
+        // re-using part of the buffer
+        memcpy(buf, "ANISOU", 6);
+        const double eps = 1e-6;
+        stbsp_snprintf(buf+28, 43, "%7.0f%7.0f%7.0f%7.0f%7.0f%7.0f",
+                       a.u11*1e4 + eps, a.u22*1e4 + eps, a.u33*1e4 + eps,
+                       a.u12*1e4 + eps, a.u13*1e4 + eps, a.u23*1e4 + eps);
+        buf[28+42] = ' ';
+        os.write(buf, 81);
+      }
+    }
+    if (res.entity_type == EntityType::Polymer &&
+        (&res == &chain.residues.back() ||
+         (&res + 1)->entity_type != EntityType::Polymer)) {
+      if (iotbx_compat) {
+        WRITE("%-80s\n", "TER");
+      } else {
+        // re-using part of the buffer in the middle, e.g.:
+        // TER    4153      LYS B 286
+        stbsp_snprintf(buf, 82, "TER   %5s",
+                       impl::encode_serial_in_hybrid36(buf8, ++serial));
+        std::memset(buf+11, ' ', 6);
+        std::memset(buf+28, ' ', 52);
+        os.write(buf, 81);
+      }
+    }
+  }
+}
+
+inline void write_atoms(const Structure& st, std::ostream& os,
+                        bool iotbx_compat) {
+  char buf[88];
   for (const Model& model : st.models) {
     int serial = 0;
     if (st.models.size() > 1)
       WRITE("MODEL %8s %65s\n", model.name.c_str(), "");
-    for (const Chain& chain : model.chains) {
-      const std::string& chain_name = chain.name_for_pdb();
-      if (chain_auth && chain_name != chain_auth)
-        continue;
-      if (chain_name.empty())
-        gemmi::fail("empty chain name");
-      if (chain_name.length() > 2)
-        gemmi::fail("long chain name: " + chain_name);
-      const Entity* entity = st.get_entity_of(chain);
-      for (const Residue& res : chain.residues) {
-        bool as_het = use_hetatm(res, entity);
-        for (const Atom& a : res.atoms) {
-          //  1- 6  6s  record name
-          //  7-11  5d  integer serial
-          // 12     1   -
-          // 13-16  4s  atom name (from 13 only if 4-char or 2-char symbol)
-          // 17     1c  altloc
-          // 18-20  3s  residue name
-          // 21     1   -
-          // 22     1s  chain
-          // 23-26  4d  integer residue sequence number
-          // 27     1c  insertion code
-          // 28-30  3   - 
-          // 31-38  8f  x (8.3)
-          // 39-46  8f  y
-          // 47-54  8f  z
-          // 55-60  6f  occupancy (6.2)
-          // 61-66  6f  temperature factor (6.2)
-          // 67-76  6   -
-          // 73-76      segment identifier, left-justified (non-standard)
-          // 77-78  2s  element symbol, right-justified
-          // 79-80  2s  charge
-          WRITE("%-6s%5s %-4s%c%3s"
-                "%2s%5s   %8.3f%8.3f%8.3f"
-                "%6.2f%6.2f      %-4.4s%2s%c%c\n",
-                as_het ? "HETATM" : "ATOM",
-                impl::encode_serial_in_hybrid36(buf8, ++serial),
-                a.padded_name().c_str(),
-                a.altloc ? std::toupper(a.altloc) : ' ',
-                res.name.c_str(),
-                chain_name.c_str(),
-                impl::write_seq_id(buf8a, res),
-                // We want to avoid negative zero and round them numbers up
-                // if they originally had one digit more and that digit was 5.
-                a.pos.x > -5e-4 && a.pos.x < 0 ? 0 : a.pos.x + 1e-10,
-                a.pos.y > -5e-4 && a.pos.y < 0 ? 0 : a.pos.y + 1e-10,
-                a.pos.z > -5e-4 && a.pos.z < 0 ? 0 : a.pos.z + 1e-10,
-                // Occupancy is stored as single prec, but we know it's <= 1,
-                // so no precision is lost even if it had 6 digits after dot.
-                a.occ + 1e-6,
-                // B is harder to get rounded right. It is stored as float,
-                // and may be given with more than single precision in mmCIF
-                // If it was originally %.5f (5TIS) we need to add 0.5 * 10^-5.
-                a.b_iso + 0.5e-5,
-                res.segment.c_str(),
-                a.element.uname(),
-                // Charge is written as 1+ or 2-, etc, or just empty space.
-                // Sometimes PDB files have explicit 0s (5M05); we ignore them.
-                a.charge ? a.charge > 0 ? '0'+a.charge : '0'-a.charge : ' ',
-                a.charge ? a.charge > 0 ? '+' : '-' : ' ');
-          if (a.u11 != 0.0f) {
-            // re-using part of the buffer
-            memcpy(buf, "ANISOU", 6);
-            const double eps = 1e-6;
-            stbsp_snprintf(buf+28, 43, "%7.0f%7.0f%7.0f%7.0f%7.0f%7.0f",
-                           a.u11*1e4 + eps, a.u22*1e4 + eps, a.u33*1e4 + eps,
-                           a.u12*1e4 + eps, a.u13*1e4 + eps, a.u23*1e4 + eps);
-            buf[28+42] = ' ';
-            os.write(buf, 81);
-          }
-        }
-      }
-      if (entity && entity->entity_type == EntityType::Polymer) {
-        if (iotbx_compat) {
-          WRITE("%-80s\n", "TER");
-        } else {
-          // re-using part of the buffer in the middle, e.g.:
-          // TER    4153      LYS B 286
-          stbsp_snprintf(buf, 82, "TER   %5s",
-                         impl::encode_serial_in_hybrid36(buf8, ++serial));
-          std::memset(buf+11, ' ', 6);
-          std::memset(buf+28, ' ', 52);
-          os.write(buf, 81);
-        }
-      }
-    }
+    for (const Chain& chain : model.chains)
+      write_chain_atoms(chain, os, serial, iotbx_compat);
     if (st.models.size() > 1)
       WRITE("%-80s\n", "ENDMDL");
   }
 }
-
 
 inline void write_header(const Structure& st, std::ostream& os,
                          bool iotbx_compat) {
@@ -271,27 +274,20 @@ inline void write_header(const Structure& st, std::ostream& os,
   if (!st.models.empty() && !iotbx_compat) {
     // SEQRES
     for (const Chain& ch : st.models[0].chains) {
-      const Entity* entity = st.get_entity_of(ch);
-      if (entity && entity->entity_type == EntityType::Polymer) {
-        const std::string& chain_name = ch.name_for_pdb();
-        int seq_len = 0;
-        int prev_seq_num = -1;
-        for (const SequenceItem& si : entity->sequence)
-          if (si.num < 0 || si.num != prev_seq_num) {
-            ++seq_len;
-            prev_seq_num = si.num;
-          }
-        prev_seq_num = -1;
+      const SubChain polymer = ch.get_polymer();
+      const Entity* entity = polymer.name().empty() ? st.get_entity(ch.name)
+                                                    : st.get_entity_of(polymer);
+      if (entity) {
+        int seq_len = entity->seq_length();
         int row = 0;
         int col = 0;
-        for (const SequenceItem& si : entity->sequence) {
-          if (si.num >= 0 && si.num == prev_seq_num)
+        for (size_t i = 0; i != entity->sequence.size(); ++i) {
+          if (!entity->is_seq_first_conformer(i))
             continue;
-          prev_seq_num = si.num;
           if (col == 0)
             stbsp_snprintf(buf, 82, "SEQRES%4d%2s%5d %62s\n",
-                           ++row, chain_name.c_str(), seq_len, "");
-          const std::string& res = si.mon;
+                           ++row, ch.name.c_str(), seq_len, "");
+          const std::string& res = entity->sequence[i].mon;
           memcpy(buf + 18 + 4*col + 4-res.length(), res.c_str(), res.length());
           if (++col == 13) {
             os.write(buf, 81);
@@ -317,9 +313,9 @@ inline void write_header(const Structure& st, std::ostream& os,
                                                  cra2.atom->pos, con.asu);
         WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  \n",
            ++counter,
-           cra1.residue->name.c_str(), cra1.chain->name_for_pdb().c_str(),
+           cra1.residue->name.c_str(), cra1.chain->name.c_str(),
            write_seq_id(buf8, *cra1.residue),
-           cra2.residue->name.c_str(), cra2.chain->name_for_pdb().c_str(),
+           cra2.residue->name.c_str(), cra2.chain->name.c_str(),
            write_seq_id(buf8a, *cra2.residue),
            "1555", im.pdb_symbol(false).c_str(), im.dist());
       }
@@ -339,12 +335,12 @@ inline void write_header(const Structure& st, std::ostream& os,
               cra1.atom->padded_name().c_str(),
               cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
               cra1.residue->name.c_str(),
-              cra1.chain->name_for_pdb().c_str(),
+              cra1.chain->name.c_str(),
               write_seq_id(buf8, *cra1.residue),
               cra2.atom->padded_name().c_str(),
               cra2.atom->altloc ? std::toupper(cra2.atom->altloc) : ' ',
               cra2.residue->name.c_str(),
-              cra2.chain->name_for_pdb().c_str(),
+              cra2.chain->name.c_str(),
               write_seq_id(buf8a, *cra2.residue),
               "1555", im.pdb_symbol(false).c_str(), im.dist());
       }
@@ -352,20 +348,19 @@ inline void write_header(const Structure& st, std::ostream& os,
     // CISPEP (note: uses only the first conformation)
     counter = 0;
     for (const Model& model : st.models)
-      for (const Chain& chain : model.chains) {
-        const char* cname = chain.name_for_pdb().c_str();
+      for (const Chain& chain : model.chains)
         for (const Residue& res : chain.residues)
           if (res.is_cis)
-            if (const Residue* next = chain.next_bonded_aa(res)) {
+            if (const Residue* next = chain.next_bonded_aa(res))
               WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s\n",
-                  ++counter,
-                  res.name.c_str(), cname, write_seq_id(buf8, res),
-                  next->name.c_str(), cname, write_seq_id(buf8a, *next),
-                  st.models.size() > 1 ? model.name.c_str() : "0",
-                  deg(calculate_omega(res, *next)),
-                  "");
-            }
-      }
+                    ++counter,
+                    res.name.c_str(), chain.name.c_str(),
+                    write_seq_id(buf8, res),
+                    next->name.c_str(), chain.name.c_str(),
+                    write_seq_id(buf8a, *next),
+                    st.models.size() > 1 ? model.name.c_str() : "0",
+                    deg(calculate_omega(res, *next)),
+                    "");
   }
 
   write_cryst1(st, os);
@@ -394,17 +389,16 @@ inline std::string make_pdb_headers(const Structure& st) {
 inline void write_pdb(const Structure& st, std::ostream& os,
                       bool iotbx_compat=false) {
   impl::write_header(st, os, iotbx_compat);
-  impl::write_atoms(st, os, iotbx_compat, nullptr);
+  impl::write_atoms(st, os, iotbx_compat);
   char buf[88];
   WRITE("%-80s\n", "END");
 }
 
-// If chain_auth is specified it outputs only this chain.
-inline void write_minimal_pdb(const Structure& st, std::ostream& os,
-                              const char* chain_auth=nullptr) {
+// If chain_name is specified it outputs only this chain.
+inline void write_minimal_pdb(const Structure& st, std::ostream& os) {
   impl::write_cryst1(st, os);
   impl::write_ncs(st, os);
-  impl::write_atoms(st, os, false, chain_auth);
+  impl::write_atoms(st, os, false);
 }
 
 #undef WRITE

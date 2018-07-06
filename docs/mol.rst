@@ -759,10 +759,11 @@ related to alternative conformations".
 
 Gemmi exposes the *altloc* field to the user (like mmdb).
 On top of it it offers simple utilities that make working with conformers
-easier: functions that ignore all but the main conformations
-(inspired by BioPython), and lightweight proxy objects
-ResidueGroup and AtomGroup that group alternative conformers
-(inspired by iotbx).
+easier:
+
+- functions that ignore all but the main conformations (inspired by BioPython),
+- and lightweight proxy objects ResidueSpan and AtomSpan that group
+  alternative conformers (inspired by iotbx).
 
 Structure
 ---------
@@ -797,11 +798,11 @@ Let us mutate all methionine residues (MET) to selenomethionine (MSE).
   :hide:
 
   >>> st = gemmi.read_structure('../tests/1orc.pdb')
-  >>> st[0].residues('A', 12, ' ')
-  <gemmi.ResidueGroup [12(MET)]>
+  >>> st[0].sole_residue('A', 12, ' ')
+  <gemmi.Residue 12(MET) with 8 atoms>
   >>> met_to_mse(st)
-  >>> st[0].residues('A', 12, ' ')
-  <gemmi.ResidueGroup [12(MSE)]>
+  >>> st[0].sole_residue('A', 12, ' ')
+  <gemmi.Residue 12(MSE) with 8 atoms>
 
 Model
 -----
@@ -814,19 +815,19 @@ Chain
   >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
   >>> chain_b = st[0]['B']
   >>> # iteration goes through all residues and atom sites
-  >>> [res.name for res in chain_b]
+  >>> [res.name for res in chain_b][:10] # FIXME
   ['DSN', 'ALA', 'N2C', 'NCY', 'MVA', 'DSN', 'ALA', 'NCY', 'N2C', 'MVA']
   >>> # The two pairs N2C/NCY above are alternative conformations.
   >>> # Sometimes we want to ignore alternative conformations:
-  >>> [res.name for res in chain_b.first_conformer()]
+  >>> [res.name for res in chain_b.first_conformer()][:8] # FIXME
   ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
   >>>
   >>> chain_a = st[0]['A']
   >>> # the first residue has sequence id '1', but since one sequence id
   >>> # may belong to more than one residue (microheterogeneity)
-  >>> # this getter returns ResidueGroup:
+  >>> # this getter returns ResidueSpan:
   >>> chain_a['1']
-  <gemmi.ResidueGroup [1(DG)]>
+  <gemmi.ResidueSpan [1(DG)]>
   >>> first_residue = _[0]
   >>> first_residue
   <gemmi.Residue 1(DG) with 23 atoms>
