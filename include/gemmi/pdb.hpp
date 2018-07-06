@@ -146,6 +146,15 @@ inline ResidueId read_res_id(const char* seq_id, const char* name) {
   return rid;
 }
 
+// "28-MAR-07" -> "2007-03-28"
+inline std::string pdb_date_format_to_iso(const std::string& date) {
+  const char months[] = "JAN01FEB02MAR03APR04MAY05JUN06"
+                        "JUL07AUG08SEP09OCT10NOV11DEC122222";
+  const char* m = strstr(months, date.substr(3, 3).c_str());
+  return (date[7] > '6' ? "19" : "20") + date.substr(7, 2) + "-" +
+         (m ? std::string(m+3, 2) : "??") + "-" + date.substr(0, 2);
+}
+
 struct FileInput {
   std::FILE* f;
   char* gets(char* line, int size) { return std::fgets(line, size, f); }
@@ -374,15 +383,9 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       if (len > 50)
         st.info["_struct_keywords.pdbx_keywords"] =
                                     rtrimmed(std::string(line+10, 40));
-      if (len > 59) { // date in PDB has format 28-MAR-07
-        std::string date(line+50, 9);
-        const char months[] = "JAN01FEB02MAR03APR04MAY05JUN06"
-                              "JUL07AUG08SEP09OCT10NOV11DEC122222";
-        const char* m = strstr(months, date.substr(3, 3).c_str());
+      if (len > 59) // date in PDB has format 28-MAR-07
         st.info["_pdbx_database_status.recvd_initial_deposition_date"] =
-          (date[7] > '6' ? "19" : "20") + date.substr(7, 2) + "-" +
-          (m ? std::string(m+3, 2) : "??") + "-" + date.substr(0, 2);
-      }
+          pdb_date_format_to_iso(std::string(line+50, 9));
       if (len > 66)
         st.info["_entry.id"] = std::string(line+62, 4);
 

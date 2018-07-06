@@ -59,18 +59,6 @@ inline PolymerType polymer_type_from_string(const std::string& t) {
   return PolymerType::Unknown;
 }
 
-// sometimes a name shorter than "polydeoxyribonucleotide" is more readable
-inline const char* polymer_type_abbr(PolymerType ptype) {
-  switch (ptype) {
-    case PolymerType::PeptideL: return "AAL";
-    case PolymerType::PeptideD: return "AAD";
-    case PolymerType::Dna: return "DNA";
-    case PolymerType::Rna: return "RNA";
-    case PolymerType::DnaRnaHybrid: return "xNA";
-    default: return "";
-  }
-}
-
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

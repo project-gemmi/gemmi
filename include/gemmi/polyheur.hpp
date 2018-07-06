@@ -9,7 +9,6 @@
 #include <vector>
 #include "model.hpp"
 #include "resinfo.hpp"  // for find_tabulated_residue
-#include "entstr.hpp"   // for polymer_type_abbr
 #include "util.hpp"     // for vector_remove_if
 
 namespace gemmi {
@@ -17,13 +16,13 @@ namespace gemmi {
 // A simplistic classification. It may change in the future.
 // It returns PolymerType which corresponds to _entity_poly.type,
 // but here we use only PeptideL, Rna, Dna, DnaRnaHybrid and Unknown.
-inline PolymerType check_polymer_type(const ResidueSpan& residues) {
-  if (residues.size() < 2)
+inline PolymerType check_polymer_type(const SubChain& polymer) {
+  if (polymer.size() < 2)
     return PolymerType::Unknown;
   size_t counts[9] = {0};
   size_t aa = 0;
   size_t na = 0;
-  for (const Residue& r : residues)
+  for (const Residue& r : polymer)
     if (r.entity_type == EntityType::Unknown ||
         r.entity_type == EntityType::Polymer) {
       ResidueInfo info = find_tabulated_residue(r.name);
@@ -36,10 +35,10 @@ inline PolymerType check_polymer_type(const ResidueSpan& residues) {
     }
   aa += counts[ResidueInfo::AA] + counts[ResidueInfo::AAD];
   na += counts[ResidueInfo::RNA] + counts[ResidueInfo::DNA];
-  if (aa == residues.size() || (aa > 10 && 2 * aa > residues.size()))
+  if (aa == polymer.size() || (aa > 10 && 2 * aa > polymer.size()))
     return counts[ResidueInfo::AA] >= counts[ResidueInfo::AAD]
            ? PolymerType::PeptideL : PolymerType::PeptideD;
-  if (na == residues.size() || (na > 10 && 2 * na > residues.size())) {
+  if (na == polymer.size() || (na > 10 && 2 * na > polymer.size())) {
     if (counts[ResidueInfo::DNA] == 0)
       return PolymerType::Rna;
     else if (counts[ResidueInfo::RNA] == 0)
@@ -103,11 +102,11 @@ inline bool are_connected2(const Residue& r1, const Residue& r2,
   return false;
 }
 
-inline std::string make_one_letter_sequence(const ResidueSpan& residue_span) {
+inline std::string make_one_letter_sequence(const SubChain& polymer) {
   std::string seq;
   const Residue* prev = nullptr;
-  PolymerType ptype = check_polymer_type(residue_span);
-  for (const Residue& residue : residue_span) {
+  PolymerType ptype = check_polymer_type(polymer);
+  for (const Residue& residue : polymer) {
     ResidueInfo info = find_tabulated_residue(residue.name);
     if (prev && !are_connected2(*prev, residue, ptype))
       seq += '-';
@@ -116,23 +115,6 @@ inline std::string make_one_letter_sequence(const ResidueSpan& residue_span) {
   }
   return seq;
 }
-
-// TODO: remove this function, too specialized.
-// returns a string such as AAL:GSHMTTPSHLSDRYEL
-inline std::string extract_sequence_info(const Chain& chain) {
-  const ResidueSpan span = chain.get_polymer();
-  std::string info = polymer_type_abbr(check_polymer_type(span));
-  info += ':';
-  info += make_one_letter_sequence(span);
-  return info;
-}
-
-/*
-int count_unknown_entity_type(const Chain& chain) {
-  return std::count_if(chain.residues.begin(), chain.residues.end(),
-      [](const Residue& r) { return r.entity_type == EntityType::Unknown; });
-}
-*/
 
 inline bool has_subchains_assigned(const Chain& chain) {
   return std::all_of(chain.residues.begin(), chain.residues.end(),

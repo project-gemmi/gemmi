@@ -220,7 +220,6 @@ void add_mol(py::module& m) {
     .def("count_atom_sites", &count_atom_sites<Chain>)
     .def("count_occupancies", &count_occupancies<Chain>)
     .def("trim_to_alanine", &trim_to_alanine)
-    .def("extract_sequence_info", &extract_sequence_info)
     .def("first_conformer",
          (UniqProxy<Residue> (Chain::*)()) &Chain::first_conformer)
     .def("__repr__", [](const Chain& self) {
@@ -254,6 +253,8 @@ void add_mol(py::module& m) {
 
   py::class_<SubChain>(m, "SubChain", residue_span)
     .def("name", &SubChain::name)
+    .def("check_polymer_type", &check_polymer_type)
+    .def("make_one_letter_sequence", &make_one_letter_sequence)
   ;
 
   py::class_<UniqProxy<Atom>>(m, "FirstConformerAtoms")

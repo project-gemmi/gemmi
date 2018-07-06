@@ -304,11 +304,13 @@ class TestMol(unittest.TestCase):
     def test_extract_sequence_info(self):
         st = gemmi.read_structure(full_path('5cvz_final.pdb'))
         st.add_entity_types()
-        chain = st[0][0]
-        expected = ('AAL:AAATSLVYDTCYVTLTERATTSFQRQSFPTLKGMGDRAFQVVAFTIQGVS'
-                    'AAPLMYNARLYNPGDTDSVHATGVQLMGTVPRTVRLTPRVGQNNWFFGNTEEAE'
-                    'TILAIDGLVSTKGANAPSNTVIVTGCFRLAPSELQSS')
-        self.assertEqual(chain.extract_sequence_info(), expected)
+        polymer = st[0][0].get_polymer()
+        self.assertEqual(polymer.check_polymer_type(),
+                         gemmi.PolymerType.PeptideL)
+        expected = ('AAATSLVYDTCYVTLTERATTSFQRQSFPTLKGMGDRAFQVVAFTIQGVS'
+                    'AAPLMYNARLYNPGDTDSVHATGVQLMGTVPRTVRLTPRVGQNNWFFGNT'
+                    'EEAETILAIDGLVSTKGANAPSNTVIVTGCFRLAPSELQSS')
+        self.assertEqual(polymer.make_one_letter_sequence(), expected)
 
 
 if __name__ == '__main__':
