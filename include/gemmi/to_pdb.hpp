@@ -275,20 +275,20 @@ inline void write_header(const Structure& st, std::ostream& os,
     // SEQRES
     for (const Chain& ch : st.models[0].chains) {
       const SubChain polymer = ch.get_polymer();
-      const Entity* entity = polymer.name().empty() ? st.get_entity(ch.name)
-                                                    : st.get_entity_of(polymer);
+      const Entity* entity = polymer.labelled() ? st.get_entity_of(polymer)
+                                                : st.get_entity(ch.name);
       if (entity) {
         int seq_len = entity->seq_length();
         int row = 0;
         int col = 0;
-        for (size_t i = 0; i != entity->sequence.size(); ++i) {
+        for (size_t i = 0; i != entity->poly_seq.size(); ++i) {
           if (!entity->is_seq_first_conformer(i))
             continue;
           if (col == 0)
             stbsp_snprintf(buf, 82, "SEQRES%4d%2s%5d %62s\n",
                            ++row, ch.name.c_str(), seq_len, "");
-          const std::string& res = entity->sequence[i].mon;
-          memcpy(buf + 18 + 4*col + 4-res.length(), res.c_str(), res.length());
+          const std::string& mon = entity->poly_seq[i].mon;
+          memcpy(buf + 18 + 4*col + 4-mon.length(), mon.c_str(), mon.length());
           if (++col == 13) {
             os.write(buf, 81);
             col = 0;

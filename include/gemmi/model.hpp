@@ -112,12 +112,12 @@ enum class PolymerType : unsigned char {
   Other,
 };
 
-struct SequenceItem {
+struct PolySeqItem {
   int num;  // _entity_poly_seq.num or -1 if from SEQRES
   std::string mon;  // _entity_poly_seq.mon_id or resName from SEQRES
-  explicit SequenceItem(std::string m) noexcept : num(-1), mon(m) {}
-  SequenceItem(int n, std::string m) noexcept : num(n), mon(m) {}
-  bool operator==(const SequenceItem& o) const {
+  explicit PolySeqItem(std::string m) noexcept : num(-1), mon(m) {}
+  PolySeqItem(int n, std::string m) noexcept : num(n), mon(m) {}
+  bool operator==(const PolySeqItem& o) const {
     return num == o.num && mon == o.mon;
   }
 };
@@ -127,23 +127,23 @@ struct Entity {
   std::vector<std::string> subchains;
   EntityType entity_type = EntityType::Unknown;
   PolymerType polymer_type = PolymerType::Unknown;
-  std::vector<SequenceItem> sequence;
+  std::vector<PolySeqItem> poly_seq;  // SEQRES / entity_poly_seq
 
   explicit Entity(std::string name_) noexcept : name(name_) {}
 
-  //ConstUniqProxy<SequenceItem>
-  //seq_first_conformer() const { return {sequence}; }
+  //ConstUniqProxy<PolySeqItem>
+  //seq_first_conformer() const { return {poly_seq}; }
 
   // TODO: is it worth to use first_conformer UniqProxy
   bool is_seq_first_conformer(int idx) const {
-    int num = sequence[idx].num;
-    return num < 0 || idx == 0 || num != sequence[idx-1].num;
+    int num = poly_seq[idx].num;
+    return num < 0 || idx == 0 || num != poly_seq[idx-1].num;
   }
 
-  // handles point mutations, unlike sequence.size()
+  // handles point mutations, unlike poly_seq.size()
   int seq_length() const {
     int len = 0;
-    for (size_t i = 0; i != sequence.size(); ++i)
+    for (size_t i = 0; i != poly_seq.size(); ++i)
       if (is_seq_first_conformer(i))
         ++len;
     return len;
@@ -167,6 +167,7 @@ struct Atom {
   float b_iso;
   float u11=0, u22=0, u33=0, u12=0, u13=0, u23=0;
 
+  char altloc_or(char null_char) const { return altloc ? altloc : null_char; }
   bool same_conformer(const Atom& other) const {
     return is_same_conformer(altloc, other.altloc);
   }
@@ -333,6 +334,13 @@ struct ResidueSpan {
   Residue& back() { return *(begin_ + size_ - 1); }
   const Residue& back() const { return *(begin_ + size_ - 1); }
   std::size_t size() const { return size_; }
+  int length() const {
+    int length = size_;
+    for (int n = int(size_) - 1; n > 0; --n)
+      if ((begin_ + n)->same_group(*(begin_ + n - 1)))
+        --length;
+    return length;
+  }
   const Residue& operator[](std::size_t i) const { return *(begin_ + i); }
   Residue& operator[](std::size_t i) { return *(begin_ + i); }
   Residue& at(std::size_t i) {
@@ -363,10 +371,9 @@ struct ResidueGroup : ResidueSpan {
 struct SubChain : ResidueSpan {
   SubChain() = default;
   SubChain(ResidueSpan&& span) : ResidueSpan(std::move(span)) {}
-  //SubChain(iterator begin, std::size_t size) : ResidueSpan{begin, size} {}
-  // useful for ResidueSpan returned by subchains()
+  bool labelled() const { return !empty() && !begin()->subchain.empty(); }
   const std::string& name() const {
-    const static std::string empty_name = "n/a";
+    const static std::string empty_name = "";
     return empty() ? empty_name : begin_->subchain;
   }
   // the same as Chain::first_conformer()
@@ -715,11 +722,10 @@ struct Structure {
   }
 
   const Entity* get_entity_of(const SubChain& sub) const {
-    if (sub.empty() || sub.name().empty())
-      return nullptr;
-    for (const Entity& ent : entities)
-      if (in_vector(sub.name(), ent.subchains))
-        return &ent;
+    if (sub.labelled())
+      for (const Entity& ent : entities)
+        if (in_vector(sub.name(), ent.subchains))
+          return &ent;
     return nullptr;
   }
   Entity* get_entity_of(const SubChain& sub) {

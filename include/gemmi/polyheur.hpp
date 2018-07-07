@@ -205,14 +205,19 @@ inline void ensure_entities(Structure& st) {
 
 inline void deduplicate_entities(Structure& st) {
   for (auto i = st.entities.begin(); i != st.entities.end(); ++i)
-    if (!i->sequence.empty())
+    if (!i->poly_seq.empty())
       for (auto j = i + 1; j != st.entities.end(); ++j)
-        if (j->polymer_type == i->polymer_type && j->sequence == i->sequence) {
+        if (j->polymer_type == i->polymer_type && j->poly_seq == i->poly_seq) {
           vector_move_extend(i->subchains, std::move(j->subchains));
           st.entities.erase(j--);
         }
 }
 
+inline void setup_entities(Structure& st) {
+  assign_subchains(st, false);
+  ensure_entities(st);
+  deduplicate_entities(st);
+}
 
 // Remove hydrogens.
 template<class T> void remove_hydrogens(T& obj) {

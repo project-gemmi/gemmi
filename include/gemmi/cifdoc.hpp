@@ -789,7 +789,7 @@ inline bool is_text_field(const std::string& val) {
 inline std::string quote(std::string v) {
   // strings with '(' happen to be quoted in mmCIF files, so we do the same
   if (v.find_first_of(" \t\r\n'\"()[]{}#") == std::string::npos &&
-      v[0] != '_' && v[0] != '$' && v[0] != '\0' &&
+      !v.empty() && v[0] != '_' && v[0] != '$' && v[0] != '\0' &&
       (v.size() > 1 || (v[0] != '.' && v[0] != '?')))
     return v;
   if (std::memchr(v.c_str(), '\n', v.size()))

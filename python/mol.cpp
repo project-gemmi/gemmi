@@ -70,17 +70,29 @@ void add_mol(py::module& m) {
     .value("Other", PolymerType::Other)
     .value("Unknown", PolymerType::Unknown);
 
+  py::class_<PolySeqItem>(m, "PolySeqItem")
+    .def(py::init<int, std::string>())
+    .def_readwrite("num", &PolySeqItem::num)
+    .def_readwrite("mon", &PolySeqItem::mon)
+    .def("__repr__", [](const PolySeqItem& self) {
+        std::string r = "<gemmi.PolySeqItem " + self.mon;
+        if (self.num != -1)
+          r += " (" + std::to_string(self.num) + ")";
+        return r + ">";
+    });
+
   py::class_<Entity>(m, "Entity")
     .def(py::init<std::string>())
     .def_readwrite("name", &Entity::name)
     .def_readwrite("subchains", &Entity::subchains)
     .def_readwrite("entity_type", &Entity::entity_type)
     .def_readwrite("polymer_type", &Entity::polymer_type)
+    .def_readwrite("poly_seq", &Entity::poly_seq)
     .def("__repr__", [](const Entity& self) {
         std::string r = "<gemmi.Entity ";
         r += entity_type_to_string(self.entity_type);
         if (self.polymer_type != PolymerType::Unknown)
-          r += " / " + polymer_type_to_string(self.polymer_type);
+          r += " " + polymer_type_to_string(self.polymer_type);
         using namespace std;  // VS2015/17 doesn't like std::snprintf
         char buf[64];
         snprintf(buf, 64, " object at %p>", (void*)&self);
@@ -147,6 +159,7 @@ void add_mol(py::module& m) {
          py::arg("overwrite")=false)
     .def("ensure_entities", &ensure_entities)
     .def("deduplicate_entities", &deduplicate_entities)
+    .def("setup_entities", &setup_entities)
     .def("remove_hydrogens", remove_hydrogens<Structure>)
     .def("remove_waters", remove_waters<Structure>)
     .def("remove_ligands_and_waters",
@@ -269,6 +282,7 @@ void add_mol(py::module& m) {
     .def_readwrite("icode", &Residue::icode)
     .def_readwrite("segment", &Residue::segment)
     .def_readwrite("subchain", &Residue::subchain)
+    .def_readwrite("entity_type", &Residue::entity_type)
     .def_readwrite("label_seq", &Residue::label_seq)
     .def("seq_id", &Residue::seq_id)
     .def("__len__", [](const Residue& res) { return res.atoms.size(); })

@@ -288,7 +288,7 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
                                                {"id", "entity_id"});
   for (const gemmi::Chain& chain : model0.chains)
     for (gemmi::SubChain sub : const_cast<gemmi::Chain&>(chain).subchains())
-      if (!sub.name().empty()) {
+      if (sub.labelled()) {
         const gemmi::Entity* ent = st.get_entity_of(sub);
         asym_loop.add_row({sub.name(), (ent ? ent->name : "?")});
       }
@@ -616,10 +616,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   std::string output = p.nonOption(1);
   try {
     gemmi::Structure st = read_structure(input);
-    /* TODO
     if (st.input_format == gemmi::CoorFormat::Pdb)
-      gemmi::split_nonpolymers(st);
-      */
+      gemmi::setup_entities(st);
     if (st.models.empty())
       return 1;
     gemmi::Model& model0 = st.models[0];
@@ -653,7 +651,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     Linkage linkage;
     for (const gemmi::Chain& chain : model0.chains)
       for (gemmi::SubChain sub : const_cast<gemmi::Chain&>(chain).subchains()) {
-        assert(!sub.name().empty());
+        assert(sub.labelled());
         const gemmi::Entity* ent = st.get_entity_of(sub);
         linkage.chains.push_back(determine_linkage(sub, monlib, ent));
       }

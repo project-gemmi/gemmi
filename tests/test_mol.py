@@ -211,7 +211,6 @@ class TestMol(unittest.TestCase):
         return out_lines
 
     def test_read_write_1orc(self, via_cif=False):
-        return  # TODO
         path = full_path('1orc.pdb')
         with open(path) as f:
             expected = [line for line in f if is_written_to_pdb(line, via_cif)]
@@ -222,7 +221,6 @@ class TestMol(unittest.TestCase):
         self.test_read_write_1orc(via_cif=True)
 
     def test_read_write_1lzh(self, via_cif=False):
-        return  # TODO
         path = full_path('1lzh.pdb.gz')
         mode = 'rt' if sys.version_info >= (3,) else 'r'
         with gzip.open(path, mode=mode) as f:
@@ -287,7 +285,6 @@ class TestMol(unittest.TestCase):
         doc = st.make_mmcif_document()
         st2 = gemmi.make_structure_from_block(doc[0])
         out = st2.make_pdb_headers()
-        return  # TODO
         self.assertEqual(out.splitlines(), SSBOND_FRAGMENT.splitlines()[:3])
 
     def test_remove_atom(self):

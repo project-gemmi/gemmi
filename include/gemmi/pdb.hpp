@@ -376,7 +376,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       for (int i = 19; i < 68; i += 4) {
         std::string res_name = read_string(line+i, 3);
         if (!res_name.empty())
-          ent.sequence.emplace_back(res_name);
+          ent.poly_seq.emplace_back(res_name);
       }
 
     } else if (is_record_type(line, "HEADER")) {

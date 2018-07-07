@@ -186,6 +186,7 @@ static void convert(const std::string& input, CoorFormat input_type,
     }
   } else if (input_type == CoorFormat::Pdb) {
     st = read_structure(input, CoorFormat::Pdb);
+    setup_entities(st);
   } else {
     gemmi::fail("Unexpected input format.");
   }

@@ -54,9 +54,9 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
           vv.emplace_back(std::to_string(++serial));
           vv.emplace_back(a.element.uname());
           vv.emplace_back(a.name);
-          vv.emplace_back(1, a.altloc ? a.altloc : '.');
+          vv.emplace_back(1, a.altloc_or('.'));
           vv.emplace_back(res.name);
-          vv.emplace_back(res.subchain);
+          vv.emplace_back(cif::quote(res.subchain));
           vv.emplace_back(label_seq_id);
           vv.emplace_back(pdbx_icode(res));
           vv.emplace_back(to_str(a.pos.x));
@@ -94,16 +94,20 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
   }
 }
 
+inline std::string subchain_or_dot(const Residue& res) {
+  return res.subchain.empty() ? "." : cif::quote(res.subchain);
+}
+
 inline void write_struct_conn(const Structure& st, cif::Block& block) {
   // example:
   // disulf1 disulf A CYS 3  SG ? 3 ? 1_555 A CYS 18 SG ? 18 ?  1_555 ? 2.045
   cif::Loop& conn_loop = block.init_mmcif_loop("_struct_conn.",
       {"id", "conn_type_id",
-       "ptnr1_label_asym_id", "ptnr1_label_comp_id", "ptnr1_label_seq_id",
-       "ptnr1_label_atom_id", "pdbx_ptnr1_label_alt_id",
+       "ptnr1_auth_asym_id", "ptnr1_label_asym_id", "ptnr1_label_comp_id",
+       "ptnr1_label_seq_id", "ptnr1_label_atom_id", "pdbx_ptnr1_label_alt_id",
        "ptnr1_auth_seq_id", "pdbx_ptnr1_PDB_ins_code", "ptnr1_symmetry",
-       "ptnr2_label_asym_id", "ptnr2_label_comp_id", "ptnr2_label_seq_id",
-       "ptnr2_label_atom_id", "pdbx_ptnr2_label_alt_id",
+       "ptnr2_auth_asym_id", "ptnr2_label_asym_id", "ptnr2_label_comp_id",
+       "ptnr2_label_seq_id", "ptnr2_label_atom_id", "pdbx_ptnr2_label_alt_id",
        "ptnr2_auth_seq_id", "pdbx_ptnr2_PDB_ins_code", "ptnr2_symmetry",
        "details", "pdbx_dist_value"});
   for (const Connection& con : st.models.at(0).connections) {
@@ -114,26 +118,28 @@ inline void write_struct_conn(const Structure& st, cif::Block& block) {
     SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
                                              cra2.atom->pos, con.asu);
     conn_loop.add_row({
-        con.name,                               // id
-        get_mmcif_connection_type_id(con.type), // conn_type_id
-        cra1.chain->name,                       // ptnr1_label_asym_id
-        con.atom[0].res_id.name,                // ptnr1_label_comp_id
-        ".",                                    // ptnr1_label_seq_id
-        con.atom[0].atom_name,                  // ptnr1_label_atom_id
-        std::string(1, con.atom[0].altloc ? con.atom[0].altloc : '?'),
-        con.atom[0].res_id.seq_num.str(),       // ptnr1_auth_seq_id
-        pdbx_icode(con.atom[0].res_id),         // ptnr1_PDB_ins_code
-        "1_555",                                // ptnr1_symmetry
-        cra2.chain->name,                       // ptnr2_label_asym_id
-        con.atom[1].res_id.name,                // ptnr2_label_comp_id
-        ".",                                    // ptnr2_label_seq_id
-        con.atom[1].atom_name,                  // ptnr2_label_atom_id
-        std::string(1, con.atom[1].altloc ? con.atom[1].altloc : '?'),
-        con.atom[1].res_id.seq_num.str(),       // ptnr2_auth_seq_id
-        pdbx_icode(con.atom[1].res_id),         // ptnr2_PDB_ins_code
-        im.pdb_symbol(true),                    // ptnr2_symmetry
-        "?",                                    // details
-        to_str(im.dist())                       // pdbx_dist_value
+        con.name,                                  // id
+        get_mmcif_connection_type_id(con.type),    // conn_type_id
+        cra1.chain->name,                          // ptnr1_auth_asym_id
+        subchain_or_dot(*cra1.residue),            // ptnr1_label_asym_id
+        cra1.residue->name,                        // ptnr1_label_comp_id
+        cra1.residue->label_seq.str(),             // ptnr1_label_seq_id
+        cra1.atom->name,                           // ptnr1_label_atom_id
+        std::string(1, cra1.atom->altloc_or('?')), // pdbx_ptnr1_label_alt_id
+        cra1.residue->seq_num.str(),               // ptnr1_auth_seq_id
+        pdbx_icode(con.atom[0].res_id),            // ptnr1_PDB_ins_code
+        "1_555",                                   // ptnr1_symmetry
+        cra2.chain->name,                          // ptnr2_auth_asym_id
+        subchain_or_dot(*cra2.residue),            // ptnr2_label_asym_id
+        cra2.residue->name,                        // ptnr2_label_comp_id
+        cra2.residue->label_seq.str(),             // ptnr2_label_seq_id
+        cra2.atom->name,                           // ptnr2_label_atom_id
+        std::string(1, cra2.atom->altloc_or('?')), // pdbx_ptnr2_label_alt_id
+        cra2.residue->seq_num.str(),               // ptnr2_auth_seq_id
+        pdbx_icode(con.atom[1].res_id),            // ptnr2_PDB_ins_code
+        im.pdb_symbol(true),                       // ptnr2_symmetry
+        "?",                                       // details
+        to_str(im.dist())                          // pdbx_dist_value
     });
   }
 }
@@ -231,7 +237,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
                                                {"id", "entity_id"});
   for (const Chain& chain : st.models[0].chains)
     for (SubChain sub : const_cast<Chain&>(chain).subchains())
-      if (!sub.name().empty()) {
+      if (sub.labelled()) {
         const Entity* ent = st.get_entity_of(sub);
         asym_loop.add_row({sub.name(), (ent ? ent->name : "?")});
       }
@@ -254,17 +260,17 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   // _struct_mon_prot_cis
   cif::Loop& prot_cis_loop = block.init_mmcif_loop("_struct_mon_prot_cis.",
       {"pdbx_id", "pdbx_PDB_model_num", "label_asym_id", "label_seq_id",
-       "auth_seq_id", "pdbx_PDB_ins_code",
-       "label_comp_id", "auth_comp_id", "label_alt_id"});
+       "auth_asym_id", "auth_seq_id", "pdbx_PDB_ins_code",
+       "label_comp_id", "label_alt_id"});
   for (const Model& model : st.models)
     for (const Chain& chain : model.chains)
-        for (const Residue& res : chain.residues)
-          if (res.is_cis)
-            prot_cis_loop.add_row({to_string(prot_cis_loop.length()+1),
-                                   model.name, res.subchain,
-                                   res.label_seq.str(),
-                                   res.seq_num.str(), impl::pdbx_icode(res),
-                                   res.name, res.name, "."});
+      for (const Residue& res : chain.residues)
+        if (res.is_cis)
+          prot_cis_loop.add_row({to_string(prot_cis_loop.length()+1),
+                                 model.name, impl::subchain_or_dot(res),
+                                 res.label_seq.str(), chain.name,
+                                 res.seq_num.str(), impl::pdbx_icode(res),
+                                 res.name, "."});
 
   // _atom_sites (SCALE)
   if (st.has_origx || st.cell.explicit_matrices) {
@@ -286,7 +292,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
                                          {"entity_id", "num", "mon_id"});
   for (const Entity& ent : st.entities)
     if (ent.entity_type == EntityType::Polymer)
-      for (const SequenceItem& si : ent.sequence) {
+      for (const PolySeqItem& si : ent.poly_seq) {
         std::string num = si.num >= 0 ? to_string(si.num) : "?";
         poly_loop.add_row({ent.name, num, si.mon});
       }

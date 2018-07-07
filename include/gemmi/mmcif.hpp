@@ -111,6 +111,26 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
   }
 }
 
+inline void fill_residue_entity_type(Structure& st) {
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      for (SubChain sub : chain.subchains()) {
+        EntityType etype = EntityType::Unknown;
+        if (const Entity* ent = st.get_entity_of(sub))
+          etype = ent->entity_type;
+        if (etype == EntityType::Unknown) {
+          if (sub[0].is_water())
+            etype = EntityType::Water;
+          if (sub.length() > 1)
+            etype = EntityType::Polymer;
+          else
+            etype = EntityType::NonPolymer;
+        }
+        for (Residue& residue : sub)
+          residue.entity_type = etype;
+      }
+}
+
 inline Structure structure_from_cif_block(const cif::Block& block_) {
   using cif::as_number;
   using cif::as_string;
@@ -291,22 +311,26 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
   for (auto row : block.find("_entity_poly_seq.",
                              {"entity_id", "num", "mon_id"}))
     if (Entity* ent = st.get_entity(row.str(0)))
-      ent->sequence.push_back({cif::as_int(row[1], -1), row.str(2)});
+      ent->poly_seq.push_back({cif::as_int(row[1], -1), row.str(2)});
 
   for (auto row : block.find("_struct_asym.", {"id", "entity_id"}))
     if (Entity* ent = st.get_entity(row.str(1)))
       ent->subchains.push_back(row.str(0));
 
+  fill_residue_entity_type(st);
+
   st.setup_cell_images();
 
   // CISPEP
   for (auto row : block.find("_struct_mon_prot_cis.",
-                             {"pdbx_PDB_model_num", "label_asym_id",
-                              "auth_seq_id", "?pdbx_PDB_ins_code",
-                              "auth_comp_id"})) {
-    if (row.has2(0) && row.has2(1) && row.has2(2) && row.has2(4))
+                             {"pdbx_PDB_model_num", "auth_asym_id",  // 0-1
+                              "auth_seq_id", "?pdbx_PDB_ins_code",   // 2-3
+                              "?label_comp_id", "?auth_comp_id"})) { // 4-5
+    if (row.has2(0) && row.has2(1) && row.has2(2) &&
+        (row.has2(4) || row.has2(5)))
       if (Model* mdl = st.find_model(row[0])) {
-        ResidueId rid = make_resid(row.str(4), row.str(2), row.ptr_at(3));
+        std::string comp = row.str(row.has2(4) ? 4 : 5);
+        ResidueId rid = make_resid(comp, row.str(2), row.ptr_at(3));
         if (Chain* ch = mdl->find_chain(row[1]))
           if (Residue* res = ch->find_residue(rid))
             res->is_cis = true;

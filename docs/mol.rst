@@ -813,13 +813,14 @@ Chain
 .. doctest::
 
   >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
+  >>> st.remove_ligands_and_waters()
   >>> chain_b = st[0]['B']
   >>> # iteration goes through all residues and atom sites
-  >>> [res.name for res in chain_b][:10] # FIXME
+  >>> [res.name for res in chain_b]
   ['DSN', 'ALA', 'N2C', 'NCY', 'MVA', 'DSN', 'ALA', 'NCY', 'N2C', 'MVA']
   >>> # The two pairs N2C/NCY above are alternative conformations.
   >>> # Sometimes we want to ignore alternative conformations:
-  >>> [res.name for res in chain_b.first_conformer()][:8] # FIXME
+  >>> [res.name for res in chain_b.first_conformer()]
   ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
   >>>
   >>> chain_a = st[0]['A']
