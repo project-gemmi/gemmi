@@ -121,7 +121,7 @@ inline void fill_residue_entity_type(Structure& st) {
         if (etype == EntityType::Unknown) {
           if (sub[0].is_water())
             etype = EntityType::Water;
-          if (sub.length() > 1)
+          else if (sub.length() > 1)
             etype = EntityType::Polymer;
           else
             etype = EntityType::NonPolymer;
