@@ -351,7 +351,7 @@ inline void write_header(const Structure& st, std::ostream& os,
       for (const Chain& chain : model.chains)
         for (const Residue& res : chain.residues)
           if (res.is_cis)
-            if (const Residue* next = chain.next_bonded_aa(res))
+            if (const Residue* next = chain.next_bonded_aa(res)) {
               WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s\n",
                     ++counter,
                     res.name.c_str(), chain.name.c_str(),
@@ -361,6 +361,7 @@ inline void write_header(const Structure& st, std::ostream& os,
                     st.models.size() > 1 ? model.name.c_str() : "0",
                     deg(calculate_omega(res, *next)),
                     "");
+            }
   }
 
   write_cryst1(st, os);
