@@ -762,7 +762,7 @@ On top of it it offers simple utilities that make working with conformers
 easier:
 
 - functions that ignore all but the main conformations (inspired by BioPython),
-- and lightweight proxy objects ResidueSpan and AtomSpan that group
+- and lightweight proxy objects ResidueGroup and AtomGroup that group
   alternative conformers (inspired by iotbx).
 
 Structure
@@ -826,9 +826,9 @@ Chain
   >>> chain_a = st[0]['A']
   >>> # the first residue has sequence id '1', but since one sequence id
   >>> # may belong to more than one residue (microheterogeneity)
-  >>> # this getter returns ResidueSpan:
+  >>> # this getter returns ResidueGroup:
   >>> chain_a['1']
-  <gemmi.ResidueSpan [1(DG)]>
+  <gemmi.ResidueGroup [1(DG)]>
   >>> first_residue = _[0]
   >>> first_residue
   <gemmi.Residue 1(DG) with 23 atoms>

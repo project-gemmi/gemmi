@@ -248,12 +248,7 @@ void add_mol(py::module& m) {
     .def("__bool__", [](const ResidueSpan &g) -> bool { return !g.empty(); })
     .def("__getitem__", [](ResidueSpan& g, int index) -> Residue& {
         return g.at(index >= 0 ? index : index + g.size());
-    }, py::arg("index"), py::return_value_policy::reference_internal)
-    .def("__repr__", [](const ResidueSpan& self) {
-        return "<gemmi.ResidueSpan [" +
-               join_str(self, ' ', [](const Residue& r) { return r.str(); }) +
-               "]>";
-    });
+    }, py::arg("index"), py::return_value_policy::reference_internal);
 
   py::class_<ResidueGroup>(m, "ResidueGroup", residue_span)
     // need to duplicate it so it is visible
@@ -262,13 +257,20 @@ void add_mol(py::module& m) {
     }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("__getitem__", &ResidueGroup::by_resname,
          py::arg("name"), py::return_value_policy::reference_internal)
-  ;
+    .def("__repr__", [](const ResidueGroup& self) {
+        return "<gemmi.ResidueGroup [" +
+               join_str(self, ' ', [](const Residue& r) { return r.str(); }) +
+               "]>";
+    });
 
   py::class_<SubChain>(m, "SubChain", residue_span)
     .def("name", &SubChain::name)
     .def("check_polymer_type", &check_polymer_type)
     .def("make_one_letter_sequence", &make_one_letter_sequence)
-  ;
+    .def("__repr__", [](const SubChain& self) {
+        return "<gemmi.SubChain " + self.name() +
+               ", length " + std::to_string(self.size()) + ">";
+    });
 
   py::class_<UniqProxy<Atom>>(m, "FirstConformerAtoms")
     .def("__iter__", [](UniqProxy<Atom>& self) {
