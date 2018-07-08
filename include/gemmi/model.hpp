@@ -192,44 +192,48 @@ struct Atom {
   }
 };
 
-// TODO
-/*
 struct SeqId {
   using OptionalNum = impl::OptionalInt<-999>;
 
-  OptionalNum seq_num; // sequence number
-  char icode = ' ';  // insertion code
-};
-*/
-
-// Sequence ID (sequence number + insertion code) + residue name + segment ID
-struct ResidueId {
-  using OptionalNum = impl::OptionalInt<-999>;
-
-  OptionalNum seq_num; // sequence number
+  OptionalNum num; // sequence number
   char icode = ' ';  // insertion code
 
-  std::string segment; // segid - up to 4 characters in the PDB file
-  std::string name;
+  SeqId() = default;
+  SeqId(int num_, char icode_) { num = num_; icode = icode_; }
+
+  bool operator==(const SeqId& o) const {
+    return num == o.num && (icode | 0x20) == (o.icode | 0x20);
+  }
+  bool operator!=(const SeqId& o) const { return !operator==(o); }
 
   char has_icode() const { return icode != ' '; }
-  // checks for equality of sequence ID; used for first_conformation iterators
-  bool same_group(const ResidueId& o) const {
-    return seq_num == o.seq_num && icode == o.icode;
-  }
-  bool matches(const ResidueId& o) const {
-    return same_group(o) && segment == o.segment && name == o.name;
-  }
-  std::string seq_id() const {
-    std::string r = seq_num.str();
+
+  std::string str() const {
+    std::string r = num.str();
     if (icode != ' ')
       r += icode;
     return r;
   }
-  std::string str() const { return seq_id() + "(" + name + ")"; }
+};
+
+// Sequence ID (sequence number + insertion code) + residue name + segment ID
+struct ResidueId {
+  SeqId seqid;
+  std::string segment; // segid - up to 4 characters in the PDB file
+  std::string name;
+
+  // checks for equality of sequence ID; used for first_conformation iterators
+  bool same_group(const ResidueId& o) const { return seqid == o.seqid; }
+
+  bool matches(const ResidueId& o) const {
+    return seqid == o.seqid && segment == o.segment && name == o.name;
+  }
+  std::string str() const { return seqid.str() + "(" + name + ")"; }
 };
 
 struct Residue : public ResidueId {
+  using OptionalNum = SeqId::OptionalNum;
+
   std::string subchain;   // mmCIF _atom_site.label_asym_id
   OptionalNum label_seq;  // mmCIF _atom_site.label_seq_id
   EntityType entity_type = EntityType::Unknown;
@@ -447,9 +451,8 @@ struct Chain {
   }
 
   ResidueGroup find_residue_group(int seqnum, char icode=' ') {
-    return get_residue_span([&](const Residue& r) {
-        return r.seq_num == seqnum && (r.icode | 0x20) == (icode | 0x20);
-    });
+    SeqId id(seqnum, icode);
+    return get_residue_span([&](const Residue& r) { return r.seqid == id; });
   }
 
   Residue* find_residue(const ResidueId& rid);
@@ -519,7 +522,7 @@ inline std::string atom_str(const std::string& chain_name,
   r += '/';
   r += res_id.name;
   r += ' ';
-  r += res_id.seq_id();
+  r += res_id.seqid.str();
   r += '/';
   r += atom_name;
   if (altloc) {
@@ -641,8 +644,7 @@ struct Model {
     ResidueSpan rr = chain->find_residue_group(resnum, icode);
     if (rr.size() != 1)
       fail((rr.empty() ? "No residue " : "Multiple residues ") +
-           chain_name + " " + // TODO SeqId
-           std::to_string(resnum) + std::string(1, icode));
+           chain_name + " " + SeqId(resnum, icode).str());
     return rr[0];
   }
 
@@ -770,10 +772,10 @@ inline Residue* Chain::find_or_add_residue(const ResidueId& rid) {
 inline void Chain::append_residues(std::vector<Residue> new_resi) {
   int seqnum = 0;
   for (const Residue& res : residues)
-    seqnum = std::max({seqnum, int(res.label_seq), int(res.seq_num)});
+    seqnum = std::max({seqnum, int(res.label_seq), int(res.seqid.num)});
   for (Residue& res : new_resi) {
-    res.label_seq = res.seq_num = ++seqnum;
-    res.icode = ' ';
+    res.label_seq = res.seqid.num = ++seqnum;
+    res.seqid.icode = ' ';
   }
   std::move(new_resi.begin(), new_resi.end(), std::back_inserter(residues));
 }

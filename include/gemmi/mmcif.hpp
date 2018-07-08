@@ -57,16 +57,16 @@ inline ResidueId make_resid(const std::string& name,
   rid.name = name;
   if (icode)
     // the insertion code happens to be always a single letter
-    rid.icode = cif::as_char(*icode, ' ');
+    rid.seqid.icode = cif::as_char(*icode, ' ');
   // old mmCIF files have auth_seq_id as number + icode (e.g. 15A)
   if (!seqid.empty() && seqid.back() >= 'A') {
-    if (rid.icode == ' ')
-      rid.icode = seqid.back();
-    else if (rid.icode != seqid.back())
+    if (rid.seqid.icode == ' ')
+      rid.seqid.icode = seqid.back();
+    else if (rid.seqid.icode != seqid.back())
       fail("Inconsistent insertion code in " + seqid);
-    rid.seq_num = cif::as_int(seqid.substr(0, seqid.size() - 1));
+    rid.seqid.num = cif::as_int(seqid.substr(0, seqid.size() - 1));
   } else {
-    rid.seq_num = cif::as_int(seqid, Residue::OptionalNum::None);
+    rid.seqid.num = cif::as_int(seqid, Residue::OptionalNum::None);
   }
   return rid;
 }
@@ -101,7 +101,7 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
       AtomAddress& a = c.atom[i];
       a.chain_name = row.str(2+i);
       if (row.has2(12+i))
-        a.res_id.icode = cif::as_char(row[12+i], ' ');
+        a.res_id.seqid.icode = cif::as_char(row[12+i], ' ');
       a.res_id = make_resid(row.str(4+i), row.str(10+i), row.ptr_at(12+i));
       a.atom_name = row.str(6+i);
       a.altloc = row.has2(8+i) ? cif::as_char(row[8+i], '\0') : '\0';
@@ -265,7 +265,7 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
           resi->label_seq = cif::as_int(row[kLabelSeqId]);
         resi->subchain = row.str(kLabelAsymId);
       }
-    } else if (resi->seq_num != rid.seq_num || resi->icode != rid.icode) {
+    } else if (resi->seqid != rid.seqid) {
       fail("Inconsistent sequence ID: " + resi->str() + " / " + rid.str());
     }
     Atom atom;

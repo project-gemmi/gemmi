@@ -109,12 +109,12 @@ static void print_contacts(const Structure& st, const Parameters& params) {
                    atom.altloc ? std::toupper(atom.altloc) : ' ',
                    res.name.c_str(),
                    chain.name.c_str(),
-                   res.seq_id().c_str(),
+                   res.seqid.str().c_str(),
                    cra.atom->padded_name().c_str(),
                    cra.atom->altloc ? std::toupper(cra.atom->altloc) : ' ',
                    cra.residue->name.c_str(),
                    cra.chain->name.c_str(),
-                   cra.residue->seq_id().c_str(),
+                   cra.residue->seqid.str().c_str(),
                    "1555", im.pdb_symbol(false).c_str(), im.dist());
         });
       }

@@ -23,8 +23,8 @@ using info_map_type = std::map<std::string, std::string>;
 PYBIND11_MAKE_OPAQUE(info_map_type)
 
 namespace pybind11 { namespace detail {
-  template<> struct type_caster<ResidueId::OptionalNum>
-    : optional_caster<ResidueId::OptionalNum> {};
+  template<> struct type_caster<SeqId::OptionalNum>
+    : optional_caster<SeqId::OptionalNum> {};
 }} // namespace pybind11::detail
 
 
@@ -277,16 +277,22 @@ void add_mol(py::module& m) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
 
+  py::class_<SeqId>(m, "SeqId")
+    .def_readwrite("num", &SeqId::num)
+    .def_readwrite("icode", &SeqId::icode)
+    .def("__str__", &SeqId::str)
+    .def("__repr__", [](const SeqId& self) {
+        return "<gemmi.SeqId " + self.str() + ">";
+    });
+
   py::class_<Residue>(m, "Residue")
     .def(py::init<>())
     .def_readwrite("name", &Residue::name)
-    .def_readwrite("seq_num", &Residue::seq_num)
-    .def_readwrite("icode", &Residue::icode)
+    .def_readwrite("seqid", &Residue::seqid)
     .def_readwrite("segment", &Residue::segment)
     .def_readwrite("subchain", &Residue::subchain)
     .def_readwrite("entity_type", &Residue::entity_type)
     .def_readwrite("label_seq", &Residue::label_seq)
-    .def("seq_id", &Residue::seq_id)
     .def("__len__", [](const Residue& res) { return res.atoms.size(); })
     .def("__contains__", [](const Residue& res, const std::string& name) {
         return res.find_atom(name) != nullptr;

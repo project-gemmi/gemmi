@@ -39,15 +39,15 @@ class TestMol(unittest.TestCase):
     def test_residue(self):
         res = gemmi.Residue()
         self.assertEqual(res.label_seq, None)
-        self.assertEqual(res.seq_num, None)
+        self.assertEqual(res.seqid.num, None)
         res.label_seq = 1
         self.assertEqual(res.label_seq, 1)
-        res.seq_num = 2
-        self.assertEqual(res.seq_num, 2)
+        res.seqid.num = 2
+        self.assertEqual(res.seqid.num, 2)
         res.label_seq = None
         self.assertEqual(res.label_seq, None)
-        res.seq_num = None
-        self.assertEqual(res.seq_num, None)
+        res.seqid.num = None
+        self.assertEqual(res.seqid.num, None)
         for name in ['HOH', 'hoh', 'DOD', 'h2o', 'H2O', 'WAT']:
             res.name = name
             self.assertTrue(res.is_water())
@@ -152,7 +152,7 @@ class TestMol(unittest.TestCase):
         self.assertEqual(len(st[0]['A']['1']), 1)
         chain_a = st[0]['A']
         self.assertEqual(chain_a[0].label_seq, 1)
-        self.assertEqual(chain_a['1'][0].seq_num, 1)
+        self.assertEqual(chain_a['1'][0].seqid.num, 1)
         b3 = st[0]['B']['3']
         self.assertEqual(len(b3), 2)
         self.assertEqual(repr(b3[0]), repr(st[0]['B'][2]))
@@ -187,13 +187,13 @@ class TestMol(unittest.TestCase):
         self.assertTrue(all(res.name == 'HOH' for res in waters))
         self.assertTrue(A['3'])
         self.assertFalse(A['0'])
-        self.assertEqual([res.seq_num for res in A if res.icode != ' '],
+        self.assertEqual([res.seqid.num for res in A if res.seqid.icode != ' '],
                          [56] * 5)
         self.assertEqual(len(A['55']), 1)
         self.assertEqual(len(A['55B']), 0)
         self.assertEqual(len(A['56B']), 1)
-        self.assertEqual(A['56'][0].icode, ' ')
-        self.assertEqual(A['56c'][0].icode, 'C')
+        self.assertEqual(A['56'][0].seqid.icode, ' ')
+        self.assertEqual(A['56c'][0].seqid.icode, 'C')
 
     def write_back_and_compare(self, path, via_cif):
         st = gemmi.read_structure(path)

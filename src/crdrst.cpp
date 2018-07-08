@@ -234,13 +234,14 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
     if (!chain_info.polymer)
       continue;
     for (const Linkage::ResInfo& res_info : chain_info.residues) {
-      std::string prev = res_info.prev ? res_info.prev->res->seq_id() : "n/a";
+      std::string prev = res_info.prev ? res_info.prev->res->seqid.str()
+                                       : "n/a";
       std::string mod = res_info.mods.at(0);
       if (mod == "AA-STAND")
         mod = res_info.mods.at(1);
       if (mod.empty())
         mod += '.';
-      poly_loop.add_row({res_info.res->name, res_info.res->seq_id(),
+      poly_loop.add_row({res_info.res->name, res_info.res->seqid.str(),
                          chain_info.entity_id, res_info.prev_link, prev, mod});
     }
   }
@@ -326,7 +327,7 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
   vv.reserve(count_atom_sites(st) * atom_loop.tags.size());
   for (const gemmi::Chain& chain : model0.chains) {
     for (const gemmi::Residue& res : chain.residues) {
-      std::string auth_seq_id = res.seq_num.str();
+      std::string auth_seq_id = res.seqid.num.str();
       //std::string ins_code(1, res.icode != ' ' ? res.icode : '?');
       gemmi::ChemComp& cc = monlib.monomers.at(res.name);
       for (const gemmi::Atom& a : res.atoms) {
@@ -513,8 +514,8 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
         if (link && !link->rt.empty()) {
           const gemmi::Residue* prev = ri.prev->res;
           std::string comment = "# link " + ri.prev_link + " " +
-                                 prev->seq_id() + " " + prev->name + " - " +
-                                 ri.res->seq_id() + " " + ri.res->name;
+                                 prev->seqid.str() + " " + prev->name + " - " +
+                                 ri.res->seqid.str() + " " + ri.res->name;
           restr_loop.add_row({comment + "\nLINK", ".", cif::quote(ri.prev_link),
                               ".", ".", ".", ".", ".", ".", ".", "."});
           int n = add_restraints(link->rt, *prev, ri.res, restr_loop, counters);
@@ -542,7 +543,7 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
       if (!chem_comp.rt.empty()) {
         // comments are added relying on how cif writing works
         std::string res_info = "# monomer " + chain_info.name + " " +
-                               ri.res->seq_id() + " " + ri.res->name;
+                               ri.res->seqid.str() + " " + ri.res->name;
 
         // need to revisit it later on
         std::string group = cif::quote(chem_comp.group.substr(0, 8));

@@ -73,7 +73,7 @@ class TestSubCells(unittest.TestCase):
         self.assertAlmostEqual(sc.dist(a1.pos, m2.pos()), 0.13, delta=5e-3)
         cra2 = m2.to_cra(st[0])
         self.assertEqual(cra2.chain.name, 'B')
-        self.assertEqual(cra2.residue.seq_id(), '37')
+        self.assertEqual(str(cra2.residue.seqid), '37')
         self.assertEqual(cra2.atom.name, 'SG')
 
     def test_1gtv(self):

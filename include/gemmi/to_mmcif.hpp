@@ -18,7 +18,7 @@ namespace gemmi {
 namespace impl {
 
 inline std::string pdbx_icode(const ResidueId& rid) {
-  return std::string(1, rid.has_icode() ? rid.icode : '?');
+  return std::string(1, rid.seqid.has_icode() ? rid.seqid.icode : '?');
 }
 
 inline std::string subchain_or_dot(const Residue& res) {
@@ -53,7 +53,7 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
     for (const Chain& chain : model.chains) {
       for (const Residue& res : chain.residues) {
         std::string label_seq_id = res.label_seq.str();
-        std::string auth_seq_id = res.seq_num.str();
+        std::string auth_seq_id = res.seqid.num.str();
         for (const Atom& a : res.atoms) {
           vv.emplace_back(std::to_string(++serial));
           vv.emplace_back(a.element.uname());
@@ -126,7 +126,7 @@ inline void write_struct_conn(const Structure& st, cif::Block& block) {
         cra1.residue->label_seq.str(),             // ptnr1_label_seq_id
         cra1.atom->name,                           // ptnr1_label_atom_id
         std::string(1, cra1.atom->altloc_or('?')), // pdbx_ptnr1_label_alt_id
-        cra1.residue->seq_num.str(),               // ptnr1_auth_seq_id
+        cra1.residue->seqid.num.str(),             // ptnr1_auth_seq_id
         pdbx_icode(con.atom[0].res_id),            // ptnr1_PDB_ins_code
         "1_555",                                   // ptnr1_symmetry
         cra2.chain->name,                          // ptnr2_auth_asym_id
@@ -135,7 +135,7 @@ inline void write_struct_conn(const Structure& st, cif::Block& block) {
         cra2.residue->label_seq.str(),             // ptnr2_label_seq_id
         cra2.atom->name,                           // ptnr2_label_atom_id
         std::string(1, cra2.atom->altloc_or('?')), // pdbx_ptnr2_label_alt_id
-        cra2.residue->seq_num.str(),               // ptnr2_auth_seq_id
+        cra2.residue->seqid.num.str(),             // ptnr2_auth_seq_id
         pdbx_icode(con.atom[1].res_id),            // ptnr2_PDB_ins_code
         im.pdb_symbol(true),                       // ptnr2_symmetry
         "?",                                       // details
@@ -269,7 +269,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
           prot_cis_loop.add_row({to_string(prot_cis_loop.length()+1),
                                  model.name, impl::subchain_or_dot(res),
                                  res.label_seq.str(), chain.name,
-                                 res.seq_num.str(), impl::pdbx_icode(res),
+                                 res.seqid.num.str(), impl::pdbx_icode(res),
                                  res.name, "."});
 
   // _atom_sites (SCALE)
