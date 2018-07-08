@@ -21,6 +21,10 @@ inline std::string pdbx_icode(const ResidueId& rid) {
   return std::string(1, rid.has_icode() ? rid.icode : '?');
 }
 
+inline std::string subchain_or_dot(const Residue& res) {
+  return res.subchain.empty() ? "." : cif::quote(res.subchain);
+}
+
 inline void add_cif_atoms(const Structure& st, cif::Block& block) {
   // atom list
   cif::Loop& atom_loop = block.init_mmcif_loop("_atom_site.", {
@@ -56,7 +60,7 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
           vv.emplace_back(a.name);
           vv.emplace_back(1, a.altloc_or('.'));
           vv.emplace_back(res.name);
-          vv.emplace_back(cif::quote(res.subchain));
+          vv.emplace_back(subchain_or_dot(res));
           vv.emplace_back(label_seq_id);
           vv.emplace_back(pdbx_icode(res));
           vv.emplace_back(to_str(a.pos.x));
@@ -92,10 +96,6 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
       aniso_val.emplace_back(to_str(a.second->u23));
     }
   }
-}
-
-inline std::string subchain_or_dot(const Residue& res) {
-  return res.subchain.empty() ? "." : cif::quote(res.subchain);
 }
 
 inline void write_struct_conn(const Structure& st, cif::Block& block) {

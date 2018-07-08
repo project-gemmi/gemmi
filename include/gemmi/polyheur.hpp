@@ -70,14 +70,13 @@ inline bool is_polymer_residue(const Residue& res, PolymerType ptype) {
 
 inline bool are_connected(const Residue& r1, const Residue& r2,
                           PolymerType ptype) {
-  if (ptype == PolymerType::PeptideL || ptype == PolymerType::PeptideD) {
+  if (is_polypeptide(ptype)) {
     // similar to has_peptide_bond_to()
     const Atom* a1 = r1.get_c();
     const Atom* a2 = r2.get_n();
     return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(1.341 * 1.5);
   }
-  if (ptype == PolymerType::Dna || ptype == PolymerType::Rna ||
-      ptype == PolymerType::DnaRnaHybrid) {
+  if (is_polynucleotide(ptype)) {
     const Atom* a1 = r1.get_o3prim();
     const Atom* a2 = r2.get_p();
     return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(1.6 * 1.5);
@@ -88,13 +87,12 @@ inline bool are_connected(const Residue& r1, const Residue& r2,
 // not a good check, but requires only CA (or P) atoms
 inline bool are_connected2(const Residue& r1, const Residue& r2,
                            PolymerType ptype) {
-  if (ptype == PolymerType::PeptideL || ptype == PolymerType::PeptideD) {
+  if (is_polypeptide(ptype)) {
     const Atom* a1 = r1.get_ca();
     const Atom* a2 = r2.get_ca();
     return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(5.0);
   }
-  if (ptype == PolymerType::Dna || ptype == PolymerType::Rna ||
-      ptype == PolymerType::DnaRnaHybrid) {
+  if (is_polynucleotide(ptype)) {
     const Atom* a1 = r1.get_p();
     const Atom* a2 = r2.get_p();
     return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(7.5);
@@ -242,19 +240,11 @@ template<> inline void remove_waters(Chain& ch) {
 
 // Remove ligands and waters. It may leave empty chains.
 inline void remove_ligands_and_waters(Chain& ch) {
-  int aa_count = 0;
-  int na_count = 0;
+  PolymerType ptype = check_polymer_type(ch.whole());
   vector_remove_if(ch.residues, [&](const Residue& res) {
       if (res.entity_type == EntityType::Unknown) {
-        ResidueInfo info = find_tabulated_residue(res.name);
-        if (info.is_amino_acid())
-          ++aa_count;
-        if (info.is_nucleic_acid())
-          ++na_count;
-        if (info.found())
-          return !(info.is_amino_acid() || info.is_nucleic_acid());
         // TODO: check connectivity
-        return aa_count >= na_count ? !res.get_ca() : !res.get_p();
+        return !is_polymer_residue(res, ptype);
       }
       return res.entity_type != EntityType::Polymer;
   });

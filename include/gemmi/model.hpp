@@ -112,6 +112,15 @@ enum class PolymerType : unsigned char {
   Other,
 };
 
+inline bool is_polypeptide(PolymerType pt) {
+  return pt == PolymerType::PeptideL || pt == PolymerType::PeptideD;
+}
+
+inline bool is_polynucleotide(PolymerType pt) {
+  return pt == PolymerType::Dna || pt == PolymerType::Rna ||
+         pt == PolymerType::DnaRnaHybrid;
+}
+
 struct PolySeqItem {
   int num;  // _entity_poly_seq.num or -1 if from SEQRES
   std::string mon;  // _entity_poly_seq.mon_id or resName from SEQRES

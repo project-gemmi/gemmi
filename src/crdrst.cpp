@@ -127,7 +127,7 @@ static std::string get_link_type(const gemmi::Residue& res,
     return ".";
   if (!are_connected(*prev, res, ptype))
     return "gap";
-  if (ptype == PolymerType::PeptideL || ptype == PolymerType::PeptideD) {
+  if (is_polypeptide(ptype)) {
     std::string link = prev->is_cis ? "CIS" : "TRANS";
     if ((res.name == "PRO" || residue_group == "P-peptide") &&
         link == "TRANS" /* TODO: remove when we don't need makecif compat*/) {
@@ -137,7 +137,7 @@ static std::string get_link_type(const gemmi::Residue& res,
     }
     return link;
   }
-  if (ptype == PolymerType::Dna || ptype == PolymerType::Rna)
+  if (is_polynucleotide(ptype))
     return "p";
   return "?";
 }
@@ -146,12 +146,12 @@ static std::string get_modification(const gemmi::SubChain& subchain,
                                     const gemmi::Residue& res,
                                     gemmi::PolymerType ptype) {
   using gemmi::PolymerType;
-  if (ptype == PolymerType::PeptideL || ptype == PolymerType::PeptideD) {
+  if (is_polypeptide(ptype)) {
     if (&res == &subchain.front())
       return "NH3";
     else if (&res == &subchain.back())
       return res.find_atom("OXT") ? "COO" : "TERMINUS";
-  } else if (ptype == PolymerType::Dna || ptype == PolymerType::Rna) {
+  } else if (is_polynucleotide(ptype)) {
     if (&res == &subchain.front())
       return "5*END";
     else if (&res == &subchain.back())
