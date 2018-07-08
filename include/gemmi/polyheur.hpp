@@ -153,24 +153,25 @@ inline void add_entity_types(Structure& st, bool overwrite) {
 //
 // Here we use naming and rules different from both wwPDB and makecif.
 inline void assign_subchains(Chain& chain) {
-  add_entity_types(chain, false);
   int nonpoly_number = 0;
   for (Residue& res : chain.residues) {
     res.subchain = chain.name + ":";
     if (res.entity_type == EntityType::Polymer)
-      res.subchain += 'P';
+      res.subchain += '0';
     else if (res.entity_type == EntityType::NonPolymer)
       res.subchain += std::to_string(++nonpoly_number);
     else if (res.entity_type == EntityType::Water)
-      res.subchain += 'W';
+      res.subchain += 'w';
   }
 }
 
 inline void assign_subchains(Structure& st, bool force) {
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
-      if (force || !has_subchains_assigned(chain))
+      if (force || !has_subchains_assigned(chain)) {
+        add_entity_types(chain, false);
         assign_subchains(chain);
+      }
 }
 
 inline void ensure_entities(Structure& st) {

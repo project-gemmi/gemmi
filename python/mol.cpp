@@ -89,7 +89,7 @@ void add_mol(py::module& m) {
     .def_readwrite("polymer_type", &Entity::polymer_type)
     .def_readwrite("poly_seq", &Entity::poly_seq)
     .def("__repr__", [](const Entity& self) {
-        std::string r = "<gemmi.Entity ";
+        std::string r = "<gemmi.Entity '" + self.name + "' ";
         r += entity_type_to_string(self.entity_type);
         if (self.polymer_type != PolymerType::Unknown)
           r += " " + polymer_type_to_string(self.polymer_type);

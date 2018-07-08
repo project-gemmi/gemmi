@@ -180,8 +180,6 @@ class TestMol(unittest.TestCase):
         self.assertEqual(len(st.ncs), 0)
         model = st[0]
         self.assertEqual(len(model), 1)
-        self.assertEqual(len(model.subchains()), 1)
-        st.assign_subchains()
         self.assertEqual(len(model.subchains()), 2)
         A = model['A']
         waters = A.get_waters()
