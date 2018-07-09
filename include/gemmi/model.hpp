@@ -170,7 +170,7 @@ struct Atom {
   signed char charge = 0;  // [-8, +8]
   Element element = El::X;
   char flag = '\0'; // custom flag
-  int custom = 0; // for now it's primarily used as a serial number
+  int serial = 0;
   Position pos;
   float occ;
   float b_iso;

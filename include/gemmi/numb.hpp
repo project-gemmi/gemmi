@@ -126,6 +126,14 @@ inline int as_int(const std::string& s, int default_) {
   return is_null(s) ? default_ : as_int(s);
 }
 
+inline int as_int_noexcept(const std::string& s, int default_) noexcept {
+  int n = 0;
+  pegtl::memory_input<> in(s, "");
+  if (pegtl::parse<int_rules::int_, ActionInt>(in, n))
+    return n;
+  return default_;
+}
+
 
 } // namespace cif
 } // namespace gemmi

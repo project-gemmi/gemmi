@@ -274,6 +274,10 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
     atom.altloc = cif::as_char(row[kAltId], '\0');
     atom.charge = cif::is_null(row[kCharge]) ? 0 : cif::as_int(row[kCharge]);
     atom.element = gemmi::Element(as_string(row[kSymbol]));
+    // According to the PDBx/mmCIF spec _atom_site.id can be a string,
+    // but in all the files it is a serial number; its value is not essential,
+    // so we just ignore non-integer ids.
+    atom.serial = cif::as_int_noexcept(row[kId], 0);
     atom.pos.x = cif::as_number(row[kX]);
     atom.pos.y = cif::as_number(row[kY]);
     atom.pos.z = cif::as_number(row[kZ]);

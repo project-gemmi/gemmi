@@ -332,7 +332,7 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
       gemmi::ChemComp& cc = monlib.monomers.at(res.name);
       for (const gemmi::Atom& a : res.atoms) {
         vv.emplace_back("ATOM");
-        vv.emplace_back(std::to_string(a.custom));
+        vv.emplace_back(std::to_string(a.serial));
         vv.emplace_back(a.name);
         vv.emplace_back(1, a.altloc ? a.altloc : '.');
         vv.emplace_back(res.name);
@@ -396,8 +396,8 @@ static int add_restraints(const Restraints& rt,
           obs += " # " + at1->name + " " + at2->name;
           restr_loop.add_row({"BOND", std::to_string(++counters[0]),
                               bond_type_to_string(bond.type), ".",
-                              std::to_string(at1->custom),
-                              std::to_string(at2->custom),
+                              std::to_string(at1->serial),
+                              std::to_string(at2->serial),
                               ".", ".",
                               to_str(bond.value), to_str(bond.esd), obs});
           if (!at1->altloc && !at2->altloc)
@@ -413,9 +413,9 @@ static int add_restraints(const Restraints& rt,
             obs += " # " + at1->name + " " + at2->name + " " + at3->name;
             restr_loop.add_row({"ANGL", std::to_string(++counters[1]),
                                 ".", ".",
-                                std::to_string(at1->custom),
-                                std::to_string(at2->custom),
-                                std::to_string(at3->custom),
+                                std::to_string(at1->serial),
+                                std::to_string(at2->serial),
+                                std::to_string(at3->serial),
                                 ".",
                                 to_str(angle.value), to_str(angle.esd), obs});
             if (!at1->altloc && !at2->altloc && !at3->altloc)
@@ -434,10 +434,10 @@ static int add_restraints(const Restraints& rt,
                      " " + at3->name + " " + at4->name;
               restr_loop.add_row({"TORS", std::to_string(++counters[2]),
                                   tor.label, std::to_string(tor.period),
-                                  std::to_string(at1->custom),
-                                  std::to_string(at2->custom),
-                                  std::to_string(at3->custom),
-                                  std::to_string(at4->custom),
+                                  std::to_string(at1->serial),
+                                  std::to_string(at2->serial),
+                                  std::to_string(at3->serial),
+                                  std::to_string(at4->serial),
                                   to_str(tor.value), to_str(tor.esd), obs});
               if (!at1->altloc && !at2->altloc && !at3->altloc && !at4->altloc)
                 break;
@@ -456,10 +456,10 @@ static int add_restraints(const Restraints& rt,
                                 + " " + at3->name + " " + at4->name;
               restr_loop.add_row({"CHIR", std::to_string(++counters[3]),
                                   chirality_to_string(chir.chir), ".",
-                                  std::to_string(at1->custom),
-                                  std::to_string(at2->custom),
-                                  std::to_string(at3->custom),
-                                  std::to_string(at4->custom),
+                                  std::to_string(at1->serial),
+                                  std::to_string(at2->serial),
+                                  std::to_string(at3->serial),
+                                  std::to_string(at4->serial),
                                   to_str3(vol), "0.020", obs});
               if (!at1->altloc && !at2->altloc && !at3->altloc && !at4->altloc)
                 break;
@@ -479,7 +479,7 @@ static int add_restraints(const Restraints& rt,
                       coeff[2] * atom->pos.z + coeff[3];
         std::string obs = to_str3(dist) + " # " + atom->name;
         restr_loop.add_row({"PLAN", std::to_string(counters[4]), plane.label,
-                            ".", std::to_string(atom->custom), ".", ".", ".",
+                            ".", std::to_string(atom->serial), ".", ".", ".",
                             to_str(plane.esd), ".", obs});
       }
       if (std::all_of(atoms.begin(), atoms.end(),
@@ -638,15 +638,15 @@ int GEMMI_MAIN(int argc, char **argv) {
           auto it = cc.find_atom(atom.name);
           if (it == cc.atoms.end())
             gemmi::fail("No atom " + atom.name + " expected in " + res.name);
-          atom.custom = it - cc.atoms.begin();
+          atom.serial = it - cc.atoms.begin();
         }
         std::sort(res.atoms.begin(), res.atoms.end(),
                   [](const gemmi::Atom& a, const gemmi::Atom& b) {
-                    return a.custom != b.custom ? a.custom < b.custom
+                    return a.serial != b.serial ? a.serial < b.serial
                                                 : a.altloc < b.altloc;
                   });
         for (gemmi::Atom& atom : res.atoms)
-          atom.custom = ++serial;
+          atom.serial = ++serial;
       }
 
     Linkage linkage;

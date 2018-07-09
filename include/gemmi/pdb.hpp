@@ -147,6 +147,11 @@ inline ResidueId read_res_id(const char* seq_id, const char* name) {
   return rid;
 }
 
+inline int read_serial(const char* ptr) {
+  return ptr[0] < 'A' ? read_int(ptr, 5)
+                      : read_base36<5>(ptr) - 16796160 + 100000;
+}
+
 // "28-MAR-07" -> "2007-03-28"
 inline std::string pdb_date_format_to_iso(const std::string& date) {
   const char months[] = "JAN01FEB02MAR03APR04MAY05JUN06"
@@ -325,6 +330,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       }
 
       Atom atom;
+      atom.serial = read_serial(line+6);
       atom.name = read_string(line+12, 4);
       atom.altloc = line[16] == ' ' ? '\0' : line[16];
       atom.pos.x = read_double(line+30, 8);
