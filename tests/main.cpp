@@ -3,6 +3,8 @@
 #include "doctest.h"
 
 #include <cstdlib>  // for rand
+#include <climits>  // for INT_MIN, INT_MAX
+#include <gemmi/stoi.hpp>
 #include <gemmi/math.hpp>
 #include <linalg.h>
 
@@ -105,6 +107,12 @@ TEST_CASE("Correlation") {
   CHECK_EQ(cor.mean_x, 3.05);
   CHECK_EQ(cor.mean_y, 11);
   CHECK_EQ(cor.coefficient(), doctest::Approx(0.66257388));
+}
+
+TEST_CASE("string_to_int") {
+  CHECK_EQ(gemmi::string_to_int(std::to_string(INT_MAX), true), INT_MAX);
+  CHECK_EQ(gemmi::string_to_int(std::to_string(INT_MIN), true), INT_MIN);
+  CHECK_EQ(gemmi::string_to_int("", false), 0);
 }
 
 // vim:sw=2:ts=2:et:path^=../include,../third_party

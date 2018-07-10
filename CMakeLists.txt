@@ -206,7 +206,7 @@ endif()
 ### benchmarks ###
 
 if (benchmark_FOUND)
-  foreach(b elem mod pdb resinfo round sym)
+  foreach(b stoi elem mod pdb resinfo round sym)
     add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp)
     target_link_libraries(${b}-bm benchmark::benchmark)
     set_target_properties(${b}-bm PROPERTIES RUNTIME_OUTPUT_DIRECTORY
