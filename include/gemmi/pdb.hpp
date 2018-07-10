@@ -455,6 +455,9 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
     } else if (is_record_type(line, "END")) {  // NUL == ' ' & ~0x20
       break;
+    } else if (is_record_type(line, "data")) {
+      if (line[4] == '_' && model && model->chains.empty())
+        fail("Incorrect file format (perhaps it is cif not pdb?): " + source);
     }
   }
 
