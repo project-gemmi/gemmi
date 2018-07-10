@@ -13,6 +13,7 @@
 #include "cifdoc.hpp"
 #include "elem.hpp"  // for Element
 #include "numb.hpp"  // for as_number
+#include "stoi.hpp"  // for string_to_int
 #include "util.hpp"  // for istarts_with
 #include "model.hpp" // for Residue, Atom
 

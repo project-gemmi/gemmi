@@ -90,51 +90,6 @@ inline double as_number(const std::string& s, double nan=NAN) {
   return nan;
 }
 
-
-// Integers.
-
-namespace int_rules {
-  using namespace pegtl;
-  struct sign : opt<one<'+', '-'>> {};
-  struct int_ : seq<sign, plus<digit>, pegtl::eof> {};
-}
-template<typename Rule> struct ActionInt : pegtl::nothing<Rule> {};
-template<> struct ActionInt<pegtl::digit> {
-  template<typename Input> static void apply(const Input& in, int& n) {
-      n = n * 10 + (*in.begin() - '0');
-  }
-};
-template<> struct ActionInt<int_rules::int_> {
-  template<typename Input> static void apply(const Input& in, int& n) {
-    if (*in.begin() == '-')
-      n = -n;
-  }
-};
-
-
-// utility functions
-
-inline int as_int(const std::string& s) {
-  int n = 0;
-  pegtl::memory_input<> in(s, "");
-  if (pegtl::parse<int_rules::int_, ActionInt>(in, n))
-    return n;
-  throw std::runtime_error("not an integer number: " + s);
-}
-
-inline int as_int(const std::string& s, int default_) {
-  return is_null(s) ? default_ : as_int(s);
-}
-
-inline int as_int_noexcept(const std::string& s, int default_) noexcept {
-  int n = 0;
-  pegtl::memory_input<> in(s, "");
-  if (pegtl::parse<int_rules::int_, ActionInt>(in, n))
-    return n;
-  return default_;
-}
-
-
 } // namespace cif
 } // namespace gemmi
 #endif

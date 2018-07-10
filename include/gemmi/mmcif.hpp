@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include "cifdoc.hpp"
 #include "numb.hpp"  // for as_number
+#include "stoi.hpp"  // for string_to_int
 #include "model.hpp"
 #include "entstr.hpp" // for entity_type_from_string, polymer_type_from_string
 
@@ -277,7 +278,7 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
     // According to the PDBx/mmCIF spec _atom_site.id can be a string,
     // but in all the files it is a serial number; its value is not essential,
     // so we just ignore non-integer ids.
-    atom.serial = cif::as_int_noexcept(row[kId], 0);
+    atom.serial = string_to_int(row[kId], false);
     atom.pos.x = cif::as_number(row[kX]);
     atom.pos.y = cif::as_number(row[kY]);
     atom.pos.z = cif::as_number(row[kZ]);

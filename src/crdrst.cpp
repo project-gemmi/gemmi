@@ -37,7 +37,7 @@ static const option::Descriptor Usage[] = {
   { NoHydrogens, 0, "H", "no-hydrogens", Arg::None,
     "  -H, --no-hydrogens  \tRemove or do not add hydrogens." },
   { NoZeroOccRestr, 0, "", "no-zero-occ", Arg::None,
-    "  -H, --no-hydrogens  \tNo restraints for zero-occupancy atoms." },
+    "  --no-zero-occ  \tNo restraints for zero-occupancy atoms." },
   { 0, 0, 0, 0, 0, 0 }
 };
 

@@ -25,6 +25,7 @@
 #include "util.hpp"
 #include "polyheur.hpp" // for assign_subchains
 #include "fileutil.hpp" // for path_basename, file_open
+#include "stoi.hpp"     // for string_to_int
 
 namespace gemmi {
 
@@ -38,21 +39,7 @@ inline std::string rtrimmed(std::string s) {
 }
 
 inline int read_int(const char* p, int field_length) {
-  int sign = 1;
-  int n = 0;
-  int i = 0;
-  while (i < field_length && std::isspace(p[i]))
-    ++i;
-  if (p[i] == '-') {
-    ++i;
-    sign = -1;
-  } else if (p[i] == '+') {
-    ++i;
-  }
-  for (; i < field_length && p[i] >= '0' && p[i] <= '9'; ++i) {
-    n = n * 10 + (p[i] - '0');
-  }
-  return sign * n;
+  return string_to_int(p, false, field_length);
 }
 
 template<int N> int read_base36(const char* p) {

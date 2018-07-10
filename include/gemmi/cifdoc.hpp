@@ -5,8 +5,9 @@
 
 #ifndef GEMMI_CIFDOC_HPP_
 #define GEMMI_CIFDOC_HPP_
-#include "util.hpp"  // for starts_with, to_lower, fail
 #include "iterator.hpp"  // for StrideIter, IndirectIter
+#include "stoi.hpp"  // for string_to_int
+#include "util.hpp"  // for starts_with, to_lower, fail
 #include <algorithm> // for move, find_if, all_of, min
 #include <array>
 #include <cstring>   // for memchr
@@ -81,6 +82,15 @@ inline char as_char(const std::string& value, char null) {
     return s[0];
   fail("Not a single character: " + value);
 }
+
+inline int as_int(const std::string& str) {
+  return string_to_int(str, true);
+}
+
+inline int as_int(const std::string& str, int default_) {
+  return is_null(str) ? default_ : as_int(str);
+}
+
 
 using Pair = std::array<std::string, 2>;
 
