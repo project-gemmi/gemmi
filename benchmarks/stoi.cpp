@@ -50,6 +50,6 @@ BENCHMARK_CAPTURE(sequential, to_int_true, to_int_true);
 BENCHMARK_CAPTURE(sequential, pdb_hpp, pdb_hpp);
 BENCHMARK_CAPTURE(sequential, cif_as_int, cif_as_int);
 BENCHMARK_CAPTURE(sequential, cif_as_int_noexcept, cif_as_int_noexcept);
-BENCHMARK_MAIN()
+BENCHMARK_MAIN();
 
 // vim:sw=2:ts=2:et

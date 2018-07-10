@@ -25,7 +25,7 @@ static void find_tabulated_residue_x10(benchmark::State& state) {
 }
 
 BENCHMARK(find_tabulated_residue_x10);
-BENCHMARK_MAIN()
+BENCHMARK_MAIN();
 
 /* Output from my laptop:
 

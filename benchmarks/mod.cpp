@@ -57,7 +57,7 @@ BENCHMARK_CAPTURE(run, 2, positive_modulo2);
 BENCHMARK_CAPTURE(run, 3, positive_modulo3);
 BENCHMARK_CAPTURE(run, 4, positive_modulo4);
 BENCHMARK_CAPTURE(run, 5, positive_modulo5);
-BENCHMARK_MAIN()
+BENCHMARK_MAIN();
 
 /*
 --------------------------------------------------

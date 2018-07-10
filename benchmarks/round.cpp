@@ -47,7 +47,7 @@ BENCHMARK_CAPTURE(run2, round, use2_round);
 BENCHMARK_CAPTURE(run2, floor, use2_floor);
 BENCHMARK_CAPTURE(run2, nearbyint, use2_nearbyint);
 BENCHMARK_CAPTURE(run2, rint, use2_rint);
-BENCHMARK_MAIN()
+BENCHMARK_MAIN();
 
 /*
 -----------------------------------------------------
