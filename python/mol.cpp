@@ -5,7 +5,7 @@
 #include "gemmi/model.hpp"
 #include "gemmi/calculate.hpp"
 #include "gemmi/polyheur.hpp"
-#define STB_SPRINTF_IMPLEMENTATION
+#define GEMMI_WRITE_IMPLEMENTATION
 #include "gemmi/to_pdb.hpp"
 #include "gemmi/to_mmcif.hpp"
 

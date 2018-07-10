@@ -5,11 +5,26 @@
 #ifndef GEMMI_TO_MMCIF_HPP_
 #define GEMMI_TO_MMCIF_HPP_
 
+#include "model.hpp"
+#include "cifdoc.hpp"
+
+namespace gemmi {
+
+void update_cif_block(const Structure& st, cif::Block& block);
+cif::Document make_mmcif_document(const Structure& st);
+
+// temporarily we use it in crdrst.cpp
+namespace impl {
+void write_struct_conn(const Structure& st, cif::Block& block);
+}
+
+} // namespace gemmi
+
+#ifdef GEMMI_WRITE_IMPLEMENTATION
+
 #include <string>
 #include <utility>  // std::pair
 #include "sprintf.hpp"
-#include "cifdoc.hpp"
-#include "model.hpp"
 #include "entstr.hpp" // for entity_type_to_string, polymer_type_to_string
 #include "calculate.hpp"  // for count_atom_sites
 
@@ -98,7 +113,7 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
   }
 }
 
-inline void write_struct_conn(const Structure& st, cif::Block& block) {
+void write_struct_conn(const Structure& st, cif::Block& block) {
   // example:
   // disulf1 disulf A CYS 3  SG ? 3 ? 1_555 A CYS 18 SG ? 18 ?  1_555 ? 2.045
   cif::Loop& conn_loop = block.init_mmcif_loop("_struct_conn.",
@@ -146,7 +161,7 @@ inline void write_struct_conn(const Structure& st, cif::Block& block) {
 
 } // namespace impl
 
-inline void update_cif_block(const Structure& st, cif::Block& block) {
+void update_cif_block(const Structure& st, cif::Block& block) {
   using std::to_string;
   if (st.models.empty())
     return;
@@ -300,7 +315,7 @@ inline void update_cif_block(const Structure& st, cif::Block& block) {
   impl::add_cif_atoms(st, block);
 }
 
-inline cif::Document make_mmcif_document(const Structure& st) {
+cif::Document make_mmcif_document(const Structure& st) {
   cif::Document doc;
   doc.blocks.resize(1);
   gemmi::update_cif_block(st, doc.blocks[0]);
@@ -308,5 +323,7 @@ inline cif::Document make_mmcif_document(const Structure& st) {
 }
 
 } // namespace gemmi
+#endif // GEMMI_WRITE_IMPLEMENTATION
+
 #endif
 // vim:sw=2:ts=2:et

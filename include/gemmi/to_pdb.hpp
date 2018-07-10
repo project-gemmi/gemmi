@@ -5,14 +5,34 @@
 #ifndef GEMMI_TO_PDB_HPP_
 #define GEMMI_TO_PDB_HPP_
 
+#include "model.hpp"
+#include <ostream>
+
+namespace gemmi {
+
+struct PdbWriteOptions {
+  bool seqres_records = true;
+  bool ssbond_records = true;
+  bool link_records = true;
+  bool cispep_records = true;
+  bool numbered_ter = true;
+};
+
+void write_pdb(const Structure& st, std::ostream& os,
+               PdbWriteOptions opt=PdbWriteOptions());
+void write_minimal_pdb(const Structure& st, std::ostream& os);
+std::string make_pdb_headers(const Structure& st);
+
+} // namespace gemmi
+
+#ifdef GEMMI_WRITE_IMPLEMENTATION
+
 #include <cassert>
 #include <cctype>
 #include <cstring>
 #include <algorithm>
-#include <ostream>
 #include <sstream>
 #include "sprintf.hpp"
-#include "model.hpp"
 #include "calculate.hpp"  // for calculate_omega
 #include "resinfo.hpp"
 #include "util.hpp"
@@ -132,7 +152,7 @@ inline void write_ncs(const Structure& st, std::ostream& os) {
 }
 
 inline void write_chain_atoms(const Chain& chain, std::ostream& os,
-                              int& serial, bool iotbx_compat) {
+                              int& serial, PdbWriteOptions opt) {
   char buf[88];
   char buf8[8];
   char buf8a[8];
@@ -205,9 +225,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
     if (res.entity_type == EntityType::Polymer &&
         (&res == &chain.residues.back() ||
          (&res + 1)->entity_type != EntityType::Polymer)) {
-      if (iotbx_compat) {
-        WRITE("%-80s\n", "TER");
-      } else {
+      if (opt.numbered_ter) {
         // re-using part of the buffer in the middle, e.g.:
         // TER    4153      LYS B 286
         stbsp_snprintf(buf, 82, "TER   %5s",
@@ -215,27 +233,29 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
         std::memset(buf+11, ' ', 6);
         std::memset(buf+28, ' ', 52);
         os.write(buf, 81);
+      } else {
+        WRITE("%-80s\n", "TER");
       }
     }
   }
 }
 
 inline void write_atoms(const Structure& st, std::ostream& os,
-                        bool iotbx_compat) {
+                        PdbWriteOptions opt) {
   char buf[88];
   for (const Model& model : st.models) {
     int serial = 0;
     if (st.models.size() > 1)
       WRITE("MODEL %8s %65s\n", model.name.c_str(), "");
     for (const Chain& chain : model.chains)
-      write_chain_atoms(chain, os, serial, iotbx_compat);
+      write_chain_atoms(chain, os, serial, opt);
     if (st.models.size() > 1)
       WRITE("%-80s\n", "ENDMDL");
   }
 }
 
 inline void write_header(const Structure& st, std::ostream& os,
-                         bool iotbx_compat) {
+                         PdbWriteOptions opt) {
   char buf[88];
   { // header line
     const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
@@ -271,8 +291,8 @@ inline void write_header(const Structure& st, std::ostream& os,
     WRITE("REMARK   2 RESOLUTION. %7.2f %-49s\n", st.resolution, "ANGSTROMS.");
   }
 
-  if (!st.models.empty() && !iotbx_compat) {
-    // SEQRES
+  // SEQRES
+  if (!st.models.empty() && opt.seqres_records) {
     for (const Chain& ch : st.models[0].chains) {
       const SubChain polymer = ch.get_polymer();
       const Entity* entity = polymer.labelled() ? st.get_entity_of(polymer)
@@ -298,70 +318,78 @@ inline void write_header(const Structure& st, std::ostream& os,
           os.write(buf, 81);
       }
     }
+  }
 
-    // SSBOND  (note: uses only the first model and primary conformation)
-    int counter = 0;
+  if (!st.models.empty()) {
     char buf8[8];
     char buf8a[8];
-    for (const Connection& con : st.models[0].connections)
-      if (con.type == Connection::Disulf) {
-        const_CRA cra1 = st.models[0].find_cra(con.atom[0]);
-        const_CRA cra2 = st.models[0].find_cra(con.atom[1]);
-        if (!cra1.atom || !cra2.atom)
-          continue;
-        SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
-                                                 cra2.atom->pos, con.asu);
-        WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  \n",
-           ++counter,
-           cra1.residue->name.c_str(), cra1.chain->name.c_str(),
-           write_seq_id(buf8, *cra1.residue),
-           cra2.residue->name.c_str(), cra2.chain->name.c_str(),
-           write_seq_id(buf8a, *cra2.residue),
-           "1555", im.pdb_symbol(false).c_str(), im.dist());
-      }
+    // SSBOND  (note: uses only the first model and primary conformation)
+    if (opt.ssbond_records) {
+      int counter = 0;
+      for (const Connection& con : st.models[0].connections)
+        if (con.type == Connection::Disulf) {
+          const_CRA cra1 = st.models[0].find_cra(con.atom[0]);
+          const_CRA cra2 = st.models[0].find_cra(con.atom[1]);
+          if (!cra1.atom || !cra2.atom)
+            continue;
+          SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
+                                                   cra2.atom->pos, con.asu);
+          WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  \n",
+             ++counter,
+             cra1.residue->name.c_str(), cra1.chain->name.c_str(),
+             write_seq_id(buf8, *cra1.residue),
+             cra2.residue->name.c_str(), cra2.chain->name.c_str(),
+             write_seq_id(buf8a, *cra2.residue),
+             "1555", im.pdb_symbol(false).c_str(), im.dist());
+        }
+    }
 
     // LINK  (note: uses only the first model and primary conformation)
-    for (const Connection& con : st.models[0].connections)
-      if (con.type == Connection::Covale || con.type == Connection::MetalC ||
-          con.type == Connection::None) {
-        const_CRA cra1 = st.models[0].find_cra(con.atom[0]);
-        const_CRA cra2 = st.models[0].find_cra(con.atom[1]);
-        if (!cra1.atom || !cra2.atom)
-          continue;
-        SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
-                                                 cra2.atom->pos, con.asu);
-        WRITE("LINK        %-4s%c%3s%2s%5s   "
-              "            %-4s%c%3s%2s%5s  %6s %6s %5.2f  \n",
-              cra1.atom->padded_name().c_str(),
-              cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
-              cra1.residue->name.c_str(),
-              cra1.chain->name.c_str(),
-              write_seq_id(buf8, *cra1.residue),
-              cra2.atom->padded_name().c_str(),
-              cra2.atom->altloc ? std::toupper(cra2.atom->altloc) : ' ',
-              cra2.residue->name.c_str(),
-              cra2.chain->name.c_str(),
-              write_seq_id(buf8a, *cra2.residue),
-              "1555", im.pdb_symbol(false).c_str(), im.dist());
-      }
+    if (!st.models.empty() && opt.link_records) {
+      for (const Connection& con : st.models[0].connections)
+        if (con.type == Connection::Covale || con.type == Connection::MetalC ||
+            con.type == Connection::None) {
+          const_CRA cra1 = st.models[0].find_cra(con.atom[0]);
+          const_CRA cra2 = st.models[0].find_cra(con.atom[1]);
+          if (!cra1.atom || !cra2.atom)
+            continue;
+          SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
+                                                   cra2.atom->pos, con.asu);
+          WRITE("LINK        %-4s%c%3s%2s%5s   "
+                "            %-4s%c%3s%2s%5s  %6s %6s %5.2f  \n",
+                cra1.atom->padded_name().c_str(),
+                cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
+                cra1.residue->name.c_str(),
+                cra1.chain->name.c_str(),
+                write_seq_id(buf8, *cra1.residue),
+                cra2.atom->padded_name().c_str(),
+                cra2.atom->altloc ? std::toupper(cra2.atom->altloc) : ' ',
+                cra2.residue->name.c_str(),
+                cra2.chain->name.c_str(),
+                write_seq_id(buf8a, *cra2.residue),
+                "1555", im.pdb_symbol(false).c_str(), im.dist());
+        }
+    }
 
     // CISPEP (note: uses only the first conformation)
-    counter = 0;
-    for (const Model& model : st.models)
-      for (const Chain& chain : model.chains)
-        for (const Residue& res : chain.residues)
-          if (res.is_cis)
-            if (const Residue* next = chain.next_bonded_aa(res)) {
-              WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s\n",
-                    ++counter,
-                    res.name.c_str(), chain.name.c_str(),
-                    write_seq_id(buf8, res),
-                    next->name.c_str(), chain.name.c_str(),
-                    write_seq_id(buf8a, *next),
-                    st.models.size() > 1 ? model.name.c_str() : "0",
-                    deg(calculate_omega(res, *next)),
-                    "");
-            }
+    if (!st.models.empty() && opt.cispep_records) {
+      int counter = 0;
+      for (const Model& model : st.models)
+        for (const Chain& chain : model.chains)
+          for (const Residue& res : chain.residues)
+            if (res.is_cis)
+              if (const Residue* next = chain.next_bonded_aa(res)) {
+                WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s\n",
+                      ++counter,
+                      res.name.c_str(), chain.name.c_str(),
+                      write_seq_id(buf8, res),
+                      next->name.c_str(), chain.name.c_str(),
+                      write_seq_id(buf8a, *next),
+                      st.models.size() > 1 ? model.name.c_str() : "0",
+                      deg(calculate_omega(res, *next)),
+                      "");
+              }
+    }
   }
 
   write_cryst1(st, os);
@@ -381,30 +409,30 @@ inline void write_header(const Structure& st, std::ostream& os,
 
 } // namespace impl
 
-inline std::string make_pdb_headers(const Structure& st) {
+std::string make_pdb_headers(const Structure& st) {
   std::ostringstream os;
-  impl::write_header(st, os, false);
+  impl::write_header(st, os, PdbWriteOptions());
   return os.str();
 }
 
-inline void write_pdb(const Structure& st, std::ostream& os,
-                      bool iotbx_compat=false) {
-  impl::write_header(st, os, iotbx_compat);
-  impl::write_atoms(st, os, iotbx_compat);
+void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
+  impl::write_header(st, os, opt);
+  impl::write_atoms(st, os, opt);
   char buf[88];
   WRITE("%-80s\n", "END");
 }
 
-// If chain_name is specified it outputs only this chain.
-inline void write_minimal_pdb(const Structure& st, std::ostream& os) {
+void write_minimal_pdb(const Structure& st, std::ostream& os) {
   impl::write_cryst1(st, os);
   impl::write_ncs(st, os);
-  impl::write_atoms(st, os, false);
+  impl::write_atoms(st, os, PdbWriteOptions());
 }
 
 #undef WRITE
 #undef WRITEU
 
 } // namespace gemmi
+#endif // GEMMI_WRITE_IMPLEMENTATION
+
 #endif
 // vim:sw=2:ts=2:et

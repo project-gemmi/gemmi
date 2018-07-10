@@ -10,6 +10,10 @@
 # define stbsp_snprintf std::snprintf
 # define stbsp_sprintf std::sprintf
 #else
+# ifdef GEMMI_WRITE_IMPLEMENTATION
+#  define STB_SPRINTF_IMPLEMENTATION
+# endif
+//# define STB_SPRINTF_DECORATE(name) gemmi_##name
 # include <stb_sprintf.h>
 #endif
 #include <string>

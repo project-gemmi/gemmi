@@ -1,11 +1,11 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "input.h"
-#include "output.h"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
-#include "gemmi/sprintf.hpp"
 #include "gemmi/polyheur.hpp"  // for remove_hydrogens, ...
+#include "gemmi/to_pdb.hpp"    // for write_pdb, ...
+#include "gemmi/to_mmcif.hpp"  // for update_cif_block
 
 #include <cstring>
 #include <iostream>
@@ -25,12 +25,16 @@ struct ConvArg: public Arg {
   static option::ArgStatus NumbChoice(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"quote", "nosu", "mix"});
   }
+
+  static option::ArgStatus NcsChoice(const option::Option& option, bool msg) {
+    return Arg::Choice(option, msg, {"dup", "addnum"});
+  }
 };
 
 enum OptionIndex { Verbose=3, FormatIn, FormatOut,
                    Comcifs, Mmjson, Bare, Numb, CifDot, PdbxStyle,
                    ExpandNcs, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
-                   IotbxCompat, SegmentAsChain };
+                   ShortTer, SegmentAsChain };
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
@@ -64,8 +68,9 @@ static const option::Descriptor Usage[] = {
   { PdbxStyle, 0, "", "pdbx-style", Arg::None,
     "  --pdbx-style  \tSimilar styling (formatting) as in wwPDB." },
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular options:" },
-  { ExpandNcs, 0, "", "expand-ncs", Arg::None,
-    "  --expand-ncs  \tExpand strict NCS specified in MTRIXn or equivalent." },
+  { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
+    "  --expand-ncs=dup|addn  \tExpand strict NCS specified in MTRIXn or"
+    " equivalent. New chain names are the same or have added numbers." },
   { RemoveH, 0, "", "remove-h", Arg::None,
     "  --remove-h  \tRemove hydrogens." },
   { RemoveWaters, 0, "", "remove-waters", Arg::None,
@@ -74,8 +79,8 @@ static const option::Descriptor Usage[] = {
     "  --remove-lig-wat  \tRemove ligands and waters." },
   { TrimAla, 0, "", "trim-to-ala", Arg::None,
     "  --trim-to-ala  \tTrim aminoacids to alanine." },
-  { IotbxCompat, 0, "", "iotbx-compat", Arg::None,
-    "  --iotbx-compat  \tLimited compatibility with iotbx (details in docs)." },
+  { ShortTer, 0, "", "short-ter", Arg::None,
+    "  --short-ter  \tWrite PDB TER records without numbers (iotbx compat.)." },
   { SegmentAsChain, 0, "", "segment-as-chain", Arg::None,
     "  --segment-as-chain \tAppend segment id to label_asym_id (chain name)." },
   { NoOp, 0, "", "", Arg::None,
@@ -193,7 +198,7 @@ static void convert(const std::string& input, CoorFormat input_type,
 
   if (options[ExpandNcs]) {
     ChainNaming ch_naming = ChainNaming::AddNum;
-    if (options[IotbxCompat])
+    if (options[ExpandNcs].arg[0] == 'd')
      ch_naming = ChainNaming::Dup;
     else if (output_type == CoorFormat::Pdb)
       ch_naming = ChainNaming::Short;
@@ -269,7 +274,10 @@ static void convert(const std::string& input, CoorFormat input_type,
     }
   } else if (output_type == CoorFormat::Pdb) {
     // call wrapper from output.cpp - to make building faster
-    write_pdb(st, *os, options[IotbxCompat]);
+    gemmi::PdbWriteOptions opt;
+    if (options[ShortTer])
+      opt.numbered_ter = false;
+    gemmi::write_pdb(st, *os, opt);
   }
 }
 
