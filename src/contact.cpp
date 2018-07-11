@@ -4,7 +4,6 @@
 
 #include <gemmi/subcells.hpp>
 #include <gemmi/polyheur.hpp>  // for are_connected
-#include <gemmi/pdb.hpp>  // for split_nonpolymers
 #include <gemmi/elem.hpp>  // for is_hydrogen
 #include "input.h"
 #define GEMMI_PROG contact

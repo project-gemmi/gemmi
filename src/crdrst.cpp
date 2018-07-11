@@ -12,7 +12,6 @@
 #include "gemmi/entstr.hpp"    // for entity_type_to_string
 #include "gemmi/to_mmcif.hpp"  // for write_struct_conn
 #include "gemmi/sprintf.hpp"   // for to_str, to_str_prec
-#include "gemmi/pdb.hpp"       // for split_nonpolymers
 #include "gemmi/calculate.hpp" // for calculate_angle, find_best_plane
 #include "gemmi/polyheur.hpp"  // for are_connected, remove_hydrogens
 
