@@ -142,6 +142,7 @@ void add_mol(py::module& m) {
     .def("__delitem__", &Structure::remove_model, py::arg("name"))
     .def("find_or_add_model", &Structure::find_or_add_model,
          py::arg("name"), py::return_value_policy::reference_internal)
+    .def("merge_same_name_chains", &Structure::merge_same_name_chains)
     .def("make_pdb_headers", &make_pdb_headers)
     .def("write_pdb", [](const Structure& st, const std::string& path) {
        std::ofstream f(path.c_str());
@@ -193,11 +194,18 @@ void add_mol(py::module& m) {
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("subchains", &Model::subchains,
          py::return_value_policy::reference_internal)
+    .def("find_residue_group", &Model::find_residue_group,
+         py::arg("chain"), py::arg("resnum"), py::arg("icode"),
+         py::return_value_policy::reference_internal)
     .def("sole_residue", &Model::sole_residue,
          py::arg("chain"), py::arg("resnum"), py::arg("icode"),
          py::return_value_policy::reference_internal)
-    .def("find_or_add_chain", &Model::find_or_add_chain,
+    .def("find_chain", &Model::find_chain,
          py::arg("name"), py::return_value_policy::reference_internal)
+    .def("add_chain", [](Model& self, const std::string& name) -> Chain& {
+        self.chains.emplace_back(name);
+        return self.chains.back();
+    }, py::arg("name"), py::return_value_policy::reference_internal)
     .def("remove_chain", &Model::remove_chain, py::arg("name"))
     .def("__delitem__", &Model::remove_chain, py::arg("name"))
     .def("count_atom_sites", &count_atom_sites<Model>)

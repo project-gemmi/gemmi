@@ -455,12 +455,6 @@ struct Chain {
     return get_residue_span([&](const Residue& r) { return r.seqid == id; });
   }
 
-  Residue* find_residue(const ResidueId& rid);
-  Residue* find_or_add_residue(const ResidueId& rid);
-  void append_residues(std::vector<Residue> new_resi);
-  std::vector<Residue>& children() { return residues; }
-  const std::vector<Residue>& children() const { return residues; }
-
   ResidueGroup find_by_seqid(const std::string& seqid) {
     char* endptr;
     int seqnum = std::strtol(seqid.c_str(), &endptr, 10);
@@ -468,6 +462,12 @@ struct Chain {
       throw std::invalid_argument("Not a seqid: " + seqid);
     return find_residue_group(seqnum, *endptr);
   }
+
+  Residue* find_residue(const ResidueId& rid);
+  Residue* find_or_add_residue(const ResidueId& rid);
+  void append_residues(std::vector<Residue> new_resi);
+  std::vector<Residue>& children() { return residues; }
+  const std::vector<Residue>& children() const { return residues; }
 
   // Returns the previous residue or nullptr.
   // Got complicated by handling of multi-conformations / microheterogeneity.
@@ -596,28 +596,24 @@ struct Model {
   std::vector<Connection> connections;
   explicit Model(std::string mname) noexcept : name(mname) {}
 
+  // Returns the first chain with given name, or nullptr.
   Chain* find_chain(const std::string& chain_name) {
     return impl::find_or_null(chains, chain_name);
   }
 
-  Residue* find_residue(const std::string& chain_name, const ResidueId& rid) {
-    if (Chain* chain = find_chain(chain_name))
-      return chain->find_residue(rid);
-    return nullptr;
-  }
-
-  Chain& add_chain(const std::string& chain_name) {
-    if (find_chain(chain_name))
-      throw std::runtime_error("The chain '" + chain_name + "' already exists");
-    chains.emplace_back(chain_name);
-    return chains.back();
-  }
-  Chain& find_or_add_chain(const std::string& chain_name) {
-    return impl::find_or_add(chains, chain_name);
-  }
-
   void remove_chain(const std::string& chain_name) {
-    chains.erase(impl::find_iter(chains, chain_name));
+    vector_remove_if(chains,
+                     [&](const Chain& c) { return c.name == chain_name; });
+  }
+
+  void merge_same_name_chains() {
+    for (auto i = chains.begin(); i != chains.end(); ++i)
+      for (auto j = i + 1; j != chains.end(); ++j)
+        if (i->name == j->name) {
+          std::move(j->residues.begin(), j->residues.end(),
+                    std::back_inserter(i->residues));
+          chains.erase(j--);
+        }
   }
 
   SubChain get_subchain(const std::string& sub_name) {
@@ -637,14 +633,29 @@ struct Model {
     return v;
   }
 
+  Residue* find_residue(const std::string& chain_name, const ResidueId& rid) {
+    for (Chain& chain : chains)
+      if (chain.name == chain_name)
+        if (Residue* residue = chain.find_residue(rid))
+          return residue;
+    return nullptr;
+  }
+
+  ResidueGroup find_residue_group(const std::string& chain_name,
+                                  int resnum, char icode) {
+    for (Chain& chain : chains)
+      if (chain.name == chain_name)
+        if (ResidueGroup res_group = chain.find_residue_group(resnum, icode))
+          return res_group;
+    fail("No such chain or residue: " + chain_name +
+         " " + SeqId(resnum, icode).str());
+  }
+
   Residue& sole_residue(const std::string& chain_name, int resnum, char icode) {
-    Chain* chain = find_chain(chain_name);
-    if (!chain)
-      fail("No chain " + chain_name);
-    ResidueSpan rr = chain->find_residue_group(resnum, icode);
+    ResidueSpan rr = find_residue_group(chain_name, resnum, icode);
     if (rr.size() != 1)
-      fail((rr.empty() ? "No residue " : "Multiple residues ") +
-           chain_name + " " + SeqId(resnum, icode).str());
+      fail("Multiple residues " + chain_name +
+           " " + SeqId(resnum, icode).str());
     return rr[0];
   }
 
@@ -748,6 +759,11 @@ struct Structure {
     int given = std::count_if(ncs.begin(), ncs.end(),
                               [](const NcsOp& o) { return o.given; });
     return (ncs.size() + 1.0) / (given + 1.0);  // +1 b/c identity not included
+  }
+
+  void merge_same_name_chains() {
+    for (Model& model : models)
+      model.merge_same_name_chains();
   }
 
   std::vector<Model>& children() { return models; }

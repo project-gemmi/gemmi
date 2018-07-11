@@ -294,9 +294,11 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       if (!chain || chain_name != chain->name) {
         if (!model)
           wrong("ATOM/HETATM between models");
-        chain = &model->find_or_add_chain(chain_name);
-        after_ter = !chain->residues.empty() &&
-                    chain->residues[0].entity_type == EntityType::Polymer;
+        const Chain* prev_part = model->find_chain(chain_name);
+        after_ter = prev_part &&
+                    prev_part->residues[0].entity_type == EntityType::Polymer;
+        model->chains.emplace_back(chain_name);
+        chain = &model->chains.back();
         resi = nullptr;
       }
       // Non-standard but widely used 4-character segment identifier.

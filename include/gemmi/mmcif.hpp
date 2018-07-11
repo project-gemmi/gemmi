@@ -254,7 +254,8 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
       chain = nullptr;
     }
     if (!chain || row[kAuthAsymId] != chain->name) {
-      chain = &model->find_or_add_chain(row.str(kAuthAsymId));
+      model->chains.emplace_back(row.str(kAuthAsymId));
+      chain = &model->chains.back();
       resi = nullptr;
     }
     ResidueId rid = make_resid(as_string(row[kCompId]),
@@ -336,9 +337,8 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
       if (Model* mdl = st.find_model(row[0])) {
         std::string comp = row.str(row.has2(4) ? 4 : 5);
         ResidueId rid = make_resid(comp, row.str(2), row.ptr_at(3));
-        if (Chain* ch = mdl->find_chain(row[1]))
-          if (Residue* res = ch->find_residue(rid))
-            res->is_cis = true;
+        if (Residue* res = mdl->find_residue(row[1], rid))
+          res->is_cis = true;
       }
   }
 

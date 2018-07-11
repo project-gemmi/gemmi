@@ -765,6 +765,32 @@ easier:
 - and lightweight proxy objects ResidueGroup and AtomGroup that group
   alternative conformers (inspired by iotbx).
 
+Discontinuous chains
+~~~~~~~~~~~~~~~~~~~~
+
+The usual order of atoms in a file is
+
+* either by chain (A-polymer, A-ligands, A-waters, B-polymer,
+  B-ligands, B-waters)
+* or by chain parts (A-polymer, B-polymer, A-ligands, B-ligands,
+  A-waters, B-waters).
+
+In the latter case (example: 100D), chain parts with the same name
+are either merged automatically (MMDB, BioPython)
+or left as separate chains (iotbx).
+
+In gemmi we support both options. Since merging is easier than splitting,
+the chains are first read separately and after reading the file
+the user can call ``Structure::merge_same_name_chains()``.
+
+In the Python interface merging is also controlled
+by optional argument to the ``gemmi.read_structure()`` function:
+
+.. code-block:: python
+
+  read_structure(path: str, merge_same_name_chains: bool = True) -> gemmi.Structure
+
+
 Structure
 ---------
 

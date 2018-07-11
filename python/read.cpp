@@ -36,9 +36,12 @@ void add_cif_read(py::module& cif) {
 }
 
 void add_read_structure(py::module& m) {
-  m.def("read_structure", [](const std::string& path) {
-          return new Structure(read_structure(MaybeGzipped(path)));
-        }, py::arg("path"),
+  m.def("read_structure", [](const std::string& path, bool merge) {
+          auto st = new Structure(read_structure(MaybeGzipped(path)));
+          if (merge)
+            st->merge_same_name_chains();
+          return st;
+        }, py::arg("path"), py::arg("merge_same_name_chains")=true,
         "Reads a coordinate file into Structure.");
   m.def("make_structure_from_block", &make_structure_from_block,
         py::arg("block"), "Takes mmCIF block and returns Structure.");
