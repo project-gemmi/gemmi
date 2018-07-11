@@ -1,11 +1,11 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/elem.hpp"
+#include "gemmi/entstr.hpp"
 #include "gemmi/resinfo.hpp"
 #include "gemmi/model.hpp"
 #include "gemmi/calculate.hpp"
 #include "gemmi/polyheur.hpp"
-#define GEMMI_WRITE_IMPLEMENTATION
 #include "gemmi/to_pdb.hpp"
 #include "gemmi/to_mmcif.hpp"
 

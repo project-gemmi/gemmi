@@ -380,7 +380,7 @@ struct ResidueGroup : ResidueSpan {
   }
 };
 
-// returned by find_residue_group()
+// returned by subchains(), get_polymer(), etc.
 struct SubChain : ResidueSpan {
   SubChain() = default;
   SubChain(ResidueSpan&& span) : ResidueSpan(std::move(span)) {}

@@ -223,7 +223,7 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/third_party/pybind11/CMakeLists.txt")
   add_subdirectory(third_party/pybind11)
   pybind11_add_module(gemmi python/gemmi.cpp python/grid.cpp python/cif.cpp
                             python/unitcell.cpp python/mol.cpp
-                            python/read.cpp python/sym.cpp)
+                            python/read.cpp python/sym.cpp python/write.cpp)
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
     target_compile_options(gemmi PRIVATE "-Wno-shadow")
   endif()
