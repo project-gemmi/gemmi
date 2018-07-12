@@ -71,15 +71,32 @@ struct Ccp4 {
   GridStats hstats;  // data statistics read from / written to ccp4 map
   // stores raw headers if the grid was read from ccp4 map
   std::vector<int32_t> ccp4_header;
+  bool same_byte_order;
 
   // methods to access info from ccp4 headers, w is word number from the spec
-  int32_t* header_word(int w) { return &ccp4_header.at(w - 1); }
-  const int32_t* header_word(int w) const { return &ccp4_header.at(w - 1); }
+  void* header_word(int w) { return &ccp4_header.at(w - 1); }
+  const void* header_word(int w) const { return &ccp4_header.at(w - 1); }
 
-  int32_t header_i32(int w) const { return *header_word(w); }
+  void swap_two_bytes(void* start) const {
+    char* bytes = static_cast<char*>(start);
+    std::swap(bytes[0], bytes[1]);
+  }
+  void swap_four_bytes(void* start) const {
+    char* bytes = static_cast<char*>(start);
+    std::swap(bytes[0], bytes[3]);
+    std::swap(bytes[1], bytes[2]);
+  }
+
+  int32_t header_i32(int w) const {
+    int32_t value = ccp4_header.at(w - 1);
+    if (!same_byte_order)
+      swap_four_bytes(&value);
+    return value;
+  }
   float header_float(int w) const {
+    int32_t int_value = header_i32(w);
     float f;
-    std::memcpy(&f, header_word(w), 4);
+    std::memcpy(&f, &int_value, 4);
     return f;
   }
   // ccp4 map header has mostly 80-byte strings
@@ -89,7 +106,9 @@ struct Ccp4 {
     return std::string(reinterpret_cast<const char*>(header_word(w)), len);
   }
   void set_header_i32(int w, int32_t value) {
-    *header_word(w) = value;
+    if (!same_byte_order)
+      swap_four_bytes(&value);
+    ccp4_header.at(w - 1) = value;
   };
   void set_header_3i32(int w, int32_t x, int32_t y, int32_t z) {
     set_header_i32(w, x);
@@ -97,7 +116,9 @@ struct Ccp4 {
     set_header_i32(w+2, z);
   };
   void set_header_float(int w, float value) {
-    std::memcpy(header_word(w), &value, 4);
+    int32_t int32_value;
+    std::memcpy(&int32_value, &value, 4);
+    set_header_i32(w, int32_value);
   };
   void set_header_str(int w, const std::string& str) {
     std::memcpy(header_word(w), str.c_str(), str.size());
@@ -189,6 +210,10 @@ struct Ccp4 {
       fail("Failed to read map header: " + path);
     if (header_str(53, 4) != "MAP ")
       fail("Not a CCP4 map: " + path);
+    std::string machst = header_str(54, 4);
+    if (machst[0] != 0x44 && machst[0] != 0x11)
+      fail("Unsupported machine stamp (endiannes) in the file?");
+    same_byte_order = machst[0] == (is_little_endian() ? 0x44 : 0x11);
     grid.unit_cell.set(header_rfloat(11), header_rfloat(12), header_rfloat(13),
                        header_rfloat(14), header_rfloat(15), header_rfloat(16));
     size_t ext_w = header_i32(24) / 4;  // NSYMBT in words
@@ -203,7 +228,8 @@ struct Ccp4 {
     for (int i = 0; i < 3; ++i) {
       int axis = header_i32(17 + i);
       if (axis < 1 || axis > 3)
-        fail("Unexpected axis value in word " + std::to_string(17 + i));
+        fail("Unexpected axis value in word " + std::to_string(17 + i)
+             + ": " + std::to_string(axis));
     }
     hstats.dmin = header_float(20);
     hstats.dmax = header_float(21);
@@ -284,6 +310,15 @@ void Ccp4<T>::read_ccp4_map(const std::string& path) {
     fail("Only modes 0, 1, 2 and 6 are supported.");
   //if (std::fgetc(f.get()) != EOF)
   //  fail("The map file is longer then expected.");
+
+  if (!same_byte_order) {
+    if (sizeof(T) == 2)
+      for (T& value : grid.data)
+        swap_two_bytes(&value);
+    else if (sizeof(T) == 4)
+      for (T& value : grid.data)
+        swap_four_bytes(&value);
+  }
 }
 
 namespace impl {
