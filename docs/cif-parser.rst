@@ -1162,13 +1162,13 @@ where ``_atom_site.auth_atom_id`` differs from ``_atom_site.label_atom_id``, or
 where ``_atom_site.auth_comp_id`` differs from ``_atom_site.label_comp_id``.
 So here is a small C++ program:
 
-.. literalinclude:: ../examples/auth_label.cc
+.. literalinclude:: ../examples/auth_label.cpp
 
 We compile it, run it, and come back after an hour:
 
 .. code-block:: none
 
-    $ g++-6 -O2 -I.. -Ithird_party examples/auth_label.cc -lstdc++fs -lz
+    $ g++-6 -O2 -I.. -Ithird_party examples/auth_label.cpp -lstdc++fs -lz
     $ ./a.out pdb_copy/mmCIF
     3D3W: atom_id  O1 -> OD
     1TNI: atom_id  HN2 -> HN3

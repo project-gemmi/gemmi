@@ -161,7 +161,7 @@ target_link_libraries(ctest cgemmi)
 
 add_executable(cpptest EXCLUDE_FROM_ALL tests/main.cpp tests/cif.cpp)
 
-add_executable(hello EXCLUDE_FROM_ALL examples/hello.cc)
+add_executable(hello EXCLUDE_FROM_ALL examples/hello.cpp)
 add_executable(doc_example EXCLUDE_FROM_ALL
                docs/code/sym.cpp docs/code/elem.cpp docs/code/resinfo.cpp
                docs/code/cell.cpp)
@@ -180,11 +180,11 @@ add_executable(test_disulf EXCLUDE_FROM_ALL tests/disulf.cpp)
 support_gz(test_disulf)
 
 # auth_label requires <experimental/filesystem> and -lstdc++fs
-add_executable(auth_label EXCLUDE_FROM_ALL examples/auth_label.cc)
+add_executable(auth_label EXCLUDE_FROM_ALL examples/auth_label.cpp)
 target_link_libraries(auth_label stdc++fs)
 support_gz(auth_label)
 
-add_executable(check_conn EXCLUDE_FROM_ALL examples/check_conn.cc)
+add_executable(check_conn EXCLUDE_FROM_ALL examples/check_conn.cpp)
 support_gz(check_conn)
 
 enable_testing()
