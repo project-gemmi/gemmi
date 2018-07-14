@@ -4,9 +4,10 @@
 
 #ifndef GEMMI_GZ_HPP_
 #define GEMMI_GZ_HPP_
-#include "util.hpp"  // ends_with
-#include "fileutil.hpp"  // MaybeStdin, file_open
-#include <cstdio>    // fseek, ftell, fread
+#include "util.hpp"     // iends_with
+#include "fileutil.hpp" // file_open
+#include "input.hpp"    // MaybeStdin
+#include <cstdio>       // fseek, ftell, fread
 #include <memory>
 #include <string>
 #include <zlib.h>
@@ -45,7 +46,7 @@ public:
   };
 
   explicit MaybeGzipped(const std::string& path)
-    : MaybeStdin(path), mem_size_(0), file_(nullptr) {}
+    : MaybeStdin(path), memory_size_(0), file_(nullptr) {}
   ~MaybeGzipped() {
     if (file_)
 #if ZLIB_VERNUM >= 0x1235
@@ -55,19 +56,19 @@ public:
 #endif
   }
 
-  bool is_compressed() const { return ends_with(path(), ".gz"); }
-  size_t mem_size() const { return mem_size_; }
+  bool is_compressed() const { return iends_with(path(), ".gz"); }
+  size_t memory_size() const { return memory_size_; }
 
   std::unique_ptr<char[]> memory() {
     if (!is_compressed())
       return MaybeStdin::memory();
-    mem_size_ = estimate_uncompressed_size(path());
+    memory_size_ = estimate_uncompressed_size(path());
     open();
-    if (mem_size_ > 500000000)
+    if (memory_size_ > 500000000)
       fail("For now gz files above 500MB uncompressed are not supported.");
-    std::unique_ptr<char[]> mem(new char[mem_size_]);
-    int bytes_read = gzread(file_, mem.get(), mem_size_);
-    if (bytes_read < (int) mem_size_ && !gzeof(file_)) {
+    std::unique_ptr<char[]> mem(new char[memory_size_]);
+    int bytes_read = gzread(file_, mem.get(), memory_size_);
+    if (bytes_read < (int) memory_size_ && !gzeof(file_)) {
       int errnum;
       std::string err_str = gzerror(file_, &errnum);
       if (errnum)
@@ -87,7 +88,7 @@ public:
   }
 
 private:
-  size_t mem_size_;
+  size_t memory_size_;
   gzFile file_;
 
   void open() {

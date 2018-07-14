@@ -2,7 +2,7 @@
 
 #include "gemmi/ccp4.hpp"
 #include "gemmi/symmetry.hpp"
-#include "input.h"
+#include "gemmi/gzread.hpp"
 #include <cstdlib>  // for strtod
 
 #define GEMMI_PROG mask
@@ -67,7 +67,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       in_type = InputType::Ccp4;
   }
   if (in_type == InputType::Unknown) {
-    if (coordinate_format_from_extension(input) != gemmi::CoorFormat::Unknown) {
+    if (gemmi::coordinate_format_from_extension_gz(input) !=
+        gemmi::CoorFormat::Unknown) {
       in_type = InputType::Coordinates;
     } else if (gemmi::iends_with(input, ".ccp4") ||
                gemmi::iends_with(input, ".map")) {
@@ -120,7 +121,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       double radius = (p.options[Radius]
                        ? std::strtod(p.options[Radius].arg, nullptr)
                        : 3.0);
-      gemmi::Structure st = read_structure(input);
+      gemmi::Structure st = gemmi::read_structure_gz(input);
       gemmi::Ccp4<signed char> mask;
       mask.grid.unit_cell = st.cell;
       mask.grid.space_group = gemmi::find_spacegroup_by_name(st.spacegroup_hm);

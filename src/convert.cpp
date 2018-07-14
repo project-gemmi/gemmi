@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#include "input.h"
+#include "gemmi/gzread.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/polyheur.hpp"  // for remove_hydrogens, ...
@@ -187,17 +187,17 @@ static void convert(const std::string& input, CoorFormat input_type,
       options[ExpandNcs] || options[RemoveH] || options[RemoveWaters] ||
       options[RemoveLigWat] || options[TrimAla] || options[SegmentAsChain]);
   if (input_type == CoorFormat::Mmcif || input_type == CoorFormat::Mmjson) {
-    cif_in = cif_read_any(input);
+    cif_in = gemmi::read_cif_or_mmjson_gz(input);
     if ((output_type == CoorFormat::Mmjson || output_type == CoorFormat::Mmcif)
         && !modify_structure) {
       // no need to interpret the structure
     } else {
-      st = make_structure(cif_in);
+      st = gemmi::make_structure(cif_in);
       if (st.models.empty())
         gemmi::fail("No atoms in the input file. Is it mmCIF?");
     }
   } else if (input_type == CoorFormat::Pdb) {
-    st = read_structure(input, CoorFormat::Pdb);
+    st = gemmi::read_pdb_gz(input);
     setup_entities(st);
   } else {
     gemmi::fail("Unexpected input format.");
@@ -305,7 +305,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   CoorFormat in_type = p.options[FormatIn]
     ? filetypes[p.options[FormatIn].arg]
-    : coordinate_format_from_extension(input);
+    : gemmi::coordinate_format_from_extension_gz(input);
   if (in_type == CoorFormat::Unknown) {
     std::cerr << "The input format cannot be determined from input"
                  " filename. Use option --from.\n";
@@ -314,7 +314,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   CoorFormat out_type = p.options[FormatOut]
     ? filetypes[p.options[FormatOut].arg]
-    : coordinate_format_from_extension(output);
+    : gemmi::coordinate_format_from_extension_gz(output);
   if (out_type == CoorFormat::Unknown) {
     std::cerr << "The output format cannot be determined from output"
                  " filename. Use option --to.\n";

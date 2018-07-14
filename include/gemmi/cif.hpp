@@ -303,14 +303,14 @@ Document read(T&& input) {
   if (input.is_stdin())
     return read_cstream(stdin, 16*1024, "stdin");
   if (std::unique_ptr<char[]> mem = input.memory())
-    return read_memory(mem.get(), input.mem_size(), input.path().c_str());
+    return read_memory(mem.get(), input.memory_size(), input.path().c_str());
   return read_file(input.path());
 }
 
 template<typename T>
 bool check_syntax_any(T&& input, std::string* msg) {
   if (std::unique_ptr<char[]> mem = input.memory()) {
-    pegtl::memory_input<> in(mem.get(), input.mem_size(), input.path());
+    pegtl::memory_input<> in(mem.get(), input.memory_size(), input.path());
     return check_syntax(in, msg);
   }
   pegtl::file_input<> in(input.path());

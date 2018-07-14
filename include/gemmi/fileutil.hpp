@@ -52,19 +52,6 @@ inline std::size_t file_size(FILE* f, const std::string& path) {
   return length;
 }
 
-// for transparent handling of stdin along filenames
-class MaybeStdin {
-public:
-  explicit MaybeStdin(const std::string& path) : path_(path) {}
-  bool is_stdin() const { return path_ == "-"; };
-  const std::string& path() const { return path_; };
-  size_t mem_size() const { return 0; };
-  std::unique_ptr<char[]> memory() { return nullptr; }
-  bool get_line_stream() const { return false; }
-private:
-  std::string path_;
-};
-
 inline bool is_pdb_code(const std::string& str) {
   return str.length() == 4 && std::isdigit(str[0]) && std::isalnum(str[1]) &&
                               std::isalnum(str[2]) && std::isalnum(str[3]);

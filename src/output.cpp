@@ -6,5 +6,3 @@
 #include "gemmi/sprintf.hpp"
 #include "gemmi/to_mmcif.hpp"
 #include "gemmi/to_pdb.hpp"
-
-// vim:sw=2:ts=2:et:path^=../include,../third_party

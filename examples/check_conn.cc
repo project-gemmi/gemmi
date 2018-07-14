@@ -1,16 +1,13 @@
 // This program re-calculates _struct_conn.pdbx_dist_value values
 // and prints message if it differs by more than 0.002A from the value in file.
 
-#include <gemmi/util.hpp> // for giends_with
 #include <gemmi/gz.hpp>   // for MaybeGzipped
 #include <gemmi/cif.hpp>
 #include <gemmi/numb.hpp> // for as_number
 #include <gemmi/mmcif.hpp>
 #include <gemmi/conn.hpp>
 #include <gemmi/dirwalk.hpp> // for CifWalk
-#include <gemmi/mmread.hpp> // for read_structure
 #include <cstdio>
-#include <map>
 
 using namespace gemmi;
 

@@ -6,7 +6,7 @@
 #include <gemmi/elem.hpp>  // for is_hydrogen
 #include <gemmi/math.hpp>  // for Correlation
 #include <gemmi/resinfo.hpp>  // for find_tabulated_residue
-#include "input.h"
+#include <gemmi/gzread.hpp>
 #define GEMMI_PROG btest
 #include "options.h"
 #include <stdio.h>

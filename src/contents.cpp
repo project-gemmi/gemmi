@@ -6,7 +6,7 @@
 #include <gemmi/symmetry.hpp>
 #include <gemmi/resinfo.hpp>
 #include <gemmi/calculate.hpp>
-#include "input.h"
+#include <gemmi/gzread.hpp>
 #define GEMMI_PROG contents
 #include "options.h"
 #include <stdio.h>
@@ -159,7 +159,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::printf("\n");
       if (verbose || p.nonOptionsCount() > 1)
         std::printf("File: %s\n", input.c_str());
-      Structure st = read_structure(input);
+      Structure st = read_structure_gz(input);
       if (p.options[Dihedrals])
         print_dihedrals(st);
       print_atoms_on_special_positions(st);

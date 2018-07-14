@@ -5,7 +5,7 @@
 #include <gemmi/subcells.hpp>
 #include <gemmi/polyheur.hpp>  // for are_connected
 #include <gemmi/elem.hpp>  // for is_hydrogen
-#include "input.h"
+#include <gemmi/gzread.hpp>
 #define GEMMI_PROG contact
 #include "options.h"
 #include <stdio.h>
@@ -144,7 +144,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (params.verbose > 0 ||
           (p.nonOptionsCount() > 1 && !params.print_count))
         std::printf("%sFile: %s\n", (i > 0 ? "\n" : ""), input.c_str());
-      Structure st = read_structure(input);
+      Structure st = read_structure_gz(input);
       print_contacts(st, params);
     }
   } catch (std::runtime_error& e) {

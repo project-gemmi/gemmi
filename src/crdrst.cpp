@@ -6,7 +6,7 @@
 #include <numeric> // for accumulate
 #include <set>
 #include <stdexcept>
-#include "input.h"
+#include "gemmi/gzread.hpp"
 #include "gemmi/chemcomp.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/entstr.hpp"    // for entity_type_to_string
@@ -72,7 +72,8 @@ inline MonLib read_monomers(std::string monomer_dir,
   assert(!monomer_dir.empty());
   if (monomer_dir.back() != '/' && monomer_dir.back() != '\\')
     monomer_dir += '/';
-  monlib.mon_lib_list = cif_read_any(monomer_dir + "list/mon_lib_list.cif");
+  monlib.mon_lib_list = gemmi::read_cif_or_mmjson_gz(monomer_dir +
+                                                     "list/mon_lib_list.cif");
   std::string error;
   for (const std::string& name : resnames) {
     std::string path = monomer_dir;
@@ -80,7 +81,7 @@ inline MonLib read_monomers(std::string monomer_dir,
     path += '/';
     path += name + ".cif";
     try {
-      cif::Document doc = cif_read_any(path);
+      cif::Document doc = gemmi::read_cif_or_mmjson_gz(path);
       auto cc = gemmi::make_chemcomp_from_cif(name, doc);
       monlib.monomers.emplace(name, cc);
     } catch(std::runtime_error& err) {
@@ -617,7 +618,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   std::string input = p.coordinate_input_file(0);
   std::string output = p.nonOption(1);
   try {
-    gemmi::Structure st = read_structure(input);
+    gemmi::Structure st = gemmi::read_structure_gz(input);
     if (st.input_format == gemmi::CoorFormat::Pdb)
       gemmi::setup_entities(st);
     if (st.models.empty())

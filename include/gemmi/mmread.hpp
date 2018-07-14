@@ -5,35 +5,24 @@
 #ifndef GEMMI_MMREAD_HPP_
 #define GEMMI_MMREAD_HPP_
 
-#include "model.hpp"
-#include "cif.hpp"
-#include "mmcif.hpp"
-#include "pdb.hpp"
-#include "json.hpp"  // mmJSON
-#include "util.hpp"  // for giends_with
+#include "model.hpp"     // for Structure
+#include "cif.hpp"       // for cif::read
+#include "mmcif.hpp"     // for make_structure_from_block
+#include "pdb.hpp"       // for read_pdb
+#include "json.hpp"      // for read_mmjson
+#include "util.hpp"      // for iends_with
+#include "input.hpp"     // for JustFile
 
 namespace gemmi {
 
 inline CoorFormat coordinate_format_from_extension(const std::string& path) {
-  if (giends_with(path, ".pdb") || giends_with(path, ".ent"))
+  if (iends_with(path, ".pdb") || iends_with(path, ".ent"))
     return CoorFormat::Pdb;
-  if (giends_with(path, ".cif"))
+  if (iends_with(path, ".cif"))
     return CoorFormat::Mmcif;
-  if (giends_with(path, ".json") || giends_with(path, ".js"))
+  if (iends_with(path, ".json"))
     return CoorFormat::Mmjson;
   return CoorFormat::Unknown;
-}
-
-inline Structure read_structure_file(const std::string& path,
-                                     CoorFormat format=CoorFormat::Unknown) {
-  if (format == CoorFormat::Unknown)
-    format = coordinate_format_from_extension(path);
-  switch (format) {
-    case CoorFormat::Pdb:  return read_pdb_file(path);
-    case CoorFormat::Mmcif:  return make_structure(cif::read_file(path));
-    case CoorFormat::Mmjson: return make_structure(cif::read_mmjson_file(path));
-    case CoorFormat::Unknown: fail("Unknown format.");
-  }
 }
 
 template<typename T>
@@ -41,12 +30,20 @@ Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown) {
   if (format == CoorFormat::Unknown)
     format = coordinate_format_from_extension(input.path());
   switch (format) {
-    case CoorFormat::Pdb:  return read_pdb(input);
-    case CoorFormat::Mmcif:  return make_structure(cif::read(input));
-    case CoorFormat::Mmjson: return make_structure(cif::read_mmjson(input));
-    case CoorFormat::Unknown: fail("Unknown format.");
+    case CoorFormat::Pdb:
+      return read_pdb(input);
+    case CoorFormat::Mmcif:
+      return make_structure_from_block(cif::read(input).sole_block());
+    case CoorFormat::Mmjson:
+      return make_structure_from_block(cif::read_mmjson(input).sole_block());
+    case CoorFormat::Unknown:
+      fail("Unknown format.");
   }
-  fail(""); // avoid GCC5 warning
+}
+
+inline Structure read_structure_file(const std::string& path,
+                                     CoorFormat format=CoorFormat::Unknown) {
+  return read_structure(JustFile(path), format);
 }
 
 } // namespace gemmi

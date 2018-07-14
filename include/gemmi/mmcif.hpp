@@ -132,7 +132,7 @@ inline void fill_residue_entity_type(Structure& st) {
       }
 }
 
-inline Structure structure_from_cif_block(const cif::Block& block_) {
+inline Structure make_structure_from_block(const cif::Block& block_) {
   using cif::as_number;
   using cif::as_string;
   // find() and Table don't have const variants, but we don't change anything.
@@ -350,12 +350,7 @@ inline Structure structure_from_cif_block(const cif::Block& block_) {
 } // namespace impl
 
 inline Structure make_structure_from_block(const cif::Block& block) {
-  return impl::structure_from_cif_block(block);
-}
-
-// the name of this function may change
-inline Structure make_structure(const cif::Document& doc) {
-  return impl::structure_from_cif_block(doc.sole_block());
+  return impl::make_structure_from_block(block);
 }
 
 } // namespace gemmi

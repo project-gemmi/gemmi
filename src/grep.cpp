@@ -5,8 +5,7 @@
 #include "gemmi/cif.hpp"
 #include "gemmi/gz.hpp"
 #include "gemmi/dirwalk.hpp"
-#include "gemmi/util.hpp"  // for is_pdb_code
-#include "gemmi/fileutil.hpp"  // for expand_if_pdb_code
+#include "gemmi/fileutil.hpp"  // for is_pdb_code, expand_if_pdb_code
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
@@ -435,7 +434,7 @@ void grep_file(const std::string& path, Parameters& par, int& err_count) {
       run_parse(in, par);
     } else if (input.is_compressed()) {
       std::unique_ptr<char[]> mem = input.memory();
-      pegtl::memory_input<> in(mem.get(), input.mem_size(), path);
+      pegtl::memory_input<> in(mem.get(), input.memory_size(), path);
       run_parse(in, par);
     } else {
       pegtl::file_input<> in(path);
