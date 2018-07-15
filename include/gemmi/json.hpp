@@ -126,12 +126,13 @@ inline Document read_mmjson_file(const std::string& path) {
 
 template<typename T>
 Document read_mmjson(T&& input) {
-  /* TODO
   if (input.is_stdin()) {
-    size_t size = 16*1024;
-    // getline + std::cin?
-    return read_mmjson_insitu(stdin, size, "stdin");
-  } */
+    std::vector<char> buffer;
+    char chunk[16*1024];
+    while (size_t n = fread(chunk, 1, sizeof chunk, stdin))
+      buffer.insert(buffer.end(), chunk, chunk + n);
+    return read_mmjson_insitu(buffer.data(), buffer.size(), "stdin");
+  }
   if (std::unique_ptr<char[]> mem = input.memory())
     return read_mmjson_insitu(mem.get(), input.memory_size(), input.path());
   return read_mmjson_file(input.path());

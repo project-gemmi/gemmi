@@ -16,7 +16,14 @@
 
 namespace gemmi {
 
-cif::Document read_cif_or_mmjson_gz(const std::string& path);
+cif::Document read_cif_gz(const std::string& path);
+cif::Document read_mmjson_gz(const std::string& path);
+
+inline cif::Document read_cif_or_mmjson_gz(const std::string& path) {
+  if (giends_with(path, "json") || giends_with(path, "js"))
+    return read_mmjson_gz(path);
+  return read_cif_gz(path);
+}
 
 Structure make_structure(const cif::Document& doc);
 
@@ -41,10 +48,12 @@ CoorFormat coordinate_format_from_extension_gz(const std::string& path);
 
 namespace gemmi {
 
-cif::Document read_cif_or_mmjson_gz(const std::string& path) {
-  if (giends_with(path, "json") || giends_with(path, "js"))
-    return cif::read_mmjson(MaybeGzipped(path));
+cif::Document read_cif_gz(const std::string& path) {
   return cif::read(MaybeGzipped(path));
+}
+
+cif::Document read_mmjson_gz(const std::string& path) {
+  return cif::read_mmjson(MaybeGzipped(path));
 }
 
 Structure make_structure(const cif::Document& doc) {

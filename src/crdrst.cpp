@@ -72,8 +72,8 @@ inline MonLib read_monomers(std::string monomer_dir,
   assert(!monomer_dir.empty());
   if (monomer_dir.back() != '/' && monomer_dir.back() != '\\')
     monomer_dir += '/';
-  monlib.mon_lib_list = gemmi::read_cif_or_mmjson_gz(monomer_dir +
-                                                     "list/mon_lib_list.cif");
+  monlib.mon_lib_list = gemmi::read_cif_gz(monomer_dir +
+                                           "list/mon_lib_list.cif");
   std::string error;
   for (const std::string& name : resnames) {
     std::string path = monomer_dir;
@@ -81,7 +81,7 @@ inline MonLib read_monomers(std::string monomer_dir,
     path += '/';
     path += name + ".cif";
     try {
-      cif::Document doc = gemmi::read_cif_or_mmjson_gz(path);
+      cif::Document doc = gemmi::read_cif_gz(path);
       auto cc = gemmi::make_chemcomp_from_cif(name, doc);
       monlib.monomers.emplace(name, cc);
     } catch(std::runtime_error& err) {

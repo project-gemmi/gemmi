@@ -187,7 +187,8 @@ static void convert(const std::string& input, CoorFormat input_type,
       options[ExpandNcs] || options[RemoveH] || options[RemoveWaters] ||
       options[RemoveLigWat] || options[TrimAla] || options[SegmentAsChain]);
   if (input_type == CoorFormat::Mmcif || input_type == CoorFormat::Mmjson) {
-    cif_in = gemmi::read_cif_or_mmjson_gz(input);
+    cif_in = input_type == CoorFormat::Mmcif ? gemmi::read_cif_gz(input)
+                                             : gemmi::read_mmjson_gz(input);
     if ((output_type == CoorFormat::Mmjson || output_type == CoorFormat::Mmcif)
         && !modify_structure) {
       // no need to interpret the structure
