@@ -64,6 +64,16 @@ GridStats calculate_grid_statistics(const std::vector<T>& data) {
   return st;
 }
 
+namespace impl {
+  inline bool fread_wrap(void *ptr, size_t size, size_t nmemb, FILE *stream) {
+    return std::fread(ptr, size, nmemb, stream) == nmemb;
+  }
+  template <typename T>
+  bool fread_wrap(void *ptr, size_t size, size_t nmemb, T& stream) {
+    return stream.read(ptr, size * nmemb);
+  }
+}
+
 
 template<typename T=float>
 struct Ccp4 {
@@ -203,10 +213,11 @@ struct Ccp4 {
     return std::round(1e5 * header_float(w)) / 1e5;
   }
 
-  void read_ccp4_header(FILE* f, const std::string& path) {
+  template<typename Stream>
+  void read_ccp4_header(Stream f, const std::string& path) {
     const size_t hsize = 256;
     ccp4_header.resize(hsize);
-    if (std::fread(ccp4_header.data(), 4, hsize, f) != hsize)
+    if (!impl::fread_wrap(ccp4_header.data(), 4, hsize, f))
       fail("Failed to read map header: " + path);
     if (header_str(53, 4) != "MAP ")
       fail("Not a CCP4 map: " + path);
@@ -220,7 +231,7 @@ struct Ccp4 {
     if (ext_w > 1000000)
       fail("Unexpectedly long extendended header: " + path);
     ccp4_header.resize(hsize + ext_w);
-    if (std::fread(ccp4_header.data() + hsize, 4, ext_w, f) != ext_w)
+    if (!impl::fread_wrap(ccp4_header.data() + hsize, 4, ext_w, f))
       fail("Failed to read extended header: " + path);
     grid.nu = header_i32(1);
     grid.nv = header_i32(2);
@@ -243,25 +254,41 @@ struct Ccp4 {
 
   double setup(GridSetup mode, T default_value);
 
-  void read_ccp4_map(const std::string& path);
+  template<typename Stream>
+  void read_ccp4_stream(Stream f, const std::string& path);
+
+  void read_ccp4_file(const std::string& path) {
+    gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "rb");
+    read_ccp4_stream(f.get(), path);
+  }
+
+  template<typename Input>
+  void read_ccp4(Input&& input) {
+    if (input.is_stdin())
+      return read_ccp4_stream(stdin, "stdin");
+    if (auto stream = input.get_stream())
+      return read_ccp4_stream(stream, input.path());
+    return read_ccp4_file(input.path());
+  }
+
   void write_ccp4_map(const std::string& path) const;
 };
 
 
 namespace impl {
 
-template<typename TFile, typename TMem>
-void read_data(FILE* f, std::vector<TMem>& content) {
+template<typename Stream, typename TFile, typename TMem>
+void read_data(Stream& f, std::vector<TMem>& content) {
   if (typeid(TFile) == typeid(TMem)) {
     size_t len = content.size();
-    if (std::fread(content.data(), sizeof(TMem), len, f) != len)
+    if (!fread_wrap(content.data(), sizeof(TMem), len, f))
       fail("Failed to read all the data from the map file.");
   } else {
     constexpr size_t chunk_size = 64 * 1024;
     std::vector<TFile> work(chunk_size);
     for (size_t i = 0; i < content.size(); i += chunk_size) {
       size_t len = std::min(chunk_size, content.size() - i);
-      if (std::fread(work.data(), sizeof(TFile), len, f) != len)
+      if (!fread_wrap(work.data(), sizeof(TFile), len, f))
         fail("Failed to read all the data from the map file.");
       for (size_t j = 0; j < len; ++j)
         content[i+j] = static_cast<TMem>(work[j]);
@@ -292,23 +319,22 @@ void write_data(const std::vector<TMem>& content, FILE* f) {
 
 // This function was tested only on little-endian machines,
 // let us know if you need support for other architectures.
-template<typename T>
-void Ccp4<T>::read_ccp4_map(const std::string& path) {
-  gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "rb");
-  read_ccp4_header(f.get(), path);
+template<typename T> template<typename Stream>
+void Ccp4<T>::read_ccp4_stream(Stream f, const std::string& path) {
+  read_ccp4_header(f, path);
   grid.data.resize(grid.nu * grid.nv * grid.nw);
   int mode = header_i32(4);
   if (mode == 0)
-    impl::read_data<std::int8_t>(f.get(), grid.data);
+    impl::read_data<Stream, std::int8_t>(f, grid.data);
   else if (mode == 1)
-    impl::read_data<std::int16_t>(f.get(), grid.data);
+    impl::read_data<Stream, std::int16_t>(f, grid.data);
   else if (mode == 2)
-    impl::read_data<float>(f.get(), grid.data);
+    impl::read_data<Stream, float>(f, grid.data);
   else if (mode == 6)
-    impl::read_data<std::uint16_t>(f.get(), grid.data);
+    impl::read_data<Stream, std::uint16_t>(f, grid.data);
   else
     fail("Only modes 0, 1, 2 and 6 are supported.");
-  //if (std::fgetc(f.get()) != EOF)
+  //if (std::fgetc(f) != EOF)
   //  fail("The map file is longer then expected.");
 
   if (!same_byte_order) {

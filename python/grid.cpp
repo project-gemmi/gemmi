@@ -1,6 +1,7 @@
 // Copyright 2018 Global Phasing Ltd.
 
 #include "gemmi/ccp4.hpp"
+#include "gemmi/gz.hpp"  // for MaybeGzipped
 #include "gemmi/subcells.hpp"
 
 #include <pybind11/pybind11.h>
@@ -78,13 +79,13 @@ void add_grid(py::module& m) {
 
   m.def("read_ccp4_map", [](const std::string& path) {
           Ccp4<float> grid;
-          grid.read_ccp4_map(path);
+          grid.read_ccp4(MaybeGzipped(path));
           return grid;
         }, py::arg("path"), py::return_value_policy::move,
         "Reads a CCP4 file, mode 2 (floating-point data).");
   m.def("read_ccp4_mask", [](const std::string& path) {
           Ccp4<int8_t> grid;
-          grid.read_ccp4_map(path);
+          grid.read_ccp4(MaybeGzipped(path));
           return grid;
         }, py::arg("path"), py::return_value_policy::move,
         "Reads a CCP4 file, mode 0 (int8_t data, usually 0/1 masks).");

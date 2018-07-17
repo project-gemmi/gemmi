@@ -38,11 +38,12 @@ inline size_t estimate_uncompressed_size(const std::string& path) {
 
 class MaybeGzipped : public MaybeStdin {
 public:
-  struct GzInput {
+  struct GzStream {
     gzFile f;
     explicit operator bool() const { return f; }
     char* gets(char* line, int size) { return gzgets(f, line, size); }
     int getc() { return gzgetc(f); }
+    bool read(void* buf, int len) { return gzread(f, buf, len) == len; }
   };
 
   explicit MaybeGzipped(const std::string& path)
@@ -77,14 +78,14 @@ public:
     return mem;
   }
 
-  GzInput get_line_stream() {
+  GzStream get_stream() {
     if (!is_compressed())
-      return GzInput{nullptr};
+      return GzStream{nullptr};
     open();
 #if ZLIB_VERNUM >= 0x1235
     gzbuffer(file_, 64*1024);
 #endif
-    return GzInput{file_};
+    return GzStream{file_};
   }
 
 private:

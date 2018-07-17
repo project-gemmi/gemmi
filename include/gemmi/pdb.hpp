@@ -501,8 +501,8 @@ template<typename T>
 inline Structure read_pdb(T&& input) {
   if (input.is_stdin())
     return read_pdb_from_line_input(pdb_impl::FileInput{stdin}, "stdin");
-  if (auto line_input = input.get_line_stream())
-    return pdb_impl::read_pdb_from_line_input(line_input, input.path());
+  if (auto stream = input.get_stream())
+    return pdb_impl::read_pdb_from_line_input(stream, input.path());
   return read_pdb_file(input.path());
 }
 

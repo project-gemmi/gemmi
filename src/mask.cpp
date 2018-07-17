@@ -3,6 +3,7 @@
 #include "gemmi/ccp4.hpp"
 #include "gemmi/symmetry.hpp"
 #include "gemmi/gzread.hpp"
+#include "gemmi/gz.hpp"  // for MaybeGzipped
 #include <cstdlib>  // for strtod
 
 #define GEMMI_PROG mask
@@ -90,7 +91,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (in_type == InputType::Ccp4) {
       double threshold;
       gemmi::Ccp4<signed char> mask;
-      mask.read_ccp4_map(input);
+      mask.read_ccp4(gemmi::MaybeGzipped(input));
       if (p.options[Threshold]) {
         threshold = std::strtod(p.options[Threshold].arg, nullptr);
       } else if (p.options[Fraction]) {

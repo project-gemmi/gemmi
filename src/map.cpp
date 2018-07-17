@@ -1,6 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/ccp4.hpp"
+#include "gemmi/gz.hpp"  // for MaybeGzipped
 #include "gemmi/util.hpp"  // for trim_str
 #include "gemmi/symmetry.hpp"
 #include <cmath>     // for floor
@@ -179,7 +180,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::printf("\n\n");
       if (verbose)
         std::fprintf(stderr, "Reading %s ...\n", input);
-      map.read_ccp4_map(input);
+      map.read_ccp4(gemmi::MaybeGzipped(input));
       gemmi::GridStats stats = print_info(map);
       if (p.options[Deltas])
         print_deltas(map.grid, stats.dmin, stats.dmax);
