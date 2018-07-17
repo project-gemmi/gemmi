@@ -24,7 +24,7 @@ Python 2.7/3.x module
 ---------------------
 
 To install the gemmi module you need pip, git and not too old
-C++ compiler (GCC 4.8+, Clang 3.4+, MSVC 2015+, ICC 16+)::
+C++ compiler (GCC 4.8+, Clang 3.4+, MSVC 2015+, ICC 17+)::
 
     pip install gemmi
 
