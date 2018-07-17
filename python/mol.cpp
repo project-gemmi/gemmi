@@ -142,7 +142,8 @@ void add_mol(py::module& m) {
     .def("__delitem__", &Structure::remove_model, py::arg("name"))
     .def("find_or_add_model", &Structure::find_or_add_model,
          py::arg("name"), py::return_value_policy::reference_internal)
-    .def("merge_same_name_chains", &Structure::merge_same_name_chains)
+    .def("merge_same_name_chains", &Structure::merge_same_name_chains,
+         py::arg("min_sep")=0)
     .def("make_pdb_headers", &make_pdb_headers)
     .def("write_pdb", [](const Structure& st, const std::string& path) {
        std::ofstream f(path.c_str());
@@ -202,6 +203,8 @@ void add_mol(py::module& m) {
          py::return_value_policy::reference_internal)
     .def("find_chain", &Model::find_chain,
          py::arg("name"), py::return_value_policy::reference_internal)
+    .def("find_last_chain", &Model::find_last_chain,
+         py::arg("name"), py::return_value_policy::reference_internal)
     .def("add_chain", [](Model& self, const std::string& name) -> Chain& {
         self.chains.emplace_back(name);
         return self.chains.back();
@@ -237,7 +240,8 @@ void add_mol(py::module& m) {
     .def("get_polymer", (SubChain (Chain::*)()) &Chain::get_polymer)
     .def("get_waters", (SubChain (Chain::*)()) &Chain::get_waters)
     .def("has_subchains_assigned", &has_subchains_assigned)
-    .def("append_residues", &Chain::append_residues)
+    .def("append_residues", &Chain::append_residues,
+         py::arg("new_residues"), py::arg("min_sep")=0)
     .def("count_atom_sites", &count_atom_sites<Chain>)
     .def("count_occupancies", &count_occupancies<Chain>)
     .def("trim_to_alanine", &trim_to_alanine)
@@ -256,7 +260,12 @@ void add_mol(py::module& m) {
     .def("__bool__", [](const ResidueSpan &g) -> bool { return !g.empty(); })
     .def("__getitem__", [](ResidueSpan& g, int index) -> Residue& {
         return g.at(index >= 0 ? index : index + g.size());
-    }, py::arg("index"), py::return_value_policy::reference_internal);
+    }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("__repr__", [](const ResidueSpan& self) {
+        return "<gemmi.ResidueSpan [" +
+               join_str(self, ' ', [](const Residue& r) { return r.str(); }) +
+               "]>";
+    });
 
   py::class_<ResidueGroup>(m, "ResidueGroup", residue_span)
     // need to duplicate it so it is visible

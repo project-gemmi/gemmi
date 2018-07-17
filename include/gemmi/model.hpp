@@ -27,6 +27,9 @@ namespace impl {
 template<int N> struct OptionalInt {
   enum { None=N };
   int value = None;
+
+  OptionalInt() = default;
+  OptionalInt(int n) : value(n) {}
   bool has_value() const { return value != None; }
   std::string str() const {
     return has_value() ? std::to_string(value) : "?";
@@ -36,6 +39,14 @@ template<int N> struct OptionalInt {
   bool operator!=(const OptionalInt& o) const { return value != o.value; }
   bool operator==(int n) const { return value == n; }
   bool operator!=(int n) const { return value != n; }
+  OptionalInt operator+(OptionalInt o) const {
+    return OptionalInt(has_value() && o.has_value() ? value + o.value : N);
+  }
+  OptionalInt operator-(OptionalInt o) const {
+    return OptionalInt(has_value() && o.has_value() ? value - o.value : N);
+  }
+  OptionalInt& operator+=(int n) { if (has_value()) value += n; return *this; }
+  OptionalInt& operator-=(int n) { if (has_value()) value -= n; return *this; }
   explicit operator int() const { return value; }
   explicit operator bool() const { return has_value(); }
   // these are defined for partial compatibility with C++17 std::optional
@@ -337,6 +348,7 @@ struct ResidueSpan {
 
   ResidueSpan() = default;
   ResidueSpan(iterator begin, std::size_t n) : begin_(begin), size_(n) {}
+  ResidueSpan(std::vector<Residue>& v) : begin_(v.begin()), size_(v.size()) {}
 
   const_iterator begin() const { return begin_; }
   const_iterator end() const { return begin_ + size_; }
@@ -354,6 +366,21 @@ struct ResidueSpan {
         --length;
     return length;
   }
+
+  SeqId::OptionalNum extreme_num(bool label, bool min) const {
+    SeqId::OptionalNum result;
+    for (const Residue& r : *this) {
+      if (auto num = label ? r.label_seq : r.seqid.num)
+        if (!result || (min ? int(num) < int(result) : int(num) > int(result)))
+          result = num;
+    }
+    return result;
+  }
+  SeqId::OptionalNum min_seqnum() const { return extreme_num(false, true); }
+  SeqId::OptionalNum max_seqnum() const { return extreme_num(false, false); }
+  SeqId::OptionalNum min_label_seq() const { return extreme_num(true, true); }
+  SeqId::OptionalNum max_label_seq() const { return extreme_num(true, false); }
+
   const Residue& operator[](std::size_t i) const { return *(begin_ + i); }
   Residue& operator[](std::size_t i) { return *(begin_ + i); }
   Residue& at(std::size_t i) {
@@ -389,6 +416,7 @@ struct SubChain : ResidueSpan {
     const static std::string empty_name = "";
     return empty() ? empty_name : begin_->subchain;
   }
+
   // the same as Chain::first_conformer()
   /* TODO
   UniqProxy<Residue> first_conformer() {
@@ -465,7 +493,7 @@ struct Chain {
 
   Residue* find_residue(const ResidueId& rid);
   Residue* find_or_add_residue(const ResidueId& rid);
-  void append_residues(std::vector<Residue> new_resi);
+  void append_residues(std::vector<Residue> new_resi, int min_sep=0);
   std::vector<Residue>& children() { return residues; }
   const std::vector<Residue>& children() const { return residues; }
 
@@ -601,17 +629,24 @@ struct Model {
     return impl::find_or_null(chains, chain_name);
   }
 
+  // Returns the last chain with given name, or nullptr.
+  Chain* find_last_chain(const std::string& chain_name) {
+    auto it = std::find_if(chains.rbegin(), chains.rend(),
+                         [&](const Chain& c) { return c.name == chain_name; });
+    return it != chains.rend() ? &*it : nullptr;
+  }
+
+
   void remove_chain(const std::string& chain_name) {
     vector_remove_if(chains,
                      [&](const Chain& c) { return c.name == chain_name; });
   }
 
-  void merge_same_name_chains() {
+  void merge_same_name_chains(int min_sep=0) {
     for (auto i = chains.begin(); i != chains.end(); ++i)
       for (auto j = i + 1; j != chains.end(); ++j)
         if (i->name == j->name) {
-          std::move(j->residues.begin(), j->residues.end(),
-                    std::back_inserter(i->residues));
+          i->append_residues(j->residues, min_sep);
           chains.erase(j--);
         }
   }
@@ -761,9 +796,9 @@ struct Structure {
     return (ncs.size() + 1.0) / (given + 1.0);  // +1 b/c identity not included
   }
 
-  void merge_same_name_chains() {
+  void merge_same_name_chains(int min_sep=0) {
     for (Model& model : models)
-      model.merge_same_name_chains();
+      model.merge_same_name_chains(min_sep);
   }
 
   std::vector<Model>& children() { return models; }
@@ -785,13 +820,16 @@ inline Residue* Chain::find_or_add_residue(const ResidueId& rid) {
   return &residues.back();
 }
 
-inline void Chain::append_residues(std::vector<Residue> new_resi) {
-  int seqnum = 0;
-  for (const Residue& res : residues)
-    seqnum = std::max({seqnum, int(res.label_seq), int(res.seqid.num)});
-  for (Residue& res : new_resi) {
-    res.label_seq = res.seqid.num = ++seqnum;
-    res.seqid.icode = ' ';
+inline void Chain::append_residues(std::vector<Residue> new_resi, int min_sep) {
+  if (min_sep > 0) {
+    auto diff = ResidueSpan(new_resi).min_seqnum() - whole().max_seqnum();
+    if (diff && int(diff) < min_sep)
+      for (Residue& res : new_resi)
+        res.seqid.num += min_sep - int(diff);
+    diff = ResidueSpan(new_resi).min_label_seq() - whole().max_label_seq();
+    if (diff && int(diff) < min_sep)
+      for (Residue& res : new_resi)
+        res.label_seq += min_sep - int(diff);
   }
   std::move(new_resi.begin(), new_resi.end(), std::back_inserter(residues));
 }
