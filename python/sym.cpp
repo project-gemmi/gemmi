@@ -104,10 +104,12 @@ void add_symmetry(py::module& m) {
 
   py::class_<SpaceGroup>(m, "SpaceGroup")
     .def(py::init<>())
-    .def(py::init([](int n) { return get_spacegroup_by_number(n); }),
-         py::arg("ccp4"), py::return_value_policy::reference)
-    .def(py::init([](const std::string& s) {return get_spacegroup_by_name(s);}),
-         py::arg("hm"), py::return_value_policy::reference)
+    .def(py::init([](int n) {
+           return const_cast<SpaceGroup&>(get_spacegroup_by_number(n));
+         }), py::arg("ccp4"), py::return_value_policy::reference)
+    .def(py::init([](const std::string& s) {
+           return const_cast<SpaceGroup&>(get_spacegroup_by_name(s));
+         }), py::arg("hm"), py::return_value_policy::reference)
     //.def(py::init(&find_spacegroup_by_name))
     .def("__repr__", [](const SpaceGroup &self) {
         return "<gemmi.SpaceGroup(\"" + self.xhm() + "\")>";

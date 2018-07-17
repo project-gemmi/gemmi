@@ -16,6 +16,13 @@ matrix:
       - FC=gfortran-4.8
       - PYTHON=python
 
+  - os: linux
+    dist: trusty
+    compiler: clang
+    env:
+      - COMPILER=clang++-3.4
+      - PYTHON=python3
+
   - os: osx
     osx_image: xcode8.3
     compiler: clang
@@ -35,6 +42,7 @@ install:
   $PYTHON -m pip install --user pybind11
   $PYTHON -c "import pybind11; print('headers: ' + pybind11.get_include(True))"
 script:
+  - $COMPILER --version
   - CXX=$COMPILER cmake .
   - make -j2
   - make check -j2
