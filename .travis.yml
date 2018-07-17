@@ -4,7 +4,7 @@ git:
 sudo: false
 addons:
   apt:
-    packages: [libz-dev, gfortran]
+    packages: [libz-dev, gfortran, python3-pip]
 
 matrix:
   include:
