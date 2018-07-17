@@ -22,7 +22,7 @@ matrix:
       apt:
         packages: [libz-dev, python3-pip, clang-3.4]
     env:
-      - COMPILER=clang++
+      - COMPILER=/usr/bin/clang++
       - PYTHON=python3
 
   - os: osx
