@@ -2,14 +2,14 @@ language: cpp
 git:
   depth: 3
 sudo: false
-addons:
-  apt:
-    packages: [libz-dev, gfortran, python3-pip]
 
 matrix:
   include:
   - os: linux
     dist: trusty
+    addons:
+      apt:
+        packages: [libz-dev, gfortran]
     compiler: gcc
     env:
       - COMPILER=g++-4.8
@@ -18,7 +18,9 @@ matrix:
 
   - os: linux
     dist: trusty
-    compiler: clang
+    addons:
+      apt:
+        packages: [libz-dev, python3-pip, clang-3.4]
     env:
       - COMPILER=clang++-3.4
       - PYTHON=python3
