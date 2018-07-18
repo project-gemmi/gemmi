@@ -1601,7 +1601,19 @@ Or which one has most of heavy atoms:
     '"C96 H153 N31 O25"'
 
 The :file:`components.cif` file is big, so we may want to split it into
-multiple file. Here we write all components on letter A to a new file.
+multiple file. As an example, here we create a new document with only
+one block, and we write it to a file:
+
+.. doctest::
+
+    >>> block = ccd['X12']
+    >>> d = cif.Document()
+    >>> d.add_copied_block(ccd['X12'])
+    <gemmi.cif.Block X12>
+    >>> d.write_file('X12.cif')
+
+In the next example we delete things we do not need.
+Let us write only components on letter A to a new file.
 Additionally, we remove the descriptor category:
 
 .. doctest::

@@ -38,6 +38,14 @@ void add_cif(py::module& cif) {
           throw py::index_error();
         d.blocks.erase(d.blocks.begin() + index);
     }, py::arg("index"))
+    .def("add_copied_block", [](Document& d, const Block& block, int pos) {
+        if (pos < 0)
+          pos += d.blocks.size();
+        pos = gemmi::clamp_(pos, 0, (int) d.blocks.size());
+        d.blocks.insert(d.blocks.begin() + pos, block);
+        return d.blocks[pos];
+    }, py::arg("block"), py::arg("pos")=-1,
+       py::return_value_policy::reference_internal)
     .def("add_new_block", &Document::add_new_block,
          py::arg("name"), py::arg("pos")=-1,
          py::return_value_policy::reference_internal)
