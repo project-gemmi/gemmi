@@ -14,6 +14,8 @@
 
 namespace gemmi {
 
+//   #####   string helpers   #####
+
 inline bool starts_with(const std::string& str, const std::string& prefix) {
   size_t sl = prefix.length();
   return str.length() >= sl && str.compare(0, sl, prefix) == 0;
@@ -46,12 +48,6 @@ inline std::string to_lower(std::string str) {
     if (c >= 'A' && c <= 'Z')
       c |= 0x20;
   return str;
-}
-
-// Numeric ID used for case-insensitive comparison of 4 letters.
-// s must have 4 chars or 3 chars + NUL, ' ' and NUL are equivalent in s.
-inline int ialpha4_id(const char* s) {
-  return (s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]) & ~0x20202020;
 }
 
 inline std::string trim_str(const std::string& str)
@@ -99,6 +95,9 @@ std::string join_str(const T& iterable, const S& sep) {
   return join_str(iterable, sep, [](const std::string& t) { return t; });
 }
 
+
+//   #####   vector helpers   #####
+
 template <class T>
 bool in_vector(const T& x, const std::vector<T>& v) {
   return std::find(v.begin(), v.end(), x) != v.end();
@@ -117,6 +116,21 @@ void vector_move_extend(std::vector<T>& dst, std::vector<T>&& src) {
 template <class T, typename F>
 void vector_remove_if(std::vector<T>& v, F&& condition) {
   v.erase(std::remove_if(v.begin(), v.end(), condition), v.end());
+}
+
+
+//   #####   other helpers   #####
+
+// simplified version of C++17 std::clamp
+template<class T> const T& clamp_(const T& v, const T& lo, const T& hi)
+{
+  return v < lo ? lo : hi < v ? hi : v;
+}
+
+// Numeric ID used for case-insensitive comparison of 4 letters.
+// s must have 4 chars or 3 chars + NUL, ' ' and NUL are equivalent in s.
+inline int ialpha4_id(const char* s) {
+  return (s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]) & ~0x20202020;
 }
 
 [[noreturn]]
