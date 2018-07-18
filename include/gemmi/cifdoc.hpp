@@ -365,18 +365,12 @@ struct Item {
   }
   Item(Item& o) : Item(static_cast<const Item&>(o)) {}
 
-  ~Item() {
-    switch (type) {
-      case ItemType::Pair: pair.~Pair(); break;
-      case ItemType::Loop: loop.~Loop(); break;
-      case ItemType::Frame: frame.~Block(); break;
-      case ItemType::Comment: pair.~Pair(); break;
-      case ItemType::Erased: break;
-    }
-  }
+  Item& operator=(Item&& o) { set_value(std::forward<Item>(o)); return *this; }
+
+  ~Item() { destruct(); }
 
   void erase() {
-    this->~Item();
+    destruct();
     type = ItemType::Erased;
   }
 
@@ -396,13 +390,23 @@ struct Item {
         case ItemType::Erased: break;
       }
     } else {
-      this->~Item();
+      destruct();
       type = o.type;
       move_value(std::move(o));
     }
   }
 
 private:
+  void destruct() {
+    switch (type) {
+      case ItemType::Pair: pair.~Pair(); break;
+      case ItemType::Loop: loop.~Loop(); break;
+      case ItemType::Frame: frame.~Block(); break;
+      case ItemType::Comment: pair.~Pair(); break;
+      case ItemType::Erased: break;
+    }
+  }
+
   void copy_value(const Item& o) {
     if (o.type == ItemType::Pair || o.type == ItemType::Comment)
       new (&pair) Pair(o.pair);
