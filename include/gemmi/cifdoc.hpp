@@ -365,7 +365,7 @@ struct Item {
   }
   Item(Item& o) : Item(static_cast<const Item&>(o)) {}
 
-  Item& operator=(Item&& o) { set_value(std::forward<Item>(o)); return *this; }
+  Item& operator=(Item o) { set_value(std::move(o)); return *this; }
 
   ~Item() { destruct(); }
 
