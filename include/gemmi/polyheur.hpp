@@ -49,9 +49,11 @@ inline PolymerType check_polymer_type(const SubChain& polymer) {
   return PolymerType::Unknown;
 }
 
-// TODO: use it in remove_ligands_and_waters()
 inline bool is_polymer_residue(const Residue& res, PolymerType ptype) {
   ResidueInfo info = find_tabulated_residue(res.name);
+  // If a standard residue is HETATM we assume that it is in the buffer.
+  if (info.found() && info.is_standard() && res.het_flag == 'H')
+    return false;
   switch (ptype) {
     case PolymerType::PeptideL:
     case PolymerType::PeptideD:
