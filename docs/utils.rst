@@ -4,7 +4,8 @@ Gemmi program
 The library comes with a command-line program which is also called gemmi;
 running a program is easier than calling a library function.
 
-The program has a few subcommands, each of them is a separate utility:
+This program is actually a set of small programs; each of them
+corresponding to a subcommand:
 
 .. literalinclude:: gemmi-help.txt
    :language: console
@@ -353,3 +354,37 @@ contact
 
 .. literalinclude:: contact-help.txt
    :language: console
+
+btest
+=====
+
+Predicts B-factors (ADPs) from coordinates.
+
+Protein flexibility and dynamic properties can be to some degree inferred
+from atomic coordinates of the structure. Various approaches can be used:
+molecular dynamics, Gaussian or elastic network models, normal mode analysis,
+calculation of solvent accessibility or local packing density, and so on.
+
+Here we go for the simplest solution, which is also one of the most effective.
+It starts from a 2002 PNAS paper, by Bertil Halle, that concluded that
+B-factors are more accurately predicted from counting nearby atoms
+than from Gaussian network models. The calculation in this paper were using
+only 38 high resolution structures, but later on the method was validated
+by other authors.
+
+In particular, in 2007 Manfred Weiss brought this method to the attention
+of crystallographers by analysing in Acta Cryst D different variants
+of the methods on a wider set of more representative crystal structures.
+In principle, predicting ADPs may have some use. For example,
+one of the Weiss' variants was utilized in guessing which high B-factors
+(high comparing with the value obtained from atom counting)
+result from the radiation damage.
+
+The next big step happened in 2008 when Chih-Peng Lin et al. published
+a simple yet significant improvement: weighting the counted atoms
+by the inverse of squared distance (1/d^2). This method is called WCN
+(weighted contact number).
+
+TBC
+
+

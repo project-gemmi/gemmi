@@ -136,7 +136,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     for (const std::string& path : paths) {
       if (verbose > 0)
         std::printf("File: %s\n", path.c_str());
-      Structure st = read_structure(path);
+      Structure st = read_structure_gz(path);
       Result r = test_bfactor_models(st);
       printf("%s <B>=%#.4g for %5d atoms   CC=%#.4g  rankCC=%#.4g\n",
              st.name.c_str(), r.b_mean, r.n, r.cc, r.rank_cc);
