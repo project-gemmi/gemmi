@@ -361,30 +361,99 @@ btest
 Predicts B-factors (ADPs) from coordinates.
 
 Protein flexibility and dynamic properties can be to some degree inferred
-from atomic coordinates of the structure. Various approaches can be used:
+from atomic coordinates of the structure. Various approaches are used
+in the literature:
 molecular dynamics, Gaussian or elastic network models, normal mode analysis,
 calculation of solvent accessibility or local packing density, and so on.
 
-Here we go for the simplest solution, which is also one of the most effective.
-It starts from a 2002 PNAS paper, by Bertil Halle, that concluded that
-B-factors are more accurately predicted from counting nearby atoms
-than from Gaussian network models. The calculation in this paper were using
-only 38 high resolution structures, but later on the method was validated
-by other authors.
+Here we apply the simplest approach, which is pretty effective.
+It originates in a 2002 PNAS paper in which
+`Bertil Halle <http://www.pnas.org/content/99/3/1274>`_,
+concluded that B-factors are more accurately predicted
+from counting nearby atoms than from Gaussian network models. This claim was
+based on analysis of only 38 high resolution structures, but later on the
+method was validated by other authors.
 
-In particular, in 2007 Manfred Weiss brought this method to the attention
-of crystallographers by analysing in Acta Cryst D different variants
-of the methods on a wider set of more representative crystal structures.
-In principle, predicting ADPs may have some use. For example,
-one of the Weiss' variants was utilized in guessing which high B-factors
-(high comparing with the value obtained from atom counting)
-result from the radiation damage.
+In particular, in 2007
+`Manfred Weiss <https://doi.org/10.1107/S0907444907052146>`_
+brought this method to the attention of crystallographers
+by analysing in Acta Cryst D different variants of the methods
+on a wider set of more representative crystals.
+The parameters fine-tuned by Weiss are is still being used in the MX field.
+Recently, for guessing which high B-factors (high comparing with
+the predicted value) result from the radiation damage.
 
-The next big step happened in 2008 when Chih-Peng Lin et al. published
-a simple yet significant improvement: weighting the counted atoms
-by the inverse of squared distance (1/d^2). This method is called WCN
-(weighted contact number).
+About the same time, in a 2008 paper in Proteins,
+`Chih-Peng Lin et al. <https://doi.org/10.1002/prot.21983>`_
+devised a simple yet significant improvement to the original Halle's method:
+weighting the counted atoms by 1/d^2, the inverse of squared distance.
+(Note that the average number of atoms in distance d is ~ d^2).
+This method was named WCN (weighted contact number), although it takes
+into account all atoms, not just nearby contacts.
+
+These two methods are so simple that it seems easy to find a better one.
+But according to my quick literature search, no better method of this kind
+exists. In 2009
+`Li and Bruschweiler <https://doi.org/10.1016/j.bpj.2009.01.011>`_
+proposed weighting that decreases exponentially,
+but in my hands it does not give better results than WCN.
+
+Recently, in 2016,
+`Shahmoradi and Wilke <https://doi.org/10.1002/prot.25034>`_
+did a data analysis aiming to disentangle the effects of local
+and longer-range packing in the above methods.
+They were not concerned with B-factors, though.
+The very same methods predict other properties and this paper was focused
+on the rate of protein sequence evolution.
+Interestingly, if the exponent in WCN is treated as a parameter
+(equal -2 in the canonical version), the value -2.3 gives best results
+when predicting the rate of evolution.
+
+We also need to note that
+`TLS <https://doi.org/10.1107/S0567740868001718>`_-like methods
+that model B-factors as rigid-body motion of molecules are reported
+to give much better correlation with experimental B-factors
+than other methods. Rigid-body modelling uses experimental B-factors on
+the input and employs more parameters, so it cannot be directly compared
+with WCN, but still, these results must be kept in mind.
+`Soheilifard et al <https://doi.org/10.1088/1478-3975/5/2/026008>`_
+even suggest that the correlation between the B-factor and the proximity
+of the surface is because the surface is further from the rotation center.
+We may revisit rigid-body modelling in the future, but now we get back
+to contact numbers.
+
+This quick overview skipped a few details:
+
+* while the WCN method is consistently called WCN,
+  the Halle's method was named LDM (local density model) in the original paper,
+  and is called CN (contact number) in many other papers. CN is memorable
+  when comparing with WCN (which adds 'W' -- weighting).
+  Weiss named his procedure ACN (atomic contact model).
+
+* These method are used as either "atomic" (predicting B-factors, etc.)
+  or per-residue (evolutionary rate, etc.). In the latter case
+  one needs to decide what point of the residue to use as a reference,
+  but here we are only do per-atom calculations.
+
+* The CN method requires a cut-off, and the cut-off values vary widely,
+  from about 5 to 18Å. In the original paper it was 7.35Å,
+  Weiss got 7.0Å as the optimal value, Shahmoradi 14.3Å.
+
+* Furthermore, the CN can be seen as weighted by Heaviside step function,
+  and smoothing it helps a little bit (as reported by both Halle and Weiss).
+
+* Finally, these methods could be applied ignoring the symmetry mates
+  in the crystal. Halle did the calculations on both the crystal
+  and only the asymmetric unit, with the former giving better results.
+  TODO: check the other papers.
+
+TODO: write about rank correlation, normal correlation, scaling/fitting
+of CN/WCN, etc.
+
+Btest implements combination of the CN and WCN methods above.
+Being based on a crystallographic library, it avoids common pitfalls,
+such as searching for contacts in only neighbouring unit cells (1+26);
+some structures have contacts between molecules several unit cells apart,
+even it is only :ref:`a single chain in the asu <long_chain>`.
 
 TBC
-
-
