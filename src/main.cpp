@@ -5,6 +5,7 @@
 #include <cstring>
 #include "gemmi/version.hpp"
 
+int btest_main(int argc, char** argv);
 int contact_main(int argc, char** argv);
 int contents_main(int argc, char** argv);
 int convert_main(int argc, char** argv);
@@ -24,6 +25,7 @@ struct SubCmd {
 
 #define CMD(s, desc) { #s, &s##_main, desc }
 static SubCmd subcommands[] = {
+  CMD(btest, "predicts B-factors (ADPs) from coordinates using WCN"),
   CMD(contact, "searches for contacts (neighbouring atoms)"),
   CMD(contents, "info about content of a coordinate file (pdb, mmCIF, ...)"),
   CMD(convert, "convert file (CIF - JSON, mmCIF - PDB) or modify structure"),

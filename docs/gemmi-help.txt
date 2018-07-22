@@ -2,6 +2,7 @@ $ gemmi -h
 Usage: gemmi [--version] [--help] <command> [<args>]
 
 Commands:
+ btest         predicts B-factors (ADPs) from coordinates using WCN
  contact       searches for contacts (neighbouring atoms)
  contents      info about content of a coordinate file (pdb, mmCIF, ...)
  convert       convert file (CIF - JSON, mmCIF - PDB) or modify structure

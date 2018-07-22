@@ -1,0 +1,12 @@
+$ gemmi btest -h
+Usage:
+ gemmi btest [options] INPUT[...]
+B-factor model testing.
+  -h, --help       Print usage and exit.
+  -V, --version    Print version and exit.
+  --verbose        Verbose output.
+  -f, --file=FILE  obtain paths or PDB IDs from FILE, one per line
+  -l, --list       List per-residue values.
+  --min-dist=DIST  Minimum distance for "contacts" (default: 0.8).
+  --cutoff=DIST    Maximum distance for "contacts" (default: 15).
+  --pow=P          Exponent in the weighting (default: 2).

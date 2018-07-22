@@ -146,7 +146,7 @@ add_executable(gemmi-validate EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-validate)
 
 add_executable(gemmi-prog
-               src/contact.cpp src/contents.cpp src/convert.cpp
+               src/btest.cpp src/contact.cpp src/contents.cpp src/convert.cpp
                src/output.cpp src/grep.cpp src/main.cpp src/map.cpp
                src/mask.cpp src/sg.cpp src/validate.cpp
                $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:options>)

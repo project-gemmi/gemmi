@@ -2,6 +2,8 @@
 //
 // B-factor model testing
 
+// TODO: calculation in asu only
+
 #include <gemmi/subcells.hpp>
 #include <gemmi/elem.hpp>  // for is_hydrogen
 #include <gemmi/math.hpp>  // for Correlation
@@ -15,7 +17,8 @@
 
 using namespace gemmi;
 
-enum OptionIndex { Verbose=3, FromFile };
+enum OptionIndex { Verbose=3, FromFile, ListResidues,
+                   MinDist, MaxDist, Exponent };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -26,8 +29,22 @@ static const option::Descriptor Usage[] = {
     "  -V, --version  \tPrint version and exit." },
   { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { FromFile, 0, "f", "file", Arg::Required,
-    "  -f, --file=FILE  \tobtain file (or PDB ID) list from FILE" },
+    "  -f, --file=FILE  \tobtain paths or PDB IDs from FILE, one per line" },
+  { ListResidues, 0, "l", "list", Arg::None,
+    "  -l, --list  \tList per-residue values." },
+  { MinDist, 0, "", "min-dist", Arg::Float,
+    "  --min-dist=DIST  \tMinimum distance for \"contacts\" (default: 0.8)." },
+  { MaxDist, 0, "", "cutoff", Arg::Float,
+    "  --cutoff=DIST  \tMaximum distance for \"contacts\" (default: 15)." },
+  { Exponent, 0, "", "pow", Arg::Float,
+    "  --pow=P  \tExponent in the weighting (default: 2)." },
   { 0, 0, 0, 0, 0, 0 }
+};
+
+struct Params {
+  float min_dist = 0.8;
+  float max_dist = 15.0;
+  float exponent = 2;
 };
 
 // ranks are from 1 to data.size()
@@ -69,12 +86,16 @@ struct Result {
   double rank_cc;
 };
 
-// for now checks only LDM
-// from B. Halle (2002) http://www.pnas.org/content/99/3/1274
-static Result test_bfactor_models(const Structure& st) {
-  const float min_dist = 0.8f;
-  const float max_dist = 15.0f;
-  SubCells sc(st.models.at(0), st.cell, max_dist);
+static float calculate_weight(float dist_sq, const Params& params) {
+  if (params.exponent == 2.0)  // canonical WCN
+    return 1.0f / dist_sq;
+  if (params.exponent == 0.0) // CN (a.k.a ACN)
+    return 1.0f;
+  return pow(dist_sq, -0.5f * params.exponent);
+}
+
+static Result test_bfactor_models(const Structure& st, const Params& params) {
+  SubCells sc(st.models.at(0), st.cell, params.max_dist);
   const Model& model = st.models.at(0);
   std::vector<double> b_exper;
   std::vector<double> b_predict;
@@ -82,36 +103,26 @@ static Result test_bfactor_models(const Structure& st) {
     for (const Residue& res : chain.residues) {
       if (!find_tabulated_residue(res.name).is_amino_acid())
         continue;
-      for (const Atom& atom : res.atoms)
-        if (!is_hydrogen(atom.element)) {
-          double density = 0;
-          sc.for_each(atom.pos, atom.altloc, max_dist,
-                      [&](const SubCells::Mark& m, float dist_sq) {
-              if (dist_sq > sq(min_dist) && !is_hydrogen(m.element)) {
-                const_CRA cra = m.to_cra(model);
-                ResidueInfo res_inf = find_tabulated_residue(cra.residue->name);
-                if (res_inf.is_amino_acid()) {
-                  double occ = cra.atom->occ;
-                  //if (dist_sq < sq(7.35))
-                  //  density += occ;
-                  //density += occ * std::erfc(0.5 * (std::sqrt(dist_sq) - 7.0f)) / 2;
-                  //density += occ * std::erfc(0.2 * (std::sqrt(dist_sq) - 4.0f)) / 2;
-                  density += occ / dist_sq;
-                  //density += occ / pow(dist_sq, 2.3/2.0);
-                  //density += occ * std::exp(-std::sqrt(dist_sq) / 3.0f);
-                  //density += occ * (1 - std::sqrt(dist_sq) / max_dist);
-                  //density += occ / std::sqrt(dist_sq);
-                }
-              }
-          });
-          if (density == 0.0)
-            continue;
-          b_exper.push_back(atom.b_iso);
-          b_predict.push_back(1 / density);
-        }
+      for (const Atom& atom : res.atoms) {
+        if (is_hydrogen(atom.element))
+          continue;
+        double wcn = 0;
+        sc.for_each(atom.pos, atom.altloc, params.max_dist,
+                    [&](const SubCells::Mark& m, float dist_sq) {
+            if (dist_sq > sq(params.min_dist) && !is_hydrogen(m.element)) {
+              const_CRA cra = m.to_cra(model);
+              ResidueInfo res_inf = find_tabulated_residue(cra.residue->name);
+              if (res_inf.is_amino_acid())
+                wcn += calculate_weight(dist_sq, params) * cra.atom->occ;
+            }
+        });
+        if (wcn == 0.0)
+          continue;
+        b_exper.push_back(atom.b_iso);
+        b_predict.push_back(1 / wcn);
+      }
     }
   }
-  //normalize(b_exper);
   //normalize(b_predict);
   Correlation cc = calculate_correlation(b_exper, b_predict);
   Correlation rank_cc = calculate_correlation(get_ranks(b_exper),
@@ -130,6 +141,13 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   std::vector<std::string> paths = p.paths_from_args_or_file(FromFile, 0, true);
   bool verbose = p.options[Verbose].count();
+  Params params;
+  if (p.options[MinDist])
+    params.min_dist = std::strtod(p.options[MinDist].arg, nullptr);
+  if (p.options[MaxDist])
+    params.max_dist = std::strtod(p.options[MaxDist].arg, nullptr);
+  if (p.options[Exponent])
+    params.exponent = std::strtod(p.options[Exponent].arg, nullptr);
   double sum_cc = 0;
   double sum_rank_cc = 0;
   try {
@@ -137,7 +155,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (verbose > 0)
         std::printf("File: %s\n", path.c_str());
       Structure st = read_structure_gz(path);
-      Result r = test_bfactor_models(st);
+      Result r = test_bfactor_models(st, params);
       printf("%s <B>=%#.4g for %5d atoms   CC=%#.4g  rankCC=%#.4g\n",
              st.name.c_str(), r.b_mean, r.n, r.cc, r.rank_cc);
       sum_cc += r.cc;

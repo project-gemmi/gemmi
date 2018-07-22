@@ -7,7 +7,7 @@ BIN=.
 
 echo "\$ gemmi -h" > docs/gemmi-help.txt
 $BIN/gemmi -h >> docs/gemmi-help.txt
-for prog in contact contents convert grep map mask sg validate; do
+for prog in btest contact contents convert grep map mask sg validate; do
   echo "\$ gemmi $prog -h" > docs/$prog-help.txt
   $BIN/gemmi $prog -h >> docs/$prog-help.txt
 done

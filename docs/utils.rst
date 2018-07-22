@@ -379,9 +379,9 @@ In particular, in 2007
 brought this method to the attention of crystallographers
 by analysing in Acta Cryst D different variants of the methods
 on a wider set of more representative crystals.
-The parameters fine-tuned by Weiss are is still being used in the MX field.
-Recently, for guessing which high B-factors (high comparing with
-the predicted value) result from the radiation damage.
+Recently, the parameters fine-tuned by Weiss have been used for guessing
+which high B-factors (high comparing with the predicted value) result
+`from the radiation damage <https://doi.org/10.1107/S1600577515002131>`_.
 
 About the same time, in a 2008 paper in Proteins,
 `Chih-Peng Lin et al. <https://doi.org/10.1002/prot.21983>`_
@@ -433,13 +433,13 @@ This quick overview skipped a few details:
 * These method are used as either "atomic" (predicting B-factors, etc.)
   or per-residue (evolutionary rate, etc.). In the latter case
   one needs to decide what point of the residue to use as a reference,
-  but here we are only do per-atom calculations.
+  but here we do only per-atom calculations.
 
 * The CN method requires a cut-off, and the cut-off values vary widely,
   from about 5 to 18Å. In the original paper it was 7.35Å,
   Weiss got 7.0Å as the optimal value, Shahmoradi 14.3Å.
 
-* Furthermore, the CN can be seen as weighted by Heaviside step function,
+* The CN can be seen as weighted by Heaviside step function,
   and smoothing it helps a little bit (as reported by both Halle and Weiss).
 
 * Finally, these methods could be applied ignoring the symmetry mates
@@ -454,6 +454,9 @@ Btest implements combination of the CN and WCN methods above.
 Being based on a crystallographic library, it avoids common pitfalls,
 such as searching for contacts in only neighbouring unit cells (1+26);
 some structures have contacts between molecules several unit cells apart,
-even it is only :ref:`a single chain in the asu <long_chain>`.
+even with only :ref:`a single chain in the asu <long_chain>`.
 
 TBC
+
+.. literalinclude:: btest-help.txt
+   :language: console
