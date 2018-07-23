@@ -292,65 +292,74 @@ inline Restraints::Chirality::Type chirality_from_string(const std::string& s) {
   }
 }
 
-inline ChemComp make_chemcomp_from_cif(const std::string& name,
-                                       const cif::Document& doc) {
+inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
   ChemComp cc;
-  cc.name = name;
-  const cif::Block* block_ = doc.find_block("comp_" + name);
-  if (!block_)
-    block_ = doc.find_block(name);
-  if (!block_)
-    throw std::runtime_error("data_comp_" + name + " not in the cif file");
-  cif::Block* block = const_cast<cif::Block*>(block_);
-  cif::Block* aux_block = const_cast<cif::Block*>(doc.find_block("comp_list"));
-  cif::Column group_col = block->find_values("_chem_comp.group");
-  if (!group_col && aux_block)
-    group_col = aux_block->find_values("_chem_comp.group");
+  cc.name = block_.name.substr(starts_with(block_.name, "comp_") ? 5 : 0);
+  cif::Block& block = const_cast<cif::Block&>(block_);
+  cif::Column group_col = block.find_values("_chem_comp.group");
   if (group_col)
     cc.group = group_col.str(0);
-  for (auto row : block->find("_chem_comp_atom.",
-                              {"atom_id", "type_symbol", "type_energy"}))
+  for (auto row : block.find("_chem_comp_atom.",
+                             {"atom_id", "type_symbol", "type_energy"}))
     cc.atoms.push_back({row.str(0), Element(row.str(1)), row.str(2)});
-  for (auto row : block->find("_chem_comp_bond.",
-                              {"atom_id_1", "atom_id_2",
-                               "type",
-                               "?aromatic",
-                               "value_dist", "value_dist_esd"}))
+  for (auto row : block.find("_chem_comp_bond.",
+                             {"atom_id_1", "atom_id_2",
+                              "type",
+                              "?aromatic",
+                              "value_dist", "value_dist_esd"}))
     cc.rt.bonds.push_back({{1, row.str(0)}, {1, row.str(1)},
                            bond_type_from_string(row[2]),
                            row.has2(3) && row[3][0] == 'y',
                            cif::as_number(row[4]), cif::as_number(row[5])});
-  for (auto row : block->find("_chem_comp_angle.",
-                              {"atom_id_1", "atom_id_2", "atom_id_3",
-                               "value_angle", "value_angle_esd"}))
+  for (auto row : block.find("_chem_comp_angle.",
+                             {"atom_id_1", "atom_id_2", "atom_id_3",
+                              "value_angle", "value_angle_esd"}))
     cc.rt.angles.push_back({{1, row.str(0)}, {1, row.str(1)}, {1, row.str(2)},
                             cif::as_number(row[3]), cif::as_number(row[4])});
-  for (auto row : block->find("_chem_comp_tor.",
-                              {"id",
-                               "atom_id_1", "atom_id_2",
-                               "atom_id_3", "atom_id_4",
-                               "value_angle", "value_angle_esd",
-                               "period"}))
+  for (auto row : block.find("_chem_comp_tor.",
+                             {"id",
+                              "atom_id_1", "atom_id_2",
+                              "atom_id_3", "atom_id_4",
+                              "value_angle", "value_angle_esd",
+                              "period"}))
     cc.rt.torsions.push_back({row.str(0),
                               {1, row.str(1)}, {1, row.str(2)},
                               {1, row.str(3)}, {1, row.str(4)},
                               cif::as_number(row[5]), cif::as_number(row[6]),
                               cif::as_int(row[7])});
-  for (auto row : block->find("_chem_comp_chir.",
-                              {"atom_id_centre",
-                               "atom_id_1", "atom_id_2", "atom_id_3",
-                               "volume_sign"}))
+  for (auto row : block.find("_chem_comp_chir.",
+                             {"atom_id_centre",
+                              "atom_id_1", "atom_id_2", "atom_id_3",
+                              "volume_sign"}))
     if (row[4][0] != 'c') // ignore crossN
       cc.rt.chirs.push_back({{1, row.str(0)},
                              {1, row.str(1)}, {1, row.str(2)}, {1, row.str(3)},
                              chirality_from_string(row[4])});
-  for (auto row : block->find("_chem_comp_plane_atom.",
-                              {"plane_id", "atom_id" , "dist_esd"})) {
+  for (auto row : block.find("_chem_comp_plane_atom.",
+                             {"plane_id", "atom_id" , "dist_esd"})) {
     Restraints::Plane& plane = cc.rt.get_or_add_plane(row.str(0));
     if (plane.esd == 0.0)
       plane.esd = cif::as_number(row[2]);
     plane.ids.push_back({1, row.str(1)});
   }
+  return cc;
+}
+
+inline ChemComp make_chemcomp_from_cif(const std::string& name,
+                                       const cif::Document& doc) {
+  const cif::Block* block = doc.find_block("comp_" + name);
+  if (!block)
+    block = doc.find_block(name);
+  if (!block)
+    throw std::runtime_error("data_comp_" + name + " not in the cif file");
+  ChemComp cc = make_chemcomp_from_block(*block);
+  if (cc.group.empty())
+    if (const cif::Block* list = doc.find_block("comp_list")) {
+      cif::Table tab =
+        const_cast<cif::Block*>(list)->find("_chem_comp.", {"id", "group"});
+      if (tab.ok())
+        cc.group = tab.find_row(name).str(1);
+    }
   return cc;
 }
 
