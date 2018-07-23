@@ -106,6 +106,39 @@ struct Restraints {
   }
 
   template<typename T>
+  void for_each_bonded_atom(const AtomId& a, const T& func) const {
+    for (const Bond& bond : bonds) {
+      if (bond.id1 == a)
+        func(bond.id2);
+      else if (bond.id2 == a)
+        func(bond.id1);
+    }
+  }
+
+  // BFS
+  std::vector<AtomId> find_shortest_path(const AtomId& a, const AtomId& b,
+                                         std::vector<AtomId> visited) const {
+    int start = visited.size();
+    int end = -1;
+    visited.push_back(b);
+    std::vector<int> parent(visited.size(), -1);
+    for (size_t n = start; end == -1 && n != visited.size(); ++n) {
+      for_each_bonded_atom(visited[n], [&](const AtomId& id) {
+          if (id == a)
+            end = visited.size();
+          if (!in_vector(id, visited)) {
+            visited.push_back(id);
+            parent.push_back(n);
+          }
+      });
+    }
+    std::vector<AtomId> path;
+    for (int n = end; n != -1; n = parent[n])
+      path.push_back(visited[n]);
+    return path;
+  }
+
+  template<typename T>
   std::vector<Angle>::iterator find_angle(const T& a, const T& b, const T& c) {
     return std::find_if(angles.begin(), angles.end(), [&](const Angle& ang) {
         return ang.id2 == b && ((ang.id1 == a && ang.id3 == c) ||
