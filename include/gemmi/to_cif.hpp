@@ -81,7 +81,7 @@ inline bool should_be_separted_(const Item& a, const Item& b) {
 }
 
 inline void write_cif_to_stream(std::ostream& os, const Document& doc,
-                                Style s) {
+                                Style s=Style::Simple) {
   bool first = true;
   for (const Block& block : doc.blocks) {
     if (!first)
