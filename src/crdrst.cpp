@@ -131,12 +131,10 @@ static std::string get_link_type(const gemmi::Residue& res,
     return "gap";
   if (is_polypeptide(ptype)) {
     std::string link = prev->is_cis ? "CIS" : "TRANS";
-    if ((res.name == "PRO" || residue_group == "P-peptide") &&
-        link == "TRANS" /* TODO: remove when we don't need makecif compat*/) {
-      link = "P" + link;
-    } else if (residue_group == "M-peptide") {
-      link = "NM" + link;
-    }
+    if (residue_group == "P-peptide")
+      link = "P" + link;  // PCIS, PTRANS
+    else if (residue_group == "M-peptide")
+      link = "NM" + link; // NMCIS, NMTRANS
     return link;
   }
   if (is_polynucleotide(ptype))
