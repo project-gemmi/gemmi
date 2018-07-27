@@ -130,6 +130,11 @@ class BuildExt(build_ext):
         elif ct == 'msvc':
             opts.append('/DVERSION_INFO=\\"%s\\"' %
                         self.distribution.get_version())
+        elif ct.startswith('mingw'):
+            # avoid has_flag() - it didn't work for us in msys2/mingw setup
+            opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())
+            opts.append('-std=c++14')
+            opts.append('-fvisibility=hidden')
         for ext in self.extensions:
             ext.extra_compile_args = opts
         build_ext.build_extensions(self)
