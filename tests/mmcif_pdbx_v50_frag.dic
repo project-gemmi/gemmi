@@ -1,0 +1,1192 @@
+# fragment of the original mmcif_pdbx_v50.dic file used for testing
+
+data_mmcif_pdbx.dic
+
+    _datablock.id                          mmcif_pdbx.dic
+    _datablock.description
+;
+     This data block holds the Protein Data Bank Exchange Data dictionary.
+
+;
+
+    _dictionary.title           mmcif_pdbx.dic
+    _dictionary.datablock_id    mmcif_pdbx.dic
+    _dictionary.version         5.292
+#
+     loop_
+    _dictionary_history.version
+    _dictionary_history.update
+    _dictionary_history.revision
+  5.100   2012-08-21
+;
+  Changes (jdw):
+  + Release as provisional version 5.100
+;
+  5.101   2012-08-22
+;
+  Changes (jdw):
+  +  added provisional extension for multi-source entities
+  +  added provisional extension for branched entities
+  +  added provisional extension for residues on special positions
+  +  added provisional extension for NMR data items for D&A deposition system
+  +  added provisional extension for identifying the ligand in a site
+;
+
+# <snip>
+
+##################
+## SUB_CATEGORY ##
+##################
+
+     loop_
+    _sub_category.id
+    _sub_category.description
+              'cartesian_coordinate'
+;              The collection of x, y, and z components of a position specified
+               with reference to a Cartesian (orthogonal Angstrom) coordinate
+               system.
+;
+              'cartesian_coordinate_esd'
+;              The collection of estimated standard deviations of the x, y, and
+               z components of a position specified with reference to a
+               Cartesian (orthogonal Angstrom) coordinate system.
+;
+              'fractional_coordinate'
+;              The collection of x, y, and z components of a position specified
+               with reference to unit cell directions.
+;
+              'fractional_coordinate_esd'
+;              The collection of estimated standard deviations of the x, y, and
+               z components of a position specified with reference to unit cell
+               directions.
+;
+              'matrix'
+;              The collection of elements of a matrix.
+;
+               miller_index
+;              The collection of h, k, and l components of the Miller index of
+               a reflection.
+;
+              'cell_length'
+;              The collection of a, b, and c axis lengths of a unit cell.
+;
+              'cell_length_esd'
+;              The collection of estimated standard deviations of the a, b, and
+               c axis lengths of a unit cell.
+;
+              'cell_angle'
+;              The collection of alpha, beta, and gamma angles of a unit cell.
+;
+              'cell_angle_esd'
+;              The collection of estimated standard deviations of the alpha,
+               beta, and gamma angles of a unit cell.
+;
+              'mm_atom_site_auth_label'
+;              The collection of asym id, atom id, comp id and seq id
+               components of an author's alternative specification for
+               a macromolecular atom site.
+;
+              'mm_atom_site_label'
+;              The collection of alt id, asym id, atom id, comp id and seq id
+               components of the label for a macromolecular atom site.
+;
+              'vector'
+;              The collection of elements of a vector.
+;
+
+#########################
+## CATEGORY_GROUP_LIST ##
+#########################
+
+     loop_
+    _category_group_list.id
+    _category_group_list.parent_id
+    _category_group_list.description
+##
+              'inclusive_group'   .
+;              The parent category group containing all of the data categories in the macromolecular dictionary.
+;
+              'atom_group'
+              'inclusive_group'
+;              Categories that describe the properties of atoms.
+;
+             'array_data_group'
+             'inclusive_group'
+;             Categories that describe array data.
+;
+             'axis_group'
+             'inclusive_group'
+;             Categories that describe axes.
+;
+              'audit_group'
+              'inclusive_group'
+;              Categories that describe dictionary maintenance and
+               identification.
+;
+              'cell_group'
+              'inclusive_group'
+;              Categories that describe the unit cell.
+;
+              'chemical_group'
+              'inclusive_group'
+;              Categories that describe chemical features derived from the experimental coordinate data.
+;
+              'chem_comp_group'
+              'inclusive_group'
+;              Categories that define the chemical structure and nomenclature of the momoners and ligands in the experiment.
+;
+              'chem_comp_dictionary_group'
+              'inclusive_group'
+;              Categories defining chemical structure and nomenclature of the momoners and ligands used in
+               the Chemical Component Dictionary.
+;
+
+              'chem_comp_model_group'
+              'inclusive_group'
+;              Categories defining structural models for chemical components defined in the Chemical Component Dictionary.
+;
+
+              'bird_dictionary_group'
+              'inclusive_group'
+;              Categories defining chemical structure and nomenclature of the small polymer molecules used in
+               the Biologically Interesting Molecule Reference Dictionary (BIRD).
+;
+
+              'bird_family_dictionary_group'
+              'inclusive_group'
+;              Categories defining families of related molecules used in the Biologically Interesting Molecule Reference Dictionary (BIRD).
+;
+
+              'chem_link_group'
+              'inclusive_group'
+;              Categories that describe links between components of
+               chemical structure.
+;
+              'citation_group'
+              'inclusive_group'
+;              Categories that provide bibliographic references.
+;
+              'computing_group'
+              'inclusive_group'
+;              Categories that describe the computational details of the experiment.
+;
+              'compliance_group'
+              'inclusive_group'
+;              Categories that are included in this dictionary specifically to
+               comply with previous dictionaries.
+;
+              'database_group'
+              'inclusive_group'
+;              Categories that hold references to entries in databases that
+               contain related information.
+;
+              'diffrn_group'
+              'inclusive_group'
+;              Categories that describe details of the diffraction experiment.
+;
+              'em_group'
+              'inclusive_group'
+;              Categories that describe 3-dimensional electron microscopy.
+;
+              'em_legacy_group'
+              'inclusive_group'
+;              Categories that describe 3-dimensional electron microscopy (legacy).
+;
+              'emdb_admin_group'
+              'inclusive_group'
+;              Administrative Categories for Electron Microscopy Data Bank.
+;
+              'emdb_extension_group'
+              'inclusive_group'
+;              Categories that describe 3-dimensional electron microscopy (EMDB extension).
+;
+              'entity_group'
+              'inclusive_group'
+;              Categories that describe the unique chemical and molecular entities.
+;
+              'entry_group'
+              'inclusive_group'
+;              Categories that pertain to the entire data block.
+;
+              'exptl_group'
+              'inclusive_group'
+;              Categories that hold details of the experimental conditions.
+;
+              'geom_group'
+              'inclusive_group'
+;              Categories that hold details of molecular and crystal geometry.
+;
+              'iucr_group'
+              'inclusive_group'
+;              Categories that are used for manuscript submission and
+               internal processing by the staff of the International Union of
+               Crystallography.
+;
+              'nmr_group'
+              'inclusive_group'
+;              Categories that describe Nuclear Magnetic Spectroscopy experiments.
+;
+              'pdb_group'
+              'inclusive_group'
+;              Categories that pertain to the file-format or data-processing
+               codes used by the Protein Data Bank.
+;
+              'phasing_group'
+              'inclusive_group'
+;              Categories that describe phasing.
+;
+              'refine_group'
+              'inclusive_group'
+;              Categories that describe refinement.
+;
+              'refln_group'
+              'inclusive_group'
+;              Categories that describe the details of reflection measurements.
+;
+              'struct_group'
+              'inclusive_group'
+;              Categories that contain details about the experimental structure.
+;
+              'symmetry_group'
+              'inclusive_group'
+;              Categories that describe symmetry information.
+;
+             'pdbx_group'
+             'inclusive_group'
+;             Categories which have been added to support the data archiving and exchange for the Protein Data Bank.
+;
+             'pdbx_erf_group'
+             'inclusive_group'
+;             Categories which are used by RCSB PDB to store derived
+              and computed data.
+;
+             'ccp4_group'
+             'inclusive_group'
+;             Categories from the CCP4 harvest dictionary.
+;
+             'ndb_group'
+             'inclusive_group'
+;             Categories which are used by the Nucleic Acid Database.
+;
+             'rcsb_group'
+             'inclusive_group'
+;             Categories which are used internally by the RCSB PDB.
+;
+             'protein_production_group'
+             'inclusive_group'
+;             Categories which describe the details of protein production.
+;
+             'solution_scattering_group'
+             'inclusive_group'
+;             Categories which describe the details of solution scattering experiments.
+;
+              'validate_group'
+              'inclusive_group'
+;              Categories that describe geometric properties
+               of residues that deviate from expected standards
+               by 6 * the expected RMSD
+;
+             'view_group'
+             'inclusive_group'
+;             Categories which are used to storing view transformations.
+;
+
+              'em_specimen'
+              'inclusive_group'
+;              Categories that describe electron microscopy specimens.
+;
+
+              'em_sample'
+              'inclusive_group'
+;              Categories that describe electron microscopy samples.
+;
+
+              'em_crystallography'
+              'inclusive_group'
+;              Categories that describe electron crystallography.
+;
+              'em_fitting'
+              'inclusive_group'
+;              Categories that describe electron microscopy fitting.
+;
+              'em_tomography'
+              'inclusive_group'
+;              Categories that describe electron tomography.
+;
+              'em_imaging'
+              'inclusive_group'
+;              Categories that describe electron microscopy imaging.
+;
+
+              'em_reconstruction'
+              'inclusive_group'
+;              Categories that describe electron microscopy reconstruction.
+;
+              'em_symmetry_group'
+              'inclusive_group'
+;              Categories that describe electron microscopy symmetry.
+;
+              'em_experiment'
+              'inclusive_group'
+;              Categories that describe electron microscopy experimental details.
+;
+              'em_symmetry'
+              'inclusive_group'
+;              Categories that describe electron microscopy symmetry details.
+;
+
+              'emd_group'
+              'inclusive_group'
+;              Categories describing electron microscopy that are used by the wwPDB deposition and annotation system.
+;
+              'chem_comp_model_group'
+              'inclusive_group'
+;              Categories describing experimental and computational models for individual chemical components.
+;
+              'dcc_group'
+              'inclusive_group'
+;              Categories output by the crystallographic data utility application DCC.
+;
+              'xfel_group'
+              'inclusive_group'
+;              Categories that describe X-ray Free Electron Laser (XFEL) data collection and experimental details.
+;
+              'diffrn_data_set_group'
+              'inclusive_group'
+;              Categories extending the description of measured diffraction data.
+;
+
+####################
+## ITEM_TYPE_LIST ##
+####################
+#
+#
+#  The regular expressions defined here are not compliant
+#  with the POSIX 1003.2 standard as they include the
+#  '\n' and '\t' special characters.  These regular expressions
+#  have been tested using version 0.12 of Richard Stallman's
+#  GNU regular expression library in POSIX mode.
+#
+#
+# For some data items, a standard syntax is assumed. The syntax is
+#   described for each data item in the dictionary, but is summarized here:
+#
+#   Names:     The family name(s) followed by a comma, precedes the first
+#              name(s) or initial(s).
+#
+#   Telephone numbers:
+#              The international code is given in brackets and any extension
+#              number is preceded by 'ext'.
+#
+#   Dates:     In the form yyyy-mm-dd.
+#
+##############################################################################
+
+     loop_
+    _item_type_list.code
+    _item_type_list.primitive_code
+    _item_type_list.construct
+    _item_type_list.detail
+               code      char
+               '[][_,.;:"&<>()/\{}'`~!@#$%A-Za-z0-9*|+-]*'
+;              code item types/single words ...
+;
+               ucode      uchar
+               '[][_,.;:"&<>()/\{}'`~!@#$%A-Za-z0-9*|+-]*'
+;              code item types/single words  (case insensitive) ...
+;
+               line      char
+               '[][ \t_(),.;:"&<>/\{}'`~!@#$%?+=*A-Za-z0-9|^-]*'
+;              char item types / multi-word items ...
+;
+               uline      uchar
+               '[][ \t_(),.;:"&<>/\{}'`~!@#$%?+=*A-Za-z0-9|^-]*'
+;              char item types / multi-word items (case insensitive)...
+;
+               text      char
+               '[][ \n\t()_,.;:"&<>/\{}'`~!@#$%?+=*A-Za-z0-9|^-]*'
+;              text item types / multi-line text ...
+;
+               int       numb
+               '[+-]?[0-9]+'
+;              int item types are the subset of numbers that are the negative
+               or positive integers.
+;
+               float     numb
+          '-?(([0-9]+)[.]?|([0-9]*[.][0-9]+))([(][0-9]+[)])?([eE][+-]?[0-9]+)?'
+;              float item types are the subset of numbers that are the floating
+               numbers.
+;
+               name      uchar
+               '_[_A-Za-z0-9]+\.[][_A-Za-z0-9%-]+'
+;              name item types take the form...
+;
+               idname    uchar
+               '[_A-Za-z0-9]+'
+;              idname item types take the form...
+;
+               any       char
+               '.*'
+;              A catch all for items that may take any form...
+;
+               yyyy-mm-dd  char
+                '[0-9]?[0-9]?[0-9][0-9]-[0-9]?[0-9]-[0-9][0-9]'
+;
+               Standard format for CIF dates.
+;
+               yyyy-mm-dd:hh:mm-flex  char
+                '[0-9][0-9][0-9][0-9](-[0-9]?[0-9])?(-[0-9][0-9])?(:[0-9]?[0-9]:[0-9][0-9])?'
+;
+               Flexible date-time format.
+;
+               uchar3    uchar
+              '[+]?[A-Za-z0-9][A-Za-z0-9]?[A-Za-z0-9]?'
+;
+               data item for 3 character codes
+;
+               uchar1    uchar
+              '[+]?[A-Za-z0-9]'
+;
+               data item for 1 character codes
+;
+               symop    char
+               '([1-9]|[1-9][0-9]|1[0-8][0-9]|19[0-2])(_[1-9][1-9][1-9])?'
+;              symop item types take the form n_klm, where n refers to the
+               symmetry operation that is applied to the coordinates in the
+               ATOM_SITE category identified by _atom_site_label.  It must
+               match a number given in _symmetry_equiv_pos_site_id.
+
+               k, l, and m refer to the translations that are subsequently
+               applied to the symmetry transformed coordinates to generate
+               the atom used.  These translations (x,y,z) are related to
+               (k,l,m) by
+                     k = 5 + x
+                     l = 5 + y
+                     m = 5 + z
+               By adding 5 to the translations, the use of negative numbers
+               is avoided.
+;
+               atcode      char
+               '[][ _(),.;:"&<>/\{}'`~!@#$%?+=*A-Za-z0-9|^-]*'
+;              Character data type for atom names  ...
+;
+               yyyy-mm-dd:hh:mm  char
+    '[0-9]?[0-9]?[0-9][0-9]-[0-9]?[0-9](-[0-9]?[0-9])?(:[0-9]?[0-9]:[0-9][0-9])?'
+;
+               Standard format for CIF dates with optional time stamp.
+;
+               fax      uchar
+               '[_,.;:"&<>/\{}'`~!@#$%A-Za-z0-9*|+-]*'
+;              code item types/single words  (case insensitive) ...
+;
+               phone      uchar
+               '[_,.;:"&<>/\{}'`~!@#$%A-Za-z0-9*|+-]*'
+;              code item types/single words  (case insensitive) ...
+;
+               email      uchar
+               '[_,.;:"&<>/\{}'`~!@#$%A-Za-z0-9*|+-]*'
+;              code item types/single words  (case insensitive) ...
+;
+               int-range       numb
+               '[+-]?[0-9]+-[+-]?[0-9]+'
+#               '-?[0-9]+(--?[0-9]+)?'
+;              range of integer item types are the subset of numbers that are the negative
+               or positive integers.
+;
+               float-range     numb
+ '-?(([0-9]+)[.]?|([0-9]*[.][0-9]+))([(][0-9]+[)])?([eE][+-]?[0-9]+)?(--?(([0-9]+)[.]?|([0-9]*[.][0-9]+))([(][0-9]+[)])?([eE][+-]?[0-9]+)?)?'
+;              int item types are the subset of numbers that are the floating
+               numbers.
+;
+              code30  char
+        '.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?.?'
+        'A string value, not allowed to exceed 30 characters.'
+#
+               binary    char
+;\n--CIF-BINARY-FORMAT-SECTION--\n\
+[][ \n\t()_,.;:"&<>/\{}'`~!@#$%?+=*A-Za-z0-9|^-]*\
+\n--CIF-BINARY-FORMAT-SECTION----
+;
+;              binary items are presented as MIME-like ascii-encoded
+               sections in an imgCIF.  In a CBF, raw octet streams
+               are used to convey the same information.
+;
+# Place-holder regex for this to avoid breaking any software.
+               operation_expression      char
+               '[][ \t_(),.;:"&<>/\{}'`~!@#$%?+=*A-Za-z0-9|^-]*'
+;              sequence of parenthetical integer ranges and character codes
+;
+               ec-type   char
+#    '[1-6](.[1-9][0-9]?)?(.[1-9][0-9]?)?(.[1-9][0-9]?[0-9]?)?'
+    '([1-6]((.[1-9][0-9]?)|(.-))((.[1-9][0-9]?)|(.-))((.[1-9][0-9]?[0-9]?)|(.-)))(([ ]*,[ ]*)([1-6]((.[1-9][0-9]?)|(.-))((.[1-9][0-9]?)|(.-))((.[1-9][0-9]?[0-9]?)|(.-))))*'
+;
+               Approximate format of Enzyme Commission EC number. 1.2.3.4 with
+               optional parts.
+;
+
+	       seq-one-letter-code char
+	'(([\nUGPAVLIMCFYWHKRQNEDSTX]+)?|(\([0-9A-Z][0-9A-Z]?[0-9A-Z]?\))?)+'
+;  One letter code sequence supporting parenthetical modified residues with 3-letter codes
+;
+               ucode-alphanum-csv      uchar
+               '[A-Za-z0-9]+(,[A-Za-z0-9]+)?'
+;              comma separated alpha numeric codes (single words)  (case insensitive) ...
+;
+               point_symmetry      char
+               '[CD][1-9]|[CD][1-9][0-9]*|T|O|I'
+;              Encodes point symmetry as Cn, Dn, T, O, or I  (case sensitive), where n is a positive integer.
+;
+               id_list              char
+               '[A-Za-z0-9]+(,[A-Za-z0-9]+)*'
+;              A list of comma separated chain or asym ids.
+;
+               3x4_matrices         char
+               '((([ \t]*-?(([0-9]+)[.]?|([0-9]*[.][0-9]+))([(][0-9]+[)])?([eE][+-]?[0-9]+)? +){3}?(-?(([0-9]+)[.]?|([0-9]*[.][0-9]+))([(][0-9]+[)])?([eE][+-]?[0-9]+)? *\n([\t ]*\n)*)){3})*(([ \t]*-?(([0-9]+)[.]?|([0-9]*[.][0-9]+))([(][0-9]+[)])?([eE][+-]?[0-9]+)? +){3}?(-?(([0-9]+)[.]?|([0-9]*[.][0-9]+))([(][0-9]+[)])?([eE][+-]?[0-9]+)? *\n([\t ]*\n)*)){2}(([ \t]*-?(([0-9]+)[.]?|([0-9]*[.][0-9]+))([(][0-9]+[)])?([eE][+-]?[0-9]+)? +){3}(-?(([0-9]+)[.]?|([0-9]*[.][0-9]+))([(][0-9]+[)])?([eE][+-]?[0-9]+)? *\n?([\t ]*\n)*))[ \t]*'
+;              A set of 3x4 matrices separated by spaces and newlines on each line.
+               Final newline optional. Optional spaces at start of lines. Blank lines accepted.
+;
+   non_negative_int    numb '[0-9]|[1-9][0-9]*' 'Non negative integers (0,1,2,..)'
+   positive_int        numb '[1-9][0-9]*'       'Positive integers (1,2,3,..)'
+   emd_id              char 'EMD-[1-9][0-9][0-9][0-9]' 'EMDB code'
+   pdb_id              char '[1-9][A-Z0-9][A-Z0-9][A-Z0-9]' 'PDB code (upper cases)'
+   point_group         char 'C[1-9][0-9]*|D[2-9]|D[1-9][0-9]+|O|T|I' 'Point group symmetry in Schoenflies notation'
+   point_group_helical char '[CD][1-9][0-9]*' 'Point group symmetry for helices in Schoenflies notation'
+   boolean char 'YES|NO' 'Boolean type'
+   #author char "[A-Za-z '\-]+,\s+([A-Z\-]+\.)+$" 'Author name in PDB format: Taylor, C.A.'
+   author char "[A-Za-z0-9_]+(( |-|'|\. )[A-Za-z0-9_]+)*( Jr.| III)?, [A-Za-z0-9_]\.(-?[A-Za-z0-9_]+\.)*$" 'Author name in PDB format: Taylor, C.A.'
+   orcid_id char "[0-9]{4}-[0-9]{4}-[0-9]{4}-([0-9]{3}X|[0-9]{4})"  'ORCID pattern - dddd-dddd-dddd-dddd|dddX'
+   symmetry_operation char '[-+0-9XxYyZ/ ]+,[-+0-9XxYyZ/ ]+,[-+0-9XxYyZ/ ]+' 'Allowed characters for use in symmetry operation such as 1/2-x,y,1/2-z'
+   sequence_dep        char '[a-zA-Z0-9\t \r\n\v\f\(\)]+$'  'Deposition specific one letter code'
+   date_dep            char '([1-9][0-9](([02468][048])|([13579][26]))-02-29)|[1-9][0-9][0-9][0-9]-((((0[1-9])|(1[0-2]))-((0[1-9])|(1[0-9])|(2[0-8])))|((((0[13578])|(1[02]))-31)|(((0[1,3-9])|(1[0-2]))-(29|30))))' 'Deposition specific date with better checking'
+
+#####################
+## ITEM_UNITS_LIST ##
+#####################
+
+     loop_
+    _item_units_list.code
+    _item_units_list.detail
+#
+     'metres'                 'metres (metres)'
+     'centimetres'            'centimetres (metres * 10^( -2)^)'
+     'millimetres'            'millimetres (metres * 10^( -3)^)'
+     'micrometres'            'micrometres (metres * 10^( -6)^)'
+     'nanometres'             'nanometres  (metres * 10^( -9)^)'
+     'nanometers'             'nanometers  (metres * 10^( -9)^)'
+     'angstroms'              'Angstroms   (metres * 10^(-10)^)'
+     'picometres'             'picometres  (metres * 10^(-12)^)'
+     'femtometres'            'femtometres (metres * 10^(-15)^)'
+#
+     'reciprocal_metres'      'reciprocal metres (metres^(-1)^)'
+     'reciprocal_centimetres'
+        'reciprocal centimetres ((metres * 10^( -2))^(-1))'
+     'reciprocal_millimetres'
+        'reciprocal millimetres ((metres * 10^( -3)^)^(-1)^)'
+     'reciprocal_nanometres'
+        'reciprocal nanometres  ((metres * 10^( -9)^)^(-1)^)'
+     'reciprocal_angstroms'
+        'reciprocal angstroms   ((metres * 10^(-10)^)^(-1)^)'
+     'reciprocal_picometres'
+        'reciprocal picometres  ((metres * 10^(-12)^)^(-1)^)'
+#
+     'micrometres_squared'    'micrometres squared (metres * 10^( -6)^)^2^'
+     'nanometres_squared'     'nanometres squared (metres * 10^( -9)^)^2^'
+     'angstroms_squared'      'Angstroms squared  (metres * 10^(-10)^)^2^'
+     '8pi2_angstroms_squared' '8pi^2^ * Angstroms squared (metres * 10^(-10)^)^2^'
+     'picometres_squared'     'picometres squared (metres * 10^(-12)^)^2^'
+#
+     'nanometres_cubed'       'nanometres cubed (metres * 10^( -9)^)^3^'
+     'angstroms_cubed'        'Angstroms cubed  (metres * 10^(-10)^)^3^'
+     'picometres_cubed'       'picometres cubed (metres * 10^(-12)^)^3^'
+#
+     'kilopascals'            'kilopascals'
+     'gigapascals'            'gigapascals'
+#
+     'hours'                  'hours'
+     'minutes'                'minutes'
+     'seconds'                'seconds'
+     'microseconds'           'microseconds (seconds * 10^( -6)^)'
+     'femtoseconds'           'femtoseconds (seconds * 10^( -15)^)'
+#
+     'degrees'                'degrees (of arc)'
+     'milliradians'           'milliradians (of arc)'
+#
+     'degrees_per_minute'     'degrees (of arc) per minute'
+#
+     'celsius'                'degrees (of temperature) Celsius'
+     'kelvins'                'degrees (of temperature) Kelvin'
+#
+     'electrons'              'electrons'
+#
+     'electrons_squared'      'electrons squared'
+#
+     'electrons_per_nanometres_cubed'
+; electrons per nanometres cubed (electrons/(metres * 10^( -9)^)^(-3)^)
+;
+     'electrons_per_angstroms_cubed'
+; electrons per Angstroms cubed (electrons/(metres * 10^(-10)^)^(-3)^)
+;
+     'electrons_per_picometres_cubed'
+; electrons per picometres cubed (electrons/(metres * 10^(-12)^)^(-3)^)
+;
+     'kilowatts'              'kilowatts'
+     'milliamperes'           'milliamperes'
+     'kilovolts'              'kilovolts'
+     'volts'                  'volts'
+#
+     'arbitrary'
+; arbitrary system of units.
+;
+#
+     'angstroms_degrees'      'Angstroms * degrees'
+#
+     'degrees_squared'        'degrees squared'
+#
+     'mg_per_ml'              'milliliter per milligram'
+#
+     'ml_per_min'             'milliliters per minute'
+     'microliters_per_min'     'microliters per minute'
+#
+     'milliliters'             'liter / 1000'
+#
+     'milligrams'             'grams / 1000'
+#
+     'megadaltons'            'megadaltons'
+     'kilodaltons'            'kilodaltons'
+     "kilodaltons/nanometer"  "kilodaltons/nanometer"
+#
+     'microns_squared'        'micrometres squared (metres * 10^( -6)^)^2^'
+     'microns'                'micrometres  (metres * 10^( -6)^)'
+#
+     'electrons_angstrom_squared'   'electrons square Angstrom'
+     'electron_volts'         'electron volts'
+     'kiloelectron_volts'     'KeV (electron volts * 10^( 3)^)'
+#     'mg/ml'                  'mg per milliliter'
+     'millimolar'             'millimolar'
+     'megagrams_per_cubic_metre'       'megagrams per cubic metre'
+     'pixels_per_millimetre'      'pixels per millimetre'
+     'counts'                 'counts'
+     'counts_per_photon'      'counts per photon'
+     'pascals'                'pascals'
+     'teraphotons_per_pulse'  '(photons * 10^( 12)^) per pulse'
+     'joules'                 'Joules'
+     'microjoules'             'joules * 10^( -6)^'
+     'hertz'                   'reciprocal seconds'
+#
+     loop_
+    _item_units_conversion.from_code
+    _item_units_conversion.to_code
+    _item_units_conversion.operator
+    _item_units_conversion.factor
+###
+     'metres'                   'centimetres'              '*'   1.0E+02
+     'metres'                   'millimetres'              '*'   1.0E+03
+     'metres'                   'nanometres'               '*'   1.0E+09
+     'metres'                   'angstroms'                '*'   1.0E+10
+     'metres'                   'picometres'               '*'   1.0E+12
+     'metres'                   'femtometres'              '*'   1.0E+15
+
+     'centimetres'              'millimetres'              '*'   1.0E+01
+     'centimetres'              'nanometres'               '*'   1.0E+07
+     'centimetres'              'angstroms'                '*'   1.0E+08
+     'centimetres'              'picometres'               '*'   1.0E+10
+     'centimetres'              'femtometres'              '*'   1.0E+13
+#
+     'millimetres'              'centimetres'              '*'   1.0E-01
+     'millimetres'              'nanometres'               '*'   1.0E+06
+     'millimetres'              'angstroms'                '*'   1.0E+07
+     'millimetres'              'picometres'               '*'   1.0E+09
+     'millimetres'              'femtometres'              '*'   1.0E+12
+#
+     'nanometres'               'centimetres'              '*'   1.0E-07
+     'nanometres'               'millimetres'              '*'   1.0E-06
+     'nanometres'               'angstroms'                '*'   1.0E+01
+     'nanometres'               'picometres'               '*'   1.0E+03
+     'nanometres'               'femtometres'              '*'   1.0E+06
+#
+     'angstroms'                'centimetres'              '*'   1.0E-08
+     'angstroms'                'millimetres'              '*'   1.0E-07
+     'angstroms'                'nanometres'               '*'   1.0E-01
+     'angstroms'                'picometres'               '*'   1.0E+02
+     'angstroms'                'femtometres'              '*'   1.0E+05
+#
+     'picometres'               'centimetres'              '*'   1.0E-10
+     'picometres'               'millimetres'              '*'   1.0E-09
+     'picometres'               'nanometres'               '*'   1.0E-03
+     'picometres'               'angstroms'                '*'   1.0E-02
+     'picometres'               'femtometres'              '*'   1.0E+03
+#
+     'femtometres'              'centimetres'              '*'   1.0E-13
+     'femtometres'              'millimetres'              '*'   1.0E-12
+     'femtometres'              'nanometres'               '*'   1.0E-06
+     'femtometres'              'angstroms'                '*'   1.0E-05
+     'femtometres'              'picometres'               '*'   1.0E-03
+###
+     'reciprocal_centimetres'   'reciprocal_millimetres'   '*'   1.0E-01
+     'reciprocal_centimetres'   'reciprocal_nanometres'    '*'   1.0E-07
+     'reciprocal_centimetres'   'reciprocal_angstroms'     '*'   1.0E-08
+     'reciprocal_centimetres'   'reciprocal_picometres'    '*'   1.0E-10
+#
+     'reciprocal_millimetres'   'reciprocal_centimetres'   '*'   1.0E+01
+     'reciprocal_millimetres'   'reciprocal_nanometres'    '*'   1.0E-06
+     'reciprocal_millimetres'   'reciprocal_angstroms'     '*'   1.0E-07
+     'reciprocal_millimetres'   'reciprocal_picometres'    '*'   1.0E-09
+#
+     'reciprocal_nanometres'    'reciprocal_centimetres'   '*'   1.0E+07
+     'reciprocal_nanometres'    'reciprocal_millimetres'   '*'   1.0E+06
+     'reciprocal_nanometres'    'reciprocal_angstroms'     '*'   1.0E-01
+     'reciprocal_nanometres'    'reciprocal_picometres'    '*'   1.0E-03
+#
+     'reciprocal_angstroms'     'reciprocal_centimetres'   '*'   1.0E+08
+     'reciprocal_angstroms'     'reciprocal_millimetres'   '*'   1.0E+07
+     'reciprocal_angstroms'     'reciprocal_nanometres'    '*'   1.0E+01
+     'reciprocal_angstroms'     'reciprocal_picometres'    '*'   1.0E-02
+#
+     'reciprocal_picometres'    'reciprocal_centimetres'   '*'   1.0E+10
+     'reciprocal_picometres'    'reciprocal_millimetres'   '*'   1.0E+09
+     'reciprocal_picometres'    'reciprocal_nanometres'    '*'   1.0E+03
+     'reciprocal_picometres'    'reciprocal_angstroms'     '*'   1.0E+01
+###
+     'nanometres_squared'       'angstroms_squared'        '*'   1.0E+02
+     'nanometres_squared'       'picometres_squared'       '*'   1.0E+06
+#
+     'angstroms_squared'        'nanometres_squared'       '*'   1.0E-02
+     'angstroms_squared'        'picometres_squared'       '*'   1.0E+04
+     'angstroms_squared'        '8pi2_angstroms_squared'   '*'   78.9568
+
+#
+     'picometres_squared'       'nanometres_squared'       '*'   1.0E-06
+     'picometres_squared'       'angstroms_squared'        '*'   1.0E-04
+###
+     'nanometres_cubed'         'angstroms_cubed'          '*'   1.0E+03
+     'nanometres_cubed'         'picometres_cubed'         '*'   1.0E+09
+#
+     'angstroms_cubed'          'nanometres_cubed'         '*'   1.0E-03
+     'angstroms_cubed'          'picometres_cubed'         '*'   1.0E+06
+#
+     'picometres_cubed'         'nanometres_cubed'         '*'   1.0E-09
+     'picometres_cubed'         'angstroms_cubed'          '*'   1.0E-06
+###
+     'kilopascals'              'gigapascals'              '*'   1.0E-06
+     'gigapascals'              'kilopascals'              '*'   1.0E+06
+###
+     'hours'                    'minutes'                  '*'   6.0E+01
+     'hours'                    'seconds'                  '*'   3.6E+03
+     'hours'                    'microseconds'             '*'   3.6E+09
+#
+     'minutes'                  'hours'                    '/'   6.0E+01
+     'minutes'                  'seconds'                  '*'   6.0E+01
+     'minutes'                  'microseconds'             '*'   6.0E+07
+#
+     'seconds'                  'hours'                    '/'   3.6E+03
+     'seconds'                  'minutes'                  '/'   6.0E+01
+     'seconds'                  'microseconds'             '*'   1.0E+06
+#
+     'microseconds'             'hours'                    '/'   3.6E+09
+     'microseconds'             'minutes'                  '/'   6.0E+07
+     'microseconds'             'seconds'                  '/'   1.0E+06
+###
+     'celsius'                  'kelvins'                  '-'     273.0
+     'kelvins'                  'celsius'                  '+'     273.0
+###
+     'electrons_per_nanometres_cubed'
+     'electrons_per_angstroms_cubed'                       '*'   1.0E+03
+     'electrons_per_nanometres_cubed'
+     'electrons_per_picometres_cubed'                      '*'   1.0E+09
+#
+     'electrons_per_angstroms_cubed'
+     'electrons_per_nanometres_cubed'                      '*'   1.0E-03
+     'electrons_per_angstroms_cubed'
+     'electrons_per_picometres_cubed'                      '*'   1.0E+06
+#
+     'electrons_per_picometres_cubed'
+     'electrons_per_nanometres_cubed'                      '*'   1.0E-09
+     'electrons_per_picometres_cubed'
+     'electrons_per_angstroms_cubed'                       '*'   1.0E-06
+###
+
+### EOF mmcif_pdbx-data.dic
+###########################################################################
+#
+# File:  mmcif_std-def-1.dic
+#
+#                      mmCIF Data Dictionary (standard defintions)
+#
+# This data dictionary contains the standard mmCIF data definitions.
+#
+#                           Defintion Section 1
+#
+#
+###########################################################################
+
+
+###############
+## ATOM_SITE ##
+###############
+
+save_atom_site
+    _category.description
+;              Data items in the ATOM_SITE category record details about
+               the atom sites in a macromolecular crystal structure, such as
+               the positional coordinates, atomic displacement parameters,
+               magnetic moments and directions.
+
+               The data items for describing anisotropic atomic
+               displacement factors are only used if the corresponding items
+               are not given in the ATOM_SITE_ANISOTROP category.
+;
+    _category.id                  atom_site
+    _category.mandatory_code      no
+    _category_key.name          '_atom_site.id'
+    loop_
+    _category_group.id           'inclusive_group'
+                                 'atom_group'
+    loop_
+    _category_examples.detail
+    _category_examples.case
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+;
+    Example 1 - based on PDB entry 5HVP and laboratory records for the
+                structure corresponding to PDB entry 5HVP.
+;
+;
+    loop_
+    _atom_site.group_PDB
+    _atom_site.type_symbol
+    _atom_site.label_atom_id
+    _atom_site.label_comp_id
+    _atom_site.label_asym_id
+    _atom_site.label_seq_id
+    _atom_site.label_alt_id
+    _atom_site.Cartn_x
+    _atom_site.Cartn_y
+    _atom_site.Cartn_z
+    _atom_site.occupancy
+    _atom_site.B_iso_or_equiv
+    _atom_site.footnote_id
+    _atom_site.auth_seq_id
+    _atom_site.id
+    ATOM N  N   VAL  A  11  .  25.369  30.691  11.795  1.00  17.93  .  11   1
+    ATOM C  CA  VAL  A  11  .  25.970  31.965  12.332  1.00  17.75  .  11   2
+    ATOM C  C   VAL  A  11  .  25.569  32.010  13.808  1.00  17.83  .  11   3
+    ATOM O  O   VAL  A  11  .  24.735  31.190  14.167  1.00  17.53  .  11   4
+    ATOM C  CB  VAL  A  11  .  25.379  33.146  11.540  1.00  17.66  .  11   5
+    ATOM C  CG1 VAL  A  11  .  25.584  33.034  10.030  1.00  18.86  .  11   6
+    ATOM C  CG2 VAL  A  11  .  23.933  33.309  11.872  1.00  17.12  .  11   7
+    ATOM N  N   THR  A  12  .  26.095  32.930  14.590  1.00  18.97  4  12   8
+    ATOM C  CA  THR  A  12  .  25.734  32.995  16.032  1.00  19.80  4  12   9
+    ATOM C  C   THR  A  12  .  24.695  34.106  16.113  1.00  20.92  4  12  10
+    ATOM O  O   THR  A  12  .  24.869  35.118  15.421  1.00  21.84  4  12  11
+    ATOM C  CB  THR  A  12  .  26.911  33.346  17.018  1.00  20.51  4  12  12
+    ATOM O  OG1 THR  A  12  3  27.946  33.921  16.183  0.50  20.29  4  12  13
+    ATOM O  OG1 THR  A  12  4  27.769  32.142  17.103  0.50  20.59  4  12  14
+    ATOM C  CG2 THR  A  12  3  27.418  32.181  17.878  0.50  20.47  4  12  15
+    ATOM C  CG2 THR  A  12  4  26.489  33.778  18.426  0.50  20.00  4  12  16
+    ATOM N  N   ILE  A  13  .  23.664  33.855  16.884  1.00  22.08  .  13  17
+    ATOM C  CA  ILE  A  13  .  22.623  34.850  17.093  1.00  23.44  .  13  18
+    ATOM C  C   ILE  A  13  .  22.657  35.113  18.610  1.00  25.77  .  13  19
+    ATOM O  O   ILE  A  13  .  23.123  34.250  19.406  1.00  26.28  .  13  20
+    ATOM C  CB  ILE  A  13  .  21.236  34.463  16.492  1.00  22.67  .  13  21
+    ATOM C  CG1 ILE  A  13  .  20.478  33.469  17.371  1.00  22.14  .  13  22
+    ATOM C  CG2 ILE  A  13  .  21.357  33.986  15.016  1.00  21.75  .  13  23
+    # - - - - data truncated for brevity - - - -
+    HETATM C C1 APS  C   .  1   4.171  29.012   7.116  0.58  17.27  1 300  101
+    HETATM C C2 APS  C   .  1   4.949  27.758   6.793  0.58  16.95  1 300  102
+    HETATM O O3 APS  C   .  1   4.800  26.678   7.393  0.58  16.85  1 300  103
+    HETATM N N4 APS  C   .  1   5.930  27.841   5.869  0.58  16.43  1 300  104
+    # - - - - data truncated for brevity - - - -
+;
+     save_
+
+# <snip>
+
+save__atom_site.attached_hydrogens
+    _item_description.description
+;              The number of hydrogen atoms attached to the atom at this site
+               excluding any hydrogen atoms for which coordinates (measured or
+               calculated) are given.
+;
+    _item.name                  '_atom_site.attached_hydrogens'
+    _item.category_id             atom_site
+    _item.mandatory_code          no
+    _item_aliases.alias_name    '_atom_site_attached_hydrogens'
+    _item_aliases.dictionary      cif_core.dic
+    _item_aliases.version         2.0.1
+#    _item_default.value           0
+    loop_
+    _item_range.maximum
+    _item_range.minimum           8   8
+                                  8   0
+                                  0   0
+    _item_type.code               int
+    loop_
+    _item_examples.case
+    _item_examples.detail         2  'water oxygen'
+                                  1  'hydroxyl oxygen'
+                                  4  'ammonium nitrogen'
+     save_
+
+save__atom_site.auth_asym_id
+    _item_description.description
+;              An alternative identifier for _atom_site.label_asym_id that
+               may be provided by an author in order to match the identification
+               used in the publication that describes the structure.
+;
+    loop_
+    _item.name
+    _item.category_id
+    _item.mandatory_code
+       '_atom_site.auth_asym_id'                     atom_site           yes
+       '_geom_angle.atom_site_auth_asym_id_1'        geom_angle          no
+       '_geom_angle.atom_site_auth_asym_id_2'        geom_angle          no
+       '_geom_angle.atom_site_auth_asym_id_3'        geom_angle          no
+       '_geom_bond.atom_site_auth_asym_id_1'         geom_bond           no
+       '_geom_bond.atom_site_auth_asym_id_2'         geom_bond           no
+       '_geom_contact.atom_site_auth_asym_id_1'      geom_contact        no
+       '_geom_contact.atom_site_auth_asym_id_2'      geom_contact        no
+       '_geom_hbond.atom_site_auth_asym_id_A'        geom_hbond          no
+       '_geom_hbond.atom_site_auth_asym_id_D'        geom_hbond          no
+       '_geom_hbond.atom_site_auth_asym_id_H'        geom_hbond          no
+       '_geom_torsion.atom_site_auth_asym_id_1'      geom_torsion        no
+       '_geom_torsion.atom_site_auth_asym_id_2'      geom_torsion        no
+       '_geom_torsion.atom_site_auth_asym_id_3'      geom_torsion        no
+       '_geom_torsion.atom_site_auth_asym_id_4'      geom_torsion        no
+       '_struct_conf.beg_auth_asym_id'               struct_conf         no
+       '_struct_conf.end_auth_asym_id'               struct_conf         no
+       '_struct_conn.ptnr1_auth_asym_id'             struct_conn         no
+       '_struct_conn.ptnr2_auth_asym_id'             struct_conn         no
+       '_struct_mon_nucl.auth_asym_id'               struct_mon_nucl     no
+       '_struct_mon_prot.auth_asym_id'               struct_mon_prot     no
+       '_struct_mon_prot_cis.auth_asym_id'           struct_mon_prot_cis no
+       '_struct_sheet_range.beg_auth_asym_id'        struct_sheet_range  no
+       '_struct_sheet_range.end_auth_asym_id'        struct_sheet_range  no
+       '_struct_site_gen.auth_asym_id'               struct_site_gen     no
+    loop_
+    _item_linked.child_name
+    _item_linked.parent_name
+       '_geom_angle.atom_site_auth_asym_id_1'         '_atom_site.auth_asym_id'
+       '_geom_angle.atom_site_auth_asym_id_2'         '_atom_site.auth_asym_id'
+       '_geom_angle.atom_site_auth_asym_id_3'         '_atom_site.auth_asym_id'
+       '_geom_bond.atom_site_auth_asym_id_1'          '_atom_site.auth_asym_id'
+       '_geom_bond.atom_site_auth_asym_id_2'          '_atom_site.auth_asym_id'
+       '_geom_contact.atom_site_auth_asym_id_1'       '_atom_site.auth_asym_id'
+       '_geom_contact.atom_site_auth_asym_id_2'       '_atom_site.auth_asym_id'
+       '_geom_hbond.atom_site_auth_asym_id_A'         '_atom_site.auth_asym_id'
+       '_geom_hbond.atom_site_auth_asym_id_D'         '_atom_site.auth_asym_id'
+       '_geom_hbond.atom_site_auth_asym_id_H'         '_atom_site.auth_asym_id'
+       '_geom_torsion.atom_site_auth_asym_id_1'       '_atom_site.auth_asym_id'
+       '_geom_torsion.atom_site_auth_asym_id_2'       '_atom_site.auth_asym_id'
+       '_geom_torsion.atom_site_auth_asym_id_3'       '_atom_site.auth_asym_id'
+       '_geom_torsion.atom_site_auth_asym_id_4'       '_atom_site.auth_asym_id'
+       '_struct_conf.beg_auth_asym_id'                '_atom_site.auth_asym_id'
+       '_struct_conf.end_auth_asym_id'                '_atom_site.auth_asym_id'
+       '_struct_conn.ptnr1_auth_asym_id'              '_atom_site.auth_asym_id'
+       '_struct_conn.ptnr2_auth_asym_id'              '_atom_site.auth_asym_id'
+       '_struct_mon_nucl.auth_asym_id'                '_atom_site.auth_asym_id'
+       '_struct_mon_prot.auth_asym_id'                '_atom_site.auth_asym_id'
+       '_struct_mon_prot_cis.auth_asym_id'            '_atom_site.auth_asym_id'
+       '_struct_sheet_range.beg_auth_asym_id'         '_atom_site.auth_asym_id'
+       '_struct_sheet_range.end_auth_asym_id'         '_atom_site.auth_asym_id'
+       '_struct_site_gen.auth_asym_id'                '_atom_site.auth_asym_id'
+    _item_sub_category.id         mm_atom_site_auth_label
+    _item_type.code               code
+     save_
+
+save__atom_site.auth_atom_id
+    _item_description.description
+;              An alternative identifier for _atom_site.label_atom_id that
+               may be provided by an author in order to match the identification
+               used in the publication that describes the structure.
+;
+    loop_
+    _item.name
+    _item.category_id
+    _item.mandatory_code
+       '_atom_site.auth_atom_id'                      atom_site           no
+       '_geom_angle.atom_site_auth_atom_id_1'         geom_angle          no
+       '_geom_angle.atom_site_auth_atom_id_2'         geom_angle          no
+       '_geom_angle.atom_site_auth_atom_id_3'         geom_angle          no
+       '_geom_bond.atom_site_auth_atom_id_1'          geom_bond           no
+       '_geom_bond.atom_site_auth_atom_id_2'          geom_bond           no
+       '_geom_contact.atom_site_auth_atom_id_1'       geom_contact        no
+       '_geom_contact.atom_site_auth_atom_id_2'       geom_contact        no
+       '_geom_hbond.atom_site_auth_atom_id_A'         geom_hbond          no
+       '_geom_hbond.atom_site_auth_atom_id_D'         geom_hbond          no
+       '_geom_hbond.atom_site_auth_atom_id_H'         geom_hbond          no
+       '_geom_torsion.atom_site_auth_atom_id_1'       geom_torsion        no
+       '_geom_torsion.atom_site_auth_atom_id_2'       geom_torsion        no
+       '_geom_torsion.atom_site_auth_atom_id_3'       geom_torsion        no
+       '_geom_torsion.atom_site_auth_atom_id_4'       geom_torsion        no
+       '_struct_conn.ptnr1_auth_atom_id'              struct_conn         no
+       '_struct_conn.ptnr2_auth_atom_id'              struct_conn         no
+       '_struct_sheet_hbond.range_1_beg_auth_atom_id' struct_sheet_hbond  no
+       '_struct_sheet_hbond.range_1_end_auth_atom_id' struct_sheet_hbond  no
+       '_struct_sheet_hbond.range_2_beg_auth_atom_id' struct_sheet_hbond  no
+       '_struct_sheet_hbond.range_2_end_auth_atom_id' struct_sheet_hbond  no
+       '_struct_site_gen.auth_atom_id'                struct_site_gen     no
+    loop_
+    _item_linked.child_name
+    _item_linked.parent_name
+       '_geom_angle.atom_site_auth_atom_id_1'         '_atom_site.auth_atom_id'
+       '_geom_angle.atom_site_auth_atom_id_2'         '_atom_site.auth_atom_id'
+       '_geom_angle.atom_site_auth_atom_id_3'         '_atom_site.auth_atom_id'
+       '_geom_bond.atom_site_auth_atom_id_1'          '_atom_site.auth_atom_id'
+       '_geom_bond.atom_site_auth_atom_id_2'          '_atom_site.auth_atom_id'
+       '_geom_contact.atom_site_auth_atom_id_1'       '_atom_site.auth_atom_id'
+       '_geom_contact.atom_site_auth_atom_id_2'       '_atom_site.auth_atom_id'
+       '_geom_hbond.atom_site_auth_atom_id_A'         '_atom_site.auth_atom_id'
+       '_geom_hbond.atom_site_auth_atom_id_D'         '_atom_site.auth_atom_id'
+       '_geom_hbond.atom_site_auth_atom_id_H'         '_atom_site.auth_atom_id'
+       '_geom_torsion.atom_site_auth_atom_id_1'       '_atom_site.auth_atom_id'
+       '_geom_torsion.atom_site_auth_atom_id_2'       '_atom_site.auth_atom_id'
+       '_geom_torsion.atom_site_auth_atom_id_3'       '_atom_site.auth_atom_id'
+       '_geom_torsion.atom_site_auth_atom_id_4'       '_atom_site.auth_atom_id'
+       '_struct_conn.ptnr1_auth_atom_id'              '_atom_site.auth_atom_id'
+       '_struct_conn.ptnr2_auth_atom_id'              '_atom_site.auth_atom_id'
+       '_struct_sheet_hbond.range_1_beg_auth_atom_id' '_atom_site.auth_atom_id'
+       '_struct_sheet_hbond.range_1_end_auth_atom_id' '_atom_site.auth_atom_id'
+       '_struct_sheet_hbond.range_2_beg_auth_atom_id' '_atom_site.auth_atom_id'
+       '_struct_sheet_hbond.range_2_end_auth_atom_id' '_atom_site.auth_atom_id'
+       '_struct_site_gen.auth_atom_id'                '_atom_site.auth_atom_id'
+    _item_sub_category.id         mm_atom_site_auth_label
+    _item_type.code               atcode
+     save_
+
+save__atom_site.auth_comp_id
+    _item_description.description
+;              An alternative identifier for _atom_site.label_comp_id that
+               may be provided by an author in order to match the identification
+               used in the publication that describes the structure.
+;
+    loop_
+    _item.name
+    _item.category_id
+    _item.mandatory_code
+       '_atom_site.auth_comp_id'                     atom_site           no
+       '_geom_angle.atom_site_auth_comp_id_1'        geom_angle          no
+       '_geom_angle.atom_site_auth_comp_id_2'        geom_angle          no
+       '_geom_angle.atom_site_auth_comp_id_3'        geom_angle          no
+       '_geom_bond.atom_site_auth_comp_id_1'         geom_bond           no
+       '_geom_bond.atom_site_auth_comp_id_2'         geom_bond           no
+       '_geom_contact.atom_site_auth_comp_id_1'      geom_contact        no
+       '_geom_contact.atom_site_auth_comp_id_2'      geom_contact        no
+       '_geom_hbond.atom_site_auth_comp_id_A'        geom_hbond          no
+       '_geom_hbond.atom_site_auth_comp_id_D'        geom_hbond          no
+       '_geom_hbond.atom_site_auth_comp_id_H'        geom_hbond          no
+       '_geom_torsion.atom_site_auth_comp_id_1'      geom_torsion        no
+       '_geom_torsion.atom_site_auth_comp_id_2'      geom_torsion        no
+       '_geom_torsion.atom_site_auth_comp_id_3'      geom_torsion        no
+       '_geom_torsion.atom_site_auth_comp_id_4'      geom_torsion        no
+       '_struct_conf.beg_auth_comp_id'               struct_conf         no
+       '_struct_conf.end_auth_comp_id'               struct_conf         no
+       '_struct_conn.ptnr1_auth_comp_id'             struct_conn         no
+       '_struct_conn.ptnr2_auth_comp_id'             struct_conn         no
+       '_struct_mon_nucl.auth_comp_id'               struct_mon_nucl     no
+       '_struct_mon_prot.auth_comp_id'               struct_mon_prot     no
+       '_struct_mon_prot_cis.auth_comp_id'           struct_mon_prot_cis no
+       '_struct_sheet_range.beg_auth_comp_id'        struct_sheet_range  no
+       '_struct_sheet_range.end_auth_comp_id'        struct_sheet_range  no
+       '_struct_site_gen.auth_comp_id'               struct_site_gen     no
+    loop_
+    _item_linked.child_name
+    _item_linked.parent_name
+       '_geom_angle.atom_site_auth_comp_id_1'         '_atom_site.auth_comp_id'
+       '_geom_angle.atom_site_auth_comp_id_2'         '_atom_site.auth_comp_id'
+       '_geom_angle.atom_site_auth_comp_id_3'         '_atom_site.auth_comp_id'
+       '_geom_bond.atom_site_auth_comp_id_1'          '_atom_site.auth_comp_id'
+       '_geom_bond.atom_site_auth_comp_id_2'          '_atom_site.auth_comp_id'
+       '_geom_contact.atom_site_auth_comp_id_1'       '_atom_site.auth_comp_id'
+       '_geom_contact.atom_site_auth_comp_id_2'       '_atom_site.auth_comp_id'
+       '_geom_hbond.atom_site_auth_comp_id_A'         '_atom_site.auth_comp_id'
+       '_geom_hbond.atom_site_auth_comp_id_D'         '_atom_site.auth_comp_id'
+       '_geom_hbond.atom_site_auth_comp_id_H'         '_atom_site.auth_comp_id'
+       '_geom_torsion.atom_site_auth_comp_id_1'       '_atom_site.auth_comp_id'
+       '_geom_torsion.atom_site_auth_comp_id_2'       '_atom_site.auth_comp_id'
+       '_geom_torsion.atom_site_auth_comp_id_3'       '_atom_site.auth_comp_id'
+       '_geom_torsion.atom_site_auth_comp_id_4'       '_atom_site.auth_comp_id'
+       '_struct_conf.beg_auth_comp_id'                '_atom_site.auth_comp_id'
+       '_struct_conf.end_auth_comp_id'                '_atom_site.auth_comp_id'
+       '_struct_conn.ptnr1_auth_comp_id'              '_atom_site.auth_comp_id'
+       '_struct_conn.ptnr2_auth_comp_id'              '_atom_site.auth_comp_id'
+       '_struct_mon_nucl.auth_comp_id'                '_atom_site.auth_comp_id'
+       '_struct_mon_prot.auth_comp_id'                '_atom_site.auth_comp_id'
+       '_struct_mon_prot_cis.auth_comp_id'            '_atom_site.auth_comp_id'
+       '_struct_sheet_range.beg_auth_comp_id'         '_atom_site.auth_comp_id'
+       '_struct_sheet_range.end_auth_comp_id'         '_atom_site.auth_comp_id'
+       '_struct_site_gen.auth_comp_id'                '_atom_site.auth_comp_id'
+    _item_sub_category.id         mm_atom_site_auth_label
+    _item_type.code               code
+     save_
+
+
+# <snip>
+
+#
+loop_
+_pdbx_item_linked_group.category_id
+_pdbx_item_linked_group.link_group_id
+_pdbx_item_linked_group.label
+_pdbx_item_linked_group.context
+_pdbx_item_linked_group.condition_id
+#atom_site                                1  atom_site:atom_sites_alt:1                                                . .
+atom_site                                2  atom_site:atom_sites_footnote:2                                           . .
+atom_site                                3  atom_site:atom_type:3                                                     . .
+atom_site                                4  atom_site:chem_comp:4                                                     . .
+atom_site                                5  atom_site:chem_comp_atom:5                                                . .
+atom_site                                6  atom_site:chemical_conn_atom:6                                            . .
+atom_site                                7  atom_site:entity:7                                                        . .
+atom_site                                8  atom_site:entity_poly_seq:8                                               . .
+atom_site                                9  atom_site:pdbx_poly_seq_scheme:9                                          . .
+atom_site                                10 atom_site:pdbx_refine_tls:10                                              . .
+atom_site                                11 atom_site:struct_asym:11                                                  . .
+atom_site                                12 atom_site:struct_ncs_dom:12                                               . .
+atom_site_anisotrop                      1  atom_site_anisotrop:atom_site:1                                           . .
+atom_site_anisotrop                      2  atom_site_anisotrop:atom_type:2                                           . .
+atom_sites                               1  atom_sites:entry:1                                                        . .
+# <snip>
+
+#
+loop_
+_pdbx_item_linked_group_list.child_category_id
+_pdbx_item_linked_group_list.link_group_id
+_pdbx_item_linked_group_list.child_name
+_pdbx_item_linked_group_list.parent_name
+_pdbx_item_linked_group_list.parent_category_id
+#atom_site                                1  '_atom_site.label_alt_id'                             '_atom_sites_alt.id'                        atom_sites_alt
+atom_site                                2  '_atom_site.footnote_id'                              '_atom_sites_footnote.id'                   atom_sites_footnote
+atom_site                                3  '_atom_site.type_symbol'                              '_atom_type.symbol'                         atom_type
+atom_site                                4  '_atom_site.label_comp_id'                            '_chem_comp.id'                             chem_comp
+atom_site                                5  '_atom_site.label_atom_id'                            '_chem_comp_atom.atom_id'                   chem_comp_atom
+atom_site                                6  '_atom_site.chemical_conn_number'                     '_chemical_conn_atom.number'                chemical_conn_atom
+atom_site                                7  '_atom_site.label_entity_id'                          '_entity.id'                                entity
+atom_site                                8  '_atom_site.label_comp_id'                            '_entity_poly_seq.mon_id'                   entity_poly_seq
+atom_site                                8  '_atom_site.label_entity_id'                          '_entity_poly_seq.entity_id'                entity_poly_seq
+atom_site                                8  '_atom_site.label_seq_id'                             '_entity_poly_seq.num'                      entity_poly_seq
+atom_site                                9  '_atom_site.auth_asym_id'                             '_pdbx_poly_seq_scheme.pdb_strand_id'       pdbx_poly_seq_scheme
+atom_site                                9  '_atom_site.auth_comp_id'                             '_pdbx_poly_seq_scheme.pdb_mon_id'          pdbx_poly_seq_scheme
+atom_site                                9  '_atom_site.auth_seq_id'                              '_pdbx_poly_seq_scheme.pdb_seq_num'         pdbx_poly_seq_scheme
+atom_site                                9  '_atom_site.label_asym_id'                            '_pdbx_poly_seq_scheme.asym_id'             pdbx_poly_seq_scheme
+atom_site                                9  '_atom_site.label_comp_id'                            '_pdbx_poly_seq_scheme.mon_id'              pdbx_poly_seq_scheme
+atom_site                                9  '_atom_site.label_entity_id'                          '_pdbx_poly_seq_scheme.entity_id'           pdbx_poly_seq_scheme
+atom_site                                9  '_atom_site.label_seq_id'                             '_pdbx_poly_seq_scheme.seq_id'              pdbx_poly_seq_scheme
+atom_site                                9  '_atom_site.pdbx_PDB_ins_code'                        '_pdbx_poly_seq_scheme.pdb_ins_code'        pdbx_poly_seq_scheme
+atom_site                                10 '_atom_site.pdbx_tls_group_id'                        '_pdbx_refine_tls.id'                       pdbx_refine_tls
+atom_site                                11 '_atom_site.label_asym_id'                            '_struct_asym.id'                           struct_asym
+atom_site                                11 '_atom_site.label_entity_id'                          '_struct_asym.entity_id'                    struct_asym
+atom_site                                12 '_atom_site.pdbx_ncs_dom_id'                          '_struct_ncs_dom.id'                        struct_ncs_dom
+atom_site_anisotrop                      1  '_atom_site_anisotrop.id'                             '_atom_site.id'                             atom_site
+atom_site_anisotrop                      1  '_atom_site_anisotrop.pdbx_auth_seq_id'               '_atom_site.auth_seq_id'                    atom_site
+atom_site_anisotrop                      1  '_atom_site_anisotrop.pdbx_auth_alt_id'               '_atom_site.pdbx_auth_alt_id'               atom_site
+atom_site_anisotrop                      1  '_atom_site_anisotrop.pdbx_auth_asym_id'              '_atom_site.auth_asym_id'                   atom_site
+atom_site_anisotrop                      1  '_atom_site_anisotrop.pdbx_auth_atom_id'              '_atom_site.auth_atom_id'                   atom_site
+atom_site_anisotrop                      1  '_atom_site_anisotrop.pdbx_auth_comp_id'              '_atom_site.auth_comp_id'                   atom_site
+atom_site_anisotrop                      1  '_atom_site_anisotrop.pdbx_label_seq_id'              '_atom_site.label_seq_id'                   atom_site
+atom_site_anisotrop                      1  '_atom_site_anisotrop.pdbx_label_alt_id'              '_atom_site.label_alt_id'                   atom_site
+atom_site_anisotrop                      1  '_atom_site_anisotrop.pdbx_label_asym_id'             '_atom_site.label_asym_id'                  atom_site
+atom_site_anisotrop                      1  '_atom_site_anisotrop.pdbx_label_atom_id'             '_atom_site.label_atom_id'                  atom_site
+atom_site_anisotrop                      1  '_atom_site_anisotrop.pdbx_label_comp_id'             '_atom_site.label_comp_id'                  atom_site
+atom_site_anisotrop                      1  '_atom_site_anisotrop.pdbx_PDB_ins_code'              '_atom_site.pdbx_PDB_ins_code'              atom_site
+atom_site_anisotrop                      1  '_atom_site_anisotrop.pdbx_PDB_model_num'             '_atom_site.pdbx_PDB_model_num'             atom_site
+atom_site_anisotrop                      2  '_atom_site_anisotrop.type_symbol'                    '_atom_type.symbol'                         atom_type
+atom_sites                               1  '_atom_sites.entry_id'                                '_entry.id'                                 entry
+# <snip>

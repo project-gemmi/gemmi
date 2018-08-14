@@ -309,6 +309,7 @@ struct Block {
   Table find(const std::vector<std::string>& tags) { return find({}, tags); }
   Table find_any(const std::string& prefix,
                  const std::vector<std::string>& tags);
+  Block* find_frame(std::string name);
 
   // modifying functions
   void set_pair(const std::string& tag, std::string v);
@@ -580,6 +581,14 @@ inline Column Block::find_values(const std::string& tag) {
         return Column{&i, 0};
     }
   return Column{nullptr, 0};
+}
+
+inline Block* Block::find_frame(std::string frame_name) {
+  frame_name = gemmi::to_lower(frame_name);
+  for (Item& i : items)
+    if (i.type == ItemType::Frame && gemmi::iequal(i.frame.name, frame_name))
+      return &i.frame;
+  return nullptr;
 }
 
 inline std::vector<std::string> Block::get_mmcif_category_names() const {

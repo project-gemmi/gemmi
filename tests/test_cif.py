@@ -177,5 +177,16 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(len(nonexistent), 0)
         self.assertEqual(nonexistent.width(), 0)
 
+def full_path(filename):
+    return os.path.join(os.path.dirname(__file__), filename)
+
+class TestDictinary(unittest.TestCase):
+    def test_frame_reading(self):
+        block = cif.read(full_path('mmcif_pdbx_v50_frag.dic')).sole_block()
+        self.assertIsNone(block.find_frame('heyho'))
+        frame = block.find_frame('_atom_site.auth_atom_id')
+        code = frame.find_value('_item_type.code')
+        self.assertEqual(code, 'atcode')
+
 if __name__ == '__main__':
     unittest.main()

@@ -490,9 +490,12 @@ Frame
 The named save frames (keyword ``save_``) from the STAR specification
 are used in CIF files only as sub-sections of a block.
 The only place where they are enountered are mmCIF dictionaries.
-Because of this, we expect that few users will ever need to access
-frames and we do not have special function on this occasion.
-Still, one can easily work with save frames::
+Save frames are stored as blocks.
+They can be accessed either with Block's method::
+
+    Block* find_frame(std::string name);
+
+or by iterating over all Block's items::
 
     for (cif::Item& item : block.items)
       if (item.type == cif::ItemType::Frame)
@@ -683,6 +686,13 @@ To get the actual string content one may use the method ``str``:
 
 If the tag was found in a loop, method ``get_loop`` returns a reference
 to this ``Loop`` in the DOM. Otherwise it returns ``None``.
+
+Finally, when working with a cif file that has save frames one
+may access the frames (which are of type ``cif.Block``):
+
+.. doctest::
+
+  >>> frame = block.find_frame('my_frame')
 
 Table
 ~~~~~
