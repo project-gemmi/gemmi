@@ -11,8 +11,8 @@
 #ifndef GEMMI_GZREAD_HPP_
 #define GEMMI_GZREAD_HPP_
 
-#include "gemmi/cifdoc.hpp" // for Document
-#include "gemmi/model.hpp"  // for Structure
+#include "cifdoc.hpp" // for Document
+#include "model.hpp"  // for Structure
 
 namespace gemmi {
 
