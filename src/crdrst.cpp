@@ -194,6 +194,15 @@ Linkage::ChainInfo determine_linkage(const gemmi::SubChain& subchain,
   return lc;
 }
 
+static bool has_anisou(const gemmi::Model& model) {
+  for (const gemmi::Chain& chain : model.chains)
+    for (const gemmi::Residue& res : chain.residues)
+      for (const gemmi::Atom& a : res.atoms)
+        if (a.has_anisou())
+          return true;
+  return false;
+}
+
 static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
                               const Linkage& linkage) {
   using gemmi::to_str;
@@ -323,6 +332,11 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
       "label_seg_id",
       "auth_atom_id",
       "label_chem_id"});
+  bool write_anisou = has_anisou(model0);
+  if (write_anisou)
+    for (const char* idx : {"[1][1]", "[2][2]", "[3][3]",
+                            "[1][2]", "[1][3]", "[2][3]"})
+      atom_loop.tags.push_back(std::string("_atom_site.aniso_U") + idx);
   std::vector<std::string>& vv = atom_loop.values;
   vv.reserve(count_atom_sites(st) * atom_loop.tags.size());
   for (const gemmi::Chain& chain : model0.chains) {
@@ -349,6 +363,14 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
         vv.emplace_back(1, '.'); // label_seg_id
         vv.emplace_back(a.name); // again
         vv.emplace_back(cc.get_atom(a.name).chem_type); // label_chem_id
+        if (write_anisou) {
+          if (a.has_anisou()) {
+            for (float u : {a.u11, a.u22, a.u33, a.u12, a.u13, a.u23})
+              vv.push_back(to_str(u));
+          } else {
+            vv.resize(vv.size() + 6, ".");
+          }
+        }
       }
     }
   }

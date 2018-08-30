@@ -201,6 +201,10 @@ struct Atom {
     s += name;
     return s;
   }
+  bool has_anisou() const {
+    return u11 != 0.f || u22 != 0.f || u33 != 0.f ||
+           u12 != 0.f || u13 != 0.f || u23 != 0.f;
+  }
 };
 
 struct SeqId {
