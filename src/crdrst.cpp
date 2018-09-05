@@ -569,7 +569,7 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
 
         // need to revisit it later on
         std::string group = cif::quote(chem_comp.group.substr(0, 8));
-        if (group == "peptide")
+        if (group == "peptide" || group == "P-peptid" || group == "M-peptid")
           group = "L-peptid";
 
         restr_loop.add_row({res_info + "\nMONO", ".", group,
