@@ -42,9 +42,9 @@ static const option::Descriptor Usage[] = {
 };
 
 struct Params {
-  float min_dist = 0.8;
-  float max_dist = 15.0;
-  float exponent = 2;
+  float min_dist = 0.8f;
+  float max_dist = 15.0f;
+  float exponent = 2.0f;
 };
 
 // ranks are from 1 to data.size()
@@ -91,7 +91,7 @@ static float calculate_weight(float dist_sq, const Params& params) {
     return 1.0f / dist_sq;
   if (params.exponent == 0.0) // CN (a.k.a ACN)
     return 1.0f;
-  return pow(dist_sq, -0.5f * params.exponent);
+  return std::pow(dist_sq, -0.5f * params.exponent);
 }
 
 static Result test_bfactor_models(const Structure& st, const Params& params) {
@@ -143,11 +143,11 @@ int GEMMI_MAIN(int argc, char **argv) {
   bool verbose = p.options[Verbose].count();
   Params params;
   if (p.options[MinDist])
-    params.min_dist = std::strtod(p.options[MinDist].arg, nullptr);
+    params.min_dist = std::strtof(p.options[MinDist].arg, nullptr);
   if (p.options[MaxDist])
-    params.max_dist = std::strtod(p.options[MaxDist].arg, nullptr);
+    params.max_dist = std::strtof(p.options[MaxDist].arg, nullptr);
   if (p.options[Exponent])
-    params.exponent = std::strtod(p.options[Exponent].arg, nullptr);
+    params.exponent = std::strtof(p.options[Exponent].arg, nullptr);
   double sum_cc = 0;
   double sum_rank_cc = 0;
   try {

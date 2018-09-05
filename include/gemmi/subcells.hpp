@@ -25,7 +25,7 @@ struct SubCells {
     int atom_idx;
 
     Mark(const Position& p, char alt, El el, int im, int ch, int res, int atom)
-    : x(p.x), y(p.y), z(p.z), altloc(alt), element(el),
+    : x(float(p.x)), y(float(p.y)), z(float(p.z)), altloc(alt), element(el),
       image_idx(im), chain_idx(ch), residue_idx(res), atom_idx(atom) {}
 
     Position pos() const { return {x, y, z}; }
@@ -72,7 +72,8 @@ struct SubCells {
   float dist_sq(const Position& pos1, const Position& pos2) const {
     const UnitCell& cell = grid.unit_cell;
     Fractional diff = cell.fractionalize(pos1) - cell.fractionalize(pos2);
-    return cell.orthogonalize_difference(diff.wrap_to_zero()).length_sq();
+    diff = diff.wrap_to_zero();
+    return (float) cell.orthogonalize_difference(diff).length_sq();
   }
   float dist(const Position& pos1, const Position& pos2) const {
     return std::sqrt(dist_sq(pos1, pos2));

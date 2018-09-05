@@ -131,10 +131,10 @@ int GEMMI_MAIN(int argc, char **argv) {
   params.verbose = p.options[Verbose].count();
   params.max_dist = 3.0;
   if (p.options[MaxDist])
-    params.max_dist = std::strtod(p.options[MaxDist].arg, nullptr);
+    params.max_dist = std::strtof(p.options[MaxDist].arg, nullptr);
   params.occ_sum = 0;
   if (p.options[Occ])
-    params.occ_sum = std::strtod(p.options[Occ].arg, nullptr);
+    params.occ_sum = std::strtof(p.options[Occ].arg, nullptr);
   params.any = p.options[Any];
   params.print_count = p.options[Count];
   params.no_hydrogens = p.options[NoH];
