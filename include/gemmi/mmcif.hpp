@@ -253,8 +253,8 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
       model = &st.find_or_add_model(row[kModelNum]);
       chain = nullptr;
     }
-    if (!chain || row[kAuthAsymId] != chain->name) {
-      model->chains.emplace_back(row.str(kAuthAsymId));
+    if (!chain || as_string(row[kAuthAsymId]) != chain->name) {
+      model->chains.emplace_back(as_string(row[kAuthAsymId]));
       chain = &model->chains.back();
       resi = nullptr;
     }

@@ -32,8 +32,33 @@ ATOM   2024  SG  CYS A 296      14.668  -4.407 -16.359  1.00 25.70           S
 ATOM   2128  SG  CYS A 310      24.141 -22.158 -17.213  1.00 20.07           S  
 """  # noqa: W291 - trailing whitespace
 
+# fragment of $CCP4/examples/toxd/toxd_mod_p1.pdb without chain names
+BLANK_CHAIN_FRAGMENT = """\
+CRYST1   50.000   50.00    50.00   90.00  90.00   90.00
+ATOM      1  N   GLN     1      16.207  -7.425   8.244  1.00 35.23
+ATOM      2  CA  GLN     1      16.175  -6.019   8.805  1.00 35.13
+ATOM      3  C   GLN     1      14.890  -5.752   9.585  1.00 33.49
+ATOM      4  O   GLN     1      14.563  -6.517  10.541  1.00 35.33
+ATOM      5  N   PRO     2      14.235  -4.626   9.270  1.00 30.05
+ATOM      6  CA  PRO     2      12.967  -4.255   9.939  1.00 26.63
+ATOM      7  C   PRO     2      11.955  -5.328   9.522  1.00 24.15
+ATOM      8  O   PRO     2      12.217  -6.028   8.540  1.00 22.83
+ATOM      9  CB  PRO     2      12.617  -2.895   9.427  1.00 26.18
+ATOM     10  CG  PRO     2      13.342  -2.761   8.127  1.00 28.07
+ATOM     11  CD  PRO     2      14.574  -3.663   8.212  1.00 29.12
+ATOM     12  N   ARG     3      10.892  -5.446  10.311  1.00 21.86
+ATOM     13  CA  ARG     3       9.875  -6.426  10.119  1.00 19.82
+"""
+
 def full_path(filename):
     return os.path.join(os.path.dirname(__file__), filename)
+
+def read_lines_and_remove(path):
+    with open(path) as f:
+        out_lines = f.readlines()
+    os.remove(path)
+    return out_lines
+
 
 class TestMol(unittest.TestCase):
     def test_residue(self):
@@ -203,10 +228,7 @@ class TestMol(unittest.TestCase):
         handle, out_name = tempfile.mkstemp()
         os.close(handle)
         st.write_pdb(out_name)
-        with open(out_name) as f:
-            out_lines = f.readlines()
-        os.remove(out_name)
-        return out_lines
+        return read_lines_and_remove(out_name)
 
     def test_read_write_1orc(self, via_cif=False):
         path = full_path('1orc.pdb')
@@ -262,6 +284,17 @@ class TestMol(unittest.TestCase):
         self.assertEqual(in_headers[1], out_headers[1].replace(' 4555 ',
                                                                ' 2555 '))
         self.assertEqual(in_headers[2], out_headers[2])
+
+    def test_blank_chain(self):
+        st = gemmi.read_pdb_string(BLANK_CHAIN_FRAGMENT)
+        handle, out_name = tempfile.mkstemp()
+        os.close(handle)
+        st.write_minimal_pdb(out_name)
+        out = read_lines_and_remove(out_name)
+        # CRYST1 differs (50.000 not 50.00 and added P1).
+        # ATOM lines have added element names.
+        trimmed_out = [line[:66] for line in out[1:]]
+        self.assertEqual(trimmed_out, BLANK_CHAIN_FRAGMENT.splitlines()[1:])
 
     def test_ncs(self):
         st = gemmi.read_structure(full_path('5cvz_final.pdb'))

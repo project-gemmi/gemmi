@@ -156,8 +156,6 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
   char buf[88];
   char buf8[8];
   char buf8a[8];
-  if (chain.name.empty())
-    gemmi::fail("empty chain name");
   if (chain.name.length() > 2)
     gemmi::fail("long chain name: " + chain.name);
   for (const Residue& res : chain.residues) {

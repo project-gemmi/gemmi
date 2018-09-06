@@ -85,7 +85,7 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
           vv.emplace_back(to_str(a.b_iso));
           vv.emplace_back(a.charge == 0 ? "?" : std::to_string(a.charge));
           vv.emplace_back(auth_seq_id);
-          vv.emplace_back(chain.name);
+          vv.emplace_back(cif::quote(chain.name));
           vv.emplace_back(model.name);
           if (a.u11 != 0.f)
             aniso.emplace_back(serial, &a);
