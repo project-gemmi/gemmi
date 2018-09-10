@@ -6,6 +6,7 @@
 #include "gemmi/json.hpp"
 #define GEMMI_GZREAD_IMPLEMENTATION
 #include "gemmi/gzread.hpp"
+#include "gemmi/smcif.hpp" // for AtomicStructure
 
 #include <pybind11/pybind11.h>
 
@@ -49,6 +50,13 @@ void add_read_structure(py::module& m) {
   m.def("read_pdb_string", [](const std::string& s) {
           return new Structure(read_pdb_string(s, "string"));
         }, py::arg("s"), "Reads a string as PDB file.");
+
+  m.def("read_atomic_structure", [](const std::string& path) {
+          cif::Block block = cif::read_file(path).sole_block();
+          return new AtomicStructure(make_atomic_structure_from_block(block));
+        }, py::arg("path"), "Reads a small molecule CIF file.");
+  m.def("make_atomic_structure_from_block", &make_atomic_structure_from_block,
+        py::arg("block"), "Takes CIF block and returns AtomicStructure.");
 
   // and an unrelated function from gz.hpp
   m.def("estimate_uncompressed_size", &estimate_uncompressed_size,
