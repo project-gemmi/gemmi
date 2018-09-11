@@ -195,6 +195,14 @@ struct UnitCell {
     return Position(orth.mat.multiply(delta));
   }
 
+  double distance_sq(const Fractional& pos1, const Fractional& pos2) const {
+    Fractional diff = (pos1 - pos2).wrap_to_zero();
+    return orthogonalize_difference(diff).length_sq();
+  }
+  double distance_sq(const Position& pos1, const Position& pos2) const {
+    return distance_sq(fractionalize(pos1), fractionalize(pos2));
+  }
+
   double volume_per_image() const {
     return is_crystal() ? volume / (1 + images.size()) : NAN;
   }

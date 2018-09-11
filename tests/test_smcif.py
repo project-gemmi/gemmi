@@ -4,7 +4,6 @@ import os
 import unittest
 import gemmi
 
-
 class TestRealCif(unittest.TestCase):
     def test_cod_sic(self):
         path = os.path.join(os.path.dirname(__file__), '1011031.cif')
@@ -12,6 +11,8 @@ class TestRealCif(unittest.TestCase):
         self.assertEqual(sic.name, '1011031')
         self.assertEqual(sic.cell.a, 4.358)
         self.assertEqual(sic.cell.alpha, 90.0)
+        self.assertEqual(len(sic.sites), 2)
+        self.assertEqual(len(sic.get_all_unit_cell_sites()), 8)
 
 if __name__ == '__main__':
     unittest.main()

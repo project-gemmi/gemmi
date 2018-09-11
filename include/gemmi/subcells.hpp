@@ -70,10 +70,7 @@ struct SubCells {
   }
 
   float dist_sq(const Position& pos1, const Position& pos2) const {
-    const UnitCell& cell = grid.unit_cell;
-    Fractional diff = cell.fractionalize(pos1) - cell.fractionalize(pos2);
-    diff = diff.wrap_to_zero();
-    return (float) cell.orthogonalize_difference(diff).length_sq();
+    return (float) grid.unit_cell.distance_sq(pos1, pos2);
   }
   float dist(const Position& pos1, const Position& pos2) const {
     return std::sqrt(dist_sq(pos1, pos2));

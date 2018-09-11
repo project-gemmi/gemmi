@@ -1,9 +1,12 @@
 
+.. _molecular:
+
 Molecular models
 ################
 
 This part of the Gemmi library is for handling structural models of
-biomolecules.
+biomolecules (but if needed, small molecule and inorganic structures
+can also be read.)
 
 A model from a file (PDB, mmCIF, etc.) is stored in a ``Structure`` object,
 with the usual Model-Chain-Residue-Atom hierarchy.
@@ -43,19 +46,50 @@ from the periodic table at hand.
     >>> gemmi.Element('Mo').atomic_number
     42
 
+Small Molecules
+===============
+
+CIF files that describe small-molecule and inorganic structures
+can be read into an ``AtomicStructure`` object.
+Unlike macromolecular ``Structure``, ``AtomicStructure`` has no hierarchy.
+It is just a flat list of atomic sites (``AtomicStructure::Site``)
+together with unit cell and symmetry.
+
+**C++**
+
+.. literalinclude:: code/smcif.cpp
+   :language: cpp
+
+
+**Python**
+
+.. doctest::
+
+    >>> import gemmi
+    >>> SiC = gemmi.read_atomic_structure('../tests/1011031.cif')
+    >>> SiC.cell.a
+    4.358
+    >>> SiC.spacegroup_hm
+    'F -4 3 m'
+    >>> SiC.sites
+    [<gemmi.AtomicStructure.Site Si1>, <gemmi.AtomicStructure.Site C1>]
+    >>> len(SiC.get_all_unit_cell_sites())
+    8
+
+
 .. _chemcomp:
 
 Chemical Components
 ===================
 
-Residues (monomers) and small molecule components are called in the PDB
-*chemical components*.
+Residues (monomers) and small molecule components of macromolecular models
+are called *chemical components*.
 Gemmi can use three sources of knowledge about the chemical components:
 
 * built-in basic data about a couple hundreds of the most popular components,
 * the Chemical Component Dictionary maintained by the PDB (25,000+ components),
 * so-called CIF files from the Refmac monomer library (maintained by CCP4)
-  or from other libraries in the same format.
+  and compatible files from other libraries.
 
 The built-in data is accessed through the function ``find_tabulated_residue``:
 

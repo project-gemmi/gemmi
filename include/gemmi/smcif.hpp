@@ -107,8 +107,7 @@ AtomicStructure::get_all_unit_cell_sites() const {
     for (const FTransform& image : cell.images) {
       Fractional fpos = image.apply(site.fract);
       if (std::any_of(all.begin() + start, all.end(), [&](const Site& other) {
-            Position diff = cell.orthogonalize_difference(fpos - other.fract);
-            return diff.length_sq() < 0.5 * 0.5;
+            return cell.distance_sq(fpos, other.fract) < 0.5 * 0.5;
           }))
         continue;
       all.push_back(site);

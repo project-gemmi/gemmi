@@ -1,6 +1,16 @@
 CIF Parser
 ##########
 
+This section covers reading CIF files on a syntactic level.
+
+Higher-level functions that understand semantics of:
+
+* small molecule or inorganic CIF files,
+* macromolecular PDBx/mmCIF,
+* and monomer/ligand cif files as used for macromolecular restraints
+
+are documented in section :ref:`molecular`.
+
 .. _cif_intro:
 
 What are STAR, CIF, DDL, mmCIF?
