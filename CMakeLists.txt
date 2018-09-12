@@ -27,8 +27,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(CheckIncludeFile)
 
+if (DEFINED ENV{CXXFLAGS})
+  set(USING_ENV_CXXFLAGS ON CACHE BOOL "" FORCE)
+endif()
+
 # Set default build mode (based on CMake FAQ)
-if(NOT CMAKE_BUILD_TYPE AND NOT DEFINED ENV{CXXFLAGS})
+if (NOT CMAKE_BUILD_TYPE AND NOT USING_ENV_CXXFLAGS)
   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
       "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
       FORCE)
