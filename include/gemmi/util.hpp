@@ -143,6 +143,15 @@ inline int ialpha4_id(const char* s) {
 [[noreturn]]
 inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 
+// unreachable() is used to silence GCC -Wreturn-type and hint the compiler
+[[noreturn]] inline void unreachable() {
+#if defined(__GNUC__) || defined(__clang__)
+  __builtin_unreachable();
+#elif defined(_MSC_VER)
+  __assume(0);
+#endif
+}
+
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

@@ -39,7 +39,7 @@ Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown) {
     case CoorFormat::Unknown:
       fail("Unknown format.");
   }
-  assert(0);  // silence GCC -Wreturn-type
+  unreachable();
 }
 
 inline Structure read_structure_file(const std::string& path,

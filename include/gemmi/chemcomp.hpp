@@ -313,6 +313,7 @@ inline std::string bond_type_to_string(Restraints::Bond::Type btype) {
     case Restraints::Bond::Deloc: return "deloc";
     case Restraints::Bond::Metal: return "metal";
   }
+  unreachable();
 }
 
 // it doesn't handle crossN types from the monomer library
