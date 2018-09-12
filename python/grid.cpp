@@ -6,9 +6,12 @@
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/stl_bind.h>
 
 namespace py = pybind11;
 using namespace gemmi;
+
+PYBIND11_MAKE_OPAQUE(std::vector<SubCells::Mark*>)
 
 template<typename T>
 std::string grid_dim_str(const Grid<T>& g) {
@@ -111,11 +114,13 @@ void add_grid(py::module& m) {
                std::to_string(self.residue_idx) + "/" +
                std::to_string(self.atom_idx) + ">";
     });
+  py::bind_vector<std::vector<SubCells::Mark*>>(m, "VectorSubCellsMarkPtr");
   subcells
     .def(py::init<const Model&, const UnitCell&, double>(),
          py::arg("model"), py::arg("cell"), py::arg("max_radius"))
     .def("find_atoms", &SubCells::find_atoms,
-         py::arg("pos"), py::arg("alt"), py::arg("radius"))
+         py::arg("pos"), py::arg("alt"), py::arg("radius"),
+         py::return_value_policy::move, py::keep_alive<0, 1>())
     .def("dist", &SubCells::dist)
     .def("__repr__", [](const SubCells& self) {
         return "<gemmi.SubCells with grid " + grid_dim_str(self.grid) + ">";

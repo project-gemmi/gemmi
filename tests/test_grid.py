@@ -67,8 +67,7 @@ class TestSubCells(unittest.TestCase):
         a1 = st[0].sole_residue('A', 37, ' ')[0]
         sc = gemmi.SubCells(st[0], st.cell, 5)
         marks = sc.find_atoms(a1.pos, a1.altloc, 3)
-        marks.sort(key=lambda m: sc.dist(a1.pos, m.pos()))
-        m1, m2 = marks
+        m1, m2 = sorted(marks, key=lambda m: sc.dist(a1.pos, m.pos()))
         self.assertAlmostEqual(sc.dist(a1.pos, m1.pos()), 0, delta=5e-6)
         self.assertAlmostEqual(sc.dist(a1.pos, m2.pos()), 0.13, delta=5e-3)
         cra2 = m2.to_cra(st[0])
