@@ -99,15 +99,24 @@ struct Linkage {
   struct ResInfo {
     const gemmi::Residue* res;
     std::string prev_link;
-    ResInfo* prev;
+    int prev_idx;
     std::vector<std::string> mods;
+    gemmi::ChemComp chemcomp;
+
+    ResInfo(const gemmi::Residue* r) : res(r), prev_idx(0) {}
+    const gemmi::Residue* prev_res() const {
+      return prev_idx != 0 ? (this + prev_idx)->res : nullptr;
+    }
   };
+
   struct ChainInfo {
     std::string name;
     std::string entity_id;
     bool polymer;
+    gemmi::PolymerType polymer_type;
     std::vector<ResInfo> residues;
   };
+
   struct ExtraLink {
     const gemmi::Residue* res1;
     const gemmi::Residue* res2;
@@ -120,78 +129,62 @@ struct Linkage {
   std::vector<ExtraLink> extra;
 };
 
-static std::string get_link_type(const gemmi::Residue& res,
-                                 const gemmi::Residue* prev,
-                                 const std::string& residue_group,
-                                 gemmi::PolymerType ptype) {
-  using gemmi::PolymerType;
-  if (!prev)
-    return ".";
-  if (!are_connected(*prev, res, ptype))
-    return "gap";
-  if (is_polypeptide(ptype)) {
-    std::string link = prev->is_cis ? "CIS" : "TRANS";
-    if (residue_group == "P-peptide")
-      link = "P" + link;  // PCIS, PTRANS
-    else if (residue_group == "M-peptide")
-      link = "NM" + link; // NMCIS, NMTRANS
-    return link;
-  }
+static const char* get_front_modificat(const gemmi::Residue& res,
+                                       gemmi::PolymerType ptype) {
+  (void) res;
+  if (is_polypeptide(ptype))
+    return "NH3";
   if (is_polynucleotide(ptype))
-    return "p";
-  return "?";
+    return "5*END";
+  return nullptr;
 }
 
-static std::string get_modification(const gemmi::SubChain& subchain,
-                                    const gemmi::Residue& res,
-                                    gemmi::PolymerType ptype) {
-  using gemmi::PolymerType;
-  if (is_polypeptide(ptype)) {
-    if (&res == &subchain.front())
-      return "NH3";
-    else if (&res == &subchain.back())
-      return res.find_atom("OXT") ? "COO" : "TERMINUS";
-  } else if (is_polynucleotide(ptype)) {
-    if (&res == &subchain.front())
-      return "5*END";
-    else if (&res == &subchain.back())
-      return "TERMINUS";
-  }
-  return "";
+static const char* get_back_modificat(const gemmi::Residue& res,
+                                      gemmi::PolymerType ptype) {
+  if (is_polypeptide(ptype))
+    return res.find_atom("OXT") ? "COO" : "TERMINUS";
+  if (is_polynucleotide(ptype))
+    return "TERMINUS";
+  return nullptr;
 }
 
-Linkage::ChainInfo determine_linkage(const gemmi::SubChain& subchain,
-                                     const MonLib& monlib,
-                                     const gemmi::Entity* ent) {
+static Linkage::ChainInfo initialize_chain_info(const gemmi::SubChain& subchain,
+                                                const gemmi::Entity* ent) {
   Linkage::ChainInfo lc;
   lc.residues.reserve(subchain.size());
   lc.name = subchain.name();
   lc.entity_id = ent->name;
   lc.polymer = ent && ent->entity_type == gemmi::EntityType::Polymer;
-  if (lc.polymer) {
-    // For now we ignore microheterogeneity.
-    Linkage::ResInfo* prev = nullptr;
-    for (const gemmi::Residue& res : subchain) {
-      Linkage::ResInfo lr;
-      lr.res = &res;
-      const gemmi::ChemComp& cc = monlib.monomers.at(res.name);
-      lr.prev_link = get_link_type(res, (prev ? prev->res : nullptr),
-                                   cc.group, ent->polymer_type);
-      lr.prev = prev;
-
-      // we try to get exactly the same numbers that makecif produces
-      if (ent->polymer_type == gemmi::PolymerType::PeptideL)
-        lr.mods.push_back("AA-STAND");
-      lr.mods.push_back(get_modification(subchain, res, ent->polymer_type));
-
-      lc.residues.push_back(lr);
-      prev = &lc.residues.back();
-    }
-  } else {
-    for (const gemmi::Residue& res : subchain)
-      lc.residues.push_back({&res, "", nullptr, {}});
+  lc.polymer_type = ent->polymer_type;
+  for (const gemmi::Residue& res : subchain) {
+    lc.residues.emplace_back(&res);
   }
   return lc;
+}
+
+static void setup_polymer_links(Linkage::ChainInfo& ci) {
+  if (!ci.polymer || ci.residues.empty())
+    return;
+  for (auto ri = ci.residues.begin() + 1; ri != ci.residues.end(); ++ri) {
+    // For now we ignore microheterogeneity.
+    ri->prev_idx = -1;
+    const gemmi::Residue* prev_res = (ri + ri->prev_idx)->res;
+    if (!prev_res) {
+      ri->prev_link = ".";
+    } else if (!are_connected(*prev_res, *ri->res, ci.polymer_type)) {
+      ri->prev_link = "gap";
+    } else if (is_polypeptide(ci.polymer_type)) {
+      if (ri->chemcomp.group == "P-peptide")
+        ri->prev_link = "P";  // PCIS, PTRANS
+      else if (ri->chemcomp.group == "M-peptide")
+        ri->prev_link = "NM"; // NMCIS, NMTRANS
+      ri->prev_link += prev_res->is_cis ? "CIS" : "TRANS";
+    } else if (is_polynucleotide(ci.polymer_type)) {
+      ri->prev_link = "p";
+    } else {
+      ri->prev_link = "?";
+    }
+  }
 }
 
 static bool has_anisou(const gemmi::Model& model) {
@@ -201,6 +194,15 @@ static bool has_anisou(const gemmi::Model& model) {
         if (a.has_anisou())
           return true;
   return false;
+}
+
+// for compatibility with makecif, not sure what ccp4_mod_id is really used for
+static std::string get_ccp4_mod_id(const std::vector<std::string>& mods) {
+  for (const std::string& m : mods)
+    if (m != "AA-STAND" && !gemmi::starts_with(m, "DEL-OXT") &&
+        !gemmi::starts_with(m, "DEL-HN") && m != "DEL-NMH")
+      return m;
+  return ".";
 }
 
 static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
@@ -243,13 +245,9 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
     if (!chain_info.polymer)
       continue;
     for (const Linkage::ResInfo& res_info : chain_info.residues) {
-      std::string prev = res_info.prev ? res_info.prev->res->seqid.str()
-                                       : "n/a";
-      std::string mod = res_info.mods.at(0);
-      if (mod == "AA-STAND")
-        mod = res_info.mods.at(1);
-      if (mod.empty())
-        mod += '.';
+      std::string prev = res_info.prev_idx ? res_info.prev_res()->seqid.str()
+                                           : "n/a";
+      std::string mod = get_ccp4_mod_id(res_info.mods);
       poly_loop.add_row({res_info.res->name, res_info.res->seqid.str(),
                          chain_info.entity_id, res_info.prev_link, prev, mod});
     }
@@ -531,10 +529,9 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
   for (const Linkage::ChainInfo& chain_info : linkage.chains) {
     for (const Linkage::ResInfo& ri : chain_info.residues) {
       // write link
-      if (ri.prev) {
+      if (const gemmi::Residue* prev = ri.prev_res()) {
         const gemmi::ChemLink* link = monlib.find_link(ri.prev_link);
         if (link && !link->rt.empty()) {
-          const gemmi::Residue* prev = ri.prev->res;
           std::string comment = "# link " + ri.prev_link + " " +
                                  prev->seqid.str() + " " + prev->name + " - " +
                                  ri.res->seqid.str() + " " + ri.res->name;
@@ -545,36 +542,20 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
             restr_loop.pop_row();  // remove the LINK line
         }
       }
-
-      gemmi::ChemComp chem_comp = monlib.monomers.at(ri.res->name);
-      // apply modifications
-      for (const std::string& modif : ri.mods) {
-        if (!modif.empty()) {
-          if (const gemmi::ChemMod* chem_mod = monlib.find_mod(modif))
-            try {
-              chem_mod->apply_to(chem_comp);
-            } catch(std::runtime_error& e) {
-              printf("Failed to apply modification %s to %s: %s\n",
-                     chem_mod->id.c_str(), ri.res->name.c_str(), e.what());
-            }
-          else
-            printf("Modification not found: %s\n", modif.c_str());
-        }
-      }
       // write monomer
-      if (!chem_comp.rt.empty()) {
+      if (!ri.chemcomp.rt.empty()) {
         // comments are added relying on how cif writing works
         std::string res_info = "# monomer " + chain_info.name + " " +
                                ri.res->seqid.str() + " " + ri.res->name;
 
         // need to revisit it later on
-        std::string group = cif::quote(chem_comp.group.substr(0, 8));
+        std::string group = cif::quote(ri.chemcomp.group.substr(0, 8));
         if (group == "peptide" || group == "P-peptid" || group == "M-peptid")
           group = "L-peptid";
 
         restr_loop.add_row({res_info + "\nMONO", ".", group,
                             ".", ".", ".", ".", ".", ".", ".", "."});
-        int n = add_restraints(chem_comp.rt, *ri.res, nullptr,
+        int n = add_restraints(ri.chemcomp.rt, *ri.res, nullptr,
                                restr_loop, counters);
         if (n == 0)
           restr_loop.pop_row();  // remove the MONO line
@@ -624,6 +605,8 @@ gemmi::ChemLink connection_to_chemlink(const gemmi::Connection& conn,
   return link;
 }
 
+static void add_hydrogens(Linkage::ResInfo& ri) {
+}
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
@@ -652,6 +635,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         resnames.insert(res.name);
 
     MonLib monlib = read_monomers(monomer_dir, resnames);
+
+    // sort atoms in residues and assign serial numbers
     int serial = 0;
     for (gemmi::Chain& chain : model0.chains)
       for (gemmi::Residue& res : chain.residues) {
@@ -672,21 +657,41 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
 
     Linkage linkage;
+    // initialize chains and residues
     for (const gemmi::Chain& chain : model0.chains)
       for (gemmi::SubChain sub : const_cast<gemmi::Chain&>(chain).subchains()) {
         assert(sub.labelled());
         const gemmi::Entity* ent = st.get_entity_of(sub);
-        linkage.chains.push_back(determine_linkage(sub, monlib, ent));
+        linkage.chains.push_back(initialize_chain_info(sub, ent));
       }
-    // add modifications from standard links
-    for (Linkage::ChainInfo& chain_info : linkage.chains)
-      for (Linkage::ResInfo& ri : chain_info.residues)
+    for (Linkage::ChainInfo& ci : linkage.chains) {
+      // copy monomer description
+      for (Linkage::ResInfo& ri : ci.residues)
+        ri.chemcomp = monlib.monomers.at(ri.res->name);
+      // setup polymer links
+      setup_polymer_links(ci);
+      // add built-in modifications
+      if (ci.polymer && !ci.residues.empty()) {
+        // we try to get exactly the same numbers that makecif produces
+        for (Linkage::ResInfo& ri : ci.residues)
+          if (ci.polymer_type == gemmi::PolymerType::PeptideL)
+            ri.mods.emplace_back("AA-STAND");
+        Linkage::ResInfo& front = ci.residues.front();
+        if (const char* mod = get_front_modificat(*front.res, ci.polymer_type))
+          front.mods.emplace_back(mod);
+        Linkage::ResInfo& back = ci.residues.back();
+        if (const char* mod = get_back_modificat(*back.res, ci.polymer_type))
+          back.mods.emplace_back(mod);
+      }
+      // add modifications from standard links
+      for (Linkage::ResInfo& ri : ci.residues)
         if (const gemmi::ChemLink* link = monlib.find_link(ri.prev_link)) {
           if (!link->mod[0].empty())
-            ri.prev->mods.push_back(link->mod[0]);
+            (&ri + ri.prev_idx)->mods.push_back(link->mod[0]);
           if (!link->mod[1].empty())
             ri.mods.push_back(link->mod[1]);
         }
+    }
     // add extra links
     for (const gemmi::Connection& conn : model0.connections) {
       Linkage::ExtraLink extra;
@@ -699,6 +704,26 @@ int GEMMI_MAIN(int argc, char **argv) {
         linkage.extra.push_back(extra);
       }
     }
+    // TODO: automatically determine other links
+
+    for (Linkage::ChainInfo& chain_info : linkage.chains)
+      for (Linkage::ResInfo& ri : chain_info.residues) {
+        // apply modifications
+        for (const std::string& modif : ri.mods) {
+          if (const gemmi::ChemMod* chem_mod = monlib.find_mod(modif))
+            try {
+              chem_mod->apply_to(ri.chemcomp);
+            } catch(std::runtime_error& e) {
+              printf("Failed to apply modification %s to %s: %s\n",
+                     chem_mod->id.c_str(), ri.res->name.c_str(), e.what());
+            }
+          else
+            printf("Modification not found: %s\n", modif.c_str());
+        }
+
+        // add hydrogens
+        add_hydrogens(ri);
+      }
 
     cif::Document crd = make_crd(st, monlib, linkage);
     if (p.options[Verbose])
