@@ -21,7 +21,8 @@
 namespace cif = gemmi::cif;
 using gemmi::Restraints;
 
-enum OptionIndex { Verbose=3, Monomers, NoHydrogens, NoZeroOccRestr };
+enum OptionIndex { Verbose=3, Monomers, NoHydrogens, KeepHydrogens,
+                   NoZeroOccRestr };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -37,6 +38,8 @@ static const option::Descriptor Usage[] = {
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
   { NoHydrogens, 0, "H", "no-hydrogens", Arg::None,
     "  -H, --no-hydrogens  \tRemove or do not add hydrogens." },
+  { KeepHydrogens, 0, "", "keep-hydrogens", Arg::None,
+    "  --keep-hydrogens  \tPreserve hydrogens from the input file." },
   { NoZeroOccRestr, 0, "", "no-zero-occ", Arg::None,
     "  --no-zero-occ  \tNo restraints for zero-occupancy atoms." },
   { 0, 0, 0, 0, 0, 0 }
@@ -605,7 +608,8 @@ gemmi::ChemLink connection_to_chemlink(const gemmi::Connection& conn,
   return link;
 }
 
-static void add_hydrogens(Linkage::ResInfo& ri) {
+static void place_hydrogens(Linkage::ResInfo& ri) {
+  // TODO
 }
 
 int GEMMI_MAIN(int argc, char **argv) {
@@ -620,6 +624,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   std::string input = p.coordinate_input_file(0);
   std::string output = p.nonOption(1);
+  if (p.options[KeepHydrogens] && p.options[NoHydrogens])
+    gemmi::fail("cannot use both --no-hydrogens and --keep-hydrogens");
   try {
     gemmi::Structure st = gemmi::read_structure_gz(input);
     if (st.input_format == gemmi::CoorFormat::Pdb)
@@ -627,7 +633,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (st.models.empty())
       return 1;
     gemmi::Model& model0 = st.models[0];
-    if (p.options[NoHydrogens])
+    if (!p.options[KeepHydrogens])
       gemmi::remove_hydrogens(model0);
     std::set<std::string> resnames;
     for (const gemmi::Chain& chain : model0.chains)
@@ -636,7 +642,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
     MonLib monlib = read_monomers(monomer_dir, resnames);
 
-    // sort atoms in residues and assign serial numbers
+    // add H, sort atoms in residues and assign serial numbers
     int serial = 0;
     for (gemmi::Chain& chain : model0.chains)
       for (gemmi::Residue& res : chain.residues) {
@@ -647,6 +653,14 @@ int GEMMI_MAIN(int argc, char **argv) {
             gemmi::fail("No atom " + atom.name + " expected in " + res.name);
           atom.serial = it - cc.atoms.begin();
         }
+        if (!p.options[KeepHydrogens] && !p.options[NoHydrogens])
+          for (auto it = cc.atoms.begin(); it != cc.atoms.end(); ++it)
+            if (is_hydrogen(it->el)) {
+              gemmi::Atom atom = it->to_full_atom();
+              atom.flag = 'R';
+              atom.serial = it - cc.atoms.begin();
+              res.atoms.push_back(atom);
+            }
         std::sort(res.atoms.begin(), res.atoms.end(),
                   [](const gemmi::Atom& a, const gemmi::Atom& b) {
                     return a.serial != b.serial ? a.serial < b.serial
@@ -722,7 +736,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         }
 
         // add hydrogens
-        add_hydrogens(ri);
+        if (!p.options[KeepHydrogens] && !p.options[NoHydrogens])
+          place_hydrogens(ri);
       }
 
     cif::Document crd = make_crd(st, monlib, linkage);
