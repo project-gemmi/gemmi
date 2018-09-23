@@ -128,6 +128,14 @@ struct Loop {
   void add_row(std::initializer_list<std::string> new_values, int pos=-1) {
     add_row<std::initializer_list<std::string>>(new_values, pos);
   }
+  // comments are added relying on how cif writing works
+  void add_comment_and_row(std::initializer_list<std::string> ss) {
+    if (ss.size() != tags.size() + 1)
+      fail("add_comment_and_row(): wrong row length.");
+    std::vector<std::string> vec(ss.begin() + 1, ss.end());
+    vec[0] = "#" + *ss.begin() + "\n" + vec[0];
+    return add_row(vec);
+  }
   void pop_row() {
     if (values.size() < tags.size())
       fail("pop_row() called on empty Loop");

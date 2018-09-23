@@ -534,11 +534,12 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
       if (const gemmi::Residue* prev = ri.prev_res()) {
         const gemmi::ChemLink* link = monlib.find_link(ri.prev_link);
         if (link && !link->rt.empty()) {
-          std::string comment = "# link " + ri.prev_link + " " +
+          std::string comment = " link " + ri.prev_link + " " +
                                  prev->seqid.str() + " " + prev->name + " - " +
                                  ri.res->seqid.str() + " " + ri.res->name;
-          restr_loop.add_row({comment + "\nLINK", ".", cif::quote(ri.prev_link),
-                              ".", ".", ".", ".", ".", ".", ".", "."});
+          restr_loop.add_comment_and_row({comment, "LINK", ".",
+                                          cif::quote(ri.prev_link), ".",
+                                          ".", ".", ".", ".", ".", ".", "."});
           int n = add_restraints(link->rt, *prev, ri.res, restr_loop, counters);
           if (n == 0)
             restr_loop.pop_row();  // remove the LINK line
@@ -546,8 +547,7 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
       }
       // write monomer
       if (!ri.chemcomp.rt.empty()) {
-        // comments are added relying on how cif writing works
-        std::string res_info = "# monomer " + chain_info.name + " " +
+        std::string res_info = " monomer " + chain_info.name + " " +
                                ri.res->seqid.str() + " " + ri.res->name;
 
         // need to revisit it later on
@@ -555,8 +555,8 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
         if (group == "peptide" || group == "P-peptid" || group == "M-peptid")
           group = "L-peptid";
 
-        restr_loop.add_row({res_info + "\nMONO", ".", group,
-                            ".", ".", ".", ".", ".", ".", ".", "."});
+        restr_loop.add_comment_and_row({res_info, "MONO", ".", group, ".",
+                                        ".", ".", ".", ".", ".", ".", "."});
         int n = add_restraints(ri.chemcomp.rt, *ri.res, nullptr,
                                restr_loop, counters);
         if (n == 0)
@@ -575,9 +575,10 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
       v.id = link_name;
       chem_link = &v;
     }
-    std::string comment = "# link " + chem_link->id;
-    restr_loop.add_row({comment + "\nLINK", ".", cif::quote(chem_link->id),
-                        ".", ".", ".", ".", ".", ".", ".", "."});
+    std::string comment = " link " + chem_link->id;
+    restr_loop.add_comment_and_row({comment, "LINK", ".",
+                                    cif::quote(chem_link->id), ".",
+                                    ".", ".", ".", ".", ".", ".", "."});
     char altloc = link.alt1 ? link.alt1 : (link.alt2 ? link.alt2 : '*');
     if (link.alt1 && link.alt2 && link.alt1 != link.alt2)
       printf("Warning: LINK between different conformers %c and %c.",
