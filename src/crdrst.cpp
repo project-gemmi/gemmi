@@ -132,25 +132,6 @@ struct Linkage {
   std::vector<ExtraLink> extra;
 };
 
-static const char* get_front_modificat(const gemmi::Residue& res,
-                                       gemmi::PolymerType ptype) {
-  (void) res;
-  if (is_polypeptide(ptype))
-    return "NH3";
-  if (is_polynucleotide(ptype))
-    return "5*END";
-  return nullptr;
-}
-
-static const char* get_back_modificat(const gemmi::Residue& res,
-                                      gemmi::PolymerType ptype) {
-  if (is_polypeptide(ptype))
-    return res.find_atom("OXT") ? "COO" : "TERMINUS";
-  if (is_polynucleotide(ptype))
-    return "TERMINUS";
-  return nullptr;
-}
-
 static Linkage::ChainInfo initialize_chain_info(const gemmi::SubChain& subchain,
                                                 const gemmi::Entity* ent) {
   Linkage::ChainInfo lc;
@@ -186,6 +167,24 @@ static void setup_polymer_links(Linkage::ChainInfo& ci) {
       ri->prev_link = "p";
     } else {
       ri->prev_link = "?";
+    }
+  }
+}
+
+static void add_builtin_modifications(Linkage::ChainInfo& ci) {
+  if (ci.polymer && !ci.residues.empty()) {
+    // we try to get exactly the same numbers that makecif produces
+    for (Linkage::ResInfo& ri : ci.residues)
+      if (ci.polymer_type == gemmi::PolymerType::PeptideL)
+        ri.mods.emplace_back("AA-STAND");
+    Linkage::ResInfo& front = ci.residues.front();
+    Linkage::ResInfo& back = ci.residues.back();
+    if (is_polypeptide(ci.polymer_type)) {
+      front.mods.emplace_back("NH3");
+      back.mods.emplace_back(back.res->find_atom("OXT") ? "COO" : "TERMINUS");
+    } else if (is_polynucleotide(ci.polymer_type)) {
+      front.mods.emplace_back("5*END");
+      back.mods.emplace_back("TERMINUS");
     }
   }
 }
@@ -682,21 +681,11 @@ int GEMMI_MAIN(int argc, char **argv) {
       // copy monomer description
       for (Linkage::ResInfo& ri : ci.residues)
         ri.chemcomp = monlib.monomers.at(ri.res->name);
-      // setup polymer links
+
       setup_polymer_links(ci);
-      // add built-in modifications
-      if (ci.polymer && !ci.residues.empty()) {
-        // we try to get exactly the same numbers that makecif produces
-        for (Linkage::ResInfo& ri : ci.residues)
-          if (ci.polymer_type == gemmi::PolymerType::PeptideL)
-            ri.mods.emplace_back("AA-STAND");
-        Linkage::ResInfo& front = ci.residues.front();
-        if (const char* mod = get_front_modificat(*front.res, ci.polymer_type))
-          front.mods.emplace_back(mod);
-        Linkage::ResInfo& back = ci.residues.back();
-        if (const char* mod = get_back_modificat(*back.res, ci.polymer_type))
-          back.mods.emplace_back(mod);
-      }
+
+      add_builtin_modifications(ci);
+
       // add modifications from standard links
       for (Linkage::ResInfo& ri : ci.residues)
         if (const gemmi::ChemLink* link = monlib.find_link(ri.prev_link)) {
