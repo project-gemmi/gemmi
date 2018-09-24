@@ -20,17 +20,18 @@ namespace pegtl = tao::pegtl;
 
 namespace numb_rules {
   using namespace pegtl;
+  // but we use pegtl::plus and pegtl::eof to avoid ambiguous symbols
 
   struct sign : opt<one<'+', '-'>> {};
   struct e : one<'e', 'E'> {};
-  struct exponent : seq<sign, plus<digit>> {};
+  struct exponent : seq<sign, pegtl::plus<digit>> {};
   struct uint_digit : digit {};
-  struct fraction : plus<digit> {};
+  struct fraction : pegtl::plus<digit> {};
   struct base : if_then_else<one<'.'>, fraction,
-                                       seq<plus<uint_digit>,
+                                       seq<pegtl::plus<uint_digit>,
                                            opt<one<'.'>, opt<fraction>>>> {};
   // Error in brackets ,as per CIF spec. We ignore the value for now.
-  struct err : seq<one<'('>, plus<digit>, one<')'>> {};
+  struct err : seq<one<'('>, pegtl::plus<digit>, one<')'>> {};
   struct numb : seq<sign, base, opt<e, exponent>, opt<err>, pegtl::eof> {};
 }
 
