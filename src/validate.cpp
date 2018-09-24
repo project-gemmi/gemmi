@@ -3,6 +3,7 @@
 #include "gemmi/cif.hpp"
 #include "gemmi/gz.hpp"
 #include "gemmi/ddl.hpp"
+#include "gemmi/chemcomp.hpp"
 #include <cstdio>
 #include <stdexcept>
 #include <string>
@@ -15,8 +16,9 @@
 #include "options.h"
 
 namespace cif = gemmi::cif;
+using gemmi::Restraints;
 
-enum OptionIndex { Fast=3, Stat, Verbose, Quiet, Ddl };
+enum OptionIndex { Fast=3, Stat, Verbose, Quiet, Ddl, Monomer };
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
                                 "\n\nOptions:" },
@@ -29,6 +31,8 @@ const option::Descriptor Usage[] = {
   { Quiet, 0, "q", "quiet", Arg::None, "  -q, --quiet  \tShow only errors." },
   { Ddl, 0, "d", "ddl", Arg::Required,
                                    "  -d, --ddl=PATH  \tDDL for validation." },
+  { Monomer, 0, "m", "monomer", Arg::None,
+    "  -m, --monomer  \tExtra checks for Refmac dictionary files." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -139,6 +143,62 @@ void check_empty_loops(const cif::Block& block) {
   }
 }
 
+static void check_bond_order(const gemmi::ChemComp& cc) {
+  for (const gemmi::ChemComp::Atom& atom : cc.atoms) {
+    if (cc.atoms.size() == 1)
+      continue;
+    float order_sum = 0.0f;
+    for (const Restraints::Bond& bond : cc.rt.bonds)
+      if (bond.id1 == atom.id || bond.id2 == atom.id)
+        order_sum += order_of_bond_type(bond.type);
+    bool ok = order_sum >= 1.0f;
+    if (atom.is_hydrogen()) {
+      ok = (order_sum == 1.0f);
+    } else if (atom.el == gemmi::El::P) {
+      ok = (order_sum == 3.0f || order_sum == 5.0f || order_sum == 5.5f);
+    }
+    if (!ok)
+      std::cout << cc.name << ": " << atom.id << " (" << element_name(atom.el)
+                << ") has bond order " << order_sum << std::endl;
+  }
+}
+
+static std::string repr(const Restraints::Angle& angle) {
+  return angle.id1.atom + "-" + angle.id2.atom + "-" + angle.id3.atom;
+}
+static std::string repr(const Restraints::Torsion& tor) {
+  return tor.id1.atom + "-" + tor.id2.atom + "-" +
+         tor.id3.atom + "-" + tor.id4.atom;
+}
+
+static void check_bond_angle_consistency(const gemmi::ChemComp& cc) {
+  for (const Restraints::Angle& angle : cc.rt.angles) {
+    if (!cc.rt.are_bonded(angle.id1, angle.id2) ||
+        !cc.rt.are_bonded(angle.id2, angle.id3))
+      std::cout << cc.name << ": angle " << repr(angle) << " not bonded"
+                << std::endl;
+    if (angle.value < 20)
+      std::cout << cc.name << ": angle " << repr(angle)
+                << " with low value: " << angle.value << std::endl;
+  }
+  for (const Restraints::Torsion& tor : cc.rt.torsions) {
+    if (!cc.rt.are_bonded(tor.id1, tor.id2) ||
+        !cc.rt.are_bonded(tor.id2, tor.id3) ||
+        !cc.rt.are_bonded(tor.id3, tor.id4))
+      std::cout << cc.name << ": torsion " << repr(tor) << " not bonded"
+                << std::endl;
+  }
+}
+
+static void check_monomer_doc(const cif::Document& doc) {
+  for (const cif::Block& block : doc.blocks)
+    if (block.name != "comp_list") {
+      gemmi::ChemComp cc = gemmi::make_chemcomp_from_block(block);
+      check_bond_order(cc);
+      check_bond_angle_consistency(cc);
+    }
+}
+
 
 int GEMMI_MAIN(int argc, char **argv) {
 #ifdef ANALYZE_RULES // for debugging only
@@ -174,6 +234,8 @@ int GEMMI_MAIN(int argc, char **argv) {
             std::cout << "Note: " << ver_msg << std::endl;
           ok = dict.validate(d, std::cout, quiet);
         }
+        if (p.options[Monomer])
+          check_monomer_doc(d);
       }
     } catch (std::runtime_error& e) {
       ok = false;

@@ -609,6 +609,11 @@ gemmi::ChemLink connection_to_chemlink(const gemmi::Connection& conn,
 }
 
 static void place_hydrogens(Linkage::ResInfo& ri) {
+  // for each hydrogen
+  //   P = parent atom
+  //   d = distance to P
+  //   angles
+  //
   // TODO
 }
 

@@ -106,6 +106,11 @@ struct Restraints {
   }
 
   template<typename T>
+  bool are_bonded(const T& a1, const T& a2) const {
+    return const_cast<Restraints*>(this)->find_bond(a1, a2) != bonds.end();
+  }
+
+  template<typename T>
   void for_each_bonded_atom(const AtomId& a, const T& func) const {
     for (const Bond& bond : bonds) {
       if (bond.id1 == a)
@@ -219,6 +224,7 @@ struct ChemComp {
       atom.element = el;
       return atom;
     }
+    bool is_hydrogen() const { return gemmi::is_hydrogen(el); }
   };
 
   std::string name;
@@ -312,6 +318,19 @@ inline std::string bond_type_to_string(Restraints::Bond::Type btype) {
     case Restraints::Bond::Aromatic: return "aromatic";
     case Restraints::Bond::Deloc: return "deloc";
     case Restraints::Bond::Metal: return "metal";
+  }
+  unreachable();
+}
+
+inline float order_of_bond_type(Restraints::Bond::Type btype) {
+  switch (btype) {
+    case Restraints::Bond::Single: return 1.0f;
+    case Restraints::Bond::Double: return 2.0f;
+    case Restraints::Bond::Triple: return 3.0f;
+    case Restraints::Bond::Aromatic: return 1.5f;
+    case Restraints::Bond::Deloc: return 1.5f;
+    case Restraints::Bond::Metal: return 1.0f;
+    case Restraints::Bond::Unspec: return 0.0f;
   }
   unreachable();
 }

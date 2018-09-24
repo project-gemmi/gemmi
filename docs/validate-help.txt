@@ -9,3 +9,4 @@ Options:
   --verbose       Verbose output.
   -q, --quiet     Show only errors.
   -d, --ddl=PATH  DDL for validation.
+  -m, --monomer   Extra checks for Refmac dictionary files.

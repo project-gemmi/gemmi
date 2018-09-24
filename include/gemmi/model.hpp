@@ -205,6 +205,7 @@ struct Atom {
     return u11 != 0.f || u22 != 0.f || u33 != 0.f ||
            u12 != 0.f || u13 != 0.f || u23 != 0.f;
   }
+  bool is_hydrogen() const { return gemmi::is_hydrogen(element); }
 };
 
 struct SeqId {

@@ -37,9 +37,10 @@ void check_h(const std::string& id, const ChemComp& cc) {
       other_end = &angle.id1;
     if (other_end) {
       if (angle.id2 != heavy_atom)
-        fail("_chem_comp_angle.atom_id_2 is  not H's heavy atom.");
-      printf("%.1f deg to %s, ", angle.value, other_end->atom.c_str());
-      ++angle_count;
+        fail("_chem_comp_angle.atom_id_2 is not H's heavy atom.");
+      //printf("%.1f deg to %s, ", angle.value, other_end->atom.c_str());
+      if (!cc.get_atom(other_end->atom).is_hydrogen())
+        ++angle_count;
     }
   }
 
@@ -58,7 +59,8 @@ void check_h(const std::string& id, const ChemComp& cc) {
     if (other[0]) {
       if (other[0]->atom != heavy_atom)
         fail("_chem_comp_tor atom next to H is not H's heavy atom.");
-      ++tor_count;
+      if (!cc.get_atom(other[2]->atom).is_hydrogen())
+        ++tor_count;
     }
   }
 
