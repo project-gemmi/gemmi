@@ -99,7 +99,7 @@ static Result test_bfactor_models(const Structure& st, const Params& params) {
   const Model& model = st.models.at(0);
   std::vector<double> b_exper;
   std::vector<double> b_predict;
-	for (const Chain& chain : model.chains) {
+  for (const Chain& chain : model.chains) {
     for (const Residue& res : chain.residues) {
       if (!find_tabulated_residue(res.name).is_amino_acid())
         continue;

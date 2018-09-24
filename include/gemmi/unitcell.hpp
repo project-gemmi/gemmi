@@ -114,7 +114,7 @@ struct UnitCell {
     if (sin_alpha == 0 || sin_beta == 0 || sin_gamma == 0)
       gemmi::fail("Impossible angle - N*180deg.");
 
-		// volume - formula from Giacovazzo p.62
+    // volume - formula from Giacovazzo p.62
     volume = a * b * c * sqrt(1 - cos_alpha * cos_alpha - cos_beta * cos_beta
                               - cos_gamma * cos_gamma
                               + 2 * cos_alpha * cos_beta * cos_gamma);

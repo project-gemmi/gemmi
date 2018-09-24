@@ -111,11 +111,9 @@ namespace rules {
   // until<endq<field_sep>> instead of until<field_sep>.
   struct textfield : if_must<field_sep, until<field_sep>> {};
   struct unquoted : seq<not_at<keyword>, not_at<one<'_','$','#'>>,
-						pegtl::plus<nonblank_ch>> {};
+                        pegtl::plus<nonblank_ch>> {};
 
-  // (c) Tags and values.
-
-  // (a) Basic structure of CIF.
+  // (a) Basic structure of CIF. (c) Tags and values.
   struct datablockname : pegtl::plus<nonblank_ch> {};
   struct datablockheading : sor<if_must<str_data, datablockname>,
                                 str_global> {};
@@ -127,12 +125,13 @@ namespace rules {
   struct loop_tag : tag {};
   struct loop_value : value {};
   struct loop_end : opt<str_stop, ws_or_eof> {};
-  struct loop: if_must<str_loop, whitespace,
-								 pegtl::plus<seq<loop_tag, whitespace, discard>>,
-								 sor<pegtl::plus<seq<loop_value, ws_or_eof, discard>>,
-                                     // handle incorrect CIF with empty loop
-                                     at<sor<str_loop, pegtl::eof>>>,
-                                 loop_end> {};
+  struct loop: if_must<str_loop,
+                       whitespace,
+                       pegtl::plus<seq<loop_tag, whitespace, discard>>,
+                       sor<pegtl::plus<seq<loop_value, ws_or_eof, discard>>,
+                           // handle incorrect CIF with empty loop
+                           at<sor<str_loop, pegtl::eof>>>,
+                       loop_end> {};
   struct dataitem : if_must<tag, whitespace, value, ws_or_eof, discard> {};
   struct framename : pegtl::plus<nonblank_ch> {};
   struct endframe : str_save {};

@@ -135,7 +135,7 @@ struct Mat33 {
   // Based on https://en.wikipedia.org/wiki/Eigenvalue_algorithm
   std::array<double, 3> calculate_eigenvalues() const {
     double p1 = a[0][1] * a[0][1] + a[0][2] * a[0][2] + a[1][2] * a[1][2];
-		if (p1 == 0)
+    if (p1 == 0)
       return {{a[0][0], a[1][1], a[2][2]}};
     double q = (1./3.) * (a[0][0] + a[1][1] + a[2][2]);
     Mat33 b(a[0][0] - q, a[0][1], a[0][2],

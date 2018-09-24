@@ -69,7 +69,7 @@ static void print_contacts(const Structure& st, const Parameters& params) {
 
   int counter = 0;
   const Model& model = st.models.at(0);
-	for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
+  for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
     const Chain& chain = model.chains[n_ch];
     PolymerType pt = check_polymer_type(chain.get_polymer());
     for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
