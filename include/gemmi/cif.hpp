@@ -85,7 +85,7 @@ namespace rules {
 
   // (f) White space and comments.
   struct comment : if_must<one<'#'>, until<eolf>> {};
-  struct whitespace : plus<sor<ws_char, comment>> {};
+  struct whitespace : pegtl::plus<sor<ws_char, comment>> {};
   struct ws_or_eof : sor<whitespace, pegtl::eof> {};
 
   // (b) Reserved words.
@@ -111,30 +111,30 @@ namespace rules {
   // until<endq<field_sep>> instead of until<field_sep>.
   struct textfield : if_must<field_sep, until<field_sep>> {};
   struct unquoted : seq<not_at<keyword>, not_at<one<'_','$','#'>>,
-                        plus<nonblank_ch>> {};
+						pegtl::plus<nonblank_ch>> {};
 
   // (c) Tags and values.
 
   // (a) Basic structure of CIF.
-  struct datablockname : plus<nonblank_ch> {};
+  struct datablockname : pegtl::plus<nonblank_ch> {};
   struct datablockheading : sor<if_must<str_data, datablockname>,
                                 str_global> {};
-  struct tag : seq<one<'_'>, plus<nonblank_ch>> {};
+  struct tag : seq<one<'_'>, pegtl::plus<nonblank_ch>> {};
   // unquoted value made of ordinary characters only - for a typical mmCIF file
   // it is faster to check it first even if we backtrack on some values_.
-  struct simunq : seq<plus<ordinary_char>, at<ws_char>> {};
+  struct simunq : seq<pegtl::plus<ordinary_char>, at<ws_char>> {};
   struct value: sor<simunq, singlequoted, doublequoted, textfield, unquoted> {};
   struct loop_tag : tag {};
   struct loop_value : value {};
   struct loop_end : opt<str_stop, ws_or_eof> {};
   struct loop: if_must<str_loop, whitespace,
-                                 plus<seq<loop_tag, whitespace, discard>>,
-                                 sor<plus<seq<loop_value, ws_or_eof, discard>>,
+								 pegtl::plus<seq<loop_tag, whitespace, discard>>,
+								 sor<pegtl::plus<seq<loop_value, ws_or_eof, discard>>,
                                      // handle incorrect CIF with empty loop
                                      at<sor<str_loop, pegtl::eof>>>,
                                  loop_end> {};
   struct dataitem : if_must<tag, whitespace, value, ws_or_eof, discard> {};
-  struct framename : plus<nonblank_ch> {};
+  struct framename : pegtl::plus<nonblank_ch> {};
   struct endframe : str_save {};
   struct frame : if_must<str_save, framename, whitespace,
                          star<sor<dataitem, loop>>,
