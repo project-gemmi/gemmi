@@ -143,23 +143,24 @@ void check_empty_loops(const cif::Block& block) {
   }
 }
 
-static void check_bond_order(const gemmi::ChemComp& cc) {
+static void check_valency(const gemmi::ChemComp& cc) {
   for (const gemmi::ChemComp::Atom& atom : cc.atoms) {
     if (cc.atoms.size() == 1)
       continue;
-    float order_sum = 0.0f;
+    float valency = 0.0f;
     for (const Restraints::Bond& bond : cc.rt.bonds)
       if (bond.id1 == atom.id || bond.id2 == atom.id)
-        order_sum += order_of_bond_type(bond.type);
-    bool ok = order_sum >= 1.0f;
+        valency += order_of_bond_type(bond.type);
+    bool ok = valency >= 0.5f;
+    valency -= atom.charge;
     if (atom.is_hydrogen()) {
-      ok = (order_sum == 1.0f);
+      ok = std::round(valency) == 1.0;
     } else if (atom.el == gemmi::El::P) {
-      ok = (order_sum == 3.0f || order_sum == 5.0f || order_sum == 5.5f);
+      ok = (valency == 3.0f || valency == 5.0f || valency == 5.5f);
     }
     if (!ok)
       std::cout << cc.name << ": " << atom.id << " (" << element_name(atom.el)
-                << ") has bond order " << order_sum << std::endl;
+                << ") has bond order " << valency << std::endl;
   }
 }
 
@@ -193,9 +194,14 @@ static void check_bond_angle_consistency(const gemmi::ChemComp& cc) {
 static void check_monomer_doc(const cif::Document& doc) {
   for (const cif::Block& block : doc.blocks)
     if (block.name != "comp_list") {
-      gemmi::ChemComp cc = gemmi::make_chemcomp_from_block(block);
-      check_bond_order(cc);
-      check_bond_angle_consistency(cc);
+      try {
+        gemmi::ChemComp cc = gemmi::make_chemcomp_from_block(block);
+        check_valency(cc);
+        check_bond_angle_consistency(cc);
+      } catch (const std::exception& e) {
+        std::cerr << "Failed to interpret " << block.name << " from "
+                  << doc.source << ":\n " << e.what() << std::endl;
+      }
     }
 }
 
