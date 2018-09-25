@@ -228,6 +228,16 @@ struct Table {
     }
     bool has(int n) const { return tab.has_column(n); }
     bool has2(int n) const { return has(n) && !cif::is_null(operator[](n)); }
+
+    const std::string& one_of(int n1, int n2) const {
+      static const std::string nul(1, '.');
+      if (has2(n1))
+       return operator[](n1);
+      if (has(n2))
+       return operator[](n2);
+      return nul;
+    }
+
     size_t size() const { return tab.width(); }
     std::string str(int n) const { return as_string(at(n)); }
     using iterator = IndirectIter<Row, std::string>;

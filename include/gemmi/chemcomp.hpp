@@ -213,6 +213,10 @@ struct ChemComp {
   struct Atom {
     std::string id;
     Element el;
+    // _chem_comp_atom.partial_charge can be non-integer,
+    // _chem_comp_atom.charge is always integer (but sometimes has format
+    //  '0.000' which is not correct but we ignore it).
+    float charge;
     std::string chem_type;
 
     gemmi::Atom to_full_atom() const {
@@ -222,6 +226,7 @@ struct ChemComp {
       atom.occ = 0.0f;
       atom.b_iso = 0.0f;
       atom.element = el;
+      atom.charge = static_cast<signed char>(std::round(charge));
       return atom;
     }
     bool is_hydrogen() const { return gemmi::is_hydrogen(el); }
@@ -278,6 +283,7 @@ struct ChemMod {
     std::string old_id;
     std::string new_id;
     Element el;
+    float charge;
     std::string chem_type;
   };
 
@@ -353,8 +359,11 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
   if (group_col)
     cc.group = group_col.str(0);
   for (auto row : block.find("_chem_comp_atom.",
-                             {"atom_id", "type_symbol", "type_energy"}))
-    cc.atoms.push_back({row.str(0), Element(row.str(1)), row.str(2)});
+                             {"atom_id", "type_symbol", "type_energy",
+                             "?charge", "?partial_charge"}))
+    cc.atoms.push_back({row.str(0), Element(row.str(1)),
+                        (float) cif::as_number(row.one_of(3, 4), 0.0),
+                        row.str(2)});
   for (auto row : block.find("_chem_comp_bond.",
                              {"atom_id_1", "atom_id_2",
                               "type",
@@ -566,9 +575,12 @@ inline std::map<std::string, ChemMod> read_chemmods(cif::Document& doc) {
       throw std::runtime_error("inconsisted data_mod_list");
     for (auto ra : const_cast<cif::Block*>(block)->find("_chem_mod_atom.",
                                 {"function", "atom_id", "new_atom_id",
-                                 "new_type_symbol", "new_type_energy"}))
+                                 "new_type_symbol", "new_type_energy",
+                                 "?new_charge", "?new_partial_charge"}))
       mod.atom_mods.push_back({chem_mod_type(ra[0]), ra.str(1), ra.str(2),
-                               Element(ra.str(3)), ra.str(4)});
+                               Element(ra.str(3)),
+                               (float) cif::as_number(row.one_of(5, 6)),
+                               ra.str(4)});
     mod.rt = read_restraint_modifications(*block);
     mods.emplace(mod.id, mod);
   }
@@ -595,7 +607,9 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
     switch (mod.func) {
       case 'a':
         if (chemcomp.find_atom(mod.new_id) == chemcomp.atoms.end())
-          chemcomp.atoms.push_back({mod.new_id, mod.el, mod.chem_type});
+          chemcomp.atoms.push_back({mod.new_id, mod.el,
+                                    std::isnan(mod.charge) ? mod.charge : 0,
+                                    mod.chem_type});
         break;
       case 'd':
         if (it != chemcomp.atoms.end()) {
@@ -630,6 +644,8 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
             it->id = mod.new_id;
           if (mod.el != El::X)
             it->el = mod.el;
+          if (!std::isnan(mod.charge))
+            it->charge = mod.charge;
           if (!mod.chem_type.empty())
             it->chem_type = mod.chem_type;
         }
