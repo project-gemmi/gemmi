@@ -731,7 +731,7 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
 
   // _chem_mod_plane_atom
   for (const Restraints::Plane& mod : rt.planes)
-    for (const Restraints::AtomId& atom_id : mod.ids)
+    for (const Restraints::AtomId& atom_id : mod.ids) {
       if (atom_id.comp == 'a') {
         Restraints::Plane& plane = chemcomp.rt.get_or_add_plane(mod.label);
         if (plane.esd == 0.0 && !std::isnan(mod.esd))
@@ -747,6 +747,7 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
             it->ids.erase(item);
         }
       }
+    }
 }
 
 } // namespace gemmi
