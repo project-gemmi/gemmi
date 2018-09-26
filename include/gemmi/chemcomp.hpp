@@ -579,7 +579,7 @@ inline std::map<std::string, ChemMod> read_chemmods(cif::Document& doc) {
                                  "?new_charge", "?new_partial_charge"}))
       mod.atom_mods.push_back({chem_mod_type(ra[0]), ra.str(1), ra.str(2),
                                Element(ra.str(3)),
-                               (float) cif::as_number(row.one_of(5, 6)),
+                               (float) cif::as_number(ra.one_of(5, 6)),
                                ra.str(4)});
     mod.rt = read_restraint_modifications(*block);
     mods.emplace(mod.id, mod);
