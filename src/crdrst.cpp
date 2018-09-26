@@ -66,7 +66,11 @@ struct MonLib {
         return &ml.second;
     return nullptr;
   }
-
+  void ensure_unique_link_name(std::string& name) const {
+    size_t orig_len = name.size();
+    for (int n = 1; find_link(name) != nullptr; ++n)
+      name.replace(orig_len, name.size(), std::to_string(n));
+  }
 };
 
 inline MonLib read_monomers(std::string monomer_dir,
@@ -98,13 +102,56 @@ inline MonLib read_monomers(std::string monomer_dir,
   return monlib;
 }
 
-struct Linkage {
+// Topology: restraints applied to a model
+struct Topo {
+  struct Bond {
+    const Restraints::Bond* restr;
+    std::array<gemmi::Atom*, 2> atoms;
+    bool has(const gemmi::Atom* a) const {
+      return atoms[0] == a || atoms[1] == a;
+    }
+  };
+  struct Angle {
+    const Restraints::Angle* restr;
+    std::array<gemmi::Atom*, 3> atoms;
+    bool has(const gemmi::Atom* a) const {
+      return atoms[0] == a || atoms[1] == a || atoms[2] == a;
+    }
+  };
+  struct Torsion {
+    const Restraints::Torsion* restr;
+    std::array<gemmi::Atom*, 4> atoms;
+    bool has(const gemmi::Atom* a) const {
+      return atoms[0] == a || atoms[1] == a || atoms[2] == a || atoms[3] == a;
+    }
+  };
+  struct Chirality {
+    const Restraints::Chirality* restr;
+    std::array<gemmi::Atom*, 4> atoms;
+    bool has(const gemmi::Atom* a) const {
+      return atoms[0] == a || atoms[1] == a || atoms[2] == a || atoms[3] == a;
+    }
+  };
+  struct Plane {
+    const Restraints::Plane* restr;
+    std::vector<gemmi::Atom*> atoms;
+    bool has(const gemmi::Atom* a) const {
+      return in_vector(const_cast<gemmi::Atom*>(a), atoms);
+    }
+  };
+  struct Force {
+    char provenance; // 'p' (prev_link), 'c' (chemcomp), 'o' (other link)
+    char kind; // b/a/t/c/p (bond/angle/torsion/chirality/plane)
+    int idx;
+  };
+
   struct ResInfo {
     const gemmi::Residue* res;
     std::string prev_link;
     int prev_idx;
     std::vector<std::string> mods;
     gemmi::ChemComp chemcomp;
+    std::vector<Force> forces;
 
     ResInfo(const gemmi::Residue* r) : res(r), prev_idx(0) {}
     const gemmi::Residue* prev_res() const {
@@ -130,11 +177,18 @@ struct Linkage {
 
   std::vector<ChainInfo> chains;
   std::vector<ExtraLink> extra;
+
+  // Restraints applied to Model
+  std::vector<Bond> bonds;
+  std::vector<Angle> angles;
+  std::vector<Torsion> torsions;
+  std::vector<Chirality> chirs;
+  std::vector<Plane> planes;
 };
 
-static Linkage::ChainInfo initialize_chain_info(const gemmi::SubChain& subchain,
-                                                const gemmi::Entity* ent) {
-  Linkage::ChainInfo lc;
+static Topo::ChainInfo initialize_chain_info(const gemmi::SubChain& subchain,
+                                             const gemmi::Entity* ent) {
+  Topo::ChainInfo lc;
   lc.residues.reserve(subchain.size());
   lc.name = subchain.name();
   lc.entity_id = ent->name;
@@ -146,7 +200,7 @@ static Linkage::ChainInfo initialize_chain_info(const gemmi::SubChain& subchain,
   return lc;
 }
 
-static void setup_polymer_links(Linkage::ChainInfo& ci) {
+static void setup_polymer_links(Topo::ChainInfo& ci) {
   if (!ci.polymer || ci.residues.empty())
     return;
   for (auto ri = ci.residues.begin() + 1; ri != ci.residues.end(); ++ri) {
@@ -171,14 +225,14 @@ static void setup_polymer_links(Linkage::ChainInfo& ci) {
   }
 }
 
-static void add_builtin_modifications(Linkage::ChainInfo& ci) {
+static void add_builtin_modifications(Topo::ChainInfo& ci) {
   if (ci.polymer && !ci.residues.empty()) {
     // we try to get exactly the same numbers that makecif produces
-    for (Linkage::ResInfo& ri : ci.residues)
+    for (Topo::ResInfo& ri : ci.residues)
       if (ci.polymer_type == gemmi::PolymerType::PeptideL)
         ri.mods.emplace_back("AA-STAND");
-    Linkage::ResInfo& front = ci.residues.front();
-    Linkage::ResInfo& back = ci.residues.back();
+    Topo::ResInfo& front = ci.residues.front();
+    Topo::ResInfo& back = ci.residues.back();
     if (is_polypeptide(ci.polymer_type)) {
       front.mods.emplace_back("NH3");
       back.mods.emplace_back(back.res->find_atom("OXT") ? "COO" : "TERMINUS");
@@ -207,8 +261,8 @@ static std::string get_ccp4_mod_id(const std::vector<std::string>& mods) {
   return ".";
 }
 
-static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
-                              const Linkage& linkage) {
+static cif::Document make_crd(const gemmi::Structure& st, const MonLib& monlib,
+                              const Topo& topo) {
   using gemmi::to_str;
   cif::Document crd;
   auto e_id = st.info.find("_entry.id");
@@ -243,10 +297,10 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
   cif::Loop& poly_loop = block.init_mmcif_loop("_entity_poly_seq.", {
               "mon_id", "ccp4_auth_seq_id", "entity_id",
               "ccp4_back_connect_type", "ccp4_num_mon_back", "ccp4_mod_id"});
-  for (const Linkage::ChainInfo& chain_info : linkage.chains) {
+  for (const Topo::ChainInfo& chain_info : topo.chains) {
     if (!chain_info.polymer)
       continue;
-    for (const Linkage::ResInfo& res_info : chain_info.residues) {
+    for (const Topo::ResInfo& res_info : chain_info.residues) {
       std::string prev = res_info.prev_idx ? res_info.prev_res()->seqid.str()
                                            : "n/a";
       std::string mod = get_ccp4_mod_id(res_info.mods);
@@ -343,7 +397,7 @@ static cif::Document make_crd(const gemmi::Structure& st, MonLib& monlib,
     for (const gemmi::Residue& res : chain.residues) {
       std::string auth_seq_id = res.seqid.num.str();
       //std::string ins_code(1, res.icode != ' ' ? res.icode : '?');
-      gemmi::ChemComp& cc = monlib.monomers.at(res.name);
+      const gemmi::ChemComp& cc = monlib.monomers.at(res.name);
       for (const gemmi::Atom& a : res.atoms) {
         vv.emplace_back("ATOM");
         vv.emplace_back(std::to_string(a.serial));
@@ -511,15 +565,7 @@ static int add_restraints(const Restraints& rt,
   return std::accumulate(counters, counters + 5, 0) - init_count;
 }
 
-static void make_unique_link_name(std::string& name, const MonLib& monlib) {
-  size_t orig_len = name.size();
-  for (int n = 1; monlib.find_link(name) != nullptr; ++n) {
-    name.resize(orig_len);
-    name += std::to_string(n);
-  }
-}
-
-static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
+static cif::Document make_rst(const Topo& topo, const MonLib& monlib) {
   cif::Document doc;
   doc.blocks.emplace_back("restraints");
   cif::Block& block = doc.blocks[0];
@@ -528,8 +574,8 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
               "atom_id_1", "atom_id_2", "atom_id_3", "atom_id_4",
               "value", "dev", "val_obs"});
   int counters[5] = {0, 0, 0, 0, 0};
-  for (const Linkage::ChainInfo& chain_info : linkage.chains) {
-    for (const Linkage::ResInfo& ri : chain_info.residues) {
+  for (const Topo::ChainInfo& chain_info : topo.chains) {
+    for (const Topo::ResInfo& ri : chain_info.residues) {
       // write link
       if (const gemmi::Residue* prev = ri.prev_res()) {
         const gemmi::ChemLink* link = monlib.find_link(ri.prev_link);
@@ -565,16 +611,9 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
     }
   }
   // explicit links
-  for (const Linkage::ExtraLink& link : linkage.extra) {
+  for (const Topo::ExtraLink& link : topo.extra) {
     const gemmi::ChemLink* chem_link = monlib.match_link(link.link);
-    if (!chem_link) {
-      std::string link_name = link.res1->name + "-" + link.res2->name;
-      make_unique_link_name(link_name, monlib);
-      gemmi::ChemLink& v = monlib.links[link_name];
-      v = link.link;
-      v.id = link_name;
-      chem_link = &v;
-    }
+    assert(chem_link);
     std::string comment = " link " + chem_link->id;
     restr_loop.add_comment_and_row({comment, "LINK", ".",
                                     cif::quote(chem_link->id), ".",
@@ -588,6 +627,7 @@ static cif::Document make_rst(const Linkage& linkage, MonLib& monlib) {
   }
   return doc;
 }
+
 
 static
 gemmi::ChemLink connection_to_chemlink(const gemmi::Connection& conn,
@@ -608,7 +648,7 @@ gemmi::ChemLink connection_to_chemlink(const gemmi::Connection& conn,
   return link;
 }
 
-static void place_hydrogens(Linkage::ResInfo& ri) {
+static void place_hydrogens(Topo::ResInfo& ri) {
   // for each hydrogen
   //   P = parent atom
   //   d = distance to P
@@ -675,17 +715,17 @@ int GEMMI_MAIN(int argc, char **argv) {
           atom.serial = ++serial;
       }
 
-    Linkage linkage;
+    Topo topo;
     // initialize chains and residues
     for (const gemmi::Chain& chain : model0.chains)
       for (gemmi::SubChain sub : const_cast<gemmi::Chain&>(chain).subchains()) {
         assert(sub.labelled());
         const gemmi::Entity* ent = st.get_entity_of(sub);
-        linkage.chains.push_back(initialize_chain_info(sub, ent));
+        topo.chains.push_back(initialize_chain_info(sub, ent));
       }
-    for (Linkage::ChainInfo& ci : linkage.chains) {
+    for (Topo::ChainInfo& ci : topo.chains) {
       // copy monomer description
-      for (Linkage::ResInfo& ri : ci.residues)
+      for (Topo::ResInfo& ri : ci.residues)
         ri.chemcomp = monlib.monomers.at(ri.res->name);
 
       setup_polymer_links(ci);
@@ -693,7 +733,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       add_builtin_modifications(ci);
 
       // add modifications from standard links
-      for (Linkage::ResInfo& ri : ci.residues)
+      for (Topo::ResInfo& ri : ci.residues)
         if (const gemmi::ChemLink* link = monlib.find_link(ri.prev_link)) {
           if (!link->mod[0].empty())
             (&ri + ri.prev_idx)->mods.push_back(link->mod[0]);
@@ -703,20 +743,25 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
     // add extra links
     for (const gemmi::Connection& conn : model0.connections) {
-      Linkage::ExtraLink extra;
+      Topo::ExtraLink extra;
       extra.res1 = model0.find_cra(conn.atom[0]).residue;
       extra.res2 = model0.find_cra(conn.atom[1]).residue;
       extra.alt1 = conn.atom[0].altloc;
       extra.alt2 = conn.atom[1].altloc;
       if (extra.res1 && extra.res2) {
         extra.link = connection_to_chemlink(conn, *extra.res1, *extra.res2);
-        linkage.extra.push_back(extra);
+        if (!monlib.match_link(extra.link)) {
+          monlib.ensure_unique_link_name(extra.link.id);
+          monlib.links.emplace(extra.link.id, extra.link);
+        }
+        topo.extra.push_back(extra);
       }
+
     }
     // TODO: automatically determine other links
 
-    for (Linkage::ChainInfo& chain_info : linkage.chains)
-      for (Linkage::ResInfo& ri : chain_info.residues) {
+    for (Topo::ChainInfo& chain_info : topo.chains)
+      for (Topo::ResInfo& ri : chain_info.residues) {
         // apply modifications
         for (const std::string& modif : ri.mods) {
           if (const gemmi::ChemMod* chem_mod = monlib.find_mod(modif))
@@ -735,7 +780,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           place_hydrogens(ri);
       }
 
-    cif::Document crd = make_crd(st, monlib, linkage);
+    cif::Document crd = make_crd(st, monlib, topo);
     if (p.options[Verbose])
       printf("Writing coordinates to: %s.crd\n", output.c_str());
     write_cif_to_file(crd, output + ".crd", cif::Style::NoBlankLines);
@@ -751,7 +796,7 @@ int GEMMI_MAIN(int argc, char **argv) {
               atom.name += '?';  // hide the atom by mangling the name
             }
 
-    cif::Document rst = make_rst(linkage, monlib);
+    cif::Document rst = make_rst(topo, monlib);
     if (p.options[Verbose])
       printf("Writing restraints to: %s.rst\n", output.c_str());
     write_cif_to_file(rst, output + ".rst", cif::Style::NoBlankLines);
