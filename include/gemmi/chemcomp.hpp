@@ -44,6 +44,10 @@ struct Restraints {
       const Atom* ret = residue->find_atom(atom, altloc);
       return ret && ret->flag != 'M' ? ret : nullptr;
     }
+    Atom* get_from(Residue& res1, Residue* res2, char altloc) const {
+      const Residue& cres1 = res1;
+      return const_cast<Atom*>(get_from(cres1, res2, altloc));
+    }
   };
 
   struct Bond {

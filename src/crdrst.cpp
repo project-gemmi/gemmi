@@ -139,23 +139,29 @@ struct Topo {
       return in_vector(const_cast<gemmi::Atom*>(a), atoms);
     }
   };
+
+  enum class Provenance { None, PrevLink, Monomer, NextLink, ExtraLink };
+  enum class RKind { Bond, Angle, Torsion, Chirality, Plane };
   struct Force {
-    char provenance; // 'p' (prev_link), 'c' (chemcomp), 'o' (other link)
-    char kind; // b/a/t/c/p (bond/angle/torsion/chirality/plane)
-    int idx;
+    Provenance provenance;
+    RKind rkind;
+    size_t index; // index in the respective vector (bonds, ...) in Topo
   };
 
   struct ResInfo {
-    const gemmi::Residue* res;
+    gemmi::Residue* res;
     std::string prev_link;
     int prev_idx;
     std::vector<std::string> mods;
     gemmi::ChemComp chemcomp;
     std::vector<Force> forces;
 
-    ResInfo(const gemmi::Residue* r) : res(r), prev_idx(0) {}
-    const gemmi::Residue* prev_res() const {
+    ResInfo(gemmi::Residue* r) : res(r), prev_idx(0) {}
+    gemmi::Residue* prev_res() {
       return prev_idx != 0 ? (this + prev_idx)->res : nullptr;
+    }
+    const gemmi::Residue* prev_res() const {
+      return const_cast<ResInfo*>(this)->prev_res();
     }
   };
 
@@ -168,8 +174,8 @@ struct Topo {
   };
 
   struct ExtraLink {
-    const gemmi::Residue* res1;
-    const gemmi::Residue* res2;
+    gemmi::Residue* res1;
+    gemmi::Residue* res2;
     char alt1 = '\0';
     char alt2 = '\0';
     gemmi::ChemLink link;
@@ -184,9 +190,130 @@ struct Topo {
   std::vector<Torsion> torsions;
   std::vector<Chirality> chirs;
   std::vector<Plane> planes;
+
+  ResInfo* find_resinfo(const gemmi::Residue* res) {
+    for (ChainInfo& ci : chains)
+      for (ResInfo& ri : ci.residues)
+        if (ri.res == res)
+          return &ri;
+    return nullptr;
+  }
+
+  std::vector<Force> list_restraints(const Restraints& rt,
+                                     gemmi::Residue& res, gemmi::Residue* res2,
+                                     char altloc='*') {
+    // add_restraints
+    std::string altlocs;
+    if (altloc == '*') {
+      // find all distinct altlocs
+      for (const gemmi::Atom& atom : res.atoms)
+        if (atom.altloc && altlocs.find(atom.altloc) == std::string::npos)
+          altlocs += atom.altloc;
+      if (res2)
+        for (const gemmi::Atom& atom : res2->atoms)
+          if (atom.altloc && altlocs.find(atom.altloc) == std::string::npos)
+            altlocs += atom.altloc;
+    }
+    if (altlocs.empty())
+      altlocs += altloc;
+
+    std::vector<Force> forces;
+    Provenance pro = Provenance::None;
+    for (const Restraints::Bond& bond : rt.bonds)
+      for (char alt : altlocs)
+        if (gemmi::Atom* at1 = bond.id1.get_from(res, res2, alt))
+          if (gemmi::Atom* at2 = bond.id2.get_from(res, res2, alt)) {
+            forces.push_back({pro, RKind::Bond, bonds.size()});
+            bonds.push_back({&bond, {{at1, at2}}});
+            if (!at1->altloc && !at2->altloc)
+              break;
+          }
+    for (const Restraints::Angle& angle : rt.angles)
+      for (char alt : altlocs)
+        if (gemmi::Atom* at1 = angle.id1.get_from(res, res2, alt))
+          if (gemmi::Atom* at2 = angle.id2.get_from(res, res2, alt))
+            if (gemmi::Atom* at3 = angle.id3.get_from(res, res2, alt)) {
+              forces.push_back({pro, RKind::Angle, angles.size()});
+              angles.push_back({&angle, {{at1, at2, at3}}});
+              if (!at1->altloc && !at2->altloc && !at3->altloc)
+                break;
+            }
+    for (const Restraints::Torsion& tor : rt.torsions)
+      for (char alt : altlocs)
+        if (gemmi::Atom* at1 = tor.id1.get_from(res, res2, alt))
+          if (gemmi::Atom* at2 = tor.id2.get_from(res, res2, alt))
+            if (gemmi::Atom* at3 = tor.id3.get_from(res, res2, alt))
+              if (gemmi::Atom* at4 = tor.id4.get_from(res, res2, alt)) {
+                forces.push_back({pro, RKind::Torsion, torsions.size()});
+                torsions.push_back({&tor, {{at1, at2, at3, at4}}});
+                if (!at1->altloc && !at2->altloc &&
+                    !at3->altloc && !at4->altloc)
+                  break;
+          }
+    for (const Restraints::Chirality& chir : rt.chirs)
+      for (char alt : altlocs)
+        if (gemmi::Atom* at1 = chir.id_ctr.get_from(res, res2, alt))
+          if (gemmi::Atom* at2 = chir.id1.get_from(res, res2, alt))
+            if (gemmi::Atom* at3 = chir.id2.get_from(res, res2, alt))
+              if (gemmi::Atom* at4 = chir.id3.get_from(res, res2, alt)) {
+                forces.push_back({pro, RKind::Chirality, chirs.size()});
+                chirs.push_back({&chir, {{at1, at2, at3, at4}}});
+                if (!at1->altloc && !at2->altloc &&
+                    !at3->altloc && !at4->altloc)
+                  break;
+              }
+    for (const Restraints::Plane& plane : rt.planes)
+      for (char alt : altlocs) {
+        std::vector<gemmi::Atom*> atoms;
+        for (const Restraints::AtomId& id : plane.ids)
+          if (gemmi::Atom* atom = id.get_from(res, res2, alt))
+            atoms.push_back(atom);
+        if (atoms.size() >= 4) {
+          forces.push_back({pro, RKind::Plane, planes.size()});
+          planes.push_back({&plane, atoms});
+        }
+        if (std::all_of(atoms.begin(), atoms.end(),
+                        [](gemmi::Atom* a) { return !a->altloc; }))
+          break;
+      }
+    return forces;
+  }
+
+  void finalize(const MonLib& monlib) {
+    for (ChainInfo& chain_info : chains) {
+      for (ResInfo& ri : chain_info.residues) {
+        if (gemmi::Residue* prev = ri.prev_res()) {
+          if (const gemmi::ChemLink* link = monlib.find_link(ri.prev_link)) {
+            for (const auto& f : list_restraints(link->rt, *prev, ri.res)) {
+              ri.forces.push_back({Provenance::PrevLink, f.rkind, f.index});
+              if (ri.prev_idx != 0)
+                (&ri + ri.prev_idx)->forces.push_back({Provenance::NextLink,
+                                                       f.rkind, f.index});
+            }
+          }
+        }
+        for (const auto& f : list_restraints(ri.chemcomp.rt, *ri.res, nullptr))
+          ri.forces.push_back({Provenance::Monomer, f.rkind, f.index});
+      }
+    }
+    for (Topo::ExtraLink& link : extra) {
+      if (const gemmi::ChemLink* cl = monlib.match_link(link.link)) {
+        if (link.alt1 && link.alt2 && link.alt1 != link.alt2)
+          printf("Warning: LINK between different conformers %c and %c.",
+                 link.alt1, link.alt2);
+        ResInfo* rr[2] = {find_resinfo(link.res1), find_resinfo(link.res2)};
+        for (const auto& f : list_restraints(cl->rt, *link.res1, link.res2,
+                                             link.alt1)) {
+          for (ResInfo* ri : rr)
+            if (ri)
+              ri->forces.push_back({Provenance::ExtraLink, f.rkind, f.index});
+        }
+      }
+    }
+  }
 };
 
-static Topo::ChainInfo initialize_chain_info(const gemmi::SubChain& subchain,
+static Topo::ChainInfo initialize_chain_info(gemmi::SubChain& subchain,
                                              const gemmi::Entity* ent) {
   Topo::ChainInfo lc;
   lc.residues.reserve(subchain.size());
@@ -194,7 +321,7 @@ static Topo::ChainInfo initialize_chain_info(const gemmi::SubChain& subchain,
   lc.entity_id = ent->name;
   lc.polymer = ent && ent->entity_type == gemmi::EntityType::Polymer;
   lc.polymer_type = ent->polymer_type;
-  for (const gemmi::Residue& res : subchain) {
+  for (gemmi::Residue& res : subchain) {
     lc.residues.emplace_back(&res);
   }
   return lc;
@@ -717,8 +844,8 @@ int GEMMI_MAIN(int argc, char **argv) {
 
     Topo topo;
     // initialize chains and residues
-    for (const gemmi::Chain& chain : model0.chains)
-      for (gemmi::SubChain sub : const_cast<gemmi::Chain&>(chain).subchains()) {
+    for (gemmi::Chain& chain : model0.chains)
+      for (gemmi::SubChain sub : chain.subchains()) {
         assert(sub.labelled());
         const gemmi::Entity* ent = st.get_entity_of(sub);
         topo.chains.push_back(initialize_chain_info(sub, ent));
@@ -756,7 +883,6 @@ int GEMMI_MAIN(int argc, char **argv) {
         }
         topo.extra.push_back(extra);
       }
-
     }
     // TODO: automatically determine other links
 
@@ -779,6 +905,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (!p.options[KeepHydrogens] && !p.options[NoHydrogens])
           place_hydrogens(ri);
       }
+    topo.finalize(monlib);
 
     cif::Document crd = make_crd(st, monlib, topo);
     if (p.options[Verbose])
@@ -809,5 +936,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   return 0;
 }
+
+
 
 // vim:sw=2:ts=2:et:path^=../include,../third_party
