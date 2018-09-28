@@ -84,8 +84,7 @@ inline std::array<double, 2> calculate_phi_psi(const Residue* prev,
   return phi_psi;
 }
 
-inline
-std::array<double, 4> find_best_plane(const std::vector<const Atom*>& atoms) {
+inline std::array<double, 4> find_best_plane(const std::vector<Atom*>& atoms) {
   Vec3 mean;
   for (const Atom* atom : atoms)
     mean += atom->pos;
