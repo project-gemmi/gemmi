@@ -16,6 +16,7 @@ namespace gemmi {
 constexpr double pi() { return 3.1415926535897932384626433832795029; }
 
 inline double deg(double angle) { return 180.0 / pi() * angle; }
+inline double rad(double angle) { return pi() / 180.0 * angle; }
 
 inline float sq(float x) { return x * x; }
 inline double sq(double x) { return x * x; }
@@ -38,6 +39,7 @@ struct Vec3 {
   }
   double at(int i) const { return const_cast<Vec3*>(this)->at(i); }
 
+  Vec3 operator-() const { return {-x, -y, -z}; }
   Vec3 operator-(const Vec3& o) const { return {x-o.x, y-o.y, z-o.z}; }
   Vec3 operator+(const Vec3& o) const { return {x+o.x, y+o.y, z+o.z}; }
   Vec3 operator*(double d) const { return {x*d, y*d, z*d}; }
@@ -54,6 +56,7 @@ struct Vec3 {
   }
   double length_sq() const { return x * x + y * y + z * z; }
   double length() const { return std::sqrt(length_sq()); }
+  Vec3 normalized() const { return operator/(length()); }
   double dist_sq(const Vec3& o) const { return (*this - o).length_sq(); }
   double dist(const Vec3& o) const { return std::sqrt(dist_sq(o)); }
   bool approx(const Vec3& o, double epsilon) const {
@@ -68,6 +71,8 @@ struct Vec3 {
     return buf;
   }
 };
+
+inline Vec3 operator*(double d, const Vec3& v) { return v * d; }
 
 struct Mat33 {
   double a[3][3] = { {1.,0.,0.}, {0.,1.,0.}, {0.,0.,1.} };

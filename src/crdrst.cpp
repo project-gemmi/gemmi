@@ -107,37 +107,22 @@ struct Topo {
   struct Bond {
     const Restraints::Bond* restr;
     std::array<gemmi::Atom*, 2> atoms;
-    bool has(const gemmi::Atom* a) const {
-      return atoms[0] == a || atoms[1] == a;
-    }
   };
   struct Angle {
     const Restraints::Angle* restr;
     std::array<gemmi::Atom*, 3> atoms;
-    bool has(const gemmi::Atom* a) const {
-      return atoms[0] == a || atoms[1] == a || atoms[2] == a;
-    }
   };
   struct Torsion {
     const Restraints::Torsion* restr;
     std::array<gemmi::Atom*, 4> atoms;
-    bool has(const gemmi::Atom* a) const {
-      return atoms[0] == a || atoms[1] == a || atoms[2] == a || atoms[3] == a;
-    }
   };
   struct Chirality {
     const Restraints::Chirality* restr;
     std::array<gemmi::Atom*, 4> atoms;
-    bool has(const gemmi::Atom* a) const {
-      return atoms[0] == a || atoms[1] == a || atoms[2] == a || atoms[3] == a;
-    }
   };
   struct Plane {
     const Restraints::Plane* restr;
     std::vector<gemmi::Atom*> atoms;
-    bool has(const gemmi::Atom* a) const {
-      return in_vector(const_cast<gemmi::Atom*>(a), atoms);
-    }
   };
 
   enum class Provenance { None, PrevLink, Monomer, NextLink, ExtraLink };
@@ -182,6 +167,14 @@ struct Topo {
     std::vector<Force> forces;
   };
 
+  template<typename T>
+  static int has_atom(const gemmi::Atom* a, const T& t) {
+    for (int i = 0; (size_t) i != t.atoms.size(); ++i)
+      if (t.atoms[i] == a)
+        return i;
+    return -1;
+  }
+
   std::vector<ChainInfo> chains;
   std::vector<ExtraLink> extra;
 
@@ -197,6 +190,25 @@ struct Topo {
       for (ResInfo& ri : ci.residues)
         if (ri.res == res)
           return &ri;
+    return nullptr;
+  }
+
+  const Restraints::Bond* take_bond(const gemmi::Atom* a,
+                                    const gemmi::Atom* b) const {
+    for (const Bond& bond : bonds)
+      if ((bond.atoms[0] == a && bond.atoms[1] == b) ||
+          (bond.atoms[0] == b && bond.atoms[1] == a))
+        return bond.restr;
+    return nullptr;
+  }
+
+  const Restraints::Angle* take_angle(const gemmi::Atom* a,
+                                      const gemmi::Atom* b,
+                                      const gemmi::Atom* c) const {
+    for (const Angle& ang : angles)
+      if (ang.atoms[1] == b && ((ang.atoms[0] == a && ang.atoms[2] == c) ||
+                                (ang.atoms[0] == c && ang.atoms[1] == a)))
+        return ang.restr;
     return nullptr;
   }
 
@@ -735,11 +747,70 @@ gemmi::ChemLink connection_to_chemlink(const gemmi::Connection& conn,
   return link;
 }
 
-static void place_hydrogens(Topo::ResInfo& ri) {
+/*
+static void move_hydrogen_1_1(const gemmi::Atom* a1,
+                              const gemmi::Atom* a2,
+                              const gemmi::Atom* a3,
+                              gemmi::Atom* a4,
+                              double dist,
+                              double theta,
+                              double tau) {
+}
+*/
+
+static void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
+                            const Topo& topo) {
+  std::vector<gemmi::Atom*> bonded_h;
+  std::vector<gemmi::Atom*> bonded_non_h;
+  for (const Topo::Force& force : ri.forces)
+    if (force.rkind == Topo::RKind::Bond) {
+      const Topo::Bond& t = topo.bonds[force.index];
+      int n = Topo::has_atom(&atom, t);
+      if (n == 0 || n == 1) {
+        gemmi::Atom* other = t.atoms[1-n];
+        (other->is_hydrogen() ? bonded_h : bonded_non_h).push_back(other);
+      }
+    }
+  //printf("%s: %zd %zd\n", atom.name.c_str(), bonded_h.size(), bonded_non_h.size());
+  if (bonded_h.size() == 1 && bonded_non_h.size() == 1) {
+    gemmi::Atom* h = bonded_h[0];
+    const Restraints::Bond* bond = topo.take_bond(h, &atom);
+    const Restraints::Angle* angle = topo.take_angle(h, &atom, bonded_non_h[0]);
+    if (!bond || !angle)
+      return;
+    double h_dist = bond->value;
+    if (angle->value == 180.0) {
+      // easy
+    } else {
+      // TODO: plane to dihedral angle 0
+      // using one dihedral angle
+      double theta = gemmi::rad(angle->value);
+      for (const Topo::Torsion& tor : topo.torsions)
+        if (tor.atoms[0] == h && !tor.atoms[3]->is_hydrogen()) {
+          using gemmi::Vec3;
+          assert(tor.atoms[1] == &atom);
+          assert(tor.atoms[2] == bonded_non_h[0]);
+          const Vec3& x1 = tor.atoms[3]->pos;
+          const Vec3& x2 = tor.atoms[2]->pos;
+          const Vec3& x3 = atom.pos;
+          Vec3& x4 = h->pos;
+          double tau = gemmi::rad(tor.restr->value);
+          Vec3 u = x2 - x1;
+          Vec3 v = x3 - x2;
+          Vec3 e1 = v.normalized();
+          double delta = u.dot(e1);
+          Vec3 e2 = -(u - delta * e1).normalized();
+          Vec3 e3 = e1.cross(e2);
+          x4 = x3 + h_dist * (-cos(theta) * e1 +
+                              sin(theta) * cos(tau) * e2 +
+                              sin(theta) * sin(tau) * e3);
+          // TODO
+        } else if (tor.atoms[3] == h && !tor.atoms[0]->is_hydrogen()) {
+          // TODO
+        }
+    }
+  }
   // TODO
-  // for each heavy atom
-  //   count neighbours in ri.chemcomp - heavy and hydrogens
-  //   ri.forces have restraints
 }
 
 int GEMMI_MAIN(int argc, char **argv) {
@@ -858,12 +929,15 @@ int GEMMI_MAIN(int argc, char **argv) {
           else
             printf("Modification not found: %s\n", modif.c_str());
         }
-
-        // add hydrogens
-        if (!p.options[KeepHydrogens] && !p.options[NoHydrogens])
-          place_hydrogens(ri);
       }
     topo.finalize(monlib);
+
+    if (!p.options[KeepHydrogens] && !p.options[NoHydrogens])
+      for (Topo::ChainInfo& chain_info : topo.chains)
+        for (Topo::ResInfo& ri : chain_info.residues)
+          for (gemmi::Atom& atom : ri.res->atoms)
+            if (!atom.is_hydrogen())
+              place_hydrogens(atom, ri, topo);
 
     cif::Document crd = make_crd(st, monlib, topo);
     if (p.options[Verbose])
