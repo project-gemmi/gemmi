@@ -6,11 +6,15 @@
 
 #include <iostream>
 #include <stdexcept>
+#include "gemmi/cifdoc.hpp"
 #include "gemmi/chemcomp.hpp"
+#include "gemmi/calculate.hpp" // for calculate_angle
 
 namespace cif = gemmi::cif;
 using gemmi::Restraints;
+using gemmi::Topo;
 
+// some rules for the number of bonds (currently only for H and P)
 static void check_valency(const gemmi::ChemComp& cc) {
   for (const gemmi::ChemComp::Atom& atom : cc.atoms) {
     if (cc.atoms.size() == 1)
@@ -32,6 +36,9 @@ static void check_valency(const gemmi::ChemComp& cc) {
   }
 }
 
+static std::string repr(const Restraints::Bond& bond) {
+  return bond.id1.atom + "-" + bond.id2.atom;
+}
 static std::string repr(const Restraints::Angle& angle) {
   return angle.id1.atom + "-" + angle.id2.atom + "-" + angle.id3.atom;
 }
@@ -59,6 +66,63 @@ static void check_bond_angle_consistency(const gemmi::ChemComp& cc) {
   }
 }
 
+gemmi::Residue read_chem_comp_atom_as_residue(const cif::Block& block) {
+  gemmi::Residue res;
+  res.name = block.name;
+  cif::Table table = const_cast<cif::Block&>(block).find(
+      "_chem_comp_atom.", {"atom_id", "type_symbol", "x", "y", "z"});
+  res.atoms.resize(table.length());
+  int n = 0;
+  for (auto row : table) {
+    gemmi::Atom& atom = res.atoms[n++];
+    atom.name = row.str(0);
+    atom.element = gemmi::Element(row.str(1));
+    atom.pos = gemmi::Position(cif::as_number(row[2]),
+                               cif::as_number(row[3]),
+                               cif::as_number(row[4]));
+  }
+  return res;
+}
+
+static double angle_abs_diff(double a, double b) {
+  double d = std::abs(a - b);
+  return d > 180 ? std::abs(d - 360.) : d;
+}
+
+// check _chem_comp_atom.x/y/z
+static void check_xyz_consistency(const gemmi::ChemComp& cc,
+                                  const cif::Block& block) {
+  gemmi::Residue res = read_chem_comp_atom_as_residue(block);
+  Topo topo;
+  topo.chains.resize(1);
+  Topo::ResInfo ri(&res);
+  ri.chemcomp = cc;
+  topo.apply_internal_restraints_to_residue(ri);
+  topo.chains[0].residues.push_back(ri);
+  for (const Topo::Bond& t : topo.bonds) {
+    double value = t.calculate();
+    if (std::abs(value - t.restr->value) > t.restr->esd)
+      std::cout << " [xyz bond] " << repr(*t.restr) << " should be "
+                << t.restr->value << " (esd " << t.restr->esd << ") but is "
+                << value << std::endl;
+  }
+  for (const Topo::Angle& t : topo.angles) {
+    double value = gemmi::deg(t.calculate());
+    if (angle_abs_diff(value, t.restr->value) > t.restr->esd)
+      std::cout << " [xyz angle] " << repr(*t.restr) << " should be "
+                << t.restr->value << " (esd " << t.restr->esd << ") but is "
+                << value << std::endl;
+  }
+  for (const Topo::Torsion& t : topo.torsions) {
+    double value = gemmi::deg(t.calculate());
+    if (angle_abs_diff(value, t.restr->value) > t.restr->esd)
+      std::cout << " [xyz torsion] " << repr(*t.restr) << " should be "
+                << t.restr->value << " (esd " << t.restr->esd << ") but is "
+                << value << std::endl;
+  }
+  // TODO chiral, plane
+}
+
 void check_monomer_doc(const cif::Document& doc) {
   for (const cif::Block& block : doc.blocks)
     if (block.name != "comp_list") {
@@ -66,6 +130,7 @@ void check_monomer_doc(const cif::Document& doc) {
         gemmi::ChemComp cc = gemmi::make_chemcomp_from_block(block);
         check_valency(cc);
         check_bond_angle_consistency(cc);
+        check_xyz_consistency(cc, block);
       } catch (const std::exception& e) {
         std::cerr << "Failed to interpret " << block.name << " from "
                   << doc.source << ":\n " << e.what() << std::endl;
