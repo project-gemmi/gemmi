@@ -226,7 +226,7 @@ struct Table {
     const std::string* ptr_at(int n) const {
       return const_cast<Row*>(this)->ptr_at(n);
     }
-    bool has(int n) const { return tab.has_column(n); }
+    bool has(int n) const { return tab.positions.at(n) >= 0; }
     bool has2(int n) const { return has(n) && !cif::is_null(operator[](n)); }
 
     const std::string& one_of(int n1, int n2) const {
@@ -255,7 +255,7 @@ struct Table {
   bool ok() const { return !positions.empty(); }
   size_t width() const { return positions.size(); }
   size_t length() const;
-  bool has_column(int n) const { if (ok()) return positions.at(n) >= 0; else false;}
+  bool has_column(int n) const { return ok() && positions.at(n) >= 0; }
   Row tags() { return Row{*this, -1}; }
   Row operator[](int n) { return Row{*this, n}; }
 
