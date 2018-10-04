@@ -255,7 +255,7 @@ struct Table {
   bool ok() const { return !positions.empty(); }
   size_t width() const { return positions.size(); }
   size_t length() const;
-  bool has_column(int n) const { return positions.at(n) >= 0; }
+  bool has_column(int n) const { if (ok()) return positions.at(n) >= 0; else false;}
   Row tags() { return Row{*this, -1}; }
   Row operator[](int n) { return Row{*this, n}; }
 
