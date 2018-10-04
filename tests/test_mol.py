@@ -285,6 +285,13 @@ class TestMol(unittest.TestCase):
                                                                ' 2555 '))
         self.assertEqual(in_headers[2], out_headers[2])
 
+    def test_blank_mmcif(self):
+        input_block = gemmi.cif.Block('empty')
+        st = gemmi.make_structure_from_block(input_block)
+        self.assertEqual(st.name, 'empty')
+        output_block = st.make_mmcif_document().sole_block()
+        self.assertEqual(output_block.get_mmcif_category_names(), [])
+
     def test_blank_chain(self):
         st = gemmi.read_pdb_string(BLANK_CHAIN_FRAGMENT)
         handle, out_name = tempfile.mkstemp()
