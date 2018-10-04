@@ -357,6 +357,15 @@ inline Restraints::Chirality::Type chirality_from_string(const std::string& s) {
   }
 }
 
+inline const char* chirality_to_string(Restraints::Chirality::Type chir_type) {
+  switch (chir_type) {
+    case Restraints::Chirality::Positive: return "positive";
+    case Restraints::Chirality::Negative: return "negative";
+    case Restraints::Chirality::Both: return "both";
+  }
+  unreachable();
+}
+
 inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
   ChemComp cc;
   cc.name = block_.name.substr(starts_with(block_.name, "comp_") ? 5 : 0);
@@ -802,6 +811,13 @@ struct MonLib {
 
 
 struct Topo {
+  // We have internal pointers in this class (pointers setup in
+  // apply_restraints() that point to ResInfo::chemcomp.rt),
+  // disable copying this class.
+  Topo() = default;
+  Topo(Topo const&) = delete;
+  Topo& operator=(Topo const&) = delete;
+
   struct Bond {
     const Restraints::Bond* restr;
     std::array<gemmi::Atom*, 2> atoms;

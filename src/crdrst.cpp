@@ -329,15 +329,6 @@ static cif::Document make_crd(const gemmi::Structure& st, const MonLib& monlib,
   return crd;
 }
 
-static std::string chirality_to_string(Restraints::Chirality::Type ctype) {
-  switch (ctype) {
-    case Restraints::Chirality::Positive: return "positive";
-    case Restraints::Chirality::Negative: return "negative";
-    case Restraints::Chirality::Both: return "both";
-    default: return "???";
-  }
-}
-
 static void add_restraints(const Topo::Force force,
                            const Topo& topo, const Restraints& rt,
                            cif::Loop& restr_loop, int (&counters)[5]) {
@@ -387,7 +378,7 @@ static void add_restraints(const Topo::Force force,
                                                  " " + t.atoms[2]->name +
                                                  " " + t.atoms[3]->name;
     restr_loop.add_row({"CHIR", std::to_string(++counters[3]),
-                        chirality_to_string(t.restr->chir), ".",
+                        gemmi::chirality_to_string(t.restr->chir), ".",
                         std::to_string(t.atoms[0]->serial),
                         std::to_string(t.atoms[1]->serial),
                         std::to_string(t.atoms[2]->serial),
@@ -398,8 +389,7 @@ static void add_restraints(const Topo::Force force,
     ++counters[4];
     auto coeff = find_best_plane(t.atoms);
     for (const gemmi::Atom* atom : t.atoms) {
-      double dist = coeff[0] * atom->pos.x + coeff[1] * atom->pos.y +
-                    coeff[2] * atom->pos.z + coeff[3];
+      double dist = gemmi::get_distance_from_plane(atom->pos, coeff);
       std::string obs = to_str3(dist) + " # " + atom->name;
       restr_loop.add_row({"PLAN", std::to_string(counters[4]), t.restr->label,
                           ".", std::to_string(atom->serial), ".", ".", ".",

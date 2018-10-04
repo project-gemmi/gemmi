@@ -113,6 +113,11 @@ inline std::array<double, 4> find_best_plane(const std::vector<Atom*>& atoms) {
   return {{eigvec.x, eigvec.y, eigvec.z, -eigvec.dot(mean)}};
 }
 
+inline double get_distance_from_plane(const Position& pos,
+                                      const std::array<double, 4>& coeff) {
+  return coeff[0] * pos.x + coeff[1] * pos.y + coeff[2] * pos.z + coeff[3];
+}
+
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et
