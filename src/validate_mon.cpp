@@ -77,24 +77,6 @@ static void check_bond_angle_consistency(const gemmi::ChemComp& cc) {
   }
 }
 
-gemmi::Residue read_chem_comp_atom_as_residue(const cif::Block& block) {
-  gemmi::Residue res;
-  res.name = block.name;
-  cif::Table table = const_cast<cif::Block&>(block).find(
-      "_chem_comp_atom.", {"atom_id", "type_symbol", "x", "y", "z"});
-  res.atoms.resize(table.length());
-  int n = 0;
-  for (auto row : table) {
-    gemmi::Atom& atom = res.atoms[n++];
-    atom.name = row.str(0);
-    atom.element = gemmi::Element(row.str(1));
-    atom.pos = gemmi::Position(cif::as_number(row[2]),
-                               cif::as_number(row[3]),
-                               cif::as_number(row[4]));
-  }
-  return res;
-}
-
 static double angle_abs_diff(double a, double b) {
   double d = std::abs(a - b);
   return d > 180 ? std::abs(d - 360.) : d;
@@ -158,7 +140,7 @@ void check_monomer_doc(const cif::Document& doc) {
         check_valency(cc);
         check_bond_angle_consistency(cc);
         // check consistency of _chem_comp_atom.x/y/z with restraints
-        gemmi::Residue res = read_chem_comp_atom_as_residue(block);
+        gemmi::Residue res = gemmi::read_chem_comp_as_residue(block, 'r');
         check_xyz_consistency(cc, res);
       } catch (const std::exception& e) {
         fprintf(stderr, "Failed to interpret %s from %s:\n %s\n",
