@@ -512,8 +512,6 @@ or by iterating over all Block's items::
         // doing something with item.frame which is a (nested) Block
         cif::Block& frame = item.frame;
 
-A full example is in the header ``gemmi/ddl.hpp``.
-
 Editing
 -------
 
