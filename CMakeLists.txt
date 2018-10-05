@@ -204,7 +204,11 @@ if (USE_FORTRAN)
   target_link_libraries(ftest fgemmi)
   add_executable(ftest_grid EXCLUDE_FROM_ALL fortran/ftest_grid.f90)
   target_link_libraries(ftest_grid fgemmi)
+  if("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "Intel")
+    set_property(TARGET ftest ftest_grid PROPERTY LINKER_LANGUAGE Fortran)
+  endif()
   add_dependencies(check ftest ftest_grid)
+
 endif()
 
 ### benchmarks ###
