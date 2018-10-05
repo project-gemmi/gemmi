@@ -67,32 +67,31 @@ struct Grid {
   void set_size_from_spacing(double approx_spacing, bool denser) {
     const SpaceGroup& sg = space_group ? *space_group : get_spacegroup_p1();
     std::array<int, 3> sg_fac = sg.operations().find_grid_factors();
-    int m[3];
+    int m[3] = {0, 0, 0};
     double abc[3] = {1./unit_cell.ar, 1./unit_cell.br, 1./unit_cell.cr};
     for (int i = 0; i != 3; ++i) {
-      if (i > 0 && fabs(abc[i] - abc[0]) < 0.1 && sg_fac[i] == sg_fac[0]) {
-        m[i] = m[0];
-        continue;
-      }
-      if (i > 1 && fabs(abc[i] - abc[1]) < 0.1 && sg_fac[i] == sg_fac[1]) {
-        m[i] = m[1];
-        continue;
-      }
-      int f = std::max(2, sg_fac[i]);
-      int n;
-      if (denser) {
-        n = int(std::ceil(abc[i] / (approx_spacing * f)));
-        while (!has_small_factorization(n))
-          ++n;
-      } else {
-        n = int(std::floor(abc[i] / (approx_spacing * f)));
-        if (n > 1)
+      for (int j = 0; j < i; ++j)
+        if (fabs(abc[i] - abc[j]) < 0.1 && sg_fac[i] == sg_fac[j]) {
+          m[i] = m[j];
+          break;
+        }
+      if (m[i] == 0) {
+        int f = std::max(2, sg_fac[i]);
+        int n;
+        if (denser) {
+          n = int(std::ceil(abc[i] / (approx_spacing * f)));
           while (!has_small_factorization(n))
-            --n;
-        else
-          n = 1;
+            ++n;
+        } else {
+          n = int(std::floor(abc[i] / (approx_spacing * f)));
+          if (n > 1)
+            while (!has_small_factorization(n))
+              --n;
+          else
+            n = 1;
+        }
+        m[i] = n * f;
       }
-      m[i] = n * f;
     }
     set_size_without_checking(m[0], m[1], m[2]);
   }
