@@ -27,6 +27,15 @@
 #pragma warning(disable: 4267)
 #endif
 
+#ifdef  __INTEL_COMPILER
+# pragma warning push
+// warning #597: "X<T>::operator X<T>() const" will not be called for implicit
+// or explicit conversions. That warning is triggered when templates
+// StrideIter and IndirectIter are expanded with const Value.
+# pragma warning disable 597
+#endif
+
+
 namespace gemmi {
 namespace cif {
 using std::size_t;
@@ -844,6 +853,10 @@ inline std::string quote(std::string v) {
 
 #if defined(_MSC_VER)
 #pragma warning(pop)
+#endif
+
+#ifdef  __INTEL_COMPILER
+# pragma warning pop
 #endif
 
 } // namespace cif
