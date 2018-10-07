@@ -6,6 +6,7 @@
 #define GEMMI_TO_PDB_HPP_
 
 #include "model.hpp"
+#include <cctype> // for isdigit
 #include <ostream>
 
 namespace gemmi {
@@ -243,8 +244,16 @@ inline void write_atoms(const Structure& st, std::ostream& os,
   char buf[88];
   for (const Model& model : st.models) {
     int serial = 0;
-    if (st.models.size() > 1)
-      WRITE("MODEL %8s %65s\n", model.name.c_str(), "");
+    if (st.models.size() > 1) {
+      // according to the spec model name in mmCIF may not be numeric
+      std::string name = model.name;
+      for (char c : name)
+        if (!std::isdigit(c)) {
+          name = std::to_string(&model - &st.models[0] + 1);
+          break;
+        }
+      WRITE("MODEL %8s %65s\n", name.c_str(), "");
+    }
     for (const Chain& chain : model.chains)
       write_chain_atoms(chain, os, serial, opt);
     if (st.models.size() > 1)
