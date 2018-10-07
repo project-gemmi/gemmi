@@ -230,7 +230,7 @@ void add_mol(py::module& m) {
          py::arg("pdb_seqid"), py::keep_alive<0, 1>())
     .def("__getitem__", [](Chain& ch, int index) -> Residue& {
         return ch.residues.at(index >= 0 ? index : index + ch.residues.size());
-    }, py::arg("index"), py::keep_alive<0, 1>())
+    }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("subchains", &Chain::subchains)
     .def("whole", (ResidueSpan (Chain::*)()) &Chain::whole)
     .def("get_polymer", (SubChain (Chain::*)()) &Chain::get_polymer)

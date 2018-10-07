@@ -18,8 +18,8 @@ enum class ChemCompModel {
   Ideal    // _chem_comp_atom.pdbx_model_Cartn_x_ideal
 };
 
-inline Residue read_chem_comp_as_residue(const cif::Block& block,
-                                         ChemCompModel kind) {
+inline Residue make_residue_from_chemcomp_block(const cif::Block& block,
+                                                ChemCompModel kind) {
   std::array<std::string, 3> xyz_tags;
   switch (kind) {
     case ChemCompModel::Xyz:
@@ -61,8 +61,8 @@ inline Residue read_chem_comp_as_residue(const cif::Block& block,
   return res;
 }
 
-inline Model read_chem_comp_as_model(const cif::Block& block,
-                                     ChemCompModel kind) {
+inline Model make_model_from_chemcomp_block(const cif::Block& block,
+                                            ChemCompModel kind) {
   std::string name;
   switch (kind) {
     case ChemCompModel::Xyz: name = "xyz"; break;
@@ -71,7 +71,8 @@ inline Model read_chem_comp_as_model(const cif::Block& block,
   }
   Model model(name);
   model.chains.emplace_back("");
-  model.chains[0].residues.push_back(read_chem_comp_as_residue(block, kind));
+  model.chains[0].residues.push_back(
+      make_residue_from_chemcomp_block(block, kind));
   return model;
 }
 
@@ -79,14 +80,17 @@ inline Model read_chem_comp_as_model(const cif::Block& block,
 // example (model_Cartn_x) and ideal (pdbx_model_Cartn_x_ideal).
 // For Refmac dictionary (monomer library) files returns structure with
 // a single model.
-inline Structure read_chem_comp_as_structure(const cif::Block& block) {
+inline Structure make_structure_from_chemcomp_block(const cif::Block& block) {
   Structure st;
   if (block.has_tag("_chem_comp_atom.x"))
-    st.models.push_back(read_chem_comp_as_model(block, ChemCompModel::Xyz));
+    st.models.push_back(
+        make_model_from_chemcomp_block(block, ChemCompModel::Xyz));
   if (block.has_tag("_chem_comp_atom.model_Cartn_x"))
-    st.models.push_back(read_chem_comp_as_model(block, ChemCompModel::Example));
+    st.models.push_back(
+        make_model_from_chemcomp_block(block, ChemCompModel::Example));
   if (block.has_tag("_chem_comp_atom.pdbx_model_Cartn_x_ideal"))
-    st.models.push_back(read_chem_comp_as_model(block, ChemCompModel::Ideal));
+    st.models.push_back(
+        make_model_from_chemcomp_block(block, ChemCompModel::Ideal));
   return st;
 }
 

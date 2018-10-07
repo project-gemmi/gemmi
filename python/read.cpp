@@ -52,6 +52,7 @@ void add_read_structure(py::module& m) {
           return new Structure(read_pdb_string(s, "string"));
         }, py::arg("s"), "Reads a string as PDB file.");
 
+  // from smcif.hpp
   m.def("read_atomic_structure", [](const std::string& path) {
           cif::Block block = cif::read_file(path).sole_block();
           return new AtomicStructure(make_atomic_structure_from_block(block));
@@ -60,9 +61,9 @@ void add_read_structure(py::module& m) {
         py::arg("block"), "Takes CIF block and returns AtomicStructure.");
 
   // from chemcomp_xyz.hpp
-  m.def("read_chem_comp_as_structure", &read_chem_comp_as_structure,
-        py::arg("block"),
-        "CIF block from CCD or monomer library -> AtomicStructure.");
+  m.def("make_structure_from_chemcomp_block",
+        &make_structure_from_chemcomp_block, py::arg("block"),
+        "CIF block from CCD or monomer library -> single-residue Structure.");
 
 
   // and an unrelated function from gz.hpp

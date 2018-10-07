@@ -264,7 +264,7 @@ class TestMol(unittest.TestCase):
     def test_reading_monomer_SO3_coordinates(self):
         path = full_path('SO3.cif')
         block = gemmi.cif.read(path)[-1]
-        st = gemmi.read_chem_comp_as_structure(block)
+        st = gemmi.make_structure_from_chemcomp_block(block)
         out = st.make_minimal_pdb()
         self.assertEqual(out.splitlines(), SO2_FROM_MONOMER.splitlines())
 
@@ -272,15 +272,15 @@ class TestMol(unittest.TestCase):
     def test_reading_HEM(self):
         cif_path = full_path('HEM.cif')
         cif_block = gemmi.cif.read(cif_path).sole_block()
-        cif_st = gemmi.read_chem_comp_as_structure(cif_block)
+        cif_st = gemmi.make_structure_from_chemcomp_block(cif_block)
         # we compare not-ideal model only
         del cif_st['example_xyz']
         # PDBe files have residue number 0 and ATOM instead of HETATM
-        for residue in cif_st[0][0]:
-            residue.seqid.num = 0
-            residue.het_flag = 'A'
-            for atom in residue:
-                atom.b_iso = 20
+        residue = cif_st[0][0][0]
+        residue.seqid.num = 0
+        residue.het_flag = 'A'
+        for atom in residue:
+            atom.b_iso = 20
         cif_out = cif_st.make_minimal_pdb()
         pdb_path = full_path('HEM.pdb')
         pdb_st = gemmi.read_structure(pdb_path)

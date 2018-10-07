@@ -6,7 +6,7 @@
 #include "gemmi/polyheur.hpp"  // for remove_hydrogens, ...
 #include "gemmi/to_pdb.hpp"    // for write_pdb, ...
 #include "gemmi/to_mmcif.hpp"  // for update_cif_block
-#include "gemmi/chemcomp_xyz.hpp" // for read_chem_comp_as_structure
+#include "gemmi/chemcomp_xyz.hpp" // for make_structure_from_chemcomp_block
 
 #include <cstring>
 #include <iostream>
@@ -210,7 +210,7 @@ static void convert(const std::string& input, CoorFormat input_type,
           (cif_in.blocks.size() == 1 &&
            !cif_in.blocks[0].has_tag("_atom_site.id") &&
            cif_in.blocks[0].has_tag("_chem_comp_atom.atom_id")))
-        st = gemmi::read_chem_comp_as_structure(cif_in.blocks.back());
+        st = gemmi::make_structure_from_chemcomp_block(cif_in.blocks.back());
       else
         st = gemmi::make_structure(cif_in);
       if (st.models.empty())
