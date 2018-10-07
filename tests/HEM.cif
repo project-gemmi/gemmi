@@ -1,0 +1,246 @@
+data_HEM
+# 
+_chem_comp.id                                    HEM 
+_chem_comp.name                                  "PROTOPORPHYRIN IX CONTAINING FE" 
+_chem_comp.type                                  NON-POLYMER 
+_chem_comp.pdbx_type                             HETAIN 
+_chem_comp.formula                               "C34 H32 Fe N4 O4" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         HEME 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     1999-07-08 
+_chem_comp.pdbx_modified_date                    2016-01-20 
+_chem_comp.pdbx_ambiguous_flag                   Y 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         MHM 
+_chem_comp.formula_weight                        616.487 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     HEM 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        Corina 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        3IA3 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+HEM CHA  CHA  C  0 1 N N N 2.748  -19.531 39.896 -2.161 -0.125 0.490  CHA  HEM 1  
+HEM CHB  CHB  C  0 1 N N N 3.258  -17.744 35.477 1.458  -3.419 0.306  CHB  HEM 2  
+HEM CHC  CHC  C  0 1 N N N 1.703  -21.900 33.637 4.701  0.169  -0.069 CHC  HEM 3  
+HEM CHD  CHD  C  0 1 N N N 1.149  -23.677 38.059 1.075  3.460  0.018  CHD  HEM 4  
+HEM C1A  C1A  C  0 1 Y N N 3.031  -18.673 38.872 -1.436 -1.305 0.380  C1A  HEM 5  
+HEM C2A  C2A  C  0 1 Y N N 3.578  -17.325 39.013 -2.015 -2.587 0.320  C2A  HEM 6  
+HEM C3A  C3A  C  0 1 Y N N 3.705  -16.820 37.785 -1.009 -3.500 0.270  C3A  HEM 7  
+HEM C4A  C4A  C  0 1 Y N N 3.256  -17.863 36.862 0.216  -2.803 0.298  C4A  HEM 8  
+HEM CMA  CMA  C  0 1 N N N 4.227  -15.469 37.393 -1.175 -4.996 0.197  CMA  HEM 9  
+HEM CAA  CAA  C  0 1 N N N 3.945  -16.670 40.296 -3.490 -2.893 0.314  CAA  HEM 10 
+HEM CBA  CBA  C  0 1 N N N 5.391  -17.138 40.581 -3.998 -2.926 -1.129 CBA  HEM 11 
+HEM CGA  CGA  C  0 1 N N N 6.095  -16.663 41.825 -5.473 -3.232 -1.136 CGA  HEM 12 
+HEM O1A  O1A  O  0 1 N N N 7.098  -15.928 41.683 -6.059 -3.405 -0.094 O1A  HEM 13 
+HEM O2A  O2A  O  0 1 N N N 5.657  -17.040 42.940 -6.137 -3.311 -2.300 O2A  HEM 14 
+HEM C1B  C1B  C  0 1 N N N 2.888  -18.698 34.579 2.664  -2.707 0.308  C1B  HEM 15 
+HEM C2B  C2B  C  0 1 N N N 2.933  -18.535 33.146 3.937  -3.328 0.418  C2B  HEM 16 
+HEM C3B  C3B  C  0 1 N N N 2.499  -19.716 32.632 4.874  -2.341 0.314  C3B  HEM 17 
+HEM C4B  C4B  C  0 1 N N N 2.187  -20.580 33.743 4.117  -1.079 0.139  C4B  HEM 18 
+HEM CMB  CMB  C  0 1 N N N 3.391  -17.290 32.422 4.203  -4.798 0.613  CMB  HEM 19 
+HEM CAB  CAB  C  0 1 N N N 2.345  -20.140 31.217 6.339  -2.497 0.365  CAB  HEM 20 
+HEM CBB  CBB  C  0 1 N N N 1.755  -19.492 30.233 6.935  -3.419 -0.385 CBB  HEM 21 
+HEM C1C  C1C  C  0 1 Y N N 1.395  -22.786 34.659 3.964  1.345  -0.174 C1C  HEM 22 
+HEM C2C  C2C  C  0 1 Y N N 0.854  -24.130 34.500 4.531  2.601  -0.445 C2C  HEM 23 
+HEM C3C  C3C  C  0 1 Y N N 0.689  -24.626 35.757 3.510  3.536  -0.437 C3C  HEM 24 
+HEM C4C  C4C  C  0 1 Y N N 1.139  -23.583 36.674 2.304  2.846  -0.139 C4C  HEM 25 
+HEM CMC  CMC  C  0 1 N N N 0.550  -24.782 33.175 5.991  2.880  -0.697 CMC  HEM 26 
+HEM CAC  CAC  C  0 1 N N N 0.164  -25.943 36.196 3.649  4.981  -0.692 CAC  HEM 27 
+HEM CBC  CBC  C  0 1 N N N 0.498  -27.158 35.750 4.201  5.407  -1.823 CBC  HEM 28 
+HEM C1D  C1D  C  0 1 N N N 1.550  -22.718 38.980 -0.102 2.753  0.298  C1D  HEM 29 
+HEM C2D  C2D  C  0 1 N N N 1.513  -22.879 40.415 -1.382 3.388  0.641  C2D  HEM 30 
+HEM C3D  C3D  C  0 1 N N N 1.951  -21.691 40.929 -2.283 2.389  0.774  C3D  HEM 31 
+HEM C4D  C4D  C  0 1 N N N 2.277  -20.826 39.811 -1.561 1.137  0.511  C4D  HEM 32 
+HEM CMD  CMD  C  0 1 N N N 1.055  -24.094 41.156 -1.639 4.863  0.811  CMD  HEM 33 
+HEM CAD  CAD  C  0 1 N N N 2.048  -21.326 42.352 -3.741 2.532  1.123  CAD  HEM 34 
+HEM CBD  CBD  C  0 1 N N N 0.741  -20.498 42.530 -4.573 2.563  -0.160 CBD  HEM 35 
+HEM CGD  CGD  C  0 1 N N N 0.578  -19.987 43.892 -6.032 2.706  0.189  CGD  HEM 36 
+HEM O1D  O1D  O  0 1 N N N 1.387  -19.103 44.303 -6.372 2.776  1.347  O1D  HEM 37 
+HEM O2D  O2D  O  0 1 N N N -0.401 -20.468 44.537 -6.954 2.755  -0.785 O2D  HEM 38 
+HEM NA   NA   N  0 1 Y N N 2.863  -18.969 37.554 -0.068 -1.456 0.321  NA   HEM 39 
+HEM NB   NB   N  0 1 N N N 2.439  -19.944 34.911 2.820  -1.386 0.207  NB   HEM 40 
+HEM NC   NC   N  0 1 Y N N 1.537  -22.509 35.976 2.604  1.506  -0.033 NC   HEM 41 
+HEM ND   ND   N  0 1 N N N 2.008  -21.465 38.663 -0.276 1.431  0.298  ND   HEM 42 
+HEM FE   FE   FE 0 0 N N N 2.196  -20.749 36.814 1.010  0.157  -0.060 FE   HEM 43 
+HEM HHB  HHB  H  0 1 N N N 3.587  -16.798 35.072 1.498  -4.508 0.309  HHB  HEM 44 
+HEM HHC  HHC  H  0 1 N N N 1.553  -22.268 32.633 5.786  0.229  -0.153 HHC  HEM 45 
+HEM HHD  HHD  H  0 1 N N N 0.802  -24.613 38.472 1.018  4.543  -0.083 HHD  HEM 46 
+HEM HMA  HMA  H  0 1 N N N 5.316  -15.524 37.249 -1.220 -5.306 -0.847 HMA  HEM 47 
+HEM HMAA HMAA H  0 0 N N N 3.749  -15.149 36.455 -0.328 -5.480 0.683  HMAA HEM 48 
+HEM HMAB HMAB H  0 0 N N N 3.998  -14.743 38.187 -2.097 -5.285 0.702  HMAB HEM 49 
+HEM HAA  HAA  H  0 1 N N N 3.905  -15.575 40.197 -3.662 -3.862 0.782  HAA  HEM 50 
+HEM HAAA HAAA H  0 0 N N N 3.268  -16.991 41.102 -4.024 -2.121 0.869  HAAA HEM 51 
+HEM HBA  HBA  H  0 1 N N N 5.368  -18.237 40.627 -3.825 -1.956 -1.597 HBA  HEM 52 
+HEM HBAA HBAA H  0 0 N N N 6.004  -16.819 39.725 -3.464 -3.697 -1.684 HBAA HEM 53 
+HEM HMB  HMB  H  0 1 N N N 3.319  -17.449 31.336 3.256  -5.336 0.660  HMB  HEM 54 
+HEM HMBA HMBA H  0 0 N N N 2.753  -16.442 32.711 4.794  -5.175 -0.222 HMBA HEM 55 
+HEM HMBB HMBB H  0 0 N N N 4.435  -17.072 32.692 4.752  -4.948 1.543  HMBB HEM 56 
+HEM HAB  HAB  H  0 1 N N N 2.770  -21.100 30.963 6.927  -1.863 1.011  HAB  HEM 57 
+HEM HBB  HBB  H  0 1 N N N 1.719  -19.927 29.245 7.994  -3.600 -0.277 HBB  HEM 58 
+HEM HBBA HBBA H  0 0 N N N 1.308  -18.526 30.414 6.360  -3.987 -1.102 HBBA HEM 59 
+HEM HMC  HMC  H  0 1 N N N 0.153  -25.793 33.346 6.554  1.949  -0.639 HMC  HEM 60 
+HEM HMCA HMCA H  0 0 N N N -0.196 -24.182 32.634 6.110  3.316  -1.689 HMCA HEM 61 
+HEM HMCB HMCB H  0 0 N N N 1.472  -24.846 32.578 6.362  3.578  0.053  HMCB HEM 62 
+HEM HAC  HAC  H  0 1 N N N -0.583 -25.916 36.975 3.303  5.694  0.042  HAC  HEM 63 
+HEM HBC  HBC  H  0 1 N N N 0.027  -28.035 36.169 4.614  4.696  -2.523 HBC  HEM 64 
+HEM HBCA HBCA H  0 0 N N N 1.239  -27.263 34.971 4.235  6.464  -2.043 HBCA HEM 65 
+HEM HMD  HMD  H  0 1 N N N 1.142  -23.919 42.238 -0.715 5.415  0.639  HMD  HEM 66 
+HEM HMDA HMDA H  0 0 N N N 0.006  -24.304 40.902 -2.394 5.185  0.094  HMDA HEM 67 
+HEM HMDB HMDB H  0 0 N N N 1.680  -24.954 40.872 -1.994 5.055  1.824  HMDB HEM 68 
+HEM HAD  HAD  H  0 1 N N N 2.055  -22.216 42.999 -4.052 1.687  1.738  HAD  HEM 69 
+HEM HADA HADA H  0 0 N N N 2.943  -20.719 42.554 -3.893 3.459  1.677  HADA HEM 70 
+HEM HBD  HBD  H  0 1 N N N 0.767  -19.646 41.835 -4.262 3.408  -0.775 HBD  HEM 71 
+HEM HBDA HBDA H  0 0 N N N -0.119 -21.141 42.290 -4.421 1.636  -0.714 HBDA HEM 72 
+HEM H2A  H2A  H  0 1 N N N 6.201  -16.682 43.632 -7.082 -3.510 -2.254 H2A  HEM 73 
+HEM H2D  H2D  H  0 1 N N N -0.445 -20.063 45.395 -7.877 2.847  -0.512 H2D  HEM 74 
+HEM HHA  HHA  H  0 1 N N N 2.913  -19.150 40.893 -3.246 -0.188 0.567  HHA  HEM 75 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+HEM CHA C1A  SING N N 1  
+HEM CHA C4D  DOUB N N 2  
+HEM CHA HHA  SING N N 3  
+HEM CHB C4A  SING N N 4  
+HEM CHB C1B  DOUB N N 5  
+HEM CHB HHB  SING N N 6  
+HEM CHC C4B  SING N N 7  
+HEM CHC C1C  DOUB N N 8  
+HEM CHC HHC  SING N N 9  
+HEM CHD C4C  DOUB N N 10 
+HEM CHD C1D  SING N N 11 
+HEM CHD HHD  SING N N 12 
+HEM C1A C2A  DOUB Y N 13 
+HEM C1A NA   SING Y N 14 
+HEM C2A C3A  SING Y N 15 
+HEM C2A CAA  SING N N 16 
+HEM C3A C4A  DOUB Y N 17 
+HEM C3A CMA  SING N N 18 
+HEM C4A NA   SING Y N 19 
+HEM CMA HMA  SING N N 20 
+HEM CMA HMAA SING N N 21 
+HEM CMA HMAB SING N N 22 
+HEM CAA CBA  SING N N 23 
+HEM CAA HAA  SING N N 24 
+HEM CAA HAAA SING N N 25 
+HEM CBA CGA  SING N N 26 
+HEM CBA HBA  SING N N 27 
+HEM CBA HBAA SING N N 28 
+HEM CGA O1A  DOUB N N 29 
+HEM CGA O2A  SING N N 30 
+HEM C1B C2B  SING N N 31 
+HEM C1B NB   SING N N 32 
+HEM C2B C3B  DOUB N N 33 
+HEM C2B CMB  SING N N 34 
+HEM C3B C4B  SING N N 35 
+HEM C3B CAB  SING N N 36 
+HEM C4B NB   DOUB N N 37 
+HEM CMB HMB  SING N N 38 
+HEM CMB HMBA SING N N 39 
+HEM CMB HMBB SING N N 40 
+HEM CAB CBB  DOUB N N 41 
+HEM CAB HAB  SING N N 42 
+HEM CBB HBB  SING N N 43 
+HEM CBB HBBA SING N N 44 
+HEM C1C C2C  SING Y N 45 
+HEM C1C NC   SING Y N 46 
+HEM C2C C3C  DOUB Y N 47 
+HEM C2C CMC  SING N N 48 
+HEM C3C C4C  SING Y N 49 
+HEM C3C CAC  SING N N 50 
+HEM C4C NC   SING Y N 51 
+HEM CMC HMC  SING N N 52 
+HEM CMC HMCA SING N N 53 
+HEM CMC HMCB SING N N 54 
+HEM CAC CBC  DOUB N N 55 
+HEM CAC HAC  SING N N 56 
+HEM CBC HBC  SING N N 57 
+HEM CBC HBCA SING N N 58 
+HEM C1D C2D  SING N N 59 
+HEM C1D ND   DOUB N N 60 
+HEM C2D C3D  DOUB N N 61 
+HEM C2D CMD  SING N N 62 
+HEM C3D C4D  SING N N 63 
+HEM C3D CAD  SING N N 64 
+HEM C4D ND   SING N N 65 
+HEM CMD HMD  SING N N 66 
+HEM CMD HMDA SING N N 67 
+HEM CMD HMDB SING N N 68 
+HEM CAD CBD  SING N N 69 
+HEM CAD HAD  SING N N 70 
+HEM CAD HADA SING N N 71 
+HEM CBD CGD  SING N N 72 
+HEM CBD HBD  SING N N 73 
+HEM CBD HBDA SING N N 74 
+HEM CGD O1D  DOUB N N 75 
+HEM CGD O2D  SING N N 76 
+HEM O2A H2A  SING N N 77 
+HEM O2D H2D  SING N N 78 
+HEM FE  NA   SING N N 79 
+HEM FE  NB   SING N N 80 
+HEM FE  NC   SING N N 81 
+HEM FE  ND   SING N N 82 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+HEM SMILES           ACDLabs              12.01 "C=1c3c(c(c4C=C5C(=C(C=6C=C7C(=C(C8=CC=2C(=C(C=1N=2[Fe](n34)(N5=6)N78)CCC(=O)O)C)\C=C)C)\C=C)C)C)CCC(=O)O" 
+HEM InChI            InChI                1.03  
+;InChI=1S/C34H34N4O4.Fe/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+2/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;
+;
+HEM InChIKey         InChI                1.03  KABFMIBPWCXCRK-RGGAHWMASA-L 
+HEM SMILES_CANONICAL CACTVS               3.385 "CC1=C(CCC(O)=O)C2=Cc3n4[Fe]5|6|N2=C1C=c7n5c(=CC8=N|6C(=Cc4c(C)c3CCC(O)=O)C(=C8C=C)C)c(C)c7C=C" 
+HEM SMILES           CACTVS               3.385 "CC1=C(CCC(O)=O)C2=Cc3n4[Fe]5|6|N2=C1C=c7n5c(=CC8=N|6C(=Cc4c(C)c3CCC(O)=O)C(=C8C=C)C)c(C)c7C=C" 
+HEM SMILES_CANONICAL "OpenEye OEToolkits" 1.7.6 "Cc1c2n3c(c1CCC(=O)O)C=C4C(=C(C5=[N]4[Fe]36[N]7=C(C=C8N6C(=C5)C(=C8C)C=C)C(=C(C7=C2)C)C=C)C)CCC(=O)O" 
+HEM SMILES           "OpenEye OEToolkits" 1.7.6 "Cc1c2n3c(c1CCC(=O)O)C=C4C(=C(C5=[N]4[Fe]36[N]7=C(C=C8N6C(=C5)C(=C8C)C=C)C(=C(C7=C2)C)C=C)C)CCC(=O)O" 
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+HEM "SYSTEMATIC NAME" "OpenEye OEToolkits" 1.6.1 "3-[(5Z,10Z,14Z,19Z)-18-(2-carboxyethyl)-8,13-bis(ethenyl)-3,7,12,17-tetramethyl-21,23-dihydroporphyrin-2-yl]propanoic acid" 
+HEM "SYSTEMATIC NAME" ACDLabs              12.01 "[3,3'-(7,12-diethenyl-3,8,13,17-tetramethylporphyrin-2,18-diyl-kappa~4~N~21~,N~22~,N~23~,N~24~)dipropanoato(2-)]iron"       
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+HEM "Create component"   1999-07-08 RCSB 
+HEM "Other modification" 2016-01-20 RCSB 
+# 

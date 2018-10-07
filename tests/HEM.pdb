@@ -1,0 +1,156 @@
+HEADER    NONAME 20-Feb-16
+TITLE     Produced by PDBeChem
+COMPND    HEM      
+AUTHOR    EBI-PDBe Generated
+REVDAT   1  20-Feb-16     0
+ATOM      1  CHA HEM     0      -2.161  -0.125   0.490  1.00 20.00           C+0
+ATOM      2  CHB HEM     0       1.458  -3.419   0.306  1.00 20.00           C+0
+ATOM      3  CHC HEM     0       4.701   0.169  -0.069  1.00 20.00           C+0
+ATOM      4  CHD HEM     0       1.075   3.460   0.018  1.00 20.00           C+0
+ATOM      5  C1A HEM     0      -1.436  -1.305   0.380  1.00 20.00           C+0
+ATOM      6  C2A HEM     0      -2.015  -2.587   0.320  1.00 20.00           C+0
+ATOM      7  C3A HEM     0      -1.009  -3.500   0.270  1.00 20.00           C+0
+ATOM      8  C4A HEM     0       0.216  -2.803   0.298  1.00 20.00           C+0
+ATOM      9  CMA HEM     0      -1.175  -4.996   0.197  1.00 20.00           C+0
+ATOM     10  CAA HEM     0      -3.490  -2.893   0.314  1.00 20.00           C+0
+ATOM     11  CBA HEM     0      -3.998  -2.926  -1.129  1.00 20.00           C+0
+ATOM     12  CGA HEM     0      -5.473  -3.232  -1.136  1.00 20.00           C+0
+ATOM     13  O1A HEM     0      -6.059  -3.405  -0.094  1.00 20.00           O+0
+ATOM     14  O2A HEM     0      -6.137  -3.311  -2.300  1.00 20.00           O+0
+ATOM     15  C1B HEM     0       2.664  -2.707   0.308  1.00 20.00           C+0
+ATOM     16  C2B HEM     0       3.937  -3.328   0.418  1.00 20.00           C+0
+ATOM     17  C3B HEM     0       4.874  -2.341   0.314  1.00 20.00           C+0
+ATOM     18  C4B HEM     0       4.117  -1.079   0.139  1.00 20.00           C+0
+ATOM     19  CMB HEM     0       4.203  -4.798   0.613  1.00 20.00           C+0
+ATOM     20  CAB HEM     0       6.339  -2.497   0.365  1.00 20.00           C+0
+ATOM     21  CBB HEM     0       6.935  -3.419  -0.385  1.00 20.00           C+0
+ATOM     22  C1C HEM     0       3.964   1.345  -0.174  1.00 20.00           C+0
+ATOM     23  C2C HEM     0       4.531   2.601  -0.445  1.00 20.00           C+0
+ATOM     24  C3C HEM     0       3.510   3.536  -0.437  1.00 20.00           C+0
+ATOM     25  C4C HEM     0       2.304   2.846  -0.139  1.00 20.00           C+0
+ATOM     26  CMC HEM     0       5.991   2.880  -0.697  1.00 20.00           C+0
+ATOM     27  CAC HEM     0       3.649   4.981  -0.692  1.00 20.00           C+0
+ATOM     28  CBC HEM     0       4.201   5.407  -1.823  1.00 20.00           C+0
+ATOM     29  C1D HEM     0      -0.102   2.753   0.298  1.00 20.00           C+0
+ATOM     30  C2D HEM     0      -1.382   3.388   0.641  1.00 20.00           C+0
+ATOM     31  C3D HEM     0      -2.283   2.389   0.774  1.00 20.00           C+0
+ATOM     32  C4D HEM     0      -1.561   1.137   0.511  1.00 20.00           C+0
+ATOM     33  CMD HEM     0      -1.639   4.863   0.811  1.00 20.00           C+0
+ATOM     34  CAD HEM     0      -3.741   2.532   1.123  1.00 20.00           C+0
+ATOM     35  CBD HEM     0      -4.573   2.563  -0.160  1.00 20.00           C+0
+ATOM     36  CGD HEM     0      -6.032   2.706   0.189  1.00 20.00           C+0
+ATOM     37  O1D HEM     0      -6.372   2.776   1.347  1.00 20.00           O+0
+ATOM     38  O2D HEM     0      -6.954   2.755  -0.785  1.00 20.00           O+0
+ATOM     39  NA  HEM     0      -0.068  -1.456   0.321  1.00 20.00           N+0
+ATOM     40  NB  HEM     0       2.820  -1.386   0.207  1.00 20.00           N+0
+ATOM     41  NC  HEM     0       2.604   1.506  -0.033  1.00 20.00           N+0
+ATOM     42  ND  HEM     0      -0.276   1.431   0.298  1.00 20.00           N+0
+ATOM     43 FE   HEM     0       1.010   0.157  -0.060  1.00 20.00          FE+0
+ATOM     44  HHB HEM     0       1.498  -4.508   0.309  1.00 20.00           H+0
+ATOM     45  HHC HEM     0       5.786   0.229  -0.153  1.00 20.00           H+0
+ATOM     46  HHD HEM     0       1.018   4.543  -0.083  1.00 20.00           H+0
+ATOM     47  HMA HEM     0      -1.220  -5.306  -0.847  1.00 20.00           H+0
+ATOM     48 HMAA HEM     0      -0.328  -5.480   0.683  1.00 20.00           H+0
+ATOM     49 HMAB HEM     0      -2.097  -5.285   0.702  1.00 20.00           H+0
+ATOM     50  HAA HEM     0      -3.662  -3.862   0.782  1.00 20.00           H+0
+ATOM     51 HAAA HEM     0      -4.024  -2.121   0.869  1.00 20.00           H+0
+ATOM     52  HBA HEM     0      -3.825  -1.956  -1.597  1.00 20.00           H+0
+ATOM     53 HBAA HEM     0      -3.464  -3.697  -1.684  1.00 20.00           H+0
+ATOM     54  HMB HEM     0       3.256  -5.336   0.660  1.00 20.00           H+0
+ATOM     55 HMBA HEM     0       4.794  -5.175  -0.222  1.00 20.00           H+0
+ATOM     56 HMBB HEM     0       4.752  -4.948   1.543  1.00 20.00           H+0
+ATOM     57  HAB HEM     0       6.927  -1.863   1.011  1.00 20.00           H+0
+ATOM     58  HBB HEM     0       7.994  -3.600  -0.277  1.00 20.00           H+0
+ATOM     59 HBBA HEM     0       6.360  -3.987  -1.102  1.00 20.00           H+0
+ATOM     60  HMC HEM     0       6.554   1.949  -0.639  1.00 20.00           H+0
+ATOM     61 HMCA HEM     0       6.110   3.316  -1.689  1.00 20.00           H+0
+ATOM     62 HMCB HEM     0       6.362   3.578   0.053  1.00 20.00           H+0
+ATOM     63  HAC HEM     0       3.303   5.694   0.042  1.00 20.00           H+0
+ATOM     64  HBC HEM     0       4.614   4.696  -2.523  1.00 20.00           H+0
+ATOM     65 HBCA HEM     0       4.235   6.464  -2.043  1.00 20.00           H+0
+ATOM     66  HMD HEM     0      -0.715   5.415   0.639  1.00 20.00           H+0
+ATOM     67 HMDA HEM     0      -2.394   5.185   0.094  1.00 20.00           H+0
+ATOM     68 HMDB HEM     0      -1.994   5.055   1.824  1.00 20.00           H+0
+ATOM     69  HAD HEM     0      -4.052   1.687   1.738  1.00 20.00           H+0
+ATOM     70 HADA HEM     0      -3.893   3.459   1.677  1.00 20.00           H+0
+ATOM     71  HBD HEM     0      -4.262   3.408  -0.775  1.00 20.00           H+0
+ATOM     72 HBDA HEM     0      -4.421   1.636  -0.714  1.00 20.00           H+0
+ATOM     73  H2A HEM     0      -7.082  -3.510  -2.254  1.00 20.00           H+0
+ATOM     74  H2D HEM     0      -7.877   2.847  -0.512  1.00 20.00           H+0
+ATOM     75  HHA HEM     0      -3.246  -0.188   0.567  1.00 20.00           H+0
+CONECT    1    5   32   75
+CONECT    2   15    8   44
+CONECT    3   22   18   45
+CONECT    4   29   25   46
+CONECT    5    6    1   39
+CONECT    6    5    7   10
+CONECT    7    6    8    9
+CONECT    8    7    2   39
+CONECT    9    7   47   48   49
+CONECT   10    6   11   50   51
+CONECT   11   10   12   52   53
+CONECT   12   11   13   14
+CONECT   13   12
+CONECT   14   12   73
+CONECT   15   16    2   40
+CONECT   16   15   17   19
+CONECT   17   16   18   20
+CONECT   18   17    3   40
+CONECT   19   16   54   55   56
+CONECT   20   17   21   57
+CONECT   21   20   58   59
+CONECT   22   23    3   41
+CONECT   23   22   24   26
+CONECT   24   23   25   27
+CONECT   25   24    4   41
+CONECT   26   23   60   61   62
+CONECT   27   24   28   63
+CONECT   28   27   64   65
+CONECT   29   30    4   42
+CONECT   30   29   31   33
+CONECT   31   30   32   34
+CONECT   32   31    1   42
+CONECT   33   30   66   67   68
+CONECT   34   31   35   69   70
+CONECT   35   34   36   71   72
+CONECT   36   35   37   38
+CONECT   37   36
+CONECT   38   36   74
+CONECT   39    5    8   43
+CONECT   40   15   18   43
+CONECT   41   22   25   43
+CONECT   42   29   32   43
+CONECT   43   39   40   41   42
+CONECT   44    2
+CONECT   45    3
+CONECT   46    4
+CONECT   47    9
+CONECT   48    9
+CONECT   49    9
+CONECT   50   10
+CONECT   51   10
+CONECT   52   11
+CONECT   53   11
+CONECT   54   19
+CONECT   55   19
+CONECT   56   19
+CONECT   57   20
+CONECT   58   21
+CONECT   59   21
+CONECT   60   26
+CONECT   61   26
+CONECT   62   26
+CONECT   63   27
+CONECT   64   28
+CONECT   65   28
+CONECT   66   33
+CONECT   67   33
+CONECT   68   33
+CONECT   69   34
+CONECT   70   34
+CONECT   71   35
+CONECT   72   35
+CONECT   73   14
+CONECT   74   38
+CONECT   75    1
+END

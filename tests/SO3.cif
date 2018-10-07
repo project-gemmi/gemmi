@@ -1,0 +1,65 @@
+#
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+SO3     SO3      "SULFITE ION"     NON-POLYMER     4     4     .     
+#
+data_comp_SO3
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+SO3     S       S       S3      0       -5.979      0.717       17.353      
+SO3     O1      O       O       0       -5.035      1.876       17.325      
+SO3     O2      O       OS      -1      -7.003      1.053       16.315      
+SO3     O3      O       OS      -1      -5.199      -0.407      16.748      
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.aromatic
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+SO3           S          O1      DOUBLE       n     1.496   0.019
+SO3           S          O2      SINGLE       n     1.496   0.019
+SO3           S          O3      SINGLE       n     1.496   0.019
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+SO3          O1           S          O2     104.222    1.50
+SO3          O1           S          O3     104.222    1.50
+SO3          O2           S          O3     104.222    1.50
+loop_
+_pdbx_chem_comp_descriptor.comp_id
+_pdbx_chem_comp_descriptor.type
+_pdbx_chem_comp_descriptor.program
+_pdbx_chem_comp_descriptor.program_version
+_pdbx_chem_comp_descriptor.descriptor
+SO3 SMILES           ACDLabs              10.04 "[O-]S([O-])=O"
+SO3 SMILES_CANONICAL CACTVS               3.341 "[O-][S]([O-])=O"
+SO3 SMILES           CACTVS               3.341 "[O-][S]([O-])=O"
+SO3 SMILES_CANONICAL "OpenEye OEToolkits" 1.5.0 "[O-]S(=O)[O-]"
+SO3 SMILES           "OpenEye OEToolkits" 1.5.0 "[O-]S(=O)[O-]"
+SO3 InChI            InChI                1.03  "InChI=1S/H2O3S/c1-4(2)3/h(H2,1,2,3)/p-2"
+SO3 InChIKey         InChI                1.03  LSNNMFCWUKXFEE-UHFFFAOYSA-L
+SO3 ?                acedrg               202         "dictionary generator"                  
+SO3 ?                acedrg_database      11          "data source"                           
+SO3 ?                rdkit                2017.03.2   "Chemoinformatics tool"
+SO3 ?                refmac5              5.8.0189    "optimization tool"                     

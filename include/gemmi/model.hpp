@@ -183,8 +183,8 @@ struct Atom {
   char flag = '\0'; // custom flag
   int serial = 0;
   Position pos;
-  float occ;
-  float b_iso;
+  float occ = 1.0f;
+  float b_iso = 20.0f; // arbitrary default value
   float u11=0, u22=0, u33=0, u12=0, u13=0, u23=0;
 
   char altloc_or(char null_char) const { return altloc ? altloc : null_char; }

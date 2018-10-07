@@ -7,6 +7,7 @@
 #define GEMMI_GZREAD_IMPLEMENTATION
 #include "gemmi/gzread.hpp"
 #include "gemmi/smcif.hpp" // for AtomicStructure
+#include "gemmi/chemcomp_xyz.hpp"
 
 #include <pybind11/pybind11.h>
 
@@ -57,6 +58,12 @@ void add_read_structure(py::module& m) {
         }, py::arg("path"), "Reads a small molecule CIF file.");
   m.def("make_atomic_structure_from_block", &make_atomic_structure_from_block,
         py::arg("block"), "Takes CIF block and returns AtomicStructure.");
+
+  // from chemcomp_xyz.hpp
+  m.def("read_chem_comp_as_structure", &read_chem_comp_as_structure,
+        py::arg("block"),
+        "CIF block from CCD or monomer library -> AtomicStructure.");
+
 
   // and an unrelated function from gz.hpp
   m.def("estimate_uncompressed_size", &estimate_uncompressed_size,

@@ -8,6 +8,7 @@
 #include "gemmi/polyheur.hpp"
 #include "gemmi/to_pdb.hpp"
 #include "gemmi/to_mmcif.hpp"
+#include "gemmi/to_mmcif.hpp"
 
 #include <fstream>
 #include <pybind11/pybind11.h>
@@ -144,6 +145,11 @@ void add_mol(py::module& m) {
        std::ofstream f(path.c_str());
        write_minimal_pdb(st, f);
     }, py::arg("path"))
+    .def("make_minimal_pdb", [](const Structure& st) -> std::string {
+       std::ostringstream os;
+       write_minimal_pdb(st, os);
+       return os.str();
+    })
     .def("make_mmcif_document", &make_mmcif_document)
     .def("add_entity_types", (void (*)(Structure&, bool)) &add_entity_types,
          py::arg("overwrite")=false)
@@ -299,6 +305,7 @@ void add_mol(py::module& m) {
     .def_readwrite("segment", &Residue::segment)
     .def_readwrite("subchain", &Residue::subchain)
     .def_readwrite("entity_type", &Residue::entity_type)
+    .def_readwrite("het_flag", &Residue::het_flag)
     .def_readwrite("label_seq", &Residue::label_seq)
     .def("__len__", [](const Residue& res) { return res.atoms.size(); })
     .def("__contains__", [](const Residue& res, const std::string& name) {
