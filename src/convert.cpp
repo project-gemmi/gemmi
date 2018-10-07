@@ -35,7 +35,7 @@ struct ConvArg: public Arg {
 enum OptionIndex { Verbose=3, FormatIn, FormatOut,
                    Comcifs, Mmjson, Bare, Numb, CifDot, PdbxStyle,
                    ExpandNcs, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
-                   ShortTer, SegmentAsChain };
+                   ShortTer, SegmentAsChain, Translate };
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
@@ -84,6 +84,7 @@ static const option::Descriptor Usage[] = {
     "  --short-ter  \tWrite PDB TER records without numbers (iotbx compat.)." },
   { SegmentAsChain, 0, "", "segment-as-chain", Arg::None,
     "  --segment-as-chain \tAppend segment id to label_asym_id (chain name)." },
+  { Translate, 0, "", "translate", Arg::None, 0 },
   { NoOp, 0, "", "", Arg::None,
     "\nWhen output file is -, write to standard output." },
   { 0, 0, 0, 0, 0, 0 }
@@ -93,6 +94,10 @@ static const char symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                               "abcdefghijklmnopqrstuvwxyz0123456789";
 
 enum class ChainNaming { Short, AddNum, Dup };
+
+static bool is_mmcif_compatible(CoorFormat format) {
+  return format == CoorFormat::Mmcif || format == CoorFormat::Mmjson;
+}
 
 static void expand_ncs(gemmi::Structure& st, ChainNaming ch_naming) {
   int n_ops = std::count_if(st.ncs.begin(), st.ncs.end(),
@@ -177,23 +182,27 @@ std::vector<gemmi::Chain> split_by_segments(gemmi::Chain& orig) {
   return chains;
 }
 
+static std::string format_as_string(CoorFormat format) {
+  switch (format) {
+    case CoorFormat::Unknown: return "unknown";
+    case CoorFormat::Pdb: return "pdb";
+    case CoorFormat::Mmcif: return "mmcif";
+    case CoorFormat::Mmjson: return "mmjson";
+  }
+  gemmi::unreachable();
+}
 
 static void convert(const std::string& input, CoorFormat input_type,
                     const std::string& output, CoorFormat output_type,
-                    const std::vector<option::Option>& options) {
+                    const std::vector<option::Option>& options,
+                    bool transcribe) {
   cif::Document cif_in;
   gemmi::Structure st;
   // for cif->cif we do either cif->DOM->Structure->DOM->cif or cif->DOM->cif
-  bool modify_structure = (
-      options[ExpandNcs] || options[RemoveH] || options[RemoveWaters] ||
-      options[RemoveLigWat] || options[TrimAla] || options[SegmentAsChain]);
   if (input_type == CoorFormat::Mmcif || input_type == CoorFormat::Mmjson) {
     cif_in = input_type == CoorFormat::Mmcif ? gemmi::read_cif_gz(input)
                                              : gemmi::read_mmjson_gz(input);
-    if ((output_type == CoorFormat::Mmjson || output_type == CoorFormat::Mmcif)
-        && !modify_structure) {
-      // no need to interpret the structure
-    } else {
+    if (!transcribe) {
       // first handle special case - refmac dictionary or CCD file
       if ((cif_in.blocks.size() == 2 && cif_in.blocks[0].name == "comp_list") ||
           (cif_in.blocks.size() == 3 && cif_in.blocks[0].name.empty() &&
@@ -262,8 +271,7 @@ static void convert(const std::string& input, CoorFormat input_type,
   }
 
   if (output_type == CoorFormat::Mmcif || output_type == CoorFormat::Mmjson) {
-    if ((input_type != CoorFormat::Mmcif && input_type != CoorFormat::Mmjson)
-        || modify_structure) {
+    if (!transcribe) {
       cif_in.blocks.clear();  // temporary, for testing
       cif_in.blocks.resize(1);
       update_cif_block(st, cif_in.blocks[0]);
@@ -331,11 +339,18 @@ int GEMMI_MAIN(int argc, char **argv) {
                  " filename. Use option --to.\n";
     return 1;
   }
+  bool transcribe = is_mmcif_compatible(in_type) &&
+                    is_mmcif_compatible(out_type) &&
+                    !(p.options[Translate] || p.options[ExpandNcs] ||
+                      p.options[RemoveH] || p.options[RemoveWaters] ||
+                      p.options[RemoveLigWat] || p.options[TrimAla] ||
+                      p.options[SegmentAsChain]);
   if (p.options[Verbose])
-    std::cerr << "Converting " << input << " ..." << std::endl;
-
+    std::cerr << (transcribe ? "Transcribing " : "Converting ")
+              << input << " to " << format_as_string(out_type) << "..."
+              << std::endl;
   try {
-    convert(input, in_type, output, out_type, p.options);
+    convert(input, in_type, output, out_type, p.options, transcribe);
   } catch (tao::pegtl::parse_error& e) {
     std::cerr << e.what() << std::endl;
     return 1;
