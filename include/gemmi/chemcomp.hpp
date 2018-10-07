@@ -1067,42 +1067,6 @@ struct Topo {
   }
 };
 
-
-// Reading chemical component as a coordinate file. kind is one of:
-//  'r' - for Refmac dictionary
-//  'm' - for CCD model
-//  'i' - for CCD ideal model
-inline gemmi::Residue read_chem_comp_as_residue(const cif::Block& block,
-                                                char kind) {
-  const char* r_labels[3] = {"x", "y", "z"};
-  const char* m_labels[3] = {"model_Cartn_x", "model_Cartn_y", "model_Cartn_z"};
-  const char* i_labels[3] = {"pdbx_model_Cartn_x_ideal",
-                             "pdbx_model_Cartn_y_ideal",
-                             "pdbx_model_Cartn_z_ideal"};
-  const char** labels = nullptr;
-  switch (kind) {
-    case 'r': labels = r_labels; break;
-    case 'm': labels = m_labels; break;
-    case 'i': labels = i_labels; break;
-    default: assert(0);
-  }
-  gemmi::Residue res;
-  res.name = block.name;
-  cif::Table table = const_cast<cif::Block&>(block).find("_chem_comp_atom.",
-          {"atom_id", "type_symbol", labels[0], labels[1], labels[2]});
-  res.atoms.resize(table.length());
-  int n = 0;
-  for (auto row : table) {
-    gemmi::Atom& atom = res.atoms[n++];
-    atom.name = row.str(0);
-    atom.element = gemmi::Element(row.str(1));
-    atom.pos = gemmi::Position(cif::as_number(row[2]),
-                               cif::as_number(row[3]),
-                               cif::as_number(row[4]));
-  }
-  return res;
-}
-
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

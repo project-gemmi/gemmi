@@ -331,6 +331,9 @@ struct Block {
   }
   Column find_loop(const std::string& tag);
   Column find_values(const std::string& tag);
+  bool has_tag(const std::string& tag) const {
+    return const_cast<Block*>(this)->find_values(tag).item() != nullptr;
+  }
   Table find(const std::string& prefix,
              const std::vector<std::string>& tags);
   Table find(const std::vector<std::string>& tags) { return find({}, tags); }

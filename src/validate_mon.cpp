@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include "gemmi/cifdoc.hpp"
 #include "gemmi/chemcomp.hpp"
+#include "gemmi/chemcomp_xyz.hpp"  // for read_chem_comp_as_residue
 #include "gemmi/calculate.hpp" // for calculate_angle
 
 namespace cif = gemmi::cif;
@@ -140,7 +141,8 @@ void check_monomer_doc(const cif::Document& doc) {
         check_valency(cc);
         check_bond_angle_consistency(cc);
         // check consistency of _chem_comp_atom.x/y/z with restraints
-        gemmi::Residue res = gemmi::read_chem_comp_as_residue(block, 'r');
+        gemmi::Residue res =
+            gemmi::read_chem_comp_as_residue(block, gemmi::ChemCompModel::Xyz);
         check_xyz_consistency(cc, res);
       } catch (const std::exception& e) {
         fprintf(stderr, "Failed to interpret %s from %s:\n %s\n",
