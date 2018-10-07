@@ -6,6 +6,7 @@
 #include "gemmi/polyheur.hpp"  // for remove_hydrogens, ...
 #include "gemmi/to_pdb.hpp"    // for write_pdb, ...
 #include "gemmi/to_mmcif.hpp"  // for update_cif_block
+#include "gemmi/chemcomp_xyz.hpp" // for read_chem_comp_as_structure
 
 #include <cstring>
 #include <iostream>
@@ -193,7 +194,16 @@ static void convert(const std::string& input, CoorFormat input_type,
         && !modify_structure) {
       // no need to interpret the structure
     } else {
-      st = gemmi::make_structure(cif_in);
+      // first handle special case - refmac dictionary or CCD file
+      if ((cif_in.blocks.size() == 2 && cif_in.blocks[0].name == "comp_list") ||
+          (cif_in.blocks.size() == 3 && cif_in.blocks[0].name.empty() &&
+           cif_in.blocks[1].name == "comp_list") ||
+          (cif_in.blocks.size() == 1 &&
+           !cif_in.blocks[0].has_tag("_atom_site.id") &&
+           cif_in.blocks[0].has_tag("_chem_comp_atom.atom_id")))
+        st = gemmi::read_chem_comp_as_structure(cif_in.blocks.back());
+      else
+        st = gemmi::make_structure(cif_in);
       if (st.models.empty())
         gemmi::fail("No atoms in the input file. Is it mmCIF?");
     }
