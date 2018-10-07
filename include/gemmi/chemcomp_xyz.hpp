@@ -1,7 +1,6 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// Chemical component represents a monomer from the Refmac monomer library,
-// or from PDB CCD.
+// Reading coordinates from chemical component or Refmac monomer library files.
 
 #ifndef GEMMI_CHEMCOMP_XYZ_HPP_
 #define GEMMI_CHEMCOMP_XYZ_HPP_
@@ -43,16 +42,21 @@ inline Residue read_chem_comp_as_residue(const cif::Block& block,
   else
     res.name = block.name.substr(starts_with(block.name, "comp_") ? 5 : 0);
   cif::Table table = const_cast<cif::Block&>(block).find("_chem_comp_atom.",
-          {"atom_id", "type_symbol", xyz_tags[0], xyz_tags[1], xyz_tags[2]});
+          {"atom_id", "type_symbol", "?charge",
+           xyz_tags[0], xyz_tags[1], xyz_tags[2]});
   res.atoms.resize(table.length());
   int n = 0;
   for (auto row : table) {
     Atom& atom = res.atoms[n++];
     atom.name = row.str(0);
     atom.element = Element(row.str(1));
-    atom.pos = Position(cif::as_number(row[2]),
-                        cif::as_number(row[3]),
-                        cif::as_number(row[4]));
+    if (row.has2(2))
+      // Charge is defined as integer, but some cif files in the wild have
+      // trailing '.000', so we read it as floating-point number.
+      atom.charge = (signed char) std::round(cif::as_number(row[2]));
+    atom.pos = Position(cif::as_number(row[3]),
+                        cif::as_number(row[4]),
+                        cif::as_number(row[5]));
   }
   return res;
 }
