@@ -739,6 +739,15 @@ struct NcsOp {
   Position apply(const Position& p) const { return Position(tr.apply(p)); }
 };
 
+inline const Entity* get_entity_of(const SubChain& sub,
+                                   const std::vector<Entity>& entities) {
+  if (sub.labelled())
+    for (const Entity& ent : entities)
+      if (in_vector(sub.name(), ent.subchains))
+        return &ent;
+  return nullptr;
+}
+
 struct Structure {
   std::string name;
   UnitCell cell;
@@ -784,15 +793,10 @@ struct Structure {
   }
 
   const Entity* get_entity_of(const SubChain& sub) const {
-    if (sub.labelled())
-      for (const Entity& ent : entities)
-        if (in_vector(sub.name(), ent.subchains))
-          return &ent;
-    return nullptr;
+    return gemmi::get_entity_of(sub, entities);
   }
   Entity* get_entity_of(const SubChain& sub) {
-    const Structure* const_this = this;
-    return const_cast<Entity*>(const_this->get_entity_of(sub));
+    return const_cast<Entity*>(gemmi::get_entity_of(sub, entities));
   }
 
   double get_ncs_multiplier() const {

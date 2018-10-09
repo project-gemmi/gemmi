@@ -2,18 +2,18 @@
 
 #include <stdio.h>
 #include <cstdlib> // for getenv
-#include <cctype>  // for tolower
 #include <algorithm> // for count_if
-#include <set>
 #include <stdexcept>
 #include "gemmi/gzread.hpp"
-#include "gemmi/chemcomp.hpp"
-#include "gemmi/to_cif.hpp"
+#include "gemmi/chemcomp.hpp"  // for ChemComp
+#include "gemmi/to_cif.hpp"    // for write_cif_to_file
 #include "gemmi/entstr.hpp"    // for entity_type_to_string
 #include "gemmi/to_mmcif.hpp"  // for write_struct_conn
 #include "gemmi/sprintf.hpp"   // for to_str, to_str_prec
 #include "gemmi/calculate.hpp" // for find_best_plane
-#include "gemmi/polyheur.hpp"  // for are_connected, remove_hydrogens
+#include "gemmi/polyheur.hpp"  // for remove_hydrogens
+#include "gemmi/monlib.hpp"    // for MonLib, read_monomers
+#include "gemmi/topo.hpp"      // for Topo
 
 #define GEMMI_PROG crdrst
 #include "options.h"
@@ -48,97 +48,11 @@ static const option::Descriptor Usage[] = {
 };
 
 
-inline MonLib read_monomers(std::string monomer_dir,
-                            const std::set<std::string>& resnames) {
-  MonLib monlib;
-  assert(!monomer_dir.empty());
-  if (monomer_dir.back() != '/' && monomer_dir.back() != '\\')
-    monomer_dir += '/';
-  monlib.mon_lib_list = gemmi::read_cif_gz(monomer_dir +
-                                           "list/mon_lib_list.cif");
-  std::string error;
-  for (const std::string& name : resnames) {
-    std::string path = monomer_dir;
-    path += std::tolower(name[0]);
-    path += '/';
-    path += name + ".cif";
-    try {
-      cif::Document doc = gemmi::read_cif_gz(path);
-      auto cc = gemmi::make_chemcomp_from_cif(name, doc);
-      monlib.monomers.emplace(name, cc);
-    } catch(std::runtime_error& err) {
-      error += "The monomer " + name + " could not be read.\n";
-    }
-  }
-  if (!error.empty())
-    gemmi::fail(error + "Please create definitions for missing monomers.");
-  monlib.links = gemmi::read_chemlinks(monlib.mon_lib_list);
-  monlib.modifications = gemmi::read_chemmods(monlib.mon_lib_list);
-  return monlib;
-}
-
 // Topology: restraints applied to a model
 static int count_provenance(const std::vector<Topo::Force>& forces,
                             Topo::Provenance p) {
   return std::count_if(forces.begin(), forces.end(),
                        [&](const Topo::Force& f) { return f.provenance == p; });
-}
-
-static Topo::ChainInfo initialize_chain_info(gemmi::SubChain& subchain,
-                                             const gemmi::Entity* ent) {
-  Topo::ChainInfo lc;
-  lc.residues.reserve(subchain.size());
-  lc.name = subchain.name();
-  lc.entity_id = ent->name;
-  lc.polymer = ent && ent->entity_type == gemmi::EntityType::Polymer;
-  lc.polymer_type = ent->polymer_type;
-  for (gemmi::Residue& res : subchain) {
-    lc.residues.emplace_back(&res);
-  }
-  return lc;
-}
-
-static void setup_polymer_links(Topo::ChainInfo& ci) {
-  if (!ci.polymer || ci.residues.empty())
-    return;
-  for (auto ri = ci.residues.begin() + 1; ri != ci.residues.end(); ++ri) {
-    // For now we ignore microheterogeneity.
-    ri->prev_idx = -1;
-    const gemmi::Residue* prev_res = (ri + ri->prev_idx)->res;
-    if (!prev_res) {
-      ri->prev_link = ".";
-    } else if (!are_connected(*prev_res, *ri->res, ci.polymer_type)) {
-      ri->prev_link = "gap";
-    } else if (is_polypeptide(ci.polymer_type)) {
-      if (ri->chemcomp.group == "P-peptide")
-        ri->prev_link = "P";  // PCIS, PTRANS
-      else if (ri->chemcomp.group == "M-peptide")
-        ri->prev_link = "NM"; // NMCIS, NMTRANS
-      ri->prev_link += prev_res->is_cis ? "CIS" : "TRANS";
-    } else if (is_polynucleotide(ci.polymer_type)) {
-      ri->prev_link = "p";
-    } else {
-      ri->prev_link = "?";
-    }
-  }
-}
-
-static void add_builtin_modifications(Topo::ChainInfo& ci) {
-  if (ci.polymer && !ci.residues.empty()) {
-    // we try to get exactly the same numbers that makecif produces
-    for (Topo::ResInfo& ri : ci.residues)
-      if (ci.polymer_type == gemmi::PolymerType::PeptideL)
-        ri.mods.emplace_back("AA-STAND");
-    Topo::ResInfo& front = ci.residues.front();
-    Topo::ResInfo& back = ci.residues.back();
-    if (is_polypeptide(ci.polymer_type)) {
-      front.mods.emplace_back("NH3");
-      back.mods.emplace_back(back.res->find_atom("OXT") ? "COO" : "TERMINUS");
-    } else if (is_polynucleotide(ci.polymer_type)) {
-      front.mods.emplace_back("5*END");
-      back.mods.emplace_back("TERMINUS");
-    }
-  }
 }
 
 static bool has_anisou(const gemmi::Model& model) {
@@ -444,7 +358,7 @@ static cif::Document make_rst(const Topo& topo, const MonLib& monlib) {
     }
   }
   // explicit links
-  for (const Topo::ExtraLink& link : topo.extra) {
+  for (const Topo::ExtraLink& link : topo.extras) {
     const gemmi::ChemLink* chem_link = monlib.match_link(link.link);
     assert(chem_link);
     std::string comment = " link " + chem_link->id;
@@ -457,25 +371,6 @@ static cif::Document make_rst(const Topo& topo, const MonLib& monlib) {
   return doc;
 }
 
-
-static
-gemmi::ChemLink connection_to_chemlink(const gemmi::Connection& conn,
-                                       const gemmi::Residue& res1,
-                                       const gemmi::Residue& res2) {
-  gemmi::ChemLink link;
-  link.id = res1.name + "-" + res2.name;
-  link.comp[0] = res1.name;
-  link.comp[1] = res2.name;
-  gemmi::Restraints::Bond bond;
-  bond.id1 = Restraints::AtomId{1, conn.atom[0].atom_name};
-  bond.id2 = Restraints::AtomId{2, conn.atom[1].atom_name};
-  bond.type = gemmi::Restraints::Bond::Unspec;
-  bond.aromatic = false;
-  bond.value = conn.reported_distance;
-  bond.esd = 0.02;
-  link.rt.bonds.push_back(bond);
-  return link;
-}
 
 /*
 static void move_hydrogen_1_1(const gemmi::Atom* a1,
@@ -566,12 +461,10 @@ int GEMMI_MAIN(int argc, char **argv) {
     gemmi::Model& model0 = st.models[0];
     if (!p.options[KeepHydrogens])
       gemmi::remove_hydrogens(model0);
-    std::set<std::string> resnames;
-    for (const gemmi::Chain& chain : model0.chains)
-      for (const gemmi::Residue& res : chain.residues)
-        resnames.insert(res.name);
 
-    MonLib monlib = read_monomers(monomer_dir, resnames);
+    MonLib monlib = gemmi::read_monomers(monomer_dir,
+                                         gemmi::get_all_residue_names(model0),
+                                         gemmi::read_cif_gz);
 
     // add H, sort atoms in residues and assign serial numbers
     int serial = 0;
@@ -602,65 +495,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
 
     Topo topo;
-    // initialize chains and residues
-    for (gemmi::Chain& chain : model0.chains)
-      for (gemmi::SubChain sub : chain.subchains()) {
-        assert(sub.labelled());
-        const gemmi::Entity* ent = st.get_entity_of(sub);
-        topo.chains.push_back(initialize_chain_info(sub, ent));
-      }
-    for (Topo::ChainInfo& ci : topo.chains) {
-      // copy monomer description
-      for (Topo::ResInfo& ri : ci.residues)
-        ri.chemcomp = monlib.monomers.at(ri.res->name);
-
-      setup_polymer_links(ci);
-
-      add_builtin_modifications(ci);
-
-      // add modifications from standard links
-      for (Topo::ResInfo& ri : ci.residues)
-        if (const gemmi::ChemLink* link = monlib.find_link(ri.prev_link)) {
-          if (!link->mod[0].empty())
-            (&ri + ri.prev_idx)->mods.push_back(link->mod[0]);
-          if (!link->mod[1].empty())
-            ri.mods.push_back(link->mod[1]);
-        }
-    }
-    // add extra links
-    for (const gemmi::Connection& conn : model0.connections) {
-      Topo::ExtraLink extra;
-      extra.res1 = model0.find_cra(conn.atom[0]).residue;
-      extra.res2 = model0.find_cra(conn.atom[1]).residue;
-      extra.alt1 = conn.atom[0].altloc;
-      extra.alt2 = conn.atom[1].altloc;
-      if (extra.res1 && extra.res2) {
-        extra.link = connection_to_chemlink(conn, *extra.res1, *extra.res2);
-        if (!monlib.match_link(extra.link)) {
-          monlib.ensure_unique_link_name(extra.link.id);
-          monlib.links.emplace(extra.link.id, extra.link);
-        }
-        topo.extra.push_back(extra);
-      }
-    }
-    // TODO: automatically determine other links
-
-    for (Topo::ChainInfo& chain_info : topo.chains)
-      for (Topo::ResInfo& ri : chain_info.residues) {
-        // apply modifications
-        for (const std::string& modif : ri.mods) {
-          if (const gemmi::ChemMod* chem_mod = monlib.find_mod(modif))
-            try {
-              chem_mod->apply_to(ri.chemcomp);
-            } catch(std::runtime_error& e) {
-              printf("Failed to apply modification %s to %s: %s\n",
-                     chem_mod->id.c_str(), ri.res->name.c_str(), e.what());
-            }
-          else
-            printf("Modification not found: %s\n", modif.c_str());
-        }
-      }
-    topo.finalize(monlib);
+    topo.prepare_refmac_topology(model0, st.entities, monlib);
 
     if (!p.options[KeepHydrogens] && !p.options[NoHydrogens])
       for (Topo::ChainInfo& chain_info : topo.chains)

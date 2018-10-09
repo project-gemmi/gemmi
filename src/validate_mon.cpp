@@ -7,9 +7,10 @@
 #include <stdio.h>
 #include <stdexcept>
 #include "gemmi/cifdoc.hpp"
-#include "gemmi/chemcomp.hpp"
-#include "gemmi/chemcomp_xyz.hpp"  // for make_residue_from_chemcomp_block
-#include "gemmi/calculate.hpp" // for calculate_angle
+#include "gemmi/chemcomp.hpp"     // for ChemComp
+#include "gemmi/chemcomp_xyz.hpp" // for make_residue_from_chemcomp_block
+#include "gemmi/topo.hpp"         // for Topo
+#include "gemmi/calculate.hpp"    // for calculate_angle
 
 namespace cif = gemmi::cif;
 using gemmi::Restraints;
