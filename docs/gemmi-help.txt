@@ -9,5 +9,6 @@ Commands:
  grep          search for tags in CIF file(s)
  map           print info or modify a CCP4 map
  mask          make mask in the CCP4 format
+ rmsz          validate geometry using monomer library
  sg            info about space groups
  validate      validate CIF 1.1 syntax

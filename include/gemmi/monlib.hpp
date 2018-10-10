@@ -389,15 +389,6 @@ struct MonLib {
   }
 };
 
-// helper function used to provide the second arg for read_monomers()
-inline std::set<std::string> get_all_residue_names(const gemmi::Model& model) {
-  std::set<std::string> resnames;
-  for (const gemmi::Chain& chain : model.chains)
-    for (const gemmi::Residue& res : chain.residues)
-      resnames.insert(res.name);
-  return resnames;
-}
-
 typedef cif::Document (*read_cif_func)(const std::string&);
 
 inline MonLib read_monomers(std::string monomer_dir,
@@ -427,6 +418,16 @@ inline MonLib read_monomers(std::string monomer_dir,
   monlib.links = gemmi::read_chemlinks(monlib.mon_lib_list);
   monlib.modifications = gemmi::read_chemmods(monlib.mon_lib_list);
   return monlib;
+}
+
+inline MonLib read_monomers(std::string monomer_dir,
+                            const Model& model,
+                            read_cif_func read_cif) {
+  std::set<std::string> resnames;
+  for (const gemmi::Chain& chain : model.chains)
+    for (const gemmi::Residue& res : chain.residues)
+      resnames.insert(res.name);
+  return read_monomers(monomer_dir, resnames, read_cif);
 }
 
 } // namespace gemmi

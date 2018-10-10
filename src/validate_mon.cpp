@@ -39,49 +39,24 @@ static void check_valency(const gemmi::ChemComp& cc) {
   }
 }
 
-static std::string repr(const Restraints::Bond& bond) {
-  return bond.id1.atom + "-" + bond.id2.atom;
-}
-static std::string repr(const Restraints::Angle& angle) {
-  return angle.id1.atom + "-" + angle.id2.atom + "-" + angle.id3.atom;
-}
-static std::string repr(const Restraints::Torsion& tor) {
-  return tor.id1.atom + "-" + tor.id2.atom + "-" +
-         tor.id3.atom + "-" + tor.id4.atom;
-}
-static std::string repr(const Restraints::Chirality& chir) {
-  return chir.id_ctr.atom + "," + chir.id1.atom + "," +
-         chir.id2.atom + "," + chir.id3.atom;
-}
-
-static std::string repr(const Restraints::Plane& plane) {
-  return gemmi::join_str(plane.ids, ',',
-                         [](const Restraints::AtomId& a) { return a.atom; });
-}
-
 static void check_bond_angle_consistency(const gemmi::ChemComp& cc) {
   const std::string tag = cc.name + " [restr]";
   for (const Restraints::Angle& angle : cc.rt.angles) {
     if (!cc.rt.are_bonded(angle.id1, angle.id2) ||
         !cc.rt.are_bonded(angle.id2, angle.id3))
       printf("%s angle %s with non-bonded atoms\n", tag.c_str(),
-             repr(angle).c_str());
+             angle.str().c_str());
     if (angle.value < 20)
       printf("%s angle %s with low value: %g\n", tag.c_str(),
-             repr(angle).c_str(), angle.value);
+             angle.str().c_str(), angle.value);
   }
   for (const Restraints::Torsion& tor : cc.rt.torsions) {
     if (!cc.rt.are_bonded(tor.id1, tor.id2) ||
         !cc.rt.are_bonded(tor.id2, tor.id3) ||
         !cc.rt.are_bonded(tor.id3, tor.id4))
       printf("%s torsion %s with non-bonded atoms\n", tag.c_str(),
-             repr(tor).c_str());
+             tor.str().c_str());
   }
-}
-
-static double angle_abs_diff(double a, double b) {
-  double d = std::abs(a - b);
-  return d > 180 ? std::abs(d - 360.) : d;
 }
 
 void print_outliers(const Topo& topo, const char* tag) {
@@ -90,26 +65,26 @@ void print_outliers(const Topo& topo, const char* tag) {
     double value = t.calculate();
     if (std::abs(value - t.restr->value) > esd_mult * t.restr->esd)
       printf("%s bond %s should be %g (esd %g) but is %.2f\n", tag,
-             repr(*t.restr).c_str(), t.restr->value, t.restr->esd, value);
+             t.restr->str().c_str(), t.restr->value, t.restr->esd, value);
   }
   for (const Topo::Angle& t : topo.angles) {
     double value = gemmi::deg(t.calculate());
-    if (angle_abs_diff(value, t.restr->value) > esd_mult * t.restr->esd)
+    if (gemmi::angle_abs_diff(value, t.restr->value) > esd_mult * t.restr->esd)
       printf("%s angle %s should be %g (esd %g) but is %.2f\n", tag,
-             repr(*t.restr).c_str(), t.restr->value, t.restr->esd, value);
+             t.restr->str().c_str(), t.restr->value, t.restr->esd, value);
   }
   for (const Topo::Torsion& t : topo.torsions) {
     double value = gemmi::deg(t.calculate());
-    if (angle_abs_diff(value, t.restr->value) > esd_mult * t.restr->esd)
+    if (gemmi::angle_abs_diff(value, t.restr->value) > esd_mult * t.restr->esd)
       printf("%s torsion %s should be %g (esd %g) but is %.2f\n", tag,
-             repr(*t.restr).c_str(), t.restr->value, t.restr->esd, value);
+             t.restr->str().c_str(), t.restr->value, t.restr->esd, value);
   }
   for (const Topo::Chirality& t : topo.chirs) {
     double value = t.calculate();
     if ((t.restr->chir == Restraints::Chirality::Type::Positive && value < 0) ||
         (t.restr->chir == Restraints::Chirality::Type::Negative && value > 0))
       printf("%s chir %s should be %s but is %.2f\n", tag,
-             repr(*t.restr).c_str(), gemmi::chirality_to_string(t.restr->chir),
+             t.restr->str().c_str(), gemmi::chirality_to_string(t.restr->chir),
              value);
   }
   for (const Topo::Plane& t : topo.planes) {
@@ -118,7 +93,7 @@ void print_outliers(const Topo& topo, const char* tag) {
       double dist = gemmi::get_distance_from_plane(atom->pos, coeff);
       if (dist > esd_mult * t.restr->esd)
         printf("%s plane %s has atom %s in a distance %.2f\n", tag,
-               repr(*t.restr).c_str(), atom->name.c_str(), dist);
+               t.restr->str().c_str(), atom->name.c_str(), dist);
     }
   }
 }

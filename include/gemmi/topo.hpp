@@ -25,12 +25,18 @@ struct Topo {
     const Restraints::Bond* restr;
     std::array<Atom*, 2> atoms;
     double calculate() const { return atoms[0]->pos.dist(atoms[1]->pos); }
+    double calculate_z() const {
+      return std::abs(calculate() - restr->value) / restr->esd;
+    }
   };
   struct Angle {
     const Restraints::Angle* restr;
     std::array<Atom*, 3> atoms;
     double calculate() const {
       return calculate_angle(atoms[0]->pos, atoms[1]->pos, atoms[2]->pos);
+    }
+    double calculate_z() const {
+      return angle_abs_diff(deg(calculate()), restr->value) / restr->esd;
     }
   };
   struct Torsion {
@@ -40,6 +46,9 @@ struct Topo {
       return calculate_dihedral(atoms[0]->pos, atoms[1]->pos,
                                 atoms[2]->pos, atoms[3]->pos);
     }
+    double calculate_z() const {
+      return angle_abs_diff(deg(calculate()), restr->value) / restr->esd;
+    }
   };
   struct Chirality {
     const Restraints::Chirality* restr;
@@ -47,6 +56,14 @@ struct Topo {
     double calculate() const {
       return calculate_chiral_volume(atoms[0]->pos, atoms[1]->pos,
                                      atoms[2]->pos, atoms[3]->pos);
+    }
+    // positive value for preserved chirality
+    double check() const {
+      double value = calculate();
+      if ((restr->chir == Restraints::Chirality::Type::Positive && value < 0) ||
+          (restr->chir == Restraints::Chirality::Type::Negative && value > 0))
+        return -std::abs(value);
+      return std::abs(value);
     }
   };
   struct Plane {

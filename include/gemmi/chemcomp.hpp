@@ -11,7 +11,7 @@
 #include "cifdoc.hpp"
 #include "elem.hpp"  // for Element
 #include "numb.hpp"  // for as_number
-#include "util.hpp"  // for istarts_with, fail
+#include "util.hpp"  // for istarts_with, join_str, fail
 #include "model.hpp" // for Residue, Atom
 
 namespace gemmi {
@@ -54,12 +54,16 @@ struct Restraints {
     bool aromatic;
     double value;
     double esd;
+    std::string str() const { return id1.atom + "-" + id2.atom; }
   };
 
   struct Angle {
     AtomId id1, id2, id3;
     double value;
     double esd;
+    std::string str() const {
+      return id1.atom + "-" + id2.atom + "-" + id3.atom;
+    }
   };
 
   struct Torsion {
@@ -68,18 +72,27 @@ struct Restraints {
     double value;
     double esd;
     int period;
+    std::string str() const {
+      return id1.atom + "-" + id2.atom + "-" + id3.atom + "-" + id4.atom;
+    }
   };
 
   struct Chirality {
     enum Type { Positive, Negative, Both };
     AtomId id_ctr, id1, id2, id3;
     Type chir;
+    std::string str() const {
+      return id_ctr.atom + "," + id1.atom + "," + id2.atom + "," + id3.atom;
+    }
   };
 
   struct Plane {
     std::string label;
     std::vector<AtomId> ids;
     double esd;
+    std::string str() const {
+      return join_str(ids, ',', [](const AtomId& a) { return a.atom; });
+    }
   };
 
   std::vector<Bond> bonds;
@@ -209,6 +222,13 @@ struct Restraints {
     return planes.back();
   }
 };
+
+inline double angle_abs_diff(double a, double b) {
+  double d = std::abs(a - b);
+  if (d > 360.0)
+    d -= std::floor(d / 360.0) * 360.0;
+  return d < 180.0 ? d : 360.0 - d;
+}
 
 struct ChemComp {
   struct Atom {

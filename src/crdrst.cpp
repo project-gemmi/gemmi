@@ -19,8 +19,6 @@
 #include "options.h"
 
 namespace cif = gemmi::cif;
-using gemmi::Restraints;
-using gemmi::MonLib;
 using gemmi::Topo;
 
 enum OptionIndex { Verbose=3, Monomers, NoHydrogens, KeepHydrogens,
@@ -73,7 +71,8 @@ static std::string get_ccp4_mod_id(const std::vector<std::string>& mods) {
   return ".";
 }
 
-static cif::Document make_crd(const gemmi::Structure& st, const MonLib& monlib,
+static cif::Document make_crd(const gemmi::Structure& st,
+                              const gemmi::MonLib& monlib,
                               const Topo& topo) {
   using gemmi::to_str;
   cif::Document crd;
@@ -244,7 +243,7 @@ static cif::Document make_crd(const gemmi::Structure& st, const MonLib& monlib,
 }
 
 static void add_restraints(const Topo::Force force,
-                           const Topo& topo, const Restraints& rt,
+                           const Topo& topo, const gemmi::Restraints& rt,
                            cif::Loop& restr_loop, int (&counters)[5]) {
   //using gemmi::to_str;
   const auto& to_str = gemmi::to_str_prec<3>; // to make comparisons easier
@@ -312,7 +311,7 @@ static void add_restraints(const Topo::Force force,
   }
 }
 
-static cif::Document make_rst(const Topo& topo, const MonLib& monlib) {
+static cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
   using Provenance = Topo::Provenance;
   cif::Document doc;
   doc.blocks.emplace_back("restraints");
@@ -399,8 +398,9 @@ static void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
   //printf("%s: %zd %zd\n", atom.name.c_str(), bonded_h.size(), bonded_non_h.size());
   if (bonded_h.size() == 1 && bonded_non_h.size() == 1) {
     gemmi::Atom* h = bonded_h[0];
-    const Restraints::Bond* bond = topo.take_bond(h, &atom);
-    const Restraints::Angle* angle = topo.take_angle(h, &atom, bonded_non_h[0]);
+    const gemmi::Restraints::Bond* bond = topo.take_bond(h, &atom);
+    const gemmi::Restraints::Angle* angle = topo.take_angle(h, &atom,
+                                                            bonded_non_h[0]);
     if (!bond || !angle)
       return;
     double h_dist = bond->value;
@@ -462,9 +462,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (!p.options[KeepHydrogens])
       gemmi::remove_hydrogens(model0);
 
-    MonLib monlib = gemmi::read_monomers(monomer_dir,
-                                         gemmi::get_all_residue_names(model0),
-                                         gemmi::read_cif_gz);
+    gemmi::MonLib monlib = gemmi::read_monomers(monomer_dir, model0,
+                                                gemmi::read_cif_gz);
 
     // add H, sort atoms in residues and assign serial numbers
     int serial = 0;
