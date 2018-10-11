@@ -116,10 +116,18 @@ void add_symmetry(py::module& m) {
     })
     .def_readonly("number", &SpaceGroup::number, "number 1-230.")
     .def_readonly("ccp4", &SpaceGroup::ccp4, "ccp4 number")
-    .def_readonly("hm", &SpaceGroup::hm, "Hermann-Mauguin name")
+    // Intel Compiler would not compile .def_readonly("hm", ...),
+    // the difference with hm, qualifier and hall is that they are char[N]
+    .def_property_readonly("hm", [](const SpaceGroup &self) -> const char* {
+        return self.hm;
+    }, "Hermann-Mauguin name")
     .def_readonly("ext", &SpaceGroup::ext, "Extension (1, 2, H, R or none)")
-    .def_readonly("qualifier", &SpaceGroup::qualifier, "e.g. 'cab'")
-    .def_readonly("hall", &SpaceGroup::hall, "Hall symbol")
+    .def_property_readonly("qualifier", [](const SpaceGroup &s) -> const char* {
+        return s.qualifier;
+    }, "e.g. 'cab'")
+    .def_property_readonly("hall", [](const SpaceGroup &self) -> const char* {
+        return self.hall;
+    }, "Hall symbol")
     .def("xhm", &SpaceGroup::xhm, "extended Hermann-Mauguin name")
     .def("short_name", &SpaceGroup::short_name,
          "H-M name w/o spaces and with 1's removed in '1 ... 1'.")
