@@ -760,7 +760,7 @@ and Python bindings expose these functions as well:
   'D_1000019291'
 
 Additionally, two Python-specific functions: ``get_mmcif_category``
-and ``set_mmcif_category()`` translate between a gemmi category and
+and ``set_mmcif_category`` translate between a gemmi category and
 Python dictionary:
 
 .. doctest::

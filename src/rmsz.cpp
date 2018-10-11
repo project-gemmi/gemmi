@@ -4,7 +4,6 @@
 #include <cstdlib> // for getenv
 #include <stdexcept>
 #include "gemmi/gzread.hpp"
-#include "gemmi/math.hpp"      // for Variance
 #include "gemmi/model.hpp"     // for Structure, Atom, etc
 #include "gemmi/chemcomp.hpp"  // for ChemComp
 #include "gemmi/monlib.hpp"    // for MonLib, read_monomers
@@ -37,15 +36,22 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-struct Variances {
-  gemmi::Variance d_bond;
-  gemmi::Variance d_angle;
-  gemmi::Variance d_torsion;
-  gemmi::Variance d_plane;
-  gemmi::Variance z_bond;
-  gemmi::Variance z_angle;
-  gemmi::Variance z_torsion;
-  gemmi::Variance z_plane;
+struct RMS {
+  int n = 0;
+  double sum_sq = 0.;
+  void put(double x) { ++n; sum_sq += x * x; }
+  double get_value() const { return std::sqrt(sum_sq / n); }
+};
+
+struct RMSes {
+  RMS d_bond;
+  RMS d_angle;
+  RMS d_torsion;
+  RMS d_plane;
+  RMS z_bond;
+  RMS z_angle;
+  RMS z_torsion;
+  RMS z_plane;
   int wrong_chirality = 0;
   int all_chiralities = 0;
 };
@@ -54,15 +60,15 @@ static double check_restraint(const Topo::Force force,
                               const Topo& topo,
                               double cutoff,
                               const char* tag,
-                              Variances* variances) {
+                              RMSes* rmses) {
   switch (force.rkind) {
     case Topo::RKind::Bond: {
       const Topo::Bond& t = topo.bonds[force.index];
       double z = t.calculate_z();
       if (z > cutoff)
         printf("%s bond %s: |Z|=%.1f\n", tag, t.restr->str().c_str(), z);
-      variances->z_bond.add_point(z);
-      variances->d_bond.add_point(z * t.restr->esd);
+      rmses->z_bond.put(z);
+      rmses->d_bond.put(z * t.restr->esd);
       return z;
     }
     case Topo::RKind::Angle: {
@@ -70,8 +76,8 @@ static double check_restraint(const Topo::Force force,
       double z = t.calculate_z();
       if (z > cutoff)
         printf("%s angle %s: |Z|=%.1f\n", tag, t.restr->str().c_str(), z);
-      variances->z_angle.add_point(z);
-      variances->d_angle.add_point(z * t.restr->esd);
+      rmses->z_angle.put(z);
+      rmses->d_angle.put(z * t.restr->esd);
       return z;
     }
     case Topo::RKind::Torsion: {
@@ -79,16 +85,16 @@ static double check_restraint(const Topo::Force force,
       double z = t.calculate_z();
       if (z > cutoff)
         printf("%s torsion %s: |Z|=%.1f\n", tag, t.restr->str().c_str(), z);
-      variances->z_torsion.add_point(z);
-      variances->d_torsion.add_point(z * t.restr->esd);
+      rmses->z_torsion.put(z);
+      rmses->d_torsion.put(z * t.restr->esd);
       return z;
     }
     case Topo::RKind::Chirality: {
       const Topo::Chirality& t = topo.chirs[force.index];
-      variances->all_chiralities++;
+      rmses->all_chiralities++;
       if (t.check() < 0) {
         printf("%s wrong chirality of %s\n", tag, t.restr->str().c_str());
-        variances->wrong_chirality++;
+        rmses->wrong_chirality++;
         return 1.0;
       }
       return 0.0;
@@ -106,8 +112,8 @@ static double check_restraint(const Topo::Force force,
         if (z > max_z)
             max_z = z;
       }
-      variances->z_plane.add_point(max_z);
-      variances->d_plane.add_point(max_z * t.restr->esd);
+      rmses->z_plane.put(max_z);
+      rmses->d_plane.put(max_z * t.restr->esd);
       return max_z;
     }
   }
@@ -141,33 +147,33 @@ int GEMMI_MAIN(int argc, char **argv) {
       Topo topo;
       topo.prepare_refmac_topology(model, st.entities, monlib);
 
-      Variances variances;
+      RMSes rmses;
       for (const Topo::ChainInfo& chain_info : topo.chains)
         for (const Topo::ResInfo& ri : chain_info.residues) {
           std::string res = chain_info.name + " " + ri.res->name;
           for (const Topo::Force& force : ri.forces)
             if (force.provenance == Topo::Provenance::PrevLink ||
                 force.provenance == Topo::Provenance::Monomer)
-              check_restraint(force, topo, cutoff, res.c_str(), &variances);
+              check_restraint(force, topo, cutoff, res.c_str(), &rmses);
         }
       for (const Topo::ExtraLink& link : topo.extras) {
         for (const Topo::Force& force : link.forces)
-          check_restraint(force, topo, cutoff, "link", &variances);
+          check_restraint(force, topo, cutoff, "link", &rmses);
       }
       printf("Model rmsZ: "
              "bond: %.3f, angle: %.3f, torsion: %.3f, planarity %.3f\n"
              "Model rmsD: "
              "bond: %.3f, angle: %.3f, torsion: %.3f, planarity %.3f\n"
              "wrong chirality: %d of %d\n",
-             std::sqrt(variances.z_bond.for_population()),
-             std::sqrt(variances.z_angle.for_population()),
-             std::sqrt(variances.z_torsion.for_population()),
-             std::sqrt(variances.z_plane.for_population()),
-             std::sqrt(variances.d_bond.for_population()),
-             std::sqrt(variances.d_angle.for_population()),
-             std::sqrt(variances.d_torsion.for_population()),
-             std::sqrt(variances.d_plane.for_population()),
-             variances.wrong_chirality, variances.all_chiralities);
+             rmses.z_bond.get_value(),
+             rmses.z_angle.get_value(),
+             rmses.z_torsion.get_value(),
+             rmses.z_plane.get_value(),
+             rmses.d_bond.get_value(),
+             rmses.d_angle.get_value(),
+             rmses.d_torsion.get_value(),
+             rmses.d_plane.get_value(),
+             rmses.wrong_chirality, rmses.all_chiralities);
     }
   } catch (std::runtime_error& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
