@@ -731,6 +731,10 @@ mmCIF categories
 mmCIF files group data into categories. All mmCIF tags have a dot
 (e.g. ``_entry.id``) and the category name is the part before the dot.
 
+The C++ interface has two functions to work with categories,
+``get_mmcif_category_names`` and ``find_mmcif_category``,
+and Python bindings expose these functions as well:
+
 .. doctest::
 
   >>> block.get_mmcif_category_names()[:3]
@@ -754,6 +758,32 @@ mmCIF files group data into categories. All mmCIF tags have a dot
   WWPDB: D_1000019291
   >>> cat[3][1]
   'D_1000019291'
+
+Additionally, two Python-specific functions: ``get_mmcif_category``
+and ``set_mmcif_category()`` translate between a gemmi category and
+Python dictionary:
+
+.. doctest::
+
+  >>> block.get_mmcif_category('_entry.')
+  {'id': ['1PFE']}
+  >>> sorted(block.get_mmcif_category('_database_2.').keys())
+  ['database_code', 'database_id']
+
+Depending on boolean argument ``raw`` (default: ``False``) these function
+translate ``?`` and ``.`` to ``None`` and ``False``, or not:
+
+.. doctest::
+
+  >>> default = block.get_mmcif_category('_software')
+  >>> raw = block.get_mmcif_category('_software', raw=True)
+  >>> for name in ['name', 'version', 'citation_id']:
+  ...     print(default[name][0], raw[name][0])
+  ...
+  EPMR EPMR
+  False .
+  None ?
+
 
 Editing
 -------
