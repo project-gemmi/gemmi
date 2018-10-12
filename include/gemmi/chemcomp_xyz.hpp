@@ -83,6 +83,7 @@ inline Model make_model_from_chemcomp_block(const cif::Block& block,
 // a single model.
 inline Structure make_structure_from_chemcomp_block(const cif::Block& block) {
   Structure st;
+  st.input_format = CoorFormat::ChemComp;
   if (block.has_tag("_chem_comp_atom.x"))
     st.models.push_back(
         make_model_from_chemcomp_block(block, ChemCompModel::Xyz));
@@ -93,6 +94,33 @@ inline Structure make_structure_from_chemcomp_block(const cif::Block& block) {
     st.models.push_back(
         make_model_from_chemcomp_block(block, ChemCompModel::Ideal));
   return st;
+}
+
+// a helper function for use with make_structure_from_chemcomp_block():
+//   int n = check_chemcomp_block_number(doc);
+//   if (n != -1)
+//     Structure st = make_structure_from_chemcomp_block(doc.blocks[n]);
+inline int check_chemcomp_block_number(const cif::Document& doc) {
+  // monomer library file without global_
+  if (doc.blocks.size() == 2 && doc.blocks[0].name == "comp_list")
+    return 1;
+  // monomer library file with global_
+  if (doc.blocks.size() == 3 && doc.blocks[0].name.empty() &&
+      doc.blocks[1].name == "comp_list")
+    return 2;
+  // CCD file
+  if (doc.blocks.size() == 1 &&
+      !doc.blocks[0].has_tag("_atom_site.id") &&
+      doc.blocks[0].has_tag("_chem_comp_atom.atom_id"))
+    return 0;
+  return -1;
+}
+
+inline Structure make_structure_from_chemcomp_doc(const cif::Document& doc) {
+  int n = check_chemcomp_block_number(doc);
+  if (n == -1)
+    fail("Not a chem_comp format.");
+  return make_structure_from_chemcomp_block(doc.blocks[n]);
 }
 
 } // namespace gemmi

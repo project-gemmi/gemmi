@@ -12,6 +12,7 @@
 #include "json.hpp"      // for read_mmjson
 #include "util.hpp"      // for iends_with
 #include "input.hpp"     // for JustFile
+#include "chemcomp_xyz.hpp" // for make_structure_from_chemcomp_block
 
 namespace gemmi {
 
@@ -36,6 +37,8 @@ Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown) {
       return make_structure_from_block(cif::read(input).sole_block());
     case CoorFormat::Mmjson:
       return make_structure_from_block(cif::read_mmjson(input).sole_block());
+    case CoorFormat::ChemComp:
+      return make_structure_from_chemcomp_doc(cif::read(input));
     case CoorFormat::Unknown:
       fail("Unknown format.");
   }

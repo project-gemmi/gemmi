@@ -2,10 +2,12 @@
 
 #include <stdio.h>
 #include <cstdlib> // for getenv
+#include <cstring> // for strcmp
 #include <stdexcept>
 #include "gemmi/gzread.hpp"
 #include "gemmi/model.hpp"     // for Structure, Atom, etc
 #include "gemmi/chemcomp.hpp"  // for ChemComp
+#include "gemmi/chemcomp_xyz.hpp" // for make_structure_from_chemcomp_doc
 #include "gemmi/monlib.hpp"    // for MonLib, read_monomers
 #include "gemmi/topo.hpp"      // for Topo
 #include "gemmi/calculate.hpp" // for find_best_plane, get_distance_from_plane
@@ -17,7 +19,13 @@
 namespace cif = gemmi::cif;
 using gemmi::Topo;
 
-enum OptionIndex { Verbose=3, Monomers, Cutoff };
+struct RmszArg : public Arg {
+  static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
+    return Arg::Choice(option, msg, {"cif", "pdb", "json", "chemcomp"});
+  }
+};
+
+enum OptionIndex { Verbose=3, Monomers, FormatIn, Cutoff };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -31,6 +39,8 @@ static const option::Descriptor Usage[] = {
   { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { Monomers, 0, "", "monomers", Arg::Required,
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
+  { FormatIn, 0, "", "format", RmszArg::FileFormat,
+    "  --format=FORMAT  \tInput format (default: from the file extension)." },
   { Cutoff, 0, "", "cutoff", Arg::Float,
     "  --cutoff=ZC  \tList bonds and angles with Z score > ZC (default: 2)." },
   { 0, 0, 0, 0, 0, 0 }
@@ -136,8 +146,24 @@ int GEMMI_MAIN(int argc, char **argv) {
     cutoff = std::strtod(p.options[Cutoff].arg, nullptr);
   std::string input = p.coordinate_input_file(0);
   try {
-    gemmi::Structure st = gemmi::read_structure_gz(input);
-    if (st.input_format == gemmi::CoorFormat::Pdb)
+    gemmi::Structure st;
+    if (p.options[FormatIn] &&
+        std::strcmp(p.options[FormatIn].arg, "chemcomp") == 0) {
+      st = gemmi::make_structure_from_chemcomp_doc(gemmi::read_cif_gz(input));
+    } else {
+      gemmi::CoorFormat format = gemmi::CoorFormat::Unknown;
+      if (p.options[FormatIn]) {
+        if (strcmp(p.options[FormatIn].arg, "cif") == 0)
+          format = gemmi::CoorFormat::Mmcif;
+        else if (strcmp(p.options[FormatIn].arg, "pdb") == 0)
+          format = gemmi::CoorFormat::Pdb;
+        else if (strcmp(p.options[FormatIn].arg, "json") == 0)
+          format = gemmi::CoorFormat::Mmjson;
+      }
+      st = gemmi::read_structure_gz(input, format);
+    }
+    if (st.input_format == gemmi::CoorFormat::Pdb ||
+        st.input_format == gemmi::CoorFormat::ChemComp)
       gemmi::setup_entities(st);
     for (gemmi::Model& model : st.models) {
       if (st.models.size() > 1)

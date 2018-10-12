@@ -188,6 +188,7 @@ static std::string format_as_string(CoorFormat format) {
     case CoorFormat::Pdb: return "pdb";
     case CoorFormat::Mmcif: return "mmcif";
     case CoorFormat::Mmjson: return "mmjson";
+    case CoorFormat::ChemComp: return "chemcomp";
   }
   gemmi::unreachable();
 }
@@ -203,14 +204,10 @@ static void convert(const std::string& input, CoorFormat input_type,
     cif_in = input_type == CoorFormat::Mmcif ? gemmi::read_cif_gz(input)
                                              : gemmi::read_mmjson_gz(input);
     if (!transcribe) {
+      int n = gemmi::check_chemcomp_block_number(cif_in);
       // first handle special case - refmac dictionary or CCD file
-      if ((cif_in.blocks.size() == 2 && cif_in.blocks[0].name == "comp_list") ||
-          (cif_in.blocks.size() == 3 && cif_in.blocks[0].name.empty() &&
-           cif_in.blocks[1].name == "comp_list") ||
-          (cif_in.blocks.size() == 1 &&
-           !cif_in.blocks[0].has_tag("_atom_site.id") &&
-           cif_in.blocks[0].has_tag("_chem_comp_atom.atom_id")))
-        st = gemmi::make_structure_from_chemcomp_block(cif_in.blocks.back());
+      if (n != -1)
+        st = gemmi::make_structure_from_chemcomp_block(cif_in.blocks[n]);
       else
         st = gemmi::make_structure(cif_in);
       if (st.models.empty())
