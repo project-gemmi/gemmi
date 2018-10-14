@@ -274,50 +274,6 @@ struct ChemComp {
   }
 };
 
-struct ChemLink {
-  std::string id;
-  std::string name;
-  std::string comp[2];
-  std::string mod[2];
-  std::string group[2];
-  Restraints rt;
-
-  bool matches(const ChemLink& other) const {
-    if (rt.bonds.empty() || other.rt.bonds.empty())
-      return false;
-    const Restraints::Bond& bond1 = rt.bonds[0];
-    const Restraints::Bond& bond2 = other.rt.bonds[0];
-    // TODO: handle all combinations?
-    if (comp[0] == other.comp[0] && comp[1] == other.comp[1]) {
-      return bond1.id1 == bond2.id1 && bond1.id2 == bond2.id2;
-    } else if (comp[0] == other.comp[1] && comp[1] == other.comp[0]) {
-      return bond1.id1.atom == bond2.id2.atom &&
-             bond1.id2.atom == bond2.id1.atom;
-    }
-    return false;
-  }
-};
-
-struct ChemMod {
-  struct AtomMod {
-    int func;
-    std::string old_id;
-    std::string new_id;
-    Element el;
-    float charge;
-    std::string chem_type;
-  };
-
-  std::string id;
-  std::string name;
-  std::string comp_id;
-  std::string group_id;
-  std::vector<AtomMod> atom_mods;
-  Restraints rt;
-
-  void apply_to(ChemComp& cc) const;
-};
-
 inline Restraints::Bond::Type bond_type_from_string(const std::string& s) {
   if (istarts_with(s, "sing"))
     return Restraints::Bond::Single;
@@ -454,7 +410,6 @@ inline ChemComp make_chemcomp_from_cif(const std::string& name,
     }
   return cc;
 }
-
 
 } // namespace gemmi
 #endif
