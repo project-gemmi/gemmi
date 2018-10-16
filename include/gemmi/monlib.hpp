@@ -307,7 +307,7 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
         break;
       case 'c':
         if (it != chemcomp.rt.bonds.end()) {
-          if (mod.type != Restraints::Bond::Unspec)
+          if (mod.type != Restraints::BondType::Unspec)
             it->type = mod.type;
           if (!std::isnan(mod.value))
             it->value = mod.value;

@@ -47,10 +47,12 @@ struct Restraints {
     }
   };
 
+  enum class BondType {
+    Unspec, Single, Double, Triple, Aromatic, Deloc, Metal
+  };
   struct Bond {
-    enum Type { Unspec, Single, Double, Triple, Aromatic, Deloc, Metal };
     AtomId id1, id2;
-    Type type;
+    BondType type;
     bool aromatic;
     double value;
     double esd;
@@ -274,46 +276,46 @@ struct ChemComp {
   }
 };
 
-inline Restraints::Bond::Type bond_type_from_string(const std::string& s) {
+inline Restraints::BondType bond_type_from_string(const std::string& s) {
   if (istarts_with(s, "sing"))
-    return Restraints::Bond::Single;
+    return Restraints::BondType::Single;
   if (istarts_with(s, "doub"))
-    return Restraints::Bond::Double;
+    return Restraints::BondType::Double;
   if (istarts_with(s, "trip"))
-    return Restraints::Bond::Triple;
+    return Restraints::BondType::Triple;
   if (istarts_with(s, "arom"))
-    return Restraints::Bond::Aromatic;
+    return Restraints::BondType::Aromatic;
   if (istarts_with(s, "metal"))
-    return Restraints::Bond::Metal;
+    return Restraints::BondType::Metal;
   if (istarts_with(s, "delo") || s == "1.5")
-    return Restraints::Bond::Deloc;
+    return Restraints::BondType::Deloc;
   if (cif::is_null(s))
-    return Restraints::Bond::Unspec;
+    return Restraints::BondType::Unspec;
   throw std::out_of_range("Unexpected bond type: " + s);
 }
 
-inline std::string bond_type_to_string(Restraints::Bond::Type btype) {
+inline std::string bond_type_to_string(Restraints::BondType btype) {
   switch (btype) {
-    case Restraints::Bond::Unspec: return ".";
-    case Restraints::Bond::Single: return "single";
-    case Restraints::Bond::Double: return "double";
-    case Restraints::Bond::Triple: return "triple";
-    case Restraints::Bond::Aromatic: return "aromatic";
-    case Restraints::Bond::Deloc: return "deloc";
-    case Restraints::Bond::Metal: return "metal";
+    case Restraints::BondType::Unspec: return ".";
+    case Restraints::BondType::Single: return "single";
+    case Restraints::BondType::Double: return "double";
+    case Restraints::BondType::Triple: return "triple";
+    case Restraints::BondType::Aromatic: return "aromatic";
+    case Restraints::BondType::Deloc: return "deloc";
+    case Restraints::BondType::Metal: return "metal";
   }
   unreachable();
 }
 
-inline float order_of_bond_type(Restraints::Bond::Type btype) {
+inline float order_of_bond_type(Restraints::BondType btype) {
   switch (btype) {
-    case Restraints::Bond::Single: return 1.0f;
-    case Restraints::Bond::Double: return 2.0f;
-    case Restraints::Bond::Triple: return 3.0f;
-    case Restraints::Bond::Aromatic: return 1.5f;
-    case Restraints::Bond::Deloc: return 1.5f;
-    case Restraints::Bond::Metal: return 1.0f;
-    case Restraints::Bond::Unspec: return 0.0f;
+    case Restraints::BondType::Single: return 1.0f;
+    case Restraints::BondType::Double: return 2.0f;
+    case Restraints::BondType::Triple: return 3.0f;
+    case Restraints::BondType::Aromatic: return 1.5f;
+    case Restraints::BondType::Deloc: return 1.5f;
+    case Restraints::BondType::Metal: return 1.0f;
+    case Restraints::BondType::Unspec: return 0.0f;
   }
   unreachable();
 }
@@ -345,20 +347,23 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
   if (group_col)
     cc.group = group_col.str(0);
   for (auto row : block.find("_chem_comp_atom.",
-                             {"atom_id", "type_symbol", "type_energy",
+                             {"atom_id", "type_symbol", "?type_energy",
                              "?charge", "?partial_charge"}))
     cc.atoms.push_back({row.str(0), Element(row.str(1)),
                         (float) cif::as_number(row.one_of(3, 4), 0.0),
-                        row.str(2)});
+                        row.has(2) ? row.str(2) : ""});
   for (auto row : block.find("_chem_comp_bond.",
-                             {"atom_id_1", "atom_id_2",
-                              "type",
-                              "?aromatic",
-                              "value_dist", "value_dist_esd"}))
+                             {"atom_id_1", "atom_id_2",              // 0, 1
+                              "?type", "?value_order",               // 2, 3
+                              "?aromatic", "?pdbx_aromatic_flag",    // 4, 5
+                              "?value_dist", "?value_dist_esd"})) {  // 6, 7
+    bool aromatic_flag = (row.one_of(4, 5)[0] | 0x20) == 'y';
+    double dist = row.has(6) ? cif::as_number(row[6]) : NAN;
+    double esd = row.has(7) ? cif::as_number(row[7]) : NAN;
     cc.rt.bonds.push_back({{1, row.str(0)}, {1, row.str(1)},
-                           bond_type_from_string(row[2]),
-                           row.has2(3) && row[3][0] == 'y',
-                           cif::as_number(row[4]), cif::as_number(row[5])});
+                          bond_type_from_string(row.one_of(2, 3)),
+                          aromatic_flag, dist, esd});
+  }
   for (auto row : block.find("_chem_comp_angle.",
                              {"atom_id_1", "atom_id_2", "atom_id_3",
                               "value_angle", "value_angle_esd"}))

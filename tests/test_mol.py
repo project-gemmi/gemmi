@@ -50,14 +50,6 @@ ATOM     12  N   ARG     3      10.892  -5.446  10.311  1.00 21.86
 ATOM     13  CA  ARG     3       9.875  -6.426  10.119  1.00 19.82
 """
 
-SO2_FROM_MONOMER = """\
-CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1                      
-HETATM    1  S   SO3  -999      -5.979   0.717  17.353  1.00 20.00           S  
-HETATM    2  O1  SO3  -999      -5.035   1.876  17.325  1.00 20.00           O  
-HETATM    3  O2  SO3  -999      -7.003   1.053  16.315  1.00 20.00           O1-
-HETATM    4  O3  SO3  -999      -5.199  -0.407  16.748  1.00 20.00           O1-
-"""  # noqa: W291 - trailing whitespace
-
 def full_path(filename):
     return os.path.join(os.path.dirname(__file__), filename)
 
@@ -260,40 +252,6 @@ class TestMol(unittest.TestCase):
 
     def test_read_write_1lzh_via_cif(self):
         self.test_read_write_1lzh(via_cif=True)
-
-    def test_reading_monomer_SO3_coordinates(self):
-        path = full_path('SO3.cif')
-        block = gemmi.cif.read(path)[-1]
-        st = gemmi.make_structure_from_chemcomp_block(block)
-        out = st.make_minimal_pdb()
-        self.assertEqual(out.splitlines(), SO2_FROM_MONOMER.splitlines())
-
-    # comparing HEM.cif from PDB CCD with HEM.pdb from PDBe
-    def test_reading_HEM(self):
-        cif_path = full_path('HEM.cif')
-        cif_block = gemmi.cif.read(cif_path).sole_block()
-        cif_st = gemmi.make_structure_from_chemcomp_block(cif_block)
-        self.assertEqual(len(cif_st), 2)
-        # we compare not-ideal model only
-        del cif_st['example_xyz']
-        # PDBe files have residue number 0 and ATOM instead of HETATM
-        residue = cif_st[0][0][0]
-        residue.seqid.num = 0
-        residue.het_flag = 'A'
-        for atom in residue:
-            atom.b_iso = 20
-        cif_out = cif_st.make_minimal_pdb()
-        pdb_path = full_path('HEM.pdb')
-        pdb_st = gemmi.read_structure(pdb_path)
-        pdb_out = pdb_st.make_minimal_pdb()
-        self.assertEqual(cif_out.splitlines(), pdb_out.splitlines())
-
-    # HEN.cif from CCD does not provide ideal coordinates
-    def test_reading_HEN(self):
-        path = full_path('HEN.cif')
-        block = gemmi.cif.read(path).sole_block()
-        st = gemmi.make_structure_from_chemcomp_block(block)
-        self.assertEqual(len(st), 1)
 
     def test_ncs_in_1lzh(self):
         st = gemmi.read_structure(full_path('1lzh.pdb.gz'))
