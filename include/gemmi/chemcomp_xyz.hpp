@@ -84,13 +84,13 @@ inline Model make_model_from_chemcomp_block(const cif::Block& block,
 inline Structure make_structure_from_chemcomp_block(const cif::Block& block) {
   Structure st;
   st.input_format = CoorFormat::ChemComp;
-  if (block.has_tag("_chem_comp_atom.x"))
+  if (block.has_any_value("_chem_comp_atom.x"))
     st.models.push_back(
         make_model_from_chemcomp_block(block, ChemCompModel::Xyz));
-  if (block.has_tag("_chem_comp_atom.model_Cartn_x"))
+  if (block.has_any_value("_chem_comp_atom.model_Cartn_x"))
     st.models.push_back(
         make_model_from_chemcomp_block(block, ChemCompModel::Example));
-  if (block.has_tag("_chem_comp_atom.pdbx_model_Cartn_x_ideal"))
+  if (block.has_any_value("_chem_comp_atom.pdbx_model_Cartn_x_ideal"))
     st.models.push_back(
         make_model_from_chemcomp_block(block, ChemCompModel::Ideal));
   return st;

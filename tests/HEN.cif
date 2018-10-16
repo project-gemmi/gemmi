@@ -1,0 +1,177 @@
+data_HEN
+# 
+_chem_comp.id                                    HEN 
+_chem_comp.name                                  "2-[(3-HYDROXY-2-METHYL-5-PHOSPHONOOXYMETHYL-PYRIDIN-4-YLMETHYL)-IMINO]-5-PHOSPHONO-PENT-3-ENOIC ACID" 
+_chem_comp.type                                  NON-POLYMER 
+_chem_comp.pdbx_type                             HETAIN 
+_chem_comp.formula                               "C13 H18 N2 O10 P2" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         ? 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     2001-02-21 
+_chem_comp.pdbx_modified_date                    2011-06-04 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        424.237 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     HEN 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        "not provided" 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   Y 
+_chem_comp.pdbx_model_coordinates_db_code        1I41 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+HEN N1   N1   N 0 1 Y N N 26.754 170.251 27.073 ? ? ? N1   HEN 1  
+HEN C2   C2   C 0 1 Y N N 26.499 171.203 26.075 ? ? ? C2   HEN 2  
+HEN C2A  C2A  C 0 1 N N N 26.746 170.718 24.678 ? ? ? C2A  HEN 3  
+HEN C3   C3   C 0 1 Y N N 26.048 172.499 26.485 ? ? ? C3   HEN 4  
+HEN O3   O3   O 0 1 N N N 25.805 173.393 25.567 ? ? ? O3   HEN 5  
+HEN C4   C4   C 0 1 Y N N 25.891 172.742 27.939 ? ? ? C4   HEN 6  
+HEN C4A  C4A  C 0 1 N N N 25.432 174.130 28.458 ? ? ? C4A  HEN 7  
+HEN C5   C5   C 0 1 Y N N 26.203 171.644 28.891 ? ? ? C5   HEN 8  
+HEN C6   C6   C 0 1 Y N N 26.626 170.426 28.429 ? ? ? C6   HEN 9  
+HEN C5A  C5A  C 0 1 N N N 26.038 171.902 30.404 ? ? ? C5A  HEN 10 
+HEN OP4  OP4  O 0 1 N N N 24.775 171.456 30.861 ? ? ? OP4  HEN 11 
+HEN P    P    P 0 1 N N N 23.951 172.314 31.995 ? ? ? P    HEN 12 
+HEN OP1  OP1  O 0 1 N N N 22.552 171.825 31.897 ? ? ? OP1  HEN 13 
+HEN OP2  OP2  O 0 1 N N N 24.012 173.740 31.694 ? ? ? OP2  HEN 14 
+HEN OP3  OP3  O 0 1 N N N 24.641 172.012 33.280 ? ? ? OP3  HEN 15 
+HEN N4A  N4A  N 0 1 N N N 25.153 175.266 27.700 ? ? ? N4A  HEN 16 
+HEN CAI  CAI  C 0 1 N N N 24.967 176.468 27.905 ? ? ? CAI  HEN 17 
+HEN CBC  CBC  C 0 1 N N N 24.727 177.425 26.687 ? ? ? CBC  HEN 18 
+HEN O2B  O2B  O 0 1 N N N 23.724 177.176 25.848 ? ? ? O2B  HEN 19 
+HEN O3B  O3B  O 0 1 N N N 25.450 178.397 26.447 ? ? ? O3B  HEN 20 
+HEN CBI  CBI  C 0 1 N N N 25.008 177.021 29.323 ? ? ? CBI  HEN 21 
+HEN CGI  CGI  C 0 1 N N N 25.705 178.154 29.541 ? ? ? CGI  HEN 22 
+HEN CEI  CEI  C 0 1 N N N 25.825 178.788 30.901 ? ? ? CEI  HEN 23 
+HEN PG   PG   P 0 1 N N N 26.864 180.362 30.694 ? ? ? PG   HEN 24 
+HEN OG1  OG1  O 0 1 N N N 28.456 180.071 30.701 ? ? ? OG1  HEN 25 
+HEN OG2  OG2  O 0 1 N N N 26.583 181.205 31.871 ? ? ? OG2  HEN 26 
+HEN OG3  OG3  O 0 1 N N N 26.554 180.938 29.347 ? ? ? OG3  HEN 27 
+HEN H2A1 1H2A H 0 0 N N N 26.543 171.474 23.884 ? ? ? H2A1 HEN 28 
+HEN H2A2 2H2A H 0 0 N N N 27.784 170.322 24.581 ? ? ? H2A2 HEN 29 
+HEN H2A3 3H2A H 0 0 N N N 26.167 169.785 24.482 ? ? ? H2A3 HEN 30 
+HEN HO3  HO3  H 0 1 N N N 25.505 174.252 25.839 ? ? ? HO3  HEN 31 
+HEN H4A1 1H4A H 0 0 N N N 24.521 173.941 29.073 ? ? ? H4A1 HEN 32 
+HEN H4A2 2H4A H 0 0 N N N 26.193 174.442 29.210 ? ? ? H4A2 HEN 33 
+HEN HC6  HC6  H 0 1 N N N 26.857 169.607 29.130 ? ? ? HC6  HEN 34 
+HEN H5A1 1H5A H 0 0 N N N 26.870 171.449 30.991 ? ? ? H5A1 HEN 35 
+HEN H5A2 2H5A H 0 0 N N N 26.212 172.973 30.659 ? ? ? H5A2 HEN 36 
+HEN HP1O OHP1 H 0 0 N N N 22.075 172.321 32.552 ? ? ? HP1O HEN 37 
+HEN HP3O OHP3 H 0 0 N N N 24.164 172.507 33.935 ? ? ? HP3O HEN 38 
+HEN H2BO OH2B H 0 0 N N N 23.578 177.756 25.109 ? ? ? H2BO HEN 39 
+HEN HBIC CHBI H 0 0 N N N 24.520 176.590 30.214 ? ? ? HBIC HEN 40 
+HEN HGIC CHGI H 0 0 N N N 26.168 178.554 28.623 ? ? ? HGIC HEN 41 
+HEN HCE1 1HCE H 0 0 N N N 24.838 178.976 31.384 ? ? ? HCE1 HEN 42 
+HEN HCEC CHCE H 0 0 N N N 26.232 178.093 31.672 ? ? ? HCEC HEN 43 
+HEN HG1O OHG1 H 0 0 N N N 28.976 180.859 30.597 ? ? ? HG1O HEN 44 
+HEN HG2O OHG2 H 0 0 N N N 27.103 181.993 31.767 ? ? ? HG2O HEN 45 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+HEN N1  C2   DOUB Y N 1  
+HEN N1  C6   SING Y N 2  
+HEN C2  C2A  SING N N 3  
+HEN C2  C3   SING Y N 4  
+HEN C2A H2A1 SING N N 5  
+HEN C2A H2A2 SING N N 6  
+HEN C2A H2A3 SING N N 7  
+HEN C3  O3   SING N N 8  
+HEN C3  C4   DOUB Y N 9  
+HEN O3  HO3  SING N N 10 
+HEN C4  C4A  SING N N 11 
+HEN C4  C5   SING Y N 12 
+HEN C4A N4A  SING N N 13 
+HEN C4A H4A1 SING N N 14 
+HEN C4A H4A2 SING N N 15 
+HEN C5  C6   DOUB Y N 16 
+HEN C5  C5A  SING N N 17 
+HEN C6  HC6  SING N N 18 
+HEN C5A OP4  SING N N 19 
+HEN C5A H5A1 SING N N 20 
+HEN C5A H5A2 SING N N 21 
+HEN OP4 P    SING N N 22 
+HEN P   OP1  SING N N 23 
+HEN P   OP2  DOUB N N 24 
+HEN P   OP3  SING N N 25 
+HEN OP1 HP1O SING N N 26 
+HEN OP3 HP3O SING N N 27 
+HEN N4A CAI  DOUB N N 28 
+HEN CAI CBC  SING N N 29 
+HEN CAI CBI  SING N N 30 
+HEN CBC O2B  SING N N 31 
+HEN CBC O3B  DOUB N N 32 
+HEN O2B H2BO SING N N 33 
+HEN CBI CGI  DOUB N E 34 
+HEN CBI HBIC SING N N 35 
+HEN CGI CEI  SING N N 36 
+HEN CGI HGIC SING N N 37 
+HEN CEI PG   SING N N 38 
+HEN CEI HCE1 SING N N 39 
+HEN CEI HCEC SING N N 40 
+HEN PG  OG1  SING N N 41 
+HEN PG  OG2  SING N N 42 
+HEN PG  OG3  DOUB N N 43 
+HEN OG1 HG1O SING N N 44 
+HEN OG2 HG2O SING N N 45 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+HEN SMILES           ACDLabs              10.04 "O=P(O)(O)C/C=C/C(=N\Cc1c(cnc(c1O)C)COP(=O)(O)O)C(=O)O"                                                                                                                     
+HEN SMILES_CANONICAL CACTVS               3.341 "Cc1ncc(CO[P](O)(O)=O)c(CN=C(\C=C\C[P](O)(O)=O)C(O)=O)c1O"                                                                                                                  
+HEN SMILES           CACTVS               3.341 "Cc1ncc(CO[P](O)(O)=O)c(CN=C(C=CC[P](O)(O)=O)C(O)=O)c1O"                                                                                                                    
+HEN SMILES_CANONICAL "OpenEye OEToolkits" 1.5.0 "Cc1c(c(c(cn1)COP(=O)(O)O)C/N=C(\C=C\CP(=O)(O)O)/C(=O)O)O"                                                                                                                  
+HEN SMILES           "OpenEye OEToolkits" 1.5.0 "Cc1c(c(c(cn1)COP(=O)(O)O)CN=C(C=CCP(=O)(O)O)C(=O)O)O"                                                                                                                      
+HEN InChI            InChI                1.03  "InChI=1S/C13H18N2O10P2/c1-8-12(16)10(9(5-14-8)7-25-27(22,23)24)6-15-11(13(17)18)3-2-4-26(19,20)21/h2-3,5,16H,4,6-7H2,1H3,(H,17,18)(H2,19,20,21)(H2,22,23,24)/b3-2+,15-11+" 
+HEN InChIKey         InChI                1.03  VKWJKURKEYQKKW-ZCOJICPHSA-N                                                                                                                                                 
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+HEN "SYSTEMATIC NAME" ACDLabs              10.04 "(2E,3E)-2-[({3-hydroxy-2-methyl-5-[(phosphonooxy)methyl]pyridin-4-yl}methyl)imino]-5-phosphonopent-3-enoic acid" 
+HEN "SYSTEMATIC NAME" "OpenEye OEToolkits" 1.5.0 "(E,2E)-2-[[3-hydroxy-2-methyl-5-(phosphonooxymethyl)pyridin-4-yl]methylimino]-5-phosphono-pent-3-enoic acid"     
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+HEN "Create component"  2001-02-21 RCSB 
+HEN "Modify descriptor" 2011-06-04 RCSB 
+# 

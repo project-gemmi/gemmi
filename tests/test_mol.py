@@ -273,6 +273,7 @@ class TestMol(unittest.TestCase):
         cif_path = full_path('HEM.cif')
         cif_block = gemmi.cif.read(cif_path).sole_block()
         cif_st = gemmi.make_structure_from_chemcomp_block(cif_block)
+        self.assertEqual(len(cif_st), 2)
         # we compare not-ideal model only
         del cif_st['example_xyz']
         # PDBe files have residue number 0 and ATOM instead of HETATM
@@ -286,6 +287,13 @@ class TestMol(unittest.TestCase):
         pdb_st = gemmi.read_structure(pdb_path)
         pdb_out = pdb_st.make_minimal_pdb()
         self.assertEqual(cif_out.splitlines(), pdb_out.splitlines())
+
+    # HEN.cif from CCD does not provide ideal coordinates
+    def test_reading_HEN(self):
+        path = full_path('HEN.cif')
+        block = gemmi.cif.read(path).sole_block()
+        st = gemmi.make_structure_from_chemcomp_block(block)
+        self.assertEqual(len(st), 1)
 
     def test_ncs_in_1lzh(self):
         st = gemmi.read_structure(full_path('1lzh.pdb.gz'))

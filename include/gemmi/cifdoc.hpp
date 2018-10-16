@@ -334,6 +334,10 @@ struct Block {
   bool has_tag(const std::string& tag) const {
     return const_cast<Block*>(this)->find_values(tag).item() != nullptr;
   }
+  bool has_any_value(const std::string& tag) const {
+    Column c = const_cast<Block*>(this)->find_values(tag);
+    return c.item() != nullptr && !std::all_of(c.begin(), c.end(), is_null);
+  }
   Table find(const std::string& prefix,
              const std::vector<std::string>& tags);
   Table find(const std::vector<std::string>& tags) { return find({}, tags); }
