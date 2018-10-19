@@ -91,7 +91,8 @@ Gemmi can use three sources of knowledge about the chemical components:
 * so-called CIF files from the Refmac monomer library (maintained by CCP4)
   and compatible files from other libraries.
 
-The built-in data is accessed through the function ``find_tabulated_residue``:
+The built-in data is accessed through the function ``find_tabulated_residue``
+and contains only minimal information about each residue:
 
 **C++**
 
@@ -117,9 +118,45 @@ The built-in data is accessed through the function ``find_tabulated_residue``:
     False
 
 To get more complete information we need to first read either the CCD
-or a monomer library.
+or a monomer library. As an example, we can read description of SO3
+from a file taken from Refmac dictionary (monomer library):
 
-TODO
+.. doctest::
+
+    >>> # SO3.cif -> gemmi.ChemComp
+    >>> block = gemmi.cif.read('../tests/SO3.cif')[-1]
+    >>> so3 = gemmi.make_chemcomp_from_block(block)
+
+Now we have information about atoms, bonds and other restraints
+used in refinement. If we would like to analyze the molecule as a graph,
+we could setup such a graph in NetworkX:
+
+.. doctest::
+    :skipif: networkx is None
+
+    >>> import networkx
+
+    >>> G = networkx.Graph()
+    >>> for atom in so3.atoms:
+    ...     G.add_node(atom.id, Z=atom.el.atomic_number)
+    ...
+    >>> for bond in so3.rt.bonds:
+    ...     G.add_edge(bond.id1.atom, bond.id2.atom)
+    ...
+
+This could be used for cheminformatics exercises such as
+:ref:`substructure matching <substructure_matching>` in the example section.
+Here we only count the number of automorphisms of SO3 (permutations
+of the three oxygens, 3!):
+
+.. doctest::
+    :skipif: networkx is None
+
+    >>> import networkx.algorithms.isomorphism as iso
+    >>> GM = iso.GraphMatcher(G, G, node_match=iso.categorical_node_match('Z', 0))
+    >>> sum(1 for _ in GM.isomorphisms_iter())
+    6
+
 
 Transformation matrices
 =======================
@@ -1078,6 +1115,13 @@ rainbow-colored chain:
     :align: center
     :scale: 100
     :target: https://www.rcsb.org/3d-view/5XG2/
+
+.. _substructure_matching:
+
+Substructure matching
+---------------------
+
+TODO: Subgraph isomorphism example
 
 
 B-factor analysis

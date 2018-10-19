@@ -93,7 +93,7 @@ class TestChemComp(unittest.TestCase):
         self.assertEqual(len(cc.rt.bonds), 3)
         self.assertAlmostEqual(cc.rt.get_bond("S", "O2").value, 1.496)
         self.assertAlmostEqual(cc.rt.get_bond("O3", "S").esd, 0.019)
-        with self.assertRaises(RuntimeError) as context:
+        with self.assertRaises(RuntimeError):
             cc.rt.get_bond("O2", "O3")
 
 if __name__ == '__main__':

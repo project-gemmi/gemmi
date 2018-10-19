@@ -3,7 +3,7 @@ import os
 
 # -- General configuration ------------------------------------------------
 
-needs_sphinx = '1.4'
+needs_sphinx = '1.8'
 
 extensions = ['sphinx.ext.doctest', 'sphinx.ext.githubpages']
 
@@ -69,3 +69,10 @@ def DoctestDirective_run(self):
     return nodes
 sphinx.ext.doctest.DoctestDirective.run = DoctestDirective_run
 sphinx.ext.doctest.TestcodeDirective.run = DoctestDirective_run
+
+doctest_global_setup = '''
+try:
+    import networkx
+except ImportError:
+    networkx = None
+'''
