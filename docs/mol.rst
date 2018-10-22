@@ -1116,12 +1116,94 @@ rainbow-colored chain:
     :scale: 100
     :target: https://www.rcsb.org/3d-view/5XG2/
 
+.. _structure_matching:
+
+Graph isomorphism
+-----------------
+
+Graph and subgraph isomorphism algorithms are not part of Gemmi;
+we prefer to use existing graph analysis libraries, such as Boost Graph
+Library, NetworkX, igraph, etc.
+In this example we use Python NetworkX to compare molecules from the
+Refmac monomer library with Chemical Component Dictionary (CCD) from PDB.
+
+The program below takes compares specified monomer cif files with
+corresponding CCD entries. Hydrogens and bond types are ignored.
+It takes less than half a minute to go through the 25,000 monomer
+files distributed with CCP4 (as of Oct 2018),
+so we do not try to optimize the program.
+
+.. literalinclude:: ../examples/ccd_gi.py
+   :language: python
+   :lines: 3-
+
+If we run it on monomers that start with M we get:
+
+.. code-block:: console
+
+  $ examples/ccd_gi.py $CLIBD_MON/m/*.cif
+  M10 is isomorphic
+         O9 -> O4
+         O4 -> O9
+  MK8 is isomorphic
+         O2 -> OXT
+  MMR differs
+        missing: O12 O4
+  2 of 821 monomers not found in CCD
+
+So in M10 the two atoms marked green are swapped:
+
+.. image:: img/M10-isomorphism.png
+    :align: center
+    :scale: 100
+
 .. _substructure_matching:
 
 Substructure matching
 ---------------------
 
-TODO: Subgraph isomorphism example
+Now a little script to illustrate subgraph isomorphism.
+It takes a three-letter-code of a molecule that is to be used as a pattern
+and prints all the CCD entries that contain such substructure.
+As in the previous example, hydrogens and bond types are ignored.
+
+.. literalinclude:: ../examples/ccd_subgraph.py
+   :language: python
+   :lines: 3-
+
+Let us check what entries have HEM as a substructure:
+
+.. code-block:: console
+
+  $ examples/ccd_subgraph.py HEM
+  1FH 	 +6 nodes, +7 edges
+  2FH 	 +6 nodes, +7 edges
+  4HE 	 +7 nodes, +8 edges
+  522 	 +2 nodes, +2 edges
+  6CO 	 +6 nodes, +7 edges
+  6CQ 	 +7 nodes, +8 edges
+  89R 	 +3 nodes, +3 edges
+  CLN 	 +1 nodes, +2 edges
+  DDH 	 +2 nodes, +2 edges
+  FEC 	 +6 nodes, +6 edges
+  HAS 	 +22 nodes, +22 edges
+  HCO 	 +1 nodes, +1 edges
+  HDM 	 +2 nodes, +2 edges
+  HEA 	 +17 nodes, +17 edges
+  HEB 	 +0 nodes, +0 edges
+  HEC 	 +0 nodes, +0 edges
+  HEM 	 +0 nodes, +0 edges
+  HEO 	 +16 nodes, +16 edges
+  HEV 	 +2 nodes, +2 edges
+  HP5 	 +2 nodes, +2 edges
+  ISW 	 +0 nodes, +0 edges
+  MH0 	 +0 nodes, +0 edges
+  MHM 	 +0 nodes, +0 edges
+  N7H 	 +3 nodes, +3 edges
+  NTE 	 +3 nodes, +3 edges
+  OBV 	 +14 nodes, +14 edges
+  SRM 	 +20 nodes, +20 edges
+  UFE 	 +18 nodes, +18 edges
 
 
 B-factor analysis
