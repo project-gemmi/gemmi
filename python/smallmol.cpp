@@ -77,6 +77,7 @@ void add_chemcomp(py::module& m) {
     .def_readwrite("aromatic", &Restraints::Bond::aromatic)
     .def_readwrite("value", &Restraints::Bond::value)
     .def_readwrite("esd", &Restraints::Bond::esd)
+    .def("lexicographic_str", &Restraints::Bond::lexicographic_str)
     ;
   restraints
     .def_readwrite("bonds", &Restraints::bonds)
@@ -107,6 +108,7 @@ void add_chemcomp(py::module& m) {
     .def_readonly("atoms", &ChemComp::atoms)
     .def_readonly("rt", &ChemComp::rt)
     .def("get_atom", &ChemComp::get_atom)
+    .def("remove_hydrogens", &ChemComp::remove_hydrogens)
     ;
   m.def("make_chemcomp_from_block", &make_chemcomp_from_block);
 }

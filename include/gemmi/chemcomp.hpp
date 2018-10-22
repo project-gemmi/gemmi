@@ -57,6 +57,10 @@ struct Restraints {
     double value;
     double esd;
     std::string str() const { return id1.atom + "-" + id2.atom; }
+    std::string lexicographic_str() const {
+      return id1.atom < id2.atom ? id1.atom + "-" + id2.atom
+                                 : id2.atom + "-" + id1.atom;
+    }
   };
 
   struct Angle {
@@ -273,6 +277,41 @@ struct ChemComp {
     if (it == atoms.end())
       fail("Chemical componenent " + name + " has no atom " + atom_id);
     return *it;
+  }
+
+  void remove_nonmatching_restraints() {
+    vector_remove_if(rt.bonds, [&](const Restraints::Bond& x) {
+      return find_atom(x.id1.atom) == atoms.end() ||
+             find_atom(x.id2.atom) == atoms.end();
+    });
+    vector_remove_if(rt.angles, [&](const Restraints::Angle& x) {
+      return find_atom(x.id1.atom) == atoms.end() ||
+             find_atom(x.id2.atom) == atoms.end() ||
+             find_atom(x.id3.atom) == atoms.end();
+    });
+    vector_remove_if(rt.torsions, [&](const Restraints::Torsion& x) {
+      return find_atom(x.id1.atom) == atoms.end() ||
+             find_atom(x.id2.atom) == atoms.end() ||
+             find_atom(x.id3.atom) == atoms.end() ||
+             find_atom(x.id4.atom) == atoms.end();
+    });
+    vector_remove_if(rt.chirs, [&](const Restraints::Chirality& x) {
+      return find_atom(x.id_ctr.atom) == atoms.end() ||
+             find_atom(x.id1.atom) == atoms.end() ||
+             find_atom(x.id2.atom) == atoms.end() ||
+             find_atom(x.id3.atom) == atoms.end();
+    });
+    for (Restraints::Plane& plane : rt.planes)
+      vector_remove_if(plane.ids, [&](const Restraints::AtomId& x) {
+        return find_atom(x.atom) == atoms.end();
+      });
+  }
+
+  void remove_hydrogens() {
+    vector_remove_if(atoms, [](const ChemComp::Atom& a) {
+      return a.is_hydrogen();
+    });
+    remove_nonmatching_restraints();
   }
 };
 
