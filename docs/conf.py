@@ -59,17 +59,6 @@ latex_documents = [
      u'Marcin Wojdyr', 'manual'),
 ]
 
-
-# monkey-patch doctest to set the language
-import sphinx.ext.doctest  # noqa: E402
-
-def DoctestDirective_run(self):
-    nodes = sphinx.ext.doctest.TestDirective.run(self)
-    nodes[0]['language'] = 'python'
-    return nodes
-sphinx.ext.doctest.DoctestDirective.run = DoctestDirective_run
-sphinx.ext.doctest.TestcodeDirective.run = DoctestDirective_run
-
 doctest_global_setup = '''
 try:
     import networkx
