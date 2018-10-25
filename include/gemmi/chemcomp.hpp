@@ -16,6 +16,10 @@
 
 namespace gemmi {
 
+enum class BondType {
+  Unspec, Single, Double, Triple, Aromatic, Deloc, Metal
+};
+
 struct Restraints {
   struct AtomId {
     int comp;
@@ -47,9 +51,6 @@ struct Restraints {
     }
   };
 
-  enum class BondType {
-    Unspec, Single, Double, Triple, Aromatic, Deloc, Metal
-  };
   struct Bond {
     AtomId id1, id2;
     BondType type;
@@ -272,11 +273,15 @@ struct ChemComp {
     return const_cast<ChemComp*>(this)->find_atom(atom_id);
   }
 
-  const Atom& get_atom(const std::string& atom_id) const {
+  int get_atom_index(const std::string& atom_id) const {
     auto it = find_atom(atom_id);
     if (it == atoms.end())
       fail("Chemical componenent " + name + " has no atom " + atom_id);
-    return *it;
+    return it - atoms.begin();
+  }
+
+  const Atom& get_atom(const std::string& atom_id) const {
+    return atoms[get_atom_index(atom_id)];
   }
 
   void remove_nonmatching_restraints() {
@@ -315,46 +320,46 @@ struct ChemComp {
   }
 };
 
-inline Restraints::BondType bond_type_from_string(const std::string& s) {
+inline BondType bond_type_from_string(const std::string& s) {
   if (istarts_with(s, "sing"))
-    return Restraints::BondType::Single;
+    return BondType::Single;
   if (istarts_with(s, "doub"))
-    return Restraints::BondType::Double;
+    return BondType::Double;
   if (istarts_with(s, "trip"))
-    return Restraints::BondType::Triple;
+    return BondType::Triple;
   if (istarts_with(s, "arom"))
-    return Restraints::BondType::Aromatic;
+    return BondType::Aromatic;
   if (istarts_with(s, "metal"))
-    return Restraints::BondType::Metal;
+    return BondType::Metal;
   if (istarts_with(s, "delo") || s == "1.5")
-    return Restraints::BondType::Deloc;
+    return BondType::Deloc;
   if (cif::is_null(s))
-    return Restraints::BondType::Unspec;
+    return BondType::Unspec;
   throw std::out_of_range("Unexpected bond type: " + s);
 }
 
-inline std::string bond_type_to_string(Restraints::BondType btype) {
+inline std::string bond_type_to_string(BondType btype) {
   switch (btype) {
-    case Restraints::BondType::Unspec: return ".";
-    case Restraints::BondType::Single: return "single";
-    case Restraints::BondType::Double: return "double";
-    case Restraints::BondType::Triple: return "triple";
-    case Restraints::BondType::Aromatic: return "aromatic";
-    case Restraints::BondType::Deloc: return "deloc";
-    case Restraints::BondType::Metal: return "metal";
+    case BondType::Unspec: return ".";
+    case BondType::Single: return "single";
+    case BondType::Double: return "double";
+    case BondType::Triple: return "triple";
+    case BondType::Aromatic: return "aromatic";
+    case BondType::Deloc: return "deloc";
+    case BondType::Metal: return "metal";
   }
   unreachable();
 }
 
-inline float order_of_bond_type(Restraints::BondType btype) {
+inline float order_of_bond_type(BondType btype) {
   switch (btype) {
-    case Restraints::BondType::Single: return 1.0f;
-    case Restraints::BondType::Double: return 2.0f;
-    case Restraints::BondType::Triple: return 3.0f;
-    case Restraints::BondType::Aromatic: return 1.5f;
-    case Restraints::BondType::Deloc: return 1.5f;
-    case Restraints::BondType::Metal: return 1.0f;
-    case Restraints::BondType::Unspec: return 0.0f;
+    case BondType::Single: return 1.0f;
+    case BondType::Double: return 2.0f;
+    case BondType::Triple: return 3.0f;
+    case BondType::Aromatic: return 1.5f;
+    case BondType::Deloc: return 1.5f;
+    case BondType::Metal: return 1.0f;
+    case BondType::Unspec: return 0.0f;
   }
   unreachable();
 }

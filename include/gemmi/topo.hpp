@@ -350,7 +350,7 @@ inline ChemLink connection_to_chemlink(const Connection& conn,
   Restraints::Bond bond;
   bond.id1 = Restraints::AtomId{1, conn.atom[0].atom_name};
   bond.id2 = Restraints::AtomId{2, conn.atom[1].atom_name};
-  bond.type = Restraints::BondType::Unspec;
+  bond.type = BondType::Unspec;
   bond.aromatic = false;
   bond.value = conn.reported_distance;
   bond.esd = 0.02;

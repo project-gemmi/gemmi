@@ -72,10 +72,10 @@ class TestChemComp(unittest.TestCase):
         self.assertEqual(len(cc.atoms), 75)
         self.assertEqual(len(cc.rt.bonds), 82)
         bond = cc.rt.get_bond("CGA", "O1A")
-        self.assertEqual(bond.type, gemmi.Restraints.BondType.Double)
+        self.assertEqual(bond.type, gemmi.BondType.Double)
         self.assertEqual(bond.aromatic, False)
         bond = cc.rt.get_bond("NA", "C1A")
-        self.assertEqual(bond.type, gemmi.Restraints.BondType.Single)
+        self.assertEqual(bond.type, gemmi.BondType.Single)
         self.assertEqual(bond.aromatic, True)
 
     def test_hen_ccd(self):

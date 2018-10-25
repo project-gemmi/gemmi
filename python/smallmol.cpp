@@ -51,6 +51,15 @@ void add_smcif(py::module& m) {
 }
 
 void add_chemcomp(py::module& m) {
+  py::enum_<BondType>(m, "BondType")
+    .value("Unspec", BondType::Unspec)
+    .value("Single", BondType::Single)
+    .value("Double", BondType::Double)
+    .value("Triple", BondType::Triple)
+    .value("Aromatic", BondType::Aromatic)
+    .value("Deloc", BondType::Deloc)
+    .value("Metal", BondType::Metal);
+
   py::class_<Restraints> restraints(m, "Restraints");
   py::class_<Restraints::AtomId>(restraints, "AtomId")
     .def_readwrite("comp", &Restraints::AtomId::comp)
@@ -61,15 +70,6 @@ void add_chemcomp(py::module& m) {
          py::arg("res1"), py::arg("res2"), py::arg("altloc"),
          py::return_value_policy::reference)
     ;
-  py::enum_<Restraints::BondType>(restraints, "BondType")
-    .value("Unspec", Restraints::BondType::Unspec)
-    .value("Single", Restraints::BondType::Single)
-    .value("Double", Restraints::BondType::Double)
-    .value("Triple", Restraints::BondType::Triple)
-    .value("Aromatic", Restraints::BondType::Aromatic)
-    .value("Deloc", Restraints::BondType::Deloc)
-    .value("Metal", Restraints::BondType::Metal);
-
   py::class_<Restraints::Bond>(restraints, "Bond")
     .def_readwrite("id1", &Restraints::Bond::id1)
     .def_readwrite("id2", &Restraints::Bond::id2)
