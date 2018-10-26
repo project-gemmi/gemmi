@@ -312,11 +312,12 @@ struct ChemComp {
       });
   }
 
-  void remove_hydrogens() {
+  ChemComp& remove_hydrogens() {
     vector_remove_if(atoms, [](const ChemComp::Atom& a) {
       return a.is_hydrogen();
     });
     remove_nonmatching_restraints();
+    return *this;
   }
 };
 

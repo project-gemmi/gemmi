@@ -118,8 +118,15 @@ and contains only minimal information about each residue:
     False
 
 To get more complete information we need to first read either the CCD
-or a monomer library. As an example, we can read description of SO3
-from a file taken from Refmac dictionary (monomer library):
+or a monomer library. This data is represented by class ``ChemComp``.
+
+**C++**
+
+.. literalinclude:: ../examples/with_bgl.cpp
+   :language: cpp
+   :lines: 13-14,42-47
+
+**Python**
 
 .. doctest::
 
@@ -127,9 +134,25 @@ from a file taken from Refmac dictionary (monomer library):
     >>> block = gemmi.cif.read('../tests/SO3.cif')[-1]
     >>> so3 = gemmi.make_chemcomp_from_block(block)
 
+Graph analysis
+--------------
+
 Now we have information about atoms, bonds and other restraints
 used in refinement. If we would like to analyze the molecule as a graph,
-we could setup such a graph in NetworkX:
+we could setup such a graph using any library that knows how to analyse
+graphs.
+
+**C++**
+
+Here we show how it can be done in the Boost Graph Library.
+
+.. literalinclude:: ../examples/with_bgl.cpp
+   :language: cpp
+   :lines: 9-10,13-41
+
+**Python**
+
+In a Python example we use NetworkX:
 
 .. doctest::
     :skipif: networkx is None
@@ -141,22 +164,24 @@ we could setup such a graph in NetworkX:
     ...     G.add_node(atom.id, Z=atom.el.atomic_number)
     ...
     >>> for bond in so3.rt.bonds:
-    ...     G.add_edge(bond.id1.atom, bond.id2.atom)
+    ...     G.add_edge(bond.id1.atom, bond.id2.atom)  # ignoring bond type
     ...
 
-This could be used for cheminformatics exercises such as
-:ref:`substructure matching <substructure_matching>` in the example section.
-Here we only count the number of automorphisms of SO3 (permutations
-of the three oxygens, 3!):
+To show a quick example, let us count automorphisms of SO3:
 
 .. doctest::
     :skipif: networkx is None
 
     >>> import networkx.algorithms.isomorphism as iso
     >>> GM = iso.GraphMatcher(G, G, node_match=iso.categorical_node_match('Z', 0))
+    >>> # expecting 3! automorphisms (permutations of the three oxygens)
     >>> sum(1 for _ in GM.isomorphisms_iter())
     6
 
+With a bit more of code we could get something useful for cheminformatics
+exercises. Two longer Python examples are at the end of this section:
+:ref:`graph isomorphism <graph_isomorphism>` and
+:ref:`substructure matching <substructure_matching>`.
 
 Transformation matrices
 =======================
@@ -1116,7 +1141,7 @@ rainbow-colored chain:
     :scale: 100
     :target: https://www.rcsb.org/3d-view/5XG2/
 
-.. _structure_matching:
+.. _graph_isomorphism:
 
 Graph isomorphism
 -----------------
@@ -1157,14 +1182,16 @@ So in M10 the two atoms marked green are swapped:
     :align: center
     :scale: 100
 
+(The image was generated in NGL and compressed with Compress-Or-Die.)
+
 .. _substructure_matching:
 
 Substructure matching
 ---------------------
 
 Now a little script to illustrate subgraph isomorphism.
-It takes a three-letter-code of a molecule that is to be used as a pattern
-and prints all the CCD entries that contain such substructure.
+The script takes a (three-letter-)code of a molecule that is to be used
+as a pattern and finds CCD entries that contain such a a substructure.
 As in the previous example, hydrogens and bond types are ignored.
 
 .. literalinclude:: ../examples/ccd_subgraph.py
@@ -1204,6 +1231,30 @@ Let us check what entries have HEM as a substructure:
   OBV 	 +14 nodes, +14 edges
   SRM 	 +20 nodes, +20 edges
   UFE 	 +18 nodes, +18 edges
+
+
+Maximum common subgraph
+-----------------------
+
+In this example we use McGregor's algorithm implemented in the Boost Graph
+Library to find maximum common induced subgraph. We call the MCS searching
+function with option ``only_connected_subgraphs=true``, which has obvious
+meaning and can be changed if needed.
+
+To illustrate this example, we compare ligands AUD and LSA:
+
+.. image:: img/aud_lsa.png
+    :align: center
+    :scale: 100
+
+The whole code is in :file:`examples/with_bgl.cpp`. The same file has also
+examples of using the BGL implementation of VF2 to check graph
+and subgraph isomorphisms.
+
+.. literalinclude:: ../examples/with_bgl.cpp
+   :language: cpp
+   :start-after: Example 4
+   :end-before: minimal program
 
 
 B-factor analysis
