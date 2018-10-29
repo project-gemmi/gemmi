@@ -7,7 +7,6 @@
 #include "gemmi/gzread.hpp"
 #include "gemmi/model.hpp"     // for Structure, Atom, etc
 #include "gemmi/chemcomp.hpp"  // for ChemComp
-#include "gemmi/chemcomp_xyz.hpp" // for make_structure_from_chemcomp_doc
 #include "gemmi/monlib.hpp"    // for MonLib, read_monomers
 #include "gemmi/topo.hpp"      // for Topo
 #include "gemmi/calculate.hpp" // for find_best_plane, get_distance_from_plane
@@ -146,22 +145,18 @@ int GEMMI_MAIN(int argc, char **argv) {
     cutoff = std::strtod(p.options[Cutoff].arg, nullptr);
   std::string input = p.coordinate_input_file(0);
   try {
-    gemmi::Structure st;
-    if (p.options[FormatIn] &&
-        std::strcmp(p.options[FormatIn].arg, "chemcomp") == 0) {
-      st = gemmi::make_structure_from_chemcomp_doc(gemmi::read_cif_gz(input));
-    } else {
-      gemmi::CoorFormat format = gemmi::CoorFormat::Unknown;
-      if (p.options[FormatIn]) {
-        if (strcmp(p.options[FormatIn].arg, "cif") == 0)
-          format = gemmi::CoorFormat::Mmcif;
-        else if (strcmp(p.options[FormatIn].arg, "pdb") == 0)
-          format = gemmi::CoorFormat::Pdb;
-        else if (strcmp(p.options[FormatIn].arg, "json") == 0)
-          format = gemmi::CoorFormat::Mmjson;
-      }
-      st = gemmi::read_structure_gz(input, format);
+    gemmi::CoorFormat format = gemmi::CoorFormat::Unknown;
+    if (p.options[FormatIn]) {
+      if (strcmp(p.options[FormatIn].arg, "cif") == 0)
+        format = gemmi::CoorFormat::Mmcif;
+      else if (strcmp(p.options[FormatIn].arg, "pdb") == 0)
+        format = gemmi::CoorFormat::Pdb;
+      else if (strcmp(p.options[FormatIn].arg, "json") == 0)
+        format = gemmi::CoorFormat::Mmjson;
+      else if (strcmp(p.options[FormatIn].arg, "chemcomp") == 0)
+        format = gemmi::CoorFormat::ChemComp;
     }
+    gemmi::Structure st = gemmi::read_structure_gz(input, format);
     if (st.input_format == gemmi::CoorFormat::Pdb ||
         st.input_format == gemmi::CoorFormat::ChemComp)
       gemmi::setup_entities(st);

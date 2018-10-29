@@ -28,18 +28,27 @@ inline CoorFormat coordinate_format_from_extension(const std::string& path) {
 
 template<typename T>
 Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown) {
-  if (format == CoorFormat::Unknown)
+  bool any = (format == CoorFormat::UnknownAny);
+  if (format == CoorFormat::Unknown || any)
     format = coordinate_format_from_extension(input.path());
   switch (format) {
     case CoorFormat::Pdb:
       return read_pdb(input);
     case CoorFormat::Mmcif:
+      if (any) {
+        cif::Document doc = cif::read(input);
+        int n = check_chemcomp_block_number(doc);
+        if (n != -1)
+          return make_structure_from_chemcomp_block(doc.blocks[n]);
+        return make_structure_from_block(doc.sole_block());
+      }
       return make_structure_from_block(cif::read(input).sole_block());
     case CoorFormat::Mmjson:
       return make_structure_from_block(cif::read_mmjson(input).sole_block());
     case CoorFormat::ChemComp:
       return make_structure_from_chemcomp_doc(cif::read(input));
     case CoorFormat::Unknown:
+    case CoorFormat::UnknownAny:
       fail("Unknown format.");
   }
   unreachable();

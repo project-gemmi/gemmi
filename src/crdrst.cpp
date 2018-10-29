@@ -453,11 +453,15 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (p.options[KeepHydrogens] && p.options[NoHydrogens])
     gemmi::fail("cannot use both --no-hydrogens and --keep-hydrogens");
   try {
-    gemmi::Structure st = gemmi::read_structure_gz(input);
-    if (st.input_format == gemmi::CoorFormat::Pdb)
+    gemmi::Structure st = gemmi::read_structure_gz(input,
+                                            gemmi::CoorFormat::UnknownAny);
+    if (st.input_format == gemmi::CoorFormat::Pdb ||
+        st.input_format == gemmi::CoorFormat::ChemComp)
       gemmi::setup_entities(st);
-    if (st.models.empty())
+    if (st.models.empty()) {
+      fprintf(stderr, "No models found in the input file.\n");
       return 1;
+    }
     gemmi::Model& model0 = st.models[0];
     if (!p.options[KeepHydrogens])
       gemmi::remove_hydrogens(model0);

@@ -185,6 +185,7 @@ std::vector<gemmi::Chain> split_by_segments(gemmi::Chain& orig) {
 static std::string format_as_string(CoorFormat format) {
   switch (format) {
     case CoorFormat::Unknown: return "unknown";
+    case CoorFormat::UnknownAny: return "unknown";
     case CoorFormat::Pdb: return "pdb";
     case CoorFormat::Mmcif: return "mmcif";
     case CoorFormat::Mmjson: return "mmjson";

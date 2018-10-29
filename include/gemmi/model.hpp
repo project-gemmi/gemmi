@@ -87,7 +87,9 @@ find_iter(std::vector<T>& vec, const std::string& name) {
 
 
 // File format with macromolecular model.
-enum class CoorFormat { Unknown, Pdb, Mmcif, Mmjson, ChemComp };
+// Unknown = unknown coordinate format (not ChemComp)
+// UnknownAny = any format (coordinate file for a monomer/ligand/chemcomp)
+enum class CoorFormat { Unknown, UnknownAny, Pdb, Mmcif, Mmjson, ChemComp };
 
 enum class EntityType : unsigned char {
   Unknown,
