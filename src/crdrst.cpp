@@ -20,6 +20,7 @@
 
 namespace cif = gemmi::cif;
 using gemmi::Topo;
+using gemmi::Restraints;
 
 enum OptionIndex { Verbose=3, Monomers, NoHydrogens, KeepHydrogens,
                    NoZeroOccRestr };
@@ -77,7 +78,7 @@ static cif::Document make_crd(const gemmi::Structure& st,
   using gemmi::to_str;
   cif::Document crd;
   auto e_id = st.info.find("_entry.id");
-  std::string id = (e_id != st.info.end() ? e_id->second : st.name);
+  std::string id = cif::quote(e_id != st.info.end() ? e_id->second : st.name);
   crd.blocks.emplace_back("structure_" + id);
   cif::Block& block = crd.blocks[0];
   auto& items = block.items;
@@ -215,7 +216,7 @@ static cif::Document make_crd(const gemmi::Structure& st,
         vv.emplace_back(a.name);
         vv.emplace_back(1, a.altloc ? a.altloc : '.');
         vv.emplace_back(res.name);
-        vv.emplace_back(chain.name);
+        vv.emplace_back(cif::quote(chain.name));
         vv.emplace_back(auth_seq_id);
         //vv.emplace_back(ins_code);
         vv.emplace_back(to_str(a.pos.x));
@@ -243,7 +244,7 @@ static cif::Document make_crd(const gemmi::Structure& st,
 }
 
 static void add_restraints(const Topo::Force force,
-                           const Topo& topo, const gemmi::Restraints& rt,
+                           const Topo& topo, const Restraints& rt,
                            cif::Loop& restr_loop, int (&counters)[5]) {
   //using gemmi::to_str;
   const auto& to_str = gemmi::to_str_prec<3>; // to make comparisons easier
@@ -371,71 +372,120 @@ static cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
 }
 
 
-/*
-static void move_hydrogen_1_1(const gemmi::Atom* a1,
-                              const gemmi::Atom* a2,
-                              const gemmi::Atom* a3,
-                              gemmi::Atom* a4,
-                              double dist,
-                              double theta,
-                              double tau) {
+// assumes no hydrogens in the residue
+static void add_hydrogens(const gemmi::ChemComp& cc, gemmi::Residue* res) {
+  for (auto it = cc.atoms.begin(); it != cc.atoms.end(); ++it) {
+    if (is_hydrogen(it->el)) {
+      gemmi::Atom atom = it->to_full_atom();
+      atom.flag = 'R';
+      atom.serial = it - cc.atoms.begin();
+      cc.rt.for_each_bonded_atom(atom.name, [&](const Restraints::AtomId& id) {
+        for (const gemmi::Atom& parent : res->atoms) {
+          if (parent.name == id.atom) {
+            atom.altloc = parent.altloc;
+            atom.occ = parent.occ;
+            atom.b_iso = parent.b_iso;
+            res->atoms.push_back(atom);
+          }
+        }
+        return false; // stop the bond search
+      });
+    }
+  }
 }
-*/
+
+// Position one hydrogen using one angle (theta) and one dihedral angle (tau).
+// Returns position of x4 in x1-x2-x3-x4, where dist=|x3-x4| and
+// theta is angle(x2, x3, x4).
+static gemmi::Position position_h_using_torsion(const gemmi::Position& x1,
+                                                const gemmi::Position& x2,
+                                                const gemmi::Position& x3,
+                                                double dist,
+                                                double theta,
+                                                double tau) {
+  gemmi::Vec3 u = x2 - x1;
+  gemmi::Vec3 v = x3 - x2;
+  gemmi::Vec3 e1 = v.normalized();
+  double delta = u.dot(e1);
+  gemmi::Vec3 e2 = -(u - delta * e1).normalized();
+  gemmi::Vec3 e3 = e1.cross(e2);
+  return x3 + gemmi::Position(dist * (-cos(theta) * e1 +
+                                sin(theta) * (cos(tau) * e2 + sin(tau) * e3)));
+}
+
+static
+void place_hydrogen_1_1(gemmi::Atom* H, const gemmi::Atom& A,
+                        const gemmi::Atom& B, const Topo& topo) {
+  const Restraints::Bond* bond = topo.take_bond(H, &A);
+  const Restraints::Angle* angle = topo.take_angle(H, &A, &B);
+  if (!bond || !angle)
+    return;
+  double h_dist = bond->value;
+  if (angle->value == 180.0) {
+    gemmi::Vec3 u = A.pos - H->pos;
+    H->pos = A.pos + gemmi::Position(u * (h_dist / u.length()));
+    return;
+  }
+  double theta = gemmi::rad(angle->value);
+  double tau = 0.0;
+  const gemmi::Atom* C = nullptr;
+  for (const Topo::Plane& plane : topo.planes) {
+    if (plane.atoms.size() > 3 &&
+        plane.has(H) && plane.has(&A) && plane.has(&B)) {
+      for (const gemmi::Atom* a4 : plane.atoms) {
+        if (a4 != H && a4 != &A && a4 != &B) {
+          C = a4;
+          break;
+        }
+      }
+      break;
+    }
+  }
+  if (!C) {
+    // using one dihedral angle
+    for (const Topo::Torsion& tor : topo.torsions) {
+      if (tor.atoms[0] == H && !tor.atoms[3]->is_hydrogen() &&
+          tor.atoms[1] == &A && tor.atoms[2] == &B) {
+        tau = gemmi::rad(tor.restr->value);
+        C = tor.atoms[3];
+        break;
+      } else if (tor.atoms[3] == H && !tor.atoms[0]->is_hydrogen() &&
+                 tor.atoms[1] == &B && tor.atoms[2] == &A) {
+        tau = gemmi::rad(tor.restr->value);
+        C = tor.atoms[0];
+        break;
+      }
+    }
+  }
+  H->pos = position_h_using_torsion(C ? C->pos : gemmi::Position(0, 0, 0),
+                                    B.pos, A.pos, h_dist, theta, tau);
+  H->occ = 0; // the position is not unique
+}
 
 static void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
                             const Topo& topo) {
   std::vector<gemmi::Atom*> bonded_h;
-  std::vector<gemmi::Atom*> bonded_non_h;
+  std::vector<const gemmi::Atom*> bonded_non_h;
   for (const Topo::Force& force : ri.forces)
     if (force.rkind == Topo::RKind::Bond) {
       const Topo::Bond& t = topo.bonds[force.index];
       int n = Topo::has_atom(&atom, t);
       if (n == 0 || n == 1) {
         gemmi::Atom* other = t.atoms[1-n];
-        (other->is_hydrogen() ? bonded_h : bonded_non_h).push_back(other);
+        if (other->is_hydrogen())
+          bonded_h.push_back(other);
+        else
+          bonded_non_h.push_back(other);
       }
     }
-  //printf("%s: %zd %zd\n", atom.name.c_str(), bonded_h.size(), bonded_non_h.size());
   if (bonded_h.size() == 1 && bonded_non_h.size() == 1) {
-    gemmi::Atom* h = bonded_h[0];
-    const gemmi::Restraints::Bond* bond = topo.take_bond(h, &atom);
-    const gemmi::Restraints::Angle* angle = topo.take_angle(h, &atom,
-                                                            bonded_non_h[0]);
-    if (!bond || !angle)
-      return;
-    double h_dist = bond->value;
-    if (angle->value == 180.0) {
-      // easy
-    } else {
-      // TODO: plane to dihedral angle 0
-      // using one dihedral angle
-      double theta = gemmi::rad(angle->value);
-      for (const Topo::Torsion& tor : topo.torsions)
-        if (tor.atoms[0] == h && !tor.atoms[3]->is_hydrogen()) {
-          using gemmi::Vec3;
-          assert(tor.atoms[1] == &atom);
-          assert(tor.atoms[2] == bonded_non_h[0]);
-          const Vec3& x1 = tor.atoms[3]->pos;
-          const Vec3& x2 = tor.atoms[2]->pos;
-          const Vec3& x3 = atom.pos;
-          Vec3& x4 = h->pos;
-          double tau = gemmi::rad(tor.restr->value);
-          Vec3 u = x2 - x1;
-          Vec3 v = x3 - x2;
-          Vec3 e1 = v.normalized();
-          double delta = u.dot(e1);
-          Vec3 e2 = -(u - delta * e1).normalized();
-          Vec3 e3 = e1.cross(e2);
-          x4 = x3 + h_dist * (-cos(theta) * e1 +
-                              sin(theta) * cos(tau) * e2 +
-                              sin(theta) * sin(tau) * e3);
-          // TODO
-        } else if (tor.atoms[3] == h && !tor.atoms[0]->is_hydrogen()) {
-          // TODO
-        }
-    }
+    place_hydrogen_1_1(bonded_h[0], atom, *bonded_non_h[0], topo);
+  } else if (bonded_h.size() > 0) {
+    printf("[not done] %5s: %zd %zd\n",
+           atom.name.c_str(), bonded_h.size(), bonded_non_h.size());
+    for (gemmi::Atom* h_atom : bonded_h)
+      h_atom->occ = 0;
   }
-  // TODO
 }
 
 int GEMMI_MAIN(int argc, char **argv) {
@@ -481,13 +531,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           atom.serial = it - cc.atoms.begin();
         }
         if (!p.options[KeepHydrogens] && !p.options[NoHydrogens])
-          for (auto it = cc.atoms.begin(); it != cc.atoms.end(); ++it)
-            if (is_hydrogen(it->el)) {
-              gemmi::Atom atom = it->to_full_atom();
-              atom.flag = 'R';
-              atom.serial = it - cc.atoms.begin();
-              res.atoms.push_back(atom);
-            }
+          add_hydrogens(cc, &res);
         std::sort(res.atoms.begin(), res.atoms.end(),
                   [](const gemmi::Atom& a, const gemmi::Atom& b) {
                     return a.serial != b.serial ? a.serial < b.serial

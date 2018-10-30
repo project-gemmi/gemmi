@@ -16,6 +16,7 @@ struct Position : Vec3 {
   Position() = default;
   Position(double x_, double y_, double z_) : Vec3{x_, y_, z_} {}
   explicit Position(Vec3&& v) : Vec3(v) {}
+  explicit Position(const Vec3& v) : Vec3(v) {}
   Position operator-(const Position& o) const {
     return Position(Vec3::operator-(o));
   }

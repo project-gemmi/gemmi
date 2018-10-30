@@ -131,13 +131,17 @@ struct Restraints {
     return const_cast<Restraints*>(this)->find_bond(a1, a2) != bonds.end();
   }
 
-  template<typename T>
-  void for_each_bonded_atom(const AtomId& a, const T& func) const {
+  template<typename A, typename T>
+  void for_each_bonded_atom(const A& a, const T& func) const {
     for (const Bond& bond : bonds) {
+      const AtomId* other = nullptr;
       if (bond.id1 == a)
-        func(bond.id2);
+        other = &bond.id2;
       else if (bond.id2 == a)
-        func(bond.id1);
+        other = &bond.id1;
+      if (other != nullptr)
+        if (!func(*other))
+          break;
     }
   }
 
@@ -156,6 +160,7 @@ struct Restraints {
             visited.push_back(id);
             parent.push_back(n);
           }
+          return true;
       });
     }
     std::vector<AtomId> path;

@@ -69,6 +69,9 @@ struct Topo {
   struct Plane {
     const Restraints::Plane* restr;
     std::vector<Atom*> atoms;
+    bool has(const Atom* atom) const {
+      return in_vector(const_cast<Atom*>(atom), atoms);
+    }
   };
 
   enum class Provenance { None, PrevLink, Monomer, NextLink, ExtraLink };
