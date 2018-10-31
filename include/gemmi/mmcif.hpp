@@ -59,15 +59,17 @@ inline ResidueId make_resid(const std::string& name,
   if (icode)
     // the insertion code happens to be always a single letter
     rid.seqid.icode = cif::as_char(*icode, ' ');
-  // old mmCIF files have auth_seq_id as number + icode (e.g. 15A)
-  if (!seqid.empty() && seqid.back() >= 'A') {
-    if (rid.seqid.icode == ' ')
-      rid.seqid.icode = seqid.back();
-    else if (rid.seqid.icode != seqid.back())
-      fail("Inconsistent insertion code in " + seqid);
-    rid.seqid.num = cif::as_int(seqid.substr(0, seqid.size() - 1));
-  } else {
-    rid.seqid.num = cif::as_int(seqid, Residue::OptionalNum::None);
+  if (!seqid.empty()) {
+    // old mmCIF files have auth_seq_id as number + icode (e.g. 15A)
+    if (seqid.back() >= 'A') {
+      if (rid.seqid.icode == ' ')
+        rid.seqid.icode = seqid.back();
+      else if (rid.seqid.icode != seqid.back())
+        fail("Inconsistent insertion code in " + seqid);
+      rid.seqid.num = cif::as_int(seqid.substr(0, seqid.size() - 1));
+    } else {
+      rid.seqid.num = cif::as_int(seqid, Residue::OptionalNum::None);
+    }
   }
   return rid;
 }
@@ -229,37 +231,46 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
                                       "label_comp_id",
                                       "label_asym_id",
                                       "?label_seq_id",
-                                      "pdbx_PDB_ins_code",
+                                      "?pdbx_PDB_ins_code",
                                       "Cartn_x",
                                       "Cartn_y",
                                       "Cartn_z",
                                       "occupancy",
                                       "B_iso_or_equiv",
-                                      "pdbx_formal_charge",
+                                      "?pdbx_formal_charge",
                                       "auth_seq_id",
                                       "?auth_comp_id",
-                                      "auth_asym_id",
+                                      "?auth_asym_id",
                                       "?auth_atom_id",
-                                      "pdbx_PDB_model_num"});
+                                      "?pdbx_PDB_model_num"});
   const int kCompId = atom_table.has_column(kAuthCompId) ? kAuthCompId
                                                          : kLabelCompId;
+  const int kAsymId = atom_table.has_column(kAuthAsymId) ? kAuthAsymId
+                                                         : kLabelAsymId;
   const int kAtomId = atom_table.has_column(kAuthAtomId) ? kAuthAtomId
                                                          : kLabelAtomId;
   Model *model = nullptr;
   Chain *chain = nullptr;
   Residue *resi = nullptr;
+  if (atom_table.length() != 0) {
+    if (atom_table.has_column(kModelNum))
+      model = &st.find_or_add_model(atom_table[0].str(kModelNum));
+    else
+      model = &st.find_or_add_model("1");
+  }
   for (auto row : atom_table) {
-    if (!model || row[kModelNum] != model->name) {
-      model = &st.find_or_add_model(row[kModelNum]);
+    if (row.has(kModelNum) && row[kModelNum] != model->name) {
+      model = &st.find_or_add_model(row.str(kModelNum));
       chain = nullptr;
     }
-    if (!chain || as_string(row[kAuthAsymId]) != chain->name) {
-      model->chains.emplace_back(as_string(row[kAuthAsymId]));
+    if (!chain || as_string(row[kAsymId]) != chain->name) {
+      model->chains.emplace_back(as_string(row[kAsymId]));
       chain = &model->chains.back();
       resi = nullptr;
     }
     ResidueId rid = make_resid(as_string(row[kCompId]),
-                               as_string(row[kAuthSeqId]), &row[kInsCode]);
+                               as_string(row[kAuthSeqId]),
+                               row.has(kInsCode) ? &row[kInsCode] : nullptr);
     if (!resi || !resi->matches(rid)) {
       resi = chain->find_or_add_residue(rid);
       if (resi->atoms.empty()) {
@@ -274,7 +285,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
     atom.name = as_string(row[kAtomId]);
     // altloc is always a single letter (not guaranteed by the mmCIF spec)
     atom.altloc = cif::as_char(row[kAltId], '\0');
-    atom.charge = cif::is_null(row[kCharge]) ? 0 : cif::as_int(row[kCharge]);
+    atom.charge = row.has2(kCharge) ? cif::as_int(row[kCharge]) : 0;
     atom.element = gemmi::Element(as_string(row[kSymbol]));
     // According to the PDBx/mmCIF spec _atom_site.id can be a string,
     // but in all the files it is a serial number; its value is not essential,

@@ -293,9 +293,14 @@ struct Topo {
 inline void Topo::ChainInfo::initialize(SubChain& subchain, const Entity* ent) {
   residues.reserve(subchain.size());
   name = subchain.name();
-  entity_id = ent->name;
-  polymer = ent && ent->entity_type == EntityType::Polymer;
-  polymer_type = ent->polymer_type;
+  if (ent) {
+    entity_id = ent->name;
+    polymer = ent->entity_type == EntityType::Polymer;
+    polymer_type = ent->polymer_type;
+  } else {
+    polymer = false;
+    polymer_type = PolymerType::Unknown;
+  }
   for (Residue& res : subchain)
     residues.emplace_back(&res);
 }
