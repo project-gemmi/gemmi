@@ -266,6 +266,23 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
   }
 }
 
+inline bool same_n(const char* s1, const char* s2, size_t n) {
+  return strncmp(s1, s2, n) == 0;
+}
+
+inline void read_remark3_line(const char* line, Structure& st) {
+  // According to
+  // www.wwpdb.org/documentation/file-format-content/format23/remark3.html
+  // SHELXL template has one space less (after '3') than other programs.
+  if (st.resolution == 0.0)
+    for (int offset : {11, 10}) {
+      if (same_n(line + offset, "  RESOLUTION RANGE HIGH (ANGSTROMS) :", 37)) {
+        st.resolution = read_double(line + offset + 37, 7);
+        return;
+      }
+    }
+}
+
 template<typename Input>
 Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   using namespace pdb_impl;
@@ -355,6 +372,9 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
           case 2:
             if (strstr(line, "ANGSTROM"))
               st.resolution = read_double(line + 23, 7);
+            break;
+          case 3:
+            read_remark3_line(line, st);
             break;
           default:
             // ignore all other REMARKs for now

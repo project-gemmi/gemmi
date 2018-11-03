@@ -200,6 +200,7 @@ class TestMol(unittest.TestCase):
 
     def test_read_1orc(self):
         st = gemmi.read_structure(full_path('1orc.pdb'))
+        self.assertEqual(st.resolution, 1.54)
         self.assertAlmostEqual(st.cell.a, 34.77)
         self.assertEqual(st.cell.alpha, 90)
         self.assertEqual(len(st.ncs), 0)
@@ -305,6 +306,7 @@ class TestMol(unittest.TestCase):
 
     def test_ncs(self):
         st = gemmi.read_structure(full_path('5cvz_final.pdb'))
+        self.assertEqual(st.resolution, 3.29)
         first_atom = st[0].sole_residue('A', 17, ' ')['N']
         ne2 = st[0].sole_residue('A', 63, ' ')['NE2']
         direct_dist = first_atom.pos.dist(ne2.pos)
