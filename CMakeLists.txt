@@ -127,7 +127,8 @@ add_executable(gemmi-convert EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-convert)
 
 add_executable(gemmi-crdrst EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/crdrst.cpp src/output.cpp $<TARGET_OBJECTS:input>)
+               src/crdrst.cpp src/placeh.cpp src/output.cpp
+               $<TARGET_OBJECTS:input>)
 support_gz(gemmi-crdrst)
 
 add_executable(gemmi-grep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>

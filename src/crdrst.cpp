@@ -14,6 +14,7 @@
 #include "gemmi/polyheur.hpp"  // for remove_hydrogens
 #include "gemmi/monlib.hpp"    // for MonLib, read_monomers
 #include "gemmi/topo.hpp"      // for Topo
+#include "placeh.h"            // for place_hydrogens
 
 #define GEMMI_PROG crdrst
 #include "options.h"
@@ -394,99 +395,6 @@ static void add_hydrogens(const gemmi::ChemComp& cc, gemmi::Residue* res) {
   }
 }
 
-// Position one hydrogen using one angle (theta) and one dihedral angle (tau).
-// Returns position of x4 in x1-x2-x3-x4, where dist=|x3-x4| and
-// theta is angle(x2, x3, x4).
-static gemmi::Position position_h_using_torsion(const gemmi::Position& x1,
-                                                const gemmi::Position& x2,
-                                                const gemmi::Position& x3,
-                                                double dist,
-                                                double theta,
-                                                double tau) {
-  gemmi::Vec3 u = x2 - x1;
-  gemmi::Vec3 v = x3 - x2;
-  gemmi::Vec3 e1 = v.normalized();
-  double delta = u.dot(e1);
-  gemmi::Vec3 e2 = -(u - delta * e1).normalized();
-  gemmi::Vec3 e3 = e1.cross(e2);
-  return x3 + gemmi::Position(dist * (-cos(theta) * e1 +
-                                sin(theta) * (cos(tau) * e2 + sin(tau) * e3)));
-}
-
-static
-void place_hydrogen_1_1(gemmi::Atom* H, const gemmi::Atom& A,
-                        const gemmi::Atom& B, const Topo& topo) {
-  const Restraints::Bond* bond = topo.take_bond(H, &A);
-  const Restraints::Angle* angle = topo.take_angle(H, &A, &B);
-  if (!bond || !angle)
-    return;
-  double h_dist = bond->value;
-  if (angle->value == 180.0) {
-    gemmi::Vec3 u = A.pos - H->pos;
-    H->pos = A.pos + gemmi::Position(u * (h_dist / u.length()));
-    return;
-  }
-  double theta = gemmi::rad(angle->value);
-  double tau = 0.0;
-  const gemmi::Atom* C = nullptr;
-  for (const Topo::Plane& plane : topo.planes) {
-    if (plane.atoms.size() > 3 &&
-        plane.has(H) && plane.has(&A) && plane.has(&B)) {
-      for (const gemmi::Atom* a4 : plane.atoms) {
-        if (a4 != H && a4 != &A && a4 != &B) {
-          C = a4;
-          break;
-        }
-      }
-      break;
-    }
-  }
-  if (!C) {
-    // using one dihedral angle
-    for (const Topo::Torsion& tor : topo.torsions) {
-      if (tor.atoms[0] == H && !tor.atoms[3]->is_hydrogen() &&
-          tor.atoms[1] == &A && tor.atoms[2] == &B) {
-        tau = gemmi::rad(tor.restr->value);
-        C = tor.atoms[3];
-        break;
-      } else if (tor.atoms[3] == H && !tor.atoms[0]->is_hydrogen() &&
-                 tor.atoms[1] == &B && tor.atoms[2] == &A) {
-        tau = gemmi::rad(tor.restr->value);
-        C = tor.atoms[0];
-        break;
-      }
-    }
-  }
-  H->pos = position_h_using_torsion(C ? C->pos : gemmi::Position(0, 0, 0),
-                                    B.pos, A.pos, h_dist, theta, tau);
-  H->occ = 0; // the position is not unique
-}
-
-static void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
-                            const Topo& topo) {
-  std::vector<gemmi::Atom*> bonded_h;
-  std::vector<const gemmi::Atom*> bonded_non_h;
-  for (const Topo::Force& force : ri.forces)
-    if (force.rkind == Topo::RKind::Bond) {
-      const Topo::Bond& t = topo.bonds[force.index];
-      int n = Topo::has_atom(&atom, t);
-      if (n == 0 || n == 1) {
-        gemmi::Atom* other = t.atoms[1-n];
-        if (other->is_hydrogen())
-          bonded_h.push_back(other);
-        else
-          bonded_non_h.push_back(other);
-      }
-    }
-  if (bonded_h.size() == 1 && bonded_non_h.size() == 1) {
-    place_hydrogen_1_1(bonded_h[0], atom, *bonded_non_h[0], topo);
-  } else if (bonded_h.size() > 0) {
-    printf("[not done] %5s: %zd %zd\n",
-           atom.name.c_str(), bonded_h.size(), bonded_non_h.size());
-    for (gemmi::Atom* h_atom : bonded_h)
-      h_atom->occ = 0;
-  }
-}
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
