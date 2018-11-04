@@ -206,6 +206,8 @@ void add_cif(py::module& cif) {
 
   py::class_<Table> lt(cif, "Table");
   lt.def("width", &Table::width)
+    .def_readonly("prefix_length", &Table::prefix_length)
+    .def("get_prefix", &Table::get_prefix)
     .def("column", &Table::column, py::arg("n"), py::keep_alive<0, 1>())
     .def("find_row", &Table::find_row, py::keep_alive<0, 1>())
     .def("find_column", &Table::find_column, py::arg("suffix"),

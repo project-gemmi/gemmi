@@ -211,6 +211,7 @@ struct Table {
   Item* loop_item;
   Block& bloc;
   std::vector<int> positions;
+  size_t prefix_length;
 
   struct Row {
     Table& tab;
@@ -280,6 +281,14 @@ struct Table {
     if (length() != 1)
       fail("Expected one value, found " + std::to_string(length()));
     return (*this)[0];
+  }
+
+  std::string get_prefix() const {
+    for (int pos : positions)
+      if (pos >= 0)
+        return const_cast<Table*>(this)->tags()
+               .value_at(pos).substr(0, prefix_length);
+    fail("The table has no columns.");
   }
 
   Row find_row(const std::string& s);
@@ -702,7 +711,7 @@ inline Table Block::find(const std::string& prefix,
       }
     }
   }
-  return Table{loop_item, *this, indices};
+  return Table{loop_item, *this, indices, prefix.length()};
 }
 
 inline Table Block::find_any(const std::string& prefix,
@@ -718,17 +727,17 @@ inline Table Block::find_any(const std::string& prefix,
           if (idx != -1)
             indices.push_back(idx);
         }
-        return Table{item, *this, indices};
+        return Table{item, *this, indices, prefix.length()};
       } else {
         indices.push_back(item - items.data());
         while (++tag != tags.end())
           if (const Item* p = find_pair_item(prefix + *tag))
             indices.push_back(p - items.data());
-        return Table{nullptr, *this, indices};
+        return Table{nullptr, *this, indices, prefix.length()};
       }
     }
   }
-  return Table{nullptr, *this, indices};
+  return Table{nullptr, *this, indices, prefix.length()};
 }
 
 inline Table Block::find_mmcif_category(std::string cat) {
@@ -745,12 +754,12 @@ inline Table Block::find_mmcif_category(std::string cat) {
           if (!starts_with(tag, cat))
             fail("Tag " + tag + " in loop with " + cat);
         }
-        return Table{&i, *this, indices};
+        return Table{&i, *this, indices, cat.length()};
       } else {
         indices.push_back(&i - items.data());
       }
     }
-  return Table{nullptr, *this, indices};
+  return Table{nullptr, *this, indices, cat.length()};
 }
 
 
