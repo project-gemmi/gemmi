@@ -461,8 +461,18 @@ and also supports iterators.
 It is also possible to work with the table column-wise::
 
     Column column(int n);
-    // alternatively, specify the full tag name or its unique ending 
-    Column find_column(const std::string& suffix);
+    // alternatively, specify tag name
+    Column find_column(const std::string& tag);
+
+If the table is created in a function that uses prefix,
+the prefix can be omitted in `find_column`::
+
+    Table t = block.find("_entity_poly_seq.", {"entity_id", "num", "mon_id"});
+    Column col = t.find_column(2);
+    // is equivalent to
+    Column col = t.find_column("_entity_poly_seq.mon_id");
+    // is equivalent to
+    Column col = t.find_column("mon_id");
 
 Both ``Column`` and ``Table::Row`` have functions ``begin()`` and ``end()``
 in const and non-const variants, returning ``iterator`` and

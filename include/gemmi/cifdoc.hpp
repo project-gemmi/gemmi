@@ -295,17 +295,18 @@ struct Table {
 
   Column column(int n);
 
-  // tries exact tag match first, looks for suffix later
-  Column find_column(const std::string& suffix) {
-    int w = width();
-    Row tag_row = tags();
-    for (int i = 0; i != w; ++i)
-      if (tag_row[i] == suffix)
-        return column(i);
-    for (int i = 0; i != w; ++i)
-      if (gemmi::ends_with(tag_row[i], suffix))
-        return column(i);
-    fail("Column name or suffix not found: " + suffix);
+  // prefix is optional
+  int find_column_position(const std::string& tag) const {
+    Row tag_row = const_cast<Table*>(this)->tags();
+    for (int i = 0, w = width(); i != w; ++i)
+      if (tag_row[i] == tag ||
+          tag_row[i].compare(prefix_length, std::string::npos, tag) == 0)
+        return i;
+    fail("Column name not found: " + tag);
+  }
+
+  Column find_column(const std::string& tag) {
+    return column(find_column_position(tag));
   }
 
   void erase();

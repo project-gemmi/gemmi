@@ -27,7 +27,7 @@ class TestBlock(unittest.TestCase):
         gc.collect()
         self.assertEqual([list(r) for r in rows], [['alpha', 'beta']])
 
-        tab = block.find(['_la', '_ln'])
+        tab = block.find('_l', ['a', 'n'])
         self.assertEqual(tab.find_row('A')[1], '1')
         self.assertRaises(RuntimeError, tab.find_row, 'B')
         self.assertEqual(tab.find_row('C')[1], '2')
