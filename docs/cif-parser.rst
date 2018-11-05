@@ -465,7 +465,7 @@ It is also possible to work with the table column-wise::
     Column find_column(const std::string& tag);
 
 If the table is created in a function that uses prefix,
-the prefix can be omitted in `find_column`::
+the prefix can be omitted in ``find_column``::
 
     Table t = block.find("_entity_poly_seq.", {"entity_id", "num", "mon_id"});
     Column col = t.find_column(2);
@@ -730,10 +730,73 @@ argument:
 
 .. doctest::
 
-  >>> block.find('_entity_poly_seq.', ['entity_id', 'num', 'mon_id'])
+  >>> table = block.find('_entity_poly_seq.', ['entity_id', 'num', 'mon_id'])
+  >>> table
   <gemmi.cif.Table 18 x 3>
 
-**TODO**: document Table and Row
+Table has width and length and, if a prefix was specified when calling find,
+it also stores the prefix length:
+
+.. doctest::
+
+  >>> table.width()
+  3
+  >>> len(table)
+  18
+  >>> table.prefix_length
+  17
+  >>> table.get_prefix()
+  '_entity_poly_seq.'
+
+  >>> 'yes' if table else 'no'
+  'yes'
+  >>> 'yes' if block.find(['_made_up.entry'])  else 'no'
+  'no'
+
+The data in table is stored in rows and columns, which are also lightweight
+abstraction. The columns are the same ``cif.Column`` objects as described
+above:
+
+.. doctest::
+
+  >>> table.find_column('_entity_poly_seq.mon_id')
+  <gemmi.cif.Column _entity_poly_seq.mon_id length 18>
+  >>> # the prefix is optional
+  >>> table.find_column('mon_id')
+  <gemmi.cif.Column _entity_poly_seq.mon_id length 18>
+
+But the primary way to work with tables is to access rows,
+either by iterating the table (``for row in table``),
+or by indexing:
+
+.. doctest::
+
+  >>> table[0]
+  <gemmi.cif.Table.Row: 1 1 DG>
+
+Rows can also be indexed and iterated over.
+
+.. doctest::
+
+  >>> for row in table: print(row[-1], end=',')
+  DG,DC,DG,DT,DA,DC,DG,DC,DSN,ALA,N2C,NCY,MVA,DSN,ALA,NCY,N2C,MVA,
+  >>>
+  >>> row = table[9]
+  >>> for value in row: print(value, end=',')
+  2,2,ALA,
+  >>> row[2]
+  'ALA'
+  >>> row[-1]  # the same
+  'ALA'
+  >>> row.get(2) # the same, but returns None instead of IndexError
+  'ALA'
+  >>> row['mon_id']  # the same, but slightly slower than numeric index
+  'ALA'
+  >>> row['_entity_poly_seq.mon_id']  # the same
+  'ALA'
+
+
+**TODO**: document optional tags
 
 mmCIF categories
 ~~~~~~~~~~~~~~~~

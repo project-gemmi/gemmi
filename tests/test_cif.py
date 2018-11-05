@@ -88,10 +88,16 @@ class TestBlock(unittest.TestCase):
         col_b[0] = '20'
         self.assertEqual(block.find_value('_b'), '20')
         bc = block.find(['_b', '_a'])
+        self.assertEqual(bc[0]['_a'], '1')
         bc[0][0] = '30'
         self.assertEqual(block.find_value('_b'), '30')
         bc[0][1] = '40'
         self.assertEqual(block.find_value('_a'), '40')
+        self.assertEqual(bc[0]['_a'], '40')
+        bc[0]['_a'] = '44'
+        self.assertEqual(block.find_value('_a'), '44')
+        self.assertEqual(block.find_value('_a'), '44')
+        self.assertEqual(block.find_value('_b'), '30')
 
     def test_add_row(self):
         block = cif.read_string('data_a loop_ _x _y 1 2 3 4')[0]

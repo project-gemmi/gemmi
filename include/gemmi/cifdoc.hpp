@@ -193,6 +193,7 @@ public:
   const std::string& at(int n) const {
     return const_cast<Column*>(this)->at(n);
   }
+
   std::string str(int n) const { return as_string(at(n)); }
   const Item* item() const { return item_; }
   Item* item() { return item_; }
@@ -217,18 +218,26 @@ struct Table {
     Table& tab;
     int row_index;
 
-    std::string& value_at(int pos);
+    std::string& value_at_unsafe(int pos);
+    std::string& value_at(int pos) {
+      if (pos == -1)
+        throw std::out_of_range("Cannot access missing optional tag.");
+      return value_at_unsafe(pos);
+    }
     const std::string& value_at(int pos) const {
       return const_cast<Row*>(this)->value_at(pos);
     }
+
     std::string& at(int n) {
       return value_at(tab.positions.at(n < 0 ? n + size() : n));
     }
     const std::string& at(int n) const { return const_cast<Row*>(this)->at(n); }
+
     std::string& operator[](int n);
     const std::string& operator[](int n) const {
       return const_cast<Row*>(this)->operator[](n);
     }
+
     std::string* ptr_at(int n) {
       int pos = tab.positions.at(n < 0 ? n + size() : n);
       return pos >= 0 ? &value_at(pos) : nullptr;
@@ -236,6 +245,7 @@ struct Table {
     const std::string* ptr_at(int n) const {
       return const_cast<Row*>(this)->ptr_at(n);
     }
+
     bool has(int n) const { return tab.positions.at(n) >= 0; }
     bool has2(int n) const { return has(n) && !cif::is_null(operator[](n)); }
 
@@ -249,7 +259,9 @@ struct Table {
     }
 
     size_t size() const { return tab.width(); }
+
     std::string str(int n) const { return as_string(at(n)); }
+
     using iterator = IndirectIter<Row, std::string>;
     using const_iterator = IndirectIter<const Row, const std::string>;
     iterator begin() { return iterator({this, tab.positions.begin()}); }
@@ -293,20 +305,27 @@ struct Table {
 
   Row find_row(const std::string& s);
 
-  Column column(int n);
+  Column column_at_pos(int pos);
+  Column column(int n) {
+    int pos = positions.at(n);
+    if (pos == -1)
+      fail("Cannot access absent column");
+    return column_at_pos(pos);
+  }
 
   // prefix is optional
   int find_column_position(const std::string& tag) const {
     Row tag_row = const_cast<Table*>(this)->tags();
-    for (int i = 0, w = width(); i != w; ++i)
-      if (tag_row[i] == tag ||
-          tag_row[i].compare(prefix_length, std::string::npos, tag) == 0)
-        return i;
+    for (int pos : positions) {
+      const std::string& v = tag_row.value_at_unsafe(pos);
+      if (v == tag || v.compare(prefix_length, std::string::npos, tag) == 0)
+        return pos;
+    }
     fail("Column name not found: " + tag);
   }
 
   Column find_column(const std::string& tag) {
-    return column(find_column_position(tag));
+    return column_at_pos(find_column_position(tag));
   }
 
   void erase();
@@ -533,9 +552,7 @@ inline std::string& Table::Row::operator[](int n) {
   return tab.bloc.items[pos].pair[row_index == -1 ? 0 : 1];
 }
 
-inline std::string& Table::Row::value_at(int pos) {
-  if (pos == -1)
-    throw std::out_of_range("Cannot access missing optional tag.");
+inline std::string& Table::Row::value_at_unsafe(int pos) {
   if (row_index == -1) { // tags
     if (tab.loop_item)
       return tab.loop_item->loop.tags.at(pos);
@@ -565,10 +582,7 @@ inline Table::Row Table::find_row(const std::string& s) {
   fail("Not found in the first column: " + s);
 }
 
-inline Column Table::column(int n) {
-  int pos = positions.at(n);
-  if (pos == -1)
-    fail("Cannot access absent column");
+inline Column Table::column_at_pos(int pos) {
   if (loop_item)
     return Column(loop_item, pos);
   return Column(&bloc.items[pos], 0);

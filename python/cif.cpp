@@ -210,7 +210,7 @@ void add_cif(py::module& cif) {
     .def("get_prefix", &Table::get_prefix)
     .def("column", &Table::column, py::arg("n"), py::keep_alive<0, 1>())
     .def("find_row", &Table::find_row, py::keep_alive<0, 1>())
-    .def("find_column", &Table::find_column, py::arg("suffix"),
+    .def("find_column", &Table::find_column, py::arg("tag"),
          py::keep_alive<0, 1>())
     .def("erase", &Table::erase)
     .def_property_readonly("tags",
@@ -233,8 +233,15 @@ void add_cif(py::module& cif) {
     .def("str", &Table::Row::str)
     .def("__len__", &Table::Row::size)
     .def("__getitem__", (std::string& (Table::Row::*)(int)) &Table::Row::at)
+    .def("__getitem__", [](Table::Row &self, const std::string& tag) {
+        return self.value_at_unsafe(self.tab.find_column_position(tag));
+    })
     .def("__setitem__", [](Table::Row &self, int idx, std::string value) {
         self.at(idx) = value;
+    })
+    .def("__setitem__", [](Table::Row &self, const std::string& tag,
+                           std::string value) {
+        self.value_at_unsafe(self.tab.find_column_position(tag)) = value;
     })
     .def("get", (std::string* (Table::Row::*)(int)) &Table::Row::ptr_at,
          py::arg("index"), py::return_value_policy::reference_internal)
