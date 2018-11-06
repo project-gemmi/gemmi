@@ -159,7 +159,7 @@ struct Topo {
                                       const Atom* c) const {
     for (const Angle& ang : angles)
       if (ang.atoms[1] == b && ((ang.atoms[0] == a && ang.atoms[2] == c) ||
-                                (ang.atoms[0] == c && ang.atoms[1] == a)))
+                                (ang.atoms[0] == c && ang.atoms[2] == a)))
         return ang.restr;
     return nullptr;
   }
