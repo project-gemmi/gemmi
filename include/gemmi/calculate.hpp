@@ -31,11 +31,13 @@ template<> inline double count_occupancies(const Atom& atom) {
   return atom.occ;
 }
 
+inline double calculate_angle_v(const Vec3& a, const Vec3& b) {
+  return std::acos(a.dot(b) / std::sqrt(a.length_sq() * b.length_sq()));
+}
+
 inline double calculate_angle(const Position& p0, const Position& p1,
                               const Position& p2) {
-  Vec3 a = p0 - p1;
-  Vec3 b = p2 - p1;
-  return std::acos(a.dot(b) / std::sqrt(a.length_sq() * b.length_sq()));
+  return calculate_angle_v(p0 - p1, p2 - p1);
 }
 
 // discussion: https://stackoverflow.com/questions/20305272/

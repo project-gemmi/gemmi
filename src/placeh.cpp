@@ -1,7 +1,9 @@
 // Copyright 2018 Global Phasing Ltd.
 
 #include "placeh.h"
+#include <cmath> // for sqrt, sin, cos
 #include <gemmi/chemcomp.hpp> // for ChemComp
+#include <gemmi/calculate.hpp> // for calculate_angle
 
 using gemmi::Topo;
 using gemmi::Restraints;
@@ -24,6 +26,8 @@ Position position_from_angle_and_torsion(const Position& x1,
                                          double dist,  // |x3-x4|
                                          double theta, // angle x2-x3-x4
                                          double tau) { // dihedral angle
+  using std::sin;
+  using std::cos;
   gemmi::Vec3 u = x2 - x1;
   gemmi::Vec3 v = x3 - x2;
   gemmi::Vec3 e1 = v.normalized();
@@ -34,20 +38,60 @@ Position position_from_angle_and_torsion(const Position& x1,
                                sin(theta) * (cos(tau) * e2 + sin(tau) * e3)));
 }
 
-// Calculate position using two angles.
-// Based on https://en.wikipedia.org/wiki/Trilateration
-// Returns p4. Topology: p1 is bonded to p2, p3 and p4.
-static
-Position position_from_two_angles(const Position& p1,
-                                  const Position& p2,
-                                  const Position& p3,
-                                  double dist14,   // |p4-p1|
-                                  double theta1,   // angle p4-p1-p2
-                                  double theta2) { // angle p4-p1-p3
-  double dist12 = p1.dist(p2);
-  double dist13 = p1.dist(p3);
-  return p1;
+// Rodrigues' rotation formula, rotate vector v given axis of rotation
+// (which must be a unit vector) and angle (in radians).
+gemmi::Vec3 rotate_by_axis(const gemmi::Vec3& v, const gemmi::Vec3& axis,
+                           double theta) {
+  double sin_theta = std::sin(theta);
+  double cos_theta = std::cos(theta);
+  return v * cos_theta + axis.cross(v) * sin_theta +
+         axis * (axis.dot(v) * (1 - cos_theta));
 }
+
+// Based on https://en.wikipedia.org/wiki/Trilateration
+// If no points satisfy the condition returns a single approximation.
+static
+std::pair<Position, Position> trilaterate(const Position& p1, double r1sq,
+                                          const Position& p2, double r2sq,
+                                          const Position& p3, double r3sq) {
+  // variables have the same names as on the Wikipedia Trilateration page
+  gemmi::Vec3 ex = (p2 - p1).normalized();
+	double i = ex.dot(p3-p1);
+  gemmi::Vec3 ey = (gemmi::Vec3(p3) - p1 - i*ex).normalized();
+  gemmi::Vec3 ez = ex.cross(ey);
+	double d = (p2-p1).length();
+	double j = ey.dot(p3-p1);
+	double x = (r1sq - r2sq + d*d) / (2*d);
+	double y = (r1sq - r3sq + i*i + j*j) / (2*j) - x*i/j;
+  double z2 = r1sq - x*x - y*y;
+	double z = z2 > 0 ? std::sqrt(z2) : 0;
+	return std::make_pair(p1 + Position(x*ex + y*ey + z*ez),
+	                      p1 + Position(x*ex + y*ey - z*ez));
+}
+
+// Calculate position using two angles.
+// Returns p4. Topology: p1 is bonded to p2, p3 and p4.
+static std::pair<Position, Position>
+position_from_two_angles(const Position& p1,
+                         const Position& p2,
+                         const Position& p3,
+                         double dist14,     // |p4-p1|
+                         double theta214,   // angle p2-p1-p4
+                         double theta314) { // angle p3-p1-p4
+  double d12sq = p1.dist_sq(p2);
+  double d13sq = p1.dist_sq(p3);
+  double d14sq = dist14 * dist14;
+  // the law of cosines
+  double d24sq = d14sq + d12sq - 2 * std::sqrt(d14sq * d12sq) * cos(theta214);
+  double d34sq = d14sq + d13sq - 2 * std::sqrt(d14sq * d13sq) * cos(theta314);
+  auto t = trilaterate(p1, d14sq, p2, d24sq, p3, d34sq);
+  printf("theta214=%g <- %g  theta314=%g <- %g theta213=%g\n",
+     gemmi::deg(calculate_angle(t.first, p1, p2)), gemmi::deg(theta214),
+     gemmi::deg(calculate_angle(t.first, p1, p3)), gemmi::deg(theta314),
+     gemmi::deg(calculate_angle(p2, p1, p3)));
+  return t;
+}
+
 
 static
 void place_hydrogen_1_1(BondedAtom& h, const gemmi::Atom& a,
@@ -143,14 +187,32 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
     place_hydrogen_1_1(hs[0], atom, known[0], topo);
 
   } else if (known.size() == 2 && hs.size() == 1) {
-    double phi = gemmi::rad(120);
-    double psi = gemmi::rad(120);
+    double theta1 = gemmi::rad(120);
+    double theta2 = gemmi::rad(120);
     if (const Angle* ang = topo.take_angle(hs[0].ptr, &atom, known[0].ptr))
-      phi = gemmi::rad(ang->value);
+      theta1 = gemmi::rad(ang->value);
     if (const Angle* ang = topo.take_angle(hs[0].ptr, &atom, known[1].ptr))
-      psi = gemmi::rad(ang->value);
-    hs[0].pos = position_from_two_angles(known[0].pos, atom.pos, known[1].pos,
-                                         hs[0].dist, phi, psi);
+      theta2 = gemmi::rad(ang->value);
+    if (const Angle* ang = topo.take_angle(known[0].ptr, &atom, known[1].ptr)) {
+      // If all atoms are in the same plane (sum of angles is 360 degree)
+      // the calculations can be simplified.
+      double sum = theta1 + theta2 + gemmi::rad(ang->value);
+      constexpr double two_pi = 2 * gemmi::pi();
+      if (std::fabs(sum - two_pi) < 1e-4) {
+        gemmi::Vec3 v12 = (known[0].pos - atom.pos);
+        gemmi::Vec3 v13 = (known[1].pos - atom.pos);
+        double ratio = (two_pi - calculate_angle_v(v12, v13)) /
+                       (theta1 + theta2);
+        gemmi::Vec3 axis = v13.cross(v12).normalized();
+        gemmi::Vec3 v14 = rotate_by_axis(v12, axis, theta1 * ratio);
+        hs[0].pos = atom.pos + Position(hs[0].dist / v14.length() * v14);
+        return;
+      }
+    }
+    auto possible = position_from_two_angles(atom.pos,
+                                             known[0].pos, known[1].pos,
+                                             hs[0].dist, theta1, theta2);
+    hs[0].pos = possible.first; // TODO
 
     printf("[2xangle] %5s: \n", hs[0].ptr->name.c_str());
 
