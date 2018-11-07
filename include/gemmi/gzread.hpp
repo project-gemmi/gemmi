@@ -65,7 +65,8 @@ Structure read_pdb_gz(const std::string& path) {
 }
 
 Structure read_structure_gz(const std::string& path, CoorFormat format) {
-  if (format == CoorFormat::Unknown)
+  if ((format == CoorFormat::Unknown || format == CoorFormat::UnknownAny) &&
+      ends_with(path, ".gz"))
     format = coordinate_format_from_extension_gz(path);
   return read_structure(MaybeGzipped(path), format);
 }
