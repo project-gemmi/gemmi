@@ -164,6 +164,13 @@ struct Topo {
     return nullptr;
   }
 
+  const Chirality* get_chirality(const Atom* ctr) const {
+    for (const Chirality& chir : chirs)
+      if (chir.atoms[0] == ctr)
+        return &chir;
+    return nullptr;
+  }
+
   std::vector<Force> apply_restraints(const Restraints& rt,
                                       Residue& res, Residue* res2,
                                       char altloc='*') {

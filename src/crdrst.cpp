@@ -118,7 +118,9 @@ static cif::Document make_crd(const gemmi::Structure& st,
                                            : "n/a";
       std::string mod = get_ccp4_mod_id(res_info.mods);
       poly_loop.add_row({res_info.res->name, res_info.res->seqid.str(),
-                         chain_info.entity_id, res_info.prev_link, prev, mod});
+                         chain_info.entity_id,
+                         res_info.prev_idx ? res_info.prev_link : ".",
+                         prev, mod});
     }
   }
   items.emplace_back(cif::CommentArg{"##########\n"

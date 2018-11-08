@@ -49,7 +49,7 @@ gemmi::Vec3 rotate_by_axis(const gemmi::Vec3& v, const gemmi::Vec3& axis,
 }
 
 // Based on https://en.wikipedia.org/wiki/Trilateration
-// If no points satisfy the condition returns a single approximation.
+// If no points satisfy the returns NaNs
 static
 std::pair<Position, Position> trilaterate(const Position& p1, double r1sq,
                                           const Position& p2, double r2sq,
@@ -64,7 +64,7 @@ std::pair<Position, Position> trilaterate(const Position& p1, double r1sq,
 	double x = (r1sq - r2sq + d*d) / (2*d);
 	double y = (r1sq - r3sq + i*i + j*j) / (2*j) - x*i/j;
   double z2 = r1sq - x*x - y*y;
-	double z = z2 > 0 ? std::sqrt(z2) : 0;
+	double z = std::sqrt(z2);  // may result in NaN
 	return std::make_pair(p1 + Position(x*ex + y*ey + z*ez),
 	                      p1 + Position(x*ex + y*ey - z*ez));
 }
@@ -85,10 +85,6 @@ position_from_two_angles(const Position& p1,
   double d24sq = d14sq + d12sq - 2 * std::sqrt(d14sq * d12sq) * cos(theta214);
   double d34sq = d14sq + d13sq - 2 * std::sqrt(d14sq * d13sq) * cos(theta314);
   auto t = trilaterate(p1, d14sq, p2, d24sq, p3, d34sq);
-  printf("theta214=%g <- %g  theta314=%g <- %g theta213=%g\n",
-     gemmi::deg(calculate_angle(t.first, p1, p2)), gemmi::deg(theta214),
-     gemmi::deg(calculate_angle(t.first, p1, p3)), gemmi::deg(theta314),
-     gemmi::deg(calculate_angle(p2, p1, p3)));
   return t;
 }
 
@@ -196,13 +192,13 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
     if (const Angle* ang = topo.take_angle(known[0].ptr, &atom, known[1].ptr)) {
       // If all atoms are in the same plane (sum of angles is 360 degree)
       // the calculations can be simplified.
-      double sum = theta1 + theta2 + gemmi::rad(ang->value);
+      double theta3 = gemmi::rad(ang->value);
+      gemmi::Vec3 v12 = (known[0].pos - atom.pos);
+      gemmi::Vec3 v13 = (known[1].pos - atom.pos);
+      double angle213 = calculate_angle_v(v12, v13);
       constexpr double two_pi = 2 * gemmi::pi();
-      if (std::fabs(sum - two_pi) < 1e-4) {
-        gemmi::Vec3 v12 = (known[0].pos - atom.pos);
-        gemmi::Vec3 v13 = (known[1].pos - atom.pos);
-        double ratio = (two_pi - calculate_angle_v(v12, v13)) /
-                       (theta1 + theta2);
+      if (theta1 + theta2 + std::max(theta3, angle213) + 0.01 > two_pi) {
+        double ratio = (two_pi - angle213) / (theta1 + theta2);
         gemmi::Vec3 axis = v13.cross(v12).normalized();
         gemmi::Vec3 v14 = rotate_by_axis(v12, axis, theta1 * ratio);
         hs[0].pos = atom.pos + Position(hs[0].dist / v14.length() * v14);
@@ -212,14 +208,17 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
     auto possible = position_from_two_angles(atom.pos,
                                              known[0].pos, known[1].pos,
                                              hs[0].dist, theta1, theta2);
-    hs[0].pos = possible.first; // TODO
+    const Topo::Chirality* chir = topo.get_chirality(&atom);
+    hs[0].pos = possible.first;
+    if (chir && chir->check() < 0)
+      hs[0].pos = possible.second;
 
-    printf("[2xangle] %5s: \n", hs[0].ptr->name.c_str());
+    printf("[2xangle] %5s of %s\n", hs[0].ptr->name.c_str(), atom.name.c_str());
 
   // TODO: all other cases
 
   } else {
-    printf("[not done] %5s: %zd %zd\n",
+    printf("[not done] %5s: %zd h %zd known\n",
            atom.name.c_str(), hs.size(), known.size());
     for (BondedAtom& bonded_h : hs)
       bonded_h.ptr->occ = 0;
