@@ -58,12 +58,11 @@ struct Topo {
                                      atoms[2]->pos, atoms[3]->pos);
     }
     // positive value for preserved chirality
-    double check() const {
-      double value = calculate();
-      if ((restr->chir == Restraints::Chirality::Type::Positive && value < 0) ||
-          (restr->chir == Restraints::Chirality::Type::Negative && value > 0))
-        return -std::abs(value);
-      return std::abs(value);
+    bool check() const {
+      if ((restr->chir == ChiralityType::Positive && calculate() < 0) ||
+          (restr->chir == ChiralityType::Negative && calculate() > 0))
+        return false;
+      return true;
     }
   };
   struct Plane {

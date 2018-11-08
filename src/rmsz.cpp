@@ -101,7 +101,7 @@ static double check_restraint(const Topo::Force force,
     case Topo::RKind::Chirality: {
       const Topo::Chirality& t = topo.chirs[force.index];
       rmses->all_chiralities++;
-      if (t.check() < 0) {
+      if (!t.check()) {
         printf("%s wrong chirality of %s\n", tag, t.restr->str().c_str());
         rmses->wrong_chirality++;
         return 1.0;

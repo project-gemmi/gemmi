@@ -19,6 +19,7 @@ namespace gemmi {
 enum class BondType {
   Unspec, Single, Double, Triple, Aromatic, Deloc, Metal
 };
+enum class ChiralityType { Positive, Negative, Both };
 
 struct Restraints {
   struct AtomId {
@@ -68,6 +69,7 @@ struct Restraints {
     AtomId id1, id2, id3;
     double value;
     double esd;
+    double radians() const { return rad(value); }
     std::string str() const {
       return id1.atom + "-" + id2.atom + "-" + id3.atom;
     }
@@ -85,9 +87,8 @@ struct Restraints {
   };
 
   struct Chirality {
-    enum Type { Positive, Negative, Both };
     AtomId id_ctr, id1, id2, id3;
-    Type chir;
+    ChiralityType chir;
     std::string str() const {
       return id_ctr.atom + "," + id1.atom + "," + id2.atom + "," + id3.atom;
     }
@@ -371,20 +372,20 @@ inline float order_of_bond_type(BondType btype) {
 }
 
 // it doesn't handle crossN types from the monomer library
-inline Restraints::Chirality::Type chirality_from_string(const std::string& s) {
+inline ChiralityType chirality_from_string(const std::string& s) {
   switch (s[0] | 0x20) {
-    case 'p': return Restraints::Chirality::Positive;
-    case 'n': return Restraints::Chirality::Negative;
-    case 'b': return Restraints::Chirality::Both;
+    case 'p': return ChiralityType::Positive;
+    case 'n': return ChiralityType::Negative;
+    case 'b': return ChiralityType::Both;
     default: throw std::out_of_range("Unexpected chirality: " + s);
   }
 }
 
-inline const char* chirality_to_string(Restraints::Chirality::Type chir_type) {
+inline const char* chirality_to_string(ChiralityType chir_type) {
   switch (chir_type) {
-    case Restraints::Chirality::Positive: return "positive";
-    case Restraints::Chirality::Negative: return "negative";
-    case Restraints::Chirality::Both: return "both";
+    case ChiralityType::Positive: return "positive";
+    case ChiralityType::Negative: return "negative";
+    case ChiralityType::Both: return "both";
   }
   unreachable();
 }

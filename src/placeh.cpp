@@ -89,53 +89,6 @@ position_from_two_angles(const Position& p1,
 }
 
 
-static
-void place_hydrogen_1_1(BondedAtom& h, const gemmi::Atom& a,
-                        const BondedAtom& b, const Topo& topo) {
-  const Restraints::Angle* angle = topo.take_angle(h.ptr, &a, b.ptr);
-  if (!angle)
-    return;
-  if (angle->value == 180.0) {
-    gemmi::Vec3 u = a.pos - h.pos;
-    h.pos = a.pos + Position(u * (h.dist / u.length()));
-    return;
-  }
-  double theta = gemmi::rad(angle->value);
-  double tau = 0.0;
-  const gemmi::Atom* c = nullptr;
-  for (const Topo::Plane& plane : topo.planes) {
-    if (plane.atoms.size() > 3 &&
-        plane.has(h.ptr) && plane.has(&a) && plane.has(b.ptr)) {
-      for (const gemmi::Atom* maybe_c : plane.atoms) {
-        if (maybe_c != h.ptr && maybe_c != &a && maybe_c != b.ptr) {
-          c = maybe_c;
-          break;
-        }
-      }
-      break;
-    }
-  }
-  if (!c) {
-    // using one dihedral angle
-    for (const Topo::Torsion& tor : topo.torsions) {
-      if (tor.atoms[0] == h.ptr && !tor.atoms[3]->is_hydrogen() &&
-          tor.atoms[1] == &a && tor.atoms[2] == b.ptr) {
-        tau = gemmi::rad(tor.restr->value);
-        c = tor.atoms[3];
-        break;
-      } else if (tor.atoms[3] == h.ptr && !tor.atoms[0]->is_hydrogen() &&
-                 tor.atoms[1] == b.ptr && tor.atoms[2] == &a) {
-        tau = gemmi::rad(tor.restr->value);
-        c = tor.atoms[0];
-        break;
-      }
-    }
-  }
-  h.pos = position_from_angle_and_torsion(c ? c->pos : Position(0, 0, 0),
-                                          b.pos, a.pos, h.dist, theta, tau);
-  h.ptr->occ = 0; // the position is not unique
-}
-
 void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
                      const Topo& topo) {
   using Angle = Restraints::Angle;
@@ -157,48 +110,131 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
   if (hs.size() == 0)
     return;
 
+  auto giveup = [&](const std::string& message) {
+    for (BondedAtom& bonded_h : hs)
+      bonded_h.ptr->occ = 0;
+    gemmi::fail(message);
+  };
+
+  // ==== only hydrogens ====
   if (known.size() == 0) {
+    // we can only arbitrarily pick directions of atoms
+    for (BondedAtom& bonded_h : hs)
+      bonded_h.ptr->occ = 0;
     hs[0].pos = atom.pos + Position(hs[0].dist, 0, 0);
     if (hs.size() > 1) {
       double theta = M_PI;
       if (const Angle* ang = topo.take_angle(hs[1].ptr, &atom, hs[0].ptr))
-        theta = gemmi::rad(ang->value);
+        theta = ang->radians();
       hs[1].pos = atom.pos + Position(hs[1].dist * cos(theta),
                                       hs[1].dist * sin(theta), 0);
     }
     if (hs.size() > 2) {
-      double theta1 = gemmi::rad(180);
-      double theta2 = gemmi::rad(180);
-      if (const Angle* ang = topo.take_angle(hs[2].ptr, &atom, hs[0].ptr))
-        theta1 = gemmi::rad(ang->value);
-      if (const Angle* ang = topo.take_angle(hs[2].ptr, &atom, hs[1].ptr))
-        theta2 = gemmi::rad(ang->value);
-      // TODO 3rd atom
+      if (hs.size() == 3) {
+        // for now only NH3 (NH2.cif and NH3.cif) has such configuration,
+        // so we are cheating here a little.
+        double y = 2 * atom.pos.y - hs[1].pos.y;
+        hs[2].pos = Position(hs[1].pos.x, y, hs[1].pos.z);
+      } else if (hs.size() == 4) {
+        // similarly, only CH4 (CH2.cif) and and NH4 (NH4.cif) are handled here
+        const Angle* ang1 = topo.take_angle(hs[2].ptr, &atom, hs[0].ptr);
+        const Angle* ang2 = topo.take_angle(hs[2].ptr, &atom, hs[1].ptr);
+        double theta1 = gemmi::rad(ang1 ? ang1->value : 109.47122);
+        double theta2 = gemmi::rad(ang2 ? ang2->value : 109.47122);
+        auto pos = position_from_two_angles(atom.pos, hs[0].pos, hs[1].pos,
+                                            hs[2].dist, theta1, theta2);
+        hs[2].pos = pos.first;
+        hs[3].pos = pos.second;
+      }
     }
-    // TODO 4th atom
-    for (BondedAtom& bonded_h : hs)
-      bonded_h.ptr->occ = 0;
 
-  } else if (known.size() == 1 && hs.size() == 1) {
-    place_hydrogen_1_1(hs[0], atom, known[0], topo);
+  // ==== one heavy atom and hydrogens ====
+  } else if (known.size() == 1) {
+    const BondedAtom& h = hs[0];
+    const BondedAtom& heavy = known[0];
+    const Restraints::Angle* angle = topo.take_angle(h.ptr, &atom, heavy.ptr);
+    if (!angle)
+      giveup("No angle restraint for " + h.ptr->name + ", giving up.\n");
+    if (std::abs(angle->value - 180.0) < 0.5) {
+      gemmi::Vec3 u = atom.pos - h.pos;
+      h.pos = atom.pos + Position(u * (h.dist / u.length()));
+      return;
+    }
+    double theta = angle->radians();
+    double tau = 0.0;
+    const gemmi::Atom* tau_end = nullptr;
+    for (const Topo::Plane& plane : topo.planes) {
+      if (plane.atoms.size() > 3 &&
+          plane.has(h.ptr) && plane.has(&atom) && plane.has(heavy.ptr)) {
+        for (const gemmi::Atom* a : plane.atoms) {
+          if (a != h.ptr && a != &atom && a != heavy.ptr) {
+            tau_end = a;
+            break;
+          }
+        }
+        break;
+      }
+    }
+    if (!tau_end) {
+      // using one dihedral angle
+      for (const Topo::Torsion& tor : topo.torsions) {
+        if (tor.atoms[0] == h.ptr && !tor.atoms[3]->is_hydrogen() &&
+            tor.atoms[1] == &atom && tor.atoms[2] == heavy.ptr) {
+          tau = gemmi::rad(tor.restr->value);
+          tau_end = tor.atoms[3];
+          break;
+        } else if (tor.atoms[3] == h.ptr && !tor.atoms[0]->is_hydrogen() &&
+                   tor.atoms[1] == heavy.ptr && tor.atoms[2] == &atom) {
+          tau = gemmi::rad(tor.restr->value);
+          tau_end = tor.atoms[0];
+          break;
+        }
+      }
+    }
+    h.pos = position_from_angle_and_torsion(
+        tau_end ? tau_end->pos : Position(0, 0, 0),
+        heavy.pos, atom.pos, h.dist, theta, tau);
+    h.ptr->occ = 0; // the position is not unique
+    if (hs.size() > 1) {
+      const Angle* angle2 = topo.take_angle(hs[1].ptr, &atom, heavy.ptr);
+      const Angle* angleh = topo.take_angle(hs[2].ptr, &atom, h.ptr);
+      if (hs.size() == 2) {
+        /* TODO: symmetric
+        printf("cccccc  %g %g %g %s\n",
+                                     angle ? angle->value : 0,
+                                     angle2 ? angle2->value : 0,
+                                     angleh ? angleh->value : 0,
+                                     tau_end ? "tau" : "nop");
+        */
+      } else if (hs.size() == 2) {
+        // TODO
+      }
+      giveup("not implemented yet");
+    }
 
-  } else if (known.size() == 2 && hs.size() == 1) {
-    double theta1 = gemmi::rad(120);
-    double theta2 = gemmi::rad(120);
-    if (const Angle* ang = topo.take_angle(hs[0].ptr, &atom, known[0].ptr))
-      theta1 = gemmi::rad(ang->value);
-    if (const Angle* ang = topo.take_angle(hs[0].ptr, &atom, known[1].ptr))
-      theta2 = gemmi::rad(ang->value);
-    if (const Angle* ang = topo.take_angle(known[0].ptr, &atom, known[1].ptr)) {
+  // ==== two heavy atoms and hydrogens ====
+  } else if (known.size() == 2) {
+    if (hs.size() > 2)
+      giveup("Unusual: atom bonded to two heavy atoms and 3+ hydrogens.");
+    const Angle* ang1 = topo.take_angle(hs[0].ptr, &atom, known[0].ptr);
+    const Angle* ang2 = topo.take_angle(hs[0].ptr, &atom, known[1].ptr);
+    const Angle* ang3 = topo.take_angle(known[0].ptr, &atom, known[1].ptr);
+
+    if (!ang1 || !ang2)
+      giveup("Missing angle restraint, giving up.\n");
+    double theta1 = ang1->radians();
+    double theta2 = ang2->radians();
+    if (ang3) {
       // If all atoms are in the same plane (sum of angles is 360 degree)
       // the calculations can be simplified.
-      double theta3 = gemmi::rad(ang->value);
+      double theta3 = ang3->radians();
       gemmi::Vec3 v12 = (known[0].pos - atom.pos);
       gemmi::Vec3 v13 = (known[1].pos - atom.pos);
-      double angle213 = calculate_angle_v(v12, v13);
+      // theta3 is the ideal restraint value, cur_theta3 is the current value
+      double cur_theta3 = calculate_angle_v(v12, v13);
       constexpr double two_pi = 2 * gemmi::pi();
-      if (theta1 + theta2 + std::max(theta3, angle213) + 0.01 > two_pi) {
-        double ratio = (two_pi - angle213) / (theta1 + theta2);
+      if (theta1 + theta2 + std::max(theta3, cur_theta3) + 0.01 > two_pi) {
+        double ratio = (two_pi - cur_theta3) / (theta1 + theta2);
         gemmi::Vec3 axis = v13.cross(v12).normalized();
         gemmi::Vec3 v14 = rotate_by_axis(v12, axis, theta1 * ratio);
         hs[0].pos = atom.pos + Position(hs[0].dist / v14.length() * v14);
@@ -208,20 +244,23 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
     auto possible = position_from_two_angles(atom.pos,
                                              known[0].pos, known[1].pos,
                                              hs[0].dist, theta1, theta2);
-    const Topo::Chirality* chir = topo.get_chirality(&atom);
     hs[0].pos = possible.first;
-    if (chir && chir->check() < 0)
-      hs[0].pos = possible.second;
-
-    printf("[2xangle] %5s of %s\n", hs[0].ptr->name.c_str(), atom.name.c_str());
-
-  // TODO: all other cases
+    if (hs.size() == 1) {
+      const Topo::Chirality* chir = topo.get_chirality(&atom);
+      if (chir && chir->restr->chir != gemmi::ChiralityType::Both) {
+        if (!chir->check())
+          hs[0].pos = possible.second;
+      } else {
+        hs[0].ptr->occ = 0;
+      }
+    } else {
+      hs[1].pos = possible.second;
+    }
 
   } else {
     printf("[not done] %5s: %zd h %zd known\n",
            atom.name.c_str(), hs.size(), known.size());
-    for (BondedAtom& bonded_h : hs)
-      bonded_h.ptr->occ = 0;
+    giveup("not implemented yet");
   }
 }
 
@@ -268,8 +307,6 @@ void print_restraint_summary(const std::string& id, const ChemComp& cc) {
       //printf("%.1f deg to %s, ", angle.value, other_end->atom.c_str());
       if (!cc.get_atom(other_end->atom).is_hydrogen()) {
         ++angle_count;
-        if (angle.value == 180.0)
-          angle_count += 100;
       }
     }
   }

@@ -81,8 +81,8 @@ void print_outliers(const Topo& topo, const char* tag) {
   }
   for (const Topo::Chirality& t : topo.chirs) {
     double value = t.calculate();
-    if ((t.restr->chir == Restraints::Chirality::Type::Positive && value < 0) ||
-        (t.restr->chir == Restraints::Chirality::Type::Negative && value > 0))
+    if ((t.restr->chir == gemmi::ChiralityType::Positive && value < 0) ||
+        (t.restr->chir == gemmi::ChiralityType::Negative && value > 0))
       printf("%s chir %s should be %s but is %.2f\n", tag,
              t.restr->str().c_str(), gemmi::chirality_to_string(t.restr->chir),
              value);

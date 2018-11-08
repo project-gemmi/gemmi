@@ -458,8 +458,16 @@ int GEMMI_MAIN(int argc, char **argv) {
       for (Topo::ChainInfo& chain_info : topo.chains)
         for (Topo::ResInfo& ri : chain_info.residues)
           for (gemmi::Atom& atom : ri.res->atoms)
-            if (!atom.is_hydrogen())
-              place_hydrogens(atom, ri, topo);
+            if (!atom.is_hydrogen()) {
+              try {
+                place_hydrogens(atom, ri, topo);
+              } catch (const std::runtime_error& e) {
+                std::string loc = gemmi::atom_str(chain_info.name, *ri.res,
+                                                  atom.name, atom.altloc);
+                printf("Placing of hydrogen bonded to %s failed:\n  %s\n",
+                       loc.c_str(), e.what());
+              }
+            }
 
     cif::Document crd = make_crd(st, monlib, topo);
     if (p.options[Verbose])
