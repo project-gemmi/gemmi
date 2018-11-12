@@ -376,19 +376,19 @@ static cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
 
 
 // assumes no hydrogens in the residue
-static void add_hydrogens(const gemmi::ChemComp& cc, gemmi::Residue* res) {
+static void add_hydrogens(const gemmi::ChemComp& cc, gemmi::Residue& res) {
   for (auto it = cc.atoms.begin(); it != cc.atoms.end(); ++it) {
     if (is_hydrogen(it->el)) {
       gemmi::Atom atom = it->to_full_atom();
       atom.flag = 'R';
       atom.serial = it - cc.atoms.begin();
       cc.rt.for_each_bonded_atom(atom.name, [&](const Restraints::AtomId& id) {
-        for (const gemmi::Atom& parent : res->atoms) {
+        for (const gemmi::Atom& parent : res.atoms) {
           if (parent.name == id.atom) {
             atom.altloc = parent.altloc;
             atom.occ = parent.occ;
             atom.b_iso = parent.b_iso;
-            res->atoms.push_back(atom);
+            res.atoms.push_back(atom);
           }
         }
         return false; // stop the bond search
@@ -423,25 +423,29 @@ int GEMMI_MAIN(int argc, char **argv) {
       return 1;
     }
     gemmi::Model& model0 = st.models[0];
-    if (!p.options[KeepHydrogens])
-      gemmi::remove_hydrogens(model0);
-
     gemmi::MonLib monlib = gemmi::read_monomers(monomer_dir, model0,
                                                 gemmi::read_cif_gz);
 
+    Topo topo;
+    topo.initialize_refmac_topology(model0, st.entities, monlib);
+
     // add H, sort atoms in residues and assign serial numbers
     int serial = 0;
-    for (gemmi::Chain& chain : model0.chains)
-      for (gemmi::Residue& res : chain.residues) {
-        const gemmi::ChemComp &cc = monlib.monomers.at(res.name);
+    for (Topo::ChainInfo& chain_info : topo.chains)
+      for (Topo::ResInfo& ri : chain_info.residues) {
+        const gemmi::ChemComp &cc = ri.chemcomp;
+        gemmi::Residue &res = *ri.res;
         for (gemmi::Atom& atom : res.atoms) {
           auto it = cc.find_atom(atom.name);
           if (it == cc.atoms.end())
             gemmi::fail("No atom " + atom.name + " expected in " + res.name);
-          atom.serial = it - cc.atoms.begin();
+          atom.serial = it - cc.atoms.begin(); // temporary, for sorting only
         }
-        if (!p.options[KeepHydrogens] && !p.options[NoHydrogens])
-          add_hydrogens(cc, &res);
+        if (!p.options[KeepHydrogens]) {
+          gemmi::remove_hydrogens(res);
+          if (!p.options[NoHydrogens])
+            add_hydrogens(cc, res);
+        }
         std::sort(res.atoms.begin(), res.atoms.end(),
                   [](const gemmi::Atom& a, const gemmi::Atom& b) {
                     return a.serial != b.serial ? a.serial < b.serial
@@ -451,8 +455,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           atom.serial = ++serial;
       }
 
-    Topo topo;
-    topo.prepare_refmac_topology(model0, st.entities, monlib);
+    topo.finalize_refmac_topology(monlib);
 
     if (!p.options[KeepHydrogens] && !p.options[NoHydrogens])
       for (Topo::ChainInfo& chain_info : topo.chains)

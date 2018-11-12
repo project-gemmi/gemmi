@@ -185,7 +185,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::MonLib monlib = gemmi::read_monomers(monomer_dir, model,
                                                   gemmi::read_cif_gz);
       Topo topo;
-      topo.prepare_refmac_topology(model, st.entities, monlib);
+      topo.initialize_refmac_topology(model, st.entities, monlib);
+      topo.finalize_refmac_topology(monlib);
 
       RMSes rmses;
       for (const Topo::ChainInfo& chain_info : topo.chains)

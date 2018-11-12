@@ -291,9 +291,22 @@ struct Topo {
   }
 
   // Model is non-const b/c we store non-const pointers to residues in Topo.
-  void prepare_refmac_topology(Model& model0,
-                               const std::vector<Entity>& entities,
-                               MonLib& monlib);
+  // Because of the pointers, don't add or remove residues after this step.
+  // Monlib may get modified by addition of extra links from the model.
+  void initialize_refmac_topology(Model& model0,
+                                  const std::vector<Entity>& entities,
+                                  MonLib& monlib);
+
+  // This step stores pointers to gemmi::Atom's from model0,
+  // so after this step don't add or remove atoms.
+  // monlib is needed only for links.
+  void finalize_refmac_topology(const MonLib& monlib) {
+    for (ChainInfo& chain_info : chains)
+      for (ResInfo& ri : chain_info.residues)
+        apply_restraints_to_residue(ri, monlib);
+    for (ExtraLink& link : extras)
+      apply_restraints_to_extra_link(link, monlib);
+  }
 };
 
 inline void Topo::ChainInfo::initialize(SubChain& subchain, const Entity* ent) {
@@ -374,9 +387,10 @@ inline ChemLink connection_to_chemlink(const Connection& conn,
 
 
 // Model is non-const b/c we store non-const pointers to residues in Topo.
-inline void Topo::prepare_refmac_topology(Model& model0,
-                                          const std::vector<Entity>& entities,
-                                          MonLib& monlib) {
+inline
+void Topo::initialize_refmac_topology(Model& model0,
+                                      const std::vector<Entity>& entities,
+                                      MonLib& monlib) {
   // initialize chains and residues
   for (Chain& chain : model0.chains)
     for (SubChain sub : chain.subchains()) {
@@ -436,13 +450,6 @@ inline void Topo::prepare_refmac_topology(Model& model0,
           printf("Modification not found: %s\n", modif.c_str());
       }
     }
-
-  // finalize
-  for (ChainInfo& chain_info : chains)
-    for (ResInfo& ri : chain_info.residues)
-      apply_restraints_to_residue(ri, monlib);
-  for (ExtraLink& link : extras)
-    apply_restraints_to_extra_link(link, monlib);
 }
 
 } // namespace gemmi
