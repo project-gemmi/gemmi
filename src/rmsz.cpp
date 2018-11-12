@@ -35,7 +35,8 @@ static const option::Descriptor Usage[] = {
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
   { Version, 0, "V", "version", Arg::None,
     "  -V, --version  \tPrint version and exit." },
-  { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  { Verbose, 0, "v", "verbose", Arg::None,
+    "  -v, --verbose  \tVerbose output." },
   { Monomers, 0, "", "monomers", Arg::Required,
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
   { FormatIn, 0, "", "format", RmszArg::FileFormat,
@@ -69,13 +70,19 @@ static double check_restraint(const Topo::Force force,
                               const Topo& topo,
                               double cutoff,
                               const char* tag,
-                              RMSes* rmses) {
+                              RMSes* rmses,
+                              bool verbose) {
   switch (force.rkind) {
     case Topo::RKind::Bond: {
       const Topo::Bond& t = topo.bonds[force.index];
       double z = t.calculate_z();
-      if (z > cutoff)
-        printf("%s bond %s: |Z|=%.1f\n", tag, t.restr->str().c_str(), z);
+      if (z > cutoff) {
+        int n = printf("%s bond %s: |Z|=%.1f", tag, t.restr->str().c_str(), z);
+        if (verbose)
+          printf(" %*.3f -> %.3f", std::max(50 - n, 7),
+                 t.restr->value, t.calculate());
+        puts("");
+      }
       rmses->z_bond.put(z);
       rmses->d_bond.put(z * t.restr->esd);
       return z;
@@ -83,17 +90,29 @@ static double check_restraint(const Topo::Force force,
     case Topo::RKind::Angle: {
       const Topo::Angle& t = topo.angles[force.index];
       double z = t.calculate_z();
-      if (z > cutoff)
-        printf("%s angle %s: |Z|=%.1f\n", tag, t.restr->str().c_str(), z);
+      if (z > cutoff) {
+        int n = printf("%s angle %s: |Z|=%.1f", tag, t.restr->str().c_str(), z);
+        if (verbose)
+          printf(" %*.1f -> %.1f", std::max(50 - n, 7),
+                 t.restr->value, gemmi::deg(t.calculate()));
+        puts("");
+      }
       rmses->z_angle.put(z);
       rmses->d_angle.put(z * t.restr->esd);
       return z;
     }
     case Topo::RKind::Torsion: {
       const Topo::Torsion& t = topo.torsions[force.index];
+      // TODO consider torsion period
       double z = t.calculate_z();
-      if (z > cutoff)
-        printf("%s torsion %s: |Z|=%.1f\n", tag, t.restr->str().c_str(), z);
+      if (z > cutoff) {
+        int n = printf("%s torsion %s: |Z|=%.1f",
+                       tag, t.restr->str().c_str(), z);
+        if (verbose)
+          printf(" %*.1f -> %.1f", std::max(50 - n, 7),
+                 t.restr->value, gemmi::deg(t.calculate()));
+        puts("");
+      }
       rmses->z_torsion.put(z);
       rmses->d_torsion.put(z * t.restr->esd);
       return z;
@@ -171,15 +190,17 @@ int GEMMI_MAIN(int argc, char **argv) {
       RMSes rmses;
       for (const Topo::ChainInfo& chain_info : topo.chains)
         for (const Topo::ResInfo& ri : chain_info.residues) {
-          std::string res = chain_info.name + " " + ri.res->name;
+          std::string res = chain_info.name + " " + ri.res->str();
           for (const Topo::Force& force : ri.forces)
             if (force.provenance == Topo::Provenance::PrevLink ||
                 force.provenance == Topo::Provenance::Monomer)
-              check_restraint(force, topo, cutoff, res.c_str(), &rmses);
+              check_restraint(force, topo, cutoff, res.c_str(), &rmses,
+                              p.options[Verbose]);
         }
       for (const Topo::ExtraLink& link : topo.extras) {
         for (const Topo::Force& force : link.forces)
-          check_restraint(force, topo, cutoff, "link", &rmses);
+          check_restraint(force, topo, cutoff, "link", &rmses,
+                          p.options[Verbose]);
       }
       printf("Model rmsZ: "
              "bond: %.3f, angle: %.3f, torsion: %.3f, planarity %.3f\n"
