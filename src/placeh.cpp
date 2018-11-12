@@ -7,6 +7,7 @@
 
 using gemmi::Topo;
 using gemmi::Restraints;
+using gemmi::Vec3;
 using gemmi::Position;
 
 struct BondedAtom {
@@ -28,24 +29,33 @@ Position position_from_angle_and_torsion(const Position& x1,
                                          double tau) { // dihedral angle
   using std::sin;
   using std::cos;
-  gemmi::Vec3 u = x2 - x1;
-  gemmi::Vec3 v = x3 - x2;
-  gemmi::Vec3 e1 = v.normalized();
+  Vec3 u = x2 - x1;
+  Vec3 v = x3 - x2;
+  Vec3 e1 = v.normalized();
   double delta = u.dot(e1);
-  gemmi::Vec3 e2 = -(u - delta * e1).normalized();
-  gemmi::Vec3 e3 = e1.cross(e2);
+  Vec3 e2 = -(u - delta * e1).normalized();
+  Vec3 e3 = e1.cross(e2);
   return x3 + Position(dist * (-cos(theta) * e1 +
                                sin(theta) * (cos(tau) * e2 + sin(tau) * e3)));
 }
 
 // Rodrigues' rotation formula, rotate vector v given axis of rotation
 // (which must be a unit vector) and angle (in radians).
-gemmi::Vec3 rotate_by_axis(const gemmi::Vec3& v, const gemmi::Vec3& axis,
-                           double theta) {
+inline
+Vec3 rotate_about_axis(const Vec3& v, const Vec3& axis, double theta) {
   double sin_theta = std::sin(theta);
   double cos_theta = std::cos(theta);
   return v * cos_theta + axis.cross(v) * sin_theta +
          axis * (axis.dot(v) * (1 - cos_theta));
+}
+
+Vec3 get_vector_to_line(const Position& point,
+                        const Position& point_on_the_line,
+                        const Vec3& unit_vector) {
+  // en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Vector_formulation
+  // the component of a − p perpendicular to the line is: (a-p) - ((a-p).n)n
+  Vec3 ap = point_on_the_line - point;
+  return ap - ap.dot(unit_vector) * unit_vector;
 }
 
 // Based on https://en.wikipedia.org/wiki/Trilateration
@@ -55,10 +65,10 @@ std::pair<Position, Position> trilaterate(const Position& p1, double r1sq,
                                           const Position& p2, double r2sq,
                                           const Position& p3, double r3sq) {
   // variables have the same names as on the Wikipedia Trilateration page
-  gemmi::Vec3 ex = (p2 - p1).normalized();
+  Vec3 ex = (p2 - p1).normalized();
 	double i = ex.dot(p3-p1);
-  gemmi::Vec3 ey = (gemmi::Vec3(p3) - p1 - i*ex).normalized();
-  gemmi::Vec3 ez = ex.cross(ey);
+  Vec3 ey = (Vec3(p3) - p1 - i*ex).normalized();
+  Vec3 ez = ex.cross(ey);
 	double d = (p2-p1).length();
 	double j = ey.dot(p3-p1);
 	double x = (r1sq - r2sq + d*d) / (2*d);
@@ -156,8 +166,10 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
     if (!angle)
       giveup("No angle restraint for " + h.ptr->name + ", giving up.\n");
     if (std::abs(angle->value - 180.0) < 0.5) {
-      gemmi::Vec3 u = atom.pos - h.pos;
+      Vec3 u = atom.pos - h.pos;
       h.pos = atom.pos + Position(u * (h.dist / u.length()));
+      if (hs.size() > 1)
+        giveup("Unusual: one of two H atoms has angle restraint 180 deg.");
       return;
     }
     double theta = angle->radians();
@@ -167,7 +179,7 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
       if (plane.atoms.size() > 3 &&
           plane.has(h.ptr) && plane.has(&atom) && plane.has(heavy.ptr)) {
         for (const gemmi::Atom* a : plane.atoms) {
-          if (a != h.ptr && a != &atom && a != heavy.ptr) {
+          if (!a->is_hydrogen() && a != &atom && a != heavy.ptr) {
             tau_end = a;
             break;
           }
@@ -175,17 +187,23 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
         break;
       }
     }
+    gemmi::Atom* torsion_h = nullptr;
     if (!tau_end) {
-      // using one dihedral angle
+      // Using one dihedral angle.
+      // We don't check here for which hydrogen the torsion angle is defined.
+      // If an atom has 2 or 3 hydrogens, the torsion angle may not be given
+      // for the first one, but only for the 2nd or 3rd (e.g. HD22 in ASN).
       for (const Topo::Torsion& tor : topo.torsions) {
-        if (tor.atoms[0] == h.ptr && !tor.atoms[3]->is_hydrogen() &&
-            tor.atoms[1] == &atom && tor.atoms[2] == heavy.ptr) {
+        if (tor.atoms[0]->is_hydrogen() && tor.atoms[1] == &atom &&
+            tor.atoms[2] == heavy.ptr && !tor.atoms[3]->is_hydrogen()) {
           tau = gemmi::rad(tor.restr->value);
+          torsion_h = tor.atoms[0];
           tau_end = tor.atoms[3];
           break;
-        } else if (tor.atoms[3] == h.ptr && !tor.atoms[0]->is_hydrogen() &&
-                   tor.atoms[1] == heavy.ptr && tor.atoms[2] == &atom) {
+        } else if (tor.atoms[3]->is_hydrogen() && tor.atoms[2] == &atom &&
+                   tor.atoms[1] == heavy.ptr && !tor.atoms[0]->is_hydrogen()) {
           tau = gemmi::rad(tor.restr->value);
+          torsion_h = tor.atoms[3];
           tau_end = tor.atoms[0];
           break;
         }
@@ -195,27 +213,33 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
         tau_end ? tau_end->pos : Position(0, 0, 0),
         heavy.pos, atom.pos, h.dist, theta, tau);
     h.ptr->occ = 0; // the position is not unique
-    if (hs.size() > 1) {
-      const Angle* angle2 = topo.take_angle(hs[1].ptr, &atom, heavy.ptr);
-      const Angle* angleh = topo.take_angle(hs[2].ptr, &atom, h.ptr);
-      if (hs.size() == 2) {
-        /* TODO: symmetric
-        printf("cccccc  %g %g %g %s\n",
-                                     angle ? angle->value : 0,
-                                     angle2 ? angle2->value : 0,
-                                     angleh ? angleh->value : 0,
-                                     tau_end ? "tau" : "nop");
-        */
-      } else if (hs.size() == 2) {
-        // TODO
-      }
-      giveup("not implemented yet");
+    if (hs.size() == 2) {
+      // I think we can assume the two hydrogens are symmetric.
+      Vec3 axis = (heavy.pos - atom.pos).normalized();
+      Vec3 perpendicular = get_vector_to_line(hs[0].pos, atom.pos, axis);
+      hs[1].pos = hs[0].pos + gemmi::Position(2 * perpendicular);
+    } else if (hs.size() == 3) {
+      // Here we assume the three hydrogens are in the same distance from
+      // the parent atom and that they make an equilateral triangle.
+      // First check for which hydrogen was the torsion restraint (if any).
+      int idx = 0;
+      for (int i : {1, 2})
+        if (torsion_h == hs[i].ptr) {
+          idx = i;
+          hs[i].pos = h.pos;
+        }
+      // Now get the other positions by rotation
+      Vec3 axis = (heavy.pos - atom.pos).normalized();
+      Vec3 v1 = h.pos - atom.pos;
+      Vec3 v2 = rotate_about_axis(v1, axis, gemmi::rad(120));
+      Vec3 v3 = rotate_about_axis(v1, axis, gemmi::rad(-120));
+      hs[(idx+1) % 3].pos = atom.pos + Position(v2);
+      hs[(idx+2) % 3].pos = atom.pos + Position(v3);
+    } else if (hs.size() >= 4) {
+      giveup("Unusual: atom bonded to one heavy atoms and 4+ hydrogens.");
     }
-
   // ==== two heavy atoms and hydrogens ====
-  } else if (known.size() == 2) {
-    if (hs.size() > 2)
-      giveup("Unusual: atom bonded to two heavy atoms and 3+ hydrogens.");
+  } else {  // known.size() >= 2
     const Angle* ang1 = topo.take_angle(hs[0].ptr, &atom, known[0].ptr);
     const Angle* ang2 = topo.take_angle(hs[0].ptr, &atom, known[1].ptr);
     const Angle* ang3 = topo.take_angle(known[0].ptr, &atom, known[1].ptr);
@@ -228,39 +252,52 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
       // If all atoms are in the same plane (sum of angles is 360 degree)
       // the calculations can be simplified.
       double theta3 = ang3->radians();
-      gemmi::Vec3 v12 = (known[0].pos - atom.pos);
-      gemmi::Vec3 v13 = (known[1].pos - atom.pos);
+      Vec3 v12 = known[0].pos - atom.pos;
+      Vec3 v13 = known[1].pos - atom.pos;
       // theta3 is the ideal restraint value, cur_theta3 is the current value
       double cur_theta3 = calculate_angle_v(v12, v13);
       constexpr double two_pi = 2 * gemmi::pi();
       if (theta1 + theta2 + std::max(theta3, cur_theta3) + 0.01 > two_pi) {
         double ratio = (two_pi - cur_theta3) / (theta1 + theta2);
-        gemmi::Vec3 axis = v13.cross(v12).normalized();
-        gemmi::Vec3 v14 = rotate_by_axis(v12, axis, theta1 * ratio);
+        Vec3 axis = v13.cross(v12).normalized();
+        Vec3 v14 = rotate_about_axis(v12, axis, theta1 * ratio);
         hs[0].pos = atom.pos + Position(hs[0].dist / v14.length() * v14);
         return;
       }
     }
-    auto possible = position_from_two_angles(atom.pos,
-                                             known[0].pos, known[1].pos,
-                                             hs[0].dist, theta1, theta2);
-    hs[0].pos = possible.first;
-    if (hs.size() == 1) {
-      const Topo::Chirality* chir = topo.get_chirality(&atom);
-      if (chir && chir->restr->chir != gemmi::ChiralityType::Both) {
-        if (!chir->check())
-          hs[0].pos = possible.second;
-      } else {
-        hs[0].ptr->occ = 0;
-      }
-    } else {
-      hs[1].pos = possible.second;
+    auto pos = position_from_two_angles(atom.pos, known[0].pos, known[1].pos,
+                                        hs[0].dist, theta1, theta2);
+    switch (hs.size()) {
+      case 1:
+        if (known.size() == 2) {
+          const Topo::Chirality* chir = topo.get_chirality(&atom);
+          if (chir && chir->restr->chir != gemmi::ChiralityType::Both) {
+            hs[0].pos = chir->check() ? pos.first : pos.second;
+          } else {
+            hs[0].pos = pos.first;
+            hs[0].ptr->occ = 0;
+          }
+        } else { // known.size() > 2
+          const gemmi::Atom* a3 = known[2].ptr;
+          if (const Angle* a = topo.take_angle(a3, &atom, hs[0].ptr)){
+            double val1 = gemmi::calculate_angle(a3->pos, atom.pos, pos.first);
+            double val2 = gemmi::calculate_angle(a3->pos, atom.pos, pos.second);
+            double diff1 = gemmi::angle_abs_diff(val1, a->value);
+            double diff2 = gemmi::angle_abs_diff(val2, a->value);
+            hs[0].pos = diff1 < diff2 ? pos.first : pos.second;
+          } else {
+            hs[0].pos = pos.first;
+            hs[0].ptr->occ = 0;
+          }
+        }
+        break;
+      case 2:
+        hs[0].pos = pos.first;
+        hs[1].pos = pos.second;
+        break;
+      default:
+        giveup("Unusual: atom bonded to 2+ heavy atoms and 3+ hydrogens.");
     }
-
-  } else {
-    printf("[not done] %5s: %zd h %zd known\n",
-           atom.name.c_str(), hs.size(), known.size());
-    giveup("not implemented yet");
   }
 }
 
