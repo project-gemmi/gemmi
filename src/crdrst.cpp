@@ -346,6 +346,8 @@ static cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
       if (count_provenance(ri.forces, Provenance::Monomer) > 0) {
         std::string res_info = " monomer " + chain_info.name + " " +
                                ri.res->seqid.str() + " " + ri.res->name;
+        if (!ri.mods.empty())
+          res_info += " modified by " + gemmi::join_str(ri.mods, ", ");
 
         // need to revisit it later on
         std::string group = cif::quote(ri.chemcomp.group.substr(0, 8));
@@ -361,14 +363,14 @@ static cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
     }
   }
   // explicit links
-  for (const Topo::ExtraLink& link : topo.extras) {
-    const gemmi::ChemLink* chem_link = monlib.match_link(link.link);
+  for (const Topo::ExtraLink& extra_link : topo.extras) {
+    const gemmi::ChemLink* chem_link = monlib.find_link(extra_link.link_id);
     assert(chem_link);
     std::string comment = " link " + chem_link->id;
     restr_loop.add_comment_and_row({comment, "LINK", ".",
                                     cif::quote(chem_link->id), ".",
                                     ".", ".", ".", ".", ".", ".", "."});
-    for (const Topo::Force& force : link.forces)
+    for (const Topo::Force& force : extra_link.forces)
       add_restraints(force, topo, chem_link->rt, restr_loop, counters);
   }
   return doc;
@@ -387,6 +389,8 @@ static std::string first_bonded_atom(const gemmi::Restraints& rt,
 
 // assumes no hydrogens in the residue
 static void add_hydrogens(const gemmi::ChemComp& cc, gemmi::Residue& res) {
+  if (cc.name == "HOH") // for compatibility with refmac/makecif
+    return;
   for (auto it = cc.atoms.begin(); it != cc.atoms.end(); ++it)
     if (it->is_hydrogen()) {
       gemmi::Atom atom = it->to_full_atom();

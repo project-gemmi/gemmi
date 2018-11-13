@@ -28,21 +28,6 @@ struct ChemLink {
   std::string mod[2];
   std::string group[2];
   Restraints rt;
-
-  bool matches(const ChemLink& other) const {
-    if (rt.bonds.empty() || other.rt.bonds.empty())
-      return false;
-    const Restraints::Bond& bond1 = rt.bonds[0];
-    const Restraints::Bond& bond2 = other.rt.bonds[0];
-    // TODO: handle all combinations?
-    if (comp[0] == other.comp[0] && comp[1] == other.comp[1]) {
-      return bond1.id1 == bond2.id1 && bond1.id2 == bond2.id2;
-    } else if (comp[0] == other.comp[1] && comp[1] == other.comp[0]) {
-      return bond1.id1.atom == bond2.id2.atom &&
-             bond1.id2.atom == bond2.id1.atom;
-    }
-    return false;
-  }
 };
 
 struct ChemMod {
@@ -422,10 +407,18 @@ struct MonLib {
     auto modif = modifications.find(name);
     return modif != modifications.end() ? &modif->second : nullptr;
   }
-  const ChemLink* match_link(const ChemLink& link) const {
-    for (auto& ml : links)
-      if (link.matches(ml.second))
-        return &ml.second;
+  const ChemLink* match_link(
+      const std::string& comp1, const std::string& atom1,
+      const std::string& comp2, const std::string& atom2) const {
+    for (auto& ml : links) {
+      const ChemLink& link = ml.second;
+      if (link.rt.bonds.empty())
+        continue;
+      const Restraints::Bond& bond = link.rt.bonds[0];
+      if (link.comp[0] == comp1 && link.comp[1] == comp2 &&
+          bond.id1.atom == atom1 && bond.id2.atom == atom2)
+        return &link;
+    }
     return nullptr;
   }
   void ensure_unique_link_name(std::string& name) const {

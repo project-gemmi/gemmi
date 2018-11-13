@@ -96,6 +96,10 @@ struct Topo {
     const Residue* prev_res() const {
       return const_cast<ResInfo*>(this)->prev_res();
     }
+    void add_mod(const std::string& m) {
+      if (!m.empty())
+        mods.push_back(m);
+    }
   };
 
   struct ChainInfo {
@@ -115,7 +119,7 @@ struct Topo {
     Residue* res2;
     char alt1 = '\0';
     char alt2 = '\0';
-    ChemLink link;
+    std::string link_id;
     std::vector<Force> forces;
   };
 
@@ -271,22 +275,26 @@ struct Topo {
   }
 
   void apply_restraints_to_extra_link(ExtraLink& link, const MonLib& monlib) {
-    if (const ChemLink* cl = monlib.match_link(link.link)) {
-      if (link.alt1 && link.alt2 && link.alt1 != link.alt2)
-        printf("Warning: LINK between different conformers %c and %c.",
-               link.alt1, link.alt2);
-      ResInfo* ri1 = find_resinfo(link.res1);
-      ResInfo* ri2 = find_resinfo(link.res2);
-      auto forces = apply_restraints(cl->rt, *link.res1, link.res2,
-                                     link.alt1);
-      for (Force& f : forces) {
-        f.provenance = Provenance::ExtraLink;
-        link.forces.push_back(f);
-        if (ri1)
-          ri1->forces.push_back(f);
-        if (ri2)
-          ri2->forces.push_back(f);
-      }
+    const ChemLink* cl = monlib.find_link(link.link_id);
+    if (!cl) {
+      printf("Warning: ignoring link '%s' as it is not in the monomer library",
+             link.link_id.c_str());
+      return;
+    }
+    if (link.alt1 && link.alt2 && link.alt1 != link.alt2)
+      printf("Warning: LINK between different conformers %c and %c.",
+             link.alt1, link.alt2);
+    ResInfo* ri1 = find_resinfo(link.res1);
+    ResInfo* ri2 = find_resinfo(link.res2);
+    auto forces = apply_restraints(cl->rt, *link.res1, link.res2,
+                                   link.alt1);
+    for (Force& f : forces) {
+      f.provenance = Provenance::ExtraLink;
+      link.forces.push_back(f);
+      if (ri1)
+        ri1->forces.push_back(f);
+      if (ri2)
+        ri2->forces.push_back(f);
     }
   }
 
@@ -367,24 +375,6 @@ inline void Topo::ChainInfo::add_refmac_builtin_modifications() {
   }
 }
 
-inline ChemLink connection_to_chemlink(const Connection& conn,
-                                       const Residue& res1,
-                                       const Residue& res2) {
-  ChemLink link;
-  link.id = res1.name + "-" + res2.name;
-  link.comp[0] = res1.name;
-  link.comp[1] = res2.name;
-  Restraints::Bond bond;
-  bond.id1 = Restraints::AtomId{1, conn.atom[0].atom_name};
-  bond.id2 = Restraints::AtomId{2, conn.atom[1].atom_name};
-  bond.type = BondType::Unspec;
-  bond.aromatic = false;
-  bond.value = conn.reported_distance;
-  bond.esd = 0.02;
-  link.rt.bonds.push_back(bond);
-  return link;
-}
-
 
 // Model is non-const b/c we store non-const pointers to residues in Topo.
 inline
@@ -411,10 +401,8 @@ void Topo::initialize_refmac_topology(Model& model0,
     // add modifications from standard links
     for (ResInfo& ri : ci.residues)
       if (const ChemLink* link = monlib.find_link(ri.prev_link)) {
-        if (!link->mod[0].empty())
-          (&ri + ri.prev_idx)->mods.push_back(link->mod[0]);
-        if (!link->mod[1].empty())
-          ri.mods.push_back(link->mod[1]);
+        (&ri + ri.prev_idx)->add_mod(link->mod[0]);
+        ri.add_mod(link->mod[1]);
       }
   }
   // add extra links
@@ -422,18 +410,46 @@ void Topo::initialize_refmac_topology(Model& model0,
     ExtraLink extra;
     extra.res1 = model0.find_cra(conn.atom[0]).residue;
     extra.res2 = model0.find_cra(conn.atom[1]).residue;
-    if (extra.res1 && extra.res2) {
-      extra.link = connection_to_chemlink(conn, *extra.res1, *extra.res2);
-      if (!monlib.match_link(extra.link)) {
-        monlib.ensure_unique_link_name(extra.link.id);
-        monlib.links.emplace(extra.link.id, extra.link);
-      }
-      extra.alt1 = conn.atom[0].altloc;
-      extra.alt2 = conn.atom[1].altloc;
-      extras.push_back(extra);
+    if (!extra.res1 || !extra.res2)
+      continue;
+    // ignoring hydrogen bonds and metal coordination
+    if (conn.type == Connection::Hydrog && conn.type == Connection::MetalC)
+      continue;
+    if (const ChemLink* match =
+        monlib.match_link(extra.res1->name, conn.atom[0].atom_name,
+                          extra.res2->name, conn.atom[1].atom_name)) {
+      extra.link_id = match->id;
+      // add modifications from the link
+      find_resinfo(extra.res1)->add_mod(match->mod[0]);
+      find_resinfo(extra.res2)->add_mod(match->mod[1]);
+    } else if (const ChemLink* match =
+                monlib.match_link(extra.res2->name, conn.atom[1].atom_name,
+                                  extra.res1->name, conn.atom[0].atom_name)) {
+      extra.link_id = match->id;
+      // add modifications from the link
+      find_resinfo(extra.res2)->add_mod(match->mod[0]);
+      find_resinfo(extra.res1)->add_mod(match->mod[1]);
+    } else {
+      ChemLink cl;
+      cl.comp[0] = extra.res1->name;
+      cl.comp[1] = extra.res2->name;
+      cl.id = cl.comp[0] + "-" + cl.comp[1];
+      Restraints::Bond bond;
+      bond.id1 = Restraints::AtomId{1, conn.atom[0].atom_name};
+      bond.id2 = Restraints::AtomId{2, conn.atom[1].atom_name};
+      bond.type = BondType::Unspec;
+      bond.aromatic = false;
+      bond.value = conn.reported_distance;
+      bond.esd = 0.02;
+      cl.rt.bonds.push_back(bond);
+      monlib.ensure_unique_link_name(cl.id);
+      monlib.links.emplace(cl.id, cl);
+      extra.link_id = cl.id;
     }
+    extra.alt1 = conn.atom[0].altloc;
+    extra.alt2 = conn.atom[1].altloc;
+    extras.push_back(extra);
   }
-  // TODO: automatically determine other links
 
   for (ChainInfo& chain_info : chains)
     for (ResInfo& ri : chain_info.residues) {

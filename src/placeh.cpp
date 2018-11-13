@@ -128,7 +128,6 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
 
   // ==== only hydrogens ====
   if (known.size() == 0) {
-#if 0  // disable for now, for compatibility with makecif
     // we can only arbitrarily pick directions of atoms
     for (BondedAtom& bonded_h : hs)
       bonded_h.ptr->occ = 0;
@@ -158,7 +157,6 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
         hs[3].pos = pos.second;
       }
     }
-#endif
 
   // ==== one heavy atom and hydrogens ====
   } else if (known.size() == 1) {
