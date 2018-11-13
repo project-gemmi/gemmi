@@ -84,7 +84,7 @@ struct Topo {
   struct ResInfo {
     Residue* res;
     std::string prev_link;
-    int prev_idx;
+    int prev_idx; // relative to current index, 0 means n/a
     std::vector<std::string> mods;
     ChemComp chemcomp;
     std::vector<Force> forces;

@@ -374,27 +374,35 @@ static cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
   return doc;
 }
 
+static std::string first_bonded_atom(const gemmi::Restraints& rt,
+                                     const std::string& atom_name) {
+  for (const Restraints::Bond& bond : rt.bonds) {
+    if (bond.id1.atom == atom_name)
+      return bond.id2.atom;
+    if (bond.id2.atom == atom_name)
+      return bond.id1.atom;
+  }
+  return std::string();
+}
 
 // assumes no hydrogens in the residue
 static void add_hydrogens(const gemmi::ChemComp& cc, gemmi::Residue& res) {
-  for (auto it = cc.atoms.begin(); it != cc.atoms.end(); ++it) {
-    if (is_hydrogen(it->el)) {
+  for (auto it = cc.atoms.begin(); it != cc.atoms.end(); ++it)
+    if (it->is_hydrogen()) {
       gemmi::Atom atom = it->to_full_atom();
       atom.flag = 'R';
       atom.serial = it - cc.atoms.begin();
-      cc.rt.for_each_bonded_atom(atom.name, [&](const Restraints::AtomId& id) {
-        for (const gemmi::Atom& parent : res.atoms) {
-          if (parent.name == id.atom) {
-            atom.altloc = parent.altloc;
-            atom.occ = parent.occ;
-            atom.b_iso = parent.b_iso;
-            res.atoms.push_back(atom);
-          }
+      std::string parent_name = first_bonded_atom(cc.rt, atom.name);
+      // cannot use range-based for here because res.atoms may get re-allocated
+      for (size_t i = 0, size = res.atoms.size(); i != size; ++i)
+        if (res.atoms[i].name == parent_name) {
+          const gemmi::Atom& parent = res.atoms[i];
+          atom.altloc = parent.altloc;
+          atom.occ = parent.occ;
+          atom.b_iso = parent.b_iso;
+          res.atoms.push_back(atom);
         }
-        return false; // stop the bond search
-      });
     }
-  }
 }
 
 
@@ -435,22 +443,35 @@ int GEMMI_MAIN(int argc, char **argv) {
       for (Topo::ResInfo& ri : chain_info.residues) {
         const gemmi::ChemComp &cc = ri.chemcomp;
         gemmi::Residue &res = *ri.res;
+        if (!p.options[KeepHydrogens]) {
+          gemmi::remove_hydrogens(res);
+          if (!p.options[NoHydrogens])
+            add_hydrogens(cc, res);
+        }
         for (gemmi::Atom& atom : res.atoms) {
           auto it = cc.find_atom(atom.name);
           if (it == cc.atoms.end())
             gemmi::fail("No atom " + atom.name + " expected in " + res.name);
           atom.serial = it - cc.atoms.begin(); // temporary, for sorting only
         }
-        if (!p.options[KeepHydrogens]) {
-          gemmi::remove_hydrogens(res);
-          if (!p.options[NoHydrogens])
-            add_hydrogens(cc, res);
-        }
         std::sort(res.atoms.begin(), res.atoms.end(),
                   [](const gemmi::Atom& a, const gemmi::Atom& b) {
                     return a.serial != b.serial ? a.serial < b.serial
                                                 : a.altloc < b.altloc;
                   });
+        if (1) {  // temporary addition for makecif/refmac compatibility
+          if (gemmi::in_vector(std::string("AA-STAND"),  ri.mods) &&
+              !ri.res->find_atom("OXT")) {
+            gemmi::Atom atom;
+            atom.name = "OXT";
+            atom.element = gemmi::El::O;
+            atom.pos = gemmi::Position(0, 0, 0);
+            atom.flag = 'M';
+            atom.occ = 0;
+            atom.b_iso = 0;
+            ri.res->atoms.push_back(atom);
+          }
+        }
         for (gemmi::Atom& atom : res.atoms)
           atom.serial = ++serial;
       }
