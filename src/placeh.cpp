@@ -174,6 +174,7 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
     }
     double theta = angle->radians();
     double tau = 0.0;
+    int period = 0;
     const gemmi::Atom* tau_end = nullptr;
     for (const Topo::Plane& plane : topo.planes) {
       if (plane.atoms.size() > 3 &&
@@ -199,12 +200,14 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
           tau = gemmi::rad(tor.restr->value);
           torsion_h = tor.atoms[0];
           tau_end = tor.atoms[3];
+          period = tor.restr->period;
           break;
         } else if (tor.atoms[3]->is_hydrogen() && tor.atoms[2] == &atom &&
                    tor.atoms[1] == heavy.ptr && !tor.atoms[0]->is_hydrogen()) {
           tau = gemmi::rad(tor.restr->value);
           torsion_h = tor.atoms[3];
           tau_end = tor.atoms[0];
+          period = tor.restr->period;
           break;
         }
       }
@@ -212,7 +215,6 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
     h.pos = position_from_angle_and_torsion(
         tau_end ? tau_end->pos : Position(0, 0, 0),
         heavy.pos, atom.pos, h.dist, theta, tau);
-    h.ptr->occ = 0; // the position is not unique
     if (hs.size() == 2) {
       // I think we can assume the two hydrogens are symmetric.
       Vec3 axis = (heavy.pos - atom.pos).normalized();
@@ -238,6 +240,10 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
     } else if (hs.size() >= 4) {
       giveup("Unusual: atom bonded to one heavy atoms and 4+ hydrogens.");
     }
+    // somewhat arbitrary rule
+    if (!tau_end || (hs.size() == 1 && period > 1))
+      for (BondedAtom& bonded_h : hs)
+        bonded_h.ptr->occ = 0;
   // ==== two heavy atoms and hydrogens ====
   } else {  // known.size() >= 2
     const Angle* ang1 = topo.take_angle(hs[0].ptr, &atom, known[0].ptr);

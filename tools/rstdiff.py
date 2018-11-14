@@ -27,7 +27,8 @@ def read_rst(path):
 def read_crd(path):
     block = cif.read(path).sole_block()
     sites = block.find('_atom_site.', ['id', 'label_atom_id', 'label_alt_id',
-                                       'label_comp_id', 'calc_flag'])
+                                       'label_comp_id', 'occupancy',
+                                       'calc_flag'])
     atoms = [a for a in sites if a[-1] != 'M']
     real_serial = {None: None, '.': '.'}
     for a in atoms:
@@ -47,12 +48,14 @@ def main():
         print('_atom_site count differs: %d vs %d' %
               (len(crd1.atoms), len(crd2.atoms)))
     for a1, a2 in zip(crd1.atoms, crd2.atoms):
-        if any(a1.str(i) != a2.str(i) for i in range(1, 5)):
+        if any(a1.str(i) != a2.str(i) for i in [1, 2, 3, 5]):
             print('First difference:')
             print('ATOM %s %s %s %s' % (a1[0], a1.str(1), a1[2], a1[3]))
             print('ATOM %s %s %s %s' % (a2[0], a2.str(1), a2[2], a2[3]))
-            print()
             break
+        if float(a1[4]) != float(a2[4]):
+            print('ATOM %s %s %s %s occupancy %s vs %s' % (
+                  a1[0], a1.str(1), a1[2], a1[3], a1[4], a2[4]))
 
     r1 = read_rst(args.file1_rst)
     r2 = read_rst(args.file2_rst)
