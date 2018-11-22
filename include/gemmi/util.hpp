@@ -57,6 +57,13 @@ inline std::string to_lower(std::string str) {
   return str;
 }
 
+inline std::string to_upper(std::string str) {
+  for (char& c : str)
+    if (c >= 'a' && c <= 'z')
+      c &= ~0x20;
+  return str;
+}
+
 inline std::string trim_str(const std::string& str)
 {
   std::string ws = " \r\n\t";

@@ -193,6 +193,7 @@ struct Atom {
   bool same_conformer(const Atom& other) const {
     return is_same_conformer(altloc, other.altloc);
   }
+  // same_group() is for use in UniqIter
   bool same_group(const Atom& other) const { return name == other.name; }
   // Name as a string left-padded like in the PDB format:
   // the first two characters make the element name.
