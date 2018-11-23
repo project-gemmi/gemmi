@@ -847,7 +847,7 @@ how the disorder is presented. The main options are:
 
 * leave it to the user (e.g. mmdb and clipper).
 
-Handling alternative conformations may add a lot complexity.
+Handling alternative conformations adds significant complexity.
 The `iotbx.pdb <https://cci.lbl.gov/cctbx_docs/iotbx/iotbx.pdb.html>`_
 documentation says that
 "about 90% of the development time invested into iotbx.pdb was in some form
@@ -857,7 +857,7 @@ Gemmi exposes the *altloc* field to the user (like mmdb).
 On top of it it offers simple utilities that make working with conformers
 easier:
 
-- functions that ignore all but the main conformations (inspired by BioPython),
+- functions that ignore all but the main conformation (inspired by BioPython),
 - and lightweight proxy objects ResidueGroup and AtomGroup that group
   alternative conformers (inspired by iotbx).
 
@@ -880,7 +880,7 @@ the chains are first read separately and after reading the file
 the user can call ``Structure::merge_same_name_chains()``.
 
 In the Python interface merging is also controlled
-by optional argument to the ``gemmi.read_structure()`` function:
+by second argument to the ``gemmi.read_structure()`` function:
 
 .. code-block:: python
 
@@ -929,6 +929,8 @@ Let us mutate all methionine residues (MET) to selenomethionine (MSE).
 Model
 -----
 
+TODO
+
 Chain
 -----
 
@@ -970,6 +972,8 @@ the residue, we also need to supply
 
 Residue
 -------
+
+TODO
 
 Atom
 ----
@@ -1035,12 +1039,9 @@ TODO
 Selections
 ==========
 
+For now, Gemmi supports only the selection syntax from MMDB.
+
 TODO
-
-MMDB selection language.
-
-And perhaps something else (selections used in JMol or PyMOL?)
-
 
 Sequence
 ========

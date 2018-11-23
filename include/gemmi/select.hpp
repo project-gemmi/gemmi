@@ -11,15 +11,16 @@
 #include <climits>   // for INT_MIN, INT_MAX
 #include "util.hpp"  // for fail
 #include "model.hpp" // for Model, Chain, etc
+#include "iterator.hpp" // for FilterProxy
 
 namespace gemmi {
 
 // from http://www.ccp4.ac.uk/html/pdbcur.html
 // Specification of the selection sets:
 // either
-//     /mdl/chn/s1.i1-s2.i2/at[el]:aloc 
+//     /mdl/chn/s1.i1-s2.i2/at[el]:aloc
 // or
-//     /mdl/chn/*(res).ic/at[el]:aloc 
+//     /mdl/chn/*(res).ic/at[el]:aloc
 //
 
 struct Selection {
@@ -28,7 +29,11 @@ struct Selection {
     bool inverted = false;
     std::string list;  // comma-separated
 
-    std::string str() const { return inverted ? "!" + list : list; }
+    std::string str() const {
+      if (all)
+        return "*";
+      return inverted ? "!" + list : list;
+    }
   };
 
   struct SequenceId {
@@ -46,16 +51,24 @@ struct Selection {
       }
       return s;
     }
+
+    int compare(const SeqId& seqid) const {
+      if (seqnum != *seqid.num)
+        return seqnum < *seqid.num ? -1 : 1;
+      if (icode != '*' && icode != seqid.icode)
+        return icode < seqid.icode ? -1 : 1;
+      return 0;
+    }
   };
 
   int mdl = 0;            // 0 = all
   List chain_ids;
   SequenceId from_seqid = {INT_MIN, '*'};
   SequenceId to_seqid = {INT_MAX, '*'};
-  List residues;
+  List residue_names;
   List atom_names;
   List elements;
-  List altlocs = {true, false, ""};
+  List altlocs;
 
   std::string to_cid() const {
     std::string cid(1, '/');
@@ -65,17 +78,17 @@ struct Selection {
     cid += chain_ids.str();
     cid += '/';
     cid += from_seqid.str();
-    if (!residues.list.empty()) {
-      cid += residues.str();
+    if (!residue_names.all) {
+      cid += residue_names.str();
     } else {
       cid += '-';
       cid += to_seqid.str();
     }
     cid += '/';
     cid += atom_names.str();
-    if (!elements.list.empty())
+    if (!elements.all)
       cid += "[" + elements.str() + "]";
-    if (altlocs.list.length() != 1 || altlocs.list[0] != '*')
+    if (!altlocs.all)
       cid += ":" + altlocs.str();
     return cid;
   }
@@ -105,14 +118,33 @@ struct Selection {
     return chain_ids.all || find_in_list(chain.name, chain_ids);
   }
   bool matches(const gemmi::Residue& res) const {
-    // TODO
-    return true;
+    return (residue_names.all || find_in_list(res.name, residue_names)) &&
+            from_seqid.compare(res.seqid) <= 0 &&
+            to_seqid.compare(res.seqid) >= 0;
   }
   bool matches(const gemmi::Atom& a) const {
     return (atom_names.all || find_in_list(a.name, atom_names)) &&
            (elements.all || find_in_list(a.element.uname(), elements)) &&
            (altlocs.all ||
             find_in_list(std::string(a.altloc ? 0 : 1, a.altloc), altlocs));
+  }
+  bool matches(const gemmi::CRA& cra) const {
+    return (cra.chain == nullptr || matches(*cra.chain)) &&
+           (cra.residue == nullptr || matches(*cra.residue)) &&
+           (cra.atom == nullptr || matches(*cra.atom));
+  }
+
+  FilterProxy<Selection, Model> models(Structure& st) const {
+    return FilterProxy<Selection, Model>{*this, st.models};
+  }
+  FilterProxy<Selection, Chain> chains(Model& model) const {
+    return FilterProxy<Selection, Chain>{*this, model.chains};
+  }
+  FilterProxy<Selection, Residue> residues(Chain& chain) const {
+    return FilterProxy<Selection, Residue>{*this, chain.residues};
+  }
+  FilterProxy<Selection, Atom> atoms(Residue& residue) const {
+    return FilterProxy<Selection, Atom>{*this, residue.atoms};
   }
 };
 
@@ -132,9 +164,14 @@ int determine_omitted_cid_fields(const std::string& cid) {
 }
 
 Selection::List make_cid_list(const std::string& cid, size_t pos, size_t end) {
-  bool all = cid[pos] == '*';
-  bool inv = cid[pos] == '!';
-  return Selection::List{all, inv, cid.substr(pos+inv, end - (pos+inv))};
+  Selection::List list;
+  list.all = (cid[pos] == '*');
+  if (cid[pos] == '!') {
+    list.inverted = true;
+    ++pos;
+  }
+  list.list = cid.substr(pos, end - pos);
+  return list;
 }
 
 Selection::SequenceId parse_cid_seqid(const std::string& cid, size_t& pos,
@@ -195,7 +232,7 @@ inline Selection parse_cid(const std::string& cid) {
     if (cid[pos] == '(') {
       ++pos;
       size_t right_br = cid.find(')', pos);
-      sel.residues = impl::make_cid_list(cid, pos, right_br);
+      sel.residue_names = impl::make_cid_list(cid, pos, right_br);
       pos = right_br + 1;
     }
     // allow "(RES)." and "(RES).*" and "(RES)*"
@@ -210,7 +247,7 @@ inline Selection parse_cid(const std::string& cid) {
     sep = pos;
   }
 
-  // atom  at[el]:aloc 
+  // atom;  at[el]:aloc
   if (sep < cid.size()) {
     if (sep != 0 && cid[sep] != '/')
         fail("Invalid selection syntax: " + cid);

@@ -121,6 +121,49 @@ struct ConstUniqProxy {
   iterator end() const { return {{&vec, vec.size()}}; }
 };
 
+
+template<typename Filter, typename Vector, typename Value>
+class FilterIterPolicy {
+public:
+  typedef Value value_type;
+  FilterIterPolicy() : vec_(nullptr), pos_(0) {}
+  FilterIterPolicy(const Filter* filter, Vector* vec, std::size_t pos)
+      : filter_(filter), vec_(vec), pos_(pos) {
+    while (pos_ != vec_->size() && !matches(pos_)) ++pos_;
+  }
+  bool matches(std::size_t p) const { return filter_->matches((*vec_)[p]); }
+  void increment() { while (pos_ != vec_->size() && !matches(++pos_)) {} }
+  void decrement() { while (pos_ != 0 && !matches(--pos_)) {} }
+  bool equal(const FilterIterPolicy& o) const { return pos_ == o.pos_; }
+  Value& dereference() { return (*vec_)[pos_]; }
+  using const_policy = FilterIterPolicy<Filter, Vector const, Value const>;
+  operator const_policy() const { return const_policy(vec_, pos_); }
+private:
+  const Filter* filter_;
+  Vector* vec_;
+  std::size_t pos_;
+};
+template<typename Filter, typename Vector, typename Value>
+using FilterIter = BidirIterator<FilterIterPolicy<Filter, Vector, Value>>;
+
+template<typename Filter, typename Value>
+struct FilterProxy {
+  const Filter& filter;
+  std::vector<Value>& vec;
+  using iterator = FilterIter<Filter, std::vector<Value>, Value>;
+  iterator begin() { return {{&filter, &vec, 0}}; }
+  iterator end() { return {{&filter, &vec, vec.size()}}; }
+};
+
+template<typename Filter, typename Value>
+struct ConstFilterProxy {
+  const Filter& filter;
+  const std::vector<Value>& vec;
+  using iterator = FilterIter<Filter, const std::vector<Value>, const Value>;
+  iterator begin() const { return {{&filter, &vec, 0}}; }
+  iterator end() const { return {{&filter, &vec, vec.size()}}; }
+};
+
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et
