@@ -1257,8 +1257,3 @@ and subgraph isomorphisms.
    :start-after: Example 4
    :end-before: minimal program
 
-
-B-factor analysis
------------------
-
-TODO

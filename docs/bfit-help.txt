@@ -1,6 +1,6 @@
-$ gemmi btest -h
+$ gemmi bfit -h
 Usage:
- gemmi btest [options] INPUT[...]
+ gemmi bfit [options] INPUT[...]
 B-factor model testing.
   -h, --help       Print usage and exit.
   -V, --version    Print version and exit.
