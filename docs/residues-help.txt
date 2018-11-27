@@ -1,0 +1,12 @@
+$ gemmi residues -h
+Usage:
+ gemmi residues [options] INPUT[...]
+Prints one residue per line, with atom names.
+  -h, --help          Print usage and exit.
+  -V, --version       Print version and exit.
+  --format=FORMAT     Input format (default: from the file extension).
+  -mSEL, --match=SEL  Print residues/atoms matching the selection.
+INPUT is a coordinate file (mmCIF, PDB, etc).
+The selection SEL has MMDB syntax:
+/mdl/chn/s1.i1(res)-s2.i2/at[el]:aloc (all fields are optional)
+

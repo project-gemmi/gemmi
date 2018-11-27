@@ -339,6 +339,21 @@ Makes a mask in the CCP4 format. It has two functions:
 .. literalinclude:: mask-help.txt
    :language: console
 
+residues
+========
+
+List residues from a coordinate file, one per line.
+
+.. literalinclude:: residues-help.txt
+   :language: console
+
+Example::
+
+    $ gemmi residues -m '/3/*/(CYS,CSD)' 4pth.pdb
+    Model 3
+    A   85  CYS: N CA C O CB SG H HA HB2 HB3 HG
+    A  152  CSD: N CA CB SG C O OD1 OD2 HA HB2 HB3
+
 sg
 ==
 
@@ -482,8 +497,8 @@ The overview above skipped a few details:
 * Finally, these methods could be applied ignoring the symmetry mates
   in the crystal. Halle did the calculations on both the crystal
   and only the asymmetric unit, with the former giving better results.
-  Weiss is also taking into account intermolecular contacts, I think
-  other papers ignore it.
+  Weiss (ACN) and Li and Bruschweiler (LCBM) are also taking into account
+  intermolecular contacts, I think other papers don't.
 
 Metrics for comparison
 ----------------------
@@ -498,6 +513,11 @@ a significant difference.
 Even better, the rank correlation is invariant under any monotonic scaling,
 It is the second metric that we use and having two metrics should be
 sufficient.
+
+Results
+-------
+
+TBC
 
 Program
 -------

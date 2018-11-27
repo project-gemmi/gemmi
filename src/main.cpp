@@ -12,6 +12,7 @@ int convert_main(int argc, char** argv);
 int grep_main(int argc, char** argv);
 int map_main(int argc, char** argv);
 int mask_main(int argc, char** argv);
+int residues_main(int argc, char** argv);
 int rmsz_main(int argc, char** argv);
 int sg_main(int argc, char** argv);
 int validate_main(int argc, char** argv);
@@ -33,6 +34,7 @@ static SubCmd subcommands[] = {
   CMD(grep, "search for tags in CIF file(s)"),
   CMD(map, "print info or modify a CCP4 map"),
   CMD(mask, "make mask in the CCP4 format"),
+  CMD(residues, "list residues from a coordinate file"),
   CMD(rmsz, "validate geometry using monomer library"),
   CMD(sg, "info about space groups"),
   CMD(validate, "validate CIF 1.1 syntax"),

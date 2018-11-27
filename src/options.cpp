@@ -8,6 +8,7 @@
 #include <gemmi/fileutil.hpp>  // for expand_if_pdb_code
 #include <gemmi/version.hpp>   // for GEMMI_VERSION
 #include <gemmi/util.hpp>   // for trim_str
+#include <gemmi/model.hpp>  // for gemmi::CoorFormat
 
 using std::fprintf;
 
@@ -171,6 +172,21 @@ OptParser::paths_from_args_or_file(int opt, int other, bool expand) {
     for (std::string& path : paths)
       path = gemmi::expand_if_pdb_code(path);
   return paths;
+}
+
+gemmi::CoorFormat coor_format_as_enum(const option::Option& format_in) {
+  gemmi::CoorFormat format = gemmi::CoorFormat::Unknown;
+  if (format_in) {
+    if (strcmp(format_in.arg, "cif") == 0)
+      format = gemmi::CoorFormat::Mmcif;
+    else if (strcmp(format_in.arg, "pdb") == 0)
+      format = gemmi::CoorFormat::Pdb;
+    else if (strcmp(format_in.arg, "json") == 0)
+      format = gemmi::CoorFormat::Mmjson;
+    else if (strcmp(format_in.arg, "chemcomp") == 0)
+      format = gemmi::CoorFormat::ChemComp;
+  }
+  return format;
 }
 
 // vim:sw=2:ts=2:et:path^=../include,../third_party

@@ -2,7 +2,6 @@
 
 #include <stdio.h>
 #include <cstdlib> // for getenv
-#include <cstring> // for strcmp
 #include <stdexcept>
 #include "gemmi/gzread.hpp"
 #include "gemmi/model.hpp"     // for Structure, Atom, etc
@@ -17,12 +16,6 @@
 
 namespace cif = gemmi::cif;
 using gemmi::Topo;
-
-struct RmszArg : public Arg {
-  static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
-    return Arg::Choice(option, msg, {"cif", "pdb", "json", "chemcomp"});
-  }
-};
 
 enum OptionIndex { Verbose=3, Monomers, FormatIn, Cutoff };
 
@@ -39,7 +32,7 @@ static const option::Descriptor Usage[] = {
     "  -v, --verbose  \tVerbose output." },
   { Monomers, 0, "", "monomers", Arg::Required,
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
-  { FormatIn, 0, "", "format", RmszArg::FileFormat,
+  { FormatIn, 0, "", "format", Arg::CoorFormat,
     "  --format=FORMAT  \tInput format (default: from the file extension)." },
   { Cutoff, 0, "", "cutoff", Arg::Float,
     "  --cutoff=ZC  \tList bonds and angles with Z score > ZC (default: 2)." },
@@ -164,17 +157,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     cutoff = std::strtod(p.options[Cutoff].arg, nullptr);
   std::string input = p.coordinate_input_file(0);
   try {
-    gemmi::CoorFormat format = gemmi::CoorFormat::Unknown;
-    if (p.options[FormatIn]) {
-      if (strcmp(p.options[FormatIn].arg, "cif") == 0)
-        format = gemmi::CoorFormat::Mmcif;
-      else if (strcmp(p.options[FormatIn].arg, "pdb") == 0)
-        format = gemmi::CoorFormat::Pdb;
-      else if (strcmp(p.options[FormatIn].arg, "json") == 0)
-        format = gemmi::CoorFormat::Mmjson;
-      else if (strcmp(p.options[FormatIn].arg, "chemcomp") == 0)
-        format = gemmi::CoorFormat::ChemComp;
-    }
+    gemmi::CoorFormat format = coor_format_as_enum(p.options[FormatIn]);
     gemmi::Structure st = gemmi::read_structure_gz(input, format);
     if (st.input_format == gemmi::CoorFormat::Pdb ||
         st.input_format == gemmi::CoorFormat::ChemComp)

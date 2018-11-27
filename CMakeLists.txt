@@ -143,6 +143,10 @@ add_executable(gemmi-mask EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/mask.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-mask)
 
+add_executable(gemmi-residues EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/residues.cpp $<TARGET_OBJECTS:input>)
+support_gz(gemmi-residues)
+
 add_executable(gemmi-rmsz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/rmsz.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-rmsz)
@@ -157,7 +161,7 @@ support_gz(gemmi-validate)
 add_executable(gemmi-prog
                src/bfit.cpp src/contact.cpp src/contents.cpp src/convert.cpp
                src/output.cpp src/grep.cpp src/main.cpp src/map.cpp
-               src/mask.cpp src/rmsz.cpp src/sg.cpp
+               src/mask.cpp src/residues.cpp src/rmsz.cpp src/sg.cpp
                src/validate.cpp src/validate_mon.cpp
                $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:options>)
 support_gz(gemmi-prog)

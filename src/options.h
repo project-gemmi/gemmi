@@ -33,6 +33,9 @@ struct Arg: public option::Arg {
   static option::ArgStatus Int(const option::Option& option, bool msg);
   static option::ArgStatus Int3(const option::Option& option, bool msg);
   static option::ArgStatus Float(const option::Option& option, bool msg);
+  static option::ArgStatus CoorFormat(const option::Option& option, bool msg) {
+    return Choice(option, msg, {"cif", "pdb", "json", "chemcomp"});
+  }
 };
 
 struct OptParser : option::Parser {
@@ -55,5 +58,10 @@ struct OptParser : option::Parser {
                                     : options[opt].desc->shortopt;
   }
 };
+
+namespace gemmi { enum class CoorFormat; }
+
+// to be used with Arg::CoorFormat
+gemmi::CoorFormat coor_format_as_enum(const option::Option& format_in);
 
 // vim:sw=2:ts=2:et:path^=../include,../third_party
