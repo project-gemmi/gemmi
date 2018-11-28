@@ -52,6 +52,8 @@ struct SubCells {
   Grid<item_type> grid;
 
   SubCells(const Model& model, const UnitCell& cell, double max_radius);
+  void populate(const Model& model);
+  void add_atom(const Atom& atom, int n_ch, int n_res, int n_atom);
 
   // assumes data in [0, 1), but uses index_n to handle numeric deviations
   item_type& get_subcell(const Fractional& fr) {
@@ -96,28 +98,35 @@ inline SubCells::SubCells(const Model& model, const UnitCell& cell,
   if (grid.nu < 3 || grid.nv < 3 || grid.nw < 3)
     grid.set_size_without_checking(std::max(grid.nu, 3), std::max(grid.nv, 3),
                                    std::max(grid.nw, 3));
-  const UnitCell& gcell = grid.unit_cell;
+}
+
+inline void SubCells::populate(const Model& model) {
   for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
     const Chain& chain = model.chains[n_ch];
     for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
       const Residue& res = chain.residues[n_res];
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
-        const Atom& atom = res.atoms[n_atom];
-        Fractional frac0 = gcell.fractionalize(atom.pos);
-        {
-          Fractional frac = frac0.wrap_to_unit();
-          Position pos = gcell.orthogonalize(frac);
-          get_subcell(frac).emplace_back(pos, atom.altloc, atom.element.elem,
-                                         0, n_ch, n_res, n_atom);
-        }
-        for (int n_im = 0; n_im != (int) gcell.images.size(); ++n_im) {
-          Fractional frac = gcell.images[n_im].apply(frac0).wrap_to_unit();
-          Position pos = gcell.orthogonalize(frac);
-          get_subcell(frac).emplace_back(pos, atom.altloc, atom.element.elem,
-                                         n_im + 1, n_ch, n_res, n_atom);
-        }
+        add_atom(res.atoms[n_atom], n_ch, n_res, n_atom);
       }
     }
+  }
+}
+
+inline void SubCells::add_atom(const Atom& atom,
+                               int n_ch, int n_res, int n_atom) {
+  const UnitCell& gcell = grid.unit_cell;
+  Fractional frac0 = gcell.fractionalize(atom.pos);
+  {
+    Fractional frac = frac0.wrap_to_unit();
+    Position pos = gcell.orthogonalize(frac);
+    get_subcell(frac).emplace_back(pos, atom.altloc, atom.element.elem,
+                                   0, n_ch, n_res, n_atom);
+  }
+  for (int n_im = 0; n_im != (int) gcell.images.size(); ++n_im) {
+    Fractional frac = gcell.images[n_im].apply(frac0).wrap_to_unit();
+    Position pos = gcell.orthogonalize(frac);
+    get_subcell(frac).emplace_back(pos, atom.altloc, atom.element.elem,
+                                   n_im + 1, n_ch, n_res, n_atom);
   }
 }
 

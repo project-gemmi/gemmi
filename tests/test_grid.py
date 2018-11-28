@@ -66,6 +66,7 @@ class TestSubCells(unittest.TestCase):
         st = gemmi.read_pdb_string(FRAGMENT_5A11)
         a1 = st[0].sole_residue('A', 37, ' ')[0]
         sc = gemmi.SubCells(st[0], st.cell, 5)
+        sc.populate(st[0])
         marks = sc.find_atoms(a1.pos, a1.altloc, 3)
         m1, m2 = sorted(marks, key=lambda m: sc.dist(a1.pos, m.pos()))
         self.assertAlmostEqual(sc.dist(a1.pos, m1.pos()), 0, delta=5e-6)
@@ -79,6 +80,7 @@ class TestSubCells(unittest.TestCase):
         st = gemmi.read_pdb_string(FRAGMENT_1GTV)
         a1 = st[0].sole_residue('A', 85, ' ')[0]
         subcells = gemmi.SubCells(st[0], st.cell, 5)
+        subcells.populate(st[0])
         marks = subcells.find_atoms(a1.pos, a1.altloc, 3)
         self.assertEqual(len(marks), 2)
         for mark in marks:

@@ -10,3 +10,5 @@ B-factor model testing.
   --min-dist=DIST  Minimum distance for "contacts" (default: 0.8).
   --cutoff=DIST    Maximum distance for "contacts" (default: 15).
   --pow=P          Exponent in the weighting (default: 2).
+  --chain=CHAIN    Use only one chain from the INPUT file.
+  --sanity         Run sanity checks first.

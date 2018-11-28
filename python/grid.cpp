@@ -118,6 +118,11 @@ void add_grid(py::module& m) {
   subcells
     .def(py::init<const Model&, const UnitCell&, double>(),
          py::arg("model"), py::arg("cell"), py::arg("max_radius"))
+    .def("populate", &SubCells::populate, py::arg("model"),
+         "Usually run after constructing SubCells with the same model arg.")
+    .def("add_atom", &SubCells::add_atom,
+         py::arg("atom"), py::arg("n_ch"), py::arg("n_res"), py::arg("n_atom"),
+         "Lower-level alternative to populate()")
     .def("find_atoms", &SubCells::find_atoms,
          py::arg("pos"), py::arg("alt"), py::arg("radius"),
          py::return_value_policy::move, py::keep_alive<0, 1>())

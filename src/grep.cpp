@@ -509,7 +509,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     replace_all(params.delim, "\\t", "\t");
   }
 
-  auto paths = p.paths_from_args_or_file(FromFile, 1, false);
+  auto paths = p.paths_from_args_or_file(FromFile, 1);
   const char* tag = p.nonOption(0);
   if (tag[0] != '_') {
     fprintf(stderr, "CIF tag must start with \"_\": %s\n", tag);
@@ -540,8 +540,9 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (path == "-") {
       grep_file(path, params, err_count);
       file_count++;
-    } else if (gemmi::is_pdb_code(path)) {
-      std::string real_path = gemmi::expand_if_pdb_code(path);
+    } else if (p.options[FromFile] ? starts_with_pdb_code(path)
+                                   : gemmi::is_pdb_code(path)) {
+      std::string real_path = gemmi::expand_if_pdb_code(path.substr(0, 4));
       params.last_block = true;  // PDB code implies -O
       grep_file(real_path, params, err_count);
       params.last_block = p.options[OneBlock];

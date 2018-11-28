@@ -50,8 +50,7 @@ struct OptParser : option::Parser {
   void require_input_files_as_args(int other_args=0);
   // returns the nth arg except that a PDB code gets replaced by $PDB_DIR/...
   std::string coordinate_input_file(int n);
-  std::vector<std::string> paths_from_args_or_file(int opt, int other,
-                                                   bool expand);
+  std::vector<std::string> paths_from_args_or_file(int opt, int other);
   [[noreturn]] void print_try_help_and_exit(const char* msg);
   const char* given_name(int opt) const {  // sans one dash
     return options[opt].namelen > 1 ? options[opt].name + 1
@@ -63,5 +62,8 @@ namespace gemmi { enum class CoorFormat; }
 
 // to be used with Arg::CoorFormat
 gemmi::CoorFormat coor_format_as_enum(const option::Option& format_in);
+
+// can be used with paths_from_args_or_file()
+bool starts_with_pdb_code(const std::string& s);
 
 // vim:sw=2:ts=2:et:path^=../include,../third_party

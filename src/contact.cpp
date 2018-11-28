@@ -49,6 +49,7 @@ struct Parameters {
 static void print_contacts(const Structure& st, const Parameters& params) {
   const float special_pos_cutoff = 0.8f;
   SubCells sc(st.models.at(0), st.cell, std::max(5.0f, params.max_dist));
+  sc.populate(st.models[0]);
 
   if (params.verbose > 0) {
     if (params.verbose > 1) {

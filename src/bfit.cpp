@@ -9,6 +9,7 @@
 #include <gemmi/math.hpp>  // for Correlation
 #include <gemmi/resinfo.hpp>  // for find_tabulated_residue
 #include <gemmi/gzread.hpp>
+#include <gemmi/fileutil.hpp>  // for expand_if_pdb_code
 #define GEMMI_PROG bfit
 #include "options.h"
 #include <stdio.h>
@@ -18,7 +19,7 @@
 using namespace gemmi;
 
 enum OptionIndex { Verbose=3, FromFile, ListResidues,
-                   MinDist, MaxDist, Exponent };
+                   MinDist, MaxDist, Exponent, ChainName, Sanity };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -38,6 +39,10 @@ static const option::Descriptor Usage[] = {
     "  --cutoff=DIST  \tMaximum distance for \"contacts\" (default: 15)." },
   { Exponent, 0, "", "pow", Arg::Float,
     "  --pow=P  \tExponent in the weighting (default: 2)." },
+  { ChainName, 0, "", "chain", Arg::Required,
+    "  --chain=CHAIN  \tUse only one chain from the INPUT file." },
+  { Sanity, 0, "", "sanity", Arg::None,
+    "  --sanity  \tRun sanity checks first." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -45,7 +50,28 @@ struct Params {
   float min_dist = 0.8f;
   float max_dist = 15.0f;
   float exponent = 2.0f;
+  std::string chain_name;
 };
+
+static bool check_sanity(const Model& model) {
+  for (const Chain& chain : model.chains)
+    for (const Residue& res : chain.residues)
+      for (const Atom& atom : res.atoms) {
+        if (atom.occ < 0 || atom.occ > 1) {
+          fprintf(stderr, "WRONG: atom %s in %s has occupancy: %g\n",
+                          atom.name.c_str(), res.str().c_str(), atom.occ);
+          return false;
+        }
+        if (atom.b_iso < 0 ||
+            (atom.b_iso == 0 && !atom.is_hydrogen() && atom.occ != 0)) {
+          fprintf(stderr, "WRONG: atom %s in %s has B_iso: %g\n",
+                          atom.name.c_str(), res.str().c_str(), atom.b_iso);
+          return false;
+        }
+      }
+
+  return true;
+}
 
 // ranks are from 1 to data.size()
 static std::vector<int> get_ranks(const std::vector<double>& data) {
@@ -95,12 +121,31 @@ static float calculate_weight(float dist_sq, const Params& params) {
 }
 
 static Result test_bfactor_models(const Structure& st, const Params& params) {
-  SubCells sc(st.models.at(0), st.cell, params.max_dist);
   const Model& model = st.models.at(0);
+
+  SubCells sc(model, st.cell, params.max_dist);
+  // populate sc
+  for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
+    const Chain& chain = model.chains[n_ch];
+    for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
+      const Residue& res = chain.residues[n_res];
+      if (find_tabulated_residue(res.name).is_buffer_or_water())
+        continue;
+      for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
+        const Atom& atom = res.atoms[n_atom];
+        if (!atom.is_hydrogen())
+          sc.add_atom(atom, n_ch, n_res, n_atom);
+      }
+    }
+  }
+
   std::vector<double> b_exper;
   std::vector<double> b_predict;
   for (const Chain& chain : model.chains) {
+    if (!params.chain_name.empty() && chain.name != params.chain_name)
+      continue;
     for (const Residue& res : chain.residues) {
+      // TODO use subchains if available
       if (!find_tabulated_residue(res.name).is_amino_acid())
         continue;
       for (const Atom& atom : res.atoms) {
@@ -109,21 +154,22 @@ static Result test_bfactor_models(const Structure& st, const Params& params) {
         double wcn = 0;
         sc.for_each(atom.pos, atom.altloc, params.max_dist,
                     [&](const SubCells::Mark& m, float dist_sq) {
-            if (dist_sq > sq(params.min_dist) && !is_hydrogen(m.element)) {
+            if (dist_sq > sq(params.min_dist)) {
               const_CRA cra = m.to_cra(model);
-              ResidueInfo res_inf = find_tabulated_residue(cra.residue->name);
-              if (res_inf.is_amino_acid())
-                wcn += calculate_weight(dist_sq, params) * cra.atom->occ;
+              wcn += calculate_weight(dist_sq, params) * cra.atom->occ;
             }
         });
-        if (wcn == 0.0)
+        if (wcn == 0.0) {
+          fprintf(stderr, "Warning: lonely atom %s %s %s\n",
+                  chain.name.c_str(), res.str().c_str(), atom.name.c_str());
           continue;
+        }
         b_exper.push_back(atom.b_iso);
         b_predict.push_back(1 / wcn);
       }
     }
   }
-  //normalize(b_predict);
+
   Correlation cc = calculate_correlation(b_exper, b_predict);
   Correlation rank_cc = calculate_correlation(get_ranks(b_exper),
                                               get_ranks(b_predict));
@@ -139,7 +185,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
 
-  std::vector<std::string> paths = p.paths_from_args_or_file(FromFile, 0, true);
+  std::vector<std::string> paths = p.paths_from_args_or_file(FromFile, 0);
+
   bool verbose = p.options[Verbose].count();
   Params params;
   if (p.options[MinDist])
@@ -148,16 +195,32 @@ int GEMMI_MAIN(int argc, char **argv) {
     params.max_dist = std::strtof(p.options[MaxDist].arg, nullptr);
   if (p.options[Exponent])
     params.exponent = std::strtof(p.options[Exponent].arg, nullptr);
+  if (p.options[ChainName])
+    params.chain_name = p.options[ChainName].arg;
   double sum_cc = 0;
   double sum_rank_cc = 0;
   try {
-    for (const std::string& path : paths) {
+    for (std::string& path : paths) {
       if (verbose > 0)
         std::printf("File: %s\n", path.c_str());
-      Structure st = read_structure_gz(path);
+      if (p.options[FromFile] && !p.options[ChainName]) {
+        // TODO: don't assume 5, find tab
+        params.chain_name = gemmi::trim_str(path.substr(5));
+      }
+      if (p.options[FromFile] && starts_with_pdb_code(path))
+        path.resize(4);
+      Structure st = read_structure_gz(gemmi::expand_if_pdb_code(path));
+      if (p.options[Sanity]) {
+        if (!check_sanity(st.models.at(0))) {
+          fprintf(stderr, "Skipping %s\n", path.c_str());
+          continue;
+        }
+      }
       Result r = test_bfactor_models(st, params);
-      printf("%s <B>=%#.4g for %5d atoms   CC=%#.4g  rankCC=%#.4g\n",
-             st.name.c_str(), r.b_mean, r.n, r.cc, r.rank_cc);
+      printf("%s %s <B>=%5.2f for %5d atoms   CC=%.4f  rankCC=%.4f\n",
+             st.name.c_str(),
+             params.chain_name.empty() ? "*" : params.chain_name.c_str(),
+             r.b_mean, r.n, r.cc, r.rank_cc);
       sum_cc += r.cc;
       sum_rank_cc += r.rank_cc;
     }

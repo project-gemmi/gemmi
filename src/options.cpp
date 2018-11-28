@@ -141,8 +141,13 @@ std::string OptParser::coordinate_input_file(int n) {
   return gemmi::expand_if_pdb_code(nonOption(n));
 }
 
+bool starts_with_pdb_code(const std::string& s) {
+  return s.length() > 4 && std::strchr(" \t\r\n:,;|", s[4]) &&
+         gemmi::is_pdb_code(s.substr(0, 4));
+}
+
 std::vector<std::string>
-OptParser::paths_from_args_or_file(int opt, int other, bool expand) {
+OptParser::paths_from_args_or_file(int opt, int other) {
   std::vector<std::string> paths;
   const option::Option& file_option = options[opt];
   if (file_option) {
@@ -156,9 +161,6 @@ OptParser::paths_from_args_or_file(int opt, int other, bool expand) {
     char buf[512];
     while (std::fgets(buf, 512, f)) {
       std::string s = gemmi::trim_str(buf);
-      if (s.length() > 4 && std::strchr(" \t\r\n:,;|", s[4]) &&
-          gemmi::is_pdb_code(s.substr(0, 4)))
-        s.resize(4);
       if (!s.empty())
         paths.emplace_back(s);
     }
@@ -168,9 +170,6 @@ OptParser::paths_from_args_or_file(int opt, int other, bool expand) {
     for (int i = other; i < nonOptionsCount(); ++i)
       paths.emplace_back(nonOption(i));
   }
-  if (expand)
-    for (std::string& path : paths)
-      path = gemmi::expand_if_pdb_code(path);
   return paths;
 }
 
