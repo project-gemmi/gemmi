@@ -5,10 +5,14 @@ B-factor model testing.
   -h, --help       Print usage and exit.
   -V, --version    Print version and exit.
   --verbose        Verbose output.
-  -f, --file=FILE  obtain paths or PDB IDs from FILE, one per line
+  -f, --file=FILE  Obtain paths or PDB IDs from FILE, one per line.
   -l, --list       List per-residue values.
   --min-dist=DIST  Minimum distance for "contacts" (default: 0.8).
   --cutoff=DIST    Maximum distance for "contacts" (default: 15).
   --pow=P          Exponent in the weighting (default: 2).
   --chain=CHAIN    Use only one chain from the INPUT file.
   --sanity         Run sanity checks first.
+  --sidechains=X   One of: include, exclude, only (default: include).
+  --no-crystal     Ignore crystal symmetry and intermolecular contacts.
+  --omit-ends=N    Ignore N terminal residues from each chain end.
+  --tsv            Output as tab-separated values.
