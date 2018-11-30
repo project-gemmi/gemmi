@@ -21,7 +21,7 @@ using namespace gemmi;
 
 enum OptionIndex { Verbose=3, FromFile, ListResidues, MinDist, MaxDist,
                    Exponent, ChainName, Sanity, SideChains, NoCrystal,
-                   OmitEnds, Tsv };
+                   OmitEnds, PrintRes };
 
 struct BfitArg {
   static option::ArgStatus SideChains(const option::Option& option, bool msg) {
@@ -56,8 +56,8 @@ static const option::Descriptor Usage[] = {
     "  --no-crystal  \tIgnore crystal symmetry and intermolecular contacts." },
   { OmitEnds, 0, "", "omit-ends", Arg::Int,
     "  --omit-ends=N  \tIgnore N terminal residues from each chain end." },
-  { Tsv, 0, "", "tsv", Arg::None,
-    "  --tsv  \tOutput as tab-separated values." },
+  { PrintRes, 0, "", "print-res", Arg::None,
+    "  --print-res  \tPrint also resolution and R-free." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -126,6 +126,7 @@ struct Result {
   int n_residues;
   int n;
   double b_mean;
+  double b_stddev;
   double cc;
   double rank_cc;
 };
@@ -172,10 +173,13 @@ static Result test_bfactor_models(const Structure& st, const Params& params) {
   for (const Chain& chain : model.chains) {
     if (!params.chain_name.empty() && chain.name != params.chain_name)
       continue;
-    for (const Residue& res : chain.get_polymer()) {
-      // TODO: params.omit_ends
+    const SubChain polymer = chain.get_polymer();
+    if (polymer.size() <= 2 * params.omit_ends)
+      continue;
+    auto p_end = polymer.end() - params.omit_ends;
+    for (auto res = polymer.begin() + params.omit_ends; res != p_end; ++res) {
       ++n_residues;
-      for (const Atom& atom : res.atoms) {
+      for (const Atom& atom : res->atoms) {
         if (is_hydrogen(atom.element))
           continue;
         if ((params.sidechains == 'e' && !is_protein_backbone(atom.name)) ||
@@ -191,7 +195,7 @@ static Result test_bfactor_models(const Structure& st, const Params& params) {
         });
         if (wcn == 0.0) {
           fprintf(stderr, "Warning: lonely atom %s %s %s\n",
-                  chain.name.c_str(), res.str().c_str(), atom.name.c_str());
+                  chain.name.c_str(), res->str().c_str(), atom.name.c_str());
           continue;
         }
         b_exper.push_back(atom.b_iso);
@@ -205,6 +209,7 @@ static Result test_bfactor_models(const Structure& st, const Params& params) {
                                               get_ranks(b_predict));
   Result r;
   r.b_mean = cc.mean_x;
+  r.b_stddev = std::sqrt(cc.x_variance());
   r.n = b_exper.size();
   r.cc = cc.coefficient();
   r.rank_cc = rank_cc.coefficient();
@@ -234,11 +239,10 @@ int GEMMI_MAIN(int argc, char **argv) {
     params.omit_ends = std::atoi(p.options[OmitEnds].arg);
   double sum_cc = 0;
   double sum_rank_cc = 0;
-  const char* format = p.options[Tsv]
-               ? "%s\t%s\t%d\t%d\t%.2f\t%.4f\t%.4f\n"
-               : "%s %s #res=%3d N=%5d  <B>=%5.2f   CC=%.4f  rankCC=%.4f\n";
-  if (p.options[Tsv])
-    printf("PDB\tChain\tN\t<B>\tCC\trankCC\n");
+  printf("PDB\tChain\t");
+  if (p.options[PrintRes])
+    printf("Res[A]\tRFree\t");
+  printf("#res\tN\t<B>\tstd(B)\tCC\trankCC\n");
   try {
     for (std::string& path : paths) {
       if (verbose > 0)
@@ -260,10 +264,15 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
       gemmi::assign_subchains(st, false);
       Result r = test_bfactor_models(st, params);
-      printf(format,
+      printf("%s\t%s\t",
              st.name.c_str(),
-             params.chain_name.empty() ? "*" : params.chain_name.c_str(),
-             r.n_residues, r.n, r.b_mean,
+             params.chain_name.empty() ? "*" : params.chain_name.c_str());
+      if (p.options[PrintRes]) {
+        double rfree = std::atof(st.info["_refine.ls_R_factor_R_free"].c_str());
+        printf("%.2f\t%.2f\t", st.resolution, rfree);
+      }
+      printf("%d\t%d\t%.2f\t%.1f\t%.4f\t%.4f\n",
+             r.n_residues, r.n, r.b_mean, r.b_stddev,
              r.cc, r.rank_cc);
       sum_cc += r.cc;
       sum_rank_cc += r.rank_cc;

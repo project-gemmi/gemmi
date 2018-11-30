@@ -8,7 +8,7 @@ BUILD_DIR="$(pwd)"
 ./tools/docs-help.sh
 (cd docs && make -j4 html SPHINXOPTS="-q -n")
 export PYTHONPATH=$BUILD_DIR
-python3 -m unittest discover -s tests
+python3.7 -m unittest discover -s tests
 # Where python 2 and 3 output differ, the docs have output from v3.
 # So 'make doctest' works only if sphinx-build was installed for python3.
 (cd docs && make doctest SPHINXOPTS="-q -n")

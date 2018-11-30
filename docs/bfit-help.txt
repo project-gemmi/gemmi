@@ -15,4 +15,4 @@ B-factor model testing.
   --sidechains=X   One of: include, exclude, only (default: include).
   --no-crystal     Ignore crystal symmetry and intermolecular contacts.
   --omit-ends=N    Ignore N terminal residues from each chain end.
-  --tsv            Output as tab-separated values.
+  --print-res      Print also resolution and R-free.

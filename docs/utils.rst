@@ -503,16 +503,31 @@ The overview above skipped a few details:
 Metrics for comparison
 ----------------------
 
-To compare a number of nearby atoms with B-factor we either rescale 
+To compare a number of nearby atoms with B-factor we either rescale
 the former, or we use a metric that does not require rescaling.
-The Pearson correlation coefficient is invariant under linear transformation,
+The Pearson correlation coefficient (CC) is invariant under linear
+transformation,
 so it can be calculated directly unless we would like to apply non-linear
-scaling. Which was tried only in the Manfred Weiss' paper and did not make
-a significant difference.
+scaling. Which was tried only in the Manfred Weiss' paper: scaling
+function with three parameters improved CC by 0.012 comparing with linear
+function (that has two parameters). Here, to keep it simple, we only do
+linear scaling.
 
-Even better, the rank correlation is invariant under any monotonic scaling,
-It is the second metric that we use and having two metrics should be
-sufficient.
+As noted by Halle, Pearson CC as well as mean-square deviation
+can be dominated by a few outliers. Therefore Halle used relative mean
+absolute deviation (RMAD): sum of absolute differences divided
+by the average absolute deviation in the experimantal values.
+Halle justifies this normalization writing that it allows to compare
+structures determined at different temperatures.
+This is debatable as can be seen from ccp4bb
+`discussions <https://www.mail-archive.com/ccp4bb@jiscmail.ac.uk/msg30444.html>`_
+on how to compare B-factors between two structures.
+Anyway, RMAD is a good metric. It is calculated after (linear) scaling
+of the predicted numbers to fit experimental values.
+
+Another metric is the rank correlation. It is interesting because it is
+invariant under any monotonic scaling. But it is not guaranteed to be
+a good measure of similarity.
 
 Results
 -------
