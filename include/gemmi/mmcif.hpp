@@ -181,6 +181,9 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
     st.info[new_date_tag] = st.info[old_date_tag];
   add_info("_struct_keywords.pdbx_keywords");
   add_info("_struct_keywords.text");
+  // Not sure if we should use _pdbx_refine.free_R_factor_no_cutoff
+  // if _refine.ls_R_factor_R_free is absent.
+  add_info("_refine.ls_R_factor_R_free");
 
   for (const std::string& d : block.find_values("_refine.ls_d_res_high")) {
     double resol = cif::as_number(d);

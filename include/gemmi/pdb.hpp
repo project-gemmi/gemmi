@@ -274,13 +274,21 @@ inline void read_remark3_line(const char* line, Structure& st) {
   // According to
   // www.wwpdb.org/documentation/file-format-content/format23/remark3.html
   // SHELXL template has one space less (after '3') than other programs.
-  if (st.resolution == 0.0)
-    for (int offset : {11, 10}) {
-      if (same_n(line + offset, "  RESOLUTION RANGE HIGH (ANGSTROMS) :", 37)) {
+  // In special cases, such as joint X-ray and neutron refinement 5MOO,
+  // PDB file can have two REMARK 3 blocks.
+  for (int offset : {11, 10}) {
+    if (st.resolution == 0.0 &&
+        same_n(line + offset, "  RESOLUTION RANGE HIGH (ANGSTROMS) :", 37)) {
         st.resolution = read_double(line + offset + 37, 7);
         return;
-      }
     }
+    if (same_n(line + offset, "  BIN FREE R VALUE                    :", 39)) {
+      std::string& r_free = st.info["_refine.ls_R_factor_R_free"];
+      if (!r_free.empty())
+        r_free += "; ";
+      r_free = trim_str(read_string(line + offset + 39, 29));
+    }
+  }
 }
 
 template<typename Input>
