@@ -107,6 +107,9 @@ TEST_CASE("Correlation") {
   CHECK_EQ(cor.mean_x, 3.05);
   CHECK_EQ(cor.mean_y, 11);
   CHECK_EQ(cor.coefficient(), doctest::Approx(0.66257388));
+  CHECK_EQ(cor.covariance(), doctest::Approx(1.15));
+  CHECK_EQ(cor.x_variance(), doctest::Approx(0.6025));
+  CHECK_EQ(cor.y_variance(), doctest::Approx(5));
 }
 
 TEST_CASE("string_to_int") {

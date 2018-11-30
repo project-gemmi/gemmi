@@ -224,8 +224,9 @@ struct Variance {
   double mean_x = 0.;
 
   void add_point(double x) {
+    ++n;
     double dx = x - mean_x;
-    mean_x += dx / ++n;
+    mean_x += dx / n;
     sum_sq += dx * (x - mean_x);
   }
   double for_sample() const { return sum_sq / (n - 1); }
@@ -235,8 +236,9 @@ struct Variance {
 struct Covariance : Variance {
   double mean_y = 0.;
   void add_point(double x, double y) {
+    ++n;
     double dx = x - mean_x;
-    mean_x += dx / ++n;
+    mean_x += dx / n;
     mean_y += (y - mean_y) / n;
     sum_sq += dx * (y - mean_y);
   }
@@ -261,6 +263,9 @@ struct Correlation {
     mean_y += dy / n;
   }
   double coefficient() const { return sum_xy / std::sqrt(sum_xx * sum_yy); }
+  double x_variance() const { return sum_xx / n; }
+  double y_variance() const { return sum_yy / n; }
+  double covariance() const { return sum_xy / n; }
 };
 
 } // namespace gemmi
