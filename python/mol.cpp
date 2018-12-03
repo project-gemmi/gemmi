@@ -226,6 +226,16 @@ void add_mol(py::module& m) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
 
+  py::class_<UniqProxy<Residue, ResidueSpan>>(m, "FirstConformerResSpan")
+    .def("__iter__", [](UniqProxy<Residue, ResidueSpan>& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>());
+
+  py::class_<UniqProxy<Atom>>(m, "FirstConformerAtoms")
+    .def("__iter__", [](UniqProxy<Atom>& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>());
+
   py::class_<Chain>(m, "Chain")
     .def(py::init<std::string>())
     .def_readwrite("name", &Chain::name)
@@ -264,6 +274,9 @@ void add_mol(py::module& m) {
     .def("__getitem__", [](ResidueSpan& g, int index) -> Residue& {
         return g.at(index >= 0 ? index : index + g.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("first_conformer", (UniqProxy<Residue, ResidueSpan> (ResidueSpan::*)())
+                            &ResidueSpan::first_conformer)
+    .def("length", &ResidueSpan::length)
     .def("__repr__", [](const ResidueSpan& self) {
         return "<gemmi.ResidueSpan [" +
                join_str(self, ' ', [](const Residue& r) { return r.str(); }) +
@@ -291,11 +304,6 @@ void add_mol(py::module& m) {
         return "<gemmi.SubChain " + self.name() +
                ", length " + std::to_string(self.size()) + ">";
     });
-
-  py::class_<UniqProxy<Atom>>(m, "FirstConformerAtoms")
-    .def("__iter__", [](UniqProxy<Atom>& self) {
-        return py::make_iterator(self);
-    }, py::keep_alive<0, 1>());
 
   py::class_<SeqId>(m, "SeqId")
     .def_readwrite("num", &SeqId::num)

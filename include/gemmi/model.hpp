@@ -401,6 +401,9 @@ struct ResidueSpan {
   }
   bool empty() const { return size_ == 0; }
   explicit operator bool() const { return size_ != 0; }
+
+  UniqProxy<Residue, ResidueSpan> first_conformer() { return {*this}; }
+  ConstUniqProxy<Residue, ResidueSpan> first_conformer() const {return {*this};}
 };
 
 // returned by find_residue_group()
@@ -424,14 +427,6 @@ struct SubChain : ResidueSpan {
     const static std::string empty_name = "";
     return empty() ? empty_name : begin_->subchain;
   }
-
-  // the same as Chain::first_conformer()
-  /* TODO
-  UniqProxy<Residue> first_conformer() {
-  }
-  ConstUniqProxy<Residue> first_conformer() const {
-  }
-  */
 };
 
 

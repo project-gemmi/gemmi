@@ -347,6 +347,30 @@ class TestMol(unittest.TestCase):
         del st['1']
         self.assertEqual(len(st), 0)
 
+    def test_first_conformer(self):
+        model = gemmi.read_structure(full_path('1pfe.cif.gz'))[0]
+        b = model['B']
+        self.assertEqual([res.name for res in b if not res.is_water()],
+                         ['DSN', 'ALA', 'N2C', 'NCY', 'MVA', 'DSN',
+                          'ALA', 'NCY', 'N2C', 'MVA', 'QUI', 'QUI'])
+        self.assertEqual([res.name for res in b.first_conformer()
+                          if not res.is_water()],
+                         ['DSN', 'ALA', 'N2C', 'MVA', 'DSN',
+                          'ALA', 'NCY', 'MVA', 'QUI', 'QUI'])
+        polymer = b.get_polymer()
+        self.assertEqual([res.name for res in polymer],
+                         ['DSN', 'ALA', 'N2C', 'NCY', 'MVA', 'DSN',
+                          'ALA', 'NCY', 'N2C', 'MVA'])
+        self.assertEqual([res.name for res in polymer.first_conformer()],
+                         ['DSN', 'ALA', 'N2C', 'MVA', 'DSN',
+                          'ALA', 'NCY', 'MVA'])
+        self.assertEqual(len(polymer), 10)
+        self.assertEqual(polymer.length(), 8)
+        self.assertEqual(polymer.make_one_letter_sequence(), 'sAXvsAXv')
+        res1 = model.sole_residue('A', 1, ' ')
+        self.assertEqual([atom.name for atom in res1.first_conformer()],
+                         [atom.name for atom in res1 if atom.altloc != 'B'])
+
     def test_extract_sequence_info(self):
         st = gemmi.read_structure(full_path('5cvz_final.pdb'))
         st.add_entity_types()

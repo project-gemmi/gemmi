@@ -106,17 +106,17 @@ private:
 template<typename Vector, typename Value>
 using UniqIter = BidirIterator<UniqIterPolicy<Vector, Value>>;
 
-template<typename Value>
+template<typename Value, typename Vector=std::vector<Value>>
 struct UniqProxy {
-  std::vector<Value>& vec;
-  using iterator = UniqIter<std::vector<Value>, Value>;
+  Vector& vec;
+  using iterator = UniqIter<Vector, Value>;
   iterator begin() { return {{&vec, 0}}; }
   iterator end() { return {{&vec, vec.size()}}; }
 };
 template<typename Value, typename Vector=std::vector<Value>>
 struct ConstUniqProxy {
-  const std::vector<Value>& vec;
-  using iterator = UniqIter<const std::vector<Value>, const Value>;
+  const Vector& vec;
+  using iterator = UniqIter<const Vector, const Value>;
   iterator begin() const { return {{&vec, 0}}; }
   iterator end() const { return {{&vec, vec.size()}}; }
 };

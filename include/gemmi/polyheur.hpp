@@ -106,7 +106,7 @@ inline std::string make_one_letter_sequence(const SubChain& polymer) {
   std::string seq;
   const Residue* prev = nullptr;
   PolymerType ptype = check_polymer_type(polymer);
-  for (const Residue& residue : polymer) {
+  for (const Residue& residue : polymer.first_conformer()) {
     ResidueInfo info = find_tabulated_residue(residue.name);
     if (prev && !are_connected2(*prev, residue, ptype))
       seq += '-';
