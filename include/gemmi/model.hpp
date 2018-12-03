@@ -455,6 +455,15 @@ struct Chain {
     return const_cast<Chain*>(this)->get_polymer();
   }
 
+  SubChain get_ligands() {
+    return get_residue_span([](const Residue& r) {
+        return r.entity_type == EntityType::NonPolymer;
+    });
+  }
+  const SubChain get_ligands() const {
+    return const_cast<Chain*>(this)->get_ligands();
+  }
+
   SubChain get_waters() {
     return get_residue_span([](const Residue& r) {
         return r.entity_type == EntityType::Water;

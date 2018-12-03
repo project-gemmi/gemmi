@@ -367,6 +367,7 @@ class TestMol(unittest.TestCase):
         self.assertEqual(len(polymer), 10)
         self.assertEqual(polymer.length(), 8)
         self.assertEqual(polymer.make_one_letter_sequence(), 'sAXvsAXv')
+        self.assertEqual([res.name for res in b.get_ligands()], ['QUI', 'QUI'])
         res1 = model.sole_residue('A', 1, ' ')
         self.assertEqual([atom.name for atom in res1.first_conformer()],
                          [atom.name for atom in res1 if atom.altloc != 'B'])

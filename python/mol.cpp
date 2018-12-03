@@ -251,6 +251,7 @@ void add_mol(py::module& m) {
     .def("subchains", &Chain::subchains)
     .def("whole", (ResidueSpan (Chain::*)()) &Chain::whole)
     .def("get_polymer", (SubChain (Chain::*)()) &Chain::get_polymer)
+    .def("get_ligands", (SubChain (Chain::*)()) &Chain::get_ligands)
     .def("get_waters", (SubChain (Chain::*)()) &Chain::get_waters)
     .def("has_subchains_assigned", &has_subchains_assigned)
     .def("append_residues", &Chain::append_residues,
