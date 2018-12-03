@@ -265,7 +265,7 @@ class TestMol(unittest.TestCase):
             image_of_pb = st.ncs[0].apply(pb)
             self.assertTrue(pa.dist(image_of_pb) < 0.01)
 
-    def test_pdb_fragment(self):
+    def test_pdb_element_names(self):
         pdb_line = "HETATM 4154 MG    MG A 341       1.384  19.340  11.968" \
                    "  1.00 67.64          MG"
         for line in [pdb_line, pdb_line.strip(' MG'), pdb_line[:-2] + '  ']:
@@ -273,6 +273,14 @@ class TestMol(unittest.TestCase):
             mg_atom = st[0].sole_residue('A', 341, ' ')['MG']
             self.assertEqual(mg_atom.element.name, 'Mg')
             self.assertAlmostEqual(mg_atom.b_iso, 67.64, delta=1e-6)
+
+    def test_pdb_misaligned_element(self):
+        pdb_line = "ATOM      7 S    SUB A   7      34.489 -14.293  34.343" \
+                   "  0.29 43.77          S"
+        for line in [pdb_line, pdb_line + '\n', pdb_line + '\r\n']:
+            st = gemmi.read_pdb_string(line)
+            atom = st[0].sole_residue('A', 7, ' ')['S']
+            self.assertEqual(atom.element.name, 'S')
 
     def test_4hhh_frag(self):
         path = full_path('4hhh_frag.pdb')

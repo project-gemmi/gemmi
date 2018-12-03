@@ -184,7 +184,10 @@ inline El find_element(const char* symbol) {
   char second = symbol[1] & ~0x20;
   if (first == '\0')
     return impl::find_single_letter_element(second);
-  if (second == '\0')
+  // To handle symbol being "S\n" we have the condition below.
+  // In addition to \t, \v, \r and \n it catches also !"3$%&'()*+,- and
+  // some control characters - inconsistent but not necessarily bad.
+  if (second < 14)
     return impl::find_single_letter_element(first);
   elname_t* names = &element_uppercase_name(El::X);
   for (int i = 0; i != 120; ++i) {
