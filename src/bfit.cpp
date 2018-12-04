@@ -130,6 +130,8 @@ struct Result {
   double b_stddev;
   double cc;
   double rank_cc;
+  double mean_abs_dev;
+  double relative_mean_abs_dev;
 };
 
 static float calculate_weight(float dist_sq, const Params& params) {
@@ -171,6 +173,7 @@ static Result test_bfactor_models(const Structure& st, const Params& params) {
   // calculate B-factor predictor
   std::vector<double> b_exper;
   std::vector<double> b_predict;
+  std::vector<const Atom*> atom_ptr;
   int n_residues = 0;
   for (const Chain& chain : model.chains) {
     if (!params.chain_name.empty() && chain.name != params.chain_name)
@@ -208,6 +211,7 @@ static Result test_bfactor_models(const Structure& st, const Params& params) {
         }
         b_exper.push_back(atom.b_iso);
         b_predict.push_back(1 / wcn);
+        atom_ptr.push_back(&atom);
       }
     }
   }
@@ -220,19 +224,33 @@ static Result test_bfactor_models(const Structure& st, const Params& params) {
     path += ".xy";
     auto f = gemmi::file_open(path.c_str(), "w");
     for (size_t i = 0; i != b_predict.size(); ++i)
-      fprintf(f.get(), "%g\t%g\n", b_predict[i], b_exper[i]);
+      fprintf(f.get(), "%g\t%g\t%s\t%s\n", b_predict[i], b_exper[i],
+              atom_ptr[i]->name.c_str(), atom_ptr[i]->element.name());
   }
 
   // calculate statistics
-  Correlation cc = calculate_correlation(b_exper, b_predict);
-  Correlation rank_cc = calculate_correlation(get_ranks(b_exper),
-                                              get_ranks(b_predict));
+  Correlation cc = calculate_correlation(b_predict, b_exper);
+  Correlation rank_cc = calculate_correlation(get_ranks(b_predict),
+                                              get_ranks(b_exper));
   Result r;
-  r.b_mean = cc.mean_x;
-  r.b_stddev = std::sqrt(cc.x_variance());
+  r.b_mean = cc.mean_y;
+  r.b_stddev = std::sqrt(cc.y_variance());
   r.n = b_exper.size();
   r.cc = cc.coefficient();
   r.rank_cc = rank_cc.coefficient();
+  {
+    double slope = cc.slope();
+    double intercept = cc.intercept();
+    double a = 0, b = 0;
+    for (size_t i = 0; i != b_exper.size(); ++i) {
+      double diff = b_predict[i] * slope + intercept - b_exper[i];
+      a += std::abs(diff);
+      b += std::abs(b_exper[i] - cc.mean_y);
+      //b_predict[i] = diff; // re-purposing b_predict
+    }
+    r.mean_abs_dev = a / b_exper.size();
+    r.relative_mean_abs_dev = a / b;
+  }
   r.n_residues = n_residues;
   return r;
 }
@@ -260,11 +278,12 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (p.options[XyOut])
     params.xy_out = p.options[XyOut].arg;
   double sum_cc = 0;
+  double sum_rmad = 0;
   double sum_rank_cc = 0;
   printf("PDB\tChain\t");
   if (p.options[PrintRes])
     printf("Res[A]\tRFree\t");
-  printf("#res\tN\t<B>\tstd(B)\tCC\trankCC\n");
+  printf("#res\tN\t<B>\tstd(B)\tCC\t1-RMAD\trankCC\n");
   try {
     for (std::string& path : paths) {
       if (verbose > 0)
@@ -293,15 +312,17 @@ int GEMMI_MAIN(int argc, char **argv) {
         double rfree = std::atof(st.info["_refine.ls_R_factor_R_free"].c_str());
         printf("%.2f\t%.2f\t", st.resolution, rfree);
       }
-      printf("%d\t%d\t%.2f\t%.1f\t%.4f\t%.4f\n",
+      printf("%d\t%d\t%.2f\t%.1f\t%.4f\t%.4f\t%.4f\n",
              r.n_residues, r.n, r.b_mean, r.b_stddev,
-             r.cc, r.rank_cc);
+             r.cc, 1.0 - r.relative_mean_abs_dev, r.rank_cc);
       sum_cc += r.cc;
+      sum_rmad += r.relative_mean_abs_dev;
       sum_rank_cc += r.rank_cc;
     }
-    if (paths.size() > 1)
-      printf("average of %4zu files             CC=%#.4g  rankCC=%#.4g\n",
-             paths.size(), sum_cc / paths.size(), sum_rank_cc / paths.size());
+    int N = paths.size();
+    if (N > 1)
+      printf("average of %4d files     CC=%#.4g  1-RMAD=%#.4g  rankCC=%#.4g\n",
+             N, sum_cc / N, 1.0 - sum_rmad / N, sum_rank_cc / N);
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
