@@ -2,8 +2,6 @@
 //
 // B-factor model testing
 
-// TODO: calculation in asu only
-
 #include <gemmi/subcells.hpp>
 #include <gemmi/elem.hpp>  // for is_hydrogen
 #include <gemmi/math.hpp>  // for Correlation
@@ -21,7 +19,7 @@ using namespace gemmi;
 
 enum OptionIndex { Verbose=3, FromFile, ListResidues, MinDist, MaxDist,
                    Exponent, ChainName, Sanity, SideChains, NoCrystal,
-                   OmitEnds, PrintRes };
+                   OmitEnds, PrintRes, XyOut };
 
 struct BfitArg {
   static option::ArgStatus SideChains(const option::Option& option, bool msg) {
@@ -58,6 +56,8 @@ static const option::Descriptor Usage[] = {
     "  --omit-ends=N  \tIgnore N terminal residues from each chain end." },
   { PrintRes, 0, "", "print-res", Arg::None,
     "  --print-res  \tPrint also resolution and R-free." },
+  { XyOut, 0, "", "xy-out", Arg::Required,
+    "  --xy-out=DIR  \tWrite DIR/name.xy files with WCN and B(exper)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -68,6 +68,7 @@ struct Params {
   std::string chain_name;
   char sidechains = 'i';
   int omit_ends = 0;
+  std::string xy_out;
 };
 
 static bool check_sanity(const Model& model) {
@@ -151,8 +152,8 @@ static bool is_protein_backbone(const std::string& name) {
 static Result test_bfactor_models(const Structure& st, const Params& params) {
   const Model& model = st.models.at(0);
 
+  // prepare cell lists for neighbour search
   SubCells sc(model, st.cell, params.max_dist);
-  // populate sc
   for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
     const Chain& chain = model.chains[n_ch];
     for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
@@ -167,6 +168,7 @@ static Result test_bfactor_models(const Structure& st, const Params& params) {
     }
   }
 
+  // calculate B-factor predictor
   std::vector<double> b_exper;
   std::vector<double> b_predict;
   int n_residues = 0;
@@ -190,7 +192,13 @@ static Result test_bfactor_models(const Structure& st, const Params& params) {
                     [&](const SubCells::Mark& m, float dist_sq) {
             if (dist_sq > sq(params.min_dist)) {
               const_CRA cra = m.to_cra(model);
-              wcn += calculate_weight(dist_sq, params) * cra.atom->occ;
+              float weight = calculate_weight(dist_sq, params);
+              // if an atom is one of multiple conformations we iterate here
+              // only over other atoms of the same conformation (and atoms
+              // with no altloc) so we don't weight by occupancy.
+              if (atom.altloc == '\0')
+                weight *= cra.atom->occ;
+              wcn += weight;
             }
         });
         if (wcn == 0.0) {
@@ -204,6 +212,18 @@ static Result test_bfactor_models(const Structure& st, const Params& params) {
     }
   }
 
+  // optionally, write xy file
+  if (!params.xy_out.empty()) {
+    std::string path = params.xy_out + "/" + st.name;
+    if (!params.chain_name.empty())
+      path += "-" + params.chain_name;
+    path += ".xy";
+    auto f = gemmi::file_open(path.c_str(), "w");
+    for (size_t i = 0; i != b_predict.size(); ++i)
+      fprintf(f.get(), "%g\t%g\n", b_predict[i], b_exper[i]);
+  }
+
+  // calculate statistics
   Correlation cc = calculate_correlation(b_exper, b_predict);
   Correlation rank_cc = calculate_correlation(get_ranks(b_exper),
                                               get_ranks(b_predict));
@@ -237,6 +257,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     params.sidechains = p.options[SideChains].arg[0];
   if (p.options[OmitEnds])
     params.omit_ends = std::atoi(p.options[OmitEnds].arg);
+  if (p.options[XyOut])
+    params.xy_out = p.options[XyOut].arg;
   double sum_cc = 0;
   double sum_rank_cc = 0;
   printf("PDB\tChain\t");

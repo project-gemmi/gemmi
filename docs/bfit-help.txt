@@ -16,3 +16,4 @@ B-factor model testing.
   --no-crystal     Ignore crystal symmetry and intermolecular contacts.
   --omit-ends=N    Ignore N terminal residues from each chain end.
   --print-res      Print also resolution and R-free.
+  --xy-out=DIR     Write DIR/name.xy files with WCN and B(exper).
