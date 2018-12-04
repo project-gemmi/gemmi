@@ -266,6 +266,9 @@ struct Correlation {
   double x_variance() const { return sum_xx / n; }
   double y_variance() const { return sum_yy / n; }
   double covariance() const { return sum_xy / n; }
+  // the regression line
+  double slope() const { return sum_xy / sum_xx; }
+  double intercept() const { return mean_y - slope() * mean_x; }
 };
 
 } // namespace gemmi

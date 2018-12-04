@@ -110,6 +110,9 @@ TEST_CASE("Correlation") {
   CHECK_EQ(cor.covariance(), doctest::Approx(1.15));
   CHECK_EQ(cor.x_variance(), doctest::Approx(0.6025));
   CHECK_EQ(cor.y_variance(), doctest::Approx(5));
+  // scipy.stats.linregress([2.1, 2.5, 4.0, 3.6], [8, 12, 14, 10])
+  CHECK_EQ(cor.slope(), doctest::Approx(1.9087136929460577));
+  CHECK_EQ(cor.intercept(), doctest::Approx(5.178423236514524));
 }
 
 TEST_CASE("string_to_int") {
