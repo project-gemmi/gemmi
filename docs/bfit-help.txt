@@ -10,6 +10,7 @@ B-factor model testing.
   --min-dist=DIST  Minimum distance for "contacts" (default: 0.8).
   --cutoff=DIST    Maximum distance for "contacts" (default: 15).
   --pow=P          Exponent in the weighting (default: 2).
+  --blur=SIGMA     Apply Gaussian smoothing of predicted B-factors.
   --chain=CHAIN    Use only one chain from the INPUT file.
   --sanity         Run sanity checks first.
   --sidechains=X   One of: include, exclude, only (default: include).

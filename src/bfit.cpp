@@ -18,7 +18,7 @@
 using namespace gemmi;
 
 enum OptionIndex { Verbose=3, FromFile, ListResidues, MinDist, MaxDist,
-                   Exponent, ChainName, Sanity, SideChains, NoCrystal,
+                   Exponent, Blur, ChainName, Sanity, SideChains, NoCrystal,
                    OmitEnds, PrintRes, XyOut };
 
 struct BfitArg {
@@ -44,6 +44,8 @@ static const option::Descriptor Usage[] = {
     "  --cutoff=DIST  \tMaximum distance for \"contacts\" (default: 15)." },
   { Exponent, 0, "", "pow", Arg::Float,
     "  --pow=P  \tExponent in the weighting (default: 2)." },
+  { Blur, 0, "", "blur", Arg::Float,
+    "  --blur=SIGMA  \tApply Gaussian smoothing of predicted B-factors." },
   { ChainName, 0, "", "chain", Arg::Required,
     "  --chain=CHAIN  \tUse only one chain from the INPUT file." },
   { Sanity, 0, "", "sanity", Arg::None,
@@ -65,6 +67,7 @@ struct Params {
   float min_dist = 0.8f;
   float max_dist = 15.0f;
   float exponent = 2.0f;
+  float blur = 0.0f;
   std::string chain_name;
   char sidechains = 'i';
   int omit_ends = 0;
@@ -151,8 +154,8 @@ static bool is_protein_backbone(const std::string& name) {
   }
 }
 
-static Result test_bfactor_models(const Structure& st, const Params& params) {
-  const Model& model = st.models.at(0);
+static Result test_bfactor_models(Structure& st, const Params& params) {
+  Model& model = st.models.at(0);
 
   // prepare cell lists for neighbour search
   SubCells sc(model, st.cell, params.max_dist);
@@ -175,16 +178,16 @@ static Result test_bfactor_models(const Structure& st, const Params& params) {
   std::vector<double> b_predict;
   std::vector<const Atom*> atom_ptr;
   int n_residues = 0;
-  for (const Chain& chain : model.chains) {
+  for (Chain& chain : model.chains) {
     if (!params.chain_name.empty() && chain.name != params.chain_name)
       continue;
-    const SubChain polymer = chain.get_polymer();
+    SubChain polymer = chain.get_polymer();
     if (polymer.size() <= 2 * params.omit_ends)
       continue;
     auto p_end = polymer.end() - params.omit_ends;
     for (auto res = polymer.begin() + params.omit_ends; res != p_end; ++res) {
       ++n_residues;
-      for (const Atom& atom : res->atoms) {
+      for (Atom& atom : res->atoms) {
         if (is_hydrogen(atom.element))
           continue;
         if ((params.sidechains == 'e' && !is_protein_backbone(atom.name)) ||
@@ -194,7 +197,7 @@ static Result test_bfactor_models(const Structure& st, const Params& params) {
         sc.for_each(atom.pos, atom.altloc, params.max_dist,
                     [&](const SubCells::Mark& m, float dist_sq) {
             if (dist_sq > sq(params.min_dist)) {
-              const_CRA cra = m.to_cra(model);
+              CRA cra = m.to_cra(model);
               float weight = calculate_weight(dist_sq, params);
               // if an atom is one of multiple conformations we iterate here
               // only over other atoms of the same conformation (and atoms
@@ -211,8 +214,33 @@ static Result test_bfactor_models(const Structure& st, const Params& params) {
         }
         b_exper.push_back(atom.b_iso);
         b_predict.push_back(1 / wcn);
+        // re-use u11 for bookkeeping of 1/wcn
+        atom.flag = 1;
+        atom.u11 = b_predict.back();
         atom_ptr.push_back(&atom);
       }
+    }
+  }
+
+  // smoothing - average weighted by Gaussian(dist)
+  if (params.blur > 0.f) {
+    float mult = -0.5 / (params.blur * params.blur);
+    for (size_t i = 0; i != atom_ptr.size(); ++i) {
+      const Atom& atom = *atom_ptr[i];
+      double b_sum = 0;
+      double weight_sum = 0;
+      sc.for_each(atom.pos, atom.altloc, 3 * params.blur,
+                  [&](const SubCells::Mark& m, float dist_sq) {
+          const_CRA cra = m.to_cra(model);
+          if (cra.atom->flag) {
+            float weight = std::exp(mult * dist_sq);
+            if (atom.altloc == '\0' && cra.atom != &atom)
+              weight *= cra.atom->occ;
+            b_sum += weight * cra.atom->u11;
+            weight_sum += weight;
+          }
+      });
+      b_predict[i] = b_sum / weight_sum;
     }
   }
 
@@ -269,6 +297,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     params.max_dist = std::strtof(p.options[MaxDist].arg, nullptr);
   if (p.options[Exponent])
     params.exponent = std::strtof(p.options[Exponent].arg, nullptr);
+  if (p.options[Blur])
+    params.blur = std::strtof(p.options[Blur].arg, nullptr);
   if (p.options[ChainName])
     params.chain_name = p.options[ChainName].arg;
   if (p.options[SideChains])
@@ -295,6 +325,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (p.options[FromFile] && starts_with_pdb_code(path))
         path.resize(4);
       Structure st = read_structure_gz(gemmi::expand_if_pdb_code(path));
+      st.merge_same_name_chains();
       if (p.options[NoCrystal])
         st.cell = UnitCell();
       if (p.options[Sanity]) {
