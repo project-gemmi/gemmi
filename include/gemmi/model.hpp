@@ -599,17 +599,26 @@ struct AtomAddress {
   }
 };
 
-struct CRA {
-  Chain* chain;
-  Residue* residue;
-  Atom* atom;
-};
-
 struct const_CRA {
   const Chain* chain;
   const Residue* residue;
   const Atom* atom;
 };
+
+struct CRA {
+  Chain* chain;
+  Residue* residue;
+  Atom* atom;
+  operator const_CRA() const { return const_CRA{chain, residue, atom}; }
+};
+
+inline std::string atom_str(const const_CRA& cra) {
+  static const ResidueId null_residue_id;
+  return atom_str(cra.chain ? cra.chain->name : "null",
+                  cra.residue ? *cra.residue : null_residue_id,
+                  cra.atom ? cra.atom->name : "null",
+                  cra.atom ? cra.atom->altloc : '\0');
+}
 
 // A connection. Corresponds to _struct_conn.
 // Symmetry operators are not trusted and not stored.
