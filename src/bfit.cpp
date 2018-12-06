@@ -191,7 +191,7 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
     if (!params.chain_name.empty() && chain.name != params.chain_name)
       continue;
     SubChain polymer = chain.get_polymer();
-    if (polymer.size() <= 2 * params.omit_ends)
+    if (polymer.size() <= 2 * (size_t) params.omit_ends)
       continue;
     Position com = calculate_center_of_mass(polymer);
     auto p_end = polymer.end() - params.omit_ends;
@@ -236,8 +236,8 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
         b_predict.push_back(value);
         // re-use u11 and u22 for bookkeeping
         atom.flag = 1;
-        atom.u11 = value;
-        atom.u22 = r2;
+        atom.u11 = (float) value;
+        atom.u22 = (float) r2;
         atom_ptr.push_back(&atom);
       }
     }
@@ -245,7 +245,7 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
 
   // smoothing - average weighted by Gaussian(dist)
   if (params.blur > 0.f) {
-    float mult = -0.5 / (params.blur * params.blur);
+    float mult = -0.5f / (params.blur * params.blur);
     for (size_t i = 0; i != atom_ptr.size(); ++i) {
       const Atom& atom = *atom_ptr[i];
       double b_sum = 0;
@@ -328,7 +328,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (p.options[SideChains])
     params.sidechains = p.options[SideChains].arg[0];
   if (p.options[OmitEnds])
-    params.omit_ends = std::atoi(p.options[OmitEnds].arg);
+    params.omit_ends = std::max(std::atoi(p.options[OmitEnds].arg), 0);
   if (p.options[XyOut])
     params.xy_out = p.options[XyOut].arg;
   double sum_cc = 0;

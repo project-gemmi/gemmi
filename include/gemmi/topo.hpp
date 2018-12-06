@@ -422,9 +422,9 @@ void Topo::initialize_refmac_topology(Model& model0,
       // add modifications from the link
       find_resinfo(extra.res1)->add_mod(match->mod[0]);
       find_resinfo(extra.res2)->add_mod(match->mod[1]);
-    } else if (const ChemLink* match =
+    } else if ((match =
                 monlib.match_link(extra.res2->name, conn.atom[1].atom_name,
-                                  extra.res1->name, conn.atom[0].atom_name)) {
+                                  extra.res1->name, conn.atom[0].atom_name))) {
       extra.link_id = match->id;
       // add modifications from the link
       find_resinfo(extra.res2)->add_mod(match->mod[0]);

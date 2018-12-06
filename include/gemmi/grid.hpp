@@ -33,7 +33,7 @@ inline bool has_small_factorization(int n) {
 // and space group is P1.
 template<typename T=float>
 struct Grid {
-  int nu, nv, nw;
+  int nu = 0, nv = 0, nw = 0;
   UnitCell unit_cell;
   bool full_canonical; // grid for the whole unit cell with X,Y,Z order
   const SpaceGroup* space_group = nullptr;
