@@ -18,8 +18,8 @@
 using namespace gemmi;
 
 enum OptionIndex { Verbose=3, FromFile, ListResidues, MinDist, MaxDist,
-                   Exponent, Blur, ChainName, Sanity, SideChains, NoCrystal,
-                   OmitEnds, PrintRes, XyOut };
+                   Exponent, Blur, Rom, ChainName, Sanity, SideChains,
+                   NoCrystal, OmitEnds, PrintRes, XyOut };
 
 struct BfitArg {
   static option::ArgStatus SideChains(const option::Option& option, bool msg) {
@@ -46,6 +46,8 @@ static const option::Descriptor Usage[] = {
     "  --pow=P  \tExponent in the weighting (default: 2)." },
   { Blur, 0, "", "blur", Arg::Float,
     "  --blur=SIGMA  \tApply Gaussian smoothing of predicted B-factors." },
+  { Rom, 0, "", "rom", Arg::None,
+    "  --rom  \tRotation only model: |pos-ctr_of_chain|^P instead of WCN." },
   { ChainName, 0, "", "chain", Arg::Required,
     "  --chain=CHAIN  \tUse only one chain from the INPUT file." },
   { Sanity, 0, "", "sanity", Arg::None,
@@ -69,10 +71,23 @@ struct Params {
   float exponent = 2.0f;
   float blur = 0.0f;
   std::string chain_name;
+  bool rotation_only = false;
   char sidechains = 'i';
   int omit_ends = 0;
   std::string xy_out;
 };
+
+const Position calculate_center_of_mass(const SubChain& subchain) {
+  double mass = 0;
+  Vec3 sum;
+  for (const Residue& res : subchain)
+    for (const Atom& atom : res.atoms) {
+      double w = atom.element.weight() * atom.occ;
+      sum += atom.pos * w;
+      mass += w;
+    }
+  return Position(sum / mass);
+}
 
 static bool check_sanity(const Model& model) {
   for (const Chain& chain : model.chains)
@@ -117,15 +132,6 @@ Correlation calculate_correlation(const std::vector<T>& a,
   return cc;
 }
 
-void normalize(std::vector<double>& values) {
-  Variance variance;
-  for (double x : values)
-    variance.add_point(x);
-  double stddev = std::sqrt(variance.for_population());
-  for (double& x : values)
-    x = (x - variance.mean_x) / stddev;
-}
-
 struct Result {
   int n_residues;
   int n;
@@ -158,17 +164,20 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
   Model& model = st.models.at(0);
 
   // prepare cell lists for neighbour search
-  SubCells sc(model, st.cell, params.max_dist);
-  for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
-    const Chain& chain = model.chains[n_ch];
-    for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
-      const Residue& res = chain.residues[n_res];
-      if (find_tabulated_residue(res.name).is_buffer_or_water())
-        continue;
-      for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
-        const Atom& atom = res.atoms[n_atom];
-        if (!atom.is_hydrogen())
-          sc.add_atom(atom, n_ch, n_res, n_atom);
+  SubCells sc;
+  if (!params.rotation_only || params.blur != 0) {
+    sc.initialize(model, st.cell, params.max_dist);
+    for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
+      const Chain& chain = model.chains[n_ch];
+      for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
+        const Residue& res = chain.residues[n_res];
+        if (find_tabulated_residue(res.name).is_buffer_or_water())
+          continue;
+        for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
+          const Atom& atom = res.atoms[n_atom];
+          if (!atom.is_hydrogen())
+            sc.add_atom(atom, n_ch, n_res, n_atom);
+        }
       }
     }
   }
@@ -184,6 +193,7 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
     SubChain polymer = chain.get_polymer();
     if (polymer.size() <= 2 * params.omit_ends)
       continue;
+    Position com = calculate_center_of_mass(polymer);
     auto p_end = polymer.end() - params.omit_ends;
     for (auto res = polymer.begin() + params.omit_ends; res != p_end; ++res) {
       ++n_residues;
@@ -193,30 +203,41 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
         if ((params.sidechains == 'e' && !is_protein_backbone(atom.name)) ||
             (params.sidechains == 'o' && is_protein_backbone(atom.name)))
           continue;
-        double wcn = 0;
-        sc.for_each(atom.pos, atom.altloc, params.max_dist,
-                    [&](const SubCells::Mark& m, float dist_sq) {
-            if (dist_sq > sq(params.min_dist)) {
-              CRA cra = m.to_cra(model);
-              float weight = calculate_weight(dist_sq, params);
-              // if an atom is one of multiple conformations we iterate here
-              // only over other atoms of the same conformation (and atoms
-              // with no altloc) so we don't weight by occupancy.
-              if (atom.altloc == '\0')
-                weight *= cra.atom->occ;
-              wcn += weight;
-            }
-        });
-        if (wcn == 0.0) {
-          fprintf(stderr, "Warning: lonely atom %s %s %s\n",
-                  chain.name.c_str(), res->str().c_str(), atom.name.c_str());
-          continue;
+        double r2 = atom.pos.dist_sq(com);
+        double value;
+        if (params.rotation_only) {
+          if (params.exponent == 2)
+            value = r2;
+          else
+            value = std::pow(r2, 0.5 * params.exponent);
+        } else {
+          double wcn = 0;
+          sc.for_each(atom.pos, atom.altloc, params.max_dist,
+                      [&](const SubCells::Mark& m, float dist_sq) {
+              if (dist_sq > sq(params.min_dist)) {
+                CRA cra = m.to_cra(model);
+                float weight = calculate_weight(dist_sq, params);
+                // if an atom is one of multiple conformations we iterate here
+                // only over other atoms of the same conformation (and atoms
+                // with no altloc) so we don't weight by occupancy.
+                if (atom.altloc == '\0')
+                  weight *= cra.atom->occ;
+                wcn += weight;
+              }
+          });
+          if (wcn == 0.0) {
+            fprintf(stderr, "Warning: lonely atom %s %s %s\n",
+                    chain.name.c_str(), res->str().c_str(), atom.name.c_str());
+            continue;
+          }
+          value = 1 / wcn;
         }
         b_exper.push_back(atom.b_iso);
-        b_predict.push_back(1 / wcn);
-        // re-use u11 for bookkeeping of 1/wcn
+        b_predict.push_back(value);
+        // re-use u11 and u22 for bookkeeping
         atom.flag = 1;
-        atom.u11 = b_predict.back();
+        atom.u11 = value;
+        atom.u22 = r2;
         atom_ptr.push_back(&atom);
       }
     }
@@ -252,7 +273,8 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
     path += ".xy";
     auto f = gemmi::file_open(path.c_str(), "w");
     for (size_t i = 0; i != b_predict.size(); ++i)
-      fprintf(f.get(), "%g\t%g\t%s\t%s\n", b_predict[i], b_exper[i],
+      fprintf(f.get(), "%g\t%g\t%.2f\t%s\t%s\n", b_predict[i], b_exper[i],
+              atom_ptr[i]->u22, // squared distance to the center of mass
               atom_ptr[i]->name.c_str(), atom_ptr[i]->element.name());
   }
 
@@ -299,6 +321,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     params.exponent = std::strtof(p.options[Exponent].arg, nullptr);
   if (p.options[Blur])
     params.blur = std::strtof(p.options[Blur].arg, nullptr);
+  if (p.options[Rom])
+    params.rotation_only = true;
   if (p.options[ChainName])
     params.chain_name = p.options[ChainName].arg;
   if (p.options[SideChains])
@@ -352,8 +376,9 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
     int N = paths.size();
     if (N > 1)
-      printf("average of %4d files     CC=%#.4g  1-RMAD=%#.4g  rankCC=%#.4g\n",
-             N, sum_cc / N, 1.0 - sum_rmad / N, sum_rank_cc / N);
+      fprintf(stderr,
+              "average of %4d files    CC=%#.4g  1-RMAD=%#.4g  rankCC=%#.4g\n",
+              N, sum_cc / N, 1.0 - sum_rmad / N, sum_rank_cc / N);
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;

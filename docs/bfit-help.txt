@@ -11,6 +11,7 @@ B-factor model testing.
   --cutoff=DIST    Maximum distance for "contacts" (default: 15).
   --pow=P          Exponent in the weighting (default: 2).
   --blur=SIGMA     Apply Gaussian smoothing of predicted B-factors.
+  --rom            Rotation only model: |pos-ctr_of_chain|^P instead of WCN.
   --chain=CHAIN    Use only one chain from the INPUT file.
   --sanity         Run sanity checks first.
   --sidechains=X   One of: include, exclude, only (default: include).
