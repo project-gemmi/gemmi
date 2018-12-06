@@ -613,7 +613,7 @@ struct CRA {
 };
 
 inline std::string atom_str(const const_CRA& cra) {
-  static const ResidueId null_residue_id;
+  static const ResidueId null_residue_id = {};
   return atom_str(cra.chain ? cra.chain->name : "null",
                   cra.residue ? *cra.residue : null_residue_id,
                   cra.atom ? cra.atom->name : "null",
