@@ -51,7 +51,11 @@ struct SubCells {
   using item_type = std::vector<Mark>;
   Grid<item_type> grid;
 
-  SubCells(const Model& model, const UnitCell& cell, double max_radius);
+  SubCells() = default;
+  SubCells(const Model& model, const UnitCell& cell, double max_radius) {
+    initialize(model, cell, max_radius);
+  }
+  void initialize(const Model& model, const UnitCell& cell, double max_radius);
   void populate(const Model& model);
   void add_atom(const Atom& atom, int n_ch, int n_res, int n_atom);
 
@@ -80,8 +84,8 @@ struct SubCells {
 };
 
 
-inline SubCells::SubCells(const Model& model, const UnitCell& cell,
-                          double max_radius) {
+inline void SubCells::initialize(const Model& model, const UnitCell& cell,
+                                 double max_radius) {
   if (cell.is_crystal()) {
     grid.set_unit_cell(cell);
   } else {
