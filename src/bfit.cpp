@@ -198,7 +198,7 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
     for (auto res = polymer.begin() + params.omit_ends; res != p_end; ++res) {
       ++n_residues;
       for (Atom& atom : res->atoms) {
-        if (is_hydrogen(atom.element))
+        if (is_hydrogen(atom.element) || atom.occ == 0.0f)
           continue;
         if ((params.sidechains == 'e' && !is_protein_backbone(atom.name)) ||
             (params.sidechains == 'o' && is_protein_backbone(atom.name)))
@@ -272,6 +272,7 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
       path += "-" + params.chain_name;
     path += ".xy";
     auto f = gemmi::file_open(path.c_str(), "w");
+    fprintf(f.get(), "WCN\tB\tr2\tatom\telem\n");
     for (size_t i = 0; i != b_predict.size(); ++i)
       fprintf(f.get(), "%g\t%g\t%.2f\t%s\t%s\n", b_predict[i], b_exper[i],
               atom_ptr[i]->u22, // squared distance to the center of mass
@@ -344,10 +345,11 @@ int GEMMI_MAIN(int argc, char **argv) {
         fprintf(stderr, "File: %s\n", path.c_str());
       if (p.options[FromFile] && !p.options[ChainName]) {
         size_t sep = path.find_first_of(" \t");
-        params.chain_name = gemmi::trim_str(path.substr(sep));
+        if (sep != std::string::npos) {
+          params.chain_name = gemmi::trim_str(path.substr(sep));
+          path.resize(sep);
+        }
       }
-      if (p.options[FromFile] && starts_with_pdb_code(path))
-        path.resize(4);
       Structure st = read_structure_gz(gemmi::expand_if_pdb_code(path));
       st.merge_same_name_chains();
       if (p.options[NoCrystal])

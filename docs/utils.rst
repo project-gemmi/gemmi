@@ -532,7 +532,32 @@ a good measure of similarity.
 Results
 -------
 
-TBC
+To be wrapped up and published. But in the meantime here are some thoughts:
+
+* The optimal exponent is slightly larger than 2; let's use 2 (i.e. w=1/r^2)
+  to keep it simple.
+
+* Accounting for all symmetry mates (i.e. for intermolecular contacts
+  in the crystal) improves the results - and then the cut-off is necessary.
+
+* The optimal cut-off is around 15 - let's use 15.
+
+* Averaging predicted B-factors of nearby atoms helps - we use Gaussian
+  smoothing (blurring) with sigma around 2A.
+
+* Pearson CC around 0.8 may seem high, but it corresponds to R2 0.64,
+  i.e. it we explain only 64% of the B-factor variance.
+  Even less of the absolute deviation - below 50%.
+
+* To get the lowest RMAS we use quantile regression with q=0.5.
+  This optimizes least absolute deviation (LAD).
+  The difference from OLS is not big, in terms of RMAS only ~0.03.
+
+* Combining WCN with CN is helping only a tiny bit (i.e. both are highly
+  correlated) at the cost of additional parameter that is fitted.
+  Combining WCN with rotation-only model (distance from the center of mass ^2)
+  increases correlation slightly more, but still not much.
+
 
 Program
 -------
