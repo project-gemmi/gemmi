@@ -49,7 +49,8 @@ Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown) {
       return make_structure_from_chemcomp_doc(cif::read(input));
     case CoorFormat::Unknown:
     case CoorFormat::UnknownAny:
-      fail("Unknown format.");
+      fail("Unknown format of " +
+           (input.path().empty() ? "coordinate file" : input.path()) + ".");
   }
   unreachable();
 }
