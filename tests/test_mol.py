@@ -273,6 +273,8 @@ class TestMol(unittest.TestCase):
             mg_atom = st[0].sole_residue('A', 341, ' ')['MG']
             self.assertEqual(mg_atom.element.name, 'Mg')
             self.assertAlmostEqual(mg_atom.b_iso, 67.64, delta=1e-6)
+        mg_atom.element = gemmi.Element('Cu')
+        self.assertEqual(mg_atom.element.name, 'Cu')
 
     def test_pdb_misaligned_element(self):
         pdb_line = "ATOM      7 S    SUB A   7      34.489 -14.293  34.343" \

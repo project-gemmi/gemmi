@@ -271,14 +271,14 @@ inline Document read_memory(const char* data, size_t size, const char* name) {
   return read_input(in);
 }
 
-inline Document read_cstream(std::FILE *f, size_t maximum, const char* name) {
-  pegtl::cstream_input<> in(f, maximum, name);
+inline Document read_cstream(std::FILE *f, size_t bufsize, const char* name) {
+  pegtl::cstream_input<> in(f, bufsize, name);
   return read_input(in);
 }
 
 inline Document read_istream(std::istream &is,
-                             size_t maximum, const char* name) {
-  pegtl::istream_input<> in(is, maximum, name);
+                             size_t bufsize, const char* name) {
+  pegtl::istream_input<> in(is, bufsize, name);
   return read_input(in);
 }
 

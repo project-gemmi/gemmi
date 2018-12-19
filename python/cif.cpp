@@ -18,6 +18,7 @@ void add_cif(py::module& cif) {
     .value("Pdbx", Style::Pdbx);
   py::class_<Document>(cif, "Document")
     .def(py::init<>())
+    .def_readwrite("source", &Document::source)
     .def("__len__", [](const Document& d) { return d.blocks.size(); })
     .def("__iter__", [](const Document& d) {
         return py::make_iterator(d.blocks);
@@ -208,6 +209,7 @@ void add_cif(py::module& cif) {
   lt.def("width", &Table::width)
     .def_readonly("prefix_length", &Table::prefix_length)
     .def("get_prefix", &Table::get_prefix)
+    .def("has_column", &Table::has_column)
     .def("column", &Table::column, py::arg("n"), py::keep_alive<0, 1>())
     .def("find_row", &Table::find_row, py::keep_alive<0, 1>())
     .def("find_column", &Table::find_column, py::arg("tag"),
@@ -245,6 +247,7 @@ void add_cif(py::module& cif) {
     })
     .def("get", (std::string* (Table::Row::*)(int)) &Table::Row::ptr_at,
          py::arg("index"), py::return_value_policy::reference_internal)
+    .def("has", &Table::Row::has, py::arg("index"))
     .def("__iter__", [](const Table::Row& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
@@ -254,4 +257,6 @@ void add_cif(py::module& cif) {
           items += " " + (self.has(i) ? self[i] : "None");
         return "<gemmi.cif.Table.Row:" + items + ">";
     });
+
+  cif.def("quote", &quote, py::arg("string"));
 }

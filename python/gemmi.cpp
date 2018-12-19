@@ -31,6 +31,11 @@ PYBIND11_MODULE(gemmi, mg) {
   add_cif(cif);
   add_cif_read(cif);
 
+  py::class_<gemmi::CifWalk>(mg, "CifWalk")
+    .def(py::init<const char*>())
+    .def("__iter__", [](gemmi::CifWalk& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>());
   py::class_<gemmi::CoorFileWalk>(mg, "CoorFileWalk")
     .def(py::init<const char*>())
     .def("__iter__", [](gemmi::CoorFileWalk& self) {

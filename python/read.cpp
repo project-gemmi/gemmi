@@ -36,6 +36,7 @@ void add_cif_read(py::module& cif) {
   cif.def("as_int", (int (*)(const std::string&, int)) &cif::as_int,
           py::arg("value"), py::arg("default"),
           "Returns int number from string value or the second arg if null.");
+  cif.def("is_null", &cif::is_null, py::arg("value"));
 }
 
 void add_read_structure(py::module& m) {

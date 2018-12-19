@@ -697,8 +697,11 @@ inline Loop& Block::setup_loop(Table&& tab, const std::string& prefix,
 inline Table Block::find(const std::string& prefix,
                          const std::vector<std::string>& tags) {
   Item* loop_item = nullptr;
-  if (!tags.empty())
+  if (!tags.empty()) {
+    if (tags[0][0] == '?')
+      fail("The first tag in find() cannot be ?optional.");
     loop_item = find_loop(prefix + tags[0]).item();
+  }
 
   std::vector<int> indices;
   indices.reserve(tags.size());
