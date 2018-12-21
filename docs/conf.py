@@ -39,7 +39,7 @@ if not os.environ.get('READTHEDOCS'):
     #html_theme = 'bizstyle'
     # html_theme_options = {}
 
-#html_static_path = ['_static']
+html_static_path = ['custom.css']
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -65,3 +65,6 @@ try:
 except ImportError:
     networkx = None
 '''
+
+def setup(app):
+    app.add_stylesheet('custom.css')

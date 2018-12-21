@@ -1,0 +1,10 @@
+
+.highlight-pycon .highlight, .highlight-python .highlight {
+ background: #fcfcce;
+}
+.highlight-cpp .highlight {
+ background: #e2ffef;
+}
+.highlight-cpp .highlight .cl {
+ color: #486878
+}

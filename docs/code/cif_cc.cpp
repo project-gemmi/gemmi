@@ -10,7 +10,7 @@ int main() {
       std::cout << cc[0] << " weights " << cc[1] << std::endl;
 }
 
-// the next example is in docs from line 15
+// the next example is in docs from line 15 to 27
 
 #include <iostream>
 #include <gemmi/cif.hpp>
@@ -24,4 +24,11 @@ void convert_to_xyz(cif::Document doc) {
   for (auto row : atoms)
     std::cout << gemmi::join_str(row, " ") << "\n";
     //std::cout << boost::algorithm::join(row, " ") << "\n";
+}
+
+
+// this example is in docs from line 32 to 33
+void swap_atom_id_tags(cif::Block& block) {
+  cif::Table::Row tags = block.find("_atom_site.", {"label_atom_id", "auth_atom_id"}).tags();
+  std::swap(tags[0], tags[1]);
 }
