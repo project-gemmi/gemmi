@@ -100,7 +100,7 @@ void add_chemcomp(py::module& m) {
     .def_readonly("el", &ChemComp::Atom::el)
     .def_readonly("charge", &ChemComp::Atom::charge)
     .def_readonly("chem_type", &ChemComp::Atom::chem_type)
-    .def("is_hydrogen", is_hydrogen)
+    .def("is_hydrogen", &ChemComp::Atom::is_hydrogen)
     ;
   chemcomp
     .def_readonly("name", &ChemComp::name)

@@ -1,7 +1,7 @@
 // Copyright 2018 Global Phasing Ltd.
 //
 // Cell-linked lists method for atom searching (a.k.a. grid search, binning,
-// bucketing, cell techinque for neighbours search, etc).
+// bucketing, cell technique for neighbours search, etc).
 
 #ifndef GEMMI_SUBCELLS_HPP_
 #define GEMMI_SUBCELLS_HPP_
@@ -72,6 +72,16 @@ struct SubCells {
   std::vector<Mark*> find_atoms(const Position& pos, char alt, float radius) {
     std::vector<Mark*> out;
     for_each(pos, alt, radius, [&out](Mark& a, float) { out.push_back(&a); });
+    return out;
+  }
+
+  std::vector<Mark*> find_neighbors(const Atom& atom,
+                                    float min_dist, float max_dist) {
+    std::vector<Mark*> out;
+    for_each(atom.pos, atom.altloc, max_dist, [&](Mark& a, float dist_sq) {
+        if (dist_sq > sq(min_dist))
+          out.push_back(&a);
+    });
     return out;
   }
 

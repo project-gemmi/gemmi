@@ -126,6 +126,9 @@ void add_grid(py::module& m) {
     .def("find_atoms", &SubCells::find_atoms,
          py::arg("pos"), py::arg("alt"), py::arg("radius"),
          py::return_value_policy::move, py::keep_alive<0, 1>())
+    .def("find_neighbors", &SubCells::find_neighbors,
+         py::arg("atom"), py::arg("min_dist"), py::arg("max_dist"),
+         py::return_value_policy::move, py::keep_alive<0, 1>())
     .def("dist", &SubCells::dist)
     .def("__repr__", [](const SubCells& self) {
         return "<gemmi.SubCells with grid " + grid_dim_str(self.grid) + ">";

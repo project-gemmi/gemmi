@@ -81,6 +81,9 @@ class TestSubCells(unittest.TestCase):
         self.assertEqual(cra2.chain.name, 'B')
         self.assertEqual(str(cra2.residue.seqid), '37')
         self.assertEqual(cra2.atom.name, 'SG')
+        marks2 = sc.find_neighbors(a1, 0.1, 3)
+        self.assertEqual(len(marks2), 1)
+        self.assertEqual(marks2[0], m2)
 
     def test_5a11_using_add_atom(self):
         self.test_5a11(use_populate=False)
@@ -95,6 +98,8 @@ class TestSubCells(unittest.TestCase):
         for mark in marks:
             d = subcells.dist(a1.pos, mark.pos())
             self.assertAlmostEqual(d, 0, delta=5e-6)
+        marks2 = subcells.find_neighbors(a1, 0.1, 3)
+        self.assertEqual(len(marks2), 0)
 
 if __name__ == '__main__':
     unittest.main()

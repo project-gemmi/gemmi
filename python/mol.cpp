@@ -357,6 +357,7 @@ void add_mol(py::module& m) {
     .def_readwrite("occ", &Atom::occ)
     .def_readwrite("b_iso", &Atom::b_iso)
     .def_readwrite("serial", &Atom::serial)
+    .def("is_hydrogen", &Atom::is_hydrogen)
     .def("__repr__", [](const Atom& self) {
         std::string r = "<gemmi.Atom " + self.name;
         if (self.altloc) {
