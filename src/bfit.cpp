@@ -77,10 +77,10 @@ struct Params {
   std::string xy_out;
 };
 
-const Position calculate_center_of_mass(const SubChain& subchain) {
+const Position calculate_center_of_mass(const ResidueSpan& residue_span) {
   double mass = 0;
   Vec3 sum;
-  for (const Residue& res : subchain)
+  for (const Residue& res : residue_span)
     for (const Atom& atom : res.atoms) {
       double w = atom.element.weight() * atom.occ;
       sum += atom.pos * w;
@@ -190,7 +190,7 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
   for (Chain& chain : model.chains) {
     if (!params.chain_name.empty() && chain.name != params.chain_name)
       continue;
-    SubChain polymer = chain.get_polymer();
+    ResidueSpan polymer = chain.get_polymer();
     if (polymer.size() <= 2 * (size_t) params.omit_ends)
       continue;
     Position com = calculate_center_of_mass(polymer);

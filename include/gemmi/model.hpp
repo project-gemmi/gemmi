@@ -404,6 +404,12 @@ struct ResidueSpan {
 
   UniqProxy<Residue, ResidueSpan> first_conformer() { return {*this}; }
   ConstUniqProxy<Residue, ResidueSpan> first_conformer() const {return {*this};}
+
+  const std::string& subchain_id() const {
+    if (size_ == 0)
+      throw std::out_of_range("No ResidueSpan::subchain_id() for empty span");
+    return begin_->subchain;
+  }
 };
 
 // returned by find_residue_group()
@@ -417,18 +423,6 @@ struct ResidueGroup : ResidueSpan {
     throw std::invalid_argument("ResidueGroup has no residue " + name);
   }
 };
-
-// returned by subchains(), get_polymer(), etc.
-struct SubChain : ResidueSpan {
-  SubChain() = default;
-  SubChain(ResidueSpan&& span) : ResidueSpan(std::move(span)) {}
-  bool labelled() const { return !empty() && !begin()->subchain.empty(); }
-  const std::string& name() const {
-    const static std::string empty_name = "";
-    return empty() ? empty_name : begin_->subchain;
-  }
-};
-
 
 struct Chain {
   static const char* what() { return "Chain"; }
@@ -446,43 +440,42 @@ struct Chain {
   ResidueSpan whole() { return ResidueSpan(residues.begin(), residues.size()); }
   const ResidueSpan whole() const { return const_cast<Chain*>(this)->whole(); }
 
-  SubChain get_polymer() {
+  ResidueSpan get_polymer() {
     return get_residue_span([](const Residue& r) {
         return r.entity_type == EntityType::Polymer;
     });
   }
-  const SubChain get_polymer() const {
+  const ResidueSpan get_polymer() const {
     return const_cast<Chain*>(this)->get_polymer();
   }
 
-  SubChain get_ligands() {
+  ResidueSpan get_ligands() {
     return get_residue_span([](const Residue& r) {
         return r.entity_type == EntityType::NonPolymer;
     });
   }
-  const SubChain get_ligands() const {
+  const ResidueSpan get_ligands() const {
     return const_cast<Chain*>(this)->get_ligands();
   }
 
-  SubChain get_waters() {
+  ResidueSpan get_waters() {
     return get_residue_span([](const Residue& r) {
         return r.entity_type == EntityType::Water;
     });
   }
-  const SubChain get_waters() const {
+  const ResidueSpan get_waters() const {
     return const_cast<Chain*>(this)->get_waters();
   }
 
-  SubChain get_subchain(const std::string& s) {
+  ResidueSpan get_subchain(const std::string& s) {
     return get_residue_span([&](const Residue& r) { return r.subchain == s; });
   }
-  const SubChain get_subchain(const std::string& s) const {
+  const ResidueSpan get_subchain(const std::string& s) const {
     return const_cast<Chain*>(this)->get_subchain(s);
   }
 
-  // TODO: use generator with iterators
-  std::vector<SubChain> subchains() {
-    std::vector<SubChain> v;
+  std::vector<ResidueSpan> subchains() {
+    std::vector<ResidueSpan> v;
     for (auto i = residues.begin(); i != residues.end(); i += v.back().size())
       v.emplace_back(get_residue_span([&](const Residue& r) {
             return r.subchain == i->subchain;
@@ -672,18 +665,18 @@ struct Model {
         }
   }
 
-  SubChain get_subchain(const std::string& sub_name) {
+  ResidueSpan get_subchain(const std::string& sub_name) {
     for (Chain& chain : chains)
-      if (SubChain sub = chain.get_subchain(sub_name))
+      if (ResidueSpan sub = chain.get_subchain(sub_name))
         return sub;
-    return SubChain();
+    return ResidueSpan();
   }
-  const SubChain get_subchain(const std::string& sub_name) const {
+  const ResidueSpan get_subchain(const std::string& sub_name) const {
     return const_cast<Model*>(this)->get_subchain(sub_name);
   }
 
-  std::vector<SubChain> subchains() {
-    std::vector<SubChain> v;
+  std::vector<ResidueSpan> subchains() {
+    std::vector<ResidueSpan> v;
     for (Chain& chain : chains)
       vector_move_extend(v, chain.subchains());
     return v;
@@ -755,11 +748,11 @@ struct NcsOp {
   Position apply(const Position& p) const { return Position(tr.apply(p)); }
 };
 
-inline const Entity* get_entity_of(const SubChain& sub,
+inline const Entity* get_entity_of(const ResidueSpan& sub,
                                    const std::vector<Entity>& entities) {
-  if (sub.labelled())
+  if (sub && !sub.subchain_id().empty())
     for (const Entity& ent : entities)
-      if (in_vector(sub.name(), ent.subchains))
+      if (in_vector(sub.subchain_id(), ent.subchains))
         return &ent;
   return nullptr;
 }
@@ -808,10 +801,10 @@ struct Structure {
     return const_cast<Structure*>(this)->get_entity(ent_id);
   }
 
-  const Entity* get_entity_of(const SubChain& sub) const {
+  const Entity* get_entity_of(const ResidueSpan& sub) const {
     return gemmi::get_entity_of(sub, entities);
   }
-  Entity* get_entity_of(const SubChain& sub) {
+  Entity* get_entity_of(const ResidueSpan& sub) {
     return const_cast<Entity*>(gemmi::get_entity_of(sub, entities));
   }
 

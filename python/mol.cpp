@@ -125,7 +125,7 @@ void add_mol(py::module& m) {
          (Entity* (Structure::*)(const std::string&)) &Structure::get_entity,
          py::arg("subchain"), py::return_value_policy::reference_internal)
     .def("get_entity_of",
-         (Entity* (Structure::*)(const SubChain&)) &Structure::get_entity_of,
+         (Entity* (Structure::*)(const ResidueSpan&)) &Structure::get_entity_of,
          py::arg("subchain"), py::return_value_policy::reference_internal)
     .def("__len__", [](const Structure& st) { return st.models.size(); })
     .def("__iter__", [](const Structure& st) {
@@ -194,7 +194,7 @@ void add_mol(py::module& m) {
         return self.chains.at(index >= 0 ? index : index + self.chains.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("get_subchain",
-         (SubChain (Model::*)(const std::string&)) &Model::get_subchain,
+         (ResidueSpan (Model::*)(const std::string&)) &Model::get_subchain,
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("subchains", &Model::subchains,
          py::return_value_policy::reference_internal)
@@ -250,9 +250,11 @@ void add_mol(py::module& m) {
     }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("subchains", &Chain::subchains)
     .def("whole", (ResidueSpan (Chain::*)()) &Chain::whole)
-    .def("get_polymer", (SubChain (Chain::*)()) &Chain::get_polymer)
-    .def("get_ligands", (SubChain (Chain::*)()) &Chain::get_ligands)
-    .def("get_waters", (SubChain (Chain::*)()) &Chain::get_waters)
+    .def("get_polymer", (ResidueSpan (Chain::*)()) &Chain::get_polymer)
+    .def("get_ligands", (ResidueSpan (Chain::*)()) &Chain::get_ligands)
+    .def("get_waters", (ResidueSpan (Chain::*)()) &Chain::get_waters)
+    .def("get_subchain",
+         (ResidueSpan (Chain::*)(const std::string&)) &Chain::get_subchain)
     .def("has_subchains_assigned", &has_subchains_assigned)
     .def("append_residues", &Chain::append_residues,
          py::arg("new_residues"), py::arg("min_sep")=0)
@@ -278,10 +280,19 @@ void add_mol(py::module& m) {
     .def("first_conformer", (UniqProxy<Residue, ResidueSpan> (ResidueSpan::*)())
                             &ResidueSpan::first_conformer)
     .def("length", &ResidueSpan::length)
+    .def("subchain_id", &ResidueSpan::subchain_id)
+    .def("check_polymer_type", &check_polymer_type)
+    .def("make_one_letter_sequence", &make_one_letter_sequence)
     .def("__repr__", [](const ResidueSpan& self) {
-        return "<gemmi.ResidueSpan [" +
-               join_str(self, ' ', [](const Residue& r) { return r.str(); }) +
-               "]>";
+        int N = self.size();
+        std::string r = "<gemmi.ResidueSpan N=" + std::to_string(N) + " [";
+        for (int i = 0; i < (N < 5 ? N : 3); ++i) {
+          if (i != 0) r += ' ';
+          r += self[i].str();
+        }
+        if (N >= 5)
+          r += " ... " + self[N-1].str();
+        return r + "]>";
     });
 
   py::class_<ResidueGroup>(m, "ResidueGroup", residue_span)
@@ -295,15 +306,6 @@ void add_mol(py::module& m) {
         return "<gemmi.ResidueGroup [" +
                join_str(self, ' ', [](const Residue& r) { return r.str(); }) +
                "]>";
-    });
-
-  py::class_<SubChain>(m, "SubChain", residue_span)
-    .def("name", &SubChain::name)
-    .def("check_polymer_type", &check_polymer_type)
-    .def("make_one_letter_sequence", &make_one_letter_sequence)
-    .def("__repr__", [](const SubChain& self) {
-        return "<gemmi.SubChain " + self.name() +
-               ", length " + std::to_string(self.size()) + ">";
     });
 
   py::class_<SeqId>(m, "SeqId")

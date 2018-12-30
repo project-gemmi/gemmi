@@ -166,10 +166,10 @@ static cif::Document make_crd(const gemmi::Structure& st,
   cif::Loop& asym_loop = block.init_mmcif_loop("_struct_asym.",
                                                {"id", "entity_id"});
   for (const gemmi::Chain& chain : model0.chains)
-    for (gemmi::SubChain sub : const_cast<gemmi::Chain&>(chain).subchains())
-      if (sub.labelled()) {
+    for (gemmi::ResidueSpan sub : const_cast<gemmi::Chain&>(chain).subchains())
+      if (!sub.subchain_id().empty()) {
         const gemmi::Entity* ent = st.get_entity_of(sub);
-        asym_loop.add_row({sub.name(), (ent ? ent->name : "?")});
+        asym_loop.add_row({sub.subchain_id(), (ent ? ent->name : "?")});
       }
   const auto& connections = model0.connections;
   if (!connections.empty()) {

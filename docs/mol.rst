@@ -8,11 +8,12 @@ This part of the Gemmi library is for handling structural models of
 biomolecules (but if needed, small molecule and inorganic structures
 can also be read.)
 
-A model from a file (PDB, mmCIF, etc.) is stored in a ``Structure`` object,
-with the usual Model-Chain-Residue-Atom hierarchy.
-Apart from low-level functions to access and manipulate the structure,
-we keep on expanding a toolset of higher-level functionality:
-calculation of popular metrics, ready-to-use complex operations, etc.
+Models from a single file (PDB, mmCIF, etc.) are stored in the ``Structure``
+class, with the usual Model-Chain-Residue-Atom hierarchy.
+Gemmi provides basic functions to access and manipulate the structure,
+and on top of it more complex functions:
+neighbor search, calculation of dihedral angles, removal of ligands from
+a model, etc.
 
 Comparing with the usual tools rooted in bioinformatics:
 
@@ -53,15 +54,11 @@ CIF files that describe small-molecule and inorganic structures
 can be read into an ``AtomicStructure`` object.
 Unlike macromolecular ``Structure``, ``AtomicStructure`` has no hierarchy.
 It is just a flat list of atomic sites (``AtomicStructure::Site``)
-together with unit cell and symmetry.
-
-**C++**
+together with the unit cell and symmetry.
 
 .. literalinclude:: code/smcif.cpp
    :language: cpp
 
-
-**Python**
 
 .. doctest::
 
@@ -88,18 +85,18 @@ Gemmi can use three sources of knowledge about the chemical components:
 
 * built-in basic data about a couple hundreds of the most popular components,
 * the Chemical Component Dictionary maintained by the PDB (25,000+ components),
-* so-called CIF files from the Refmac monomer library (maintained by CCP4)
-  and compatible files from other libraries.
+* so-called CIF files compatible with the format of the Refmac/CCP4 monomer
+  library.
+
+Built-in data
+-------------
 
 The built-in data is accessed through the function ``find_tabulated_residue``
-and contains only minimal information about each residue:
-
-**C++**
+and contains only minimal information about each residue, such as
+assigned category and one-letter code:
 
 .. literalinclude:: code/resinfo.cpp
    :language: cpp
-
-**Python**
 
 .. doctest::
 
@@ -111,22 +108,22 @@ and contains only minimal information about each residue:
     >>> gemmi.find_tabulated_residue('DOD').is_water()
     True
     >>> # PDB marks "non-standard" residues as HETATM.
-    >>> # Pyrrolysine is now standard - some microbes have it.
+    >>> # Pyrrolysine is standard - some microbes have it.
     >>> gemmi.find_tabulated_residue('PYL').is_standard()
     True
     >>> gemmi.find_tabulated_residue('MSE').is_standard()
     False
 
-To get more complete information we need to first read either the CCD
-or a monomer library. This data is represented by class ``ChemComp``.
+External data
+-------------
 
-**C++**
+To get more complete information, including atoms and bonds in the monomer,
+we need to first read either the CCD or a monomer library.
+The data for one monomer is kept in the ``ChemComp`` class.
 
 .. literalinclude:: ../examples/with_bgl.cpp
    :language: cpp
    :lines: 13-14,42-47
-
-**Python**
 
 .. doctest::
 
@@ -134,15 +131,14 @@ or a monomer library. This data is represented by class ``ChemComp``.
     >>> block = gemmi.cif.read('../tests/SO3.cif')[-1]
     >>> so3 = gemmi.make_chemcomp_from_block(block)
 
+Chemical component data is complementing structural model data from mmCIF
+files, as the latter does not include bonding between atoms.
+
 Graph analysis
 --------------
 
-Now we have information about atoms, bonds and other restraints
-used in refinement. If we would like to analyze the molecule as a graph,
-we could setup such a graph using any library that knows how to analyse
-graphs.
-
-**C++**
+If we would like to analyze a chemical molecule as a graph,
+we could setup the corresponding graph in any of the graph libraries.
 
 Here we show how it can be done in the Boost Graph Library.
 
@@ -150,48 +146,50 @@ Here we show how it can be done in the Boost Graph Library.
    :language: cpp
    :lines: 9-10,13-41
 
-**Python**
-
-In a Python example we use NetworkX:
+And here we use NetworkX in Python:
 
 .. doctest::
-    :skipif: networkx is None
+  :skipif: networkx is None
 
-    >>> import networkx
+  >>> import networkx
 
-    >>> G = networkx.Graph()
-    >>> for atom in so3.atoms:
-    ...     G.add_node(atom.id, Z=atom.el.atomic_number)
-    ...
-    >>> for bond in so3.rt.bonds:
-    ...     G.add_edge(bond.id1.atom, bond.id2.atom)  # ignoring bond type
-    ...
+  >>> G = networkx.Graph()
+  >>> for atom in so3.atoms:
+  ...     G.add_node(atom.id, Z=atom.el.atomic_number)
+  ...
+  >>> for bond in so3.rt.bonds:
+  ...     G.add_edge(bond.id1.atom, bond.id2.atom)  # ignoring bond type
+  ...
 
 To show a quick example, let us count automorphisms of SO3:
 
 .. doctest::
-    :skipif: networkx is None
+  :skipif: networkx is None
 
-    >>> import networkx.algorithms.isomorphism as iso
-    >>> GM = iso.GraphMatcher(G, G, node_match=iso.categorical_node_match('Z', 0))
-    >>> # expecting 3! automorphisms (permutations of the three oxygens)
-    >>> sum(1 for _ in GM.isomorphisms_iter())
-    6
+  >>> import networkx.algorithms.isomorphism as iso
+  >>> GM = iso.GraphMatcher(G, G, node_match=iso.categorical_node_match('Z', 0))
+  >>> # expecting 3! automorphisms (permutations of the three oxygens)
+  >>> sum(1 for _ in GM.isomorphisms_iter())
+  6
 
-With a bit more of code we could get something useful for cheminformatics
-exercises. Two longer Python examples are at the end of this section:
-:ref:`graph isomorphism <graph_isomorphism>` and
-:ref:`substructure matching <substructure_matching>`.
+With a bit more of code we could perform a real cheminformatics task.
+See examples at the end of this section:
+:ref:`graph isomorphism <graph_isomorphism>`,
+:ref:`substructure matching <substructure_matching>` and
+:ref:`maximum common subgraph <maximum_common_subgraph>`.
 
 Transformation matrices
 =======================
 
-We also need a tiny bit of linear algebra to work with 3D transformations,
-such as crystallographic symmetry and NCS operations,
-or fractionalization and orthogonalization of coordinates.
+Working with macromolecular coordinates involves 3D transformations,
+such as crystallographic and non-crystallographic symmetry operations,
+and fractionalization and orthogonalization of coordinates.
+This requires a tiny bit of linear algebra.
 
-A tranformation is represented by class ``Transform`` that has two member
-variables: ``mat`` (of type ``Mat33``) and ``vec`` (of type ``Vec3``).
+Such transformations tend to be represented either by a 4x4 matrix,
+or by a 3x3 matrix and a translation vector. Gemmi uses the latter.
+The ``Transform`` class that has two member variables:
+``mat`` (of type ``Mat33``) and ``vec`` (of type ``Vec3``).
 In C++ these types are defined in ``gemmi/math.hpp``.
 
 Coordinates are represented by classes derived from ``Vec3``:
@@ -231,6 +229,8 @@ For the same reason gemmi also has a ``FTransform``, which is like
     <gemmi.Vec3(1.8895, 28.4929, 12.7262)>
     >>> ncs_op.inverse().apply(_)
     <gemmi.Vec3(20, 30, 40)>
+
+.. _unitcell:
 
 Unit Cell
 =========
@@ -288,28 +288,33 @@ Gemmi support the following coordinate file formats:
     * mmJSON,
     * a binary format (MMTF, binary CIF, or own format) is to be considered.
 
-In this section we first show how to read any of the supported formats,
-then in the next sections we go into details of the individual formats,
-and finally we show what can be done with the structural model.
+In this section we show how to read a coordinate file in Gemmi.
+In the next sections we will go into details of the individual formats.
+Finally, we will show what can be done with a structural model.
 
 C++
 ---
 
-Any of the macromolecular coordinate files supported by Gemmi can be opened
+All the macromolecular coordinate files supported by Gemmi can be opened
 using::
 
-    #include <gemmi/mmread.hpp>
-    // ...
-    gemmi::Structure st = gemmi::read_structure_file(path);
-    std::cout << "This file has " << st.models.size() << " models.\n";
+  Structure read_structure_file(const std::string& path, CoorFormat format=CoorFormat::Unknown)
 
-``gemmi::Structure`` is documented :ref:`further on <mcra>`.
+  // where CoorFormat is
+  enum class CoorFormat { Unknown, Pdb, Mmcif, Mmjson };
 
-The file format above is determined from the file extension.
-Alternatively, the format can be specified as the second argument
-of ``read_structure_file``, one of the enumeration values::
+For example::
 
-    enum class CoorFormat { Unknown, Pdb, Mmcif, Mmjson };
+  #include <gemmi/mmread.hpp>
+  // ...
+  gemmi::Structure st = gemmi::read_structure_file(path);
+  std::cout << "This file has " << st.models.size() << " models.\n";
+
+In this example the file format is not specified and is determined from
+the file extension.
+
+``gemmi::Structure`` is defined in ``gemmi/model.hpp`` and
+it will be documented :ref:`later on <mcra>`.
 
 Gemmi also has a templated function ``read_structure`` that you can use
 to customize how you provide the data (bytes) to the parsers.
@@ -323,14 +328,16 @@ the resulting program must be linked with the zlib library.
 
 .. code-block:: console
 
-    $ c++ -std=c++11 -Iinclude -Ithird_party example_above.cpp -lz
-    $ ./a.out 2cco.cif.gz
-    This file has 20 models.
+  $ c++ -std=c++11 -Iinclude -Ithird_party example_above.cpp -lz
+  $ ./a.out 2cco.cif.gz
+  This file has 20 models.
 
 The :file:`gemmi/mmread.hpp` header includes many other headers
-and is relatively slow to compile. If this matters it is recommended
-to include this header in only one ``cpp`` file,
-and in other files use only :file:`gemmi/model.hpp`.
+and is relatively slow to compile. For this reason, include it in
+only one compilation unit (that does not change often).
+Alternatively, if want to support only a single coordinate format, use
+a function specific to this format. For example, the next section
+shows how to read just a PDB file (``read_pdb_file(path)``).
 
 Python
 ------
@@ -349,7 +356,7 @@ or not) can be opened using:
   >>> gemmi.read_structure(path)  #doctest: +ELLIPSIS
   <gemmi.Structure ...>
 
-``gemmi.Structure`` is documented :ref:`further on <mcra>`.
+``gemmi.Structure`` will be documented :ref:`later on <mcra>`.
 
 
 PDB format
@@ -357,8 +364,25 @@ PDB format
 
 The PDB format evolved between 1970's and 2012. Nowadays the PDB organization
 uses PDBx/mmCIF as the primary format and the legacy PDB format is frozen.
-Gemmi aims to support files adhering to the official format specification_,
-as well as files with commonly present deviations from the standard.
+
+.. note::
+
+   The PDB format  specification_ aims to describe the format of files
+   generated by the wwPDB. It does not aim to specify a format that can
+   be used for data exchange between third-party programs.
+   Following literally the specification is neither useful nor possible.
+   For example: the REVDAT record is mandatory, but using it makes sense
+   only for the entries released by the PDB.
+   Therefore no software generates files conforming to the specification
+   except from the wwPDB software (and even this one is not strictly
+   conforming: it writes ``1555`` in the LINK record for the identity operator
+   while the specifications requires leaving these fields blank).
+   So do not read too much into the specification.
+
+Gemmi aims to support all flavours of PDB files that are in common use
+in the field of macromolecular crystallography. This includes files from
+wwPDB as well as files outputted by mainstream software.
+
 In particular, we support the following extensions:
 
 * two-character chain IDs (columns 21 and 22),
@@ -374,19 +398,7 @@ of the PDB format.
 You do not need to read it if you just want to use Gemmi and work with
 molecular models.
 
-.. note::
-
-   The specification_ aims to describe the format of files generated by the
-   wwPDB. It does not aim to specify a format that can be used for data
-   exchange between third-party programs.
-   Following literally the specification is neither useful nor possible.
-   For example: the REVDAT record is mandatory, but using it makes sense
-   only for the entries released by the PDB.
-   Therefore no software generates files conforming to the specification
-   except from the wwPDB software (and even this one is not strictly
-   conforming: it writes ``1555`` in the LINK record for the identity operator
-   while the specifications requires leaving these fields blank).
-   So do not read too much into the specification.
+----
 
 Let us start with the the list of atoms:
 
@@ -398,14 +410,16 @@ Let us start with the the list of atoms:
 
 Standard residues of protein, DNA or RNA are marked as ATOM. Solvent,
 ligands, metals, carbohydrates and everything else is marked as HETATM.
-Non-standard residues of protein, DNA or RNA are HETATM according to
-the wwPDB (so it is not a good idea to remove all HETATM records when one
-wants to only remove ligands and solvent),
-but many programs and crystallographers prefer to mark them as ATOM.
+What about non-standard residues of protein, DNA or RNA?
+According to the wwPDB they are HETATM,
+but some programs and crystallographers prefer to mark them as ATOM.
 It is better to not rely on any of the two conventions.
+In particular, removing ligands and solvent cannot be done by
+removing all the HETATM records.
 
-The second field is the serial number of an atom. The wwPDB spec limits
-the serial numbers to the range 1--99,999, but the popular extension
+The next field after ATOM/HETATM is the serial number of an atom.
+The wwPDB spec limits the serial numbers to the range 1--99,999,
+but the popular extension
 called hybrid-36_ allows to have more atoms in the file by using
 also letters in this field. If you do not need to interpret the CONECT
 records the serial number can be simply ignored.
@@ -471,18 +485,18 @@ Handling alternative conformations adds a lot of complexity,
 as it will be described later on in this documentation.
 These were all tricky things in the atom list.
 
-One more thing that is sometimes forgotten. In most of the PDB entries
-reading the CRYST1 record and the list of atoms is all that is needed
-to construct the crystal structure. But to read correctly all PDB files
-we also need to read two other records:
+Now let's go to matrices. In most of the PDB entries the CRYST1 record
+is all that is needed to construct the crystal structure.
+But in some PDB files we need to take into account two other records:
 
 * MTRIX -- if marked as not-given it defines operations needed to reconstruct
   the asymmetric unit,
 * SCALE -- provides fractionalization matrix. The format of this entry
   is unfortunate: for large unit cells the relative precision of numbers is
   too small. So if coordinates are given in standard settings it is better
-  to calculate the fractionalization matrix from the unit cell dimensions.
-  But the SCALE record needs to be checked to see if the settings are
+  to calculate the fractionalization matrix from the unit cell dimensions
+  (i.e. from the CRYST1 record).
+  But the SCALE record needs to be checked to see if the settings *are*
   the standard ones.
 
 .. _specification: https://www.wwpdb.org/documentation/file-format-content/format33/v3.3.html
@@ -493,16 +507,14 @@ C++
 
 As described in the previous section, all coordinate files can be read
 using the same function calls. Additionally, in C++, you may read a selected
-file format to avoid linking with the code you do not use:
+file format to avoid linking with the code you do not use::
 
-::
+  #include <gemmi/pdb.hpp>     // to read
+  #include <gemmi/gz.hpp>      // to uncompress on the fly
 
-    #include <gemmi/pdb.hpp>     // to read
-    #include <gemmi/gz.hpp>      // to uncompress on the fly
-
-    gemmi::Structure st1 = gemmi::read_pdb_file(path);
-    // or
-    gemmi::Structure st2 = gemmi::read_pdb_file(gemmi::MaybeGzipped(path));
+  gemmi::Structure st1 = gemmi::read_pdb_file(path);
+  // or
+  gemmi::Structure st2 = gemmi::read_pdb_file(gemmi::MaybeGzipped(path));
 
 
 The content of the file can also be read from a string or from a memory::
@@ -528,8 +540,8 @@ PDBx/mmCIF format
 =================
 
 The mmCIF format (more formally: PDBx/mmCIF) became the primary format
-used by the wwPDB. The format uses the CIF 1.1 syntax and a semantics
-as described by the PDBx/mmCIF DDL2 dictionary.
+used by the wwPDB. The format uses the CIF 1.1 syntax with semantics
+described by the PDBx/mmCIF DDL2 dictionary.
 
 While this section may clarify a few things, you do not need to read it
 to work with mmCIF files.
@@ -538,7 +550,7 @@ The main characteristics of the CIF syntax are described in the
 :ref:`CIF introduction <cif_intro>`.
 Here we focus on things specific to mmCIF:
 
-* PDBx/mmCIF dictionary is clearly based on a relational database schema.
+* PDBx/mmCIF dictionary is clearly inspired by relational databases.
   Categories correspond to tables. Data items correspond to columns.
   Key data items correspond to primary (or composite) keys in RDBMS.
 
@@ -546,8 +558,8 @@ Here we focus on things specific to mmCIF:
   some relations between tables seem to be designed for any number of entries
   in one block.
   For example, although a file has only one ``_entry.id`` and
-  ``_struct.title``, the dictionary uses extra item called ``_struct.entry_id``
-  to match the title with id.
+  ``_struct.title``, the dictionary uses an extra item called
+  ``_struct.entry_id`` to match the title with id.
   Is it a good practice to check ``_struct.entry_id`` before reading
   ``_struct.title``? Probably not, as I have seen files with missing
   ``_struct.entry_id`` but never (yet) with multiple ``_struct.title``.
@@ -629,13 +641,16 @@ On the other hand, chain names (``asym_id``) and sequence numbers often
 differ and in the user interface it is better to use the author-defined
 names, for consistency with the PDB format and with the literature.
 
+.. _subchain:
+
 While this is not guaranteed by the specification, in all PDB entries
 each ``auth_asym_id`` "chain" is split into one or more ``label_asym_id``
 "chains"; let us call them *subchains*.
-Polymer (residues before the TER record in the PDB format) goes into
-one subchain, all waters go into another one, and all the other non-polymer
-residues are put into separate single-residue subchains.
-Non-linear polymers (sugars) are treated as a set of non-polymers.
+The polymer (residues before the TER record in the PDB format) goes into
+one subchain; all the other (non-polymer) residues are put into
+single-residue subchains;
+except the waters, which are all put into one subchain.
+Non-linear polymers (sugars) are considered here to be non-polymers.
 
 .. note::
 
@@ -659,7 +674,7 @@ So once again, now in a color-coded version:
  ATOM   <b>1034</b> N <span style="color:#d50">N   <span style="background-color:#ace">B</span> ARG B</span> 2  <span style="color:#d50">73</span>  <span style="background-color:#ace">A</span> -4.641  24.646  -55.195 0.82 22.07 ? <span style="background-color:#ace">77   ARG H N  </span> 1
  </pre></div>
 
-and a couple lines for another file (6any):
+and a couple lines from another file (6any):
 
 .. raw:: html
 
@@ -693,8 +708,6 @@ and _atom_site_anisotrop uses all 1, 2 and 3.
 C++
 ---
 
-All coordinate files can be read using the same interface.
-
 Internally, reading mmCIF files is done in two stages:
 file → ``cif::Document`` → ``Structure``.
 
@@ -709,17 +722,20 @@ file → ``cif::Document`` → ``Structure``.
     cif::Document doc = cif::read(gemmi::MaybeGzipped(mmcif_file));
     gemmi::Structure structure =  gemmi::make_structure(doc);
 
-The same with writing: first a ``cif::Document`` is created
+``cif::Document`` can be additionally used to access meta-data,
+such as the details of the experiment or software used for data processing.
+The examples are provided in the :ref:`CIF parser <cif_examples>` section.
+
+Note that usually you may simply use ``read_structure_file()`` instead,
+as it was described in one of the previous sections.
+
+Writing is also in two stages: first a ``cif::Document`` is created
 and then it is written to disk::
 
     #include <gemmi/to_mmcif.hpp>  // Structure -> cif::Document
     #include <gemmi/to_cif.hpp>    // cif::Document -> file
 
     gemmi::write_cif_to_file(gemmi::make_mmcif_document(structure), "new.cif");
-
-``cif::Document`` can be used to access meta-data,
-such as the details of the experiment or software used for data processing.
-The examples are provided in the :ref:`CIF parser <cif_examples>` section.
 
 Python
 ------
@@ -730,18 +746,24 @@ Python
   >>> mmcif_path =  '../tests/5i55.cif'
 
 
+As a reminder, you may use the interface common for all file formats:
+
 .. doctest::
 
-  >>> # just use interface common for all file formats
   >>> structure = gemmi.read_structure(mmcif_path)
-  >>>
-  >>> # but if you use the cif.read() or cif.read_string() for low level
-  >>> # access you may make the structure directly from the cif block:
-  >>> # read the content of the PDB file in a string:
+
+But if you use ``cif.read()`` or ``cif.read_string()`` for low-level
+access you may make the structure directly from the cif block:
+
+.. doctest::
+
   >>> cif_block = gemmi.cif.read(mmcif_path)[0]
   >>> structure = gemmi.make_structure_from_block(cif_block)
-  >>>
-  >>> # similarly, writing can also be done in two stages
+
+Similarly, writing can also be done in two stages:
+
+.. doctest::
+
   >>> structure.make_mmcif_document().write_file('new.cif')
 
 
@@ -749,7 +771,8 @@ mmJSON format
 =============
 
 The mmJSON_ format is a JSON representation of the mmCIF data.
-This format can be easily parsed with any JSON parser (Gemmi uses sajson).
+This format can be easily parsed with any JSON parser (Gemmi uses
+`sajson <https://github.com/chadaustin/sajson>`_).
 It is a good alternative to PDBML -- easier to parse
 and twice smaller (gzipped).
 
@@ -761,7 +784,7 @@ Files in this format are available from PDBj:
 
     curl -o 5MOO.json.gz 'https://pdbj.org/rest/downloadPDBfile?id=5MOO&format=mmjson-all'
 
-Gemmi can reads mmJSON files into ``cif::Document``,
+Gemmi reads mmJSON files into ``cif::Document``,
 as it does with mmCIF files.
 
 C++
@@ -783,7 +806,7 @@ Reading::
 
 Writing::
 
-    #include <gemmi/to_json.hpp>  // to write
+    #include <gemmi/to_json.hpp>  // for write_mmjson_to_stream
 
     // cif::Document doc = gemmi::make_mmcif_document(structure); 
     gemmi::write_mmjson_to_stream(ostream, doc);
@@ -796,6 +819,7 @@ Python
 
   >>> mmjson_path =  '../tests/1pfe.json'
 
+Reading:
 
 .. doctest::
 
@@ -805,8 +829,12 @@ Python
   >>> # but you can do it in two steps if you wish
   >>> cif_block = gemmi.cif.read_mmjson(mmjson_path)[0]
   >>> structure = gemmi.make_structure_from_block(cif_block)
-  >>>
-  >>> # similarly, Structure -> mmJSON can also be done in two stages
+
+Writing:
+
+.. doctest::
+
+  >>> # Structure -> cif.Document -> mmJSON
   >>> json_str = structure.make_mmcif_document().as_json(mmjson=True)
 
 
@@ -833,6 +861,8 @@ PDBx/mmCIF uses more general (but not so obvious) terms:
 *entity* and *struct_asym* (structural component in asymetric unit)
 instead of chain,
 and *chem_comp* (chemical component) for residue/monomer.
+
+.. _altconf:
 
 Alternative conformations
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -875,7 +905,7 @@ In the latter case (example: 100D), chain parts with the same name
 are either merged automatically (MMDB, BioPython)
 or left as separate chains (iotbx).
 
-In gemmi we support both options. Since merging is easier than splitting,
+In gemmi we support both ways. Since merging is easier than splitting,
 the chains are first read separately and after reading the file
 the user can call ``Structure::merge_same_name_chains()``.
 
@@ -891,9 +921,13 @@ Structure
 ---------
 
 The object of type Structure that we get from reading a PDB or mmCIF file
-may contain multiple models. This adds one more level to the hierarchy.
-At this point it may be good to show an example code.
-Let us mutate all methionine residues (MET) to selenomethionine (MSE).
+may contain multiple models. This adds one more level to the hierarchy:
+structure - model - chain - residue - atom.
+
+Let us first show an example of code that iterates over all levels of
+this hierarchy. The code mutates all methionine residues (MET)
+to selenomethionine (MSE).
+
 
 **C++**
 
@@ -911,10 +945,11 @@ Let us mutate all methionine residues (MET) to selenomethionine (MSE).
           for chain in model:
               for residue in chain:
                   if residue.name == 'MET':
-                      s_atom = residue['SD']
                       residue.name = 'MSE'
-                      s_atom.name = 'SE'
-                      s_atom.element = gemmi.Element('Se')
+                      for atom in residue:
+                          if atom.name == 'SD':
+                              atom.name = 'SE'
+                              atom.element = gemmi.Element('Se')
 
 .. doctest::
   :hide:
@@ -926,28 +961,163 @@ Let us mutate all methionine residues (MET) to selenomethionine (MSE).
   >>> st[0].sole_residue('A', 12, ' ')
   <gemmi.Residue 12(MSE) with 8 atoms>
 
+----
+
+Apart from storing models (often just a single model)
+the ``Structure`` has the following properties:
+
+* ``name`` (string) -- usually the file basename or PDB code,
+* ``cell`` -- :ref:`unit cell <unitcell>`,
+* ``spacegroup_hm`` (string) -- full space group name in Hermann–Mauguin
+  notation (usually taken from the coordinate file),
+* ``ncs`` (C++ type: ``vector<NcsOp>``) -- list of NCS operations,
+  usually taken from the MTRIX record or from the _struct_ncs_oper category,
+* ``resolution`` (C++ type: ``double``) -- resolution value from REMARK 2 or 3,
+* ``entities`` (C++ type: ``vector<Entity>``) -- additional information
+  about :ref:`subchains <subchain>`, such as entity type and polymer's
+  sequence,
+* ``info`` (C++ type: ``map<string, string>``) --
+  minimal metadata with keys being mmcif tags (_entry.id, _exptl.method, ...),
+* ``raw_remarks`` (C++ type: ``vector<string>``) -- REMARK records
+  from a PDB file, empty if the input file has different format.
+
+It also has a number of methods for working with the properties.
+TODO: document member functions of ``Structure``.
+
 Model
 -----
 
-TODO
+``Model`` contains a list of ``Chain``\ s.
+
+It also has a name (``string name``).
+Normally, models are numbered and the name is a number.
+But according to the mmCIF spec the name does not need to be a number,
+so just in case we store it as a string.
+
+.. doctest::
+
+  >>> gemmi.read_structure('../tests/1orc.pdb')[0].name
+  '1'
+
+The model contains also a list of connections (for example, from LINK and
+SSBOND records). How connections are stored may change in the future
+and it is left undocumented for now (TODO).
 
 Chain
 -----
 
+``Chain`` corresponds to the chain in the PDB format and
+to ``_atom_site.auth_asym_id`` in the mmCIF format.
+It has a name and a list of ``Residue``\ s.
+
+To get the name or access a residue by index,
+in C++ you may access these properties directly::
+
+  std::string name;
+  std::vector<Residue> residues;
+
+In Python, the name can be accessed like in C++:
+
 .. doctest::
 
   >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
-  >>> st.remove_ligands_and_waters()
-  >>> chain_b = st[0]['B']
+  >>> chain_a = st[0]['A']
+  >>> chain_a.name
+  'A'
+
+but the residues are accessed by indexing the chain object:
+
+.. doctest::
+
+  >>> chain_a[0]
+  <gemmi.Residue 1(DG) with 23 atoms>
+  >>> chain_a[-1]
+  <gemmi.Residue 2070(HOH) with 1 atoms>
+  >>> len(chain_a)
+  79
+
+Often, we need to refer to a part of the chain.
+A span of consecutive residues can be represented by an object
+called ``ResidueSpan``.
+For example, if we want to process separately the polymer, ligand
+and water parts of the chain, we can use the following functions
+that return ``ResidueSpan``::
+
+  ResidueSpan Chain::get_polymer()
+  ResidueSpan Chain::get_ligands()
+  ResidueSpan Chain::get_waters()
+
+.. doctest::
+
+  >>> chain_a.get_polymer()
+  <gemmi.ResidueSpan N=8 [1(DG) 2(DC) 3(DG) ... 8(DC)]>
+  >>> chain_a.get_ligands()
+  <gemmi.ResidueSpan N=1 [20(CL)]>
+  >>> chain_a.get_waters()
+  <gemmi.ResidueSpan N=70 [2001(HOH) 2002(HOH) 2003(HOH) ... 2070(HOH)]>
+
+.. note::
+
+    This is possible because, conventionally, polymer is at the beginning
+    of the chain, waters are at the end, and ligands are in the middle.
+    It won't work if for some reasons the residues of different categories
+    are intermixed.
+
+And we also have::
+
+  ResidueSpan Chain::whole()
+
+.. doctest::
+
+  >>> chain_a.whole()
+  <gemmi.ResidueSpan N=79 [1(DG) 2(DC) 3(DG) ... 2070(HOH)]>
+
+In the mmCIF format residues are grouped by the ``_atom_site.label_asym_id``
+tag. Each such group, called here :ref:`subchain <subchain>`,
+corresponds to one entity (a polymer, a non-polymer or waters).
+Such a subchain can also be represented as a residue span::
+
+  // get subchain by name
+  ResidueSpan Chain::get_subchain(const std::string& s)
+
+  // get a list of all subchains
+  std::vector<ResidueSpan> subchains()
+
+.. doctest::
+
+  >>> chain_a.get_subchain('C')
+  <gemmi.ResidueSpan N=1 [20(CL)]>
+  >>> len(chain_a.subchains())
+  3
+
+Now we need to consider microheterogeneities (point mutations).
+They are less frequent than alternative conformations of atoms
+in a residue, but we still need to handle them.
+So we have two approaches, as mentioned before in the section
+about :ref:`alternative conformations <altconf>`.
+
+For quick and approximate analysis of the structure, one may get by
+with ignoring all but the first (main) conformer.
+Both ``Chain`` and ``ResidueSpan`` have function ``first_conformer()``
+which returns iterator over residues of the main conformer.
+
+.. doctest::
+
+  >>> polymer_b = st[0]['B'].get_polymer()
   >>> # iteration goes through all residues and atom sites
-  >>> [res.name for res in chain_b]
+  >>> [res.name for res in polymer_b]
   ['DSN', 'ALA', 'N2C', 'NCY', 'MVA', 'DSN', 'ALA', 'NCY', 'N2C', 'MVA']
   >>> # The two pairs N2C/NCY above are alternative conformations.
   >>> # Sometimes we want to ignore alternative conformations:
-  >>> [res.name for res in chain_b.first_conformer()]
+  >>> [res.name for res in polymer_b.first_conformer()]
   ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
-  >>>
-  >>> chain_a = st[0]['A']
+
+A more complex approach is to group together the alternatives.
+Such a group is represented by ``ResidueGroup``, which is derived from
+``ResidueSpan``.
+
+
+..
   >>> # the first residue has sequence id '1', but since one sequence id
   >>> # may belong to more than one residue (microheterogeneity)
   >>> # this getter returns ResidueGroup:
@@ -965,10 +1135,6 @@ Chain
   19
 
 TODO
-
-In case of microheterogeneity (two different residues as alternative
-conformations at the same position) the sequence ID does not identify
-the residue, we also need to supply
 
 Residue
 -------
@@ -1349,6 +1515,7 @@ Let us check what entries have HEM as a substructure:
   SRM 	 +20 nodes, +20 edges
   UFE 	 +18 nodes, +18 edges
 
+.. _maximum_common_subgraph:
 
 Maximum common subgraph
 -----------------------

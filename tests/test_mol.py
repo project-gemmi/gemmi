@@ -171,7 +171,7 @@ class TestMol(unittest.TestCase):
         self.assertEqual(st.info['_refine.ls_R_factor_R_free'], '0.168')
         self.assertEqual(len(st), 1)
         self.assertEqual(len(st[0]), 2)
-        label_to_auth_name = {sub.name(): ch.name for ch in st[0]
+        label_to_auth_name = {sub.subchain_id(): ch.name for ch in st[0]
                               for sub in ch.subchains()}
         self.assertEqual(label_to_auth_name,
                          dict(A='A', B='B', C='A', D='B', E='B', F='A', G='B'))

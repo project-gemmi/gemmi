@@ -301,9 +301,14 @@ inline void write_header(const Structure& st, std::ostream& os,
   // SEQRES
   if (!st.models.empty() && opt.seqres_records) {
     for (const Chain& ch : st.models[0].chains) {
-      const SubChain polymer = ch.get_polymer();
-      const Entity* entity = polymer.labelled() ? st.get_entity_of(polymer)
-                                                : st.get_entity(ch.name);
+      const Entity* entity = st.get_entity_of(ch.get_polymer());
+      // If the input pdb file has no TER records the subchains and entities
+      // are not setup automatically. In such case it is possible to call
+      // setup_entities() to use heuristic to split polymer and ligands
+      // and assign entities. But if it was not called, we may still find
+      // the original SEQRES in the entity named after the chain name.
+      if (!entity)
+        entity = st.get_entity(ch.name);
       if (entity) {
         int seq_len = entity->seq_length();
         int row = 0;

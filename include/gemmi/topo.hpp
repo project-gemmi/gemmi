@@ -109,7 +109,7 @@ struct Topo {
     PolymerType polymer_type;
     std::vector<ResInfo> residues;
 
-    void initialize(SubChain& subchain, const Entity* ent);
+    void initialize(ResidueSpan& subchain, const Entity* ent);
     void setup_polymer_links();
     void add_refmac_builtin_modifications();
   };
@@ -317,9 +317,10 @@ struct Topo {
   }
 };
 
-inline void Topo::ChainInfo::initialize(SubChain& subchain, const Entity* ent) {
+inline
+void Topo::ChainInfo::initialize(ResidueSpan& subchain, const Entity* ent) {
   residues.reserve(subchain.size());
-  name = subchain.name();
+  name = subchain.at(0).subchain;
   if (ent) {
     entity_id = ent->name;
     polymer = ent->entity_type == EntityType::Polymer;
@@ -383,8 +384,7 @@ void Topo::initialize_refmac_topology(Model& model0,
                                       MonLib& monlib) {
   // initialize chains and residues
   for (Chain& chain : model0.chains)
-    for (SubChain sub : chain.subchains()) {
-      assert(sub.labelled());
+    for (ResidueSpan sub : chain.subchains()) {
       const Entity* ent = get_entity_of(sub, entities);
       chains.emplace_back();
       chains.back().initialize(sub, ent);
