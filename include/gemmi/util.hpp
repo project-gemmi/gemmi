@@ -66,7 +66,7 @@ inline std::string to_upper(std::string str) {
 
 inline std::string trim_str(const std::string& str)
 {
-  std::string ws = " \r\n\t";
+  const std::string ws = " \r\n\t";
   std::string::size_type first = str.find_first_not_of(ws);
   if (first == std::string::npos)
     return std::string{};
@@ -74,20 +74,53 @@ inline std::string trim_str(const std::string& str)
   return str.substr(first, last - first + 1);
 }
 
+inline std::string rtrim_str(const std::string& str)
+{
+  std::string::size_type last = str.find_last_not_of(" \r\n\t");
+  return str.substr(0, last == std::string::npos ? 0 : last + 1);
+}
+
 namespace impl {
 inline size_t length(char) { return 1; }
 inline size_t length(const std::string& s) { return s.length(); }
 }
 
+// takes a single separator (usually char or string);
+// may return empty fields
 template<typename S>
-inline std::vector<std::string> split_str(const std::string& str, S sep) {
-  std::vector<std::string> result;
+void split_str_into(const std::string& str, S sep,
+                    std::vector<std::string>& result) {
   std::size_t start = 0, end;
   while ((end = str.find(sep, start)) != std::string::npos) {
     result.emplace_back(str, start, end - start);
     start = end + impl::length(sep);
   }
   result.emplace_back(str, start);
+}
+
+template<typename S>
+std::vector<std::string> split_str(const std::string& str, S sep) {
+  std::vector<std::string> result;
+  split_str_into(str, sep, result);
+  return result;
+}
+
+// _multi variants takes multiple 1-char separators as a string;
+// discards empty fields
+inline void split_str_into_multi(const std::string& str, const char* seps,
+                                 std::vector<std::string>& result) {
+  std::size_t start = str.find_first_not_of(seps);
+  while (start != std::string::npos) {
+    std::size_t end = str.find_first_of(seps, start);
+    result.emplace_back(str, start, end - start);
+    start = str.find_first_not_of(seps, end);
+  }
+}
+
+inline std::vector<std::string> split_str_multi(const std::string& str,
+                                                const char* seps) {
+  std::vector<std::string> result;
+  split_str_into_multi(str, seps, result);
   return result;
 }
 

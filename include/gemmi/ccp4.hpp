@@ -16,7 +16,7 @@
 #include <vector>
 #include "symmetry.hpp"
 #include "util.hpp"      // for fail
-#include "fileutil.hpp"  // for file_open
+#include "fileutil.hpp"  // for file_open, is_little_endian, ...
 #include "grid.hpp"
 
 namespace gemmi {
@@ -30,11 +30,6 @@ enum class GridSetup {
   Full,         // reorder and expand to the whole unit cell
   FullCheck     // additionally consistency of redundant data
 };
-
-inline bool is_little_endian() {
-  std::uint32_t x = 1;
-  return *reinterpret_cast<char *>(&x) == 1;
-}
 
 struct GridStats {
   double dmin = NAN;
@@ -86,16 +81,6 @@ struct Ccp4 {
   // methods to access info from ccp4 headers, w is word number from the spec
   void* header_word(int w) { return &ccp4_header.at(w - 1); }
   const void* header_word(int w) const { return &ccp4_header.at(w - 1); }
-
-  void swap_two_bytes(void* start) const {
-    char* bytes = static_cast<char*>(start);
-    std::swap(bytes[0], bytes[1]);
-  }
-  void swap_four_bytes(void* start) const {
-    char* bytes = static_cast<char*>(start);
-    std::swap(bytes[0], bytes[3]);
-    std::swap(bytes[1], bytes[2]);
-  }
 
   int32_t header_i32(int w) const {
     int32_t value = ccp4_header.at(w - 1);

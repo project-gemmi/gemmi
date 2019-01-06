@@ -80,6 +80,23 @@ inline std::string expand_if_pdb_code(const std::string& input) {
   return path;
 }
 
+// helper function for working with binary files
+inline bool is_little_endian() {
+  std::uint32_t x = 1;
+  return *reinterpret_cast<char *>(&x) == 1;
+}
+
+inline void swap_two_bytes(void* start) {
+  char* bytes = static_cast<char*>(start);
+  std::swap(bytes[0], bytes[1]);
+}
+
+inline void swap_four_bytes(void* start) {
+  char* bytes = static_cast<char*>(start);
+  std::swap(bytes[0], bytes[3]);
+  std::swap(bytes[1], bytes[2]);
+}
+
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

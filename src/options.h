@@ -44,7 +44,7 @@ struct OptParser : option::Parser {
   std::vector<option::Option> buffer;
   std::vector<std::vector<int>> exclusive_groups;
 
-  OptParser(const char* prog) : program_name(prog) {}
+  explicit OptParser(const char* prog) : program_name(prog) {}
   void simple_parse(int argc, char** argv, const option::Descriptor usage[]);
   void require_positional_args(int n);
   void require_input_files_as_args(int other_args=0);
