@@ -263,10 +263,11 @@ struct UnitCell {
     const double max_dist_sq = max_dist * max_dist;
     int n = 0;
     Fractional fpos = fractionalize(pos);
-    for (const FTransform& image : images)
-      if (orthogonalize_difference(image.apply(fpos) - fpos).length_sq()
-          < max_dist_sq)
+    for (const FTransform& image : images) {
+      Fractional fdiff = (image.apply(fpos) - fpos).wrap_to_zero();
+      if (orthogonalize_difference(fdiff).length_sq() < max_dist_sq)
         ++n;
+    }
     return n;
   }
 };
