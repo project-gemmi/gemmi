@@ -191,6 +191,21 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
       st.resolution = resol;
   }
 
+  for (auto row : block.find("_software.", {"name",
+                                            "?classification",
+                                            "?version",
+                                            "?pdbx_ordinal"})) {
+    st.software.emplace_back();
+    SoftwareItem& item = st.software.back();
+    item.name = row.str(0);
+    if (row.has2(1))
+      item.classification = SoftwareItem::classification_from_str(row.str(1));
+    if (row.has2(2))
+      item.version = row.str(2);
+    if (row.has2(3))
+      item.pdbx_ordinal = cif::as_int(row[3]);
+  }
+
   std::vector<std::string> ncs_oper_tags = transform_tags("matrix", "vector");
   ncs_oper_tags.emplace_back("id");  // 12
   ncs_oper_tags.emplace_back("?code");  // 13

@@ -313,6 +313,17 @@ void update_cif_block(const Structure& st, cif::Block& block) {
       }
 
   impl::add_cif_atoms(st, block);
+
+  if (!st.software.empty()) {
+    cif::Loop& loop = block.init_mmcif_loop("_software.",
+                       {"pdbx_ordinal", "classification", "name", "version"});
+    for (const SoftwareItem& item : st.software)
+      loop.add_row({
+          to_string(item.pdbx_ordinal),
+          cif::quote(SoftwareItem::classification_to_str(item.classification)),
+          cif::quote(item.name),
+          item.version.empty() ? "?" : cif::quote(item.version)});
+  }
 }
 
 cif::Document make_mmcif_document(const Structure& st) {

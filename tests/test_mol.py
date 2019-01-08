@@ -170,6 +170,14 @@ class TestMol(unittest.TestCase):
                 n_images = st.cell.is_special_position(atom.pos)
                 self.assertEqual(atom.occ * (n_images + 1), 1.0)
 
+    def test_software_category(self):
+        doc = gemmi.cif.read_file(full_path('3dg1_final.cif'))
+        input_block = doc.sole_block()
+        st = gemmi.make_structure_from_block(input_block)
+        output_block = st.make_mmcif_document().sole_block()
+        self.assertEqual(input_block.get_mmcif_category('_software'),
+                         output_block.get_mmcif_category('_software'))
+
     def read_1pfe(self, filename):
         st = gemmi.read_structure(full_path(filename))
         self.assertAlmostEqual(st.cell.a, 39.374)
