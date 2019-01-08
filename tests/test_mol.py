@@ -160,6 +160,16 @@ class TestMol(unittest.TestCase):
     def test_rnase_predefined_removals2(self):
         self.test_rnase_predefined_removals(add_entities=True)
 
+    def test_3dg1(self):
+        st = gemmi.read_structure(full_path('3dg1_final.cif'))
+        self.assertEqual(st.info['_entry.id'], '3DG1')
+        self.assertEqual(len(st[0]), 1)
+        chain = st[0]['A']
+        for res in chain:
+            for atom in res:
+                n_images = st.cell.is_special_position(atom.pos)
+                self.assertEqual(atom.occ * (n_images + 1), 1.0)
+
     def read_1pfe(self, filename):
         st = gemmi.read_structure(full_path(filename))
         self.assertAlmostEqual(st.cell.a, 39.374)

@@ -108,6 +108,8 @@ void add_unitcell(py::module& m) {
     .def("volume_per_image", &UnitCell::volume_per_image)
     .def("find_nearest_image", &UnitCell::find_nearest_image,
         py::arg("ref"), py::arg("pos"), py::arg("asu")=SameAsu::Any)
+    .def("is_special_position", &UnitCell::is_special_position,
+         py::arg("pos"), py::arg("max_dist")=0.8)
     .def("__repr__", [](const UnitCell& self) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
              + ", " + triple(self.alpha, self.beta, self.gamma) + ")>";
