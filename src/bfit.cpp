@@ -366,7 +366,9 @@ int GEMMI_MAIN(int argc, char **argv) {
              st.name.c_str(),
              params.chain_name.empty() ? "*" : params.chain_name.c_str());
       if (p.options[PrintRes]) {
-        double rfree = std::atof(st.info["_refine.ls_R_factor_R_free"].c_str());
+        double rfree = 0;
+        if (st.meta.refinement.size() > 0)
+          rfree = st.meta.refinement[0].r_free;
         printf("%.2f\t%.2f\t", st.resolution, rfree);
       }
       printf("%d\t%d\t%.2f\t%.1f\t%.4f\t%.4f\t%.4f\n",

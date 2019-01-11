@@ -5,6 +5,7 @@
 #ifndef GEMMI_TO_MMCIF_HPP_
 #define GEMMI_TO_MMCIF_HPP_
 
+#include <cmath>  // for isnan
 #include "model.hpp"
 #include "cifdoc.hpp"
 
@@ -39,6 +40,19 @@ inline std::string pdbx_icode(const ResidueId& rid) {
 inline std::string subchain_or_dot(const Residue& res) {
   return res.subchain.empty() ? "." : cif::quote(res.subchain);
 }
+
+inline std::string number_or_dot(double d) {
+  return std::isnan(d) ? "." : to_str(d);
+}
+
+inline std::string number_or_qmark(double d) {
+  return std::isnan(d) ? "?" : to_str(d);
+}
+
+inline std::string string_or_qmark(const std::string& s) {
+  return s.empty() ? "?" : cif::quote(s);
+}
+
 
 inline void add_cif_atoms(const Structure& st, cif::Block& block) {
   // atom list
@@ -214,6 +228,51 @@ void update_cif_block(const Structure& st, cif::Block& block) {
     for (const std::string& m : gemmi::split_str(exptl_method->second, "; "))
       exptl_method_loop.add_row({id, cif::quote(m)});
 
+  // _refine
+  if (!st.meta.refinement.empty()) {
+    cif::Loop& loop = block.init_mmcif_loop("_refine.", {
+        "entry_id",
+        "pdbx_refine_id",
+        "ls_d_res_high",
+        "ls_d_res_low",
+        "ls_percent_reflns_obs",
+        "ls_number_reflns_obs"});
+    for (size_t i = 0; i != st.meta.refinement.size(); ++i) {
+      const RefinementInfo& ref = st.meta.refinement[i];
+      loop.values.push_back(id);
+      loop.values.push_back(std::to_string(i+1));
+      loop.values.push_back(impl::number_or_dot(ref.resolution_high));
+      loop.values.push_back(impl::number_or_dot(ref.resolution_low));
+      loop.values.push_back(impl::number_or_dot(ref.completeness));
+      loop.values.push_back(ref.reflection_count == -1 ? "."
+                                    : std::to_string(ref.reflection_count));
+      auto add = [&](const std::string& tag, const std::string& val) {
+        if (i == 0)
+          loop.tags.push_back("_refine." + tag);
+        loop.values.push_back(val);
+      };
+      if (st.meta.has(&RefinementInfo::rfree_set_count))
+        add("ls_number_reflns_obs", ref.rfree_set_count == -1
+                                    ? "."
+                                    : std::to_string(ref.rfree_set_count));
+      if (st.meta.has(&RefinementInfo::r_all))
+        add("ls_R_factor_obs", impl::number_or_qmark(ref.r_all));
+      if (st.meta.has(&RefinementInfo::r_work))
+        add("ls_R_factor_R_work", impl::number_or_qmark(ref.r_work));
+      if (st.meta.has(&RefinementInfo::r_free))
+        add("ls_R_factor_R_free", impl::number_or_qmark(ref.r_free));
+      add("pdbx_ls_cross_valid_method",
+          impl::string_or_qmark(ref.cross_validation_method));
+      if (st.meta.has(&RefinementInfo::rfree_selection_method))
+        add("pdbx_R_Free_selection_details",
+            impl::string_or_qmark(ref.rfree_selection_method));
+      if (st.meta.has(&RefinementInfo::b_wilson))
+        add("B_iso_Wilson_estimate", impl::number_or_qmark(ref.b_wilson));
+      if (st.meta.has(&RefinementInfo::mean_b))
+        add("B_iso_mean", impl::number_or_qmark(ref.mean_b));
+    }
+  }
+
   // title, keywords
   auto title = st.info.find("_struct.title");
   if (title != st.info.end()) {
@@ -314,13 +373,13 @@ void update_cif_block(const Structure& st, cif::Block& block) {
 
   impl::add_cif_atoms(st, block);
 
-  if (!st.software.empty()) {
+  if (!st.meta.software.empty()) {
     cif::Loop& loop = block.init_mmcif_loop("_software.",
                        {"pdbx_ordinal", "classification", "name", "version"});
-    for (const SoftwareItem& item : st.software)
+    for (const SoftwareItem& item : st.meta.software)
       loop.add_row({
           to_string(item.pdbx_ordinal),
-          cif::quote(SoftwareItem::classification_to_str(item.classification)),
+          cif::quote(software_classification_to_string(item.classification)),
           cif::quote(item.name),
           item.version.empty() ? "?" : cif::quote(item.version)});
   }

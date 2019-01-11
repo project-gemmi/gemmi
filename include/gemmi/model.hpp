@@ -17,6 +17,7 @@
 #include "elem.hpp"
 #include "unitcell.hpp"
 #include "symmetry.hpp"
+#include "metadata.hpp"
 #include "iterator.hpp"
 
 namespace gemmi {
@@ -757,43 +758,6 @@ inline const Entity* get_entity_of(const ResidueSpan& sub,
   return nullptr;
 }
 
-// corresponds to the mmCIF _software category
-struct SoftwareItem {
-  enum Classification {
-    DataCollection, DataExtraction, DataProcessing, DataReduction,
-    DataScaling, ModelBuilding, Phasing, Refinement, Unspecified
-  };
-
-  static const char* classification_to_str(Classification c) {
-    switch (c) {
-      case DataCollection: return "data collection";
-      case DataExtraction: return "data extraction";
-      case DataProcessing: return "data processing";
-      case DataReduction: return "data reduction";
-      case DataScaling: return "data scaling";
-      case ModelBuilding: return "model building";
-      case Phasing: return "phasing";
-      case Refinement: return "refinement";
-      case Unspecified: return "";
-    }
-    unreachable();
-  }
-
-  static Classification classification_from_str(const std::string& str) {
-    for (Classification c = DataCollection; c != Unspecified;
-         c = static_cast<Classification>(c + 1))
-      if (iequal(str, classification_to_str(c)))
-        return c;
-    return Unspecified;
-  }
-
-  std::string name;
-  std::string version;
-  Classification classification = Unspecified;
-  int pdbx_ordinal = -1;
-};
-
-
 struct Structure {
   std::string name;
   UnitCell cell;
@@ -801,7 +765,7 @@ struct Structure {
   std::vector<Model> models;
   std::vector<NcsOp> ncs;
   std::vector<Entity> entities;
-  std::vector<SoftwareItem> software;
+  Metadata meta;
 
   // Store ORIGXn / _database_PDB_matrix.origx*
   bool has_origx = false;

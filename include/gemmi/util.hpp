@@ -80,6 +80,20 @@ inline std::string rtrim_str(const std::string& str)
   return str.substr(0, last == std::string::npos ? 0 : last + 1);
 }
 
+// end is after the last character of the string (typically \0)
+inline const char* rtrim_cstr(const char* start, const char* end=nullptr) {
+  if (!start)
+    return nullptr;
+  if (!end) {
+    end = start;
+    while (*end != '\0')
+      ++end;
+  }
+  while (end > start && std::isspace(end[-1]))
+    --end;
+  return end;
+}
+
 namespace impl {
 inline size_t length(char) { return 1; }
 inline size_t length(const std::string& s) { return s.length(); }
@@ -140,6 +154,13 @@ std::string join_str(const T& iterable, const S& sep, const F& getter) {
 template<typename T, typename S>
 std::string join_str(const T& iterable, const S& sep) {
   return join_str(iterable, sep, [](const std::string& t) { return t; });
+}
+
+inline const char* skip_blank(const char* p) {
+  if (p)
+    while (*p == ' ' || *p == '\t')
+      ++p;
+  return p;
 }
 
 

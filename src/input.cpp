@@ -2,5 +2,4 @@
 
 // This file exists to make compilation of gemmi faster.
 
-#define GEMMI_GZREAD_IMPLEMENTATION
-#include "gemmi/gzread.hpp"
+#include <gemmi/gzread_impl.hpp>

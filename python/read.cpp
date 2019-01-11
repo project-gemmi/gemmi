@@ -4,8 +4,8 @@
 #include "gemmi/cifdoc.hpp"
 #include "gemmi/cif.hpp"
 #include "gemmi/json.hpp"
-#define GEMMI_GZREAD_IMPLEMENTATION
 #include "gemmi/gzread.hpp"
+#include "gemmi/gzread_impl.hpp"
 #include "gemmi/smcif.hpp" // for AtomicStructure
 #include "gemmi/chemcomp_xyz.hpp"
 

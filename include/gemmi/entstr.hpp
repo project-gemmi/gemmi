@@ -59,6 +59,35 @@ inline PolymerType polymer_type_from_string(const std::string& t) {
   return PolymerType::Unknown;
 }
 
+inline
+std::string software_classification_to_string(SoftwareItem::Classification c) {
+  switch (c) {
+    case SoftwareItem::DataCollection: return "data collection";
+    case SoftwareItem::DataExtraction: return "data extraction";
+    case SoftwareItem::DataProcessing: return "data processing";
+    case SoftwareItem::DataReduction:  return "data reduction";
+    case SoftwareItem::DataScaling:    return "data scaling";
+    case SoftwareItem::ModelBuilding:  return "model building";
+    case SoftwareItem::Phasing:        return "phasing";
+    case SoftwareItem::Refinement:     return "refinement";
+    case SoftwareItem::Unspecified:    return "";
+  }
+  unreachable();
+}
+
+inline SoftwareItem::Classification
+software_classification_from_string(const std::string& str) {
+  if (iequal(str, "data collection")) return SoftwareItem::DataCollection;
+  if (iequal(str, "data extraction")) return SoftwareItem::DataExtraction;
+  if (iequal(str, "data processing")) return SoftwareItem::DataProcessing;
+  if (iequal(str, "data reduction"))  return SoftwareItem::DataReduction;
+  if (iequal(str, "data scaling"))    return SoftwareItem::DataScaling;
+  if (iequal(str, "model building"))  return SoftwareItem::ModelBuilding;
+  if (iequal(str, "phasing"))         return SoftwareItem::Phasing;
+  if (iequal(str, "refinement"))      return SoftwareItem::Refinement;
+  return SoftwareItem::Unspecified;
+}
+
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

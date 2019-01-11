@@ -12,9 +12,7 @@ def is_written_to_pdb(line, via_cif):
                     'DBREF ', 'SEQADV', 'HET   ', 'HETNAM', 'FORMUL', 'HELIX ',
                     'SHEET ', 'SITE  ', 'MASTER']:
         return False
-    # currently gemmi reads resolution from mmCIF but does not write it
-    # to mmCIF. Otherwise it would be (via_cif and line[6:10] != '   2')
-    if line[:6] == 'REMARK' and via_cif:
+    if line[:6] == 'REMARK' and via_cif and line[6:10] != '   2':
         return False
     return True
 

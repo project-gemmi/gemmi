@@ -195,11 +195,11 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
                                             "?classification",
                                             "?version",
                                             "?pdbx_ordinal"})) {
-    st.software.emplace_back();
-    SoftwareItem& item = st.software.back();
+    st.meta.software.emplace_back();
+    SoftwareItem& item = st.meta.software.back();
     item.name = row.str(0);
     if (row.has2(1))
-      item.classification = SoftwareItem::classification_from_str(row.str(1));
+      item.classification = software_classification_from_string(row.str(1));
     if (row.has2(2))
       item.version = row.str(2);
     if (row.has2(3))

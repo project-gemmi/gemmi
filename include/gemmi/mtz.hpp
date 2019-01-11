@@ -49,6 +49,7 @@ struct Mtz {
     return (s[0] << 24) | (s[1] << 16) | (s[2] << 8) | s[3];
   }
   static constexpr int id3u(const char* s) { return id3(s) & ~0x202020; }
+  // TODO: use ialpha4_id
   static constexpr int id4u(const char* s) { return id4(s) & ~0x20202020; }
 
   void read_first_bytes(std::FILE* stream) {

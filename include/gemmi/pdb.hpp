@@ -5,7 +5,7 @@
 // https://www.wwpdb.org/documentation/file-format-content/format33/v3.3.html
 // + support for two-character chain IDs (columns 21 and 22)
 // + read segment ID (columns 73-76)
-// + ignore atom serial number (compatible with the cctbx hybrid-36 extension)
+// + read hybrid-36 serial numbers (http://cci.lbl.gov/hybrid_36/)
 // + hybrid-36 sequence id for sequences longer than 9999 (no such examples)
 
 #ifndef GEMMI_PDB_HPP_
@@ -16,7 +16,7 @@
 #include <cctype>     // for isspace
 #include <cstdio>     // for FILE, size_t
 #include <cstdlib>    // for strtol
-#include <cstring>    // for memcpy, strstr
+#include <cstring>    // for memcpy, strstr, strchr, strncmp
 #include <map>        // for map
 #include <string>     // for string
 #include <vector>     // for vector
@@ -69,6 +69,29 @@ inline double read_double(const char* p, int field_length) {
   }
   return sign * d;
 }
+
+inline double read_double(const char* p) {
+  int sign = 1;
+  double d = 0;
+  int i = 0;
+  while (std::isspace(p[i]))
+    ++i;
+  if (p[i] == '-') {
+    ++i;
+    sign = -1;
+  } else if (p[i] == '+') {
+    ++i;
+  }
+  for (; p[i] >= '0' && p[i] <= '9'; ++i)
+    d = d * 10 + (p[i] - '0');
+  if (p[i] == '.') {
+    double mult = 0.1;
+    for (++i; p[i] >= '0' && p[i] <= '9'; ++i, mult *= 0.1)
+      d += mult * (p[i] - '0');
+  }
+  return sign * d;
+}
+
 
 inline std::string read_string(const char* p, int field_length) {
   // left trim
@@ -266,27 +289,117 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
   }
 }
 
-inline bool same_n(const char* s1, const char* s2, size_t n) {
-  return strncmp(s1, s2, n) == 0;
+template<size_t N>
+inline bool same_str(const std::string& s, const char (&literal)[N]) {
+  return s.size() == N - 1 && std::strcmp(s.c_str(), literal) == 0;
 }
 
 inline void read_remark3_line(const char* line, Structure& st) {
-  // According to
+  // Based on:
   // www.wwpdb.org/documentation/file-format-content/format23/remark3.html
-  // SHELXL template has one space less (after '3') than other programs.
+  // and analysis of PDB files.
   // In special cases, such as joint X-ray and neutron refinement 5MOO,
   // PDB file can have two REMARK 3 blocks.
-  for (int offset : {11, 10}) {
-    if (st.resolution == 0.0 &&
-        same_n(line + offset, "  RESOLUTION RANGE HIGH (ANGSTROMS) :", 37)) {
-        st.resolution = read_double(line + offset + 37, 7);
-        return;
+  // Generally, after "REMARK   3" we have either a header-like sentance
+  // or a key:value pair with a colon, or a continuation of text from the
+  // previous line.
+  const char* key_start = skip_blank(line + 10);
+  const char* colon = std::strchr(key_start, ':');
+  const char* key_end = rtrim_cstr(key_start, colon);
+  std::string key(key_start, key_end);
+  if (colon) {
+    if (st.meta.refinement.empty())
+      return;
+    RefinementInfo& ref_info = st.meta.refinement.back();
+    const char* value = skip_blank(colon + 1);
+    const char* end = rtrim_cstr(value);
+    if (end - value == 4 && std::strncmp(value, "NULL", 4) == 0)
+      return;
+    if (same_str(key, "RESOLUTION RANGE HIGH (ANGSTROMS)")) {
+      ref_info.resolution_high = read_double(value);
+      if (st.resolution == 0.0)
+        st.resolution = ref_info.resolution_high;
+    } else if (same_str(key, "RESOLUTION RANGE LOW  (ANGSTROMS)")) {
+      ref_info.resolution_low = read_double(value);
+    } else if (same_str(key, "COMPLETENESS FOR RANGE        (%)")) {
+      ref_info.completeness = read_double(value);
+    } else if (same_str(key, "NUMBER OF REFLECTIONS")) {
+      ref_info.reflection_count = std::atoi(value);
+    } else if (same_str(key, "CROSS-VALIDATION METHOD")) {
+      ref_info.cross_validation_method = trim_str(value);
+    } else if (same_str(key, "FREE R VALUE TEST SET SELECTION")) {
+      ref_info.rfree_selection_method = trim_str(value);
+    } else if (same_str(key, "R VALUE     (WORKING + TEST SET)")) {
+      ref_info.r_all = read_double(value);
+    } else if (same_str(key, "R VALUE            (WORKING SET)")) {
+      ref_info.r_work = read_double(value);
+    } else if (same_str(key, "FREE R VALUE")) {
+      ref_info.r_free = read_double(value);
+    } else if (same_str(key, "FREE R VALUE TEST SET COUNT")) {
+      ref_info.rfree_set_count = atoi(value);
+    } else if (same_str(key, "TOTAL NUMBER OF BINS USED")) {
+      ref_info.bin_count = std::atoi(value);
+    } else if (same_str(key, "BIN RESOLUTION RANGE HIGH       (A)")) {
+      if (!ref_info.bins.empty())
+        ref_info.bins.back().resolution_high = read_double(value);
+    } else if (same_str(key, "BIN RESOLUTION RANGE LOW        (A)")) {
+      if (!ref_info.bins.empty())
+        ref_info.bins.back().resolution_low = read_double(value);
+    } else if (same_str(key, "BIN COMPLETENESS (WORKING+TEST) (%)")) {
+      if (!ref_info.bins.empty())
+        ref_info.bins.back().resolution_low = read_double(value);
+    } else if (same_str(key, "REFLECTIONS IN BIN   (WORKING+TEST)")) {
+      if (!ref_info.bins.empty())
+        ref_info.bins.back().resolution_low = read_double(value);
+    } else if (same_str(key, "BIN R VALUE          (WORKING+TEST)")) {
+      if (!ref_info.bins.empty())
+        ref_info.bins.back().resolution_low = read_double(value);
+    } else if (same_str(key, "BIN R VALUE           (WORKING SET)")) {
+      if (!ref_info.bins.empty())
+        ref_info.bins.back().resolution_low = read_double(value);
+    } else if (same_str(key, "BIN FREE R VALUE")) {
+      if (!ref_info.bins.empty())
+        ref_info.bins.back().resolution_low = read_double(value);
+    } else if (same_str(key, "BIN FREE R VALUE TEST SET COUNT")) {
+      if (!ref_info.bins.empty())
+        ref_info.bins.back().resolution_low = read_double(value);
+    } else if (same_str(key, "FROM WILSON PLOT           (A**2)")) {
+      ref_info.b_wilson = read_double(value);
+    } else if (same_str(key, "MEAN B VALUE      (OVERALL, A**2)")) {
+      ref_info.mean_b = read_double(value);
+    } else if (same_str(key, "B11 (A**2)")) {
+      ref_info.aniso_b.a11 = read_double(value);
+    } else if (same_str(key, "B22 (A**2)")) {
+      ref_info.aniso_b.a22 = read_double(value);
+    } else if (same_str(key, "B33 (A**2)")) {
+      ref_info.aniso_b.a33 = read_double(value);
+    } else if (same_str(key, "B12 (A**2)")) {
+      ref_info.aniso_b.a12 = read_double(value);
+    } else if (same_str(key, "B13 (A**2)")) {
+      ref_info.aniso_b.a13 = read_double(value);
+    } else if (same_str(key, "B23 (A**2)")) {
+      ref_info.aniso_b.a23 = read_double(value);
+    } else if (same_str(key, "ESD FROM LUZZATI PLOT                    (A)")) {
+      ref_info.luzzati_error = read_double(value);
+    } else if (same_str(key, "DPI (BLOW EQ-10) BASED ON R VALUE        (A)")) {
+      ref_info.dpi_blow_r = read_double(value);
+    } else if (same_str(key, "DPI (BLOW EQ-9) BASED ON FREE R VALUE    (A)")) {
+      ref_info.dpi_blow_rfree = read_double(value);
+    } else if (same_str(key, "DPI (CRUICKSHANK) BASED ON R VALUE       (A)")) {
+      ref_info.dpi_cruickshank_r = read_double(value);
+    } else if (same_str(key, "DPI (CRUICKSHANK) BASED ON FREE R VALUE  (A)")) {
+      ref_info.dpi_cruickshank_rfree = read_double(value);
+    } else if (same_str(key, "CORRELATION COEFFICIENT FO-FC")) {
+      ref_info.cc_fo_fc = read_double(value);
+    } else if (same_str(key, "CORRELATION COEFFICIENT FO-FC FREE")) {
+      ref_info.cc_fo_fc_free = read_double(value);
     }
-    if (same_n(line + offset, "  BIN FREE R VALUE                    :", 39)) {
-      std::string& r_free = st.info["_refine.ls_R_factor_R_free"];
-      if (!r_free.empty())
-        r_free += "; ";
-      r_free = trim_str(read_string(line + offset + 39, 29));
+  } else {
+    if (same_str(key, "DATA USED IN REFINEMENT.")) {
+      st.meta.refinement.emplace_back();
+    } else if (same_str(key, "FIT IN THE HIGHEST RESOLUTION BIN.")) {
+      if (!st.meta.refinement.empty())
+        st.meta.refinement.back().bins.emplace_back();
     }
   }
 }
