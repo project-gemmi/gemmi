@@ -275,7 +275,8 @@ static void convert(const std::string& input, CoorFormat input_type,
       update_cif_block(st, cif_in.blocks[0]);
     }
     if (output_type == CoorFormat::Mmcif) {
-      auto style = options[PdbxStyle] ? cif::Style::Pdbx : cif::Style::Simple;
+      auto style = options[PdbxStyle] ? cif::Style::Pdbx
+                                      : cif::Style::PreferPairs;
       write_cif_to_stream(*os, cif_in, style);
     } else /*output_type == CoorFormat::Mmjson*/ {
       cif::JsonWriter writer(*os);
