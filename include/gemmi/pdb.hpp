@@ -308,13 +308,25 @@ inline void read_remark3_line(const char* line, Structure& st) {
   const char* key_end = rtrim_cstr(key_start, colon);
   std::string key(key_start, key_end);
   if (colon) {
-    if (st.meta.refinement.empty())
-      return;
-    RefinementInfo& ref_info = st.meta.refinement.back();
     const char* value = skip_blank(colon + 1);
     const char* end = rtrim_cstr(value);
     if (end - value == 4 && std::strncmp(value, "NULL", 4) == 0)
       return;
+    if (same_str(key, "PROGRAM")) {
+      st.meta.software.emplace_back();
+      SoftwareItem& item = st.meta.software.back();
+      item.name = std::string(value, end);
+      size_t sep = item.name.rfind(' ');
+      if (sep != std::string::npos) {
+        item.version = item.name.substr(sep + 1);
+        item.name.resize(sep);
+      }
+      item.classification = SoftwareItem::Refinement;
+      item.pdbx_ordinal = st.meta.software.size();
+    }
+    if (st.meta.refinement.empty())
+      return;
+    RefinementInfo& ref_info = st.meta.refinement.back();
     if (same_str(key, "RESOLUTION RANGE HIGH (ANGSTROMS)")) {
       ref_info.resolution_high = read_double(value);
       if (st.resolution == 0.0)
@@ -326,9 +338,9 @@ inline void read_remark3_line(const char* line, Structure& st) {
     } else if (same_str(key, "NUMBER OF REFLECTIONS")) {
       ref_info.reflection_count = std::atoi(value);
     } else if (same_str(key, "CROSS-VALIDATION METHOD")) {
-      ref_info.cross_validation_method = trim_str(value);
+      ref_info.cross_validation_method = std::string(value, end);
     } else if (same_str(key, "FREE R VALUE TEST SET SELECTION")) {
-      ref_info.rfree_selection_method = trim_str(value);
+      ref_info.rfree_selection_method = std::string(value, end);
     } else if (same_str(key, "R VALUE     (WORKING + TEST SET)")) {
       ref_info.r_all = read_double(value);
     } else if (same_str(key, "R VALUE            (WORKING SET)")) {
@@ -347,22 +359,22 @@ inline void read_remark3_line(const char* line, Structure& st) {
         ref_info.bins.back().resolution_low = read_double(value);
     } else if (same_str(key, "BIN COMPLETENESS (WORKING+TEST) (%)")) {
       if (!ref_info.bins.empty())
-        ref_info.bins.back().resolution_low = read_double(value);
+        ref_info.bins.back().completeness = read_double(value);
     } else if (same_str(key, "REFLECTIONS IN BIN   (WORKING+TEST)")) {
       if (!ref_info.bins.empty())
-        ref_info.bins.back().resolution_low = read_double(value);
+        ref_info.bins.back().reflection_count = std::atoi(value);
     } else if (same_str(key, "BIN R VALUE          (WORKING+TEST)")) {
       if (!ref_info.bins.empty())
-        ref_info.bins.back().resolution_low = read_double(value);
+        ref_info.bins.back().r_all = read_double(value);
     } else if (same_str(key, "BIN R VALUE           (WORKING SET)")) {
       if (!ref_info.bins.empty())
-        ref_info.bins.back().resolution_low = read_double(value);
+        ref_info.bins.back().r_work = read_double(value);
     } else if (same_str(key, "BIN FREE R VALUE")) {
       if (!ref_info.bins.empty())
-        ref_info.bins.back().resolution_low = read_double(value);
+        ref_info.bins.back().r_free = read_double(value);
     } else if (same_str(key, "BIN FREE R VALUE TEST SET COUNT")) {
       if (!ref_info.bins.empty())
-        ref_info.bins.back().resolution_low = read_double(value);
+        ref_info.bins.back().rfree_set_count = std::atoi(value);
     } else if (same_str(key, "FROM WILSON PLOT           (A**2)")) {
       ref_info.b_wilson = read_double(value);
     } else if (same_str(key, "MEAN B VALUE      (OVERALL, A**2)")) {

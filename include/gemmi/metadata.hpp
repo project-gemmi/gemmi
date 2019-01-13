@@ -98,6 +98,10 @@ struct Metadata {
     return std::any_of(refinement.begin(), refinement.end(),
             [&](const RefinementInfo& r) { return !(r.*field).empty(); });
   }
+  bool has(SymmetricTensor RefinementInfo::*field) const {
+    return std::any_of(refinement.begin(), refinement.end(),
+        [&](const RefinementInfo& r) { return !std::isnan((r.*field).a11); });
+  }
 };
 
 } // namespace gemmi

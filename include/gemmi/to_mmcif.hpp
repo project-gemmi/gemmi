@@ -5,6 +5,7 @@
 #ifndef GEMMI_TO_MMCIF_HPP_
 #define GEMMI_TO_MMCIF_HPP_
 
+#include <cassert>
 #include <cmath>  // for isnan
 #include "model.hpp"
 #include "cifdoc.hpp"
@@ -44,9 +45,16 @@ inline std::string subchain_or_dot(const Residue& res) {
 inline std::string number_or_dot(double d) {
   return std::isnan(d) ? "." : to_str(d);
 }
-
 inline std::string number_or_qmark(double d) {
   return std::isnan(d) ? "?" : to_str(d);
+}
+
+// for use with non-negative Metadata fields that use -1 for N/A
+inline std::string int_or_dot(int n) {
+  return n == -1 ? "." : std::to_string(n);
+}
+inline std::string int_or_qmark(int n) {
+  return n == -1 ? "?" : std::to_string(n);
 }
 
 inline std::string string_or_qmark(const std::string& s) {
@@ -173,6 +181,16 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
   }
 }
 
+void add_tensor_tags(cif::Loop& loop, const std::string& prefix) {
+  for (const char* postfix : {"[1][1]", "[2][2]", "[3][3]",
+                              "[1][2]", "[1][3]", "[2][3]"})
+    loop.tags.push_back(prefix + postfix);
+}
+void add_tensor_values(cif::Loop& loop, const SymmetricTensor& t) {
+  for (const double d : {t.a11, t.a22, t.a33, t.a12, t.a13, t.a23})
+    loop.values.push_back(impl::number_or_qmark(d));
+}
+
 } // namespace impl
 
 void update_cif_block(const Structure& st, cif::Block& block) {
@@ -237,24 +255,36 @@ void update_cif_block(const Structure& st, cif::Block& block) {
         "ls_d_res_low",
         "ls_percent_reflns_obs",
         "ls_number_reflns_obs"});
+    cif::Loop& analyze_loop = block.init_mmcif_loop("_refine_analyze.", {
+        "entry_id",
+        "pdbx_refine_id",
+        "Luzzati_coordinate_error_obs"});
+    cif::Loop& shell_loop = block.init_mmcif_loop("_refine_ls_shell.", {
+        "pdbx_refine_id",
+        "ls_d_res_high",
+        "ls_d_res_low",
+        "ls_percent_reflns_obs",
+        "ls_number_reflns_obs",
+        "ls_number_reflns_R_free",
+        "ls_R_factor_obs",
+        "ls_R_factor_R_work",
+        "ls_R_factor_R_free"});
     for (size_t i = 0; i != st.meta.refinement.size(); ++i) {
+      std::string ref_id = "ref" + std::to_string(i+1);
       const RefinementInfo& ref = st.meta.refinement[i];
       loop.values.push_back(id);
-      loop.values.push_back(std::to_string(i+1));
+      loop.values.push_back(ref_id);
       loop.values.push_back(impl::number_or_dot(ref.resolution_high));
       loop.values.push_back(impl::number_or_dot(ref.resolution_low));
       loop.values.push_back(impl::number_or_dot(ref.completeness));
-      loop.values.push_back(ref.reflection_count == -1 ? "."
-                                    : std::to_string(ref.reflection_count));
+      loop.values.push_back(impl::int_or_dot(ref.reflection_count));
       auto add = [&](const std::string& tag, const std::string& val) {
         if (i == 0)
           loop.tags.push_back("_refine." + tag);
         loop.values.push_back(val);
       };
       if (st.meta.has(&RefinementInfo::rfree_set_count))
-        add("ls_number_reflns_obs", ref.rfree_set_count == -1
-                                    ? "."
-                                    : std::to_string(ref.rfree_set_count));
+        add("ls_number_reflns_R_free", impl::int_or_dot(ref.rfree_set_count));
       if (st.meta.has(&RefinementInfo::r_all))
         add("ls_R_factor_obs", impl::number_or_qmark(ref.r_all));
       if (st.meta.has(&RefinementInfo::r_work))
@@ -270,7 +300,42 @@ void update_cif_block(const Structure& st, cif::Block& block) {
         add("B_iso_Wilson_estimate", impl::number_or_qmark(ref.b_wilson));
       if (st.meta.has(&RefinementInfo::mean_b))
         add("B_iso_mean", impl::number_or_qmark(ref.mean_b));
+      if (st.meta.has(&RefinementInfo::aniso_b)) {
+        if (i == 0)
+          impl::add_tensor_tags(loop, "_refine.aniso_B");
+        impl::add_tensor_values(loop, ref.aniso_b);
+      }
+      if (st.meta.has(&RefinementInfo::dpi_blow_r))
+        add("pdbx_overall_SU_R_Blow_DPI",
+            impl::number_or_qmark(ref.dpi_blow_r));
+      if (st.meta.has(&RefinementInfo::dpi_blow_rfree))
+        add("pdbx_overall_SU_R_free_Blow_DPI",
+            impl::number_or_qmark(ref.dpi_blow_rfree));
+      if (st.meta.has(&RefinementInfo::dpi_cruickshank_r))
+        add("overall_SU_R_Cruickshank_DPI",
+            impl::number_or_qmark(ref.dpi_cruickshank_r));
+      if (st.meta.has(&RefinementInfo::dpi_cruickshank_rfree))
+        add("pdbx_overall_SU_R_free_Cruickshank_DPI",
+            impl::number_or_qmark(ref.dpi_cruickshank_rfree));
+      if (st.meta.has(&RefinementInfo::cc_fo_fc))
+        add("correlation_coeff_Fo_to_Fc", impl::number_or_qmark(ref.cc_fo_fc));
+      if (st.meta.has(&RefinementInfo::cc_fo_fc_free))
+        add("correlation_coeff_Fo_to_Fc_free",
+            impl::number_or_qmark(ref.cc_fo_fc_free));
+      analyze_loop.add_row({id, ref_id,
+                            impl::number_or_qmark(ref.luzzati_error)});
+      for (const BasicRefinementInfo& bin : ref.bins)
+        shell_loop.add_row({ref_id,
+                            impl::number_or_dot(bin.resolution_high),
+                            impl::number_or_qmark(bin.resolution_low),
+                            impl::number_or_qmark(bin.completeness),
+                            impl::int_or_qmark(bin.reflection_count),
+                            impl::int_or_qmark(bin.rfree_set_count),
+                            impl::number_or_qmark(bin.r_all),
+                            impl::number_or_qmark(bin.r_work),
+                            impl::number_or_qmark(bin.r_free)});
     }
+    assert(loop.values.size() % loop.tags.size() == 0);
   }
 
   // title, keywords
