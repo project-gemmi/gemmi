@@ -190,8 +190,10 @@ struct MemoryInput {
   char* gets(char* line, int size) {
     if (start >= end)
       return nullptr;
-    const char* nl = (const char*) std::memchr(start, '\n', end - start);
-    size_t len = nl && nl + 1 - start < size ? nl + 1 - start : size;
+    if (size > end - start)
+      size = end - start;
+    const char* nl = (const char*) std::memchr(start, '\n', size);
+    size_t len = nl ? nl - start + 1 : size;
     std::memcpy(line, start, len);
     start += len;
     return line;
