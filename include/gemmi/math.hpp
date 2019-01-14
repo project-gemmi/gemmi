@@ -83,14 +83,15 @@ struct Mat33 {
   row_t& operator[](int i) { return a[i]; }
 
   Mat33() = default;
+  explicit Mat33(double d) : a{{d, d, d}, {d, d, d}, {d, d, d}} {}
   Mat33(double a1, double a2, double a3, double b1, double b2, double b3,
         double c1, double c2, double c3)
   : a{{a1, a2, a3}, {b1, b2, b3}, {c1, c2, c3}} {}
 
   Vec3 multiply(const Vec3& p) const {
-    return {a[0][0] * p.x  + a[0][1] * p.y  + a[0][2] * p.z,
-            a[1][0] * p.x  + a[1][1] * p.y  + a[1][2] * p.z,
-            a[2][0] * p.x  + a[2][1] * p.y  + a[2][2] * p.z};
+    return {a[0][0] * p.x + a[0][1] * p.y + a[0][2] * p.z,
+            a[1][0] * p.x + a[1][1] * p.y + a[1][2] * p.z,
+            a[2][0] * p.x + a[2][1] * p.y + a[2][2] * p.z};
   }
   Mat33 multiply(const Mat33& b) const {
     Mat33 r;

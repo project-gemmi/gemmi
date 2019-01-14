@@ -186,8 +186,8 @@ void add_tensor_tags(cif::Loop& loop, const std::string& prefix) {
                               "[1][2]", "[1][3]", "[2][3]"})
     loop.tags.push_back(prefix + postfix);
 }
-void add_tensor_values(cif::Loop& loop, const SymmetricTensor& t) {
-  for (const double d : {t.a11, t.a22, t.a33, t.a12, t.a13, t.a23})
+void add_tensor_values(cif::Loop& loop, const Mat33& t) {
+  for (const double d : {t[0][0], t[1][1], t[2][2], t[0][1], t[0][2], t[1][2]})
     loop.values.push_back(impl::number_or_qmark(d));
 }
 
@@ -248,6 +248,7 @@ void update_cif_block(const Structure& st, cif::Block& block) {
 
   // _refine
   if (!st.meta.refinement.empty()) {
+    block.items.reserve(block.items.size() + 3);
     cif::Loop& loop = block.init_mmcif_loop("_refine.", {
         "entry_id",
         "pdbx_refine_id",
@@ -437,6 +438,21 @@ void update_cif_block(const Structure& st, cif::Block& block) {
       }
 
   impl::add_cif_atoms(st, block);
+
+  /*
+    block.items.reserve(block.items.size() + 2);
+    cif::Loop& loop = block.init_mmcif_loop("_pdbx_refine_tls.", {
+        "pdbx_refine_id", "id",
+        "T[1][1]", "T[2][2]", "T[3][3]", "T[1][2]", "T[1][3]", "T[2][3]",
+        "L[1][1]", "L[2][2]", "L[3][3]", "L[1][2]", "L[1][3]", "L[2][3]",
+        "S[1][1]", "S[1][2]", "S[1][3]", "S[2][1]", "S[2][2]", "S[2][3]",
+        "S[3][1]", "S[3][2]", "S[3][3]",
+        "origin_x", "origin_y", "origin_z",
+        "method", "details"});
+    cif::Loop& group_loop = block.init_mmcif_loop("_pdbx_refine_tls_group.", {
+        "id", "refine_tls_id", "selection_details"});
+  }
+  */
 
   if (!st.meta.software.empty()) {
     cif::Loop& loop = block.init_mmcif_loop("_software.",

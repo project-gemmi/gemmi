@@ -132,7 +132,7 @@ inline void split_str_into_multi(const std::string& str, const char* seps,
 }
 
 inline std::vector<std::string> split_str_multi(const std::string& str,
-                                                const char* seps) {
+                                                const char* seps=" \t") {
   std::vector<std::string> result;
   split_str_into_multi(str, seps, result);
   return result;

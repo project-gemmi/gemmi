@@ -10,10 +10,6 @@
 
 namespace gemmi {
 
-struct SymmetricTensor {
-  double a11, a22, a33, a12, a13, a23;
-};
-
 // corresponds to the mmCIF _software category
 struct SoftwareItem {
   enum Classification {
@@ -27,12 +23,12 @@ struct SoftwareItem {
 };
 
 struct TlsGroup {
-  std::string id;
-  std::string selection;
-  Position origin;
-  SymmetricTensor T = {NAN, NAN, NAN, NAN, NAN, NAN};
-  SymmetricTensor L = {NAN, NAN, NAN, NAN, NAN, NAN};
-  Mat33 S;
+  std::string id;           // _pdbx_refine_tls.id
+  std::string selection;    // _pdbx_refine_tls_group.selection_details
+  Position origin;          // _pdbx_refine_tls.origin_x/y/z
+  Mat33 T;                  // _pdbx_refine_tls.T[][]
+  Mat33 L;                  // _pdbx_refine_tls.L[][]
+  Mat33 S;                  // _pdbx_refine_tls.S[][]
 };
 
 // RefinementInfo corresponds to REMARK 3.
@@ -62,7 +58,7 @@ struct RefinementInfo : BasicRefinementInfo {
   std::vector<BasicRefinementInfo> bins;
   double b_wilson = NAN;              // _reflns.B_iso_Wilson_estimate
   double mean_b = NAN;                // _refine.B_iso_mean
-  SymmetricTensor aniso_b;            // _refine.aniso_B[][]
+  Mat33 aniso_b;                      // _refine.aniso_B[][]
   double luzzati_error = NAN; // _refine_analyze.Luzzati_coordinate_error_obs
   double dpi_blow_r = NAN;            // _refine.pdbx_overall_SU_R_Blow_DPI
   double dpi_blow_rfree = NAN;        // _refine.pdbx_overall_SU_R_free_Blow_DPI
@@ -98,9 +94,17 @@ struct Metadata {
     return std::any_of(refinement.begin(), refinement.end(),
             [&](const RefinementInfo& r) { return !(r.*field).empty(); });
   }
-  bool has(SymmetricTensor RefinementInfo::*field) const {
+  bool has(Mat33 RefinementInfo::*field) const {
     return std::any_of(refinement.begin(), refinement.end(),
-        [&](const RefinementInfo& r) { return !std::isnan((r.*field).a11); });
+        [&](const RefinementInfo& r) { return !std::isnan((r.*field)[0][0]); });
+  }
+  bool has(const RefinementInfo::Restr&) const {
+    return std::any_of(refinement.begin(), refinement.end(),
+            [&](const RefinementInfo& r) { return !r.restr.empty(); });
+  }
+  bool has(const TlsGroup&) const {
+    return std::any_of(refinement.begin(), refinement.end(),
+            [&](const RefinementInfo& r) { return !r.tls_groups.empty(); });
   }
 };
 

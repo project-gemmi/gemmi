@@ -117,6 +117,13 @@ inline bool is_record_type(const char* s, const char* record) {
   return ialpha4_id(s) == ialpha4_id(record);
 }
 
+inline bool is_tls_item(const std::string& key) {
+  return key.size() == 3 &&
+    (key[0] == 'T' || key[0] == 'L' || key[0] == 'S') &&
+    (key[1] == '1' || key[1] == '2' || key[1] == '3') &&
+    (key[2] == '1' || key[2] == '2' || key[2] == '3');
+}
+
 // The standard charge format is 2+, but some files have +2.
 inline signed char read_charge(char digit, char sign) {
   if (sign == ' ' && digit == ' ')  // by far the most common case
@@ -380,17 +387,17 @@ inline void read_remark3_line(const char* line, Structure& st) {
     } else if (same_str(key, "MEAN B VALUE      (OVERALL, A**2)")) {
       ref_info.mean_b = read_double(value);
     } else if (same_str(key, "B11 (A**2)")) {
-      ref_info.aniso_b.a11 = read_double(value);
+      ref_info.aniso_b[0][0] = read_double(value);
     } else if (same_str(key, "B22 (A**2)")) {
-      ref_info.aniso_b.a22 = read_double(value);
+      ref_info.aniso_b[1][1] = read_double(value);
     } else if (same_str(key, "B33 (A**2)")) {
-      ref_info.aniso_b.a33 = read_double(value);
+      ref_info.aniso_b[2][2] = read_double(value);
     } else if (same_str(key, "B12 (A**2)")) {
-      ref_info.aniso_b.a12 = read_double(value);
+      ref_info.aniso_b[0][1] = read_double(value);
     } else if (same_str(key, "B13 (A**2)")) {
-      ref_info.aniso_b.a13 = read_double(value);
+      ref_info.aniso_b[0][2] = read_double(value);
     } else if (same_str(key, "B23 (A**2)")) {
-      ref_info.aniso_b.a23 = read_double(value);
+      ref_info.aniso_b[1][2] = read_double(value);
     } else if (same_str(key, "ESD FROM LUZZATI PLOT                    (A)")) {
       ref_info.luzzati_error = read_double(value);
     } else if (same_str(key, "DPI (BLOW EQ-10) BASED ON R VALUE        (A)")) {
@@ -405,6 +412,37 @@ inline void read_remark3_line(const char* line, Structure& st) {
       ref_info.cc_fo_fc = read_double(value);
     } else if (same_str(key, "CORRELATION COEFFICIENT FO-FC FREE")) {
       ref_info.cc_fo_fc_free = read_double(value);
+    } else if (same_str(key, "TLS GROUP")) {
+      ref_info.tls_groups.emplace_back();
+      ref_info.tls_groups.back().id = std::string(value, end);
+    } else if (same_str(key, "SET")) {
+      if (ref_info.tls_groups.empty())
+        return;
+      ref_info.tls_groups.back().id = std::string(value, end);
+    } else if (same_str(key, "ORIGIN FOR THE GROUP (A)")) {
+      std::vector<std::string> xyz = split_str_multi(std::string(value, end));
+      if (ref_info.tls_groups.empty() || xyz.size() != 3)
+        return;
+      Position& origin = ref_info.tls_groups.back().origin;
+      origin.x = read_double(xyz[0].c_str());
+      origin.y = read_double(xyz[1].c_str());
+      origin.z = read_double(xyz[2].c_str());
+    } else if (is_tls_item(key)) {
+      if (ref_info.tls_groups.empty())
+        return;
+      TlsGroup& tls = ref_info.tls_groups.back();
+      std::vector<std::string> tokens = split_str_multi(key_start);
+      for (size_t i = 0; i + 1 < tokens.size(); i += 2) {
+        std::string& k = tokens[i];
+        if (k.size() == 4 && k[3] == ':')
+          k.resize(3);
+        if (is_tls_item(k)) {
+          Mat33& m = k[0] == 'T' ? tls.T : k[0] == 'L' ? tls.L : tls.S;
+          int x = k[1] - '1';
+          int y = k[2] - '1';
+          m[x][y] = m[y][x] = read_double(tokens[i+1].c_str());
+        }
+      }
     }
   } else {
     if (same_str(key, "DATA USED IN REFINEMENT.")) {
