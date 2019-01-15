@@ -88,6 +88,8 @@ struct Metadata {
   std::vector<ExperimentInfo> experiments;
   std::vector<RefinementInfo> refinement;
   std::vector<SoftwareItem> software;
+  std::string solved_by;       // _refine.pdbx_method_to_determine_struct
+  std::string starting_model;  // _refine.pdbx_starting_model
 
   bool has(double RefinementInfo::*field) const {
     return std::any_of(refinement.begin(), refinement.end(),
@@ -112,6 +114,21 @@ struct Metadata {
   bool has_tls() const {
     return std::any_of(refinement.begin(), refinement.end(),
             [&](const RefinementInfo& r) { return !r.tls_groups.empty(); });
+  }
+
+  SoftwareItem& add_software(SoftwareItem::Classification type,
+                             const std::string& name) {
+    software.emplace_back();
+    SoftwareItem& item = software.back();
+    item.name = name;
+    size_t sep = item.name.rfind(' ');
+    if (sep != std::string::npos) {
+      item.version = item.name.substr(sep + 1);
+      item.name.resize(sep);
+    }
+    item.classification = type;
+    item.pdbx_ordinal = software.size();
+    return item;
   }
 };
 

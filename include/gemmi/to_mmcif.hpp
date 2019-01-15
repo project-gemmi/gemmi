@@ -181,16 +181,6 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
   }
 }
 
-void add_tensor_tags(cif::Loop& loop, const std::string& prefix) {
-  for (const char* postfix : {"[1][1]", "[2][2]", "[3][3]",
-                              "[1][2]", "[1][3]", "[2][3]"})
-    loop.tags.push_back(prefix + postfix);
-}
-void add_tensor_values(cif::Loop& loop, const Mat33& t) {
-  for (const double d : {t[0][0], t[1][1], t[2][2], t[0][1], t[0][2], t[1][2]})
-    loop.values.push_back(impl::number_or_qmark(d));
-}
-
 } // namespace impl
 
 void update_cif_block(const Structure& st, cif::Block& block) {
@@ -304,8 +294,12 @@ void update_cif_block(const Structure& st, cif::Block& block) {
         add("B_iso_mean", impl::number_or_qmark(ref.mean_b));
       if (st.meta.has(&RefinementInfo::aniso_b)) {
         if (i == 0)
-          impl::add_tensor_tags(loop, "_refine.aniso_B");
-        impl::add_tensor_values(loop, ref.aniso_b);
+          for (const char* index : {"[1][1]", "[2][2]", "[3][3]",
+                                    "[1][2]", "[1][3]", "[2][3]"})
+            loop.tags.push_back(std::string("_refine.aniso_B") + index);
+        const Mat33& t = ref.aniso_b;
+        for (double d : {t[0][0], t[1][1], t[2][2], t[0][1], t[0][2], t[1][2]})
+          loop.values.push_back(impl::number_or_qmark(d));
       }
       if (st.meta.has(&RefinementInfo::dpi_blow_r))
         add("pdbx_overall_SU_R_Blow_DPI",
@@ -324,6 +318,10 @@ void update_cif_block(const Structure& st, cif::Block& block) {
       if (st.meta.has(&RefinementInfo::cc_fo_fc_free))
         add("correlation_coeff_Fo_to_Fc_free",
             impl::number_or_qmark(ref.cc_fo_fc_free));
+      if (!st.meta.solved_by.empty())
+        add("pdbx_method_to_determine_struct", cif::quote(st.meta.solved_by));
+      if (!st.meta.starting_model.empty())
+        add("pdbx_starting_model", cif::quote(st.meta.starting_model));
       analyze_loop.add_row({id, ref.id,
                             impl::number_or_qmark(ref.luzzati_error)});
       for (const BasicRefinementInfo& bin : ref.bins)

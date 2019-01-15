@@ -181,6 +181,7 @@ class TestMol(unittest.TestCase):
         block = st.make_mmcif_document().sole_block()
         refine = block.get_mmcif_category('_refine')
         self.assertEqual(refine['ls_d_res_high'], ['1.44', '1.43'])
+        self.assertEqual(refine['pdbx_starting_model'], ['4I8H'] * 2)
 
     def read_1pfe(self, filename):
         st = gemmi.read_structure(full_path(filename))

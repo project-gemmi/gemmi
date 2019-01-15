@@ -321,18 +321,9 @@ inline void read_remark3_line(const char* line, Structure& st) {
     const char* end = rtrim_cstr(value);
     if (end - value == 4 && std::strncmp(value, "NULL", 4) == 0)
       return;
-    if (same_str(key, "PROGRAM")) {
-      st.meta.software.emplace_back();
-      SoftwareItem& item = st.meta.software.back();
-      item.name = std::string(value, end);
-      size_t sep = item.name.rfind(' ');
-      if (sep != std::string::npos) {
-        item.version = item.name.substr(sep + 1);
-        item.name.resize(sep);
-      }
-      item.classification = SoftwareItem::Refinement;
-      item.pdbx_ordinal = st.meta.software.size();
-    }
+    if (same_str(key, "PROGRAM"))
+      SoftwareItem& item = st.meta.add_software(SoftwareItem::Refinement,
+                                                std::string(value, end));
     if (st.meta.refinement.empty())
       return;
     RefinementInfo& ref_info = st.meta.refinement.back();
@@ -457,6 +448,43 @@ inline void read_remark3_line(const char* line, Structure& st) {
   }
 }
 
+inline void read_remark_200_230_240(const char* line, Structure& st) {
+  const char* key_start = skip_blank(line + 10);
+  const char* colon = std::strchr(key_start, ':');
+  const char* key_end = rtrim_cstr(key_start, colon);
+  std::string key(key_start, key_end);
+  if (colon) {
+    const char* value = skip_blank(colon + 1);
+    const char* end = rtrim_cstr(value);
+    if (end - value == 4 && std::strncmp(value, "NULL", 4) == 0)
+      return;
+    if (same_str(key, "INTENSITY-INTEGRATION SOFTWARE")) {
+      st.meta.add_software(SoftwareItem::DataReduction,
+                           std::string(value, end));
+    } else if (same_str(key, "DATA SCALING SOFTWARE")) {
+      st.meta.add_software(SoftwareItem::DataScaling, std::string(value, end));
+    } else if (same_str(key, "SOFTWARE USED")) {
+      st.meta.add_software(SoftwareItem::Phasing, std::string(value, end));
+    } else if (same_str(key, "METHOD USED TO DETERMINE THE STRUCTURE")) {
+      st.meta.solved_by = std::string(value, end);
+    } else if (same_str(key, "STARTING MODEL")) {
+      st.meta.starting_model = std::string(value, end);
+    }
+    if (st.meta.experiments.empty())
+      return;
+    ExperimentInfo& exper = st.meta.experiments.back();
+    if (same_str(key, "EXPERIMENT TYPE")) {
+      exper.method = std::string(value, end);
+    } else if (same_str(key, "NUMBER OF CRYSTALS USED")) {
+      exper.number_of_crystals = std::atoi(value);
+    }
+  } else {
+    if (same_str(key, "EXPERIMENTAL DETAILS")) {
+      st.meta.experiments.emplace_back();
+    }
+  }
+}
+
 template<typename Input>
 Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   using namespace pdb_impl;
@@ -550,6 +578,11 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
             break;
           case 3:
             read_remark3_line(line, st);
+            break;
+          case 200:
+          case 230:
+          case 240:
+            read_remark_200_230_240(line, st);
             break;
           default:
             // ignore all other REMARKs for now
