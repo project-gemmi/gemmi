@@ -176,6 +176,12 @@ class TestMol(unittest.TestCase):
         self.assertEqual(input_block.get_mmcif_category('_software'),
                          output_block.get_mmcif_category('_software'))
 
+    def test_5moo_header(self):
+        st = gemmi.read_structure(full_path('5moo_header.pdb'))
+        block = st.make_mmcif_document().sole_block()
+        refine = block.get_mmcif_category('_refine')
+        self.assertEqual(refine['ls_d_res_high'], ['1.44', '1.43'])
+
     def read_1pfe(self, filename):
         st = gemmi.read_structure(full_path(filename))
         self.assertAlmostEqual(st.cell.a, 39.374)
