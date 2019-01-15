@@ -52,6 +52,7 @@ struct RefinementInfo : BasicRefinementInfo {
     double weight = NAN;
     std::string function;
   };
+  std::string id;
   std::string cross_validation_method; // _refine.pdbx_ls_cross_valid_method
   std::string rfree_selection_method;  // _refine.pdbx_R_Free_selection_details
   int bin_count = -1;        // _refine_ls_shell.pdbx_total_number_of_bins_used
@@ -98,11 +99,11 @@ struct Metadata {
     return std::any_of(refinement.begin(), refinement.end(),
         [&](const RefinementInfo& r) { return !std::isnan((r.*field)[0][0]); });
   }
-  bool has(const RefinementInfo::Restr&) const {
+  bool has_restr() const {
     return std::any_of(refinement.begin(), refinement.end(),
             [&](const RefinementInfo& r) { return !r.restr.empty(); });
   }
-  bool has(const TlsGroup&) const {
+  bool has_tls() const {
     return std::any_of(refinement.begin(), refinement.end(),
             [&](const RefinementInfo& r) { return !r.tls_groups.empty(); });
   }

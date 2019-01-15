@@ -420,7 +420,7 @@ inline void read_remark3_line(const char* line, Structure& st) {
     } else if (same_str(key, "SET")) {
       if (ref_info.tls_groups.empty())
         return;
-      ref_info.tls_groups.back().id = std::string(value, end);
+      ref_info.tls_groups.back().selection = std::string(value, end);
     } else if (same_str(key, "ORIGIN FOR THE GROUP (A)")) {
       std::vector<std::string> xyz = split_str_multi(std::string(value, end));
       if (ref_info.tls_groups.empty() || xyz.size() != 3)
@@ -449,6 +449,7 @@ inline void read_remark3_line(const char* line, Structure& st) {
   } else {
     if (same_str(key, "DATA USED IN REFINEMENT.")) {
       st.meta.refinement.emplace_back();
+      st.meta.refinement.back().id = std::to_string(st.meta.refinement.size());
     } else if (same_str(key, "FIT IN THE HIGHEST RESOLUTION BIN.")) {
       if (!st.meta.refinement.empty())
         st.meta.refinement.back().bins.emplace_back();

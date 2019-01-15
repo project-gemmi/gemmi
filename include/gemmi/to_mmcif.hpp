@@ -271,10 +271,9 @@ void update_cif_block(const Structure& st, cif::Block& block) {
         "ls_R_factor_R_work",
         "ls_R_factor_R_free"});
     for (size_t i = 0; i != st.meta.refinement.size(); ++i) {
-      std::string ref_id = "ref" + std::to_string(i+1);
       const RefinementInfo& ref = st.meta.refinement[i];
       loop.values.push_back(id);
-      loop.values.push_back(ref_id);
+      loop.values.push_back(ref.id);
       loop.values.push_back(impl::number_or_dot(ref.resolution_high));
       loop.values.push_back(impl::number_or_dot(ref.resolution_low));
       loop.values.push_back(impl::number_or_dot(ref.completeness));
@@ -323,10 +322,10 @@ void update_cif_block(const Structure& st, cif::Block& block) {
       if (st.meta.has(&RefinementInfo::cc_fo_fc_free))
         add("correlation_coeff_Fo_to_Fc_free",
             impl::number_or_qmark(ref.cc_fo_fc_free));
-      analyze_loop.add_row({id, ref_id,
+      analyze_loop.add_row({id, ref.id,
                             impl::number_or_qmark(ref.luzzati_error)});
       for (const BasicRefinementInfo& bin : ref.bins)
-        shell_loop.add_row({ref_id,
+        shell_loop.add_row({ref.id,
                             impl::number_or_dot(bin.resolution_high),
                             impl::number_or_qmark(bin.resolution_low),
                             impl::number_or_qmark(bin.completeness),
@@ -439,20 +438,37 @@ void update_cif_block(const Structure& st, cif::Block& block) {
 
   impl::add_cif_atoms(st, block);
 
-  /*
-    block.items.reserve(block.items.size() + 2);
+  if (st.meta.has_tls()) {
     cif::Loop& loop = block.init_mmcif_loop("_pdbx_refine_tls.", {
         "pdbx_refine_id", "id",
         "T[1][1]", "T[2][2]", "T[3][3]", "T[1][2]", "T[1][3]", "T[2][3]",
         "L[1][1]", "L[2][2]", "L[3][3]", "L[1][2]", "L[1][3]", "L[2][3]",
-        "S[1][1]", "S[1][2]", "S[1][3]", "S[2][1]", "S[2][2]", "S[2][3]",
+        "S[1][1]", "S[1][2]", "S[1][3]",
+        "S[2][1]", "S[2][2]", "S[2][3]",
         "S[3][1]", "S[3][2]", "S[3][3]",
-        "origin_x", "origin_y", "origin_z",
-        "method", "details"});
+        "origin_x", "origin_y", "origin_z"});
+    for (const RefinementInfo& ref : st.meta.refinement)
+      for (const TlsGroup& tls : ref.tls_groups) {
+        const Mat33& T = tls.T;
+        const Mat33& L = tls.L;
+        const Mat33& S = tls.S;
+        auto q = impl::number_or_qmark;
+        loop.add_row({ref.id, tls.id,
+                      q(T[0][0]), q(T[1][1]), q(T[2][2]),
+                      q(T[0][1]), q(T[0][2]), q(T[1][2]),
+                      q(L[0][0]), q(L[1][1]), q(L[2][2]),
+                      q(L[0][1]), q(L[0][2]), q(L[1][2]),
+                      q(S[0][0]), q(S[0][1]), q(S[0][2]),
+                      q(S[1][0]), q(S[1][1]), q(S[1][2]),
+                      q(S[2][0]), q(S[2][1]), q(S[2][2]),
+                      q(tls.origin.x), q(tls.origin.y), q(tls.origin.z)});
+      }
     cif::Loop& group_loop = block.init_mmcif_loop("_pdbx_refine_tls_group.", {
         "id", "refine_tls_id", "selection_details"});
+    for (const RefinementInfo& ref : st.meta.refinement)
+      for (const TlsGroup& tls : ref.tls_groups)
+        group_loop.add_row({tls.id, tls.id, cif::quote(tls.selection)});
   }
-  */
 
   if (!st.meta.software.empty()) {
     cif::Loop& loop = block.init_mmcif_loop("_software.",
