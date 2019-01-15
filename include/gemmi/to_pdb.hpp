@@ -283,7 +283,8 @@ inline void write_header(const Structure& st, std::ostream& os,
   }
   write_multiline(os, "TITLE", st.get_info("_struct.title"), 80);
   write_multiline(os, "KEYWDS", st.get_info("_struct_keywords.text"), 79);
-  write_multiline(os, "EXPDTA", st.get_info("_exptl.method"), 79);
+  write_multiline(os, "EXPDTA", join_str(st.meta.experiments, "; ",
+                       [](const ExperimentInfo& e) { return e.method; }), 79);
   if (st.models.size() > 1)
     WRITE("NUMMDL    %-6zu %63s\n", st.models.size(), "");
 

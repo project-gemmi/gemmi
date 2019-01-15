@@ -239,12 +239,14 @@ void update_cif_block(const Structure& st, cif::Block& block) {
                              polymer_type_to_string(ent.polymer_type)});
 
   // _exptl
-  cif::Loop& exptl_method_loop = block.init_mmcif_loop("_exptl.",
-                                                       {"entry_id", "method"});
-  auto exptl_method = st.info.find("_exptl.method");
-  if (exptl_method != st.info.end())
-    for (const std::string& m : gemmi::split_str(exptl_method->second, "; "))
-      exptl_method_loop.add_row({id, cif::quote(m)});
+  if (!st.meta.experiments.empty()) {
+    cif::Loop& loop = block.init_mmcif_loop("_exptl.",
+                                    {"entry_id", "method", "crystals_number"});
+    for (const ExperimentInfo& exper : st.meta.experiments)
+      loop.add_row({id, cif::quote(exper.method),
+                    impl::int_or_qmark(exper.number_of_crystals)});
+  }
+
 
   // _refine
   if (!st.meta.refinement.empty()) {

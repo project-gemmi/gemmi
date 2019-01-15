@@ -183,7 +183,7 @@ class TestMol(unittest.TestCase):
         self.assertEqual(st.name, '1PFE')
         self.assertEqual(st.spacegroup_hm, 'P 63 2 2')
         self.assertEqual(st.info['_entry.id'], '1PFE')
-        self.assertEqual(st.info['_exptl.method'], 'X-RAY DIFFRACTION')
+        #self.assertEqual(st.info['_exptl.method'], 'X-RAY DIFFRACTION')
         self.assertEqual(st.info['_refine.ls_R_factor_R_free'], '0.168')
         self.assertEqual(len(st), 1)
         self.assertEqual(len(st[0]), 2)

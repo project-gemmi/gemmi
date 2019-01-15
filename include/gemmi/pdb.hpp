@@ -467,6 +467,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   Structure st;
   st.input_format = CoorFormat::Pdb;
   st.name = path_basename(source);
+  std::string exptl_method;
   std::vector<std::string> conn_records;
   Model *model = &st.find_or_add_model("1");
   Chain *chain = nullptr;
@@ -590,7 +591,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
     } else if (is_record_type(line, "EXPDTA")) {
       if (len > 10)
-        st.info["_exptl.method"] += rtrimmed(std::string(line+10, len-10-1));
+        exptl_method += rtrimmed(std::string(line+10, len-10-1));
 
     } else if (is_record_type(line, "CRYST1")) {
       if (len > 54)
@@ -654,6 +655,15 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     } else if (is_record_type(line, "data")) {
       if (line[4] == '_' && model && model->chains.empty())
         fail("Incorrect file format (perhaps it is cif not pdb?): " + source);
+    }
+  }
+
+  for (std::string& method : split_str(exptl_method, ';')) {
+    method = trim_str(method);
+    if (!std::any_of(st.meta.experiments.begin(), st.meta.experiments.end(),
+                [&](const ExperimentInfo& e) { return e.method == method; })) {
+      st.meta.experiments.emplace_back();
+      st.meta.experiments.back().method = method;
     }
   }
 

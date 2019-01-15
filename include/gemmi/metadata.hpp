@@ -22,6 +22,11 @@ struct SoftwareItem {
   int pdbx_ordinal = -1;
 };
 
+struct ExperimentInfo {
+  std::string method;
+  int number_of_crystals = -1;
+};
+
 struct TlsGroup {
   std::string id;           // _pdbx_refine_tls.id
   std::string selection;    // _pdbx_refine_tls_group.selection_details
@@ -80,6 +85,7 @@ struct XRDInfo {
 
 
 struct Metadata {
+  std::vector<ExperimentInfo> experiments;
   std::vector<RefinementInfo> refinement;
   std::vector<SoftwareItem> software;
 

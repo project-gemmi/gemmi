@@ -169,7 +169,6 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
   };
   add_info("_entry.id");
   add_info("_cell.Z_PDB");
-  add_info("_exptl.method");
   add_info("_struct.title");
   // in pdbx/mmcif v5 date_original was replaced with a much longer tag
   std::string old_date_tag = "_database_PDB_rev.date_original";
@@ -181,14 +180,20 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
     st.info[new_date_tag] = st.info[old_date_tag];
   add_info("_struct_keywords.pdbx_keywords");
   add_info("_struct_keywords.text");
-  // Not sure if we should use _pdbx_refine.free_R_factor_no_cutoff
-  // if _refine.ls_R_factor_R_free is absent.
+  // TODO: _refine* -> Metadata::RefinementInfo
   add_info("_refine.ls_R_factor_R_free");
 
   for (const std::string& d : block.find_values("_refine.ls_d_res_high")) {
     double resol = cif::as_number(d);
     if (resol > 0 && (st.resolution == 0 || resol < st.resolution))
       st.resolution = resol;
+  }
+
+  for (auto row : block.find("_exptl.", {"method", "?crystals_number"})) {
+    st.meta.experiments.emplace_back();
+    st.meta.experiments.back().method = row.str(0);
+    if (row.has2(1))
+      st.meta.experiments.back().number_of_crystals = cif::as_int(row[1]);
   }
 
   for (auto row : block.find("_software.", {"name",
