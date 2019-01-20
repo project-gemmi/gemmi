@@ -22,10 +22,62 @@ struct SoftwareItem {
   int pdbx_ordinal = -1;
 };
 
-struct ExperimentInfo {
-  std::string method;
-  int number_of_crystals = -1;
+// Information from REMARK 200/230 is significantly expanded in PDBx/mmCIF.
+// These remarks corresponds to data across 12 mmCIF categories
+// including categories _exptl, _reflns, _exptl_crystal, _diffrn and others.
+// _exptl and _reflns seem to be 1:1. Usually we have one experiment (_exptl),
+// except for a joint refinement (e.g. X-ray + neutron data).
+// Both crystal (_exptl_crystal) and reflection statistics (_reflns) can
+// be associated with multiple diffraction sets (_diffrn).
+// But if we use the PDB format, only one diffraction set per method
+// can be described.
+
+struct ReflectionsInfo {
+  double resolution_high = NAN; // _reflns.d_resolution_high
+                                // (or _reflns_shell.d_res_high)
+  double resolution_low = NAN;  // _reflns.d_resolution_low
+  double completeness = NAN;    // _reflns.percent_possible_obs
+  double redundancy = NAN;      // _reflns.pdbx_redundancy
+  double r_merge = NAN;         // _reflns.pdbx_Rmerge_I_obs
+  double r_sym = NAN;           // _reflns.pdbx_Rsym_value
+  double mean_I_over_sigma = NAN; // _reflns.pdbx_netI_over_sigmaI
 };
+
+// _exptl has no id, _exptl.method is key item and must be unique
+struct ExperimentInfo {
+  std::string method;             // _exptl.method
+  int number_of_crystals = -1;    // _exptl.crystals_number
+  int unique_reflections = -1;    // _reflns.number_obs
+  ReflectionsInfo reflections;
+  double b_wilson = NAN;          // _reflns.B_iso_Wilson_estimate
+  std::vector<ReflectionsInfo> shells;
+};
+
+struct DiffractionInfo {
+  std::string id;                // _diffrn.id
+  std::string crystal_id;        // _diffrn.crystal_id
+  double temperature = NAN;      // _diffrn.ambient_temp
+  std::string source;            // _diffrn_source.source
+  std::string source_type;       // _diffrn_source.type
+  std::string synchrotron;       // _diffrn_source.pdbx_synchrotron_site
+  std::string beamline;          // _diffrn_source.pdbx_synchrotron_beamline
+  std::string wavelengths;       // _diffrn_source.pdbx_wavelength
+  std::string scattering_type;   // _diffrn_radiation.pdbx_scattering_type
+  char mono_or_laue = '\0'; // _diffrn_radiation.pdbx_monochromatic_or_laue_m_l
+  std::string monochromator;     // _diffrn_radiation.monochromator
+  std::string collection_date;   // _diffrn_detector.pdbx_collection_date
+  std::string optics;            // _diffrn_detector.details
+  std::string detector;          // _diffrn_detector.detector
+  std::string detector_make;     // _diffrn_detector.type
+};
+
+struct CrystalInfo {
+  std::string id;                 // _exptl_crystal.id
+  double ph = NAN;                // _exptl_crystal_grow.pH
+  std::string ph_range;           // _exptl_crystal_grow.pdbx_pH_range
+  std::vector<DiffractionInfo> diffractions;
+};
+
 
 struct TlsGroup {
   std::string id;           // _pdbx_refine_tls.id
@@ -62,7 +114,6 @@ struct RefinementInfo : BasicRefinementInfo {
   std::string rfree_selection_method;  // _refine.pdbx_R_Free_selection_details
   int bin_count = -1;        // _refine_ls_shell.pdbx_total_number_of_bins_used
   std::vector<BasicRefinementInfo> bins;
-  double b_wilson = NAN;              // _reflns.B_iso_Wilson_estimate
   double mean_b = NAN;                // _refine.B_iso_mean
   Mat33 aniso_b;                      // _refine.aniso_B[][]
   double luzzati_error = NAN; // _refine_analyze.Luzzati_coordinate_error_obs
@@ -77,15 +128,10 @@ struct RefinementInfo : BasicRefinementInfo {
   std::string remarks;
 };
 
-// Corresponds to REMARK 200.
-struct XRDInfo {
-  std::string collection_date;        // _diffrn_detector.pdbx_collection_date
-  double temperature;                 // _diffrn.ambient_temp
-};
-
 
 struct Metadata {
   std::vector<ExperimentInfo> experiments;
+  std::vector<CrystalInfo> crystals;
   std::vector<RefinementInfo> refinement;
   std::vector<SoftwareItem> software;
   std::string solved_by;       // _refine.pdbx_method_to_determine_struct

@@ -92,7 +92,6 @@ inline double read_double(const char* p) {
   return sign * d;
 }
 
-
 inline std::string read_string(const char* p, int field_length) {
   // left trim
   while (field_length != 0 && std::isspace(*p)) {
@@ -115,13 +114,6 @@ inline std::string read_string(const char* p, int field_length) {
 // Both args must have at least 3+1 chars. ' ' and NUL are equivalent in s.
 inline bool is_record_type(const char* s, const char* record) {
   return ialpha4_id(s) == ialpha4_id(record);
-}
-
-inline bool is_tls_item(const std::string& key) {
-  return key.size() == 3 &&
-    (key[0] == 'T' || key[0] == 'L' || key[0] == 'S') &&
-    (key[1] == '1' || key[1] == '2' || key[1] == '3') &&
-    (key[2] == '1' || key[2] == '2' || key[2] == '3');
 }
 
 // The standard charge format is 2+, but some files have +2.
@@ -173,7 +165,7 @@ inline int read_serial(const char* ptr) {
 inline std::string pdb_date_format_to_iso(const std::string& date) {
   const char months[] = "JAN01FEB02MAR03APR04MAY05JUN06"
                         "JUL07AUG08SEP09OCT10NOV11DEC122222";
-  const char* m = strstr(months, date.substr(3, 3).c_str());
+  const char* m = strstr(months, to_upper(date.substr(3, 3)).c_str());
   return (date[7] > '6' ? "19" : "20") + date.substr(7, 2) + "-" +
          (m ? std::string(m+3, 2) : "??") + "-" + date.substr(0, 2);
 }
@@ -303,188 +295,6 @@ inline bool same_str(const std::string& s, const char (&literal)[N]) {
   return s.size() == N - 1 && std::strcmp(s.c_str(), literal) == 0;
 }
 
-inline void read_remark3_line(const char* line, Structure& st) {
-  // Based on:
-  // www.wwpdb.org/documentation/file-format-content/format23/remark3.html
-  // and analysis of PDB files.
-  // In special cases, such as joint X-ray and neutron refinement 5MOO,
-  // PDB file can have two REMARK 3 blocks.
-  // Generally, after "REMARK   3" we have either a header-like sentance
-  // or a key:value pair with a colon, or a continuation of text from the
-  // previous line.
-  const char* key_start = skip_blank(line + 10);
-  const char* colon = std::strchr(key_start, ':');
-  const char* key_end = rtrim_cstr(key_start, colon);
-  std::string key(key_start, key_end);
-  if (colon) {
-    const char* value = skip_blank(colon + 1);
-    const char* end = rtrim_cstr(value);
-    if (end - value == 4 && std::strncmp(value, "NULL", 4) == 0)
-      return;
-    if (same_str(key, "PROGRAM"))
-      SoftwareItem& item = st.meta.add_software(SoftwareItem::Refinement,
-                                                std::string(value, end));
-    if (st.meta.refinement.empty())
-      return;
-    RefinementInfo& ref_info = st.meta.refinement.back();
-    if (same_str(key, "RESOLUTION RANGE HIGH (ANGSTROMS)")) {
-      ref_info.resolution_high = read_double(value);
-      if (st.resolution == 0.0)
-        st.resolution = ref_info.resolution_high;
-    } else if (same_str(key, "RESOLUTION RANGE LOW  (ANGSTROMS)")) {
-      ref_info.resolution_low = read_double(value);
-    } else if (same_str(key, "COMPLETENESS FOR RANGE        (%)")) {
-      ref_info.completeness = read_double(value);
-    } else if (same_str(key, "NUMBER OF REFLECTIONS")) {
-      ref_info.reflection_count = std::atoi(value);
-    } else if (same_str(key, "CROSS-VALIDATION METHOD")) {
-      ref_info.cross_validation_method = std::string(value, end);
-    } else if (same_str(key, "FREE R VALUE TEST SET SELECTION")) {
-      ref_info.rfree_selection_method = std::string(value, end);
-    } else if (same_str(key, "R VALUE     (WORKING + TEST SET)")) {
-      ref_info.r_all = read_double(value);
-    } else if (same_str(key, "R VALUE            (WORKING SET)")) {
-      ref_info.r_work = read_double(value);
-    } else if (same_str(key, "FREE R VALUE")) {
-      ref_info.r_free = read_double(value);
-    } else if (same_str(key, "FREE R VALUE TEST SET COUNT")) {
-      ref_info.rfree_set_count = atoi(value);
-    } else if (same_str(key, "TOTAL NUMBER OF BINS USED")) {
-      ref_info.bin_count = std::atoi(value);
-    } else if (same_str(key, "BIN RESOLUTION RANGE HIGH       (A)")) {
-      if (!ref_info.bins.empty())
-        ref_info.bins.back().resolution_high = read_double(value);
-    } else if (same_str(key, "BIN RESOLUTION RANGE LOW        (A)")) {
-      if (!ref_info.bins.empty())
-        ref_info.bins.back().resolution_low = read_double(value);
-    } else if (same_str(key, "BIN COMPLETENESS (WORKING+TEST) (%)")) {
-      if (!ref_info.bins.empty())
-        ref_info.bins.back().completeness = read_double(value);
-    } else if (same_str(key, "REFLECTIONS IN BIN   (WORKING+TEST)")) {
-      if (!ref_info.bins.empty())
-        ref_info.bins.back().reflection_count = std::atoi(value);
-    } else if (same_str(key, "BIN R VALUE          (WORKING+TEST)")) {
-      if (!ref_info.bins.empty())
-        ref_info.bins.back().r_all = read_double(value);
-    } else if (same_str(key, "BIN R VALUE           (WORKING SET)")) {
-      if (!ref_info.bins.empty())
-        ref_info.bins.back().r_work = read_double(value);
-    } else if (same_str(key, "BIN FREE R VALUE")) {
-      if (!ref_info.bins.empty())
-        ref_info.bins.back().r_free = read_double(value);
-    } else if (same_str(key, "BIN FREE R VALUE TEST SET COUNT")) {
-      if (!ref_info.bins.empty())
-        ref_info.bins.back().rfree_set_count = std::atoi(value);
-    } else if (same_str(key, "FROM WILSON PLOT           (A**2)")) {
-      ref_info.b_wilson = read_double(value);
-    } else if (same_str(key, "MEAN B VALUE      (OVERALL, A**2)")) {
-      ref_info.mean_b = read_double(value);
-    } else if (same_str(key, "B11 (A**2)")) {
-      ref_info.aniso_b[0][0] = read_double(value);
-    } else if (same_str(key, "B22 (A**2)")) {
-      ref_info.aniso_b[1][1] = read_double(value);
-    } else if (same_str(key, "B33 (A**2)")) {
-      ref_info.aniso_b[2][2] = read_double(value);
-    } else if (same_str(key, "B12 (A**2)")) {
-      ref_info.aniso_b[0][1] = read_double(value);
-    } else if (same_str(key, "B13 (A**2)")) {
-      ref_info.aniso_b[0][2] = read_double(value);
-    } else if (same_str(key, "B23 (A**2)")) {
-      ref_info.aniso_b[1][2] = read_double(value);
-    } else if (same_str(key, "ESD FROM LUZZATI PLOT                    (A)")) {
-      ref_info.luzzati_error = read_double(value);
-    } else if (same_str(key, "DPI (BLOW EQ-10) BASED ON R VALUE        (A)")) {
-      ref_info.dpi_blow_r = read_double(value);
-    } else if (same_str(key, "DPI (BLOW EQ-9) BASED ON FREE R VALUE    (A)")) {
-      ref_info.dpi_blow_rfree = read_double(value);
-    } else if (same_str(key, "DPI (CRUICKSHANK) BASED ON R VALUE       (A)")) {
-      ref_info.dpi_cruickshank_r = read_double(value);
-    } else if (same_str(key, "DPI (CRUICKSHANK) BASED ON FREE R VALUE  (A)")) {
-      ref_info.dpi_cruickshank_rfree = read_double(value);
-    } else if (same_str(key, "CORRELATION COEFFICIENT FO-FC")) {
-      ref_info.cc_fo_fc = read_double(value);
-    } else if (same_str(key, "CORRELATION COEFFICIENT FO-FC FREE")) {
-      ref_info.cc_fo_fc_free = read_double(value);
-    } else if (same_str(key, "TLS GROUP")) {
-      ref_info.tls_groups.emplace_back();
-      ref_info.tls_groups.back().id = std::string(value, end);
-    } else if (same_str(key, "SET")) {
-      if (ref_info.tls_groups.empty())
-        return;
-      ref_info.tls_groups.back().selection = std::string(value, end);
-    } else if (same_str(key, "ORIGIN FOR THE GROUP (A)")) {
-      std::vector<std::string> xyz = split_str_multi(std::string(value, end));
-      if (ref_info.tls_groups.empty() || xyz.size() != 3)
-        return;
-      Position& origin = ref_info.tls_groups.back().origin;
-      origin.x = read_double(xyz[0].c_str());
-      origin.y = read_double(xyz[1].c_str());
-      origin.z = read_double(xyz[2].c_str());
-    } else if (is_tls_item(key)) {
-      if (ref_info.tls_groups.empty())
-        return;
-      TlsGroup& tls = ref_info.tls_groups.back();
-      std::vector<std::string> tokens = split_str_multi(key_start);
-      for (size_t i = 0; i + 1 < tokens.size(); i += 2) {
-        std::string& k = tokens[i];
-        if (k.size() == 4 && k[3] == ':')
-          k.resize(3);
-        if (is_tls_item(k)) {
-          Mat33& m = k[0] == 'T' ? tls.T : k[0] == 'L' ? tls.L : tls.S;
-          int x = k[1] - '1';
-          int y = k[2] - '1';
-          m[x][y] = m[y][x] = read_double(tokens[i+1].c_str());
-        }
-      }
-    }
-  } else {
-    if (same_str(key, "DATA USED IN REFINEMENT.")) {
-      st.meta.refinement.emplace_back();
-      st.meta.refinement.back().id = std::to_string(st.meta.refinement.size());
-    } else if (same_str(key, "FIT IN THE HIGHEST RESOLUTION BIN.")) {
-      if (!st.meta.refinement.empty())
-        st.meta.refinement.back().bins.emplace_back();
-    }
-  }
-}
-
-inline void read_remark_200_230_240(const char* line, Structure& st) {
-  const char* key_start = skip_blank(line + 10);
-  const char* colon = std::strchr(key_start, ':');
-  const char* key_end = rtrim_cstr(key_start, colon);
-  std::string key(key_start, key_end);
-  if (colon) {
-    const char* value = skip_blank(colon + 1);
-    const char* end = rtrim_cstr(value);
-    if (end - value == 4 && std::strncmp(value, "NULL", 4) == 0)
-      return;
-    if (same_str(key, "INTENSITY-INTEGRATION SOFTWARE")) {
-      st.meta.add_software(SoftwareItem::DataReduction,
-                           std::string(value, end));
-    } else if (same_str(key, "DATA SCALING SOFTWARE")) {
-      st.meta.add_software(SoftwareItem::DataScaling, std::string(value, end));
-    } else if (same_str(key, "SOFTWARE USED")) {
-      st.meta.add_software(SoftwareItem::Phasing, std::string(value, end));
-    } else if (same_str(key, "METHOD USED TO DETERMINE THE STRUCTURE")) {
-      st.meta.solved_by = std::string(value, end);
-    } else if (same_str(key, "STARTING MODEL")) {
-      st.meta.starting_model = std::string(value, end);
-    }
-    if (st.meta.experiments.empty())
-      return;
-    ExperimentInfo& exper = st.meta.experiments.back();
-    if (same_str(key, "EXPERIMENT TYPE")) {
-      exper.method = std::string(value, end);
-    } else if (same_str(key, "NUMBER OF CRYSTALS USED")) {
-      exper.number_of_crystals = std::atoi(value);
-    }
-  } else {
-    if (same_str(key, "EXPERIMENTAL DETAILS")) {
-      st.meta.experiments.emplace_back();
-    }
-  }
-}
-
 template<typename Input>
 Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   using namespace pdb_impl;
@@ -570,23 +380,17 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
     } else if (is_record_type(line, "REMARK")) {
       st.raw_remarks.push_back(line);
-      if (len > 11) {
-        switch (read_int(line + 7, 3)) {
-          case 2:
-            if (strstr(line, "ANGSTROM"))
-              st.resolution = read_double(line + 23, 7);
-            break;
-          case 3:
-            read_remark3_line(line, st);
-            break;
-          case 200:
-          case 230:
-          case 240:
-            read_remark_200_230_240(line, st);
-            break;
-          default:
-            // ignore all other REMARKs for now
-            break;
+      // By default, we only look for resolution.
+      // Other parsing of remarks is in interpret_remarks().
+      if (len > 11 && st.resolution == 0.0) {
+        int num = read_int(line + 7, 3);
+        if (num == 2) {
+          if (strstr(line, "ANGSTROM"))
+            st.resolution = read_double(line + 23, 7);
+        } else if (num == 3) {
+          if (strstr(line, "RESOLUTION RANGE HIGH (ANGSTROMS)"))
+            if (const char* colon = strchr(line + 44, ':'))
+              st.resolution = read_double(colon + 1);
         }
       }
 
@@ -624,7 +428,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
     } else if (is_record_type(line, "EXPDTA")) {
       if (len > 10)
-        exptl_method += rtrimmed(std::string(line+10, len-10-1));
+        st.info["_exptl.method"] += rtrimmed(std::string(line+10, len-10-1));
 
     } else if (is_record_type(line, "CRYST1")) {
       if (len > 54)
@@ -688,15 +492,6 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     } else if (is_record_type(line, "data")) {
       if (line[4] == '_' && model && model->chains.empty())
         fail("Incorrect file format (perhaps it is cif not pdb?): " + source);
-    }
-  }
-
-  for (std::string& method : split_str(exptl_method, ';')) {
-    method = trim_str(method);
-    if (!std::any_of(st.meta.experiments.begin(), st.meta.experiments.end(),
-                [&](const ExperimentInfo& e) { return e.method == method; })) {
-      st.meta.experiments.emplace_back();
-      st.meta.experiments.back().method = method;
     }
   }
 

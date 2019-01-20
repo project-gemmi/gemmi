@@ -8,6 +8,7 @@
 #include "gemmi/gzread_impl.hpp"
 #include "gemmi/smcif.hpp" // for AtomicStructure
 #include "gemmi/chemcomp_xyz.hpp"
+#include "gemmi/remarks.hpp"
 
 #include <pybind11/pybind11.h>
 
@@ -41,7 +42,9 @@ void add_cif_read(py::module& cif) {
 
 void add_read_structure(py::module& m) {
   m.def("read_structure", [](const std::string& path, bool merge) {
-          auto st = new Structure(read_structure_gz(path));
+          Structure* st = new Structure(read_structure_gz(path));
+          if (!st->raw_remarks.empty())
+            read_metadata_from_remarks(*st);
           if (merge)
             st->merge_same_name_chains();
           return st;
@@ -50,7 +53,9 @@ void add_read_structure(py::module& m) {
   m.def("make_structure_from_block", &make_structure_from_block,
         py::arg("block"), "Takes mmCIF block and returns Structure.");
   m.def("read_pdb_string", [](const std::string& s) {
-          return new Structure(read_pdb_string(s, "string"));
+          Structure* st = new Structure(read_pdb_string(s, "string"));
+          read_metadata_from_remarks(*st);
+          return st;
         }, py::arg("s"), "Reads a string as PDB file.");
 
   // from smcif.hpp

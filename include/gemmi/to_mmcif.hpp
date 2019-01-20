@@ -221,22 +221,132 @@ void update_cif_block(const Structure& st, cif::Block& block) {
     entity_loop.add_row({ent.name, entity_type_to_string(ent.entity_type)});
 
   // _entity_poly
-  cif::Loop& ent_poly_loop = block.init_mmcif_loop("_entity_poly.",
-                                                   {"entity_id", "type"});
+  cif::Loop& ent_poly_loop = block.init_mmcif_loop("_entity_poly.", {"entity_id", "type"});
   for (const Entity& ent : st.entities)
     if (ent.entity_type == EntityType::Polymer)
-      ent_poly_loop.add_row({ent.name,
-                             polymer_type_to_string(ent.polymer_type)});
+      ent_poly_loop.add_row({ent.name, polymer_type_to_string(ent.polymer_type)});
 
   // _exptl
   if (!st.meta.experiments.empty()) {
     cif::Loop& loop = block.init_mmcif_loop("_exptl.",
-                                    {"entry_id", "method", "crystals_number"});
+                                            {"entry_id", "method", "crystals_number"});
     for (const ExperimentInfo& exper : st.meta.experiments)
       loop.add_row({id, cif::quote(exper.method),
                     impl::int_or_qmark(exper.number_of_crystals)});
   }
 
+  // _exptl_crystal_grow
+  if (std::any_of(st.meta.crystals.begin(), st.meta.crystals.end(),
+            [](const CrystalInfo& c) { return !c.ph_range.empty() || !std::isnan(c.ph); })) {
+    cif::Loop& grow_loop = block.init_mmcif_loop("_exptl_crystal_grow.",
+                                                 {"crystal_id", "pH", "pdbx_pH_range"});
+    for (const CrystalInfo& crystal : st.meta.crystals)
+      grow_loop.add_row({cif::quote(crystal.id),
+                         impl::number_or_qmark(crystal.ph),
+                         impl::string_or_qmark(crystal.ph_range)});
+  }
+
+  // _diffrn
+  if (std::any_of(st.meta.crystals.begin(), st.meta.crystals.end(),
+                  [](const CrystalInfo& c) { return !c.diffractions.empty(); })) {
+
+    cif::Loop& loop = block.init_mmcif_loop("_diffrn.", {"id", "crystal_id", "ambient_temp"});
+    for (const CrystalInfo& cryst : st.meta.crystals)
+      for (const DiffractionInfo& diffr : cryst.diffractions)
+        loop.add_row({diffr.id, diffr.crystal_id, impl::number_or_qmark(diffr.temperature)});
+    // _diffrn_detector
+    cif::Loop& det_loop = block.init_mmcif_loop("_diffrn_detector.",
+                                                {"diffrn_id",
+                                                 "pdbx_collection_date",
+                                                 "detector",
+                                                 "type",
+                                                 "details"});
+    for (const CrystalInfo& cryst : st.meta.crystals)
+      for (const DiffractionInfo& diffr : cryst.diffractions)
+        det_loop.add_row({diffr.id,
+                          impl::string_or_qmark(diffr.collection_date),
+                          impl::string_or_qmark(diffr.detector),
+                          impl::string_or_qmark(diffr.detector_make),
+                          impl::string_or_qmark(diffr.optics)});
+
+    // _diffrn_radiation
+    cif::Loop& rad_loop = block.init_mmcif_loop("_diffrn_radiation.",
+                                                {"diffrn_id",
+                                                 "pdbx_scattering_type",
+                                                 "pdbx_monochromatic_or_laue_m_l",
+                                                 "monochromator"});
+    for (const CrystalInfo& cryst : st.meta.crystals)
+      for (const DiffractionInfo& diffr : cryst.diffractions)
+        rad_loop.add_row({diffr.id,
+                          impl::string_or_qmark(diffr.scattering_type),
+                          std::string(1, diffr.mono_or_laue ? diffr.mono_or_laue : '?'),
+                          impl::string_or_qmark(diffr.monochromator)});
+    // _diffrn_source
+    cif::Loop& source_loop = block.init_mmcif_loop("_diffrn_source.",
+                                                   {"diffrn_id",
+                                                    "source",
+                                                    "type",
+                                                    "pdbx_synchrotron_site",
+                                                    "pdbx_synchrotron_beamline",
+                                                    "pdbx_wavelength_list"});
+    for (const CrystalInfo& crystal : st.meta.crystals)
+      for (const DiffractionInfo& diffr : crystal.diffractions)
+        source_loop.add_row({diffr.id,
+                             impl::string_or_qmark(diffr.source),
+                             impl::string_or_qmark(diffr.source_type),
+                             impl::string_or_qmark(diffr.synchrotron),
+                             impl::string_or_qmark(diffr.beamline),
+                             impl::string_or_qmark(diffr.wavelengths)});
+  }
+
+  // _reflns
+  if (!st.meta.experiments.empty()) {
+    cif::Loop& loop = block.init_mmcif_loop("_reflns.", {
+        "entry_id",
+        "pdbx_ordinal",
+        "pdbx_diffrn_id",
+        "number_obs",
+        "d_resolution_high",
+        "d_resolution_low",
+        "percent_possible_obs",
+        "pdbx_redundancy",
+        "pdbx_Rmerge_I_obs",
+        "pdbx_Rsym_value",
+        "pdbx_netI_over_sigmaI",
+        "B_iso_Wilson_estimate"});
+    int n = 0;
+    for (const ExperimentInfo& exper : st.meta.experiments)
+      loop.add_row({id,
+                    std::to_string(++n),
+                    "?",  // TODO
+                    impl::int_or_qmark(exper.unique_reflections),
+                    impl::number_or_qmark(exper.reflections.resolution_high),
+                    impl::number_or_qmark(exper.reflections.resolution_low),
+                    impl::number_or_qmark(exper.reflections.completeness),
+                    impl::number_or_qmark(exper.reflections.redundancy),
+                    impl::number_or_qmark(exper.reflections.r_merge),
+                    impl::number_or_qmark(exper.reflections.r_sym),
+                    impl::number_or_qmark(exper.reflections.mean_I_over_sigma),
+                    impl::number_or_qmark(exper.b_wilson)});
+    // _reflns_shell
+    cif::Loop& shell_loop = block.init_mmcif_loop("_reflns_shell.", {
+        "d_res_high",
+        "d_res_low",
+        "percent_possible_all",
+        "pdbx_redundancy",
+        "Rmerge_I_obs",
+        "pdbx_Rsym_value",
+        "meanI_over_sigI_obs"});
+    for (const ExperimentInfo& exper : st.meta.experiments)
+      for (const ReflectionsInfo& shell : exper.shells)
+        shell_loop.add_row({impl::number_or_qmark(shell.resolution_high),
+                            impl::number_or_qmark(shell.resolution_low),
+                            impl::number_or_qmark(shell.completeness),
+                            impl::number_or_qmark(shell.redundancy),
+                            impl::number_or_qmark(shell.r_merge),
+                            impl::number_or_qmark(shell.r_sym),
+                            impl::number_or_qmark(shell.mean_I_over_sigma)});
+  }
 
   // _refine
   if (!st.meta.refinement.empty()) {
@@ -288,8 +398,6 @@ void update_cif_block(const Structure& st, cif::Block& block) {
       if (st.meta.has(&RefinementInfo::rfree_selection_method))
         add("pdbx_R_Free_selection_details",
             impl::string_or_qmark(ref.rfree_selection_method));
-      if (st.meta.has(&RefinementInfo::b_wilson))
-        add("B_iso_Wilson_estimate", impl::number_or_qmark(ref.b_wilson));
       if (st.meta.has(&RefinementInfo::mean_b))
         add("B_iso_mean", impl::number_or_qmark(ref.mean_b));
       if (st.meta.has(&RefinementInfo::aniso_b)) {
@@ -319,9 +427,9 @@ void update_cif_block(const Structure& st, cif::Block& block) {
         add("correlation_coeff_Fo_to_Fc_free",
             impl::number_or_qmark(ref.cc_fo_fc_free));
       if (!st.meta.solved_by.empty())
-        add("pdbx_method_to_determine_struct", cif::quote(st.meta.solved_by));
+        add("pdbx_method_to_determine_struct", impl::string_or_qmark(st.meta.solved_by));
       if (!st.meta.starting_model.empty())
-        add("pdbx_starting_model", cif::quote(st.meta.starting_model));
+        add("pdbx_starting_model", impl::string_or_qmark(st.meta.starting_model));
       analyze_loop.add_row({id, ref.id,
                             impl::number_or_qmark(ref.luzzati_error)});
       for (const BasicRefinementInfo& bin : ref.bins)

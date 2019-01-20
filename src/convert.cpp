@@ -7,6 +7,7 @@
 #include "gemmi/to_pdb.hpp"    // for write_pdb, ...
 #include "gemmi/to_mmcif.hpp"  // for update_cif_block
 #include "gemmi/chemcomp_xyz.hpp" // for make_structure_from_chemcomp_block
+#include "gemmi/remarks.hpp"   // for read_metadata_from_remarks
 
 #include <cstring>
 #include <iostream>
@@ -216,6 +217,7 @@ static void convert(const std::string& input, CoorFormat input_type,
     }
   } else if (input_type == CoorFormat::Pdb) {
     st = gemmi::read_pdb_gz(input);
+    gemmi::read_metadata_from_remarks(st);
     setup_entities(st);
   } else {
     gemmi::fail("Unexpected input format.");
