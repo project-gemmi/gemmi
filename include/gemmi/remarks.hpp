@@ -1,6 +1,7 @@
 // Copyright 2019 Global Phasing Ltd.
 //
-// Reading some of the REMARKs from the PDB format.
+// Function read_metadata_from_remarks() that interprets REMARK 3
+// and REMARK 200/230/240 filling in Metadata.
 
 #ifndef GEMMI_REMARKS_HPP_
 #define GEMMI_REMARKS_HPP_
@@ -13,19 +14,14 @@ namespace gemmi {
 namespace pdb_impl {
 
 inline bool is_double(const char* p) {
-  while (std::isspace(*p))
-    ++p;
-  if (*p == '-' || *p == '+')
-    ++p;
-  while (*p >= '0' && *p <= '9')
-    ++p;
+  while (std::isspace(*p)) ++p;
+  if (*p == '-' || *p == '+') ++p;
+  while (is_digit(*p)) ++p;
   if (*p == '.') {
     ++p;
-    while (*p >= '0' && *p <= '9')
-      ++p;
+    while (is_digit(*++p)) ++p;
   }
-  while (std::isspace(*p))
-    ++p;
+  while (std::isspace(*p)) ++p;
   return *p == '\0';
 }
 
@@ -34,6 +30,43 @@ inline bool is_tls_item(const std::string& key) {
     (key[0] == 'T' || key[0] == 'L' || key[0] == 'S') &&
     (key[1] == '1' || key[1] == '2' || key[1] == '3') &&
     (key[2] == '1' || key[2] == '2' || key[2] == '3');
+}
+
+// Usually we have one program per line:
+//   XDS
+//   XDS VERSION NOVEMBER 3, 2014
+//   AIMLESS 0.5.17
+// but it can also be a list of programs:
+//   autoPROC (Version 1.3.0), AIMLESS, STARANISO
+//   autoPROC, XDS (VERSION Jan 26, 2018)
+// We assume that:
+// - the name has only one word (apologies to Queen of Spades,
+//   Force Field X, APEX 2 and Insight II).
+// - comma not followed by a digit separates programs
+// - brackets and the word VERSION are to be removed from version
+inline void add_software(Metadata& meta, SoftwareItem::Classification type,
+                         const std::string& name) {
+  for (size_t start = 0, end = 0; end != std::string::npos; start = end + 1) {
+    end = name.find(',', start);
+    while (end != std::string::npos &&
+           name[end+1] == ' ' && is_digit(name[end+2]))
+      end = name.find(',', end + 1);
+    meta.software.emplace_back();
+    SoftwareItem& item = meta.software.back();
+    item.name = trim_str(name.substr(start, end - start));
+    size_t sep = item.name.find(' ');
+    if (sep != std::string::npos) {
+      size_t ver_start = item.name.find_first_not_of(" (", sep + 1);
+      item.version = item.name.substr(ver_start);
+      item.name.resize(sep);
+      if (!item.version.empty() && item.version.back() == ')')
+        item.version.pop_back();
+      if (istarts_with(item.version, "version "))
+        item.version.erase(0, 8);
+    }
+    item.classification = type;
+    item.pdbx_ordinal = meta.software.size();
+  }
 }
 
 
@@ -56,8 +89,7 @@ inline void read_remark3_line(const char* line, Metadata& meta) {
     if (end - value == 4 && std::strncmp(value, "NULL", 4) == 0)
       return;
     if (same_str(key, "PROGRAM"))
-      SoftwareItem& item = meta.add_software(SoftwareItem::Refinement,
-                                             std::string(value, end));
+      add_software(meta, SoftwareItem::Refinement, std::string(value, end));
     if (meta.refinement.empty())
       return;
     RefinementInfo& ref_info = meta.refinement.back();
@@ -191,11 +223,11 @@ inline void read_remark_200_230_240(const char* line, Metadata& meta) {
     if (end - value == 4 && std::strncmp(value, "NULL", 4) == 0)
       return;
     if (same_str(key, "INTENSITY-INTEGRATION SOFTWARE")) {
-      meta.add_software(SoftwareItem::DataReduction, std::string(value, end));
+      add_software(meta, SoftwareItem::DataReduction, std::string(value, end));
     } else if (same_str(key, "DATA SCALING SOFTWARE")) {
-      meta.add_software(SoftwareItem::DataScaling, std::string(value, end));
+      add_software(meta, SoftwareItem::DataScaling, std::string(value, end));
     } else if (same_str(key, "SOFTWARE USED")) {
-      meta.add_software(SoftwareItem::Phasing, std::string(value, end));
+      add_software(meta, SoftwareItem::Phasing, std::string(value, end));
     } else if (same_str(key, "METHOD USED TO DETERMINE THE STRUCTURE")) {
       meta.solved_by = std::string(value, end);
     } else if (same_str(key, "STARTING MODEL")) {
@@ -280,13 +312,13 @@ inline void read_remark_200_230_240(const char* line, Metadata& meta) {
     }
   } else {
     if (same_str(key, "EXPERIMENTAL DETAILS")) {
-      meta.experiments.emplace_back();
       meta.crystals.emplace_back();
       CrystalInfo& c = meta.crystals.back();
       c.id = std::to_string(meta.crystals.size());
       c.diffractions.emplace_back();
       c.diffractions[0].id = c.id;
-      c.diffractions[0].crystal_id = c.id;
+      meta.experiments.emplace_back();
+      meta.experiments.back().diffraction_ids.push_back(c.id);
       if (line[8] == '0' && line[9] == '0')
         c.diffractions[0].scattering_type = "x-ray";
       else if (line[8] == '3' && line[9] == '0')

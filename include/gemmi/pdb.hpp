@@ -31,12 +31,7 @@ namespace gemmi {
 
 namespace pdb_impl {
 
-inline std::string rtrimmed(std::string s) {
-  auto p = std::find_if_not(s.rbegin(), s.rend(),
-                            [](int c) { return std::isspace(c); });
-  s.erase(p.base(), s.end());
-  return s;
-}
+inline bool is_digit(char c) { return c >= '0' && c <= '9'; }
 
 inline int read_int(const char* p, int field_length) {
   return string_to_int(p, false, field_length);
@@ -162,12 +157,17 @@ inline int read_serial(const char* ptr) {
 }
 
 // "28-MAR-07" -> "2007-03-28"
+// (we also accept less standard format "28-Mar-2007" as used by BUSTER)
 inline std::string pdb_date_format_to_iso(const std::string& date) {
   const char months[] = "JAN01FEB02MAR03APR04MAY05JUN06"
                         "JUL07AUG08SEP09OCT10NOV11DEC122222";
   const char* m = strstr(months, to_upper(date.substr(3, 3)).c_str());
-  return (date[7] > '6' ? "19" : "20") + date.substr(7, 2) + "-" +
-         (m ? std::string(m+3, 2) : "??") + "-" + date.substr(0, 2);
+  std::string year;
+  if (date.size() >= 11 && is_digit(date[9]) && is_digit(date[10]))
+    year = date.substr(7, 4);
+  else
+    year = (date[7] > '6' ? "19" : "20") + date.substr(7, 2);
+  return year + "-" + (m ? std::string(m+3, 2) : "??") + "-" + date.substr(0, 2);
 }
 
 struct FileInput {
@@ -409,8 +409,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
     } else if (is_record_type(line, "HEADER")) {
       if (len > 50)
-        st.info["_struct_keywords.pdbx_keywords"] =
-                                    rtrimmed(std::string(line+10, 40));
+        st.info["_struct_keywords.pdbx_keywords"] = rtrim_str(std::string(line+10, 40));
       if (len > 59) // date in PDB has format 28-MAR-07
         st.info["_pdbx_database_status.recvd_initial_deposition_date"] =
           pdb_date_format_to_iso(std::string(line+50, 9));
@@ -419,16 +418,15 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
     } else if (is_record_type(line, "TITLE")) {
       if (len > 10)
-        st.info["_struct.title"] += rtrimmed(std::string(line+10, len-10-1));
+        st.info["_struct.title"] += rtrim_str(std::string(line+10, len-10-1));
 
     } else if (is_record_type(line, "KEYWDS")) {
       if (len > 10)
-        st.info["_struct_keywords.text"] +=
-                                    rtrimmed(std::string(line+10, len-10-1));
+        st.info["_struct_keywords.text"] += rtrim_str(std::string(line+10, len-10-1));
 
     } else if (is_record_type(line, "EXPDTA")) {
       if (len > 10)
-        st.info["_exptl.method"] += rtrimmed(std::string(line+10, len-10-1));
+        st.info["_exptl.method"] += trim_str(std::string(line+10, len-10-1));
 
     } else if (is_record_type(line, "CRYST1")) {
       if (len > 54)

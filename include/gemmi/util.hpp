@@ -64,8 +64,7 @@ inline std::string to_upper(std::string str) {
   return str;
 }
 
-inline std::string trim_str(const std::string& str)
-{
+inline std::string trim_str(const std::string& str) {
   const std::string ws = " \r\n\t";
   std::string::size_type first = str.find_first_not_of(ws);
   if (first == std::string::npos)
@@ -74,8 +73,7 @@ inline std::string trim_str(const std::string& str)
   return str.substr(first, last - first + 1);
 }
 
-inline std::string rtrim_str(const std::string& str)
-{
+inline std::string rtrim_str(const std::string& str) {
   std::string::size_type last = str.find_last_not_of(" \r\n\t");
   return str.substr(0, last == std::string::npos ? 0 : last + 1);
 }

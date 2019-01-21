@@ -51,11 +51,11 @@ struct ExperimentInfo {
   ReflectionsInfo reflections;
   double b_wilson = NAN;          // _reflns.B_iso_Wilson_estimate
   std::vector<ReflectionsInfo> shells;
+  std::vector<std::string> diffraction_ids;
 };
 
 struct DiffractionInfo {
   std::string id;                // _diffrn.id
-  std::string crystal_id;        // _diffrn.crystal_id
   double temperature = NAN;      // _diffrn.ambient_temp
   std::string source;            // _diffrn_source.source
   std::string source_type;       // _diffrn_source.type
@@ -160,21 +160,6 @@ struct Metadata {
   bool has_tls() const {
     return std::any_of(refinement.begin(), refinement.end(),
             [&](const RefinementInfo& r) { return !r.tls_groups.empty(); });
-  }
-
-  SoftwareItem& add_software(SoftwareItem::Classification type,
-                             const std::string& name) {
-    software.emplace_back();
-    SoftwareItem& item = software.back();
-    item.name = name;
-    size_t sep = item.name.rfind(' ');
-    if (sep != std::string::npos) {
-      item.version = item.name.substr(sep + 1);
-      item.name.resize(sep);
-    }
-    item.classification = type;
-    item.pdbx_ordinal = software.size();
-    return item;
   }
 };
 

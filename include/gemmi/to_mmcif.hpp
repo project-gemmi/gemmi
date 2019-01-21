@@ -253,7 +253,7 @@ void update_cif_block(const Structure& st, cif::Block& block) {
     cif::Loop& loop = block.init_mmcif_loop("_diffrn.", {"id", "crystal_id", "ambient_temp"});
     for (const CrystalInfo& cryst : st.meta.crystals)
       for (const DiffractionInfo& diffr : cryst.diffractions)
-        loop.add_row({diffr.id, diffr.crystal_id, impl::number_or_qmark(diffr.temperature)});
+        loop.add_row({diffr.id, cryst.id, impl::number_or_qmark(diffr.temperature)});
     // _diffrn_detector
     cif::Loop& det_loop = block.init_mmcif_loop("_diffrn_detector.",
                                                 {"diffrn_id",
@@ -313,12 +313,12 @@ void update_cif_block(const Structure& st, cif::Block& block) {
         "pdbx_Rmerge_I_obs",
         "pdbx_Rsym_value",
         "pdbx_netI_over_sigmaI",
-        "B_iso_Wilson_estimate"});
+        /*"B_iso_Wilson_estimate"*/});
     int n = 0;
     for (const ExperimentInfo& exper : st.meta.experiments)
       loop.add_row({id,
                     std::to_string(++n),
-                    "?",  // TODO
+                    join_str(exper.diffraction_ids, ","),
                     impl::int_or_qmark(exper.unique_reflections),
                     impl::number_or_qmark(exper.reflections.resolution_high),
                     impl::number_or_qmark(exper.reflections.resolution_low),
@@ -327,7 +327,7 @@ void update_cif_block(const Structure& st, cif::Block& block) {
                     impl::number_or_qmark(exper.reflections.r_merge),
                     impl::number_or_qmark(exper.reflections.r_sym),
                     impl::number_or_qmark(exper.reflections.mean_I_over_sigma),
-                    impl::number_or_qmark(exper.b_wilson)});
+                    /*impl::number_or_qmark(exper.b_wilson)*/});
     // _reflns_shell
     cif::Loop& shell_loop = block.init_mmcif_loop("_reflns_shell.", {
         "d_res_high",
