@@ -64,6 +64,9 @@ inline std::string to_upper(std::string str) {
   return str;
 }
 
+// works as expected only for a-zA-Z
+inline char alpha_up(char c) { return c & ~0x20; }
+
 inline std::string trim_str(const std::string& str) {
   const std::string ws = " \r\n\t";
   std::string::size_type first = str.find_first_not_of(ws);

@@ -169,6 +169,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
   };
   add_info("_entry.id");
   add_info("_cell.Z_PDB");
+  add_info("_exptl.method");
   add_info("_struct.title");
   // in pdbx/mmcif v5 date_original was replaced with a much longer tag
   std::string old_date_tag = "_database_PDB_rev.date_original";

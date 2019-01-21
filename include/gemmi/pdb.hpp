@@ -161,13 +161,18 @@ inline int read_serial(const char* ptr) {
 inline std::string pdb_date_format_to_iso(const std::string& date) {
   const char months[] = "JAN01FEB02MAR03APR04MAY05JUN06"
                         "JUL07AUG08SEP09OCT10NOV11DEC122222";
-  const char* m = strstr(months, to_upper(date.substr(3, 3)).c_str());
-  std::string year;
-  if (date.size() >= 11 && is_digit(date[9]) && is_digit(date[10]))
-    year = date.substr(7, 4);
-  else
-    year = (date[7] > '6' ? "19" : "20") + date.substr(7, 2);
-  return year + "-" + (m ? std::string(m+3, 2) : "??") + "-" + date.substr(0, 2);
+  std::string iso = "xxxx-xx-xx";
+  if (date.size() >= 11 && is_digit(date[9]) && is_digit(date[10])) {
+    std::memcpy(&iso[0], &date[7], 4);
+  } else {
+    std::memcpy(&iso[0], (date[7] > '6' ? "19" : "20"), 2);
+    std::memcpy(&iso[2], &date[7], 2);
+  }
+  char month[4] = {alpha_up(date[3]), alpha_up(date[4]), alpha_up(date[5]), '\0'};
+  if (const char* m = strstr(months, month))
+    std::memcpy(&iso[5], m + 3, 2);
+  std::memcpy(&iso[8], &date[0], 2);
+  return iso;
 }
 
 struct FileInput {
