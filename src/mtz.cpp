@@ -29,6 +29,33 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
+static void dump(const Mtz& mtz) {
+  std::printf("Title: %s\n", mtz.title.c_str());
+  std::printf("Number of Datasets = %zu\n", mtz.datasets.size());
+  for (const Mtz::Dataset& ds : mtz.datasets) {
+    std::printf("Dataset %4d   %s > %s > %s:\n",
+                ds.number, ds.project_name.c_str(),
+                ds.crystal_name.c_str(), ds.dataset_name.c_str());
+    std::printf("        cell  %g %7g %7g  %6g %6g %6g\n",
+                ds.cell.a, ds.cell.b, ds.cell.c,
+                ds.cell.alpha, ds.cell.beta, ds.cell.gamma);
+    std::printf("  wavelength  %g\n", ds.wavelength);
+  }
+  std::printf("Number of Columns = %d\n", mtz.ncol);
+  std::printf("Number of Reflections = %d\n", mtz.nreflections);
+  if (mtz.nbatches != 0)
+    std::printf("Number of Batches = %d\n", mtz.nbatches);
+	//std::printf("Missing values marked as: \n", );
+  // History
+  std::printf("Global Cell (obsolete):  %7g %7g %7g  %6g %6g %6g\n",
+              mtz.cell.a, mtz.cell.b, mtz.cell.c,
+              mtz.cell.alpha, mtz.cell.beta, mtz.cell.gamma);
+  std::printf("Resolution: %.2f - %.2f A\n",
+              mtz.resolution_high(), mtz.resolution_low());
+  //std::printf("Sort Order: %d\n", );
+  //std::printf("Space group = '%s' (number %d)\n", );
+}
+
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
@@ -58,18 +85,15 @@ int GEMMI_MAIN(int argc, char **argv) {
         mtz.seek_headers(f.get());
         while (std::fread(buf, 1, 80, f.get()) != 0) {
           std::printf("%s\n", gemmi::rtrim_str(buf).c_str());
-          if (gemmi::Mtz::id3u(buf) == gemmi::Mtz::id3("END"))
+          if (gemmi::ialpha3_id(buf) == gemmi::ialpha3_id("END"))
             break;
         }
       }
-      mtz.read_headers(f.get(), verbose ? stderr : nullptr);
-      if (p.options[Dump]) {
-        std::printf("Title: %s\n", mtz.title.c_str());
-        std::printf("Number of Columns = %d\n", mtz.ncol);
-        std::printf("Number of Reflections = %d\n", mtz.nreflections);
-        if (mtz.nbatches != 0)
-          std::printf("Number of Batches = %d\n", mtz.nbatches);
-      }
+      if (verbose)
+        mtz.warnings = stderr;
+      mtz.read_headers(f.get());
+      if (p.options[Dump])
+        dump(mtz);
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());

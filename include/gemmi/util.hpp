@@ -157,13 +157,6 @@ std::string join_str(const T& iterable, const S& sep) {
   return join_str(iterable, sep, [](const std::string& t) { return t; });
 }
 
-inline const char* skip_blank(const char* p) {
-  if (p)
-    while (*p == ' ' || *p == '\t')
-      ++p;
-  return p;
-}
-
 
 //   #####   vector helpers   #####
 
@@ -198,8 +191,12 @@ template<class T> const T& clamp_(const T& v, const T& lo, const T& hi)
 
 // Numeric ID used for case-insensitive comparison of 4 letters.
 // s must have 4 chars or 3 chars + NUL, ' ' and NUL are equivalent in s.
-inline int ialpha4_id(const char* s) {
+constexpr int ialpha4_id(const char* s) {
   return (s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]) & ~0x20202020;
+}
+// Numeric ID used for case-insensitive comparison of 3 letters.
+constexpr int ialpha3_id(const char* s) {
+  return (s[0] << 16 | s[1] << 8 | s[2]) & ~0x20202020;
 }
 
 [[noreturn]]

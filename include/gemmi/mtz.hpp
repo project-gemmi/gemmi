@@ -11,20 +11,23 @@
 #include <cstring>   // for memcpy
 #include <string>
 #include <vector>
-#include <map>
 #include "fileutil.hpp"  // for file_open, is_little_endian, ...
 //#include "symmetry.hpp"  // for SpaceGroup
 #include "unitcell.hpp"  // for UnitCell
 #include "util.hpp"      // for fail
+#include "atof.hpp"      // for simple_atof
+#include "stoi.hpp"      // for read_word, string_to_int
 
 namespace gemmi {
 
 struct Mtz {
   struct Dataset {
-    std::string project;
+    int number;
+    std::string project_name;
+    std::string crystal_name;
     std::string dataset_name;
     UnitCell cell;
-    double wavelength;
+    double wavelength = NAN;
   };
 
   bool same_byte_order = true;
@@ -34,23 +37,24 @@ struct Mtz {
   int ncol = 0;
   int nreflections = 0;
   int nbatches = 0;
+  double inv_d2_min = NAN;
+  double inv_d2_max = NAN;
   UnitCell cell;
-  std::map<int, Dataset> datasets;
+  std::vector<Dataset> datasets;
 
+  FILE* warnings = nullptr;
+
+  double resolution_high() const { return std::sqrt(1.0 / inv_d2_max); }
+  double resolution_low() const  { return std::sqrt(1.0 / inv_d2_min); }
+  Dataset& last() {
+    if (datasets.empty())
+      fail("MTZ dataset not found (missing DATASET header line?).");
+    return datasets.back();
+  }
   void toggle_endiannes() {
     same_byte_order = !same_byte_order;
     swap_four_bytes(&header_offset);
   }
-
-  static constexpr int id3(const char* s) {
-    return (s[0] << 16) | (s[1] << 8) | s[2];
-  }
-  static constexpr int id4(const char* s) {
-    return (s[0] << 24) | (s[1] << 16) | (s[2] << 8) | s[3];
-  }
-  static constexpr int id3u(const char* s) { return id3(s) & ~0x202020; }
-  // TODO: use ialpha4_id
-  static constexpr int id4u(const char* s) { return id4(s) & ~0x20202020; }
 
   void read_first_bytes(std::FILE* stream) {
     char buf[12] = {0};
@@ -82,46 +86,114 @@ struct Mtz {
   }
 
   static const char* skip_word(const char* line) {
-    while (*line != '\0' && !isspace(*line))
+    while (*line != '\0' && !std::isspace(*line))
       ++line;
-    while (isspace(*line))
+    while (std::isspace(*line))
       ++line;
     return line;
   }
 
-  bool parse_header(const char* line) {
-    switch (id4u(line)) {
-      case id4("VERS"):
-        version_stamp = rtrim_str(skip_word(line));
-        return true;
-      case id4("TITL"):
-        title = rtrim_str(skip_word(line));
-        return true;
-      case id4("NCOL"): {
+  static UnitCell read_cell_parameters(const char* line) {
+    UnitCell cell;
+    cell.a = simple_atof(line, &line);
+    cell.b = simple_atof(line, &line);
+    cell.c = simple_atof(line, &line);
+    cell.alpha = simple_atof(line, &line);
+    cell.beta = simple_atof(line, &line);
+    cell.gamma = simple_atof(line, &line);
+    return cell;
+  }
+
+  void warn(const std::string& text) {
+    if (warnings)
+      std::fprintf(warnings, "%s\n", text.c_str());
+  }
+
+  void parse_header(const char* line) {
+    const int first_word_id = ialpha4_id(line);
+    line = skip_word(line);
+    switch (first_word_id) {
+      case ialpha4_id("VERS"):
+        version_stamp = rtrim_str(line);
+        break;
+      case ialpha4_id("TITL"):
+        title = rtrim_str(line);
+        break;
+      case ialpha4_id("NCOL"): {
         char* endptr;
-        ncol = std::strtol(skip_word(line), &endptr, 10);
+        ncol = std::strtol(line, &endptr, 10);
         nreflections = std::strtol(endptr, &endptr, 10);
         nbatches = std::strtol(endptr, &endptr, 10);
-        return true;
+        break;
       }
-      case id4("CELL"):
-        return true;
-      case id4("DCEL"):
-        return true;
-      case id4("DWAV"):
-        return true;
+      case ialpha4_id("CELL"):
+        cell = read_cell_parameters(line);
+        break;
+      case ialpha4_id("SORT"):
+        // TODO
+        break;
+      case ialpha4_id("SYMI"):
+        // TODO
+        break;
+      case ialpha4_id("SYMM"):
+        // TODO
+        break;
+      case ialpha4_id("RESO"):
+        inv_d2_min = simple_atof(line, &line);
+        inv_d2_max = simple_atof(line, &line);
+        break;
+      case ialpha4_id("VALM"):
+        // TODO
+        break;
+      case ialpha4_id("COLU"):
+        // TODO
+        break;
+      case ialpha4_id("COLS"):
+        // TODO
+        break;
+      case ialpha4_id("NDIF"):
+        datasets.reserve(string_to_int(line, false));
+        break;
+      case ialpha4_id("PROJ"):
+        datasets.emplace_back();
+        datasets.back().number = string_to_int(line, false);
+        datasets.back().project_name = read_word(skip_word(line));
+        break;
+      case ialpha4_id("CRYS"):
+        if (string_to_int(line, false) == last().number)
+          datasets.back().crystal_name = read_word(skip_word(line));
+        else
+          warn("MTZ CRYSTAL line: unusual numbering.");
+        break;
+      case ialpha4_id("DATA"):
+        if (string_to_int(line, false) == last().number)
+          datasets.back().dataset_name = read_word(skip_word(line));
+        else
+          warn("MTZ DATASET line: unusual numbering.");
+        break;
+      case ialpha4_id("DCEL"):
+        if (string_to_int(line, false) == last().number)
+          datasets.back().cell = read_cell_parameters(skip_word(line));
+        else
+          warn("MTZ DCELL line: unusual numbering.");
+        break;
+      case ialpha4_id("DWAV"):
+        if (string_to_int(line, false) == last().number)
+          datasets.back().wavelength = simple_atof(skip_word(line));
+        else
+          warn("MTZ DWAV line: unusual numbering.");
+        break;
       default:
-        return false;
+        warn("Unknown header: " + rtrim_str(line));
     }
   }
 
-  void read_headers(std::FILE* stream, std::FILE* warnings=nullptr) {
+  void read_headers(std::FILE* stream) {
     char buf[81] = {0};
     seek_headers(stream);
-    while (std::fread(buf, 1, 80, stream) == 80 && id3u(buf) != id3("END")) {
-      bool known = parse_header(buf);
-      if (warnings && !known)
-        std::fprintf(warnings, "Unknown header: %s\n", rtrim_str(buf).c_str());
+    while (std::fread(buf, 1, 80, stream) == 80 &&
+           ialpha3_id(buf) != ialpha3_id("END")) {
+      parse_header(buf);
     }
   }
 };

@@ -7,7 +7,7 @@
 #define GEMMI_REMARKS_HPP_
 
 #include "metadata.hpp"
-#include "pdb.hpp"  // for pdb_date_format_to_iso, read_double, ...
+#include "pdb.hpp"  // for pdb_date_format_to_iso, read_int, ...
 
 namespace gemmi {
 
@@ -94,11 +94,11 @@ inline void read_remark3_line(const char* line, Metadata& meta) {
       return;
     RefinementInfo& ref_info = meta.refinement.back();
     if (same_str(key, "RESOLUTION RANGE HIGH (ANGSTROMS)")) {
-      ref_info.resolution_high = read_double(value);
+      ref_info.resolution_high = simple_atof(value);
     } else if (same_str(key, "RESOLUTION RANGE LOW  (ANGSTROMS)")) {
-      ref_info.resolution_low = read_double(value);
+      ref_info.resolution_low = simple_atof(value);
     } else if (same_str(key, "COMPLETENESS FOR RANGE        (%)")) {
-      ref_info.completeness = read_double(value);
+      ref_info.completeness = simple_atof(value);
     } else if (same_str(key, "NUMBER OF REFLECTIONS")) {
       ref_info.reflection_count = std::atoi(value);
     } else if (same_str(key, "CROSS-VALIDATION METHOD")) {
@@ -106,70 +106,70 @@ inline void read_remark3_line(const char* line, Metadata& meta) {
     } else if (same_str(key, "FREE R VALUE TEST SET SELECTION")) {
       ref_info.rfree_selection_method = std::string(value, end);
     } else if (same_str(key, "R VALUE     (WORKING + TEST SET)")) {
-      ref_info.r_all = read_double(value);
+      ref_info.r_all = simple_atof(value);
     } else if (same_str(key, "R VALUE            (WORKING SET)")) {
-      ref_info.r_work = read_double(value);
+      ref_info.r_work = simple_atof(value);
     } else if (same_str(key, "FREE R VALUE")) {
-      ref_info.r_free = read_double(value);
+      ref_info.r_free = simple_atof(value);
     } else if (same_str(key, "FREE R VALUE TEST SET COUNT")) {
       ref_info.rfree_set_count = atoi(value);
     } else if (same_str(key, "TOTAL NUMBER OF BINS USED")) {
       ref_info.bin_count = std::atoi(value);
     } else if (same_str(key, "BIN RESOLUTION RANGE HIGH       (A)")) {
       if (!ref_info.bins.empty())
-        ref_info.bins.back().resolution_high = read_double(value);
+        ref_info.bins.back().resolution_high = simple_atof(value);
     } else if (same_str(key, "BIN RESOLUTION RANGE LOW        (A)")) {
       if (!ref_info.bins.empty())
-        ref_info.bins.back().resolution_low = read_double(value);
+        ref_info.bins.back().resolution_low = simple_atof(value);
     } else if (same_str(key, "BIN COMPLETENESS (WORKING+TEST) (%)")) {
       if (!ref_info.bins.empty())
-        ref_info.bins.back().completeness = read_double(value);
+        ref_info.bins.back().completeness = simple_atof(value);
     } else if (same_str(key, "REFLECTIONS IN BIN   (WORKING+TEST)")) {
       if (!ref_info.bins.empty())
         ref_info.bins.back().reflection_count = std::atoi(value);
     } else if (same_str(key, "BIN R VALUE          (WORKING+TEST)")) {
       if (!ref_info.bins.empty())
-        ref_info.bins.back().r_all = read_double(value);
+        ref_info.bins.back().r_all = simple_atof(value);
     } else if (same_str(key, "BIN R VALUE           (WORKING SET)")) {
       if (!ref_info.bins.empty())
-        ref_info.bins.back().r_work = read_double(value);
+        ref_info.bins.back().r_work = simple_atof(value);
     } else if (same_str(key, "BIN FREE R VALUE")) {
       if (!ref_info.bins.empty())
-        ref_info.bins.back().r_free = read_double(value);
+        ref_info.bins.back().r_free = simple_atof(value);
     } else if (same_str(key, "BIN FREE R VALUE TEST SET COUNT")) {
       if (!ref_info.bins.empty())
         ref_info.bins.back().rfree_set_count = std::atoi(value);
     } else if (same_str(key, "FROM WILSON PLOT           (A**2)")) {
       // TODO
-      // exper.b_wilson = read_double(value);
+      // exper.b_wilson = simple_atof(value);
     } else if (same_str(key, "MEAN B VALUE      (OVERALL, A**2)")) {
-      ref_info.mean_b = read_double(value);
+      ref_info.mean_b = simple_atof(value);
     } else if (same_str(key, "B11 (A**2)")) {
-      ref_info.aniso_b[0][0] = read_double(value);
+      ref_info.aniso_b[0][0] = simple_atof(value);
     } else if (same_str(key, "B22 (A**2)")) {
-      ref_info.aniso_b[1][1] = read_double(value);
+      ref_info.aniso_b[1][1] = simple_atof(value);
     } else if (same_str(key, "B33 (A**2)")) {
-      ref_info.aniso_b[2][2] = read_double(value);
+      ref_info.aniso_b[2][2] = simple_atof(value);
     } else if (same_str(key, "B12 (A**2)")) {
-      ref_info.aniso_b[0][1] = read_double(value);
+      ref_info.aniso_b[0][1] = simple_atof(value);
     } else if (same_str(key, "B13 (A**2)")) {
-      ref_info.aniso_b[0][2] = read_double(value);
+      ref_info.aniso_b[0][2] = simple_atof(value);
     } else if (same_str(key, "B23 (A**2)")) {
-      ref_info.aniso_b[1][2] = read_double(value);
+      ref_info.aniso_b[1][2] = simple_atof(value);
     } else if (same_str(key, "ESD FROM LUZZATI PLOT                    (A)")) {
-      ref_info.luzzati_error = read_double(value);
+      ref_info.luzzati_error = simple_atof(value);
     } else if (same_str(key, "DPI (BLOW EQ-10) BASED ON R VALUE        (A)")) {
-      ref_info.dpi_blow_r = read_double(value);
+      ref_info.dpi_blow_r = simple_atof(value);
     } else if (same_str(key, "DPI (BLOW EQ-9) BASED ON FREE R VALUE    (A)")) {
-      ref_info.dpi_blow_rfree = read_double(value);
+      ref_info.dpi_blow_rfree = simple_atof(value);
     } else if (same_str(key, "DPI (CRUICKSHANK) BASED ON R VALUE       (A)")) {
-      ref_info.dpi_cruickshank_r = read_double(value);
+      ref_info.dpi_cruickshank_r = simple_atof(value);
     } else if (same_str(key, "DPI (CRUICKSHANK) BASED ON FREE R VALUE  (A)")) {
-      ref_info.dpi_cruickshank_rfree = read_double(value);
+      ref_info.dpi_cruickshank_rfree = simple_atof(value);
     } else if (same_str(key, "CORRELATION COEFFICIENT FO-FC")) {
-      ref_info.cc_fo_fc = read_double(value);
+      ref_info.cc_fo_fc = simple_atof(value);
     } else if (same_str(key, "CORRELATION COEFFICIENT FO-FC FREE")) {
-      ref_info.cc_fo_fc_free = read_double(value);
+      ref_info.cc_fo_fc_free = simple_atof(value);
     } else if (same_str(key, "TLS GROUP")) {
       ref_info.tls_groups.emplace_back();
       ref_info.tls_groups.back().id = std::string(value, end);
@@ -181,9 +181,9 @@ inline void read_remark3_line(const char* line, Metadata& meta) {
       if (ref_info.tls_groups.empty() || xyz.size() != 3)
         return;
       Position& origin = ref_info.tls_groups.back().origin;
-      origin.x = read_double(xyz[0].c_str());
-      origin.y = read_double(xyz[1].c_str());
-      origin.z = read_double(xyz[2].c_str());
+      origin.x = simple_atof(xyz[0].c_str());
+      origin.y = simple_atof(xyz[1].c_str());
+      origin.z = simple_atof(xyz[2].c_str());
     } else if (is_tls_item(key)) {
       if (ref_info.tls_groups.empty())
         return;
@@ -197,7 +197,7 @@ inline void read_remark3_line(const char* line, Metadata& meta) {
           Mat33& m = k[0] == 'T' ? tls.T : k[0] == 'L' ? tls.L : tls.S;
           int x = k[1] - '1';
           int y = k[2] - '1';
-          m[x][y] = m[y][x] = read_double(tokens[i+1].c_str());
+          m[x][y] = m[y][x] = simple_atof(tokens[i+1].c_str());
         }
       }
     }
@@ -241,13 +241,13 @@ inline void read_remark_200_230_240(const char* line, Metadata& meta) {
         exper.number_of_crystals = std::atoi(value);
       } else if (same_str(key, "PH")) {
         if (is_double(value))
-          meta.crystals.back().ph = read_double(value);
+          meta.crystals.back().ph = simple_atof(value);
         else
           meta.crystals.back().ph_range = std::string(value, end);
       } else if (same_str(key, "DATE OF DATA COLLECTION")) {
         diffr.collection_date = pdb_date_format_to_iso(std::string(value, end));
       } else if (same_str(key, "TEMPERATURE           (KELVIN)")) {
-        diffr.temperature = read_double(value);
+        diffr.temperature = simple_atof(value);
       } else if (same_str(key, "SYNCHROTRON              (Y/N)")) {
         if (*value == 'Y')
           diffr.source = "SYNCHROTRON";
@@ -279,34 +279,34 @@ inline void read_remark_200_230_240(const char* line, Metadata& meta) {
       } else if (same_str(key, "NUMBER OF UNIQUE REFLECTIONS")) {
         exper.unique_reflections = std::atoi(value);
       } else if (same_str(key, "RESOLUTION RANGE HIGH      (A)")) {
-        exper.reflections.resolution_high = read_double(value);
+        exper.reflections.resolution_high = simple_atof(value);
       } else if (same_str(key, "RESOLUTION RANGE LOW       (A)")) {
-        exper.reflections.resolution_low = read_double(value);
+        exper.reflections.resolution_low = simple_atof(value);
       } else if (same_str(key, "COMPLETENESS FOR RANGE     (%)")) {
-        exper.reflections.completeness = read_double(value);
+        exper.reflections.completeness = simple_atof(value);
       } else if (same_str(key, "DATA REDUNDANCY")) {
-        exper.reflections.redundancy = read_double(value);
+        exper.reflections.redundancy = simple_atof(value);
       } else if (same_str(key, "R MERGE                    (I)")) {
-        exper.reflections.r_merge = read_double(value);
+        exper.reflections.r_merge = simple_atof(value);
       } else if (same_str(key, "R SYM                      (I)")) {
-        exper.reflections.r_sym = read_double(value);
+        exper.reflections.r_sym = simple_atof(value);
       } else if (same_str(key, "<I/SIGMA(I)> FOR THE DATA SET")) {
-        exper.reflections.mean_I_over_sigma = read_double(value);
+        exper.reflections.mean_I_over_sigma = simple_atof(value);
       } else if (!exper.shells.empty()) {
         if (same_str(key, "HIGHEST RESOLUTION SHELL, RANGE HIGH (A)")) {
-          exper.shells.back().resolution_high = read_double(value);
+          exper.shells.back().resolution_high = simple_atof(value);
         } else if (same_str(key, "HIGHEST RESOLUTION SHELL, RANGE LOW  (A)")) {
-          exper.shells.back().resolution_low = read_double(value);
+          exper.shells.back().resolution_low = simple_atof(value);
         } else if (same_str(key, "COMPLETENESS FOR SHELL     (%)")) {
-          exper.shells.back().completeness = read_double(value);
+          exper.shells.back().completeness = simple_atof(value);
         } else if (same_str(key, "DATA REDUNDANCY IN SHELL")) {
-          exper.shells.back().redundancy = read_double(value);
+          exper.shells.back().redundancy = simple_atof(value);
         } else if (same_str(key, "R MERGE FOR SHELL          (I)")) {
-          exper.shells.back().r_merge = read_double(value);
+          exper.shells.back().r_merge = simple_atof(value);
         } else if (same_str(key, "R SYM FOR SHELL            (I)")) {
-          exper.shells.back().r_sym = read_double(value);
+          exper.shells.back().r_sym = simple_atof(value);
         } else if (same_str(key, "<I/SIGMA(I)> FOR SHELL")) {
-          exper.shells.back().mean_I_over_sigma = read_double(value);
+          exper.shells.back().mean_I_over_sigma = simple_atof(value);
         }
       }
     }

@@ -13,7 +13,7 @@
 
 #include <algorithm>  // for find_if_not, swap
 #include <cassert>    // for assert
-#include <cctype>     // for isspace
+#include <cctype>     // for isalpha
 #include <cstdio>     // for FILE, size_t
 #include <cstdlib>    // for strtol
 #include <cstring>    // for memcpy, strstr, strchr, strncmp
@@ -26,6 +26,7 @@
 #include "polyheur.hpp" // for assign_subchains
 #include "fileutil.hpp" // for path_basename, file_open
 #include "stoi.hpp"     // for string_to_int
+#include "atof.hpp"     // for simple_atof
 
 namespace gemmi {
 
@@ -47,7 +48,7 @@ inline double read_double(const char* p, int field_length) {
   int sign = 1;
   double d = 0;
   int i = 0;
-  while (i < field_length && std::isspace(p[i]))
+  while (i < field_length && isspace_c(p[i]))
     ++i;
   if (p[i] == '-') {
     ++i;
@@ -65,31 +66,9 @@ inline double read_double(const char* p, int field_length) {
   return sign * d;
 }
 
-inline double read_double(const char* p) {
-  int sign = 1;
-  double d = 0;
-  int i = 0;
-  while (std::isspace(p[i]))
-    ++i;
-  if (p[i] == '-') {
-    ++i;
-    sign = -1;
-  } else if (p[i] == '+') {
-    ++i;
-  }
-  for (; p[i] >= '0' && p[i] <= '9'; ++i)
-    d = d * 10 + (p[i] - '0');
-  if (p[i] == '.') {
-    double mult = 0.1;
-    for (++i; p[i] >= '0' && p[i] <= '9'; ++i, mult *= 0.1)
-      d += mult * (p[i] - '0');
-  }
-  return sign * d;
-}
-
 inline std::string read_string(const char* p, int field_length) {
   // left trim
-  while (field_length != 0 && std::isspace(*p)) {
+  while (field_length != 0 && isspace_c(*p)) {
     ++p;
     --field_length;
   }
@@ -100,7 +79,7 @@ inline std::string read_string(const char* p, int field_length) {
       break;
     }
   // right trim
-  while (field_length != 0 && std::isspace(p[field_length-1]))
+  while (field_length != 0 && isspace_c(p[field_length-1]))
     --field_length;
   return std::string(p, field_length);
 }
@@ -118,7 +97,7 @@ inline signed char read_charge(char digit, char sign) {
   if (sign >= '0' && sign <= '9')
     std::swap(digit, sign);
   if (digit >= '0' && digit <= '9') {
-    if (sign != '+' && sign != '-' && sign != '\0' && !std::isspace(sign))
+    if (sign != '+' && sign != '-' && sign != '\0' && !isspace_c(sign))
       fail("Wrong format for charge: " +
            std::string(1, digit) + std::string(1, sign));
     return (digit - '0') * (sign == '-' ? -1 : 1);
@@ -395,7 +374,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
         } else if (num == 3) {
           if (strstr(line, "RESOLUTION RANGE HIGH (ANGSTROMS)"))
             if (const char* colon = strchr(line + 44, ':'))
-              st.resolution = read_double(colon + 1);
+              st.resolution = simple_atof(colon + 1);
         }
       }
 

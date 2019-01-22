@@ -1,6 +1,6 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// string to integer
+// string_to_int, isspace_c, skip_blank
 
 #ifndef GEMMI_STOI_HPP_
 #define GEMMI_STOI_HPP_
@@ -13,7 +13,30 @@ namespace gemmi {
 // equivalent of std::isspace for C locale
 inline bool isspace_c(char c) {
   return c == ' ' || c == '\t' || c == '\n'|| c == '\f' ||
-         c == '\v' || c == '\r' ;
+         c == '\v' || c == '\r';
+}
+
+inline bool is_blank(char c) {
+  return c == ' ' || c == '\t';
+}
+
+inline const char* skip_blank(const char* p) {
+  if (p)
+    while (is_blank(*p))
+      ++p;
+  return p;
+}
+
+inline const char* skip_word(const char* p) {
+  if (p)
+    while (*p != '\0' && !isspace_c(*p))
+      ++p;
+  return p;
+}
+
+inline std::string read_word(const char* line) {
+  line = skip_blank(line);
+  return std::string(line, skip_word(line));
 }
 
 // no checking for overflow
@@ -40,7 +63,7 @@ inline int string_to_int(const char* p, bool checked, size_t length=0) {
       ++i;
     if (!has_digits || p[i] != '\0')
       throw std::invalid_argument("not an integer: " +
-                                   std::string(p, length ? length : i+1));
+                                  std::string(p, length ? length : i+1));
   }
   return mult * n;
 }
