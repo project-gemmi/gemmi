@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include "cifdoc.hpp"
 #include "numb.hpp"  // for as_number
-#include "stoi.hpp"  // for string_to_int
+#include "atox.hpp"  // for string_to_int
 #include "model.hpp"
 #include "entstr.hpp" // for entity_type_from_string, polymer_type_from_string
 

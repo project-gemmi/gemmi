@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <benchmark/benchmark.h>
-#include <gemmi/stoi.hpp>
+#include <gemmi/atox.hpp>
 
 static int std_stoi(const std::string& str) {
   return std::stoi(str);

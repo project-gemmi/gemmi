@@ -4,7 +4,7 @@
 
 #include <cstdlib>  // for rand
 #include <climits>  // for INT_MIN, INT_MAX
-#include <gemmi/stoi.hpp>
+#include <gemmi/atox.hpp>
 #include <gemmi/math.hpp>
 #include <linalg.h>
 

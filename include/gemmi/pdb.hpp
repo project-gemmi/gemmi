@@ -25,14 +25,11 @@
 #include "util.hpp"
 #include "polyheur.hpp" // for assign_subchains
 #include "fileutil.hpp" // for path_basename, file_open
-#include "stoi.hpp"     // for string_to_int
-#include "atof.hpp"     // for simple_atof
+#include "atox.hpp"     // for string_to_int, simple_atof
 
 namespace gemmi {
 
 namespace pdb_impl {
-
-inline bool is_digit(char c) { return c >= '0' && c <= '9'; }
 
 inline int read_int(const char* p, int field_length) {
   return string_to_int(p, false, field_length);

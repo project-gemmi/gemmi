@@ -7,16 +7,15 @@
 
 #include <cstdint>   // for int32_t
 #include <cstdio>    // for FILE, fread
-#include <cstdlib>   // for strtol
 #include <cstring>   // for memcpy
+#include <array>
 #include <string>
 #include <vector>
 #include "fileutil.hpp"  // for file_open, is_little_endian, ...
 //#include "symmetry.hpp"  // for SpaceGroup
 #include "unitcell.hpp"  // for UnitCell
 #include "util.hpp"      // for fail
-#include "atof.hpp"      // for simple_atof
-#include "stoi.hpp"      // for read_word, string_to_int
+#include "atox.hpp"      // for simple_atof, read_word, string_to_int
 
 namespace gemmi {
 
@@ -37,9 +36,13 @@ struct Mtz {
   int ncol = 0;
   int nreflections = 0;
   int nbatches = 0;
+  std::array<int, 5> sort_order;
   double inv_d2_min = NAN;
   double inv_d2_max = NAN;
+  float valm = NAN;
+  int nsymop = 0;
   UnitCell cell;
+  std::string spacegroup_name;
   std::vector<Dataset> datasets;
 
   FILE* warnings = nullptr;
@@ -120,35 +123,56 @@ struct Mtz {
         title = rtrim_str(line);
         break;
       case ialpha4_id("NCOL"): {
-        char* endptr;
-        ncol = std::strtol(line, &endptr, 10);
-        nreflections = std::strtol(endptr, &endptr, 10);
-        nbatches = std::strtol(endptr, &endptr, 10);
+        ncol = simple_atoi(line, &line);
+        nreflections = simple_atoi(line, &line);
+        nbatches = simple_atoi(line, &line);
         break;
       }
       case ialpha4_id("CELL"):
         cell = read_cell_parameters(line);
         break;
       case ialpha4_id("SORT"):
-        // TODO
+        for (int& n : sort_order)
+          n = simple_atoi(line, &line);
         break;
-      case ialpha4_id("SYMI"):
-        // TODO
+      case ialpha4_id("SYMI"): {
+        nsymop = simple_atoi(line, &line);
+        simple_atoi(line, &line); // ignore number of primitive operations
+        line = skip_word(skip_blank(line)); // ignore lattice type
+        int sg_number = simple_atoi(line, &line);
+        line = skip_blank(line);
+        if (*line != '\'')
+          spacegroup_name = read_word(line);
+        else if (const char* end = std::strchr(++line, '\''))
+          spacegroup_name.assign(line, end);
+        // ignore point group which is at the end of line
         break;
+      }
       case ialpha4_id("SYMM"):
-        // TODO
+        // we don't read symmetry operations,
+        // they are inferred from the space group.
         break;
       case ialpha4_id("RESO"):
         inv_d2_min = simple_atof(line, &line);
         inv_d2_max = simple_atof(line, &line);
         break;
       case ialpha4_id("VALM"):
-        // TODO
+        if (*line != 'N') {
+          const char* endptr;
+          float v = (float) simple_atof(line, &endptr);
+          if (*endptr == '\0' || isspace_c(*endptr))
+            valm = v;
+          else
+            warn("Unexpected VALM value: " + rtrim_str(line));
+        }
         break;
       case ialpha4_id("COLU"):
         // TODO
         break;
       case ialpha4_id("COLS"):
+        // TODO
+        break;
+      case ialpha4_id("COLG"):
         // TODO
         break;
       case ialpha4_id("NDIF"):
@@ -177,12 +201,14 @@ struct Mtz {
         else
           warn("MTZ DCELL line: unusual numbering.");
         break;
+      // case("DRES"): not in use yet
       case ialpha4_id("DWAV"):
         if (string_to_int(line, false) == last().number)
           datasets.back().wavelength = simple_atof(skip_word(line));
         else
           warn("MTZ DWAV line: unusual numbering.");
         break;
+      // TODO: MTZH, MTZB, BH, MTZE
       default:
         warn("Unknown header: " + rtrim_str(line));
     }

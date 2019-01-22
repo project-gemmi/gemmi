@@ -31,7 +31,7 @@ static const option::Descriptor Usage[] = {
 
 static void dump(const Mtz& mtz) {
   std::printf("Title: %s\n", mtz.title.c_str());
-  std::printf("Number of Datasets = %zu\n", mtz.datasets.size());
+  std::printf("Number of Datasets = %zu\n\n", mtz.datasets.size());
   for (const Mtz::Dataset& ds : mtz.datasets) {
     std::printf("Dataset %4d   %s > %s > %s:\n",
                 ds.number, ds.project_name.c_str(),
@@ -41,19 +41,21 @@ static void dump(const Mtz& mtz) {
                 ds.cell.alpha, ds.cell.beta, ds.cell.gamma);
     std::printf("  wavelength  %g\n", ds.wavelength);
   }
-  std::printf("Number of Columns = %d\n", mtz.ncol);
+  std::printf("\nNumber of Columns = %d\n", mtz.ncol);
   std::printf("Number of Reflections = %d\n", mtz.nreflections);
   if (mtz.nbatches != 0)
     std::printf("Number of Batches = %d\n", mtz.nbatches);
-	//std::printf("Missing values marked as: \n", );
+  std::printf("Missing values marked as: %g\n", mtz.valm);
   // History
   std::printf("Global Cell (obsolete):  %7g %7g %7g  %6g %6g %6g\n",
               mtz.cell.a, mtz.cell.b, mtz.cell.c,
               mtz.cell.alpha, mtz.cell.beta, mtz.cell.gamma);
   std::printf("Resolution: %.2f - %.2f A\n",
               mtz.resolution_high(), mtz.resolution_low());
-  //std::printf("Sort Order: %d\n", );
-  //std::printf("Space group = '%s' (number %d)\n", );
+  std::printf("Sort Order: %d %d %d %d %d\n",
+              mtz.sort_order[0], mtz.sort_order[1], mtz.sort_order[2],
+              mtz.sort_order[3], mtz.sort_order[4]);
+  std::printf("Space Group: %s\n", mtz.spacegroup_name.c_str());
 }
 
 

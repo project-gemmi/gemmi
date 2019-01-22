@@ -11,7 +11,6 @@
 #include "cifdoc.hpp"
 #include "math.hpp" // Fractional
 #include "numb.hpp"  // for as_number
-//#include "stoi.hpp"  // for string_to_int
 #include "symmetry.hpp" // SpaceGroup
 #include "unitcell.hpp" // UnitCell
 
