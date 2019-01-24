@@ -52,6 +52,12 @@ inline std::string read_word(const char* line) {
   return std::string(line, skip_word(line));
 }
 
+inline std::string read_word(const char* line, const char** endptr) {
+  line = skip_blank(line);
+  *endptr = skip_word(line);
+  return std::string(line, *endptr);
+}
+
 // no checking for overflow
 inline int string_to_int(const char* p, bool checked, size_t length=0) {
   int mult = -1;

@@ -47,7 +47,7 @@ static void dump(const Mtz& mtz) {
     std::printf("Number of Batches = %d\n", mtz.nbatches);
   std::printf("Missing values marked as: %g\n", mtz.valm);
   // History
-  std::printf("Global Cell (obsolete):  %7g %7g %7g  %6g %6g %6g\n",
+  std::printf("Global Cell (obsolete):  %7.3f %7.3f %7.3f  %g %g %g\n",
               mtz.cell.a, mtz.cell.b, mtz.cell.c,
               mtz.cell.alpha, mtz.cell.beta, mtz.cell.gamma);
   std::printf("Resolution: %.2f - %.2f A\n",
@@ -56,6 +56,14 @@ static void dump(const Mtz& mtz) {
               mtz.sort_order[0], mtz.sort_order[1], mtz.sort_order[2],
               mtz.sort_order[3], mtz.sort_order[4]);
   std::printf("Space Group: %s\n", mtz.spacegroup_name.c_str());
+  std::printf("Space Group Number: %d\n", mtz.spacegroup_number);
+  if (mtz.history.empty()) {
+    std::printf("\nNo history in the file.\n");
+  } else {
+    std::printf("\nHistory (%zu lines):\n", mtz.history.size());
+    for (const std::string& hline : mtz.history)
+      std::printf("%s\n", hline.c_str());
+  }
 }
 
 

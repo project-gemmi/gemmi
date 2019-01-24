@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 #include "fileutil.hpp"  // for file_open, is_little_endian, ...
-//#include "symmetry.hpp"  // for SpaceGroup
+#include "symmetry.hpp"  // for find_spacegroup_by_name, SpaceGroup
 #include "unitcell.hpp"  // for UnitCell
 #include "util.hpp"      // for fail
 #include "atox.hpp"      // for simple_atof, read_word, string_to_int
@@ -20,6 +20,15 @@
 namespace gemmi {
 
 struct Mtz {
+  struct Column {
+    int dataset_number;
+    char type;
+    std::string label;
+    float min_value = NAN;
+    float max_value = NAN;
+    std::string source;
+  };
+
   struct Dataset {
     int number;
     std::string project_name;
@@ -42,18 +51,33 @@ struct Mtz {
   float valm = NAN;
   int nsymop = 0;
   UnitCell cell;
+  int spacegroup_number = 0;
   std::string spacegroup_name;
+  std::vector<Op> symops;
+  const SpaceGroup* spacegroup = nullptr;
   std::vector<Dataset> datasets;
+  std::vector<Column> columns;
+  std::vector<std::string> history;
 
   FILE* warnings = nullptr;
 
   double resolution_high() const { return std::sqrt(1.0 / inv_d2_max); }
   double resolution_low() const  { return std::sqrt(1.0 / inv_d2_min); }
-  Dataset& last() {
+
+  Dataset& last_dataset() {
     if (datasets.empty())
       fail("MTZ dataset not found (missing DATASET header line?).");
     return datasets.back();
   }
+  Dataset& dataset(int number) {
+    if ((size_t)number < datasets.size() && datasets[number].number == number)
+      return datasets[number];
+    for (Dataset& d : datasets)
+      if (d.number == number)
+        return d;
+    fail("MTZ file ha no dataset number " + std::to_string(number));
+  }
+
   void toggle_endiannes() {
     same_byte_order = !same_byte_order;
     swap_four_bytes(&header_offset);
@@ -112,7 +136,7 @@ struct Mtz {
       std::fprintf(warnings, "%s\n", text.c_str());
   }
 
-  void parse_header(const char* line) {
+  void parse_main_header(const char* line) {
     const int first_word_id = ialpha4_id(line);
     line = skip_word(line);
     switch (first_word_id) {
@@ -137,9 +161,10 @@ struct Mtz {
         break;
       case ialpha4_id("SYMI"): {
         nsymop = simple_atoi(line, &line);
+        symops.reserve(nsymop);
         simple_atoi(line, &line); // ignore number of primitive operations
         line = skip_word(skip_blank(line)); // ignore lattice type
-        int sg_number = simple_atoi(line, &line);
+        spacegroup_number = simple_atoi(line, &line);
         line = skip_blank(line);
         if (*line != '\'')
           spacegroup_name = read_word(line);
@@ -149,8 +174,7 @@ struct Mtz {
         break;
       }
       case ialpha4_id("SYMM"):
-        // we don't read symmetry operations,
-        // they are inferred from the space group.
+        symops.push_back(parse_triplet(line));
         break;
       case ialpha4_id("RESO"):
         inv_d2_min = simple_atof(line, &line);
@@ -166,49 +190,58 @@ struct Mtz {
             warn("Unexpected VALM value: " + rtrim_str(line));
         }
         break;
-      case ialpha4_id("COLU"):
-        // TODO
+      case ialpha4_id("COLU"): {
+        columns.emplace_back();
+        Column& col = columns.back();
+        col.label = read_word(line, &line);
+        col.type = read_word(line, &line)[0];
+        col.min_value = simple_atof(line, &line);
+        col.max_value = simple_atof(line, &line);
+        col.dataset_number = simple_atoi(line);
         break;
+      }
       case ialpha4_id("COLS"):
-        // TODO
+        if (columns.empty())
+          fail("MTZ: COLSRC before COLUMN?");
+        line = skip_word(line);
+        columns.back().source = read_word(line);
         break;
       case ialpha4_id("COLG"):
-        // TODO
+        // Column group - not used.
         break;
       case ialpha4_id("NDIF"):
-        datasets.reserve(string_to_int(line, false));
+        datasets.reserve(simple_atoi(line));
         break;
       case ialpha4_id("PROJ"):
         datasets.emplace_back();
-        datasets.back().number = string_to_int(line, false);
+        datasets.back().number = simple_atoi(line, &line);
         datasets.back().project_name = read_word(skip_word(line));
         break;
       case ialpha4_id("CRYS"):
-        if (string_to_int(line, false) == last().number)
-          datasets.back().crystal_name = read_word(skip_word(line));
+        if (simple_atoi(line, &line) == last_dataset().number)
+          datasets.back().crystal_name = read_word(line);
         else
           warn("MTZ CRYSTAL line: unusual numbering.");
         break;
       case ialpha4_id("DATA"):
-        if (string_to_int(line, false) == last().number)
-          datasets.back().dataset_name = read_word(skip_word(line));
+        if (simple_atoi(line, &line) == last_dataset().number)
+          datasets.back().dataset_name = read_word(line);
         else
           warn("MTZ DATASET line: unusual numbering.");
         break;
       case ialpha4_id("DCEL"):
-        if (string_to_int(line, false) == last().number)
-          datasets.back().cell = read_cell_parameters(skip_word(line));
+        if (simple_atoi(line, &line) == last_dataset().number)
+          datasets.back().cell = read_cell_parameters(line);
         else
           warn("MTZ DCELL line: unusual numbering.");
         break;
       // case("DRES"): not in use yet
       case ialpha4_id("DWAV"):
-        if (string_to_int(line, false) == last().number)
-          datasets.back().wavelength = simple_atof(skip_word(line));
+        if (simple_atoi(line, &line) == last_dataset().number)
+          datasets.back().wavelength = simple_atof(line);
         else
           warn("MTZ DWAV line: unusual numbering.");
         break;
-      // TODO: MTZH, MTZB, BH, MTZE
       default:
         warn("Unknown header: " + rtrim_str(line));
     }
@@ -219,8 +252,38 @@ struct Mtz {
     seek_headers(stream);
     while (std::fread(buf, 1, 80, stream) == 80 &&
            ialpha3_id(buf) != ialpha3_id("END")) {
-      parse_header(buf);
+      parse_main_header(buf);
     }
+    int n_headers = 0;
+    while (std::fread(buf, 1, 80, stream) == 80 &&
+           ialpha4_id(buf) != ialpha4_id("MTZE")) {
+      if (n_headers != 0) {
+        const char* start = skip_blank(buf);
+        const char* end = rtrim_cstr(start, start+80);;
+        history.emplace_back(start, end);
+        --n_headers;
+      } else if (ialpha4_id(buf) == ialpha4_id("MTZH")) {
+        n_headers = simple_atof(skip_word(buf));
+        if (n_headers < 0 || n_headers > 30) {
+          warn("Wrong MTZ: number of headers should be between 0 and 30");
+          return;
+        }
+        history.reserve(n_headers);
+      }
+      // TODO: MTZB, BH
+    }
+  }
+
+  void setup_spacegroup() {
+    spacegroup = find_spacegroup_by_name(spacegroup_name);
+    if (!spacegroup)
+      warn("MTZ: unrecognized spacegroup name: " + spacegroup_name);
+    if (spacegroup->ccp4 != spacegroup_number)
+      warn("MTZ: inconsistent spacegroup name and number");
+  }
+
+  void read_data(std::FILE* stream) {
+    // TODO
   }
 };
 
@@ -230,6 +293,8 @@ inline Mtz read_mtz_stream(std::FILE* stream, const std::string& path) {
   try {
     mtz.read_first_bytes(stream);
     mtz.read_headers(stream);
+    mtz.setup_spacegroup();
+    mtz.read_data(stream);
   } catch (std::runtime_error& e) {
     fail(std::string(e.what()) + ": " + path);
   }
