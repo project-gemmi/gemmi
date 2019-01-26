@@ -19,17 +19,17 @@ class TestExamples(unittest.TestCase):
         sys.stdout.close()
         sys.stdout = sys.__stdout__
     def test_aafreq(self):
-        import aafreq  # noqa: E401 - imported but unused
+        import aafreq  # noqa: F401 - imported but unused
     def test_col_order(self):
-        import col_order  # noqa: E401
+        import col_order  # noqa: F401
     def test_hello(self):
-        import hello  # noqa: E401
+        import hello  # noqa: F401
     def test_matthews(self):
-        import matthews  # noqa: E401
+        import matthews  # noqa: F401
     def test_monomers(self):
-        import monomers  # noqa: E401
+        import monomers  # noqa: F401
     def test_simple_search(self):
-        import simple_search  # noqa: E401
+        import simple_search  # noqa: F401
     def test_weight(self):
         import weight
         weight.main()
@@ -41,7 +41,7 @@ class TestExamples(unittest.TestCase):
 class TestExamples2(unittest.TestCase):
     def test_from_json(self):
         sys.argv = ['from_json.py', JSON_FILE, os.devnull]
-        import from_json  # noqa: E401
+        import from_json  # noqa: F401
 
 if __name__ == '__main__':
     unittest.main()
