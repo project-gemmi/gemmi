@@ -39,7 +39,7 @@ int8_t* geMask_data(geMask* mask) {
 }
 
 int8_t geMask_get_value(geMask* mask, int u, int v, int w) {
-  return as_cpp(mask)->grid.get_value_s(u, v, w);
+  return as_cpp(mask)->grid.get_value(u, v, w);
 }
 
 void geMask_free(geMask* mask) {

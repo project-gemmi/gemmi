@@ -195,8 +195,8 @@ struct Mtz {
         Column& col = columns.back();
         col.label = read_word(line, &line);
         col.type = read_word(line, &line)[0];
-        col.min_value = simple_atof(line, &line);
-        col.max_value = simple_atof(line, &line);
+        col.min_value = (float) simple_atof(line, &line);
+        col.max_value = (float) simple_atof(line, &line);
         col.dataset_number = simple_atoi(line);
         break;
       }
@@ -250,10 +250,11 @@ struct Mtz {
   void read_headers(std::FILE* stream) {
     char buf[81] = {0};
     seek_headers(stream);
+    // main headers -- until END
     while (std::fread(buf, 1, 80, stream) == 80 &&
-           ialpha3_id(buf) != ialpha3_id("END")) {
+           ialpha3_id(buf) != ialpha3_id("END"))
       parse_main_header(buf);
-    }
+    // history and batch headers -- until MTZENDOFHEADERS
     int n_headers = 0;
     while (std::fread(buf, 1, 80, stream) == 80 &&
            ialpha4_id(buf) != ialpha4_id("MTZE")) {
@@ -263,7 +264,7 @@ struct Mtz {
         history.emplace_back(start, end);
         --n_headers;
       } else if (ialpha4_id(buf) == ialpha4_id("MTZH")) {
-        n_headers = simple_atof(skip_word(buf));
+        n_headers = simple_atoi(skip_word(buf));
         if (n_headers < 0 || n_headers > 30) {
           warn("Wrong MTZ: number of headers should be between 0 and 30");
           return;

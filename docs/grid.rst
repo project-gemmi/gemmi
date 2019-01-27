@@ -25,61 +25,116 @@ then we effectively have a box with periodic boundary conditions.
 C++
 ---
 
-The templated ``struct Grid``::
+The ``gemmi/grid.hpp`` header defines::
 
-    template<typename T=float> struct Grid;
+  template<typename T=float> struct Grid;
 
-is defined in the header file ``gemmi/grid.hpp``.
+which stores dimensions and data::
 
-The actual data is a 3d array with dimensions ``nu``, ``nv`` and ``nw``,
-internally kept as ``std::vector<T> data``.
+  int nu, nv, nw;
+  std::vector<T> data;
 
-TODO: space_group
+The data point can be accessed with::
 
-TODO: unit_cell
+  T Grid<T>::get_value(int u, int v, int w) const
+  void Grid<T>::set_value(int u, int v, int w, T x)
 
-TODO: how to get/set size
+If the grid represents a map or mask read from a file,
+it stores also the unit cell and symmetry::
 
-The data can be accessed in two ways::
+  UnitCell unit_cell;
+  const SpaceGroup* space_group;
 
-    // quick: for 0<=u<nu, 0<=v<nv, 0<=w<nw.
-    T get_value_q(int u, int v, int w) const;
+These variables can be accessed directly, except that ``unit_cell`` should
+be set using ``Grid<T>::set_unit_cell()``.
 
-    // safe: u, v, and w and wrapped using modulo function (u mod nu, etc.)
-    T get_value_s(int u, int v, int w) const;
+Unit cell parameters enable conversion between coordinates and grid
+points. For example, we have a member function for masking area
+around atoms that takes coordinates in Angstroms, radius,
+and sets all the grid points in the specified radius to 1::
 
-TODO: setting value
+  void Grid<T>::mask_atom(double x, double y, double z, double radius)
 
+To make it more efficient, the function above does not consider symmetry.
+At the end, we should call one of the *symmetrizing* functions.
+In this case, if two symmetry-related grid point have values 0 and 1
+we want to set both to 1. It can be done by calling::
+
+  void Grid<T>::symmetrize_max()
+
+This illustrates how the Grid is meant to be used.
+For more information consult the source code or contact the author.
 
 Python
 ------
 
 .. doctest::
 
-   >>> import gemmi
-   >>>
-   >>> grid = gemmi.FloatGrid(12, 12, 12)
-   >>> # in real work we do not expect handling of individual values
-   >>> grid.set_value(1, 1, 1, 7.0)
-   >>> grid.get_value(1, 1, 1)
-   7.0
-   >>> # we can test wrapping of indices (a.k.a. periodic boundary conditions)
-   >>> grid.get_value(-11, 13, 25)
-   7.0
+  >>> import gemmi
+  >>>
+  >>> grid = gemmi.FloatGrid(12, 12, 12)
+  >>> # in real work we do not expect handling of individual values
+  >>> grid.set_value(1, 1, 1, 7.0)
+  >>> grid.get_value(1, 1, 1)
+  7.0
+  >>> # we can test wrapping of indices (a.k.a. periodic boundary conditions)
+  >>> grid.get_value(-11, 13, 25)
+  7.0
 
-It is a clever 3D array that understands crystallographic symmetry.
+The main selling point of Grid is that it understands crystallographic
+symmetry.
 
 .. doctest::
 
-   >>> grid.space_group = gemmi.find_spacegroup_by_name('P2')
-   >>> grid.set_value(0, 0, 0, 0.125)  # a special position
-   >>> sum(grid)  # for now only two points: 7.0 + 0.125
-   7.125
-   >>> grid.symmetrize_max()  # applying symmetry
-   >>> sum(grid)  # one point gets duplicated, the other doesn't
-   14.125
+  >>> grid.space_group = gemmi.find_spacegroup_by_name('P2')
+  >>> grid.set_value(0, 0, 0, 0.125)  # a special position
+  >>> sum(grid)  # for now only two points: 7.0 + 0.125
+  7.125
+  >>> grid.symmetrize_max()  # applying symmetry
+  >>> sum(grid)  # one point gets duplicated, the other doesn't
+  14.125
 
-TODO: unit cell and everything else
+The data can be acesssed through the
+`buffer protocol <https://docs.python.org/3/c-api/buffer.html>`_.
+It means that you can use it as a numpy array without copying the data:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> import numpy
+  >>> array = numpy.array(grid, copy=False)
+  >>> array.dtype
+  dtype('float32')
+  >>> array.shape
+  (12, 12, 12)
+  >>> numpy.argwhere(array == 7.0)
+  array([[ 1,  1,  1],
+         [11,  1, 11]])
+
+(It does not make gemmi dependent on numpy -- gemmi talks with numpy
+through the buffer protocol, and it can talk with any other Python library
+that supports this protocol.)
+
+In addition to the symmetry, the Grid may also have associated unit cell.
+
+.. doctest::
+
+  >>> grid.set_unit_cell(gemmi.UnitCell(45, 45, 45, 90, 82.5, 90))
+  >>> grid.unit_cell
+  <gemmi.UnitCell(45, 45, 45, 90, 82.5, 90)>
+
+This allows to translate position in Angstroms to the location in grid.
+If we'd like to set grid points near a specified position we can
+use function ``set_points_around()`` that takes ``Position`` as an argument:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> grid.set_points_around(gemmi.Position(25, 25, 25), radius=3, value=10)
+  >>> numpy.argwhere(array == 10)
+  array([[7, 6, 6],
+         [7, 7, 6]])
+
 
 MRC/CCP4 maps
 =============
@@ -114,13 +169,12 @@ There are two typical approaches to generate a crystallographic map:
   the map is supposed to expand the symmetry. This approach is used by
   the CCP4 clipper library and by programs that use this library, such as Coot.
 
-The latter approach generates map for exactly one asu if possible,
-i.e. if the shape of the asu in fractional coordinates
-is rectangular. Otherwise, redundancy cannot be avoided.
-
-The maps generated for asu tend to be smaller than the maps around
-the molecule (as compared in the
-`UglyMol wiki <https://github.com/uglymol/uglymol/wiki/ccp4-dsn6-mtz>`_).
+The latter approach generates map for exactly one asu, if possible.
+It is not possible if the shape of the asu in fractional coordinates
+is not rectangular, and in such cases we must have some redundancy.
+On average, the maps generated for asu are significantly smaller,
+as compared in the
+`UglyMol wiki <https://github.com/uglymol/uglymol/wiki/ccp4-dsn6-mtz>`_.
 
 Nowadays, the CCP4 format is rarely used in crystallography.
 Almost all programs read the reflection data and calculate maps internally.
@@ -181,7 +235,8 @@ one). For this we have a function::
 
     map.setup(GridSetup::Full, NAN);  // unknown values are set to NAN
 
-(Some of the functions described later in this section require this call.)
+This call is required to make grid functions work correctly with the
+unit cell parameters.
 
 Writing
 ~~~~~~~
@@ -215,8 +270,8 @@ The Python API is similar.
     >>> m.grid
     <gemmi.FloatGrid(60, 24, 60)>
 
-The low-level header access has three getters and three setters,
-as in the C++ version.
+For the low-level access to header one can use the same getters and
+setters as in the C++ version.
 
 .. doctest::
 
@@ -228,14 +283,3 @@ as in the C++ version.
     >>> m.header_str(57, 80).strip()
     'Created by MAPMAN V. 080625/7.8.5 at Wed Jan 3 12:57:38 2018 for A. Nonymous'
 
-TODO: writing
-
-Toolbox
-=======
-
-TODO: Higher-level functions. set_points_around()
-
-Fortran
-=======
-
-TODO

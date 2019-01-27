@@ -5,8 +5,11 @@
 #ifndef GEMMI_METADATA_HPP_
 #define GEMMI_METADATA_HPP_
 
-#include <array>
-#include "math.hpp"
+#include <algorithm>     // for any_of
+#include <string>
+#include <vector>
+#include "math.hpp"      // for Mat33
+#include "unitcell.hpp"  // for Position
 
 namespace gemmi {
 

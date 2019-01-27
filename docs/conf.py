@@ -61,6 +61,10 @@ latex_documents = [
 
 doctest_global_setup = '''
 try:
+    import numpy
+except ImportError:
+    numpy = None
+try:
     import networkx
 except ImportError:
     networkx = None

@@ -125,10 +125,9 @@ struct Grid {
 
   T get_value_q(int u, int v, int w) const { return data[index_q(u, v, w)]; }
 
-  // _s stands for safe
-  T get_value_s(int u, int v, int w) const { return data[index_s(u, v, w)]; }
+  T get_value(int u, int v, int w) const { return data[index_s(u, v, w)]; }
 
-  void set_value_s(int u, int v, int w, T x) { data[index_s(u, v, w)] = x; }
+  void set_value(int u, int v, int w, T x) { data[index_s(u, v, w)] = x; }
 
   void fill(T value) { std::fill(data.begin(), data.end(), value); }
 

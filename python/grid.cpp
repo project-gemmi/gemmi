@@ -22,7 +22,17 @@ std::string grid_dim_str(const Grid<T>& g) {
 template<typename T>
 void add_grid(py::module& m, const char* name) {
   using Gr = Grid<T>;
-  py::class_<Gr>(m, name)
+  py::class_<Gr>(m, name, py::buffer_protocol())
+    .def_buffer([](Gr &g) -> py::buffer_info {
+      return py::buffer_info(g.data.data(),
+                             sizeof(T),
+                             py::format_descriptor<T>::format(),
+                             3,  // it is 3D
+                             {g.nu, g.nv, g.nw},
+                             {sizeof(T) * g.nu * g.nv,  // strides
+                              sizeof(T) * g.nv,
+                              sizeof(T)});
+    })
     .def(py::init<>())
     .def(py::init([](int nx, int ny, int nz) {
       Gr grid;
@@ -32,12 +42,13 @@ void add_grid(py::module& m, const char* name) {
     .def_readonly("nu", &Gr::nu, "size in the first (fastest-changing) dim")
     .def_readonly("nv", &Gr::nv, "size in the second dimension")
     .def_readonly("nw", &Gr::nw, "size in the third (slowest-changing) dim")
-    .def("get_value", &Gr::get_value_s)
-    .def("set_value", &Gr::set_value_s)
+    .def("get_value", &Gr::get_value)
+    .def("set_value", &Gr::set_value)
     .def_readwrite("space_group", &Gr::space_group)
     .def_readonly("unit_cell", &Gr::unit_cell)
     .def("set_unit_cell", (void (Gr::*)(const UnitCell&)) &Gr::set_unit_cell)
-    .def("set_points_around", &Gr::set_points_around)
+    .def("set_points_around", &Gr::set_points_around,
+         py::arg("position"), py::arg("radius"), py::arg("value"))
     .def("symmetrize_min", &Gr::symmetrize_min)
     .def("symmetrize_max", &Gr::symmetrize_max)
     .def("fill", &Gr::fill, py::arg("value"))
