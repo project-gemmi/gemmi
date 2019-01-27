@@ -208,8 +208,12 @@ struct Grid {
   }
 
   // two most common symmetrize functions
-  void symmetrize_min() { symmetrize([](T a, T b) { return a < b ? a : b; }); }
-  void symmetrize_max() { symmetrize([](T a, T b) { return a > b ? a : b; }); }
+  void symmetrize_min() {
+    symmetrize([](T a, T b) { return (a < b || !(b == b)) ? a : b; });
+  }
+  void symmetrize_max() {
+    symmetrize([](T a, T b) { return (a > b || !(b == b)) ? a : b; });
+  }
 };
 
 } // namespace gemmi

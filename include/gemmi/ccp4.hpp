@@ -333,17 +333,15 @@ void Ccp4<T>::read_ccp4_stream(Stream f, const std::string& path) {
 }
 
 namespace impl {
-template<typename T> void check_diff(T a, T b, double* max_error) {
-  if (a < b || a > b)
-    *max_error = std::max(*max_error, std::fabs(double(a - b)));
+
+template<typename T> bool is_same(T a, T b) { return a == b; }
+template<> inline bool is_same(float a, float b) {
+  return std::isnan(b) ? std::isnan(a) : a == b;
+}
+template<> inline bool is_same(double a, double b) {
+  return std::isnan(b) ? std::isnan(a) : a == b;
 }
 
-// MSVC does not accept std::int8_t etc. as an argument to std::isnan()
-template<typename T> bool is_nan(T a) { return std::isnan(a); }
-template<> inline bool is_nan(std::int8_t) { return false; }
-template<> inline bool is_nan(std::int16_t) { return false; }
-template<> inline bool is_nan(std::uint16_t) { return false; }
-template<> inline bool is_nan(int) { return false; }
 }
 
 template<typename T>
@@ -385,20 +383,29 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
       for (it[0] = start[0]; it[0] < end[0]; it[0]++) { // cols
         T val = grid.data[idx++];
         int new_index = grid.index_s(it[pos[0]], it[pos[1]], it[pos[2]]);
-        if (mode == GridSetup::FullCheck || mode == GridSetup::ResizeOnly)
-          impl::check_diff(full[new_index], val, &max_error);
         full[new_index] = val;
       }
   grid.data = full;
-  if (mode == GridSetup::Full)
-    grid.symmetrize([](T a, T b) { return impl::is_nan(a) ? b : a; });
-  else if (mode == GridSetup::FullCheck)
-    grid.symmetrize([&max_error](T a, T b) {
-        impl::check_diff(a, b, &max_error);
-        return impl::is_nan(a) ? b : a;
+  if (mode == GridSetup::Full) {
+    grid.full_canonical = true;
+    grid.symmetrize([&default_value](T a, T b) {
+        return impl::is_same(a, default_value) ? b : a;
     });
-  grid.full_canonical = pos[0] == 0 && pos[1] == 1 && pos[2] == 2 &&
-                        full_cell();
+  } else if (mode == GridSetup::FullCheck) {
+    grid.full_canonical = true;
+    grid.symmetrize([&max_error, &default_value](T a, T b) {
+        if (impl::is_same(a, default_value)) {
+          return b;
+        } else {
+          if (!impl::is_same(b, default_value))
+            max_error = std::max(max_error, std::fabs(double(a - b)));
+          return a;
+        }
+    });
+  } else {
+    grid.full_canonical = pos[0] == 0 && pos[1] == 1 && pos[2] == 2 &&
+                          full_cell();
+  }
   return max_error;
 }
 

@@ -29,9 +29,9 @@ void add_grid(py::module& m, const char* name) {
                              py::format_descriptor<T>::format(),
                              3,  // it is 3D
                              {g.nu, g.nv, g.nw},
-                             {sizeof(T) * g.nu * g.nv,  // strides
-                              sizeof(T) * g.nv,
-                              sizeof(T)});
+                             {sizeof(T),               // strides
+                              sizeof(T) * g.nu,
+                              sizeof(T) * g.nu * g.nv});
     })
     .def(py::init<>())
     .def(py::init([](int nx, int ny, int nz) {
@@ -47,6 +47,7 @@ void add_grid(py::module& m, const char* name) {
     .def_readwrite("space_group", &Gr::space_group)
     .def_readonly("unit_cell", &Gr::unit_cell)
     .def("set_unit_cell", (void (Gr::*)(const UnitCell&)) &Gr::set_unit_cell)
+    .def_readonly("full_canonical", &Gr::full_canonical)
     .def("set_points_around", &Gr::set_points_around,
          py::arg("position"), py::arg("radius"), py::arg("value"))
     .def("symmetrize_min", &Gr::symmetrize_min)
@@ -87,10 +88,13 @@ void add_grid(py::module& m) {
   add_grid<float>(m, "FloatGrid");
   add_grid<int8_t>(m, "Int8Grid");
   add_ccp4<float>(m, "Ccp4Map")
-    .def("setup", [](Ccp4<float>& self) { self.setup(GridSetup::Full, NAN); });
+    .def("setup", [](Ccp4<float>& self, float default_value) {
+            self.setup(GridSetup::Full, default_value);
+         }, py::arg("default_value")=NAN);
   add_ccp4<int8_t>(m, "Ccp4Mask")
-    .def("setup", [](Ccp4<int8_t>& self) { self.setup(GridSetup::Full, -1); });
-
+    .def("setup", [](Ccp4<int8_t>& self, int8_t default_value) {
+            self.setup(GridSetup::Full, default_value);
+         }, py::arg("default_value")=-1);
   m.def("read_ccp4_map", [](const std::string& path) {
           Ccp4<float> grid;
           grid.read_ccp4(MaybeGzipped(path));

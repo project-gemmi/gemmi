@@ -5,9 +5,9 @@ Grids and maps
 Volumetric grid
 ===============
 
-When working with macromolecular models we often use
-3D data on an evenly spaced, rectangular grid.
-The data may represent the electron density, a mask of the protein area,
+Macromolecular models are often accompanied by 3D data on an evenly spaced,
+rectangular grid.
+The data may represent electron density, a mask of the protein area,
 or any other scalar data.
 
 In Gemmi such a data is stored in a class called Grid.
@@ -39,18 +39,17 @@ The data point can be accessed with::
   T Grid<T>::get_value(int u, int v, int w) const
   void Grid<T>::set_value(int u, int v, int w, T x)
 
-If the grid represents a map or mask read from a file,
-it stores also the unit cell and symmetry::
+The unit cell and symmetry::
 
   UnitCell unit_cell;
   const SpaceGroup* space_group;
 
-These variables can be accessed directly, except that ``unit_cell`` should
+can be accessed directly, except that ``unit_cell`` should
 be set using ``Grid<T>::set_unit_cell()``.
 
 Unit cell parameters enable conversion between coordinates and grid
 points. For example, we have a member function for masking area
-around atoms that takes coordinates in Angstroms, radius,
+around atoms that takes coordinates in Angstroms and radius,
 and sets all the grid points in the specified radius to 1::
 
   void Grid<T>::mask_atom(double x, double y, double z, double radius)
@@ -68,12 +67,13 @@ For more information consult the source code or contact the author.
 Python
 ------
 
+Let us create a new grid:
+
 .. doctest::
 
   >>> import gemmi
   >>>
   >>> grid = gemmi.FloatGrid(12, 12, 12)
-  >>> # in real work we do not expect handling of individual values
   >>> grid.set_value(1, 1, 1, 7.0)
   >>> grid.get_value(1, 1, 1)
   7.0
@@ -81,8 +81,8 @@ Python
   >>> grid.get_value(-11, 13, 25)
   7.0
 
-The main selling point of Grid is that it understands crystallographic
-symmetry.
+The main advantage of Grid over generic 3D arrays is that
+it understands crystallographic symmetry.
 
 .. doctest::
 
@@ -91,12 +91,13 @@ symmetry.
   >>> sum(grid)  # for now only two points: 7.0 + 0.125
   7.125
   >>> grid.symmetrize_max()  # applying symmetry
-  >>> sum(grid)  # one point gets duplicated, the other doesn't
+  >>> sum(grid)  # one point gets duplicated, the other is on rotation axis
   14.125
 
-The data can be acesssed through the
+The data can be also acesssed through the
 `buffer protocol <https://docs.python.org/3/c-api/buffer.html>`_.
-It means that you can use it as a numpy array without copying the data:
+It means that you can use it as a numpy array (Fortran-style contiguous)
+without copying the data:
 
 .. doctest::
   :skipif: numpy is None
@@ -115,7 +116,7 @@ It means that you can use it as a numpy array without copying the data:
 through the buffer protocol, and it can talk with any other Python library
 that supports this protocol.)
 
-In addition to the symmetry, the Grid may also have associated unit cell.
+In addition to the symmetry, Grid may also have associated unit cell.
 
 .. doctest::
 
@@ -132,8 +133,9 @@ use function ``set_points_around()`` that takes ``Position`` as an argument:
 
   >>> grid.set_points_around(gemmi.Position(25, 25, 25), radius=3, value=10)
   >>> numpy.argwhere(array == 10)
-  array([[7, 6, 6],
-         [7, 7, 6]])
+  array([[6, 6, 7],
+         [6, 7, 7]])
+  >>> # now the data does not obey symmetry, we should call symmetrize*()
 
 
 MRC/CCP4 maps
@@ -143,8 +145,8 @@ We support one file format for storing the grid data on disk: MRC/CCP4 map.
 The content of the map file is stored in a class that contains
 both the Grid class and all the meta-data from the CCP4 file header.
 
-CCP4 format has a few different modes that correspond to different data types.
-Gemmi supports:
+The CCP4 format has a few different modes that correspond to different
+data types. Gemmi supports:
 
 * mode 0 -- which correspond to the C++ type int8_t,
 * mode 1 -- corresponds to int16_t,
@@ -156,7 +158,7 @@ and mode 0 (int8_t) for masks. Mask is 0/1 data that marks part of the volume
 (e.g. the solvent region). Other modes are not used in crystallography,
 but may be used for CryoEM data.
 
-This file format is quite flexible. The data is stored as sections,
+The CCP4 format is quite flexible. The data is stored as sections,
 rows and columns that correspond to a permutation of the X, Y and Z axes
 as defined in the file header.
 The file can contain only a part of the asymmetric unit,
@@ -167,17 +169,18 @@ There are two typical approaches to generate a crystallographic map:
   around it is produced using CCP4 utilities such as ``fft`` and ``mapmask``,
 * or a map is made for the asymmetric unit (asu), and the program that reads
   the map is supposed to expand the symmetry. This approach is used by
-  the CCP4 clipper library and by programs that use this library, such as Coot.
+  the CCP4 clipper library and by programs that use this library,
+  such as ``cfft`` and Coot.
 
 The latter approach generates map for exactly one asu, if possible.
 It is not possible if the shape of the asu in fractional coordinates
-is not rectangular, and in such cases we must have some redundancy.
+is not rectangular, and in such case we must have some redundancy.
 On average, the maps generated for asu are significantly smaller,
 as compared in the
 `UglyMol wiki <https://github.com/uglymol/uglymol/wiki/ccp4-dsn6-mtz>`_.
 
 Nowadays, the CCP4 format is rarely used in crystallography.
-Almost all programs read the reflection data and calculate maps internally.
+Almost all programs read the reflection data and calculate maps on the fly.
 
 C++
 ---

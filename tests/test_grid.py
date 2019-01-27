@@ -1,8 +1,13 @@
 #!/usr/bin/env python
 
+import math
 import os
 import unittest
 import gemmi
+try:
+    import numpy
+except ImportError:
+    numpy = None
 
 class TestFloatGrid(unittest.TestCase):
     def test_reading(self):
@@ -16,12 +21,32 @@ class TestFloatGrid(unittest.TestCase):
         self.assertEqual(m.header_i32(28), 20140)
         dmax = m.header_float(21)
         self.assertEqual(dmax, max(m.grid))
+        self.assertFalse(m.grid.full_canonical)
         m.setup()
+        self.assertTrue(m.grid.full_canonical)
         self.assertEqual(m.grid.nu, 60)
         self.assertEqual(m.grid.nv, 24)
         self.assertEqual(m.grid.nw, 60)
         self.assertEqual(m.header_float(14), 90.0)  # 14 - alpha angle
         self.assertEqual(m.grid.unit_cell.alpha, 90.0)
+        self.assertEqual(m.grid.space_group.ccp4, 4)  # P21
+        # this spacegroup has symop -x, y+1/2, -z
+        m.grid.set_value(60-3, 24//2+4, 60-5, 100)  # image of (3, 4, 5)
+        self.assertEqual(m.grid.get_value(60-3, 24//2+4, 60-5), 100)
+        self.assertTrue(math.isnan(m.grid.get_value(3, 4, 5)))
+        m.grid.symmetrize_max()
+        self.assertEqual(m.grid.get_value(3, 4, 5), 100)
+        m.grid.set_value(3, 4, 5, float('nan'))
+        self.assertTrue(math.isnan(m.grid.get_value(3, 4, 5)))
+        m.grid.symmetrize_min()
+        self.assertEqual(m.grid.get_value(3, 4, 5), 100)
+        m.grid.set_value(60-3, 24//2+4, 60-5, float('nan'))
+        m.grid.symmetrize_max()
+        self.assertEqual(m.grid.get_value(60-3, 24//2+4, 60-5), 100)
+        if numpy:
+            arr = numpy.array(m.grid, copy=False)
+            self.assertEqual(arr.shape, (60, 24, 60))
+            self.assertEqual(arr[3][4][5], 100)
 
     def test_new(self):
         N = 24
