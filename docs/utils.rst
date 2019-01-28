@@ -339,6 +339,12 @@ Makes a mask in the CCP4 format. It has two functions:
 .. literalinclude:: mask-help.txt
    :language: console
 
+mtz
+===
+
+.. literalinclude:: mtz-help.txt
+   :language: console
+
 residues
 ========
 

@@ -26,7 +26,7 @@ struct Mtz {
     std::string label;
     float min_value = NAN;
     float max_value = NAN;
-    std::string source;
+    std::string source;  // from COLSRC
   };
 
   struct Dataset {
@@ -58,6 +58,7 @@ struct Mtz {
   std::vector<Dataset> datasets;
   std::vector<Column> columns;
   std::vector<std::string> history;
+  std::vector<float> raw_data;
 
   FILE* warnings = nullptr;
 
@@ -104,12 +105,6 @@ struct Mtz {
     std::memcpy(&header_offset, buf + 4, 4);
     if (!same_byte_order)
       swap_four_bytes(&header_offset);
-  }
-
-  void seek_headers(std::FILE* stream) {
-    if (std::fseek(stream, 4 * (header_offset - 1), SEEK_SET) != 0)
-      fail("Cannot rewinding to the MTZ header at byte "
-           + std::to_string(header_offset));
   }
 
   static const char* skip_word(const char* line) {
@@ -247,14 +242,24 @@ struct Mtz {
     }
   }
 
-  void read_headers(std::FILE* stream) {
+  void seek_headers(std::FILE* stream) {
+    if (std::fseek(stream, 4 * (header_offset - 1), SEEK_SET) != 0)
+      fail("Cannot rewind to the MTZ header at byte "
+           + std::to_string(header_offset));
+  }
+
+  // read headers until END
+  void read_main_headers(std::FILE* stream) {
     char buf[81] = {0};
     seek_headers(stream);
-    // main headers -- until END
     while (std::fread(buf, 1, 80, stream) == 80 &&
            ialpha3_id(buf) != ialpha3_id("END"))
       parse_main_header(buf);
-    // history and batch headers -- until MTZENDOFHEADERS
+  }
+
+  // read the part between END and MTZENDOFHEADERS
+  void read_history_and_later_headers(std::FILE* stream) {
+    char buf[81] = {0};
     int n_headers = 0;
     while (std::fread(buf, 1, 80, stream) == 80 &&
            ialpha4_id(buf) != ialpha4_id("MTZE")) {
@@ -283,28 +288,36 @@ struct Mtz {
       warn("MTZ: inconsistent spacegroup name and number");
   }
 
-  void read_data(std::FILE* stream) {
-    // TODO
+  void read_raw_data(std::FILE* stream) {
+    raw_data.resize(ncol * nreflections);
+    if (std::fseek(stream, 80, SEEK_SET) != 0)
+      fail("Cannot rewind to the MTZ data.");
+    size_t n = ncol * nreflections;
+    if (std::fread(raw_data.data(), 4, n, stream) != n)
+      fail("Error when reading MTZ data");
   }
 };
 
 
-inline Mtz read_mtz_stream(std::FILE* stream, const std::string& path) {
+inline Mtz read_mtz_stream(std::FILE* stream, bool with_data) {
   Mtz mtz;
-  try {
-    mtz.read_first_bytes(stream);
-    mtz.read_headers(stream);
-    mtz.setup_spacegroup();
-    mtz.read_data(stream);
-  } catch (std::runtime_error& e) {
-    fail(std::string(e.what()) + ": " + path);
+  mtz.read_first_bytes(stream);
+  mtz.read_main_headers(stream);
+  mtz.read_history_and_later_headers(stream);
+  mtz.setup_spacegroup();
+  if (with_data) {
+    mtz.read_raw_data(stream);
   }
   return mtz;
 }
 
 inline Mtz read_mtz_file(const std::string& path) {
   gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "rb");
-  return read_mtz_stream(f.get(), path);
+  try {
+    return read_mtz_stream(f.get(), true);
+  } catch (std::runtime_error& e) {
+    fail(std::string(e.what()) + ": " + path);
+  }
 }
 
 } // namespace gemmi

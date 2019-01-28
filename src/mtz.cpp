@@ -4,13 +4,15 @@
 
 #include <gemmi/mtz.hpp>
 #include <gemmi/fileutil.hpp> // for file_open
+//#include <gemmi/sprintf.hpp>  // for to_str
 #define GEMMI_PROG mtz
 #include "options.h"
 #include <stdio.h>
 
 using namespace gemmi;
 
-enum OptionIndex { Verbose=3, Headers, Dump, ToggleEndian };
+enum OptionIndex { Verbose=3, Headers, Dump, PrintTsv, PrintStats,
+                   ToggleEndian };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -24,6 +26,10 @@ static const option::Descriptor Usage[] = {
     "  -H, --headers  \tPrint raw headers, until the END record." },
   { Dump, 0, "d", "dump", Arg::None,
     "  -d, --dump  \tPrint a subset of CCP4 mtzdmp informations." },
+  { PrintTsv, 0, "", "tsv", Arg::None,
+    "  --tsv  \tPrint all the data as tab-separated values." },
+  { PrintStats, 0, "", "stats", Arg::None,
+    "  --stats  \tPrint column statistics (completeness, mean, etc)." },
   { ToggleEndian, 0, "", "toggle-endian", Arg::None,
     "  --toggle-endian  \tToggle assumed endiannes (little <-> big)." },
   { 0, 0, 0, 0, 0, 0 }
@@ -46,7 +52,6 @@ static void dump(const Mtz& mtz) {
   if (mtz.nbatches != 0)
     std::printf("Number of Batches = %d\n", mtz.nbatches);
   std::printf("Missing values marked as: %g\n", mtz.valm);
-  // History
   std::printf("Global Cell (obsolete):  %7.3f %7.3f %7.3f  %g %g %g\n",
               mtz.cell.a, mtz.cell.b, mtz.cell.c,
               mtz.cell.alpha, mtz.cell.beta, mtz.cell.gamma);
@@ -57,6 +62,11 @@ static void dump(const Mtz& mtz) {
               mtz.sort_order[3], mtz.sort_order[4]);
   std::printf("Space Group: %s\n", mtz.spacegroup_name.c_str());
   std::printf("Space Group Number: %d\n", mtz.spacegroup_number);
+  std::printf("\nColumn  \tType\tDataset\tMin\tMax\t\n");
+  for (const Mtz::Column& col : mtz.columns)
+    std::printf("%-8s\t%c\t%d\t% .5g\t% .5g\n",
+                col.label.c_str(), col.type, col.dataset_number,
+                col.min_value, col.max_value);
   if (mtz.history.empty()) {
     std::printf("\nNo history in the file.\n");
   } else {
@@ -66,6 +76,45 @@ static void dump(const Mtz& mtz) {
   }
 }
 
+static void print_tsv(const Mtz& mtz) {
+  int ncol = mtz.ncol;
+  for (int i = 0; i < ncol; ++i)
+    printf("%s%c", mtz.columns[i].label.c_str(), i + 1 != ncol ? '\t' : '\n');
+  for (int i = 0; i < mtz.nreflections * ncol; ++i)
+    printf("%g%c", mtz.raw_data[i], (i + 1) % ncol != 0 ? '\t' : '\n');
+}
+
+struct ColumnStats {
+  float min_value = INFINITY;
+  float max_value = -INFINITY;
+  Variance var;
+};
+
+static void print_stats(const Mtz& mtz) {
+  std::vector<ColumnStats> column_stats(mtz.columns.size());
+  for (size_t i = 0; i != mtz.raw_data.size(); ++i) {
+    float v = mtz.raw_data[i];
+    if (!std::isnan(v)) {
+      ColumnStats& stat = column_stats[i % column_stats.size()];
+      if (v < stat.min_value)
+        stat.min_value = v;
+      if (v > stat.max_value)
+        stat.max_value = v;
+      stat.var.add_point(v);
+    }
+  }
+  std::printf("column type @dataset  completeness        min       max"
+              "       mean   stddev\n");
+  for (size_t i = 0; i != column_stats.size(); ++i) {
+    const Mtz::Column& col = mtz.columns[i];
+    const ColumnStats& stat = column_stats[i];
+    std::printf("%-14s %c @%d  %d (%6.2f%%) %9.5g %9.5g  %9.5g %8.4g\n",
+                col.label.c_str(), col.type, col.dataset_number,
+                stat.var.n, 100.0 * stat.var.n / mtz.nreflections,
+                stat.min_value, stat.max_value,
+                stat.var.mean_x, std::sqrt(stat.var.for_population()));
+  }
+}
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
@@ -101,9 +150,16 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
       if (verbose)
         mtz.warnings = stderr;
-      mtz.read_headers(f.get());
+      mtz.read_main_headers(f.get());
+      mtz.read_history_and_later_headers(f.get());
       if (p.options[Dump])
         dump(mtz);
+      if (p.options[PrintTsv] || p.options[PrintStats])
+        mtz.read_raw_data(f.get());
+      if (p.options[PrintTsv])
+        print_tsv(mtz);
+      if (p.options[PrintStats])
+        print_stats(mtz);
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());
