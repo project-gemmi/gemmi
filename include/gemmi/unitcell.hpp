@@ -270,6 +270,25 @@ struct UnitCell {
     }
     return n;
   }
+
+  // Calculate 1/d^2 for specified hkl reflection.
+  // 1/d^2 = (2*sin(theta)/lambda)^2
+  // The indices are integers, but they may be stored as floating-point
+  // numbers (MTZ format) so we use double to avoid conversions.
+  double calculate_1_d2(double h, double k, double l) const {
+    double arh = ar * h;
+    double brk = br * k;
+    double crl = cr * l;
+    return arh * arh + brk * brk + crl * crl + 2 * (arh * brk * cos_gammar +
+                                                    brk * crl * cos_alphar +
+                                                    arh * crl * cos_betar);
+  }
+
+  // Calculate d-spacing.
+  // d = lambda/(2*sin(theta))
+  double calculate_d(double h, double k, double l) const {
+    return 1.0 / std::sqrt(calculate_1_d2(h, k, l));
+  }
 };
 
 } // namespace gemmi

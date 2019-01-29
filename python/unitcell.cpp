@@ -110,6 +110,10 @@ void add_unitcell(py::module& m) {
         py::arg("ref"), py::arg("pos"), py::arg("asu")=SameAsu::Any)
     .def("is_special_position", &UnitCell::is_special_position,
          py::arg("pos"), py::arg("max_dist")=0.8)
+    .def("calculate_1_d2", &UnitCell::calculate_1_d2,
+         py::arg("hk"), py::arg("k"), py::arg("l"))
+    .def("calculate_d", &UnitCell::calculate_d,
+         py::arg("hk"), py::arg("k"), py::arg("l"))
     .def("__repr__", [](const UnitCell& self) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
              + ", " + triple(self.alpha, self.beta, self.gamma) + ")>";
