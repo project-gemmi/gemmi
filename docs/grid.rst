@@ -286,3 +286,17 @@ setters as in the C++ version.
     >>> m.header_str(57, 80).strip()
     'Created by MAPMAN V. 080625/7.8.5 at Wed Jan 3 12:57:38 2018 for A. Nonymous'
 
+Let us end with a short code that draws a contour plot similar to mapslicer
+plots
+(see Fig. 3 in `this CCP4 paper <http://dx.doi.org/10.1107/S0907444902016116>`_
+if you wonder what is mapslicer).
+To keep the example short we assume that the lattice vectors are orthogonal.
+
+.. literalinclude:: ../examples/patterson_slice.py
+   :language: python
+   :lines: 3-
+
+.. image:: img/patterson_slice.png
+    :align: center
+    :scale: 100
+
