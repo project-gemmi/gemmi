@@ -359,6 +359,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     std::cerr << "ERROR: " << e.what() << std::endl;
     return 2;
   }
+  if (p.options[Verbose])
+    std::cerr << "Done." << std::endl;
   return 0;
 }
 
