@@ -8,6 +8,8 @@
 #include <cctype>    // for isdigit, isalnum
 #include <cstdio>    // for FILE, fopen, fclose
 #include <cstdlib>   // getenv
+#include <cstring>   // strlen
+#include <initializer_list>
 #include <memory>    // for unique_ptr
 #include <string>
 #include "util.hpp"  // for fail, to_lower
@@ -19,9 +21,18 @@
 
 namespace gemmi {
 
-inline std::string path_basename(const std::string& path) {
+// strip directory and suffixes from filename
+inline std::string path_basename(const std::string& path,
+                                 std::initializer_list<const char*> exts) {
   size_t pos = path.find_last_of("\\/");
-  return pos == std::string::npos ? path : path.substr(pos + 1);
+  std::string basename = pos == std::string::npos ? path : path.substr(pos + 1);
+  for (const char* ext : exts) {
+    size_t len = std::strlen(ext);
+    if (basename.size() > len &&
+        basename.compare(basename.length() - len, len, ext, len) == 0)
+      basename.resize(basename.length() - len);
+  }
+  return basename;
 }
 
 // file operations
