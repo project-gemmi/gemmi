@@ -43,7 +43,13 @@ static SubCmd subcommands[] = {
 };
 
 static void print_usage() {
-  printf("Usage: gemmi [--version] [--help] <command> [<args>]\n\n"
+  printf("gemmi " GEMMI_VERSION "\n"
+         "Command-line utility that accompanies the GEMMI library.\n"
+         "Developed jointly by CCP4 and Global Phasing Ltd.\n"
+         "Licence: Mozilla Public License 2.0.\n"
+         "Copyright 2017-2019 Global Phasing Ltd.\n"
+         "https://github.com/project-gemmi/gemmi\n\n"
+         "Usage: gemmi [--version] [--help] <command> [<args>]\n\n"
          "Commands:\n");
   for (SubCmd& sub : subcommands)
     printf(" %-13s %s\n", sub.cmd, sub.desc);
