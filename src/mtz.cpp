@@ -62,9 +62,9 @@ static void dump(const Mtz& mtz) {
               mtz.sort_order[3], mtz.sort_order[4]);
   std::printf("Space Group: %s\n", mtz.spacegroup_name.c_str());
   std::printf("Space Group Number: %d\n", mtz.spacegroup_number);
-  std::printf("\nColumn  \tType\tDataset\tMin\tMax\t\n");
+  std::printf("\nColumn    Type Dataset    Min        Max\n");
   for (const Mtz::Column& col : mtz.columns)
-    std::printf("%-8s\t%c\t%d\t% .5g\t% .5g\n",
+    std::printf("%-12s %c %2d %12.6g %10.6g\n",
                 col.label.c_str(), col.type, col.dataset_number,
                 col.min_value, col.max_value);
   if (mtz.history.empty()) {

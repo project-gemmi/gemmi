@@ -46,8 +46,8 @@ struct Mtz {
   int nreflections = 0;
   int nbatches = 0;
   std::array<int, 5> sort_order;
-  double inv_d2_min = NAN;
-  double inv_d2_max = NAN;
+  double min_1_d2 = NAN;
+  double max_1_d2 = NAN;
   float valm = NAN;
   int nsymop = 0;
   UnitCell cell;
@@ -62,8 +62,8 @@ struct Mtz {
 
   FILE* warnings = nullptr;
 
-  double resolution_high() const { return std::sqrt(1.0 / inv_d2_max); }
-  double resolution_low() const  { return std::sqrt(1.0 / inv_d2_min); }
+  double resolution_high() const { return std::sqrt(1.0 / max_1_d2); }
+  double resolution_low() const  { return std::sqrt(1.0 / min_1_d2); }
 
   Dataset& last_dataset() {
     if (datasets.empty())
@@ -76,7 +76,26 @@ struct Mtz {
     for (Dataset& d : datasets)
       if (d.number == number)
         return d;
-    fail("MTZ file ha no dataset number " + std::to_string(number));
+    fail("MTZ file has no dataset number " + std::to_string(number));
+  }
+  int count(const std::string& label) const {
+    int n = 0;
+    for (const Column& col : columns)
+      if (col.label == label)
+        ++n;
+    return n;
+  }
+  Column* column_with_label(const std::string& label) {
+    for (Column& col : columns)
+      if (col.label == label)
+        return &col;
+    return nullptr;
+  }
+  Column* column_with_type(char type) {
+    for (Column& col : columns)
+      if (col.type == type)
+        return &col;
+    return nullptr;
   }
 
   void toggle_endiannes() {
@@ -171,8 +190,8 @@ struct Mtz {
         symops.push_back(parse_triplet(args));
         break;
       case ialpha4_id("RESO"):
-        inv_d2_min = simple_atof(args, &args);
-        inv_d2_max = simple_atof(args, &args);
+        min_1_d2 = simple_atof(args, &args);
+        max_1_d2 = simple_atof(args, &args);
         break;
       case ialpha4_id("VALM"):
         if (*args != 'N') {
@@ -300,6 +319,9 @@ struct Mtz {
     size_t n = ncol * nreflections;
     if (std::fread(raw_data.data(), 4, n, stream) != n)
       fail("Error when reading MTZ data");
+    if (!same_byte_order)
+      for (float& f : raw_data)
+        swap_four_bytes(&f);
   }
 };
 

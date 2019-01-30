@@ -1,14 +1,19 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/unitcell.hpp"
+#include "gemmi/mtz.hpp"
 
 #include <cstdio>
 #include <array>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/stl_bind.h>
 
 namespace py = pybind11;
 using namespace gemmi;
+
+PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Column>)
+PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Dataset>)
 
 static std::string triple(double x, double y, double z) {
   using namespace std;  // VS2015/17 doesn't like std::snprintf
@@ -118,4 +123,76 @@ void add_unitcell(py::module& m) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
              + ", " + triple(self.alpha, self.beta, self.gamma) + ")>";
     });
+}
+
+void add_mtz(py::module& m) {
+  py::bind_vector<std::vector<Mtz::Column>>(m, "VectorMtzColumn");
+  py::bind_vector<std::vector<Mtz::Dataset>>(m, "VectorMtzDataset");
+
+  py::class_<Mtz> mtz(m, "Mtz", py::buffer_protocol());
+  mtz.def(py::init<>())
+    .def_buffer([](Mtz &self) {
+      size_t expected_size = self.ncol * self.nreflections;
+      int nrow = self.raw_data.size() == expected_size ? self.nreflections : 0;
+      return py::buffer_info(self.raw_data.data(),
+                             4, py::format_descriptor<float>::format(),
+                             2, {self.ncol, nrow}, // dimensions
+                             {4, 4 * self.ncol});  // strides
+    })
+    .def_readwrite("title", &Mtz::title)
+    .def_readwrite("ncol", &Mtz::ncol)
+    .def_readwrite("nreflections", &Mtz::nreflections)
+    .def_readwrite("nbatches", &Mtz::nbatches)
+    .def_readwrite("min_1_d2", &Mtz::min_1_d2)
+    .def_readwrite("max_1_d2", &Mtz::max_1_d2)
+    .def_readwrite("valm", &Mtz::valm)
+    .def_readwrite("nsymop", &Mtz::nsymop)
+    .def_readwrite("cell", &Mtz::cell)
+    .def_readwrite("spacegroup", &Mtz::spacegroup)
+    .def_readwrite("datasets", &Mtz::datasets)
+    .def_readwrite("columns", &Mtz::columns)
+    .def_readwrite("history", &Mtz::history)
+    .def("resolution_high", &Mtz::resolution_high)
+    .def("resolution_low", &Mtz::resolution_low)
+    .def("dataset", &Mtz::dataset, py::arg("number"))
+    .def("count", &Mtz::count, py::arg("label"))
+    .def("column_with_label", &Mtz::column_with_label, py::arg("label"),
+         py::return_value_policy::reference_internal)
+    .def("column_with_type", &Mtz::column_with_type, py::arg("type"),
+         py::return_value_policy::reference_internal)
+    .def("column_labels", [](const Mtz& self) {
+        std::vector<std::string> labels;
+        labels.reserve(self.columns.size());
+        for (const Mtz::Column& c : self.columns)
+          labels.push_back(c.label);
+        return labels;
+    })
+    .def("__repr__", [](const Mtz& self) {
+        return "<gemmi.Mtz with " + std::to_string(self.ncol) + " columns, " +
+               std::to_string(self.nreflections) + " reflections>";
+    });
+  py::class_<Mtz::Dataset>(mtz, "Dataset")
+    .def_readwrite("number", &Mtz::Dataset::number)
+    .def_readwrite("project_name", &Mtz::Dataset::project_name)
+    .def_readwrite("crystal_name", &Mtz::Dataset::crystal_name)
+    .def_readwrite("dataset_name", &Mtz::Dataset::dataset_name)
+    .def_readwrite("cell", &Mtz::Dataset::cell)
+    .def_readwrite("wavelength", &Mtz::Dataset::wavelength)
+    .def("__repr__", [](const Mtz::Dataset& self) {
+        return "<gemmi.Mtz.Dataset " + std::to_string(self.number) + " " +
+               self.project_name + "/" + self.crystal_name + "/" +
+               self.dataset_name + ">";
+    });
+  py::class_<Mtz::Column>(mtz, "Column")
+    .def_readwrite("dataset_number", &Mtz::Column::dataset_number)
+    .def_readwrite("type", &Mtz::Column::type)
+    .def_readwrite("label", &Mtz::Column::label)
+    .def_readwrite("min_value", &Mtz::Column::min_value)
+    .def_readwrite("max_value", &Mtz::Column::max_value)
+    .def_readwrite("source", &Mtz::Column::source)
+    .def("__repr__", [](const Mtz::Column& self) {
+        return "<gemmi.Mtz.Column " + self.label + ">";
+    });
+
+  m.def("read_mtz_file", &read_mtz_file);
 }

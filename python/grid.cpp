@@ -23,7 +23,7 @@ template<typename T>
 void add_grid(py::module& m, const char* name) {
   using Gr = Grid<T>;
   py::class_<Gr>(m, name, py::buffer_protocol())
-    .def_buffer([](Gr &g) -> py::buffer_info {
+    .def_buffer([](Gr &g) {
       return py::buffer_info(g.data.data(),
                              sizeof(T),
                              py::format_descriptor<T>::format(),
