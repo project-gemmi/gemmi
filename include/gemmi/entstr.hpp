@@ -27,18 +27,18 @@ inline EntityType entity_type_from_string(const std::string& t) {
 }
 
 
-inline std::string polymer_type_to_string(PolymerType polymer_type) {
+inline std::string polymer_type_to_qstring(PolymerType polymer_type) {
   switch (polymer_type) {
     case PolymerType::PeptideL: return "polypeptide(L)";
     case PolymerType::PeptideD: return "polypeptide(D)";
     case PolymerType::Dna: return "polydeoxyribonucleotide";
     case PolymerType::Rna: return "polyribonucleotide";
     case PolymerType::DnaRnaHybrid:
-      return "polydeoxyribonucleotide/polyribonucleotide hybrid";
+      return "'polydeoxyribonucleotide/polyribonucleotide hybrid'";
     case PolymerType::SaccharideD: return "polysaccharide(D)";
     case PolymerType::SaccharideL: return "polysaccharide(L)";
     case PolymerType::Other: return "other";
-    case PolymerType::Pna: return "peptide nucleic acid";
+    case PolymerType::Pna: return "'peptide nucleic acid'";
     case PolymerType::CyclicPseudoPeptide: return "cyclic-pseudo-peptide";
     default /*PolymerType::Unknown*/: return "?";
   }

@@ -90,7 +90,7 @@ void add_mol(py::module& m) {
         std::string r = "<gemmi.Entity '" + self.name + "' ";
         r += entity_type_to_string(self.entity_type);
         if (self.polymer_type != PolymerType::Unknown)
-          r += " " + polymer_type_to_string(self.polymer_type);
+          r += " " + polymer_type_to_qstring(self.polymer_type);
         using namespace std;  // VS2015/17 doesn't like std::snprintf
         char buf[64];
         snprintf(buf, 64, " object at %p>", (void*)&self);

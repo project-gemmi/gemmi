@@ -224,7 +224,7 @@ void update_cif_block(const Structure& st, cif::Block& block) {
   cif::Loop& ent_poly_loop = block.init_mmcif_loop("_entity_poly.", {"entity_id", "type"});
   for (const Entity& ent : st.entities)
     if (ent.entity_type == EntityType::Polymer)
-      ent_poly_loop.add_row({ent.name, polymer_type_to_string(ent.polymer_type)});
+      ent_poly_loop.add_row({ent.name, polymer_type_to_qstring(ent.polymer_type)});
 
   // _exptl
   if (!st.meta.experiments.empty()) {
