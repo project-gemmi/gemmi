@@ -132,110 +132,112 @@ struct Mtz {
   }
 
   void parse_main_header(const char* line) {
-    const int first_word_id = ialpha4_id(line);
-    line = skip_word(line);
-    switch (first_word_id) {
+    const char* args = skip_word(line);
+    switch (ialpha4_id(line)) {
       case ialpha4_id("VERS"):
-        version_stamp = rtrim_str(line);
+        version_stamp = rtrim_str(args);
         break;
       case ialpha4_id("TITL"):
-        title = rtrim_str(line);
+        title = rtrim_str(args);
         break;
       case ialpha4_id("NCOL"): {
-        ncol = simple_atoi(line, &line);
-        nreflections = simple_atoi(line, &line);
-        nbatches = simple_atoi(line, &line);
+        ncol = simple_atoi(args, &args);
+        nreflections = simple_atoi(args, &args);
+        nbatches = simple_atoi(args, &args);
         break;
       }
       case ialpha4_id("CELL"):
-        cell = read_cell_parameters(line);
+        cell = read_cell_parameters(args);
         break;
       case ialpha4_id("SORT"):
         for (int& n : sort_order)
-          n = simple_atoi(line, &line);
+          n = simple_atoi(args, &args);
         break;
       case ialpha4_id("SYMI"): {
-        nsymop = simple_atoi(line, &line);
+        nsymop = simple_atoi(args, &args);
         symops.reserve(nsymop);
-        simple_atoi(line, &line); // ignore number of primitive operations
-        line = skip_word(skip_blank(line)); // ignore lattice type
-        spacegroup_number = simple_atoi(line, &line);
-        line = skip_blank(line);
-        if (*line != '\'')
-          spacegroup_name = read_word(line);
-        else if (const char* end = std::strchr(++line, '\''))
-          spacegroup_name.assign(line, end);
-        // ignore point group which is at the end of line
+        simple_atoi(args, &args); // ignore number of primitive operations
+        args = skip_word(skip_blank(args)); // ignore lattice type
+        spacegroup_number = simple_atoi(args, &args);
+        args = skip_blank(args);
+        if (*args != '\'')
+          spacegroup_name = read_word(args);
+        else if (const char* end = std::strchr(++args, '\''))
+          spacegroup_name.assign(args, end);
+        // ignore point group which is at the end of args
         break;
       }
       case ialpha4_id("SYMM"):
-        symops.push_back(parse_triplet(line));
+        symops.push_back(parse_triplet(args));
         break;
       case ialpha4_id("RESO"):
-        inv_d2_min = simple_atof(line, &line);
-        inv_d2_max = simple_atof(line, &line);
+        inv_d2_min = simple_atof(args, &args);
+        inv_d2_max = simple_atof(args, &args);
         break;
       case ialpha4_id("VALM"):
-        if (*line != 'N') {
+        if (*args != 'N') {
           const char* endptr;
-          float v = (float) simple_atof(line, &endptr);
+          float v = (float) simple_atof(args, &endptr);
           if (*endptr == '\0' || isspace_c(*endptr))
             valm = v;
           else
-            warn("Unexpected VALM value: " + rtrim_str(line));
+            warn("Unexpected VALM value: " + rtrim_str(args));
         }
         break;
       case ialpha4_id("COLU"): {
         columns.emplace_back();
         Column& col = columns.back();
-        col.label = read_word(line, &line);
-        col.type = read_word(line, &line)[0];
-        col.min_value = (float) simple_atof(line, &line);
-        col.max_value = (float) simple_atof(line, &line);
-        col.dataset_number = simple_atoi(line);
+        col.label = read_word(args, &args);
+        col.type = read_word(args, &args)[0];
+        col.min_value = (float) simple_atof(args, &args);
+        col.max_value = (float) simple_atof(args, &args);
+        col.dataset_number = simple_atoi(args);
         break;
       }
       case ialpha4_id("COLS"):
         if (columns.empty())
           fail("MTZ: COLSRC before COLUMN?");
-        line = skip_word(line);
-        columns.back().source = read_word(line);
+        args = skip_word(args);
+        columns.back().source = read_word(args);
         break;
       case ialpha4_id("COLG"):
         // Column group - not used.
         break;
       case ialpha4_id("NDIF"):
-        datasets.reserve(simple_atoi(line));
+        datasets.reserve(simple_atoi(args));
         break;
       case ialpha4_id("PROJ"):
         datasets.emplace_back();
-        datasets.back().number = simple_atoi(line, &line);
-        datasets.back().project_name = read_word(skip_word(line));
+        datasets.back().number = simple_atoi(args, &args);
+        datasets.back().project_name = read_word(skip_word(args));
         break;
       case ialpha4_id("CRYS"):
-        if (simple_atoi(line, &line) == last_dataset().number)
-          datasets.back().crystal_name = read_word(line);
+        if (simple_atoi(args, &args) == last_dataset().number)
+          datasets.back().crystal_name = read_word(args);
         else
           warn("MTZ CRYSTAL line: unusual numbering.");
         break;
       case ialpha4_id("DATA"):
-        if (simple_atoi(line, &line) == last_dataset().number)
-          datasets.back().dataset_name = read_word(line);
+        if (simple_atoi(args, &args) == last_dataset().number)
+          datasets.back().dataset_name = read_word(args);
         else
           warn("MTZ DATASET line: unusual numbering.");
         break;
       case ialpha4_id("DCEL"):
-        if (simple_atoi(line, &line) == last_dataset().number)
-          datasets.back().cell = read_cell_parameters(line);
+        if (simple_atoi(args, &args) == last_dataset().number)
+          datasets.back().cell = read_cell_parameters(args);
         else
           warn("MTZ DCELL line: unusual numbering.");
         break;
       // case("DRES"): not in use yet
       case ialpha4_id("DWAV"):
-        if (simple_atoi(line, &line) == last_dataset().number)
-          datasets.back().wavelength = simple_atof(line);
+        if (simple_atoi(args, &args) == last_dataset().number)
+          datasets.back().wavelength = simple_atof(args);
         else
           warn("MTZ DWAV line: unusual numbering.");
+        break;
+      case ialpha4_id("BATCH"):
+        // this header is not used for anything?
         break;
       default:
         warn("Unknown header: " + rtrim_str(line));
@@ -275,8 +277,11 @@ struct Mtz {
           return;
         }
         history.reserve(n_headers);
+      } else if (ialpha4_id(buf) == ialpha4_id("MTZB")) {
+        for (int i = 0; i < nbatches; ++i) {
+          // TODO: BH, etc
+        }
       }
-      // TODO: MTZB, BH
     }
   }
 
