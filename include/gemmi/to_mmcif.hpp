@@ -57,6 +57,9 @@ inline std::string int_or_qmark(int n) {
   return n == -1 ? "?" : std::to_string(n);
 }
 
+inline std::string string_or_dot(const std::string& s) {
+  return s.empty() ? "." : cif::quote(s);
+}
 inline std::string string_or_qmark(const std::string& s) {
   return s.empty() ? "?" : cif::quote(s);
 }
@@ -189,7 +192,7 @@ void update_cif_block(const Structure& st, cif::Block& block) {
     return;
   block.name = st.name;
   auto e_id = st.info.find("_entry.id");
-  std::string id = cif::quote(e_id != st.info.end() ? e_id->second : st.name);
+  std::string id = impl::string_or_dot(e_id != st.info.end() ? e_id->second : st.name);
   block.set_pair("_entry.id", id);
   auto initial_date =
          st.info.find("_pdbx_database_status.recvd_initial_deposition_date");

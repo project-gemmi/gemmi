@@ -405,7 +405,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
           st.info["_pdbx_database_status.recvd_initial_deposition_date"] = date;
       }
       if (len > 66)
-        st.info["_entry.id"] = std::string(line+62, 4);
+        st.info["_entry.id"] = rtrim_str(std::string(line+62, 4));
 
     } else if (is_record_type(line, "TITLE")) {
       if (len > 10)
