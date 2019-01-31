@@ -7,6 +7,7 @@
 // + read segment ID (columns 73-76)
 // + read hybrid-36 serial numbers (http://cci.lbl.gov/hybrid_36/)
 // + hybrid-36 sequence id for sequences longer than 9999 (no such examples)
+// + allow for longer REMARK lines (up to 120 characters)
 
 #ifndef GEMMI_PDB_HPP_
 #define GEMMI_PDB_HPP_
@@ -299,10 +300,10 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   Model *model = &st.find_or_add_model("1");
   Chain *chain = nullptr;
   Residue *resi = nullptr;
-  char line[88] = {0};
+  char line[122] = {0};
   bool after_ter = false;
   Transform matrix;
-  while (size_t len = copy_line_from_stream(line, 82, infile)) {
+  while (size_t len = copy_line_from_stream(line, 121, infile)) {
     ++line_num;
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
       if (len < 66)
