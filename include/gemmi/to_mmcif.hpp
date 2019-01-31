@@ -193,7 +193,7 @@ void update_cif_block(const Structure& st, cif::Block& block) {
   block.set_pair("_entry.id", id);
   auto initial_date =
          st.info.find("_pdbx_database_status.recvd_initial_deposition_date");
-  if (initial_date != st.info.end()) {
+  if (initial_date != st.info.end() && !initial_date->second.empty()) {
     block.set_pair("_pdbx_database_status.entry_id", id);
     block.set_pair(initial_date->first, initial_date->second);
   }

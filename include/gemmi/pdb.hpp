@@ -16,7 +16,7 @@
 #include <cctype>     // for isalpha
 #include <cstdio>     // for FILE, size_t
 #include <cstdlib>    // for strtol
-#include <cstring>    // for memcpy, strstr, strchr, strncmp
+#include <cstring>    // for memcpy, strstr, strchr, strcmp
 #include <map>        // for map
 #include <string>     // for string
 #include <vector>     // for vector
@@ -134,9 +134,17 @@ inline int read_serial(const char* ptr) {
 
 // "28-MAR-07" -> "2007-03-28"
 // (we also accept less standard format "28-Mar-2007" as used by BUSTER)
+// We do not check if the date is correct.
+// The returned value is one of:
+//   DDDD-DD-DD - possibly correct date,
+//   DDDD-xx-DD - unrecognized month,
+//   empty string - the digits were not there.
 inline std::string pdb_date_format_to_iso(const std::string& date) {
   const char months[] = "JAN01FEB02MAR03APR04MAY05JUN06"
                         "JUL07AUG08SEP09OCT10NOV11DEC122222";
+  if (date.size() < 9 || !is_digit(date[0]) || !is_digit(date[1]) ||
+                         !is_digit(date[7]) || !is_digit(date[8]))
+    return std::string();
   std::string iso = "xxxx-xx-xx";
   if (date.size() >= 11 && is_digit(date[9]) && is_digit(date[10])) {
     std::memcpy(&iso[0], &date[7], 4);
@@ -145,7 +153,7 @@ inline std::string pdb_date_format_to_iso(const std::string& date) {
     std::memcpy(&iso[2], &date[7], 2);
   }
   char month[4] = {alpha_up(date[3]), alpha_up(date[4]), alpha_up(date[5]), '\0'};
-  if (const char* m = strstr(months, month))
+  if (const char* m = std::strstr(months, month))
     std::memcpy(&iso[5], m + 3, 2);
   std::memcpy(&iso[8], &date[0], 2);
   return iso;
@@ -366,11 +374,11 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       if (len > 11 && st.resolution == 0.0) {
         int num = read_int(line + 7, 3);
         if (num == 2) {
-          if (strstr(line, "ANGSTROM"))
+          if (std::strstr(line, "ANGSTROM"))
             st.resolution = read_double(line + 23, 7);
         } else if (num == 3) {
-          if (strstr(line, "RESOLUTION RANGE HIGH (ANGSTROMS)"))
-            if (const char* colon = strchr(line + 44, ':'))
+          if (std::strstr(line, "RESOLUTION RANGE HIGH (ANGSTROMS)"))
+            if (const char* colon = std::strchr(line + 44, ':'))
               st.resolution = simple_atof(colon + 1);
         }
       }
@@ -391,9 +399,11 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     } else if (is_record_type(line, "HEADER")) {
       if (len > 50)
         st.info["_struct_keywords.pdbx_keywords"] = rtrim_str(std::string(line+10, 40));
-      if (len > 59) // date in PDB has format 28-MAR-07
-        st.info["_pdbx_database_status.recvd_initial_deposition_date"] =
-          pdb_date_format_to_iso(std::string(line+50, 9));
+      if (len > 59) { // date in PDB has format 28-MAR-07
+        std::string date = pdb_date_format_to_iso(std::string(line+50, 9));
+        if (!date.empty())
+          st.info["_pdbx_database_status.recvd_initial_deposition_date"] = date;
+      }
       if (len > 66)
         st.info["_entry.id"] = std::string(line+62, 4);
 
