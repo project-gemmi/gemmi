@@ -8,6 +8,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
+#include <pybind11/numpy.h>
 
 namespace py = pybind11;
 using namespace gemmi;
@@ -125,6 +126,37 @@ void add_unitcell(py::module& m) {
     });
 }
 
+template<typename F>
+py::array_t<float> make_new_column(const Mtz& mtz, int dataset, F f) {
+  if (!mtz.has_raw_data())
+    throw std::runtime_error("MTZ: the data must be read first");
+  const UnitCell& cell = mtz.get_cell(dataset);
+  if (!cell.is_crystal())
+    throw std::runtime_error("MTZ: unknown unit cell parameters");
+  py::array_t<float> arr(mtz.nreflections);
+  py::buffer_info buf = arr.request();
+  float* ptr = (float*) buf.ptr;
+  for (int i = 0; i < mtz.nreflections; ++i) {
+    int hidx = mtz.ncol * i;
+    ptr[i] = f(cell,
+               mtz.raw_data[hidx], mtz.raw_data[hidx+1], mtz.raw_data[hidx+2]);
+  }
+  return arr;
+}
+
+static py::array_t<float> make_1_d2_array(const Mtz& mtz, int dataset) {
+  return make_new_column(mtz, dataset,
+                         [](const UnitCell& cell, float h, float k, float l) {
+                           return (float) cell.calculate_1_d2(h, k, l);
+                         });
+}
+static py::array_t<float> make_d_array(const Mtz& mtz, int dataset) {
+  return make_new_column(mtz, dataset,
+                         [](const UnitCell& cell, float h, float k, float l) {
+                           return (float) cell.calculate_d(h, k, l);
+                         });
+}
+
 void add_mtz(py::module& m) {
   py::bind_vector<std::vector<Mtz::Column>>(m, "VectorMtzColumn");
   py::bind_vector<std::vector<Mtz::Dataset>>(m, "VectorMtzDataset");
@@ -132,12 +164,11 @@ void add_mtz(py::module& m) {
   py::class_<Mtz> mtz(m, "Mtz", py::buffer_protocol());
   mtz.def(py::init<>())
     .def_buffer([](Mtz &self) {
-      size_t expected_size = self.ncol * self.nreflections;
-      int nrow = self.raw_data.size() == expected_size ? self.nreflections : 0;
+      int nrow = self.has_raw_data() ? self.nreflections : 0;
       return py::buffer_info(self.raw_data.data(),
                              4, py::format_descriptor<float>::format(),
-                             2, {self.ncol, nrow}, // dimensions
-                             {4, 4 * self.ncol});  // strides
+                             2, {nrow, self.ncol}, // dimensions
+                             {4 * self.ncol, 4});  // strides
     })
     .def_readwrite("title", &Mtz::title)
     .def_readwrite("ncol", &Mtz::ncol)
@@ -167,6 +198,10 @@ void add_mtz(py::module& m) {
           labels.push_back(c.label);
         return labels;
     })
+    .def("get_cell", (UnitCell& (Mtz::*)(int)) &Mtz::get_cell,
+         py::arg("dataset")=-1)
+    .def("make_1_d2_array", &make_1_d2_array, py::arg("dataset")=-1)
+    .def("make_d_array", &make_d_array, py::arg("dataset")=-1)
     .def("__repr__", [](const Mtz& self) {
         return "<gemmi.Mtz with " + std::to_string(self.ncol) + " columns, " +
                std::to_string(self.nreflections) + " reflections>";

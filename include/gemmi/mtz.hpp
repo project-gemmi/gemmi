@@ -62,8 +62,21 @@ struct Mtz {
 
   FILE* warnings = nullptr;
 
+  // Functions to use after MTZ headers (and data) is read.
+
   double resolution_high() const { return std::sqrt(1.0 / max_1_d2); }
   double resolution_low() const  { return std::sqrt(1.0 / min_1_d2); }
+
+  UnitCell& get_cell(int dataset=-1) {
+    for (Dataset& ds : datasets)
+      if (ds.number == dataset && ds.cell.is_crystal())
+        return ds.cell;
+    return cell;
+  }
+
+  const UnitCell& get_cell(int dataset=-1) const {
+    return const_cast<Mtz*>(this)->get_cell(dataset);
+  }
 
   Dataset& last_dataset() {
     if (datasets.empty())
@@ -97,6 +110,11 @@ struct Mtz {
         return &col;
     return nullptr;
   }
+  bool has_raw_data() const {
+    return raw_data.size() == (size_t) ncol * nreflections;
+  }
+
+  // Functions for reading MTZ headers and data.
 
   void toggle_endiannes() {
     same_byte_order = !same_byte_order;
@@ -135,14 +153,13 @@ struct Mtz {
   }
 
   static UnitCell read_cell_parameters(const char* line) {
-    UnitCell cell;
-    cell.a = simple_atof(line, &line);
-    cell.b = simple_atof(line, &line);
-    cell.c = simple_atof(line, &line);
-    cell.alpha = simple_atof(line, &line);
-    cell.beta = simple_atof(line, &line);
-    cell.gamma = simple_atof(line, &line);
-    return cell;
+    double a = simple_atof(line, &line);
+    double b = simple_atof(line, &line);
+    double c = simple_atof(line, &line);
+    double alpha = simple_atof(line, &line);
+    double beta = simple_atof(line, &line);
+    double gamma = simple_atof(line, &line);
+    return UnitCell(a, b, c, alpha, beta, gamma);
   }
 
   void warn(const std::string& text) {
