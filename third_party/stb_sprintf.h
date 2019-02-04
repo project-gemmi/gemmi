@@ -1,7 +1,7 @@
 // stb_sprintf - v1.05 - public domain snprintf() implementation
 // originally by Jeff Roberts / RAD Game Tools, 2015/10/20
 // http://github.com/nothings/stb
-// Modified to avoid UB and warnings at the cost of dependency on strings.h
+// Modified to avoid UB and warnings at the cost of dependency on string.h
 // and possibly slower string copying.
 //
 // allowed types:  sc uidBboXx p AaGgEef n
@@ -161,7 +161,6 @@ PERFORMANCE vs MSVC 2008 32-/64-bit (GCC is even slower than MSVC):
 #endif
 
 #include <stdarg.h> // for va_list()
-#include <string.h> // for memcpy(), strlen()
 
 #ifndef STB_SPRINTF_MIN
 #define STB_SPRINTF_MIN 512 // how many characters per callback
@@ -185,7 +184,7 @@ STBSP__PUBLICDEF void STB_SPRINTF_DECORATE(set_separators)(char comma, char peri
 #ifdef STB_SPRINTF_IMPLEMENTATION
 
 #include <stdlib.h> // for va_arg()
-#include <string.h> // for memcpy()
+#include <string.h> // for memcpy(), strlen()
 
 #define stbsp__uint32 unsigned int
 #define stbsp__int32 signed int
