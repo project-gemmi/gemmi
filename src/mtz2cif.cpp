@@ -225,7 +225,7 @@ static void write_cif(const gemmi::Mtz& mtz, const std::vector<Trans> spec,
         fputc(' ', out);
       float v = row[tr.col_idx];
       if (tr.is_status)
-        fputc(v ? 'f' : '<', out);
+        fputc(v == 0. ? 'f' : 'o', out);
       else
         fprintf(out, tr.format.c_str(), v);
     }
