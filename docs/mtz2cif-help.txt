@@ -2,11 +2,12 @@ $ gemmi mtz2cif -h
 Usage:
   gemmi mtz2cif [options] MTZ_FILE CIF_FILE
 Options:
-  -h, --help     Print usage and exit.
-  -V, --version  Print version and exit.
-  --verbose      Verbose output.
-  --spec=FILE    Column and format specification.
-  --print-spec   Print default spec and exit.
+  -h, --help             Print usage and exit.
+  -V, --version          Print version and exit.
+  --verbose              Verbose output.
+  --spec=FILE            Column and format specification.
+  --print-spec           Print default spec and exit.
+  -b NAME, --block=NAME  mmCIF block name: data_NAME (default: mtz).
 
 If CIF_FILE is -, the output is printed to stdout.
 If spec is -, it is read from stdin.
@@ -15,7 +16,7 @@ Lines in the spec file have format:
   [FLAG] COLUMN TYPE TAG [FORMAT]
 for example:
   SIGF_native * SIGF_meas_au 12.5e
-  FREE I pdbx_r_free_flag 3d
+  FREE I pdbx_r_free_flag 3.0f
 FLAG (optional) is either ? or &:
   ? = column is skipped if absent in the MTZ file.
   & = column is skipped if previous line was skipped. Example:

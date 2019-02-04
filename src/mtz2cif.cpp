@@ -17,7 +17,7 @@
 #define GEMMI_PROG mtz2cif
 #include "options.h"
 
-enum OptionIndex { Verbose=3, Spec, PrintSpec };
+enum OptionIndex { Verbose=3, Spec, PrintSpec, BlockName };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -31,6 +31,8 @@ static const option::Descriptor Usage[] = {
     "  --spec=FILE  \tColumn and format specification." },
   { PrintSpec, 0, "", "print-spec", Arg::None,
     "  --print-spec  \tPrint default spec and exit." },
+  { BlockName, 0, "b", "block", Arg::Required,
+    "  -b NAME, --block=NAME  \tmmCIF block name: data_NAME (default: mtz)." },
   { NoOp, 0, "", "", Arg::None,
     "\nIf CIF_FILE is -, the output is printed to stdout."
     "\nIf spec is -, it is read from stdin."
@@ -38,7 +40,7 @@ static const option::Descriptor Usage[] = {
     "\n  [FLAG] COLUMN TYPE TAG [FORMAT]"
     "\nfor example:"
     "\n  SIGF_native * SIGF_meas_au 12.5e"
-    "\n  FREE I pdbx_r_free_flag 3d"
+    "\n  FREE I pdbx_r_free_flag 3.0f"
     "\nFLAG (optional) is either ? or &:"
     "\n  ? = column is skipped if absent in the MTZ file."
     "\n  & = column is skipped if previous line was skipped. Example:"
@@ -62,6 +64,12 @@ struct Trans {
   bool is_status;
   std::string refln_tag;
   std::string format;
+};
+
+struct Options {
+  std::vector<Trans> spec;
+  const char* block_name;
+  const char* mtz_path;
 };
 
 static const char* default_spec[] = {
@@ -178,6 +186,19 @@ static std::vector<Trans> parse_spec(const gemmi::Mtz& mtz,
     }
     spec.push_back(tr);
   }
+  if (spec.empty())
+    gemmi::fail("Empty translation spec");
+  for (size_t i = 0; i != spec.size(); ++i)
+    for (size_t j = i + 1; j != spec.size(); ++j)
+      if (spec[i].refln_tag == spec[j].refln_tag)
+        gemmi::fail("duplicated output tag: " + spec[i].refln_tag);
+  // H, K, L must be the first columns in MTZ and are required in _refln
+  for (int i = 2; i != -1; --i)
+    if (!gemmi::in_vector_f([&](const Trans& t) { return t.col_idx == i; },
+                            spec)) {
+      spec.insert(spec.begin(), Trans{i, false, "index_h", "%g "});
+      spec.front().refln_tag.back() += i;
+    }
   return spec;
 }
 
@@ -185,14 +206,14 @@ static std::vector<Trans> parse_spec(const gemmi::Mtz& mtz,
 # pragma GCC diagnostic ignored "-Wformat-nonliteral"
 #endif
 
-static void write_cif(const gemmi::Mtz& mtz, const std::vector<Trans> spec,
-                      FILE* out) {
+static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
   std::string id = ".";
-  fprintf(out, "# Converted from MTZ by gemmi-mtz2cif " GEMMI_VERSION "\n");
+  fprintf(out, "# Converted by gemmi-mtz2cif " GEMMI_VERSION "\n");
+  fprintf(out, "# from: %s\n", opt.mtz_path);
   fprintf(out, "# MTZ title: %s\n", mtz.title.c_str());
   for (size_t i = 0; i != mtz.history.size(); ++i)
     fprintf(out, "# MTZ history #%zu: %s\n", i, mtz.history[i].c_str());
-  fprintf(out, "data_%s\n\n", "mtz");
+  fprintf(out, "data_%s\n\n", opt.block_name);
   fprintf(out, "_entry.id %s\n\n", id.c_str());
   const gemmi::UnitCell& cell = mtz.get_cell();
   fprintf(out, "_cell.entry_id %s\n", id.c_str());
@@ -204,21 +225,21 @@ static void write_cif(const gemmi::Mtz& mtz, const std::vector<Trans> spec,
   fprintf(out, "_cell.angle_gamma %8.3f\n\n", cell.gamma);
   if (const gemmi::SpaceGroup* sg = mtz.spacegroup) {
     fprintf(out, "_symmetry.entry_id %s\n", id.c_str());
-    fprintf(out, "_symmetry.space_group_name_H-M %s\n", sg->hm);
+    fprintf(out, "_symmetry.space_group_name_H-M '%s'\n", sg->hm);
     fprintf(out, "_symmetry.Int_Tables_number %d\n\n", sg->number);
     // could write _symmetry_equiv.pos_as_xyz, but would it be useful?
   }
   fprintf(out, "loop_\n");
-  for (const Trans& tr : spec) {
+  for (const Trans& tr : opt.spec) {
     const gemmi::Mtz::Column& col = mtz.columns.at(tr.col_idx);
     const gemmi::Mtz::Dataset& ds = mtz.dataset(col.dataset_number);
-    fprintf(out, "_refln.%-24s # %-14s from dataset %s\n",
+    fprintf(out, "_refln.%-26s # %-14s from dataset %s\n",
             tr.refln_tag.c_str(), col.label.c_str(), ds.dataset_name.c_str());
   }
   for (int i = 0; i != mtz.nreflections; ++i) {
     const float* row = &mtz.raw_data[i*mtz.ncol];
     bool first = true;
-    for (const Trans& tr : spec) {
+    for (const Trans& tr : opt.spec) {
       if (first)
         first = false;
       else
@@ -226,6 +247,8 @@ static void write_cif(const gemmi::Mtz& mtz, const std::vector<Trans> spec,
       float v = row[tr.col_idx];
       if (tr.is_status)
         fputc(v == 0. ? 'f' : 'o', out);
+      else if (std::isnan(v))
+        fputc('?', out);  // TODO padding
       else
         fprintf(out, tr.format.c_str(), v);
     }
@@ -260,7 +283,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   if (verbose)
     fprintf(stderr, "Writing %s ...\n", cif_path);
-  std::vector<Trans> spec;
+  Options options;
+  options.mtz_path = mtz_path;
   try {
   std::vector<std::string> lines;
     if (p.options[Spec]) {
@@ -277,27 +301,15 @@ int GEMMI_MAIN(int argc, char **argv) {
       for (const char* line : default_spec)
         lines.emplace_back(line);
     }
-    spec = parse_spec(mtz, lines);
-    if (spec.empty())
-      gemmi::fail("Empty translation spec");
-    for (size_t i = 0; i != spec.size(); ++i)
-      for (size_t j = i + 1; j != spec.size(); ++j)
-        if (spec[i].refln_tag == spec[j].refln_tag)
-          gemmi::fail("duplicated output tag: " + spec[i].refln_tag);
-    // H, K, L must be the first columns in MTZ and are required in _refln
-    for (int i = 2; i != -1; --i)
-      if (!gemmi::in_vector_f([&](const Trans& t) { return t.col_idx == i; },
-                              spec)) {
-        spec.insert(spec.begin(), Trans{i, false, "index_h", "%g "});
-        spec.front().refln_tag.back() += i;
-      }
+    options.spec = parse_spec(mtz, lines);
   } catch (std::runtime_error& e) {
     fprintf(stderr, "Problem in translation spec: %s\n", e.what());
     return 2;
   }
+  options.block_name = p.options[BlockName] ? p.options[BlockName].arg : "mtz";
   try {
     gemmi::fileptr_t f_out = gemmi::file_open_or(cif_path, "w", stdout);
-    write_cif(mtz, spec, f_out.get());
+    write_cif(mtz, options, f_out.get());
   } catch (std::runtime_error& e) {
     fprintf(stderr, "ERROR writing %s: %s\n", cif_path, e.what());
     return 3;
