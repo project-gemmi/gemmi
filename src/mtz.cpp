@@ -4,12 +4,11 @@
 
 #include <gemmi/mtz.hpp>
 #include <gemmi/fileutil.hpp> // for file_open
-//#include <gemmi/sprintf.hpp>  // for to_str
 #define GEMMI_PROG mtz
 #include "options.h"
 #include <stdio.h>
 
-using namespace gemmi;
+using gemmi::Mtz;
 
 enum OptionIndex { Verbose=3, Headers, Dump, PrintTsv, PrintStats,
                    ToggleEndian };
@@ -36,43 +35,43 @@ static const option::Descriptor Usage[] = {
 };
 
 static void dump(const Mtz& mtz) {
-  std::printf("Title: %s\n", mtz.title.c_str());
-  std::printf("Number of Datasets = %zu\n\n", mtz.datasets.size());
+  printf("Title: %s\n", mtz.title.c_str());
+  printf("Number of Datasets = %zu\n\n", mtz.datasets.size());
   for (const Mtz::Dataset& ds : mtz.datasets) {
-    std::printf("Dataset %4d   %s > %s > %s:\n",
-                ds.number, ds.project_name.c_str(),
-                ds.crystal_name.c_str(), ds.dataset_name.c_str());
-    std::printf("        cell  %g %7g %7g  %6g %6g %6g\n",
-                ds.cell.a, ds.cell.b, ds.cell.c,
-                ds.cell.alpha, ds.cell.beta, ds.cell.gamma);
-    std::printf("  wavelength  %g\n", ds.wavelength);
+    printf("Dataset %4d   %s > %s > %s:\n",
+           ds.number, ds.project_name.c_str(),
+           ds.crystal_name.c_str(), ds.dataset_name.c_str());
+    printf("        cell  %g %7g %7g  %6g %6g %6g\n",
+           ds.cell.a, ds.cell.b, ds.cell.c,
+           ds.cell.alpha, ds.cell.beta, ds.cell.gamma);
+    printf("  wavelength  %g\n", ds.wavelength);
   }
-  std::printf("\nNumber of Columns = %d\n", mtz.ncol);
-  std::printf("Number of Reflections = %d\n", mtz.nreflections);
+  printf("\nNumber of Columns = %d\n", mtz.ncol);
+  printf("Number of Reflections = %d\n", mtz.nreflections);
   if (mtz.nbatches != 0)
-    std::printf("Number of Batches = %d\n", mtz.nbatches);
-  std::printf("Missing values marked as: %g\n", mtz.valm);
-  std::printf("Global Cell (obsolete):  %7.3f %7.3f %7.3f  %g %g %g\n",
-              mtz.cell.a, mtz.cell.b, mtz.cell.c,
-              mtz.cell.alpha, mtz.cell.beta, mtz.cell.gamma);
-  std::printf("Resolution: %.2f - %.2f A\n",
-              mtz.resolution_high(), mtz.resolution_low());
-  std::printf("Sort Order: %d %d %d %d %d\n",
-              mtz.sort_order[0], mtz.sort_order[1], mtz.sort_order[2],
-              mtz.sort_order[3], mtz.sort_order[4]);
-  std::printf("Space Group: %s\n", mtz.spacegroup_name.c_str());
-  std::printf("Space Group Number: %d\n", mtz.spacegroup_number);
-  std::printf("\nColumn    Type Dataset    Min        Max\n");
+    printf("Number of Batches = %d\n", mtz.nbatches);
+  printf("Missing values marked as: %g\n", mtz.valm);
+  printf("Global Cell (obsolete):  %7.3f %7.3f %7.3f  %g %g %g\n",
+         mtz.cell.a, mtz.cell.b, mtz.cell.c,
+         mtz.cell.alpha, mtz.cell.beta, mtz.cell.gamma);
+  printf("Resolution: %.2f - %.2f A\n",
+         mtz.resolution_high(), mtz.resolution_low());
+  printf("Sort Order: %d %d %d %d %d\n",
+         mtz.sort_order[0], mtz.sort_order[1], mtz.sort_order[2],
+         mtz.sort_order[3], mtz.sort_order[4]);
+  printf("Space Group: %s\n", mtz.spacegroup_name.c_str());
+  printf("Space Group Number: %d\n", mtz.spacegroup_number);
+  printf("\nColumn    Type Dataset    Min        Max\n");
   for (const Mtz::Column& col : mtz.columns)
-    std::printf("%-12s %c %2d %12.6g %10.6g\n",
-                col.label.c_str(), col.type, col.dataset_number,
-                col.min_value, col.max_value);
+    printf("%-12s %c %2d %12.6g %10.6g\n",
+           col.label.c_str(), col.type, col.dataset_number,
+           col.min_value, col.max_value);
   if (mtz.history.empty()) {
-    std::printf("\nNo history in the file.\n");
+    printf("\nNo history in the file.\n");
   } else {
-    std::printf("\nHistory (%zu lines):\n", mtz.history.size());
+    printf("\nHistory (%zu lines):\n", mtz.history.size());
     for (const std::string& hline : mtz.history)
-      std::printf("%s\n", hline.c_str());
+      printf("%s\n", hline.c_str());
   }
 }
 
@@ -87,7 +86,7 @@ static void print_tsv(const Mtz& mtz) {
 struct ColumnStats {
   float min_value = INFINITY;
   float max_value = -INFINITY;
-  Variance var;
+  gemmi::Variance var;
 };
 
 static void print_stats(const Mtz& mtz) {
@@ -103,16 +102,16 @@ static void print_stats(const Mtz& mtz) {
       stat.var.add_point(v);
     }
   }
-  std::printf("column type @dataset  completeness        min       max"
-              "       mean   stddev\n");
+  printf("column type @dataset  completeness        min       max"
+         "       mean   stddev\n");
   for (size_t i = 0; i != column_stats.size(); ++i) {
     const Mtz::Column& col = mtz.columns[i];
     const ColumnStats& stat = column_stats[i];
-    std::printf("%-14s %c @%d  %d (%6.2f%%) %9.5g %9.5g  %9.5g %8.4g\n",
-                col.label.c_str(), col.type, col.dataset_number,
-                stat.var.n, 100.0 * stat.var.n / mtz.nreflections,
-                stat.min_value, stat.max_value,
-                stat.var.mean_x, std::sqrt(stat.var.for_population()));
+    printf("%-14s %c @%d  %d (%6.2f%%) %9.5g %9.5g  %9.5g %8.4g\n",
+           col.label.c_str(), col.type, col.dataset_number,
+           stat.var.n, 100.0 * stat.var.n / mtz.nreflections,
+           stat.min_value, stat.max_value,
+           stat.var.mean_x, std::sqrt(stat.var.for_population()));
   }
 }
 
@@ -127,9 +126,9 @@ int GEMMI_MAIN(int argc, char **argv) {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       const char* path = p.nonOption(i);
       if (i != 0)
-        std::printf("\n\n");
+        printf("\n\n");
       if (verbose)
-        std::fprintf(stderr, "Reading %s ...\n", path);
+        fprintf(stderr, "Reading %s ...\n", path);
       gemmi::fileptr_t f = gemmi::file_open(path, "rb");
       Mtz mtz;
       try {
@@ -137,13 +136,13 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (p.options[ToggleEndian])
           mtz.toggle_endiannes();
       } catch (std::runtime_error& e) {
-        fail(std::string(e.what()) + ": " + path);
+        gemmi::fail(std::string(e.what()) + ": " + path);
       }
       if (p.options[Headers]) {
         char buf[81] = {0};
         mtz.seek_headers(f.get());
-        while (std::fread(buf, 1, 80, f.get()) != 0) {
-          std::printf("%s\n", gemmi::rtrim_str(buf).c_str());
+        while (fread(buf, 1, 80, f.get()) != 0) {
+          printf("%s\n", gemmi::rtrim_str(buf).c_str());
           if (gemmi::ialpha3_id(buf) == gemmi::ialpha3_id("END"))
             break;
         }
@@ -162,7 +161,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         print_stats(mtz);
     }
   } catch (std::runtime_error& e) {
-    std::fprintf(stderr, "ERROR: %s\n", e.what());
+    fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }
   return 0;

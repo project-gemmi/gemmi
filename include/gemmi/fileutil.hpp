@@ -36,9 +36,9 @@ inline std::string path_basename(const std::string& path,
 }
 
 // file operations
-typedef std::unique_ptr<FILE, decltype(&std::fclose)> fileptr_t;
+typedef std::unique_ptr<std::FILE, decltype(&std::fclose)> fileptr_t;
 
-inline fileptr_t file_open(const char *path, const char *mode) {
+inline fileptr_t file_open(const char* path, const char* mode) {
   std::FILE* file;
 #if defined(_WIN32) && defined(GEMMI_WINDOWS_PATHS_IN_UTF8)
   std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> convert;
@@ -52,7 +52,15 @@ inline fileptr_t file_open(const char *path, const char *mode) {
   return fileptr_t(file, &std::fclose);
 }
 
-inline std::size_t file_size(FILE* f, const std::string& path) {
+// helper function for treating "-" as stdin or stdout
+inline fileptr_t file_open_or(const char* path, const char* mode,
+                              std::FILE* dash_stream) {
+  if (path[0] == '-' && path[1] == '\0')
+    return fileptr_t(dash_stream, [](std::FILE*) { return 0; });
+  return file_open(path, mode);
+}
+
+inline std::size_t file_size(std::FILE* f, const std::string& path) {
   if (std::fseek(f, 0, SEEK_END) != 0)
     fail(path + ": fseek failed");
   long length = std::ftell(f);

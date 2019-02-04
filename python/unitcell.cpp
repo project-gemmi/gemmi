@@ -185,7 +185,8 @@ void add_mtz(py::module& m) {
     .def_readwrite("history", &Mtz::history)
     .def("resolution_high", &Mtz::resolution_high)
     .def("resolution_low", &Mtz::resolution_low)
-    .def("dataset", &Mtz::dataset, py::arg("number"))
+    .def("dataset", (Mtz::Dataset& (Mtz::*)(int)) &Mtz::dataset,
+         py::arg("number"))
     .def("count", &Mtz::count, py::arg("label"))
     .def("column_with_label", &Mtz::column_with_label, py::arg("label"),
          py::return_value_policy::reference_internal)

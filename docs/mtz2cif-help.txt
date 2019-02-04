@@ -1,0 +1,32 @@
+$ gemmi mtz2cif -h
+Usage:
+  gemmi mtz2cif [options] MTZ_FILE CIF_FILE
+Options:
+  -h, --help     Print usage and exit.
+  -V, --version  Print version and exit.
+  --verbose      Verbose output.
+  --spec=FILE    Column and format specification.
+  --print-spec   Print default spec and exit.
+
+If CIF_FILE is -, the output is printed to stdout.
+If spec is -, it is read from stdin.
+
+Lines in the spec file have format:
+  [FLAG] COLUMN TYPE TAG [FORMAT]
+for example:
+  SIGF_native * SIGF_meas_au 12.5e
+  FREE I pdbx_r_free_flag 3d
+FLAG (optional) is either ? or &:
+  ? = column is skipped if absent in the MTZ file.
+  & = column is skipped if previous line was skipped. Example:
+      ? I    J intensity_meas
+      & SIGI Q intensity_sigma
+COLUMN is MTZ column label. Columns H K L are added if not specified.
+  Alternative labels can be separated with | (e.g. FREE|FreeR_flag).
+TYPE is used for checking the columm type, unless it is '*'.
+TAG does not include category name, it is only the part after _refln.
+FORMAT (optional) is printf-like floating-point format:
+ - one of e, f, g with optional flag, width and precision
+ - flag is one of + - # _; '_' stands for ' ', for example '_.4f'
+ - since all numbers in MTZ are stored as float, the integer columns use
+   the same format as float. The format of _refln.status is ignored.

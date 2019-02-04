@@ -91,6 +91,9 @@ struct Mtz {
         return d;
     fail("MTZ file has no dataset number " + std::to_string(number));
   }
+  const Dataset& dataset(int number) const {
+    return const_cast<Mtz*>(this)->dataset(number);
+  }
   int count(const std::string& label) const {
     int n = 0;
     for (const Column& col : columns)
@@ -340,18 +343,21 @@ struct Mtz {
       for (float& f : raw_data)
         swap_four_bytes(&f);
   }
+
+  void read_all_headers(std::FILE* stream) {
+    read_first_bytes(stream);
+    read_main_headers(stream);
+    read_history_and_later_headers(stream);
+    setup_spacegroup();
+  }
 };
 
 
 inline Mtz read_mtz_stream(std::FILE* stream, bool with_data) {
   Mtz mtz;
-  mtz.read_first_bytes(stream);
-  mtz.read_main_headers(stream);
-  mtz.read_history_and_later_headers(stream);
-  mtz.setup_spacegroup();
-  if (with_data) {
+  mtz.read_all_headers(stream);
+  if (with_data)
     mtz.read_raw_data(stream);
-  }
   return mtz;
 }
 

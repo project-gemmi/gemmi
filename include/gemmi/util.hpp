@@ -165,6 +165,11 @@ bool in_vector(const T& x, const std::vector<T>& v) {
   return std::find(v.begin(), v.end(), x) != v.end();
 }
 
+template <typename F, typename T>
+bool in_vector_f(F f, const std::vector<T>& v) {
+  return std::find_if(v.begin(), v.end(), f) != v.end();
+}
+
 template <class T>
 void vector_move_extend(std::vector<T>& dst, std::vector<T>&& src) {
   if (dst.empty())

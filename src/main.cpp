@@ -13,6 +13,7 @@ int grep_main(int argc, char** argv);
 int map_main(int argc, char** argv);
 int mask_main(int argc, char** argv);
 int mtz_main(int argc, char** argv);
+int mtz2cif_main(int argc, char** argv);
 int residues_main(int argc, char** argv);
 int rmsz_main(int argc, char** argv);
 int sg_main(int argc, char** argv);
@@ -36,6 +37,7 @@ static SubCmd subcommands[] = {
   CMD(map, "print info or modify a CCP4 map"),
   CMD(mask, "make mask in the CCP4 format"),
   CMD(mtz, "print info about MTZ reflection file"),
+  CMD(mtz2cif, "convert MTZ to structure factor mmCIF"),
   CMD(residues, "list residues from a coordinate file"),
   CMD(rmsz, "validate geometry using monomer library"),
   CMD(sg, "info about space groups"),
@@ -44,8 +46,8 @@ static SubCmd subcommands[] = {
 
 static void print_usage() {
   printf("gemmi " GEMMI_VERSION "\n"
-         "Command-line utility that accompanies the GEMMI library.\n"
-         "Developed jointly by CCP4 and Global Phasing Ltd.\n"
+         "Command-line utility that accompanies the GEMMI library,\n"
+         "which is a joint project of CCP4 and Global Phasing Ltd.\n"
          "Licence: Mozilla Public License 2.0.\n"
          "Copyright 2017-2019 Global Phasing Ltd.\n"
          "https://github.com/project-gemmi/gemmi\n\n"

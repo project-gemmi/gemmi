@@ -345,6 +345,14 @@ mtz
 .. literalinclude:: mtz-help.txt
    :language: console
 
+mtz2cif
+=======
+
+Converts reflection data from MTZ to mmCIF.
+
+.. literalinclude:: mtz2cif-help.txt
+   :language: console
+
 residues
 ========
 

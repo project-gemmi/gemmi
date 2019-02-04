@@ -1,7 +1,7 @@
 $ gemmi -h
 gemmi 0.1.7
-Command-line utility that accompanies the GEMMI library.
-Developed jointly by CCP4 and Global Phasing Ltd.
+Command-line utility that accompanies the GEMMI library,
+which is a joint project of CCP4 and Global Phasing Ltd.
 Licence: Mozilla Public License 2.0.
 Copyright 2017-2019 Global Phasing Ltd.
 https://github.com/project-gemmi/gemmi
@@ -17,6 +17,7 @@ Commands:
  map           print info or modify a CCP4 map
  mask          make mask in the CCP4 format
  mtz           print info about MTZ reflection file
+ mtz2cif       convert MTZ to structure factor mmCIF
  residues      list residues from a coordinate file
  rmsz          validate geometry using monomer library
  sg            info about space groups
