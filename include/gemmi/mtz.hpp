@@ -217,7 +217,7 @@ struct Mtz {
         if (*args != 'N') {
           const char* endptr;
           float v = (float) simple_atof(args, &endptr);
-          if (*endptr == '\0' || isspace_c(*endptr))
+          if (*endptr == '\0' || is_space(*endptr))
             valm = v;
           else
             warn("Unexpected VALM value: " + rtrim_str(args));

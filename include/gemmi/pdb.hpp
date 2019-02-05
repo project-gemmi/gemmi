@@ -46,7 +46,7 @@ inline double read_double(const char* p, int field_length) {
   int sign = 1;
   double d = 0;
   int i = 0;
-  while (i < field_length && isspace_c(p[i]))
+  while (i < field_length && is_space(p[i]))
     ++i;
   if (p[i] == '-') {
     ++i;
@@ -66,7 +66,7 @@ inline double read_double(const char* p, int field_length) {
 
 inline std::string read_string(const char* p, int field_length) {
   // left trim
-  while (field_length != 0 && isspace_c(*p)) {
+  while (field_length != 0 && is_space(*p)) {
     ++p;
     --field_length;
   }
@@ -77,7 +77,7 @@ inline std::string read_string(const char* p, int field_length) {
       break;
     }
   // right trim
-  while (field_length != 0 && isspace_c(p[field_length-1]))
+  while (field_length != 0 && is_space(p[field_length-1]))
     --field_length;
   return std::string(p, field_length);
 }
@@ -95,7 +95,7 @@ inline signed char read_charge(char digit, char sign) {
   if (sign >= '0' && sign <= '9')
     std::swap(digit, sign);
   if (digit >= '0' && digit <= '9') {
-    if (sign != '+' && sign != '-' && sign != '\0' && !isspace_c(sign))
+    if (sign != '+' && sign != '-' && sign != '\0' && !is_space(sign))
       fail("Wrong format for charge: " +
            std::string(1, digit) + std::string(1, sign));
     return (digit - '0') * (sign == '-' ? -1 : 1);

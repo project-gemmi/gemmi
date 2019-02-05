@@ -19,16 +19,18 @@
 
 namespace gemmi {
 
-// equivalent of std::isspace for C locale
-inline bool isspace_c(char c) {
+// equivalent of std::isspace for C locale (no handling of EOF)
+inline bool is_space(char c) {
   return c == ' ' || c == '\t' || c == '\n'|| c == '\f' ||
          c == '\v' || c == '\r';
 }
 
+// equivalent of std::isblank for C locale (no handling of EOF)
 inline bool is_blank(char c) {
   return c == ' ' || c == '\t';
 }
 
+// equivalent of std::isdigit for C locale (no handling of EOF)
 inline bool is_digit(char c) {
   return c >= '0' && c <= '9';
 }
@@ -42,7 +44,7 @@ inline const char* skip_blank(const char* p) {
 
 inline const char* skip_word(const char* p) {
   if (p)
-    while (*p != '\0' && !isspace_c(*p))
+    while (*p != '\0' && !is_space(*p))
       ++p;
   return p;
 }
@@ -63,7 +65,7 @@ inline int string_to_int(const char* p, bool checked, size_t length=0) {
   int mult = -1;
   int n = 0;
   size_t i = 0;
-  while ((length == 0 || i < length) && isspace_c(p[i]))
+  while ((length == 0 || i < length) && is_space(p[i]))
     ++i;
   if (p[i] == '-') {
     mult = 1;
@@ -78,7 +80,7 @@ inline int string_to_int(const char* p, bool checked, size_t length=0) {
     has_digits = true;
   }
   if (checked) {
-    while ((length == 0 || i < length) && isspace_c(p[i]))
+    while ((length == 0 || i < length) && is_space(p[i]))
       ++i;
     if (!has_digits || p[i] != '\0')
       throw std::invalid_argument("not an integer: " +
@@ -94,7 +96,7 @@ inline int string_to_int(const std::string& str, bool checked) {
 inline int simple_atoi(const char* p, const char** endptr=nullptr) {
   int mult = -1;
   int n = 0;
-  while (isspace_c(*p))
+  while (is_space(*p))
     ++p;
   if (*p == '-') {
     mult = 1;
@@ -113,7 +115,7 @@ inline int simple_atoi(const char* p, const char** endptr=nullptr) {
 // no checking for overflow
 // no support for scientific notation
 inline double simple_atof(const char* p, const char** endptr=nullptr) {
-  while (isspace_c(*p))
+  while (is_space(*p))
     ++p;
   int sign = 1;
   if (*p == '-') {
