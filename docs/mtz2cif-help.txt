@@ -8,6 +8,7 @@ Options:
   --spec=FILE            Column and format specification.
   --print-spec           Print default spec and exit.
   -b NAME, --block=NAME  mmCIF block name: data_NAME (default: mtz).
+  --skip-empty           Skip reflections with no values.
 
 If CIF_FILE is -, the output is printed to stdout.
 If spec is -, it is read from stdin.
@@ -18,8 +19,9 @@ for example:
   SIGF_native * SIGF_meas_au 12.5e
   FREE I pdbx_r_free_flag 3.0f
 FLAG (optional) is either ? or &:
-  ? = column is skipped if absent in the MTZ file.
-  & = column is skipped if previous line was skipped. Example:
+  ? = ignored if no column is the MTZ file has this name.
+  & = ignored if the previous line was ignored.
+  Example:
       ? I    J intensity_meas
       & SIGI Q intensity_sigma
 COLUMN is MTZ column label. Columns H K L are added if not specified.

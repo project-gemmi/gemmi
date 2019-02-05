@@ -17,7 +17,7 @@
 #define GEMMI_PROG mtz2cif
 #include "options.h"
 
-enum OptionIndex { Verbose=3, Spec, PrintSpec, BlockName };
+enum OptionIndex { Verbose=3, Spec, PrintSpec, BlockName, SkipEmpty };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -33,6 +33,8 @@ static const option::Descriptor Usage[] = {
     "  --print-spec  \tPrint default spec and exit." },
   { BlockName, 0, "b", "block", Arg::Required,
     "  -b NAME, --block=NAME  \tmmCIF block name: data_NAME (default: mtz)." },
+  { SkipEmpty, 0, "", "skip-empty", Arg::None,
+    "  --skip-empty  \tSkip reflections with no values." },
   { NoOp, 0, "", "", Arg::None,
     "\nIf CIF_FILE is -, the output is printed to stdout."
     "\nIf spec is -, it is read from stdin."
@@ -42,8 +44,9 @@ static const option::Descriptor Usage[] = {
     "\n  SIGF_native * SIGF_meas_au 12.5e"
     "\n  FREE I pdbx_r_free_flag 3.0f"
     "\nFLAG (optional) is either ? or &:"
-    "\n  ? = column is skipped if absent in the MTZ file."
-    "\n  & = column is skipped if previous line was skipped. Example:"
+    "\n  ? = ignored if no column is the MTZ file has this name."
+    "\n  & = ignored if the previous line was ignored."
+    "\n  Example:"
     "\n      ? I    J intensity_meas"
     "\n      & SIGI Q intensity_sigma"
     "\nCOLUMN is MTZ column label. Columns H K L are added if not specified."
@@ -61,13 +64,15 @@ static const option::Descriptor Usage[] = {
 
 struct Trans {
   int col_idx;
-  bool is_status;
+  bool is_status = false;
   std::string refln_tag;
-  std::string format;
+  std::string format = "%g";
+  int min_width = 0;
 };
 
 struct Options {
   std::vector<Trans> spec;
+  std::vector<int> value_indices;  // used for --skip_empty
   const char* block_name;
   const char* mtz_path;
 };
@@ -112,27 +117,30 @@ static int find_column_index(const std::string& column, const gemmi::Mtz& mtz) {
   return idx;
 }
 
-void check_format(const std::string& fmt) {
+int check_format(const std::string& fmt) {
   // expected format: [#_+-]?\d*(\.\d+)?[fFgGeEc]
+  int min_width = 0;
   if (fmt.find('%') != std::string::npos)
     gemmi::fail("Specify format without %. Got: " + fmt);
-  size_t pos = 0;
-  if (fmt[0] == '_' || fmt[0] == '+' || fmt[0] == '-' || fmt[0] == '#')
-   pos = 1;
-  while (gemmi::is_digit(fmt[pos]))
-    ++pos;
-  if (fmt[pos] == '.' && gemmi::is_digit(fmt[pos+1])) {
-    pos += 2;
-    while (gemmi::is_digit(fmt[pos]))
-      ++pos;
+  const char* p = fmt.c_str();
+  if (*p == '_' || *p == '+' || *p == '-' || *p == '#')
+   ++p;
+  if (gemmi::is_digit(*p)) {
+    min_width = *p++ - '0';
+    if (gemmi::is_digit(*p)) // two digits of width number max
+      min_width = min_width * 10 + (*p++ - '0');
   }
-  if (std::isalpha(fmt[pos]))
-    ++pos;
-  if (fmt[pos] != '\0')
+  if (*p == '.' && gemmi::is_digit(*(p+1))) {
+    p += 2;
+    if (gemmi::is_digit(*p)) // two digits of precision numbers max
+      ++p;
+  }
+  if (!std::isalpha(*p) || *(p+1) != '\0')
     gemmi::fail("wrong format : " + fmt + "\nCorrect examples: g, .4f, 12.5e");
-  char c = gemmi::alpha_up(fmt.back());
+  char c = gemmi::alpha_up(*p);
   if (c != 'F' && c != 'G' && c != 'E')
     gemmi::fail("expected floating-point format, got: " + fmt);
+  return min_width;
 }
 
 static std::vector<Trans> parse_spec(const gemmi::Mtz& mtz,
@@ -176,10 +184,8 @@ static std::vector<Trans> parse_spec(const gemmi::Mtz& mtz,
                   std::string(1, col.type) + " not " + type);
     tr.is_status = gemmi::iequal(tr.refln_tag, "status");
     std::string fmt = gemmi::read_word(p, &p);
-    if (fmt.empty()) {
-      tr.format = "%g";
-    } else if (!tr.is_status) {
-      check_format(fmt);
+    if (!fmt.empty() && !tr.is_status) {
+      tr.min_width = check_format(fmt);
       tr.format = "%" + fmt;
       if (tr.format[1] == '_')
         tr.format[1] = ' ';
@@ -196,8 +202,11 @@ static std::vector<Trans> parse_spec(const gemmi::Mtz& mtz,
   for (int i = 2; i != -1; --i)
     if (!gemmi::in_vector_f([&](const Trans& t) { return t.col_idx == i; },
                             spec)) {
-      spec.insert(spec.begin(), Trans{i, false, "index_h", "%g "});
-      spec.front().refln_tag.back() += i;
+      Trans tr;
+      tr.col_idx = i;
+      tr.refln_tag = "index_";
+      tr.refln_tag += ('h' + i); // h, k or l
+      spec.insert(spec.begin(), tr);
     }
   return spec;
 }
@@ -238,6 +247,10 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
   }
   for (int i = 0; i != mtz.nreflections; ++i) {
     const float* row = &mtz.raw_data[i*mtz.ncol];
+    if (!opt.value_indices.empty() &&
+        std::all_of(opt.value_indices.begin(), opt.value_indices.end(),
+                    [&](int n) { return std::isnan(row[n]); }))
+      continue;
     bool first = true;
     for (const Trans& tr : opt.spec) {
       if (first)
@@ -245,12 +258,15 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
       else
         fputc(' ', out);
       float v = row[tr.col_idx];
-      if (tr.is_status)
+      if (tr.is_status) {
         fputc(v == 0. ? 'f' : 'o', out);
-      else if (std::isnan(v))
-        fputc('?', out);  // TODO padding
-      else
+      } else if (std::isnan(v)) {
+        for (int j = 1; j < tr.min_width; ++j)
+          fputc(' ', out);
+        fputc('?', out);
+      } else {
         fprintf(out, tr.format.c_str(), v);
+      }
     }
     fputc('\n', out);
   }
@@ -293,7 +309,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::fileptr_t f_spec = gemmi::file_open_or(spec_path, "r", stdin);
       while (fgets(buf, sizeof(buf), f_spec.get()) != NULL) {
         const char* start = gemmi::skip_blank(buf);
-        if (*start != '\0' && *start != '#')
+        if (*start != '\0' && *start != '\r' && *start != '\n' && *start != '#')
           lines.emplace_back(start);
       }
     } else {
@@ -306,6 +322,12 @@ int GEMMI_MAIN(int argc, char **argv) {
     fprintf(stderr, "Problem in translation spec: %s\n", e.what());
     return 2;
   }
+  if (p.options[SkipEmpty])
+    for (const Trans& tr : options.spec) {
+      const gemmi::Mtz::Column& col = mtz.columns[tr.col_idx];
+      if (col.type != 'H' && col.type != 'I')
+        options.value_indices.push_back(tr.col_idx);
+    }
   options.block_name = p.options[BlockName] ? p.options[BlockName].arg : "mtz";
   try {
     gemmi::fileptr_t f_out = gemmi::file_open_or(cif_path, "w", stdout);
