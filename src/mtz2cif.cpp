@@ -44,7 +44,7 @@ static const option::Descriptor Usage[] = {
     "\n  SIGF_native * SIGF_meas_au 12.5e"
     "\n  FREE I pdbx_r_free_flag 3.0f"
     "\nFLAG (optional) is either ? or &:"
-    "\n  ? = ignored if no column is the MTZ file has this name."
+    "\n  ? = ignored if no column in the MTZ file has this name."
     "\n  & = ignored if the previous line was ignored."
     "\n  Example:"
     "\n      ? I    J intensity_meas"

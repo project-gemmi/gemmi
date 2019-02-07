@@ -19,7 +19,7 @@ for example:
   SIGF_native * SIGF_meas_au 12.5e
   FREE I pdbx_r_free_flag 3.0f
 FLAG (optional) is either ? or &:
-  ? = ignored if no column is the MTZ file has this name.
+  ? = ignored if no column in the MTZ file has this name.
   & = ignored if the previous line was ignored.
   Example:
       ? I    J intensity_meas
