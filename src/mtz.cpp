@@ -80,7 +80,7 @@ static void print_tsv(const Mtz& mtz) {
   for (int i = 0; i < ncol; ++i)
     printf("%s%c", mtz.columns[i].label.c_str(), i + 1 != ncol ? '\t' : '\n');
   for (int i = 0; i < mtz.nreflections * ncol; ++i)
-    printf("%g%c", mtz.raw_data[i], (i + 1) % ncol != 0 ? '\t' : '\n');
+    printf("%g%c", mtz.data[i], (i + 1) % ncol != 0 ? '\t' : '\n');
 }
 
 struct ColumnStats {
@@ -91,8 +91,8 @@ struct ColumnStats {
 
 static void print_stats(const Mtz& mtz) {
   std::vector<ColumnStats> column_stats(mtz.columns.size());
-  for (size_t i = 0; i != mtz.raw_data.size(); ++i) {
-    float v = mtz.raw_data[i];
+  for (size_t i = 0; i != mtz.data.size(); ++i) {
+    float v = mtz.data[i];
     if (!std::isnan(v)) {
       ColumnStats& stat = column_stats[i % column_stats.size()];
       if (v < stat.min_value)

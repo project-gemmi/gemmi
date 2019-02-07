@@ -128,7 +128,7 @@ void add_unitcell(py::module& m) {
 
 template<typename F>
 py::array_t<float> make_new_column(const Mtz& mtz, int dataset, F f) {
-  if (!mtz.has_raw_data())
+  if (!mtz.has_data())
     throw std::runtime_error("MTZ: the data must be read first");
   const UnitCell& cell = mtz.get_cell(dataset);
   if (!cell.is_crystal())
@@ -138,8 +138,7 @@ py::array_t<float> make_new_column(const Mtz& mtz, int dataset, F f) {
   float* ptr = (float*) buf.ptr;
   for (int i = 0; i < mtz.nreflections; ++i) {
     int hidx = mtz.ncol * i;
-    ptr[i] = f(cell,
-               mtz.raw_data[hidx], mtz.raw_data[hidx+1], mtz.raw_data[hidx+2]);
+    ptr[i] = f(cell, mtz.data[hidx], mtz.data[hidx+1], mtz.data[hidx+2]);
   }
   return arr;
 }
@@ -164,8 +163,8 @@ void add_mtz(py::module& m) {
   py::class_<Mtz> mtz(m, "Mtz", py::buffer_protocol());
   mtz.def(py::init<>())
     .def_buffer([](Mtz &self) {
-      int nrow = self.has_raw_data() ? self.nreflections : 0;
-      return py::buffer_info(self.raw_data.data(),
+      int nrow = self.has_data() ? self.nreflections : 0;
+      return py::buffer_info(self.data.data(),
                              4, py::format_descriptor<float>::format(),
                              2, {nrow, self.ncol}, // dimensions
                              {4 * self.ncol, 4});  // strides
@@ -219,15 +218,34 @@ void add_mtz(py::module& m) {
                self.project_name + "/" + self.crystal_name + "/" +
                self.dataset_name + ">";
     });
-  py::class_<Mtz::Column>(mtz, "Column")
+  py::class_<Mtz::Column>(mtz, "Column", py::buffer_protocol())
+    .def_buffer([](Mtz::Column& self) {
+      return py::buffer_info(self.parent->data.data() + self.idx,
+                             4, py::format_descriptor<float>::format(),
+                             1, {self.size()},      // dimensions
+                             {4 * self.stride()});  // strides
+    })
+    .def_property_readonly("array", [](const Mtz::Column& self) {
+      return py::array_t<float>({self.size()}, {4 * self.stride()},
+                                self.parent->data.data() + self.idx,
+                                py::cast(self));
+    }, py::return_value_policy::reference_internal)
     .def_readwrite("dataset_number", &Mtz::Column::dataset_number)
     .def_readwrite("type", &Mtz::Column::type)
     .def_readwrite("label", &Mtz::Column::label)
     .def_readwrite("min_value", &Mtz::Column::min_value)
     .def_readwrite("max_value", &Mtz::Column::max_value)
     .def_readwrite("source", &Mtz::Column::source)
+    .def("__len__", &Mtz::Column::size)
+    .def("__getitem__", [](const Mtz::Column& self, int index) -> float {
+        return self.at(index >= 0 ? index : index + self.size());
+    }, py::arg("index"))
+    .def("__iter__", [](Mtz::Column& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>())
     .def("__repr__", [](const Mtz::Column& self) {
-        return "<gemmi.Mtz.Column " + self.label + ">";
+        return "<gemmi.Mtz.Column " + self.label + " type " + std::string(1, self.type) +
+               ">";
     });
 
   m.def("read_mtz_file", &read_mtz_file);

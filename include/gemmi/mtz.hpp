@@ -5,17 +5,24 @@
 #ifndef GEMMI_MTZ_HPP_
 #define GEMMI_MTZ_HPP_
 
+#include <cassert>
 #include <cstdint>   // for int32_t
 #include <cstdio>    // for FILE, fread
 #include <cstring>   // for memcpy
 #include <array>
 #include <string>
 #include <vector>
+#include "atox.hpp"      // for simple_atof, read_word, string_to_int
+#include "iterator.hpp"  // for StrideIter
 #include "fileutil.hpp"  // for file_open, is_little_endian, ...
 #include "symmetry.hpp"  // for find_spacegroup_by_name, SpaceGroup
 #include "unitcell.hpp"  // for UnitCell
 #include "util.hpp"      // for fail
-#include "atox.hpp"      // for simple_atof, read_word, string_to_int
+
+#ifdef  __INTEL_COMPILER
+# pragma warning push
+# pragma warning disable 597  // for StrideIter, the same as in cifdoc.hpp.
+#endif
 
 namespace gemmi {
 
@@ -27,6 +34,29 @@ struct Mtz {
     float min_value = NAN;
     float max_value = NAN;
     std::string source;  // from COLSRC
+    Mtz* parent;
+    std::size_t idx;
+
+    bool has_data() const { return parent->has_data(); }
+    int size() const { return has_data() ? parent->nreflections : 0; }
+    int stride() const { return parent->ncol; }
+    float& operator[](int n) { return parent->data[idx + n * parent->ncol]; }
+    float operator[](int n) const { return parent->data[idx + n * parent->ncol]; }
+    float& at(int n) { return parent->data.at(idx + n * parent->ncol); }
+    float at(int n) const { return parent->data.at(idx + n * parent->ncol); }
+    using iterator = StrideIter<float>;
+    iterator begin() {
+      assert(parent);
+      assert(&parent->columns[idx] == this);
+      return iterator({parent->data.data(), idx, (unsigned) parent->ncol});
+    }
+    iterator end() {
+      return iterator({parent->data.data() + parent->data.size(),
+                       idx, (unsigned) parent->ncol});
+    }
+    using const_iterator = StrideIter<const float>;
+    const_iterator begin() const { return const_cast<Column*>(this)->begin(); }
+    const_iterator end() const { return const_cast<Column*>(this)->end(); }
   };
 
   struct Dataset {
@@ -58,9 +88,39 @@ struct Mtz {
   std::vector<Dataset> datasets;
   std::vector<Column> columns;
   std::vector<std::string> history;
-  std::vector<float> raw_data;
+  std::vector<float> data;
 
   FILE* warnings = nullptr;
+
+  Mtz() = default;
+  Mtz(Mtz&& o) noexcept
+    : same_byte_order(o.same_byte_order),
+      header_offset(o.header_offset),
+      version_stamp(std::move(o.version_stamp)),
+      title(std::move(o.title)),
+      ncol(o.ncol),
+      nreflections(o.nreflections),
+      nbatches(o.nbatches),
+      sort_order(std::move(o.sort_order)),
+      min_1_d2(o.min_1_d2),
+      max_1_d2(o.max_1_d2),
+      valm(o.valm),
+      nsymop(o.nsymop),
+      cell(std::move(o.cell)),
+      spacegroup_number(o.spacegroup_number),
+      spacegroup_name(std::move(o.spacegroup_name)),
+      symops(std::move(o.symops)),
+      spacegroup(o.spacegroup),
+      datasets(std::move(o.datasets)),
+      columns(std::move(o.columns)),
+      history(std::move(o.history)),
+      data(std::move(o.data)),
+      warnings(o.warnings) {
+    for (Mtz::Column& col : columns)
+      col.parent = this;
+  }
+  Mtz(Mtz const&) = delete;
+  Mtz& operator=(Mtz const&) = delete;
 
   // Functions to use after MTZ headers (and data) is read.
 
@@ -113,8 +173,9 @@ struct Mtz {
         return &col;
     return nullptr;
   }
-  bool has_raw_data() const {
-    return raw_data.size() == (size_t) ncol * nreflections;
+
+  bool has_data() const {
+    return data.size() == (size_t) ncol * nreflections;
   }
 
   // Functions for reading MTZ headers and data.
@@ -231,6 +292,8 @@ struct Mtz {
         col.min_value = (float) simple_atof(args, &args);
         col.max_value = (float) simple_atof(args, &args);
         col.dataset_number = simple_atoi(args);
+        col.parent = this;
+        col.idx = columns.size() - 1;
         break;
       }
       case ialpha4_id("COLS"):
@@ -333,14 +396,14 @@ struct Mtz {
   }
 
   void read_raw_data(std::FILE* stream) {
-    raw_data.resize(ncol * nreflections);
+    data.resize(ncol * nreflections);
     if (std::fseek(stream, 80, SEEK_SET) != 0)
       fail("Cannot rewind to the MTZ data.");
     size_t n = ncol * nreflections;
-    if (std::fread(raw_data.data(), 4, n, stream) != n)
+    if (std::fread(data.data(), 4, n, stream) != n)
       fail("Error when reading MTZ data");
     if (!same_byte_order)
-      for (float& f : raw_data)
+      for (float& f : data)
         swap_four_bytes(&f);
   }
 
@@ -369,6 +432,10 @@ inline Mtz read_mtz_file(const std::string& path) {
     fail(std::string(e.what()) + ": " + path);
   }
 }
+
+#ifdef  __INTEL_COMPILER
+# pragma warning pop
+#endif
 
 } // namespace gemmi
 #endif
