@@ -24,15 +24,15 @@ inline Residue make_residue_from_chemcomp_block(const cif::Block& block,
   std::array<std::string, 3> xyz_tags;
   switch (kind) {
     case ChemCompModel::Xyz:
-      xyz_tags = {"x", "y", "z"};
+      xyz_tags = {{"x", "y", "z"}};
       break;
     case ChemCompModel::Example:
-      xyz_tags = {"model_Cartn_x", "model_Cartn_y", "model_Cartn_z"};
+      xyz_tags = {{"model_Cartn_x", "model_Cartn_y", "model_Cartn_z"}};
       break;
     case ChemCompModel::Ideal:
-      xyz_tags = {"pdbx_model_Cartn_x_ideal",
-                  "pdbx_model_Cartn_y_ideal",
-                  "pdbx_model_Cartn_z_ideal"};
+      xyz_tags = {{"pdbx_model_Cartn_x_ideal",
+                   "pdbx_model_Cartn_y_ideal",
+                   "pdbx_model_Cartn_z_ideal"}};
       break;
   }
   Residue res;
