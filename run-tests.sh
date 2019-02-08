@@ -11,7 +11,7 @@ export PYTHONPATH=$BUILD_DIR
 python3 -m unittest discover -s tests
 # Where python 2 and 3 output differ, the docs have output from v3.
 # So 'make doctest' works only if sphinx-build was installed for python3.
-(cd docs && make doctest SPHINXOPTS="-q -n")
+(cd docs && IN_DOCTEST=1 make doctest SPHINXOPTS="-q -n -E")
 flake8 docs/ examples/ tests/ tools/ setup.py
 
 # check if each header can be compiled on its own

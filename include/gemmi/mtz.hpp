@@ -28,7 +28,7 @@ namespace gemmi {
 
 struct Mtz {
   struct Column {
-    int dataset_number;
+    int dataset_id;
     char type;
     std::string label;
     float min_value = NAN;
@@ -60,7 +60,7 @@ struct Mtz {
   };
 
   struct Dataset {
-    int number;
+    int id;
     std::string project_name;
     std::string crystal_name;
     std::string dataset_name;
@@ -129,7 +129,7 @@ struct Mtz {
 
   UnitCell& get_cell(int dataset=-1) {
     for (Dataset& ds : datasets)
-      if (ds.number == dataset && ds.cell.is_crystal())
+      if (ds.id == dataset && ds.cell.is_crystal())
         return ds.cell;
     return cell;
   }
@@ -143,16 +143,16 @@ struct Mtz {
       fail("MTZ dataset not found (missing DATASET header line?).");
     return datasets.back();
   }
-  Dataset& dataset(int number) {
-    if ((size_t)number < datasets.size() && datasets[number].number == number)
-      return datasets[number];
+  Dataset& dataset(int id) {
+    if ((size_t)id < datasets.size() && datasets[id].id == id)
+      return datasets[id];
     for (Dataset& d : datasets)
-      if (d.number == number)
+      if (d.id == id)
         return d;
-    fail("MTZ file has no dataset number " + std::to_string(number));
+    fail("MTZ file has no dataset with ID " + std::to_string(id));
   }
-  const Dataset& dataset(int number) const {
-    return const_cast<Mtz*>(this)->dataset(number);
+  const Dataset& dataset(int id) const {
+    return const_cast<Mtz*>(this)->dataset(id);
   }
   int count(const std::string& label) const {
     int n = 0;
@@ -291,7 +291,7 @@ struct Mtz {
         col.type = read_word(args, &args)[0];
         col.min_value = (float) simple_atof(args, &args);
         col.max_value = (float) simple_atof(args, &args);
-        col.dataset_number = simple_atoi(args);
+        col.dataset_id = simple_atoi(args);
         col.parent = this;
         col.idx = columns.size() - 1;
         break;
@@ -310,30 +310,30 @@ struct Mtz {
         break;
       case ialpha4_id("PROJ"):
         datasets.emplace_back();
-        datasets.back().number = simple_atoi(args, &args);
+        datasets.back().id = simple_atoi(args, &args);
         datasets.back().project_name = read_word(skip_word(args));
         break;
       case ialpha4_id("CRYS"):
-        if (simple_atoi(args, &args) == last_dataset().number)
+        if (simple_atoi(args, &args) == last_dataset().id)
           datasets.back().crystal_name = read_word(args);
         else
           warn("MTZ CRYSTAL line: unusual numbering.");
         break;
       case ialpha4_id("DATA"):
-        if (simple_atoi(args, &args) == last_dataset().number)
+        if (simple_atoi(args, &args) == last_dataset().id)
           datasets.back().dataset_name = read_word(args);
         else
           warn("MTZ DATASET line: unusual numbering.");
         break;
       case ialpha4_id("DCEL"):
-        if (simple_atoi(args, &args) == last_dataset().number)
+        if (simple_atoi(args, &args) == last_dataset().id)
           datasets.back().cell = read_cell_parameters(args);
         else
           warn("MTZ DCELL line: unusual numbering.");
         break;
       // case("DRES"): not in use yet
       case ialpha4_id("DWAV"):
-        if (simple_atoi(args, &args) == last_dataset().number)
+        if (simple_atoi(args, &args) == last_dataset().id)
           datasets.back().wavelength = simple_atof(args);
         else
           warn("MTZ DWAV line: unusual numbering.");

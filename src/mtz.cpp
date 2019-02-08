@@ -39,7 +39,7 @@ static void dump(const Mtz& mtz) {
   printf("Number of Datasets = %zu\n\n", mtz.datasets.size());
   for (const Mtz::Dataset& ds : mtz.datasets) {
     printf("Dataset %4d   %s > %s > %s:\n",
-           ds.number, ds.project_name.c_str(),
+           ds.id, ds.project_name.c_str(),
            ds.crystal_name.c_str(), ds.dataset_name.c_str());
     printf("        cell  %g %7g %7g  %6g %6g %6g\n",
            ds.cell.a, ds.cell.b, ds.cell.c,
@@ -64,7 +64,7 @@ static void dump(const Mtz& mtz) {
   printf("\nColumn    Type Dataset    Min        Max\n");
   for (const Mtz::Column& col : mtz.columns)
     printf("%-12s %c %2d %12.6g %10.6g\n",
-           col.label.c_str(), col.type, col.dataset_number,
+           col.label.c_str(), col.type, col.dataset_id,
            col.min_value, col.max_value);
   if (mtz.history.empty()) {
     printf("\nNo history in the file.\n");
@@ -108,7 +108,7 @@ static void print_stats(const Mtz& mtz) {
     const Mtz::Column& col = mtz.columns[i];
     const ColumnStats& stat = column_stats[i];
     printf("%-14s %c @%d  %d (%6.2f%%) %9.5g %9.5g  %9.5g %8.4g\n",
-           col.label.c_str(), col.type, col.dataset_number,
+           col.label.c_str(), col.type, col.dataset_id,
            stat.var.n, 100.0 * stat.var.n / mtz.nreflections,
            stat.min_value, stat.max_value,
            stat.var.mean_x, std::sqrt(stat.var.for_population()));

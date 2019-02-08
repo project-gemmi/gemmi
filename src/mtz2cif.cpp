@@ -241,7 +241,7 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
   fprintf(out, "loop_\n");
   for (const Trans& tr : opt.spec) {
     const gemmi::Mtz::Column& col = mtz.columns.at(tr.col_idx);
-    const gemmi::Mtz::Dataset& ds = mtz.dataset(col.dataset_number);
+    const gemmi::Mtz::Dataset& ds = mtz.dataset(col.dataset_id);
     fprintf(out, "_refln.%-26s # %-14s from dataset %s\n",
             tr.refln_tag.c_str(), col.label.c_str(), ds.dataset_name.c_str());
   }

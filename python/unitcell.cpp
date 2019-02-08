@@ -185,7 +185,7 @@ void add_mtz(py::module& m) {
     .def("resolution_high", &Mtz::resolution_high)
     .def("resolution_low", &Mtz::resolution_low)
     .def("dataset", (Mtz::Dataset& (Mtz::*)(int)) &Mtz::dataset,
-         py::arg("number"))
+         py::arg("id"))
     .def("count", &Mtz::count, py::arg("label"))
     .def("column_with_label", &Mtz::column_with_label, py::arg("label"),
          py::return_value_policy::reference_internal)
@@ -207,14 +207,14 @@ void add_mtz(py::module& m) {
                std::to_string(self.nreflections) + " reflections>";
     });
   py::class_<Mtz::Dataset>(mtz, "Dataset")
-    .def_readwrite("number", &Mtz::Dataset::number)
+    .def_readwrite("id", &Mtz::Dataset::id)
     .def_readwrite("project_name", &Mtz::Dataset::project_name)
     .def_readwrite("crystal_name", &Mtz::Dataset::crystal_name)
     .def_readwrite("dataset_name", &Mtz::Dataset::dataset_name)
     .def_readwrite("cell", &Mtz::Dataset::cell)
     .def_readwrite("wavelength", &Mtz::Dataset::wavelength)
     .def("__repr__", [](const Mtz::Dataset& self) {
-        return "<gemmi.Mtz.Dataset " + std::to_string(self.number) + " " +
+        return "<gemmi.Mtz.Dataset " + std::to_string(self.id) + " " +
                self.project_name + "/" + self.crystal_name + "/" +
                self.dataset_name + ">";
     });
@@ -230,7 +230,7 @@ void add_mtz(py::module& m) {
                                 self.parent->data.data() + self.idx,
                                 py::cast(self));
     }, py::return_value_policy::reference_internal)
-    .def_readwrite("dataset_number", &Mtz::Column::dataset_number)
+    .def_readwrite("dataset_id", &Mtz::Column::dataset_id)
     .def_readwrite("type", &Mtz::Column::type)
     .def_readwrite("label", &Mtz::Column::label)
     .def_readwrite("min_value", &Mtz::Column::min_value)

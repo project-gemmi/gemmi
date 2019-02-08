@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 # Read MTZ file and plot I/sigma_I as a function of 1/d^2.
 
 import sys

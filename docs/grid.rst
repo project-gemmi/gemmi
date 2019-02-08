@@ -96,7 +96,7 @@ it understands crystallographic symmetry.
 
 The data can be also acesssed through the
 `buffer protocol <https://docs.python.org/3/c-api/buffer.html>`_.
-It means that you can use it as a numpy array (Fortran-style contiguous)
+It means that you can use it as a NumPy array (Fortran-style contiguous)
 without copying the data:
 
 .. doctest::
@@ -112,7 +112,7 @@ without copying the data:
   array([[ 1,  1,  1],
          [11,  1, 11]])
 
-(It does not make gemmi dependent on numpy -- gemmi talks with numpy
+(It does not make gemmi dependent on NumPy -- gemmi talks with NumPy
 through the buffer protocol, and it can talk with any other Python library
 that supports this protocol.)
 

@@ -59,7 +59,10 @@ latex_documents = [
      u'Marcin Wojdyr', 'manual'),
 ]
 
-doctest_global_setup = '''
+if os.environ.get('IN_DOCTEST'):
+    doctest_global_setup = '''
+import os
+no_mtz_file = not os.path.exists('example.mtz')
 try:
     import numpy
 except ImportError:
@@ -68,6 +71,12 @@ try:
     import networkx
 except ImportError:
     networkx = None
+'''
+else:
+    doctest_global_setup = '''
+no_mtz_file = False
+numpy = True
+networkx = True
 '''
 
 def setup(app):
