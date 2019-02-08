@@ -230,6 +230,8 @@ void add_mtz(py::module& m) {
                                 self.parent->data.data() + self.idx,
                                 py::cast(self));
     }, py::return_value_policy::reference_internal)
+    .def_property_readonly("dataset",
+            (Mtz::Dataset& (Mtz::Column::*)()) &Mtz::Column::dataset)
     .def_readwrite("dataset_id", &Mtz::Column::dataset_id)
     .def_readwrite("type", &Mtz::Column::type)
     .def_readwrite("label", &Mtz::Column::label)

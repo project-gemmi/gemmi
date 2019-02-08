@@ -27,6 +27,15 @@
 namespace gemmi {
 
 struct Mtz {
+  struct Dataset {
+    int id;
+    std::string project_name;
+    std::string crystal_name;
+    std::string dataset_name;
+    UnitCell cell;
+    double wavelength = NAN;
+  };
+
   struct Column {
     int dataset_id;
     char type;
@@ -37,13 +46,15 @@ struct Mtz {
     Mtz* parent;
     std::size_t idx;
 
+    Dataset& dataset() { return parent->dataset(dataset_id); }
+    const Dataset& dataset() const { return parent->dataset(dataset_id); }
     bool has_data() const { return parent->has_data(); }
     int size() const { return has_data() ? parent->nreflections : 0; }
     int stride() const { return parent->ncol; }
-    float& operator[](int n) { return parent->data[idx + n * parent->ncol]; }
-    float operator[](int n) const { return parent->data[idx + n * parent->ncol]; }
-    float& at(int n) { return parent->data.at(idx + n * parent->ncol); }
-    float at(int n) const { return parent->data.at(idx + n * parent->ncol); }
+    float& operator[](int n) { return parent->data[idx + n * stride()]; }
+    float operator[](int n) const { return parent->data[idx + n * stride()]; }
+    float& at(int n) { return parent->data.at(idx + n * stride()); }
+    float at(int n) const { return parent->data.at(idx + n * stride()); }
     using iterator = StrideIter<float>;
     iterator begin() {
       assert(parent);
@@ -57,15 +68,6 @@ struct Mtz {
     using const_iterator = StrideIter<const float>;
     const_iterator begin() const { return const_cast<Column*>(this)->begin(); }
     const_iterator end() const { return const_cast<Column*>(this)->end(); }
-  };
-
-  struct Dataset {
-    int id;
-    std::string project_name;
-    std::string crystal_name;
-    std::string dataset_name;
-    UnitCell cell;
-    double wavelength = NAN;
   };
 
   bool same_byte_order = true;
