@@ -72,7 +72,8 @@ struct Trans {
 
 struct Options {
   std::vector<Trans> spec;
-  std::vector<int> value_indices;  // used for --skip_empty
+  bool skip_empty;
+  std::vector<int> value_indices;  // used for --skip_empty and status 'x'
   const char* block_name;
   const char* mtz_path;
 };
@@ -247,9 +248,9 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
   }
   for (int i = 0; i != mtz.nreflections; ++i) {
     const float* row = &mtz.data[i*mtz.ncol];
-    if (!opt.value_indices.empty() &&
-        std::all_of(opt.value_indices.begin(), opt.value_indices.end(),
-                    [&](int n) { return std::isnan(row[n]); }))
+    bool empty = std::all_of(opt.value_indices.begin(), opt.value_indices.end(),
+                             [&](int n) { return std::isnan(row[n]); });
+    if (opt.skip_empty && empty)
       continue;
     bool first = true;
     for (const Trans& tr : opt.spec) {
@@ -259,7 +260,10 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
         fputc(' ', out);
       float v = row[tr.col_idx];
       if (tr.is_status) {
-        fputc(v == 0. ? 'f' : 'o', out);
+        char status = 'x';
+        if (!empty)
+          status = v == 0. ? 'f' : 'o';
+        fputc(status, out);
       } else if (std::isnan(v)) {
         for (int j = 1; j < tr.min_width; ++j)
           fputc(' ', out);
@@ -322,12 +326,12 @@ int GEMMI_MAIN(int argc, char **argv) {
     fprintf(stderr, "Problem in translation spec: %s\n", e.what());
     return 2;
   }
-  if (p.options[SkipEmpty])
-    for (const Trans& tr : options.spec) {
-      const gemmi::Mtz::Column& col = mtz.columns[tr.col_idx];
-      if (col.type != 'H' && col.type != 'I')
-        options.value_indices.push_back(tr.col_idx);
-    }
+  options.skip_empty = p.options[SkipEmpty];
+  for (const Trans& tr : options.spec) {
+    const gemmi::Mtz::Column& col = mtz.columns[tr.col_idx];
+    if (col.type != 'H' && col.type != 'I')
+      options.value_indices.push_back(tr.col_idx);
+  }
   options.block_name = p.options[BlockName] ? p.options[BlockName].arg : "mtz";
   try {
     gemmi::fileptr_t f_out = gemmi::file_open_or(cif_path, "w", stdout);
