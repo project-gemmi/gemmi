@@ -253,6 +253,7 @@ struct ResidueId {
 
 struct Residue : public ResidueId {
   using OptionalNum = SeqId::OptionalNum;
+  static const char* what() { return "Residue"; }
 
   std::string subchain;   // mmCIF _atom_site.label_asym_id
   OptionalNum label_seq;  // mmCIF _atom_site.label_seq_id
@@ -344,20 +345,22 @@ struct Residue : public ResidueId {
   ConstUniqProxy<Atom> first_conformer() const { return {atoms}; }
 };
 
-// ResidueSpan represents residues with the same sequence number and insertion
-// code, but different residue names. I.e. microheterogeneity.
-// Usually, there is only one residue in the group.
-// The residues must be consecutive.
+// ResidueSpan represents consecutive residues within the same chain.
+// It's used as return value of get_polymer(), get_ligands(), get_waters()
+// and get_subchain().
 struct ResidueSpan {
   using iterator = std::vector<Residue>::iterator;
   using const_iterator = std::vector<Residue>::const_iterator;
 
   iterator begin_;
   std::size_t size_ = 0;
+  std::vector<Residue>* residues_ = nullptr;  // for remove_residue()
 
   ResidueSpan() = default;
-  ResidueSpan(iterator begin, std::size_t n) : begin_(begin), size_(n) {}
-  ResidueSpan(std::vector<Residue>& v) : begin_(v.begin()), size_(v.size()) {}
+  ResidueSpan(std::vector<Residue>& v, iterator begin, std::size_t n)
+    : begin_(begin), size_(n), residues_(&v) {}
+  ResidueSpan(std::vector<Residue>& v)
+    : begin_(v.begin()), size_(v.size()), residues_(&v) {}
 
   const_iterator begin() const { return begin_; }
   const_iterator end() const { return begin_ + size_; }
@@ -413,7 +416,10 @@ struct ResidueSpan {
   }
 };
 
-// returned by find_residue_group()
+// ResidueGroup represents residues with the same sequence number and insertion
+// code, but different residue names. I.e. microheterogeneity.
+// Usually, there is only one residue in the group.
+// The residues must be consecutive.
 struct ResidueGroup : ResidueSpan {
   ResidueGroup() = default;
   ResidueGroup(ResidueSpan&& span) : ResidueSpan(std::move(span)) {}
@@ -422,6 +428,9 @@ struct ResidueGroup : ResidueSpan {
       if (it->name == name)
         return *it;
     throw std::invalid_argument("ResidueGroup has no residue " + name);
+  }
+  void remove_residue(const std::string& name) {
+    residues_->erase(impl::find_iter(*residues_, name));
   }
 };
 
@@ -435,10 +444,10 @@ struct Chain {
   template<typename T> ResidueSpan get_residue_span(T&& func) {
     auto begin = std::find_if(residues.begin(), residues.end(), func);
     auto size = std::find_if_not(begin, residues.end(), func) - begin;
-    return ResidueSpan(begin, size);
+    return ResidueSpan(residues, begin, size);
   }
 
-  ResidueSpan whole() { return ResidueSpan(residues.begin(), residues.size()); }
+  ResidueSpan whole() { return ResidueSpan(residues); }
   const ResidueSpan whole() const { return const_cast<Chain*>(this)->whole(); }
 
   ResidueSpan get_polymer() {

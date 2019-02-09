@@ -359,7 +359,7 @@ class TestMol(unittest.TestCase):
         out = st2.make_pdb_headers()
         self.assertEqual(out.splitlines(), SSBOND_FRAGMENT.splitlines()[:3])
 
-    def test_remove_atom(self):
+    def test_remove(self):
         st = gemmi.read_pdb_string(SSBOND_FRAGMENT)
         res = st[0].sole_residue('A', 310, ' ')
         self.assertEqual(len(res), 1)
@@ -369,6 +369,18 @@ class TestMol(unittest.TestCase):
         self.assertEqual(st[0].name, '1')
         del st['1']
         self.assertEqual(len(st), 0)
+
+    def test_remove2(self):
+        model = gemmi.read_structure(full_path('1pfe.cif.gz'))[0]
+        self.assertEqual(len(model), 2)
+        del model['A']
+        self.assertEqual(len(model), 1)
+        b = model['B']
+        self.assertEqual(b[0].name, 'DSN')
+        del b['1']['DSN']
+        self.assertEqual(b[0].name, 'ALA')
+        del b[0]
+        self.assertEqual(b[0].name, 'N2C')
 
     def test_first_conformer(self):
         model = gemmi.read_structure(full_path('1pfe.cif.gz'))[0]

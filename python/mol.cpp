@@ -248,6 +248,13 @@ void add_mol(py::module& m) {
     .def("__getitem__", [](Chain& ch, int index) -> Residue& {
         return ch.residues.at(index >= 0 ? index : index + ch.residues.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("__delitem__", [](Chain& ch, int index) {
+        if (index < 0)
+          index += ch.residues.size();
+        if ((size_t) index >= ch.residues.size())
+          throw py::index_error();
+        ch.residues.erase(ch.residues.begin() + index);
+    }, py::arg("index"))
     .def("subchains", &Chain::subchains)
     .def("whole", (ResidueSpan (Chain::*)()) &Chain::whole)
     .def("get_polymer", (ResidueSpan (Chain::*)()) &Chain::get_polymer)
@@ -302,6 +309,7 @@ void add_mol(py::module& m) {
     }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("__getitem__", &ResidueGroup::by_resname,
          py::arg("name"), py::return_value_policy::reference_internal)
+    .def("__delitem__", &ResidueGroup::remove_residue, py::arg("name"))
     .def("__repr__", [](const ResidueGroup& self) {
         return "<gemmi.ResidueGroup [" +
                join_str(self, ' ', [](const Residue& r) { return r.str(); }) +
