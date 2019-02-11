@@ -17,7 +17,7 @@ def get_file_paths_from_args():
     must be the first word, but may be followed by others), we do:
       ./myscript -f my-list.txt $PDB_DIR/structures/divided/mmCIF
     Sometimes we want to check a specific PDB codes. If $PDB_DIR is set
-    is is enough to do:
+    it is enough to do:
       ./myscript 1ABC 2def
     """
     parser = argparse.ArgumentParser(usage='%(prog)s [options] path [...]')

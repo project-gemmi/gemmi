@@ -62,7 +62,7 @@ Datasets are stored in variable ``datasets``::
   >>> len(mtz.datasets)
   2
 
-In the MTZ file, each dataset is is identified internally by an integer
+In the MTZ file, each dataset is identified internally by an integer
 "dataset ID". To get dataset with specified ID use function::
 
   Dataset& Mtz::dataset(int id)
