@@ -564,7 +564,7 @@ void update_cif_block(const Structure& st, cif::Block& block) {
         const Mat33& L = tls.L;
         const Mat33& S = tls.S;
         auto q = impl::number_or_qmark;
-        loop.add_row({ref.id, tls.id,
+        loop.add_row({ref.id, impl::string_or_dot(tls.id),
                       q(T[0][0]), q(T[1][1]), q(T[2][2]),
                       q(T[0][1]), q(T[0][2]), q(T[1][2]),
                       q(L[0][0]), q(L[1][1]), q(L[2][2]),
@@ -577,8 +577,10 @@ void update_cif_block(const Structure& st, cif::Block& block) {
     cif::Loop& group_loop = block.init_mmcif_loop("_pdbx_refine_tls_group.", {
         "id", "refine_tls_id", "selection_details"});
     for (const RefinementInfo& ref : st.meta.refinement)
-      for (const TlsGroup& tls : ref.tls_groups)
-        group_loop.add_row({tls.id, tls.id, impl::string_or_qmark(tls.selection)});
+      for (const TlsGroup& tls : ref.tls_groups) {
+        std::string id = impl::string_or_dot(tls.id);
+        group_loop.add_row({id, id, impl::string_or_qmark(tls.selection)});
+      }
   }
 
   if (!st.meta.software.empty()) {
