@@ -72,8 +72,8 @@ struct Trans {
 
 struct Options {
   std::vector<Trans> spec;
-  bool skip_empty;
-  std::vector<int> value_indices;  // used for --skip_empty and status 'x'
+  std::vector<int> value_indices;  // used for --skip_empty
+  std::vector<int> sigma_indices;  // used for status 'x'
   const char* block_name;
   const char* mtz_path;
 };
@@ -248,10 +248,10 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
   }
   for (int i = 0; i != mtz.nreflections; ++i) {
     const float* row = &mtz.data[i*mtz.ncol];
-    bool empty = std::all_of(opt.value_indices.begin(), opt.value_indices.end(),
-                             [&](int n) { return std::isnan(row[n]); });
-    if (opt.skip_empty && empty)
-      continue;
+    if (!opt.value_indices.empty())
+      if (std::all_of(opt.value_indices.begin(), opt.value_indices.end(),
+                      [&](int n) { return std::isnan(row[n]); }))
+        continue;
     bool first = true;
     for (const Trans& tr : opt.spec) {
       if (first)
@@ -261,7 +261,9 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
       float v = row[tr.col_idx];
       if (tr.is_status) {
         char status = 'x';
-        if (!empty)
+        if (opt.sigma_indices.empty() ||
+            !std::all_of(opt.sigma_indices.begin(), opt.sigma_indices.end(),
+                         [&](int n) { return std::isnan(row[n]); }))
           status = v == 0. ? 'f' : 'o';
         fputc(status, out);
       } else if (std::isnan(v)) {
@@ -326,11 +328,12 @@ int GEMMI_MAIN(int argc, char **argv) {
     fprintf(stderr, "Problem in translation spec: %s\n", e.what());
     return 2;
   }
-  options.skip_empty = p.options[SkipEmpty];
   for (const Trans& tr : options.spec) {
     const gemmi::Mtz::Column& col = mtz.columns[tr.col_idx];
-    if (col.type != 'H' && col.type != 'I')
+    if (p.options[SkipEmpty] && col.type != 'H' && col.type != 'I')
       options.value_indices.push_back(tr.col_idx);
+    if (col.type != 'Q' && col.type != 'L' && col.type != 'M')
+      options.sigma_indices.push_back(tr.col_idx);
   }
   options.block_name = p.options[BlockName] ? p.options[BlockName].arg : "mtz";
   try {
