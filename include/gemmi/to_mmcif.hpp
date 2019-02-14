@@ -578,8 +578,8 @@ void update_cif_block(const Structure& st, cif::Block& block) {
         "id", "refine_tls_id", "selection_details"});
     for (const RefinementInfo& ref : st.meta.refinement)
       for (const TlsGroup& tls : ref.tls_groups) {
-        std::string id = impl::string_or_dot(tls.id);
-        group_loop.add_row({id, id, impl::string_or_qmark(tls.selection)});
+        std::string tid = impl::string_or_dot(tls.id);
+        group_loop.add_row({tid, tid, impl::string_or_qmark(tls.selection)});
       }
   }
 

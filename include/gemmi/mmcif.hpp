@@ -9,10 +9,11 @@
 #include <string>
 #include <unordered_map>
 #include "cifdoc.hpp"
-#include "numb.hpp"  // for as_number
-#include "atox.hpp"  // for string_to_int
+#include "numb.hpp"   // for as_number
+#include "atox.hpp"   // for string_to_int
 #include "model.hpp"
 #include "entstr.hpp" // for entity_type_from_string, polymer_type_from_string
+#include "refln.hpp"  // for set_cell_from_mmcif
 
 namespace gemmi {
 
@@ -142,19 +143,8 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
   Structure st;
   st.input_format = CoorFormat::Mmcif;
   st.name = block.name;
-
-  // unit cell and symmetry
-  cif::Table cell = block.find("_cell.",
-                               {"length_a", "length_b", "length_c",
-                                "angle_alpha", "angle_beta", "angle_gamma"});
-  if (cell.ok()) {
-    auto c = cell.one();
-    if (!cif::is_null(c[0]) && !cif::is_null(c[1]) && !cif::is_null(c[2]))
-      st.cell.set(as_number(c[0]), as_number(c[1]), as_number(c[2]),
-                  as_number(c[3]), as_number(c[4]), as_number(c[5]));
-  }
-  st.spacegroup_hm =
-                as_string(block.find_value("_symmetry.space_group_name_H-M"));
+  set_cell_from_mmcif(block, st.cell);
+  st.spacegroup_hm = as_string(block.find_value("_symmetry.space_group_name_H-M"));
 
   auto add_info = [&](std::string tag) {
     bool first = true;
@@ -385,6 +375,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
 inline Structure make_structure_from_block(const cif::Block& block) {
   return impl::make_structure_from_block(block);
 }
+
 
 } // namespace gemmi
 #endif

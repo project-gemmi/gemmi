@@ -96,9 +96,13 @@ inline int as_int(const std::string& str) {
   return string_to_int(str, true);
 }
 
-inline int as_int(const std::string& str, int default_) {
-  return is_null(str) ? default_ : as_int(str);
+inline int as_int(const std::string& str, int null) {
+  return is_null(str) ? null : as_int(str);
 }
+
+// for use in templates (see also as_any() functions in numb.hpp)
+inline int as_any(const std::string& s, int null) { return as_int(s, null); }
+inline char as_any(const std::string& s, char null) { return as_char(s, null); }
 
 
 using Pair = std::array<std::string, 2>;

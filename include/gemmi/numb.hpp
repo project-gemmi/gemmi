@@ -91,6 +91,14 @@ inline double as_number(const std::string& s, double nan=NAN) {
   return nan;
 }
 
+// for use in templates (see also as_any() functions in cifdoc.hpp)
+inline float as_any(const std::string& s, float null) {
+  return (float) as_number(s, null);
+}
+inline double as_any(const std::string& s, double null) {
+  return as_number(s, null);
+}
+
 } // namespace cif
 } // namespace gemmi
 #endif
