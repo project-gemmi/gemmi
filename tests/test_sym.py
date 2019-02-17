@@ -112,21 +112,28 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(a.sym_ops, b.sym_ops)
         self.assertEqual(a.cen_ops, b.cen_ops)
 
-    def compare_hall_symops_with_sgtbx(self, hall):
+    def compare_hall_symops_with_sgtbx(self, hall, existing_group=True):
         cctbx_sg = sgtbx.space_group(hall)
-        cctbx_ops = set(m.as_xyz() for m in cctbx_sg.all_ops(mod=1))
-        gemmi_sg = gemmi.symops_from_hall(hall)
-        self.assertEqual(len(gemmi_sg.sym_ops), cctbx_sg.order_p())
-        self.assertEqual(len(gemmi_sg.cen_ops), cctbx_sg.n_ltr())
-        gemmi_ops = set(m.triplet() for m in gemmi_sg)
-        self.assertEqual(cctbx_ops, gemmi_ops)
+        cctbx_triplets = set(m.as_xyz() for m in cctbx_sg.all_ops(mod=1))
+        gemmi_gops = gemmi.symops_from_hall(hall)
+        self.assertEqual(len(gemmi_gops.sym_ops), cctbx_sg.order_p())
+        self.assertEqual(len(gemmi_gops.cen_ops), cctbx_sg.n_ltr())
+        self.assertEqual(len(gemmi_gops), cctbx_sg.order_z())
+        gemmi_triplets = set(m.triplet() for m in gemmi_gops)
+        self.assertEqual(cctbx_triplets, gemmi_triplets)
+        gemmi_sg = gemmi.find_spacegroup_by_ops(gemmi_gops)
+        if existing_group:
+            self.assertEqual(gemmi_sg.point_group_hm(),
+                             cctbx_sg.point_group_type())
+            self.assertEqual(gemmi_sg.crystal_system_str(),
+                             cctbx_sg.crystal_system().lower())
 
     def test_with_sgtbx(self):
         if sgtbx is None:
             return
         for s in sgtbx.space_group_symbol_iterator():
             self.compare_hall_symops_with_sgtbx(s.hall())
-        self.compare_hall_symops_with_sgtbx('C -4 -2b')
+        self.compare_hall_symops_with_sgtbx('C -4 -2b', existing_group=False)
 
     def test_table(self):
         for sg in gemmi.spacegroup_table():

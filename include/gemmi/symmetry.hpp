@@ -644,6 +644,85 @@ inline GroupOps symops_from_hall(const char* hall) {
   return ops;
 }
 
+// CRYSTAL SYSTEMS AND POINT GROUPS
+
+enum class CrystalSystem : unsigned char {
+  Triclinic=0, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, Cubic
+};
+
+inline const char* crystal_system_str(CrystalSystem system) {
+  static const char* names[7] = {
+    "triclinic", "monoclinic", "orthorhombic", "tetragonal",
+    "trigonal", "hexagonal", "cubic"
+  };
+  return names[static_cast<int>(system)];
+}
+
+enum class PointGroup : unsigned char {
+  C1=0, Ci, C2, Cs, C2h, D2, C2v, D2h, C4, S4, C4h, D4, C4v, D2d, D4h, C3,
+  C3i, D3, C3v, D3d, C6, C3h, C6h, D6, C6v, D3h, D6h, T, Th, O, Td, Oh
+};
+
+inline const char* point_group_hm(PointGroup pg) {
+  static const char hm_pointgroup_names[32][6] = {
+    "1", "-1", "2", "m", "2/m", "222", "mm2", "mmm",
+    "4", "-4", "4/m", "422", "4mm", "-42m", "4/mmm", "3",
+    "-3", "32", "3m", "-3m", "6", "-6", "6/m", "622",
+    "6mm", "-62m", "6/mmm", "23", "m-3", "432", "-43m", "m-3m",
+  };
+  return hm_pointgroup_names[static_cast<int>(pg)];
+}
+
+inline CrystalSystem crystal_system(PointGroup pg) {
+  static const CrystalSystem crystal_systems[32] = {
+    CrystalSystem::Triclinic,    CrystalSystem::Triclinic,
+    CrystalSystem::Monoclinic,   CrystalSystem::Monoclinic,
+    CrystalSystem::Monoclinic,   CrystalSystem::Orthorhombic,
+    CrystalSystem::Orthorhombic, CrystalSystem::Orthorhombic,
+    CrystalSystem::Tetragonal,   CrystalSystem::Tetragonal,
+    CrystalSystem::Tetragonal,   CrystalSystem::Tetragonal,
+    CrystalSystem::Tetragonal,   CrystalSystem::Tetragonal,
+    CrystalSystem::Tetragonal,   CrystalSystem::Trigonal,
+    CrystalSystem::Trigonal,     CrystalSystem::Trigonal,
+    CrystalSystem::Trigonal,     CrystalSystem::Trigonal,
+    CrystalSystem::Hexagonal,    CrystalSystem::Hexagonal,
+    CrystalSystem::Hexagonal,    CrystalSystem::Hexagonal,
+    CrystalSystem::Hexagonal,    CrystalSystem::Hexagonal,
+    CrystalSystem::Hexagonal,    CrystalSystem::Cubic,
+    CrystalSystem::Cubic,        CrystalSystem::Cubic,
+    CrystalSystem::Cubic,        CrystalSystem::Cubic
+  };
+  return crystal_systems[static_cast<int>(pg)];
+}
+
+inline PointGroup point_group(int space_group_number) {
+  static char indices[230] = {
+     0,  1,  2,  2,  2,  3,  3,  3,  3,  4,
+     4,  4,  4,  4,  4,  5,  5,  5,  5,  5,
+     5,  5,  5,  5,  6,  6,  6,  6,  6,  6,
+     6,  6,  6,  6,  6,  6,  6,  6,  6,  6,
+     6,  6,  6,  6,  6,  6,  7,  7,  7,  7,
+     7,  7,  7,  7,  7,  7,  7,  7,  7,  7,
+     7,  7,  7,  7,  7,  7,  7,  7,  7,  7,
+     7,  7,  7,  7,  8,  8,  8,  8,  8,  8,
+     9,  9, 10, 10, 10, 10, 10, 10, 11, 11,
+    11, 11, 11, 11, 11, 11, 11, 11, 12, 12,
+    12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+    13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
+    13, 13, 14, 14, 14, 14, 14, 14, 14, 14,
+    14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
+    14, 14, 15, 15, 15, 15, 16, 16, 17, 17,
+    17, 17, 17, 17, 17, 18, 18, 18, 18, 18,
+    18, 19, 19, 19, 19, 19, 19, 20, 20, 20,
+    20, 20, 20, 21, 22, 22, 23, 23, 23, 23,
+    23, 23, 24, 24, 24, 24, 25, 25, 25, 25,
+    26, 26, 26, 26, 27, 27, 27, 27, 27, 28,
+    28, 28, 28, 28, 28, 28, 29, 29, 29, 29,
+    29, 29, 29, 29, 30, 30, 30, 30, 30, 30,
+    31, 31, 31, 31, 31, 31, 31, 31, 31, 31
+  };
+  return static_cast<PointGroup>(indices[space_group_number-1]);
+}
 
 // LIST OF CRYSTALLOGRAPHIC SPACE GROUPS
 
@@ -668,6 +747,17 @@ struct SpaceGroup { // typically 40 bytes
       s[0] = 'H';
     s.erase(std::remove(s.begin(), s.end(), ' '), s.end());
     return s;
+  }
+
+  PointGroup point_group() const { return gemmi::point_group(number); }
+  const char* point_group_hm() const {
+    return gemmi::point_group_hm(point_group());
+  }
+  CrystalSystem crystal_system() const {
+    return gemmi::crystal_system(point_group());
+  }
+  const char* crystal_system_str() const {
+    return gemmi::crystal_system_str(crystal_system());
   }
 
   GroupOps operations() const { return symops_from_hall(hall); }

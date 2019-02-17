@@ -91,9 +91,7 @@ void add_symmetry(py::module& m) {
             return !a.is_same_as(b);
     }, py::is_operator())
 #endif
-    .def("__len__", [](const GroupOps& g) {
-            return g.sym_ops.size() * g.cen_ops.size();
-    })
+    .def("__len__", [](const GroupOps& g) { return g.order(); })
     .def_readwrite("sym_ops", &GroupOps::sym_ops,
                "Symmetry operations (to be combined with centering vectors).")
     .def_readwrite("cen_ops", &GroupOps::cen_ops, "Centering vectors.")
@@ -131,6 +129,10 @@ void add_symmetry(py::module& m) {
     .def("xhm", &SpaceGroup::xhm, "extended Hermann-Mauguin name")
     .def("short_name", &SpaceGroup::short_name,
          "H-M name w/o spaces and with 1's removed in '1 ... 1'.")
+    .def("point_group_hm", &SpaceGroup::point_group_hm,
+         "Returns H-M name of the point group.")
+    .def("crystal_system_str", &SpaceGroup::crystal_system_str,
+         "Returns lower-case name of the crystal system.")
     .def("operations", &SpaceGroup::operations, "Group of operations");
 
   m.def("spacegroup_table", []() {
