@@ -4,7 +4,8 @@
 
 #ifndef GEMMI_ITERBASE_HPP_
 #define GEMMI_ITERBASE_HPP_
-#include <iterator>  // for bidirectional_iterator_tag
+#include <iterator>     // for bidirectional_iterator_tag
+#include <type_traits>  // for remove_cv
 #include <vector>
 
 namespace gemmi {
@@ -12,10 +13,10 @@ namespace gemmi {
 // implements concept BidirectionalIterator
 template <typename Policy>
 struct BidirIterator : Policy {
-  typedef typename Policy::value_type value_type;
+  typedef typename std::remove_cv<typename Policy::value_type>::type value_type;
   typedef std::ptrdiff_t difference_type;
-  typedef value_type* pointer;
-  typedef value_type& reference;
+  typedef typename Policy::value_type* pointer;
+  typedef typename Policy::value_type& reference;
   typedef std::bidirectional_iterator_tag iterator_category;
 
   BidirIterator() = default;
