@@ -103,6 +103,12 @@ struct UnitCell {
   // that is why we check both.
   bool is_crystal() const { return a != 1.0 && frac.mat[0][0] != 1.0; }
 
+  bool operator==(const UnitCell& o) const {
+    return a == o.a && b == o.b && c == o.c &&
+           alpha == o.alpha && beta == o.beta && gamma == o.gamma;
+  }
+  bool operator!=(const UnitCell& o) const { return !operator==(o); }
+
   void calculate_properties() {
     constexpr double deg2rad = pi() / 180.0;
     // ensure exact values for right angles

@@ -76,7 +76,7 @@ void add_symmetry(py::module& m) {
         "Parse one of the three parts of a triplet.");
   m.def("make_triplet_part", &make_triplet_part,
         py::arg("x"), py::arg("y"), py::arg("z"), py::arg("w"),
-        "Make one of the three parts of a triplet.");
+        py::arg("style")='x', "Make one of the three parts of a triplet.");
 
   py::class_<GroupOps>(m, "GroupOps")
     .def(py::init<>())

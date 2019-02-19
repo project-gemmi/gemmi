@@ -38,6 +38,19 @@ inline const char* skip_blank(const char* p) {
   return p;
 }
 
+// much faster than s += std::to_string(n) for n in 0 ... 99
+inline void append_small_number(std::string& s, int n) {
+  if (n < 0 || n >= 100) {
+    s += std::to_string(n);
+  } else if (n < 10) {
+    s += char('0' + n);
+  } else { // 10 ... 99
+    int tens = n / 10;
+    s += char('0' + tens);
+    s += char('0' + n - 10 * tens);
+  }
+}
+
 } // namespace impl
 
 // TRIPLET <-> SYM OP
@@ -234,22 +247,9 @@ inline Op parse_triplet(const std::string& s) {
   return { rot, tran };
 }
 
-inline std::string make_triplet_part(int x, int y, int z, int w) {
+inline std::string make_triplet_part(int x, int y, int z, int w,
+                                     char style='x') {
   std::string s;
-
-  // much faster than s += std::to_string(n), n is assumed to be >= 0.
-  auto append_small_number = [&s](int n) {
-    if (n < 10) {
-      s += char('0' + n);
-    } else if (n < 100) {
-      int tens = n / 10;
-      s += char('0' + tens);
-      s += char('0' + n - 10 * tens);
-    } else {
-      s += std::to_string(n);
-    }
-  };
-
   int xyz[] = { x, y, z };
   for (int i = 0; i != 3; ++i)
     if (xyz[i] != 0) {
@@ -258,8 +258,8 @@ inline std::string make_triplet_part(int x, int y, int z, int w) {
       else if (!s.empty())
         s += '+';
       if (xyz[i] != 1 && xyz[i] != -1)
-        append_small_number(xyz[i] < 0 ? -xyz[i] : xyz[i]);
-      s += char('x' + i);
+        impl::append_small_number(s, xyz[i] < 0 ? -xyz[i] : xyz[i]);
+      s += char(style + i);
     }
   if (w != 0) { // reduce the w/TDEN fraction to lowest terms
     int denom = 1;
@@ -271,14 +271,14 @@ inline std::string make_triplet_part(int x, int y, int z, int w) {
     if (w > 0) {
       if (!s.empty())
         s += '+';
-      append_small_number(w);
+      impl::append_small_number(s, w);
     } else {
       s += '-';
-      append_small_number(-w);
+      impl::append_small_number(s, -w);
     }
     if (denom != 1) {
       s += '/';
-      append_small_number(denom);
+      impl::append_small_number(s, denom);
     }
   }
   return s;

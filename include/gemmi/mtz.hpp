@@ -9,12 +9,13 @@
 #include <cstdint>   // for int32_t
 #include <cstdio>    // for FILE, fread
 #include <cstring>   // for memcpy
+#include <cmath>     // for isnan
 #include <array>
 #include <string>
 #include <vector>
-#include "atox.hpp"      // for simple_atof, read_word, string_to_int
+#include "atox.hpp"      // for simple_atof, simple_atoi, read_word
 #include "iterator.hpp"  // for StrideIter
-#include "fileutil.hpp"  // for file_open, is_little_endian, ...
+#include "fileutil.hpp"  // for file_open, is_little_endian, fileptr_t, ...
 #include "symmetry.hpp"  // for find_spacegroup_by_name, SpaceGroup
 #include "unitcell.hpp"  // for UnitCell
 #include "util.hpp"      // for fail
@@ -26,6 +27,24 @@
 
 namespace gemmi {
 
+template <typename T, typename FP=typename std::iterator_traits<T>::value_type>
+std::array<FP,2> calculate_min_max_disregarding_nans(T begin, T end) {
+  std::array<FP,2> minmax = {{NAN, NAN}};
+  T i = begin;
+  while (i != end && std::isnan(*i))
+    ++i;
+  if (i != end) {
+    minmax[0] = minmax[1] = *i;
+    while (++i != end) {
+      if (*i < minmax[0])
+        minmax[0] = *i;
+      else if (*i > minmax[1])
+        minmax[1] = *i;
+    }
+  }
+  return minmax;
+}
+
 struct Mtz {
   struct Dataset {
     int id;
@@ -33,7 +52,7 @@ struct Mtz {
     std::string crystal_name;
     std::string dataset_name;
     UnitCell cell;
-    double wavelength = NAN;
+    double wavelength = 0.;
   };
 
   struct Column {
@@ -131,7 +150,7 @@ struct Mtz {
 
   UnitCell& get_cell(int dataset=-1) {
     for (Dataset& ds : datasets)
-      if (ds.id == dataset && ds.cell.is_crystal())
+      if (ds.id == dataset && ds.cell.is_crystal() && ds.cell.a > 0)
         return ds.cell;
     return cell;
   }
@@ -180,6 +199,35 @@ struct Mtz {
     return data.size() == (size_t) ncol * nreflections;
   }
 
+  void extend_min_max_1_d2(const UnitCell& uc, double& min, double& max) const {
+    for (size_t i = 0; i < data.size(); i += ncol) {
+      double res = uc.calculate_1_d2(data[i+0], data[i+1], data[i+2]);
+      if (res < min)
+        min = res;
+      if (res > max)
+        max = res;
+    }
+  }
+
+  std::array<double,2> calculate_min_max_1_d2() const {
+    if (!has_data() || ncol < 3)
+      fail("No data.");
+    double min_value = INFINITY;
+    double max_value = 0.;
+    if (cell.is_crystal() && cell.a > 0)
+      extend_min_max_1_d2(cell, min_value, max_value);
+    const UnitCell* prev_cell = nullptr;
+    for (const Dataset& ds : datasets)
+      if (ds.cell.is_crystal() && ds.cell.a > 0 && ds.cell != cell &&
+          (!prev_cell || ds.cell != *prev_cell)) {
+        extend_min_max_1_d2(ds.cell, min_value, max_value);
+        prev_cell = &ds.cell;
+      }
+    if (min_value == INFINITY)
+      min_value = 0;
+    return {{min_value, max_value}};
+  }
+
   // Functions for reading MTZ headers and data.
 
   void toggle_endiannes() {
@@ -191,7 +239,7 @@ struct Mtz {
     char buf[12] = {0};
 
     if (std::fread(buf, 1, 12, stream) != 12)
-      fail("Could not read the MTZ file (it it empty?)");
+      fail("Could not read the MTZ file (is it empty?)");
     if (buf[0] != 'M' || buf[1] != 'T' || buf[2] != 'Z' || buf[3] != ' ')
       fail("Not an MTZ file - it does not start with 'MTZ '");
 
@@ -415,8 +463,11 @@ struct Mtz {
     read_history_and_later_headers(stream);
     setup_spacegroup();
   }
-};
 
+  // Function for writing MTZ file
+  void write_to_stream(std::FILE* stream) const;
+  void write_to_file(const std::string& path) const;
+};
 
 inline Mtz read_mtz_stream(std::FILE* stream, bool with_data) {
   Mtz mtz;
@@ -427,13 +478,99 @@ inline Mtz read_mtz_stream(std::FILE* stream, bool with_data) {
 }
 
 inline Mtz read_mtz_file(const std::string& path) {
-  gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "rb");
+  fileptr_t f = file_open(path.c_str(), "rb");
   try {
     return read_mtz_stream(f.get(), true);
   } catch (std::runtime_error& e) {
     fail(std::string(e.what()) + ": " + path);
   }
 }
+
+#ifdef GEMMI_WRITE_IMPLEMENTATION
+
+#include "sprintf.hpp"
+
+#define WRITE(...) do { \
+    int len = stbsp_snprintf(buf, 81, __VA_ARGS__); \
+    std::memset(buf + len, ' ', 80 - len); \
+    if (std::fwrite(buf, 80, 1, stream) != 1) \
+      fail("Writing MTZ file failed."); \
+  } while(0)
+
+void Mtz::write_to_stream(std::FILE* stream) const {
+  if (!has_data())
+    fail("Cannot write Mtz which has not data.");
+  if (!spacegroup)
+    fail("Cannot write Mtz which has no space group.");
+  char buf[81] = {'M', 'T', 'Z', ' ', '\0'};
+  std::int32_t header_start = ncol * nreflections + 21;
+  std::memcpy(buf + 4, &header_start, 4);
+  std::int32_t machst = is_little_endian() ? 0x00004144 : 0x11110000;
+  std::memcpy(buf + 8, &machst, 4);
+  if (std::fwrite(buf, 80, 1, stream) != 1 ||
+      std::fwrite(data.data(), 4, data.size(), stream) != data.size())
+    fail("Writing MTZ file failed.");
+  WRITE("VERS MTZ:V1.1");
+  WRITE("TITLE %s", title.c_str());
+  WRITE("NCOL %8d %12d %8d", ncol, nreflections, nbatches);
+  if (cell.is_crystal())
+    WRITE("CELL  %9.4f %9.4f %9.4f %9.4f %9.4f %9.4f",
+          cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma);
+  WRITE("SORT  %3d %3d %3d %3d %3d", sort_order[0], sort_order[1],
+        sort_order[2], sort_order[3], sort_order[4]);
+  GroupOps ops = spacegroup->operations();
+  WRITE("SYMINF %3d %2d %c %5d %*s'%s' PG%s",
+        ops.order(),               // number of symmetry operations
+        (int) ops.sym_ops.size(),  // number of primitive operations
+        spacegroup->hm[0],         // lattice type
+        spacegroup->ccp4,          // space group number 
+        20 - (int) std::strlen(spacegroup->hm), "",
+        spacegroup->hm,            // space group name
+        spacegroup->point_group_hm()); // point group name
+  for (Op op : ops)
+    WRITE("SYMM %s", to_upper(op.triplet()).c_str());
+  auto reso = calculate_min_max_1_d2();
+  WRITE("RESO %-20.12f %-20.12f", reso[0], reso[1]);
+  if (std::isnan(valm))
+    WRITE("VALM NAN");
+  else
+    WRITE("VALM %f", valm);
+  for (const Column& col : columns) {
+    auto minmax = calculate_min_max_disregarding_nans(col.begin(), col.end());
+    WRITE("COLUMN %-30s %c %17.9g %17.9g %4d",
+          col.label.c_str(), col.type, minmax[0], minmax[1], col.dataset_id);
+    if (!col.source.empty())
+      WRITE("COLSRC %-30s %-36s  %4d",
+            col.label.c_str(), col.source.c_str(), col.dataset_id);
+  }
+  WRITE("NDIF %8zu", datasets.size());
+  for (const Dataset& ds : datasets) {
+    WRITE("PROJECT %7d %s", ds.id, ds.project_name.c_str());
+    WRITE("CRYSTAL %7d %s", ds.id, ds.crystal_name.c_str());
+    WRITE("DATASET %7d %s", ds.id, ds.dataset_name.c_str());
+    WRITE("DCELL %9d %10.4f%10.4f%10.4f%10.4f%10.4f%10.4f",
+          ds.id, ds.cell.a, ds.cell.b, ds.cell.c,
+          ds.cell.alpha, ds.cell.beta, ds.cell.gamma);
+    WRITE("DWAVEL %8d %10.5f", ds.id, ds.wavelength);
+    //WRITE("BATCH");
+  }
+  WRITE("END");
+  // history
+  WRITE("MTZENDOFHEADERS");
+}
+
+#undef WRITE
+
+void Mtz::write_to_file(const std::string& path) const {
+  fileptr_t f = file_open(path.c_str(), "wb");
+  try {
+    return write_to_stream(f.get());
+  } catch (std::runtime_error& e) {
+    fail(std::string(e.what()) + ": " + path);
+  }
+}
+
+#endif // GEMMI_WRITE_IMPLEMENTATION
 
 #ifdef  __INTEL_COMPILER
 # pragma warning pop
