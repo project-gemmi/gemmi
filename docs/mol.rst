@@ -955,10 +955,10 @@ to selenomethionine (MSE).
   :hide:
 
   >>> st = gemmi.read_structure('../tests/1orc.pdb')
-  >>> st[0].sole_residue('A', 12, ' ')
+  >>> st[0].sole_residue('A', gemmi.SeqId('12'))
   <gemmi.Residue 12(MET) with 8 atoms>
   >>> met_to_mse(st)
-  >>> st[0].sole_residue('A', 12, ' ')
+  >>> st[0].sole_residue('A', gemmi.SeqId('12'))
   <gemmi.Residue 12(MSE) with 8 atoms>
 
 ----
@@ -1254,7 +1254,7 @@ The following functions search for atoms near the specified atom or point::
 
 .. doctest::
 
-  >>> ref_atom = st[0].sole_residue('A', 3, ' ')['P']
+  >>> ref_atom = st[0].sole_residue('A', gemmi.SeqId('3'))['P']
   >>> marks = subcells.find_neighbors(ref_atom, min_dist=0.1, max_dist=3)
   >>> len(marks)
   6

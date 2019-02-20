@@ -220,6 +220,13 @@ struct SeqId {
 
   SeqId() = default;
   SeqId(int num_, char icode_) { num = num_; icode = icode_; }
+  explicit SeqId(const std::string& str) {
+    char* endptr;
+    num = std::strtol(str.c_str(), &endptr, 10);
+    if (endptr == str.c_str() || (*endptr != '\0' && endptr[1] != '\0'))
+      throw std::invalid_argument("Not a seqid: " + str);
+    icode = (*endptr | 0x20);
+  }
 
   bool operator==(const SeqId& o) const {
     return num == o.num && (icode | 0x20) == (o.icode | 0x20);
@@ -493,17 +500,8 @@ struct Chain {
     return v;
   }
 
-  ResidueGroup find_residue_group(int seqnum, char icode=' ') {
-    SeqId id(seqnum, icode);
+  ResidueGroup find_residue_group(SeqId id) {
     return get_residue_span([&](const Residue& r) { return r.seqid == id; });
-  }
-
-  ResidueGroup find_by_seqid(const std::string& seqid) {
-    char* endptr;
-    int seqnum = std::strtol(seqid.c_str(), &endptr, 10);
-    if (endptr == seqid.c_str() || (*endptr != '\0' && endptr[1] != '\0'))
-      throw std::invalid_argument("Not a seqid: " + seqid);
-    return find_residue_group(seqnum, *endptr);
   }
 
   Residue* find_residue(const ResidueId& rid);
@@ -700,21 +698,18 @@ struct Model {
     return nullptr;
   }
 
-  ResidueGroup find_residue_group(const std::string& chain_name,
-                                  int resnum, char icode) {
+  ResidueGroup find_residue_group(const std::string& chain_name, SeqId seqid) {
     for (Chain& chain : chains)
       if (chain.name == chain_name)
-        if (ResidueGroup res_group = chain.find_residue_group(resnum, icode))
+        if (ResidueGroup res_group = chain.find_residue_group(seqid))
           return res_group;
-    fail("No such chain or residue: " + chain_name +
-         " " + SeqId(resnum, icode).str());
+    fail("No such chain or residue: " + chain_name + " " + seqid.str());
   }
 
-  Residue& sole_residue(const std::string& chain_name, int resnum, char icode) {
-    ResidueSpan rr = find_residue_group(chain_name, resnum, icode);
+  Residue& sole_residue(const std::string& chain_name, SeqId seqid) {
+    ResidueSpan rr = find_residue_group(chain_name, seqid);
     if (rr.size() != 1)
-      fail("Multiple residues " + chain_name +
-           " " + SeqId(resnum, icode).str());
+      fail("Multiple residues " + chain_name + " " + seqid.str());
     return rr[0];
   }
 

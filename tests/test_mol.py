@@ -291,7 +291,7 @@ class TestMol(unittest.TestCase):
                    "  1.00 67.64          MG"
         for line in [pdb_line, pdb_line.strip(' MG'), pdb_line[:-2] + '  ']:
             st = gemmi.read_pdb_string(line)
-            mg_atom = st[0].sole_residue('A', 341, ' ')['MG']
+            mg_atom = st[0].sole_residue('A', gemmi.SeqId(341, ' '))['MG']
             self.assertEqual(mg_atom.element.name, 'Mg')
             self.assertAlmostEqual(mg_atom.b_iso, 67.64, delta=1e-6)
         mg_atom.element = gemmi.Element('Cu')
@@ -302,7 +302,7 @@ class TestMol(unittest.TestCase):
                    "  0.29 43.77          S"
         for line in [pdb_line, pdb_line + '\n', pdb_line + '\r\n']:
             st = gemmi.read_pdb_string(line)
-            atom = st[0].sole_residue('A', 7, ' ')['S']
+            atom = st[0].sole_residue('A', gemmi.SeqId('7'))['S']
             self.assertEqual(atom.element.name, 'S')
 
     def test_4hhh_frag(self):
@@ -339,8 +339,8 @@ class TestMol(unittest.TestCase):
     def test_ncs(self):
         st = gemmi.read_structure(full_path('5cvz_final.pdb'))
         self.assertEqual(st.resolution, 3.29)
-        first_atom = st[0].sole_residue('A', 17, ' ')['N']
-        ne2 = st[0].sole_residue('A', 63, ' ')['NE2']
+        first_atom = st[0].sole_residue('A', gemmi.SeqId(17, ' '))['N']
+        ne2 = st[0].sole_residue('A', gemmi.SeqId('63'))['NE2']
         direct_dist = first_atom.pos.dist(ne2.pos)
         self.assertAlmostEqual(direct_dist, 34.89, delta=1e-2)
         nearest_image = st.cell.find_nearest_image(first_atom.pos, ne2.pos)
@@ -361,7 +361,7 @@ class TestMol(unittest.TestCase):
 
     def test_remove(self):
         st = gemmi.read_pdb_string(SSBOND_FRAGMENT)
-        res = st[0].sole_residue('A', 310, ' ')
+        res = st[0].sole_residue('A', gemmi.SeqId('310'))
         self.assertEqual(len(res), 1)
         del res['SG']
         self.assertEqual(len(res), 0)
@@ -403,7 +403,7 @@ class TestMol(unittest.TestCase):
         self.assertEqual(polymer.length(), 8)
         self.assertEqual(polymer.make_one_letter_sequence(), 'sAXvsAXv')
         self.assertEqual([res.name for res in b.get_ligands()], ['QUI', 'QUI'])
-        res1 = model.sole_residue('A', 1, ' ')
+        res1 = model.sole_residue('A', gemmi.SeqId('1'))
         self.assertEqual([atom.name for atom in res1.first_conformer()],
                          [atom.name for atom in res1 if atom.altloc != 'B'])
 

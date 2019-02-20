@@ -89,7 +89,7 @@ ATOM   2293  SG  CYS B  85      42.948   6.483  17.913  0.52 23.86           S
 class TestSubCells(unittest.TestCase):
     def test_5a11(self, use_populate=True):
         st = gemmi.read_pdb_string(FRAGMENT_5A11)
-        a1 = st[0].sole_residue('A', 37, ' ')[0]
+        a1 = st[0].sole_residue('A', gemmi.SeqId(37, ' '))[0]
         sc = gemmi.SubCells(st[0], st.cell, 5)
         if use_populate:
             sc.populate(st[0])
@@ -115,7 +115,7 @@ class TestSubCells(unittest.TestCase):
 
     def test_1gtv(self):
         st = gemmi.read_pdb_string(FRAGMENT_1GTV)
-        a1 = st[0].sole_residue('A', 85, ' ')[0]
+        a1 = st[0].sole_residue('A', gemmi.SeqId(85, ' '))[0]
         subcells = gemmi.SubCells(st[0], st.cell, 5)
         subcells.populate(st[0])
         marks = subcells.find_atoms(a1.pos, a1.altloc, 3)

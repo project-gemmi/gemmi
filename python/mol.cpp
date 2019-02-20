@@ -199,10 +199,10 @@ void add_mol(py::module& m) {
     .def("subchains", &Model::subchains,
          py::return_value_policy::reference_internal)
     .def("find_residue_group", &Model::find_residue_group,
-         py::arg("chain"), py::arg("resnum"), py::arg("icode"),
+         py::arg("chain"), py::arg("seqid"),
          py::return_value_policy::reference_internal)
     .def("sole_residue", &Model::sole_residue,
-         py::arg("chain"), py::arg("resnum"), py::arg("icode"),
+         py::arg("chain"), py::arg("seqid"),
          py::return_value_policy::reference_internal)
     .def("find_chain", &Model::find_chain,
          py::arg("name"), py::return_value_policy::reference_internal)
@@ -243,8 +243,9 @@ void add_mol(py::module& m) {
     .def("__iter__", [](const Chain& ch) {
         return py::make_iterator(ch.residues);
     }, py::keep_alive<0, 1>())
-    .def("__getitem__", &Chain::find_by_seqid,
-         py::arg("pdb_seqid"), py::keep_alive<0, 1>())
+    .def("__getitem__", [](Chain& ch, const std::string& seqid) {
+        return ch.find_residue_group(SeqId(seqid));
+    }, py::arg("pdb_seqid"), py::keep_alive<0, 1>())
     .def("__getitem__", [](Chain& ch, int index) -> Residue& {
         return ch.residues.at(index >= 0 ? index : index + ch.residues.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
@@ -317,6 +318,8 @@ void add_mol(py::module& m) {
     });
 
   py::class_<SeqId>(m, "SeqId")
+    .def(py::init<int, char>())
+    .def(py::init<const std::string&>())
     .def_readwrite("num", &SeqId::num)
     .def_readwrite("icode", &SeqId::icode)
     .def("__str__", &SeqId::str)
