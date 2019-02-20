@@ -81,7 +81,7 @@ Dataset has a few properties that can be accessed directly::
     std::string crystal_name;
     std::string dataset_name;
     UnitCell cell;
-    double wavelength = NAN;
+    double wavelength = 0.;
   };
 
 Python bindings provide the same properties:

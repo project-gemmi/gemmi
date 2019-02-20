@@ -499,7 +499,7 @@ inline Mtz read_mtz_file(const std::string& path) {
 
 void Mtz::write_to_stream(std::FILE* stream) const {
   if (!has_data())
-    fail("Cannot write Mtz which has not data.");
+    fail("Cannot write Mtz which has no data.");
   if (!spacegroup)
     fail("Cannot write Mtz which has no space group.");
   char buf[81] = {'M', 'T', 'Z', ' ', '\0'};
