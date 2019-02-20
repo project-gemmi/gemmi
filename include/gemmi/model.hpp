@@ -7,7 +7,6 @@
 
 #include <algorithm>  // for find_if, count_if
 #include <array>
-#include <cstdlib>    // for strtol
 #include <iterator>   // for back_inserter
 #include <map>        // for map
 #include <stdexcept>  // for out_of_range
@@ -19,43 +18,11 @@
 #include "symmetry.hpp"
 #include "metadata.hpp"
 #include "iterator.hpp"
+#include "seqid.hpp"
 
 namespace gemmi {
 
 namespace impl {
-
-// Optional int value. N is a special value that means not-set.
-template<int N> struct OptionalInt {
-  enum { None=N };
-  int value = None;
-
-  OptionalInt() = default;
-  OptionalInt(int n) : value(n) {}
-  bool has_value() const { return value != None; }
-  std::string str() const {
-    return has_value() ? std::to_string(value) : "?";
-  }
-  OptionalInt& operator=(int n) { value = n; return *this; }
-  bool operator==(const OptionalInt& o) const { return value == o.value; }
-  bool operator!=(const OptionalInt& o) const { return value != o.value; }
-  bool operator==(int n) const { return value == n; }
-  bool operator!=(int n) const { return value != n; }
-  OptionalInt operator+(OptionalInt o) const {
-    return OptionalInt(has_value() && o.has_value() ? value + o.value : N);
-  }
-  OptionalInt operator-(OptionalInt o) const {
-    return OptionalInt(has_value() && o.has_value() ? value - o.value : N);
-  }
-  OptionalInt& operator+=(int n) { if (has_value()) value += n; return *this; }
-  OptionalInt& operator-=(int n) { if (has_value()) value -= n; return *this; }
-  explicit operator int() const { return value; }
-  explicit operator bool() const { return has_value(); }
-  // these are defined for partial compatibility with C++17 std::optional
-  using value_type = int;
-  int& operator*() { return value; }
-  const int& operator*() const { return value; }
-  int& emplace(int n) { value = n; return value; }
-};
 
 template<typename T>
 T* find_or_null(std::vector<T>& vec, const std::string& name) {
@@ -210,37 +177,6 @@ struct Atom {
            u12 != 0.f || u13 != 0.f || u23 != 0.f;
   }
   bool is_hydrogen() const { return gemmi::is_hydrogen(element); }
-};
-
-struct SeqId {
-  using OptionalNum = impl::OptionalInt<-999>;
-
-  OptionalNum num; // sequence number
-  char icode = ' ';  // insertion code
-
-  SeqId() = default;
-  SeqId(int num_, char icode_) { num = num_; icode = icode_; }
-  explicit SeqId(const std::string& str) {
-    char* endptr;
-    num = std::strtol(str.c_str(), &endptr, 10);
-    if (endptr == str.c_str() || (*endptr != '\0' && endptr[1] != '\0'))
-      throw std::invalid_argument("Not a seqid: " + str);
-    icode = (*endptr | 0x20);
-  }
-
-  bool operator==(const SeqId& o) const {
-    return num == o.num && (icode | 0x20) == (o.icode | 0x20);
-  }
-  bool operator!=(const SeqId& o) const { return !operator==(o); }
-
-  char has_icode() const { return icode != ' '; }
-
-  std::string str() const {
-    std::string r = num.str();
-    if (icode != ' ')
-      r += icode;
-    return r;
-  }
 };
 
 // Sequence ID (sequence number + insertion code) + residue name + segment ID

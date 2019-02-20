@@ -575,12 +575,19 @@ void update_cif_block(const Structure& st, cif::Block& block) {
                       q(tls.origin.x), q(tls.origin.y), q(tls.origin.z)});
       }
     cif::Loop& group_loop = block.init_mmcif_loop("_pdbx_refine_tls_group.", {
-        "id", "refine_tls_id", "selection_details"});
+        "id", "refine_tls_id", "beg_auth_asym_id", "beg_auth_seq_id",
+        "end_auth_asym_id", "end_auth_seq_id", "selection_details"});
+    int counter = 1;
     for (const RefinementInfo& ref : st.meta.refinement)
-      for (const TlsGroup& tls : ref.tls_groups) {
-        std::string tid = impl::string_or_dot(tls.id);
-        group_loop.add_row({tid, tid, impl::string_or_qmark(tls.selection)});
-      }
+      for (const TlsGroup& tls : ref.tls_groups)
+        for (const TlsGroup::Selection& sel : tls.selections)
+          group_loop.add_row({std::to_string(counter++),
+                              impl::string_or_dot(tls.id),
+                              impl::string_or_qmark(sel.chain),
+                              sel.res_begin.num ? sel.res_begin.str() : "?",
+                              impl::string_or_qmark(sel.chain),
+                              sel.res_end.num ? sel.res_end.str() : "?",
+                              impl::string_or_qmark(sel.details)});
   }
 
   if (!st.meta.software.empty()) {

@@ -174,8 +174,24 @@ inline void read_remark3_line(const char* line, Metadata& meta) {
       ref_info.tls_groups.emplace_back();
       ref_info.tls_groups.back().id = std::string(value, end);
     } else if (same_str(key, "SET")) {
-      if (!ref_info.tls_groups.empty())
-        ref_info.tls_groups.back().selection = std::string(value, end);
+      if (!ref_info.tls_groups.empty()) {
+        TlsGroup& group = ref_info.tls_groups.back();
+        group.selections.emplace_back();
+        group.selections.back().details = std::string(value, end);
+      }
+    } else if (same_str(key, "RESIDUE RANGE")) {
+      if (!ref_info.tls_groups.empty()) {
+        TlsGroup& group = ref_info.tls_groups.back();
+        group.selections.emplace_back();
+        TlsGroup::Selection& sel = group.selections.back();
+        const char* endptr;
+        sel.chain = read_word(value, &endptr);
+        sel.res_begin = SeqId(read_word(endptr, &endptr));
+        std::string chain_end = read_word(endptr, &endptr);
+        sel.res_end = SeqId(read_word(endptr, &endptr));
+        if (sel.chain != chain_end)  // this is unexpected
+          group.selections.pop_back();
+      }
     } else if (same_str(key, "ORIGIN FOR THE GROUP (A)")) {
       std::vector<std::string> xyz = split_str_multi(std::string(value, end));
       if (ref_info.tls_groups.empty() || xyz.size() != 3)

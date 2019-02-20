@@ -10,6 +10,7 @@
 #include <vector>
 #include "math.hpp"      // for Mat33
 #include "unitcell.hpp"  // for Position
+#include "seqid.hpp"     // for SeqId
 
 namespace gemmi {
 
@@ -83,8 +84,14 @@ struct CrystalInfo {
 
 
 struct TlsGroup {
+  struct Selection {
+    std::string chain;
+    SeqId res_begin;
+    SeqId res_end;
+    std::string details;  // _pdbx_refine_tls_group.selection_details
+  };
   std::string id;           // _pdbx_refine_tls.id
-  std::string selection;    // _pdbx_refine_tls_group.selection_details
+  std::vector<Selection> selections;
   Position origin;          // _pdbx_refine_tls.origin_x/y/z
   Mat33 T;                  // _pdbx_refine_tls.T[][]
   Mat33 L;                  // _pdbx_refine_tls.L[][]
