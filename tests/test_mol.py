@@ -129,6 +129,10 @@ class TestMol(unittest.TestCase):
         n_res = len(model['A'])
         st.remove_ligands_and_waters()
         self.assertEqual(len(model['A']), n_res - 2)
+        mse = model['A'][0]
+        self.assertEqual(len(mse), 8)
+        mse.trim_to_alanine()
+        self.assertEqual([a.name for a in mse], ['N', 'CA', 'C', 'O', 'CB'])
         model['A'].trim_to_alanine()
         # ALA has 5 atoms, except the last one which has OXT (hence +1)
         expected_count = sum(4 + (r.name != 'GLY') for r in model['A']) + 1

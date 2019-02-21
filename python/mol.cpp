@@ -268,7 +268,7 @@ void add_mol(py::module& m) {
          py::arg("new_residues"), py::arg("min_sep")=0)
     .def("count_atom_sites", &count_atom_sites<Chain>)
     .def("count_occupancies", &count_occupancies<Chain>)
-    .def("trim_to_alanine", &trim_to_alanine)
+    .def("trim_to_alanine", (void (*)(Chain&)) &trim_to_alanine)
     .def("first_conformer",
          (UniqProxy<Residue> (Chain::*)()) &Chain::first_conformer)
     .def("__repr__", [](const Chain& self) {
@@ -355,6 +355,7 @@ void add_mol(py::module& m) {
     .def("first_conformer",
          (UniqProxy<Atom> (Residue::*)()) &Residue::first_conformer)
     .def("is_water", &Residue::is_water)
+    .def("trim_to_alanine", (bool (*)(Residue&)) &trim_to_alanine)
     .def("__repr__", [](const Residue& self) {
         return "<gemmi.Residue " + self.str() +
                " with " + std::to_string(self.atoms.size()) + " atoms>";
