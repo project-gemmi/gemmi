@@ -264,6 +264,10 @@ void add_mol(py::module& m) {
     .def("get_subchain",
          (ResidueSpan (Chain::*)(const std::string&)) &Chain::get_subchain)
     .def("has_subchains_assigned", &has_subchains_assigned)
+    .def("previous_residue", &Chain::previous_residue,
+         py::return_value_policy::reference_internal)
+    .def("next_residue", &Chain::next_residue,
+         py::return_value_policy::reference_internal)
     .def("append_residues", &Chain::append_residues,
          py::arg("new_residues"), py::arg("min_sep")=0)
     .def("count_atom_sites", &count_atom_sites<Chain>)

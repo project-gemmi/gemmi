@@ -218,6 +218,20 @@ class TestMol(unittest.TestCase):
         self.assertAlmostEqual(atom_cl.occ, 0.17)
         self.assertEqual(atom_cl.element.name, 'Cl')
 
+        chain_b = st[0]['B']
+        res = chain_b['6']['ALA']
+        res = chain_b.next_residue(res)
+        self.assertEqual(res.name, 'NCY')
+        res = chain_b.next_residue(res)
+        self.assertEqual(res.name, 'MVA')
+        res = chain_b.previous_residue(res)
+        self.assertEqual(res.name, 'NCY')
+        res = chain_b.previous_residue(res)
+        self.assertEqual(res.name, 'ALA')
+        res = chain_b.next_residue(chain_b['7']['N2C'])
+        self.assertEqual(res.name, 'MVA')
+        self.assertEqual(chain_b.previous_residue(res).name, 'NCY')
+
     def test_read_1pfe_cif(self):
         self.read_1pfe('1pfe.cif.gz')
 

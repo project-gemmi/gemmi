@@ -452,7 +452,8 @@ struct Chain {
     const Residue* start = residues.data();
     for (const Residue* p = &res; p != start; )
       if (!res.same_group(*--p)) {
-        while (p != start && p->same_group(*(p-1)) && !res.same_conformer(*p))
+        while (p != start && p->same_group(*(p-1)) &&
+               (res.atoms.at(0).altloc == '\0' || !res.same_conformer(*p)))
           --p;
         return p;
       }
@@ -471,7 +472,7 @@ struct Chain {
     return nullptr;
   }
 
-  const Residue* prev_bonded_aa(const Residue& res) const {
+  const Residue* previous_bonded_aa(const Residue& res) const {
     if (const Residue* prev = previous_residue(res))
       if (prev->has_peptide_bond_to(res))
         return prev;
