@@ -218,12 +218,16 @@ class TestMol(unittest.TestCase):
         self.assertAlmostEqual(atom_cl.occ, 0.17)
         self.assertEqual(atom_cl.element.name, 'Cl')
 
+    def test_previous_next_residue(self):
+        st = gemmi.read_structure(full_path('1pfe.cif.gz'),
+                                  merge_same_name_chains=False)
         chain_b = st[0]['B']
         res = chain_b['6']['ALA']
         res = chain_b.next_residue(res)
         self.assertEqual(res.name, 'NCY')
         res = chain_b.next_residue(res)
         self.assertEqual(res.name, 'MVA')
+        self.assertIsNone(chain_b.next_residue(res))
         res = chain_b.previous_residue(res)
         self.assertEqual(res.name, 'NCY')
         res = chain_b.previous_residue(res)
@@ -231,6 +235,7 @@ class TestMol(unittest.TestCase):
         res = chain_b.next_residue(chain_b['7']['N2C'])
         self.assertEqual(res.name, 'MVA')
         self.assertEqual(chain_b.previous_residue(res).name, 'NCY')
+        self.assertIsNone(chain_b.previous_residue(chain_b[0]))
 
     def test_read_1pfe_cif(self):
         self.read_1pfe('1pfe.cif.gz')
