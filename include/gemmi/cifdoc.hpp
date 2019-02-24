@@ -117,9 +117,10 @@ struct Loop {
   std::vector<std::string> values;
 
   // search and access
-  int find_tag(const std::string& tag) const {
+  int find_tag(std::string tag) const {
+    tag = gemmi::to_lower(tag);
     auto f = std::find_if(tags.begin(), tags.end(),
-                          [&tag](const std::string& t) { return t == tag; });
+               [&tag](const std::string& t) { return gemmi::iequal(t, tag); });
     return f == tags.end() ? -1 : f - tags.begin();
   }
   size_t width() const { return tags.size(); }

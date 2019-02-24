@@ -6,6 +6,7 @@
 #include "gemmi/version.hpp"
 
 int bfit_main(int argc, char** argv);
+int cif2mtz_main(int argc, char** argv);
 int contact_main(int argc, char** argv);
 int contents_main(int argc, char** argv);
 int convert_main(int argc, char** argv);
@@ -30,6 +31,7 @@ struct SubCmd {
 #define CMD(s, desc) { #s, &s##_main, desc }
 static SubCmd subcommands[] = {
   CMD(bfit, "predicts B-factors (ADPs) from coordinates using WCN"),
+  CMD(cif2mtz, "convert structure factor mmCIF to MTZ"),
   CMD(contact, "searches for contacts (neighbouring atoms)"),
   CMD(contents, "info about content of a coordinate file (pdb, mmCIF, ...)"),
   CMD(convert, "convert file (CIF - JSON, mmCIF - PDB) or modify structure"),

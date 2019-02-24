@@ -34,6 +34,7 @@ struct ReflnBlock {
   std::string entry_id;
   UnitCell cell;
   const SpaceGroup* spacegroup = nullptr;
+  double wavelength;
   cif::Loop* refln_loop = nullptr;
 
   ReflnBlock(cif::Block&& block_) : block(block_) {
@@ -42,6 +43,9 @@ struct ReflnBlock {
     const char* hm_tag = "_symmetry.space_group_name_H-M";
     if (const std::string* hm = block.find_value(hm_tag))
       spacegroup = find_spacegroup_by_name(cif::as_string(*hm));
+    const char* wave_tag = "_diffrn_radiation_wavelength.wavelength";
+    cif::Column wave_col = block.find_values(wave_tag);
+    wavelength = wave_col.length() == 1 ? cif::as_number(wave_col[0]) : 0.;
     refln_loop = block.find_loop("_refln.index_h").get_loop();
   }
 

@@ -52,7 +52,7 @@ struct Mtz {
     std::string crystal_name;
     std::string dataset_name;
     UnitCell cell;
-    double wavelength = 0.;
+    double wavelength;
   };
 
   struct Column {
@@ -96,7 +96,7 @@ struct Mtz {
   int ncol = 0;
   int nreflections = 0;
   int nbatches = 0;
-  std::array<int, 5> sort_order;
+  std::array<int, 5> sort_order = {};
   double min_1_d2 = NAN;
   double max_1_d2 = NAN;
   float valm = NAN;
@@ -362,6 +362,7 @@ struct Mtz {
         datasets.emplace_back();
         datasets.back().id = simple_atoi(args, &args);
         datasets.back().project_name = read_word(skip_word(args));
+        datasets.back().wavelength = 0.0;
         break;
       case ialpha4_id("CRYS"):
         if (simple_atoi(args, &args) == last_dataset().id)
@@ -409,6 +410,8 @@ struct Mtz {
     while (std::fread(buf, 1, 80, stream) == 80 &&
            ialpha3_id(buf) != ialpha3_id("END"))
       parse_main_header(buf);
+    if (ncol != (int) columns.size())
+      fail("Number of COLU records inconsistent with NCOL record.");
   }
 
   // read the part between END and MTZENDOFHEADERS
@@ -486,9 +489,13 @@ inline Mtz read_mtz_file(const std::string& path) {
   }
 }
 
+} // namespace gemmi
+
 #ifdef GEMMI_WRITE_IMPLEMENTATION
 
 #include "sprintf.hpp"
+
+namespace gemmi {
 
 #define WRITE(...) do { \
     int len = stbsp_snprintf(buf, 81, __VA_ARGS__); \
@@ -570,12 +577,13 @@ void Mtz::write_to_file(const std::string& path) const {
   }
 }
 
+} // namespace gemmi
+
 #endif // GEMMI_WRITE_IMPLEMENTATION
 
 #ifdef  __INTEL_COMPILER
 # pragma warning pop
 #endif
 
-} // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

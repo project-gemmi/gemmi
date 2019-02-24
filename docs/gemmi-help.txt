@@ -10,6 +10,7 @@ Usage: gemmi [--version] [--help] <command> [<args>]
 
 Commands:
  bfit          predicts B-factors (ADPs) from coordinates using WCN
+ cif2mtz       convert structure factor mmCIF to MTZ
  contact       searches for contacts (neighbouring atoms)
  contents      info about content of a coordinate file (pdb, mmCIF, ...)
  convert       convert file (CIF - JSON, mmCIF - PDB) or modify structure
