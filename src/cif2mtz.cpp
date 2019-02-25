@@ -174,12 +174,18 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (verbose)
     fprintf(stderr, "Reading %s ...\n", cif_path);
   cif::Document doc = gemmi::read_cif_gz(cif_path);
+  const gemmi::SpaceGroup* first_sg = nullptr;
   if (convert_all) {
     for (cif::Block& block : doc.blocks) {
       std::string path = p.options[Dir].arg;
       path += '/';
       path += block.name;
+      path += ".mtz";
       gemmi::ReflnBlock rb(std::move(block));
+      if (!first_sg)
+        first_sg = rb.spacegroup;
+      else if (!rb.spacegroup)
+        rb.spacegroup = first_sg;
       convert_cif_block_to_mtz(rb, path, p.options);
     }
   } else {
