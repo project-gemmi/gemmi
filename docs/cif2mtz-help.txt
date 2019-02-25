@@ -1,0 +1,19 @@
+$ gemmi cif2mtz -h
+Usage:
+  gemmi cif2mtz [options] CIF_FILE MTZ_FILE
+  gemmi cif2mtz [options] CIF_FILE --dir=DIRECTORY
+Options:
+  -h, --help             Print usage and exit.
+  -V, --version          Print version and exit.
+  --verbose              Verbose output.
+  -b NAME, --block=NAME  mmCIF block to convert.
+  -d DIR, --dir=NAME     Output directory.
+  --title                MTZ title.
+
+First variant: converts the first block of CIF_FILE, or the block
+specified with --block=NAME, to MTZ file with given name.
+
+Second variant: converts each block of CIF_FILE to one MTZ file
+(block-name.mtz) in the specified DIRECTORY.
+
+If CIF_FILE is -, the input is read from stdin.
