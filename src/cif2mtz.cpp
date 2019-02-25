@@ -176,6 +176,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   cif::Document doc = gemmi::read_cif_gz(cif_path);
   const gemmi::SpaceGroup* first_sg = nullptr;
   if (convert_all) {
+    bool ok = true;
     for (cif::Block& block : doc.blocks) {
       std::string path = p.options[Dir].arg;
       path += '/';
@@ -186,8 +187,15 @@ int GEMMI_MAIN(int argc, char **argv) {
         first_sg = rb.spacegroup;
       else if (!rb.spacegroup)
         rb.spacegroup = first_sg;
-      convert_cif_block_to_mtz(rb, path, p.options);
+      try {
+        convert_cif_block_to_mtz(rb, path, p.options);
+      } catch (std::runtime_error& e) {
+        fprintf(stderr, "ERROR: %s\n", e.what());
+        ok = false;
+      }
     }
+    if (!ok)
+      return 1;
   } else {
     const char* mtz_path = p.nonOption(1);
     cif::Block* block = &doc.blocks.at(0);
@@ -199,7 +207,12 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
     }
     gemmi::ReflnBlock rb(std::move(*block));
-    convert_cif_block_to_mtz(rb, mtz_path, p.options);
+    try {
+      convert_cif_block_to_mtz(rb, mtz_path, p.options);
+    } catch (std::runtime_error& e) {
+      fprintf(stderr, "ERROR: %s\n", e.what());
+      return 1;
+    }
   }
   if (verbose)
     fprintf(stderr, "Done.\n");
