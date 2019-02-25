@@ -562,7 +562,13 @@ void Mtz::write_to_stream(std::FILE* stream) const {
     //WRITE("BATCH");
   }
   WRITE("END");
-  // history
+  if (!history.empty()) {
+    // According to mtzformat.html the file can have only up to 30 history
+    // lines, but we don't enforce it here.
+    WRITE("MTZHIST %3zu", history.size());
+    for (const std::string& line : history)
+      WRITE("%s", line.c_str());
+  }
   WRITE("MTZENDOFHEADERS");
 }
 

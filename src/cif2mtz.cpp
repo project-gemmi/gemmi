@@ -19,7 +19,7 @@
 
 namespace cif = gemmi::cif;
 
-enum OptionIndex { Verbose=3, BlockName, Dir, Title };
+enum OptionIndex { Verbose=3, BlockName, Dir, Title, History };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -35,8 +35,10 @@ static const option::Descriptor Usage[] = {
     "  -b NAME, --block=NAME  \tmmCIF block to convert." },
   { Dir, 0, "d", "dir", Arg::Required,
     "  -d DIR, --dir=NAME  \tOutput directory." },
-  { Title, 0, "", "titl", Arg::None,
+  { Title, 0, "", "title", Arg::Required,
     "  --title  \tMTZ title." },
+  { History, 0, "-H", "history", Arg::Required,
+    "  -H LINE, --history=LINE  \tAdd a history line." },
   { NoOp, 0, "", "", Arg::None,
     "\nFirst variant: converts the first block of CIF_FILE, or the block"
     "\nspecified with --block=NAME, to MTZ file with given name."
@@ -105,6 +107,8 @@ void convert_cif_block_to_mtz(const gemmi::ReflnBlock& rb,
   gemmi::Mtz mtz;
   if (options[Title])
     mtz.title = options[Title].arg;
+  for (const option::Option* opt = options[History]; opt; opt = opt->next())
+    mtz.history.push_back(opt->arg);
   mtz.cell = rb.cell;
   mtz.spacegroup = rb.spacegroup;
   mtz.datasets.push_back({0, "HKL_base", "HKL_base", "HKL_base", mtz.cell, 0.});
