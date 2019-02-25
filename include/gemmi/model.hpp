@@ -39,16 +39,21 @@ T& find_or_add(std::vector<T>& vec, const std::string& name) {
   return vec.back();
 }
 
-template<typename T> typename std::vector<T>::iterator
-find_iter(std::vector<T>& vec, const std::string& name) {
-  auto it = std::find_if(vec.begin(), vec.end(),
-                         [&name](const T& m) { return m.name == name; });
-  if (it == vec.end())
+template<typename Iter, typename T = typename Iter::value_type>
+Iter find_iter(Iter begin, Iter end, const std::string& name) {
+  Iter i = std::find_if(begin, end, [&](const T& x) { return x.name == name; });
+  if (i == end)
     throw std::invalid_argument(
         T::what() + (" " + name) + " not found (only [" +
-        join_str(vec, ' ', [](const T& x) { return x.name; }) +
+        join_str(begin, end, ' ', [](const T& x) { return x.name; }) +
         "])");
-  return it;
+  return i;
+}
+
+template<typename T>
+typename std::vector<T>::iterator find_iter(std::vector<T>& vec,
+                                            const std::string& name) {
+  return find_iter(vec.begin(), vec.end(), name);
 }
 
 } // namespace impl
@@ -367,13 +372,10 @@ struct ResidueGroup : ResidueSpan {
   ResidueGroup() = default;
   ResidueGroup(ResidueSpan&& span) : ResidueSpan(std::move(span)) {}
   Residue& by_resname(const std::string& name) {
-    for (auto it = begin_; it != begin_ + size_; ++it)
-      if (it->name == name)
-        return *it;
-    throw std::invalid_argument("ResidueGroup has no residue " + name);
+    return *impl::find_iter(begin_, begin_ + size_, name);
   }
   void remove_residue(const std::string& name) {
-    residues_->erase(impl::find_iter(*residues_, name));
+    residues_->erase(impl::find_iter(begin_, begin_ + size_, name));
   }
 };
 

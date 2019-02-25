@@ -140,21 +140,31 @@ inline std::vector<std::string> split_str_multi(const std::string& str,
 }
 
 template<typename T, typename S, typename F>
-std::string join_str(const T& iterable, const S& sep, const F& getter) {
+std::string join_str(T begin, T end, const S& sep, const F& getter) {
   std::string r;
   bool first = true;
-  for (const auto& item : iterable) {
+  for (T i = begin; i != end; ++i) {
     if (!first)
       r += sep;
-    r += getter(item);
+    r += getter(*i);
     first = false;
   }
   return r;
 }
 
 template<typename T, typename S>
+std::string join_str(T begin, T end, const S& sep) {
+  return join_str(begin, end, sep, [](const std::string& t) { return t; });
+}
+
+template<typename T, typename S, typename F>
+std::string join_str(const T& iterable, const S& sep, const F& getter) {
+  return join_str(iterable.begin(), iterable.end(), sep, getter);
+}
+
+template<typename T, typename S>
 std::string join_str(const T& iterable, const S& sep) {
-  return join_str(iterable, sep, [](const std::string& t) { return t; });
+  return join_str(iterable.begin(), iterable.end(), sep);
 }
 
 
