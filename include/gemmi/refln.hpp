@@ -36,6 +36,7 @@ struct ReflnBlock {
   const SpaceGroup* spacegroup = nullptr;
   double wavelength;
   cif::Loop* refln_loop = nullptr;
+  cif::Loop* diffrn_refln_loop = nullptr;
 
   ReflnBlock(cif::Block&& block_) : block(block_) {
     entry_id = cif::as_string(block.find_value("_entry.id"));
@@ -47,6 +48,7 @@ struct ReflnBlock {
     cif::Column wave_col = block.find_values(wave_tag);
     wavelength = wave_col.length() == 1 ? cif::as_number(wave_col[0]) : 0.;
     refln_loop = block.find_loop("_refln.index_h").get_loop();
+    diffrn_refln_loop = block.find_loop("_diffrn_refln.index_h").get_loop();
   }
 
   size_t get_column_index(const std::string& tag) const {

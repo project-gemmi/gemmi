@@ -51,42 +51,46 @@ static const option::Descriptor Usage[] = {
 
 struct Entry {
   const char* refln_tag;
-  const char* refln_tag2;
   const char* col_label;
   char col_type;
   unsigned char dataset_id;
 };
 
-static Entry translation_table[] = {
-  {"index_h", nullptr,               "H",          'H', 0},
-  {"index_k", nullptr,               "K",          'H', 0},
-  {"index_l", nullptr,               "L",          'H', 0},
-  {"pdbx_r_free_flag", "status",     "FreeR_flag", 'I', 0},
-  {"intensity_meas", nullptr,        "I",          'J', 1},
-  {"intensity_sigma", nullptr,       "SIGI",       'Q', 1},
-  {"pdbx_I_plus", nullptr,           "I(+)",       'K', 1},
-  {"pdbx_I_plus_sigma", nullptr,     "SIGI(+)",    'M', 1},
-  {"pdbx_I_minus", nullptr,          "I(-)",       'K', 1},
-  {"pdbx_I_minus_sigma", nullptr,    "SIGI(-)",    'M', 1},
-  {"F_meas_au", nullptr,             "FP",         'F', 1},
-  {"F_meas_sigma_au", nullptr,       "SIGFP",      'Q', 1},
-  {"pdbx_F_plus", nullptr,           "F(+)",       'G', 1},
-  {"pdbx_F_plus_sigma", nullptr,     "SIGF(+)",    'L', 1},
-  {"pdbx_F_minus", nullptr,          "F(-)",       'G', 1},
-  {"pdbx_F_minus_sigma", nullptr,    "SIGF(-)",    'L', 1},
-  {"pdbx_anom_difference", nullptr,  "DP",         'D', 1},
-  {"pdbx_anom_difference_sigma", nullptr, "SIGDP", 'Q', 1},
-  {"F_calc", nullptr,                "FC",         'F', 1},
-  {"phase_calc", nullptr,            "PHIC",       'P', 1},
-  {"fom", "weight",                  "FOM",        'W', 1},
-  {"pdbx_HL_A_iso", nullptr,         "HLA",        'A', 1},
-  {"pdbx_HL_B_iso", nullptr,         "HLB",        'A', 1},
-  {"pdbx_HL_C_iso", nullptr,         "HLC",        'A', 1},
-  {"pdbx_HL_D_iso", nullptr,         "HLD",        'A', 1},
-  {"pdbx_FWT", nullptr,              "FWT",        'F', 1},
-  {"pdbx_PHWT", nullptr,             "PHWT",       'P', 1},
-  {"pdbx_DELFWT", nullptr,           "DELFWT",     'F', 1},
-  {"pdbx_DELPHWT", nullptr,          "DELPHWT",    'P', 1},
+// When we have a few alternative mmCIF tags for the same MTZ label,
+// they are in consecutive rows and all but the last one have null col_label.
+static Entry conv_table[] = {
+  {"index_h",                    "H",          'H', 0},
+  {"index_k",                    "K",          'H', 0},
+  {"index_l",                    "L",          'H', 0},
+  {"pdbx_r_free_flag",           nullptr,      'I', 0},
+  {"status",                     "FreeR_flag", 's', 0}, // s is a special flag
+  {"intensity_meas",             nullptr,      'J', 1},
+  {"intensity_net",              "I",          'J', 1},
+  {"intensity_sigma",            "SIGI",       'Q', 1},
+  {"pdbx_I_plus",                "I(+)",       'K', 1},
+  {"pdbx_I_plus_sigma",          "SIGI(+)",    'M', 1},
+  {"pdbx_I_minus",               "I(-)",       'K', 1},
+  {"pdbx_I_minus_sigma",         "SIGI(-)",    'M', 1},
+  {"F_meas_au",                  "FP",         'F', 1},
+  {"F_meas_sigma_au",            "SIGFP",      'Q', 1},
+  {"pdbx_F_plus",                "F(+)",       'G', 1},
+  {"pdbx_F_plus_sigma",          "SIGF(+)",    'L', 1},
+  {"pdbx_F_minus",               "F(-)",       'G', 1},
+  {"pdbx_F_minus_sigma",         "SIGF(-)",    'L', 1},
+  {"pdbx_anom_difference",       "DP",         'D', 1},
+  {"pdbx_anom_difference_sigma", "SIGDP",      'Q', 1},
+  {"F_calc",                     "FC",         'F', 1},
+  {"phase_calc",                 "PHIC",       'P', 1},
+  {"fom",                        nullptr,      'W', 1},
+  {"weight",                     "FOM",        'W', 1},
+  {"pdbx_HL_A_iso",              "HLA",        'A', 1},
+  {"pdbx_HL_B_iso",              "HLB",        'A', 1},
+  {"pdbx_HL_C_iso",              "HLC",        'A', 1},
+  {"pdbx_HL_D_iso",              "HLD",        'A', 1},
+  {"pdbx_FWT",                   "FWT",        'F', 1},
+  {"pdbx_PHWT",                  "PHWT",       'P', 1},
+  {"pdbx_DELFWT",                "DELFWT",     'F', 1},
+  {"pdbx_DELPHWT",               "DELPHWT",    'P', 1},
 };
 
 inline float status_to_freeflag(const std::string& str) {
@@ -114,45 +118,47 @@ void convert_cif_block_to_mtz(const gemmi::ReflnBlock& rb,
   mtz.datasets.push_back({0, "HKL_base", "HKL_base", "HKL_base", mtz.cell, 0.});
   mtz.datasets.push_back({1, "unknown", "unknown", "unknown", mtz.cell,
                           rb.wavelength});
-  if (!rb.refln_loop)
+  const cif::Loop* loop = rb.refln_loop ? rb.refln_loop : rb.diffrn_refln_loop;
+  if (!loop)
     gemmi::fail("_refln category not found in mmCIF block: " + rb.block.name);
-  const cif::Loop& loop = *rb.refln_loop;
+  bool uses_status = false;
   std::vector<int> indices;
-  std::string tag = "_refln.";
-  for (const Entry& tr : translation_table) {
-    tag.replace(7, std::string::npos, tr.refln_tag);
-    int index = loop.find_tag(tag);
-    if (index == -1 && tr.refln_tag2) {
-      tag.replace(7, std::string::npos, tr.refln_tag2);
-      index = loop.find_tag(tag);
-    }
+  std::string tag = loop->tags[0].substr(0, loop->tags[0].find('.') + 1);
+  const size_t len = tag.length();
+  for (auto c = std::begin(conv_table); c != std::end(conv_table); ++c) {
+    tag.replace(len, std::string::npos, c->refln_tag);
+    int index = loop->find_tag(tag);
     if (index != -1) {
       indices.push_back(index);
       mtz.columns.emplace_back();
       gemmi::Mtz::Column& col = mtz.columns.back();
-      col.dataset_id = tr.dataset_id;
-      col.type = tr.col_type;
-      col.label = tr.col_label;
+      col.dataset_id = c->dataset_id;
+      col.type = c->col_type;
+      if (col.type == 's') {
+        col.type = 'I';
+        uses_status = true;
+      }
+      while (!c->col_label)
+        ++c;
+      col.label = c->col_label;
       col.parent = &mtz;
       col.idx = mtz.columns.size() - 1;
-    } else if (tr.col_type == 'H') {
+    } else if (c->col_type == 'H') {
       gemmi::fail("Miller index tag not found: " + tag);
     }
   }
   mtz.ncol = mtz.columns.size();
-  mtz.nreflections = loop.length();
+  mtz.nreflections = loop->length();
   mtz.data.resize(mtz.ncol * mtz.nreflections);
-  bool uses_status = indices.size() > 3 &&
-                     gemmi::iequal(loop.tags[indices[3]], "_refln.status");
   int k = 0;
-  for (size_t i = 0; i < loop.values.size(); i += loop.tags.size()) {
+  for (size_t i = 0; i < loop->values.size(); i += loop->tags.size()) {
     size_t j = 0;
     for (; j != 3; ++j)
-      mtz.data[k++] = (float) cif::as_int(loop.values[i + indices[j]]);
+      mtz.data[k++] = (float) cif::as_int(loop->values[i + indices[j]]);
     if (uses_status)
-      mtz.data[k++] = status_to_freeflag(loop.values[i + indices[j++]]);
+      mtz.data[k++] = status_to_freeflag(loop->values[i + indices[j++]]);
     for (; j != indices.size(); ++j)
-      mtz.data[k++] = (float) cif::as_number(loop.values[i + indices[j]]);
+      mtz.data[k++] = (float) cif::as_number(loop->values[i + indices[j]]);
   }
   if (options[Verbose])
     fprintf(stderr, "Writing %s ...\n", mtz_path.c_str());
