@@ -25,10 +25,7 @@ void add_grid(py::module& m, const char* name) {
   py::class_<Gr>(m, name, py::buffer_protocol())
     .def_buffer([](Gr &g) {
       return py::buffer_info(g.data.data(),
-                             sizeof(T),
-                             py::format_descriptor<T>::format(),
-                             3,  // it is 3D
-                             {g.nu, g.nv, g.nw},
+                             {g.nu, g.nv, g.nw},       // dimensions
                              {sizeof(T),               // strides
                               sizeof(T) * g.nu,
                               sizeof(T) * g.nu * g.nv});

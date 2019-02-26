@@ -165,8 +165,7 @@ void add_mtz(py::module& m) {
     .def_buffer([](Mtz &self) {
       int nrow = self.has_data() ? self.nreflections : 0;
       return py::buffer_info(self.data.data(),
-                             4, py::format_descriptor<float>::format(),
-                             2, {nrow, self.ncol}, // dimensions
+                             {nrow, self.ncol}, // dimensions
                              {4 * self.ncol, 4});  // strides
     })
     .def_readwrite("title", &Mtz::title)
@@ -221,8 +220,7 @@ void add_mtz(py::module& m) {
   py::class_<Mtz::Column>(mtz, "Column", py::buffer_protocol())
     .def_buffer([](Mtz::Column& self) {
       return py::buffer_info(self.parent->data.data() + self.idx,
-                             4, py::format_descriptor<float>::format(),
-                             1, {self.size()},      // dimensions
+                             {self.size()},         // dimensions
                              {4 * self.stride()});  // strides
     })
     .def_property_readonly("array", [](const Mtz::Column& self) {
