@@ -161,7 +161,7 @@ so the data is not contiguous (because it's stored row-wise in MTZ):
 Here is an example that uses the array property
 to make a plot similar to `AUSPEX <http://www.auspex.de/>`_:
 
-.. literalinclude:: ../examples/i_sigi.py
+.. literalinclude:: ../examples/mtz_i_sigi.py
   :language: python
   :lines: 4-
 
@@ -197,4 +197,19 @@ is Pandas DataFrame:
 SF mmCIF
 ========
 
-to be done
+Reflection data mmCIF files usually contain one block, but may have
+multiple blocks, for example merged and unmerged data in separate blocks.
+Usually blocks contain information about the unit cell and space group,
+sometimes also about the radiation wavelength.
+Usually, the reflections are listed as mmCIF category ``_refln``,
+but in some blocks the ``_diffrn_refln`` category is used
+to provide intensities.
+
+The script below renders the same colorful *I*/*σ* image as in the previous
+section, but it can take as an argument a file downloaded directly from
+the wwPDB (for example,
+``$PDB_DIR/structures/divided/structure_factors/de/r5deisf.ent.gz``).
+
+.. literalinclude:: ../examples/cif_i_sigi.py
+  :language: python
+  :lines: 4-

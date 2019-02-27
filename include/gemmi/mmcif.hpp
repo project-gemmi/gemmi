@@ -13,7 +13,7 @@
 #include "atox.hpp"   // for string_to_int
 #include "model.hpp"
 #include "entstr.hpp" // for entity_type_from_string, polymer_type_from_string
-#include "refln.hpp"  // for set_cell_from_mmcif
+#include "mmcif_impl.hpp" // for set_cell_from_mmcif
 
 namespace gemmi {
 
@@ -144,7 +144,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
   st.input_format = CoorFormat::Mmcif;
   st.name = block.name;
   set_cell_from_mmcif(block, st.cell);
-  st.spacegroup_hm = as_string(block.find_value("_symmetry.space_group_name_H-M"));
+  st.spacegroup_hm = as_string(impl::find_spacegroup_hm_value(block));
 
   auto add_info = [&](std::string tag) {
     bool first = true;

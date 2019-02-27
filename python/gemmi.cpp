@@ -11,7 +11,7 @@ namespace py = pybind11;
 void add_symmetry(py::module& m); // sym.cpp
 void add_grid(py::module& m); // grid.cpp
 void add_unitcell(py::module& m); // unitcell.cpp
-void add_mtz(py::module& m); // unitcell.cpp
+void add_hkl(py::module& m); // hkl.cpp
 void add_mol(py::module& m); // mol.cpp
 void add_cif(py::module& cif); // cif.cpp
 void add_read_structure(py::module& m); // read.cpp
@@ -24,7 +24,7 @@ PYBIND11_MODULE(gemmi, mg) {
   add_symmetry(mg);
   add_grid(mg);
   add_unitcell(mg);
-  add_mtz(mg);
+  add_hkl(mg);
   add_mol(mg);
   add_smcif(mg);
   add_chemcomp(mg);

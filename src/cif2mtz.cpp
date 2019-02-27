@@ -105,6 +105,15 @@ inline float status_to_freeflag(const std::string& str) {
 }
 
 static
+gemmi::ReflnBlock& get_block_by_name(std::vector<gemmi::ReflnBlock>& rblocks,
+                                     const std::string& name) {
+  for (gemmi::ReflnBlock& rb : rblocks)
+    if (rb.block.name == name)
+      return rb;
+  gemmi::fail("block not found: " + name);
+}
+
+static
 void convert_cif_block_to_mtz(const gemmi::ReflnBlock& rb,
                               const std::string& mtz_path,
                               const std::vector<option::Option>& options) {
@@ -179,16 +188,15 @@ int GEMMI_MAIN(int argc, char **argv) {
   const char* cif_path = p.nonOption(0);
   if (verbose)
     fprintf(stderr, "Reading %s ...\n", cif_path);
-  cif::Document doc = gemmi::read_cif_gz(cif_path);
+  auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(cif_path).blocks);
   const gemmi::SpaceGroup* first_sg = nullptr;
   if (convert_all) {
     bool ok = true;
-    for (cif::Block& block : doc.blocks) {
+    for (gemmi::ReflnBlock& rb : rblocks) {
       std::string path = p.options[Dir].arg;
       path += '/';
-      path += block.name;
+      path += rb.block.name;
       path += ".mtz";
-      gemmi::ReflnBlock rb(std::move(block));
       if (!first_sg)
         first_sg = rb.spacegroup;
       else if (!rb.spacegroup)
@@ -204,16 +212,10 @@ int GEMMI_MAIN(int argc, char **argv) {
       return 1;
   } else {
     const char* mtz_path = p.nonOption(1);
-    cif::Block* block = &doc.blocks.at(0);
-    if (p.options[BlockName]) {
-      block = doc.find_block(p.options[BlockName].arg);
-      if (!block) {
-        fprintf(stderr, "Block not found: %s\n", p.options[BlockName].arg);
-        std::exit(1);
-      }
-    }
-    gemmi::ReflnBlock rb(std::move(*block));
     try {
+      const gemmi::ReflnBlock& rb = p.options[BlockName]
+        ? get_block_by_name(rblocks, p.options[BlockName].arg)
+        : rblocks.at(0);
       convert_cif_block_to_mtz(rb, mtz_path, p.options);
     } catch (std::runtime_error& e) {
       fprintf(stderr, "ERROR: %s\n", e.what());
