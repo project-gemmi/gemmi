@@ -412,16 +412,17 @@ Background
 ----------
 
 Protein flexibility and dynamic properties can be to some degree inferred
-from atomic coordinates of the structure. Various approaches are used
+from the atomic coordinates of the structure. Various approaches are used
 in the literature:
 molecular dynamics, Gaussian or elastic network models, normal mode analysis,
 calculation of solvent accessibility or local packing density, and so on.
 
 Here we apply the simplest approach, which is pretty effective.
-It originates from a `2002 PNAS paper <http://www.pnas.org/content/99/3/1274>`_
+It originates from the
+`2002 PNAS paper <http://www.pnas.org/content/99/3/1274>`_
 in which Bertil Halle concluded that B-factors are more accurately predicted
-from counting nearby atoms than from Gaussian network models. This claim was
-based on analysis of only 38 high resolution structures (and a neat theory),
+by counting nearby atoms than by Gaussian network models. This claim was
+based on the analysis of only 38 high resolution structures (and a neat theory),
 but later on the method was validated on many other structures.
 
 In particular, in 2007 Manfred Weiss brought this method to the attention
@@ -433,14 +434,13 @@ Recently, the parameters fine-tuned by Weiss have been used for guessing
 which high B-factors (high comparing with the predicted value) result
 `from the radiation damage <https://doi.org/10.1107/S1600577515002131>`_.
 
-About the same time,
-in a `2008 paper in Proteins <https://doi.org/10.1002/prot.21983>`_,
-Chih-Peng Lin et al. devised a simple yet significant improvement to the
-original Halle's method:
-weighting the counted atoms by 1/d^2, the inverse of squared distance.
-(Note that the average number of atoms in distance d is ~ d^2).
-This method was named WCN (weighted contact number), although it takes
-into account all atoms, not just nearby contacts.
+Only a few months later, in 2008,
+`Chih-Peng Lin et al. devised <https://doi.org/10.1002/prot.21983>`_
+a simple yet significant improvement to the original Halle's method:
+weighting the counted atoms by 1/*d*:sup:`2`, the inverse of squared distance.
+It nicely counters the increasing average number of atoms with the distance
+(~ *d*:sup:`2`).
+This method was named WCN -- weighted contact number (hmm.. "contact").
 
 These two methods are so simple that it seems easy to find a better one.
 But according to my quick literature search, no better method of this kind
@@ -452,12 +452,12 @@ but in my hands it does not give better results than WCN.
 `In 2016 Shahmoradi and Wilke <https://doi.org/10.1002/prot.25034>`_
 did a data analysis aiming to disentangle the effects of local
 and longer-range packing in the above methods.
-They were not concerned with B-factors, though.
-The "contact" methods predict also other properties and this paper was
-focused on the rate of protein sequence evolution.
+They were not concerned with B-factors, though, but with
+the rate of protein sequence evolution.
+Because the "contact" methods predict many things.
 Interestingly, if the exponent in WCN is treated as a parameter
-(equal -2 in the canonical version), the value -2.3 gives best results
-in predicting the rate of evolution.
+(equal -2 in the canonical version), the value -2.3 gives the best results
+in predicting evolution.
 
 TLS
 ---
@@ -465,27 +465,26 @@ TLS
 We also need to note that
 `TLS <https://doi.org/10.1107/S0567740868001718>`_-like methods
 that model B-factors as rigid-body motion of molecules are reported
-to give much better correlation with experimental B-factors
+to give better correlation with experimental B-factors
 than other methods. But because such models use experimental B-factors on
 the input and employ more parameters, they are not directly comparable
-with WCN. Nevertheless, these results must be kept in mind.
+with WCN.
 
-Unlike TLS that is routinely used in the refinement of diffraction data,
+Unlike the TLS that is routinely used in the refinement of diffraction data,
 the TLS modelling described here is isotropic.
-Thus, it uses 10 parameters (anisotropic TLS requires 20), as described
-in a `PNAS paper (1991) <https://doi.org/10.1073/pnas.88.7.2773>`_
-by Kuriyan and Weis.
+It uses 10 parameters (anisotropic TLS requires 20) as described in a
+`paper by Kuriyan and Weis <https://doi.org/10.1073/pnas.88.7.2773>`_ (1991).
 `Soheilifard et al (2008) <https://doi.org/10.1088/1478-3975/5/2/026008>`_
 got even better results by increasing B-factors at the protein ends,
-using together 13 parameters. This model was named eTLS (e = extended).
+using 13 parameters all together. This model was named eTLS (e = extended).
 
 The high effectiveness of the TLS model does not mean that B-factors
 are dominated by the rigid-body motion. As noted by Kuriyan and Weis,
 the TLS model captures also the fact that atoms in the interior of
 a protein molecule generally have smaller displacements than those
 on the exterior. Additionally, authors of the LCBM paper find that
-when the TLS model is fitted to only half of the protein, it poorly fits
-the other half, which suggests that it is prone to overfitting.
+the TLS model fitted to only half of the protein poorly fits
+the other half, which suggests overfitting.
 
 We may revisit rigid-body modelling in the future, but now we get back
 to the contact numbers.
@@ -493,18 +492,19 @@ to the contact numbers.
 Details
 -------
 
-The overview above skipped a few details:
+The overview above skipped a few details.
 
-* while the WCN method is consistently called WCN,
+* While the WCN method is consistently called WCN,
   the Halle's method was named LDM (local density model) in the original paper,
   and is called CN (contact number) in some other papers. CN is memorable
-  when comparing with WCN (which adds 'W' -- weighting).
-  Weiss named his procedure ACN (atomic contact model).
+  when comparing with WCN (which adds 'W' -- weighting)
+  and with ACN (which adds 'A' -- atomic).
 
-* These method are used as either "atomic", i.e. per-atom
-  (for predicting B-factors, etc.)
-  or per-residue (for evolutionary rate, etc.). In the latter case
-  one needs to decide what point of the residue to use as a reference,
+* These method are used either per-atom (for predicting B-factors, etc.)
+  or per-residue (for evolutionary rate, etc.).
+  So having "A" in ACN clarifies how it is used.
+  To calculate the contact number per-residue one needs to pick
+  a reference point in the residue (Cβ, the center of mass or something else),
   but here we do only per-atom calculations.
 
 * The CN method requires a cut-off, and the cut-off values vary widely,
@@ -517,11 +517,11 @@ The overview above skipped a few details:
 * Similarly to eTLS, the LCBM method has eLCBM variant that adds
   "end effects" -- special treatment of the termini.
 
-* Finally, these methods could be applied ignoring the symmetry mates
-  in the crystal. Halle did the calculations on both the crystal
-  and only the asymmetric unit, with the former giving better results.
-  Weiss (ACN) and Li and Bruschweiler (LCBM) are also taking into account
-  intermolecular contacts, I think other papers don't.
+* Finally, these methods may or may not consider the symmetry mates
+  in the crystal. Halle checked that including symmetric images
+  improves the prediction.
+  Weiss (ACN) and Li and Bruschweiler (LCBM) are also taking symmetry into
+  account. But I think other papers don't.
 
 Metrics for comparison
 ----------------------
@@ -545,8 +545,9 @@ structures determined at different temperatures.
 This is debatable as can be seen from ccp4bb
 `discussions <https://www.mail-archive.com/ccp4bb@jiscmail.ac.uk/msg30444.html>`_
 on how to compare B-factors between two structures.
-Anyway, RMAD is a good metric. It is calculated after (linear) scaling
-of the predicted numbers to fit experimental values.
+But for sure RMAD is a more robust metric, so we also use it.
+It adds another complication, though. To minimize the absolute deviation
+we cannot use least-squares fitting, but rather quantile regression with q=0.5.
 
 Another metric is the rank correlation. It is interesting because it is
 invariant under any monotonic scaling. But it is not guaranteed to be
@@ -557,38 +558,41 @@ Results
 
 To be wrapped up and published. But in the meantime here are some thoughts:
 
-* The optimal exponent is slightly larger than 2; let's use 2 (i.e. w=1/r^2)
-  to keep it simple.
+* The optimal exponent is slightly larger than 2; the difference is small,
+  so we prefer to use 2 (i.e. *w*\ =1/*r*:sup:`2`).
 
 * Accounting for all symmetry mates (i.e. for intermolecular contacts
-  in the crystal) improves the results - and then the cut-off is necessary.
+  in the crystal) improves the results -- and then the cut-off is necessary.
 
-* The optimal cut-off is around 15 - let's use 15.
+* The optimal cut-off is around 15A -- let's use 15A.
 
-* Averaging predicted B-factors of nearby atoms helps - we use Gaussian
-  smoothing (blurring) with sigma around 2A.
+* Averaging predicted B-factors of nearby atoms helps; we use Gaussian
+  smoothing (blurring) with σ around 2A.
 
-* Pearson CC around 0.8 may seem high, but it corresponds to R2 0.64,
+* Pearson CC around 0.8 may seem high, but it corresponds to R2=0.64,
   i.e. it we explain only 64% of the B-factor variance.
-  Even less of the absolute deviation - below 50%.
+  Even less of the absolute deviation -- below 50%.
 
-* To get the lowest RMAS we use quantile regression with q=0.5.
-  This optimizes least absolute deviation (LAD).
-  The difference from OLS is not big, in terms of RMAS only ~0.03.
+* Minimizing absolute deviation (with quantile regression)
+  gives similar results as the ordinary least squares (OLS).
+  The difference in terms of RMAS is only ~0.03.
 
 * Combining WCN with CN is helping only a tiny bit (i.e. both are highly
   correlated) at the cost of additional parameter that is fitted.
-  Combining WCN with rotation-only model (distance from the center of mass ^2)
-  increases correlation slightly more, but still not much.
+  Combining WCN with rotation-only model (squared distance from the center
+  of mass) increases CC slightly more, but still not much.
 
 
 Program
 -------
 
 Bfit implements combination of the CN and WCN methods above.
-Being based on a crystallographic library it avoids common pitfalls,
-such as searching for contacts in only neighbouring unit cells (1+26);
-some structures have contacts between molecules several unit cells apart,
+
+Being based on a general-purpose crystallographic library it handles
+corner cases that are often ignored. A good example is searching
+for contacts. For most of the structures, considering only the same
+and neighbouring unit cells (1+26) is enough.
+But some structures have contacts between molecules several unit cells apart,
 even with only :ref:`a single chain in the asu <long_chain>`.
 
 TBC
