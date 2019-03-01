@@ -16,10 +16,28 @@ enum class Style {
   Pdbx,         // PreferPairs + put '#' (empty comments) between categories
 };
 
+// CIF files are read in binary mode. It makes difference only for text fields.
+// If the text field with \r\n would be written as is in text mode on Windows
+// \r would get duplicated. As a workaround, here we convert \r\n to \n.
+// Hopefully \r that gets removed here is never meaningful.
+inline void write_text_field(std::ostream& os, const std::string& value) {
+  for (size_t pos = 0, end = 0; end != std::string::npos; pos = end + 1) {
+    end = value.find("\r\n", pos);
+    size_t len = (end == std::string::npos ? value.size() : end) - pos;
+    os.write(value.c_str() + pos, len);
+  }
+}
+
 inline void write_out_pair(std::ostream& os,
                            const std::string& name, const std::string& value) {
-  bool br = is_text_field(value) || name.size() + value.size() > 120;
-  os << name << (br ? '\n' : ' ') << value << '\n';
+  os << name;
+  bool text_field = is_text_field(value);
+  os.put(text_field || name.size() + value.size() > 120 ? '\n' : ' ');
+  if (text_field)
+    write_text_field(os, value);
+  else
+    os << value;
+  os.put('\n');
 }
 
 inline void write_out_loop(std::ostream& os, const Loop& loop, Style style) {
@@ -37,8 +55,12 @@ inline void write_out_loop(std::ostream& os, const Loop& loop, Style style) {
   size_t ncol = loop.tags.size();
   size_t col = 0;
   for (const std::string& val : loop.values) {
-    os.put(col++ == 0 || is_text_field(val) ? '\n' : ' ');
-    os << val;
+    bool text_field = is_text_field(val);
+    os.put(col++ == 0 || text_field ? '\n' : ' ');
+    if (text_field)
+      write_text_field(os, val);
+    else
+      os << val;
     if (col == ncol)
       col = 0;
   }

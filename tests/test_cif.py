@@ -185,6 +185,14 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(len(nonexistent), 0)
         self.assertEqual(nonexistent.width(), 0)
 
+    def test_line_endings(self):
+        lines = ['data_a', '_a_field', ';' 'text line', ';']
+        for eol in ('\r\n', '\n'):
+            input_str = eol.join(lines) + eol
+            doc = cif.read_string(input_str)
+            output_str = doc.as_string().replace(os.linesep, eol)
+            self.assertEqual(input_str, output_str)
+
 def full_path(filename):
     return os.path.join(os.path.dirname(__file__), filename)
 
