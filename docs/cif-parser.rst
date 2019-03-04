@@ -369,6 +369,7 @@ Instead, we have a few choices for "styling" of the output:
   mimicking the peculiar formatting of PDBx/mmCIF files in the official
   wwPDB archive. It enables diff-ing original and modified files with
   option ``--ignore-space-change``.
+* ``Style::Indent35`` writes values from pairs from 35th column,
 
 C++
 ---

@@ -14,6 +14,7 @@ enum class Style {
   NoBlankLines,
   PreferPairs,  // write single-row loops as pairs
   Pdbx,         // PreferPairs + put '#' (empty comments) between categories
+  Indent35,     // start values in pairs from 35th column
 };
 
 // CIF files are read in binary mode. It makes difference only for text fields.
@@ -28,15 +29,21 @@ inline void write_text_field(std::ostream& os, const std::string& value) {
   }
 }
 
-inline void write_out_pair(std::ostream& os,
-                           const std::string& name, const std::string& value) {
+inline void write_out_pair(std::ostream& os, const std::string& name,
+                           const std::string& value, Style style) {
   os << name;
-  bool text_field = is_text_field(value);
-  os.put(text_field || name.size() + value.size() > 120 ? '\n' : ' ');
-  if (text_field)
+  if (is_text_field(value)) {
+    os.put('\n');
     write_text_field(os, value);
-  else
+  } else {
+    if (name.size() + value.size() > 120)
+      os.put('\n');
+    else if (style == Style::Indent35 && name.size() < 34)
+      os.write("                                  ", 34 - name.size());
+    else
+      os.put(' ');
     os << value;
+  }
   os.put('\n');
 }
 
@@ -46,7 +53,7 @@ inline void write_out_loop(std::ostream& os, const Loop& loop, Style style) {
   if ((style == Style::PreferPairs || style == Style::Pdbx) &&
       loop.length() == 1) {
     for (size_t i = 0; i != loop.tags.size(); ++i)
-      write_out_pair(os, loop.tags[i], loop.values[i]);
+      write_out_pair(os, loop.tags[i], loop.values[i], style);
     return;
   }
   os << "loop_";
@@ -70,7 +77,7 @@ inline void write_out_loop(std::ostream& os, const Loop& loop, Style style) {
 inline void write_out_item(std::ostream& os, const Item& item, Style style) {
   switch (item.type) {
     case ItemType::Pair:
-      write_out_pair(os, item.pair[0], item.pair[1]);
+      write_out_pair(os, item.pair[0], item.pair[1], style);
       break;
     case ItemType::Loop:
       write_out_loop(os, item.loop, style);
