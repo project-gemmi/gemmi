@@ -110,10 +110,6 @@ endif()
 add_library(input OBJECT src/input.cpp)
 add_library(options OBJECT src/options.cpp)
 
-add_executable(gemmi-bfit EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/bfit.cpp $<TARGET_OBJECTS:input>)
-support_gz(gemmi-bfit)
-
 add_executable(gemmi-cif2mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/cif2mtz.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-cif2mtz)
@@ -169,8 +165,12 @@ add_executable(gemmi-validate EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/validate.cpp src/validate_mon.cpp)
 support_gz(gemmi-validate)
 
+add_executable(gemmi-wcn EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/wcn.cpp $<TARGET_OBJECTS:input>)
+support_gz(gemmi-wcn)
+
 add_executable(gemmi-prog
-               src/bfit.cpp src/cif2mtz.cpp src/contact.cpp
+               src/wcn.cpp src/cif2mtz.cpp src/contact.cpp
                src/contents.cpp src/convert.cpp src/output.cpp
                src/grep.cpp src/main.cpp src/map.cpp src/mask.cpp
                src/mtz.cpp src/mtz2cif src/residues.cpp src/rmsz.cpp

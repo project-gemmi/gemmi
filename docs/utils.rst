@@ -402,11 +402,13 @@ Searches for contacts in a model.
 .. literalinclude:: contact-help.txt
    :language: console
 
-bfit
-====
+wcn
+===
 
-Predicts B-factors (ADPs) from coordinates
-and compares them to the actual B-factors.
+Calculates Weighted Contact Number (WCN) and a few other similar metrics.
+
+WCN can be used to predicts B-factors (ADPs) from coordinates,
+and to compare this prediction with the values from refinement.
 
 Background
 ----------
@@ -586,7 +588,7 @@ To be wrapped up and published. But in the meantime here are some thoughts:
 Program
 -------
 
-Bfit implements combination of the CN and WCN methods above.
+gemmi-wcn implements combination of the CN and WCN methods above.
 
 Being based on a general-purpose crystallographic library it handles
 corner cases that are often ignored. A good example is searching
@@ -597,5 +599,5 @@ even with only :ref:`a single chain in the asu <long_chain>`.
 
 TBC
 
-.. literalinclude:: bfit-help.txt
+.. literalinclude:: wcn-help.txt
    :language: console

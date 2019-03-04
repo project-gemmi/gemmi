@@ -1,7 +1,7 @@
-$ gemmi bfit -h
+$ gemmi wcn -h
 Usage:
- gemmi bfit [options] INPUT[...]
-B-factor model testing.
+ gemmi wcn [options] INPUT[...]
+Calculation of local density / contact numbers: WCN, CN, ACN, LDM, etc.
   -h, --help       Print usage and exit.
   -V, --version    Print version and exit.
   --verbose        Verbose output.

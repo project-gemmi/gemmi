@@ -1,7 +1,7 @@
 CIF Parser
 ##########
 
-This section covers reading CIF files on a syntactic level.
+This section covers working with CIF files on a syntactic level.
 
 Higher-level functions that understand semantics of:
 

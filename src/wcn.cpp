@@ -9,7 +9,7 @@
 #include <gemmi/polyheur.hpp> // for assign_subchains
 #include <gemmi/gzread.hpp>
 #include <gemmi/fileutil.hpp> // for expand_if_pdb_code
-#define GEMMI_PROG bfit
+#define GEMMI_PROG wcn
 #include "options.h"
 #include <stdio.h>
 #include <cstdlib>  // for strtod
@@ -21,15 +21,15 @@ enum OptionIndex { Verbose=3, FromFile, ListResidues, MinDist, MaxDist,
                    Exponent, Blur, Rom, ChainName, Sanity, SideChains,
                    NoCrystal, OmitEnds, PrintRes, XyOut };
 
-struct BfitArg {
+struct WcnArg {
   static option::ArgStatus SideChains(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"include", "exclude", "only"});
   }
 };
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
-    "Usage:\n " EXE_NAME " [options] INPUT[...]"
-    "\nB-factor model testing."},
+    "Usage:\n " EXE_NAME " [options] INPUT[...]\n"
+    "Calculation of local density / contact numbers: WCN, CN, ACN, LDM, etc."},
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
   { Version, 0, "V", "version", Arg::None,
     "  -V, --version  \tPrint version and exit." },
@@ -52,7 +52,7 @@ static const option::Descriptor Usage[] = {
     "  --chain=CHAIN  \tUse only one chain from the INPUT file." },
   { Sanity, 0, "", "sanity", Arg::None,
     "  --sanity  \tRun sanity checks first." },
-  { SideChains, 0, "", "sidechains", BfitArg::SideChains,
+  { SideChains, 0, "", "sidechains", WcnArg::SideChains,
     "  --sidechains=X  \tOne of: include, exclude, only (default: include)." },
   { NoCrystal, 0, "", "no-crystal", Arg::None,
     "  --no-crystal  \tIgnore crystal symmetry and intermolecular contacts." },

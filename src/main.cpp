@@ -5,7 +5,6 @@
 #include <cstring>
 #include "gemmi/version.hpp"
 
-int bfit_main(int argc, char** argv);
 int cif2mtz_main(int argc, char** argv);
 int contact_main(int argc, char** argv);
 int contents_main(int argc, char** argv);
@@ -19,6 +18,7 @@ int residues_main(int argc, char** argv);
 int rmsz_main(int argc, char** argv);
 int sg_main(int argc, char** argv);
 int validate_main(int argc, char** argv);
+int wcn_main(int argc, char** argv);
 
 typedef int (*main_type)(int argc, char** argv);
 
@@ -30,7 +30,6 @@ struct SubCmd {
 
 #define CMD(s, desc) { #s, &s##_main, desc }
 static SubCmd subcommands[] = {
-  CMD(bfit, "predicts B-factors (ADPs) from coordinates using WCN"),
   CMD(cif2mtz, "convert structure factor mmCIF to MTZ"),
   CMD(contact, "searches for contacts (neighbouring atoms)"),
   CMD(contents, "info about content of a coordinate file (pdb, mmCIF, ...)"),
@@ -44,6 +43,7 @@ static SubCmd subcommands[] = {
   CMD(rmsz, "validate geometry using monomer library"),
   CMD(sg, "info about space groups"),
   CMD(validate, "validate CIF 1.1 syntax"),
+  CMD(wcn, "calculate local density / contact numbers (WCN, CN, ACN, LDM)"),
 };
 
 static void print_usage() {
