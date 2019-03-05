@@ -49,6 +49,26 @@ enum class ItemType : unsigned char {
   Erased,
 };
 
+inline uint8_t char_table(char c) {
+  static const uint8_t table[256] = {
+   // 0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 2, 0, 0, // 0
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 1
+      2, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, // 2
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, // 3
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 4
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, // 5
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 6
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, // 7
+   // 128-255
+      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+  };
+  return table[static_cast<unsigned char>(c)];
+}
+
 inline void assert_tag(const std::string& tag) {
   if (tag[0] != '_')
     fail("Tag should start with '_', got: " + tag);
@@ -876,18 +896,21 @@ inline bool is_text_field(const std::string& val) {
 }
 
 inline std::string quote(std::string v) {
-  // strings with '(' happen to be quoted in mmCIF files, so we do the same
-  if (v.find_first_of(" \t\r\n'\"()[]{}#") == std::string::npos &&
-      !v.empty() && v[0] != '_' && v[0] != '$' && v[0] != '\0' &&
-      (v.size() > 1 || (v[0] != '.' && v[0] != '?')))
+  if (std::all_of(v.begin(), v.end(), [](char c) { return char_table(c) == 1; })
+      && !v.empty() && !is_null(v))
     return v;
-  if (std::memchr(v.c_str(), '\n', v.size()))
-    return ";" + v + "\n;";
-  if (std::memchr(v.c_str(), '\'', v.size()) == nullptr)
-    return "'" + v + "'";
-  if (std::memchr(v.c_str(), '"', v.size()) == nullptr)
-    return '"' + v + '"';
-  return ";" + v + "\n;";
+  char q = ';';
+  if (std::memchr(v.c_str(), '\n', v.size()) == nullptr) {
+    if (std::memchr(v.c_str(), '\'', v.size()) == nullptr)
+      q = '\'';
+    else if (std::memchr(v.c_str(), '"', v.size()) == nullptr)
+      q = '"';
+  }
+  v.insert(v.begin(), q);
+  if (q == ';')
+    v += '\n';
+  v += q;
+  return v;
 }
 
 #if defined(_MSC_VER)

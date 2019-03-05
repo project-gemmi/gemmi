@@ -193,6 +193,13 @@ class TestBlock(unittest.TestCase):
             output_str = doc.as_string()
             self.assertEqual(input_str.replace(eol, '\n'), output_str)
 
+class TestQuote(unittest.TestCase):
+    def test_quote(self):
+        self.assertEqual(cif.quote('a.b-c'), 'a.b-c')
+        self.assertEqual(cif.quote('loop_'), "'loop_'")
+        self.assertEqual(cif.quote('a"\nb'), ';a"\nb\n;')
+        self.assertEqual(cif.quote(u'\u0394'), u"'\u0394'")
+
 def full_path(filename):
     return os.path.join(os.path.dirname(__file__), filename)
 

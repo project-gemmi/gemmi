@@ -34,30 +34,10 @@ namespace rules {
 
   using namespace pegtl;
 
-  inline uint8_t lookup_table(char c) {
-    static const uint8_t table[256] = {
-     // 0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 2, 0, 0, // 0
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 1
-        2, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, // 2
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, // 3
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 4
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, // 5
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 6
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, // 7
-     // 128-255
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-    };
-    return table[static_cast<unsigned char>(c)];
-  }
-
   template<int TableVal> struct lookup_char {
     using analyze_t = analysis::generic<analysis::rule_type::ANY>;
     template<typename Input> static bool match(Input& in) {
-      if (!in.empty() && lookup_table(in.peek_char()) == TableVal) {
+      if (!in.empty() && cif::char_table(in.peek_char()) == TableVal) {
         if (TableVal == 2)  // this set includes new-line
           in.bump(1);
         else
