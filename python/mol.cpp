@@ -143,10 +143,23 @@ void add_mol(py::module& m) {
     .def("merge_same_name_chains", &Structure::merge_same_name_chains,
          py::arg("min_sep")=0)
     .def("make_pdb_headers", &make_pdb_headers)
-    .def("write_pdb", [](const Structure& st, const std::string& path) {
+    .def("write_pdb", [](const Structure& st, const std::string& path,
+                         bool seqres_records, bool ssbond_records,
+                         bool link_records, bool cispep_records,
+                         bool ter_records, bool numbered_ter) {
+       PdbWriteOptions options;
+       options.seqres_records = seqres_records;
+       options.ssbond_records = ssbond_records;
+       options.link_records = link_records;
+       options.cispep_records = cispep_records;
+       options.ter_records = ter_records;
+       options.numbered_ter = numbered_ter;
        std::ofstream f(path.c_str());
-       write_pdb(st, f);
-    }, py::arg("path"))
+       write_pdb(st, f, options);
+    }, py::arg("path"),
+       py::arg("seqres_records")=true, py::arg("ssbond_records")=true,
+       py::arg("link_records")=true, py::arg("cispep_records")=true,
+       py::arg("ter_records")=true, py::arg("numbered_ter")=true)
     .def("write_minimal_pdb",
          [](const Structure& st, const std::string& path) {
        std::ofstream f(path.c_str());

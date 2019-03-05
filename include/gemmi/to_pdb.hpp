@@ -16,6 +16,7 @@ struct PdbWriteOptions {
   bool ssbond_records = true;
   bool link_records = true;
   bool cispep_records = true;
+  bool ter_records = true;
   bool numbered_ter = true;
 };
 
@@ -221,7 +222,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
         os.write(buf, 81);
       }
     }
-    if (res.entity_type == EntityType::Polymer &&
+    if (opt.ter_records && res.entity_type == EntityType::Polymer &&
         (&res == &chain.residues.back() ||
          (&res + 1)->entity_type != EntityType::Polymer)) {
       if (opt.numbered_ter) {
