@@ -147,30 +147,31 @@ namespace rules {
 
 // **** error messages ****
 
-template<typename Rule> struct Errors : public pegtl::normal<Rule> {
-  static const std::string msg;
+template<typename Rule> const std::string& error_message() {
+  static const std::string s = "parse error";
+  return s;
+}
+#define error_msg(rule, msg) \
+  template<> inline const std::string& error_message<rule>() { \
+    static const std::string s = msg; \
+    return s; \
+  }
+error_msg(rules::quoted_tail<rules::one<'\''>>, "unterminated 'string'")
+error_msg(rules::quoted_tail<rules::one<'"'>>, "unterminated \"string\"")
+error_msg(pegtl::until<rules::field_sep>, "unterminated text field")
+error_msg(rules::value, "expected value")
+error_msg(rules::datablockname, "unnamed DataBlock")
+error_msg(rules::framename, "unnamed save_ frame")
+#undef error_msg
 
+template<typename Rule> struct Errors : public pegtl::normal<Rule> {
   template<typename Input, typename ... States>
   static void raise(const Input& in, States&& ...) {
-    throw pegtl::parse_error(msg, in);
+    throw pegtl::parse_error(error_message<Rule>()
+                           //+ " matching " + pegtl::internal::demangle<Rule>()
+                             , in);
   }
 };
-#if defined(_MSC_VER)
-# define error_msg(x) \
-  template<> __declspec(selectany) const std::string Errors<x>::msg
-#else
-# define error_msg(x) \
-  template<> const std::string Errors<x>::msg __attribute__((weak))
-#endif
-// TODO: error "expected data_ keyword
-error_msg(rules::quoted_tail<rules::one<'\''>>) = "unterminated 'string'";
-error_msg(rules::quoted_tail<rules::one<'"'>>) = "unterminated \"string\"";
-error_msg(pegtl::until<rules::field_sep>) = "unterminated text field";
-error_msg(rules::value) = "expected value";
-error_msg(rules::datablockname) = "unnamed DataBlock";
-error_msg(rules::framename) = "unnamed save_ frame";
-#undef error_msg
-template<typename T> const std::string Errors<T>::msg = "parse error";
 
 // **** parsing actions that fill the storage ****
 
