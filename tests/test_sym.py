@@ -119,6 +119,7 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(len(gemmi_gops.sym_ops), cctbx_sg.order_p())
         self.assertEqual(len(gemmi_gops.cen_ops), cctbx_sg.n_ltr())
         self.assertEqual(len(gemmi_gops), cctbx_sg.order_z())
+        self.assertEqual(gemmi_gops.is_centric(), cctbx_sg.is_centric())
         gemmi_triplets = set(m.triplet() for m in gemmi_gops)
         self.assertEqual(cctbx_triplets, gemmi_triplets)
         gemmi_sg = gemmi.find_spacegroup_by_ops(gemmi_gops)

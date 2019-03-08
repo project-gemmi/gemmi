@@ -46,9 +46,12 @@ static void process_arg(const char* arg) {
   printf("Number: %d\n", sg->number);
   printf("CCP4 number: %d\n", sg->ccp4);
   printf("Hermann–Mauguin: %s\n", sg->hm);
-  printf("extended H-M: %s\n", sg->xhm().c_str());
+  printf("Extended H-M: %s\n", sg->xhm().c_str());
   printf("Hall symbol: %s\n", sg->hall);
-  print_symmetry_operations(sg->operations());
+  printf("Point group: %s\n", sg->point_group_hm());
+  gemmi::GroupOps ops = sg->operations();
+  printf("Is centric: %s\n", ops.is_centric() ? "yes" : "no");
+  print_symmetry_operations(ops);
   printf("\n");
 }
 

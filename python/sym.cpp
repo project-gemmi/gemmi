@@ -95,6 +95,7 @@ void add_symmetry(py::module& m) {
     .def_readwrite("sym_ops", &GroupOps::sym_ops,
                "Symmetry operations (to be combined with centering vectors).")
     .def_readwrite("cen_ops", &GroupOps::cen_ops, "Centering vectors.")
+    .def("is_centric", &GroupOps::is_centric)
     .def("find_grid_factors", &GroupOps::find_grid_factors,
          "Minimal multiplicity for real-space grid (e.g. 1,1,6 for P61).")
     .def("change_basis", &GroupOps::change_basis, py::arg("cob"),

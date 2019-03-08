@@ -341,6 +341,8 @@ struct GroupOps {
     return nullptr;
   }
 
+  bool is_centric() const { return find_by_rotation({-1,0,0, 0,-1,0, 0,0,-1}); }
+
   void change_basis(const Op& cob) {
     if (sym_ops.empty() || cen_ops.empty())
       return;
@@ -761,6 +763,15 @@ struct SpaceGroup { // typically 40 bytes
   }
 
   GroupOps operations() const { return symops_from_hall(hall); }
+
+  GroupOps point_group_operations() const {
+    GroupOps ops = generators_from_hall(hall);
+    for (Op& op : ops.sym_ops)
+      op.tran.fill(0.0);
+    ops.cen_ops.resize(1);
+    ops.add_missing_elements();
+    return ops;
+  }
 };
 
 struct SpaceGroupAltName {
