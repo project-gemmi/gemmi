@@ -385,7 +385,7 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
         int new_index = grid.index_s(it[pos[0]], it[pos[1]], it[pos[2]]);
         full[new_index] = val;
       }
-  grid.data = full;
+  grid.data = std::move(full);
   if (mode == GridSetup::Full) {
     grid.full_canonical = true;
     grid.symmetrize([&default_value](T a, T b) {
