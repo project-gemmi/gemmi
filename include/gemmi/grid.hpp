@@ -23,7 +23,9 @@ inline int modulo(int a, int n) {
 }
 
 inline bool has_small_factorization(int n) {
-  for (int k : {2, 3, 5})
+  while (n % 2 == 0)
+    n /= 2;
+  for (int k : {3, 5})
     while (n % k == 0)
       n /= k;
   return n == 1 || n == -1;
@@ -63,15 +65,15 @@ struct Grid {
     set_size_without_checking(u, v, w);
   }
 
-  // The resulting spacing can be smaller (if denser=true) or greater than arg.
-  void set_size_from_spacing(double approx_spacing, bool denser) {
+  std::array<int, 3> pick_good_size(const std::array<double, 3>& limit,
+                                    bool denser) {
+    std::array<int, 3> m = {{0, 0, 0}};
     const SpaceGroup& sg = space_group ? *space_group : get_spacegroup_p1();
-    std::array<int, 3> sg_fac = sg.operations().find_grid_factors();
-    int m[3] = {0, 0, 0};
-    double abc[3] = {1./unit_cell.ar, 1./unit_cell.br, 1./unit_cell.cr};
+    GroupOps gops = sg.operations();
+    std::array<int, 3> sg_fac = gops.find_grid_factors();
     for (int i = 0; i != 3; ++i) {
       for (int j = 0; j < i; ++j)
-        if (fabs(abc[i] - abc[j]) < 0.1 && sg_fac[i] == sg_fac[j]) {
+        if (fabs(limit[i] - limit[j]) < 0.5 && sg_fac[i] == sg_fac[j]) {
           m[i] = m[j];
           break;
         }
@@ -79,11 +81,11 @@ struct Grid {
         int f = std::max(2, sg_fac[i]);
         int n;
         if (denser) {
-          n = int(std::ceil(abc[i] / (approx_spacing * f)));
+          n = int(std::ceil(limit[i] / f));
           while (!has_small_factorization(n))
             ++n;
         } else {
-          n = int(std::floor(abc[i] / (approx_spacing * f)));
+          n = int(std::floor(limit[i] / f));
           if (n > 1)
             while (!has_small_factorization(n))
               --n;
@@ -93,8 +95,27 @@ struct Grid {
         m[i] = n * f;
       }
     }
+    for (int i = 1; i != 3; ++i)
+      for (int j = 0; j != i; ++j)
+        if (gops.are_directions_symmetry_related(i, j) && m[i] != m[j])
+          m[i] = m[j] = (denser ? std::max(m[i], m[j]) : std::min(m[i], m[j]));
+
+    return m;
+  }
+
+  void set_size_from(std::array<double, 3> limit, bool denser) {
+    auto m = pick_good_size(limit, denser);
     set_size_without_checking(m[0], m[1], m[2]);
   }
+
+  // The resulting spacing can be smaller (if denser=true) or greater than arg.
+  void set_size_from_spacing(double approx_spacing, bool denser) {
+    std::array<double, 3> limit = {{1. / (unit_cell.ar * approx_spacing),
+                                    1. / (unit_cell.br * approx_spacing),
+                                    1. / (unit_cell.cr * approx_spacing)}};
+    set_size_from(limit, denser);
+  }
+
 
   void set_unit_cell(double a, double b, double c,
                      double alpha, double beta, double gamma) {

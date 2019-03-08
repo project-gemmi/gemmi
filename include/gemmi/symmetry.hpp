@@ -404,6 +404,13 @@ struct GroupOps {
     return {T / r[0], T / r[1], T / r[2]};
   }
 
+  bool are_directions_symmetry_related(int u, int v) {
+    for (Op& op : sym_ops)
+      if (op.rot[u][v] != 0)
+        return true;
+    return false;
+  }
+
   struct Iter {
     const GroupOps& gops;
     int n_sym, n_cen;
