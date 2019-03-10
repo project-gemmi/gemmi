@@ -394,7 +394,7 @@ struct GroupOps {
 
   // minimal multiplicity for real-space grid in each direction
   // examples: 1,2,1 for P21, 1,1,6 for P61
-  std::array<int, 3> find_grid_factors() {
+  std::array<int, 3> find_grid_factors() const {
     const int T = Op::TDEN;
     int r[3] = {T, T, T};
     for (const Op& op : *this)
@@ -404,8 +404,8 @@ struct GroupOps {
     return {T / r[0], T / r[1], T / r[2]};
   }
 
-  bool are_directions_symmetry_related(int u, int v) {
-    for (Op& op : sym_ops)
+  bool are_directions_symmetry_related(int u, int v) const {
+    for (const Op& op : sym_ops)
       if (op.rot[u][v] != 0)
         return true;
     return false;
