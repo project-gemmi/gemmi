@@ -1,10 +1,12 @@
 // Copyright 2018 Global Phasing Ltd.
 
+#include <complex>
 #include "gemmi/ccp4.hpp"
 #include "gemmi/gz.hpp"  // for MaybeGzipped
 #include "gemmi/subcells.hpp"
 
 #include <pybind11/pybind11.h>
+#include <pybind11/complex.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 
@@ -17,6 +19,13 @@ template<typename T>
 std::string grid_dim_str(const Grid<T>& g) {
   return std::to_string(g.nu) + ", " + std::to_string(g.nv) + ", " +
          std::to_string(g.nw);
+}
+
+bool operator<(const std::complex<float>& a, const std::complex<float>& b) {
+    return std::norm(a) < std::norm(b);
+}
+bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
+    return std::norm(a) > std::norm(b);
 }
 
 template<typename T>
@@ -84,6 +93,7 @@ py::class_<T> add_ccp4(py::module& m, const char* name) {
 void add_grid(py::module& m) {
   add_grid<float>(m, "FloatGrid");
   add_grid<int8_t>(m, "Int8Grid");
+  add_grid<std::complex<float>>(m, "ComplexGrid");
   add_ccp4<float>(m, "Ccp4Map")
     .def("setup", [](Ccp4<float>& self, float default_value) {
             self.setup(GridSetup::Full, default_value);
