@@ -99,6 +99,8 @@ void add_hkl(py::module& m) {
          py::arg("dataset")=-1)
     .def("make_1_d2_array", &make_1_d2_array, py::arg("dataset")=-1)
     .def("make_d_array", &make_d_array, py::arg("dataset")=-1)
+    .def("get_map_coef_as_grid", &Mtz::get_map_coef_as_grid<float>,
+         py::arg("f"), py::arg("phi"), py::arg("size")=std::array<int,3>{0,0,0})
     .def("__repr__", [](const Mtz& self) {
         return "<gemmi.Mtz with " + std::to_string(self.ncol) + " columns, " +
                std::to_string(self.nreflections) + " reflections>";

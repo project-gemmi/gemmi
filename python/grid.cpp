@@ -1,6 +1,15 @@
 // Copyright 2018 Global Phasing Ltd.
 
 #include <complex>
+
+// for symmetrize_min and symmetrize_max
+bool operator<(const std::complex<float>& a, const std::complex<float>& b) {
+    return std::norm(a) < std::norm(b);
+}
+bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
+    return std::norm(a) > std::norm(b);
+}
+
 #include "gemmi/ccp4.hpp"
 #include "gemmi/gz.hpp"  // for MaybeGzipped
 #include "gemmi/subcells.hpp"
@@ -19,13 +28,6 @@ template<typename T>
 std::string grid_dim_str(const Grid<T>& g) {
   return std::to_string(g.nu) + ", " + std::to_string(g.nv) + ", " +
          std::to_string(g.nw);
-}
-
-bool operator<(const std::complex<float>& a, const std::complex<float>& b) {
-    return std::norm(a) < std::norm(b);
-}
-bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
-    return std::norm(a) > std::norm(b);
 }
 
 template<typename T>

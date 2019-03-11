@@ -185,12 +185,8 @@ struct Grid {
       d = d > threshold ? 1 : 0;
   }
 
-  // Use provided function to reduce values of all symmetry mates of each
-  // grid points, then assign the result to all the points.
-  void symmetrize(std::function<T(T, T)> func) {
-    if (!space_group || space_group->number == 1 || !full_canonical)
-      return;
-    std::vector<Op> ops = space_group->operations().all_ops_sorted();
+  void symmetrize_using_ops(std::vector<Op> ops,
+                            std::function<T(T, T)> func) {
     auto id = std::find(ops.begin(), ops.end(), Op::identity());
     if (id != ops.end())
       ops.erase(id);
@@ -226,6 +222,14 @@ struct Grid {
           }
         }
     assert(idx == (int) data.size());
+  }
+
+  // Use provided function to reduce values of all symmetry mates of each
+  // grid points, then assign the result to all the points.
+  void symmetrize(std::function<T(T, T)> func) {
+    if (!space_group || space_group->number == 1 || !full_canonical)
+      return;
+    symmetrize_using_ops(space_group->operations().all_ops_sorted(), func);
   }
 
   // two most common symmetrize functions

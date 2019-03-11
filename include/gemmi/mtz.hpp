@@ -10,10 +10,12 @@
 #include <cstdio>    // for FILE, fread
 #include <cstring>   // for memcpy
 #include <cmath>     // for isnan
+#include <complex>   // for complex
 #include <array>
 #include <string>
 #include <vector>
 #include "atox.hpp"      // for simple_atof, simple_atoi, read_word
+#include "grid.hpp"      // for Grid
 #include "iterator.hpp"  // for StrideIter
 #include "fileutil.hpp"  // for file_open, is_little_endian, fileptr_t, ...
 #include "symmetry.hpp"  // for find_spacegroup_by_name, SpaceGroup
@@ -465,6 +467,69 @@ struct Mtz {
     read_main_headers(stream);
     read_history_and_later_headers(stream);
     setup_spacegroup();
+  }
+
+  std::array<int, 3> max_abs_hkl() const {
+    std::array<int, 3> max_abs{{0, 0, 0}};
+    for (size_t i = 0; i < data.size(); i += ncol)
+      for (int j = 0; j != 3; ++j) {
+        int v = std::abs((int) data[i+j]);
+        if (v > max_abs[j])
+          max_abs[j] = v;
+      }
+    return max_abs;
+  }
+
+  template<typename T> Grid<std::complex<T>>
+  get_map_coef_as_grid(const std::string& f, const std::string& phi,
+                       std::array<int, 3> size={{0,0,0}}) const {
+    if (!has_data() || ncol < 5)
+      fail("No data.");
+    Grid<std::complex<T>> grid;
+    grid.unit_cell = cell;
+    grid.space_group = spacegroup;
+    std::array<int, 3> max_abs = max_abs_hkl();
+    std::array<double, 3> dsize;
+    for (int i = 0; i != 3; ++i)
+      dsize[i] = (double) std::max(size[i], 2 * max_abs[i] + 1);
+    grid.set_size_from(dsize, /*denser=*/true);
+    const Column* f_col = const_cast<Mtz*>(this)->column_with_label(f);
+    const Column* phi_col = const_cast<Mtz*>(this)->column_with_label(phi);
+    if (!f_col || !phi_col)
+      fail("Map coefficients not found.");
+    constexpr float deg2rad = float(pi() / 180.0);
+    for (size_t i = 0; i < data.size(); i += ncol) {
+      int h = (int) data[i+0];
+      int k = (int) data[i+1];
+      int l = (int) data[i+2];
+      float f_val = data[i+f_col->idx];
+      float phi_val = deg2rad * data[i+phi_col->idx];
+      if (f_val >= 0.f)
+        grid.data[grid.index_n(h, k, l)] = std::polar(f_val, phi_val);
+    }
+    const std::complex<T> default_val; // initialized to 0+0i
+    GroupOps pg_ops = spacegroup->point_group_operations();
+    grid.symmetrize_using_ops(pg_ops.sym_ops,
+                              [&](std::complex<T> a, std::complex<T> b) {
+        if (a != default_val && b != default_val && a != b)
+          std::fprintf(stderr, "a != b: %g, %g vs %g, %g\n",
+                       std::abs(a), std::arg(a), std::abs(b), std::arg(b));
+        return a != default_val ? a : b;
+    });
+    // Friedel pairs
+    if (!pg_ops.is_centric())
+      for (int u = 0; u != grid.nu; ++u)
+        for (int v = 0; v != grid.nv; ++v)
+          for (int w = 0; w != grid.nw; ++w) {
+            int idx = grid.index_q(u, v, w);
+            if (grid.data[idx] == default_val) {
+              int inv_idx = grid.index_q(u == 0 ? 0 : grid.nu - u,
+                                         v == 0 ? 0 : grid.nv - v,
+                                         w == 0 ? 0 : grid.nw - w);
+              grid.data[idx] = std::conj(grid.data[inv_idx]);
+            }
+          }
+    return grid;
   }
 
   // Function for writing MTZ file
