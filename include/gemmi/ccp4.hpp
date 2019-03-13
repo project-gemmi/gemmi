@@ -76,7 +76,7 @@ struct Ccp4 {
   GridStats hstats;  // data statistics read from / written to ccp4 map
   // stores raw headers if the grid was read from ccp4 map
   std::vector<int32_t> ccp4_header;
-  bool same_byte_order;
+  bool same_byte_order = true;
 
   // methods to access info from ccp4 headers, w is word number from the spec
   void* header_word(int w) { return &ccp4_header.at(w - 1); }
@@ -157,8 +157,10 @@ struct Ccp4 {
       hstats = calculate_grid_statistics(grid.data);
     if (mode != 0 && mode != 1 && mode != 2 && mode != 6)
       fail("Only modes 0, 1, 2 and 6 are supported.");
-    if (ccp4_header.empty())
-      return prepare_ccp4_header(mode);
+    if (ccp4_header.empty()) {
+      prepare_ccp4_header(mode);
+      return;
+    }
     assert(ccp4_header.size() >= 256);
     set_header_i32(4, mode);
     set_header_float(20, (float) hstats.dmin);
