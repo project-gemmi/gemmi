@@ -128,6 +128,8 @@ struct Grid {
     calculate_spacing();
   }
 
+  double get_voxel_size() const { return unit_cell.volume / (nu * nv * nw); }
+
   // Quick but unsafe. assumes (for efficiency) that 0 <= u < nu, etc.
   int index_q(int u, int v, int w) const { return w * nu * nv + v * nu + u; }
 
@@ -185,8 +187,7 @@ struct Grid {
       d = d > threshold ? 1 : 0;
   }
 
-  void symmetrize_using_ops(std::vector<Op> ops,
-                            std::function<T(T, T)> func) {
+  void symmetrize_using_ops(std::vector<Op> ops, std::function<T(T, T)> func) {
     auto id = std::find(ops.begin(), ops.end(), Op::identity());
     if (id != ops.end())
       ops.erase(id);
@@ -225,7 +226,7 @@ struct Grid {
   }
 
   // Use provided function to reduce values of all symmetry mates of each
-  // grid points, then assign the result to all the points.
+  // grid point, then assign the result to all the points.
   void symmetrize(std::function<T(T, T)> func) {
     if (!space_group || space_group->number == 1 || !full_canonical)
       return;

@@ -53,9 +53,10 @@ void add_grid(py::module& m, const char* name) {
     .def("get_value", &Gr::get_value)
     .def("set_value", &Gr::set_value)
     .def_readwrite("space_group", &Gr::space_group)
-    .def_readonly("unit_cell", &Gr::unit_cell)
+    .def_readwrite("unit_cell", &Gr::unit_cell)
     .def("set_unit_cell", (void (Gr::*)(const UnitCell&)) &Gr::set_unit_cell)
     .def_readonly("full_canonical", &Gr::full_canonical)
+    .def("get_voxel_size", &Gr::get_voxel_size)
     .def("set_points_around", &Gr::set_points_around,
          py::arg("position"), py::arg("radius"), py::arg("value"))
     .def("symmetrize_min", &Gr::symmetrize_min)
@@ -74,7 +75,7 @@ py::class_<T> add_ccp4(py::module& m, const char* name) {
   using Map = Ccp4<T>;
   return py::class_<Map>(m, name)
     .def(py::init<>())
-    .def_readonly("grid", &Map::grid)
+    .def_readwrite("grid", &Map::grid)
     .def("header_i32", &Map::header_i32)
     .def("header_float", &Map::header_float)
     .def("header_str", &Map::header_str)
