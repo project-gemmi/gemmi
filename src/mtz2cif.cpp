@@ -98,7 +98,7 @@ static const char* default_spec[] = {
   "? FWT|2FOFCWT      F pdbx_FWT",
   "& PHWT|PH2FOFCWT   P pdbx_PHWT",
   "? DELFWT|FOFCWT    F pdbx_DELFWT",
-  "& DELPHWT|PHFOFCWT P pdbx_DELPHWT",
+  "& DELPHWT|PHDELWT|PHFOFCWT P pdbx_DELPHWT",
 };
 
 static int find_column_index(const std::string& column, const gemmi::Mtz& mtz) {
