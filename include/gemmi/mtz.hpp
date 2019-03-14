@@ -190,11 +190,17 @@ struct Mtz {
         return &col;
     return nullptr;
   }
+  const Column* column_with_label(const std::string& label) const {
+    return const_cast<Mtz*>(this)->column_with_label(label);
+  }
   Column* column_with_type(char type) {
     for (Column& col : columns)
       if (col.type == type)
         return &col;
     return nullptr;
+  }
+  const Column* column_with_type(char type) const {
+    return const_cast<Mtz*>(this)->column_with_type(type);
   }
 
   bool has_data() const {
@@ -424,7 +430,7 @@ struct Mtz {
            ialpha4_id(buf) != ialpha4_id("MTZE")) {
       if (n_headers != 0) {
         const char* start = skip_blank(buf);
-        const char* end = rtrim_cstr(start, start+80);;
+        const char* end = rtrim_cstr(start, start+80);
         history.emplace_back(start, end);
         --n_headers;
       } else if (ialpha4_id(buf) == ialpha4_id("MTZH")) {
@@ -480,11 +486,13 @@ struct Mtz {
     return max_abs;
   }
 
-  template<typename T> Grid<std::complex<T>>
-  get_map_coef_as_grid(const std::string& f, const std::string& phi,
+  template<typename T=float> Grid<std::complex<T>>
+  get_map_coef_as_grid(const std::string& f_label, const std::string& phi_label,
                        std::array<int, 3> size={{0,0,0}}) const {
     if (!has_data() || ncol < 5)
       fail("No data.");
+    if (!spacegroup)
+      fail("No spacegroup.");
     Grid<std::complex<T>> grid;
     grid.unit_cell = cell;
     grid.space_group = spacegroup;
@@ -493,42 +501,40 @@ struct Mtz {
     for (int i = 0; i != 3; ++i)
       dsize[i] = (double) std::max(size[i], 2 * max_abs[i] + 1);
     grid.set_size_from(dsize, /*denser=*/true);
-    const Column* f_col = const_cast<Mtz*>(this)->column_with_label(f);
-    const Column* phi_col = const_cast<Mtz*>(this)->column_with_label(phi);
+    const Column* f_col = column_with_label(f_label);
+    const Column* phi_col = column_with_label(phi_label);
     if (!f_col || !phi_col)
       fail("Map coefficients not found.");
-    constexpr float deg2rad = float(pi() / 180.0);
+    const std::complex<T> default_val; // initialized to 0+0i
+    GroupOps ops = spacegroup->operations();
+    std::vector<Op>& sym_ops = ops.sym_ops;
+    auto id = std::find(sym_ops.begin(), sym_ops.end(), Op::identity());
+    if (id != sym_ops.end())
+      sym_ops.erase(id);
     for (size_t i = 0; i < data.size(); i += ncol) {
       int h = (int) data[i+0];
       int k = (int) data[i+1];
       int l = (int) data[i+2];
-      float f_val = data[i+f_col->idx];
-      float phi_val = deg2rad * data[i+phi_col->idx];
-      if (f_val >= 0.f)
-        grid.data[grid.index_n(h, k, l)] = std::polar(f_val, phi_val);
-    }
-    const std::complex<T> default_val; // initialized to 0+0i
-    GroupOps pg_ops = spacegroup->point_group_operations();
-    grid.symmetrize_using_ops(pg_ops.sym_ops,
-                              [&](std::complex<T> a, std::complex<T> b) {
-        if (a != default_val && b != default_val && a != b)
-          std::fprintf(stderr, "a != b: %g, %g vs %g, %g\n",
-                       std::abs(a), std::arg(a), std::abs(b), std::arg(b));
-        return a != default_val ? a : b;
-    });
-    // Friedel pairs
-    if (!pg_ops.is_centric())
-      for (int u = 0; u != grid.nu; ++u)
-        for (int v = 0; v != grid.nv; ++v)
-          for (int w = 0; w != grid.nw; ++w) {
-            int idx = grid.index_q(u, v, w);
-            if (grid.data[idx] == default_val) {
-              int inv_idx = grid.index_q(u == 0 ? 0 : grid.nu - u,
-                                         v == 0 ? 0 : grid.nv - v,
-                                         w == 0 ? 0 : grid.nw - w);
-              grid.data[idx] = std::conj(grid.data[inv_idx]);
-            }
+      T f = data[i+f_col->idx];
+      double phi = rad(data[i+phi_col->idx]);
+      if (f > 0.f) {
+        int idx = grid.index_n(h, k, l);
+        grid.data[idx] = std::polar(f, (T) phi);
+        for (const Op& op : sym_ops) {
+          int ho = h, ko = k, lo = l;
+          op.apply_in_place_mult(ho, ko, lo, 0);
+          int idxo = grid.index_n(ho, ko, lo);
+          if (grid.data[idxo] == default_val) {
+            //double shifted_phi = phi + op.phase_shift(h, k, l);
+            double shifted_phi = phi - op.phase_shift(ho, ko, lo);
+            grid.data[idxo] = std::polar(f, (T) shifted_phi);
           }
+        }
+      }
+    }
+    // Friedel pairs
+    if (!ops.is_centric())
+      grid.add_friedel_mates();
     return grid;
   }
 

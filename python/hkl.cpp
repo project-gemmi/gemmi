@@ -84,10 +84,12 @@ void add_hkl(py::module& m) {
     .def("dataset", (Mtz::Dataset& (Mtz::*)(int)) &Mtz::dataset,
          py::arg("id"))
     .def("count", &Mtz::count, py::arg("label"))
-    .def("column_with_label", &Mtz::column_with_label, py::arg("label"),
-         py::return_value_policy::reference_internal)
-    .def("column_with_type", &Mtz::column_with_type, py::arg("type"),
-         py::return_value_policy::reference_internal)
+    .def("column_with_label",
+         (Mtz::Column* (Mtz::*)(const std::string&)) &Mtz::column_with_label,
+         py::arg("label"), py::return_value_policy::reference_internal)
+    .def("column_with_type",
+         (Mtz::Column* (Mtz::*)(char)) &Mtz::column_with_type,
+         py::arg("type"), py::return_value_policy::reference_internal)
     .def("column_labels", [](const Mtz& self) {
         std::vector<std::string> labels;
         labels.reserve(self.columns.size());

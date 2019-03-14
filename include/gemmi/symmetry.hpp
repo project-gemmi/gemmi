@@ -133,6 +133,11 @@ struct Op {
     apply_in_place_mult(x, y, z, 1.0 / Op::TDEN);
   }
 
+  double phase_shift(int h, int k, int l) const {
+    constexpr double mult = -2 * 3.1415926535897932384626433832795 / Op::TDEN;
+    return mult * (h * tran[0] + k * tran[1] + l * tran[2]);
+  }
+
   std::array<std::array<int_t, 4>, 4> seitz() const {
     std::array<std::array<int_t, 4>, 4> t;
     for (int i = 0; i < 3; ++i)
@@ -770,15 +775,6 @@ struct SpaceGroup { // typically 40 bytes
   }
 
   GroupOps operations() const { return symops_from_hall(hall); }
-
-  GroupOps point_group_operations() const {
-    GroupOps ops = generators_from_hall(hall);
-    for (Op& op : ops.sym_ops)
-      op.tran.fill(0.0);
-    ops.cen_ops.resize(1);
-    ops.add_missing_elements();
-    return ops;
-  }
 };
 
 struct SpaceGroupAltName {

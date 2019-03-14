@@ -1,11 +1,12 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// 3d grid used by CCP4 maps and cell-method search.
+// 3d grid used by CCP4 maps, cell-method search and hkl data.
 
 #ifndef GEMMI_GRID_HPP_
 #define GEMMI_GRID_HPP_
 
 #include <cassert>
+#include <complex>  // for std::conj
 #include <functional> // for function
 #include <vector>
 #include "unitcell.hpp"
@@ -239,6 +240,25 @@ struct Grid {
   }
   void symmetrize_max() {
     symmetrize([](T a, T b) { return (a > b || !(b == b)) ? a : b; });
+  }
+
+  // makes sense only for hkl data
+  void add_friedel_mates() {
+    const T default_val{};
+    for (int u = 0; u != nu; ++u) {
+      int u_ = u == 0 ? 0 : nu - u;
+      for (int v = 0; v != nv; ++v) {
+        int v_ = v == 0 ? 0 : nv - v;
+        for (int w = 0; w != nw; ++w) {
+          int idx = index_q(u, v, w);
+          if (data[idx] == default_val) {
+            int w_ = w == 0 ? 0 : nw - w;
+            int inv_idx = index_q(u_, v_, w_);
+            data[idx] = std::conj(data[inv_idx]);
+          }
+        }
+      }
+    }
   }
 };
 
