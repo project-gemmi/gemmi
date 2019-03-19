@@ -48,7 +48,8 @@ inline fileptr_t file_open(const char* path, const char* mode) {
 #else
   if ((file = std::fopen(path, mode)) == nullptr)
 #endif
-    fail("Failed to open file: " + std::string(path));
+    fail(std::string("Failed to open file") +
+         (*mode == 'w' ? " for writing: " : ": ") + path);
   return fileptr_t(file, &std::fclose);
 }
 
