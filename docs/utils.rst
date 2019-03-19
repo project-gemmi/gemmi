@@ -4,7 +4,7 @@ Gemmi program
 The library comes with a command-line program which is also called gemmi;
 running a program is easier than calling a library function.
 
-This program is actually a set of small programs; each of them
+This program is actually a set of small programs, each of them
 corresponding to a subcommand:
 
 .. literalinclude:: gemmi-help.txt
@@ -583,6 +583,10 @@ To be wrapped up and published. But in the meantime here are some thoughts:
   correlated) at the cost of additional parameter that is fitted.
   Combining WCN with rotation-only model (squared distance from the center
   of mass) increases CC slightly more, but still not much.
+
+* Accounting for symmetry mates worsens prediction of evolutionary rates.
+  I used `data <https://github.com/shahmoradi/cordiv>`_
+  from Shahmoradi and Wilke to check this.
 
 
 Program

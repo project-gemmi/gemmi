@@ -234,10 +234,16 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
         }
         b_exper.push_back(atom.b_iso);
         b_predict.push_back(value);
-        // re-use u11 and u22 for bookkeeping
+        // re-purposing u11, u22 and name
         atom.flag = 1;
         atom.u11 = (float) value;
         atom.u22 = (float) r2;
+        std::string names = chain.name;
+        names += '\t';
+        names += res->seqid.str();
+        names += '\t';
+        names += atom.name;
+        atom.name = std::move(names);
         atom_ptr.push_back(&atom);
       }
     }
@@ -272,11 +278,14 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
       path += "-" + params.chain_name;
     path += ".xy";
     auto f = gemmi::file_open(path.c_str(), "w");
-    fprintf(f.get(), "WCN\tB\tr2\tatom\telem\n");
+    fprintf(f.get(), "WCN\tB\tr2\tchain\tseqid\tatom\telem\n");
     for (size_t i = 0; i != b_predict.size(); ++i)
-      fprintf(f.get(), "%g\t%g\t%.2f\t%s\t%s\n", b_predict[i], b_exper[i],
+      fprintf(f.get(), "%g\t%g\t%.2f\t%s\t%s\n",
+              b_predict[i], b_exper[i],
               atom_ptr[i]->u22, // squared distance to the center of mass
-              atom_ptr[i]->name.c_str(), atom_ptr[i]->element.name());
+              // Atom::name was used here to store also chain and seqid
+              atom_ptr[i]->name.c_str(),
+              atom_ptr[i]->element.name());
   }
 
   // calculate statistics
