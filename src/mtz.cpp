@@ -61,7 +61,7 @@ static void dump(const Mtz& mtz) {
          mtz.sort_order[3], mtz.sort_order[4]);
   printf("Space Group: %s\n", mtz.spacegroup_name.c_str());
   printf("Space Group Number: %d\n", mtz.spacegroup_number);
-  printf("\nColumn    Type Dataset    Min        Max\n");
+  printf("\nColumn    Type  Dataset    Min        Max\n");
   for (const Mtz::Column& col : mtz.columns)
     printf("%-12s %c %2d %12.6g %10.6g\n",
            col.label.c_str(), col.type, col.dataset_id,
