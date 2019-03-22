@@ -83,17 +83,20 @@ Residues (monomers) and small molecule components of macromolecular models
 are called *chemical components*.
 Gemmi can use three sources of knowledge about the chemical components:
 
-* built-in basic data about a couple hundreds of the most popular components,
-* the Chemical Component Dictionary maintained by the PDB (25,000+ components),
+* built-in basic data about 350+ popular components,
+* the Chemical Component Dictionary (CCD) maintained by the PDB
+  (25,000+ components),
 * so-called CIF files compatible with the format of the Refmac/CCP4 monomer
   library.
 
 Built-in data
 -------------
 
-The built-in data is accessed through the function ``find_tabulated_residue``
-and contains only minimal information about each residue, such as
-assigned category and one-letter code:
+The built-in data is accessed through the function ``find_tabulated_residue``.
+It contains only minimal information about each residue:
+assigned category, the "standard" flag (non-standard residues are marked
+as HETATM in the PDB, even in polymer), one-letter code
+and number of hydrogens:
 
 .. literalinclude:: code/resinfo.cpp
    :language: cpp
@@ -114,12 +117,37 @@ assigned category and one-letter code:
     >>> gemmi.find_tabulated_residue('MSE').is_standard()
     False
 
-External data
--------------
+
+CCD and monomer libraries
+-------------------------
 
 To get more complete information, including atoms and bonds in the monomer,
-we need to first read either the CCD or a monomer library.
-The data for one monomer is kept in the ``ChemComp`` class.
+we need to first read either the `CCD <https://www.wwpdb.org/data/ccd>`_
+or a monomer library.
+
+The CCD :file:`components.cif` file describes all the monomers
+(residues, ligands, solvent molecules) from the PDB entries.
+Importantly, it contains information about bonds that is absent
+in the PDB entries.
+
+.. note::
+
+    The absence of this information in mmCIF files is a
+    `well-known problem <https://www.cgl.ucsf.edu/chimera/data/mmcif-oct2013/mmcif.html>`_,
+    mitigated somewhat by PDBe which in parallel to the wwPDB archive has also
+    `mmCIF files with connectivity <https://doi.org/10.1093/nar/gkv1047>`_
+    and bond-order information;
+    and by RCSB which has this information in the
+    `MMTF format <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5473584/#__tag_618683893>`_.
+
+Macromolecular refinement programs need to know more about monomers
+than the CCD can tell: they need to know how to restrain the structure.
+Therefore, they have own dictionaries with more information than CCD,
+such as Refmac dictionary (a.k.a. monomer library or cif files).
+These libraries are often complemented by user's own cif files.
+
+Gemmi has class ``ChemComp`` that corresponds to the data about one monomer
+that is read from either CCD or a cif file.
 
 .. literalinclude:: ../examples/with_bgl.cpp
    :language: cpp
@@ -131,8 +159,8 @@ The data for one monomer is kept in the ``ChemComp`` class.
     >>> block = gemmi.cif.read('../tests/SO3.cif')[-1]
     >>> so3 = gemmi.make_chemcomp_from_block(block)
 
-Chemical component data is complementing structural model data from mmCIF
-files, as the latter does not include bonding between atoms.
+The ``ChemComp`` class is not fully documented yet,
+but the examples below show how to access the lists of atoms and bonds.
 
 Graph analysis
 --------------
@@ -235,9 +263,10 @@ For the same reason gemmi also has a ``FTransform``, which is like
 Unit Cell
 =========
 
-When working with a structural models in a crystal, we need to work
-with a unit cell, and in particular we need to be able to switch between
+When working with a structural model in a crystal we need to know
+the unit cell. In particular, we need to be able to switch between
 orthogonal and fractional coordinates.
+Here are the most important properties and methods of the ``UnitCell`` class:
 
 **C++**
 
@@ -884,7 +913,7 @@ documentation says that
 related to alternative conformations".
 
 Gemmi exposes the *altloc* field to the user (like mmdb).
-On top of it it offers simple utilities that make working with conformers
+On top of it it offers utilities that make working with conformers
 easier:
 
 - functions that ignore all but the main conformation (inspired by BioPython),
@@ -907,14 +936,14 @@ or left as separate chains (iotbx).
 
 In gemmi we support both ways. Since merging is easier than splitting,
 the chains are first read separately and after reading the file
-the user can call ``Structure::merge_same_name_chains()``.
+the user can call ``Structure::merge_chain_parts()``.
 
 In the Python interface merging is also controlled
 by second argument to the ``gemmi.read_structure()`` function:
 
 .. code-block:: python
 
-  read_structure(path: str, merge_same_name_chains: bool = True) -> gemmi.Structure
+  read_structure(path: str, merge_chain_parts: bool = True) -> gemmi.Structure
 
 
 Structure
@@ -981,27 +1010,97 @@ the ``Structure`` has the following properties:
 * ``raw_remarks`` (C++ type: ``vector<string>``) -- REMARK records
   from a PDB file, empty if the input file has different format.
 
-It also has a number of methods for working with the properties.
-TODO: document member functions of ``Structure``.
+It also has a number of methods. To access or delete a model with known
+name use::
+
+  Model* Structure::find_model(const std::string& model_name)
+  void Structure::remove_model(const std::string& model_name)
+
+In Python these functions are wrapped as ``__getitem__`` and ``__delitem__``:
+
+.. doctest::
+
+  >>> structure['1']
+  <gemmi.Model 1 with 6 chain(s)>
+  >>> del structure['1']
+
+TODO: document the rest.
 
 Model
 -----
 
-``Model`` contains a list of ``Chain``\ s.
-
-It also has a name (``string name``).
+``Model`` must have a unique name (``string name``).
 Normally, models are numbered and the name is a number.
 But according to the mmCIF spec the name does not need to be a number,
 so just in case we store it as a string.
 
 .. doctest::
 
-  >>> gemmi.read_structure('../tests/1orc.pdb')[0].name
+  >>> model = gemmi.read_structure('../tests/1orc.pdb')[0]
+  >>> model.name
   '1'
+
+
+Most importantly, ``Model`` contains a list of ``Chain``\ s.
+The chains can be accessed by index or by name::
+
+  // to access or delete a chain by index use directly the chains vector:
+  std::vector<Chain> Model::chains
+  // to access or delete a chain by name use functions:
+  Chain* Model::find_chain(const std::string& chain_name)
+  void Model::remove_chain(const std::string& chain_name)
+
+.. doctest::
+
+  >>> model
+  <gemmi.Model 1 with 1 chain(s)>
+  >>> model[0]
+  <gemmi.Chain A with 121 res>
+  >>> model['A']
+  <gemmi.Chain A with 121 res>
+  >>> del model['A']  # deletes chain A
 
 The model contains also a list of connections (for example, from LINK and
 SSBOND records). How connections are stored may change in the future
 and it is left undocumented for now (TODO).
+
+As was discussed before, the PDBx/mmCIF format has also
+a poorly-designed set of parallel identifiers. In particular, it has
+``label_asym_id`` in parallel to ``auth_asym_id``.
+In Gemmi the residues with the same ``label_asym_id`` are called
+:ref:`subchain <subchain>`.
+Subchain is represented by class ``ResidueSpan``.
+If you want to access a subchain with the specified ``label_asym_id``, use::
+
+  Model::get_subchain(const std::string& sub_name) -> ResidueSpan
+
+.. doctest::
+
+  >>> model = gemmi.read_structure('../tests/1pfe.cif.gz')[0]
+  >>> model.get_subchain('A')
+  <gemmi.ResidueSpan of 8: [1(DG) 2(DC) 3(DG) ... 8(DC)]>
+
+To get the list of all subchains in the model, use::
+
+  Model::subchains() -> std::vector<ResidueSpan>
+
+.. doctest::
+
+  >>> [subchain.subchain_id() for subchain in model.subchains()]
+  ['A', 'C', 'F', 'B', 'D', 'E', 'G']
+
+The subchains got re-ordered when the chain parts were merged.
+Alternatively, we could do:
+
+.. doctest::
+
+  >>> model = gemmi.read_structure('../tests/1pfe.cif.gz', merge_chain_parts=False)[0]
+  >>> [subchain.subchain_id() for subchain in model.subchains()]
+  ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+
+The ``ResidueSpan`` is described in the next section.
+
+TODO: document other functions
 
 Chain
 -----
@@ -1020,8 +1119,8 @@ In Python, the name can be accessed like in C++:
 
 .. doctest::
 
-  >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
-  >>> chain_a = st[0]['A']
+  >>> model = gemmi.read_structure('../tests/1pfe.cif.gz')[0]
+  >>> chain_a = model['A']
   >>> chain_a.name
   'A'
 
@@ -1050,11 +1149,11 @@ that return ``ResidueSpan``::
 .. doctest::
 
   >>> chain_a.get_polymer()
-  <gemmi.ResidueSpan N=8 [1(DG) 2(DC) 3(DG) ... 8(DC)]>
+  <gemmi.ResidueSpan of 8: [1(DG) 2(DC) 3(DG) ... 8(DC)]>
   >>> chain_a.get_ligands()
-  <gemmi.ResidueSpan N=1 [20(CL)]>
+  <gemmi.ResidueSpan of 1: [20(CL)]>
   >>> chain_a.get_waters()
-  <gemmi.ResidueSpan N=70 [2001(HOH) 2002(HOH) 2003(HOH) ... 2070(HOH)]>
+  <gemmi.ResidueSpan of 70: [2001(HOH) 2002(HOH) 2003(HOH) ... 2070(HOH)]>
 
 .. note::
 
@@ -1070,25 +1169,18 @@ And we also have::
 .. doctest::
 
   >>> chain_a.whole()
-  <gemmi.ResidueSpan N=79 [1(DG) 2(DC) 3(DG) ... 2070(HOH)]>
+  <gemmi.ResidueSpan of 79: [1(DG) 2(DC) 3(DG) ... 2070(HOH)]>
 
-In the mmCIF format residues are grouped by the ``_atom_site.label_asym_id``
-tag. Each such group, called here :ref:`subchain <subchain>`,
-corresponds to one entity (a polymer, a non-polymer or waters).
-Such a subchain can also be represented as a residue span::
-
-  // get subchain by name
-  ResidueSpan Chain::get_subchain(const std::string& s)
-
-  // get a list of all subchains
-  std::vector<ResidueSpan> subchains()
+``Chain`` has also functions ``get_subchain()`` and ``subchains()``
+that do the same as functions of ``Model`` with the same names,
+but they only return subchains of the given chain:
 
 .. doctest::
 
-  >>> chain_a.get_subchain('C')
-  <gemmi.ResidueSpan N=1 [20(CL)]>
-  >>> len(chain_a.subchains())
-  3
+  >>> [subchain.subchain_id() for subchain in model['A'].subchains()]
+  ['A', 'C', 'F']
+  >>> [subchain.subchain_id() for subchain in model['B'].subchains()]
+  ['B', 'D', 'E', 'G']
 
 Now we need to consider microheterogeneities (point mutations).
 They are less frequent than alternative conformations of atoms
@@ -1103,7 +1195,7 @@ which returns iterator over residues of the main conformer.
 
 .. doctest::
 
-  >>> polymer_b = st[0]['B'].get_polymer()
+  >>> polymer_b = model['B'].get_polymer()
   >>> # iteration goes through all residues and atom sites
   >>> [res.name for res in polymer_b]
   ['DSN', 'ALA', 'N2C', 'NCY', 'MVA', 'DSN', 'ALA', 'NCY', 'N2C', 'MVA']

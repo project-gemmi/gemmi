@@ -310,7 +310,7 @@ void add_mol(py::module& m) {
     .def("make_one_letter_sequence", &make_one_letter_sequence)
     .def("__repr__", [](const ResidueSpan& self) {
         int N = self.size();
-        std::string r = "<gemmi.ResidueSpan N=" + std::to_string(N) + " [";
+        std::string r = "<gemmi.ResidueSpan of " + std::to_string(N) + ": [";
         for (int i = 0; i < (N < 5 ? N : 3); ++i) {
           if (i != 0) r += ' ';
           r += self[i].str();

@@ -1844,20 +1844,9 @@ Chemical Component Dictionary
 -----------------------------
 
 For something a bit different, let us look at the data from
-`CCD <https://www.wwpdb.org/data/ccd>`_.
-The :file:`components.cif` file describes all the monomers (residues,
+the :file:`components.cif` from `CCD <https://www.wwpdb.org/data/ccd>`_.
+This file describes all the monomers (residues,
 ligands, solvent molecules) from the PDB entries.
-It contains information about bonds that is absent in the PDB entries.
-
-.. note::
-
-    The absence of this information in mmCIF files is a
-    `well-known problem <https://www.cgl.ucsf.edu/chimera/data/mmcif-oct2013/mmcif.html>`_,
-    mitigated somewhat by PDBe which in parallel to the wwPDB archive has also
-    `mmCIF files with connectivity <https://doi.org/10.1093/nar/gkv1047>`_
-    and bond-order information;
-    and by RCSB which has this information in the
-    `MMTF format <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5473584/#__tag_618683893>`_.
 
 As an exercise, let us check heavy atoms in selenomethionine:
 
@@ -1883,7 +1872,7 @@ One may wonder what is the heaviest CCD component:
     >>> _.find_value('_chem_comp.formula')
     '"O62 P2 W18"'
 
-Or which one has most of heavy atoms:
+Or which one has the largest number of heavy atoms:
 
 .. doctest::
 
@@ -1929,13 +1918,3 @@ The examples here present low-level, generic handling of CCD as a CIF file.
 If we would need to look into coordinates, it would be better to use
 higher level representation of the chemical component, which is provided
 by :ref:`gemmi::ChemComp <chemcomp>`.
-
-Monomer libraries
------------------
-
-Macromolecular refinement programs need to know more about monomers
-than CCD can tell: they need to know how to restrain the structure.
-Therefore, they have own dictionaries, such as Refmac dictionary
-(a.k.a. monomer library or cif files).
-:file:`examples/monomers.py` has a simple consistency checks
-between the CCD and Refmac dictionary.

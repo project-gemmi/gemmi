@@ -10,8 +10,8 @@ for which only 65 space groups are relevant,
 we cover all the 230 crystallographic space groups
 for the sake of completeness.
 
-This part of Gemmi has no dependencies:
-all is in a single C++ header :file:`symmetry.hpp`.
+For C++: this part of Gemmi has no dependencies,
+all is in a single header :file:`symmetry.hpp`.
 
 Space group table
 =================
