@@ -360,7 +360,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         }
       }
       Structure st = read_structure_gz(gemmi::expand_if_pdb_code(path));
-      st.merge_same_name_chains();
+      st.merge_chain_parts();
       if (p.options[NoCrystal])
         st.cell = UnitCell();
       if (p.options[Sanity]) {

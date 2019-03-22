@@ -140,7 +140,7 @@ void add_mol(py::module& m) {
     .def("__delitem__", &Structure::remove_model, py::arg("name"))
     .def("find_or_add_model", &Structure::find_or_add_model,
          py::arg("name"), py::return_value_policy::reference_internal)
-    .def("merge_same_name_chains", &Structure::merge_same_name_chains,
+    .def("merge_chain_parts", &Structure::merge_chain_parts,
          py::arg("min_sep")=0)
     .def("make_pdb_headers", &make_pdb_headers)
     .def("write_pdb", [](const Structure& st, const std::string& path,

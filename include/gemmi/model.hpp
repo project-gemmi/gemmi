@@ -603,7 +603,7 @@ struct Model {
                      [&](const Chain& c) { return c.name == chain_name; });
   }
 
-  void merge_same_name_chains(int min_sep=0) {
+  void merge_chain_parts(int min_sep=0) {
     for (auto i = chains.begin(); i != chains.end(); ++i)
       for (auto j = i + 1; j != chains.end(); ++j)
         if (i->name == j->name) {
@@ -759,9 +759,9 @@ struct Structure {
     return (ncs.size() + 1.0) / (given + 1.0);  // +1 b/c identity not included
   }
 
-  void merge_same_name_chains(int min_sep=0) {
+  void merge_chain_parts(int min_sep=0) {
     for (Model& model : models)
-      model.merge_same_name_chains(min_sep);
+      model.merge_chain_parts(min_sep);
   }
 
   std::vector<Model>& children() { return models; }

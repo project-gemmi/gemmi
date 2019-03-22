@@ -220,7 +220,7 @@ class TestMol(unittest.TestCase):
 
     def test_previous_next_residue(self):
         st = gemmi.read_structure(full_path('1pfe.cif.gz'),
-                                  merge_same_name_chains=False)
+                                  merge_chain_parts=False)
         chain_b = st[0]['B']
         res = chain_b['6']['ALA']
         res = chain_b.next_residue(res)

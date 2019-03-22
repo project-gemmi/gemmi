@@ -46,9 +46,9 @@ void add_read_structure(py::module& m) {
           if (!st->raw_remarks.empty())
             read_metadata_from_remarks(*st);
           if (merge)
-            st->merge_same_name_chains();
+            st->merge_chain_parts();
           return st;
-        }, py::arg("path"), py::arg("merge_same_name_chains")=true,
+        }, py::arg("path"), py::arg("merge_chain_parts")=true,
         "Reads a coordinate file into Structure.");
   m.def("make_structure_from_block", &make_structure_from_block,
         py::arg("block"), "Takes mmCIF block and returns Structure.");
