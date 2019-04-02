@@ -236,6 +236,13 @@ void update_cif_block(const Structure& st, cif::Block& block) {
     for (const ExperimentInfo& exper : st.meta.experiments)
       loop.add_row({id, cif::quote(exper.method),
                     impl::int_or_qmark(exper.number_of_crystals)});
+  } else {
+    auto exptl_method = st.info.find("_exptl.method");
+    if (exptl_method != st.info.end()) {
+      cif::Loop& loop = block.init_mmcif_loop("_exptl.", {"entry_id", "method"});
+      for (const std::string& m : gemmi::split_str(exptl_method->second, "; "))
+        loop.add_row({id, cif::quote(m)});
+    }
   }
 
   // _exptl_crystal_grow
