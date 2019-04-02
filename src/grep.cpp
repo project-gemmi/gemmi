@@ -273,7 +273,7 @@ template<> struct Search<rules::value> {
     if (p.match_value) {
       p.match_value = 0;
       process_match(in, p, p.globbing ? 0 : -1);
-      if (p.last_block)
+      if (p.last_block && !p.globbing)
         throw true;
     }
   }
@@ -310,7 +310,7 @@ template<> struct Search<rules::loop_end> {
   template<typename Input> static void apply(const Input&, Parameters& p) {
     if (p.match_column != -1) {
       p.match_column = -1;
-      if (p.last_block)
+      if (p.last_block && !p.globbing)
         throw true;
     }
   }
