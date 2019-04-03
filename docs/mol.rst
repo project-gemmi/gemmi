@@ -1024,6 +1024,26 @@ In Python these functions are wrapped as ``__getitem__`` and ``__delitem__``:
   <gemmi.Model 1 with 6 chain(s)>
   >>> del structure['1']
 
+Entity is a new concept introduced in the mmCIF format.
+If the structure is read from a PDB file, we can assign entities
+by calling method ``setup_entities``.
+This method uses a simple heuristic to group residues into
+:ref:`subchains <subchain>` which are mapped to entities
+(this is primarily about finding where the polymer ends;
+the TER record makes it trivial).
+One entity can correspond to more than one subchain. In particular,
+all polymers with identical sequence in the SEQRES record are mapped to
+the same entity.
+
+Calling ``setup_entities`` is useful when converting from PDB to mmCIF
+(but to just convert files use :ref:`gemmi-convert <convert>`):
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/1orc.pdb')
+  >>> st.setup_entities()
+  >>> st.make_mmcif_document().write_file('out.cif')
+
 TODO: document the rest.
 
 Model
