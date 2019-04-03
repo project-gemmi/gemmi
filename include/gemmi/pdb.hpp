@@ -295,7 +295,6 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   Structure st;
   st.input_format = CoorFormat::Pdb;
   st.name = path_basename(source, {".gz", ".pdb"});
-  std::string exptl_method;
   std::vector<std::string> conn_records;
   Model *model = &st.find_or_add_model("1");
   Chain *chain = nullptr;
