@@ -42,8 +42,9 @@ void add_cif(py::module& cif) {
     }, py::arg("index"))
     .def("add_copied_block", [](Document& d, const Block& block, int pos) {
         if (pos < 0)
-          pos += d.blocks.size();
-        pos = gemmi::clamp_(pos, 0, (int) d.blocks.size());
+          pos = d.blocks.size();
+        else if (pos > (int) d.blocks.size())
+          throw py::index_error();
         d.blocks.insert(d.blocks.begin() + pos, block);
         return d.blocks[pos];
     }, py::arg("block"), py::arg("pos")=-1,
