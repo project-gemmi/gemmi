@@ -423,7 +423,7 @@ struct Mtz {
   }
 
   // read the part between END and MTZENDOFHEADERS
-  void read_history_and_later_headers(std::FILE* stream) {
+  void read_history_and_batch_headers(std::FILE* stream) {
     char buf[81] = {0};
     int n_headers = 0;
     while (std::fread(buf, 1, 80, stream) == 80 &&
@@ -471,7 +471,7 @@ struct Mtz {
   void read_all_headers(std::FILE* stream) {
     read_first_bytes(stream);
     read_main_headers(stream);
-    read_history_and_later_headers(stream);
+    read_history_and_batch_headers(stream);
     setup_spacegroup();
   }
 

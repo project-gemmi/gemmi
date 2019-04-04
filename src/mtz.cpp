@@ -150,7 +150,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (verbose)
         mtz.warnings = stderr;
       mtz.read_main_headers(f.get());
-      mtz.read_history_and_later_headers(f.get());
+      mtz.read_history_and_batch_headers(f.get());
       if (p.options[Dump])
         dump(mtz);
       if (p.options[PrintTsv] || p.options[PrintStats])

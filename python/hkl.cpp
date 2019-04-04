@@ -16,6 +16,30 @@ PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Column>)
 PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Dataset>)
 PYBIND11_MAKE_OPAQUE(std::vector<ReflnBlock>)
 
+namespace gemmi {
+  inline std::ostream& operator<< (std::ostream& os, const Mtz::Dataset& ds) {
+    os << "<gemmi.Mtz.Dataset " << ds.id << ' ' << ds.project_name
+       << '/' << ds.crystal_name << '/' << ds.dataset_name << '>';
+    return os;
+  }
+
+  inline std::ostream& operator<< (std::ostream& os, const ReflnBlock& rb) {
+    os << "<gemmi.ReflnBlock " + rb.block.name + " with ";
+    if (rb.default_loop)
+      os << rb.default_loop->width() << " x " << rb.default_loop->length();
+    else
+      os << " no ";
+    os << " loop>";
+    return os;
+  }
+}
+
+template <typename T> std::string tostr(const T& s) {
+  std::ostringstream stream;
+  stream << s;
+  return stream.str();
+}
+
 template<typename F>
 py::array_t<float> make_new_column(const Mtz& mtz, int dataset, F f) {
   if (!mtz.has_data())
@@ -54,9 +78,9 @@ py::array_t<T> py_array_from_vector(std::vector<T>&& original_vec) {
 }
 
 void add_hkl(py::module& m) {
-  py::bind_vector<std::vector<Mtz::Column>>(m, "VectorMtzColumn");
-  py::bind_vector<std::vector<Mtz::Dataset>>(m, "VectorMtzDataset");
-  py::bind_vector<std::vector<ReflnBlock>>(m, "VectorReflnBlock");
+  py::bind_vector<std::vector<Mtz::Column>>(m, "MtzColumns");
+  py::bind_vector<std::vector<Mtz::Dataset>>(m, "MtzDatasets");
+  py::bind_vector<std::vector<ReflnBlock>>(m, "ReflnBlocks");
 
   py::class_<Mtz> mtz(m, "Mtz", py::buffer_protocol());
   mtz.def(py::init<>())
@@ -103,6 +127,7 @@ void add_hkl(py::module& m) {
     .def("make_d_array", &make_d_array, py::arg("dataset")=-1)
     .def("get_map_coef_as_grid", &Mtz::get_map_coef_as_grid<float>,
          py::arg("f"), py::arg("phi"), py::arg("size")=std::array<int,3>{0,0,0})
+    .def("write_to_file", &Mtz::write_to_file, py::arg("path"))
     .def("__repr__", [](const Mtz& self) {
         return "<gemmi.Mtz with " + std::to_string(self.ncol) + " columns, " +
                std::to_string(self.nreflections) + " reflections>";
@@ -115,9 +140,7 @@ void add_hkl(py::module& m) {
     .def_readwrite("cell", &Mtz::Dataset::cell)
     .def_readwrite("wavelength", &Mtz::Dataset::wavelength)
     .def("__repr__", [](const Mtz::Dataset& self) {
-        return "<gemmi.Mtz.Dataset " + std::to_string(self.id) + " " +
-               self.project_name + "/" + self.crystal_name + "/" +
-               self.dataset_name + ">";
+      return tostr(self);
     });
   py::class_<Mtz::Column>(mtz, "Column", py::buffer_protocol())
     .def_buffer([](Mtz::Column& self) {
@@ -173,16 +196,7 @@ void add_hkl(py::module& m) {
         return py_array_from_vector(self.make_1_d2_vector());
     })
     .def("__repr__", [](const ReflnBlock& self) {
-        std::string s = "<gemmi.ReflnBlock " + self.block.name + " with ";
-        if (self.default_loop) {
-          s += std::to_string(self.default_loop->width());
-          s += " x ";
-          s += std::to_string(self.default_loop->length());
-        } else {
-          s += " no ";
-        }
-        s += " loop>";
-        return s;
+      return tostr(self);
     });
   m.def("as_refln_blocks",
         [](cif::Document& d) { return as_refln_blocks(std::move(d.blocks)); });

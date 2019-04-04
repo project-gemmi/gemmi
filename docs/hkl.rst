@@ -58,8 +58,8 @@ Datasets are stored in variable ``datasets``::
 .. doctest::
   :skipif: no_mtz_file
 
-  >>> len(mtz.datasets)
-  2
+  >>> mtz.datasets
+  MtzDatasets[<gemmi.Mtz.Dataset 0 HKL_base/HKL_base/HKL_base>, <gemmi.Mtz.Dataset 1 5dei/5dei/1>]
 
 In the MTZ file, each dataset is identified internally by an integer
 "dataset ID". To get dataset with specified ID use function::
@@ -90,8 +90,14 @@ Python bindings provide the same properties:
 
   >>> mtz.dataset(0).project_name
   'HKL_base'
+  >>> mtz.dataset(0).crystal_name
+  'HKL_base'
+  >>> mtz.dataset(0).dataset_name
+  'HKL_base'
   >>> mtz.dataset(0).cell
   <gemmi.UnitCell(70.166, 92.451, 93.715, 63.586, 72.425, 72.884)>
+  >>> mtz.dataset(0).wavelength
+  0.0
 
 
 Columns are stored in variable ``columns``::
@@ -101,6 +107,8 @@ Columns are stored in variable ``columns``::
 .. doctest::
   :skipif: no_mtz_file
 
+  >>> mtz.columns[0]
+  <gemmi.Mtz.Column H type H>
   >>> len(mtz.columns)
   6
 
@@ -136,8 +144,12 @@ Python bindings provide the same properties:
   1
   >>> intensity.type
   'J'
+  >>> intensity.label
+  'I'
   >>> intensity.min_value, intensity.max_value
   (-513.5999755859375, 138805.0)
+  >>> intensity.source
+  'CREATED_31/01/2019_20:31:27'
 
 In both C++ and Python ``Column`` supports the iteration protocol:
 
@@ -148,7 +160,7 @@ In both C++ and Python ``Column`` supports the iteration protocol:
   2665.906147073007
 
 In Python we also have a read-only ``array`` property that provides
-view of the data compatible with NumPy. It does not copy the data,
+a view of the data compatible with NumPy. It does not copy the data,
 so the data is not contiguous (because it's stored row-wise in MTZ):
 
 .. doctest::
@@ -192,6 +204,19 @@ is Pandas DataFrame:
   >>> df = pandas.DataFrame(data=all_data, columns=mtz.column_labels())
   >>> # now we can handle columns using their labels:
   >>> I_over_sigma = df['I'] / df['SIGI']
+
+In C++, the MTZ file can be written to a file using one of the functions::
+
+  void Mtz::write_to_stream(std::FILE* stream) const
+  void Mtz::write_to_file(const std::string& path) const
+
+and in Python using:
+
+.. doctest::
+  :skipif: no_mtz_file
+
+  >>> mtz.write_to_file('output.mtz')
+
 
 SF mmCIF
 ========
