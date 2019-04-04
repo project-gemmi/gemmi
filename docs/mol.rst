@@ -564,6 +564,24 @@ Python
     # if you have the content of the PDB file in a string:
     structure = gemmi.read_pdb_string(string)
 
+To output a file or string in the PDB format use one of the functions:
+
+.. code-block:: python
+
+  # write_pdb() has multiple keyworded options that disable writing
+  # of various records.
+  structure.write_pdb(path [, options])
+
+  # To write only CRYST1 and coordinates, use:
+  structure.write_minimal_pdb(path)
+
+  # To get the same as a string:
+  pdb_string = structure.make_minimal_pdb()
+
+  # To get PDB headers as a string:
+  header_string = structure.make_pdb_headers()
+
+
 
 PDBx/mmCIF format
 =================

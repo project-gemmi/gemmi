@@ -458,7 +458,7 @@ Python
   >>> doc['MSE']
   <gemmi.cif.Block MSE>
 
-It has two non-magic functions:
+It has two other ways of accessing a block:
 
 .. doctest::
 
@@ -473,14 +473,13 @@ It has two non-magic functions:
   >>> cif.read("../tests/1pfe.cif.gz").sole_block()
   <gemmi.cif.Block 1PFE>
 
-and one property
+Blocks can be inserted (by default -- appended after existing blocks)
+using one of the two functions:
 
-.. doctest::
+* ``Document.add_new_block(name, pos=-1)``
+* ``Document.add_copied_block(block, pos=-1)``
 
-  >>> doc.source
-  'components.cif'
-
-And here is how to start a new document:
+As an example, here is how to start a new document:
 
 .. doctest::
 
@@ -488,7 +487,15 @@ And here is how to start a new document:
   >>> block_one = d.add_new_block('block-one')
   >>> # populate block_one
 
-To remove a block use ``Document.__delitem__`` (for example: ``del doc[1]``).
+To delete a block use ``Document.__delitem__`` (for example: ``del doc[1]``).
+
+Document has also one property
+
+.. doctest::
+
+  >>> doc.source
+  'components.cif'
+
 
 Block
 =====

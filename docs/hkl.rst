@@ -48,9 +48,8 @@ In Python, we have a single function for reading MTZ files:
 
 The Mtz class has a number of properties that are based on the header
 records in the MTZ format, such as ``spacegroup``, ``cell``,
-``title`, ``history``. (TODO: document them all.)
+``title``, ``history``. (TODO: document them all.)
 Importantly, it also has a list of datasets and a list of columns.
-that are stored in variables ``datasets`` and ``columns``.
 
 Datasets are stored in variable ``datasets``::
 
