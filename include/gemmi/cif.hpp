@@ -94,9 +94,10 @@ namespace rules {
                         pegtl::plus<nonblank_ch>> {};
 
   // (a) Basic structure of CIF. (c) Tags and values.
-  struct datablockname : pegtl::plus<nonblank_ch> {};
-  struct datablockheading : sor<if_must<str_data, datablockname>,
-                                str_global> {};
+  // datablockname in STAR/CIF should not be empty, but we made an exception
+  // for RELION which writes blocks starting with bare data_
+  struct datablockname : star<nonblank_ch> {};
+  struct datablockheading : sor<seq<str_data, datablockname>, str_global> {};
   struct tag : seq<one<'_'>, pegtl::plus<nonblank_ch>> {};
   // unquoted value made of ordinary characters only - for a typical mmCIF file
   // it is faster to check it first even if we backtrack on some values_.
@@ -140,7 +141,6 @@ error_msg(rules::quoted_tail<rules::one<'\''>>, "unterminated 'string'")
 error_msg(rules::quoted_tail<rules::one<'"'>>, "unterminated \"string\"")
 error_msg(pegtl::until<rules::field_sep>, "unterminated text field")
 error_msg(rules::value, "expected value")
-error_msg(rules::datablockname, "unnamed DataBlock")
 error_msg(rules::framename, "unnamed save_ frame")
 #undef error_msg
 
@@ -160,7 +160,10 @@ template<typename Rule> struct Action : pegtl::nothing<Rule> {};
 template<> struct Action<rules::datablockname> {
   template<typename Input> static void apply(const Input& in, Document& out) {
     out.blocks.emplace_back(in.string());
-    out.items_ = &out.blocks.back().items;
+    Block& block = out.blocks.back();
+    if (block.name.empty()) // RELION's case
+      block.name += '#';
+    out.items_ = &block.items;
   }
 };
 template<> struct Action<rules::str_global> {

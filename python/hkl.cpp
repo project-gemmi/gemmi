@@ -17,6 +17,7 @@ PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Dataset>)
 PYBIND11_MAKE_OPAQUE(std::vector<ReflnBlock>)
 
 namespace gemmi {
+  // operator<< is used by stl_bind for vector's __repr__
   inline std::ostream& operator<< (std::ostream& os, const Mtz::Dataset& ds) {
     os << "<gemmi.Mtz.Dataset " << ds.id << ' ' << ds.project_name
        << '/' << ds.crystal_name << '/' << ds.dataset_name << '>';

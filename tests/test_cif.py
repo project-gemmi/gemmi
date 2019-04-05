@@ -193,6 +193,19 @@ class TestBlock(unittest.TestCase):
             output_str = doc.as_string()
             self.assertEqual(input_str.replace(eol, '\n'), output_str)
 
+    def test_relion_syntax_exception(self):
+        block = cif.read_string("""\
+            data_
+            loop_
+            _rlnImageName
+            _rlnMicrographName
+            _rlnDefocusU
+            _rlnDefocusV
+            mic1/img000001.spi mic1 10000 10500
+            mic1/img000002.spi mic1 10000 10500
+            """).sole_block()
+        self.assertEqual(block.name, '#')
+
 class TestQuote(unittest.TestCase):
     def test_quote(self):
         self.assertEqual(cif.quote('a.b-c'), 'a.b-c')
