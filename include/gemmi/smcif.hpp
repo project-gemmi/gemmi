@@ -21,7 +21,7 @@ struct AtomicStructure {
     std::string label;
     std::string type_symbol;
     Fractional fract;
-    float occ;
+    float occ = 1.0f;
   };
   std::string name;
   UnitCell cell;
