@@ -3,7 +3,7 @@ import os
 
 # -- General configuration ------------------------------------------------
 
-needs_sphinx = '1.8'
+needs_sphinx = '1.8.5'
 
 extensions = ['sphinx.ext.doctest', 'sphinx.ext.githubpages']
 
@@ -59,8 +59,7 @@ latex_documents = [
      u'Marcin Wojdyr', 'manual'),
 ]
 
-if os.environ.get('IN_DOCTEST'):
-    doctest_global_setup = '''
+doctest_global_setup = '''
 import os
 no_mtz_file = not os.path.exists('example.mtz')
 try:
@@ -71,12 +70,6 @@ try:
     import networkx
 except ImportError:
     networkx = None
-'''
-else:
-    doctest_global_setup = '''
-no_mtz_file = False
-numpy = True
-networkx = True
 '''
 
 def setup(app):
