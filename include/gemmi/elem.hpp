@@ -103,6 +103,44 @@ inline double molecular_weight(El el) {
   return weights[static_cast<int>(el)];
 }
 
+inline float covalent_radius(El el) {
+  static constexpr float radii[] = {
+    /*X*/ 0.50f,
+    /*H*/ 0.23f, /*He*/ 0.93f,
+    /*Li*/ 0.68f, /*Be*/ 0.35f, /*B*/ 0.83f, /*C*/ 0.68f, /*N*/ 0.68f,
+    /*O*/ 0.68f, /*F*/ 0.64f, /*Ne*/ 1.12f,
+    /*Na*/ 0.97f, /*Mg*/ 1.10f, /*Al*/ 1.35f, /*Si*/ 1.20f, /*P*/ 0.75f,
+    /*S*/ 1.02f, /*Cl*/ 0.99f, /*Ar*/ 1.57f,
+    /*K*/ 1.33f, /*Ca*/ 0.99f, /*Sc*/ 1.44f, /*Ti*/ 1.47f, /*V*/ 1.33f,
+    /*Cr*/ 1.35f, /*Mn*/ 1.35f, /*Fe*/ 1.34f, /*Co*/ 1.33f, /*Ni*/ 1.50f,
+    /*Cu*/ 1.52f, /*Zn*/ 1.45f, /*Ga*/ 1.22f, /*Ge*/ 1.17f, /*As*/ 1.21f,
+    /*Se*/ 1.22f, /*Br*/ 1.21f, /*Kr*/ 1.91f,
+    /*Rb*/ 1.47f, /*Sr*/ 1.12f, /*Y*/ 1.78f, /*Zr*/ 1.56f, /*Nb*/ 1.48f,
+    /*Mo*/ 1.47f, /*Tc*/ 1.35f, /*Ru*/ 1.40f, /*Rh*/ 1.45f, /*Pd*/ 1.50f,
+    /*Ag*/ 1.59f, /*Cd*/ 1.69f, /*In*/ 1.63f, /*Sn*/ 1.46f, /*Sb*/ 1.46f,
+    /*Te*/ 1.47f, /*I*/ 1.40f, /*Xe*/ 1.98f,
+    /*Cs*/ 1.67f, /*Ba*/ 1.34f, /*La*/ 1.87f, /*Ce*/ 1.83f, /*Pr*/ 1.82f,
+    /*Nd*/ 1.81f, /*Pm*/ 1.80f, /*Sm*/ 1.80f, /*Eu*/ 1.99f, /*Gd*/ 1.79f,
+    /*Tb*/ 1.76f, /*Dy*/ 1.75f, /*Ho*/ 1.74f, /*Er*/ 1.73f, /*Tm*/ 1.72f,
+    /*Yb*/ 1.94f, /*Lu*/ 1.72f, /*Hf*/ 1.57f, /*Ta*/ 1.43f, /*W*/ 1.37f,
+    /*Re*/ 1.35f, /*Os*/ 1.37f, /*Ir*/ 1.32f, /*Pt*/ 1.50f, /*Au*/ 1.50f,
+    /*Hg*/ 1.70f, /*Tl*/ 1.55f, /*Pb*/ 1.54f, /*Bi*/ 1.54f, /*Po*/ 1.68f,
+    /*At*/ 1.70f, /*Rn*/ 2.40f,
+    /*Fr*/ 2.00f, /*Ra*/ 1.90f, /*Ac*/ 1.88f, /*Th*/ 1.79f, /*Pa*/ 1.61f,
+    /*U*/ 1.58f, /*Np*/ 1.55f, /*Pu*/ 1.53f, /*Am*/ 1.51f, /*Cm*/ 1.50f,
+    /*Bk*/ 1.50f, /*Cf*/ 1.50f, /*Es*/ 1.50f, /*Fm*/ 1.50f, /*Md*/ 1.50f,
+    /*No*/ 1.50f, /*Lr*/ 1.50f, /*Rf*/ 1.57f, /*Db*/ 1.49f, /*Sg*/ 1.43f,
+    /*Bh*/ 1.41f, /*Hs*/ 1.34f, /*Mt*/ 1.29f, /*Ds*/ 1.28f, /*Rg*/ 1.21f,
+    /*Cn*/ 1.22f, /*Nh*/ 1.50f, /*Fl*/ 1.50f, /*Mc*/ 1.50f, /*Lv*/ 1.50f,
+    /*Ts*/ 1.50f, /*Og*/ 1.50f,
+    /*D*/ 0.23f, /*END*/ 0.0f
+  };
+  static_assert(radii[static_cast<int>(El::D)] == 0.23f, "Hmm");
+  static_assert(sizeof(radii) / sizeof(radii[0]) ==
+                static_cast<int>(El::END) + 1, "Hmm");
+  return radii[static_cast<int>(el)];
+}
+
 typedef const char elname_t[3];
 
 inline const char* element_name(El el) {
@@ -213,6 +251,7 @@ struct Element {
     return elem == El::D ? 1 : static_cast<int>(elem);
   }
   double weight() const { return molecular_weight(elem); }
+  float covalent_r() const { return covalent_radius(elem); }
   // return name such as Mg (not MG)
   const char* name() const { return element_name(elem); }
   // return uppercase name such as MG

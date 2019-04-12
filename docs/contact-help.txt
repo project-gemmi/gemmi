@@ -2,11 +2,12 @@ $ gemmi contact -h
 Usage:
  gemmi contact [options] INPUT[...]
 Searches for contacts in a model (PDB or mmCIF).
-  -h, --help       Print usage and exit.
-  -V, --version    Print version and exit.
-  --verbose        Verbose output.
+  -h, --help     Print usage and exit.
+  -V, --version  Print version and exit.
+  --verbose      Verbose output.
   -d, --maxdist=D  Maximal distance in A (default 3.0)
-  --occsum=MIN     Ignore atom pairs with summed occupancies < MIN.
-  --any            Output any atom pair, even from the same residue.
-  --noh            Ignore hydrogen (and deuterium) atoms.
-  --count          Print only a count of atom pairs.
+  --cov=TOL      Use max distance = covalent radii sum + TOL [A].
+  --occsum=MIN   Ignore atom pairs with summed occupancies < MIN.
+  --any          Output any atom pair, even from the same residue.
+  --noh          Ignore hydrogen (and deuterium) atoms.
+  --count        Print only a count of atom pairs.

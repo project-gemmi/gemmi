@@ -24,6 +24,7 @@ void add_smcif(py::module& m) {
     .def(py::init<int>())
     .def_property_readonly("name", &Element::name)
     .def_property_readonly("weight", &Element::weight)
+    .def_property_readonly("covalent_r", &Element::covalent_r)
     .def_property_readonly("atomic_number", &Element::atomic_number)
     .def("__repr__", [](const Element& self) {
         return "<gemmi.Element: " + std::string(self.name()) + ">";

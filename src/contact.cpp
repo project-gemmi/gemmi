@@ -14,7 +14,7 @@
 
 using namespace gemmi;
 
-enum OptionIndex { Verbose=3, MaxDist, Occ, Any, NoH, Count };
+enum OptionIndex { Verbose=3, Cov, MaxDist, Occ, Any, NoH, Count };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -25,7 +25,9 @@ static const option::Descriptor Usage[] = {
     "  -V, --version  \tPrint version and exit." },
   { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { MaxDist, 0, "d", "maxdist", Arg::Float,
-    "  -d, --maxdist=D  \tMaximal distance in A (default 3.0)" },
+    "  -d, --maxdist=D  Maximal distance in A (default 3.0)" },
+  { Cov, 0, "", "cov", Arg::Float,
+    "  --cov=TOL  \tUse max distance = covalent radii sum + TOL [A]." },
   { Occ, 0, "", "occsum", Arg::Float,
     "  --occsum=MIN  \tIgnore atom pairs with summed occupancies < MIN." },
   { Any, 0, "", "any", Arg::None,
@@ -38,8 +40,9 @@ static const option::Descriptor Usage[] = {
 };
 
 struct Parameters {
-  float max_dist;
-  float occ_sum;
+  float cov_tol = 0.0f;
+  float max_dist = 3.0f;
+  float occ_sum = 0.0f;
   bool any;
   bool print_count;
   bool no_hydrogens;
@@ -48,7 +51,8 @@ struct Parameters {
 
 static void print_contacts(const Structure& st, const Parameters& params) {
   const float special_pos_cutoff = 0.8f;
-  SubCells sc(st.models.at(0), st.cell, std::max(5.0f, params.max_dist));
+  float max_r = params.cov_tol == 0 ? params.max_dist : 4.f + params.cov_tol;
+  SubCells sc(st.models.at(0), st.cell, std::max(5.0f, max_r));
   sc.populate(st.models[0]);
 
   if (params.verbose > 0) {
@@ -80,7 +84,12 @@ static void print_contacts(const Structure& st, const Parameters& params) {
         if (params.no_hydrogens && is_hydrogen(atom.element))
           continue;
         double min_occ = params.occ_sum - atom.occ;
-        sc.for_each(atom.pos, atom.altloc, params.max_dist,
+        float d_part = 0;
+        if (params.cov_tol != 0) {
+          d_part = atom.element.covalent_r() + params.cov_tol;
+          max_r = d_part + 2.4f;
+        }
+        sc.for_each(atom.pos, atom.altloc, max_r,
                     [&](const SubCells::Mark& m, float dist_sq) {
             if (!params.any) {
               if (m.image_idx == 0 && m.chain_idx == n_ch &&
@@ -97,6 +106,9 @@ static void print_contacts(const Structure& st, const Parameters& params) {
               return;
             const_CRA cra = m.to_cra(model);
             if (cra.atom->occ < min_occ)
+              return;
+            if (d_part != 0 &&
+                dist_sq > sq(d_part + cra.atom->element.covalent_r()))
               return;
             ++counter;
             if (params.print_count)
@@ -130,10 +142,10 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.require_input_files_as_args();
   Parameters params;
   params.verbose = p.options[Verbose].count();
-  params.max_dist = 3.0;
+  if (p.options[Cov])
+    params.cov_tol = std::strtof(p.options[Cov].arg, nullptr);
   if (p.options[MaxDist])
     params.max_dist = std::strtof(p.options[MaxDist].arg, nullptr);
-  params.occ_sum = 0;
   if (p.options[Occ])
     params.occ_sum = std::strtof(p.options[Occ].arg, nullptr);
   params.any = p.options[Any];
