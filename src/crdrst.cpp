@@ -435,7 +435,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       return 1;
     }
     gemmi::Model& model0 = st.models[0];
-    gemmi::MonLib monlib = gemmi::read_monomers(monomer_dir, model0,
+    gemmi::MonLib monlib = gemmi::read_monomers(monomer_dir,
+                                                model0.get_all_residue_names(),
                                                 gemmi::read_cif_gz);
 
     Topo topo;

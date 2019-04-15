@@ -165,7 +165,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     for (gemmi::Model& model : st.models) {
       if (st.models.size() > 1)
         printf("### Model %s ###\n", model.name.c_str());
-      gemmi::MonLib monlib = gemmi::read_monomers(monomer_dir, model,
+      gemmi::MonLib monlib = gemmi::read_monomers(monomer_dir,
+                                                  model.get_all_residue_names(),
                                                   gemmi::read_cif_gz);
       Topo topo;
       topo.initialize_refmac_topology(model, st.entities, monlib);

@@ -652,6 +652,15 @@ struct Model {
     return rr[0];
   }
 
+  std::vector<std::string> get_all_residue_names() const {
+    std::vector<std::string> names;
+    for (const Chain& chain : chains)
+      for (const Residue& res : chain.residues)
+        if (!in_vector(res.name, names))
+          names.push_back(res.name);
+    return names;
+  }
+
   Connection* find_connection_by_name(const std::string& conn_name) {
     return impl::find_or_null(connections, conn_name);
   }

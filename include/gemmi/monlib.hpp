@@ -9,7 +9,6 @@
 #include <cassert>
 #include <cctype>  // for tolower
 #include <map>
-#include <set>
 #include <string>
 #include <vector>
 #include "cifdoc.hpp"
@@ -431,7 +430,7 @@ struct MonLib {
 typedef cif::Document (*read_cif_func)(const std::string&);
 
 inline MonLib read_monomers(std::string monomer_dir,
-                            const std::set<std::string>& resnames,
+                            const std::vector<std::string>& resnames,
                             read_cif_func read_cif) {
   MonLib monlib;
   assert(!monomer_dir.empty());
@@ -457,16 +456,6 @@ inline MonLib read_monomers(std::string monomer_dir,
   monlib.links = gemmi::read_chemlinks(monlib.mon_lib_list);
   monlib.modifications = gemmi::read_chemmods(monlib.mon_lib_list);
   return monlib;
-}
-
-inline MonLib read_monomers(std::string monomer_dir,
-                            const Model& model,
-                            read_cif_func read_cif) {
-  std::set<std::string> resnames;
-  for (const gemmi::Chain& chain : model.chains)
-    for (const gemmi::Residue& res : chain.residues)
-      resnames.insert(res.name);
-  return read_monomers(monomer_dir, resnames, read_cif);
 }
 
 } // namespace gemmi
