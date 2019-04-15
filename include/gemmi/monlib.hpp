@@ -433,7 +433,8 @@ inline MonLib read_monomers(std::string monomer_dir,
                             const std::vector<std::string>& resnames,
                             read_cif_func read_cif) {
   MonLib monlib;
-  assert(!monomer_dir.empty());
+  if (monomer_dir.empty())
+    fail("read_monomers(): monomer_dir not specified.");
   if (monomer_dir.back() != '/' && monomer_dir.back() != '\\')
     monomer_dir += '/';
   monlib.mon_lib_list = (*read_cif)(monomer_dir + "list/mon_lib_list.cif");
@@ -445,16 +446,16 @@ inline MonLib read_monomers(std::string monomer_dir,
     path += name + ".cif";
     try {
       cif::Document doc = (*read_cif)(path);
-      auto cc = gemmi::make_chemcomp_from_cif(name, doc);
+      auto cc = make_chemcomp_from_cif(name, doc);
       monlib.monomers.emplace(name, cc);
     } catch(std::runtime_error& err) {
       error += "The monomer " + name + " could not be read.\n";
     }
   }
   if (!error.empty())
-    gemmi::fail(error + "Please create definitions for missing monomers.");
-  monlib.links = gemmi::read_chemlinks(monlib.mon_lib_list);
-  monlib.modifications = gemmi::read_chemmods(monlib.mon_lib_list);
+    fail(error + "Please create definitions for missing monomers.");
+  monlib.links = read_chemlinks(monlib.mon_lib_list);
+  monlib.modifications = read_chemmods(monlib.mon_lib_list);
   return monlib;
 }
 

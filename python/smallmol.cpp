@@ -3,6 +3,8 @@
 #include "gemmi/elem.hpp"
 #include "gemmi/smcif.hpp"
 #include "gemmi/chemcomp.hpp"
+#include "gemmi/monlib.hpp"
+#include "gemmi/gzread.hpp" // read_cif_gz
 
 #include <fstream>
 #include <pybind11/pybind11.h>
@@ -14,10 +16,19 @@ using namespace gemmi;
 
 PYBIND11_MAKE_OPAQUE(std::vector<Restraints::Bond>)
 PYBIND11_MAKE_OPAQUE(std::vector<ChemComp::Atom>)
+using monomers_type = std::map<std::string, ChemComp>;
+using links_type = std::map<std::string, ChemLink>;
+using modifications_type = std::map<std::string, ChemMod>;
+PYBIND11_MAKE_OPAQUE(monomers_type)
+PYBIND11_MAKE_OPAQUE(links_type)
+PYBIND11_MAKE_OPAQUE(modifications_type)
 
 void add_smcif(py::module& m) {
-  py::bind_vector<std::vector<Restraints::Bond>>(m, "VectorRestraintsBond");
-  py::bind_vector<std::vector<ChemComp::Atom>>(m, "VectorChemCompAtom");
+  py::bind_vector<std::vector<Restraints::Bond>>(m, "RestraintsBonds");
+  py::bind_vector<std::vector<ChemComp::Atom>>(m, "ChemCompAtoms");
+  py::bind_map<monomers_type>(m, "ChemCompMap");
+  py::bind_map<links_type>(m, "ChemLinkMap");
+  py::bind_map<modifications_type>(m, "ChemModMap");
 
   py::class_<Element>(m, "Element")
     .def(py::init<const std::string &>())
@@ -79,7 +90,9 @@ void add_chemcomp(py::module& m) {
     .def_readwrite("value", &Restraints::Bond::value)
     .def_readwrite("esd", &Restraints::Bond::esd)
     .def("lexicographic_str", &Restraints::Bond::lexicographic_str)
-    ;
+    .def("__repr__", [](const Restraints::Bond& self) {
+        return "<gemmi.Restraints.Bond " + self.str() + ">";
+    });
   restraints
     .def_readwrite("bonds", &Restraints::bonds)
     .def("empty", &Restraints::empty)
@@ -112,4 +125,43 @@ void add_chemcomp(py::module& m) {
     .def("remove_hydrogens", &ChemComp::remove_hydrogens)
     ;
   m.def("make_chemcomp_from_block", &make_chemcomp_from_block);
+
+  py::class_<ChemLink>(m, "ChemLink")
+    .def_readwrite("id", &ChemLink::id)
+    .def_readwrite("name", &ChemLink::name)
+    .def_readwrite("comp1", &ChemLink::comp1)
+    .def_readwrite("mod1", &ChemLink::mod1)
+    .def_readwrite("group1", &ChemLink::group1)
+    .def_readwrite("comp2", &ChemLink::comp2)
+    .def_readwrite("mod2", &ChemLink::mod2)
+    .def_readwrite("group2", &ChemLink::group2)
+    .def_readwrite("rt", &ChemLink::rt)
+    .def("__repr__", [](const ChemLink& self) {
+        return "<gemmi.ChemLink " + self.id + " " +
+                (self.comp1.empty() ? self.group1 : self.comp1) + "-" +
+                (self.comp2.empty() ? self.group2 : self.comp2) + ">";
+    });
+
+  py::class_<ChemMod>(m, "ChemMod")
+    .def_readwrite("id", &ChemMod::id)
+    .def("__repr__", [](const ChemLink& self) {
+        return "<gemmi.ChemMod " + self.id + ">";
+    });
+
+  py::class_<MonLib>(m, "MonLib")
+    .def_readonly("monomers", &MonLib::monomers)
+    .def_readonly("links", &MonLib::links)
+    .def_readonly("modifications", &MonLib::modifications)
+    .def("__repr__", [](const MonLib& self) {
+        return "<gemmi.MonLib with " +
+               std::to_string(self.monomers.size()) + " monomers, " +
+               std::to_string(self.links.size()) + " links, " +
+               std::to_string(self.modifications.size()) + " modifications>";
+    });
+    ;
+
+  m.def("read_monomers", [](const std::string& monomer_dir,
+                            const std::vector<std::string>& resnames) {
+    return read_monomers(monomer_dir, resnames, gemmi::read_cif_gz);
+  });
 }
