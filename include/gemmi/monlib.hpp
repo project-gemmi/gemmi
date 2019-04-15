@@ -23,9 +23,8 @@ namespace gemmi {
 struct ChemLink {
   std::string id;
   std::string name;
-  std::string comp[2];
-  std::string mod[2];
-  std::string group[2];
+  std::string comp1, mod1, group1;
+  std::string comp2, mod2, group2;
   Restraints rt;
 };
 
@@ -117,11 +116,12 @@ inline std::map<std::string,ChemLink> read_chemlinks(cif::Document& doc) {
     ChemLink link;
     link.id = row.str(0);
     link.name = row.str(1);
-    for (int i : {0, 1}) {
-      link.comp[i] = row.str(2 + i * 3);
-      link.mod[i] = row.str(3 + i * 3);
-      link.group[i] = row.str(4 + i * 3);
-    }
+    link.comp1 = row.str(2);
+    link.mod1 = row.str(3);
+    link.group1 = row.str(4);
+    link.comp2 = row.str(5);
+    link.mod2 = row.str(6);
+    link.group2 = row.str(7);
     const cif::Block* block = doc.find_block("link_" + link.id);
     if (!block)
       throw std::runtime_error("inconsisted data_link_list");
@@ -414,7 +414,7 @@ struct MonLib {
       if (link.rt.bonds.empty())
         continue;
       const Restraints::Bond& bond = link.rt.bonds[0];
-      if (link.comp[0] == comp1 && link.comp[1] == comp2 &&
+      if (link.comp1 == comp1 && link.comp2 == comp2 &&
           bond.id1.atom == atom1 && bond.id2.atom == atom2)
         return &link;
     }

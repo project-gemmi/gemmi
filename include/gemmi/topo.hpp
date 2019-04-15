@@ -401,8 +401,8 @@ void Topo::initialize_refmac_topology(Model& model0,
     // add modifications from standard links
     for (ResInfo& ri : ci.residues)
       if (const ChemLink* link = monlib.find_link(ri.prev_link)) {
-        (&ri + ri.prev_idx)->add_mod(link->mod[0]);
-        ri.add_mod(link->mod[1]);
+        (&ri + ri.prev_idx)->add_mod(link->mod1);
+        ri.add_mod(link->mod2);
       }
   }
   // add extra links
@@ -420,20 +420,20 @@ void Topo::initialize_refmac_topology(Model& model0,
                           extra.res2->name, conn.atom[1].atom_name)) {
       extra.link_id = match->id;
       // add modifications from the link
-      find_resinfo(extra.res1)->add_mod(match->mod[0]);
-      find_resinfo(extra.res2)->add_mod(match->mod[1]);
+      find_resinfo(extra.res1)->add_mod(match->mod1);
+      find_resinfo(extra.res2)->add_mod(match->mod2);
     } else if ((match =
                 monlib.match_link(extra.res2->name, conn.atom[1].atom_name,
                                   extra.res1->name, conn.atom[0].atom_name))) {
       extra.link_id = match->id;
       // add modifications from the link
-      find_resinfo(extra.res2)->add_mod(match->mod[0]);
-      find_resinfo(extra.res1)->add_mod(match->mod[1]);
+      find_resinfo(extra.res2)->add_mod(match->mod1);
+      find_resinfo(extra.res1)->add_mod(match->mod2);
     } else {
       ChemLink cl;
-      cl.comp[0] = extra.res1->name;
-      cl.comp[1] = extra.res2->name;
-      cl.id = cl.comp[0] + "-" + cl.comp[1];
+      cl.comp1 = extra.res1->name;
+      cl.comp2 = extra.res2->name;
+      cl.id = cl.comp1 + "-" + cl.comp2;
       Restraints::Bond bond;
       bond.id1 = Restraints::AtomId{1, conn.atom[0].atom_name};
       bond.id2 = Restraints::AtomId{2, conn.atom[1].atom_name};
