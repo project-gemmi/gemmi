@@ -5,6 +5,7 @@
 #include "gemmi/chemcomp.hpp"
 #include "gemmi/monlib.hpp"
 #include "gemmi/gzread.hpp" // read_cif_gz
+#include "gemmi/linkhunt.hpp"
 
 #include <fstream>
 #include <pybind11/pybind11.h>
@@ -62,7 +63,7 @@ void add_smcif(py::module& m) {
     });
 }
 
-void add_chemcomp(py::module& m) {
+void add_monlib(py::module& m) {
   py::enum_<BondType>(m, "BondType")
     .value("Unspec", BondType::Unspec)
     .value("Single", BondType::Single)
@@ -164,4 +165,17 @@ void add_chemcomp(py::module& m) {
                             const std::vector<std::string>& resnames) {
     return read_monomers(monomer_dir, resnames, gemmi::read_cif_gz);
   });
+
+  py::class_<LinkHunt> linkhunt(m, "LinkHunt");
+  linkhunt
+    .def("index_chem_links", &LinkHunt::index_chem_links)
+    .def("find_possible_links", &LinkHunt::find_possible_links)
+    ;
+  py::class_<LinkHunt::Match>(linkhunt, "Match")
+    .def_readonly("chem_link", &LinkHunt::Match::chem_link)
+    .def_readonly("cra1", &LinkHunt::Match::cra1)
+    .def_readonly("cra2", &LinkHunt::Match::cra2)
+    .def_readonly("same_asu", &LinkHunt::Match::same_asu)
+    .def_readonly("bond_length", &LinkHunt::Match::bond_length)
+    ;
 }

@@ -56,7 +56,7 @@ struct SubCells {
     initialize(model, cell, max_radius);
   }
   void initialize(const Model& model, const UnitCell& cell, double max_radius);
-  void populate(const Model& model);
+  void populate(const Model& model, bool include_h=true);
   void add_atom(const Atom& atom, int n_ch, int n_res, int n_atom);
 
   // assumes data in [0, 1), but uses index_n to handle numeric deviations
@@ -114,13 +114,15 @@ inline void SubCells::initialize(const Model& model, const UnitCell& cell,
                                    std::max(grid.nw, 3));
 }
 
-inline void SubCells::populate(const Model& model) {
+inline void SubCells::populate(const Model& model, bool include_h) {
   for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
     const Chain& chain = model.chains[n_ch];
     for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
       const Residue& res = chain.residues[n_res];
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
-        add_atom(res.atoms[n_atom], n_ch, n_res, n_atom);
+        const Atom& atom = res.atoms[n_atom];
+        if (include_h || !atom.is_hydrogen())
+          add_atom(atom, n_ch, n_res, n_atom);
       }
     }
   }

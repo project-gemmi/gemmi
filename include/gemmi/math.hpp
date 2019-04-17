@@ -18,8 +18,8 @@ constexpr double pi() { return 3.1415926535897932384626433832795029; }
 constexpr double deg(double angle) { return 180.0 / pi() * angle; }
 constexpr double rad(double angle) { return pi() / 180.0 * angle; }
 
-inline float sq(float x) { return x * x; }
-inline double sq(double x) { return x * x; }
+constexpr float sq(float x) { return x * x; }
+constexpr double sq(double x) { return x * x; }
 
 inline int iround(double d) { return static_cast<int>(std::round(d)); }
 

@@ -53,7 +53,7 @@ static void print_contacts(const Structure& st, const Parameters& params) {
   const float special_pos_cutoff = 0.8f;
   float max_r = params.cov_tol == 0 ? params.max_dist : 4.f + params.cov_tol;
   SubCells sc(st.models.at(0), st.cell, std::max(5.0f, max_r));
-  sc.populate(st.models[0]);
+  sc.populate(st.models[0], /*include_h=*/ !params.no_hydrogens);
 
   if (params.verbose > 0) {
     if (params.verbose > 1) {
@@ -101,8 +101,6 @@ static void print_contacts(const Structure& st, const Parameters& params) {
             if (m.chain_idx == n_ch && m.residue_idx == n_res &&
                 m.atom_idx == n_atom && (m.image_idx == 0 ||
                                          dist_sq < sq(special_pos_cutoff)))
-              return;
-            if (params.no_hydrogens && is_hydrogen(m.element))
               return;
             const_CRA cra = m.to_cra(model);
             if (cra.atom->occ < min_occ)

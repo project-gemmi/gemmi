@@ -52,6 +52,11 @@ struct Restraints {
     }
   };
 
+  static std::string lexicographic_str(const std::string& name1,
+                                       const std::string& name2) {
+    return name1 < name2 ? name1 + "-" + name2 : name2 + "-" + name1;
+  }
+
   struct Bond {
     AtomId id1, id2;
     BondType type;
@@ -60,8 +65,7 @@ struct Restraints {
     double esd;
     std::string str() const { return id1.atom + "-" + id2.atom; }
     std::string lexicographic_str() const {
-      return id1.atom < id2.atom ? id1.atom + "-" + id2.atom
-                                 : id2.atom + "-" + id1.atom;
+      return Restraints::lexicographic_str(id1.atom, id2.atom);
     }
   };
 
