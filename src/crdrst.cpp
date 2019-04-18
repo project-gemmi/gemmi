@@ -12,7 +12,7 @@
 #include "gemmi/sprintf.hpp"   // for to_str, to_str_prec
 #include "gemmi/calculate.hpp" // for find_best_plane
 #include "gemmi/polyheur.hpp"  // for remove_hydrogens
-#include "gemmi/monlib.hpp"    // for MonLib, read_monomers
+#include "gemmi/monlib.hpp"    // for MonLib, read_monomer_lib
 #include "gemmi/topo.hpp"      // for Topo
 #include "placeh.h"            // for place_hydrogens
 
@@ -435,7 +435,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       return 1;
     }
     gemmi::Model& model0 = st.models[0];
-    gemmi::MonLib monlib = gemmi::read_monomers(monomer_dir,
+    gemmi::MonLib monlib = gemmi::read_monomer_lib(monomer_dir,
                                                 model0.get_all_residue_names(),
                                                 gemmi::read_cif_gz);
 

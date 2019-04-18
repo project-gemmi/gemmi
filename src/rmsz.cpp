@@ -6,7 +6,7 @@
 #include "gemmi/gzread.hpp"
 #include "gemmi/model.hpp"     // for Structure, Atom, etc
 #include "gemmi/chemcomp.hpp"  // for ChemComp
-#include "gemmi/monlib.hpp"    // for MonLib, read_monomers
+#include "gemmi/monlib.hpp"    // for MonLib, read_monomer_lib
 #include "gemmi/topo.hpp"      // for Topo
 #include "gemmi/calculate.hpp" // for find_best_plane, get_distance_from_plane
 #include "gemmi/polyheur.hpp"  // for setup_entities
@@ -165,7 +165,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     for (gemmi::Model& model : st.models) {
       if (st.models.size() > 1)
         printf("### Model %s ###\n", model.name.c_str());
-      gemmi::MonLib monlib = gemmi::read_monomers(monomer_dir,
+      gemmi::MonLib monlib = gemmi::read_monomer_lib(monomer_dir,
                                                   model.get_all_residue_names(),
                                                   gemmi::read_cif_gz);
       Topo topo;

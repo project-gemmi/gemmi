@@ -127,20 +127,23 @@ void add_monlib(py::module& m) {
     ;
   m.def("make_chemcomp_from_block", &make_chemcomp_from_block);
 
-  py::class_<ChemLink>(m, "ChemLink")
+  py::class_<ChemLink> chemlink(m, "ChemLink");
+  chemlink
     .def_readwrite("id", &ChemLink::id)
     .def_readwrite("name", &ChemLink::name)
-    .def_readwrite("comp1", &ChemLink::comp1)
-    .def_readwrite("mod1", &ChemLink::mod1)
-    .def_readwrite("group1", &ChemLink::group1)
-    .def_readwrite("comp2", &ChemLink::comp2)
-    .def_readwrite("mod2", &ChemLink::mod2)
-    .def_readwrite("group2", &ChemLink::group2)
+    .def_readwrite("side1", &ChemLink::side1)
+    .def_readwrite("side2", &ChemLink::side2)
     .def_readwrite("rt", &ChemLink::rt)
     .def("__repr__", [](const ChemLink& self) {
-        return "<gemmi.ChemLink " + self.id + " " +
-                (self.comp1.empty() ? self.group1 : self.comp1) + "-" +
-                (self.comp2.empty() ? self.group2 : self.comp2) + ">";
+        return "<gemmi.ChemLink " + self.id + ">";
+    });
+  py::class_<ChemLink::Side>(chemlink, "Side")
+    .def_readwrite("comp", &ChemLink::Side::comp)
+    .def_readwrite("mod", &ChemLink::Side::mod)
+    .def_readwrite("group", &ChemLink::Side::group)
+    .def("__repr__", [](const ChemLink::Side& self) {
+        return "<gemmi.ChemLink.Side " + self.comp + "/" +
+               ChemLink::group_str(self.group) + ">";
     });
 
   py::class_<ChemMod>(m, "ChemMod")
@@ -161,14 +164,19 @@ void add_monlib(py::module& m) {
     });
     ;
 
-  m.def("read_monomers", [](const std::string& monomer_dir,
-                            const std::vector<std::string>& resnames) {
-    return read_monomers(monomer_dir, resnames, gemmi::read_cif_gz);
+  m.def("read_monomer_lib", [](const std::string& monomer_dir,
+                               const std::vector<std::string>& resnames) {
+    return read_monomer_lib(monomer_dir, resnames, gemmi::read_cif_gz);
+  });
+  m.def("read_monomer_cif", [](const std::string& path) {
+    return read_monomer_cif(path, gemmi::read_cif_gz);
   });
 
   py::class_<LinkHunt> linkhunt(m, "LinkHunt");
   linkhunt
-    .def("index_chem_links", &LinkHunt::index_chem_links)
+    .def(py::init<>())
+    .def("index_chem_links", &LinkHunt::index_chem_links,
+         py::arg("monlib"), py::keep_alive<1, 2>())
     .def("find_possible_links", &LinkHunt::find_possible_links)
     ;
   py::class_<LinkHunt::Match>(linkhunt, "Match")

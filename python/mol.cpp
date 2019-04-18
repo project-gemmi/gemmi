@@ -191,7 +191,9 @@ void add_mol(py::module& m) {
   py::class_<CRA>(m, "CRA")
     .def_readonly("chain", &CRA::chain)
     .def_readonly("residue", &CRA::residue)
-    .def_readonly("atom", &CRA::atom);
+    .def_readonly("atom", &CRA::atom)
+    .def("__str__", [](const CRA& self) { return atom_str(self); })
+    ;
 
   py::class_<Model>(m, "Model")
     .def(py::init<std::string>())

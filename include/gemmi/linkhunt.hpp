@@ -6,6 +6,7 @@
 #define GEMMI_LINKHUNT_HPP_
 
 #include <map>
+#include <unordered_map>
 #include "monlib.hpp"
 #include "subcells.hpp"
 
@@ -20,16 +21,15 @@ struct LinkHunt {
     float bond_length;
   };
 
-  // third letter of group: poLymer, pePtide, dnA/rna, pyRanose, nOn-polymer
-  static char group_code(const std::string& group_id) {
-    return group_id.size() > 2 ? alpha_up(group_id[2]) : '\0';
-  }
-
   double global_max_dist = 2.34; // ZN-CYS
   std::multimap<std::string, const ChemLink*> links;
+  std::unordered_map<std::string, ChemLink::Group> res_group;
   std::map<std::string, double> max_dist_per_atom;
 
   void index_chem_links(const MonLib& monlib) {
+    static const std::vector<std::string> blacklist = {
+      "TRANS", "PTRANS", "NMTRANS", "CIS", "PCIS", "NMCIS", "p"
+    };
     for (const auto& iter : monlib.links) {
       const ChemLink& link = iter.second;
       if (link.rt.bonds.empty())
@@ -37,6 +37,11 @@ struct LinkHunt {
       if (link.rt.bonds.size() > 1)
         fprintf(stderr, "Note: considering only the first bond in %s\n",
                 link.id.c_str());
+      if (link.side1.comp.empty() && link.side2.comp.empty())
+        if (link.side1.group == ChemLink::Group::Null ||
+            link.side2.group == ChemLink::Group::Null ||
+            in_vector(link.id, blacklist))
+          continue;
       const Restraints::Bond& bond = link.rt.bonds[0];
       if (bond.value > global_max_dist)
         global_max_dist = bond.value;
@@ -47,6 +52,26 @@ struct LinkHunt {
       }
       links.emplace(bond.lexicographic_str(), &link);
     }
+    for (const auto& ri : monlib.residue_infos) {
+      ChemLink::Group group = ChemLink::Group::Null;
+      if (ri.second.is_amino_acid())
+        group = ChemLink::Group::Peptide;
+      else if (ri.second.is_nucleic_acid())
+        group = ChemLink::Group::DnaRna;
+      else if (ri.second.kind == ResidueInfo::PYR)
+        group = ChemLink::Group::Pyranose;
+      res_group.emplace(ri.first, group);
+    }
+  }
+
+  bool match_link_side(const ChemLink::Side& side,
+                       const std::string& resname) const {
+    if (!side.comp.empty())
+      return side.comp == resname;
+    if (side.group == ChemLink::Group::Null)
+      return false;
+    auto iter = res_group.find(resname);
+    return iter != res_group.end() && iter->second == side.group;
   }
 
   std::vector<Match> find_possible_links(Structure& st, double tolerance) {
@@ -87,16 +112,16 @@ struct LinkHunt {
                 const Restraints::Bond& bond = link.rt.bonds[0];
                 if (dist_sq > sq(bond.value * tolerance))
                   continue;
-                // TODO: handle null residue name
                 if (bond.id1.atom == atom.name &&
-                    link.comp1 == res.name && link.comp2 == cra.residue->name) {
+                    match_link_side(link.side1, res.name) &&
+                    match_link_side(link.side2, cra.residue->name)) {
                   results.push_back({&link, {&chain, &res, &atom}, cra,
                                      !m.image_idx, std::sqrt(dist_sq)});
                   break;
                 }
                 if (bond.id2.atom == atom.name &&
-                           link.comp2 == res.name &&
-                           link.comp1 == cra.residue->name) {
+                    match_link_side(link.side2, res.name) &&
+                    match_link_side(link.side1, cra.residue->name)) {
                   results.push_back({&link, cra, {&chain, &res, &atom},
                                      !m.image_idx, std::sqrt(dist_sq)});
                   break;
