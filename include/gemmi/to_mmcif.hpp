@@ -374,14 +374,14 @@ void update_cif_block(const Structure& st, cif::Block& block) {
         "Luzzati_coordinate_error_obs"});
     cif::Loop& shell_loop = block.init_mmcif_loop("_refine_ls_shell.", {
         "pdbx_refine_id",
-        "ls_d_res_high",
-        "ls_d_res_low",
-        "ls_percent_reflns_obs",
-        "ls_number_reflns_obs",
-        "ls_number_reflns_R_free",
-        "ls_R_factor_obs",
-        "ls_R_factor_R_work",
-        "ls_R_factor_R_free"});
+        "d_res_high",
+        "d_res_low",
+        "percent_reflns_obs",
+        "number_reflns_obs",
+        "number_reflns_R_free",
+        "R_factor_obs",
+        "R_factor_R_work",
+        "R_factor_R_free"});
     for (size_t i = 0; i != st.meta.refinement.size(); ++i) {
       const RefinementInfo& ref = st.meta.refinement[i];
       loop.values.push_back(id);
