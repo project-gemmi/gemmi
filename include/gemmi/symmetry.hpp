@@ -658,7 +658,7 @@ inline GroupOps symops_from_hall(const char* hall) {
   return ops;
 }
 
-// CRYSTAL SYSTEMS AND POINT GROUPS
+// CRYSTAL SYSTEMS, POINT GROUPS AND LAUE CLASSES
 
 enum class CrystalSystem : unsigned char {
   Triclinic=0, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, Cubic
@@ -687,26 +687,55 @@ inline const char* point_group_hm(PointGroup pg) {
   return hm_pointgroup_names[static_cast<int>(pg)];
 }
 
-inline CrystalSystem crystal_system(PointGroup pg) {
-  static const CrystalSystem crystal_systems[32] = {
-    CrystalSystem::Triclinic,    CrystalSystem::Triclinic,
-    CrystalSystem::Monoclinic,   CrystalSystem::Monoclinic,
-    CrystalSystem::Monoclinic,   CrystalSystem::Orthorhombic,
-    CrystalSystem::Orthorhombic, CrystalSystem::Orthorhombic,
-    CrystalSystem::Tetragonal,   CrystalSystem::Tetragonal,
-    CrystalSystem::Tetragonal,   CrystalSystem::Tetragonal,
-    CrystalSystem::Tetragonal,   CrystalSystem::Tetragonal,
-    CrystalSystem::Tetragonal,   CrystalSystem::Trigonal,
-    CrystalSystem::Trigonal,     CrystalSystem::Trigonal,
-    CrystalSystem::Trigonal,     CrystalSystem::Trigonal,
-    CrystalSystem::Hexagonal,    CrystalSystem::Hexagonal,
-    CrystalSystem::Hexagonal,    CrystalSystem::Hexagonal,
-    CrystalSystem::Hexagonal,    CrystalSystem::Hexagonal,
-    CrystalSystem::Hexagonal,    CrystalSystem::Cubic,
-    CrystalSystem::Cubic,        CrystalSystem::Cubic,
-    CrystalSystem::Cubic,        CrystalSystem::Cubic
+enum class Laue : unsigned char {
+  L1=0, L2m, Lmmm, L4m, L4mmm, L3, L3m, L6m, L6mmm, Lm3, Lm3m
+};
+
+inline Laue pointgroup_to_laue(PointGroup pg) {
+  static const Laue laue[32] = {
+    Laue::L1, Laue::L1,
+    Laue::L2m, Laue::L2m, Laue::L2m,
+    Laue::Lmmm, Laue::Lmmm, Laue::Lmmm,
+    Laue::L4m, Laue::L4m, Laue::L4m,
+    Laue::L4mmm, Laue::L4mmm, Laue::L4mmm, Laue::L4mmm,
+    Laue::L3, Laue::L3,
+    Laue::L3m, Laue::L3m, Laue::L3m,
+    Laue::L6m, Laue::L6m, Laue::L6m,
+    Laue::L6mmm, Laue::L6mmm, Laue::L6mmm, Laue::L6mmm,
+    Laue::Lm3, Laue::Lm3,
+    Laue::Lm3m, Laue::Lm3m, Laue::Lm3m,
   };
-  return crystal_systems[static_cast<int>(pg)];
+  return laue[static_cast<int>(pg)];
+}
+
+inline PointGroup laue_to_pointgroup(Laue laue) {
+  static const PointGroup pg[11] = {
+    PointGroup::Ci, PointGroup::C2h, PointGroup::D2h, PointGroup::C4h,
+    PointGroup::D4h, PointGroup::C3i, PointGroup::D3d, PointGroup::C6h,
+    PointGroup::D6h, PointGroup::Th, PointGroup::Oh
+  };
+  return pg[static_cast<int>(laue)];
+}
+
+inline const char* laue_class_str(Laue laue) {
+  return point_group_hm(laue_to_pointgroup(laue));
+}
+
+inline CrystalSystem crystal_system(Laue laue) {
+  static const CrystalSystem crystal_systems[11] = {
+    CrystalSystem::Triclinic,
+    CrystalSystem::Monoclinic,
+    CrystalSystem::Orthorhombic,
+    CrystalSystem::Tetragonal, CrystalSystem::Tetragonal,
+    CrystalSystem::Trigonal,   CrystalSystem::Trigonal,
+    CrystalSystem::Hexagonal,  CrystalSystem::Hexagonal,
+    CrystalSystem::Cubic,      CrystalSystem::Cubic
+  };
+  return crystal_systems[static_cast<int>(laue)];
+}
+
+inline CrystalSystem crystal_system(PointGroup pg) {
+  return crystal_system(pointgroup_to_laue(pg));
 }
 
 inline PointGroup point_group(int space_group_number) {
@@ -767,6 +796,8 @@ struct SpaceGroup { // typically 40 bytes
   const char* point_group_hm() const {
     return gemmi::point_group_hm(point_group());
   }
+  Laue laue_class() const { return pointgroup_to_laue(point_group()); }
+  const char* laue_str() const { return laue_class_str(laue_class()); }
   CrystalSystem crystal_system() const {
     return gemmi::crystal_system(point_group());
   }
