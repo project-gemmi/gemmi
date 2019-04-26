@@ -9,4 +9,5 @@ Print informations from an mtz file.
   -d, --dump       Print a subset of CCP4 mtzdmp informations.
   --tsv            Print all the data as tab-separated values.
   --stats          Print column statistics (completeness, mean, etc).
+  --check-asu      Check if reflections are in conventional ASU.
   --toggle-endian  Toggle assumed endiannes (little <-> big).

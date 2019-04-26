@@ -11,7 +11,7 @@
 using gemmi::Mtz;
 
 enum OptionIndex { Verbose=3, Headers, Dump, PrintTsv, PrintStats,
-                   ToggleEndian };
+                   CheckAsu, ToggleEndian };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -29,6 +29,8 @@ static const option::Descriptor Usage[] = {
     "  --tsv  \tPrint all the data as tab-separated values." },
   { PrintStats, 0, "", "stats", Arg::None,
     "  --stats  \tPrint column statistics (completeness, mean, etc)." },
+  { CheckAsu, 0, "", "check-asu", Arg::None,
+    "  --check-asu  \tCheck if reflections are in conventional ASU." },
   { ToggleEndian, 0, "", "toggle-endian", Arg::None,
     "  --toggle-endian  \tToggle assumed endiannes (little <-> big)." },
   { 0, 0, 0, 0, 0, 0 }
@@ -115,6 +117,25 @@ static void print_stats(const Mtz& mtz) {
   }
 }
 
+static void check_asu(const Mtz& mtz) {
+  int ncol = mtz.ncol;
+  const gemmi::SpaceGroup* sg = mtz.spacegroup;
+  if (!sg)
+    gemmi::fail("no spacegroup in the MTZ file.");
+  int counter = 0;
+  for (int i = 0; i < mtz.nreflections; ++i) {
+    int h = (int) mtz.data[i * ncol + 0];
+    int k = (int) mtz.data[i * ncol + 1];
+    int l = (int) mtz.data[i * ncol + 2];
+    if (sg->is_in_hkl_asu(h, k, l))
+      ++counter;
+  }
+  printf("spacegroup: %s\n", sg->xhm().c_str());
+  printf("ccp4 ASU convention: %s\n", sg->hkl_asu_str());
+  printf("inside / outside of ASU: %d / %d\n",
+         counter, mtz.nreflections - counter);
+}
+
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
@@ -151,14 +172,17 @@ int GEMMI_MAIN(int argc, char **argv) {
         mtz.warnings = stderr;
       mtz.read_main_headers(f.get());
       mtz.read_history_and_batch_headers(f.get());
+      mtz.setup_spacegroup();
       if (p.options[Dump])
         dump(mtz);
-      if (p.options[PrintTsv] || p.options[PrintStats])
+      if (p.options[PrintTsv] || p.options[PrintStats] || p.options[CheckAsu])
         mtz.read_raw_data(f.get());
       if (p.options[PrintTsv])
         print_tsv(mtz);
       if (p.options[PrintStats])
         print_stats(mtz);
+      if (p.options[CheckAsu])
+        check_asu(mtz);
     }
   } catch (std::runtime_error& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
