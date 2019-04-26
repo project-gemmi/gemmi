@@ -132,6 +132,9 @@ void add_symmetry(py::module& m) {
          "H-M name w/o spaces and with 1's removed in '1 ... 1'.")
     .def("point_group_hm", &SpaceGroup::point_group_hm,
          "Returns H-M name of the point group.")
+    .def("laue_str", &SpaceGroup::laue_str,
+         "Returns name of the Laue class (for centrosymmetric groups "
+         "the same as point_group_hm).")
     .def("crystal_system_str", &SpaceGroup::crystal_system_str,
          "Returns lower-case name of the crystal system.")
     .def("operations", &SpaceGroup::operations, "Group of operations");

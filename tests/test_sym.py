@@ -140,6 +140,10 @@ class TestSymmetry(unittest.TestCase):
         for sg in gemmi.spacegroup_table():
             if sg.ccp4 != 0:
                 self.assertEqual(sg.ccp4 % 1000, sg.number)
+            if sg.operations().is_centric():
+                self.assertEqual(sg.laue_str(), sg.point_group_hm())
+            else:
+                self.assertNotEqual(sg.laue_str(), sg.point_group_hm())
 
     def test_find_spacegroup(self):
         self.assertEqual(gemmi.SpaceGroup('P21212').hm, 'P 21 21 2')
