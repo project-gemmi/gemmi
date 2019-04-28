@@ -137,6 +137,7 @@ void add_symmetry(py::module& m) {
          "the same as point_group_hm).")
     .def("crystal_system_str", &SpaceGroup::crystal_system_str,
          "Returns lower-case name of the crystal system.")
+    .def("is_reference_setting", &SpaceGroup::is_reference_setting)
     .def("operations", &SpaceGroup::operations, "Group of operations");
 
   m.def("spacegroup_table", []() {

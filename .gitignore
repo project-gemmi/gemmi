@@ -3,6 +3,7 @@
 *.py[co]
 a.out
 /build
+/build-*/
 /dist
 /gemmi.egg-info
 tags

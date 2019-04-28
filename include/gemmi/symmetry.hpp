@@ -815,8 +815,12 @@ struct SpaceGroup { // typically 40 bytes
   const char* crystal_system_str() const {
     return gemmi::crystal_system_str(crystal_system());
   }
-  inline bool is_in_hkl_asu(int h, int k, int l) const;
-  inline const char* hkl_asu_str() const;
+  bool is_in_hkl_asu(int h, int k, int l) const;
+  const char* hkl_asu_str() const;
+
+  bool is_reference_setting() const {
+    return ext != '1' && (ext != '2' ? number == ccp4 : qualifier[0] == '\0');
+  }
 
   GroupOps operations() const { return symops_from_hall(hall); }
 };

@@ -128,6 +128,8 @@ class TestSymmetry(unittest.TestCase):
                              cctbx_sg.point_group_type())
             self.assertEqual(gemmi_sg.crystal_system_str(),
                              cctbx_sg.crystal_system().lower())
+        else:
+            self.assertIsNone(gemmi_sg)
 
     def test_with_sgtbx(self):
         if sgtbx is None:
@@ -144,6 +146,14 @@ class TestSymmetry(unittest.TestCase):
                 self.assertEqual(sg.laue_str(), sg.point_group_hm())
             else:
                 self.assertNotEqual(sg.laue_str(), sg.point_group_hm())
+            if sgtbx:
+                hall = sg.hall.encode()
+                cctbx_sg = sgtbx.space_group(hall)
+                cctbx_info = sgtbx.space_group_info(group=cctbx_sg)
+                self.assertEqual(sg.is_reference_setting(),
+                                 cctbx_info.is_reference_setting())
+                #to_ref = cctbx_info.change_of_basis_op_to_reference_setting()
+                #from_ref = '%s' % cob_to_ref.inverse().c()
 
     def test_find_spacegroup(self):
         self.assertEqual(gemmi.SpaceGroup('P21212').hm, 'P 21 21 2')

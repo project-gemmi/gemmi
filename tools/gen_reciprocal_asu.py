@@ -44,7 +44,8 @@ hklasu_strings = [
 
 def compare_ccp4_and_sgtbx(syminfo_data):
     for s in sgtbx.space_group_symbol_iterator():
-        sg_type = sgtbx.space_group_type(s.hermann_mauguin())
+        sg = sgtbx.space_group(s.hall())
+        sg_type = sgtbx.space_group_type(sg)
         asu = sgtbx.reciprocal_space_asu(sg_type)
         sgtbx_hklasu = asu.reference_as_string().replace('==', '=')
         ccp4_hklasu = syminfo_data[s.number()]
