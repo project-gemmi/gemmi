@@ -131,6 +131,8 @@ static void check_asu(const Mtz& mtz) {
       ++counter;
   }
   printf("spacegroup: %s\n", sg->xhm().c_str());
+  if (!sg->is_reference_setting())
+    printf("NOTE: it is not reference setting, the ASU below may not apply.\n");
   printf("ccp4 ASU convention: %s\n", sg->hkl_asu_str());
   printf("inside / outside of ASU: %d / %d\n",
          counter, mtz.nreflections - counter);

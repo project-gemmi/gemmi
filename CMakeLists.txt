@@ -143,6 +143,9 @@ add_executable(gemmi-mask EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/mask.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-mask)
 
+add_executable(gemmi-mixmtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/mixmtz.cpp src/output.cpp)
+
 add_executable(gemmi-mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/mtz.cpp)
 support_gz(gemmi-mtz)

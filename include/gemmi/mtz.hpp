@@ -10,6 +10,7 @@
 #include <cstdio>    // for FILE, fread
 #include <cstring>   // for memcpy
 #include <cmath>     // for isnan
+#include <algorithm> // for sort
 #include <complex>   // for complex
 #include <array>
 #include <string>
@@ -538,6 +539,22 @@ struct Mtz {
     return grid;
   }
 
+  std::vector<int> sorted_row_indices() const {
+    if (!has_data())
+      fail("No data.");
+    std::vector<int> indices(nreflections);
+    for (int i = 0; i != nreflections; ++i)
+      indices[i] = i;
+    std::sort(indices.begin(), indices.end(), [&](int i, int j) {
+      int a = i * ncol;
+      int b = j * ncol;
+      return data[a] < data[b] || (data[a] == data[b] && (
+               data[a+1] < data[b+1] || (data[a+1] == data[b+1] && (
+                 data[a+2] < data[b+2]))));
+    });
+    return indices;
+  }
+
   // Function for writing MTZ file
   void write_to_stream(std::FILE* stream) const;
   void write_to_file(const std::string& path) const;
@@ -576,6 +593,8 @@ namespace gemmi {
   } while(0)
 
 void Mtz::write_to_stream(std::FILE* stream) const {
+  // uses: data, spacegroup, ncol, nreflections, nbatches, cell, sort_order,
+  //       valm, columns, datasets, history
   if (!has_data())
     fail("Cannot write Mtz which has no data.");
   if (!spacegroup)
