@@ -247,7 +247,7 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
             tr.refln_tag.c_str(), col.label.c_str(), ds.dataset_name.c_str());
   }
   for (int i = 0; i != mtz.nreflections; ++i) {
-    const float* row = &mtz.data[i*mtz.ncol];
+    const float* row = &mtz.data[i * mtz.columns.size()];
     if (!opt.value_indices.empty())
       if (std::all_of(opt.value_indices.begin(), opt.value_indices.end(),
                       [&](int n) { return std::isnan(row[n]); }))

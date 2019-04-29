@@ -156,9 +156,8 @@ void convert_cif_block_to_mtz(const gemmi::ReflnBlock& rb,
       gemmi::fail("Miller index tag not found: " + tag);
     }
   }
-  mtz.ncol = mtz.columns.size();
   mtz.nreflections = loop->length();
-  mtz.data.resize(mtz.ncol * mtz.nreflections);
+  mtz.data.resize(mtz.columns.size() * mtz.nreflections);
   int k = 0;
   for (size_t i = 0; i < loop->values.size(); i += loop->tags.size()) {
     size_t j = 0;

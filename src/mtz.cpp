@@ -48,7 +48,7 @@ static void dump(const Mtz& mtz) {
            ds.cell.alpha, ds.cell.beta, ds.cell.gamma);
     printf("  wavelength  %g\n", ds.wavelength);
   }
-  printf("\nNumber of Columns = %d\n", mtz.ncol);
+  printf("\nNumber of Columns = %zu\n", mtz.columns.size());
   printf("Number of Reflections = %d\n", mtz.nreflections);
   if (mtz.nbatches != 0)
     printf("Number of Batches = %d\n", mtz.nbatches);
@@ -78,10 +78,10 @@ static void dump(const Mtz& mtz) {
 }
 
 static void print_tsv(const Mtz& mtz) {
-  int ncol = mtz.ncol;
-  for (int i = 0; i < ncol; ++i)
+  size_t ncol = mtz.columns.size();
+  for (size_t i = 0; i < ncol; ++i)
     printf("%s%c", mtz.columns[i].label.c_str(), i + 1 != ncol ? '\t' : '\n');
-  for (int i = 0; i < mtz.nreflections * ncol; ++i)
+  for (size_t i = 0; i < mtz.nreflections * ncol; ++i)
     printf("%g%c", mtz.data[i], (i + 1) % ncol != 0 ? '\t' : '\n');
 }
 
@@ -118,7 +118,7 @@ static void print_stats(const Mtz& mtz) {
 }
 
 static void check_asu(const Mtz& mtz) {
-  int ncol = mtz.ncol;
+  size_t ncol = mtz.columns.size();
   const gemmi::SpaceGroup* sg = mtz.spacegroup;
   if (!sg)
     gemmi::fail("no spacegroup in the MTZ file.");

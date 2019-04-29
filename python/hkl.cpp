@@ -52,7 +52,7 @@ py::array_t<float> make_new_column(const Mtz& mtz, int dataset, F f) {
   py::buffer_info buf = arr.request();
   float* ptr = (float*) buf.ptr;
   for (int i = 0; i < mtz.nreflections; ++i) {
-    int hidx = mtz.ncol * i;
+    int hidx = mtz.columns.size() * i;
     ptr[i] = f(cell, mtz.data[hidx], mtz.data[hidx+1], mtz.data[hidx+2]);
   }
   return arr;
@@ -87,12 +87,12 @@ void add_hkl(py::module& m) {
   mtz.def(py::init<>())
     .def_buffer([](Mtz &self) {
       int nrow = self.has_data() ? self.nreflections : 0;
+      int ncol = (int) self.columns.size();
       return py::buffer_info(self.data.data(),
-                             {nrow, self.ncol}, // dimensions
-                             {4 * self.ncol, 4});  // strides
+                             {nrow, ncol}, // dimensions
+                             {4 * ncol, 4});  // strides
     })
     .def_readwrite("title", &Mtz::title)
-    .def_readwrite("ncol", &Mtz::ncol)
     .def_readwrite("nreflections", &Mtz::nreflections)
     .def_readwrite("nbatches", &Mtz::nbatches)
     .def_readwrite("min_1_d2", &Mtz::min_1_d2)
@@ -130,7 +130,8 @@ void add_hkl(py::module& m) {
          py::arg("f"), py::arg("phi"), py::arg("size")=std::array<int,3>{0,0,0})
     .def("write_to_file", &Mtz::write_to_file, py::arg("path"))
     .def("__repr__", [](const Mtz& self) {
-        return "<gemmi.Mtz with " + std::to_string(self.ncol) + " columns, " +
+        return "<gemmi.Mtz with " +
+               std::to_string(self.columns.size()) + " columns, " +
                std::to_string(self.nreflections) + " reflections>";
     });
   py::class_<Mtz::Dataset>(mtz, "Dataset")

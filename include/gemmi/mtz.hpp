@@ -72,7 +72,7 @@ struct Mtz {
     const Dataset& dataset() const { return parent->dataset(dataset_id); }
     bool has_data() const { return parent->has_data(); }
     int size() const { return has_data() ? parent->nreflections : 0; }
-    int stride() const { return parent->ncol; }
+    unsigned stride() const { return (unsigned) parent->columns.size(); }
     float& operator[](int n) { return parent->data[idx + n * stride()]; }
     float operator[](int n) const { return parent->data[idx + n * stride()]; }
     float& at(int n) { return parent->data.at(idx + n * stride()); }
@@ -81,11 +81,11 @@ struct Mtz {
     iterator begin() {
       assert(parent);
       assert(&parent->columns[idx] == this);
-      return iterator({parent->data.data(), idx, (unsigned) parent->ncol});
+      return iterator({parent->data.data(), idx, stride()});
     }
     iterator end() {
-      return iterator({parent->data.data() + parent->data.size(),
-                       idx, (unsigned) parent->ncol});
+      return iterator({parent->data.data() + parent->data.size(), idx,
+                       stride()});
     }
     using const_iterator = StrideIter<const float>;
     const_iterator begin() const { return const_cast<Column*>(this)->begin(); }
@@ -96,7 +96,6 @@ struct Mtz {
   std::int32_t header_offset = 0;
   std::string version_stamp;
   std::string title;
-  int ncol = 0;
   int nreflections = 0;
   int nbatches = 0;
   std::array<int, 5> sort_order = {};
@@ -122,7 +121,6 @@ struct Mtz {
       header_offset(o.header_offset),
       version_stamp(std::move(o.version_stamp)),
       title(std::move(o.title)),
-      ncol(o.ncol),
       nreflections(o.nreflections),
       nbatches(o.nbatches),
       sort_order(std::move(o.sort_order)),
@@ -205,11 +203,11 @@ struct Mtz {
   }
 
   bool has_data() const {
-    return data.size() == (size_t) ncol * nreflections;
+    return data.size() == columns.size() * nreflections;
   }
 
   void extend_min_max_1_d2(const UnitCell& uc, double& min, double& max) const {
-    for (size_t i = 0; i < data.size(); i += ncol) {
+    for (size_t i = 0; i < data.size(); i += columns.size()) {
       double res = uc.calculate_1_d2(data[i+0], data[i+1], data[i+2]);
       if (res < min)
         min = res;
@@ -219,7 +217,7 @@ struct Mtz {
   }
 
   std::array<double,2> calculate_min_max_1_d2() const {
-    if (!has_data() || ncol < 3)
+    if (!has_data() || columns.size() < 3)
       fail("No data.");
     double min_value = INFINITY;
     double max_value = 0.;
@@ -290,122 +288,6 @@ struct Mtz {
       std::fprintf(warnings, "%s\n", text.c_str());
   }
 
-  void parse_main_header(const char* line) {
-    const char* args = skip_word(line);
-    switch (ialpha4_id(line)) {
-      case ialpha4_id("VERS"):
-        version_stamp = rtrim_str(args);
-        break;
-      case ialpha4_id("TITL"):
-        title = rtrim_str(args);
-        break;
-      case ialpha4_id("NCOL"): {
-        ncol = simple_atoi(args, &args);
-        nreflections = simple_atoi(args, &args);
-        nbatches = simple_atoi(args, &args);
-        break;
-      }
-      case ialpha4_id("CELL"):
-        cell = read_cell_parameters(args);
-        break;
-      case ialpha4_id("SORT"):
-        for (int& n : sort_order)
-          n = simple_atoi(args, &args);
-        break;
-      case ialpha4_id("SYMI"): {
-        nsymop = simple_atoi(args, &args);
-        symops.reserve(nsymop);
-        simple_atoi(args, &args); // ignore number of primitive operations
-        args = skip_word(skip_blank(args)); // ignore lattice type
-        spacegroup_number = simple_atoi(args, &args);
-        args = skip_blank(args);
-        if (*args != '\'')
-          spacegroup_name = read_word(args);
-        else if (const char* end = std::strchr(++args, '\''))
-          spacegroup_name.assign(args, end);
-        // ignore point group which is at the end of args
-        break;
-      }
-      case ialpha4_id("SYMM"):
-        symops.push_back(parse_triplet(args));
-        break;
-      case ialpha4_id("RESO"):
-        min_1_d2 = simple_atof(args, &args);
-        max_1_d2 = simple_atof(args, &args);
-        break;
-      case ialpha4_id("VALM"):
-        if (*args != 'N') {
-          const char* endptr;
-          float v = (float) simple_atof(args, &endptr);
-          if (*endptr == '\0' || is_space(*endptr))
-            valm = v;
-          else
-            warn("Unexpected VALM value: " + rtrim_str(args));
-        }
-        break;
-      case ialpha4_id("COLU"): {
-        columns.emplace_back();
-        Column& col = columns.back();
-        col.label = read_word(args, &args);
-        col.type = read_word(args, &args)[0];
-        col.min_value = (float) simple_atof(args, &args);
-        col.max_value = (float) simple_atof(args, &args);
-        col.dataset_id = simple_atoi(args);
-        col.parent = this;
-        col.idx = columns.size() - 1;
-        break;
-      }
-      case ialpha4_id("COLS"):
-        if (columns.empty())
-          fail("MTZ: COLSRC before COLUMN?");
-        args = skip_word(args);
-        columns.back().source = read_word(args);
-        break;
-      case ialpha4_id("COLG"):
-        // Column group - not used.
-        break;
-      case ialpha4_id("NDIF"):
-        datasets.reserve(simple_atoi(args));
-        break;
-      case ialpha4_id("PROJ"):
-        datasets.emplace_back();
-        datasets.back().id = simple_atoi(args, &args);
-        datasets.back().project_name = read_word(skip_word(args));
-        datasets.back().wavelength = 0.0;
-        break;
-      case ialpha4_id("CRYS"):
-        if (simple_atoi(args, &args) == last_dataset().id)
-          datasets.back().crystal_name = read_word(args);
-        else
-          warn("MTZ CRYSTAL line: unusual numbering.");
-        break;
-      case ialpha4_id("DATA"):
-        if (simple_atoi(args, &args) == last_dataset().id)
-          datasets.back().dataset_name = read_word(args);
-        else
-          warn("MTZ DATASET line: unusual numbering.");
-        break;
-      case ialpha4_id("DCEL"):
-        if (simple_atoi(args, &args) == last_dataset().id)
-          datasets.back().cell = read_cell_parameters(args);
-        else
-          warn("MTZ DCELL line: unusual numbering.");
-        break;
-      // case("DRES"): not in use yet
-      case ialpha4_id("DWAV"):
-        if (simple_atoi(args, &args) == last_dataset().id)
-          datasets.back().wavelength = simple_atof(args);
-        else
-          warn("MTZ DWAV line: unusual numbering.");
-        break;
-      case ialpha4_id("BATCH"):
-        // this header is not used for anything?
-        break;
-      default:
-        warn("Unknown header: " + rtrim_str(line));
-    }
-  }
-
   void seek_headers(std::FILE* stream) {
     if (std::fseek(stream, 4 * (header_offset - 1), SEEK_SET) != 0)
       fail("Cannot rewind to the MTZ header at byte "
@@ -414,11 +296,125 @@ struct Mtz {
 
   // read headers until END
   void read_main_headers(std::FILE* stream) {
-    char buf[81] = {0};
+    char line[81] = {0};
     seek_headers(stream);
-    while (std::fread(buf, 1, 80, stream) == 80 &&
-           ialpha3_id(buf) != ialpha3_id("END"))
-      parse_main_header(buf);
+    int ncol = 0;
+    while (std::fread(line, 1, 80, stream) == 80 &&
+           ialpha3_id(line) != ialpha3_id("END")) {
+      const char* args = skip_word(line);
+      switch (ialpha4_id(line)) {
+        case ialpha4_id("VERS"):
+          version_stamp = rtrim_str(args);
+          break;
+        case ialpha4_id("TITL"):
+          title = rtrim_str(args);
+          break;
+        case ialpha4_id("NCOL"): {
+          ncol = simple_atoi(args, &args);
+          nreflections = simple_atoi(args, &args);
+          nbatches = simple_atoi(args, &args);
+          break;
+        }
+        case ialpha4_id("CELL"):
+          cell = read_cell_parameters(args);
+          break;
+        case ialpha4_id("SORT"):
+          for (int& n : sort_order)
+            n = simple_atoi(args, &args);
+          break;
+        case ialpha4_id("SYMI"): {
+          nsymop = simple_atoi(args, &args);
+          symops.reserve(nsymop);
+          simple_atoi(args, &args); // ignore number of primitive operations
+          args = skip_word(skip_blank(args)); // ignore lattice type
+          spacegroup_number = simple_atoi(args, &args);
+          args = skip_blank(args);
+          if (*args != '\'')
+            spacegroup_name = read_word(args);
+          else if (const char* end = std::strchr(++args, '\''))
+            spacegroup_name.assign(args, end);
+          // ignore point group which is at the end of args
+          break;
+        }
+        case ialpha4_id("SYMM"):
+          symops.push_back(parse_triplet(args));
+          break;
+        case ialpha4_id("RESO"):
+          min_1_d2 = simple_atof(args, &args);
+          max_1_d2 = simple_atof(args, &args);
+          break;
+        case ialpha4_id("VALM"):
+          if (*args != 'N') {
+            const char* endptr;
+            float v = (float) simple_atof(args, &endptr);
+            if (*endptr == '\0' || is_space(*endptr))
+              valm = v;
+            else
+              warn("Unexpected VALM value: " + rtrim_str(args));
+          }
+          break;
+        case ialpha4_id("COLU"): {
+          columns.emplace_back();
+          Column& col = columns.back();
+          col.label = read_word(args, &args);
+          col.type = read_word(args, &args)[0];
+          col.min_value = (float) simple_atof(args, &args);
+          col.max_value = (float) simple_atof(args, &args);
+          col.dataset_id = simple_atoi(args);
+          col.parent = this;
+          col.idx = columns.size() - 1;
+          break;
+        }
+        case ialpha4_id("COLS"):
+          if (columns.empty())
+            fail("MTZ: COLSRC before COLUMN?");
+          args = skip_word(args);
+          columns.back().source = read_word(args);
+          break;
+        case ialpha4_id("COLG"):
+          // Column group - not used.
+          break;
+        case ialpha4_id("NDIF"):
+          datasets.reserve(simple_atoi(args));
+          break;
+        case ialpha4_id("PROJ"):
+          datasets.emplace_back();
+          datasets.back().id = simple_atoi(args, &args);
+          datasets.back().project_name = read_word(skip_word(args));
+          datasets.back().wavelength = 0.0;
+          break;
+        case ialpha4_id("CRYS"):
+          if (simple_atoi(args, &args) == last_dataset().id)
+            datasets.back().crystal_name = read_word(args);
+          else
+            warn("MTZ CRYSTAL line: unusual numbering.");
+          break;
+        case ialpha4_id("DATA"):
+          if (simple_atoi(args, &args) == last_dataset().id)
+            datasets.back().dataset_name = read_word(args);
+          else
+            warn("MTZ DATASET line: unusual numbering.");
+          break;
+        case ialpha4_id("DCEL"):
+          if (simple_atoi(args, &args) == last_dataset().id)
+            datasets.back().cell = read_cell_parameters(args);
+          else
+            warn("MTZ DCELL line: unusual numbering.");
+          break;
+        // case("DRES"): not in use yet
+        case ialpha4_id("DWAV"):
+          if (simple_atoi(args, &args) == last_dataset().id)
+            datasets.back().wavelength = simple_atof(args);
+          else
+            warn("MTZ DWAV line: unusual numbering.");
+          break;
+        case ialpha4_id("BATCH"):
+          // this header is not used for anything?
+          break;
+        default:
+          warn("Unknown header: " + rtrim_str(line));
+      }
+    }
     if (ncol != (int) columns.size())
       fail("Number of COLU records inconsistent with NCOL record.");
   }
@@ -458,10 +454,10 @@ struct Mtz {
   }
 
   void read_raw_data(std::FILE* stream) {
-    data.resize(ncol * nreflections);
+    size_t n = columns.size() * nreflections;
+    data.resize(n);
     if (std::fseek(stream, 80, SEEK_SET) != 0)
       fail("Cannot rewind to the MTZ data.");
-    size_t n = ncol * nreflections;
     if (std::fread(data.data(), 4, n, stream) != n)
       fail("Error when reading MTZ data");
     if (!same_byte_order)
@@ -478,7 +474,7 @@ struct Mtz {
 
   std::array<int, 3> max_abs_hkl() const {
     std::array<int, 3> max_abs{{0, 0, 0}};
-    for (size_t i = 0; i < data.size(); i += ncol)
+    for (size_t i = 0; i < data.size(); i += columns.size())
       for (int j = 0; j != 3; ++j) {
         int v = std::abs((int) data[i+j]);
         if (v > max_abs[j])
@@ -490,7 +486,7 @@ struct Mtz {
   template<typename T=float> Grid<std::complex<T>>
   get_map_coef_as_grid(const std::string& f_label, const std::string& phi_label,
                        std::array<int, 3> size={{0,0,0}}) const {
-    if (!has_data() || ncol < 5)
+    if (!has_data() || columns.size() < 5)
       fail("No data.");
     if (!spacegroup)
       fail("No spacegroup.");
@@ -512,7 +508,7 @@ struct Mtz {
     auto id = std::find(sym_ops.begin(), sym_ops.end(), Op::identity());
     if (id != sym_ops.end())
       sym_ops.erase(id);
-    for (size_t i = 0; i < data.size(); i += ncol) {
+    for (size_t i = 0; i < data.size(); i += columns.size()) {
       int h = (int) data[i+0];
       int k = (int) data[i+1];
       int l = (int) data[i+2];
@@ -546,8 +542,8 @@ struct Mtz {
     for (int i = 0; i != nreflections; ++i)
       indices[i] = i;
     std::sort(indices.begin(), indices.end(), [&](int i, int j) {
-      int a = i * ncol;
-      int b = j * ncol;
+      int a = i * columns.size();
+      int b = j * columns.size();
       return data[a] < data[b] || (data[a] == data[b] && (
                data[a+1] < data[b+1] || (data[a+1] == data[b+1] && (
                  data[a+2] < data[b+2]))));
@@ -593,14 +589,14 @@ namespace gemmi {
   } while(0)
 
 void Mtz::write_to_stream(std::FILE* stream) const {
-  // uses: data, spacegroup, ncol, nreflections, nbatches, cell, sort_order,
+  // uses: data, spacegroup, nreflections, nbatches, cell, sort_order,
   //       valm, columns, datasets, history
   if (!has_data())
     fail("Cannot write Mtz which has no data.");
   if (!spacegroup)
     fail("Cannot write Mtz which has no space group.");
   char buf[81] = {'M', 'T', 'Z', ' ', '\0'};
-  std::int32_t header_start = ncol * nreflections + 21;
+  std::int32_t header_start = columns.size() * nreflections + 21;
   std::memcpy(buf + 4, &header_start, 4);
   std::int32_t machst = is_little_endian() ? 0x00004144 : 0x11110000;
   std::memcpy(buf + 8, &machst, 4);
@@ -609,7 +605,7 @@ void Mtz::write_to_stream(std::FILE* stream) const {
     fail("Writing MTZ file failed.");
   WRITE("VERS MTZ:V1.1");
   WRITE("TITLE %s", title.c_str());
-  WRITE("NCOL %8d %12d %8d", ncol, nreflections, nbatches);
+  WRITE("NCOL %8zu %12d %8d", columns.size(), nreflections, nbatches);
   if (cell.is_crystal())
     WRITE("CELL  %9.4f %9.4f %9.4f %9.4f %9.4f %9.4f",
           cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma);
