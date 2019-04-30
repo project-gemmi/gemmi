@@ -551,6 +551,39 @@ struct Mtz {
     return indices;
   }
 
+  Dataset& add_dataset(const std::string& name) {
+    int id = 0;
+    for (const Dataset& d : datasets)
+      if (d.id >= id)
+        id = d.id + 1;
+    datasets.push_back({id, name, name, name, cell, 0.0});
+    return datasets.back();
+  }
+
+  Column& add_column(const std::string& label, char type,
+                     int dataset_id=-1, int pos=-1) {
+    if (datasets.empty())
+      fail("No datasets.");
+    if (dataset_id < 0)
+      dataset_id = datasets.back().id;
+    else
+      dataset(dataset_id); // check if such dataset exist
+    if (pos >= (int) columns.size())
+      fail("Requested column position after the end.");
+    if (pos < 0)
+      pos = columns.size();
+    else
+      for (int i = pos; i < (int) columns.size(); ++i)
+        ++columns[i].idx;
+    Column col;
+    col.dataset_id = dataset_id;
+    col.type = type;
+    col.label = label;
+    col.parent = this;
+    col.idx = pos;
+    return *columns.insert(columns.begin() + pos, col);
+  }
+
   // Function for writing MTZ file
   void write_to_stream(std::FILE* stream) const;
   void write_to_file(const std::string& path) const;

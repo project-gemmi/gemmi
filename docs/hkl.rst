@@ -28,7 +28,18 @@ MTZ
 
 MTZ format has textual headers and a binary data table, where all numbers
 are stored in a 32-bit floating point format.
-The headers, as well as data, are read into ``Mtz`` class.
+The headers, as well as data, are stored in class ``Mtz``.
+The columns of data are grouped hierarchically (Project -> Crystal -> Dataset
+-> Column), but normally the column name is all that is needed,
+and the hierarchy can be ignored. In Gemmi, the hierarchy is flattened:
+we have a list of columns and a list of datasets.
+Each columns is associated with one dataset, and each dataset have properties
+``project_name`` and ``crystal_name`` (in addition to ``dataset_name``),
+which is enough to construct tree-like hierarchy if needed.
+
+
+Reading
+-------
 
 In C++, the MTZ file can be read using either stand-alone functions::
 
@@ -204,6 +215,67 @@ is Pandas DataFrame:
   >>> df = pandas.DataFrame(data=all_data, columns=mtz.column_labels())
   >>> # now we can handle columns using their labels:
   >>> I_over_sigma = df['I'] / df['SIGI']
+
+Changing
+--------
+
+First, we show how to create and populate a new ``Mtz`` object.
+
+.. doctest::
+
+  >>> mtz = gemmi.Mtz()
+  >>> mtz.spacegroup = gemmi.find_spacegroup_by_name('P 21 21 2')
+  >>> mtz.cell.set(77.7, 149.5, 62.4, 90, 90, 90)
+
+Now we need to add datasets and columns.
+
+.. doctest::
+
+  >>> mtz.add_dataset('HKL_base')
+  <gemmi.Mtz.Dataset 0 HKL_base/HKL_base/HKL_base>
+
+``project_name`` and ``crystal_name`` are set to ``dataset_name``.
+If different names are needed, the properties of the returned Dataset
+can be changed.
+
+The first three columns of an MTZ file should be always Miller indices:
+
+.. doctest::
+
+  >>> for label in ['H', 'K', 'L']: mtz.add_column(label, 'H')
+  <gemmi.Mtz.Column H type H>
+  <gemmi.Mtz.Column K type H>
+  <gemmi.Mtz.Column L type H>
+
+Two more columns in a separate dataset:
+
+.. doctest::
+
+  >>> mtz.add_dataset('synthetic')
+  <gemmi.Mtz.Dataset 1 synthetic/synthetic/synthetic>
+  >>> mtz.add_column('F', 'F')
+  <gemmi.Mtz.Column F type F>
+  >>> mtz.add_column('SIGF', 'Q')
+  <gemmi.Mtz.Column SIGF type Q>
+
+By default, the new column is assigned to the last dataset
+and is placed at the end of the column list.
+But we can choose any dataset and position:
+
+.. doctest::
+
+  >>> mtz.add_column('FREE', 'I', dataset_id=0, pos=3)
+  <gemmi.Mtz.Column FREE type I>
+  >>> mtz.column_labels()
+  ['H', 'K', 'L', 'FREE', 'F', 'SIGF']
+
+Now it is time to add data.
+
+TODO
+
+
+Writing
+-------
 
 In C++, the MTZ file can be written to a file using one of the functions::
 

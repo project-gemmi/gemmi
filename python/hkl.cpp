@@ -128,6 +128,11 @@ void add_hkl(py::module& m) {
     .def("make_d_array", &make_d_array, py::arg("dataset")=-1)
     .def("get_map_coef_as_grid", &Mtz::get_map_coef_as_grid<float>,
          py::arg("f"), py::arg("phi"), py::arg("size")=std::array<int,3>{0,0,0})
+    .def("add_dataset", &Mtz::add_dataset, py::arg("name"),
+         py::return_value_policy::reference_internal)
+    .def("add_column", &Mtz::add_column, py::arg("label"), py::arg("type"),
+         py::arg("dataset_id")=-1, py::arg("pos")=-1,
+         py::return_value_policy::reference_internal)
     .def("write_to_file", &Mtz::write_to_file, py::arg("path"))
     .def("__repr__", [](const Mtz& self) {
         return "<gemmi.Mtz with " +
