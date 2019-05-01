@@ -584,6 +584,14 @@ struct Mtz {
     return *columns.insert(columns.begin() + pos, col);
   }
 
+  void set_data(const float* new_data, size_t n) {
+    if (n % columns.size() != 0)
+      fail("Mtz.set_data(): expected " +
+           std::to_string(columns.size()) + " columns.");
+    nreflections = n / columns.size();
+    data.assign(new_data, new_data + n);
+  }
+
   // Function for writing MTZ file
   void write_to_stream(std::FILE* stream) const;
   void write_to_file(const std::string& path) const;

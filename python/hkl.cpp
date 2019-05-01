@@ -133,6 +133,21 @@ void add_hkl(py::module& m) {
     .def("add_column", &Mtz::add_column, py::arg("label"), py::arg("type"),
          py::arg("dataset_id")=-1, py::arg("pos")=-1,
          py::return_value_policy::reference_internal)
+    .def("set_data", [](Mtz& self, py::array_t<float> arr) {
+         if (arr.ndim() != 2)
+           fail("Mtz.set_data(): expected 2D array.");
+         int nrow = (int) arr.shape(0);
+         int ncol = (int) arr.shape(1);
+         if (ncol != (int) self.columns.size())
+           fail("Mtz.set_data(): expected " +
+                std::to_string(self.columns.size()) + " columns.");
+         self.nreflections = nrow;
+         self.data.resize(nrow * ncol);
+         auto r = arr.unchecked<2>();
+         for (ssize_t row = 0; row < nrow; row++)
+           for (ssize_t col = 0; col < ncol; col++)
+             self.data[row*ncol+col] = r(row, col);
+    }, py::arg("array"))
     .def("write_to_file", &Mtz::write_to_file, py::arg("path"))
     .def("__repr__", [](const Mtz& self) {
         return "<gemmi.Mtz with " +

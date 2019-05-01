@@ -216,10 +216,15 @@ is Pandas DataFrame:
   >>> # now we can handle columns using their labels:
   >>> I_over_sigma = df['I'] / df['SIGI']
 
-Changing
---------
+Modifying
+---------
 
-First, we show how to create and populate a new ``Mtz`` object.
+To show how the data and metadata in an ``Mtz`` object can be modified,
+we will create a complete ``Mtz`` object from scratch.
+The code below is in Python, but all the functions and properties have
+equivalents with the same names in C++.
+
+We start from creating an object and setting its space group and unit cell:
 
 .. doctest::
 
@@ -234,11 +239,16 @@ Now we need to add datasets and columns.
   >>> mtz.add_dataset('HKL_base')
   <gemmi.Mtz.Dataset 0 HKL_base/HKL_base/HKL_base>
 
-``project_name`` and ``crystal_name`` are set to ``dataset_name``.
-If different names are needed, the properties of the returned Dataset
-can be changed.
+The name passed to ``add_dataset()`` is used to set ``dataset_name``,
+``crystal_name`` and ``project_name``. These three names are often
+kept the same, but if needed, they can be changed afterwards.
 
-The first three columns of an MTZ file should be always Miller indices:
+The MTZ format stores general, per file cell dimensions (keyword CELL),
+as well per dataset ones (keyword DCELL).
+Function ``add_dataset`` initializes the latter from the former.
+This also can be changed afterwards.
+
+The first three columns must always be Miller indices:
 
 .. doctest::
 
@@ -247,7 +257,7 @@ The first three columns of an MTZ file should be always Miller indices:
   <gemmi.Mtz.Column K type H>
   <gemmi.Mtz.Column L type H>
 
-Two more columns in a separate dataset:
+Let's add two more columns in a separate dataset:
 
 .. doctest::
 
@@ -270,9 +280,23 @@ But we can choose any dataset and position:
   ['H', 'K', 'L', 'FREE', 'F', 'SIGF']
 
 Now it is time to add data.
+In Python we have function ``set_data()`` that expects 2D NumPy array
+of floating point numbers (even indices are converted to floats,
+but they need to be converted at some point anyway -- the MTZ format
+stores all numbers as 32-bit floats).
 
-TODO
+.. doctest::
 
+  >>> data = numpy.array([[4, 13, 8, 1, 453.9, 19.12],
+  ...                     [4, 13, 9, 0, 102.0, 27.31]], numpy.float)
+  >>> mtz.set_data(data)
+  >>> mtz
+  <gemmi.Mtz with 6 columns, 2 reflections>
+
+In C++ the ``set_data`` function takes a pointer to row-wise ordered data
+and its size (columns x rows)::
+
+  void Mtz::set_data(const float* new_data, size_t n)
 
 Writing
 -------
