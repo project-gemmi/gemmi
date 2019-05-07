@@ -483,9 +483,10 @@ struct Mtz {
     return max_abs;
   }
 
+  // If half_l is true, grid has only data with l>=0.
   template<typename T=float> Grid<std::complex<T>>
-  get_map_coef_as_grid(const std::string& f_label, const std::string& phi_label,
-                       std::array<int, 3> size={{0,0,0}}) const {
+  get_f_phi_on_grid(const std::string& f_label, const std::string& phi_label,
+                    bool half_l, std::array<int, 3> size={{0,0,0}}) const {
     if (!has_data() || columns.size() < 5)
       fail("No data.");
     if (!spacegroup)
@@ -497,41 +498,40 @@ struct Mtz {
     std::array<double, 3> dsize;
     for (int i = 0; i != 3; ++i)
       dsize[i] = (double) std::max(size[i], 2 * max_abs[i] + 1);
-    grid.set_size_from(dsize, /*denser=*/true);
+    size = grid.pick_good_size(dsize, /*denser=*/true);
+    if (half_l)
+      size[2] = size[2] / 2 + 1;
+    grid.set_size_without_checking(size[0], size[1], size[2]);
     const Column* f_col = column_with_label(f_label);
     const Column* phi_col = column_with_label(phi_label);
     if (!f_col || !phi_col)
       fail("Map coefficients not found.");
     const std::complex<T> default_val; // initialized to 0+0i
     GroupOps ops = spacegroup->operations();
-    std::vector<Op>& sym_ops = ops.sym_ops;
-    auto id = std::find(sym_ops.begin(), sym_ops.end(), Op::identity());
-    if (id != sym_ops.end())
-      sym_ops.erase(id);
     for (size_t i = 0; i < data.size(); i += columns.size()) {
       int h = (int) data[i+0];
       int k = (int) data[i+1];
       int l = (int) data[i+2];
       T f = data[i+f_col->idx];
       double phi = rad(data[i+phi_col->idx]);
-      if (f > 0.f) {
-        int idx = grid.index_n(h, k, l);
-        grid.data[idx] = std::polar(f, (T) phi);
-        for (const Op& op : sym_ops) {
-          int ho = h, ko = k, lo = l;
-          op.apply_in_place_mult(ho, ko, lo, 0);
-          int idxo = grid.index_n(ho, ko, lo);
-          if (grid.data[idxo] == default_val) {
-            //double shifted_phi = phi + op.phase_shift(h, k, l);
-            double shifted_phi = phi - op.phase_shift(ho, ko, lo);
-            grid.data[idxo] = std::polar(f, (T) shifted_phi);
+      if (f > 0.f)
+        for (const Op& op : ops.sym_ops) {
+          auto hklp = op.apply_to_hkl({{h, k, l}});
+          double shifted_phi = phi + op.phase_shift(h, k, l);
+          if (!half_l || hklp[2] >= 0) {
+            int idx = grid.index_n(hklp[0], hklp[1], hklp[2]);
+            if (grid.data[idx] == default_val)
+              grid.data[idx] = std::polar(f, (T) shifted_phi);
+          } else {
+            int idx = grid.index_n(-hklp[0], -hklp[1], -hklp[2]);
+            if (grid.data[idx] == default_val)
+              grid.data[idx] = std::polar(f, (T) -shifted_phi);
           }
         }
-      }
     }
     // Friedel pairs
     if (!ops.is_centric())
-      grid.add_friedel_mates();
+      grid.add_friedel_mates(half_l);
     return grid;
   }
 

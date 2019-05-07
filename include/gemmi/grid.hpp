@@ -243,13 +243,13 @@ struct Grid {
   }
 
   // makes sense only for hkl data
-  void add_friedel_mates() {
+  void add_friedel_mates(bool only_l0) {
     const T default_val{};
     for (int u = 0; u != nu; ++u) {
       int u_ = u == 0 ? 0 : nu - u;
       for (int v = 0; v != nv; ++v) {
         int v_ = v == 0 ? 0 : nv - v;
-        for (int w = 0; w != nw; ++w) {
+        for (int w = 0; w != (only_l0 ? 1 : nw); ++w) {
           int idx = index_q(u, v, w);
           if (data[idx] == default_val) {
             int w_ = w == 0 ? 0 : nw - w;

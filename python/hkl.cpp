@@ -126,8 +126,9 @@ void add_hkl(py::module& m) {
          py::arg("dataset")=-1)
     .def("make_1_d2_array", &make_1_d2_array, py::arg("dataset")=-1)
     .def("make_d_array", &make_d_array, py::arg("dataset")=-1)
-    .def("get_map_coef_as_grid", &Mtz::get_map_coef_as_grid<float>,
-         py::arg("f"), py::arg("phi"), py::arg("size")=std::array<int,3>{0,0,0})
+    .def("get_f_phi_on_grid", &Mtz::get_f_phi_on_grid<float>,
+         py::arg("f"), py::arg("phi"), py::arg("half_l"),
+         py::arg("size")=std::array<int,3>{0,0,0})
     .def("add_dataset", &Mtz::add_dataset, py::arg("name"),
          py::return_value_policy::reference_internal)
     .def("add_column", &Mtz::add_column, py::arg("label"), py::arg("type"),
