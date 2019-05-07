@@ -74,7 +74,7 @@ struct Grid {
     std::array<int, 3> sg_fac = gops.find_grid_factors();
     for (int i = 0; i != 3; ++i) {
       for (int j = 0; j < i; ++j)
-        if (fabs(limit[i] - limit[j]) < 0.5 && sg_fac[i] == sg_fac[j]) {
+        if (std::fabs(limit[i] - limit[j]) < 0.5 && sg_fac[i] == sg_fac[j]) {
           m[i] = m[j];
           break;
         }

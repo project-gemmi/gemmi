@@ -107,7 +107,7 @@ inline std::array<double, 4> find_best_plane(const std::vector<Atom*>& atoms) {
   auto eig = m.calculate_eigenvalues();
   double smallest = eig[0];
   for (double d : {eig[1], eig[2]})
-    if (fabs(d) < fabs(smallest))
+    if (std::fabs(d) < std::fabs(smallest))
       smallest = d;
   Vec3 eigvec = m.calculate_eigenvector(smallest);
   if (eigvec.x < 0)

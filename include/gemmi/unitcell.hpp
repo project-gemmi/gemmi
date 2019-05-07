@@ -122,9 +122,9 @@ struct UnitCell {
       gemmi::fail("Impossible angle - N*180deg.");
 
     // volume - formula from Giacovazzo p.62
-    volume = a * b * c * sqrt(1 - cos_alpha * cos_alpha - cos_beta * cos_beta
-                              - cos_gamma * cos_gamma
-                              + 2 * cos_alpha * cos_beta * cos_gamma);
+    volume = a * b * c * std::sqrt(1 - cos_alpha * cos_alpha
+                                   - cos_beta * cos_beta - cos_gamma * cos_gamma
+                                   + 2 * cos_alpha * cos_beta * cos_gamma);
 
     // reciprocal parameters a*, b*, ... (Giacovazzo, p. 64)
     ar = b * c * sin_alpha / volume;
