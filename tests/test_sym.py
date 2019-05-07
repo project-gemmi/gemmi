@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import math
 import unittest
 import random
 import gemmi
@@ -205,6 +206,21 @@ class TestSymmetry(unittest.TestCase):
             return gemmi.SpaceGroup(name).operations().find_grid_factors()
         self.assertEqual(fact('P21'), [1, 2, 1])
         self.assertEqual(fact('P61'), [1, 1, 6])
+
+    # based on example from pages 9-10 in
+    # http://oldwww.iucr.org/iucr-top/comm/cteach/pamphlets/9/9.pdf
+    def test_phase_shift(self):
+        ops = gemmi.find_spacegroup_by_name('P 31 2 1').operations()
+        refl = [3, 0, 1]
+        expected_equiv = [
+            # in the paper the last two reflections are swapped
+            [3, 0, 1], [0, -3, 1], [-3, 3, 1],
+            [0, 3, -1], [3, -3, -1], [-3, 0, -1]]
+        self.assertEqual([op.apply_to_hkl(refl) for op in ops], expected_equiv)
+        expected_shifts = [0, -120, -240, 0, -240, -120]
+        for op, expected in zip(ops, expected_shifts):
+            shift = math.degrees(op.phase_shift(*refl))
+            self.assertAlmostEqual((shift - expected) % 360, 0)
 
 if __name__ == '__main__':
     unittest.main()

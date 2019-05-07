@@ -45,6 +45,9 @@ void add_symmetry(py::module& m) {
             return mat;
          }, "Returns Seitz matrix (integers and fractions)")
     .def("float_seitz", &Op::float_seitz, "Returns Seitz matrix (floats)")
+    .def("apply_to_hkl", &Op::apply_to_hkl, py::arg("hkl"))
+    .def("phase_shift", &Op::phase_shift,
+         py::arg("h"), py::arg("k"), py::arg("l"))
     .def("__mul__", [](const Op &a, const Op &b) { return a * b; },
          py::is_operator())
     .def("__mul__", [](const Op &a, const std::string &b) {

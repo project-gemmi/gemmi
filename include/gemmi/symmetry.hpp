@@ -142,6 +142,13 @@ struct Op {
     apply_in_place_mult(x, y, z, 1.0 / Op::TDEN);
   }
 
+  std::array<int, 3> apply_to_hkl(const std::array<int, 3>& hkl) const {
+    std::array<int, 3> ret;
+    for (int i = 0; i != 3; ++i)
+      ret[i] = rot[0][i] * hkl[0] + rot[1][i] * hkl[1] + rot[2][i] * hkl[2];
+    return ret;
+  }
+
   double phase_shift(int h, int k, int l) const {
     constexpr double mult = -2 * 3.1415926535897932384626433832795 / Op::TDEN;
     return mult * (h * tran[0] + k * tran[1] + l * tran[2]);
