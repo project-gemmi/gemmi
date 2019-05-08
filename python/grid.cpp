@@ -56,7 +56,7 @@ void add_grid(py::module& m, const char* name) {
     .def_readwrite("unit_cell", &Gr::unit_cell)
     .def("set_unit_cell", (void (Gr::*)(const UnitCell&)) &Gr::set_unit_cell)
     .def_readonly("full_canonical", &Gr::full_canonical)
-    .def("get_voxel_size", &Gr::get_voxel_size)
+    .def_property_readonly("point_count", &Gr::point_count)
     .def("set_points_around", &Gr::set_points_around,
          py::arg("position"), py::arg("radius"), py::arg("value"))
     .def("symmetrize_min", &Gr::symmetrize_min)

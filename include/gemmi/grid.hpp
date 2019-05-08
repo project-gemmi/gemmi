@@ -129,7 +129,7 @@ struct Grid {
     calculate_spacing();
   }
 
-  double get_voxel_size() const { return unit_cell.volume / (nu * nv * nw); }
+  int point_count() const { return nu * nv * nw; }
 
   // Quick but unsafe. assumes (for efficiency) that 0 <= u < nu, etc.
   int index_q(int u, int v, int w) const { return w * nu * nv + v * nu + u; }

@@ -502,6 +502,7 @@ struct Mtz {
     if (half_l)
       size[2] = size[2] / 2 + 1;
     grid.set_size_without_checking(size[0], size[1], size[2]);
+    grid.full_canonical = false; // disable some real-space functionality
     const Column* f_col = column_with_label(f_label);
     const Column* phi_col = column_with_label(phi_label);
     if (!f_col || !phi_col)

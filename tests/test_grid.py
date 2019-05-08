@@ -27,6 +27,7 @@ class TestFloatGrid(unittest.TestCase):
         self.assertEqual(m.grid.nu, 60)
         self.assertEqual(m.grid.nv, 24)
         self.assertEqual(m.grid.nw, 60)
+        self.assertEqual(m.grid.point_count, 60 * 24 * 60)
         self.assertEqual(m.header_float(14), 90.0)  # 14 - alpha angle
         self.assertEqual(m.grid.unit_cell.alpha, 90.0)
         self.assertEqual(m.grid.space_group.ccp4, 4)  # P21
