@@ -104,17 +104,13 @@ struct Grid {
     return m;
   }
 
-  void set_size_from(std::array<double, 3> limit, bool denser) {
-    auto m = pick_good_size(limit, denser);
-    set_size_without_checking(m[0], m[1], m[2]);
-  }
-
   // The resulting spacing can be smaller (if denser=true) or greater than arg.
   void set_size_from_spacing(double approx_spacing, bool denser) {
     std::array<double, 3> limit = {{1. / (unit_cell.ar * approx_spacing),
                                     1. / (unit_cell.br * approx_spacing),
                                     1. / (unit_cell.cr * approx_spacing)}};
-    set_size_from(limit, denser);
+    auto m = pick_good_size(limit, denser);
+    set_size_without_checking(m[0], m[1], m[2]);
   }
 
 
@@ -242,24 +238,6 @@ struct Grid {
     symmetrize([](T a, T b) { return (a > b || !(b == b)) ? a : b; });
   }
 
-  // makes sense only for hkl data
-  void add_friedel_mates(bool only_l0) {
-    const T default_val{};
-    for (int u = 0; u != nu; ++u) {
-      int u_ = u == 0 ? 0 : nu - u;
-      for (int v = 0; v != nv; ++v) {
-        int v_ = v == 0 ? 0 : nv - v;
-        for (int w = 0; w != (only_l0 ? 1 : nw); ++w) {
-          int idx = index_q(u, v, w);
-          if (data[idx] == default_val) {
-            int w_ = w == 0 ? 0 : nw - w;
-            int inv_idx = index_q(u_, v_, w_);
-            data[idx] = std::conj(data[inv_idx]);
-          }
-        }
-      }
-    }
-  }
 };
 
 } // namespace gemmi
