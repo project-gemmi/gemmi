@@ -9,6 +9,15 @@
 #include "grid.hpp"      // for Grid
 #include "mtz.hpp"       // for Mtz
 
+#if defined(__GNUC__)
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wfloat-conversion"
+#endif
+#include <pocketfft/pocketfft_hdronly.h>
+#if defined(__GNUC__)
+# pragma GCC diagnostic pop
+#endif
+
 namespace gemmi {
 
 #if 0
@@ -94,6 +103,31 @@ Grid<std::complex<T>> get_f_phi_on_grid(const Mtz& mtz,
     }
   }
   return grid;
+}
+
+
+template<typename T>
+Grid<T> transform_f_phi_half_to_map(Grid<std::complex<T>>&& hkl) {
+  Grid<T> map;
+  // x -> conj(x) is equivalent to changing axis direction before FFT
+  for (std::complex<T>& x : hkl.data)
+    x.imag(-x.imag());
+  map.space_group = hkl.space_group;
+  map.unit_cell = hkl.unit_cell;
+  int full_nw = 2 * (hkl.nw - 1);
+  map.set_size(hkl.nu, hkl.nv, full_nw);
+  map.full_canonical = true;
+  T norm = T(1.0 / map.unit_cell.volume);
+  pocketfft::shape_t shape{(size_t)hkl.nw, (size_t)hkl.nv, (size_t)hkl.nu};
+  ptrdiff_t s = sizeof(T);
+  pocketfft::stride_t stride{hkl.nv * hkl.nu * 2*s, hkl.nu * 2*s, 2*s};
+  pocketfft::c2c<T>(shape, stride, stride, {1, 2}, pocketfft::BACKWARD,
+                    &hkl.data[0], &hkl.data[0], 1.0f);
+  pocketfft::stride_t stride_out{hkl.nv * hkl.nu * s, hkl.nu * s, s};
+  shape[0] = full_nw;
+  pocketfft::c2r<T>(shape, stride, stride_out, /*axis=*/0,
+                    &hkl.data[0], &map.data[0], norm);
+  return map;
 }
 
 } // namespace gemmi

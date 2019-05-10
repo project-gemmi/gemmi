@@ -10,7 +10,6 @@
 //#include <gemmi/fileutil.hpp> // for file_open
 //#include <gemmi/atox.hpp>     // for read_word
 #include <gemmi/version.hpp>  // for GEMMI_VERSION
-#include <pocketfft/pocketfft_hdronly.h>
 
 #define GEMMI_PROG mtz2map
 #include "options.h"
@@ -105,24 +104,9 @@ int GEMMI_MAIN(int argc, char **argv) {
                                            half_l, {size[0], size[1], size[2]});
     if (verbose)
       fprintf(stderr, "Fourier transform...\n");
-    // x -> conj(x) is equivalent to changing axis direction before FFT
-    for (std::complex<float>& x : grid.data)
-      x.imag(-x.imag());
     gemmi::Ccp4<float> ccp4;
-    ccp4.grid.space_group = mtz.spacegroup;
-    ccp4.grid.unit_cell = mtz.cell;
-    int full_nw = 2 * (grid.nw - 1);
-    ccp4.grid.set_size(grid.nu, grid.nv, full_nw);
-    float norm = float(1.0 / ccp4.grid.unit_cell.volume);
-    pocketfft::shape_t shape{(size_t)grid.nw, (size_t)grid.nv, (size_t)grid.nu};
-    ptrdiff_t s = sizeof(float);
-    pocketfft::stride_t stride{grid.nv * grid.nu * 2*s, grid.nu * 2*s, 2*s};
-    pocketfft::c2c<float>(shape, stride, stride, {1, 2}, pocketfft::BACKWARD,
-                          &grid.data[0], &grid.data[0], 1.0f);
-    pocketfft::stride_t stride_out{grid.nv * grid.nu * s, grid.nu * s, s};
-    shape[0] = full_nw;
-    pocketfft::c2r<float>(shape, stride, stride_out, 0,
-                          &grid.data[0], &ccp4.grid.data[0], norm);
+    ccp4.grid = gemmi::transform_f_phi_half_to_map(std::move(grid));
+
     if (verbose)
       fprintf(stderr, "Writing %s ...\n", map_path);
     ccp4.update_ccp4_header(2, true);
