@@ -13,7 +13,7 @@
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wfloat-conversion"
 #endif
-#include <pocketfft/pocketfft_hdronly.h>
+#include <pocketfft_hdronly.h>
 #if defined(__GNUC__) && !defined(__clang__)
 # pragma GCC diagnostic pop
 #endif
