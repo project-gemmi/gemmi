@@ -10,12 +10,7 @@
 //#include <gemmi/fileutil.hpp> // for file_open
 //#include <gemmi/atox.hpp>     // for read_word
 #include <gemmi/version.hpp>  // for GEMMI_VERSION
-//#define GEMMI_USE_FFTW
-#ifdef GEMMI_USE_FFTW
-# include <fftw3.h>
-#else
-# include <pocketfft/pocketfft_hdronly.h>
-#endif
+#include <pocketfft/pocketfft_hdronly.h>
 
 #define GEMMI_PROG mtz2map
 #include "options.h"
@@ -105,7 +100,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     std::vector<int> size{0, 0, 0};
     if (p.options[GridDims])
       size = parse_comma_separated_ints(p.options[GridDims].arg);
-    bool half_l = false;
+    bool half_l = true;
     auto grid = gemmi::get_f_phi_on_grid<>(mtz, cols[0]->idx, cols[1]->idx,
                                            half_l, {size[0], size[1], size[2]});
     if (verbose)
@@ -116,28 +111,18 @@ int GEMMI_MAIN(int argc, char **argv) {
     gemmi::Ccp4<float> ccp4;
     ccp4.grid.space_group = mtz.spacegroup;
     ccp4.grid.unit_cell = mtz.cell;
-    //ccp4.grid.set_size(grid.nu, grid.nv, 2 * (grid.nw - 1));
-    ccp4.grid.set_size(grid.nu, grid.nv, grid.nw);
+    int full_nw = 2 * (grid.nw - 1);
+    ccp4.grid.set_size(grid.nu, grid.nv, full_nw);
     float norm = float(1.0 / ccp4.grid.unit_cell.volume);
-#ifdef GEMMI_USE_FFTW
-    fftwf_plan plan = fftwf_plan_dft_3d(
-        grid.nw, grid.nv, grid.nu,
-        reinterpret_cast<fftwf_complex*>(&grid.data[0]),
-        reinterpret_cast<fftwf_complex*>(&grid.data[0]),
-        FFTW_BACKWARD, FFTW_ESTIMATE);
-    fftwf_execute(plan);
-    fftwf_destroy_plan(plan);
-    for (size_t i = 0; i != grid.data.size(); ++i)
-      ccp4.grid.data[i] = grid.data[i].real() * norm;
-#else
-    ptrdiff_t s = sizeof(float);
     pocketfft::shape_t shape{(size_t)grid.nw, (size_t)grid.nv, (size_t)grid.nu};
+    ptrdiff_t s = sizeof(float);
     pocketfft::stride_t stride{grid.nv * grid.nu * 2*s, grid.nu * 2*s, 2*s};
-    pocketfft::c2c<float>(shape, stride, stride, {0, 1, 2}, false,
-                          &grid.data[0], &grid.data[0], norm);
-    for (size_t i = 0; i != grid.data.size(); ++i)
-      ccp4.grid.data[i] = grid.data[i].real();
-#endif
+    pocketfft::c2c<float>(shape, stride, stride, {1, 2}, pocketfft::BACKWARD,
+                          &grid.data[0], &grid.data[0], 1.0f);
+    pocketfft::stride_t stride_out{grid.nv * grid.nu * s, grid.nu * s, s};
+    shape[0] = full_nw;
+    pocketfft::c2r<float>(shape, stride, stride_out, 0,
+                          &grid.data[0], &ccp4.grid.data[0], norm);
     if (verbose)
       fprintf(stderr, "Writing %s ...\n", map_path);
     ccp4.update_ccp4_header(2, true);
