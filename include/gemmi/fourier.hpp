@@ -9,12 +9,12 @@
 #include "grid.hpp"      // for Grid
 #include "mtz.hpp"       // for Mtz
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__clang__)
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wfloat-conversion"
 #endif
 #include <pocketfft/pocketfft_hdronly.h>
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__clang__)
 # pragma GCC diagnostic pop
 #endif
 
