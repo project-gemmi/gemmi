@@ -155,7 +155,6 @@ add_executable(gemmi-mtz2cif EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 
 add_executable(gemmi-mtz2map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/mtz2map.cpp)
-target_link_libraries(gemmi-mtz2map -lfftw3f)
 
 add_executable(gemmi-residues EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/residues.cpp $<TARGET_OBJECTS:input>)
