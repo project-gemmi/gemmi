@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #error This file is C++ and requires a C++ compiler
 #endif
 
-#if __cplusplus < 201103L
+#if !(__cplusplus >= 201103L || _MSVC_LANG+0L >= 201103L)
 #error This file requires at least C++11 support
 #endif
 
