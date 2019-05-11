@@ -80,6 +80,13 @@ option::ArgStatus Arg::Float(const option::Option& option, bool msg) {
   return option::ARG_ILLEGAL;
 }
 
+// we wrap fwrite because passing it directly may cause warning
+// "ignoring attributes on template argument" [-Wignored-attributes]
+static
+size_t write_func(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
+  return fwrite(ptr, size, nmemb, stream);
+}
+
 void OptParser::simple_parse(int argc, char** argv,
                              const option::Descriptor usage[]) {
   if (argc < 1)
@@ -91,7 +98,7 @@ void OptParser::simple_parse(int argc, char** argv,
   if (error())
     std::exit(2);
   if (options[Help]) {
-    option::printUsage(fwrite, stdout, usage);
+    option::printUsage(write_func, stdout, usage);
     std::exit(0);
   }
   if (options[Version]) {
@@ -100,7 +107,7 @@ void OptParser::simple_parse(int argc, char** argv,
   }
   if (options[NoOp]) {
     fprintf(stderr, "Invalid option.\n");
-    option::printUsage(fwrite, stderr, usage);
+    option::printUsage(write_func, stderr, usage);
     std::exit(2);
   }
   for (const auto& group : exclusive_groups) {
