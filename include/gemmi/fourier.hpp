@@ -109,15 +109,15 @@ Grid<std::complex<T>> get_f_phi_on_grid(const Mtz& mtz,
 template<typename T>
 Grid<T> transform_f_phi_half_to_map(Grid<std::complex<T>>&& hkl) {
   Grid<T> map;
+  T norm = T(1.0 / map.unit_cell.volume);
   // x -> conj(x) is equivalent to changing axis direction before FFT
   for (std::complex<T>& x : hkl.data)
-    x.imag(-x.imag());
+    x = {norm * x.real(), -norm * x.imag()};
   map.space_group = hkl.space_group;
   map.unit_cell = hkl.unit_cell;
   int full_nw = 2 * (hkl.nw - 1);
   map.set_size(hkl.nu, hkl.nv, full_nw);
   map.full_canonical = true;
-  T norm = T(1.0 / map.unit_cell.volume);
   pocketfft::shape_t shape{(size_t)hkl.nw, (size_t)hkl.nv, (size_t)hkl.nu};
   ptrdiff_t s = sizeof(T);
   pocketfft::stride_t stride{hkl.nv * hkl.nu * 2*s, hkl.nu * 2*s, 2*s};
@@ -126,7 +126,7 @@ Grid<T> transform_f_phi_half_to_map(Grid<std::complex<T>>&& hkl) {
   pocketfft::stride_t stride_out{hkl.nv * hkl.nu * s, hkl.nu * s, s};
   shape[0] = full_nw;
   pocketfft::c2r<T>(shape, stride, stride_out, /*axis=*/0,
-                    &hkl.data[0], &map.data[0], norm);
+                    &hkl.data[0], &map.data[0], 1.0f);
   return map;
 }
 
