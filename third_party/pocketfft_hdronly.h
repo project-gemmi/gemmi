@@ -52,9 +52,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <malloc.h>
 #endif
 
-#ifdef __GNUC__
+#if defined(__GNUC__)
 #define NOINLINE __attribute__((noinline))
 #define restrict __restrict__
+#elif defined(_MSC_VER)
+#define NOINLINE __declspec(noinline)
+#define restrict __restrict
 #else
 #define NOINLINE
 #define restrict
@@ -115,7 +118,13 @@ template<typename T> class arr
       return reinterpret_cast<T *>(res);
       }
     static void dealloc(T *ptr)
-      { free(ptr); }
+      {
+#if !defined(POCKETFFT_NO_VECTORS) && __cplusplus < 201703L && defined(_WIN32)
+          _aligned_free(ptr);
+#else
+          free(ptr);
+#endif
+      }
 
   public:
     arr() : p(0), sz(0) {}
