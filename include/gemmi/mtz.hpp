@@ -551,6 +551,19 @@ inline Mtz read_mtz_file(const std::string& path) {
   }
 }
 
+// Abstraction of data source, cf. SfMmcifDataProxy.
+struct MtzDataProxy {
+  const Mtz& mtz_;
+  bool ok() const { return mtz_.has_data(); }
+  size_t stride() const { return mtz_.columns.size(); }
+  size_t size() const { return mtz_.data.size(); }
+  int get_int(int n) const { return (int) mtz_.data[n]; }
+  template<typename T> T get(int n) const { return mtz_.data[n]; }
+  const UnitCell& unit_cell() const { return mtz_.cell; }
+  const SpaceGroup* spacegroup() const { return mtz_.spacegroup; }
+};
+
+
 } // namespace gemmi
 
 #ifdef GEMMI_WRITE_IMPLEMENTATION

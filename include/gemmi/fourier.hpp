@@ -7,7 +7,6 @@
 
 #include <array>
 #include "grid.hpp"      // for Grid
-#include "mtz.hpp"       // for Mtz
 
 #if defined(__GNUC__) && !defined(__clang__)
 # pragma GCC diagnostic push
@@ -20,32 +19,24 @@
 
 namespace gemmi {
 
-#if 0
-struct MtzRowIterator {
-  size_t stride() { return mtz.columns.size(); }
-  int data_as_int(int n) { (int) mtz.data[n]; }
-  template<typename T=float> T data_as(int n) { return mtz.data[n]; }
-};
-#endif
-
 // If half_l is true, grid has only data with l>=0.
-template<typename T=float>
-Grid<std::complex<T>> get_f_phi_on_grid(const Mtz& mtz,
+template<typename T, typename DataProxy>
+Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
                                         size_t f_col, size_t phi_col,
                                         bool half_l,
                                         std::array<int, 3> min_size) {
-  if (!mtz.has_data() || mtz.columns.size() < 5)
+  if (!data.ok() || data.stride() < 5)
     fail("No data.");
-  if (!mtz.spacegroup)
+  if (!data.spacegroup())
     fail("No spacegroup.");
   Grid<std::complex<T>> grid;
-  grid.unit_cell = mtz.cell;
-  grid.space_group = mtz.spacegroup;
+  grid.unit_cell = data.unit_cell();
+  grid.space_group = data.spacegroup();
 
   { // set grid size
-    for (size_t i = 0; i < mtz.data.size(); i += mtz.columns.size())
+    for (size_t i = 0; i < data.size(); i += data.stride())
       for (int j = 0; j != 3; ++j) {
-        int v = 2 * std::abs((int) mtz.data[i+j]) + 1;
+        int v = 2 * std::abs(data.get_int(i+j)) + 1;
         if (v > min_size[j])
           min_size[j] = v;
       }
@@ -59,17 +50,17 @@ Grid<std::complex<T>> get_f_phi_on_grid(const Mtz& mtz,
     grid.full_canonical = false; // disable some real-space functionality
   }
 
-  if (f_col >= mtz.columns.size() || phi_col >= mtz.columns.size())
+  if (f_col >= data.stride() || phi_col >= data.stride())
     fail("Map coefficients not found.");
   const std::complex<T> default_val; // initialized to 0+0i
   GroupOps ops = grid.space_group->operations();
-  for (size_t i = 0; i < mtz.data.size(); i += mtz.columns.size()) {
-    int h = (int) mtz.data[i+0];
-    int k = (int) mtz.data[i+1];
-    int l = (int) mtz.data[i+2];
-    T f = mtz.data[i+f_col];
+  for (size_t i = 0; i < data.size(); i += data.stride()) {
+    int h = data.get_int(i+0);
+    int k = data.get_int(i+1);
+    int l = data.get_int(i+2);
+    T f = data.template get<T>(i+f_col);
     if (f > 0.f) {
-      double phi = rad(mtz.data[i+phi_col]);
+      double phi = rad(data.template get<double>(i+phi_col));
       for (const Op& op : ops.sym_ops) {
         auto hklp = op.apply_to_hkl({{h, k, l}});
         double shifted_phi = phi + op.phase_shift(h, k, l);

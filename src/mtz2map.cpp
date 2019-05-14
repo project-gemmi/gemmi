@@ -1,12 +1,12 @@
 // Copyright 2019 Global Phasing Ltd.
 //
-// MTZ map coefficients -> CCP4 map.
+// MTZ (or SF-mmCIF) map coefficients -> CCP4 map.
 
 #include <stdio.h>
 #include <cstring>              // for strcmp
 #include <gemmi/mtz.hpp>
 #include <gemmi/ccp4.hpp>
-#include <gemmi/fourier.hpp>
+#include <gemmi/fourier.hpp>  // for get_f_phi_on_grid, transform_f_phi_...
 //#include <gemmi/fileutil.hpp> // for file_open
 //#include <gemmi/atox.hpp>     // for read_word
 #include <gemmi/version.hpp>  // for GEMMI_VERSION
@@ -100,8 +100,10 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (p.options[GridDims])
       size = parse_comma_separated_ints(p.options[GridDims].arg);
     bool half_l = true;
-    auto grid = gemmi::get_f_phi_on_grid<>(mtz, cols[0]->idx, cols[1]->idx,
-                                           half_l, {size[0], size[1], size[2]});
+    auto grid = gemmi::get_f_phi_on_grid<float>(gemmi::MtzDataProxy{mtz},
+                                                cols[0]->idx, cols[1]->idx,
+                                                half_l,
+                                                {size[0], size[1], size[2]});
     if (verbose)
       fprintf(stderr, "Fourier transform...\n");
     gemmi::Ccp4<float> ccp4;
