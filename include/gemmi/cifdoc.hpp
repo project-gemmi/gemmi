@@ -358,7 +358,7 @@ struct Table {
   // It is not a proper input iterator, but just enough for using range-for.
   struct iterator {
     Table& parent;
-    size_t index;
+    int index;
     void operator++() { index++; }
     bool operator==(const iterator& o) const { return index == o.index; }
     bool operator!=(const iterator& o) const { return index != o.index; }
@@ -366,7 +366,7 @@ struct Table {
     const std::string& get(int n) const { return parent[index].at(n); }
   };
   iterator begin() { return iterator{*this, 0}; }
-  iterator end() { return iterator{*this, length()}; }
+  iterator end() { return iterator{*this, (int)length()}; }
 };
 
 struct Block {

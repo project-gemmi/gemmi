@@ -323,7 +323,7 @@ template<> struct Search<rules::loop_value> {
       if (p.column == p.match_column)
         process_match(in, p, -1);
     } else {
-      for (size_t i = 0; i != p.multi_match_columns.size(); ++i)
+      for (int i = 0; i != (int) p.multi_match_columns.size(); ++i)
         if (p.column == p.multi_match_columns[i])
           process_match(in, p, i);
     }

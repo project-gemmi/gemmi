@@ -321,7 +321,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   std::vector<std::string> paths = p.paths_from_args_or_file(FromFile, 0);
 
-  bool verbose = p.options[Verbose].count();
+  int verbose = p.options[Verbose].count();
   Params params;
   if (p.options[MinDist])
     params.min_dist = std::strtof(p.options[MinDist].arg, nullptr);

@@ -479,8 +479,8 @@ struct Mtz {
     for (int i = 0; i != nreflections; ++i)
       indices[i] = i;
     std::sort(indices.begin(), indices.end(), [&](int i, int j) {
-      int a = i * columns.size();
-      int b = j * columns.size();
+      int a = i * (int) columns.size();
+      int b = j * (int) columns.size();
       return data[a] < data[b] || (data[a] == data[b] && (
                data[a+1] < data[b+1] || (data[a+1] == data[b+1] && (
                  data[a+2] < data[b+2]))));
@@ -557,8 +557,8 @@ struct MtzDataProxy {
   bool ok() const { return mtz_.has_data(); }
   size_t stride() const { return mtz_.columns.size(); }
   size_t size() const { return mtz_.data.size(); }
-  int get_int(int n) const { return (int) mtz_.data[n]; }
-  template<typename T> T get(int n) const { return mtz_.data[n]; }
+  int get_int(size_t n) const { return (int) mtz_.data[n]; }
+  template<typename T> T get(size_t n) const { return mtz_.data[n]; }
   const UnitCell& unit_cell() const { return mtz_.cell; }
   const SpaceGroup* spacegroup() const { return mtz_.spacegroup; }
 };
@@ -587,7 +587,7 @@ void Mtz::write_to_stream(std::FILE* stream) const {
   if (!spacegroup)
     fail("Cannot write Mtz which has no space group.");
   char buf[81] = {'M', 'T', 'Z', ' ', '\0'};
-  std::int32_t header_start = columns.size() * nreflections + 21;
+  std::int32_t header_start = (int) columns.size() * nreflections + 21;
   std::memcpy(buf + 4, &header_start, 4);
   std::int32_t machst = is_little_endian() ? 0x00004144 : 0x11110000;
   std::memcpy(buf + 8, &machst, 4);

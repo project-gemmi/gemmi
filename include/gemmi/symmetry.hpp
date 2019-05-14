@@ -401,8 +401,8 @@ struct GroupOps {
   }
 
   Op get_op(int n) const {
-    int n_cen = n / sym_ops.size();
-    int n_sym = n % sym_ops.size();
+    int n_cen = n / (int) sym_ops.size();
+    int n_sym = n % (int) sym_ops.size();
     return sym_ops.at(n_sym).add_centering(cen_ops.at(n_cen));
   }
 

@@ -61,6 +61,9 @@ endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+  # /wd4244 - conversion from 'type1' to 'type2', possible loss of data
+  # /wd4267 - conversion from 'size_t' to 'type2'
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /wd4267")
 endif()
 
 if (USE_FORTRAN)

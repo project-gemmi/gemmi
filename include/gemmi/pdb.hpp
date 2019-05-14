@@ -104,7 +104,7 @@ inline signed char read_charge(char digit, char sign) {
   return 0;
 }
 
-inline int read_matrix(Transform& t, char* line, int len) {
+inline int read_matrix(Transform& t, char* line, size_t len) {
   if (len < 46)
     return 0;
   char n = line[5] - '0';

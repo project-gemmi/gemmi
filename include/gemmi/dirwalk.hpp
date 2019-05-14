@@ -48,15 +48,15 @@ public:
     for (auto& d : dirs_)
       tinydir_close(&d.second);
   }
-  void push_dir(int cur_pos, const char* path) {
+  void push_dir(size_t cur_pos, const char* path) {
     dirs_.emplace_back();
     dirs_.back().first = cur_pos;
     if (tinydir_open_sorted(&dirs_.back().second, path) == -1)
       throw std::runtime_error("Cannot open directory: " + std::string(path));
   }
-  int pop_dir() {
+  size_t pop_dir() {
     assert(!dirs_.empty());
-    int old_pos = dirs_.back().first;
+    size_t old_pos = dirs_.back().first;
     tinydir_close(&dirs_.back().second);
     dirs_.pop_back();
     return old_pos;
@@ -110,7 +110,7 @@ public:
 private:
   friend struct Iter;
   tinydir_file top_;
-  std::vector<std::pair<int, tinydir_dir>> dirs_;
+  std::vector<std::pair<size_t, tinydir_dir>> dirs_;
 };
 
 namespace impl {

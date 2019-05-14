@@ -528,7 +528,9 @@ inline MonLib read_monomer_lib(std::string monomer_dir,
       auto cc = make_chemcomp_from_cif(name, doc);
       monlib.monomers.emplace(name, cc);
     } catch(std::runtime_error& err) {
-      error += "The monomer " + name + " could not be read.\n";
+      error += "The monomer " + name + " could not be read: ";
+      error += err.what();
+      error += ".\n";
     }
   }
   if (!error.empty())

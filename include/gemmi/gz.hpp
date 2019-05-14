@@ -68,7 +68,7 @@ public:
     if (memory_size_ > 500000000)
       fail("For now gz files above 500MB uncompressed are not supported.");
     std::unique_ptr<char[]> mem(new char[memory_size_]);
-    int bytes_read = gzread(file_, mem.get(), memory_size_);
+    int bytes_read = gzread(file_, mem.get(), (unsigned) memory_size_);
     if (bytes_read < (int) memory_size_ && !gzeof(file_)) {
       int errnum;
       std::string err_str = gzerror(file_, &errnum);

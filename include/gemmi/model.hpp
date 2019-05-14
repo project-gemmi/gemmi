@@ -130,7 +130,7 @@ struct Entity {
   //seq_first_conformer() const { return {poly_seq}; }
 
   // TODO: is it worth to use first_conformer UniqProxy
-  bool is_seq_first_conformer(int idx) const {
+  bool is_seq_first_conformer(size_t idx) const {
     int num = poly_seq[idx].num;
     return num < 0 || idx == 0 || num != poly_seq[idx-1].num;
   }
@@ -763,8 +763,8 @@ struct Structure {
   }
 
   double get_ncs_multiplier() const {
-    int given = std::count_if(ncs.begin(), ncs.end(),
-                              [](const NcsOp& o) { return o.given; });
+    size_t given = std::count_if(ncs.begin(), ncs.end(),
+                                 [](const NcsOp& o) { return o.given; });
     return (ncs.size() + 1.0) / (given + 1.0);  // +1 b/c identity not included
   }
 

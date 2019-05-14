@@ -51,7 +51,7 @@ public:
   operator const_policy() const { return const_policy(cur_, offset_, stride_); }
 private:
   Value* cur_;
-  unsigned offset_;
+  std::size_t offset_;
   unsigned stride_;
 };
 template<typename Value>
