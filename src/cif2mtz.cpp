@@ -188,7 +188,6 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (verbose)
     fprintf(stderr, "Reading %s ...\n", cif_path);
   auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(cif_path).blocks);
-  const gemmi::SpaceGroup* first_sg = nullptr;
   if (convert_all) {
     bool ok = true;
     for (gemmi::ReflnBlock& rb : rblocks) {
@@ -196,10 +195,6 @@ int GEMMI_MAIN(int argc, char **argv) {
       path += '/';
       path += rb.block.name;
       path += ".mtz";
-      if (!first_sg)
-        first_sg = rb.spacegroup;
-      else if (!rb.spacegroup)
-        rb.spacegroup = first_sg;
       try {
         convert_cif_block_to_mtz(rb, path, p.options);
       } catch (std::runtime_error& e) {

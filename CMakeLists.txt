@@ -158,7 +158,8 @@ add_executable(gemmi-mtz2cif EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/mtz2cif.cpp)
 
 add_executable(gemmi-mtz2map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/mtz2map.cpp)
+               src/mtz2map.cpp $<TARGET_OBJECTS:input>)
+support_gz(gemmi-mtz2map)
 
 add_executable(gemmi-residues EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/residues.cpp $<TARGET_OBJECTS:input>)
@@ -183,8 +184,8 @@ add_executable(gemmi-prog
                src/wcn.cpp src/cif2mtz.cpp src/contact.cpp
                src/contents.cpp src/convert.cpp src/output.cpp
                src/grep.cpp src/main.cpp src/map.cpp src/mask.cpp
-               src/mtz.cpp src/mtz2cif src/residues.cpp src/rmsz.cpp
-               src/sg.cpp src/validate.cpp src/validate_mon.cpp
+               src/mtz.cpp src/mtz2cif.cpp src/mtz2map.cpp src/residues.cpp
+               src/rmsz.cpp src/sg.cpp src/validate.cpp src/validate_mon.cpp
                $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:options>)
 support_gz(gemmi-prog)
 target_compile_definitions(gemmi-prog PRIVATE GEMMI_ALL_IN_ONE=1)

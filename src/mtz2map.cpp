@@ -3,24 +3,27 @@
 // MTZ (or SF-mmCIF) map coefficients -> CCP4 map.
 
 #include <stdio.h>
-#include <cstring>              // for strcmp
-#include <gemmi/mtz.hpp>
-#include <gemmi/ccp4.hpp>
+#include <cstring>            // for strcmp
+#include <gemmi/mtz.hpp>      // for Mtz
+#include <gemmi/ccp4.hpp>     // for Ccp4
 #include <gemmi/fourier.hpp>  // for get_f_phi_on_grid, transform_f_phi_...
-//#include <gemmi/fileutil.hpp> // for file_open
-//#include <gemmi/atox.hpp>     // for read_word
-#include <gemmi/version.hpp>  // for GEMMI_VERSION
+#include <gemmi/gzread.hpp>   // for read_cif_gz
+#include <gemmi/refln.hpp>    // for ReflnBlock
+#include <gemmi/util.hpp>     // for fail, giends_with
+//#include <gemmi/version.hpp>  // for GEMMI_VERSION
 
 #define GEMMI_PROG mtz2map
 #include "options.h"
 
 using gemmi::Mtz;
+using options_type = std::vector<option::Option>;
 
 enum OptionIndex { Verbose=3, Diff, FLabel, PhiLabel, GridDims };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
-    "Usage:\n  " EXE_NAME " [options] MTZ_FILE MAP_FILE"
+    "Usage:\n  " EXE_NAME " [options] INPUT_FILE MAP_FILE\n"
+    "INPUT_FILE must be either MTZ or mmCIF with map coefficients."
     "\nOptions:"},
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
   { Version, 0, "V", "version", Arg::None,
@@ -39,7 +42,7 @@ static const option::Descriptor Usage[] = {
 
 
 static std::array<const Mtz::Column*, 2>
-get_mtz_columns(const Mtz& mtz, const std::vector<option::Option>& options) {
+get_mtz_columns(const Mtz& mtz, const options_type& options) {
   static const char* default_labels[] = {
     "FWT", "PHWT", "DELFWT", "PHDELWT",
     "2FOFCWT", "PH2FOFCWT", "FOFCWT", "PHFOFCWT",
@@ -75,12 +78,34 @@ get_mtz_columns(const Mtz& mtz, const std::vector<option::Option>& options) {
   return {{f_col, phi_col}};
 }
 
+static gemmi::Grid<std::complex<float>>
+grid_from_mmcif(const char* input_path, std::array<int,3> size,
+                const char* f_label, const char* ph_label, bool verbose) {
+  auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(input_path).blocks);
+  if (verbose)
+    fprintf(stderr, "Looking for tags _refln.%s and _refln.%s...\n",
+            f_label, ph_label);
+  for (gemmi::ReflnBlock& rb : rblocks) {
+    int f_idx = rb.find_column_index(f_label);
+    int ph_idx = rb.find_column_index(ph_label);
+    if (f_idx != -1 && ph_idx != -1) {
+      if (verbose)
+        fprintf(stderr, "Putting data from block %s into matrix...\n",
+                rb.block.name.c_str());
+      return gemmi::get_f_phi_on_grid<float>(gemmi::ReflnDataProxy{rb},
+                                             f_idx, ph_idx,
+                                             /*half_l*/true, size);
+    }
+  }
+  gemmi::fail("Corresponding tags not found in the mmCIF file.");
+}
+
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   p.require_positional_args(2);
   bool verbose = p.options[Verbose];
-  const char* mtz_path = p.nonOption(0);
+  const char* input_path = p.nonOption(0);
   const char* map_path = p.nonOption(1);
   if (p.options[PhiLabel] && !p.options[FLabel]) {
     fprintf(stderr, "Option -p can be given only together with -f\n");
@@ -89,23 +114,35 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (p.options[FLabel] && p.options[Diff])
     fprintf(stderr, "Option -d has no effect together with -f\n");
   if (verbose)
-    fprintf(stderr, "Reading %s ...\n", mtz_path);
+    fprintf(stderr, "Reading %s ...\n", input_path);
+  std::vector<int> vsize{0, 0, 0};
+  if (p.options[GridDims])
+    vsize = parse_comma_separated_ints(p.options[GridDims].arg);
+  std::array<int,3> size = {{vsize[0], vsize[1], vsize[2]}};
   try {
-    Mtz mtz = gemmi::read_mtz_file(mtz_path);
-    auto cols = get_mtz_columns(mtz, p.options);
+    gemmi::Grid<std::complex<float>> grid;
+    if (gemmi::giends_with(input_path, ".cif") ||
+        gemmi::giends_with(input_path, ".ent")) {
+      const char* f_label = p.options[Diff] ? "pdbx_DELFWT" : "pdbx_FWT";
+      const char* ph_label = p.options[Diff] ?  "pdbx_DELPHWT" : "pdbx_PHWT";
+      if (p.options[FLabel])
+        f_label = p.options[FLabel].arg;
+      if (p.options[PhiLabel])
+        ph_label = p.options[PhiLabel].arg;
+      grid = grid_from_mmcif(input_path, size, f_label, ph_label, verbose);
+    } else {
+      Mtz mtz = gemmi::read_mtz_file(input_path);
+      auto cols = get_mtz_columns(mtz, p.options);
+      if (p.options[Verbose])
+        fprintf(stderr, "Putting data from columns %s and %s into matrix...\n",
+                cols[0]->label.c_str(), cols[1]->label.c_str());
+      grid = gemmi::get_f_phi_on_grid<float>(gemmi::MtzDataProxy{mtz},
+                                             cols[0]->idx, cols[1]->idx,
+                                             /*half_l*/true, size);
+    }
     if (verbose)
-      fprintf(stderr, "Putting data from columns %s and %s into matrix...\n",
-              cols[0]->label.c_str(), cols[1]->label.c_str());
-    std::vector<int> size{0, 0, 0};
-    if (p.options[GridDims])
-      size = parse_comma_separated_ints(p.options[GridDims].arg);
-    bool half_l = true;
-    auto grid = gemmi::get_f_phi_on_grid<float>(gemmi::MtzDataProxy{mtz},
-                                                cols[0]->idx, cols[1]->idx,
-                                                half_l,
-                                                {size[0], size[1], size[2]});
-    if (verbose)
-      fprintf(stderr, "Fourier transform...\n");
+      fprintf(stderr, "Fourier transform -> grid %d x %d x %d...\n",
+              grid.nu, grid.nv, (grid.nw - 1) * 2);
     gemmi::Ccp4<float> ccp4;
     ccp4.grid = gemmi::transform_f_phi_half_to_map(std::move(grid));
 

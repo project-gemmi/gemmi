@@ -37,12 +37,24 @@ struct ReflnBlock {
     default_loop = refln_loop ? refln_loop : diffrn_refln_loop;
   }
 
-  size_t get_column_index(const std::string& tag) const {
-    int name_pos = refln_loop ? 7 : 13;
-    for (size_t i = 0; i != default_loop->tags.size(); ++i)
+  bool ok() const { return default_loop != nullptr; }
+
+  // position after "_refln." or "_diffrn_refln".
+  int tag_offset() const { return refln_loop ? 7 : 13; }
+
+  int find_column_index(const std::string& tag) const {
+    int name_pos = tag_offset();
+    for (int i = 0; i != (int) default_loop->tags.size(); ++i)
       if (default_loop->tags[i].compare(name_pos, std::string::npos, tag) == 0)
         return i;
-    throw std::runtime_error("Column not found: " + tag);
+    return -1;
+  }
+
+  size_t get_column_index(const std::string& tag) const {
+    int idx = find_column_index(tag);
+    if (idx == -1)
+      throw std::runtime_error("Column not found: " + tag);
+    return idx;
   }
 
   template <typename T>
@@ -54,30 +66,30 @@ struct ReflnBlock {
     return v;
   }
 
+  std::array<size_t,3> get_hkl_column_indices() const {
+    return {{get_column_index("index_h"),
+             get_column_index("index_k"),
+             get_column_index("index_l")}};
+  }
+
   std::vector<std::array<int,3>> make_index_vector() const {
-    size_t h_idx = get_column_index("index_h");
-    size_t k_idx = get_column_index("index_k");
-    size_t l_idx = get_column_index("index_l");
+    auto hkl_idx = get_hkl_column_indices();
     std::vector<std::array<int,3>> v(default_loop->length());
-    for (size_t j = 0, n = 0; j != v.size(); j++, n += default_loop->width()) {
-      v[j][0] = cif::as_int(default_loop->values[n + h_idx]);
-      v[j][1] = cif::as_int(default_loop->values[n + k_idx]);
-      v[j][2] = cif::as_int(default_loop->values[n + l_idx]);
-    }
+    for (size_t j = 0, n = 0; j != v.size(); j++, n += default_loop->width())
+      for (int i = 0; i != 3; ++i)
+        v[j][i] = cif::as_int(default_loop->values[n + hkl_idx[i]]);
     return v;
   }
 
   std::vector<double> make_1_d2_vector() const {
     if (!cell.is_crystal() || cell.a <= 0)
       fail("Unit cell is not known");
-    size_t h_idx = get_column_index("index_h");
-    size_t k_idx = get_column_index("index_k");
-    size_t l_idx = get_column_index("index_l");
+    auto hkl_idx = get_hkl_column_indices();
     std::vector<double> r(default_loop->length());
     for (size_t j = 0, n = 0; j != r.size(); j++, n += default_loop->width()) {
-      int h = cif::as_int(default_loop->values[n + h_idx]);
-      int k = cif::as_int(default_loop->values[n + k_idx]);
-      int l = cif::as_int(default_loop->values[n + l_idx]);
+      int h = cif::as_int(default_loop->values[n + hkl_idx[0]]);
+      int k = cif::as_int(default_loop->values[n + hkl_idx[1]]);
+      int l = cif::as_int(default_loop->values[n + hkl_idx[2]]);
       r[j] = cell.calculate_1_d2(h, k, l);
     }
     return r;
@@ -92,8 +104,30 @@ std::vector<ReflnBlock> as_refln_blocks(std::vector<cif::Block>&& blocks) {
   for (cif::Block& block : blocks)
     r.emplace_back(std::move(block));
   blocks.clear();
+  // Some blocks miss space group tag, try to fill it in.
+  const gemmi::SpaceGroup* first_sg = nullptr;
+  for (gemmi::ReflnBlock& rblock : r)
+    if (!first_sg)
+      first_sg = rblock.spacegroup;
+    else if (!rblock.spacegroup)
+      rblock.spacegroup = first_sg;
   return r;
 }
+
+// Abstraction of data source, cf. MtzDataProxy.
+struct ReflnDataProxy {
+  const ReflnBlock& rb_;
+  const cif::Loop& loop() const { return *rb_.default_loop; }
+  bool ok() const { return rb_.ok(); }
+  std::array<size_t,3> hkl_col() const { return rb_.get_hkl_column_indices(); }
+  size_t stride() const { return loop().tags.size(); }
+  size_t size() const { return loop().values.size(); }
+  int get_int(size_t n) const { return cif::as_int(loop().values[n]); }
+  double get_num(size_t n) const { return cif::as_number(loop().values[n]); }
+  const UnitCell& unit_cell() const { return rb_.cell; }
+  const SpaceGroup* spacegroup() const { return rb_.spacegroup; }
+};
+
 
 } // namespace gemmi
 #endif

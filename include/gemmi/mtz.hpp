@@ -551,14 +551,15 @@ inline Mtz read_mtz_file(const std::string& path) {
   }
 }
 
-// Abstraction of data source, cf. SfMmcifDataProxy.
+// Abstraction of data source, cf. ReflnDataProxy.
 struct MtzDataProxy {
   const Mtz& mtz_;
   bool ok() const { return mtz_.has_data(); }
+  constexpr std::array<size_t,3> hkl_col() const { return {{0, 1, 2}}; }
   size_t stride() const { return mtz_.columns.size(); }
   size_t size() const { return mtz_.data.size(); }
   int get_int(size_t n) const { return (int) mtz_.data[n]; }
-  template<typename T> T get(size_t n) const { return mtz_.data[n]; }
+  float get_num(size_t n) const { return mtz_.data[n]; }
   const UnitCell& unit_cell() const { return mtz_.cell; }
   const SpaceGroup* spacegroup() const { return mtz_.spacegroup; }
 };

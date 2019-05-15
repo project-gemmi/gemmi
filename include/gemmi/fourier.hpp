@@ -7,6 +7,9 @@
 
 #include <array>
 #include "grid.hpp"      // for Grid
+#include "math.hpp"      // for rad
+#include "symmetry.hpp"  // for GroupOps, Op
+#include "util.hpp"      // for fail
 
 #if defined(__GNUC__) && !defined(__clang__)
 # pragma GCC diagnostic push
@@ -32,11 +35,12 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
   Grid<std::complex<T>> grid;
   grid.unit_cell = data.unit_cell();
   grid.space_group = data.spacegroup();
+  auto hkl_col = data.hkl_col();
 
   { // set grid size
     for (size_t i = 0; i < data.size(); i += data.stride())
       for (int j = 0; j != 3; ++j) {
-        int v = 2 * std::abs(data.get_int(i+j)) + 1;
+        int v = 2 * std::abs(data.get_int(i + hkl_col[j])) + 1;
         if (v > min_size[j])
           min_size[j] = v;
       }
@@ -55,12 +59,12 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
   const std::complex<T> default_val; // initialized to 0+0i
   GroupOps ops = grid.space_group->operations();
   for (size_t i = 0; i < data.size(); i += data.stride()) {
-    int h = data.get_int(i+0);
-    int k = data.get_int(i+1);
-    int l = data.get_int(i+2);
-    T f = data.template get<T>(i+f_col);
+    int h = data.get_int(i + hkl_col[0]);
+    int k = data.get_int(i + hkl_col[1]);
+    int l = data.get_int(i + hkl_col[2]);
+    T f = (T) data.get_num(i + f_col);
     if (f > 0.f) {
-      double phi = rad(data.template get<double>(i+phi_col));
+      double phi = rad(data.get_num(i + phi_col));
       for (const Op& op : ops.sym_ops) {
         auto hklp = op.apply_to_hkl({{h, k, l}});
         double shifted_phi = phi + op.phase_shift(h, k, l);
