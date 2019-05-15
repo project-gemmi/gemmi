@@ -309,7 +309,7 @@ template<typename T> class sincos_2pibyn
 
     void fill_first_quadrant(size_t n, T * restrict res)
       {
-      constexpr Thigh hsqt2 = Thigh(0.707106781186547524400844362104849L);
+      constexpr T hsqt2 = T(0.707106781186547524400844362104849L);
       size_t quart = n>>2;
       if ((n&7)==0)
         res[quart] = res[quart+1] = hsqt2;
