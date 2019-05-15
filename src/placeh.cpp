@@ -133,7 +133,7 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
       bonded_h.ptr->occ = 0;
     hs[0].pos = atom.pos + Position(hs[0].dist, 0, 0);
     if (hs.size() > 1) {
-      double theta = M_PI;
+      double theta = gemmi::pi();
       if (const Angle* ang = topo.take_angle(hs[1].ptr, &atom, hs[0].ptr))
         theta = ang->radians();
       hs[1].pos = atom.pos + Position(hs[1].dist * cos(theta),

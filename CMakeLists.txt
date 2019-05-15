@@ -64,6 +64,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   # /wd4244 - conversion from 'type1' to 'type2', possible loss of data
   # /wd4267 - conversion from 'size_t' to 'type2'
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /wd4267")
+  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Qvec-report:1")
 endif()
 
 if (USE_FORTRAN)
@@ -216,7 +217,9 @@ support_gz(test_disulf)
 
 # auth_label requires <experimental/filesystem> and -lstdc++fs
 add_executable(auth_label EXCLUDE_FROM_ALL examples/auth_label.cpp)
-target_link_libraries(auth_label stdc++fs)
+if (NOT MSVC)
+  target_link_libraries(auth_label stdc++fs)
+endif()
 support_gz(auth_label)
 
 add_executable(check_conn EXCLUDE_FROM_ALL examples/check_conn.cpp)

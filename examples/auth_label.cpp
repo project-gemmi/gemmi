@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
     return 1;
   for (auto& p : fs::recursive_directory_iterator(argv[1])) {
     std::string path = p.path().u8string();
-    if (ends_with(path, ".cif") or ends_with(path, ".cif.gz")) {
+    if (ends_with(path, ".cif") || ends_with(path, ".cif.gz")) {
       cif::Document doc = cif::read(gemmi::MaybeGzipped(path));
       // What author's atom names were changed?
       print_differences(doc.sole_block(), "atom_id");
