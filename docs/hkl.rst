@@ -332,6 +332,46 @@ Usually, the reflections are listed as mmCIF category ``_refln``,
 but in some blocks the ``_diffrn_refln`` category is used
 to provide intensities.
 
+The support for SF mmCIF files in Gemmi is built on top of the generic
+support for CIF files. We have class ``ReflnBlock`` that wraps ``cif::Block``
+and a function ``as_refln_blocks``. In C++::
+
+  std::vector<ReflnBlock> as_refln_blocks(std::vector<cif::Block>&& blocks)
+
+In Python this function takes ``cif.Document`` as an argument:
+
+.. doctest::
+
+  >>> doc = gemmi.cif.read('../tests/r5wkdsf.ent')
+  >>> doc
+  <gemmi.cif.Document with 1 blocks (r5wkdsf)>
+  >>> rblocks = gemmi.as_refln_blocks(doc)
+
+Blocks are moved from the Document to the new list:
+
+.. doctest::
+
+  >>> doc
+  <gemmi.cif.Document with 0 blocks ()>
+  >>> rblocks
+  ReflnBlocks[<gemmi.ReflnBlock r5wkdsf with 17 x 406 loop>]
+
+When ReflnBlock is created some of the mmCIF tags are interpreted
+to initialize the following properties:
+
+.. doctest::
+
+  >>> rblock = rblocks[0]
+  >>> rblock.entry_id
+  '5wkd'
+  >>> rblock.cell
+  <gemmi.UnitCell(50.347, 4.777, 14.746, 90, 101.733, 90)>
+  >>> rblock.spacegroup
+  <gemmi.SpaceGroup("C 1 2 1")>
+  >>> rblock.wavelength
+  0.9791
+
+
 The script below renders the same colorful *I*/*σ* image as in the previous
 section, but it can take as an argument a file downloaded directly from
 the wwPDB (for example,
@@ -340,3 +380,13 @@ the wwPDB (for example,
 .. literalinclude:: ../examples/cif_i_sigi.py
   :language: python
   :lines: 4-
+
+Data on a 3D grid
+=================
+
+TODO
+
+FFT
+===
+
+TODO

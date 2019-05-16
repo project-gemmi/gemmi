@@ -222,6 +222,7 @@ void add_hkl(py::module& m) {
     .def("make_1_d2_array", [](ReflnBlock& self) {
         return py_array_from_vector(self.make_1_d2_vector());
     })
+    .def("__bool__", [](const ReflnBlock& self) { return self.ok(); })
     .def("__repr__", [](const ReflnBlock& self) {
       return tostr(self);
     });

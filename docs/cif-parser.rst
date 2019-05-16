@@ -1862,8 +1862,8 @@ As an exercise, let us check heavy atoms in selenomethionine:
 .. doctest::
 
     >>> from gemmi import cif
-    >>> cif.read('components.cif')  #doctest: +ELLIPSIS
-    <gemmi.cif.Document object at 0x...>
+    >>> cif.read('components.cif')  # doctest: +ELLIPSIS
+    <gemmi.cif.Document with ... blocks (000, 001, 002...)>
     >>> _.find_block('MSE')
     <gemmi.cif.Block MSE>
     >>> _.find('_chem_comp_atom.', ['atom_id', 'type_symbol'])

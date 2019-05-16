@@ -43,6 +43,8 @@ struct ReflnBlock {
   int tag_offset() const { return refln_loop ? 7 : 13; }
 
   int find_column_index(const std::string& tag) const {
+    if (!ok())
+      return -1;
     int name_pos = tag_offset();
     for (int i = 0; i != (int) default_loop->tags.size(); ++i)
       if (default_loop->tags[i].compare(name_pos, std::string::npos, tag) == 0)
@@ -117,7 +119,11 @@ std::vector<ReflnBlock> as_refln_blocks(std::vector<cif::Block>&& blocks) {
 // Abstraction of data source, cf. MtzDataProxy.
 struct ReflnDataProxy {
   const ReflnBlock& rb_;
-  const cif::Loop& loop() const { return *rb_.default_loop; }
+  const cif::Loop& loop() const {
+    if (!rb_.default_loop)
+      fail("Invalid ReflnBlock");
+    return *rb_.default_loop;
+  }
   bool ok() const { return rb_.ok(); }
   std::array<size_t,3> hkl_col() const { return rb_.get_hkl_column_indices(); }
   size_t stride() const { return loop().tags.size(); }

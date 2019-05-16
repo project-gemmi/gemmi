@@ -26,6 +26,17 @@ _chem_comp.pdbx_ideal_coordinates_missing_flag   N
 _chem_comp.pdbx_model_coordinates_db_code        3LIN 
 _chem_comp.pdbx_subcomponent_list                ? 
 _chem_comp.pdbx_processing_site                  RCSB 
+
+# [cut]
+data_001
+_chem_comp.id                                    001 
+_chem_comp.formula                               "C35 H42 F2 N2 O6" 
+_chem_comp.formula_weight                        624.715 
+# [cut]
+data_002
+_chem_comp.id                                    002 
+_chem_comp.formula                               "C23 H35 N3 O6" 
+_chem_comp.formula_weight                        449.541 
 # [cut]
 
 data_AL

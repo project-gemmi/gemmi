@@ -75,7 +75,19 @@ void add_cif(py::module& cif) {
           writer.set_mmjson();
         writer.write_json(d);
         return os.str();
-    }, py::arg("mmjson")=false, "Returns JSON representation in a string.");
+    }, py::arg("mmjson")=false, "Returns JSON representation in a string.")
+    .def("__repr__", [](const Document &d) {
+        std::string s = "<gemmi.cif.Document with ";
+        s += std::to_string(d.blocks.size());
+        s += " blocks (";
+        for (size_t i = 0; i != std::min(size_t{3}, d.blocks.size()); ++i) {
+          if (i != 0)
+            s += ", ";
+          s += d.blocks[i].name;
+        }
+        s += d.blocks.size() > 3 ? "...)>" : ")>";
+        return s;
+    });
 
   py::class_<Block>(cif, "Block")
     .def(py::init<const std::string &>())
