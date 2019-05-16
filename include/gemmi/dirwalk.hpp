@@ -8,7 +8,9 @@
 // or files that look like SF mmCIF files from wwPDB, e.g. r3aaasf.ent.gz).
 // It's good for traversing a local copy of the wwPDB archive.
 // PdbWalk: .pdb or .ent (optionally with .gz) except r????sf.ent
-// CoorFileWalk: .cif, .pdb or .ent (optionally with .gz) except r????sf.ent
+// CoorFileWalk: .cif, .pdb or .ent (optionally with .gz)
+//               except r????sf.ent and *-sf.cif
+//
 //
 // Usage:
 //   for (tinydir_file& file : gemmi::DirWalk(top_dir))
@@ -116,7 +118,7 @@ private:
 namespace impl {
 // the SF mmCIF files from PDB have names such as
 // divided/structure_factors/aa/r3aaasf.ent.gz
-inline bool is_sf_mmcif_filename(const std::string& filename) {
+inline bool is_rxsf_ent_filename(const std::string& filename) {
   return filename[0] == 'r' && giends_with(filename, "sf.ent")
          && filename.find('.') >= 4;
 }
@@ -129,20 +131,22 @@ struct IsMmCifFile { // actually we don't know what kind of cif file it is
 
 struct IsCifFile {
   static bool check(const std::string& filename) {
-    return giends_with(filename, ".cif") || is_sf_mmcif_filename(filename);
+    return giends_with(filename, ".cif") || is_rxsf_ent_filename(filename);
   }
 };
 
 struct IsPdbFile {
   static bool check(const std::string& filename) {
     return giends_with(filename, ".pdb") ||
-           (giends_with(filename, ".ent") && !is_sf_mmcif_filename(filename));
+           (giends_with(filename, ".ent") && !is_rxsf_ent_filename(filename));
   }
 };
 
 struct IsCoordinateFile {
   static bool check(const std::string& filename) {
-    return IsMmCifFile::check(filename) || IsPdbFile::check(filename);
+    // the SF mmCIF files from RCSB website have names such as 3AAA-sf.cif
+    return IsPdbFile::check(filename) ||
+           (IsMmCifFile::check(filename) && !giends_with(filename, "-sf.cif"));
   }
 };
 } // namespace impl

@@ -317,7 +317,14 @@ and in Python using:
 SF mmCIF
 ========
 
-Reflection data mmCIF files usually contain one block, but may have
+The mmCIF format is also used to store reflection data from crystallographic
+experiments. Reflections and coordinates are normally stored in separate
+mmCIF files. The files with reflections are called structure factor mmCIF
+or shortly SF mmCIF. Such file for the 1ABC PDB entry
+is usually named either ``1ABC-sf.cif`` (if downloaded through RCSB website)
+or ``r1abcsf.ent`` (if downloaded through PDBe website or through FTP).
+
+SF mmCIF files usually contain one block, but may have
 multiple blocks, for example merged and unmerged data in separate blocks.
 Usually blocks contain information about the unit cell and space group,
 sometimes also about the radiation wavelength.
