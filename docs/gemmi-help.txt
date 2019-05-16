@@ -18,7 +18,7 @@ Commands:
  mask          make mask in the CCP4 format
  mtz           print info about MTZ reflection file
  mtz2cif       convert MTZ to structure factor mmCIF
- mtz2map       transform map coefficients to map
+ mtz2map       transform map coefficients (from MTZ or mmCIF) to map
  residues      list residues from a coordinate file
  rmsz          validate geometry using monomer library
  sg            info about space groups

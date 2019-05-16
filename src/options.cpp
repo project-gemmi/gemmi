@@ -59,7 +59,7 @@ option::ArgStatus Arg::Int(const option::Option& option, bool msg) {
 
 option::ArgStatus Arg::Int3(const option::Option& option, bool msg) {
   if (option.arg && parse_comma_separated_ints(option.arg).size() == 3)
-      return option::ARG_OK;
+    return option::ARG_OK;
   if (msg)
     fprintf(stderr, "Option '%.*s' requires three comma-separated integers "
                     "as an argument,\n for example: %.*s=11,12,13",

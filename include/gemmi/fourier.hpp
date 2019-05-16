@@ -11,14 +11,10 @@
 #include "symmetry.hpp"  // for GroupOps, Op
 #include "util.hpp"      // for fail
 
-#if defined(__GNUC__) && !defined(__clang__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wfloat-conversion"
+#if !(__GNUC__+0 >= 5 || __clang__+0 >= 5)
+#define POCKETFFT_NO_VECTORS
 #endif
 #include <pocketfft_hdronly.h>
-#if defined(__GNUC__) && !defined(__clang__)
-# pragma GCC diagnostic pop
-#endif
 
 namespace gemmi {
 
@@ -114,7 +110,7 @@ Grid<T> transform_f_phi_half_to_map(Grid<std::complex<T>>&& hkl) {
   map.set_size(hkl.nu, hkl.nv, full_nw);
   map.full_canonical = true;
   pocketfft::shape_t shape{(size_t)hkl.nw, (size_t)hkl.nv, (size_t)hkl.nu};
-  ptrdiff_t s = sizeof(T);
+  std::ptrdiff_t s = sizeof(T);
   pocketfft::stride_t stride{hkl.nv * hkl.nu * 2*s, hkl.nu * 2*s, 2*s};
   pocketfft::c2c<T>(shape, stride, stride, {1, 2}, pocketfft::BACKWARD,
                     &hkl.data[0], &hkl.data[0], 1.0f);
