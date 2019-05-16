@@ -30,7 +30,7 @@ class TestFloatGrid(unittest.TestCase):
         self.assertEqual(m.grid.point_count, 60 * 24 * 60)
         self.assertEqual(m.header_float(14), 90.0)  # 14 - alpha angle
         self.assertEqual(m.grid.unit_cell.alpha, 90.0)
-        self.assertEqual(m.grid.space_group.ccp4, 4)  # P21
+        self.assertEqual(m.grid.spacegroup.ccp4, 4)  # P21
         # this spacegroup has symop -x, y+1/2, -z
         m.grid.set_value(60-3, 24//2+4, 60-5, 100)  # image of (3, 4, 5)
         self.assertEqual(m.grid.get_value(60-3, 24//2+4, 60-5), 100)
@@ -57,13 +57,13 @@ class TestFloatGrid(unittest.TestCase):
         self.assertEqual(m.nw, N)
         m.set_value(1,2,3, 1.0)
         self.assertEqual(sum(m), 1.0)
-        m.space_group = gemmi.find_spacegroup_by_name('C2')
-        self.assertEqual(m.space_group.number, 5)
+        m.spacegroup = gemmi.find_spacegroup_by_name('C2')
+        self.assertEqual(m.spacegroup.number, 5)
         m.symmetrize_max()
         self.assertEqual(sum(m), 4.0)
         m.fill(2.0)
-        m.space_group = gemmi.find_spacegroup_by_name('P 62 2 2')
-        self.assertEqual(len(m.space_group.operations()), 12)
+        m.spacegroup = gemmi.find_spacegroup_by_name('P 62 2 2')
+        self.assertEqual(len(m.spacegroup.operations()), 12)
         m.set_value(1, 2, 3, 0.0)
         m.symmetrize_min()
         self.assertEqual(sum(m), 2 * N * N * N - 2 * 12)

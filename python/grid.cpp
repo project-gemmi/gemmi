@@ -52,7 +52,7 @@ void add_grid(py::module& m, const char* name) {
     .def_readonly("nw", &Gr::nw, "size in the third (slowest-changing) dim")
     .def("get_value", &Gr::get_value)
     .def("set_value", &Gr::set_value)
-    .def_readwrite("space_group", &Gr::space_group)
+    .def_readwrite("spacegroup", &Gr::spacegroup)
     .def_readwrite("unit_cell", &Gr::unit_cell)
     .def("set_unit_cell", (void (Gr::*)(const UnitCell&)) &Gr::set_unit_cell)
     .def_readonly("full_canonical", &Gr::full_canonical)
@@ -86,7 +86,7 @@ py::class_<T> add_ccp4(py::module& m, const char* name) {
          py::arg("mode"), py::arg("update_stats"))
     .def("write_ccp4_map", &Map::write_ccp4_map, py::arg("filename"))
     .def("__repr__", [=](const Map& self) {
-        const SpaceGroup* sg = self.grid.space_group;
+        const SpaceGroup* sg = self.grid.spacegroup;
         std::string sg_str = sg ?  std::to_string(sg->ccp4) : "?";
         return "<gemmi." + std::string(name) + " with grid (" +
                grid_dim_str(self.grid) + ") in SG #" + sg_str + ">";

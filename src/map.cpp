@@ -93,7 +93,7 @@ gemmi::GridStats print_info(const gemmi::Ccp4<T>& map) {
   std::printf("Grid sampling on x, y, z: %5d %5d %5d    %12s %d points/cell\n",
               mx, my, mz, "->", mx * my * mz);
   const gemmi::UnitCell& cell = grid.unit_cell;
-  const gemmi::SpaceGroup* sg = grid.space_group;
+  const gemmi::SpaceGroup* sg = grid.spacegroup;
   std::printf("Space group: %d  (%s)\n",
               sg ? sg->ccp4 : 0, sg ? sg->hm : "unknown");
   int order = sg ? sg->operations().order() : 1;

@@ -30,7 +30,7 @@ void geMask_mask_atom(geMask* mask, double x, double y, double z,
 
 void geMask_apply_space_group(geMask* mask, int ccp4_num) {
   gemmi::Grid<std::int8_t>& g = as_cpp(mask)->grid;
-  g.space_group = gemmi::find_spacegroup_by_number(ccp4_num);
+  g.spacegroup = gemmi::find_spacegroup_by_number(ccp4_num);
   g.symmetrize([](std::int8_t a, std::int8_t b) { return a > b ? a : b; });
 }
 

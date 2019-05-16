@@ -30,7 +30,7 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
     fail("No spacegroup.");
   Grid<std::complex<T>> grid;
   grid.unit_cell = data.unit_cell();
-  grid.space_group = data.spacegroup();
+  grid.spacegroup = data.spacegroup();
   auto hkl_col = data.hkl_col();
 
   { // set grid size
@@ -53,7 +53,7 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
   if (f_col >= data.stride() || phi_col >= data.stride())
     fail("Map coefficients not found.");
   const std::complex<T> default_val; // initialized to 0+0i
-  GroupOps ops = grid.space_group->operations();
+  GroupOps ops = grid.spacegroup->operations();
   for (size_t i = 0; i < data.size(); i += data.stride()) {
     int h = data.get_int(i + hkl_col[0]);
     int k = data.get_int(i + hkl_col[1]);
@@ -104,7 +104,7 @@ Grid<T> transform_f_phi_half_to_map(Grid<std::complex<T>>&& hkl) {
   // x -> conj(x) is equivalent to changing axis direction before FFT
   for (std::complex<T>& x : hkl.data)
     x = {norm * x.real(), -norm * x.imag()};
-  map.space_group = hkl.space_group;
+  map.spacegroup = hkl.spacegroup;
   map.unit_cell = hkl.unit_cell;
   int full_nw = 2 * (hkl.nw - 1);
   map.set_size(hkl.nu, hkl.nv, full_nw);

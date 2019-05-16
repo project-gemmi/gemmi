@@ -121,8 +121,8 @@ struct Ccp4 {
 
   void prepare_ccp4_header(int mode) {
     GroupOps ops;
-    if (grid.space_group)
-      ops = grid.space_group->operations();
+    if (grid.spacegroup)
+      ops = grid.spacegroup->operations();
     ccp4_header.clear();
     ccp4_header.resize(256 + ops.order() * 20, 0);
     set_header_3i32(1, grid.nu, grid.nv, grid.nw); // NX, NY, NZ
@@ -135,7 +135,7 @@ struct Ccp4 {
     set_header_float(15, (float) grid.unit_cell.beta);
     set_header_float(16, (float) grid.unit_cell.gamma);
     set_header_3i32(17, 1, 2, 3); // MAPC, MAPR, MAPS
-    set_header_i32(23, grid.space_group ? grid.space_group->ccp4 : 1); // ISPG
+    set_header_i32(23, grid.spacegroup ? grid.spacegroup->ccp4 : 1); // ISPG
     set_header_i32(24, ops.order() * 80);  // NSYMBT
     set_header_str(27, "CCP4"); // EXTTYP
     set_header_i32(28, 20140);  // NVERSION
@@ -233,7 +233,7 @@ struct Ccp4 {
     hstats.dmax = header_float(21);
     hstats.dmean = header_float(22);
     hstats.rms = header_float(55);
-    grid.space_group = find_spacegroup_by_number(header_i32(23));
+    grid.spacegroup = find_spacegroup_by_number(header_i32(23));
     auto pos = axis_positions();
     grid.full_canonical = pos[0] == 0 && pos[1] == 1 && pos[2] == 2 &&
                           full_cell();

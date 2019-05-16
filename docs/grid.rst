@@ -42,7 +42,7 @@ The data point can be accessed with::
 The unit cell and symmetry::
 
   UnitCell unit_cell;
-  const SpaceGroup* space_group;
+  const SpaceGroup* spacegroup;
 
 can be accessed directly, except that ``unit_cell`` should
 be set using ``Grid<T>::set_unit_cell()``.
@@ -86,7 +86,7 @@ it understands crystallographic symmetry.
 
 .. doctest::
 
-  >>> grid.space_group = gemmi.find_spacegroup_by_name('P2')
+  >>> grid.spacegroup = gemmi.find_spacegroup_by_name('P2')
   >>> grid.set_value(0, 0, 0, 0.125)  # a special position
   >>> sum(grid)  # for now only two points: 7.0 + 0.125
   7.125
@@ -265,7 +265,7 @@ The Python API is similar.
     <gemmi.Ccp4Map with grid (8, 6, 10) in SG #4>
     >>> m.grid  # tiny grid as it is a toy example
     <gemmi.FloatGrid(8, 6, 10)>
-    >>> m.grid.space_group
+    >>> m.grid.spacegroup
     <gemmi.SpaceGroup("P 1 21 1")>
     >>> m.grid.unit_cell
     <gemmi.UnitCell(29.45, 10.5, 29.7, 90, 111.975, 90)>

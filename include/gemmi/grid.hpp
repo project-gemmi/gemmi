@@ -39,7 +39,7 @@ struct Grid {
   int nu = 0, nv = 0, nw = 0;
   UnitCell unit_cell;
   bool full_canonical; // grid for the whole unit cell with X,Y,Z order
-  const SpaceGroup* space_group = nullptr;
+  const SpaceGroup* spacegroup = nullptr;
   double spacing[3];
 
   std::vector<T> data;
@@ -58,10 +58,10 @@ struct Grid {
   }
 
   void set_size(int u, int v, int w) {
-    if (space_group) {
-      auto factors = space_group->operations().find_grid_factors();
+    if (spacegroup) {
+      auto factors = spacegroup->operations().find_grid_factors();
       if (u % factors[0] != 0 || v % factors[1] != 0 || w % factors[2] != 0)
-        fail("Grid not compatible with the space group " + space_group->xhm());
+        fail("Grid not compatible with the space group " + spacegroup->xhm());
     }
     set_size_without_checking(u, v, w);
   }
@@ -69,7 +69,7 @@ struct Grid {
   std::array<int, 3> pick_good_size(const std::array<double, 3>& limit,
                                     bool denser) {
     std::array<int, 3> m = {{0, 0, 0}};
-    const SpaceGroup& sg = space_group ? *space_group : get_spacegroup_p1();
+    const SpaceGroup& sg = spacegroup ? *spacegroup : get_spacegroup_p1();
     GroupOps gops = sg.operations();
     std::array<int, 3> sg_fac = gops.find_grid_factors();
     for (int i = 0; i != 3; ++i) {
@@ -225,9 +225,9 @@ struct Grid {
   // Use provided function to reduce values of all symmetry mates of each
   // grid point, then assign the result to all the points.
   void symmetrize(std::function<T(T, T)> func) {
-    if (!space_group || space_group->number == 1 || !full_canonical)
+    if (!spacegroup || spacegroup->number == 1 || !full_canonical)
       return;
-    symmetrize_using_ops(space_group->operations().all_ops_sorted(), func);
+    symmetrize_using_ops(spacegroup->operations().all_ops_sorted(), func);
   }
 
   // two most common symmetrize functions

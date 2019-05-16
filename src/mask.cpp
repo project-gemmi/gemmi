@@ -125,7 +125,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::Structure st = gemmi::read_structure_gz(input);
       gemmi::Ccp4<signed char> mask;
       mask.grid.unit_cell = st.cell;
-      mask.grid.space_group = gemmi::find_spacegroup_by_name(st.spacegroup_hm);
+      mask.grid.spacegroup = gemmi::find_spacegroup_by_name(st.spacegroup_hm);
       if (p.options[GridDims]) {
         auto dims = parse_comma_separated_ints(p.options[GridDims].arg);
         mask.grid.set_size(dims[0], dims[1], dims[2]);
@@ -145,9 +145,9 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::fprintf(stderr, "Total points: %d\n", np);
         std::fprintf(stderr, "Unit cell volume: %.1f A^3\n", vol);
         std::fprintf(stderr, "Volume per point: %.3f A^3\n", vol / np);
-        if (g.space_group) {
-          std::fprintf(stderr, "Spacegroup: %s\n", g.space_group->hm);
-          int na = g.space_group->operations().order();
+        if (g.spacegroup) {
+          std::fprintf(stderr, "Spacegroup: %s\n", g.spacegroup->hm);
+          int na = g.spacegroup->operations().order();
           std::fprintf(stderr, "ASU volume: %.1f A^3\n", vol / na);
           std::fprintf(stderr, "Points per ASU: %d\n", np / na);
         } else {
