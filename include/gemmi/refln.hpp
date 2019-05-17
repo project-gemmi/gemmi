@@ -52,7 +52,7 @@ struct ReflnBlock {
     check_ok();
     std::vector<std::string> labels(default_loop->tags.size());
     for (size_t i = 0; i != labels.size(); ++i)
-      labels[i].assign(default_loop->tags[i], tag_offset());
+      labels[i].assign(default_loop->tags[i], tag_offset(), std::string::npos);
     return labels;
   }
 
