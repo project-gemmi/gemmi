@@ -60,15 +60,20 @@ latex_documents = [
 ]
 
 doctest_global_setup = '''
-import os
-no_mtz_file = not os.path.exists('example.mtz')
 try:
     import numpy
 except ImportError:
+    print('Tests that use NumPy are disabled.')
     numpy = None
+try:
+    import pandas
+except ImportError:
+    print('Tests that use pandas are disabled.')
+    pandas = None
 try:
     import networkx
 except ImportError:
+    print('Tests that use networkx are disabled.')
     networkx = None
 '''
 

@@ -16,6 +16,7 @@ using namespace gemmi;
 PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Column>)
 PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Dataset>)
 PYBIND11_MAKE_OPAQUE(std::vector<ReflnBlock>)
+PYBIND11_MAKE_OPAQUE(std::vector<const Mtz::Column*>)
 
 namespace gemmi {
   // operator<< is used by stl_bind for vector's __repr__
@@ -32,6 +33,11 @@ namespace gemmi {
     else
       os << " no ";
     os << " loop>";
+    return os;
+  }
+
+  inline std::ostream& operator<< (std::ostream& os, const Mtz::Column* col) {
+    os << "<gemmi.Mtz.Column " << col->label << " type " << col->type << '>';
     return os;
   }
 }
@@ -83,6 +89,7 @@ void add_hkl(py::module& m) {
   py::bind_vector<std::vector<Mtz::Column>>(m, "MtzColumns");
   py::bind_vector<std::vector<Mtz::Dataset>>(m, "MtzDatasets");
   py::bind_vector<std::vector<ReflnBlock>>(m, "ReflnBlocks");
+  py::bind_vector<std::vector<const Mtz::Column*>>(m, "MtzColumnRefs");
 
   py::class_<Mtz> mtz(m, "Mtz", py::buffer_protocol());
   mtz.def(py::init<>())
@@ -113,9 +120,8 @@ void add_hkl(py::module& m) {
     .def("column_with_label",
          (Mtz::Column* (Mtz::*)(const std::string&)) &Mtz::column_with_label,
          py::arg("label"), py::return_value_policy::reference_internal)
-    .def("column_with_type",
-         (Mtz::Column* (Mtz::*)(char)) &Mtz::column_with_type,
-         py::arg("type"), py::return_value_policy::reference_internal)
+    .def("columns_with_type", &Mtz::columns_with_type,
+         py::arg("type"), py::keep_alive<0, 1>())
     .def("column_labels", [](const Mtz& self) {
         std::vector<std::string> labels;
         labels.reserve(self.columns.size());
@@ -127,9 +133,16 @@ void add_hkl(py::module& m) {
          py::arg("dataset")=-1)
     .def("make_1_d2_array", &make_1_d2_array, py::arg("dataset")=-1)
     .def("make_d_array", &make_d_array, py::arg("dataset")=-1)
-    .def("get_f_phi_on_grid", [](const Mtz& self, size_t f_col, size_t phi_col,
-                                 bool half_l, std::array<int, 3> min_size) {
-        return get_f_phi_on_grid<float>(MtzDataProxy{self}, f_col, phi_col,
+    .def("get_f_phi_on_grid", [](const Mtz& self,
+                                 const std::string& f_col,
+                                 const std::string& phi_col,
+                                 bool half_l,
+                                 std::array<int, 3> min_size) {
+        const Mtz::Column* f = self.column_with_label(f_col);
+        const Mtz::Column* phi = self.column_with_label(phi_col);
+        if (!f || !phi)
+          fail("Requested tags not found.");
+        return get_f_phi_on_grid<float>(MtzDataProxy{self}, f->idx, phi->idx,
                                         half_l, min_size);
     }, py::arg("f"), py::arg("phi"), py::arg("half_l"), py::arg("size"))
     .def("add_dataset", &Mtz::add_dataset, py::arg("name"),
@@ -195,10 +208,7 @@ void add_hkl(py::module& m) {
     .def("__iter__", [](Mtz::Column& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
-    .def("__repr__", [](const Mtz::Column& self) {
-        return "<gemmi.Mtz.Column " + self.label +
-               " type " + std::string(1, self.type) + ">";
-    });
+    .def("__repr__", [](const Mtz::Column& self) { return tostr(&self); });
 
   m.def("read_mtz_file", &read_mtz_file);
 
@@ -208,6 +218,7 @@ void add_hkl(py::module& m) {
     .def_readonly("cell", &ReflnBlock::cell)
     .def_readonly("spacegroup", &ReflnBlock::spacegroup)
     .def_readonly("wavelength", &ReflnBlock::wavelength)
+    .def("column_labels", &ReflnBlock::column_labels)
     .def("make_array_int",
          [](ReflnBlock& self, const std::string& tag, int null) {
            return py_array_from_vector(self.make_vector(tag, null));
@@ -222,6 +233,18 @@ void add_hkl(py::module& m) {
     .def("make_1_d2_array", [](ReflnBlock& self) {
         return py_array_from_vector(self.make_1_d2_vector());
     })
+    .def("get_f_phi_on_grid", [](const ReflnBlock& self,
+                                 const std::string& f_col,
+                                 const std::string& phi_col,
+                                 bool half_l,
+                                 std::array<int, 3> min_size) {
+        size_t f_idx = self.get_column_index(f_col);
+        size_t phi_idx = self.get_column_index(phi_col);
+        return get_f_phi_on_grid<float>(ReflnDataProxy{self}, f_idx, phi_idx,
+                                        half_l, min_size);
+    }, py::arg("f"), py::arg("phi"), py::arg("half_l"), py::arg("min_size"))
+    .def("is_unmerged", &ReflnBlock::is_unmerged)
+    .def("use_unmerged", &ReflnBlock::use_unmerged)
     .def("__bool__", [](const ReflnBlock& self) { return self.ok(); })
     .def("__repr__", [](const ReflnBlock& self) {
       return tostr(self);

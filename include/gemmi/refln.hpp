@@ -38,9 +38,23 @@ struct ReflnBlock {
   }
 
   bool ok() const { return default_loop != nullptr; }
+  void check_ok() const { if (!ok()) fail("Invalid ReflnBlock"); }
 
   // position after "_refln." or "_diffrn_refln".
   int tag_offset() const { return refln_loop ? 7 : 13; }
+
+  void use_unmerged(bool unmerged) {
+    default_loop = unmerged ? diffrn_refln_loop : refln_loop;
+  }
+  bool is_unmerged() const { return ok() && default_loop == diffrn_refln_loop; }
+
+  std::vector<std::string> column_labels() const {
+    check_ok();
+    std::vector<std::string> labels(default_loop->tags.size());
+    for (size_t i = 0; i != labels.size(); ++i)
+      labels[i].assign(default_loop->tags[i], tag_offset());
+    return labels;
+  }
 
   int find_column_index(const std::string& tag) const {
     if (!ok())
@@ -59,8 +73,8 @@ struct ReflnBlock {
     return idx;
   }
 
-  template <typename T>
-  std::vector<T> make_vector(const std::string& tag, T null) {
+  template<typename T>
+  std::vector<T> make_vector(const std::string& tag, T null) const {
     size_t n = get_column_index(tag);
     std::vector<T> v(default_loop->length());
     for (size_t j = 0; j != v.size(); n += default_loop->width(), ++j)
@@ -119,11 +133,7 @@ std::vector<ReflnBlock> as_refln_blocks(std::vector<cif::Block>&& blocks) {
 // Abstraction of data source, cf. MtzDataProxy.
 struct ReflnDataProxy {
   const ReflnBlock& rb_;
-  const cif::Loop& loop() const {
-    if (!rb_.default_loop)
-      fail("Invalid ReflnBlock");
-    return *rb_.default_loop;
-  }
+  const cif::Loop& loop() const { rb_.check_ok(); return *rb_.default_loop; }
   bool ok() const { return rb_.ok(); }
   std::array<size_t,3> hkl_col() const { return rb_.get_hkl_column_indices(); }
   size_t stride() const { return loop().tags.size(); }
@@ -133,7 +143,6 @@ struct ReflnDataProxy {
   const UnitCell& unit_cell() const { return rb_.cell; }
   const SpaceGroup* spacegroup() const { return rb_.spacegroup; }
 };
-
 
 } // namespace gemmi
 #endif

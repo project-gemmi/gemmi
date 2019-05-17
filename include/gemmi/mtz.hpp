@@ -192,14 +192,12 @@ struct Mtz {
   const Column* column_with_label(const std::string& label) const {
     return const_cast<Mtz*>(this)->column_with_label(label);
   }
-  Column* column_with_type(char type) {
-    for (Column& col : columns)
+  std::vector<const Column*> columns_with_type(char type) const {
+    std::vector<const Column*> cols;
+    for (const Column& col : columns)
       if (col.type == type)
-        return &col;
-    return nullptr;
-  }
-  const Column* column_with_type(char type) const {
-    return const_cast<Mtz*>(this)->column_with_type(type);
+        cols.push_back(&col);
+    return cols;
   }
 
   bool has_data() const {

@@ -52,25 +52,54 @@ process is needed.
 In Python, we have a single function for reading MTZ files:
 
 .. doctest::
-  :skipif: no_mtz_file
 
   >>> import gemmi
-  >>> mtz = gemmi.read_mtz_file('example.mtz')
+  >>> mtz = gemmi.read_mtz_file('../tests/5e5z.mtz')
 
-The Mtz class has a number of properties that are based on the header
-records in the MTZ format, such as ``spacegroup``, ``cell``,
-``title``, ``history``. (TODO: document them all.)
-Importantly, it also has a list of datasets and a list of columns.
+The Mtz class has a number of properties read from the MTZ header
+(they are the same in C++ and Python):
 
-Datasets are stored in variable ``datasets``::
+.. doctest::
+
+  >>> mtz.cell        # from MTZ record CELL
+  <gemmi.UnitCell(9.643, 9.609, 19.029, 90, 101.224, 90)>
+  >>> mtz.spacegroup  # from SYMINF
+  <gemmi.SpaceGroup("P 1 21 1")>
+  >>> mtz.title       # from TITLE
+  ''
+  >>> mtz.history     # from history lines
+  ['From cif2mtz 17/ 5/2019 12:15:14']
+
+and other properties that are read from the MTZ file, although they could
+be recalculated from the data:
+
+.. doctest::
+
+  >>> mtz.nreflections   # from MTZ record NCOL
+  441
+  >>> mtz.min_1_d2       # from RESO
+  0.0028703967109323008
+  >>> mtz.max_1_d2       # from RESO
+  0.36117017269134527
+
+The resolution can also be checked using functions:
+
+.. doctest::
+
+  >>> mtz.resolution_low()   # sqrt(1 / min_1_d2)
+  18.665044863474492
+  >>> mtz.resolution_high()  # sqrt(1 / max_1_d2)
+  1.6639645192598425
+
+Importantly, Mtz class has a list of datasets and a list of columns.
+Datasets are stored in the variable ``datasets``::
 
   std::vector<Mtz::Dataset> Mtz::datasets
 
 .. doctest::
-  :skipif: no_mtz_file
 
   >>> mtz.datasets
-  MtzDatasets[<gemmi.Mtz.Dataset 0 HKL_base/HKL_base/HKL_base>, <gemmi.Mtz.Dataset 1 5dei/5dei/1>]
+  MtzDatasets[<gemmi.Mtz.Dataset 0 HKL_base/HKL_base/HKL_base>, <gemmi.Mtz.Dataset 1 5e5z/5e5z/1>]
 
 In the MTZ file, each dataset is identified internally by an integer
 "dataset ID". To get dataset with specified ID use function::
@@ -78,7 +107,6 @@ In the MTZ file, each dataset is identified internally by an integer
   Dataset& Mtz::dataset(int id)
 
 .. doctest::
-  :skipif: no_mtz_file
 
   >>> mtz.dataset(0)
   <gemmi.Mtz.Dataset 0 HKL_base/HKL_base/HKL_base>
@@ -97,7 +125,6 @@ Dataset has a few properties that can be accessed directly::
 Python bindings provide the same properties:
 
 .. doctest::
-  :skipif: no_mtz_file
 
   >>> mtz.dataset(0).project_name
   'HKL_base'
@@ -106,7 +133,7 @@ Python bindings provide the same properties:
   >>> mtz.dataset(0).dataset_name
   'HKL_base'
   >>> mtz.dataset(0).cell
-  <gemmi.UnitCell(70.166, 92.451, 93.715, 63.586, 72.425, 72.884)>
+  <gemmi.UnitCell(9.643, 9.609, 19.029, 90, 101.224, 90)>
   >>> mtz.dataset(0).wavelength
   0.0
 
@@ -116,22 +143,20 @@ Columns are stored in variable ``columns``::
   std::vector<Mtz::Column> Mtz::columns
 
 .. doctest::
-  :skipif: no_mtz_file
 
   >>> mtz.columns[0]
   <gemmi.Mtz.Column H type H>
   >>> len(mtz.columns)
-  6
+  8
 
 To get the first column with the specified label or type use functions:
 
 .. doctest::
-  :skipif: no_mtz_file
 
   >>> mtz.column_with_label('FREE')
   <gemmi.Mtz.Column FREE type I>
-  >>> mtz.column_with_type('Q')
-  <gemmi.Mtz.Column SIGI type Q>
+  >>> mtz.columns_with_type('Q')
+  MtzColumnRefs[<gemmi.Mtz.Column SIGFP type Q>, <gemmi.Mtz.Column SIGI type Q>]
 
 Column has properties read from MTZ headers COLUMN and COLSRC::
 
@@ -148,7 +173,6 @@ Column has properties read from MTZ headers COLUMN and COLSRC::
 Python bindings provide the same properties:
 
 .. doctest::
-  :skipif: no_mtz_file
 
   >>> intensity = mtz.column_with_label('I')
   >>> intensity.dataset_id
@@ -158,27 +182,35 @@ Python bindings provide the same properties:
   >>> intensity.label
   'I'
   >>> intensity.min_value, intensity.max_value
-  (-513.5999755859375, 138805.0)
+  (-0.30090001225471497, 216.60499572753906)
   >>> intensity.source
-  'CREATED_31/01/2019_20:31:27'
+  'CREATED_17/05/2019_12:15:14'
+
+C++ function ``Mtz::Column::size()`` is wrapped in Python as ``__len__``:
+
+.. doctest::
+
+  >>> len(intensity)
+  441
 
 In both C++ and Python ``Column`` supports the iteration protocol:
 
 .. doctest::
-  :skipif: no_mtz_file
+  :skipif: numpy is None
 
-  >>> sum(intensity) / len(intensity)
-  2665.906147073007
+  >>> [x for x in intensity if x > 100]
+  [124.25700378417969, 100.08699798583984, 216.60499572753906]
+  >>> numpy.nanmean(intensity)
+  11.505858
 
 In Python we also have a read-only ``array`` property that provides
 a view of the data compatible with NumPy. It does not copy the data,
 so the data is not contiguous (because it's stored row-wise in MTZ):
 
 .. doctest::
-  :skipif: no_mtz_file
 
   >>> intensity.array.strides
-  (24,)
+  (32,)
 
 Here is an example that uses the array property
 to make a plot similar to `AUSPEX <http://www.auspex.de/>`_:
@@ -200,7 +232,7 @@ For example, to view the data as 2D NumPy array (C-style contiguous)
 without copying do:
 
 .. doctest::
-  :skipif: no_mtz_file
+  :skipif: numpy is None
 
   >>> import numpy
   >>> all_data = numpy.array(mtz, copy=False)
@@ -209,7 +241,7 @@ It helps to have labels on the columns. A good data structure for this
 is Pandas DataFrame:
 
 .. doctest::
-  :skipif: no_mtz_file
+  :skipif: pandas is None
 
   >>> import pandas
   >>> df = pandas.DataFrame(data=all_data, columns=mtz.column_labels())
@@ -286,6 +318,7 @@ but they need to be converted at some point anyway -- the MTZ format
 stores all numbers as 32-bit floats).
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> data = numpy.array([[4, 13, 8, 1, 453.9, 19.12],
   ...                     [4, 13, 9, 0, 102.0, 27.31]], numpy.float)
@@ -309,7 +342,6 @@ In C++, the MTZ file can be written to a file using one of the functions::
 and in Python using:
 
 .. doctest::
-  :skipif: no_mtz_file
 
   >>> mtz.write_to_file('output.mtz')
 
@@ -326,16 +358,18 @@ or ``r1abcsf.ent`` (if downloaded through PDBe website or through FTP).
 
 SF mmCIF files usually contain one block, but may have
 multiple blocks, for example merged and unmerged data in separate blocks.
-Usually blocks contain information about the unit cell and space group,
-sometimes also about the radiation wavelength.
-Usually, the reflections are listed as mmCIF category ``_refln``,
-but in some blocks the ``_diffrn_refln`` category is used
-to provide intensities.
+Merged and unmerged data is expected in mmCIF categories ``_refln``
+and ``_diffrn_refln``, respectively.
+Usually, also the unit cell, space group, and sometimes the radiation
+wavelength is recorded.
 
 The support for SF mmCIF files in Gemmi is built on top of the generic
-support for CIF files. We have class ``ReflnBlock`` that wraps ``cif::Block``
-and a function ``as_refln_blocks``. In C++::
+support for the CIF format.
+We have class ``ReflnBlock`` that wraps ``cif::Block``
+and a function ``as_refln_blocks``::
 
+  // in C++ it can be called:
+  // auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(path).blocks);
   std::vector<ReflnBlock> as_refln_blocks(std::vector<cif::Block>&& blocks)
 
 In Python this function takes ``cif.Document`` as an argument:
@@ -371,7 +405,81 @@ to initialize the following properties:
   >>> rblock.wavelength
   0.9791
 
+To check if block has either merged or unmerged data, in C++ use function
+``ok()``, and in Python:
 
+.. doctest::
+
+  >>> bool(rblock)
+  True
+
+Normally, one block has only one type of data, merged and unmerged.
+Which one is used can be checked with the function:
+
+.. doctest::
+
+  >>> rblock.is_unmerged()
+  False
+
+But it is syntactically correct to have both types of data two tables
+in one block.  In such case you can switch with table is used:
+
+.. doctest::
+
+  >>> rblock.use_unmerged(True)
+  >>> rblock.use_unmerged(False)
+
+Finally, ReflnBlock has functions for working with the data table::
+
+  std::vector<std::string> ReflnBlock::column_labels() const
+
+  size_t ReflnBlock::get_column_index(const std::string& tag) const
+
+  template<typename T>
+  std::vector<T> ReflnBlock::make_vector(const std::string& tag, T null) const
+
+  std::vector<std::array<int,3>> ReflnBlock::make_index_vector() const
+
+  std::vector<double> ReflnBlock::make_1_d2_vector() const
+
+We will describe these functions while going through its Python equivalents.
+``column_labels()`` returns list of tags associated with the columns,
+excluding the category part. Unlike in the MTZ format, here the tags
+must be unique.
+
+.. doctest::
+
+  >>> rblock.column_labels()
+  ['crystal_id', 'wavelength_id', 'scale_group_code', 'index_h', 'index_k', 'index_l', 'status', 'pdbx_r_free_flag', 'F_meas_au', 'F_meas_sigma_au', 'F_calc_au', 'phase_calc', 'pdbx_FWT', 'pdbx_PHWT', 'pdbx_DELFWT', 'pdbx_DELPHWT', 'fom']
+
+All the data is stored as strings. We can get integer or real values from
+the selected column in an array. In Python -- in NumPy array:
+
+.. doctest::
+  :skipif: numpy is None
+  :hide:
+
+  >>> numpy.set_printoptions(threshold=5)
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> rblock.make_array_int('index_h', -1000)  # 2nd arg - value for nulls
+  array([-26, -26, -26, ...,  25,  26,  26], dtype=int32)
+
+  >>> rblock.make_array_float('F_meas_au')  # by default, null values -> NAN
+  array([12.66, 13.82, 24.11, ...,   nan,  9.02,   nan])
+  >>> rblock.make_array_float('F_meas_au', 0.0)  # use 0.0 for nulls
+  array([12.66, 13.82, 24.11, ...,  0.  ,  9.02,  0.  ])
+
+We also have a convenience function that returns array of 1/d^2 values:
+
+.. doctest::
+
+  >>> rblock.make_1_d2_array().round(4)
+  array([0.2681, 0.2677, 0.2768, ..., 0.301 , 0.2782, 0.2978])
+
+Now a full example.
 The script below renders the same colorful *I*/*σ* image as in the previous
 section, but it can take as an argument a file downloaded directly from
 the wwPDB (for example,
