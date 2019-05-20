@@ -748,6 +748,11 @@ struct Structure {
     models.erase(impl::find_iter(models, model_name));
   }
 
+  void renumber_models() {
+    for (size_t i = 0; i != models.size(); ++i)
+      models[i].name = std::to_string(i+1);
+  }
+
   Entity* get_entity(const std::string& ent_id) {
     return impl::find_or_null(entities, ent_id);
   }

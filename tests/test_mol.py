@@ -385,7 +385,7 @@ class TestMol(unittest.TestCase):
     def test_add_remove(self):
         st = gemmi.read_pdb_string(SSBOND_FRAGMENT)
         st.add_model(st[0])
-        st[1].name = '2'
+        st.renumber_models()
         res = st[0].sole_residue('A', gemmi.SeqId('310'))
         self.assertEqual(len(res), 1)
         del res['SG']
@@ -395,8 +395,10 @@ class TestMol(unittest.TestCase):
         self.assertEqual(len(st), 2)
         self.assertEqual(st[0].name, '1')
         del st['1']
-        self.assertEqual(st[0].name, '2')
         self.assertEqual(len(st), 1)
+        self.assertEqual(st[0].name, '2')
+        st.renumber_models()
+        self.assertEqual(st[0].name, '1')
 
     def test_remove2(self):
         model = gemmi.read_structure(full_path('1pfe.cif.gz'))[0]

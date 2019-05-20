@@ -145,6 +145,7 @@ void add_mol(py::module& m) {
             pos = st.models.size();
           st.models.insert(st.models.begin() + pos, model);
          }, py::arg("model"), py::arg("pos")=-1)
+    .def("renumber_models", &Structure::renumber_models)
     .def("merge_chain_parts", &Structure::merge_chain_parts,
          py::arg("min_sep")=0)
     .def("make_pdb_headers", &make_pdb_headers)
