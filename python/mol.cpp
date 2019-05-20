@@ -140,6 +140,11 @@ void add_mol(py::module& m) {
     .def("__delitem__", &Structure::remove_model, py::arg("name"))
     .def("find_or_add_model", &Structure::find_or_add_model,
          py::arg("name"), py::return_value_policy::reference_internal)
+    .def("add_model", [](Structure& st, const Model& model, int pos) {
+          if (pos < 0 || (size_t) pos > st.models.size())
+            pos = st.models.size();
+          st.models.insert(st.models.begin() + pos, model);
+         }, py::arg("model"), py::arg("pos")=-1)
     .def("merge_chain_parts", &Structure::merge_chain_parts,
          py::arg("min_sep")=0)
     .def("make_pdb_headers", &make_pdb_headers)

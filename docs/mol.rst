@@ -890,8 +890,8 @@ Writing:
 Model - Chain - Residue - Atom
 ==============================
 
-Hierarchy
----------
+Introduction
+------------
 
 The most useful representation for working with macromolecular models
 is a hierarchy of objects.
@@ -1041,6 +1041,18 @@ In Python these functions are wrapped as ``__getitem__`` and ``__delitem__``:
   >>> structure['1']
   <gemmi.Model 1 with 6 chain(s)>
   >>> del structure['1']
+
+To add a model the the structure, in C++ use directly methods of::
+
+  std::vector<Model> Structure::models
+
+and in Python use:
+
+.. code-block:: python
+
+  Structure.add_model(model, pos=-1)
+
+----
 
 Entity is a new concept introduced in the mmCIF format.
 If the structure is read from a PDB file, we can assign entities
