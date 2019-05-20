@@ -56,9 +56,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 
-#ifdef __GNUC__
+#if defined(__GNUC__)
 #define NOINLINE __attribute__((noinline))
 #define restrict __restrict__
+#elif defined(_MSC_VER)
+#define NOINLINE __declspec(noinline)
+#define restrict __restrict
 #else
 #define NOINLINE
 #define restrict
@@ -66,15 +69,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace pocketfft {
 
-using shape_t = std::vector<std::size_t>;
-using stride_t = std::vector<std::ptrdiff_t>;
-
-constexpr bool FORWARD  = true,
-               BACKWARD = false;
-
 namespace detail {
 
 using namespace std;
+
+using shape_t = vector<size_t>;
+using stride_t = vector<ptrdiff_t>;
+
+constexpr bool FORWARD  = true,
+               BACKWARD = false;
 
 #ifndef POCKETFFT_NO_VECTORS
 #if (defined(__AVX512F__))
@@ -97,29 +100,48 @@ template<typename T> class arr
     T *p;
     size_t sz;
 
+#if defined(POCKETFFT_NO_VECTORS)
     static T *ralloc(size_t num)
       {
       if (num==0) return nullptr;
-#ifdef POCKETFFT_NO_VECTORS
       void *res = malloc(num*sizeof(T));
       if (!res) throw bad_alloc();
-#else
-#if __cplusplus >= 201703L
-      void *res = aligned_alloc(64,num*sizeof(T));
-      if (!res) throw bad_alloc();
-#elif defined(_WIN32)
-      void *res = _aligned_malloc(num*sizeof(T), 64);
-      if (!res) throw bad_alloc();
-#else
-      void *res(nullptr);
-      if (posix_memalign(&res, 64, num*sizeof(T))!=0)
-        throw bad_alloc();
-#endif
-#endif
       return reinterpret_cast<T *>(res);
       }
     static void dealloc(T *ptr)
       { free(ptr); }
+#elif __cplusplus >= 201703L
+    static T *ralloc(size_t num)
+      {
+      if (num==0) return nullptr;
+      void *res = aligned_alloc(64,num*sizeof(T));
+      if (!res) throw bad_alloc();
+      return reinterpret_cast<T *>(res);
+      }
+    static void dealloc(T *ptr)
+      { free(ptr); }
+#elif defined(_WIN32)
+    static T *ralloc(size_t num)
+      {
+      if (num==0) return nullptr;
+      void *res = _aligned_malloc(num*sizeof(T), 64);
+      if (!res) throw bad_alloc();
+      return reinterpret_cast<T *>(res);
+      }
+    static void dealloc(T *ptr)
+      { _aligned_free(ptr); }
+#else
+    static T *ralloc(size_t num)
+      {
+      if (num==0) return nullptr;
+      void *res(nullptr);
+      if (posix_memalign(&res, 64, num*sizeof(T))!=0)
+        throw bad_alloc();
+      return reinterpret_cast<T *>(res);
+      }
+    static void dealloc(T *ptr)
+      { free(ptr); }
+#endif
 
   public:
     arr() : p(0), sz(0) {}
@@ -1099,9 +1121,13 @@ template<typename T0> class rfftp
       { fact.push_back({factor, nullptr, nullptr}); }
 
 #define WA(x,i) wa[(i)+(x)*(ido-1)]
-#define PM(a,b,c,d) { a=c+d; b=c-d; }
+template<typename T> inline void PM(T &a, T &b, T c, T d)
+  { a=c+d; b=c-d; }
+
 /* (a+ib) = conj(c+id) * (e+if) */
-#define MULPM(a,b,c,d,e,f) { a=c*e+d*f; b=c*f-d*e; }
+template<typename T1, typename T2, typename T3> inline void MULPM
+  (T1 &a, T1 &b, T2 c, T2 d, T3 e, T3 f)
+  {  a=c*e+d*f; b=c*f-d*e; }
 
 #define CC(a,b,c) cc[(a)+ido*((b)+l1*(c))]
 #define CH(a,b,c) ch[(a)+ido*((b)+cdim*(c))]
@@ -1112,7 +1138,7 @@ template<typename T> void radf2 (size_t ido, size_t l1,
   constexpr size_t cdim=2;
 
   for (size_t k=0; k<l1; k++)
-    PM (CH(0,0,k),CH(ido-1,1,k),CC(0,k,0),CC(0,k,1))
+    PM (CH(0,0,k),CH(ido-1,1,k),CC(0,k,0),CC(0,k,1));
   if ((ido&1)==0)
     for (size_t k=0; k<l1; k++)
       {
@@ -1125,9 +1151,9 @@ template<typename T> void radf2 (size_t ido, size_t l1,
       {
       size_t ic=ido-i;
       T tr2, ti2;
-      MULPM (tr2,ti2,WA(0,i-2),WA(0,i-1),CC(i-1,k,1),CC(i,k,1))
-      PM (CH(i-1,0,k),CH(ic-1,1,k),CC(i-1,k,0),tr2)
-      PM (CH(i  ,0,k),CH(ic  ,1,k),ti2,CC(i  ,k,0))
+      MULPM (tr2,ti2,WA(0,i-2),WA(0,i-1),CC(i-1,k,1),CC(i,k,1));
+      PM (CH(i-1,0,k),CH(ic-1,1,k),CC(i-1,k,0),tr2);
+      PM (CH(i  ,0,k),CH(ic  ,1,k),ti2,CC(i  ,k,0));
       }
   }
 
@@ -1150,8 +1176,8 @@ template<typename T> void radf3(size_t ido, size_t l1,
       {
       size_t ic=ido-i;
       T di2, di3, dr2, dr3;
-      MULPM (dr2,di2,WA(0,i-2),WA(0,i-1),CC(i-1,k,1),CC(i,k,1)) // d2=conj(WA0)*CC1
-      MULPM (dr3,di3,WA(1,i-2),WA(1,i-1),CC(i-1,k,2),CC(i,k,2)) // d3=conj(WA1)*CC2
+      MULPM (dr2,di2,WA(0,i-2),WA(0,i-1),CC(i-1,k,1),CC(i,k,1)); // d2=conj(WA0)*CC1
+      MULPM (dr3,di3,WA(1,i-2),WA(1,i-1),CC(i-1,k,2),CC(i,k,2)); // d3=conj(WA1)*CC2
       T cr2=dr2+dr3; // c add
       T ci2=di2+di3;
       CH(i-1,0,k) = CC(i-1,k,0)+cr2; // c add
@@ -1160,8 +1186,8 @@ template<typename T> void radf3(size_t ido, size_t l1,
       T ti2 = CC(i  ,k,0)+taur*ci2;
       T tr3 = taui*(di2-di3);  // t3 = taui*i*(d3-d2)?
       T ti3 = taui*(dr3-dr2);
-      PM(CH(i-1,2,k),CH(ic-1,1,k),tr2,tr3) // PM(i) = t2+t3
-      PM(CH(i  ,2,k),CH(ic  ,1,k),ti3,ti2) // PM(ic) = conj(t2-t3)
+      PM(CH(i-1,2,k),CH(ic-1,1,k),tr2,tr3); // PM(i) = t2+t3
+      PM(CH(i  ,2,k),CH(ic  ,1,k),ti3,ti2); // PM(ic) = conj(t2-t3)
       }
   }
 
@@ -1174,17 +1200,17 @@ template<typename T> void radf4(size_t ido, size_t l1,
   for (size_t k=0; k<l1; k++)
     {
     T tr1,tr2;
-    PM (tr1,CH(0,2,k),CC(0,k,3),CC(0,k,1))
-    PM (tr2,CH(ido-1,1,k),CC(0,k,0),CC(0,k,2))
-    PM (CH(0,0,k),CH(ido-1,3,k),tr2,tr1)
+    PM (tr1,CH(0,2,k),CC(0,k,3),CC(0,k,1));
+    PM (tr2,CH(ido-1,1,k),CC(0,k,0),CC(0,k,2));
+    PM (CH(0,0,k),CH(ido-1,3,k),tr2,tr1);
     }
   if ((ido&1)==0)
     for (size_t k=0; k<l1; k++)
       {
       T ti1=-hsqt2*(CC(ido-1,k,1)+CC(ido-1,k,3));
       T tr1= hsqt2*(CC(ido-1,k,1)-CC(ido-1,k,3));
-      PM (CH(ido-1,0,k),CH(ido-1,2,k),CC(ido-1,k,0),tr1)
-      PM (CH(    0,3,k),CH(    0,1,k),ti1,CC(ido-1,k,2))
+      PM (CH(ido-1,0,k),CH(ido-1,2,k),CC(ido-1,k,0),tr1);
+      PM (CH(    0,3,k),CH(    0,1,k),ti1,CC(ido-1,k,2));
       }
   if (ido<=2) return;
   for (size_t k=0; k<l1; k++)
@@ -1192,17 +1218,17 @@ template<typename T> void radf4(size_t ido, size_t l1,
       {
       size_t ic=ido-i;
       T ci2, ci3, ci4, cr2, cr3, cr4, ti1, ti2, ti3, ti4, tr1, tr2, tr3, tr4;
-      MULPM(cr2,ci2,WA(0,i-2),WA(0,i-1),CC(i-1,k,1),CC(i,k,1))
-      MULPM(cr3,ci3,WA(1,i-2),WA(1,i-1),CC(i-1,k,2),CC(i,k,2))
-      MULPM(cr4,ci4,WA(2,i-2),WA(2,i-1),CC(i-1,k,3),CC(i,k,3))
-      PM(tr1,tr4,cr4,cr2)
-      PM(ti1,ti4,ci2,ci4)
-      PM(tr2,tr3,CC(i-1,k,0),cr3)
-      PM(ti2,ti3,CC(i  ,k,0),ci3)
-      PM(CH(i-1,0,k),CH(ic-1,3,k),tr2,tr1)
-      PM(CH(i  ,0,k),CH(ic  ,3,k),ti1,ti2)
-      PM(CH(i-1,2,k),CH(ic-1,1,k),tr3,ti4)
-      PM(CH(i  ,2,k),CH(ic  ,1,k),tr4,ti3)
+      MULPM(cr2,ci2,WA(0,i-2),WA(0,i-1),CC(i-1,k,1),CC(i,k,1));
+      MULPM(cr3,ci3,WA(1,i-2),WA(1,i-1),CC(i-1,k,2),CC(i,k,2));
+      MULPM(cr4,ci4,WA(2,i-2),WA(2,i-1),CC(i-1,k,3),CC(i,k,3));
+      PM(tr1,tr4,cr4,cr2);
+      PM(ti1,ti4,ci2,ci4);
+      PM(tr2,tr3,CC(i-1,k,0),cr3);
+      PM(ti2,ti3,CC(i  ,k,0),ci3);
+      PM(CH(i-1,0,k),CH(ic-1,3,k),tr2,tr1);
+      PM(CH(i  ,0,k),CH(ic  ,3,k),ti1,ti2);
+      PM(CH(i-1,2,k),CH(ic-1,1,k),tr3,ti4);
+      PM(CH(i  ,2,k),CH(ic  ,1,k),tr4,ti3);
       }
   }
 
@@ -1218,8 +1244,8 @@ template<typename T> void radf5(size_t ido, size_t l1,
   for (size_t k=0; k<l1; k++)
     {
     T cr2, cr3, ci4, ci5;
-    PM (cr2,ci5,CC(0,k,4),CC(0,k,1))
-    PM (cr3,ci4,CC(0,k,3),CC(0,k,2))
+    PM (cr2,ci5,CC(0,k,4),CC(0,k,1));
+    PM (cr3,ci4,CC(0,k,3),CC(0,k,2));
     CH(0,0,k)=CC(0,k,0)+cr2+cr3;
     CH(ido-1,1,k)=CC(0,k,0)+tr11*cr2+tr12*cr3;
     CH(0,2,k)=ti11*ci5+ti12*ci4;
@@ -1233,26 +1259,26 @@ template<typename T> void radf5(size_t ido, size_t l1,
       T ci2, di2, ci4, ci5, di3, di4, di5, ci3, cr2, cr3, dr2, dr3,
         dr4, dr5, cr5, cr4, ti2, ti3, ti5, ti4, tr2, tr3, tr4, tr5;
       size_t ic=ido-i;
-      MULPM (dr2,di2,WA(0,i-2),WA(0,i-1),CC(i-1,k,1),CC(i,k,1))
-      MULPM (dr3,di3,WA(1,i-2),WA(1,i-1),CC(i-1,k,2),CC(i,k,2))
-      MULPM (dr4,di4,WA(2,i-2),WA(2,i-1),CC(i-1,k,3),CC(i,k,3))
-      MULPM (dr5,di5,WA(3,i-2),WA(3,i-1),CC(i-1,k,4),CC(i,k,4))
-      PM(cr2,ci5,dr5,dr2)
-      PM(ci2,cr5,di2,di5)
-      PM(cr3,ci4,dr4,dr3)
-      PM(ci3,cr4,di3,di4)
+      MULPM (dr2,di2,WA(0,i-2),WA(0,i-1),CC(i-1,k,1),CC(i,k,1));
+      MULPM (dr3,di3,WA(1,i-2),WA(1,i-1),CC(i-1,k,2),CC(i,k,2));
+      MULPM (dr4,di4,WA(2,i-2),WA(2,i-1),CC(i-1,k,3),CC(i,k,3));
+      MULPM (dr5,di5,WA(3,i-2),WA(3,i-1),CC(i-1,k,4),CC(i,k,4));
+      PM(cr2,ci5,dr5,dr2);
+      PM(ci2,cr5,di2,di5);
+      PM(cr3,ci4,dr4,dr3);
+      PM(ci3,cr4,di3,di4);
       CH(i-1,0,k)=CC(i-1,k,0)+cr2+cr3;
       CH(i  ,0,k)=CC(i  ,k,0)+ci2+ci3;
       tr2=CC(i-1,k,0)+tr11*cr2+tr12*cr3;
       ti2=CC(i  ,k,0)+tr11*ci2+tr12*ci3;
       tr3=CC(i-1,k,0)+tr12*cr2+tr11*cr3;
       ti3=CC(i  ,k,0)+tr12*ci2+tr11*ci3;
-      MULPM(tr5,tr4,cr5,cr4,ti11,ti12)
-      MULPM(ti5,ti4,ci5,ci4,ti11,ti12)
-      PM(CH(i-1,2,k),CH(ic-1,1,k),tr2,tr5)
-      PM(CH(i  ,2,k),CH(ic  ,1,k),ti5,ti2)
-      PM(CH(i-1,4,k),CH(ic-1,3,k),tr3,tr4)
-      PM(CH(i  ,4,k),CH(ic  ,3,k),ti4,ti3)
+      MULPM(tr5,tr4,cr5,cr4,ti11,ti12);
+      MULPM(ti5,ti4,ci5,ci4,ti11,ti12);
+      PM(CH(i-1,2,k),CH(ic-1,1,k),tr2,tr5);
+      PM(CH(i  ,2,k),CH(ic  ,1,k),ti5,ti2);
+      PM(CH(i-1,4,k),CH(ic-1,3,k),tr3,tr4);
+      PM(CH(i  ,4,k),CH(ic  ,3,k),ti4,ti3);
       }
   }
 
@@ -1414,7 +1440,7 @@ template<typename T> void radb2(size_t ido, size_t l1, const T * restrict cc,
   constexpr size_t cdim=2;
 
   for (size_t k=0; k<l1; k++)
-    PM (CH(0,k,0),CH(0,k,1),CC(0,0,k),CC(ido-1,1,k))
+    PM (CH(0,k,0),CH(0,k,1),CC(0,0,k),CC(ido-1,1,k));
   if ((ido&1)==0)
     for (size_t k=0; k<l1; k++)
       {
@@ -1427,9 +1453,9 @@ template<typename T> void radb2(size_t ido, size_t l1, const T * restrict cc,
       {
       size_t ic=ido-i;
       T ti2, tr2;
-      PM (CH(i-1,k,0),tr2,CC(i-1,0,k),CC(ic-1,1,k))
-      PM (ti2,CH(i  ,k,0),CC(i  ,0,k),CC(ic  ,1,k))
-      MULPM (CH(i,k,1),CH(i-1,k,1),WA(0,i-2),WA(0,i-1),ti2,tr2)
+      PM (CH(i-1,k,0),tr2,CC(i-1,0,k),CC(ic-1,1,k));
+      PM (ti2,CH(i  ,k,0),CC(i  ,0,k),CC(ic  ,1,k));
+      MULPM (CH(i,k,1),CH(i-1,k,1),WA(0,i-2),WA(0,i-1),ti2,tr2);
       }
   }
 
@@ -1461,10 +1487,10 @@ template<typename T> void radb3(size_t ido, size_t l1,
       T cr3=taui*(CC(i-1,2,k)-CC(ic-1,1,k));// c3=taui*(CC(i)-conj(CC(ic)))
       T ci3=taui*(CC(i  ,2,k)+CC(ic  ,1,k));
       T di2, di3, dr2, dr3;
-      PM(dr3,dr2,cr2,ci3) // d2= (cr2-ci3, ci2+cr3) = c2+i*c3
-      PM(di2,di3,ci2,cr3) // d3= (cr2+ci3, ci2-cr3) = c2-i*c3
-      MULPM(CH(i,k,1),CH(i-1,k,1),WA(0,i-2),WA(0,i-1),di2,dr2) // ch = WA*d2
-      MULPM(CH(i,k,2),CH(i-1,k,2),WA(1,i-2),WA(1,i-1),di3,dr3)
+      PM(dr3,dr2,cr2,ci3); // d2= (cr2-ci3, ci2+cr3) = c2+i*c3
+      PM(di2,di3,ci2,cr3); // d3= (cr2+ci3, ci2-cr3) = c2-i*c3
+      MULPM(CH(i,k,1),CH(i-1,k,1),WA(0,i-2),WA(0,i-1),di2,dr2); // ch = WA*d2
+      MULPM(CH(i,k,2),CH(i-1,k,2),WA(1,i-2),WA(1,i-1),di3,dr3);
       }
   }
 
@@ -1477,18 +1503,18 @@ template<typename T> void radb4(size_t ido, size_t l1,
   for (size_t k=0; k<l1; k++)
     {
     T tr1, tr2;
-    PM (tr2,tr1,CC(0,0,k),CC(ido-1,3,k))
+    PM (tr2,tr1,CC(0,0,k),CC(ido-1,3,k));
     T tr3=2*CC(ido-1,1,k);
     T tr4=2*CC(0,2,k);
-    PM (CH(0,k,0),CH(0,k,2),tr2,tr3)
-    PM (CH(0,k,3),CH(0,k,1),tr1,tr4)
+    PM (CH(0,k,0),CH(0,k,2),tr2,tr3);
+    PM (CH(0,k,3),CH(0,k,1),tr1,tr4);
     }
   if ((ido&1)==0)
     for (size_t k=0; k<l1; k++)
       {
       T tr1,tr2,ti1,ti2;
-      PM (ti1,ti2,CC(0    ,3,k),CC(0    ,1,k))
-      PM (tr2,tr1,CC(ido-1,0,k),CC(ido-1,2,k))
+      PM (ti1,ti2,CC(0    ,3,k),CC(0    ,1,k));
+      PM (tr2,tr1,CC(ido-1,0,k),CC(ido-1,2,k));
       CH(ido-1,k,0)=tr2+tr2;
       CH(ido-1,k,1)=sqrt2*(tr1-ti1);
       CH(ido-1,k,2)=ti2+ti2;
@@ -1500,17 +1526,17 @@ template<typename T> void radb4(size_t ido, size_t l1,
       {
       T ci2, ci3, ci4, cr2, cr3, cr4, ti1, ti2, ti3, ti4, tr1, tr2, tr3, tr4;
       size_t ic=ido-i;
-      PM (tr2,tr1,CC(i-1,0,k),CC(ic-1,3,k))
-      PM (ti1,ti2,CC(i  ,0,k),CC(ic  ,3,k))
-      PM (tr4,ti3,CC(i  ,2,k),CC(ic  ,1,k))
-      PM (tr3,ti4,CC(i-1,2,k),CC(ic-1,1,k))
-      PM (CH(i-1,k,0),cr3,tr2,tr3)
-      PM (CH(i  ,k,0),ci3,ti2,ti3)
-      PM (cr4,cr2,tr1,tr4)
-      PM (ci2,ci4,ti1,ti4)
-      MULPM (CH(i,k,1),CH(i-1,k,1),WA(0,i-2),WA(0,i-1),ci2,cr2)
-      MULPM (CH(i,k,2),CH(i-1,k,2),WA(1,i-2),WA(1,i-1),ci3,cr3)
-      MULPM (CH(i,k,3),CH(i-1,k,3),WA(2,i-2),WA(2,i-1),ci4,cr4)
+      PM (tr2,tr1,CC(i-1,0,k),CC(ic-1,3,k));
+      PM (ti1,ti2,CC(i  ,0,k),CC(ic  ,3,k));
+      PM (tr4,ti3,CC(i  ,2,k),CC(ic  ,1,k));
+      PM (tr3,ti4,CC(i-1,2,k),CC(ic-1,1,k));
+      PM (CH(i-1,k,0),cr3,tr2,tr3);
+      PM (CH(i  ,k,0),ci3,ti2,ti3);
+      PM (cr4,cr2,tr1,tr4);
+      PM (ci2,ci4,ti1,ti4);
+      MULPM (CH(i,k,1),CH(i-1,k,1),WA(0,i-2),WA(0,i-1),ci2,cr2);
+      MULPM (CH(i,k,2),CH(i-1,k,2),WA(1,i-2),WA(1,i-1),ci3,cr3);
+      MULPM (CH(i,k,3),CH(i-1,k,3),WA(2,i-2),WA(2,i-1),ci4,cr4);
       }
   }
 
@@ -1533,9 +1559,9 @@ template<typename T> void radb5(size_t ido, size_t l1,
     T cr2=CC(0,0,k)+tr11*tr2+tr12*tr3;
     T cr3=CC(0,0,k)+tr12*tr2+tr11*tr3;
     T ci4, ci5;
-    MULPM(ci5,ci4,ti5,ti4,ti11,ti12)
-    PM(CH(0,k,4),CH(0,k,1),cr2,ci5)
-    PM(CH(0,k,3),CH(0,k,2),cr3,ci4)
+    MULPM(ci5,ci4,ti5,ti4,ti11,ti12);
+    PM(CH(0,k,4),CH(0,k,1),cr2,ci5);
+    PM(CH(0,k,3),CH(0,k,2),cr3,ci4);
     }
   if (ido==1) return;
   for (size_t k=0; k<l1;++k)
@@ -1543,10 +1569,10 @@ template<typename T> void radb5(size_t ido, size_t l1,
       {
       size_t ic=ido-i;
       T tr2, tr3, tr4, tr5, ti2, ti3, ti4, ti5;
-      PM(tr2,tr5,CC(i-1,2,k),CC(ic-1,1,k))
-      PM(ti5,ti2,CC(i  ,2,k),CC(ic  ,1,k))
-      PM(tr3,tr4,CC(i-1,4,k),CC(ic-1,3,k))
-      PM(ti4,ti3,CC(i  ,4,k),CC(ic  ,3,k))
+      PM(tr2,tr5,CC(i-1,2,k),CC(ic-1,1,k));
+      PM(ti5,ti2,CC(i  ,2,k),CC(ic  ,1,k));
+      PM(tr3,tr4,CC(i-1,4,k),CC(ic-1,3,k));
+      PM(ti4,ti3,CC(i  ,4,k),CC(ic  ,3,k));
       CH(i-1,k,0)=CC(i-1,0,k)+tr2+tr3;
       CH(i  ,k,0)=CC(i  ,0,k)+ti2+ti3;
       T cr2=CC(i-1,0,k)+tr11*tr2+tr12*tr3;
@@ -1554,17 +1580,17 @@ template<typename T> void radb5(size_t ido, size_t l1,
       T cr3=CC(i-1,0,k)+tr12*tr2+tr11*tr3;
       T ci3=CC(i  ,0,k)+tr12*ti2+tr11*ti3;
       T ci4, ci5, cr5, cr4;
-      MULPM(cr5,cr4,tr5,tr4,ti11,ti12)
-      MULPM(ci5,ci4,ti5,ti4,ti11,ti12)
+      MULPM(cr5,cr4,tr5,tr4,ti11,ti12);
+      MULPM(ci5,ci4,ti5,ti4,ti11,ti12);
       T dr2, dr3, dr4, dr5, di2, di3, di4, di5;
-      PM(dr4,dr3,cr3,ci4)
-      PM(di3,di4,ci3,cr4)
-      PM(dr5,dr2,cr2,ci5)
-      PM(di2,di5,ci2,cr5)
-      MULPM(CH(i,k,1),CH(i-1,k,1),WA(0,i-2),WA(0,i-1),di2,dr2)
-      MULPM(CH(i,k,2),CH(i-1,k,2),WA(1,i-2),WA(1,i-1),di3,dr3)
-      MULPM(CH(i,k,3),CH(i-1,k,3),WA(2,i-2),WA(2,i-1),di4,dr4)
-      MULPM(CH(i,k,4),CH(i-1,k,4),WA(3,i-2),WA(3,i-1),di5,dr5)
+      PM(dr4,dr3,cr3,ci4);
+      PM(di3,di4,ci3,cr4);
+      PM(dr5,dr2,cr2,ci5);
+      PM(di2,di5,ci2,cr5);
+      MULPM(CH(i,k,1),CH(i-1,k,1),WA(0,i-2),WA(0,i-1),di2,dr2);
+      MULPM(CH(i,k,2),CH(i-1,k,2),WA(1,i-2),WA(1,i-1),di3,dr3);
+      MULPM(CH(i,k,3),CH(i-1,k,3),WA(2,i-2),WA(2,i-1),di4,dr4);
+      MULPM(CH(i,k,4),CH(i-1,k,4),WA(3,i-2),WA(3,i-1),di5,dr5);
       }
   }
 
@@ -1709,8 +1735,6 @@ template<typename T> void radbg(size_t ido, size_t ip, size_t l1,
 #undef CH
 #undef CC
 
-#undef MULPM
-#undef PM
 #undef WA
 
     template<typename T> void copy_and_norm(T *c, T *p1, size_t n, T0 fct)
@@ -2212,9 +2236,15 @@ template<typename T> arr<char> alloc_tmp(const shape_t &shape,
   return arr<char>(tmpsize*elemsize);
   }
 
+#ifdef POCKETFFT_OPENMP
+#define POCKETFFT_NTHREADS nthreads
+#else
+#define POCKETFFT_NTHREADS
+#endif
+
 template<typename T> NOINLINE void general_c(
   const ndarr<cmplx<T>> &in, ndarr<cmplx<T>> &out,
-  const shape_t &axes, bool forward, T fct, size_t nthreads=1)
+  const shape_t &axes, bool forward, T fct, size_t POCKETFFT_NTHREADS)
   {
   unique_ptr<pocketfft_c<T>> plan;
 
@@ -2227,8 +2257,6 @@ template<typename T> NOINLINE void general_c(
 
 #ifdef POCKETFFT_OPENMP
 #pragma omp parallel num_threads(util::thread_count(nthreads, in.shape(), axes[iax]))
-#else
-    (void) nthreads;
 #endif
 {
     auto storage = alloc_tmp<T>(in.shape(), len, sizeof(cmplx<T>));
@@ -2279,7 +2307,7 @@ template<typename T> NOINLINE void general_c(
 
 template<typename T> NOINLINE void general_hartley(
   const ndarr<T> &in, ndarr<T> &out, const shape_t &axes, T fct,
-  size_t nthreads=1)
+  size_t POCKETFFT_NTHREADS)
   {
   unique_ptr<pocketfft_r<T>> plan;
 
@@ -2343,7 +2371,7 @@ template<typename T> NOINLINE void general_hartley(
 
 template<typename T> NOINLINE void general_r2c(
   const ndarr<T> &in, ndarr<cmplx<T>> &out, size_t axis, T fct,
-  size_t nthreads=1)
+  size_t POCKETFFT_NTHREADS)
   {
   pocketfft_r<T> plan(in.shape(axis));
   constexpr auto vlen = VTYPE<T>::vlen;
@@ -2394,15 +2422,13 @@ template<typename T> NOINLINE void general_r2c(
   }
 template<typename T> NOINLINE void general_c2r(
   const ndarr<cmplx<T>> &in, ndarr<T> &out, size_t axis, T fct,
-  size_t nthreads=1)
+  size_t POCKETFFT_NTHREADS)
   {
   pocketfft_r<T> plan(out.shape(axis));
   constexpr auto vlen = VTYPE<T>::vlen;
   size_t len=out.shape(axis);
 #ifdef POCKETFFT_OPENMP
 #pragma omp parallel num_threads(util::thread_count(nthreads, in.shape(), axis))
-#else
-  (void) nthreads;
 #endif
 {
   auto storage = alloc_tmp<T>(out.shape(), len, sizeof(T));
@@ -2452,7 +2478,7 @@ template<typename T> NOINLINE void general_c2r(
 
 template<typename T> NOINLINE void general_r(
   const ndarr<T> &in, ndarr<T> &out, size_t axis, bool forward, T fct,
-  size_t nthreads=1)
+  size_t POCKETFFT_NTHREADS)
   {
   constexpr auto vlen = VTYPE<T>::vlen;
   size_t len=in.shape(axis);
@@ -2505,16 +2531,14 @@ template<typename T> NOINLINE void general_r(
 } // end of parallel region
   }
 
+#undef POCKETFFT_NTHREADS
 #undef HAVE_VECSUPPORT
-
-} // namespace detail
 
 template<typename T> void c2c(const shape_t &shape, const stride_t &stride_in,
   const stride_t &stride_out, const shape_t &axes, bool forward,
-  const std::complex<T> *data_in, std::complex<T> *data_out, T fct,
+  const complex<T> *data_in, complex<T> *data_out, T fct,
   size_t nthreads=1)
   {
-  using namespace detail;
   if (util::prod(shape)==0) return;
   util::sanity_check(shape, stride_in, stride_out, data_in==data_out, axes);
   ndarr<cmplx<T>> ain(data_in, shape, stride_in),
@@ -2524,9 +2548,8 @@ template<typename T> void c2c(const shape_t &shape, const stride_t &stride_in,
 
 template<typename T> void r2c(const shape_t &shape_in,
   const stride_t &stride_in, const stride_t &stride_out, size_t axis,
-  const T *data_in, std::complex<T> *data_out, T fct, size_t nthreads=1)
+  const T *data_in, complex<T> *data_out, T fct, size_t nthreads=1)
   {
-  using namespace detail;
   if (util::prod(shape_in)==0) return;
   util::sanity_check(shape_in, stride_in, stride_out, false, axis);
   ndarr<T> ain(data_in, shape_in, stride_in);
@@ -2538,9 +2561,8 @@ template<typename T> void r2c(const shape_t &shape_in,
 
 template<typename T> void r2c(const shape_t &shape_in,
   const stride_t &stride_in, const stride_t &stride_out, const shape_t &axes,
-  const T *data_in, std::complex<T> *data_out, T fct, size_t nthreads=1)
+  const T *data_in, complex<T> *data_out, T fct, size_t nthreads=1)
   {
-  using namespace detail;
   if (util::prod(shape_in)==0) return;
   util::sanity_check(shape_in, stride_in, stride_out, false, axes);
   r2c(shape_in, stride_in, stride_out, axes.back(), data_in, data_out, fct,
@@ -2556,9 +2578,8 @@ template<typename T> void r2c(const shape_t &shape_in,
 
 template<typename T> void c2r(const shape_t &shape_out,
   const stride_t &stride_in, const stride_t &stride_out, size_t axis,
-  const std::complex<T> *data_in, T *data_out, T fct, size_t nthreads=1)
+  const complex<T> *data_in, T *data_out, T fct, size_t nthreads=1)
   {
-  using namespace detail;
   if (util::prod(shape_out)==0) return;
   util::sanity_check(shape_out, stride_in, stride_out, false, axis);
   shape_t shape_in(shape_out);
@@ -2570,9 +2591,8 @@ template<typename T> void c2r(const shape_t &shape_out,
 
 template<typename T> void c2r(const shape_t &shape_out,
   const stride_t &stride_in, const stride_t &stride_out, const shape_t &axes,
-  const std::complex<T> *data_in, T *data_out, T fct, size_t nthreads=1)
+  const complex<T> *data_in, T *data_out, T fct, size_t nthreads=1)
   {
-  using namespace detail;
   if (util::prod(shape_out)==0) return;
   if (axes.size()==1)
     return c2r(shape_out, stride_in, stride_out, axes[0], data_in, data_out,
@@ -2597,7 +2617,6 @@ template<typename T> void r2r_fftpack(const shape_t &shape,
   const stride_t &stride_in, const stride_t &stride_out, size_t axis,
   bool forward, const T *data_in, T *data_out, T fct, size_t nthreads=1)
   {
-  using namespace detail;
   if (util::prod(shape)==0) return;
   util::sanity_check(shape, stride_in, stride_out, data_in==data_out, axis);
   ndarr<T> ain(data_in, shape, stride_in), aout(data_out, shape, stride_out);
@@ -2608,12 +2627,23 @@ template<typename T> void r2r_hartley(const shape_t &shape,
   const stride_t &stride_in, const stride_t &stride_out, const shape_t &axes,
   const T *data_in, T *data_out, T fct, size_t nthreads=1)
   {
-  using namespace detail;
   if (util::prod(shape)==0) return;
   util::sanity_check(shape, stride_in, stride_out, data_in==data_out, axes);
   ndarr<T> ain(data_in, shape, stride_in), aout(data_out, shape, stride_out);
   general_hartley(ain, aout, axes, fct, nthreads);
   }
+
+} // namespace detail
+
+using detail::FORWARD;
+using detail::BACKWARD;
+using detail::shape_t;
+using detail::stride_t;
+using detail::c2c;
+using detail::c2r;
+using detail::r2c;
+using detail::r2r_fftpack;
+using detail::r2r_hartley;
 
 } // namespace pocketfft
 
