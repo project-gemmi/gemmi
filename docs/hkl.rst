@@ -21,7 +21,8 @@ to be performed on the fly.
 Gemmi can read two formats of reflection files:
 
 * MTZ files -- the most popular format in macromolecular crystallography,
-* and mmCIF files -- used for data archiving in the Protein Data Bank.
+* and structure factor mmCIF files -- used for data archiving
+  in the Protein Data Bank.
 
 MTZ
 ===
@@ -34,8 +35,8 @@ The columns of data are grouped hierarchically (Project -> Crystal -> Dataset
 and the hierarchy can be ignored. In Gemmi, the hierarchy is flattened:
 we have a list of columns and a list of datasets.
 Each columns is associated with one dataset, and each dataset have properties
-``project_name`` and ``crystal_name`` (in addition to ``dataset_name``),
-which is enough to construct tree-like hierarchy if needed.
+``project_name`` and ``crystal_name`` (in addition to the ``dataset_name``),
+which is enough to reconstruct tree-like hierarchy if needed.
 
 
 Reading
@@ -70,11 +71,8 @@ The Mtz class has a number of properties read from the MTZ header
   >>> mtz.history     # from history lines
   ['From cif2mtz 17/ 5/2019 12:15:14']
 
-and other properties that are read from the MTZ file, although they could
-be recalculated from the data:
-
-.. doctest::
-
+  >>> # The properties below are also read from the MTZ file,
+  >>> # although they could be recalculated from the data.
   >>> mtz.nreflections   # from MTZ record NCOL
   441
   >>> mtz.min_1_d2       # from RESO
@@ -102,7 +100,7 @@ Datasets are stored in the variable ``datasets``::
   MtzDatasets[<gemmi.Mtz.Dataset 0 HKL_base/HKL_base/HKL_base>, <gemmi.Mtz.Dataset 1 5e5z/5e5z/1>]
 
 In the MTZ file, each dataset is identified internally by an integer
-"dataset ID". To get dataset with specified ID use function::
+"dataset ID". To get dataset with the specified ID use function::
 
   Dataset& Mtz::dataset(int id)
 
@@ -149,12 +147,17 @@ Columns are stored in variable ``columns``::
   >>> len(mtz.columns)
   8
 
-To get the first column with the specified label or type use functions:
+To get the first column with the specified label use functions:
 
 .. doctest::
 
   >>> mtz.column_with_label('FREE')
   <gemmi.Mtz.Column FREE type I>
+
+To get all columns of the specified type use:
+
+.. doctest::
+
   >>> mtz.columns_with_type('Q')
   MtzColumnRefs[<gemmi.Mtz.Column SIGFP type Q>, <gemmi.Mtz.Column SIGI type Q>]
 
@@ -492,9 +495,117 @@ the wwPDB (for example,
 Data on a 3D grid
 =================
 
-TODO
+The reciprocal space data can be alternatively presented on a 3D grid
+indexed by Miller indices.
+Currently, this functionality is limited to a single function,
+but we expect to expand it as we gather more use cases.
+
+In C++, the ``<gemmi/fourier.hpp>`` header defines templated function
+``get_f_phi_on_grid()`` that can be used with both MTZ and SF mmCIF data.
+Here we focus on the usage from Python.
+
+Both Mtz and ReflnBlock classes have method ``get_f_phi_on_grid``
+that takes two column names: for amplitude and phase (assumed to be in degrees),
+and returns a :ref:`Grid <grid>` of complex numbers.
+All the missing values are set to 0.
+
+.. doctest::
+
+  >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT')
+  <gemmi.ComplexGrid(54, 6, 18)>
+
+Two optional parameters can be specified. One is minimal size of the grid:
+
+.. doctest::
+
+  >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', min_size=[64,8,0])
+  <gemmi.ComplexGrid(64, 8, 18)>
+
+the other is the ``half_l`` flag is used to shrink the size of the grid.
+With this flag set only data with non-negative index l are returned.
+If the data data is Hermitian, i.e. if it is a Fourier transform of
+the real data (electron density), the full data can be restored by setting
+values of missing (h k l) reflections to the conjugate values of its
+Friedel mates (-h -k -l).
+
+.. doctest::
+
+  >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', half_l=True)
+  <gemmi.ComplexGrid(54, 6, 10)>
+
+When set together with ``half_l=True``, the ``min_size`` still refers
+to the full size.
+
+As an example, we will use numpy.fft to calculate electron density map
+from map coefficients. Let say we want the map on a grid 72x8x24 (oversampled
+by 1/3).
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> full = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', min_size=[72, 8, 24])
+  >>> array = numpy.array(full, copy=False)
+  >>> complex_map = numpy.fft.ifftn(array.conj())
+  >>> scale_factor = complex_map.size / full.unit_cell.volume
+  >>> real_map = numpy.real(complex_map) * scale_factor
+  >>> round(real_map[1][2][3], 5)
+  -0.40554
+  >>> round(real_map.std(), 5)
+  0.66338
+
+Above, we could use ``fftn(array)`` instead of ``ifftn(array.conj())``,
+but the inverse FFT is more appropriate here (or so I think).
+
+Since the data is Hermitian, using complex-to-complex FFT is equivant to
+using complex-to-real FFT on a half of the data:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> half = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', half_l=True, min_size=[72, 8, 24])
+  >>> array = numpy.array(half, copy=False)
+  >>> real_map = numpy.fft.irfftn(array.conj()) * scale_factor
+  >>> round(real_map[1][2][3], 5)
+  -0.40554
+  >>> round(real_map.std(), 5)
+  0.66338
 
 FFT
 ===
 
-TODO
+Gemmi is using the `PocketFFT <https://gitlab.mpcdf.mpg.de/mtr/pocketfft>`_
+library to transform between real space and reciprocal space.
+This library was picked after evaluation and tedious
+`benchmarking of many FFT libraries <https://github.com/project-gemmi/benchmarking-fft>`_.
+
+In C++, the relevant functions are in the ``<gemmi/fourier.hpp>`` header.
+Like in the previous section, we will cover here only the Python interface.
+
+Analogically to the function introduced in the previous subsection,
+both Mtz and ReflnBlock classes have method ``transform_f_phi_to_map``
+that takes two column names: for amplitude and phase (assumed to be in degrees),
+and returns a :ref:`Grid <grid>` -- but now it is grid of real numbers.
+that represents map in the direct space.
+
+.. doctest::
+
+  >>> rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', min_size=[72, 8, 24])
+  <gemmi.FloatGrid(72, 8, 24)>
+
+Again, this data can be accessed as NumPy 3D array:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> array = numpy.array(_, copy=False)
+  >>> round(array.std(), 5)
+  0.66338
+
+Alternatively, it can be be written as CCP4 map (for the whole unit cell):
+
+.. doctest::
+
+  >>> ccp4 = gemmi.Ccp4Map()
+  >>> ccp4.grid = rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', min_size=[72, 8, 24])
+  >>> ccp4.update_ccp4_header(2, True)
+  >>> ccp4.write_ccp4_map('5wkd.ccp4')

@@ -2,6 +2,8 @@
 Grids and maps
 ##############
 
+.. _grid:
+
 Volumetric grid
 ===============
 

@@ -45,7 +45,7 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
             /*denser=*/true);
     if (half_l)
       size[2] = size[2] / 2 + 1;
-    // make H is fast and L is slow here -- not ideal
+    // index H is fast and L is slow here -- not ideal
     grid.set_size_without_checking(size[0], size[1], size[2]);
     grid.full_canonical = false; // disable some real-space functionality
   }
@@ -100,10 +100,9 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
 template<typename T>
 Grid<T> transform_f_phi_half_to_map(Grid<std::complex<T>>&& hkl) {
   Grid<T> map;
-  T norm = T(1.0 / map.unit_cell.volume);
   // x -> conj(x) is equivalent to changing axis direction before FFT
   for (std::complex<T>& x : hkl.data)
-    x = {norm * x.real(), -norm * x.imag()};
+    x.imag(-x.imag());
   map.spacegroup = hkl.spacegroup;
   map.unit_cell = hkl.unit_cell;
   int full_nw = 2 * (hkl.nw - 1);
@@ -116,9 +115,19 @@ Grid<T> transform_f_phi_half_to_map(Grid<std::complex<T>>&& hkl) {
                     &hkl.data[0], &hkl.data[0], 1.0f);
   pocketfft::stride_t stride_out{hkl.nv * hkl.nu * s, hkl.nu * s, s};
   shape[0] = full_nw;
+  T norm = T(1.0 / hkl.unit_cell.volume);
   pocketfft::c2r<T>(shape, stride, stride_out, /*axis=*/0,
-                    &hkl.data[0], &map.data[0], 1.0f);
+                    &hkl.data[0], &map.data[0], norm);
   return map;
+}
+
+
+template<typename T, typename DataProxy>
+Grid<T> transform_f_phi_to_map(const DataProxy& data,
+                               size_t f_col, size_t phi_col,
+                               std::array<int, 3> min_size) {
+  return transform_f_phi_half_to_map(
+                  get_f_phi_on_grid<T>(data, f_col, phi_col, true, min_size));
 }
 
 } // namespace gemmi

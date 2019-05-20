@@ -1052,6 +1052,10 @@ and in Python use:
 
   Structure.add_model(model, pos=-1)
 
+After adding or removing models you may call ``Structure::renumber_models()``
+which will set model *names* to sequential numbers (next section
+explains why models have names).
+
 ----
 
 Entity is a new concept introduced in the mmCIF format.
