@@ -154,6 +154,13 @@ To get the first column with the specified label use functions:
   >>> mtz.column_with_label('FREE')
   <gemmi.Mtz.Column FREE type I>
 
+If the column names are not unique, you may specify the dataset:
+
+  >>> mtz.column_with_label('FREE', mtz.dataset(0))
+  >>> # None
+  >>> mtz.column_with_label('FREE', mtz.dataset(1))
+  <gemmi.Mtz.Column FREE type I>
+
 To get all columns of the specified type use:
 
 .. doctest::

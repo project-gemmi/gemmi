@@ -132,8 +132,10 @@ void add_hkl(py::module& m) {
          py::arg("id"))
     .def("count", &Mtz::count, py::arg("label"))
     .def("column_with_label",
-         (Mtz::Column* (Mtz::*)(const std::string&)) &Mtz::column_with_label,
-         py::arg("label"), py::return_value_policy::reference_internal)
+         (Mtz::Column* (Mtz::*)(const std::string&, const Mtz::Dataset*))
+                                                     &Mtz::column_with_label,
+         py::arg("label"), py::arg("dataset")=nullptr,
+         py::return_value_policy::reference_internal)
     .def("columns_with_type", &Mtz::columns_with_type,
          py::arg("type"), py::keep_alive<0, 1>())
     .def("column_labels", [](const Mtz& self) {

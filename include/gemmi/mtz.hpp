@@ -176,6 +176,15 @@ struct Mtz {
   const Dataset& dataset(int id) const {
     return const_cast<Mtz*>(this)->dataset(id);
   }
+  Dataset* dataset_with_name(const std::string& name) {
+    for (Dataset& d : datasets)
+      if (d.dataset_name == name)
+        return &d;
+    return nullptr;
+  }
+  const Dataset* dataset_with_name(const std::string& label) const {
+    return const_cast<Mtz*>(this)->dataset_with_name(label);
+  }
   int count(const std::string& label) const {
     int n = 0;
     for (const Column& col : columns)
@@ -183,14 +192,16 @@ struct Mtz {
         ++n;
     return n;
   }
-  Column* column_with_label(const std::string& label) {
+  Column* column_with_label(const std::string& label,
+                            const Dataset* ds=nullptr) {
     for (Column& col : columns)
-      if (col.label == label)
+      if (col.label == label && (!ds || ds->id == col.dataset_id))
         return &col;
     return nullptr;
   }
-  const Column* column_with_label(const std::string& label) const {
-    return const_cast<Mtz*>(this)->column_with_label(label);
+  const Column* column_with_label(const std::string& label,
+                                  const Dataset* ds=nullptr) const {
+    return const_cast<Mtz*>(this)->column_with_label(label, ds);
   }
   std::vector<const Column*> columns_with_type(char type) const {
     std::vector<const Column*> cols;
