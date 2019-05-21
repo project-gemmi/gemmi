@@ -130,6 +130,42 @@ Grid<T> transform_f_phi_to_map(const DataProxy& data,
                   get_f_phi_on_grid<T>(data, f_col, phi_col, true, min_size));
 }
 
+template<typename T>
+Grid<std::complex<T>> transform_map_to_f_phi(const Grid<T>& map, bool half_l) {
+  Grid<std::complex<T>> hkl;
+  hkl.spacegroup = map.spacegroup;
+  hkl.unit_cell = map.unit_cell;
+  hkl.full_canonical = false; // disable some real-space functionality
+  int half_nw = map.nw / 2 + 1;
+  hkl.set_size(map.nu, map.nv, half_l ? half_nw : map.nw);
+  T norm = T(map.unit_cell.volume / map.point_count());
+  pocketfft::shape_t shape{(size_t)map.nw, (size_t)map.nv, (size_t)map.nu};
+  std::ptrdiff_t s = sizeof(T);
+  pocketfft::stride_t stride_in{hkl.nv * hkl.nu * s, hkl.nu * s, s};
+  pocketfft::stride_t stride{hkl.nv * hkl.nu * 2*s, hkl.nu * 2*s, 2*s};
+  pocketfft::r2c<T>(shape, stride_in, stride, /*axis=*/0,
+                    &map.data[0], &hkl.data[0], norm);
+  shape[0] = half_nw;
+  pocketfft::c2c<T>(shape, stride, stride, {1, 2}, pocketfft::FORWARD,
+                    &hkl.data[0], &hkl.data[0], 1.0f);
+  if (!half_l)  // add Friedel pairs
+    for (int w = half_nw; w != hkl.nw; ++w) {
+      int w_ = hkl.nw - w;
+      for (int v = 0; v != hkl.nv; ++v) {
+        int v_ = v == 0 ? 0 : hkl.nv - v;
+        for (int u = 0; u != hkl.nu; ++u) {
+          int u_ = u == 0 ? 0 : hkl.nu - u;
+          int idx = hkl.index_q(u, v, w);
+          int inv_idx = hkl.index_q(u_, v_, w_);
+          hkl.data[idx] = hkl.data[inv_idx];  // conj() is called later
+        }
+      }
+    }
+  for (int i = 0; i != hkl.nu * hkl.nv * half_nw; ++i)
+    hkl.data[i].imag(-hkl.data[i].imag());
+  return hkl;
+}
+
 } // namespace gemmi
 #endif
 // vim:sw=2:ts=2:et

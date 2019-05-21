@@ -274,4 +274,6 @@ void add_hkl(py::module& m) {
     });
   m.def("as_refln_blocks",
         [](cif::Document& d) { return as_refln_blocks(std::move(d.blocks)); });
+  m.def("transform_map_to_f_phi", &transform_map_to_f_phi<float>,
+        py::arg("map"), py::arg("half_l")=false);
 }

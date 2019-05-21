@@ -609,3 +609,38 @@ Alternatively, it can be be written as CCP4 map (for the whole unit cell):
   >>> ccp4.grid = rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', min_size=[72, 8, 24])
   >>> ccp4.update_ccp4_header(2, True)
   >>> ccp4.write_ccp4_map('5wkd.ccp4')
+
+The electron density data can be transformed back to reciprocal space
+coefficients:
+
+.. doctest::
+
+  >>> ccp4.grid
+  <gemmi.FloatGrid(72, 8, 24)>
+  >>> gemmi.transform_map_to_f_phi(ccp4.grid)
+  <gemmi.ComplexGrid(72, 8, 24)>
+
+Now you can access hkl reflections using ``Grid.get_value()``:
+
+.. doctest::
+
+  >>> _.get_value(23, -1, -3)
+  (18.440288543701172+26.18924903869629j)
+
+
+You can also use the ``half_l`` flag to shrink the size of the resulting grid:
+
+.. doctest::
+
+  >>> gemmi.transform_map_to_f_phi(ccp4.grid, half_l=True)
+  <gemmi.ComplexGrid(72, 8, 13)>
+
+Now you cannot directly access a data point with negative Miller index l,
+but you can use its Friedel mate:
+
+.. doctest::
+
+  >>> _.get_value(-23, 1, 3).conjugate()
+  (18.440288543701172+26.18924903869629j)
+
+TODO: standalone function gemmi.transform_f_phi_to_map(grid)
