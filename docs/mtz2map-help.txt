@@ -7,6 +7,7 @@ Options:
   -V, --version        Print version and exit.
   --verbose            Verbose output.
   -d, --diff           Use data from columns (PH)DELFWT or (PH)FOFCWT.
+  --section=NAME       MTZ dataset name or CIF block name
   -fCOLUMN             F label in the MTZ file.
   -pCOLUMN             Phase label in the MTZ file.
   -g, --grid=NX,NY,NZ  Grid sampling.

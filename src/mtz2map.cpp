@@ -18,7 +18,7 @@
 using gemmi::Mtz;
 using options_type = std::vector<option::Option>;
 
-enum OptionIndex { Verbose=3, Diff, FLabel, PhiLabel, GridDims };
+enum OptionIndex { Verbose=3, Diff, Section, FLabel, PhiLabel, GridDims };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -31,6 +31,8 @@ static const option::Descriptor Usage[] = {
   { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { Diff, 0, "d", "diff", Arg::None,
     "  -d, --diff  \tUse data from columns (PH)DELFWT or (PH)FOFCWT." },
+  { Section, 0, "", "section", Arg::Required,
+    "  --section=NAME  \tMTZ dataset name or CIF block name" },
   { FLabel, 0, "f", "", Arg::Required,
     "  -fCOLUMN  \tF label in the MTZ file." },
   { PhiLabel, 0, "p", "", Arg::Required,
@@ -50,26 +52,33 @@ get_mtz_columns(const Mtz& mtz, const options_type& options) {
   };
   const Mtz::Column* f_col = nullptr;
   const Mtz::Column* phi_col = nullptr;
+  const Mtz::Dataset* ds = nullptr;
+  if (options[Section]) {
+    std::string dname = options[Section].arg;
+    ds = mtz.dataset_with_name(dname);
+    if (!ds)
+      gemmi::fail("No such dataset in the MTZ file: " + dname);
+  }
   if (options[FLabel]) {
-    f_col = mtz.column_with_label(options[FLabel].arg);
+    f_col = mtz.column_with_label(options[FLabel].arg, ds);
     if (!f_col)
       gemmi::fail("Column not found: " + std::string(options[FLabel].arg));
     if (options[PhiLabel]) {
-      phi_col = mtz.column_with_label(options[PhiLabel].arg);
+      phi_col = mtz.column_with_label(options[PhiLabel].arg, ds);
     } else {
       for (int i = 0; ; i += 2) {
         if (default_labels[i] == nullptr)
           gemmi::fail("Unknown phase column label.\n");
         if (std::strcmp(default_labels[i], options[FLabel].arg) == 0) {
-          phi_col = mtz.column_with_label(default_labels[i + 1]);
+          phi_col = mtz.column_with_label(default_labels[i + 1], ds);
           break;
         }
       }
     }
   } else {
     for (int i = (options[Diff] ? 2 : 0); default_labels[i]; i += 4)
-      if ((f_col = mtz.column_with_label(default_labels[i])) &&
-          (phi_col = mtz.column_with_label(default_labels[i+1]))) {
+      if ((f_col = mtz.column_with_label(default_labels[i], ds)) &&
+          (phi_col = mtz.column_with_label(default_labels[i+1], ds))) {
         break;
       }
   }
@@ -80,12 +89,17 @@ get_mtz_columns(const Mtz& mtz, const options_type& options) {
 
 static gemmi::Grid<std::complex<float>>
 grid_from_mmcif(const char* input_path, std::array<int,3> size,
+                const char* block_name,
                 const char* f_label, const char* ph_label, bool verbose) {
   auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(input_path).blocks);
   if (verbose)
     fprintf(stderr, "Looking for tags _refln.%s and _refln.%s...\n",
             f_label, ph_label);
+  bool has_section = false;
   for (gemmi::ReflnBlock& rb : rblocks) {
+    if (block_name && rb.block.name != block_name)
+      continue;
+    has_section = true;
     int f_idx = rb.find_column_index(f_label);
     int ph_idx = rb.find_column_index(ph_label);
     if (f_idx != -1 && ph_idx != -1) {
@@ -97,6 +111,8 @@ grid_from_mmcif(const char* input_path, std::array<int,3> size,
                                              /*half_l*/true, size);
     }
   }
+  if (!has_section)
+    gemmi::fail("Section not found in the mmCIF file.");
   gemmi::fail("Corresponding tags not found in the mmCIF file.");
 }
 
@@ -125,11 +141,14 @@ int GEMMI_MAIN(int argc, char **argv) {
         gemmi::giends_with(input_path, ".ent")) {
       const char* f_label = p.options[Diff] ? "pdbx_DELFWT" : "pdbx_FWT";
       const char* ph_label = p.options[Diff] ?  "pdbx_DELPHWT" : "pdbx_PHWT";
+      const char* block_name = p.options[Section] ? p.options[Section].arg
+                                                  : nullptr;
       if (p.options[FLabel])
         f_label = p.options[FLabel].arg;
       if (p.options[PhiLabel])
         ph_label = p.options[PhiLabel].arg;
-      grid = grid_from_mmcif(input_path, size, f_label, ph_label, verbose);
+      grid = grid_from_mmcif(input_path, size, block_name, f_label, ph_label,
+                             verbose);
     } else {
       Mtz mtz = gemmi::read_mtz_file(input_path);
       auto cols = get_mtz_columns(mtz, p.options);
