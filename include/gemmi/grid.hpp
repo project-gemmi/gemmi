@@ -44,7 +44,8 @@ inline std::array<int, 3> good_grid_size(const std::array<double, 3>& limit,
         break;
       }
     if (m[i] == 0) {
-      int f = std::max(2, sg_fac[i]);
+      // having sizes always even simplifies things
+      int f = sg_fac[i] % 2 == 0 ? sg_fac[i] : 2 * sg_fac[i];
       int n;
       if (denser) {
         n = int(std::ceil(limit[i] / f));
@@ -65,7 +66,6 @@ inline std::array<int, 3> good_grid_size(const std::array<double, 3>& limit,
     for (int j = 0; j != i; ++j)
       if (gops.are_directions_symmetry_related(i, j) && m[i] != m[j])
         m[i] = m[j] = (denser ? std::max(m[i], m[j]) : std::min(m[i], m[j]));
-
   return m;
 }
 

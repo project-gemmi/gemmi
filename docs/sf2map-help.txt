@@ -17,7 +17,7 @@ Options:
   --verbose            Verbose output.
   -d, --diff           Use difference map coefficients.
   --section=NAME       MTZ dataset name or CIF block name
-  -fCOLUMN             F column (MTZ label or mmCIF tag).
-  -pCOLUMN             Phase column (MTZ label or mmCIF tag).
+  -f COLUMN            F column (MTZ label or mmCIF tag).
+  -p COLUMN            Phase column (MTZ label or mmCIF tag).
   -g, --grid=NX,NY,NZ  Grid sampling.
-  -G                   Print grid size that would be used and exit.
+  -G                   Print size of the grid that would be used and exit.
