@@ -32,6 +32,44 @@ inline bool has_small_factorization(int n) {
   return n == 1 || n == -1;
 }
 
+inline std::array<int, 3> good_grid_size(const std::array<double, 3>& limit,
+                                         bool denser, const SpaceGroup* sg) {
+  std::array<int, 3> m = {{0, 0, 0}};
+  GroupOps gops = (sg ? *sg : get_spacegroup_p1()).operations();
+  std::array<int, 3> sg_fac = gops.find_grid_factors();
+  for (int i = 0; i != 3; ++i) {
+    for (int j = 0; j < i; ++j)
+      if (std::fabs(limit[i] - limit[j]) < 0.5 && sg_fac[i] == sg_fac[j]) {
+        m[i] = m[j];
+        break;
+      }
+    if (m[i] == 0) {
+      int f = std::max(2, sg_fac[i]);
+      int n;
+      if (denser) {
+        n = int(std::ceil(limit[i] / f));
+        while (!has_small_factorization(n))
+          ++n;
+      } else {
+        n = int(std::floor(limit[i] / f));
+        if (n > 1)
+          while (!has_small_factorization(n))
+            --n;
+        else
+          n = 1;
+      }
+      m[i] = n * f;
+    }
+  }
+  for (int i = 1; i != 3; ++i)
+    for (int j = 0; j != i; ++j)
+      if (gops.are_directions_symmetry_related(i, j) && m[i] != m[j])
+        m[i] = m[j] = (denser ? std::max(m[i], m[j]) : std::min(m[i], m[j]));
+
+  return m;
+}
+
+
 // For now, for simplicity, the grid covers whole unit cell
 // and space group is P1.
 template<typename T=float>
@@ -66,50 +104,12 @@ struct Grid {
     set_size_without_checking(u, v, w);
   }
 
-  std::array<int, 3> pick_good_size(const std::array<double, 3>& limit,
-                                    bool denser) {
-    std::array<int, 3> m = {{0, 0, 0}};
-    const SpaceGroup& sg = spacegroup ? *spacegroup : get_spacegroup_p1();
-    GroupOps gops = sg.operations();
-    std::array<int, 3> sg_fac = gops.find_grid_factors();
-    for (int i = 0; i != 3; ++i) {
-      for (int j = 0; j < i; ++j)
-        if (std::fabs(limit[i] - limit[j]) < 0.5 && sg_fac[i] == sg_fac[j]) {
-          m[i] = m[j];
-          break;
-        }
-      if (m[i] == 0) {
-        int f = std::max(2, sg_fac[i]);
-        int n;
-        if (denser) {
-          n = int(std::ceil(limit[i] / f));
-          while (!has_small_factorization(n))
-            ++n;
-        } else {
-          n = int(std::floor(limit[i] / f));
-          if (n > 1)
-            while (!has_small_factorization(n))
-              --n;
-          else
-            n = 1;
-        }
-        m[i] = n * f;
-      }
-    }
-    for (int i = 1; i != 3; ++i)
-      for (int j = 0; j != i; ++j)
-        if (gops.are_directions_symmetry_related(i, j) && m[i] != m[j])
-          m[i] = m[j] = (denser ? std::max(m[i], m[j]) : std::min(m[i], m[j]));
-
-    return m;
-  }
-
   // The resulting spacing can be smaller (if denser=true) or greater than arg.
   void set_size_from_spacing(double approx_spacing, bool denser) {
     std::array<double, 3> limit = {{1. / (unit_cell.ar * approx_spacing),
                                     1. / (unit_cell.br * approx_spacing),
                                     1. / (unit_cell.cr * approx_spacing)}};
-    auto m = pick_good_size(limit, denser);
+    auto m = good_grid_size(limit, denser, spacegroup);
     set_size_without_checking(m[0], m[1], m[2]);
   }
 

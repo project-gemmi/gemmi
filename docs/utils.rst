@@ -355,14 +355,6 @@ Converts reflection data from MTZ to mmCIF.
 .. literalinclude:: mtz2cif-help.txt
    :language: console
 
-mtz2map
-=======
-
-Transforms map coefficients from either MTZ or SF mmCIF to map.
-
-.. literalinclude:: mtz2map-help.txt
-   :language: console
-
 cif2mtz
 =======
 
@@ -371,6 +363,13 @@ Converts reflection data from mmCIF to MTZ.
 .. literalinclude:: cif2mtz-help.txt
    :language: console
 
+sf2map
+=======
+
+Transforms map coefficients from either MTZ or SF mmCIF to CCP4 map.
+
+.. literalinclude:: sf2map-help.txt
+   :language: console
 
 residues
 ========

@@ -14,9 +14,9 @@ int map_main(int argc, char** argv);
 int mask_main(int argc, char** argv);
 int mtz_main(int argc, char** argv);
 int mtz2cif_main(int argc, char** argv);
-int mtz2map_main(int argc, char** argv);
 int residues_main(int argc, char** argv);
 int rmsz_main(int argc, char** argv);
+int sf2map_main(int argc, char** argv);
 int sg_main(int argc, char** argv);
 int validate_main(int argc, char** argv);
 int wcn_main(int argc, char** argv);
@@ -40,9 +40,9 @@ static SubCmd subcommands[] = {
   CMD(mask, "make mask in the CCP4 format"),
   CMD(mtz, "print info about MTZ reflection file"),
   CMD(mtz2cif, "convert MTZ to structure factor mmCIF"),
-  CMD(mtz2map, "transform map coefficients (from MTZ or mmCIF) to map"),
   CMD(residues, "list residues from a coordinate file"),
   CMD(rmsz, "validate geometry using monomer library"),
+  CMD(sf2map, "transform map coefficients (from MTZ or mmCIF) to map"),
   CMD(sg, "info about space groups"),
   CMD(validate, "validate CIF 1.1 syntax"),
   CMD(wcn, "calculate local density / contact numbers (WCN, CN, ACN, LDM)"),

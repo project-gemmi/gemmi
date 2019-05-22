@@ -18,6 +18,23 @@
 
 namespace gemmi {
 
+template<typename DataProxy>
+std::array<int, 3> get_size_for_hkl(const DataProxy& data,
+                                    std::array<int, 3> min_size) {
+  // adjust min_size by checking Miller indices in the data
+  auto hkl_col = data.hkl_col();
+  for (size_t i = 0; i < data.size(); i += data.stride())
+    for (int j = 0; j != 3; ++j) {
+      int v = 2 * std::abs(data.get_int(i + hkl_col[j])) + 1;
+      if (v > min_size[j])
+        min_size[j] = v;
+    }
+  return good_grid_size(
+            {{(double)min_size[0], (double)min_size[1], (double)min_size[2]}},
+            /*denser=*/true,
+            data.spacegroup());
+}
+
 // If half_l is true, grid has only data with l>=0.
 template<typename T, typename DataProxy>
 Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
@@ -31,29 +48,18 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
   Grid<std::complex<T>> grid;
   grid.unit_cell = data.unit_cell();
   grid.spacegroup = data.spacegroup();
-  auto hkl_col = data.hkl_col();
-
-  { // set grid size
-    for (size_t i = 0; i < data.size(); i += data.stride())
-      for (int j = 0; j != 3; ++j) {
-        int v = 2 * std::abs(data.get_int(i + hkl_col[j])) + 1;
-        if (v > min_size[j])
-          min_size[j] = v;
-      }
-    std::array<int, 3> size = grid.pick_good_size(
-            {{(double)min_size[0], (double)min_size[1], (double)min_size[2]}},
-            /*denser=*/true);
-    if (half_l)
-      size[2] = size[2] / 2 + 1;
-    // index H is fast and L is slow here -- not ideal
-    grid.set_size_without_checking(size[0], size[1], size[2]);
-    grid.full_canonical = false; // disable some real-space functionality
-  }
+  std::array<int, 3> size = get_size_for_hkl(data, min_size);
+  if (half_l)
+    size[2] = size[2] / 2 + 1;
+  // index H is fast and L is slow here -- not ideal
+  grid.set_size_without_checking(size[0], size[1], size[2]);
+  grid.full_canonical = false; // disable some real-space functionality
 
   if (f_col >= data.stride() || phi_col >= data.stride())
     fail("Map coefficients not found.");
   const std::complex<T> default_val; // initialized to 0+0i
   GroupOps ops = grid.spacegroup->operations();
+  auto hkl_col = data.hkl_col();
   for (size_t i = 0; i < data.size(); i += data.stride()) {
     int h = data.get_int(i + hkl_col[0]);
     int k = data.get_int(i + hkl_col[1]);
@@ -135,9 +141,9 @@ Grid<std::complex<T>> transform_map_to_f_phi(const Grid<T>& map, bool half_l) {
   Grid<std::complex<T>> hkl;
   hkl.spacegroup = map.spacegroup;
   hkl.unit_cell = map.unit_cell;
-  hkl.full_canonical = false; // disable some real-space functionality
   int half_nw = map.nw / 2 + 1;
   hkl.set_size(map.nu, map.nv, half_l ? half_nw : map.nw);
+  hkl.full_canonical = false; // disable some real-space functionality
   T norm = T(map.unit_cell.volume / map.point_count());
   pocketfft::shape_t shape{(size_t)map.nw, (size_t)map.nv, (size_t)map.nu};
   std::ptrdiff_t s = sizeof(T);
