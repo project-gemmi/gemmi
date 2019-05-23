@@ -19,18 +19,18 @@ using gemmi::Mtz;
 using options_type = std::vector<option::Option>;
 
 enum OptionIndex { Verbose=3, Diff, Section, FLabel, PhiLabel, GridDims,
-                   GridQuery };
+                   GridQuery, Normalize };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n  " EXE_NAME " [options] INPUT_FILE MAP_FILE\n\n"
     "INPUT_FILE must be either MTZ or mmCIF with map coefficients.\n\n"
-    "By default, coefficients for a 2mFo-DFc map are used.\n"
-    "If \"-d\" is specified - for a mFo-DFc map.\n"
-    "Coefficients for a normal map are expected in MTZ columns FWT/PHWT or\n"
-    "2FOFCWT/PH2FOFCWT, or under mmCIF tags _refln.pdbx_FWT/pdbx_PHWT.\n"
-    "For a difference map - in MTZ columns DELFWT/PHDELWT or FOFCWT/PHFOFCWT,\n"
-    "or under mmCIF tags _refln.pdbx_DELFWT/pdbx_DELPHWT\n"
+    "By default, the program searches for 2mFo-DFc map coefficients in:\n"
+    "  - MTZ columns FWT/PHWT or 2FOFCWT/PH2FOFCWT,\n"
+    "  - mmCIF tags _refln.pdbx_FWT/pdbx_PHWT.\n"
+    "If option \"-d\" is given, mFo-DFc map coefficients are searched in:\n"
+    "  - MTZ columns DELFWT/PHDELWT or FOFCWT/PHFOFCWT,\n"
+    "  - mmCIF tags _refln.pdbx_DELFWT/pdbx_DELPHWT\n"
     "\nOptions:"},
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
   { Version, 0, "V", "version", Arg::None,
@@ -48,6 +48,8 @@ static const option::Descriptor Usage[] = {
     "  -g, --grid=NX,NY,NZ  \tGrid sampling." },
   { GridQuery, 0, "G", "", Arg::None,
     "  -G  \tPrint size of the grid that would be used and exit." },
+  { Normalize, 0, "", "normalize", Arg::None,
+    "  --normalize  \tScale the map to standard deviation 1 and mean 0." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -181,6 +183,11 @@ static void transform_sf_to_map(OptParser& p) {
   if (verbose)
     fprintf(stderr, "Writing %s ...\n", map_path);
   ccp4.update_ccp4_header(2, true);
+  if (p.options[Normalize]) {
+    double mult = 1.0 / ccp4.hstats.rms;
+    for (float& x : ccp4.grid.data)
+      x = float((x - ccp4.hstats.dmean) * mult);
+  }
   ccp4.write_ccp4_map(map_path);
 }
 

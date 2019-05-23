@@ -4,12 +4,12 @@ Usage:
 
 INPUT_FILE must be either MTZ or mmCIF with map coefficients.
 
-By default, coefficients for a 2mFo-DFc map are used.
-If "-d" is specified - for a mFo-DFc map.
-Coefficients for a normal map are expected in MTZ columns FWT/PHWT or
-2FOFCWT/PH2FOFCWT, or under mmCIF tags _refln.pdbx_FWT/pdbx_PHWT.
-For a difference map - in MTZ columns DELFWT/PHDELWT or FOFCWT/PHFOFCWT,
-or under mmCIF tags _refln.pdbx_DELFWT/pdbx_DELPHWT
+By default, the program searches for 2mFo-DFc map coefficients in:
+  - MTZ columns FWT/PHWT or 2FOFCWT/PH2FOFCWT,
+  - mmCIF tags _refln.pdbx_FWT/pdbx_PHWT.
+If option "-d" is given, mFo-DFc map coefficients are searched in:
+  - MTZ columns DELFWT/PHDELWT or FOFCWT/PHFOFCWT,
+  - mmCIF tags _refln.pdbx_DELFWT/pdbx_DELPHWT
 
 Options:
   -h, --help           Print usage and exit.
@@ -21,3 +21,4 @@ Options:
   -p COLUMN            Phase column (MTZ label or mmCIF tag).
   -g, --grid=NX,NY,NZ  Grid sampling.
   -G                   Print size of the grid that would be used and exit.
+  --normalize          Scale the map to standard deviation 1 and mean 0.
