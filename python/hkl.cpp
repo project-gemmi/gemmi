@@ -83,13 +83,14 @@ Grid<std::complex<float>> mtz_get_f_phi_on_grid(const Mtz& self,
                                                 const std::string& f_col,
                                                 const std::string& phi_col,
                                                 bool half_l,
-                                                std::array<int, 3> min_size) {
+                                                std::array<int, 3> min_size,
+                                                double sample_rate) {
   const Mtz::Column* f = self.column_with_label(f_col);
   const Mtz::Column* phi = self.column_with_label(phi_col);
   if (!f || !phi)
     fail("Column labels not found.");
   return get_f_phi_on_grid<float>(MtzDataProxy{self}, f->idx, phi->idx,
-                                  half_l, min_size);
+                                  half_l, min_size, sample_rate);
 }
 
 template<typename T>
@@ -151,14 +152,18 @@ void add_hkl(py::module& m) {
     .def("make_d_array", &make_d_array, py::arg("dataset")=-1)
     .def("get_f_phi_on_grid", &mtz_get_f_phi_on_grid,
          py::arg("f"), py::arg("phi"), py::arg("half_l")=false,
-         py::arg("size")=std::array<int,3>{{0,0,0}})
+         py::arg("size")=std::array<int,3>{{0,0,0}},
+         py::arg("sample_rate")=0.)
     .def("transform_f_phi_to_map", [](const Mtz& self,
                                       const std::string& f_col,
                                       const std::string& phi_col,
-                                      std::array<int, 3> min_size) {
+                                      std::array<int, 3> min_size,
+                                      double sample_rate) {
         return transform_f_phi_half_to_map(
-                  mtz_get_f_phi_on_grid(self, f_col, phi_col, true, min_size));
-    }, py::arg("f"), py::arg("phi"), py::arg("size")=std::array<int,3>{{0,0,0}})
+                          mtz_get_f_phi_on_grid(self, f_col, phi_col, true,
+                                                min_size, sample_rate));
+    }, py::arg("f"), py::arg("phi"),
+       py::arg("size")=std::array<int,3>{{0,0,0}}, py::arg("sample_rate")=0.)
     .def("add_dataset", &Mtz::add_dataset, py::arg("name"),
          py::return_value_policy::reference_internal)
     .def("add_column", &Mtz::add_column, py::arg("label"), py::arg("type"),
@@ -251,23 +256,28 @@ void add_hkl(py::module& m) {
                                  const std::string& f_col,
                                  const std::string& phi_col,
                                  bool half_l,
-                                 std::array<int, 3> min_size) {
+                                 std::array<int, 3> min_size,
+                                 double sample_rate) {
         size_t f_idx = self.get_column_index(f_col);
         size_t phi_idx = self.get_column_index(phi_col);
         return get_f_phi_on_grid<float>(ReflnDataProxy{self}, f_idx, phi_idx,
-                                        half_l, min_size);
+                                        half_l, min_size, sample_rate);
     }, py::arg("f"), py::arg("phi"), py::arg("half_l")=false,
-       py::arg("min_size")=std::array<int,3>{{0,0,0}})
+       py::arg("min_size")=std::array<int,3>{{0,0,0}},
+       py::arg("sample_rate")=0.)
     .def("transform_f_phi_to_map", [](const ReflnBlock& self,
                                       const std::string& f_col,
                                       const std::string& phi_col,
-                                      std::array<int, 3> min_size) {
+                                      std::array<int, 3> min_size,
+                                      double sample_rate) {
         size_t f_idx = self.get_column_index(f_col);
         size_t phi_idx = self.get_column_index(phi_col);
         return transform_f_phi_to_map<float>(ReflnDataProxy{self},
-                                             f_idx, phi_idx, min_size);
+                                             f_idx, phi_idx,
+                                             min_size, sample_rate);
     }, py::arg("f"), py::arg("phi"),
-       py::arg("min_size")=std::array<int,3>{{0,0,0}})
+       py::arg("min_size")=std::array<int,3>{{0,0,0}},
+       py::arg("sample_rate")=0.)
     .def("is_unmerged", &ReflnBlock::is_unmerged)
     .def("use_unmerged", &ReflnBlock::use_unmerged)
     .def("__bool__", [](const ReflnBlock& self) { return self.ok(); })

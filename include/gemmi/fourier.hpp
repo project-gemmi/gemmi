@@ -20,7 +20,8 @@ namespace gemmi {
 
 template<typename DataProxy>
 std::array<int, 3> get_size_for_hkl(const DataProxy& data,
-                                    std::array<int, 3> min_size) {
+                                    std::array<int, 3> min_size,
+                                    double sample_rate) {
   // adjust min_size by checking Miller indices in the data
   auto hkl_col = data.hkl_col();
   for (size_t i = 0; i < data.size(); i += data.stride())
@@ -29,10 +30,24 @@ std::array<int, 3> get_size_for_hkl(const DataProxy& data,
       if (v > min_size[j])
         min_size[j] = v;
     }
-  return good_grid_size(
-            {{(double)min_size[0], (double)min_size[1], (double)min_size[2]}},
-            /*denser=*/true,
-            data.spacegroup());
+  std::array<double, 3> dsize{{(double)min_size[0],
+                               (double)min_size[1],
+                               (double)min_size[2]}};
+  if (sample_rate > 0) {
+    const UnitCell& cell = data.unit_cell();
+    double max_1_d2 = 0;
+    for (size_t i = 0; i < data.size(); i += data.stride()) {
+      int h = data.get_int(i + hkl_col[0]);
+      int k = data.get_int(i + hkl_col[1]);
+      int l = data.get_int(i + hkl_col[2]);
+      max_1_d2 = std::max(max_1_d2, cell.calculate_1_d2(h, k, l));
+    }
+    double inv_d_min = std::sqrt(max_1_d2);
+    std::array<double, 3> cellr = {{cell.ar, cell.br, cell.cr}};
+    for (int i = 0; i < 3; ++i)
+      dsize[i] = std::max(dsize[i], sample_rate * inv_d_min / cellr[i]);
+  }
+  return good_grid_size(dsize, /*denser=*/true, data.spacegroup());
 }
 
 // If half_l is true, grid has only data with l>=0.
@@ -40,7 +55,8 @@ template<typename T, typename DataProxy>
 Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
                                         size_t f_col, size_t phi_col,
                                         bool half_l,
-                                        std::array<int, 3> min_size) {
+                                        std::array<int, 3> min_size,
+                                        double sample_rate) {
   if (!data.ok() || data.stride() < 5)
     fail("No data.");
   if (!data.spacegroup())
@@ -48,7 +64,7 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
   Grid<std::complex<T>> grid;
   grid.unit_cell = data.unit_cell();
   grid.spacegroup = data.spacegroup();
-  std::array<int, 3> size = get_size_for_hkl(data, min_size);
+  std::array<int, 3> size = get_size_for_hkl(data, min_size, sample_rate);
   if (half_l)
     size[2] = size[2] / 2 + 1;
   // index H is fast and L is slow here -- not ideal
@@ -131,9 +147,11 @@ Grid<T> transform_f_phi_half_to_map(Grid<std::complex<T>>&& hkl) {
 template<typename T, typename DataProxy>
 Grid<T> transform_f_phi_to_map(const DataProxy& data,
                                size_t f_col, size_t phi_col,
-                               std::array<int, 3> min_size) {
-  return transform_f_phi_half_to_map(
-                  get_f_phi_on_grid<T>(data, f_col, phi_col, true, min_size));
+                               std::array<int, 3> min_size,
+                               double sample_rate) {
+  return transform_f_phi_half_to_map(get_f_phi_on_grid<T>(data, f_col, phi_col,
+                                                          true, min_size,
+                                                          sample_rate));
 }
 
 template<typename T>

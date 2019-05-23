@@ -585,7 +585,8 @@ library to transform between real space and reciprocal space.
 This library was picked after evaluation and tedious
 `benchmarking of many FFT libraries <https://github.com/project-gemmi/benchmarking-fft>`_.
 
-In C++, the relevant functions are in the ``<gemmi/fourier.hpp>`` header.
+In C++, the relevant functions are in the ``<gemmi/fourier.hpp>`` header,
+and the :ref:`gemmi-sf2map <sf2map>` program may serve as a code example.
 Like in the previous section, we will cover here only the Python interface.
 
 Analogically to the function introduced in the previous subsection,
@@ -599,7 +600,22 @@ that represents map in the direct space.
   >>> rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', min_size=[72, 8, 24])
   <gemmi.FloatGrid(72, 8, 24)>
 
-Again, this data can be accessed as NumPy 3D array:
+The grid size is often defined in terms of *d*:sub:`min`. The CCP4 FFT program
+has a keyword ``SAMPLE`` to specify the fineness of sampling in the real space.
+Here, we have argument ``sample_rate`` with the same meaning: the value 3
+would request sampling *d*:sub:`min`/3. (N.B. 3 here is equivalent to Clipper
+oversampling  parameter equal 1.5). Both functions ``get_f_phi_on_grid``
+and ``transform_f_phi_to_map`` can take the ``sample_rate`` argument.
+
+.. doctest::
+
+  >>> rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', sample_rate=4)
+  <gemmi.FloatGrid(120, 12, 36)>
+
+If both ``min_size`` and ``sample_rate`` would be given, the finer slicing
+of the two would be used.
+
+The grid data can be accessed as NumPy 3D array:
 
 .. doctest::
   :skipif: numpy is None
@@ -613,12 +629,12 @@ Alternatively, it can be be written as CCP4 map (for the whole unit cell):
 .. doctest::
 
   >>> ccp4 = gemmi.Ccp4Map()
-  >>> ccp4.grid = rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', min_size=[72, 8, 24])
+  >>> ccp4.grid = rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', sample_rate=2.6)
   >>> ccp4.update_ccp4_header(2, True)
   >>> ccp4.write_ccp4_map('5wkd.ccp4')
 
-The electron density data can be transformed back to reciprocal space
-coefficients:
+To transformed the electron density data back to reciprocal space coefficients
+use function ``transform_map_to_f_phi``:
 
 .. doctest::
 

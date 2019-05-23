@@ -11,6 +11,7 @@ If option "-d" is given, mFo-DFc map coefficients are searched in:
   - MTZ columns DELFWT/PHDELWT or FOFCWT/PHFOFCWT,
   - mmCIF tags _refln.pdbx_DELFWT/pdbx_DELPHWT
 
+
 Options:
   -h, --help           Print usage and exit.
   -V, --version        Print version and exit.
@@ -19,6 +20,7 @@ Options:
   --section=NAME       MTZ dataset name or CIF block name
   -f COLUMN            F column (MTZ label or mmCIF tag).
   -p COLUMN            Phase column (MTZ label or mmCIF tag).
-  -g, --grid=NX,NY,NZ  Grid sampling.
+  -g, --grid=NX,NY,NZ  Grid size (user-specified minimum).
+  -s, --sample=NUMBER  Set spacing to d_min/NUMBER (3 is usual).
   -G                   Print size of the grid that would be used and exit.
   --normalize          Scale the map to standard deviation 1 and mean 0.

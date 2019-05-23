@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <cstring>            // for strcmp
+#include <cstdlib>            // for strtod
 #include <gemmi/mtz.hpp>      // for Mtz
 #include <gemmi/ccp4.hpp>     // for Ccp4
 #include <gemmi/fourier.hpp>  // for get_f_phi_on_grid, transform_f_phi_...
@@ -19,7 +20,7 @@ using gemmi::Mtz;
 using options_type = std::vector<option::Option>;
 
 enum OptionIndex { Verbose=3, Diff, Section, FLabel, PhiLabel, GridDims,
-                   GridQuery, Normalize };
+                   Sample, GridQuery, Normalize };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -30,7 +31,7 @@ static const option::Descriptor Usage[] = {
     "  - mmCIF tags _refln.pdbx_FWT/pdbx_PHWT.\n"
     "If option \"-d\" is given, mFo-DFc map coefficients are searched in:\n"
     "  - MTZ columns DELFWT/PHDELWT or FOFCWT/PHFOFCWT,\n"
-    "  - mmCIF tags _refln.pdbx_DELFWT/pdbx_DELPHWT\n"
+    "  - mmCIF tags _refln.pdbx_DELFWT/pdbx_DELPHWT\n\n"
     "\nOptions:"},
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
   { Version, 0, "V", "version", Arg::None,
@@ -45,7 +46,9 @@ static const option::Descriptor Usage[] = {
   { PhiLabel, 0, "p", "", Arg::Required,
     "  -p COLUMN  \tPhase column (MTZ label or mmCIF tag)." },
   { GridDims, 0, "g", "grid", Arg::Int3,
-    "  -g, --grid=NX,NY,NZ  \tGrid sampling." },
+    "  -g, --grid=NX,NY,NZ  \tGrid size (user-specified minimum)." },
+  { Sample, 0, "s", "--sample", Arg::Float,
+    "  -s, --sample=NUMBER  \tSet spacing to d_min/NUMBER (3 is usual)." },
   { GridQuery, 0, "G", "", Arg::None,
     "  -G  \tPrint size of the grid that would be used and exit." },
   { Normalize, 0, "", "normalize", Arg::None,
@@ -99,8 +102,9 @@ get_mtz_columns(const Mtz& mtz, const options_type& options) {
 }
 
 template<typename DataProxy>
-void print_grid_size(const DataProxy& data, std::array<int, 3> min_size) {
-  std::array<int, 3> size = gemmi::get_size_for_hkl(data, min_size);
+void print_grid_size(const DataProxy& data, std::array<int, 3> min_size,
+                     double rate) {
+  std::array<int, 3> size = gemmi::get_size_for_hkl(data, min_size, rate);
   printf("Grid size: %d x %d x %d\n", size[0], size[1], size[2]);
 }
 
@@ -118,7 +122,9 @@ static void transform_sf_to_map(OptParser& p) {
   if (p.options[GridDims])
     vsize = parse_comma_separated_ints(p.options[GridDims].arg);
   std::array<int,3> min_size = {{vsize[0], vsize[1], vsize[2]}};
-
+  double sample_rate = 0;
+  if (p.options[Sample])
+    sample_rate = std::strtod(p.options[Sample].arg, nullptr);
   gemmi::Grid<std::complex<float>> grid;
   if (gemmi::giends_with(input_path, ".cif") ||
       gemmi::giends_with(input_path, ".ent")) {
@@ -147,12 +153,12 @@ static void transform_sf_to_map(OptParser& p) {
           fprintf(stderr, "Putting data from block %s into matrix...\n",
                   rb.block.name.c_str());
         if (p.options[GridQuery]) {
-          print_grid_size(gemmi::ReflnDataProxy{rb}, min_size);
+          print_grid_size(gemmi::ReflnDataProxy{rb}, min_size, sample_rate);
           return;
         }
         grid = gemmi::get_f_phi_on_grid<float>(gemmi::ReflnDataProxy{rb},
-                                               f_idx, ph_idx,
-                                               /*half_l*/true, min_size);
+                                               f_idx, ph_idx, /*half_l=*/true,
+                                               min_size, sample_rate);
         break;
       }
     }
@@ -167,12 +173,12 @@ static void transform_sf_to_map(OptParser& p) {
       fprintf(stderr, "Putting data from columns %s and %s into matrix...\n",
               cols[0]->label.c_str(), cols[1]->label.c_str());
     if (p.options[GridQuery]) {
-      print_grid_size(gemmi::MtzDataProxy{mtz}, min_size);
+      print_grid_size(gemmi::MtzDataProxy{mtz}, min_size, sample_rate);
       return;
     }
     grid = gemmi::get_f_phi_on_grid<float>(gemmi::MtzDataProxy{mtz},
-                                           cols[0]->idx, cols[1]->idx,
-                                           /*half_l*/true, min_size);
+                                           cols[0]->idx, cols[1]->idx, true,
+                                           min_size, sample_rate);
   }
 
   if (verbose)
