@@ -504,15 +504,13 @@ Data on a 3D grid
 
 The reciprocal space data can be alternatively presented on a 3D grid
 indexed by Miller indices.
-Currently, this functionality is limited to a single function,
-but we expect to expand it as we gather more use cases.
 
 In C++, the ``<gemmi/fourier.hpp>`` header defines templated function
 ``get_f_phi_on_grid()`` that can be used with both MTZ and SF mmCIF data.
-Here we focus on the usage from Python.
+Here, we focus on the usage from Python.
 
 Both Mtz and ReflnBlock classes have method ``get_f_phi_on_grid``
-that takes two column names: for amplitude and phase (assumed to be in degrees),
+that takes two column names: amplitude and phase (in degrees),
 and returns a :ref:`Grid <grid>` of complex numbers.
 All the missing values are set to 0.
 
@@ -521,15 +519,29 @@ All the missing values are set to 0.
   >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT')
   <gemmi.ComplexGrid(54, 6, 18)>
 
-Two optional parameters can be specified. One is minimal size of the grid:
+This function has three optional parameters: ``min_size``, ``sample_rate``
+and ``half_l``.
+
+``min_size`` sets explicitely the minimal size of the grid:
 
 .. doctest::
 
   >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', min_size=[64,8,0])
   <gemmi.ComplexGrid(64, 8, 18)>
 
-the other is the ``half_l`` flag is used to shrink the size of the grid.
-With this flag set only data with non-negative index l are returned.
+The actual size can be increased to make room for all reflections,
+to obey restrictions imposed by the spacegroup, and to make the size
+FFT-friendly (currently this means factors 2, 3 and 5).
+
+``sample_rate`` is also used to set the minimal grid size,
+but it sets it in relation to *d*:sub:`min`.
+It is defined analogically to the keyword ``SAMPLE`` in the CCP4 FFT program.
+For example, ``sample_rate=3`` requests grid size that corresponds
+to real-space sampling *d*:sub:`min`/3.
+(N.B. 3 here is equivalent to Clipper oversampling parameter equal 1.5).
+
+The ``half_l`` flag is used to shrink the size of the grid in computer memory.
+With this flag set the grid does not include data with negative index l.
 If the data data is Hermitian, i.e. if it is a Fourier transform of
 the real data (electron density), the full data can be restored by setting
 values of missing (h k l) reflections to the conjugate values of its
@@ -544,13 +556,14 @@ When set together with ``half_l=True``, the ``min_size`` still refers
 to the full size.
 
 As an example, we will use numpy.fft to calculate electron density map
-from map coefficients. Let say we want the map on a grid 72x8x24 (oversampled
-by 1/3).
+from map coefficients. Gemmi can calculate it internally, as described
+in the next section, but it is instructive to do it with a general-purpose
+tool.
 
 .. doctest::
   :skipif: numpy is None
 
-  >>> full = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', min_size=[72, 8, 24])
+  >>> full = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', sample_rate=2.6)
   >>> array = numpy.array(full, copy=False)
   >>> complex_map = numpy.fft.ifftn(array.conj())
   >>> scale_factor = complex_map.size / full.unit_cell.volume
@@ -569,7 +582,7 @@ using complex-to-real FFT on a half of the data:
 .. doctest::
   :skipif: numpy is None
 
-  >>> half = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', half_l=True, min_size=[72, 8, 24])
+  >>> half = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', half_l=True, sample_rate=2.6)
   >>> array = numpy.array(half, copy=False)
   >>> real_map = numpy.fft.irfftn(array.conj()) * scale_factor
   >>> round(real_map[1][2][3], 5)
@@ -580,42 +593,40 @@ using complex-to-real FFT on a half of the data:
 FFT
 ===
 
-Gemmi is using the `PocketFFT <https://gitlab.mpcdf.mpg.de/mtr/pocketfft>`_
-library to transform between real space and reciprocal space.
-This library was picked after evaluation and tedious
+Internally, Gemmi is using
+the `PocketFFT <https://gitlab.mpcdf.mpg.de/mtr/pocketfft>`_ library
+to transform between real space and reciprocal space.
+This library was picked after evaluation and
 `benchmarking of many FFT libraries <https://github.com/project-gemmi/benchmarking-fft>`_.
 
 In C++, the relevant functions are in the ``<gemmi/fourier.hpp>`` header,
 and the :ref:`gemmi-sf2map <sf2map>` program may serve as a code example.
-Like in the previous section, we will cover here only the Python interface.
+Like in the previous section, here we will cover only the Python interface.
 
-Analogically to the function introduced in the previous subsection,
-both Mtz and ReflnBlock classes have method ``transform_f_phi_to_map``
-that takes two column names: for amplitude and phase (assumed to be in degrees),
-and returns a :ref:`Grid <grid>` -- but now it is grid of real numbers.
-that represents map in the direct space.
+Instead of using numpy.fft as in the example above,
+we can use ``gemmi.transform_f_phi_grid_to_map()``
+and we expect to get the same result (wrapped in a :ref:`Grid <grid>` class):
 
 .. doctest::
 
-  >>> rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', min_size=[72, 8, 24])
+  >>> gemmi.transform_f_phi_grid_to_map(half)
   <gemmi.FloatGrid(72, 8, 24)>
+  >>> round(_.get_value(1, 2, 3), 5)
+  -0.40554
 
-The grid size is often defined in terms of *d*:sub:`min`. The CCP4 FFT program
-has a keyword ``SAMPLE`` to specify the fineness of sampling in the real space.
-Here, we have argument ``sample_rate`` with the same meaning: the value 3
-would request sampling *d*:sub:`min`/3. (N.B. 3 here is equivalent to Clipper
-oversampling  parameter equal 1.5). Both functions ``get_f_phi_on_grid``
-and ``transform_f_phi_to_map`` can take the ``sample_rate`` argument.
+Both Mtz and ReflnBlock classes have method ``transform_f_phi_to_map``
+that combines ``get_f_phi_on_grid()`` with ``transform_f_phi_grid_to_map()``.
+
+``transform_f_phi_to_map`` takes column names for amplitude and
+phase (in degrees), and optional parameters ``min_size`` and
+``sample_rate``:
 
 .. doctest::
 
   >>> rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', sample_rate=4)
   <gemmi.FloatGrid(120, 12, 36)>
 
-If both ``min_size`` and ``sample_rate`` would be given, the finer slicing
-of the two would be used.
-
-The grid data can be accessed as NumPy 3D array:
+The grid can be accessed as NumPy 3D array:
 
 .. doctest::
   :skipif: numpy is None
@@ -624,7 +635,7 @@ The grid data can be accessed as NumPy 3D array:
   >>> round(array.std(), 5)
   0.66338
 
-Alternatively, it can be be written as CCP4 map (for the whole unit cell):
+and it can be stored in a CCP4 map format:
 
 .. doctest::
 
@@ -633,7 +644,7 @@ Alternatively, it can be be written as CCP4 map (for the whole unit cell):
   >>> ccp4.update_ccp4_header(2, True)
   >>> ccp4.write_ccp4_map('5wkd.ccp4')
 
-To transformed the electron density data back to reciprocal space coefficients
+To transform the electron density back to reciprocal space coefficients
 use function ``transform_map_to_f_phi``:
 
 .. doctest::
@@ -648,22 +659,20 @@ Now you can access hkl reflections using ``Grid.get_value()``:
 .. doctest::
 
   >>> _.get_value(23, -1, -3)
-  (18.440288543701172+26.18924903869629j)
+  (18.440279006958008+26.189247131347656j)
 
 
-You can also use the ``half_l`` flag to shrink the size of the resulting grid:
+``transform_map_to_f_phi`` has one optional flag: ``half_l``.
+It has the same meaning as in the function ``get_f_phi_on_grid``.
+When you set ``half_l=True`` you cannot access directly a data point
+with negative Miller index l, but you can use its Friedel mate:
 
 .. doctest::
 
   >>> gemmi.transform_map_to_f_phi(ccp4.grid, half_l=True)
   <gemmi.ComplexGrid(72, 8, 13)>
+  >>> _.get_value(-23, 1, 3).conjugate()  # value for (23, -1, -3)
+  (18.440279006958008+26.189247131347656j)
 
-Now you cannot directly access a data point with negative Miller index l,
-but you can use its Friedel mate:
-
-.. doctest::
-
-  >>> _.get_value(-23, 1, 3).conjugate()
-  (18.440288543701172+26.18924903869629j)
-
-TODO: standalone function gemmi.transform_f_phi_to_map(grid)
+Then again, you can use ``transform_f_phi_grid_to_map()``
+to transform it back to the direct space, and so on...

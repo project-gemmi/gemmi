@@ -76,7 +76,8 @@ template<typename T=float>
 struct Grid {
   int nu = 0, nv = 0, nw = 0;
   UnitCell unit_cell;
-  bool full_canonical; // grid for the whole unit cell with X,Y,Z order
+  bool full_canonical = false; // grid for the whole unit cell with X,Y,Z order
+  bool half_l = false; // hkl grid that stores only l>=0
   const SpaceGroup* spacegroup = nullptr;
   double spacing[3];
 

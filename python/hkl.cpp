@@ -159,7 +159,7 @@ void add_hkl(py::module& m) {
                                       const std::string& phi_col,
                                       std::array<int, 3> min_size,
                                       double sample_rate) {
-        return transform_f_phi_half_to_map(
+        return transform_f_phi_grid_to_map(
                           mtz_get_f_phi_on_grid(self, f_col, phi_col, true,
                                                 min_size, sample_rate));
     }, py::arg("f"), py::arg("phi"),
@@ -286,6 +286,9 @@ void add_hkl(py::module& m) {
     });
   m.def("as_refln_blocks",
         [](cif::Document& d) { return as_refln_blocks(std::move(d.blocks)); });
+  m.def("transform_f_phi_grid_to_map", [](Grid<std::complex<float>> grid) {
+          return transform_f_phi_grid_to_map<float>(std::move(grid));
+        }, py::arg("grid"));
   m.def("transform_map_to_f_phi", &transform_map_to_f_phi<float>,
         py::arg("map"), py::arg("half_l")=false);
 }

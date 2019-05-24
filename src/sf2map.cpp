@@ -185,7 +185,7 @@ static void transform_sf_to_map(OptParser& p) {
     fprintf(stderr, "Fourier transform -> grid %d x %d x %d...\n",
             grid.nu, grid.nv, (grid.nw - 1) * 2);
   gemmi::Ccp4<float> ccp4;
-  ccp4.grid = gemmi::transform_f_phi_half_to_map(std::move(grid));
+  ccp4.grid = gemmi::transform_f_phi_grid_to_map(std::move(grid));
   if (verbose)
     fprintf(stderr, "Writing %s ...\n", map_path);
   ccp4.update_ccp4_header(2, true);

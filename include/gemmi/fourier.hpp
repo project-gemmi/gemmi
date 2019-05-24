@@ -63,6 +63,7 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
     fail("No spacegroup.");
   Grid<std::complex<T>> grid;
   grid.unit_cell = data.unit_cell();
+  grid.half_l = half_l;
   grid.spacegroup = data.spacegroup();
   std::array<int, 3> size = get_size_for_hkl(data, min_size, sample_rate);
   if (half_l)
@@ -120,36 +121,44 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
 
 
 template<typename T>
-Grid<T> transform_f_phi_half_to_map(Grid<std::complex<T>>&& hkl) {
+Grid<T> transform_f_phi_grid_to_map(Grid<std::complex<T>>&& hkl) {
   Grid<T> map;
   // x -> conj(x) is equivalent to changing axis direction before FFT
   for (std::complex<T>& x : hkl.data)
     x.imag(-x.imag());
   map.spacegroup = hkl.spacegroup;
   map.unit_cell = hkl.unit_cell;
-  int full_nw = 2 * (hkl.nw - 1);
+  int full_nw = hkl.half_l ? 2 * (hkl.nw - 1) : hkl.nw;
   map.set_size(hkl.nu, hkl.nv, full_nw);
   map.full_canonical = true;
   pocketfft::shape_t shape{(size_t)hkl.nw, (size_t)hkl.nv, (size_t)hkl.nu};
   std::ptrdiff_t s = sizeof(T);
   pocketfft::stride_t stride{hkl.nv * hkl.nu * 2*s, hkl.nu * 2*s, 2*s};
-  pocketfft::c2c<T>(shape, stride, stride, {1, 2}, pocketfft::BACKWARD,
-                    &hkl.data[0], &hkl.data[0], 1.0f);
-  pocketfft::stride_t stride_out{hkl.nv * hkl.nu * s, hkl.nu * s, s};
-  shape[0] = full_nw;
+  pocketfft::shape_t axes{2, 1};
+  if (!hkl.half_l)
+    axes.push_back(0);
   T norm = T(1.0 / hkl.unit_cell.volume);
-  pocketfft::c2r<T>(shape, stride, stride_out, /*axis=*/0,
-                    &hkl.data[0], &map.data[0], norm);
+  pocketfft::c2c<T>(shape, stride, stride, axes, pocketfft::BACKWARD,
+                    &hkl.data[0], &hkl.data[0], norm);
+  if (hkl.half_l) {
+    pocketfft::stride_t stride_out{hkl.nv * hkl.nu * s, hkl.nu * s, s};
+    shape[0] = full_nw;
+    pocketfft::c2r<T>(shape, stride, stride_out, /*axis=*/0,
+                      &hkl.data[0], &map.data[0], 1.0f);
+  } else {
+    assert(map.data.size() == hkl.data.size());
+    for (size_t i = 0; i != map.data.size(); ++i)
+      map.data[i] = hkl.data[i].real();
+  }
   return map;
 }
-
 
 template<typename T, typename DataProxy>
 Grid<T> transform_f_phi_to_map(const DataProxy& data,
                                size_t f_col, size_t phi_col,
                                std::array<int, 3> min_size,
                                double sample_rate) {
-  return transform_f_phi_half_to_map(get_f_phi_on_grid<T>(data, f_col, phi_col,
+  return transform_f_phi_grid_to_map(get_f_phi_on_grid<T>(data, f_col, phi_col,
                                                           true, min_size,
                                                           sample_rate));
 }
@@ -157,8 +166,9 @@ Grid<T> transform_f_phi_to_map(const DataProxy& data,
 template<typename T>
 Grid<std::complex<T>> transform_map_to_f_phi(const Grid<T>& map, bool half_l) {
   Grid<std::complex<T>> hkl;
-  hkl.spacegroup = map.spacegroup;
   hkl.unit_cell = map.unit_cell;
+  hkl.half_l = half_l;
+  hkl.spacegroup = map.spacegroup;
   int half_nw = map.nw / 2 + 1;
   hkl.set_size(map.nu, map.nv, half_l ? half_nw : map.nw);
   hkl.full_canonical = false; // disable some real-space functionality
