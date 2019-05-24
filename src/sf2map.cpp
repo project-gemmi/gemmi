@@ -47,7 +47,7 @@ static const option::Descriptor Usage[] = {
     "  -p COLUMN  \tPhase column (MTZ label or mmCIF tag)." },
   { GridDims, 0, "g", "grid", Arg::Int3,
     "  -g, --grid=NX,NY,NZ  \tGrid size (user-specified minimum)." },
-  { Sample, 0, "s", "--sample", Arg::Float,
+  { Sample, 0, "s", "sample", Arg::Float,
     "  -s, --sample=NUMBER  \tSet spacing to d_min/NUMBER (3 is usual)." },
   { GridQuery, 0, "G", "", Arg::None,
     "  -G  \tPrint size of the grid that would be used and exit." },
