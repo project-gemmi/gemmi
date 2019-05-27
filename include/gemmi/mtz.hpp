@@ -116,30 +116,32 @@ struct Mtz {
   FILE* warnings = nullptr;
 
   Mtz() = default;
-  Mtz(Mtz&& o) noexcept
-    : same_byte_order(o.same_byte_order),
-      header_offset(o.header_offset),
-      version_stamp(std::move(o.version_stamp)),
-      title(std::move(o.title)),
-      nreflections(o.nreflections),
-      nbatches(o.nbatches),
-      sort_order(std::move(o.sort_order)),
-      min_1_d2(o.min_1_d2),
-      max_1_d2(o.max_1_d2),
-      valm(o.valm),
-      nsymop(o.nsymop),
-      cell(std::move(o.cell)),
-      spacegroup_number(o.spacegroup_number),
-      spacegroup_name(std::move(o.spacegroup_name)),
-      symops(std::move(o.symops)),
-      spacegroup(o.spacegroup),
-      datasets(std::move(o.datasets)),
-      columns(std::move(o.columns)),
-      history(std::move(o.history)),
-      data(std::move(o.data)),
-      warnings(o.warnings) {
+  Mtz(Mtz&& o) noexcept { *this = std::move(o); }
+  Mtz& operator=(Mtz&& o) noexcept {
+    same_byte_order = o.same_byte_order;
+    header_offset = o.header_offset;
+    version_stamp = std::move(o.version_stamp);
+    title = std::move(o.title);
+    nreflections = o.nreflections;
+    nbatches = o.nbatches;
+    sort_order = std::move(o.sort_order);
+    min_1_d2 = o.min_1_d2;
+    max_1_d2 = o.max_1_d2;
+    valm = o.valm;
+    nsymop = o.nsymop;
+    cell = std::move(o.cell);
+    spacegroup_number = o.spacegroup_number;
+    spacegroup_name = std::move(o.spacegroup_name);
+    symops = std::move(o.symops);
+    spacegroup = o.spacegroup;
+    datasets = std::move(o.datasets);
+    columns = std::move(o.columns);
+    history = std::move(o.history);
+    data = std::move(o.data);
+    warnings = o.warnings;
     for (Mtz::Column& col : columns)
       col.parent = this;
+    return *this;
   }
   Mtz(Mtz const&) = delete;
   Mtz& operator=(Mtz const&) = delete;
@@ -518,16 +520,15 @@ struct Mtz {
       fail("Requested column position after the end.");
     if (pos < 0)
       pos = columns.size();
-    else
-      for (int i = pos; i < (int) columns.size(); ++i)
-        ++columns[i].idx;
-    Column col;
-    col.dataset_id = dataset_id;
-    col.type = type;
-    col.label = label;
-    col.parent = this;
-    col.idx = pos;
-    return *columns.insert(columns.begin() + pos, col);
+    auto col = columns.emplace(columns.begin() + pos);
+    for (auto i = col + 1; i != columns.end(); ++i)
+      i->idx++;
+    col->dataset_id = dataset_id;
+    col->type = type;
+    col->label = label;
+    col->parent = this;
+    col->idx = pos;
+    return *col;
   }
 
   void set_data(const float* new_data, size_t n) {
