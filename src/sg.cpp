@@ -44,6 +44,9 @@ static void process_arg(const char* arg) {
     return;
   }
   printf("Number: %d\n", sg->number);
+  bool is_reference = sg->is_reference_setting();
+  printf("Is reference setting for this space group: %s\n",
+         is_reference ? "yes" : "no");
   printf("CCP4 number: %d\n", sg->ccp4);
   printf("Hermann–Mauguin: %s\n", sg->hm);
   printf("Extended H-M: %s\n", sg->xhm().c_str());
@@ -51,6 +54,11 @@ static void process_arg(const char* arg) {
   printf("Point group: %s\n", sg->point_group_hm());
   gemmi::GroupOps ops = sg->operations();
   printf("Is centric: %s\n", ops.is_centric() ? "yes" : "no");
+  std::array<int, 3> gf = ops.find_grid_factors();
+  printf("Grid restrictions: NX=%dn NY=%dn NZ=%dn\n", gf[0], gf[1], gf[2]);
+  printf("Reciprocal space ASU%s: %s\n",
+         is_reference ? "" : " wrt. standard settings",
+         sg->hkl_asu_str());
   print_symmetry_operations(ops);
   printf("\n");
 }
