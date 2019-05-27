@@ -124,12 +124,13 @@ void convert_cif_block_to_mtz(const gemmi::ReflnBlock& rb,
     mtz.history.push_back(opt->arg);
   mtz.cell = rb.cell;
   mtz.spacegroup = rb.spacegroup;
-  mtz.datasets.push_back({0, "HKL_base", "HKL_base", "HKL_base", mtz.cell, 0.});
-  mtz.datasets.push_back({1, "unknown", "unknown", "unknown", mtz.cell,
-                          rb.wavelength});
+  mtz.add_dataset("HKL_base");
+  mtz.add_dataset("unknown").wavelength = rb.wavelength;
   const cif::Loop* loop = rb.refln_loop ? rb.refln_loop : rb.diffrn_refln_loop;
   if (!loop)
     gemmi::fail("_refln category not found in mmCIF block: " + rb.block.name);
+  if (options[Verbose])
+    fprintf(stderr, "Searching tags with known MTZ equivalents ...\n");
   bool uses_status = false;
   std::vector<int> indices;
   std::string tag = loop->tags[0].substr(0, loop->tags[0].find('.') + 1);
@@ -152,6 +153,8 @@ void convert_cif_block_to_mtz(const gemmi::ReflnBlock& rb,
       col.label = c->col_label;
       col.parent = &mtz;
       col.idx = mtz.columns.size() - 1;
+      if (options[Verbose])
+        fprintf(stderr, "  %s -> %s\n", tag.c_str(), col.label.c_str());
     } else if (c->col_type == 'H') {
       gemmi::fail("Miller index tag not found: " + tag);
     }
