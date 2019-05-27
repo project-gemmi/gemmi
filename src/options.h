@@ -28,6 +28,7 @@ std::vector<int> parse_comma_separated_ints(const char* arg);
 
 struct Arg: public option::Arg {
   static option::ArgStatus Required(const option::Option& option, bool msg);
+  static option::ArgStatus Char(const option::Option& option, bool msg);
   static option::ArgStatus Choice(const option::Option& option, bool msg,
                                   std::vector<const char*> choices);
   static option::ArgStatus Int(const option::Option& option, bool msg);

@@ -1,0 +1,16 @@
+$ gemmi map2sf -h
+Usage:
+  gemmi map2sf [options] MAP_FILE OUTPUT_FILE COL_F COL_PH
+
+Writes map coefficients (amplitude and phase) of a map to OUTPUT_FILE.
+The output is MTZ if it has mtz extension, otherwise it is mmCIF.
+
+Options:
+  -h, --help       Print usage and exit.
+  -V, --version    Print version and exit.
+  --verbose        Verbose output.
+  -b, --base=PATH  Add new columns to the data from this file.
+  --section=NAME   Add new columns to this MTZ dataset or CIF block.
+  --dmin=D_MIN     Resolution limit.
+  --ftype=TYPE     MTZ amplitude column type (default: F).
+  --phitype=TYPE   MTZ phase column type (default: P).

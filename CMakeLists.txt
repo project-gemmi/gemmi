@@ -143,6 +143,10 @@ add_executable(gemmi-map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/map.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-map)
 
+add_executable(gemmi-map2sf EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/map2sf.cpp $<TARGET_OBJECTS:input>)
+support_gz(gemmi-map2sf)
+
 add_executable(gemmi-mask EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/mask.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-mask)
@@ -183,9 +187,10 @@ support_gz(gemmi-wcn)
 add_executable(gemmi-prog
                src/wcn.cpp src/cif2mtz.cpp src/contact.cpp
                src/contents.cpp src/convert.cpp src/output.cpp
-               src/grep.cpp src/main.cpp src/map.cpp src/mask.cpp
-               src/mtz.cpp src/mtz2cif.cpp src/residues.cpp src/rmsz.cpp
-               src/sf2map.cpp src/sg.cpp src/validate.cpp src/validate_mon.cpp
+               src/grep.cpp src/main.cpp src/map.cpp src/map2sf.cpp
+               src/mask.cpp src/mtz.cpp src/mtz2cif.cpp
+               src/residues.cpp src/rmsz.cpp src/sf2map.cpp src/sg.cpp
+               src/validate.cpp src/validate_mon.cpp
                $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:options>)
 support_gz(gemmi-prog)
 target_compile_definitions(gemmi-prog PRIVATE GEMMI_ALL_IN_ONE=1)

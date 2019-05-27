@@ -11,6 +11,7 @@ int contents_main(int argc, char** argv);
 int convert_main(int argc, char** argv);
 int grep_main(int argc, char** argv);
 int map_main(int argc, char** argv);
+int map2sf_main(int argc, char** argv);
 int mask_main(int argc, char** argv);
 int mtz_main(int argc, char** argv);
 int mtz2cif_main(int argc, char** argv);
@@ -37,6 +38,7 @@ static SubCmd subcommands[] = {
   CMD(convert, "convert file (CIF - JSON, mmCIF - PDB) or modify structure"),
   CMD(grep, "search for tags in CIF file(s)"),
   CMD(map, "print info or modify a CCP4 map"),
+  CMD(map2sf, "transform CCP4 map to map coefficients (in MTZ or mmCIF)"),
   CMD(mask, "make mask in the CCP4 format"),
   CMD(mtz, "print info about MTZ reflection file"),
   CMD(mtz2cif, "convert MTZ to structure factor mmCIF"),

@@ -531,6 +531,19 @@ struct Mtz {
     return *col;
   }
 
+  void expand_data_rows(int added) {
+    int old_row_size = columns.size() - added;
+    if ((int) data.size() != old_row_size * nreflections)
+      fail("Internal error");
+    data.resize(columns.size() * nreflections);
+    for (int i = nreflections; i-- != 0; ) {
+      for (int j = added; j-- != 0; )
+        data[i * columns.size() + old_row_size + j] = NAN;
+      for (int j = old_row_size; j-- != 0; )
+        data[i * columns.size() + j] = data[i * old_row_size + j];
+    }
+  }
+
   void set_data(const float* new_data, size_t n) {
     if (n % columns.size() != 0)
       fail("Mtz.set_data(): expected " +

@@ -31,6 +31,16 @@ option::ArgStatus Arg::Required(const option::Option& option, bool msg) {
   return option::ARG_ILLEGAL;
 }
 
+option::ArgStatus Arg::Char(const option::Option& option, bool msg) {
+  if (Required(option, msg) == option::ARG_ILLEGAL)
+    return option::ARG_ILLEGAL;
+  if (option.arg[0] != '\0' || option.arg[1] == '\0')
+    return option::ARG_OK;
+  if (msg)
+    fprintf(stderr, "Argument of '%s' must be one character\n", option.name);
+  return option::ARG_ILLEGAL;
+}
+
 option::ArgStatus Arg::Choice(const option::Option& option, bool msg,
                               std::vector<const char*> choices) {
   if (Required(option, msg) == option::ARG_ILLEGAL)
