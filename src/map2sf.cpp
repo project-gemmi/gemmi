@@ -47,6 +47,11 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
+inline float get_phase_for_mtz(std::complex<float> v) {
+  float angle = (float) gemmi::deg(std::arg(v));
+  return angle >= 0.f ? angle : angle + 360.f;
+}
+
 static void transform_map_to_sf(OptParser& p) {
   bool verbose = p.options[Verbose];
   const char* map_path = p.nonOption(0);
@@ -103,7 +108,7 @@ static void transform_map_to_sf(OptParser& p) {
         int l = (int) mtz.data[i * ncol + 2];
         std::complex<float> v = hkl.get_value(h, k, l);
         mtz.data[i * ncol + f_idx] = (float) std::abs(v);
-        mtz.data[i * ncol + f_idx + 1] = (float) gemmi::deg(std::arg(v));
+        mtz.data[i * ncol + f_idx + 1] = get_phase_for_mtz(v);
       }
     } else {
       mtz.cell = map.grid.unit_cell;
@@ -133,7 +138,7 @@ static void transform_map_to_sf(OptParser& p) {
               mtz.data.push_back((float) k);
               mtz.data.push_back((float) l);
               mtz.data.push_back((float) std::abs(v));
-              mtz.data.push_back((float) gemmi::deg(std::arg(v)));
+              mtz.data.push_back(get_phase_for_mtz(v));
               ++mtz.nreflections;
             }
     }
