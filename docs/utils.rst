@@ -366,7 +366,7 @@ Converts reflection data from mmCIF to MTZ.
 .. _sf2map:
 
 sf2map
-=======
+======
 
 Transforms map coefficients from either MTZ or SF mmCIF to CCP4 map.
 
@@ -375,6 +375,14 @@ Transforms map coefficients from either MTZ or SF mmCIF to CCP4 map.
 
 The ``--sample`` option is named after the ``GRID SAMPLE`` keyword of
 the venerable CCP4 FFT program; its value has the same meaning.
+
+map2sf
+======
+
+Transforms CCP4 map into map coefficients.
+
+.. literalinclude:: map2sf-help.txt
+   :language: console
 
 residues
 ========
