@@ -170,7 +170,7 @@ Grid<std::complex<T>> transform_map_to_f_phi(const Grid<T>& map, bool half_l) {
   hkl.half_l = half_l;
   hkl.spacegroup = map.spacegroup;
   int half_nw = map.nw / 2 + 1;
-  hkl.set_size(map.nu, map.nv, half_l ? half_nw : map.nw);
+  hkl.set_size_without_checking(map.nu, map.nv, half_l ? half_nw : map.nw);
   hkl.full_canonical = false; // disable some real-space functionality
   T norm = T(map.unit_cell.volume / map.point_count());
   pocketfft::shape_t shape{(size_t)map.nw, (size_t)map.nv, (size_t)map.nu};

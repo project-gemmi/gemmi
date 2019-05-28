@@ -133,6 +133,7 @@ static void transform_map_to_sf(OptParser& p) {
               mtz.data.push_back((float) l);
               mtz.data.push_back((float) std::abs(v));
               mtz.data.push_back((float) gemmi::deg(std::arg(v)));
+              ++mtz.nreflections;
             }
     }
     if (verbose)

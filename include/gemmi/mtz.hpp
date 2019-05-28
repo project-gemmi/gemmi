@@ -600,16 +600,16 @@ namespace gemmi {
     int len = stbsp_snprintf(buf, 81, __VA_ARGS__); \
     std::memset(buf + len, ' ', 80 - len); \
     if (std::fwrite(buf, 80, 1, stream) != 1) \
-      fail("Writing MTZ file failed."); \
+      fail("Writing MTZ file failed"); \
   } while(0)
 
 void Mtz::write_to_stream(std::FILE* stream) const {
   // uses: data, spacegroup, nreflections, nbatches, cell, sort_order,
   //       valm, columns, datasets, history
   if (!has_data())
-    fail("Cannot write Mtz which has no data.");
+    fail("Cannot write Mtz which has no data");
   if (!spacegroup)
-    fail("Cannot write Mtz which has no space group.");
+    fail("Cannot write Mtz which has no space group");
   char buf[81] = {'M', 'T', 'Z', ' ', '\0'};
   std::int32_t header_start = (int) columns.size() * nreflections + 21;
   std::memcpy(buf + 4, &header_start, 4);
@@ -617,7 +617,7 @@ void Mtz::write_to_stream(std::FILE* stream) const {
   std::memcpy(buf + 8, &machst, 4);
   if (std::fwrite(buf, 80, 1, stream) != 1 ||
       std::fwrite(data.data(), 4, data.size(), stream) != data.size())
-    fail("Writing MTZ file failed.");
+    fail("Writing MTZ file failed");
   WRITE("VERS MTZ:V1.1");
   WRITE("TITLE %s", title.c_str());
   WRITE("NCOL %8zu %12d %8d", columns.size(), nreflections, nbatches);
