@@ -124,7 +124,8 @@ static void transform_map_to_sf(OptParser& p) {
           for (int l = 0; l < max_l + 1; ++l)
             if (mtz.spacegroup->is_in_hkl_asu(h, k, l) &&
                 (min_1_d2 == 0. ||
-                 mtz.cell.calculate_1_d2(h, k, l) < min_1_d2)) {
+                 mtz.cell.calculate_1_d2(h, k, l) < min_1_d2) &&
+                !(h == 0 && k == 0 && l == 0)) {
               std::complex<float> v = hkl.get_value_q(h >= 0 ? h : h + hkl.nu,
                                                       k >= 0 ? k : k + hkl.nv,
                                                       l);
