@@ -825,6 +825,7 @@ struct SpaceGroup { // typically 40 bytes
   bool is_in_hkl_asu(int h, int k, int l) const;
   const char* hkl_asu_str() const;
 
+  // such a formula just happens to give the right result
   bool is_reference_setting() const {
     return ext != '1' && (ext != '2' ? number == ccp4 : qualifier[0] == '\0');
   }
@@ -1395,9 +1396,8 @@ const SpaceGroup Tables_<Dummy>::main[554] = {
   { 23, 1023, "I 2 2 2a"  ,   0,     "", "I 2ab 2bc"     }, // 536
   { 94, 1094, "P 42 21 2a",   0,     "", "P 4bc 2a"      }, // 537
   {197, 1197, "I 2 3a"    ,   0,     "", "I 2ab 2bc 3"   }, // 538
-  // And extra entries from Open Babel, double checked with
-  // Crystallographic Space Group Diagrams and Tables,
-  // http://img.chem.ucl.ac.uk/sgp/
+  // And extra entries from Open Babel, double checked with Crystallographic
+  // Space Group Diagrams and Tables at http://img.chem.ucl.ac.uk/sgp/
   // triclinic - enlarged unit cells
   {  1,    0, "A 1"       ,   0,     "", "A 1"           },
   {  1,    0, "B 1"       ,   0,     "", "B 1"           },
@@ -1483,6 +1483,14 @@ inline const SpaceGroup& get_spacegroup_by_number(int ccp4) {
     throw std::invalid_argument("Invalid space-group number: "
                                 + std::to_string(ccp4));
   return *sg;
+}
+
+inline const SpaceGroup& get_spacegroup_reference_setting(int number) {
+  for (const SpaceGroup& sg : spacegroup_tables::main)
+    if (sg.number == number && sg.is_reference_setting())
+      return sg;
+  throw std::invalid_argument("Invalid space-group number: "
+                              + std::to_string(number));
 }
 
 inline const SpaceGroup* find_spacegroup_by_name(std::string name) noexcept {
