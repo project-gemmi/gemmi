@@ -90,6 +90,12 @@ class TestMol(unittest.TestCase):
     def test_read_5i55_again(self):
         st = gemmi.read_structure(full_path('5i55.cif'))
         self.assertEqual(st.info['_entry.id'], '5I55')
+
+        center = st[0].calculate_center_of_mass()
+        # PyMOL>print cmd.centerofmass()
+        pymol_ctr = [15.468438991742687, 4.8312495347721045, 20.607400844016833]
+        self.assertTrue(center.dist(gemmi.Position(*pymol_ctr)) < 1e-7)
+
         chain, = st[0]
         a, b, c, d = chain.subchains()
         ent_a = st.get_entity_of(a)

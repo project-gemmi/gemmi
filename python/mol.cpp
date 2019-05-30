@@ -238,6 +238,9 @@ void add_mol(py::module& m) {
     .def("__delitem__", &Model::remove_chain, py::arg("name"))
     .def("count_atom_sites", &count_atom_sites<Model>)
     .def("count_occupancies", &count_occupancies<Model>)
+    .def("calculate_center_of_mass", [](const Model& self) {
+        return calculate_center_of_mass(self).get();
+    })
     .def("__repr__", [](const Model& self) {
         return "<gemmi.Model " + self.name + " with " +
                std::to_string(self.chains.size()) + " chain(s)>";

@@ -31,6 +31,25 @@ template<> inline double count_occupancies(const Atom& atom) {
   return atom.occ;
 }
 
+struct CenterOfMass {
+  Position weighted_sum;
+  double mass;
+  Position get() const { return Position(weighted_sum / mass); }
+};
+
+template<class T> CenterOfMass calculate_center_of_mass(const T& obj) {
+  CenterOfMass total{{}, 0.};
+  for (const auto& child : obj.children()) {
+    CenterOfMass part = calculate_center_of_mass(child);
+    total = {total.weighted_sum + part.weighted_sum, total.mass + part.mass};
+  }
+  return total;
+}
+template<> inline CenterOfMass calculate_center_of_mass(const Atom& atom) {
+  double w_mass = atom.element.weight() * atom.occ;
+  return CenterOfMass{Position(atom.pos * w_mass), w_mass};
+}
+
 inline double calculate_angle_v(const Vec3& a, const Vec3& b) {
   return std::acos(a.dot(b) / std::sqrt(a.length_sq() * b.length_sq()));
 }
