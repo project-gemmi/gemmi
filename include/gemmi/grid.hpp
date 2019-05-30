@@ -189,6 +189,7 @@ struct Grid {
     auto id = std::find(ops.begin(), ops.end(), Op::identity());
     if (id != ops.end())
       ops.erase(id);
+    // rescale Op for faster calculations laster
     for (Op& op : ops) {
       op.tran[0] = op.tran[0] * nu / Op::TDEN;
       op.tran[1] = op.tran[1] * nv / Op::TDEN;
@@ -204,9 +205,12 @@ struct Grid {
           if (visited[idx])
             continue;
           for (size_t k = 0; k < ops.size(); ++k) {
-            int tu = u, tv = v, tw = w;
-            ops[k].apply_in_place_mult(tu, tv, tw, 1);
-            mates[k] = index_n(tu, tv, tw);
+            const Op& op = ops[k];
+            int t[3];
+            for (int i = 0; i != 3; ++i)
+              t[i] = op.rot[i][0] * u + op.rot[i][1] * v + op.rot[i][2] * w +
+                     op.tran[i];
+            mates[k] = index_n(t[0], t[1], t[2]);
           }
           T value = data[idx];
           for (int k : mates) {

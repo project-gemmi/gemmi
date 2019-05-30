@@ -127,26 +127,11 @@ struct Op {
     return r;
   }
 
-  template<typename T>
-  void apply_in_place_mult(T& x, T& y, T& z, T mult) const {
-    T ret[3];
-    for (int i = 0; i != 3; ++i)
-      ret[i] = rot[i][0] * x + rot[i][1] * y + rot[i][2] * z + tran[i] * mult;
-    x = ret[0];
-    y = ret[1];
-    z = ret[2];
-  }
-
-  template<typename T>
-  void apply_in_place(T& x, T& y, T& z) const {
-    apply_in_place_mult(x, y, z, 1.0 / Op::TDEN);
-  }
-
   std::array<int, 3> apply_to_hkl(const std::array<int, 3>& hkl) const {
-    std::array<int, 3> ret;
+    std::array<int, 3> r;
     for (int i = 0; i != 3; ++i)
-      ret[i] = rot[0][i] * hkl[0] + rot[1][i] * hkl[1] + rot[2][i] * hkl[2];
-    return ret;
+      r[i] = rot[0][i] * hkl[0] + rot[1][i] * hkl[1] + rot[2][i] * hkl[2];
+    return r;
   }
 
   double phase_shift(int h, int k, int l) const {
