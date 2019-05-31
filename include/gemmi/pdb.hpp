@@ -296,7 +296,8 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   st.input_format = CoorFormat::Pdb;
   st.name = path_basename(source, {".gz", ".pdb"});
   std::vector<std::string> conn_records;
-  Model *model = &st.find_or_add_model("1");
+  st.models.emplace_back("1");
+  Model *model = &st.models.back();
   Chain *chain = nullptr;
   Residue *resi = nullptr;
   char line[122] = {0};
@@ -311,8 +312,14 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       ResidueId rid = read_res_id(line+22, line+17);
 
       if (!chain || chain_name != chain->name) {
-        if (!model)
-          wrong("ATOM/HETATM between models");
+        if (!model) {
+          // MD trajectories may have frames separated by ENDMDL without MODEL.
+          std::string name = std::to_string(st.models.size() + 1);
+          if (st.find_model(name))
+            wrong("ATOM/HETATM between models");
+          st.models.emplace_back(name);
+          model = &st.models.back();
+        }
         const Chain* prev_part = model->find_chain(chain_name);
         after_ter = prev_part &&
                     prev_part->residues[0].entity_type == EntityType::Polymer;
