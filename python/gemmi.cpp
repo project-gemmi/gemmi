@@ -3,6 +3,7 @@
 #include <sstream>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include "gemmi/version.hpp"
 #include "gemmi/dirwalk.hpp"
 #include "gemmi/fileutil.hpp"  // for expand_if_pdb_code
 
@@ -21,6 +22,7 @@ void add_monlib(py::module& cif); // smallmol.cpp
 
 PYBIND11_MODULE(gemmi, mg) {
   mg.doc() = "General MacroMolecular I/O";
+  mg.attr("__version__") = GEMMI_VERSION;
   add_symmetry(mg);
   add_grid(mg);
   add_unitcell(mg);
