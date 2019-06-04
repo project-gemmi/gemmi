@@ -4,11 +4,15 @@
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/stl_bind.h>
 
 namespace py = pybind11;
 using namespace gemmi;
 
+PYBIND11_MAKE_OPAQUE(std::vector<Op::Tran>)
+
 void add_symmetry(py::module& m) {
+  py::bind_vector<std::vector<Op::Tran>>(m, "TranList");
   py::class_<Op>(m, "Op")
     .def(py::init<>(&Op::identity))
     .def(py::init(&parse_triplet))
@@ -36,7 +40,7 @@ void add_symmetry(py::module& m) {
               for (int j = 0; j < 4; ++j) {
                 auto v = arr[i][j];
                 if (j == 3 && i != 3 && v != 0)
-                  row.append(fr(v, (int)Op::TDEN));
+                  row.append(fr(v, Op::TDEN));
                 else
                   row.append(v);
               }
@@ -73,13 +77,32 @@ void add_symmetry(py::module& m) {
         return "<gemmi.Op(\"" + self.triplet() + "\")>";
     });
 
+  py::class_<FractOp>(m, "FractOp")
+    .def(py::init<>())
+    .def(py::init<const Op&>())
+    .def_readwrite("op", &FractOp::op)
+    .def("triplet", &FractOp::triplet)
+    .def("inverse", &FractOp::inverse)
+    .def("__mul__", [](const FractOp &a, const FractOp &b) { return a * b; },
+         py::is_operator())
+    .def("__eq__", [](const FractOp &a, const FractOp &b) { return a == b; },
+         py::is_operator())
+#if PY_MAJOR_VERSION < 3  // in Py3 != is inferred from ==
+    .def("__ne__", [](const FractOp &a, const FractOp &b) { return a != b; },
+         py::is_operator())
+#endif
+    .def("__repr__", [](const FractOp& self) {
+        return "<gemmi.FractOp " + self.triplet() + ">";
+    });
+
   m.def("parse_triplet", &parse_triplet, py::arg("triplet"),
         "Parse coordinate triplet into gemmi.Op.");
   m.def("parse_triplet_part", &parse_triplet_part, py::arg("s"),
         "Parse one of the three parts of a triplet.");
   m.def("make_triplet_part", &make_triplet_part,
         py::arg("x"), py::arg("y"), py::arg("z"), py::arg("w"),
-        py::arg("style")='x', "Make one of the three parts of a triplet.");
+        py::arg("is_fract")=false, py::arg("style")='x',
+        "Make one of the three parts of a triplet.");
 
   py::class_<GroupOps>(m, "GroupOps")
     .def(py::init<>())

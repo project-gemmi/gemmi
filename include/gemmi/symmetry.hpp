@@ -60,21 +60,48 @@ inline void append_small_number(std::string& s, int n) {
   }
 }
 
+inline void append_sign_of(std::string& s, int n) {
+  if (n < 0)
+    s += '-';
+  else if (!s.empty())
+    s += '+';
+}
+
+// append w/TDEN fraction reduced to the lowest terms
+inline void append_op_fraction(std::string& s, int w) {
+  // Op::TDEN == 24 == 2 * 2 * 2 * 3
+  int denom = 1;
+  for (int i = 0; i != 3; ++i)
+    if (w % 2 == 0)  // 2, 2, 2
+      w /= 2;
+    else
+      denom *= 2;
+  if (w % 3 == 0)    // 3
+    w /= 3;
+  else
+    denom *= 3;
+  impl::append_small_number(s, w);
+  if (denom != 1) {
+    s += '/';
+    impl::append_small_number(s, denom);
+  }
+}
+
 } // namespace impl
 
 // TRIPLET <-> SYM OP
 
+// Op is for symmetry operations. It has integer rotation matrix and
+// fractional translation vector.
 struct Op {
-  enum { TDEN=24 };  // 24 to handle 1/8 in change-of-basis
-  typedef int int_t;
-  typedef std::array<std::array<int_t, 3>, 3> Rot;
-  typedef std::array<int_t, 3> Tran;
+  static constexpr int TDEN = 24;  // 24 to handle 1/8 in change-of-basis
+  typedef std::array<std::array<int, 3>, 3> Rot;
+  typedef std::array<int, 3> Tran;
 
   Rot rot;
   Tran tran;
 
   std::string triplet() const;
-  std::string rot_triplet() const { return Op{rot, {0, 0, 0}}.triplet(); };
 
   Op inverse(int* denom=nullptr) const;
 
@@ -107,7 +134,7 @@ struct Op {
 
   Op negated() { return { negated_rot(), { -tran[0], -tran[1], -tran[2] } }; }
 
-  int det_rot() const { // should be 1 (rotation) or -1 (with inversion)
+  int det_rot() const { // 1 for rotation, -1 for rotoinversion
     return rot[0][0] * (rot[1][1] * rot[2][2] - rot[1][2] * rot[2][1])
          - rot[0][1] * (rot[1][0] * rot[2][2] - rot[1][2] * rot[2][0])
          + rot[0][2] * (rot[1][0] * rot[2][1] - rot[1][1] * rot[2][0]);
@@ -139,8 +166,8 @@ struct Op {
     return mult * (h * tran[0] + k * tran[1] + l * tran[2]);
   }
 
-  std::array<std::array<int_t, 4>, 4> seitz() const {
-    std::array<std::array<int_t, 4>, 4> t;
+  std::array<std::array<int, 4>, 4> seitz() const {
+    std::array<std::array<int, 4>, 4> t;
     for (int i = 0; i < 3; ++i)
       t[i] = { rot[i][0], rot[i][1], rot[i][2], tran[i] };
     t[3] = { 0, 0, 0, 1 };
@@ -162,6 +189,51 @@ struct Op {
   }
 };
 
+// Operation with fractional "rotation" matrix (with Op::TDEN denominator).
+// Used for change-of-basic operators.
+struct FractOp {
+  Op op;
+
+  FractOp() {}
+  explicit FractOp(const Op& op_) : op(op_) {
+    for (int i = 0; i != 3; ++i)
+      for (int j = 0; j != 3; ++j)
+        op.rot[i][j] *= Op::TDEN;
+  }
+
+  Op to_op() const {
+    Op r = op;
+    for (int i = 0; i != 3; ++i)
+      for (int j = 0; j != 3; ++j)
+        r.rot[i][j] /= Op::TDEN;
+    return r;
+  }
+
+  FractOp combine(const FractOp& b) const {
+    FractOp r;
+    for (int i = 0; i != 3; ++i) {
+      r.op.tran[i] = 0;
+      for (int j = 0; j != 3; ++j) {
+        r.op.rot[i][j] = (op.rot[i][0] * b.op.rot[0][j] +
+                          op.rot[i][1] * b.op.rot[1][j] +
+                          op.rot[i][2] * b.op.rot[2][j]) / Op::TDEN;
+        r.op.tran[i] += op.rot[i][j] * b.op.tran[j];
+      }
+      if (r.op.tran[i] % Op::TDEN != 0)
+        impl::fail("fractional problem");
+      r.op.tran[i] = r.op.tran[i] / Op::TDEN + op.tran[i];
+    }
+    return r;
+  }
+
+  FractOp& wrap() { op.wrap(); return *this; };
+
+  std::string triplet() const;
+
+  FractOp inverse() const;
+};
+
+
 inline bool operator==(const Op& a, const Op& b) {
   return a.rot == b.rot && a.tran == b.tran;
 }
@@ -170,13 +242,25 @@ inline bool operator!=(const Op& a, const Op& b) { return !(a == b); }
 inline Op operator*(const Op& a, const Op& b) { return a.combine(b).wrap(); }
 inline Op& operator*=(Op& a, const Op& b) { a = a * b; return a; }
 
+
+inline bool operator==(const FractOp& a, const FractOp& b) {
+  return a.op.rot == b.op.rot && a.op.tran == b.op.tran;
+}
+inline bool operator!=(const FractOp& a, const FractOp& b) { return !(a == b); }
+
+inline FractOp operator*(const FractOp& a, const FractOp& b) {
+  return a.combine(b).wrap();
+}
+inline FractOp& operator*=(FractOp& a, const FractOp& b) { a = a*b; return a; }
+
+
 inline Op Op::inverse(int* denom) const {
   int detr = det_rot();
   int sign = detr >= 0 ? 1 : -1;
-  if (detr != 1 && detr != -1) {
+  if (std::abs(detr) != 1) {
     if (detr == 0 || denom == nullptr)
-      impl::fail("not a rotation/inversion: det|" + rot_triplet() + "|="
-                 + std::to_string(detr));
+      impl::fail("cannot invert matrix: det|" +
+                 Op{rot, {0,0,0}}.triplet() + "|=" + std::to_string(detr));
     *denom = detr * sign;
   }
   Op inv;
@@ -196,8 +280,20 @@ inline Op Op::inverse(int* denom) const {
   return inv;
 }
 
-inline std::array<Op::int_t, 4> parse_triplet_part(const std::string& s) {
-  std::array<Op::int_t, 4> r = { 0, 0, 0, 0 };
+inline FractOp FractOp::inverse() const {
+  int denom = 1;
+  FractOp inv;
+  inv.op = op.inverse(&denom);
+  for (int i = 0; i != 3; ++i) {
+    for (int j = 0; j != 3; ++j)
+      inv.op.rot[i][j] = inv.op.rot[i][j] * (Op::TDEN * Op::TDEN) / denom;
+    inv.op.tran[i] = inv.op.tran[i] * Op::TDEN / denom;
+  }
+  return inv;
+}
+
+inline std::array<int, 4> parse_triplet_part(const std::string& s) {
+  std::array<int, 4> r = { 0, 0, 0, 0 };
   int sign = 1;
   for (const char* c = s.c_str(); c != s.c_str() + s.length(); ++c) {
     if (*c == '+') {
@@ -253,47 +349,44 @@ inline Op parse_triplet(const std::string& s) {
   return { rot, tran };
 }
 
-inline std::string make_triplet_part(int x, int y, int z, int w,
+inline std::string make_triplet_part(int x, int y, int z, int w, bool is_fract,
                                      char style='x') {
   std::string s;
   int xyz[] = { x, y, z };
   for (int i = 0; i != 3; ++i)
     if (xyz[i] != 0) {
-      if (xyz[i] < 0)
-        s += '-';
-      else if (!s.empty())
-        s += '+';
-      if (xyz[i] != 1 && xyz[i] != -1)
-        impl::append_small_number(s, xyz[i] < 0 ? -xyz[i] : xyz[i]);
+      impl::append_sign_of(s, xyz[i]);
+      int a = std::abs(xyz[i]);
+      if (is_fract) {
+        if (a != Op::TDEN) {
+          impl::append_op_fraction(s, a);
+          s += '*';
+        }
+      } else {
+        if (a != 1)
+          impl::append_small_number(s, a);
+      }
       s += char(style + i);
     }
-  if (w != 0) { // reduce the w/TDEN fraction to lowest terms
-    int denom = 1;
-    for (int factor : {2, 2, 2, 3})  // for Op::TDEN == 24
-      if (w % factor == 0)
-        w /= factor;
-      else
-        denom *= factor;
-    if (w > 0) {
-      if (!s.empty())
-        s += '+';
-      impl::append_small_number(s, w);
-    } else {
-      s += '-';
-      impl::append_small_number(s, -w);
-    }
-    if (denom != 1) {
-      s += '/';
-      impl::append_small_number(s, denom);
-    }
+  if (w != 0) {
+    impl::append_sign_of(s, w);
+    impl::append_op_fraction(s, std::abs(w));
   }
   return s;
 }
 
+inline std::string make_triplet(const Op& op, bool is_fr) {
+  const Op::Rot& rot = op.rot;
+  return make_triplet_part(rot[0][0], rot[0][1], rot[0][2], op.tran[0], is_fr) +
+   "," + make_triplet_part(rot[1][0], rot[1][1], rot[1][2], op.tran[1], is_fr) +
+   "," + make_triplet_part(rot[2][0], rot[2][1], rot[2][2], op.tran[2], is_fr);
+}
+
 inline std::string Op::triplet() const {
-  return make_triplet_part(rot[0][0], rot[0][1], rot[0][2], tran[0]) +
-   "," + make_triplet_part(rot[1][0], rot[1][1], rot[1][2], tran[1]) +
-   "," + make_triplet_part(rot[2][0], rot[2][1], rot[2][2], tran[2]);
+  return make_triplet(*this, false);
+}
+inline std::string FractOp::triplet() const {
+  return make_triplet(this->op, true);
 }
 
 
@@ -349,30 +442,47 @@ struct GroupOps {
 
   bool is_centric() const { return find_by_rotation({-1,0,0, 0,-1,0, 0,0,-1}); }
 
-  void change_basis(const Op& cob) {
+  void change_basis(const FractOp& cob) {
     if (sym_ops.empty() || cen_ops.empty())
       return;
-    int den = 1;
-    Op cob_inv = cob.inverse(&den);
-    // assuming the first items in sym_ops and cen_ops are identities
+    FractOp inv = cob.inverse();
+
+    // Apply change-of-basis to sym_ops.
+    // Ignore the first item in sym_ops -- it's identity.
     for (auto op = sym_ops.begin() + 1; op != sym_ops.end(); ++op)
-      *op = cob.combine(*op).combine(cob_inv).wrap();
-    constexpr Op::Rot rid = Op::identity().rot;
-    for (auto tr = cen_ops.begin() + 1; tr != cen_ops.end(); ++tr)
-      *tr = cob.combine(Op{rid, *tr}).combine(cob_inv).wrap().tran;
-    if (den > 1) {  // this part was tested only on R 3 :R -> :H
-      for (auto op = sym_ops.begin() + 1; op != sym_ops.end(); ++op)
-        for (auto& i : op->rot)
-          for (auto& j : i)
-            j /= den;
-      // the centering must have changed
-      for (int i = static_cast<int>(cen_ops.size()) - 1; i >= 0; --i)
-        for (int j = i - 1; j >= 0; --j)
-          if (cen_ops[i] == cen_ops[j]) {
-            cen_ops.erase(cen_ops.begin() + i);
-            break;
-          }
+      *op = cob.combine(FractOp(*op)).combine(inv).wrap().to_op();
+
+    // The number of centering vectors may be different.
+    // As an ad-hoc method (not proved to be robust) add lattice points
+    // from a super-cell.
+    int idet = inv.op.det_rot() / (Op::TDEN * Op::TDEN * Op::TDEN);
+    if (idet > 1) {
+      std::vector<Op::Tran> new_cen_ops;
+      new_cen_ops.reserve(idet * idet * idet * cen_ops.size());
+      for (int i = 0; i < idet; ++i)
+        for (int j = 0; j < idet; ++j)
+          for (int k = 0; k < idet; ++k)
+            for (Op::Tran& cen : cen_ops)
+              new_cen_ops.push_back({i * Op::TDEN + cen[0],
+                                     j * Op::TDEN + cen[1],
+                                     k * Op::TDEN + cen[2]});
+      cen_ops.swap(new_cen_ops);
     }
+
+    // Apply change-of-basis to centering vectors
+    FractOp fid(Op::identity());
+    for (auto tr = cen_ops.begin() + 1; tr != cen_ops.end(); ++tr) {
+      fid.op.tran = *tr;
+      *tr = cob.combine(fid).combine(inv).wrap().op.tran;
+    }
+
+    // Remove redundant centering vectors.
+    for (int i = static_cast<int>(cen_ops.size()) - 1; i > 0; --i)
+      for (int j = i - 1; j >= 0; --j)
+        if (cen_ops[i] == cen_ops[j]) {
+          cen_ops.erase(cen_ops.begin() + i);
+          break;
+        }
   }
 
   std::vector<Op> all_ops_sorted() const {
@@ -645,7 +755,7 @@ inline GroupOps generators_from_hall(const char* hall) {
       impl::fail("missing ')': " + std::string(hall));
     if (ops.sym_ops.empty())
       impl::fail("misplaced translation: " + std::string(hall));
-    ops.change_basis(parse_hall_change_of_basis(part + 1, rb));
+    ops.change_basis(FractOp(parse_hall_change_of_basis(part + 1, rb)));
 
     if (*impl::skip_blank(find_blank(rb + 1)) != '\0')
       impl::fail("unexpected characters after ')': " + std::string(hall));

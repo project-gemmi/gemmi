@@ -65,32 +65,67 @@ Triplets and matrices
 Crystallographic symmetry operations have a few notations.
 Gemmi undertands only coordinate triplets (sometimes called
 the Jones' faithful notation) such as ``x,x-y,z+1/2``.
+A symmetry operation, represented by class Op, can be created in Python as:
 
-The operations are equivalent to
+.. doctest::
 
-* either a 3x3 rotation matrix and a translation
-  vector,
-* or to a single 4x4 transformation matrix (which in crystallography
-  is called *Seitz matrix*).
+    >>> import gemmi
+    >>> op = gemmi.Op('-y,x-y,z+1/3')
+
+The operation is stored internally as a 3x3 rotation matrix and
+a translation vector. It is equivalent to a single 4x4 transformation
+matrix (which in crystallography is called *Seitz matrix*).
 
 .. doctest::
     :options: +NORMALIZE_WHITESPACE
 
-    >>> import gemmi
-    >>> gemmi.Op('x,-y,z+1/3').seitz()
-    [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 1, Fraction(1, 3)], [0, 0, 0, 1]]
-    >>> gemmi.Op('x,-y,z+1/3').float_seitz()
-    [[1.0, 0.0, 0.0, 0.0],
-     [0.0, -1.0, 0.0, 0.0],
+    >>> op.seitz()
+    [[0, -1, 0, 0], [1, -1, 0, 0], [0, 0, 1, Fraction(1, 3)], [0, 0, 0, 1]]
+    >>> op.float_seitz()
+    [[0.0, -1.0, 0.0, 0.0],
+     [1.0, -1.0, 0.0, 0.0],
      [0.0, 0.0, 1.0, 0.3333333333333333],
      [0.0, 0.0, 0.0, 1.0]]
 
-The triplets and matrices may not represent crystallographic symmetry,
-but for example, generation of the biological assembly.
+The triplets and matrices may represent not only crystallographic symmetry,
+but also, for example, generation of the biological assembly.
 For this reason, ``x,y+1,z`` is not reduced to the identity.
 But when the operations are transformed by the multiplication operator
 in C++ and Python they are assumed to be symmetry operations
-and the translation is wrapped to [0,1).
+and the translation is wrapped to [0,1):
+
+.. doctest::
+
+    >>> op
+    <gemmi.Op("-y,x-y,z+1/3")>
+    >>> op * op
+    <gemmi.Op("-x+y,-x,z+2/3")>
+    >>> op * op * op
+    <gemmi.Op("x,y,z")>
+
+The rotation matrix in Op class has integer elements.
+We call it the "rotation matrix", because that's the primary purpose,
+but this matrix could also represent a different linear transformation:
+
+.. doctest::
+
+    >>> op = gemmi.Op("-y+z,x+z,-x+y+z")
+    >>> op.det_rot()
+    3
+
+If the matrix elements were fractional, the Op class could represent any
+crystallographic change-of-basis transformation. So we introduce a class
+FractOp that has fractional "rotation" matrix:
+
+.. doctest::
+
+    >>> fract_op = gemmi.FractOp(op)
+    >>> fract_op.inverse()
+    <gemmi.FractOp -1/3*x+2/3*y-1/3*z,-2/3*x+1/3*y+1/3*z,1/3*x+1/3*y+1/3*z>
+    >>> _ * fract_op
+    <gemmi.FractOp x,y,z>
+
+FractOp is implemented as a minimal wrapper around class Op.
 
 Operations and Hall symbols
 ===========================
@@ -226,7 +261,7 @@ Python
     x+1/2,y+1/2,z+1/2
     -x+1/2,y+1/2,-z+1/2
     >>>
-    >>> ops.change_basis(gemmi.Op('x,y,x+z'))  # I2 -> C2
+    >>> ops.change_basis(gemmi.FractOp(gemmi.Op('x,y,x+z')))  # I2 -> C2
     >>> gemmi.find_spacegroup_by_ops(ops)
     <gemmi.SpaceGroup("C 1 2 1")>
 

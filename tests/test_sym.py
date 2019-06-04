@@ -90,8 +90,15 @@ class TestSymmetry(unittest.TestCase):
             op = gemmi.Op(xyz)
             self.assertEqual(op * op.inverse(), 'x,y,z')
             self.assertEqual(op.inverse().inverse(), op)
+        # test change-of-basis op between hexagonal and trigonal settings
         op = gemmi.Op("-y+z,x+z,-x+y+z")  # det=3
+        self.assertEqual(op.det_rot(), 3)
         self.assertRaises(RuntimeError, op.inverse)
+        fr_op = gemmi.FractOp(op)
+        self.assertEqual(fr_op.triplet(), op.triplet())
+        inv = fr_op.inverse()
+        expected_inv = '-1/3*x+2/3*y-1/3*z,-2/3*x+1/3*y+1/3*z,1/3*x+1/3*y+1/3*z'
+        self.assertEqual(inv.triplet(), expected_inv)
 
     def test_generators_from_hall(self):
         # first test on example matrices from
@@ -178,6 +185,22 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(gemmi.find_spacegroup_by_number(5).hm, 'C 1 2 1')
         self.assertEqual(gemmi.SpaceGroup(4005).hm, 'I 1 2 1')
         self.assertIsNone(gemmi.find_spacegroup_by_name('abc'))
+
+    def change_basis(self, name_a, name_b, basisop_triplet):
+        basisop = gemmi.FractOp(gemmi.Op(basisop_triplet))
+        a = gemmi.find_spacegroup_by_name(name_a)
+        b = gemmi.find_spacegroup_by_name(name_b)
+        ops = a.operations()
+        ops.change_basis(basisop)
+        self.assertEqual(ops, b.operations())
+        ops.change_basis(basisop.inverse())
+        self.assertEqual(ops, a.operations())
+
+    def test_change_basis(self):
+        self.change_basis('I2', 'C2', 'x,y,x+z')
+        self.change_basis('C 1 c 1', 'C 1 n 1', 'x+1/4,y+1/4,z')
+        self.change_basis('R 3 :H', 'R 3 :R', '-y+z,x+z,-x+y+z')
+        self.change_basis('A -1', 'P -1', '-x,-y+z,y+z')
 
     def test_short_name(self):
         for (longer, shorter) in [('P 21 2 21', 'P21221'),
