@@ -67,9 +67,9 @@ inline void append_sign_of(std::string& s, int n) {
     s += '+';
 }
 
-// append w/TDEN fraction reduced to the lowest terms
+// append w/DEN fraction reduced to the lowest terms
 inline void append_op_fraction(std::string& s, int w) {
-  // Op::TDEN == 24 == 2 * 2 * 2 * 3
+  // Op::DEN == 24 == 2 * 2 * 2 * 3
   int denom = 1;
   for (int i = 0; i != 3; ++i)
     if (w % 2 == 0)  // 2, 2, 2
@@ -94,7 +94,7 @@ inline void append_op_fraction(std::string& s, int w) {
 // Op is for symmetry operations. It has integer rotation matrix and
 // fractional translation vector.
 struct Op {
-  static constexpr int TDEN = 24;  // 24 to handle 1/8 in change-of-basis
+  static constexpr int DEN = 24;  // 24 to handle 1/8 in change-of-basis
   typedef std::array<std::array<int, 3>, 3> Rot;
   typedef std::array<int, 3> Tran;
 
@@ -108,10 +108,10 @@ struct Op {
   // if the translation points outside of the unit cell, wrap it.
   Op& wrap() {
     for (int i = 0; i != 3; ++i) {
-      if (tran[i] >= TDEN) // elements need to be in [0,TDEN)
-        tran[i] %= TDEN;
+      if (tran[i] >= DEN) // elements need to be in [0,DEN)
+        tran[i] %= DEN;
       else if (tran[i] < 0)
-        tran[i] = ((tran[i] + 1) % TDEN) + TDEN - 1;
+        tran[i] = ((tran[i] + 1) % DEN) + DEN - 1;
     }
     return *this;
   }
@@ -162,7 +162,7 @@ struct Op {
   }
 
   double phase_shift(int h, int k, int l) const {
-    constexpr double mult = -2 * 3.1415926535897932384626433832795 / Op::TDEN;
+    constexpr double mult = -2 * 3.1415926535897932384626433832795 / Op::DEN;
     return mult * (h * tran[0] + k * tran[1] + l * tran[2]);
   }
 
@@ -178,7 +178,7 @@ struct Op {
     std::array<std::array<double, 4>, 4> t;
     for (int i = 0; i < 3; ++i)
       t[i] = { double(rot[i][0]), double(rot[i][1]), double(rot[i][2]),
-               tran[i] / double(Op::TDEN) };
+               tran[i] / double(Op::DEN) };
     t[3] = { 0., 0., 0., 1. };
     return t;
   }
@@ -189,7 +189,7 @@ struct Op {
   }
 };
 
-// Operation with fractional "rotation" matrix (with Op::TDEN denominator).
+// Operation with fractional "rotation" matrix (with Op::DEN denominator).
 // Used for change-of-basic operators.
 struct FractOp {
   Op op;
@@ -198,14 +198,14 @@ struct FractOp {
   explicit FractOp(const Op& op_) : op(op_) {
     for (int i = 0; i != 3; ++i)
       for (int j = 0; j != 3; ++j)
-        op.rot[i][j] *= Op::TDEN;
+        op.rot[i][j] *= Op::DEN;
   }
 
   Op to_op() const {
     Op r = op;
     for (int i = 0; i != 3; ++i)
       for (int j = 0; j != 3; ++j)
-        r.rot[i][j] /= Op::TDEN;
+        r.rot[i][j] /= Op::DEN;
     return r;
   }
 
@@ -216,12 +216,12 @@ struct FractOp {
       for (int j = 0; j != 3; ++j) {
         r.op.rot[i][j] = (op.rot[i][0] * b.op.rot[0][j] +
                           op.rot[i][1] * b.op.rot[1][j] +
-                          op.rot[i][2] * b.op.rot[2][j]) / Op::TDEN;
+                          op.rot[i][2] * b.op.rot[2][j]) / Op::DEN;
         r.op.tran[i] += op.rot[i][j] * b.op.tran[j];
       }
-      if (r.op.tran[i] % Op::TDEN != 0)
+      if (r.op.tran[i] % Op::DEN != 0)
         impl::fail("fractional problem");
-      r.op.tran[i] = r.op.tran[i] / Op::TDEN + op.tran[i];
+      r.op.tran[i] = r.op.tran[i] / Op::DEN + op.tran[i];
     }
     return r;
   }
@@ -286,8 +286,8 @@ inline FractOp FractOp::inverse() const {
   inv.op = op.inverse(&denom);
   for (int i = 0; i != 3; ++i) {
     for (int j = 0; j != 3; ++j)
-      inv.op.rot[i][j] = inv.op.rot[i][j] * (Op::TDEN * Op::TDEN) / denom;
-    inv.op.tran[i] = inv.op.tran[i] * Op::TDEN / denom;
+      inv.op.rot[i][j] = inv.op.rot[i][j] * (Op::DEN * Op::DEN) / denom;
+    inv.op.tran[i] = inv.op.tran[i] * Op::DEN / denom;
   }
   return inv;
 }
@@ -314,11 +314,11 @@ inline std::array<int, 4> parse_triplet_part(const std::string& s) {
       int den = 1;
       if (*endptr == '/') {
         den = strtol(endptr + 1, &endptr, 10);
-        if (den < 1 || Op::TDEN % den != 0)
+        if (den < 1 || Op::DEN % den != 0)
           impl::fail("Unexpected denominator " + std::to_string(den) + " in: "
                      + s);
       }
-      r[3] *= Op::TDEN / den;
+      r[3] *= Op::DEN / den;
       c = endptr - 1;
     } else if (std::memchr("xXhHaA", *c, 6)) {
       r[0] += sign;
@@ -358,7 +358,7 @@ inline std::string make_triplet_part(int x, int y, int z, int w, bool is_fract,
       impl::append_sign_of(s, xyz[i]);
       int a = std::abs(xyz[i]);
       if (is_fract) {
-        if (a != Op::TDEN) {
+        if (a != Op::DEN) {
           impl::append_op_fraction(s, a);
           s += '*';
         }
@@ -394,8 +394,8 @@ inline std::string FractOp::triplet() const {
 
 // corresponds to Table A1.4.2.2 in ITfC vol.B (edition 2010)
 inline std::vector<Op::Tran> centring_vectors(char lattice_symbol) {
-  constexpr int h = Op::TDEN / 2;
-  constexpr int t = Op::TDEN / 3;
+  constexpr int h = Op::DEN / 2;
+  constexpr int t = Op::DEN / 3;
   constexpr int d = 2 * t;
   switch (lattice_symbol & ~0x20) {
     case 'P': return {{0, 0, 0}};
@@ -455,7 +455,7 @@ struct GroupOps {
     // The number of centering vectors may be different.
     // As an ad-hoc method (not proved to be robust) add lattice points
     // from a super-cell.
-    int idet = inv.op.det_rot() / (Op::TDEN * Op::TDEN * Op::TDEN);
+    int idet = inv.op.det_rot() / (Op::DEN * Op::DEN * Op::DEN);
     if (idet > 1) {
       std::vector<Op::Tran> new_cen_ops;
       new_cen_ops.reserve(idet * idet * idet * cen_ops.size());
@@ -463,9 +463,9 @@ struct GroupOps {
         for (int j = 0; j < idet; ++j)
           for (int k = 0; k < idet; ++k)
             for (Op::Tran& cen : cen_ops)
-              new_cen_ops.push_back({i * Op::TDEN + cen[0],
-                                     j * Op::TDEN + cen[1],
-                                     k * Op::TDEN + cen[2]});
+              new_cen_ops.push_back({i * Op::DEN + cen[0],
+                                     j * Op::DEN + cen[1],
+                                     k * Op::DEN + cen[2]});
       cen_ops.swap(new_cen_ops);
     }
 
@@ -511,7 +511,7 @@ struct GroupOps {
   // minimal multiplicity for real-space grid in each direction
   // examples: 1,2,1 for P21, 1,1,6 for P61
   std::array<int, 3> find_grid_factors() const {
-    const int T = Op::TDEN;
+    const int T = Op::DEN;
     int r[3] = {T, T, T};
     for (const Op& op : *this)
       for (int i = 0; i != 3; ++i)
@@ -627,8 +627,8 @@ inline Op::Rot hall_rotation_z(int N) {
   }
 }
 inline Op::Tran hall_translation_from_symbol(char symbol) {
-  constexpr int h = Op::TDEN / 2;
-  constexpr int q = Op::TDEN / 4;
+  constexpr int h = Op::DEN / 2;
+  constexpr int q = Op::DEN / 4;
   switch (symbol) {
     case 'a': return {h, 0, 0};
     case 'b': return {0, h, 0};
@@ -697,7 +697,7 @@ inline Op hall_matrix_symbol(const char* start, const char* end,
   else if (principal_axis == 'y')
     op.rot = alter_order(op.rot, 1, 2, 0);
   if (fractional_tran)
-    op.tran[principal_axis - 'x'] += Op::TDEN / N * fractional_tran;
+    op.tran[principal_axis - 'x'] += Op::DEN / N * fractional_tran;
   prev = N;
   return op;
 }
@@ -711,7 +711,7 @@ inline Op parse_hall_change_of_basis(const char* start, const char* end) {
   Op cob = Op::identity();
   char* endptr;
   for (int i = 0; i != 3; ++i) {
-    cob.tran[i] = std::strtol(start, &endptr, 10) % 12 * (Op::TDEN / 12);
+    cob.tran[i] = std::strtol(start, &endptr, 10) % 12 * (Op::DEN / 12);
     start = endptr;
   }
   if (endptr != end)

@@ -820,7 +820,7 @@ inline void Structure::setup_cell_images() {
         double(op.rot[0][0]), double(op.rot[0][1]), double(op.rot[0][2]),
         double(op.rot[1][0]), double(op.rot[1][1]), double(op.rot[1][2]),
         double(op.rot[2][0]), double(op.rot[2][1]), double(op.rot[2][2]));
-      double mult = 1.0 / Op::TDEN;
+      double mult = 1.0 / Op::DEN;
       Vec3 tran(mult * op.tran[0], mult * op.tran[1], mult * op.tran[2]);
       cell.images.emplace_back(rot, tran);
     }

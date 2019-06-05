@@ -16,11 +16,11 @@ void add_symmetry(py::module& m) {
   py::class_<Op>(m, "Op")
     .def(py::init<>(&Op::identity))
     .def(py::init(&parse_triplet))
-    .def_property_readonly_static("TDEN", [](py::object) { return Op::TDEN; },
+    .def_property_readonly_static("DEN", [](py::object) { return Op::DEN; },
                            "Denominator (integer) for the translation vector.")
     .def_readwrite("rot", &Op::rot, "3x3 integer matrix.")
     .def_readwrite("tran", &Op::tran,
-       "Numerators (integers) of the translation vector. Denominator TDEN=24.")
+       "Numerators (integers) of the translation vector. Denominator DEN=24.")
     .def("triplet", &Op::triplet, "Returns coordinate triplet x,y,z.")
     .def("det_rot", &Op::det_rot, "Determinant of the 3x3 matrix.")
     .def("inverse", [](const Op& self) { return self.inverse(); },
@@ -39,7 +39,7 @@ void add_symmetry(py::module& m) {
               for (int j = 0; j < 4; ++j) {
                 auto v = arr[i][j];
                 if (j == 3 && i != 3 && v != 0)
-                  row.append(fr(v, Op::TDEN + 0));  // +0 to avoid linker error
+                  row.append(fr(v, Op::DEN + 0));  // +0 to avoid linker error
                 else
                   row.append(v);
               }

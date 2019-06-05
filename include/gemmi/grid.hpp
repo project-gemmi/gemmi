@@ -191,9 +191,9 @@ struct Grid {
       ops.erase(id);
     // rescale Op for faster calculations laster
     for (Op& op : ops) {
-      op.tran[0] = op.tran[0] * nu / Op::TDEN;
-      op.tran[1] = op.tran[1] * nv / Op::TDEN;
-      op.tran[2] = op.tran[2] * nw / Op::TDEN;
+      op.tran[0] = op.tran[0] * nu / Op::DEN;
+      op.tran[1] = op.tran[1] * nv / Op::DEN;
+      op.tran[2] = op.tran[2] * nw / Op::DEN;
     }
     std::vector<int> mates(ops.size(), 0);
     std::vector<bool> visited(data.size(), false);

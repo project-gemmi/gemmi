@@ -10,7 +10,7 @@ try:
 except ImportError:
     sgtbx = None
 
-TDEN = gemmi.Op.TDEN
+DEN = gemmi.Op.DEN
 
 CANONICAL_SINGLES = {
     "x"     : [ 1, 0, 0, 0],
@@ -19,32 +19,32 @@ CANONICAL_SINGLES = {
     "-z"    : [ 0, 0,-1, 0],
     "x-y"   : [ 1,-1, 0, 0],
     "-x+y"  : [-1, 1, 0, 0],
-    "x+1/2" : [ 1, 0, 0, TDEN//2],
-    "y+1/4" : [ 0, 1, 0, TDEN//4],
-    "z+3/4" : [ 0, 0, 1, TDEN*3//4],
-    "z+1/3" : [ 0, 0, 1, TDEN*1//3],
-    "z+1/6" : [ 0, 0, 1, TDEN//6],
-    "z+2/3" : [ 0, 0, 1, TDEN*2//3],
-    "z+5/6" : [ 0, 0, 1, TDEN*5//6],
-    "-x+1/4": [-1, 0, 0, TDEN//4],
-    "-y+1/2": [ 0,-1, 0, TDEN//2],
-    "-y+3/4": [ 0,-1, 0, TDEN*3//4],
-    "-z+1/3": [ 0, 0,-1, TDEN//3],
-    "-z+1/6": [ 0, 0,-1, TDEN//6],
-    "-z+2/3": [ 0, 0,-1, TDEN*2//3],
-    "-z+5/6": [ 0, 0,-1, TDEN*5//6],
+    "x+1/2" : [ 1, 0, 0, DEN//2],
+    "y+1/4" : [ 0, 1, 0, DEN//4],
+    "z+3/4" : [ 0, 0, 1, DEN*3//4],
+    "z+1/3" : [ 0, 0, 1, DEN*1//3],
+    "z+1/6" : [ 0, 0, 1, DEN//6],
+    "z+2/3" : [ 0, 0, 1, DEN*2//3],
+    "z+5/6" : [ 0, 0, 1, DEN*5//6],
+    "-x+1/4": [-1, 0, 0, DEN//4],
+    "-y+1/2": [ 0,-1, 0, DEN//2],
+    "-y+3/4": [ 0,-1, 0, DEN*3//4],
+    "-z+1/3": [ 0, 0,-1, DEN//3],
+    "-z+1/6": [ 0, 0,-1, DEN//6],
+    "-z+2/3": [ 0, 0,-1, DEN*2//3],
+    "-z+5/6": [ 0, 0,-1, DEN*5//6],
 }
 
 OTHER_SINGLES = {
     # order and letter case may vary
     "Y-x"   : [-1, 1, 0,  0],
     "-X"    : [-1, 0, 0,  0],
-    "-1/2+Y": [ 0, 1, 0, -TDEN//2],
+    "-1/2+Y": [ 0, 1, 0, -DEN//2],
     # we want to handle non-crystallographic translations
-    "x+3"   : [ 1, 0, 0,  TDEN*3],
-    "1+Y"   : [ 0, 1, 0,  TDEN],
-    "-2+Y"  : [ 0, 1, 0, -TDEN*2],
-    "-z-5/6": [ 0, 0,-1, -TDEN*5//6],
+    "x+3"   : [ 1, 0, 0,  DEN*3],
+    "1+Y"   : [ 0, 1, 0,  DEN],
+    "-2+Y"  : [ 0, 1, 0, -DEN*2],
+    "-z-5/6": [ 0, 0,-1, -DEN*5//6],
 }
 
 
@@ -59,7 +59,7 @@ class TestSymmetry(unittest.TestCase):
 
     def test_make_triplet_part(self):
         self.assertEqual(gemmi.make_triplet_part(0, 0, 0, 1),
-                         '1/%d' % gemmi.Op.TDEN)
+                         '1/%d' % gemmi.Op.DEN)
         for single, row in CANONICAL_SINGLES.items():
             calculated = gemmi.make_triplet_part(*row)
             self.assertEqual(calculated, single)
