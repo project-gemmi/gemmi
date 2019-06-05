@@ -71,6 +71,7 @@ class TestSymmetry(unittest.TestCase):
             triplet = ','.join(items)
             op = gemmi.parse_triplet(triplet)
             self.assertEqual(op.triplet(), triplet)
+        self.assertEqual(gemmi.Op(' x , - y, + z ').triplet(), 'x,-y,z')
 
     def test_combine(self):
         a = gemmi.Op('x+1/3,z,-y')
@@ -98,6 +99,9 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(op * inv, 'x,y,z')
         expected_inv = '-1/3*x+2/3*y-1/3*z,-2/3*x+1/3*y+1/3*z,1/3*x+1/3*y+1/3*z'
         self.assertEqual(inv.triplet(), expected_inv)
+        self.assertEqual(gemmi.Op(expected_inv), inv)
+        op = gemmi.Op('1/2*x+1/2*y,-1/2*x+1/2*y,z')
+        self.assertEqual(op.inverse().triplet(), 'x-y,x+y,z')
 
     def test_generators_from_hall(self):
         # first test on example matrices from

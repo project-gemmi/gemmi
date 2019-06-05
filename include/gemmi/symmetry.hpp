@@ -192,44 +192,42 @@ inline Op Op::inverse() const {
 
 inline std::array<int, 4> parse_triplet_part(const std::string& s) {
   std::array<int, 4> r = { 0, 0, 0, 0 };
-  int sign = 1;
-  for (const char* c = s.c_str(); c != s.c_str() + s.length(); ++c) {
-    if (*c == '+') {
-      sign = 1;
-      continue;
+  int num = Op::DEN;
+  const char* c = s.c_str();
+  while (*(c = impl::skip_blank(c))) {
+    if (*c == '+' || *c == '-') {
+      num = (*c == '+' ? Op::DEN : -Op::DEN);
+      c = impl::skip_blank(++c);
     }
-    if (*c == '-') {
-      sign = -1;
-      continue;
-    }
-    if (*c == ' ' || *c == '\t')
-      continue;
-    if (sign == 0)
+    if (num == 0)
       impl::fail("wrong or unsupported triplet format: " + s);
+    bool is_shift = false;
     if (*c >= '0' && *c <= '9') {
       char* endptr;
-      r[3] = sign * strtol(c, &endptr, 10);
-      int den = 1;
+      num *= std::strtol(c, &endptr, 10);
       if (*endptr == '/') {
-        den = strtol(endptr + 1, &endptr, 10);
+        int den = std::strtol(endptr + 1, &endptr, 10);
         if (den < 1 || Op::DEN % den != 0)
-          impl::fail("Unexpected denominator " + std::to_string(den) + " in: "
-                     + s);
+          impl::fail("Wrong denominator " + std::to_string(den) + " in: " + s);
+        num /= den;
       }
-      r[3] *= Op::DEN / den;
-      c = endptr - 1;
-    } else if (std::memchr("xXhHaA", *c, 6)) {
-      r[0] += sign * Op::DEN;
-    } else if (std::memchr("yYkKbB", *c, 6)) {
-      r[1] += sign * Op::DEN;
-    } else if (std::memchr("zZlLcC", *c, 6)) {
-      r[2] += sign * Op::DEN;
-    } else {
-      impl::fail(std::string("unexpected character '") + *c + "' in: " + s);
+      is_shift = (*endptr != '*');
+      c = (is_shift ? endptr - 1 : impl::skip_blank(endptr + 1));
     }
-    sign = 0;
+    if (is_shift)
+      r[3] += num;
+    else if (std::memchr("xXhHaA", *c, 6))
+      r[0] += num;
+    else if (std::memchr("yYkKbB", *c, 6))
+      r[1] += num;
+    else if (std::memchr("zZlLcC", *c, 6))
+      r[2] += num;
+    else
+      impl::fail(std::string("unexpected character '") + *c + "' in: " + s);
+    ++c;
+    num = 0;
   }
-  if (sign != 0)
+  if (num != 0)
     impl::fail("trailing sign in: " + s);
   return r;
 }
