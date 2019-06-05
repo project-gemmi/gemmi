@@ -10,41 +10,41 @@ try:
 except ImportError:
     sgtbx = None
 
-DEN = gemmi.Op.DEN
+D = gemmi.Op.DEN
 
 CANONICAL_SINGLES = {
-    "x"     : [ 1, 0, 0, 0],
-    "z"     : [ 0, 0, 1, 0],
-    "-y"    : [ 0,-1, 0, 0],
-    "-z"    : [ 0, 0,-1, 0],
-    "x-y"   : [ 1,-1, 0, 0],
-    "-x+y"  : [-1, 1, 0, 0],
-    "x+1/2" : [ 1, 0, 0, DEN//2],
-    "y+1/4" : [ 0, 1, 0, DEN//4],
-    "z+3/4" : [ 0, 0, 1, DEN*3//4],
-    "z+1/3" : [ 0, 0, 1, DEN*1//3],
-    "z+1/6" : [ 0, 0, 1, DEN//6],
-    "z+2/3" : [ 0, 0, 1, DEN*2//3],
-    "z+5/6" : [ 0, 0, 1, DEN*5//6],
-    "-x+1/4": [-1, 0, 0, DEN//4],
-    "-y+1/2": [ 0,-1, 0, DEN//2],
-    "-y+3/4": [ 0,-1, 0, DEN*3//4],
-    "-z+1/3": [ 0, 0,-1, DEN//3],
-    "-z+1/6": [ 0, 0,-1, DEN//6],
-    "-z+2/3": [ 0, 0,-1, DEN*2//3],
-    "-z+5/6": [ 0, 0,-1, DEN*5//6],
+    "x"     : [ D, 0, 0, 0],
+    "z"     : [ 0, 0, D, 0],
+    "-y"    : [ 0,-D, 0, 0],
+    "-z"    : [ 0, 0,-D, 0],
+    "x-y"   : [ D,-D, 0, 0],
+    "-x+y"  : [-D, D, 0, 0],
+    "x+1/2" : [ D, 0, 0, D//2],
+    "y+1/4" : [ 0, D, 0, D//4],
+    "z+3/4" : [ 0, 0, D, D*3//4],
+    "z+1/3" : [ 0, 0, D, D*1//3],
+    "z+1/6" : [ 0, 0, D, D//6],
+    "z+2/3" : [ 0, 0, D, D*2//3],
+    "z+5/6" : [ 0, 0, D, D*5//6],
+    "-x+1/4": [-D, 0, 0, D//4],
+    "-y+1/2": [ 0,-D, 0, D//2],
+    "-y+3/4": [ 0,-D, 0, D*3//4],
+    "-z+1/3": [ 0, 0,-D, D//3],
+    "-z+1/6": [ 0, 0,-D, D//6],
+    "-z+2/3": [ 0, 0,-D, D*2//3],
+    "-z+5/6": [ 0, 0,-D, D*5//6],
 }
 
 OTHER_SINGLES = {
     # order and letter case may vary
-    "Y-x"   : [-1, 1, 0,  0],
-    "-X"    : [-1, 0, 0,  0],
-    "-1/2+Y": [ 0, 1, 0, -DEN//2],
+    "Y-x"   : [-D, D, 0,  0],
+    "-X"    : [-D, 0, 0,  0],
+    "-1/2+Y": [ 0, D, 0, -D//2],
     # we want to handle non-crystallographic translations
-    "x+3"   : [ 1, 0, 0,  DEN*3],
-    "1+Y"   : [ 0, 1, 0,  DEN],
-    "-2+Y"  : [ 0, 1, 0, -DEN*2],
-    "-z-5/6": [ 0, 0,-1, -DEN*5//6],
+    "x+3"   : [ D, 0, 0,  D*3],
+    "1+Y"   : [ 0, D, 0,  D],
+    "-2+Y"  : [ 0, D, 0, -D*2],
+    "-z-5/6": [ 0, 0,-D, -D*5//6],
 }
 
 
@@ -92,11 +92,10 @@ class TestSymmetry(unittest.TestCase):
             self.assertEqual(op.inverse().inverse(), op)
         # test change-of-basis op between hexagonal and trigonal settings
         op = gemmi.Op("-y+z,x+z,-x+y+z")  # det=3
-        self.assertEqual(op.det_rot(), 3)
-        self.assertRaises(RuntimeError, op.inverse)
-        fr_op = gemmi.FractOp(op)
-        self.assertEqual(fr_op.triplet(), op.triplet())
-        inv = fr_op.inverse()
+        self.assertEqual(op.det_rot(), 3 * gemmi.Op.DEN**3)
+        inv = op.inverse()
+        self.assertEqual(inv * op, 'x,y,z')
+        self.assertEqual(op * inv, 'x,y,z')
         expected_inv = '-1/3*x+2/3*y-1/3*z,-2/3*x+1/3*y+1/3*z,1/3*x+1/3*y+1/3*z'
         self.assertEqual(inv.triplet(), expected_inv)
 
@@ -187,7 +186,7 @@ class TestSymmetry(unittest.TestCase):
         self.assertIsNone(gemmi.find_spacegroup_by_name('abc'))
 
     def change_basis(self, name_a, name_b, basisop_triplet):
-        basisop = gemmi.FractOp(gemmi.Op(basisop_triplet))
+        basisop = gemmi.Op(basisop_triplet)
         a = gemmi.find_spacegroup_by_name(name_a)
         b = gemmi.find_spacegroup_by_name(name_b)
         ops = a.operations()

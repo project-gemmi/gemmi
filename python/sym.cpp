@@ -23,30 +23,31 @@ void add_symmetry(py::module& m) {
        "Numerators (integers) of the translation vector. Denominator DEN=24.")
     .def("triplet", &Op::triplet, "Returns coordinate triplet x,y,z.")
     .def("det_rot", &Op::det_rot, "Determinant of the 3x3 matrix.")
-    .def("inverse", [](const Op& self) { return self.inverse(); },
-         "Returns inverted operator.")
+    .def("inverse", &Op::inverse, "Returns inverted operator.")
     .def("negated", &Op::negated, "Returns Op with all elements nagated")
     .def("translated", &Op::translated, py::arg("a"), "Adds a to tran")
     .def("wrap", &Op::wrap, "Wrap the translation part to [0,1)")
     .def("combine", &Op::combine, py::arg("b"),
          "Combine two symmetry operations.")
     .def("seitz", [](const Op& self) {
-            auto arr = self.seitz();
+            auto arr = self.int_seitz();
             auto mat = py::list();
             py::object fr = py::module::import("fractions").attr("Fraction");
             for (int i = 0; i < 4; ++i) {
               auto row = py::list();
               for (int j = 0; j < 4; ++j) {
                 auto v = arr[i][j];
-                if (j == 3 && i != 3 && v != 0)
-                  row.append(fr(v, Op::DEN + 0));  // +0 to avoid linker error
-                else
+                if (i == 3 || v == 0)
                   row.append(v);
+                else if (std::abs(v) == Op::DEN)
+                  row.append(v / Op::DEN);
+                else
+                  row.append(fr(v, Op::DEN + 0));  // +0 to avoid linker error
               }
               mat.append(row);
             }
             return mat;
-         }, "Returns Seitz matrix (integers and fractions)")
+         }, "Returns Seitz matrix (fractions)")
     .def("float_seitz", &Op::float_seitz, "Returns Seitz matrix (floats)")
     .def("apply_to_hkl", &Op::apply_to_hkl, py::arg("hkl"))
     .def("phase_shift", &Op::phase_shift,
@@ -76,31 +77,13 @@ void add_symmetry(py::module& m) {
         return "<gemmi.Op(\"" + self.triplet() + "\")>";
     });
 
-  py::class_<FractOp>(m, "FractOp")
-    .def(py::init<>())
-    .def(py::init<const Op&>())
-    .def_readwrite("op", &FractOp::op)
-    .def("triplet", &FractOp::triplet)
-    .def("inverse", &FractOp::inverse)
-    .def("__mul__", [](const FractOp &a, const FractOp &b) { return a * b; },
-         py::is_operator())
-    .def("__eq__", [](const FractOp &a, const FractOp &b) { return a == b; },
-         py::is_operator())
-#if PY_MAJOR_VERSION < 3  // in Py3 != is inferred from ==
-    .def("__ne__", [](const FractOp &a, const FractOp &b) { return a != b; },
-         py::is_operator())
-#endif
-    .def("__repr__", [](const FractOp& self) {
-        return "<gemmi.FractOp " + self.triplet() + ">";
-    });
-
   m.def("parse_triplet", &parse_triplet, py::arg("triplet"),
         "Parse coordinate triplet into gemmi.Op.");
   m.def("parse_triplet_part", &parse_triplet_part, py::arg("s"),
         "Parse one of the three parts of a triplet.");
   m.def("make_triplet_part", &make_triplet_part,
         py::arg("x"), py::arg("y"), py::arg("z"), py::arg("w"),
-        py::arg("is_fract")=false, py::arg("style")='x',
+        py::arg("style")='x',
         "Make one of the three parts of a triplet.");
 
   py::class_<GroupOps>(m, "GroupOps")

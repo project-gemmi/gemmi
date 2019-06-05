@@ -103,29 +103,20 @@ and the translation is wrapped to [0,1):
     >>> op * op * op
     <gemmi.Op("x,y,z")>
 
-The rotation matrix in Op class has integer elements.
-We call it the "rotation matrix", because that's the primary purpose,
-but this matrix could also represent a different linear transformation:
+Both matrix and translation vector are stored as fractions:
+integer numerator are stored in arrays, and denominator is given
+in constant ``DEN`` and is equal to 24.
+
+The matrix is called "rotation matrix", because that's its primary purpose,
+but it can represent a different linear transformation:
 
 .. doctest::
 
     >>> op = gemmi.Op("-y+z,x+z,-x+y+z")
-    >>> op.det_rot()
-    3
-
-If the matrix elements were fractional, the Op class could represent any
-crystallographic change-of-basis transformation. So we introduce a class
-FractOp that has fractional "rotation" matrix:
-
-.. doctest::
-
-    >>> fract_op = gemmi.FractOp(op)
-    >>> fract_op.inverse()
-    <gemmi.FractOp -1/3*x+2/3*y-1/3*z,-2/3*x+1/3*y+1/3*z,1/3*x+1/3*y+1/3*z>
-    >>> _ * fract_op
-    <gemmi.FractOp x,y,z>
-
-FractOp is implemented as a minimal wrapper around class Op.
+    >>> op.inverse()
+    <gemmi.Op("-1/3*x+2/3*y-1/3*z,-2/3*x+1/3*y+1/3*z,1/3*x+1/3*y+1/3*z")>
+    >>> _ * op
+    <gemmi.Op("x,y,z")>
 
 Operations and Hall symbols
 ===========================
@@ -261,7 +252,7 @@ Python
     x+1/2,y+1/2,z+1/2
     -x+1/2,y+1/2,-z+1/2
     >>>
-    >>> ops.change_basis(gemmi.FractOp(gemmi.Op('x,y,x+z')))  # I2 -> C2
+    >>> ops.change_basis(gemmi.Op('x,y,x+z'))  # I2 -> C2
     >>> gemmi.find_spacegroup_by_ops(ops)
     <gemmi.SpaceGroup("C 1 2 1")>
 

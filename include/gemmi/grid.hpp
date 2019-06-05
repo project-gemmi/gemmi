@@ -194,6 +194,9 @@ struct Grid {
       op.tran[0] = op.tran[0] * nu / Op::DEN;
       op.tran[1] = op.tran[1] * nv / Op::DEN;
       op.tran[2] = op.tran[2] * nw / Op::DEN;
+      for (int i = 0; i != 3; ++i)
+        for (int j = 0; j != 3; ++j)
+          op.rot[i][j] /= Op::DEN;
     }
     std::vector<int> mates(ops.size(), 0);
     std::vector<bool> visited(data.size(), false);

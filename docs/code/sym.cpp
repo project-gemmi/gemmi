@@ -27,7 +27,7 @@ int main() {
   for (const gemmi::Op& operation : ops)
     std::cout << "   " << operation.triplet();
   // output:   x,y,z   -x,y,-z   x+1/2,y+1/2,z+1/2   -x+1/2,y+1/2,-z+1/2
-  ops.change_basis(gemmi::FractOp(gemmi::parse_triplet("x,y,x+z")));
+  ops.change_basis(gemmi::parse_triplet("x,y,x+z"));
   assert(gemmi::find_spacegroup_by_ops(ops) == c2);
 
   assert(gemmi::find_spacegroup_by_name("C m m e") ==  // new name with 'e'

@@ -47,6 +47,211 @@ inline const char* skip_blank(const char* p) {
   return p;
 }
 
+} // namespace impl
+
+
+// OP
+
+// Op is a symmetry operation, or a change-of-basic transformation,
+// or a different operation of similar kind.
+// Both "rotation" matrix and translation vector are fractional, with DEN
+// used as the denominator.
+struct Op {
+  static constexpr int DEN = 24;  // 24 to handle 1/8 in change-of-basis
+  typedef std::array<std::array<int, 3>, 3> Rot;
+  typedef std::array<int, 3> Tran;
+
+  Rot rot;
+  Tran tran;
+
+  std::string triplet() const;
+
+  Op inverse() const;
+
+  // If the translation points outside of the unit cell, wrap it.
+  Op& wrap() {
+    for (int i = 0; i != 3; ++i) {
+      if (tran[i] >= DEN) // elements need to be in [0,DEN)
+        tran[i] %= DEN;
+      else if (tran[i] < 0)
+        tran[i] = ((tran[i] + 1) % DEN) + DEN - 1;
+    }
+    return *this;
+  }
+
+  Op& translate(const Tran& a) {
+    for (int i = 0; i != 3; ++i)
+      tran[i] += a[i];
+    return *this;
+  }
+
+  Op translated(const Tran& a) const { return Op(*this).translate(a); }
+
+  Op add_centering(const Tran& a) const { return translated(a).wrap(); }
+
+  Rot negated_rot() const {
+    return { -rot[0][0], -rot[0][1], -rot[0][2],
+             -rot[1][0], -rot[1][1], -rot[1][2],
+             -rot[2][0], -rot[2][1], -rot[2][2] };
+  }
+
+  Op negated() { return { negated_rot(), { -tran[0], -tran[1], -tran[2] } }; }
+
+  // DEN^3 for rotation, -DEN^3 for rotoinversion
+  int det_rot() const {
+    return rot[0][0] * (rot[1][1] * rot[2][2] - rot[1][2] * rot[2][1])
+         - rot[0][1] * (rot[1][0] * rot[2][2] - rot[1][2] * rot[2][0])
+         + rot[0][2] * (rot[1][0] * rot[2][1] - rot[1][1] * rot[2][0]);
+  }
+
+  Op combine(const Op& b) const {
+    Op r;
+    for (int i = 0; i != 3; ++i) {
+      r.tran[i] = tran[i] * Op::DEN;
+      for (int j = 0; j != 3; ++j) {
+        r.rot[i][j] = (rot[i][0] * b.rot[0][j] +
+                       rot[i][1] * b.rot[1][j] +
+                       rot[i][2] * b.rot[2][j]) / Op::DEN;
+        r.tran[i] += rot[i][j] * b.tran[j];
+      }
+      r.tran[i] /= Op::DEN;
+    }
+    return r;
+  }
+
+  std::array<int, 3> apply_to_hkl(const std::array<int, 3>& hkl) const {
+    std::array<int, 3> r;
+    for (int i = 0; i != 3; ++i)
+      r[i] = (rot[0][i] * hkl[0] + rot[1][i] * hkl[1] + rot[2][i] * hkl[2])
+             / Op::DEN;
+    return r;
+  }
+
+  double phase_shift(int h, int k, int l) const {
+    constexpr double mult = -2 * 3.1415926535897932384626433832795 / Op::DEN;
+    return mult * (h * tran[0] + k * tran[1] + l * tran[2]);
+  }
+
+  std::array<std::array<int, 4>, 4> int_seitz() const {
+    std::array<std::array<int, 4>, 4> t;
+    for (int i = 0; i < 3; ++i)
+      t[i] = { rot[i][0], rot[i][1], rot[i][2], tran[i] };
+    t[3] = { 0, 0, 0, 1 };
+    return t;
+  }
+
+  std::array<std::array<double, 4>, 4> float_seitz() const {
+    std::array<std::array<double, 4>, 4> t;
+    double m = 1.0 / Op::DEN;
+    for (int i = 0; i < 3; ++i)
+      t[i] = { m * rot[i][0], m * rot[i][1], m * rot[i][2], m * tran[i] };
+    t[3] = { 0., 0., 0., 1. };
+    return t;
+  }
+
+  static constexpr Op identity() {
+    return {{DEN,0,0, 0,DEN,0, 0,0,DEN}, {0,0,0}};
+  }
+  bool operator<(const Op& rhs) const {
+    return std::tie(rot, tran) < std::tie(rhs.rot, rhs.tran);
+  }
+};
+
+inline bool operator==(const Op& a, const Op& b) {
+  return a.rot == b.rot && a.tran == b.tran;
+}
+inline bool operator!=(const Op& a, const Op& b) { return !(a == b); }
+
+inline Op operator*(const Op& a, const Op& b) { return a.combine(b).wrap(); }
+inline Op& operator*=(Op& a, const Op& b) { a = a * b; return a; }
+
+inline Op Op::inverse() const {
+  int detr = det_rot();
+  if (detr == 0)
+    impl::fail("cannot invert matrix: " + Op{rot, {0,0,0}}.triplet());
+  int d2 = Op::DEN * Op::DEN;
+  Op inv;
+  inv.rot[0][0] = d2 * (rot[1][1] * rot[2][2] - rot[2][1] * rot[1][2]) / detr;
+  inv.rot[0][1] = d2 * (rot[0][2] * rot[2][1] - rot[0][1] * rot[2][2]) / detr;
+  inv.rot[0][2] = d2 * (rot[0][1] * rot[1][2] - rot[0][2] * rot[1][1]) / detr;
+  inv.rot[1][0] = d2 * (rot[1][2] * rot[2][0] - rot[1][0] * rot[2][2]) / detr;
+  inv.rot[1][1] = d2 * (rot[0][0] * rot[2][2] - rot[0][2] * rot[2][0]) / detr;
+  inv.rot[1][2] = d2 * (rot[1][0] * rot[0][2] - rot[0][0] * rot[1][2]) / detr;
+  inv.rot[2][0] = d2 * (rot[1][0] * rot[2][1] - rot[2][0] * rot[1][1]) / detr;
+  inv.rot[2][1] = d2 * (rot[2][0] * rot[0][1] - rot[0][0] * rot[2][1]) / detr;
+  inv.rot[2][2] = d2 * (rot[0][0] * rot[1][1] - rot[1][0] * rot[0][1]) / detr;
+  for (int i = 0; i != 3; ++i)
+    inv.tran[i] = (-tran[0] * inv.rot[i][0]
+                   -tran[1] * inv.rot[i][1]
+                   -tran[2] * inv.rot[i][2]) / Op::DEN;
+  return inv;
+}
+
+
+// TRIPLET -> OP
+
+inline std::array<int, 4> parse_triplet_part(const std::string& s) {
+  std::array<int, 4> r = { 0, 0, 0, 0 };
+  int sign = 1;
+  for (const char* c = s.c_str(); c != s.c_str() + s.length(); ++c) {
+    if (*c == '+') {
+      sign = 1;
+      continue;
+    }
+    if (*c == '-') {
+      sign = -1;
+      continue;
+    }
+    if (*c == ' ' || *c == '\t')
+      continue;
+    if (sign == 0)
+      impl::fail("wrong or unsupported triplet format: " + s);
+    if (*c >= '0' && *c <= '9') {
+      char* endptr;
+      r[3] = sign * strtol(c, &endptr, 10);
+      int den = 1;
+      if (*endptr == '/') {
+        den = strtol(endptr + 1, &endptr, 10);
+        if (den < 1 || Op::DEN % den != 0)
+          impl::fail("Unexpected denominator " + std::to_string(den) + " in: "
+                     + s);
+      }
+      r[3] *= Op::DEN / den;
+      c = endptr - 1;
+    } else if (std::memchr("xXhHaA", *c, 6)) {
+      r[0] += sign * Op::DEN;
+    } else if (std::memchr("yYkKbB", *c, 6)) {
+      r[1] += sign * Op::DEN;
+    } else if (std::memchr("zZlLcC", *c, 6)) {
+      r[2] += sign * Op::DEN;
+    } else {
+      impl::fail(std::string("unexpected character '") + *c + "' in: " + s);
+    }
+    sign = 0;
+  }
+  if (sign != 0)
+    impl::fail("trailing sign in: " + s);
+  return r;
+}
+
+inline Op parse_triplet(const std::string& s) {
+  if (std::count(s.begin(), s.end(), ',') != 2)
+    impl::fail("expected exactly two commas in triplet");
+  size_t comma1 = s.find(',');
+  size_t comma2 = s.find(',', comma1 + 1);
+  auto a = parse_triplet_part(s.substr(0, comma1));
+  auto b = parse_triplet_part(s.substr(comma1 + 1, comma2 - (comma1 + 1)));
+  auto c = parse_triplet_part(s.substr(comma2 + 1));
+  Op::Rot rot = {a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]};
+  Op::Tran tran = {a[3], b[3], c[3]};
+  return { rot, tran };
+}
+
+
+// OP -> TRIPLET
+
+namespace impl {
+
 // much faster than s += std::to_string(n) for n in 0 ... 99
 inline void append_small_number(std::string& s, int n) {
   if (n < 0 || n >= 100) {
@@ -89,267 +294,7 @@ inline void append_op_fraction(std::string& s, int w) {
 
 } // namespace impl
 
-// TRIPLET <-> SYM OP
-
-// Op is for symmetry operations. It has integer rotation matrix and
-// fractional translation vector.
-struct Op {
-  static constexpr int DEN = 24;  // 24 to handle 1/8 in change-of-basis
-  typedef std::array<std::array<int, 3>, 3> Rot;
-  typedef std::array<int, 3> Tran;
-
-  Rot rot;
-  Tran tran;
-
-  std::string triplet() const;
-
-  Op inverse(int* denom=nullptr) const;
-
-  // if the translation points outside of the unit cell, wrap it.
-  Op& wrap() {
-    for (int i = 0; i != 3; ++i) {
-      if (tran[i] >= DEN) // elements need to be in [0,DEN)
-        tran[i] %= DEN;
-      else if (tran[i] < 0)
-        tran[i] = ((tran[i] + 1) % DEN) + DEN - 1;
-    }
-    return *this;
-  }
-
-  Op& translate(const Tran& a) {
-    for (int i = 0; i != 3; ++i)
-      tran[i] += a[i];
-    return *this;
-  }
-
-  Op translated(const Tran& a) const { return Op(*this).translate(a); }
-
-  Op add_centering(const Tran& a) const { return translated(a).wrap(); }
-
-  Rot negated_rot() const {
-    return { -rot[0][0], -rot[0][1], -rot[0][2],
-             -rot[1][0], -rot[1][1], -rot[1][2],
-             -rot[2][0], -rot[2][1], -rot[2][2] };
-  }
-
-  Op negated() { return { negated_rot(), { -tran[0], -tran[1], -tran[2] } }; }
-
-  int det_rot() const { // 1 for rotation, -1 for rotoinversion
-    return rot[0][0] * (rot[1][1] * rot[2][2] - rot[1][2] * rot[2][1])
-         - rot[0][1] * (rot[1][0] * rot[2][2] - rot[1][2] * rot[2][0])
-         + rot[0][2] * (rot[1][0] * rot[2][1] - rot[1][1] * rot[2][0]);
-  }
-
-  Op combine(const Op& b) const {
-    Op r;
-    for (int i = 0; i != 3; ++i) {
-      r.tran[i] = tran[i];
-      for (int j = 0; j != 3; ++j) {
-        r.rot[i][j] = rot[i][0] * b.rot[0][j] +
-                      rot[i][1] * b.rot[1][j] +
-                      rot[i][2] * b.rot[2][j];
-        r.tran[i] += rot[i][j] * b.tran[j];
-      }
-    }
-    return r;
-  }
-
-  std::array<int, 3> apply_to_hkl(const std::array<int, 3>& hkl) const {
-    std::array<int, 3> r;
-    for (int i = 0; i != 3; ++i)
-      r[i] = rot[0][i] * hkl[0] + rot[1][i] * hkl[1] + rot[2][i] * hkl[2];
-    return r;
-  }
-
-  double phase_shift(int h, int k, int l) const {
-    constexpr double mult = -2 * 3.1415926535897932384626433832795 / Op::DEN;
-    return mult * (h * tran[0] + k * tran[1] + l * tran[2]);
-  }
-
-  std::array<std::array<int, 4>, 4> seitz() const {
-    std::array<std::array<int, 4>, 4> t;
-    for (int i = 0; i < 3; ++i)
-      t[i] = { rot[i][0], rot[i][1], rot[i][2], tran[i] };
-    t[3] = { 0, 0, 0, 1 };
-    return t;
-  }
-
-  std::array<std::array<double, 4>, 4> float_seitz() const {
-    std::array<std::array<double, 4>, 4> t;
-    for (int i = 0; i < 3; ++i)
-      t[i] = { double(rot[i][0]), double(rot[i][1]), double(rot[i][2]),
-               tran[i] / double(Op::DEN) };
-    t[3] = { 0., 0., 0., 1. };
-    return t;
-  }
-
-  static constexpr Op identity() { return {{1,0,0, 0,1,0, 0,0,1}, {0,0,0}}; };
-  bool operator<(const Op& rhs) const {
-    return std::tie(rot, tran) < std::tie(rhs.rot, rhs.tran);
-  }
-};
-
-// Operation with fractional "rotation" matrix (with Op::DEN denominator).
-// Used for change-of-basic operators.
-struct FractOp {
-  Op op;
-
-  FractOp() {}
-  explicit FractOp(const Op& op_) : op(op_) {
-    for (int i = 0; i != 3; ++i)
-      for (int j = 0; j != 3; ++j)
-        op.rot[i][j] *= Op::DEN;
-  }
-
-  Op to_op() const {
-    Op r = op;
-    for (int i = 0; i != 3; ++i)
-      for (int j = 0; j != 3; ++j)
-        r.rot[i][j] /= Op::DEN;
-    return r;
-  }
-
-  FractOp combine(const FractOp& b) const {
-    FractOp r;
-    for (int i = 0; i != 3; ++i) {
-      r.op.tran[i] = 0;
-      for (int j = 0; j != 3; ++j) {
-        r.op.rot[i][j] = (op.rot[i][0] * b.op.rot[0][j] +
-                          op.rot[i][1] * b.op.rot[1][j] +
-                          op.rot[i][2] * b.op.rot[2][j]) / Op::DEN;
-        r.op.tran[i] += op.rot[i][j] * b.op.tran[j];
-      }
-      if (r.op.tran[i] % Op::DEN != 0)
-        impl::fail("fractional problem");
-      r.op.tran[i] = r.op.tran[i] / Op::DEN + op.tran[i];
-    }
-    return r;
-  }
-
-  FractOp& wrap() { op.wrap(); return *this; };
-
-  std::string triplet() const;
-
-  FractOp inverse() const;
-};
-
-
-inline bool operator==(const Op& a, const Op& b) {
-  return a.rot == b.rot && a.tran == b.tran;
-}
-inline bool operator!=(const Op& a, const Op& b) { return !(a == b); }
-
-inline Op operator*(const Op& a, const Op& b) { return a.combine(b).wrap(); }
-inline Op& operator*=(Op& a, const Op& b) { a = a * b; return a; }
-
-
-inline bool operator==(const FractOp& a, const FractOp& b) {
-  return a.op.rot == b.op.rot && a.op.tran == b.op.tran;
-}
-inline bool operator!=(const FractOp& a, const FractOp& b) { return !(a == b); }
-
-inline FractOp operator*(const FractOp& a, const FractOp& b) {
-  return a.combine(b).wrap();
-}
-inline FractOp& operator*=(FractOp& a, const FractOp& b) { a = a*b; return a; }
-
-
-inline Op Op::inverse(int* denom) const {
-  int detr = det_rot();
-  int sign = detr >= 0 ? 1 : -1;
-  if (std::abs(detr) != 1) {
-    if (detr == 0 || denom == nullptr)
-      impl::fail("cannot invert matrix: det|" +
-                 Op{rot, {0,0,0}}.triplet() + "|=" + std::to_string(detr));
-    *denom = detr * sign;
-  }
-  Op inv;
-  inv.rot[0][0] = sign * (rot[1][1] * rot[2][2] - rot[2][1] * rot[1][2]);
-  inv.rot[0][1] = sign * (rot[0][2] * rot[2][1] - rot[0][1] * rot[2][2]);
-  inv.rot[0][2] = sign * (rot[0][1] * rot[1][2] - rot[0][2] * rot[1][1]);
-  inv.rot[1][0] = sign * (rot[1][2] * rot[2][0] - rot[1][0] * rot[2][2]);
-  inv.rot[1][1] = sign * (rot[0][0] * rot[2][2] - rot[0][2] * rot[2][0]);
-  inv.rot[1][2] = sign * (rot[1][0] * rot[0][2] - rot[0][0] * rot[1][2]);
-  inv.rot[2][0] = sign * (rot[1][0] * rot[2][1] - rot[2][0] * rot[1][1]);
-  inv.rot[2][1] = sign * (rot[2][0] * rot[0][1] - rot[0][0] * rot[2][1]);
-  inv.rot[2][2] = sign * (rot[0][0] * rot[1][1] - rot[1][0] * rot[0][1]);
-  for (int i = 0; i != 3; ++i)
-    inv.tran[i] = - tran[0] * inv.rot[i][0]
-                  - tran[1] * inv.rot[i][1]
-                  - tran[2] * inv.rot[i][2];
-  return inv;
-}
-
-inline FractOp FractOp::inverse() const {
-  int denom = 1;
-  FractOp inv;
-  inv.op = op.inverse(&denom);
-  for (int i = 0; i != 3; ++i) {
-    for (int j = 0; j != 3; ++j)
-      inv.op.rot[i][j] = inv.op.rot[i][j] * (Op::DEN * Op::DEN) / denom;
-    inv.op.tran[i] = inv.op.tran[i] * Op::DEN / denom;
-  }
-  return inv;
-}
-
-inline std::array<int, 4> parse_triplet_part(const std::string& s) {
-  std::array<int, 4> r = { 0, 0, 0, 0 };
-  int sign = 1;
-  for (const char* c = s.c_str(); c != s.c_str() + s.length(); ++c) {
-    if (*c == '+') {
-      sign = 1;
-      continue;
-    }
-    if (*c == '-') {
-      sign = -1;
-      continue;
-    }
-    if (*c == ' ' || *c == '\t')
-      continue;
-    if (sign == 0)
-      impl::fail("wrong or unsupported triplet format: " + s);
-    if (*c >= '0' && *c <= '9') {
-      char* endptr;
-      r[3] = sign * strtol(c, &endptr, 10);
-      int den = 1;
-      if (*endptr == '/') {
-        den = strtol(endptr + 1, &endptr, 10);
-        if (den < 1 || Op::DEN % den != 0)
-          impl::fail("Unexpected denominator " + std::to_string(den) + " in: "
-                     + s);
-      }
-      r[3] *= Op::DEN / den;
-      c = endptr - 1;
-    } else if (std::memchr("xXhHaA", *c, 6)) {
-      r[0] += sign;
-    } else if (std::memchr("yYkKbB", *c, 6)) {
-      r[1] += sign;
-    } else if (std::memchr("zZlLcC", *c, 6)) {
-      r[2] += sign;
-    } else {
-      impl::fail(std::string("unexpected character '") + *c + "' in: " + s);
-    }
-    sign = 0;
-  }
-  if (sign != 0)
-    impl::fail("trailing sign in: " + s);
-  return r;
-}
-
-inline Op parse_triplet(const std::string& s) {
-  if (std::count(s.begin(), s.end(), ',') != 2)
-    impl::fail("expected exactly two commas in triplet");
-  size_t comma1 = s.find(',');
-  size_t comma2 = s.find(',', comma1 + 1);
-  auto a = parse_triplet_part(s.substr(0, comma1));
-  auto b = parse_triplet_part(s.substr(comma1 + 1, comma2 - (comma1 + 1)));
-  auto c = parse_triplet_part(s.substr(comma2 + 1));
-  Op::Rot rot = {a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]};
-  Op::Tran tran = {a[3], b[3], c[3]};
-  return { rot, tran };
-}
-
-inline std::string make_triplet_part(int x, int y, int z, int w, bool is_fract,
+inline std::string make_triplet_part(int x, int y, int z, int w,
                                      char style='x') {
   std::string s;
   int xyz[] = { x, y, z };
@@ -357,14 +302,9 @@ inline std::string make_triplet_part(int x, int y, int z, int w, bool is_fract,
     if (xyz[i] != 0) {
       impl::append_sign_of(s, xyz[i]);
       int a = std::abs(xyz[i]);
-      if (is_fract) {
-        if (a != Op::DEN) {
-          impl::append_op_fraction(s, a);
-          s += '*';
-        }
-      } else {
-        if (a != 1)
-          impl::append_small_number(s, a);
+      if (a != Op::DEN) {
+        impl::append_op_fraction(s, a);
+        s += '*';
       }
       s += char(style + i);
     }
@@ -375,18 +315,10 @@ inline std::string make_triplet_part(int x, int y, int z, int w, bool is_fract,
   return s;
 }
 
-inline std::string make_triplet(const Op& op, bool is_fr) {
-  const Op::Rot& rot = op.rot;
-  return make_triplet_part(rot[0][0], rot[0][1], rot[0][2], op.tran[0], is_fr) +
-   "," + make_triplet_part(rot[1][0], rot[1][1], rot[1][2], op.tran[1], is_fr) +
-   "," + make_triplet_part(rot[2][0], rot[2][1], rot[2][2], op.tran[2], is_fr);
-}
-
 inline std::string Op::triplet() const {
-  return make_triplet(*this, false);
-}
-inline std::string FractOp::triplet() const {
-  return make_triplet(this->op, true);
+  return make_triplet_part(rot[0][0], rot[0][1], rot[0][2], tran[0]) +
+   "," + make_triplet_part(rot[1][0], rot[1][1], rot[1][2], tran[1]) +
+   "," + make_triplet_part(rot[2][0], rot[2][1], rot[2][2], tran[2]);
 }
 
 
@@ -440,22 +372,24 @@ struct GroupOps {
     return nullptr;
   }
 
-  bool is_centric() const { return find_by_rotation({-1,0,0, 0,-1,0, 0,0,-1}); }
+  bool is_centric() const {
+    return find_by_rotation({-Op::DEN,0,0, 0,-Op::DEN,0, 0,0,-Op::DEN});
+  }
 
-  void change_basis(const FractOp& cob) {
+  void change_basis(const Op& cob) {
     if (sym_ops.empty() || cen_ops.empty())
       return;
-    FractOp inv = cob.inverse();
+    Op inv = cob.inverse();
 
     // Apply change-of-basis to sym_ops.
     // Ignore the first item in sym_ops -- it's identity.
     for (auto op = sym_ops.begin() + 1; op != sym_ops.end(); ++op)
-      *op = cob.combine(FractOp(*op)).combine(inv).wrap().to_op();
+      *op = cob.combine(*op).combine(inv).wrap();
 
     // The number of centering vectors may be different.
     // As an ad-hoc method (not proved to be robust) add lattice points
     // from a super-cell.
-    int idet = inv.op.det_rot() / (Op::DEN * Op::DEN * Op::DEN);
+    int idet = inv.det_rot() / (Op::DEN * Op::DEN * Op::DEN);
     if (idet > 1) {
       std::vector<Op::Tran> new_cen_ops;
       new_cen_ops.reserve(idet * idet * idet * cen_ops.size());
@@ -470,10 +404,10 @@ struct GroupOps {
     }
 
     // Apply change-of-basis to centering vectors
-    FractOp fid(Op::identity());
+    Op cvec = Op::identity();
     for (auto tr = cen_ops.begin() + 1; tr != cen_ops.end(); ++tr) {
-      fid.op.tran = *tr;
-      *tr = cob.combine(fid).combine(inv).wrap().op.tran;
+      cvec.tran = *tr;
+      *tr = cob.combine(cvec).combine(inv).wrap().tran;
     }
 
     // Remove redundant centering vectors.
@@ -561,8 +495,7 @@ inline void GroupOps::add_missing_elements() {
   };
   // Below we assume that all centring vectors are already known (in cen_ops)
   // so when checking for a new element we compare only the 3x3 matrix.
-#if 1 // Dimino's algorithm
-  // see Luc Bourhis' answer https://physics.stackexchange.com/a/351400/95713
+  // Dimino's algorithm. https://physics.stackexchange.com/a/351400/95713
   std::vector<Op> gen(sym_ops.begin() + 1, sym_ops.end());
   sym_ops.resize(2);
   const Op::Rot idrot = Op::identity().rot;
@@ -591,20 +524,6 @@ inline void GroupOps::add_missing_elements() {
       check_size();
     }
   }
-#else // brute force
-  size_t generator_count = sym_ops.size();
-  size_t prev_size = 0;
-  while (prev_size != sym_ops.size()) {
-    prev_size = sym_ops.size();
-    for (size_t i = 1; i != prev_size; ++i)
-      for (size_t j = 1; j != generator_count; ++j) {
-        Op new_op = sym_ops[i].combine(sym_ops[j]);
-        if (find_by_rotation(new_op.rot) == nullptr)
-          sym_ops.push_back(new_op.wrap());
-      }
-    check_size();
-  }
-#endif
 }
 
 
@@ -614,15 +533,16 @@ inline void GroupOps::add_missing_elements() {
 
 // matrices for Nz from Table 3 and 4 from hall_symbols.html
 inline Op::Rot hall_rotation_z(int N) {
+  constexpr int d = Op::DEN;
   switch (N) {
-    case 1: return {1,0,0,  0,1,0,  0,0,1};
-    case 2: return {-1,0,0, 0,-1,0, 0,0,1};
-    case 3: return {0,-1,0, 1,-1,0, 0,0,1};
-    case 4: return {0,-1,0, 1,0,0,  0,0,1};
-    case 6: return {1,-1,0, 1,0,0,  0,0,1};
-    case '\'': return {0,-1,0, -1,0,0, 0,0,-1};
-    case '"':  return {0,1,0,   1,0,0, 0,0,-1};
-    case '*':  return {0,0,1,   1,0,0, 0,1,0};
+    case 1: return {d,0,0,  0,d,0,  0,0,d};
+    case 2: return {-d,0,0, 0,-d,0, 0,0,d};
+    case 3: return {0,-d,0, d,-d,0, 0,0,d};
+    case 4: return {0,-d,0, d,0,0,  0,0,d};
+    case 6: return {d,-d,0, d,0,0,  0,0,d};
+    case '\'': return {0,-d,0, -d,0,0, 0,0,-d};
+    case '"':  return {0,d,0,   d,0,0, 0,0,-d};
+    case '*':  return {0,0,d,   d,0,0, 0,d,0};
     default: impl::fail("incorrect axis definition");
   }
 }
@@ -755,7 +675,7 @@ inline GroupOps generators_from_hall(const char* hall) {
       impl::fail("missing ')': " + std::string(hall));
     if (ops.sym_ops.empty())
       impl::fail("misplaced translation: " + std::string(hall));
-    ops.change_basis(FractOp(parse_hall_change_of_basis(part + 1, rb)));
+    ops.change_basis(parse_hall_change_of_basis(part + 1, rb));
 
     if (*impl::skip_blank(find_blank(rb + 1)) != '\0')
       impl::fail("unexpected characters after ')': " + std::string(hall));
