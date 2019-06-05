@@ -19,20 +19,20 @@ using std::size_t;
 namespace pegtl = tao::pegtl;
 
 namespace numb_rules {
-  using namespace pegtl;
-  // but we use pegtl::plus and pegtl::eof to avoid ambiguous symbols
-
-  struct sign : opt<one<'+', '-'>> {};
-  struct e : one<'e', 'E'> {};
-  struct exponent : seq<sign, pegtl::plus<digit>> {};
-  struct uint_digit : digit {};
-  struct fraction : pegtl::plus<digit> {};
-  struct base : if_then_else<one<'.'>, fraction,
-                                       seq<pegtl::plus<uint_digit>,
-                                           opt<one<'.'>, opt<fraction>>>> {};
+  struct sign : pegtl::opt<pegtl::one<'+', '-'>> {};
+  struct e : pegtl::one<'e', 'E'> {};
+  struct exponent : pegtl::seq<sign, pegtl::plus<pegtl::digit>> {};
+  struct uint_digit : pegtl::digit {};
+  struct fraction : pegtl::plus<pegtl::digit> {};
+  struct full_base : pegtl::seq<pegtl::plus<uint_digit>,
+                                pegtl::opt<pegtl::one<'.'>,
+                                           pegtl::opt<fraction>>> {};
+  struct base : pegtl::if_then_else<pegtl::one<'.'>, fraction, full_base> {};
   // Error in brackets ,as per CIF spec. We ignore the value for now.
-  struct err : seq<one<'('>, pegtl::plus<digit>, one<')'>> {};
-  struct numb : seq<sign, base, opt<e, exponent>, opt<err>, pegtl::eof> {};
+  struct err : pegtl::seq<pegtl::one<'('>, pegtl::plus<pegtl::digit>,
+                          pegtl::one<')'>> {};
+  struct numb : pegtl::seq<sign, base, pegtl::opt<e, exponent>,
+                           pegtl::opt<err>, pegtl::eof> {};
 }
 
 // Actions for getting the number. For now we ignore s.u., so the actions

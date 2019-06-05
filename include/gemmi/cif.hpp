@@ -32,10 +32,8 @@ namespace pegtl = tao::pegtl;
 // **** grammar rules, named similarly as in the CIF 1.1 spec ****
 namespace rules {
 
-  using namespace pegtl;
-
   template<int TableVal> struct lookup_char {
-    using analyze_t = analysis::generic<analysis::rule_type::ANY>;
+    using analyze_t = pegtl::analysis::generic<pegtl::analysis::rule_type::ANY>;
     template<typename Input> static bool match(Input& in) {
       if (!in.empty() && cif::char_table(in.peek_char()) == TableVal) {
         if (TableVal == 2)  // this set includes new-line
@@ -57,16 +55,16 @@ namespace rules {
   using ws_char = lookup_char<2>;
 
   // !"#$%&'()*+,-./0-9:;<=>?@A-Z[\]^_`a-z{|}~
-  struct nonblank_ch : range<'!', '~'> {};
+  struct nonblank_ch : pegtl::range<'!', '~'> {};
 
   // ascii space is just before '!'
-  struct anyprint_ch : ranges<' ', '~', '\t'> {};
+  struct anyprint_ch : pegtl::ranges<' ', '~', '\t'> {};
 
 
   // (f) White space and comments.
-  struct comment : if_must<one<'#'>, until<eolf>> {};
-  struct whitespace : pegtl::plus<sor<ws_char, comment>> {};
-  struct ws_or_eof : sor<whitespace, pegtl::eof> {};
+  struct comment : pegtl::if_must<pegtl::one<'#'>, pegtl::until<pegtl::eolf>>{};
+  struct whitespace : pegtl::plus<pegtl::sor<ws_char, comment>> {};
+  struct ws_or_eof : pegtl::sor<whitespace, pegtl::eof> {};
 
   // (b) Reserved words.
   struct str_data : TAOCPP_PEGTL_ISTRING("data_") {};
@@ -74,54 +72,65 @@ namespace rules {
   struct str_global : TAOCPP_PEGTL_ISTRING("global_") {};
   struct str_save : TAOCPP_PEGTL_ISTRING("save_") {};
   struct str_stop : TAOCPP_PEGTL_ISTRING("stop_") {};
-  struct keyword : sor<str_data, str_loop, str_global, str_save, str_stop> {};
+  struct keyword : pegtl::sor<str_data, str_loop, str_global,
+                              str_save, str_stop> {};
 
   // (e) Character strings and text fields.
   template<typename Q>
-  struct endq : seq<Q, at<sor<one<' ','\n','\r','\t','#'>, pegtl::eof>>> {};
+  struct endq : pegtl::seq<Q, pegtl::at<pegtl::sor<
+                                          pegtl::one<' ','\n','\r','\t','#'>,
+                                          pegtl::eof>>> {};
   // strict rule would be:
   // template <typename Q> struct quoted_tail : until<endq<Q>, anyprint_ch> {};
   // but it was relaxed after PDB accepted 5q1h with non-ascii character
-  template<typename Q> struct quoted_tail : until<endq<Q>, not_one<'\n'>> {};
-  template<typename Q> struct quoted : if_must<Q, quoted_tail<Q>> {};
-  struct singlequoted : quoted<one<'\''>> {};
-  struct doublequoted : quoted<one<'"'>> {};
-  struct field_sep : seq<bol, one<';'>> {};
+  template<typename Q>
+  struct quoted_tail : pegtl::until<endq<Q>, pegtl::not_one<'\n'>> {};
+  template<typename Q>
+  struct quoted : pegtl::if_must<Q, quoted_tail<Q>> {};
+  struct singlequoted : quoted<pegtl::one<'\''>> {};
+  struct doublequoted : quoted<pegtl::one<'"'>> {};
+  struct field_sep : pegtl::seq<pegtl::bol, pegtl::one<';'>> {};
   // CIF 2.0 requires whitespace after text field, so it'd be:
   // until<endq<field_sep>> instead of until<field_sep>.
-  struct textfield : if_must<field_sep, until<field_sep>> {};
-  struct unquoted : seq<not_at<keyword>, not_at<one<'_','$','#'>>,
-                        pegtl::plus<nonblank_ch>> {};
+  struct textfield : pegtl::if_must<field_sep, pegtl::until<field_sep>> {};
+  struct unquoted : pegtl::seq<pegtl::not_at<keyword>,
+                               pegtl::not_at<pegtl::one<'_','$','#'>>,
+                               pegtl::plus<nonblank_ch>> {};
 
   // (a) Basic structure of CIF. (c) Tags and values.
   // datablockname in STAR/CIF should not be empty, but we made an exception
   // for RELION which writes blocks starting with bare data_
-  struct datablockname : star<nonblank_ch> {};
-  struct datablockheading : sor<seq<str_data, datablockname>, str_global> {};
-  struct tag : seq<one<'_'>, pegtl::plus<nonblank_ch>> {};
+  struct datablockname : pegtl::star<nonblank_ch> {};
+  struct datablockheading : pegtl::sor<pegtl::seq<str_data, datablockname>, str_global> {};
+  struct tag : pegtl::seq<pegtl::one<'_'>, pegtl::plus<nonblank_ch>> {};
   // unquoted value made of ordinary characters only - for a typical mmCIF file
   // it is faster to check it first even if we backtrack on some values_.
-  struct simunq : seq<pegtl::plus<ordinary_char>, at<ws_char>> {};
-  struct value: sor<simunq, singlequoted, doublequoted, textfield, unquoted> {};
+  struct simunq : pegtl::seq<pegtl::plus<ordinary_char>, pegtl::at<ws_char>> {};
+  struct value : pegtl::sor<simunq, singlequoted, doublequoted,
+                            textfield, unquoted> {};
   struct loop_tag : tag {};
   struct loop_value : value {};
-  struct loop_end : opt<str_stop, ws_or_eof> {};
-  struct loop: if_must<str_loop,
-                       whitespace,
-                       pegtl::plus<seq<loop_tag, whitespace, discard>>,
-                       sor<pegtl::plus<seq<loop_value, ws_or_eof, discard>>,
-                           // handle incorrect CIF with empty loop
-                           at<sor<str_loop, pegtl::eof>>>,
-                       loop_end> {};
-  struct dataitem : if_must<tag, whitespace, value, ws_or_eof, discard> {};
+  struct loop_end : pegtl::opt<str_stop, ws_or_eof> {};
+  struct loop : pegtl::if_must<str_loop,
+                  whitespace,
+                  pegtl::plus<pegtl::seq<loop_tag, whitespace, pegtl::discard>>,
+                  pegtl::sor<pegtl::plus<pegtl::seq<loop_value, ws_or_eof,
+                                                     pegtl::discard>>,
+                  // handle incorrect CIF with empty loop
+                  pegtl::at<pegtl::sor<str_loop, pegtl::eof>>>,
+                  loop_end> {};
+  struct dataitem : pegtl::if_must<tag, whitespace, value, ws_or_eof,
+                                   pegtl::discard> {};
   struct framename : pegtl::plus<nonblank_ch> {};
   struct endframe : str_save {};
-  struct frame : if_must<str_save, framename, whitespace,
-                         star<sor<dataitem, loop>>,
-                         endframe, ws_or_eof> {};
-  struct datablock : seq<datablockheading, ws_or_eof,
-                         star<sor<dataitem, loop, frame>>> {};
-  struct file : must<opt<whitespace>, star<datablock>, pegtl::eof> {};
+  struct frame : pegtl::if_must<str_save, framename, whitespace,
+                                pegtl::star<pegtl::sor<dataitem, loop>>,
+                                endframe, ws_or_eof> {};
+  struct datablock : pegtl::seq<datablockheading, ws_or_eof,
+                             pegtl::star<pegtl::sor<dataitem, loop, frame>>> {};
+  struct file : pegtl::must<pegtl::opt<whitespace>,
+                            pegtl::star<datablock>,
+                            pegtl::eof> {};
 
 } // namespace rules
 
@@ -137,8 +146,8 @@ template<typename Rule> const std::string& error_message() {
     static const std::string s = msg; \
     return s; \
   }
-error_msg(rules::quoted_tail<rules::one<'\''>>, "unterminated 'string'")
-error_msg(rules::quoted_tail<rules::one<'"'>>, "unterminated \"string\"")
+error_msg(rules::quoted_tail<pegtl::one<'\''>>, "unterminated 'string'")
+error_msg(rules::quoted_tail<pegtl::one<'"'>>, "unterminated \"string\"")
 error_msg(pegtl::until<rules::field_sep>, "unterminated text field")
 error_msg(rules::value, "expected value")
 error_msg(rules::framename, "unnamed save_ frame")
