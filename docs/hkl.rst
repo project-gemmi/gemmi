@@ -623,6 +623,8 @@ phase (in degrees), and optional parameters ``min_size`` and
 
 .. doctest::
 
+  >>> rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', min_size=[128,16,32])
+  <gemmi.FloatGrid(128, 16, 32)>
   >>> rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', sample_rate=4)
   <gemmi.FloatGrid(120, 12, 36)>
 
