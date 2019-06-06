@@ -2,22 +2,30 @@ cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
 project(gemmi C CXX)
 
 option(USE_FORTRAN "Build Fortran bindings" OFF)
+option(USE_PYTHON "Build Python bindings" OFF)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
+option(FOR_CCP4 "For internal CCP4 installation" OFF)
 
 if (DEFINED ENV{FC} OR CMAKE_Fortran_COMPILER)
   set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
 endif()
 
+if (FOR_CCP4)
+  find_package(CCP4 REQUIRED)
+  set(PYTHON_INSTALL_DIR ${CCP4_PY2_DIR})
+endif()
+
 if (USE_FORTRAN)
   enable_language(Fortran)
 else()
-  message(STATUS
-          "Skipping Fortran bindings. If you need them add -D USE_FORTRAN=1")
+  message(STATUS "Skipping Fortran bindings. Add -D USE_FORTRAN=1 to build them.")
 endif()
 
 if (DEFINED ENV{EXTRA_WFLAGS})
   set(EXTRA_WARNINGS ON CACHE BOOL "Set extra warning flags" FORCE)
 endif()
+
+set(PYTHON_INSTALL_PATH ${PYTHON_SITE_PACKAGES})
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -264,12 +272,12 @@ if (benchmark_FOUND)
 endif()
 
 ### Python bindings ###
-# Note: setup.py is the primary way to build Python bindings.
-# Here we build it only for convenience and only in certain configuration.
-if (EXISTS "${CMAKE_SOURCE_DIR}/third_party/pybind11/CMakeLists.txt"
-    AND NOT NO_PYTHON)
+# Alternatively, the Python module can be built with setup.py.
+
+if (USE_PYTHON)
   message(STATUS "The python module will be built.")
-  add_subdirectory(third_party/pybind11)
+  find_package(pybind11 2.2.4 CONFIG REQUIRED)
+  message(STATUS "Found pybind11 ${pybind11_VERSION}: ${pybind11_INCLUDE_DIRS}")
   pybind11_add_module(gemmi python/gemmi.cpp python/cif.cpp python/grid.cpp
                             python/hkl.cpp python/mol.cpp python/read.cpp
                             python/smallmol.cpp python/sym.cpp
@@ -277,6 +285,15 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/third_party/pybind11/CMakeLists.txt"
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
     target_compile_options(gemmi PRIVATE "-Wno-shadow")
   endif()
+  if (NOT DEFINED PYTHON_INSTALL_DIR)
+    set(PYTHON_INSTALL_DIR ${PYTHON_SITE_PACKAGES})
+  endif()
 else()
-  message(STATUS "Note: The python module can be built with setup.py.")
+  message(STATUS "Skipping Python module. Add -D USE_PYTHON=1 to build it.")
+endif()
+
+install(TARGETS gemmi-prog DESTINATION bin)
+install(DIRECTORY include/gemmi DESTINATION include)
+if (USE_PYTHON AND DEFINED PYTHON_INSTALL_DIR)
+  install(TARGETS gemmi DESTINATION ${PYTHON_INSTALL_DIR})
 endif()
