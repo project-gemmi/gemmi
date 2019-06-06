@@ -7,6 +7,7 @@
 
 #include <map>
 #include <unordered_map>
+#include "elem.hpp"
 #include "model.hpp"
 #include "monlib.hpp"
 #include "subcells.hpp"
@@ -23,12 +24,12 @@ inline Connection* find_connection_by_cra(Model& model, CRA& cra1, CRA& cra2) {
 
 struct LinkHunt {
   struct Match {
-    const ChemLink* chem_link;
+    const ChemLink* chem_link = nullptr;
     CRA cra1;
     CRA cra2;
     bool same_asu;
-    float bond_length;
-    Connection* conn;
+    float bond_length = 0.f;
+    Connection* conn = nullptr;
   };
 
   double global_max_dist = 2.34; // ZN-CYS
@@ -115,8 +116,11 @@ struct LinkHunt {
                   m.atom_idx == n_atom && dist_sq < sq(0.8f))
                 return;
               CRA cra = m.to_cra(model);
+
+              // search for a match in chem_links
               auto range = links.equal_range(Restraints::lexicographic_str(
                                                   atom.name, cra.atom->name));
+              Match match;
               for (auto iter = range.first; iter != range.second; ++iter) {
                 const ChemLink& link = *iter->second;
                 const Restraints::Bond& bond = link.rt.bonds[0];
@@ -125,17 +129,36 @@ struct LinkHunt {
                 if (bond.id1.atom == atom.name &&
                     match_link_side(link.side1, res.name) &&
                     match_link_side(link.side2, cra.residue->name)) {
-                  results.push_back({&link, {&chain, &res, &atom}, cra,
-                                    !m.image_idx, std::sqrt(dist_sq), nullptr});
+                  match.chem_link = &link;
+                  match.cra1 = {&chain, &res, &atom};
+                  match.cra2 = cra;
                   break;
                 }
                 if (bond.id2.atom == atom.name &&
                     match_link_side(link.side2, res.name) &&
                     match_link_side(link.side1, cra.residue->name)) {
-                  results.push_back({&link, cra, {&chain, &res, &atom},
-                                    !m.image_idx, std::sqrt(dist_sq), nullptr});
+                  match.chem_link = &link;
+                  match.cra1 = cra;
+                  match.cra2 = {&chain, &res, &atom};
                   break;
                 }
+              }
+              bool found = (match.chem_link != nullptr);
+
+              if (!found) {
+                // check if we have a link based on elements' covalent radii
+                float r1 = atom.element.covalent_r();
+                float r2 = cra.atom->element.covalent_r();
+                if (dist_sq < sq((r1 + r2) * 1.1 * tolerance)) {
+                  match.cra1 = cra;
+                  match.cra2 = {&chain, &res, &atom};
+                  found = true;
+                }
+              }
+              if (found) {
+                match.same_asu = !m.image_idx;
+                match.bond_length = std::sqrt(dist_sq);
+                results.push_back(match);
               }
           });
         }
