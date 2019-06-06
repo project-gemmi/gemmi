@@ -560,6 +560,13 @@ inline std::string atom_str(const const_CRA& cra) {
                   cra.atom ? cra.atom->altloc : '\0');
 }
 
+inline bool atom_matches(const const_CRA& cra, const AtomAddress& addr) {
+  return cra.chain && cra.chain->name == addr.chain_name &&
+         cra.residue && cra.residue->matches(addr.res_id) &&
+         cra.atom && cra.atom->name == addr.atom_name &&
+         cra.atom->altloc == addr.altloc;
+}
+
 // A connection. Corresponds to _struct_conn.
 // Symmetry operators are not trusted and not stored.
 // We assume that the nearest symmetry mate is connected.

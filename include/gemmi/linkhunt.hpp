@@ -7,10 +7,19 @@
 
 #include <map>
 #include <unordered_map>
+#include "model.hpp"
 #include "monlib.hpp"
 #include "subcells.hpp"
 
 namespace gemmi {
+
+inline Connection* find_connection_by_cra(Model& model, CRA& cra1, CRA& cra2) {
+  for (Connection& c : model.connections)
+    if ((atom_matches(cra1, c.atom[0]) && atom_matches(cra2, c.atom[1])) ||
+        (atom_matches(cra1, c.atom[1]) && atom_matches(cra2, c.atom[0])))
+      return &c;
+  return nullptr;
+}
 
 struct LinkHunt {
   struct Match {
@@ -19,6 +28,7 @@ struct LinkHunt {
     CRA cra2;
     bool same_asu;
     float bond_length;
+    Connection* conn;
   };
 
   double global_max_dist = 2.34; // ZN-CYS
@@ -116,14 +126,14 @@ struct LinkHunt {
                     match_link_side(link.side1, res.name) &&
                     match_link_side(link.side2, cra.residue->name)) {
                   results.push_back({&link, {&chain, &res, &atom}, cra,
-                                     !m.image_idx, std::sqrt(dist_sq)});
+                                    !m.image_idx, std::sqrt(dist_sq), nullptr});
                   break;
                 }
                 if (bond.id2.atom == atom.name &&
                     match_link_side(link.side2, res.name) &&
                     match_link_side(link.side1, cra.residue->name)) {
                   results.push_back({&link, cra, {&chain, &res, &atom},
-                                     !m.image_idx, std::sqrt(dist_sq)});
+                                    !m.image_idx, std::sqrt(dist_sq), nullptr});
                   break;
                 }
               }
@@ -131,6 +141,8 @@ struct LinkHunt {
         }
       }
     }
+    for (Match& match : results)
+      match.conn = find_connection_by_cra(model, match.cra1, match.cra2);
     return results;
   }
 };

@@ -185,5 +185,6 @@ void add_monlib(py::module& m) {
     .def_readonly("cra2", &LinkHunt::Match::cra2)
     .def_readonly("same_asu", &LinkHunt::Match::same_asu)
     .def_readonly("bond_length", &LinkHunt::Match::bond_length)
+    .def_readonly("conn", &LinkHunt::Match::conn)
     ;
 }

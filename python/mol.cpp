@@ -25,6 +25,7 @@
 namespace py = pybind11;
 using namespace gemmi;
 
+PYBIND11_MAKE_OPAQUE(std::vector<Connection>)
 PYBIND11_MAKE_OPAQUE(std::vector<NcsOp>)
 PYBIND11_MAKE_OPAQUE(std::vector<Entity>)
 using info_map_type = std::map<std::string, std::string>;
@@ -108,8 +109,25 @@ void add_mol(py::module& m) {
                (self.given ? " (" : " (not ") + "given)>";
     });
 
-  py::bind_vector<std::vector<NcsOp>>(m, "VectorNcsOp");
-  py::bind_vector<std::vector<Entity>>(m, "VectorEntity");
+  py::enum_<Connection::Type>(m, "ConnectionType")
+    .value("Covale", Connection::Type::Covale)
+    .value("Disulf", Connection::Type::Disulf)
+    .value("Hydrog", Connection::Type::Hydrog)
+    .value("MetalC", Connection::Type::MetalC)
+    .value("None",   Connection::Type::None);
+
+  py::class_<Connection>(m, "Connection")
+    .def_readwrite("name", &Connection::name)
+    .def_readwrite("type", &Connection::type)
+    .def_readwrite("reported_distance", &Connection::reported_distance)
+    .def("__repr__", [](const Connection& self) {
+        return "<gemmi.Connection " + self.name + "  " +
+               self.atom[0].str() + " - " + self.atom[1].str() + ">";
+    });
+
+  py::bind_vector<std::vector<Connection>>(m, "ConnectionList");
+  py::bind_vector<std::vector<NcsOp>>(m, "NcsOpList");
+  py::bind_vector<std::vector<Entity>>(m, "EntityList");
   py::bind_map<info_map_type>(m, "InfoMap");
 
   py::class_<Structure>(m, "Structure")
@@ -204,6 +222,7 @@ void add_mol(py::module& m) {
   py::class_<Model>(m, "Model")
     .def(py::init<std::string>())
     .def_readwrite("name", &Model::name)
+    .def_readwrite("connections", &Model::connections)
     .def("__len__", [](const Model& self) { return self.chains.size(); })
     .def("__iter__", [](const Model& self) {
         return py::make_iterator(self.chains);
