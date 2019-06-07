@@ -4,15 +4,9 @@ project(gemmi C CXX)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
-option(FOR_CCP4 "For internal CCP4 installation" OFF)
 
 if (DEFINED ENV{FC} OR CMAKE_Fortran_COMPILER)
   set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
-endif()
-
-if (FOR_CCP4)
-  find_package(CCP4 REQUIRED)
-  set(PYTHON_INSTALL_DIR ${CCP4_PY2_DIR})
 endif()
 
 if (USE_FORTRAN)
