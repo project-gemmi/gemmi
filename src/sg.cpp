@@ -45,8 +45,11 @@ static void process_arg(const char* arg) {
   }
   printf("Number: %d\n", sg->number);
   bool is_reference = sg->is_reference_setting();
-  printf("Is reference setting for this space group: %s\n",
+  printf("Is standard setting for this space group: %s\n",
          is_reference ? "yes" : "no");
+
+  printf("Change-of-basis operator to standard setting: %s\n",
+         sg->basisop_str());
   printf("CCP4 number: %d\n", sg->ccp4);
   printf("Hermann–Mauguin: %s\n", sg->hm);
   printf("Extended H-M: %s\n", sg->xhm().c_str());
@@ -57,8 +60,8 @@ static void process_arg(const char* arg) {
   std::array<int, 3> gf = ops.find_grid_factors();
   printf("Grid restrictions: NX=%dn NY=%dn NZ=%dn\n", gf[0], gf[1], gf[2]);
   printf("Reciprocal space ASU%s: %s\n",
-         is_reference ? "" : " wrt. standard settings",
-         sg->hkl_asu_str());
+         is_reference ? "" : " wrt. standard setting",
+         gemmi::HklAsuChecker(sg).condition_str());
   print_symmetry_operations(ops);
   printf("\n");
 }

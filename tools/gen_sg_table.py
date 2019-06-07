@@ -65,6 +65,21 @@ def verify_hall_symbol(entry):
                 for c in entry['cenops'])
     assert given == set(hall_ops), entry
 
+basisops = []
+
+def get_basisop(sgtbx_info):
+    to_ref = sgtbx_info.change_of_basis_op_to_reference_setting()
+    from_ref = to_ref.inverse()
+    b_str = str(from_ref.c())
+    try:
+        b_idx = basisops.index(b_str)
+    except ValueError:
+        b_idx = len(basisops)
+        basisops.append(b_str)
+    #print('FR %s' % from_ref.c())
+    #print('TR %s' % to_ref.c())
+    return b_str, b_idx
+
 shorter_halls = {
     'C 2y (x+1/4,y+1/4,-x+z-1/4)': 'I 2yb',
     'C 2y (x+1/4,y+1/4,z)': 'C 2yb',
@@ -91,7 +106,7 @@ print('''\
   // Note: spacegroup 68 has three duplicates with different H-M names.
 ''')
 counter = 0
-fmt = '  {%3d, %4d, %-12s, %s, %6s, %-16s}, // %3d'
+fmt = '  {%3d, %4d, %-12s, %s, %6s, %-16s, %-2d}, // %3d'
 def quot(s):
     return '"%s"' % s.replace('"', r'\"')
 for s in sgtbx.space_group_symbol_iterator():
@@ -102,13 +117,18 @@ for s in sgtbx.space_group_symbol_iterator():
         ext = "'%c'" % s.extension()
     info = syminfo_dict.pop(xhm)
     assert info['number'] == s.number()
+    cctbx_sg = sgtbx.space_group(s.hall())
+    cctbx_info = sgtbx.space_group_info(group=cctbx_sg)
+    from_ref, basisop_idx = get_basisop(cctbx_info)
+    assert from_ref == info['basisop'], (from_ref, info['basisop'])
     if gemmi:
         assert (set(gemmi.symops_from_hall(s.hall())) ==
                 set(gemmi.symops_from_hall(info['hall']))), xhm
     print(fmt % (s.number(), info['ccp4'], quot(s.hermann_mauguin()),
-                 ext, quot(s.qualifier()), quot(s.hall().strip()), counter))
+                 ext, quot(s.qualifier()), quot(s.hall().strip()),
+                 basisop_idx, counter))
     counter += 1
-print('  // Then extra entries from syminfo.lib')
+print('  // And extra entries from syminfo.lib')
 for info in syminfo_data:
     if info['xhm'] in syminfo_dict:  # i.e. it was not printed yet
         hm = info['xhm']
@@ -125,6 +145,38 @@ for info in syminfo_data:
         if gemmi:
             assert (set(gemmi.symops_from_hall(hall)) ==
                     set(gemmi.symops_from_hall(info['hall']))), hm
+        cctbx_sg = sgtbx.space_group(hall)
+        cctbx_info = sgtbx.space_group_info(group=cctbx_sg)
+        from_ref, basisop_idx = get_basisop(cctbx_info)
         print(fmt % (info['number'], info['ccp4'], quot(hm), ext, '""',
-                     quot(hall), counter))
+                     quot(hall), basisop_idx, counter))
         counter += 1
+print('  // And ...')
+additional = [
+    ('A 1', 'A 1'),
+    ('B 1', 'B 1'),
+    ('C 1', 'C 1'),
+    ('F 1', 'F 1'),
+    ('I 1', 'I 1'),
+    ('A -1', '-A 1'),
+    ('B -1', '-B 1'),
+    ('C -1', '-C 1'),
+    ('F -1', '-F 1'),
+    ('I -1', '-I 1'),
+    ('C 1 1 21', 'C 2c'),
+    ('F 1 2/m 1', '-F 2y'),
+    ('A b a m', '-A 2 2ab'),
+    ('C -4 2 b', 'C -4 2ya'),
+    ('F 4/m m m', '-F 4 2'),
+]
+for hm, hall in additional:
+    cctbx_sg = sgtbx.space_group(hall)
+    cctbx_info = sgtbx.space_group_info(group=cctbx_sg)
+    from_ref, basisop_idx = get_basisop(cctbx_info)
+    number = cctbx_info.type().number()
+    print(fmt % (number, 0, quot(hm), '  0', '""', quot(hall),
+                 basisop_idx, counter))
+    counter += 1
+print('\n')
+for b in basisops:
+    print('  "%s",' % b)

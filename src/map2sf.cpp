@@ -124,10 +124,11 @@ static void transform_map_to_sf(OptParser& p) {
       int max_h = (hkl.nu - 1) / 2;
       int max_k = (hkl.nv - 1) / 2;
       int max_l = hkl.nw - 1;
+      gemmi::HklAsuChecker hkl_asu(mtz.spacegroup);
       for (int h = -max_h; h < max_h + 1; ++h)
         for (int k = -max_k; k < max_k + 1; ++k)
           for (int l = 0; l < max_l + 1; ++l)
-            if (mtz.spacegroup->is_in_hkl_asu(h, k, l) &&
+            if (hkl_asu.is_in(h, k, l) &&
                 (min_1_d2 == 0. ||
                  mtz.cell.calculate_1_d2(h, k, l) < min_1_d2) &&
                 !(h == 0 && k == 0 && l == 0)) {
