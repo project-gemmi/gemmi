@@ -14,7 +14,7 @@
 #if !(__GNUC__+0 >= 5 || __clang__+0 >= 5)
 #define POCKETFFT_NO_VECTORS
 #endif
-#include <pocketfft_hdronly.h>
+#include "third_party/pocketfft_hdronly.h"
 
 namespace gemmi {
 

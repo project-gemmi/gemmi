@@ -30,7 +30,7 @@
 #if defined(_MSC_VER) && !defined(NOMINMAX)
 # define NOMINMAX
 #endif
-#include <tinydir.h>
+#include "third_party/tinydir.h"
 
 #include "util.hpp"  // for giends_with
 

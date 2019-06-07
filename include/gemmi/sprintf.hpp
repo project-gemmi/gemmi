@@ -14,7 +14,7 @@
 #  define STB_SPRINTF_IMPLEMENTATION
 # endif
 //# define STB_SPRINTF_DECORATE(name) gemmi_##name
-# include <stb_sprintf.h>
+# include "third_party/stb_sprintf.h"
 #endif
 #include <string>
 

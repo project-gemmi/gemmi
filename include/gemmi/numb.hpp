@@ -10,7 +10,7 @@
 
 #include <cmath>   // for NAN
 #include <cstddef> // for size_t
-#include <tao/pegtl.hpp>
+#include "third_party/tao/pegtl.hpp"
 #include "cifdoc.hpp" // for is_null
 
 namespace gemmi {

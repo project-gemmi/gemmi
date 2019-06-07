@@ -13,7 +13,7 @@
 
 #define SAJSON_UNSORTED_OBJECT_KEYS
 #define SAJSON_NUMBERS_AS_STRINGS
-#include <sajson.h>
+#include "third_party/sajson.h"
 
 #include "cifdoc.hpp"   // for Document, etc
 #include "util.hpp"     // for fail
