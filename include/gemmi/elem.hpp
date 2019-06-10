@@ -103,39 +103,42 @@ inline double molecular_weight(El el) {
   return weights[static_cast<int>(el)];
 }
 
+// Covalent radius data from https://en.wikipedia.org/wiki/Covalent_radius
+// which in turn comes from
+// Cordero et al (2008). "Covalent radii revisited". Dalton Trans. 21, 2832
 inline float covalent_radius(El el) {
   static constexpr float radii[] = {
     /*X*/ 0.50f,
-    /*H*/ 0.23f, /*He*/ 0.93f,
-    /*Li*/ 0.68f, /*Be*/ 0.35f, /*B*/ 0.83f, /*C*/ 0.68f, /*N*/ 0.68f,
-    /*O*/ 0.68f, /*F*/ 0.64f, /*Ne*/ 1.12f,
-    /*Na*/ 0.97f, /*Mg*/ 1.10f, /*Al*/ 1.35f, /*Si*/ 1.20f, /*P*/ 0.85f,
-    /*S*/ 1.02f, /*Cl*/ 0.99f, /*Ar*/ 1.57f,
-    /*K*/ 1.33f, /*Ca*/ 0.99f, /*Sc*/ 1.44f, /*Ti*/ 1.47f, /*V*/ 1.33f,
-    /*Cr*/ 1.35f, /*Mn*/ 1.35f, /*Fe*/ 1.34f, /*Co*/ 1.33f, /*Ni*/ 1.50f,
-    /*Cu*/ 1.52f, /*Zn*/ 1.45f, /*Ga*/ 1.22f, /*Ge*/ 1.17f, /*As*/ 1.21f,
-    /*Se*/ 1.22f, /*Br*/ 1.21f, /*Kr*/ 1.91f,
-    /*Rb*/ 1.47f, /*Sr*/ 1.12f, /*Y*/ 1.78f, /*Zr*/ 1.56f, /*Nb*/ 1.48f,
-    /*Mo*/ 1.47f, /*Tc*/ 1.35f, /*Ru*/ 1.40f, /*Rh*/ 1.45f, /*Pd*/ 1.50f,
-    /*Ag*/ 1.59f, /*Cd*/ 1.69f, /*In*/ 1.63f, /*Sn*/ 1.46f, /*Sb*/ 1.46f,
-    /*Te*/ 1.47f, /*I*/ 1.40f, /*Xe*/ 1.98f,
-    /*Cs*/ 1.67f, /*Ba*/ 1.34f, /*La*/ 1.87f, /*Ce*/ 1.83f, /*Pr*/ 1.82f,
-    /*Nd*/ 1.81f, /*Pm*/ 1.80f, /*Sm*/ 1.80f, /*Eu*/ 1.99f, /*Gd*/ 1.79f,
-    /*Tb*/ 1.76f, /*Dy*/ 1.75f, /*Ho*/ 1.74f, /*Er*/ 1.73f, /*Tm*/ 1.72f,
-    /*Yb*/ 1.94f, /*Lu*/ 1.72f, /*Hf*/ 1.57f, /*Ta*/ 1.43f, /*W*/ 1.37f,
-    /*Re*/ 1.35f, /*Os*/ 1.37f, /*Ir*/ 1.32f, /*Pt*/ 1.50f, /*Au*/ 1.50f,
-    /*Hg*/ 1.70f, /*Tl*/ 1.55f, /*Pb*/ 1.54f, /*Bi*/ 1.54f, /*Po*/ 1.68f,
-    /*At*/ 1.70f, /*Rn*/ 2.40f,
-    /*Fr*/ 2.00f, /*Ra*/ 1.90f, /*Ac*/ 1.88f, /*Th*/ 1.79f, /*Pa*/ 1.61f,
-    /*U*/ 1.58f, /*Np*/ 1.55f, /*Pu*/ 1.53f, /*Am*/ 1.51f, /*Cm*/ 1.50f,
-    /*Bk*/ 1.50f, /*Cf*/ 1.50f, /*Es*/ 1.50f, /*Fm*/ 1.50f, /*Md*/ 1.50f,
-    /*No*/ 1.50f, /*Lr*/ 1.50f, /*Rf*/ 1.57f, /*Db*/ 1.49f, /*Sg*/ 1.43f,
+    /*H*/ 0.31f, /*He*/ 0.28f,
+    /*Li*/ 1.28f, /*Be*/ 0.96f, /*B*/ 0.84f, /*C*/ 0.73f, /*N*/ 0.71f,
+    /*O*/ 0.66f, /*F*/ 0.57f, /*Ne*/ 0.58f,
+    /*Na*/ 1.66f, /*Mg*/ 1.41f, /*Al*/ 1.21f, /*Si*/ 1.11f, /*P*/ 1.07f,
+    /*S*/ 1.05f, /*Cl*/ 1.02f, /*Ar*/ 1.06f,
+    /*K*/ 2.03f, /*Ca*/ 1.76f, /*Sc*/ 1.70f, /*Ti*/ 1.60f, /*V*/ 1.53f,
+    /*Cr*/ 1.39f, /*Mn*/ 1.39f, /*Fe*/ 1.32f, /*Co*/ 1.26f, /*Ni*/ 1.24f,
+    /*Cu*/ 1.32f, /*Zn*/ 1.22f, /*Ga*/ 1.22f, /*Ge*/ 1.20f, /*As*/ 1.19f,
+    /*Se*/ 1.20f, /*Br*/ 1.20f, /*Kr*/ 1.16f,
+    /*Rb*/ 2.20f, /*Sr*/ 1.95f, /*Y*/ 1.90f, /*Zr*/ 1.75f, /*Nb*/ 1.64f,
+    /*Mo*/ 1.54f, /*Tc*/ 1.47f, /*Ru*/ 1.46f, /*Rh*/ 1.42f, /*Pd*/ 1.39f,
+    /*Ag*/ 1.45f, /*Cd*/ 1.44f, /*In*/ 1.42f, /*Sn*/ 1.39f, /*Sb*/ 1.39f,
+    /*Te*/ 1.38f, /*I*/ 1.39f, /*Xe*/ 1.40f,
+    /*Cs*/ 2.44f, /*Ba*/ 2.15f, /*La*/ 2.07f, /*Ce*/ 2.04f, /*Pr*/ 2.03f,
+    /*Nd*/ 2.01f, /*Pm*/ 1.99f, /*Sm*/ 1.98f, /*Eu*/ 1.98f, /*Gd*/ 1.96f,
+    /*Tb*/ 1.94f, /*Dy*/ 1.92f, /*Ho*/ 1.92f, /*Er*/ 1.89f, /*Tm*/ 1.90f,
+    /*Yb*/ 1.87f, /*Lu*/ 1.75f, /*Hf*/ 1.87f, /*Ta*/ 1.70f, /*W*/ 1.62f,
+    /*Re*/ 1.51f, /*Os*/ 1.44f, /*Ir*/ 1.41f, /*Pt*/ 1.36f, /*Au*/ 1.36f,
+    /*Hg*/ 1.32f, /*Tl*/ 1.45f, /*Pb*/ 1.46f, /*Bi*/ 1.48f, /*Po*/ 1.40f,
+    /*At*/ 1.50f, /*Rn*/ 1.50f,
+    /*Fr*/ 2.60f, /*Ra*/ 2.21f, /*Ac*/ 2.15f, /*Th*/ 2.06f, /*Pa*/ 2.00f,
+    /*U*/ 1.96f, /*Np*/ 1.90f, /*Pu*/ 1.87f, /*Am*/ 1.80f, /*Cm*/ 1.69f,
+    /*Bk*/ 1.68f, /*Cf*/ 1.68f, /*Es*/ 1.65f, /*Fm*/ 1.67f, /*Md*/ 1.73f,
+    /*No*/ 1.76f, /*Lr*/ 1.61f, /*Rf*/ 1.57f, /*Db*/ 1.49f, /*Sg*/ 1.43f,
     /*Bh*/ 1.41f, /*Hs*/ 1.34f, /*Mt*/ 1.29f, /*Ds*/ 1.28f, /*Rg*/ 1.21f,
     /*Cn*/ 1.22f, /*Nh*/ 1.50f, /*Fl*/ 1.50f, /*Mc*/ 1.50f, /*Lv*/ 1.50f,
     /*Ts*/ 1.50f, /*Og*/ 1.50f,
-    /*D*/ 0.23f, /*END*/ 0.0f
+    /*D*/ 0.31f, /*END*/ 0.0f
   };
-  static_assert(radii[static_cast<int>(El::D)] == 0.23f, "Hmm");
+  static_assert(radii[static_cast<int>(El::D)] == 0.31f, "Hmm");
   static_assert(sizeof(radii) / sizeof(radii[0]) ==
                 static_cast<int>(El::END) + 1, "Hmm");
   return radii[static_cast<int>(el)];
