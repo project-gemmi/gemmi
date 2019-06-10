@@ -82,7 +82,7 @@ endif()
 
 if (ZLIB_FOUND)
   macro(support_gz exe)
-    target_link_libraries(${exe} ZLIB::ZLIB)
+    target_link_libraries(${exe} PRIVATE ZLIB::ZLIB)
   endmacro()
 else()
   add_library(ungz OBJECT
@@ -109,7 +109,7 @@ add_library(cgemmi STATIC fortran/grid.cpp fortran/symmetry.cpp)
 
 if (USE_FORTRAN)
   add_library(fgemmi STATIC fortran/gemmi.f90)
-  target_link_libraries(fgemmi cgemmi)
+  target_link_libraries(fgemmi PRIVATE cgemmi)
 endif()
 
 
@@ -203,7 +203,7 @@ set_target_properties(gemmi-prog PROPERTIES OUTPUT_NAME gemmi)
 ### tests and examples ###
 
 add_executable(ctest EXCLUDE_FROM_ALL fortran/ctest.c)
-target_link_libraries(ctest cgemmi)
+target_link_libraries(ctest PRIVATE cgemmi)
 
 add_executable(cpptest EXCLUDE_FROM_ALL tests/main.cpp tests/cif.cpp)
 
@@ -228,7 +228,7 @@ support_gz(test_disulf)
 # auth_label requires <experimental/filesystem> and -lstdc++fs
 add_executable(auth_label EXCLUDE_FROM_ALL examples/auth_label.cpp)
 if (NOT MSVC)
-  target_link_libraries(auth_label stdc++fs)
+  target_link_libraries(auth_label PRIVATE stdc++fs)
 endif()
 support_gz(auth_label)
 
@@ -245,9 +245,9 @@ add_dependencies(check
 
 if (USE_FORTRAN)
   add_executable(ftest EXCLUDE_FROM_ALL fortran/ftest.f90)
-  target_link_libraries(ftest fgemmi)
+  target_link_libraries(ftest PRIVATE fgemmi)
   add_executable(ftest_grid EXCLUDE_FROM_ALL fortran/ftest_grid.f90)
-  target_link_libraries(ftest_grid fgemmi)
+  target_link_libraries(ftest_grid PRIVATE fgemmi)
   if("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "Intel")
     set_property(TARGET ftest ftest_grid PROPERTY LINKER_LANGUAGE Fortran)
   endif()
@@ -260,7 +260,7 @@ endif()
 if (benchmark_FOUND)
   foreach(b stoi elem mod pdb resinfo round sym)
     add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp)
-    target_link_libraries(${b}-bm benchmark::benchmark)
+    target_link_libraries(${b}-bm PRIVATE benchmark::benchmark)
     set_target_properties(${b}-bm PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                              "${CMAKE_BINARY_DIR}/benchmarks")
     add_dependencies(check ${b}-bm)
