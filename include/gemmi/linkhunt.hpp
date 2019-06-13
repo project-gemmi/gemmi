@@ -27,6 +27,7 @@ struct LinkHunt {
   struct Match {
     const ChemLink* chem_link = nullptr;
     int chem_link_count = 0;
+    int score = -1000;
     CRA cra1;
     CRA cra2;
     bool same_asu;
@@ -140,8 +141,9 @@ struct LinkHunt {
                   order1 = false;
                 else
                   continue;
+                int link_score = (link.side1.comp.empty() ? 0 : 1) +
+                                 (link.side2.comp.empty() ? 0 : 1);
                 // check chirality
-                int chirality_score = 0;
                 for (const Restraints::Chirality& chirality : link.rt.chirs)
                   if (chirality.sign != ChiralityType::Both) {
                     Residue& res1 = order1 ? res : *cra.residue;
@@ -155,16 +157,17 @@ struct LinkHunt {
                       double vol = calculate_chiral_volume(at1->pos, at2->pos,
                                                            at3->pos, at4->pos);
                       if (chirality.is_wrong(vol))
-                        --chirality_score;
+                        link_score -= 10;
                     }
                   }
-                if (chirality_score < 0)
+                match.chem_link_count++;
+                if (link_score < match.score)
                   continue;
                 //if (match.chem_link)
                 //  printf("DEBUG: %s %s (%d)\n", match.chem_link->id.c_str(),
                 //         link.id.c_str(), match.chem_link_count);
                 match.chem_link = &link;
-                match.chem_link_count++;
+                match.score = link_score;
                 if (order1) {
                   match.cra1 = {&chain, &res, &atom};
                   match.cra2 = cra;
