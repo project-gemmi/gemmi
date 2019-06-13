@@ -57,13 +57,7 @@ struct Topo {
       return calculate_chiral_volume(atoms[0]->pos, atoms[1]->pos,
                                      atoms[2]->pos, atoms[3]->pos);
     }
-    // positive value for preserved chirality
-    bool check() const {
-      if ((restr->chir == ChiralityType::Positive && calculate() < 0) ||
-          (restr->chir == ChiralityType::Negative && calculate() > 0))
-        return false;
-      return true;
-    }
+    bool check() const { return !restr->is_wrong(calculate()); }
   };
   struct Plane {
     const Restraints::Plane* restr;

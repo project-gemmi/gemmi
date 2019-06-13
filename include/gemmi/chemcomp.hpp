@@ -93,6 +93,11 @@ struct Restraints {
   struct Chirality {
     AtomId id_ctr, id1, id2, id3;
     ChiralityType chir;
+
+    bool is_wrong(double volume) const {
+      return (chir == ChiralityType::Positive && volume < 0) ||
+             (chir == ChiralityType::Negative && volume > 0);
+    }
     std::string str() const {
       return id_ctr.atom + "," + id1.atom + "," + id2.atom + "," + id3.atom;
     }

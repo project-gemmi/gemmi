@@ -7,6 +7,7 @@
 
 #include <map>
 #include <unordered_map>
+#include "calculate.hpp"  // for calculate_chiral_volume
 #include "elem.hpp"
 #include "model.hpp"
 #include "monlib.hpp"
@@ -25,6 +26,7 @@ inline Connection* find_connection_by_cra(Model& model, CRA& cra1, CRA& cra2) {
 struct LinkHunt {
   struct Match {
     const ChemLink* chem_link = nullptr;
+    int chem_link_count = 0;
     CRA cra1;
     CRA cra2;
     bool same_asu;
@@ -39,7 +41,7 @@ struct LinkHunt {
 
   void index_chem_links(const MonLib& monlib) {
     static const std::vector<std::string> blacklist = {
-      "TRANS", "PTRANS", "NMTRANS", "CIS", "PCIS", "NMCIS", "p"
+      "TRANS", "PTRANS", "NMTRANS", "CIS", "PCIS", "NMCIS", "p", "SS"
     };
     for (const auto& iter : monlib.links) {
       const ChemLink& link = iter.second;
@@ -85,10 +87,11 @@ struct LinkHunt {
     return iter != res_group.end() && iter->second == side.group;
   }
 
-  std::vector<Match> find_possible_links(Structure& st, double tolerance) {
+  std::vector<Match> find_possible_links(Structure& st, double bond_margin,
+                                                        double radius_margin) {
     std::vector<Match> results;
     Model& model = st.models.at(0);
-    SubCells sc(model, st.cell, std::max(5.0, global_max_dist * tolerance));
+    SubCells sc(model, st.cell, std::max(5.0, global_max_dist * bond_margin));
     sc.populate(model);
     for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
       Chain& chain = model.chains[n_ch];
@@ -124,42 +127,66 @@ struct LinkHunt {
               for (auto iter = range.first; iter != range.second; ++iter) {
                 const ChemLink& link = *iter->second;
                 const Restraints::Bond& bond = link.rt.bonds[0];
-                if (dist_sq > sq(bond.value * tolerance))
+                if (dist_sq > sq(bond.value * bond_margin))
                   continue;
+                bool order1;
                 if (bond.id1.atom == atom.name &&
                     match_link_side(link.side1, res.name) &&
-                    match_link_side(link.side2, cra.residue->name)) {
-                  match.chem_link = &link;
+                    match_link_side(link.side2, cra.residue->name))
+                  order1 = true;
+                else if (bond.id2.atom == atom.name &&
+                    match_link_side(link.side2, res.name) &&
+                    match_link_side(link.side1, cra.residue->name))
+                  order1 = false;
+                else
+                  continue;
+                // check chirality
+                int chirality_score = 0;
+                for (const Restraints::Chirality& chirality : link.rt.chirs)
+                  if (chirality.chir != ChiralityType::Both) {
+                    Residue& res1 = order1 ? res : *cra.residue;
+                    Residue* res2 = order1 ? cra.residue : &res;
+                    char alt = atom.altloc ? atom.altloc : cra.atom->altloc;
+                    Atom* at1 = chirality.id_ctr.get_from(res1, res2, alt);
+                    Atom* at2 = chirality.id1.get_from(res1, res2, alt);
+                    Atom* at3 = chirality.id2.get_from(res1, res2, alt);
+                    Atom* at4 = chirality.id3.get_from(res1, res2, alt);
+                    if (at1 && at2 && at3 && at4) {
+                      double vol = calculate_chiral_volume(at1->pos, at2->pos,
+                                                           at3->pos, at4->pos);
+                      if (chirality.is_wrong(vol))
+                        --chirality_score;
+                    }
+                  }
+                if (chirality_score < 0)
+                  continue;
+                //if (match.chem_link)
+                //  printf("DEBUG: %s %s (%d)\n", match.chem_link->id.c_str(),
+                //         link.id.c_str(), match.chem_link_count);
+                match.chem_link = &link;
+                match.chem_link_count++;
+                if (order1) {
                   match.cra1 = {&chain, &res, &atom};
                   match.cra2 = cra;
-                  break;
-                }
-                if (bond.id2.atom == atom.name &&
-                    match_link_side(link.side2, res.name) &&
-                    match_link_side(link.side1, cra.residue->name)) {
-                  match.chem_link = &link;
+                } else {
                   match.cra1 = cra;
                   match.cra2 = {&chain, &res, &atom};
-                  break;
                 }
               }
-              bool found = (match.chem_link != nullptr);
 
-              if (!found) {
-                // check if we have a link based on elements' covalent radii
+              // potential other links according to covalent radii
+              if (!match.chem_link) {
                 float r1 = atom.element.covalent_r();
                 float r2 = cra.atom->element.covalent_r();
-                if (dist_sq < sq((r1 + r2) * 1.1 * tolerance)) {
-                  match.cra1 = cra;
-                  match.cra2 = {&chain, &res, &atom};
-                  found = true;
-                }
+                if (dist_sq > sq((r1 + r2) * radius_margin))
+                  return;
+                match.cra1 = cra;
+                match.cra2 = {&chain, &res, &atom};
               }
-              if (found) {
-                match.same_asu = !m.image_idx;
-                match.bond_length = std::sqrt(dist_sq);
-                results.push_back(match);
-              }
+
+              match.same_asu = !m.image_idx;
+              match.bond_length = std::sqrt(dist_sq);
+              results.push_back(match);
           });
         }
       }

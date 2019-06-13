@@ -177,10 +177,12 @@ void add_monlib(py::module& m) {
     .def(py::init<>())
     .def("index_chem_links", &LinkHunt::index_chem_links,
          py::arg("monlib"), py::keep_alive<1, 2>())
-    .def("find_possible_links", &LinkHunt::find_possible_links)
+    .def("find_possible_links", &LinkHunt::find_possible_links,
+         py::arg("st"), py::arg("bond_margin"), py::arg("radius_margin"))
     ;
   py::class_<LinkHunt::Match>(linkhunt, "Match")
     .def_readonly("chem_link", &LinkHunt::Match::chem_link)
+    .def_readonly("chem_link_count", &LinkHunt::Match::chem_link_count)
     .def_readonly("cra1", &LinkHunt::Match::cra1)
     .def_readonly("cra2", &LinkHunt::Match::cra2)
     .def_readonly("same_asu", &LinkHunt::Match::same_asu)
