@@ -83,7 +83,7 @@ void print_outliers(const Topo& topo, const char* tag) {
     double value = t.calculate();
     if (t.restr->is_wrong(value))
       printf("%s chir %s should be %s but is %.2f\n", tag,
-             t.restr->str().c_str(), gemmi::chirality_to_string(t.restr->chir),
+             t.restr->str().c_str(), gemmi::chirality_to_string(t.restr->sign),
              value);
   }
   for (const Topo::Plane& t : topo.planes) {

@@ -426,7 +426,7 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
         break;
       case 'c':
         if (it != chemcomp.rt.chirs.end())
-          it->chir = mod.chir;
+          it->sign = mod.sign;
         break;
     }
   }

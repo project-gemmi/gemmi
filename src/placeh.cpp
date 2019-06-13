@@ -277,7 +277,7 @@ void place_hydrogens(const gemmi::Atom& atom, Topo::ResInfo& ri,
       case 1:
         if (known.size() == 2) {
           const Topo::Chirality* chir = topo.get_chirality(&atom);
-          if (chir && chir->restr->chir != gemmi::ChiralityType::Both) {
+          if (chir && chir->restr->sign != gemmi::ChiralityType::Both) {
             hs[0].pos = chir->check() ? pos.first : pos.second;
           } else {
             hs[0].pos = pos.first;

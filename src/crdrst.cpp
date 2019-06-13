@@ -295,7 +295,7 @@ static void add_restraints(const Topo::Force force,
                                                  " " + t.atoms[2]->name +
                                                  " " + t.atoms[3]->name;
     restr_loop.add_row({"CHIR", std::to_string(++counters[3]),
-                        gemmi::chirality_to_string(t.restr->chir), ".",
+                        gemmi::chirality_to_string(t.restr->sign), ".",
                         std::to_string(t.atoms[0]->serial),
                         std::to_string(t.atoms[1]->serial),
                         std::to_string(t.atoms[2]->serial),

@@ -143,7 +143,7 @@ struct LinkHunt {
                 // check chirality
                 int chirality_score = 0;
                 for (const Restraints::Chirality& chirality : link.rt.chirs)
-                  if (chirality.chir != ChiralityType::Both) {
+                  if (chirality.sign != ChiralityType::Both) {
                     Residue& res1 = order1 ? res : *cra.residue;
                     Residue* res2 = order1 ? cra.residue : &res;
                     char alt = atom.altloc ? atom.altloc : cra.atom->altloc;
