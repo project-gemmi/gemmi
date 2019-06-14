@@ -97,7 +97,7 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
         break;
       }
     if (row.has2(14) && row.has2(15)) {
-      c.asu = (row.str(14) == row.str(15) ? SameAsu::Yes : SameAsu::No);
+      c.asu = (row.str(14) == row.str(15) ? Asu::Same : Asu::Different);
     }
     if (row.has2(16))
       c.reported_distance = cif::as_number(row[16]);

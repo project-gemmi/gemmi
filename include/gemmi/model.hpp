@@ -574,7 +574,7 @@ struct Connection {
   enum Type { Covale, Disulf, Hydrog, MetalC, None };
   std::string name;
   Type type = None;
-  SameAsu asu = SameAsu::Any;
+  Asu asu = Asu::Any;
   AtomAddress atom[2];
   double reported_distance = 0.0;
 };

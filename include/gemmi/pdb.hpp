@@ -195,12 +195,12 @@ inline size_t copy_line_from_stream(char* line, int size, Input&& in) {
   return len;
 }
 
-inline SameAsu compare_link_symops(const std::string& record) {
+inline Asu compare_link_symops(const std::string& record) {
   if (record.size() < 72)
-    return SameAsu::Any;  // it could be interpreted as Yes
+    return Asu::Any;  // it could be interpreted as Same
   if (read_string(&record[59], 6) == read_string(&record[66], 6))
-    return SameAsu::Yes;
-  return SameAsu::No;
+    return Asu::Same;
+  return Asu::Different;
 }
 
 inline

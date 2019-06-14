@@ -49,7 +49,7 @@ struct Fractional : Vec3 {
   }
 };
 
-enum class SameAsu : char { Yes, No, Any };
+enum class Asu : char { Same, Different, Any };
 
 // Result of find_nearest_image
 struct SymImage {
@@ -232,18 +232,18 @@ struct UnitCell {
   }
 
   SymImage find_nearest_image(const Position& ref, const Position& pos,
-                              SameAsu asu) const {
+                              Asu asu) const {
     SymImage image;
-    if (asu == SameAsu::No)
+    if (asu == Asu::Different)
       image.dist_sq = INFINITY;
     else
       image.dist_sq = ref.dist_sq(pos);
-    if (asu == SameAsu::Yes || !is_crystal())
+    if (asu == Asu::Same || !is_crystal())
       return image;
     Fractional fpos = fractionalize(pos);
     Fractional fref = fractionalize(ref);
     search_pbc_images(fpos - fref, image);
-    if (asu == SameAsu::No &&
+    if (asu == Asu::Different &&
         image.box[0] == 0 && image.box[1] == 0 && image.box[2] == 0)
       image.dist_sq = INFINITY;
     for (int n = 0; n != static_cast<int>(images.size()); ++n)

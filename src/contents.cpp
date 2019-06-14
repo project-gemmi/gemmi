@@ -136,7 +136,7 @@ static void print_atoms_on_special_positions(const Structure& st) {
         if (int n = st.cell.is_special_position(atom.pos)) {
           found = true;
           SymImage im = st.cell.find_nearest_image(atom.pos, atom.pos,
-                                                   SameAsu::No);
+                                                   Asu::Different);
           printf("\n    %s %4d%c %3s %-3s %c fold=%d  occ=%.2f  d_image=%.4f",
                  chain.name.c_str(), *res.seqid.num, res.seqid.icode,
                  res.name.c_str(), atom.name.c_str(), (atom.altloc | 0x20),

@@ -17,8 +17,7 @@ int verbose = false;
 static bool has_connection(std::vector<Connection> vec, const Connection& con) {
   for (const Connection& item : vec)
     if (item.type == con.type &&
-        (item.asu == con.asu || item.asu == SameAsu::Any ||
-                                con.asu == SameAsu::Any) &&
+        (item.asu == con.asu || item.asu == Asu::Any || con.asu == Asu::Any) &&
         ((item.atom[0] == con.atom[0] && item.atom[1] == con.atom[1]) ||
          (item.atom[0] == con.atom[1] && item.atom[1] == con.atom[0])))
       return true;
