@@ -41,9 +41,6 @@ struct LinkHunt {
   std::map<std::string, double> max_dist_per_atom;
 
   void index_chem_links(const MonLib& monlib) {
-    static const std::vector<std::string> blacklist = {
-      "TRANS", "PTRANS", "NMTRANS", "CIS", "PCIS", "NMCIS", "p", "SS"
-    };
     for (const auto& iter : monlib.links) {
       const ChemLink& link = iter.second;
       if (link.rt.bonds.empty())
@@ -54,7 +51,7 @@ struct LinkHunt {
       if (link.side1.comp.empty() && link.side2.comp.empty())
         if (link.side1.group == ChemLink::Group::Null ||
             link.side2.group == ChemLink::Group::Null ||
-            in_vector(link.id, blacklist))
+            link.id == "SS")
           continue;
       const Restraints::Bond& bond = link.rt.bonds[0];
       if (bond.value > global_max_dist)
@@ -66,16 +63,8 @@ struct LinkHunt {
       }
       links.emplace(bond.lexicographic_str(), &link);
     }
-    for (const auto& ri : monlib.residue_infos) {
-      ChemLink::Group group = ChemLink::Group::Null;
-      if (ri.second.is_amino_acid())
-        group = ChemLink::Group::Peptide;
-      else if (ri.second.is_nucleic_acid())
-        group = ChemLink::Group::DnaRna;
-      else if (ri.second.kind == ResidueInfo::PYR)
-        group = ChemLink::Group::Pyranose;
-      res_group.emplace(ri.first, group);
-    }
+    for (const auto& ri : monlib.residue_infos)
+      res_group.emplace(ri.first, ChemLink::group_from_residue_info(ri.second));
   }
 
   bool match_link_side(const ChemLink::Side& side,

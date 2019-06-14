@@ -17,15 +17,16 @@
 #include "util.hpp"  // for fail
 #include "model.hpp" // for Residue, Atom
 #include "chemcomp.hpp" // for ChemComp
-#include "resinfo.hpp" // for ChemComp
+#include "resinfo.hpp" // for ResidueInfo
 
 namespace gemmi {
 
 struct ChemLink {
   enum class Group {
     // _chem_link.group_comp_N is one of:
-    // "peptide", "pyranose", "DNA/RNA" or null (we ignore "polymer")
-    Peptide, Pyranose, DnaRna, Null
+    // "peptide", "P-peptide", "M-peptide", "pyranose", "DNA/RNA" or null
+    // (we ignore "polymer")
+    Peptide, PPeptide, MPeptide, Pyranose, DnaRna, Null
   };
   struct Side {
     std::string comp;
@@ -45,6 +46,8 @@ struct ChemLink {
         ++cstr;
       switch (ialpha4_id(cstr)) {
         case ialpha4_id("pept"): return Group::Peptide;
+        case ialpha4_id("p-pe"): return Group::PPeptide;
+        case ialpha4_id("m-pe"): return Group::MPeptide;
         case ialpha4_id("pyra"): return Group::Pyranose;
         case ialpha4_id("dna/"): return Group::DnaRna;
       }
@@ -55,9 +58,28 @@ struct ChemLink {
   static const char* group_str(Group g) {
     switch (g) {
       case Group::Peptide: return "peptide";
+      case Group::PPeptide: return "P-peptide";
+      case Group::MPeptide: return "M-peptide";
       case Group::Pyranose: return "pyranose";
       case Group::DnaRna: return "DNA/RNA";
       case Group::Null: return ".";
+    }
+    unreachable();
+  }
+
+  static Group group_from_residue_info(const ResidueInfo& ri) {
+    switch (ri.kind) {
+      case ResidueInfo::UNKNOWN: return Group::Null;
+      case ResidueInfo::AA:      return Group::Peptide;
+      case ResidueInfo::AAD:     return Group::Peptide;
+      case ResidueInfo::PAA:     return Group::PPeptide;
+      case ResidueInfo::MAA:     return Group::MPeptide;
+      case ResidueInfo::RNA:     return Group::DnaRna;
+      case ResidueInfo::DNA:     return Group::DnaRna;
+      case ResidueInfo::BUF:     return Group::Null;
+      case ResidueInfo::HOH:     return Group::Null;
+      case ResidueInfo::PYR:     return Group::Pyranose;
+      case ResidueInfo::ELS:     return Group::Null;
     }
     unreachable();
   }
@@ -147,6 +169,8 @@ inline ResidueInfo::Kind chemcomp_group_to_kind(const std::string& group) {
     switch (ialpha4_id(str)) {
       case ialpha4_id("non-"): return ResidueInfo::ELS;
       case ialpha4_id("pept"): return ResidueInfo::AA;
+      case ialpha4_id("p-pe"): return ResidueInfo::PAA;
+      case ialpha4_id("m-pe"): return ResidueInfo::MAA;
       case ialpha4_id("dna"): return ResidueInfo::DNA;
       case ialpha4_id("rna"): return ResidueInfo::RNA;
       case ialpha4_id("pyra"): return ResidueInfo::PYR;

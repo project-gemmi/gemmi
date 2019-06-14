@@ -19,7 +19,7 @@ namespace gemmi {
 inline PolymerType check_polymer_type(const ResidueSpan& polymer) {
   if (polymer.size() < 2)
     return PolymerType::Unknown;
-  size_t counts[9] = {0};
+  size_t counts[ResidueInfo::ELS+1] = {0};
   size_t aa = 0;
   size_t na = 0;
   for (const Residue& r : polymer)
@@ -33,7 +33,8 @@ inline PolymerType check_polymer_type(const ResidueSpan& polymer) {
       else if (r.get_p())
         ++na;
     }
-  aa += counts[ResidueInfo::AA] + counts[ResidueInfo::AAD];
+  aa += counts[ResidueInfo::AA] + counts[ResidueInfo::AAD] +
+        counts[ResidueInfo::PAA] + counts[ResidueInfo::MAA];
   na += counts[ResidueInfo::RNA] + counts[ResidueInfo::DNA];
   if (aa == polymer.size() || (aa > 10 && 2 * aa > polymer.size()))
     return counts[ResidueInfo::AA] >= counts[ResidueInfo::AAD]

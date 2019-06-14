@@ -14,6 +14,8 @@ struct ResidueInfo {
   // Simple approximate classification.
   // AA - aminoacid
   // AAD - D-aminoacid
+  // PAA - proline-like aminoacid
+  // MAA - methylated aminoacid
   // RNA, DNA - nucleic acids
   // HOH - water or heavy water
   // PYR - pyranose according to the refmac dictionary
@@ -21,7 +23,7 @@ struct ResidueInfo {
   // ELS - something else (ligand).
   enum Kind : char {
     // when changing this list update check_polymer_type()
-    UNKNOWN=0, AA, AAD, RNA, DNA, BUF, HOH, PYR, ELS
+    UNKNOWN=0, AA, AAD, PAA, MAA, RNA, DNA, BUF, HOH, PYR, ELS
   };
   Kind kind;
   // one-letter code or space (uppercase iff it is a standard residues)
@@ -34,7 +36,9 @@ struct ResidueInfo {
   bool is_dna() const { return kind == DNA; }
   bool is_rna() const { return kind == RNA; }
   bool is_nucleic_acid() const { return is_dna() || is_rna(); }
-  bool is_amino_acid() const { return kind == AA || kind == AAD; }
+  bool is_amino_acid() const {
+    return kind == AA || kind == AAD || kind == PAA || kind == MAA;
+  }
   bool is_buffer_or_water() const { return kind == HOH || kind == BUF; }
   // PDB format has non-standard residues (modified AA) marked as HETATM.
   bool is_standard() const { return (one_letter_code & 0x20) == 0; }
