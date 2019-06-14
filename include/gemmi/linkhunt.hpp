@@ -12,6 +12,7 @@
 #include "model.hpp"
 #include "monlib.hpp"
 #include "subcells.hpp"
+#include "topo.hpp"       // for Topo::Torsion
 
 namespace gemmi {
 
@@ -133,11 +134,11 @@ struct LinkHunt {
                 int link_score = (link.side1.comp.empty() ? 0 : 1) +
                                  (link.side2.comp.empty() ? 0 : 1);
                 // check chirality
+                Residue& res1 = order1 ? res : *cra.residue;
+                Residue* res2 = order1 ? cra.residue : &res;
+                char alt = atom.altloc ? atom.altloc : cra.atom->altloc;
                 for (const Restraints::Chirality& chirality : link.rt.chirs)
                   if (chirality.sign != ChiralityType::Both) {
-                    Residue& res1 = order1 ? res : *cra.residue;
-                    Residue* res2 = order1 ? cra.residue : &res;
-                    char alt = atom.altloc ? atom.altloc : cra.atom->altloc;
                     Atom* at1 = chirality.id_ctr.get_from(res1, res2, alt);
                     Atom* at2 = chirality.id1.get_from(res1, res2, alt);
                     Atom* at3 = chirality.id2.get_from(res1, res2, alt);
@@ -148,6 +149,18 @@ struct LinkHunt {
                       if (chirality.is_wrong(vol))
                         link_score -= 10;
                     }
+                  }
+                // check fixed torsion angle (_chem_link_tor.period == 0)
+                for (const Restraints::Torsion& tor : link.rt.torsions)
+                  if (tor.period == 0) {
+                    Atom* at1 = tor.id1.get_from(res1, res2, alt);
+                    Atom* at2 = tor.id2.get_from(res1, res2, alt);
+                    Atom* at3 = tor.id3.get_from(res1, res2, alt);
+                    Atom* at4 = tor.id4.get_from(res1, res2, alt);
+                    double z = 10.;
+                    if (at1 && at2 && at3 && at4)
+                      z = Topo::Torsion{&tor, {{at1, at2, at3, at4}}}.calculate_z();
+                    link_score -= (int) z;
                   }
                 match.chem_link_count++;
                 if (link_score < match.score)
@@ -172,8 +185,8 @@ struct LinkHunt {
                 float r2 = cra.atom->element.covalent_r();
                 if (dist_sq > sq((r1 + r2) * radius_margin))
                   return;
-                match.cra1 = cra;
-                match.cra2 = {&chain, &res, &atom};
+                match.cra1 = {&chain, &res, &atom};
+                match.cra2 = cra;
               }
 
               match.same_asu = !m.image_idx;
