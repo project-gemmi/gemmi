@@ -41,7 +41,7 @@ matrix:
 install:
 - |
   $PYTHON -m pip --version || $PYTHON -m ensurepip --user
-  $PYTHON -m pip install --user pybind11==2.2.4
+  $PYTHON -m pip install --user pybind11
   $PYTHON -c "import pybind11; print('headers: ' + pybind11.get_include(True))"
 script:
   - $COMPILER --version

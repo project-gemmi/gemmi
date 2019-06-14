@@ -27,7 +27,8 @@ def gather_data():
     for path in util.get_file_paths_from_args():
         block = cif.read(path).sole_block()
         code = cif.as_string(block.find_value('_entry.id'))
-        na = sum('nucleotide' in t[0] for t in block.find('_entity_poly.type'))
+        na = sum('nucleotide' in t[0]
+                 for t in block.find_values('_entity_poly.type'))
         vs = block.find_value('_exptl_crystal.density_percent_sol')
         vm = block.find_value('_exptl_crystal.density_Matthews')
         d_min = block.find_value('_refine.ls_d_res_high')

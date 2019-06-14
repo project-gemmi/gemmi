@@ -73,15 +73,15 @@ void add_unitcell(py::module& m) {
     .def("apply", &FTransform::apply);
 
 
-  py::class_<SymImage> symimage(m, "SymImage");
-  symimage
+  py::class_<SymImage>(m, "SymImage")
     .def("dist", &SymImage::dist)
     .def("__repr__", [](const SymImage& self) {
         return "<gemmi.SymImage cell:[" +
           triple(self.box[0], self.box[1], self.box[2]) +
           "] sym:" + std::to_string(self.sym_id) + ">";
     });
-  py::enum_<SameAsu>(symimage, "Asu")
+
+  py::enum_<SameAsu>(m, "Asu")
     .value("Same", SameAsu::Yes)
     .value("Different", SameAsu::No)
     .value("Any", SameAsu::Any);
@@ -108,8 +108,10 @@ void add_unitcell(py::module& m) {
     .def("fractionalize", &UnitCell::fractionalize)
     .def("orthogonalize", &UnitCell::orthogonalize)
     .def("volume_per_image", &UnitCell::volume_per_image)
+    // since pybind11 2.3.0 having =SameAsu::Any causes "import gemmi" to fail:
+    // ImportError: TypeError: __int__ returned non-int (type str)
     .def("find_nearest_image", &UnitCell::find_nearest_image,
-        py::arg("ref"), py::arg("pos"), py::arg("asu")=SameAsu::Any)
+         py::arg("ref"), py::arg("pos"), py::arg("asu")/*=SameAsu::Any*/)
     .def("is_special_position", &UnitCell::is_special_position,
          py::arg("pos"), py::arg("max_dist")=0.8)
     .def("calculate_1_d2", &UnitCell::calculate_1_d2,
