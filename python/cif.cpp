@@ -106,6 +106,8 @@ void add_cif(py::module& cif) {
     .def("find", (Table (Block::*)(const std::vector<std::string>&))
                  &Block::find,
          py::arg("tags"), py::keep_alive<0, 1>())
+    .def("find_or_add", &Block::find_or_add,
+         py::arg("prefix"), py::arg("tags"), py::keep_alive<0, 1>())
     .def("find_frame", &Block::find_frame, py::arg("name"),
          py::return_value_policy::reference_internal)
     .def("set_pair", &Block::set_pair, py::arg("tag"), py::arg("value"))
@@ -229,6 +231,8 @@ void add_cif(py::module& cif) {
     .def("find_column", &Table::find_column, py::arg("tag"),
          py::keep_alive<0, 1>())
     .def("erase", &Table::erase)
+    .def("append_row", &Table::append_row<std::vector<std::string>>,
+         py::arg("new_values"))
     .def_property_readonly("tags",
             py::cpp_function(&Table::tags, py::keep_alive<0, 1>()))
     .def("__iter__", [](Table& self) {

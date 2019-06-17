@@ -330,6 +330,7 @@ struct Table {
 
   Row find_row(const std::string& s);
 
+  template <typename T> void append_row(T new_values);
   Column column_at_pos(int pos);
   Column column(int n) {
     int pos = positions.at(n);
@@ -397,6 +398,16 @@ struct Block {
   Table find(const std::vector<std::string>& tags) { return find({}, tags); }
   Table find_any(const std::string& prefix,
                  const std::vector<std::string>& tags);
+  Table find_or_add(const std::string& prefix, std::vector<std::string> tags) {
+    Table t = find(prefix, tags);
+    if (!t.ok()) {
+      for (int i = 0; i != (int) tags.size(); ++i)
+        t.positions.push_back(i);
+      t.loop_item = &setup_loop_item(find_any(prefix, tags), prefix,
+                                     std::move(tags));
+    }
+    return t;
+  }
   Block* find_frame(std::string name);
 
   // modifying functions
@@ -416,6 +427,8 @@ struct Block {
   }
 
 private:
+  Item& setup_loop_item(Table&& tab, const std::string& prefix,
+                        std::vector<std::string>&& tags);
   Loop& setup_loop(Table&& tab, const std::string& prefix,
                    std::vector<std::string>&& tags);
 };
@@ -607,6 +620,23 @@ inline Table::Row Table::find_row(const std::string& s) {
   fail("Not found in the first column: " + s);
 }
 
+template <typename T> void Table::append_row(T new_values) {
+  if (!ok())
+    fail("append_row(): table not found");
+  if (new_values.size() != width())
+    fail("append_row(): wrong row length");
+  if (!loop_item)
+    // this limitation could be lifted if needed
+    fail("append_row(): existing data must be in loop_");
+  Loop& loop = loop_item->loop;
+  size_t cur_size = loop.values.size();
+  loop.values.resize(cur_size + loop.width(), ".");
+  int n = 0;
+  for (const auto& value : new_values)
+    loop.values[cur_size + positions[n++]] = value;
+}
+
+
 inline Column Table::column_at_pos(int pos) {
   if (loop_item)
     return Column(loop_item, pos);
@@ -697,8 +727,8 @@ inline std::vector<std::string> Block::get_mmcif_category_names() const {
   return cats;
 }
 
-inline Loop& Block::setup_loop(Table&& tab, const std::string& prefix,
-                               std::vector<std::string>&& tags) {
+inline Item& Block::setup_loop_item(Table&& tab, const std::string& prefix,
+                                    std::vector<std::string>&& tags) {
   Item *item;
   if (tab.loop_item) {
     item = tab.loop_item;
@@ -716,7 +746,12 @@ inline Loop& Block::setup_loop(Table&& tab, const std::string& prefix,
     assert_tag(tag);
   }
   item->loop.tags = std::move(tags);
-  return item->loop;
+  return *item;
+}
+
+inline Loop& Block::setup_loop(Table&& tab, const std::string& prefix,
+                               std::vector<std::string>&& tags) {
+  return setup_loop_item(std::move(tab), prefix, std::move(tags)).loop;
 }
 
 inline Table Block::find(const std::string& prefix,

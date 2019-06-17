@@ -80,6 +80,12 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(loop.width(), 2)
         self.assertEqual(loop.length(), 3)
         self.assertEqual(list(block.find(['_c.c', '_c.d'])[1]), ['n', 'w'])
+        tab = block.find_or_add('_c.', ['d'])
+        self.assertEqual((tab.width(), len(tab)), (1, 3))
+        tab = block.find_or_add('_c.', ['d', 'c'])
+        self.assertEqual((tab.width(), len(tab)), (2, 3))
+        tab = block.find_or_add('_u.', ['d', 'c'])
+        self.assertEqual((tab.width(), len(tab)), (2, 0))
 
     def test_setitem(self):
         block = cif.read_string('data_a _a 1 _b 2 _c 3')[0]
@@ -105,6 +111,16 @@ class TestBlock(unittest.TestCase):
         loop.add_row(['5', '6'])
         loop.add_row(['?', '0'], 0)
         self.assertEqual(list(block.find_values('_y')), '0 2 4 6'.split())
+        self.assertEqual(loop.length(), 4)
+        block.find(['_x']).append_row(['xa'])
+        block.find(['_y']).append_row(['ya'])
+        block.find(['_y', '_x']).append_row(['yb', 'xb'])
+        block.find(['_x', '_y']).append_row(['xc', 'yc'])
+        self.assertEqual(loop.length(), 8)
+        self.assertEqual(list(block.find_values('_x')),
+                         '? 1 3 5 xa . xb xc'.split())
+        self.assertEqual(list(block.find_values('_y')),
+                         '0 2 4 6 . ya yb yc'.split())
 
     def test_set_mmcif_category(self):
         doc = cif.Document()
