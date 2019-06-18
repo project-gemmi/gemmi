@@ -75,7 +75,7 @@ struct LinkHunt {
     if (side.group == ChemLink::Group::Null)
       return false;
     auto iter = res_group.find(resname);
-    return iter != res_group.end() && iter->second == side.group;
+    return iter != res_group.end() && side.matches_group(iter->second);
   }
 
   std::vector<Match> find_possible_links(Structure& st, double bond_margin,
@@ -131,8 +131,8 @@ struct LinkHunt {
                   order1 = false;
                 else
                   continue;
-                int link_score = (link.side1.comp.empty() ? 0 : 1) +
-                                 (link.side2.comp.empty() ? 0 : 1);
+                int link_score = link.side1.specificity() +
+                                 link.side2.specificity();
                 // check chirality
                 Residue& res1 = order1 ? res : *cra.residue;
                 Residue* res2 = order1 ? cra.residue : &res;

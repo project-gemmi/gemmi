@@ -32,6 +32,15 @@ struct ChemLink {
     std::string comp;
     std::string mod;
     Group group;
+    bool matches_group(Group res) const {
+      return res == group ||
+             (group == Group::Peptide && (int) res <= (int) Group::MPeptide);
+    }
+    int specificity() const {
+      if (!comp.empty())
+        return 3;
+      return group == Group::PPeptide || group == Group::MPeptide ? 1 : 0;
+    };
   };
   std::string id;
   std::string name;
