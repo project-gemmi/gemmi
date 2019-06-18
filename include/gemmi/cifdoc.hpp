@@ -331,6 +331,9 @@ struct Table {
   Row find_row(const std::string& s);
 
   template <typename T> void append_row(T new_values);
+  void append_row(std::initializer_list<std::string> new_values) {
+    append_row<std::initializer_list<std::string>>(new_values);
+  }
   Column column_at_pos(int pos);
   Column column(int n) {
     int pos = positions.at(n);
