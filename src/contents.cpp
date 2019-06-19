@@ -160,10 +160,10 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (verbose || p.nonOptionsCount() > 1)
         std::printf("File: %s\n", input.c_str());
       Structure st = read_structure_gz(input);
+      print_content_info(st, verbose);
+      print_atoms_on_special_positions(st);
       if (p.options[Dihedrals])
         print_dihedrals(st);
-      print_atoms_on_special_positions(st);
-      print_content_info(st, verbose);
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());
