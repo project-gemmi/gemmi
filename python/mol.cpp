@@ -166,6 +166,7 @@ void add_mol(py::module& m) {
     .def("renumber_models", &Structure::renumber_models)
     .def("merge_chain_parts", &Structure::merge_chain_parts,
          py::arg("min_sep")=0)
+    .def("setup_cell_images", &Structure::setup_cell_images)
     .def("make_pdb_headers", &make_pdb_headers)
     .def("write_pdb", [](const Structure& st, const std::string& path,
                          bool seqres_records, bool ssbond_records,

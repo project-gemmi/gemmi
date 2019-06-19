@@ -819,6 +819,7 @@ inline void Chain::append_residues(std::vector<Residue> new_resi, int min_sep) {
 }
 
 inline void Structure::setup_cell_images() {
+  cell.images.clear();
   if (const SpaceGroup* sg = find_spacegroup_by_name(spacegroup_hm)) {
     for (Op op : sg->operations()) {
       if (op == Op::identity())

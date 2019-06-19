@@ -82,6 +82,7 @@ AtomicStructure make_atomic_structure_from_block(const cif::Block& block_) {
 
 inline void AtomicStructure::setup_cell_images() {
   // duplicating part of Structure::setup_cell_images()
+  cell.images.clear();
   if (const SpaceGroup* sg = find_spacegroup_by_name(spacegroup_hm)) {
     for (Op op : sg->operations()) {
       if (op == Op::identity())
