@@ -185,7 +185,7 @@ void add_monlib(py::module& m) {
     .def_readonly("chem_link_count", &LinkHunt::Match::chem_link_count)
     .def_readonly("cra1", &LinkHunt::Match::cra1)
     .def_readonly("cra2", &LinkHunt::Match::cra2)
-    .def_readonly("same_asu", &LinkHunt::Match::same_asu)
+    .def_readonly("same_image", &LinkHunt::Match::same_image)
     .def_readonly("bond_length", &LinkHunt::Match::bond_length)
     .def_readonly("conn", &LinkHunt::Match::conn)
     ;

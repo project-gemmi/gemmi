@@ -31,7 +31,7 @@ struct LinkHunt {
     int score = -1000;
     CRA cra1;
     CRA cra2;
-    bool same_asu;
+    bool same_image;
     float bond_length = 0.f;
     Connection* conn = nullptr;
   };
@@ -189,7 +189,7 @@ struct LinkHunt {
                 match.cra2 = cra;
               }
 
-              match.same_asu = !m.image_idx;
+              match.same_image = !m.image_idx;
               match.bond_length = std::sqrt(dist_sq);
               results.push_back(match);
           });
