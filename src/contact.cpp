@@ -14,7 +14,7 @@
 
 using namespace gemmi;
 
-enum OptionIndex { Verbose=3, Cov, MaxDist, Occ, Any, NoH, Count };
+enum OptionIndex { Verbose=3, Cov, CovMult, MaxDist, Occ, Any, NoH, Count };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -28,6 +28,8 @@ static const option::Descriptor Usage[] = {
     "  -d, --maxdist=D  Maximal distance in A (default 3.0)" },
   { Cov, 0, "", "cov", Arg::Float,
     "  --cov=TOL  \tUse max distance = covalent radii sum + TOL [A]." },
+  { CovMult, 0, "", "covmult", Arg::Float,
+    "  --covmult=M  \tUse max distance = M * covalent radii sum + TOL [A]." },
   { Occ, 0, "", "occsum", Arg::Float,
     "  --occsum=MIN  \tIgnore atom pairs with summed occupancies < MIN." },
   { Any, 0, "", "any", Arg::None,
@@ -40,18 +42,20 @@ static const option::Descriptor Usage[] = {
 };
 
 struct Parameters {
-  float cov_tol = 0.0f;
-  float max_dist = 3.0f;
-  float occ_sum = 0.0f;
+  bool use_cov_radius;
   bool any;
   bool print_count;
   bool no_hydrogens;
+  float cov_tol = 0.0f;
+  float cov_mult = 1.0f;
+  float max_dist = 3.0f;
+  float occ_sum = 0.0f;
   int verbose;
 };
 
 static void print_contacts(const Structure& st, const Parameters& params) {
   const float special_pos_cutoff = 0.8f;
-  float max_r = params.cov_tol == 0 ? params.max_dist : 4.f + params.cov_tol;
+  float max_r = params.use_cov_radius ? params.max_dist : 4.f + params.cov_tol;
   SubCells sc(st.models.at(0), st.cell, std::max(5.0f, max_r));
   sc.populate(st.models[0], /*include_h=*/ !params.no_hydrogens);
 
@@ -84,20 +88,24 @@ static void print_contacts(const Structure& st, const Parameters& params) {
         if (params.no_hydrogens && is_hydrogen(atom.element))
           continue;
         double min_occ = params.occ_sum - atom.occ;
-        float d_part = 0;
-        if (params.cov_tol != 0) {
-          d_part = atom.element.covalent_r() + params.cov_tol;
+        float d_part = 0.f;
+        if (params.use_cov_radius) {
+          d_part = params.cov_mult * atom.element.covalent_r() + params.cov_tol;
           max_r = d_part + 2.4f;
         }
         sc.for_each(atom.pos, atom.altloc, max_r,
                     [&](const SubCells::Mark& m, float dist_sq) {
             if (!params.any) {
+              // do not consider connections inside a residue
+              // or between this and previous/next residue
               if (m.image_idx == 0 && m.chain_idx == n_ch &&
                   (m.residue_idx == n_res ||
                    are_connected(res, chain.residues[m.residue_idx], pt) ||
                    are_connected(chain.residues[m.residue_idx], res, pt)))
                 return;
             }
+            // atom can be linked with its image, but if the image
+            // is too close the atom is likely on special position.
             if (m.chain_idx == n_ch && m.residue_idx == n_res &&
                 m.atom_idx == n_atom && (m.image_idx == 0 ||
                                          dist_sq < sq(special_pos_cutoff)))
@@ -105,9 +113,12 @@ static void print_contacts(const Structure& st, const Parameters& params) {
             const_CRA cra = m.to_cra(model);
             if (cra.atom->occ < min_occ)
               return;
-            if (d_part != 0 &&
-                dist_sq > sq(d_part + cra.atom->element.covalent_r()))
-              return;
+            if (params.use_cov_radius) {
+              float limit = d_part + params.cov_mult *
+                                     cra.atom->element.covalent_r();
+              if (limit < 0 || dist_sq > sq(limit))
+                return;
+            }
             ++counter;
             if (params.print_count)
               return;
@@ -140,8 +151,11 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.require_input_files_as_args();
   Parameters params;
   params.verbose = p.options[Verbose].count();
+  params.use_cov_radius = (p.options[Cov] || p.options[CovMult]);
   if (p.options[Cov])
     params.cov_tol = std::strtof(p.options[Cov].arg, nullptr);
+  if (p.options[CovMult])
+    params.cov_mult = std::strtof(p.options[CovMult].arg, nullptr);
   if (p.options[MaxDist])
     params.max_dist = std::strtof(p.options[MaxDist].arg, nullptr);
   if (p.options[Occ])
