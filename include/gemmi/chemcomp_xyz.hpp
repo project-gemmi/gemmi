@@ -84,6 +84,8 @@ inline Model make_model_from_chemcomp_block(const cif::Block& block,
 inline Structure make_structure_from_chemcomp_block(const cif::Block& block) {
   Structure st;
   st.input_format = CoorFormat::ChemComp;
+  if (const std::string* name = block.find_value("_chem_comp.id"))
+    st.name = *name;
   if (block.has_any_value("_chem_comp_atom.x"))
     st.models.push_back(
         make_model_from_chemcomp_block(block, ChemCompModel::Xyz));
