@@ -5,6 +5,22 @@ import os
 import unittest
 from gemmi import cif
 
+class TestDoc(unittest.TestCase):
+    def test_slice(self):
+        doc = cif.read_string("""
+            data_a
+            _one 1 _two 2 _three 3
+            data_b
+            _four 4
+            data_c
+            _two 2 _four 4 _six 6
+        """)
+        self.assertEqual([b.name for b in doc[:1]], ['a'])
+        self.assertEqual([b.name for b in doc[1:]], ['b', 'c'])
+        self.assertEqual([b.name for b in doc[:]], ['a', 'b', 'c'])
+        self.assertEqual([b.name for b in doc[1:-1]], ['b'])
+        self.assertEqual([b.name for b in doc[1:1]], [])
+
 class TestBlock(unittest.TestCase):
     def test_find(self):
         block = cif.read_string("""
