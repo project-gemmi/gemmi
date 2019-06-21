@@ -40,7 +40,12 @@ Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown) {
         int n = check_chemcomp_block_number(doc);
         if (n != -1)
           return make_structure_from_chemcomp_block(doc.blocks[n]);
-        return make_structure_from_block(doc.sole_block());
+        // mmCIF files for deposition may have more than one block:
+        // coordinates in the first block and restraints in the others.
+        for (size_t i = 1; i < doc.blocks.size(); ++i)
+          if (doc.blocks[i].has_tag("_atom_site.id"))
+            fail("Expected a single block with coordinates: " + input.path());
+        return make_structure_from_block(doc.blocks.at(0));
       }
       return make_structure_from_block(cif::read(input).sole_block());
     case CoorFormat::Mmjson:
