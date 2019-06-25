@@ -1,5 +1,5 @@
 // Compare pairs of columns from the _atom_site table.
-// Compiled with: g++-6 -O2 -Iinclude -Ithird_party auth_label.cc -lstdc++fs -lz
+// Compiled with: g++-6 -O2 -Iinclude auth_label.cc -lstdc++fs -lz
 #include <gemmi/gz.hpp>
 #include <gemmi/cif.hpp>
 #include <iostream>

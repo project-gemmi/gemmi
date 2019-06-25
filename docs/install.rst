@@ -8,11 +8,11 @@ C++ library
 -----------
 
 It is a header-only library. You need to ensure that
-the ``include`` and ``third_party`` directories are in your include path
+the ``include`` directory is in your include path
 when compiling your program. For example::
 
     git clone https://github.com/project-gemmi/gemmi.git
-    c++ -std=c++11 -Igemmi/include -Igemmi/third_party -O2 my_program.cpp
+    c++ -std=c++11 -Igemmi/include -O2 my_program.cpp
 
 If you want Gemmi to uncompress gzipped files on the fly
 (i.e. if you ``#include <gemmi/gz.hpp>``)

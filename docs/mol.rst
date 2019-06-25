@@ -357,7 +357,7 @@ the resulting program must be linked with the zlib library.
 
 .. code-block:: console
 
-  $ c++ -std=c++11 -Iinclude -Ithird_party example_above.cpp -lz
+  $ c++ -std=c++11 -Iinclude example_above.cpp -lz
   $ ./a.out 2cco.cif.gz
   This file has 20 models.
 

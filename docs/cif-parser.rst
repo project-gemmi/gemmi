@@ -180,8 +180,8 @@ C++
 CIF parser is implemented in header files,
 so you do not need to compile Gemmi.
 It has a single dependency: PEGTL (also header-only),
-which is included in the ``third_party`` directory.
-All you need is to make sure that Gemmi and PEGTL headers are in your
+which is included under the ``include/gemmi/third_party`` directory.
+All you need is to make sure that Gemmi headers are in your
 project's include path, and compile your program as C++11 or later.
 
 Let us start with a simple example.
@@ -198,7 +198,7 @@ and run a compiler:
 .. code-block:: none
 
     git clone https://github.com/project-gemmi/gemmi.git
-    c++ -std=c++11 -Igemmi/include -Igemmi/third_party -O2 my_program.cpp
+    c++ -std=c++11 -Igemmi/include -O2 my_program.cpp
 
 Python
 ------
@@ -1470,7 +1470,7 @@ We compile it, run it, and come back after an hour:
 
 .. code-block:: none
 
-    $ g++-6 -O2 -I.. -Ithird_party examples/auth_label.cpp -lstdc++fs -lz
+    $ g++-6 -O2 -Iinclude examples/auth_label.cpp -lstdc++fs -lz
     $ ./a.out pdb_copy/mmCIF
     3D3W: atom_id  O1 -> OD
     1TNI: atom_id  HN2 -> HN3
