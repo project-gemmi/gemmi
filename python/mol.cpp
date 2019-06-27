@@ -241,7 +241,7 @@ void add_mol(py::module& m) {
          py::return_value_policy::reference_internal)
     .def("find_residue_group", &Model::find_residue_group,
          py::arg("chain"), py::arg("seqid"),
-         py::return_value_policy::reference_internal)
+         py::keep_alive<0, 1>())
     .def("sole_residue", &Model::sole_residue,
          py::arg("chain"), py::arg("seqid"),
          py::return_value_policy::reference_internal)
