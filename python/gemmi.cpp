@@ -47,7 +47,8 @@ PYBIND11_MODULE(gemmi, mg) {
     }, py::keep_alive<0, 1>());
   mg.def("is_pdb_code", &gemmi::is_pdb_code);
   mg.def("expand_pdb_code_to_path", &gemmi::expand_pdb_code_to_path);
-  mg.def("expand_if_pdb_code", &gemmi::expand_if_pdb_code);
+  mg.def("expand_if_pdb_code", &gemmi::expand_if_pdb_code,
+         py::arg("code"), py::arg("filetype")='M');
 }
 
 // vim:sw=2:ts=2:et

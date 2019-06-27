@@ -79,19 +79,25 @@ inline bool is_pdb_code(const std::string& str) {
 
 // Call it after checking the code with gemmi::is_pdb_code(code).
 // The convention for $PDB_DIR is the same as in BioJava, see the docs.
-inline std::string expand_pdb_code_to_path(const std::string& code) {
+// type is the requested file type: 'M' for mmCIF or 'P' for PDB.
+inline std::string expand_pdb_code_to_path(const std::string& code, char type) {
+  std::string path;
   if (const char* pdb_dir = std::getenv("PDB_DIR")) {
     std::string lc = to_lower(code);
-    return std::string(pdb_dir) + "/structures/divided/mmCIF/" +
-           lc.substr(1, 2) + "/" + lc + ".cif.gz";
+    path = pdb_dir;
+    path += "/structures/divided/";
+    path += (type == 'M' ? "mmCIF/" : "pdb/");
+    path += lc.substr(1, 2) + "/";
+    path += (type == 'M' ?  lc + ".cif.gz" : "pdb" + lc + ".ent.gz");
   }
-  return std::string{};
+  return path;
 }
 
-inline std::string expand_if_pdb_code(const std::string& input) {
+// type must be 'M' for mmCIF or 'P' for PDB
+inline std::string expand_if_pdb_code(const std::string& input, char type='M') {
   std::string path;
   if (is_pdb_code(input)) {
-    path = gemmi::expand_pdb_code_to_path(input);
+    path = gemmi::expand_pdb_code_to_path(input, type);
     if (path.empty())
       fail(input + " is a PDB code, but $PDB_DIR is not set.\n");
   } else {
