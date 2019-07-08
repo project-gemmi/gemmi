@@ -35,4 +35,3 @@ CoorFormat coordinate_format_from_extension_gz(const std::string& path);
 } // namespace gemmi
 
 #endif
-// vim:sw=2:ts=2:et

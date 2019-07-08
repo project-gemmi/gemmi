@@ -177,4 +177,3 @@ void SubCells::for_each(const Position& pos, char alt, float radius,
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

@@ -573,4 +573,3 @@ inline MonLib read_monomer_lib(std::string monomer_dir,
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

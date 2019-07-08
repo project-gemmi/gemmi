@@ -137,4 +137,3 @@ inline double simple_atof(const char* p, const char** endptr=nullptr) {
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

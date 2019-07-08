@@ -35,5 +35,3 @@ Benchmark                           Time           CPU Iterations
 find_tabulated_residue_x10         52 ns         52 ns   13458745
 
 */
-
-// vim:sw=2:ts=2:et:path^=../include,../third_party

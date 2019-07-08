@@ -55,4 +55,3 @@ void geMask_write_ccp4_map(geMask* mask, const char* path) {
 }
 
 }
-// vim:sw=2:ts=2:et

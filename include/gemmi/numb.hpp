@@ -102,4 +102,3 @@ inline double as_any(const std::string& s, double null) {
 } // namespace cif
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

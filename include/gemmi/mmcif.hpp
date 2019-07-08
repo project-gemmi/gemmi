@@ -379,4 +379,3 @@ inline Structure make_structure_from_block(const cif::Block& block) {
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

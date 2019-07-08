@@ -693,4 +693,3 @@ void Mtz::write_to_file(const std::string& path) const {
 #endif
 
 #endif
-// vim:sw=2:ts=2:et

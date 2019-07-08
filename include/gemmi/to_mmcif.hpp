@@ -620,4 +620,3 @@ cif::Document make_mmcif_document(const Structure& st) {
 #endif // GEMMI_WRITE_IMPLEMENTATION
 
 #endif
-// vim:sw=2:ts=2:et

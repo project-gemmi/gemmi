@@ -120,5 +120,3 @@ TEST_CASE("string_to_int") {
   CHECK_EQ(gemmi::string_to_int(std::to_string(INT_MIN), true), INT_MIN);
   CHECK_EQ(gemmi::string_to_int("", false), 0);
 }
-
-// vim:sw=2:ts=2:et:path^=../include,../third_party

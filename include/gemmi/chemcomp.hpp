@@ -478,4 +478,3 @@ inline ChemComp make_chemcomp_from_cif(const std::string& name,
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

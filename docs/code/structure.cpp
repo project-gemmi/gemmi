@@ -32,4 +32,3 @@ void iterate_over_everything(gemmi::Structure& st) {
     }
   }
 }
-// vim:sw=2:ts=2:et:path^=../include,../third_party

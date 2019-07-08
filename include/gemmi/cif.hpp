@@ -316,4 +316,3 @@ bool check_syntax_any(T&& input, std::string* msg) {
 } // namespace cif
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

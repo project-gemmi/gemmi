@@ -69,5 +69,3 @@ run/3              14 ns         14 ns   49802527
 run/4              21 ns         21 ns   33985958
 run/5              11 ns         11 ns   64842324
 */
-
-// vim:sw=2:ts=2:et:path^=../include,../third_party

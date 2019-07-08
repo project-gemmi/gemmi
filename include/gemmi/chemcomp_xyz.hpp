@@ -127,4 +127,3 @@ inline Structure make_structure_from_chemcomp_doc(const cif::Document& doc) {
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

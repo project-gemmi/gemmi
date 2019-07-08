@@ -146,4 +146,3 @@ inline void write_cif_to_file(const Document& doc, const std::string& filename,
 } // namespace gemmi
 
 #endif
-// vim:sw=2:ts=2:et

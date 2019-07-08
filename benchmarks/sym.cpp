@@ -69,5 +69,3 @@ BENCHMARK_MAIN();
 // gemmi::generators_from_hall(): 60-1000 ns
 // GroupOps::add_missing_elements(): for P212121: ~500 ns
 //                                   for Fm-3m: 2700ns w/ Dimino, 28000 ns w/o
-
-// vim:sw=2:ts=2:et:path^=../include,../third_party

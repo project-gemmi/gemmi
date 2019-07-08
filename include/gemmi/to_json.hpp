@@ -295,4 +295,3 @@ inline void write_mmjson_to_stream(std::ostream& os, const Document& doc) {
 } // namespace cif
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

@@ -202,4 +202,3 @@ Grid<std::complex<T>> transform_map_to_f_phi(const Grid<T>& map, bool half_l) {
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

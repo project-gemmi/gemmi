@@ -452,4 +452,3 @@ void write_minimal_pdb(const Structure& st, std::ostream& os) {
 #endif // GEMMI_WRITE_IMPLEMENTATION
 
 #endif
-// vim:sw=2:ts=2:et

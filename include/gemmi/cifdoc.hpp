@@ -962,4 +962,3 @@ inline std::string quote(std::string v) {
 } // namespace cif
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

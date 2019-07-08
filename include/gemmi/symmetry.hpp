@@ -1705,4 +1705,3 @@ template<> struct hash<gemmi::Op> {
 #endif
 
 #endif
-// vim:sw=2:ts=2:et

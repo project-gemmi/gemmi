@@ -50,4 +50,3 @@ std::vector<Connection> find_disulfide_bonds(const Model& model,
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

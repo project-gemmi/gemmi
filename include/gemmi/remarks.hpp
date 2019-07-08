@@ -369,5 +369,3 @@ void read_metadata_from_remarks(Structure& st) {
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et
-

@@ -53,5 +53,3 @@ common_elements             16 ns         16 ns   43586668
 various_elements            86 ns         86 ns    8055870
 heavy_elements             332 ns        332 ns    2142365
 */
-
-// vim:sw=2:ts=2:et:path^=../include,../third_party

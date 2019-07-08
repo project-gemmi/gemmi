@@ -536,4 +536,3 @@ inline Structure read_pdb(T&& input) {
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

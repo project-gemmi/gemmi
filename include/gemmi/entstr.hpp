@@ -90,4 +90,3 @@ software_classification_from_string(const std::string& str) {
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

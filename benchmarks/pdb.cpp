@@ -91,5 +91,3 @@ int main(int argc, char** argv) {
 /* Output from my desktop:
 
 */
-
-// vim:sw=2:ts=2:et:path^=../include,../third_party

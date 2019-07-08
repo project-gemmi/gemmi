@@ -25,4 +25,3 @@ program main
 
   call grid%free()
 end program main
-! vim:sw=2:ts=2:et

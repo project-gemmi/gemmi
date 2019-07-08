@@ -438,4 +438,3 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

@@ -118,4 +118,3 @@ AtomicStructure::get_all_unit_cell_sites() const {
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

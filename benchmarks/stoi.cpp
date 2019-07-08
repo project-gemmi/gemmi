@@ -34,5 +34,3 @@ BENCHMARK_CAPTURE(sequential, std_stoi, std_stoi);
 BENCHMARK_CAPTURE(sequential, to_int_false, to_int_false);
 BENCHMARK_CAPTURE(sequential, to_int_true, to_int_true);
 BENCHMARK_MAIN();
-
-// vim:sw=2:ts=2:et

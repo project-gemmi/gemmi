@@ -50,5 +50,3 @@ PYBIND11_MODULE(gemmi, mg) {
   mg.def("expand_if_pdb_code", &gemmi::expand_if_pdb_code,
          py::arg("code"), py::arg("filetype")='M');
 }
-
-// vim:sw=2:ts=2:et

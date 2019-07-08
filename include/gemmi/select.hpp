@@ -275,4 +275,3 @@ inline Selection parse_cid(const std::string& cid) {
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

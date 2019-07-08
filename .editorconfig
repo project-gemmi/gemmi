@@ -1,0 +1,7 @@
+# https://EditorConfig.org
+
+root = true
+
+[*.{cpp,hpp,f90}]
+indent_style = space
+indent_size = 2

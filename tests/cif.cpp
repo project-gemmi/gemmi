@@ -86,5 +86,3 @@ TEST_CASE("cif::Block::init_loop") {
   CHECK_EQ(block.find_values("_p.u").item(), nullptr);
   CHECK_EQ(block.find_values("_p.v").at(0), "30");
 }
-
-// vim:sw=2:ts=2:et:path^=../include,../third_party

@@ -846,4 +846,3 @@ inline void Structure::setup_cell_images() {
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

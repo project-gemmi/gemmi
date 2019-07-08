@@ -63,5 +63,3 @@ run2/floor            18 ns         18 ns   38176320
 run2/nearbyint        16 ns         16 ns   43588313
 run2/rint             13 ns         13 ns   53491145
 */
-
-// vim:sw=2:ts=2:et:path^=../include,../third_party

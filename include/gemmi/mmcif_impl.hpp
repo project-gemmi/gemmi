@@ -35,4 +35,3 @@ inline const std::string* find_spacegroup_hm_value(const cif::Block& block) {
 } // namespace gemmi
 
 #endif
-// vim:sw=2:ts=2:et

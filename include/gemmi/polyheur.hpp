@@ -294,4 +294,3 @@ inline void trim_to_alanine(Chain& chain) {
 
 } // namespace gemmi
 #endif
-// vim:sw=2:ts=2:et

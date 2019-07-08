@@ -93,5 +93,3 @@ void geOp_free(geOp* op) {
 }
 
 }
-
-// vim:sw=2:ts=2:et
