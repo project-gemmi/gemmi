@@ -39,7 +39,6 @@ struct LinkHunt {
   double global_max_dist = 2.34; // ZN-CYS
   std::multimap<std::string, const ChemLink*> links;
   std::unordered_map<std::string, ChemLink::Group> res_group;
-  std::map<std::string, double> max_dist_per_atom;
 
   void index_chem_links(const MonLib& monlib) {
     for (const auto& iter : monlib.links) {
@@ -57,11 +56,6 @@ struct LinkHunt {
       const Restraints::Bond& bond = link.rt.bonds[0];
       if (bond.value > global_max_dist)
         global_max_dist = bond.value;
-      for (const std::string& atom_name : {bond.id1.atom, bond.id1.atom}) {
-        auto r = max_dist_per_atom.emplace(atom_name, bond.value);
-        if (!r.second && r.first->second < bond.value)
-          r.first->second = bond.value;
-      }
       links.emplace(bond.lexicographic_str(), &link);
     }
     for (const auto& ri : monlib.residue_infos)
@@ -82,7 +76,9 @@ struct LinkHunt {
                                                         double radius_margin) {
     std::vector<Match> results;
     Model& model = st.models.at(0);
-    SubCells sc(model, st.cell, std::max(5.0, global_max_dist * bond_margin));
+    double search_radius = std::max(global_max_dist * bond_margin,
+                                    /*max r1+r2 ~=*/3.0 * radius_margin);
+    SubCells sc(model, st.cell, std::max(5.0, search_radius));
     sc.populate(model);
     for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
       Chain& chain = model.chains[n_ch];
@@ -90,10 +86,7 @@ struct LinkHunt {
         Residue& res = chain.residues[n_res];
         for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
           Atom& atom = res.atoms[n_atom];
-          auto max_dist = max_dist_per_atom.find(atom.name);
-          if (max_dist == max_dist_per_atom.end())
-            continue;
-          sc.for_each(atom.pos, atom.altloc, (float) max_dist->second,
+          sc.for_each(atom.pos, atom.altloc, (float) search_radius,
                       [&](SubCells::Mark& m, float dist_sq) {
               // do not consider connections inside a residue
               if (m.image_idx == 0 && m.chain_idx == n_ch &&

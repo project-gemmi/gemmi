@@ -149,6 +149,8 @@ inline void SubCells::add_atom(const Atom& atom,
 template<typename T>
 void SubCells::for_each(const Position& pos, char alt, float radius,
                         const T& func) {
+  if (radius <= 0.f)
+    return;
   Fractional fr = grid.unit_cell.fractionalize(pos).wrap_to_unit();
   int u0 = int(fr.x * grid.nu);
   int v0 = int(fr.y * grid.nv);
