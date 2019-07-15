@@ -8,3 +8,7 @@
 .highlight-cpp .highlight .cl {
  color: #486878
 }
+
+/* roles used in mol.rst */
+.orange-fg { color:#d50; }
+.blue-bg { background-color:#ace; }

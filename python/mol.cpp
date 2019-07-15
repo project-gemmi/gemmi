@@ -36,6 +36,12 @@ namespace pybind11 { namespace detail {
     : optional_caster<SeqId::OptionalNum> {};
 }} // namespace pybind11::detail
 
+template<typename P, typename C> void add_child(P& parent, C child, int pos) {
+  std::vector<C>& children = parent.children();
+  if (pos < 0 || (size_t) pos > children.size())
+    pos = children.size();
+  children.insert(children.begin() + pos, std::move(child));
+}
 
 void add_mol(py::module& m) {
   py::class_<ResidueInfo>(m, "ResidueInfo")
@@ -158,11 +164,8 @@ void add_mol(py::module& m) {
     .def("__delitem__", &Structure::remove_model, py::arg("name"))
     .def("find_or_add_model", &Structure::find_or_add_model,
          py::arg("name"), py::return_value_policy::reference_internal)
-    .def("add_model", [](Structure& st, const Model& model, int pos) {
-          if (pos < 0 || (size_t) pos > st.models.size())
-            pos = st.models.size();
-          st.models.insert(st.models.begin() + pos, model);
-         }, py::arg("model"), py::arg("pos")=-1)
+    .def("add_model", add_child<Structure, Model>,
+         py::arg("model"), py::arg("pos")=-1)
     .def("renumber_models", &Structure::renumber_models)
     .def("merge_chain_parts", &Structure::merge_chain_parts,
          py::arg("min_sep")=0)
@@ -250,10 +253,8 @@ void add_mol(py::module& m) {
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("find_last_chain", &Model::find_last_chain,
          py::arg("name"), py::return_value_policy::reference_internal)
-    .def("add_chain", [](Model& self, const std::string& name) -> Chain& {
-        self.chains.emplace_back(name);
-        return self.chains.back();
-    }, py::arg("name"), py::return_value_policy::reference_internal)
+    .def("add_chain", add_child<Model, Chain>,
+         py::arg("chain"), py::arg("pos")=-1)
     .def("remove_chain", &Model::remove_chain, py::arg("name"))
     .def("__delitem__", &Model::remove_chain, py::arg("name"))
     .def("count_atom_sites", &count_atom_sites<Model>)
