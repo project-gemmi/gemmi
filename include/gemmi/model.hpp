@@ -293,6 +293,8 @@ struct Residue : public ResidueId {
   ConstUniqProxy<Atom> first_conformer() const { return {atoms}; }
 };
 
+struct ResidueGroup;
+
 // ResidueSpan represents consecutive residues within the same chain.
 // It's used as return value of get_polymer(), get_ligands(), get_waters()
 // and get_subchain().
@@ -357,10 +359,22 @@ struct ResidueSpan {
   UniqProxy<Residue, ResidueSpan> first_conformer() { return {*this}; }
   ConstUniqProxy<Residue, ResidueSpan> first_conformer() const {return {*this};}
 
+  ResidueGroup find_residue_group(SeqId id);
+
   const std::string& subchain_id() const {
     if (size_ == 0)
       throw std::out_of_range("No ResidueSpan::subchain_id() for empty span");
+    if (size_ > 1 && front().subchain != back().subchain)
+      fail("subchain id varies");
     return begin_->subchain;
+  }
+
+  iterator insert(iterator it, Residue&& res) {
+    auto offset = begin_ - residues_->begin();
+    auto ret = residues_->insert(it, std::move(res));
+    begin_ = residues_->begin() + offset;
+    ++size_;
+    return ret;
   }
 };
 
@@ -376,8 +390,16 @@ struct ResidueGroup : ResidueSpan {
   }
   void remove_residue(const std::string& name) {
     residues_->erase(impl::find_iter(begin_, begin_ + size_, name));
+    --size_;
   }
 };
+
+inline ResidueGroup ResidueSpan::find_residue_group(SeqId id) {
+  auto func = [&](const Residue& r) { return r.seqid == id; };
+  auto group_begin = std::find_if(begin(), end(), func);
+  auto group_size = std::find_if_not(group_begin, end(), func) - group_begin;
+  return ResidueSpan(*residues_, group_begin, group_size);
+}
 
 struct Chain {
   static const char* what() { return "Chain"; }

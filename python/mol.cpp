@@ -36,11 +36,29 @@ namespace pybind11 { namespace detail {
     : optional_caster<SeqId::OptionalNum> {};
 }} // namespace pybind11::detail
 
-template<typename P, typename C> void add_child(P& parent, C child, int pos) {
-  std::vector<C>& children = parent.children();
-  if (pos < 0 || (size_t) pos > children.size())
-    pos = children.size();
-  children.insert(children.begin() + pos, std::move(child));
+template<typename T, typename C>
+C& add_item(T& container, C child, int pos) {
+  if ((size_t) pos > container.size()) // true also for negative pos
+    pos = container.size();
+  return *container.insert(container.begin() + pos, std::move(child));
+}
+
+template<typename P, typename C>
+C& add_child(P& parent, C child, int pos) {
+  return add_item(parent.children(), std::move(child), pos);
+}
+
+template<typename T> int normalize_index(int index, T& container) {
+  if (index < 0)
+    index += container.size();
+  if ((size_t) index >= container.size())
+    throw py::index_error();
+  return index;
+}
+
+template<typename P> void remove_child(P& parent, int index) {
+  auto& children = parent.children();
+  children.erase(children.begin() + normalize_index(index, children));
 }
 
 void add_mol(py::module& m) {
@@ -165,7 +183,8 @@ void add_mol(py::module& m) {
     .def("find_or_add_model", &Structure::find_or_add_model,
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("add_model", add_child<Structure, Model>,
-         py::arg("model"), py::arg("pos")=-1)
+         py::arg("model"), py::arg("pos")=-1,
+         py::return_value_policy::reference_internal)
     .def("renumber_models", &Structure::renumber_models)
     .def("merge_chain_parts", &Structure::merge_chain_parts,
          py::arg("min_sep")=0)
@@ -254,7 +273,13 @@ void add_mol(py::module& m) {
     .def("find_last_chain", &Model::find_last_chain,
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("add_chain", add_child<Model, Chain>,
-         py::arg("chain"), py::arg("pos")=-1)
+         py::arg("chain"), py::arg("pos")=-1,
+         py::return_value_policy::reference_internal)
+    // for compatibility with older gemmi version
+    .def("add_chain", [](Model& self, const std::string& name) -> Chain& {
+        self.chains.emplace_back(name);
+        return self.chains.back();
+     }, py::arg("name"), py::return_value_policy::reference_internal)
     .def("remove_chain", &Model::remove_chain, py::arg("name"))
     .def("__delitem__", &Model::remove_chain, py::arg("name"))
     .def("count_atom_sites", &count_atom_sites<Model>)
@@ -295,13 +320,10 @@ void add_mol(py::module& m) {
     .def("__getitem__", [](Chain& ch, int index) -> Residue& {
         return ch.residues.at(index >= 0 ? index : index + ch.residues.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
-    .def("__delitem__", [](Chain& ch, int index) {
-        if (index < 0)
-          index += ch.residues.size();
-        if ((size_t) index >= ch.residues.size())
-          throw py::index_error();
-        ch.residues.erase(ch.residues.begin() + index);
-    }, py::arg("index"))
+    .def("__delitem__", remove_child<Chain>, py::arg("index"))
+    .def("add_residue", add_child<Chain, Residue>,
+         py::arg("residue"), py::arg("pos")=-1,
+         py::return_value_policy::reference_internal)
     .def("subchains", &Chain::subchains)
     .def("whole", (ResidueSpan (Chain::*)()) &Chain::whole)
     .def("get_polymer", (ResidueSpan (Chain::*)()) &Chain::get_polymer)
@@ -335,6 +357,16 @@ void add_mol(py::module& m) {
     .def("__getitem__", [](ResidueSpan& g, int index) -> Residue& {
         return g.at(index >= 0 ? index : index + g.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("__getitem__", [](ResidueSpan& self, const std::string& seqid) {
+        return self.find_residue_group(SeqId(seqid));
+    }, py::arg("pdb_seqid"), py::keep_alive<0, 1>())
+    .def("__delitem__", [](ResidueSpan& self, int index) {
+        self.residues_->erase(self.begin() + normalize_index(index, self));
+        --self.size_;
+    }, py::arg("index"))
+    .def("add_residue", add_item<ResidueSpan, Residue>,
+         py::arg("residue"), py::arg("pos")=-1,
+         py::return_value_policy::reference_internal)
     .def("first_conformer", (UniqProxy<Residue, ResidueSpan> (ResidueSpan::*)())
                             &ResidueSpan::first_conformer)
     .def("length", &ResidueSpan::length)

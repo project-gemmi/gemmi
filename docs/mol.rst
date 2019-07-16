@@ -1105,10 +1105,10 @@ and in Python use:
 
 for example,
 
-.. doctest::
+.. testcode::
 
-  >>> structure.add_model(gemmi.Model('7'))  # add a new model
-  >>> structure.add_model(structure[0])      # add a copy of model #0
+  structure.add_model(gemmi.Model('7'))  # add a new model
+  structure.add_model(structure[0])      # add a copy of model #0
 
 After adding or removing models you may call:
 
@@ -1189,10 +1189,10 @@ and in Python use:
 
 for example,
 
-.. doctest::
+.. testcode::
 
-  >>> model.add_chain(gemmi.Chain('E'))  # add a new (empty) chain
-  >>> model.add_chain(model[0])          # add a copy of chain #0
+  model.add_chain(gemmi.Chain('E'))  # add a new (empty) chain
+  model.add_chain(model[0])          # add a copy of chain #0
 
 Each ``Model`` in a Structure must have a unique name (``string name``).
 Normally, models are numbered and the name is a number.
@@ -1271,9 +1271,9 @@ to ``Model``, but also to ``Structure``, ``Chain`` and ``Residue``.
 Chain
 =====
 
-``Chain`` corresponds to the chain in the PDB format and
+Chain corresponds to the chain in the PDB format and
 to ``_atom_site.auth_asym_id`` in the mmCIF format.
-It has a name and a list of ``Residue``\ s.
+It has a name and a list of residues (class ``Residue``).
 
 To get the name or access a residue by index,
 in C++ you may access these properties directly::
@@ -1281,7 +1281,7 @@ in C++ you may access these properties directly::
   std::string name;
   std::vector<Residue> residues;
 
-In Python, the name can be accessed like in C++:
+In Python, we also have the ``name`` property:
 
 .. doctest::
 
@@ -1290,20 +1290,63 @@ In Python, the name can be accessed like in C++:
   >>> chain_a.name
   'A'
 
-but the residues are accessed by indexing the chain object:
+but the residues are accessed by iterating or indexing directly
+the chain object:
 
 .. doctest::
 
-  >>> chain_a[0]
+  >>> chain_a[0]   # first residue
   <gemmi.Residue 1(DG) with 23 atoms>
-  >>> chain_a[-1]
+  >>> chain_a[-1]  # last residue
   <gemmi.Residue 2070(HOH) with 1 atoms>
   >>> len(chain_a)
   79
+  >>> sum(res.is_water() for res in chain_a)
+  70
+
+To add a residue to the chain, in C++ use directly methods
+of ``Chain::residues`` and in Python use:
+
+.. code-block:: python
+
+  Chain.add_residue(residue, pos=-1)
+
+for example,
+
+.. doctest::
+
+  >>> # add a copy of the first residue at the end
+  >>> chain_a.add_residue(chain_a[0])
+  <gemmi.Residue 1(DG) with 23 atoms>
+  >>> # and then delete it
+  >>> del chain_a[-1]
+
+
+In the literature, residues are referred to by sequence ID (number and,
+optionally, insertion code) and residue name. To get residues with
+with the specified sequence ID use indexing with a string as an argument:
+
+.. doctest::
+
+  >>> chain_a['1']
+  <gemmi.ResidueGroup [1(DG)]>
+
+The returned object is a ResidueGroup with a single residue,
+unless we have a point mutation.
+The ResidueGroup is documented later on. For now let's only show
+how to extract the residue we want:
+
+.. doctest::
+
+  >>> chain_a['1']['DG']   # gets residue DG
+  <gemmi.Residue 1(DG) with 23 atoms>
+  >>> chain_a['1'][0]      # gets first residue in the group
+  <gemmi.Residue 1(DG) with 23 atoms>
+
+----
 
 Often, we need to refer to a part of the chain.
-A span of consecutive residues can be represented by an object
-called ``ResidueSpan``.
+A span of consecutive residues can be represented by ``ResidueSpan``.
 For example, if we want to process separately the polymer, ligand
 and water parts of the chain, we can use the following functions
 that return ``ResidueSpan``::
@@ -1328,7 +1371,7 @@ that return ``ResidueSpan``::
     It won't work if for some reasons the residues of different categories
     are intermixed.
 
-And we also have::
+We also have a function that returns the whole chain as a residue span::
 
   ResidueSpan Chain::whole()
 
@@ -1338,8 +1381,7 @@ And we also have::
   <gemmi.ResidueSpan of 79: [1(DG) 2(DC) 3(DG) ... 2070(HOH)]>
 
 ``Chain`` has also functions ``get_subchain()`` and ``subchains()``
-that do the same as functions of ``Model`` with the same names,
-but they only return subchains of the given chain:
+that do the same as the functions of ``Model`` with the same names:
 
 .. doctest::
 
@@ -1348,7 +1390,9 @@ but they only return subchains of the given chain:
   >>> [subchain.subchain_id() for subchain in model['B'].subchains()]
   ['B', 'D', 'E', 'G']
 
-Now we need to consider microheterogeneities (point mutations).
+----
+
+Now let us consider microheterogeneities (point mutations).
 They are less frequent than alternative conformations of atoms
 in a residue, but we still need to handle them.
 So we have two approaches, as mentioned before in the section
@@ -1374,6 +1418,124 @@ A more complex approach is to group together the alternatives.
 Such a group is represented by ``ResidueGroup``, which is derived from
 ``ResidueSpan``.
 
+TODO
+
+----
+
+In Python, Chain has a few specialized, but commonly used functions.
+Two that are present also in the Model class:
+
+.. doctest::
+
+  >>> chain_a.count_atom_sites()
+  242
+  >>> chain_a.count_occupancies()
+  216.9999997317791
+
+and a function that changes a polypeptide chain into polyalanine
+(in C++ ``trim_to_alanine()`` is in ``gemmi/polyheur.hpp``):
+
+.. doctest::
+
+  >>> chain_a.trim_to_alanine()
+
+
+ResidueSpan, ResidueGroup
+=========================
+
+ResidueSpan and ResidueGroup are lightweight structures that point
+to a consecutive span of residues in a chain.
+Their purpose was presented in the previous section.
+Here we only list their member functions:
+
+.. doctest::
+
+  >>> # in the following examples we use polymer_b from the previous section
+  >>> polymer_b
+  <gemmi.ResidueSpan of 10: [1(DSN) 2(ALA) 3(N2C) ... 8(MVA)]>
+  >>> polymer_b[1]   # gets residue by index
+  <gemmi.Residue 2(ALA) with 5 atoms>
+
+.. doctest::
+
+  >>> # iterating over all residues
+  >>> for res in polymer_b: print(res.name, end='-')
+  DSN-ALA-N2C-NCY-MVA-DSN-ALA-NCY-N2C-MVA-
+  >>> # iterating over primary (first) conformer
+  >>> for res in polymer_b.first_conformer(): print(res.name, end='-')
+  DSN-ALA-N2C-MVA-DSN-ALA-NCY-MVA-
+
+.. doctest::
+
+  >>> len(polymer_b)      # number of residues
+  10
+  >>> polymer_b.length()  # length of the chain (which has 2 point mutations)
+  8
+
+We have the same functions for adding and removing residues as in Chain:
+
+.. doctest::
+
+  >>> # add a new (empty) residue at the beginning
+  >>> polymer_b.add_residue(gemmi.Residue(), 0)
+  <gemmi.Residue ?() with 0 atoms>
+  >>> # and delete it
+  >>> del polymer_b[0]
+
+If ResidueSpan represents a subchain we can get its ID (``label_asym_id``):
+
+.. doctest::
+
+  >>> polymer_b.subchain_id()
+  'B'
+
+If it's a polymer, we can ask for polymer type and sequence:
+
+.. doctest::
+
+  >>> polymer_b.check_polymer_type()
+  PolymerType.PeptideL
+  >>> polymer_b.make_one_letter_sequence()
+  'sAXvsAXv'
+
+(In C++ these two functions are available in ``gemmi/polyheur.hpp``.)
+
+ResidueSpan, like Chain, has a ``__getitem__`` function that takes
+sequence ID as a string and returns ResidueGroup.
+In ResidueGroup we can uniquely address residue by name, therefore the
+``__getitem__`` (and ``__delitem__``) function can take residue name.
+
+.. doctest::
+
+  >>> polymer_b['2']  # ResidueSpan[sequence ID] -> ResidueGroup
+  <gemmi.ResidueGroup [2(ALA)]>
+  >>> _['ALA']        # ResidueGroup[residue name] -> Residue
+  <gemmi.Residue 2(ALA) with 5 atoms>
+
+Residue
+=======
+
+Residue contains atoms and a number of properties:
+
+* ``name`` (string) -- residue name, such as ``ALA``.
+* ``seqid``
+* ``segment``
+* ``subchain``
+* ``entity_type``
+* ``het_flag``
+* ``label_seq``
+
+``__iter__``, ``__getitem__``, ``__delitem__``
+
+``__len__``, ``__contains__``
+
+``first_conformer``
+
+``first_conformer``
+
+``is_water``
+
+TODO: add_atom
 
 ..
   >>> # the first residue has sequence id '1', but since one sequence id
@@ -1392,15 +1554,21 @@ Such a group is represented by ``ResidueGroup``, which is derived from
   >>> len(list(_))  # 23 - 4
   19
 
-TODO
-
-Residue
-=======
-
-TODO
-
 Atom
 ====
+
+* ``name`` (string) -- atom name, such as ``CB``.
+* ``altloc``
+* ``charge``
+* ``element``
+* ``pos``
+* ``occ``
+* ``b_iso``
+* ``serial``
+
+``is_hydrogen()``
+
+how to calculate distance, angle, dihedral angle
 
 C++
 ---
