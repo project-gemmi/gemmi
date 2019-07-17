@@ -452,8 +452,18 @@ void add_mol(py::module& m) {
     .def_readwrite("pos", &Atom::pos)
     .def_readwrite("occ", &Atom::occ)
     .def_readwrite("b_iso", &Atom::b_iso)
+    .def_readwrite("u11", &Atom::u11)
+    .def_readwrite("u22", &Atom::u22)
+    .def_readwrite("u33", &Atom::u33)
+    .def_readwrite("u12", &Atom::u12)
+    .def_readwrite("u13", &Atom::u13)
+    .def_readwrite("u23", &Atom::u23)
     .def_readwrite("serial", &Atom::serial)
+    .def_readwrite("flag", &Atom::flag)
     .def("is_hydrogen", &Atom::is_hydrogen)
+    .def("has_altloc", &Atom::has_altloc)
+    .def("has_anisou", &Atom::has_anisou)
+    .def("b_iso_from_aniso", &Atom::b_iso_from_aniso)
     .def("__repr__", [](const Atom& self) {
         std::string r = "<gemmi.Atom " + self.name;
         if (self.altloc) {
@@ -467,6 +477,8 @@ void add_mol(py::module& m) {
         return r + buf;
     });
 
+  m.def("calculate_angle", &calculate_angle,
+        "Input: three points. Output: angle in radians.");
   m.def("calculate_dihedral", &calculate_dihedral,
         "Input: four points. Output: dihedral angle in radians.");
 }

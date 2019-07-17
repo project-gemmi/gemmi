@@ -213,7 +213,7 @@ add_executable(doc_example EXCLUDE_FROM_ALL
                docs/code/cell.cpp)
 add_executable(doc_example2 EXCLUDE_FROM_ALL docs/code/cif_cc.cpp)
 add_executable(doc_maybegz EXCLUDE_FROM_ALL
-               docs/code/maybegz.cpp docs/code/structure.cpp
+               docs/code/maybegz.cpp
                docs/code/mutate.cpp)
 support_gz(doc_maybegz)
 

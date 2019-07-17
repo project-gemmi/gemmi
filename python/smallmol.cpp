@@ -34,6 +34,14 @@ void add_smcif(py::module& m) {
   py::class_<Element>(m, "Element")
     .def(py::init<const std::string &>())
     .def(py::init<int>())
+    .def("__eq__",
+         [](const Element &a, const Element &b) { return a.elem == b.elem; },
+         py::is_operator())
+#if PY_MAJOR_VERSION < 3  // in Py3 != is inferred from ==
+    .def("__ne__",
+         [](const Element &a, const Element &b) { return a.elem != b.elem; },
+         py::is_operator())
+#endif
     .def_property_readonly("name", &Element::name)
     .def_property_readonly("weight", &Element::weight)
     .def_property_readonly("covalent_r", &Element::covalent_r)

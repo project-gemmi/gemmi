@@ -177,9 +177,13 @@ struct Atom {
     s += name;
     return s;
   }
+  bool has_altloc() const { return altloc != '\0'; }
   bool has_anisou() const {
     return u11 != 0.f || u22 != 0.f || u33 != 0.f ||
            u12 != 0.f || u13 != 0.f || u23 != 0.f;
+  }
+  double b_iso_from_aniso() const {
+    return 8 * pi() * pi() / 3. * (u11 + u22 + u33);
   }
   bool is_hydrogen() const { return gemmi::is_hydrogen(element); }
 };

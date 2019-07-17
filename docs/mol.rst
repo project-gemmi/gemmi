@@ -23,6 +23,7 @@ Comparing with tools rooted in bioinformatics:
 * and Gemmi is aware of the neighbouring molecules that are implied by
   the crystallographic and non-crystallographic symmetry.
 
+.. _elements:
 
 Elements
 ========
@@ -201,8 +202,51 @@ See examples at the end of this section:
 :ref:`substructure matching <substructure_matching>` and
 :ref:`maximum common subgraph <maximum_common_subgraph>`.
 
-Transformation matrices
-=======================
+Coordinates and matrices
+========================
+
+Coordinates are represented by two classes:
+
+* ``Position`` for coordinates in Angstroms (orthogonal coordinates),
+* ``Fractional`` for coordinates relative to the unit cell
+  (fractional coordinates).
+
+Both ``Position`` and ``Fractional`` are derived from ``Vec3``,
+which has three numeric properties: ``x``, ``y`` and ``z``.
+
+.. doctest::
+
+    >>> v = gemmi.Vec3(1.2, 3.4, 5.6)
+    >>> v.y
+    3.4
+    >>> v[1]
+    3.4
+
+The only reason to have separate types is to prevent functions that
+expect fractional coordinates from accepting orthogonal ones, and vice versa.
+In C++ these types are defined in ``gemmi/math.hpp``.
+
+If you have points in space you may want to calculate distances, angles
+and dihedral angles:
+
+.. doctest::
+
+    >>> from math import degrees
+    >>> p1 = gemmi.Position(0, 0, 0)
+    >>> p2 = gemmi.Position(0, 0, 1)
+    >>> p3 = gemmi.Position(0, 1, 0)
+    >>> p4 = gemmi.Position(-1, 1, 0)
+    >>> p1.dist(p2)
+    1.0
+    >>> degrees(gemmi.calculate_angle(p1, p2, p3))
+    45.00000000000001
+    >>> degrees(gemmi.calculate_dihedral(p1, p2, p3, p4))
+    90.0
+
+It can be done similarly in C++. Additionally, in C++ you have a number of
+other functions. See headers ``gemmi/math.hpp`` and ``gemmi/calculate.hpp``.
+
+----
 
 Working with macromolecular coordinates involves 3D transformations,
 such as crystallographic and non-crystallographic symmetry operations,
@@ -214,19 +258,11 @@ or by a 3x3 matrix and a translation vector. Gemmi uses the latter.
 Transformations are represented by the ``Transform`` class
 that has two member variables:
 ``mat`` (of type ``Mat33``) and ``vec`` (of type ``Vec3``).
-In C++ these types are defined in ``gemmi/math.hpp``.
 
-Coordinates are represented by classes derived from ``Vec3``:
-
-* ``Position`` for coordinates in Angstroms (orthogonal coordinates),
-* ``Fractional`` for coordinates relative to the unit cell
-  (fractional coordinates).
-
-The only reason to have separate types is to prevent functions that
-expect fractional coordinates from accepting orthogonal ones, and vice versa.
-
-For the same reason gemmi also has a ``FTransform``, which is like
-``Transform`` but can be applied only to ``Fractional`` coordinates.
+To avoid mixing of orthogonal and fractional coordinates
+Gemmi also has ``FTransform``, which is like ``Transform``,
+but can be applied only to ``Fractional`` coordinates.
+In C++ all these types are defined in ``gemmi/math.hpp``.
 
 **Python**
 
@@ -253,6 +289,7 @@ For the same reason gemmi also has a ``FTransform``, which is like
     <gemmi.Vec3(1.8895, 28.4929, 12.7262)>
     >>> ncs_op.inverse().apply(_)
     <gemmi.Vec3(20, 30, 40)>
+
 
 .. _unitcell:
 
@@ -997,6 +1034,8 @@ by second argument to the ``gemmi.read_structure()`` function:
 
   read_structure(path: str, merge_chain_parts: bool = True) -> gemmi.Structure
 
+.. _met_mse_example:
+
 Example
 -------
 
@@ -1432,21 +1471,23 @@ Two that are present also in the Model class:
   >>> chain_a.count_occupancies()
   216.9999997317791
 
-and a function that changes a polypeptide chain into polyalanine
-(in C++ ``trim_to_alanine()`` is in ``gemmi/polyheur.hpp``):
+and a function that changes a polypeptide chain into polyalanine:
 
 .. doctest::
 
   >>> chain_a.trim_to_alanine()
 
+In C++ ``trim_to_alanine()`` is defined in ``gemmi/polyheur.hpp``.
 
 ResidueSpan, ResidueGroup
 =========================
 
 ResidueSpan and ResidueGroup are lightweight structures that point
 to a consecutive span of residues in a chain.
-Their purpose was presented in the previous section.
-Here we only list their member functions:
+But as was was shown in the previous section, they are used for different
+things.
+
+Both allow addressing residue by (0-based) index:
 
 .. doctest::
 
@@ -1455,6 +1496,9 @@ Here we only list their member functions:
   <gemmi.ResidueSpan of 10: [1(DSN) 2(ALA) 3(N2C) ... 8(MVA)]>
   >>> polymer_b[1]   # gets residue by index
   <gemmi.Residue 2(ALA) with 5 atoms>
+
+You can iterate over residues, although for ResidueSpan it may be better
+to iterate only over one conformer:
 
 .. doctest::
 
@@ -1465,6 +1509,8 @@ Here we only list their member functions:
   >>> for res in polymer_b.first_conformer(): print(res.name, end='-')
   DSN-ALA-N2C-MVA-DSN-ALA-NCY-MVA-
 
+Related to this, the length can be calculating in two ways:
+
 .. doctest::
 
   >>> len(polymer_b)      # number of residues
@@ -1472,7 +1518,7 @@ Here we only list their member functions:
   >>> polymer_b.length()  # length of the chain (which has 2 point mutations)
   8
 
-We have the same functions for adding and removing residues as in Chain:
+The functions for adding and removing residues are the same as in Chain:
 
 .. doctest::
 
@@ -1500,10 +1546,11 @@ If it's a polymer, we can ask for polymer type and sequence:
 
 (In C++ these two functions are available in ``gemmi/polyheur.hpp``.)
 
-ResidueSpan, like Chain, has a ``__getitem__`` function that takes
-sequence ID as a string and returns ResidueGroup.
-In ResidueGroup we can uniquely address residue by name, therefore the
-``__getitem__`` (and ``__delitem__``) function can take residue name.
+In addition to the numeric indexing,
+``ResidueSpan.__getitem__`` (like ``Chain.__getitem__``) can take
+sequence ID as a string, returning ResidueGroup.
+In ResidueGroup we can uniquely address a residue by name, therefore
+``ResidueGroup.__getitem__`` (and ``__delitem__``) takes residue name.
 
 .. doctest::
 
@@ -1517,13 +1564,16 @@ Residue
 
 Residue contains atoms and a number of properties:
 
-* ``name`` (string) -- residue name, such as ``ALA``.
-* ``seqid``
-* ``segment``
-* ``subchain``
-* ``entity_type``
-* ``het_flag``
-* ``label_seq``
+* ``name`` -- residue name, such as ``ALA``.
+* ``seqid`` -- sequence ID ...
+* ``segment`` -- segment from the PDB format v2.
+* ``subchain`` -- ``label_asym_id`` from mmCIF (read from a file or added by
+  gemmi, for example by ``Structure.assign_subchains()``),
+* ``entity_type`` -- one of ``EntityType.Unknown``, ``EntityType.Polymer``,
+  ``EntityType.NonPolymer``, ``EntityType.Water``.
+* ``het_flag`` -- a single character based on PDB record or mmCIF
+  ``_atom_site.group_PDB``: 'A' = ATOM, 'H' = HETATM, '\0' = unspecified,
+* ``label_seq`` -- numeric value from the ``_atom_site.label_seq_id`` field.
 
 ``__iter__``, ``__getitem__``, ``__delitem__``
 
@@ -1557,40 +1607,100 @@ TODO: add_atom
 Atom
 ====
 
-* ``name`` (string) -- atom name, such as ``CB``.
-* ``altloc``
-* ``charge``
-* ``element``
-* ``pos``
-* ``occ``
-* ``b_iso``
-* ``serial``
+Atom has the following properties:
 
-``is_hydrogen()``
+* ``name`` -- atom name, such as ``CA`` or ``CB``,
+* ``altloc`` -- alternative location indicator (one character),
+* ``charge`` -- integer number (partial charges are not supported),
+* ``element`` -- :ref:`element <elements>` from a periodic table,
+* ``pos`` -- coordinates in Angstroms (instance of ``Position``),
+* ``occ`` -- occupancy,
+* ``b_iso`` -- isotropic temperature factor or, more accurately,
+  atomic displacement parameter (ADP),
+* ``u11``, ``u22``, ``u33``, ``u12``, ``u13``, ``u23`` -- anisotropic atomic
+  displacement parameters (U not B).
+* ``serial`` -- atom serial number (integer).
+* ``flag`` -- custom flag, a single character that can be used for anything
+  by the user.
 
-how to calculate distance, angle, dihedral angle
+These properties can be read and written from both C++ and Python,
+as was shown in :ref:`the example <met_mse_example>` where sulfur
+was mutated to selenium.
 
-C++
----
+.. doctest::
 
-Everything will be documented later on.
+  >>> atom = polymer_b['2']['ALA']['CA']
+  >>> atom.name
+  'CA'
+  >>> atom.element
+  <gemmi.Element: C>
+  >>> atom.pos
+  <gemmi.Position(-9.498, 10.028, 12.461)>
+  >>> atom.occ
+  1.0
+  >>> atom.b_iso
+  9.4399995803833
+  >>> atom.charge
+  0
+  >>> atom.serial
+  179
+  >>> atom.flag
+  '\x00'
 
-Here is a minimal example that shows the hierarchy and properties
-of each object.
+``altloc`` is stored as a single character. Majority of atoms has
+a single conformations and the altloc character set to NUL (``'\0'``).
+If you want to check if an atom has non-NUL altloc, you may also use
+method ``has_altloc()``:
 
-.. literalinclude:: code/structure.cpp
+.. doctest::
 
+  >>> atom.altloc
+  '\x00'
+  >>> atom.has_altloc()
+  False
 
-TODO
+``element`` can be compared (``==``, ``!=``) with other instances
+of gemmi.Element. For checking if it is a hydrogen we have a dedicated
+function ``is_hydrogen()`` which returns true for both H and D:
 
-Python
-------
+.. doctest::
 
-.. code-block:: python
+  >>> atom.element == gemmi.Element('C')
+  True
+  >>> atom.is_hydrogen()
+  False
 
-    import gemmi
+Following the convention used in wwPDB, the values of isotropic and
+anisotropic ADPs are in different units (*B* = 8\ *π*\ :sup:`2`\ *U*).
+Files from the PDB should have full isotropic B-factors:
 
-TODO
+.. doctest::
+
+  >>> atom.b_iso
+  9.4399995803833
+  >>> atom.has_anisou()  # has non-zero anisotropic ADP
+  True
+  >>> '%g %g %g' % (atom.u11, atom.u22, atom.u33)
+  '0.1386 0.1295 0.0907'
+  >>> '%g %g %g' % (atom.u12, atom.u23, atom.u23)
+  '-0.0026 0.0068 0.0068'
+  >>> U_eq = (atom.u11 + atom.u22 + atom.u33) / 3
+  >>> from math import pi
+  >>> '%g ~= %g' % (atom.b_iso, 8 * pi**2 * U_eq)
+  '9.44 ~= 9.44324'
+
+Unfortunately, as discussed in the
+`BDB paper <http://dx.doi.org/10.1093/protein/gzu044>`_,
+some PDB entries instead of the full isotropic ADP
+contain "residual" B-factor or a different metric.
+If anisotropic ADPs are present, one can use the following function
+to calculate corresponding isotropic ADP:
+
+.. doctest::
+
+  >>> atom.b_iso_from_aniso()
+  9.443238117199861
+
 
 Neighbor search
 ===============
