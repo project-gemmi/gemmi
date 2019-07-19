@@ -232,11 +232,12 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
   auto aniso_map = get_anisotropic_u(block);
 
   // atom list
-  enum { kId=0, kSymbol, kLabelAtomId, kAltId, kLabelCompId, kLabelAsymId,
-         kLabelSeqId, kInsCode, kX, kY, kZ, kOcc, kBiso, kCharge,
+  enum { kId=0, kGroupPdb, kSymbol, kLabelAtomId, kAltId, kLabelCompId,
+         kLabelAsymId, kLabelSeqId, kInsCode, kX, kY, kZ, kOcc, kBiso, kCharge,
          kAuthSeqId, kAuthCompId, kAuthAsymId, kAuthAtomId, kModelNum };
   cif::Table atom_table = block.find("_atom_site.",
                                      {"id",
+                                      "?group_PDB",
                                       "type_symbol",
                                       "label_atom_id",
                                       "label_alt_id",
@@ -289,6 +290,13 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
         if (row.has2(kLabelSeqId))
           resi->label_seq = cif::as_int(row[kLabelSeqId]);
         resi->subchain = row.str(kLabelAsymId);
+        // don't check if group_PDB is consistent, it's not that important
+        if (row.has2(kGroupPdb))
+          for (int i = 0; i < 2; ++i) { // first character could be " or '
+            const char c = alpha_up(row[kGroupPdb][i]);
+            if (c == 'A' || c == 'H' || c == '\0')
+              resi->het_flag = c;
+          }
       }
     } else if (resi->seqid != rid.seqid) {
       fail("Inconsistent sequence ID: " + resi->str() + " / " + rid.str());
