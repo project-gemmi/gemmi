@@ -89,12 +89,12 @@ public:
   void increment() {
     std::size_t old = pos_++;
     while (pos_ != vec_->size() && (*vec_)[old].same_group((*vec_)[pos_]))
-        ++pos_;
+      ++pos_;
   }
   void decrement() {
     --pos_;
     while (pos_ != 0 && (*vec_)[pos_ - 1].same_group((*vec_)[pos_]))
-        --pos_;
+      --pos_;
   }
   bool equal(const UniqIterPolicy& o) const { return pos_ == o.pos_; }
   Value& dereference() { return (*vec_)[pos_]; }
