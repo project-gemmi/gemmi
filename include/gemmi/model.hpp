@@ -188,6 +188,55 @@ struct Atom {
   bool is_hydrogen() const { return gemmi::is_hydrogen(element); }
 };
 
+template<typename Item> struct ItemSpanBase {
+  using iterator = typename std::vector<Item>::iterator;
+  using const_iterator = typename std::vector<Item>::const_iterator;
+
+  iterator begin_;
+  std::size_t size_ = 0;
+  std::vector<Item>* vector_ = nullptr;  // for remove_residue()
+
+  ItemSpanBase() = default;
+  ItemSpanBase(std::vector<Item>& v, iterator begin, std::size_t n)
+    : begin_(begin), size_(n), vector_(&v) {}
+  ItemSpanBase(std::vector<Item>& v)
+    : begin_(v.begin()), size_(v.size()), vector_(&v) {}
+
+  const_iterator begin() const { return begin_; }
+  const_iterator end() const { return begin_ + size_; }
+  iterator begin() { return begin_; }
+  iterator end() { return begin_ + size_; }
+  Item& front() { return *begin_; }
+  const Item& front() const { return *begin_; }
+  Item& back() { return *(begin_ + size_ - 1); }
+  const Item& back() const { return *(begin_ + size_ - 1); }
+  std::size_t size() const { return size_; }
+
+  const Item& operator[](std::size_t i) const { return *(begin_ + i); }
+  Item& operator[](std::size_t i) { return *(begin_ + i); }
+  Item& at(std::size_t i) {
+    if (i >= size())
+      throw std::out_of_range("item index ouf of range: #" + std::to_string(i));
+    return *(begin_ + i);
+  }
+  const Item& at(std::size_t i) const {
+    return const_cast<ItemSpanBase*>(this)->at(i);
+  }
+  bool empty() const { return size_ == 0; }
+  explicit operator bool() const { return size_ != 0; }
+};
+
+struct AtomGroup : ItemSpanBase<Atom> {
+  using ItemSpanBase::ItemSpanBase;
+  std::string name() const { return size_ != 0 ? front().name : ""; }
+  Atom& by_altloc(char alt) {
+    for (Atom& atom : *this)
+      if (atom.altloc == alt)
+        return atom;
+    fail("No such altloc");
+  }
+};
+
 // Sequence ID (sequence number + insertion code) + residue name + segment ID
 struct ResidueId {
   SeqId seqid;
@@ -228,7 +277,7 @@ struct Residue : public ResidueId {
   }
 
   // default values accept anything
-  const Atom* find_atom(const std::string& atom_name, char altloc='*',
+  const Atom* find_atom(const std::string& atom_name, char altloc,
                         El el=El::X) const {
     for (const Atom& a : atoms)
       if (a.name == atom_name
@@ -237,13 +286,34 @@ struct Residue : public ResidueId {
         return &a;
     return nullptr;
   }
-  Atom* find_atom(const std::string& atom_name, char altloc='*', El el=El::X) {
+  Atom* find_atom(const std::string& atom_name, char altloc, El el=El::X) {
     const Residue* const_this = this;
     return const_cast<Atom*>(const_this->find_atom(atom_name, altloc, el));
   }
 
-  void remove_atom(const std::string& atom_name) {
-    atoms.erase(impl::find_iter(atoms, atom_name));
+  std::vector<Atom>::iterator find_atom_iter(const std::string& atom_name,
+                                             char altloc, El el=El::X) {
+    if (Atom* a = find_atom(atom_name, altloc, el))
+      return atoms.begin() + (a - atoms.data());
+    fail("Atom to be removed not found.");
+  }
+
+  AtomGroup get(const std::string& atom_name) {
+    auto func = [&](const Atom& a) { return a.name == atom_name; };
+    auto g_begin = std::find_if(atoms.begin(), atoms.end(), func);
+    if (g_begin == atoms.end())
+      fail("No such atom: " + atom_name);
+    auto g_end = std::find_if_not(g_begin, atoms.end(), func);
+    if (std::find_if(g_end, atoms.end(), func) != atoms.end())
+      fail("Non-consecutive alternative location of the atom");
+    return AtomGroup(atoms, g_begin, g_end - g_begin);
+  }
+
+  Atom& sole_atom(const std::string& atom_name) {
+    AtomGroup aa = get(atom_name);
+    if (aa.size() != 1)
+      fail("Multiple alternative atoms " + atom_name);
+    return aa[0];
   }
 
   // short-cuts to access peptide backbone atoms
@@ -302,29 +372,9 @@ struct ResidueGroup;
 // ResidueSpan represents consecutive residues within the same chain.
 // It's used as return value of get_polymer(), get_ligands(), get_waters()
 // and get_subchain().
-struct ResidueSpan {
-  using iterator = std::vector<Residue>::iterator;
-  using const_iterator = std::vector<Residue>::const_iterator;
+struct ResidueSpan : ItemSpanBase<Residue> {
+  using ItemSpanBase::ItemSpanBase;
 
-  iterator begin_;
-  std::size_t size_ = 0;
-  std::vector<Residue>* residues_ = nullptr;  // for remove_residue()
-
-  ResidueSpan() = default;
-  ResidueSpan(std::vector<Residue>& v, iterator begin, std::size_t n)
-    : begin_(begin), size_(n), residues_(&v) {}
-  ResidueSpan(std::vector<Residue>& v)
-    : begin_(v.begin()), size_(v.size()), residues_(&v) {}
-
-  const_iterator begin() const { return begin_; }
-  const_iterator end() const { return begin_ + size_; }
-  iterator begin() { return begin_; }
-  iterator end() { return begin_ + size_; }
-  Residue& front() { return *begin_; }
-  const Residue& front() const { return *begin_; }
-  Residue& back() { return *(begin_ + size_ - 1); }
-  const Residue& back() const { return *(begin_ + size_ - 1); }
-  std::size_t size() const { return size_; }
   int length() const {
     int length = size_;
     for (int n = int(size_) - 1; n > 0; --n)
@@ -347,19 +397,6 @@ struct ResidueSpan {
   SeqId::OptionalNum min_label_seq() const { return extreme_num(true, true); }
   SeqId::OptionalNum max_label_seq() const { return extreme_num(true, false); }
 
-  const Residue& operator[](std::size_t i) const { return *(begin_ + i); }
-  Residue& operator[](std::size_t i) { return *(begin_ + i); }
-  Residue& at(std::size_t i) {
-    if (i >= size())
-      throw std::out_of_range("ResidueSpan: no item " + std::to_string(i));
-    return *(begin_ + i);
-  }
-  const Residue& at(std::size_t i) const {
-    return const_cast<ResidueSpan*>(this)->at(i);
-  }
-  bool empty() const { return size_ == 0; }
-  explicit operator bool() const { return size_ != 0; }
-
   UniqProxy<Residue, ResidueSpan> first_conformer() { return {*this}; }
   ConstUniqProxy<Residue, ResidueSpan> first_conformer() const {return {*this};}
 
@@ -374,9 +411,9 @@ struct ResidueSpan {
   }
 
   iterator insert(iterator it, Residue&& res) {
-    auto offset = begin_ - residues_->begin();
-    auto ret = residues_->insert(it, std::move(res));
-    begin_ = residues_->begin() + offset;
+    auto offset = begin_ - vector_->begin();
+    auto ret = vector_->insert(it, std::move(res));
+    begin_ = vector_->begin() + offset;
     ++size_;
     return ret;
   }
@@ -393,7 +430,7 @@ struct ResidueGroup : ResidueSpan {
     return *impl::find_iter(begin_, begin_ + size_, name);
   }
   void remove_residue(const std::string& name) {
-    residues_->erase(impl::find_iter(begin_, begin_ + size_, name));
+    vector_->erase(impl::find_iter(begin_, begin_ + size_, name));
     --size_;
   }
 };
@@ -402,7 +439,7 @@ inline ResidueGroup ResidueSpan::find_residue_group(SeqId id) {
   auto func = [&](const Residue& r) { return r.seqid == id; };
   auto group_begin = std::find_if(begin(), end(), func);
   auto group_size = std::find_if_not(group_begin, end(), func) - group_begin;
-  return ResidueSpan(*residues_, group_begin, group_size);
+  return ResidueSpan(*vector_, group_begin, group_size);
 }
 
 struct Chain {

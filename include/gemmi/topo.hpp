@@ -362,7 +362,7 @@ inline void Topo::ChainInfo::add_refmac_builtin_modifications() {
     Topo::ResInfo& back = residues.back();
     if (is_polypeptide(polymer_type)) {
       front.mods.emplace_back("NH3");
-      back.mods.emplace_back(back.res->find_atom("OXT") ? "COO" : "TERMINUS");
+      back.mods.emplace_back(back.res->find_atom("OXT", '*') ? "COO" : "TERMINUS");
     } else if (is_polynucleotide(polymer_type)) {
       front.mods.emplace_back("5*END");
       back.mods.emplace_back("TERMINUS");

@@ -9,6 +9,9 @@
  color: #486878
 }
 
+/* overwrite 12px margin that adds extra spacing before a nested list */
+.rst-content .section ul p { margin-bottom: 0; }
+
 /* roles used in mol.rst */
 .orange-fg { color:#d50; }
 .blue-bg { background-color:#ace; }

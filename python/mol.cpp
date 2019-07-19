@@ -361,7 +361,7 @@ void add_mol(py::module& m) {
         return self.find_residue_group(SeqId(seqid));
     }, py::arg("pdb_seqid"), py::keep_alive<0, 1>())
     .def("__delitem__", [](ResidueSpan& self, int index) {
-        self.residues_->erase(self.begin() + normalize_index(index, self));
+        self.vector_->erase(self.begin() + normalize_index(index, self));
         --self.size_;
     }, py::arg("index"))
     .def("add_residue", add_item<ResidueSpan, Residue>,
@@ -399,6 +399,22 @@ void add_mol(py::module& m) {
                "]>";
     });
 
+  py::class_<AtomGroup>(m, "AtomGroup", residue_span)
+    .def("__len__", &AtomGroup::size)
+    .def("__iter__", [](AtomGroup& g) { return py::make_iterator(g); },
+         py::keep_alive<0, 1>())
+    .def("__bool__", [](const ResidueSpan &g) -> bool { return !g.empty(); })
+    .def("__getitem__", [](AtomGroup& g, int index) -> Atom& {
+        return g.at(index >= 0 ? index : index + g.size());
+    }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("__getitem__", &AtomGroup::by_altloc,
+         py::arg("altloc"), py::return_value_policy::reference_internal)
+    .def("name", &AtomGroup::name)
+    .def("__repr__", [](const AtomGroup& self) {
+        return "<gemmi.AtomGroup " + self.name() + ", sites: " +
+               std::to_string(self.size()) + ">";
+    });
+
   py::class_<SeqId>(m, "SeqId")
     .def(py::init<int, char>())
     .def(py::init<const std::string&>())
@@ -420,22 +436,33 @@ void add_mol(py::module& m) {
     .def_readwrite("label_seq", &Residue::label_seq)
     .def("__len__", [](const Residue& res) { return res.atoms.size(); })
     .def("__contains__", [](const Residue& res, const std::string& name) {
-        return res.find_atom(name) != nullptr;
+        return res.find_atom(name, '*') != nullptr;
     })
     .def("__iter__", [](const Residue& res) {
         return py::make_iterator(res.atoms);
     }, py::keep_alive<0, 1>())
-    // TODO: should it return a list of items with this name
-    //       or should altloc be specified as part of the name ('CA.A')
-    .def("__getitem__", [](Residue& res, const std::string& name) -> Atom& {
-        return *impl::find_iter(res.atoms, name);
-    }, py::arg("name"), py::return_value_policy::reference_internal)
     .def("__getitem__", [](Residue& self, int index) -> Atom& {
         return self.atoms.at(index >= 0 ? index : index + self.atoms.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
-    .def("__delitem__", &Residue::remove_atom, py::arg("name"))
+    .def("__getitem__", &Residue::get,
+         py::arg("name"), py::return_value_policy::reference_internal)
+    .def("__delitem__", remove_child<Residue>, py::arg("index"))
+    .def("find_atom", [](Residue& self, const std::string& name, char altloc) {
+           return self.find_atom(name, altloc);
+         },
+         //(Atom* (Residue::*)(const std::string&, char, El)) &Residue::find_atom,
+         py::arg("name"), py::arg("altloc"), /*py::arg("el")=El::X,*/
+         py::return_value_policy::reference_internal)
+    .def("remove_atom",
+         [](Residue& self, const std::string& name, char altloc/*, El el*/) {
+           self.atoms.erase(self.find_atom_iter(name, altloc/*, el*/));
+    }, py::arg("name"), py::arg("altloc") /*, py::arg("el")=El::X*/)
+    .def("add_atom", add_child<Residue, Atom>,
+         py::arg("atom"), py::arg("pos")=-1,
+         py::return_value_policy::reference_internal)
     .def("first_conformer",
          (UniqProxy<Atom> (Residue::*)()) &Residue::first_conformer)
+    .def("sole_atom", &Residue::sole_atom)
     .def("is_water", &Residue::is_water)
     .def("trim_to_alanine", (bool (*)(Residue&)) &trim_to_alanine)
     .def("__repr__", [](const Residue& self) {

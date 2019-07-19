@@ -220,7 +220,7 @@ class TestMol(unittest.TestCase):
         res_cl = list(chain_c)[0]
         self.assertEqual(res_cl.name, 'CL')
         self.assertEqual(len(res_cl), 1)
-        atom_cl = res_cl['CL']
+        atom_cl = res_cl.find_atom('CL', '*')
         self.assertAlmostEqual(atom_cl.occ, 0.17)
         self.assertEqual(atom_cl.element.name, 'Cl')
 
@@ -310,8 +310,8 @@ class TestMol(unittest.TestCase):
         self.assertEqual(len(st.ncs), 1)
         A, B = st[0]
         for ra, rb in zip(A, B):
-            pa = ra['CA'].pos
-            pb = rb['CA'].pos
+            pa = ra['CA'][0].pos
+            pb = rb['CA'][0].pos
             image_of_pb = st.ncs[0].apply(pb)
             self.assertTrue(pa.dist(image_of_pb) < 0.01)
 
@@ -320,7 +320,8 @@ class TestMol(unittest.TestCase):
                    "  1.00 67.64          MG"
         for line in [pdb_line, pdb_line.strip(' MG'), pdb_line[:-2] + '  ']:
             st = gemmi.read_pdb_string(line)
-            mg_atom = st[0].sole_residue('A', gemmi.SeqId(341, ' '))['MG']
+            residue = st[0].sole_residue('A', gemmi.SeqId(341, ' '))
+            mg_atom = residue.sole_atom('MG')
             self.assertEqual(mg_atom.element.name, 'Mg')
             self.assertAlmostEqual(mg_atom.b_iso, 67.64, delta=1e-6)
         mg_atom.element = gemmi.Element('Cu')
@@ -331,7 +332,7 @@ class TestMol(unittest.TestCase):
                    "  0.29 43.77          S"
         for line in [pdb_line, pdb_line + '\n', pdb_line + '\r\n']:
             st = gemmi.read_pdb_string(line)
-            atom = st[0].sole_residue('A', gemmi.SeqId('7'))['S']
+            atom = st[0].sole_residue('A', gemmi.SeqId('7')).sole_atom('S')
             self.assertEqual(atom.element.name, 'S')
 
     def test_4hhh_frag(self):
@@ -368,8 +369,8 @@ class TestMol(unittest.TestCase):
     def test_ncs(self):
         st = gemmi.read_structure(full_path('5cvz_final.pdb'))
         self.assertEqual(st.resolution, 3.29)
-        first_atom = st[0].sole_residue('A', gemmi.SeqId(17, ' '))['N']
-        ne2 = st[0].sole_residue('A', gemmi.SeqId('63'))['NE2']
+        first_atom = st[0].sole_residue('A', gemmi.SeqId(17, ' '))[0]
+        ne2 = st[0].sole_residue('A', gemmi.SeqId('63')).sole_atom('NE2')
         direct_dist = first_atom.pos.dist(ne2.pos)
         self.assertAlmostEqual(direct_dist, 34.89, delta=1e-2)
         nearest_image = st.cell.find_nearest_image(first_atom.pos, ne2.pos,
@@ -395,7 +396,7 @@ class TestMol(unittest.TestCase):
         st.renumber_models()
         res = st[0].sole_residue('A', gemmi.SeqId('310'))
         self.assertEqual(len(res), 1)
-        del res['SG']
+        res.remove_atom('SG', ' ')
         self.assertEqual(len(res), 0)
         res = st[1].sole_residue('A', gemmi.SeqId('310'))
         self.assertEqual(len(res), 1)

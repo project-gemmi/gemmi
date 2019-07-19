@@ -466,7 +466,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                   });
         if (1) {  // temporary addition for makecif/refmac compatibility
           if (gemmi::in_vector(std::string("AA-STAND"),  ri.mods) &&
-              !ri.res->find_atom("OXT")) {
+              !ri.res->find_atom("OXT", '*')) {
             gemmi::Atom atom;
             atom.name = "OXT";
             atom.element = gemmi::El::O;
