@@ -252,6 +252,10 @@ inline double angle_abs_diff(double a, double b) {
   return d < 180.0 ? d : 360.0 - d;
 }
 
+template<typename Restr> double angle_z(double value_rad, const Restr& restr) {
+  return angle_abs_diff(deg(value_rad), restr.value) / restr.esd;
+}
+
 struct ChemComp {
   struct Atom {
     std::string id;

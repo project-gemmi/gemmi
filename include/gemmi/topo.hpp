@@ -35,9 +35,7 @@ struct Topo {
     double calculate() const {
       return calculate_angle(atoms[0]->pos, atoms[1]->pos, atoms[2]->pos);
     }
-    double calculate_z() const {
-      return angle_abs_diff(deg(calculate()), restr->value) / restr->esd;
-    }
+    double calculate_z() const { return angle_z(calculate(), *restr); }
   };
   struct Torsion {
     const Restraints::Torsion* restr;
@@ -46,9 +44,7 @@ struct Topo {
       return calculate_dihedral(atoms[0]->pos, atoms[1]->pos,
                                 atoms[2]->pos, atoms[3]->pos);
     }
-    double calculate_z() const {
-      return angle_abs_diff(deg(calculate()), restr->value) / restr->esd;
-    }
+    double calculate_z() const { return angle_z(calculate(), *restr); }
   };
   struct Chirality {
     const Restraints::Chirality* restr;
