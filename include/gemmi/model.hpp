@@ -746,8 +746,7 @@ struct Model {
   }
 
   const_CRA find_cra(const AtomAddress& address) const {
-    CRA cra = const_cast<Model*>(this)->find_cra(address);
-    return {cra.chain, cra.residue, cra.atom};
+    return const_cast<Model*>(this)->find_cra(address);
   }
 
 
