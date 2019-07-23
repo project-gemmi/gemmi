@@ -12,7 +12,6 @@
 #include "model.hpp"
 #include "monlib.hpp"
 #include "subcells.hpp"
-#include "topo.hpp"       // for Topo::Torsion
 
 namespace gemmi {
 
@@ -152,7 +151,9 @@ struct LinkHunt {
                     Atom* at4 = tor.id4.get_from(res1, res2, alt);
                     double z = 10.;
                     if (at1 && at2 && at3 && at4)
-                      z = Topo::Torsion{&tor, {{at1, at2, at3, at4}}}.calculate_z();
+                      z = angle_z(calculate_dihedral(at1->pos, at2->pos,
+                                                     at3->pos, at4->pos),
+                                  tor);
                     link_score -= (int) z;
                   }
                 match.chem_link_count++;
