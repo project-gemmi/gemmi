@@ -164,6 +164,8 @@ void add_monlib(py::module& m) {
     .def_readonly("monomers", &MonLib::monomers)
     .def_readonly("links", &MonLib::links)
     .def_readonly("modifications", &MonLib::modifications)
+    .def("add_monomer_if_present", &MonLib::add_monomer_if_present)
+    .def("add_monomers_if_present", &MonLib::add_monomers_if_present)
     .def("__repr__", [](const MonLib& self) {
         return "<gemmi.MonLib with " +
                std::to_string(self.monomers.size()) + " monomers, " +
@@ -179,6 +181,15 @@ void add_monlib(py::module& m) {
   m.def("read_monomer_cif", [](const std::string& path) {
     return read_monomer_cif(path, gemmi::read_cif_gz);
   });
+
+  py::class_<BondIndex>(m, "BondIndex")
+    .def(py::init<const Model&>(), py::keep_alive<1, 2>())
+    .def("add_link", &BondIndex::add_link)
+    .def("add_monomer_bonds", &BondIndex::add_monomer_bonds)
+    .def("are_linked", &BondIndex::are_linked)
+    .def("graph_distance", &BondIndex::graph_distance,
+         py::arg("a"), py::arg("b"), py::arg("max_distance")=4)
+    ;
 
   py::class_<LinkHunt> linkhunt(m, "LinkHunt");
   linkhunt

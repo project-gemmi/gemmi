@@ -527,6 +527,19 @@ struct MonLib {
     for (int n = 1; find_link(name) != nullptr; ++n)
       name.replace(orig_len, name.size(), std::to_string(n));
   }
+
+  void add_monomer_if_present(const cif::Block& block) {
+    if (block.has_tag("_chem_comp_atom.atom_id")) {
+      ChemComp cc = make_chemcomp_from_block(block);
+      std::string name = cc.name;
+      monomers.emplace(name, std::move(cc));
+    }
+  }
+
+  void add_monomers_if_present(const cif::Document& doc) {
+    for (const cif::Block& block : doc.blocks)
+      add_monomer_if_present(block);
+  }
 };
 
 typedef cif::Document (*read_cif_func)(const std::string&);
@@ -535,12 +548,8 @@ inline MonLib read_monomer_cif(const std::string& path,
                                read_cif_func read_cif) {
   MonLib monlib;
   monlib.mon_lib_list = (*read_cif)(path);
-  for (cif::Block& block : monlib.mon_lib_list.blocks)
-    if (block.find_values("_chem_comp_atom.atom_id")) {
-      ChemComp cc = make_chemcomp_from_block(block);
-      std::string name = cc.name;
-      monlib.monomers.emplace(name, std::move(cc));
-    }
+  for (const cif::Block& block : monlib.mon_lib_list.blocks)
+    monlib.add_monomer_if_present(block);
   insert_chemlinks(monlib.mon_lib_list, monlib.links);
   insert_chemmods(monlib.mon_lib_list, monlib.modifications);
   insert_comp_list(monlib.mon_lib_list, monlib.residue_infos);
@@ -576,6 +585,65 @@ inline MonLib read_monomer_lib(std::string monomer_dir,
     fail(error + "Please create definitions for missing monomers.");
   return monlib;
 }
+
+
+struct BondIndex {
+  const Model& model;
+  std::map<int, std::vector<int>> index;
+
+  BondIndex(const Model& model_) : model(model_) {
+    for (const_CRA& cra : model.all())
+      if (!index.emplace(cra.atom->serial, 0).second)
+        fail("duplicated serial numbers");
+  }
+
+  void add_link(const Atom& a, const Atom& b) {
+    std::vector<int>& list1 = index.at(a.serial);
+    if (!in_vector(b.serial, list1))
+      list1.push_back(b.serial);
+    std::vector<int>& list2 = index.at(b.serial);
+    if (!in_vector(a.serial, list2))
+      list2.push_back(a.serial);
+  }
+
+  void add_monomer_bonds(MonLib& monlib) {
+    for (const Chain& chain : model.chains)
+      for (const Residue& res : chain.residues) {
+        std::string altlocs;
+        add_distinct_altlocs(res, altlocs);
+        if (altlocs.empty())
+          altlocs += '*';
+        const ChemComp& chemcomp = monlib.monomers.at(res.name);
+        for (const Restraints::Bond& bond : chemcomp.rt.bonds)
+          for (char alt : altlocs)
+            if (const Atom* at1 = res.find_atom(bond.id1.atom, alt))
+              if (const Atom* at2 = res.find_atom(bond.id2.atom, alt)) {
+                add_link(*at1, *at2);
+                if (!at1->altloc && !at2->altloc)
+                  break;
+              }
+      }
+  }
+
+  bool are_linked(const Atom& a, const Atom& b) const {
+    return in_vector(b.serial, index.at(a.serial));
+  }
+
+  int graph_distance(const Atom& a, const Atom& b, int max_distance=4) const {
+    std::vector<int> neighbors(1, a.serial);
+    for (int distance = 1; distance <= max_distance; ++distance) {
+      for (int n = neighbors.size(); n--; ) {
+        for (int serial : index.at(neighbors[n])) {
+          if (serial == b.serial)
+            return distance;
+          if (!in_vector(serial, neighbors))
+            neighbors.push_back(serial);
+        }
+      }
+    }
+    return max_distance + 1;
+  }
+};
 
 } // namespace gemmi
 #endif
