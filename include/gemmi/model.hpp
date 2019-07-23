@@ -648,6 +648,55 @@ inline const char* get_mmcif_connection_type_id(Connection::Type t) {
   return type_ids[t];
 }
 
+template<typename CraT>
+class CraIterPolicy {
+public:
+  typedef CraT value_type;
+  CraIterPolicy() : chains_end(nullptr), cra{nullptr, nullptr, nullptr} {}
+  CraIterPolicy(const Chain* end, CraT cra_)
+    : chains_end(end), cra(cra_) {}
+  void increment() {
+    if (cra.atom)
+      if (++cra.atom == vector_end_ptr(cra.residue->atoms)) {
+        if (++cra.residue == vector_end_ptr(cra.chain->residues)) {
+          if (++cra.chain == chains_end) {
+            cra.atom = nullptr;
+            return;
+          }
+          cra.residue = &cra.chain->residues.at(0);
+        }
+        cra.atom = &cra.residue->atoms.at(0);
+      }
+  }
+  void decrement() {
+    if (cra.atom)
+      if (cra.atom-- == cra.residue->atoms.data()) {
+        if (cra.residue-- == cra.chain->residues.data())
+          cra.residue = &(--cra.chain)->residues.back();
+        cra.atom = &cra.residue->atoms.back();
+      }
+  }
+  bool equal(const CraIterPolicy& o) const { return cra.atom == o.cra.atom; }
+  CraT& dereference() { return cra; }
+  using const_policy = CraIterPolicy<const_CRA>;
+  operator const_policy() const { return const_policy(chains_end, cra); }
+private:
+  const Chain* chains_end;
+  CraT cra;
+};
+
+struct ConstCraProxy {
+  const std::vector<Chain>& chains;
+  using iterator = BidirIterator<CraIterPolicy<const_CRA>>;
+  iterator begin() {
+    auto chain = &chains.at(0);
+    auto residue = &chain->residues.at(0);
+    auto atom = &residue->atoms.at(0);
+    return CraIterPolicy<const_CRA>{vector_end_ptr(chains), {chain, residue, atom}};
+  }
+  iterator end() { return {}; }
+};
+
 struct Model {
   static const char* what() { return "Model"; }
   std::string name;  // actually an integer number
@@ -749,6 +798,7 @@ struct Model {
     return const_cast<Model*>(this)->find_cra(address);
   }
 
+  ConstCraProxy all() const { return {chains}; }
 
   Atom* find_atom(const AtomAddress& address) { return find_cra(address).atom; }
 

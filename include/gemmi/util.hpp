@@ -181,6 +181,11 @@ bool in_vector_f(F f, const std::vector<T>& v) {
 }
 
 template <class T>
+T* vector_end_ptr(std::vector<T>& v) { return v.data() + v.size(); }
+template <class T>
+const T* vector_end_ptr(const std::vector<T>& v) { return v.data() + v.size(); }
+
+template <class T>
 void vector_move_extend(std::vector<T>& dst, std::vector<T>&& src) {
   if (dst.empty())
     dst = std::move(src);
