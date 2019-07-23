@@ -50,13 +50,14 @@ struct SubCells {
 
   using item_type = std::vector<Mark>;
   Grid<item_type> grid;
+  const Model* model = nullptr;
 
   SubCells() = default;
-  SubCells(const Model& model, const UnitCell& cell, double max_radius) {
-    initialize(model, cell, max_radius);
+  SubCells(const Model& model_, const UnitCell& cell, double max_radius) {
+    initialize(model_, cell, max_radius);
   }
   void initialize(const Model& model, const UnitCell& cell, double max_radius);
-  void populate(const Model& model, bool include_h=true);
+  void populate(bool include_h=true);
   void add_atom(const Atom& atom, int n_ch, int n_res, int n_atom);
 
   // assumes data in [0, 1), but uses index_n to handle numeric deviations
@@ -94,13 +95,14 @@ struct SubCells {
 };
 
 
-inline void SubCells::initialize(const Model& model, const UnitCell& cell,
+inline void SubCells::initialize(const Model& model_, const UnitCell& cell,
                                  double max_radius) {
+  model = &model_;
   if (cell.is_crystal()) {
     grid.set_unit_cell(cell);
   } else {
     BoundingBox box;
-    for (const Chain& chain : model.chains)
+    for (const Chain& chain : model->chains)
       for (const Residue& res : chain.residues)
         for (const Atom& atom : res.atoms)
           box.add(atom.pos);
@@ -114,9 +116,11 @@ inline void SubCells::initialize(const Model& model, const UnitCell& cell,
                                    std::max(grid.nw, 3));
 }
 
-inline void SubCells::populate(const Model& model, bool include_h) {
-  for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
-    const Chain& chain = model.chains[n_ch];
+inline void SubCells::populate(bool include_h) {
+  if (!model)
+    fail("SubCells not initialized");
+  for (int n_ch = 0; n_ch != (int) model->chains.size(); ++n_ch) {
+    const Chain& chain = model->chains[n_ch];
     for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
       const Residue& res = chain.residues[n_res];
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {

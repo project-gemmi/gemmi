@@ -1834,13 +1834,14 @@ For this it needs to know the the maximum radius that will be used in searches,
 as well as the unit cell. Since the system may be non-periodic,
 the constructor also takes the model as an argument -- it is used to
 calculate the bounding box for the model if there is no unit cell.
+It is also stored and used if ``populate()`` is called.
 The C++ signature (in ``gemmi/subcells.hpp``) is::
 
   SubCells::SubCells(const Model& model, const UnitCell& cell, double max_radius)
 
 Then the cell lists need to be populated with items either by calling::
 
-  void SubCells::populate(const Model& model)
+  void SubCells::populate(bool include_h=true)
 
 or by adding individual atoms::
 
@@ -1856,7 +1857,7 @@ An example in Python:
 
   >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
   >>> subcells = gemmi.SubCells(st[0], st.cell, 3)
-  >>> subcells.populate(st[0])
+  >>> subcells.populate()
 
 If we'd like to choose which atoms to add, for example to ignore hydrogens,
 we could use ``add_atom()`` instead:

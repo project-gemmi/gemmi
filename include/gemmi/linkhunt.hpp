@@ -79,7 +79,7 @@ struct LinkHunt {
     double search_radius = std::max(global_max_dist * bond_margin,
                                     /*max r1+r2 ~=*/3.0 * radius_margin);
     SubCells sc(model, st.cell, std::max(5.0, search_radius));
-    sc.populate(model);
+    sc.populate();
     for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
       Chain& chain = model.chains[n_ch];
       for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {

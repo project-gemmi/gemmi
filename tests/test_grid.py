@@ -93,7 +93,7 @@ class TestSubCells(unittest.TestCase):
         a1 = st[0].sole_residue('A', gemmi.SeqId(37, ' '))[0]
         sc = gemmi.SubCells(st[0], st.cell, 5)
         if use_populate:
-            sc.populate(st[0])
+            sc.populate()
         else:
             for n_ch, chain in enumerate(st[0]):
                 for n_res, res in enumerate(chain):
@@ -118,7 +118,7 @@ class TestSubCells(unittest.TestCase):
         st = gemmi.read_pdb_string(FRAGMENT_1GTV)
         a1 = st[0].sole_residue('A', gemmi.SeqId(85, ' '))[0]
         subcells = gemmi.SubCells(st[0], st.cell, 5)
-        subcells.populate(st[0])
+        subcells.populate()
         marks = subcells.find_atoms(a1.pos, a1.altloc, 3)
         self.assertEqual(len(marks), 2)
         for mark in marks:

@@ -142,10 +142,10 @@ void add_grid(py::module& m) {
   py::bind_vector<std::vector<SubCells::Mark*>>(m, "VectorSubCellsMarkPtr");
   subcells
     .def(py::init<const Model&, const UnitCell&, double>(),
-         py::arg("model"), py::arg("cell"), py::arg("max_radius"))
-    .def("populate", &SubCells::populate,
-         py::arg("model"), py::arg("include_h")=true,
-         "Usually run after constructing SubCells with the same model arg.")
+         py::arg("model"), py::arg("cell"), py::arg("max_radius"),
+         py::keep_alive<1, 2>())
+    .def("populate", &SubCells::populate, py::arg("include_h")=true,
+         "Usually run after constructing SubCells.")
     .def("add_atom", &SubCells::add_atom,
          py::arg("atom"), py::arg("n_ch"), py::arg("n_res"), py::arg("n_atom"),
          "Lower-level alternative to populate()")
