@@ -21,6 +21,12 @@
 
 namespace gemmi {
 
+inline void add_distinct_altlocs(const Residue& res, std::string& altlocs) {
+  for (const Atom& atom : res.atoms)
+    if (atom.altloc && altlocs.find(atom.altloc) == std::string::npos)
+      altlocs += atom.altloc;
+}
+
 struct ChemLink {
   enum class Group {
     // _chem_link.group_comp_N is one of:

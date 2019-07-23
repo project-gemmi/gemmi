@@ -170,13 +170,9 @@ struct Topo {
     std::string altlocs;
     if (altloc == '*') {
       // find all distinct altlocs
-      for (const Atom& atom : res.atoms)
-        if (atom.altloc && altlocs.find(atom.altloc) == std::string::npos)
-          altlocs += atom.altloc;
+      add_distinct_altlocs(res, altlocs);
       if (res2)
-        for (const Atom& atom : res2->atoms)
-          if (atom.altloc && altlocs.find(atom.altloc) == std::string::npos)
-            altlocs += atom.altloc;
+        add_distinct_altlocs(*res2, altlocs);
     }
     if (altlocs.empty())
       altlocs += altloc;
