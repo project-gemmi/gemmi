@@ -593,7 +593,7 @@ struct BondIndex {
 
   BondIndex(const Model& model_) : model(model_) {
     for (const_CRA& cra : model.all())
-      if (!index.emplace(cra.atom->serial, 0).second)
+      if (!index.emplace(cra.atom->serial, std::vector<int>()).second)
         fail("duplicated serial numbers");
   }
 
@@ -613,8 +613,10 @@ struct BondIndex {
         add_distinct_altlocs(res, altlocs);
         if (altlocs.empty())
           altlocs += '*';
-        const ChemComp& chemcomp = monlib.monomers.at(res.name);
-        for (const Restraints::Bond& bond : chemcomp.rt.bonds)
+        auto monomer = monlib.monomers.find(res.name);
+        if (monomer == monlib.monomers.end())
+          fail("Monomer description not found: " + res.name);
+        for (const Restraints::Bond& bond : monomer->second.rt.bonds)
           for (char alt : altlocs)
             if (const Atom* at1 = res.find_atom(bond.id1.atom, alt))
               if (const Atom* at2 = res.find_atom(bond.id2.atom, alt)) {
