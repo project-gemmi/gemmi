@@ -72,11 +72,11 @@ void add_cif(py::module& cif) {
     .def("write_file", &write_cif_to_file,
          py::arg("filename"), py::arg("style")=Style::Simple,
          "Write data to a CIF file.")
-    .def("as_string", [](const Document& d) {
+    .def("as_string", [](const Document& d, Style style) {
         std::ostringstream os;
-        write_cif_to_stream(os, d, Style::Simple);
+        write_cif_to_stream(os, d, style);
         return os.str();
-    }, "Write data in a CIF format to a string.")
+    }, py::arg("style")=Style::Simple, "Returns a string in CIF format.")
     .def("as_json", [](const Document& d, bool mmjson) {
         std::ostringstream os;
         JsonWriter writer(os);

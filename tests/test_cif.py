@@ -225,6 +225,12 @@ class TestBlock(unittest.TestCase):
             output_str = doc.as_string()
             self.assertEqual(input_str.replace(eol, '\n'), output_str)
 
+    def test_write_style(self):
+        doc = cif.read_string('data_one _x y')
+        self.assertEqual(doc.as_string().splitlines(), ['data_one', '_x y'])
+        self.assertEqual(doc.as_string(style=cif.Style.Indent35).splitlines(),
+                         ['data_one', '_x                                y'])
+
     def test_relion_syntax_exception(self):
         block = cif.read_string("""\
             data_
