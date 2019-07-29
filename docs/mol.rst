@@ -890,16 +890,19 @@ mmJSON format
 The mmJSON_ format is a JSON representation of the mmCIF data.
 This format can be easily parsed with any JSON parser (Gemmi uses
 `sajson <https://github.com/chadaustin/sajson>`_).
-It is a good alternative to PDBML -- easier to parse
-and twice smaller (gzipped).
+It is a good alternative to PDBML -- easier to parse and smaller.
 
 .. _mmJSON: https://pdbj.org/help/mmjson?lang=en
 
-Files in this format are available from PDBj:
+Files in this format are available from PDBj using REST API:
 
 .. code-block:: none
 
     curl -o 5MOO.json.gz 'https://pdbj.org/rest/downloadPDBfile?id=5MOO&format=mmjson-all'
+
+as well as `ftp/rsync`__.
+
+__ mmJSON_
 
 Gemmi reads mmJSON files into ``cif::Document``,
 as it does with mmCIF files.
