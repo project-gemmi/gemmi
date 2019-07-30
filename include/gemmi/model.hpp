@@ -648,6 +648,43 @@ inline const char* get_mmcif_connection_type_id(Connection::Type t) {
   return type_ids[t];
 }
 
+// Secondary structure. PDBx/mmCIF stores helices and sheets separately.
+
+// mmCIF spec defines 32 possible values for _struct_conf.conf_type_id -
+// "the type of the conformation of the backbone of the polymer (whether
+// protein or nucleic acid)". But as of 2019 only HELX_P is used (not counting
+// TURN_P that occurs in only 6 entries). The actual helix type is given
+// by numeric value of _struct_conf.pdbx_PDB_helix_class, which corresponds
+// to helixClass from the PDB HELIX record. These values are in the range 1-10.
+// As of 2019 it's almost only type 1 and 5:
+// 3116566 of  1 - right-handed alpha
+//      16 of  2 - right-handed omega
+//      84 of  3 - right-handed pi
+//      79 of  4 - right-handed gamma
+// 1063337 of  5 - right-handed 3-10
+//      27 of  6 - left-handed alpha
+//       5 of  7 - left-handed omega
+//       2 of  8 - left-handed gamma
+//       8 of  9 - 2-7 ribbon/helix
+//      46 of 10 - polyproline
+struct Helix {
+  enum HelixClass {
+    UnknownHelix, RAlpha, ROmega, RPi, RGamma, R310,
+    LAlpha, LOmega, LGamma, Helix27, HelixPolyProlineNone
+  };
+  AtomAddress start, end;
+  HelixClass pdb_helix_class = UnknownHelix;
+  int length = -1;
+  void set_helix_class_as_int(int n) {
+    if (n >= 1 && n <= 10)
+      pdb_helix_class = static_cast<HelixClass>(n);
+  }
+};
+
+struct Sheet {
+};
+
+
 template<typename CraT>
 class CraIterPolicy {
 public:
@@ -788,7 +825,9 @@ struct Model {
     for (Chain& chain : chains)
       if (chain.name == address.chain_name)
         if (Residue* res = chain.find_residue(address.res_id)) {
-          Atom *at = res->find_atom(address.atom_name, address.altloc);
+          Atom *at = nullptr;
+          if (!address.atom_name.empty())
+            at = res->find_atom(address.atom_name, address.altloc);
           return {&chain, res, at};
         }
     return {nullptr, nullptr, nullptr};
@@ -836,6 +875,8 @@ struct Structure {
   std::vector<Model> models;
   std::vector<NcsOp> ncs;
   std::vector<Entity> entities;
+  std::vector<Helix> helices;
+  std::vector<Sheet> sheets;
   Metadata meta;
 
   // Store ORIGXn / _database_PDB_matrix.origx*

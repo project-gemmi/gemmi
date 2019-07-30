@@ -478,6 +478,19 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       st.has_origx = true;
       read_matrix(st.origx, line, len);
 
+    } else if (is_record_type(line, "HELIX")) {
+      if (len < 40)
+        continue;
+      Helix helix;
+      helix.start.chain_name = read_string(line+19, 2);
+      helix.start.res_id = read_res_id(line+21, line+15);
+      helix.end.chain_name = read_string(line+31, 2);
+      helix.end.res_id = read_res_id(line+33, line+27);
+      helix.set_helix_class_as_int(read_int(line+38, 2));
+      if (len > 72)
+        helix.length = read_int(line+72, 5);
+      st.helices.emplace_back(helix);
+
     } else if (is_record_type(line, "SSBOND") ||
                is_record_type(line, "LINK") ||
                is_record_type(line, "CISPEP")) {

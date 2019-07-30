@@ -512,6 +512,43 @@ void update_cif_block(const Structure& st, cif::Block& block) {
     }
   }
 
+  if (!st.helices.empty()) {
+    cif::Loop& struct_conf_loop = block.init_mmcif_loop("_struct_conf.",
+        {"conf_type_id", "id",
+         "beg_auth_asym_id", "beg_label_asym_id", "beg_label_comp_id",
+         "beg_label_seq_id", "beg_auth_seq_id", "pdbx_beg_PDB_ins_code",
+         "end_auth_asym_id", "end_label_asym_id", "end_label_comp_id",
+         "end_label_seq_id", "end_auth_seq_id", "pdbx_end_PDB_ins_code",
+         "pdbx_PDB_helix_class", "pdbx_PDB_helix_length"});
+    int count = 0;
+    for (const Helix& helix : st.helices) {
+      const_CRA cra1 = st.models[0].find_cra(helix.start);
+      const_CRA cra2 = st.models[0].find_cra(helix.end);
+      if (!cra1.residue || !cra2.residue)
+        continue;
+      struct_conf_loop.add_row({
+        "HELX_P",                                     // conf_type_id
+        "H" + std::to_string(++count),                // id
+        cra1.chain->name,                             // beg_auth_asym_id
+        impl::subchain_or_dot(*cra1.residue),         // beg_label_asym_id
+        cra1.residue->name,                           // beg_label_comp_id
+        cra1.residue->label_seq.str(),                // beg_label_seq_id
+        cra1.residue->seqid.num.str(),                // beg_auth_seq_id
+        impl::pdbx_icode(*cra1.residue),              // beg_PDB_ins_code
+        cra2.chain->name,                             // beg_auth_asym_id
+        impl::subchain_or_dot(*cra2.residue),         // beg_label_asym_id
+        cra2.residue->name,                           // beg_label_comp_id
+        cra2.residue->label_seq.str(),                // beg_label_seq_id
+        cra2.residue->seqid.num.str(),                // beg_auth_seq_id
+        impl::pdbx_icode(*cra2.residue),              // beg_PDB_ins_code
+        std::to_string((int)helix.pdb_helix_class),   // pdbx_PDB_helix_class
+        impl::int_or_qmark(helix.length)              // pdbx_PDB_helix_length
+      });
+    }
+    if (count != 0)
+      block.set_pair("_struct_conf_type.id", "HELX_P");
+  }
+
   impl::write_struct_conn(st, block);
 
   // _struct_mon_prot_cis

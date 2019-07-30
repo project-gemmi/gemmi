@@ -48,9 +48,12 @@ else
 fi
 
 # TITLE, KEYWDS: line breaks can happen in different places
+# In HELIX helixID may differ.
+
 not_identical="\
 ^TITLE|\
-^KEYWDS"
+^KEYWDS|\
+^HELIX "
 absent="\
 ^AUTHOR|\
 ^CAVEAT|\
@@ -58,7 +61,6 @@ absent="\
 ^CONECT|\
 ^DBREF|\
 ^FORMUL|\
-^HELIX |\
 ^HET   |\
 ^HETNAM|\
 ^HETSYN|\

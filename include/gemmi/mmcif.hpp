@@ -75,6 +75,29 @@ inline ResidueId make_resid(const std::string& name,
   return rid;
 }
 
+inline void read_helices(cif::Block& block, Structure& st) {
+  for (const auto row : block.find("_struct_conf.", {
+        "conf_type_id",                                              // 0
+        "beg_auth_asym_id", "beg_label_comp_id",                     // 1-2
+        "beg_auth_seq_id", "?pdbx_beg_PDB_ins_code",                 // 3-4
+        "end_auth_asym_id", "end_label_comp_id",                     // 5-6
+        "end_auth_seq_id", "?pdbx_end_PDB_ins_code",                 // 7-8
+        "?pdbx_PDB_helix_class", "?pdbx_PDB_helix_length"})) {       // 9-10
+    if (alpha_up(row.str(0)[0]) != 'H')
+      continue;
+    Helix h;
+    h.start.chain_name = row.str(1);
+    h.start.res_id = make_resid(row.str(2), row.str(3), row.ptr_at(4));
+    h.end.chain_name = row.str(5);
+    h.end.res_id = make_resid(row.str(6), row.str(7), row.ptr_at(8));
+    if (row.has(9))
+      h.set_helix_class_as_int(cif::as_int(row[9], -1));
+    if (row.has(10))
+      h.length = cif::as_int(row[10], -1);
+    st.helices.push_back(h);
+  }
+}
+
 inline void read_connectivity(cif::Block& block, Structure& st) {
   // label_ identifiers are not sufficient for HOH:
   // waters have null label_seq_id so we need auth_seq_id+icode.
@@ -372,6 +395,8 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
           res->is_cis = true;
       }
   }
+
+  read_helices(block, st);
 
   read_connectivity(block, st);
 

@@ -9,7 +9,7 @@ import gemmi
 
 def is_written_to_pdb(line, via_cif):
     if line[:6] in ['COMPND', 'SOURCE', 'MDLTYP', 'AUTHOR', 'REVDAT', 'JRNL  ',
-                    'DBREF ', 'SEQADV', 'HET   ', 'HETNAM', 'FORMUL', 'HELIX ',
+                    'DBREF ', 'SEQADV', 'HET   ', 'HETNAM', 'FORMUL',
                     'SHEET ', 'SITE  ', 'MASTER']:
         return False
     if line[:6] == 'REMARK' and via_cif and line[6:10] != '   2':

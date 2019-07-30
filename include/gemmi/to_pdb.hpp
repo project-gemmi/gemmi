@@ -98,7 +98,7 @@ inline char* encode_seq_num_in_hybrid36(char* str, int seq_id) {
   return base36_encode(str, 4, seq_id - 10000 + 10 * 36 * 36 * 36);
 }
 
-inline char* write_seq_id(char* str, const Residue& res) {
+inline char* write_seq_id(char* str, const ResidueId& res) {
   encode_seq_num_in_hybrid36(str, *res.seqid.num);
   str[4] = res.seqid.icode;
   str[5] = '\0';
@@ -334,6 +334,24 @@ inline void write_header(const Structure& st, std::ostream& os,
         if (col != 0)
           os.write(buf, 81);
       }
+    }
+  }
+
+  if (!st.helices.empty()) {
+    char buf8[8];
+    char buf8a[8];
+    int counter = 0;
+    for (const Helix& helix : st.helices) {
+      ++counter;
+      // According to the PDB spec serial number can be from 1 to 999.
+      // Here, we allow for up to 9999 helices by using columns 7 and 11.
+      WRITE("HELIX %4d%4d %3s%2s %5s %3s%2s %5s%2d %35d    \n",
+            counter, counter,
+            helix.start.res_id.name.c_str(), helix.start.chain_name.c_str(),
+            write_seq_id(buf8, helix.start.res_id),
+            helix.end.res_id.name.c_str(), helix.end.chain_name.c_str(),
+            write_seq_id(buf8a, helix.end.res_id),
+            (int) helix.pdb_helix_class, helix.length);
     }
   }
 
