@@ -414,7 +414,7 @@ struct Block {
   Block* find_frame(std::string name);
 
   // modifying functions
-  void set_pair(const std::string& tag, std::string value);
+  void set_pair(const std::string& tag, const std::string& value);
 
   Loop& init_loop(const std::string& prefix, std::vector<std::string> tags) {
     return setup_loop(find_any(prefix, tags), prefix, std::move(tags));
@@ -666,7 +666,7 @@ inline const Pair* Block::find_pair(const std::string& tag) const {
   return item ? &item->pair : nullptr;
 }
 
-inline void Block::set_pair(const std::string& tag, std::string value) {
+inline void Block::set_pair(const std::string& tag, const std::string& value) {
   assert_tag(tag);
   for (Item& i : items) {
     if (i.type == ItemType::Pair && i.pair[0] == tag) {
