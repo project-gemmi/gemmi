@@ -190,34 +190,34 @@ int GEMMI_MAIN(int argc, char **argv) {
   const char* cif_path = p.nonOption(0);
   if (verbose)
     fprintf(stderr, "Reading %s ...\n", cif_path);
-  auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(cif_path).blocks);
-  if (convert_all) {
-    bool ok = true;
-    for (gemmi::ReflnBlock& rb : rblocks) {
-      std::string path = p.options[Dir].arg;
-      path += '/';
-      path += rb.block.name;
-      path += ".mtz";
-      try {
-        convert_cif_block_to_mtz(rb, path, p.options);
-      } catch (std::runtime_error& e) {
-        fprintf(stderr, "ERROR: %s\n", e.what());
-        ok = false;
+  try {
+    auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(cif_path).blocks);
+    if (convert_all) {
+      bool ok = true;
+      for (gemmi::ReflnBlock& rb : rblocks) {
+        std::string path = p.options[Dir].arg;
+        path += '/';
+        path += rb.block.name;
+        path += ".mtz";
+        try {
+          convert_cif_block_to_mtz(rb, path, p.options);
+        } catch (std::runtime_error& e) {
+          fprintf(stderr, "ERROR: %s\n", e.what());
+          ok = false;
+        }
       }
-    }
-    if (!ok)
-      return 1;
-  } else {
-    const char* mtz_path = p.nonOption(1);
-    try {
+      if (!ok)
+        return 1;
+    } else {
+      const char* mtz_path = p.nonOption(1);
       const gemmi::ReflnBlock& rb = p.options[BlockName]
         ? get_block_by_name(rblocks, p.options[BlockName].arg)
         : rblocks.at(0);
       convert_cif_block_to_mtz(rb, mtz_path, p.options);
-    } catch (std::runtime_error& e) {
-      fprintf(stderr, "ERROR: %s\n", e.what());
-      return 1;
     }
+  } catch (std::runtime_error& e) {
+    fprintf(stderr, "ERROR: %s\n", e.what());
+    return 1;
   }
   if (verbose)
     fprintf(stderr, "Done.\n");
