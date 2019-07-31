@@ -189,7 +189,8 @@ void add_monlib(py::module& m) {
     .def("add_monomer_bonds", &BondIndex::add_monomer_bonds)
     .def("are_linked", &BondIndex::are_linked)
     .def("graph_distance", &BondIndex::graph_distance,
-         py::arg("a"), py::arg("b"), py::arg("max_distance")=4)
+         py::arg("a"), py::arg("b"), py::arg("same_index"),
+         py::arg("max_distance")=4)
     ;
 
   py::class_<LinkHunt> linkhunt(m, "LinkHunt");

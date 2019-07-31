@@ -589,21 +589,32 @@ inline MonLib read_monomer_lib(std::string monomer_dir,
 
 struct BondIndex {
   const Model& model;
-  std::map<int, std::vector<int>> index;
+
+  struct AtomImage {
+    int atom_serial;
+    bool same_image;
+    bool operator==(const AtomImage& o) const {
+      return atom_serial == o.atom_serial && same_image == o.same_image;
+    }
+  };
+  std::map<int, std::vector<AtomImage>> index;
 
   BondIndex(const Model& model_) : model(model_) {
     for (const_CRA& cra : model.all())
-      if (!index.emplace(cra.atom->serial, std::vector<int>()).second)
+      if (!index.emplace(cra.atom->serial, std::vector<AtomImage>()).second)
         fail("duplicated serial numbers");
   }
 
-  void add_link(const Atom& a, const Atom& b) {
-    std::vector<int>& list1 = index.at(a.serial);
-    if (!in_vector(b.serial, list1))
-      list1.push_back(b.serial);
-    std::vector<int>& list2 = index.at(b.serial);
-    if (!in_vector(a.serial, list2))
-      list2.push_back(a.serial);
+  void add_oneway_link(const Atom& a, const Atom& b, bool same_image) {
+    std::vector<AtomImage>& list_a = index.at(a.serial);
+    AtomImage ai{b.serial, same_image};
+    if (!in_vector(ai, list_a))
+      list_a.push_back(ai);
+  }
+
+  void add_link(const Atom& a, const Atom& b, bool same_image) {
+    add_oneway_link(a, b, same_image);
+    add_oneway_link(b, a, same_image);
   }
 
   void add_monomer_bonds(MonLib& monlib) {
@@ -620,26 +631,29 @@ struct BondIndex {
           for (char alt : altlocs)
             if (const Atom* at1 = res.find_atom(bond.id1.atom, alt))
               if (const Atom* at2 = res.find_atom(bond.id2.atom, alt)) {
-                add_link(*at1, *at2);
+                add_link(*at1, *at2, true);
                 if (!at1->altloc && !at2->altloc)
                   break;
               }
       }
   }
 
-  bool are_linked(const Atom& a, const Atom& b) const {
-    return in_vector(b.serial, index.at(a.serial));
+  bool are_linked(const Atom& a, const Atom& b, bool same_image) const {
+    return in_vector({b.serial, same_image}, index.at(a.serial));
   }
 
-  int graph_distance(const Atom& a, const Atom& b, int max_distance=4) const {
-    std::vector<int> neighbors(1, a.serial);
+  int graph_distance(const Atom& a, const Atom& b, bool same_image,
+                     int max_distance=4) const {
+    std::vector<AtomImage> neighbors(1, {a.serial, true});
     for (int distance = 1; distance <= max_distance; ++distance) {
       for (int n = neighbors.size(); n--; ) {
-        for (int serial : index.at(neighbors[n])) {
-          if (serial == b.serial)
+        for (AtomImage ai : index.at(neighbors[n].atom_serial)) {
+          if (!neighbors[n].same_image)
+            ai.same_image = !ai.same_image;
+          if (ai.atom_serial == b.serial && ai.same_image == same_image)
             return distance;
-          if (!in_vector(serial, neighbors))
-            neighbors.push_back(serial);
+          if (!in_vector(ai, neighbors))
+            neighbors.push_back(ai);
         }
       }
     }
