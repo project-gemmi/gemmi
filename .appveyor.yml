@@ -23,7 +23,8 @@ build_script:
 - cmake --build . --config %CMAKE_CONFIG%
 - cmake --build . --config %CMAKE_CONFIG% --target check
 - py -3 -c "import sys; print(sys.version+'\n'+sys.executable)"
-- py -3 -m pip install --upgrade .
+- py -3 -m pip install pybind11
+- py -3 setup.py install
 - cmd: '"%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
 - py -2 -c "import sys; print(sys.version+'\n'+sys.executable)"
 - py -2 -m pip install --upgrade .
