@@ -17,7 +17,8 @@
 #define GEMMI_PROG mtz2cif
 #include "options.h"
 
-enum OptionIndex { Verbose=3, Spec, PrintSpec, BlockName, SkipEmpty };
+enum OptionIndex { Verbose=3, Spec, PrintSpec, BlockName, SkipEmpty,
+                   NoComments };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -35,6 +36,8 @@ static const option::Descriptor Usage[] = {
     "  -b NAME, --block=NAME  \tmmCIF block name: data_NAME (default: mtz)." },
   { SkipEmpty, 0, "", "skip-empty", Arg::None,
     "  --skip-empty  \tSkip reflections with no values." },
+  { NoComments, 0, "", "no-comments", Arg::None,
+    "  --no-comments  \tDo not write comments in the mmCIF file." },
   { NoOp, 0, "", "", Arg::None,
     "\nIf CIF_FILE is -, the output is printed to stdout."
     "\nIf spec is -, it is read from stdin."
@@ -74,6 +77,7 @@ struct Options {
   std::vector<Trans> spec;
   std::vector<int> value_indices;  // used for --skip_empty
   std::vector<int> sigma_indices;  // used for status 'x'
+  bool with_comments;
   const char* block_name;
   const char* mtz_path;
 };
@@ -218,11 +222,13 @@ static std::vector<Trans> parse_spec(const gemmi::Mtz& mtz,
 
 static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
   std::string id = ".";
-  fprintf(out, "# Converted by gemmi-mtz2cif " GEMMI_VERSION "\n");
-  fprintf(out, "# from: %s\n", opt.mtz_path);
-  fprintf(out, "# MTZ title: %s\n", mtz.title.c_str());
-  for (size_t i = 0; i != mtz.history.size(); ++i)
-    fprintf(out, "# MTZ history #%zu: %s\n", i, mtz.history[i].c_str());
+  if (opt.with_comments) {
+    fprintf(out, "# Converted by gemmi-mtz2cif " GEMMI_VERSION "\n");
+    fprintf(out, "# from: %s\n", opt.mtz_path);
+    fprintf(out, "# MTZ title: %s\n", mtz.title.c_str());
+    for (size_t i = 0; i != mtz.history.size(); ++i)
+      fprintf(out, "# MTZ history #%zu: %s\n", i, mtz.history[i].c_str());
+  }
   fprintf(out, "data_%s\n\n", opt.block_name);
   fprintf(out, "_entry.id %s\n\n", id.c_str());
   const gemmi::UnitCell& cell = mtz.get_cell();
@@ -243,8 +249,11 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
   for (const Trans& tr : opt.spec) {
     const gemmi::Mtz::Column& col = mtz.columns.at(tr.col_idx);
     const gemmi::Mtz::Dataset& ds = mtz.dataset(col.dataset_id);
-    fprintf(out, "_refln.%-26s # %-14s from dataset %s\n",
-            tr.refln_tag.c_str(), col.label.c_str(), ds.dataset_name.c_str());
+    if (opt.with_comments)
+      fprintf(out, "_refln.%-26s # %-14s from dataset %s\n",
+              tr.refln_tag.c_str(), col.label.c_str(), ds.dataset_name.c_str());
+    else
+      fprintf(out, "_refln.%s\n", tr.refln_tag.c_str());
   }
   for (int i = 0; i != mtz.nreflections; ++i) {
     const float* row = &mtz.data[i * mtz.columns.size()];
@@ -336,6 +345,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       options.sigma_indices.push_back(tr.col_idx);
   }
   options.block_name = p.options[BlockName] ? p.options[BlockName].arg : "mtz";
+  options.with_comments = !p.options[NoComments];
   try {
     gemmi::fileptr_t f_out = gemmi::file_open_or(cif_path, "w", stdout);
     write_cif(mtz, options, f_out.get());
