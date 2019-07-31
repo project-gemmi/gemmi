@@ -18,6 +18,7 @@
 #include "symmetry.hpp"
 #include "metadata.hpp"
 #include "iterator.hpp"
+#include "span.hpp"      // for VectorSpan
 #include "seqid.hpp"
 
 namespace gemmi {
@@ -188,47 +189,9 @@ struct Atom {
   bool is_hydrogen() const { return gemmi::is_hydrogen(element); }
 };
 
-template<typename Item> struct ItemSpanBase {
-  using iterator = typename std::vector<Item>::iterator;
-  using const_iterator = typename std::vector<Item>::const_iterator;
-
-  iterator begin_;
-  std::size_t size_ = 0;
-  std::vector<Item>* vector_ = nullptr;  // for remove_residue()
-
-  ItemSpanBase() = default;
-  ItemSpanBase(std::vector<Item>& v, iterator begin, std::size_t n)
-    : begin_(begin), size_(n), vector_(&v) {}
-  ItemSpanBase(std::vector<Item>& v)
-    : begin_(v.begin()), size_(v.size()), vector_(&v) {}
-
-  const_iterator begin() const { return begin_; }
-  const_iterator end() const { return begin_ + size_; }
-  iterator begin() { return begin_; }
-  iterator end() { return begin_ + size_; }
-  Item& front() { return *begin_; }
-  const Item& front() const { return *begin_; }
-  Item& back() { return *(begin_ + size_ - 1); }
-  const Item& back() const { return *(begin_ + size_ - 1); }
-  std::size_t size() const { return size_; }
-
-  const Item& operator[](std::size_t i) const { return *(begin_ + i); }
-  Item& operator[](std::size_t i) { return *(begin_ + i); }
-  Item& at(std::size_t i) {
-    if (i >= size())
-      throw std::out_of_range("item index ouf of range: #" + std::to_string(i));
-    return *(begin_ + i);
-  }
-  const Item& at(std::size_t i) const {
-    return const_cast<ItemSpanBase*>(this)->at(i);
-  }
-  bool empty() const { return size_ == 0; }
-  explicit operator bool() const { return size_ != 0; }
-};
-
-struct AtomGroup : ItemSpanBase<Atom> {
-  using ItemSpanBase::ItemSpanBase;
-  std::string name() const { return size_ != 0 ? front().name : ""; }
+struct AtomGroup : VectorSpan<Atom> {
+  using VectorSpan::VectorSpan;
+  std::string name() const { return size() != 0 ? front().name : ""; }
   Atom& by_altloc(char alt) {
     for (Atom& atom : *this)
       if (atom.altloc == alt)
@@ -372,13 +335,13 @@ struct ResidueGroup;
 // ResidueSpan represents consecutive residues within the same chain.
 // It's used as return value of get_polymer(), get_ligands(), get_waters()
 // and get_subchain().
-struct ResidueSpan : ItemSpanBase<Residue> {
-  using ItemSpanBase::ItemSpanBase;
+struct ResidueSpan : VectorSpan<Residue> {
+  using VectorSpan::VectorSpan;
 
   int length() const {
-    int length = (int) size_;
+    int length = (int) size();
     for (int n = length - 1; n > 0; --n)
-      if ((begin_ + n)->same_group(*(begin_ + n - 1)))
+      if ((begin() + n)->same_group(*(begin() + n - 1)))
         --length;
     return length;
   }
@@ -403,19 +366,11 @@ struct ResidueSpan : ItemSpanBase<Residue> {
   ResidueGroup find_residue_group(SeqId id);
 
   const std::string& subchain_id() const {
-    if (size_ == 0)
+    if (empty())
       throw std::out_of_range("No ResidueSpan::subchain_id() for empty span");
-    if (size_ > 1 && front().subchain != back().subchain)
+    if (size() > 1 && front().subchain != back().subchain)
       fail("subchain id varies");
-    return begin_->subchain;
-  }
-
-  iterator insert(iterator it, Residue&& res) {
-    auto offset = begin_ - vector_->begin();
-    auto ret = vector_->insert(it, std::move(res));
-    begin_ = vector_->begin() + offset;
-    ++size_;
-    return ret;
+    return begin()->subchain;
   }
 };
 
@@ -427,11 +382,10 @@ struct ResidueGroup : ResidueSpan {
   ResidueGroup() = default;
   ResidueGroup(ResidueSpan&& span) : ResidueSpan(std::move(span)) {}
   Residue& by_resname(const std::string& name) {
-    return *impl::find_iter(begin_, begin_ + size_, name);
+    return *impl::find_iter(begin(), end(), name);
   }
   void remove_residue(const std::string& name) {
-    vector_->erase(impl::find_iter(begin_, begin_ + size_, name));
-    --size_;
+    erase(impl::find_iter(begin(), end(), name));
   }
 };
 
@@ -439,7 +393,7 @@ inline ResidueGroup ResidueSpan::find_residue_group(SeqId id) {
   auto func = [&](const Residue& r) { return r.seqid == id; };
   auto group_begin = std::find_if(begin(), end(), func);
   auto group_size = std::find_if_not(group_begin, end(), func) - group_begin;
-  return ResidueSpan(*vector_, group_begin, group_size);
+  return ResidueSpan(*this, group_begin, group_size);
 }
 
 struct Chain {

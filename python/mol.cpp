@@ -361,8 +361,7 @@ void add_mol(py::module& m) {
         return self.find_residue_group(SeqId(seqid));
     }, py::arg("pdb_seqid"), py::keep_alive<0, 1>())
     .def("__delitem__", [](ResidueSpan& self, int index) {
-        self.vector_->erase(self.begin() + normalize_index(index, self));
-        --self.size_;
+        self.erase(self.begin() + normalize_index(index, self));
     }, py::arg("index"))
     .def("add_residue", add_item<ResidueSpan, Residue>,
          py::arg("residue"), py::arg("pos")=-1,

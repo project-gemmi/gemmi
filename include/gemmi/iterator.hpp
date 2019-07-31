@@ -2,8 +2,8 @@
 //
 // Iterators. Currently each of them is a BidirectionalIterator.
 
-#ifndef GEMMI_ITERBASE_HPP_
-#define GEMMI_ITERBASE_HPP_
+#ifndef GEMMI_ITERATOR_HPP_
+#define GEMMI_ITERATOR_HPP_
 #include <iterator>     // for bidirectional_iterator_tag
 #include <type_traits>  // for remove_cv
 #include <vector>
