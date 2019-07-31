@@ -59,7 +59,7 @@ py::array_t<float> make_new_column(const Mtz& mtz, int dataset, F f) {
   py::buffer_info buf = arr.request();
   float* ptr = (float*) buf.ptr;
   for (int i = 0; i < mtz.nreflections; ++i) {
-    int hidx = mtz.columns.size() * i;
+    int hidx = (int) mtz.columns.size() * i;
     ptr[i] = f(cell, mtz.data[hidx], mtz.data[hidx+1], mtz.data[hidx+2]);
   }
   return arr;

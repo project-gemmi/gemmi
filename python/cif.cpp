@@ -44,14 +44,14 @@ void add_cif(py::module& cif) {
     })
     .def("__delitem__", [](Document &d, int index) {
         if (index < 0)
-          index += d.blocks.size();
+          index += (int) d.blocks.size();
         if (index < 0 || static_cast<size_t>(index) >= d.blocks.size())
           throw py::index_error();
         d.blocks.erase(d.blocks.begin() + index);
     }, py::arg("index"))
     .def("add_copied_block", [](Document& d, const Block& block, int pos) {
         if (pos < 0)
-          pos = d.blocks.size();
+          pos = (int) d.blocks.size();
         else if (pos > (int) d.blocks.size())
           throw py::index_error();
         d.blocks.insert(d.blocks.begin() + pos, block);

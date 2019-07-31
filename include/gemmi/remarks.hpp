@@ -65,7 +65,7 @@ inline void add_software(Metadata& meta, SoftwareItem::Classification type,
         item.version.erase(0, 8);
     }
     item.classification = type;
-    item.pdbx_ordinal = meta.software.size();
+    item.pdbx_ordinal = (int) meta.software.size();
   }
 }
 

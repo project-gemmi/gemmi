@@ -646,7 +646,7 @@ struct BondIndex {
                      int max_distance=4) const {
     std::vector<AtomImage> neighbors(1, {a.serial, true});
     for (int distance = 1; distance <= max_distance; ++distance) {
-      for (int n = neighbors.size(); n--; ) {
+      for (size_t n = neighbors.size(); n--; ) {
         for (AtomImage ai : index.at(neighbors[n].atom_serial)) {
           if (!neighbors[n].same_image)
             ai.same_image = !ai.same_image;

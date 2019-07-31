@@ -516,10 +516,10 @@ struct Mtz {
       dataset_id = datasets.back().id;
     else
       dataset(dataset_id); // check if such dataset exist
-    if (pos >= (int) columns.size())
+    if (pos > (int) columns.size())
       fail("Requested column position after the end.");
     if (pos < 0)
-      pos = columns.size();
+      pos = (int) columns.size();
     auto col = columns.emplace(columns.begin() + pos);
     for (auto i = col + 1; i != columns.end(); ++i)
       i->idx++;
@@ -532,7 +532,7 @@ struct Mtz {
   }
 
   void expand_data_rows(int added) {
-    int old_row_size = columns.size() - added;
+    int old_row_size = (int) columns.size() - added;
     if ((int) data.size() != old_row_size * nreflections)
       fail("Internal error");
     data.resize(columns.size() * nreflections);
@@ -544,11 +544,11 @@ struct Mtz {
     }
   }
 
-  void set_data(const float* new_data, size_t n) {
-    if (n % columns.size() != 0)
-      fail("Mtz.set_data(): expected " +
-           std::to_string(columns.size()) + " columns.");
-    nreflections = n / columns.size();
+  void set_data(const float* new_data, int n) {
+    int ncols = (int) columns.size();
+    if (n % ncols != 0)
+      fail("Mtz.set_data(): expected " + std::to_string(ncols) + " columns.");
+    nreflections = n / ncols;
     data.assign(new_data, new_data + n);
   }
 

@@ -65,7 +65,7 @@ namespace impl {
   }
   template <typename T>
   bool fread_wrap(void *ptr, size_t size, size_t nmemb, T& stream) {
-    return stream.read(ptr, size * nmemb);
+    return stream.read(ptr, static_cast<int>(size * nmemb));
   }
 }
 

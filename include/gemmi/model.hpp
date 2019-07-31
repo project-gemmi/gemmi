@@ -376,8 +376,8 @@ struct ResidueSpan : ItemSpanBase<Residue> {
   using ItemSpanBase::ItemSpanBase;
 
   int length() const {
-    int length = size_;
-    for (int n = int(size_) - 1; n > 0; --n)
+    int length = (int) size_;
+    for (int n = length - 1; n > 0; --n)
       if ((begin_ + n)->same_group(*(begin_ + n - 1)))
         --length;
     return length;
