@@ -51,12 +51,6 @@ Iter find_iter(Iter begin, Iter end, const std::string& name) {
   return i;
 }
 
-template<typename T>
-typename std::vector<T>::iterator find_iter(std::vector<T>& vec,
-                                            const std::string& name) {
-  return find_iter(vec.begin(), vec.end(), name);
-}
-
 } // namespace impl
 
 
@@ -859,7 +853,7 @@ struct Structure {
   }
 
   void remove_model(const std::string& model_name) {
-    models.erase(impl::find_iter(models, model_name));
+    models.erase(impl::find_iter(models.begin(), models.end(), model_name));
   }
 
   void renumber_models() {

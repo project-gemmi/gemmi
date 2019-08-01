@@ -15,7 +15,7 @@ python3.7 -m unittest discover -s tests
 flake8 docs/ examples/ tests/ tools/ setup.py
 
 # check if each header can be compiled on its own
-#for f in include/gemmi/*.hpp; do gcc-9 -Ithird_party -c -fsyntax-only $f; done
+#for f in include/gemmi/*.hpp; do gcc-9 -c -fsyntax-only $f; done
 
 # run tests under valgrind
 #valgrind $BUILD_DIR/cpptest
