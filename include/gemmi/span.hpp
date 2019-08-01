@@ -56,7 +56,7 @@ template<typename Item> struct VectorSpan {
     return ret;
   }
 
-  void erase(typename std::vector<Item>::const_iterator position) {
+  void erase(typename std::vector<Item>::iterator position) {
     vector_->erase(position);
     --size_;
   }
