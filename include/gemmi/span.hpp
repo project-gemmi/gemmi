@@ -6,13 +6,15 @@
 #define GEMMI_SPAN_HPP_
 
 #include <vector>
-#include <stdexcept>  // for out_of_range
+#include <stdexcept>    // for out_of_range
+#include <type_traits>  // for remove_cv
 
 namespace gemmi {
 
 template<typename Item> struct VectorSpan {
   using iterator = typename std::vector<Item>::iterator;
   using const_iterator = typename std::vector<Item>::const_iterator;
+  using value_type = typename std::remove_cv<Item>::type;
 
   VectorSpan() = default;
   VectorSpan(std::vector<Item>& v, iterator begin, std::size_t n)

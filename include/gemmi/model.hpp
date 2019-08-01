@@ -40,13 +40,15 @@ T& find_or_add(std::vector<T>& vec, const std::string& name) {
   return vec.back();
 }
 
-template<typename Iter, typename T = typename Iter::value_type>
-Iter find_iter(Iter begin, Iter end, const std::string& name) {
-  Iter i = std::find_if(begin, end, [&](const T& x) { return x.name == name; });
-  if (i == end)
+template<typename Span, typename T = typename Span::value_type>
+typename Span::iterator find_iter(Span& span, const std::string& name) {
+  auto i = std::find_if(span.begin(), span.end(),
+                        [&](const T& x) { return x.name == name; });
+  if (i == span.end())
     throw std::invalid_argument(
         T::what() + (" " + name) + " not found (only [" +
-        join_str(begin, end, ' ', [](const T& x) { return x.name; }) +
+        join_str(span.begin(), span.end(), ' ',
+                 [](const T& x) { return x.name; }) +
         "])");
   return i;
 }
@@ -376,10 +378,10 @@ struct ResidueGroup : ResidueSpan {
   ResidueGroup() = default;
   ResidueGroup(ResidueSpan&& span) : ResidueSpan(std::move(span)) {}
   Residue& by_resname(const std::string& name) {
-    return *impl::find_iter(begin(), end(), name);
+    return *impl::find_iter(*this, name);
   }
   void remove_residue(const std::string& name) {
-    erase(impl::find_iter(begin(), end(), name));
+    erase(impl::find_iter(*this, name));
   }
 };
 
@@ -853,7 +855,7 @@ struct Structure {
   }
 
   void remove_model(const std::string& model_name) {
-    models.erase(impl::find_iter(models.begin(), models.end(), model_name));
+    models.erase(impl::find_iter(models, model_name));
   }
 
   void renumber_models() {

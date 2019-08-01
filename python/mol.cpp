@@ -177,7 +177,7 @@ void add_mol(py::module& m) {
         return st.models.at(index >= 0 ? index : index + st.models.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("__getitem__", [](Structure& st, const std::string& name) -> Model& {
-        return *impl::find_iter(st.models.begin(), st.models.end(), name);
+        return *impl::find_iter(st.models, name);
     }, py::arg("name"), py::return_value_policy::reference_internal)
     .def("__delitem__", &Structure::remove_model, py::arg("name"))
     .def("find_or_add_model", &Structure::find_or_add_model,
@@ -251,7 +251,7 @@ void add_mol(py::module& m) {
         return py::make_iterator(self.chains);
     }, py::keep_alive<0, 1>())
     .def("__getitem__", [](Model& self, const std::string& name) -> Chain& {
-        return *impl::find_iter(self.chains.begin(), self.chains.end(), name);
+        return *impl::find_iter(self.chains, name);
     }, py::arg("name"), py::return_value_policy::reference_internal)
     .def("__getitem__", [](Model& self, int index) -> Chain& {
         return self.chains.at(index >= 0 ? index : index + self.chains.size());
