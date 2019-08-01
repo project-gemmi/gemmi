@@ -14,7 +14,7 @@
 #include <string>
 #include "util.hpp"  // for fail, to_lower
 
-#if defined(_WIN32) && defined(GEMMI_WINDOWS_PATHS_IN_UTF8)
+#if defined(_WIN32) && !defined(GEMMI_USE_FOPEN)
 #include <locale>
 #include <codecvt>
 #endif
