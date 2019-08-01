@@ -14,6 +14,9 @@
 //#include "third_party/tao/pegtl/contrib/tracer.hpp"  // for debugging
 
 #include "cifdoc.hpp" // for Document, etc
+#if defined(_WIN32)
+#include "fileutil.hpp" // for file_open
+#endif
 
 #if defined(_MSC_VER)
 #pragma warning(push)
@@ -250,7 +253,12 @@ template<typename Input> Document read_input(Input&& in) {
 }
 
 inline Document read_file(const std::string& filename) {
+#if defined(_WIN32)
+  FILE* f = file_open(filename.c_str(), "rb").release();
+  pegtl::read_input<> in(f, filename);
+#else
   pegtl::file_input<> in(filename);
+#endif
   return read_input(in);
 }
 

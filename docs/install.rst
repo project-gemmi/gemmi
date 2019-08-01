@@ -18,6 +18,9 @@ If you want Gemmi to uncompress gzipped files on the fly
 (i.e. if you ``#include <gemmi/gz.hpp>``)
 you will also need to link your program with the zlib library.
 
+If a file name is passed to Gemmi (through ``std::string``)
+it is assumed to be in ASCII or UTF-8.
+
 .. _install_py:
 
 Python 2.7/3.x module

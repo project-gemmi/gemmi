@@ -40,7 +40,7 @@ typedef std::unique_ptr<std::FILE, decltype(&std::fclose)> fileptr_t;
 
 inline fileptr_t file_open(const char* path, const char* mode) {
   std::FILE* file;
-#if defined(_WIN32) && defined(GEMMI_WINDOWS_PATHS_IN_UTF8)
+#if defined(_WIN32) && !defined(GEMMI_USE_FOPEN)
   std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> convert;
   std::wstring wpath = convert.from_bytes(path);
   std::wstring wmode = convert.from_bytes(mode);
