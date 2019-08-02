@@ -11,9 +11,11 @@
 
 namespace gemmi {
 
+// It is somewhat similar to C++20 std::span, but works only with std::vector,
+// and implements insert() and erase().
 template<typename Item> struct VectorSpan {
-  using iterator = typename std::vector<Item>::iterator;
-  using const_iterator = typename std::vector<Item>::const_iterator;
+  using iterator = Item*;
+  using const_iterator = Item const*;
   using value_type = typename std::remove_cv<Item>::type;
 
   VectorSpan() = default;
@@ -22,7 +24,7 @@ template<typename Item> struct VectorSpan {
   VectorSpan(VectorSpan& base, iterator begin, std::size_t n)
     : begin_(begin), size_(n), vector_(base.vector_) {}
   VectorSpan(std::vector<Item>& v)
-    : begin_(v.begin()), size_(v.size()), vector_(&v) {}
+    : begin_(v.data()), size_(v.size()), vector_(&v) {}
 
   const_iterator begin() const { return begin_; }
   const_iterator end() const { return begin_ + size_; }
@@ -51,15 +53,16 @@ template<typename Item> struct VectorSpan {
   explicit operator bool() const { return size_ != 0; }
 
   iterator insert(iterator pos, Item&& item) {
-    auto offset = begin_ - vector_->begin();
-    auto ret = vector_->insert(pos, std::move(item));
-    begin_ = vector_->begin() + offset;
+    auto offset = begin_ - vector_->data();
+    auto iter = vector_->begin() + (pos - vector_->data());
+    auto ret = vector_->insert(iter, std::move(item));
+    begin_ = vector_->data() + offset;
     ++size_;
-    return ret;
+    return &*ret;
   }
 
-  void erase(typename std::vector<Item>::iterator position) {
-    vector_->erase(position);
+  void erase(iterator pos) {
+    vector_->erase(vector_->begin() + (pos - vector_->data()));
     --size_;
   }
 

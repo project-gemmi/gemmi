@@ -265,7 +265,7 @@ struct Residue : public ResidueId {
     auto g_end = std::find_if_not(g_begin, atoms.end(), func);
     if (std::find_if(g_end, atoms.end(), func) != atoms.end())
       fail("Non-consecutive alternative location of the atom");
-    return AtomGroup(atoms, g_begin, g_end - g_begin);
+    return AtomGroup(atoms, &*g_begin, g_end - g_begin);
   }
 
   Atom& sole_atom(const std::string& atom_name) {
@@ -389,7 +389,7 @@ inline ResidueGroup ResidueSpan::find_residue_group(SeqId id) {
   auto func = [&](const Residue& r) { return r.seqid == id; };
   auto group_begin = std::find_if(begin(), end(), func);
   auto group_size = std::find_if_not(group_begin, end(), func) - group_begin;
-  return ResidueSpan(*this, group_begin, group_size);
+  return ResidueSpan(*this, &*group_begin, group_size);
 }
 
 struct Chain {
@@ -402,7 +402,7 @@ struct Chain {
   template<typename T> ResidueSpan get_residue_span(T&& func) {
     auto begin = std::find_if(residues.begin(), residues.end(), func);
     auto size = std::find_if_not(begin, residues.end(), func) - begin;
-    return ResidueSpan(residues, begin, size);
+    return ResidueSpan(residues, &*begin, size);
   }
 
   ResidueSpan whole() { return ResidueSpan(residues); }
