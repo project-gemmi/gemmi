@@ -7,7 +7,7 @@
 
 #include <vector>
 #include <stdexcept>    // for out_of_range
-#include <type_traits>  // for remove_cv
+#include <type_traits>  // for remove_cv, conditional, is_const
 
 namespace gemmi {
 
@@ -17,14 +17,19 @@ template<typename Item> struct VectorSpan {
   using iterator = Item*;
   using const_iterator = Item const*;
   using value_type = typename std::remove_cv<Item>::type;
+  using vector_type = typename std::conditional<std::is_const<Item>::value,
+                                                const std::vector<value_type>,
+                                                std::vector<value_type>>::type;
 
   VectorSpan() = default;
-  VectorSpan(std::vector<Item>& v, iterator begin, std::size_t n)
+  VectorSpan(vector_type& v, iterator begin, std::size_t n)
     : begin_(begin), size_(n), vector_(&v) {}
   VectorSpan(VectorSpan& base, iterator begin, std::size_t n)
     : begin_(begin), size_(n), vector_(base.vector_) {}
-  VectorSpan(std::vector<Item>& v)
-    : begin_(v.data()), size_(v.size()), vector_(&v) {}
+  VectorSpan(vector_type& v)
+    : begin_(&v[0]), size_(v.size()), vector_(&v) {}
+  VectorSpan(const VectorSpan<value_type>& o)
+    : begin_(o.begin_), size_(o.size_), vector_(o.vector_) {}
 
   const_iterator begin() const { return begin_; }
   const_iterator end() const { return begin_ + size_; }
@@ -69,7 +74,7 @@ template<typename Item> struct VectorSpan {
 private:
   iterator begin_;
   std::size_t size_ = 0;
-  std::vector<Item>* vector_ = nullptr;  // for insert() and erase()
+  vector_type* vector_ = nullptr;  // for insert() and erase()
 };
 
 } // namespace gemmi

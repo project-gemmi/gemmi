@@ -331,13 +331,14 @@ struct ResidueGroup;
 // ResidueSpan represents consecutive residues within the same chain.
 // It's used as return value of get_polymer(), get_ligands(), get_waters()
 // and get_subchain().
-struct ResidueSpan : VectorSpan<Residue> {
-  using VectorSpan::VectorSpan;
+template <typename R>
+struct ResidueSpanImpl : VectorSpan<R> {
+  using VectorSpan<R>::VectorSpan;
 
   int length() const {
-    int length = (int) size();
+    int length = (int) this->size();
     for (int n = length - 1; n > 0; --n)
-      if ((begin() + n)->same_group(*(begin() + n - 1)))
+      if ((this->begin() + n)->same_group(*(this->begin() + n - 1)))
         --length;
     return length;
   }
@@ -356,19 +357,23 @@ struct ResidueSpan : VectorSpan<Residue> {
   SeqId::OptionalNum min_label_seq() const { return extreme_num(true, true); }
   SeqId::OptionalNum max_label_seq() const { return extreme_num(true, false); }
 
-  UniqProxy<Residue, ResidueSpan> first_conformer() { return {*this}; }
-  ConstUniqProxy<Residue, ResidueSpan> first_conformer() const {return {*this};}
-
-  ResidueGroup find_residue_group(SeqId id);
+  UniqProxy<R, ResidueSpanImpl> first_conformer() { return {*this}; }
+  ConstUniqProxy<R, ResidueSpanImpl> first_conformer() const {return {*this};}
 
   const std::string& subchain_id() const {
-    if (empty())
-      throw std::out_of_range("No ResidueSpan::subchain_id() for empty span");
-    if (size() > 1 && front().subchain != back().subchain)
+    if (this->empty())
+      throw std::out_of_range("subchain_id(): empty span");
+    if (this->size() > 1 && this->front().subchain != this->back().subchain)
       fail("subchain id varies");
-    return begin()->subchain;
+    return this->begin()->subchain;
   }
+
+  ResidueGroup find_residue_group(SeqId id);
 };
+
+using ConstResidueSpan = ResidueSpanImpl<const Residue>;
+using ResidueSpan = ResidueSpanImpl<Residue>;
+
 
 // ResidueGroup represents residues with the same sequence number and insertion
 // code, but different residue names. I.e. microheterogeneity.
@@ -385,11 +390,20 @@ struct ResidueGroup : ResidueSpan {
   }
 };
 
-inline ResidueGroup ResidueSpan::find_residue_group(SeqId id) {
+struct ConstResidueGroup : ConstResidueSpan {
+  ConstResidueGroup() = default;
+  ConstResidueGroup(ConstResidueSpan&& sp) : ConstResidueSpan(std::move(sp)) {}
+  const Residue& by_resname(const std::string& name) {
+    return *impl::find_iter(*this, name);
+  }
+};
+
+template <typename R>
+inline ResidueGroup ResidueSpanImpl<R>::find_residue_group(SeqId id) {
   auto func = [&](const Residue& r) { return r.seqid == id; };
-  auto group_begin = std::find_if(begin(), end(), func);
-  auto group_size = std::find_if_not(group_begin, end(), func) - group_begin;
-  return ResidueSpan(*this, &*group_begin, group_size);
+  auto group_begin = std::find_if(this->begin(), this->end(), func);
+  auto group_end = std::find_if_not(group_begin, this->end(), func);
+  return ResidueSpanImpl(*this, &*group_begin, group_end - group_begin);
 }
 
 struct Chain {
@@ -406,7 +420,7 @@ struct Chain {
   }
 
   ResidueSpan whole() { return ResidueSpan(residues); }
-  const ResidueSpan whole() const { return const_cast<Chain*>(this)->whole(); }
+  ConstResidueSpan whole() const { return ConstResidueSpan{residues}; }
 
   ResidueSpan get_polymer() {
     return get_residue_span([](const Residue& r) {
