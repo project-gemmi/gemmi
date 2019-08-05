@@ -30,14 +30,14 @@ struct SubCells {
 
     Position pos() const { return {x, y, z}; }
 
-    CRA to_cra(Model& model) const {
-      Chain& c = model.chains.at(chain_idx);
+    CRA to_cra(Model& mdl) const {
+      Chain& c = mdl.chains.at(chain_idx);
       Residue& r = c.residues.at(residue_idx);
       Atom& a = r.atoms.at(atom_idx);
       return {&c, &r, &a};
     }
-    const_CRA to_cra(const Model& model) const {
-      const Chain& c = model.chains.at(chain_idx);
+    const_CRA to_cra(const Model& mdl) const {
+      const Chain& c = mdl.chains.at(chain_idx);
       const Residue& r = c.residues.at(residue_idx);
       const Atom& a = r.atoms.at(atom_idx);
       return {&c, &r, &a};
