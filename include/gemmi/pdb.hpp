@@ -509,8 +509,8 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       if (ch.residues[0].entity_type != EntityType::Unknown) {
         assign_subchains(ch);
         if (Entity* entity = st.get_entity(ch.name))
-          // assign_subchains() uses postfix :0 for the polymer part
-          entity->subchains.emplace_back(ch.name + ":0");
+          if (auto polymer = ch.get_polymer())
+            entity->subchains.emplace_back(polymer.subchain_id());
       }
 
   st.setup_cell_images();
