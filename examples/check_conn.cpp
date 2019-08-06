@@ -1,48 +1,22 @@
 // This program re-calculates _struct_conn.pdbx_dist_value values
 // and prints message if it differs by more than 0.002A from the value in file.
 
+#include <cstdio>
 #include <gemmi/gz.hpp>   // for MaybeGzipped
 #include <gemmi/cif.hpp>
 #include <gemmi/numb.hpp> // for as_number
 #include <gemmi/mmcif.hpp>
-#include <gemmi/conn.hpp>
 #include <gemmi/dirwalk.hpp> // for CifWalk
-#include <cstdio>
 
 using namespace gemmi;
 
 int verbose = false;
-
-
-static bool has_connection(std::vector<Connection> vec, const Connection& con) {
-  for (const Connection& item : vec)
-    if (item.type == con.type &&
-        (item.asu == con.asu || item.asu == Asu::Any || con.asu == Asu::Any) &&
-        ((item.atom[0] == con.atom[0] && item.atom[1] == con.atom[1]) ||
-         (item.atom[0] == con.atom[1] && item.atom[1] == con.atom[0])))
-      return true;
-  return false;
-}
-
-static void print_connection(const Connection& con, Structure& st) {
-  const Atom* a1 = st.models[0].find_atom(con.atom[0]);
-  const Atom* a2 = st.models[0].find_atom(con.atom[1]);
-  if (a1 && a2) {
-    SymImage im = st.cell.find_nearest_image(a1->pos, a2->pos, con.asu);
-    std::printf("%s - %s  im:%s  %.3f\n",
-                con.atom[0].str().c_str(), con.atom[1].str().c_str(),
-                im.pdb_symbol(true).c_str(), im.dist());
-  } else {
-    std::printf("Ooops, cannot find atom.\n");
-  }
-}
 
 static void check_struct_conn(cif::Block& block) {
   cif::Table struct_conn = block.find("_struct_conn.", {"id", "conn_type_id",
                                                         "ptnr2_symmetry",
                                                         "pdbx_dist_value" });
   Structure st = make_structure_from_block(block);
-  size_t disulf_count = 0;
   for (Connection& con : st.models[0].connections) {
     const Atom* atom[2] = {nullptr, nullptr};
     for (int n : {0, 1}) {
@@ -74,31 +48,11 @@ static void check_struct_conn(cif::Block& block) {
                   ref_dist, ref_sym.c_str(),
                   st.cell.explicit_matrices ? "  {fract}" : "");
     }
-    if (con.type == Connection::Disulf)
-        ++disulf_count;
   }
   for (cif::Table::Row row : struct_conn)
     if (st.models[0].find_connection_by_name(row.str(0)) == nullptr)
       std::printf("%s: connection not read: %s\n", block.name.c_str(),
                   row.str(0).c_str());
-  auto ssbonds = find_disulfide_bonds(st.models[0], st.cell);
-  if (disulf_count != ssbonds.size()) {
-      printf("%s: S-S bonds: %zu annotated, %zu found by gemmi.\n",
-             block.name.c_str(), disulf_count, ssbonds.size());
-  }
-  for (const Connection& con : ssbonds)
-    if (!has_connection(st.models[0].connections, con)) {
-      std::printf("%s: missing S-S: ", block.name.c_str());
-      print_connection(con, st);
-    }
-  if (verbose) {
-    std::printf("Search for disulfide bonds gives:\n");
-    for (const Connection& con : ssbonds)
-      print_connection(con, st);
-    if (ssbonds.empty())
-      std::printf("nothing\n");
-    std::printf("\n");
-  }
 }
 
 int main(int argc, char* argv[]) {
