@@ -24,6 +24,7 @@ JSON output options:
 
 CIF output options:
   --pdbx-style           Similar styling (formatting) as in wwPDB.
+  --skip-category=CAT    Do not output tags starting with _CAT
 
 Macromolecular options:
   --expand-ncs=dup|addn  Expand strict NCS specified in MTRIXn or equivalent.

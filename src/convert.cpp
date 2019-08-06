@@ -34,7 +34,7 @@ struct ConvArg: public Arg {
 };
 
 enum OptionIndex { Verbose=3, FormatIn, FormatOut,
-                   Comcifs, Mmjson, Bare, Numb, CifDot, PdbxStyle,
+                   Comcifs, Mmjson, Bare, Numb, CifDot, PdbxStyle, SkipCat,
                    ExpandNcs, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
                    ShortTer, SegmentAsChain, Translate };
 static const option::Descriptor Usage[] = {
@@ -69,6 +69,8 @@ static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "\nCIF output options:" },
   { PdbxStyle, 0, "", "pdbx-style", Arg::None,
     "  --pdbx-style  \tSimilar styling (formatting) as in wwPDB." },
+  { SkipCat, 0, "", "skip-category", Arg::Required,
+    "  --skip-category=CAT  \tDo not output tags starting with _CAT" },
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular options:" },
   { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
     "  --expand-ncs=dup|addn  \tExpand strict NCS specified in MTRIXn or"
@@ -275,6 +277,15 @@ static void convert(const std::string& input, CoorFormat input_type,
       cif_in.blocks.clear();  // temporary, for testing
       cif_in.blocks.resize(1);
       update_cif_block(st, cif_in.blocks[0]);
+    }
+    for (const option::Option* opt = options[SkipCat]; opt; opt = opt->next()) {
+      std::string category = opt->arg;
+      if (category[0] != '_')
+        category.insert(0, 1, '_');
+      for (cif::Block& block : cif_in.blocks)
+        for (cif::Item& item : block.items)
+          if (item.has_prefix(category))
+            item.erase();
     }
     if (output_type == CoorFormat::Mmcif) {
       auto style = options[PdbxStyle] ? cif::Style::Pdbx
