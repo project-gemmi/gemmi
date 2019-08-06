@@ -11,12 +11,10 @@
 #include <cstring>   // for memcpy
 #include <cmath>     // for isnan
 #include <algorithm> // for sort
-#include <complex>   // for complex
 #include <array>
 #include <string>
 #include <vector>
 #include "atox.hpp"      // for simple_atof, simple_atoi, read_word
-#include "grid.hpp"      // for Grid
 #include "iterator.hpp"  // for StrideIter
 #include "fileutil.hpp"  // for file_open, is_little_endian, fileptr_t, ...
 #include "symmetry.hpp"  // for find_spacegroup_by_name, SpaceGroup

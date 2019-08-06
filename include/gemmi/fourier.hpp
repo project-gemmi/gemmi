@@ -6,6 +6,7 @@
 #define GEMMI_FOURIER_HPP_
 
 #include <array>
+#include <complex>       // for std::conj
 #include "grid.hpp"      // for Grid
 #include "math.hpp"      // for rad
 #include "symmetry.hpp"  // for GroupOps, Op

@@ -6,7 +6,6 @@
 #define GEMMI_GRID_HPP_
 
 #include <cassert>
-#include <complex>  // for std::conj
 #include <functional> // for function
 #include <vector>
 #include "unitcell.hpp"
