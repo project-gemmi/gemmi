@@ -18,7 +18,7 @@
 #include "symmetry.hpp"
 #include "metadata.hpp"
 #include "iterator.hpp"
-#include "span.hpp"      // for VectorSpan
+#include "span.hpp"      // for Span, MutableVectorSpan
 #include "seqid.hpp"
 
 namespace gemmi {
@@ -53,6 +53,20 @@ typename Span::iterator find_iter(Span& span, const std::string& name) {
   return i;
 }
 
+template<typename Group>
+typename Group::element_type& get_by_altloc(Group& group, char alt) {
+  for (auto& atom : group)
+    if (atom.altloc == alt)
+      return atom;
+  fail("No such altloc");
+}
+
+template<typename T, typename M> std::vector<T> model_subchains(M* model) {
+  std::vector<T> v;
+  for (auto& chain : model->chains)
+    vector_move_extend(v, chain.subchains());
+  return v;
+}
 } // namespace impl
 
 
@@ -185,15 +199,17 @@ struct Atom {
   bool is_hydrogen() const { return gemmi::is_hydrogen(element); }
 };
 
-struct AtomGroup : VectorSpan<Atom> {
-  using VectorSpan::VectorSpan;
+struct AtomGroup : MutableVectorSpan<Atom> {
+  using MutableVectorSpan::MutableVectorSpan;
   std::string name() const { return size() != 0 ? front().name : ""; }
-  Atom& by_altloc(char alt) {
-    for (Atom& atom : *this)
-      if (atom.altloc == alt)
-        return atom;
-    fail("No such altloc");
-  }
+  Atom& by_altloc(char alt) { return impl::get_by_altloc(*this, alt); }
+};
+
+struct ConstAtomGroup : Span<const Atom> {
+  ConstAtomGroup(const Atom* begin, size_t n) : Span(begin, n) {}
+  ConstAtomGroup(const AtomGroup& o) : Span(o.begin(), o.size()) {}
+  std::string name() const { return size() != 0 ? front().name : ""; }
+  const Atom& by_altloc(char a) const { return impl::get_by_altloc(*this, a); }
 };
 
 // Sequence ID (sequence number + insertion code) + residue name + segment ID
@@ -327,18 +343,17 @@ struct Residue : public ResidueId {
 };
 
 struct ResidueGroup;
+struct ConstResidueGroup;
 
-// ResidueSpan represents consecutive residues within the same chain.
-// It's used as return value of get_polymer(), get_ligands(), get_waters()
-// and get_subchain().
-template <typename R>
-struct ResidueSpanImpl : VectorSpan<R> {
-  using VectorSpan<R>::VectorSpan;
+struct ConstResidueSpan : Span<const Residue> {
+  using Parent = Span<const Residue>;
+  using Parent::Span;
+  ConstResidueSpan(Parent&& span) : Parent(std::move(span)) {}
 
   int length() const {
-    int length = (int) this->size();
+    int length = (int) size();
     for (int n = length - 1; n > 0; --n)
-      if ((this->begin() + n)->same_group(*(this->begin() + n - 1)))
+      if ((begin() + n)->same_group(*(begin() + n - 1)))
         --length;
     return length;
   }
@@ -357,8 +372,9 @@ struct ResidueSpanImpl : VectorSpan<R> {
   SeqId::OptionalNum min_label_seq() const { return extreme_num(true, true); }
   SeqId::OptionalNum max_label_seq() const { return extreme_num(true, false); }
 
-  UniqProxy<R, ResidueSpanImpl> first_conformer() { return {*this}; }
-  ConstUniqProxy<R, ResidueSpanImpl> first_conformer() const {return {*this};}
+  ConstUniqProxy<Residue, ConstResidueSpan> first_conformer() const {
+    return {*this};
+  }
 
   const std::string& subchain_id() const {
     if (this->empty())
@@ -368,12 +384,31 @@ struct ResidueSpanImpl : VectorSpan<R> {
     return this->begin()->subchain;
   }
 
-  ResidueGroup find_residue_group(SeqId id);
+  ConstResidueGroup find_residue_group(SeqId id) const;
 };
 
-using ConstResidueSpan = ResidueSpanImpl<const Residue>;
-using ResidueSpan = ResidueSpanImpl<Residue>;
-
+// ResidueSpan represents consecutive residues within the same chain.
+// It's used as return value of get_polymer(), get_ligands(), get_waters()
+// and get_subchain().
+struct ResidueSpan : MutableVectorSpan<Residue> {
+  using Parent = MutableVectorSpan<Residue>;
+  ResidueSpan() = default;
+  ResidueSpan(Parent&& span) : Parent(std::move(span)) {}
+  ResidueSpan(vector_type& v, iterator begin, std::size_t n)
+    : Parent(v, begin, n) {}
+  int length() const { return const_().length(); }
+  SeqId::OptionalNum min_seqnum() const { return const_().min_seqnum(); }
+  SeqId::OptionalNum max_seqnum() const { return const_().max_seqnum(); }
+  SeqId::OptionalNum min_label_seq() const { return const_().min_label_seq(); }
+  SeqId::OptionalNum max_label_seq() const { return const_().max_label_seq(); }
+  UniqProxy<Residue, ResidueSpan> first_conformer() { return {*this}; }
+  ConstUniqProxy<Residue, ResidueSpan> first_conformer() const { return {*this}; }
+  const std::string& subchain_id() const { return const_().subchain_id(); }
+  ResidueGroup find_residue_group(SeqId id);
+  ConstResidueGroup find_residue_group(SeqId id) const;
+private:
+  ConstResidueSpan const_() const { return ConstResidueSpan(begin(), size()); }
+};
 
 // ResidueGroup represents residues with the same sequence number and insertion
 // code, but different residue names. I.e. microheterogeneity.
@@ -398,13 +433,25 @@ struct ConstResidueGroup : ConstResidueSpan {
   }
 };
 
-template <typename R>
-inline ResidueGroup ResidueSpanImpl<R>::find_residue_group(SeqId id) {
-  auto func = [&](const Residue& r) { return r.seqid == id; };
-  auto group_begin = std::find_if(this->begin(), this->end(), func);
-  auto group_end = std::find_if_not(group_begin, this->end(), func);
-  return ResidueSpanImpl(*this, &*group_begin, group_end - group_begin);
+inline ResidueGroup ResidueSpan::find_residue_group(SeqId id) {
+  return ResidueSpan(subspan([&](const Residue& r) { return r.seqid == id; }));
 }
+
+
+namespace impl {
+template<typename T, typename Ch> std::vector<T> chain_subchains(Ch* ch) {
+  std::vector<T> v;
+  auto span = ch->whole();
+  for (auto i = ch->residues.begin(); i != ch->residues.end(); ) {
+    T sub = span.subspan([&](const Residue& r) {
+        return r.subchain == i->subchain;
+    });
+    v.push_back(sub);
+    i += sub.size();
+  }
+  return v;
+}
+} // namespace impl
 
 struct Chain {
   static const char* what() { return "Chain"; }
@@ -413,21 +460,26 @@ struct Chain {
 
   explicit Chain(std::string cname) noexcept : name(cname) {}
 
-  template<typename T> ResidueSpan get_residue_span(T&& func) {
-    auto begin = std::find_if(residues.begin(), residues.end(), func);
-    auto size = std::find_if_not(begin, residues.end(), func) - begin;
-    return ResidueSpan(residues, &*begin, size);
+  ResidueSpan whole() {
+    return ResidueSpan(residues, &residues.at(0), residues.size());
+  }
+  ConstResidueSpan whole() const {
+    return ConstResidueSpan(&residues.at(0), residues.size());
   }
 
-  ResidueSpan whole() { return ResidueSpan(residues); }
-  ConstResidueSpan whole() const { return ConstResidueSpan{residues}; }
+  template<typename F> ResidueSpan get_residue_span(F&& func) {
+    return whole().subspan(func);
+  }
+  template<typename F> ConstResidueSpan get_residue_span(F&& func) const {
+    return whole().subspan(func);
+  }
 
   ResidueSpan get_polymer() {
     return get_residue_span([](const Residue& r) {
         return r.entity_type == EntityType::Polymer;
     });
   }
-  const ResidueSpan get_polymer() const {
+  ConstResidueSpan get_polymer() const {
     return const_cast<Chain*>(this)->get_polymer();
   }
 
@@ -436,7 +488,7 @@ struct Chain {
         return r.entity_type == EntityType::NonPolymer;
     });
   }
-  const ResidueSpan get_ligands() const {
+  ConstResidueSpan get_ligands() const {
     return const_cast<Chain*>(this)->get_ligands();
   }
 
@@ -445,31 +497,36 @@ struct Chain {
         return r.entity_type == EntityType::Water;
     });
   }
-  const ResidueSpan get_waters() const {
+  ConstResidueSpan get_waters() const {
     return const_cast<Chain*>(this)->get_waters();
   }
 
   ResidueSpan get_subchain(const std::string& s) {
     return get_residue_span([&](const Residue& r) { return r.subchain == s; });
   }
-  const ResidueSpan get_subchain(const std::string& s) const {
+  ConstResidueSpan get_subchain(const std::string& s) const {
     return const_cast<Chain*>(this)->get_subchain(s);
   }
 
   std::vector<ResidueSpan> subchains() {
-    std::vector<ResidueSpan> v;
-    for (auto i = residues.begin(); i != residues.end(); i += v.back().size())
-      v.emplace_back(get_residue_span([&](const Residue& r) {
-            return r.subchain == i->subchain;
-      }));
-    return v;
+    return impl::chain_subchains<ResidueSpan>(this);
+  }
+  std::vector<ConstResidueSpan> subchains() const {
+    return impl::chain_subchains<ConstResidueSpan>(this);
   }
 
   ResidueGroup find_residue_group(SeqId id) {
-    return get_residue_span([&](const Residue& r) { return r.seqid == id; });
+    return whole().find_residue_group(id);
+  }
+  ConstResidueGroup find_residue_group(SeqId id) const {
+    return whole().find_residue_group(id);
   }
 
   Residue* find_residue(const ResidueId& rid);
+  const Residue* find_residue(const ResidueId& rid) const {
+    return const_cast<Chain*>(this)->find_residue(rid);
+  }
+
   Residue* find_or_add_residue(const ResidueId& rid);
   void append_residues(std::vector<Residue> new_resi, int min_sep=0);
   std::vector<Residue>& children() { return residues; }
@@ -738,15 +795,15 @@ struct Model {
         return sub;
     return ResidueSpan();
   }
-  const ResidueSpan get_subchain(const std::string& sub_name) const {
+  ConstResidueSpan get_subchain(const std::string& sub_name) const {
     return const_cast<Model*>(this)->get_subchain(sub_name);
   }
 
   std::vector<ResidueSpan> subchains() {
-    std::vector<ResidueSpan> v;
-    for (Chain& chain : chains)
-      vector_move_extend(v, chain.subchains());
-    return v;
+    return impl::model_subchains<ResidueSpan>(this);
+  }
+  std::vector<ConstResidueSpan> subchains() const {
+    return impl::model_subchains<ConstResidueSpan>(this);
   }
 
   Residue* find_residue(const std::string& chain_name, const ResidueId& rid) {
@@ -823,7 +880,7 @@ struct NcsOp {
   Position apply(const Position& p) const { return Position(tr.apply(p)); }
 };
 
-inline const Entity* get_entity_of(const ResidueSpan& sub,
+inline const Entity* get_entity_of(const ConstResidueSpan& sub,
                                    const std::vector<Entity>& entities) {
   if (sub && !sub.subchain_id().empty())
     for (const Entity& ent : entities)
@@ -884,10 +941,10 @@ struct Structure {
     return const_cast<Structure*>(this)->get_entity(ent_id);
   }
 
-  const Entity* get_entity_of(const ResidueSpan& sub) const {
+  const Entity* get_entity_of(const ConstResidueSpan& sub) const {
     return gemmi::get_entity_of(sub, entities);
   }
-  Entity* get_entity_of(const ResidueSpan& sub) {
+  Entity* get_entity_of(const ConstResidueSpan& sub) {
     return const_cast<Entity*>(gemmi::get_entity_of(sub, entities));
   }
 
@@ -923,11 +980,12 @@ inline Residue* Chain::find_or_add_residue(const ResidueId& rid) {
 
 inline void Chain::append_residues(std::vector<Residue> new_resi, int min_sep) {
   if (min_sep > 0) {
-    auto diff = ResidueSpan(new_resi).min_seqnum() - whole().max_seqnum();
+    ConstResidueSpan new_span(&new_resi[0], new_resi.size());
+    auto diff = new_span.min_seqnum() - whole().max_seqnum();
     if (diff && int(diff) < min_sep)
       for (Residue& res : new_resi)
         res.seqid.num += min_sep - int(diff);
-    diff = ResidueSpan(new_resi).min_label_seq() - whole().max_label_seq();
+    diff = new_span.min_label_seq() - whole().max_label_seq();
     if (diff && int(diff) < min_sep)
       for (Residue& res : new_resi)
         res.label_seq += min_sep - int(diff);

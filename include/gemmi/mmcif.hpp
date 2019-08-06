@@ -142,7 +142,7 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
 inline void fill_residue_entity_type(Structure& st) {
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
-      for (ResidueSpan sub : chain.subchains()) {
+      for (ResidueSpan& sub : chain.subchains()) {
         EntityType etype = EntityType::Unknown;
         if (const Entity* ent = st.get_entity_of(sub))
           etype = ent->entity_type;

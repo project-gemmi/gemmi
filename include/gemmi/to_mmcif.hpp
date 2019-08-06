@@ -493,7 +493,7 @@ void update_cif_block(const Structure& st, cif::Block& block) {
   cif::Loop& asym_loop = block.init_mmcif_loop("_struct_asym.",
                                                {"id", "entity_id"});
   for (const Chain& chain : st.models[0].chains)
-    for (ResidueSpan sub : const_cast<Chain&>(chain).subchains())
+    for (ConstResidueSpan& sub : chain.subchains())
       if (!sub.subchain_id().empty()) {
         const Entity* ent = st.get_entity_of(sub);
         asym_loop.add_row({sub.subchain_id(), (ent ? ent->name : "?")});

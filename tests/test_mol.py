@@ -400,6 +400,9 @@ class TestMol(unittest.TestCase):
         self.assertEqual(len(res), 0)
         res = st[1].sole_residue('A', gemmi.SeqId('310'))
         self.assertEqual(len(res), 1)
+        self.assertEqual(len(st[0]['A']), 7)
+        del st[0]['A'][3]
+        self.assertEqual(len(st[0]['A']), 6)
         self.assertEqual(len(st), 2)
         self.assertEqual(st[0].name, '1')
         del st['1']

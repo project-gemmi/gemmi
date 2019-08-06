@@ -166,9 +166,9 @@ void add_mol(py::module& m) {
     .def("get_entity",
          (Entity* (Structure::*)(const std::string&)) &Structure::get_entity,
          py::arg("subchain"), py::return_value_policy::reference_internal)
-    .def("get_entity_of",
-         (Entity* (Structure::*)(const ResidueSpan&)) &Structure::get_entity_of,
-         py::arg("subchain"), py::return_value_policy::reference_internal)
+    .def("get_entity_of", [](Structure& st, ResidueSpan& span) {
+        return st.get_entity_of(span);
+    }, py::arg("subchain"), py::return_value_policy::reference_internal)
     .def("__len__", [](const Structure& st) { return st.models.size(); })
     .def("__iter__", [](const Structure& st) {
         return py::make_iterator(st.models);
@@ -259,7 +259,7 @@ void add_mol(py::module& m) {
     .def("get_subchain",
          (ResidueSpan (Model::*)(const std::string&)) &Model::get_subchain,
          py::arg("name"), py::return_value_policy::reference_internal)
-    .def("subchains", &Model::subchains,
+    .def("subchains", (std::vector<ResidueSpan> (Model::*)()) &Model::subchains,
          py::return_value_policy::reference_internal)
     .def("find_residue_group", &Model::find_residue_group,
          py::arg("chain"), py::arg("seqid"),
@@ -324,7 +324,7 @@ void add_mol(py::module& m) {
     .def("add_residue", add_child<Chain, Residue>,
          py::arg("residue"), py::arg("pos")=-1,
          py::return_value_policy::reference_internal)
-    .def("subchains", &Chain::subchains)
+    .def("subchains", (std::vector<ResidueSpan> (Chain::*)()) &Chain::subchains)
     .def("whole", (ResidueSpan (Chain::*)()) &Chain::whole)
     .def("get_polymer", (ResidueSpan (Chain::*)()) &Chain::get_polymer)
     .def("get_ligands", (ResidueSpan (Chain::*)()) &Chain::get_ligands)
@@ -370,8 +370,12 @@ void add_mol(py::module& m) {
                             &ResidueSpan::first_conformer)
     .def("length", &ResidueSpan::length)
     .def("subchain_id", &ResidueSpan::subchain_id)
-    .def("check_polymer_type", &check_polymer_type)
-    .def("make_one_letter_sequence", &make_one_letter_sequence)
+    .def("check_polymer_type", [](const ResidueSpan& span) {
+        return check_polymer_type(span);
+    })
+    .def("make_one_letter_sequence", [](const ResidueSpan& span) {
+        return make_one_letter_sequence(span);
+    })
     .def("__repr__", [](const ResidueSpan& self) {
         int N = self.size();
         std::string r = "<gemmi.ResidueSpan of " + std::to_string(N) + ": [";

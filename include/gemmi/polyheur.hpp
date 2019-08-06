@@ -16,7 +16,7 @@ namespace gemmi {
 // A simplistic classification. It may change in the future.
 // It returns PolymerType which corresponds to _entity_poly.type,
 // but here we use only PeptideL, Rna, Dna, DnaRnaHybrid and Unknown.
-inline PolymerType check_polymer_type(const ResidueSpan& polymer) {
+inline PolymerType check_polymer_type(const ConstResidueSpan& polymer) {
   if (polymer.size() < 2)
     return PolymerType::Unknown;
   size_t counts[ResidueInfo::ELS+1] = {0};
@@ -103,7 +103,7 @@ inline bool are_connected2(const Residue& r1, const Residue& r2,
   return false;
 }
 
-inline std::string make_one_letter_sequence(const ResidueSpan& polymer) {
+inline std::string make_one_letter_sequence(const ConstResidueSpan& polymer) {
   std::string seq;
   const Residue* prev = nullptr;
   PolymerType ptype = check_polymer_type(polymer);
@@ -180,7 +180,7 @@ inline void assign_subchains(Structure& st, bool force) {
 inline void ensure_entities(Structure& st) {
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
-      for (ResidueSpan sub : chain.subchains()) {
+      for (ResidueSpan& sub : chain.subchains()) {
         Entity* ent = st.get_entity_of(sub);
         if (!ent) {
           EntityType etype = sub[0].entity_type;

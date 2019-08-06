@@ -12,7 +12,7 @@
 #ifndef GEMMI_PDB_HPP_
 #define GEMMI_PDB_HPP_
 
-#include <algorithm>  // for find_if_not, swap
+#include <algorithm>  // for swap
 #include <cassert>    // for assert
 #include <cctype>     // for isalpha
 #include <cstdio>     // for FILE, size_t
