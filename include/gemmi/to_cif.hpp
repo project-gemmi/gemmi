@@ -6,6 +6,11 @@
 #include <fstream>
 #include "cifdoc.hpp"
 
+#if defined(_MSC_VER) && !defined(GEMMI_USE_FOPEN)
+#include <locale>
+#include <codecvt>
+#endif
+
 namespace gemmi {
 namespace cif {
 
@@ -134,8 +139,14 @@ inline void write_cif_to_stream(std::ostream& os, const Document& doc,
 }
 
 inline void write_cif_to_file(const Document& doc, const std::string& filename,
-                          Style s=Style::Simple) {
+                              Style s=Style::Simple) {
+#if defined(_MSC_VER) && !defined(GEMMI_USE_FOPEN)
+  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> convert;
+  std::wstring wfilename = convert.from_bytes(filename.c_str());
+  std::ofstream of(wfilename.c_str());
+#else
   std::ofstream of(filename);
+#endif
   if (!of)
     throw std::runtime_error("Failed to open " + filename);
   write_cif_to_stream(of, doc, s);
