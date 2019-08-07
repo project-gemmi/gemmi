@@ -30,7 +30,7 @@ template<typename T>
 Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown) {
   bool any = (format == CoorFormat::UnknownAny);
   if (format == CoorFormat::Unknown || any)
-    format = coordinate_format_from_extension(input.path());
+    format = coordinate_format_from_extension(input.basepath());
   switch (format) {
     case CoorFormat::Pdb:
       return read_pdb(input);

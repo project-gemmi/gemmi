@@ -58,6 +58,9 @@ public:
   }
 
   bool is_compressed() const { return iends_with(path(), ".gz"); }
+  std::string basepath() const {
+    return is_compressed() ? path().substr(0, path().size() - 3) : path();
+  }
   size_t memory_size() const { return memory_size_; }
 
   std::unique_ptr<char[]> memory() {

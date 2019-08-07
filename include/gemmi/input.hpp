@@ -24,6 +24,7 @@ public:
   explicit JustFile(const std::string& path) : path_(path) {}
 
   const std::string& path() const { return path_; };
+  const std::string& basepath() const { return path_; };
 
   // for handling of some file names as stdin, ("-" in MaybeStdin);
   // each reading function needs to call it (some functions use stdin
