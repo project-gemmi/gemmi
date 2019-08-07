@@ -26,14 +26,16 @@ CIF output options:
   --pdbx-style           Similar styling (formatting) as in wwPDB.
   --skip-category=CAT    Do not output tags starting with _CAT
 
-Macromolecular options:
+PDB input/output options:
+  --segment-as-chain     Append segment id to label_asym_id (chain name).
+  --short-ter            Write PDB TER records without numbers (iotbx compat.).
+
+Macromolecular operations:
   --expand-ncs=dup|addn  Expand strict NCS specified in MTRIXn or equivalent.
                          New chain names are the same or have added numbers.
   --remove-h             Remove hydrogens.
   --remove-waters        Remove waters.
   --remove-lig-wat       Remove ligands and waters.
   --trim-to-ala          Trim aminoacids to alanine.
-  --short-ter            Write PDB TER records without numbers (iotbx compat.).
-  --segment-as-chain     Append segment id to label_asym_id (chain name).
 
 When output file is -, write to standard output.
