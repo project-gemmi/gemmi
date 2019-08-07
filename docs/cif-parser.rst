@@ -884,6 +884,15 @@ The ``Table`` has functions to check its shape::
   >>> len(table)  # number of rows
   18
 
+If Table's data is in Loop, the Loop class can be accessed using::
+
+  Loop* get_loop();  // nullptr for tag-value pairs
+
+.. doctest::
+
+  >>> table.loop     # None for tag-value pairs
+  <gemmi.cif.Loop 18 x 4>
+
 If a prefix was specified when calling find, the prefix length is stored
 and the prefix can be retrived::
 

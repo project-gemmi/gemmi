@@ -299,6 +299,7 @@ struct Table {
     }
   };
 
+  Loop* get_loop();
   bool ok() const { return !positions.empty(); }
   size_t width() const { return positions.size(); }
   size_t length() const;
@@ -584,26 +585,28 @@ inline std::string& Column::operator[](int n) {
 
 inline std::string& Table::Row::operator[](int n) {
   int pos = tab.positions[n];
-  if (tab.loop_item) {
-    Loop& loop = tab.loop_item->loop;
+  if (Loop* loop = tab.get_loop()) {
     if (row_index == -1) // tags
-      return loop.tags[pos];
-    return loop.values[loop.width() * row_index + pos];
+      return loop->tags[pos];
+    return loop->values[loop->width() * row_index + pos];
   }
   return tab.bloc.items[pos].pair[row_index == -1 ? 0 : 1];
 }
 
 inline std::string& Table::Row::value_at_unsafe(int pos) {
+  Loop* loop = tab.get_loop();
   if (row_index == -1) { // tags
-    if (tab.loop_item)
-      return tab.loop_item->loop.tags.at(pos);
+    if (loop)
+      return loop->tags.at(pos);
     return tab.bloc.items[pos].pair[0];
   }
-  if (tab.loop_item) {
-    Loop& loop = tab.loop_item->loop;
-    return loop.values.at(loop.width() * row_index + pos);
-  }
+  if (loop)
+    return loop->values.at(loop->width() * row_index + pos);
   return tab.bloc.items[pos].pair[1];
+}
+
+inline Loop* Table::get_loop() {
+  return loop_item ? &loop_item->loop : nullptr;
 }
 
 inline size_t Table::length() const {
@@ -612,11 +615,10 @@ inline size_t Table::length() const {
 
 inline Table::Row Table::find_row(const std::string& s) {
   int pos = positions.at(0);
-  if (loop_item) {
-    const Loop& loop = loop_item->loop;
-    for (size_t i = 0; i < loop.values.size(); i += loop.width())
-      if (as_string(loop.values[i + pos]) == s)
-        return Row{*this, static_cast<int>(i / loop.width())};
+  if (const Loop* loop = get_loop()) {
+    for (size_t i = 0; i < loop->values.size(); i += loop->width())
+      if (as_string(loop->values[i + pos]) == s)
+        return Row{*this, static_cast<int>(i / loop->width())};
   } else if (as_string(bloc.items[pos].pair[1]) == s) {
     return Row{*this, 0};
   }

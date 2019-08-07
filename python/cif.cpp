@@ -233,6 +233,8 @@ void add_cif(py::module& cif) {
   py::class_<Table> lt(cif, "Table");
   lt.def("width", &Table::width)
     .def_readonly("prefix_length", &Table::prefix_length)
+    .def_property_readonly("loop", &Table::get_loop,
+                           py::return_value_policy::reference_internal)
     .def("get_prefix", &Table::get_prefix)
     .def("has_column", &Table::has_column)
     .def("column", &Table::column, py::arg("n"), py::keep_alive<0, 1>())
