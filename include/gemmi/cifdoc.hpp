@@ -461,10 +461,6 @@ struct Item {
       : type(o.type), line_number(o.line_number) {
     move_value(std::move(o));
   }
-  Item(const Item&& o)
-      : type(o.type), line_number(o.line_number) {
-    copy_value(o);
-  }
   Item(const Item& o)
       : type(o.type), line_number(o.line_number) {
     copy_value(o);
