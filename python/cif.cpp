@@ -101,6 +101,8 @@ void add_cif(py::module& cif) {
   py::class_<Block>(cif, "Block")
     .def(py::init<const std::string &>())
     .def_readwrite("name", &Block::name)
+    .def("__iter__", [](Block& self) { return py::make_iterator(self.items); },
+         py::keep_alive<0, 1>())
     .def("find_pair", &Block::find_pair, py::arg("tag"),
          py::return_value_policy::reference_internal)
     .def("find_value", &Block::find_value, py::arg("tag"),
@@ -195,6 +197,20 @@ void add_cif(py::module& cif) {
     .def("__repr__", [](const Block &self) {
         return "<gemmi.cif.Block " + self.name + ">";
     });
+
+  py::class_<Item> (cif, "Item")
+    .def("erase", &Item::erase)
+    .def_readonly("line_number", &Item::line_number)
+    .def_property_readonly("pair", [](Item& self) {
+        return self.type == ItemType::Pair ? &self.pair : nullptr;
+    }, py::return_value_policy::reference_internal)
+    .def_property_readonly("loop", [](Item& self) {
+        return self.type == ItemType::Loop ? &self.loop : nullptr;
+    }, py::return_value_policy::reference_internal)
+    .def_property_readonly("frame", [](Item& self) {
+        return self.type == ItemType::Frame ? &self.frame : nullptr;
+    }, py::return_value_policy::reference_internal)
+    ;
 
   py::class_<Loop> lp(cif, "Loop");
   lp.def(py::init<>())

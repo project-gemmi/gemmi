@@ -532,7 +532,26 @@ Each block has a name:
   >>> block.name
   '1PFE'
 
-and a list of items (not exposed directly in Python).
+and a list of items:
+
+.. doctest::
+
+  >>> for item in block:
+  ...    if item.line_number > 1670:
+  ...        if item.pair is not None:
+  ...            print('pair', item.pair)
+  ...        elif item.loop is not None:
+  ...            print('loop', item.loop)
+  ...        elif item.frame is not None:
+  ...            print('frame', item.frame)
+  ...
+  pair ['_ndb_struct_conf_na.entry_id', '1PFE']
+  pair ['_ndb_struct_conf_na.feature', "'double helix'"]
+  loop <gemmi.cif.Loop 8 x 25>
+  loop <gemmi.cif.Loop 5 x 43>
+  loop <gemmi.cif.Loop 3 x 3>
+  loop <gemmi.cif.Loop 83 x 10>
+
 
 Frame
 =====
