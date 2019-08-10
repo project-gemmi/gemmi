@@ -202,19 +202,19 @@ static void convert(const std::string& input, CoorFormat input_type,
                     const std::string& output, CoorFormat output_type,
                     const std::vector<option::Option>& options,
                     bool transcribe) {
-  cif::Document cif_in;
+  cif::Document doc;
   gemmi::Structure st;
   // for cif->cif we do either cif->DOM->Structure->DOM->cif or cif->DOM->cif
   if (input_type == CoorFormat::Mmcif || input_type == CoorFormat::Mmjson) {
-    cif_in = input_type == CoorFormat::Mmcif ? gemmi::read_cif_gz(input)
-                                             : gemmi::read_mmjson_gz(input);
+    doc = input_type == CoorFormat::Mmcif ? gemmi::read_cif_gz(input)
+                                          : gemmi::read_mmjson_gz(input);
     if (!transcribe) {
-      int n = gemmi::check_chemcomp_block_number(cif_in);
+      int n = gemmi::check_chemcomp_block_number(doc);
       // first handle special case - refmac dictionary or CCD file
       if (n != -1)
-        st = gemmi::make_structure_from_chemcomp_block(cif_in.blocks[n]);
+        st = gemmi::make_structure_from_chemcomp_block(doc.blocks[n]);
       else
-        st = gemmi::make_structure(cif_in);
+        st = gemmi::make_structure(doc);
       if (st.models.empty())
         gemmi::fail("No atoms in the input file. Is it mmCIF?");
     }
@@ -275,15 +275,15 @@ static void convert(const std::string& input, CoorFormat input_type,
 
   if (output_type == CoorFormat::Mmcif || output_type == CoorFormat::Mmjson) {
     if (!transcribe) {
-      cif_in.blocks.clear();  // temporary, for testing
-      cif_in.blocks.resize(1);
-      update_cif_block(st, cif_in.blocks[0]);
+      doc.blocks.clear();  // temporary, for testing
+      doc.blocks.resize(1);
+      update_cif_block(st, doc.blocks[0]);
     }
     for (const option::Option* opt = options[SkipCat]; opt; opt = opt->next()) {
       std::string category = opt->arg;
       if (category[0] != '_')
         category.insert(0, 1, '_');
-      for (cif::Block& block : cif_in.blocks)
+      for (cif::Block& block : doc.blocks)
         for (cif::Item& item : block.items)
           if (item.has_prefix(category))
             item.erase();
@@ -291,7 +291,7 @@ static void convert(const std::string& input, CoorFormat input_type,
     if (output_type == CoorFormat::Mmcif) {
       auto style = options[PdbxStyle] ? cif::Style::Pdbx
                                       : cif::Style::PreferPairs;
-      write_cif_to_stream(*os, cif_in, style);
+      write_cif_to_stream(*os, doc, style);
     } else /*output_type == CoorFormat::Mmjson*/ {
       cif::JsonWriter writer(*os);
       if (options[Comcifs])
@@ -309,7 +309,7 @@ static void convert(const std::string& input, CoorFormat input_type,
       }
       if (options[CifDot])
         writer.cif_dot = options[CifDot].arg;
-      writer.write_json(cif_in);
+      writer.write_json(doc);
     }
   } else if (output_type == CoorFormat::Pdb) {
     // call wrapper from output.cpp - to make building faster
