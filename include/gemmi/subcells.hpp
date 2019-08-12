@@ -99,7 +99,7 @@ inline void SubCells::initialize(const Model& model_, const UnitCell& cell,
                                  double max_radius) {
   model = &model_;
   if (cell.is_crystal()) {
-    grid.set_unit_cell(cell);
+    grid.unit_cell = cell;
   } else {
     BoundingBox box;
     for (const Chain& chain : model->chains)
@@ -108,7 +108,7 @@ inline void SubCells::initialize(const Model& model_, const UnitCell& cell,
           box.add(atom.pos);
     double margin = 4 * max_radius;
     Vec3 size = box.get_size() + Vec3(margin, margin, margin);
-    grid.set_unit_cell(size.x, size.y, size.z, 90, 90, 90);
+    grid.unit_cell.set(size.x, size.y, size.z, 90, 90, 90);
   }
   grid.set_size_from_spacing(max_radius, false);
   if (grid.nu < 3 || grid.nv < 3 || grid.nw < 3)
