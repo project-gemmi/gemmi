@@ -25,6 +25,15 @@ matrix:
       - COMPILER=/usr/bin/clang++
       - PYTHON=python3
 
+  - os: linux
+    dist: xenial
+    addons:
+      apt:
+        packages: [libz-dev, g++-4.9]
+    env:
+      - COMPILER=/usr/bin/g++-4.9
+      - PYTHON=/bin/true
+
   - os: osx
     osx_image: xcode8.3
     compiler: clang
