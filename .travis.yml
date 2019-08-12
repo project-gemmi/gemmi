@@ -29,9 +29,9 @@ matrix:
     dist: xenial
     addons:
       apt:
-        packages: [libz-dev, g++-4.9]
+        packages: [g++]
     env:
-      - COMPILER=/usr/bin/g++-4.9
+      - COMPILER=/usr/bin/g++
       - PYTHON=/bin/true
 
   - os: osx
