@@ -108,10 +108,8 @@ void add_unitcell(py::module& m) {
     .def("fractionalize", &UnitCell::fractionalize)
     .def("orthogonalize", &UnitCell::orthogonalize)
     .def("volume_per_image", &UnitCell::volume_per_image)
-    // since pybind11 2.3.0 having =Asu::Any causes "import gemmi" to fail:
-    // ImportError: TypeError: __int__ returned non-int (type str)
     .def("find_nearest_image", &UnitCell::find_nearest_image,
-         py::arg("ref"), py::arg("pos"), py::arg("asu")/*=Asu::Any*/)
+         py::arg("ref"), py::arg("pos"), py::arg("asu")=Asu::Any)
     .def("is_special_position", &UnitCell::is_special_position,
          py::arg("pos"), py::arg("max_dist")=0.8)
     .def("calculate_1_d2", &UnitCell::calculate_1_d2,

@@ -49,7 +49,7 @@ struct Fractional : Vec3 {
   }
 };
 
-enum class Asu : char { Same, Different, Any };
+enum class Asu : unsigned char { Same, Different, Any };
 
 // Result of find_nearest_image
 struct SymImage {

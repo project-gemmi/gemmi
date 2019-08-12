@@ -21,7 +21,7 @@ struct ResidueInfo {
   // PYR - pyranose according to the refmac dictionary
   // BUF - agent from crystallization buffer according to PISA agents.dat
   // ELS - something else (ligand).
-  enum Kind : char {
+  enum Kind : unsigned char {
     // when changing this list update check_polymer_type()
     UNKNOWN=0, AA, AAD, PAA, MAA, RNA, DNA, BUF, HOH, PYR, ELS
   };

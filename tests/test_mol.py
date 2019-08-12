@@ -373,8 +373,7 @@ class TestMol(unittest.TestCase):
         ne2 = st[0].sole_residue('A', gemmi.SeqId('63')).sole_atom('NE2')
         direct_dist = first_atom.pos.dist(ne2.pos)
         self.assertAlmostEqual(direct_dist, 34.89, delta=1e-2)
-        nearest_image = st.cell.find_nearest_image(first_atom.pos, ne2.pos,
-                                                   gemmi.Asu.Any)
+        nearest_image = st.cell.find_nearest_image(first_atom.pos, ne2.pos)
         nearest_dist = nearest_image.dist()
         self.assertAlmostEqual(nearest_dist, 8.02, delta=1e-2)
 
