@@ -128,6 +128,8 @@ inline ResidueId read_res_id(const char* seq_id, const char* name) {
   return rid;
 }
 
+inline char read_altloc(char c) { return c == ' ' ? '\0' : c; }
+
 inline int read_serial(const char* ptr) {
   return ptr[0] < 'A' ? read_int(ptr, 5)
                       : read_base36<5>(ptr) - 16796160 + 100000;
@@ -260,7 +262,7 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
         c.atom[i].chain_name = read_string(t + 20, 2);
         c.atom[i].res_id = read_res_id(t + 22, t + 17);
         c.atom[i].atom_name = read_string(t + 12, 4);
-        c.atom[i].altloc = (t[16] == ' ' ? '\0' : t[16]);
+        c.atom[i].altloc = read_altloc(t[16]);
       }
       c.asu = compare_link_symops(record);
       if (record.length() > 73)
@@ -347,7 +349,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       Atom atom;
       atom.serial = read_serial(line+6);
       atom.name = read_string(line+12, 4);
-      atom.altloc = line[16] == ' ' ? '\0' : line[16];
+      atom.altloc = read_altloc(line[16]);
       atom.pos.x = read_double(line+30, 8);
       atom.pos.y = read_double(line+38, 8);
       atom.pos.z = read_double(line+46, 8);
