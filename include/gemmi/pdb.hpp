@@ -500,6 +500,28 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
         helix.length = read_int(line+72, 5);
       st.helices.emplace_back(helix);
 
+    } else if (is_record_type(line, "SHEET")) {
+      if (len < 40)
+        continue;
+      std::string sheet_id = read_string(line+12, 3);
+      Sheet& sheet = impl::find_or_add(st.sheets, sheet_id);
+      sheet.strands.emplace_back();
+      Sheet::Strand& strand = sheet.strands.back();
+      strand.start.chain_name = read_string(line+21, 2);
+      strand.start.res_id = read_res_id(line+22, line+17);
+      strand.end.chain_name = read_string(line+32, 2);
+      strand.end.res_id = read_res_id(line+33, line+28);
+      strand.sense = read_int(line+38, 2);
+      if (len > 67) {
+        // the SHEET record has no altloc for atoms of hydrogen bond
+        strand.hbond_atom2.atom_name = read_string(line+41, 4);
+        strand.hbond_atom2.chain_name = read_string(line+48, 2);
+        strand.hbond_atom2.res_id = read_res_id(line+50, line+45);
+        strand.hbond_atom1.atom_name = read_string(line+56, 4);
+        strand.hbond_atom1.chain_name = read_string(line+63, 2);
+        strand.hbond_atom1.res_id = read_res_id(line+65, line+60);
+      }
+
     } else if (is_record_type(line, "SSBOND") ||
                is_record_type(line, "LINK") ||
                is_record_type(line, "CISPEP")) {

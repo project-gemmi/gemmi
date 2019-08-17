@@ -365,6 +365,31 @@ inline void write_header(const Structure& st, std::ostream& os,
     }
   }
 
+  if (!st.sheets.empty()) {
+    char buf8a[8], buf8b[8], buf8c[8], buf8d[8];
+    for (const Sheet& sheet : st.sheets) {
+      int strand_counter = 0;
+      for (const Sheet::Strand& strand : sheet.strands) {
+        const AtomAddress& a2 = strand.hbond_atom2;
+        const AtomAddress& a1 = strand.hbond_atom1;
+        // H-bond atom names are expected to be O and N
+        WRITE("SHEET %4d %3.3s%2zu %3s%2s%5s %3s%2s%5s%2d  %-3s%3s%2s%5s "
+              " %-3s%3s%2s%5s          \n",
+              ++strand_counter, sheet.name.c_str(), sheet.strands.size(),
+              strand.start.res_id.name.c_str(), strand.start.chain_name.c_str(),
+              write_seq_id(buf8a, strand.start.res_id),
+              strand.end.res_id.name.c_str(), strand.end.chain_name.c_str(),
+              write_seq_id(buf8b, strand.end.res_id), strand.sense,
+              a2.atom_name.c_str(), a2.res_id.name.c_str(),
+              a2.chain_name.c_str(),
+              a2.res_id.seqid.num ? write_seq_id(buf8c, a2.res_id) : "",
+              a1.atom_name.c_str(), a1.res_id.name.c_str(),
+              a1.chain_name.c_str(),
+              a1.res_id.seqid.num ? write_seq_id(buf8d, a1.res_id) : "");
+      }
+    }
+  }
+
   if (!st.models.empty()) {
     char buf8[8];
     char buf8a[8];

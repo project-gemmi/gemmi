@@ -694,6 +694,14 @@ struct Helix {
 };
 
 struct Sheet {
+  struct Strand {
+    AtomAddress start, end;
+    AtomAddress hbond_atom2, hbond_atom1;
+    int sense;  // 0 = first strand, 1 = parallel, -1 = anti-parallel.
+  };
+  std::string name;
+  std::vector<Strand> strands;
+  explicit Sheet(std::string sheet_id) noexcept : name(sheet_id) {}
 };
 
 
