@@ -4,8 +4,9 @@
 
 #include <gemmi/subcells.hpp>
 #include <gemmi/polyheur.hpp>  // for are_connected
-#include <gemmi/elem.hpp>  // for is_hydrogen
+#include <gemmi/elem.hpp>      // for is_hydrogen
 #include <gemmi/gzread.hpp>
+#include <gemmi/to_pdb.hpp>    // for padded_atom_name
 #define GEMMI_PROG contact
 #include "options.h"
 #include <stdio.h>
@@ -126,12 +127,12 @@ static void print_contacts(const Structure& st, const Parameters& params) {
                                         atom.pos, cra.atom->pos, m.image_idx);
             printf("            %-4s%c%3s%2s%5s   "
                    "            %-4s%c%3s%2s%5s  %6s %6s %5.2f\n",
-                   atom.padded_name().c_str(),
+                   padded_atom_name(atom).c_str(),
                    atom.altloc ? std::toupper(atom.altloc) : ' ',
                    res.name.c_str(),
                    chain.name.c_str(),
                    res.seqid.str().c_str(),
-                   cra.atom->padded_name().c_str(),
+                   padded_atom_name(*cra.atom).c_str(),
                    cra.atom->altloc ? std::toupper(cra.atom->altloc) : ' ',
                    cra.residue->name.c_str(),
                    cra.chain->name.c_str(),

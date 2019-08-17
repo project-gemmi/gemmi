@@ -25,6 +25,16 @@ void write_pdb(const Structure& st, std::ostream& os,
 void write_minimal_pdb(const Structure& st, std::ostream& os);
 std::string make_pdb_headers(const Structure& st);
 
+// Name as a string left-padded like in the PDB format:
+// the first two characters make the element name.
+inline std::string padded_atom_name(const Atom& atom) {
+  std::string s;
+  if (atom.element.uname()[1] == '\0' && atom.name.size() < 4)
+    s += ' ';
+  s += atom.name;
+  return s;
+}
+
 } // namespace gemmi
 
 #ifdef GEMMI_WRITE_IMPLEMENTATION
@@ -188,7 +198,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
             "%6.2f%6.2f      %-4.4s%2s%c%c\n",
             as_het ? "HETATM" : "ATOM",
             impl::encode_serial_in_hybrid36(buf8, ++serial),
-            a.padded_name().c_str(),
+            padded_atom_name(a).c_str(),
             a.altloc ? std::toupper(a.altloc) : ' ',
             res.name.c_str(),
             chain.name.c_str(),
@@ -392,12 +402,12 @@ inline void write_header(const Structure& st, std::ostream& os,
                                                    cra2.atom->pos, con.asu);
           WRITE("LINK        %-4s%c%3s%2s%5s   "
                 "            %-4s%c%3s%2s%5s  %6s %6s %5.2f  \n",
-                cra1.atom->padded_name().c_str(),
+                padded_atom_name(*cra1.atom).c_str(),
                 cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
                 cra1.residue->name.c_str(),
                 cra1.chain->name.c_str(),
                 write_seq_id(buf8, *cra1.residue),
-                cra2.atom->padded_name().c_str(),
+                padded_atom_name(*cra2.atom).c_str(),
                 cra2.atom->altloc ? std::toupper(cra2.atom->altloc) : ' ',
                 cra2.residue->name.c_str(),
                 cra2.chain->name.c_str(),

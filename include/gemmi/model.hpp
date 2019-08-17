@@ -179,15 +179,6 @@ struct Atom {
   }
   // same_group() is for use in UniqIter
   bool same_group(const Atom& other) const { return name == other.name; }
-  // Name as a string left-padded like in the PDB format:
-  // the first two characters make the element name.
-  std::string padded_name() const {
-    std::string s;
-    if (element.uname()[1] == '\0' && name.size() < 4)
-      s += ' ';
-    s += name;
-    return s;
-  }
   bool has_altloc() const { return altloc != '\0'; }
   bool has_anisou() const {
     return u11 != 0.f || u22 != 0.f || u33 != 0.f ||
