@@ -119,11 +119,18 @@ inline int read_matrix(Transform& t, char* line, size_t len) {
 
 inline ResidueId read_res_id(const char* seq_id, const char* name) {
   ResidueId rid;
+  rid.seqid.icode = seq_id[4];
   // We support hybrid-36 extension, although it is never used in practice
   // as 9999 residues per chain are enough.
-  rid.seqid.num = seq_id[0] < 'A' ? read_int(seq_id, 4)
-                                  : read_base36<4>(seq_id) - 466560 + 10000;
-  rid.seqid.icode = seq_id[4];
+  if (seq_id[0] < 'A') {
+    for (int i = 4; i != 0; --i, ++seq_id)
+      if (!is_space(*seq_id)) {
+        rid.seqid.num = read_int(seq_id, i);
+        break;
+      }
+  } else {
+    rid.seqid.num = read_base36<4>(seq_id) - 466560 + 10000;
+  }
   rid.name = read_string(name, 3);
   return rid;
 }
