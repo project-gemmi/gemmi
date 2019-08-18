@@ -503,7 +503,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
     } else if (is_record_type(line, "SHEET")) {
       if (len < 40)
         continue;
-      std::string sheet_id = read_string(line+12, 3);
+      std::string sheet_id = read_string(line+11, 3);
       Sheet& sheet = impl::find_or_add(st.sheets, sheet_id);
       sheet.strands.emplace_back();
       Sheet::Strand& strand = sheet.strands.back();
