@@ -76,14 +76,15 @@ inline ResidueId make_resid(const std::string& name,
   return rid;
 }
 
-inline void read_helices(cif::Block& block, Structure& st) {
+inline std::vector<Helix> read_helices(cif::Block& block) {
+  std::vector<Helix> helices;
   for (const auto row : block.find("_struct_conf.", {
-        "conf_type_id",                                              // 0
-        "beg_auth_asym_id", "beg_label_comp_id",                     // 1-2
-        "beg_auth_seq_id", "?pdbx_beg_PDB_ins_code",                 // 3-4
-        "end_auth_asym_id", "end_label_comp_id",                     // 5-6
-        "end_auth_seq_id", "?pdbx_end_PDB_ins_code",                 // 7-8
-        "?pdbx_PDB_helix_class", "?pdbx_PDB_helix_length"})) {       // 9-10
+        "conf_type_id",                                          // 0
+        "beg_auth_asym_id", "beg_label_comp_id",                 // 1-2
+        "beg_auth_seq_id", "?pdbx_beg_PDB_ins_code",             // 3-4
+        "end_auth_asym_id", "end_label_comp_id",                 // 5-6
+        "end_auth_seq_id", "?pdbx_end_PDB_ins_code",             // 7-8
+        "?pdbx_PDB_helix_class", "?pdbx_PDB_helix_length"})) {   // 9-10
     if (alpha_up(row.str(0)[0]) != 'H')
       continue;
     Helix h;
@@ -95,8 +96,62 @@ inline void read_helices(cif::Block& block, Structure& st) {
       h.set_helix_class_as_int(cif::as_int(row[9], -1));
     if (row.has(10))
       h.length = cif::as_int(row[10], -1);
-    st.helices.push_back(h);
+    helices.push_back(h);
   }
+  return helices;
+}
+
+inline std::vector<Sheet> read_sheets(cif::Block& block) {
+  std::vector<Sheet> sheets;
+  for (const std::string& sheet_id : block.find_values("_struct_sheet.id"))
+    sheets.emplace_back(sheet_id);
+  for (const auto row : block.find("_struct_sheet_range.", {
+        "sheet_id", "id",                                        // 0-1
+        "beg_auth_asym_id", "beg_label_comp_id",                 // 2-3
+        "beg_auth_seq_id", "?pdbx_beg_PDB_ins_code",             // 4-5
+        "end_auth_asym_id", "end_label_comp_id",                 // 6-7
+        "end_auth_seq_id", "?pdbx_end_PDB_ins_code"})) {         // 8-9
+    Sheet& sheet = impl::find_or_add(sheets, row.str(0));
+    sheet.strands.emplace_back();
+    Sheet::Strand& strand = sheet.strands.back();
+    strand.name = row.str(1);
+    strand.start.chain_name = row.str(2);
+    strand.start.res_id = make_resid(row.str(3), row.str(4), row.ptr_at(5));
+    strand.end.chain_name = row.str(6);
+    strand.end.res_id = make_resid(row.str(7), row.str(8), row.ptr_at(9));
+  }
+
+  // below we assume that range_id_1 is the strand preceding range_id_2
+  for (const auto row : block.find("_struct_sheet_order.", {
+        "sheet_id", "range_id_2", "sense"}))
+    if (Sheet* sheet = impl::find_or_null(sheets, row.str(0)))
+      if (Sheet::Strand* ss = impl::find_or_null(sheet->strands, row.str(1)))
+        switch (alpha_up(row.str(2)[0])) {
+          case 'P': ss->sense = 1; break; // parallel
+          case 'A': ss->sense = -1; break; // anti-parallel
+        }
+
+  for (const auto row : block.find("_pdbx_struct_sheet_hbond.", {
+        "sheet_id", "range_id_2",
+        "range_1_auth_asym_id", "range_1_label_comp_id",
+        "range_1_auth_seq_id", "?range_1_PDB_ins_code",
+        "range_1_label_atom_id",
+        "range_2_auth_asym_id", "range_2_label_comp_id",
+        "range_2_auth_seq_id", "?range_2_PDB_ins_code",
+        "range_2_label_atom_id"}))
+    if (Sheet* sheet = impl::find_or_null(sheets, row.str(0)))
+      if (Sheet::Strand* ss = impl::find_or_null(sheet->strands, row.str(1))) {
+        ss->hbond_atom1.chain_name = row.str(2);
+        ss->hbond_atom1.res_id = make_resid(row.str(3), row.str(4),
+                                            row.ptr_at(5));
+        ss->hbond_atom1.atom_name = row.str(6);
+        ss->hbond_atom2.chain_name = row.str(7);
+        ss->hbond_atom2.res_id = make_resid(row.str(8), row.str(9),
+                                            row.ptr_at(10));
+        ss->hbond_atom2.atom_name = row.str(11);
+      }
+
+  return sheets;
 }
 
 inline void read_connectivity(cif::Block& block, Structure& st) {
@@ -397,7 +452,8 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
       }
   }
 
-  read_helices(block, st);
+  st.helices = read_helices(block);
+  st.sheets = read_sheets(block);
 
   read_connectivity(block, st);
 

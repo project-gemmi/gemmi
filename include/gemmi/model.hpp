@@ -698,6 +698,7 @@ struct Sheet {
     AtomAddress start, end;
     AtomAddress hbond_atom2, hbond_atom1;
     int sense;  // 0 = first strand, 1 = parallel, -1 = anti-parallel.
+    std::string name; // optional, _struct_sheet_range.id if from mmCIF
   };
   std::string name;
   std::vector<Strand> strands;

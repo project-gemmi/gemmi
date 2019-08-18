@@ -36,9 +36,9 @@ tempd=/run/gemmi
 pout="$tempd/$code-p.pdb"
 gout="$tempd/$code-g.pdb"
 cifout="$tempd/$code.cif"  # used with VIA_CIF=1
-cif=${PDB_COPY:-/hdd}/mmCIF/${code:1:2}/${code}.cif.gz
-if [[ -d ${PDB_COPY:-/hdd}/pdb ]]; then
-  pdb=${PDB_COPY:-/hdd}/pdb/${code:1:2}/pdb${code}.ent.gz
+cif=${PDB_COPY}/mmCIF/${code:1:2}/${code}.cif.gz
+if [[ -d ${PDB_COPY}/pdb ]]; then
+  pdb=${PDB_COPY}/pdb/${code:1:2}/pdb${code}.ent.gz
 else
   pdb=$tempd/pdb${code}.ent.gz
   if [[ ! -e $pdb ]]; then
@@ -71,7 +71,6 @@ absent="\
 ^REMARK...[^2]|\
 ^REVDAT|\
 ^SEQADV|\
-^SHEET |\
 ^SITE  |\
 ^SLTBRG|\
 ^SOURCE|\

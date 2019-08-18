@@ -535,18 +535,106 @@ void update_cif_block(const Structure& st, cif::Block& block) {
         cra1.residue->label_seq.str(),                // beg_label_seq_id
         cra1.residue->seqid.num.str(),                // beg_auth_seq_id
         impl::pdbx_icode(*cra1.residue),              // beg_PDB_ins_code
-        cra2.chain->name,                             // beg_auth_asym_id
-        impl::subchain_or_dot(*cra2.residue),         // beg_label_asym_id
-        cra2.residue->name,                           // beg_label_comp_id
-        cra2.residue->label_seq.str(),                // beg_label_seq_id
-        cra2.residue->seqid.num.str(),                // beg_auth_seq_id
-        impl::pdbx_icode(*cra2.residue),              // beg_PDB_ins_code
+        cra2.chain->name,                             // end_auth_asym_id
+        impl::subchain_or_dot(*cra2.residue),         // end_label_asym_id
+        cra2.residue->name,                           // end_label_comp_id
+        cra2.residue->label_seq.str(),                // end_label_seq_id
+        cra2.residue->seqid.num.str(),                // end_auth_seq_id
+        impl::pdbx_icode(*cra2.residue),              // end_PDB_ins_code
         std::to_string((int)helix.pdb_helix_class),   // pdbx_PDB_helix_class
         impl::int_or_qmark(helix.length)              // pdbx_PDB_helix_length
       });
     }
     if (count != 0)
       block.set_pair("_struct_conf_type.id", "HELX_P");
+  }
+
+  // _struct_sheet*
+  if (!st.sheets.empty()) {
+    cif::Loop& sheet_loop = block.init_mmcif_loop("_struct_sheet.",
+                                                  {"id", "number_strand"});
+    for (const Sheet& sheet : st.sheets)
+      sheet_loop.add_row({sheet.name, std::to_string(sheet.strands.size())});
+
+    cif::Loop& order_loop = block.init_mmcif_loop("_struct_sheet_order.",
+                    {"sheet_id", "range_id_1", "range_id_2", "sense"});
+    for (const Sheet& sheet : st.sheets)
+      for (size_t i = 1; i < sheet.strands.size(); ++i) {
+        const Sheet::Strand& strand = sheet.strands[i];
+        if (strand.sense != 0)
+          order_loop.add_row({sheet.name,
+                              std::to_string(i), std::to_string(i+1),
+                              strand.sense > 0 ? "parallel" : "anti-parallel"});
+      }
+
+    cif::Loop& range_loop = block.init_mmcif_loop("_struct_sheet_range.",
+        {"sheet_id", "id",
+         "beg_auth_asym_id", "beg_label_asym_id", "beg_label_comp_id",
+         "beg_label_seq_id", "beg_auth_seq_id", "pdbx_beg_PDB_ins_code",
+         "end_auth_asym_id", "end_label_asym_id", "end_label_comp_id",
+         "end_label_seq_id", "end_auth_seq_id", "pdbx_end_PDB_ins_code"});
+    for (const Sheet& sheet : st.sheets)
+      for (size_t i = 0; i < sheet.strands.size(); ++i) {
+        const Sheet::Strand& strand = sheet.strands[i];
+        const_CRA cra1 = st.models[0].find_cra(strand.start);
+        const_CRA cra2 = st.models[0].find_cra(strand.end);
+        if (!cra1.residue || !cra2.residue)
+          continue;
+        range_loop.add_row({
+          sheet.name,                                 // sheet_id
+          std::to_string(i+1),                        // id
+          cra1.chain->name,                           // beg_auth_asym_id
+          impl::subchain_or_dot(*cra1.residue),       // beg_label_asym_id
+          cra1.residue->name,                         // beg_label_comp_id
+          cra1.residue->label_seq.str(),              // beg_label_seq_id
+          cra1.residue->seqid.num.str(),              // beg_auth_seq_id
+          impl::pdbx_icode(*cra1.residue),            // beg_PDB_ins_code
+          cra2.chain->name,                           // end_auth_asym_id
+          impl::subchain_or_dot(*cra2.residue),       // end_label_asym_id
+          cra2.residue->name,                         // end_label_comp_id
+          cra2.residue->label_seq.str(),              // end_label_seq_id
+          cra2.residue->seqid.num.str(),              // end_auth_seq_id
+          impl::pdbx_icode(*cra2.residue)             // end_PDB_ins_code
+        });
+    }
+
+    cif::Loop& hbond_loop = block.init_mmcif_loop("_pdbx_struct_sheet_hbond.",
+        {"sheet_id", "range_id_1", "range_id_2",
+         "range_1_auth_asym_id", "range_1_label_asym_id",
+         "range_1_label_comp_id", "range_1_label_seq_id", "range_1_auth_seq_id",
+         "range_1_PDB_ins_code", "range_1_label_atom_id",
+         "range_2_auth_asym_id", "range_2_label_asym_id",
+         "range_2_label_comp_id", "range_2_label_seq_id", "range_2_auth_seq_id",
+         "range_2_PDB_ins_code", "range_2_label_atom_id"});
+    for (const Sheet& sheet : st.sheets)
+      for (size_t i = 1; i < sheet.strands.size(); ++i) {
+        const Sheet::Strand& strand = sheet.strands[i];
+        if (strand.hbond_atom2.atom_name.empty())
+          continue;
+        const_CRA cra1 = st.models[0].find_cra(strand.hbond_atom1);
+        const_CRA cra2 = st.models[0].find_cra(strand.hbond_atom2);
+        if (!cra1.atom || !cra2.atom)
+          continue;
+        hbond_loop.add_row({
+          sheet.name,                                 // sheet_id
+          std::to_string(i),                          // range_id_1
+          std::to_string(i+1),                        // range_id_2
+          cra1.chain->name,                           // range_1_auth_asym_id
+          impl::subchain_or_dot(*cra1.residue),       // range_1_label_asym_id
+          cra1.residue->name,                         // range_1_label_comp_id
+          cra1.residue->label_seq.str(),              // range_1_label_seq_id
+          cra1.residue->seqid.num.str(),              // range_1_auth_seq_id
+          impl::pdbx_icode(*cra1.residue),            // range_1_PDB_ins_code
+          cra1.atom->name.c_str(),                    // range_1_label_atom_id
+          cra2.chain->name,                           // range_2_auth_asym_id
+          impl::subchain_or_dot(*cra2.residue),       // range_2_label_asym_id
+          cra2.residue->name,                         // range_2_label_comp_id
+          cra2.residue->label_seq.str(),              // range_2_label_seq_id
+          cra2.residue->seqid.num.str(),              // range_2_auth_seq_id
+          impl::pdbx_icode(*cra2.residue),            // range_2_PDB_ins_code
+          cra2.atom->name.c_str()                     // range_2_label_atom_id
+        });
+    }
   }
 
   impl::write_struct_conn(st, block);

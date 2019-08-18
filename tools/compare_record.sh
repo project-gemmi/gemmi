@@ -36,13 +36,17 @@ fi
 cut -f1,3 - | grep "$MONTH" | while read -r code date; do
   code=${code,,}
   echo $code
-  pdb=${PDB_COPY:-/hdd}/pdb/${code:1:2}/pdb${code}.ent.gz
+  pdb=${PDB_COPY}/pdb/${code:1:2}/pdb${code}.ent.gz
   if [[ ${FROM_PDB:-} = 1 ]]; then
     inp="$pdb"
   else
-    inp=${PDB_COPY:-/hdd}/mmCIF/${code:1:2}/${code}.cif.gz
+    inp=${PDB_COPY}/mmCIF/${code:1:2}/${code}.cif.gz
   fi
-  ${DIFF:-diff} -U0 --label="$pdb" --label="from $inp" \
-      <(zgrep $RECORD "$pdb") \
-      <($GEMMI convert --to=pdb "$inp" - | grep $RECORD) ||:
+  if [ -e $inp ] && [ -e $pdb ]; then
+    ${DIFF:-diff} -U0 --label="$pdb" --label="from $inp" \
+        <(zgrep $RECORD "$pdb") \
+        <($GEMMI convert --to=pdb "$inp" - | grep $RECORD) ||:
+  else
+      echo "files not found for $code"
+  fi
 done
