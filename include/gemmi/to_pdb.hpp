@@ -322,8 +322,13 @@ inline void write_header(const Structure& st, std::ostream& os,
       // setup_entities() to use heuristic to split polymer and ligands
       // and assign entities. But if it was not called, we may still find
       // the original SEQRES in the entity named after the chain name.
-      if (!entity)
+      if (!entity && st.input_format == gemmi::CoorFormat::Pdb &&
+          !ch.residues.empty() && ch.residues[0].subchain.empty()) {
         entity = st.get_entity(ch.name);
+        if (entity && !entity->subchains.empty())
+          entity = nullptr;
+      }
+
       if (entity) {
         int seq_len = entity->seq_length();
         int row = 0;
