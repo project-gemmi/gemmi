@@ -4,6 +4,7 @@
 #include "gemmi/gz.hpp"
 #include "gemmi/cifdoc.hpp"
 #include "gemmi/numb.hpp"
+#include "gemmi/tostr.hpp"
 #include <cstdio>
 #include <cmath>      // for INFINITY
 #include <algorithm>  // for find
@@ -124,14 +125,14 @@ static std::string token_stats(const cif::Document& d) {
   info += format_7zd(nframes) + " frames\n";
   info += format_7zd(nvals) + " non-loop items:";
   for (int i = 1; i != 5; ++i)
-    info += "  " + value_type_to_str(static_cast<ValueType>(i))
-            + ":" + std::to_string(vals_by_type[i]);
+    info += gemmi::tostr("  ", value_type_to_str(static_cast<ValueType>(i)),
+                         ':', vals_by_type[i]);
   info += "\n";
   info += format_7zd(nloops) + " loops w/\n";
   info += "        " + format_7zd(nlooptags) + " tags:";
   for (int i = 1; i != 5; ++i)
-    info += "  " + value_type_to_str(static_cast<ValueType>(i))
-            + ":" + std::to_string(looptags_by_type[i]);
+    info += gemmi::tostr("  ", value_type_to_str(static_cast<ValueType>(i)),
+                         ':', looptags_by_type[i]);
   info += "\n";
   info += "        " + format_7zd(nloopvals) + " values\n";
   return info;

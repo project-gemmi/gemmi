@@ -1,6 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/cifdoc.hpp"
+#include "gemmi/tostr.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 
@@ -195,7 +196,7 @@ void add_cif(py::module& cif) {
            return data;
          }, py::arg("name"), py::arg("raw")=false)
     .def("__repr__", [](const Block &self) {
-        return "<gemmi.cif.Block " + self.name + ">";
+        return gemmi::tostr("<gemmi.cif.Block ", self.name, '>');
     });
 
   py::class_<Item> (cif, "Item")
@@ -222,8 +223,8 @@ void add_cif(py::module& cif) {
          py::arg("new_values"), py::arg("pos")=-1)
     .def("set_all_values", &Loop::set_all_values, py::arg("columns"))
     .def("__repr__", [](const Loop &self) {
-        return "<gemmi.cif.Loop " + std::to_string(self.length()) + " x " +
-                                    std::to_string(self.width()) + ">";
+        return gemmi::tostr("<gemmi.cif.Loop ", self.length(), " x ",
+                            self.width(), '>');
     });
 
   py::class_<Column>(cif, "Column")
@@ -242,7 +243,7 @@ void add_cif(py::module& cif) {
     .def("__repr__", [](const Column &self) {
         std::string desc = "nil";
         if (const std::string* tag = self.get_tag())
-          desc = *tag + " length " + std::to_string(self.length());
+          desc = gemmi::tostr(*tag, " length ", self.length());
         return "<gemmi.cif.Column " + desc + ">";
     });
 
@@ -270,8 +271,7 @@ void add_cif(py::module& cif) {
     .def("__len__", &Table::length)
     .def("__repr__", [](const Table& self) {
         return "<gemmi.cif.Table " +
-               (self.ok() ? std::to_string(self.length()) + " x " +
-                            std::to_string(self.width())
+               (self.ok() ? gemmi::tostr(self.length(), " x ", self.width())
                           : "nil") +
                ">";
     });

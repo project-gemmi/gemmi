@@ -13,6 +13,7 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 #include "gemmi/ccp4.hpp"
 #include "gemmi/gz.hpp"  // for MaybeGzipped
 #include "gemmi/subcells.hpp"
+#include "gemmi/tostr.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/complex.h>
@@ -66,7 +67,7 @@ void add_grid(py::module& m, const char* name) {
         return py::make_iterator(self.data);
     }, py::keep_alive<0, 1>())
     .def("__repr__", [=](const Gr& self) {
-        return "<gemmi." + std::string(name) + "(" + grid_dim_str(self) + ")>";
+        return tostr("<gemmi.", name, '(', grid_dim_str(self), ")>");
     });
 }
 
@@ -87,9 +88,8 @@ py::class_<T> add_ccp4(py::module& m, const char* name) {
     .def("write_ccp4_map", &Map::write_ccp4_map, py::arg("filename"))
     .def("__repr__", [=](const Map& self) {
         const SpaceGroup* sg = self.grid.spacegroup;
-        std::string sg_str = sg ?  std::to_string(sg->ccp4) : "?";
-        return "<gemmi." + std::string(name) + " with grid (" +
-               grid_dim_str(self.grid) + ") in SG #" + sg_str + ">";
+        return tostr("<gemmi.", name, " with grid (", grid_dim_str(self.grid),
+                     ") in SG #", sg ? std::to_string(sg->ccp4) : "?", '>');
     });
 }
 
@@ -133,11 +133,9 @@ void add_grid(py::module& m) {
     .def("to_cra",
          (CRA (SubCells::Mark::*)(Model&) const) &SubCells::Mark::to_cra)
     .def("__repr__", [](const SubCells::Mark& self) {
-        return "<gemmi.SubCells.Mark " +
-               std::string(element_name(self.element)) + " of atom " +
-               std::to_string(self.chain_idx) + "/" +
-               std::to_string(self.residue_idx) + "/" +
-               std::to_string(self.atom_idx) + ">";
+        return tostr("<gemmi.SubCells.Mark ", element_name(self.element),
+                     " of atom ", self.chain_idx, '/', self.residue_idx, '/',
+                     self.atom_idx, '>');
     });
   py::bind_vector<std::vector<SubCells::Mark*>>(m, "VectorSubCellsMarkPtr");
   subcells
@@ -157,6 +155,6 @@ void add_grid(py::module& m) {
          py::return_value_policy::move, py::keep_alive<0, 1>())
     .def("dist", &SubCells::dist)
     .def("__repr__", [](const SubCells& self) {
-        return "<gemmi.SubCells with grid " + grid_dim_str(self.grid) + ">";
+        return tostr("<gemmi.SubCells with grid ",grid_dim_str(self.grid),'>');
     });
 }

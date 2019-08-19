@@ -8,6 +8,7 @@
 #include "iterator.hpp"  // for StrideIter, IndirectIter
 #include "atox.hpp"  // for string_to_int
 #include "util.hpp"  // for starts_with, to_lower, fail
+#include "tostr.hpp"  // for tostr
 #include <algorithm> // for move, find_if, all_of, min
 #include <array>
 #include <cstring>   // for memchr
@@ -531,8 +532,7 @@ private:
 inline void Loop::set_all_values(std::vector<std::vector<std::string>> columns){
   size_t w = columns.size();
   if (w != width())
-    fail("set_all_values(): expected " + std::to_string(width()) +
-         " columns, got " + std::to_string(w));
+    fail(tostr("set_all_values(): expected ", width(), " columns, got ", w));
   if (w == 0)
     return;
   size_t h = columns[0].size();
@@ -888,8 +888,7 @@ struct Document {
 [[noreturn]]
 inline void cif_fail(const Document& d, const Block& b, const Item& item,
                      const std::string& s) {
-  fail(d.source + ":" + std::to_string(item.line_number) +
-       " in data_" + b.name + ": " + s);
+  fail(tostr(d.source, ':', item.line_number, " in data_", b.name, ": ", s));
 }
 
 // Throw an error if any block name, frame name or tag is duplicated.

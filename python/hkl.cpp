@@ -4,6 +4,7 @@
 #include "gemmi/mtz.hpp"
 #include "gemmi/refln.hpp"
 #include "gemmi/fourier.hpp"
+#include "gemmi/tostr.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -27,7 +28,7 @@ namespace gemmi {
   }
 
   inline std::ostream& operator<< (std::ostream& os, const ReflnBlock& rb) {
-    os << "<gemmi.ReflnBlock " + rb.block.name + " with ";
+    os << "<gemmi.ReflnBlock " << rb.block.name << " with ";
     if (rb.default_loop)
       os << rb.default_loop->width() << " x " << rb.default_loop->length();
     else
@@ -40,12 +41,6 @@ namespace gemmi {
     os << "<gemmi.Mtz.Column " << col->label << " type " << col->type << '>';
     return os;
   }
-}
-
-template <typename T> std::string tostr(const T& s) {
-  std::ostringstream stream;
-  stream << s;
-  return stream.str();
 }
 
 template<typename F>
@@ -186,9 +181,8 @@ void add_hkl(py::module& m) {
     }, py::arg("array"))
     .def("write_to_file", &Mtz::write_to_file, py::arg("path"))
     .def("__repr__", [](const Mtz& self) {
-        return "<gemmi.Mtz with " +
-               std::to_string(self.columns.size()) + " columns, " +
-               std::to_string(self.nreflections) + " reflections>";
+        return tostr("<gemmi.Mtz with ", self.columns.size(), " columns, ",
+                     self.nreflections, " reflections>");
     });
   py::class_<Mtz::Dataset>(mtz, "Dataset")
     .def_readwrite("id", &Mtz::Dataset::id)
@@ -197,9 +191,8 @@ void add_hkl(py::module& m) {
     .def_readwrite("dataset_name", &Mtz::Dataset::dataset_name)
     .def_readwrite("cell", &Mtz::Dataset::cell)
     .def_readwrite("wavelength", &Mtz::Dataset::wavelength)
-    .def("__repr__", [](const Mtz::Dataset& self) {
-      return tostr(self);
-    });
+    .def("__repr__", [](const Mtz::Dataset& self) { return tostr(self); })
+    ;
   py::class_<Mtz::Column>(mtz, "Column", py::buffer_protocol())
     .def_buffer([](Mtz::Column& self) {
       return py::buffer_info(self.parent->data.data() + self.idx,
@@ -227,7 +220,8 @@ void add_hkl(py::module& m) {
     .def("__iter__", [](Mtz::Column& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
-    .def("__repr__", [](const Mtz::Column& self) { return tostr(&self); });
+    .def("__repr__", [](const Mtz::Column& self) { return tostr(&self); })
+    ;
 
   m.def("read_mtz_file", &read_mtz_file);
 
@@ -281,9 +275,8 @@ void add_hkl(py::module& m) {
     .def("is_unmerged", &ReflnBlock::is_unmerged)
     .def("use_unmerged", &ReflnBlock::use_unmerged)
     .def("__bool__", [](const ReflnBlock& self) { return self.ok(); })
-    .def("__repr__", [](const ReflnBlock& self) {
-      return tostr(self);
-    });
+    .def("__repr__", [](const ReflnBlock& self) { return tostr(self); })
+    ;
   m.def("as_refln_blocks",
         [](cif::Document& d) { return as_refln_blocks(std::move(d.blocks)); });
   m.def("transform_f_phi_grid_to_map", [](Grid<std::complex<float>> grid) {

@@ -8,7 +8,7 @@
 #include "gemmi/polyheur.hpp"
 #include "gemmi/to_pdb.hpp"
 #include "gemmi/to_mmcif.hpp"
-#include "gemmi/to_mmcif.hpp"
+#include "gemmi/tostr.hpp"
 
 #include <fstream>
 #include <pybind11/pybind11.h>
@@ -41,13 +41,6 @@ namespace gemmi {
     return os;
   }
 }
-
-template <typename T> std::string tostr(const T& s) {
-  std::ostringstream stream;
-  stream << s;
-  return stream.str();
-}
-
 
 namespace pybind11 { namespace detail {
   template<> struct type_caster<SeqId::OptionalNum>
@@ -129,7 +122,7 @@ void add_mol(py::module& m) {
     .def_readwrite("entity_type", &Entity::entity_type)
     .def_readwrite("polymer_type", &Entity::polymer_type)
     .def_readwrite("poly_seq", &Entity::poly_seq)
-    .def("__repr__", &tostr<Entity>);
+    .def("__repr__", [](const Entity& self) { return tostr(self); });
 
   py::class_<NcsOp>(m, "NcsOp")
     .def_readwrite("id", &NcsOp::id)
@@ -137,9 +130,9 @@ void add_mol(py::module& m) {
     .def_readonly("tr", &NcsOp::tr)
     .def("apply", &NcsOp::apply)
     .def("__repr__", [](const NcsOp& self) {
-        return "<gemmi.NcsOp " + self.id +
-               " |shift|=" + std::to_string(self.tr.vec.length()) +
-               (self.given ? " (" : " (not ") + "given)>";
+        return tostr("<gemmi.NcsOp ", self.id,
+                     " |shift|=", self.tr.vec.length(),
+                     (self.given ? " (" : " (not "), "given)>");
     });
 
   py::enum_<Connection::Type>(m, "ConnectionType")
@@ -154,8 +147,8 @@ void add_mol(py::module& m) {
     .def_readwrite("type", &Connection::type)
     .def_readwrite("reported_distance", &Connection::reported_distance)
     .def("__repr__", [](const Connection& self) {
-        return "<gemmi.Connection " + self.name + "  " +
-               self.atom[0].str() + " - " + self.atom[1].str() + ">";
+        return tostr("<gemmi.Connection ", self.name, "  ",
+                     self.atom[0].str(), " - ", self.atom[1].str(), '>');
     });
 
   py::bind_vector<std::vector<Connection>>(m, "ConnectionList");
@@ -240,8 +233,8 @@ void add_mol(py::module& m) {
          (void (*)(Structure&)) &remove_ligands_and_waters)
     .def("remove_empty_chains", (void (*)(Structure&)) &remove_empty_chains)
     .def("__repr__", [](const Structure& self) {
-        return "<gemmi.Structure " + self.name + " with " +
-               std::to_string(self.models.size()) + " model(s)>";
+        return tostr("<gemmi.Structure ", self.name, " with ",
+                     self.models.size(), " model(s)>");
     });
 
   py::class_<CRA>(m, "CRA")
@@ -297,8 +290,8 @@ void add_mol(py::module& m) {
         return calculate_center_of_mass(self).get();
     })
     .def("__repr__", [](const Model& self) {
-        return "<gemmi.Model " + self.name + " with " +
-               std::to_string(self.chains.size()) + " chain(s)>";
+        return tostr("<gemmi.Model ", self.name, " with ",
+                     self.chains.size(), " chain(s)>");
     });
 
   py::class_<UniqProxy<Residue>>(m, "FirstConformerRes")
@@ -353,8 +346,8 @@ void add_mol(py::module& m) {
     .def("first_conformer",
          (UniqProxy<Residue> (Chain::*)()) &Chain::first_conformer)
     .def("__repr__", [](const Chain& self) {
-        return "<gemmi.Chain " + self.name +
-               " with " + std::to_string(self.residues.size()) + " res>";
+        return tostr("<gemmi.Chain ", self.name,
+                     " with ", self.residues.size(), " res>");
     });
 
   py::class_<ResidueSpan> residue_span(m, "ResidueSpan");
@@ -423,8 +416,8 @@ void add_mol(py::module& m) {
          py::arg("altloc"), py::return_value_policy::reference_internal)
     .def("name", &AtomGroup::name)
     .def("__repr__", [](const AtomGroup& self) {
-        return "<gemmi.AtomGroup " + self.name() + ", sites: " +
-               std::to_string(self.size()) + ">";
+        return tostr("<gemmi.AtomGroup ", self.name(), ", sites: ",
+                     self.size(), '>');
     });
 
   py::class_<SeqId>(m, "SeqId")
@@ -434,7 +427,7 @@ void add_mol(py::module& m) {
     .def_readwrite("icode", &SeqId::icode)
     .def("__str__", &SeqId::str)
     .def("__repr__", [](const SeqId& self) {
-        return "<gemmi.SeqId " + self.str() + ">";
+        return tostr("<gemmi.SeqId ", self.str(), '>');
     });
 
   py::class_<Residue>(m, "Residue")
@@ -478,8 +471,8 @@ void add_mol(py::module& m) {
     .def("is_water", &Residue::is_water)
     .def("trim_to_alanine", (bool (*)(Residue&)) &trim_to_alanine)
     .def("__repr__", [](const Residue& self) {
-        return "<gemmi.Residue " + self.str() +
-               " with " + std::to_string(self.atoms.size()) + " atoms>";
+        return tostr("<gemmi.Residue ", self.str(), " with ",
+                     self.atoms.size(), " atoms>");
     });
 
   py::class_<Atom>(m, "Atom")
