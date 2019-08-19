@@ -611,9 +611,10 @@ void update_cif_block(const Structure& st, cif::Block& block) {
         const Sheet::Strand& strand = sheet.strands[i];
         if (strand.hbond_atom2.atom_name.empty())
           continue;
+        // hbond_atomN is not a full atom "address": altloc is missing
         const_CRA cra1 = st.models[0].find_cra(strand.hbond_atom1);
         const_CRA cra2 = st.models[0].find_cra(strand.hbond_atom2);
-        if (!cra1.atom || !cra2.atom)
+        if (!cra1.residue || !cra2.residue)
           continue;
         hbond_loop.add_row({
           sheet.name,                                 // sheet_id
@@ -625,14 +626,14 @@ void update_cif_block(const Structure& st, cif::Block& block) {
           cra1.residue->label_seq.str(),              // range_1_label_seq_id
           cra1.residue->seqid.num.str(),              // range_1_auth_seq_id
           impl::pdbx_icode(*cra1.residue),            // range_1_PDB_ins_code
-          cra1.atom->name.c_str(),                    // range_1_label_atom_id
+          strand.hbond_atom1.atom_name.c_str(),       // range_1_label_atom_id
           cra2.chain->name,                           // range_2_auth_asym_id
           impl::subchain_or_dot(*cra2.residue),       // range_2_label_asym_id
           cra2.residue->name,                         // range_2_label_comp_id
           cra2.residue->label_seq.str(),              // range_2_label_seq_id
           cra2.residue->seqid.num.str(),              // range_2_auth_seq_id
           impl::pdbx_icode(*cra2.residue),            // range_2_PDB_ins_code
-          cra2.atom->name.c_str()                     // range_2_label_atom_id
+          strand.hbond_atom2.atom_name.c_str()        // range_2_label_atom_id
         });
     }
   }
