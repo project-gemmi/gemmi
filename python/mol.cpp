@@ -31,6 +31,24 @@ PYBIND11_MAKE_OPAQUE(std::vector<Entity>)
 using info_map_type = std::map<std::string, std::string>;
 PYBIND11_MAKE_OPAQUE(info_map_type)
 
+namespace gemmi {
+  inline std::ostream& operator<< (std::ostream& os, const Entity& ent) {
+    os << "<gemmi.Entity '" << ent.name << "' "
+       << entity_type_to_string(ent.entity_type);
+    if (ent.polymer_type != PolymerType::Unknown)
+      os << ' ' << polymer_type_to_qstring(ent.polymer_type);
+    os << " object at " << (void*)&ent << '>';
+    return os;
+  }
+}
+
+template <typename T> std::string tostr(const T& s) {
+  std::ostringstream stream;
+  stream << s;
+  return stream.str();
+}
+
+
 namespace pybind11 { namespace detail {
   template<> struct type_caster<SeqId::OptionalNum>
     : optional_caster<SeqId::OptionalNum> {};
@@ -111,16 +129,7 @@ void add_mol(py::module& m) {
     .def_readwrite("entity_type", &Entity::entity_type)
     .def_readwrite("polymer_type", &Entity::polymer_type)
     .def_readwrite("poly_seq", &Entity::poly_seq)
-    .def("__repr__", [](const Entity& self) {
-        std::string r = "<gemmi.Entity '" + self.name + "' ";
-        r += entity_type_to_string(self.entity_type);
-        if (self.polymer_type != PolymerType::Unknown)
-          r += " " + polymer_type_to_qstring(self.polymer_type);
-        using namespace std;  // VS2015/17 doesn't like std::snprintf
-        char buf[64];
-        snprintf(buf, 64, " object at %p>", (void*)&self);
-        return r + buf;
-    });
+    .def("__repr__", &tostr<Entity>);
 
   py::class_<NcsOp>(m, "NcsOp")
     .def_readwrite("id", &NcsOp::id)
