@@ -363,6 +363,14 @@ void read_metadata_from_remarks(Structure& st) {
         case 240:
           pdb_impl::read_remark_200_230_240(remark.c_str(), st.meta);
           break;
+        case 300:
+          if (!st.meta.remark_300_detail.empty()) {
+            st.meta.remark_300_detail += '\n';
+            st.meta.remark_300_detail += rtrim_str(remark.substr(11));
+          } else if (remark.compare(11, 7, "REMARK:") == 0) {
+            st.meta.remark_300_detail = trim_str(remark.substr(18));
+          }
+          break;
       }
     }
 }

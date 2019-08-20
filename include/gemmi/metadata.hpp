@@ -146,6 +146,7 @@ struct Metadata {
   std::vector<SoftwareItem> software;
   std::string solved_by;       // _refine.pdbx_method_to_determine_struct
   std::string starting_model;  // _refine.pdbx_starting_model
+  std::string remark_300_detail; // _struct_biol.details
 
   bool has(double RefinementInfo::*field) const {
     return std::any_of(refinement.begin(), refinement.end(),

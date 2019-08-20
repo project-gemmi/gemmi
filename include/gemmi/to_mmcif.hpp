@@ -638,6 +638,11 @@ void update_cif_block(const Structure& st, cif::Block& block) {
     }
   }
 
+  if (!st.meta.remark_300_detail.empty()) {
+    block.set_pair("_struct_biol.id", "1");
+    block.set_pair("_struct_biol.details", cif::quote(st.meta.remark_300_detail));
+  }
+
   impl::write_struct_conn(st, block);
 
   // _struct_mon_prot_cis
