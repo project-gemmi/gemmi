@@ -28,7 +28,7 @@ inline size_t estimate_uncompressed_size(const std::string& path) {
   unsigned char buf[4];
   if (std::fread(buf, 1, 4, f.get()) != 4)
     fail("Failed to read last 4 bytes of: " + path);
-  size_t orig_size = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
+  unsigned orig_size = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
   if (orig_size + 100 < gzipped_size || orig_size > 100 * gzipped_size)
     fail("Cannot determine uncompressed size of " + path +
          "\nWould it be " + std::to_string(gzipped_size) + " -> " +
@@ -68,8 +68,8 @@ public:
       return MaybeStdin::memory();
     memory_size_ = estimate_uncompressed_size(path());
     open();
-    if (memory_size_ > 500000000)
-      fail("For now gz files above 500MB uncompressed are not supported.");
+    if (memory_size_ > 2147483647)
+      fail("For now gz files above 2 GiB uncompressed are not supported.");
     std::unique_ptr<char[]> mem(new char[memory_size_]);
     int bytes_read = gzread(file_, mem.get(), (unsigned) memory_size_);
     if (bytes_read < (int) memory_size_ && !gzeof(file_)) {
