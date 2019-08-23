@@ -277,7 +277,7 @@ static void convert(const std::string& input, CoorFormat input_type,
     if (!transcribe) {
       doc.blocks.clear();  // temporary, for testing
       doc.blocks.resize(1);
-      update_cif_block(st, doc.blocks[0]);
+      update_cif_block(st, doc.blocks[0], /*with_atoms=*/true);
     }
     for (const option::Option* opt = options[SkipCat]; opt; opt = opt->next()) {
       std::string category = opt->arg;

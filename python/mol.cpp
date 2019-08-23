@@ -220,6 +220,7 @@ void add_mol(py::module& m) {
        return os.str();
     })
     .def("make_mmcif_document", &make_mmcif_document)
+    .def("make_mmcif_headers", &make_mmcif_headers)
     .def("add_entity_types", (void (*)(Structure&, bool)) &add_entity_types,
          py::arg("overwrite")=false)
     .def("assign_subchains", (void (*)(Structure&, bool)) &assign_subchains,

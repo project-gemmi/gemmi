@@ -192,6 +192,8 @@ class TestMol(unittest.TestCase):
         refine = block.get_mmcif_category('_refine')
         self.assertEqual(refine['ls_d_res_high'], ['1.44', '1.43'])
         self.assertEqual(refine['pdbx_starting_model'], ['4I8H'] * 2)
+        self.assertEqual(list(block.find_values('_diffrn.ambient_temp')),
+                         ['295', '295'])
 
     def read_1pfe(self, filename):
         st = gemmi.read_structure(full_path(filename))

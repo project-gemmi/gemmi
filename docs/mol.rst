@@ -606,6 +606,20 @@ The content of the file can also be read from a string or from memory::
     # if you have the content of the PDB file in a string:
     structure = gemmi.read_pdb_string(string)
 
+Not all the metadata read from a PDB file is directly accessible from Python.
+Experimental details, refinement statistics, the secondary structure
+information, and many other things can be only read indirectly,
+by first putting it into a cif.Block:
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/5moo_header.pdb')
+  >>> block = st.make_mmcif_headers()
+  >>> block.get_mmcif_category('_diffrn')
+  {'id': ['1', '2'], 'crystal_id': ['1', '2'], 'ambient_temp': ['295', '295']}
+  >>> block.get_mmcif_category('_diffrn_radiation')
+  {'diffrn_id': ['1', '2'], 'pdbx_scattering_type': ['x-ray', 'neutron'], 'pdbx_monochromatic_or_laue_m_l': ['M', None], 'monochromator': [None, None]}
+
 Writing
 -------
 
@@ -620,7 +634,7 @@ in a header ``gemmi/to_pdb.hpp``::
   std::string make_pdb_headers(const Structure& st);
 
 Internally, these functions use the
-[stb_sprintf](https://github.com/nothings/stb) library.
+`stb_sprintf <https://github.com/nothings/stb>`_ library.
 And like in stb-style libraries, the implementation of the functions above
 is guarded by a macro. In exactly one file you need to add::
 

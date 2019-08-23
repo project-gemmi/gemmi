@@ -12,8 +12,9 @@
 
 namespace gemmi {
 
-void update_cif_block(const Structure& st, cif::Block& block);
+void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms);
 cif::Document make_mmcif_document(const Structure& st);
+cif::Block make_mmcif_headers(const Structure& st);
 
 // temporarily we use it in crdrst.cpp
 namespace impl {
@@ -186,7 +187,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
 
 } // namespace impl
 
-void update_cif_block(const Structure& st, cif::Block& block) {
+void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
   using std::to_string;
   if (st.models.empty())
     return;
@@ -685,7 +686,8 @@ void update_cif_block(const Structure& st, cif::Block& block) {
         poly_loop.add_row({ent.name, num, si.mon});
       }
 
-  impl::add_cif_atoms(st, block);
+  if (with_atoms)
+    impl::add_cif_atoms(st, block);
 
   if (st.meta.has_tls()) {
     cif::Loop& loop = block.init_mmcif_loop("_pdbx_refine_tls.", {
@@ -743,8 +745,14 @@ void update_cif_block(const Structure& st, cif::Block& block) {
 cif::Document make_mmcif_document(const Structure& st) {
   cif::Document doc;
   doc.blocks.resize(1);
-  gemmi::update_cif_block(st, doc.blocks[0]);
+  gemmi::update_cif_block(st, doc.blocks[0], true);
   return doc;
+}
+
+cif::Block make_mmcif_headers(const Structure& st) {
+  cif::Block block;
+  gemmi::update_cif_block(st, block, false);
+  return block;
 }
 
 } // namespace gemmi
