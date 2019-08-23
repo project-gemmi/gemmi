@@ -274,8 +274,7 @@ class TestMol(unittest.TestCase):
         self.assertEqual(A['56'][0].seqid.icode, ' ')
         self.assertEqual(A['56c'][0].seqid.icode, 'C')
 
-    def write_back_and_compare(self, path, via_cif):
-        st = gemmi.read_structure(path)
+    def write_and_read(self, st, via_cif):
         if via_cif:
             doc = st.make_mmcif_document()
             st = gemmi.make_structure_from_block(doc[0])
@@ -288,7 +287,7 @@ class TestMol(unittest.TestCase):
         path = full_path('1orc.pdb')
         with open(path) as f:
             expected = [line for line in f if is_written_to_pdb(line, via_cif)]
-        out_lines = self.write_back_and_compare(path, via_cif)
+        out_lines = self.write_and_read(gemmi.read_structure(path), via_cif)
         self.assertEqual(expected, out_lines)
 
     def test_read_write_1orc_via_cif(self):
@@ -299,7 +298,7 @@ class TestMol(unittest.TestCase):
         mode = 'rt' if sys.version_info >= (3,) else 'r'
         with gzip.open(path, mode=mode) as f:
             expected = [line for line in f if is_written_to_pdb(line, via_cif)]
-        out_lines = self.write_back_and_compare(path, via_cif)
+        out_lines = self.write_and_read(gemmi.read_structure(path), via_cif)
         self.assertEqual(expected[0], out_lines[0])
         # TITLE lines differ because the text is broken at different word
         self.assertEqual(expected[3:], out_lines[3:])
@@ -316,6 +315,36 @@ class TestMol(unittest.TestCase):
             pb = rb['CA'][0].pos
             image_of_pb = st.ncs[0].apply(pb)
             self.assertTrue(pa.dist(image_of_pb) < 0.01)
+
+    def test_read_write_5cvz_final(self, via_cif=False):
+        path = full_path('5cvz_final.pdb')
+        with open(path) as f:
+            expected = [line.rstrip() for line in f
+                        if is_written_to_pdb(line, via_cif) and
+                        # SCALE is not written b/c CRYST1 has more precision.
+                        line[:5] != 'SCALE']
+        st = gemmi.read_structure(path)
+        if via_cif:
+            # input file w/o TER record -> subchains not setup automatically
+            st.setup_entities()
+            doc = st.make_mmcif_document()
+            st = gemmi.make_structure_from_block(doc[0])
+        # First MTRIX which is identity is not stored. Let's add it here.
+        identity_ncs = gemmi.NcsOp()
+        identity_ncs.id = '1'
+        identity_ncs.given = True
+        st.ncs.insert(0, identity_ncs)
+        out_lines = self.write_and_read(st, via_cif=False)
+        if via_cif:
+            out_lines = [line for line in out_lines
+                         # input file has no REMARK 2, but it gets generated
+                         # from REMARK 3 when going pdb->cif->pdb
+                         if line[:10] != 'REMARK   2' and
+                         line[:5] != 'TER  ']
+        self.assertEqual(expected, [line.rstrip() for line in out_lines])
+
+    def test_read_write_5cvz_final_via_cif(self):
+        self.test_read_write_5cvz_final(via_cif=True)
 
     def test_pdb_element_names(self):
         pdb_line = "HETATM 4154 MG    MG A 341       1.384  19.340  11.968" \

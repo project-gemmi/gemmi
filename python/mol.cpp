@@ -125,6 +125,7 @@ void add_mol(py::module& m) {
     .def("__repr__", [](const Entity& self) { return tostr(self); });
 
   py::class_<NcsOp>(m, "NcsOp")
+    .def(py::init<>())
     .def_readwrite("id", &NcsOp::id)
     .def_readwrite("given", &NcsOp::given)
     .def_readonly("tr", &NcsOp::tr)
