@@ -114,8 +114,13 @@ void process_match(const Input& in, Parameters& par, int n) {
     printf("%s%s", par.block_name.c_str(), sep);
   if (par.with_line_numbers)
     printf("%zu%s", in.iterator().line, sep);
-  if (par.with_tag)
-    printf("[%s] ", (n < 0 ? par.search_tag : par.multi_tags[n]).c_str());
+  if (par.with_tag) {
+    const std::string& tag = n < 0 ? par.search_tag : par.multi_tags[n];
+    if (par.delim.empty())
+      printf("[%s] ", tag.c_str());
+    else
+      printf("%s%s", tag.c_str(), sep);
+  }
   std::string value = par.raw ? in.string() : cif::as_string(in.string());
   printf("%s\n", value.c_str());
   if (par.counters[0] == par.max_count)
@@ -184,8 +189,12 @@ static void process_multi_match(Parameters& par) {
       printf("%s%s", par.path, sep);
     if (par.with_blockname)
       printf("%s%s", par.block_name.c_str(), sep);
-    if (par.with_tag)
-      printf("[%s] ", par.multi_tags[0].c_str());
+    if (par.with_tag) {
+      if (par.delim.empty())
+        printf("[%s] ", par.multi_tags[0].c_str());
+      else
+        printf("%s%s", par.multi_tags[0].c_str(), sep);
+    }
     for (size_t j = 0; j != par.multi_values.size(); ++j) {
       if (j != 0)
         std::fputs(par.delim.empty() ? ";" : par.delim.c_str(), stdout);
