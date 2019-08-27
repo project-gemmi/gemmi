@@ -396,6 +396,15 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
           if (std::strstr(line, "RESOLUTION RANGE HIGH (ANGSTROMS)"))
             if (const char* colon = std::strchr(line + 44, ':'))
               st.resolution = simple_atof(colon + 1);
+        } else if (num == 350) {
+          if (len > 24 && strncmp(line + 11, "BIOMOLECULE:", 12) == 0)
+            st.assemblies.emplace_back(read_string(line+23, 20));
+          // AUTHOR DETERMINED BIOLOGICAL UNIT:
+          // SOFTWARE DETERMINED QUATERNARY STRUCTURE:
+          // APPLY THE FOLLOWING TO CHAINS:
+          //                    AND CHAINS:
+          //  BIOMT1
+          // TODO
         }
       }
 

@@ -194,6 +194,66 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
   }
 }
 
+inline std::vector<Assembly> read_assemblies(cif::Block& block) {
+  std::vector<Assembly> assemblies;
+  cif::Table prop_tab = block.find("_pdbx_struct_assembly_prop.",
+                                   {"biol_id", "type", "value"});
+  cif::Table gen_tab = block.find("_pdbx_struct_assembly_gen.",
+                          {"assembly_id", "oper_expression", "asym_id_list"});
+  std::vector<Assembly::Oper> oper_list;
+  std::vector<std::string> oper_list_tags = transform_tags("matrix", "vector");
+  oper_list_tags.emplace_back("id");  // 12
+  oper_list_tags.emplace_back("type");  // 13
+  for (const auto row : block.find("_pdbx_struct_oper_list.", oper_list_tags)) {
+    oper_list.emplace_back();
+    oper_list.back().name = row.str(12);
+    oper_list.back().type = row.str(13);
+    oper_list.back().transform = get_transform_matrix(row);
+  }
+  for (const auto row : block.find("_pdbx_struct_assembly.", {
+        "id", "details", "method_details",
+        "oligomeric_details", "oligomeric_count"})) {
+    assemblies.emplace_back(row.str(0));
+    Assembly& a = assemblies.back();
+    std::string detail = row.str(1);
+    if (detail == "author_and_software_defined_assembly")
+      a.author_determined = a.software_determined = true;
+    else if (detail == "author_defined_assembly")
+      a.author_determined = true;
+    else if (detail == "software_defined_assembly")
+      a.software_determined = true;
+    if (!a.author_determined && !a.software_determined) {
+      assemblies.pop_back();
+      continue;
+    }
+    if (a.software_determined && !cif::is_null(row[2]))
+      a.software_name = row.str(2);  // method_details
+    a.oligomeric_details = row.str(3);
+    a.oligomeric_count = cif::as_int(row[4], 0);
+    for (const auto row_p : prop_tab)
+      if (row_p.str(0) == a.name) {
+        std::string type = row_p.str(1);
+        double value = cif::as_number(row_p[2]);
+        if (type == "ABSA (A^2)")
+          a.absa = value;
+        else if (type == "SSA (A^2)")
+          a.ssa = value;
+        else if (type == "MORE")
+          a.more = value;
+      }
+    for (const auto row_g : gen_tab)
+      if (row_g.str(0) == a.name) {
+        a.generators.emplace_back();
+        Assembly::Gen& gen = a.generators.back();
+        split_str_into(row_g.str(2), ',', gen.subchains);
+        for (const std::string& name : split_str(row_g.str(1), ','))
+          if (const Assembly::Oper* oper = impl::find_or_null(oper_list, name))
+            gen.opers.push_back(*oper);
+      }
+  }
+  return assemblies;
+}
+
 inline void fill_residue_entity_type(Structure& st) {
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
@@ -454,8 +514,8 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
 
   st.helices = read_helices(block);
   st.sheets = read_sheets(block);
-
   read_connectivity(block, st);
+  st.assemblies = read_assemblies(block);
 
   return st;
 }

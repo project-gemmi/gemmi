@@ -880,6 +880,31 @@ struct NcsOp {
   Position apply(const Position& p) const { return Position(tr.apply(p)); }
 };
 
+// bioassembly / biomolecule
+struct Assembly {
+  struct Oper {
+    std::string name; // optional (from mmCIF only)
+    std::string type; // optional (from mmCIF only)
+    Transform transform;
+  };
+  struct Gen {
+    std::vector<std::string> chains;
+    std::vector<std::string> subchains;
+    std::vector<Oper> opers;
+  };
+  std::string name;
+  bool author_determined = false;
+  bool software_determined = false;
+  int oligomeric_count = 0;
+  std::string oligomeric_details;
+  std::string software_name;
+  double absa = NAN; // TOTAL BURIED SURFACE AREA: ... ANGSTROM**2
+  double ssa = NAN;  // SURFACE AREA OF THE COMPLEX: ... ANGSTROM**2
+  double more = NAN; // CHANGE IN SOLVENT FREE ENERGY: ... KCAL/MOL
+  std::vector<Gen> generators;
+  Assembly(const std::string& name_) : name(name_) {}
+};
+
 inline const Entity* get_entity_of(const ConstResidueSpan& sub,
                                    const std::vector<Entity>& entities) {
   if (sub && !sub.subchain_id().empty())
@@ -898,6 +923,7 @@ struct Structure {
   std::vector<Entity> entities;
   std::vector<Helix> helices;
   std::vector<Sheet> sheets;
+  std::vector<Assembly> assemblies;
   Metadata meta;
 
   // Store ORIGXn / _database_PDB_matrix.origx*
