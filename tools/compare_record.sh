@@ -43,9 +43,14 @@ cut -f1,3 - | grep "$MONTH" | while read -r code date; do
     inp=${PDB_COPY}/mmCIF/${code:1:2}/${code}.cif.gz
   fi
   if [ -e $inp ] && [ -e $pdb ]; then
+    if [[ ${VIA_CIF:-} = 1 ]]; then
+        cifout="/run/gemmi/$code.cif"
+        $GEMMI convert "$inp" "$cifout"
+        inp="$cifout"
+    fi
     ${DIFF:-diff} -U0 --label="$pdb" --label="from $inp" \
         <(zgrep "$RECORD" "$pdb") \
-        <($GEMMI-convert --to=pdb "$inp" - | grep "$RECORD") ||:
+        <($GEMMI convert --to=pdb "$inp" - | grep "$RECORD") ||:
   else
       echo "files not found for $code"
   fi
