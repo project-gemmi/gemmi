@@ -44,8 +44,8 @@ cut -f1,3 - | grep "$MONTH" | while read -r code date; do
   fi
   if [ -e $inp ] && [ -e $pdb ]; then
     ${DIFF:-diff} -U0 --label="$pdb" --label="from $inp" \
-        <(zgrep $RECORD "$pdb") \
-        <($GEMMI convert --to=pdb "$inp" - | grep $RECORD) ||:
+        <(zgrep "$RECORD" "$pdb") \
+        <($GEMMI-convert --to=pdb "$inp" - | grep "$RECORD") ||:
   else
       echo "files not found for $code"
   fi
