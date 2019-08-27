@@ -7,6 +7,7 @@
 
 #include <algorithm>  // for equal, find, remove_if
 #include <cctype>     // for tolower
+#include <cstring>    // for strncmp
 #include <iterator>   // for begin, end, make_move_iterator
 #include <stdexcept>  // for runtime_error
 #include <string>
@@ -19,6 +20,10 @@ namespace gemmi {
 inline bool starts_with(const std::string& str, const std::string& prefix) {
   size_t sl = prefix.length();
   return str.length() >= sl && str.compare(0, sl, prefix) == 0;
+}
+
+template<size_t N> bool starts_with(const char* a, const char (&b)[N]) {
+  return std::strncmp(a, b, N-1) == 0;
 }
 
 inline bool ends_with(const std::string& str, const std::string& suffix) {

@@ -883,7 +883,7 @@ struct NcsOp {
 // bioassembly / biomolecule
 struct Assembly {
   struct Oper {
-    std::string name; // optional (from mmCIF only)
+    std::string name; // optional
     std::string type; // optional (from mmCIF only)
     Transform transform;
   };

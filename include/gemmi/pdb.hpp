@@ -385,27 +385,62 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
     } else if (is_record_type(line, "REMARK")) {
       st.raw_remarks.push_back(line);
-      // By default, we only look for resolution.
+      if (len <= 11)
+        continue;
+      int num = read_int(line + 7, 3);
+      // By default, we only look for resolution and REMARK 350.
       // Other parsing of remarks is in interpret_remarks().
-      if (len > 11 && st.resolution == 0.0) {
-        int num = read_int(line + 7, 3);
-        if (num == 2) {
-          if (std::strstr(line, "ANGSTROM"))
-            st.resolution = read_double(line + 23, 7);
-        } else if (num == 3) {
-          if (std::strstr(line, "RESOLUTION RANGE HIGH (ANGSTROMS)"))
-            if (const char* colon = std::strchr(line + 44, ':'))
-              st.resolution = simple_atof(colon + 1);
-        } else if (num == 350) {
-          if (len > 24 && strncmp(line + 11, "BIOMOLECULE:", 12) == 0)
-            st.assemblies.emplace_back(read_string(line+23, 20));
-          // AUTHOR DETERMINED BIOLOGICAL UNIT:
-          // SOFTWARE DETERMINED QUATERNARY STRUCTURE:
-          // APPLY THE FOLLOWING TO CHAINS:
-          //                    AND CHAINS:
-          //  BIOMT1
-          // TODO
+      if (num == 2) {
+        if (st.resolution == 0.0 && std::strstr(line, "ANGSTROM"))
+          st.resolution = read_double(line + 23, 7);
+      } else if (num == 3) {
+        if (st.resolution == 0.0 &&
+            std::strstr(line, "RESOLUTION RANGE HIGH (ANGSTROMS)"))
+          if (const char* colon = std::strchr(line + 44, ':'))
+            st.resolution = simple_atof(colon + 1);
+      } else if (num == 350) {
+        const char* colon = std::strchr(line+11, ':');
+        if (colon == line+22 && starts_with(line+11, "BIOMOLECULE")) {
+          st.assemblies.emplace_back(read_string(line+23, 20));
+          continue;
         }
+        if (st.assemblies.empty())
+          continue;
+        Assembly& assembly = st.assemblies.back();
+        if (starts_with(line+11, "  BIOMT")) {
+          if (read_matrix(matrix, line+13, len-13) == 3)
+            if (!assembly.generators.empty()) {
+              auto& opers = assembly.generators.back().opers;
+              opers.emplace_back();
+              opers.back().name = read_string(line+7, 3);
+              opers.back().transform = matrix;
+              matrix.set_identity();
+            }
+#define CHECK(cpos, text) (colon == line+cpos && starts_with(line+11, text))
+        } else if (CHECK(44, "AUTHOR DETERMINED")) {
+          assembly.author_determined = true;
+          assembly.oligomeric_details = read_string(line+45, 35);
+        } else if (CHECK(51, "SOFTWARE DETERMINED")) {
+          assembly.software_determined = true;
+          assembly.oligomeric_details = read_string(line+52, 28);
+        } else if (CHECK(24, "SOFTWARE USED")) {
+          assembly.software_name = read_string(line+25, 55);
+        } else if (CHECK(36, "TOTAL BURIED SURFACE AREA")) {
+          assembly.absa = read_double(line+37, 12);
+        } else if (CHECK(38, "SURFACE AREA OF THE COMPLEX")) {
+          assembly.ssa = read_double(line+39, 12);
+        } else if (CHECK(40, "CHANGE IN SOLVENT FREE ENERGY")) {
+          assembly.more = read_double(line+41, 12);
+        } else if (CHECK(40, "APPLY THE FOLLOWING TO CHAINS") ||
+                   CHECK(40, "                   AND CHAINS")) {
+          if (line[11] == 'A') // first line - APPLY ...
+            assembly.generators.emplace_back();
+          else if (assembly.generators.empty())
+            continue;
+          split_str_into_multi(read_string(line+41, 39), ", ",
+                               assembly.generators.back().chains);
+        }
+#undef CHECK
       }
 
     } else if (is_record_type(line, "CONECT")) {
