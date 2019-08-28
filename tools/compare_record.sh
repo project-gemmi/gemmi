@@ -14,6 +14,8 @@
 # Customization via environment variables:
 #  - setting diff path or wrapper: DIFF=colordiff
 #  - PDB->PDB conversion: FROM_PDB=1
+#  - cif->cif->PDB conversion: VIA_CIF=1
+#  - PDB->cif->PDB conversion: FROM_PDB=1 VIA_CIF=1
 #
 # Example (date is Jan 2017): compare_record.sh LINK "01/../17" < entries.idx
 #
@@ -32,6 +34,7 @@ else
   echo "gemmi executable not found"
   exit 1
 fi
+CONVERT="$GEMMI convert --translate"
 
 cut -f1,3 - | grep "$MONTH" | while read -r code date; do
   code=${code,,}
@@ -45,12 +48,12 @@ cut -f1,3 - | grep "$MONTH" | while read -r code date; do
   if [ -e $inp ] && [ -e $pdb ]; then
     if [[ ${VIA_CIF:-} = 1 ]]; then
         cifout="/run/gemmi/$code.cif"
-        $GEMMI convert "$inp" "$cifout"
+        $CONVERT "$inp" "$cifout"
         inp="$cifout"
     fi
     ${DIFF:-diff} -U0 --label="$pdb" --label="from $inp" \
         <(zgrep "$RECORD" "$pdb") \
-        <($GEMMI convert --to=pdb "$inp" - | grep "$RECORD") ||:
+        <($CONVERT --to=pdb "$inp" - | grep "$RECORD") ||:
   else
       echo "files not found for $code"
   fi

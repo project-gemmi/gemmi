@@ -202,6 +202,10 @@ struct Transform {
     return mat.is_identity() && vec.x == 0. && vec.y == 0. && vec.z == 0.;
   }
   void set_identity() { mat = Mat33(); vec = Vec3(); }
+
+  bool approx(const Transform& o, double epsilon) const {
+    return mat.approx(o.mat, epsilon) && vec.approx(o.vec, epsilon);
+  }
 };
 
 struct BoundingBox {

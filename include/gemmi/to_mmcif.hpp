@@ -139,6 +139,107 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
   }
 }
 
+// the names are: monomeric, dimeric, ...meric, 21-meric, 22-meric, ...
+int xmeric_to_number(const std::string& oligomeric) {
+  static const char names[20][10] = {
+    "mono", "di", "tri", "tetra", "penta",
+    "hexa", "hepta", "octa", "nona", "deca",
+    "undeca", "dodeca", "trideca", "tetradeca", "pentadeca",
+    "hexadeca", "heptadeca", "octadeca", "nonadeca", "eicosa"
+  };
+  size_t len = oligomeric.length();
+  const char* p = oligomeric.c_str();
+  for (int i = 0; i != 20; ++i)
+    if (len == std::strlen(names[i]) + 5 && strncmp(p, names[i], len-5) == 0)
+      return i + 1;
+  int n = 0;
+  for (; is_digit(*p); ++p)
+    n = n * 10 + (*p - '0');
+  return n;
+}
+
+void write_assemblies(const Structure& st, cif::Block& block) {
+  block.items.reserve(block.items.size() + 4); // avoid re-allocation
+  cif::Loop& a_loop = block.init_mmcif_loop("_pdbx_struct_assembly.",
+      {"id", "details", "method_details",
+       "oligomeric_details", "oligomeric_count"});
+  cif::Loop& prop_loop = block.init_mmcif_loop("_pdbx_struct_assembly_prop.",
+      {"biol_id", "type", "value"});
+  cif::Loop& gen_loop = block.init_mmcif_loop("_pdbx_struct_assembly_gen.",
+      {"assembly_id", "oper_expression", "asym_id_list"});
+  cif::Loop& oper_loop = block.init_mmcif_loop("_pdbx_struct_oper_list.",
+      {"id", "type",
+       "matrix[1][1]", "matrix[1][2]", "matrix[1][3]", "vector[1]",
+       "matrix[2][1]", "matrix[2][2]", "matrix[2][3]", "vector[2]",
+       "matrix[3][1]", "matrix[3][2]", "matrix[3][3]", "vector[3]"});
+  std::vector<const Assembly::Oper*> distinct_oper;
+  for (const Assembly& as : st.assemblies) {
+    std::string how_defined = "?";
+    if (as.author_determined && as.software_determined)
+      how_defined = "author_and_software_defined_assembly";
+    else if (as.author_determined)
+      how_defined = "author_defined_assembly";
+    else if (as.software_determined)
+      how_defined = "software_defined_assembly";
+    std::string oligomer = to_lower(as.oligomeric_details);
+    int nmer = as.oligomeric_count != 0 ? as.oligomeric_count
+                                        : xmeric_to_number(oligomer);
+    // _pdbx_struct_assembly
+    a_loop.add_row({as.name,
+                    how_defined,
+                    impl::string_or_qmark(as.software_name),
+                    cif::quote(oligomer),
+                    nmer == 0 ? "?" : std::to_string(nmer)});
+
+    // _pdbx_struct_assembly_prop
+    if (!std::isnan(as.absa))
+      prop_loop.add_row({as.name, "'ABSA (A^2)'", to_str(as.absa)});
+    if (!std::isnan(as.ssa))
+      prop_loop.add_row({as.name, "'SSA (A^2)'", to_str(as.ssa)});
+    if (!std::isnan(as.more))
+      prop_loop.add_row({as.name, "MORE", to_str(as.more)});
+
+    // _pdbx_struct_assembly_gen and _pdbx_struct_oper_list
+    for (const Assembly::Gen& gen : as.generators) {
+      std::string subchain_str;
+      for (const std::string& name : gen.subchains)
+        string_append_sep(subchain_str, ',', name);
+      if (subchain_str.empty()) // chain names to subchain names
+        for (const Chain& chain : st.models[0].chains)
+          if (in_vector(chain.name, gen.chains))
+            for (const auto& sub : chain.subchains())
+              string_append_sep(subchain_str, ',', sub.front().subchain);
+      std::string oper_str;
+      for (const Assembly::Oper& oper : gen.opers) {
+        size_t k = 0;
+        for (; k != distinct_oper.size(); ++k)
+          if (distinct_oper[k]->transform.approx(oper.transform, 1e-9))
+            break;
+        string_append_sep(oper_str, ',', std::to_string(k+1));
+        if (k != distinct_oper.size())
+          continue;
+        distinct_oper.emplace_back(&oper);
+        oper_loop.values.emplace_back(std::to_string(k+1));
+        if (!oper.type.empty()) {
+          oper_loop.values.emplace_back(cif::quote(oper.type));
+        } else if (oper.transform.is_identity()) {
+          oper_loop.values.emplace_back("'identity operation'");
+        } else {
+          oper_loop.values.emplace_back("'crystal symmetry operation'");
+        }
+        for (int i = 0; i < 3; ++i) {
+          for (int j = 0; j < 3; ++j)
+            oper_loop.values.emplace_back(to_str(oper.transform.mat[i][j]));
+          oper_loop.values.emplace_back(to_str(oper.transform.vec.at(i)));
+        }
+      }
+      gen_loop.add_row({as.name,
+                        oper_str.empty() ? "." : oper_str,
+                        subchain_str.empty() ? "?" : subchain_str});
+    }
+  }
+}
+
 void write_struct_conn(const Structure& st, cif::Block& block) {
   // example:
   // disulf1 disulf A CYS 3  SG ? 3 ? 1_555 A CYS 18 SG ? 18 ?  1_555 ? 2.045
@@ -639,10 +740,13 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
     }
   }
 
+  // _pdbx_struct_assembly* and _struct_biol (REMARK 300/350)
   if (!st.meta.remark_300_detail.empty()) {
     block.set_pair("_struct_biol.id", "1");
     block.set_pair("_struct_biol.details", cif::quote(st.meta.remark_300_detail));
   }
+  if (!st.assemblies.empty())
+    impl::write_assemblies(st, block);
 
   impl::write_struct_conn(st, block);
 

@@ -172,6 +172,12 @@ std::string join_str(const T& iterable, const S& sep) {
   return join_str(iterable.begin(), iterable.end(), sep);
 }
 
+template<typename T, typename S>
+void string_append_sep(std::string& str, S sep, const T& item) {
+  if (!str.empty())
+    str += sep;
+  str += item;
+}
 
 //   #####   vector helpers   #####
 
