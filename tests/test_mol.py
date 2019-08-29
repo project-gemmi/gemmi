@@ -329,7 +329,6 @@ class TestMol(unittest.TestCase):
             st.setup_entities()
             doc = st.make_mmcif_document()
             st = gemmi.make_structure_from_block(doc[0])
-            doc.write_file('/tmp/yyout.cif')
         # First MTRIX which is identity is not stored. Let's add it here.
         identity_ncs = gemmi.NcsOp()
         identity_ncs.id = '1'
@@ -342,8 +341,6 @@ class TestMol(unittest.TestCase):
                          # from REMARK 3 when going pdb->cif->pdb
                          if line[:10] != 'REMARK   2' and
                          line[:5] != 'TER  ']
-            # combination of MTRIX and REMARK 350 is yet to be sorted
-            expected = [line for line in expected if line[:10] != 'REMARK 350']
         self.assertEqual(expected, [line.rstrip() for line in out_lines])
 
     def test_read_write_5cvz_final_via_cif(self):

@@ -111,6 +111,17 @@ inline int simple_atoi(const char* p, const char** endptr=nullptr) {
   return mult * n;
 }
 
+inline int no_sign_atoi(const char* p, const char** endptr=nullptr) {
+  int n = 0;
+  while (is_space(*p))
+    ++p;
+  for (; is_digit(*p); ++p)
+    n = n * 10 + (*p - '0');
+  if (endptr)
+    *endptr = p;
+  return n;
+}
+
 
 // no checking for overflow
 // no support for scientific notation

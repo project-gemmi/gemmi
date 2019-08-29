@@ -152,10 +152,7 @@ int xmeric_to_number(const std::string& oligomeric) {
   for (int i = 0; i != 20; ++i)
     if (len == std::strlen(names[i]) + 5 && strncmp(p, names[i], len-5) == 0)
       return i + 1;
-  int n = 0;
-  for (; is_digit(*p); ++p)
-    n = n * 10 + (*p - '0');
-  return n;
+  return no_sign_atoi(p);
 }
 
 void write_assemblies(const Structure& st, cif::Block& block) {
@@ -181,6 +178,12 @@ void write_assemblies(const Structure& st, cif::Block& block) {
       how_defined = "author_defined_assembly";
     else if (as.software_determined)
       how_defined = "software_defined_assembly";
+    else if (as.special_kind == Assembly::SpecialKind::CompleteIcosahedral)
+      how_defined = "complete icosahedral assembly";
+    else if (as.special_kind == Assembly::SpecialKind::RepresentativeHelical)
+      how_defined = "representative helical assembly";
+    else if (as.special_kind == Assembly::SpecialKind::CompletePoint)
+      how_defined = "complete point assembly";
     std::string oligomer = to_lower(as.oligomeric_details);
     int nmer = as.oligomeric_count != 0 ? as.oligomeric_count
                                         : xmeric_to_number(oligomer);
@@ -224,8 +227,10 @@ void write_assemblies(const Structure& st, cif::Block& block) {
           oper_loop.values.emplace_back(cif::quote(oper.type));
         } else if (oper.transform.is_identity()) {
           oper_loop.values.emplace_back("'identity operation'");
-        } else {
+        } else if (as.author_determined || as.software_determined) {
           oper_loop.values.emplace_back("'crystal symmetry operation'");
+        } else {
+          oper_loop.values.emplace_back(".");
         }
         for (int i = 0; i < 3; ++i) {
           for (int j = 0; j < 3; ++j)

@@ -892,9 +892,13 @@ struct Assembly {
     std::vector<std::string> subchains;
     std::vector<Oper> opers;
   };
+  enum class SpecialKind {
+    NA, CompleteIcosahedral, RepresentativeHelical, CompletePoint
+  };
   std::string name;
   bool author_determined = false;
   bool software_determined = false;
+  SpecialKind special_kind = SpecialKind::NA;
   int oligomeric_count = 0;
   std::string oligomeric_details;
   std::string software_name;

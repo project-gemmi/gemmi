@@ -194,6 +194,35 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
   }
 }
 
+// Operation expression is an item type used for *.oper_expression.
+// Here, to keep it simple, we ignore products such as "(2)(3)".
+// We parse "3", "1,3,5", "one,two", "(3)", "(a)", "(1-60)", "(2,3-8,XY)", etc
+inline std::vector<std::string> parse_operation_expr(const std::string& expr) {
+  std::vector<std::string> result;
+  std::size_t start = 0;
+  std::size_t close_br = std::string::npos;
+  if (expr[0] == '(') {
+    start = 1;
+    close_br = expr.find(')');
+  }
+  for (;;) {
+    std::size_t sep = std::min(expr.find(',', start), close_br);
+    std::size_t minus = expr.find('-', start);
+    if (minus < sep) {
+      int n_min = no_sign_atoi(expr.c_str() + start);
+      int n_max = no_sign_atoi(expr.c_str() + minus + 1);
+      for (int n = n_min; n <= n_max; ++n)
+        result.push_back(std::to_string(n));
+    } else {
+      result.emplace_back(expr, start, sep - start);
+    }
+    if (sep == close_br)
+      break;
+    start = sep + 1;
+  }
+  return result;
+}
+
 inline std::vector<Assembly> read_assemblies(cif::Block& block) {
   std::vector<Assembly> assemblies;
   cif::Table prop_tab = block.find("_pdbx_struct_assembly_prop.",
@@ -222,7 +251,15 @@ inline std::vector<Assembly> read_assemblies(cif::Block& block) {
       a.author_determined = true;
     else if (detail == "software_defined_assembly")
       a.software_determined = true;
-    if (!a.author_determined && !a.software_determined) {
+    else if (detail == "complete icosahedral assembly")
+      a.special_kind = Assembly::SpecialKind::CompleteIcosahedral;
+    else if (detail == "representative helical assembly")
+      a.special_kind = Assembly::SpecialKind::RepresentativeHelical;
+    else if (detail == "complete point assembly")
+      a.special_kind = Assembly::SpecialKind::CompletePoint;
+
+    if (!a.author_determined && !a.software_determined &&
+        a.special_kind == Assembly::SpecialKind::NA && !detail.empty()) {
       assemblies.pop_back();
       continue;
     }
@@ -246,7 +283,7 @@ inline std::vector<Assembly> read_assemblies(cif::Block& block) {
         a.generators.emplace_back();
         Assembly::Gen& gen = a.generators.back();
         split_str_into(row_g.str(2), ',', gen.subchains);
-        for (const std::string& name : split_str(row_g.str(1), ','))
+        for (const std::string& name : parse_operation_expr(row_g.str(1)))
           if (const Assembly::Oper* oper = impl::find_or_null(oper_list, name))
             gen.opers.push_back(*oper);
       }
