@@ -467,7 +467,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
 
   // _refine
   if (!st.meta.refinement.empty()) {
-    block.items.reserve(block.items.size() + 3);
+    block.items.reserve(block.items.size() + 4);
     cif::Loop& loop = block.init_mmcif_loop("_refine.", {
         "entry_id",
         "pdbx_refine_id",
@@ -479,6 +479,9 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
         "entry_id",
         "pdbx_refine_id",
         "Luzzati_coordinate_error_obs"});
+    cif::Loop& restr_loop = block.init_mmcif_loop("_refine_ls_restr.", {
+        "pdbx_refine_id", "type",
+        "number", "weight", "pdbx_restraint_function", "dev_ideal"});
     cif::Loop& shell_loop = block.init_mmcif_loop("_refine_ls_shell.", {
         "pdbx_refine_id",
         "d_res_high",
@@ -549,6 +552,13 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
         add("pdbx_starting_model", impl::string_or_qmark(st.meta.starting_model));
       analyze_loop.add_row({id, ref.id,
                             impl::number_or_qmark(ref.luzzati_error)});
+      for (const RefinementInfo::Restr& restr : ref.restr_stats)
+        restr_loop.add_row({ref.id,
+                            cif::quote(restr.name),
+                            impl::int_or_qmark(restr.count),
+                            impl::number_or_qmark(restr.weight),
+                            impl::string_or_qmark(restr.function),
+                            impl::number_or_qmark(restr.dev_ideal)});
       for (const BasicRefinementInfo& bin : ref.bins)
         shell_loop.add_row({ref.id,
                             impl::number_or_dot(bin.resolution_high),

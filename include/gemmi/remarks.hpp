@@ -69,6 +69,19 @@ inline void add_software(Metadata& meta, SoftwareItem::Classification type,
   }
 }
 
+// REMARK   3   TERM                          COUNT    WEIGHT   FUNCTION.
+// REMARK   3    BOND LENGTHS              : 5760   ; 2.000  ; HARMONIC
+inline void add_restraint_count_weight(RefinementInfo& ref_info,
+                                       const char* key, const char* value) {
+  ref_info.restr_stats.emplace_back(key);
+  RefinementInfo::Restr& restr = ref_info.restr_stats.back();
+  const char* endptr;
+  restr.count = no_sign_atoi(value, &endptr);
+  if (const char* sep = std::strchr(endptr, ';'))
+    restr.weight = simple_atof(sep + 1, &endptr);
+  if (const char* sep = std::strchr(endptr, ';'))
+    restr.function = read_string(sep+1, 50);
+}
 
 inline void read_remark3_line(const char* line, Metadata& meta) {
   // Based on:
@@ -170,6 +183,34 @@ inline void read_remark3_line(const char* line, Metadata& meta) {
       ref_info.cc_fo_fc = simple_atof(value);
     } else if (same_str(key, "CORRELATION COEFFICIENT FO-FC FREE")) {
       ref_info.cc_fo_fc_free = simple_atof(value);
+    } else if (same_str(key, "BOND LENGTHS")) {
+      add_restraint_count_weight(ref_info, "t_bond_d", value);
+    } else if (same_str(key, "BOND ANGLES")) {
+      add_restraint_count_weight(ref_info, "t_angle_deg", value);
+    } else if (same_str(key, "TORSION ANGLES")) {
+      add_restraint_count_weight(ref_info, "t_dihedral_angle_d", value);
+    } else if (same_str(key, "GENERAL PLANES")) {
+      add_restraint_count_weight(ref_info, "t_gen_planes", value);
+    } else if (same_str(key, "ISOTROPIC THERMAL FACTORS")) {
+      add_restraint_count_weight(ref_info, "t_it", value);
+    } else if (same_str(key, "BAD NON-BONDED CONTACTS")) {
+      add_restraint_count_weight(ref_info, "t_nbd", value);
+    } else if (same_str(key, "CHIRAL IMPROPER TORSION")) {
+      add_restraint_count_weight(ref_info, "t_chiral_improper_torsion", value);
+    } else if (same_str(key, "IDEAL-DIST CONTACT TERM")) {
+      add_restraint_count_weight(ref_info, "t_ideal_dist_contact", value);
+    } else if (same_str(key, "BOND LENGTHS                       (A)")) {
+      impl::find_or_add(ref_info.restr_stats, "t_bond_d").dev_ideal
+        = read_double(value, 50);
+    } else if (same_str(key, "BOND ANGLES                  (DEGREES)")) {
+      impl::find_or_add(ref_info.restr_stats, "t_angle_deg").dev_ideal
+        = read_double(value, 50);
+    } else if (same_str(key, "PEPTIDE OMEGA TORSION ANGLES (DEGREES)")) {
+      impl::find_or_add(ref_info.restr_stats, "t_omega_torsion").dev_ideal
+        = read_double(value, 50);
+    } else if (same_str(key, "OTHER TORSION ANGLES         (DEGREES)")) {
+      impl::find_or_add(ref_info.restr_stats, "t_other_torsion").dev_ideal
+        = read_double(value, 50);
     } else if (same_str(key, "TLS GROUP")) {
       ref_info.tls_groups.emplace_back();
       ref_info.tls_groups.back().id = std::string(value, end);

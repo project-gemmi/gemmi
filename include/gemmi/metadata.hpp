@@ -114,10 +114,12 @@ struct BasicRefinementInfo {
 
 struct RefinementInfo : BasicRefinementInfo {
   struct Restr {
-    std::string type;
+    std::string name;
     int count = -1;
     double weight = NAN;
     std::string function;
+    double dev_ideal = NAN;
+    Restr(const std::string& name_) : name(name_) {}
   };
   std::string id;
   std::string cross_validation_method; // _refine.pdbx_ls_cross_valid_method
@@ -133,7 +135,7 @@ struct RefinementInfo : BasicRefinementInfo {
   double dpi_cruickshank_rfree = NAN; // _refine.pdbx_overall_SU_R_free_Cruickshank_DPI
   double cc_fo_fc = NAN;              // _refine.correlation_coeff_Fo_to_Fc
   double cc_fo_fc_free = NAN;         // _refine.correlation_coeff_Fo_to_Fc_free
-  std::vector<Restr> restr;           // _refine_ls_restr
+  std::vector<Restr> restr_stats;     // _refine_ls_restr
   std::vector<TlsGroup> tls_groups;   // _pdbx_refine_tls
   std::string remarks;
 };
@@ -166,7 +168,7 @@ struct Metadata {
   }
   bool has_restr() const {
     return std::any_of(refinement.begin(), refinement.end(),
-            [&](const RefinementInfo& r) { return !r.restr.empty(); });
+            [&](const RefinementInfo& r) { return !r.restr_stats.empty(); });
   }
   bool has_tls() const {
     return std::any_of(refinement.begin(), refinement.end(),
