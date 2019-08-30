@@ -9,6 +9,7 @@ import os
 import sys
 
 USE_SYSTEM_ZLIB = False
+MIN_PYBIND_VER = '2.3.0'
 
 def read_version_from_header():
     with open('include/gemmi/version.hpp') as f:
@@ -39,6 +40,12 @@ class get_pybind_include(object):
             print('\n' + 50*'*')
             print('*****  Please try to install pybind11 first  *****')
             print(50*'*' + '\n')
+            sys.exit(1)
+        if pybind11.__version__ < MIN_PYBIND_VER:
+            print('\n' + 50*'*')
+            print('Use pybind11 >= %s.' % MIN_PYBIND_VER)
+            print('You have pybind11 %s in %s'
+                  % (pybind11.__version__, os.path.dirname(pybind11.__file__)))
             sys.exit(1)
         return pybind11.get_include(self.user)
 
@@ -155,7 +162,7 @@ setup(
     ext_modules=ext_modules,
     packages=['gemmi-examples'],
     package_dir={'gemmi-examples': 'examples'},
-    install_requires=['pybind11>=2.3.0'],
+    install_requires=['pybind11>=' + MIN_PYBIND_VER],
     cmdclass={'build_ext': BuildExt},
     zip_safe=False,
     license='MPL-2.0',

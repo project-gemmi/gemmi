@@ -277,7 +277,7 @@ endif()
 
 if (USE_PYTHON)
   message(STATUS "The python module will be built.")
-  find_package(pybind11 2.2.4 CONFIG REQUIRED)
+  find_package(pybind11 2.3.0 CONFIG REQUIRED)
   message(STATUS "Found pybind11 ${pybind11_VERSION}: ${pybind11_INCLUDE_DIRS}")
   pybind11_add_module(gemmi python/gemmi.cpp python/cif.cpp python/grid.cpp
                             python/hkl.cpp python/mol.cpp python/read.cpp
