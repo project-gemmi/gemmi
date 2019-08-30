@@ -52,19 +52,19 @@ inline std::string padded_atom_name(const Atom& atom) {
 namespace gemmi {
 
 #define WRITE(...) do { \
-    stbsp_snprintf(buf, 82, __VA_ARGS__); \
+    gf_snprintf(buf, 82, __VA_ARGS__); \
     os.write(buf, 81); \
   } while(0)
 
 #define WRITEU(...) do { \
-    stbsp_snprintf(buf, 82, __VA_ARGS__); \
+    gf_snprintf(buf, 82, __VA_ARGS__); \
     for (int i_ = 0; i_ != 80; i_++) \
       if (buf[i_] >= 'a' && buf[i_] <= 'z') buf[i_] -= 0x20; \
     os.write(buf, 81); \
   } while(0)
 
 #define WRITELN(...) do { \
-    int length__ = stbsp_snprintf(buf, 82, __VA_ARGS__); \
+    int length__ = gf_snprintf(buf, 82, __VA_ARGS__); \
     if (length__ < 80) \
       std::memset(buf + length__, ' ', 80 - length__); \
     buf[81] = '\n'; \
@@ -101,7 +101,7 @@ inline char *base36_encode(char* buffer, int width, int value) {
 inline char* encode_serial_in_hybrid36(char* str, int serial) {
   assert(serial >= 0);
   if (serial < 100000) {
-    stbsp_sprintf(str, "%5d", serial);
+    gstb_sprintf(str, "%5d", serial);
     return str;
   }
   return base36_encode(str, 5, serial - 100000 + 10 * 36 * 36 * 36 * 36);
@@ -110,7 +110,7 @@ inline char* encode_serial_in_hybrid36(char* str, int serial) {
 // based on http://cci.lbl.gov/hybrid_36/
 inline char* encode_seq_num_in_hybrid36(char* str, int seq_id) {
   if (seq_id > -1000 && seq_id < 10000) {
-    stbsp_sprintf(str, "%4d", seq_id);
+    gstb_sprintf(str, "%4d", seq_id);
     return str;
   }
   return base36_encode(str, 4, seq_id - 10000 + 10 * 36 * 36 * 36);
@@ -314,9 +314,9 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
         // re-using part of the buffer
         memcpy(buf, "ANISOU", 6);
         const double eps = 1e-6;
-        stbsp_snprintf(buf+28, 43, "%7.0f%7.0f%7.0f%7.0f%7.0f%7.0f",
-                       a.u11*1e4 + eps, a.u22*1e4 + eps, a.u33*1e4 + eps,
-                       a.u12*1e4 + eps, a.u13*1e4 + eps, a.u23*1e4 + eps);
+        gf_snprintf(buf+28, 43, "%7.0f%7.0f%7.0f%7.0f%7.0f%7.0f",
+                    a.u11*1e4 + eps, a.u22*1e4 + eps, a.u33*1e4 + eps,
+                    a.u12*1e4 + eps, a.u13*1e4 + eps, a.u23*1e4 + eps);
         buf[28+42] = ' ';
         os.write(buf, 81);
       }
@@ -327,8 +327,8 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
       if (opt.numbered_ter) {
         // re-using part of the buffer in the middle, e.g.:
         // TER    4153      LYS B 286
-        stbsp_snprintf(buf, 82, "TER   %5s",
-                       impl::encode_serial_in_hybrid36(buf8, ++serial));
+        gf_snprintf(buf, 82, "TER   %5s",
+                    impl::encode_serial_in_hybrid36(buf8, ++serial));
         std::memset(buf+11, ' ', 6);
         std::memset(buf+28, ' ', 52);
         os.write(buf, 81);
@@ -425,8 +425,8 @@ inline void write_header(const Structure& st, std::ostream& os,
           if (!entity->is_seq_first_conformer(i))
             continue;
           if (col == 0)
-            stbsp_snprintf(buf, 82, "SEQRES%4d%2s%5d %62s\n",
-                           ++row, ch.name.c_str(), seq_len, "");
+            gf_snprintf(buf, 82, "SEQRES%4d%2s%5d %62s\n",
+                        ++row, ch.name.c_str(), seq_len, "");
           const std::string& mon = entity->poly_seq[i].mon;
           memcpy(buf + 18 + 4*col + 4-mon.length(), mon.c_str(), mon.length());
           if (++col == 13) {

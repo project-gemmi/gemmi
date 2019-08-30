@@ -595,7 +595,7 @@ struct MtzDataProxy {
 namespace gemmi {
 
 #define WRITE(...) do { \
-    int len = stbsp_snprintf(buf, 81, __VA_ARGS__); \
+    int len = gf_snprintf(buf, 81, __VA_ARGS__); \
     std::memset(buf + len, ' ', 80 - len); \
     if (std::fwrite(buf, 80, 1, stream) != 1) \
       fail("Writing MTZ file failed"); \
