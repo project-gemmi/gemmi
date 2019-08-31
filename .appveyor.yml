@@ -6,30 +6,34 @@ environment:
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       CMAKE_GENERATOR: Visual Studio 14 2015
       CMAKE_CONFIG: Debug
-      PY_PYTHON3: 3.5-32
-      PY_PYTHON2: 2.7-32
+      PY_PYTHON: 2.7-32
     - arch: x64
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_GENERATOR: Visual Studio 15 2017 Win64
       CMAKE_CONFIG: Release
+      PY_PYTHON: 3.5
     - arch: x64
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       CMAKE_GENERATOR: Visual Studio 16 2019
       CMAKE_CONFIG: Debug
+    - arch: x86
+      CMAKE_GENERATOR: MinGW Makefiles
+      CMAKE_CONFIG: Release
+      PY_PYTHON: 3.5-32
+      BINDIR: C:\MinGW\bin
 
 build_script:
 - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (del "C:\Program Files (x86)\MSBuild\14.0\Microsoft.Common.targets\ImportAfter\Xamarin.Common.targets")
+- if defined BINDIR (set "PATH=%BINDIR%;%PATH%")
 - cmake -G "%CMAKE_GENERATOR%" .
 - cmake --build . --config %CMAKE_CONFIG%
 - cmake --build . --config %CMAKE_CONFIG% --target check
-- py -3 -c "import sys; print(sys.version+'\n'+sys.executable)"
-- py -3 -m pip install pybind11
-- py -3 setup.py install
-- cmd: '"%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
-- py -2 -c "import sys; print(sys.version+'\n'+sys.executable)"
-- py -2 -m pip install --upgrade .
+- py -c "import sys; print(sys.version+'\n'+sys.executable)"
+- py -m pip install pybind11
+- cmd: 'if [%PY_PYTHON%]==[2.7-32] "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
+- py setup.py install
+- py -m pip install --upgrade .
 
 test_script:
 - ctest -C "%CMAKE_CONFIG%" --output-on-failure
-- py -3 -m unittest discover -v -s tests/
-- py -2 -m unittest discover -v -s tests/
+- py -m unittest discover -v -s tests/
