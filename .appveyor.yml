@@ -17,10 +17,14 @@ environment:
       CMAKE_GENERATOR: Visual Studio 16 2019
       CMAKE_CONFIG: Debug
     - arch: x86
-      CMAKE_GENERATOR: MinGW Makefiles
-      CMAKE_CONFIG: Release
+      CMAKE_GENERATOR: MSYS Makefiles
+      CMAKE_CONFIG: RelWithDebInfo
       PY_PYTHON: 3.5-32
       BINDIR: C:\MinGW\bin
+    - arch: x64
+      CMAKE_GENERATOR: MinGW Makefiles
+      CMAKE_CONFIG: MinSizeRel
+      PY_PYTHON: 3.6
 
 build_script:
 - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (del "C:\Program Files (x86)\MSBuild\14.0\Microsoft.Common.targets\ImportAfter\Xamarin.Common.targets")
