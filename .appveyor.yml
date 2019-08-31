@@ -33,7 +33,8 @@ environment:
 build_script:
 - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (del "C:\Program Files (x86)\MSBuild\14.0\Microsoft.Common.targets\ImportAfter\Xamarin.Common.targets")
 # CMake protests against sh.exe in PATH for MinGW Makefiles
-- if defined BINDIR (set PATH=%PATH:C:\Program Files (x86)\Git\bin;=%)
+- if defined BINDIR (set "PATH=%PATH:C:\Program Files (x86)\Git\bin;=%")
+- if defined BINDIR (set "PATH=%PATH:C:\Program Files\Git\usr\bin;=%")
 - if defined BINDIR (set "PATH=%BINDIR%;%PATH%")
 - cmake -G "%CMAKE_GENERATOR%" .
 - cmake --build . --config %CMAKE_CONFIG%
