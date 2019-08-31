@@ -40,7 +40,7 @@ class MaybeGzipped : public MaybeStdin {
 public:
   struct GzStream {
     gzFile f;
-    explicit operator bool() const { return f; }
+    explicit operator bool() const { return f != nullptr; }
     char* gets(char* line, int size) { return gzgets(f, line, size); }
     int getc() { return gzgetc(f); }
     bool read(void* buf, int len) { return gzread(f, buf, len) == len; }

@@ -44,7 +44,7 @@ On Windows Python 3.5+ should automatically find an appropriate compiler
 (MSVC 2015+) . If the compiler is not installed, pip shows a message
 with a download link.
 For Python 2.7 pip prefers MSVC 2008, which is too old to compile gemmi.
-You may still use MSVC 2015 or 2017, but before invoking pip you need to
+You may still use MSVC 2015, 2017 or 2019, but before invoking pip you need to
 set the compiler environment with one of these commands::
 
     "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" x64

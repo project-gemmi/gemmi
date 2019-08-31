@@ -61,7 +61,7 @@ C& add_child(P& parent, C child, int pos) {
 
 template<typename T> int normalize_index(int index, T& container) {
   if (index < 0)
-    index += container.size();
+    index += (int) container.size();
   if ((size_t) index >= container.size())
     throw py::index_error();
   return index;
@@ -381,7 +381,7 @@ void add_mol(py::module& m) {
         return make_one_letter_sequence(span);
     })
     .def("__repr__", [](const ResidueSpan& self) {
-        int N = self.size();
+        int N = (int) self.size();
         std::string r = "<gemmi.ResidueSpan of " + std::to_string(N) + ": [";
         for (int i = 0; i < (N < 5 ? N : 3); ++i) {
           if (i != 0) r += ' ';

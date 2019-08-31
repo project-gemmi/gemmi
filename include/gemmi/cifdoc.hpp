@@ -466,7 +466,6 @@ struct Item {
       : type(o.type), line_number(o.line_number) {
     copy_value(o);
   }
-  Item(Item& o) : Item(static_cast<const Item&>(o)) {}
 
   Item& operator=(Item o) { set_value(std::move(o)); return *this; }
 

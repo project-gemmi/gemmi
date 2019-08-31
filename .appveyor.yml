@@ -7,6 +7,7 @@ environment:
       CMAKE_GENERATOR: Visual Studio 14 2015
       CMAKE_CONFIG: Debug
       PY_PYTHON: 2.7-32
+      USE_PIP: 1
     - arch: x64
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_GENERATOR: Visual Studio 15 2017 Win64
@@ -16,6 +17,7 @@ environment:
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       CMAKE_GENERATOR: Visual Studio 16 2019
       CMAKE_CONFIG: Debug
+      USE_PIP: 1
     - arch: x86
       CMAKE_GENERATOR: MSYS Makefiles
       CMAKE_CONFIG: RelWithDebInfo
@@ -25,9 +27,13 @@ environment:
       CMAKE_GENERATOR: MinGW Makefiles
       CMAKE_CONFIG: MinSizeRel
       PY_PYTHON: 3.6
+      BINDIR: 'C:\msys64\mingw64\bin;C:\msys64\usr\bin'
+      USE_PIP: 1
 
 build_script:
 - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (del "C:\Program Files (x86)\MSBuild\14.0\Microsoft.Common.targets\ImportAfter\Xamarin.Common.targets")
+# CMake protests against sh.exe in PATH for MinGW Makefiles
+- if defined BINDIR (set PATH=%PATH:C:\Program Files (x86)\Git\bin;=%)
 - if defined BINDIR (set "PATH=%BINDIR%;%PATH%")
 - cmake -G "%CMAKE_GENERATOR%" .
 - cmake --build . --config %CMAKE_CONFIG%
@@ -35,8 +41,8 @@ build_script:
 - py -c "import sys; print(sys.version+'\n'+sys.executable)"
 - py -m pip install pybind11
 - cmd: 'if [%PY_PYTHON%]==[2.7-32] "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
-- py setup.py install
-- py -m pip install --upgrade .
+- if     defined USE_PIP (py -m pip install --upgrade .)
+- if not defined USE_PIP (py setup.py install)
 
 test_script:
 - ctest -C "%CMAKE_CONFIG%" --output-on-failure
