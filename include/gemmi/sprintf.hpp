@@ -42,7 +42,7 @@ std::string to_str_prec(double d) {
 }
 
 // this is equivalent of stbsp_snprintf, but with __attribute__(format)
-#if defined(__GNUC__) || (defined(__clang) && __has_attribute(format))
+#if defined(__GNUC__) || defined(__clang)
 __attribute__((format(printf, 3, 4)))
 #endif
 inline int gf_snprintf(char *buf, int count, char const *fmt, ...) {
