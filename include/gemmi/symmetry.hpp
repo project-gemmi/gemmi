@@ -371,7 +371,7 @@ struct GroupOps {
   }
 
   bool is_centric() const {
-    return find_by_rotation({-Op::DEN,0,0, 0,-Op::DEN,0, 0,0,-Op::DEN});
+    return find_by_rotation({-Op::DEN,0,0, 0,-Op::DEN,0, 0,0,-Op::DEN}) != nullptr;
   }
 
   void change_basis(const Op& cob) {
