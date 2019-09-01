@@ -24,7 +24,6 @@ environment:
       CMAKE_CONFIG: MinSizeRel
       PY_PYTHON: 3.5-32
       BINDIR: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin;C:\msys64\usr\bin
-      USE_PIP: 1
 
 build_script:
 - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (del "C:\Program Files (x86)\MSBuild\14.0\Microsoft.Common.targets\ImportAfter\Xamarin.Common.targets")
@@ -35,10 +34,9 @@ build_script:
 - cmake --build . --config %CMAKE_CONFIG% --target check
 - py -c "import sys; print(sys.version+'\n'+sys.executable)"
 - py -m pip install pybind11
-- cmd: 'if [%PY_PYTHON%]==[2.7-32] echo "Force using VC14 for Python2"'
+- if not defined USE_PIP (py setup.py install)
 - cmd: '"%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
 - if     defined USE_PIP (py -m pip install --upgrade .)
-- if not defined USE_PIP (py setup.py install)
 
 test_script:
 - ctest -C "%CMAKE_CONFIG%" --output-on-failure

@@ -241,21 +241,30 @@ add_executable(check_conn EXCLUDE_FROM_ALL examples/check_conn.cpp)
 support_gz(check_conn)
 
 enable_testing()
+
+add_custom_target(print-version
+  COMMAND gemmi --version
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  COMMENT "gemmi --version"
+)
+
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION>)
 add_test(NAME cpptest COMMAND cpptest)
 
 add_dependencies(check
     ctest cpptest hello doc_example doc_example2 doc_maybegz
-    test_disulf check_conn)
+    test_disulf check_conn print-version)
 
 if (USE_FORTRAN)
   add_executable(ftest EXCLUDE_FROM_ALL fortran/ftest.f90)
   target_link_libraries(ftest PRIVATE fgemmi)
+  add_test(NAME ftest COMMAND ftest)
   add_executable(ftest_grid EXCLUDE_FROM_ALL fortran/ftest_grid.f90)
   target_link_libraries(ftest_grid PRIVATE fgemmi)
   if("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "Intel")
     set_property(TARGET ftest ftest_grid PROPERTY LINKER_LANGUAGE Fortran)
   endif()
+  add_test(NAME ftest_grid COMMAND ftest_grid)
   add_dependencies(check ftest ftest_grid)
 
 endif()
