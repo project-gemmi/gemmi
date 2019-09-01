@@ -175,10 +175,10 @@ void add_cif(py::module& cif) {
            ensure_mmcif_category(name);
            py::dict data;
            Table table = self.find_mmcif_category(name);
-           int len = table.length();
+           int len = (int) table.length();
            for (const std::string& tag : table.tags()) {
              assert(tag.size() >= name.size());
-             Column col = table.column(data.size());
+             Column col = table.column((int)data.size());
              py::list new_list(len);
              for (int i = 0; i != len; ++i)
                if (raw) {
@@ -233,7 +233,7 @@ void add_cif(py::module& cif) {
          py::return_value_policy::reference_internal)
     .def("__iter__", [](const Column& self) { return py::make_iterator(self); },
          py::keep_alive<0, 1>())
-    .def("__bool__", [](const Column &self) -> bool { return self.item(); })
+    .def("__bool__", [](const Column &self) { return self.item() != nullptr; })
     .def("__len__", [](const Column &self) { return self.length(); })
     .def("__getitem__", (std::string& (Column::*)(int)) &Column::at)
     .def("__setitem__", [](Column &self, int idx, std::string value) {

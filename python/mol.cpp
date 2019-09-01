@@ -50,7 +50,7 @@ namespace pybind11 { namespace detail {
 template<typename T, typename C>
 C& add_item(T& container, C child, int pos) {
   if ((size_t) pos > container.size()) // true also for negative pos
-    pos = container.size();
+    pos = (int) container.size();
   return *container.insert(container.begin() + pos, std::move(child));
 }
 
