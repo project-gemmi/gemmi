@@ -432,14 +432,13 @@ inline ResidueGroup ResidueSpan::find_residue_group(SeqId id) {
 namespace impl {
 template<typename T, typename Ch> std::vector<T> chain_subchains(Ch* ch) {
   std::vector<T> v;
-  auto span = ch->whole();
-  for (auto i = ch->residues.begin(); i != ch->residues.end(); ) {
-    T sub = span.subspan([&](const Residue& r) {
-        return r.subchain == i->subchain;
-    });
-    v.push_back(sub);
-    i += sub.size();
-  }
+  auto span_start = ch->residues.begin();
+  for (auto i = span_start; i != ch->residues.end(); ++i)
+    if (i->subchain != span_start->subchain) {
+      v.push_back(ch->whole().sub(span_start, i));
+      span_start = i;
+    }
+  v.push_back(ch->whole().sub(span_start, ch->residues.end()));
   return v;
 }
 } // namespace impl

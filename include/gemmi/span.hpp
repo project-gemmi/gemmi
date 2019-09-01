@@ -55,6 +55,10 @@ template<typename Item> struct Span {
   bool empty() const { return size_ == 0; }
   explicit operator bool() const { return size_ != 0; }
 
+  template<typename Iter> Span<Item> sub(Iter first, Iter last) {
+    return Span<Item>(&*first, last - first);
+  }
+
   template<typename F, typename V=Item> Span<V> subspan(F&& func) {
     auto group_begin = std::find_if(this->begin(), this->end(), func);
     auto group_end = std::find_if_not(group_begin, this->end(), func);
@@ -80,6 +84,10 @@ template<typename Item> struct MutableVectorSpan : Span<Item> {
     : Span<Item>(p), vector_(v) {}
   MutableVectorSpan(vector_type& v, iterator begin, std::size_t n)
     : Span<Item>(begin, n), vector_(&v) {}
+
+  template<typename Iter> MutableVectorSpan<Item> sub(Iter first, Iter last) {
+    return {Span<Item>::sub(first, last), vector_};
+  }
 
   template<typename F> MutableVectorSpan<Item> subspan(F&& func) {
     return {Span<Item>::subspan(std::forward<F>(func)), vector_};
