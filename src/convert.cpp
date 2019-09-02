@@ -370,6 +370,9 @@ int GEMMI_MAIN(int argc, char **argv) {
   } catch (std::runtime_error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl;
     return 2;
+  } catch (std::invalid_argument& e) {
+    std::cerr << "ERROR: " << e.what() << std::endl;
+    return 3;
   }
   if (p.options[Verbose])
     std::cerr << "Done." << std::endl;
