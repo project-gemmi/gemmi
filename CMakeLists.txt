@@ -243,7 +243,7 @@ support_gz(check_conn)
 enable_testing()
 
 add_custom_target(print-version
-  COMMAND gemmi --version
+  COMMAND gemmi-prog --version
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   COMMENT "gemmi --version"
 )
