@@ -363,11 +363,15 @@ struct GroupOps {
     return 0;
   }
 
-  const Op* find_by_rotation(const Op::Rot& r) const {
-    for (const Op& op : sym_ops)
+  Op* find_by_rotation(const Op::Rot& r) {
+    for (Op& op : sym_ops)
       if (op.rot == r)
         return &op;
     return nullptr;
+  }
+
+  const Op* find_by_rotation(const Op::Rot& r) const {
+    return const_cast<GroupOps*>(this)->find_by_rotation(r);
   }
 
   bool is_centric() const {
@@ -524,6 +528,22 @@ inline void GroupOps::add_missing_elements() {
   }
 }
 
+// Create GroupOps from Ops by separating centering vectors
+inline GroupOps split_centering_vectors(const std::vector<Op>& ops) {
+  const Op identity = Op::identity();
+  GroupOps go;
+  go.sym_ops.push_back(identity);
+  for (const Op& op : ops)
+    if (Op* old_op = go.find_by_rotation(op.rot)) {
+      if (op.rot == identity.rot)  // pure shift
+        go.cen_ops.push_back(op.tran);
+      if (op.tran == identity.tran)  // or rather |op.tran| < |old_op->tran| ?
+        old_op->tran = op.tran;
+    } else {
+      go.sym_ops.push_back(op);
+    }
+  return go;
+}
 
 // INTERPRETING HALL SYMBOLS
 // based on both ITfC vol.B ch.1.4 (2010)

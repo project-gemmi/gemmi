@@ -87,7 +87,7 @@ void add_symmetry(py::module& m) {
         "Make one of the three parts of a triplet.");
 
   py::class_<GroupOps>(m, "GroupOps")
-    .def(py::init<>())
+    .def(py::init(&split_centering_vectors))
     .def("__iter__", [](const GroupOps& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
@@ -103,6 +103,7 @@ void add_symmetry(py::module& m) {
     .def_readwrite("sym_ops", &GroupOps::sym_ops,
                "Symmetry operations (to be combined with centering vectors).")
     .def_readwrite("cen_ops", &GroupOps::cen_ops, "Centering vectors.")
+    .def("find_centering", &GroupOps::find_centering)
     .def("is_centric", &GroupOps::is_centric)
     .def("find_grid_factors", &GroupOps::find_grid_factors,
          "Minimal multiplicity for real-space grid (e.g. 1,1,6 for P61).")
@@ -135,6 +136,7 @@ void add_symmetry(py::module& m) {
     .def_property_readonly("hall", [](const SpaceGroup &self) -> const char* {
         return self.hall;
     }, "Hall symbol")
+    .def_property_readonly("basisop", &SpaceGroup::basisop)
     .def("xhm", &SpaceGroup::xhm, "extended Hermann-Mauguin name")
     .def("short_name", &SpaceGroup::short_name,
          "H-M name w/o spaces and with 1's removed in '1 ... 1'.")
@@ -145,7 +147,6 @@ void add_symmetry(py::module& m) {
          "the same as point_group_hm).")
     .def("crystal_system_str", &SpaceGroup::crystal_system_str,
          "Returns lower-case name of the crystal system.")
-    .def("basisop", &SpaceGroup::basisop)
     .def("is_reference_setting", &SpaceGroup::is_reference_setting)
     .def("operations", &SpaceGroup::operations, "Group of operations");
 

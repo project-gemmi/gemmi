@@ -189,6 +189,15 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(gemmi.SpaceGroup(4005).hm, 'I 1 2 1')
         self.assertIsNone(gemmi.find_spacegroup_by_name('abc'))
 
+    def test_groupops(self):
+        gops = gemmi.GroupOps([gemmi.Op(t) for t in ['x, y, z',
+                                                     'x, -y, z+1/2',
+                                                     'x+1/2, y+1/2, z',
+                                                     'x+1/2, -y+1/2, z+1/2']])
+        self.assertEqual(gops.find_centering(), 'C')
+        self.assertEqual(len(gops), 4)
+        self.assertEqual(gemmi.find_spacegroup_by_ops(gops).hm, 'C 1 c 1')
+
     def change_basis(self, name_a, name_b, basisop_triplet):
         basisop = gemmi.Op(basisop_triplet)
         a = gemmi.find_spacegroup_by_name(name_a)
