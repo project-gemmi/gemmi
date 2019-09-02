@@ -221,17 +221,21 @@ inline void read_remark3_line(const char* line, Metadata& meta) {
         group.selections.back().details = std::string(value, end);
       }
     } else if (same_str(key, "RESIDUE RANGE")) {
-      if (!ref_info.tls_groups.empty()) {
+      if (!ref_info.tls_groups.empty() && end > colon+21) {
         TlsGroup& group = ref_info.tls_groups.back();
         group.selections.emplace_back();
         TlsGroup::Selection& sel = group.selections.back();
-        const char* endptr;
-        sel.chain = read_word(value, &endptr);
-        sel.res_begin = SeqId(read_word(endptr, &endptr));
-        std::string chain_end = read_word(endptr, &endptr);
-        sel.res_end = SeqId(read_word(endptr, &endptr));
-        if (sel.chain != chain_end)  // this is unexpected
+        sel.chain = read_string(colon+1, 5);
+        if (sel.chain == read_string(colon+16, 5)) {
+          try {
+            sel.res_begin = SeqId(read_string(colon+6, 6));
+            sel.res_end = SeqId(read_string(colon+21, 6));
+          } catch (std::invalid_argument&) {
+            group.selections.pop_back();
+          }
+        } else {  // unexpected -- TLS group should be in one chain
           group.selections.pop_back();
+        }
       }
     } else if (same_str(key, "ORIGIN FOR THE GROUP (A)")) {
       std::vector<std::string> xyz = split_str_multi(std::string(value, end));
