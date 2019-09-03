@@ -73,6 +73,8 @@ inline void add_software(Metadata& meta, SoftwareItem::Classification type,
 // REMARK   3    BOND LENGTHS              : 5760   ; 2.000  ; HARMONIC
 inline void add_restraint_count_weight(RefinementInfo& ref_info,
                                        const char* key, const char* value) {
+  if (*value == 'N') // NULL instead of number
+    return;
   ref_info.restr_stats.emplace_back(key);
   RefinementInfo::Restr& restr = ref_info.restr_stats.back();
   const char* endptr;
