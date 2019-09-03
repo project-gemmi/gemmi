@@ -189,14 +189,26 @@ inline void read_remark3_line(const char* line, Metadata& meta) {
       add_restraint_count_weight(ref_info, "t_angle_deg", value);
     } else if (same_str(key, "TORSION ANGLES")) {
       add_restraint_count_weight(ref_info, "t_dihedral_angle_d", value);
+    } else if (same_str(key, "TRIGONAL CARBON PLANES")) {
+      add_restraint_count_weight(ref_info, "t_trig_c_planes", value);
     } else if (same_str(key, "GENERAL PLANES")) {
       add_restraint_count_weight(ref_info, "t_gen_planes", value);
     } else if (same_str(key, "ISOTROPIC THERMAL FACTORS")) {
       add_restraint_count_weight(ref_info, "t_it", value);
     } else if (same_str(key, "BAD NON-BONDED CONTACTS")) {
       add_restraint_count_weight(ref_info, "t_nbd", value);
+    } else if (same_str(key, "IMPROPER TORSIONS")) {
+      add_restraint_count_weight(ref_info, "t_improper_torsion", value);
     } else if (same_str(key, "CHIRAL IMPROPER TORSION")) {
       add_restraint_count_weight(ref_info, "t_chiral_improper_torsion", value);
+    } else if (same_str(key, "SUM OF OCCUPANCIES")) {
+      add_restraint_count_weight(ref_info, "t_sum_occupancies", value);
+    } else if (same_str(key, "UTILITY DISTANCES")) {
+      add_restraint_count_weight(ref_info, "t_utility_distance", value);
+    } else if (same_str(key, "UTILITY ANGLES")) {
+      add_restraint_count_weight(ref_info, "t_utility_angle", value);
+    } else if (same_str(key, "UTILITY TORSION")) {
+      add_restraint_count_weight(ref_info, "t_utility_torsion", value);
     } else if (same_str(key, "IDEAL-DIST CONTACT TERM")) {
       add_restraint_count_weight(ref_info, "t_ideal_dist_contact", value);
     } else if (same_str(key, "BOND LENGTHS                       (A)")) {
