@@ -9,6 +9,7 @@
 #include "cifdoc.hpp"    // for cif::Block
 #include "numb.hpp"      // for cif::as_number
 #include "unitcell.hpp"  // for UnitCell
+#include "symmetry.hpp"  // for SpaceGroup
 
 namespace gemmi {
 namespace impl {
@@ -29,6 +30,12 @@ inline void set_cell_from_mmcif(cif::Block& block, UnitCell& cell) {
 inline const std::string* find_spacegroup_hm_value(const cif::Block& block) {
   const char* hm_tag = "_symmetry.space_group_name_H-M";
   return block.find_value(hm_tag);
+}
+
+inline const SpaceGroup* read_spacegroup_from_block(const cif::Block& block) {
+  if (const std::string* hm = find_spacegroup_hm_value(block))
+    return find_spacegroup_by_name(cif::as_string(*hm));
+  return nullptr;
 }
 
 } // namespace impl

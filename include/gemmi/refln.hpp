@@ -9,8 +9,8 @@
 #include "cifdoc.hpp"
 #include "numb.hpp"       // for as_number
 #include "unitcell.hpp"   // for UnitCell
-#include "symmetry.hpp"   // for find_spacegroup_by_name
-#include "mmcif_impl.hpp" // for set_cell_from_mmcif
+#include "symmetry.hpp"   // for SpaceGroup
+#include "mmcif_impl.hpp" // for set_cell_from_mmcif, read_spacegroup_from_block
 
 namespace gemmi {
 
@@ -27,8 +27,7 @@ struct ReflnBlock {
   ReflnBlock(cif::Block&& block_) : block(block_) {
     entry_id = cif::as_string(block.find_value("_entry.id"));
     impl::set_cell_from_mmcif(block, cell);
-    if (const std::string* hm = impl::find_spacegroup_hm_value(block))
-      spacegroup = find_spacegroup_by_name(cif::as_string(*hm));
+    spacegroup = impl::read_spacegroup_from_block(block);
     const char* wave_tag = "_diffrn_radiation_wavelength.wavelength";
     cif::Column wave_col = block.find_values(wave_tag);
     wavelength = wave_col.length() == 1 ? cif::as_number(wave_col[0]) : 0.;
@@ -128,6 +127,29 @@ std::vector<ReflnBlock> as_refln_blocks(std::vector<cif::Block>&& blocks) {
     else if (!rblock.spacegroup)
       rblock.spacegroup = first_sg;
   return r;
+}
+
+// Get the first (merged) block with required labels.
+// Optionally, block name can be specified.
+inline ReflnBlock get_refln_block(std::vector<cif::Block>&& blocks,
+                                  const std::vector<std::string>& labels,
+                                  const char* block_name=nullptr) {
+  const gemmi::SpaceGroup* first_sg = nullptr;
+  for (cif::Block& block : blocks) {
+    if (!first_sg)
+      first_sg = impl::read_spacegroup_from_block(block);
+    if (block_name && block.name != block_name)
+      continue;
+    if (cif::Loop* loop = block.find_loop("_refln.index_h").get_loop())
+      if (std::all_of(labels.begin(), labels.end(),
+            [&](const std::string& s) { return loop->has_tag("_refln."+s); })) {
+        ReflnBlock rblock(std::move(block));
+        if (!rblock.spacegroup && first_sg)
+          rblock.spacegroup = first_sg;
+        return rblock;
+      }
+  }
+  gemmi::fail("Required block or tags not found in the SF-mmCIF file.");
 }
 
 // Abstraction of data source, cf. MtzDataProxy.

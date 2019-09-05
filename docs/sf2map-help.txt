@@ -9,7 +9,7 @@ By default, the program searches for 2mFo-DFc map coefficients in:
   - mmCIF tags _refln.pdbx_FWT/pdbx_PHWT.
 If option "-d" is given, mFo-DFc map coefficients are searched in:
   - MTZ columns DELFWT/PHDELWT or FOFCWT/PHFOFCWT,
-  - mmCIF tags _refln.pdbx_DELFWT/pdbx_DELPHWT
+  - mmCIF tags _refln.pdbx_DELFWT/pdbx_DELPHWT.
 
 
 Options:

@@ -122,6 +122,12 @@ endif()
 
 add_library(input OBJECT src/input.cpp)
 add_library(options OBJECT src/options.cpp)
+add_library(output OBJECT src/output.cpp)
+add_library(mapcoef OBJECT src/mapcoef.cpp)
+
+add_executable(gemmi-blobs EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/blobs.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:input>)
+support_gz(gemmi-blobs)
 
 add_executable(gemmi-cif2mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/cif2mtz.cpp $<TARGET_OBJECTS:input>)
@@ -136,11 +142,11 @@ add_executable(gemmi-contents EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-contents)
 
 add_executable(gemmi-convert EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/convert.cpp src/output.cpp $<TARGET_OBJECTS:input>)
+               src/convert.cpp $<TARGET_OBJECTS:output> $<TARGET_OBJECTS:input>)
 support_gz(gemmi-convert)
 
 add_executable(gemmi-crdrst EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/crdrst.cpp src/placeh.cpp src/output.cpp
+               src/crdrst.cpp src/placeh.cpp $<TARGET_OBJECTS:output>
                $<TARGET_OBJECTS:input>)
 support_gz(gemmi-crdrst)
 
@@ -161,7 +167,7 @@ add_executable(gemmi-mask EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-mask)
 
 add_executable(gemmi-mixmtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/mixmtz.cpp src/output.cpp)
+               src/mixmtz.cpp $<TARGET_OBJECTS:output>)
 
 add_executable(gemmi-mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/mtz.cpp)
@@ -179,7 +185,7 @@ add_executable(gemmi-rmsz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-rmsz)
 
 add_executable(gemmi-sf2map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/sf2map.cpp $<TARGET_OBJECTS:input>)
+               src/sf2map.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:input>)
 support_gz(gemmi-sf2map)
 
 add_executable(gemmi-sg EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
@@ -195,12 +201,15 @@ support_gz(gemmi-wcn)
 
 add_executable(gemmi-prog
                src/wcn.cpp src/cif2mtz.cpp src/contact.cpp
-               src/contents.cpp src/convert.cpp src/output.cpp
+               src/contents.cpp src/convert.cpp
                src/grep.cpp src/main.cpp src/map.cpp src/map2sf.cpp
                src/mask.cpp src/mtz.cpp src/mtz2cif.cpp
                src/residues.cpp src/rmsz.cpp src/sf2map.cpp src/sg.cpp
                src/validate.cpp src/validate_mon.cpp
-               $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:options>)
+               $<TARGET_OBJECTS:mapcoef>
+               $<TARGET_OBJECTS:input>
+               $<TARGET_OBJECTS:output>
+               $<TARGET_OBJECTS:options>)
 support_gz(gemmi-prog)
 target_compile_definitions(gemmi-prog PRIVATE GEMMI_ALL_IN_ONE=1)
 set_target_properties(gemmi-prog PROPERTIES OUTPUT_NAME gemmi)

@@ -144,6 +144,7 @@ struct Loop {
                [&tag](const std::string& t) { return gemmi::iequal(t, tag); });
     return f == tags.end() ? -1 : f - tags.begin();
   }
+  bool has_tag(const std::string& tag) const { return find_tag(tag) != -1; }
   size_t width() const { return tags.size(); }
   size_t length() const { return values.size() / tags.size(); }
   const std::string& val(size_t row, size_t col) const {
