@@ -44,7 +44,8 @@ static void transform_sf_to_map(OptParser& p) {
   const char* input_path = p.nonOption(0);
   const char* map_path = p.nonOption(1);
   gemmi::Ccp4<float> ccp4;
-  ccp4.grid = read_sf_and_transform_to_map(input_path, p.options);
+  ccp4.grid = read_sf_and_fft_to_map(input_path, p.options,
+                                     p.options[Verbose] ? stderr : nullptr);
   if (p.options[Verbose])
     fprintf(stderr, "Writing %s ...\n", map_path);
   ccp4.update_ccp4_header(2, true);

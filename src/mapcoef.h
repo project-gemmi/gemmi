@@ -9,6 +9,7 @@ enum MapOptions { Verbose=3, Diff, Section, FLabel, PhLabel, GridDims,
 extern const option::Descriptor MapUsage[];
 
 gemmi::Grid<float>
-read_sf_and_transform_to_map(const char* input_path,
-                             const std::vector<option::Option>& options,
-                             bool oversample_by_default=false);
+read_sf_and_fft_to_map(const char* input_path,
+                       const std::vector<option::Option>& options,
+                       FILE* output,
+                       bool oversample_by_default=false);

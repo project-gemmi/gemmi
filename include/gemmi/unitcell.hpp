@@ -252,16 +252,31 @@ struct UnitCell {
     return image;
   }
 
-  SymImage find_nearest_pbc_image(const Position& ref, const Position& pos,
-                                  int image_idx) const {
-    SymImage image;
-    image.dist_sq = INFINITY;
-    image.sym_id = image_idx;
-    Fractional fpos = fractionalize(pos);
+  void apply_transform(Fractional& fpos, int image_idx) const {
     if (image_idx > 0)
       fpos = images.at(image_idx - 1).apply(fpos);
-    search_pbc_images(fpos - fractionalize(ref), image);
-    return image;
+  }
+
+  void apply_transform_inverse(Fractional& fpos, int image_idx) const {
+    if (image_idx > 0)
+      fpos = FTransform(images.at(image_idx - 1).inverse()).apply(fpos);
+  }
+
+  SymImage find_nearest_pbc_image(const Position& ref, const Position& pos,
+                                  int image_idx) const {
+    SymImage sym_image;
+    sym_image.dist_sq = INFINITY;
+    sym_image.sym_id = image_idx;
+    Fractional fpos = fractionalize(pos);
+    apply_transform(fpos, image_idx);
+    search_pbc_images(fpos - fractionalize(ref), sym_image);
+    return sym_image;
+  }
+
+  Position orthogonalize_in_pbc(const Position& ref,
+                                const Fractional& fpos) const {
+    Fractional fref = fractionalize(ref);
+    return orthogonalize_difference((fpos - fref).wrap_to_zero()) + ref;
   }
 
   // return number of nearby symmetry mates (0 = none, 3 = 4-fold axis, etc)

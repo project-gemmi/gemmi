@@ -50,6 +50,7 @@ struct SubCells {
 
   using item_type = std::vector<Mark>;
   Grid<item_type> grid;
+  double radius_specified = 0.;
   const Model* model = nullptr;
 
   SubCells() = default;
@@ -86,6 +87,18 @@ struct SubCells {
     return out;
   }
 
+  Mark* find_nearest_atom(const Position& pos) {
+    Mark* mark = nullptr;
+    float nearest_dist_sq = float(radius_specified * radius_specified);
+    for_each(pos, '\0', nearest_dist_sq, [&](Mark& a, float dist_sq) {
+        if (dist_sq < nearest_dist_sq) {
+          mark = &a;
+          nearest_dist_sq = dist_sq;
+        }
+    });
+    return mark;
+  }
+
   float dist_sq(const Position& pos1, const Position& pos2) const {
     return (float) grid.unit_cell.distance_sq(pos1, pos2);
   }
@@ -98,6 +111,7 @@ struct SubCells {
 inline void SubCells::initialize(const Model& model_, const UnitCell& cell,
                                  double max_radius) {
   model = &model_;
+  radius_specified = max_radius;
   if (cell.is_crystal()) {
     grid.unit_cell = cell;
   } else {

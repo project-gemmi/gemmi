@@ -184,11 +184,13 @@ struct Grid {
       d = d > threshold ? 1 : 0;
   }
 
-  void symmetrize_using_ops(std::vector<Op> ops, std::function<T(T, T)> func) {
+  // operations re-scaled for faster later calculations; identity not included
+  std::vector<Op> get_scaled_ops_except_id() const {
+    std::vector<Op> ops = spacegroup->operations().all_ops_sorted();
     auto id = std::find(ops.begin(), ops.end(), Op::identity());
     if (id != ops.end())
       ops.erase(id);
-    // rescale Op for faster calculations laster
+    // Rescale symmetry operations. Rotations are expected to be integral.
     for (Op& op : ops) {
       op.tran[0] = op.tran[0] * nu / Op::DEN;
       op.tran[1] = op.tran[1] * nv / Op::DEN;
@@ -197,6 +199,20 @@ struct Grid {
         for (int j = 0; j != 3; ++j)
           op.rot[i][j] /= Op::DEN;
     }
+    return ops;
+  }
+
+  static
+  std::array<int,3> transformed_uvw(const Op& scaled_op, int u, int v, int w) {
+    std::array<int, 3> t;
+    const Op::Rot& rot = scaled_op.rot;
+    for (int i = 0; i != 3; ++i)
+      t[i] = rot[i][0] * u + rot[i][1] * v + rot[i][2] * w + scaled_op.tran[i];
+    return t;
+  }
+
+  void symmetrize_using_ops(const std::vector<Op>& ops,
+                            std::function<T(T, T)> func) {
     std::vector<int> mates(ops.size(), 0);
     std::vector<bool> visited(data.size(), false);
     int idx = 0;
@@ -207,11 +223,7 @@ struct Grid {
           if (visited[idx])
             continue;
           for (size_t k = 0; k < ops.size(); ++k) {
-            const Op& op = ops[k];
-            int t[3];
-            for (int i = 0; i != 3; ++i)
-              t[i] = op.rot[i][0] * u + op.rot[i][1] * v + op.rot[i][2] * w +
-                     op.tran[i];
+            std::array<int,3> t = transformed_uvw(ops[k], u, v, w);
             mates[k] = index_n(t[0], t[1], t[2]);
           }
           T value = data[idx];
@@ -232,9 +244,8 @@ struct Grid {
   // Use provided function to reduce values of all symmetry mates of each
   // grid point, then assign the result to all the points.
   void symmetrize(std::function<T(T, T)> func) {
-    if (!spacegroup || spacegroup->number == 1 || !full_canonical)
-      return;
-    symmetrize_using_ops(spacegroup->operations().all_ops_sorted(), func);
+    if (spacegroup && spacegroup->number != 1 && full_canonical)
+      symmetrize_using_ops(get_scaled_ops_except_id(), func);
   }
 
   // two most common symmetrize functions
@@ -245,6 +256,21 @@ struct Grid {
     symmetrize([](T a, T b) { return (a > b || !(b == b)) ? a : b; });
   }
 
+  template<typename V> std::vector<V> get_asu_mask(V in, V out) const {
+    std::vector<V> mask(data.size(), in);
+    std::vector<Op> ops = get_scaled_ops_except_id();
+    int idx = 0;
+    for (int w = 0; w != nw; ++w)
+      for (int v = 0; v != nv; ++v)
+        for (int u = 0; u != nu; ++u, ++idx)
+          if (mask[idx] == in)
+            for (const Op& op : ops) {
+              std::array<int,3> t = transformed_uvw(op, u, v, w);
+              int mate_idx = index_n(t[0], t[1], t[2]);
+              mask[mate_idx] = out;
+            }
+    return mask;
+  }
 };
 
 } // namespace gemmi

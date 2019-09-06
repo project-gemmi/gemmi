@@ -95,16 +95,16 @@ void print_grid_size(const DataProxy& data, std::array<int, 3> min_size,
 
 
 gemmi::Grid<float>
-read_sf_and_transform_to_map(const char* input_path,
-                             const std::vector<option::Option>& options,
-                             bool oversample_by_default) {
-  bool verbose = options[Verbose];
+read_sf_and_fft_to_map(const char* input_path,
+                       const std::vector<option::Option>& options,
+                       FILE* output,
+                       bool oversample_by_default) {
   if (options[PhLabel] && !options[FLabel])
     gemmi::fail("Option -p can be given only together with -f");
   if (options[FLabel] && options[Diff])
     gemmi::fail("Option -d has no effect together with -f");
-  if (verbose)
-    fprintf(stderr, "Reading %s ...\n", input_path);
+  if (output)
+    fprintf(output, "Reading reflections from %s ...\n", input_path);
   std::vector<int> vsize{0, 0, 0};
   if (options[GridDims])
     vsize = parse_comma_separated_ints(options[GridDims].arg);
@@ -125,8 +125,8 @@ read_sf_and_transform_to_map(const char* input_path,
       f_label = diff_map ? "pdbx_DELFWT" : "pdbx_FWT";
     if (!ph_label)
       ph_label = diff_map ?  "pdbx_DELPHWT" : "pdbx_PHWT";
-    if (verbose)
-      fprintf(stderr, "Looking for tags _refln.%s and _refln.%s...\n",
+    if (output)
+      fprintf(output, "Looking for tags _refln.%s and _refln.%s...\n",
               f_label, ph_label);
     gemmi::ReflnBlock rblock = gemmi::get_refln_block(
                                    gemmi::read_cif_gz(input_path).blocks,
@@ -135,8 +135,8 @@ read_sf_and_transform_to_map(const char* input_path,
       print_grid_size(gemmi::ReflnDataProxy{rblock}, min_size, sample_rate);
       std::exit(0);
     }
-    if (verbose)
-      fprintf(stderr, "Putting data from block %s into matrix...\n",
+    if (output)
+      fprintf(output, "Putting data from block %s into matrix...\n",
               rblock.block.name.c_str());
     grid = gemmi::get_f_phi_on_grid<float>(gemmi::ReflnDataProxy{rblock},
                                            rblock.find_column_index(f_label),
@@ -146,8 +146,8 @@ read_sf_and_transform_to_map(const char* input_path,
   } else {
     Mtz mtz = gemmi::read_mtz_file(input_path);
     auto cols = get_mtz_map_columns(mtz, section, diff_map, f_label, ph_label);
-    if (options[Verbose])
-      fprintf(stderr, "Putting data from columns %s and %s into matrix...\n",
+    if (output)
+      fprintf(output, "Putting data from columns %s and %s into matrix...\n",
               cols[0]->label.c_str(), cols[1]->label.c_str());
     if (options[GridQuery]) {
       print_grid_size(gemmi::MtzDataProxy{mtz}, min_size, sample_rate);
@@ -157,8 +157,8 @@ read_sf_and_transform_to_map(const char* input_path,
                                            cols[0]->idx, cols[1]->idx, true,
                                            min_size, sample_rate);
   }
-  if (verbose)
-    fprintf(stderr, "Fourier transform -> grid %d x %d x %d...\n",
+  if (output)
+    fprintf(output, "Fourier transform -> grid %d x %d x %d...\n",
             grid.nu, grid.nv, (grid.nw - 1) * 2);
   return gemmi::transform_f_phi_grid_to_map(std::move(grid));
 }
