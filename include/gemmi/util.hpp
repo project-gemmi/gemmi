@@ -214,12 +214,6 @@ void vector_remove_if(std::vector<T>& v, F&& condition) {
 
 //   #####   other helpers   #####
 
-// simplified version of C++17 std::clamp
-template<class T> const T& clamp_(const T& v, const T& lo, const T& hi)
-{
-  return v < lo ? lo : hi < v ? hi : v;
-}
-
 // Numeric ID used for case-insensitive comparison of 4 letters.
 // s must have 4 chars or 3 chars + NUL, ' ' and NUL are equivalent in s.
 constexpr int ialpha4_id(const char* s) {
