@@ -5,14 +5,15 @@
 #ifndef GEMMI_MMREAD_HPP_
 #define GEMMI_MMREAD_HPP_
 
-#include "model.hpp"     // for Structure
-#include "cif.hpp"       // for cif::read
-#include "mmcif.hpp"     // for make_structure_from_block
-#include "pdb.hpp"       // for read_pdb
-#include "json.hpp"      // for read_mmjson
-#include "util.hpp"      // for iends_with
-#include "input.hpp"     // for JustFile
 #include "chemcomp_xyz.hpp" // for make_structure_from_chemcomp_block
+#include "cif.hpp"       // for cif::read
+#include "fail.hpp"      // for fail
+#include "input.hpp"     // for JustFile
+#include "json.hpp"      // for read_mmjson
+#include "mmcif.hpp"     // for make_structure_from_block
+#include "model.hpp"     // for Structure
+#include "pdb.hpp"       // for read_pdb
+#include "util.hpp"      // for iends_with
 
 namespace gemmi {
 

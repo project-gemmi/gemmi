@@ -4,9 +4,10 @@
 
 #ifndef GEMMI_GZ_HPP_
 #define GEMMI_GZ_HPP_
-#include "util.hpp"     // iends_with
+#include "fail.hpp"     // fail
 #include "fileutil.hpp" // file_open
 #include "input.hpp"    // MaybeStdin
+#include "util.hpp"     // iends_with
 #include <cstdio>       // fseek, ftell, fread
 #include <memory>
 #include <string>

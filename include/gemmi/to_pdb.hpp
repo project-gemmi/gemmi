@@ -6,7 +6,6 @@
 #define GEMMI_TO_PDB_HPP_
 
 #include "model.hpp"
-#include <cctype> // for isdigit
 #include <ostream>
 
 namespace gemmi {
@@ -40,10 +39,11 @@ inline std::string padded_atom_name(const Atom& atom) {
 #ifdef GEMMI_WRITE_IMPLEMENTATION
 
 #include <cassert>
-#include <cctype>
+#include <cctype> // for isdigit
 #include <cstring>
 #include <algorithm>
 #include <sstream>
+#include "fail.hpp"       // for fail
 #include "sprintf.hpp"
 #include "calculate.hpp"  // for calculate_omega
 #include "resinfo.hpp"
@@ -258,7 +258,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
   char buf8[8];
   char buf8a[8];
   if (chain.name.length() > 2)
-    gemmi::fail("long chain name: " + chain.name);
+    fail("long chain name: " + chain.name);
   for (const Residue& res : chain.residues) {
     bool as_het = use_hetatm(res);
     for (const Atom& a : res.atoms) {
@@ -410,7 +410,7 @@ inline void write_header(const Structure& st, std::ostream& os,
       // setup_entities() to use heuristic to split polymer and ligands
       // and assign entities. But if it was not called, we may still find
       // the original SEQRES in the entity named after the chain name.
-      if (!entity && st.input_format == gemmi::CoorFormat::Pdb &&
+      if (!entity && st.input_format == CoorFormat::Pdb &&
           !ch.residues.empty() && ch.residues[0].subchain.empty()) {
         entity = st.get_entity(ch.name);
         if (entity && !entity->subchains.empty())

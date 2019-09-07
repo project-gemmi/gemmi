@@ -10,7 +10,7 @@
 #include "grid.hpp"      // for Grid
 #include "math.hpp"      // for rad
 #include "symmetry.hpp"  // for GroupOps, Op
-#include "util.hpp"      // for fail
+#include "fail.hpp"      // for fail
 
 #if !(__GNUC__+0 >= 5 || __clang__+0 >= 5)
 #define POCKETFFT_NO_VECTORS

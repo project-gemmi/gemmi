@@ -6,7 +6,6 @@
 #ifndef GEMMI_MONLIB_HPP_
 #define GEMMI_MONLIB_HPP_
 
-#include <cassert>
 #include <cctype>  // for tolower
 #include <map>
 #include <string>
@@ -14,7 +13,7 @@
 #include "cifdoc.hpp"
 #include "elem.hpp"  // for Element
 #include "numb.hpp"  // for as_number
-#include "util.hpp"  // for fail
+#include "fail.hpp"  // for fail, unreachable
 #include "model.hpp" // for Residue, Atom
 #include "chemcomp.hpp" // for ChemComp
 #include "resinfo.hpp" // for ResidueInfo

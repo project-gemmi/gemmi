@@ -13,7 +13,6 @@
 #define GEMMI_PDB_HPP_
 
 #include <algorithm>  // for swap
-#include <cassert>    // for assert
 #include <cctype>     // for isalpha
 #include <cstdio>     // for FILE, size_t
 #include <cstdlib>    // for strtol
@@ -22,11 +21,12 @@
 #include <string>     // for string
 #include <vector>     // for vector
 
-#include "model.hpp"
-#include "util.hpp"
-#include "polyheur.hpp" // for assign_subchains
-#include "fileutil.hpp" // for path_basename, file_open
 #include "atox.hpp"     // for string_to_int, simple_atof
+#include "fail.hpp"     // for fail
+#include "fileutil.hpp" // for path_basename, file_open
+#include "model.hpp"
+#include "polyheur.hpp" // for assign_subchains
+#include "util.hpp"
 
 namespace gemmi {
 

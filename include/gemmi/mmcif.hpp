@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_map>
 #include "cifdoc.hpp"
+#include "fail.hpp"   // for fail
 #include "numb.hpp"   // for as_number
 #include "atox.hpp"   // for string_to_int
 #include "model.hpp"

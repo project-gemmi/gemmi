@@ -16,7 +16,7 @@
 #include "third_party/sajson.h"
 
 #include "cifdoc.hpp"   // for Document, etc
-#include "util.hpp"     // for fail
+#include "fail.hpp"     // for fail
 #include "fileutil.hpp" // for file_open
 
 namespace gemmi {
@@ -59,7 +59,7 @@ inline void fill_document_from_sajson(Document& d, const sajson::document& s) {
   if (root.get_type() != sajson::TYPE_OBJECT || root.get_length() != 1)
     fail("not mmJSON");
   std::string block_name = root.get_object_key(0).as_string();
-  if (!gemmi::starts_with(block_name, "data_"))
+  if (!starts_with(block_name, "data_"))
     fail("top level key should start with data_");
   d.blocks.emplace_back(block_name.substr(5));
   std::vector<Item>& items = d.blocks[0].items;
@@ -116,8 +116,8 @@ inline Document read_mmjson_insitu(char* buffer, size_t size,
 }
 
 inline Document read_mmjson_file(const std::string& path) {
-  gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "rb");
-  size_t buf_size = gemmi::file_size(f.get(), path);
+  fileptr_t f = file_open(path.c_str(), "rb");
+  size_t buf_size = file_size(f.get(), path);
   std::vector<char> buffer(buf_size);
   if (std::fread(buffer.data(), buffer.size(), 1, f.get()) != 1)
     fail(path + ": fread failed");

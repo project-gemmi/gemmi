@@ -112,9 +112,9 @@ inline bool finalize_blob(Blob& blob, const gemmi::Grid<float>& grid,
 std::vector<Blob> find_blobs_by_flood_fill(const gemmi::Grid<float>& grid,
                                            const BlobCriteria& criteria) {
   std::vector<Blob> blobs;
-  std::array<std::array<int, 3>, 6> moves = {{{-1, 0, 0}, {1, 0, 0},
-                                              {0 ,-1, 0}, {0, 1, 0},
-                                              {0, 0, -1}, {0, 0, 1}}};
+  std::array<std::array<int, 3>, 6> moves = {{{{-1, 0, 0}}, {{1, 0, 0}},
+                                              {{0 ,-1, 0}}, {{0, 1, 0}},
+                                              {{0, 0, -1}}, {{0, 0, 1}}}};
   // the mask will be used as follows:
   // 1=in blob,  0=in asu, not in blob (so far),  -1=in neither
   std::vector<signed char> mask = grid.get_asu_mask<signed char>(0, -1);

@@ -11,8 +11,6 @@
 #include "pdb.hpp"    // for read_pdb
 #include "json.hpp"   // for read_mmjson
 #include "gz.hpp"     // for MaybeGzipped
-#include "json.hpp"   // for read_mmjson
-#include "util.hpp"   // for ends_with
 
 namespace gemmi {
 

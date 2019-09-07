@@ -7,7 +7,8 @@
 #define GEMMI_CIFDOC_HPP_
 #include "iterator.hpp"  // for StrideIter, IndirectIter
 #include "atox.hpp"  // for string_to_int
-#include "util.hpp"  // for starts_with, to_lower, fail
+#include "fail.hpp"  // for fail
+#include "util.hpp"  // for starts_with, to_lower
 #include "tostr.hpp"  // for tostr
 #include <algorithm> // for move, find_if, all_of, min
 #include <array>

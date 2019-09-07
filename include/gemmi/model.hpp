@@ -14,12 +14,14 @@
 #include <vector>
 
 #include "elem.hpp"
+#include "fail.hpp"      // for fail
 #include "unitcell.hpp"
 #include "symmetry.hpp"
 #include "metadata.hpp"
 #include "iterator.hpp"
 #include "span.hpp"      // for Span, MutableVectorSpan
 #include "seqid.hpp"
+#include "util.hpp"      // for join_str, vector_move_extend, in_vector
 
 namespace gemmi {
 

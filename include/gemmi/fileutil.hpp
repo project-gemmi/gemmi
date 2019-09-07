@@ -12,7 +12,8 @@
 #include <initializer_list>
 #include <memory>    // for unique_ptr
 #include <string>
-#include "util.hpp"  // for fail, to_lower
+#include "fail.hpp"  // for fail
+#include "util.hpp"  // for to_lower
 
 #if defined(_MSC_VER) && !defined(GEMMI_USE_FOPEN)
 #include <locale>

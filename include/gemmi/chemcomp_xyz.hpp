@@ -7,6 +7,7 @@
 
 #include <array>
 #include "cifdoc.hpp" // for Block, etc
+#include "fail.hpp"   // for fail
 #include "numb.hpp"   // for as_number
 #include "model.hpp"  // for Atom, Residue, etc
 

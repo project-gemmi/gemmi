@@ -6,8 +6,9 @@
 #define GEMMI_UNITCELL_HPP_
 
 #include <cmath>      // for cos, sin, sqrt, floor, NAN
+#include <vector>
 #include "math.hpp"
-#include "util.hpp"   // for fail
+#include "fail.hpp"   // for fail
 
 namespace gemmi {
 
@@ -119,7 +120,7 @@ struct UnitCell {
     double sin_beta  = beta  == 90. ? 1. : std::sin(deg2rad * beta);
     double sin_gamma = gamma == 90. ? 1. : std::sin(deg2rad * gamma);
     if (sin_alpha == 0 || sin_beta == 0 || sin_gamma == 0)
-      gemmi::fail("Impossible angle - N*180deg.");
+      fail("Impossible angle - N*180deg.");
 
     // volume - formula from Giacovazzo p.62
     volume = a * b * c * std::sqrt(1 - cos_alpha * cos_alpha

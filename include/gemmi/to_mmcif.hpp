@@ -5,8 +5,6 @@
 #ifndef GEMMI_TO_MMCIF_HPP_
 #define GEMMI_TO_MMCIF_HPP_
 
-#include <cassert>
-#include <cmath>  // for isnan
 #include "model.hpp"
 #include "cifdoc.hpp"
 
@@ -25,6 +23,8 @@ void write_struct_conn(const Structure& st, cif::Block& block);
 
 #ifdef GEMMI_WRITE_IMPLEMENTATION
 
+#include <cassert>
+#include <cmath>  // for isnan
 #include <string>
 #include <utility>  // std::pair
 #include "sprintf.hpp"

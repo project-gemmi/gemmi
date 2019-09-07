@@ -1,6 +1,9 @@
-// Copyright 2017 Global Phasing Ltd.
+// Copyright 2017-2019 Global Phasing Ltd.
 //
 // Crystallographic Symmetry. Space Groups. Coordinate Triplets.
+//
+// If this is all that you need from Gemmi you can just copy this file,
+// fail.hpp and LICENSE.txt to your project.
 
 #ifndef GEMMI_SYMMETRY_HPP_
 #define GEMMI_SYMMETRY_HPP_
@@ -16,6 +19,8 @@
 #include <tuple>      // for tie
 #include <vector>
 
+#include "fail.hpp"   // for fail, unreachable
+
 // we use brace elision with std:array's
 #ifdef __clang__
 # pragma clang diagnostic push
@@ -28,18 +33,7 @@ namespace gemmi {
 
 namespace impl {
 
-// copied two helper functions from util.hpp to keep it a single-header lib
-[[noreturn]]
-inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
-
-[[noreturn]] inline void unreachable() {
-#if defined(__GNUC__) || defined(__clang__)
-  __builtin_unreachable();
-#elif defined(_MSC_VER)
-  __assume(0);
-#endif
-}
-
+// copied a helper function from atox.hpp to keep it a two-header lib
 inline const char* skip_blank(const char* p) {
   if (p)
     while (*p == ' ' || *p == '\t' || *p == '_') // '_' can be used as space
@@ -168,7 +162,7 @@ inline Op& operator*=(Op& a, const Op& b) { a = a * b; return a; }
 inline Op Op::inverse() const {
   int detr = det_rot();
   if (detr == 0)
-    impl::fail("cannot invert matrix: " + Op{rot, {0,0,0}}.triplet());
+    fail("cannot invert matrix: " + Op{rot, {0,0,0}}.triplet());
   int d2 = Op::DEN * Op::DEN;
   Op inv;
   inv.rot[0][0] = d2 * (rot[1][1] * rot[2][2] - rot[2][1] * rot[1][2]) / detr;
@@ -200,7 +194,7 @@ inline std::array<int, 4> parse_triplet_part(const std::string& s) {
       c = impl::skip_blank(++c);
     }
     if (num == 0)
-      impl::fail("wrong or unsupported triplet format: " + s);
+      fail("wrong or unsupported triplet format: " + s);
     bool is_shift = false;
     if (*c >= '0' && *c <= '9') {
       char* endptr;
@@ -208,7 +202,7 @@ inline std::array<int, 4> parse_triplet_part(const std::string& s) {
       if (*endptr == '/') {
         int den = std::strtol(endptr + 1, &endptr, 10);
         if (den < 1 || Op::DEN % den != 0)
-          impl::fail("Wrong denominator " + std::to_string(den) + " in: " + s);
+          fail("Wrong denominator " + std::to_string(den) + " in: " + s);
         num /= den;
       }
       is_shift = (*endptr != '*');
@@ -223,18 +217,18 @@ inline std::array<int, 4> parse_triplet_part(const std::string& s) {
     else if (std::memchr("zZlLcC", *c, 6))
       r[2] += num;
     else
-      impl::fail(std::string("unexpected character '") + *c + "' in: " + s);
+      fail(std::string("unexpected character '") + *c + "' in: " + s);
     ++c;
     num = 0;
   }
   if (num != 0)
-    impl::fail("trailing sign in: " + s);
+    fail("trailing sign in: " + s);
   return r;
 }
 
 inline Op parse_triplet(const std::string& s) {
   if (std::count(s.begin(), s.end(), ',') != 2)
-    impl::fail("expected exactly two commas in triplet");
+    fail("expected exactly two commas in triplet");
   size_t comma1 = s.find(',');
   size_t comma2 = s.find(',', comma1 + 1);
   auto a = parse_triplet_part(s.substr(0, comma1));
@@ -339,7 +333,7 @@ inline std::vector<Op::Tran> centring_vectors(char lattice_symbol) {
     case 'T': return {{0, 0, 0}, {t, d, t}, {d, t, d}};
     case 'H': return {{0, 0, 0}, {t, d, 0}, {d, t, 0}};
     case 'F': return {{0, 0, 0}, {0, h, h}, {h, 0, h}, {h, h, 0}};
-    default: impl::fail(std::string("not a lattice symbol: ") + lattice_symbol);
+    default: fail(std::string("not a lattice symbol: ") + lattice_symbol);
   }
 }
 
@@ -488,12 +482,12 @@ struct GroupOps {
 inline void GroupOps::add_missing_elements() {
   // We always keep identity as sym_ops[0].
   if (sym_ops.empty() || sym_ops[0] != Op::identity())
-    impl::fail("oops");
+    fail("oops");
   if (sym_ops.size() == 1)
     return;
   auto check_size = [&]() {
     if (sym_ops.size() > 1023)
-      impl::fail("1000+ elements in the group should not happen");
+      fail("1000+ elements in the group should not happen");
   };
   // Below we assume that all centring vectors are already known (in cen_ops)
   // so when checking for a new element we compare only the 3x3 matrix.
@@ -561,7 +555,7 @@ inline Op::Rot hall_rotation_z(int N) {
     case '\'': return {0,-d,0, -d,0,0, 0,0,-d};
     case '"':  return {0,d,0,   d,0,0, 0,0,-d};
     case '*':  return {0,0,d,   d,0,0, 0,d,0};
-    default: impl::fail("incorrect axis definition");
+    default: fail("incorrect axis definition");
   }
 }
 inline Op::Tran hall_translation_from_symbol(char symbol) {
@@ -576,7 +570,7 @@ inline Op::Tran hall_translation_from_symbol(char symbol) {
     case 'v': return {0, q, 0};
     case 'w': return {0, 0, q};
     case 'd': return {q, q, q};
-    default: impl::fail(std::string("unknown symbol: ") + symbol);
+    default: fail(std::string("unknown symbol: ") + symbol);
   }
 }
 
@@ -586,7 +580,7 @@ inline Op hall_matrix_symbol(const char* start, const char* end,
   bool neg = (*start == '-');
   const char* p = (neg ? start + 1 : start);
   if (*p < '1' || *p == '5' || *p > '6')
-    impl::fail("wrong n-fold order notation: " + std::string(start, end));
+    fail("wrong n-fold order notation: " + std::string(start, end));
   int N = *p++ - '0';
   int fractional_tran = 0;
   char principal_axis = '\0';
@@ -594,11 +588,11 @@ inline Op hall_matrix_symbol(const char* start, const char* end,
   for (; p < end; ++p) {
     if (*p >= '1' && *p <= '5') {
       if (fractional_tran != '\0')
-        impl::fail("two numeric subscripts");
+        fail("two numeric subscripts");
       fractional_tran = *p - '0';
     } else if (*p == '\'' || *p == '"' || *p == '*') {
       if (N != (*p == '*' ? 3 : 2))
-        impl::fail("wrong symbol: " + std::string(start, end));
+        fail("wrong symbol: " + std::string(start, end));
       diagonal_axis = *p;
     } else if (*p == 'x' || *p == 'y' || *p == 'z') {
       principal_axis = *p;
@@ -618,7 +612,7 @@ inline Op hall_matrix_symbol(const char* start, const char* end,
     } else if (pos == 3 && N == 3) {
       diagonal_axis = '*';
     } else if (N != 1) {
-      impl::fail("missing axis");
+      fail("missing axis");
     }
   }
   // get the operation
@@ -653,7 +647,7 @@ inline Op parse_hall_change_of_basis(const char* start, const char* end) {
     start = endptr;
   }
   if (endptr != end)
-    impl::fail("unexpected change-of-basis format: " + std::string(start, end));
+    fail("unexpected change-of-basis format: " + std::string(start, end));
   return cob;
 }
 
@@ -664,7 +658,7 @@ inline GroupOps generators_from_hall(const char* hall) {
     return p;
   };
   if (hall == nullptr)
-    impl::fail("null");
+    fail("null");
   hall = impl::skip_blank(hall);
   GroupOps ops;
   ops.sym_ops.emplace_back(Op::identity());
@@ -673,7 +667,7 @@ inline GroupOps generators_from_hall(const char* hall) {
     ops.sym_ops.emplace_back(Op::identity().negated());
   const char* lat = impl::skip_blank(centrosym ? hall + 1 : hall);
   if (!lat)
-    impl::fail("not a hall symbol: " + std::string(hall));
+    fail("not a hall symbol: " + std::string(hall));
   ops.cen_ops = centring_vectors(*lat);
   int counter = 0;
   int prev = 0;
@@ -690,13 +684,13 @@ inline GroupOps generators_from_hall(const char* hall) {
   if (*part == '(') {
     const char* rb = std::strchr(part, ')');
     if (!rb)
-      impl::fail("missing ')': " + std::string(hall));
+      fail("missing ')': " + std::string(hall));
     if (ops.sym_ops.empty())
-      impl::fail("misplaced translation: " + std::string(hall));
+      fail("misplaced translation: " + std::string(hall));
     ops.change_basis(parse_hall_change_of_basis(part + 1, rb));
 
     if (*impl::skip_blank(find_blank(rb + 1)) != '\0')
-      impl::fail("unexpected characters after ')': " + std::string(hall));
+      fail("unexpected characters after ')': " + std::string(hall));
   }
   return ops;
 }
@@ -1684,7 +1678,7 @@ struct HklAsuChecker {
       case 8: return h>=0 && ((l>=h && k>h) || (l==h && k==h));
       case 9: return k>=l && l>=h && h>=0;
     }
-    impl::unreachable();
+    unreachable();
   }
 
   const char* condition_str() const {
@@ -1700,7 +1694,7 @@ struct HklAsuChecker {
       case 8: return "h>=0 and ((l>=h and k>h) or (l=h and k=h))";
       case 9: return "k>=l and l>=h and h>=0";
     }
-    impl::unreachable();
+    unreachable();
   }
 };
 

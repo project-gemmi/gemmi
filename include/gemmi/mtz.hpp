@@ -16,10 +16,11 @@
 #include <vector>
 #include "atox.hpp"      // for simple_atof, simple_atoi, read_word
 #include "iterator.hpp"  // for StrideIter
+#include "fail.hpp"      // for fail
 #include "fileutil.hpp"  // for file_open, is_little_endian, fileptr_t, ...
 #include "symmetry.hpp"  // for find_spacegroup_by_name, SpaceGroup
 #include "unitcell.hpp"  // for UnitCell
-#include "util.hpp"      // for fail
+#include "util.hpp"      // for ialpha4_id, rtrim_str, ialpha3_id, ...
 
 #ifdef  __INTEL_COMPILER
 # pragma warning push

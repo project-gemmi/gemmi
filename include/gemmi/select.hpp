@@ -9,7 +9,7 @@
 #include <cstdlib>   // for strtol
 #include <cctype>    // for isalpha
 #include <climits>   // for INT_MIN, INT_MAX
-#include "util.hpp"  // for fail
+#include "fail.hpp"  // for fail
 #include "model.hpp" // for Model, Chain, etc
 #include "iterator.hpp" // for FilterProxy
 

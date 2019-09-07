@@ -15,7 +15,7 @@
 #include <typeinfo>  // for typeid
 #include <vector>
 #include "symmetry.hpp"
-#include "util.hpp"      // for fail
+#include "fail.hpp"      // for fail
 #include "fileutil.hpp"  // for file_open, is_little_endian, ...
 #include "grid.hpp"
 
@@ -190,7 +190,7 @@ struct Ccp4 {
     for (int i = 0; i != 3; ++i) {
       int mapi = header_i32(17 + i);
       if (mapi <= 0 || mapi > 3 || pos[mapi - 1] != -1)
-        gemmi::fail("Incorrect MAPC/MAPR/MAPS records");
+        fail("Incorrect MAPC/MAPR/MAPS records");
       pos[mapi - 1] = i;
     }
     return pos;
@@ -245,7 +245,7 @@ struct Ccp4 {
   void read_ccp4_stream(Stream f, const std::string& path);
 
   void read_ccp4_file(const std::string& path) {
-    gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "rb");
+    fileptr_t f = file_open(path.c_str(), "rb");
     read_ccp4_stream(f.get(), path);
   }
 
@@ -414,7 +414,7 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
 template<typename T>
 void Ccp4<T>::write_ccp4_map(const std::string& path) const {
   assert(ccp4_header.size() >= 256);
-  gemmi::fileptr_t f = gemmi::file_open(path.c_str(), "wb");
+  fileptr_t f = file_open(path.c_str(), "wb");
   std::fwrite(ccp4_header.data(), 4, ccp4_header.size(), f.get());
   int mode = header_i32(4);
   if (mode == 0)

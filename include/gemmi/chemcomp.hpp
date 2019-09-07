@@ -10,8 +10,9 @@
 #include <vector>
 #include "cifdoc.hpp"
 #include "elem.hpp"  // for Element
+#include "fail.hpp"  // for fail, unreachable
 #include "numb.hpp"  // for as_number
-#include "util.hpp"  // for istarts_with, join_str, fail
+#include "util.hpp"  // for istarts_with, join_str
 #include "model.hpp" // for Residue, Atom
 
 namespace gemmi {

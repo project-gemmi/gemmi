@@ -6,13 +6,13 @@
 #ifndef GEMMI_SMCIF_HPP_
 #define GEMMI_SMCIF_HPP_
 
+#include <algorithm>     // for any_of
 #include <string>
 #include <vector>
 #include "cifdoc.hpp"
-#include "math.hpp" // Fractional
-#include "numb.hpp"  // for as_number
-#include "symmetry.hpp" // SpaceGroup
-#include "unitcell.hpp" // UnitCell
+#include "numb.hpp"      // for as_number
+#include "symmetry.hpp"  // SpaceGroup
+#include "unitcell.hpp"  // UnitCell, Fractional
 
 namespace gemmi {
 

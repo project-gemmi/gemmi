@@ -8,6 +8,8 @@
 
 #include <vector>
 #include <cmath>  // for INFINITY, sqrt
+
+#include "fail.hpp"       // for fail
 #include "grid.hpp"
 #include "model.hpp"
 

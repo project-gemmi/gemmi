@@ -11,7 +11,6 @@
 #include <cmath>   // for NAN
 #include <cstddef> // for size_t
 #include "third_party/tao/pegtl.hpp"
-#include "cifdoc.hpp" // for is_null
 
 namespace gemmi {
 namespace cif {

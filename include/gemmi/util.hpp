@@ -9,7 +9,6 @@
 #include <cctype>     // for tolower
 #include <cstring>    // for strncmp
 #include <iterator>   // for begin, end, make_move_iterator
-#include <stdexcept>  // for runtime_error
 #include <string>
 #include <vector>
 
@@ -222,18 +221,6 @@ constexpr int ialpha4_id(const char* s) {
 // Numeric ID used for case-insensitive comparison of 3 letters.
 constexpr int ialpha3_id(const char* s) {
   return (s[0] << 16 | s[1] << 8 | s[2]) & ~0x20202020;
-}
-
-[[noreturn]]
-inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
-
-// unreachable() is used to silence GCC -Wreturn-type and hint the compiler
-[[noreturn]] inline void unreachable() {
-#if defined(__GNUC__) || defined(__clang__)
-  __builtin_unreachable();
-#elif defined(_MSC_VER)
-  __assume(0);
-#endif
 }
 
 } // namespace gemmi

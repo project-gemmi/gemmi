@@ -7,10 +7,11 @@
 
 #include <array>
 #include "cifdoc.hpp"
-#include "numb.hpp"       // for as_number
-#include "unitcell.hpp"   // for UnitCell
-#include "symmetry.hpp"   // for SpaceGroup
+#include "fail.hpp"       // for fail
 #include "mmcif_impl.hpp" // for set_cell_from_mmcif, read_spacegroup_from_block
+#include "numb.hpp"       // for as_number
+#include "symmetry.hpp"   // for SpaceGroup
+#include "unitcell.hpp"   // for UnitCell
 
 namespace gemmi {
 
@@ -120,8 +121,8 @@ std::vector<ReflnBlock> as_refln_blocks(std::vector<cif::Block>&& blocks) {
     r.emplace_back(std::move(block));
   blocks.clear();
   // Some blocks miss space group tag, try to fill it in.
-  const gemmi::SpaceGroup* first_sg = nullptr;
-  for (gemmi::ReflnBlock& rblock : r)
+  const SpaceGroup* first_sg = nullptr;
+  for (ReflnBlock& rblock : r)
     if (!first_sg)
       first_sg = rblock.spacegroup;
     else if (!rblock.spacegroup)
@@ -134,7 +135,7 @@ std::vector<ReflnBlock> as_refln_blocks(std::vector<cif::Block>&& blocks) {
 inline ReflnBlock get_refln_block(std::vector<cif::Block>&& blocks,
                                   const std::vector<std::string>& labels,
                                   const char* block_name=nullptr) {
-  const gemmi::SpaceGroup* first_sg = nullptr;
+  const SpaceGroup* first_sg = nullptr;
   for (cif::Block& block : blocks) {
     if (!first_sg)
       first_sg = impl::read_spacegroup_from_block(block);
@@ -149,7 +150,7 @@ inline ReflnBlock get_refln_block(std::vector<cif::Block>&& blocks,
         return rblock;
       }
   }
-  gemmi::fail("Required block or tags not found in the SF-mmCIF file.");
+  fail("Required block or tags not found in the SF-mmCIF file.");
 }
 
 // Abstraction of data source, cf. MtzDataProxy.
