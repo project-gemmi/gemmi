@@ -461,6 +461,9 @@ struct Mtz {
       warn("MTZ: unrecognized spacegroup name: " + spacegroup_name);
     if (spacegroup->ccp4 != spacegroup_number)
       warn("MTZ: inconsistent spacegroup name and number");
+    cell.set_cell_images_from_spacegroup(spacegroup);
+    for (Dataset& d : datasets)
+      d.cell.set_cell_images_from_spacegroup(spacegroup);
   }
 
   void read_raw_data(std::FILE* stream) {

@@ -29,6 +29,7 @@ struct ReflnBlock {
     entry_id = cif::as_string(block.find_value("_entry.id"));
     impl::set_cell_from_mmcif(block, cell);
     spacegroup = impl::read_spacegroup_from_block(block);
+    cell.set_cell_images_from_spacegroup(spacegroup);
     const char* wave_tag = "_diffrn_radiation_wavelength.wavelength";
     cif::Column wave_col = block.find_values(wave_tag);
     wavelength = wave_col.length() == 1 ? cif::as_number(wave_col[0]) : 0.;
