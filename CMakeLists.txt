@@ -200,12 +200,12 @@ add_executable(gemmi-wcn EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-wcn)
 
 add_executable(gemmi-prog
-               src/wcn.cpp src/cif2mtz.cpp src/contact.cpp
+               src/blobs.cpp src/cif2mtz.cpp src/contact.cpp
                src/contents.cpp src/convert.cpp
                src/grep.cpp src/main.cpp src/map.cpp src/map2sf.cpp
                src/mask.cpp src/mtz.cpp src/mtz2cif.cpp
                src/residues.cpp src/rmsz.cpp src/sf2map.cpp src/sg.cpp
-               src/validate.cpp src/validate_mon.cpp
+               src/validate.cpp src/validate_mon.cpp src/wcn.cpp
                $<TARGET_OBJECTS:mapcoef>
                $<TARGET_OBJECTS:input>
                $<TARGET_OBJECTS:output>

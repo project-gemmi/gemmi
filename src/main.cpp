@@ -5,6 +5,7 @@
 #include <cstring>
 #include "gemmi/version.hpp"
 
+int blobs_main(int argc, char** argv);
 int cif2mtz_main(int argc, char** argv);
 int contact_main(int argc, char** argv);
 int contents_main(int argc, char** argv);
@@ -32,6 +33,7 @@ struct SubCmd {
 
 #define CMD(s, desc) { #s, &s##_main, desc }
 static SubCmd subcommands[] = {
+  CMD(blobs, "list unmodelled electron density blobs"),
   CMD(cif2mtz, "convert structure factor mmCIF to MTZ"),
   CMD(contact, "searches for contacts (neighbouring atoms)"),
   CMD(contents, "info about content of a coordinate file (pdb, mmCIF, ...)"),
