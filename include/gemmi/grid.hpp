@@ -68,6 +68,17 @@ inline std::array<int, 3> good_grid_size(const std::array<double, 3>& limit,
   return m;
 }
 
+struct GridOp {
+  Op scaled_op;
+
+  std::array<int, 3> apply(int u, int v, int w) const {
+    std::array<int, 3> t;
+    const Op::Rot& rot = scaled_op.rot;
+    for (int i = 0; i != 3; ++i)
+      t[i] = rot[i][0] * u + rot[i][1] * v + rot[i][2] * w + scaled_op.tran[i];
+    return t;
+  }
+};
 
 // For now, for simplicity, the grid covers whole unit cell
 // and space group is P1.
@@ -185,33 +196,28 @@ struct Grid {
   }
 
   // operations re-scaled for faster later calculations; identity not included
-  std::vector<Op> get_scaled_ops_except_id() const {
-    std::vector<Op> ops = spacegroup->operations().all_ops_sorted();
-    auto id = std::find(ops.begin(), ops.end(), Op::identity());
-    if (id != ops.end())
-      ops.erase(id);
-    // Rescale symmetry operations. Rotations are expected to be integral.
-    for (Op& op : ops) {
-      op.tran[0] = op.tran[0] * nu / Op::DEN;
-      op.tran[1] = op.tran[1] * nv / Op::DEN;
-      op.tran[2] = op.tran[2] * nw / Op::DEN;
-      for (int i = 0; i != 3; ++i)
-        for (int j = 0; j != 3; ++j)
-          op.rot[i][j] /= Op::DEN;
-    }
-    return ops;
+  std::vector<GridOp> get_scaled_ops_except_id() const {
+    GroupOps gops = spacegroup->operations();
+    std::vector<GridOp> grid_ops;
+    grid_ops.reserve(gops.order());
+    for (const Op& so : gops.sym_ops)
+      for (const Op::Tran& co : gops.cen_ops) {
+        Op op = so.add_centering(co);
+        if (op != Op::identity()) {
+          // Rescale. Rotations are expected to be integral.
+          op.tran[0] = op.tran[0] * nu / Op::DEN;
+          op.tran[1] = op.tran[1] * nv / Op::DEN;
+          op.tran[2] = op.tran[2] * nw / Op::DEN;
+          for (int i = 0; i != 3; ++i)
+            for (int j = 0; j != 3; ++j)
+              op.rot[i][j] /= Op::DEN;
+          grid_ops.push_back({op});
+        }
+      }
+    return grid_ops;
   }
 
-  static
-  std::array<int,3> transformed_uvw(const Op& scaled_op, int u, int v, int w) {
-    std::array<int, 3> t;
-    const Op::Rot& rot = scaled_op.rot;
-    for (int i = 0; i != 3; ++i)
-      t[i] = rot[i][0] * u + rot[i][1] * v + rot[i][2] * w + scaled_op.tran[i];
-    return t;
-  }
-
-  void symmetrize_using_ops(const std::vector<Op>& ops,
+  void symmetrize_using_ops(const std::vector<GridOp>& ops,
                             std::function<T(T, T)> func) {
     std::vector<int> mates(ops.size(), 0);
     std::vector<bool> visited(data.size(), false);
@@ -223,7 +229,7 @@ struct Grid {
           if (visited[idx])
             continue;
           for (size_t k = 0; k < ops.size(); ++k) {
-            std::array<int,3> t = transformed_uvw(ops[k], u, v, w);
+            std::array<int,3> t = ops[k].apply(u, v, w);
             mates[k] = index_n(t[0], t[1], t[2]);
           }
           T value = data[idx];
@@ -258,14 +264,14 @@ struct Grid {
 
   template<typename V> std::vector<V> get_asu_mask(V in, V out) const {
     std::vector<V> mask(data.size(), in);
-    std::vector<Op> ops = get_scaled_ops_except_id();
+    std::vector<GridOp> ops = get_scaled_ops_except_id();
     int idx = 0;
     for (int w = 0; w != nw; ++w)
       for (int v = 0; v != nv; ++v)
         for (int u = 0; u != nu; ++u, ++idx)
           if (mask[idx] == in)
-            for (const Op& op : ops) {
-              std::array<int,3> t = transformed_uvw(op, u, v, w);
+            for (const GridOp& op : ops) {
+              std::array<int, 3> t = op.apply(u, v, w);
               int mate_idx = index_n(t[0], t[1], t[2]);
               mask[mate_idx] = out;
             }

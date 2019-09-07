@@ -118,7 +118,7 @@ std::vector<Blob> find_blobs_by_flood_fill(const gemmi::Grid<float>& grid,
   // the mask will be used as follows:
   // 1=in blob,  0=in asu, not in blob (so far),  -1=in neither
   std::vector<signed char> mask = grid.get_asu_mask<signed char>(0, -1);
-  std::vector<gemmi::Op> ops = grid.get_scaled_ops_except_id();
+  std::vector<gemmi::GridOp> ops = grid.get_scaled_ops_except_id();
   int idx = 0;
   for (int w = 0; w != grid.nw; ++w)
     for (int v = 0; v != grid.nv; ++v)
@@ -141,8 +141,8 @@ std::vector<Blob> find_blobs_by_flood_fill(const gemmi::Grid<float>& grid,
             nabe.idx = grid.index_s(nabe.u, nabe.v, nabe.w);
             if (mask[nabe.idx] != 1 && grid.data[nabe.idx] > criteria.cutoff) {
               if (mask[nabe.idx] != 0)
-                for (const gemmi::Op& op : ops) {
-                  auto t = grid.transformed_uvw(op, nabe.u, nabe.v, nabe.w);
+                for (const gemmi::GridOp& op : ops) {
+                  auto t = op.apply(nabe.u, nabe.v, nabe.w);
                   int mate_idx = grid.index_s(t[0], t[1], t[2]);
                   if (mask[mate_idx] == 0)
                     mask[mate_idx] = -1;
