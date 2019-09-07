@@ -236,15 +236,19 @@ static int run(OptParser& p) {
             [](const Blob& a, const Blob& b) { return a.score > b.score; });
 
   // move blob position to the symmetry image nearest to the model
+  if (st.cell.images.size() != grid.unit_cell.images.size())
+    fprintf(stderr, "Warning: different space groups in model and data.");
+  if (!st.cell.approx(grid.unit_cell, 0.1))
+    fprintf(stderr, "Warning: different unit cells in model and data.");
   // assert(st.cell == grid.unit_cell);
-  gemmi::SubCells sc(model, st.cell, 10.0);
+  gemmi::SubCells sc(model, grid.unit_cell, 10.0);
   sc.populate();
   for (Blob& blob : blobs)
     if (const gemmi::SubCells::Mark* mark = sc.find_nearest_atom(blob.pos)) {
       const gemmi::Position& ref = mark->to_cra(model).atom->pos;
-      gemmi::Fractional fpos = st.cell.fractionalize(blob.pos);
-      st.cell.apply_transform_inverse(fpos, mark->image_idx);
-      blob.pos = st.cell.orthogonalize_in_pbc(ref, fpos);
+      gemmi::Fractional fpos = grid.unit_cell.fractionalize(blob.pos);
+      grid.unit_cell.apply_transform_inverse(fpos, mark->image_idx);
+      blob.pos = grid.unit_cell.orthogonalize_in_pbc(ref, fpos);
     }
 
   // output results
