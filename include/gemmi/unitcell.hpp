@@ -188,6 +188,25 @@ struct UnitCell {
     calculate_properties();
   }
 
+  // template to avoid dependency on symmetry.hpp
+  template<typename SG> void set_cell_images_from_spacegroup(const SG* sg) {
+    images.clear();
+    if (!sg)
+      return;
+    auto group_ops = sg->operations();
+    images.reserve(group_ops.order() - 1);
+    for (const auto& op : group_ops) {
+      if (op == op.identity())
+        continue;
+      double mult = 1.0 / op.DEN;
+      Mat33 rot(mult * op.rot[0][0], mult * op.rot[0][1], mult * op.rot[0][2],
+                mult * op.rot[1][0], mult * op.rot[1][1], mult * op.rot[1][2],
+                mult * op.rot[2][0], mult * op.rot[2][1], mult * op.rot[2][2]);
+      Vec3 tran(mult * op.tran[0], mult * op.tran[1], mult * op.tran[2]);
+      images.emplace_back(rot, tran);
+    }
+  }
+
   Position orthogonalize(const Fractional& f) const {
     return Position(orth.apply(f));
   }
