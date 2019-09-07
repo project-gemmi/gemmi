@@ -110,6 +110,12 @@ struct UnitCell {
   }
   bool operator!=(const UnitCell& o) const { return !operator==(o); }
 
+  bool approx(const UnitCell& o, double epsilon) const {
+    auto eq = [&](double x, double y) { return std::fabs(x - y) < epsilon; };
+    return eq(a, o.a) && eq(b, o.b) && eq(c, o.c) &&
+           eq(alpha, o.alpha) && eq(beta, o.beta) && eq(gamma, o.gamma);
+  }
+
   void calculate_properties() {
     constexpr double deg2rad = pi() / 180.0;
     // ensure exact values for right angles
