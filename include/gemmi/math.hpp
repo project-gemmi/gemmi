@@ -228,6 +228,11 @@ struct Variance {
   double sum_sq = 0.;
   double mean_x = 0.;
 
+  Variance() = default;
+  template <typename T> Variance(T begin, T end) : Variance() {
+    for (auto i = begin; i != end; ++i)
+      add_point(*i);
+  }
   void add_point(double x) {
     ++n;
     double dx = x - mean_x;

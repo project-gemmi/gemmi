@@ -1,7 +1,7 @@
 Gemmi program
 #############
 
-The library comes with a command-line program which is also called gemmi;
+The library comes with a command-line program which is also named gemmi;
 running a program is easier than calling a library function.
 
 This program is actually a set of small programs, each of them
@@ -422,6 +422,18 @@ contact
 Searches for contacts in a model.
 
 .. literalinclude:: contact-help.txt
+   :language: console
+
+blobs
+=====
+
+Searches for unmodelled blobs in electron density.
+Similar to "Validate > Unmodelled blobs..." in Coot.
+For use in Dimple_.
+
+.. _Dimple: https://ccp4.github.io/dimple/
+
+.. literalinclude:: blobs-help.txt
    :language: console
 
 wcn

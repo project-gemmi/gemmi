@@ -1,0 +1,33 @@
+$ gemmi blobs -h
+Usage:
+ gemmi blobs [options] MTZ_OR_MMCIF PDB_OR_MMCIF
+
+Search for umodelled blobs of electron density.
+
+Options:
+  -h, --help            Print usage and exit.
+  -V, --version         Print version and exit.
+  --verbose             Verbose output.
+
+The area around model is masked to search only unmodelled density.
+  --mask-radius=NUMBER  Mask radius (default: 2.0 A).
+  --mask-water          Mask water (water is not masked by default).
+
+Searching blobs of density above:
+  --sigma=NUMBER        Sigma (RMSD) level (default: 1.0).
+  --abs=NUMBER          Absolute level in electrons/A^3.
+
+Blob criteria:
+  --min-volume=NUMBER   Minimal volume (default: 10.0 A^3).
+  --min-score=NUMBER    Min. this electrons in blob (default: 15.0).
+  --min-sigma=NUMBER    Min. peak rmsd (default: 0.0).
+  --min-peak=NUMBER     Min. peak density (default: 0.0 el/A^3).
+
+Options for map calculation:
+  -d, --diff            Use difference map coefficients.
+  --section=NAME        MTZ dataset name or CIF block name
+  -f COLUMN             F column (MTZ label or mmCIF tag).
+  -p COLUMN             Phase column (MTZ label or mmCIF tag).
+  -g, --grid=NX,NY,NZ   Grid size (user-specified minimum).
+  -s, --sample=NUMBER   Set spacing to d_min/NUMBER (3 is usual).
+  -G                    Print size of the grid that would be used and exit.
