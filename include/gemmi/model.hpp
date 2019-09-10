@@ -135,23 +135,19 @@ struct Entity {
   std::vector<std::string> subchains;
   EntityType entity_type = EntityType::Unknown;
   PolymerType polymer_type = PolymerType::Unknown;
-  std::vector<PolySeqItem> poly_seq;  // SEQRES / entity_poly_seq
+  std::vector<PolySeqItem> full_sequence;  // SEQRES / entity_poly_seq
 
   explicit Entity(std::string name_) noexcept : name(name_) {}
 
-  //ConstUniqProxy<PolySeqItem>
-  //seq_first_conformer() const { return {poly_seq}; }
-
-  // TODO: is it worth to use first_conformer UniqProxy
   bool is_seq_first_conformer(size_t idx) const {
-    int num = poly_seq[idx].num;
-    return num < 0 || idx == 0 || num != poly_seq[idx-1].num;
+    int num = full_sequence[idx].num;
+    return num < 0 || idx == 0 || num != full_sequence[idx-1].num;
   }
 
-  // handles point mutations, unlike poly_seq.size()
+  // handles point mutations, unlike full_sequence.size()
   int seq_length() const {
     int len = 0;
-    for (size_t i = 0; i != poly_seq.size(); ++i)
+    for (size_t i = 0; i != full_sequence.size(); ++i)
       if (is_seq_first_conformer(i))
         ++len;
     return len;

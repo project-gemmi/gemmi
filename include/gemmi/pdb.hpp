@@ -453,7 +453,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       for (int i = 19; i < 68; i += 4) {
         std::string res_name = read_string(line+i, 3);
         if (!res_name.empty())
-          ent.poly_seq.emplace_back(res_name);
+          ent.full_sequence.emplace_back(res_name);
       }
 
     } else if (is_record_type(line, "HEADER")) {
@@ -582,7 +582,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   for (Model& mod : st.models)
     for (Chain& ch : mod.chains)
       if (ch.residues[0].entity_type != EntityType::Unknown) {
-        assign_subchains(ch);
+        assign_subchain_names(ch);
         if (Entity* entity = st.get_entity(ch.name))
           if (auto polymer = ch.get_polymer())
             entity->subchains.emplace_back(polymer.subchain_id());

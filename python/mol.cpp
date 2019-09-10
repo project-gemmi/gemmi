@@ -121,7 +121,7 @@ void add_mol(py::module& m) {
     .def_readwrite("subchains", &Entity::subchains)
     .def_readwrite("entity_type", &Entity::entity_type)
     .def_readwrite("polymer_type", &Entity::polymer_type)
-    .def_readwrite("poly_seq", &Entity::poly_seq)
+    .def_readwrite("full_sequence", &Entity::full_sequence)
     .def("__repr__", [](const Entity& self) { return tostr(self); });
 
   py::class_<NcsOp>(m, "NcsOp")

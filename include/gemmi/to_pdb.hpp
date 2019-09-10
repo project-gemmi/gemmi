@@ -421,13 +421,13 @@ inline void write_header(const Structure& st, std::ostream& os,
         int seq_len = entity->seq_length();
         int row = 0;
         int col = 0;
-        for (size_t i = 0; i != entity->poly_seq.size(); ++i) {
+        for (size_t i = 0; i != entity->full_sequence.size(); ++i) {
           if (!entity->is_seq_first_conformer(i))
             continue;
           if (col == 0)
             gf_snprintf(buf, 82, "SEQRES%4d%2s%5d %62s\n",
                         ++row, ch.name.c_str(), seq_len, "");
-          const std::string& mon = entity->poly_seq[i].mon;
+          const std::string& mon = entity->full_sequence[i].mon;
           memcpy(buf + 18 + 4*col + 4-mon.length(), mon.c_str(), mon.length());
           if (++col == 13) {
             os.write(buf, 81);

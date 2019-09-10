@@ -155,7 +155,7 @@ inline void add_entity_types(Structure& st, bool overwrite) {
 // somewhat different rules (it was written in 1990's before PDBx/mmCIF).
 //
 // Here we use naming and rules different from both wwPDB and makecif.
-inline void assign_subchains(Chain& chain) {
+inline void assign_subchain_names(Chain& chain) {
   for (Residue& res : chain.residues) {
     res.subchain = chain.name;
     switch (res.entity_type) {
@@ -172,7 +172,7 @@ inline void assign_subchains(Structure& st, bool force) {
     for (Chain& chain : model.chains)
       if (force || !has_subchains_assigned(chain)) {
         add_entity_types(chain, false);
-        assign_subchains(chain);
+        assign_subchain_names(chain);
       }
 }
 
@@ -206,9 +206,10 @@ inline void ensure_entities(Structure& st) {
 
 inline void deduplicate_entities(Structure& st) {
   for (auto i = st.entities.begin(); i != st.entities.end(); ++i)
-    if (!i->poly_seq.empty())
+    if (!i->full_sequence.empty())
       for (auto j = i + 1; j != st.entities.end(); ++j)
-        if (j->polymer_type == i->polymer_type && j->poly_seq == i->poly_seq) {
+        if (j->polymer_type == i->polymer_type &&
+            j->full_sequence == i->full_sequence) {
           vector_move_extend(i->subchains, std::move(j->subchains));
           st.entities.erase(j--);
         }

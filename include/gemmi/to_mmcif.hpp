@@ -800,7 +800,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
                                          {"entity_id", "num", "mon_id"});
   for (const Entity& ent : st.entities)
     if (ent.entity_type == EntityType::Polymer)
-      for (const PolySeqItem& si : ent.poly_seq) {
+      for (const PolySeqItem& si : ent.full_sequence) {
         std::string num = si.num >= 0 ? to_string(si.num) : "?";
         poly_loop.add_row({ent.name, num, si.mon});
       }
