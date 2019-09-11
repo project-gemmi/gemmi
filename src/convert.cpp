@@ -35,6 +35,7 @@ struct ConvArg: public Arg {
 
 enum OptionIndex { Verbose=3, FormatIn, FormatOut,
                    Comcifs, Mmjson, Bare, Numb, CifDot, PdbxStyle, SkipCat,
+                   BlockName,
                    ExpandNcs, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
                    ShortTer, SegmentAsChain, Translate };
 static const option::Descriptor Usage[] = {
@@ -52,6 +53,15 @@ static const option::Descriptor Usage[] = {
     "  --from=FORMAT  \tInput format (default: from the file extension)." },
   { FormatOut, 0, "", "to", ConvArg::FileFormat,
     "  --to=FORMAT  \tOutput format (default: from the file extension)." },
+
+  { NoOp, 0, "", "", Arg::None, "\nCIF output options:" },
+  { PdbxStyle, 0, "", "pdbx-style", Arg::None,
+    "  --pdbx-style  \tSimilar styling (formatting) as in wwPDB." },
+  { SkipCat, 0, "", "skip-category", Arg::Required,
+    "  --skip-category=CAT  \tDo not output tags starting with _CAT" },
+  { BlockName, 0, "b", "block-name", Arg::Required,
+    "  -b, --block-name=NAME  \tSet block name and default _entry.id" },
+
   { NoOp, 0, "", "", Arg::None, "\nJSON output options:" },
   { Comcifs, 0, "c", "comcifs", Arg::None,
     "  -c, --comcifs  \tConform to the COMCIFS CIF-JSON standard draft." },
@@ -66,16 +76,13 @@ static const option::Descriptor Usage[] = {
                              "\v  mix (default) - quote only numbs with s.u." },
   { CifDot, 0, "", "dot", Arg::Required,
     "  --dot=STRING  \tJSON representation of CIF's '.' (default: null)." },
-  { NoOp, 0, "", "", Arg::None, "\nCIF output options:" },
-  { PdbxStyle, 0, "", "pdbx-style", Arg::None,
-    "  --pdbx-style  \tSimilar styling (formatting) as in wwPDB." },
-  { SkipCat, 0, "", "skip-category", Arg::Required,
-    "  --skip-category=CAT  \tDo not output tags starting with _CAT" },
+
   { NoOp, 0, "", "", Arg::None, "\nPDB input/output options:" },
   { SegmentAsChain, 0, "", "segment-as-chain", Arg::None,
     "  --segment-as-chain \tAppend segment id to label_asym_id (chain name)." },
   { ShortTer, 0, "", "short-ter", Arg::None,
     "  --short-ter  \tWrite PDB TER records without numbers (iotbx compat.)." },
+
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular operations:" },
   { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
     "  --expand-ncs=dup|addn  \tExpand strict NCS specified in MTRIXn or"
@@ -89,6 +96,7 @@ static const option::Descriptor Usage[] = {
   { TrimAla, 0, "", "trim-to-ala", Arg::None,
     "  --trim-to-ala  \tTrim aminoacids to alanine." },
   { Translate, 0, "", "translate", Arg::None, 0 },
+
   { NoOp, 0, "", "", Arg::None,
     "\nWhen output file is -, write to standard output." },
   { 0, 0, 0, 0, 0, 0 }
@@ -275,6 +283,8 @@ static void convert(const std::string& input, CoorFormat input_type,
 
   if (output_type == CoorFormat::Mmcif || output_type == CoorFormat::Mmjson) {
     if (!transcribe) {
+      if (options[BlockName])
+        st.name = options[BlockName].arg;
       doc.blocks.clear();  // temporary, for testing
       doc.blocks.resize(1);
       update_cif_block(st, doc.blocks[0], /*with_atoms=*/true);

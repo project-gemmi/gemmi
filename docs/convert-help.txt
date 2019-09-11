@@ -12,6 +12,11 @@ General options:
   --from=FORMAT          Input format (default: from the file extension).
   --to=FORMAT            Output format (default: from the file extension).
 
+CIF output options:
+  --pdbx-style           Similar styling (formatting) as in wwPDB.
+  --skip-category=CAT    Do not output tags starting with _CAT
+  -b, --block-name=NAME  Set block name and default _entry.id
+
 JSON output options:
   -c, --comcifs          Conform to the COMCIFS CIF-JSON standard draft.
   -m, --mmjson           Compatible with mmJSON from PDBj.
@@ -21,10 +26,6 @@ JSON output options:
                            nosu - number without s.u.,
                            mix (default) - quote only numbs with s.u.
   --dot=STRING           JSON representation of CIF's '.' (default: null).
-
-CIF output options:
-  --pdbx-style           Similar styling (formatting) as in wwPDB.
-  --skip-category=CAT    Do not output tags starting with _CAT
 
 PDB input/output options:
   --segment-as-chain     Append segment id to label_asym_id (chain name).
