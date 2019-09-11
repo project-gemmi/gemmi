@@ -120,37 +120,17 @@ inline bool is_polynucleotide(PolymerType pt) {
          pt == PolymerType::DnaRnaHybrid;
 }
 
-struct PolySeqItem {
-  int num;  // _entity_poly_seq.num or -1 if from SEQRES
-  std::string mon;  // _entity_poly_seq.mon_id or resName from SEQRES
-  explicit PolySeqItem(std::string m) noexcept : num(-1), mon(m) {}
-  PolySeqItem(int n, std::string m) noexcept : num(n), mon(m) {}
-  bool operator==(const PolySeqItem& o) const {
-    return num == o.num && mon == o.mon;
-  }
-};
-
 struct Entity {
   std::string name;
   std::vector<std::string> subchains;
   EntityType entity_type = EntityType::Unknown;
   PolymerType polymer_type = PolymerType::Unknown;
-  std::vector<PolySeqItem> full_sequence;  // SEQRES / entity_poly_seq
+  // SEQRES or entity_poly_seq with microheterogeneity as comma-separated names
+  std::vector<std::string> full_sequence;
 
   explicit Entity(std::string name_) noexcept : name(name_) {}
-
-  bool is_seq_first_conformer(size_t idx) const {
-    int num = full_sequence[idx].num;
-    return num < 0 || idx == 0 || num != full_sequence[idx-1].num;
-  }
-
-  // handles point mutations, unlike full_sequence.size()
-  int seq_length() const {
-    int len = 0;
-    for (size_t i = 0; i != full_sequence.size(); ++i)
-      if (is_seq_first_conformer(i))
-        ++len;
-    return len;
+  static std::string first_mon(const std::string& mon_list) {
+    return mon_list.substr(0, mon_list.find(','));
   }
 };
 

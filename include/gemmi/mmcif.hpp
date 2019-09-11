@@ -524,9 +524,14 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
 
   for (auto row : block.find("_entity_poly_seq.",
                              {"entity_id", "num", "mon_id"}))
-    if (Entity* ent = st.get_entity(row.str(0)))
-      ent->full_sequence.push_back({cif::as_int(row[1], -1), row.str(2)});
-
+    if (Entity* ent = st.get_entity(row.str(0))) {
+      // According to the spec, num must be >= 1.
+      int pos = cif::as_int(row[1], 0) - 1;
+      if (pos == (int) ent->full_sequence.size())
+        ent->full_sequence.push_back(row.str(2));
+      else if (pos >= 0 && pos < (int) ent->full_sequence.size())
+        ent->full_sequence[pos] += "," + row.str(2);
+    }
   for (auto row : block.find("_struct_asym.", {"id", "entity_id"}))
     if (Entity* ent = st.get_entity(row.str(1)))
       ent->subchains.push_back(row.str(0));

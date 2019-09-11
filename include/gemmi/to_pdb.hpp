@@ -312,7 +312,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
             a.charge ? a.charge > 0 ? '+' : '-' : ' ');
       if (a.u11 != 0.0f) {
         // re-using part of the buffer
-        memcpy(buf, "ANISOU", 6);
+        std::memcpy(buf, "ANISOU", 6);
         const double eps = 1e-6;
         gf_snprintf(buf+28, 43, "%7.0f%7.0f%7.0f%7.0f%7.0f%7.0f",
                     a.u11*1e4 + eps, a.u22*1e4 + eps, a.u33*1e4 + eps,
@@ -418,17 +418,17 @@ inline void write_header(const Structure& st, std::ostream& os,
       }
 
       if (entity) {
-        int seq_len = entity->seq_length();
         int row = 0;
         int col = 0;
-        for (size_t i = 0; i != entity->full_sequence.size(); ++i) {
-          if (!entity->is_seq_first_conformer(i))
-            continue;
+        for (const std::string& monomers : entity->full_sequence) {
           if (col == 0)
-            gf_snprintf(buf, 82, "SEQRES%4d%2s%5d %62s\n",
-                        ++row, ch.name.c_str(), seq_len, "");
-          const std::string& mon = entity->full_sequence[i].mon;
-          memcpy(buf + 18 + 4*col + 4-mon.length(), mon.c_str(), mon.length());
+            gf_snprintf(buf, 82, "SEQRES%4d%2s%5zu %62s\n",
+                        ++row, ch.name.c_str(),
+                        entity->full_sequence.size(), "");
+          size_t end = monomers.find(',');
+          if (end == std::string::npos)
+            end = monomers.length();
+          std::memcpy(buf + 18 + 4*col + 4-end, monomers.c_str(), end);
           if (++col == 13) {
             os.write(buf, 81);
             col = 0;

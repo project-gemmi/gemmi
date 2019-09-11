@@ -104,17 +104,6 @@ void add_mol(py::module& m) {
     .value("Other", PolymerType::Other)
     .value("Unknown", PolymerType::Unknown);
 
-  py::class_<PolySeqItem>(m, "PolySeqItem")
-    .def(py::init<int, std::string>())
-    .def_readwrite("num", &PolySeqItem::num)
-    .def_readwrite("mon", &PolySeqItem::mon)
-    .def("__repr__", [](const PolySeqItem& self) {
-        std::string r = "<gemmi.PolySeqItem " + self.mon;
-        if (self.num != -1)
-          r += " (" + std::to_string(self.num) + ")";
-        return r + ">";
-    });
-
   py::class_<Entity>(m, "Entity")
     .def(py::init<std::string>())
     .def_readwrite("name", &Entity::name)
