@@ -20,7 +20,7 @@ CIF output options:
 JSON output options:
   -c, --comcifs          Conform to the COMCIFS CIF-JSON standard draft.
   -m, --mmjson           Compatible with mmJSON from PDBj.
-  -b, --bare-tags        Output tags without the first underscore.
+  --bare-tags            Output tags without the first underscore.
   --numb=quote|nosu|mix  Convert the CIF numb type to one of:
                            quote - string in quotes,
                            nosu - number without s.u.,

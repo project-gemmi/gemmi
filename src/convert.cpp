@@ -67,8 +67,8 @@ static const option::Descriptor Usage[] = {
     "  -c, --comcifs  \tConform to the COMCIFS CIF-JSON standard draft." },
   { Mmjson, 0, "m", "mmjson", Arg::None,
     "  -m, --mmjson   \tCompatible with mmJSON from PDBj." },
-  { Bare, 0, "b", "bare-tags", Arg::None,
-    "  -b, --bare-tags  \tOutput tags without the first underscore." },
+  { Bare, 0, "", "bare-tags", Arg::None,
+    "  --bare-tags  \tOutput tags without the first underscore." },
   { Numb, 0, "", "numb", ConvArg::NumbChoice,
     "  --numb=quote|nosu|mix  \tConvert the CIF numb type to one of:"
                              "\v  quote - string in quotes,"
