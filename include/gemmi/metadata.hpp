@@ -22,6 +22,7 @@ struct SoftwareItem {
   };
   std::string name;
   std::string version;
+  std::string date;
   Classification classification = Unspecified;
   int pdbx_ordinal = -1;
 };

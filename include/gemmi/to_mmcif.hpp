@@ -857,13 +857,14 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
 
   if (!st.meta.software.empty()) {
     cif::Loop& loop = block.init_mmcif_loop("_software.",
-                       {"pdbx_ordinal", "classification", "name", "version"});
+                 {"pdbx_ordinal", "classification", "name", "version", "date"});
     for (const SoftwareItem& item : st.meta.software)
       loop.add_row({
-          to_string(item.pdbx_ordinal),
+          std::to_string(item.pdbx_ordinal),
           cif::quote(software_classification_to_string(item.classification)),
           cif::quote(item.name),
-          item.version.empty() ? "?" : cif::quote(item.version)});
+          impl::string_or_qmark(item.version),
+          impl::string_or_qmark(item.date)});
   }
 }
 

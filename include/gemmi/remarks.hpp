@@ -44,6 +44,9 @@ inline bool is_tls_item(const std::string& key) {
 //   Force Field X, APEX 2 and Insight II).
 // - comma not followed by a digit separates programs
 // - brackets and the word VERSION are to be removed from version
+// Additionally, if version has format: "something (DATE)" where
+// the DATE format is either 28-MAR-07 or 28-Mar-2007, then DATE
+// is put into _software.date.
 inline void add_software(Metadata& meta, SoftwareItem::Classification type,
                          const std::string& name) {
   for (size_t start = 0, end = 0; end != std::string::npos; start = end + 1) {
@@ -59,8 +62,21 @@ inline void add_software(Metadata& meta, SoftwareItem::Classification type,
       size_t ver_start = item.name.find_first_not_of(" (", sep + 1);
       item.version = item.name.substr(ver_start);
       item.name.resize(sep);
-      if (!item.version.empty() && item.version.back() == ')')
-        item.version.pop_back();
+      if (!item.version.empty() && item.version.back() == ')') {
+        size_t open_br = item.version.find('(');
+        if (open_br == std::string::npos) {
+          item.version.pop_back();
+        } else if (open_br + 11 == item.version.size() ||
+                   open_br + 13 == item.version.size()) {
+          item.date = pdb_date_format_to_iso(item.version.substr(open_br + 1));
+          if (item.date.size() == 10 && item.date[5] != 'x') {
+            size_t last = item.version.find_last_not_of(' ', open_br - 1);
+            item.version.resize(last + 1);
+          } else {
+            item.date.clear();
+          }
+        }
+      }
       if (istarts_with(item.version, "version "))
         item.version.erase(0, 8);
     }

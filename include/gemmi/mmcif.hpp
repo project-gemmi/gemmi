@@ -365,6 +365,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
   for (auto row : block.find("_software.", {"name",
                                             "?classification",
                                             "?version",
+                                            "?date",
                                             "?pdbx_ordinal"})) {
     st.meta.software.emplace_back();
     SoftwareItem& item = st.meta.software.back();
@@ -374,7 +375,9 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
     if (row.has2(2))
       item.version = row.str(2);
     if (row.has2(3))
-      item.pdbx_ordinal = cif::as_int(row[3]);
+      item.date = row.str(3);
+    if (row.has2(4))
+      item.pdbx_ordinal = cif::as_int(row[4]);
   }
 
   std::vector<std::string> ncs_oper_tags = transform_tags("matrix", "vector");

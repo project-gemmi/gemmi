@@ -183,8 +183,9 @@ class TestMol(unittest.TestCase):
         input_block = doc.sole_block()
         st = gemmi.make_structure_from_block(input_block)
         output_block = st.make_mmcif_document().sole_block()
-        self.assertEqual(input_block.get_mmcif_category('_software'),
-                         output_block.get_mmcif_category('_software'))
+        software = output_block.get_mmcif_category('_software')
+        del software['date']
+        self.assertEqual(input_block.get_mmcif_category('_software'), software)
 
     def test_5moo_header(self):
         st = gemmi.read_structure(full_path('5moo_header.pdb'))
