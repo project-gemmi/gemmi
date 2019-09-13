@@ -184,6 +184,10 @@ add_executable(gemmi-rmsz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/rmsz.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-rmsz)
 
+add_executable(gemmi-seq EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/seq.cpp $<TARGET_OBJECTS:input>)
+support_gz(gemmi-seq)
+
 add_executable(gemmi-sf2map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/sf2map.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:input>)
 support_gz(gemmi-sf2map)
