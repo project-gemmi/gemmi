@@ -38,10 +38,13 @@ struct Alignment {
   void backtrack_to_cigar(const std::uint8_t *p, int i, int j) {
     i--;
     int j0 = j--;
+    int state = 0;
     while (i >= 0 && j >= 0) {
       // at the beginning of the loop, _state_ tells us which state to check
       // if requesting the H state, find state one maximizes it.
-      int state = p[(size_t)i * j0 + j] & 7;
+      uint32_t tmp = p[(size_t)i * j0 + j];
+      if (state == 0 || (tmp & (1 << (state + 2))) == 0)
+        state = tmp & 7;
       if (state == 0) { // match
         push_cigar(0, 1);
         --i;
