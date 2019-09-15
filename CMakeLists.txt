@@ -208,7 +208,8 @@ add_executable(gemmi-prog
                src/contents.cpp src/convert.cpp
                src/grep.cpp src/main.cpp src/map.cpp src/map2sf.cpp
                src/mask.cpp src/mtz.cpp src/mtz2cif.cpp
-               src/residues.cpp src/rmsz.cpp src/sf2map.cpp src/sg.cpp
+               src/residues.cpp src/rmsz.cpp
+               src/seq.cpp src/sf2map.cpp src/sg.cpp
                src/validate.cpp src/validate_mon.cpp src/wcn.cpp
                $<TARGET_OBJECTS:mapcoef>
                $<TARGET_OBJECTS:input>

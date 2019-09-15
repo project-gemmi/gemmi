@@ -8,7 +8,7 @@ BIN=.
 echo "\$ gemmi -h" > docs/gemmi-help.txt
 $BIN/gemmi -h >> docs/gemmi-help.txt
 for prog in blobs cif2mtz contact contents convert grep \
-    map map2sf mask mtz mtz2cif residues rmsz sf2map sg validate wcn; do
+    map map2sf mask mtz mtz2cif residues rmsz sf2map seq sg validate wcn; do
   echo "\$ gemmi $prog -h" > docs/$prog-help.txt
   $BIN/gemmi $prog -h >> docs/$prog-help.txt
 done

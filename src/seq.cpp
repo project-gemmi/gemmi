@@ -12,23 +12,43 @@
 #include <stdio.h>
 #include <cstring>  // for strlen
 
-enum OptionIndex { Verbose=3, TextAlign };
+enum OptionIndex { Verbose=3, Match, Mismatch, GapOpen, GapExt, TextAlign };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] INPUT[...]"
-    "\nCompare sequence (SEQRES) with model from a PDB or mmCIF file."},
+    "\nCompares sequence (SEQRES) with model from a PDB or mmCIF file."
+    "\nFor testing, it can also compare strings with option --text-align."
+    "\nPerforms global alignment with scoring matrix and affine gap penalty."
+    "\nCurrently, we only use match/mismatch scoring matrix.\n" },
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
   { Version, 0, "V", "version", Arg::None,
     "  -V, --version  \tPrint version and exit." },
   { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { TextAlign, 0, "", "text-align", Arg::None,
     "  --text-align  \tAlign characters in two strings (for testing)." },
+
+  { NoOp, 0, "", "", Arg::None, "\nScoring (absolute values):" },
+  { Match, 0, "", "match", Arg::Int,
+    "  --match=INT  \tMatch score (default: 0)." },
+  { Mismatch, 0, "", "mism", Arg::Int,
+    "  --mism=INT  \tMismatch penalty (default: 1)." },
+  { GapOpen, 0, "", "gapo", Arg::Int,
+    "  --gapo=INT  \tGap opening penalty (default: 1)." },
+  { GapExt, 0, "", "gape", Arg::Int,
+    "  --gape=INT  \tGap extension penalty (default: 1)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
+struct Scoring {
+  int match = 0;
+  int mismatch = -1;
+  int gapo = 1;
+  int gape = 1;
+};
 
-static void print_text_alignment(const char* text1, const char* text2) {
+static void print_text_alignment(const char* text1, const char* text2,
+                                 const Scoring& scoring) {
   int len1 = (int) std::strlen(text1);
   int len2 = (int) std::strlen(text2);
   std::vector<uint8_t> v1(len1);
@@ -38,14 +58,14 @@ static void print_text_alignment(const char* text1, const char* text2) {
   for (int i = 0; i != len2; ++i)
     v2[i] = text2[i] >= 32 && text2[i] < 127 ? text2[i] - 32 : 0;
   int m = 127 - 32;
-  std::vector<int8_t> score_matrix(m * m, -1);
+  std::vector<int8_t> score_matrix(m * m, scoring.mismatch);
   for (int i = 0; i < m; ++i)
-    score_matrix[i * m + i] = 1;
+    score_matrix[i * m + i] = scoring.match;
   gemmi::Alignment result = gemmi::align_sequences(
       len1, v1.data(),
       len2, v2.data(),
       m, score_matrix.data(),
-      /*gapo*/1, /*gape*/1);
+      scoring.gapo, scoring.gape);
   printf("Score: %d   CIGAR: %s\n", result.score, result.cigar_str().c_str());
   size_t pos1 = 0;
   size_t pos2 = 0;
@@ -72,7 +92,8 @@ static void print_text_alignment(const char* text1, const char* text2) {
 }
 
 
-static void print_sequence_alignment(const gemmi::Structure& st, bool verbose) {
+static void print_sequence_alignment(const gemmi::Structure& st,
+                                     const Scoring& scoring, bool verbose) {
   if (st.models.size() > 1)
     std::fprintf(stderr, "Warning: using only the first model out of %zu.\n",
                  st.models.size());
@@ -105,14 +126,14 @@ static void print_sequence_alignment(const gemmi::Structure& st, bool verbose) {
     full_seq.reserve(ent->full_sequence.size());
     for (const std::string& mon_list : ent->full_sequence)
       full_seq.push_back(encoding.at(gemmi::Entity::first_mon(mon_list)));
-    std::vector<int8_t> score_matrix(n_mon * n_mon, -2);
+    std::vector<int8_t> score_matrix(n_mon * n_mon, scoring.mismatch);
     for (size_t i = 0; i != n_mon; ++i)
-      score_matrix[i * n_mon + i] = 4;
+      score_matrix[i * n_mon + i] = scoring.match;
     gemmi::Alignment result = gemmi::align_sequences(
         full_seq.size(), full_seq.data(),
         model_seq.size(), model_seq.data(),
         n_mon, score_matrix.data(),
-        /*gapo*/4, /*gape*/2);
+        scoring.gapo, scoring.gape);
     printf("%s chain %s CIGAR: %s\n",
            st.name.c_str(), chain.name.c_str(), result.cigar_str().c_str());
     if (verbose) {
@@ -147,9 +168,18 @@ static void print_sequence_alignment(const gemmi::Structure& st, bool verbose) {
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
+  Scoring scoring;
+  if (p.options[Match])
+    scoring.match = std::abs(std::atoi(p.options[Match].arg));
+  if (p.options[Mismatch])
+    scoring.mismatch = -std::abs(std::atoi(p.options[Mismatch].arg));
+  if (p.options[GapOpen])
+    scoring.gapo = std::abs(std::atoi(p.options[GapOpen].arg));
+  if (p.options[GapExt])
+    scoring.gape = std::abs(std::atoi(p.options[GapExt].arg));
   if (p.options[TextAlign]) {
     p.require_positional_args(2);
-    print_text_alignment(p.nonOption(0), p.nonOption(1));
+    print_text_alignment(p.nonOption(0), p.nonOption(1), scoring);
     return 0;
   }
   p.require_input_files_as_args();
@@ -163,7 +193,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::printf("File: %s\n", input.c_str());
       gemmi::Structure st = gemmi::read_structure_gz(input);
       gemmi::setup_entities(st);
-      print_sequence_alignment(st, verbose);
+      print_sequence_alignment(st, scoring, verbose);
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());

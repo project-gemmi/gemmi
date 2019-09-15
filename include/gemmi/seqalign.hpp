@@ -87,6 +87,7 @@ Alignment align_sequences(int qlen, const std::uint8_t *query,
   struct eh_t { std::int32_t h, e; };
   eh_t *eh = new eh_t[qlen + 1];
   std::int32_t gapoe = gapo + gape;
+
   // fill the first row
   eh[0].h = 0;
   eh[0].e = -gapoe - gapoe;
@@ -118,11 +119,11 @@ Alignment align_sequences(int qlen, const std::uint8_t *query,
       h += scores[j];
       std::uint8_t direction = 0;
       if (h < e) {
-        direction = 1;
+        direction = 1;  // deletion
         h = e;
       }
       if (h < f) {
-        direction = 2;
+        direction = 2;  // insertion
         h = f;
       }
       h1 = h;

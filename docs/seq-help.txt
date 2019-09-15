@@ -1,0 +1,18 @@
+$ gemmi seq -h
+Usage:
+ gemmi seq [options] INPUT[...]
+Compares sequence (SEQRES) with model from a PDB or mmCIF file.
+For testing, it can also compare strings with option --text-align.
+Performs global alignment with scoring matrix and affine gap penalty.
+Currently, we only use match/mismatch scoring matrix.
+
+  -h, --help     Print usage and exit.
+  -V, --version  Print version and exit.
+  --verbose      Verbose output.
+  --text-align   Align characters in two strings (for testing).
+
+Scoring (absolute values):
+  --match=INT    Match score (default: 0).
+  --mism=INT     Mismatch penalty (default: 1).
+  --gapo=INT     Gap opening penalty (default: 1).
+  --gape=INT     Gap extension penalty (default: 1).
