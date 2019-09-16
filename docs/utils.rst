@@ -413,7 +413,7 @@ For the testing purpose, it can align text strings.
 For example, the Levenshtein distance can be calculated by setting
 the gap opening penalty to zero::
 
-    $ ./gemmi seq --gapo=0 --text-align Saturday Sunday
+    $ ./gemmi seq --match=0 --gapo=0 --text-align Saturday Sunday
     Score: -3   CIGAR: 1M2I5M
     =II=X===
     Saturday
