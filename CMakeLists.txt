@@ -169,6 +169,10 @@ support_gz(gemmi-mask)
 add_executable(gemmi-mixmtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/mixmtz.cpp $<TARGET_OBJECTS:output>)
 
+add_executable(gemmi-mondiff EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/mondiff.cpp $<TARGET_OBJECTS:input>)
+support_gz(gemmi-mondiff)
+
 add_executable(gemmi-mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/mtz.cpp)
 support_gz(gemmi-mtz)
@@ -207,7 +211,7 @@ add_executable(gemmi-prog
                src/blobs.cpp src/cif2mtz.cpp src/contact.cpp
                src/contents.cpp src/convert.cpp
                src/grep.cpp src/main.cpp src/map.cpp src/map2sf.cpp
-               src/mask.cpp src/mtz.cpp src/mtz2cif.cpp
+               src/mask.cpp src/mondiff.cpp src/mtz.cpp src/mtz2cif.cpp
                src/residues.cpp src/rmsz.cpp
                src/seq.cpp src/sf2map.cpp src/sg.cpp
                src/validate.cpp src/validate_mon.cpp src/wcn.cpp
