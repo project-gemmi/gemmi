@@ -130,8 +130,12 @@ struct Restraints {
         return (b.id1 == a1 && b.id2 == a2) || (b.id1 == a2 && b.id2 == a1);
     });
   }
+  template<typename T>
+  std::vector<Bond>::const_iterator find_bond(const T& a1, const T& a2) const {
+    return const_cast<Restraints*>(this)->find_bond(a1, a2);
+  }
   const Bond& get_bond(const AtomId& a1, const AtomId& a2) const {
-    auto it = const_cast<Restraints*>(this)->find_bond(a1, a2);
+    auto it = find_bond(a1, a2);
     if (it == bonds.end())
       fail("Bond restraint not found: " + a1.atom + "-" + a2.atom);
     return *it;
@@ -139,7 +143,7 @@ struct Restraints {
 
   template<typename T>
   bool are_bonded(const T& a1, const T& a2) const {
-    return const_cast<Restraints*>(this)->find_bond(a1, a2) != bonds.end();
+    return find_bond(a1, a2) != bonds.end();
   }
 
   template<typename A, typename T>
