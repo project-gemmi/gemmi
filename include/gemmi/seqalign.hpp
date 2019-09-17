@@ -76,6 +76,7 @@ private:
 
 Alignment align_sequences(int qlen, const std::uint8_t *query,
                           int tlen, const std::uint8_t *target,
+                          const std::vector<std::int8_t>& free_gapo,
                           std::int8_t m, const std::int8_t *mat,
                           std::int8_t gapo, std::int8_t gape) {
   // generate the query profile
@@ -89,11 +90,14 @@ Alignment align_sequences(int qlen, const std::uint8_t *query,
   std::int32_t gapoe = gapo + gape;
 
   // fill the first row
-  eh[0].h = 0;
-  eh[0].e = -gapoe - gapoe;
-  for (std::int32_t j = 1; j <= qlen; ++j) {
-    eh[j].h = -(gapoe + gape * (j - 1));
-    eh[j].e = -(gapoe + gapoe + gape * j);
+  {
+    std::int32_t gap0 = !free_gapo.empty() && free_gapo[0] ? gape : gapoe;
+    eh[0].h = 0;
+    eh[0].e = -gap0 - gapoe;
+    for (std::int32_t j = 1; j <= qlen; ++j) {
+      eh[j].h = -(gap0 + gape * (j - 1));
+      eh[j].e = -(gap0 + gapoe + gape * j);
+    }
   }
 
   // backtrack matrix; in each cell: f<<4|e<<2|h
@@ -105,6 +109,8 @@ Alignment align_sequences(int qlen, const std::uint8_t *query,
     std::uint8_t *zi = &z[(size_t)i * qlen];
     std::int32_t h1 = -(gapoe + gape * i);
     std::int32_t f = -(gapoe + gapoe + gape * i);
+    std::int32_t gapx = i < (std::int32_t)free_gapo.size() && free_gapo[i+1]
+                        ? gape : gapoe;
     for (std::int32_t j = 0; j < qlen; ++j) {
       // At the beginning of the loop:
       //  eh[j] = { H(i-1,j-1), E(i,j) }, f = F(i,j) and h1 = H(i,j-1)
@@ -122,23 +128,27 @@ Alignment align_sequences(int qlen, const std::uint8_t *query,
         direction = 1;  // deletion
         h = e;
       }
-      if (h < f) {
+      if (h <= f) {
         direction = 2;  // insertion
         h = f;
       }
       h1 = h;
+
       h -= gapoe;
       e -= gape;
       if (e > h)
         direction |= 0x08;
       else
         e = h;
+
+      h = h1 - gapx;
       p->e = e;
       f -= gape;
       if (f > h)
         direction |= 0x10;
       else
         f = h;
+
       // z[i,j] keeps h for the current cell and e/f for the next cell
       zi[j] = direction;
     }
