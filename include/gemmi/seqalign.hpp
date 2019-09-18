@@ -73,10 +73,10 @@ private:
   }
 };
 
-
+inline
 Alignment align_sequences(int qlen, const std::uint8_t *query,
                           int tlen, const std::uint8_t *target,
-                          const std::vector<std::int8_t>& free_gapo,
+                          const std::vector<bool>& free_gapo,
                           std::int8_t m, const std::int8_t *mat,
                           std::int8_t gapo, std::int8_t gape) {
   // generate the query profile
@@ -109,7 +109,7 @@ Alignment align_sequences(int qlen, const std::uint8_t *query,
     std::uint8_t *zi = &z[(size_t)i * qlen];
     std::int32_t h1 = -(gapoe + gape * i);
     std::int32_t f = -(gapoe + gapoe + gape * i);
-    std::int32_t gapx = i < (std::int32_t)free_gapo.size() && free_gapo[i+1]
+    std::int32_t gapx = i+1 < (std::int32_t)free_gapo.size() && free_gapo[i+1]
                         ? gape : gapoe;
     for (std::int32_t j = 0; j < qlen; ++j) {
       // At the beginning of the loop:

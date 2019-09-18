@@ -47,7 +47,7 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2) {
              bond_type_to_string(b2->type).c_str());
     if (std::fabs(b1.value - b2->value) > 0.01 ||
         std::fabs(b1.esd - b2->esd) > 0.1)
-      printf("! bond %-8s  value %.3f : %.3f   esd %g : %g\n",
+      printf("! bond %-8s  value %.3f : %.3f   esd %.3f : %.3f\n",
              b1.str().c_str(), b1.value, b2->value, b1.esd, b2->esd);
   }
   for (const Restraints::Bond& b2 : cc2.rt.bonds)

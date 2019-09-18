@@ -103,9 +103,9 @@ inline bool are_connected2(const Residue& r1, const Residue& r2,
   return false;
 }
 
-// mix of are_connected and are_connected2
+// are_connected3() = are_connected() + fallback to are_connected2()
 inline bool are_connected3(const Residue& r1, const Residue& r2,
-                           PolymerType ptype, bool on_missing) {
+                           PolymerType ptype) {
   if (is_polypeptide(ptype)) {
     if (const Atom* a1 = r1.get_c())
       if (const Atom* a2 = r2.get_n())
@@ -121,7 +121,7 @@ inline bool are_connected3(const Residue& r1, const Residue& r2,
       if (const Atom* a2 = r2.get_p())
         return a1->pos.dist_sq(a2->pos) < sq(7.5);
   }
-  return on_missing;
+  return false;
 }
 
 inline std::string make_one_letter_sequence(const ConstResidueSpan& polymer) {

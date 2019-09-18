@@ -4,8 +4,9 @@
 
 #include <gemmi/model.hpp>
 #include <gemmi/gzread.hpp>
-#include <gemmi/polyheur.hpp>  // for are_connected3, setup_entities
+#include <gemmi/polyheur.hpp>  // for setup_entities
 #include <gemmi/seqalign.hpp>  // for align_sequences
+#include <gemmi/labelseq.hpp>  // for align_polymer
 
 #define GEMMI_PROG seq
 #include "options.h"
@@ -43,15 +44,8 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-struct Scoring {
-  int match = 1;
-  int mismatch = -1;
-  int gapo = 1;
-  int gape = 1;
-};
-
 static void print_text_alignment(const char* text1, const char* text2,
-                                 const Scoring& scoring) {
+                                 const gemmi::AlignmentScoring& scoring) {
   int len1 = (int) std::strlen(text1);
   int len2 = (int) std::strlen(text2);
   std::vector<uint8_t> v1(len1);
@@ -64,7 +58,7 @@ static void print_text_alignment(const char* text1, const char* text2,
   std::vector<int8_t> score_matrix(m * m, scoring.mismatch);
   for (int i = 0; i < m; ++i)
     score_matrix[i * m + i] = scoring.match;
-  std::vector<int8_t> free_gapo(1, 1);
+  std::vector<bool> free_gapo(1, 1);
   gemmi::Alignment result = gemmi::align_sequences(
       len1, v1.data(),
       len2, v2.data(),
@@ -95,59 +89,11 @@ static void print_text_alignment(const char* text1, const char* text2,
   printf("%s\n%s\n%s\n", match.c_str(), out1.c_str(), out2.c_str());
 }
 
-static
-std::vector<int8_t> prepare_free_gapo(const gemmi::ConstResidueSpan& polymer,
-                                      gemmi::PolymerType polymer_type) {
-  std::vector<int8_t> gaps;
-  gaps.reserve(polymer.size());
-  gaps.push_back(1); // free gap opening at the beginning of sequence
-  auto res = polymer.begin();
-  for (auto next_res = res; ++next_res != polymer.end(); res = next_res)
-    gaps.push_back(!gemmi::are_connected3(*res, *next_res, polymer_type, true));
-  return gaps;
-}
-
-// pre: !!polymer
-static gemmi::Alignment do_alignment(const gemmi::ConstResidueSpan& polymer,
-                                     const gemmi::Entity& ent,
-                                     const Scoring& scoring) {
-  std::map<std::string, uint8_t> encoding;
-  for (const gemmi::Residue& res : polymer)
-    encoding.emplace(res.name, 0);
-  for (const std::string& mon_list : ent.full_sequence)
-    encoding.emplace(gemmi::Entity::first_mon(mon_list), 0);
-  std::vector<std::string> all_monomers;
-  size_t n_mon = encoding.size();
-  all_monomers.reserve(n_mon);
-  for (auto& item : encoding) {
-    item.second = (uint8_t) all_monomers.size();
-    all_monomers.push_back(item.first);
-  }
-  std::vector<uint8_t> model_seq;
-  model_seq.reserve(polymer.size());
-  auto first_conformer = polymer.first_conformer();
-  for (const gemmi::Residue& res : first_conformer)
-    model_seq.push_back(encoding.at(res.name));
-  std::vector<uint8_t> full_seq;
-  full_seq.reserve(ent.full_sequence.size());
-  for (const std::string& mon_list : ent.full_sequence)
-    full_seq.push_back(encoding.at(gemmi::Entity::first_mon(mon_list)));
-  std::vector<int8_t> score_matrix(n_mon * n_mon, scoring.mismatch);
-  for (size_t i = 0; i != n_mon; ++i)
-    score_matrix[i * n_mon + i] = scoring.match;
-  return gemmi::align_sequences(
-      full_seq.size(), full_seq.data(),
-      model_seq.size(), model_seq.data(),
-      prepare_free_gapo(polymer, ent.polymer_type),
-      n_mon, score_matrix.data(),
-      scoring.gapo, scoring.gape);
-}
-
 static void print_alignment_details(const gemmi::Alignment& result,
                                     const std::string& chain_name,
                                     const gemmi::ConstResidueSpan& polymer,
                                     const gemmi::Entity& ent) {
-  std::vector<int8_t> gaps = prepare_free_gapo(polymer, ent.polymer_type);
+  std::vector<bool> gaps = prepare_free_gapo(polymer, ent.polymer_type);
   auto gap = gaps.begin();
   int seq_pos = 0;
   auto model_residues = polymer.first_conformer();
@@ -202,7 +148,7 @@ static void check_label_seq_id(const gemmi::Alignment& result,
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
-  Scoring scoring;
+  gemmi::AlignmentScoring scoring;
   if (p.options[Match])
     scoring.match = std::abs(std::atoi(p.options[Match].arg));
   if (p.options[Mismatch])
@@ -238,8 +184,10 @@ int GEMMI_MAIN(int argc, char **argv) {
           continue;
         const gemmi::Entity* ent = st.get_entity_of(polymer);
         if (!ent)
-          gemmi::fail("Full sequence (SEQRES) not found for chain "+chain.name);
-        gemmi::Alignment result = do_alignment(polymer, *ent, scoring);
+          gemmi::fail("No sequence (SEQRES) for chain " + chain.name);
+        if (gemmi::seqid_matches_seqres(polymer, *ent))
+          printf("Sequence numbers are wrt the full sequence (SEQRES).\n");
+        gemmi::Alignment result = align_polymer(polymer, *ent, scoring);
         printf("%s chain %s CIGAR: %s\n",
                st.name.c_str(), chain.name.c_str(), result.cigar_str().c_str());
         if (p.options[CheckMmcif])
