@@ -36,7 +36,7 @@ namespace tao
    do {                                                                                 \
       const int errorno = errno;                                                        \
       std::ostringstream oss;                                                           \
-      oss << "pegtl: " << TAO_PEGTL_INTERNAL_UNWRAP( MESSAGE ) << " errno " << errorno; \
+      oss << TAO_PEGTL_INTERNAL_UNWRAP( MESSAGE ) << " errno " << errorno; \
       throw tao::TAO_PEGTL_NAMESPACE::input_error( oss.str(), errorno );                \
    } while( false )
 
