@@ -45,7 +45,7 @@ public:
                                std::string(path));
     }
   }
-  explicit DirWalk(const std::string& path) { DirWalk(path.c_str()); }
+  explicit DirWalk(const std::string& path) : DirWalk(path.c_str()) {}
   ~DirWalk() {
     for (auto& d : dirs_)
       tinydir_close(&d.second);
