@@ -191,6 +191,10 @@ struct Restraints {
                                 (ang.id1 == c && ang.id3 == a));
     });
   }
+  template<typename T> std::vector<Angle>::const_iterator
+  find_angle(const T& a, const T& b, const T& c) const {
+    return const_cast<Restraints*>(this)->find_angle(a, b, c);
+  }
   const Angle& get_angle(const AtomId& a, const AtomId& b, const AtomId& c)
                                                                         const {
     auto it = const_cast<Restraints*>(this)->find_angle(a, b, c);
@@ -208,6 +212,10 @@ struct Restraints {
                (t.id1 == d && t.id2 == c && t.id3 == b && t.id4 == a);
     });
   }
+  template<typename T> std::vector<Torsion>::const_iterator
+  find_torsion(const T& a, const T& b, const T& c, const T& d) const {
+    return const_cast<Restraints*>(this)->find_torsion(a, b, c, d);
+  }
 
   template<typename T>
   std::vector<Chirality>::iterator find_chir(const T& ctr, const T& a,
@@ -217,6 +225,10 @@ struct Restraints {
                                    (t.id1 == b && t.id2 == c && t.id3 == a) ||
                                    (t.id1 == c && t.id2 == a && t.id3 == b));
     });
+  }
+  template<typename T> std::vector<Chirality>::const_iterator
+  find_chir(const T& ctr, const T& a, const T& b, const T& c) const {
+    return const_cast<Restraints*>(this)->find_chir(ctr, a, b, c);
   }
 
   double chiral_abs_volume(const Restraints::Chirality& ch) const {
@@ -363,7 +375,7 @@ inline BondType bond_type_from_string(const std::string& s) {
   throw std::out_of_range("Unexpected bond type: " + s);
 }
 
-inline std::string bond_type_to_string(BondType btype) {
+inline const char* bond_type_to_string(BondType btype) {
   switch (btype) {
     case BondType::Unspec: return ".";
     case BondType::Single: return "single";
