@@ -2,6 +2,8 @@
 
 // Thin, leaky wrapper around The Lean Mean C++ Option Parser.
 
+#pragma once
+
 #include <vector>
 #include <string>
 #include <optionparser.h>

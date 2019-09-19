@@ -1,3 +1,5 @@
+// Copyright 2018 Global Phasing Ltd.
+#pragma once
 
 #include <gemmi/model.hpp> // for Atom
 #include <gemmi/topo.hpp>  // for Topo

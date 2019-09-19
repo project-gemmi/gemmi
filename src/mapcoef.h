@@ -1,3 +1,5 @@
+// Copyright 2019 Global Phasing Ltd.
+#pragma once
 
 #include <gemmi/grid.hpp>      // for Grid
 #include <optionparser.h>

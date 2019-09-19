@@ -74,7 +74,7 @@ struct SymImage {
 struct FTransform : Transform {
   FTransform(const Transform& t) : Transform(t) {}
   FTransform(Transform&& t) : Transform(t) {}
-  FTransform(Mat33 m, Vec3 v) : Transform{m, v} {}
+  FTransform(const Mat33& m, const Vec3& v) : Transform{m, v} {}
   Fractional apply(const Fractional& p) const {
     return Fractional(Transform::apply(p));
   }
