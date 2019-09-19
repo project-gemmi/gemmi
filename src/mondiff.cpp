@@ -25,35 +25,122 @@ static const option::Descriptor Usage[] = {
 };
 
 static
+std::string str(const ChemComp& cc, const Restraints::Bond& b) {
+  return gemmi::tostr("bond ", b.id1.atom, '-', b.id2.atom,
+                      " (", cc.get_atom(b.id1.atom).chem_type,
+                      '-', cc.get_atom(b.id2.atom).chem_type, ')');
+}
+
+static
+std::string str(const ChemComp& cc, const Restraints::Angle& a) {
+  return gemmi::tostr("angle ", a.id1.atom, '-', a.id2.atom, '-', a.id3.atom,
+                      " (", cc.get_atom(a.id1.atom).chem_type,
+                      '-', cc.get_atom(a.id2.atom).chem_type,
+                      '-', cc.get_atom(a.id3.atom).chem_type, ')');
+}
+
+static
+std::string str(const ChemComp&, const Restraints::Torsion& a) {
+  return "torsion " + a.str();
+}
+
+static
+std::string str(const ChemComp&, const Restraints::Chirality& a) {
+  return "chirality " + a.str();
+}
+
+static
+const char* mark(double delta, double eps) {
+  if (delta < eps) return "";
+  if (delta < 2*eps) return "*";
+  if (delta < 4*eps) return "**";
+  if (delta < 8*eps) return "***";
+  return "****";
+}
+
+static
 void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2) {
   // atoms
-  for (const ChemComp::Atom& a : cc1.atoms)
-    if (cc2.find_atom(a.id) == cc2.atoms.end())
-      printf("- atom %s\n", a.id.c_str());
+  for (const ChemComp::Atom& a : cc1.atoms) {
+    auto b = cc2.find_atom(a.id);
+    if (b == cc2.atoms.end())
+      printf("- atom %s (%s)\n", a.id.c_str(), a.chem_type.c_str());
+    else if (a.chem_type != b->chem_type)
+      printf("! atom %s (%s : %s)\n",
+             a.id.c_str(), a.chem_type.c_str(), b->chem_type.c_str());
+  }
   for (const ChemComp::Atom& a : cc2.atoms)
     if (cc1.find_atom(a.id) == cc1.atoms.end())
-      printf("+ atom %s\n", a.id.c_str());
+      printf("+ atom %s (%s)\n", a.id.c_str(), a.chem_type.c_str());
 
   // bonds
-  for (const Restraints::Bond& b1 : cc1.rt.bonds) {
-    auto b2 = cc2.rt.find_bond(b1.id1, b1.id2);
-    if (b2 == cc2.rt.bonds.end()) {
-      printf("- bond %s\n", b1.str().c_str());
-      continue;
+  for (const Restraints::Bond& a : cc1.rt.bonds) {
+    auto b = cc2.rt.find_bond(a.id1, a.id2);
+    if (b == cc2.rt.bonds.end()) {
+      printf("- bond %s\n", str(cc1, a).c_str());
+    } else {
+      if (a.type != b->type)
+        printf("! %-30s %s : %s\n", str(cc1, a).c_str(),
+               bond_type_to_string(a.type),
+               bond_type_to_string(b->type));
+      double delta = std::fabs(a.value - b->value);
+      if (delta > 0.01 || std::fabs(a.esd - b->esd) > 0.1)
+        printf("! %-30s %4s %.3f : %.3f   esd %.3f : %.3f\n",
+               str(cc1, a).c_str(), mark(delta, a.esd),
+               a.value, b->value, a.esd, b->esd);
     }
-    if (b1.type != b2->type)
-      printf("! bond %-8s %s : %s\n", b1.str().c_str(),
-             bond_type_to_string(b1.type).c_str(),
-             bond_type_to_string(b2->type).c_str());
-    if (std::fabs(b1.value - b2->value) > 0.01 ||
-        std::fabs(b1.esd - b2->esd) > 0.1)
-      printf("! bond %-8s  value %.3f : %.3f   esd %.3f : %.3f\n",
-             b1.str().c_str(), b1.value, b2->value, b1.esd, b2->esd);
   }
-  for (const Restraints::Bond& b2 : cc2.rt.bonds)
-    if (cc1.rt.find_bond(b2.id1, b2.id2) == cc1.rt.bonds.end())
-      printf("+ bond %s\n", b2.str().c_str());
+  for (const Restraints::Bond& a : cc2.rt.bonds)
+    if (cc1.rt.find_bond(a.id1, a.id2) == cc1.rt.bonds.end())
+      printf("+ %s\n", str(cc2, a).c_str());
 
+  // angles
+  for (const Restraints::Angle& a : cc1.rt.angles) {
+    auto b = cc2.rt.find_angle(a.id1, a.id2, a.id3);
+    if (b == cc2.rt.angles.end()) {
+      printf("- %s\n", str(cc1, a).c_str());
+    } else {
+      double delta = std::fabs(a.value - b->value);
+      if (delta > 0.1 || std::fabs(a.esd - b->esd) > 1.0)
+        printf("! %-30s %4s %6.2f : %6.2f   esd %.2f : %.2f\n",
+               str(cc1, a).c_str(), mark(delta, a.esd),
+               a.value, b->value, a.esd, b->esd);
+    }
+  }
+  for (const Restraints::Angle& a : cc2.rt.angles)
+    if (cc1.rt.find_angle(a.id1, a.id2, a.id3) == cc1.rt.angles.end())
+      printf("+ %s\n", str(cc2, a).c_str());
+
+  // torsion angles
+  for (const Restraints::Torsion& a : cc1.rt.torsions) {
+    auto b = cc2.rt.find_torsion(a.id1, a.id2, a.id3, a.id4);
+    if (b == cc2.rt.torsions.end()) {
+      printf("- %s\n", str(cc1, a).c_str());
+    } else {
+      double delta = std::fabs(a.value - b->value);
+      if (delta > 0.1 || std::fabs(a.esd - b->esd) > 1.0)
+        printf("! %-30s %4s %6.2f : %6.2f   esd %.2f : %.2f\n",
+               str(cc1, a).c_str(), mark(delta, a.esd),
+               a.value, b->value, a.esd, b->esd);
+    }
+  }
+  for (const Restraints::Torsion& a : cc2.rt.torsions)
+    if (cc1.rt.find_torsion(a.id1, a.id2, a.id3, a.id4) == cc1.rt.torsions.end())
+      printf("+ %s\n", str(cc2, a).c_str());
+
+  // chiralities
+  for (const Restraints::Chirality& a : cc1.rt.chirs) {
+    auto b = cc2.rt.find_chir(a.id_ctr, a.id1, a.id2, a.id3);
+    if (b == cc2.rt.chirs.end())
+      printf("- %s\n", str(cc1, a).c_str());
+    else if (a.sign != b->sign)
+      printf("! %-30s %s : %s\n", str(cc1, a).c_str(),
+             chirality_to_string(a.sign),
+             chirality_to_string(b->sign));
+  }
+  for (const Restraints::Chirality& a : cc2.rt.chirs)
+    if (cc1.rt.find_chir(a.id_ctr, a.id1, a.id2, a.id3) == cc1.rt.chirs.end())
+      printf("+ %s\n", str(cc2, a).c_str());
 }
 
 int GEMMI_MAIN(int argc, char **argv) {
