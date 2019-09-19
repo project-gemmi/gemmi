@@ -458,6 +458,20 @@ For use in Dimple_.
 .. literalinclude:: blobs-help.txt
    :language: console
 
+mondiff
+=======
+
+Compares restraints from two monomer CIF files.
+It is intended for comparing restraints for the same monomer,
+but generated with different programs (or different versions of the same
+program).
+
+The files should have format used by the CCP4/Refmac monomer library.
+This format is supported by all major macromolecular refinement programs.
+
+.. literalinclude:: mondiff-help.txt
+   :language: console
+
 wcn
 ===
 

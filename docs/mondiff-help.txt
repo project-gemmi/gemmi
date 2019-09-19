@@ -1,0 +1,14 @@
+$ gemmi mondiff -h
+Usage:
+  gemmi mondiff [options] FILE1 FILE2
+Options:
+  -h, --help         Print usage and exit.
+  -V, --version      Print version and exit.
+  --verbose          Verbose output.
+
+Minimal reported differences:
+  --bond=DELTA       difference in distance value (default: 0.01).
+  --bond-esd=DELTA   difference in distance esd (default: 0.1).
+  --angle=DELTA      difference in angle value (default: 0.1).
+  --angle-esd=DELTA  difference in angle esd (default: 1.0).
+  --rel=SIGMA         abs(value difference) / esd > SIGMA (default: 0.0).

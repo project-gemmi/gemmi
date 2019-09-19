@@ -35,6 +35,10 @@ struct Restraints {
     bool operator==(const std::string& name) const { return atom == name; }
     bool operator!=(const std::string& name) const { return atom != name; }
 
+    bool operator<(const AtomId& o) const {
+      return comp == o.comp ? atom < o.atom : comp < o.comp;
+    }
+
     const Atom* get_from(const Residue& res1, const Residue* res2,
                          char altloc) const {
       const Residue* residue;
