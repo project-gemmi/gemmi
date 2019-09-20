@@ -1,0 +1,4 @@
+Third-party libraries used from the C++ library (include/gemmi/)
+are under include/gemmi/third_party/.
+The libraries here are used only in command-line tools,
+Python bindings and tests.
