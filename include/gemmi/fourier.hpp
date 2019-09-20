@@ -12,7 +12,12 @@
 #include "symmetry.hpp"  // for GroupOps, Op
 #include "fail.hpp"      // for fail
 
-#if !(__GNUC__+0 >= 5 || __clang__+0 >= 5)
+#ifdef  __INTEL_COMPILER
+// warning #2196: routine is both "inline" and "noinline"
+# pragma warning disable 2196
+#endif
+
+#if !(__GNUC__+0 >= 5 || __clang__+0 >= 5) || defined(__INTEL_COMPILER)
 #define POCKETFFT_NO_VECTORS
 #endif
 #include "third_party/pocketfft_hdronly.h"

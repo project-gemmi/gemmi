@@ -71,9 +71,9 @@ struct GridPos {
 struct Blob {
   std::vector<GridPos> points;
   gemmi::Position pos;
-  double volume = 0.0f;
-  double score = 0.0f;
-  float max_value = 0.0f;
+  double volume = 0.0;
+  double score = 0.0;
+  double max_value = 0.0;
   gemmi::const_CRA cra = {nullptr, nullptr, nullptr};
 };
 
@@ -93,7 +93,7 @@ inline bool finalize_blob(Blob& blob, const gemmi::Grid<float>& grid,
     return false;
   double sum[3] = {0., 0., 0.};
   for (const GridPos& point : blob.points) {
-    float value = grid.data[point.idx];
+    double value = grid.data[point.idx];
     blob.score += value;
     if (value > blob.max_value)
       blob.max_value = value;

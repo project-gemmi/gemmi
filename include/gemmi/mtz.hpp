@@ -22,11 +22,6 @@
 #include "unitcell.hpp"  // for UnitCell
 #include "util.hpp"      // for ialpha4_id, rtrim_str, ialpha3_id, ...
 
-#ifdef  __INTEL_COMPILER
-# pragma warning push
-# pragma warning disable 597  // for StrideIter, the same as in cifdoc.hpp.
-#endif
-
 namespace gemmi {
 
 template <typename T, typename FP=typename std::iterator_traits<T>::value_type>
@@ -689,9 +684,5 @@ void Mtz::write_to_file(const std::string& path) const {
 } // namespace gemmi
 
 #endif // GEMMI_WRITE_IMPLEMENTATION
-
-#ifdef  __INTEL_COMPILER
-# pragma warning pop
-#endif
 
 #endif

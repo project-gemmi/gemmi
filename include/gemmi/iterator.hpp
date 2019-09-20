@@ -8,6 +8,13 @@
 #include <type_traits>  // for remove_cv
 #include <vector>
 
+#ifdef  __INTEL_COMPILER
+// warning #597: "X<T>::operator X<T>() const" will not be called for implicit
+// or explicit conversions. That warning is triggered when templates
+// StrideIter, IndirectIter and others are expanded with const Value.
+# pragma warning disable 597
+#endif
+
 namespace gemmi {
 
 // implements concept BidirectionalIterator

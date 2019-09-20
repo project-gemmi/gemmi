@@ -388,7 +388,7 @@ struct GroupOps {
     int idet = inv.det_rot() / (Op::DEN * Op::DEN * Op::DEN);
     if (idet > 1) {
       std::vector<Op::Tran> new_cen_ops;
-      new_cen_ops.reserve(idet * idet * idet * cen_ops.size());
+      new_cen_ops.reserve(cen_ops.size() * idet * idet * idet);
       for (int i = 0; i < idet; ++i)
         for (int j = 0; j < idet; ++j)
           for (int k = 0; k < idet; ++k)

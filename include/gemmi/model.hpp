@@ -1016,4 +1016,5 @@ inline void Structure::setup_cell_images() {
 }
 
 } // namespace gemmi
+
 #endif

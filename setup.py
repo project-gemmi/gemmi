@@ -2,9 +2,9 @@
 # which is under a BSD-like license:
 # https://github.com/pybind/python_example/blob/master/LICENSE
 
-import setuptools
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
+from setuptools import distutils
 import os
 import sys
 
@@ -93,7 +93,7 @@ def has_flag(compiler, flagname):
         f.write('int main (int argc, char **argv) { return 0; }')
         try:
             compiler.compile([f.name], extra_postargs=[flagname])
-        except setuptools.distutils.errors.CompileError:
+        except distutils.errors.CompileError:
             return False
     return True
 
