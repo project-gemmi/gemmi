@@ -8,7 +8,7 @@
 #include <cassert>
 #include <cmath>     // for NAN, sqrt
 #include <cstdint>   // for uint16_t, uint32_t
-#include <cstdio>    // for FILE, fread
+#include <cstdio>    // for FILE
 #include <cstring>   // for memcpy
 #include <array>
 #include <string>
@@ -58,17 +58,6 @@ GridStats calculate_grid_statistics(const std::vector<T>& data) {
   st.rms = std::sqrt(sq_sum / data.size() - st.dmean * st.dmean);
   return st;
 }
-
-namespace impl {
-  inline bool fread_wrap(void *ptr, size_t size, size_t nmemb, FILE *stream) {
-    return std::fread(ptr, size, nmemb, stream) == nmemb;
-  }
-  template <typename T>
-  bool fread_wrap(void *ptr, size_t size, size_t nmemb, T& stream) {
-    return stream.read(ptr, static_cast<int>(size * nmemb));
-  }
-}
-
 
 template<typename T=float>
 struct Ccp4 {
@@ -204,7 +193,7 @@ struct Ccp4 {
   void read_ccp4_header(Stream f, const std::string& path) {
     const size_t hsize = 256;
     ccp4_header.resize(hsize);
-    if (!impl::fread_wrap(ccp4_header.data(), 4, hsize, f))
+    if (!f.read(ccp4_header.data(), 4 * hsize))
       fail("Failed to read map header: " + path);
     if (header_str(53, 4) != "MAP ")
       fail("Not a CCP4 map: " + path);
@@ -218,7 +207,7 @@ struct Ccp4 {
     if (ext_w > 1000000)
       fail("Unexpectedly long extendended header: " + path);
     ccp4_header.resize(hsize + ext_w);
-    if (!impl::fread_wrap(ccp4_header.data() + hsize, 4, ext_w, f))
+    if (!f.read(ccp4_header.data() + hsize, 4 * ext_w))
       fail("Failed to read extended header: " + path);
     grid.nu = header_i32(1);
     grid.nv = header_i32(2);
@@ -246,13 +235,13 @@ struct Ccp4 {
 
   void read_ccp4_file(const std::string& path) {
     fileptr_t f = file_open(path.c_str(), "rb");
-    read_ccp4_stream(f.get(), path);
+    read_ccp4_stream(FileInput{f.get()}, path);
   }
 
   template<typename Input>
   void read_ccp4(Input&& input) {
     if (input.is_stdin())
-      return read_ccp4_stream(stdin, "stdin");
+      return read_ccp4_stream(FileInput{stdin}, "stdin");
     if (auto stream = input.get_stream())
       return read_ccp4_stream(stream, input.path());
     return read_ccp4_file(input.path());
@@ -268,14 +257,14 @@ template<typename Stream, typename TFile, typename TMem>
 void read_data(Stream& f, std::vector<TMem>& content) {
   if (typeid(TFile) == typeid(TMem)) {
     size_t len = content.size();
-    if (!fread_wrap(content.data(), sizeof(TMem), len, f))
+    if (!f.read(content.data(), sizeof(TMem) * len))
       fail("Failed to read all the data from the map file.");
   } else {
     constexpr size_t chunk_size = 64 * 1024;
     std::vector<TFile> work(chunk_size);
     for (size_t i = 0; i < content.size(); i += chunk_size) {
       size_t len = std::min(chunk_size, content.size() - i);
-      if (!fread_wrap(work.data(), sizeof(TFile), len, f))
+      if (!f.read(work.data(), sizeof(TFile) * len))
         fail("Failed to read all the data from the map file.");
       for (size_t j = 0; j < len; ++j)
         content[i+j] = static_cast<TMem>(work[j]);

@@ -124,5 +124,12 @@ inline void swap_four_bytes(void* start) {
   std::swap(bytes[1], bytes[2]);
 }
 
+struct FileInput {
+  std::FILE* f;
+  char* gets(char* line, int size) { return std::fgets(line, size, f); }
+  int getc() { return std::fgetc(f); }
+  bool read(void* buf, size_t len) { return std::fread(buf, len, 1, f) == 1; }
+};
+
 } // namespace gemmi
 #endif

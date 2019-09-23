@@ -169,12 +169,6 @@ inline std::string pdb_date_format_to_iso(const std::string& date) {
   return iso;
 }
 
-struct FileInput {
-  std::FILE* f;
-  char* gets(char* line, int size) { return std::fgets(line, size, f); }
-  int getc() { return std::fgetc(f); }
-};
-
 struct MemoryInput {
   const char* start;
   const char* end;
@@ -598,8 +592,8 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 }  // namespace pdb_impl
 
 inline Structure read_pdb_file(const std::string& path) {
-  auto f = file_open(path.c_str(), "r");
-  return read_pdb_from_line_input(pdb_impl::FileInput{f.get()}, path);
+  auto f = file_open(path.c_str(), "rb");
+  return pdb_impl::read_pdb_from_line_input(FileInput{f.get()}, path);
 }
 
 inline Structure read_pdb_from_memory(const char* data, size_t size,
@@ -616,7 +610,7 @@ inline Structure read_pdb_string(const std::string& str,
 template<typename T>
 inline Structure read_pdb(T&& input) {
   if (input.is_stdin())
-    return read_pdb_from_line_input(pdb_impl::FileInput{stdin}, "stdin");
+    return pdb_impl::read_pdb_from_line_input(FileInput{stdin}, "stdin");
   if (auto stream = input.get_stream())
     return pdb_impl::read_pdb_from_line_input(stream, input.path());
   return read_pdb_file(input.path());
