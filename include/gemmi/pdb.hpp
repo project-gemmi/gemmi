@@ -170,23 +170,6 @@ inline std::string pdb_date_format_to_iso(const std::string& date) {
   return iso;
 }
 
-struct MemoryInput {
-  const char* start;
-  const char* end;
-  char* gets(char* line, int size) {
-    if (start >= end)
-      return nullptr;
-    if (size > end - start)
-      size = end - start;
-    const char* nl = (const char*) std::memchr(start, '\n', size);
-    size_t len = nl ? nl - start + 1 : size;
-    std::memcpy(line, start, len);
-    start += len;
-    return line;
-  }
-  int getc() { return start < end ? *++start : EOF; }
-};
-
 template<typename Input>
 inline size_t copy_line_from_stream(char* line, int size, Input&& in) {
   if (!in.gets(line, size))
@@ -599,7 +582,8 @@ inline Structure read_pdb_file(const std::string& path) {
 
 inline Structure read_pdb_from_memory(const char* data, size_t size,
                                       const std::string& name) {
-  return read_pdb_from_line_input(pdb_impl::MemoryInput{data, data+size}, name);
+  return pdb_impl::read_pdb_from_line_input(MemoryStream{data, data + size},
+                                            name);
 }
 
 inline Structure read_pdb_string(const std::string& str,

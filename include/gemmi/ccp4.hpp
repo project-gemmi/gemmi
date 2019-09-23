@@ -239,6 +239,11 @@ struct Ccp4 {
     read_ccp4_stream(FileStream{f.get()}, path);
   }
 
+  inline void read_ccp4_from_memory(const char* data, size_t size,
+                                    const std::string& name) {
+    return read_ccp4_stream(MemoryStream{data, data + size}, name);
+  }
+
   template<typename Input>
   void read_ccp4(Input&& input) {
     if (input.is_stdin())

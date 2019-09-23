@@ -22,6 +22,33 @@ struct FileStream {
   bool read(void* buf, size_t len) { return std::fread(buf, len, 1, f) == 1; }
 };
 
+struct MemoryStream {
+  const char* start;
+  const char* const end;
+
+  char* gets(char* line, int size) {
+    if (start >= end)
+      return nullptr;
+    if (size > end - start)
+      size = end - start;
+    const char* nl = (const char*) std::memchr(start, '\n', size);
+    size_t len = nl ? nl - start + 1 : size;
+    std::memcpy(line, start, len);
+    start += len;
+    return line;
+  }
+  int getc() { return start < end ? *++start : EOF; }
+
+  bool read(void* buf, size_t len) {
+    if (start + len > end)
+      return false;
+    std::memcpy(buf, start, len);
+    start += len;
+    return true;
+  }
+};
+
+
 class BasicInput {
 public:
   explicit BasicInput(const std::string& path) : path_(path) {}
