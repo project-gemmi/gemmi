@@ -17,6 +17,7 @@
 #include "symmetry.hpp"
 #include "fail.hpp"      // for fail
 #include "fileutil.hpp"  // for file_open, is_little_endian, ...
+#include "input.hpp"     // for FileStream
 #include "grid.hpp"
 
 namespace gemmi {
@@ -235,15 +236,15 @@ struct Ccp4 {
 
   void read_ccp4_file(const std::string& path) {
     fileptr_t f = file_open(path.c_str(), "rb");
-    read_ccp4_stream(FileInput{f.get()}, path);
+    read_ccp4_stream(FileStream{f.get()}, path);
   }
 
   template<typename Input>
   void read_ccp4(Input&& input) {
     if (input.is_stdin())
-      return read_ccp4_stream(FileInput{stdin}, "stdin");
-    if (auto stream = input.get_stream())
-      return read_ccp4_stream(stream, input.path());
+      return read_ccp4_stream(FileStream{stdin}, "stdin");
+    if (input.is_compressed())
+      return read_ccp4_stream(input.get_uncompressing_stream(), input.path());
     return read_ccp4_file(input.path());
   }
 

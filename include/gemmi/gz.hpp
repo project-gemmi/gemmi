@@ -4,14 +4,15 @@
 
 #ifndef GEMMI_GZ_HPP_
 #define GEMMI_GZ_HPP_
-#include "fail.hpp"     // fail
-#include "fileutil.hpp" // file_open
-#include "input.hpp"    // MaybeStdin
-#include "util.hpp"     // iends_with
+#include <cassert>
 #include <cstdio>       // fseek, ftell, fread
 #include <memory>
 #include <string>
 #include <zlib.h>
+#include "fail.hpp"     // fail
+#include "fileutil.hpp" // file_open
+#include "input.hpp"    // BasicInput
+#include "util.hpp"     // iends_with
 
 namespace gemmi {
 
@@ -37,18 +38,17 @@ inline size_t estimate_uncompressed_size(const std::string& path) {
   return orig_size;
 }
 
-class MaybeGzipped : public MaybeStdin {
+class MaybeGzipped : public BasicInput {
 public:
   struct GzStream {
     gzFile f;
-    explicit operator bool() const { return f != nullptr; }
     char* gets(char* line, int size) { return gzgets(f, line, size); }
     int getc() { return gzgetc(f); }
     bool read(void* buf, int len) { return gzread(f, buf, len) == len; }
   };
 
   explicit MaybeGzipped(const std::string& path)
-    : MaybeStdin(path), memory_size_(0), file_(nullptr) {}
+    : BasicInput(path), memory_size_(0), file_(nullptr) {}
   ~MaybeGzipped() {
     if (file_)
 #if ZLIB_VERNUM >= 0x1235
@@ -66,7 +66,7 @@ public:
 
   std::unique_ptr<char[]> memory() {
     if (!is_compressed())
-      return MaybeStdin::memory();
+      return BasicInput::memory();
     memory_size_ = estimate_uncompressed_size(path());
     open();
     if (memory_size_ > 2147483647)
@@ -82,9 +82,8 @@ public:
     return mem;
   }
 
-  GzStream get_stream() {
-    if (!is_compressed())
-      return GzStream{nullptr};
+  GzStream get_uncompressing_stream() {
+    assert(is_compressed());
     open();
 #if ZLIB_VERNUM >= 0x1235
     gzbuffer(file_, 64*1024);

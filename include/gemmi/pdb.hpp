@@ -24,6 +24,7 @@
 #include "atox.hpp"     // for string_to_int, simple_atof
 #include "fail.hpp"     // for fail
 #include "fileutil.hpp" // for path_basename, file_open
+#include "input.hpp"    // for FileStream
 #include "model.hpp"
 #include "polyheur.hpp" // for assign_subchains
 #include "util.hpp"
@@ -593,7 +594,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
 inline Structure read_pdb_file(const std::string& path) {
   auto f = file_open(path.c_str(), "rb");
-  return pdb_impl::read_pdb_from_line_input(FileInput{f.get()}, path);
+  return pdb_impl::read_pdb_from_line_input(FileStream{f.get()}, path);
 }
 
 inline Structure read_pdb_from_memory(const char* data, size_t size,
@@ -610,9 +611,10 @@ inline Structure read_pdb_string(const std::string& str,
 template<typename T>
 inline Structure read_pdb(T&& input) {
   if (input.is_stdin())
-    return pdb_impl::read_pdb_from_line_input(FileInput{stdin}, "stdin");
-  if (auto stream = input.get_stream())
-    return pdb_impl::read_pdb_from_line_input(stream, input.path());
+    return pdb_impl::read_pdb_from_line_input(FileStream{stdin}, "stdin");
+  if (input.is_compressed())
+    return pdb_impl::read_pdb_from_line_input(input.get_uncompressing_stream(),
+                                              input.path());
   return read_pdb_file(input.path());
 }
 

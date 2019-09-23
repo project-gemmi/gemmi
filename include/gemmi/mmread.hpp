@@ -8,7 +8,7 @@
 #include "chemcomp_xyz.hpp" // for make_structure_from_chemcomp_block
 #include "cif.hpp"       // for cif::read
 #include "fail.hpp"      // for fail
-#include "input.hpp"     // for JustFile
+#include "input.hpp"     // for BasicInput
 #include "json.hpp"      // for read_mmjson
 #include "mmcif.hpp"     // for make_structure_from_block
 #include "model.hpp"     // for Structure
@@ -63,7 +63,7 @@ Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown) {
 
 inline Structure read_structure_file(const std::string& path,
                                      CoorFormat format=CoorFormat::Unknown) {
-  return read_structure(JustFile(path), format);
+  return read_structure(BasicInput(path), format);
 }
 
 } // namespace gemmi
