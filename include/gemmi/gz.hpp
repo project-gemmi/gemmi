@@ -44,7 +44,7 @@ public:
     gzFile f;
     char* gets(char* line, int size) { return gzgets(f, line, size); }
     int getc() { return gzgetc(f); }
-    bool read(void* buf, int len) { return gzread(f, buf, len) == len; }
+    bool read(void* buf, int len) { return gzfread(buf, len, 1, f) == 1; }
   };
 
   explicit MaybeGzipped(const std::string& path)
@@ -69,11 +69,11 @@ public:
       return BasicInput::memory();
     memory_size_ = estimate_uncompressed_size(path());
     open();
-    if (memory_size_ > 2147483647)
-      fail("For now gz files above 2 GiB uncompressed are not supported.");
+    if (memory_size_ > 3221225471)
+      fail("For now gz files above 3 GiB uncompressed are not supported.");
     std::unique_ptr<char[]> mem(new char[memory_size_]);
-    int bytes_read = gzread(file_, mem.get(), (unsigned) memory_size_);
-    if (bytes_read < (int) memory_size_ && !gzeof(file_)) {
+    size_t result = gzfread(mem.get(), memory_size_, 1, file_);
+    if (result != 1 && !gzeof(file_)) {
       int errnum;
       std::string err_str = gzerror(file_, &errnum);
       if (errnum)
