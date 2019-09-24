@@ -60,8 +60,8 @@ static const option::Descriptor Usage[] = {
     "  --pdbx-style  \tSimilar styling (formatting) as in wwPDB." },
   { SkipCat, 0, "", "skip-category", Arg::Required,
     "  --skip-category=CAT  \tDo not output tags starting with _CAT" },
-  { BlockName, 0, "b", "block-name", Arg::Required,
-    "  -b, --block-name=NAME  \tSet block name and default _entry.id" },
+  { BlockName, 0, "b", "block", Arg::Required,
+    "  -b NAME, --block=NAME  \tSet block name and default _entry.id" },
 
   { NoOp, 0, "", "", Arg::None, "\nJSON output options:" },
   { Comcifs, 0, "c", "comcifs", Arg::None,

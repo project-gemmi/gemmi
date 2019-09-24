@@ -15,7 +15,7 @@ General options:
 CIF output options:
   --pdbx-style           Similar styling (formatting) as in wwPDB.
   --skip-category=CAT    Do not output tags starting with _CAT
-  -b, --block-name=NAME  Set block name and default _entry.id
+  -b NAME, --block=NAME  Set block name and default _entry.id
 
 JSON output options:
   -c, --comcifs          Conform to the COMCIFS CIF-JSON standard draft.
