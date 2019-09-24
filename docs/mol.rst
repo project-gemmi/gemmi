@@ -586,7 +586,7 @@ file format to avoid linking with the code you do not use::
 
   gemmi::Structure st1 = gemmi::read_pdb_file(path);
   // or
-  gemmi::Structure st2 = gemmi::read_pdb_file(gemmi::MaybeGzipped(path));
+  gemmi::Structure st2 = gemmi::read_pdb(gemmi::MaybeGzipped(path));
 
 
 The content of the file can also be read from a string or from memory::

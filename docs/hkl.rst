@@ -45,7 +45,7 @@ Reading
 In C++, the MTZ file can be read using either stand-alone functions::
 
   Mtz read_mtz_file(const std::string& path)
-  Mtz read_mtz_stream(std::FILE* stream, bool with_data)
+  template<typename Input> Mtz read_mtz(Input&& input, bool with_data)
 
 or member functions of the Mtz class, when more control over the reading
 process is needed.

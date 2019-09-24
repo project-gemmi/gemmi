@@ -4,6 +4,8 @@
 
 #include <gemmi/mtz.hpp>
 #include <gemmi/fileutil.hpp> // for file_open
+#include <gemmi/gz.hpp>       // for MaybeGzipped
+#include <gemmi/input.hpp>    // for FileStream, MemoryStream
 #define GEMMI_PROG mtz
 #include "options.h"
 #include <stdio.h>
@@ -138,53 +140,64 @@ static void check_asu(const Mtz& mtz) {
          counter, mtz.nreflections - counter);
 }
 
+template<typename Stream>
+void print_mtz_info(Stream&& stream, const char* path,
+                    const std::vector<option::Option>& options) {
+  Mtz mtz;
+  try {
+    mtz.read_first_bytes(stream);
+    if (options[ToggleEndian])
+      mtz.toggle_endiannes();
+  } catch (std::runtime_error& e) {
+    gemmi::fail(std::string(e.what()) + ": " + path);
+  }
+  if (options[Headers]) {
+    char buf[81] = {0};
+    mtz.seek_headers(stream);
+    while (stream.read(buf, 80)) {
+      printf("%s\n", gemmi::rtrim_str(buf).c_str());
+      if (gemmi::ialpha3_id(buf) == gemmi::ialpha3_id("END"))
+        break;
+    }
+  }
+  if (options[Verbose])
+    mtz.warnings = stderr;
+  mtz.read_main_headers(stream);
+  mtz.read_history_and_batch_headers(stream);
+  mtz.setup_spacegroup();
+  if (options[Dump])
+    dump(mtz);
+  if (options[PrintTsv] || options[PrintStats] || options[CheckAsu])
+    mtz.read_raw_data(stream);
+  if (options[PrintTsv])
+    print_tsv(mtz);
+  if (options[PrintStats])
+    print_stats(mtz);
+  if (options[CheckAsu])
+    check_asu(mtz);
+}
+
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   p.require_input_files_as_args();
-  bool verbose = p.options[Verbose];
-
-
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       const char* path = p.nonOption(i);
       if (i != 0)
         printf("\n\n");
-      if (verbose)
+      if (p.options[Verbose])
         fprintf(stderr, "Reading %s ...\n", path);
-      gemmi::fileptr_t f = gemmi::file_open(path, "rb");
-      Mtz mtz;
-      try {
-        mtz.read_first_bytes(f.get());
-        if (p.options[ToggleEndian])
-          mtz.toggle_endiannes();
-      } catch (std::runtime_error& e) {
-        gemmi::fail(std::string(e.what()) + ": " + path);
+      gemmi::MaybeGzipped input(path);
+      if (input.is_stdin()) {
+        print_mtz_info(gemmi::FileStream{stdin}, path, p.options);
+      } else if (std::unique_ptr<char[]> mem = input.memory()) {
+        gemmi::MemoryStream stream(mem.get(), mem.get() + input.memory_size());
+        print_mtz_info(std::move(stream), path, p.options);
+      } else {
+        gemmi::fileptr_t f = gemmi::file_open(input.path().c_str(), "rb");
+        print_mtz_info(gemmi::FileStream{f.get()}, path, p.options);
       }
-      if (p.options[Headers]) {
-        char buf[81] = {0};
-        mtz.seek_headers(f.get());
-        while (fread(buf, 1, 80, f.get()) != 0) {
-          printf("%s\n", gemmi::rtrim_str(buf).c_str());
-          if (gemmi::ialpha3_id(buf) == gemmi::ialpha3_id("END"))
-            break;
-        }
-      }
-      if (verbose)
-        mtz.warnings = stderr;
-      mtz.read_main_headers(f.get());
-      mtz.read_history_and_batch_headers(f.get());
-      mtz.setup_spacegroup();
-      if (p.options[Dump])
-        dump(mtz);
-      if (p.options[PrintTsv] || p.options[PrintStats] || p.options[CheckAsu])
-        mtz.read_raw_data(f.get());
-      if (p.options[PrintTsv])
-        print_tsv(mtz);
-      if (p.options[PrintStats])
-        print_stats(mtz);
-      if (p.options[CheckAsu])
-        check_asu(mtz);
     }
   } catch (std::runtime_error& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());

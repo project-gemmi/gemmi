@@ -9,6 +9,7 @@
 #include <cassert>
 #include <memory>  // for unique_ptr
 #include <string>
+#include "fail.hpp"  // for unreachable
 
 namespace gemmi {
 
@@ -20,32 +21,43 @@ struct FileStream {
   int getc() { return std::fgetc(f); }
   // used in ccp4.hpp
   bool read(void* buf, size_t len) { return std::fread(buf, len, 1, f) == 1; }
+  bool seek(long offset) { return std::fseek(f, offset, SEEK_SET) == 0; }
 };
 
 struct MemoryStream {
-  const char* start;
-  const char* const end;
+  MemoryStream(const char* start_, const char* end_)
+    : start(start_), end(end_), cur(start_) {}
 
   char* gets(char* line, int size) {
-    if (start >= end)
+    if (cur >= end)
       return nullptr;
-    if (size > end - start)
-      size = end - start;
-    const char* nl = (const char*) std::memchr(start, '\n', size);
-    size_t len = nl ? nl - start + 1 : size;
-    std::memcpy(line, start, len);
-    start += len;
+    if (size > end - cur)
+      size = end - cur;
+    const char* nl = (const char*) std::memchr(cur, '\n', size);
+    size_t len = nl ? nl - cur + 1 : size;
+    std::memcpy(line, cur, len);
+    cur += len;
     return line;
   }
-  int getc() { return start < end ? *++start : EOF; }
+  int getc() { return cur < end ? *++cur : EOF; }
 
   bool read(void* buf, size_t len) {
-    if (start + len > end)
+    if (cur + len > end)
       return false;
-    std::memcpy(buf, start, len);
-    start += len;
+    std::memcpy(buf, cur, len);
+    cur += len;
     return true;
   }
+
+  int seek(long offset) {
+    cur = start + offset;
+    return cur < end;
+  }
+
+private:
+  const char* const start;
+  const char* const end;
+  const char* cur;
 };
 
 

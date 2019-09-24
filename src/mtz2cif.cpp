@@ -13,6 +13,7 @@
 #include <gemmi/mtz.hpp>
 #include <gemmi/fileutil.hpp> // for file_open
 #include <gemmi/atox.hpp>     // for read_word
+#include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/version.hpp>  // for GEMMI_VERSION
 #define GEMMI_PROG mtz2cif
 #include "options.h"
@@ -305,9 +306,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz.warnings = stderr;
   }
   try {
-    gemmi::fileptr_t f_in = gemmi::file_open(mtz_path, "rb");
-    mtz.read_all_headers(f_in.get());
-    mtz.read_raw_data(f_in.get());
+    mtz.read_input(gemmi::MaybeGzipped(mtz_path), true);
   } catch (std::runtime_error& e) {
     fprintf(stderr, "ERROR reading %s: %s\n", mtz_path, e.what());
     return 1;
@@ -317,7 +316,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   Options options;
   options.mtz_path = mtz_path;
   try {
-  std::vector<std::string> lines;
+    std::vector<std::string> lines;
     if (p.options[Spec]) {
       char buf[256];
       const char* spec_path = p.options[Spec].arg;

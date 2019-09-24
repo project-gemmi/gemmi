@@ -179,6 +179,7 @@ support_gz(gemmi-mtz)
 
 add_executable(gemmi-mtz2cif EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/mtz2cif.cpp)
+support_gz(gemmi-mtz2cif)
 
 add_executable(gemmi-residues EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/residues.cpp $<TARGET_OBJECTS:input>)

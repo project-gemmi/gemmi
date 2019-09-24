@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 #include "atox.hpp"      // for simple_atof, simple_atoi, read_word
+#include "input.hpp"     // for FileStream
 #include "iterator.hpp"  // for StrideIter
 #include "fail.hpp"      // for fail
 #include "fileutil.hpp"  // for file_open, is_little_endian, fileptr_t, ...
@@ -247,10 +248,11 @@ struct Mtz {
     swap_four_bytes(&header_offset);
   }
 
-  void read_first_bytes(std::FILE* stream) {
+  template<typename Stream>
+  void read_first_bytes(Stream& stream) {
     char buf[12] = {0};
 
-    if (std::fread(buf, 1, 12, stream) != 12)
+    if (!stream.read(buf, 12))
       fail("Could not read the MTZ file (is it empty?)");
     if (buf[0] != 'M' || buf[1] != 'T' || buf[2] != 'Z' || buf[3] != ' ')
       fail("Not an MTZ file - it does not start with 'MTZ '");
@@ -293,19 +295,20 @@ struct Mtz {
       std::fprintf(warnings, "%s\n", text.c_str());
   }
 
-  void seek_headers(std::FILE* stream) {
-    if (std::fseek(stream, 4 * (header_offset - 1), SEEK_SET) != 0)
+  template<typename Stream>
+  void seek_headers(Stream& stream) {
+    if (!stream.seek(4 * (header_offset - 1)))
       fail("Cannot rewind to the MTZ header at byte "
            + std::to_string(header_offset));
   }
 
   // read headers until END
-  void read_main_headers(std::FILE* stream) {
+  template<typename Stream>
+  void read_main_headers(Stream& stream) {
     char line[81] = {0};
     seek_headers(stream);
     int ncol = 0;
-    while (std::fread(line, 1, 80, stream) == 80 &&
-           ialpha3_id(line) != ialpha3_id("END")) {
+    while (stream.read(line, 80) && ialpha3_id(line) != ialpha3_id("END")) {
       const char* args = skip_word(line);
       switch (ialpha4_id(line)) {
         case ialpha4_id("VERS"):
@@ -425,11 +428,11 @@ struct Mtz {
   }
 
   // read the part between END and MTZENDOFHEADERS
-  void read_history_and_batch_headers(std::FILE* stream) {
+  template<typename Stream>
+  void read_history_and_batch_headers(Stream& stream) {
     char buf[81] = {0};
     int n_headers = 0;
-    while (std::fread(buf, 1, 80, stream) == 80 &&
-           ialpha4_id(buf) != ialpha4_id("MTZE")) {
+    while (stream.read(buf, 80) && ialpha4_id(buf) != ialpha4_id("MTZE")) {
       if (n_headers != 0) {
         const char* start = skip_blank(buf);
         const char* end = rtrim_cstr(start, start+80);
@@ -452,8 +455,10 @@ struct Mtz {
 
   void setup_spacegroup() {
     spacegroup = find_spacegroup_by_name(spacegroup_name);
-    if (!spacegroup)
+    if (!spacegroup) {
       warn("MTZ: unrecognized spacegroup name: " + spacegroup_name);
+      return;
+    }
     if (spacegroup->ccp4 != spacegroup_number)
       warn("MTZ: inconsistent spacegroup name and number");
     cell.set_cell_images_from_spacegroup(spacegroup);
@@ -461,23 +466,54 @@ struct Mtz {
       d.cell.set_cell_images_from_spacegroup(spacegroup);
   }
 
-  void read_raw_data(std::FILE* stream) {
+  template<typename Stream>
+  void read_raw_data(Stream& stream) {
     size_t n = columns.size() * nreflections;
     data.resize(n);
-    if (std::fseek(stream, 80, SEEK_SET) != 0)
+    if (!stream.seek(80))
       fail("Cannot rewind to the MTZ data.");
-    if (std::fread(data.data(), 4, n, stream) != n)
+    if (!stream.read(data.data(), 4 * n))
       fail("Error when reading MTZ data");
     if (!same_byte_order)
       for (float& f : data)
         swap_four_bytes(&f);
   }
 
-  void read_all_headers(std::FILE* stream) {
+  template<typename Stream>
+  void read_all_headers(Stream& stream) {
     read_first_bytes(stream);
     read_main_headers(stream);
     read_history_and_batch_headers(stream);
     setup_spacegroup();
+  }
+
+  template<typename Stream>
+  void read_stream(Stream&& stream, bool with_data) {
+    read_all_headers(stream);
+    if (with_data)
+      read_raw_data(stream);
+  }
+
+  void read_file(const std::string& path) {
+    fileptr_t f = file_open(path.c_str(), "rb");
+    try {
+      read_stream(FileStream{f.get()}, true);
+    } catch (std::runtime_error& e) {
+      fail(std::string(e.what()) + ": " + path);
+    }
+  }
+
+  template<typename Input>
+  void read_input(Input&& input, bool with_data) {
+    if (input.is_stdin()) {
+      read_stream(FileStream{stdin}, with_data);
+    } else if (std::unique_ptr<char[]> mem = input.memory()) {
+      MemoryStream stream(mem.get(), mem.get() + input.memory_size());
+      read_stream(std::move(stream), with_data);
+    } else {
+      fileptr_t f = file_open(input.path().c_str(), "rb");
+      read_stream(FileStream{f.get()}, true);
+    }
   }
 
   std::vector<int> sorted_row_indices() const {
@@ -554,22 +590,19 @@ struct Mtz {
   void write_to_file(const std::string& path) const;
 };
 
-inline Mtz read_mtz_stream(std::FILE* stream, bool with_data) {
+inline Mtz read_mtz_file(const std::string& path) {
   Mtz mtz;
-  mtz.read_all_headers(stream);
-  if (with_data)
-    mtz.read_raw_data(stream);
+  mtz.read_file(path);
   return mtz;
 }
 
-inline Mtz read_mtz_file(const std::string& path) {
-  fileptr_t f = file_open(path.c_str(), "rb");
-  try {
-    return read_mtz_stream(f.get(), true);
-  } catch (std::runtime_error& e) {
-    fail(std::string(e.what()) + ": " + path);
-  }
+template<typename Input>
+Mtz read_mtz(Input&& input, bool with_data) {
+  Mtz mtz;
+  mtz.read_input(std::forward<Input>(input), with_data);
+  return mtz;
 }
+
 
 // Abstraction of data source, cf. ReflnDataProxy.
 struct MtzDataProxy {

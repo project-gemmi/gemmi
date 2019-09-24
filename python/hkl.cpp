@@ -5,6 +5,7 @@
 #include "gemmi/refln.hpp"
 #include "gemmi/fourier.hpp"
 #include "gemmi/tostr.hpp"
+#include "gemmi/gz.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -223,7 +224,9 @@ void add_hkl(py::module& m) {
     .def("__repr__", [](const Mtz::Column& self) { return tostr(&self); })
     ;
 
-  m.def("read_mtz_file", &read_mtz_file);
+  m.def("read_mtz_file", [](const std::string& path) {
+      return read_mtz(MaybeGzipped(path), true);
+  }, py::arg("path"), py::return_value_policy::move);
 
   py::class_<ReflnBlock>(m, "ReflnBlock")
     .def_readonly("block", &ReflnBlock::block)

@@ -7,6 +7,7 @@
 #include <cstring>            // for strcmp
 #include <cstdlib>            // for strtod, exit
 #include <array>
+#include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/mtz.hpp>      // for Mtz
 #include <gemmi/fourier.hpp>  // for get_f_phi_on_grid, transform_f_phi_..
 #include <gemmi/gzread.hpp>   // for read_cif_gz
@@ -144,7 +145,7 @@ read_sf_and_fft_to_map(const char* input_path,
                                            /*half_l=*/true,
                                            min_size, sample_rate);
   } else {
-    Mtz mtz = gemmi::read_mtz_file(input_path);
+    Mtz mtz = gemmi::read_mtz(gemmi::MaybeGzipped(input_path), true);
     auto cols = get_mtz_map_columns(mtz, section, diff_map, f_label, ph_label);
     if (output)
       fprintf(output, "Putting data from columns %s and %s into matrix...\n",
