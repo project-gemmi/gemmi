@@ -6,6 +6,7 @@
 #define GEMMI_GZ_HPP_
 #include <cassert>
 #include <cstdio>       // fseek, ftell, fread
+#include <climits>      // INT_MAX
 #include <memory>
 #include <string>
 #include <zlib.h>
@@ -38,13 +39,25 @@ inline size_t estimate_uncompressed_size(const std::string& path) {
   return orig_size;
 }
 
+inline bool big_gzread(gzFile file, void* buf, size_t len) {
+  // In zlib >= 1.2.9 we could use gzfread()
+  // return gzfread(buf, len, 1, f) == 1;
+  while (len > INT_MAX) {
+    if (gzread(file, buf, INT_MAX) != INT_MAX)
+      return false;
+    len -= INT_MAX;
+    buf = (char*) buf + INT_MAX;
+  }
+  return gzread(file, buf, (unsigned) len) == (int) len;
+}
+
 class MaybeGzipped : public BasicInput {
 public:
   struct GzStream {
     gzFile f;
     char* gets(char* line, int size) { return gzgets(f, line, size); }
     int getc() { return gzgetc(f); }
-    bool read(void* buf, int len) { return gzfread(buf, len, 1, f) == 1; }
+    bool read(void* buf, size_t len) { return big_gzread(f, buf, len); }
   };
 
   explicit MaybeGzipped(const std::string& path)
@@ -72,8 +85,8 @@ public:
     if (memory_size_ > 3221225471)
       fail("For now gz files above 3 GiB uncompressed are not supported.");
     std::unique_ptr<char[]> mem(new char[memory_size_]);
-    size_t result = gzfread(mem.get(), memory_size_, 1, file_);
-    if (result != 1 && !gzeof(file_)) {
+    bool ok = big_gzread(file_, mem.get(), memory_size_);
+    if (!ok && !gzeof(file_)) {
       int errnum;
       std::string err_str = gzerror(file_, &errnum);
       if (errnum)
