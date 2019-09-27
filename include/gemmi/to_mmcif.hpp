@@ -435,7 +435,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
     for (const ExperimentInfo& exper : st.meta.experiments)
       loop.add_row({id,
                     std::to_string(++n),
-                    join_str(exper.diffraction_ids, ","),
+                    impl::string_or_dot((join_str(exper.diffraction_ids, ","))),
                     impl::int_or_qmark(exper.unique_reflections),
                     impl::number_or_qmark(exper.reflections.resolution_high),
                     impl::number_or_qmark(exper.reflections.resolution_low),

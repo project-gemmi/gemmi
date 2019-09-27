@@ -57,8 +57,8 @@ def read_lines_and_remove(path):
     os.remove(path)
     return out_lines
 
-def get_path_for_tempfile():
-    handle, out_name = tempfile.mkstemp()
+def get_path_for_tempfile(suffix=''):
+    handle, out_name = tempfile.mkstemp(suffix=suffix)
     os.close(handle)
     return out_name
 
@@ -201,8 +201,7 @@ class TestMol(unittest.TestCase):
         self.assertEqual(list(block.find_values('_diffrn.ambient_temp')),
                          ['295', '295'])
 
-    def read_1pfe(self, filename):
-        st = gemmi.read_structure(full_path(filename))
+    def check_1pfe(self, st):
         self.assertAlmostEqual(st.cell.a, 39.374)
         self.assertEqual(st.cell.gamma, 120)
         self.assertEqual(st.name, '1PFE')
@@ -231,6 +230,7 @@ class TestMol(unittest.TestCase):
         atom_cl = res_cl.find_atom('CL', '*')
         self.assertAlmostEqual(atom_cl.occ, 0.17)
         self.assertEqual(atom_cl.element.name, 'Cl')
+        return st
 
     def test_previous_next_residue(self):
         st = gemmi.read_structure(full_path('1pfe.cif.gz'),
@@ -252,10 +252,19 @@ class TestMol(unittest.TestCase):
         self.assertIsNone(chain_b.previous_residue(chain_b[0]))
 
     def test_read_1pfe_cif(self):
-        self.read_1pfe('1pfe.cif.gz')
+        st = gemmi.read_structure(full_path('1pfe.cif.gz'))
+        self.check_1pfe(st)
+
+        # write structure to cif and read it back
+        out_name = get_path_for_tempfile(suffix='.cif')
+        st.make_mmcif_document().write_file(out_name)
+        st2 = gemmi.read_structure(out_name)
+        os.remove(out_name)
+        self.check_1pfe(st2)
 
     def test_read_1pfe_json(self):
-        self.read_1pfe('1pfe.json')
+        st = gemmi.read_structure(full_path('1pfe.json'))
+        self.check_1pfe(st)
 
     def test_read_1orc(self):
         st = gemmi.read_structure(full_path('1orc.pdb'))
