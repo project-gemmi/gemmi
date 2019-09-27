@@ -57,6 +57,11 @@ def read_lines_and_remove(path):
     os.remove(path)
     return out_lines
 
+def get_path_for_tempfile():
+    handle, out_name = tempfile.mkstemp()
+    os.close(handle)
+    return out_name
+
 
 class TestMol(unittest.TestCase):
     def test_residue(self):
@@ -279,8 +284,7 @@ class TestMol(unittest.TestCase):
         if via_cif:
             doc = st.make_mmcif_document()
             st = gemmi.make_structure_from_block(doc[0])
-        handle, out_name = tempfile.mkstemp()
-        os.close(handle)
+        out_name = get_path_for_tempfile()
         st.write_pdb(out_name)
         return read_lines_and_remove(out_name)
 
@@ -389,8 +393,7 @@ class TestMol(unittest.TestCase):
 
     def test_blank_chain(self):
         st = gemmi.read_pdb_string(BLANK_CHAIN_FRAGMENT)
-        handle, out_name = tempfile.mkstemp()
-        os.close(handle)
+        out_name = get_path_for_tempfile()
         st.write_minimal_pdb(out_name)
         out = read_lines_and_remove(out_name)
         # CRYST1 differs (50.000 not 50.00 and added P1).
