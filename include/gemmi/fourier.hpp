@@ -139,7 +139,7 @@ Grid<T> transform_f_phi_grid_to_map(Grid<std::complex<T>>&& hkl) {
   map.full_canonical = true;
   pocketfft::shape_t shape{(size_t)hkl.nw, (size_t)hkl.nv, (size_t)hkl.nu};
   std::ptrdiff_t s = sizeof(T);
-  pocketfft::stride_t stride{hkl.nv * hkl.nu * 2*s, hkl.nu * 2*s, 2*s};
+  pocketfft::stride_t stride{2*s * hkl.nv * hkl.nu, 2*s * hkl.nu, 2*s};
   pocketfft::shape_t axes{2, 1};
   if (!hkl.half_l)
     axes.push_back(0);
@@ -181,8 +181,8 @@ Grid<std::complex<T>> transform_map_to_f_phi(const Grid<T>& map, bool half_l) {
   T norm = T(map.unit_cell.volume / map.point_count());
   pocketfft::shape_t shape{(size_t)map.nw, (size_t)map.nv, (size_t)map.nu};
   std::ptrdiff_t s = sizeof(T);
-  pocketfft::stride_t stride_in{hkl.nv * hkl.nu * s, hkl.nu * s, s};
-  pocketfft::stride_t stride{hkl.nv * hkl.nu * 2*s, hkl.nu * 2*s, 2*s};
+  pocketfft::stride_t stride_in{s * hkl.nv * hkl.nu, s * hkl.nu, s};
+  pocketfft::stride_t stride{2*s * hkl.nv * hkl.nu, 2*s * hkl.nu, 2*s};
   pocketfft::r2c<T>(shape, stride_in, stride, /*axis=*/0,
                     &map.data[0], &hkl.data[0], norm);
   shape[0] = half_nw;
