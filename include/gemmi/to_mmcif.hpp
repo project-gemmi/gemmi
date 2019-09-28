@@ -352,6 +352,14 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
     }
   }
 
+  // _exptl_crystal
+  if (!st.meta.crystals.empty()) {
+    cif::Loop& loop = block.init_mmcif_loop("_exptl_crystal.",
+                                            {"id", "description"});
+    for (const CrystalInfo& cryst : st.meta.crystals)
+      loop.add_row({cryst.id, impl::string_or_qmark(cryst.description)});
+  }
+
   // _exptl_crystal_grow
   if (std::any_of(st.meta.crystals.begin(), st.meta.crystals.end(),
             [](const CrystalInfo& c) { return !c.ph_range.empty() || !std::isnan(c.ph); })) {

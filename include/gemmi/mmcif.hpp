@@ -378,6 +378,13 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
       st.meta.experiments.back().number_of_crystals = cif::as_int(row[1]);
   }
 
+  for (auto row : block.find("_exptl_crystal.", {"id", "?description"})) {
+    st.meta.crystals.emplace_back();
+    st.meta.crystals.back().id = row.str(0);
+    if (row.has2(1))
+      st.meta.crystals.back().description = row.str(1);
+  }
+
   for (auto row : block.find("_software.", {"name",
                                             "?classification",
                                             "?version",

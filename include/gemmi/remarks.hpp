@@ -303,7 +303,18 @@ inline void read_remark3_line(const char* line, Metadata& meta) {
   }
 }
 
-inline void read_remark_200_230_240(const char* line, Metadata& meta) {
+inline void read_remark_200_230_240(const char* line, Metadata& meta,
+                                    std::string*& cryst_desc) {
+  // multi-line continuation requires special handling
+  if (cryst_desc) {
+    if (line[10] == ' ' && line[11] == ' ') {
+      const char* start = line + 11;
+      cryst_desc->append(start, rtrim_cstr(start) - start);
+      return;
+    }
+    cryst_desc = nullptr;
+  }
+
   const char* key_start = skip_blank(line + 10);
   const char* colon = std::strchr(key_start, ':');
   const char* key_end = rtrim_cstr(key_start, colon);
@@ -383,6 +394,9 @@ inline void read_remark_200_230_240(const char* line, Metadata& meta) {
         exper.reflections.r_sym = simple_atof(value);
       } else if (same_str(key, "<I/SIGMA(I)> FOR THE DATA SET")) {
         exper.reflections.mean_I_over_sigma = simple_atof(value);
+      } else if (same_str(key, "REMARK")) {
+        cryst_desc = &meta.crystals.back().description;
+        *cryst_desc = std::string(value, end);
       } else if (!exper.shells.empty()) {
         if (same_str(key, "HIGHEST RESOLUTION SHELL, RANGE HIGH (A)")) {
           exper.shells.back().resolution_high = simple_atof(value);
@@ -427,6 +441,7 @@ inline void read_remark_200_230_240(const char* line, Metadata& meta) {
 } // namespace pdb_impl
 
 void read_metadata_from_remarks(Structure& st) {
+  std::string* cr_desc = nullptr;
   for (const std::string& remark : st.raw_remarks)
     if (remark.size() > 11) {
       switch (pdb_impl::read_int(remark.c_str() + 7, 3)) {
@@ -436,7 +451,7 @@ void read_metadata_from_remarks(Structure& st) {
         case 200:
         case 230:
         case 240:
-          pdb_impl::read_remark_200_230_240(remark.c_str(), st.meta);
+          pdb_impl::read_remark_200_230_240(remark.c_str(), st.meta, cr_desc);
           break;
         case 300:
           if (!st.meta.remark_300_detail.empty()) {

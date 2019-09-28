@@ -78,6 +78,7 @@ struct DiffractionInfo {
 
 struct CrystalInfo {
   std::string id;                 // _exptl_crystal.id
+  std::string description;        // _exptl_crystal.description
   double ph = NAN;                // _exptl_crystal_grow.pH
   std::string ph_range;           // _exptl_crystal_grow.pdbx_pH_range
   std::vector<DiffractionInfo> diffractions;
