@@ -349,10 +349,26 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
   add_info("_struct_keywords.pdbx_keywords");
   add_info("_struct_keywords.text");
 
-  for (const std::string& d : block.find_values("_refine.ls_d_res_high")) {
-    double resol = cif::as_number(d);
-    if (resol > 0 && (st.resolution == 0 || resol < st.resolution))
-      st.resolution = resol;
+  for (auto row : block.find("_refine.", {"pdbx_refine_id",           // 0
+                                          "?ls_d_res_high",           // 1
+                                          "?ls_d_res_low",            // 2
+                                          "?ls_percent_reflns_obs",   // 3
+                                          "?ls_number_reflns_obs"})) {
+    st.meta.refinement.emplace_back();
+    RefinementInfo& ref = st.meta.refinement.back();
+    ref.id = row.str(0);
+    if (row.has(1)) {
+      ref.resolution_high = cif::as_number(row[1]);
+      if (ref.resolution_high > 0 &&
+          (st.resolution == 0 || ref.resolution_high < st.resolution))
+      st.resolution = ref.resolution_high;
+    }
+    if (row.has(2))
+      ref.resolution_low = cif::as_number(row[2]);
+    if (row.has(3))
+      ref.completeness = cif::as_number(row[3]);
+    if (row.has2(4))
+      ref.reflection_count = cif::as_int(row[4]);
   }
 
   for (auto row : block.find("_exptl.", {"method", "?crystals_number"})) {
