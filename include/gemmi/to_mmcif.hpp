@@ -495,7 +495,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
     for (size_t i = 0; i != st.meta.refinement.size(); ++i) {
       const RefinementInfo& ref = st.meta.refinement[i];
       loop.values.push_back(id);
-      loop.values.push_back(ref.id);
+      loop.values.push_back(cif::quote(ref.id));
       loop.values.push_back(impl::number_or_dot(ref.resolution_high));
       loop.values.push_back(impl::number_or_dot(ref.resolution_low));
       loop.values.push_back(impl::number_or_dot(ref.completeness));
@@ -550,17 +550,18 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
         add("pdbx_method_to_determine_struct", impl::string_or_qmark(st.meta.solved_by));
       if (!st.meta.starting_model.empty())
         add("pdbx_starting_model", impl::string_or_qmark(st.meta.starting_model));
-      analyze_loop.add_row({id, ref.id,
+      analyze_loop.add_row({id,
+                            cif::quote(ref.id),
                             impl::number_or_qmark(ref.luzzati_error)});
       for (const RefinementInfo::Restr& restr : ref.restr_stats)
-        restr_loop.add_row({ref.id,
+        restr_loop.add_row({cif::quote(ref.id),
                             cif::quote(restr.name),
                             impl::int_or_qmark(restr.count),
                             impl::number_or_qmark(restr.weight),
                             impl::string_or_qmark(restr.function),
                             impl::number_or_qmark(restr.dev_ideal)});
       for (const BasicRefinementInfo& bin : ref.bins)
-        shell_loop.add_row({ref.id,
+        shell_loop.add_row({cif::quote(ref.id),
                             impl::number_or_dot(bin.resolution_high),
                             impl::number_or_qmark(bin.resolution_low),
                             impl::number_or_qmark(bin.completeness),
@@ -829,7 +830,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
         const Mat33& L = tls.L;
         const Mat33& S = tls.S;
         auto q = impl::number_or_qmark;
-        loop.add_row({ref.id, impl::string_or_dot(tls.id),
+        loop.add_row({cif::quote(ref.id), impl::string_or_dot(tls.id),
                       q(T[0][0]), q(T[1][1]), q(T[2][2]),
                       q(T[0][1]), q(T[0][2]), q(T[1][2]),
                       q(L[0][0]), q(L[1][1]), q(L[2][2]),
