@@ -566,9 +566,10 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
         add("pdbx_method_to_determine_struct", impl::string_or_qmark(st.meta.solved_by));
       if (!st.meta.starting_model.empty())
         add("pdbx_starting_model", impl::string_or_qmark(st.meta.starting_model));
-      analyze_loop.add_row({id,
-                            cif::quote(ref.id),
-                            impl::number_or_qmark(ref.luzzati_error)});
+      if (!std::isnan(ref.luzzati_error))
+        analyze_loop.add_row({id,
+                              cif::quote(ref.id),
+                              impl::number_or_qmark(ref.luzzati_error)});
       for (const RefinementInfo::Restr& restr : ref.restr_stats)
         restr_loop.add_row({cif::quote(ref.id),
                             cif::quote(restr.name),
