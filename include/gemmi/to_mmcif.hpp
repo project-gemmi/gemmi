@@ -93,7 +93,7 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
   for (const Model& model : st.models) {
     for (const Chain& chain : model.chains) {
       for (const Residue& res : chain.residues) {
-        std::string label_seq_id = res.label_seq.str();
+        std::string label_seq_id = res.label_seq.str('.');
         std::string auth_seq_id = res.seqid.num.str();
         for (const Atom& a : res.atoms) {
           vv.emplace_back(std::to_string(++serial));
@@ -270,7 +270,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
         cra1.chain->name,                          // ptnr1_auth_asym_id
         subchain_or_dot(*cra1.residue),            // ptnr1_label_asym_id
         cra1.residue->name,                        // ptnr1_label_comp_id
-        cra1.residue->label_seq.str(),             // ptnr1_label_seq_id
+        cra1.residue->label_seq.str('.'),          // ptnr1_label_seq_id
         cra1.atom->name,                           // ptnr1_label_atom_id
         std::string(1, cra1.atom->altloc_or('?')), // pdbx_ptnr1_label_alt_id
         cra1.residue->seqid.num.str(),             // ptnr1_auth_seq_id
@@ -279,7 +279,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
         cra2.chain->name,                          // ptnr2_auth_asym_id
         subchain_or_dot(*cra2.residue),            // ptnr2_label_asym_id
         cra2.residue->name,                        // ptnr2_label_comp_id
-        cra2.residue->label_seq.str(),             // ptnr2_label_seq_id
+        cra2.residue->label_seq.str('.'),          // ptnr2_label_seq_id
         cra2.atom->name,                           // ptnr2_label_atom_id
         std::string(1, cra2.atom->altloc_or('?')), // pdbx_ptnr2_label_alt_id
         cra2.residue->seqid.num.str(),             // ptnr2_auth_seq_id
@@ -443,7 +443,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
     for (const ExperimentInfo& exper : st.meta.experiments)
       loop.add_row({id,
                     std::to_string(++n),
-                    impl::string_or_dot((join_str(exper.diffraction_ids, ","))),
+                    impl::string_or_dot(join_str(exper.diffraction_ids, ",")),
                     impl::int_or_qmark(exper.unique_reflections),
                     impl::number_or_qmark(exper.reflections.resolution_high),
                     impl::number_or_qmark(exper.reflections.resolution_low),
@@ -455,6 +455,8 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
                     /*impl::number_or_qmark(exper.b_wilson)*/});
     // _reflns_shell
     cif::Loop& shell_loop = block.init_mmcif_loop("_reflns_shell.", {
+        "pdbx_ordinal",
+        "pdbx_diffrn_id",
         "d_res_high",
         "d_res_low",
         "percent_possible_all",
@@ -462,15 +464,21 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
         "Rmerge_I_obs",
         "pdbx_Rsym_value",
         "meanI_over_sigI_obs"});
-    for (const ExperimentInfo& exper : st.meta.experiments)
+    n = 0;
+    for (const ExperimentInfo& exper : st.meta.experiments) {
+      std::string diffrn_id =
+        impl::string_or_dot(join_str(exper.diffraction_ids, ","));
       for (const ReflectionsInfo& shell : exper.shells)
-        shell_loop.add_row({impl::number_or_qmark(shell.resolution_high),
+        shell_loop.add_row({std::to_string(++n),
+                            diffrn_id,
+                            impl::number_or_qmark(shell.resolution_high),
                             impl::number_or_qmark(shell.resolution_low),
                             impl::number_or_qmark(shell.completeness),
                             impl::number_or_qmark(shell.redundancy),
                             impl::number_or_qmark(shell.r_merge),
                             impl::number_or_qmark(shell.r_sym),
                             impl::number_or_qmark(shell.mean_I_over_sigma)});
+    }
   }
 
   // _refine

@@ -19,7 +19,9 @@ template<int N> struct OptionalInt {
   OptionalInt() = default;
   OptionalInt(int n) : value(n) {}
   bool has_value() const { return value != None; }
-  std::string str() const { return has_value() ? std::to_string(value) : "?"; }
+  std::string str(char null='?') const {
+    return has_value() ? std::to_string(value) : std::string(1, null);
+  }
   OptionalInt& operator=(int n) { value = n; return *this; }
   bool operator==(const OptionalInt& o) const { return value == o.value; }
   bool operator!=(const OptionalInt& o) const { return value != o.value; }

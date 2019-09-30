@@ -385,6 +385,54 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
       st.meta.crystals.back().description = row.str(1);
   }
 
+  for (auto row : block.find("_diffrn.",
+                             {"id", "crystal_id", "?ambient_temp"})) {
+    std::string id = row.str(1);
+    auto cryst = std::find_if(st.meta.crystals.begin(), st.meta.crystals.end(),
+                              [&](const CrystalInfo& c) { return c.id == id; });
+    if (cryst != st.meta.crystals.end()) {
+      cryst->diffractions.emplace_back();
+      cryst->diffractions.back().id = row.str(0);
+      if (row.has2(2))
+        cryst->diffractions.back().temperature = cif::as_number(row[2]);
+    }
+  }
+
+  size_t n = 0;
+  for (auto row : block.find("_reflns.", {"pdbx_diffrn_id",        // 0
+                                          "?number_obs",           // 1
+                                          "?d_resolution_high",    // 2
+                                          "?d_resolution_low",     // 3
+                                          "?percent_possible_obs", // 4
+                                          "?pdbx_redundancy",      // 5
+                                          "?pdbx_Rmerge_I_obs",    // 6
+                                          "?pdbx_Rsym_value",      // 7
+                                          "?pdbx_netI_over_sigmaI"})) {
+    // In the case of multiple experiments (_exptl), which is rare,
+    // it is not explicit to which experiment which data statistics
+    // (_reflns) corresponds to. We assume they are in the same order.
+    if (n >= st.meta.experiments.size())
+      break;
+    ExperimentInfo& exper = st.meta.experiments[n++];
+    split_str_into(row.str(0), ',', exper.diffraction_ids);
+    if (row.has2(1))
+      exper.unique_reflections = cif::as_int(row[1]);
+    if (row.has2(2))
+      exper.reflections.resolution_high = cif::as_number(row[2]);
+    if (row.has2(3))
+      exper.reflections.resolution_low = cif::as_number(row[3]);
+    if (row.has2(4))
+      exper.reflections.completeness = cif::as_number(row[4]);
+    if (row.has2(5))
+      exper.reflections.redundancy = cif::as_number(row[5]);
+    if (row.has2(6))
+      exper.reflections.r_merge = cif::as_number(row[6]);
+    if (row.has2(7))
+      exper.reflections.r_sym = cif::as_number(row[7]);
+    if (row.has2(8))
+      exper.reflections.mean_I_over_sigma = cif::as_number(row[8]);
+  }
+
   for (auto row : block.find("_software.", {"name",
                                             "?classification",
                                             "?version",
