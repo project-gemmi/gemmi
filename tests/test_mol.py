@@ -12,6 +12,10 @@ def is_written_to_pdb(line, via_cif):
                     'DBREF ', 'SEQADV', 'HET   ', 'HETNAM', 'FORMUL',
                     'SITE  ', 'MASTER']:
         return False
+    # ORIGX is written only if it is a non-identity matrix
+    # SCALE is written only if it is non-default
+    if line[:5] in ['ORIGX', 'SCALE']:
+        return False
     if line[:6] == 'REMARK' and via_cif and line[7:10] not in ['  2', '350']:
         return False
     return True

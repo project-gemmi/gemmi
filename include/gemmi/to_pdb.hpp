@@ -556,11 +556,13 @@ inline void write_header(const Structure& st, std::ostream& os,
   }
 
   write_cryst1(st, os);
-  if (st.has_origx || st.cell.explicit_matrices) {
+  if (st.has_origx && !st.origx.is_identity()) {
     for (int i = 0; i < 3; ++i)
       WRITE("ORIGX%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,
             st.origx.mat[i][0], st.origx.mat[i][1], st.origx.mat[i][2],
             st.origx.vec.at(i), "");
+  }
+  if (st.cell.explicit_matrices) {
     for (int i = 0; i < 3; ++i)
       // We add a small number to avoid negative 0.
       WRITE("SCALE%d %13.6f%10.6f%10.6f %14.5f %24s\n", i+1,

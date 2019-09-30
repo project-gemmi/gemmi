@@ -635,7 +635,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
       }
 
   // _database_PDB_matrix (ORIGX)
-  if (st.has_origx) {
+  if (st.has_origx && !st.origx.is_identity()) {
     block.set_pair("_database_PDB_matrix.entry_id", id);
     std::string prefix = "_database_PDB_matrix.origx";
     for (int i = 0; i < 3; ++i) {
