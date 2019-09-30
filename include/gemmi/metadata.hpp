@@ -129,7 +129,7 @@ struct RefinementInfo : BasicRefinementInfo {
   int bin_count = -1;        // _refine_ls_shell.pdbx_total_number_of_bins_used
   std::vector<BasicRefinementInfo> bins;
   double mean_b = NAN;                // _refine.B_iso_mean
-  Mat33 aniso_b;                      // _refine.aniso_B[][]
+  Mat33 aniso_b{NAN};                 // _refine.aniso_B[][]
   double luzzati_error = NAN; // _refine_analyze.Luzzati_coordinate_error_obs
   double dpi_blow_r = NAN;            // _refine.pdbx_overall_SU_R_Blow_DPI
   double dpi_blow_rfree = NAN;        // _refine.pdbx_overall_SU_R_free_Blow_DPI
