@@ -687,7 +687,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
   // _struct_sheet*
   if (!st.sheets.empty()) {
     cif::Loop& sheet_loop = block.init_mmcif_loop("_struct_sheet.",
-                                                  {"id", "number_strand"});
+                                                  {"id", "number_strands"});
     for (const Sheet& sheet : st.sheets)
       sheet_loop.add_row({sheet.name, std::to_string(sheet.strands.size())});
 
