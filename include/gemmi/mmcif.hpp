@@ -20,6 +20,19 @@ namespace gemmi {
 
 namespace impl {
 
+void copy_int(const cif::Table::Row& row, int n, int& dest) {
+  if (row.has2(n))
+    dest = cif::as_int(row[n]);
+}
+void copy_double(const cif::Table::Row& row, int n, double& dest) {
+  if (row.has2(n))
+    dest = cif::as_number(row[n]);
+}
+void copy_string(const cif::Table::Row& row, int n, std::string& dest) {
+  if (row.has2(n))
+    dest = cif::as_string(row[n]);
+}
+
 inline std::unordered_map<std::string, std::array<float,6>>
 get_anisotropic_u(cif::Block& block) {
   cif::Table aniso_tab = block.find("_atom_site_anisotrop.",
@@ -179,8 +192,7 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
     if (row.has2(14) && row.has2(15)) {
       c.asu = (row.str(14) == row.str(15) ? Asu::Same : Asu::Different);
     }
-    if (row.has2(16))
-      c.reported_distance = cif::as_number(row[16]);
+    copy_double(row, 16, c.reported_distance);
     for (int i = 0; i < 2; ++i) {
       AtomAddress& a = c.atom[i];
       a.chain_name = row.str(2+i);
@@ -361,28 +373,23 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
       ref.resolution_high = cif::as_number(row[1]);
       if (ref.resolution_high > 0 &&
           (st.resolution == 0 || ref.resolution_high < st.resolution))
-      st.resolution = ref.resolution_high;
+        st.resolution = ref.resolution_high;
     }
-    if (row.has(2))
-      ref.resolution_low = cif::as_number(row[2]);
-    if (row.has(3))
-      ref.completeness = cif::as_number(row[3]);
-    if (row.has2(4))
-      ref.reflection_count = cif::as_int(row[4]);
+    copy_double(row, 2, ref.resolution_low);
+    copy_double(row, 3, ref.completeness);
+    copy_int(row, 4, ref.reflection_count);
   }
 
   for (auto row : block.find("_exptl.", {"method", "?crystals_number"})) {
     st.meta.experiments.emplace_back();
     st.meta.experiments.back().method = row.str(0);
-    if (row.has2(1))
-      st.meta.experiments.back().number_of_crystals = cif::as_int(row[1]);
+    copy_int(row, 1, st.meta.experiments.back().number_of_crystals);
   }
 
   for (auto row : block.find("_exptl_crystal.", {"id", "?description"})) {
     st.meta.crystals.emplace_back();
     st.meta.crystals.back().id = row.str(0);
-    if (row.has2(1))
-      st.meta.crystals.back().description = row.str(1);
+    copy_string(row, 1, st.meta.crystals.back().description);
   }
 
   for (auto row : block.find("_diffrn.",
@@ -393,8 +400,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
     if (cryst != st.meta.crystals.end()) {
       cryst->diffractions.emplace_back();
       cryst->diffractions.back().id = row.str(0);
-      if (row.has2(2))
-        cryst->diffractions.back().temperature = cif::as_number(row[2]);
+      copy_double(row, 2, cryst->diffractions.back().temperature);
     }
   }
 
@@ -415,22 +421,14 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
       break;
     ExperimentInfo& exper = st.meta.experiments[n++];
     split_str_into(row.str(0), ',', exper.diffraction_ids);
-    if (row.has2(1))
-      exper.unique_reflections = cif::as_int(row[1]);
-    if (row.has2(2))
-      exper.reflections.resolution_high = cif::as_number(row[2]);
-    if (row.has2(3))
-      exper.reflections.resolution_low = cif::as_number(row[3]);
-    if (row.has2(4))
-      exper.reflections.completeness = cif::as_number(row[4]);
-    if (row.has2(5))
-      exper.reflections.redundancy = cif::as_number(row[5]);
-    if (row.has2(6))
-      exper.reflections.r_merge = cif::as_number(row[6]);
-    if (row.has2(7))
-      exper.reflections.r_sym = cif::as_number(row[7]);
-    if (row.has2(8))
-      exper.reflections.mean_I_over_sigma = cif::as_number(row[8]);
+    copy_int(row, 1, exper.unique_reflections);
+    copy_double(row, 2, exper.reflections.resolution_high);
+    copy_double(row, 3, exper.reflections.resolution_low);
+    copy_double(row, 4, exper.reflections.completeness);
+    copy_double(row, 5, exper.reflections.redundancy);
+    copy_double(row, 6, exper.reflections.r_merge);
+    copy_double(row, 7, exper.reflections.r_sym);
+    copy_double(row, 8, exper.reflections.mean_I_over_sigma);
   }
 
   for (auto row : block.find("_software.", {"name",
@@ -443,12 +441,9 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
     item.name = row.str(0);
     if (row.has2(1))
       item.classification = software_classification_from_string(row.str(1));
-    if (row.has2(2))
-      item.version = row.str(2);
-    if (row.has2(3))
-      item.date = row.str(3);
-    if (row.has2(4))
-      item.pdbx_ordinal = cif::as_int(row[4]);
+    copy_string(row, 2, item.version);
+    copy_string(row, 3, item.date);
+    copy_int(row, 4, item.pdbx_ordinal);
   }
 
   std::vector<std::string> ncs_oper_tags = transform_tags("matrix", "vector");
