@@ -68,8 +68,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       in_type = InputType::Ccp4;
   }
   if (in_type == InputType::Unknown) {
-    if (gemmi::coordinate_format_from_extension_gz(input) !=
-        gemmi::CoorFormat::Unknown) {
+    if (gemmi::coor_format_from_ext_gz(input) != gemmi::CoorFormat::Unknown) {
       in_type = InputType::Coordinates;
     } else if (gemmi::iends_with(input, ".ccp4") ||
                gemmi::iends_with(input, ".map")) {

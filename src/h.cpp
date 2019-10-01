@@ -1,8 +1,9 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include <stdio.h>
-#include <cstdlib> // for getenv
+#include <cstdlib>   // for getenv
 #include <stdexcept>
+#include <iostream>  // for cout
 #include <gemmi/gzread.hpp>
 #include "gemmi/chemcomp.hpp"  // for ChemComp
 #include "gemmi/polyheur.hpp"  // for remove_hydrogens
@@ -11,6 +12,7 @@
 #include "gemmi/to_pdb.hpp"    // for write_pdb
 #include "gemmi/monlib.hpp"    // for MonLib, read_monomer_lib
 #include "gemmi/topo.hpp"      // for Topo
+#include "gemmi/ofstream.hpp"  // for Ostream
 #include <gemmi/placeh.hpp>    // for place_hydrogens
 
 #define GEMMI_PROG h
@@ -146,14 +148,12 @@ int GEMMI_MAIN(int argc, char **argv) {
              initial_h, count_h(st));
     if (p.options[Verbose])
       printf("Writing coordinates to %s\n", output.c_str());
-    if (gemmi::coordinate_format_from_extension_gz(output)
-        == gemmi::CoorFormat::Pdb) {
-      std::ofstream os(output.c_str());
-      gemmi::write_pdb(st, os);
-    } else {
-      cif::write_cif_to_file(gemmi::make_mmcif_document(st),
-                             output, cif::Style::PreferPairs);
-    }
+    gemmi::Ofstream os(output, &std::cout);
+    if (gemmi::coor_format_from_ext_gz(output) == gemmi::CoorFormat::Pdb)
+      gemmi::write_pdb(st, os.ref());
+    else
+      cif::write_cif_to_stream(os.ref(), gemmi::make_mmcif_document(st),
+                               cif::Style::PreferPairs);
   } catch (std::runtime_error& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;

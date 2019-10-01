@@ -890,7 +890,8 @@ and then it is written to disk.
     #include <gemmi/to_mmcif.hpp>  // Structure -> cif::Document
     #include <gemmi/to_cif.hpp>    // cif::Document -> file
 
-    gemmi::write_cif_to_file(gemmi::make_mmcif_document(structure), "new.cif");
+    std::ofstream os("new.cif");
+    gemmi::write_cif_to_file(os, gemmi::make_mmcif_document(structure));
 
 **Python**
 

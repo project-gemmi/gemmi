@@ -9,6 +9,7 @@
 #include "gemmi/to_pdb.hpp"
 #include "gemmi/to_mmcif.hpp"
 #include "gemmi/tostr.hpp"
+#include "gemmi/ofstream.hpp"
 
 #include <fstream>
 #include <pybind11/pybind11.h>
@@ -186,16 +187,16 @@ void add_mol(py::module& m) {
        options.cispep_records = cispep_records;
        options.ter_records = ter_records;
        options.numbered_ter = numbered_ter;
-       std::ofstream f(path.c_str());
-       write_pdb(st, f, options);
+       Ofstream f(path);
+       write_pdb(st, f.ref(), options);
     }, py::arg("path"),
        py::arg("seqres_records")=true, py::arg("ssbond_records")=true,
        py::arg("link_records")=true, py::arg("cispep_records")=true,
        py::arg("ter_records")=true, py::arg("numbered_ter")=true)
     .def("write_minimal_pdb",
          [](const Structure& st, const std::string& path) {
-       std::ofstream f(path.c_str());
-       write_minimal_pdb(st, f);
+       Ofstream f(path);
+       write_minimal_pdb(st, f.ref());
     }, py::arg("path"))
     .def("make_minimal_pdb", [](const Structure& st) -> std::string {
        std::ostringstream os;

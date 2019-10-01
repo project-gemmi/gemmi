@@ -17,7 +17,7 @@
 
 namespace gemmi {
 
-inline CoorFormat coordinate_format_from_extension(const std::string& path) {
+inline CoorFormat coor_format_from_ext(const std::string& path) {
   if (iends_with(path, ".pdb") || iends_with(path, ".ent"))
     return CoorFormat::Pdb;
   if (iends_with(path, ".cif"))
@@ -31,7 +31,7 @@ template<typename T>
 Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown) {
   bool any = (format == CoorFormat::UnknownAny);
   if (format == CoorFormat::Unknown || any)
-    format = coordinate_format_from_extension(input.basepath());
+    format = coor_format_from_ext(input.basepath());
   switch (format) {
     case CoorFormat::Pdb:
       return read_pdb(input);

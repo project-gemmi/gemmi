@@ -376,11 +376,8 @@ Instead, we have a few choices for "styling" of the output:
 C++
 ---
 
-The functions writing ``cif::Document`` to C++ stream or to a file
-are in a separate header ``gemmi/to_cif.hpp``::
-
-  void write_cif_to_file(const Document& doc, const std::string& filename,
-                         Style style=Style::Simple)
+The functions writing ``cif::Document`` to C++ stream
+is in a separate header ``gemmi/to_cif.hpp``::
 
   void write_cif_to_stream(std::ostream& os, const Document& doc, Style style)
 

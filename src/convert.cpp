@@ -5,6 +5,7 @@
 #include "gemmi/to_json.hpp"
 #include "gemmi/polyheur.hpp"  // for remove_hydrogens, ...
 #include "gemmi/to_pdb.hpp"    // for write_pdb, ...
+#include "gemmi/ofstream.hpp"  // for Ofstream
 #include "gemmi/to_mmcif.hpp"  // for update_cif_block
 #include "gemmi/chemcomp_xyz.hpp" // for make_structure_from_chemcomp_block
 #include "gemmi/remarks.hpp"   // for read_metadata_from_remarks
@@ -320,16 +321,7 @@ static void convert(const std::string& input, CoorFormat input_type,
       model.chains = std::move(new_chains);
     }
 
-  std::ostream* os;
-  std::unique_ptr<std::ostream> os_deleter;
-  if (output != "-") {
-    os_deleter.reset(new std::ofstream(output));
-    os = os_deleter.get();
-    if (!os || !*os)
-      gemmi::fail("Failed to open for writing: " + output);
-  } else {
-    os = &std::cout;
-  }
+  gemmi::Ofstream os(output, &std::cout);
 
   if (output_type == CoorFormat::Mmcif || output_type == CoorFormat::Mmjson) {
     if (!transcribe) {
@@ -357,9 +349,9 @@ static void convert(const std::string& input, CoorFormat input_type,
     if (output_type == CoorFormat::Mmcif) {
       auto style = options[PdbxStyle] ? cif::Style::Pdbx
                                       : cif::Style::PreferPairs;
-      write_cif_to_stream(*os, doc, style);
+      write_cif_to_stream(os.ref(), doc, style);
     } else /*output_type == CoorFormat::Mmjson*/ {
-      cif::JsonWriter writer(*os);
+      cif::JsonWriter writer(os.ref());
       if (options[Comcifs])
         writer.set_comcifs();
       if (options[Mmjson])
@@ -382,7 +374,7 @@ static void convert(const std::string& input, CoorFormat input_type,
     gemmi::PdbWriteOptions opt;
     if (options[ShortTer])
       opt.numbered_ter = false;
-    gemmi::write_pdb(st, *os, opt);
+    gemmi::write_pdb(st, os.ref(), opt);
   }
 }
 
@@ -403,7 +395,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   CoorFormat in_type = p.options[FormatIn]
     ? filetypes[p.options[FormatIn].arg]
-    : gemmi::coordinate_format_from_extension_gz(input);
+    : gemmi::coor_format_from_ext_gz(input);
   if (in_type == CoorFormat::Unknown) {
     std::cerr << "The input format cannot be determined from input"
                  " filename. Use option --from.\n";
@@ -412,7 +404,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   CoorFormat out_type = p.options[FormatOut]
     ? filetypes[p.options[FormatOut].arg]
-    : gemmi::coordinate_format_from_extension_gz(output);
+    : gemmi::coor_format_from_ext_gz(output);
   if (out_type == CoorFormat::Unknown) {
     std::cerr << "The output format cannot be determined from output"
                  " filename. Use option --to.\n";

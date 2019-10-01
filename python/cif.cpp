@@ -4,6 +4,7 @@
 #include "gemmi/tostr.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
+#include "gemmi/ofstream.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -70,9 +71,12 @@ void add_cif(py::module& cif) {
          (Block* (Document::*)(const std::string&)) &Document::find_block,
          py::arg("name"),
          py::return_value_policy::reference_internal)
-    .def("write_file", &write_cif_to_file,
-         py::arg("filename"), py::arg("style")=Style::Simple,
-         "Write data to a CIF file.")
+    .def("write_file",
+         [](const Document& doc, const std::string& filename, Style s) {
+        gemmi::Ofstream os(filename);
+        write_cif_to_stream(os.ref(), doc, s);
+    }, py::arg("filename"), py::arg("style")=Style::Simple,
+    "Write data to a CIF file.")
     .def("as_string", [](const Document& d, Style style) {
         std::ostringstream os;
         write_cif_to_stream(os, d, style);

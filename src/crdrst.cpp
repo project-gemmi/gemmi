@@ -6,7 +6,8 @@
 #include <stdexcept>
 #include "gemmi/gzread.hpp"
 #include "gemmi/chemcomp.hpp"  // for ChemComp
-#include "gemmi/to_cif.hpp"    // for write_cif_to_file
+#include "gemmi/to_cif.hpp"    // for write_cif_to_stream
+#include "gemmi/ofstream.hpp"  // for Ofstream
 #include "gemmi/entstr.hpp"    // for entity_type_to_string
 #include "gemmi/to_mmcif.hpp"  // for write_struct_conn
 #include "gemmi/sprintf.hpp"   // for to_str, to_str_prec
@@ -468,7 +469,10 @@ int GEMMI_MAIN(int argc, char **argv) {
     cif::Document crd = make_crd(st, monlib, topo);
     if (p.options[Verbose])
       printf("Writing coordinates to: %s.crd\n", output.c_str());
-    write_cif_to_file(crd, output + ".crd", cif::Style::NoBlankLines);
+    {
+      gemmi::Ofstream os(output + ".crd");
+      write_cif_to_stream(os.ref(), crd, cif::Style::NoBlankLines);
+    }
 
     if (p.options[NoZeroOccRestr])
       for (gemmi::Chain& chain : model0.chains)
@@ -484,7 +488,10 @@ int GEMMI_MAIN(int argc, char **argv) {
     cif::Document rst = make_rst(topo, monlib);
     if (p.options[Verbose])
       printf("Writing restraints to: %s.rst\n", output.c_str());
-    write_cif_to_file(rst, output + ".rst", cif::Style::NoBlankLines);
+    {
+      gemmi::Ofstream os(output + ".rst");
+      write_cif_to_stream(os.ref(), rst, cif::Style::NoBlankLines);
+    }
   } catch (std::runtime_error& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
