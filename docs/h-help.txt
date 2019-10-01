@@ -1,0 +1,17 @@
+$ gemmi h -h
+Usage:
+ gemmi h [options] INPUT_FILE OUTPUT_FILE
+
+Add hydrogens in positions specified by the monomer library.
+By default, it removes and re-adds all hydrogens.
+By default, hydrogens are not added to water.
+
+Options:
+  -h, --help      Print usage and exit.
+  -V, --version   Print version and exit.
+  --verbose       Verbose output.
+  --monomers=DIR  Monomer library dir (default: $CLIBD_MON).
+  --remove        Only remove hydrogens.
+  --keep          Do not add/remove hydrogens, only change positions.
+  --water         Add hydrogens also to waters.
+  --sort          Order atoms in residues according to _chem_comp_atom.

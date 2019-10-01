@@ -15,6 +15,7 @@ Commands:
  contents      info about content of a coordinate file (pdb, mmCIF, ...)
  convert       convert file (CIF - JSON, mmCIF - PDB) or modify structure
  grep          search for tags in CIF file(s)
+ h             add or remove hydrogen atoms
  map           print info or modify a CCP4 map
  map2sf        transform CCP4 map to map coefficients (in MTZ or mmCIF)
  mask          make mask in the CCP4 format

@@ -150,6 +150,17 @@ struct Restraints {
     return find_bond(a1, a2) != bonds.end();
   }
 
+  template<typename T>
+  const AtomId* first_bonded_atom(const T& a) const {
+    for (const Bond& bond : bonds) {
+      if (bond.id1 == a)
+        return &bond.id2;
+      if (bond.id2.atom == a)
+        return &bond.id1;
+    }
+    return nullptr;
+  }
+
   template<typename A, typename T>
   void for_each_bonded_atom(const A& a, const T& func) const {
     for (const Bond& bond : bonds) {

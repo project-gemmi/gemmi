@@ -146,13 +146,17 @@ add_executable(gemmi-convert EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-convert)
 
 add_executable(gemmi-crdrst EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/crdrst.cpp src/placeh.cpp $<TARGET_OBJECTS:output>
+               src/crdrst.cpp $<TARGET_OBJECTS:output>
                $<TARGET_OBJECTS:input>)
 support_gz(gemmi-crdrst)
 
 add_executable(gemmi-grep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/grep.cpp)
 support_gz(gemmi-grep)
+
+add_executable(gemmi-h EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/h.cpp $<TARGET_OBJECTS:output> $<TARGET_OBJECTS:input>)
+support_gz(gemmi-h)
 
 add_executable(gemmi-map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/map.cpp $<TARGET_OBJECTS:input>)
@@ -211,7 +215,7 @@ support_gz(gemmi-wcn)
 add_executable(gemmi-prog
                src/blobs.cpp src/cif2mtz.cpp src/contact.cpp
                src/contents.cpp src/convert.cpp
-               src/grep.cpp src/main.cpp src/map.cpp src/map2sf.cpp
+               src/grep.cpp src/h.cpp src/main.cpp src/map.cpp src/map2sf.cpp
                src/mask.cpp src/mondiff.cpp src/mtz.cpp src/mtz2cif.cpp
                src/residues.cpp src/rmsz.cpp
                src/seq.cpp src/sf2map.cpp src/sg.cpp

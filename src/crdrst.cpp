@@ -14,7 +14,7 @@
 #include "gemmi/polyheur.hpp"  // for remove_hydrogens
 #include "gemmi/monlib.hpp"    // for MonLib, read_monomer_lib
 #include "gemmi/topo.hpp"      // for Topo
-#include "placeh.h"            // for place_hydrogens
+#include "gemmi/placeh.hpp"    // for place_hydrogens
 
 #define GEMMI_PROG crdrst
 #include "options.h"
@@ -376,40 +376,6 @@ static cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
   return doc;
 }
 
-static std::string first_bonded_atom(const gemmi::Restraints& rt,
-                                     const std::string& atom_name) {
-  for (const Restraints::Bond& bond : rt.bonds) {
-    if (bond.id1.atom == atom_name)
-      return bond.id2.atom;
-    if (bond.id2.atom == atom_name)
-      return bond.id1.atom;
-  }
-  return std::string();
-}
-
-// assumes no hydrogens in the residue
-static void add_hydrogens(const gemmi::ChemComp& cc, gemmi::Residue& res) {
-  if (cc.name == "HOH") // for compatibility with refmac/makecif
-    return;
-  for (auto it = cc.atoms.begin(); it != cc.atoms.end(); ++it)
-    if (it->is_hydrogen()) {
-      gemmi::Atom atom = it->to_full_atom();
-      atom.flag = 'R';
-      atom.serial = it - cc.atoms.begin();
-      std::string parent_name = first_bonded_atom(cc.rt, atom.name);
-      // cannot use range-based for here because res.atoms may get re-allocated
-      for (size_t i = 0, size = res.atoms.size(); i != size; ++i)
-        if (res.atoms[i].name == parent_name) {
-          const gemmi::Atom& parent = res.atoms[i];
-          atom.altloc = parent.altloc;
-          atom.occ = parent.occ;
-          atom.b_iso = parent.b_iso;
-          res.atoms.push_back(atom);
-        }
-    }
-}
-
-
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
@@ -451,7 +417,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (!p.options[KeepHydrogens]) {
           gemmi::remove_hydrogens(res);
           if (!p.options[NoHydrogens])
-            add_hydrogens(cc, res);
+            if (cc.name != "HOH") // for compatibility with refmac/makecif
+              add_hydrogens(cc, res);
         }
         for (gemmi::Atom& atom : res.atoms) {
           auto it = cc.find_atom(atom.name);

@@ -458,6 +458,15 @@ For use in Dimple_.
 .. literalinclude:: blobs-help.txt
    :language: console
 
+h
+==
+
+Adds or removes hydrogens.
+Hydrogen are put in positions based only on restraints from a monomer library.
+
+.. literalinclude:: h-help.txt
+   :language: console
+
 mondiff
 =======
 
