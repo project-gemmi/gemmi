@@ -7,6 +7,7 @@
 #define GEMMI_INPUT_HPP_
 
 #include <cassert>
+#include <cstring> // for memchr
 #include <memory>  // for unique_ptr
 #include <string>
 #include "fail.hpp"  // for unreachable
