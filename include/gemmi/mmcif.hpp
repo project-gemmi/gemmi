@@ -324,6 +324,14 @@ inline void fill_residue_entity_type(Structure& st) {
       }
 }
 
+DiffractionInfo* find_diffrn(Metadata& meta, const std::string& diffrn_id) {
+  for (CrystalInfo& crystal_info : meta.crystals)
+    for (DiffractionInfo& diffr_info : crystal_info.diffractions)
+      if (diffr_info.id == diffrn_id)
+        return &diffr_info;
+  return nullptr;
+}
+
 inline Structure make_structure_from_block(const cif::Block& block_) {
   using cif::as_number;
   using cif::as_string;
@@ -403,6 +411,41 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
       copy_double(row, 2, cryst->diffractions.back().temperature);
     }
   }
+  for (auto row : block.find("_diffrn_detector.", {"diffrn_id",
+                                                   "?pdbx_collection_date",
+                                                   "?detector",
+                                                   "?type",
+                                                   "?details"}))
+    if (DiffractionInfo* di = find_diffrn(st.meta, row.str(0))) {
+      copy_string(row, 1, di->collection_date);
+      copy_string(row, 2, di->detector);
+      copy_string(row, 3, di->detector_make);
+      copy_string(row, 4, di->optics);
+    }
+  for (auto row : block.find("_diffrn_radiation.",
+                             {"diffrn_id",
+                              "?pdbx_scattering_type",
+                              "?pdbx_monochromatic_or_laue_m_l",
+                              "?monochromator"}))
+    if (DiffractionInfo* di = find_diffrn(st.meta, row.str(0))) {
+      copy_string(row, 1, di->scattering_type);
+      if (row.has2(2))
+        di->mono_or_laue = row.str(2)[0];
+      copy_string(row, 3, di->monochromator);
+    }
+  for (auto row : block.find("_diffrn_source.", {"diffrn_id",
+                                                 "?source",
+                                                 "?type",
+                                                 "?pdbx_synchrotron_site",
+                                                 "?pdbx_synchrotron_beamline",
+                                                 "?pdbx_wavelength_list"}))
+    if (DiffractionInfo* di = find_diffrn(st.meta, row.str(0))) {
+      copy_string(row, 1, di->source);
+      copy_string(row, 2, di->source_type);
+      copy_string(row, 3, di->synchrotron);
+      copy_string(row, 4, di->beamline);
+      copy_string(row, 5, di->wavelengths);
+    }
 
   size_t n = 0;
   for (auto row : block.find("_reflns.", {"pdbx_diffrn_id",        // 0

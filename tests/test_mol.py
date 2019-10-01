@@ -97,7 +97,8 @@ class TestMol(unittest.TestCase):
         self.assertEqual(cell.gamma, 90)
 
     def test_read_5i55_again(self):
-        st = gemmi.read_structure(full_path('5i55.cif'))
+        block = gemmi.cif.read(full_path('5i55.cif'))[0]
+        st = gemmi.make_structure_from_block(block)
         self.assertEqual(st.info['_entry.id'], '5I55')
 
         center = st[0].calculate_center_of_mass()
@@ -118,6 +119,38 @@ class TestMol(unittest.TestCase):
         self.assertEqual(ent_d.subchains, ['D'])
         self.assertEqual(ent_d.entity_type, gemmi.EntityType.Water)
         self.assertEqual(ent_d.polymer_type, gemmi.PolymerType.Unknown)
+
+        output_block = st.make_mmcif_document().sole_block()
+        cnames = block.get_mmcif_category_names()
+        cnames_out = [name for name in output_block.get_mmcif_category_names()
+                      if len(output_block.find_mmcif_category(name)) > 0]
+        common_categories = [name for name in cnames_out if name in cnames]
+        common_categories.sort()
+        cc = ['_atom_site.', '_cell.', '_diffrn.', '_diffrn_detector.',
+              '_diffrn_radiation.', '_diffrn_source.', '_entity.',
+              '_entity_poly.', '_entity_poly_seq.', '_entry.', '_exptl.',
+              '_exptl_crystal.', '_pdbx_database_status.',
+              '_pdbx_struct_assembly.', '_pdbx_struct_assembly_gen.',
+              '_pdbx_struct_oper_list.', '_refine.', '_reflns.', '_software.',
+              '_struct.', '_struct_asym.', '_struct_conf.',
+              '_struct_conf_type.', '_struct_conn.', '_struct_keywords.',
+              '_symmetry.']
+        self.assertEqual(common_categories, cc)
+        for name in common_categories:
+            cat_in = block.get_mmcif_category(name)
+            cat_out = output_block.get_mmcif_category(name)
+            for tag, values_out in cat_out.items():
+                values_in = cat_in[tag]
+                self.assertEqual(len(values_in), len(values_out))
+                for (a, b) in zip(values_in, values_out):
+                    try:
+                        if a == b or abs(float(a) - float(b)) < 2e-4:
+                            continue
+                    except ValueError:
+                        pass
+                    self.assertTrue(name+tag in ['_struct_conf.id'])
+        for name_out in cnames_out:
+            self.assertTrue(name_out in cnames)
 
     def test_5i55_predefined_removals(self, clear_entities=False):
         st = gemmi.read_structure(full_path('5i55.cif'))
