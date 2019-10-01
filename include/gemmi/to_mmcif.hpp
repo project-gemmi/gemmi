@@ -529,8 +529,9 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
         add("ls_R_factor_R_work", impl::number_or_qmark(ref.r_work));
       if (st.meta.has(&RefinementInfo::r_free))
         add("ls_R_factor_R_free", impl::number_or_qmark(ref.r_free));
-      add("pdbx_ls_cross_valid_method",
-          impl::string_or_qmark(ref.cross_validation_method));
+      if (st.meta.has(&RefinementInfo::cross_validation_method))
+        add("pdbx_ls_cross_valid_method",
+            impl::string_or_qmark(ref.cross_validation_method));
       if (st.meta.has(&RefinementInfo::rfree_selection_method))
         add("pdbx_R_Free_selection_details",
             impl::string_or_qmark(ref.rfree_selection_method));
@@ -881,7 +882,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
           std::to_string(item.pdbx_ordinal),
           cif::quote(software_classification_to_string(item.classification)),
           cif::quote(item.name),
-          impl::string_or_qmark(item.version),
+          impl::string_or_dot(item.version),
           impl::string_or_qmark(item.date)});
   }
 }

@@ -194,6 +194,8 @@ class TestMol(unittest.TestCase):
         output_block = st.make_mmcif_document().sole_block()
         software = output_block.get_mmcif_category('_software')
         del software['date']
+        assert software['version'][0] is False
+        software['version'][0] = None
         self.assertEqual(input_block.get_mmcif_category('_software'), software)
 
     def test_5moo_header(self):
