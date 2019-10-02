@@ -580,21 +580,23 @@ Pairs and Loops
 ===============
 
 The functions in this section can be considered low-level, because they are
-specific to either name-value pairs or to loops. Assuming what is a pair
-and what is in loop is a common source of bugs when handling mmCIF files,
-so instead of these functions we recommend using abstractions introduced
-in the next sections.
+specific to either name-value pairs or to loops.
+
 
 .. warning::
 
-    When working with proteins one could assume that anisotropic ADP values
+    Assuming what is a pair and what is in loop is a common source of bugs
+    when handling mmCIF files, so instead of these functions we recommend
+    using abstractions introduced in the next sections. For example,
+    when working with proteins one could assume that anisotropic ADP values
     are in a loop, but wwPDB has entries with anisotropic ADP
     for one atom only -- as name-value pairs.
     On the other hand, one could think that R-free is always given as
     name-value, but in entries from joint X-ray and neutron refinement
     it is in a loop.
-    Be careful with functions from this section. The next section introduces
-    function that work with both pairs and loops.
+    Be careful.
+
+The next sections introduce function that work with both pairs and loops.
 
 C++
 ---
@@ -724,6 +726,23 @@ and/or ``_ocean_name`` and
 * if they are in name-value pairs: the pairs will be removed
   and a table will be created at the position of the first pair.
 
+----
+
+To reorder items, use ``block.move_item(old_pos, new_pos)``.
+The current position of a tag can be obtained using ``block.get_index(tag)``.
+
+.. doctest::
+
+  >>> block.get_index('_entry.id')
+  0
+  >>> block.get_index('_ocean_id')
+  384
+  >>> block.move_item(0, -1)  # move first item to the end
+  >>> block.get_index('_entry.id')
+  384
+  >>> block.get_index('_ocean_id')
+  383
+  >>> block.move_item(384, 0)  # let's move it back (384 == -1 here)
 
 Column
 ======

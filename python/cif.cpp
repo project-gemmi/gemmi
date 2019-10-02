@@ -126,9 +126,11 @@ void add_cif(py::module& cif) {
          py::arg("prefix"), py::arg("tags"), py::keep_alive<0, 1>())
     .def("find_frame", &Block::find_frame, py::arg("name"),
          py::return_value_policy::reference_internal)
+    .def("get_index", &Block::get_index, py::arg("tag"))
     .def("set_pair", &Block::set_pair, py::arg("tag"), py::arg("value"))
     .def("init_loop", &Block::init_loop, py::arg("prefix"), py::arg("tags"),
          py::return_value_policy::reference_internal)
+    .def("move_item", &Block::move_item, py::arg("old_pos"), py::arg("new_pos"))
     .def("find_mmcif_category", &Block::find_mmcif_category,
          py::arg("category"), py::keep_alive<0, 1>(),
          "Returns Table with all items in the category.")

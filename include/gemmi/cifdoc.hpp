@@ -10,7 +10,7 @@
 #include "fail.hpp"  // for fail
 #include "util.hpp"  // for starts_with, to_lower
 #include "tostr.hpp"  // for tostr
-#include <algorithm> // for move, find_if, all_of, min
+#include <algorithm> // for move, find_if, all_of, min, rotate
 #include <array>
 #include <cstring>   // for memchr
 #include <initializer_list>
@@ -408,12 +408,16 @@ struct Block {
   }
   Block* find_frame(std::string name);
 
+  size_t get_index(const std::string& tag) const;
+
   // modifying functions
   void set_pair(const std::string& tag, const std::string& value);
 
   Loop& init_loop(const std::string& prefix, std::vector<std::string> tags) {
     return setup_loop(find_any(prefix, tags), prefix, std::move(tags));
   }
+
+  void move_item(int old_pos, int new_pos);
 
   // mmCIF specific functions
   std::vector<std::string> get_mmcif_category_names() const;
@@ -695,6 +699,33 @@ inline Block* Block::find_frame(std::string frame_name) {
     if (i.type == ItemType::Frame && gemmi::iequal(i.frame.name, frame_name))
       return &i.frame;
   return nullptr;
+}
+
+inline size_t Block::get_index(const std::string& tag) const {
+  for (size_t i = 0; i != items.size(); ++i) {
+    const Item& item = items[i];
+    if ((item.type == ItemType::Pair && item.pair[0] == tag) ||
+        (item.type == ItemType::Loop && item.loop.find_tag(tag) != -1))
+      return i;
+  }
+  fail(tag + "is not in block");
+}
+
+inline void Block::move_item(int old_pos, int new_pos) {
+  if (old_pos < 0)
+    old_pos += items.size();
+  if ((size_t) old_pos >= items.size())
+    fail("move_item: old_pos out of range");
+  if (new_pos < 0)
+    new_pos += items.size();
+  if ((size_t) new_pos >= items.size())
+    fail("move_item: new_pos out of range");
+  auto src = items.begin() + old_pos;
+  auto dst = items.begin() + new_pos;
+  if (src < dst)
+    std::rotate(src, src+1, dst+1);
+  else
+    std::rotate(dst, src, src+1);
 }
 
 inline std::vector<std::string> Block::get_mmcif_category_names() const {
