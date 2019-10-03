@@ -12,9 +12,8 @@ static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] SPACEGROUP[...]"
     "\nPrints information about the space group."},
-  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
-  { Version, 0, "V", "version", Arg::None,
-    "  -V, --version  \tPrint version and exit." },
+  CommonUsage[Help],
+  CommonUsage[Version],
   //{ Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { 0, 0, 0, 0, 0, 0 }
 };

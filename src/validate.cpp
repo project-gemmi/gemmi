@@ -31,9 +31,8 @@ enum OptionIndex { Fast=3, Stat, Verbose, Quiet, Ddl, Monomer };
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
                                 "\n\nOptions:" },
-  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
-  { Version, 0, "V", "version", Arg::None,
-    "  -V, --version  \tDisplay version information and exit." },
+  CommonUsage[Help],
+  CommonUsage[Version],
   { Fast, 0, "f", "fast", Arg::None, "  -f, --fast  \tSyntax-only check." },
   { Stat, 0, "s", "stat", Arg::None, "  -s, --stat  \tShow token statistics" },
   { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },

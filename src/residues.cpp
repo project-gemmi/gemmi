@@ -14,9 +14,8 @@ static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] INPUT[...]"
     "\nPrints one residue per line, with atom names." },
-  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
-  { Version, 0, "V", "version", Arg::None,
-    "  -V, --version  \tPrint version and exit." },
+  CommonUsage[Help],
+  CommonUsage[Version],
   { FormatIn, 0, "", "format", Arg::CoorFormat,
     "  --format=FORMAT  \tInput format (default: from the file extension)." },
   { Match, 0, "-m", "--match", Arg::Required,

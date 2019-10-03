@@ -24,9 +24,8 @@ static const option::Descriptor Usage[] = {
     "\n\nMakes a mask in the CCP4 format."
     "\nIf INPUT is a CCP4 map the mask is created by thresholding the map."
     "\nIf INPUT is a coordinate file (mmCIF, PDB, etc) the atoms are masked." },
-  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
-  { Version, 0, "V", "version", Arg::None,
-    "  -V, --version  \tPrint version and exit." },
+  CommonUsage[Help],
+  CommonUsage[Version],
   { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { FormatIn, 0, "", "from", MaskArg::FileFormat,
     "  --from=coor|map  \tInput type (default: from file extension)." },

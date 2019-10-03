@@ -26,6 +26,8 @@
 
 enum { NoOp=0, Help=1, Version=2 };
 
+extern const option::Descriptor CommonUsage[];
+
 std::vector<int> parse_comma_separated_ints(const char* arg);
 
 struct Arg: public option::Arg {

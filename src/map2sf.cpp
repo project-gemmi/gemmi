@@ -30,9 +30,8 @@ static const option::Descriptor Usage[] = {
     "Writes map coefficients (amplitude and phase) of a map to OUTPUT_FILE.\n"
     "The output is MTZ if it has mtz extension, otherwise it is mmCIF.\n"
     "\nOptions:"},
-  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
-  { Version, 0, "V", "version", Arg::None,
-    "  -V, --version  \tPrint version and exit." },
+  CommonUsage[Help],
+  CommonUsage[Version],
   { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { Base, 0, "b", "base", Arg::Required,
     "  -b, --base=PATH  \tAdd new columns to the data from this file." },

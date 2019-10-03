@@ -24,8 +24,8 @@ static const option::Descriptor Usage[] = {
     "  - MTZ columns DELFWT/PHDELWT or FOFCWT/PHFOFCWT,\n"
     "  - mmCIF tags _refln.pdbx_DELFWT/pdbx_DELPHWT.\n\n"
     "\nOptions:"},
-  MapUsage[Help],
-  MapUsage[Version],
+  CommonUsage[Help],
+  CommonUsage[Version],
   MapUsage[Verbose],
   MapUsage[Diff],
   MapUsage[Section],

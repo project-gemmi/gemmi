@@ -16,9 +16,8 @@ static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] MTZ_IN1[...] MTZ_OUT"
     "\nWrite selected columns from one or more MTZ files to a new file."},
-  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
-  { Version, 0, "V", "version", Arg::None,
-    "  -V, --version  \tPrint version and exit." },
+  CommonUsage[Help],
+  CommonUsage[Version],
   { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { Force, 0, "", "force", Arg::None,
     "  --force  \tDo not check if merged files are compatible." },

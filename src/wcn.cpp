@@ -30,9 +30,8 @@ static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] INPUT[...]\n"
     "Calculation of local density / contact numbers: WCN, CN, ACN, LDM, etc."},
-  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
-  { Version, 0, "V", "version", Arg::None,
-    "  -V, --version  \tPrint version and exit." },
+  CommonUsage[Help],
+  CommonUsage[Version],
   { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { FromFile, 0, "f", "file", Arg::Required,
     "  -f, --file=FILE  \tObtain paths or PDB IDs from FILE, one per line." },

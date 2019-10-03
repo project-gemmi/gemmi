@@ -48,9 +48,8 @@ static const option::Descriptor Usage[] = {
     "\n\nwith possible conversions CIF-JSON, and mmCIF-PDB-mmJSON."
     "\nFORMAT can be specified as one of: cif, json, pdb."
     "\n\nGeneral options:" },
-  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
-  { Version, 0, "V", "version", Arg::None,
-    "  -V, --version  \tPrint version and exit." },
+  CommonUsage[Help],
+  CommonUsage[Version],
   { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { FormatIn, 0, "", "from", ConvArg::FileFormat,
     "  --from=FORMAT  \tInput format (default: from the file extension)." },

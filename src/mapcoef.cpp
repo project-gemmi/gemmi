@@ -21,10 +21,9 @@
 using gemmi::Mtz;
 
 const option::Descriptor MapUsage[] = {
-  { 0, 0, 0, 0, 0, 0 }, // this makes MapUsage[Help] return Help item, etc
-  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
-  { Version, 0, "V", "version", Arg::None,
-    "  -V, --version  \tPrint version and exit." },
+  { 0, 0, 0, 0, 0, 0 }, // The first 3 entries are empty to make MapUsage[enum]
+  { 0, 0, 0, 0, 0, 0 }, // work as expected.
+  { 0, 0, 0, 0, 0, 0 }, // NoOp=0, Help=1, Version=2.
   { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { Diff, 0, "d", "diff", Arg::None,
     "  -d, --diff  \tUse difference map coefficients." },

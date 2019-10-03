@@ -33,9 +33,8 @@ static const option::Descriptor Usage[] = {
     "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_BASENAME"
     "\n\nMake intermediate files from one of PDB, mmCIF or mmJSON formats."
     "\n\nOptions:" },
-  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
-  { Version, 0, "V", "version", Arg::None,
-    "  -V, --version  \tPrint version and exit." },
+  CommonUsage[Help],
+  CommonUsage[Version],
   { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { Monomers, 0, "", "monomers", Arg::Required,
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },

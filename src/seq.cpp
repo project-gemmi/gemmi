@@ -23,9 +23,8 @@ static const option::Descriptor Usage[] = {
     "\nFor testing, it can also compare strings with option --text-align."
     "\nPerforms global alignment with scoring matrix and affine gap penalty."
     "\nCurrently, we only use match/mismatch scoring matrix.\n" },
-  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
-  { Version, 0, "V", "version", Arg::None,
-    "  -V, --version  \tPrint version and exit." },
+  CommonUsage[Help],
+  CommonUsage[Version],
   { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { CheckMmcif, 0, "", "check-mmcif", Arg::None,
     "  --check-mmcif  \tCompare alignment with mmCIF _atom_site.label_seq_id" },

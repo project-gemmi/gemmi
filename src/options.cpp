@@ -12,6 +12,13 @@
 
 using std::fprintf;
 
+const option::Descriptor CommonUsage[] = {
+  { 0, 0, 0, 0, 0, 0 }, // this makes CommonUsage[Help] return Help item, etc
+  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
+  { Version, 0, "V", "version", Arg::None,
+    "  -V, --version  \tPrint version and exit." }
+};
+
 std::vector<int> parse_comma_separated_ints(const char* arg) {
   std::vector<int> result;
   char* endptr = nullptr;

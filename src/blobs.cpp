@@ -24,8 +24,8 @@ static const option::Descriptor Usage[] = {
     "\n " EXE_NAME " [options] MTZ_OR_MMCIF PDB_OR_MMCIF"
     "\n\nSearch for umodelled blobs of electron density."
     "\n\nOptions:" },
-  MapUsage[Help],
-  MapUsage[Version],
+  CommonUsage[Help],
+  CommonUsage[Version],
   MapUsage[Verbose],
 
   { NoOp, 0, "", "", Arg::None,

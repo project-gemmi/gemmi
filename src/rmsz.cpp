@@ -25,9 +25,8 @@ static const option::Descriptor Usage[] = {
     "\n " EXE_NAME " [options] INPUT_FILE"
     "\n\nValidate geometry of a coordinate file with (Refmac) monomer library."
     "\n\nOptions:" },
-  { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
-  { Version, 0, "V", "version", Arg::None,
-    "  -V, --version  \tPrint version and exit." },
+  CommonUsage[Help],
+  CommonUsage[Version],
   { Verbose, 0, "v", "verbose", Arg::None,
     "  -v, --verbose  \tVerbose output." },
   { Monomers, 0, "", "monomers", Arg::Required,
