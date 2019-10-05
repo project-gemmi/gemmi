@@ -6,8 +6,7 @@
 #define GEMMI_OFSTREAM_HPP_
 
 #if defined(_MSC_VER) && !defined(GEMMI_USE_FOPEN)
-# include <locale>
-# include <codecvt>
+# include "utf.hpp"
 #endif
 #include <fstream>
 #include <memory>
@@ -25,8 +24,7 @@ struct Ofstream {
     }
     keeper_.reset(new std::ofstream);
 #if defined(_MSC_VER) && !defined(GEMMI_USE_FOPEN)
-    std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> convert;
-    std::wstring wfilename = convert.from_bytes(filename.c_str());
+    std::wstring wfilename = UTF8_to_wchar(filename.c_str());
     keeper_->open(wfilename.c_str());
 #else
     keeper_->open(filename);

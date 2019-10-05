@@ -15,9 +15,8 @@
 #include "fail.hpp"  // for fail
 #include "util.hpp"  // for to_lower
 
-#if defined(_MSC_VER) && !defined(GEMMI_USE_FOPEN)
-#include <locale>
-#include <codecvt>
+#if defined(_WIN32) && !defined(GEMMI_USE_FOPEN)
+#include "utf.hpp"
 #endif
 
 namespace gemmi {
@@ -41,10 +40,9 @@ typedef std::unique_ptr<std::FILE, decltype(&std::fclose)> fileptr_t;
 
 inline fileptr_t file_open(const char* path, const char* mode) {
   std::FILE* file;
-#if defined(_MSC_VER) && !defined(GEMMI_USE_FOPEN)
-  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> convert;
-  std::wstring wpath = convert.from_bytes(path);
-  std::wstring wmode = convert.from_bytes(mode);
+#if defined(_WIN32) && !defined(GEMMI_USE_FOPEN)
+  std::wstring wpath = UTF8_to_wchar(path);
+  std::wstring wmode = UTF8_to_wchar(mode);
   if ((file = ::_wfopen(wpath.c_str(), wmode.c_str())) == nullptr)
 #else
   if ((file = std::fopen(path, mode)) == nullptr)
