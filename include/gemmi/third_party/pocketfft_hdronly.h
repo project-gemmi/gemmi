@@ -228,7 +228,11 @@ template<typename T> class sincos_2pibyn
     //          [-0.25; 0.25]!
     void my_sincosm1pi (Thigh a_, Thigh *restrict res)
       {
+// Emscripten doesn't support fma(), so we just use sin().
+// https://github.com/emscripten-core/emscripten-fastcomp/issues/83
+#ifndef __EMSCRIPTEN__
       if (sizeof(Thigh)>sizeof(double)) // don't have the code for long double
+#endif
         {
         Thigh pi = Thigh(3.141592653589793238462643383279502884197L);
         res[1] = sin(pi*a_);
