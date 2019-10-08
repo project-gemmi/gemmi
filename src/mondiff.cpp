@@ -243,6 +243,9 @@ int GEMMI_MAIN(int argc, char **argv) {
   } catch (std::runtime_error& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
+  } catch (std::out_of_range& e) {
+    fprintf(stderr, "ERROR: %s\n", e.what());
+    return 2;
   }
   return 0;
 }
