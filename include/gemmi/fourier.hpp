@@ -57,12 +57,11 @@ std::array<int, 3> get_size_for_hkl(const DataProxy& data,
 }
 
 // If half_l is true, grid has only data with l>=0.
+// Parameter size can be obtained from get_size_for_hkl().
 template<typename T, typename DataProxy>
 Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
                                         size_t f_col, size_t phi_col,
-                                        bool half_l,
-                                        std::array<int, 3> min_size,
-                                        double sample_rate) {
+                                        std::array<int, 3> size, bool half_l) {
   if (!data.ok() || data.stride() < 5)
     fail("No data.");
   if (!data.spacegroup())
@@ -71,7 +70,6 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
   grid.unit_cell = data.unit_cell();
   grid.half_l = half_l;
   grid.spacegroup = data.spacegroup();
-  std::array<int, 3> size = get_size_for_hkl(data, min_size, sample_rate);
   if (half_l)
     size[2] = size[2] / 2 + 1;
   // index H is fast and L is slow here -- not ideal
@@ -164,9 +162,9 @@ Grid<T> transform_f_phi_to_map(const DataProxy& data,
                                size_t f_col, size_t phi_col,
                                std::array<int, 3> min_size,
                                double sample_rate) {
+  std::array<int,3> size = get_size_for_hkl(data, min_size, sample_rate);
   return transform_f_phi_grid_to_map(get_f_phi_on_grid<T>(data, f_col, phi_col,
-                                                          true, min_size,
-                                                          sample_rate));
+                                                          size, true));
 }
 
 template<typename T>

@@ -85,8 +85,9 @@ Grid<std::complex<float>> mtz_get_f_phi_on_grid(const Mtz& self,
   const Mtz::Column* phi = self.column_with_label(phi_col);
   if (!f || !phi)
     fail("Column labels not found.");
-  return get_f_phi_on_grid<float>(MtzDataProxy{self}, f->idx, phi->idx,
-                                  half_l, min_size, sample_rate);
+  MtzDataProxy data{self};
+  std::array<int,3> size = get_size_for_hkl(data, min_size, sample_rate);
+  return get_f_phi_on_grid<float>(data, f->idx, phi->idx, size, half_l);
 }
 
 template<typename T>
@@ -257,8 +258,9 @@ void add_hkl(py::module& m) {
                                  double sample_rate) {
         size_t f_idx = self.get_column_index(f_col);
         size_t phi_idx = self.get_column_index(phi_col);
-        return get_f_phi_on_grid<float>(ReflnDataProxy{self}, f_idx, phi_idx,
-                                        half_l, min_size, sample_rate);
+        ReflnDataProxy data{self};
+        std::array<int,3> size = get_size_for_hkl(data, min_size, sample_rate);
+        return get_f_phi_on_grid<float>(data, f_idx, phi_idx, size, half_l);
     }, py::arg("f"), py::arg("phi"), py::arg("half_l")=false,
        py::arg("min_size")=std::array<int,3>{{0,0,0}},
        py::arg("sample_rate")=0.)

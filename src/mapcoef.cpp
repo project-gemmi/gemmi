@@ -138,11 +138,12 @@ read_sf_and_fft_to_map(const char* input_path,
     if (output)
       fprintf(output, "Putting data from block %s into matrix...\n",
               rblock.block.name.c_str());
+    gemmi::ReflnDataProxy data{rblock};
+    auto size = gemmi::get_size_for_hkl(data, min_size, sample_rate);
     grid = gemmi::get_f_phi_on_grid<float>(gemmi::ReflnDataProxy{rblock},
                                            rblock.find_column_index(f_label),
                                            rblock.find_column_index(ph_label),
-                                           /*half_l=*/true,
-                                           min_size, sample_rate);
+                                           size, /*half_l=*/true);
   } else {
     Mtz mtz = gemmi::read_mtz(gemmi::MaybeGzipped(input_path), true);
     auto cols = get_mtz_map_columns(mtz, section, diff_map, f_label, ph_label);
@@ -153,9 +154,10 @@ read_sf_and_fft_to_map(const char* input_path,
       print_grid_size(gemmi::MtzDataProxy{mtz}, min_size, sample_rate);
       std::exit(0);
     }
-    grid = gemmi::get_f_phi_on_grid<float>(gemmi::MtzDataProxy{mtz},
-                                           cols[0]->idx, cols[1]->idx, true,
-                                           min_size, sample_rate);
+    gemmi::MtzDataProxy data{mtz};
+    auto size = gemmi::get_size_for_hkl(data, min_size, sample_rate);
+    grid = gemmi::get_f_phi_on_grid<float>(data, cols[0]->idx, cols[1]->idx,
+                                           size, /*half_l=*/true);
   }
   if (output)
     fprintf(output, "Fourier transform -> grid %d x %d x %d...\n",
