@@ -617,6 +617,18 @@ struct MtzDataProxy {
   const SpaceGroup* spacegroup() const { return mtz_.spacegroup; }
 };
 
+// Like above, but here the data is store outside of the Mtz class
+struct MtzExternalDataProxy : MtzDataProxy {
+  const float* data_;
+
+  MtzExternalDataProxy(const Mtz& mtz, const float* data)
+    : MtzDataProxy{mtz}, data_(data) {}
+  bool ok() const { return true; }
+  size_t size() const { return mtz_.columns.size() * mtz_.nreflections; }
+  int get_int(size_t n) const { return (int) data_[n]; }
+  float get_num(size_t n) const { return data_[n]; }
+};
+
 
 } // namespace gemmi
 
