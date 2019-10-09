@@ -387,6 +387,9 @@ inline BondType bond_type_from_string(const std::string& s) {
     return BondType::Deloc;
   if (cif::is_null(s))
     return BondType::Unspec;
+  // program PDB2TNT produces a restraint file with bond type 'coval'
+  if (s == "coval")
+    return BondType::Unspec;
   throw std::out_of_range("Unexpected bond type: " + s);
 }
 
