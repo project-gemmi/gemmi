@@ -117,14 +117,20 @@ struct Ccp4 {
     ccp4_header.resize(256 + ops.order() * 20, 0);
     set_header_3i32(1, grid.nu, grid.nv, grid.nw); // NX, NY, NZ
     set_header_3i32(5, 0, 0, 0); // NXSTART, NYSTART, NZSTART
-    set_header_3i32(8, grid.nu, grid.nv, grid.nw);  // MX, MY, MZ
+    if (grid.hkl_orient == HklOrient::HKL)
+      set_header_3i32(8, grid.nu, grid.nv, grid.nw);  // MX, MY, MZ
+    else // grid.hkl_orient == HklOrient::LKH
+      set_header_3i32(8, grid.nw, grid.nv, grid.nu);
     set_header_float(11, (float) grid.unit_cell.a);
     set_header_float(12, (float) grid.unit_cell.b);
     set_header_float(13, (float) grid.unit_cell.c);
     set_header_float(14, (float) grid.unit_cell.alpha);
     set_header_float(15, (float) grid.unit_cell.beta);
     set_header_float(16, (float) grid.unit_cell.gamma);
-    set_header_3i32(17, 1, 2, 3); // MAPC, MAPR, MAPS
+    if (grid.hkl_orient == HklOrient::HKL)
+      set_header_3i32(17, 1, 2, 3); // MAPC, MAPR, MAPS
+    else // grid.hkl_orient == HklOrient::LKH
+      set_header_3i32(17, 3, 2, 1);
     set_header_i32(23, grid.spacegroup ? grid.spacegroup->ccp4 : 1); // ISPG
     set_header_i32(24, ops.order() * 80);  // NSYMBT
     set_header_str(27, "CCP4"); // EXTTYP

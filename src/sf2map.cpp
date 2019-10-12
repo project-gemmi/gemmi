@@ -33,6 +33,7 @@ static const option::Descriptor Usage[] = {
   MapUsage[PhLabel],
   MapUsage[GridDims],
   MapUsage[Sample],
+  MapUsage[AxesZyx],
   MapUsage[GridQuery],
   { Normalize, 0, "", "normalize", Arg::None,
     "  --normalize  \tScale the map to standard deviation 1 and mean 0." },

@@ -80,6 +80,13 @@ struct GridOp {
   }
 };
 
+// for hkl grid, two orientations of hkl axes are supported
+enum class HklOrient : unsigned char {
+  HKL,  // default, corresponds to CCP4 map with axis order XYZ,
+        // i.e. index H is fast and L is slow
+  LKH   // fast L, may not be fully supported everywhere
+};
+
 // For now, for simplicity, the grid covers whole unit cell
 // and space group is P1.
 template<typename T=float>
@@ -88,6 +95,7 @@ struct Grid {
   UnitCell unit_cell;
   bool full_canonical = false; // grid for the whole unit cell with X,Y,Z order
   bool half_l = false; // hkl grid that stores only l>=0
+  HklOrient hkl_orient = HklOrient::HKL;  // ignore for non-hkl grid
   const SpaceGroup* spacegroup = nullptr;
   double spacing[3];
 

@@ -37,6 +37,8 @@ const option::Descriptor MapUsage[] = {
     "  -g, --grid=NX,NY,NZ  \tGrid size (user-specified minimum)." },
   { Sample, 0, "s", "sample", Arg::Float,
     "  -s, --sample=NUMBER  \tSet spacing to d_min/NUMBER (3 is usual)." },
+  { AxesZyx, 0, "", "zyx", Arg::None,
+    "  --zyx  \tOutput axes Z Y X as fast, medium, slow (default is X Y Z)." },
   { GridQuery, 0, "G", "", Arg::None,
     "  -G  \tPrint size of the grid that would be used and exit." },
 };
@@ -86,14 +88,6 @@ get_mtz_map_columns(const Mtz& mtz, const char* section, bool diff_map,
   return {{f_col, phi_col}};
 }
 
-template<typename DataProxy>
-void print_grid_size(const DataProxy& data, std::array<int, 3> min_size,
-                     double rate) {
-  std::array<int, 3> size = gemmi::get_size_for_hkl(data, min_size, rate);
-  printf("Grid size: %d x %d x %d\n", size[0], size[1], size[2]);
-}
-
-
 gemmi::Grid<float>
 read_sf_and_fft_to_map(const char* input_path,
                        const std::vector<option::Option>& options,
@@ -118,6 +112,9 @@ read_sf_and_fft_to_map(const char* input_path,
   const char* f_label = options[FLabel] ? options[FLabel].arg : nullptr;
   const char* ph_label = options[PhLabel] ? options[PhLabel].arg : nullptr;
   bool diff_map = options[Diff];
+  bool half_l = true;
+  gemmi::HklOrient hkl_orient = options[AxesZyx] ? gemmi::HklOrient::LKH
+                                                 : gemmi::HklOrient::HKL;
   gemmi::Grid<std::complex<float>> grid;
   if (gemmi::giends_with(input_path, ".cif") ||
       gemmi::giends_with(input_path, ".ent")) {
@@ -131,37 +128,39 @@ read_sf_and_fft_to_map(const char* input_path,
     gemmi::ReflnBlock rblock = gemmi::get_refln_block(
                                    gemmi::read_cif_gz(input_path).blocks,
                                    {f_label, ph_label}, section);
+    gemmi::ReflnDataProxy data{rblock};
+    auto size = gemmi::get_size_for_hkl(data, min_size, sample_rate);
     if (options[GridQuery]) {
-      print_grid_size(gemmi::ReflnDataProxy{rblock}, min_size, sample_rate);
+      printf("Grid size: %d x %d x %d\n", size[0], size[1], size[2]);
       std::exit(0);
     }
     if (output)
       fprintf(output, "Putting data from block %s into matrix...\n",
               rblock.block.name.c_str());
-    gemmi::ReflnDataProxy data{rblock};
-    auto size = gemmi::get_size_for_hkl(data, min_size, sample_rate);
     grid = gemmi::get_f_phi_on_grid<float>(gemmi::ReflnDataProxy{rblock},
                                            rblock.find_column_index(f_label),
                                            rblock.find_column_index(ph_label),
-                                           size, /*half_l=*/true);
+                                           size, half_l, hkl_orient);
   } else {
     Mtz mtz = gemmi::read_mtz(gemmi::MaybeGzipped(input_path), true);
     auto cols = get_mtz_map_columns(mtz, section, diff_map, f_label, ph_label);
+    gemmi::MtzDataProxy data{mtz};
+    auto size = gemmi::get_size_for_hkl(data, min_size, sample_rate);
+    if (options[GridQuery]) {
+      printf("Grid size: %d x %d x %d\n", size[0], size[1], size[2]);
+      std::exit(0);
+    }
     if (output)
       fprintf(output, "Putting data from columns %s and %s into matrix...\n",
               cols[0]->label.c_str(), cols[1]->label.c_str());
-    if (options[GridQuery]) {
-      print_grid_size(gemmi::MtzDataProxy{mtz}, min_size, sample_rate);
-      std::exit(0);
-    }
-    gemmi::MtzDataProxy data{mtz};
-    auto size = gemmi::get_size_for_hkl(data, min_size, sample_rate);
     grid = gemmi::get_f_phi_on_grid<float>(data, cols[0]->idx, cols[1]->idx,
-                                           size, /*half_l=*/true);
+                                           size, half_l, hkl_orient);
   }
   if (output)
-    fprintf(output, "Fourier transform -> grid %d x %d x %d...\n",
-            grid.nu, grid.nv, (grid.nw - 1) * 2);
-  return gemmi::transform_f_phi_grid_to_map(std::move(grid));
+    fprintf(output, "Fourier transform...\n");
+  gemmi::Grid<float> map = gemmi::transform_f_phi_grid_to_map(std::move(grid));
+  if (output)
+    fprintf(output, "Map size: %d x %d x %d\n", map.nu, map.nv, map.nw);
+  return map;
 }
 

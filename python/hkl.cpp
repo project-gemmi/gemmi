@@ -78,16 +78,15 @@ static
 Grid<std::complex<float>> mtz_get_f_phi_on_grid(const Mtz& self,
                                                 const std::string& f_col,
                                                 const std::string& phi_col,
+                                                std::array<int, 3> size,
                                                 bool half_l,
-                                                std::array<int, 3> min_size,
-                                                double sample_rate) {
+                                                HklOrient hkl_orient) {
   const Mtz::Column* f = self.column_with_label(f_col);
   const Mtz::Column* phi = self.column_with_label(phi_col);
   if (!f || !phi)
     fail("Column labels not found.");
-  MtzDataProxy data{self};
-  std::array<int,3> size = get_size_for_hkl(data, min_size, sample_rate);
-  return get_f_phi_on_grid<float>(data, f->idx, phi->idx, size, half_l);
+  return get_f_phi_on_grid<float>(MtzDataProxy{self}, f->idx, phi->idx, size,
+                                  half_l, hkl_orient);
 }
 
 template<typename T>
@@ -102,6 +101,10 @@ void add_hkl(py::module& m) {
   py::bind_vector<std::vector<Mtz::Dataset>>(m, "MtzDatasets");
   py::bind_vector<std::vector<ReflnBlock>>(m, "ReflnBlocks");
   py::bind_vector<std::vector<const Mtz::Column*>>(m, "MtzColumnRefs");
+
+  py::enum_<HklOrient>(m, "HklOrient")
+    .value("HKL", HklOrient::HKL)
+    .value("LKH", HklOrient::LKH);
 
   py::class_<Mtz> mtz(m, "Mtz", py::buffer_protocol());
   mtz.def(py::init<>())
@@ -147,18 +150,24 @@ void add_hkl(py::module& m) {
          py::arg("dataset")=-1)
     .def("make_1_d2_array", &make_1_d2_array, py::arg("dataset")=-1)
     .def("make_d_array", &make_d_array, py::arg("dataset")=-1)
+    .def("get_size_for_hkl",
+         [](const Mtz& self, std::array<int,3> min_size, double sample_rate) {
+          return get_size_for_hkl(MtzDataProxy{self}, min_size, sample_rate);
+    }, py::arg("min_size")=std::array<int,3>{{0,0,0}},
+       py::arg("sample_rate")=0.)
     .def("get_f_phi_on_grid", &mtz_get_f_phi_on_grid,
-         py::arg("f"), py::arg("phi"), py::arg("half_l")=false,
-         py::arg("size")=std::array<int,3>{{0,0,0}},
-         py::arg("sample_rate")=0.)
+         py::arg("f"), py::arg("phi"), py::arg("size"),
+         py::arg("half_l")=false, py::arg("hkl_orient")=HklOrient::HKL)
     .def("transform_f_phi_to_map", [](const Mtz& self,
                                       const std::string& f_col,
                                       const std::string& phi_col,
                                       std::array<int, 3> min_size,
                                       double sample_rate) {
+        MtzDataProxy data{self};
+        std::array<int,3> size = get_size_for_hkl(data, min_size, sample_rate);
         return transform_f_phi_grid_to_map(
-                          mtz_get_f_phi_on_grid(self, f_col, phi_col, true,
-                                                min_size, sample_rate));
+                          mtz_get_f_phi_on_grid(self, f_col, phi_col, size,
+                                                true, HklOrient::HKL));
     }, py::arg("f"), py::arg("phi"),
        py::arg("size")=std::array<int,3>{{0,0,0}}, py::arg("sample_rate")=0.)
     .def("add_dataset", &Mtz::add_dataset, py::arg("name"),
@@ -250,20 +259,23 @@ void add_hkl(py::module& m) {
     .def("make_1_d2_array", [](ReflnBlock& self) {
         return py_array_from_vector(self.make_1_d2_vector());
     })
+    .def("get_size_for_hkl",
+         [](const ReflnBlock& self,
+            std::array<int,3> min_size, double sample_rate) {
+          return get_size_for_hkl(ReflnDataProxy{self}, min_size, sample_rate);
+    }, py::arg("min_size")=std::array<int,3>{{0,0,0}},
+       py::arg("sample_rate")=0.)
     .def("get_f_phi_on_grid", [](const ReflnBlock& self,
                                  const std::string& f_col,
                                  const std::string& phi_col,
-                                 bool half_l,
-                                 std::array<int, 3> min_size,
-                                 double sample_rate) {
+                                 std::array<int, 3> size,
+                                 bool half_l, HklOrient hkl_orient) {
         size_t f_idx = self.get_column_index(f_col);
         size_t phi_idx = self.get_column_index(phi_col);
-        ReflnDataProxy data{self};
-        std::array<int,3> size = get_size_for_hkl(data, min_size, sample_rate);
-        return get_f_phi_on_grid<float>(data, f_idx, phi_idx, size, half_l);
-    }, py::arg("f"), py::arg("phi"), py::arg("half_l")=false,
-       py::arg("min_size")=std::array<int,3>{{0,0,0}},
-       py::arg("sample_rate")=0.)
+        return get_f_phi_on_grid<float>(ReflnDataProxy{self}, f_idx, phi_idx,
+                                        size, half_l, hkl_orient);
+    }, py::arg("f"), py::arg("phi"), py::arg("size"),
+       py::arg("half_l")=false, py::arg("hkl_orient")=HklOrient::HKL)
     .def("transform_f_phi_to_map", [](const ReflnBlock& self,
                                       const std::string& f_col,
                                       const std::string& phi_col,

@@ -510,50 +510,52 @@ In C++, the ``<gemmi/fourier.hpp>`` header defines templated function
 Here, we focus on the usage from Python.
 
 Both Mtz and ReflnBlock classes have method ``get_f_phi_on_grid``
-that takes two column names: amplitude and phase (in degrees),
-and returns a :ref:`Grid <grid>` of complex numbers.
-All the missing values are set to 0.
+that takes three mandatory arguments: column names for the amplitude and phase,
+and the grid size.
+It returns a :ref:`Grid <grid>` of complex numbers.
+All the missing values are set to 0:
 
 .. doctest::
 
-  >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT')
+  >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', [54,6,18])
   <gemmi.ComplexGrid(54, 6, 18)>
 
-This function has three optional parameters: ``min_size``, ``sample_rate``
-and ``half_l``.
-
+To get an appropriate size, we can use method ``get_size_for_hkl``
+that has two optional parameters: ``min_size`` and ``sample_rate``.
 ``min_size`` sets explicitely the minimal size of the grid:
 
 .. doctest::
 
-  >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', min_size=[64,8,0])
-  <gemmi.ComplexGrid(64, 8, 18)>
+  >>> rblock.get_size_for_hkl(min_size=[64,8,0])
+  [64, 8, 18]
 
 The actual size can be increased to make room for all reflections,
 to obey restrictions imposed by the spacegroup, and to make the size
 FFT-friendly (currently this means factors 2, 3 and 5).
 
-``sample_rate`` is also used to set the minimal grid size,
-but it sets it in relation to *d*:sub:`min`.
+``sample_rate`` sets the minimal grid size in relation to *d*:sub:`min`.
 It is defined analogically to the keyword ``SAMPLE`` in the CCP4 FFT program.
 For example, ``sample_rate=3`` requests grid size that corresponds
 to real-space sampling *d*:sub:`min`/3.
 (N.B. 3 here is equivalent to Clipper oversampling parameter equal 1.5).
 
-The ``half_l`` flag is used to shrink the size of the grid in computer memory.
-With this flag set the grid does not include data with negative index l.
+.. doctest::
+
+  >>> rblock.get_size_for_hkl(sample_rate=3.0)
+  [90, 8, 30]
+
+The ``get_f_phi_on_grid`` function has also optional ``half_l`` flag,
+which is used to shrink the size of the grid in computer memory.
+With this flag set the grid does not include data with negative index *l*.
 If the data data is Hermitian, i.e. if it is a Fourier transform of
 the real data (electron density), the full data can be restored by setting
-values of missing (h k l) reflections to the conjugate values of its
-Friedel mates (-h -k -l).
+values of missing (*h* *k* *l*) reflections to the conjugate values of its
+Friedel mates (*-h* *-k* *-l*).
 
 .. doctest::
 
-  >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', half_l=True)
+  >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', [54,6,18], half_l=True)
   <gemmi.ComplexGrid(54, 6, 10)>
-
-When set together with ``half_l=True``, the ``min_size`` still refers
-to the full size.
 
 As an example, we will use numpy.fft to calculate electron density map
 from map coefficients. Gemmi can calculate it internally, as described
@@ -563,7 +565,8 @@ tool.
 .. doctest::
   :skipif: numpy is None
 
-  >>> full = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', sample_rate=2.6)
+  >>> size = rblock.get_size_for_hkl(sample_rate=2.6)
+  >>> full = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', size)
   >>> array = numpy.array(full, copy=False)
   >>> complex_map = numpy.fft.ifftn(array.conj())
   >>> scale_factor = complex_map.size / full.unit_cell.volume
@@ -582,7 +585,7 @@ using complex-to-real FFT on a half of the data:
 .. doctest::
   :skipif: numpy is None
 
-  >>> half = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', half_l=True, sample_rate=2.6)
+  >>> half = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', size, half_l=True)
   >>> array = numpy.array(half, copy=False)
   >>> real_map = numpy.fft.irfftn(array.conj()) * scale_factor
   >>> round(real_map[1][2][3], 5)
