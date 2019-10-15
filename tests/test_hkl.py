@@ -32,6 +32,13 @@ class TestMtz(unittest.TestCase):
         map3 = mtz.transform_f_phi_to_map('FWT', 'PHWT', size)
         self.assertTrue(numpy.allclose(map1, map3, atol=6e-7, rtol=0))
 
+        grid2 = gemmi.transform_map_to_f_phi(map1, half_l=False)
+        self.assertTrue(numpy.allclose(grid2, array_full, atol=1e-4, rtol=0))
+
+        grid_half = mtz.get_f_phi_on_grid('FWT', 'PHWT', size, half_l=True)
+        grid3 = gemmi.transform_map_to_f_phi(map1, half_l=True)
+        self.assertTrue(numpy.allclose(grid3, grid_half, atol=1e-4, rtol=0))
+
     def test_f_phi_grid(self):
         path = full_path('5wkd_phases.mtz.gz')
         mtz = gemmi.read_mtz_file(path)
