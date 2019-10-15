@@ -73,11 +73,12 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
   grid.half_l = half_l;
   grid.hkl_orient = hkl_orient;
   grid.spacegroup = data.spacegroup();
+  grid.check_grid_factors(size[0], size[1], size[2]);
   if (half_l)
     size[2] = size[2] / 2 + 1;
   if (hkl_orient == HklOrient::LKH)
     std::swap(size[0], size[2]);
-  grid.set_size(size[0], size[1], size[2]);
+  grid.set_size_without_checking(size[0], size[1], size[2]);
   grid.full_canonical = false; // disable some real-space functionality
 
   if (f_col >= data.stride() || phi_col >= data.stride())
@@ -165,10 +166,14 @@ Grid<T> transform_f_phi_grid_to_map(Grid<std::complex<T>>&& hkl) {
   map.spacegroup = hkl.spacegroup;
   map.unit_cell = hkl.unit_cell;
   map.hkl_orient = hkl.hkl_orient;
-  if (hkl.hkl_orient == HklOrient::HKL)
-    map.set_size(hkl.nu, hkl.nv, hkl.half_l ? 2 * (hkl.nw - 1) : hkl.nw);
-  else // hkl.hkl_orient == HklOrient::LKH
-    map.set_size(hkl.half_l ? 2 * (hkl.nu - 1) : hkl.nu, hkl.nv, hkl.nw);
+  if (hkl.hkl_orient == HklOrient::HKL) {
+    int nw = hkl.half_l ? 2 * (hkl.nw - 1) : hkl.nw;
+    map.set_size(hkl.nu, hkl.nv, nw);
+  } else { // hkl.hkl_orient == HklOrient::LKH
+    int nu = hkl.half_l ? 2 * (hkl.nu - 1) : hkl.nu;
+    map.check_grid_factors(hkl.nw, hkl.nv, nu);
+    map.set_size_without_checking(nu, hkl.nv, hkl.nw);
+  }
   map.full_canonical = hkl.hkl_orient == HklOrient::HKL;
   pocketfft::shape_t shape{(size_t)hkl.nw, (size_t)hkl.nv, (size_t)hkl.nu};
   std::ptrdiff_t s = sizeof(T);
