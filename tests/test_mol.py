@@ -3,9 +3,9 @@
 import gzip
 import os
 import sys
-import tempfile
 import unittest
 import gemmi
+from common import full_path, get_path_for_tempfile
 
 def is_written_to_pdb(line, via_cif):
     if line[:6] in ['COMPND', 'SOURCE', 'MDLTYP', 'AUTHOR', 'REVDAT', 'JRNL  ',
@@ -52,19 +52,11 @@ ATOM     12  N   ARG     3      10.892  -5.446  10.311  1.00 21.86
 ATOM     13  CA  ARG     3       9.875  -6.426  10.119  1.00 19.82
 """
 
-def full_path(filename):
-    return os.path.join(os.path.dirname(__file__), filename)
-
 def read_lines_and_remove(path):
     with open(path) as f:
         out_lines = f.readlines()
     os.remove(path)
     return out_lines
-
-def get_path_for_tempfile(suffix=''):
-    handle, out_name = tempfile.mkstemp(suffix=suffix)
-    os.close(handle)
-    return out_name
 
 
 class TestMol(unittest.TestCase):
