@@ -664,7 +664,7 @@ Now you can access hkl reflections using ``Grid.get_value()``:
 .. doctest::
 
   >>> _.get_value(23, -1, -3)
-  (18.440279006958008+26.189247131347656j)
+  (18.440279006958008+26.18924331665039j)
 
 
 ``transform_map_to_f_phi`` has one optional flag: ``half_l``.
@@ -677,7 +677,7 @@ with negative Miller index l, but you can use its Friedel mate:
   >>> gemmi.transform_map_to_f_phi(ccp4.grid, half_l=True)
   <gemmi.ComplexGrid(72, 8, 13)>
   >>> _.get_value(-23, 1, 3).conjugate()  # value for (23, -1, -3)
-  (18.440279006958008+26.189247131347656j)
+  (18.440279006958008+26.18924331665039j)
 
 Then again, you can use ``transform_f_phi_grid_to_map()``
 to transform it back to the direct space, and so on...

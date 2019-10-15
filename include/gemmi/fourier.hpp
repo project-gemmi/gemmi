@@ -190,7 +190,7 @@ Grid<T> transform_f_phi_grid_to_map(Grid<std::complex<T>>&& hkl) {
     pocketfft::stride_t stride_out{map.nv * map.nu * s, map.nu * s, s};
     shape[0] = (size_t) map.nw;
     shape[2] = (size_t) map.nu;
-    pocketfft::c2r<T>(shape, stride, stride_out, last_axis,
+    pocketfft::c2r<T>(shape, stride, stride_out, last_axis, pocketfft::BACKWARD,
                       &hkl.data[0], &map.data[0], 1.0f);
   } else {
     pocketfft::c2c<T>(shape, stride, stride, axes, pocketfft::BACKWARD,
@@ -226,7 +226,7 @@ Grid<std::complex<T>> transform_map_to_f_phi(const Grid<T>& map, bool half_l) {
   std::ptrdiff_t s = sizeof(T);
   pocketfft::stride_t stride_in{s * hkl.nv * hkl.nu, s * hkl.nu, s};
   pocketfft::stride_t stride{2*s * hkl.nv * hkl.nu, 2*s * hkl.nu, 2*s};
-  pocketfft::r2c<T>(shape, stride_in, stride, /*axis=*/0,
+  pocketfft::r2c<T>(shape, stride_in, stride, /*axis=*/0, pocketfft::FORWARD,
                     &map.data[0], &hkl.data[0], norm);
   shape[0] = half_nw;
   pocketfft::c2c<T>(shape, stride, stride, {1, 2}, pocketfft::FORWARD,
