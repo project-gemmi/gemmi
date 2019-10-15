@@ -20,6 +20,7 @@
 #if !(__GNUC__+0 >= 5 || __clang__+0 >= 5) || defined(__INTEL_COMPILER)
 #define POCKETFFT_NO_VECTORS
 #endif
+#define POCKETFFT_NO_MULTITHREADING
 #include "third_party/pocketfft_hdronly.h"
 
 namespace gemmi {
@@ -94,9 +95,10 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
       for (const Op& op : ops.sym_ops) {
         auto hklp = op.apply_to_hkl({{h, k, l}});
         double shifted_phi = phi + op.phase_shift(h, k, l);
+        int lp = hklp[2];
         if (hkl_orient == HklOrient::LKH)
           std::swap(hklp[0], hklp[2]);
-        if (!half_l || hklp[2] >= 0) {
+        if (!half_l || lp >= 0) {
           int idx = grid.index_n(hklp[0], hklp[1], hklp[2]);
           if (grid.data[idx] == default_val)
             grid.data[idx] = std::polar(f, (T) shifted_phi);
@@ -181,7 +183,8 @@ Grid<T> transform_f_phi_grid_to_map(Grid<std::complex<T>>&& hkl) {
     pocketfft::c2c<T>(shape, stride, stride, axes, pocketfft::BACKWARD,
                       &hkl.data[0], &hkl.data[0], norm);
     pocketfft::stride_t stride_out{map.nv * map.nu * s, map.nu * s, s};
-    shape[0] = map.nw;
+    shape[0] = (size_t) map.nw;
+    shape[2] = (size_t) map.nu;
     pocketfft::c2r<T>(shape, stride, stride_out, last_axis,
                       &hkl.data[0], &map.data[0], 1.0f);
   } else {

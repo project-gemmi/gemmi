@@ -117,6 +117,8 @@ struct Grid {
   void set_size(int u, int v, int w) {
     if (spacegroup) {
       auto factors = spacegroup->operations().find_grid_factors();
+      if (hkl_orient == HklOrient::LKH)
+        std::swap(factors[0], factors[2]);
       if (u % factors[0] != 0 || v % factors[1] != 0 || w % factors[2] != 0)
         fail("Grid not compatible with the space group " + spacegroup->xhm());
     }
