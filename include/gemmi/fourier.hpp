@@ -221,9 +221,15 @@ Grid<T> transform_f_phi_grid_to_map(Grid<std::complex<T>>&& hkl) {
 template<typename T, typename DataProxy>
 Grid<T> transform_f_phi_to_map(const DataProxy& data,
                                size_t f_col, size_t phi_col,
-                               std::array<int, 3> min_size,
-                               double sample_rate) {
-  std::array<int,3> size = get_size_for_hkl(data, min_size, sample_rate);
+                               std::array<int, 3> size,
+                               double sample_rate,
+                               bool exact_size=false) {
+  if (exact_size) {
+    gemmi::check_if_hkl_fits_in(data, size);
+    gemmi::check_grid_factors(data.spacegroup(), size[0], size[1], size[2]);
+  } else {
+    size = get_size_for_hkl(data, size, sample_rate);
+  }
   return transform_f_phi_grid_to_map(get_f_phi_on_grid<T>(data, f_col, phi_col,
                                                           size, true));
 }

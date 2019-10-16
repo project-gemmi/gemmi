@@ -160,18 +160,22 @@ void add_hkl(py::module& m) {
                                       const std::string& f_col,
                                       const std::string& phi_col,
                                       std::array<int, 3> min_size,
+                                      std::array<int, 3> exact_size,
                                       double sample_rate) {
         const Mtz::Column* f = self.column_with_label(f_col);
         const Mtz::Column* phi = self.column_with_label(phi_col);
         if (!f || !phi)
           fail("Column labels not found.");
-        MtzDataProxy data{self};
-        std::array<int,3> size = get_size_for_hkl(data, min_size, sample_rate);
-        return transform_f_phi_grid_to_map(
-                      get_f_phi_on_grid<float>(data, f->idx, phi->idx, size,
-                                               true, HklOrient::HKL));
+        bool exact = (exact_size[0] != 0 || exact_size[1] != 0 ||
+                      exact_size[2] != 0);
+        return transform_f_phi_to_map<float>(MtzDataProxy{self},
+                                             f->idx, phi->idx,
+                                             exact ? exact_size : min_size,
+                                             sample_rate, exact);
     }, py::arg("f"), py::arg("phi"),
-       py::arg("size")=std::array<int,3>{{0,0,0}}, py::arg("sample_rate")=0.)
+       py::arg("min_size")=std::array<int,3>{{0,0,0}},
+       py::arg("exact_size")=std::array<int,3>{{0,0,0}},
+       py::arg("sample_rate")=0.)
     .def("add_dataset", &Mtz::add_dataset, py::arg("name"),
          py::return_value_policy::reference_internal)
     .def("add_column", &Mtz::add_column, py::arg("label"), py::arg("type"),
@@ -284,14 +288,19 @@ void add_hkl(py::module& m) {
                                       const std::string& f_col,
                                       const std::string& phi_col,
                                       std::array<int, 3> min_size,
+                                      std::array<int, 3> exact_size,
                                       double sample_rate) {
         size_t f_idx = self.get_column_index(f_col);
         size_t phi_idx = self.get_column_index(phi_col);
+        bool exact = (exact_size[0] != 0 || exact_size[1] != 0 ||
+                      exact_size[2] != 0);
         return transform_f_phi_to_map<float>(ReflnDataProxy{self},
                                              f_idx, phi_idx,
-                                             min_size, sample_rate);
+                                             exact ? exact_size : min_size,
+                                             sample_rate, exact);
     }, py::arg("f"), py::arg("phi"),
        py::arg("min_size")=std::array<int,3>{{0,0,0}},
+       py::arg("exact_size")=std::array<int,3>{{0,0,0}},
        py::arg("sample_rate")=0.)
     .def("is_unmerged", &ReflnBlock::is_unmerged)
     .def("use_unmerged", &ReflnBlock::use_unmerged)

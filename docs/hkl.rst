@@ -634,15 +634,17 @@ Both Mtz and ReflnBlock classes have method ``transform_f_phi_to_map``
 that combines ``get_f_phi_on_grid()`` with ``transform_f_phi_grid_to_map()``.
 
 ``transform_f_phi_to_map`` takes column names for amplitude and
-phase (in degrees), and optional parameters ``min_size`` and
-``sample_rate``:
+phase (in degrees), and optional parameters ``min_size``, ``exact_size`` and
+``sample_rate`` (normally only one of them is given):
 
 .. doctest::
 
-  >>> rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', min_size=[128,16,32])
-  <gemmi.FloatGrid(128, 16, 32)>
   >>> rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', sample_rate=4)
   <gemmi.FloatGrid(120, 12, 36)>
+  >>> rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', min_size=[127,16,31])
+  <gemmi.FloatGrid(128, 16, 32)>
+  >>> rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', exact_size=[70,8,24])
+  <gemmi.FloatGrid(70, 8, 24)>
 
 The grid can be accessed as NumPy 3D array:
 
