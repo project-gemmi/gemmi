@@ -57,6 +57,17 @@ std::array<int, 3> get_size_for_hkl(const DataProxy& data,
   return good_grid_size(dsize, /*denser=*/true, data.spacegroup());
 }
 
+template<typename DataProxy>
+void check_if_hkl_fits_in(const DataProxy& data, std::array<int, 3> size) {
+  auto hkl_col = data.hkl_col();
+  for (size_t i = 0; i < data.size(); i += data.stride())
+    for (int j = 0; j != 3; ++j) {
+      int index = data.get_int(i + hkl_col[j]);
+      if (2 * std::abs(index) >= size[j])
+        fail("grid size is too small for hkl data");
+    }
+}
+
 // If half_l is true, grid has only data with l>=0.
 // Parameter size can be obtained from get_size_for_hkl().
 template<typename T, typename DataProxy>
@@ -68,12 +79,12 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
     fail("No data.");
   if (!data.spacegroup())
     fail("No spacegroup.");
+  check_grid_factors(data.spacegroup(), size[0], size[1], size[2]);
   Grid<std::complex<T>> grid;
   grid.unit_cell = data.unit_cell();
   grid.half_l = half_l;
   grid.hkl_orient = hkl_orient;
   grid.spacegroup = data.spacegroup();
-  grid.check_grid_factors(size[0], size[1], size[2]);
   if (half_l)
     size[2] = size[2] / 2 + 1;
   if (hkl_orient == HklOrient::LKH)
@@ -171,7 +182,7 @@ Grid<T> transform_f_phi_grid_to_map(Grid<std::complex<T>>&& hkl) {
     map.set_size(hkl.nu, hkl.nv, nw);
   } else { // hkl.hkl_orient == HklOrient::LKH
     int nu = hkl.half_l ? 2 * (hkl.nu - 1) : hkl.nu;
-    map.check_grid_factors(hkl.nw, hkl.nv, nu);
+    check_grid_factors(map.spacegroup, hkl.nw, hkl.nv, nu);
     map.set_size_without_checking(nu, hkl.nv, hkl.nw);
   }
   map.full_canonical = hkl.hkl_orient == HklOrient::HKL;

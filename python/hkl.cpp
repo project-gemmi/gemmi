@@ -74,17 +74,6 @@ static py::array_t<float> make_d_array(const Mtz& mtz, int dataset) {
                          });
 }
 
-template<typename DataProxy>
-void check_if_hkl_fits_in(const DataProxy& data, std::array<int, 3> size) {
-  auto hkl_col = data.hkl_col();
-  for (size_t i = 0; i < data.size(); i += data.stride())
-    for (int j = 0; j != 3; ++j) {
-      int index = data.get_int(i + hkl_col[j]);
-      if (2 * std::abs(index) >= size[j])
-        fail("grid size is too small for hkl data");
-    }
-}
-
 template<typename T>
 py::array_t<T> py_array_from_vector(std::vector<T>&& original_vec) {
   auto v = new std::vector<T>(std::move(original_vec));

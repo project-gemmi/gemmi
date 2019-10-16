@@ -80,6 +80,14 @@ struct GridOp {
   }
 };
 
+inline void check_grid_factors(const SpaceGroup* sg, int u, int v, int w) {
+  if (sg) {
+    auto factors = sg->operations().find_grid_factors();
+    if (u % factors[0] != 0 || v % factors[1] != 0 || w % factors[2] != 0)
+      fail("Grid not compatible with the space group " + sg->xhm());
+  }
+}
+
 // for hkl grid, two orientations of hkl axes are supported
 enum class HklOrient : unsigned char {
   HKL,  // default, corresponds to CCP4 map with axis order XYZ,
@@ -114,16 +122,8 @@ struct Grid {
     full_canonical = true;
   }
 
-  void check_grid_factors(int u, int v, int w) {
-    if (spacegroup) {
-      auto factors = spacegroup->operations().find_grid_factors();
-      if (u % factors[0] != 0 || v % factors[1] != 0 || w % factors[2] != 0)
-        fail("Grid not compatible with the space group " + spacegroup->xhm());
-    }
-  }
-
   void set_size(int u, int v, int w) {
-    check_grid_factors(u, v, w);
+    check_grid_factors(spacegroup, u, v, w);
     set_size_without_checking(u, v, w);
   }
 

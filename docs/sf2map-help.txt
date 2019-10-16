@@ -21,6 +21,7 @@ Options:
   -f COLUMN            F column (MTZ label or mmCIF tag).
   -p COLUMN            Phase column (MTZ label or mmCIF tag).
   -g, --grid=NX,NY,NZ  Grid size (user-specified minimum).
+  --exact              Use the exact grid size specified by --grid.
   -s, --sample=NUMBER  Set spacing to d_min/NUMBER (3 is usual).
   --zyx                Output axes Z Y X as fast, medium, slow (default is X Y
                        Z).

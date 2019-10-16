@@ -57,6 +57,7 @@ static const option::Descriptor Usage[] = {
   MapUsage[FLabel],
   MapUsage[PhLabel],
   MapUsage[GridDims],
+  MapUsage[ExactDims],
   MapUsage[Sample],
   MapUsage[GridQuery],
   { 0, 0, 0, 0, 0, 0 }

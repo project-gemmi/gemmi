@@ -35,6 +35,8 @@ const option::Descriptor MapUsage[] = {
     "  -p COLUMN  \tPhase column (MTZ label or mmCIF tag)." },
   { GridDims, 0, "g", "grid", Arg::Int3,
     "  -g, --grid=NX,NY,NZ  \tGrid size (user-specified minimum)." },
+  { ExactDims, 0, "", "exact", Arg::None,
+    "  --exact  \tUse the exact grid size specified by --grid." },
   { Sample, 0, "s", "sample", Arg::Float,
     "  -s, --sample=NUMBER  \tSet spacing to d_min/NUMBER (3 is usual)." },
   { AxesZyx, 0, "", "zyx", Arg::None,
@@ -88,6 +90,21 @@ get_mtz_map_columns(const Mtz& mtz, const char* section, bool diff_map,
   return {{f_col, phi_col}};
 }
 
+template<typename DataProxy>
+void adjust_size(const DataProxy& data, std::array<int, 3>& size,
+                 double sample_rate, bool exact_dims, bool grid_query) {
+  if (exact_dims) {
+    gemmi::check_if_hkl_fits_in(data, size);
+    gemmi::check_grid_factors(data.spacegroup(), size[0], size[1], size[2]);
+  } else {
+    size = gemmi::get_size_for_hkl(data, size, sample_rate);
+  }
+  if (grid_query) {
+    printf("Grid size: %d x %d x %d\n", size[0], size[1], size[2]);
+    std::exit(0);
+  }
+}
+
 gemmi::Grid<float>
 read_sf_and_fft_to_map(const char* input_path,
                        const std::vector<option::Option>& options,
@@ -97,12 +114,16 @@ read_sf_and_fft_to_map(const char* input_path,
     gemmi::fail("Option -p can be given only together with -f");
   if (options[FLabel] && options[Diff])
     gemmi::fail("Option -d has no effect together with -f");
+  if (options[ExactDims] && !options[GridDims])
+    gemmi::fail("Option --exact requires option --grid");
+  if (options[ExactDims] && options[Sample])
+    gemmi::fail("Option --sample has not effect together with --exact");
   if (output)
     fprintf(output, "Reading reflections from %s ...\n", input_path);
   std::vector<int> vsize{0, 0, 0};
   if (options[GridDims])
     vsize = parse_comma_separated_ints(options[GridDims].arg);
-  std::array<int,3> min_size = {{vsize[0], vsize[1], vsize[2]}};
+  std::array<int,3> size = {{vsize[0], vsize[1], vsize[2]}};
   double sample_rate = 0.;
   if (options[Sample])
     sample_rate = std::strtod(options[Sample].arg, nullptr);
@@ -129,11 +150,8 @@ read_sf_and_fft_to_map(const char* input_path,
                                    gemmi::read_cif_gz(input_path).blocks,
                                    {f_label, ph_label}, section);
     gemmi::ReflnDataProxy data{rblock};
-    auto size = gemmi::get_size_for_hkl(data, min_size, sample_rate);
-    if (options[GridQuery]) {
-      printf("Grid size: %d x %d x %d\n", size[0], size[1], size[2]);
-      std::exit(0);
-    }
+    adjust_size(data, size, sample_rate,
+                options[ExactDims], options[GridQuery]);
     if (output)
       fprintf(output, "Putting data from block %s into matrix...\n",
               rblock.block.name.c_str());
@@ -145,11 +163,8 @@ read_sf_and_fft_to_map(const char* input_path,
     Mtz mtz = gemmi::read_mtz(gemmi::MaybeGzipped(input_path), true);
     auto cols = get_mtz_map_columns(mtz, section, diff_map, f_label, ph_label);
     gemmi::MtzDataProxy data{mtz};
-    auto size = gemmi::get_size_for_hkl(data, min_size, sample_rate);
-    if (options[GridQuery]) {
-      printf("Grid size: %d x %d x %d\n", size[0], size[1], size[2]);
-      std::exit(0);
-    }
+    adjust_size(data, size, sample_rate,
+                options[ExactDims], options[GridQuery]);
     if (output)
       fprintf(output, "Putting data from columns %s and %s into matrix...\n",
               cols[0]->label.c_str(), cols[1]->label.c_str());
