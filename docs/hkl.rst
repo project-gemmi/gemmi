@@ -544,10 +544,11 @@ to real-space sampling *d*:sub:`min`/3.
   >>> rblock.get_size_for_hkl(sample_rate=3.0)
   [90, 8, 30]
 
-The ``get_f_phi_on_grid`` function has also optional ``half_l`` flag,
-which is used to shrink the size of the grid in computer memory.
+The ``get_f_phi_on_grid`` function has also two optional arguments:
+``half_l`` and ``hkl_orient``.
+The ``half_l`` flag is used to shrink the size of the grid in the memory.
 With this flag set the grid does not include data with negative index *l*.
-If the data data is Hermitian, i.e. if it is a Fourier transform of
+If the data is Hermitian, i.e. if it is a Fourier transform of
 the real data (electron density), the full data can be restored by setting
 values of missing (*h* *k* *l*) reflections to the conjugate values of its
 Friedel mates (*-h* *-k* *-l*).
@@ -556,6 +557,18 @@ Friedel mates (*-h* *-k* *-l*).
 
   >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', [54,6,18], half_l=True)
   <gemmi.ComplexGrid(54, 6, 10)>
+
+``hkl_orient`` can take one of the two values : ``HklOrient.HKL`` (the default)
+or ``HklOrient.LKH``. The former puts the *h* direction is along the first
+(fast) axis of the grid, the latter results in *l* along the fast axis.
+(The fast axis is first, which is a Fortran convention; this convention
+affected the design of the CCP4 format, which in turn affected the design of
+Gemmi's Grid.)
+
+.. doctest::
+
+  >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', [54,6,18], hkl_orient=gemmi.HklOrient.LKH)
+  <gemmi.ComplexGrid(18, 6, 54)>
 
 As an example, we will use numpy.fft to calculate electron density map
 from map coefficients. Gemmi can calculate it internally, as described
