@@ -9,6 +9,29 @@ try:
 except ImportError:
     numpy = None
 
+def compare_maps(self, a, b, atol):
+    #print(abs(numpy.array(a) - b).max())
+    self.assertTrue(numpy.allclose(a, b, atol=atol, rtol=0))
+
+def fft_test(self, data, f, phi, size):
+    if numpy is None:
+        return
+    grid_full = data.get_f_phi_on_grid(f, phi, size, half_l=False)
+    array_full = numpy.array(grid_full, copy=False)
+    map1 = gemmi.transform_f_phi_grid_to_map(grid_full)
+    map2 = numpy.fft.ifftn(array_full.conj())
+    map2 = numpy.real(map2) * (map2.size / grid_full.unit_cell.volume)
+    compare_maps(self, map1, map2, atol=6e-7)
+    map3 = data.transform_f_phi_to_map(f, phi, size)
+    compare_maps(self, map1, map3, atol=6e-7)
+
+    grid2 = gemmi.transform_map_to_f_phi(map1, half_l=False)
+    compare_maps(self, grid2, array_full, atol=1e-4)
+
+    grid_half = data.get_f_phi_on_grid(f, phi, size, half_l=True)
+    grid3 = gemmi.transform_map_to_f_phi(map1, half_l=True)
+    compare_maps(self, grid3, grid_half, atol=1e-4)
+
 class TestMtz(unittest.TestCase):
     def test_read_write(self):
         path = full_path('5e5z.mtz')
@@ -19,25 +42,6 @@ class TestMtz(unittest.TestCase):
         mtz2 = gemmi.read_mtz_file(out_name)
         os.remove(out_name)
         self.assertEqual(mtz2.spacegroup.hm, 'P 1 21 1')
-
-    def fft_test(self, mtz, size):
-        if numpy is None:
-            return
-        grid_full = mtz.get_f_phi_on_grid('FWT', 'PHWT', size, half_l=False)
-        array_full = numpy.array(grid_full, copy=False)
-        map1 = gemmi.transform_f_phi_grid_to_map(grid_full)
-        map2 = numpy.fft.ifftn(array_full.conj())
-        map2 = numpy.real(map2) * (map2.size / grid_full.unit_cell.volume)
-        self.assertTrue(numpy.allclose(map1, map2, atol=5e-7, rtol=0))
-        map3 = mtz.transform_f_phi_to_map('FWT', 'PHWT', size)
-        self.assertTrue(numpy.allclose(map1, map3, atol=6e-7, rtol=0))
-
-        grid2 = gemmi.transform_map_to_f_phi(map1, half_l=False)
-        self.assertTrue(numpy.allclose(grid2, array_full, atol=1e-4, rtol=0))
-
-        grid_half = mtz.get_f_phi_on_grid('FWT', 'PHWT', size, half_l=True)
-        grid3 = gemmi.transform_map_to_f_phi(map1, half_l=True)
-        self.assertTrue(numpy.allclose(grid3, grid_half, atol=1e-4, rtol=0))
 
     def test_f_phi_grid(self):
         path = full_path('5wkd_phases.mtz.gz')
@@ -53,7 +57,7 @@ class TestMtz(unittest.TestCase):
             array2 = numpy.array(grid2, copy=False)
             self.assertTrue((array2 == array1.transpose(2,1,0)).all())
 
-        self.fft_test(mtz, size)
+        fft_test(self, mtz, 'FWT', 'PHWT', size)
 
 
 class TestSfMmcif(unittest.TestCase):
@@ -61,6 +65,9 @@ class TestSfMmcif(unittest.TestCase):
         doc = gemmi.cif.read(full_path('r5wkdsf.ent'))
         rblock = gemmi.as_refln_blocks(doc)[0]
         self.assertEqual(rblock.spacegroup.hm, 'C 1 2 1')
+
+        size = rblock.get_size_for_hkl()
+        fft_test(self, rblock, 'pdbx_FWT', 'pdbx_PHWT', size)
 
 if __name__ == '__main__':
     unittest.main()
