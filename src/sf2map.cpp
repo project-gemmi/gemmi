@@ -43,7 +43,7 @@ static const option::Descriptor Usage[] = {
 
 static void transform_sf_to_map(OptParser& p) {
   const char* input_path = p.nonOption(0);
-  const char* map_path = p.nonOption(1);
+  const char* map_path = p.options[GridQuery] ? nullptr : p.nonOption(1);
   gemmi::Ccp4<float> ccp4;
   ccp4.grid = read_sf_and_fft_to_map(input_path, p.options,
                                      p.options[Verbose] ? stderr : nullptr);
@@ -62,7 +62,10 @@ static void transform_sf_to_map(OptParser& p) {
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
-  p.require_positional_args(2);
+  if (p.options[GridQuery])
+    p.require_input_files_as_args(0);
+  else
+    p.require_positional_args(2);
   try {
     transform_sf_to_map(p);
   } catch (std::runtime_error& e) {
