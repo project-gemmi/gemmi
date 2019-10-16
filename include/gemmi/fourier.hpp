@@ -169,8 +169,7 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
 
 
 template<typename T>
-Grid<T> transform_f_phi_grid_to_map(Grid<std::complex<T>>&& hkl) {
-  Grid<T> map;
+void transform_f_phi_grid_to_map_(Grid<std::complex<T>>&& hkl, Grid<T>& map) {
   // x -> conj(x) is equivalent to changing axis direction before FFT
   for (std::complex<T>& x : hkl.data)
     x.imag(-x.imag());
@@ -210,6 +209,12 @@ Grid<T> transform_f_phi_grid_to_map(Grid<std::complex<T>>&& hkl) {
     for (size_t i = 0; i != map.data.size(); ++i)
       map.data[i] = hkl.data[i].real();
   }
+}
+
+template<typename T>
+Grid<T> transform_f_phi_grid_to_map(Grid<std::complex<T>>&& hkl) {
+  Grid<T> map;
+  transform_f_phi_grid_to_map_(std::forward<Grid<std::complex<T>>>(hkl), map);
   return map;
 }
 
