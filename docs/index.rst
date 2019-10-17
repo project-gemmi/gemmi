@@ -48,6 +48,7 @@ Contents
    cif-parser
    sym
    mol
+   analysis
    grid
    hkl
    utils
