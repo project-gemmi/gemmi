@@ -301,9 +301,9 @@ inline float cosm1pi0(float a)
   // adapted from https://stackoverflow.com/questions/42792939/
   float s = a * a;
   float r =        2.313842773437500000e-01f;
-  r = fmaf (r, s, -1.335021972656250000e+00f);
-  r = fmaf (r, s,  4.058703899383544922e+00f);
-  r = fmaf (r, s, -4.934802055358886719e+00f);
+  r = std::fmaf (r, s, -1.335021972656250000e+00f);
+  r = std::fmaf (r, s,  4.058703899383544922e+00f);
+  r = std::fmaf (r, s, -4.934802055358886719e+00f);
   return r*s;
   }
 
