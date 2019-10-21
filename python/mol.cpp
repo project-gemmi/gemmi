@@ -307,6 +307,15 @@ void add_mol(py::module& m) {
     .def("__getitem__", [](Chain& ch, int index) -> Residue& {
         return ch.residues.at(index >= 0 ? index : index + ch.residues.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("__getitem__", [](Chain &ch, py::slice slice) -> py::list {
+        size_t start, stop, step, slength;
+        if (!slice.compute(ch.residues.size(), &start, &stop, &step, &slength))
+          throw py::error_already_set();
+        py::list l;
+        for (size_t i = 0; i < slength; ++i)
+          l.append(py::cast(&ch.residues[start + i * step]));
+        return l;
+    }, py::return_value_policy::reference_internal)
     .def("__delitem__", remove_child<Chain>, py::arg("index"))
     .def("add_residue", add_child<Chain, Residue>,
          py::arg("residue"), py::arg("pos")=-1,
@@ -498,4 +507,8 @@ void add_mol(py::module& m) {
         "Input: three points. Output: angle in radians.");
   m.def("calculate_dihedral", &calculate_dihedral,
         "Input: four points. Output: dihedral angle in radians.");
+  m.def("calculate_phi_psi", &calculate_phi_psi,
+        py::arg("prev_residue"), py::arg("residue"), py::arg("next_residue"));
+  m.def("calculate_omega", &calculate_omega,
+        py::arg("residue"), py::arg("next_residue"));
 }

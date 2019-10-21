@@ -14,5 +14,5 @@ for path in sys.argv[1:]:
     x = mtz.make_1_d2_array()
     y = intensity.array / sigma.array
     pyplot.figure(figsize=(5,5))
-    pyplot.hexbin(x, y, gridsize=70, bins='log', cmap='gnuplot2')
+    pyplot.hexbin(x, y, gridsize=180, bins='log', cmap='gnuplot2')
     pyplot.show()

@@ -288,12 +288,78 @@ and subgraph isomorphisms.
    :start-after: Example 4
    :end-before: minimal program
 
+
 Torsion Angles
 ==============
 
-and the Ramachandran Plot
+Gemmi can calculate a dihedral angle between any given four atoms or points,
+as it was described in the section about :ref:`coordinates <coordinates>`.
 
-TODO
+It also has convenience functions to calculate often analyzed
+dihedral angles in the protein backbone: φ (phi), ψ (psi) and ω (omega).
+
+The ω angle is usually around 180°:
+
+.. doctest::
+
+  >>> from math import degrees
+  >>> chain = gemmi.read_structure('../tests/5cvz_final.pdb')[0]['A']
+  >>> degrees(gemmi.calculate_omega(chain[0], chain[1]))
+  159.90922150065668
+  >>> for res in chain[:5]:
+  ...     next_res = chain.next_residue(res)
+  ...     if next_res:
+  ...         omega = gemmi.calculate_omega(res, next_res)
+  ...         print(res.name, degrees(omega))
+  ...
+  ALA 159.90922150065668
+  ALA -165.26874513591105
+  ALA -165.85686681169656
+  THR -172.99968385093513
+  SER 176.74223937657646
+
+Angles φ and ψ are usually calculated together, so we have a single
+function to calculate them:
+
+.. doctest::
+
+  >>> for res in chain[:5]:
+  ...     prev_res = chain.previous_residue(res)
+  ...     next_res = chain.next_residue(res)
+  ...     phi, psi = gemmi.calculate_phi_psi(prev_res, res, next_res)
+  ...     print('%s %8.2f %8.2f' % (res.name, degrees(phi), degrees(psi)))
+  ...
+  ALA      nan   106.94
+  ALA  -116.64    84.57
+  ALA   -45.57   127.40
+  THR   -62.01   147.45
+  SER   -92.85   161.53
+
+In C++ the corresponding functions are in header ``calculate.hpp``.
+
+To illustrate the calculation of torsion angles we should make
+a Ramachandran plot.
+Let us plot angles from all PDB entries with resolution higher than 1.5A.
+Usually, glycine, proline and the residue preceding proline (pre-proline)
+are plotted separately. Here, we will exclude pre-proline and make
+separate plot for each amino acid. So first, we calculate angles
+and save φ,ψ pairs to files -- one file per residue.
+
+.. literalinclude:: ../examples/rama_gather.py
+   :language: python
+
+The script above works with coordinate files in any of the formats
+supported by gemmi (PDB, mmCIF, mmJSON). As of 2019, processing
+a :ref:`local copy of the PDB archive <pdb_dir>`
+in the PDB format takes about 20 minutes.
+
+In the next step we use a second script (see :file:`examples/rama_gather.py`)
+to plot the data points with matplotlib.
+Here are example plots that we get (click to enlarge):
+
+.. image:: img/ramachandran-per-aa.png
+    :align: center
+    :scale: 60
 
 
 .. _pdb_dir:

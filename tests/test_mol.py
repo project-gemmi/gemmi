@@ -207,6 +207,8 @@ class TestMol(unittest.TestCase):
         self.assertEqual(st.info['_entry.id'], '3DG1')
         self.assertEqual(len(st[0]), 1)
         chain = st[0]['A']
+        for res in chain[-2:]:
+            self.assertEqual(res.name, 'HOH')
         for res in chain:
             for atom in res:
                 n_images = st.cell.is_special_position(atom.pos)

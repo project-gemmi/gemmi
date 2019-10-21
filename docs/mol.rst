@@ -202,6 +202,8 @@ See examples at the end of this section:
 :ref:`substructure matching <substructure_matching>` and
 :ref:`maximum common subgraph <maximum_common_subgraph>`.
 
+.. _coordinates:
+
 Coordinates and matrices
 ========================
 
