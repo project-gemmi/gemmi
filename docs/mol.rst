@@ -1836,3 +1836,17 @@ rainbow-colored chain:
     :scale: 100
     :target: https://www.rcsb.org/3d-view/5XG2/
 
+
+CCD subset
+----------
+
+Since the whole Chemical Component Dictionary is large
+we may want to extract a subset of it that covers only residues
+in given structures.
+
+.. literalinclude:: ../examples/sub_ccd.py
+   :language: python
+   :start-at: residue names
+
+For complete and ready-to-use script see :file:`examples/sub_ccd.py`.
+
