@@ -162,6 +162,7 @@ For now, Gemmi supports only the selection syntax from MMDB.
 
 TODO
 
+.. _graph_analysis:
 
 Graph analysis
 ==============
@@ -171,18 +172,53 @@ between atoms (bonds = graph edges). This part of the library is not
 documented yet.
 
 The rest of this section shows how to use Gemmi together with external
-graph analysis libraries to analyse the similarity of small molecules.
+graph analysis libraries to analyse the similarity of chemical molecules.
+To do this, first we set up a graph corresponding to the molecule.
+
+Here we show how it can be done in the Boost Graph Library.
+
+.. literalinclude:: ../examples/with_bgl.cpp
+   :lines: 9-10,13-41
+
+And here we use NetworkX in Python:
+
+.. doctest::
+  :skipif: networkx is None
+
+  >>> import networkx
+
+  >>> G = networkx.Graph()
+  >>> block = gemmi.cif.read('../tests/SO3.cif')[-1]
+  >>> so3 = gemmi.make_chemcomp_from_block(block)
+  >>> for atom in so3.atoms:
+  ...     G.add_node(atom.id, Z=atom.el.atomic_number)
+  ...
+  >>> for bond in so3.rt.bonds:
+  ...     G.add_edge(bond.id1.atom, bond.id2.atom)  # ignoring bond type
+  ...
+
+To show a quick example, let us count automorphisms of SO3:
+
+.. doctest::
+  :skipif: networkx is None
+
+  >>> import networkx.algorithms.isomorphism as iso
+  >>> GM = iso.GraphMatcher(G, G, node_match=iso.categorical_node_match('Z', 0))
+  >>> # expecting 3! automorphisms (permutations of the three oxygens)
+  >>> sum(1 for _ in GM.isomorphisms_iter())
+  6
+
+With a bit more of code we could perform a real cheminformatics task.
 
 .. _graph_isomorphism:
 
 Graph isomorphism
 -----------------
 
-Graph and subgraph isomorphism algorithms are not part of Gemmi;
-we prefer to use existing graph analysis libraries, such as Boost Graph
-Library, NetworkX, igraph, etc.
 In this example we use Python NetworkX to compare molecules from the
 Refmac monomer library with Chemical Component Dictionary (CCD) from PDB.
+The same could be done with other graph analysis libraries,
+such as Boost Graph Library, igraph, etc.
 
 The program below takes compares specified monomer cif files with
 corresponding CCD entries. Hydrogens and bond types are ignored.

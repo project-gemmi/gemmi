@@ -145,7 +145,7 @@ such as the Refmac dictionary, where each monomer is described by one cif file.
 These libraries are often complemented by user's own cif files.
 
 Gemmi has class ``ChemComp`` that corresponds to the data about a monomer
-from either CCD or a cif file.
+from either the CCD or a cif file.
 
 .. literalinclude:: ../examples/with_bgl.cpp
    :lines: 13-14,42-47
@@ -156,51 +156,15 @@ from either CCD or a cif file.
     >>> block = gemmi.cif.read('../tests/SO3.cif')[-1]
     >>> so3 = gemmi.make_chemcomp_from_block(block)
 
-The ``ChemComp`` class is not fully documented yet,
-but the examples below show how to access the lists of atoms and bonds.
+It also has class ``MonLib`` that corresponds to a monomer library.
+In addition to storing a mapping between residue names and ``ChemComp``\ s,
+it also stores information that in the CCP4 monomer library is kept in
+:file:`mon_lib_list.cif`: description of chemical links and modifications,
+and classification of the residues.
 
-Graph analysis
---------------
-
-If we would like to analyze a chemical molecule as a graph,
-we could setup the corresponding graph in any of the graph libraries.
-
-Here we show how it can be done in the Boost Graph Library.
-
-.. literalinclude:: ../examples/with_bgl.cpp
-   :lines: 9-10,13-41
-
-And here we use NetworkX in Python:
-
-.. doctest::
-  :skipif: networkx is None
-
-  >>> import networkx
-
-  >>> G = networkx.Graph()
-  >>> for atom in so3.atoms:
-  ...     G.add_node(atom.id, Z=atom.el.atomic_number)
-  ...
-  >>> for bond in so3.rt.bonds:
-  ...     G.add_edge(bond.id1.atom, bond.id2.atom)  # ignoring bond type
-  ...
-
-To show a quick example, let us count automorphisms of SO3:
-
-.. doctest::
-  :skipif: networkx is None
-
-  >>> import networkx.algorithms.isomorphism as iso
-  >>> GM = iso.GraphMatcher(G, G, node_match=iso.categorical_node_match('Z', 0))
-  >>> # expecting 3! automorphisms (permutations of the three oxygens)
-  >>> sum(1 for _ in GM.isomorphisms_iter())
-  6
-
-With a bit more of code we could perform a real cheminformatics task.
-See examples at the end of this section:
-:ref:`graph isomorphism <graph_isomorphism>`,
-:ref:`substructure matching <substructure_matching>` and
-:ref:`maximum common subgraph <maximum_common_subgraph>`.
+These classes are not documented yet.
+The examples in :ref:`graph_analysis`
+show how to access the lists of atoms and bonds from ``ChemComp``.
 
 .. _coordinates:
 
