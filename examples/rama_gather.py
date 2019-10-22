@@ -1,3 +1,6 @@
+# Gathers data for Ramachandran plot that can be plotted with rama_plot.py.
+# See the section about torsion angles in documentation.
+
 import sys
 from math import degrees
 import gemmi

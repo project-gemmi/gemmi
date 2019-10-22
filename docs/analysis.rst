@@ -347,6 +347,7 @@ and save φ,ψ pairs to files -- one file per residue.
 
 .. literalinclude:: ../examples/rama_gather.py
    :language: python
+   :start-at: import sys
 
 The script above works with coordinate files in any of the formats
 supported by gemmi (PDB, mmCIF, mmJSON). As of 2019, processing

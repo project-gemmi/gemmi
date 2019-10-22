@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# Plots the data from rama_gather.py
+
 import sys
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
