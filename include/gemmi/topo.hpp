@@ -270,10 +270,10 @@ struct Topo {
     if (link.alt1 && link.alt2 && link.alt1 != link.alt2)
       printf("Warning: LINK between different conformers %c and %c.",
              link.alt1, link.alt2);
+    char alt = link.alt1 ? link.alt1 : link.alt2;
     ResInfo* ri1 = find_resinfo(link.res1);
     ResInfo* ri2 = find_resinfo(link.res2);
-    auto forces = apply_restraints(cl->rt, *link.res1, link.res2,
-                                   link.alt1);
+    auto forces = apply_restraints(cl->rt, *link.res1, link.res2, alt);
     for (Force& f : forces) {
       f.provenance = Provenance::ExtraLink;
       link.forces.push_back(f);
@@ -393,14 +393,16 @@ void Topo::initialize_refmac_topology(Model& model0,
   }
   // add extra links
   for (const Connection& conn : model0.connections) {
+    // ignoring hydrogen bonds and metal coordination
+    if (conn.type == Connection::Hydrog || conn.type == Connection::MetalC)
+      continue;
     ExtraLink extra;
     extra.res1 = model0.find_cra(conn.atom[0]).residue;
     extra.res2 = model0.find_cra(conn.atom[1]).residue;
     if (!extra.res1 || !extra.res2)
       continue;
-    // ignoring hydrogen bonds and metal coordination
-    if (conn.type == Connection::Hydrog && conn.type == Connection::MetalC)
-      continue;
+    extra.alt1 = conn.atom[0].altloc;
+    extra.alt2 = conn.atom[1].altloc;
     if (const ChemLink* match =
         monlib.match_link(extra.res1->name, conn.atom[0].atom_name,
                           extra.res2->name, conn.atom[1].atom_name)) {
@@ -412,9 +414,11 @@ void Topo::initialize_refmac_topology(Model& model0,
                 monlib.match_link(extra.res2->name, conn.atom[1].atom_name,
                                   extra.res1->name, conn.atom[0].atom_name))) {
       extra.link_id = match->id;
+      std::swap(extra.res1, extra.res2);
+      std::swap(extra.alt1, extra.alt2);
       // add modifications from the link
-      find_resinfo(extra.res2)->add_mod(match->side1.mod);
-      find_resinfo(extra.res1)->add_mod(match->side2.mod);
+      find_resinfo(extra.res1)->add_mod(match->side1.mod);
+      find_resinfo(extra.res2)->add_mod(match->side2.mod);
     } else {
       ChemLink cl;
       cl.side1.comp = extra.res1->name;
@@ -432,8 +436,6 @@ void Topo::initialize_refmac_topology(Model& model0,
       monlib.links.emplace(cl.id, cl);
       extra.link_id = cl.id;
     }
-    extra.alt1 = conn.atom[0].altloc;
-    extra.alt2 = conn.atom[1].altloc;
     extras.push_back(extra);
   }
 
