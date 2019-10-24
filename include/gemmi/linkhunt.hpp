@@ -71,8 +71,10 @@ struct LinkHunt {
     return iter != res_group.end() && side.matches_group(iter->second);
   }
 
-  std::vector<Match> find_possible_links(Structure& st, double bond_margin,
-                                                        double radius_margin) {
+  std::vector<Match> find_possible_links(Structure& st,
+                                         double bond_margin,
+                                         double radius_margin,
+                                         bool skip_intra_residue_links=true) {
     std::vector<Match> results;
     Model& model = st.models.at(0);
     double search_radius = std::max(global_max_dist * bond_margin,
@@ -88,8 +90,8 @@ struct LinkHunt {
           sc.for_each(atom.pos, atom.altloc, (float) search_radius,
                       [&](SubCells::Mark& m, float dist_sq) {
               // do not consider connections inside a residue
-              if (m.image_idx == 0 && m.chain_idx == n_ch &&
-                  m.residue_idx == n_res)
+              if (skip_intra_residue_links && m.image_idx == 0 &&
+                  m.chain_idx == n_ch && m.residue_idx == n_res)
                 return;
               // avoid reporting connections twice (A-B and B-A)
               if (m.chain_idx < n_ch || (m.chain_idx == n_ch &&
@@ -103,73 +105,72 @@ struct LinkHunt {
                 return;
               CRA cra = m.to_cra(model);
 
-              // search for a match in chem_links
-              auto range = links.equal_range(Restraints::lexicographic_str(
-                                                  atom.name, cra.atom->name));
               Match match;
-              for (auto iter = range.first; iter != range.second; ++iter) {
-                const ChemLink& link = *iter->second;
-                const Restraints::Bond& bond = link.rt.bonds[0];
-                if (dist_sq > sq(bond.value * bond_margin))
-                  continue;
-                bool order1;
-                if (bond.id1.atom == atom.name &&
-                    match_link_side(link.side1, res.name) &&
-                    match_link_side(link.side2, cra.residue->name))
-                  order1 = true;
-                else if (bond.id2.atom == atom.name &&
-                    match_link_side(link.side2, res.name) &&
-                    match_link_side(link.side1, cra.residue->name))
-                  order1 = false;
-                else
-                  continue;
-                int link_score = link.side1.specificity() +
-                                 link.side2.specificity();
-                // check chirality
-                Residue& res1 = order1 ? res : *cra.residue;
-                Residue* res2 = order1 ? cra.residue : &res;
-                char alt = atom.altloc ? atom.altloc : cra.atom->altloc;
-                for (const Restraints::Chirality& chirality : link.rt.chirs)
-                  if (chirality.sign != ChiralityType::Both) {
-                    Atom* at1 = chirality.id_ctr.get_from(res1, res2, alt);
-                    Atom* at2 = chirality.id1.get_from(res1, res2, alt);
-                    Atom* at3 = chirality.id2.get_from(res1, res2, alt);
-                    Atom* at4 = chirality.id3.get_from(res1, res2, alt);
-                    if (at1 && at2 && at3 && at4) {
-                      double vol = calculate_chiral_volume(at1->pos, at2->pos,
-                                                           at3->pos, at4->pos);
-                      if (chirality.is_wrong(vol))
-                        link_score -= 10;
+              if (bond_margin > 0) {
+                // search for a match in chem_links
+                auto range = links.equal_range(Restraints::lexicographic_str(
+                                                    atom.name, cra.atom->name));
+                for (auto iter = range.first; iter != range.second; ++iter) {
+                  const ChemLink& link = *iter->second;
+                  const Restraints::Bond& bond = link.rt.bonds[0];
+                  if (dist_sq > sq(bond.value * bond_margin))
+                    continue;
+                  bool order1;
+                  if (bond.id1.atom == atom.name &&
+                      match_link_side(link.side1, res.name) &&
+                      match_link_side(link.side2, cra.residue->name))
+                    order1 = true;
+                  else if (bond.id2.atom == atom.name &&
+                      match_link_side(link.side2, res.name) &&
+                      match_link_side(link.side1, cra.residue->name))
+                    order1 = false;
+                  else
+                    continue;
+                  int link_score = link.side1.specificity() +
+                                   link.side2.specificity();
+                  // check chirality
+                  Residue& res1 = order1 ? res : *cra.residue;
+                  Residue* res2 = order1 ? cra.residue : &res;
+                  char alt = atom.altloc ? atom.altloc : cra.atom->altloc;
+                  for (const Restraints::Chirality& chirality : link.rt.chirs)
+                    if (chirality.sign != ChiralityType::Both) {
+                      Atom* at1 = chirality.id_ctr.get_from(res1, res2, alt);
+                      Atom* at2 = chirality.id1.get_from(res1, res2, alt);
+                      Atom* at3 = chirality.id2.get_from(res1, res2, alt);
+                      Atom* at4 = chirality.id3.get_from(res1, res2, alt);
+                      if (at1 && at2 && at3 && at4) {
+                        double vol = calculate_chiral_volume(at1->pos, at2->pos,
+                                                             at3->pos, at4->pos);
+                        if (chirality.is_wrong(vol))
+                          link_score -= 10;
+                      }
                     }
+                  // check fixed torsion angle (_chem_link_tor.period == 0)
+                  for (const Restraints::Torsion& tor : link.rt.torsions)
+                    if (tor.period == 0) {
+                      Atom* at1 = tor.id1.get_from(res1, res2, alt);
+                      Atom* at2 = tor.id2.get_from(res1, res2, alt);
+                      Atom* at3 = tor.id3.get_from(res1, res2, alt);
+                      Atom* at4 = tor.id4.get_from(res1, res2, alt);
+                      double z = 10.;
+                      if (at1 && at2 && at3 && at4)
+                        z = angle_z(calculate_dihedral(at1->pos, at2->pos,
+                                                       at3->pos, at4->pos),
+                                    tor);
+                      link_score -= (int) z;
+                    }
+                  match.chem_link_count++;
+                  if (link_score < match.score)
+                    continue;
+                  match.chem_link = &link;
+                  match.score = link_score;
+                  if (order1) {
+                    match.cra1 = {&chain, &res, &atom};
+                    match.cra2 = cra;
+                  } else {
+                    match.cra1 = cra;
+                    match.cra2 = {&chain, &res, &atom};
                   }
-                // check fixed torsion angle (_chem_link_tor.period == 0)
-                for (const Restraints::Torsion& tor : link.rt.torsions)
-                  if (tor.period == 0) {
-                    Atom* at1 = tor.id1.get_from(res1, res2, alt);
-                    Atom* at2 = tor.id2.get_from(res1, res2, alt);
-                    Atom* at3 = tor.id3.get_from(res1, res2, alt);
-                    Atom* at4 = tor.id4.get_from(res1, res2, alt);
-                    double z = 10.;
-                    if (at1 && at2 && at3 && at4)
-                      z = angle_z(calculate_dihedral(at1->pos, at2->pos,
-                                                     at3->pos, at4->pos),
-                                  tor);
-                    link_score -= (int) z;
-                  }
-                match.chem_link_count++;
-                if (link_score < match.score)
-                  continue;
-                //if (match.chem_link)
-                //  printf("DEBUG: %s %s (%d)\n", match.chem_link->id.c_str(),
-                //         link.id.c_str(), match.chem_link_count);
-                match.chem_link = &link;
-                match.score = link_score;
-                if (order1) {
-                  match.cra1 = {&chain, &res, &atom};
-                  match.cra2 = cra;
-                } else {
-                  match.cra1 = cra;
-                  match.cra2 = {&chain, &res, &atom};
                 }
               }
 

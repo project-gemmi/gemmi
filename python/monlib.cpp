@@ -1,9 +1,10 @@
 // Copyright 2018 Global Phasing Ltd.
 
 #include "gemmi/chemcomp.hpp"
-#include "gemmi/monlib.hpp"
 #include "gemmi/gzread.hpp" // read_cif_gz
 #include "gemmi/linkhunt.hpp"
+#include "gemmi/monlib.hpp"
+#include "gemmi/topo.hpp"
 
 #include <fstream>
 #include <pybind11/pybind11.h>
@@ -15,6 +16,8 @@ using namespace gemmi;
 
 PYBIND11_MAKE_OPAQUE(std::vector<Restraints::Bond>)
 PYBIND11_MAKE_OPAQUE(std::vector<ChemComp::Atom>)
+PYBIND11_MAKE_OPAQUE(std::vector<Topo::Bond>)
+PYBIND11_MAKE_OPAQUE(std::vector<Topo::ExtraLink>)
 using monomers_type = std::map<std::string, ChemComp>;
 using links_type = std::map<std::string, ChemLink>;
 using modifications_type = std::map<std::string, ChemMod>;
@@ -25,6 +28,8 @@ PYBIND11_MAKE_OPAQUE(modifications_type)
 void add_monlib(py::module& m) {
   py::bind_vector<std::vector<Restraints::Bond>>(m, "RestraintsBonds");
   py::bind_vector<std::vector<ChemComp::Atom>>(m, "ChemCompAtoms");
+  py::bind_vector<std::vector<Topo::Bond>>(m, "TopoBonds");
+  py::bind_vector<std::vector<Topo::ExtraLink>>(m, "TopoExtraLinks");
   py::bind_map<monomers_type>(m, "ChemCompMap");
   py::bind_map<links_type>(m, "ChemLinkMap");
   py::bind_map<modifications_type>(m, "ChemModMap");
@@ -122,6 +127,8 @@ void add_monlib(py::module& m) {
     .def_readonly("monomers", &MonLib::monomers)
     .def_readonly("links", &MonLib::links)
     .def_readonly("modifications", &MonLib::modifications)
+    .def("find_link", &MonLib::find_link, py::arg("link_id"),
+         py::return_value_policy::reference_internal)
     .def("add_monomer_if_present", &MonLib::add_monomer_if_present)
     .def("add_monomers_if_present", &MonLib::add_monomers_if_present)
     .def("__repr__", [](const MonLib& self) {
@@ -130,6 +137,30 @@ void add_monlib(py::module& m) {
                std::to_string(self.links.size()) + " links, " +
                std::to_string(self.modifications.size()) + " modifications>";
     });
+
+  py::class_<Topo> topo(m, "Topo");
+  py::class_<Topo::Bond>(topo, "Bond")
+    .def_readonly("restr", &Topo::Bond::restr)
+    .def_readonly("atoms", &Topo::Bond::atoms)
+    .def("calculate", &Topo::Bond::calculate)
+    .def("calculate_z", &Topo::Bond::calculate_z)
+    ;
+  py::class_<Topo::ExtraLink>(topo, "ExtraLink")
+    .def_readonly("res1", &Topo::ExtraLink::res1)
+    .def_readonly("res2", &Topo::ExtraLink::res2)
+    .def_readonly("alt1", &Topo::ExtraLink::alt1)
+    .def_readonly("alt2", &Topo::ExtraLink::alt2)
+    .def_readonly("link_id", &Topo::ExtraLink::link_id)
+    ;
+  topo
+    .def(py::init<>())
+    .def("prepare_refmac_topology",
+         [](Topo& self, Structure& st, MonLib& monlib) {
+        self.initialize_refmac_topology(st.models.at(0), st.entities, monlib);
+        self.finalize_refmac_topology(monlib);
+    })
+    .def_readonly("bonds", &Topo::bonds)
+    .def_readonly("extras", &Topo::extras)
     ;
 
   m.def("read_monomer_lib", [](const std::string& monomer_dir,
@@ -156,7 +187,8 @@ void add_monlib(py::module& m) {
     .def("index_chem_links", &LinkHunt::index_chem_links,
          py::arg("monlib"), py::keep_alive<1, 2>())
     .def("find_possible_links", &LinkHunt::find_possible_links,
-         py::arg("st"), py::arg("bond_margin"), py::arg("radius_margin"))
+         py::arg("st"), py::arg("bond_margin"), py::arg("radius_margin"),
+         py::arg("skip_intra_residue_links")=true)
     ;
   py::class_<LinkHunt::Match>(linkhunt, "Match")
     .def_readonly("chem_link", &LinkHunt::Match::chem_link)
