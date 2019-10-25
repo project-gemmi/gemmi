@@ -620,6 +620,9 @@ To add a pair to the block, or modify an existing one, use::
 
   void Block::set_pair(const std::string& tag, std::string value)
 
+The value needs quoting, the passed argument needs to be already quoted
+(you may pass ``cif::quote(value)``).
+
 ----
 
 Loop is defined as::
@@ -664,6 +667,12 @@ use function ``set_pair``:
 
   >>> block.set_pair('_year', '2030')
 
+If the value needs to be quoting, it must be passed quoted:
+
+.. doctest::
+
+  >>> block.set_pair('_title', cif.quote('Goldilocks and the Three Bears'))
+
 Now we can create a CIF file can from scratch:
 
 .. doctest::
@@ -705,11 +714,11 @@ a list of lists of string. The lists of strings correspond to columns.
   >>> loop = block.find_loop('_citation_author.citation_id').get_loop()
   >>> loop.tags
   ['_citation_author.citation_id', '_citation_author.name', '_citation_author.ordinal']
-  >>> loop.set_all_values([['primary']*2, ['Alice', 'Bob'], ['1', '2']])
+  >>> loop.set_all_values([['primary']*2, [cif.quote('Alice A.'), cif.quote('Bob B.')], ['1', '2']])
   >>> for row in block.find_mmcif_category('_citation_author.'):
   ...   print(list(row))
-  ['primary', 'Alice', '1']
-  ['primary', 'Bob', '2']
+  ['primary', "'Alice A.'", '1']
+  ['primary', "'Bob B.'", '2']
 
 To add a new loop (replacing old one if it exists) use ``init_loop``:
 
@@ -717,7 +726,7 @@ To add a new loop (replacing old one if it exists) use ``init_loop``:
 
   >>> loop = block.init_loop('_ocean_', ['id', 'name'])
   >>> # empty table is invalid in CIF, we need to add something
-  >>> loop.add_row(['1', 'Atlantic'])
+  >>> loop.add_row(['1', cif.quote('Atlantic Ocean')])
 
 In the above example, if the block already has tags ``_ocean_id``
 and/or ``_ocean_name`` and
@@ -736,13 +745,13 @@ The current position of a tag can be obtained using ``block.get_index(tag)``.
   >>> block.get_index('_entry.id')
   0
   >>> block.get_index('_ocean_id')
-  384
+  385
   >>> block.move_item(0, -1)  # move first item to the end
   >>> block.get_index('_entry.id')
-  384
+  385
   >>> block.get_index('_ocean_id')
-  383
-  >>> block.move_item(384, 0)  # let's move it back (384 == -1 here)
+  384
+  >>> block.move_item(385, 0)  # let's move it back (385 == -1 here)
 
 Column
 ======
