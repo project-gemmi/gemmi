@@ -13,7 +13,7 @@
 using gemmi::Mtz;
 
 enum OptionIndex { Verbose=3, Headers, Dump, PrintTsv, PrintStats,
-                   CheckAsu, ToggleEndian };
+                   CheckAsu, ToggleEndian, NoIsym };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -34,6 +34,8 @@ static const option::Descriptor Usage[] = {
     "  --check-asu  \tCheck if reflections are in conventional ASU." },
   { ToggleEndian, 0, "", "toggle-endian", Arg::None,
     "  --toggle-endian  \tToggle assumed endiannes (little <-> big)." },
+  { NoIsym, 0, "", "no-isym", Arg::None,
+    "  --no-isym  \tDo not apply symmetry from M/ISYM column." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -166,8 +168,11 @@ void print_mtz_info(Stream&& stream, const char* path,
   mtz.setup_spacegroup();
   if (options[Dump])
     dump(mtz);
-  if (options[PrintTsv] || options[PrintStats] || options[CheckAsu])
+  if (options[PrintTsv] || options[PrintStats] || options[CheckAsu]) {
     mtz.read_raw_data(stream);
+    if (!options[NoIsym])
+      mtz.apply_isym();
+  }
   if (options[PrintTsv])
     print_tsv(mtz);
   if (options[PrintStats])

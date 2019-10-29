@@ -532,6 +532,28 @@ struct Mtz {
     return indices;
   }
 
+  // Change HKL according to M/ISYM
+  void apply_isym() {
+    if (!has_data())
+      fail("apply_isym(): data not read yet");
+    const Column* col = column_with_label("M/ISYM");
+    if (col == nullptr || col->type != 'Y' || col->idx < 3)
+      return;
+    std::vector<Op> inv_symops;
+    inv_symops.reserve(symops.size());
+    for (const Op& op : symops)
+      inv_symops.push_back(op.inverse());
+    for (size_t n = 0; n + col->idx < data.size(); n += columns.size()) {
+      int isym = static_cast<int>(data[n + col->idx]) & 0xFF;
+      const Op& op = inv_symops.at((isym - 1) / 2);
+      std::array<int,3> hkl = {{(int)data[n], (int)data[n+1], (int)data[n+2]}};
+      hkl = op.apply_to_hkl(hkl);
+      int sign = (isym & 1) ? 1 : -1;
+      for (int i = 0; i < 3; ++i)
+        data[n+i] = static_cast<float>(sign * hkl[i]);
+    }
+  }
+
   Dataset& add_dataset(const std::string& name) {
     int id = 0;
     for (const Dataset& d : datasets)
