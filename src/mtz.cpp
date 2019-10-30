@@ -53,8 +53,7 @@ static void dump(const Mtz& mtz) {
   }
   printf("\nNumber of Columns = %zu\n", mtz.columns.size());
   printf("Number of Reflections = %d\n", mtz.nreflections);
-  if (mtz.nbatches != 0)
-    printf("Number of Batches = %d\n", mtz.nbatches);
+  printf("Number of Batches = %zu\n", mtz.batches.size());
   printf("Missing values marked as: %g\n", mtz.valm);
   printf("Global Cell (obsolete):  %7.3f %7.3f %7.3f  %g %g %g\n",
          mtz.cell.a, mtz.cell.b, mtz.cell.c,

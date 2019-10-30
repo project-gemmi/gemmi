@@ -87,12 +87,37 @@ struct Mtz {
     const_iterator end() const { return const_cast<Column*>(this)->end(); }
   };
 
+  struct Batch {
+    Batch() {
+      ints.resize(29, 0);
+      floats.resize(156, 0.);
+      // write the same values that are written by CCP4 progs such as COMBAT
+      ints[0] = 29 + 156;
+      ints[1] = 29;
+      ints[2] = 156;
+      floats[43] = 1.f; // batch scale
+    }
+    int number;
+    std::string title;
+    std::vector<int> ints;
+    std::vector<float> floats;
+    std::vector<std::string> axes;
+
+    void set_cell(const UnitCell& cell) {
+      floats[0] = (float) cell.a;
+      floats[1] = (float) cell.b;
+      floats[2] = (float) cell.c;
+      floats[3] = (float) cell.alpha;
+      floats[4] = (float) cell.beta;
+      floats[5] = (float) cell.gamma;
+    }
+  };
+
   bool same_byte_order = true;
   std::int32_t header_offset = 0;
   std::string version_stamp;
   std::string title;
   int nreflections = 0;
-  int nbatches = 0;
   std::array<int, 5> sort_order = {};
   double min_1_d2 = NAN;
   double max_1_d2 = NAN;
@@ -105,6 +130,7 @@ struct Mtz {
   const SpaceGroup* spacegroup = nullptr;
   std::vector<Dataset> datasets;
   std::vector<Column> columns;
+  std::vector<Batch> batches;
   std::vector<std::string> history;
   std::vector<float> data;
 
@@ -118,7 +144,6 @@ struct Mtz {
     version_stamp = std::move(o.version_stamp);
     title = std::move(o.title);
     nreflections = o.nreflections;
-    nbatches = o.nbatches;
     sort_order = std::move(o.sort_order);
     min_1_d2 = o.min_1_d2;
     max_1_d2 = o.max_1_d2;
@@ -131,6 +156,7 @@ struct Mtz {
     spacegroup = o.spacegroup;
     datasets = std::move(o.datasets);
     columns = std::move(o.columns);
+    batches = std::move(o.batches);
     history = std::move(o.history);
     data = std::move(o.data);
     warnings = o.warnings;
@@ -320,7 +346,10 @@ struct Mtz {
         case ialpha4_id("NCOL"): {
           ncol = simple_atoi(args, &args);
           nreflections = simple_atoi(args, &args);
-          nbatches = simple_atoi(args, &args);
+          int nbatches = simple_atoi(args);
+          if (nbatches < 0 || nbatches > 10000000)  // sanity check
+            fail("Wrong NCOL header");
+          batches.resize(nbatches);
           break;
         }
         case ialpha4_id("CELL"):
@@ -446,8 +475,28 @@ struct Mtz {
         }
         history.reserve(n_headers);
       } else if (ialpha4_id(buf) == ialpha4_id("MTZB")) {
-        for (int i = 0; i < nbatches; ++i) {
-          // TODO: BH, etc
+        for (Batch& batch : batches) {
+          stream.read(buf, 80);
+          if (ialpha3_id(buf) != ialpha3_id("BH "))
+            fail("Missing BH header");
+          const char* args = skip_word(buf);
+          batch.number = simple_atoi(args, &args);
+          int total_words = simple_atoi(args, &args);
+          int int_words = simple_atoi(args, &args);
+          int float_words = simple_atoi(args);
+          if (total_words != int_words + float_words || total_words > 1000)
+            fail("Wrong BH header");
+          stream.read(buf, 80); // TITLE
+          const char* end = rtrim_cstr(buf + 6, buf+76);
+          batch.title.assign(buf, end - buf);
+          batch.ints.resize(int_words);
+          stream.read(batch.ints.data(), int_words * 4);
+          batch.floats.resize(float_words);
+          stream.read(batch.floats.data(), float_words * 4);
+          stream.read(buf, 80);
+          if (ialpha4_id(buf) != ialpha4_id("BHCH"))
+            fail("Missing BHCH header");
+          split_str_into(buf + 5, ' ', batch.axes);
         }
       }
     }
@@ -612,6 +661,38 @@ struct Mtz {
   void write_to_file(const std::string& path) const;
 };
 
+// Unmerged MTZ files always store in-asu hkl indices and symmetry operation
+// encoded in the M/ISYM column. Here is a helper for writing such files.
+struct UnmergedHklMover {
+  UnmergedHklMover(const Mtz& mtz)
+    : asu_checker_(mtz.spacegroup),
+      group_ops_(mtz.spacegroup->operations())
+  {}
+
+  // Modifies hkl and returns ISYM value for M/ISYM
+  int move_to_asu(std::array<int, 3>& hkl) {
+    int isym = 1;
+    for (Op op : group_ops_) {
+      auto new_hkl = op.apply_to_hkl(hkl);
+      if (asu_checker_.is_in(new_hkl[0], new_hkl[1], new_hkl[2])) {
+        hkl = new_hkl;
+        return isym;
+      }
+      if (asu_checker_.is_in(-new_hkl[0], -new_hkl[1], -new_hkl[2])) {
+        hkl = {{-new_hkl[0], -new_hkl[1], -new_hkl[2]}};
+        return isym + 1;
+      }
+      isym += 2;
+    }
+    return 0;
+  }
+
+private:
+  HklAsuChecker asu_checker_;
+  GroupOps group_ops_;
+};
+
+
 inline Mtz read_mtz_file(const std::string& path) {
   Mtz mtz;
   mtz.read_file(path);
@@ -668,7 +749,7 @@ namespace gemmi {
   } while(0)
 
 void Mtz::write_to_stream(std::FILE* stream) const {
-  // uses: data, spacegroup, nreflections, nbatches, cell, sort_order,
+  // uses: data, spacegroup, nreflections, batches, cell, sort_order,
   //       valm, columns, datasets, history
   if (!has_data())
     fail("Cannot write Mtz which has no data");
@@ -684,7 +765,7 @@ void Mtz::write_to_stream(std::FILE* stream) const {
     fail("Writing MTZ file failed");
   WRITE("VERS MTZ:V1.1");
   WRITE("TITLE %s", title.c_str());
-  WRITE("NCOL %8zu %12d %8d", columns.size(), nreflections, nbatches);
+  WRITE("NCOL %8zu %12d %8zu", columns.size(), nreflections, batches.size());
   if (cell.is_crystal())
     WRITE("CELL  %9.4f %9.4f %9.4f %9.4f %9.4f %9.4f",
           cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma);
@@ -724,7 +805,15 @@ void Mtz::write_to_stream(std::FILE* stream) const {
           ds.id, ds.cell.a, ds.cell.b, ds.cell.c,
           ds.cell.alpha, ds.cell.beta, ds.cell.gamma);
     WRITE("DWAVEL %8d %10.5f", ds.id, ds.wavelength);
-    //WRITE("BATCH");
+    for (size_t i = 0; i < batches.size(); i += 12) {
+      std::memcpy(buf, "BATCH ", 6);
+      int pos = 6;
+      for (size_t j = i; j < std::min(batches.size(), i + 12); ++j, pos += 6)
+        gf_snprintf(buf + pos, 7, "%6zu", j + 1);
+      std::memset(buf + pos, ' ', 80 - pos);
+      if (std::fwrite(buf, 80, 1, stream) != 1)
+        fail("Writing MTZ file failed");
+    }
   }
   WRITE("END");
   if (!history.empty()) {
@@ -733,6 +822,25 @@ void Mtz::write_to_stream(std::FILE* stream) const {
     WRITE("MTZHIST %3zu", history.size());
     for (const std::string& line : history)
       WRITE("%s", line.c_str());
+  }
+  if (!batches.empty()) {
+    WRITE("MTZBATS");
+    int n = 0;
+    for (const Batch& batch : batches) {
+      // keep the numbers the same as in files written by libccp4
+      WRITE("BH %8d %7zu %7zu %7zu",
+            ++n, batch.ints.size() + batch.floats.size(),
+            batch.ints.size(), batch.floats.size());
+      WRITE("TITLE %.70s", batch.title.c_str());
+      if (batch.ints.size() != 29 || batch.floats.size() != 156)
+        fail("wrong size of binaries batch headers");
+      std::fwrite(batch.ints.data(), 4, batch.ints.size(), stream);
+      std::fwrite(batch.floats.data(), 4, batch.floats.size(), stream);
+      WRITE("BHCH  %7.7s %7.7s %7.7s",
+            batch.axes.size() > 0 ? batch.axes[0].c_str() : "",
+            batch.axes.size() > 1 ? batch.axes[1].c_str() : "",
+            batch.axes.size() > 2 ? batch.axes[2].c_str() : "");
+    }
   }
   WRITE("MTZENDOFHEADERS");
 }

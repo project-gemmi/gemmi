@@ -1654,6 +1654,8 @@ struct HklAsuChecker {
   Op::Rot rot;
 
   HklAsuChecker(const SpaceGroup* sg) {
+    if (sg == nullptr)
+      fail("Missing space group");
     rot = sg->basisop().inverse().rot;
     idx = spacegroup_tables::ccp4_hkl_asu[sg->number - 1];
   }

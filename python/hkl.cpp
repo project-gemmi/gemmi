@@ -15,8 +15,9 @@
 namespace py = pybind11;
 using namespace gemmi;
 
-PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Column>)
 PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Dataset>)
+PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Column>)
+PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Batch>)
 PYBIND11_MAKE_OPAQUE(std::vector<ReflnBlock>)
 PYBIND11_MAKE_OPAQUE(std::vector<const Mtz::Column*>)
 
@@ -28,6 +29,11 @@ namespace gemmi {
     return os;
   }
 
+  inline std::ostream& operator<< (std::ostream& os, const Mtz::Column* col) {
+    os << "<gemmi.Mtz.Column " << col->label << " type " << col->type << '>';
+    return os;
+  }
+
   inline std::ostream& operator<< (std::ostream& os, const ReflnBlock& rb) {
     os << "<gemmi.ReflnBlock " << rb.block.name << " with ";
     if (rb.default_loop)
@@ -35,11 +41,6 @@ namespace gemmi {
     else
       os << " no ";
     os << " loop>";
-    return os;
-  }
-
-  inline std::ostream& operator<< (std::ostream& os, const Mtz::Column* col) {
-    os << "<gemmi.Mtz.Column " << col->label << " type " << col->type << '>';
     return os;
   }
 }
@@ -82,8 +83,9 @@ py::array_t<T> py_array_from_vector(std::vector<T>&& original_vec) {
 }
 
 void add_hkl(py::module& m) {
-  py::bind_vector<std::vector<Mtz::Column>>(m, "MtzColumns");
   py::bind_vector<std::vector<Mtz::Dataset>>(m, "MtzDatasets");
+  py::bind_vector<std::vector<Mtz::Column>>(m, "MtzColumns");
+  py::bind_vector<std::vector<Mtz::Batch>>(m, "MtzBatches");
   py::bind_vector<std::vector<ReflnBlock>>(m, "ReflnBlocks");
   py::bind_vector<std::vector<const Mtz::Column*>>(m, "MtzColumnRefs");
 
@@ -102,7 +104,6 @@ void add_hkl(py::module& m) {
     })
     .def_readwrite("title", &Mtz::title)
     .def_readwrite("nreflections", &Mtz::nreflections)
-    .def_readwrite("nbatches", &Mtz::nbatches)
     .def_readwrite("min_1_d2", &Mtz::min_1_d2)
     .def_readwrite("max_1_d2", &Mtz::max_1_d2)
     .def_readwrite("valm", &Mtz::valm)
@@ -111,6 +112,7 @@ void add_hkl(py::module& m) {
     .def_readwrite("spacegroup", &Mtz::spacegroup)
     .def_readwrite("datasets", &Mtz::datasets)
     .def_readwrite("columns", &Mtz::columns)
+    .def_readwrite("batches", &Mtz::batches)
     .def_readwrite("history", &Mtz::history)
     .def("resolution_high", &Mtz::resolution_high)
     .def("resolution_low", &Mtz::resolution_low)
@@ -238,6 +240,13 @@ void add_hkl(py::module& m) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
     .def("__repr__", [](const Mtz::Column& self) { return tostr(&self); })
+    ;
+  py::class_<Mtz::Batch>(mtz, "Batch")
+    .def_readwrite("number", &Mtz::Batch::number)
+    .def_readwrite("title", &Mtz::Batch::title)
+    .def_readonly("ints", &Mtz::Batch::ints)
+    .def_readonly("floats", &Mtz::Batch::floats)
+    .def_readonly("axes", &Mtz::Batch::axes)
     ;
 
   m.def("read_mtz_file", [](const std::string& path) {

@@ -2,8 +2,8 @@
 //
 // convert SF-mmCIF to MTZ
 
-#include <algorithm>
 #include <cstdlib>            // for exit
+#include <memory>             // for unique_ptr
 #include <stdio.h>
 #ifndef GEMMI_ALL_IN_ONE
 # define GEMMI_WRITE_IMPLEMENTATION 1
@@ -19,7 +19,7 @@
 
 namespace cif = gemmi::cif;
 
-enum OptionIndex { Verbose=3, BlockName, Dir, Title, History };
+enum OptionIndex { Verbose=3, BlockName, Dir, Title, History, Unmerged };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -38,6 +38,8 @@ static const option::Descriptor Usage[] = {
     "  --title  \tMTZ title." },
   { History, 0, "-H", "history", Arg::Required,
     "  -H LINE, --history=LINE  \tAdd a history line." },
+  { Unmerged, 0, "u", "unmerged", Arg::None,
+    "  -u, --unmerged  \tWrite unmerged MTZ file(s)." },
   { NoOp, 0, "", "", Arg::None,
     "\nFirst variant: converts the first block of CIF_FILE, or the block"
     "\nspecified with --block=NAME, to MTZ file with given name."
@@ -134,10 +136,15 @@ void convert_cif_block_to_mtz(const gemmi::ReflnBlock& rb,
   std::vector<int> indices;
   std::string tag = loop->tags[0].substr(0, loop->tags[0].find('.') + 1);
   const size_t len = tag.length();
+  bool unmerged = options[Unmerged] || !rb.refln_loop;
   for (auto c = std::begin(conv_table); c != std::end(conv_table); ++c) {
     tag.replace(len, std::string::npos, c->refln_tag);
     int index = loop->find_tag(tag);
     if (index != -1) {
+      // Some early unmerged depositions such as 1vly have data in _refln
+      // and also have _refln.status (always 'o'). We skip it here.
+      if (unmerged && c->col_type == 's')
+        continue;
       indices.push_back(index);
       mtz.columns.emplace_back();
       gemmi::Mtz::Column& col = mtz.columns.back();
@@ -150,25 +157,66 @@ void convert_cif_block_to_mtz(const gemmi::ReflnBlock& rb,
       while (!c->col_label)
         ++c;
       col.label = c->col_label;
-      col.parent = &mtz;
-      col.idx = mtz.columns.size() - 1;
       if (options[Verbose])
         fprintf(stderr, "  %s -> %s\n", tag.c_str(), col.label.c_str());
     } else if (c->col_type == 'H') {
       gemmi::fail("Miller index tag not found: " + tag);
     }
   }
+  std::unique_ptr<gemmi::UnmergedHklMover> hkl_mover;
+  if (unmerged) {
+    if (options[Verbose])
+      fprintf(stderr, "Adding columns M/ISYM and BATCH for unmerged data...\n");
+    auto col = mtz.columns.emplace(mtz.columns.begin() + 3);
+    col->dataset_id = 1;
+    col->type = 'Y';
+    col->label = "M/ISYM";
+
+    col = mtz.columns.emplace(mtz.columns.begin() + 4);
+    col->dataset_id = 1;
+    col->type = 'B';
+    col->label = "BATCH";
+
+    mtz.batches.emplace_back();
+    mtz.batches.back().set_cell(mtz.cell);
+    hkl_mover.reset(new gemmi::UnmergedHklMover(mtz));
+  }
+  for (size_t i = 0; i != mtz.columns.size(); ++i) {
+    mtz.columns[i].parent = &mtz;
+    mtz.columns[i].idx = i;
+  }
   mtz.nreflections = loop->length();
   mtz.data.resize(mtz.columns.size() * mtz.nreflections);
   int k = 0;
   for (size_t i = 0; i < loop->values.size(); i += loop->tags.size()) {
     size_t j = 0;
-    for (; j != 3; ++j)
-      mtz.data[k++] = (float) cif::as_int(loop->values[i + indices[j]]);
+    if (unmerged) {
+      std::array<int, 3> hkl;
+      for (int ii = 0; ii != 3; ++ii)
+        hkl[ii] = cif::as_int(loop->values[i + indices[ii]]);
+      int isym = hkl_mover->move_to_asu(hkl);
+      for (; j != 3; ++j)
+        mtz.data[k++] = (float) hkl[j];
+      mtz.data[k++] = (float) isym;
+      mtz.data[k++] = 1.0f; // batch number
+    } else {
+      for (; j != 3; ++j)
+        mtz.data[k++] = (float) cif::as_int(loop->values[i + indices[j]]);
+    }
     if (uses_status)
       mtz.data[k++] = status_to_freeflag(loop->values[i + indices[j++]]);
-    for (; j != indices.size(); ++j)
-      mtz.data[k++] = (float) cif::as_number(loop->values[i + indices[j]]);
+    for (; j != indices.size(); ++j) {
+      const std::string& v = loop->values[i + indices[j]];
+      if (cif::is_null(v)) {
+        mtz.data[k] = (float) NAN;
+      } else {
+        mtz.data[k] = (float) cif::as_number(v);
+        if (std::isnan(mtz.data[k]))
+          fprintf(stderr, "Value #%zu in the loop is not a number: %s\n",
+                  i + indices[j], v.c_str());
+      }
+      ++k;
+    }
   }
   if (options[Verbose])
     fprintf(stderr, "Writing %s ...\n", mtz_path.c_str());

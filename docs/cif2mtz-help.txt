@@ -10,6 +10,7 @@ Options:
   -d DIR, --dir=NAME       Output directory.
   --title                  MTZ title.
   -H LINE, --history=LINE  Add a history line.
+  -u, --unmerged           Write unmerged MTZ file(s).
 
 First variant: converts the first block of CIF_FILE, or the block
 specified with --block=NAME, to MTZ file with given name.
