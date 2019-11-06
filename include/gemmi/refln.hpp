@@ -41,8 +41,8 @@ struct ReflnBlock {
   bool ok() const { return default_loop != nullptr; }
   void check_ok() const { if (!ok()) fail("Invalid ReflnBlock"); }
 
-  // position after "_refln." or "_diffrn_refln".
-  int tag_offset() const { return refln_loop ? 7 : 13; }
+  // position after "_refln." or "_diffrn_refln."
+  int tag_offset() const { return refln_loop ? 7 : 14; }
 
   void use_unmerged(bool unmerged) {
     default_loop = unmerged ? diffrn_refln_loop : refln_loop;
