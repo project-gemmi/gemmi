@@ -17,9 +17,6 @@
 # pragma warning disable 2196
 #endif
 
-#if !(__GNUC__+0 >= 5 || __clang__+0 >= 5) || defined(__INTEL_COMPILER)
-#define POCKETFFT_NO_VECTORS
-#endif
 #define POCKETFFT_NO_MULTITHREADING
 #include "third_party/pocketfft_hdronly.h"
 
