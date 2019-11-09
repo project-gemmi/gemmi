@@ -429,10 +429,12 @@ struct Chain {
   explicit Chain(std::string cname) noexcept : name(cname) {}
 
   ResidueSpan whole() {
-    return ResidueSpan(residues, &residues.at(0), residues.size());
+    auto begin = residues.empty() ? nullptr : &residues.at(0);
+    return ResidueSpan(residues, begin, residues.size());
   }
   ConstResidueSpan whole() const {
-    return ConstResidueSpan(&residues.at(0), residues.size());
+    auto begin = residues.empty() ? nullptr : &residues.at(0);
+    return ConstResidueSpan(begin, residues.size());
   }
 
   template<typename F> ResidueSpan get_residue_span(F&& func) {
@@ -986,12 +988,16 @@ inline Residue* Chain::find_or_add_residue(const ResidueId& rid) {
 }
 
 inline void Chain::append_residues(std::vector<Residue> new_resi, int min_sep) {
+  if (new_resi.empty())
+    return;
   if (min_sep > 0) {
     ConstResidueSpan new_span(&new_resi[0], new_resi.size());
+    // adjust sequence numbers if necessary
     auto diff = new_span.min_seqnum() - whole().max_seqnum();
     if (diff && int(diff) < min_sep)
       for (Residue& res : new_resi)
         res.seqid.num += min_sep - int(diff);
+    // adjust label_seq_id if necessary
     diff = new_span.min_label_seq() - whole().max_label_seq();
     if (diff && int(diff) < min_sep)
       for (Residue& res : new_resi)

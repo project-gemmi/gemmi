@@ -499,6 +499,16 @@ class TestMol(unittest.TestCase):
         del b[0]
         self.assertEqual(b[0].name, 'N2C')
 
+        # test append_residues()
+        self.assertEqual(len(b), 20)
+        b.append_residues(b[:5], min_sep=10)
+        self.assertEqual(len(b), 25)
+
+        # test append_residues() with empty chain
+        new_chain = gemmi.Chain('X')
+        new_chain.append_residues(b[:5], min_sep=1)
+        self.assertEqual(len(new_chain), 5)
+
     def test_first_conformer(self):
         model = gemmi.read_structure(full_path('1pfe.cif.gz'))[0]
         b = model['B']
