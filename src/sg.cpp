@@ -6,7 +6,7 @@
 #define GEMMI_PROG sg
 #include "options.h"
 
-// enum OptionIndex { Verbose=3 };
+enum OptionIndex { Verbose=3 };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -14,7 +14,7 @@ static const option::Descriptor Usage[] = {
     "\nPrints information about the space group."},
   CommonUsage[Help],
   CommonUsage[Version],
-  //{ Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -25,7 +25,24 @@ static void print_symmetry_operations(const gemmi::GroupOps& ops) {
     printf("    %s\n", op.triplet().c_str());
 }
 
-static void process_arg(const char* arg) {
+static void print_verbose_info(const char* hall) {
+  using gemmi::Op;
+  printf("The operations are generated from Hall symbol: %s\n", hall);
+  gemmi::GroupOps ops = gemmi::generators_from_hall(hall);
+  printf("%zu centering vector(s):\n", ops.cen_ops.size());
+  for (const Op::Tran& cenop : ops.cen_ops)
+    printf("    %s\n", Op{Op::identity().rot, cenop}.triplet().c_str());
+  printf("%zu generator(s) of primitive symops (not counting identity):\n",
+         ops.sym_ops.size() - 1);
+  for (size_t i = 1; i < ops.sym_ops.size(); ++i)
+    printf("    %s\n", ops.sym_ops[i].triplet().c_str());
+  ops.add_missing_elements();
+  printf("give %zu primitive symmetry operation(s):\n", ops.sym_ops.size());
+  for (const Op& symop : ops.sym_ops)
+    printf("    %s\n", symop.triplet().c_str());
+}
+
+static void process_arg(const char* arg, bool verbose) {
   const gemmi::SpaceGroup* sg = gemmi::find_spacegroup_by_name(arg);
   if (sg == nullptr) {
     try {
@@ -34,6 +51,8 @@ static void process_arg(const char* arg) {
       if (sg == nullptr) {
         printf("Hall symbol: %s\n", arg);
         print_symmetry_operations(ops);
+        if (verbose)
+          print_verbose_info(arg);
       }
     } catch (std::runtime_error&) {
     }
@@ -62,6 +81,8 @@ static void process_arg(const char* arg) {
          is_reference ? "" : " wrt. standard setting",
          gemmi::HklAsuChecker(sg).condition_str());
   print_symmetry_operations(ops);
+  if (verbose)
+    print_verbose_info(sg->hall);
   printf("\n");
 }
 
@@ -69,7 +90,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   for (int i = 0; i < p.nonOptionsCount(); ++i)
-    process_arg(p.nonOption(i));
+    process_arg(p.nonOption(i), p.options[Verbose]);
   return 0;
 }
 
