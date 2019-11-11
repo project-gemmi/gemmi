@@ -663,8 +663,6 @@ inline GroupOps generators_from_hall(const char* hall) {
   GroupOps ops;
   ops.sym_ops.emplace_back(Op::identity());
   bool centrosym = (hall[0] == '-');
-  if (centrosym)
-    ops.sym_ops.emplace_back(Op::identity().negated());
   const char* lat = impl::skip_blank(centrosym ? hall + 1 : hall);
   if (!lat)
     fail("not a hall symbol: " + std::string(hall));
@@ -681,6 +679,8 @@ inline GroupOps generators_from_hall(const char* hall) {
     }
     part = impl::skip_blank(space);
   }
+  if (centrosym)
+    ops.sym_ops.emplace_back(Op::identity().negated());
   if (*part == '(') {
     const char* rb = std::strchr(part, ')');
     if (!rb)
