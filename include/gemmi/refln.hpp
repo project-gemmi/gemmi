@@ -25,6 +25,8 @@ struct ReflnBlock {
   cif::Loop* diffrn_refln_loop = nullptr;
   cif::Loop* default_loop = nullptr;
 
+  ReflnBlock() = default;
+  ReflnBlock(ReflnBlock&& rblock_) = default;
   ReflnBlock(cif::Block&& block_) : block(block_) {
     entry_id = cif::as_string(block.find_value("_entry.id"));
     impl::set_cell_from_mmcif(block, cell);
@@ -36,6 +38,20 @@ struct ReflnBlock {
     refln_loop = block.find_loop("_refln.index_h").get_loop();
     diffrn_refln_loop = block.find_loop("_diffrn_refln.index_h").get_loop();
     default_loop = refln_loop ? refln_loop : diffrn_refln_loop;
+  }
+  ReflnBlock& operator=(ReflnBlock&&) = default;
+  ReflnBlock& operator=(const ReflnBlock& o) {
+    block = o.block;
+    entry_id = o.entry_id;
+    cell = o.cell;
+    spacegroup = o.spacegroup;
+    wavelength = o.wavelength;
+    if (o.refln_loop)
+      refln_loop = block.find_loop("_refln.index_h").get_loop();
+    if (o.diffrn_refln_loop)
+      diffrn_refln_loop = block.find_loop("_diffrn_refln.index_h").get_loop();
+    default_loop = refln_loop ? refln_loop : diffrn_refln_loop;
+    return *this;
   }
 
   bool ok() const { return default_loop != nullptr; }
