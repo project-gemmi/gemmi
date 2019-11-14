@@ -22,6 +22,20 @@
 
 namespace gemmi {
 
+template<typename T>
+double phase_in_angles(const std::complex<T>& v) {
+  double angle = gemmi::deg(std::arg(v));
+  return angle >= 0. ? angle : angle + 360.;
+}
+
+// calculate part of the structure factor: exp(2 pi i r * s)
+inline std::complex<double> structure_factor_part(Fractional fpos,
+                                                  int h, int k, int l) {
+  double arg = 2 * pi() * (h * fpos.x + k * fpos.y + l * fpos.z);
+  return std::complex<double>{std::cos(arg), std::sin(arg)};
+}
+
+
 template<typename DataProxy>
 std::array<int, 3> get_size_for_hkl(const DataProxy& data,
                                     std::array<int, 3> min_size,

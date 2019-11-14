@@ -107,7 +107,7 @@ static void transform_map_to_sf(OptParser& p) {
         int l = (int) mtz.data[i * ncol + 2];
         std::complex<float> v = hkl.get_value(h, k, l);
         mtz.data[i * ncol + f_idx] = (float) std::abs(v);
-        mtz.data[i * ncol + f_idx + 1] = get_phase_for_mtz(v);
+        mtz.data[i * ncol + f_idx + 1] = (float) gemmi::phase_in_angles(v);
       }
     } else {
       mtz.cell = map.grid.unit_cell;
@@ -137,8 +137,8 @@ static void transform_map_to_sf(OptParser& p) {
               mtz.data.push_back((float) h);
               mtz.data.push_back((float) k);
               mtz.data.push_back((float) l);
-              mtz.data.push_back((float) std::abs(v));
-              mtz.data.push_back(get_phase_for_mtz(v));
+              mtz.data.push_back(std::abs(v));
+              mtz.data.push_back((float) gemmi::phase_in_angles(v));
               ++mtz.nreflections;
             }
     }
