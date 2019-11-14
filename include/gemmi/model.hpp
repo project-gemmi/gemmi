@@ -86,29 +86,19 @@ enum class EntityType : unsigned char {
   Water
 };
 
-// number of different _entity_poly.type values in the PDB in mid-2017:
-//   168923 polypeptide(L)
-//   9905   polydeoxyribonucleotide
-//   4559   polyribonucleotide
-//   156    polydeoxyribonucleotide/polyribonucleotide hybrid
-//   57     polypeptide(D)
-//   18     polysaccharide(D)
-//   4      other
-//   2      peptide nucleic acid
-//   1      cyclic-pseudo-peptide
-//   0      polysaccharide(L)  (never used but present in mmcif_pdbx_v50.dic)
+// values corresponding to mmCIF _entity_poly.type
 enum class PolymerType : unsigned char {
-  Unknown, // unknown or not applicable
-  PeptideL,
-  PeptideD,
-  Dna,
-  Rna,
-  DnaRnaHybrid,
-  SaccharideD,
-  SaccharideL,
-  Pna, // artificial thing
-  CyclicPseudoPeptide,
-  Other,
+  Unknown,       // unknown or not applicable
+  PeptideL,      // polypeptide(L) in mmCIF (168923 values in the PDB in 2017)
+  PeptideD,      // polypeptide(D) (57 values)
+  Dna,           // polydeoxyribonucleotide (9905)
+  Rna,           // polyribonucleotide (4559)
+  DnaRnaHybrid,  // polydeoxyribonucleotide/polyribonucleotide hybrid (156)
+  SaccharideD,   // polysaccharide(D) (18)
+  SaccharideL,   // polysaccharide(L) (0)
+  Pna,           // peptide nucleic acid (2)
+  CyclicPseudoPeptide,  // cyclic-pseudo-peptide (1)
+  Other,         // other (4)
 };
 
 inline bool is_polypeptide(PolymerType pt) {
