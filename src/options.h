@@ -24,7 +24,7 @@
 # define EXE_NAME "gemmi-" GEMMI_XSTRINGIZE(GEMMI_PROG)
 #endif
 
-enum { NoOp=0, Help=1, Version=2 };
+enum { NoOp=0, Help=1, Version=2, Verbose=3 };
 
 extern const option::Descriptor CommonUsage[];
 

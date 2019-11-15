@@ -27,16 +27,16 @@ namespace cif = gemmi::cif;
 // defined in validate_mon.cpp
 void check_monomer_doc(const cif::Document& doc);
 
-enum OptionIndex { Fast=3, Stat, Verbose, Quiet, Ddl, Monomer };
+enum OptionIndex { Quiet=4, Fast, Stat, Ddl, Monomer };
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
                                 "\n\nOptions:" },
   CommonUsage[Help],
   CommonUsage[Version],
+  CommonUsage[Verbose],
+  { Quiet, 0, "q", "quiet", Arg::None, "  -q, --quiet  \tShow only errors." },
   { Fast, 0, "f", "fast", Arg::None, "  -f, --fast  \tSyntax-only check." },
   { Stat, 0, "s", "stat", Arg::None, "  -s, --stat  \tShow token statistics" },
-  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
-  { Quiet, 0, "q", "quiet", Arg::None, "  -q, --quiet  \tShow only errors." },
   { Ddl, 0, "d", "ddl", Arg::Required,
                                    "  -d, --ddl=PATH  \tDDL for validation." },
   { Monomer, 0, "m", "monomer", Arg::None,

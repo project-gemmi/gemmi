@@ -7,7 +7,7 @@ Search for umodelled blobs of electron density.
 Options:
   -h, --help            Print usage and exit.
   -V, --version         Print version and exit.
-  --verbose             Verbose output.
+  -v, --verbose         Verbose output.
 
 The area around model is masked to search only unmodelled density.
   --mask-radius=NUMBER  Mask radius (default: 2.0 A).

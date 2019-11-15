@@ -36,7 +36,7 @@ struct ConvArg: public Arg {
   }
 };
 
-enum OptionIndex { Verbose=3, FormatIn, FormatOut,
+enum OptionIndex { FormatIn=4, FormatOut,
                    Comcifs, Mmjson, Bare, Numb, CifDot,
                    PdbxStyle, SkipCat, BlockName, SortCif,
                    ExpandNcs, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
@@ -50,7 +50,7 @@ static const option::Descriptor Usage[] = {
     "\n\nGeneral options:" },
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { FormatIn, 0, "", "from", ConvArg::FileFormat,
     "  --from=FORMAT  \tInput format (default: from the file extension)." },
   { FormatOut, 0, "", "to", ConvArg::FileFormat,

@@ -1,8 +1,7 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// Handles of "gemmi validate --monomer".
 // Part of gemmi-validate that does extra validation for cif files from
-// Refmac monomer dictionary.
+// the Refmac monomer dictionary ("gemmi validate --monomer").
 
 #include <stdio.h>
 #include <stdexcept>

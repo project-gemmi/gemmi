@@ -8,7 +8,7 @@ FORMAT can be specified as one of: cif, json, pdb.
 General options:
   -h, --help             Print usage and exit.
   -V, --version          Print version and exit.
-  --verbose              Verbose output.
+  -v, --verbose          Verbose output.
   --from=FORMAT          Input format (default: from the file extension).
   --to=FORMAT            Output format (default: from the file extension).
 

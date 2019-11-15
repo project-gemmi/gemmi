@@ -15,14 +15,14 @@
 #define GEMMI_PROG map
 #include "options.h"
 
-enum OptionIndex { Verbose=3, Deltas, CheckSym, Reorder, Full };
+enum OptionIndex { Deltas=4, CheckSym, Reorder, Full };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] CCP4_MAP[...]\n" },
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { Deltas, 0, "", "deltas", Arg::None,
     "  --deltas  \tStatistics of dx, dy and dz." },
   { CheckSym, 0, "", "check-symmetry", Arg::None,

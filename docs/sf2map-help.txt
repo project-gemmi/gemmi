@@ -15,7 +15,7 @@ If option "-d" is given, mFo-DFc map coefficients are searched in:
 Options:
   -h, --help           Print usage and exit.
   -V, --version        Print version and exit.
-  --verbose            Verbose output.
+  -v, --verbose        Verbose output.
   -d, --diff           Use difference map coefficients.
   --section=NAME       MTZ dataset name or CIF block name
   -f COLUMN            F column (MTZ label or mmCIF tag).

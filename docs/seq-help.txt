@@ -8,7 +8,7 @@ Currently, we only use match/mismatch scoring matrix.
 
   -h, --help     Print usage and exit.
   -V, --version  Print version and exit.
-  --verbose      Verbose output.
+  -v, --verbose  Verbose output.
   --check-mmcif  Compare alignment with mmCIF _atom_site.label_seq_id
   --text-align   Align characters in two strings (for testing).
 

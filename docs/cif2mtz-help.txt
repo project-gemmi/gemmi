@@ -5,7 +5,7 @@ Usage:
 Options:
   -h, --help               Print usage and exit.
   -V, --version            Print version and exit.
-  --verbose                Verbose output.
+  -v, --verbose            Verbose output.
   -b NAME, --block=NAME    mmCIF block to convert.
   -d DIR, --dir=NAME       Output directory.
   --title                  MTZ title.

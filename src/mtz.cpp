@@ -12,7 +12,7 @@
 
 using gemmi::Mtz;
 
-enum OptionIndex { Verbose=3, Headers, Dump, PrintTsv, PrintStats,
+enum OptionIndex { Headers=4, Dump, PrintTsv, PrintStats,
                    CheckAsu, ToggleEndian, NoIsym };
 
 static const option::Descriptor Usage[] = {
@@ -21,7 +21,7 @@ static const option::Descriptor Usage[] = {
     "\nPrint informations from an mtz file."},
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { Headers, 0, "H", "headers", Arg::None,
     "  -H, --headers  \tPrint raw headers, until the END record." },
   { Dump, 0, "d", "dump", Arg::None,

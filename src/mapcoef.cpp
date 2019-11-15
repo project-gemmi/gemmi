@@ -23,8 +23,8 @@ using gemmi::Mtz;
 const option::Descriptor MapUsage[] = {
   { 0, 0, 0, 0, 0, 0 }, // The first 3 entries are empty to make MapUsage[enum]
   { 0, 0, 0, 0, 0, 0 }, // work as expected.
-  { 0, 0, 0, 0, 0, 0 }, // NoOp=0, Help=1, Version=2.
-  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  { 0, 0, 0, 0, 0, 0 }, // NoOp=0, Help=1, Version=2, Verbose=3.
+  { 0, 0, 0, 0, 0, 0 },
   { Diff, 0, "d", "diff", Arg::None,
     "  -d, --diff  \tUse difference map coefficients." },
   { Section, 0, "", "section", Arg::Required,

@@ -9,7 +9,7 @@ By default, hydrogens are not added to water.
 Options:
   -h, --help      Print usage and exit.
   -V, --version   Print version and exit.
-  --verbose       Verbose output.
+  -v, --verbose   Verbose output.
   --monomers=DIR  Monomer library dir (default: $CLIBD_MON).
   --remove        Only remove hydrogens.
   --keep          Do not add/remove hydrogens, only change positions.

@@ -12,7 +12,7 @@
 
 using namespace gemmi;
 
-enum OptionIndex { Verbose=3, Bond, BondEsd, Angle, AngleEsd, Relative };
+enum OptionIndex { Bond=4, BondEsd, Angle, AngleEsd, Relative };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -21,7 +21,7 @@ static const option::Descriptor Usage[] = {
     "\nOptions:"},
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { NoOp, 0, "", "", Arg::None, "\nMinimal reported differences:" },
   { Bond, 0, "", "bond", Arg::Float,
     "  --bond=DELTA  \tdifference in distance value (default: 0.01)." },

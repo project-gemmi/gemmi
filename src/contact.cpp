@@ -15,7 +15,7 @@
 
 using namespace gemmi;
 
-enum OptionIndex { Verbose=3, Cov, CovMult, MaxDist, Occ, Any, NoH, Count };
+enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Any, NoH, Count };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -23,7 +23,7 @@ static const option::Descriptor Usage[] = {
     "\nSearches for contacts in a model (PDB or mmCIF)."},
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { MaxDist, 0, "d", "maxdist", Arg::Float,
     "  -d, --maxdist=D  Maximal distance in A (default 3.0)" },
   { Cov, 0, "", "cov", Arg::Float,

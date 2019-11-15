@@ -26,8 +26,7 @@ static const option::Descriptor Usage[] = {
     "\n\nOptions:" },
   CommonUsage[Help],
   CommonUsage[Version],
-  MapUsage[Verbose],
-
+  CommonUsage[Verbose],
   { NoOp, 0, "", "", Arg::None,
     "\nThe area around model is masked to search only unmodelled density." },
   { MaskRadius, 0, "", "mask-radius", Arg::Float,

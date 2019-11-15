@@ -4,7 +4,7 @@ Usage:
 Print informations from an mtz file.
   -h, --help       Print usage and exit.
   -V, --version    Print version and exit.
-  --verbose        Verbose output.
+  -v, --verbose    Verbose output.
   -H, --headers    Print raw headers, until the END record.
   -d, --dump       Print a subset of CCP4 mtzdmp informations.
   --tsv            Print all the data as tab-separated values.

@@ -4,4 +4,4 @@ Usage:
 Prints information about the space group.
   -h, --help     Print usage and exit.
   -V, --version  Print version and exit.
-  --verbose      Verbose output.
+  -v, --verbose  Verbose output.

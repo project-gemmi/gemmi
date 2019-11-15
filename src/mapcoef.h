@@ -5,7 +5,7 @@
 #include <optionparser.h>
 
 // used by sf2map and blobs
-enum MapOptions { Verbose=3, Diff, Section, FLabel, PhLabel, GridDims,
+enum MapOptions { Diff=4, Section, FLabel, PhLabel, GridDims,
                   ExactDims, Sample, AxesZyx, GridQuery, AfterMapOptions };
 
 extern const option::Descriptor MapUsage[];

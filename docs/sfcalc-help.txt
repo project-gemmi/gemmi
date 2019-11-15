@@ -10,5 +10,6 @@ or uses FFT to calculate all reflections up to requested resolution.
 Options:
   -h, --help     Print usage and exit.
   -V, --version  Print version and exit.
+  -v, --verbose  Verbose output.
   --hkl=H,K,L    Calculate structure factor F_hkl.
   --dmin=D       Calculate structure factors up to given resolution.

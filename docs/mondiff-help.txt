@@ -4,7 +4,7 @@ Usage:
 Options:
   -h, --help         Print usage and exit.
   -V, --version      Print version and exit.
-  --verbose          Verbose output.
+  -v, --verbose      Verbose output.
 
 Minimal reported differences:
   --bond=DELTA       difference in distance value (default: 0.01).

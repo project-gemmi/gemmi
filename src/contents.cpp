@@ -13,7 +13,7 @@
 
 using namespace gemmi;
 
-enum OptionIndex { Verbose=3, Dihedrals };
+enum OptionIndex { Dihedrals=4 };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -21,7 +21,7 @@ static const option::Descriptor Usage[] = {
     "\nAnalyses content of a PDB or mmCIF."},
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { Dihedrals, 0, "", "dihedrals", Arg::None,
     "  --dihedrals  \tPrint peptide dihedral angles." },
   { 0, 0, 0, 0, 0, 0 }

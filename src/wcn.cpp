@@ -17,7 +17,7 @@
 
 using namespace gemmi;
 
-enum OptionIndex { Verbose=3, FromFile, ListResidues, MinDist, MaxDist,
+enum OptionIndex { FromFile=4, ListResidues, MinDist, MaxDist,
                    Exponent, Blur, Rom, ChainName, Sanity, SideChains,
                    NoCrystal, OmitEnds, PrintRes, XyOut };
 
@@ -32,7 +32,7 @@ static const option::Descriptor Usage[] = {
     "Calculation of local density / contact numbers: WCN, CN, ACN, LDM, etc."},
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { FromFile, 0, "f", "file", Arg::Required,
     "  -f, --file=FILE  \tObtain paths or PDB IDs from FILE, one per line." },
   { ListResidues, 0, "l", "list", Arg::None,

@@ -18,8 +18,7 @@
 #define GEMMI_PROG mtz2cif
 #include "options.h"
 
-enum OptionIndex { Verbose=3, Spec, PrintSpec, BlockName, SkipEmpty,
-                   NoComments };
+enum OptionIndex { Spec=4, PrintSpec, BlockName, SkipEmpty, NoComments };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -27,7 +26,7 @@ static const option::Descriptor Usage[] = {
     "\nOptions:"},
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { Spec, 0, "", "spec", Arg::Required,
     "  --spec=FILE  \tColumn and format specification." },
   { PrintSpec, 0, "", "print-spec", Arg::None,

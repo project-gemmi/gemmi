@@ -24,8 +24,7 @@ namespace cif = gemmi::cif;
 using gemmi::Topo;
 using gemmi::Restraints;
 
-enum OptionIndex { Verbose=3, Monomers, NoHydrogens, KeepHydrogens,
-                   NoZeroOccRestr };
+enum OptionIndex { Monomers=4, NoHydrogens, KeepHydrogens, NoZeroOccRestr };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -35,7 +34,7 @@ static const option::Descriptor Usage[] = {
     "\n\nOptions:" },
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { Monomers, 0, "", "monomers", Arg::Required,
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
   { NoHydrogens, 0, "H", "no-hydrogens", Arg::None,

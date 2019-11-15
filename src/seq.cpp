@@ -13,8 +13,7 @@
 #include <stdio.h>
 #include <cstring>  // for strlen
 
-enum OptionIndex { Verbose=3, Match, Mismatch, GapOpen, GapExt,
-                   CheckMmcif, TextAlign };
+enum OptionIndex { Match=4, Mismatch, GapOpen, GapExt, CheckMmcif, TextAlign };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -25,7 +24,7 @@ static const option::Descriptor Usage[] = {
     "\nCurrently, we only use match/mismatch scoring matrix.\n" },
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { CheckMmcif, 0, "", "check-mmcif", Arg::None,
     "  --check-mmcif  \tCompare alignment with mmCIF _atom_site.label_seq_id" },
   { TextAlign, 0, "", "text-align", Arg::None,

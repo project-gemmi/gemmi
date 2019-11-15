@@ -6,7 +6,7 @@
 #define GEMMI_PROG sg
 #include "options.h"
 
-enum OptionIndex { Verbose=3 };
+//enum OptionIndex { Verbose=3 };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -14,7 +14,7 @@ static const option::Descriptor Usage[] = {
     "\nPrints information about the space group."},
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { 0, 0, 0, 0, 0, 0 }
 };
 

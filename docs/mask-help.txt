@@ -7,7 +7,7 @@ If INPUT is a CCP4 map the mask is created by thresholding the map.
 If INPUT is a coordinate file (mmCIF, PDB, etc) the atoms are masked.
   -h, --help           Print usage and exit.
   -V, --version        Print version and exit.
-  --verbose            Verbose output.
+  -v, --verbose        Verbose output.
   --from=coor|map      Input type (default: from file extension).
 
 Options for making a mask from a map:

@@ -11,7 +11,7 @@
 #define GEMMI_PROG sfcalc
 #include "options.h"
 
-enum OptionIndex { Verbose=3, Hkl, Dmin };
+enum OptionIndex { Hkl=4, Dmin };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -22,6 +22,7 @@ static const option::Descriptor Usage[] = {
     "\nOptions:"},
   CommonUsage[Help],
   CommonUsage[Version],
+  CommonUsage[Verbose],
   { Hkl, 0, "", "hkl", Arg::Int3,
     "  --hkl=H,K,L  \tCalculate structure factor F_hkl." },
   { Dmin, 0, "", "dmin", Arg::Float,

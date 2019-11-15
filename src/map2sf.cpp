@@ -22,7 +22,7 @@
 using gemmi::Mtz;
 using options_type = std::vector<option::Option>;
 
-enum OptionIndex { Verbose=3, Base, Section, DMin, FType, PhiType };
+enum OptionIndex { Base=4, Section, DMin, FType, PhiType };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -32,7 +32,7 @@ static const option::Descriptor Usage[] = {
     "\nOptions:"},
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { Base, 0, "b", "base", Arg::Required,
     "  -b, --base=PATH  \tAdd new columns to the data from this file." },
   { Section, 0, "", "section", Arg::Required,

@@ -19,7 +19,7 @@
 
 namespace cif = gemmi::cif;
 
-enum OptionIndex { Verbose=3, BlockName, Dir, Title, History, Unmerged };
+enum OptionIndex { BlockName=4, Dir, Title, History, Unmerged };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -29,7 +29,7 @@ static const option::Descriptor Usage[] = {
     "\nOptions:"},
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { BlockName, 0, "b", "block", Arg::Required,
     "  -b NAME, --block=NAME  \tmmCIF block to convert." },
   { Dir, 0, "d", "dir", Arg::Required,

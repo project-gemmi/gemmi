@@ -9,7 +9,7 @@
 #define GEMMI_PROG mask
 #include "options.h"
 
-enum OptionIndex { Verbose=3, FormatIn, Threshold, Fraction, GridSpac,
+enum OptionIndex { FormatIn=4, Threshold, Fraction, GridSpac,
                    GridDims, Radius };
 
 struct MaskArg {
@@ -26,7 +26,7 @@ static const option::Descriptor Usage[] = {
     "\nIf INPUT is a coordinate file (mmCIF, PDB, etc) the atoms are masked." },
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { FormatIn, 0, "", "from", MaskArg::FileFormat,
     "  --from=coor|map  \tInput type (default: from file extension)." },
   { NoOp, 0, "", "", Arg::None, "\nOptions for making a mask from a map:" },

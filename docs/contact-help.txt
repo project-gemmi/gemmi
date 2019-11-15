@@ -4,7 +4,7 @@ Usage:
 Searches for contacts in a model (PDB or mmCIF).
   -h, --help     Print usage and exit.
   -V, --version  Print version and exit.
-  --verbose      Verbose output.
+  -v, --verbose  Verbose output.
   -d, --maxdist=D  Maximal distance in A (default 3.0)
   --cov=TOL      Use max distance = covalent radii sum + TOL [A].
   --covmult=M    Use max distance = M * covalent radii sum + TOL [A].

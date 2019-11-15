@@ -16,7 +16,9 @@ const option::Descriptor CommonUsage[] = {
   { 0, 0, 0, 0, 0, 0 }, // this makes CommonUsage[Help] return Help item, etc
   { Help, 0, "h", "help", Arg::None, "  -h, --help  \tPrint usage and exit." },
   { Version, 0, "V", "version", Arg::None,
-    "  -V, --version  \tPrint version and exit." }
+    "  -V, --version  \tPrint version and exit." },
+  { Verbose, 0, "v", "verbose", Arg::None,
+    "  -v, --verbose  \tVerbose output." }
 };
 
 std::vector<int> parse_comma_separated_ints(const char* arg) {

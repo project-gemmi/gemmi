@@ -17,7 +17,7 @@
 namespace cif = gemmi::cif;
 using gemmi::Topo;
 
-enum OptionIndex { Verbose=3, Monomers, FormatIn, Cutoff };
+enum OptionIndex { Monomers=4, FormatIn, Cutoff };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -27,8 +27,7 @@ static const option::Descriptor Usage[] = {
     "\n\nOptions:" },
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "v", "verbose", Arg::None,
-    "  -v, --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { Monomers, 0, "", "monomers", Arg::Required,
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
   { FormatIn, 0, "", "format", Arg::CoorFormat,

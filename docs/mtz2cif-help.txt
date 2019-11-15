@@ -4,7 +4,7 @@ Usage:
 Options:
   -h, --help             Print usage and exit.
   -V, --version          Print version and exit.
-  --verbose              Verbose output.
+  -v, --verbose          Verbose output.
   --spec=FILE            Column and format specification.
   --print-spec           Print default spec and exit.
   -b NAME, --block=NAME  mmCIF block name: data_NAME (default: mtz).

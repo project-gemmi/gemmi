@@ -26,7 +26,7 @@ static const option::Descriptor Usage[] = {
     "\nOptions:"},
   CommonUsage[Help],
   CommonUsage[Version],
-  MapUsage[Verbose],
+  CommonUsage[Verbose],
   MapUsage[Diff],
   MapUsage[Section],
   MapUsage[FLabel],

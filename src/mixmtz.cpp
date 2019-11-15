@@ -10,7 +10,7 @@
 
 using gemmi::Mtz;
 
-enum OptionIndex { Verbose=3, Force, Asu, ToggleEndian };
+enum OptionIndex { Force=4, Asu, ToggleEndian };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -18,7 +18,7 @@ static const option::Descriptor Usage[] = {
     "\nWrite selected columns from one or more MTZ files to a new file."},
   CommonUsage[Help],
   CommonUsage[Version],
-  { Verbose, 0, "v", "verbose", Arg::None, "  --verbose  \tVerbose output." },
+  CommonUsage[Verbose],
   { Force, 0, "", "force", Arg::None,
     "  --force  \tDo not check if merged files are compatible." },
   { Asu, 0, "", "asu", Arg::None,
