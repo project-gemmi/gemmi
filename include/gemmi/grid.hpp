@@ -174,13 +174,13 @@ struct Grid {
 
   void fill(T value) { std::fill(data.begin(), data.end(), value); }
 
-  void set_points_around(const Position& ctr, double radius, T value) {
+  template <typename Func>
+  void use_points_around(const Fractional& fctr, double radius, Func&& func) {
     int du = (int) std::ceil(radius / spacing[0]);
     int dv = (int) std::ceil(radius / spacing[1]);
     int dw = (int) std::ceil(radius / spacing[2]);
     if (du > nu || dv > nv || dw > nw)
-      fail("Masking radius bigger than the unit cell?");
-    Fractional fctr = unit_cell.fractionalize(ctr).wrap_to_unit();
+      fail("grid operation failed: radius bigger than the unit cell?");
     int u0 = iround(fctr.x * nu);
     int v0 = iround(fctr.y * nv);
     int w0 = iround(fctr.z * nw);
@@ -192,10 +192,15 @@ struct Grid {
                             fctr.z - w * (1.0 / nw)};
           fdelta.move_toward_zero_by_one();
           Position d = unit_cell.orthogonalize(fdelta);
-          if (d.x*d.x + d.y*d.y + d.z*d.z < radius*radius) {
-            data[index_n(u, v, w)] = value;
-          }
+          double d2 = d.x*d.x + d.y*d.y + d.z*d.z;
+          if (d2 < radius * radius)
+            func(data[index_n(u, v, w)], d2);
         }
+  }
+
+  void set_points_around(const Position& ctr, double radius, T value) {
+    Fractional fctr = unit_cell.fractionalize(ctr).wrap_to_unit();
+    use_points_around(fctr, radius, [&](T& point, double) { point = value; });
   }
 
   void mask_atom(double x, double y, double z, double radius) {

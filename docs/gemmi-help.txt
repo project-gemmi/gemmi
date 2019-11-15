@@ -26,6 +26,7 @@ Commands:
  rmsz          validate geometry using monomer library
  seq           sequence alignment (global, pairwise, affine gap penalty)
  sf2map        transform map coefficients (from MTZ or mmCIF) to map
+ sfcalc        calculate structure factors from a model
  sg            info about space groups
  validate      validate CIF 1.1 syntax
  wcn           calculate local density / contact numbers (WCN, CN, ACN, LDM)

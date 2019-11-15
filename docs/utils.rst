@@ -384,6 +384,14 @@ Transforms CCP4 map into map coefficients.
 .. literalinclude:: map2sf-help.txt
    :language: console
 
+sfcalc
+======
+
+Calculates structure factors from a model.
+
+.. literalinclude:: sfcalc-help.txt
+   :language: console
+
 residues
 ========
 

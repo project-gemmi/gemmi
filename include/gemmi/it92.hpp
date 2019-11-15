@@ -18,6 +18,11 @@
 
 namespace gemmi {
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-conversion"
+#endif
+
 template<class Real>
 struct IT92 {
   struct Entry {
@@ -162,6 +167,10 @@ const typename IT92<Real>::Entry IT92<Real>::it92[98] = {
   {{36.7881, 24.7736, 17.8919, 4.23284}, {0.451018, 3.04619, 12.8946, 86.003}, 13.2754}, // Bk
   {{36.9185, 25.1995, 18.3317, 4.24391}, {0.437533, 3.00775, 12.4044, 83.7881}, 13.2674}, // Cf
 };
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 } // namespace gemmi
 #endif
