@@ -103,13 +103,13 @@ struct Mtz {
     std::vector<float> floats;
     std::vector<std::string> axes;
 
-    void set_cell(const UnitCell& cell) {
-      floats[0] = (float) cell.a;
-      floats[1] = (float) cell.b;
-      floats[2] = (float) cell.c;
-      floats[3] = (float) cell.alpha;
-      floats[4] = (float) cell.beta;
-      floats[5] = (float) cell.gamma;
+    void set_cell(const UnitCell& uc) {
+      floats[0] = (float) uc.a;
+      floats[1] = (float) uc.b;
+      floats[2] = (float) uc.c;
+      floats[3] = (float) uc.alpha;
+      floats[4] = (float) uc.beta;
+      floats[5] = (float) uc.gamma;
     }
   };
 
