@@ -100,10 +100,22 @@ void put_first_model_density_on_grid(const Structure& st, Grid<float>& grid,
   grid.symmetrize([](double a, double b) { return a + b; });
 }
 
-void print_structure_factors(const Structure& st, double d_min) {
+void print_structure_factors(const Structure& st, double d_min, bool verbose) {
   Grid<float> grid;
+  if (verbose) {
+    fprintf(stderr, "Preparing electron density on a grid...\n");
+    fflush(stderr);
+  }
   put_first_model_density_on_grid(st, grid, d_min / 3.);
+  if (verbose) {
+    fprintf(stderr, "FFT of grid %d x %d x %d\n", grid.nu, grid.nv, grid.nw);
+    fflush(stderr);
+  }
   Grid<std::complex<float>> sf = transform_map_to_f_phi(grid, /*half_l=*/true);
+  if (verbose) {
+    fprintf(stderr, "Printing results...\n");
+    fflush(stderr);
+  }
   double max_1_d2 = 1. / std::sqrt(d_min);
   for (int h = -sf.nu / 2; h < sf.nu / 2; ++h)
     for (int k = -sf.nv / 2; k < sf.nv / 2; ++k)
@@ -122,6 +134,10 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       std::string input = p.coordinate_input_file(i);
+      if (p.options[Verbose]) {
+        fprintf(stderr, "Reading file %s...\n", input.c_str());
+        fflush(stderr);
+      }
       gemmi::Structure st = gemmi::read_structure_gz(input);
       for (const option::Option* opt = p.options[Hkl]; opt; opt = opt->next()) {
         std::vector<int> hkl = parse_comma_separated_ints(opt->arg);
@@ -131,7 +147,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
       if (p.options[Dmin]) {
         double dmin = std::strtod(p.options[Dmin].arg, nullptr);
-        print_structure_factors(st, dmin);
+        print_structure_factors(st, dmin, p.options[Verbose]);
       }
     }
   } catch (std::runtime_error& e) {
