@@ -5,4 +5,5 @@ Analyses content of a PDB or mmCIF.
   -h, --help     Print usage and exit.
   -V, --version  Print version and exit.
   -v, --verbose  Verbose output.
+  -b             Print statistics of isotropic ADPs (B-factors).
   --dihedrals    Print peptide dihedral angles.

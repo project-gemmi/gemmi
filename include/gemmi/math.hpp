@@ -281,5 +281,34 @@ struct Correlation {
   double intercept() const { return mean_y - slope() * mean_x; }
 };
 
+
+struct DataStats {
+  double dmin = NAN;
+  double dmax = NAN;
+  double dmean = NAN;
+  double rms = NAN;
+};
+
+template<typename T>
+DataStats calculate_data_statistics(const std::vector<T>& data) {
+  DataStats stats;
+  if (data.empty())
+    return stats;
+  double sum = 0;
+  double sq_sum = 0;
+  stats.dmin = stats.dmax = data[0];
+  for (double d : data) {
+    sum += d;
+    sq_sum += d * d;
+    if (d < stats.dmin)
+      stats.dmin = d;
+    if (d > stats.dmax)
+      stats.dmax = d;
+  }
+  stats.dmean = sum / data.size();
+  stats.rms = std::sqrt(sq_sum / data.size() - stats.dmean * stats.dmean);
+  return stats;
+}
+
 } // namespace gemmi
 #endif

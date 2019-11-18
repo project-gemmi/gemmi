@@ -32,38 +32,10 @@ enum class GridSetup {
   FullCheck     // additionally consistency of redundant data
 };
 
-struct GridStats {
-  double dmin = NAN;
-  double dmax = NAN;
-  double dmean = NAN;
-  double rms = NAN;
-};
-
-template<typename T>
-GridStats calculate_grid_statistics(const std::vector<T>& data) {
-  GridStats st;
-  if (data.empty())
-    return st;
-  double sum = 0;
-  double sq_sum = 0;
-  st.dmin = st.dmax = data[0];
-  for (double d : data) {
-    sum += d;
-    sq_sum += d * d;
-    if (d < st.dmin)
-      st.dmin = d;
-    if (d > st.dmax)
-      st.dmax = d;
-  }
-  st.dmean = sum / data.size();
-  st.rms = std::sqrt(sq_sum / data.size() - st.dmean * st.dmean);
-  return st;
-}
-
 template<typename T=float>
 struct Ccp4 {
   Grid<T> grid;
-  GridStats hstats;  // data statistics read from / written to ccp4 map
+  DataStats hstats;  // data statistics read from / written to ccp4 map
   // stores raw headers if the grid was read from ccp4 map
   std::vector<int32_t> ccp4_header;
   bool same_byte_order = true;
@@ -150,7 +122,7 @@ struct Ccp4 {
 
   void update_ccp4_header(int mode, bool update_stats=false) {
     if (update_stats)
-      hstats = calculate_grid_statistics(grid.data);
+      hstats = calculate_data_statistics(grid.data);
     if (mode != 0 && mode != 1 && mode != 2 && mode != 6)
       fail("Only modes 0, 1, 2 and 6 are supported.");
     if (ccp4_header.empty()) {

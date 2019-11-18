@@ -3,17 +3,18 @@
 // This program analyses PDB or mmCIF files, printing similar things
 // as CCP4 RWCONTENTS: weight, Matthews coefficient, etc.
 
+#include <stdio.h>
 #include <gemmi/symmetry.hpp>
 #include <gemmi/resinfo.hpp>
 #include <gemmi/calculate.hpp>
 #include <gemmi/gzread.hpp>
+#include "histogram.h"     // for print_histogram
 #define GEMMI_PROG contents
 #include "options.h"
-#include <stdio.h>
 
 using namespace gemmi;
 
-enum OptionIndex { Dihedrals=4 };
+enum OptionIndex { Dihedrals=4, Bfactors };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -22,6 +23,8 @@ static const option::Descriptor Usage[] = {
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
+  { Bfactors, 0, "-b", "", Arg::None,
+    "  -b  \tPrint statistics of isotropic ADPs (B-factors)." },
   { Dihedrals, 0, "", "dihedrals", Arg::None,
     "  --dihedrals  \tPrint peptide dihedral angles." },
   { 0, 0, 0, 0, 0, 0 }
@@ -46,9 +49,6 @@ static void print_content_info(const Structure& st, bool /*verbose*/) {
   printf(" Number of images (symmetry * strict NCS): %5g\n", n_molecules);
   printf(" Cell volume [A^3]: %30.1f\n", st.cell.volume);
   printf(" ASU volume [A^3]:  %30.1f\n", st.cell.volume / order);
-  if (st.models.size() > 1)
-    std::fprintf(stderr, "Warning: using only the first model out of %zu.\n",
-                 st.models.size());
   double water_count = 0;
   int h_count = 0;
   double weight = 0;
@@ -146,6 +146,21 @@ static void print_atoms_on_special_positions(const Structure& st) {
   printf("\n");
 }
 
+static void print_bfactor_info(const gemmi::Model& model) {
+  std::vector<double> bfactors;
+  for (const Chain& chain : model.chains)
+    for (const Residue& res : chain.residues)
+      for (const Atom& atom : res.atoms)
+        if (atom.occ > 0)
+          bfactors.push_back(atom.b_iso);
+  gemmi::DataStats stats = gemmi::calculate_data_statistics(bfactors);
+  printf("\nIsotropic ADPs: %zu values\n", bfactors.size());
+  printf("  min: %.2f  max: %.2f  mean: %.2f  std.dev: %.2f\n",
+         stats.dmin, stats.dmax, stats.dmean, stats.rms);
+  if (stats.dmin < stats.dmax)
+    print_histogram(bfactors, stats.dmin, stats.dmax);
+}
+
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
@@ -159,8 +174,14 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (verbose || p.nonOptionsCount() > 1)
         std::printf("File: %s\n", input.c_str());
       Structure st = read_structure_gz(input);
+      if (st.models.size() > 1)
+        std::fprintf(stderr,
+                     "Warning: using only the first model out of %zu.\n",
+                     st.models.size());
       print_content_info(st, verbose);
       print_atoms_on_special_positions(st);
+      if (p.options[Bfactors])
+        print_bfactor_info(st.models.at(0));
       if (p.options[Dihedrals])
         print_dihedrals(st);
     }

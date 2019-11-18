@@ -1,17 +1,13 @@
 // Copyright 2017 Global Phasing Ltd.
 
+#include <cmath>           // for floor
+#include <cstdio>          // for fprintf
+#include <algorithm>       // for nth_element, count_if
 #include "gemmi/ccp4.hpp"
-#include "gemmi/gz.hpp"  // for MaybeGzipped
+#include "gemmi/gz.hpp"    // for MaybeGzipped
 #include "gemmi/util.hpp"  // for trim_str
 #include "gemmi/symmetry.hpp"
-#include <cmath>     // for floor
-#include <cstdio>    // for fprintf
-#include <algorithm> // for nth_element, count_if
-#define USE_UNICODE
-#ifdef USE_UNICODE
-#include <clocale>  // for setlocale
-#include <cwchar>  // for wint_t
-#endif
+#include "histogram.h"     // for print_histogram
 #define GEMMI_PROG map
 #include "options.h"
 
@@ -35,42 +31,7 @@ static const option::Descriptor Usage[] = {
 };
 
 template<typename T>
-void print_histogram(const std::vector<T>& data, double min, double max) {
-#ifdef USE_UNICODE
-  std::setlocale(LC_ALL, "");
-  constexpr int rows = 12;
-#else
-  constexpr int rows = 24;
-#endif
-  const int cols = 80; // TODO: use $COLUMNS
-  std::vector<int> bins(cols+1, 0);
-  double delta = max - min;
-  for (T d : data) {
-    int n = (int) std::floor((d - min) * (cols / delta));
-    bins[n >= 0 ? (n < cols ? n : cols - 1) : 0]++;
-  }
-  double max_h = *std::max_element(std::begin(bins), std::end(bins));
-  for (int i = rows; i > 0; --i) {
-    for (int j = 0; j < cols; ++j) {
-      double h = bins[j] / max_h * rows;
-#ifdef USE_UNICODE
-      wint_t c = ' ';
-      if (h > i) {
-        c = 0x2588; // 0x2581 = one eighth block, ..., 0x2588 = full block
-      } else if (h > i - 1) {
-        c = 0x2581 + static_cast<int>((h - (i - 1)) * 7);
-      }
-      printf("%lc", c);
-#else
-      std::putchar(h > i + 0.5 ? '#' : ' ');
-#endif
-    }
-    std::putchar('\n');
-  }
-}
-
-template<typename T>
-gemmi::GridStats print_info(const gemmi::Ccp4<T>& map) {
+gemmi::DataStats print_info(const gemmi::Ccp4<T>& map) {
   const gemmi::Grid<T>& grid = map.grid;
   std::printf("Map mode: %d\n", map.header_i32(4));
   std::printf("Endiannes: %snative\n", map.same_byte_order ? "" : "NOT ");
@@ -109,7 +70,7 @@ gemmi::GridStats print_info(const gemmi::Ccp4<T>& map) {
     std::printf("Non-zero origin: %d %d %d\n", origin[0], origin[1], origin[2]);
 
   std::printf("\nStatistics from HEADER and DATA\n");
-  gemmi::GridStats st = gemmi::calculate_grid_statistics(grid.data);
+  gemmi::DataStats st = gemmi::calculate_data_statistics(grid.data);
   std::printf("Minimum: %12.5f  %12.5f\n", map.hstats.dmin, st.dmin);
   std::printf("Maximum: %12.5f  %12.5f\n", map.hstats.dmax, st.dmax);
   std::printf("Mean:    %12.5f  %12.5f\n", map.hstats.dmean, st.dmean);
@@ -151,7 +112,7 @@ void print_deltas(const gemmi::Grid<T>& grid, double dmin, double dmax) {
         for (int u = f[0]; u < grid.nu; ++u)
           deltas.push_back(grid.get_value_q(u, v, w) -
                            grid.get_value_q(u - f[0], v - f[1], w - f[2]));
-    gemmi::GridStats st = gemmi::calculate_grid_statistics(deltas);
+    gemmi::DataStats st = gemmi::calculate_data_statistics(deltas);
     std::printf("\nd%c: min: %.5f  max: %.5f  mean: %.5f  std.dev: %.5f\n",
                 "XYZ"[i], st.dmin, st.dmax, st.dmean, st.rms);
     print_histogram(deltas, dmin, dmax);
@@ -180,7 +141,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (verbose)
         std::fprintf(stderr, "Reading %s ...\n", input);
       map.read_ccp4(gemmi::MaybeGzipped(input));
-      gemmi::GridStats stats = print_info(map);
+      gemmi::DataStats stats = print_info(map);
       if (p.options[Deltas])
         print_deltas(map.grid, stats.dmin, stats.dmax);
       if (p.options[Reorder]) {
