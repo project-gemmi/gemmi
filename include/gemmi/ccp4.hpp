@@ -211,11 +211,13 @@ struct Ccp4 {
     grid.unit_cell.set(header_rfloat(11), header_rfloat(12), header_rfloat(13),
                        header_rfloat(14), header_rfloat(15), header_rfloat(16));
     size_t ext_w = header_i32(24) / 4;  // NSYMBT in words
-    if (ext_w > 1000000)
-      fail("Unexpectedly long extendended header: " + path);
-    ccp4_header.resize(hsize + ext_w);
-    if (!f.read(ccp4_header.data() + hsize, 4 * ext_w))
-      fail("Failed to read extended header: " + path);
+    if (ext_w != 0) {
+      if (ext_w > 1000000)
+        fail("Unexpectedly long extended header: " + path);
+      ccp4_header.resize(hsize + ext_w);
+      if (!f.read(ccp4_header.data() + hsize, 4 * ext_w))
+        fail("Failed to read extended header: " + path);
+    }
     grid.nu = header_i32(1);
     grid.nv = header_i32(2);
     grid.nw = header_i32(3);
