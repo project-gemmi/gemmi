@@ -11,7 +11,7 @@
 #define GEMMI_PROG sfcalc
 #include "options.h"
 
-enum OptionIndex { Hkl=4, Dmin, Rate, RadiusMult };
+enum OptionIndex { Hkl=4, Dmin, Rate, Smear, RadiusMult };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -30,15 +30,11 @@ static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "\nOptions affecting FFT-based calculations:" },
   { Rate, 0, "", "rate", Arg::Float,
     "  --rate=R  \tShannon rate used for grid spacing (default: 1.5)." },
+  { Smear, 0, "", "smear", Arg::Float,
+    "  --smear=X  \tB added for Gaussian smearing (default: 0.0)." },
   { RadiusMult, 0, "", "radius-mult", Arg::Float,
     "  --radius-mult=X  \tMultiply atomic radius by X (default: 1.0)." },
   { 0, 0, 0, 0, 0, 0 }
-};
-
-struct Options {
-  double d_min;
-  double rate = 1.5;
-  double radius_mult = 1.0;
 };
 
 static
@@ -79,23 +75,31 @@ void print_sf(std::complex<double> sf, int h, int k, int l) {
 namespace {
 using namespace gemmi;
 
+struct RhoGridOptions {
+  double d_min;
+  double rate = 1.5;
+  double smear = 0.0;
+  double radius_mult = 1.0;
+};
+
 template <typename T>
 void add_atom_density_to_grid(const Atom& atom, Grid<T>& grid,
-                              double radius_mult=1.0) {
-  const double radius = 6 * radius_mult; // FIXME
+                              const RhoGridOptions& opt) {
+  const double radius = 6 * opt.radius_mult; // FIXME
   Fractional fpos = grid.unit_cell.fractionalize(atom.pos).wrap_to_unit();
   auto& scat = IT92<T>::get(atom.element);
   grid.use_points_around(fpos, radius, [&](T& point, double r2) {
-      point += (T) atom.occ * scat.calculate_density((T)r2, atom.b_iso);
+      double b = atom.b_iso + opt.smear;
+      point += (T)atom.occ * scat.calculate_density((T)r2, (T)b);
   });
 }
 
 void add_model_density_to_grid(const Model& model, Grid<float>& grid,
-                               double radius_mult=1.0) {
+                               const RhoGridOptions& opt) {
   for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms)
-        add_atom_density_to_grid(atom, grid, radius_mult);
+        add_atom_density_to_grid(atom, grid, opt);
 }
 
 template <typename T>
@@ -105,23 +109,22 @@ void set_grid_cell_and_spacegroup(Grid<T>& grid, const Structure& st) {
 }
 
 void put_first_model_density_on_grid(const Structure& st, Grid<float>& grid,
-                                     double grid_spacing, double radius_mult) {
+                                     const RhoGridOptions& opt) {
   grid.data.clear();
   set_grid_cell_and_spacegroup(grid, st);
-  grid.set_size_from_spacing(grid_spacing, true);
-  add_model_density_to_grid(st.models.at(0), grid, radius_mult);
+  grid.set_size_from_spacing(opt.d_min / (2 * opt.rate), true);
+  add_model_density_to_grid(st.models.at(0), grid, opt);
   grid.symmetrize([](double a, double b) { return a + b; });
 }
 
-void print_structure_factors(const Structure& st, const Options& opt,
+void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
                              bool verbose) {
   Grid<float> grid;
   if (verbose) {
     fprintf(stderr, "Preparing electron density on a grid...\n");
     fflush(stderr);
   }
-  put_first_model_density_on_grid(st, grid, opt.d_min / (2 * opt.rate),
-                                  opt.radius_mult);
+  put_first_model_density_on_grid(st, grid, opt);
   if (verbose) {
     fprintf(stderr, "FFT of grid %d x %d x %d\n", grid.nu, grid.nv, grid.nw);
     fflush(stderr);
@@ -134,9 +137,14 @@ void print_structure_factors(const Structure& st, const Options& opt,
   double max_1_d2 = 1. / std::sqrt(opt.d_min);
   for (int h = -sf.nu / 2; h < sf.nu / 2; ++h)
     for (int k = -sf.nv / 2; k < sf.nv / 2; ++k)
-      for (int l = 0; l < sf.nw / 2; ++l)
-        if (sf.unit_cell.calculate_1_d2(h, k, l) < max_1_d2)
-          print_sf(sf.data[sf.index_n(h, k, l)], h, k, l);
+      for (int l = 0; l < sf.nw / 2; ++l) {
+        double hkl_1_d2 = sf.unit_cell.calculate_1_d2(h, k, l);
+        if (hkl_1_d2 < max_1_d2) {
+          std::complex<double> value = sf.data[sf.index_n(h, k, l)];
+          double unsmear = std::exp(opt.smear * 0.25 * hkl_1_d2);
+          print_sf(unsmear * value, h, k, l);
+        }
+      }
 }
 
 } // namespace
@@ -164,10 +172,12 @@ int GEMMI_MAIN(int argc, char **argv) {
         print_sf(sf, hkl[0], hkl[1], hkl[2]);
       }
       if (p.options[Dmin]) {
-        Options opt;
+        RhoGridOptions opt;
         opt.d_min = std::strtod(p.options[Dmin].arg, nullptr);
         if (p.options[Rate])
           opt.rate = std::strtod(p.options[Rate].arg, nullptr);
+        if (p.options[Smear])
+          opt.smear = std::strtod(p.options[Smear].arg, nullptr);
         if (p.options[RadiusMult])
           opt.radius_mult = std::strtod(p.options[RadiusMult].arg, nullptr);
         print_structure_factors(st, opt, p.options[Verbose]);
