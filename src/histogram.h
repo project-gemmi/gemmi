@@ -1,6 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include <cstdio>
+#include <cstdlib>  // for getenv, strtol
 #include <vector>
 
 #define USE_UNICODE
@@ -17,7 +18,14 @@ void print_histogram(const std::vector<T>& data, double min, double max) {
 #else
   constexpr int rows = 24;
 #endif
-  const int cols = 80; // TODO: use $COLUMNS
+  int cols = 80;
+  // In bash COLUMNS is a shell variable, not environment variable.
+  // It needs to be exported to be visible here.
+  if (const char* columns_env = std::getenv("COLUMNS")) {
+    long c = std::strtol(columns_env, nullptr, 10);
+    if (c > 10 && c < 1000)  // sanity check
+      cols = (int) c;
+  }
   std::vector<int> bins(cols+1, 0);
   double delta = max - min;
   for (T d : data) {
