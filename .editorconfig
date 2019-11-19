@@ -2,6 +2,6 @@
 
 root = true
 
-[*.{cpp,hpp,f90}]
+[*.{cpp,hpp,h,f90}]
 indent_style = space
 indent_size = 2
