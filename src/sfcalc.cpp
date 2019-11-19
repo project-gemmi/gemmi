@@ -11,7 +11,7 @@
 #define GEMMI_PROG sfcalc
 #include "options.h"
 
-enum OptionIndex { Hkl=4, Dmin };
+enum OptionIndex { Hkl=4, Dmin, Rate, RadiusMult };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -27,7 +27,18 @@ static const option::Descriptor Usage[] = {
     "  --hkl=H,K,L  \tCalculate structure factor F_hkl." },
   { Dmin, 0, "", "dmin", Arg::Float,
     "  --dmin=D  \tCalculate structure factors up to given resolution." },
+  { NoOp, 0, "", "", Arg::None, "\nOptions affecting FFT-based calculations:" },
+  { Rate, 0, "", "rate", Arg::Float,
+    "  --rate=R  \tShannon rate used for grid spacing (default: 1.5)." },
+  { RadiusMult, 0, "", "radius-mult", Arg::Float,
+    "  --radius-mult=X  \tMultiply atomic radius by X (default: 1.0)." },
   { 0, 0, 0, 0, 0, 0 }
+};
+
+struct Options {
+  double d_min;
+  double rate = 1.5;
+  double radius_mult = 1.0;
 };
 
 static
@@ -69,8 +80,9 @@ namespace {
 using namespace gemmi;
 
 template <typename T>
-void add_atom_density_to_grid(const Atom& atom, Grid<T>& grid) {
-  const double radius = 6; // FIXME
+void add_atom_density_to_grid(const Atom& atom, Grid<T>& grid,
+                              double radius_mult=1.0) {
+  const double radius = 6 * radius_mult; // FIXME
   Fractional fpos = grid.unit_cell.fractionalize(atom.pos).wrap_to_unit();
   auto& scat = IT92<T>::get(atom.element);
   grid.use_points_around(fpos, radius, [&](T& point, double r2) {
@@ -78,11 +90,12 @@ void add_atom_density_to_grid(const Atom& atom, Grid<T>& grid) {
   });
 }
 
-void add_model_density_to_grid(const Model& model, Grid<float>& grid) {
+void add_model_density_to_grid(const Model& model, Grid<float>& grid,
+                               double radius_mult=1.0) {
   for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms)
-        add_atom_density_to_grid(atom, grid);
+        add_atom_density_to_grid(atom, grid, radius_mult);
 }
 
 template <typename T>
@@ -92,21 +105,23 @@ void set_grid_cell_and_spacegroup(Grid<T>& grid, const Structure& st) {
 }
 
 void put_first_model_density_on_grid(const Structure& st, Grid<float>& grid,
-                                     double grid_spacing) {
+                                     double grid_spacing, double radius_mult) {
   grid.data.clear();
   set_grid_cell_and_spacegroup(grid, st);
   grid.set_size_from_spacing(grid_spacing, true);
-  add_model_density_to_grid(st.models.at(0), grid);
+  add_model_density_to_grid(st.models.at(0), grid, radius_mult);
   grid.symmetrize([](double a, double b) { return a + b; });
 }
 
-void print_structure_factors(const Structure& st, double d_min, bool verbose) {
+void print_structure_factors(const Structure& st, const Options& opt,
+                             bool verbose) {
   Grid<float> grid;
   if (verbose) {
     fprintf(stderr, "Preparing electron density on a grid...\n");
     fflush(stderr);
   }
-  put_first_model_density_on_grid(st, grid, d_min / 3.);
+  put_first_model_density_on_grid(st, grid, opt.d_min / (2 * opt.rate),
+                                  opt.radius_mult);
   if (verbose) {
     fprintf(stderr, "FFT of grid %d x %d x %d\n", grid.nu, grid.nv, grid.nw);
     fflush(stderr);
@@ -116,7 +131,7 @@ void print_structure_factors(const Structure& st, double d_min, bool verbose) {
     fprintf(stderr, "Printing results...\n");
     fflush(stderr);
   }
-  double max_1_d2 = 1. / std::sqrt(d_min);
+  double max_1_d2 = 1. / std::sqrt(opt.d_min);
   for (int h = -sf.nu / 2; h < sf.nu / 2; ++h)
     for (int k = -sf.nv / 2; k < sf.nv / 2; ++k)
       for (int l = 0; l < sf.nw / 2; ++l)
@@ -141,13 +156,21 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::Structure st = gemmi::read_structure_gz(input);
       for (const option::Option* opt = p.options[Hkl]; opt; opt = opt->next()) {
         std::vector<int> hkl = parse_comma_separated_ints(opt->arg);
+        if (p.options[Verbose])
+          fprintf(stderr, "hkl=(%d %d %d) -> d=%g\n", hkl[0], hkl[1], hkl[2],
+                  st.cell.calculate_d(hkl[0], hkl[1], hkl[2]));
         std::complex<double> sf =
           calculate_structure_factor(st, hkl[0], hkl[1], hkl[2]);
         print_sf(sf, hkl[0], hkl[1], hkl[2]);
       }
       if (p.options[Dmin]) {
-        double dmin = std::strtod(p.options[Dmin].arg, nullptr);
-        print_structure_factors(st, dmin, p.options[Verbose]);
+        Options opt;
+        opt.d_min = std::strtod(p.options[Dmin].arg, nullptr);
+        if (p.options[Rate])
+          opt.rate = std::strtod(p.options[Rate].arg, nullptr);
+        if (p.options[RadiusMult])
+          opt.radius_mult = std::strtod(p.options[RadiusMult].arg, nullptr);
+        print_structure_factors(st, opt, p.options[Verbose]);
       }
     }
   } catch (std::runtime_error& e) {
