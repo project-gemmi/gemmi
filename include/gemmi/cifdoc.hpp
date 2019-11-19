@@ -950,7 +950,7 @@ inline void check_duplicates(const Document& d) {
 
 inline bool is_text_field(const std::string& val) {
   size_t len = val.size();
-  return len > 3 && val[0] == ';' && (val[len-2] == '\n' || val[len-2] == '\r');
+  return len > 2 && val[0] == ';' && (val[len-2] == '\n' || val[len-2] == '\r');
 }
 
 inline std::string quote(std::string v) {

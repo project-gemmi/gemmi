@@ -35,6 +35,7 @@
  "frames": {
   "_and": "item",
   "_exptl_crystal_grow.pdbx_details": "0.1 M BIS-TRIS 5.5 pH 5.5, 25%PEG3350",
+  "_cell_special_details": "",
   "Frames": {
    "fr": {
     "_a": 1,
