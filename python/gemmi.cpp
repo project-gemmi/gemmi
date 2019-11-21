@@ -6,6 +6,7 @@
 #include "gemmi/dirwalk.hpp"
 #include "gemmi/fileutil.hpp"  // for expand_if_pdb_code
 #include "gemmi/elem.hpp"
+#include "gemmi/it92.hpp"
 #include "gemmi/smcif.hpp"
 
 namespace py = pybind11;
@@ -23,6 +24,7 @@ void add_monlib(py::module& cif); // monlib.cpp
 void add_misc(py::module& m) {
   using gemmi::Element;
   using gemmi::AtomicStructure;
+  using IT92 = gemmi::IT92<double>;
   py::class_<Element>(m, "Element")
     .def(py::init<const std::string &>())
     .def(py::init<int>())
@@ -38,6 +40,9 @@ void add_misc(py::module& m) {
     .def_property_readonly("weight", &Element::weight)
     .def_property_readonly("covalent_r", &Element::covalent_r)
     .def_property_readonly("atomic_number", &Element::atomic_number)
+    .def_property_readonly("it92", [](const Element& self) {
+        return IT92::get_ptr(self.elem);
+    }, py::return_value_policy::reference_internal)
     .def("__repr__", [](const Element& self) {
         return "<gemmi.Element: " + std::string(self.name()) + ">";
     });
@@ -61,6 +66,12 @@ void add_misc(py::module& m) {
     .def("__repr__", [](const AtomicStructure& self) {
         return "<gemmi.AtomicStructure: " + std::string(self.name) + ">";
     });
+
+  py::class_<IT92::Coef>(m, "IT92Coef")
+    .def("calculate_sf", &IT92::Coef::calculate_sf, py::arg("stol2"))
+    .def("calculate_density", &IT92::Coef::calculate_density,
+         py::arg("r2"), py::arg("B"))
+    ;
 
   py::class_<gemmi::CifWalk>(m, "CifWalk")
     .def(py::init<const char*>())
