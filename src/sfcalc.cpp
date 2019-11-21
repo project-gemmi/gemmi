@@ -11,7 +11,7 @@
 #define GEMMI_PROG sfcalc
 #include "options.h"
 
-enum OptionIndex { Hkl=4, Dmin, Rate, Smear, RadiusMult, Check };
+enum OptionIndex { Hkl=4, Dmin, Rate, Smear, RCutoff, Check };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -32,8 +32,8 @@ static const option::Descriptor Usage[] = {
     "  --rate=R  \tShannon rate used for grid spacing (default: 1.5)." },
   { Smear, 0, "", "smear", Arg::Float,
     "  --smear=X  \tB added for Gaussian smearing (default: 0.0)." },
-  { RadiusMult, 0, "", "radius-mult", Arg::Float,
-    "  --radius-mult=X  \tMultiply atomic radius by X (default: 1.0)." },
+  { RCutoff, 0, "", "r-cutoff", Arg::Float,
+    "  --r-cutoff=Y  \tUse atomic radius R such that rho(R) < Y (default: 1e-4)." },
   { Check, 0, "", "check", Arg::None,
     "  --check  \tCalculate exact values and report differences (slow)." },
   { 0, 0, 0, 0, 0, 0 }
@@ -77,21 +77,55 @@ void print_sf(std::complex<double> sf, int h, int k, int l) {
 namespace {
 using namespace gemmi;
 
+template <typename T>
+double determine_effective_radius(const T& coef, float b, float min_value) {
+  float x1 = 3.5f;
+  float y1 = coef.calculate_density(x1*x1, b);
+  float x2 = x1;
+  float y2 = y1;
+  if (y1 < min_value)
+    while (y1 < min_value) {
+      x2 = x1;
+      y2 = y1;
+      x1 -= 0.5f;
+      y1 = coef.calculate_density(x1*x1, b);
+    }
+  else
+    while (y2 > min_value) {
+      x1 = x2;
+      y1 = y2;
+      x2 += 0.5f;
+      y2 = coef.calculate_density(x2*x2, b);
+    }
+  while (x2 - x1 > 0.02f) {
+    float new_x = 0.5f * (x2 + x1);
+    float new_y = coef.calculate_density(new_x*new_x, b);
+    if (new_y < min_value) {
+      x2 = new_x;
+      y2 = new_y;
+    } else {
+      x1 = new_x;
+      y1 = new_y;
+    }
+  }
+  return x2;
+}
+
 struct RhoGridOptions {
   double d_min;
   double rate = 1.5;
   double smear = 0.0;
-  double radius_mult = 1.0;
+  float r_cutoff = 1e-4f;
 };
 
 template <typename T>
 void add_atom_density_to_grid(const Atom& atom, Grid<T>& grid,
                               const RhoGridOptions& opt) {
-  const double radius = 6 * opt.radius_mult; // FIXME
-  Fractional fpos = grid.unit_cell.fractionalize(atom.pos).wrap_to_unit();
   auto& scat = IT92<T>::get(atom.element);
+  double b = atom.b_iso + opt.smear;
+  double radius = determine_effective_radius(scat, (float) b, opt.r_cutoff);
+  Fractional fpos = grid.unit_cell.fractionalize(atom.pos).wrap_to_unit();
   grid.use_points_around(fpos, radius, [&](T& point, double r2) {
-      double b = atom.b_iso + opt.smear;
       point += (T)atom.occ * scat.calculate_density((T)r2, (T)b);
   });
 }
@@ -204,8 +238,8 @@ int GEMMI_MAIN(int argc, char **argv) {
           opt.rate = std::strtod(p.options[Rate].arg, nullptr);
         if (p.options[Smear])
           opt.smear = std::strtod(p.options[Smear].arg, nullptr);
-        if (p.options[RadiusMult])
-          opt.radius_mult = std::strtod(p.options[RadiusMult].arg, nullptr);
+        if (p.options[RCutoff])
+          opt.r_cutoff = (float) std::strtod(p.options[RCutoff].arg, nullptr);
         print_structure_factors(st, opt, p.options[Verbose], p.options[Check]);
       }
     }

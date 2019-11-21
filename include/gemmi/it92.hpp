@@ -25,7 +25,7 @@ namespace gemmi {
 
 template<class Real>
 struct IT92 {
-  struct Entry {
+  struct Coef {
     Real a[4], b[4], c;
 
     // argument: (sin(theta)/lambda)^2
@@ -49,25 +49,25 @@ struct IT92 {
     }
   };
 
-  static const Entry it92[98];
+  static const Coef it92[98];
 
   static bool has(El el) {
     return el != El::X && (el <= El::Cf || el == El::D);
   }
 
-  static const Entry& get(El el) {
+  static const Coef& get(El el) {
     if (el == El::D)
       el = El::H;
     return it92[(int)el - 1];
   }
 
-  static const Entry* get_ptr(El el) {
+  static const Coef* get_ptr(El el) {
     return has(el) ? &get(el) : nullptr;
   }
 };
 
 template<class Real>
-const typename IT92<Real>::Entry IT92<Real>::it92[98] = {
+const typename IT92<Real>::Coef IT92<Real>::it92[98] = {
   {{0.493002, 0.322912, 0.140191, 0.04081}, {10.5109, 26.1257, 3.14236, 57.7997}, 0.003038}, // H
   {{0.8734, 0.6309, 0.3112, 0.178}, {9.1037, 3.3568, 22.9276, 0.9821}, 0.0064}, // He
   {{1.1282, 0.7508, 0.6175, 0.4653}, {3.9546, 1.0524, 85.3905, 168.261}, 0.0377}, // Li
