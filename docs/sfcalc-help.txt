@@ -18,3 +18,4 @@ Options affecting FFT-based calculations:
   --rate=R         Shannon rate used for grid spacing (default: 1.5).
   --smear=X        B added for Gaussian smearing (default: 0.0).
   --radius-mult=X  Multiply atomic radius by X (default: 1.0).
+  --check          Calculate exact values and report differences (slow).

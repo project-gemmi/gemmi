@@ -11,7 +11,7 @@
 #define GEMMI_PROG sfcalc
 #include "options.h"
 
-enum OptionIndex { Hkl=4, Dmin, Rate, Smear, RadiusMult };
+enum OptionIndex { Hkl=4, Dmin, Rate, Smear, RadiusMult, Check };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -34,6 +34,8 @@ static const option::Descriptor Usage[] = {
     "  --smear=X  \tB added for Gaussian smearing (default: 0.0)." },
   { RadiusMult, 0, "", "radius-mult", Arg::Float,
     "  --radius-mult=X  \tMultiply atomic radius by X (default: 1.0)." },
+  { Check, 0, "", "check", Arg::None,
+    "  --check  \tCalculate exact values and report differences (slow)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -118,7 +120,7 @@ void put_first_model_density_on_grid(const Structure& st, Grid<float>& grid,
 }
 
 void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
-                             bool verbose) {
+                             bool verbose, bool check) {
   Grid<float> grid;
   if (verbose) {
     fprintf(stderr, "Preparing electron density on a grid...\n");
@@ -134,17 +136,41 @@ void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
     fprintf(stderr, "Printing results...\n");
     fflush(stderr);
   }
-  double max_1_d2 = 1. / std::sqrt(opt.d_min);
+  double sum_sq_diff = 0.;
+  double sum_abs = 0.;
+  double max_abs_df = 0.;
+  int count = 0;
+  double max_1_d2 = 1. / (opt.d_min * opt.d_min);
   for (int h = -sf.nu / 2; h < sf.nu / 2; ++h)
     for (int k = -sf.nv / 2; k < sf.nv / 2; ++k)
       for (int l = 0; l < sf.nw / 2; ++l) {
         double hkl_1_d2 = sf.unit_cell.calculate_1_d2(h, k, l);
         if (hkl_1_d2 < max_1_d2) {
           std::complex<double> value = sf.data[sf.index_n(h, k, l)];
-          double unsmear = std::exp(opt.smear * 0.25 * hkl_1_d2);
-          print_sf(unsmear * value, h, k, l);
+          value *= std::exp(opt.smear * 0.25 * hkl_1_d2);
+          if (check) {
+            std::complex<double> exact = calculate_structure_factor(st, h,k,l);
+            double abs_df = std::abs(value - exact);
+            sum_sq_diff += sq(abs_df);
+            sum_abs += std::abs(exact);
+            if (abs_df > max_abs_df)
+              max_abs_df = abs_df;
+            ++count;
+            printf(" (%d %d %d)\t%7.2f\t%7.2f  \t%6.2f\t%6.2f\td=%5.2f\n",
+                   h, k, l, std::abs(value), std::abs(exact),
+                   gemmi::phase_in_angles(value), gemmi::phase_in_angles(exact),
+                   1. / std::sqrt(hkl_1_d2));
+          } else {
+            print_sf(value, h, k, l);
+          }
         }
       }
+  if (check) {
+    double rmse = std::sqrt(sum_sq_diff / count);
+    double abs_avg = sum_abs / count;
+    fprintf(stderr, "RMSE: %g\tNormalized RMSE: %g%%\tMax |dF|: %g\n",
+            rmse, 100. * rmse / abs_avg, max_abs_df);
+  }
 }
 
 } // namespace
@@ -180,7 +206,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           opt.smear = std::strtod(p.options[Smear].arg, nullptr);
         if (p.options[RadiusMult])
           opt.radius_mult = std::strtod(p.options[RadiusMult].arg, nullptr);
-        print_structure_factors(st, opt, p.options[Verbose]);
+        print_structure_factors(st, opt, p.options[Verbose], p.options[Check]);
       }
     }
   } catch (std::runtime_error& e) {
