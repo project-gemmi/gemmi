@@ -7,11 +7,12 @@
 #include <gemmi/fourier.hpp>
 #include <gemmi/gzread.hpp>
 #include <gemmi/it92.hpp>
+#include <gemmi/fileutil.hpp>  // for file_open
 
 #define GEMMI_PROG sfcalc
 #include "options.h"
 
-enum OptionIndex { Hkl=4, Dmin, Rate, Smear, RCutoff, Check };
+enum OptionIndex { Hkl=4, Dmin, Rate, Smear, RCut, Check };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -31,10 +32,10 @@ static const option::Descriptor Usage[] = {
   { Rate, 0, "", "rate", Arg::Float,
     "  --rate=R  \tShannon rate used for grid spacing (default: 1.5)." },
   { Smear, 0, "", "smear", Arg::Float,
-    "  --smear=X  \tB added for Gaussian smearing (default: 0.0)." },
-  { RCutoff, 0, "", "r-cutoff", Arg::Float,
-    "  --r-cutoff=Y  \tUse atomic radius R such that rho(R) < Y (default: 1e-4)." },
-  { Check, 0, "", "check", Arg::None,
+    "  --smear=X  \tB added for Gaussian smearing (default: auto)." },
+  { RCut, 0, "", "rcut", Arg::Float,
+    "  --rcut=Y  \tUse atomic radius R such that rho(R) < Y (default: 5e-5)." },
+  { Check, 0, "", "check", Arg::Optional,
     "  --check  \tCalculate exact values and report differences (slow)." },
   { 0, 0, 0, 0, 0, 0 }
 };
@@ -114,8 +115,8 @@ double determine_effective_radius(const T& coef, float b, float min_value) {
 struct RhoGridOptions {
   double d_min;
   double rate = 1.5;
-  double smear = 0.0;
-  float r_cutoff = 1e-4f;
+  double smear = 0.;
+  float r_cut = 5e-5f;
 };
 
 template <typename T>
@@ -123,7 +124,7 @@ void add_atom_density_to_grid(const Atom& atom, Grid<T>& grid,
                               const RhoGridOptions& opt) {
   auto& scat = IT92<T>::get(atom.element);
   double b = atom.b_iso + opt.smear;
-  double radius = determine_effective_radius(scat, (float) b, opt.r_cutoff);
+  double radius = determine_effective_radius(scat, (float) b, opt.r_cut);
   Fractional fpos = grid.unit_cell.fractionalize(atom.pos).wrap_to_unit();
   grid.use_points_around(fpos, radius, [&](T& point, double r2) {
       point += (T)atom.occ * scat.calculate_density((T)r2, (T)b);
@@ -154,7 +155,7 @@ void put_first_model_density_on_grid(const Structure& st, Grid<float>& grid,
 }
 
 void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
-                             bool verbose, bool check) {
+                             bool verbose, bool check, const char* cache_file) {
   Grid<float> grid;
   if (verbose) {
     fprintf(stderr, "Preparing electron density on a grid...\n");
@@ -170,6 +171,9 @@ void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
     fprintf(stderr, "Printing results...\n");
     fflush(stderr);
   }
+  gemmi::fileptr_t cache(nullptr, nullptr);
+  if (cache_file)
+    cache = gemmi::file_open(cache_file, "r");
   double sum_sq_diff = 0.;
   double sum_abs = 0.;
   double max_abs_df = 0.;
@@ -183,14 +187,28 @@ void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
           std::complex<double> value = sf.data[sf.index_n(h, k, l)];
           value *= std::exp(opt.smear * 0.25 * hkl_1_d2);
           if (check) {
-            std::complex<double> exact = calculate_structure_factor(st, h,k,l);
+            std::complex<double> exact;
+            if (cache_file) {
+              char buf[100];
+              if (fgets(buf, 99, cache.get()) == nullptr)
+                gemmi::fail("cannot read line from file");
+              int h_, k_, l_;
+              double f_abs, f_deg;
+              sscanf(buf, " (%d %d %d) %*f %lf %*f %lf",
+                     &h_, &k_, &l_, &f_abs, &f_deg);
+              if (h_ != h || k_ != k || l_ != l)
+                gemmi::fail("Different h k l order in file.");
+              exact = std::polar(f_abs, gemmi::rad(f_deg));
+            } else {
+              exact = calculate_structure_factor(st, h, k, l);
+            }
             double abs_df = std::abs(value - exact);
             sum_sq_diff += sq(abs_df);
             sum_abs += std::abs(exact);
             if (abs_df > max_abs_df)
               max_abs_df = abs_df;
             ++count;
-            printf(" (%d %d %d)\t%7.2f\t%7.2f  \t%6.2f\t%6.2f\td=%5.2f\n",
+            printf(" (%d %d %d)\t%7.2f\t%8.3f \t%6.2f\t%7.3f\td=%5.2f\n",
                    h, k, l, std::abs(value), std::abs(exact),
                    gemmi::phase_in_angles(value), gemmi::phase_in_angles(exact),
                    1. / std::sqrt(hkl_1_d2));
@@ -205,6 +223,16 @@ void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
     fprintf(stderr, "RMSE: %g\tNormalized RMSE: %g%%\tMax |dF|: %g\n",
             rmse, 100. * rmse / abs_avg, max_abs_df);
   }
+}
+
+double get_minimum_b_iso(const Model& model) {
+  double b_min = 1000.;
+  for (const Chain& chain : model.chains)
+    for (const Residue& residue : chain.residues)
+      for (const Atom& atom : residue.atoms)
+        if (atom.b_iso < b_min)
+          b_min = atom.b_iso;
+  return b_min;
 }
 
 } // namespace
@@ -236,11 +264,27 @@ int GEMMI_MAIN(int argc, char **argv) {
         opt.d_min = std::strtod(p.options[Dmin].arg, nullptr);
         if (p.options[Rate])
           opt.rate = std::strtod(p.options[Rate].arg, nullptr);
-        if (p.options[Smear])
+        if (p.options[RCut])
+          opt.r_cut = (float) std::strtod(p.options[RCut].arg, nullptr);
+
+        if (p.options[Smear]) {
           opt.smear = std::strtod(p.options[Smear].arg, nullptr);
-        if (p.options[RCutoff])
-          opt.r_cutoff = (float) std::strtod(p.options[RCutoff].arg, nullptr);
-        print_structure_factors(st, opt, p.options[Verbose], p.options[Check]);
+        } else if (opt.rate < 3) {
+          // ITfC vol B section 1.3.4.4.5 has formula
+          // B = log Q / (sigma * (sigma - 1) * d^*_max^2)
+          // But it is more complex. If we take into account numerical
+          // accuracy, optimal B depends also on atomic cutoff radius
+          // and on distribution of B-factors. On the other hand increasing
+          // B increases the radius. He we use an ad-hoc rule.
+          double sqrtB = 4 * opt.d_min * (1./opt.rate - 0.2);
+          double b_min = get_minimum_b_iso(st.models.at(0));
+          opt.smear = sqrtB * sqrtB - b_min;
+          if (p.options[Verbose])
+            fprintf(stderr, "B_min=%g, B_add=%g\n", b_min, opt.smear);
+        }
+
+        print_structure_factors(st, opt, p.options[Verbose],
+                                p.options[Check], p.options[Check].arg);
       }
     }
   } catch (std::runtime_error& e) {
