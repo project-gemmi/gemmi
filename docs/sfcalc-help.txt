@@ -8,14 +8,14 @@ Either directly calculates reflections specified by option --hkl
 or uses FFT to calculate all reflections up to requested resolution.
 
 Options:
-  -h, --help     Print usage and exit.
-  -V, --version  Print version and exit.
-  -v, --verbose  Verbose output.
-  --hkl=H,K,L    Calculate structure factor F_hkl.
-  --dmin=D       Calculate structure factors up to given resolution.
+  -h, --help       Print usage and exit.
+  -V, --version    Print version and exit.
+  -v, --verbose    Verbose output.
+  --hkl=H,K,L      Calculate structure factor F_hkl.
+  --dmin=D         Calculate structure factors up to given resolution.
 
 Options affecting FFT-based calculations:
-  --rate=R       Shannon rate used for grid spacing (default: 1.5).
-  --smear=X      B added for Gaussian smearing (default: auto).
-  --rcut=Y       Use atomic radius R such that rho(R) < Y (default: 5e-5).
-  --check        Calculate exact values and report differences (slow).
+  --rate=R         Shannon rate used for grid spacing (default: 1.5).
+  --smear=X        B added for Gaussian smearing (default: auto).
+  --rcut=Y         Use atomic radius r such that rho(r) < Y (default: 5e-5).
+  --check[=CACHE]  Calculate exact values and report differences (slow).

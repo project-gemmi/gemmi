@@ -392,6 +392,76 @@ Calculates structure factors from a model.
 .. literalinclude:: sfcalc-help.txt
    :language: console
 
+In general, structure factors can be calculated
+
+* either directly, by summing contributions from each atom to each reflection,
+* or by calculating an electron density on a grid and using discrete
+  Fourier transform.
+
+This program can measure the errors resulting from the latter method
+(in addition to its main function -- calculation of the structure factors).
+The errors depend on
+
+* the grid spacing -- controlled by the oversampling ``--rate=R``;
+  the maximum spacing is *d*\ :sub:`min`/2\ *R*,
+* atomic radius -- we neglect electron density of the atom beyond this radius;
+  only density contributions above the (absolute) value specified with
+  ``--rcut`` are taken into account,
+* Gaussian dampening (smearing) factor -- artificial temperature factor
+  *B*\ :sub:`extra` added to all atomic B-factors (the structure factors
+  are later corrected to cancel it out); either specified with ``--smear``
+  or picked automatically.
+
+Choosing these parameters is a trade-off between efficiency and accuracy.
+*B*\ :sub:`extra` is the most interesting one.
+It is discussed in the `ITfC vol B <https://it.iucr.org/Bb/contents/>`_,
+chapter 1.3 by G. Bricogne, section 1.3.4.4.5, and further in papers by
+`J. Navaza (2002) <https://doi.org/10.1107/S0108767302016318>`_ and by
+`P. Afonine and A. Urzhumtsev (2003) <https://doi.org/10.1107/S0108767303022062>`_.
+Still, I have not found a practical recipe how to pick a good value.
+Increasing the dampening makes the computations slower (because it
+increases atomic radius), while the value of *B*\ :sub:`extra` that
+gives the most accurate results depends on the resolution, oversampling,
+atomic radius cut-off, and on the distribution of B-factors
+(normally, only the minimal B-factor in the model is considered).
+
+The option ``--check`` can be used to see how accuracy and efficiency
+depends on the choice of parameters.  For example, this shell script
+performs a series of calculations with differing *B*\ :sub:`extra`:
+
+.. code-block:: shell
+
+  model=1mru.pdb
+  dmin=2.5
+  gemmi sfcalc --dmin=$dmin --check $model >cache.tsv
+  for i in `seq -20 5 20`; do
+      printf -- "$i\t" >&2
+      gemmi sfcalc --dmin=$dmin --rate=1.5 --rcut=1e-4 --smear=$i --check=cache.tsv $model
+  done >/dev/null
+
+Running it prints:
+
+.. code-block:: none
+
+  -20	RMSE: 0.93304	0.54950%	Max |dF|: 38.804	0.31107s
+  -15	RMSE: 0.37007	0.21795%	Max |dF|: 41.257	0.31841s
+  -10	RMSE: 0.27075	0.15945%	Max |dF|: 44.347	0.33627s
+  -5	RMSE: 0.27228	0.16035%	Max |dF|: 47.585	0.34612s
+  0	RMSE: 0.28903	0.17022%	Max |dF|: 50.952	0.35979s
+  5	RMSE: 0.30806	0.18143%	Max |dF|: 54.355	0.37591s
+  10	RMSE: 0.32847	0.19345%	Max |dF|: 57.921	0.38800s
+  15	RMSE: 0.35029	0.20630%	Max |dF|: 61.655	0.39949s
+  20	RMSE: 0.37283	0.21958%	Max |dF|: 65.437	0.41929s
+
+The error used in RMSE is the magnitude of the difference of two vectors:
+\|F\ :sub:`approx` -- F\ :sub:`exact`\|.
+The next column is RMSE normalized by the sum of \|F\ :sub:`calc`\|.
+Then we have maximum error for a single reflection, and the wall time
+of computations.
+We can see that in this case negative "dampening" (subtracting about
+10A\ :sup:`2` from all B-factors) improves both accuracy and performance.
+
+
 residues
 ========
 

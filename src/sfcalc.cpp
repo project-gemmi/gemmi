@@ -3,6 +3,7 @@
 // Calculate structure factors from a molecular model.
 
 #include <stdio.h>
+#include <chrono>
 #include <complex>
 #include <gemmi/fourier.hpp>
 #include <gemmi/gzread.hpp>
@@ -34,9 +35,9 @@ static const option::Descriptor Usage[] = {
   { Smear, 0, "", "smear", Arg::Float,
     "  --smear=X  \tB added for Gaussian smearing (default: auto)." },
   { RCut, 0, "", "rcut", Arg::Float,
-    "  --rcut=Y  \tUse atomic radius R such that rho(R) < Y (default: 5e-5)." },
+    "  --rcut=Y  \tUse atomic radius r such that rho(r) < Y (default: 5e-5)." },
   { Check, 0, "", "check", Arg::Optional,
-    "  --check  \tCalculate exact values and report differences (slow)." },
+    "  --check[=CACHE]  \tCalculate exact values and report differences (slow)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -156,18 +157,25 @@ void put_first_model_density_on_grid(const Structure& st, Grid<float>& grid,
 
 void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
                              bool verbose, bool check, const char* cache_file) {
+  using Clock = std::chrono::steady_clock;
   Grid<float> grid;
   if (verbose) {
     fprintf(stderr, "Preparing electron density on a grid...\n");
     fflush(stderr);
   }
+  auto start = Clock::now();
   put_first_model_density_on_grid(st, grid, opt);
   if (verbose) {
+    std::chrono::duration<double> elapsed = Clock::now() - start;
+    fprintf(stderr, "...took %g s.\n", elapsed.count());
     fprintf(stderr, "FFT of grid %d x %d x %d\n", grid.nu, grid.nv, grid.nw);
     fflush(stderr);
+    start = Clock::now();
   }
   Grid<std::complex<float>> sf = transform_map_to_f_phi(grid, /*half_l=*/true);
   if (verbose) {
+    std::chrono::duration<double> elapsed = Clock::now() - start;
+    fprintf(stderr, "...took %g s.\n", elapsed.count());
     fprintf(stderr, "Printing results...\n");
     fflush(stderr);
   }
@@ -220,8 +228,13 @@ void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
   if (check) {
     double rmse = std::sqrt(sum_sq_diff / count);
     double abs_avg = sum_abs / count;
-    fprintf(stderr, "RMSE: %g\tNormalized RMSE: %g%%\tMax |dF|: %g\n",
+    fprintf(stderr, "RMSE: %#.5g\t%#.5g%%\tMax |dF|: %#.5g",
             rmse, 100. * rmse / abs_avg, max_abs_df);
+    if (!verbose) {
+      std::chrono::duration<double> elapsed = Clock::now() - start;
+      fprintf(stderr, "\t%#.5gs", elapsed.count());
+    }
+    fprintf(stderr, "\n");
   }
 }
 
