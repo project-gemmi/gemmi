@@ -190,7 +190,7 @@ static void print_data_for_html(const Context& ctx) {
       using Pair = std::pair<std::string, int>;
       std::vector<Pair> pairs(st.values.begin(), st.values.end());
       std::sort(pairs.begin(), pairs.end(),
-                [](Pair& a, Pair& b) { return a.second > b.second; });
+          [](const Pair& a, const Pair& b) { return a.second > b.second; });
       for (auto& value_count : pairs) {
         gemmi::replace_all(value_count.first, "&", "&amp;");
         gemmi::replace_all(value_count.first, "<", "&lt;");

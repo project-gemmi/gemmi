@@ -18,7 +18,7 @@
 
 namespace gemmi {
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && __GNUC__-0 > 4
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wfloat-conversion"
 #endif
@@ -168,7 +168,7 @@ const typename IT92<Real>::Coef IT92<Real>::it92[98] = {
   {{36.9185, 25.1995, 18.3317, 4.24391}, {0.437533, 3.00775, 12.4044, 83.7881}, 13.2674}, // Cf
 };
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && __GNUC__-0 > 4
 #pragma GCC diagnostic pop
 #endif
 
