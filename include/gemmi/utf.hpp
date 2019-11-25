@@ -41,7 +41,7 @@ inline std::wstring UTF8_to_wchar(const char* in) {
 inline std::string wchar_to_UTF8(const wchar_t* in) {
   std::string out;
   unsigned int codepoint = 0;
-  for (in;  *in != 0;  ++in) {
+  while (*in != 0) {
     if (*in >= 0xd800 && *in <= 0xdbff) {
       codepoint = ((*in - 0xd800) << 10) + 0x10000;
     } else {
@@ -66,6 +66,7 @@ inline std::string wchar_to_UTF8(const wchar_t* in) {
       }
       codepoint = 0;
     }
+    ++in;
   }
   return out;
 }
