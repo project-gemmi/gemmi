@@ -24,6 +24,7 @@ int seq_main(int argc, char** argv);
 int sf2map_main(int argc, char** argv);
 int sfcalc_main(int argc, char** argv);
 int sg_main(int argc, char** argv);
+int tags_main(int argc, char** argv);
 int validate_main(int argc, char** argv);
 int wcn_main(int argc, char** argv);
 
@@ -56,6 +57,7 @@ static SubCmd subcommands[] = {
   CMD(sf2map, "transform map coefficients (from MTZ or mmCIF) to map"),
   CMD(sfcalc, "calculate structure factors from a model"),
   CMD(sg, "info about space groups"),
+  CMD(tags, "list tags from CIF file(s)"),
   CMD(validate, "validate CIF 1.1 syntax"),
   CMD(wcn, "calculate local density / contact numbers (WCN, CN, ACN, LDM)"),
 };

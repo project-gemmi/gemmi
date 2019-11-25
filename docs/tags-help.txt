@@ -1,2 +1,8 @@
 $ gemmi tags -h
-'tags' is not a gemmi command. See 'gemmi --help'.
+Usage:
+ gemmi tags [options] FILE_OR_DIR[...]
+List CIF tags with counts of blocks and values.
+  -h, --help     Print usage and exit.
+  -V, --version  Print version and exit.
+  --count-files  Count files instead of blocks.
+  --full         Gather data for project-gemmi.github.io/pdb-stats/tags.html
