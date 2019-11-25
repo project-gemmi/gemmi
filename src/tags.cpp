@@ -230,7 +230,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   ctx.full_output = p.options[Full];
   ctx.per_block = !p.options[CountFiles];
   for (int i = 0; i < p.nonOptionsCount(); ++i) {
-    for (const char* path : gemmi::CifWalk(p.nonOption(i))) {
+    for (const std::string& path : gemmi::CifWalk(p.nonOption(i))) {
       try {
         gemmi::MaybeGzipped input(path);
         if (input.is_stdin()) {

@@ -550,7 +550,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       file_count++;
     } else {
       try {
-        for (const char* file : gemmi::CifWalk(path)) {
+        for (const std::string& file : gemmi::CifWalk(path)) {
           grep_file(file, params, err_count);
           file_count++;
         }

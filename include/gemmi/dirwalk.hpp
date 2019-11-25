@@ -33,13 +33,30 @@
 #include "third_party/tinydir.h"
 
 #include "util.hpp"  // for giends_with
+#if defined(_WIN32) && defined(_UNICODE)
+ #include "utf.hpp"
+#endif
 
 namespace gemmi {
+
+inline std::string as_utf8(const _tinydir_char_t* path) {
+#if defined(_WIN32) && defined(_UNICODE)
+  return wchar_to_UTF8(path);
+#else
+  return path;
+#endif
+}
 
 class DirWalk {
 public:
   explicit DirWalk(const char* path) {
-    if (tinydir_file_open(&top_, path) == -1) {
+#if defined(_WIN32) && defined(_UNICODE)
+    std::wstring str = UTF8_to_wchar(path);
+    const _tinydir_char_t* xpath = str.c_str();
+#else
+    const char* xpath = path;
+#endif
+    if (tinydir_file_open(&top_, xpath) == -1) {
       //std::perror(nullptr);
       throw std::runtime_error("Cannot open file or directory: " +
                                std::string(path));
@@ -50,11 +67,11 @@ public:
     for (auto& d : dirs_)
       tinydir_close(&d.second);
   }
-  void push_dir(size_t cur_pos, const char* path) {
+  void push_dir(size_t cur_pos, const _tinydir_char_t* path) {
     dirs_.emplace_back();
     dirs_.back().first = cur_pos;
     if (tinydir_open_sorted(&dirs_.back().second, path) == -1)
-      throw std::runtime_error("Cannot open directory: " + std::string(path));
+      throw std::runtime_error("Cannot open directory: " + as_utf8(path));
   }
   size_t pop_dir() {
     assert(!dirs_.empty());
@@ -77,8 +94,10 @@ public:
       return get_dir()._files[cur];
     }
 
-    bool is_special(const char* name) const {
-      return strcmp(name, ".") == 0 || strcmp(name, "..") == 0;
+    // checks for "." and ".."
+    bool is_special(const _tinydir_char_t* name) const {
+      return name[0] == '.' && (name[1] == '\0' ||
+                                (name[1] == '.' && name[2] == '\0'));
     }
 
     size_t depth() const { return walk.dirs_.size(); }
@@ -164,13 +183,13 @@ public:
       for (;;) {
         Iter::operator++();
         const tinydir_file& f = Iter::operator*();
-        if ((!f.is_dir && Check::check(f.name))
+        if ((!f.is_dir && Check::check(as_utf8(f.name)))
             || walk.is_single_file()
             || (depth() == 0 && cur == 1))
           break;
       }
     }
-    const char* operator*() const { return Iter::operator*().path; }
+    std::string operator*() const { return as_utf8(Iter::operator*().path); }
   };
   CifIter begin() {
     CifIter it = DirWalk::begin();

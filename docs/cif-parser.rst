@@ -1308,7 +1308,7 @@ C++
 
   // ...
   // throws std::runtime_error if top_dir doesn't exist
-  for (const char* cif_file : gemmi::CifWalk(top_dir)) {
+  for (const std::string& cif_file : gemmi::CifWalk(top_dir)) {
     cif::Document doc = cif::read(gemmi::MaybeGzipped(cif_file));
     // ...
   }

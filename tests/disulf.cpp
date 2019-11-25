@@ -92,7 +92,7 @@ static void print_connection(const AtomAddress& a1, const AtomAddress& a2,
               im.pdb_symbol(true).c_str(), im.dist());
 }
 
-static void check_disulf(const char* path) {
+static void check_disulf(const std::string& path) {
   Structure st = read_structure(MaybeGzipped(path));
   const Model& model = st.models.at(0);
   std::vector<Connection> c1 = find_disulfide_bonds(model, st.cell);
@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
   }
   try {
     for (; pos != argc; ++pos)
-      for (const char* path : CoorFileWalk(expand_if_pdb_code(argv[pos])))
+      for (std::string path : CoorFileWalk(expand_if_pdb_code(argv[pos])))
         check_disulf(path);
   } catch (std::runtime_error& err) {
     std::fprintf(stderr, "Error: %s\n", err.what());

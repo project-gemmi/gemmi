@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
   int counter = 0;
   try {
     for (; pos != argc; ++pos) {
-      for (const char* path : CifWalk(expand_if_pdb_code(argv[pos]))) {
+      for (const std::string& path : CifWalk(expand_if_pdb_code(argv[pos]))) {
         cif::Document doc = cif::read(MaybeGzipped(path));
         check_struct_conn(doc.sole_block());
         if (++counter % 1000 == 0) {
