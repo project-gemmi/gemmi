@@ -236,7 +236,7 @@ add_executable(gemmi-prog
 support_gz(gemmi-prog)
 target_compile_definitions(gemmi-prog PRIVATE GEMMI_ALL_IN_ONE=1)
 set_target_properties(gemmi-prog PROPERTIES OUTPUT_NAME gemmi)
-if (USE_UNICODE)
+if (USE_WMAIN)
   target_compile_definitions(gemmi-prog PRIVATE _UNICODE=1)
   if(MINGW)
     # target_link_options were added in cmake 3.13
