@@ -165,7 +165,9 @@ void print_mtz_info(Stream&& stream, const char* path,
   mtz.read_main_headers(stream);
   mtz.read_history_and_batch_headers(stream);
   mtz.setup_spacegroup();
-  if (options[Dump])
+  if (options[Dump] ||
+      !(options[PrintTsv] || options[PrintStats] || options[CheckAsu] ||
+        options[Headers]))
     dump(mtz);
   if (options[PrintTsv] || options[PrintStats] || options[CheckAsu]) {
     mtz.read_raw_data(stream);
