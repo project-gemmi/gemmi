@@ -4,6 +4,7 @@ project(gemmi C CXX)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
+option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" OFF)
 
 if (DEFINED ENV{FC} OR CMAKE_Fortran_COMPILER)
   set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
@@ -235,6 +236,13 @@ add_executable(gemmi-prog
 support_gz(gemmi-prog)
 target_compile_definitions(gemmi-prog PRIVATE GEMMI_ALL_IN_ONE=1)
 set_target_properties(gemmi-prog PROPERTIES OUTPUT_NAME gemmi)
+if (USE_UNICODE)
+  target_compile_definitions(gemmi-prog PRIVATE _UNICODE=1)
+  if(MINGW)
+    # target_link_options were added in cmake 3.13
+    set_target_properties(gemmi-prog PROPERTIES LINK_FLAGS "-municode")
+  endif()
+endif()
 
 ### tests and examples ###
 

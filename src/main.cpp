@@ -84,11 +84,28 @@ static main_type get_subcommand_function(const char* cmd) {
   return nullptr;
 }
 
-int main(int argc, char** argv) {
+#if defined(_WIN32) && defined(_UNICODE)
+#include <vector>
+#include "gemmi/utf.hpp"
+
+extern "C"
+int wmain(int argc, wchar_t** argv_)
+#else
+int main(int argc, char** argv)
+#endif
+{
   if (argc < 2) {
     print_usage();
     return 1;
   }
+#if defined(_WIN32) && defined(_UNICODE)
+  std::vector<std::string> utf8_args(argc);
+  std::vector<char*> argv(argc);
+  for (int i = 0; i < argc; ++i) {
+    utf8_args[i] = gemmi::wchar_to_UTF8(argv_[i]);
+    argv[i] = &utf8_args[i][0];
+  }
+#endif
   if (eq(argv[1], "--version") || eq(argv[1], "-V")) {
     printf("gemmi %s\n", GEMMI_VERSION);
     return 0;
@@ -117,7 +134,7 @@ int main(int argc, char** argv) {
     printf("'%s' is not a gemmi command. See 'gemmi --help'.\n", argv[1]);
     return 1;
   }
-  return (*func)(argc - 1, argv + 1);
+  return (*func)(argc - 1, &argv[1]);
 }
 
 // vim:sw=2:ts=2:et

@@ -38,5 +38,37 @@ inline std::wstring UTF8_to_wchar(const char* in) {
   return out;
 }
 
+inline std::string wchar_to_UTF8(const wchar_t* in) {
+  std::string out;
+  unsigned int codepoint = 0;
+  for (in;  *in != 0;  ++in) {
+    if (*in >= 0xd800 && *in <= 0xdbff) {
+      codepoint = ((*in - 0xd800) << 10) + 0x10000;
+    } else {
+      if (*in >= 0xdc00 && *in <= 0xdfff)
+        codepoint |= *in - 0xdc00;
+      else
+        codepoint = *in;
+      if (codepoint <= 0x7f) {
+        out += static_cast<char>(codepoint);
+      } else if (codepoint <= 0x7ff) {
+        out += static_cast<char>(0xc0 | ((codepoint >> 6) & 0x1f));
+        out += static_cast<char>(0x80 | (codepoint & 0x3f));
+      } else if (codepoint <= 0xffff) {
+        out += static_cast<char>(0xe0 | ((codepoint >> 12) & 0x0f));
+        out += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3f));
+        out += static_cast<char>(0x80 | (codepoint & 0x3f));
+      } else {
+        out += static_cast<char>(0xf0 | ((codepoint >> 18) & 0x07));
+        out += static_cast<char>(0x80 | ((codepoint >> 12) & 0x3f));
+        out += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3f));
+        out += static_cast<char>(0x80 | (codepoint & 0x3f));
+      }
+      codepoint = 0;
+    }
+  }
+  return out;
+}
+
 } // namespace gemmi
 #endif
