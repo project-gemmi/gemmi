@@ -17,6 +17,9 @@
 # pragma warning disable 2196
 #endif
 
+#ifdef __MINGW32__  // MinGW may have problem with std::mutex etc
+# define POCKETFFT_CACHE_SIZE 0
+#endif
 #define POCKETFFT_NO_MULTITHREADING
 #include "third_party/pocketfft_hdronly.h"
 
