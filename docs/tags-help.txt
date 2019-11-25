@@ -1,0 +1,2 @@
+$ gemmi tags -h
+'tags' is not a gemmi command. See 'gemmi --help'.

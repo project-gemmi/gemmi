@@ -319,6 +319,33 @@ But when used together with ``--iotbx-compat``,
 the program mimicks ``iotbx.pdb.expand_ncs`` and leaves the same chain names
 while adding distinct segment IDs.
 
+tags
+====
+
+Lists tags from one or multiple CIF files together with some statistics.
+
+.. literalinclude:: tags-help.txt
+   :language: console
+
+By default, the tag statistics show in how many blocks the tag is present,
+and the total number of non-null values for the tag:
+
+.. code-block:: console
+
+  $ gemmi tags components.cif.gz
+  tag	block-count	value-count
+  _chem_comp.formula	29748	29748
+  _chem_comp.formula_weight	29749	29749
+  ...
+  _pdbx_chem_comp_identifier.type	29338	52899
+  Tag count: 67
+  Block count: 29749
+  File count: 1
+
+This program is run with option ``--full``
+on the whole PDB archive to produce data for
+`pdb-stats/tags.html <https://project-gemmi.github.io/pdb-stats/tags.html>`_.
+
 
 map
 ===

@@ -178,6 +178,15 @@ void string_append_sep(std::string& str, S sep, const T& item) {
   str += item;
 }
 
+inline void replace_all(std::string &s,
+                        const std::string &old, const std::string &new_) {
+  std::string::size_type pos = 0;
+  while ((pos = s.find(old, pos)) != std::string::npos) {
+    s.replace(pos, old.size(), new_);
+    pos += new_.size();
+  }
+}
+
 //   #####   vector helpers   #####
 
 template <class T>

@@ -6,6 +6,7 @@
 #include "gemmi/gz.hpp"
 #include "gemmi/dirwalk.hpp"
 #include "gemmi/fileutil.hpp"  // for is_pdb_code, expand_if_pdb_code
+#include "gemmi/util.hpp"      // for replace_all
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
@@ -470,15 +471,6 @@ void grep_file(const std::string& path, Parameters& par, int& err_count) {
 }
 
 
-static void replace_all(std::string &s,
-                        const std::string &old, const std::string &new_) {
-  std::string::size_type pos = 0;
-  while ((pos = s.find(old, pos)) != std::string::npos) {
-    s.replace(pos, old.size(), new_);
-    pos += new_.size();
-  }
-}
-
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
@@ -515,7 +507,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     params.raw = true;
   if (p.options[Delim]) {
     params.delim = p.options[Delim].arg;
-    replace_all(params.delim, "\\t", "\t");
+    gemmi::replace_all(params.delim, "\\t", "\t");
   }
 
   auto paths = p.paths_from_args_or_file(FromFile, 1);

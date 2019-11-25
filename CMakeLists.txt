@@ -208,6 +208,10 @@ support_gz(gemmi-sfcalc)
 add_executable(gemmi-sg EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/sg.cpp)
 
+add_executable(gemmi-tags EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/tags.cpp)
+support_gz(gemmi-tags)
+
 add_executable(gemmi-validate EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/validate.cpp src/validate_mon.cpp)
 support_gz(gemmi-validate)
@@ -223,7 +227,7 @@ add_executable(gemmi-prog
                src/mask.cpp src/mondiff.cpp src/mtz.cpp src/mtz2cif.cpp
                src/residues.cpp src/rmsz.cpp
                src/seq.cpp src/sf2map.cpp src/sfcalc.cpp src/sg.cpp
-               src/validate.cpp src/validate_mon.cpp src/wcn.cpp
+               src/tags.cpp src/validate.cpp src/validate_mon.cpp src/wcn.cpp
                $<TARGET_OBJECTS:mapcoef>
                $<TARGET_OBJECTS:input>
                $<TARGET_OBJECTS:output>
