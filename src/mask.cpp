@@ -1,10 +1,11 @@
 // Copyright 2017 Global Phasing Ltd.
 
+#include <cstdio>   // for printf, fprintf
+#include <cstdlib>  // for strtod
 #include "gemmi/ccp4.hpp"
 #include "gemmi/symmetry.hpp"
 #include "gemmi/gzread.hpp"
 #include "gemmi/gz.hpp"  // for MaybeGzipped
-#include <cstdlib>  // for strtod
 
 #define GEMMI_PROG mask
 #include "options.h"

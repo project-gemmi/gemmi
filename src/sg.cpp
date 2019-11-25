@@ -1,10 +1,12 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/symmetry.hpp"
-#include <stdio.h>
+#include <cstdio>
 
 #define GEMMI_PROG sg
 #include "options.h"
+
+using std::printf;
 
 //enum OptionIndex { Verbose=3 };
 
@@ -58,7 +60,7 @@ static void process_arg(const char* arg, bool verbose) {
     }
   }
   if (sg == nullptr) {
-    fprintf(stderr, "Space group not found: %s\n", arg);
+    std::fprintf(stderr, "Space group not found: %s\n", arg);
     return;
   }
   printf("Number: %d\n", sg->number);

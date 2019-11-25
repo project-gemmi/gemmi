@@ -2,6 +2,9 @@
 //
 // Searches for contacts -- neighbouring atoms.
 
+#include <cstdio>
+#include <cstdlib>    // for strtod
+#include <algorithm>  // for min, max
 #include <gemmi/subcells.hpp>
 #include <gemmi/polyheur.hpp>  // for are_connected
 #include <gemmi/elem.hpp>      // for is_hydrogen
@@ -9,11 +12,9 @@
 #include <gemmi/to_pdb.hpp>    // for padded_atom_name
 #define GEMMI_PROG contact
 #include "options.h"
-#include <stdio.h>
-#include <cstdlib>  // for strtod
-#include <algorithm>  // for min, max
 
 using namespace gemmi;
+using std::printf;
 
 enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Any, NoH, Count };
 

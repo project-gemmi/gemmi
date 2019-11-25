@@ -8,10 +8,12 @@
 #include <gemmi/seqalign.hpp>  // for align_sequences
 #include <gemmi/labelseq.hpp>  // for align_polymer
 
+#include <cstdio>   // for printf, fprintf, putchar
+#include <cstring>  // for strlen
 #define GEMMI_PROG seq
 #include "options.h"
-#include <stdio.h>
-#include <cstring>  // for strlen
+
+using std::printf;
 
 enum OptionIndex { Match=4, Mismatch, GapOpen, GapExt, CheckMmcif, TextAlign };
 
@@ -113,7 +115,7 @@ static void print_alignment_details(const gemmi::Alignment& result,
         if (res->label_seq)
           printf("   id:%4d %c",
                  *res->label_seq, *res->label_seq == seq_pos ? ' ' : '!');
-        putchar(*gap++ ? '^' : ' ');
+        std::putchar(*gap++ ? '^' : ' ');
         if (op == 'D' || fmon != res->name)
           printf("    <-- BAD");
         res++;
@@ -195,7 +197,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
     }
   } catch (std::runtime_error& e) {
-    fprintf(stderr, "ERROR: %s\n", e.what());
+    std::fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }
   return 0;

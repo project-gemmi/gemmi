@@ -2,15 +2,16 @@
 //
 // MTZ info
 
+#include <cstdio>
 #include <gemmi/mtz.hpp>
 #include <gemmi/fileutil.hpp> // for file_open
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/input.hpp>    // for FileStream, MemoryStream
 #define GEMMI_PROG mtz
 #include "options.h"
-#include <stdio.h>
 
 using gemmi::Mtz;
+using std::printf;
 
 enum OptionIndex { Headers=4, Dump, PrintTsv, PrintStats,
                    CheckAsu, ToggleEndian, NoIsym };
@@ -192,7 +193,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (i != 0)
         printf("\n\n");
       if (p.options[Verbose])
-        fprintf(stderr, "Reading %s ...\n", path);
+        std::fprintf(stderr, "Reading %s ...\n", path);
       gemmi::MaybeGzipped input(path);
       if (input.is_stdin()) {
         print_mtz_info(gemmi::FileStream{stdin}, path, p.options);
@@ -205,7 +206,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
     }
   } catch (std::runtime_error& e) {
-    fprintf(stderr, "ERROR: %s\n", e.what());
+    std::fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }
   return 0;

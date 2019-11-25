@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#include <stdio.h>
+#include <cstdio>
 #include <cstdlib>   // for getenv
 #include <stdexcept>
 #include <iostream>  // for cout
@@ -98,7 +98,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   const char* monomer_dir = p.options[Monomers] ? p.options[Monomers].arg
                                                 : std::getenv("CLIBD_MON");
   if (monomer_dir == nullptr || *monomer_dir == '\0') {
-    fprintf(stderr, "Set $CLIBD_MON or use option --monomers.\n");
+    std::fprintf(stderr, "Set $CLIBD_MON or use option --monomers.\n");
     return 1;
   }
   std::string input = p.coordinate_input_file(0);
@@ -106,12 +106,12 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (p.options[KeepH] && p.options[RemoveH])
     gemmi::fail("cannot use both --remove and --keep");
   if (p.options[Verbose])
-    printf("Reading coordinates from %s\n", input.c_str());
+    std::printf("Reading coordinates from %s\n", input.c_str());
   try {
     gemmi::Structure st = gemmi::read_structure_gz(input,
                                             gemmi::CoorFormat::UnknownAny);
     if (st.models.empty() || st.models[0].chains.empty()) {
-      fprintf(stderr, "No atoms in the input file. Wrong format?\n");
+      std::fprintf(stderr, "No atoms in the input file. Wrong format?\n");
       return 1;
     }
     int initial_h = 0;
@@ -119,8 +119,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       initial_h = count_h(st);
     std::vector<std::string> res_names = st.models[0].get_all_residue_names();
     if (p.options[Verbose])
-      printf("Reading %zu monomers and all links from %s\n",
-             res_names.size(), input.c_str());
+      std::printf("Reading %zu monomers and all links from %s\n",
+                  res_names.size(), input.c_str());
     gemmi::MonLib monlib = gemmi::read_monomer_lib(monomer_dir, res_names,
                                                    gemmi::read_cif_gz);
     for (gemmi::Model& model : st.models) {
@@ -137,16 +137,16 @@ int GEMMI_MAIN(int argc, char **argv) {
               } catch (const std::runtime_error& e) {
                 std::string loc = gemmi::atom_str(chain_info.name, *ri.res,
                                                   atom.name, atom.altloc);
-                printf("Placing of hydrogen bonded to %s failed:\n  %s\n",
-                       loc.c_str(), e.what());
+                std::printf("Placing of hydrogen bonded to %s failed:\n  %s\n",
+                            loc.c_str(), e.what());
               }
             }
     }
     if (p.options[Verbose])
-      printf("Hydrogen site count: %d in input, %d in output.\n",
-             initial_h, count_h(st));
+      std::printf("Hydrogen site count: %d in input, %d in output.\n",
+                  initial_h, count_h(st));
     if (p.options[Verbose])
-      printf("Writing coordinates to %s\n", output.c_str());
+      std::printf("Writing coordinates to %s\n", output.c_str());
     gemmi::Ofstream os(output, &std::cout);
     if (gemmi::coor_format_from_ext_gz(output) == gemmi::CoorFormat::Pdb)
       gemmi::write_pdb(st, os.ref());
@@ -154,10 +154,10 @@ int GEMMI_MAIN(int argc, char **argv) {
       cif::write_cif_to_stream(os.ref(), gemmi::make_mmcif_document(st),
                                cif::Style::PreferPairs);
   } catch (std::runtime_error& e) {
-    fprintf(stderr, "ERROR: %s\n", e.what());
+    std::fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   } catch (std::out_of_range& e) {
-    fprintf(stderr, "ERROR: %s\n", e.what());
+    std::fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }
   return 0;

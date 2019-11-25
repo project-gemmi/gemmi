@@ -1,6 +1,6 @@
 // Copyright 2019 Global Phasing Ltd.
 
-#include <stdio.h>
+#include <cstdio>
 #include <algorithm>  // count
 #include <stdexcept>
 #include "gemmi/gzread.hpp"
@@ -13,6 +13,7 @@
 #include "options.h"
 
 namespace cif = gemmi::cif;
+using std::printf;
 
 enum OptionIndex { SigmaCutoff=AfterMapOptions, AbsCutoff,
                    MaskRadius, MaskWater,
@@ -172,7 +173,7 @@ static int run(OptParser& p) {
     printf("Reading coordinates from %s ...\n", model_path.c_str());
   gemmi::Structure st = gemmi::read_structure_gz(model_path);
   if (st.models.empty() || st.models[0].chains.empty()) {
-    fprintf(stderr, "Not a coordinate file: %s\n", model_path.c_str());
+    std::fprintf(stderr, "Not a coordinate file: %s\n", model_path.c_str());
     return 1;
   }
   if (st.models.size() > 1)
@@ -192,9 +193,9 @@ static int run(OptParser& p) {
            grid.unit_cell.volume / grid.point_count());
   // move blob position to the symmetry image nearest to the model
   if (st.cell.images.size() != grid.unit_cell.images.size())
-    fprintf(stderr, "Warning: different space groups in model and data.");
+    std::fprintf(stderr, "Warning: different space groups in model and data.");
   if (!st.cell.approx(grid.unit_cell, 0.1))
-    fprintf(stderr, "Warning: different unit cells in model and data.");
+    std::fprintf(stderr, "Warning: different unit cells in model and data.");
 
   // calculate map RMSD and setup blob criteria
   BlobCriteria criteria;
@@ -276,7 +277,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     return run(p);
   } catch (std::runtime_error& e) {
-    fprintf(stderr, "ERROR: %s\n", e.what());
+    std::fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }
 }

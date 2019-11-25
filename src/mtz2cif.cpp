@@ -8,8 +8,8 @@
 //  - check that the FP column is not from Refmac
 //  - should we allow for repeated column name in MTZ?
 
+#include <cstdio>
 #include <algorithm>
-#include <stdio.h>
 #include <gemmi/mtz.hpp>
 #include <gemmi/fileutil.hpp> // for file_open
 #include <gemmi/atox.hpp>     // for read_word
@@ -17,6 +17,8 @@
 #include <gemmi/version.hpp>  // for GEMMI_VERSION
 #define GEMMI_PROG mtz2cif
 #include "options.h"
+
+using std::fprintf;
 
 enum OptionIndex { Spec=4, PrintSpec, BlockName, SkipEmpty, NoComments };
 
@@ -265,7 +267,7 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
       if (first)
         first = false;
       else
-        fputc(' ', out);
+        std::fputc(' ', out);
       float v = row[tr.col_idx];
       if (tr.is_status) {
         char status = 'x';
@@ -273,16 +275,16 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
             !std::all_of(opt.sigma_indices.begin(), opt.sigma_indices.end(),
                          [&](int n) { return std::isnan(row[n]); }))
           status = v == 0. ? 'f' : 'o';
-        fputc(status, out);
+        std::fputc(status, out);
       } else if (std::isnan(v)) {
         for (int j = 1; j < tr.min_width; ++j)
-          fputc(' ', out);
-        fputc('?', out);
+          std::fputc(' ', out);
+        std::fputc('?', out);
       } else {
         fprintf(out, tr.format.c_str(), v);
       }
     }
-    fputc('\n', out);
+    std::fputc('\n', out);
   }
 }
 
@@ -291,7 +293,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.simple_parse(argc, argv, Usage);
   if (p.options[PrintSpec]) {
     for (const char* line : default_spec)
-      printf("%s\n", line);
+      std::printf("%s\n", line);
     return 0;
   }
   p.require_positional_args(2);

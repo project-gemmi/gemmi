@@ -3,7 +3,7 @@
 // This program analyses PDB or mmCIF files, printing similar things
 // as CCP4 RWCONTENTS: weight, Matthews coefficient, etc.
 
-#include <stdio.h>
+#include <cstdio>
 #include <gemmi/symmetry.hpp>
 #include <gemmi/resinfo.hpp>
 #include <gemmi/calculate.hpp>
@@ -13,6 +13,7 @@
 #include "options.h"
 
 using namespace gemmi;
+using std::printf;
 
 enum OptionIndex { Dihedrals=4, Bfactors };
 

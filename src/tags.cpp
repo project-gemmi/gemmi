@@ -7,7 +7,7 @@
 #include "gemmi/gz.hpp"       // for MaybeGzipped
 #include <cassert>
 #include <cmath>    // for INFINITY
-#include <cstdio>   // for printf, fprintf
+#include <cstdio>
 #include <utility>  // for pair
 #include <string>
 #include <map>
@@ -41,15 +41,15 @@ constexpr int ENUM_LIMIT = 20;
 struct TagStats {
   int file_count = 0;
   int block_count = 0;
-  size_t total_count = 0;
+  unsigned long total_count = 0;
   int min_count = INT_MAX;
   int max_count = 1;
   bool in_this_file = false;
   std::map<std::string, int> values;
-  size_t text_count = 0;
-  size_t multi_word_count = 0;
-  size_t single_word_count = 0;
-  size_t number_count = 0;
+  unsigned text_count = 0;
+  unsigned multi_word_count = 0;
+  unsigned single_word_count = 0;
+  unsigned number_count = 0;
   double min_number = +INFINITY;
   double max_number = -INFINITY;
 
@@ -198,13 +198,13 @@ static void print_data_for_html(const Context& ctx) {
       }
     } else {
       if (st.text_count != 0)
-        std::printf("\t%zu {text}", st.text_count);
+        std::printf("\t%u {text}", st.text_count);
       if (st.multi_word_count != 0)
-        std::printf("\t%zu {line}", st.multi_word_count);
+        std::printf("\t%u {line}", st.multi_word_count);
       if (st.single_word_count != 0)
-        std::printf("\t%zu {word}", st.single_word_count);
+        std::printf("\t%u {word}", st.single_word_count);
       if (st.number_count != 0)
-        std::printf("\t%zu {%g - %g}",
+        std::printf("\t%u {%g - %g}",
                     st.number_count, st.min_number, st.max_number);
     }
     std::printf("\n");
@@ -218,7 +218,7 @@ static void print_tag_list(const Context& ctx) {
     if (st.block_count == 0)
       continue;
     int groups = ctx.per_block ? st.block_count : st.file_count;
-    std::printf("%s\t%d\t%zu\n", item.first.c_str(), groups, st.total_count);
+    std::printf("%s\t%d\t%lu\n", item.first.c_str(), groups, st.total_count);
   }
 }
 

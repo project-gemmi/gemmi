@@ -2,9 +2,9 @@
 //
 // convert SF-mmCIF to MTZ
 
+#include <cstdio>             // for fprintf
 #include <cstdlib>            // for exit
 #include <memory>             // for unique_ptr
-#include <stdio.h>
 #ifndef GEMMI_ALL_IN_ONE
 # define GEMMI_WRITE_IMPLEMENTATION 1
 #endif
@@ -18,6 +18,7 @@
 #include "options.h"
 
 namespace cif = gemmi::cif;
+using std::fprintf;
 
 enum OptionIndex { BlockName=4, Dir, Title, History, Unmerged };
 
