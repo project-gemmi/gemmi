@@ -79,7 +79,7 @@ inline Vec3 get_vector_to_line(const Position& point,
                                const Position& point_on_the_line,
                                const Vec3& unit_vector) {
   // en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Vector_formulation
-  // the component of a − p perpendicular to the line is: (a-p) - ((a-p).n)n
+  // the component of a - p perpendicular to the line is: (a-p) - ((a-p).n)n
   Vec3 ap = point_on_the_line - point;
   return ap - ap.dot(unit_vector) * unit_vector;
 }

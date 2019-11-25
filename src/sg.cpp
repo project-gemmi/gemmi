@@ -69,7 +69,7 @@ static void process_arg(const char* arg, bool verbose) {
   printf("Change-of-basis operator to standard setting: %s\n",
          sg->basisop_str());
   printf("CCP4 number: %d\n", sg->ccp4);
-  printf("Hermann–Mauguin: %s\n", sg->hm);
+  printf("Hermann-Mauguin: %s\n", sg->hm);
   printf("Extended H-M: %s\n", sg->xhm().c_str());
   printf("Hall symbol: %s\n", sg->hall);
   printf("Point group: %s\n", sg->point_group_hm());

@@ -874,7 +874,7 @@ inline const char* get_basisop(int basisop_idx) {
 struct SpaceGroup { // typically 44 bytes
   int number;
   int ccp4;
-  char hm[11];  // Hermann–Mauguin (international) notation
+  char hm[11];  // Hermann-Mauguin (international) notation
   char ext;
   char qualifier[5];
   char hall[15];
