@@ -241,7 +241,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           pegtl::memory_input<> in(mem.get(), input.memory_size(), path);
           pegtl::parse<rules::file, Counter, cif::Errors>(in, ctx);
         } else {
-          pegtl::file_input<> in(path);
+          GEMMI_CIF_FILE_INPUT(in, path);
           pegtl::parse<rules::file, Counter, cif::Errors>(in, ctx);
         }
         for (auto& item : ctx.stats)

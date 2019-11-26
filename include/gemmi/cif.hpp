@@ -252,13 +252,18 @@ template<typename Input> Document read_input(Input&& in) {
   return doc;
 }
 
-inline Document read_file(const std::string& filename) {
+// pegtl::read_input may use mmap and be faster, but does not work
+// on Windows with Unicode filenames.
 #if defined(_WIN32)
-  FILE* f = file_open(filename.c_str(), "rb").release();
-  pegtl::read_input<> in(f, filename);
+#define GEMMI_CIF_FILE_INPUT(in, path) \
+  tao::pegtl::read_input<> in(gemmi::file_open(path.c_str(), "rb").release(), path)
 #else
-  pegtl::file_input<> in(filename);
+#define GEMMI_CIF_FILE_INPUT(in, path) \
+  tao::pegtl::file_input<> in(path)
 #endif
+
+inline Document read_file(const std::string& filename) {
+  GEMMI_CIF_FILE_INPUT(in, filename);
   return read_input(in);
 }
 
@@ -311,7 +316,7 @@ bool check_syntax_any(T&& input, std::string* msg) {
     pegtl::memory_input<> in(mem.get(), input.memory_size(), input.path());
     return check_syntax(in, msg);
   }
-  pegtl::file_input<> in(input.path());
+  GEMMI_CIF_FILE_INPUT(in, input.path());
   return check_syntax(in, msg);
 }
 

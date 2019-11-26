@@ -447,7 +447,7 @@ void grep_file(const std::string& path, Parameters& par, int& err_count) {
       pegtl::memory_input<> in(mem.get(), input.memory_size(), path);
       run_parse(in, par);
     } else {
-      pegtl::file_input<> in(path);
+      GEMMI_CIF_FILE_INPUT(in, path);
       run_parse(in, par);
     }
   } catch (bool) {
