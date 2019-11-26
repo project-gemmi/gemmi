@@ -10,7 +10,7 @@ namespace gemmi {
 // https://stackoverflow.com/questions/148403/utf8-to-from-wide-char-conversion-in-stl/148766#148766
 inline std::wstring UTF8_to_wchar(const char* in) {
   std::wstring out;
-  unsigned int codepoint;
+  unsigned int codepoint = 0;
   while (*in != 0) {
     unsigned char ch = static_cast<unsigned char>(*in);
     if (ch <= 0x7f)
