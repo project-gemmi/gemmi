@@ -40,6 +40,7 @@ third_party/pybind11
 /*.cif
 /*.pdb
 /*.json
+/*.mtz
 src/*.cif
 src/*.pdb
 src/*.json
@@ -49,3 +50,7 @@ docs/A.cif
 docs/new.cif
 docs/1pfe-*.cif
 docs/X12.cif
+
+# wasm
+/wasm/*/*.wasm
+/wasm/mtz/mtz.js
