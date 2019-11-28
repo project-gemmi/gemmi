@@ -13,15 +13,19 @@ using gemmi::Mtz;
 
 class MtzFft {
 public:
+  MtzFft() {}
   // char* or void* cannot be used
   // https://github.com/emscripten-core/emscripten/issues/9448
-  MtzFft(int32_t data, size_t size)
-    : data_((char*) data) {
+  bool read(int32_t data, size_t size) {
+    data_ = (char*) data;
     try {
       mtz_.read_stream(gemmi::MemoryStream(data_, data_ + size), false);
     } catch (std::runtime_error& e) {
-      (void) e;
+      last_error_ = "Failed to read MTZ file: ";
+      last_error_ += e.what();
+      return false;
     }
+    return true;
   }
 
   ~MtzFft() {
@@ -40,7 +44,7 @@ public:
                                           gemmi::HklOrient::LKH);
       gemmi::transform_f_phi_grid_to_map_(std::move(coefs), grid_);
     } catch (std::runtime_error& e) {
-      std::puts(e.what());
+      last_error_ = e.what();
       return 0;
     }
     gemmi::Variance grid_variance(grid_.data.begin(), grid_.data.end());
@@ -53,7 +57,7 @@ public:
     if (const Mtz::Column* f_col = mtz_.column_with_label(f_label))
       if (const Mtz::Column* phi_col = mtz_.column_with_label(phi_label))
         return calculate_map_from_columns(f_col, phi_col);
-    std::puts("Requested labels not found in the MTZ file.");
+    last_error_ = "Requested labels not found in the MTZ file.";
     return 0;
   }
 
@@ -71,7 +75,7 @@ public:
       if (const Mtz::Column* f_col = mtz_.column_with_label(labels[i]))
         if (const Mtz::Column* phi_col = mtz_.column_with_label(labels[i+1]))
           return calculate_map_from_columns(f_col, phi_col);
-    std::puts("Default map coefficient labels not found");
+    last_error_ = "Default map coefficient labels not found";
     return 0;
   }
 
@@ -80,6 +84,8 @@ public:
   int get_nz() const { return grid_.nw; }
 
   double get_rmsd() const { return rmsd_; }
+
+  std::string get_last_error() const { return last_error_; }
 
   double get_cell_param(int n) const {
     switch (n) {
@@ -95,9 +101,10 @@ public:
 
 private:
   gemmi::Mtz mtz_;
-  char* data_;
+  char* data_ = nullptr;
   gemmi::Grid<float> grid_;
-  double rmsd_;
+  double rmsd_ = 0.;
+  std::string last_error_;
 };
 
 using emscripten::class_;
@@ -105,12 +112,14 @@ using emscripten::allow_raw_pointers;
 
 EMSCRIPTEN_BINDINGS(GemmiMtz) {
   class_<MtzFft>("Mtz")
-    .constructor<int32_t, size_t>(allow_raw_pointers())
+    .constructor<>()
+    .function("read", &MtzFft::read, allow_raw_pointers())
     .function("calculate_map", &MtzFft::calculate_map, allow_raw_pointers())
     .property("nx", &MtzFft::get_nx)
     .property("ny", &MtzFft::get_ny)
     .property("nz", &MtzFft::get_nz)
     .property("rmsd", &MtzFft::get_rmsd)
+    .property("last_error", &MtzFft::get_last_error)
     .function("cell_param", &MtzFft::get_cell_param)
     ;
 }
