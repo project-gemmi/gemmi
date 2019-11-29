@@ -1,0 +1,24 @@
+{
+  "name": "mtz",
+  "version": "0.1.0",
+  "description": "MTZ reflection data to density map (structural biology)",
+  "homepage": "https://project-gemmi.github.io/",
+  "main": "mtz.js",
+  "files": [
+    "mtz.js",
+    "mtz.wasm"
+  ],
+  "dependencies": {},
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/project-gemmi/gemmi.git"
+  },
+  "keywords": [
+    "mtz",
+    "crystallography",
+    "fft",
+    "wasm"
+  ],
+  "license": "MPL-2.0"
+}
