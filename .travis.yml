@@ -37,7 +37,7 @@ matrix:
   - os: osx
     osx_image: xcode8.3
     compiler: clang
-    env: COMPILER=clang++ PYTHON=python3
+    env: COMPILER=clang++ PYTHON=python
     #before_install:
     #  - brew update
     #  - brew install $PYTHON || brew upgrade $PYTHON
