@@ -8,8 +8,10 @@
 #include <gemmi/fourier.hpp>  // for update_cif_block
 #include <gemmi/math.hpp>     // for Variance
 #include <emscripten/bind.h>
+#include <emscripten/val.h>
 
 using gemmi::Mtz;
+using emscripten::val;
 
 class MtzFft {
 public:
@@ -32,8 +34,8 @@ public:
     std::free(data_);
   }
 
-  int32_t calculate_map_from_columns(const Mtz::Column* f_col,
-                                     const Mtz::Column* phi_col) {
+  val calculate_map_from_columns(const Mtz::Column* f_col,
+                                 const Mtz::Column* phi_col) {
     try {
       const float* raw_data = (const float*)(data_ + 80);
       gemmi::MtzExternalDataProxy proxy(mtz_, raw_data);
@@ -45,23 +47,25 @@ public:
       gemmi::transform_f_phi_grid_to_map_(std::move(coefs), grid_);
     } catch (std::runtime_error& e) {
       last_error_ = e.what();
-      return 0;
+      return val::null();
     }
-    gemmi::Variance grid_variance(grid_.data.begin(), grid_.data.end());
+    const std::vector<float>& data = grid_.data;
+    gemmi::Variance grid_variance(data.begin(), data.end());
     rmsd_ = std::sqrt(grid_variance.for_population());
-    return (int32_t) grid_.data.data();
+    return val(emscripten::typed_memory_view(data.size(), data.data()));
+    //return (int32_t) data.data();
   }
 
-  int32_t calculate_map_from_labels(const std::string& f_label,
-                                    const std::string& phi_label) {
+  val calculate_map_from_labels(const std::string& f_label,
+                                const std::string& phi_label) {
     if (const Mtz::Column* f_col = mtz_.column_with_label(f_label))
       if (const Mtz::Column* phi_col = mtz_.column_with_label(phi_label))
         return calculate_map_from_columns(f_col, phi_col);
     last_error_ = "Requested labels not found in the MTZ file.";
-    return 0;
+    return val::null();
   }
 
-  int32_t calculate_map(bool diff_map) {
+  val calculate_map(bool diff_map) {
     static const char* normal_labels[] = {
       "FWT", "PHWT",
       "2FOFCWT", "PH2FOFCWT",
@@ -76,28 +80,19 @@ public:
         if (const Mtz::Column* phi_col = mtz_.column_with_label(labels[i+1]))
           return calculate_map_from_columns(f_col, phi_col);
     last_error_ = "Default map coefficient labels not found";
-    return 0;
+    return val::null();
   }
 
-  int get_nx() const { return grid_.nu; }
+  // we used HklOrient::LKH
+  int get_nx() const { return grid_.nw; }
   int get_ny() const { return grid_.nv; }
-  int get_nz() const { return grid_.nw; }
+  int get_nz() const { return grid_.nu; }
 
   double get_rmsd() const { return rmsd_; }
 
   std::string get_last_error() const { return last_error_; }
 
-  double get_cell_param(int n) const {
-    switch (n) {
-      case 0: return mtz_.cell.a;
-      case 1: return mtz_.cell.b;
-      case 2: return mtz_.cell.c;
-      case 3: return mtz_.cell.alpha;
-      case 4: return mtz_.cell.beta;
-      case 5: return mtz_.cell.gamma;
-    }
-    return 0.;
-  }
+  gemmi::UnitCell get_cell() const { return mtz_.cell; }
 
 private:
   gemmi::Mtz mtz_;
@@ -111,15 +106,25 @@ using emscripten::class_;
 using emscripten::allow_raw_pointers;
 
 EMSCRIPTEN_BINDINGS(GemmiMtz) {
+  class_<gemmi::UnitCell>("UnitCell")
+    .property("a", &gemmi::UnitCell::a)
+    .property("b", &gemmi::UnitCell::b)
+    .property("c", &gemmi::UnitCell::c)
+    .property("alpha", &gemmi::UnitCell::alpha)
+    .property("beta", &gemmi::UnitCell::beta)
+    .property("gamma", &gemmi::UnitCell::gamma)
+    ;
+
   class_<MtzFft>("Mtz")
     .constructor<>()
     .function("read", &MtzFft::read, allow_raw_pointers())
-    .function("calculate_map", &MtzFft::calculate_map, allow_raw_pointers())
+    .function("calculate_map", &MtzFft::calculate_map)
+    .function("calculate_map_from_labels", &MtzFft::calculate_map_from_labels)
     .property("nx", &MtzFft::get_nx)
     .property("ny", &MtzFft::get_ny)
     .property("nz", &MtzFft::get_nz)
     .property("rmsd", &MtzFft::get_rmsd)
     .property("last_error", &MtzFft::get_last_error)
-    .function("cell_param", &MtzFft::get_cell_param)
+    .property("cell", &MtzFft::get_cell)
     ;
 }
