@@ -5,7 +5,9 @@ Module['readMtz'] = function (mtz_buf/*:ArrayBuffer*/) {
   Module.writeArrayToMemory(arr, buffer);
   var mtz = new Module.Mtz;
   if (!mtz.read(buffer, arr.length)) {
-    throw Error(mtz.last_error);
+    var last_error = mtz.last_error;
+    mtz.delete();
+    throw Error(last_error);
   }
   return mtz;
 }
