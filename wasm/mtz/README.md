@@ -4,15 +4,17 @@ The MTZ file format is used for the storage of reflection data --
 the data from diffraction experiments in macromolecular crystallography.
 
 This library is primarily intended for web-based molecular viewers.
-It can read MTZ file and transform map coefficients (reciprocal space)
+
+It can read an MTZ file and transform map coefficients (reciprocal space)
 to a density map (real space).
 
-* It is part of [GEMMI](https://project-gemmi.github.io/) (license: MPL 2.0),
-  and it is built on the C++ code documented
-  [here](https://gemmi.readthedocs.io/en/latest/hkl.html).
-* It uses [PocketFFT](https://gitlab.mpcdf.mpg.de/mtr/pocketfft) (license: MIT)
-  for discrete Fourier transform.
-* It uses [Emscripten](https://emscripten.org/) to compile C++ to WASM + JS
+It uses:
+
+* C++ code from [GEMMI](https://project-gemmi.github.io/) (license: MPL 2.0),
+  for [handling MTZ files](https://gemmi.readthedocs.io/en/latest/hkl.html),
+* [PocketFFT](https://gitlab.mpcdf.mpg.de/mtr/pocketfft) (license: MIT)
+  for discrete Fourier transform,
+* and [Emscripten](https://emscripten.org/) to compile C++ to WASM + JS.
 
 You can see this package in action on https://uglymol.github.io/view/
 
@@ -25,7 +27,7 @@ Binaries → `npm i mtz`
 ## Usage
 
 The module is generated with Emscripten option MODULARIZE,
-which wraps everything into a function that needs to be invoked:
+which wraps everything into a function that invoked (once) gives the module:
 
     var module = GemmiMtz();
 
