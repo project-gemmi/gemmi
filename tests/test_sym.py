@@ -254,7 +254,7 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual([op.apply_to_hkl(refl) for op in ops], expected_equiv)
         expected_shifts = [0, -120, -240, 0, -240, -120]
         for op, expected in zip(ops, expected_shifts):
-            shift = math.degrees(op.phase_shift(*refl))
+            shift = math.degrees(op.phase_shift(refl))
             self.assertAlmostEqual((shift - expected) % 360, 0)
 
 if __name__ == '__main__':

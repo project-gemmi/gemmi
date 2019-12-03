@@ -121,9 +121,9 @@ struct Op {
     return r;
   }
 
-  double phase_shift(int h, int k, int l) const {
+  double phase_shift(const std::array<int, 3>& hkl) const {
     constexpr double mult = -2 * 3.1415926535897932384626433832795 / Op::DEN;
-    return mult * (h * tran[0] + k * tran[1] + l * tran[2]);
+    return mult * (hkl[0] * tran[0] + hkl[1] * tran[1] + hkl[2] * tran[2]);
   }
 
   std::array<std::array<int, 4>, 4> int_seitz() const {

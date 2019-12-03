@@ -119,8 +119,9 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
     if (f > 0.f) {
       double phi = rad(data.get_num(i + phi_col));
       for (const Op& op : ops.sym_ops) {
-        auto hklp = op.apply_to_hkl({{h, k, l}});
-        double shifted_phi = phi + op.phase_shift(h, k, l);
+        std::array<int, 3> hkl{{h, k, l}};
+        auto hklp = op.apply_to_hkl(hkl);
+        double shifted_phi = phi + op.phase_shift(hkl);
         int lp = hklp[2];
         if (hkl_orient == HklOrient::LKH)
           std::swap(hklp[0], hklp[2]);
