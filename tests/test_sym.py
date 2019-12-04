@@ -243,7 +243,7 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(fact('P61'), [1, 1, 6])
 
     # based on example from pages 9-10 in
-    # http://oldwww.iucr.org/iucr-top/comm/cteach/pamphlets/9/9.pdf
+    # https://www.iucr.org/education/pamphlets/9
     def test_phase_shift(self):
         ops = gemmi.find_spacegroup_by_name('P 31 2 1').operations()
         refl = [3, 0, 1]

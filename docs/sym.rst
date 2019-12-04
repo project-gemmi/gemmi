@@ -255,8 +255,8 @@ and up to a few microseconds for the highest symmetry group Fm3̅m
 .. _SPGGEN: http://dx.doi.org/10.1107/S1600576716007330
 
 
-Symmetry operations
-===================
+Operations
+==========
 
 Crystallographic symmetry operations have a few notations.
 Gemmi undertands only coordinate triplets (sometimes called
@@ -275,8 +275,25 @@ and in Python as:
     >>> import gemmi
     >>> op = gemmi.Op('-y,x-y,z+1/3')
 
-The operation is stored internally as a 3x3 rotation matrix and
-a translation vector. It is equivalent to a single 4x4 transformation
+We can also do the opposite:
+
+.. doctest::
+
+    >>> op.triplet()
+    '-y,x-y,z+1/3'
+
+The operation consists of a 3x3 rotation matrix and
+a translation vector, both stored internally as integers that need to be
+divided by ``DEN`` == 24 to get the actual values.
+
+.. doctest::
+
+    >>> op.rot
+    [[0, -24, 0], [24, -24, 0], [0, 0, 24]]
+    >>> op.tran
+    [0, 0, 8]
+
+Alternatively, the operation can be expressed as a single 4x4 transformation
 matrix (which in crystallography is called *Seitz matrix*).
 
 .. doctest::
@@ -290,23 +307,7 @@ matrix (which in crystallography is called *Seitz matrix*).
      [0.0, 0.0, 1.0, 0.3333333333333333],
      [0.0, 0.0, 0.0, 1.0]]
 
-The triplets and matrices may represent not only crystallographic symmetry,
-but also, for example, generation of a biological assembly.
-For this reason, ``x,y+1,z`` is not reduced to the identity.
-But when the operations are transformed by the multiplication operator
-they are assumed to be symmetry operations
-and the translation is wrapped to [0,1):
-
-.. doctest::
-
-    >>> op
-    <gemmi.Op("-y,x-y,z+1/3")>
-    >>> op * op
-    <gemmi.Op("-x+y,-x,z+2/3")>
-    >>> op * op * op
-    <gemmi.Op("x,y,z")>
-
-``Op`` has a few methods:
+Operations can be combined, inverted and wrapped:
 
 .. doctest::
 
@@ -316,27 +317,51 @@ and the translation is wrapped to [0,1):
     <gemmi.Op("-y,x-y,z-2/3")>
     >>> _.wrap()
     <gemmi.Op("-y,x-y,z+1/3")>
-    >>> _.triplet()
-    '-y,x-y,z+1/3'
 
-Both matrix and translation vector are stored as fractions:
-integer numerator are stored in arrays, and denominator is given
-in constant ``DEN`` and is equal to 24.
-
-The matrix is called "rotation matrix", because that's its primary purpose,
-but it can represent a different linear transformation:
+Wrapping applies *modulo* 1 to the translational part.
+Which is usually desirable for crystallographic symmetry.
+But the triplets and matrices may represent also, for example,
+generation of a biological assembly.
+For this reason, ``x,y+1,z`` is not automatically reduced to the identity.
+But when operations are combined,
+they are assumed to be symmetry operations and the result is wrapped to [0,1):
 
 .. doctest::
 
-    >>> op = gemmi.Op("-y+z,x+z,-x+y+z")
-    >>> op.inverse()
-    <gemmi.Op("-1/3*x+2/3*y-1/3*z,-2/3*x+1/3*y+1/3*z,1/3*x+1/3*y+1/3*z")>
-    >>> _ * op
+    >>> op
+    <gemmi.Op("-y,x-y,z+1/3")>
+    >>> op * op
+    <gemmi.Op("-x+y,-x,z+2/3")>
+    >>> op * op * op  # without wrapping we'd have z+1
     <gemmi.Op("x,y,z")>
 
+The ``Op.rot`` matrix is called "rotation matrix", because that's the primary
+purpose, but it can also represent different linear transformations:
 
-Group of Operations
-===================
+.. doctest::
+
+    >>> enlarging_op = gemmi.Op("-y+z,x+z,-x+y+z")
+    >>> enlarging_op.inverse()
+    <gemmi.Op("-1/3*x+2/3*y-1/3*z,-2/3*x+1/3*y+1/3*z,1/3*x+1/3*y+1/3*z")>
+    >>> _ * enlarging_op
+    <gemmi.Op("x,y,z")>
+
+In the real space, crystal symmetry operation applied to a fractional atom
+position gives an equivalent position.
+In the reciprocal space, the same operation relates equivalent reflections.
+The rotational part determines reflection indices,
+the translational part -- phase shift.
+
+.. doctest::
+
+    >>> hkl = [3, 0, 1]
+    >>> op.apply_to_hkl(hkl)
+    [0, -3, 1]
+    >>> op.phase_shift(hkl)  # -120 degrees in radians
+    -2.0943951023931953
+
+Groups of Operations
+====================
 
 Each space-group setting corresponds to a unique set of operations.
 This set is represented by class ``GroupOps``.
@@ -396,6 +421,9 @@ Finally, we can modify GroupOps by apply a change-of-basis operator:
 
 C++ Example
 ===========
+
+Since the code snippets above were only in Python,
+here we compensate it with one longer example in C++.
 
 .. literalinclude:: code/sym.cpp
    :language: cpp
