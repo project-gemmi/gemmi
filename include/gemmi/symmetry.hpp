@@ -113,6 +113,14 @@ struct Op {
     return r;
   }
 
+  std::array<double, 3> apply_to_xyz(const std::array<double, 3>& xyz) const {
+    std::array<double, 3> out;
+    for (int i = 0; i != 3; ++i)
+      out[i] = (rot[i][0] * xyz[0] + rot[i][1] * xyz[1] + rot[i][2] * xyz[2] +
+                tran[i]) / Op::DEN;
+    return out;
+  }
+
   std::array<int, 3> apply_to_hkl(const std::array<int, 3>& hkl) const {
     std::array<int, 3> r;
     for (int i = 0; i != 3; ++i)

@@ -346,10 +346,17 @@ purpose, but it can also represent different linear transformations:
     >>> _ * enlarging_op
     <gemmi.Op("x,y,z")>
 
-In the real space, crystal symmetry operation applied to a fractional atom
-position gives an equivalent position.
+In the real space, a crystal symmetry operation can be applied
+to the fractional atom position to get an equivalent position:
+
+.. doctest::
+
+    >>> op.apply_to_xyz([0.25, 0.21875, 0.3])
+    [-0.21875, 0.03125, 0.6333333333333333]
+
+
 In the reciprocal space, the same operation relates equivalent reflections.
-The rotational part determines reflection indices,
+The rotational part determines Miller indices,
 the translational part -- phase shift.
 
 .. doctest::
