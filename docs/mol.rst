@@ -308,6 +308,17 @@ With this list we can use:
   it returns the symmetric image of ``pos`` that is nearest to ``ref``.
   The last argument can also be set to ``Asu::Same`` or ``Asu::Different``.
 
+In the reciprocal space, the unit cell can be used to determine interplanar
+spacing *d*:sub:`hkl`:
+
+.. doctest::
+
+    >>> cell.calculate_d([0, 1, 0])
+    39.5
+    >>> cell.calculate_1_d2([8, -9, 10])  # calculates 1/d^2
+    0.20240687828293985
+
+
 Reading coordinate files
 ========================
 
