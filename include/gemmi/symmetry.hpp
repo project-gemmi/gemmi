@@ -29,6 +29,9 @@
 
 namespace gemmi {
 
+// used as an argument for Op::apply_to_hkl()
+using Miller = std::array<int, 3>;
+
 // UTILS
 
 namespace impl {
@@ -121,15 +124,15 @@ struct Op {
     return out;
   }
 
-  std::array<int, 3> apply_to_hkl(const std::array<int, 3>& hkl) const {
-    std::array<int, 3> r;
+  Miller apply_to_hkl(const Miller& hkl) const {
+    Miller r;
     for (int i = 0; i != 3; ++i)
       r[i] = (rot[0][i] * hkl[0] + rot[1][i] * hkl[1] + rot[2][i] * hkl[2])
              / Op::DEN;
     return r;
   }
 
-  double phase_shift(const std::array<int, 3>& hkl) const {
+  double phase_shift(const Miller& hkl) const {
     constexpr double mult = -2 * 3.1415926535897932384626433832795 / Op::DEN;
     return mult * (hkl[0] * tran[0] + hkl[1] * tran[1] + hkl[2] * tran[2]);
   }
