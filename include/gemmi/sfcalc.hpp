@@ -11,8 +11,6 @@
 
 namespace gemmi {
 
-// direct calculation of a single structure factor
-
 // calculate part of the structure factor: exp(2 pi i r * s)
 inline std::complex<double> structure_factor_part(Fractional fpos,
                                                   const Miller& hkl) {
