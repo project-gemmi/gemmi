@@ -697,6 +697,15 @@ if (errno)
 	/* Concatenate the file name and extension to form base name */
 	_tinydir_strcat(file_name_buf, ext_buf);
 	base_name = file_name_buf;
+	if (base_name[0] == '\0')
+	{
+		_tinydir_strcpy(file->path, dir_name);
+		file->name[0] = '\0';
+		file->extension = file->name;
+		file->is_dir = 1;
+		file->is_reg = 0;
+		return 0;
+	}
 #else
 	_tinydir_strcpy(dir_name_buf, path);
 	dir_name = dirname(dir_name_buf);
