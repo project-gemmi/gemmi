@@ -141,7 +141,7 @@ struct Restraints {
   const Bond& get_bond(const AtomId& a1, const AtomId& a2) const {
     auto it = find_bond(a1, a2);
     if (it == bonds.end())
-      fail("Bond restraint not found: " + a1.atom + "-" + a2.atom);
+      fail("Bond restraint not found: ", a1.atom, '-', a2.atom);
     return *it;
   }
 
@@ -214,7 +214,7 @@ struct Restraints {
                                                                         const {
     auto it = const_cast<Restraints*>(this)->find_angle(a, b, c);
     if (it == angles.end())
-      fail("Angle restraint not found: " + a.atom + "-" + b.atom + "-"+c.atom);
+      fail("Angle restraint not found: ", a.atom, '-', b.atom, '-', c.atom);
     return *it;
   }
 
@@ -327,7 +327,7 @@ struct ChemComp {
   int get_atom_index(const std::string& atom_id) const {
     auto it = find_atom(atom_id);
     if (it == atoms.end())
-      fail("Chemical componenent " + name + " has no atom " + atom_id);
+      fail("Chemical componenent ", name, " has no atom ", atom_id);
     return it - atoms.begin();
   }
 

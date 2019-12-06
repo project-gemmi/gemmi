@@ -236,7 +236,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     cif::Document doc2 = read_cif_gz(path2);
     const cif::Block* block2 = doc2.find_block(block1->name);
     if (!block2)
-      fail("Block " + block1->name + " not found in " + path2);
+      fail("Block ", block1->name, " not found in ", path2);
     ChemComp cc1 = make_chemcomp_from_block(*block1);
     ChemComp cc2 = make_chemcomp_from_block(*block2);
     compare_chemcomps(cc1, cc2, delta);

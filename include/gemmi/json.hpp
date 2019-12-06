@@ -48,7 +48,7 @@ inline std::string as_cif_value(const sajson::value& val) {
     case sajson::TYPE_STRING:
       return quote(val.as_string());
     default:
-      fail("Unexpected " + json_type_as_string(val.get_type()) + " in JSON.");
+      fail("Unexpected ", json_type_as_string(val.get_type()), " in JSON.");
       return "";
   }
 }
@@ -87,8 +87,8 @@ inline void fill_document_from_sajson(Document& d, const sajson::document& s) {
       if (arr.get_type() != sajson::TYPE_ARRAY)
         fail("Expected array, got " + json_type_as_string(arr.get_type()));
       if (arr.get_length() != cif_rows)
-        fail("Expected array of length " + std::to_string(cif_rows) + " not "
-             + std::to_string(arr.get_length()));
+        fail("Expected array of length ", std::to_string(cif_rows), " not ",
+             std::to_string(arr.get_length()));
       if (cif_rows == 1) {
         items.emplace_back(tag, as_cif_value(arr.get_array_element(0)));
       } else {
@@ -108,7 +108,7 @@ inline Document read_mmjson_insitu(char* buffer, size_t size,
   sajson::document json = sajson::parse(sajson::dynamic_allocation(),
                                     sajson::mutable_string_view(size, buffer));
   if (!json.is_valid())
-    fail(name + ":" + std::to_string(json.get_error_line()) + " error: " +
+    fail(name, ":", std::to_string(json.get_error_line()), " error: ",
          json.get_error_message_as_string());
   fill_document_from_sajson(doc, json);
   doc.source = name;

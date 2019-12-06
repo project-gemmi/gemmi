@@ -34,8 +34,7 @@ std::complex<double> calculate_structure_factor(const Model& model,
         double& sfactor = scattering_factors[(int)el];
         if (sfactor == 0.) {
           if (!Table::has(el))
-            fail("Missing scattering factor for " +
-                 std::string(element_name(el)));
+            fail("Missing scattering factor for ", element_name(el));
           sfactor = Table::get(el).calculate_sf(stol2);
         }
         Fractional fpos = cell.fractionalize(atom.pos);

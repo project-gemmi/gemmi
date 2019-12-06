@@ -64,7 +64,7 @@ void remove_add_sort(Topo& topo, const std::vector<option::Option>& options) {
         for (gemmi::Atom& atom : res.atoms) {
           auto it = cc.find_atom(atom.name);
           if (it == cc.atoms.end())
-            gemmi::fail("No atom " + atom.name + " expected in " + res.name);
+            gemmi::fail("No atom ", atom.name, " expected in ", res.name);
           atom.serial = it - cc.atoms.begin(); // temporary, for sorting only
         }
         std::sort(res.atoms.begin(), res.atoms.end(),

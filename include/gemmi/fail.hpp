@@ -7,11 +7,23 @@
 
 #include <stdexcept>  // for runtime_error
 #include <string>
+#include <utility>    // for forward
 
 namespace gemmi {
 
 [[noreturn]]
 inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
+
+template<typename T, typename... Args> [[noreturn]]
+void fail(std::string&& str, T&& arg1, Args&&... args) {
+  str += arg1;
+  fail(std::move(str), std::forward<Args>(args)...);
+}
+template<typename T, typename... Args> [[noreturn]]
+void fail(const std::string& str, T&& arg1, Args&&... args) {
+  fail(str + arg1, std::forward<Args>(args)...);
+}
+
 
 // unreachable() is used to silence GCC -Wreturn-type and hint the compiler
 [[noreturn]] inline void unreachable() {

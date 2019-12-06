@@ -60,12 +60,12 @@ get_mtz_map_columns(const Mtz& mtz, const char* section, bool diff_map,
   if (section) {
     ds = mtz.dataset_with_name(section);
     if (!ds)
-      gemmi::fail(std::string("No such dataset in the MTZ file: ") + section);
+      gemmi::fail("No such dataset in the MTZ file: ", section);
   }
   if (f_label) {
     f_col = mtz.column_with_label(f_label, ds);
     if (!f_col)
-      gemmi::fail(std::string("Column not found: ") + f_label);
+      gemmi::fail("Column not found: ", f_label);
     if (phi_label) {
       phi_col = mtz.column_with_label(phi_label, ds);
     } else {
