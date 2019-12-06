@@ -89,7 +89,7 @@ void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
     for (int k = -sf.nv / 2; k < sf.nv / 2; ++k)
       for (int l = 0; l < sf.nw / 2; ++l) {
         Miller hkl{{h, k, l}};
-        double hkl_1_d2 = sf.unit_cell.calculate_1_d2(h, k, l);
+        double hkl_1_d2 = sf.unit_cell.calculate_1_d2(hkl);
         if (hkl_1_d2 < max_1_d2) {
           std::complex<double> value = sf.data[sf.index_n(h, k, l)];
           value *= std::exp(opt.smear * 0.25 * hkl_1_d2);
@@ -170,7 +170,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         gemmi::Miller hkl{{hkl_[0], hkl_[1], hkl_[2]}};
         if (p.options[Verbose])
           fprintf(stderr, "hkl=(%d %d %d) -> d=%g\n", hkl[0], hkl[1], hkl[2],
-                  st.cell.calculate_d(hkl[0], hkl[1], hkl[2]));
+                  st.cell.calculate_d(hkl));
         std::complex<double> sf =
           calculate_structure_factor<IT92<double>>(st.models[0], st.cell, hkl);
         print_sf(sf, hkl);

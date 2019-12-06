@@ -81,6 +81,10 @@ struct FTransform : Transform {
 };
 
 
+// a synonym for convenient passing of hkl
+using Miller = std::array<int, 3>;
+
+
 struct UnitCell {
   UnitCell() = default;
   UnitCell(double a_, double b_, double c_,
@@ -330,11 +334,14 @@ struct UnitCell {
                                                     brk * crl * cos_alphar +
                                                     arh * crl * cos_betar);
   }
+  double calculate_1_d2(const Miller& hkl) const {
+    return calculate_1_d2(hkl[0], hkl[1], hkl[2]);
+  }
 
   // Calculate d-spacing.
   // d = lambda/(2*sin(theta))
-  double calculate_d(double h, double k, double l) const {
-    return 1.0 / std::sqrt(calculate_1_d2(h, k, l));
+  double calculate_d(const Miller& hkl) const {
+    return 1.0 / std::sqrt(calculate_1_d2(hkl));
   }
 };
 

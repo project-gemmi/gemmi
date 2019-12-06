@@ -71,7 +71,8 @@ static py::array_t<float> make_1_d2_array(const Mtz& mtz, int dataset) {
 static py::array_t<float> make_d_array(const Mtz& mtz, int dataset) {
   return make_new_column(mtz, dataset,
                          [](const UnitCell& cell, float h, float k, float l) {
-                           return (float) cell.calculate_d(h, k, l);
+                           double _1_d2 = cell.calculate_1_d2(h, k, l);
+                           return (float) (1.0 / std::sqrt(_1_d2));
                          });
 }
 

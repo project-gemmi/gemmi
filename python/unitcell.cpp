@@ -5,7 +5,7 @@
 #include <cstdio>  // for snprintf
 #include <array>
 #include <pybind11/pybind11.h>
-//#include <pybind11/stl.h>
+#include <pybind11/stl.h>
 //#include <pybind11/stl_bind.h>
 //#include <pybind11/numpy.h>
 
@@ -112,10 +112,10 @@ void add_unitcell(py::module& m) {
          py::arg("ref"), py::arg("pos"), py::arg("asu")=Asu::Any)
     .def("is_special_position", &UnitCell::is_special_position,
          py::arg("pos"), py::arg("max_dist")=0.8)
-    .def("calculate_1_d2", &UnitCell::calculate_1_d2,
-         py::arg("hk"), py::arg("k"), py::arg("l"))
-    .def("calculate_d", &UnitCell::calculate_d,
-         py::arg("hk"), py::arg("k"), py::arg("l"))
+    .def("calculate_1_d2",
+         (double (UnitCell::*)(const Miller&)const) &UnitCell::calculate_1_d2,
+         py::arg("hkl"))
+    .def("calculate_d", &UnitCell::calculate_d, py::arg("hkl"))
     .def("__repr__", [](const UnitCell& self) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
              + ", " + triple(self.alpha, self.beta, self.gamma) + ")>";

@@ -29,9 +29,6 @@
 
 namespace gemmi {
 
-// used as an argument for Op::apply_to_hkl()
-using Miller = std::array<int, 3>;
-
 // UTILS
 
 namespace impl {
@@ -123,6 +120,9 @@ struct Op {
                 tran[i]) / Op::DEN;
     return out;
   }
+
+  // Miller is defined in the same way in namespace gemmi in unitcell.hpp
+  using Miller = std::array<int, 3>;
 
   Miller apply_to_hkl(const Miller& hkl) const {
     Miller r;

@@ -41,9 +41,9 @@ class TestUnitCell(unittest.TestCase):
         #  uc = uctbx.unit_cell((35.996, 41.601, 45.756, 67.40, 66.90, 74.85))
         #  uc.d_star_sq((-3, -2, 1))
         #  uc.d((3, 4, 5))
-        self.assertAlmostEqual(cell.calculate_1_d2(-3, -2, 1),
+        self.assertAlmostEqual(cell.calculate_1_d2([-3, -2, 1]),
                                0.0128229081865688, delta=1e-17)
-        self.assertAlmostEqual(cell.calculate_d(3, 4, 5),
+        self.assertAlmostEqual(cell.calculate_d([3, 4, 5]),
                                7.7319559244298, delta=1e-13)
 
 

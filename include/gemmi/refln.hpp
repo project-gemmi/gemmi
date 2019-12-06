@@ -120,10 +120,10 @@ struct ReflnBlock {
     auto hkl_idx = get_hkl_column_indices();
     std::vector<double> r(default_loop->length());
     for (size_t j = 0, n = 0; j != r.size(); j++, n += default_loop->width()) {
-      int h = cif::as_int(default_loop->values[n + hkl_idx[0]]);
-      int k = cif::as_int(default_loop->values[n + hkl_idx[1]]);
-      int l = cif::as_int(default_loop->values[n + hkl_idx[2]]);
-      r[j] = cell.calculate_1_d2(h, k, l);
+      Miller hkl;
+      for (int i = 0; i != 3; ++i)
+        hkl[i] = cif::as_int(default_loop->values[n + hkl_idx[i]]);
+      r[j] = cell.calculate_1_d2(hkl);
     }
     return r;
   }
