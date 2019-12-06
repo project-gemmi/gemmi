@@ -1,31 +1,32 @@
 
-Reflection files
+Reciprocal space
 ################
 
-This section is about reciprocal space and is primarily for people
-working with crystallographic data.
+This section is primarily for people working with crystallographic data.
 
-Reflection files list reflections, identified by Miller indices (h,k,l),
-with various numbers assigned to them.
-Initially, the numbers represent observations derived from
+Gemmi supports three reflection file formats:
+
+* MTZ files -- the most popular format in macromolecular crystallography,
+* structure factor mmCIF files -- used for data archiving
+  in the Protein Data Bank,
+* and small molecule structure factor CIF files (usually with extension hkl).
+
+Reflection files store Miller indices (*hkl*) with various associated
+numbers. Initially, the numbers represent observations derived from
 diffraction images (estimated intensities and their errors).
 Then other quantities derived from these are added,
 as well as quantities derived from a macromolecular model
 or from both the model and experimental data.
 
-Electron density maps, which are used in real space, are also kept as
-numbers assigned to reflections. They must be Fourier-transformed
-to the real space before use, but this operation is cheap enough
-to be performed on the fly.
+Even electron density maps, which are used in the real space, are nowadays
+stored mostly as map coefficients in reflection files.
+Molecular viewers can Fourier-transform them on the fly and show
+in the real space. Therefore, switching between real and reciprocal space
+is also included in Gemmi, as well as calculation of structure factors
+from the model.
 
-Gemmi can read two formats of reflection files:
-
-* MTZ files -- the most popular format in macromolecular crystallography,
-* and structure factor mmCIF files -- used for data archiving
-  in the Protein Data Bank.
-
-MTZ
-===
+MTZ format
+==========
 
 MTZ format has textual headers and a binary data table, where all numbers
 are stored in a 32-bit floating point format.
@@ -431,8 +432,8 @@ Which one is used can be checked with the function:
   >>> rblock.is_unmerged()
   False
 
-But it is syntactically correct to have both types of data two tables
-in one block.  In such case you can switch with table is used:
+But it is syntactically correct to have both types of data in two tables
+in one block. In such case you can switch which table is used:
 
 .. doctest::
 
@@ -482,7 +483,7 @@ the selected column in an array. In Python -- in NumPy array:
   >>> rblock.make_array_float('F_meas_au', 0.0)  # use 0.0 for nulls
   array([12.66, 13.82, 24.11, ...,  0.  ,  9.02,  0.  ])
 
-We also have a convenience function that returns array of 1/d^2 values:
+We also have a convenience function that returns array of 1/*d*:sup:`2` values:
 
 .. doctest::
 
@@ -499,8 +500,15 @@ the wwPDB (for example,
   :language: python
   :lines: 4-
 
-Data on a 3D grid
-=================
+hkl CIF
+=======
+
+In the small molecule world reflections are also stored in separate CIF files.
+
+(work in progress)
+
+Data on 3D grid
+===============
 
 The reciprocal space data can be alternatively presented on a 3D grid
 indexed by Miller indices.
@@ -696,3 +704,14 @@ with negative Miller index l, but you can use its Friedel mate:
 
 Then again, you can use ``transform_f_phi_grid_to_map()``
 to transform it back to the direct space, and so on...
+
+Scattering factors
+==================
+
+TODO:
+
+* f = f0 + f'
+* f0 coefficients
+* f' (Cromer, Henke (f1 - Z), from CIF file)
+* direct calculation or FFT, tradoffs between performance and accuracy
+* bulk solvent
