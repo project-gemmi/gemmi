@@ -72,6 +72,21 @@ together with the unit cell and symmetry.
     [<gemmi.AtomicStructure.Site Si1>, <gemmi.AtomicStructure.Site C1>]
     >>> len(SiC.get_all_unit_cell_sites())
     8
+    >>> site = SiC.sites[0]
+    >>> site.label
+    'Si1'
+    >>> site.type_symbol
+    'Si4+'
+    >>> site.fract
+    <gemmi.Fractional(0, 0, 0)>
+    >>> site.occ
+    1.0
+    >>> site.u_iso  # not specified here
+    0.0
+    >>> site.element  # obtained from type_symbol 'Si4+'
+    <gemmi.Element: Si>
+    >>> site.charge   # obtained from type_symbol 'Si4+'
+    4
 
 
 .. _chemcomp:

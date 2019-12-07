@@ -52,6 +52,10 @@ void add_misc(py::module& m) {
     .def_readonly("label", &AtomicStructure::Site::label)
     .def_readonly("type_symbol", &AtomicStructure::Site::type_symbol)
     .def_readonly("fract", &AtomicStructure::Site::fract)
+    .def_readonly("occ", &AtomicStructure::Site::occ)
+    .def_readonly("u_iso", &AtomicStructure::Site::u_iso)
+    .def_readonly("element", &AtomicStructure::Site::element)
+    .def_readonly("charge", &AtomicStructure::Site::charge)
     .def("__repr__", [](const AtomicStructure::Site& self) {
         return "<gemmi.AtomicStructure.Site " + self.label + ">";
     });

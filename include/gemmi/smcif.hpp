@@ -21,8 +21,14 @@ struct AtomicStructure {
     std::string label;
     std::string type_symbol;
     Fractional fract;
-    float occ = 1.0f;
+    double occ = 1.0;
+    double u_iso = 0.;
+    Element element = El::X;
+    signed char charge = 0;  // [-8, +8]
+
+    void fill_in_element_and_charge();
   };
+
   std::string name;
   UnitCell cell;
   std::string spacegroup_hm;
@@ -52,13 +58,14 @@ AtomicStructure make_atomic_structure_from_block(const cif::Block& block_) {
   st.spacegroup_hm =
                 as_string(block.find_value("_symmetry_space_group_name_H-M"));
 
-  enum { kLabel, kSymbol, kX, kY, kZ, kOcc };
+  enum { kLabel, kSymbol, kX, kY, kZ, kUiso, kOcc };
   cif::Table atom_table = block.find("_atom_site_",
                                      {"label",
                                       "?type_symbol",
                                       "?fract_x",
                                       "?fract_y",
                                       "?fract_z",
+                                      "?U_iso_or_equiv",
                                       "?occupancy"});
   for (auto row : atom_table) {
     AtomicStructure::Site site;
@@ -71,13 +78,25 @@ AtomicStructure make_atomic_structure_from_block(const cif::Block& block_) {
       site.fract.y = as_number(row[kY]);
     if (row.has(kZ))
       site.fract.z = as_number(row[kZ]);
+    if (row.has(kUiso))
+      site.occ = as_number(row[kUiso], 0.0);
     if (row.has(kOcc))
-      site.occ = (float) as_number(row[kOcc], 1.0);
+      site.occ = as_number(row[kOcc], 1.0);
+    site.fill_in_element_and_charge();
     st.sites.push_back(site);
   }
   const SpaceGroup* sg = find_spacegroup_by_name(st.spacegroup_hm);
   st.cell.set_cell_images_from_spacegroup(sg);
   return st;
+}
+
+inline void AtomicStructure::Site::fill_in_element_and_charge() {
+  const std::string& s = type_symbol.empty() ? label : type_symbol;
+  int len = s.size() > 1 && std::isalpha(s[1]) ? 2 : 1;
+  element = len == 1 ? impl::find_single_letter_element(s[0])
+                     : find_element(s.c_str());
+  if (element != El::X && std::isdigit(s[len]))
+    charge = (s[len] - '0') * (s[len+1] == '-' ? -1 : 1);
 }
 
 inline std::vector<AtomicStructure::Site>
