@@ -1,41 +1,16 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// Read small molecule CIF file into AtomicStructure.
-// Minimal functionality.
+// Read small molecule CIF file into AtomicStructure (from smodel.hpp).
 
 #ifndef GEMMI_SMCIF_HPP_
 #define GEMMI_SMCIF_HPP_
 
-#include <algorithm>     // for any_of
-#include <string>
-#include <vector>
+#include "smodel.hpp"    // AtomicStructure
 #include "cifdoc.hpp"
 #include "numb.hpp"      // for as_number
 #include "symmetry.hpp"  // SpaceGroup
-#include "unitcell.hpp"  // UnitCell, Fractional
 
 namespace gemmi {
-
-struct AtomicStructure {
-  struct Site {
-    std::string label;
-    std::string type_symbol;
-    Fractional fract;
-    double occ = 1.0;
-    double u_iso = 0.;
-    Element element = El::X;
-    signed char charge = 0;  // [-8, +8]
-
-    void fill_in_element_and_charge();
-  };
-
-  std::string name;
-  UnitCell cell;
-  std::string spacegroup_hm;
-  std::vector<Site> sites;
-
-  std::vector<Site> get_all_unit_cell_sites() const;
-};
 
 inline
 AtomicStructure make_atomic_structure_from_block(const cif::Block& block_) {
@@ -79,7 +54,7 @@ AtomicStructure make_atomic_structure_from_block(const cif::Block& block_) {
     if (row.has(kZ))
       site.fract.z = as_number(row[kZ]);
     if (row.has(kUiso))
-      site.occ = as_number(row[kUiso], 0.0);
+      site.u_iso = as_number(row[kUiso], 0.0);
     if (row.has(kOcc))
       site.occ = as_number(row[kOcc], 1.0);
     site.fill_in_element_and_charge();
@@ -88,34 +63,6 @@ AtomicStructure make_atomic_structure_from_block(const cif::Block& block_) {
   const SpaceGroup* sg = find_spacegroup_by_name(st.spacegroup_hm);
   st.cell.set_cell_images_from_spacegroup(sg);
   return st;
-}
-
-inline void AtomicStructure::Site::fill_in_element_and_charge() {
-  const std::string& s = type_symbol.empty() ? label : type_symbol;
-  int len = s.size() > 1 && std::isalpha(s[1]) ? 2 : 1;
-  element = len == 1 ? impl::find_single_letter_element(s[0])
-                     : find_element(s.c_str());
-  if (element != El::X && std::isdigit(s[len]))
-    charge = (s[len] - '0') * (s[len+1] == '-' ? -1 : 1);
-}
-
-inline std::vector<AtomicStructure::Site>
-AtomicStructure::get_all_unit_cell_sites() const {
-  std::vector<Site> all;
-  for (const Site& site : sites) {
-    size_t start = all.size();
-    all.push_back(site);
-    for (const FTransform& image : cell.images) {
-      Fractional fpos = image.apply(site.fract);
-      if (std::any_of(all.begin() + start, all.end(), [&](const Site& other) {
-            return cell.distance_sq(fpos, other.fract) < 0.5 * 0.5;
-          }))
-        continue;
-      all.push_back(site);
-      all.back().fract = fpos;
-    }
-  }
-  return all;
 }
 
 } // namespace gemmi

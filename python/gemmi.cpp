@@ -7,7 +7,7 @@
 #include "gemmi/fileutil.hpp"  // for expand_if_pdb_code
 #include "gemmi/elem.hpp"
 #include "gemmi/it92.hpp"
-#include "gemmi/smcif.hpp"
+#include "gemmi/smodel.hpp"    // for AtomicStructure
 
 namespace py = pybind11;
 

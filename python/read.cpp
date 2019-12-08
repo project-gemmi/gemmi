@@ -6,7 +6,7 @@
 #include "gemmi/json.hpp"
 #include "gemmi/gzread.hpp"
 #include "gemmi/gzread_impl.hpp"
-#include "gemmi/smcif.hpp" // for AtomicStructure
+#include "gemmi/smcif.hpp"         // for make_atomic_structure_from_block
 #include "gemmi/chemcomp_xyz.hpp"
 #include "gemmi/remarks.hpp"
 
