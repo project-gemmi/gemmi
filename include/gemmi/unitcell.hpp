@@ -310,16 +310,18 @@ struct UnitCell {
   }
 
   // return number of nearby symmetry mates (0 = none, 3 = 4-fold axis, etc)
-  int is_special_position(const Position& pos, double max_dist = 0.8) const {
+  int is_special_position(const Fractional& fpos, double max_dist) const {
     const double max_dist_sq = max_dist * max_dist;
     int n = 0;
-    Fractional fpos = fractionalize(pos);
     for (const FTransform& image : images) {
       Fractional fdiff = (image.apply(fpos) - fpos).wrap_to_zero();
       if (orthogonalize_difference(fdiff).length_sq() < max_dist_sq)
         ++n;
     }
     return n;
+  }
+  int is_special_position(const Position& pos, double max_dist = 0.8) const {
+    return is_special_position(fractionalize(pos), max_dist);
   }
 
   // Calculate 1/d^2 for specified hkl reflection.

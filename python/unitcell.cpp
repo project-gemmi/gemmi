@@ -110,8 +110,14 @@ void add_unitcell(py::module& m) {
     .def("volume_per_image", &UnitCell::volume_per_image)
     .def("find_nearest_image", &UnitCell::find_nearest_image,
          py::arg("ref"), py::arg("pos"), py::arg("asu")=Asu::Any)
-    .def("is_special_position", &UnitCell::is_special_position,
+    .def("is_special_position",
+         (int (UnitCell::*)(const Position&, double) const)
+           &UnitCell::is_special_position,
          py::arg("pos"), py::arg("max_dist")=0.8)
+    .def("is_special_position",
+         (int (UnitCell::*)(const Fractional&, double) const)
+           &UnitCell::is_special_position,
+         py::arg("fpos"), py::arg("max_dist"))
     .def("calculate_1_d2",
          (double (UnitCell::*)(const Miller&)const) &UnitCell::calculate_1_d2,
          py::arg("hkl"))
