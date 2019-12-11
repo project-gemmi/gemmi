@@ -24,25 +24,34 @@ struct AtomicStructure {
     double u_iso = 0.;
     Element element = El::X;
     signed char charge = 0;  // [-8, +8]
+  };
 
-    void fill_in_element_and_charge();
+  struct AtomType {
+    std::string symbol;
+    Element element = El::X;
+    signed char charge = 0;  // [-8, +8]
+    double dispersion_real;
+    double dispersion_imag;
   };
 
   std::string name;
   UnitCell cell;
   std::string spacegroup_hm;
   std::vector<Site> sites;
+  std::vector<AtomType> atom_types;
 
   std::vector<Site> get_all_unit_cell_sites() const;
 };
 
-inline void AtomicStructure::Site::fill_in_element_and_charge() {
-  const std::string& s = type_symbol.empty() ? label : type_symbol;
-  int len = s.size() > 1 && std::isalpha(s[1]) ? 2 : 1;
-  element = len == 1 ? impl::find_single_letter_element(s[0])
-                     : find_element(s.c_str());
-  if (element != El::X && s[len] >= '0' && s[len] <= '9')
-    charge = (s[len] - '0') * (s[len+1] == '-' ? -1 : 1);
+template<typename T>
+inline void split_element_and_charge(const std::string& label, T* dest) {
+  int len = label.size() > 1 && std::isalpha(label[1]) ? 2 : 1;
+  dest->element = len == 1 ? impl::find_single_letter_element(label[0] & ~0x20)
+                           : find_element(label.c_str());
+  if (dest->element != El::X && label[len] >= '0' && label[len] <= '9')
+    dest->charge = label[len] - '0';
+  if (label[len+1] == '-')
+    dest->charge = -dest->charge;
 }
 
 inline std::vector<AtomicStructure::Site>

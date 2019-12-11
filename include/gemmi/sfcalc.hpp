@@ -20,12 +20,12 @@ public:
   void set_hkl(const Miller& hkl) {
     hkl_ = hkl;
     stol2_ = 0.25 * cell_.calculate_1_d2(hkl);
-    scattering_factors.clear();
-    scattering_factors.resize((int) El::END, 0.);
+    scattering_factors_.clear();
+    scattering_factors_.resize((int) El::END, 0.);
   }
 
   double get_scattering_factor(Element element, double fprim = 0.) {
-    double& sfactor = scattering_factors[(int)element.elem];
+    double& sfactor = scattering_factors_[(int)element.elem];
     if (sfactor == 0.) {
       if (!Table::has(element.elem))
         fail("Missing scattering factor for ", element.name());
@@ -58,11 +58,14 @@ public:
 
   // The occupancy is assumed to take into account symmetry,
   // i.e. to be fractional if the atom is on special position.
-  std::complex<double> calculate_sf_from_atomic_structure(
-                            const AtomicStructure& atomic, const Miller& hkl) {
+  std::complex<double>
+  calculate_sf_from_atomic_structure(const AtomicStructure& ast,
+                                     const Miller& hkl) {
     std::complex<double> sf = 0.;
     set_hkl(hkl);
-    for (const AtomicStructure::Site& site : atomic.sites) {
+    for (const AtomicStructure::AtomType& atom_type : ast.atom_types)
+      get_scattering_factor(atom_type.element, atom_type.dispersion_real);
+    for (const AtomicStructure::Site& site : ast.sites) {
       double b_iso = 8 * pi() * pi() * site.u_iso;
       sf += site.occ * get_contribution(site.element, site.fract, b_iso);
     }
@@ -79,7 +82,7 @@ private:
   const UnitCell& cell_;
   Miller hkl_;
   double stol2_;
-  std::vector<double> scattering_factors;
+  std::vector<double> scattering_factors_;
 };
 
 

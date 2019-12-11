@@ -47,6 +47,8 @@ AtomicStructure make_atomic_structure_from_block(const cif::Block& block_) {
     site.label = as_string(row[kLabel]);
     if (row.has(kSymbol))
       site.type_symbol = as_string(row[kSymbol]);
+    else
+      site.type_symbol = site.label;
     if (row.has(kX))
       site.fract.x = as_number(row[kX]);
     if (row.has(kY))
@@ -57,9 +59,22 @@ AtomicStructure make_atomic_structure_from_block(const cif::Block& block_) {
       site.u_iso = as_number(row[kUiso], 0.0);
     if (row.has(kOcc))
       site.occ = as_number(row[kOcc], 1.0);
-    site.fill_in_element_and_charge();
+    split_element_and_charge(site.type_symbol, &site);
     st.sites.push_back(site);
   }
+
+  for (auto row : block.find("_atom_type_",
+                             {"symbol",
+                              "scat_dispersion_real",
+                              "scat_dispersion_imag"})) {
+    AtomicStructure::AtomType atom_type;
+    atom_type.symbol = row.str(0);
+    atom_type.dispersion_real = cif::as_number(row[1]);
+    atom_type.dispersion_imag = cif::as_number(row[2]);
+    split_element_and_charge(atom_type.symbol, &atom_type);
+    st.atom_types.push_back(atom_type);
+  }
+
   const SpaceGroup* sg = find_spacegroup_by_name(st.spacegroup_hm);
   st.cell.set_cell_images_from_spacegroup(sg);
   return st;

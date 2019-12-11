@@ -9,6 +9,7 @@
 #include <gemmi/gzread.hpp>
 #include <gemmi/it92.hpp>
 #include <gemmi/fileutil.hpp>  // for file_open
+#include <gemmi/math.hpp>      // for sq
 #include <gemmi/rhogrid.hpp>   // for put_first_model_density_on_grid
 #include <gemmi/sfcalc.hpp>    // for calculate_structure_factor
 #include <gemmi/smcif.hpp>     // for make_atomic_structure_from_block
@@ -16,16 +17,17 @@
 #define GEMMI_PROG sfcalc
 #include "options.h"
 
-enum OptionIndex { Hkl=4, Dmin, Rate, Smear, RCut, Check };
+enum OptionIndex { Hkl=4, Dmin, Rate, Smear, RCut, Check,
+                   NoFp, Measured, Scale };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n  " EXE_NAME " [options] INPUT_FILE\n\n"
-    "Calculates structure factors of a model (PDB or mmCIF file).\n\n"
-    "Either directly calculates reflections specified by option --hkl\n"
-    "or uses FFT to calculate all reflections up to requested resolution.\n"
-    "It can also calculate (only directly) structure factors from a small\n"
-    "molecule CIF file.\n"
+    "Calculates structure factors of a model (PDB, mmCIF or SMX CIF file).\n\n"
+    "Uses FFT to calculate all reflections up to requested resolution for MX\n"
+    "files. Otherwise, for SMX and --hkl, F's are calculated directly.\n"
+    "This program can also compare F's calculated directly with values\n"
+    "calculated through FFT or with values read from a reflection file.\n"
     "\nOptions:"},
   CommonUsage[Help],
   CommonUsage[Version],
@@ -34,7 +36,9 @@ static const option::Descriptor Usage[] = {
     "  --hkl=H,K,L  \tCalculate structure factor F_hkl." },
   { Dmin, 0, "", "dmin", Arg::Float,
     "  --dmin=D  \tCalculate structure factors up to given resolution." },
-  { NoOp, 0, "", "", Arg::None, "\nOptions affecting FFT-based calculations:" },
+  { NoFp, 0, "", "nofp", Arg::None,
+    "  --nofp  \tIgnore f' (anomalous dispersion scattering)." },
+  { NoOp, 0, "", "", Arg::None, "\nOptions for FFT-based calculations:" },
   { Rate, 0, "", "rate", Arg::Float,
     "  --rate=R  \tShannon rate used for grid spacing (default: 1.5)." },
   { Smear, 0, "", "smear", Arg::Float,
@@ -44,8 +48,13 @@ static const option::Descriptor Usage[] = {
   { Check, 0, "", "check", Arg::Optional,
     "  --check[=CACHE]  \tCalculate exact values and report differences (slow)." },
   { NoOp, 0, "", "", Arg::None,
-    "\nOption --check=FILE.hkl can also be used to check values from"
-    "\n_refln_F_(squared_)calc in a small molecule CIF file." },
+    "\nOptions for comparing calculated values with values from a file:" },
+  { NoOp, 0, "", "", Arg::None,
+    "  --check[=FILE]  \tRe-calculate Fcalc and report differences." },
+  { Measured, 0, "", "meas", Arg::None,
+    "  --meas  \tCompare against measured values _refln_F_(squared_)meas." },
+  { Scale, 0, "", "scale", Arg::Float,
+    "  --scale=S  \tMultiply calculated F by sqrt(S) (default: 1)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -57,14 +66,20 @@ void print_sf(std::complex<double> sf, const gemmi::Miller& hkl) {
 
 struct Comparator {
   double sum_sq_diff = 0.;
+  double sum_sq1 = 0.;
+  double sum_sq2 = 0.;
   double sum_abs = 0.;
   double max_abs_df = 0.;
+  double sum_abs_diff = 0.;
   int count = 0;
 
   template<typename T> void add(T value, T exact) {
     double abs_df = std::abs(value - exact);
     sum_sq_diff += abs_df * abs_df;
+    sum_sq1 += gemmi::sq(std::abs(value));
+    sum_sq2 += gemmi::sq(std::abs(exact));
     sum_abs += std::abs(exact);
+    sum_abs_diff += std::abs(std::abs(value) - std::abs(exact));
     if (abs_df > max_abs_df)
       max_abs_df = abs_df;
     ++count;
@@ -73,6 +88,8 @@ struct Comparator {
   double rmse() const { return std::sqrt(sum_sq_diff / count); }
   double abs_avg() const { return sum_abs / count; }
   double weighted_rmse() const { return rmse() / abs_avg(); }
+  double rfactor() const { return sum_abs_diff / sum_abs; }
+  double scale() const { return std::sqrt(sum_sq1 / sum_sq2); }
 };
 
 using namespace gemmi;
@@ -144,9 +161,9 @@ void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
         }
       }
   if (check) {
-    fprintf(stderr, "RMSE: %#.5g\t%#.5g%%\tMax |dF|: %#.5g",
+    fprintf(stderr, "RMSE: %#.5g\t%#.4g%%\tmax|dF|=%#.4g  \tR-factor: %#.3g%%",
             comparator.rmse(), 100. * comparator.weighted_rmse(),
-            comparator.max_abs_df);
+            comparator.max_abs_df, 100 * comparator.rfactor());
     if (!verbose) {
       std::chrono::duration<double> elapsed = Clock::now() - start;
       fprintf(stderr, "\t%#.5gs", elapsed.count());
@@ -166,42 +183,59 @@ double get_minimum_b_iso(const Model& model) {
   return b_min;
 }
 
-void verify_f_calc(const AtomicStructure& ast, bool verbose, const char* path) {
+static
+void verify_f_calc(const AtomicStructure& ast, const std::string& suffix,
+                   double scale, bool verbose, const char* path) {
   StructureFactorCalculator<IT92<double>> calc(ast.cell);
   cif::Document hkl_doc = read_cif_gz(path);
   cif::Block& block = hkl_doc.blocks.at(0);
-  Comparator comparator;
-  cif::Table table = block.find("_refln_", {"index_h", "index_k", "index_l",
-                                            "?F_calc", "?F_squared_calc"});
+  std::string f_cols[2] = {"?F_calc", "?F_squared_calc"};
+  cif::Table table = block.find("_refln_",
+      {"index_h", "index_k", "index_l", "?F_"+suffix, "?F_squared_"+suffix});
   if (!table.ok())
     fail("_refln_index_ category not found in ", path);
   if (table.has_column(3)) {
     if (verbose)
-      fprintf(stderr, "Checking _refln_F_calc\n");
+      fprintf(stderr, "Checking _refln_F_calc from %s\n", path);
   } else if (table.has_column(4)) {
     if (verbose)
-      fprintf(stderr, "Checking square root of _refln_F_squared_calc\n");
+      fprintf(stderr, "Checking sqrt of _refln_F_squared_calc from %s\n", path);
   } else {
     fail("neither _refln_F_calc nor _refln_F_squared_calc not found");
   }
+  if (verbose && !ast.atom_types.empty())
+    fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
+            (unsigned) ast.atom_types.size());
+  Comparator comparator;
+  Miller hkl;
   for (auto row : table) {
-    Miller hkl{{cif::as_int(row[0]), cif::as_int(row[1]), cif::as_int(row[2])}};
-    std::complex<double> f = calc.calculate_sf_from_atomic_structure(ast, hkl);
-    double f_abs = std::abs(f);
     double fcalc_from_file = NAN;
-    if (row.has(3))
-      fcalc_from_file = cif::as_number(row[3]);
-    else if (row.has(4))
-      fcalc_from_file = std::sqrt(cif::as_number(row[4]));
-    comparator.add(fcalc_from_file, f_abs);
+    try {
+      for (int i = 0; i != 3; ++i)
+        hkl[i] = cif::as_int(row[i]);
+      if (row.has(3))
+        fcalc_from_file = cif::as_number(row[3]);
+      else if (row.has(4))
+        fcalc_from_file = std::sqrt(cif::as_number(row[4]));
+    } catch(std::runtime_error& e) {
+      fprintf(stderr, "Error in _refln_[] in %s: %s\n", path, e.what());
+      continue;
+    } catch(std::invalid_argument& e) {
+      fprintf(stderr, "Error in _refln_[] in %s: %s\n", path, e.what());
+      continue;
+    }
+    double f = std::abs(calc.calculate_sf_from_atomic_structure(ast, hkl));
+    f *= scale;
+    comparator.add(fcalc_from_file, f);
     if (verbose)
       printf(" (%d %d %d)\t%7.2f\t%8.3f \td=%5.2f\n",
-             hkl[0], hkl[1], hkl[2], fcalc_from_file, f_abs,
+             hkl[0], hkl[1], hkl[2], fcalc_from_file, f,
              ast.cell.calculate_d(hkl));
   }
-  fprintf(stderr, "RMSE: %#.5g\t%#.5g%%\tMax |dF|: %#.5g\n",
+  fprintf(stderr,
+          "RMSE=%#.5g  %#.4g%%  max|dF|=%#.4g  R=%#.3g%%  sum(F^2)_ratio=%g\n",
           comparator.rmse(), 100. * comparator.weighted_rmse(),
-          comparator.max_abs_df);
+          comparator.max_abs_df, 100*comparator.rfactor(), comparator.scale());
 }
 
 int GEMMI_MAIN(int argc, char **argv) {
@@ -222,7 +256,9 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (giends_with(input, ".cif"))
           ast = gemmi::make_atomic_structure_from_block(
                                     gemmi::read_cif_gz(input).sole_block());
-        if (ast.sites.empty())
+        if (ast.sites.empty() ||
+            // COD can have a row of nulls as a placeholder (e.g. 2211708)
+            (ast.sites.size() == 1 && ast.sites[0].element == El::X))
           gemmi::fail("no atoms in the file");
         // SM CIF files specify full occupancy for atoms on special positions.
         // We need to adjust it for symmetry calculations.
@@ -276,7 +312,14 @@ int GEMMI_MAIN(int argc, char **argv) {
       } else if (p.options[Check]) {
         if (use_st)
           gemmi::fail("not a SM CIF");
-        verify_f_calc(ast, p.options[Verbose], p.options[Check].arg);
+        if (p.options[NoFp])
+          ast.atom_types.clear();
+        double scale = 1.0;
+        if (p.options[Scale])
+          scale = std::strtod(p.options[Scale].arg, nullptr);
+        std::string suffix = p.options[Measured] ? "meas" : "calc";
+        const char* path = p.options[Check].arg;
+        verify_f_calc(ast, suffix, scale, p.options[Verbose], path);
       }
     }
   } catch (std::runtime_error& e) {

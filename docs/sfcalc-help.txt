@@ -2,12 +2,12 @@ $ gemmi sfcalc -h
 Usage:
   gemmi sfcalc [options] INPUT_FILE
 
-Calculates structure factors of a model (PDB or mmCIF file).
+Calculates structure factors of a model (PDB, mmCIF or SMX CIF file).
 
-Either directly calculates reflections specified by option --hkl
-or uses FFT to calculate all reflections up to requested resolution.
-It can also calculate (only directly) structure factors from a small
-molecule CIF file.
+Uses FFT to calculate all reflections up to requested resolution for MX
+files. Otherwise, for SMX and --hkl, F's are calculated directly.
+This program can also compare F's calculated directly with values
+calculated through FFT or with values read from a reflection file.
 
 Options:
   -h, --help       Print usage and exit.
@@ -15,12 +15,15 @@ Options:
   -v, --verbose    Verbose output.
   --hkl=H,K,L      Calculate structure factor F_hkl.
   --dmin=D         Calculate structure factors up to given resolution.
+  --nofp           Ignore f' (anomalous dispersion scattering).
 
-Options affecting FFT-based calculations:
+Options for FFT-based calculations:
   --rate=R         Shannon rate used for grid spacing (default: 1.5).
   --smear=X        B added for Gaussian smearing (default: auto).
   --rcut=Y         Use atomic radius r such that rho(r) < Y (default: 5e-5).
   --check[=CACHE]  Calculate exact values and report differences (slow).
 
-Option --check=FILE.hkl can also be used to check values from
-_refln_F_(squared_)calc in a small molecule CIF file.
+Options for comparing calculated values with values from a file:
+  --check[=FILE]   Re-calculate Fcalc and report differences.
+  --meas           Compare against measured values _refln_F_(squared_)meas.
+  --scale=S        Multiply calculated F by sqrt(S) (default: 1).
