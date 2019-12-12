@@ -22,8 +22,8 @@ namespace cif = gemmi::cif;
 namespace rules = gemmi::cif::rules;
 
 
-enum OptionIndex { FromFile=3, Recurse, MaxCount, OneBlock, And, Delim,
-                   WithFileName, NoBlockName, WithLineNumbers, WithTag,
+enum OptionIndex { FromFile=3, NamePattern, Recurse, MaxCount, OneBlock, And,
+                   Delim, WithFileName, NoBlockName, WithLineNumbers, WithTag,
                    Summarize, MatchingFiles, NonMatchingFiles, Count, Raw };
 
 static const option::Descriptor Usage[] = {
@@ -31,6 +31,8 @@ static const option::Descriptor Usage[] = {
     "Usage: " EXE_NAME " [options] TAG FILE_OR_DIR_OR_PDBID[...]\n"
     "       " EXE_NAME " -f FILE [options] TAG\n"
     "Search for TAG in CIF files."
+    "\nBy default, recursive directory search checks only *.cif(.gz) files."
+    "\nTo change it, specify --name=* or --name=*.hkl."
     "\n\nOptions:" },
   { Help, 0, "h", "help", Arg::None,
     "  -h, --help  \tdisplay this help and exit" },
@@ -38,6 +40,9 @@ static const option::Descriptor Usage[] = {
     "  -V, --version  \tdisplay version information and exit" },
   { FromFile, 0, "f", "file", Arg::Required,
     "  -f, --file=FILE  \tobtain file (or PDB ID) list from FILE" },
+  { NamePattern, 0, "", "name", Arg::Required,
+    "  --name=PATTERN  \tfilename glob pattern used in recursive grep;"
+    " by default, *.cif and *.cif.gz files are searched" },
   { MaxCount, 0, "m", "max-count", Arg::Int,
     "  -m, --max-count=NUM  \tprint max NUM values per file" },
   { OneBlock, 0, "O", "one-block", Arg::None,
@@ -143,34 +148,6 @@ static std::string escape(const std::string& s, char delim) {
   return r;
 }
 
-// linear-time glob matching: https://research.swtch.com/glob
-static bool glob_match(const std::string& pattern, const std::string& str) {
-  size_t pat_next = 0;
-  size_t str_next = std::string::npos;
-  size_t pat_pos = 0;
-  size_t str_pos = 0;
-  while (pat_pos < pattern.size() || str_pos < str.size()) {
-    if (pat_pos < pattern.size()) {
-      char c = pattern[pat_pos];
-      if (c == '*') {
-        pat_next = pat_pos;
-        str_next = str_pos + 1;
-        pat_pos++;
-        continue;
-      } else if (str_pos < str.size() && (c == '?' || c == str[str_pos])) {
-        pat_pos++;
-        str_pos++;
-        continue;
-      }
-    }
-    if (str_next > str.size())
-      return false;
-    pat_pos = pat_next;
-    str_pos = str_next;
-  }
-  return true;
-}
-
 static void process_multi_match(Parameters& par) {
   if (par.multi_values.empty())
     return;
@@ -269,7 +246,7 @@ template<> struct Search<rules::tag> {
       if (p.search_tag.size() == in.size() && p.search_tag == in.string())
         p.match_value = 1;
     } else {
-      if (glob_match(p.search_tag, in.string())) {
+      if (gemmi::glob_match(p.search_tag, in.string())) {
         p.multi_tags.resize(1);
         p.multi_tags[0] = in.string();
         p.match_value = 1;
@@ -305,7 +282,7 @@ template<> struct Search<rules::loop_tag> {
         p.column = 0;
       }
     } else {
-      if (glob_match(p.search_tag, in.string())) {
+      if (gemmi::glob_match(p.search_tag, in.string())) {
         p.multi_tags.emplace_back(in.string());
         p.multi_match_columns.emplace_back(p.table_width);
         p.match_column = 0;
@@ -550,9 +527,17 @@ int GEMMI_MAIN(int argc, char **argv) {
       file_count++;
     } else {
       try {
-        for (const std::string& file : gemmi::CifWalk(path)) {
-          grep_file(file, params, err_count);
-          file_count++;
+        if (p.options[NamePattern]) {
+          std::string pattern = p.options[NamePattern].arg;
+          for (const std::string& file : gemmi::GlobWalk(path, pattern)) {
+            grep_file(file, params, err_count);
+            file_count++;
+          }
+        } else {
+          for (const std::string& file : gemmi::CifWalk(path)) {
+            grep_file(file, params, err_count);
+            file_count++;
+          }
         }
       } catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());
