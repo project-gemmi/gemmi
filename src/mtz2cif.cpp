@@ -9,6 +9,7 @@
 //  - should we allow for repeated column name in MTZ?
 
 #include <cstdio>
+#include <cstdlib>            // for strtod
 #include <algorithm>
 #include <gemmi/mtz.hpp>
 #include <gemmi/fileutil.hpp> // for file_open
@@ -20,7 +21,8 @@
 
 using std::fprintf;
 
-enum OptionIndex { Spec=4, PrintSpec, BlockName, SkipEmpty, NoComments };
+enum OptionIndex { Spec=4, PrintSpec, BlockName, SkipEmpty, NoComments,
+                   Wavelength };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -39,6 +41,8 @@ static const option::Descriptor Usage[] = {
     "  --skip-empty  \tSkip reflections with no values." },
   { NoComments, 0, "", "no-comments", Arg::None,
     "  --no-comments  \tDo not write comments in the mmCIF file." },
+  { Wavelength, 0, "", "wavelength", Arg::Float,
+    "  --wavelength=LAMBDA  \tSet wavelengths (default: from input file)." },
   { NoOp, 0, "", "", Arg::None,
     "\nIf CIF_FILE is -, the output is printed to stdout."
     "\nIf spec is -, it is read from stdin."
@@ -81,6 +85,7 @@ struct Options {
   bool with_comments;
   const char* block_name;
   const char* mtz_path;
+  double wavelength = NAN;
 };
 
 static const char* default_spec[] = {
@@ -221,6 +226,31 @@ static std::vector<Trans> parse_spec(const gemmi::Mtz& mtz,
 # pragma GCC diagnostic ignored "-Wformat-nonliteral"
 #endif
 
+// Get the first (non-zero) DWAVEL corresponding to a sigma column from
+// the template. If not found, try value columns (intensity, amplitude
+// or anomalous difference).
+static
+double get_wavelength(const gemmi::Mtz& mtz, const std::vector<Trans>& spec) {
+  for (const Trans& tr : spec) {
+    const gemmi::Mtz::Column& col = mtz.columns.at(tr.col_idx);
+    if (col.type == 'Q' || col.type == 'M' || col.type == 'L') { // sigma
+      double wavelength = mtz.dataset(col.dataset_id).wavelength;
+      if (wavelength != 0.)
+        return wavelength;
+    }
+  }
+  for (const Trans& tr : spec) {
+    const gemmi::Mtz::Column& col = mtz.columns.at(tr.col_idx);
+    if (col.type == 'F' || col.type == 'J' || col.type == 'D' ||
+        col.type == 'K' || col.type == 'G') { // data value
+      double wavelength = mtz.dataset(col.dataset_id).wavelength;
+      if (wavelength != 0.)
+        return wavelength;
+    }
+  }
+  return 0.;
+}
+
 static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
   std::string id = ".";
   if (opt.with_comments) {
@@ -240,6 +270,12 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
   fprintf(out, "_cell.angle_alpha %8.3f\n", cell.alpha);
   fprintf(out, "_cell.angle_beta  %8.3f\n", cell.beta);
   fprintf(out, "_cell.angle_gamma %8.3f\n\n", cell.gamma);
+  double wavelength = std::isnan(opt.wavelength) ? get_wavelength(mtz, opt.spec)
+                                                 : opt.wavelength;
+  if (wavelength != 0.) {
+    fprintf(out, "_diffrn_radiation_wavelength.id 1\n");
+    fprintf(out, "_diffrn_radiation_wavelength.wavelength %g\n\n", wavelength);
+  }
   if (const gemmi::SpaceGroup* sg = mtz.spacegroup) {
     fprintf(out, "_symmetry.entry_id %s\n", id.c_str());
     fprintf(out, "_symmetry.space_group_name_H-M '%s'\n", sg->hm);
@@ -346,6 +382,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   options.block_name = p.options[BlockName] ? p.options[BlockName].arg : "mtz";
   options.with_comments = !p.options[NoComments];
+  if (p.options[Wavelength])
+    options.wavelength = std::strtod(p.options[Wavelength].arg, nullptr);
   try {
     gemmi::fileptr_t f_out = gemmi::file_open_or(cif_path, "w", stdout);
     write_cif(mtz, options, f_out.get());
