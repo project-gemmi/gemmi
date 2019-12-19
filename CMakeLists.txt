@@ -226,7 +226,7 @@ support_gz(gemmi-wcn)
 
 add_executable(gemmi-prog
                src/blobs.cpp src/cif2mtz.cpp src/contact.cpp
-               src/contents.cpp src/convert.cpp
+               src/contents.cpp src/convert.cpp src/fprim.cpp
                src/grep.cpp src/h.cpp src/main.cpp src/map.cpp src/map2sf.cpp
                src/mask.cpp src/mondiff.cpp src/mtz.cpp src/mtz2cif.cpp
                src/residues.cpp src/rmsz.cpp

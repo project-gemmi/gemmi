@@ -708,10 +708,22 @@ to transform it back to the direct space, and so on...
 Scattering factors
 ==================
 
-TODO:
+Atomic form factor
+------------------
 
-* f = f0 + f'
-* f0 coefficients
-* f' (Cromer, Henke (f1 - Z), from CIF file)
-* direct calculation or FFT, tradoffs between performance and accuracy
-* bulk solvent
+TODO
+
+(also: direct calculation or FFT, tradoffs between performance and accuracy)
+
+.. _anomalous:
+
+Anomalous scattering
+--------------------
+
+TODO
+
+Bulk solvent correction
+-----------------------
+
+TODO
+

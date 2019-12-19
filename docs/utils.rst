@@ -488,6 +488,18 @@ of computations.
 We can see that in this case negative "dampening" (subtracting about
 10A\ :sup:`2` from all B-factors) improves both accuracy and performance.
 
+fprim
+=====
+
+Calculate anomalous scattering factors (f\' and f\").
+Uses `Cromer-Libermann <https://doi.org/10.1107/S0567739481000600>`_
+algorithm with corrections from
+`Kissel and Pratt <https://doi.org/10.1107/S0108767389010718>`_.
+This and different approaches are discussed in the documentation
+of the :ref:`underlying functions <anomalous>`.
+
+.. literalinclude:: fprim-help.txt
+   :language: console
 
 residues
 ========

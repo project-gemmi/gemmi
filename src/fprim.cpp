@@ -13,7 +13,8 @@ enum OptionIndex { Energy=4, Wavelen };
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] ELEMENT[...]"
-    "\nPrints anomalous scattering factors f' and f\"."},
+    "\nPrints anomalous scattering factors f' and f\"."
+    "\n\nOptions:" },
   CommonUsage[Help],
   CommonUsage[Version],
   //CommonUsage[Verbose],
