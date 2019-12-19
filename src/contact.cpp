@@ -16,7 +16,8 @@
 using namespace gemmi;
 using std::printf;
 
-enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Any, NoH, NoSym, Count };
+enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Any, NoH, NoSym, Count,
+                   Twice };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -41,6 +42,8 @@ static const option::Descriptor Usage[] = {
     "  --nosym  \tIgnore contacts with symmetry mates." },
   { Count, 0, "", "count", Arg::None,
     "  --count  \tPrint only a count of atom pairs." },
+  { Twice, 0, "", "twice", Arg::None,
+    "  --twice  \tPrint each atom pair A-B twice (A-B and B-A)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -50,6 +53,7 @@ struct Parameters {
   bool print_count;
   bool no_hydrogens;
   bool no_symmetry;
+  bool twice;
   float cov_tol = 0.0f;
   float cov_mult = 1.0f;
   float max_dist = 3.0f;
@@ -80,6 +84,7 @@ static void print_contacts(const Structure& st, const Parameters& params) {
            min_count, max_count, double(total_count) / sc.grid.data.size());
   }
 
+  // the code here is similar to LinkHunt::find_possible_links()
   int counter = 0;
   const Model& model = st.models.at(0);
   for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
@@ -108,6 +113,13 @@ static void print_contacts(const Structure& st, const Parameters& params) {
                    are_connected(chain.residues[m.residue_idx], res, pt)))
                 return;
             }
+            if (!params.twice)
+              // avoid reporting connections twice (A-B and B-A)
+              if (m.chain_idx < n_ch || (m.chain_idx == n_ch &&
+                    (m.residue_idx < n_res || (m.residue_idx == n_res &&
+                                               m.atom_idx < n_atom))))
+                return;
+
             // atom can be linked with its image, but if the image
             // is too close the atom is likely on special position.
             if (m.chain_idx == n_ch && m.residue_idx == n_res &&
@@ -179,6 +191,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   params.print_count = p.options[Count];
   params.no_hydrogens = p.options[NoH];
   params.no_symmetry = p.options[NoSym];
+  params.twice = p.options[Twice];
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       std::string input = p.coordinate_input_file(i);
