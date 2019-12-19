@@ -151,6 +151,9 @@ add_executable(gemmi-crdrst EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                $<TARGET_OBJECTS:input>)
 support_gz(gemmi-crdrst)
 
+add_executable(gemmi-fprim EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/fprim.cpp)
+
 add_executable(gemmi-grep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/grep.cpp)
 support_gz(gemmi-grep)
