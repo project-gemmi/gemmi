@@ -11,4 +11,5 @@ Searches for contacts in a model (PDB or mmCIF).
   --occsum=MIN   Ignore atom pairs with summed occupancies < MIN.
   --any          Output any atom pair, even from the same residue.
   --noh          Ignore hydrogen (and deuterium) atoms.
+  --nosym        Ignore contacts with symmetry mates.
   --count        Print only a count of atom pairs.

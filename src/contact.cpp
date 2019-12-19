@@ -16,7 +16,7 @@
 using namespace gemmi;
 using std::printf;
 
-enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Any, NoH, Count };
+enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Any, NoH, NoSym, Count };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -37,6 +37,8 @@ static const option::Descriptor Usage[] = {
     "  --any  \tOutput any atom pair, even from the same residue." },
   { NoH, 0, "", "noh", Arg::None,
     "  --noh  \tIgnore hydrogen (and deuterium) atoms." },
+  { NoSym, 0, "", "nosym", Arg::None,
+    "  --nosym  \tIgnore contacts with symmetry mates." },
   { Count, 0, "", "count", Arg::None,
     "  --count  \tPrint only a count of atom pairs." },
   { 0, 0, 0, 0, 0, 0 }
@@ -47,6 +49,7 @@ struct Parameters {
   bool any;
   bool print_count;
   bool no_hydrogens;
+  bool no_symmetry;
   float cov_tol = 0.0f;
   float cov_mult = 1.0f;
   float max_dist = 3.0f;
@@ -123,8 +126,19 @@ static void print_contacts(const Structure& st, const Parameters& params) {
             ++counter;
             if (params.print_count)
               return;
-            SymImage im = st.cell.find_nearest_pbc_image(
-                                        atom.pos, cra.atom->pos, m.image_idx);
+            const char* sym1;
+            std::string sym2;
+            double dist;
+            if (params.no_symmetry) {
+              sym1 = "";
+              dist = std::sqrt(dist_sq);
+            } else {
+              SymImage im = st.cell.find_nearest_pbc_image(
+                                          atom.pos, cra.atom->pos, m.image_idx);
+              sym1 = "1555";
+              sym2 = im.pdb_symbol(false);
+              dist = im.dist();
+            }
             printf("            %-4s%c%3s%2s%5s   "
                    "            %-4s%c%3s%2s%5s  %6s %6s %5.2f\n",
                    padded_atom_name(atom).c_str(),
@@ -137,7 +151,7 @@ static void print_contacts(const Structure& st, const Parameters& params) {
                    cra.residue->name.c_str(),
                    cra.chain->name.c_str(),
                    cra.residue->seqid.str().c_str(),
-                   "1555", im.pdb_symbol(false).c_str(), im.dist());
+                   sym1, sym2.c_str(), dist);
         });
       }
     }
@@ -164,6 +178,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   params.any = p.options[Any];
   params.print_count = p.options[Count];
   params.no_hydrogens = p.options[NoH];
+  params.no_symmetry = p.options[NoSym];
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       std::string input = p.coordinate_input_file(i);
@@ -171,6 +186,8 @@ int GEMMI_MAIN(int argc, char **argv) {
           (p.nonOptionsCount() > 1 && !params.print_count))
         std::printf("%sFile: %s\n", (i > 0 ? "\n" : ""), input.c_str());
       Structure st = read_structure_gz(input);
+      if (params.no_symmetry)
+        st.cell = UnitCell();
       print_contacts(st, params);
     }
   } catch (std::runtime_error& e) {
