@@ -13,3 +13,4 @@ Searches for contacts in a model (PDB or mmCIF).
   --noh          Ignore hydrogen (and deuterium) atoms.
   --nosym        Ignore contacts with symmetry mates.
   --count        Print only a count of atom pairs.
+  --twice        Print each atom pair A-B twice (A-B and B-A).
