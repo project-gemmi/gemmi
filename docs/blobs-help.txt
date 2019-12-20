@@ -28,6 +28,7 @@ Options for map calculation:
   --section=NAME        MTZ dataset name or CIF block name
   -f COLUMN             F column (MTZ label or mmCIF tag).
   -p COLUMN             Phase column (MTZ label or mmCIF tag).
+  --weight=COLUMN       (normally not needed) weighting for F.
   -g, --grid=NX,NY,NZ   Grid size (user-specified minimum).
   --exact               Use the exact grid size specified by --grid.
   -s, --sample=NUMBER   Set spacing to d_min/NUMBER (3 is usual).

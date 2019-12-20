@@ -75,19 +75,67 @@ void check_if_hkl_fits_in(const DataProxy& data, std::array<int, 3> size) {
     }
 }
 
-// If half_l is true, grid has only data with l>=0.
-// Parameter size can be obtained from get_size_for_hkl().
+inline float friedel_mate_value(float v) { return v; }
+inline double friedel_mate_value(double v) { return v; }
+
+template<typename T>
+std::complex<T> friedel_mate_value(const std::complex<T>& v) {
+  return std::conj(v);
+}
+
+template<typename T>
+void add_friedel_mates(Grid<T>& grid) {
+  const T default_val = T(); // initialized to 0 or 0+0i
+  if (grid.hkl_orient == HklOrient::HKL) {
+    for (int w = 0; w != (grid.half_l ? 1 : grid.nw); ++w) {
+      int w_ = w == 0 ? 0 : grid.nw - w;
+      for (int v = 0; v != grid.nv; ++v) {
+        int v_ = v == 0 ? 0 : grid.nv - v;
+        for (int u = 0; u != grid.nu; ++u) {
+          int idx = grid.index_q(u, v, w);
+          if (grid.data[idx] == default_val) {
+            int u_ = u == 0 ? 0 : grid.nu - u;
+            int inv_idx = grid.index_q(u_, v_, w_);
+            grid.data[idx] = friedel_mate_value(grid.data[inv_idx]);
+          }
+        }
+      }
+    }
+  } else { // grid.hkl_orient == HklOrient::LKH
+    for (int w = 0; w != grid.nw; ++w) {
+      int w_ = w == 0 ? 0 : grid.nw - w;
+      for (int v = 0; v != grid.nv; ++v) {
+        int v_ = v == 0 ? 0 : grid.nv - v;
+        if (grid.half_l) {
+          int idx = grid.index_q(0, v, w);
+          if (grid.data[idx] == default_val) {
+            int inv_idx = grid.index_q(0, v_, w_);
+            grid.data[idx] = friedel_mate_value(grid.data[inv_idx]);
+          }
+        } else {
+          for (int u = 0; u != grid.nu; ++u) {
+            int idx = grid.index_q(u, v, w);
+            if (grid.data[idx] == default_val) {
+              int u_ = u == 0 ? 0 : grid.nu - u;
+              int inv_idx = grid.index_q(u_, v_, w_);
+              grid.data[idx] = friedel_mate_value(grid.data[inv_idx]);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 template<typename T, typename DataProxy>
-Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
-                                        size_t f_col, size_t phi_col,
-                                        std::array<int, 3> size, bool half_l,
-                                        HklOrient hkl_orient=HklOrient::HKL) {
+void initialize_hkl_grid(Grid<T>& grid, const DataProxy& data,
+                         std::array<int, 3> size, bool half_l,
+                         HklOrient hkl_orient) {
   if (!data.ok() || data.stride() < 5)
     fail("No data.");
   if (!data.spacegroup())
     fail("No spacegroup.");
   check_grid_factors(data.spacegroup(), size[0], size[1], size[2]);
-  Grid<std::complex<T>> grid;
   grid.unit_cell = data.unit_cell();
   grid.half_l = half_l;
   grid.hkl_orient = hkl_orient;
@@ -98,6 +146,17 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
     std::swap(size[0], size[2]);
   grid.set_size_without_checking(size[0], size[1], size[2]);
   grid.full_canonical = false; // disable some real-space functionality
+}
+
+// If half_l is true, grid has only data with l>=0.
+// Parameter size can be obtained from get_size_for_hkl().
+template<typename T, typename DataProxy>
+Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
+                                        size_t f_col, size_t phi_col,
+                                        std::array<int, 3> size, bool half_l,
+                                        HklOrient hkl_orient=HklOrient::HKL) {
+  Grid<std::complex<T>> grid;
+  initialize_hkl_grid(grid, data, size, half_l, hkl_orient);
 
   if (f_col >= data.stride() || phi_col >= data.stride())
     fail("Map coefficients not found.");
@@ -130,48 +189,48 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
       }
     }
   }
-  // add Friedel pairs
-  if (!ops.is_centric()) {
-    if (hkl_orient == HklOrient::HKL) {
-      for (int w = 0; w != (half_l ? 1 : grid.nw); ++w) {
-        int w_ = w == 0 ? 0 : grid.nw - w;
-        for (int v = 0; v != grid.nv; ++v) {
-          int v_ = v == 0 ? 0 : grid.nv - v;
-          for (int u = 0; u != grid.nu; ++u) {
-            int idx = grid.index_q(u, v, w);
-            if (grid.data[idx] == default_val) {
-              int u_ = u == 0 ? 0 : grid.nu - u;
-              int inv_idx = grid.index_q(u_, v_, w_);
-              grid.data[idx] = std::conj(grid.data[inv_idx]);
-            }
-          }
-        }
-      }
-    } else { // hkl_orient == HklOrient::LKH
-      for (int w = 0; w != grid.nw; ++w) {
-        int w_ = w == 0 ? 0 : grid.nw - w;
-        for (int v = 0; v != grid.nv; ++v) {
-          int v_ = v == 0 ? 0 : grid.nv - v;
-          if (half_l) {
-            int idx = grid.index_q(0, v, w);
-            if (grid.data[idx] == default_val) {
-              int inv_idx = grid.index_q(0, v_, w_);
-              grid.data[idx] = std::conj(grid.data[inv_idx]);
-            }
-          } else {
-            for (int u = 0; u != grid.nu; ++u) {
-              int idx = grid.index_q(u, v, w);
-              if (grid.data[idx] == default_val) {
-                int u_ = u == 0 ? 0 : grid.nu - u;
-                int inv_idx = grid.index_q(u_, v_, w_);
-                grid.data[idx] = std::conj(grid.data[inv_idx]);
-              }
-            }
-          }
+  if (!ops.is_centric())
+    add_friedel_mates(grid);
+  return grid;
+}
+
+template<typename T, typename DataProxy>
+Grid<T> get_value_on_grid(const DataProxy& data, size_t column,
+                          std::array<int, 3> size, bool half_l,
+                          HklOrient hkl_orient=HklOrient::HKL) {
+  Grid<T> grid;
+  initialize_hkl_grid(grid, data, size, half_l, hkl_orient);
+
+  if (column >= data.stride())
+    fail("Map coefficients not found.");
+  GroupOps ops = grid.spacegroup->operations();
+  auto hkl_col = data.hkl_col();
+  for (size_t i = 0; i < data.size(); i += data.stride()) {
+    int h = data.get_int(i + hkl_col[0]);
+    int k = data.get_int(i + hkl_col[1]);
+    int l = data.get_int(i + hkl_col[2]);
+    T val = (T) data.get_num(i + column);
+    if (val != 0.) {
+      for (const Op& op : ops.sym_ops) {
+        Miller hkl{{h, k, l}};
+        auto hklp = op.apply_to_hkl(hkl);
+        int lp = hklp[2];
+        if (hkl_orient == HklOrient::LKH)
+          std::swap(hklp[0], hklp[2]);
+        if (!half_l || lp >= 0) {
+          int idx = grid.index_n(hklp[0], hklp[1], hklp[2]);
+          if (grid.data[idx] == 0.)  // 0 is the default value
+            grid.data[idx] = val;
+        } else {
+          int idx = grid.index_n(-hklp[0], -hklp[1], -hklp[2]);
+          if (grid.data[idx] == 0.)
+            grid.data[idx] = val;
         }
       }
     }
   }
+  if (!ops.is_centric())
+    add_friedel_mates(grid);
   return grid;
 }
 

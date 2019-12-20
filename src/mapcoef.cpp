@@ -33,6 +33,8 @@ const option::Descriptor MapUsage[] = {
     "  -f COLUMN  \tF column (MTZ label or mmCIF tag)." },
   { PhLabel, 0, "p", "", Arg::Required,
     "  -p COLUMN  \tPhase column (MTZ label or mmCIF tag)." },
+  { WeightLabel, 0, "", "weight", Arg::Required,
+    "  --weight=COLUMN  \t(normally not needed) weighting for F." },
   { GridDims, 0, "g", "grid", Arg::Int3,
     "  -g, --grid=NX,NY,NZ  \tGrid size (user-specified minimum)." },
   { ExactDims, 0, "", "exact", Arg::None,
@@ -90,6 +92,17 @@ get_mtz_map_columns(const Mtz& mtz, const char* section, bool diff_map,
   return {{f_col, phi_col}};
 }
 
+static const Mtz::Column&
+get_mtz_column(const Mtz& mtz, const char* section, const char* label) {
+  const Mtz::Dataset* ds = nullptr;
+  if (section)
+    ds = mtz.dataset_with_name(section);
+  const Mtz::Column* col = mtz.column_with_label(label, ds);
+  if (!col)
+    gemmi::fail("Column not found: ", label);
+  return *col;
+}
+
 template<typename DataProxy>
 void adjust_size(const DataProxy& data, std::array<int, 3>& size,
                  double sample_rate, bool exact_dims, bool grid_query) {
@@ -132,11 +145,14 @@ read_sf_and_fft_to_map(const char* input_path,
   const char* section = options[Section] ? options[Section].arg : nullptr;
   const char* f_label = options[FLabel] ? options[FLabel].arg : nullptr;
   const char* ph_label = options[PhLabel] ? options[PhLabel].arg : nullptr;
+  const char* weight_label = options[WeightLabel] ? options[WeightLabel].arg
+                                                  : nullptr;
   bool diff_map = options[Diff];
   bool half_l = true;
   gemmi::HklOrient hkl_orient = options[AxesZyx] ? gemmi::HklOrient::LKH
                                                  : gemmi::HklOrient::HKL;
   gemmi::Grid<std::complex<float>> grid;
+  gemmi::Grid<float> weight_grid;
   if (gemmi::giends_with(input_path, ".cif") ||
       gemmi::giends_with(input_path, ".ent")) {
     if (!f_label)
@@ -155,22 +171,36 @@ read_sf_and_fft_to_map(const char* input_path,
     if (output)
       fprintf(output, "Putting data from block %s into matrix...\n",
               rblock.block.name.c_str());
-    grid = gemmi::get_f_phi_on_grid<float>(gemmi::ReflnDataProxy{rblock},
+    gemmi::ReflnDataProxy data_proxy{rblock};
+    grid = gemmi::get_f_phi_on_grid<float>(data_proxy,
                                            rblock.find_column_index(f_label),
                                            rblock.find_column_index(ph_label),
                                            size, half_l, hkl_orient);
+    if (weight_label)
+      weight_grid = gemmi::get_value_on_grid<float>(
+          data_proxy, rblock.find_column_index(weight_label),
+          size, half_l, hkl_orient);
   } else {
     Mtz mtz = gemmi::read_mtz(gemmi::MaybeGzipped(input_path), true);
     auto cols = get_mtz_map_columns(mtz, section, diff_map, f_label, ph_label);
-    gemmi::MtzDataProxy data{mtz};
-    adjust_size(data, size, sample_rate,
+    gemmi::MtzDataProxy data_proxy{mtz};
+    adjust_size(data_proxy, size, sample_rate,
                 options[ExactDims], options[GridQuery]);
     if (output)
       fprintf(output, "Putting data from columns %s and %s into matrix...\n",
               cols[0]->label.c_str(), cols[1]->label.c_str());
-    grid = gemmi::get_f_phi_on_grid<float>(data, cols[0]->idx, cols[1]->idx,
+    grid = gemmi::get_f_phi_on_grid<float>(data_proxy,
+                                           cols[0]->idx, cols[1]->idx,
                                            size, half_l, hkl_orient);
+    if (weight_label) {
+      const Mtz::Column& col = get_mtz_column(mtz, section, weight_label);
+      weight_grid = gemmi::get_value_on_grid<float>(data_proxy, col.idx,
+                                                    size, half_l, hkl_orient);
+    }
   }
+  if (weight_grid.data.size() == grid.data.size())
+    for (size_t i = 0; i != grid.data.size(); ++i)
+      grid.data[i] *= weight_grid.data[i];
   if (output)
     fprintf(output, "Fourier transform...\n");
   gemmi::Grid<float> map = gemmi::transform_f_phi_grid_to_map(std::move(grid));
@@ -178,4 +208,3 @@ read_sf_and_fft_to_map(const char* input_path,
     fprintf(output, "Map size: %d x %d x %d\n", map.nu, map.nv, map.nw);
   return map;
 }
-

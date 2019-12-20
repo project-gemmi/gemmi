@@ -56,6 +56,7 @@ static const option::Descriptor Usage[] = {
   MapUsage[Section],
   MapUsage[FLabel],
   MapUsage[PhLabel],
+  MapUsage[WeightLabel],
   MapUsage[GridDims],
   MapUsage[ExactDims],
   MapUsage[Sample],
