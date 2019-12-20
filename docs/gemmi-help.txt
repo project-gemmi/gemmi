@@ -14,7 +14,7 @@ Commands:
  contact       searches for contacts (neighbouring atoms)
  contents      info about content of a coordinate file (pdb, mmCIF, ...)
  convert       convert file (CIF - JSON, mmCIF - PDB) or modify structure
- fprim         calculate anomalous scattering factors f' and f"
+ fprime        calculate anomalous scattering factors f' and f"
  grep          search for tags in CIF file(s)
  h             add or remove hydrogen atoms
  map           print info or modify a CCP4 map

@@ -24,19 +24,19 @@ public:
     scattering_factors_.resize((int) El::END, 0.);
   }
 
-  double get_scattering_factor(Element element, double fprim = 0.) {
+  double get_scattering_factor(Element element, double fprime = 0.) {
     double& sfactor = scattering_factors_[(int)element.elem];
     if (sfactor == 0.) {
       if (!Table::has(element.elem))
         fail("Missing scattering factor for ", element.name());
-      sfactor = Table::get(element.elem).calculate_sf(stol2_) + fprim;
+      sfactor = Table::get(element.elem).calculate_sf(stol2_) + fprime;
     }
     return sfactor;
   }
 
   std::complex<double> get_contribution(Element el, const Fractional& fpos,
-                                        double b_iso, double fprim=0.) {
-    double scat_factor = get_scattering_factor(el, fprim);
+                                        double b_iso, double fprime=0.) {
+    double scat_factor = get_scattering_factor(el, fprime);
     std::complex<double> part = calculate_sf_part(fpos);
     for (const FTransform& image : cell_.images)
       part += calculate_sf_part(image.apply(fpos));

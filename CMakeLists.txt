@@ -151,8 +151,8 @@ add_executable(gemmi-crdrst EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                $<TARGET_OBJECTS:input>)
 support_gz(gemmi-crdrst)
 
-add_executable(gemmi-fprim EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/fprim.cpp)
+add_executable(gemmi-fprime EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/fprime.cpp)
 
 add_executable(gemmi-grep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/grep.cpp)
@@ -226,7 +226,7 @@ support_gz(gemmi-wcn)
 
 add_executable(gemmi-prog
                src/blobs.cpp src/cif2mtz.cpp src/contact.cpp
-               src/contents.cpp src/convert.cpp src/fprim.cpp
+               src/contents.cpp src/convert.cpp src/fprime.cpp
                src/grep.cpp src/h.cpp src/main.cpp src/map.cpp src/map2sf.cpp
                src/mask.cpp src/mondiff.cpp src/mtz.cpp src/mtz2cif.cpp
                src/residues.cpp src/rmsz.cpp

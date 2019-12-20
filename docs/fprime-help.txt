@@ -1,6 +1,6 @@
-$ gemmi fprim -h
+$ gemmi fprime -h
 Usage:
- gemmi fprim [options] ELEMENT[...]
+ gemmi fprime [options] ELEMENT[...]
 Prints anomalous scattering factors f' and f".
 
 Options:

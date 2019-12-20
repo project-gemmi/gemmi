@@ -1,11 +1,11 @@
 // Copyright 2019 Global Phasing Ltd.
 
 #include "gemmi/elem.hpp"   // for Element, find_element
-#include "gemmi/fprim.hpp"  // for cromer_libermann_for_array
+#include "gemmi/fprime.hpp"  // for cromer_libermann_for_array
 #include <cstdlib>          // for atof
 #include <stdio.h>
 
-#define GEMMI_PROG fprim
+#define GEMMI_PROG fprime
 #include "options.h"
 
 enum OptionIndex { Energy=4, Wavelen };
@@ -47,12 +47,12 @@ int GEMMI_MAIN(int argc, char **argv) {
       energies.push_back(hc / atof(opt->arg));
     std::vector<double> fp(energies.size(), 0);
     std::vector<double> fpp(energies.size(), 0);
-    printf("Element\tE[eV]\tWavelength[A]\tf'\tf\"\n");
+    printf("Element\t E[eV]\tWavelength[A]\t   f'   \t  f\"\n");
     gemmi::cromer_libermann_for_array(elem.atomic_number(),
                                       (int) energies.size(), energies.data(),
                                       &fp[0], &fpp[0]);
     for (size_t j = 0; j != energies.size(); ++j) {
-      printf("%s\t%g\t%-9g\t%.5g\t%.5g\n",
+      printf("%s\t%#g\t% -8g\t%8.5g\t%.5g\n",
              elem.name(), energies[j], hc / energies[j], fp[j], fpp[j]);
     }
   }

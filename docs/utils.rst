@@ -488,8 +488,8 @@ of computations.
 We can see that in this case negative "dampening" (subtracting about
 10A\ :sup:`2` from all B-factors) improves both accuracy and performance.
 
-fprim
-=====
+fprime
+======
 
 Calculate anomalous scattering factors (f\' and f\").
 Uses `Cromer-Libermann <https://doi.org/10.1107/S0567739481000600>`_
@@ -498,8 +498,32 @@ algorithm with corrections from
 This and different approaches are discussed in the documentation
 of the :ref:`underlying functions <anomalous>`.
 
-.. literalinclude:: fprim-help.txt
+.. literalinclude:: fprime-help.txt
    :language: console
+
+Here is an example how to print f' and f" using gemmi, XrayDB,
+CCP4 crossec and cctbx (pyFprime is not included because it is
+a GUI-only program). The Chantler's data from XrayDB is probably
+the most reliable one::
+
+  $ gemmi fprime --wavelength=1.2 Se
+  Element  E[eV]  Wavelength[A]      f'             f"
+  Se      10332.0  1.2             -1.4186        0.72389
+
+  $ python3 -c "import xraydb; print(xraydb.f1_chantler('Se', 10332.0), xraydb.f2_chantler('Se', 10332.0))"
+  -1.4202028957329489 0.7100533627953146
+
+  $ echo -e "atom SE\n cwav 1 1.2 0\n END" | crossec | grep ^SE
+  SE          1.2000    -1.5173     0.7240
+
+  $ cctbx.eltbx.show_fp_fdp --wavelength=1.2 --elements=Se
+  Wavelength: 1.2 Angstrom
+
+  Element: Se
+    Henke et al.  : f'=-1.44568 , f''=0.757958
+    Sasaki et al. : f'=-1.5104  , f''=0.724000
+    diff f''=-2.29 %
+
 
 residues
 ========
