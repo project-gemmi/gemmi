@@ -720,7 +720,57 @@ TODO
 Anomalous scattering
 --------------------
 
-TODO
+The anomalous dispersion is wavelength dependent.
+Gemmi provides function ``cromer_libermann`` that calculates
+real and imaginary components *f'* and *f"*
+for isolated atoms from Z=3 to Z=92.
+
+As the name suggests, we use the Cromer-Libermann algorithm.
+This algorithm, as is noted on the
+`pyFprime website <https://subversion.xray.aps.anl.gov/trac/pyFprime/>`_,
+"fails in computing *f'* for wavelengths < 0.16 Å (> 77.48 keV)
+for the heaviest elements (Au-Cf)
+and fails to correctly compute *f'*, *f"* and *μ*
+for wavelengths > 2.67 Å (< 4.64 keV) for very heavy elements (Am-Cf)."
+
+The implementation is contained in a single C++ header file
+:file:`fprime.hpp` with no dependencies.
+All the data is embedded in the code.
+The binary size after compilation is about 100kB.
+
+Admittedly, the data tables synthesised by C.T. Chantler are more accurate.
+Consider using them instead. They are available from the
+`NIST website <https://www.nist.gov/pml/x-ray-form-factor-attenuation-and-scattering-tables>`_
+and from the `XrayDB <https://github.com/xraypy/XrayDB>`_ project.
+
+The code in :file:`fprime.hpp` is based on the X-ray spectroscopy project
+`Larch <https://xraypy.github.io/xraylarch/>`_
+and should give the same results as the
+`f1f2_cl <https://xraypy.github.io/xraylarch/xray/index.html#_xray.f1f2_cl>`_
+function there. The Fortran code in Larch is, in turn, based on the
+`Brennan and Cowan <https://aip.scitation.org/doi/10.1063/1.1142625>`_
+routines. Which, in turn, were based on the
+`original program <https://doi.org/10.1107/S0021889883010791>`_
+from Don Cromer. Along the way, the code was extensively modified.
+Importantly, the Jensen correction has been removed (as is recommended
+in the chapter 4.2.6 of `ITvC <https://it.iucr.org/Cb/contents/>`_)
+and the `Kissel and Pratt (1990) <https://doi.org/10.1107/S0108767389010718>`_
+correction has been added.
+Therefore, it gives different results than the
+`crossec <http://www.ccp4.ac.uk/html/crossec.html>`_ program,
+which was contributed to CCP4 directly by Don Cromer in the 1990's.
+
+The ``cromer_libermann`` function is available in both C++ and Python:
+
+.. doctest::
+
+  >>> gemmi.Element('Se').atomic_number
+  34
+  >>> gemmi.cromer_libermann(_, 10332.0)
+  (-1.4186231113544407, 0.7238969498014027)
+
+The same values can be printed from the command line program
+:ref:`gemmi-fprime <fprime>`.
 
 Bulk solvent correction
 -----------------------

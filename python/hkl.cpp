@@ -6,6 +6,7 @@
 #include "gemmi/fourier.hpp"
 #include "gemmi/tostr.hpp"
 #include "gemmi/gz.hpp"
+#include "gemmi/fprime.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -324,4 +325,9 @@ void add_hkl(py::module& m) {
         }, py::arg("grid"));
   m.def("transform_map_to_f_phi", &transform_map_to_f_phi<float>,
         py::arg("map"), py::arg("half_l")=false);
+  m.def("cromer_libermann", [](int z, double energy) {
+          std::pair<double, double> r;
+          r.first = cromer_libermann(z, energy, &r.second);
+          return r;
+        }, py::arg("z"), py::arg("energy"));
 }

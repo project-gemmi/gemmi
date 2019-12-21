@@ -488,10 +488,12 @@ of computations.
 We can see that in this case negative "dampening" (subtracting about
 10A\ :sup:`2` from all B-factors) improves both accuracy and performance.
 
+.. _fprime:
+
 fprime
 ======
 
-Calculate anomalous scattering factors (f\' and f\").
+Calculate anomalous scattering factors (*f\'* and *f\"*).
 Uses `Cromer-Libermann <https://doi.org/10.1107/S0567739481000600>`_
 algorithm with corrections from
 `Kissel and Pratt <https://doi.org/10.1107/S0108767389010718>`_.
@@ -501,7 +503,7 @@ of the :ref:`underlying functions <anomalous>`.
 .. literalinclude:: fprime-help.txt
    :language: console
 
-Here is an example how to print f' and f" using gemmi, XrayDB,
+Here is an example how to print *f'* and *f"* using gemmi, XrayDB,
 CCP4 crossec and cctbx (pyFprime is not included because it is
 a GUI-only program). The Chantler's data from XrayDB is probably
 the most reliable one::
