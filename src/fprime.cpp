@@ -1,8 +1,9 @@
 // Copyright 2019 Global Phasing Ltd.
 
-#include "gemmi/elem.hpp"   // for Element, find_element
+#include "gemmi/elem.hpp"    // for Element, find_element
 #include "gemmi/fprime.hpp"  // for cromer_libermann_for_array
-#include <cstdlib>          // for atof
+#include "gemmi/math.hpp"    // for hc
+#include <cstdlib>           // for atof
 #include <stdio.h>
 
 #define GEMMI_PROG fprime
@@ -26,7 +27,6 @@ static const option::Descriptor Usage[] = {
 };
 
 int GEMMI_MAIN(int argc, char **argv) {
-  const double hc = 12398.4197386209; // $ units -d15 'h * c / eV / angstrom'
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   if (!p.options[Energy] && !p.options[Wavelen]) {
@@ -43,6 +43,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     std::vector<double> energies;
     for (const option::Option* opt = p.options[Energy]; opt; opt = opt->next())
       energies.push_back(atof(opt->arg));
+    double hc = gemmi::hc();
     for (const option::Option* opt = p.options[Wavelen]; opt; opt = opt->next())
       energies.push_back(hc / atof(opt->arg));
     std::vector<double> fp(energies.size(), 0);

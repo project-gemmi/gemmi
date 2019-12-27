@@ -6,14 +6,19 @@
 #define GEMMI_MATH_HPP_
 
 #include <cmath>      // for fabs, cos, sqrt, round
+#include <cstdio>     // for snprintf
 #include <array>
 #include <stdexcept>  // for out_of_range
 #include <string>
-#include <cstdio>     // for snprintf
+#include <vector>
 
 namespace gemmi {
 
 constexpr double pi() { return 3.1415926535897932384626433832795029; }
+
+// The value used in converting between energy[eV] and wavelength[Angstrom].
+// $ units -d15 'h * c / eV / angstrom'
+constexpr double hc() { return 12398.4197386209; }
 
 constexpr double deg(double angle) { return 180.0 / pi() * angle; }
 constexpr double rad(double angle) { return pi() / 180.0 * angle; }
