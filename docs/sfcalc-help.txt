@@ -16,6 +16,7 @@ Options:
   --hkl=H,K,L      Calculate structure factor F_hkl.
   --dmin=D         Calculate structure factors up to given resolution.
   --nofp           Ignore f' (anomalous dispersion scattering).
+  --no-file-fp     Ignore _atom_type_scat_dispersion_real.
 
 Options for FFT-based calculations:
   --rate=R         Shannon rate used for grid spacing (default: 1.5).

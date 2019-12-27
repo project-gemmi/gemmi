@@ -13,12 +13,13 @@
 #include <gemmi/rhogrid.hpp>   // for put_first_model_density_on_grid
 #include <gemmi/sfcalc.hpp>    // for calculate_structure_factor
 #include <gemmi/smcif.hpp>     // for make_atomic_structure_from_block
+#include <gemmi/fprime.hpp>    // for cromer_libermann
 
 #define GEMMI_PROG sfcalc
 #include "options.h"
 
 enum OptionIndex { Hkl=4, Dmin, Rate, Smear, RCut, Check,
-                   NoFp, Measured, Scale };
+                   NoFp, NoFileFp, Measured, Scale };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -38,6 +39,8 @@ static const option::Descriptor Usage[] = {
     "  --dmin=D  \tCalculate structure factors up to given resolution." },
   { NoFp, 0, "", "nofp", Arg::None,
     "  --nofp  \tIgnore f' (anomalous dispersion scattering)." },
+  { NoFileFp, 0, "", "no-file-fp", Arg::None,
+    "  --no-file-fp  \tIgnore _atom_type_scat_dispersion_real." },
   { NoOp, 0, "", "", Arg::None, "\nOptions for FFT-based calculations:" },
   { Rate, 0, "", "rate", Arg::Float,
     "  --rate=R  \tShannon rate used for grid spacing (default: 1.5)." },
@@ -183,6 +186,23 @@ double get_minimum_b_iso(const Model& model) {
   return b_min;
 }
 
+void fill_atom_types(gemmi::AtomicStructure& ast) {
+  if (ast.wavelength > 0.) {
+    double energy = hc() / ast.wavelength;
+    for (gemmi::AtomicStructure::Site& site : ast.sites) {
+      if (!ast.get_atom_type(site.type_symbol)) {
+        ast.atom_types.emplace_back();
+        gemmi::AtomicStructure::AtomType& at = ast.atom_types.back();
+        at.symbol = site.type_symbol;
+        gemmi::split_element_and_charge(at.symbol, &at);
+        int z = site.element.atomic_number();
+        at.dispersion_real = gemmi::cromer_libermann(z, energy,
+                                                     &at.dispersion_imag);
+      }
+    }
+  }
+}
+
 static
 void verify_f_calc(const AtomicStructure& ast, const std::string& suffix,
                    double scale, bool verbose, const char* path) {
@@ -267,6 +287,10 @@ int GEMMI_MAIN(int argc, char **argv) {
           if (n_mates != 0)
             site.occ /= (n_mates + 1);
         }
+        if (p.options[NoFp] || p.options[NoFileFp])
+          ast.atom_types.clear();
+        if (!p.options[NoFp] && ast.atom_types.empty())
+          fill_atom_types(ast);
       }
       const UnitCell& cell = use_st ? st.cell : ast.cell;
       StructureFactorCalculator<IT92<double>> calc(cell);
@@ -312,8 +336,6 @@ int GEMMI_MAIN(int argc, char **argv) {
       } else if (p.options[Check]) {
         if (use_st)
           gemmi::fail("not a SM CIF");
-        if (p.options[NoFp])
-          ast.atom_types.clear();
         double scale = 1.0;
         if (p.options[Scale])
           scale = std::strtod(p.options[Scale].arg, nullptr);
