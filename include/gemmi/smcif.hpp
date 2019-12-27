@@ -74,6 +74,8 @@ AtomicStructure make_atomic_structure_from_block(const cif::Block& block_) {
     split_element_and_charge(atom_type.symbol, &atom_type);
     st.atom_types.push_back(atom_type);
   }
+  if (cif::Column w_col = block.find_values("_diffrn_radiation_wavelength"))
+    st.wavelength = cif::as_number(w_col.at(0));
 
   const SpaceGroup* sg = find_spacegroup_by_name(st.spacegroup_hm);
   st.cell.set_cell_images_from_spacegroup(sg);

@@ -39,8 +39,16 @@ struct AtomicStructure {
   std::string spacegroup_hm;
   std::vector<Site> sites;
   std::vector<AtomType> atom_types;
+  double wavelength = 0.; // the first wavelength if multiple
 
   std::vector<Site> get_all_unit_cell_sites() const;
+
+  const AtomType* get_atom_type(const std::string& symbol) const {
+    for (const AtomType& at : atom_types)
+      if (at.symbol == symbol)
+        return &at;
+    return nullptr;
+  }
 };
 
 template<typename T>
