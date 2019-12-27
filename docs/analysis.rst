@@ -328,13 +328,13 @@ and subgraph isomorphisms.
 Torsion Angles
 ==============
 
-Gemmi can calculate a dihedral angle between any given four atoms or points,
-as it was described in the section about :ref:`coordinates <coordinates>`.
+This section presents functions dedicated to calculation of the dihedral angles
+φ (phi), ψ (psi) and ω (omega) of the protein backbone.
+These functions are built upon the more general ``calculate_dihedral`` function,
+introduced in :ref:`the section about coordinates <coordinates>`,
+which takes four points in the space as arguments.
 
-It also has convenience functions to calculate often analyzed
-dihedral angles in the protein backbone: φ (phi), ψ (psi) and ω (omega).
-
-The ω angle is usually around 180°:
+``calculate_omega()`` calculates the ω angle, which is usually around 180°:
 
 .. doctest::
 
@@ -354,8 +354,8 @@ The ω angle is usually around 180°:
   THR -172.99968385093513
   SER 176.74223937657646
 
-Angles φ and ψ are usually calculated together, so we have a single
-function to calculate them:
+The φ and ψ angles are often used together, so they are calculated
+in one function ``calculate_phi_psi()``:
 
 .. doctest::
 
@@ -371,15 +371,14 @@ function to calculate them:
   THR   -62.01   147.45
   SER   -92.85   161.53
 
-In C++ the corresponding functions are in header ``calculate.hpp``.
+In C++ these functions can be found in ``gemmi/calculate.hpp``.
 
-To illustrate the calculation of torsion angles we should make
-a Ramachandran plot.
-Let us plot angles from all PDB entries with resolution higher than 1.5A.
+The torsion angles φ and ψ can be visualized on the Ramachandran plot.
+Let us plot angles from all PDB entries with the resolution higher than 1.5A.
 Usually, glycine, proline and the residue preceding proline (pre-proline)
 are plotted separately. Here, we will exclude pre-proline and make
 separate plot for each amino acid. So first, we calculate angles
-and save φ,ψ pairs to files -- one file per residue.
+and save φ,ψ pairs in a set of files -- one file per residue.
 
 .. literalinclude:: ../examples/rama_gather.py
    :language: python
@@ -390,9 +389,9 @@ supported by gemmi (PDB, mmCIF, mmJSON). As of 2019, processing
 a :ref:`local copy of the PDB archive <pdb_dir>`
 in the PDB format takes about 20 minutes.
 
-In the next step we use a second script (see :file:`examples/rama_gather.py`)
-to plot the data points with matplotlib.
-Here are example plots that we get (click to enlarge):
+In the second step we plot the data points with matplotlib.
+We use a script that can be found in :file:`examples/rama_gather.py`.
+Six of the resulting plots are shown here (click to enlarge):
 
 .. image:: img/ramachandran-per-aa.png
     :align: center
