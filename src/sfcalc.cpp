@@ -13,13 +13,12 @@
 #include <gemmi/rhogrid.hpp>   // for put_first_model_density_on_grid
 #include <gemmi/sfcalc.hpp>    // for calculate_structure_factor
 #include <gemmi/smcif.hpp>     // for make_atomic_structure_from_block
-#include <gemmi/fprime.hpp>    // for cromer_libermann
 
 #define GEMMI_PROG sfcalc
 #include "options.h"
 
 enum OptionIndex { Hkl=4, Dmin, Rate, Smear, RCut, Check,
-                   NoFp, NoFileFp, Measured, Scale };
+                   NoFp, NoFileFp, Wavelength, Measured, Scale };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -36,16 +35,18 @@ static const option::Descriptor Usage[] = {
   { Hkl, 0, "", "hkl", Arg::Int3,
     "  --hkl=H,K,L  \tCalculate structure factor F_hkl." },
   { Dmin, 0, "", "dmin", Arg::Float,
-    "  --dmin=D  \tCalculate structure factors up to given resolution." },
+    "  --dmin=NUM  \tCalculate structure factors up to given resolution." },
   { NoFp, 0, "", "nofp", Arg::None,
     "  --nofp  \tIgnore f' (anomalous dispersion scattering)." },
   { NoFileFp, 0, "", "no-file-fp", Arg::None,
     "  --no-file-fp  \tIgnore _atom_type_scat_dispersion_real." },
+  { Wavelength, 0, "", "wavelength", Arg::Float,
+    "  --wavelength=NUM  \tWavelength [A] for calculation of f'." },
   { NoOp, 0, "", "", Arg::None, "\nOptions for FFT-based calculations:" },
   { Rate, 0, "", "rate", Arg::Float,
-    "  --rate=R  \tShannon rate used for grid spacing (default: 1.5)." },
+    "  --rate=NUM  \tShannon rate used for grid spacing (default: 1.5)." },
   { Smear, 0, "", "smear", Arg::Float,
-    "  --smear=X  \tB added for Gaussian smearing (default: auto)." },
+    "  --smear=NUM  \tB added for Gaussian smearing (default: auto)." },
   { RCut, 0, "", "rcut", Arg::Float,
     "  --rcut=Y  \tUse atomic radius r such that rho(r) < Y (default: 5e-5)." },
   { Check, 0, "", "check", Arg::Optional,
@@ -63,7 +64,7 @@ static const option::Descriptor Usage[] = {
 
 static
 void print_sf(std::complex<double> sf, const gemmi::Miller& hkl) {
-  printf(" (%d %d %d)\t%8.2f\t%6.2f\n",
+  printf(" (%d %d %d)\t%8.12f\t%6.12f\n",
          hkl[0], hkl[1], hkl[2], std::abs(sf), gemmi::phase_in_angles(sf));
 }
 
@@ -186,27 +187,11 @@ double get_minimum_b_iso(const Model& model) {
   return b_min;
 }
 
-void fill_atom_types(gemmi::AtomicStructure& ast) {
-  if (ast.wavelength > 0.) {
-    double energy = hc() / ast.wavelength;
-    for (gemmi::AtomicStructure::Site& site : ast.sites) {
-      if (!ast.get_atom_type(site.type_symbol)) {
-        ast.atom_types.emplace_back();
-        gemmi::AtomicStructure::AtomType& at = ast.atom_types.back();
-        at.symbol = site.type_symbol;
-        gemmi::split_element_and_charge(at.symbol, &at);
-        int z = site.element.atomic_number();
-        at.dispersion_real = gemmi::cromer_libermann(z, energy,
-                                                     &at.dispersion_imag);
-      }
-    }
-  }
-}
-
 static
-void verify_f_calc(const AtomicStructure& ast, const std::string& suffix,
+void verify_f_calc(const AtomicStructure& ast,
+                   StructureFactorCalculator<IT92<double>>& calc,
+                   const std::string& suffix,
                    double scale, bool verbose, const char* path) {
-  StructureFactorCalculator<IT92<double>> calc(ast.cell);
   cif::Document hkl_doc = read_cif_gz(path);
   cif::Block& block = hkl_doc.blocks.at(0);
   std::string f_cols[2] = {"?F_calc", "?F_squared_calc"};
@@ -287,13 +272,34 @@ int GEMMI_MAIN(int argc, char **argv) {
           if (n_mates != 0)
             site.occ /= (n_mates + 1);
         }
-        if (p.options[NoFp] || p.options[NoFileFp])
-          ast.atom_types.clear();
-        if (!p.options[NoFp] && ast.atom_types.empty())
-          fill_atom_types(ast);
       }
       const UnitCell& cell = use_st ? st.cell : ast.cell;
       StructureFactorCalculator<IT92<double>> calc(cell);
+      if (!p.options[NoFp]) {
+        if (use_st) {
+          if (!p.options[NoFileFp]) {
+            // _atom_type.scat_dispersion_real is almost never used,
+            // so for now we ignore it.
+          }
+          double wavelength = 0;
+          // reading wavelength from PDB and mmCIF files needs to be revisited
+          //if (!st.crystals.empty() && !st.crystals[0].diffractions.empty())
+          //  wavelength_list = st.crystals[0].diffractions[0].wavelengths;
+          if (p.options[Wavelength])
+            wavelength = std::atof(p.options[Wavelength].arg);
+          if (wavelength > 0)
+            calc.add_fprimes_from_cl(st.models[0], hc() / wavelength);
+        } else {
+          if (!p.options[NoFileFp])
+            for (const AtomicStructure::AtomType& atom_type : ast.atom_types)
+              calc.set_fprim(atom_type.element, atom_type.dispersion_real);
+          double wavelength = ast.wavelength;
+          if (p.options[Wavelength])
+            wavelength = std::atof(p.options[Wavelength].arg);
+          if (wavelength > 0)
+            calc.add_fprimes_from_cl(ast, hc() / ast.wavelength);
+        }
+      }
       for (const option::Option* opt = p.options[Hkl]; opt; opt = opt->next()) {
         std::vector<int> hkl_ = parse_comma_separated_ints(opt->arg);
         gemmi::Miller hkl{{hkl_[0], hkl_[1], hkl_[2]}};
@@ -341,7 +347,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           scale = std::strtod(p.options[Scale].arg, nullptr);
         std::string suffix = p.options[Measured] ? "meas" : "calc";
         const char* path = p.options[Check].arg;
-        verify_f_calc(ast, suffix, scale, p.options[Verbose], path);
+        verify_f_calc(ast, calc, suffix, scale, p.options[Verbose], path);
       }
     }
   } catch (std::runtime_error& e) {
