@@ -164,14 +164,11 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
   GroupOps ops = grid.spacegroup->operations();
   auto hkl_col = data.hkl_col();
   for (size_t i = 0; i < data.size(); i += data.stride()) {
-    int h = data.get_int(i + hkl_col[0]);
-    int k = data.get_int(i + hkl_col[1]);
-    int l = data.get_int(i + hkl_col[2]);
+    Miller hkl = data.get_hkl(i, hkl_col);
     T f = (T) data.get_num(i + f_col);
     if (f > 0.f) {
       double phi = rad(data.get_num(i + phi_col));
       for (const Op& op : ops.sym_ops) {
-        Miller hkl{{h, k, l}};
         auto hklp = op.apply_to_hkl(hkl);
         double shifted_phi = phi + op.phase_shift(hkl);
         int lp = hklp[2];
@@ -206,13 +203,10 @@ Grid<T> get_value_on_grid(const DataProxy& data, size_t column,
   GroupOps ops = grid.spacegroup->operations();
   auto hkl_col = data.hkl_col();
   for (size_t i = 0; i < data.size(); i += data.stride()) {
-    int h = data.get_int(i + hkl_col[0]);
-    int k = data.get_int(i + hkl_col[1]);
-    int l = data.get_int(i + hkl_col[2]);
+    Miller hkl = data.get_hkl(i, hkl_col);
     T val = (T) data.get_num(i + column);
     if (val != 0.) {
       for (const Op& op : ops.sym_ops) {
-        Miller hkl{{h, k, l}};
         auto hklp = op.apply_to_hkl(hkl);
         int lp = hklp[2];
         if (hkl_orient == HklOrient::LKH)

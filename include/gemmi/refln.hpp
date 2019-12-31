@@ -182,6 +182,11 @@ struct ReflnDataProxy {
   double get_num(size_t n) const { return cif::as_number(loop().values[n]); }
   const UnitCell& unit_cell() const { return rb_.cell; }
   const SpaceGroup* spacegroup() const { return rb_.spacegroup; }
+  Miller get_hkl(size_t offset, const std::array<size_t,3>& hkl_cols) const {
+    return {{get_int(offset + hkl_cols[0]),
+             get_int(offset + hkl_cols[1]),
+             get_int(offset + hkl_cols[2])}};
+  }
 };
 
 } // namespace gemmi

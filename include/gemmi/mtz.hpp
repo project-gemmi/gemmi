@@ -718,6 +718,9 @@ struct MtzDataProxy {
   float get_num(size_t n) const { return mtz_.data[n]; }
   const UnitCell& unit_cell() const { return mtz_.cell; }
   const SpaceGroup* spacegroup() const { return mtz_.spacegroup; }
+  Miller get_hkl(size_t offset, const std::array<size_t,3>&) const {
+    return {{get_int(offset + 0), get_int(offset + 1), get_int(offset + 2)}};
+  }
 };
 
 // Like above, but here the data is store outside of the Mtz class
@@ -730,8 +733,9 @@ struct MtzExternalDataProxy : MtzDataProxy {
   size_t size() const { return mtz_.columns.size() * mtz_.nreflections; }
   int get_int(size_t n) const { return (int) data_[n]; }
   float get_num(size_t n) const { return data_[n]; }
+private:
+  void get_hkl() const {} // disable for now
 };
-
 
 } // namespace gemmi
 
