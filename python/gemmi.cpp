@@ -60,12 +60,23 @@ void add_misc(py::module& m) {
         return "<gemmi.AtomicStructure.Site " + self.label + ">";
     });
 
+  using AtomType = AtomicStructure::AtomType;
+  py::class_<AtomType>(atomic_structure, "AtomType")
+    .def_readonly("symbol", &AtomType::symbol)
+    .def_readonly("element", &AtomType::element)
+    .def_readwrite("dispersion_real", &AtomType::dispersion_real)
+    .def_readwrite("dispersion_imag", &AtomType::dispersion_imag)
+    .def("__repr__", [](const AtomType& self) {
+        return "<gemmi.AtomicStructure.AtomType " + self.symbol + ">";
+    });
+
   atomic_structure
     .def(py::init<>())
     .def_readwrite("name", &AtomicStructure::name)
     .def_readwrite("cell", &AtomicStructure::cell)
     .def_readonly("spacegroup_hm", &AtomicStructure::spacegroup_hm)
     .def_readonly("sites", &AtomicStructure::sites)
+    .def_readonly("atom_types", &AtomicStructure::atom_types)
     .def("get_all_unit_cell_sites", &AtomicStructure::get_all_unit_cell_sites)
     .def("__repr__", [](const AtomicStructure& self) {
         return "<gemmi.AtomicStructure: " + std::string(self.name) + ">";

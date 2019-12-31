@@ -26,6 +26,13 @@ class TestRealCif(unittest.TestCase):
         self.assertEqual(len(sic.sites), 2)
         self.assertEqual(len(sic.get_all_unit_cell_sites()), 8)
 
+    def test_fen4(self):
+        path = full_path('2242624.cif')
+        ast = gemmi.read_atomic_structure(path)
+        types = ast.atom_types
+        self.assertEqual(len(types), 2)
+        self.assertEqual(types[0].symbol, 'Fe')
+        self.assertEqual(types[1].element, gemmi.Element('N'))
 
 # tests for gemmi/chemcomp_xyz.hpp
 class TestChemCompXyz(unittest.TestCase):
