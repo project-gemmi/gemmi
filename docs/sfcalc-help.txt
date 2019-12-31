@@ -23,9 +23,9 @@ Options for FFT-based calculations:
   --rate=NUM        Shannon rate used for grid spacing (default: 1.5).
   --smear=NUM       B added for Gaussian smearing (default: auto).
   --rcut=Y          Use atomic radius r such that rho(r) < Y (default: 5e-5).
-  --check[=CACHE]   Calculate exact values and report differences (slow).
+  --test[=CACHE]    Calculate exact values and report differences (slow).
 
 Options for comparing calculated values with values from a file:
-  --check[=FILE]    Re-calculate Fcalc and report differences.
+  --check=FILE      Re-calculate Fcalc and report differences.
   --meas            Compare against measured values _refln_F_(squared_)meas.
   --scale=S         Multiply calculated F by sqrt(S) (default: 1).

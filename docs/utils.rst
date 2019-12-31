@@ -452,7 +452,7 @@ gives the most accurate results depends on the resolution, oversampling,
 atomic radius cut-off, and on the distribution of B-factors
 (normally, only the minimal B-factor in the model is considered).
 
-The option ``--check`` can be used to see how accuracy and efficiency
+The option ``--test`` can be used to see how accuracy and efficiency
 depends on the choice of parameters.  For example, this shell script
 performs a series of calculations with differing *B*\ :sub:`extra`:
 
@@ -460,10 +460,10 @@ performs a series of calculations with differing *B*\ :sub:`extra`:
 
   model=1mru.pdb
   dmin=2.5
-  gemmi sfcalc --dmin=$dmin --check $model >cache.tsv
+  gemmi sfcalc --dmin=$dmin --test $model >cache.tsv
   for i in `seq -20 5 20`; do
       printf -- "$i\t" >&2
-      gemmi sfcalc --dmin=$dmin --rate=1.5 --rcut=1e-4 --smear=$i --check=cache.tsv $model
+      gemmi sfcalc --dmin=$dmin --rate=1.5 --rcut=1e-4 --smear=$i --test=cache.tsv $model
   done >/dev/null
 
 Running it prints:

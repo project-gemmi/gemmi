@@ -13,12 +13,14 @@
 #include <gemmi/rhogrid.hpp>   // for put_first_model_density_on_grid
 #include <gemmi/sfcalc.hpp>    // for calculate_structure_factor
 #include <gemmi/smcif.hpp>     // for make_atomic_structure_from_block
+#include <gemmi/mtz.hpp>       // for read_mtz_file
+#include <gemmi/gz.hpp>        // for MaybeGzipped
 
 #define GEMMI_PROG sfcalc
 #include "options.h"
 
-enum OptionIndex { Hkl=4, Dmin, Rate, Smear, RCut, Check,
-                   NoFp, NoFileFp, Wavelength, Measured, Scale };
+enum OptionIndex { Hkl=4, Dmin, Rate, Smear, RCut, Test, Check,
+                   NoFp, NoFileFp, Wavelength, Label, Scale };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -49,13 +51,13 @@ static const option::Descriptor Usage[] = {
     "  --smear=NUM  \tB added for Gaussian smearing (default: auto)." },
   { RCut, 0, "", "rcut", Arg::Float,
     "  --rcut=Y  \tUse atomic radius r such that rho(r) < Y (default: 5e-5)." },
-  { Check, 0, "", "check", Arg::Optional,
-    "  --check[=CACHE]  \tCalculate exact values and report differences (slow)." },
+  { Test, 0, "", "test", Arg::Optional,
+    "  --test[=CACHE]  \tCalculate exact values and report differences (slow)." },
   { NoOp, 0, "", "", Arg::None,
     "\nOptions for comparing calculated values with values from a file:" },
-  { NoOp, 0, "", "", Arg::None,
-    "  --check[=FILE]  \tRe-calculate Fcalc and report differences." },
-  { Measured, 0, "", "meas", Arg::None,
+  { Check, 0, "", "check", Arg::Required,
+    "  --check=FILE  \tRe-calculate Fcalc and report differences." },
+  { Label, 0, "", "meas", Arg::None,
     "  --meas  \tCompare against measured values _refln_F_(squared_)meas." },
   { Scale, 0, "", "scale", Arg::Float,
     "  --scale=S  \tMultiply calculated F by sqrt(S) (default: 1)." },
@@ -100,7 +102,7 @@ using namespace gemmi;
 
 static
 void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
-                             bool verbose, bool check, const char* cache_file) {
+                             bool verbose, bool test, const char* cache_file) {
   using Clock = std::chrono::steady_clock;
   Grid<float> grid;
   if (verbose) {
@@ -138,7 +140,7 @@ void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
         if (hkl_1_d2 < max_1_d2) {
           std::complex<double> value = sf.data[sf.index_n(h, k, l)];
           value *= std::exp(opt.smear * 0.25 * hkl_1_d2);
-          if (check) {
+          if (test) {
             std::complex<double> exact;
             if (cache_file) {
               char cache_line[100];
@@ -164,7 +166,7 @@ void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
           }
         }
       }
-  if (check) {
+  if (test) {
     fprintf(stderr, "RMSE: %#.5g\t%#.4g%%\tmax|dF|=%#.4g  \tR-factor: %#.3g%%",
             comparator.rmse(), 100. * comparator.weighted_rmse(),
             comparator.max_abs_df, 100 * comparator.rfactor());
@@ -188,40 +190,47 @@ double get_minimum_b_iso(const Model& model) {
 }
 
 static
-void verify_f_calc(const AtomicStructure& ast,
-                   StructureFactorCalculator<IT92<double>>& calc,
-                   const std::string& suffix,
-                   double scale, bool verbose, const char* path) {
+void compare_with_hkl(const AtomicStructure& ast,
+                      StructureFactorCalculator<IT92<double>>& calc,
+                      const std::string& label, double scale,
+                      bool verbose, const char* path,
+                      Comparator& comparator) {
   cif::Document hkl_doc = read_cif_gz(path);
   cif::Block& block = hkl_doc.blocks.at(0);
-  std::string f_cols[2] = {"?F_calc", "?F_squared_calc"};
-  cif::Table table = block.find("_refln_",
-      {"index_h", "index_k", "index_l", "?F_"+suffix, "?F_squared_"+suffix});
+  std::vector<std::string> tags =
+    {"index_h", "index_k", "index_l", "?F_calc", "?F_squared_calc"};
+  if (!label.empty()) {
+    tags.pop_back();
+    tags.back().replace(1, std::string::npos, label);
+  }
+  cif::Table table = block.find("_refln_", tags);
   if (!table.ok())
     fail("_refln_index_ category not found in ", path);
   if (table.has_column(3)) {
     if (verbose)
-      fprintf(stderr, "Checking _refln_F_calc from %s\n", path);
-  } else if (table.has_column(4)) {
+      fprintf(stderr, "Checking _refln_%s from %s\n", tags[3].c_str()+1, path);
+  } else if (tags.size() > 4 && table.has_column(4)) {
     if (verbose)
-      fprintf(stderr, "Checking sqrt of _refln_F_squared_calc from %s\n", path);
+      fprintf(stderr, "Checking sqrt of _refln_%s from %s\n",
+              tags[4].c_str()+1, path);
   } else {
-    fail("neither _refln_F_calc nor _refln_F_squared_calc not found");
+    std::string msg;
+    if (label.empty())
+      msg = "Neither _refln_F_calc nor _refln_F_squared_calc";
+    else
+      msg = "_refln_" + label;
+    fail(msg + " not found in: ", path);
   }
-  if (verbose && !ast.atom_types.empty())
-    fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
-            (unsigned) ast.atom_types.size());
-  Comparator comparator;
   Miller hkl;
   for (auto row : table) {
-    double fcalc_from_file = NAN;
+    double f_from_file = NAN;
     try {
       for (int i = 0; i != 3; ++i)
         hkl[i] = cif::as_int(row[i]);
       if (row.has(3))
-        fcalc_from_file = cif::as_number(row[3]);
+        f_from_file = cif::as_number(row[3]);
       else if (row.has(4))
-        fcalc_from_file = std::sqrt(cif::as_number(row[4]));
+        f_from_file = std::sqrt(cif::as_number(row[4]));
     } catch(std::runtime_error& e) {
       fprintf(stderr, "Error in _refln_[] in %s: %s\n", path, e.what());
       continue;
@@ -231,17 +240,38 @@ void verify_f_calc(const AtomicStructure& ast,
     }
     double f = std::abs(calc.calculate_sf_from_atomic_structure(ast, hkl));
     f *= scale;
-    comparator.add(fcalc_from_file, f);
+    comparator.add(f_from_file, f);
     if (verbose)
       printf(" (%d %d %d)\t%7.2f\t%8.3f \td=%5.2f\n",
-             hkl[0], hkl[1], hkl[2], fcalc_from_file, f,
+             hkl[0], hkl[1], hkl[2], f_from_file, f,
              ast.cell.calculate_d(hkl));
   }
-  fprintf(stderr,
-          "RMSE=%#.5g  %#.4g%%  max|dF|=%#.4g  R=%#.3g%%  sum(F^2)_ratio=%g\n",
-          comparator.rmse(), 100. * comparator.weighted_rmse(),
-          comparator.max_abs_df, 100*comparator.rfactor(), comparator.scale());
 }
+
+static
+void compare_with_mtz(const Model& model, const UnitCell& cell,
+                      StructureFactorCalculator<IT92<double>>& calc,
+                      const std::string& label, double scale, bool verbose,
+                      const char* path, Comparator& comparator) {
+  Mtz mtz;
+  mtz.read_input(gemmi::MaybeGzipped(path), true);
+  Mtz::Column* col = mtz.column_with_label(label);
+  if (!col)
+    fail("MTZ file has no column with label: " + label);
+  gemmi::MtzDataProxy data_proxy{mtz};
+  auto hkl_col = data_proxy.hkl_col();
+  for (size_t i = 0; i < data_proxy.size(); i += data_proxy.stride()) {
+    Miller hkl = data_proxy.get_hkl(i, hkl_col);
+    double f_from_file = data_proxy.get_num(i + col->idx);
+    double f = std::abs(calc.calculate_sf_from_model(model, hkl));
+    f *= scale;
+    comparator.add(f_from_file, f);
+    if (verbose)
+      printf(" (%d %d %d)\t%7.2f\t%8.3f \td=%5.2f\n",
+             hkl[0], hkl[1], hkl[2], f_from_file, f, cell.calculate_d(hkl));
+  }
+}
+
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
@@ -289,10 +319,14 @@ int GEMMI_MAIN(int argc, char **argv) {
             wavelength = std::atof(p.options[Wavelength].arg);
           if (wavelength > 0)
             calc.add_fprimes_from_cl(st.models[0], hc() / wavelength);
-        } else {
-          if (!p.options[NoFileFp])
+        } else { // small molecule
+          if (!p.options[NoFileFp] && !ast.atom_types.empty()) {
+            if (p.options[Verbose])
+              fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
+                      (unsigned) ast.atom_types.size());
             for (const AtomicStructure::AtomType& atom_type : ast.atom_types)
               calc.set_fprim(atom_type.element, atom_type.dispersion_real);
+          }
           double wavelength = ast.wavelength;
           if (p.options[Wavelength])
             wavelength = std::atof(p.options[Wavelength].arg);
@@ -326,10 +360,11 @@ int GEMMI_MAIN(int argc, char **argv) {
         } else if (opt.rate < 3) {
           // ITfC vol B section 1.3.4.4.5 has formula
           // B = log Q / (sigma * (sigma - 1) * d^*_max^2)
-          // But it is more complex. If we take into account numerical
-          // accuracy, optimal B depends also on atomic cutoff radius
-          // and on distribution of B-factors. On the other hand increasing
-          // B increases the radius. He we use an ad-hoc rule.
+          // This value is not optimal.
+          // The optimal value would depend on the distribution of B-factors
+          // and on the atomic cutoff radius, and probably it would be too hard
+          // to estimate.
+          // Here we use a simple ad-hoc rule:
           double sqrtB = 4 * opt.d_min * (1./opt.rate - 0.2);
           double b_min = get_minimum_b_iso(st.models[0]);
           opt.smear = sqrtB * sqrtB - b_min;
@@ -338,16 +373,31 @@ int GEMMI_MAIN(int argc, char **argv) {
         }
 
         print_structure_factors(st, opt, p.options[Verbose],
-                                p.options[Check], p.options[Check].arg);
+                                p.options[Test], p.options[Test].arg);
       } else if (p.options[Check]) {
-        if (use_st)
-          gemmi::fail("not a SM CIF");
         double scale = 1.0;
         if (p.options[Scale])
           scale = std::strtod(p.options[Scale].arg, nullptr);
-        std::string suffix = p.options[Measured] ? "meas" : "calc";
         const char* path = p.options[Check].arg;
-        verify_f_calc(ast, calc, suffix, scale, p.options[Verbose], path);
+        Comparator comparator;
+        std::string label;
+        if (p.options[Label])
+         label = p.options[Label].arg;
+        else if (use_st)
+          label = "FC";
+        if (use_st)
+          compare_with_mtz(st.models[0], st.cell, calc, label, scale,
+                           p.options[Verbose], path, comparator);
+        else
+          compare_with_hkl(ast, calc, label, scale,
+                           p.options[Verbose], path, comparator);
+        fprintf(stderr, "RMSE=%#.5g  %#.4g%%  max|dF|=%#.4g  "
+                        "R=%#.3g%%  sum(F^2)_ratio=%g\n",
+                        comparator.rmse(),
+                        100. * comparator.weighted_rmse(),
+                        comparator.max_abs_df,
+                        100 * comparator.rfactor(),
+                        comparator.scale());
       }
     }
   } catch (std::runtime_error& e) {
