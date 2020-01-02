@@ -1,3 +1,5 @@
+.. highlight:: console
+
 Gemmi program
 #############
 
@@ -24,22 +26,20 @@ imposed by DDL1 and DDL2 dictionaries.
 grep
 ====
 
-.. highlight:: console
-
 Searches for a specified tag in CIF files and prints the associated values,
 one value per line::
 
-    $ gemmi grep _refine.ls_R_factor_R_free 5fyi.cif.gz
-    5FYI:0.2358
-    $ gemmi grep _refine.ls_R_factor_R_free mmCIF/mo/?moo.cif.gz
-    1MOO:0.177
-    3MOO:0.21283
-    4MOO:0.22371
-    5MOO:0.1596
-    5MOO:0.1848
-    $ gemmi grep -b _software.name 5fyi.cif.gz
-    DIMPLE
-    PHENIX
+  $ gemmi grep _refine.ls_R_factor_R_free 5fyi.cif.gz
+  5FYI:0.2358
+  $ gemmi grep _refine.ls_R_factor_R_free mmCIF/mo/?moo.cif.gz
+  1MOO:0.177
+  3MOO:0.21283
+  4MOO:0.22371
+  5MOO:0.1596
+  5MOO:0.1848
+  $ gemmi grep -b _software.name 5fyi.cif.gz
+  DIMPLE
+  PHENIX
 
 Some of the command-line options correspond to the options of GNU grep
 (``-c``, ``-l``, ``-H``, ``-n``).
@@ -52,9 +52,9 @@ This is a minimalistic program designed to be used together with Unix
 text-processing utilities. For example, it cannot filter values itself,
 but one may use grep::
 
-    $ gemmi grep _pdbx_database_related.db_name /pdb/mmCIF/aa/* | grep EMDB
-    4AAS:EMDB
-    5AA0:EMDB
+  $ gemmi grep _pdbx_database_related.db_name /pdb/mmCIF/aa/* | grep EMDB
+  4AAS:EMDB
+  5AA0:EMDB
 
 Gemmi-grep tries to be simple to use like Unix grep, but at the same time
 it is aware of the CIF syntax rules. In particular, ``gemmi grep _one``
@@ -67,13 +67,13 @@ Gemmi-grep does not support regular expression, only globbing (wildcards):
 characters (including zero). When using wildcards you may also want
 to use the ``-t`` option which prints the tag::
 
-    $ gemmi grep -t _*free 3gem.cif
-    3GEM:[_refine.ls_R_factor_R_free] 0.182
-    3GEM:[_refine.ls_percent_reflns_R_free] 5.000
-    3GEM:[_refine.ls_number_reflns_R_free] 3951
-    3GEM:[_refine.correlation_coeff_Fo_to_Fc_free] 0.952
-    3GEM:[_refine_ls_shell.R_factor_R_free] 0.272
-    3GEM:[_refine_ls_shell.number_reflns_R_free] 253
+  $ gemmi grep -t _*free 3gem.cif
+  3GEM:[_refine.ls_R_factor_R_free] 0.182
+  3GEM:[_refine.ls_percent_reflns_R_free] 5.000
+  3GEM:[_refine.ls_number_reflns_R_free] 3951
+  3GEM:[_refine.correlation_coeff_Fo_to_Fc_free] 0.952
+  3GEM:[_refine_ls_shell.R_factor_R_free] 0.272
+  3GEM:[_refine_ls_shell.number_reflns_R_free] 253
 
 Let say we want to find extreme unit cell angles in the PDB.
 ``_cell.angle_*a`` will match _cell.angle_alpha as well as beta and gamma,
@@ -81,14 +81,14 @@ but not _cell.angle_alpha_esd etc.
 
 ::
 
-   $ gemmi grep -d' ' _cell.angle_*a /pdb/mmCIF/ | awk '$2 < 50 || $2 > 140 { print $0; }'
-   4AL2 144.28
-   2EX3 45.40
-   2GMV 145.09
-   4NX1 140.060
-   4OVP 140.070
-   1SPG 141.90
-   2W1I 146.58
+  $ gemmi grep -d' ' _cell.angle_*a /pdb/mmCIF/ | awk '$2 < 50 || $2 > 140 { print $0; }'
+  4AL2 144.28
+  2EX3 45.40
+  2GMV 145.09
+  4NX1 140.060
+  4OVP 140.070
+  1SPG 141.90
+  2W1I 146.58
 
 The option ``-O`` is used to make gemmi-grep faster.
 With this option the program finds only the first occurence of the tag
@@ -102,42 +102,42 @@ between 10 and 30 minutes, depending where the searched tag is located.
 This is much faster than with other CIF parsers (to my best knowledge)
 and it makes the program useful for ad-hoc PDB statistics::
 
-    $ gemmi grep -O -b _entity_poly.type /pdb/mmCIF | sort | uniq -c
-          1 cyclic-pseudo-peptide
-          4 other
-          2 peptide nucleic acid
-       9905 polydeoxyribonucleotide
-        156 polydeoxyribonucleotide/polyribonucleotide hybrid
-         57 polypeptide(D)
-     168923 polypeptide(L)
-       4559 polyribonucleotide
-         18 polysaccharide(D)
+  $ gemmi grep -O -b _entity_poly.type /pdb/mmCIF | sort | uniq -c
+        1 cyclic-pseudo-peptide
+        4 other
+        2 peptide nucleic acid
+     9905 polydeoxyribonucleotide
+      156 polydeoxyribonucleotide/polyribonucleotide hybrid
+       57 polypeptide(D)
+   168923 polypeptide(L)
+     4559 polyribonucleotide
+       18 polysaccharide(D)
 
 Option ``-c`` counts the values in each block or file. As an example
 we may check which entries have the biggest variety of chemical components
 (spoiler: ribosomes)::
 
-    $ gemmi grep -O -c _chem_comp.id /pdb/mmCIF | sort -t: -k2 -nr | head
-    5J91:58
-    5J8A:58
-    5J7L:58
-    5J5B:58
-    4YBB:58
-    5JC9:57
-    5J88:57
-    5IT8:57
-    5IQR:50
-    5AFI:50
+  $ gemmi grep -O -c _chem_comp.id /pdb/mmCIF | sort -t: -k2 -nr | head
+  5J91:58
+  5J8A:58
+  5J7L:58
+  5J5B:58
+  4YBB:58
+  5JC9:57
+  5J88:57
+  5IT8:57
+  5IQR:50
+  5AFI:50
 
 Going back to moo, we may want to know to what experimental method
 the Rfree values correspond::
 
-    $ gemmi grep _refine.ls_R_factor_R_free -a _refine.pdbx_refine_id mmCIF/mo/?moo.cif.gz
-    1MOO:0.177;X-RAY DIFFRACTION
-    3MOO:0.21283;X-RAY DIFFRACTION
-    4MOO:0.22371;X-RAY DIFFRACTION
-    5MOO:0.1596;X-RAY DIFFRACTION
-    5MOO:0.1848;NEUTRON DIFFRACTION
+  $ gemmi grep _refine.ls_R_factor_R_free -a _refine.pdbx_refine_id mmCIF/mo/?moo.cif.gz
+  1MOO:0.177;X-RAY DIFFRACTION
+  3MOO:0.21283;X-RAY DIFFRACTION
+  4MOO:0.22371;X-RAY DIFFRACTION
+  5MOO:0.1596;X-RAY DIFFRACTION
+  5MOO:0.1848;NEUTRON DIFFRACTION
 
 Option ``-a`` (``--and``) can be specified many times.
 If we would add ``-a _pdbx_database_status.recvd_initial_deposition_date``
@@ -152,10 +152,10 @@ What are the heaviest chains?
 
 ::
 
-   $ gemmi grep --delimiter='\t' _entity.formula_weight -a _entity.pdbx_description /hdd/mmCIF/ | sort -nrk2 | head -3
-   6EK0    1641906.750     28S ribosomal RNA
-   5T2C    1640238.125     28S rRNA
-   5LKS    1640238.125     28S ribosomal RNA
+  $ gemmi grep --delimiter='\t' _entity.formula_weight -a _entity.pdbx_description /hdd/mmCIF/ | sort -nrk2 | head -3
+  6EK0    1641906.750     28S ribosomal RNA
+  5T2C    1640238.125     28S rRNA
+  5LKS    1640238.125     28S ribosomal RNA
 
 With some further processing the option ``-a`` can be used to generate
 quite sophisticated reports. Here is a little demo:
@@ -173,9 +173,9 @@ as the main tag, gemmi-grep uses only the first value for this tag.
 Unless we just count the number of value. Counting works for any combination
 of tags::
 
-    $ gemmi grep -c _refln.intensity_meas -a _diffrn_refln.intensity_net r5paysf.ent.gz
-    r5paysf:63611;0
-    r5payAsf:0;356684
+  $ gemmi grep -c _refln.intensity_meas -a _diffrn_refln.intensity_net r5paysf.ent.gz
+  r5paysf:63611;0
+  r5payAsf:0;356684
 
 (The file used in this example is structure factor (SF) mmCIF.
 Strangely these files in the PDB have extension ``ent`` not ``cif``.)
@@ -184,9 +184,9 @@ The first number in the output above is the number of specified intensities.
 If you would like to count in also values ``?`` and ``.`` specify
 the option ``--raw``::
 
-    $ gemmi grep --raw -c _refln.intensity_meas r5paysf.ent.gz
-    r5paysf:63954
-    r5payAsf:0
+  $ gemmi grep --raw -c _refln.intensity_meas r5paysf.ent.gz
+  r5paysf:63954
+  r5payAsf:0
 
 Gemmi-grep can work with any CIF files but it has one feature
 specific to the PDB data. When :ref:`$PDB_DIR <pdb_dir>` is set
@@ -198,17 +198,17 @@ The file paths or PDB codes can be read from a file.
 For example, if we want to analyse PDB data deposited in 2016
 we may first make a file that lists all such files::
 
-    $ gemmi grep -H -O _pdbx_database_status.recvd_initial_deposition_date $PDB_DIR/structures/divided/mmCIF | \
-            grep 2016 >year2016.txt
+  $ gemmi grep -H -O _pdbx_database_status.recvd_initial_deposition_date $PDB_DIR/structures/divided/mmCIF | \
+          grep 2016 >year2016.txt
 
 The 2016.txt file file has lines that start with the filename::
 
-    /hdd/structures/divided/mmCIF/ww/5ww9.cif.gz:5WW9:2016-12-31
-    /hdd/structures/divided/mmCIF/ww/5wwc.cif.gz:5WWC:2016-12-31
+  /hdd/structures/divided/mmCIF/ww/5ww9.cif.gz:5WW9:2016-12-31
+  /hdd/structures/divided/mmCIF/ww/5wwc.cif.gz:5WWC:2016-12-31
 
 and a command such as::
 
-    $ gemmi grep -f year2016.out _diffrn.ambient_temp
+  $ gemmi grep -f year2016.out _diffrn.ambient_temp
 
 will grep only the listed cif files.
 
@@ -226,17 +226,17 @@ The monomer library (Refmac dictionary) has tags such as
 ``_chem_comp_atom.comp_id``, ``_chem_comp_bond.comp_id`` that are expected
 to be consistent with the block name::
 
-    $ gemmi grep _*.comp_id $CLIBD_MON/a/ASN.cif
-    comp_ASN:ASN
-    [repeated 106 times]
+  $ gemmi grep _*.comp_id $CLIBD_MON/a/ASN.cif
+  comp_ASN:ASN
+  [repeated 106 times]
 
 We can quickly check if the names are always consistent by filtering
 the output above with awk, for all monomer files, to print only lines
 where the block name and comp_id differ::
 
-    $ gemmi grep _*.comp_id $CLIBD_MON/? | awk -F: 'substr($1, 6) != $2'
-    comp_M43:N09
-    ...
+  $ gemmi grep _*.comp_id $CLIBD_MON/? | awk -F: 'substr($1, 6) != $2'
+  comp_M43:N09
+  ...
 
 planarity
 ~~~~~~~~~
@@ -248,10 +248,10 @@ What is the maximum number of atoms in one plane?
 
 ::
 
-    $ gemmi grep _chem_comp_plane_atom.plane_id $CLIBD_MON/? | uniq -c | sort -nr | head -3
-     38 comp_LG8:plan-1
-     36 comp_UCM:plan-1
-     36 comp_SA3:plan-1
+  $ gemmi grep _chem_comp_plane_atom.plane_id $CLIBD_MON/? | uniq -c | sort -nr | head -3
+   38 comp_LG8:plan-1
+   36 comp_UCM:plan-1
+   36 comp_SA3:plan-1
 
 
 .. _convert:
@@ -537,10 +537,10 @@ List residues from a coordinate file, one per line.
 
 Example::
 
-    $ gemmi residues -m '/3/*/(CYS,CSD)' 4pth.pdb
-    Model 3
-    A   85  CYS: N CA C O CB SG H HA HB2 HB3 HG
-    A  152  CSD: N CA CB SG C O OD1 OD2 HA HB2 HB3
+  $ gemmi residues -m '/3/*/(CYS,CSD)' 4pth.pdb
+  Model 3
+  A   85  CYS: N CA C O CB SG H HA HB2 HB3 HG
+  A  152  CSD: N CA CB SG C O OD1 OD2 HA HB2 HB3
 
 seq
 ===
