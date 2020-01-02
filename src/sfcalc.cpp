@@ -20,7 +20,7 @@
 #include "options.h"
 
 enum OptionIndex { Hkl=4, Dmin, Rate, Smear, RCut, Test, Check,
-                   NoFp, NoFileFp, Wavelength, Label, Scale };
+                   NoFp, CifFp, Wavelength, Label, Scale };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -40,8 +40,8 @@ static const option::Descriptor Usage[] = {
     "  --dmin=NUM  \tCalculate structure factors up to given resolution." },
   { NoFp, 0, "", "nofp", Arg::None,
     "  --nofp  \tIgnore f' (anomalous dispersion scattering)." },
-  { NoFileFp, 0, "", "no-file-fp", Arg::None,
-    "  --no-file-fp  \tIgnore _atom_type_scat_dispersion_real." },
+  { CifFp, 0, "", "ciffp", Arg::None,
+    "  --ciffp  \tRead f' from _atom_type_scat_dispersion_real in CIF." },
   { Wavelength, 0, "", "wavelength", Arg::Float,
     "  --wavelength=NUM  \tWavelength [A] for calculation of f'." },
   { NoOp, 0, "", "", Arg::None, "\nOptions for FFT-based calculations:" },
@@ -307,7 +307,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       StructureFactorCalculator<IT92<double>> calc(cell);
       if (!p.options[NoFp]) {
         if (use_st) {
-          if (!p.options[NoFileFp]) {
+          if (p.options[CifFp]) {
             // _atom_type.scat_dispersion_real is almost never used,
             // so for now we ignore it.
           }
@@ -320,7 +320,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           if (wavelength > 0)
             calc.add_fprimes_from_cl(st.models[0], hc() / wavelength);
         } else { // small molecule
-          if (!p.options[NoFileFp] && !ast.atom_types.empty()) {
+          if (p.options[CifFp] && !ast.atom_types.empty()) {
             if (p.options[Verbose])
               fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
                       (unsigned) ast.atom_types.size());
