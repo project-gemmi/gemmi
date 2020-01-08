@@ -10,7 +10,7 @@ For working with:
 
 * macromolecular models (content of PDB, PDBx/mmCIF and mmJSON files),
 * refinement restraints (CIF files),
-* reflection data (MTZ and mmCIF formats).
+* reflection data (MTZ and mmCIF formats),
 * data on a 3D grid (electron density maps, masks, MRC/CCP4 format)
 * crystallographic symmetry.
 
@@ -20,10 +20,10 @@ and in other molecular-structure sciences that use CIF files
 (we have the `fastest <https://github.com/project-gemmi/mmcif-benchmark>`_
 open-source CIF parser).
 
-Gemmi is open-source (MPL_) and portable (Linux, Windows, MacOS).
+Gemmi is open-source (MPL_) and portable -- it runs on Linux, Windows,
+MacOS and even inside a web browser if compiled to WebAssembly.
 It is written in C++11, with Python (2 and 3) bindings,
 and with partial C and Fortran 2003 interface.
-A WebAssembly (and perhaps also JavaScript) port is under consideration.
 
 .. _MPL: https://www.mozilla.org/en-US/MPL/2.0/
 
@@ -35,7 +35,7 @@ Source code repository: https://github.com/project-gemmi/gemmi
 
 .. important::
 
-    As of 2019 the library is under intensive development and not
+    As of 2020 the library is under intensive development and not
     everything is documented yet. Just ask questions.
 
 Contents
