@@ -6,6 +6,7 @@
 #define GEMMI_GRID_HPP_
 
 #include <cassert>
+#include <complex>
 #include <functional> // for function
 #include <vector>
 #include "unitcell.hpp"
@@ -95,6 +96,14 @@ enum class HklOrient : unsigned char {
   LKH   // fast L, may not be fully supported everywhere
 };
 
+inline double lerp_(double a, double b, double t) {
+  return a + (b - a) * t;
+}
+template<typename T>
+std::complex<T> lerp_(std::complex<T> a, std::complex<T> b, double t) {
+  return a + (b - a) * (T) t;
+}
+
 // For now, for simplicity, the grid covers whole unit cell
 // and space group is P1.
 template<typename T=float>
@@ -169,6 +178,35 @@ struct Grid {
   T get_value_q(int u, int v, int w) const { return data[index_q(u, v, w)]; }
 
   T get_value(int u, int v, int w) const { return data[index_s(u, v, w)]; }
+
+  // https://en.wikipedia.org/wiki/Trilinear_interpolation
+  T interpolate_value(double x, double y, double z) const {
+    double tmp;
+    double xd = std::modf(x, &tmp);
+    int u = (int) tmp;
+    double yd = std::modf(y, &tmp);
+    int v = (int) tmp;
+    double zd = std::modf(z, &tmp);
+    int w = (int) tmp;
+    assert(u >= 0 && v >= 0 && w >= 0);
+    assert(u < nu - 1 && v < nv - 1 && w < nw - 1);
+    T avg[2];
+    for (int dw = 0; dw < 2; ++dw) {
+      int idx1 = index_q(u, v, w + dw);
+      int idx2 = index_q(u, v + 1, w + dw);
+      avg[dw] = (T) lerp_(lerp_(data[idx1], data[idx1 + 1], xd),
+                          lerp_(data[idx2], data[idx2 + 1], xd),
+                          yd);
+    }
+    return (T) lerp_(avg[0], avg[1], zd);
+  }
+  T interpolate_value(const Fractional& fctr) const {
+    Fractional f = fctr.wrap_to_unit();
+    return interpolate_value(f.x * nu, f.y * nv, f.z * nw);
+  }
+  T interpolate_value(const Position& ctr) const {
+    return interpolate_value(unit_cell.fractionalize(ctr));
+  }
 
   void set_value(int u, int v, int w, T x) { data[index_s(u, v, w)] = x; }
 

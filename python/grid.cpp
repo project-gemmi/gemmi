@@ -53,6 +53,10 @@ void add_grid(py::module& m, const char* name) {
     .def_readonly("nw", &Gr::nw, "size in the third (slowest-changing) dim")
     .def("get_value", &Gr::get_value)
     .def("set_value", &Gr::set_value)
+    .def("interpolate_value",
+         (T (Gr::*)(const Fractional&) const) &Gr::interpolate_value)
+    .def("interpolate_value",
+         (T (Gr::*)(const Position&) const) &Gr::interpolate_value)
     .def_readwrite("spacegroup", &Gr::spacegroup)
     .def_readwrite("unit_cell", &Gr::unit_cell)
     .def("set_unit_cell", (void (Gr::*)(const UnitCell&)) &Gr::set_unit_cell)
