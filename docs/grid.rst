@@ -50,11 +50,16 @@ can be accessed directly, except that ``unit_cell`` should
 be set using ``Grid<T>::set_unit_cell()``.
 
 Unit cell parameters enable conversion between coordinates and grid
-points. For example, we have a member function for masking area
-around atoms that takes coordinates in Angstroms and radius,
-and sets all the grid points in the specified radius to 1::
+points. To get an interpolated value at any position (in either fractional
+or orthogonal coordinates), use::
 
-  void Grid<T>::mask_atom(double x, double y, double z, double radius)
+  T Grid<T>::interpolate_value(const Fractional& fctr) const
+  T Grid<T>::interpolate_value(const Position& ctr) const
+
+We also have a few more specialized functions.
+For example, a member function used primarily for masking area around atoms:
+
+  void Grid<T>::set_points_around(const Position& ctr, double radius, T value)
 
 To make it more efficient, the function above does not consider symmetry.
 At the end, we should call one of the *symmetrizing* functions.
@@ -126,9 +131,23 @@ In addition to the symmetry, Grid may also have associated unit cell.
   >>> grid.unit_cell
   <gemmi.UnitCell(45, 45, 45, 90, 82.5, 90)>
 
-This allows to translate position in Angstroms to the location in grid.
-If we'd like to set grid points near a specified position we can
-use function ``set_points_around()`` that takes ``Position`` as an argument:
+This allows us to translate position in Angstroms to the location in grid,
+and to get an interpolated value (with trilinear interpolation) at any point:
+
+.. doctest::
+
+  >>> grid.interpolate_value(gemmi.Position(2, 3, 4))
+  2.0333263874053955
+
+This function can also take fractional position:
+
+.. doctest::
+
+  >>> grid.interpolate_value(gemmi.Fractional(1/24, 1/24, 1/24))
+  0.890625
+
+If you would like to set grid points near a specified position
+use the ``set_points_around()`` function:
 
 .. doctest::
   :skipif: numpy is None
