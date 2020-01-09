@@ -213,12 +213,22 @@ struct Grid {
   void fill(T value) { std::fill(data.begin(), data.end(), value); }
 
   template <typename Func>
-  void use_points_around(const Fractional& fctr, double radius, Func&& func) {
+  void use_points_around(const Fractional& fctr_, double radius, Func&& func,
+                         bool fail_on_too_large_radius=true) {
+    const Fractional fctr = fctr_.wrap_to_unit();
     int du = (int) std::ceil(radius / spacing[0]);
     int dv = (int) std::ceil(radius / spacing[1]);
     int dw = (int) std::ceil(radius / spacing[2]);
-    if (du > nu || dv > nv || dw > nw)
-      fail("grid operation failed: radius bigger than the unit cell?");
+    if (fail_on_too_large_radius) {
+      if (2 * du >= nu || 2 * dv >= nv || 2 * dw >= nw)
+        fail("grid operation failed: radius bigger than half the unit cell?");
+    } else {
+      // If we'd use the minimum image convention the max would be (nu-1)/2.
+      // The limits set here are necessary for index_n() that is used below.
+      du = std::min(du, nu - 1);
+      dv = std::min(dv, nv - 1);
+      dw = std::min(dw, nw - 1);
+    }
     int u0 = iround(fctr.x * nu);
     int v0 = iround(fctr.y * nv);
     int w0 = iround(fctr.z * nw);
@@ -228,16 +238,15 @@ struct Grid {
           Fractional fdelta{fctr.x - u * (1.0 / nu),
                             fctr.y - v * (1.0 / nv),
                             fctr.z - w * (1.0 / nw)};
-          fdelta.move_toward_zero_by_one();
           Position d = unit_cell.orthogonalize(fdelta);
-          double d2 = d.x*d.x + d.y*d.y + d.z*d.z;
+          double d2 = d.x*d.x + d.y*d.y + d.z*d.z; //d.length_sq()
           if (d2 < radius * radius)
             func(data[index_n(u, v, w)], d2);
         }
   }
 
   void set_points_around(const Position& ctr, double radius, T value) {
-    Fractional fctr = unit_cell.fractionalize(ctr).wrap_to_unit();
+    Fractional fctr = unit_cell.fractionalize(ctr);
     use_points_around(fctr, radius, [&](T& point, double) { point = value; });
   }
 

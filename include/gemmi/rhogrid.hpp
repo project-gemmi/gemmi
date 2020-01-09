@@ -64,10 +64,10 @@ void add_atom_density_to_grid(const Atom& atom, Grid<T>& grid,
   auto& scat = Table::get(atom.element);
   double b = atom.b_iso + opt.smear;
   double radius = determine_effective_radius(scat, (float) b, opt.r_cut);
-  Fractional fpos = grid.unit_cell.fractionalize(atom.pos).wrap_to_unit();
+  Fractional fpos = grid.unit_cell.fractionalize(atom.pos);
   grid.use_points_around(fpos, radius, [&](T& point, double r2) {
       point += T(atom.occ * scat.calculate_density((T)r2, (T)b));
-  });
+  }, /*fail_on_too_large_radius=*/false);
 }
 
 template <typename Table, typename T>
