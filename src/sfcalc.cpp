@@ -98,7 +98,15 @@ struct Comparator {
   double scale() const { return std::sqrt(sum_sq1 / sum_sq2); }
 };
 
+static
+void print_to_stderr(const Comparator& c) {
+  fprintf(stderr, "RMSE=%#.5g  %#.4g%%  max|dF|=%#.4g  R=%.3f%%",
+          c.rmse(), 100 * c.weighted_rmse(), c.max_abs_df, 100 * c.rfactor());
+}
+
 using namespace gemmi;
+
+
 
 static
 void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
@@ -167,12 +175,10 @@ void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
         }
       }
   if (test) {
-    fprintf(stderr, "RMSE: %#.5g\t%#.4g%%\tmax|dF|=%#.4g  \tR-factor: %#.3g%%",
-            comparator.rmse(), 100. * comparator.weighted_rmse(),
-            comparator.max_abs_df, 100 * comparator.rfactor());
+    print_to_stderr(comparator);
     if (!verbose) {
       std::chrono::duration<double> elapsed = Clock::now() - start;
-      fprintf(stderr, "\t%#.5gs", elapsed.count());
+      fprintf(stderr, "   %#.5gs", elapsed.count());
     }
     fprintf(stderr, "\n");
   }
@@ -391,13 +397,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         else
           compare_with_hkl(ast, calc, label, scale,
                            p.options[Verbose], path, comparator);
-        fprintf(stderr, "RMSE=%#.5g  %#.4g%%  max|dF|=%#.4g  "
-                        "R=%#.3g%%  sum(F^2)_ratio=%g\n",
-                        comparator.rmse(),
-                        100. * comparator.weighted_rmse(),
-                        comparator.max_abs_df,
-                        100 * comparator.rfactor(),
-                        comparator.scale());
+        print_to_stderr(comparator);
+        fprintf(stderr, "  sum(F^2)_ratio=%g\n", comparator.scale());
       }
     }
   } catch (std::runtime_error& e) {
