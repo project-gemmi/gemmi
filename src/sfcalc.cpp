@@ -48,7 +48,7 @@ static const option::Descriptor Usage[] = {
   { Rate, 0, "", "rate", Arg::Float,
     "  --rate=NUM  \tShannon rate used for grid spacing (default: 1.5)." },
   { Blur, 0, "", "blur", Arg::Float,
-    "  --blur=NUM  \tB added for Gaussian smearing (default: auto)." },
+    "  --blur=NUM  \tB added for Gaussian blurring (default: auto)." },
   { RCut, 0, "", "rcut", Arg::Float,
     "  --rcut=Y  \tUse atomic radius r such that rho(r) < Y (default: 5e-5)." },
   { Test, 0, "", "test", Arg::Optional,
@@ -147,7 +147,7 @@ void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
         double hkl_1_d2 = sf.unit_cell.calculate_1_d2(hkl);
         if (hkl_1_d2 < max_1_d2) {
           std::complex<double> value = sf.data[sf.index_n(h, k, l)];
-          value *= std::exp(opt.smear * 0.25 * hkl_1_d2);
+          value *= std::exp(opt.blur * 0.25 * hkl_1_d2);
           if (test) {
             std::complex<double> exact;
             if (cache_file) {
@@ -362,7 +362,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           opt.r_cut = (float) std::strtod(p.options[RCut].arg, nullptr);
 
         if (p.options[Blur]) {
-          opt.smear = std::strtod(p.options[Blur].arg, nullptr);
+          opt.blur = std::strtod(p.options[Blur].arg, nullptr);
         } else if (opt.rate < 3) {
           // ITfC vol B section 1.3.4.4.5 has formula
           // B = log Q / (sigma * (sigma - 1) * d^*_max^2)
@@ -373,9 +373,9 @@ int GEMMI_MAIN(int argc, char **argv) {
           // Here we use a simple ad-hoc rule:
           double sqrtB = 4 * opt.d_min * (1./opt.rate - 0.2);
           double b_min = get_minimum_b_iso(st.models[0]);
-          opt.smear = sqrtB * sqrtB - b_min;
+          opt.blur = sqrtB * sqrtB - b_min;
           if (p.options[Verbose])
-            fprintf(stderr, "B_min=%g, B_add=%g\n", b_min, opt.smear);
+            fprintf(stderr, "B_min=%g, B_add=%g\n", b_min, opt.blur);
         }
 
         print_structure_factors(st, opt, p.options[Verbose],

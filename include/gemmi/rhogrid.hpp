@@ -54,15 +54,16 @@ void set_grid_cell_and_spacegroup(Grid<T>& grid, const Structure& st) {
 struct RhoGridOptions {
   double d_min;
   double rate = 1.5;
-  double smear = 0.;
+  double blur = 0.;
   float r_cut = 5e-5f;
 };
 
+// pre: check if Table::has(atom.element)
 template <typename Table, typename T>
 void add_atom_density_to_grid(const Atom& atom, Grid<T>& grid,
                               const RhoGridOptions& opt) {
   auto& scat = Table::get(atom.element);
-  double b = atom.b_iso + opt.smear;
+  double b = atom.b_iso + opt.blur;
   double radius = determine_effective_radius(scat, (float) b, opt.r_cut);
   Fractional fpos = grid.unit_cell.fractionalize(atom.pos);
   grid.use_points_around(fpos, radius, [&](T& point, double r2) {

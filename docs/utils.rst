@@ -434,7 +434,7 @@ The errors depend on
 * atomic radius -- we neglect electron density of the atom beyond this radius;
   only density contributions above the (absolute) value specified with
   ``--rcut`` are taken into account,
-* Gaussian dampening (smearing) factor -- artificial temperature factor
+* Gaussian dampening (blurring) factor -- artificial temperature factor
   *B*\ :sub:`extra` added to all atomic B-factors (the structure factors
   are later corrected to cancel it out); either specified with ``--blur``
   or picked automatically.
