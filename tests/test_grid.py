@@ -31,6 +31,13 @@ class TestFloatGrid(unittest.TestCase):
         self.assertEqual(m.header_float(14), 90.0)  # 14 - alpha angle
         self.assertEqual(m.grid.unit_cell.alpha, 90.0)
         self.assertEqual(m.grid.spacegroup.ccp4, 4)  # P21
+
+        pos = gemmi.Position(19.4, 3., 21.)
+        frac = m.grid.unit_cell.fractionalize(pos)
+        pos_value = 2.1543798446655273
+        self.assertAlmostEqual(m.grid.interpolate_value(pos), pos_value)
+        self.assertAlmostEqual(m.grid.interpolate_value(frac), pos_value)
+
         # this spacegroup has symop -x, y+1/2, -z
         m.grid.set_value(60-3, 24//2+4, 60-5, 100)  # image of (3, 4, 5)
         self.assertEqual(m.grid.get_value(60-3, 24//2+4, 60-5), 100)
