@@ -19,7 +19,7 @@
 #define GEMMI_PROG sfcalc
 #include "options.h"
 
-enum OptionIndex { Hkl=4, Dmin, Rate, Smear, RCut, Test, Check,
+enum OptionIndex { Hkl=4, Dmin, Rate, Blur, RCut, Test, Check,
                    NoFp, CifFp, Wavelength, Label, Scale };
 
 static const option::Descriptor Usage[] = {
@@ -47,8 +47,8 @@ static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "\nOptions for FFT-based calculations:" },
   { Rate, 0, "", "rate", Arg::Float,
     "  --rate=NUM  \tShannon rate used for grid spacing (default: 1.5)." },
-  { Smear, 0, "", "smear", Arg::Float,
-    "  --smear=NUM  \tB added for Gaussian smearing (default: auto)." },
+  { Blur, 0, "", "blur", Arg::Float,
+    "  --blur=NUM  \tB added for Gaussian smearing (default: auto)." },
   { RCut, 0, "", "rcut", Arg::Float,
     "  --rcut=Y  \tUse atomic radius r such that rho(r) < Y (default: 5e-5)." },
   { Test, 0, "", "test", Arg::Optional,
@@ -355,8 +355,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (p.options[RCut])
           opt.r_cut = (float) std::strtod(p.options[RCut].arg, nullptr);
 
-        if (p.options[Smear]) {
-          opt.smear = std::strtod(p.options[Smear].arg, nullptr);
+        if (p.options[Blur]) {
+          opt.smear = std::strtod(p.options[Blur].arg, nullptr);
         } else if (opt.rate < 3) {
           // ITfC vol B section 1.3.4.4.5 has formula
           // B = log Q / (sigma * (sigma - 1) * d^*_max^2)

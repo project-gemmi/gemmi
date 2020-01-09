@@ -436,7 +436,7 @@ The errors depend on
   ``--rcut`` are taken into account,
 * Gaussian dampening (smearing) factor -- artificial temperature factor
   *B*\ :sub:`extra` added to all atomic B-factors (the structure factors
-  are later corrected to cancel it out); either specified with ``--smear``
+  are later corrected to cancel it out); either specified with ``--blur``
   or picked automatically.
 
 Choosing these parameters is a trade-off between efficiency and accuracy.
@@ -463,7 +463,7 @@ performs a series of calculations with differing *B*\ :sub:`extra`:
   gemmi sfcalc --dmin=$dmin --test $model >cache.tsv
   for i in `seq -20 5 20`; do
       printf -- "$i\t" >&2
-      gemmi sfcalc --dmin=$dmin --rate=1.5 --rcut=1e-4 --smear=$i --test=cache.tsv $model
+      gemmi sfcalc --dmin=$dmin --rate=1.5 --rcut=1e-4 --blur=$i --test=cache.tsv $model
   done >/dev/null
 
 Running it prints:

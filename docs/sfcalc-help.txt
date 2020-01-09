@@ -21,7 +21,7 @@ Options:
 
 Options for FFT-based calculations:
   --rate=NUM        Shannon rate used for grid spacing (default: 1.5).
-  --smear=NUM       B added for Gaussian smearing (default: auto).
+  --blur=NUM        B added for Gaussian smearing (default: auto).
   --rcut=Y          Use atomic radius r such that rho(r) < Y (default: 5e-5).
   --test[=CACHE]    Calculate exact values and report differences (slow).
 
