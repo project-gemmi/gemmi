@@ -207,8 +207,6 @@ template<typename T> struct cmplx {
   cmplx(T r_, T i_) : r(r_), i(i_) {}
   void Set(T r_, T i_) { r=r_; i=i_; }
   void Set(T r_) { r=r_; i=T(0); }
-  void Split(T &r_, T &i_) const { r_=r; i_=i; }
-  void SplitConj(T &r_, T &i_) const { r_=r; i_=-i; }
   cmplx &operator+= (const cmplx &other)
     { r+=other.r; i+=other.i; return *this; }
   template<typename T2>cmplx &operator*= (T2 other)
@@ -3186,12 +3184,18 @@ template<typename T> POCKETFFT_NOINLINE void general_c2r(
           size_t i=1, ii=1;
           if (forward)
             for (; i<len-1; i+=2, ++ii)
-              for (size_t j=0; j<vlen; ++j)
-                in[it.iofs(j,ii)].SplitConj(tdatav[i][j], tdatav[i+1][j]);
+              for (size_t j=0; j<vlen; ++j) {
+                const cmplx<T>& t = in[it.iofs(j,ii)];
+                tdatav[i][j] = t.r;
+                tdatav[i+1][j] = -t.i;
+              }
           else
             for (; i<len-1; i+=2, ++ii)
-              for (size_t j=0; j<vlen; ++j)
-                in[it.iofs(j,ii)].Split(tdatav[i][j], tdatav[i+1][j]);
+              for (size_t j=0; j<vlen; ++j) {
+                const cmplx<T>& t = in[it.iofs(j,ii)];
+                tdatav[i][j] = t.r;
+                tdatav[i+1][j] = t.i;
+              }
           if (i<len)
             for (size_t j=0; j<vlen; ++j)
               tdatav[i][j] = in[it.iofs(j,ii)].r;
@@ -3208,11 +3212,17 @@ template<typename T> POCKETFFT_NOINLINE void general_c2r(
         {
         size_t i=1, ii=1;
         if (forward)
-          for (; i<len-1; i+=2, ++ii)
-            in[it.iofs(ii)].SplitConj(tdata[i], tdata[i+1]);
+          for (; i<len-1; i+=2, ++ii) {
+            const cmplx<T>& t = in[it.iofs(ii)];
+            tdata[i] = t.r;
+            tdata[i+1] = -t.i;
+          }
         else
-          for (; i<len-1; i+=2, ++ii)
-            in[it.iofs(ii)].Split(tdata[i], tdata[i+1]);
+          for (; i<len-1; i+=2, ++ii) {
+            const cmplx<T>& t = in[it.iofs(ii)];
+            tdata[i] = t.r;
+            tdata[i+1] = t.i;
+          }
         if (i<len)
           tdata[i] = in[it.iofs(ii)].r;
         }
