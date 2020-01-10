@@ -106,8 +106,6 @@ void print_to_stderr(const Comparator& c) {
 
 using namespace gemmi;
 
-
-
 static
 void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
                              bool verbose, bool test, const char* cache_file) {
@@ -181,6 +179,35 @@ void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
       fprintf(stderr, "   %#.5gs", elapsed.count());
     }
     fprintf(stderr, "\n");
+  }
+}
+
+void print_structure_factors_sm(const AtomicStructure& ast,
+                                StructureFactorCalculator<IT92<double>>& calc,
+                                const RhoGridOptions& opt, bool verbose) {
+  using Clock = std::chrono::steady_clock;
+  auto start = Clock::now();
+  int counter = 0;
+  double max_1_d = 1. / opt.d_min;
+  int max_h = int(max_1_d / ast.cell.ar);
+  int max_k = int(max_1_d / ast.cell.br);
+  int max_l = int(max_1_d / ast.cell.cr);
+  for (int h = -max_h; h <= max_h; ++h)
+    for (int k = -max_k; k <= max_k; ++k)
+      for (int l = 0; l <= max_l; ++l) {
+        Miller hkl{{h, k, l}};
+        double hkl_1_d2 = ast.cell.calculate_1_d2(hkl);
+        if (hkl_1_d2 < max_1_d * max_1_d) {
+          auto value = calc.calculate_sf_from_atomic_structure(ast, hkl);
+          print_sf(value, hkl);
+          ++counter;
+        }
+      }
+  if (verbose) {
+    std::chrono::duration<double> elapsed = Clock::now() - start;
+    fflush(stdout);
+    fprintf(stderr, "Calculated %d SFs in %g s.\n", counter, elapsed.count());
+    fflush(stderr);
   }
 }
 
@@ -352,34 +379,40 @@ int GEMMI_MAIN(int argc, char **argv) {
           print_sf(calc.calculate_sf_from_atomic_structure(ast, hkl), hkl);
       }
       if (p.options[Dmin]) {
-        if (!use_st)
-          gemmi::fail("for now small-molecule CIF files work only with --hkl");
         RhoGridOptions opt;
         opt.d_min = std::strtod(p.options[Dmin].arg, nullptr);
-        if (p.options[Rate])
-          opt.rate = std::strtod(p.options[Rate].arg, nullptr);
-        if (p.options[RCut])
-          opt.r_cut = (float) std::strtod(p.options[RCut].arg, nullptr);
+        if (use_st) {
+          if (p.options[Rate])
+            opt.rate = std::strtod(p.options[Rate].arg, nullptr);
+          if (p.options[RCut])
+            opt.r_cut = (float) std::strtod(p.options[RCut].arg, nullptr);
 
-        if (p.options[Blur]) {
-          opt.blur = std::strtod(p.options[Blur].arg, nullptr);
-        } else if (opt.rate < 3) {
-          // ITfC vol B section 1.3.4.4.5 has formula
-          // B = log Q / (sigma * (sigma - 1) * d^*_max^2)
-          // This value is not optimal.
-          // The optimal value would depend on the distribution of B-factors
-          // and on the atomic cutoff radius, and probably it would be too hard
-          // to estimate.
-          // Here we use a simple ad-hoc rule:
-          double sqrtB = 4 * opt.d_min * (1./opt.rate - 0.2);
-          double b_min = get_minimum_b_iso(st.models[0]);
-          opt.blur = sqrtB * sqrtB - b_min;
-          if (p.options[Verbose])
-            fprintf(stderr, "B_min=%g, B_add=%g\n", b_min, opt.blur);
+          if (p.options[Blur]) {
+            opt.blur = std::strtod(p.options[Blur].arg, nullptr);
+          } else if (opt.rate < 3) {
+            // ITfC vol B section 1.3.4.4.5 has formula
+            // B = log Q / (sigma * (sigma - 1) * d^*_max^2)
+            // This value is not optimal.
+            // The optimal value would depend on the distribution of B-factors
+            // and on the atomic cutoff radius, and probably it would be too
+            // hard to estimate.
+            // Here we use a simple ad-hoc rule:
+            double sqrtB = 4 * opt.d_min * (1./opt.rate - 0.2);
+            double b_min = get_minimum_b_iso(st.models[0]);
+            opt.blur = sqrtB * sqrtB - b_min;
+            if (p.options[Verbose])
+              fprintf(stderr, "B_min=%g, B_add=%g\n", b_min, opt.blur);
+          }
+
+          print_structure_factors(st, opt, p.options[Verbose],
+                                  p.options[Test], p.options[Test].arg);
+        } else {
+          if (p.options[Rate] || p.options[RCut] || p.options[Blur] ||
+              p.options[Test])
+            fail("Small molecule SFs are calculated directly. Do not use any\n"
+                 "of the FFT-related options: --rate, --blur, --rcut, --test.");
+          print_structure_factors_sm(ast, calc, opt, p.options[Verbose]);
         }
-
-        print_structure_factors(st, opt, p.options[Verbose],
-                                p.options[Test], p.options[Test].arg);
       } else if (p.options[Check]) {
         double scale = 1.0;
         if (p.options[Scale])
