@@ -110,12 +110,12 @@ constexpr bool FORWARD  = true,
 #  if (__clang_major__ > 9) || (__clang_major__ == 9 && __clang_minor__ >= 3)
 #     undef POCKETFFT_NO_VECTORS
 #  else
-#     pragma message("FFT vectorization disabled - old Apple Clang version")
+#     pragma message("FFT vectorization disabled - old Apple Clang " __clang_version__)
 #  endif
 #elif __clang_major__ >= 5
 #  undef POCKETFFT_NO_VECTORS
 #else
-#  pragma message("FFT vectorization disabled - old Clang version")
+#  pragma message("FFT vectorization disabled - old Clang " __clang_version__)
 #endif
 #elif defined(__GNUC__)
 #if __GNUC__>=5
