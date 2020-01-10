@@ -20,7 +20,7 @@
 #include "options.h"
 
 enum OptionIndex { Hkl=4, Dmin, Rate, Blur, RCut, Test, Check,
-                   NoFp, CifFp, Wavelength, Label, Scale };
+                   CifFp, Wavelength, Label, Scale };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -38,12 +38,11 @@ static const option::Descriptor Usage[] = {
     "  --hkl=H,K,L  \tCalculate structure factor F_hkl." },
   { Dmin, 0, "", "dmin", Arg::Float,
     "  --dmin=NUM  \tCalculate structure factors up to given resolution." },
-  { NoFp, 0, "", "nofp", Arg::None,
-    "  --nofp  \tIgnore f' (anomalous dispersion scattering)." },
   { CifFp, 0, "", "ciffp", Arg::None,
     "  --ciffp  \tRead f' from _atom_type_scat_dispersion_real in CIF." },
-  { Wavelength, 0, "", "wavelength", Arg::Float,
-    "  --wavelength=NUM  \tWavelength [A] for calculation of f'." },
+  { Wavelength, 0, "w", "wavelength", Arg::Float,
+    "  --wavelength=NUM  \tWavelength [A] for calculation of f' "
+    "(use --wavelength=0 or -w0 to ignore anomalous scattering)." },
   { NoOp, 0, "", "", Arg::None, "\nOptions for FFT-based calculations:" },
   { Rate, 0, "", "rate", Arg::Float,
     "  --rate=NUM  \tShannon rate used for grid spacing (default: 1.5)." },
@@ -338,35 +337,36 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
       const UnitCell& cell = use_st ? st.cell : ast.cell;
       StructureFactorCalculator<IT92<double>> calc(cell);
-      if (!p.options[NoFp]) {
-        if (use_st) {
-          if (p.options[CifFp]) {
-            // _atom_type.scat_dispersion_real is almost never used,
-            // so for now we ignore it.
-          }
-          double wavelength = 0;
-          // reading wavelength from PDB and mmCIF files needs to be revisited
-          //if (!st.crystals.empty() && !st.crystals[0].diffractions.empty())
-          //  wavelength_list = st.crystals[0].diffractions[0].wavelengths;
-          if (p.options[Wavelength])
-            wavelength = std::atof(p.options[Wavelength].arg);
-          if (wavelength > 0)
-            calc.add_fprimes_from_cl(st.models[0], hc() / wavelength);
-        } else { // small molecule
-          if (p.options[CifFp] && !ast.atom_types.empty()) {
-            if (p.options[Verbose])
-              fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
-                      (unsigned) ast.atom_types.size());
-            for (const AtomicStructure::AtomType& atom_type : ast.atom_types)
-              calc.set_fprim(atom_type.element, atom_type.dispersion_real);
-          }
-          double wavelength = ast.wavelength;
-          if (p.options[Wavelength])
-            wavelength = std::atof(p.options[Wavelength].arg);
-          if (wavelength > 0)
-            calc.add_fprimes_from_cl(ast, hc() / ast.wavelength);
+
+      // assign f'
+      if (use_st) {
+        if (p.options[CifFp]) {
+          // _atom_type.scat_dispersion_real is almost never used,
+          // so for now we ignore it.
         }
+        double wavelength = 0;
+        // reading wavelength from PDB and mmCIF files needs to be revisited
+        //if (!st.crystals.empty() && !st.crystals[0].diffractions.empty())
+        //  wavelength_list = st.crystals[0].diffractions[0].wavelengths;
+        if (p.options[Wavelength])
+          wavelength = std::atof(p.options[Wavelength].arg);
+        if (wavelength > 0)
+          calc.add_fprimes_from_cl(st.models[0], hc() / wavelength);
+      } else { // small molecule
+        if (p.options[CifFp] && !ast.atom_types.empty()) {
+          if (p.options[Verbose])
+            fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
+                    (unsigned) ast.atom_types.size());
+          for (const AtomicStructure::AtomType& atom_type : ast.atom_types)
+            calc.set_fprim(atom_type.element, atom_type.dispersion_real);
+        }
+        double wavelength = ast.wavelength;
+        if (p.options[Wavelength])
+          wavelength = std::atof(p.options[Wavelength].arg);
+        if (wavelength > 0)
+          calc.add_fprimes_from_cl(ast, hc() / ast.wavelength);
       }
+
       for (const option::Option* opt = p.options[Hkl]; opt; opt = opt->next()) {
         std::vector<int> hkl_ = parse_comma_separated_ints(opt->arg);
         gemmi::Miller hkl{{hkl_[0], hkl_[1], hkl_[2]}};

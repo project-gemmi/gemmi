@@ -15,9 +15,9 @@ Options:
   -v, --verbose     Verbose output.
   --hkl=H,K,L       Calculate structure factor F_hkl.
   --dmin=NUM        Calculate structure factors up to given resolution.
-  --nofp            Ignore f' (anomalous dispersion scattering).
   --ciffp           Read f' from _atom_type_scat_dispersion_real in CIF.
-  --wavelength=NUM  Wavelength [A] for calculation of f'.
+  --wavelength=NUM  Wavelength [A] for calculation of f' (use --wavelength=0 or
+                    -w0 to ignore anomalous scattering).
 
 Options for FFT-based calculations:
   --rate=NUM        Shannon rate used for grid spacing (default: 1.5).

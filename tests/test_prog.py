@@ -45,7 +45,7 @@ RMSE=0.019256  0.2252%  max|dF|=0.04784  R=0.191%  sum(F^2)_ratio=1.00094
 
     def test_sfcalc2(self):
         self.do('''\
-$ gemmi sfcalc --nofp --check=tests/2242624.hkl tests/2242624.cif
+$ gemmi sfcalc --wavelength=0 --check=tests/2242624.hkl tests/2242624.cif
 RMSE=0.10942  1.295%  max|dF|=0.1498  R=1.279%  sum(F^2)_ratio=1.01019
 ''')
 
