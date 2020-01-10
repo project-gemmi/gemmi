@@ -106,8 +106,8 @@ constexpr bool FORWARD  = true,
 // do nothing. This is necessary because this compiler also sets __GNUC__.
 #elif defined(__clang__)
 #ifdef __apple_build_version__
-   // the macros show Xcode version - we check for Xcode 9.3
-#  if (__clang_major__ > 9) || (__clang_major__ == 9 && __clang_minor__ >= 3)
+   // Apple Clang 9.1 is based on Clang 5
+#  if (__clang_major__ > 9) || (__clang_major__ == 9 && __clang_minor__ >= 1)
 #     undef POCKETFFT_NO_VECTORS
 #  else
 #     pragma message("FFT vectorization disabled - old Apple Clang " __clang_version__)
