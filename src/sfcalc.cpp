@@ -10,7 +10,7 @@
 #include <gemmi/it92.hpp>
 #include <gemmi/fileutil.hpp>  // for file_open
 #include <gemmi/math.hpp>      // for sq
-#include <gemmi/rhogrid.hpp>   // for put_first_model_density_on_grid
+#include <gemmi/rhogrid.hpp>   // for put_model_density_on_grid
 #include <gemmi/sfcalc.hpp>    // for calculate_structure_factor
 #include <gemmi/smcif.hpp>     // for make_atomic_structure_from_block
 #include <gemmi/mtz.hpp>       // for read_mtz_file
@@ -105,18 +105,19 @@ void print_to_stderr(const Comparator& c) {
 
 using namespace gemmi;
 
-static
-void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
+template<typename Table>
+void print_structure_factors(const Structure& st,
+                             DensityCalculator<Table,float>& dencalc,
                              bool verbose, bool test, const char* cache_file) {
   using Clock = std::chrono::steady_clock;
-  Grid<float> grid;
   if (verbose) {
     fprintf(stderr, "Preparing electron density on a grid...\n");
     fflush(stderr);
   }
   auto start = Clock::now();
-  using Table = IT92<double>;
-  put_first_model_density_on_grid<Table>(st, grid, opt);
+  dencalc.set_grid_cell_and_spacegroup(st);
+  dencalc.put_model_density_on_grid(st.models[0]);
+  const Grid<float>& grid = dencalc.grid;;
   if (verbose) {
     std::chrono::duration<double> elapsed = Clock::now() - start;
     fprintf(stderr, "...took %g s.\n", elapsed.count());
@@ -136,7 +137,7 @@ void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
   if (cache_file)
     cache = gemmi::file_open(cache_file, "r");
   Comparator comparator;
-  double max_1_d2 = 1. / (opt.d_min * opt.d_min);
+  double max_1_d2 = 1. / (dencalc.d_min * dencalc.d_min);
   for (int h = -sf.nu / 2; h < sf.nu / 2; ++h)
     for (int k = -sf.nv / 2; k < sf.nv / 2; ++k)
       for (int l = 0; l < sf.nw / 2; ++l) {
@@ -144,7 +145,7 @@ void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
         double hkl_1_d2 = sf.unit_cell.calculate_1_d2(hkl);
         if (hkl_1_d2 < max_1_d2) {
           std::complex<double> value = sf.data[sf.index_n(h, k, l)];
-          value *= std::exp(opt.blur * 0.25 * hkl_1_d2);
+          value *= dencalc.reciprocal_space_multiplier(hkl_1_d2);
           if (test) {
             std::complex<double> exact;
             if (cache_file) {
@@ -181,13 +182,14 @@ void print_structure_factors(const Structure& st, const RhoGridOptions& opt,
   }
 }
 
+template<typename Table>
 void print_structure_factors_sm(const AtomicStructure& ast,
-                                StructureFactorCalculator<IT92<double>>& calc,
-                                const RhoGridOptions& opt, bool verbose) {
+                                StructureFactorCalculator<Table>& calc,
+                                double d_min, bool verbose) {
   using Clock = std::chrono::steady_clock;
   auto start = Clock::now();
   int counter = 0;
-  double max_1_d = 1. / opt.d_min;
+  double max_1_d = 1. / d_min;
   int max_h = int(max_1_d / ast.cell.ar);
   int max_k = int(max_1_d / ast.cell.br);
   int max_l = int(max_1_d / ast.cell.cr);
@@ -221,9 +223,9 @@ double get_minimum_b_iso(const Model& model) {
   return b_min;
 }
 
-static
+template<typename Table>
 void compare_with_hkl(const AtomicStructure& ast,
-                      StructureFactorCalculator<IT92<double>>& calc,
+                      StructureFactorCalculator<Table>& calc,
                       const std::string& label, double scale,
                       bool verbose, const char* path,
                       Comparator& comparator) {
@@ -280,9 +282,9 @@ void compare_with_hkl(const AtomicStructure& ast,
   }
 }
 
-static
+template<typename Table>
 void compare_with_mtz(const Model& model, const UnitCell& cell,
-                      StructureFactorCalculator<IT92<double>>& calc,
+                      StructureFactorCalculator<Table>& calc,
                       const std::string& label, double scale, bool verbose,
                       const char* path, Comparator& comparator) {
   Mtz mtz;
@@ -304,6 +306,134 @@ void compare_with_mtz(const Model& model, const UnitCell& cell,
   }
 }
 
+void process(const std::string& input, const OptParser& p) {
+  // read (Atomic)Structure
+  gemmi::Structure st = gemmi::read_structure_gz(input);
+  gemmi::AtomicStructure ast;
+  bool use_st = !st.models.empty();
+  if (!use_st) {
+    if (giends_with(input, ".cif"))
+      ast = gemmi::make_atomic_structure_from_block(
+                                gemmi::read_cif_gz(input).sole_block());
+    if (ast.sites.empty() ||
+        // COD can have a row of nulls as a placeholder (e.g. 2211708)
+        (ast.sites.size() == 1 && ast.sites[0].element == El::X))
+      gemmi::fail("no atoms in the file");
+    // SM CIF files specify full occupancy for atoms on special positions.
+    // We need to adjust it for symmetry calculations.
+    for (AtomicStructure::Site& site : ast.sites) {
+      int n_mates = ast.cell.is_special_position(site.fract, 0.4);
+      if (n_mates != 0)
+        site.occ /= (n_mates + 1);
+    }
+  }
+
+  const UnitCell& cell = use_st ? st.cell : ast.cell;
+  using Table = IT92<double>;
+  StructureFactorCalculator<Table> calc(cell);
+
+  // assign f'
+  if (use_st) {
+    if (p.options[CifFp]) {
+      // _atom_type.scat_dispersion_real is almost never used,
+      // so for now we ignore it.
+    }
+    double wavelength = 0;
+    // reading wavelength from PDB and mmCIF files needs to be revisited
+    //if (!st.crystals.empty() && !st.crystals[0].diffractions.empty())
+    //  wavelength_list = st.crystals[0].diffractions[0].wavelengths;
+    if (p.options[Wavelength])
+      wavelength = std::atof(p.options[Wavelength].arg);
+    if (wavelength > 0)
+      calc.add_fprimes_from_cl(st.models[0], hc() / wavelength);
+  } else { // small molecule
+    if (p.options[CifFp] && !ast.atom_types.empty()) {
+      if (p.options[Verbose])
+        fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
+                (unsigned) ast.atom_types.size());
+      for (const AtomicStructure::AtomType& atom_type : ast.atom_types)
+        calc.set_fprim(atom_type.element, atom_type.dispersion_real);
+    }
+    double wavelength = ast.wavelength;
+    if (p.options[Wavelength])
+      wavelength = std::atof(p.options[Wavelength].arg);
+    if (wavelength > 0)
+      calc.add_fprimes_from_cl(ast, hc() / wavelength);
+  }
+
+  // handle option --hkl
+  for (const option::Option* opt = p.options[Hkl]; opt; opt = opt->next()) {
+    std::vector<int> hkl_ = parse_comma_separated_ints(opt->arg);
+    gemmi::Miller hkl{{hkl_[0], hkl_[1], hkl_[2]}};
+    if (p.options[Verbose])
+      fprintf(stderr, "hkl=(%d %d %d) -> d=%g\n", hkl[0], hkl[1], hkl[2],
+              cell.calculate_d(hkl));
+    if (use_st)
+      print_sf(calc.calculate_sf_from_model(st.models[0], hkl), hkl);
+    else
+      print_sf(calc.calculate_sf_from_atomic_structure(ast, hkl), hkl);
+  }
+
+  // handle option --dmin
+  if (p.options[Dmin]) {
+    double d_min = std::strtod(p.options[Dmin].arg, nullptr);
+    if (use_st) {
+      DensityCalculator<Table, float> dencalc;
+      dencalc.d_min = d_min;
+      if (p.options[Rate])
+        dencalc.rate = std::strtod(p.options[Rate].arg, nullptr);
+      if (p.options[RCut])
+        dencalc.r_cut = (float) std::strtod(p.options[RCut].arg, nullptr);
+
+      if (p.options[Blur]) {
+        dencalc.blur = std::strtod(p.options[Blur].arg, nullptr);
+      } else if (dencalc.rate < 3) {
+        // ITfC vol B section 1.3.4.4.5 has formula
+        // B = log Q / (sigma * (sigma - 1) * d^*_max^2)
+        // This value is not optimal.
+        // The optimal value would depend on the distribution of B-factors
+        // and on the atomic cutoff radius, and probably it would be too
+        // hard to estimate.
+        // Here we use a simple ad-hoc rule:
+        double sqrtB = 4 * dencalc.d_min * (1./dencalc.rate - 0.2);
+        double b_min = get_minimum_b_iso(st.models[0]);
+        dencalc.blur = sqrtB * sqrtB - b_min;
+        if (p.options[Verbose])
+          fprintf(stderr, "B_min=%g, B_add=%g\n", b_min, dencalc.blur);
+      }
+
+      print_structure_factors(st, dencalc, p.options[Verbose],
+                              p.options[Test], p.options[Test].arg);
+    } else {
+      if (p.options[Rate] || p.options[RCut] || p.options[Blur] ||
+          p.options[Test])
+        fail("Small molecule SFs are calculated directly. Do not use any\n"
+             "of the FFT-related options: --rate, --blur, --rcut, --test.");
+      print_structure_factors_sm(ast, calc, d_min, p.options[Verbose]);
+    }
+
+  // handle option --check
+  } else if (p.options[Check]) {
+    double scale = 1.0;
+    if (p.options[Scale])
+      scale = std::strtod(p.options[Scale].arg, nullptr);
+    const char* path = p.options[Check].arg;
+    Comparator comparator;
+    std::string label;
+    if (p.options[Label])
+     label = p.options[Label].arg;
+    else if (use_st)
+      label = "FC";
+    if (use_st)
+      compare_with_mtz(st.models[0], st.cell, calc, label, scale,
+                       p.options[Verbose], path, comparator);
+    else
+      compare_with_hkl(ast, calc, label, scale,
+                       p.options[Verbose], path, comparator);
+    print_to_stderr(comparator);
+    fprintf(stderr, "  sum(F^2)_ratio=%g\n", comparator.scale());
+  }
+}
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
@@ -316,123 +446,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         fprintf(stderr, "Reading file %s ...\n", input.c_str());
         fflush(stderr);
       }
-      gemmi::Structure st = gemmi::read_structure_gz(input);
-      gemmi::AtomicStructure ast;
-      bool use_st = !st.models.empty();
-      if (!use_st) {
-        if (giends_with(input, ".cif"))
-          ast = gemmi::make_atomic_structure_from_block(
-                                    gemmi::read_cif_gz(input).sole_block());
-        if (ast.sites.empty() ||
-            // COD can have a row of nulls as a placeholder (e.g. 2211708)
-            (ast.sites.size() == 1 && ast.sites[0].element == El::X))
-          gemmi::fail("no atoms in the file");
-        // SM CIF files specify full occupancy for atoms on special positions.
-        // We need to adjust it for symmetry calculations.
-        for (AtomicStructure::Site& site : ast.sites) {
-          int n_mates = ast.cell.is_special_position(site.fract, 0.4);
-          if (n_mates != 0)
-            site.occ /= (n_mates + 1);
-        }
-      }
-      const UnitCell& cell = use_st ? st.cell : ast.cell;
-      StructureFactorCalculator<IT92<double>> calc(cell);
-
-      // assign f'
-      if (use_st) {
-        if (p.options[CifFp]) {
-          // _atom_type.scat_dispersion_real is almost never used,
-          // so for now we ignore it.
-        }
-        double wavelength = 0;
-        // reading wavelength from PDB and mmCIF files needs to be revisited
-        //if (!st.crystals.empty() && !st.crystals[0].diffractions.empty())
-        //  wavelength_list = st.crystals[0].diffractions[0].wavelengths;
-        if (p.options[Wavelength])
-          wavelength = std::atof(p.options[Wavelength].arg);
-        if (wavelength > 0)
-          calc.add_fprimes_from_cl(st.models[0], hc() / wavelength);
-      } else { // small molecule
-        if (p.options[CifFp] && !ast.atom_types.empty()) {
-          if (p.options[Verbose])
-            fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
-                    (unsigned) ast.atom_types.size());
-          for (const AtomicStructure::AtomType& atom_type : ast.atom_types)
-            calc.set_fprim(atom_type.element, atom_type.dispersion_real);
-        }
-        double wavelength = ast.wavelength;
-        if (p.options[Wavelength])
-          wavelength = std::atof(p.options[Wavelength].arg);
-        if (wavelength > 0)
-          calc.add_fprimes_from_cl(ast, hc() / ast.wavelength);
-      }
-
-      for (const option::Option* opt = p.options[Hkl]; opt; opt = opt->next()) {
-        std::vector<int> hkl_ = parse_comma_separated_ints(opt->arg);
-        gemmi::Miller hkl{{hkl_[0], hkl_[1], hkl_[2]}};
-        if (p.options[Verbose])
-          fprintf(stderr, "hkl=(%d %d %d) -> d=%g\n", hkl[0], hkl[1], hkl[2],
-                  cell.calculate_d(hkl));
-        if (use_st)
-          print_sf(calc.calculate_sf_from_model(st.models[0], hkl), hkl);
-        else
-          print_sf(calc.calculate_sf_from_atomic_structure(ast, hkl), hkl);
-      }
-      if (p.options[Dmin]) {
-        RhoGridOptions opt;
-        opt.d_min = std::strtod(p.options[Dmin].arg, nullptr);
-        if (use_st) {
-          if (p.options[Rate])
-            opt.rate = std::strtod(p.options[Rate].arg, nullptr);
-          if (p.options[RCut])
-            opt.r_cut = (float) std::strtod(p.options[RCut].arg, nullptr);
-
-          if (p.options[Blur]) {
-            opt.blur = std::strtod(p.options[Blur].arg, nullptr);
-          } else if (opt.rate < 3) {
-            // ITfC vol B section 1.3.4.4.5 has formula
-            // B = log Q / (sigma * (sigma - 1) * d^*_max^2)
-            // This value is not optimal.
-            // The optimal value would depend on the distribution of B-factors
-            // and on the atomic cutoff radius, and probably it would be too
-            // hard to estimate.
-            // Here we use a simple ad-hoc rule:
-            double sqrtB = 4 * opt.d_min * (1./opt.rate - 0.2);
-            double b_min = get_minimum_b_iso(st.models[0]);
-            opt.blur = sqrtB * sqrtB - b_min;
-            if (p.options[Verbose])
-              fprintf(stderr, "B_min=%g, B_add=%g\n", b_min, opt.blur);
-          }
-
-          print_structure_factors(st, opt, p.options[Verbose],
-                                  p.options[Test], p.options[Test].arg);
-        } else {
-          if (p.options[Rate] || p.options[RCut] || p.options[Blur] ||
-              p.options[Test])
-            fail("Small molecule SFs are calculated directly. Do not use any\n"
-                 "of the FFT-related options: --rate, --blur, --rcut, --test.");
-          print_structure_factors_sm(ast, calc, opt, p.options[Verbose]);
-        }
-      } else if (p.options[Check]) {
-        double scale = 1.0;
-        if (p.options[Scale])
-          scale = std::strtod(p.options[Scale].arg, nullptr);
-        const char* path = p.options[Check].arg;
-        Comparator comparator;
-        std::string label;
-        if (p.options[Label])
-         label = p.options[Label].arg;
-        else if (use_st)
-          label = "FC";
-        if (use_st)
-          compare_with_mtz(st.models[0], st.cell, calc, label, scale,
-                           p.options[Verbose], path, comparator);
-        else
-          compare_with_hkl(ast, calc, label, scale,
-                           p.options[Verbose], path, comparator);
-        print_to_stderr(comparator);
-        fprintf(stderr, "  sum(F^2)_ratio=%g\n", comparator.scale());
-      }
+      process(input, p);
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());

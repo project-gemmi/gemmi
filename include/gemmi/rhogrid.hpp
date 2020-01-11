@@ -45,50 +45,56 @@ double determine_effective_radius(const Coef& coef, double b, double cutoff) {
   return x2;
 }
 
-template <typename T>
-void set_grid_cell_and_spacegroup(Grid<T>& grid, const Structure& st) {
-  grid.unit_cell = st.cell;
-  grid.spacegroup = find_spacegroup_by_name(st.spacegroup_hm);
-}
-
-struct RhoGridOptions {
-  double d_min;
+// Usual usage:
+// - set d_min and optionally also other parameters
+// - set grid's unit cell and space group using set_grid_cell_and_spacegroup()
+// - check that Table has SF coefficients for all elements that are to be used
+// - call put_model_density_on_grid()
+// - if blur is used, the SF must be then multiplied by the value returned by
+//   reciprocal_space_multiplier()
+template <typename Table, typename Real>
+struct DensityCalculator {
+  Grid<Real> grid;
+  double d_min = 0.;
   double rate = 1.5;
   double blur = 0.;
   float r_cut = 5e-5f;
+
+  // pre: check if Table::has(atom.element)
+  void add_atom_density_to_grid(const Atom& atom) {
+    auto& scat = Table::get(atom.element);
+    double b = atom.b_iso + blur;
+    double radius = determine_effective_radius(scat, (float) b, r_cut);
+    Fractional fpos = grid.unit_cell.fractionalize(atom.pos);
+    grid.use_points_around(fpos, radius, [&](Real& point, double r2) {
+        point += Real(atom.occ * scat.calculate_density((Real)r2, (Real)b));
+    }, /*fail_on_too_large_radius=*/false);
+  }
+
+  void add_model_density_to_grid(const Model& model) {
+    for (const Chain& chain : model.chains)
+      for (const Residue& res : chain.residues)
+        for (const Atom& atom : res.atoms)
+          add_atom_density_to_grid(atom);
+  }
+
+  void put_model_density_on_grid(const Model& model) {
+    grid.data.clear();
+    grid.set_size_from_spacing(d_min / (2 * rate), true);
+    add_model_density_to_grid(model);
+    grid.symmetrize([](double a, double b) { return a + b; });
+  }
+
+  void set_grid_cell_and_spacegroup(const Structure& st) {
+    grid.unit_cell = st.cell;
+    grid.spacegroup = find_spacegroup_by_name(st.spacegroup_hm);
+  }
+
+  // The argument is 1/d^2 - as outputted by unit_cell.calculate_1_d2(hkl).
+  double reciprocal_space_multiplier(double inv_d2) {
+    return std::exp(blur * 0.25 * inv_d2);
+  }
 };
-
-// pre: check if Table::has(atom.element)
-template <typename Table, typename T>
-void add_atom_density_to_grid(const Atom& atom, Grid<T>& grid,
-                              const RhoGridOptions& opt) {
-  auto& scat = Table::get(atom.element);
-  double b = atom.b_iso + opt.blur;
-  double radius = determine_effective_radius(scat, (float) b, opt.r_cut);
-  Fractional fpos = grid.unit_cell.fractionalize(atom.pos);
-  grid.use_points_around(fpos, radius, [&](T& point, double r2) {
-      point += T(atom.occ * scat.calculate_density((T)r2, (T)b));
-  }, /*fail_on_too_large_radius=*/false);
-}
-
-template <typename Table, typename T>
-void add_model_density_to_grid(const Model& model, Grid<T>& grid,
-                               const RhoGridOptions& opt) {
-  for (const Chain& chain : model.chains)
-    for (const Residue& res : chain.residues)
-      for (const Atom& atom : res.atoms)
-        add_atom_density_to_grid<Table>(atom, grid, opt);
-}
-
-template <typename Table, typename T>
-void put_first_model_density_on_grid(const Structure& st, Grid<T>& grid,
-                                     const RhoGridOptions& opt) {
-  grid.data.clear();
-  set_grid_cell_and_spacegroup(grid, st);
-  grid.set_size_from_spacing(opt.d_min / (2 * opt.rate), true);
-  add_model_density_to_grid<Table>(st.models.at(0), grid, opt);
-  grid.symmetrize([](double a, double b) { return a + b; });
-}
 
 } // namespace gemmi
 #endif
