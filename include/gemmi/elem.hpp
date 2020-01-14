@@ -225,8 +225,8 @@ inline El find_element(const char* symbol) {
   char second = symbol[1] & ~0x20;
   if (first == '\0')
     return impl::find_single_letter_element(second);
-  // To handle symbol being "S\n" we have the condition below.
-  // In addition to \t, \v, \r and \n it catches also !"3$%&'()*+,- and
+  // To handle symbol being "X\n" we have the condition below.
+  // In addition to \t, \v, \r and \n it catches also !"#$%&'()*+,- and
   // some control characters - inconsistent but not necessarily bad.
   if (second < 14)
     return impl::find_single_letter_element(first);
