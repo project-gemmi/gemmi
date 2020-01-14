@@ -839,15 +839,12 @@ struct Model {
               r && a ? static_cast<int>(a - r->atoms.data()) : -1 }};
   }
 
-  std::bitset<(size_t)El::END> present_elements(bool no_unknown=false) const {
+  std::bitset<(size_t)El::END> present_elements() const {
     std::bitset<(size_t)El::END> table;
     for (const Chain& chain : chains)
       for (const Residue& res : chain.residues)
-        for (const Atom& a : res.atoms) {
-          if (no_unknown && a.element == El::X)
-            fail("Unknown element of " + atom_str(chain, res, a));
+        for (const Atom& a : res.atoms)
           table.set((int)a.element.elem);
-        }
     return table;
   }
 

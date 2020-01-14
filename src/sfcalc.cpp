@@ -20,7 +20,7 @@
 #include "options.h"
 
 enum OptionIndex { Hkl=4, Dmin, Rate, Blur, RCut, Test, Check,
-                   CifFp, Wavelength, ReplaceX, Label, Scale };
+                   CifFp, Wavelength, Unknown, Label, Scale };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -43,8 +43,8 @@ static const option::Descriptor Usage[] = {
   { Wavelength, 0, "w", "wavelength", Arg::Float,
     "  --wavelength=NUM  \tWavelength [A] for calculation of f' "
     "(use --wavelength=0 or -w0 to ignore anomalous scattering)." },
-  { ReplaceX, 0, "", "replace-x", Arg::Required,
-    "  --replace-x=SYMBOL  \tUse scattering factor of SYMBOL for unknown atoms." },
+  { Unknown, 0, "", "unknown", Arg::Required,
+    "  --unknown=SYMBOL  \tUse form factor of SYMBOL for unknown atoms." },
   { NoOp, 0, "", "", Arg::None, "\nOptions for FFT-based calculations:" },
   { Rate, 0, "", "rate", Arg::Float,
     "  --rate=NUM  \tShannon rate used for grid spacing (default: 1.5)." },
@@ -359,10 +359,10 @@ void process(const std::string& input, const OptParser& p) {
       wavelength = ast.wavelength;
     }
   }
-  if (p.options[ReplaceX]) {
-    El new_el = find_element(p.options[ReplaceX].arg);
+  if (p.options[Unknown]) {
+    El new_el = find_element(p.options[Unknown].arg);
     if (new_el == El::X)
-      fail("--replace-x must specify chemical element symbol.");
+      fail("--unknown must specify chemical element symbol.");
     if (use_st) {
       for (Chain& chain : st.models[0].chains)
         for (Residue& residue : chain.residues)
@@ -375,8 +375,10 @@ void process(const std::string& input, const OptParser& p) {
           atom.element = new_el;
     }
   }
-  auto present_elems = use_st ? st.models[0].present_elements(true)
-                              : ast.present_elements(true);
+  auto present_elems = use_st ? st.models[0].present_elements()
+                              : ast.present_elements();
+  if (present_elems[(int)El::X])
+    fail("unknown element. Add --unknown=O to treat unknown atoms as oxygen.");
   for (size_t i = 1; i != present_elems.size(); ++i)
     if (present_elems[i] && !Table::has((El)i))
       fail("Missing form factor for element ", element_name((El)i));
