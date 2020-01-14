@@ -8,6 +8,7 @@
 
 #include <cctype>        // for isalpha
 #include <algorithm>     // for any_of
+#include <bitset>
 #include <string>
 #include <vector>
 #include "elem.hpp"      // Element
@@ -48,6 +49,17 @@ struct AtomicStructure {
       if (at.symbol == symbol)
         return &at;
     return nullptr;
+  }
+
+  // similar to Model::present_elements() from model.hpp
+  std::bitset<(size_t)El::END> present_elements(bool no_unknown=false) const {
+    std::bitset<(size_t)El::END> table;
+    for (const Site& atom : sites) {
+      if (no_unknown && atom.element == El::X)
+        fail("Unknown element of atom " + atom.label);
+      table.set((size_t)atom.element.elem);
+    }
+    return table;
   }
 };
 

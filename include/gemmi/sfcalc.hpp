@@ -78,29 +78,10 @@ public:
     return sf;
   }
 
-  void set_fprime(El el, double fprime) { fprimes_[el] = fprime; }
+  void set_fprime(El el, double val) { fprimes_[el] = val; }
+  void set_fprime_if_not_set(El el, double val) { fprimes_.emplace(el, val); }
+  const std::map<El, double>& fprimes() const { return fprimes_; }
 
-  void add_fprimes_from_cl(const AtomicStructure& ast, double energy) {
-    for (const AtomicStructure::Site& site : ast.sites)
-      if (fprimes_.count(site.element) == 0) {
-        int z = site.element.atomic_number();
-        double fprime = cromer_libermann(z, energy, nullptr);
-        fprimes_.emplace(site.element, fprime);
-      }
-  }
-
-  void add_fprimes_from_cl(const Model& model, double energy) {
-    std::vector<unsigned char> present_elem((int)El::END, 0);
-    for (const Chain& chain : model.chains)
-      for (const Residue& res : chain.residues)
-        for (const Atom& a : res.atoms)
-          present_elem[(int)a.element.elem] = 1;
-    for (int z = 1; z <= 92; ++z)
-      if (present_elem[z]) {
-        double fprime = cromer_libermann(z, energy, nullptr);
-        fprimes_.emplace((El)z, fprime);
-      }
-  }
 
 private:
   // calculate part of the structure factor: exp(2 pi i r * s)

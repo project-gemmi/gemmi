@@ -333,32 +333,42 @@ void process(const std::string& input, const OptParser& p) {
   StructureFactorCalculator<Table> calc(cell);
 
   // assign f'
-  if (use_st) {
-    if (p.options[CifFp]) {
+  if (p.options[CifFp]) {
+    if (use_st) {
       // _atom_type.scat_dispersion_real is almost never used,
       // so for now we ignore it.
-    }
-    double wavelength = 0;
-    // reading wavelength from PDB and mmCIF files needs to be revisited
-    //if (!st.crystals.empty() && !st.crystals[0].diffractions.empty())
-    //  wavelength_list = st.crystals[0].diffractions[0].wavelengths;
-    if (p.options[Wavelength])
-      wavelength = std::atof(p.options[Wavelength].arg);
-    if (wavelength > 0)
-      calc.add_fprimes_from_cl(st.models[0], hc() / wavelength);
-  } else { // small molecule
-    if (p.options[CifFp] && !ast.atom_types.empty()) {
+    } else { // small molecule
       if (p.options[Verbose])
         fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
                 (unsigned) ast.atom_types.size());
       for (const AtomicStructure::AtomType& atom_type : ast.atom_types)
         calc.set_fprime(atom_type.element, atom_type.dispersion_real);
     }
-    double wavelength = ast.wavelength;
-    if (p.options[Wavelength])
-      wavelength = std::atof(p.options[Wavelength].arg);
-    if (wavelength > 0)
-      calc.add_fprimes_from_cl(ast, hc() / wavelength);
+  }
+  double wavelength = 0;
+  if (p.options[Wavelength]) {
+    wavelength = std::atof(p.options[Wavelength].arg);
+  } else {
+    if (use_st) {
+      // reading wavelength from PDB and mmCIF files needs to be revisited
+      //if (!st.crystals.empty() && !st.crystals[0].diffractions.empty())
+      //  wavelength_list = st.crystals[0].diffractions[0].wavelengths;
+    } else {
+      wavelength = ast.wavelength;
+    }
+  }
+  auto present_elems = use_st ? st.models[0].present_elements(true)
+                              : ast.present_elements(true);
+  for (size_t i = 1; i != present_elems.size(); ++i)
+    if (present_elems[i] && !Table::has((El)i))
+      fail("Missing form factor for element ", element_name((El)i));
+  if (wavelength > 0) {
+    double energy = hc() / wavelength;
+    for (int z = 1; z <= 92; ++z)
+      if (present_elems[z]) {
+        double fprime = cromer_libermann(z, energy, nullptr);
+        calc.set_fprime_if_not_set((El)z, fprime);
+      }
   }
 
   // handle option --hkl
@@ -384,7 +394,8 @@ void process(const std::string& input, const OptParser& p) {
         dencalc.rate = std::strtod(p.options[Rate].arg, nullptr);
       if (p.options[RCut])
         dencalc.r_cut = (float) std::strtod(p.options[RCut].arg, nullptr);
-
+      for (auto& it : calc.fprimes())
+        dencalc.fprimes[(int)it.first] = (float) it.second;
       if (p.options[Blur]) {
         dencalc.blur = std::strtod(p.options[Blur].arg, nullptr);
       } else if (dencalc.rate < 3) {
