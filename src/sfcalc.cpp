@@ -352,7 +352,7 @@ void process(const std::string& input, const OptParser& p) {
         fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
                 (unsigned) ast.atom_types.size());
       for (const AtomicStructure::AtomType& atom_type : ast.atom_types)
-        calc.set_fprim(atom_type.element, atom_type.dispersion_real);
+        calc.set_fprime(atom_type.element, atom_type.dispersion_real);
     }
     double wavelength = ast.wavelength;
     if (p.options[Wavelength])

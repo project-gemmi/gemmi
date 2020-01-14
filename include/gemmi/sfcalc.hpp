@@ -78,7 +78,7 @@ public:
     return sf;
   }
 
-  void set_fprim(El el, double fprime) { fprimes_[el] = fprime; }
+  void set_fprime(El el, double fprime) { fprimes_[el] = fprime; }
 
   void add_fprimes_from_cl(const AtomicStructure& ast, double energy) {
     for (const AtomicStructure::Site& site : ast.sites)
