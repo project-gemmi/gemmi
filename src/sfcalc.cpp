@@ -20,7 +20,7 @@
 #include "options.h"
 
 enum OptionIndex { Hkl=4, Dmin, Rate, Blur, RCut, Test, Check,
-                   CifFp, Wavelength, Label, Scale };
+                   CifFp, Wavelength, ReplaceX, Label, Scale };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -43,6 +43,8 @@ static const option::Descriptor Usage[] = {
   { Wavelength, 0, "w", "wavelength", Arg::Float,
     "  --wavelength=NUM  \tWavelength [A] for calculation of f' "
     "(use --wavelength=0 or -w0 to ignore anomalous scattering)." },
+  { ReplaceX, 0, "", "replace-x", Arg::Required,
+    "  --replace-x=SYMBOL  \tUse scattering factor of SYMBOL for unknown atoms." },
   { NoOp, 0, "", "", Arg::None, "\nOptions for FFT-based calculations:" },
   { Rate, 0, "", "rate", Arg::Float,
     "  --rate=NUM  \tShannon rate used for grid spacing (default: 1.5)." },
@@ -355,6 +357,22 @@ void process(const std::string& input, const OptParser& p) {
       //  wavelength_list = st.crystals[0].diffractions[0].wavelengths;
     } else {
       wavelength = ast.wavelength;
+    }
+  }
+  if (p.options[ReplaceX]) {
+    El new_el = find_element(p.options[ReplaceX].arg);
+    if (new_el == El::X)
+      fail("--replace-x must specify chemical element symbol.");
+    if (use_st) {
+      for (Chain& chain : st.models[0].chains)
+        for (Residue& residue : chain.residues)
+          for (Atom& atom : residue.atoms)
+            if (atom.element == El::X)
+              atom.element = new_el;
+    } else {
+      for (AtomicStructure::Site& atom : ast.sites)
+        if (atom.element == El::X)
+          atom.element = new_el;
     }
   }
   auto present_elems = use_st ? st.models[0].present_elements(true)
