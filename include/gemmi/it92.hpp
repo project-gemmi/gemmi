@@ -23,8 +23,23 @@ namespace gemmi {
 #pragma GCC diagnostic ignored "-Wfloat-conversion"
 #endif
 
+template<int N, typename Real>
+struct ExpSum {
+  Real a[N], b[N];
+
+  Real calculate(Real r2) const {
+    Real density = 0;
+    for (int i = 0; i < N; ++i)
+      density += a[i] * std::exp(b[i] * r2);
+    return density;
+  }
+};
+
+
 template<class Real>
 struct IT92 {
+  static Real pow15(Real x) { return x * std::sqrt(x); }
+
   struct Coef {
     Real a[4], b[4], c;
 
@@ -39,13 +54,26 @@ struct IT92 {
     Real calculate_density(Real r2, Real B) const {
       constexpr Real _4pi = 4 * pi();
       Real r2pi = r2 * pi();
-      auto pow15 = [](Real x) { return x * std::sqrt(x); };
       Real density = c * pow15(_4pi / B) * std::exp(-(_4pi / B) * r2pi);
       for (int i = 0; i < 4; ++i) {
         Real t = _4pi / (b[i]+B);
         density += a[i] * pow15(t) * std::exp(-t*r2pi);
       }
       return density;
+    }
+
+    ExpSum<5,float> precalculate_density(Real B, Real fprim=0) const {
+      ExpSum<5,float> prec;
+      constexpr Real _4pi = 4 * pi();
+      for (int i = 0; i < 4; ++i) {
+        Real t = _4pi / (b[i]+B);
+        prec.a[i] = a[i] * pow15(t);
+        prec.b[i] = -t * pi();
+      }
+      Real t = _4pi / B;
+      prec.a[4] = (c + fprim) * pow15(t);
+      prec.b[4] = -t * pi();
+      return prec;
     }
   };
 

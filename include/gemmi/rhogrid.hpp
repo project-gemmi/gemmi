@@ -11,30 +11,30 @@
 
 namespace gemmi {
 
-template <typename Coef>
-double determine_effective_radius(const Coef& coef, double b, double cutoff) {
-  double x1 = 3.5;
-  double y1 = coef.calculate_density(x1*x1, b);
-  double x2 = x1;
-  double y2 = y1;
-  if (y1 < cutoff)
-    while (y1 < cutoff) {
+template <typename F>
+double determine_cutoff_radius(const F& func, float cutoff_level) {
+  float x1 = 3.5f;
+  float y1 = func(x1);
+  float x2 = x1;
+  float y2 = y1;
+  if (y1 < cutoff_level)
+    while (y1 < cutoff_level) {
       x2 = x1;
       y2 = y1;
-      x1 -= 0.5;
-      y1 = coef.calculate_density(x1*x1, b);
+      x1 -= 0.5f;
+      y1 = func(x1);
     }
   else
-    while (y2 > cutoff) {
+    while (y2 > cutoff_level) {
       x1 = x2;
       y1 = y2;
-      x2 += 0.5;
-      y2 = coef.calculate_density(x2*x2, b);
+      x2 += 0.5f;
+      y2 = func(x2);
     }
-  while (x2 - x1 > 0.02) {
-    double new_x = 0.5 * (x2 + x1);
-    double new_y = coef.calculate_density(new_x*new_x, b);
-    if (new_y < cutoff) {
+  while (x2 - x1 > 0.02f) {
+    float new_x = 0.5f * (x2 + x1);
+    float new_y = func(new_x);
+    if (new_y < cutoff_level) {
       x2 = new_x;
       y2 = new_y;
     } else {
@@ -59,15 +59,20 @@ struct DensityCalculator {
   double rate = 1.5;
   double blur = 0.;
   float r_cut = 5e-5f;
+  std::vector<float> fprimes = std::vector<float>((int)El::END, 0.f);
 
   // pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {
     auto& scat = Table::get(atom.element);
+    float fprime = fprimes[(int)atom.element.elem];
     double b = atom.b_iso + blur;
-    double radius = determine_effective_radius(scat, (float) b, r_cut);
+    auto precal = scat.precalculate_density(b, fprime);
+    double radius = determine_cutoff_radius(
+                              [&](float r) { return precal.calculate(r*r); },
+                              r_cut);
     Fractional fpos = grid.unit_cell.fractionalize(atom.pos);
     grid.use_points_around(fpos, radius, [&](Real& point, double r2) {
-        point += Real(atom.occ * scat.calculate_density((Real)r2, (Real)b));
+        point += Real(atom.occ * precal.calculate((Real)r2));
     }, /*fail_on_too_large_radius=*/false);
   }
 
