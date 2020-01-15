@@ -1,11 +1,11 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// Read small molecule CIF file into AtomicStructure (from smodel.hpp).
+// Read small molecule CIF file into SmallStructure (from small.hpp).
 
 #ifndef GEMMI_SMCIF_HPP_
 #define GEMMI_SMCIF_HPP_
 
-#include "smodel.hpp"    // AtomicStructure
+#include "small.hpp"     // SmallStructure
 #include "cifdoc.hpp"
 #include "numb.hpp"      // for as_number
 #include "symmetry.hpp"  // SpaceGroup
@@ -13,11 +13,11 @@
 namespace gemmi {
 
 inline
-AtomicStructure make_atomic_structure_from_block(const cif::Block& block_) {
+SmallStructure make_small_structure_from_block(const cif::Block& block_) {
   using cif::as_number;
   using cif::as_string;
   cif::Block& block = const_cast<cif::Block&>(block_);
-  AtomicStructure st;
+  SmallStructure st;
   st.name = block.name;
 
   // unit cell and symmetry
@@ -43,7 +43,7 @@ AtomicStructure make_atomic_structure_from_block(const cif::Block& block_) {
                                       "?U_iso_or_equiv",
                                       "?occupancy"});
   for (auto row : atom_table) {
-    AtomicStructure::Site site;
+    SmallStructure::Site site;
     site.label = as_string(row[kLabel]);
     if (row.has(kSymbol))
       site.type_symbol = as_string(row[kSymbol]);
@@ -67,7 +67,7 @@ AtomicStructure make_atomic_structure_from_block(const cif::Block& block_) {
                              {"symbol",
                               "scat_dispersion_real",
                               "scat_dispersion_imag"})) {
-    AtomicStructure::AtomType atom_type;
+    SmallStructure::AtomType atom_type;
     atom_type.symbol = row.str(0);
     atom_type.dispersion_real = cif::as_number(row[1]);
     atom_type.dispersion_imag = cif::as_number(row[2]);

@@ -52,9 +52,9 @@ Small Molecules
 ===============
 
 CIF files that describe small-molecule and inorganic structures
-can be read into an ``AtomicStructure`` object.
-Unlike macromolecular ``Structure``, ``AtomicStructure`` has no hierarchy.
-It is just a flat list of atomic sites (``AtomicStructure::Site``)
+can be read into an ``SmallStructure`` object.
+Unlike macromolecular ``Structure``, ``SmallStructure`` has no hierarchy.
+It is just a flat list of atomic sites (``SmallStructure::Site``)
 together with the unit cell and symmetry.
 
 .. literalinclude:: code/smcif.cpp
@@ -63,13 +63,13 @@ together with the unit cell and symmetry.
 .. doctest::
 
     >>> import gemmi
-    >>> SiC = gemmi.read_atomic_structure('../tests/1011031.cif')
+    >>> SiC = gemmi.read_small_structure('../tests/1011031.cif')
     >>> SiC.cell.a
     4.358
     >>> SiC.spacegroup_hm
     'F -4 3 m'
     >>> SiC.sites
-    [<gemmi.AtomicStructure.Site Si1>, <gemmi.AtomicStructure.Site C1>]
+    [<gemmi.SmallStructure.Site Si1>, <gemmi.SmallStructure.Site C1>]
     >>> len(SiC.get_all_unit_cell_sites())
     8
     >>> site = SiC.sites[0]

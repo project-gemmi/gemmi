@@ -12,7 +12,7 @@
 #include <gemmi/math.hpp>      // for sq
 #include <gemmi/rhogrid.hpp>   // for put_model_density_on_grid
 #include <gemmi/sfcalc.hpp>    // for calculate_structure_factor
-#include <gemmi/smcif.hpp>     // for make_atomic_structure_from_block
+#include <gemmi/smcif.hpp>     // for make_small_structure_from_block
 #include <gemmi/mtz.hpp>       // for read_mtz_file
 #include <gemmi/gz.hpp>        // for MaybeGzipped
 
@@ -185,23 +185,23 @@ void print_structure_factors(const Structure& st,
 }
 
 template<typename Table>
-void print_structure_factors_sm(const AtomicStructure& ast,
+void print_structure_factors_sm(const SmallStructure& small,
                                 StructureFactorCalculator<Table>& calc,
                                 double d_min, bool verbose) {
   using Clock = std::chrono::steady_clock;
   auto start = Clock::now();
   int counter = 0;
   double max_1_d = 1. / d_min;
-  int max_h = int(max_1_d / ast.cell.ar);
-  int max_k = int(max_1_d / ast.cell.br);
-  int max_l = int(max_1_d / ast.cell.cr);
+  int max_h = int(max_1_d / small.cell.ar);
+  int max_k = int(max_1_d / small.cell.br);
+  int max_l = int(max_1_d / small.cell.cr);
   for (int h = -max_h; h <= max_h; ++h)
     for (int k = -max_k; k <= max_k; ++k)
       for (int l = 0; l <= max_l; ++l) {
         Miller hkl{{h, k, l}};
-        double hkl_1_d2 = ast.cell.calculate_1_d2(hkl);
+        double hkl_1_d2 = small.cell.calculate_1_d2(hkl);
         if (hkl_1_d2 < max_1_d * max_1_d) {
-          auto value = calc.calculate_sf_from_atomic_structure(ast, hkl);
+          auto value = calc.calculate_sf_from_small_structure(small, hkl);
           print_sf(value, hkl);
           ++counter;
         }
@@ -226,7 +226,7 @@ double get_minimum_b_iso(const Model& model) {
 }
 
 template<typename Table>
-void compare_with_hkl(const AtomicStructure& ast,
+void compare_with_hkl(const SmallStructure& small,
                       StructureFactorCalculator<Table>& calc,
                       const std::string& label, double scale,
                       bool verbose, const char* path,
@@ -274,13 +274,13 @@ void compare_with_hkl(const AtomicStructure& ast,
       fprintf(stderr, "Error in _refln_[] in %s: %s\n", path, e.what());
       continue;
     }
-    double f = std::abs(calc.calculate_sf_from_atomic_structure(ast, hkl));
+    double f = std::abs(calc.calculate_sf_from_small_structure(small, hkl));
     f *= scale;
     comparator.add(f_from_file, f);
     if (verbose)
       printf(" (%d %d %d)\t%7.2f\t%8.3f \td=%5.2f\n",
              hkl[0], hkl[1], hkl[2], f_from_file, f,
-             ast.cell.calculate_d(hkl));
+             small.cell.calculate_d(hkl));
   }
 }
 
@@ -309,28 +309,28 @@ void compare_with_mtz(const Model& model, const UnitCell& cell,
 }
 
 void process(const std::string& input, const OptParser& p) {
-  // read (Atomic)Structure
+  // read (Small)Structure
   gemmi::Structure st = gemmi::read_structure_gz(input);
-  gemmi::AtomicStructure ast;
+  gemmi::SmallStructure small;
   bool use_st = !st.models.empty();
   if (!use_st) {
     if (giends_with(input, ".cif"))
-      ast = gemmi::make_atomic_structure_from_block(
+      small = gemmi::make_small_structure_from_block(
                                 gemmi::read_cif_gz(input).sole_block());
-    if (ast.sites.empty() ||
+    if (small.sites.empty() ||
         // COD can have a row of nulls as a placeholder (e.g. 2211708)
-        (ast.sites.size() == 1 && ast.sites[0].element == El::X))
+        (small.sites.size() == 1 && small.sites[0].element == El::X))
       gemmi::fail("no atoms in the file");
     // SM CIF files specify full occupancy for atoms on special positions.
     // We need to adjust it for symmetry calculations.
-    for (AtomicStructure::Site& site : ast.sites) {
-      int n_mates = ast.cell.is_special_position(site.fract, 0.4);
+    for (SmallStructure::Site& site : small.sites) {
+      int n_mates = small.cell.is_special_position(site.fract, 0.4);
       if (n_mates != 0)
         site.occ /= (n_mates + 1);
     }
   }
 
-  const UnitCell& cell = use_st ? st.cell : ast.cell;
+  const UnitCell& cell = use_st ? st.cell : small.cell;
   using Table = IT92<double>;
   StructureFactorCalculator<Table> calc(cell);
 
@@ -342,8 +342,8 @@ void process(const std::string& input, const OptParser& p) {
     } else { // small molecule
       if (p.options[Verbose])
         fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
-                (unsigned) ast.atom_types.size());
-      for (const AtomicStructure::AtomType& atom_type : ast.atom_types)
+                (unsigned) small.atom_types.size());
+      for (const SmallStructure::AtomType& atom_type : small.atom_types)
         calc.set_fprime(atom_type.element, atom_type.dispersion_real);
     }
   }
@@ -356,7 +356,7 @@ void process(const std::string& input, const OptParser& p) {
       //if (!st.crystals.empty() && !st.crystals[0].diffractions.empty())
       //  wavelength_list = st.crystals[0].diffractions[0].wavelengths;
     } else {
-      wavelength = ast.wavelength;
+      wavelength = small.wavelength;
     }
   }
   if (p.options[Unknown]) {
@@ -370,13 +370,13 @@ void process(const std::string& input, const OptParser& p) {
             if (atom.element == El::X)
               atom.element = new_el;
     } else {
-      for (AtomicStructure::Site& atom : ast.sites)
+      for (SmallStructure::Site& atom : small.sites)
         if (atom.element == El::X)
           atom.element = new_el;
     }
   }
   auto present_elems = use_st ? st.models[0].present_elements()
-                              : ast.present_elements();
+                              : small.present_elements();
   if (present_elems[(int)El::X])
     fail("unknown element. Add --unknown=O to treat unknown atoms as oxygen.");
   for (size_t i = 1; i != present_elems.size(); ++i)
@@ -401,7 +401,7 @@ void process(const std::string& input, const OptParser& p) {
     if (use_st)
       print_sf(calc.calculate_sf_from_model(st.models[0], hkl), hkl);
     else
-      print_sf(calc.calculate_sf_from_atomic_structure(ast, hkl), hkl);
+      print_sf(calc.calculate_sf_from_small_structure(small, hkl), hkl);
   }
 
   // handle option --dmin
@@ -440,7 +440,7 @@ void process(const std::string& input, const OptParser& p) {
           p.options[Test])
         fail("Small molecule SFs are calculated directly. Do not use any\n"
              "of the FFT-related options: --rate, --blur, --rcut, --test.");
-      print_structure_factors_sm(ast, calc, d_min, p.options[Verbose]);
+      print_structure_factors_sm(small, calc, d_min, p.options[Verbose]);
     }
 
   // handle option --check
@@ -459,7 +459,7 @@ void process(const std::string& input, const OptParser& p) {
       compare_with_mtz(st.models[0], st.cell, calc, label, scale,
                        p.options[Verbose], path, comparator);
     else
-      compare_with_hkl(ast, calc, label, scale,
+      compare_with_hkl(small, calc, label, scale,
                        p.options[Verbose], path, comparator);
     print_to_stderr(comparator);
     fprintf(stderr, "  sum(F^2)_ratio=%g\n", comparator.scale());

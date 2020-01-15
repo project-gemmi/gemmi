@@ -3,8 +3,8 @@
 // Representation of small molecule or inorganic crystal.
 // Flat list of atom sites. Minimal functionality.
 
-#ifndef GEMMI_SMODEL_HPP_
-#define GEMMI_SMODEL_HPP_
+#ifndef GEMMI_SMALL_HPP_
+#define GEMMI_SMALL_HPP_
 
 #include <cctype>        // for isalpha
 #include <algorithm>     // for any_of
@@ -16,7 +16,7 @@
 
 namespace gemmi {
 
-struct AtomicStructure {
+struct SmallStructure {
   struct Site {
     std::string label;
     std::string type_symbol;
@@ -71,8 +71,8 @@ inline void split_element_and_charge(const std::string& label, T* dest) {
     dest->charge = -dest->charge;
 }
 
-inline std::vector<AtomicStructure::Site>
-AtomicStructure::get_all_unit_cell_sites() const {
+inline std::vector<SmallStructure::Site>
+SmallStructure::get_all_unit_cell_sites() const {
   std::vector<Site> all;
   for (const Site& site : sites) {
     size_t start = all.size();

@@ -19,7 +19,7 @@ def full_path(filename):
 class TestRealCif(unittest.TestCase):
     def test_cod_sic(self):
         path = full_path('1011031.cif')
-        sic = gemmi.read_atomic_structure(path)
+        sic = gemmi.read_small_structure(path)
         self.assertEqual(sic.name, '1011031')
         self.assertEqual(sic.cell.a, 4.358)
         self.assertEqual(sic.cell.alpha, 90.0)
@@ -28,7 +28,7 @@ class TestRealCif(unittest.TestCase):
 
     def test_fen4(self):
         path = full_path('2242624.cif')
-        ast = gemmi.read_atomic_structure(path)
+        ast = gemmi.read_small_structure(path)
         types = ast.atom_types
         self.assertEqual(len(types), 2)
         self.assertEqual(types[0].symbol, 'Fe')

@@ -8,7 +8,7 @@
 
 #include <complex>
 #include "model.hpp"   // for Structure, ...
-#include "smodel.hpp"  // for AtomicStructure
+#include "small.hpp"   // for SmallStructure
 #include "fprime.hpp"  // for cromer_libermann
 
 namespace gemmi {
@@ -67,11 +67,11 @@ public:
   // The occupancy is assumed to take into account symmetry,
   // i.e. to be fractional if the atom is on special position.
   std::complex<double>
-  calculate_sf_from_atomic_structure(const AtomicStructure& ast,
-                                     const Miller& hkl) {
+  calculate_sf_from_small_structure(const SmallStructure& small,
+                                    const Miller& hkl) {
     std::complex<double> sf = 0.;
     set_hkl(hkl);
-    for (const AtomicStructure::Site& site : ast.sites) {
+    for (const SmallStructure::Site& site : small.sites) {
       double b_iso = 8 * pi() * pi() * site.u_iso;
       sf += site.occ * get_contribution(site.element, site.fract, b_iso);
     }

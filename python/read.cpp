@@ -6,7 +6,7 @@
 #include "gemmi/json.hpp"
 #include "gemmi/gzread.hpp"
 #include "gemmi/gzread_impl.hpp"
-#include "gemmi/smcif.hpp"         // for make_atomic_structure_from_block
+#include "gemmi/smcif.hpp"         // for make_small_structure_from_block
 #include "gemmi/chemcomp_xyz.hpp"
 #include "gemmi/remarks.hpp"
 
@@ -57,12 +57,12 @@ void add_read_structure(py::module& m) {
         }, py::arg("s"), "Reads a string as PDB file.");
 
   // from smcif.hpp
-  m.def("read_atomic_structure", [](const std::string& path) {
+  m.def("read_small_structure", [](const std::string& path) {
           cif::Block block = cif::read_file(path).sole_block();
-          return new AtomicStructure(make_atomic_structure_from_block(block));
+          return new SmallStructure(make_small_structure_from_block(block));
         }, py::arg("path"), "Reads a small molecule CIF file.");
-  m.def("make_atomic_structure_from_block", &make_atomic_structure_from_block,
-        py::arg("block"), "Takes CIF block and returns AtomicStructure.");
+  m.def("make_small_structure_from_block", &make_small_structure_from_block,
+        py::arg("block"), "Takes CIF block and returns SmallStructure.");
 
   // from chemcomp_xyz.hpp
   m.def("make_structure_from_chemcomp_block",

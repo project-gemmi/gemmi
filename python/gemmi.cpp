@@ -7,7 +7,7 @@
 #include "gemmi/fileutil.hpp"  // for expand_if_pdb_code
 #include "gemmi/elem.hpp"
 #include "gemmi/it92.hpp"
-#include "gemmi/smodel.hpp"    // for AtomicStructure
+#include "gemmi/small.hpp"    // for SmallStructure
 
 namespace py = pybind11;
 
@@ -23,7 +23,7 @@ void add_monlib(py::module& cif); // monlib.cpp
 
 void add_misc(py::module& m) {
   using gemmi::Element;
-  using gemmi::AtomicStructure;
+  using gemmi::SmallStructure;
   using IT92 = gemmi::IT92<double>;
   py::class_<Element>(m, "Element")
     .def(py::init<const std::string &>())
@@ -47,39 +47,39 @@ void add_misc(py::module& m) {
         return "<gemmi.Element: " + std::string(self.name()) + ">";
     });
 
-  py::class_<AtomicStructure> atomic_structure(m, "AtomicStructure");
-  py::class_<AtomicStructure::Site>(atomic_structure, "Site")
-    .def_readonly("label", &AtomicStructure::Site::label)
-    .def_readonly("type_symbol", &AtomicStructure::Site::type_symbol)
-    .def_readonly("fract", &AtomicStructure::Site::fract)
-    .def_readonly("occ", &AtomicStructure::Site::occ)
-    .def_readonly("u_iso", &AtomicStructure::Site::u_iso)
-    .def_readonly("element", &AtomicStructure::Site::element)
-    .def_readonly("charge", &AtomicStructure::Site::charge)
-    .def("__repr__", [](const AtomicStructure::Site& self) {
-        return "<gemmi.AtomicStructure.Site " + self.label + ">";
+  py::class_<SmallStructure> small_structure(m, "SmallStructure");
+  py::class_<SmallStructure::Site>(small_structure, "Site")
+    .def_readonly("label", &SmallStructure::Site::label)
+    .def_readonly("type_symbol", &SmallStructure::Site::type_symbol)
+    .def_readonly("fract", &SmallStructure::Site::fract)
+    .def_readonly("occ", &SmallStructure::Site::occ)
+    .def_readonly("u_iso", &SmallStructure::Site::u_iso)
+    .def_readonly("element", &SmallStructure::Site::element)
+    .def_readonly("charge", &SmallStructure::Site::charge)
+    .def("__repr__", [](const SmallStructure::Site& self) {
+        return "<gemmi.SmallStructure.Site " + self.label + ">";
     });
 
-  using AtomType = AtomicStructure::AtomType;
-  py::class_<AtomType>(atomic_structure, "AtomType")
+  using AtomType = SmallStructure::AtomType;
+  py::class_<AtomType>(small_structure, "AtomType")
     .def_readonly("symbol", &AtomType::symbol)
     .def_readonly("element", &AtomType::element)
     .def_readwrite("dispersion_real", &AtomType::dispersion_real)
     .def_readwrite("dispersion_imag", &AtomType::dispersion_imag)
     .def("__repr__", [](const AtomType& self) {
-        return "<gemmi.AtomicStructure.AtomType " + self.symbol + ">";
+        return "<gemmi.SmallStructure.AtomType " + self.symbol + ">";
     });
 
-  atomic_structure
+  small_structure
     .def(py::init<>())
-    .def_readwrite("name", &AtomicStructure::name)
-    .def_readwrite("cell", &AtomicStructure::cell)
-    .def_readonly("spacegroup_hm", &AtomicStructure::spacegroup_hm)
-    .def_readonly("sites", &AtomicStructure::sites)
-    .def_readonly("atom_types", &AtomicStructure::atom_types)
-    .def("get_all_unit_cell_sites", &AtomicStructure::get_all_unit_cell_sites)
-    .def("__repr__", [](const AtomicStructure& self) {
-        return "<gemmi.AtomicStructure: " + std::string(self.name) + ">";
+    .def_readwrite("name", &SmallStructure::name)
+    .def_readwrite("cell", &SmallStructure::cell)
+    .def_readonly("spacegroup_hm", &SmallStructure::spacegroup_hm)
+    .def_readonly("sites", &SmallStructure::sites)
+    .def_readonly("atom_types", &SmallStructure::atom_types)
+    .def("get_all_unit_cell_sites", &SmallStructure::get_all_unit_cell_sites)
+    .def("__repr__", [](const SmallStructure& self) {
+        return "<gemmi.SmallStructure: " + std::string(self.name) + ">";
     });
 
   py::class_<IT92::Coef>(m, "IT92Coef")
