@@ -101,6 +101,7 @@ struct Comparator {
 
 static
 void print_to_stderr(const Comparator& c) {
+  fflush(stdout);
   fprintf(stderr, "RMSE=%#.5g  %#.4g%%  max|dF|=%#.4g  R=%.3f%%",
           c.rmse(), 100 * c.weighted_rmse(), c.max_abs_df, 100 * c.rfactor());
 }
@@ -119,7 +120,7 @@ void print_structure_factors(const Structure& st,
   auto start = Clock::now();
   dencalc.set_grid_cell_and_spacegroup(st);
   dencalc.put_model_density_on_grid(st.models[0]);
-  const Grid<float>& grid = dencalc.grid;;
+  const Grid<float>& grid = dencalc.grid;
   if (verbose) {
     std::chrono::duration<double> elapsed = Clock::now() - start;
     fprintf(stderr, "...took %g s.\n", elapsed.count());
@@ -139,14 +140,22 @@ void print_structure_factors(const Structure& st,
   if (cache_file)
     cache = gemmi::file_open(cache_file, "r");
   Comparator comparator;
-  double max_1_d2 = 1. / (dencalc.d_min * dencalc.d_min);
-  for (int h = -sf.nu / 2; h < sf.nu / 2; ++h)
-    for (int k = -sf.nv / 2; k < sf.nv / 2; ++k)
-      for (int l = 0; l < sf.nw / 2; ++l) {
+  double max_1_d = 1. / dencalc.d_min;
+  gemmi::HklAsuChecker hkl_asu(dencalc.grid.spacegroup);
+  int max_h = std::min(sf.nu / 2, int(max_1_d / st.cell.ar));
+  int max_k = std::min(sf.nv / 2, int(max_1_d / st.cell.br));
+  int max_l = std::min(sf.nw, int(max_1_d / st.cell.cr));
+  for (int h = -max_h; h <= max_h; ++h)
+    for (int k = -max_k; k <= max_k; ++k)
+      for (int l = 0; l <= max_l; ++l) {
+        if (!hkl_asu.is_in(h, k, l))
+          continue;
         Miller hkl{{h, k, l}};
         double hkl_1_d2 = sf.unit_cell.calculate_1_d2(hkl);
-        if (hkl_1_d2 < max_1_d2) {
-          std::complex<double> value = sf.data[sf.index_n(h, k, l)];
+        if (hkl_1_d2 < max_1_d * max_1_d) {
+          int idx_h = h < 0 ? h + sf.nu : h;
+          int idx_k = k < 0 ? k + sf.nv : k;
+          std::complex<double> value = sf.get_value_q(idx_h, idx_k, l);
           value *= dencalc.reciprocal_space_multiplier(hkl_1_d2);
           if (test) {
             std::complex<double> exact;
@@ -195,9 +204,13 @@ void print_structure_factors_sm(const SmallStructure& small,
   int max_h = int(max_1_d / small.cell.ar);
   int max_k = int(max_1_d / small.cell.br);
   int max_l = int(max_1_d / small.cell.cr);
+  const SpaceGroup* sg = find_spacegroup_by_name(small.spacegroup_hm);
+  gemmi::HklAsuChecker hkl_asu(sg ? sg : &get_spacegroup_p1());
   for (int h = -max_h; h <= max_h; ++h)
     for (int k = -max_k; k <= max_k; ++k)
       for (int l = 0; l <= max_l; ++l) {
+        if (!hkl_asu.is_in(h, k, l))
+          continue;
         Miller hkl{{h, k, l}};
         double hkl_1_d2 = small.cell.calculate_1_d2(hkl);
         if (hkl_1_d2 < max_1_d * max_1_d) {
