@@ -20,7 +20,12 @@ class TestProg(unittest.TestCase):
         assert cmd.startswith('$ gemmi ')
         output = subprocess.check_output(cmd[2:], shell=True, cwd=TOP_DIR,
                                          stderr=subprocess.STDOUT)
-        self.assertEqual(output.decode().splitlines(), rest.splitlines())
+        expected_lines = rest.splitlines()
+        output_lines = output.decode().splitlines()
+        if expected_lines[0].strip() == '[...]':
+            expected_lines.pop(0)
+            output_lines = output_lines[-len(expected_lines):]
+        self.assertEqual(expected_lines, output_lines)
 
     def test_fprime1(self):
         # example from utils.rst
@@ -54,6 +59,13 @@ RMSE=0.10942  1.295%  max|dF|=0.1498  R=1.279%  sum(F^2)_ratio=1.01019
 $ gemmi sfcalc --ciffp --check=tests/2242624.hkl tests/2242624.cif
 RMSE=0.019724  0.2307%  max|dF|=0.04863  R=0.196%  sum(F^2)_ratio=1.00101
 ''')
+
+    def test_sfcalc_5wkd(self):
+        self.do('''\
+$ gemmi sfcalc --blur=12 --dmin=2.5 --rate=2.5 --rcut=1e-7 --test -v tests/5wkd.pdb
+[...]
+RMSE=5.6297e-05  0.0001431%  max|dF|=0.0008977  R=0.000%
+''')  # noqa: E501
 
 
 if __name__ == '__main__':
