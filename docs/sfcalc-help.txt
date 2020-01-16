@@ -28,5 +28,7 @@ Options for FFT-based calculations:
 
 Options for comparing calculated values with values from a file:
   --check=FILE      Re-calculate Fcalc and report differences.
-  --meas            Compare against measured values _refln_F_(squared_)meas.
+  --f=LABEL         MTZ column label (default: FC) or small molecule cif tag
+                    (default: F_calc or F_squared_calc).
+  --phi=LABEL       MTZ column label (default: PHIC)
   --scale=S         Multiply calculated F by sqrt(S) (default: 1).

@@ -20,7 +20,7 @@
 #include "options.h"
 
 enum OptionIndex { Hkl=4, Dmin, Rate, Blur, RCut, Test, Check,
-                   CifFp, Wavelength, Unknown, Label, Scale };
+                   CifFp, Wavelength, Unknown, FLabel, PhiLabel, Scale };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -58,8 +58,11 @@ static const option::Descriptor Usage[] = {
     "\nOptions for comparing calculated values with values from a file:" },
   { Check, 0, "", "check", Arg::Required,
     "  --check=FILE  \tRe-calculate Fcalc and report differences." },
-  { Label, 0, "", "meas", Arg::None,
-    "  --meas  \tCompare against measured values _refln_F_(squared_)meas." },
+  { FLabel, 0, "", "f", Arg::Required,
+    "  --f=LABEL  \tMTZ column label (default: FC) or small molecule cif"
+    " tag (default: F_calc or F_squared_calc)." },
+  { PhiLabel, 0, "", "phi", Arg::Required,
+    "  --phi=LABEL  \tMTZ column label (default: PHIC)" },
   { Scale, 0, "", "scale", Arg::Float,
     "  --scale=S  \tMultiply calculated F by sqrt(S) (default: 1)." },
   { 0, 0, 0, 0, 0, 0 }
@@ -111,7 +114,9 @@ using namespace gemmi;
 template<typename Table>
 void print_structure_factors(const Structure& st,
                              DensityCalculator<Table,float>& dencalc,
-                             bool verbose, bool test, const char* cache_file) {
+                             bool verbose, char mode, const char* file_path,
+                             const std::string& f_label,
+                             const std::string& phi_label) {
   using Clock = std::chrono::steady_clock;
   if (verbose) {
     fprintf(stderr, "Preparing electron density on a grid...\n");
@@ -137,8 +142,28 @@ void print_structure_factors(const Structure& st,
     fflush(stderr);
   }
   gemmi::fileptr_t cache(nullptr, nullptr);
-  if (cache_file)
-    cache = gemmi::file_open(cache_file, "r");
+  std::map<Miller, std::complex<double>> mtz_data;
+  if (mode == 'T' && file_path) {
+    cache = gemmi::file_open(file_path, "r");
+  } else if (mode == 'C' && file_path) {
+    Mtz mtz;
+    mtz.read_input(gemmi::MaybeGzipped(file_path), true);
+    Mtz::Column* f_col = mtz.column_with_label(f_label);
+    if (!f_col)
+      fail("MTZ file has no column with label: " + f_label);
+    Mtz::Column* phi_col = mtz.column_with_label(phi_label);
+    if (!phi_col)
+      fail("MTZ file has no column with label: " + phi_label);
+    gemmi::MtzDataProxy data_proxy{mtz};
+    auto hkl_col = data_proxy.hkl_col();
+    for (size_t i = 0; i < data_proxy.size(); i += data_proxy.stride()) {
+      Miller hkl = data_proxy.get_hkl(i, hkl_col);
+      double f_abs = data_proxy.get_num(i + f_col->idx);
+      double f_deg = data_proxy.get_num(i + phi_col->idx);
+      mtz_data.emplace(hkl, std::polar(f_abs, gemmi::rad(f_deg)));
+    }
+  }
+
   Comparator comparator;
   double max_1_d = 1. / dencalc.d_min;
   gemmi::HklAsuChecker hkl_asu(dencalc.grid.spacegroup);
@@ -157,19 +182,26 @@ void print_structure_factors(const Structure& st,
           int idx_k = k < 0 ? k + sf.nv : k;
           std::complex<double> value = sf.get_value_q(idx_h, idx_k, l);
           value *= dencalc.reciprocal_space_multiplier(hkl_1_d2);
-          if (test) {
+          if (mode != ' ') {
             std::complex<double> exact;
-            if (cache_file) {
-              char cache_line[100];
-              if (fgets(cache_line, 99, cache.get()) == nullptr)
-                gemmi::fail("cannot read line from file");
-              int cache_h, cache_k, cache_l;
-              double f_abs, f_deg;
-              sscanf(cache_line, " (%d %d %d) %*f %lf %*f %lf",
-                     &cache_h, &cache_k, &cache_l, &f_abs, &f_deg);
-              if (cache_h != h || cache_k != k || cache_l != l)
-                gemmi::fail("Different h k l order than in cache file.");
-              exact = std::polar(f_abs, gemmi::rad(f_deg));
+            if (file_path) {
+              if (mode == 'T') {
+                char cache_line[100];
+                if (fgets(cache_line, 99, cache.get()) == nullptr)
+                  gemmi::fail("cannot read line from file");
+                int cache_h, cache_k, cache_l;
+                double f_abs, f_deg;
+                sscanf(cache_line, " (%d %d %d) %*f %lf %*f %lf",
+                       &cache_h, &cache_k, &cache_l, &f_abs, &f_deg);
+                if (cache_h != h || cache_k != k || cache_l != l)
+                  gemmi::fail("Different h k l order than in cache file.");
+                exact = std::polar(f_abs, gemmi::rad(f_deg));
+              } else if (mode == 'C') {
+                auto it = mtz_data.find(hkl);
+                if (it == mtz_data.end())
+                  continue;
+                exact = it->second;
+              }
             } else {
               exact = calc.calculate_sf_from_model(st.models[0], hkl);
             }
@@ -183,7 +215,7 @@ void print_structure_factors(const Structure& st,
           }
         }
       }
-  if (test) {
+  if (mode != ' ') {
     print_to_stderr(comparator);
     if (!verbose) {
       std::chrono::duration<double> elapsed = Clock::now() - start;
@@ -417,6 +449,16 @@ void process(const std::string& input, const OptParser& p) {
       print_sf(calc.calculate_sf_from_small_structure(small, hkl), hkl);
   }
 
+  std::string f_label, phi_label;
+  if (p.options[FLabel])
+   f_label = p.options[FLabel].arg;
+  else if (use_st)
+    f_label = "FC";
+  if (p.options[PhiLabel])
+   phi_label = p.options[PhiLabel].arg;
+  else if (use_st)
+    phi_label = "PHIC";
+
   // handle option --dmin
   if (p.options[Dmin]) {
     double d_min = std::strtod(p.options[Dmin].arg, nullptr);
@@ -446,8 +488,17 @@ void process(const std::string& input, const OptParser& p) {
           fprintf(stderr, "B_min=%g, B_add=%g\n", b_min, dencalc.blur);
       }
 
-      print_structure_factors(st, dencalc, p.options[Verbose],
-                              p.options[Test], p.options[Test].arg);
+      char mode = ' ';
+      const char *file = nullptr;
+      if (p.options[Test]) {
+        mode = 'T';
+        file = p.options[Test].arg;
+      } else if (p.options[Check]) {
+        mode = 'C';
+        file = p.options[Check].arg;
+      }
+      print_structure_factors(st, dencalc, p.options[Verbose], mode, file,
+                              f_label, phi_label);
     } else {
       if (p.options[Rate] || p.options[RCut] || p.options[Blur] ||
           p.options[Test])
@@ -463,16 +514,11 @@ void process(const std::string& input, const OptParser& p) {
       scale = std::strtod(p.options[Scale].arg, nullptr);
     const char* path = p.options[Check].arg;
     Comparator comparator;
-    std::string label;
-    if (p.options[Label])
-     label = p.options[Label].arg;
-    else if (use_st)
-      label = "FC";
     if (use_st)
-      compare_with_mtz(st.models[0], st.cell, calc, label, scale,
+      compare_with_mtz(st.models[0], st.cell, calc, f_label, scale,
                        p.options[Verbose], path, comparator);
     else
-      compare_with_hkl(small, calc, label, scale,
+      compare_with_hkl(small, calc, f_label, scale,
                        p.options[Verbose], path, comparator);
     print_to_stderr(comparator);
     fprintf(stderr, "  sum(F^2)_ratio=%g\n", comparator.scale());
