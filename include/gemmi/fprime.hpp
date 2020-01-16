@@ -106,6 +106,13 @@ inline double aknint(double x, int n, const Point *data) {
 #  pragma GCC diagnostic push
 #  pragma GCC diagnostic ignored "-Wfloat-conversion"
 # endif
+# if defined(_MSC_VER)
+#  pragma warning(push)
+   // warning C4838: conversion from double to float
+#  pragma warning(disable: 4838)
+   // warning C4305: 'initializing': truncation from 'double' to 'float' ...
+#  pragma warning(disable: 4305)
+# endif
 #endif
 
 struct OrbitalCoef {
@@ -2915,6 +2922,9 @@ inline OrbitalCoef* get_orbital_coefficients(int z, int* n_orb) {
 #ifndef GEMMI_FPRIM_ALL_DOUBLE
 # if __GNUC__-0 > 4
 #  pragma GCC diagnostic pop
+# endif
+# if defined(_MSC_VER)
+#  pragma warning(pop)
 # endif
 #endif
 
