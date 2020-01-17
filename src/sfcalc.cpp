@@ -160,7 +160,8 @@ void print_structure_factors(const Structure& st,
       Miller hkl = data_proxy.get_hkl(i, hkl_col);
       double f_abs = data_proxy.get_num(i + f_col->idx);
       double f_deg = data_proxy.get_num(i + phi_col->idx);
-      mtz_data.emplace(hkl, std::polar(f_abs, gemmi::rad(f_deg)));
+      if (!std::isnan(f_abs) && !std::isnan(f_deg))
+        mtz_data.emplace(hkl, std::polar(f_abs, gemmi::rad(f_deg)));
     }
   }
 
