@@ -69,7 +69,7 @@ static void print_usage() {
          "Command-line utility that accompanies the GEMMI library,\n"
          "which is a joint project of CCP4 and Global Phasing Ltd.\n"
          "Licence: Mozilla Public License 2.0.\n"
-         "Copyright 2017-2019 Global Phasing Ltd.\n"
+         "Copyright 2017-2020 Global Phasing Ltd.\n"
          "https://github.com/project-gemmi/gemmi\n\n"
          "Usage: gemmi [--version] [--help] <command> [<args>]\n\n"
          "Commands:\n");
