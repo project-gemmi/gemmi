@@ -476,7 +476,8 @@ void process(const std::string& input, const OptParser& p) {
         dencalc.blur = std::strtod(p.options[Blur].arg, nullptr);
       } else if (dencalc.rate < 3) {
         // ITfC vol B section 1.3.4.4.5 has formula
-        // B = log Q / (sigma * (sigma - 1) * d^*_max^2)
+        // B = log Q / (sigma * (sigma - 1) * d*_max ^2)
+        // where Q is quality factor, sigma is the oversampling rate.
         // This value is not optimal.
         // The optimal value would depend on the distribution of B-factors
         // and on the atomic cutoff radius, and probably it would be too
