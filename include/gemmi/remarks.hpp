@@ -119,7 +119,7 @@ inline void read_remark3_line(const char* line, Metadata& meta,
   // multi-line continuation requires special handling
   if (possibly_unfinished_remark3) {
     if (key_start > line + 17) {
-      *possibly_unfinished_remark3 += '\n';
+      *possibly_unfinished_remark3 += ' ';
       possibly_unfinished_remark3->append(key);
       return;
     }
