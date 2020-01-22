@@ -101,7 +101,8 @@ inline void add_restraint_count_weight(RefinementInfo& ref_info,
     restr.function = read_string(sep+1, 50);
 }
 
-inline void read_remark3_line(const char* line, Metadata& meta) {
+inline void read_remark3_line(const char* line, Metadata& meta,
+                              std::string*& possibly_unfinished_remark3) {
   // Based on:
   // www.wwpdb.org/documentation/file-format-content/format23/remark3.html
   // and analysis of PDB files.
@@ -114,6 +115,17 @@ inline void read_remark3_line(const char* line, Metadata& meta) {
   const char* colon = std::strchr(key_start, ':');
   const char* key_end = rtrim_cstr(key_start, colon);
   std::string key(key_start, key_end);
+
+  // multi-line continuation requires special handling
+  if (possibly_unfinished_remark3) {
+    if (key_start > line + 17) {
+      *possibly_unfinished_remark3 += '\n';
+      possibly_unfinished_remark3->append(key);
+      return;
+    }
+    possibly_unfinished_remark3 = nullptr;
+  }
+
   if (colon) {
     const char* value = skip_blank(colon + 1);
     const char* end = rtrim_cstr(value);
@@ -249,6 +261,7 @@ inline void read_remark3_line(const char* line, Metadata& meta) {
         TlsGroup& group = ref_info.tls_groups.back();
         group.selections.emplace_back();
         group.selections.back().details = std::string(value, end);
+        possibly_unfinished_remark3 = &group.selections.back().details;
       }
     } else if (same_str(key, "RESIDUE RANGE")) {
       if (!ref_info.tls_groups.empty() && end > colon+21) {
@@ -441,12 +454,14 @@ inline void read_remark_200_230_240(const char* line, Metadata& meta,
 } // namespace pdb_impl
 
 void read_metadata_from_remarks(Structure& st) {
+  std::string* possibly_unfinished_remark3 = nullptr;
   std::string* cr_desc = nullptr;
   for (const std::string& remark : st.raw_remarks)
     if (remark.size() > 11) {
       switch (pdb_impl::read_int(remark.c_str() + 7, 3)) {
         case 3:
-          pdb_impl::read_remark3_line(remark.c_str(), st.meta);
+          pdb_impl::read_remark3_line(remark.c_str(), st.meta,
+                                      possibly_unfinished_remark3);
           break;
         case 200:
         case 230:
