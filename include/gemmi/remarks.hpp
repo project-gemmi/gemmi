@@ -256,7 +256,10 @@ inline void read_remark3_line(const char* line, Metadata& meta,
     } else if (same_str(key, "TLS GROUP")) {
       ref_info.tls_groups.emplace_back();
       ref_info.tls_groups.back().id = std::string(value, end);
-    } else if (same_str(key, "SET")) {
+    } else if (same_str(key, "SET") ||
+               // "REMARK   3    SELECTION:"            -> TLS
+               // "REMARK   3     SELECTION          :" -> NCS
+               (same_str(key, "SELECTION") && colon == line + 23)) {
       if (!ref_info.tls_groups.empty()) {
         TlsGroup& group = ref_info.tls_groups.back();
         group.selections.emplace_back();
