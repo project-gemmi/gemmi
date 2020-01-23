@@ -53,6 +53,7 @@ fi
 not_identical="\
 ^TITLE|\
 ^KEYWDS|\
+^SCALE|\
 ^HELIX "
 absent="\
 ^AUTHOR|\
@@ -69,22 +70,24 @@ absent="\
 ^MDLTYP|\
 ^MODRES|\
 ^ORIGX|\
+^REMARK   1|\
 ^REMARK   3|\
 ^REMARK   4|\
 ^REMARK 100|\
 ^REMARK 2..|\
 ^REMARK 300|\
+^REMARK 375|\
 ^REMARK 465|\
 ^REMARK 470|\
 ^REMARK 500|\
 ^REMARK 525|\
+^REMARK 610|\
 ^REMARK 620|\
 ^REMARK 630|\
 ^REMARK 800|\
 ^REMARK 900|\
 ^REMARK 999|\
 ^REVDAT|\
-^SCALE|\
 ^SEQADV|\
 ^SITE  |\
 ^SLTBRG|\
