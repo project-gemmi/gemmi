@@ -64,7 +64,7 @@ struct SymImage {
   std::string pdb_symbol(bool underscore) const {
     char nnn[4] = "555";
     for (int i = 0; i < 3; ++i)
-      nnn[i] += box[0];
+      nnn[i] -= box[i];
     return std::to_string(sym_id + 1) + (underscore ? "_" : "") + nnn;
   }
 };
