@@ -10,7 +10,7 @@ from common import full_path, get_path_for_tempfile
 def is_written_to_pdb(line, via_cif):
     if line[:6] in ['COMPND', 'SOURCE', 'MDLTYP', 'AUTHOR', 'REVDAT', 'JRNL  ',
                     'DBREF ', 'SEQADV', 'HET   ', 'HETNAM', 'FORMUL',
-                    'SITE  ', 'MASTER']:
+                    'SITE  ', 'MASTER', 'CONECT']:
         return False
     # ORIGX is written only if it is a non-identity matrix
     # SCALE is written only if it is non-default
@@ -392,6 +392,17 @@ class TestMol(unittest.TestCase):
 
     def test_read_write_5cvz_final_via_cif(self):
         self.test_read_write_5cvz_final(via_cif=True)
+
+    def test_read_write_4oz7(self, via_cif=False):
+        path = full_path('4oz7.pdb')
+        with open(path) as f:
+            expected = [line for line in f if is_written_to_pdb(line, via_cif)]
+        st = gemmi.read_structure(path, merge_chain_parts=False)
+        out_lines = self.write_and_read(st, via_cif)
+        self.assertEqual(expected, out_lines)
+
+    def test_read_write_4oz7_via_cif(self):
+        self.test_read_write_4oz7(via_cif=True)
 
     def test_pdb_element_names(self):
         pdb_line = "HETATM 4154 MG    MG A 341       1.384  19.340  11.968" \
