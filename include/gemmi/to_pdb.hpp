@@ -491,8 +491,8 @@ inline void write_header(const Structure& st, std::ostream& os,
       int counter = 0;
       for (const Connection& con : st.models[0].connections)
         if (con.type == Connection::Disulf) {
-          const_CRA cra1 = st.models[0].find_cra(con.atom[0]);
-          const_CRA cra2 = st.models[0].find_cra(con.atom[1]);
+          const_CRA cra1 = st.models[0].find_cra(con.atom_addr1);
+          const_CRA cra2 = st.models[0].find_cra(con.atom_addr2);
           if (!cra1.atom || !cra2.atom)
             continue;
           SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
@@ -512,8 +512,8 @@ inline void write_header(const Structure& st, std::ostream& os,
       for (const Connection& con : st.models[0].connections)
         if (con.type == Connection::Covale || con.type == Connection::MetalC ||
             con.type == Connection::None) {
-          const_CRA cra1 = st.models[0].find_cra(con.atom[0]);
-          const_CRA cra2 = st.models[0].find_cra(con.atom[1]);
+          const_CRA cra1 = st.models[0].find_cra(con.atom_addr1);
+          const_CRA cra2 = st.models[0].find_cra(con.atom_addr2);
           if (!cra1.atom || !cra2.atom)
             continue;
           SymImage im = st.cell.find_nearest_image(cra1.atom->pos,

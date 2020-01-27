@@ -397,25 +397,25 @@ void Topo::initialize_refmac_topology(Model& model0,
     if (conn.type == Connection::Hydrog || conn.type == Connection::MetalC)
       continue;
     ExtraLink extra;
-    extra.res1 = model0.find_cra(conn.atom[0]).residue;
-    extra.res2 = model0.find_cra(conn.atom[1]).residue;
+    extra.res1 = model0.find_cra(conn.atom_addr1).residue;
+    extra.res2 = model0.find_cra(conn.atom_addr2).residue;
     if (!extra.res1 || !extra.res2)
       continue;
-    extra.alt1 = conn.atom[0].altloc;
-    extra.alt2 = conn.atom[1].altloc;
-    if (const ChemLink* match =
-        monlib.match_link(extra.res1->name, conn.atom[0].atom_name,
-                          extra.res2->name, conn.atom[1].atom_name)) {
+    extra.alt1 = conn.atom_addr1.altloc;
+    extra.alt2 = conn.atom_addr2.altloc;
+    const ChemLink* match =
+        monlib.match_link(extra.res1->name, conn.atom_addr1.atom_name,
+                          extra.res2->name, conn.atom_addr2.atom_name);
+    if (!match) {
+      match = monlib.match_link(extra.res2->name, conn.atom_addr2.atom_name,
+                                extra.res1->name, conn.atom_addr1.atom_name);
+      if (match) {
+        std::swap(extra.res1, extra.res2);
+        std::swap(extra.alt1, extra.alt2);
+      }
+    }
+    if (match) {
       extra.link_id = match->id;
-      // add modifications from the link
-      find_resinfo(extra.res1)->add_mod(match->side1.mod);
-      find_resinfo(extra.res2)->add_mod(match->side2.mod);
-    } else if ((match =
-                monlib.match_link(extra.res2->name, conn.atom[1].atom_name,
-                                  extra.res1->name, conn.atom[0].atom_name))) {
-      extra.link_id = match->id;
-      std::swap(extra.res1, extra.res2);
-      std::swap(extra.alt1, extra.alt2);
       // add modifications from the link
       find_resinfo(extra.res1)->add_mod(match->side1.mod);
       find_resinfo(extra.res2)->add_mod(match->side2.mod);
@@ -425,8 +425,8 @@ void Topo::initialize_refmac_topology(Model& model0,
       cl.side2.comp = extra.res2->name;
       cl.id = cl.side1.comp + "-" + cl.side2.comp;
       Restraints::Bond bond;
-      bond.id1 = Restraints::AtomId{1, conn.atom[0].atom_name};
-      bond.id2 = Restraints::AtomId{2, conn.atom[1].atom_name};
+      bond.id1 = Restraints::AtomId{1, conn.atom_addr1.atom_name};
+      bond.id2 = Restraints::AtomId{2, conn.atom_addr2.atom_name};
       bond.type = BondType::Unspec;
       bond.aromatic = false;
       bond.value = conn.reported_distance;

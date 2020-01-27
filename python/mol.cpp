@@ -129,10 +129,13 @@ void add_mol(py::module& m) {
   py::class_<Connection>(m, "Connection")
     .def_readwrite("name", &Connection::name)
     .def_readwrite("type", &Connection::type)
+    .def_readwrite("asu", &Connection::asu)
+    .def_readwrite("atom_addr1", &Connection::atom_addr1)
+    .def_readwrite("atom_addr2", &Connection::atom_addr2)
     .def_readwrite("reported_distance", &Connection::reported_distance)
     .def("__repr__", [](const Connection& self) {
         return tostr("<gemmi.Connection ", self.name, "  ",
-                     self.atom[0].str(), " - ", self.atom[1].str(), '>');
+                     self.atom_addr1.str(), " - ", self.atom_addr2.str(), '>');
     });
 
   py::bind_vector<std::vector<Connection>>(m, "ConnectionList");
@@ -222,6 +225,18 @@ void add_mol(py::module& m) {
                      self.models.size(), " model(s)>");
     });
 
+  py::class_<AtomAddress>(m, "AtomAddress")
+    .def(py::init<>())
+    .def(py::init<const Chain&, const Residue&, const Atom&>())
+    .def_readwrite("chain", &AtomAddress::chain_name)
+    .def_readwrite("res_id", &AtomAddress::res_id)
+    .def_readwrite("atom_name", &AtomAddress::atom_name)
+    .def_readwrite("altloc", &AtomAddress::altloc)
+    .def("__str__", &AtomAddress::str)
+    .def("__repr__", [](const AtomAddress& self) {
+        return tostr("<gemmi.AtomAddress ", self.str(), '>');
+    });
+
   py::class_<CRA>(m, "CRA")
     .def_readonly("chain", &CRA::chain)
     .def_readonly("residue", &CRA::residue)
@@ -255,6 +270,7 @@ void add_mol(py::module& m) {
          py::arg("chain"), py::arg("seqid"),
          py::return_value_policy::reference_internal)
     .def("get_all_residue_names", &Model::get_all_residue_names)
+    .def("find_cra", (CRA (Model::*)(const AtomAddress&)) &Model::find_cra)
     .def("find_chain", &Model::find_chain,
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("find_last_chain", &Model::find_last_chain,
@@ -424,11 +440,18 @@ void add_mol(py::module& m) {
         return tostr("<gemmi.SeqId ", self.str(), '>');
     });
 
-  py::class_<Residue>(m, "Residue")
+  py::class_<ResidueId>(m, "ResidueId")
     .def(py::init<>())
-    .def_readwrite("name", &Residue::name)
-    .def_readwrite("seqid", &Residue::seqid)
-    .def_readwrite("segment", &Residue::segment)
+    .def_readwrite("name", &ResidueId::name)
+    .def_readwrite("seqid", &ResidueId::seqid)
+    .def_readwrite("segment", &ResidueId::segment)
+    .def("__str__", &ResidueId::str)
+    .def("__repr__", [](const Residue& self) {
+        return tostr("<gemmi.ResidueId ", self.str(), '>');
+    });
+
+  py::class_<Residue, ResidueId>(m, "Residue")
+    .def(py::init<>())
     .def_readwrite("subchain", &Residue::subchain)
     .def_readwrite("entity_type", &Residue::entity_type)
     .def_readwrite("het_flag", &Residue::het_flag)

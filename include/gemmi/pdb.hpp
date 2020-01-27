@@ -190,6 +190,19 @@ inline Asu compare_link_symops(const std::string& record) {
   return Asu::Different;
 }
 
+// Atom name and altloc are not provided in the SSBOND record.
+// Usually it is SG (cysteine), but other disulfide bonds are also possible.
+// If it's not SG, we pick the first sulfur atom in the residue.
+inline void complete_ssbond_atom(AtomAddress& ad, const Model& mdl) {
+  ad.atom_name = "SG";
+  const_CRA cra = mdl.find_cra(ad);
+  if (cra.residue && (!cra.atom || cra.atom->element != El::S))
+    if (const Atom* a = cra.residue->find_by_element(El::S)) {
+      ad.atom_name = a->name;
+      ad.altloc = a->altloc;
+    }
+}
+
 inline
 void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
   int disulf_count = 0;
@@ -203,30 +216,16 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       c.name = "disulf" + std::to_string(++disulf_count);
       c.type = Connection::Disulf;
       const char* r = record.c_str();
-      c.atom[0].chain_name = read_string(r + 14, 2);
-      c.atom[0].res_id = read_res_id(r + 17, r + 11);
-      c.atom[0].atom_name = "SG";
-      c.atom[1].chain_name = read_string(r + 28, 2);
-      c.atom[1].res_id = read_res_id(r + 31, r + 25);
-      c.atom[1].atom_name = "SG";
+      c.atom_addr1.chain_name = read_string(r + 14, 2);
+      c.atom_addr1.res_id = read_res_id(r + 17, r + 11);
+      c.atom_addr2.chain_name = read_string(r + 28, 2);
+      c.atom_addr2.res_id = read_res_id(r + 31, r + 25);
       c.asu = compare_link_symops(record);
       if (record.length() > 73)
         c.reported_distance = read_double(r + 73, 5);
       for (Model& mdl : st.models) {
-        for (AtomAddress& ad : c.atom) {
-          CRA cra = mdl.find_cra(ad);
-          if (cra.residue) {
-            // Atom name and altloc are not provided in the SSBOND record.
-            // Usually it is SG (cysteine), but other disulfide bonds
-            // are also possible, so if it's not CYS and SG is absent
-            // we pick the first sulfur atom in the residue.
-            if (!cra.atom)
-              if (const Atom* a = cra.residue->find_by_element(El::S)) {
-                ad.atom_name = a->name;
-                ad.altloc = a->altloc;
-              }
-          }
-        }
+        complete_ssbond_atom(c.atom_addr1, mdl);
+        complete_ssbond_atom(c.atom_addr2, mdl);
         mdl.connections.emplace_back(c);
       }
     } else if (record[0] == 'L' || record[0] == 'l') { // LINK
@@ -244,10 +243,11 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       }
       for (int i : {0, 1}) {
         const char* t = record.c_str() + 30 * i;
-        c.atom[i].chain_name = read_string(t + 20, 2);
-        c.atom[i].res_id = read_res_id(t + 22, t + 17);
-        c.atom[i].atom_name = read_string(t + 12, 4);
-        c.atom[i].altloc = read_altloc(t[16]);
+        AtomAddress& ad = (i == 0 ? c.atom_addr1 : c.atom_addr2);
+        ad.chain_name = read_string(t + 20, 2);
+        ad.res_id = read_res_id(t + 22, t + 17);
+        ad.atom_name = read_string(t + 12, 4);
+        ad.altloc = read_altloc(t[16]);
       }
       c.asu = compare_link_symops(record);
       if (record.length() > 73)

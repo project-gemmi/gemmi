@@ -1254,9 +1254,58 @@ so just in case we store it as a string.
   '1'
 
 
-The model contains also a list of connections (for example, from LINK and
-SSBOND records). How connections are stored may change in the future
-and it is left undocumented for now (TODO).
+The model contains also a list of connections:
+
+.. doctest::
+
+  >>> model = gemmi.read_structure('../tests/4oz7.pdb')[0]
+  >>> model.connections[0]
+  <gemmi.Connection disulf1  A/CYS 4/SG - A/CYS 10/SG>
+  >>> model.connections[3]
+  <gemmi.Connection covale2  A/SER 5/C - A/22W 6/N>
+  >>> model.connections[5]
+  <gemmi.Connection metalc1  A/22W 6/S - A/CU1 101/CU>
+
+In the mmCIF format, each connection -- row in the _struct_conn table --
+has a name and type.
+When reading a PDB file, we generate names and infer types for connections
+from the LINK and SSBOND records:
+
+.. doctest::
+
+  >>> model.connections[0].name
+  'disulf1'
+  >>> model.connections[0].type
+  ConnectionType.Disulf
+
+Each connection stores also:
+
+* :ref:`addresses <atom_address>` of two atoms
+  (``atom_addr1`` and ``atom_addr2``),
+
+  .. doctest::
+
+    >>> model.connections[3].atom_addr1
+    <gemmi.AtomAddress A/SER 5/C>
+
+* a flag that for connections between different symmetry images,
+
+  .. doctest::
+
+    >>> model.connections[3].asu
+    Asu.Same
+    >>> model.connections[-1].asu
+    Asu.Different
+
+* and a distance read from the file.
+
+  .. doctest::
+
+    >>> model.connections[3].reported_distance
+    1.35
+
+When the connection is written to a file, the symmetry image and the distance
+are recalculated.
 
 ----
 
@@ -1800,6 +1849,21 @@ to calculate corresponding isotropic ADP:
 
   >>> atom.b_iso_from_aniso()
   9.443238117199861
+
+
+.. _atom_address:
+
+AtomAddress
+===========
+
+TODO
+
+.. .. doctest::
+  >>> addr = model.connections[0].atom_addr1
+  >>> addr.chain_name
+  >>> addr.res_id
+  >>> addr.atom_name
+  >>> addr.altloc
 
 
 Sequence

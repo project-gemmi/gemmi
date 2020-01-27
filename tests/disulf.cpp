@@ -48,8 +48,8 @@ std::vector<Connection> find_disulfide_bonds(const Model& model,
           c.name = "disulf" + std::to_string(ret.size() + 1);
           c.type = Connection::Disulf;
           c.asu = im.same_asu() ? Asu::Same : Asu::Different;
-          c.atom[0] = AtomAddress(*atoms[i].chain, *atoms[i].residue, *a1);
-          c.atom[1] = AtomAddress(*atoms[j].chain, *atoms[j].residue, *a2);
+          c.atom_addr1 = AtomAddress(*atoms[i].chain, *atoms[i].residue, *a1);
+          c.atom_addr2 = AtomAddress(*atoms[j].chain, *atoms[j].residue, *a2);
           ret.push_back(c);
         }
       }
@@ -100,12 +100,12 @@ static void check_disulf(const std::string& path) {
   printf("%10s  %zu %zu\n", st.name.c_str(), c1.size(), c2.size());
   if (c1.size() != c2.size() || verbose) {
     for (const Connection& con : c1) {
-      const Atom* a1 = st.models[0].find_atom(con.atom[0]);
-      const Atom* a2 = st.models[0].find_atom(con.atom[1]);
+      const Atom* a1 = st.models[0].find_atom(con.atom_addr1);
+      const Atom* a2 = st.models[0].find_atom(con.atom_addr2);
       if (!a1 || !a2)
         fail("Ooops, cannot find atom.");
       SymImage im = st.cell.find_nearest_image(a1->pos, a2->pos, con.asu);
-      print_connection(con.atom[0], con.atom[1], im);
+      print_connection(con.atom_addr1, con.atom_addr2, im);
     }
     printf("---\n");
     for (const BondInfo& bi : c2) {
