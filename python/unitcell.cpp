@@ -76,7 +76,7 @@ void add_unitcell(py::module& m) {
   py::class_<SymImage>(m, "SymImage")
     .def("dist", &SymImage::dist)
     .def("__repr__", [](const SymImage& self) {
-        return "<gemmi.SymImage cell:[" +
+        return "<gemmi.SymImage box:[" +
           triple(self.box[0], self.box[1], self.box[2]) +
           "] sym:" + std::to_string(self.sym_id) + ">";
     });

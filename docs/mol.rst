@@ -1258,13 +1258,14 @@ The model contains also a list of connections:
 
 .. doctest::
 
-  >>> model = gemmi.read_structure('../tests/4oz7.pdb')[0]
+  >>> st = gemmi.read_structure('../tests/4oz7.pdb')
+  >>> model = st[0]
   >>> model.connections[0]
   <gemmi.Connection disulf1  A/CYS 4/SG - A/CYS 10/SG>
-  >>> model.connections[3]
-  <gemmi.Connection covale2  A/SER 5/C - A/22W 6/N>
-  >>> model.connections[5]
-  <gemmi.Connection metalc1  A/22W 6/S - A/CU1 101/CU>
+  >>> model.connections[2]
+  <gemmi.Connection covale1  A/22Q 1/C - A/ALA 2/N>
+  >>> model.connections[-1]
+  <gemmi.Connection metalc8  B/22Q 1/S - A/CU1 101/CU>
 
 In the mmCIF format, each connection -- row in the _struct_conn table --
 has a name and type.
@@ -1285,14 +1286,14 @@ Each connection stores also:
 
   .. doctest::
 
-    >>> model.connections[3].atom_addr1
-    <gemmi.AtomAddress A/SER 5/C>
+    >>> model.connections[2].atom_addr2
+    <gemmi.AtomAddress A/ALA 2/N>
 
 * a flag that for connections between different symmetry images,
 
   .. doctest::
 
-    >>> model.connections[3].asu
+    >>> model.connections[2].asu
     Asu.Same
     >>> model.connections[-1].asu
     Asu.Different
@@ -1301,11 +1302,38 @@ Each connection stores also:
 
   .. doctest::
 
-    >>> model.connections[3].reported_distance
-    1.35
+    >>> model.connections[-1].reported_distance
+    2.22
 
 When the connection is written to a file, the symmetry image and the distance
-are recalculated.
+are recalculated like this:
+
+.. doctest::
+
+  >>> con = model.connections[-1]
+  >>> pos1 = model.find_cra(con.atom_addr1).atom.pos
+  >>> pos2 = model.find_cra(con.atom_addr2).atom.pos
+  >>> st.cell.find_nearest_image(pos1, pos2, con.asu)
+  <gemmi.SymImage box:[2, 1, 1] sym:5>
+  >>> _.dist()
+  2.22115330402924
+
+The vast majority of connections is intramolecular, so usually you get:
+
+.. testcode::
+  :hide:
+
+  con = model.connections[0]
+  pos1 = model.find_cra(con.atom_addr1).atom.pos
+  pos2 = model.find_cra(con.atom_addr2).atom.pos
+
+.. doctest::
+
+  >>> st.cell.find_nearest_image(pos1, pos2, con.asu)
+  <gemmi.SymImage box:[0, 0, 0] sym:0>
+
+The section about :ref:`AtomAddress <atom_address>`
+has an example that shows how to create a new connection.
 
 ----
 
