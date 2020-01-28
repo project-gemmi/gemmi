@@ -170,8 +170,7 @@ static cif::Document make_crd(const gemmi::Structure& st,
         const gemmi::Entity* ent = st.get_entity_of(sub);
         asym_loop.add_row({sub.subchain_id(), (ent ? ent->name : "?")});
       }
-  const auto& connections = model0.connections;
-  if (!connections.empty()) {
+  if (!st.connections.empty()) {
     items.emplace_back(cif::CommentArg{"#################\n"
                                        "## STRUCT_CONN ##\n"
                                        "#################"});
@@ -405,7 +404,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                                                 gemmi::read_cif_gz);
 
     Topo topo;
-    topo.initialize_refmac_topology(model0, st.entities, monlib);
+    topo.initialize_refmac_topology(st, model0, monlib);
 
     // add H, sort atoms in residues and assign serial numbers
     int serial = 0;

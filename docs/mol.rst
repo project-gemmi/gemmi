@@ -1106,6 +1106,9 @@ the ``Structure`` has the following properties:
 * ``entities`` (C++ type: ``vector<Entity>``) -- additional information
   about :ref:`subchains <subchain>`, such as entity type and polymer's
   sequence,
+* ``connections`` (C++ type: ``vector<Connection>``) -- list of connections
+  corresponding to the _struct_conn category in mmCIF, or to the pdb records
+  LINK and SSBOND,
 * ``info`` (C++ type: ``map<string, string>``) --
   minimal metadata with keys being mmcif tags (_entry.id, _exptl.method, ...),
 * ``raw_remarks`` (C++ type: ``vector<string>``) -- REMARK records
@@ -1168,7 +1171,8 @@ After adding or removing models you may call:
 which will set model *names* to sequential numbers (next section
 explains why models have names).
 
-----
+Entity
+------
 
 *Entity* is a new concept introduced in the mmCIF format.
 If the structure is read from a PDB file, we can assign entities
@@ -1189,7 +1193,111 @@ Calling ``setup_entities`` is useful when converting from PDB to mmCIF
   >>> st.setup_entities()
   >>> st.make_mmcif_document().write_file('out.cif')
 
-----
+The Entity object may change in the future.
+Here we only show its properties in an example:
+
+.. doctest::
+
+  >>> for entity in st.entities: print(entity)  #doctest: +ELLIPSIS
+  <gemmi.Entity 'A' polymer polypeptide(L) object at 0x...>
+  <gemmi.Entity 'water' water object at 0x...>
+  >>> ent = st.entities[0]
+  >>> ent.name
+  'A'
+  >>> ent.subchains
+  ['Apoly']
+  >>> ent.entity_type
+  EntityType.Polymer
+  >>> ent.polymer_type
+  PolymerType.PeptideL
+  >>> ent.full_sequence[:5]
+  ['MET', 'GLU', 'GLN', 'ARG', 'ILE']
+
+Connection
+----------
+
+The list of connections contains bonds explicitely annotated in the file:
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/4oz7.pdb')
+  >>> st.connections[0]
+  <gemmi.Connection disulf1  A/CYS 4/SG - A/CYS 10/SG>
+  >>> st.connections[2]
+  <gemmi.Connection covale1  A/22Q 1/C - A/ALA 2/N>
+  >>> st.connections[-1]
+  <gemmi.Connection metalc8  B/22Q 1/S - A/CU1 101/CU>
+
+In the mmCIF format, each connection -- row in the _struct_conn table --
+has a name and type.
+When reading a PDB file, we generate names and infer types for connections
+from the LINK and SSBOND records:
+
+.. doctest::
+
+  >>> st.connections[0].name
+  'disulf1'
+  >>> st.connections[0].type
+  ConnectionType.Disulf
+
+Each connection stores also:
+
+* :ref:`addresses <atom_address>` of two atoms
+  (``atom_addr1`` and ``atom_addr2``),
+
+  .. doctest::
+
+    >>> st.connections[2].atom_addr2
+    <gemmi.AtomAddress A/ALA 2/N>
+
+* a flag that for connections between different symmetry images,
+
+  .. doctest::
+
+    >>> st.connections[2].asu
+    Asu.Same
+    >>> st.connections[-1].asu
+    Asu.Different
+
+* and a distance read from the file.
+
+  .. doctest::
+
+    >>> st.connections[-1].reported_distance
+    2.22
+
+When the connection is written to a file, the symmetry image and the distance
+are recalculated like this:
+
+.. doctest::
+
+  >>> con = st.connections[-1]
+  >>> pos1 = st[0].find_cra(con.atom_addr1).atom.pos
+  >>> pos2 = st[0].find_cra(con.atom_addr2).atom.pos
+  >>> st.cell.find_nearest_image(pos1, pos2, con.asu)
+  <gemmi.SymImage box:[2, 1, 1] sym:5>
+  >>> _.dist()
+  2.22115330402924
+
+The vast majority of connections is intramolecular, so usually you get:
+
+.. testcode::
+  :hide:
+
+  con = st.connections[0]
+  pos1 = st[0].find_cra(con.atom_addr1).atom.pos
+  pos2 = st[0].find_cra(con.atom_addr2).atom.pos
+
+.. doctest::
+
+  >>> st.cell.find_nearest_image(pos1, pos2, con.asu)
+  <gemmi.SymImage box:[0, 0, 0] sym:0>
+
+The section about :ref:`AtomAddress <atom_address>`
+has an example that shows how to create a new connection.
+
+Common operations
+-----------------
 
 In Python, ``Structure`` has also methods for more specialized,
 but often needed operations:
@@ -1252,88 +1360,6 @@ so just in case we store it as a string.
 
   >>> model.name
   '1'
-
-
-The model contains also a list of connections:
-
-.. doctest::
-
-  >>> st = gemmi.read_structure('../tests/4oz7.pdb')
-  >>> model = st[0]
-  >>> model.connections[0]
-  <gemmi.Connection disulf1  A/CYS 4/SG - A/CYS 10/SG>
-  >>> model.connections[2]
-  <gemmi.Connection covale1  A/22Q 1/C - A/ALA 2/N>
-  >>> model.connections[-1]
-  <gemmi.Connection metalc8  B/22Q 1/S - A/CU1 101/CU>
-
-In the mmCIF format, each connection -- row in the _struct_conn table --
-has a name and type.
-When reading a PDB file, we generate names and infer types for connections
-from the LINK and SSBOND records:
-
-.. doctest::
-
-  >>> model.connections[0].name
-  'disulf1'
-  >>> model.connections[0].type
-  ConnectionType.Disulf
-
-Each connection stores also:
-
-* :ref:`addresses <atom_address>` of two atoms
-  (``atom_addr1`` and ``atom_addr2``),
-
-  .. doctest::
-
-    >>> model.connections[2].atom_addr2
-    <gemmi.AtomAddress A/ALA 2/N>
-
-* a flag that for connections between different symmetry images,
-
-  .. doctest::
-
-    >>> model.connections[2].asu
-    Asu.Same
-    >>> model.connections[-1].asu
-    Asu.Different
-
-* and a distance read from the file.
-
-  .. doctest::
-
-    >>> model.connections[-1].reported_distance
-    2.22
-
-When the connection is written to a file, the symmetry image and the distance
-are recalculated like this:
-
-.. doctest::
-
-  >>> con = model.connections[-1]
-  >>> pos1 = model.find_cra(con.atom_addr1).atom.pos
-  >>> pos2 = model.find_cra(con.atom_addr2).atom.pos
-  >>> st.cell.find_nearest_image(pos1, pos2, con.asu)
-  <gemmi.SymImage box:[2, 1, 1] sym:5>
-  >>> _.dist()
-  2.22115330402924
-
-The vast majority of connections is intramolecular, so usually you get:
-
-.. testcode::
-  :hide:
-
-  con = model.connections[0]
-  pos1 = model.find_cra(con.atom_addr1).atom.pos
-  pos2 = model.find_cra(con.atom_addr2).atom.pos
-
-.. doctest::
-
-  >>> st.cell.find_nearest_image(pos1, pos2, con.asu)
-  <gemmi.SymImage box:[0, 0, 0] sym:0>
-
-The section about :ref:`AtomAddress <atom_address>`
-has an example that shows how to create a new connection.
 
 ----
 
@@ -1881,17 +1907,83 @@ to calculate corresponding isotropic ADP:
 
 .. _atom_address:
 
-AtomAddress
-===========
+AtomAddress and CRA
+===================
 
-TODO
+Atoms are often referred to by specifying their chain, residue, atom name
+and, optionally, altloc. In gemmi, a structure to store such a specification
+is called AtomAddress.
+For instance, the following line from a PDB file:
 
-.. .. doctest::
-  >>> addr = model.connections[0].atom_addr1
+.. code-block:: none
+
+  LINK         C   22Q A   1                 N   ALA A   2     1555   1555  1.34
+
+corresponds to Connection that contains two addresses:
+
+.. doctest::
+
+  >>> st.connections[2]
+  <gemmi.Connection covale1  A/22Q 1/C - A/ALA 2/N>
+
+Let us check the properties of the second address:
+
+.. doctest::
+
+  >>> addr = _.atom_addr2
+  >>> addr
+  <gemmi.AtomAddress A/ALA 2/N>
   >>> addr.chain_name
+  'A'
   >>> addr.res_id
+  <gemmi.ResidueId 2(ALA)>
+  >>> addr.res_id.seqid
+  <gemmi.SeqId 2>
+  >>> addr.res_id.name
+  'ALA'
   >>> addr.atom_name
+  'N'
   >>> addr.altloc
+  '\x00'
+
+A valid AtomAddress points to a chain, residue and atom in a model.
+So we have another small structure, called CRA, for keeping pointers to
+the Chain, Residue and Atom together:
+
+.. doctest::
+
+  >>> cra = st[0].find_cra(addr)
+  >>> cra
+  <gemmi.CRA A/ALA 2/N>
+  >>> cra.chain
+  <gemmi.Chain A with 10 res>
+  >>> cra.residue
+  <gemmi.Residue 2(ALA) with 5 atoms>
+  >>> cra.atom
+  <gemmi.Atom N at (-24.5, -13.9, 14.8)>
+
+Now, as an exercise, we will delete and re-create a disulfide bond:
+
+.. doctest::
+
+  >>> # remove
+  >>> st.connections.pop(0)
+  <gemmi.Connection disulf1  A/CYS 4/SG - A/CYS 10/SG>
+  >>> # create
+  >>> con = gemmi.Connection()
+  >>> con
+  <gemmi.Connection   / ?/ - / ?/>
+  >>> con.name = 'new_disulf'
+  >>> con.type = gemmi.ConnectionType.Disulf
+  >>> con.asu = gemmi.Asu.Same
+  >>> chain_a = st[0]['A']
+  >>> res4 = chain_a['4']['CYS']
+  >>> res10 = chain_a['10']['CYS']
+  >>> con.atom_addr1 = gemmi.AtomAddress(chain_a, res4, res4.sole_atom('SG'))
+  >>> con.atom_addr2 = gemmi.AtomAddress(chain_a, res10, res10.sole_atom('SG'))
+  >>> st.connections.append(con)
+  >>> st.connections[-1]
+  <gemmi.Connection new_disulf  A/CYS 4/SG - A/CYS 10/SG>
 
 
 Sequence

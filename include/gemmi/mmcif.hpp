@@ -202,8 +202,7 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
       a.atom_name = row.str(6+i);
       a.altloc = row.has2(8+i) ? cif::as_char(row[8+i], '\0') : '\0';
     }
-    for (Model& mdl : st.models)
-      mdl.connections.emplace_back(c);
+    st.connections.emplace_back(c);
   }
 }
 

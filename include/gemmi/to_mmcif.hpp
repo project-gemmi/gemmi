@@ -257,7 +257,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
        "ptnr2_label_seq_id", "ptnr2_label_atom_id", "pdbx_ptnr2_label_alt_id",
        "ptnr2_auth_seq_id", "pdbx_ptnr2_PDB_ins_code", "ptnr2_symmetry",
        "details", "pdbx_dist_value"});
-  for (const Connection& con : st.models.at(0).connections) {
+  for (const Connection& con : st.connections) {
     const_CRA cra1 = st.models[0].find_cra(con.atom_addr1);
     const_CRA cra2 = st.models[0].find_cra(con.atom_addr2);
     if (!cra1.atom || !cra2.atom)

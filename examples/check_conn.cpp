@@ -17,7 +17,7 @@ static void check_struct_conn(cif::Block& block) {
                                                         "ptnr2_symmetry",
                                                         "pdbx_dist_value" });
   Structure st = make_structure_from_block(block);
-  for (Connection& con : st.models[0].connections) {
+  for (Connection& con : st.connections) {
     const Atom* atom[2] = {nullptr, nullptr};
     for (int n : {0, 1}) {
       const AtomAddress& ad = (n == 0 ? con.atom_addr1 : con.atom_addr2);
@@ -51,7 +51,7 @@ static void check_struct_conn(cif::Block& block) {
     }
   }
   for (cif::Table::Row row : struct_conn)
-    if (st.models[0].find_connection_by_name(row.str(0)) == nullptr)
+    if (st.find_connection_by_name(row.str(0)) == nullptr)
       std::printf("%s: connection not read: %s\n", block.name.c_str(),
                   row.str(0).c_str());
 }

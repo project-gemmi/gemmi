@@ -125,7 +125,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                                                    gemmi::read_cif_gz);
     for (gemmi::Model& model : st.models) {
       Topo topo;
-      topo.initialize_refmac_topology(model, st.entities, monlib);
+      topo.initialize_refmac_topology(st, model, monlib);
       remove_add_sort(topo, p.options);
       topo.finalize_refmac_topology(monlib);
       for (Topo::ChainInfo& chain_info : topo.chains)

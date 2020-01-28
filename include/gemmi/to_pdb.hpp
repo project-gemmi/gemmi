@@ -489,7 +489,7 @@ inline void write_header(const Structure& st, std::ostream& os,
     // SSBOND  (note: uses only the first model and primary conformation)
     if (opt.ssbond_records) {
       int counter = 0;
-      for (const Connection& con : st.models[0].connections)
+      for (const Connection& con : st.connections)
         if (con.type == Connection::Disulf) {
           const_CRA cra1 = st.models[0].find_cra(con.atom_addr1);
           const_CRA cra2 = st.models[0].find_cra(con.atom_addr2);
@@ -509,7 +509,7 @@ inline void write_header(const Structure& st, std::ostream& os,
 
     // LINK  (note: uses only the first model and primary conformation)
     if (!st.models.empty() && opt.link_records) {
-      for (const Connection& con : st.models[0].connections)
+      for (const Connection& con : st.connections)
         if (con.type == Connection::Covale || con.type == Connection::MetalC ||
             con.type == Connection::None) {
           const_CRA cra1 = st.models[0].find_cra(con.atom_addr1);

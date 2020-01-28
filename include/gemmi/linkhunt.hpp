@@ -15,8 +15,8 @@
 
 namespace gemmi {
 
-inline Connection* find_connection_by_cra(Model& model, CRA& cra1, CRA& cra2) {
-  for (Connection& c : model.connections)
+inline Connection* find_connection_by_cra(Structure& st, CRA& cra1, CRA& cra2) {
+  for (Connection& c : st.connections)
     if ((atom_matches(cra1, c.atom_addr1) && atom_matches(cra2, c.atom_addr2))||
         (atom_matches(cra1, c.atom_addr2) && atom_matches(cra2, c.atom_addr1)))
       return &c;
@@ -192,7 +192,7 @@ struct LinkHunt {
       }
     }
     for (Match& match : results)
-      match.conn = find_connection_by_cra(model, match.cra1, match.cra2);
+      match.conn = find_connection_by_cra(st, match.cra1, match.cra2);
     return results;
   }
 };

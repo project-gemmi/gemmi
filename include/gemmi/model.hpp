@@ -729,7 +729,6 @@ struct Model {
   static const char* what() { return "Model"; }
   std::string name;  // actually an integer number
   std::vector<Chain> chains;
-  std::vector<Connection> connections;
   explicit Model(std::string mname) noexcept : name(mname) {}
 
   // Returns the first chain with given name, or nullptr.
@@ -806,10 +805,6 @@ struct Model {
         if (!in_vector(res.name, names))
           names.push_back(res.name);
     return names;
-  }
-
-  Connection* find_connection_by_name(const std::string& conn_name) {
-    return impl::find_or_null(connections, conn_name);
   }
 
   CRA find_cra(const AtomAddress& address) {
@@ -904,6 +899,7 @@ struct Structure {
   std::vector<Model> models;
   std::vector<NcsOp> ncs;
   std::vector<Entity> entities;
+  std::vector<Connection> connections;
   std::vector<Helix> helices;
   std::vector<Sheet> sheets;
   std::vector<Assembly> assemblies;
@@ -955,6 +951,10 @@ struct Structure {
   }
   Entity* get_entity_of(const ConstResidueSpan& sub) {
     return const_cast<Entity*>(gemmi::get_entity_of(sub, entities));
+  }
+
+  Connection* find_connection_by_name(const std::string& conn_name) {
+    return impl::find_or_null(connections, conn_name);
   }
 
   double get_ncs_multiplier() const {

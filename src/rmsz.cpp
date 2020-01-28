@@ -167,7 +167,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                                                   model.get_all_residue_names(),
                                                   gemmi::read_cif_gz);
       Topo topo;
-      topo.initialize_refmac_topology(model, st.entities, monlib);
+      topo.initialize_refmac_topology(st, model, monlib);
       topo.finalize_refmac_topology(monlib);
 
       RMSes rmses;

@@ -287,8 +287,7 @@ struct Topo {
   // Model is non-const b/c we store non-const pointers to residues in Topo.
   // Because of the pointers, don't add or remove residues after this step.
   // Monlib may get modified by addition of extra links from the model.
-  void initialize_refmac_topology(Model& model0,
-                                  const std::vector<Entity>& entities,
+  void initialize_refmac_topology(const Structure& st, Model& model0,
                                   MonLib& monlib);
 
   // This step stores pointers to gemmi::Atom's from model0,
@@ -364,14 +363,12 @@ inline void Topo::ChainInfo::add_refmac_builtin_modifications() {
 
 
 // Model is non-const b/c we store non-const pointers to residues in Topo.
-inline
-void Topo::initialize_refmac_topology(Model& model0,
-                                      const std::vector<Entity>& entities,
-                                      MonLib& monlib) {
+inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
+                                             MonLib& monlib) {
   // initialize chains and residues
   for (Chain& chain : model0.chains)
     for (ResidueSpan& sub : chain.subchains()) {
-      const Entity* ent = get_entity_of(sub, entities);
+      const Entity* ent = get_entity_of(sub, st.entities);
       chains.emplace_back();
       chains.back().initialize(sub, ent);
     }
@@ -392,7 +389,7 @@ void Topo::initialize_refmac_topology(Model& model0,
       }
   }
   // add extra links
-  for (const Connection& conn : model0.connections) {
+  for (const Connection& conn : st.connections) {
     // ignoring hydrogen bonds and metal coordination
     if (conn.type == Connection::Hydrog || conn.type == Connection::MetalC)
       continue;

@@ -127,6 +127,7 @@ void add_mol(py::module& m) {
     .value("None",   Connection::Type::None);
 
   py::class_<Connection>(m, "Connection")
+    .def(py::init<>())
     .def_readwrite("name", &Connection::name)
     .def_readwrite("type", &Connection::type)
     .def_readwrite("asu", &Connection::asu)
@@ -151,6 +152,7 @@ void add_mol(py::module& m) {
     .def_readwrite("ncs", &Structure::ncs)
     .def_readwrite("resolution", &Structure::resolution)
     .def_readwrite("entities", &Structure::entities)
+    .def_readwrite("connections", &Structure::connections)
     .def_readwrite("info", &Structure::info)
     .def("get_entity",
          (Entity* (Structure::*)(const std::string&)) &Structure::get_entity,
@@ -228,7 +230,7 @@ void add_mol(py::module& m) {
   py::class_<AtomAddress>(m, "AtomAddress")
     .def(py::init<>())
     .def(py::init<const Chain&, const Residue&, const Atom&>())
-    .def_readwrite("chain", &AtomAddress::chain_name)
+    .def_readwrite("chain_name", &AtomAddress::chain_name)
     .def_readwrite("res_id", &AtomAddress::res_id)
     .def_readwrite("atom_name", &AtomAddress::atom_name)
     .def_readwrite("altloc", &AtomAddress::altloc)
@@ -242,12 +244,13 @@ void add_mol(py::module& m) {
     .def_readonly("residue", &CRA::residue)
     .def_readonly("atom", &CRA::atom)
     .def("__str__", [](const CRA& self) { return atom_str(self); })
-    ;
+    .def("__repr__", [](const CRA& self) {
+        return tostr("<gemmi.CRA ", atom_str(self), '>');
+    });
 
   py::class_<Model>(m, "Model")
     .def(py::init<std::string>())
     .def_readwrite("name", &Model::name)
-    .def_readwrite("connections", &Model::connections)
     .def("__len__", [](const Model& self) { return self.chains.size(); })
     .def("__iter__", [](const Model& self) {
         return py::make_iterator(self.chains);
@@ -446,7 +449,7 @@ void add_mol(py::module& m) {
     .def_readwrite("seqid", &ResidueId::seqid)
     .def_readwrite("segment", &ResidueId::segment)
     .def("__str__", &ResidueId::str)
-    .def("__repr__", [](const Residue& self) {
+    .def("__repr__", [](const ResidueId& self) {
         return tostr("<gemmi.ResidueId ", self.str(), '>');
     });
 

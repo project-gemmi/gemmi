@@ -223,11 +223,9 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       c.asu = compare_link_symops(record);
       if (record.length() > 73)
         c.reported_distance = read_double(r + 73, 5);
-      for (Model& mdl : st.models) {
-        complete_ssbond_atom(c.atom_addr1, mdl);
-        complete_ssbond_atom(c.atom_addr2, mdl);
-        mdl.connections.emplace_back(c);
-      }
+      complete_ssbond_atom(c.atom_addr1, st.models.at(0));
+      complete_ssbond_atom(c.atom_addr2, st.models[0]);
+      st.connections.emplace_back(c);
     } else if (record[0] == 'L' || record[0] == 'l') { // LINK
       if (record.length() < 57)
         continue;
@@ -252,8 +250,7 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       c.asu = compare_link_symops(record);
       if (record.length() > 73)
         c.reported_distance = read_double(&record[73], 5);
-      for (Model& mdl : st.models)
-        mdl.connections.emplace_back(c);
+      st.connections.emplace_back(c);
     } else if (record[0] == 'C' || record[0] == 'c') { // CISPEP
       if (record.length() < 22)
         continue;
