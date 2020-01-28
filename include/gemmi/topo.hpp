@@ -394,18 +394,18 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
     if (conn.type == Connection::Hydrog || conn.type == Connection::MetalC)
       continue;
     ExtraLink extra;
-    extra.res1 = model0.find_cra(conn.atom_addr1).residue;
-    extra.res2 = model0.find_cra(conn.atom_addr2).residue;
+    extra.res1 = model0.find_cra(conn.partner1).residue;
+    extra.res2 = model0.find_cra(conn.partner2).residue;
     if (!extra.res1 || !extra.res2)
       continue;
-    extra.alt1 = conn.atom_addr1.altloc;
-    extra.alt2 = conn.atom_addr2.altloc;
+    extra.alt1 = conn.partner1.altloc;
+    extra.alt2 = conn.partner2.altloc;
     const ChemLink* match =
-        monlib.match_link(extra.res1->name, conn.atom_addr1.atom_name,
-                          extra.res2->name, conn.atom_addr2.atom_name);
+        monlib.match_link(extra.res1->name, conn.partner1.atom_name,
+                          extra.res2->name, conn.partner2.atom_name);
     if (!match) {
-      match = monlib.match_link(extra.res2->name, conn.atom_addr2.atom_name,
-                                extra.res1->name, conn.atom_addr1.atom_name);
+      match = monlib.match_link(extra.res2->name, conn.partner2.atom_name,
+                                extra.res1->name, conn.partner1.atom_name);
       if (match) {
         std::swap(extra.res1, extra.res2);
         std::swap(extra.alt1, extra.alt2);
@@ -422,8 +422,8 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
       cl.side2.comp = extra.res2->name;
       cl.id = cl.side1.comp + "-" + cl.side2.comp;
       Restraints::Bond bond;
-      bond.id1 = Restraints::AtomId{1, conn.atom_addr1.atom_name};
-      bond.id2 = Restraints::AtomId{2, conn.atom_addr2.atom_name};
+      bond.id1 = Restraints::AtomId{1, conn.partner1.atom_name};
+      bond.id2 = Restraints::AtomId{2, conn.partner2.atom_name};
       bond.type = BondType::Unspec;
       bond.aromatic = false;
       bond.value = conn.reported_distance;

@@ -131,12 +131,12 @@ void add_mol(py::module& m) {
     .def_readwrite("name", &Connection::name)
     .def_readwrite("type", &Connection::type)
     .def_readwrite("asu", &Connection::asu)
-    .def_readwrite("atom_addr1", &Connection::atom_addr1)
-    .def_readwrite("atom_addr2", &Connection::atom_addr2)
+    .def_readwrite("partner1", &Connection::partner1)
+    .def_readwrite("partner2", &Connection::partner2)
     .def_readwrite("reported_distance", &Connection::reported_distance)
     .def("__repr__", [](const Connection& self) {
         return tostr("<gemmi.Connection ", self.name, "  ",
-                     self.atom_addr1.str(), " - ", self.atom_addr2.str(), '>');
+                     self.partner1.str(), " - ", self.partner2.str(), '>');
     });
 
   py::bind_vector<std::vector<Connection>>(m, "ConnectionList");

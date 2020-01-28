@@ -20,7 +20,7 @@ static void check_struct_conn(cif::Block& block) {
   for (Connection& con : st.connections) {
     const Atom* atom[2] = {nullptr, nullptr};
     for (int n : {0, 1}) {
-      const AtomAddress& ad = (n == 0 ? con.atom_addr1 : con.atom_addr2);
+      const AtomAddress& ad = (n == 0 ? con.partner1 : con.partner2);
       atom[n] = st.models[0].find_atom(ad);
       if (!atom[n])
         std::printf("%s: %s atom not found in res. %s\n", block.name.c_str(),
@@ -44,7 +44,7 @@ static void check_struct_conn(cif::Block& block) {
     if (verbose || differs) {
       std::printf("%s %-9s %-14s %-14s im:%s  %.3f %c= %.3f (%s)%s\n",
                   block.name.c_str(), con.name.c_str(),
-                  con.atom_addr1.str().c_str(), con.atom_addr2.str().c_str(),
+                  con.partner1.str().c_str(), con.partner2.str().c_str(),
                   im.pdb_symbol(true).c_str(), dist, (differs ? '!' : '='),
                   ref_dist, ref_sym.c_str(),
                   st.cell.explicit_matrices ? "  {fract}" : "");

@@ -17,8 +17,8 @@ namespace gemmi {
 
 inline Connection* find_connection_by_cra(Structure& st, CRA& cra1, CRA& cra2) {
   for (Connection& c : st.connections)
-    if ((atom_matches(cra1, c.atom_addr1) && atom_matches(cra2, c.atom_addr2))||
-        (atom_matches(cra1, c.atom_addr2) && atom_matches(cra2, c.atom_addr1)))
+    if ((atom_matches(cra1, c.partner1) && atom_matches(cra2, c.partner2))||
+        (atom_matches(cra1, c.partner2) && atom_matches(cra2, c.partner1)))
       return &c;
   return nullptr;
 }

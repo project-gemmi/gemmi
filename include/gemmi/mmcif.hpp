@@ -194,7 +194,7 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
     }
     copy_double(row, 16, c.reported_distance);
     for (int i = 0; i < 2; ++i) {
-      AtomAddress& a = (i == 0 ? c.atom_addr1 : c.atom_addr2);
+      AtomAddress& a = (i == 0 ? c.partner1 : c.partner2);
       a.chain_name = row.str(2+i);
       if (row.has2(12+i))
         a.res_id.seqid.icode = cif::as_char(row[12+i], ' ');

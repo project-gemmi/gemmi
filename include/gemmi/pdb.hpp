@@ -216,15 +216,15 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       c.name = "disulf" + std::to_string(++disulf_count);
       c.type = Connection::Disulf;
       const char* r = record.c_str();
-      c.atom_addr1.chain_name = read_string(r + 14, 2);
-      c.atom_addr1.res_id = read_res_id(r + 17, r + 11);
-      c.atom_addr2.chain_name = read_string(r + 28, 2);
-      c.atom_addr2.res_id = read_res_id(r + 31, r + 25);
+      c.partner1.chain_name = read_string(r + 14, 2);
+      c.partner1.res_id = read_res_id(r + 17, r + 11);
+      c.partner2.chain_name = read_string(r + 28, 2);
+      c.partner2.res_id = read_res_id(r + 31, r + 25);
       c.asu = compare_link_symops(record);
       if (record.length() > 73)
         c.reported_distance = read_double(r + 73, 5);
-      complete_ssbond_atom(c.atom_addr1, st.models.at(0));
-      complete_ssbond_atom(c.atom_addr2, st.models[0]);
+      complete_ssbond_atom(c.partner1, st.models.at(0));
+      complete_ssbond_atom(c.partner2, st.models[0]);
       st.connections.emplace_back(c);
     } else if (record[0] == 'L' || record[0] == 'l') { // LINK
       if (record.length() < 57)
@@ -241,7 +241,7 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       }
       for (int i : {0, 1}) {
         const char* t = record.c_str() + 30 * i;
-        AtomAddress& ad = (i == 0 ? c.atom_addr1 : c.atom_addr2);
+        AtomAddress& ad = (i == 0 ? c.partner1 : c.partner2);
         ad.chain_name = read_string(t + 20, 2);
         ad.res_id = read_res_id(t + 22, t + 17);
         ad.atom_name = read_string(t + 12, 4);

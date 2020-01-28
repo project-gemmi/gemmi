@@ -620,7 +620,7 @@ struct Connection {
   std::string name;
   Type type = None;
   Asu asu = Asu::Any;
-  AtomAddress atom_addr1, atom_addr2;
+  AtomAddress partner1, partner2;
   double reported_distance = 0.0;
 };
 

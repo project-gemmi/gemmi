@@ -1229,25 +1229,26 @@ The list of connections contains bonds explicitely annotated in the file:
   <gemmi.Connection metalc8  B/22Q 1/S - A/CU1 101/CU>
 
 In the mmCIF format, each connection -- row in the _struct_conn table --
-has a name and type.
-When reading a PDB file, we generate names and infer types for connections
-from the LINK and SSBOND records:
+has a name (id) and type.
+In the PDB format, equivalent records SSBOND (type ``disulf`` in mmCIF)
+and LINK (either ``covale`` or ``metalc``) do not have names,
+so Gemmi generates them automatically.
 
 .. doctest::
 
-  >>> st.connections[0].name
-  'disulf1'
   >>> st.connections[0].type
   ConnectionType.Disulf
+  >>> st.connections[0].name
+  'disulf1'
 
 Each connection stores also:
 
 * :ref:`addresses <atom_address>` of two atoms
-  (``atom_addr1`` and ``atom_addr2``),
+  (``partner1`` and ``partner2``),
 
   .. doctest::
 
-    >>> st.connections[2].atom_addr2
+    >>> st.connections[2].partner2
     <gemmi.AtomAddress A/ALA 2/N>
 
 * a flag that for connections between different symmetry images,
@@ -1272,8 +1273,8 @@ are recalculated like this:
 .. doctest::
 
   >>> con = st.connections[-1]
-  >>> pos1 = st[0].find_cra(con.atom_addr1).atom.pos
-  >>> pos2 = st[0].find_cra(con.atom_addr2).atom.pos
+  >>> pos1 = st[0].find_cra(con.partner1).atom.pos
+  >>> pos2 = st[0].find_cra(con.partner2).atom.pos
   >>> st.cell.find_nearest_image(pos1, pos2, con.asu)
   <gemmi.SymImage box:[2, 1, 1] sym:5>
   >>> _.dist()
@@ -1285,8 +1286,8 @@ The vast majority of connections is intramolecular, so usually you get:
   :hide:
 
   con = st.connections[0]
-  pos1 = st[0].find_cra(con.atom_addr1).atom.pos
-  pos2 = st[0].find_cra(con.atom_addr2).atom.pos
+  pos1 = st[0].find_cra(con.partner1).atom.pos
+  pos2 = st[0].find_cra(con.partner2).atom.pos
 
 .. doctest::
 
@@ -1930,7 +1931,7 @@ Let us check the properties of the second address:
 
 .. doctest::
 
-  >>> addr = _.atom_addr2
+  >>> addr = _.partner2
   >>> addr
   <gemmi.AtomAddress A/ALA 2/N>
   >>> addr.chain_name
@@ -1979,8 +1980,8 @@ Now, as an exercise, we will delete and re-create a disulfide bond:
   >>> chain_a = st[0]['A']
   >>> res4 = chain_a['4']['CYS']
   >>> res10 = chain_a['10']['CYS']
-  >>> con.atom_addr1 = gemmi.AtomAddress(chain_a, res4, res4.sole_atom('SG'))
-  >>> con.atom_addr2 = gemmi.AtomAddress(chain_a, res10, res10.sole_atom('SG'))
+  >>> con.partner1 = gemmi.AtomAddress(chain_a, res4, res4.sole_atom('SG'))
+  >>> con.partner2 = gemmi.AtomAddress(chain_a, res10, res10.sole_atom('SG'))
   >>> st.connections.append(con)
   >>> st.connections[-1]
   <gemmi.Connection new_disulf  A/CYS 4/SG - A/CYS 10/SG>
