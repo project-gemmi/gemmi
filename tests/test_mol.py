@@ -132,6 +132,8 @@ class TestMol(unittest.TestCase):
             cat_in = block.get_mmcif_category(name)
             cat_out = output_block.get_mmcif_category(name)
             for tag, values_out in cat_out.items():
+                if tag == 'ccp4_link_id':
+                    continue
                 values_in = cat_in[tag]
                 self.assertEqual(len(values_in), len(values_out))
                 for (a, b) in zip(values_in, values_out):

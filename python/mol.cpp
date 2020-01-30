@@ -129,6 +129,7 @@ void add_mol(py::module& m) {
   py::class_<Connection>(m, "Connection")
     .def(py::init<>())
     .def_readwrite("name", &Connection::name)
+    .def_readwrite("link_id", &Connection::link_id)
     .def_readwrite("type", &Connection::type)
     .def_readwrite("asu", &Connection::asu)
     .def_readwrite("partner1", &Connection::partner1)

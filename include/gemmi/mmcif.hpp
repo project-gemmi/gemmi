@@ -180,9 +180,11 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
         "?pdbx_ptnr1_label_alt_id", "?pdbx_ptnr2_label_alt_id", // 8-9
         "ptnr1_auth_seq_id", "ptnr2_auth_seq_id", // 10-11
         "?pdbx_ptnr1_PDB_ins_code", "?pdbx_ptnr2_PDB_ins_code", // 12-13
-        "?ptnr1_symmetry", "?ptnr2_symmetry", "?pdbx_dist_value"/*14-16*/})) {
+        "?ptnr1_symmetry", "?ptnr2_symmetry", "?pdbx_dist_value", // 14-16
+        "?ccp4_link_id"})) {
     Connection c;
     c.name = row.str(0);
+    copy_string(row, 17, c.link_id);
     std::string type = row.str(1);
     for (int i = 0; i != Connection::None; ++i)
       if (get_mmcif_connection_type_id(Connection::Type(i)) == type) {

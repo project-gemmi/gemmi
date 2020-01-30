@@ -256,7 +256,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
        "ptnr2_auth_asym_id", "ptnr2_label_asym_id", "ptnr2_label_comp_id",
        "ptnr2_label_seq_id", "ptnr2_label_atom_id", "pdbx_ptnr2_label_alt_id",
        "ptnr2_auth_seq_id", "pdbx_ptnr2_PDB_ins_code", "ptnr2_symmetry",
-       "details", "pdbx_dist_value"});
+       "details", "pdbx_dist_value", "ccp4_link_id"});
   for (const Connection& con : st.connections) {
     const_CRA cra1 = st.models[0].find_cra(con.partner1);
     const_CRA cra2 = st.models[0].find_cra(con.partner2);
@@ -274,7 +274,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
         cra1.atom->name,                           // ptnr1_label_atom_id
         std::string(1, cra1.atom->altloc_or('?')), // pdbx_ptnr1_label_alt_id
         cra1.residue->seqid.num.str(),             // ptnr1_auth_seq_id
-        pdbx_icode(con.partner1.res_id),         // ptnr1_PDB_ins_code
+        pdbx_icode(con.partner1.res_id),           // ptnr1_PDB_ins_code
         "1_555",                                   // ptnr1_symmetry
         cra2.chain->name,                          // ptnr2_auth_asym_id
         subchain_or_dot(*cra2.residue),            // ptnr2_label_asym_id
@@ -283,10 +283,11 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
         cra2.atom->name,                           // ptnr2_label_atom_id
         std::string(1, cra2.atom->altloc_or('?')), // pdbx_ptnr2_label_alt_id
         cra2.residue->seqid.num.str(),             // ptnr2_auth_seq_id
-        pdbx_icode(con.partner2.res_id),         // ptnr2_PDB_ins_code
+        pdbx_icode(con.partner2.res_id),           // ptnr2_PDB_ins_code
         im.pdb_symbol(true),                       // ptnr2_symmetry
         "?",                                       // details
-        to_str(im.dist())                          // pdbx_dist_value
+        to_str(im.dist()),                         // pdbx_dist_value
+        impl::string_or_qmark(con.link_id)         // ccp4_link_id
     });
   }
 }

@@ -618,6 +618,7 @@ inline bool atom_matches(const const_CRA& cra, const AtomAddress& addr) {
 struct Connection {
   enum Type { Covale, Disulf, Hydrog, MetalC, None };
   std::string name;
+  std::string link_id;  // _struct_conn.ccp4_link_id (== _chem_link.id)
   Type type = None;
   Asu asu = Asu::Any;
   AtomAddress partner1, partner2;
