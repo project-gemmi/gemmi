@@ -578,6 +578,12 @@ contents
 Analyses and summarizes content of a coordinate file.
 Inspired by CCP4 program ``rwcontents``.
 
+By default, it prints atom count, estimated number of hydrogens in the protein,
+molecular weight of the protein, ASU volume, Matthews coefficient
+and the fractional volume of solvent in the crystal.
+
+It has options to print other information -- see the help message below.
+
 .. literalinclude:: contents-help.txt
    :language: console
 

@@ -72,6 +72,9 @@ struct Mtz {
     float operator[](int n) const { return parent->data[idx + n * stride()]; }
     float& at(int n) { return parent->data.at(idx + n * stride()); }
     float at(int n) const { return parent->data.at(idx + n * stride()); }
+    bool is_integer() const {
+      return type == 'H' || type == 'B' || type == 'Y' || type == 'I';
+    }
     using iterator = StrideIter<float>;
     iterator begin() {
       assert(parent);

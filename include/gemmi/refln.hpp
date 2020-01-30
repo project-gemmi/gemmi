@@ -127,6 +127,13 @@ struct ReflnBlock {
     }
     return r;
   }
+
+  std::vector<double> make_d_vector() const {
+    std::vector<double> vec = make_1_d2_vector();
+    for (double& d : vec)
+      d = 1.0 / std::sqrt(d);
+    return vec;
+  }
 };
 
 // moves blocks from the argument to the return value

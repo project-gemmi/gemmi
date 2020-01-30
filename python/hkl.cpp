@@ -234,6 +234,7 @@ void add_hkl(py::module& m) {
     .def_readwrite("max_value", &Mtz::Column::max_value)
     .def_readwrite("source", &Mtz::Column::source)
     .def_readwrite("idx", &Mtz::Column::idx)
+    .def("is_integer", &Mtz::Column::is_integer)
     .def("__len__", &Mtz::Column::size)
     .def("__getitem__", [](const Mtz::Column& self, int index) -> float {
         return self.at(index >= 0 ? index : index + self.size());
@@ -272,9 +273,14 @@ void add_hkl(py::module& m) {
     }, py::arg("tag"), py::arg("null")=NAN)
     .def("make_array_float", &ReflnBlock::make_vector<double>,
          py::arg("tag"), py::arg("null")=NAN)
-    //.def("make_hkl_array", &ReflnBlock::make_hkl_vector)
+    .def("make_index_array", [](ReflnBlock& self) {
+        return py::array(py::cast((self.make_index_vector())));
+    })
     .def("make_1_d2_array", [](ReflnBlock& self) {
         return py_array_from_vector(self.make_1_d2_vector());
+    })
+    .def("make_d_array", [](ReflnBlock& self) {
+        return py_array_from_vector(self.make_d_vector());
     })
     .def("get_size_for_hkl",
          [](const ReflnBlock& self,

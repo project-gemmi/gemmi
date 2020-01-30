@@ -13,15 +13,15 @@ Gemmi supports three reflection file formats:
 
 Reflection files store Miller indices (*hkl*) with various associated
 numbers. Initially, the numbers represent observations derived from
-diffraction images (estimated intensities and their errors).
+diffraction images (reflection intensities and error estimates).
 Then other quantities derived from these are added,
 as well as quantities derived from a macromolecular model
-or from both the model and experimental data.
+that is built to explain the experimental data.
 
 Even electron density maps, which are used in the real space, are nowadays
 stored mostly as map coefficients in reflection files.
 Molecular viewers can Fourier-transform them on the fly and show
-in the real space. Therefore, switching between real and reciprocal space
+in the real space. Therefore, switching between the real and reciprocal space
 is also included in Gemmi, as well as calculation of structure factors
 from the model.
 
@@ -35,9 +35,9 @@ The columns of data are grouped hierarchically (Project -> Crystal -> Dataset
 -> Column), but normally the column name is all that is needed,
 and the hierarchy can be ignored. In Gemmi, the hierarchy is flattened:
 we have a list of columns and a list of datasets.
-Each columns is associated with one dataset, and each dataset have properties
-``project_name`` and ``crystal_name`` (in addition to the ``dataset_name``),
-which is enough to reconstruct tree-like hierarchy if needed.
+Each columns is associated with one dataset, and each dataset has properties
+``dataset_name``, ``project_name`` and ``crystal_name``,
+which is enough to reconstruct the tree-like hierarchy if needed.
 
 
 Reading
@@ -259,6 +259,14 @@ is Pandas DataFrame:
   >>> # now we can handle columns using their labels:
   >>> I_over_sigma = df['I'] / df['SIGI']
 
+The data in numpy array is float32. To cast Miller indices in the DataFrame
+to integer type:
+
+.. doctest::
+  :skipif: pandas is None
+
+  >>> df = df.astype({name: 'int32' for name in ['H', 'K', 'L']})
+
 Modifying
 ---------
 
@@ -453,6 +461,8 @@ Finally, ReflnBlock has functions for working with the data table::
 
   std::vector<double> ReflnBlock::make_1_d2_vector() const
 
+  std::vector<double> ReflnBlock::make_d_vector() const
+
 We will describe these functions while going through its Python equivalents.
 ``column_labels()`` returns list of tags associated with the columns,
 excluding the category part. Unlike in the MTZ format, here the tags
@@ -483,14 +493,22 @@ the selected column in an array. In Python -- in NumPy array:
   >>> rblock.make_array_float('F_meas_au', 0.0)  # use 0.0 for nulls
   array([12.66, 13.82, 24.11, ...,  0.  ,  9.02,  0.  ])
 
-We also have a convenience function that returns array of 1/*d*:sup:`2` values:
+We also have convenience functions that returns arrays of 1/*d*:sup:`2`
+or just *d* values:
 
 .. doctest::
 
   >>> rblock.make_1_d2_array().round(4)
   array([0.2681, 0.2677, 0.2768, ..., 0.301 , 0.2782, 0.2978])
+  >>> rblock.make_d_array().round(3)
+  array([1.931, 1.933, 1.901, ..., 1.823, 1.896, 1.832])
 
-Now a full example.
+**Example 1**
+
+.. image:: img/5dei-Ioversigma.png
+  :align: right
+  :scale: 15
+
 The script below renders the same colorful *I*/*σ* image as in the previous
 section, but it can take as an argument a file downloaded directly from
 the wwPDB (for example,
@@ -499,6 +517,50 @@ the wwPDB (for example,
 .. literalinclude:: ../examples/cif_i_sigi.py
   :language: python
   :lines: 4-
+
+**Example 2**
+
+In this example we compare columns from two files using Python pandas.
+
+Here we use the 5WKD entry, which has only 367 measured reflections,
+but the same script works fine even for 1000x more reflections.
+You'd only need to tweak the plots to make them more readable.
+
+We use two data files (SF-mmCIF MTZ) downloaded from the RCSB website.
+First, we make pandas DataFrames from both files, and then we merge them
+into a single DataFrame:
+
+.. literalinclude:: ../examples/merge_mtz_mmcif.py
+  :language: python
+  :lines: 4-27
+
+We want to compare the FP column from the MTZ file and the F_meas_au column
+from mmCIF. We start with plotting one against the other:
+
+.. image:: img/FP_vs_Fmeas_5wkd.png
+  :align: right
+  :scale: 100
+
+.. literalinclude:: ../examples/merge_mtz_mmcif.py
+  :language: python
+  :lines: 30-37
+
+The numbers are similar, but not exactly equal.
+Let us check how the difference between the two values depends on the
+resolution. We will plot the difference as a function of 1/*d*.
+This extremely small dataset has only three Miller indices *k* (0, 1 and 2),
+so we can use it for coloring.
+
+.. image:: img/FP_Fmeas_1d_5wkd.png
+  :align: right
+  :scale: 100
+
+.. literalinclude:: ../examples/merge_mtz_mmcif.py
+  :language: python
+  :lines: 40-
+
+Apparently, some scaling has been applied. The scaling is anisotropic
+and is the strongest along the *k* axis.
 
 hkl CIF
 =======
