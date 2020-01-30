@@ -27,9 +27,15 @@ and with partial C and Fortran 2003 interface.
 
 .. _MPL: https://www.mozilla.org/en-US/MPL/2.0/
 
+Occasionally, the project gets sidetracked into
+`visualization of the PDB data <https://project-gemmi.github.io/pdb-stats/>`_.
+
 Gemmi is a joint project of
 `Global Phasing Ltd <https://www.globalphasing.com/>`_
 and `CCP4 <http://www.ccp4.ac.uk>`_.
+
+The project is named after
+`Gemmi Pass <https://goo.gl/maps/akBLbGfrGE9j1oWC7>`_.
 
 Source code repository: https://github.com/project-gemmi/gemmi
 

@@ -25,4 +25,4 @@ and [Global Phasing Ltd](https://www.globalphasing.com/),
 two major providers of software for macromolecular crystallography.
 
 License: MPLv2, or (at your option) LGPLv3.
-© 2017-2019 Global Phasing Ltd.
+© 2017-2020 Global Phasing Ltd.
