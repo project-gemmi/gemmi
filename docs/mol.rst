@@ -639,8 +639,7 @@ To output a file or string in the PDB format use one of the functions:
 
 .. code-block:: python
 
-  # write_pdb() has multiple keyworded options that disable writing
-  # of various records.
+  # To write full PDB use (the options are listed below):
   structure.write_pdb(path [, options])
 
   # To write only CRYST1 and coordinates, use:
@@ -652,6 +651,24 @@ To output a file or string in the PDB format use one of the functions:
   # To get PDB headers as a string:
   header_string = structure.make_pdb_headers()
 
+``write_pdb()`` has options to suppress writing of various records,
+to avoid assigning a serial number to the TER record,
+and to add use non-standard Refmac LINKR record instead of LINK.
+Here is the full signature:
+
+.. doctest::
+
+  >>> print(gemmi.Structure.write_pdb.__doc__.replace(',', ',\n         '))
+  write_pdb(self: gemmi.Structure,
+            path: str,
+            seqres_records: bool = True,
+            ssbond_records: bool = True,
+            link_records: bool = True,
+            cispep_records: bool = True,
+            ter_records: bool = True,
+            numbered_ter: bool = True,
+            use_linkr: bool = False) -> None
+  <BLANKLINE>
 
 
 PDBx/mmCIF format

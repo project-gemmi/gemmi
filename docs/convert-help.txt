@@ -28,9 +28,12 @@ JSON output options:
                            mix (default) - quote only numbs with s.u.
   --dot=STRING           JSON representation of CIF's '.' (default: null).
 
-PDB input/output options:
+PDB input options:
   --segment-as-chain     Append segment id to label_asym_id (chain name).
+
+PDB output options:
   --short-ter            Write PDB TER records without numbers (iotbx compat.).
+  --linkr                Write LINKR record (for Refmac) if link_id is known.
 
 Macromolecular operations:
   --expand-ncs=dup|addn  Expand strict NCS specified in MTRIXn or equivalent.

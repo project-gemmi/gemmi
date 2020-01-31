@@ -248,8 +248,12 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
         ad.altloc = read_altloc(t[16]);
       }
       c.asu = compare_link_symops(record);
-      if (record.length() > 73)
-        c.reported_distance = read_double(&record[73], 5);
+      if (record.length() > 73) {
+        if (record[4] == 'R')
+          c.link_id = read_string(&record[72], 8);
+        else
+          c.reported_distance = read_double(&record[73], 5);
+      }
       st.connections.emplace_back(c);
     } else if (record[0] == 'C' || record[0] == 'c') { // CISPEP
       if (record.length() < 22)

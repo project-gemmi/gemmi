@@ -188,7 +188,8 @@ void add_mol(py::module& m) {
     .def("write_pdb", [](const Structure& st, const std::string& path,
                          bool seqres_records, bool ssbond_records,
                          bool link_records, bool cispep_records,
-                         bool ter_records, bool numbered_ter) {
+                         bool ter_records, bool numbered_ter,
+                         bool use_linkr) {
        PdbWriteOptions options;
        options.seqres_records = seqres_records;
        options.ssbond_records = ssbond_records;
@@ -196,12 +197,14 @@ void add_mol(py::module& m) {
        options.cispep_records = cispep_records;
        options.ter_records = ter_records;
        options.numbered_ter = numbered_ter;
+       options.use_linkr = use_linkr;
        Ofstream f(path);
        write_pdb(st, f.ref(), options);
     }, py::arg("path"),
        py::arg("seqres_records")=true, py::arg("ssbond_records")=true,
        py::arg("link_records")=true, py::arg("cispep_records")=true,
-       py::arg("ter_records")=true, py::arg("numbered_ter")=true)
+       py::arg("ter_records")=true, py::arg("numbered_ter")=true,
+       py::arg("use_linkr")=false)
     .def("write_minimal_pdb",
          [](const Structure& st, const std::string& path) {
        Ofstream f(path);

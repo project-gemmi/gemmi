@@ -40,7 +40,7 @@ enum OptionIndex { FormatIn=4, FormatOut,
                    Comcifs, Mmjson, Bare, Numb, CifDot,
                    PdbxStyle, SkipCat, BlockName, SortCif,
                    ExpandNcs, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
-                   ShortTer, SegmentAsChain, Translate };
+                   ShortTer, Linkr, SegmentAsChain, Translate };
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
@@ -81,11 +81,14 @@ static const option::Descriptor Usage[] = {
   { CifDot, 0, "", "dot", Arg::Required,
     "  --dot=STRING  \tJSON representation of CIF's '.' (default: null)." },
 
-  { NoOp, 0, "", "", Arg::None, "\nPDB input/output options:" },
+  { NoOp, 0, "", "", Arg::None, "\nPDB input options:" },
   { SegmentAsChain, 0, "", "segment-as-chain", Arg::None,
     "  --segment-as-chain \tAppend segment id to label_asym_id (chain name)." },
+  { NoOp, 0, "", "", Arg::None, "\nPDB output options:" },
   { ShortTer, 0, "", "short-ter", Arg::None,
     "  --short-ter  \tWrite PDB TER records without numbers (iotbx compat.)." },
+  { Linkr, 0, "", "linkr", Arg::None,
+    "  --linkr  \tWrite LINKR record (for Refmac) if link_id is known." },
 
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular operations:" },
   { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
@@ -373,6 +376,8 @@ static void convert(const std::string& input, CoorFormat input_type,
     gemmi::PdbWriteOptions opt;
     if (options[ShortTer])
       opt.numbered_ter = false;
+    if (options[Linkr])
+      opt.use_linkr = true;
     gemmi::write_pdb(st, os.ref(), opt);
   }
 }

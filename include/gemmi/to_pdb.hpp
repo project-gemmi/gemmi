@@ -17,6 +17,7 @@ struct PdbWriteOptions {
   bool cispep_records = true;
   bool ter_records = true;
   bool numbered_ter = true;
+  bool use_linkr = false;
 };
 
 void write_pdb(const Structure& st, std::ostream& os,
@@ -518,7 +519,7 @@ inline void write_header(const Structure& st, std::ostream& os,
             continue;
           SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
                                                    cra2.atom->pos, con.asu);
-          WRITE("LINK        %-4s%c%3s%2s%5s   "
+          gf_snprintf(buf, 82, "LINK        %-4s%c%3s%2s%5s   "
                 "            %-4s%c%3s%2s%5s  %6s %6s %5.2f  \n",
                 padded_atom_name(*cra1.atom).c_str(),
                 cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
@@ -531,7 +532,13 @@ inline void write_header(const Structure& st, std::ostream& os,
                 cra2.chain->name.c_str(),
                 write_seq_id(buf8a, *cra2.residue),
                 "1555", im.pdb_symbol(false).c_str(), im.dist());
+          if (opt.use_linkr && !con.link_id.empty() && im.same_asu()) {
+            buf[4] = 'R';
+            gf_snprintf(buf+58, 82-58, "%14s%-8s\n", "", con.link_id.c_str());
+          }
+          os.write(buf, 81);
         }
+
     }
 
     // CISPEP (note: uses only the first conformation)
