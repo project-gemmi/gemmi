@@ -172,6 +172,9 @@ void add_mol(py::module& m) {
         return *impl::find_iter(st.models, name);
     }, py::arg("name"), py::return_value_policy::reference_internal)
     .def("__delitem__", &Structure::remove_model, py::arg("name"))
+    .def("find_connection", &Structure::find_connection,
+         py::arg("partner1"), py::arg("partner2"),
+         py::return_value_policy::reference_internal)
     .def("find_or_add_model", &Structure::find_or_add_model,
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("add_model", add_child<Structure, Model>,
@@ -231,6 +234,10 @@ void add_mol(py::module& m) {
   py::class_<AtomAddress>(m, "AtomAddress")
     .def(py::init<>())
     .def(py::init<const Chain&, const Residue&, const Atom&>())
+    .def(py::init<const std::string&, const SeqId&, const std::string&,
+                  const std::string&, char>(),
+         py::arg("chain"), py::arg("seqid"), py::arg("resname"),
+         py::arg("atom"), py::arg("altloc")='\0')
     .def_readwrite("chain_name", &AtomAddress::chain_name)
     .def_readwrite("res_id", &AtomAddress::res_id)
     .def_readwrite("atom_name", &AtomAddress::atom_name)

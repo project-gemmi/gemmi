@@ -1228,23 +1228,46 @@ The list of connections contains bonds explicitely annotated in the file:
   >>> st.connections[-1]
   <gemmi.Connection metalc8  B/22Q 1/S - A/CU1 101/CU>
 
-In the mmCIF format, each connection -- row in the _struct_conn table --
-has a name (id) and type.
-In the PDB format, equivalent records SSBOND (type ``disulf`` in mmCIF)
-and LINK (either ``covale`` or ``metalc``) do not have names,
-so Gemmi generates them automatically.
+You can find connection between two atoms, or check if it exists,
+by specifying two :ref:`atom addresses <atom_address>`:
 
 .. doctest::
 
-  >>> st.connections[0].type
-  ConnectionType.Disulf
-  >>> st.connections[0].name
-  'disulf1'
+  >>> addr1 = gemmi.AtomAddress(chain='B', seqid=gemmi.SeqId('4'), resname='CYS', atom='SG')
+  >>> addr2 = gemmi.AtomAddress('B', gemmi.SeqId('10'), 'CYS', atom='SG')
+  >>> st.find_connection(addr1, addr2)
+  <gemmi.Connection disulf2  B/CYS 4/SG - B/CYS 10/SG>
 
-Each connection stores also:
+Each connection stores:
 
-* :ref:`addresses <atom_address>` of two atoms
-  (``partner1`` and ``partner2``),
+* type -- corresponding to _struct_conn.type in the mmCIF format;
+  one of enumeration values: Covale, Disulf, Hydrog, MetalC, None;
+  when reading PDB format the SSBOND record corresponds to Disulf,
+  LINK records -- to Covale or MetalC,
+
+  .. doctest::
+
+    >>> st.connections[0].type
+    ConnectionType.Disulf
+
+* name -- a unique name corresponding to _struct_conn.id in the mmCIF format;
+  it is auto-generated the connections are read from the PDB format,
+
+  .. doctest::
+
+    >>> st.connections[0].name
+    'disulf1'
+
+* optionally, ID of the link used to restrain this bond during refinement
+  (_chem_link.id from the CCP4 monomer library),
+  written as _struct_conn.ccp4_link_id in mmCIF,
+
+  .. doctest::
+
+    >>> st.connections[0].link_id  # no link ID -> empty string
+    ''
+
+* addresses of two atoms (``partner1`` and ``partner2``),
 
   .. doctest::
 

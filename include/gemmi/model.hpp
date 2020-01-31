@@ -570,9 +570,11 @@ struct AtomAddress {
   char altloc = '\0';
 
   AtomAddress() = default;
+  AtomAddress(const std::string& ch, const SeqId& seqid, const std::string& res,
+              const std::string& atom, char alt='\0')
+    : chain_name(ch), res_id({seqid, "", res}), atom_name(atom), altloc(alt) {}
   AtomAddress(const Chain& ch, const Residue& res, const Atom& at)
-    : chain_name(ch.name), res_id(res), atom_name(at.name), altloc(at.altloc)
-  {}
+    : chain_name(ch.name), res_id(res), atom_name(at.name), altloc(at.altloc) {}
 
   bool operator==(const AtomAddress& o) const {
     return chain_name == o.chain_name && res_id.matches(o.res_id) &&
@@ -956,6 +958,23 @@ struct Structure {
 
   Connection* find_connection_by_name(const std::string& conn_name) {
     return impl::find_or_null(connections, conn_name);
+  }
+
+  Connection* find_connection_by_cra(const const_CRA& cra1,
+                                     const const_CRA& cra2) {
+    for (Connection& c : connections)
+      if ((atom_matches(cra1, c.partner1) && atom_matches(cra2, c.partner2)) ||
+          (atom_matches(cra1, c.partner2) && atom_matches(cra2, c.partner1)))
+        return &c;
+    return nullptr;
+  }
+
+  Connection* find_connection(const AtomAddress& a1, const AtomAddress& a2) {
+    for (Connection& c : connections)
+      if ((a1 == c.partner1 && a2 == c.partner2) ||
+          (a1 == c.partner2 && a2 == c.partner1))
+        return &c;
+    return nullptr;
   }
 
   double get_ncs_multiplier() const {

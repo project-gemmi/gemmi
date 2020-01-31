@@ -15,14 +15,6 @@
 
 namespace gemmi {
 
-inline Connection* find_connection_by_cra(Structure& st, CRA& cra1, CRA& cra2) {
-  for (Connection& c : st.connections)
-    if ((atom_matches(cra1, c.partner1) && atom_matches(cra2, c.partner2))||
-        (atom_matches(cra1, c.partner2) && atom_matches(cra2, c.partner1)))
-      return &c;
-  return nullptr;
-}
-
 struct LinkHunt {
   struct Match {
     const ChemLink* chem_link = nullptr;
@@ -192,7 +184,7 @@ struct LinkHunt {
       }
     }
     for (Match& match : results)
-      match.conn = find_connection_by_cra(st, match.cra1, match.cra2);
+      match.conn = st.find_connection_by_cra(match.cra1, match.cra2);
     return results;
   }
 };
