@@ -199,7 +199,7 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
       case ID("2MA"): return { ResidueInfo::RNA, 'a',  16 };
       case ID("1MG"): return { ResidueInfo::RNA, 'g',  16 };
       case ID("5BU"): return { ResidueInfo::RNA, 'u',  12 };
-      case ID("MIA"): return { ResidueInfo::RNA, 'a',  26 };
+      case ID("MIA"): return { ResidueInfo::RNA, 'a',  24 };
       case ID("DOC"): return { ResidueInfo::DNA, 'c',  14 };
       case ID("8OG"): return { ResidueInfo::DNA, 'g',  14 };
       case ID("5CM"): return { ResidueInfo::DNA, 'c',  16 };
