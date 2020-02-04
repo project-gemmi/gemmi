@@ -31,6 +31,26 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
+static void print_atoms_on_special_positions(const Structure& st) {
+  printf(" Atoms on special positions:");
+  bool found = false;
+  for (const Chain& chain : st.models.at(0).chains)
+    for (const Residue& res : chain.residues)
+      for (const Atom& atom : res.atoms)
+        if (int n = st.cell.is_special_position(atom.pos)) {
+          found = true;
+          SymImage im = st.cell.find_nearest_image(atom.pos, atom.pos,
+                                                   Asu::Different);
+          printf("\n    %s %4d%c %3s %-3s %c fold=%d  occ=%.2f  d_image=%.4f",
+                 chain.name.c_str(), *res.seqid.num, res.seqid.icode,
+                 res.name.c_str(), atom.name.c_str(), (atom.altloc | 0x20),
+                 n+1, atom.occ, im.dist());
+        }
+  if (!found)
+    printf(" none");
+  printf("\n");
+}
+
 static void print_content_info(const Structure& st, bool /*verbose*/) {
   printf(" Spacegroup   %s\n", st.spacegroup_hm.c_str());
   int order = 1;
@@ -46,64 +66,66 @@ static void print_content_info(const Structure& st, bool /*verbose*/) {
     printf("   The ORIGX matrix is not identity.\n");
   if (st.cell.explicit_matrices)
     printf("   Non-standard fractionalization matrix is given.\n");
+  print_atoms_on_special_positions(st);
   double n_molecules = order * st.get_ncs_multiplier();
   printf(" Number of images (symmetry * strict NCS): %5g\n", n_molecules);
   printf(" Cell volume [A^3]: %30.1f\n", st.cell.volume);
   printf(" ASU volume [A^3]:  %30.1f\n", st.cell.volume / order);
   double water_count = 0;
-  int h_count = 0;
-  double weight = 0;
-  double protein_weight = 0;
-  double atom_count = 0;
-  double protein_atom_count = 0;
+  int residue_count = 0;
+  int mol_h_count = 0;
+  double mol_weight = 0;
+  double mol_atom_count = 0;
+  double buffer_atom_count = 0;
+  double file_h_count = 0;
   const Model& model = st.models.at(0);
   for (const Chain& chain : model.chains) {
     for (const Residue& res : chain.residues) {
       ResidueInfo res_info = find_tabulated_residue(res.name);
-      if (res_info.is_water())
-        if (const Atom* oxygen = res.find_by_element(El::O))
-          water_count += oxygen->occ;
-      bool is_protein = false;
-      // This code was initially written to reproduce results from
-      // CCP4 rwcontents. The logic here should be re-designed.
-      if (res_info.is_amino_acid() || res_info.is_nucleic_acid() ||
-          res.name == "HEM" || res.name == "SO4" || res.name == "SUL") {
-        is_protein = true;
-        h_count += res_info.hydrogen_count - 2;
+      bool is_buffer = res_info.is_buffer_or_water();
+      if (!is_buffer && chain.is_first_in_group(res)) {
+        residue_count++;
+        mol_h_count += std::max(res_info.hydrogen_count - 2, 0);
       }
       for (const Atom& atom : res.atoms) {
-        // skip hydrogens
-        if (atom.element == El::H || atom.element == El::D)
-          continue;
-        if (is_protein) {
-          protein_atom_count += atom.occ;
-          protein_weight += atom.occ * atom.element.weight();
+        if (atom.is_hydrogen()) {
+          file_h_count += atom.occ;
+        } else if (is_buffer) {
+          if (res_info.is_water())
+            water_count += atom.occ;
+          buffer_atom_count += atom.occ;
+        } else {
+          mol_atom_count += atom.occ;
+          mol_weight += atom.occ * atom.element.weight();
         }
-        atom_count += atom.occ;
-        weight += atom.occ * atom.element.weight();
       }
     }
   }
-  double h_weight = Element(El::H).weight();
-  weight += (2 * water_count + h_count) * h_weight;
-  protein_weight += h_count * h_weight;
-  printf(" Heavy (not H) atom count: %25.3f\n", + atom_count + water_count);
-  printf(" Estimate of the protein hydrogens: %12d\n", h_count);
-  printf(" Estimated total atom count (incl. H): %13.3f\n",
-                                atom_count + 3 * water_count + h_count);
-  printf(" Estimated protein atom count (incl. H): %11.3f\n",
-                                          protein_atom_count + h_count);
+  // add weight of hydrogens
+  mol_weight += mol_h_count * Element(El::H).weight();
+
+  printf(" Residue count excl. solvent and buffer: %7d\n", residue_count);
   printf(" Water count: %38.3f\n", water_count);
-  printf(" Molecular weight of all atoms: %20.3f\n", weight);
-  printf(" Molecular weight of protein atoms: %16.3f\n", protein_weight);
-  double total_protein_weight = protein_weight * n_molecules;
-  double Vm = st.cell.volume / total_protein_weight;
-  printf(" Matthews coefficient: %29.3f\n", Vm);
-  double Na = 0.602214;  // Avogadro number x 10^-24 (cm^3->A^3)
-  // rwcontents uses 1.34, Rupp's papers 1.35
-  for (double ro : { 1.35, 1.34 })
-    printf(" Solvent %% (for protein density %g): %13.3f\n",
-           ro, 100. * (1. - 1. / (ro * Vm * Na)));
+  printf(" Heavy (not H) atom count: %25.3f\n",
+         mol_atom_count + buffer_atom_count);
+  printf("     in macromolecules and ligands: %16.3f\n", mol_atom_count);
+  printf("     in solvent and buffer: %24.3f\n", buffer_atom_count);
+  printf(" Hydrogens in the file: %28.3f\n", file_h_count);
+  printf("Solvent content based on the model (excl. solvent and buffer)\n");
+  printf(" Estimated hydrogen count: %21d\n", mol_h_count);
+  printf(" Estimated molecular weight: %23.3f\n", mol_weight);
+  if (st.cell.is_crystal()) {
+    double total_mol_weight = mol_weight * n_molecules;
+    double Vm = st.cell.volume / total_mol_weight;
+    printf(" Matthews coefficient: %29.3f\n", Vm);
+    double Na = 0.602214;  // Avogadro number x 10^-24 (cm^3->A^3)
+    // rwcontents uses 1.34, Rupp's papers 1.35
+    for (double ro : { 1.35, 1.34 })
+      printf(" Solvent %% (for protein density %g): %13.3f\n",
+             ro, 100. * (1. - 1. / (ro * Vm * Na)));
+  } else {
+    printf(" Not a crystal / unit cell not known.\n");
+  }
 }
 
 static void print_dihedrals(const Structure& st) {
@@ -124,26 +146,6 @@ static void print_dihedrals(const Structure& st) {
         printf("\n");
     }
   }
-  printf("\n");
-}
-
-static void print_atoms_on_special_positions(const Structure& st) {
-  printf(" Atoms on special positions:");
-  bool found = false;
-  for (const Chain& chain : st.models.at(0).chains)
-    for (const Residue& res : chain.residues)
-      for (const Atom& atom : res.atoms)
-        if (int n = st.cell.is_special_position(atom.pos)) {
-          found = true;
-          SymImage im = st.cell.find_nearest_image(atom.pos, atom.pos,
-                                                   Asu::Different);
-          printf("\n    %s %4d%c %3s %-3s %c fold=%d  occ=%.2f  d_image=%.4f",
-                 chain.name.c_str(), *res.seqid.num, res.seqid.icode,
-                 res.name.c_str(), atom.name.c_str(), (atom.altloc | 0x20),
-                 n+1, atom.occ, im.dist());
-        }
-  if (!found)
-    printf(" none");
   printf("\n");
 }
 
@@ -180,7 +182,6 @@ int GEMMI_MAIN(int argc, char **argv) {
                      "Warning: using only the first model out of %zu.\n",
                      st.models.size());
       print_content_info(st, verbose);
-      print_atoms_on_special_positions(st);
       if (p.options[Bfactors])
         print_bfactor_info(st.models.at(0));
       if (p.options[Dihedrals])

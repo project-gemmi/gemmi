@@ -493,6 +493,11 @@ struct Chain {
   std::vector<Residue>& children() { return residues; }
   const std::vector<Residue>& children() const { return residues; }
 
+  // Returns false only for alternative conformation (microheterogeneity).
+  bool is_first_in_group(const Residue& res) const {
+    return &res == residues.data() || !(&res - 1)->same_group(res);
+  }
+
   // Returns the previous residue or nullptr.
   // Got complicated by handling of multi-conformations / microheterogeneity.
   const Residue* previous_residue(const Residue& res) const {
