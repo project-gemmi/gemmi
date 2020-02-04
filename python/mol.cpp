@@ -70,6 +70,7 @@ void add_mol(py::module& m) {
   py::class_<ResidueInfo>(m, "ResidueInfo")
     .def_readonly("one_letter_code", &ResidueInfo::one_letter_code)
     .def_readonly("hydrogen_count", &ResidueInfo::hydrogen_count)
+    .def_readonly("weight", &ResidueInfo::weight)
     .def("found", &ResidueInfo::found)
     .def("is_standard", &ResidueInfo::is_standard)
     .def("is_water", &ResidueInfo::is_water)

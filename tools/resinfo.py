@@ -5,9 +5,10 @@
 
 import re
 from sys import stderr
+import gemmi
 from gemmi import cif
 
-ccd = cif.read('components.cif')
+ccd = cif.read('components.cif.gz')
 
 STANDARD = ['ALA', 'ARG', 'ASN', 'ASP', 'ASX', 'CYS', 'GLN', 'GLU',
             'GLX', 'GLY', 'HIS', 'ILE', 'LEU', 'LYS', 'MET', 'PHE',
@@ -16,11 +17,28 @@ STANDARD = ['ALA', 'ARG', 'ASN', 'ASP', 'ASX', 'CYS', 'GLN', 'GLU',
             'A', 'C', 'G', 'I', 'U',
             'DA', 'DC', 'DG', 'DI', 'DT', 'DU']
 
-pattern = re.compile("""case ID\("([A-Z0-9]+)"\): return .*'(.)',( +\d+) """)
+def calculate_formula_weight(formula):
+    total = 0.
+    for elem_count in formula.split():
+        if elem_count.isalpha():
+            elem = elem_count
+            count = 1
+        else:
+            n = 2 if elem_count[1].isalpha() else 1
+            elem = elem_count[:n]
+            count = int(elem_count[n:])
+        total += count * gemmi.Element(elem).weight
+    return total
+
+
+pattern = re.compile("""case ID\("([A-Z0-9]+)"\): """
+                     """return .*'(.)',( +\d+), [\d.]+f """)
+#pattern = re.compile("""case '([A-Z])': return .*'(.)',( +\d+), [\d.]+f """)
 for line in open('include/gemmi/resinfo.hpp'):
     m = pattern.search(line)
     if m:
         name = m.group(1)
+        #name = 'D' + name
         block = ccd[name]
 
         # modify one letter code
@@ -42,15 +60,15 @@ for line in open('include/gemmi/resinfo.hpp'):
         # modify hydrogen count
         old_nh = int(m.group(3))
         formula = cif.as_string(block.find_value('_chem_comp.formula'))
-        obj = re.search(r'\bH(\d+)\b', formula)
-        if obj:
-            nh = int(obj.group(1))
-            if nh != old_nh:
-                line = line[:m.end(2)] + ("', %3d" % nh) + line[m.end(3):]
+        obj = re.search(r'\b[HD](\d+)\b', formula)
+        nh = int(obj.group(1)) if obj else 0
+        weight = calculate_formula_weight(formula)
+        line_middle = "', %3d, %#.6gf" % (nh, weight)
+        line = line[:m.end(2)] + line_middle + line[m.end(3):]
 
         # check residue type
         res_type = cif.as_string(block.find_value('_chem_comp.type')).upper()
-        has_AAD = 'ResidueInfo::AAD' in line
+        has_AAD = 'RI::AAD' in line
         expected_AAD = res_type.startswith('D-PEPTIDE')
         if expected_AAD and not has_AAD:
             print('D-PEPTIDE:', name, file=stderr)

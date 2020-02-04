@@ -110,8 +110,8 @@ Built-in data
 The built-in data is accessed through the function ``find_tabulated_residue``.
 It contains only minimal information about each residue:
 assigned category, the "standard" flag (non-standard residues are marked
-as HETATM in the PDB, even in polymer), one-letter code
-and the number of hydrogens:
+as HETATM in the PDB, even in polymer), one-letter code,
+the number of hydrogens and molecular weight:
 
 .. literalinclude:: code/resinfo.cpp
 
@@ -122,6 +122,10 @@ and the number of hydrogens:
     True
     >>> gln.one_letter_code
     'Q'
+    >>> round(gln.weight, 3)
+    146.144
+    >>> gln.hydrogen_count
+    10
     >>> gemmi.find_tabulated_residue('DOD').is_water()
     True
     >>> # PDB marks "non-standard" residues as HETATM.
