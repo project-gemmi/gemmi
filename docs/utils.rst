@@ -572,6 +572,8 @@ Prints information about given space group.
 .. literalinclude:: sg-help.txt
    :language: console
 
+.. _gemmi-content:
+
 contents
 ========
 

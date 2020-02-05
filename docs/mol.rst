@@ -104,6 +104,8 @@ Gemmi can use three sources of knowledge about chemical components:
 * so-called CIF files compatible with the format of the Refmac/CCP4 monomer
   library.
 
+.. _find_tabulated_residue:
+
 Built-in data
 -------------
 
@@ -1234,6 +1236,85 @@ Here we only show its properties in an example:
   >>> ent.full_sequence[:5]
   ['MET', 'GLU', 'GLN', 'ARG', 'ILE']
 
+The last property is the sequence.
+
+Sequence
+--------
+
+``Entity.full_sequence`` represents sequence stored
+in the SEQRES record (pdb) or in the _entity_poly_seq category (mmCIF).
+It is a list (in C++: ``std::vector``) of residue names.
+In the case of microheterogeneity (point mutation),
+if the _entity_poly_seq category is read (the SEQRES record ignores
+point mutations), multiple residue names at the same point
+in sequence are separated by commas:
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
+  >>> seq = st.get_entity('2').full_sequence
+  >>> seq
+  ['DSN', 'ALA', 'N2C,NCY', 'MVA', 'DSN', 'ALA', 'NCY,N2C', 'MVA']
+  >>> #           ^^^^^^^  microheterogeneity     ^^^^^^^
+
+To ingore point mutations we can use a helper function ``Entity::first_mon``:
+
+.. doctest::
+
+  >>> [gemmi.Entity.first_mon(item) for item in seq]
+  ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
+
+
+Another helper function calculates molecular weight from the sequence.
+It uses the :ref:`built-in table <find_tabulated_residue>` of popular
+residues.
+In this example, we have a few rare residues that are not tabulated.
+We can specify the avarage weight of unknown residue:
+
+.. doctest::
+
+  >>> gemmi.calculate_sequence_weight(seq, unknown=130.0)
+  910.7184143066406
+
+but the result is not accurate. Fortunately, it does not happen often.
+
+Now we will take another PDB file, with more common residues,
+and excercise this function to calculate Matthews coefficient:
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/5cvz_final.pdb')
+  >>> list(st[0])
+  [<gemmi.Chain A with 141 res>]
+  >>> # we have just a single chain, which makes this example simpler
+  >>> chain = st[0]['A']
+  >>> chain.get_polymer()
+  <gemmi.ResidueSpan of 0: []>
+  >>> # Not good. The chain parts where not assigned automatically,
+  >>> # because of the missing TER record in this file. We need to call:
+  >>> st.setup_entities()  # it should sort out chain parts
+  >>> chain.get_polymer()
+  <gemmi.ResidueSpan of 141: [17(ALA) 18(ALA) 19(ALA) ... 157(SER)]>
+  >>> st.get_entity_of(_)  # doctest: +ELLIPSIS
+  <gemmi.Entity 'A' polymer polypeptide(L) object at 0x...>
+  >>> weight = gemmi.calculate_sequence_weight(_.full_sequence)
+  >>> # Now we can calculate Matthews coefficient
+  >>> st.cell.volume_per_image() / weight
+  2.7407915442022364
+
+We could continue and calculate the solvent content, assuming the protein
+density of 1.35 g/cm\ :sup:`3` (the other constants below are the Avogadro
+number and Å\ :sup:`3`/cm\ :sup:`3` = 10\ :sup:`-24`):
+
+.. doctest::
+
+  >>> protein_fraction = 1. / (6.02214e23 * 1e-24 * 1.35 * _)
+  >>> print('Solvent content: {:.1f}%'.format(100 * (1 - protein_fraction)))
+  Solvent content: 55.1%
+
+Note: if you just want to calculate solvent content, use
+:ref:`gemmi-content <gemmi-content>`.
+
 Connection
 ----------
 
@@ -2029,12 +2110,6 @@ Now, as an exercise, we will delete and re-create a disulfide bond:
   >>> st.connections.append(con)
   >>> st.connections[-1]
   <gemmi.Connection new_disulf  A/CYS 4/SG - A/CYS 10/SG>
-
-
-Sequence
-========
-
-TODO
 
 
 Examples
