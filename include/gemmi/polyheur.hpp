@@ -50,6 +50,16 @@ inline PolymerType check_polymer_type(const ConstResidueSpan& polymer) {
   return PolymerType::Unknown;
 }
 
+inline double calculate_sequence_weight(const std::vector<std::string>& seq,
+                                        double unknown=0.) {
+  double weight = 0.;
+  for (const std::string& item : seq) {
+    ResidueInfo res_info = find_tabulated_residue(Entity::first_mon(item));
+    weight += res_info.found() ? res_info.weight : unknown;
+  }
+  return weight;
+}
+
 inline bool is_polymer_residue(const Residue& res, PolymerType ptype) {
   ResidueInfo info = find_tabulated_residue(res.name);
   // If a standard residue is HETATM we assume that it is in the buffer.

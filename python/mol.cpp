@@ -106,6 +106,7 @@ void add_mol(py::module& m) {
     .def_readwrite("entity_type", &Entity::entity_type)
     .def_readwrite("polymer_type", &Entity::polymer_type)
     .def_readwrite("full_sequence", &Entity::full_sequence)
+    .def_static("first_mon", &Entity::first_mon)
     .def("__repr__", [](const Entity& self) { return tostr(self); });
 
   py::class_<NcsOp>(m, "NcsOp")
@@ -549,4 +550,6 @@ void add_mol(py::module& m) {
         py::arg("prev_residue"), py::arg("residue"), py::arg("next_residue"));
   m.def("calculate_omega", &calculate_omega,
         py::arg("residue"), py::arg("next_residue"));
+  m.def("calculate_sequence_weight", &calculate_sequence_weight,
+        py::arg("sequence"), py::arg("unknown")=0.);
 }
