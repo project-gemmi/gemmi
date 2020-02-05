@@ -1,4 +1,4 @@
-// stb_sprintf - v1.07 - public domain snprintf() implementation
+// stb_sprintf - v1.08 - public domain snprintf() implementation
 // originally by Jeff Roberts / RAD Game Tools, 2015/10/20
 // http://github.com/nothings/stb
 // Modified to avoid UB and warnings at the cost of dependency on string.h.
@@ -167,7 +167,7 @@ PERFORMANCE vs MSVC 2008 32-/64-bit (GCC is even slower than MSVC):
 #ifndef STB_SPRINTF_MIN
 #define STB_SPRINTF_MIN 512 // how many characters per callback
 #endif
-typedef char *STBSP_SPRINTFCB(char *buf, void *user, int len);
+typedef char *STBSP_SPRINTFCB(const char *buf, void *user, int len);
 
 #ifndef STB_SPRINTF_DECORATE
 #define STB_SPRINTF_DECORATE(name) stbsp_##name // define this before including if you want to change the names
@@ -824,7 +824,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
                --i;
             }
             while (i >= 4) {
-               *(stbsp__uint32 *)s = 0x30303030;  // s is aligned
+               *(stbsp__uint32 *)s = 0x30303030;
                s += 4;
                i -= 4;
             }
@@ -867,7 +867,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
                         --n;
                      }
                      while (n >= 4) {
-                        *(stbsp__uint32 *)s = 0x30303030;  // s is aligned
+                        *(stbsp__uint32 *)s = 0x30303030;
                         s += 4;
                         n -= 4;
                      }
@@ -1073,9 +1073,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
             if ((fl & STBSP__TRIPLET_COMMA) == 0) {
                do {
                   s -= 2;
-                  // s is normally aligned to 2, but to avoid GCC 5 warning
-                  // (-Wstrict-aliasing) use memcpy here.
-                  memcpy(s, &stbsp__digitpair.pair[(n % 100) * 2], 2);
+                  *(stbsp__uint16 *)s = *(stbsp__uint16 *)&stbsp__digitpair.pair[(n % 100) * 2];
                   n /= 100;
                } while (n);
             }
@@ -1155,7 +1153,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
                      --i;
                   }
                   while (i >= 4) {
-                     *(stbsp__uint32 *)bf = 0x20202020;  // bf is aligned
+                     *(stbsp__uint32 *)bf = 0x20202020;
                      bf += 4;
                      i -= 4;
                   }
@@ -1193,7 +1191,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
                      --i;
                   }
                   while (i >= 4) {
-                     *(stbsp__uint32 *)bf = 0x30303030;  // bf is aligned
+                     *(stbsp__uint32 *)bf = 0x30303030;
                      bf += 4;
                      i -= 4;
                   }
@@ -1254,7 +1252,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
                --i;
             }
             while (i >= 4) {
-               *(stbsp__uint32 *)bf = 0x30303030;  // bf is aligned
+               *(stbsp__uint32 *)bf = 0x30303030;
                bf += 4;
                i -= 4;
             }
@@ -1292,7 +1290,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
                      --i;
                   }
                   while (i >= 4) {
-                     *(stbsp__uint32 *)bf = 0x20202020;  // bf is aligned
+                     *(stbsp__uint32 *)bf = 0x20202020;
                      bf += 4;
                      i -= 4;
                   }
@@ -1364,7 +1362,7 @@ typedef struct stbsp__context {
    char tmp[STB_SPRINTF_MIN];
 } stbsp__context;
 
-static char *stbsp__clamp_callback(char *buf, void *user, int len)
+static char *stbsp__clamp_callback(const char *buf, void *user, int len)
 {
    stbsp__context *c = (stbsp__context *)user;
    c->length += len;
@@ -1374,7 +1372,8 @@ static char *stbsp__clamp_callback(char *buf, void *user, int len)
 
    if (len) {
       if (buf != c->buf) {
-         char *s, *d, *se;
+         const char *s, *se;
+         char *d;
          d = c->buf;
          s = buf;
          se = buf + len;
@@ -1391,10 +1390,10 @@ static char *stbsp__clamp_callback(char *buf, void *user, int len)
    return (c->count >= STB_SPRINTF_MIN) ? c->buf : c->tmp; // go direct into buffer if you can
 }
 
-static char * stbsp__count_clamp_callback( char * buf, void * user, int len )
+static char * stbsp__count_clamp_callback( const char * buf, void * user, int len )
 {
-   (void) buf;
    stbsp__context * c = (stbsp__context*)user;
+   (void) sizeof(buf);
 
    c->length += len;
    return c->tmp; // go direct into buffer if you can
