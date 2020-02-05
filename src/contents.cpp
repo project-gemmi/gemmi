@@ -3,12 +3,14 @@
 // This program analyses PDB or mmCIF files, printing similar things
 // as CCP4 RWCONTENTS: weight, Matthews coefficient, etc.
 
+#include <cassert>
 #include <cstdio>
 #include <gemmi/symmetry.hpp>
 #include <gemmi/resinfo.hpp>
 #include <gemmi/calculate.hpp>
 #include <gemmi/gzread.hpp>
-#include "histogram.h"     // for print_histogram
+#include <gemmi/polyheur.hpp>  // for setup_entities, calculate_sequence_weight
+#include "histogram.h"         // for print_histogram
 #define GEMMI_PROG contents
 #include "options.h"
 
@@ -69,6 +71,7 @@ static void print_content_info(const Structure& st, bool /*verbose*/) {
   print_atoms_on_special_positions(st);
   double n_molecules = order * st.get_ncs_multiplier();
   printf(" Number of images (symmetry * strict NCS): %5g\n", n_molecules);
+  assert(n_molecules == st.cell.images.size() + 1);
   printf(" Cell volume [A^3]: %30.1f\n", st.cell.volume);
   printf(" ASU volume [A^3]:  %30.1f\n", st.cell.volume / order);
   double water_count = 0;
@@ -115,8 +118,33 @@ static void print_content_info(const Structure& st, bool /*verbose*/) {
   printf(" Estimated hydrogen count: %21d\n", mol_h_count);
   printf(" Estimated molecular weight: %23.3f\n", mol_weight);
   if (st.cell.is_crystal()) {
-    double total_mol_weight = mol_weight * n_molecules;
-    double Vm = st.cell.volume / total_mol_weight;
+    double Vm = st.cell.volume_per_image() / mol_weight;
+    printf(" Matthews coefficient: %29.3f\n", Vm);
+    double Na = 0.602214;  // Avogadro number x 10^-24 (cm^3->A^3)
+    // rwcontents uses 1.34, Rupp's papers 1.35
+    for (double ro : { 1.35, 1.34 })
+      printf(" Solvent %% (for protein density %g): %13.3f\n",
+             ro, 100. * (1. - 1. / (ro * Vm * Na)));
+  } else {
+    printf(" Not a crystal / unit cell not known.\n");
+  }
+  printf("Solvent content based on SEQRES\n");
+  mol_weight = 0.;
+  bool missing = false;
+  for (const Chain& chain : model.chains)
+    if (ConstResidueSpan polymer = chain.get_polymer()) {
+      const Entity* entity = st.get_entity_of(polymer);
+      if (!entity || entity->full_sequence.empty()) {
+        printf(" Missing sequence for chain %s.\n", chain.name.c_str());
+        missing = true;
+      }
+      mol_weight += calculate_sequence_weight(entity->full_sequence, 100.);
+    }
+  if (missing)
+    return;
+  printf(" Molecular weight from sequence: %19.3f\n", mol_weight);
+  if (st.cell.is_crystal()) {
+    double Vm = st.cell.volume_per_image() / mol_weight;
     printf(" Matthews coefficient: %29.3f\n", Vm);
     double Na = 0.602214;  // Avogadro number x 10^-24 (cm^3->A^3)
     // rwcontents uses 1.34, Rupp's papers 1.35
@@ -177,6 +205,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (verbose || p.nonOptionsCount() > 1)
         std::printf("File: %s\n", input.c_str());
       Structure st = read_structure_gz(input);
+      setup_entities(st);
       if (st.models.size() > 1)
         std::fprintf(stderr,
                      "Warning: using only the first model out of %zu.\n",
