@@ -337,7 +337,9 @@ struct Grid {
             for (const GridOp& op : ops) {
               std::array<int, 3> t = op.apply(u, v, w);
               int mate_idx = index_n(t[0], t[1], t[2]);
-              mask[mate_idx] = out;
+              // grid point can be on special position
+              if (mate_idx != idx)
+                mask[mate_idx] = out;
             }
     return mask;
   }
