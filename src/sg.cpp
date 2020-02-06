@@ -1,14 +1,16 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/symmetry.hpp"
+#include "gemmi/grid.hpp"
 #include <cstdio>
+#include <cstdlib>  // for atoi
 
 #define GEMMI_PROG sg
 #include "options.h"
 
 using std::printf;
 
-//enum OptionIndex { Verbose=3 };
+enum OptionIndex { Asu=4 };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -17,6 +19,8 @@ static const option::Descriptor Usage[] = {
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
+  { Asu, 0, "", "asu", Arg::Int,
+    "  --asu=N  \tDraw ASU in NxNxN map grid and exit. Uses N(N+1) columns." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -44,7 +48,23 @@ static void print_verbose_info(const char* hall) {
     printf("    %s\n", symop.triplet().c_str());
 }
 
-static void process_arg(const char* arg, bool verbose) {
+static void draw_asu(const gemmi::SpaceGroup* sg, int n) {
+  gemmi::Grid<float> grid;
+  grid.spacegroup = sg;
+  grid.set_size(n, n, n);
+  std::vector<signed char> mask = grid.get_asu_mask<signed char>(0, 1);
+  int idx = 0;
+  for (int w = 0; w != n; ++w) {
+    for (int v = 0; v != n; ++v) {
+      for (int u = 0; u != n; ++u, ++idx)
+        std::putchar(mask[idx] == 0 ? '+' : '.');
+      std::putchar(' ');
+    }
+    std::putchar('\n');
+  }
+}
+
+static const gemmi::SpaceGroup* find_spacegroup(const char* arg, bool verbose) {
   const gemmi::SpaceGroup* sg = gemmi::find_spacegroup_by_name(arg);
   if (sg == nullptr) {
     try {
@@ -59,10 +79,10 @@ static void process_arg(const char* arg, bool verbose) {
     } catch (std::runtime_error&) {
     }
   }
-  if (sg == nullptr) {
-    std::fprintf(stderr, "Space group not found: %s\n", arg);
-    return;
-  }
+  return sg;
+}
+
+static void print_info(const gemmi::SpaceGroup* sg, bool verbose) {
   printf("Number: %d\n", sg->number);
   bool is_reference = sg->is_reference_setting();
   printf("Is standard setting for this space group: %s\n",
@@ -91,8 +111,19 @@ static void process_arg(const char* arg, bool verbose) {
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
-  for (int i = 0; i < p.nonOptionsCount(); ++i)
-    process_arg(p.nonOption(i), p.options[Verbose]);
+  bool verbose = p.options[Verbose];
+  for (int i = 0; i < p.nonOptionsCount(); ++i) {
+    const char* arg = p.nonOption(i);
+    const gemmi::SpaceGroup* sg = find_spacegroup(arg, verbose);
+    if (sg == nullptr) {
+      std::fprintf(stderr, "Space group not found: %s\n", arg);
+      continue;
+    }
+    if (p.options[Asu])
+      draw_asu(sg, std::atoi(p.options[Asu].arg));
+    else
+      print_info(sg, verbose);
+  }
   return 0;
 }
 
