@@ -20,7 +20,7 @@ class TestFloatGrid(unittest.TestCase):
         m.set_header_i32(28, 20140)  # set NVERSION
         self.assertEqual(m.header_i32(28), 20140)
         dmax = m.header_float(21)
-        self.assertEqual(dmax, max(m.grid))
+        self.assertEqual(dmax, max(p.value for p in m.grid))
         self.assertFalse(m.grid.full_canonical)
         m.setup()
         self.assertTrue(m.grid.full_canonical)
@@ -63,17 +63,19 @@ class TestFloatGrid(unittest.TestCase):
         self.assertEqual(m.nv, N)
         self.assertEqual(m.nw, N)
         m.set_value(1,2,3, 1.0)
-        self.assertEqual(sum(m), 1.0)
+        self.assertEqual(m.sum(), 1.0)
         m.spacegroup = gemmi.find_spacegroup_by_name('C2')
         self.assertEqual(m.spacegroup.number, 5)
         m.symmetrize_max()
-        self.assertEqual(sum(m), 4.0)
+        self.assertEqual(m.sum(), 4.0)
+        m.get_point(0, 0, 0).value += 1
+        self.assertEqual(m.sum(), 5.0)
         m.fill(2.0)
         m.spacegroup = gemmi.find_spacegroup_by_name('P 62 2 2')
         self.assertEqual(len(m.spacegroup.operations()), 12)
         m.set_value(1, 2, 3, 0.0)
         m.symmetrize_min()
-        self.assertEqual(sum(m), 2 * N * N * N - 2 * 12)
+        self.assertEqual(m.sum(), 2 * N * N * N - 2 * 12)
 
 
 # In 5a11 applying NCS causes atom clashing

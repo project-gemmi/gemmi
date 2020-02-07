@@ -34,7 +34,8 @@ std::string grid_dim_str(const Grid<T>& g) {
 template<typename T>
 void add_grid(py::module& m, const char* name) {
   using Gr = Grid<T>;
-  py::class_<Gr>(m, name, py::buffer_protocol())
+  py::class_<Gr> gr(m, name, py::buffer_protocol());
+  gr
     .def_buffer([](Gr &g) {
       return py::buffer_info(g.data.data(),
                              {g.nu, g.nv, g.nw},       // dimensions
@@ -53,6 +54,9 @@ void add_grid(py::module& m, const char* name) {
     .def_readonly("nw", &Gr::nw, "size in the third (slowest-changing) dim")
     .def("get_value", &Gr::get_value)
     .def("set_value", &Gr::set_value)
+    .def("get_point", &Gr::get_point)
+    .def("point_to_fractional", &Gr::point_to_fractional)
+    .def("point_to_position", &Gr::point_to_position)
     .def("interpolate_value",
          (T (Gr::*)(const Fractional&) const) &Gr::interpolate_value)
     .def("interpolate_value",
@@ -67,12 +71,35 @@ void add_grid(py::module& m, const char* name) {
     .def("symmetrize_min", &Gr::symmetrize_min)
     .def("symmetrize_max", &Gr::symmetrize_max)
     .def("fill", &Gr::fill, py::arg("value"))
-    .def("__iter__", [](const Gr& self) {
-        return py::make_iterator(self.data);
-    }, py::keep_alive<0, 1>())
+    .def("sum", &Gr::sum)
+    .def("asu", &Gr::asu)
+    .def("__iter__", [](Gr& self) { return py::make_iterator(self); },
+         py::keep_alive<0, 1>())
     .def("__repr__", [=](const Gr& self) {
         return tostr("<gemmi.", name, '(', grid_dim_str(self), ")>");
     });
+
+  using GrPoint = typename Gr::Point;
+  py::class_<GrPoint>(gr, "Point")
+    .def_readonly("u", &GrPoint::u)
+    .def_readonly("v", &GrPoint::v)
+    .def_readonly("w", &GrPoint::w)
+    .def_property("value",
+                  [](const GrPoint& self) { return *self.value; },
+                  [](GrPoint& self, T x) { *self.value = x; })
+    .def("__repr__", [=](const GrPoint& self) {
+        return tostr("<gemmi.", name, "Point (", self.u, ", ", self.v, ", ",
+                     self.w, ") -> ", *self.value, '>');
+    });
+    ;
+
+  using Masked = MaskedGrid<T>;
+  py::class_<Masked>(m, ("Masked" + std::string(name)).c_str())
+    .def_readonly("grid", &Masked::grid, py::return_value_policy::reference)
+    .def_readonly("mask", &Masked::mask)
+    .def("__iter__", [](Masked& self) { return py::make_iterator(self); },
+         py::keep_alive<0, 1>())
+    ;
 }
 
 template<typename T>

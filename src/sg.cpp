@@ -52,7 +52,7 @@ static void draw_asu(const gemmi::SpaceGroup* sg, int n) {
   gemmi::Grid<float> grid;
   grid.spacegroup = sg;
   grid.set_size(n, n, n);
-  std::vector<signed char> mask = grid.get_asu_mask<signed char>(0, 1);
+  std::vector<std::int8_t> mask = grid.get_asu_mask<std::int8_t>();
   int idx = 0;
   for (int w = 0; w != n; ++w) {
     for (int v = 0; v != n; ++v) {

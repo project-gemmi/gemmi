@@ -89,7 +89,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     // map -> mask
     if (in_type == InputType::Ccp4) {
       double threshold;
-      gemmi::Ccp4<signed char> mask;
+      gemmi::Ccp4<std::int8_t> mask;
       mask.read_ccp4(gemmi::MaybeGzipped(input));
       if (p.options[Threshold]) {
         threshold = std::strtod(p.options[Threshold].arg, nullptr);
@@ -122,7 +122,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                        ? std::strtod(p.options[Radius].arg, nullptr)
                        : 3.0);
       gemmi::Structure st = gemmi::read_structure_gz(input);
-      gemmi::Ccp4<signed char> mask;
+      gemmi::Ccp4<std::int8_t> mask;
       mask.grid.unit_cell = st.cell;
       mask.grid.spacegroup = gemmi::find_spacegroup_by_name(st.spacegroup_hm);
       if (p.options[GridDims]) {
@@ -163,8 +163,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         int n = std::count(mask.grid.data.begin(), mask.grid.data.end(), 1);
         std::fprintf(stderr, "Points masked by model: %d\n", n);
       }
-      mask.grid.symmetrize(
-          [](signed char a, signed char b) { return std::max(a,b); });
+      mask.grid.symmetrize_max();
       if (p.options[Verbose]) {
         int n = std::count(mask.grid.data.begin(), mask.grid.data.end(), 1);
         std::fprintf(stderr, "After symmetrizing: %d\n", n);

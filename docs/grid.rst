@@ -95,11 +95,25 @@ it understands crystallographic symmetry.
 
   >>> grid.spacegroup = gemmi.find_spacegroup_by_name('P2')
   >>> grid.set_value(0, 0, 0, 0.125)  # a special position
-  >>> sum(grid)  # for now only two points: 7.0 + 0.125
+  >>> grid.sum()  # for now only two points: 7.0 + 0.125
   7.125
   >>> grid.symmetrize_max()  # applying symmetry
-  >>> sum(grid)  # one point gets duplicated, the other is on rotation axis
+  >>> grid.sum()  # one point got duplicated, the other is on rotation axis
   14.125
+  >>> for point in grid:
+  ...   if point.value != 0.: print(point)
+  <gemmi.FloatGridPoint (0, 0, 0) -> 0.125>
+  <gemmi.FloatGridPoint (1, 1, 1) -> 7>
+  <gemmi.FloatGridPoint (11, 1, 11) -> 7>
+
+The point that you get when iterating over grid has four properties:
+
+.. doctest::
+
+  >>> grid.get_point(0, 0, 0)
+  <gemmi.FloatGridPoint (0, 0, 0) -> 0.125>
+  >>> _.u, _.v, _.w, _.value
+  (0, 0, 0, 0.125)
 
 The data can be also acesssed through the
 `buffer protocol <https://docs.python.org/3/c-api/buffer.html>`_.
@@ -123,6 +137,32 @@ without copying the data:
 through the buffer protocol, and it can talk with any other Python library
 that supports this protocol.)
 
+We may be interested only in selected part of the map.
+For this, we have MaskedGrid that combines two Grid objects,
+using one of them as a mask for the other.
+
+When an element of the mask is 0 (false), the corresponding element
+of the other grid is unmasked and is to be used. The same convention
+is used in numpy MaskedArray.
+
+The primary use for MaskedGrid is working with asymmetric unit (asu) only:
+
+.. doctest::
+
+  >>> asu = grid.asu()
+  >>> asu  # doctest: +ELLIPSIS
+  <gemmi.MaskedFloatGrid object at 0x...>
+  >>> asu.grid is grid
+  True
+  >>> asu.mask
+  <gemmi.Int8Grid(12, 12, 12)>
+  >>> sum(point.value for point in asu)
+  7.125
+  >>> for point in asu:
+  ...   if point.value != 0: print(point)
+  <gemmi.FloatGridPoint (0, 0, 0) -> 0.125>
+  <gemmi.FloatGridPoint (1, 1, 1) -> 7>
+
 In addition to the symmetry, Grid may also have associated unit cell.
 
 .. doctest::
@@ -131,8 +171,21 @@ In addition to the symmetry, Grid may also have associated unit cell.
   >>> grid.unit_cell
   <gemmi.UnitCell(45, 45, 45, 90, 82.5, 90)>
 
-This allows us to translate position in Angstroms to the location in grid,
-and to get an interpolated value (with trilinear interpolation) at any point:
+This allows us to translate location on the grid to position in Angstroms,
+or in fractional coordinates:
+
+.. doctest::
+
+  >>> point = grid.get_point(6, 6, 6)
+  >>> grid.point_to_fractional(point)
+  <gemmi.Fractional(0.5, 0.5, 0.5)>
+  >>> grid.point_to_position(point)
+  <gemmi.Position(25.4368, 22.5, 22.3075)>
+
+
+And the other way around.
+We can translate position in Angstroms to the location in grid,
+and get an interpolated value (with trilinear interpolation) at any point:
 
 .. doctest::
 
@@ -158,6 +211,11 @@ use the ``set_points_around()`` function:
          [6, 7, 7]])
   >>> # now the data does not obey symmetry, we should call symmetrize*()
 
+To set all point values, do:
+
+.. doctest::
+
+  >>> grid.fill(1.23)
 
 MRC/CCP4 maps
 =============

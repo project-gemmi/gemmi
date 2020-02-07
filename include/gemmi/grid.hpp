@@ -7,7 +7,9 @@
 
 #include <cassert>
 #include <complex>
+#include <algorithm>  // for fill
 #include <functional> // for function
+#include <numeric>    // for accumulate
 #include <vector>
 #include "unitcell.hpp"
 #include "symmetry.hpp"
@@ -104,10 +106,17 @@ std::complex<T> lerp_(std::complex<T> a, std::complex<T> b, double t) {
   return a + (b - a) * (T) t;
 }
 
+template<typename T, typename V=std::int8_t> struct MaskedGrid;
+
 // For now, for simplicity, the grid covers whole unit cell
 // and space group is P1.
 template<typename T=float>
 struct Grid {
+  struct Point {
+    int u, v, w;
+    T* value;
+  };
+
   int nu = 0, nv = 0, nw = 0;
   UnitCell unit_cell;
   bool full_canonical = false; // grid for the whole unit cell with X,Y,Z order
@@ -179,6 +188,17 @@ struct Grid {
 
   T get_value(int u, int v, int w) const { return data[index_s(u, v, w)]; }
 
+  Point get_point(int u, int v, int w) {
+    return {u, v, w, &data[index_s(u, v, w)]};
+  }
+
+  Fractional point_to_fractional(const Point& p) const {
+    return {p.u * (1.0 / nu), p.v * (1.0 / nv), p.w * (1.0 / nw)};
+  }
+  Position point_to_position(const Point& p) const {
+    return unit_cell.orthogonalize(point_to_fractional(p));
+  }
+
   // https://en.wikipedia.org/wiki/Trilinear_interpolation
   T interpolate_value(double x, double y, double z) const {
     double tmp;
@@ -211,6 +231,7 @@ struct Grid {
   void set_value(int u, int v, int w, T x) { data[index_s(u, v, w)] = x; }
 
   void fill(T value) { std::fill(data.begin(), data.end(), value); }
+  T sum() const { return std::accumulate(data.begin(), data.end(), T()); }
 
   template <typename Func>
   void use_points_around(const Fractional& fctr_, double radius, Func&& func,
@@ -326,24 +347,102 @@ struct Grid {
     symmetrize([](T a, T b) { return (a > b || !(b == b)) ? a : b; });
   }
 
-  template<typename V> std::vector<V> get_asu_mask(V in, V out) const {
-    std::vector<V> mask(data.size(), in);
+  template<typename V> std::vector<V> get_asu_mask() const {
+    std::vector<V> mask(data.size(), 0);
     std::vector<GridOp> ops = get_scaled_ops_except_id();
     int idx = 0;
     for (int w = 0; w != nw; ++w)
       for (int v = 0; v != nv; ++v)
         for (int u = 0; u != nu; ++u, ++idx)
-          if (mask[idx] == in)
+          if (mask[idx] == 0)
             for (const GridOp& op : ops) {
               std::array<int, 3> t = op.apply(u, v, w);
               int mate_idx = index_n(t[0], t[1], t[2]);
               // grid point can be on special position
               if (mate_idx != idx)
-                mask[mate_idx] = out;
+                mask[mate_idx] = 1;
             }
     return mask;
   }
+
+  MaskedGrid<T> asu();
+
+  struct iterator {
+    Grid& parent;
+    size_t index;
+    int u = 0, v = 0, w = 0;
+    iterator(Grid& parent_, size_t index_) : parent(parent_), index(index_) {}
+    iterator& operator++() {
+      ++index;
+      if (++u == parent.nu) {
+        u = 0;
+        if (++v == parent.nv) {
+          v = 0;
+          ++w;
+        }
+      }
+      return *this;
+    }
+    typename Grid<T>::Point operator*() {
+      return {u, v, w, &parent.data[index]};
+    }
+    bool operator==(const iterator &o) const { return index == o.index; }
+    bool operator!=(const iterator &o) const { return index != o.index; }
+  };
+  iterator begin() { return {*this, 0}; }
+  iterator end() { return {*this, data.size()}; }
 };
+
+
+template<typename T, typename V> struct MaskedGrid {
+  Grid<T>* grid;
+  // should we simply store a vector
+  Grid<V> mask;
+
+  MaskedGrid(Grid<T>& grid_, std::vector<V>&& mask_data) : grid(&grid_) {
+    mask.nu = grid_.nu;
+    mask.nv = grid_.nv;
+    mask.nw = grid_.nw;
+    mask.spacegroup = grid_.spacegroup;
+    mask.data = mask_data;
+  }
+
+  struct iterator;
+  struct iterator {
+    MaskedGrid& parent;
+    size_t index;
+    int u = 0, v = 0, w = 0;
+    iterator(MaskedGrid& parent_, size_t index_)
+      : parent(parent_), index(index_) {}
+    iterator& operator++() {
+      do {
+        ++index;
+        if (++u == parent.grid->nu) {
+          u = 0;
+          if (++v == parent.grid->nv) {
+            v = 0;
+            ++w;
+          }
+        }
+      } while (index != parent.mask.data.size() &&
+               parent.mask.data[index] != 0);
+      return *this;
+    }
+    typename Grid<T>::Point operator*() {
+      return {u, v, w, &parent.grid->data[index]};
+    }
+    bool operator==(const iterator &o) const { return index == o.index; }
+    bool operator!=(const iterator &o) const { return index != o.index; }
+  };
+  iterator begin() { return {*this, 0}; }
+  iterator end() { return {*this, mask.data.size()}; }
+};
+
+template<typename T>
+MaskedGrid<T> Grid<T>::asu() {
+  return {*this, get_asu_mask<std::int8_t>()};
+}
+
 
 } // namespace gemmi
 #endif
