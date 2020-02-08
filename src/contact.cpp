@@ -63,7 +63,7 @@ struct Parameters {
 
 static void print_contacts(const Structure& st, const Parameters& params) {
   const float special_pos_cutoff = 0.8f;
-  float max_r = params.use_cov_radius ? params.max_dist : 4.f + params.cov_tol;
+  float max_r = params.use_cov_radius ? 4.f + params.cov_tol : params.max_dist;
   SubCells sc(st.models.at(0), st.cell, std::max(5.0f, max_r));
   sc.populate(/*include_h=*/!params.no_hydrogens);
 
