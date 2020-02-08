@@ -198,6 +198,9 @@ struct Grid {
   Position point_to_position(const Point& p) const {
     return unit_cell.orthogonalize(point_to_fractional(p));
   }
+  size_t point_to_index(const Point& p) const {
+    return p.value - data.data();
+  }
 
   // https://en.wikipedia.org/wiki/Trilinear_interpolation
   T interpolate_value(double x, double y, double z) const {

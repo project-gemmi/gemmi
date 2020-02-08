@@ -115,6 +115,9 @@ The point that you get when iterating over grid has four properties:
   >>> _.u, _.v, _.w, _.value
   (0, 0, 0, 0.125)
 
+The point can also be converted to index and to fractional and orthoghonal
+c oordinates, as will be demonstrated later.
+
 The data can be also acesssed through the
 `buffer protocol <https://docs.python.org/3/c-api/buffer.html>`_.
 It means that you can use it as a NumPy array (Fortran-style contiguous)
@@ -163,6 +166,17 @@ The primary use for MaskedGrid is working with asymmetric unit (asu) only:
   <gemmi.FloatGridPoint (0, 0, 0) -> 0.125>
   <gemmi.FloatGridPoint (1, 1, 1) -> 7>
 
+To convert a point to index or to fractional coordinates use:
+
+.. doctest::
+
+  >>> point = grid.get_point(6, 6, 6)
+  >>> grid.point_to_index(point)
+  942
+  >>> grid.point_to_fractional(point)
+  <gemmi.Fractional(0.5, 0.5, 0.5)>
+
+
 In addition to the symmetry, Grid may also have associated unit cell.
 
 .. doctest::
@@ -171,14 +185,10 @@ In addition to the symmetry, Grid may also have associated unit cell.
   >>> grid.unit_cell
   <gemmi.UnitCell(45, 45, 45, 90, 82.5, 90)>
 
-This allows us to translate location on the grid to position in Angstroms,
-or in fractional coordinates:
+This allows us to translate location on the grid to position in Angstroms:
 
 .. doctest::
 
-  >>> point = grid.get_point(6, 6, 6)
-  >>> grid.point_to_fractional(point)
-  <gemmi.Fractional(0.5, 0.5, 0.5)>
   >>> grid.point_to_position(point)
   <gemmi.Position(25.4368, 22.5, 22.3075)>
 

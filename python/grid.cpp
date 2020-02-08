@@ -57,6 +57,7 @@ void add_grid(py::module& m, const char* name) {
     .def("get_point", &Gr::get_point)
     .def("point_to_fractional", &Gr::point_to_fractional)
     .def("point_to_position", &Gr::point_to_position)
+    .def("point_to_index", &Gr::point_to_index)
     .def("interpolate_value",
          (T (Gr::*)(const Fractional&) const) &Gr::interpolate_value)
     .def("interpolate_value",
