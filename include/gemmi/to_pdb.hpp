@@ -40,8 +40,8 @@ inline std::string padded_atom_name(const Atom& atom) {
 #ifdef GEMMI_WRITE_IMPLEMENTATION
 
 #include <cassert>
-#include <cctype> // for isdigit
-#include <cstring>
+#include <cctype>         // for isdigit
+#include <cstring>        // for memset, memcpy
 #include <algorithm>
 #include <sstream>
 #include "fail.hpp"       // for fail
@@ -519,6 +519,11 @@ inline void write_header(const Structure& st, std::ostream& os,
             continue;
           SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
                                                    cra2.atom->pos, con.asu);
+          // Pdb spec: "sym1 and sym2 are right justified and are given as
+          // blank when the identity operator (and no cell translation) is
+          // to be applied to the atom." But all files from wwPDB have
+          // 1555 not blank, so here we also write 1555,
+          // except for LINKR (Refmac variant of LINK).
           gf_snprintf(buf, 82, "LINK        %-4s%c%3s%2s%5s   "
                 "            %-4s%c%3s%2s%5s  %6s %6s %5.2f  \n",
                 padded_atom_name(*cra1.atom).c_str(),
@@ -532,9 +537,12 @@ inline void write_header(const Structure& st, std::ostream& os,
                 cra2.chain->name.c_str(),
                 write_seq_id(buf8a, *cra2.residue),
                 "1555", im.pdb_symbol(false).c_str(), im.dist());
-          if (opt.use_linkr && !con.link_id.empty() && im.same_asu()) {
-            buf[4] = 'R';
-            gf_snprintf(buf+58, 82-58, "%14s%-8s\n", "", con.link_id.c_str());
+          if (opt.use_linkr && !con.link_id.empty()) {
+            buf[4] = 'R';  // LINK -> LINKR
+            if (im.same_asu())
+              std::memset(buf+58, ' ', 14); // erase symmetry
+            // overwrite distance with link_id
+            gf_snprintf(buf+72, 82-72, "%-8s\n", con.link_id.c_str());
           }
           os.write(buf, 81);
         }
