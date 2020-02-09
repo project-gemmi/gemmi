@@ -926,6 +926,10 @@ struct Structure {
 
   CoorFormat input_format = CoorFormat::Unknown;
 
+  const SpaceGroup* find_spacegroup() const {
+    return find_spacegroup_by_name(spacegroup_hm, cell.alpha, cell.gamma);
+  }
+
   const std::string& get_info(const std::string& tag) const {
     static const std::string empty;
     auto it = info.find(tag);
@@ -1032,7 +1036,8 @@ inline void Chain::append_residues(std::vector<Residue> new_resi, int min_sep) {
 }
 
 inline void Structure::setup_cell_images() {
-  cell.set_cell_images_from_spacegroup(find_spacegroup_by_name(spacegroup_hm));
+  const SpaceGroup* sg = find_spacegroup();
+  cell.set_cell_images_from_spacegroup(sg);
 
   // Strict NCS from MTRIXn.
   size_t n = cell.images.size();

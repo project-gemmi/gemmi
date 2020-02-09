@@ -58,7 +58,7 @@ static void print_atoms_on_special_positions(const Structure& st) {
 static void print_content_info(const Structure& st, bool /*verbose*/) {
   printf(" Spacegroup   %s\n", st.spacegroup_hm.c_str());
   int order = 1;
-  const SpaceGroup* sg = find_spacegroup_by_name(st.spacegroup_hm);
+  const SpaceGroup* sg = st.find_spacegroup();
   if (sg) {
     order = sg->operations().order();
     printf("   Group no. %d with %d operations.\n", sg->number, order);

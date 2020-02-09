@@ -32,12 +32,6 @@ inline const std::string* find_spacegroup_hm_value(const cif::Block& block) {
   return block.find_value(hm_tag);
 }
 
-inline const SpaceGroup* read_spacegroup_from_block(const cif::Block& block) {
-  if (const std::string* hm = find_spacegroup_hm_value(block))
-    return find_spacegroup_by_name(cif::as_string(*hm));
-  return nullptr;
-}
-
 } // namespace impl
 } // namespace gemmi
 

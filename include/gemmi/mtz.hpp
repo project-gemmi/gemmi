@@ -506,7 +506,8 @@ struct Mtz {
   }
 
   void setup_spacegroup() {
-    spacegroup = find_spacegroup_by_name(spacegroup_name);
+    spacegroup = find_spacegroup_by_name(spacegroup_name,
+                                         cell.alpha, cell.gamma);
     if (!spacegroup) {
       warn("MTZ: unrecognized spacegroup name: " + spacegroup_name);
       return;

@@ -118,7 +118,6 @@ void add_symmetry(py::module& m) {
     .def(py::init([](const std::string& s) {
            return const_cast<SpaceGroup&>(get_spacegroup_by_name(s));
          }), py::arg("hm"), py::return_value_policy::reference)
-    //.def(py::init(&find_spacegroup_by_name))
     .def("__repr__", [](const SpaceGroup &self) {
         return "<gemmi.SpaceGroup(\"" + self.xhm() + "\")>";
     })
@@ -160,7 +159,8 @@ void add_symmetry(py::module& m) {
   m.def("find_spacegroup_by_number", &find_spacegroup_by_number,
         py::arg("ccp4"), py::return_value_policy::reference,
         "Returns space-group of given number.");
-  m.def("find_spacegroup_by_name", &find_spacegroup_by_name, py::arg("hm"),
+  m.def("find_spacegroup_by_name", &find_spacegroup_by_name,
+        py::arg("hm"), py::arg("alpha")=0., py::arg("gamma")=0.,
         py::return_value_policy::reference,
         "Returns space-group with given name.");
   m.def("get_spacegroup_reference_setting", &get_spacegroup_reference_setting,

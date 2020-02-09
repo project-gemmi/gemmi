@@ -77,7 +77,8 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
   if (cif::Column w_col = block.find_values("_diffrn_radiation_wavelength"))
     st.wavelength = cif::as_number(w_col.at(0));
 
-  const SpaceGroup* sg = find_spacegroup_by_name(st.spacegroup_hm);
+  const SpaceGroup* sg = find_spacegroup_by_name(st.spacegroup_hm,
+                                                 st.cell.alpha, st.cell.gamma);
   st.cell.set_cell_images_from_spacegroup(sg);
   return st;
 }

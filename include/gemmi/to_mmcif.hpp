@@ -323,7 +323,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
   block.set_pair("_symmetry.entry_id", id);
   block.set_pair("_symmetry.space_group_name_H-M",
                  cif::quote(st.spacegroup_hm));
-  if (const SpaceGroup* sg = find_spacegroup_by_name(st.spacegroup_hm))
+  if (const SpaceGroup* sg = st.find_spacegroup())
     block.set_pair("_symmetry.Int_Tables_number", to_string(sg->number));
 
   // _entity

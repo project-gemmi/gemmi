@@ -92,7 +92,7 @@ struct DensityCalculator {
 
   void set_grid_cell_and_spacegroup(const Structure& st) {
     grid.unit_cell = st.cell;
-    grid.spacegroup = find_spacegroup_by_name(st.spacegroup_hm);
+    grid.spacegroup = st.find_spacegroup();
   }
 
   // The argument is 1/d^2 - as outputted by unit_cell.calculate_1_d2(hkl).

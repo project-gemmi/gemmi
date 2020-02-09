@@ -30,7 +30,9 @@ struct ReflnBlock {
   ReflnBlock(cif::Block&& block_) : block(block_) {
     entry_id = cif::as_string(block.find_value("_entry.id"));
     impl::set_cell_from_mmcif(block, cell);
-    spacegroup = impl::read_spacegroup_from_block(block);
+    if (const std::string* hm = impl::find_spacegroup_hm_value(block))
+      spacegroup = find_spacegroup_by_name(cif::as_string(*hm),
+                                           cell.alpha, cell.gamma);
     cell.set_cell_images_from_spacegroup(spacegroup);
     const char* wave_tag = "_diffrn_radiation_wavelength.wavelength";
     cif::Column wave_col = block.find_values(wave_tag);
@@ -162,7 +164,15 @@ inline ReflnBlock get_refln_block(std::vector<cif::Block>&& blocks,
   const SpaceGroup* first_sg = nullptr;
   for (cif::Block& block : blocks) {
     if (!first_sg)
-      first_sg = impl::read_spacegroup_from_block(block);
+      if (const std::string* hm = impl::find_spacegroup_hm_value(block)) {
+        first_sg = find_spacegroup_by_name(cif::as_string(*hm));
+        if (first_sg && first_sg->ext == 'H') {
+          UnitCell cell;
+          impl::set_cell_from_mmcif(block, cell);
+          first_sg = find_spacegroup_by_name(cif::as_string(*hm),
+                                             cell.alpha, cell.gamma);
+        }
+      }
     if (block_name && block.name != block_name)
       continue;
     if (cif::Loop* loop = block.find_loop("_refln.index_h").get_loop())

@@ -1589,7 +1589,10 @@ inline const SpaceGroup& get_spacegroup_reference_setting(int number) {
                               + std::to_string(number));
 }
 
-inline const SpaceGroup* find_spacegroup_by_name(std::string name) noexcept {
+// the angles alpha and gamma are optional. If provided they are only used
+// to distinguish hexagonal and rhombohedral settings (e.g. for "R 3").
+inline const SpaceGroup* find_spacegroup_by_name(std::string name,
+                                  double alpha=0., double gamma=0.) noexcept {
   if (name[0] == 'H')
     name[0] = 'R';
   const char* p = impl::skip_blank(name.c_str());
@@ -1621,8 +1624,19 @@ inline const SpaceGroup* find_spacegroup_by_name(std::string name) noexcept {
           b = impl::skip_blank(b+1);
         }
         if (*b == '\0' &&
-            (*a == '\0' || (*a == ':' && *impl::skip_blank(a+1) == sg.ext)))
+            (*a == '\0' || (*a == ':' && *impl::skip_blank(a+1) == sg.ext))) {
+          // Change hexagonal settings to rhombohedral if the unit cell angles
+          // are more consistent with the latter.
+          // We have possible ambiguity in the hexagonal crystal family.
+          // For instance, "R 3" may mean "R 3:H" (hexagonal setting) or
+          // "R 3:R" (rhombohedral setting). The :H symbols come first
+          // in the table and are used by default. The ratio gamma:alpha
+          // is 120:90 in the hexagonal system and 1:1 in rhombohedral.
+          // We assume that the 'R' entry follows directly the 'H' entry.
+          if (*a == '\0' && sg.ext == 'H' && gamma < 1.125 * alpha)
+            return &sg + 1;
           return &sg;
+        }
       } else if (sg.hm[2] == '1' && sg.hm[3] == ' ') {
         // check monoclinic short names, matching P2 to "P 1 2 1";
         // as an exception "B 2" == "B 1 1 2" (like in the PDB)
