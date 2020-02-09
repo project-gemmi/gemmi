@@ -1612,27 +1612,32 @@ inline const SpaceGroup* find_spacegroup_by_name(std::string name) noexcept {
           name[i] &= ~0x20;  // to uppercase
   }
   for (const SpaceGroup& sg : spacegroup_tables::main)
-    if (sg.hm[0] == first && sg.hm[2] == *p) {
-      const char* a = impl::skip_blank(p + 1);
-      const char* b = impl::skip_blank(sg.hm + 3);
-      while (*a == *b && *b != '\0') {
-        a = impl::skip_blank(a+1);
-        b = impl::skip_blank(b+1);
+    if (sg.hm[0] == first) {
+      if (sg.hm[2] == *p) {
+        const char* a = impl::skip_blank(p + 1);
+        const char* b = impl::skip_blank(sg.hm + 3);
+        while (*a == *b && *b != '\0') {
+          a = impl::skip_blank(a+1);
+          b = impl::skip_blank(b+1);
+        }
+        if (*b == '\0' &&
+            (*a == '\0' || (*a == ':' && *impl::skip_blank(a+1) == sg.ext)))
+          return &sg;
+      } else if (sg.hm[2] == '1' && sg.hm[3] == ' ') {
+        // check monoclinic short names, matching P2 to "P 1 2 1";
+        // as an exception "B 2" == "B 1 1 2" (like in the PDB)
+        const char* b = sg.hm + 4;
+        if (*b != '1' || (first == 'B' && *++b == ' ' && *++b != '1')) {
+          char end = (b == sg.hm + 4 ? ' ' : '\0');
+          const char* a = impl::skip_blank(p);
+          while (*a == *b && *b != end) {
+            ++a;
+            ++b;
+          }
+          if (*impl::skip_blank(a) == '\0' && *b == end)
+            return &sg;
+        }
       }
-      if (*b == '\0' &&
-          (*a == '\0' || (*a == ':' && *impl::skip_blank(a+1) == sg.ext)))
-        return &sg;
-    } else if (sg.hm[0] == first && sg.hm[2] == '1' && sg.hm[3] == ' ' &&
-               sg.hm[4] != '1') {
-      // check monoclinic short names
-      const char* a = impl::skip_blank(p);
-      const char* b = sg.hm + 4;
-      while (*a == *b && *b != ' ') {
-        a = impl::skip_blank(a+1);
-        ++b;
-      }
-      if (*a == '\0' && *b == ' ')
-        return &sg;
     }
   for (const SpaceGroupAltName& sg : spacegroup_tables::alt_names)
     if (sg.hm[0] == first && sg.hm[2] == *p) {
