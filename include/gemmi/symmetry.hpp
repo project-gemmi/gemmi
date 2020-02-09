@@ -1600,6 +1600,15 @@ inline const SpaceGroup* find_spacegroup_by_name(std::string name) noexcept {
   if (first == '\0')
     return nullptr;
   p = impl::skip_blank(p+1);
+  // change letters to lower case, except the letter after :
+  for (size_t i = p - name.c_str(); i < name.size(); ++i) {
+    if (name[i] >= 'A' && name[i] <= 'Z')
+      name[i] |= 0x20;  // to lowercase
+    else if (name[i] == ':')
+      while (++i < name.size())
+        if (name[i] >= 'a' && name[i] <= 'z')
+          name[i] &= ~0x20;  // to uppercase
+  }
   for (const SpaceGroup& sg : spacegroup_tables::main)
     if (sg.hm[0] == first && sg.hm[2] == *p) {
       const char* a = impl::skip_blank(p + 1);
