@@ -940,7 +940,7 @@ template<class Dummy>
 struct Tables_
 {
   static const SpaceGroup main[554];
-  static const SpaceGroupAltName alt_names[27];
+  static const SpaceGroupAltName alt_names[28];
   static const char ccp4_hkl_asu[230];
 };
 
@@ -1512,7 +1512,7 @@ const SpaceGroup Tables_<Dummy>::main[554] = {
 };
 
 template<class Dummy>
-const SpaceGroupAltName Tables_<Dummy>::alt_names[27] = {
+const SpaceGroupAltName Tables_<Dummy>::alt_names[28] = {
   // In 1990's ITfC vol.A changed some of the standard names, introducing
   // symbols 'e' and 'g'. sgtbx interprets these new symbols with
   // option ad_hoc_1992. spglib uses only the new symbols.
@@ -1543,6 +1543,8 @@ const SpaceGroupAltName Tables_<Dummy>::alt_names[27] = {
   {"A e a a", '2', 326}, // A b a a
   {"B b e b", '1', 329}, // B b c b
   {"B b e b", '2', 330}, // B b c b
+  // help with  parsing of unusual setting names that are present in the PDB
+  {"P 21 21 2a", 0, 532}, // P 21212(a)
 };
 
 
