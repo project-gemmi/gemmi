@@ -17,7 +17,7 @@
 using namespace gemmi;
 using std::printf;
 
-enum OptionIndex { Dihedrals=4, Bfactors };
+enum OptionIndex { Dihedrals=4, Bfactors, NoContentInfo };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -26,10 +26,12 @@ static const option::Descriptor Usage[] = {
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
-  { Bfactors, 0, "-b", "", Arg::None,
+  { Bfactors, 0, "b", "", Arg::None,
     "  -b  \tPrint statistics of isotropic ADPs (B-factors)." },
   { Dihedrals, 0, "", "dihedrals", Arg::None,
     "  --dihedrals  \tPrint peptide dihedral angles." },
+  { NoContentInfo, 0, "n", "", Arg::None,
+    "  -n  \tDo not print content (for use with other options)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -210,7 +212,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::fprintf(stderr,
                      "Warning: using only the first model out of %zu.\n",
                      st.models.size());
-      print_content_info(st, verbose);
+      if (!p.options[NoContentInfo])
+        print_content_info(st, verbose);
       if (p.options[Bfactors])
         print_bfactor_info(st.models.at(0));
       if (p.options[Dihedrals])
