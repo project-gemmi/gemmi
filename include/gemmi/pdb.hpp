@@ -120,7 +120,8 @@ inline int read_matrix(Transform& t, char* line, size_t len) {
 
 inline ResidueId read_res_id(const char* seq_id, const char* name) {
   ResidueId rid;
-  rid.seqid.icode = seq_id[4];
+  if (seq_id[4] != '\r' && seq_id[4] != '\n')
+    rid.seqid.icode = seq_id[4];
   // We support hybrid-36 extension, although it is never used in practice
   // as 9999 residues per chain are enough.
   if (seq_id[0] < 'A') {
@@ -210,7 +211,7 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
   int metalc_count = 0;
   for (const std::string& record : conn_records) {
     if (record[0] == 'S' || record[0] == 's') { // SSBOND
-      if (record.length() < 35)
+      if (record.length() < 32)
         continue;
       Connection c;
       c.name = "disulf" + std::to_string(++disulf_count);
@@ -219,7 +220,9 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       c.partner1.chain_name = read_string(r + 14, 2);
       c.partner1.res_id = read_res_id(r + 17, r + 11);
       c.partner2.chain_name = read_string(r + 28, 2);
-      c.partner2.res_id = read_res_id(r + 31, r + 25);
+      char res_id2[5] = {' ', ' ', ' ', ' ', ' '};
+      std::memcpy(res_id2, r + 31, std::min((size_t)5, record.length() - 31));
+      c.partner2.res_id = read_res_id(res_id2, r + 25);
       c.asu = compare_link_symops(record);
       if (record.length() > 73)
         c.reported_distance = read_double(r + 73, 5);

@@ -34,6 +34,12 @@ ATOM   2024  SG  CYS A 296      14.668  -4.407 -16.359  1.00 25.70           S
 ATOM   2128  SG  CYS A 310      24.141 -22.158 -17.213  1.00 20.07           S  
 """  # noqa: W291 - trailing whitespace
 
+SHORT_SSBOND = """\
+SSBOND   1 CYS A    6    CYS A   11
+ATOM     37  SG  CYS A   6      38.416  25.985  18.085  1.00 14.07  16       S
+ATOM     69  SG  CYS A  11      36.989  25.994  19.570  1.00 14.23  16       S
+"""
+
 # fragment of $CCP4/examples/toxd/toxd_mod_p1.pdb without chain names
 BLANK_CHAIN_FRAGMENT = """\
 CRYST1   50.000   50.00    50.00   90.00  90.00   90.00
@@ -478,6 +484,13 @@ class TestMol(unittest.TestCase):
         st2 = gemmi.make_structure_from_block(doc[0])
         out = st2.make_pdb_headers()
         self.assertEqual(out.splitlines(), SSBOND_FRAGMENT.splitlines()[:3])
+
+    def test_short_ssbond(self):
+        st = gemmi.read_pdb_string(SHORT_SSBOND)
+        out = st.make_pdb_headers()
+        self.assertEqual(out.splitlines()[0],
+                         SHORT_SSBOND.splitlines()[0] +
+                         "                          1555   1555  2.06  ")
 
     def test_add_remove(self):
         st = gemmi.read_pdb_string(SSBOND_FRAGMENT)
