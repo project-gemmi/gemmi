@@ -20,7 +20,7 @@ namespace gemmi {
 inline CoorFormat coor_format_from_ext(const std::string& path) {
   if (iends_with(path, ".pdb") || iends_with(path, ".ent"))
     return CoorFormat::Pdb;
-  if (iends_with(path, ".cif"))
+  if (iends_with(path, ".cif") || iends_with(path, ".mmcif"))
     return CoorFormat::Mmcif;
   if (iends_with(path, ".json"))
     return CoorFormat::Mmjson;
