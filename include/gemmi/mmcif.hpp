@@ -168,41 +168,76 @@ inline std::vector<Sheet> read_sheets(cif::Block& block) {
   return sheets;
 }
 
+inline
+void set_part_of_address_from_label(AtomAddress& a, const Model& model,
+                                    const std::string& label_asym,
+                                    const std::string& label_seq_id_raw) {
+  int seq = cif::as_int(label_seq_id_raw, SeqId::OptionalNum::None);
+  for (const Chain& chain : model.chains)
+    if (ConstResidueSpan sub = chain.get_subchain(label_asym)) {
+      a.chain_name = chain.name;
+      for (const Residue& res : sub)
+        if (res.label_seq == seq) {
+          a.res_id.seqid = res.seqid;
+          return;
+        }
+    }
+}
+
 inline void read_connectivity(cif::Block& block, Structure& st) {
+  enum {
+    kId=0, kConnTypeId=1,
+    kAuthAsymId=2/*-3*/,  kLabelAsymId=4/*-5*/, kLabelCompId=6/*-7*/,
+    kLabelAtomId=8/*-9*/, kLabelAltId=10/*-11*/,
+    kAuthSeqId=12/*-13*/, kLabelSeqId=14/*-15*/, kInsCode=16/*-17*/,
+    kSym1=18, kSym2=19, kDistValue=20, kLinkId=21
+  };
   // label_ identifiers are not sufficient for HOH:
   // waters have null label_seq_id so we need auth_seq_id+icode.
   // And since we need auth_seq_id, we also use auth_asym_id for consistency.
+  // Unless only label_*_id are available.
   for (const auto row : block.find("_struct_conn.", {
-        "id", "conn_type_id", // 0-1
-        "ptnr1_auth_asym_id", "ptnr2_auth_asym_id", // 2-3
-        "ptnr1_label_comp_id", "ptnr2_label_comp_id", // 4-5
-        "ptnr1_label_atom_id", "ptnr2_label_atom_id", // 6-7
-        "?pdbx_ptnr1_label_alt_id", "?pdbx_ptnr2_label_alt_id", // 8-9
-        "ptnr1_auth_seq_id", "ptnr2_auth_seq_id", // 10-11
-        "?pdbx_ptnr1_PDB_ins_code", "?pdbx_ptnr2_PDB_ins_code", // 12-13
-        "?ptnr1_symmetry", "?ptnr2_symmetry", "?pdbx_dist_value", // 14-16
-        "?ccp4_link_id"})) {
+        "id", "conn_type_id",                                   // 0-1
+        "?ptnr1_auth_asym_id", "?ptnr2_auth_asym_id",           // 2-3
+        "?ptnr1_label_asym_id", "?ptnr2_label_asym_id",         // 4-5
+        "ptnr1_label_comp_id", "ptnr2_label_comp_id",           // 6-7
+        "ptnr1_label_atom_id", "ptnr2_label_atom_id",           // 8-9
+        "?pdbx_ptnr1_label_alt_id", "?pdbx_ptnr2_label_alt_id", // 10-11
+        "?ptnr1_auth_seq_id", "?ptnr2_auth_seq_id",             // 12-13
+        "?ptnr1_label_seq_id", "?ptnr2_label_seq_id",           // 14-15
+        "?pdbx_ptnr1_PDB_ins_code", "?pdbx_ptnr2_PDB_ins_code", // 16-17
+        "?ptnr1_symmetry", "?ptnr2_symmetry",                   // 18-19
+        "?pdbx_dist_value", "?ccp4_link_id"})) {                // 20-21
     Connection c;
-    c.name = row.str(0);
-    copy_string(row, 17, c.link_id);
-    std::string type = row.str(1);
+    c.name = row.str(kId);
+    copy_string(row, kLinkId, c.link_id);
+    std::string type = row.str(kConnTypeId);
     for (int i = 0; i != Connection::None; ++i)
       if (get_mmcif_connection_type_id(Connection::Type(i)) == type) {
         c.type = Connection::Type(i);
         break;
       }
-    if (row.has2(14) && row.has2(15)) {
-      c.asu = (row.str(14) == row.str(15) ? Asu::Same : Asu::Different);
+    if (row.has2(kSym1) && row.has2(kSym2)) {
+      c.asu = (row.str(kSym1) == row.str(kSym2) ? Asu::Same : Asu::Different);
     }
     copy_double(row, 16, c.reported_distance);
     for (int i = 0; i < 2; ++i) {
       AtomAddress& a = (i == 0 ? c.partner1 : c.partner2);
-      a.chain_name = row.str(2+i);
-      if (row.has2(12+i))
-        a.res_id.seqid.icode = cif::as_char(row[12+i], ' ');
-      a.res_id = make_resid(row.str(4+i), row.str(10+i), row.ptr_at(12+i));
-      a.atom_name = row.str(6+i);
-      a.altloc = row.has2(8+i) ? cif::as_char(row[8+i], '\0') : '\0';
+      if (row.has(kAuthAsymId+i) && row.has(kAuthSeqId+i)) {
+        a.chain_name = row.str(kAuthAsymId+i);
+        a.res_id = make_resid(row.str(kLabelCompId+i),
+                              row.str(kAuthSeqId+i), row.ptr_at(kInsCode+i));
+      } else if (row.has(kLabelAsymId+i) && row.has(kLabelSeqId+i)) {
+        set_part_of_address_from_label(a, st.models.at(0),
+                                       row.str(kLabelAsymId+i),
+                                       row[kLabelSeqId+i]);
+        a.res_id.name = row.str(kLabelCompId+i);
+      } else {
+        fail("_struct_conn without either _auth_ or _label_ asym_id+seq_id");
+      }
+      a.atom_name = row.str(kLabelAtomId+i);
+      if (row.has2(kLabelAltId+i))
+        a.altloc = cif::as_char(row[kLabelAltId+i], '\0');
     }
     st.connections.emplace_back(c);
   }
