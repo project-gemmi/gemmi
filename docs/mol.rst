@@ -423,6 +423,16 @@ or not) can be opened using:
   >>> gemmi.read_structure(path)  #doctest: +ELLIPSIS
   <gemmi.Structure ...>
 
+If the file format is not specified (example above) it is determined from
+the file extension. If the extension is not canonical you can specify
+the format explicitely:
+
+.. doctest::
+
+  >>> gemmi.read_structure(path, format=gemmi.CoorFormat.Pdb)  #doctest: +ELLIPSIS
+  <gemmi.Structure ...>
+
+The file form
 ``gemmi.Structure`` will be documented :ref:`later on <mcra>`.
 
 

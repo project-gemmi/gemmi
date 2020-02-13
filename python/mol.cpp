@@ -80,6 +80,14 @@ void add_mol(py::module& m) {
   m.def("find_tabulated_residue", &find_tabulated_residue, py::arg("name"),
         "Find chemical component information in the internal table.");
 
+  py::enum_<CoorFormat>(m, "CoorFormat")
+    .value("Unknown", CoorFormat::Unknown)
+    .value("UnknownAny", CoorFormat::UnknownAny)
+    .value("Pdb", CoorFormat::Pdb)
+    .value("Mmcif", CoorFormat::Mmcif)
+    .value("Mmjson", CoorFormat::Mmjson)
+    .value("ChemComp", CoorFormat::ChemComp);
+
   py::enum_<EntityType>(m, "EntityType")
     .value("Unknown", EntityType::Unknown)
     .value("Polymer", EntityType::Polymer)
