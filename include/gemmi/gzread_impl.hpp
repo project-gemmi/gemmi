@@ -22,10 +22,6 @@ cif::Document read_mmjson_gz(const std::string& path) {
   return cif::read_mmjson(MaybeGzipped(path));
 }
 
-Structure make_structure(const cif::Document& doc) {
-  return make_structure_from_block(doc.sole_block());
-}
-
 Structure read_pdb_gz(const std::string& path) {
   return read_pdb(MaybeGzipped(path));
 }

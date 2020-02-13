@@ -23,8 +23,6 @@ inline cif::Document read_cif_or_mmjson_gz(const std::string& path) {
   return read_cif_gz(path);
 }
 
-Structure make_structure(const cif::Document& doc);
-
 Structure read_structure_gz(const std::string& path,
                             CoorFormat format=CoorFormat::Unknown);
 
