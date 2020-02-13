@@ -20,15 +20,15 @@ namespace gemmi {
 
 namespace impl {
 
-void copy_int(const cif::Table::Row& row, int n, int& dest) {
+inline void copy_int(const cif::Table::Row& row, int n, int& dest) {
   if (row.has2(n))
     dest = cif::as_int(row[n]);
 }
-void copy_double(const cif::Table::Row& row, int n, double& dest) {
+inline void copy_double(const cif::Table::Row& row, int n, double& dest) {
   if (row.has2(n))
     dest = cif::as_number(row[n]);
 }
-void copy_string(const cif::Table::Row& row, int n, std::string& dest) {
+inline void copy_string(const cif::Table::Row& row, int n, std::string& dest) {
   if (row.has2(n))
     dest = cif::as_string(row[n]);
 }
@@ -325,6 +325,7 @@ inline void fill_residue_entity_type(Structure& st) {
       }
 }
 
+inline
 DiffractionInfo* find_diffrn(Metadata& meta, const std::string& diffrn_id) {
   for (CrystalInfo& crystal_info : meta.crystals)
     for (DiffractionInfo& diffr_info : crystal_info.diffractions)
