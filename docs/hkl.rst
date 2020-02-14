@@ -485,12 +485,12 @@ the selected column in an array. In Python -- in NumPy array:
 .. doctest::
   :skipif: numpy is None
 
-  >>> rblock.make_array_int('index_h', -1000)  # 2nd arg - value for nulls
+  >>> rblock.make_int_array('index_h', -1000)  # 2nd arg - value for nulls
   array([-26, -26, -26, ...,  25,  26,  26], dtype=int32)
 
-  >>> rblock.make_array_float('F_meas_au')  # by default, null values -> NAN
+  >>> rblock.make_float_array('F_meas_au')  # by default, null values -> NAN
   array([12.66, 13.82, 24.11, ...,   nan,  9.02,   nan])
-  >>> rblock.make_array_float('F_meas_au', 0.0)  # use 0.0 for nulls
+  >>> rblock.make_float_array('F_meas_au', 0.0)  # use 0.0 for nulls
   array([12.66, 13.82, 24.11, ...,  0.  ,  9.02,  0.  ])
 
 We also have convenience functions that returns arrays of 1/*d*:sup:`2`
@@ -579,7 +579,7 @@ The methods of ReflnBlock are the same as in the previous section.
 
 .. doctest::
 
-  >>> print(_.make_d_array(), _.make_array_float('F_squared_meas'), sep='\n')
+  >>> print(_.make_d_array(), _.make_float_array('F_squared_meas'), sep='\n')
   [1.7710345  1.03448487 0.71839568 ... 0.67356073 0.69445847 0.56034145]
   [173.17 246.01  11.61 ...  84.99  46.98  16.99]
 

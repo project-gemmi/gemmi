@@ -8,8 +8,8 @@ import gemmi
 for path in sys.argv[1:]:
     doc = gemmi.cif.read(path)
     rblock = gemmi.as_refln_blocks(doc)[0]
-    intensity = rblock.make_array_float('intensity_meas')
-    sigma = rblock.make_array_float('intensity_sigma')
+    intensity = rblock.make_float_array('intensity_meas')
+    sigma = rblock.make_float_array('intensity_sigma')
     x = rblock.make_1_d2_array()
     y = intensity / sigma
     pyplot.figure(figsize=(5,5))

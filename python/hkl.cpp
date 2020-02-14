@@ -263,15 +263,15 @@ void add_hkl(py::module& m) {
     .def_readonly("spacegroup", &ReflnBlock::spacegroup)
     .def_readonly("wavelength", &ReflnBlock::wavelength)
     .def("column_labels", &ReflnBlock::column_labels)
-    .def("make_array_int",
+    .def("make_int_array",
          [](ReflnBlock& self, const std::string& tag, int null) {
            return py_array_from_vector(self.make_vector(tag, null));
     }, py::arg("tag"), py::arg("null"))
-    .def("make_array_float",
+    .def("make_float_array",
          [](ReflnBlock& self, const std::string& tag, double null) {
            return py_array_from_vector(self.make_vector(tag, null));
     }, py::arg("tag"), py::arg("null")=NAN)
-    .def("make_array_float", &ReflnBlock::make_vector<double>,
+    .def("make_float_array", &ReflnBlock::make_vector<double>,
          py::arg("tag"), py::arg("null")=NAN)
     .def("make_index_array", [](ReflnBlock& self) {
         return py::array(py::cast((self.make_index_vector())));

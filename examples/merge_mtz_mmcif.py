@@ -20,7 +20,7 @@ mtz_df = mtz_df.astype({label: 'int32' for label in 'HKL'})
 cif_doc = gemmi.cif.read(SFCIF_PATH)
 rblock = gemmi.as_refln_blocks(cif_doc)[0]
 cif_df = pandas.DataFrame(data=rblock.make_index_array(), columns=['H','K','L'])
-cif_df['F_meas_au'] = rblock.make_array_float('F_meas_au')
+cif_df['F_meas_au'] = rblock.make_float_array('F_meas_au')
 cif_df['d'] = rblock.make_d_array()
 
 # merge DataFrames
