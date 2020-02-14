@@ -566,8 +566,22 @@ hkl CIF
 =======
 
 In the small molecule world reflections are also stored in separate CIF files.
+Similarly to SF mmCIF files, we may take cif::Block and wrap it into
+the ReflnBlock class:
 
-(work in progress)
+.. doctest::
+
+  >>> doc = gemmi.cif.read('../tests/2242624.hkl')
+  >>> gemmi.hkl_cif_as_refln_block(doc[0])
+  <gemmi.ReflnBlock 2242624 with 7 x 71 loop>
+
+The methods of ReflnBlock are the same as in the previous section.
+
+.. doctest::
+
+  >>> print(_.make_d_array(), _.make_array_float('F_squared_meas'), sep='\n')
+  [1.7710345  1.03448487 0.71839568 ... 0.67356073 0.69445847 0.56034145]
+  [173.17 246.01  11.61 ...  84.99  46.98  16.99]
 
 Data on 3D grid
 ===============

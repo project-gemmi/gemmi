@@ -375,6 +375,7 @@ struct Block {
   explicit Block(const std::string& name_) : name(name_) {}
   Block() {}
 
+  void swap(Block& o) { name.swap(o.name); items.swap(o.items); }
   // access functions
   const Item* find_pair_item(const std::string& tag) const;
   const Pair* find_pair(const std::string& tag) const;

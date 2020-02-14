@@ -326,6 +326,7 @@ void add_hkl(py::module& m) {
     ;
   m.def("as_refln_blocks",
         [](cif::Document& d) { return as_refln_blocks(std::move(d.blocks)); });
+  m.def("hkl_cif_as_refln_block", &hkl_cif_as_refln_block, py::arg("block"));
   m.def("transform_f_phi_grid_to_map", [](Grid<std::complex<float>> grid) {
           return transform_f_phi_grid_to_map<float>(std::move(grid));
         }, py::arg("grid"));

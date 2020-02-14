@@ -14,8 +14,9 @@
 namespace gemmi {
 namespace impl {
 
-inline void set_cell_from_mmcif(cif::Block& block, UnitCell& cell) {
-  cif::Table tab = block.find("_cell.",
+inline void set_cell_from_mmcif(cif::Block& block, UnitCell& cell,
+                                bool mmcif=true) {
+  cif::Table tab = block.find((mmcif ? "_cell." : "_cell_"),
                               {"length_a", "length_b", "length_c",
                                "angle_alpha", "angle_beta", "angle_gamma"});
   if (tab.ok()) {

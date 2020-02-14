@@ -187,6 +187,21 @@ inline ReflnBlock get_refln_block(std::vector<cif::Block>&& blocks,
   fail("Required block or tags not found in the SF-mmCIF file.");
 }
 
+inline ReflnBlock hkl_cif_as_refln_block(cif::Block& block) {
+  ReflnBlock rb;
+  rb.block.swap(block);
+  rb.entry_id = rb.block.name;
+  impl::set_cell_from_mmcif(rb.block, rb.cell, /*mmcif=*/false);
+  const char* hm_tag = "_symmetry_space_group_name_H-M";
+  if (const std::string* hm = block.find_value(hm_tag))
+    rb.spacegroup = find_spacegroup_by_name(cif::as_string(*hm),
+                                            rb.cell.alpha, rb.cell.gamma);
+  rb.cell.set_cell_images_from_spacegroup(rb.spacegroup);
+  rb.refln_loop = rb.block.find_loop("_refln_index_h").get_loop();
+  rb.default_loop = rb.refln_loop;
+  return rb;
+}
+
 // Abstraction of data source, cf. MtzDataProxy.
 struct ReflnDataProxy {
   const ReflnBlock& rb_;
