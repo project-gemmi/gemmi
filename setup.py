@@ -127,7 +127,7 @@ class BuildExt(build_ext):
             os.environ['DISTUTILS_USE_SDK'] = '1'
             os.environ['MSSdk'] = '1'
         if sys.version_info[0] >= 3:
-            c_opts.append('/D_UNICODE')
+            c_opts['msvc'].append('/D_UNICODE')
 
     def build_extensions(self):
         ct = self.compiler.compiler_type
