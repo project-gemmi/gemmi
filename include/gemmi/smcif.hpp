@@ -30,8 +30,12 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
       st.cell.set(as_number(c[0]), as_number(c[1]), as_number(c[2]),
                   as_number(c[3]), as_number(c[4]), as_number(c[5]));
   }
-  st.spacegroup_hm =
-                as_string(block.find_value("_symmetry_space_group_name_H-M"));
+  for (const char* tag : {"_space_group_name_H-M_alt",
+                          "_symmetry_space_group_name_H-M"})
+    if (const std::string* val = block.find_value(tag)) {
+      st.spacegroup_hm = as_string(*val);
+      break;
+    }
 
   enum { kLabel, kSymbol, kX, kY, kZ, kUiso, kOcc, kDisorderGroup };
   cif::Table atom_table = block.find("_atom_site_",

@@ -28,11 +28,15 @@ class TestRealCif(unittest.TestCase):
 
     def test_fen4(self):
         path = full_path('2242624.cif')
-        ast = gemmi.read_small_structure(path)
-        types = ast.atom_types
+        small = gemmi.read_small_structure(path)
+        types = small.atom_types
         self.assertEqual(len(types), 2)
         self.assertEqual(types[0].symbol, 'Fe')
         self.assertEqual(types[1].element, gemmi.Element('N'))
+
+    def test_perovskite(self):
+        small = gemmi.read_small_structure(full_path('4003024.cif'))
+        self.assertEqual(small.spacegroup_hm, 'P m -3 m')
 
 # tests for gemmi/chemcomp_xyz.hpp
 class TestChemCompXyz(unittest.TestCase):
