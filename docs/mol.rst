@@ -52,8 +52,8 @@ Small Molecules
 ===============
 
 CIF files that describe small-molecule and inorganic structures
-can be read into an ``SmallStructure`` object.
-Unlike macromolecular ``Structure``, ``SmallStructure`` has no hierarchy.
+can be read into an SmallStructure object.
+Unlike macromolecular Structure, SmallStructure has no hierarchy.
 It is just a flat list of atomic sites (``SmallStructure::Site``)
 together with the unit cell and symmetry.
 
@@ -88,6 +88,29 @@ together with the unit cell and symmetry.
     >>> site.charge   # obtained from type_symbol 'Si4+'
     4
 
+We will need another cif file to show anisotropic ADPs and disorder_group:
+
+.. doctest::
+
+    >>> perovskite = gemmi.read_small_structure('../tests/4003024.cif')
+    >>> for site in perovskite.sites:
+    ...   print(site.label, site.has_anisou(), site.disorder_group or 'n/a')
+    Cs1 True n/a
+    Sn2 False 1
+    Cl1 True n/a
+    In False 2
+    >>> perovskite.sites[2].u11
+    0.10300000000000001
+    >>> perovskite.sites[2].u22
+    0.15600000000000003
+    >>> perovskite.sites[2].u33
+    0.15600000000000003
+    >>> perovskite.sites[2].u12
+    0.0
+    >>> perovskite.sites[2].u13
+    0.0
+    >>> perovskite.sites[2].u23
+    0.0
 
 .. _chemcomp:
 

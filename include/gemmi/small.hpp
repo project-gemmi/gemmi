@@ -23,8 +23,15 @@ struct SmallStructure {
     Fractional fract;
     double occ = 1.0;
     double u_iso = 0.;
+    double u11=0, u22=0, u33=0, u12=0, u13=0, u23=0;
+    std::string disorder_group;
     Element element = El::X;
     signed char charge = 0;  // [-8, +8]
+
+    bool has_anisou() const {
+      return u11 != 0. || u22 != 0. || u33 != 0. ||
+             u12 != 0. || u13 != 0. || u23 != 0.;
+    }
   };
 
   struct AtomType {

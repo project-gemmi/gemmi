@@ -33,7 +33,7 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
   st.spacegroup_hm =
                 as_string(block.find_value("_symmetry_space_group_name_H-M"));
 
-  enum { kLabel, kSymbol, kX, kY, kZ, kUiso, kOcc };
+  enum { kLabel, kSymbol, kX, kY, kZ, kUiso, kOcc, kDisorderGroup };
   cif::Table atom_table = block.find("_atom_site_",
                                      {"label",
                                       "?type_symbol",
@@ -41,7 +41,8 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
                                       "?fract_y",
                                       "?fract_z",
                                       "?U_iso_or_equiv",
-                                      "?occupancy"});
+                                      "?occupancy",
+                                      "?disorder_group"});
   for (auto row : atom_table) {
     SmallStructure::Site site;
     site.label = as_string(row[kLabel]);
@@ -59,8 +60,30 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
       site.u_iso = as_number(row[kUiso], 0.0);
     if (row.has(kOcc))
       site.occ = as_number(row[kOcc], 1.0);
+    if (row.has(kDisorderGroup))
+      site.disorder_group = as_string(row[kDisorderGroup]);
     split_element_and_charge(site.type_symbol, &site);
     st.sites.push_back(site);
+  }
+
+  std::vector<SmallStructure::Site>::iterator aniso_site = st.sites.begin();
+  for (auto row : block.find("_atom_site_aniso_",
+                             {"label", "U_11", "U_22", "U_33",
+                              "U_12", "U_13", "U_23"})) {
+    std::string aniso_label = row.str(0);
+    if (aniso_site == st.sites.end() || aniso_site->label != aniso_label) {
+      aniso_site = std::find_if(st.sites.begin(), st.sites.end(),
+              [&](SmallStructure::Site& x) { return x.label == aniso_label; });
+      if (aniso_site == st.sites.end())
+        continue;
+    }
+    aniso_site->u11 = as_number(row[1], 0.0);
+    aniso_site->u22 = as_number(row[2], 0.0);
+    aniso_site->u33 = as_number(row[3], 0.0);
+    aniso_site->u12 = as_number(row[4], 0.0);
+    aniso_site->u13 = as_number(row[5], 0.0);
+    aniso_site->u23 = as_number(row[6], 0.0);
+    ++aniso_site;
   }
 
   for (auto row : block.find("_atom_type_",
