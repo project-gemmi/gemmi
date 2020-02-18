@@ -212,14 +212,17 @@ struct Grid {
     double zd = std::modf(z, &tmp);
     int w = (int) tmp;
     assert(u >= 0 && v >= 0 && w >= 0);
-    assert(u < nu - 1 && v < nv - 1 && w < nw - 1);
+    assert(u < nu && v < nv && w < nw);
     T avg[2];
-    for (int dw = 0; dw < 2; ++dw) {
-      int idx1 = index_q(u, v, w + dw);
-      int idx2 = index_q(u, v + 1, w + dw);
-      avg[dw] = (T) lerp_(lerp_(data[idx1], data[idx1 + 1], xd),
-                          lerp_(data[idx2], data[idx2 + 1], xd),
-                          yd);
+    for (int i = 0; i < 2; ++i) {
+      int wi = (i == 0 || w + 1 != nw ? w + i : 0);
+      int idx1 = index_q(u, v, wi);
+      int v2 = v + 1 != nv ? v + 1 : 0;
+      int idx2 = index_q(u, v2, wi);
+      int u_add = u + 1 != nu ? 1 : -u;
+      avg[i] = (T) lerp_(lerp_(data[idx1], data[idx1 + u_add], xd),
+                         lerp_(data[idx2], data[idx2 + u_add], xd),
+                         yd);
     }
     return (T) lerp_(avg[0], avg[1], zd);
   }
