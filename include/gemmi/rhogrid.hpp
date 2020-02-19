@@ -87,7 +87,7 @@ struct DensityCalculator {
     grid.data.clear();
     grid.set_size_from_spacing(d_min / (2 * rate), true);
     add_model_density_to_grid(model);
-    grid.symmetrize([](double a, double b) { return a + b; });
+    grid.symmetrize([](Real a, Real b) { return a + b; });
   }
 
   void set_grid_cell_and_spacegroup(const Structure& st) {

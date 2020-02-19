@@ -8,7 +8,6 @@
 #include <cassert>
 #include <complex>
 #include <algorithm>  // for fill
-#include <functional> // for function
 #include <numeric>    // for accumulate
 #include <vector>
 #include "unitcell.hpp"
@@ -308,8 +307,8 @@ struct Grid {
     return grid_ops;
   }
 
-  void symmetrize_using_ops(const std::vector<GridOp>& ops,
-                            std::function<T(T, T)> func) {
+  template<typename Func>
+  void symmetrize_using_ops(const std::vector<GridOp>& ops, Func func) {
     std::vector<int> mates(ops.size(), 0);
     std::vector<bool> visited(data.size(), false);
     int idx = 0;
@@ -340,7 +339,8 @@ struct Grid {
 
   // Use provided function to reduce values of all symmetry mates of each
   // grid point, then assign the result to all the points.
-  void symmetrize(std::function<T(T, T)> func) {
+  template<typename Func>
+  void symmetrize(Func func) {
     if (spacegroup && spacegroup->number != 1 && full_canonical)
       symmetrize_using_ops(get_scaled_ops_except_id(), func);
   }
