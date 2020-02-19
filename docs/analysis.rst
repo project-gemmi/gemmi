@@ -48,7 +48,7 @@ calculate the bounding box for the model if there is no unit cell.
 It is also stored and used if ``populate()`` is called.
 The C++ signature (in ``gemmi/subcells.hpp``) is::
 
-  SubCells::SubCells(const Model& model, const UnitCell& cell, double max_radius)
+  SubCells::SubCells(Model& model, const UnitCell& cell, double max_radius)
 
 Then the cell lists need to be populated with items either by calling::
 
@@ -154,6 +154,10 @@ In this example the "original" atom is in a different location:
   >>> cra.atom.pos
   <gemmi.Position(-0.028, 13.85, -17.645)>
 
+Contact search
+==============
+
+TODO
 
 Selections
 ==========

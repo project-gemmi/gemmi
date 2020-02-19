@@ -59,7 +59,7 @@ std::vector<Connection> find_disulfide_bonds(const Model& model,
 }
 
 // use SubCells (cell list method) to find disulfide SG-SG bonds
-static std::vector<BondInfo> find_disulfide_bonds_cl(const Model& model,
+static std::vector<BondInfo> find_disulfide_bonds_cl(Model& model,
                                                      const UnitCell& cell) {
   const double max_dist = 3.0;
   SubCells sc(model, cell, 5.0);
@@ -94,7 +94,7 @@ static void print_connection(const AtomAddress& a1, const AtomAddress& a2,
 
 static void check_disulf(const std::string& path) {
   Structure st = read_structure(MaybeGzipped(path));
-  const Model& model = st.models.at(0);
+  Model& model = st.models.at(0);
   std::vector<Connection> c1 = find_disulfide_bonds(model, st.cell);
   std::vector<BondInfo> c2 = find_disulfide_bonds_cl(model, st.cell);
   printf("%10s  %zu %zu\n", st.name.c_str(), c1.size(), c2.size());

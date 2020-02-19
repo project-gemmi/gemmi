@@ -72,89 +72,73 @@ struct LinkHunt {
                                     /*max r1+r2 ~=*/3.0 * radius_margin);
     SubCells sc(model, st.cell, std::max(5.0, search_radius));
     sc.populate();
-    for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
-      Chain& chain = model.chains[n_ch];
-      for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
-        Residue& res = chain.residues[n_res];
-        for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
-          Atom& atom = res.atoms[n_atom];
-          sc.for_each(atom.pos, atom.altloc, (float) search_radius,
-                      [&](SubCells::Mark& m, float dist_sq) {
-              // do not consider connections inside a residue
-              if (skip_intra_residue_links && m.image_idx == 0 &&
-                  m.chain_idx == n_ch && m.residue_idx == n_res)
-                return;
-              // avoid reporting connections twice (A-B and B-A)
-              if (m.chain_idx < n_ch || (m.chain_idx == n_ch &&
-                    (m.residue_idx < n_res || (m.residue_idx == n_res &&
-                                               m.atom_idx < n_atom))))
-                return;
-              // atom can be linked with its image, but if the image
-              // is too close the atom is likely on special position.
-              if (m.chain_idx == n_ch && m.residue_idx == n_res &&
-                  m.atom_idx == n_atom && dist_sq < sq(0.8f))
-                return;
-              CRA cra = m.to_cra(model);
 
-              Match match;
-              if (bond_margin > 0) {
-                // search for a match in chem_links
-                auto range = links.equal_range(Restraints::lexicographic_str(
-                                                    atom.name, cra.atom->name));
-                for (auto iter = range.first; iter != range.second; ++iter) {
-                  const ChemLink& link = *iter->second;
-                  const Restraints::Bond& bond = link.rt.bonds[0];
-                  if (dist_sq > sq(bond.value * bond_margin))
-                    continue;
-                  bool order1;
-                  if (bond.id1.atom == atom.name &&
-                      match_link_side(link.side1, res.name) &&
-                      match_link_side(link.side2, cra.residue->name))
-                    order1 = true;
-                  else if (bond.id2.atom == atom.name &&
-                      match_link_side(link.side2, res.name) &&
-                      match_link_side(link.side1, cra.residue->name))
-                    order1 = false;
-                  else
-                    continue;
-                  int link_score = link.calculate_score(
-                      order1 ? res : *cra.residue,
-                      order1 ? cra.residue : &res,
-                      atom.altloc ? atom.altloc : cra.atom->altloc);
-                  match.chem_link_count++;
-                  if (link_score < match.score)
-                    continue;
-                  match.chem_link = &link;
-                  match.score = link_score;
-                  if (order1) {
-                    match.cra1 = {&chain, &res, &atom};
-                    match.cra2 = cra;
-                  } else {
-                    match.cra1 = cra;
-                    match.cra2 = {&chain, &res, &atom};
-                  }
-                }
+    SubCells::ContactConfig conf;
+    conf.search_radius = (float) search_radius;
+    conf.skip_intra_residue_links = skip_intra_residue_links;
+    sc.for_each_contact(conf, [&](const CRA& cra1, const CRA& cra2,
+                                  int image_idx, float dist_sq) {
+        Match match;
+
+        // search for a match in chem_links
+        if (bond_margin > 0) {
+          auto range = links.equal_range(Restraints::lexicographic_str(
+                                            cra1.atom->name, cra2.atom->name));
+          for (auto iter = range.first; iter != range.second; ++iter) {
+            const ChemLink& link = *iter->second;
+            const Restraints::Bond& bond = link.rt.bonds[0];
+            if (dist_sq > sq(bond.value * bond_margin))
+              continue;
+            bool order1;
+            if (bond.id1.atom == cra1.atom->name &&
+                match_link_side(link.side1, cra1.residue->name) &&
+                match_link_side(link.side2, cra2.residue->name))
+              order1 = true;
+            else if (bond.id2.atom == cra1.atom->name &&
+                match_link_side(link.side2, cra1.residue->name) &&
+                match_link_side(link.side1, cra2.residue->name))
+              order1 = false;
+            else
+              continue;
+            int link_score = link.calculate_score(
+                    order1 ? *cra1.residue : *cra2.residue,
+                    order1 ? cra2.residue : cra1.residue,
+                    cra1.atom->altloc ? cra1.atom->altloc : cra2.atom->altloc);
+            match.chem_link_count++;
+            if (link_score > match.score) {
+              match.chem_link = &link;
+              match.score = link_score;
+              if (order1) {
+                match.cra1 = cra1;
+                match.cra2 = cra2;
+              } else {
+                match.cra1 = cra2;
+                match.cra2 = cra1;
               }
-
-              // potential other links according to covalent radii
-              if (!match.chem_link) {
-                float r1 = atom.element.covalent_r();
-                float r2 = cra.atom->element.covalent_r();
-                if (dist_sq > sq((r1 + r2) * radius_margin))
-                  return;
-                match.cra1 = {&chain, &res, &atom};
-                match.cra2 = cra;
-              }
-
-              match.same_image = !m.image_idx;
-              match.bond_length = std::sqrt(dist_sq);
-              results.push_back(match);
-          });
+            }
+          }
         }
-      }
-    }
+
+        // potential other links according to covalent radii
+        if (!match.chem_link) {
+          float r1 = cra1.atom->element.covalent_r();
+          float r2 = cra2.atom->element.covalent_r();
+          if (dist_sq > sq((r1 + r2) * radius_margin))
+            return;
+          match.cra1 = cra1;
+          match.cra2 = cra2;
+        }
+
+        // finalize
+        match.same_image = !image_idx;
+        match.bond_length = std::sqrt(dist_sq);
+        results.push_back(match);
+    });
+
+    // add references to st.connections
     for (Match& match : results)
       match.conn = st.find_connection_by_cra(match.cra1, match.cra2);
+
     return results;
   }
 };
