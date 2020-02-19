@@ -7,7 +7,6 @@
 
 #include <map>
 #include <unordered_map>
-#include "calculate.hpp"  // for calculate_chiral_volume
 #include "elem.hpp"
 #include "model.hpp"
 #include "monlib.hpp"
@@ -118,39 +117,10 @@ struct LinkHunt {
                     order1 = false;
                   else
                     continue;
-                  int link_score = link.side1.specificity() +
-                                   link.side2.specificity();
-                  // check chirality
-                  Residue& res1 = order1 ? res : *cra.residue;
-                  Residue* res2 = order1 ? cra.residue : &res;
-                  char alt = atom.altloc ? atom.altloc : cra.atom->altloc;
-                  for (const Restraints::Chirality& chirality : link.rt.chirs)
-                    if (chirality.sign != ChiralityType::Both) {
-                      Atom* at1 = chirality.id_ctr.get_from(res1, res2, alt);
-                      Atom* at2 = chirality.id1.get_from(res1, res2, alt);
-                      Atom* at3 = chirality.id2.get_from(res1, res2, alt);
-                      Atom* at4 = chirality.id3.get_from(res1, res2, alt);
-                      if (at1 && at2 && at3 && at4) {
-                        double vol = calculate_chiral_volume(at1->pos, at2->pos,
-                                                             at3->pos, at4->pos);
-                        if (chirality.is_wrong(vol))
-                          link_score -= 10;
-                      }
-                    }
-                  // check fixed torsion angle (_chem_link_tor.period == 0)
-                  for (const Restraints::Torsion& tor : link.rt.torsions)
-                    if (tor.period == 0) {
-                      Atom* at1 = tor.id1.get_from(res1, res2, alt);
-                      Atom* at2 = tor.id2.get_from(res1, res2, alt);
-                      Atom* at3 = tor.id3.get_from(res1, res2, alt);
-                      Atom* at4 = tor.id4.get_from(res1, res2, alt);
-                      double z = 10.;
-                      if (at1 && at2 && at3 && at4)
-                        z = angle_z(calculate_dihedral(at1->pos, at2->pos,
-                                                       at3->pos, at4->pos),
-                                    tor);
-                      link_score -= (int) z;
-                    }
+                  int link_score = link.calculate_score(
+                      order1 ? res : *cra.residue,
+                      order1 ? cra.residue : &res,
+                      atom.altloc ? atom.altloc : cra.atom->altloc);
                   match.chem_link_count++;
                   if (link_score < match.score)
                     continue;

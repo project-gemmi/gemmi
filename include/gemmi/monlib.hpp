@@ -10,13 +10,14 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "calculate.hpp"  // for calculate_chiral_volume
 #include "cifdoc.hpp"
-#include "elem.hpp"  // for Element
-#include "numb.hpp"  // for as_number
-#include "fail.hpp"  // for fail, unreachable
-#include "model.hpp" // for Residue, Atom
-#include "chemcomp.hpp" // for ChemComp
-#include "resinfo.hpp" // for ResidueInfo
+#include "elem.hpp"       // for Element
+#include "numb.hpp"       // for as_number
+#include "fail.hpp"       // for fail, unreachable
+#include "model.hpp"      // for Residue, Atom
+#include "chemcomp.hpp"   // for ChemComp
+#include "resinfo.hpp"    // for ResidueInfo
 
 namespace gemmi {
 
@@ -96,6 +97,40 @@ struct ChemLink {
       case ResidueInfo::ELS:     return Group::Null;
     }
     unreachable();
+  }
+
+  // If multiple ChemLinks match a bond, the scores can pick the best match.
+  int calculate_score(const Residue& res1, const Residue* res2,
+                      char alt) const {
+    int link_score = side1.specificity() + side2.specificity();
+    // check chirality
+    for (const Restraints::Chirality& chirality : rt.chirs)
+      if (chirality.sign != ChiralityType::Both) {
+        const Atom* a1 = chirality.id_ctr.get_from(res1, res2, alt);
+        const Atom* a2 = chirality.id1.get_from(res1, res2, alt);
+        const Atom* a3 = chirality.id2.get_from(res1, res2, alt);
+        const Atom* a4 = chirality.id3.get_from(res1, res2, alt);
+        if (a1 && a2 && a3 && a4) {
+          double vol = calculate_chiral_volume(a1->pos, a2->pos,
+                                               a3->pos, a4->pos);
+          if (chirality.is_wrong(vol))
+            link_score -= 10;
+        }
+      }
+    // check fixed torsion angle (_chem_link_tor.period == 0)
+    for (const Restraints::Torsion& tor : rt.torsions)
+      if (tor.period == 0) {
+        const Atom* a1 = tor.id1.get_from(res1, res2, alt);
+        const Atom* a2 = tor.id2.get_from(res1, res2, alt);
+        const Atom* a3 = tor.id3.get_from(res1, res2, alt);
+        const Atom* a4 = tor.id4.get_from(res1, res2, alt);
+        double z = 10.;
+        if (a1 && a2 && a3 && a4)
+          z = angle_z(calculate_dihedral(a1->pos, a2->pos, a3->pos, a4->pos),
+                      tor);
+        link_score -= (int) z;
+      }
+    return link_score;
   }
 };
 
