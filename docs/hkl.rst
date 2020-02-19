@@ -583,6 +583,21 @@ The methods of ReflnBlock are the same as in the previous section.
   [1.7710345  1.03448487 0.71839568 ... 0.67356073 0.69445847 0.56034145]
   [173.17 246.01  11.61 ...  84.99  46.98  16.99]
 
+These hkl files in the CIF format are not to be confused with the SHELX hkl
+files. The latter is often included in the coordinate cif file,
+as a text value of _shelx_hkl_file:
+
+.. doctest::
+
+  >>> cif_doc = gemmi.cif.read('../tests/4003024.cif')
+  >>> hkl_str = gemmi.cif.as_string(cif_doc[0].find_value('_shelx_hkl_file'))
+  >>> print(hkl_str[:87])
+  <BLANKLINE>
+    -1   0   0   20.05    0.74
+     0   0  -1   20.09    0.73
+     0   0   1   19.76    0.73
+
+
 Data on 3D grid
 ===============
 
