@@ -1318,14 +1318,11 @@ and classes specific to macromolecular files (``PdbWalk``, ``MmCifWalk``,
 ``CoorFileWalk``). The file type of each file is guessed from
 the file name.
 
-All the functions above are based on the
-`tinydir <https://github.com/cxong/tinydir>`_ library.
-
 Python
 ------
 
-Since Python comes with function for iterating over files and directories,
-this functionality is less important here.
+Since Python comes with the os.walk() function for iterating over files
+and directories, this functionality is less important here.
 Anyway, we provide bindings for CifWalk:
 
 .. doctest::
@@ -1337,6 +1334,14 @@ Anyway, we provide bindings for CifWalk:
 We also have Python bindings for ``CoorFileWalk`` that picks macromolecular
 coordinate files.
 
+----
+
+When the user has no permission to read one of the traversed directories,
+the functions above raise an error (std::runtime_error / RuntimeError).
+
+All these directory walking functions are powered by the
+`tinydir <https://github.com/cxong/tinydir>`_ library
+(a single-header library copied into ``include/gemmi/third_party``).
 
 .. _cif_examples:
 
