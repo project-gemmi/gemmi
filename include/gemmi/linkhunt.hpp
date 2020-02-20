@@ -75,7 +75,7 @@ struct LinkHunt {
 
     SubCells::ContactConfig conf;
     conf.search_radius = (float) search_radius;
-    conf.skip_intra_residue_links = skip_intra_residue_links;
+    conf.skip_intra_residue = skip_intra_residue_links;
     sc.for_each_contact(conf, [&](const CRA& cra1, const CRA& cra2,
                                   int image_idx, float dist_sq) {
         Match match;

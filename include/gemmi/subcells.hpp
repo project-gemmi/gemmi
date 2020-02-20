@@ -54,6 +54,7 @@ struct SubCells {
   Grid<item_type> grid;
   double radius_specified = 0.;
   Model* model = nullptr;
+  bool include_h = true;
 
   SubCells() = default;
   // Model is not const so it can be modified in for_each_contact()
@@ -61,7 +62,7 @@ struct SubCells {
     initialize(model_, cell, max_radius);
   }
   void initialize(Model& model, const UnitCell& cell, double max_radius);
-  void populate(bool include_h=true);
+  void populate(bool include_h_=true);
   void add_atom(const Atom& atom, int n_ch, int n_res, int n_atom);
 
   // assumes data in [0, 1), but uses index_n to handle numeric deviations
@@ -76,8 +77,10 @@ struct SubCells {
 
   struct ContactConfig {
     float search_radius;
-    bool skip_intra_residue_links = true;
+    bool skip_intra_residue = true;  // ignore "contacts" in the same residue
+    bool twice = false;  // report both A-B and B-A
     float special_pos_cutoff_sq = 0.8f * 0.8f;
+    float min_occupancy = 0.f;
   };
 
   template<typename Func>
@@ -142,9 +145,10 @@ inline void SubCells::initialize(Model& model_, const UnitCell& cell,
                                    std::max(grid.nw, 3));
 }
 
-inline void SubCells::populate(bool include_h) {
+inline void SubCells::populate(bool include_h_) {
   if (!model)
     fail("SubCells not initialized");
+  include_h = include_h_;
   for (int n_ch = 0; n_ch != (int) model->chains.size(); ++n_ch) {
     const Chain& chain = model->chains[n_ch];
     for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
@@ -217,24 +221,33 @@ void SubCells::for_each_contact(const ContactConfig& conf, const Func& func) {
       Residue& res = chain.residues[n_res];
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
         Atom& atom = res.atoms[n_atom];
+        if (atom.occ < conf.min_occupancy)
+          continue;
         for_each(atom.pos, atom.altloc, (float) conf.search_radius,
                  [&](SubCells::Mark& m, float dist_sq) {
             // do not consider connections inside a residue
-            if (conf.skip_intra_residue_links && m.image_idx == 0 &&
+            if (conf.skip_intra_residue && m.image_idx == 0 &&
                 m.chain_idx == n_ch && m.residue_idx == n_res)
               return;
             // avoid reporting connections twice (A-B and B-A)
-            if (m.chain_idx < n_ch || (m.chain_idx == n_ch &&
-                  (m.residue_idx < n_res || (m.residue_idx == n_res &&
-                                             m.atom_idx < n_atom))))
+            if (!conf.twice)
+              if (m.chain_idx < n_ch || (m.chain_idx == n_ch &&
+                    (m.residue_idx < n_res || (m.residue_idx == n_res &&
+                                               m.atom_idx < n_atom))))
+                return;
+            // ignore hydrogens
+            if (!include_h && is_hydrogen(atom.element))
               return;
             // atom can be linked with its image, but if the image
             // is too close the atom is likely on special position.
             if (m.chain_idx == n_ch && m.residue_idx == n_res &&
                 m.atom_idx == n_atom && dist_sq < conf.special_pos_cutoff_sq)
               return;
-            func(CRA{&chain, &res, &atom}, m.to_cra(*model),
-                 m.image_idx, dist_sq);
+            CRA cra2 = m.to_cra(*model);
+            // ignore atoms with occupancy below the specified value
+            if (cra2.atom->occ < conf.min_occupancy)
+              return;
+            func(CRA{&chain, &res, &atom}, cra2, m.image_idx, dist_sq);
         });
       }
     }
