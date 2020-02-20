@@ -220,7 +220,7 @@ inline void write_remarks(const Structure& st, std::ostream& os) {
         } else {
           // subchains -> chains
           std::vector<std::string> chains;
-          for (const Chain& ch : st.models.at(0).chains)
+          for (const Chain& ch : st.first_model().chains)
             if (!ch.residues.empty() && !in_vector(ch.name, chains) &&
                 in_vector(ch.residues[0].subchain, gen.subchains))
               chains.push_back(ch.name);

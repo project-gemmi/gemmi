@@ -156,7 +156,7 @@ void add_monlib(py::module& m) {
     .def(py::init<>())
     .def("prepare_refmac_topology",
          [](Topo& self, Structure& st, MonLib& monlib) {
-        self.initialize_refmac_topology(st, st.models.at(0), monlib);
+        self.initialize_refmac_topology(st, st.first_model(), monlib);
         self.finalize_refmac_topology(monlib);
     })
     .def_readonly("bonds", &Topo::bonds)

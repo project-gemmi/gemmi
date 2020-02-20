@@ -94,7 +94,7 @@ static void print_connection(const AtomAddress& a1, const AtomAddress& a2,
 
 static void check_disulf(const std::string& path) {
   Structure st = read_structure(MaybeGzipped(path));
-  Model& model = st.models.at(0);
+  Model& model = st.first_model();
   std::vector<Connection> c1 = find_disulfide_bonds(model, st.cell);
   std::vector<BondInfo> c2 = find_disulfide_bonds_cl(model, st.cell);
   printf("%10s  %zu %zu\n", st.name.c_str(), c1.size(), c2.size());

@@ -158,7 +158,7 @@ static cif::Document make_crd(const gemmi::Structure& st,
   if (const gemmi::SpaceGroup* sg = gemmi::find_spacegroup_by_name(hm))
     items.emplace_back("_symmetry.Int_Tables_number",
                        std::to_string(sg->number));
-  const gemmi::Model& model0 = st.models.at(0);
+  const gemmi::Model& model0 = st.first_model();
   items.emplace_back(cif::CommentArg{"#################\n"
                                      "## STRUCT_ASYM ##\n"
                                      "#################"});

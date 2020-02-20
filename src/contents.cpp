@@ -38,7 +38,7 @@ static const option::Descriptor Usage[] = {
 static void print_atoms_on_special_positions(const Structure& st) {
   printf(" Atoms on special positions:");
   bool found = false;
-  for (const Chain& chain : st.models.at(0).chains)
+  for (const Chain& chain : st.first_model().chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms)
         if (int n = st.cell.is_special_position(atom.pos)) {
@@ -83,7 +83,7 @@ static void print_content_info(const Structure& st, bool /*verbose*/) {
   double mol_atom_count = 0;
   double buffer_atom_count = 0;
   double file_h_count = 0;
-  const Model& model = st.models.at(0);
+  const Model& model = st.first_model();
   for (const Chain& chain : model.chains) {
     for (const Residue& res : chain.residues) {
       ResidueInfo res_info = find_tabulated_residue(res.name);
@@ -160,7 +160,7 @@ static void print_content_info(const Structure& st, bool /*verbose*/) {
 
 static void print_dihedrals(const Structure& st) {
   printf(" Chain Residue      Psi      Phi    Omega\n");
-  const Model& model = st.models.at(0);
+  const Model& model = st.first_model();
   for (const Chain& chain : model.chains) {
     for (const Residue& res : chain.residues) {
       printf("%3s %4d%c %5s", chain.name.c_str(), *res.seqid.num,
@@ -215,7 +215,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (!p.options[NoContentInfo])
         print_content_info(st, verbose);
       if (p.options[Bfactors])
-        print_bfactor_info(st.models.at(0));
+        print_bfactor_info(st.first_model());
       if (p.options[Dihedrals])
         print_dihedrals(st);
     }

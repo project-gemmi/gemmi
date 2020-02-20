@@ -226,7 +226,7 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       c.asu = compare_link_symops(record);
       if (record.length() > 73)
         c.reported_distance = read_double(r + 73, 5);
-      complete_ssbond_atom(c.partner1, st.models.at(0));
+      complete_ssbond_atom(c.partner1, st.first_model());
       complete_ssbond_atom(c.partner2, st.models[0]);
       st.connections.emplace_back(c);
     } else if (record[0] == 'L' || record[0] == 'l') { // LINK

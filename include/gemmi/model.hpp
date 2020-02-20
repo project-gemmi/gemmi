@@ -935,6 +935,16 @@ struct Structure {
     auto it = info.find(tag);
     return it != info.end() ? it->second : empty;
   }
+
+  Model& first_model() {
+    if (models.empty())
+      fail("no structural models");
+    return models[0];
+  }
+  const Model& first_model() const {
+    return const_cast<Structure*>(this)->first_model();
+  }
+
   Model* find_model(const std::string& model_name) {
     return impl::find_or_null(models, model_name);
   }

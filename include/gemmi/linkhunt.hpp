@@ -67,7 +67,7 @@ struct LinkHunt {
                                          double radius_margin,
                                          bool skip_intra_residue_links=true) {
     std::vector<Match> results;
-    Model& model = st.models.at(0);
+    Model& model = st.first_model();
     double search_radius = std::max(global_max_dist * bond_margin,
                                     /*max r1+r2 ~=*/3.0 * radius_margin);
     SubCells sc(model, st.cell, std::max(5.0, search_radius));

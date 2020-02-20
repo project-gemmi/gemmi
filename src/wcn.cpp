@@ -160,7 +160,7 @@ static bool is_protein_backbone(const std::string& name) {
 }
 
 static Result test_bfactor_models(Structure& st, const Params& params) {
-  Model& model = st.models.at(0);
+  Model& model = st.first_model();
 
   // prepare cell lists for neighbour search
   SubCells sc;

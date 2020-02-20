@@ -64,7 +64,7 @@ struct Parameters {
 static void print_contacts(Structure& st, const Parameters& params) {
   const float special_pos_cutoff = 0.8f;
   float max_r = params.use_cov_radius ? 4.f + params.cov_tol : params.max_dist;
-  SubCells sc(st.models.at(0), st.cell, std::max(5.0f, max_r));
+  SubCells sc(st.first_model(), st.cell, std::max(5.0f, max_r));
   sc.populate(/*include_h=*/!params.no_hydrogens);
 
   if (params.verbose > 0) {
@@ -86,7 +86,7 @@ static void print_contacts(Structure& st, const Parameters& params) {
 
   // the code here is similar to LinkHunt::find_possible_links()
   int counter = 0;
-  const Model& model = st.models.at(0);
+  const Model& model = st.first_model();
   for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
     const Chain& chain = model.chains[n_ch];
     PolymerType pt = check_polymer_type(chain.get_polymer());

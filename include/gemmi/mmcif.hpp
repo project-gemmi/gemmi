@@ -228,7 +228,7 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
         a.res_id = make_resid(row.str(kLabelCompId+i),
                               row.str(kAuthSeqId+i), row.ptr_at(kInsCode+i));
       } else if (row.has(kLabelAsymId+i) && row.has(kLabelSeqId+i)) {
-        set_part_of_address_from_label(a, st.models.at(0),
+        set_part_of_address_from_label(a, st.first_model(),
                                        row.str(kLabelAsymId+i),
                                        row[kLabelSeqId+i]);
         a.res_id.name = row.str(kLabelCompId+i);
