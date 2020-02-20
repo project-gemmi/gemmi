@@ -1,7 +1,7 @@
 // This is a manually run test. It searches for disulfide (SG-SG only)
 // bonds in two ways:
-// - using a simple search - find_disulfide_bonds()
-// - using cell-linked lists method from subcells.hpp
+// - using a simple search - find_disulfide_bonds1()
+// - using cell-linked lists method from subcells.hpp - find_disulfide_bonds2()
 // and compares the results.
 // It was run for all PDB entries to test the cell lists implementation.
 
@@ -11,19 +11,30 @@
 #include <gemmi/gz.hpp>
 #include <gemmi/dirwalk.hpp>
 #include <stdexcept>  // for runtime_error
+#include <chrono>
 
 static int verbose = false;
 using namespace gemmi;
 
 struct BondInfo {
-  const_CRA ref;
-  SubCells::Mark mark;
+  const_CRA cra1, cra2;
+  int image_idx;
   float dist_sq;
+
+  void print(const UnitCell& cell) const {
+    SymImage im = cell.find_nearest_pbc_image(cra1.atom->pos, cra2.atom->pos,
+                                              image_idx);
+    assert(fabs(dist_sq - im.dist_sq) < 1e-3);
+    std::printf("%s - %s  im:%s  %.3f\n",
+                atom_str(cra1).c_str(), atom_str(cra2).c_str(),
+                im.pdb_symbol(true).c_str(), std::sqrt(dist_sq));
+  }
+
 };
 
 // Number of SG atoms is relatively small; checking all pairs should be fast.
-std::vector<Connection> find_disulfide_bonds(const Model& model,
-                                             const UnitCell& cell) {
+std::vector<BondInfo> find_disulfide_bonds1(const Model& model,
+                                              const UnitCell& cell) {
   const double max_dist = 3.0;
   // Find all SG sulfur atoms.
   std::vector<const_CRA> atoms;
@@ -34,7 +45,7 @@ std::vector<Connection> find_disulfide_bonds(const Model& model,
         if (atom.element == El::S && atom.name == sg)
           atoms.push_back(const_CRA{&chain, &res, &atom});
   // Check distances.
-  std::vector<Connection> ret;
+  std::vector<BondInfo> ret;
   for (size_t i = 0; i < atoms.size(); ++i) {
     const Atom* a1 = atoms[i].atom;
     for (size_t j = i; j < atoms.size(); ++j) {
@@ -43,15 +54,8 @@ std::vector<Connection> find_disulfide_bonds(const Model& model,
         Asu asu = (i != j ? Asu::Any : Asu::Different);
         SymImage im = cell.find_nearest_image(a1->pos, a2->pos, asu);
         // if i == j and the image is nearby the atom is on special position
-        if (im.dist_sq < max_dist * max_dist && (i != j || im.dist_sq > 1.0)) {
-          Connection c;
-          c.name = "disulf" + std::to_string(ret.size() + 1);
-          c.type = Connection::Disulf;
-          c.asu = im.same_asu() ? Asu::Same : Asu::Different;
-          c.partner1 = AtomAddress(*atoms[i].chain, *atoms[i].residue, *a1);
-          c.partner2 = AtomAddress(*atoms[j].chain, *atoms[j].residue, *a2);
-          ret.push_back(c);
-        }
+        if (im.dist_sq < max_dist * max_dist && (i != j || im.dist_sq > 1.0))
+          ret.push_back({atoms[i], atoms[j], im.sym_id, (float) im.dist_sq});
       }
     }
   }
@@ -59,12 +63,24 @@ std::vector<Connection> find_disulfide_bonds(const Model& model,
 }
 
 // use SubCells (cell list method) to find disulfide SG-SG bonds
-static std::vector<BondInfo> find_disulfide_bonds_cl(Model& model,
-                                                     const UnitCell& cell) {
+static std::vector<BondInfo> find_disulfide_bonds2(Model& model,
+                                                   const UnitCell& cell) {
   const double max_dist = 3.0;
-  SubCells sc(model, cell, 5.0);
   const std::string sg = "SG";
+  SubCells sc(model, cell, 5.0);
+#if 0
+  sc.populate();
+#else
+  for (const Chain& chain : model.chains)
+    for (const Residue& res : chain.residues)
+      for (const Atom& atom : res.atoms)
+        if (atom.element == El::S && atom.name == sg) {
+          auto indices = model.get_indices(&chain, &res, &atom);
+          sc.add_atom(atom, indices[0], indices[1], indices[2]);
+        }
+#endif
   std::vector<BondInfo> ret;
+#if 1  // faster, but requires more code
   for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms)
@@ -72,52 +88,51 @@ static std::vector<BondInfo> find_disulfide_bonds_cl(Model& model,
           auto indices = model.get_indices(&chain, &res, &atom);
           sc.for_each(atom.pos, atom.altloc, max_dist,
                       [&](const SubCells::Mark& m, float dist_sq) {
-              if (m.element != El::S ||
-                  indices[0] > m.chain_idx ||
-                  (indices[0] == m.chain_idx && indices[1] > m.residue_idx) ||
-                  (indices[0] == m.chain_idx && indices[1] == m.residue_idx &&
-                   dist_sq < 1))
+              if (m.element != El::S)
                 return;
-              if (m.to_cra(model).atom->name == sg)
-                ret.push_back({{&chain, &res, &atom}, m, dist_sq});
+              if (indices[0] > m.chain_idx || (indices[0] == m.chain_idx &&
+                    (indices[1] > m.residue_idx ||
+                     (indices[1] == m.residue_idx && dist_sq < 1))))
+                return;
+              const_CRA cra1 = {&chain, &res, &atom};
+              const_CRA cra2 = m.to_cra(model);
+              if (cra2.atom->name == sg)
+                ret.push_back({cra1, cra2, m.image_idx, dist_sq});
           });
         }
+#else  // slower, but simpler
+  SubCells::ContactConfig conf;
+  conf.search_radius = max_dist;
+  sc.for_each_contact(conf, [&](const CRA& cra1, const CRA& cra2,
+                                int image_idx, float dist_sq) {
+      if (cra1.atom->element == El::S && cra1.atom->name == sg &&
+          cra2.atom->element == El::S && cra2.atom->name == sg)
+        ret.push_back({cra1, cra2, image_idx, dist_sq});
+  });
+#endif
   return ret;
 }
 
-static void print_connection(const AtomAddress& a1, const AtomAddress& a2,
-                             const SymImage& im) {
-  std::printf("%s - %s  im:%s  %.3f\n",
-              a1.str().c_str(), a2.str().c_str(),
-              im.pdb_symbol(true).c_str(), im.dist());
-}
-
 static void check_disulf(const std::string& path) {
+  if (verbose)
+    printf("path: %s\n", path.c_str());
   Structure st = read_structure(MaybeGzipped(path));
   Model& model = st.first_model();
-  std::vector<Connection> c1 = find_disulfide_bonds(model, st.cell);
-  std::vector<BondInfo> c2 = find_disulfide_bonds_cl(model, st.cell);
-  printf("%10s  %zu %zu\n", st.name.c_str(), c1.size(), c2.size());
+  using Clock = std::chrono::steady_clock;
+  auto start = Clock::now();
+  std::vector<BondInfo> c1 = find_disulfide_bonds1(model, st.cell);
+  std::chrono::duration<double> elapsed1 = Clock::now() - start;
+  start = Clock::now();
+  std::vector<BondInfo> c2 = find_disulfide_bonds2(model, st.cell);
+  std::chrono::duration<double> elapsed2 = Clock::now() - start;
+  printf("%10s  %zu %zu  (%.3g %.3g s)\n", st.name.c_str(),
+         c1.size(), c2.size(), elapsed1.count(), elapsed2.count());
   if (c1.size() != c2.size() || verbose) {
-    for (const Connection& con : c1) {
-      const Atom* a1 = st.models[0].find_atom(con.partner1);
-      const Atom* a2 = st.models[0].find_atom(con.partner2);
-      if (!a1 || !a2)
-        fail("Ooops, cannot find atom.");
-      SymImage im = st.cell.find_nearest_image(a1->pos, a2->pos, con.asu);
-      print_connection(con.partner1, con.partner2, im);
-    }
+    for (const BondInfo& bi : c1)
+      bi.print(st.cell);
     printf("---\n");
-    for (const BondInfo& bi : c2) {
-      AtomAddress a1(*bi.ref.chain, *bi.ref.residue, *bi.ref.atom);
-      CRA cra = bi.mark.to_cra(st.models[0]);
-      AtomAddress a2(*cra.chain, *cra.residue, *cra.atom);
-      SymImage im = st.cell.find_nearest_pbc_image(bi.ref.atom->pos,
-                                                   cra.atom->pos,
-                                                   bi.mark.image_idx);
-      assert(fabs(bi.dist_sq - im.dist_sq) < 1e-3);
-      print_connection(a1, a2, im);
-    }
+    for (const BondInfo& bi : c2)
+      bi.print(st.cell);
   }
 }
 
