@@ -297,9 +297,13 @@ struct UnitCell {
     SymImage sym_image;
     sym_image.dist_sq = INFINITY;
     sym_image.sym_id = image_idx;
+    Fractional fref = fractionalize(ref);
     Fractional fpos = fractionalize(pos);
     apply_transform(fpos, image_idx);
-    search_pbc_images(fpos - fractionalize(ref), sym_image);
+    if (is_crystal())
+      search_pbc_images(fpos - fref, sym_image);
+    else
+      sym_image.dist_sq = orthogonalize_difference(fpos - fref).length_sq();
     return sym_image;
   }
 
