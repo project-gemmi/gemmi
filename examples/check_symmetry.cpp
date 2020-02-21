@@ -11,6 +11,11 @@ void check_remark290(const std::string& path) {
   using namespace gemmi;
   Structure st = read_pdb(MaybeGzipped(path));
   std::vector<Op> ops = read_remark_290(st.raw_remarks);
+  if (ops.empty()) {
+    if (st.cell.is_crystal())
+      printf("no remark 290: %s\n", path.c_str());
+    return;
+  }
   const SpaceGroup* sg = find_spacegroup_by_ops(split_centering_vectors(ops));
   if (sg) {
     const SpaceGroup* cryst1_sg = st.find_spacegroup();
@@ -21,8 +26,7 @@ void check_remark290(const std::string& path) {
       printf("REMARK 290: %zu symops -> %s\n", ops.size(), sg->xhm().c_str());
     }
   } else {
-    if (st.cell.is_crystal())
-      printf("no remark 290: %s\n", path.c_str());
+    printf("failed remark 290 ops to spacegroup: %s\n", path.c_str());
   }
 }
 
