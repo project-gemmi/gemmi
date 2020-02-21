@@ -353,13 +353,19 @@ With this list we can use:
   The last argument can also be set to ``Asu::Same`` or ``Asu::Different``.
 
 In the reciprocal space, the unit cell can be used to determine interplanar
-spacing *d*:sub:`hkl`:
+spacing *d*:sub:`hkl` (the resolution corresponding to reflection):
 
 .. doctest::
 
     >>> cell.calculate_d([0, 1, 0])
     39.5
-    >>> cell.calculate_1_d2([8, -9, 10])  # calculates 1/d^2
+
+Computationally, *d* is calculated from 1/*d*:sup:`2`, so if you
+need the latter you can calculate it directly:
+
+.. doctest::
+
+    >>> cell.calculate_1_d2([8, -9, 10])
     0.20240687828293985
 
 
