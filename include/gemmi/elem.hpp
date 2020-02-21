@@ -250,9 +250,8 @@ struct Element {
   bool operator==(El e) const { return elem == e; }
   bool operator!=(El e) const { return elem != e; }
 
-  int atomic_number() const {
-    return elem == El::D ? 1 : static_cast<int>(elem);
-  }
+  int ordinal() const { return static_cast<int>(elem); }
+  int atomic_number() const { return elem == El::D ? 1 : ordinal(); }
   double weight() const { return molecular_weight(elem); }
   float covalent_r() const { return covalent_radius(elem); }
   // return name such as Mg (not MG)

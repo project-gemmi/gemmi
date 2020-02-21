@@ -33,7 +33,7 @@ public:
   }
 
   double get_scattering_factor(Element element) {
-    double& sfactor = scattering_factors_[(int)element.elem];
+    double& sfactor = scattering_factors_[element.ordinal()];
     if (sfactor == 0.) {
       if (!Table::has(element.elem))
         fail("Missing scattering factor for ", element.name());

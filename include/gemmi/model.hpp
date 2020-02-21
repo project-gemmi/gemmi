@@ -847,7 +847,7 @@ struct Model {
     for (const Chain& chain : chains)
       for (const Residue& res : chain.residues)
         for (const Atom& a : res.atoms)
-          table.set((int)a.element.elem);
+          table.set(a.element.ordinal());
     return table;
   }
 

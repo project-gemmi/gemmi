@@ -64,7 +64,7 @@ struct DensityCalculator {
   // pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {
     auto& scat = Table::get(atom.element);
-    float fprime = fprimes[(int)atom.element.elem];
+    float fprime = fprimes[atom.element.ordinal()];
     double b = atom.b_iso + blur;
     auto precal = scat.precalculate_density(b, fprime);
     double radius = determine_cutoff_radius(
