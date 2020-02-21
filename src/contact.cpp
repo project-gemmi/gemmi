@@ -32,8 +32,8 @@ static const option::Descriptor Usage[] = {
     "  --cov=TOL  \tUse max distance = covalent radii sum + TOL [A]." },
   { CovMult, 0, "", "covmult", Arg::Float,
     "  --covmult=M  \tUse max distance = M * covalent radii sum + TOL [A]." },
-  { Occ, 0, "", "occsum", Arg::Float,
-    "  --occsum=MIN  \tIgnore atom pairs with summed occupancies < MIN." },
+  { Occ, 0, "", "minocc", Arg::Float,
+    "  --minocc=MIN  \tIgnore atoms with occupancy < MIN." },
   { Any, 0, "", "any", Arg::None,
     "  --any  \tOutput any atom pair, even from the same residue." },
   { NoH, 0, "", "noh", Arg::None,
@@ -57,12 +57,11 @@ struct Parameters {
   float cov_tol = 0.0f;
   float cov_mult = 1.0f;
   float max_dist = 3.0f;
-  float occ_sum = 0.0f;
+  float min_occ = 0.0f;
   int verbose;
 };
 
 static void print_contacts(Structure& st, const Parameters& params) {
-  const float special_pos_cutoff = 0.8f;
   float max_r = params.use_cov_radius ? 4.f + params.cov_tol : params.max_dist;
   SubCells sc(st.first_model(), st.cell, std::max(5.0f, max_r));
   sc.populate(/*include_h=*/!params.no_hydrogens);
@@ -86,88 +85,39 @@ static void print_contacts(Structure& st, const Parameters& params) {
 
   // the code here is similar to LinkHunt::find_possible_links()
   int counter = 0;
-  const Model& model = st.first_model();
-  for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
-    const Chain& chain = model.chains[n_ch];
-    PolymerType pt = check_polymer_type(chain.get_polymer());
-    for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
-      const Residue& res = chain.residues[n_res];
-      for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
-        const Atom& atom = res.atoms[n_atom];
-        if (params.no_hydrogens && is_hydrogen(atom.element))
-          continue;
-        double min_occ = params.occ_sum - atom.occ;
-        float d_part = 0.f;
-        if (params.use_cov_radius) {
-          d_part = params.cov_mult * atom.element.covalent_r() + params.cov_tol;
-          max_r = d_part + 2.4f;
-        }
-        sc.for_each(atom.pos, atom.altloc, max_r,
-                    [&](const SubCells::Mark& m, float dist_sq) {
-            if (!params.any) {
-              // do not consider connections inside a residue
-              // or between this and previous/next residue
-              if (m.image_idx == 0 && m.chain_idx == n_ch &&
-                  (m.residue_idx == n_res ||
-                   are_connected(res, chain.residues[m.residue_idx], pt) ||
-                   are_connected(chain.residues[m.residue_idx], res, pt)))
-                return;
-            }
-            if (!params.twice)
-              // avoid reporting connections twice (A-B and B-A)
-              if (m.chain_idx < n_ch || (m.chain_idx == n_ch &&
-                    (m.residue_idx < n_res || (m.residue_idx == n_res &&
-                                               m.atom_idx < n_atom))))
-                return;
-
-            // atom can be linked with its image, but if the image
-            // is too close the atom is likely on special position.
-            if (m.chain_idx == n_ch && m.residue_idx == n_res &&
-                m.atom_idx == n_atom && (m.image_idx == 0 ||
-                                         dist_sq < sq(special_pos_cutoff)))
-              return;
-            const_CRA cra = m.to_cra(model);
-            if (cra.atom->occ < min_occ)
-              return;
-            if (params.use_cov_radius) {
-              float limit = d_part + params.cov_mult *
-                                     cra.atom->element.covalent_r();
-              if (limit < 0 || dist_sq > sq(limit))
-                return;
-            }
-            ++counter;
-            if (params.print_count)
-              return;
-            const char* sym1;
-            std::string sym2;
-            double dist;
-            if (params.no_symmetry) {
-              sym1 = "";
-              dist = std::sqrt(dist_sq);
-            } else {
-              SymImage im = st.cell.find_nearest_pbc_image(
-                                          atom.pos, cra.atom->pos, m.image_idx);
-              sym1 = "1555";
-              sym2 = im.pdb_symbol(false);
-              dist = im.dist();
-            }
-            printf("            %-4s%c%3s%2s%5s   "
-                   "            %-4s%c%3s%2s%5s  %6s %6s %5.2f\n",
-                   padded_atom_name(atom).c_str(),
-                   atom.altloc ? std::toupper(atom.altloc) : ' ',
-                   res.name.c_str(),
-                   chain.name.c_str(),
-                   res.seqid.str().c_str(),
-                   padded_atom_name(*cra.atom).c_str(),
-                   cra.atom->altloc ? std::toupper(cra.atom->altloc) : ' ',
-                   cra.residue->name.c_str(),
-                   cra.chain->name.c_str(),
-                   cra.residue->seqid.str().c_str(),
-                   sym1, sym2.c_str(), dist);
-        });
+  SubCells::ContactConfig conf;
+  conf.search_radius = max_r;
+  conf.twice = params.twice;
+  conf.skip_intra_residue = !params.any;
+  conf.skip_adjacent_residue = !params.any;
+  if (params.use_cov_radius)
+    conf.setup_atomic_radii(params.cov_mult, params.cov_tol);
+  sc.for_each_contact(conf, [&](const CRA& cra1, const CRA& cra2,
+                                int image_idx, float dist_sq) {
+      ++counter;
+      if (params.print_count)
+        return;
+      std::string sym1, sym2;
+      if (!params.no_symmetry) {
+        SymImage im = st.cell.find_nearest_pbc_image(cra1.atom->pos,
+                                                     cra2.atom->pos, image_idx);
+        sym1 = "1555";
+        sym2 = im.pdb_symbol(false);
       }
-    }
-  }
+      printf("            %-4s%c%3s%2s%5s   "
+             "            %-4s%c%3s%2s%5s  %6s %6s %5.2f\n",
+             padded_atom_name(*cra1.atom).c_str(),
+             cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
+             cra1.residue->name.c_str(),
+             cra1.chain->name.c_str(),
+             cra1.residue->seqid.str().c_str(),
+             padded_atom_name(*cra2.atom).c_str(),
+             cra2.atom->altloc ? std::toupper(cra2.atom->altloc) : ' ',
+             cra2.residue->name.c_str(),
+             cra2.chain->name.c_str(),
+             cra2.residue->seqid.str().c_str(),
+             sym1.c_str(), sym2.c_str(), std::sqrt(dist_sq));
+  });
   if (params.print_count)
     printf("%s:%g\n", st.name.c_str(), 0.5 * counter);
 }
@@ -186,7 +136,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (p.options[MaxDist])
     params.max_dist = std::strtof(p.options[MaxDist].arg, nullptr);
   if (p.options[Occ])
-    params.occ_sum = std::strtof(p.options[Occ].arg, nullptr);
+    params.min_occ = std::strtof(p.options[Occ].arg, nullptr);
   params.any = p.options[Any];
   params.print_count = p.options[Count];
   params.no_hydrogens = p.options[NoH];
