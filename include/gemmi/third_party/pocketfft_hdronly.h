@@ -105,17 +105,13 @@ constexpr bool FORWARD  = true,
 #if defined(__INTEL_COMPILER)
 // do nothing. This is necessary because this compiler also sets __GNUC__.
 #elif defined(__clang__)
+// AppleClang has their own version numbering
 #ifdef __apple_build_version__
-   // Apple Clang 9.1 is based on Clang 5
 #  if (__clang_major__ > 9) || (__clang_major__ == 9 && __clang_minor__ >= 1)
 #     undef POCKETFFT_NO_VECTORS
-#  else
-#     pragma message("FFT vectorization disabled - old Apple Clang " __clang_version__)
 #  endif
 #elif __clang_major__ >= 5
 #  undef POCKETFFT_NO_VECTORS
-#else
-#  pragma message("FFT vectorization disabled - old Clang " __clang_version__)
 #endif
 #elif defined(__GNUC__)
 #if __GNUC__>=5
@@ -647,7 +643,7 @@ class thread_pool
       }
   };
 
-thread_pool & get_pool()
+inline thread_pool & get_pool()
   {
   static thread_pool pool;
 #ifdef POCKETFFT_PTHREADS
@@ -3381,7 +3377,7 @@ template<typename T> void c2r(const shape_t &shape_out,
     stride_inter[size_t(i)] =
       stride_inter[size_t(i+1)]*ptrdiff_t(shape_in[size_t(i+1)]);
   arr<std::complex<T>> tmp(nval);
-  auto newaxes = shape_t({axes.begin(), --axes.end()});
+  auto newaxes = shape_t{axes.begin(), --axes.end()};
   c2c(shape_in, stride_in, stride_inter, newaxes, forward, data_in, tmp.data(),
     T(1), nthreads);
   c2r(shape_out, stride_inter, stride_out, axes.back(), forward,
