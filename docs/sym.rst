@@ -47,7 +47,10 @@ For example, we do not include all
 the C- and F-centred tetragonal space groups featured in
 `Crystallographic Space Group Diagrams and Tables <http://img.chem.ucl.ac.uk/sgp/mainmenu.htm>`_
 by Jeremy Karl Cockcroft
-(they are also mentioned in the 2015 edition of ITfC Vol.A, Table 1.5.4.4).
+(they are also listed on
+`this page <https://cci.lbl.gov/cctbx/multiple_cell.html>`_
+written by R.W. Grosse-Kunstleve,
+and mentioned in the 2015 edition of ITfC Vol.A, Table 1.5.4.4).
 
 We also tabulated alternative names.
 For now this only includes new standard names introduced in 1990's by the IUCr
