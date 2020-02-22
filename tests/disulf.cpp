@@ -6,6 +6,7 @@
 // It was run for all PDB entries to test the cell lists implementation.
 
 #include <gemmi/subcells.hpp>
+#include <gemmi/contact.hpp>
 #include <gemmi/model.hpp>
 #include <gemmi/mmread.hpp>
 #include <gemmi/gz.hpp>
@@ -80,7 +81,7 @@ static std::vector<BondInfo> find_disulfide_bonds2(Model& model,
         }
 #endif
   std::vector<BondInfo> ret;
-#if 1  // faster, but requires more code
+#if 0  // faster, but requires more code
   for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms)
@@ -101,10 +102,9 @@ static std::vector<BondInfo> find_disulfide_bonds2(Model& model,
           });
         }
 #else  // slower, but simpler
-  SubCells::ContactConfig conf;
-  conf.search_radius = max_dist;
-  sc.for_each_contact(conf, [&](const CRA& cra1, const CRA& cra2,
-                                int image_idx, float dist_sq) {
+  ContactSearch contacts(max_dist);
+  contacts.for_each_contact(sc, [&](const CRA& cra1, const CRA& cra2,
+                                    int image_idx, float dist_sq) {
       if (cra1.atom->element == El::S && cra1.atom->name == sg &&
           cra2.atom->element == El::S && cra2.atom->name == sg)
         ret.push_back({cra1, cra2, image_idx, dist_sq});

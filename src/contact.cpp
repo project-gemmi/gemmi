@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>    // for strtod
 #include <algorithm>  // for min, max
+#include <gemmi/contact.hpp>
 #include <gemmi/subcells.hpp>
 #include <gemmi/polyheur.hpp>  // for are_connected
 #include <gemmi/elem.hpp>      // for is_hydrogen
@@ -85,15 +86,14 @@ static void print_contacts(Structure& st, const Parameters& params) {
 
   // the code here is similar to LinkHunt::find_possible_links()
   int counter = 0;
-  SubCells::ContactConfig conf;
-  conf.search_radius = max_r;
-  conf.twice = params.twice;
-  conf.skip_intra_residue = !params.any;
-  conf.skip_adjacent_residue = !params.any;
+  ContactSearch contacts(max_r);
+  contacts.twice = params.twice;
+  contacts.skip_intra_residue = !params.any;
+  contacts.skip_adjacent_residue = !params.any;
   if (params.use_cov_radius)
-    conf.setup_atomic_radii(params.cov_mult, params.cov_tol);
-  sc.for_each_contact(conf, [&](const CRA& cra1, const CRA& cra2,
-                                int image_idx, float dist_sq) {
+    contacts.setup_atomic_radii(params.cov_mult, params.cov_tol);
+  contacts.for_each_contact(sc, [&](const CRA& cra1, const CRA& cra2,
+                                    int image_idx, float dist_sq) {
       ++counter;
       if (params.print_count)
         return;

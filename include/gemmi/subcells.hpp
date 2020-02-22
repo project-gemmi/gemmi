@@ -12,7 +12,6 @@
 #include "fail.hpp"      // for fail
 #include "grid.hpp"
 #include "model.hpp"
-#include "polyheur.hpp"  // for check_polymer_type, are_connected
 
 namespace gemmi {
 
@@ -75,25 +74,6 @@ struct SubCells {
 
   template<typename Func>
   void for_each(const Position& pos, char alt, float radius, const Func& func);
-
-  struct ContactConfig {
-    float search_radius;
-    bool skip_intra_residue = true;  // ignore "contacts" in the same residue
-    bool skip_adjacent_residue = false;  // ignore contacts with prev/next res.
-    bool twice = false;  // report both A-B and B-A
-    float special_pos_cutoff_sq = 0.8f * 0.8f;
-    float min_occupancy = 0.f;
-    std::vector<float> radii;
-
-    void setup_atomic_radii(double multiplier, double tolerance) {
-      radii.resize((size_t)El::END);
-      for (int i = 0; i != (int) El::END; ++i)
-        radii[i] = float(multiplier * Element(i).covalent_r() + tolerance / 2);
-    }
-  };
-
-  template<typename Func>
-  void for_each_contact(const ContactConfig& conf, const Func& func);
 
   std::vector<Mark*> find_atoms(const Position& pos, char alt, float radius) {
     std::vector<Mark*> out;
@@ -220,61 +200,6 @@ void SubCells::for_each(const Position& pos, char alt, float radius,
   }
 }
 
-template<typename Func>
-void SubCells::for_each_contact(const ContactConfig& conf, const Func& func) {
-  if (!model)
-    fail("SubCells not initialized");
-  for (int n_ch = 0; n_ch != (int) model->chains.size(); ++n_ch) {
-    Chain& chain = model->chains[n_ch];
-    PolymerType pt = PolymerType::Unknown;
-    if (conf.skip_adjacent_residue)
-      pt = check_polymer_type(chain.get_polymer());
-    for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
-      Residue& res = chain.residues[n_res];
-      for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
-        Atom& atom = res.atoms[n_atom];
-        if (!include_h && is_hydrogen(atom.element))
-          continue;
-        if (atom.occ < conf.min_occupancy)
-          continue;
-        for_each(atom.pos, atom.altloc, (float) conf.search_radius,
-                 [&](SubCells::Mark& m, float dist_sq) {
-            // do not consider connections inside a residue
-            if (conf.skip_intra_residue && m.image_idx == 0 &&
-                m.chain_idx == n_ch && m.residue_idx == n_res)
-              return;
-            // additionally, we may have per-element distances
-            if (!conf.radii.empty())
-              if (dist_sq > sq(conf.radii[atom.element.ordinal()] +
-                               conf.radii[(int)m.element]))
-                return;
-            // do not consider connections between adjacent residues
-            if (conf.skip_adjacent_residue && m.image_idx == 0 &&
-                m.chain_idx == n_ch)
-              if (are_connected(res, chain.residues[m.residue_idx], pt) ||
-                  are_connected(chain.residues[m.residue_idx], res, pt))
-                return;
-            // avoid reporting connections twice (A-B and B-A)
-            if (!conf.twice)
-              if (m.chain_idx < n_ch || (m.chain_idx == n_ch &&
-                    (m.residue_idx < n_res || (m.residue_idx == n_res &&
-                                               m.atom_idx < n_atom))))
-                return;
-            // atom can be linked with its image, but if the image
-            // is too close the atom is likely on special position.
-            if (m.chain_idx == n_ch && m.residue_idx == n_res &&
-                m.atom_idx == n_atom && dist_sq < conf.special_pos_cutoff_sq)
-              return;
-            CRA cra2 = m.to_cra(*model);
-            // ignore atoms with occupancy below the specified value
-            if (cra2.atom->occ < conf.min_occupancy)
-              return;
-            func(CRA{&chain, &res, &atom}, cra2, m.image_idx, dist_sq);
-        });
-      }
-    }
-  }
-}
 
 } // namespace gemmi
 #endif
