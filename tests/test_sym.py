@@ -165,6 +165,9 @@ class TestSymmetry(unittest.TestCase):
                                  cctbx_info.is_reference_setting())
                 #to_ref = cctbx_info.change_of_basis_op_to_reference_setting()
                 #from_ref = '%s' % cob_to_ref.inverse().c()
+            ops = gemmi.get_spacegroup_reference_setting(sg.number).operations()
+            ops.change_basis(sg.basisop)
+            self.assertEqual(ops, sg.operations())
 
     def test_find_spacegroup(self):
         self.assertEqual(gemmi.SpaceGroup('P21212').hm, 'P 21 21 2')
