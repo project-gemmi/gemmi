@@ -50,7 +50,7 @@ class TestMtz(unittest.TestCase):
         for half_l in (False, True):
             grid1 = mtz.get_f_phi_on_grid('FWT', 'PHWT', size, half_l=half_l)
             grid2 = mtz.get_f_phi_on_grid('FWT', 'PHWT', size, half_l=half_l,
-                                          hkl_orient=gemmi.HklOrient.LKH)
+                                          order=gemmi.AxisOrder.ZYX)
             if numpy is None:
                 continue
             array1 = numpy.array(grid1, copy=False)

@@ -149,10 +149,10 @@ read_sf_and_fft_to_map(const char* input_path,
                                                   : nullptr;
   bool diff_map = options[Diff];
   bool half_l = true;
-  gemmi::HklOrient hkl_orient = options[AxesZyx] ? gemmi::HklOrient::LKH
-                                                 : gemmi::HklOrient::HKL;
-  gemmi::Grid<std::complex<float>> grid;
-  gemmi::Grid<float> weight_grid;
+  gemmi::AxisOrder axis_order = options[AxesZyx] ? gemmi::AxisOrder::ZYX
+                                                 : gemmi::AxisOrder::XYZ;
+  gemmi::FPhiGrid<float> grid;
+  gemmi::ReciprocalGrid<float> weight_grid;
   if (gemmi::giends_with(input_path, ".cif") ||
       gemmi::giends_with(input_path, ".ent")) {
     if (!f_label)
@@ -175,11 +175,11 @@ read_sf_and_fft_to_map(const char* input_path,
     grid = gemmi::get_f_phi_on_grid<float>(data_proxy,
                                            rblock.find_column_index(f_label),
                                            rblock.find_column_index(ph_label),
-                                           size, half_l, hkl_orient);
+                                           size, half_l, axis_order);
     if (weight_label)
       weight_grid = gemmi::get_value_on_grid<float>(
           data_proxy, rblock.find_column_index(weight_label),
-          size, half_l, hkl_orient);
+          size, half_l, axis_order);
   } else {
     Mtz mtz = gemmi::read_mtz(gemmi::MaybeGzipped(input_path), true);
     auto cols = get_mtz_map_columns(mtz, section, diff_map, f_label, ph_label);
@@ -191,11 +191,11 @@ read_sf_and_fft_to_map(const char* input_path,
               cols[0]->label.c_str(), cols[1]->label.c_str());
     grid = gemmi::get_f_phi_on_grid<float>(data_proxy,
                                            cols[0]->idx, cols[1]->idx,
-                                           size, half_l, hkl_orient);
+                                           size, half_l, axis_order);
     if (weight_label) {
       const Mtz::Column& col = get_mtz_column(mtz, section, weight_label);
       weight_grid = gemmi::get_value_on_grid<float>(data_proxy, col.idx,
-                                                    size, half_l, hkl_orient);
+                                                    size, half_l, axis_order);
     }
   }
   if (weight_grid.data.size() == grid.data.size())

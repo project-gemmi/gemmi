@@ -133,7 +133,7 @@ void print_structure_factors(const Structure& st,
     fflush(stderr);
     start = Clock::now();
   }
-  Grid<std::complex<float>> sf = transform_map_to_f_phi(grid, /*half_l=*/true);
+  FPhiGrid<float> sf = transform_map_to_f_phi(grid, /*half_l=*/true);
   StructureFactorCalculator<Table> calc(st.cell);
   if (verbose) {
     std::chrono::duration<double> elapsed = Clock::now() - start;

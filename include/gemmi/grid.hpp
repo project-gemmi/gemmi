@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// 3d grid used by CCP4 maps, cell-method search and hkl data.
+// 3d grids used by CCP4 maps, cell-method search and hkl data.
 
 #ifndef GEMMI_GRID_HPP_
 #define GEMMI_GRID_HPP_
@@ -90,13 +90,6 @@ inline void check_grid_factors(const SpaceGroup* sg, int u, int v, int w) {
   }
 }
 
-// for hkl grid, two orientations of hkl axes are supported
-enum class HklOrient : unsigned char {
-  HKL,  // default, corresponds to CCP4 map with axis order XYZ,
-        // i.e. index H is fast and L is slow
-  LKH   // fast L, may not be fully supported everywhere
-};
-
 inline double lerp_(double a, double b, double t) {
   return a + (b - a) * t;
 }
@@ -107,24 +100,89 @@ std::complex<T> lerp_(std::complex<T> a, std::complex<T> b, double t) {
 
 template<typename T, typename V=std::int8_t> struct MaskedGrid;
 
-// For now, for simplicity, the grid covers whole unit cell
-// and space group is P1.
-template<typename T=float>
-struct Grid {
+// Order of grid axis. Some Grid functionality works only with the XYZ order.
+// The values XYZ and XYZ are used only when the grid covers whole unit cell.
+enum class AxisOrder : unsigned char {
+  Unknown,
+  XYZ,  // default, corresponds to CCP4 map with axis order XYZ,
+        // i.e. index X (H in reciprocal space) is fast and Z (or L) is slow
+  ZYX   // fast Z (or L), may not be fully supported everywhere
+};
+
+template<typename T>
+struct GridBase {
   struct Point {
     int u, v, w;
     T* value;
   };
 
-  int nu = 0, nv = 0, nw = 0;
   UnitCell unit_cell;
-  bool full_canonical = false; // grid for the whole unit cell with X,Y,Z order
-  bool half_l = false; // hkl grid that stores only l>=0
-  HklOrient hkl_orient = HklOrient::HKL;  // ignore for non-hkl grid
   const SpaceGroup* spacegroup = nullptr;
-  double spacing[3];
-
   std::vector<T> data;
+  int nu = 0, nv = 0, nw = 0;
+  AxisOrder axis_order = AxisOrder::Unknown;
+
+
+  int point_count() const { return nu * nv * nw; }
+
+  void set_size_without_checking(int u, int v, int w) {
+    nu = u, nv = v, nw = w;
+    data.resize(u * v * w);
+  }
+
+  // Quick but unsafe. assumes (for efficiency) that 0 <= u < nu, etc.
+  int index_q(int u, int v, int w) const { return w * nu * nv + v * nu + u; }
+  T get_value_q(int u, int v, int w) const { return data[index_q(u, v, w)]; }
+
+  Fractional point_to_fractional(const Point& p) const {
+    return {p.u * (1.0 / nu), p.v * (1.0 / nv), p.w * (1.0 / nw)};
+  }
+  size_t point_to_index(const Point& p) const { return p.value - data.data(); }
+
+  void fill(T value) { std::fill(data.begin(), data.end(), value); }
+  T sum() const { return std::accumulate(data.begin(), data.end(), T()); }
+
+
+  struct iterator {
+    GridBase& parent;
+    size_t index;
+    int u = 0, v = 0, w = 0;
+    iterator(GridBase& parent_, size_t index_)
+      : parent(parent_), index(index_) {}
+    iterator& operator++() {
+      ++index;
+      if (++u == parent.nu) {
+        u = 0;
+        if (++v == parent.nv) {
+          v = 0;
+          ++w;
+        }
+      }
+      return *this;
+    }
+    typename GridBase<T>::Point operator*() {
+      return {u, v, w, &parent.data[index]};
+    }
+    bool operator==(const iterator &o) const { return index == o.index; }
+    bool operator!=(const iterator &o) const { return index != o.index; }
+  };
+  iterator begin() { return {*this, 0}; }
+  iterator end() { return {*this, data.size()}; }
+};
+
+// For simplicity, some operations work only if the grid covers whole unit cell
+// and axes u,v,w correspond to a,b,c in the unit cell.
+template<typename T=float>
+struct Grid : GridBase<T> {
+  using Point = typename GridBase<T>::Point;
+  using GridBase<T>::nu;
+  using GridBase<T>::nv;
+  using GridBase<T>::nw;
+  using GridBase<T>::unit_cell;
+  using GridBase<T>::spacegroup;
+  using GridBase<T>::data;
+
+  double spacing[3];
 
   void calculate_spacing() {
     spacing[0] = 1.0 / (nu * unit_cell.ar);
@@ -133,10 +191,9 @@ struct Grid {
   }
 
   void set_size_without_checking(int u, int v, int w) {
-    nu = u, nv = v, nw = w;
-    data.resize(u * v * w);
+    GridBase<T>::set_size_without_checking(u, v, w);
     calculate_spacing();
-    full_canonical = true;
+    this->axis_order = AxisOrder::XYZ;
   }
 
   void set_size(int u, int v, int w) {
@@ -165,40 +222,29 @@ struct Grid {
     calculate_spacing();
   }
 
-  int point_count() const { return nu * nv * nw; }
-
-  // Quick but unsafe. assumes (for efficiency) that 0 <= u < nu, etc.
-  int index_q(int u, int v, int w) const { return w * nu * nv + v * nu + u; }
-
   // Assumes (for efficiency) that -nu <= u < 2*nu, etc.
   int index_n(int u, int v, int w) const {
     if (u >= nu) u -= nu; else if (u < 0) u += nu;
     if (v >= nv) v -= nv; else if (v < 0) v += nv;
     if (w >= nw) w -= nw; else if (w < 0) w += nw;
-    return index_q(u, v, w);
+    return this->index_q(u, v, w);
   }
 
   // Safe but slower.
   int index_s(int u, int v, int w) const {
-    return index_q(modulo(u, nu), modulo(v, nv), modulo(w, nw));
+    return this->index_q(modulo(u, nu), modulo(v, nv), modulo(w, nw));
   }
 
-  T get_value_q(int u, int v, int w) const { return data[index_q(u, v, w)]; }
-
-  T get_value(int u, int v, int w) const { return data[index_s(u, v, w)]; }
+  T get_value(int u, int v, int w) const {
+    return data[index_s(u, v, w)];
+  }
 
   Point get_point(int u, int v, int w) {
     return {u, v, w, &data[index_s(u, v, w)]};
   }
 
-  Fractional point_to_fractional(const Point& p) const {
-    return {p.u * (1.0 / nu), p.v * (1.0 / nv), p.w * (1.0 / nw)};
-  }
   Position point_to_position(const Point& p) const {
-    return unit_cell.orthogonalize(point_to_fractional(p));
-  }
-  size_t point_to_index(const Point& p) const {
-    return p.value - data.data();
+    return unit_cell.orthogonalize(this->point_to_fractional(p));
   }
 
   // https://en.wikipedia.org/wiki/Trilinear_interpolation
@@ -215,9 +261,9 @@ struct Grid {
     T avg[2];
     for (int i = 0; i < 2; ++i) {
       int wi = (i == 0 || w + 1 != nw ? w + i : 0);
-      int idx1 = index_q(u, v, wi);
+      int idx1 = this->index_q(u, v, wi);
       int v2 = v + 1 != nv ? v + 1 : 0;
-      int idx2 = index_q(u, v2, wi);
+      int idx2 = this->index_q(u, v2, wi);
       int u_add = u + 1 != nu ? 1 : -u;
       avg[i] = (T) lerp_(lerp_(data[idx1], data[idx1 + u_add], xd),
                          lerp_(data[idx2], data[idx2 + u_add], xd),
@@ -234,9 +280,6 @@ struct Grid {
   }
 
   void set_value(int u, int v, int w, T x) { data[index_s(u, v, w)] = x; }
-
-  void fill(T value) { std::fill(data.begin(), data.end(), value); }
-  T sum() const { return std::accumulate(data.begin(), data.end(), T()); }
 
   template <typename Func>
   void use_points_around(const Fractional& fctr_, double radius, Func&& func,
@@ -315,7 +358,7 @@ struct Grid {
     for (int w = 0; w != nw; ++w)
       for (int v = 0; v != nv; ++v)
         for (int u = 0; u != nu; ++u, ++idx) {
-          assert(idx == index_q(u, v, w));
+          assert(idx == this->index_q(u, v, w));
           if (visited[idx])
             continue;
           for (size_t k = 0; k < ops.size(); ++k) {
@@ -341,7 +384,8 @@ struct Grid {
   // grid point, then assign the result to all the points.
   template<typename Func>
   void symmetrize(Func func) {
-    if (spacegroup && spacegroup->number != 1 && full_canonical)
+    if (spacegroup && spacegroup->number != 1 &&
+        this->axis_order == AxisOrder::XYZ)
       symmetrize_using_ops(get_scaled_ops_except_id(), func);
   }
 
@@ -372,38 +416,12 @@ struct Grid {
   }
 
   MaskedGrid<T> asu();
-
-  struct iterator {
-    Grid& parent;
-    size_t index;
-    int u = 0, v = 0, w = 0;
-    iterator(Grid& parent_, size_t index_) : parent(parent_), index(index_) {}
-    iterator& operator++() {
-      ++index;
-      if (++u == parent.nu) {
-        u = 0;
-        if (++v == parent.nv) {
-          v = 0;
-          ++w;
-        }
-      }
-      return *this;
-    }
-    typename Grid<T>::Point operator*() {
-      return {u, v, w, &parent.data[index]};
-    }
-    bool operator==(const iterator &o) const { return index == o.index; }
-    bool operator!=(const iterator &o) const { return index != o.index; }
-  };
-  iterator begin() { return {*this, 0}; }
-  iterator end() { return {*this, data.size()}; }
 };
 
 
 template<typename T, typename V> struct MaskedGrid {
   Grid<T>* grid;
-  // should we simply store a vector
-  Grid<V> mask;
+  Grid<V> mask; // should we simply store the mask as vector?
 
   MaskedGrid(Grid<T>& grid_, std::vector<V>&& mask_data) : grid(&grid_) {
     mask.nu = grid_.nu;
@@ -434,7 +452,7 @@ template<typename T, typename V> struct MaskedGrid {
                parent.mask.data[index] != 0);
       return *this;
     }
-    typename Grid<T>::Point operator*() {
+    typename GridBase<T>::Point operator*() {
       return {u, v, w, &parent.grid->data[index]};
     }
     bool operator==(const iterator &o) const { return index == o.index; }
@@ -449,6 +467,40 @@ MaskedGrid<T> Grid<T>::asu() {
   return {*this, get_asu_mask<std::int8_t>()};
 }
 
+template<typename T>
+struct ReciprocalGrid : GridBase<T> {
+  bool half_l = false; // hkl grid that stores only l>=0
+  bool has_index(int u, int v, int w) const {
+    return 2 * std::abs(u) < this->nu &&
+           2 * std::abs(v) < this->nv &&
+           2 * std::abs(w) < this->nw;
+  }
+  void check_index(int u, int v, int w) const {
+    if (!has_index(u, v, w))
+      throw std::out_of_range("ReciprocalGrid: index out of grid.");
+  }
+  // Similar to Grid::index_n(), but works only for -nu <= u < nu, etc.
+  int index_n(int u, int v, int w) const {
+    return this->index_q(u >= 0 ? u : u + this->nu,
+                         v >= 0 ? v : v + this->nv,
+                         w >= 0 ? w : w + this->nw);
+  }
+  int index_checked(int u, int v, int w) const {
+    check_index(u, v, w);
+    return index_n(u, v, w);
+  }
+  T get_value(int u, int v, int w) const {
+    return this->data[index_checked(u, v, w)];
+  }
+  T get_value_or_zero(int u, int v, int w) const {
+    return has_index(u, v, w) ? this->data[index_n(u, v, w)] : T{};
+  }
+  void set_value(int u, int v, int w, T x) {
+    this->data[index_checked(u, v, w)] = x;
+  }
+};
+
+template<typename T> using FPhiGrid = ReciprocalGrid<std::complex<T>>;
 
 } // namespace gemmi
 #endif

@@ -91,10 +91,6 @@ void add_hkl(py::module& m) {
   py::bind_vector<std::vector<ReflnBlock>>(m, "ReflnBlocks");
   py::bind_vector<std::vector<const Mtz::Column*>>(m, "MtzColumnRefs");
 
-  py::enum_<HklOrient>(m, "HklOrient")
-    .value("HKL", HklOrient::HKL)
-    .value("LKH", HklOrient::LKH);
-
   py::class_<Mtz> mtz(m, "Mtz", py::buffer_protocol());
   mtz.def(py::init<>())
     .def_buffer([](Mtz &self) {
@@ -149,7 +145,7 @@ void add_hkl(py::module& m) {
                                  const std::string& phi_col,
                                  std::array<int, 3> size,
                                  bool half_l,
-                                 HklOrient hkl_orient) {
+                                 AxisOrder order) {
         const Mtz::Column* f = self.column_with_label(f_col);
         const Mtz::Column* phi = self.column_with_label(phi_col);
         if (!f || !phi)
@@ -157,9 +153,9 @@ void add_hkl(py::module& m) {
         MtzDataProxy data{self};
         check_if_hkl_fits_in(data, size);
         return get_f_phi_on_grid<float>(data, f->idx, phi->idx, size,
-                                        half_l, hkl_orient);
+                                        half_l, order);
     }, py::arg("f"), py::arg("phi"), py::arg("size"),
-       py::arg("half_l")=false, py::arg("hkl_orient")=HklOrient::HKL)
+       py::arg("half_l")=false, py::arg("order")=AxisOrder::XYZ)
     .def("transform_f_phi_to_map", [](const Mtz& self,
                                       const std::string& f_col,
                                       const std::string& phi_col,
@@ -292,15 +288,15 @@ void add_hkl(py::module& m) {
                                  const std::string& f_col,
                                  const std::string& phi_col,
                                  std::array<int, 3> size,
-                                 bool half_l, HklOrient hkl_orient) {
+                                 bool half_l, AxisOrder order) {
         size_t f_idx = self.get_column_index(f_col);
         size_t phi_idx = self.get_column_index(phi_col);
         ReflnDataProxy data{self};
         check_if_hkl_fits_in(data, size);
         return get_f_phi_on_grid<float>(data, f_idx, phi_idx, size,
-                                        half_l, hkl_orient);
+                                        half_l, order);
     }, py::arg("f"), py::arg("phi"), py::arg("size"),
-       py::arg("half_l")=false, py::arg("hkl_orient")=HklOrient::HKL)
+       py::arg("half_l")=false, py::arg("order")=AxisOrder::XYZ)
     .def("transform_f_phi_to_map", [](const ReflnBlock& self,
                                       const std::string& f_col,
                                       const std::string& phi_col,
@@ -327,7 +323,7 @@ void add_hkl(py::module& m) {
   m.def("as_refln_blocks",
         [](cif::Document& d) { return as_refln_blocks(std::move(d.blocks)); });
   m.def("hkl_cif_as_refln_block", &hkl_cif_as_refln_block, py::arg("block"));
-  m.def("transform_f_phi_grid_to_map", [](Grid<std::complex<float>> grid) {
+  m.def("transform_f_phi_grid_to_map", [](FPhiGrid<float> grid) {
           return transform_f_phi_grid_to_map<float>(std::move(grid));
         }, py::arg("grid"));
   m.def("transform_map_to_f_phi", &transform_map_to_f_phi<float>,

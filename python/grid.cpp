@@ -26,32 +26,44 @@ using namespace gemmi;
 PYBIND11_MAKE_OPAQUE(std::vector<SubCells::Mark*>)
 
 template<typename T>
-std::string grid_dim_str(const Grid<T>& g) {
+std::string grid_dim_str(const GridBase<T>& g) {
   return std::to_string(g.nu) + ", " + std::to_string(g.nv) + ", " +
          std::to_string(g.nw);
 }
 
 template<typename T>
-void add_grid(py::module& m, const char* name) {
-  using Gr = Grid<T>;
-  py::class_<Gr> gr(m, name, py::buffer_protocol());
-  gr
-    .def_buffer([](Gr &g) {
+void add_grid(py::module& m, const std::string& name) {
+  using GrBase = GridBase<T>;
+  py::class_<GrBase> (m, (name + "Base").c_str(), py::buffer_protocol())
+    .def_buffer([](GrBase &g) {
       return py::buffer_info(g.data.data(),
                              {g.nu, g.nv, g.nw},       // dimensions
                              {sizeof(T),               // strides
                               sizeof(T) * g.nu,
                               sizeof(T) * g.nu * g.nv});
     })
+    .def_readonly("nu", &GrBase::nu, "size in the first (fastest-changing) dim")
+    .def_readonly("nv", &GrBase::nv, "size in the second dimension")
+    .def_readonly("nw", &GrBase::nw, "size in the third (slowest-changing) dim")
+    .def_readwrite("spacegroup", &GrBase::spacegroup)
+    .def_readwrite("unit_cell", &GrBase::unit_cell)
+    .def_readonly("axis_order", &GrBase::axis_order)
+    .def_property_readonly("point_count", &GrBase::point_count)
+    .def("fill", &GrBase::fill, py::arg("value"))
+    .def("sum", &GrBase::sum)
+    .def("__iter__", [](GrBase& self) { return py::make_iterator(self); },
+         py::keep_alive<0, 1>())
+    ;
+
+  using Gr = Grid<T>;
+  py::class_<Gr, GrBase> gr(m, name.c_str());
+  gr
     .def(py::init<>())
     .def(py::init([](int nx, int ny, int nz) {
       Gr grid;
       grid.set_size(nx, ny, nz);
       return grid;
     }), py::arg("nx"), py::arg("ny"), py::arg("nz"))
-    .def_readonly("nu", &Gr::nu, "size in the first (fastest-changing) dim")
-    .def_readonly("nv", &Gr::nv, "size in the second dimension")
-    .def_readonly("nw", &Gr::nw, "size in the third (slowest-changing) dim")
     .def("get_value", &Gr::get_value)
     .def("set_value", &Gr::set_value)
     .def("get_point", &Gr::get_point)
@@ -62,20 +74,12 @@ void add_grid(py::module& m, const char* name) {
          (T (Gr::*)(const Fractional&) const) &Gr::interpolate_value)
     .def("interpolate_value",
          (T (Gr::*)(const Position&) const) &Gr::interpolate_value)
-    .def_readwrite("spacegroup", &Gr::spacegroup)
-    .def_readwrite("unit_cell", &Gr::unit_cell)
     .def("set_unit_cell", (void (Gr::*)(const UnitCell&)) &Gr::set_unit_cell)
-    .def_readonly("full_canonical", &Gr::full_canonical)
-    .def_property_readonly("point_count", &Gr::point_count)
     .def("set_points_around", &Gr::set_points_around,
          py::arg("position"), py::arg("radius"), py::arg("value"))
     .def("symmetrize_min", &Gr::symmetrize_min)
     .def("symmetrize_max", &Gr::symmetrize_max)
-    .def("fill", &Gr::fill, py::arg("value"))
-    .def("sum", &Gr::sum)
     .def("asu", &Gr::asu)
-    .def("__iter__", [](Gr& self) { return py::make_iterator(self); },
-         py::keep_alive<0, 1>())
     .def("__repr__", [=](const Gr& self) {
         return tostr("<gemmi.", name, '(', grid_dim_str(self), ")>");
     });
@@ -95,12 +99,22 @@ void add_grid(py::module& m, const char* name) {
     ;
 
   using Masked = MaskedGrid<T>;
-  py::class_<Masked>(m, ("Masked" + std::string(name)).c_str())
+  py::class_<Masked>(m, ("Masked" + name).c_str())
     .def_readonly("grid", &Masked::grid, py::return_value_policy::reference)
     .def_readonly("mask", &Masked::mask)
     .def("__iter__", [](Masked& self) { return py::make_iterator(self); },
          py::keep_alive<0, 1>())
     ;
+
+  using ReGr = ReciprocalGrid<T>;
+  py::class_<ReGr, GrBase>(m, ("Reciprocal" + name).c_str())
+    .def(py::init<>())
+    .def("get_value", &ReGr::get_value)
+    .def("get_value_or_zero", &ReGr::get_value_or_zero)
+    .def("set_value", &ReGr::set_value)
+    .def("__repr__", [=](const ReGr& self) {
+        return tostr("<gemmi.Reciprocal", name, '(', grid_dim_str(self), ")>");
+    });
 }
 
 template<typename T>
@@ -149,6 +163,10 @@ void add_grid(py::module& m) {
           return grid;
         }, py::arg("path"), py::return_value_policy::move,
         "Reads a CCP4 file, mode 0 (int8_t data, usually 0/1 masks).");
+
+  py::enum_<AxisOrder>(m, "AxisOrder")
+    .value("XYZ", AxisOrder::XYZ)
+    .value("ZYX", AxisOrder::ZYX);
 
   py::class_<SubCells> subcells(m, "SubCells");
   py::class_<SubCells::Mark>(subcells, "Mark")

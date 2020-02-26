@@ -603,6 +603,9 @@ Data on 3D grid
 
 The reciprocal space data can be alternatively presented on a 3D grid
 indexed by Miller indices.
+This grid is represented by C++ class ReciprocalGrid,
+which shares most of the properties with the real-space
+class :ref:`Grid <grid>`.
 
 In C++, the ``<gemmi/fourier.hpp>`` header defines templated function
 ``get_f_phi_on_grid()`` that can be used with both MTZ and SF mmCIF data.
@@ -611,13 +614,42 @@ Here, we focus on the usage from Python.
 Both Mtz and ReflnBlock classes have method ``get_f_phi_on_grid``
 that takes three mandatory arguments: column names for the amplitude and phase,
 and the grid size.
-It returns a :ref:`Grid <grid>` of complex numbers.
+It returns reciprocal grid of complex numbers
+(``ReciprocalGrid<std::complex<float>>`` in C++,
+``ReciprocalComplexGrid`` in Python).
+Symmetry-related reflections are filled automatically (with phase shift).
 All the missing values are set to 0:
 
 .. doctest::
 
   >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', [54,6,18])
-  <gemmi.ComplexGrid(54, 6, 18)>
+  <gemmi.ReciprocalComplexGrid(54, 6, 18)>
+
+The grid above has capacity to store reflections with -27<*h*\ <27,
+-3<*k*\ <3 and -9<*l*\ <9.
+To access the data you can use the buffer protocol
+(:ref:`in the same way <buffer_protocol>` as in the Grid class),
+or getter and setter:
+
+.. doctest::
+
+  >>> grid = _
+  >>> grid.get_value(7, 1, -5)
+  (31.747737884521484-57.06287384033203j)
+  >>> grid.set_value(7, 1, -5, 12+34j)
+  >>> grid.get_value(7, 1, -5)
+  (12+34j)
+
+The functions above throw IndexError if the reflection is outside of the grid.
+If you prefer zero instead of the error, use:
+
+.. doctest::
+
+  >>> grid.get_value_or_zero(20, 30, 40)
+  0j
+
+Grid size
+---------
 
 To get an appropriate size, we can use method ``get_size_for_hkl``
 that has two optional parameters: ``min_size`` and ``sample_rate``.
@@ -625,6 +657,8 @@ that has two optional parameters: ``min_size`` and ``sample_rate``.
 
 .. doctest::
 
+  >>> rblock.get_size_for_hkl()
+  [54, 6, 18]
   >>> rblock.get_size_for_hkl(min_size=[64,8,0])
   [64, 8, 18]
 
@@ -633,7 +667,7 @@ to obey restrictions imposed by the spacegroup, and to make the size
 FFT-friendly (currently this means factors 2, 3 and 5).
 
 ``sample_rate`` sets the minimal grid size in relation to *d*:sub:`min`.
-It is defined analogically to the keyword ``SAMPLE`` in the CCP4 FFT program.
+It has the same meaning as the keyword SAMPLE in the CCP4 FFT program.
 For example, ``sample_rate=3`` requests grid size that corresponds
 to real-space sampling *d*:sub:`min`/3.
 (N.B. 3 here is equivalent to Clipper oversampling parameter equal 1.5).
@@ -643,31 +677,37 @@ to real-space sampling *d*:sub:`min`/3.
   >>> rblock.get_size_for_hkl(sample_rate=3.0)
   [90, 8, 30]
 
+Array layout
+------------
+
 The ``get_f_phi_on_grid`` function has also two optional arguments:
-``half_l`` and ``hkl_orient``.
+``half_l`` and ``axis_order``.
 The ``half_l`` flag is used to shrink the size of the grid in the memory.
-With this flag set the grid does not include data with negative index *l*.
+When set, the grid does not include data with negative index *l*.
 If the data is Hermitian, i.e. if it is a Fourier transform of
-the real data (electron density), the full data can be restored by setting
-values of missing (*h* *k* *l*) reflections to the conjugate values of its
-Friedel mates (*-h* *-k* *-l*).
+the real data (electron density), the (*h* *k* *l*) reflection
+with negative *l* can be restored as a complex conjugate of its Friedel mate
+(*-h* *-k* *-l*).
 
 .. doctest::
 
   >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', [54,6,18], half_l=True)
-  <gemmi.ComplexGrid(54, 6, 10)>
+  <gemmi.ReciprocalComplexGrid(54, 6, 10)>
 
-``hkl_orient`` can take one of the two values : ``HklOrient.HKL`` (the default)
-or ``HklOrient.LKH``. The former puts the *h* direction is along the first
-(fast) axis of the grid, the latter results in *l* along the fast axis.
-(The fast axis is first, which is a Fortran convention; this convention
+``axis_order`` can take one of the two values : ``AxisOrder.XYZ`` (the default)
+or ``AxisOrder.ZYX``. With the former -- the *h* direction is along the first
+(fast) axis of the grid. The latter results in *l* along the fast axis.
+(The fast axis is first, which is a Fortran convention. This convention
 affected the design of the CCP4 format, which in turn affected the design of
-Gemmi's Grid.)
+the grid classes in Gemmi.)
 
 .. doctest::
 
-  >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', [54,6,18], hkl_orient=gemmi.HklOrient.LKH)
-  <gemmi.ComplexGrid(18, 6, 54)>
+  >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', [54,6,18], order=gemmi.AxisOrder.ZYX)
+  <gemmi.ReciprocalComplexGrid(18, 6, 54)>
+
+Example
+-------
 
 As an example, we will use numpy.fft to calculate electron density map
 from map coefficients. Gemmi can calculate it internally, as described
@@ -771,7 +811,7 @@ use function ``transform_map_to_f_phi``:
   >>> ccp4.grid
   <gemmi.FloatGrid(72, 8, 24)>
   >>> gemmi.transform_map_to_f_phi(ccp4.grid)
-  <gemmi.ComplexGrid(72, 8, 24)>
+  <gemmi.ReciprocalComplexGrid(72, 8, 24)>
 
 Now you can access hkl reflections using ``Grid.get_value()``:
 
@@ -789,7 +829,7 @@ with negative Miller index l, but you can use its Friedel mate:
 .. doctest::
 
   >>> gemmi.transform_map_to_f_phi(ccp4.grid, half_l=True)
-  <gemmi.ComplexGrid(72, 8, 13)>
+  <gemmi.ReciprocalComplexGrid(72, 8, 13)>
   >>> _.get_value(-23, 1, 3).conjugate()  # value for (23, -1, -3)
   (18.440279006958008+26.18924331665039j)
 

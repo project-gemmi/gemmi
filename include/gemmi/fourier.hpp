@@ -84,9 +84,9 @@ std::complex<T> friedel_mate_value(const std::complex<T>& v) {
 }
 
 template<typename T>
-void add_friedel_mates(Grid<T>& grid) {
+void add_friedel_mates(ReciprocalGrid<T>& grid) {
   const T default_val = T(); // initialized to 0 or 0+0i
-  if (grid.hkl_orient == HklOrient::HKL) {
+  if (grid.axis_order == AxisOrder::XYZ) {
     for (int w = 0; w != (grid.half_l ? 1 : grid.nw); ++w) {
       int w_ = w == 0 ? 0 : grid.nw - w;
       for (int v = 0; v != grid.nv; ++v) {
@@ -101,7 +101,7 @@ void add_friedel_mates(Grid<T>& grid) {
         }
       }
     }
-  } else { // grid.hkl_orient == HklOrient::LKH
+  } else { // grid.axis_order == AxisOrder::ZYX
     for (int w = 0; w != grid.nw; ++w) {
       int w_ = w == 0 ? 0 : grid.nw - w;
       for (int v = 0; v != grid.nv; ++v) {
@@ -128,9 +128,9 @@ void add_friedel_mates(Grid<T>& grid) {
 }
 
 template<typename T, typename DataProxy>
-void initialize_hkl_grid(Grid<T>& grid, const DataProxy& data,
+void initialize_hkl_grid(ReciprocalGrid<T>& grid, const DataProxy& data,
                          std::array<int, 3> size, bool half_l,
-                         HklOrient hkl_orient) {
+                         AxisOrder axis_order) {
   if (!data.ok() || data.stride() < 5)
     fail("No data.");
   if (!data.spacegroup())
@@ -138,25 +138,24 @@ void initialize_hkl_grid(Grid<T>& grid, const DataProxy& data,
   check_grid_factors(data.spacegroup(), size[0], size[1], size[2]);
   grid.unit_cell = data.unit_cell();
   grid.half_l = half_l;
-  grid.hkl_orient = hkl_orient;
+  grid.axis_order = axis_order;
   grid.spacegroup = data.spacegroup();
   if (half_l)
     size[2] = size[2] / 2 + 1;
-  if (hkl_orient == HklOrient::LKH)
+  if (axis_order == AxisOrder::ZYX)
     std::swap(size[0], size[2]);
   grid.set_size_without_checking(size[0], size[1], size[2]);
-  grid.full_canonical = false; // disable some real-space functionality
 }
 
 // If half_l is true, grid has only data with l>=0.
 // Parameter size can be obtained from get_size_for_hkl().
 template<typename T, typename DataProxy>
-Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
-                                        size_t f_col, size_t phi_col,
-                                        std::array<int, 3> size, bool half_l,
-                                        HklOrient hkl_orient=HklOrient::HKL) {
-  Grid<std::complex<T>> grid;
-  initialize_hkl_grid(grid, data, size, half_l, hkl_orient);
+FPhiGrid<T> get_f_phi_on_grid(const DataProxy& data,
+                              size_t f_col, size_t phi_col,
+                              std::array<int, 3> size, bool half_l,
+                              AxisOrder axis_order=AxisOrder::XYZ) {
+  FPhiGrid<T> grid;
+  initialize_hkl_grid(grid, data, size, half_l, axis_order);
 
   if (f_col >= data.stride() || phi_col >= data.stride())
     fail("Map coefficients not found.");
@@ -172,17 +171,12 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
         auto hklp = op.apply_to_hkl(hkl);
         double shifted_phi = phi + op.phase_shift(hkl);
         int lp = hklp[2];
-        if (hkl_orient == HklOrient::LKH)
+        if (axis_order == AxisOrder::ZYX)
           std::swap(hklp[0], hklp[2]);
-        if (!half_l || lp >= 0) {
-          int idx = grid.index_n(hklp[0], hklp[1], hklp[2]);
-          if (grid.data[idx] == default_val)
-            grid.data[idx] = std::polar(f, (T) shifted_phi);
-        } else {
-          int idx = grid.index_n(-hklp[0], -hklp[1], -hklp[2]);
-          if (grid.data[idx] == default_val)
-            grid.data[idx] = std::polar(f, (T) -shifted_phi);
-        }
+        int sign = (!half_l || lp >= 0 ? 1 : -1);
+        int idx = grid.index_n(sign * hklp[0], sign * hklp[1], sign * hklp[2]);
+        if (grid.data[idx] == default_val)
+          grid.data[idx] = std::polar(f, (T) (sign * shifted_phi));
       }
     }
   }
@@ -192,11 +186,11 @@ Grid<std::complex<T>> get_f_phi_on_grid(const DataProxy& data,
 }
 
 template<typename T, typename DataProxy>
-Grid<T> get_value_on_grid(const DataProxy& data, size_t column,
-                          std::array<int, 3> size, bool half_l,
-                          HklOrient hkl_orient=HklOrient::HKL) {
-  Grid<T> grid;
-  initialize_hkl_grid(grid, data, size, half_l, hkl_orient);
+ReciprocalGrid<T> get_value_on_grid(const DataProxy& data, size_t column,
+                                    std::array<int, 3> size, bool half_l,
+                                    AxisOrder axis_order=AxisOrder::XYZ) {
+  ReciprocalGrid<T> grid;
+  initialize_hkl_grid(grid, data, size, half_l, axis_order);
 
   if (column >= data.stride())
     fail("Map coefficients not found.");
@@ -209,17 +203,12 @@ Grid<T> get_value_on_grid(const DataProxy& data, size_t column,
       for (const Op& op : ops.sym_ops) {
         auto hklp = op.apply_to_hkl(hkl);
         int lp = hklp[2];
-        if (hkl_orient == HklOrient::LKH)
+        if (axis_order == AxisOrder::ZYX)
           std::swap(hklp[0], hklp[2]);
-        if (!half_l || lp >= 0) {
-          int idx = grid.index_n(hklp[0], hklp[1], hklp[2]);
-          if (grid.data[idx] == 0.)  // 0 is the default value
-            grid.data[idx] = val;
-        } else {
-          int idx = grid.index_n(-hklp[0], -hklp[1], -hklp[2]);
-          if (grid.data[idx] == 0.)
-            grid.data[idx] = val;
-        }
+        int sign = (!half_l || lp >= 0 ? 1 : -1);
+        int idx = grid.index_n(sign * hklp[0], sign * hklp[1], sign * hklp[2]);
+        if (grid.data[idx] == 0.)  // 0 is the default value
+          grid.data[idx] = val;
       }
     }
   }
@@ -230,27 +219,26 @@ Grid<T> get_value_on_grid(const DataProxy& data, size_t column,
 
 
 template<typename T>
-void transform_f_phi_grid_to_map_(Grid<std::complex<T>>&& hkl, Grid<T>& map) {
+void transform_f_phi_grid_to_map_(FPhiGrid<T>&& hkl, Grid<T>& map) {
   // x -> conj(x) is equivalent to changing axis direction before FFT
   for (std::complex<T>& x : hkl.data)
     x.imag(-x.imag());
   map.spacegroup = hkl.spacegroup;
   map.unit_cell = hkl.unit_cell;
-  map.hkl_orient = hkl.hkl_orient;
-  if (hkl.hkl_orient == HklOrient::HKL) {
+  map.axis_order = hkl.axis_order;
+  if (hkl.axis_order == AxisOrder::XYZ) {
     int nw = hkl.half_l ? 2 * (hkl.nw - 1) : hkl.nw;
     map.set_size(hkl.nu, hkl.nv, nw);
-  } else { // hkl.hkl_orient == HklOrient::LKH
+  } else { // hkl.axis_order == AxisOrder::ZYX
     int nu = hkl.half_l ? 2 * (hkl.nu - 1) : hkl.nu;
     check_grid_factors(map.spacegroup, hkl.nw, hkl.nv, nu);
     map.set_size_without_checking(nu, hkl.nv, hkl.nw);
   }
-  map.full_canonical = hkl.hkl_orient == HklOrient::HKL;
   pocketfft::shape_t shape{(size_t)hkl.nw, (size_t)hkl.nv, (size_t)hkl.nu};
   std::ptrdiff_t s = sizeof(T);
   pocketfft::stride_t stride{2*s * hkl.nv * hkl.nu, 2*s * hkl.nu, 2*s};
   pocketfft::shape_t axes{2, 1, 0};
-  if (hkl.hkl_orient == HklOrient::LKH)
+  if (hkl.axis_order == AxisOrder::ZYX)
     std::swap(axes[0], axes[2]);
   T norm = T(1.0 / hkl.unit_cell.volume);
   if (hkl.half_l) {
@@ -273,9 +261,9 @@ void transform_f_phi_grid_to_map_(Grid<std::complex<T>>&& hkl, Grid<T>& map) {
 }
 
 template<typename T>
-Grid<T> transform_f_phi_grid_to_map(Grid<std::complex<T>>&& hkl) {
+Grid<T> transform_f_phi_grid_to_map(FPhiGrid<T>&& hkl) {
   Grid<T> map;
-  transform_f_phi_grid_to_map_(std::forward<Grid<std::complex<T>>>(hkl), map);
+  transform_f_phi_grid_to_map_(std::forward<FPhiGrid<T>>(hkl), map);
   return map;
 }
 
@@ -296,14 +284,13 @@ Grid<T> transform_f_phi_to_map(const DataProxy& data,
 }
 
 template<typename T>
-Grid<std::complex<T>> transform_map_to_f_phi(const Grid<T>& map, bool half_l) {
-  Grid<std::complex<T>> hkl;
+FPhiGrid<T> transform_map_to_f_phi(const Grid<T>& map, bool half_l) {
+  FPhiGrid<T> hkl;
   hkl.unit_cell = map.unit_cell;
   hkl.half_l = half_l;
   hkl.spacegroup = map.spacegroup;
   int half_nw = map.nw / 2 + 1;
   hkl.set_size_without_checking(map.nu, map.nv, half_l ? half_nw : map.nw);
-  hkl.full_canonical = false; // disable some real-space functionality
   T norm = T(map.unit_cell.volume / map.point_count());
   pocketfft::shape_t shape{(size_t)map.nw, (size_t)map.nv, (size_t)map.nu};
   std::ptrdiff_t s = sizeof(T);

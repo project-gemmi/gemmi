@@ -89,9 +89,9 @@ struct Ccp4 {
     ccp4_header.resize(256 + ops.order() * 20, 0);
     set_header_3i32(1, grid.nu, grid.nv, grid.nw); // NX, NY, NZ
     set_header_3i32(5, 0, 0, 0); // NXSTART, NYSTART, NZSTART
-    if (grid.hkl_orient == HklOrient::HKL)
+    if (grid.axis_order == AxisOrder::XYZ)
       set_header_3i32(8, grid.nu, grid.nv, grid.nw);  // MX, MY, MZ
-    else // grid.hkl_orient == HklOrient::LKH
+    else // grid.axis_order == AxisOrder::ZYX
       set_header_3i32(8, grid.nw, grid.nv, grid.nu);
     set_header_float(11, (float) grid.unit_cell.a);
     set_header_float(12, (float) grid.unit_cell.b);
@@ -99,9 +99,9 @@ struct Ccp4 {
     set_header_float(14, (float) grid.unit_cell.alpha);
     set_header_float(15, (float) grid.unit_cell.beta);
     set_header_float(16, (float) grid.unit_cell.gamma);
-    if (grid.hkl_orient == HklOrient::HKL)
+    if (grid.axis_order == AxisOrder::XYZ)
       set_header_3i32(17, 1, 2, 3); // MAPC, MAPR, MAPS
-    else // grid.hkl_orient == HklOrient::LKH
+    else // grid.axis_order == AxisOrder::ZYX
       set_header_3i32(17, 3, 2, 1);
     set_header_i32(23, grid.spacegroup ? grid.spacegroup->ccp4 : 1); // ISPG
     set_header_i32(24, ops.order() * 80);  // NSYMBT
@@ -205,8 +205,9 @@ struct Ccp4 {
     hstats.rms = header_float(55);
     grid.spacegroup = find_spacegroup_by_number(header_i32(23));
     auto pos = axis_positions();
-    grid.full_canonical = pos[0] == 0 && pos[1] == 1 && pos[2] == 2 &&
-                          full_cell();
+    grid.axis_order = AxisOrder::Unknown;
+    if (pos[0] == 0 && pos[1] == 1 && pos[2] == 2 && full_cell())
+      grid.axis_order = AxisOrder::XYZ;
   }
 
   double setup(GridSetup mode, T default_value);
@@ -324,7 +325,7 @@ template<> inline bool is_same(double a, double b) {
 template<typename T>
 double Ccp4<T>::setup(GridSetup mode, T default_value) {
   double max_error = 0.0;
-  if (grid.full_canonical || ccp4_header.empty())
+  if (grid.axis_order == AxisOrder::XYZ || ccp4_header.empty())
     return max_error;
   // cell sampling does not change
   int sampl[3] = { header_i32(8), header_i32(9), header_i32(10) };
@@ -364,12 +365,12 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
       }
   grid.data = std::move(full);
   if (mode == GridSetup::Full) {
-    grid.full_canonical = true;
+    grid.axis_order = AxisOrder::XYZ;
     grid.symmetrize([&default_value](T a, T b) {
         return impl::is_same(a, default_value) ? b : a;
     });
   } else if (mode == GridSetup::FullCheck) {
-    grid.full_canonical = true;
+    grid.axis_order = AxisOrder::XYZ;
     grid.symmetrize([&max_error, &default_value](T a, T b) {
         if (impl::is_same(a, default_value)) {
           return b;
@@ -380,8 +381,9 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
         }
     });
   } else {
-    grid.full_canonical = pos[0] == 0 && pos[1] == 1 && pos[2] == 2 &&
-                          full_cell();
+    grid.axis_order = AxisOrder::Unknown;
+    if (pos[0] == 0 && pos[1] == 1 && pos[2] == 2 && full_cell())
+      grid.axis_order = AxisOrder::XYZ;
   }
   return max_error;
 }

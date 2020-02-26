@@ -43,7 +43,7 @@ public:
       gemmi::Grid<std::complex<float>> coefs
         = gemmi::get_f_phi_on_grid<float>(proxy, f_col->idx, phi_col->idx,
                                           size, /*half_l=*/true,
-                                          gemmi::HklOrient::LKH);
+                                          gemmi::AxisOrder::ZYX);
       gemmi::transform_f_phi_grid_to_map_(std::move(coefs), grid_);
     } catch (std::runtime_error& e) {
       last_error_ = e.what();
@@ -83,7 +83,7 @@ public:
     return val::null();
   }
 
-  // we used HklOrient::LKH
+  // we used AxisOrder::ZYX
   int get_nx() const { return grid_.nw; }
   int get_ny() const { return grid_.nv; }
   int get_nz() const { return grid_.nu; }

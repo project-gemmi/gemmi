@@ -118,6 +118,8 @@ The point that you get when iterating over grid has four properties:
 The point can also be converted to index and to fractional and orthoghonal
 c oordinates, as will be demonstrated later.
 
+.. _buffer_protocol:
+
 The data can be also acesssed through the
 `buffer protocol <https://docs.python.org/3/c-api/buffer.html>`_.
 It means that you can use it as a NumPy array (Fortran-style contiguous)
