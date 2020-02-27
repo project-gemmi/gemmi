@@ -49,6 +49,7 @@ Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown) {
       cif::Document doc = cif::read(input);
       if (any) {
         int n = check_chemcomp_block_number(doc);
+        // first handle special case - refmac dictionary or CCD file
         if (n != -1)
           return make_structure_from_chemcomp_block(doc.blocks[n]);
       }

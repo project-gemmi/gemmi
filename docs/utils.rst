@@ -254,24 +254,18 @@ What is the maximum number of atoms in one plane?
    36 comp_SA3:plan-1
 
 
-.. _convert:
-
-convert
-=======
-
-.. literalinclude:: convert-help.txt
-   :language: console
-
-This programs combines a few functions.
-
 .. _json:
 
-CIF -- JSON
------------
+cif2json
+========
 
-Syntax-level conversion. The JSON representation of the CIF data
-can be customized. In particular we support CIF-JSON_ standard from COMCIFS
+Syntax-level conversion from CIF 1.1 to JSON.
+The JSON representation of the CIF data can be customized.
+In particular we support CIF-JSON_ standard from COMCIFS
 and mmJSON_ standard from PDBj (the latter is specific to mmCIF files).
+
+.. literalinclude:: cif2json-help.txt
+   :language: console
 
 The major difference between the two is that CIF-JSON is dictionary-agnostic:
 it cannot recognize categories (mmJSON groups by categories),
@@ -289,35 +283,38 @@ The minor differences are:
   ?           null        null
  =========== =========== ===========
 
-
 .. _CIF-JSON: http://comcifs.github.io/cif-json
 .. _mmJSON: https://pdbj.org/help/mmjson?lang=en
 
-mmCIF -- PDB -- mmJSON
-----------------------
 
-Conversion between macromolecular coordinate formats.
+json2cif
+========
 
-We made an effort to format the PDB files we write in the same way as the
-software used internally by the PDB, apart from writing fewer records.
-Thanks to this, in some scenarios a ``diff`` tool can be used to compare
-a PDB file written by Gemmi with an official PDB file from PDB.
+The opposite of cif2json, but currently the only supported input is mmJSON.
 
-The library and the converter also have an option (``--iotbx-compat``)
-that formats PDB files similarly to iotbx from cctbx (for example,
-in this mode ``TER`` records have no numbers).
-We do not aim to be fully compatible with CCTBX, but in many cases
-the difference will be only in whitespace.
+.. literalinclude:: json2cif-help.txt
+   :language: console
 
-NCS expansion
--------------
-The option ``--expand-ncs`` expands strict NCS,
-defined in the ``MTRIX`` record (PDB)
-or in the ``_struct_ncs_oper`` table (mmCIF).
-By default, new chains have different names than the original ones.
-But when used together with ``--iotbx-compat``,
-the program mimicks ``iotbx.pdb.expand_ncs`` and leaves the same chain names
-while adding distinct segment IDs.
+.. _convert:
+
+convert
+=======
+
+Conversion between macromolecular coordinate formats: PDB, mmCIF and mmJSON.
+
+.. literalinclude:: convert-help.txt
+   :language: console
+
+The PDB records written by Gemmi are formatted in the same way as in the wwPDB.
+This makes possible to use ``diff`` to compare a PDB file from wwPDB
+and a file converted by Gemmi from mmCIF. The file from wwPDB will have
+more records, but the diff should still be readable.
+
+The option ``--expand-ncs`` expands strict NCS, defined in
+the ``MTRIX`` record (PDB) or in the ``_struct_ncs_oper`` table (mmCIF).
+It is not obvious how to name the new chains that are added.
+We have two options: either new names are generated (``=new``) or
+the chain names are not changed but distinct segment IDs are added (``=dup``).
 
 tags
 ====

@@ -7,12 +7,14 @@
 
 int blobs_main(int argc, char** argv);
 int cif2mtz_main(int argc, char** argv);
+int cif2json_main(int argc, char** argv);
 int contact_main(int argc, char** argv);
 int contents_main(int argc, char** argv);
 int convert_main(int argc, char** argv);
 int fprime_main(int argc, char** argv);
 int grep_main(int argc, char** argv);
 int h_main(int argc, char** argv);
+int json2cif_main(int argc, char** argv);
 int map_main(int argc, char** argv);
 int map2sf_main(int argc, char** argv);
 int mask_main(int argc, char** argv);
@@ -41,12 +43,14 @@ struct SubCmd {
 static SubCmd subcommands[] = {
   CMD(blobs, "list unmodelled electron density blobs"),
   CMD(cif2mtz, "convert structure factor mmCIF to MTZ"),
+  CMD(cif2json, "translate (mm)CIF to (mm)JSON"),
   CMD(contact, "searches for contacts (neighbouring atoms)"),
   CMD(contents, "info about content of a coordinate file (pdb, mmCIF, ...)"),
   CMD(convert, "convert file (CIF - JSON, mmCIF - PDB) or modify structure"),
   CMD(fprime, "calculate anomalous scattering factors f' and f\""),
   CMD(grep, "search for tags in CIF file(s)"),
   CMD(h, "add or remove hydrogen atoms"),
+  CMD(json2cif, "translate mmJSON to mmCIF"),
   CMD(map, "print info or modify a CCP4 map"),
   CMD(map2sf, "transform CCP4 map to map coefficients (in MTZ or mmCIF)"),
   CMD(mask, "make mask in the CCP4 format"),

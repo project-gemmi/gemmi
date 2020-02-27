@@ -1,14 +1,13 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/gzread.hpp"
-#include "gemmi/mmread.hpp"    // for make_structure
+#include "gemmi/mmread.hpp"    // for CoorFormat
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/polyheur.hpp"  // for remove_hydrogens, ...
 #include "gemmi/to_pdb.hpp"    // for write_pdb, ...
 #include "gemmi/ofstream.hpp"  // for Ofstream
 #include "gemmi/to_mmcif.hpp"  // for update_cif_block
-#include "gemmi/chemcomp_xyz.hpp" // for make_structure_from_chemcomp_block
 #include "gemmi/remarks.hpp"   // for read_metadata_from_remarks
 #include "gemmi/labelseq.hpp"  // for assign_label_seq_id
 
@@ -19,13 +18,14 @@
 
 #define GEMMI_PROG convert
 #include "options.h"
+#include "cifmod.h"
 
 namespace cif = gemmi::cif;
 using gemmi::CoorFormat;
 
 struct ConvArg: public Arg {
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
-    return Arg::Choice(option, msg, {"json", "pdb", "cif"});
+    return Arg::Choice(option, msg, {"mmjson", "pdb", "mmcif", "ccd"});
   }
 
   static option::ArgStatus NumbChoice(const option::Option& option, bool msg) {
@@ -33,21 +33,20 @@ struct ConvArg: public Arg {
   }
 
   static option::ArgStatus NcsChoice(const option::Option& option, bool msg) {
-    return Arg::Choice(option, msg, {"dup", "addnum"});
+    return Arg::Choice(option, msg, {"dup", "new"});
   }
 };
 
-enum OptionIndex { FormatIn=4, FormatOut,
-                   Comcifs, Mmjson, Bare, Numb, CifDot,
-                   PdbxStyle, SkipCat, BlockName, SortCif,
+enum OptionIndex { FormatIn=AfterCifModOptions, FormatOut, PdbxStyle, BlockName,
                    ExpandNcs, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
-                   ShortTer, Linkr, SegmentAsChain, Translate };
+                   ShortTer, Linkr, SegmentAsChain, };
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
     "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
-    "\n\nwith possible conversions CIF-JSON, and mmCIF-PDB-mmJSON."
-    "\nFORMAT can be specified as one of: cif, json, pdb."
+    "\n\nwith possible conversions between PDB, mmCIF and mmJSON."
+    "\nFORMAT can be specified as one of: mmcif, mmjson, pdb, ccd (read-only)."
+    "\nccd = coordinates of a chemical component from CCD or monomer library."
     "\n\nGeneral options:" },
   CommonUsage[Help],
   CommonUsage[Version],
@@ -60,27 +59,10 @@ static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "\nCIF output options:" },
   { PdbxStyle, 0, "", "pdbx-style", Arg::None,
     "  --pdbx-style  \tSimilar styling (formatting) as in wwPDB." },
-  { SkipCat, 0, "", "skip-category", Arg::Required,
-    "  --skip-category=CAT  \tDo not output tags starting with _CAT" },
   { BlockName, 0, "b", "block", Arg::Required,
     "  -b NAME, --block=NAME  \tSet block name and default _entry.id" },
-  { SortCif, 0, "", "sort", Arg::None,
-    "  --sort  \tSort tags in alphabetical order." },
-
-  { NoOp, 0, "", "", Arg::None, "\nJSON output options:" },
-  { Comcifs, 0, "c", "comcifs", Arg::None,
-    "  -c, --comcifs  \tConform to the COMCIFS CIF-JSON standard draft." },
-  { Mmjson, 0, "m", "mmjson", Arg::None,
-    "  -m, --mmjson   \tCompatible with mmJSON from PDBj." },
-  { Bare, 0, "", "bare-tags", Arg::None,
-    "  --bare-tags  \tOutput tags without the first underscore." },
-  { Numb, 0, "", "numb", ConvArg::NumbChoice,
-    "  --numb=quote|nosu|mix  \tConvert the CIF numb type to one of:"
-                             "\v  quote - string in quotes,"
-                             "\v  nosu - number without s.u.,"
-                             "\v  mix (default) - quote only numbs with s.u." },
-  { CifDot, 0, "", "dot", Arg::Required,
-    "  --dot=STRING  \tJSON representation of CIF's '.' (default: null)." },
+  CifModUsage[SortCif],
+  CifModUsage[SkipCat],
 
   { NoOp, 0, "", "", Arg::None, "\nPDB input options:" },
   { SegmentAsChain, 0, "", "segment-as-chain", Arg::None,
@@ -93,7 +75,7 @@ static const option::Descriptor Usage[] = {
 
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular operations:" },
   { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
-    "  --expand-ncs=dup|addn  \tExpand strict NCS specified in MTRIXn or"
+    "  --expand-ncs=dup|new  \tExpand strict NCS specified in MTRIXn or"
     " equivalent. New chain names are the same or have added numbers." },
   { RemoveH, 0, "", "remove-h", Arg::None,
     "  --remove-h  \tRemove hydrogens." },
@@ -103,7 +85,6 @@ static const option::Descriptor Usage[] = {
     "  --remove-lig-wat  \tRemove ligands and waters." },
   { TrimAla, 0, "", "trim-to-ala", Arg::None,
     "  --trim-to-ala  \tTrim aminoacids to alanine." },
-  { Translate, 0, "", "translate", Arg::None, 0 },
 
   { NoOp, 0, "", "", Arg::None,
     "\nWhen output file is -, write to standard output." },
@@ -114,10 +95,6 @@ static const char symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                               "abcdefghijklmnopqrstuvwxyz0123456789";
 
 enum class ChainNaming { Short, AddNum, Dup };
-
-static bool is_mmcif_compatible(CoorFormat format) {
-  return format == CoorFormat::Mmcif || format == CoorFormat::Mmjson;
-}
 
 static void expand_ncs(gemmi::Structure& st, ChainNaming ch_naming) {
   int n_ops = std::count_if(st.ncs.begin(), st.ncs.end(),
@@ -214,78 +191,16 @@ static std::string format_as_string(CoorFormat format) {
   gemmi::unreachable();
 }
 
-
-static const std::string& sort_name(const cif::Item& item) {
-  static const std::string none;
-  switch (item.type) {
-    case cif::ItemType::Pair:
-      return item.pair[0];
-    case cif::ItemType::Loop:
-      return item.loop.tags.empty() ? none : item.loop.tags[0];
-    case cif::ItemType::Frame:
-      return item.frame.name;
-    case cif::ItemType::Comment:
-    case cif::ItemType::Erased:
-      return none;
-  }
-  gemmi::unreachable();
-}
-
-static void sort_items(cif::Block& block) {
-  std::sort(block.items.begin(), block.items.end(),
-            [&](const cif::Item& a, const cif::Item& b) {
-                return sort_name(a) < sort_name(b);
-            });
-  for (cif::Item& item : block.items)
-    if (item.type == cif::ItemType::Loop) {
-      std::vector<std::string>& tags = item.loop.tags;
-      std::vector<std::string>& values = item.loop.values;
-      int n = (int) tags.size();
-      std::vector<int> new_index(n);
-      for (int i = 0; i != n; ++i)
-        new_index[i] = i;
-      std::sort(new_index.begin(), new_index.end(), [&](int a, int b) {
-          return gemmi::to_lower(tags[a]) < gemmi::to_lower(tags[b]);
-      });
-      std::vector<std::string> tmp = tags;
-      for (int i = 0; i != n; ++i)
-        tags[i] = tmp[new_index[i]];
-      for (size_t offset = 0; offset != values.size(); offset += n) {
-        for (int i = 0; i != n; ++i)
-          tmp[i] = values[offset + i];
-        for (int i = 0; i != n; ++i)
-          values[offset + i] = tmp[new_index[i]];
-      }
-    }
-}
-
-static void convert(const std::string& input, CoorFormat input_type,
+static void convert(gemmi::Structure& st,
                     const std::string& output, CoorFormat output_type,
-                    const std::vector<option::Option>& options,
-                    bool transcribe) {
-  cif::Document doc;
-  gemmi::Structure st;
-  // for cif->cif we do either cif->DOM->Structure->DOM->cif or cif->DOM->cif
-  if (input_type == CoorFormat::Mmcif || input_type == CoorFormat::Mmjson) {
-    doc = input_type == CoorFormat::Mmcif ? gemmi::read_cif_gz(input)
-                                          : gemmi::read_mmjson_gz(input);
-    if (!transcribe) {
-      int n = gemmi::check_chemcomp_block_number(doc);
-      // first handle special case - refmac dictionary or CCD file
-      if (n != -1)
-        st = gemmi::make_structure_from_chemcomp_block(doc.blocks[n]);
-      else
-        st = gemmi::make_structure(doc);
-      if (st.models.empty())
-        gemmi::fail("No atoms in the input file. Is it mmCIF?");
-    }
-  } else if (input_type == CoorFormat::Pdb) {
-    st = gemmi::read_pdb_gz(input);
+                    const std::vector<option::Option>& options) {
+  if (st.models.empty())
+    gemmi::fail("No atoms in the input file. Wrong file format?");
+
+  if (st.input_format == CoorFormat::Pdb) {
     gemmi::read_metadata_from_remarks(st);
     setup_entities(st);
     assign_label_seq_id(st);
-  } else {
-    gemmi::fail("Unexpected input format.");
   }
 
   if (options[ExpandNcs]) {
@@ -327,27 +242,12 @@ static void convert(const std::string& input, CoorFormat input_type,
   gemmi::Ofstream os(output, &std::cout);
 
   if (output_type == CoorFormat::Mmcif || output_type == CoorFormat::Mmjson) {
-    if (!transcribe) {
-      if (options[BlockName])
-        st.name = options[BlockName].arg;
-      doc.blocks.clear();  // temporary, for testing
-      doc.blocks.resize(1);
-      update_cif_block(st, doc.blocks[0], /*with_atoms=*/true);
-    }
-
-    for (const option::Option* opt = options[SkipCat]; opt; opt = opt->next()) {
-      std::string category = opt->arg;
-      if (category[0] != '_')
-        category.insert(0, 1, '_');
-      for (cif::Block& block : doc.blocks)
-        for (cif::Item& item : block.items)
-          if (item.has_prefix(category))
-            item.erase();
-    }
-
-    if (options[SortCif])
-      for (cif::Block& block : doc.blocks)
-        sort_items(block);
+    if (options[BlockName])
+      st.name = options[BlockName].arg;
+    cif::Document doc;
+    doc.blocks.resize(1);
+    update_cif_block(st, doc.blocks[0], /*with_atoms=*/true);
+    apply_cif_doc_modifications(doc, options);
 
     if (output_type == CoorFormat::Mmcif) {
       auto style = options[PdbxStyle] ? cif::Style::Pdbx
@@ -355,21 +255,7 @@ static void convert(const std::string& input, CoorFormat input_type,
       write_cif_to_stream(os.ref(), doc, style);
     } else /*output_type == CoorFormat::Mmjson*/ {
       cif::JsonWriter writer(os.ref());
-      if (options[Comcifs])
-        writer.set_comcifs();
-      if (options[Mmjson])
-        writer.set_mmjson();
-      if (options[Bare])
-        writer.bare_tags = true;
-      if (options[Numb]) {
-        char first_letter = options[Numb].arg[0];
-        if (first_letter == 'q')
-          writer.quote_numbers = 2;
-        else if (first_letter == 'n')
-          writer.quote_numbers = 0;
-      }
-      if (options[CifDot])
-        writer.cif_dot = options[CifDot].arg;
+      writer.set_mmjson();
       writer.write_json(doc);
     }
   } else if (output_type == CoorFormat::Pdb) {
@@ -392,15 +278,13 @@ int GEMMI_MAIN(int argc, char **argv) {
   std::string input = p.coordinate_input_file(0);
   const char* output = p.nonOption(1);
 
-  // CoorFormat::Mmcif here stands for any CIF files,
-  // CoorFormat::Mmjson may not be strictly mmJSON, but also CIF-JSON.
-  std::map<std::string, CoorFormat> filetypes {{"json", CoorFormat::Mmjson},
-                                               {"pdb", CoorFormat::Pdb},
-                                               {"cif", CoorFormat::Mmcif}};
+  std::map<std::string, CoorFormat> filetypes{{"pdb", CoorFormat::Pdb},
+                                              {"mmcif", CoorFormat::Mmcif},
+                                              {"mmjson", CoorFormat::Mmjson},
+                                              {"ccd", CoorFormat::ChemComp}};
 
-  CoorFormat in_type = p.options[FormatIn]
-    ? filetypes[p.options[FormatIn].arg]
-    : gemmi::coor_format_from_ext_gz(input);
+  CoorFormat in_type = p.options[FormatIn] ? filetypes[p.options[FormatIn].arg]
+                                           : CoorFormat::UnknownAny;
   if (in_type == CoorFormat::Unknown) {
     std::cerr << "The input format cannot be determined from input"
                  " filename. Use option --from.\n";
@@ -410,23 +294,21 @@ int GEMMI_MAIN(int argc, char **argv) {
   CoorFormat out_type = p.options[FormatOut]
     ? filetypes[p.options[FormatOut].arg]
     : gemmi::coor_format_from_ext_gz(output);
+  if (out_type == CoorFormat::ChemComp) {
+    std::cerr << "The output format cannot be ccd.\n";
+    return 1;
+  }
   if (out_type == CoorFormat::Unknown) {
     std::cerr << "The output format cannot be determined from output"
                  " filename. Use option --to.\n";
     return 1;
   }
-  bool transcribe = is_mmcif_compatible(in_type) &&
-                    is_mmcif_compatible(out_type) &&
-                    !(p.options[Translate] || p.options[ExpandNcs] ||
-                      p.options[RemoveH] || p.options[RemoveWaters] ||
-                      p.options[RemoveLigWat] || p.options[TrimAla] ||
-                      p.options[SegmentAsChain]);
   if (p.options[Verbose])
-    std::cerr << (transcribe ? "Transcribing " : "Converting ")
-              << input << " to " << format_as_string(out_type) << "..."
-              << std::endl;
+    std::cerr << "Converting " << input << " to " << format_as_string(out_type)
+              << "..." << std::endl;
   try {
-    convert(input, in_type, output, out_type, p.options, transcribe);
+    gemmi::Structure st = gemmi::read_structure_gz(input, in_type);
+    convert(st, output, out_type, p.options);
   } catch (tao::pegtl::parse_error& e) {
     std::cerr << e.what() << std::endl;
     return 1;

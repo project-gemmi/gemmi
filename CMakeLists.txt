@@ -130,6 +130,10 @@ add_executable(gemmi-blobs EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/blobs.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:input>)
 support_gz(gemmi-blobs)
 
+add_executable(gemmi-cif2json EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/cif2json.cpp $<TARGET_OBJECTS:input>)
+support_gz(gemmi-cif2json)
+
 add_executable(gemmi-cif2mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/cif2mtz.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-cif2mtz)
@@ -161,6 +165,10 @@ support_gz(gemmi-grep)
 add_executable(gemmi-h EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/h.cpp $<TARGET_OBJECTS:output> $<TARGET_OBJECTS:input>)
 support_gz(gemmi-h)
+
+add_executable(gemmi-json2cif EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/json2cif.cpp $<TARGET_OBJECTS:input>)
+support_gz(gemmi-json2cif)
 
 add_executable(gemmi-map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/map.cpp $<TARGET_OBJECTS:input>)
@@ -225,9 +233,10 @@ add_executable(gemmi-wcn EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-wcn)
 
 add_executable(gemmi-prog
-               src/blobs.cpp src/cif2mtz.cpp src/contact.cpp
+               src/blobs.cpp src/cif2mtz.cpp src/cif2json.cpp src/contact.cpp
                src/contents.cpp src/convert.cpp src/fprime.cpp
-               src/grep.cpp src/h.cpp src/main.cpp src/map.cpp src/map2sf.cpp
+               src/grep.cpp src/h.cpp src/json2cif.cpp
+               src/main.cpp src/map.cpp src/map2sf.cpp
                src/mask.cpp src/mondiff.cpp src/mtz.cpp src/mtz2cif.cpp
                src/residues.cpp src/rmsz.cpp
                src/seq.cpp src/sf2map.cpp src/sfcalc.cpp src/sg.cpp

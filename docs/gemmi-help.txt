@@ -11,12 +11,14 @@ Usage: gemmi [--version] [--help] <command> [<args>]
 Commands:
  blobs         list unmodelled electron density blobs
  cif2mtz       convert structure factor mmCIF to MTZ
+ cif2json      translate (mm)CIF to (mm)JSON
  contact       searches for contacts (neighbouring atoms)
  contents      info about content of a coordinate file (pdb, mmCIF, ...)
  convert       convert file (CIF - JSON, mmCIF - PDB) or modify structure
  fprime        calculate anomalous scattering factors f' and f"
  grep          search for tags in CIF file(s)
  h             add or remove hydrogen atoms
+ json2cif      translate mmJSON to mmCIF
  map           print info or modify a CCP4 map
  map2sf        transform CCP4 map to map coefficients (in MTZ or mmCIF)
  mask          make mask in the CCP4 format

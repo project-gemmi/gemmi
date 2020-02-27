@@ -2,8 +2,9 @@ $ gemmi convert -h
 Usage:
  gemmi convert [options] INPUT_FILE OUTPUT_FILE
 
-with possible conversions CIF-JSON, and mmCIF-PDB-mmJSON.
-FORMAT can be specified as one of: cif, json, pdb.
+with possible conversions between PDB, mmCIF and mmJSON.
+FORMAT can be specified as one of: mmcif, mmjson, pdb, ccd (read-only).
+ccd = coordinates of a chemical component from CCD or monomer library.
 
 General options:
   -h, --help             Print usage and exit.
@@ -14,19 +15,9 @@ General options:
 
 CIF output options:
   --pdbx-style           Similar styling (formatting) as in wwPDB.
-  --skip-category=CAT    Do not output tags starting with _CAT
   -b NAME, --block=NAME  Set block name and default _entry.id
   --sort                 Sort tags in alphabetical order.
-
-JSON output options:
-  -c, --comcifs          Conform to the COMCIFS CIF-JSON standard draft.
-  -m, --mmjson           Compatible with mmJSON from PDBj.
-  --bare-tags            Output tags without the first underscore.
-  --numb=quote|nosu|mix  Convert the CIF numb type to one of:
-                           quote - string in quotes,
-                           nosu - number without s.u.,
-                           mix (default) - quote only numbs with s.u.
-  --dot=STRING           JSON representation of CIF's '.' (default: null).
+  --skip-category=CAT    Do not output tags starting with _CAT
 
 PDB input options:
   --segment-as-chain     Append segment id to label_asym_id (chain name).
@@ -36,7 +27,7 @@ PDB output options:
   --linkr                Write LINKR record (for Refmac) if link_id is known.
 
 Macromolecular operations:
-  --expand-ncs=dup|addn  Expand strict NCS specified in MTRIXn or equivalent.
+  --expand-ncs=dup|new   Expand strict NCS specified in MTRIXn or equivalent.
                          New chain names are the same or have added numbers.
   --remove-h             Remove hydrogens.
   --remove-waters        Remove waters.
