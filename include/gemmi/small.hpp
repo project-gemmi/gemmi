@@ -32,6 +32,9 @@ struct SmallStructure {
       return u11 != 0. || u22 != 0. || u33 != 0. ||
              u12 != 0. || u13 != 0. || u23 != 0.;
     }
+    Position orth(const gemmi::UnitCell& cell) const {
+      return cell.orthogonalize(fract);
+    }
   };
 
   struct AtomType {

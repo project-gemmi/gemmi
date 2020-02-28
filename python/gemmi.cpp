@@ -64,6 +64,7 @@ void add_misc(py::module& m) {
     .def_readonly("u13", &SmallStructure::Site::u13)
     .def_readonly("u23", &SmallStructure::Site::u23)
     .def("has_anisou", &SmallStructure::Site::has_anisou)
+    .def("orth", &SmallStructure::Site::orth)
     .def("__repr__", [](const SmallStructure::Site& self) {
         return "<gemmi.SmallStructure.Site " + self.label + ">";
     });

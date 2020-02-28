@@ -25,6 +25,7 @@ class TestRealCif(unittest.TestCase):
         self.assertEqual(sic.cell.alpha, 90.0)
         self.assertEqual(len(sic.sites), 2)
         self.assertEqual(len(sic.get_all_unit_cell_sites()), 8)
+        self.assertEqual(4 * sic.sites[1].orth(sic.cell).x, sic.cell.a)
 
     def test_fen4(self):
         path = full_path('2242624.cif')
