@@ -64,8 +64,9 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
       site.u_iso = as_number(row[kUiso], 0.0);
     if (row.has(kOcc))
       site.occ = as_number(row[kOcc], 1.0);
-    if (row.has(kDisorderGroup))
-      site.disorder_group = as_string(row[kDisorderGroup]);
+    if (row.has2(kDisorderGroup))
+      // ignore non-integer _atom_site_disorder_group
+      site.disorder_group = string_to_int(row[kDisorderGroup], false);
     split_element_and_charge(site.type_symbol, &site);
     st.sites.push_back(site);
   }

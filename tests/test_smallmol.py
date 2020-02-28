@@ -37,6 +37,8 @@ class TestRealCif(unittest.TestCase):
     def test_perovskite(self):
         small = gemmi.read_small_structure(full_path('4003024.cif'))
         self.assertEqual(small.spacegroup_hm, 'P m -3 m')
+        disorder_groups = [site.disorder_group for site in small.sites]
+        self.assertEqual(disorder_groups, [0, 1, 0, 2])
 
 # tests for gemmi/chemcomp_xyz.hpp
 class TestChemCompXyz(unittest.TestCase):
