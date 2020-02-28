@@ -29,6 +29,7 @@ PDB output options:
 Macromolecular operations:
   --expand-ncs=dup|new   Expand strict NCS specified in MTRIXn or equivalent.
                          New chain names are the same or have added numbers.
+  --assembly=ID          Output bioassembly with given ID (1, 2, ...).
   --remove-h             Remove hydrogens.
   --remove-waters        Remove waters.
   --remove-lig-wat       Remove ligands and waters.

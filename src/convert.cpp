@@ -37,9 +37,12 @@ struct ConvArg: public Arg {
   }
 };
 
-enum OptionIndex { FormatIn=AfterCifModOptions, FormatOut, PdbxStyle, BlockName,
-                   ExpandNcs, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
-                   ShortTer, Linkr, SegmentAsChain, };
+enum OptionIndex {
+  FormatIn=AfterCifModOptions, FormatOut, PdbxStyle, BlockName,
+  ExpandNcs, ExpandAssembly, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
+  ShortTer, Linkr, SegmentAsChain,
+};
+
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
@@ -77,6 +80,8 @@ static const option::Descriptor Usage[] = {
   { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
     "  --expand-ncs=dup|new  \tExpand strict NCS specified in MTRIXn or"
     " equivalent. New chain names are the same or have added numbers." },
+  { ExpandAssembly, 0, "", "assembly", Arg::Required,
+    "  --assembly=ID  \tOutput bioassembly with given ID (1, 2, ...)." },
   { RemoveH, 0, "", "remove-h", Arg::None,
     "  --remove-h  \tRemove hydrogens." },
   { RemoveWaters, 0, "", "remove-waters", Arg::None,
@@ -91,61 +96,86 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-static const char symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                              "abcdefghijklmnopqrstuvwxyz0123456789";
+struct ChainNameGenerator {
+  enum class How { Short, AddNum, Dup };
+  How how;
+  std::vector<std::string> used_names;
 
-enum class ChainNaming { Short, AddNum, Dup };
-
-static void expand_ncs(gemmi::Structure& st, ChainNaming ch_naming) {
-  int n_ops = std::count_if(st.ncs.begin(), st.ncs.end(),
-                            [](gemmi::NcsOp& op){ return !op.given; });
-  if (n_ops == 0)
-    return;
-  for (gemmi::Model& model : st.models) {
-    size_t new_length = model.chains.size() * (n_ops + 1);
-    if (new_length >= 63 && ch_naming == ChainNaming::Short)
-      ch_naming = ChainNaming::AddNum;
-    model.chains.reserve(new_length);
-    if (ch_naming == ChainNaming::Dup)
-      for (gemmi::Chain& chain : model.chains)
-        for (gemmi::Residue& res : chain.residues)
-          res.segment = "0";
-    auto orig_end = model.chains.cend();
-    std::vector<std::string> used_names;
-    if (ch_naming != ChainNaming::Dup)
+  ChainNameGenerator(const gemmi::Model& model, How how_) : how(how_) {
+    if (how != How::Dup)
       for (const gemmi::Chain& chain : model.chains)
         used_names.push_back(chain.name);
+  }
+  bool has(const std::string& name) const {
+    return gemmi::in_vector(name, used_names);
+  }
+  const std::string& added(const std::string& name) {
+    used_names.push_back(name);
+    return name;
+  }
+
+  std::string make_short_name() {
+    static const char symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                  "abcdefghijklmnopqrstuvwxyz0123456789";
+    std::string name(1, 'A');
+    for (char symbol : symbols) {
+      name[0] = symbol;
+      if (!has(name))
+        return added(name);
+    }
+    name += 'A';
+    for (char symbol1 : symbols) {
+      name[0] = symbol1;
+      for (char symbol2 : symbols) {
+        name[1] = symbol2;
+        if (!has(name))
+          return added(name);
+      }
+    }
+    gemmi::fail("run out of 1- and 2-letter chain names");
+  }
+
+  std::string make_name_with_numeric_postfix(const std::string& base, int n) {
+    std::string name = base;
+    name += std::to_string(n);
+    while (has(name)) {
+      name.resize(base.size());
+      name += std::to_string(++n);
+    }
+    return added(name);
+  }
+
+  std::string make_new_name(const std::string& old, int n) {
+    switch (how) {
+      case How::Short: return make_short_name();
+      case How::AddNum: return make_name_with_numeric_postfix(old, n);
+      case How::Dup: return old;
+    }
+    gemmi::unreachable();
+  }
+};
+
+static void expand_ncs(gemmi::Structure& st, ChainNameGenerator::How how) {
+  for (gemmi::Model& model : st.models) {
+    size_t orig_size = model.chains.size();
+    ChainNameGenerator namegen(model, how);
     for (const gemmi::NcsOp& op : st.ncs)
       if (!op.given) {
-        for (auto ch = model.chains.cbegin(); ch != orig_end; ++ch) {
-          // the most difficult part - choosing names for new chains
-          std::string name;
-          if (ch_naming == ChainNaming::Short) {
-            for (char symbol : symbols) {
-              name = std::string(1, symbol);
-              if (!gemmi::in_vector(name, used_names))
-                break;
-            }
-            used_names.push_back(name);
-          } else if (ch_naming == ChainNaming::AddNum) {
-            name = ch->name + op.id;
-            while (gemmi::in_vector(name, used_names))
-              name += "a";
-            used_names.push_back(name);
-          } else { // ChainNaming::Dup
-            name = ch->name;
-          }
+        for (size_t i = 0; i != orig_size; ++i) {
+          if (how == ChainNameGenerator::How::Dup)
+            for (gemmi::Residue& res : model.chains[i].residues)
+              res.segment = "0";
 
-          model.chains.push_back(*ch);
+          model.chains.push_back(model.chains[i]);
           gemmi::Chain& new_chain = model.chains.back();
-          new_chain.name = name;
+          new_chain.name = namegen.make_new_name(new_chain.name, (int)i+1);
 
           for (gemmi::Residue& res : new_chain.residues) {
             for (gemmi::Atom& a : res.atoms)
               a.pos = op.apply(a.pos);
             if (!res.subchain.empty())
-              res.subchain = name + ":" + res.subchain;
-            if (ch_naming == ChainNaming::Dup)
+              res.subchain = new_chain.name + ":" + res.subchain;
+            if (how == ChainNameGenerator::How::Dup)
               res.segment = op.id;
           }
         }
@@ -155,6 +185,78 @@ static void expand_ncs(gemmi::Structure& st, ChainNaming ch_naming) {
     op.given = true;
 }
 
+void expand_assembly(gemmi::Model& model, const gemmi::Assembly& assembly,
+                     ChainNameGenerator::How how, bool verbose) {
+  using namespace gemmi;
+  ChainNameGenerator namegen(model, how);
+  std::map<std::string, std::string> subs = model.subchain_to_chain();
+  for (const Assembly::Gen& gen : assembly.generators)
+    for (const Assembly::Oper& oper : gen.opers) {
+      if (verbose) {
+        std::cerr << "Applying " << oper.name << " to";
+        if (!gen.chains.empty())
+          std::cerr << " chains: " << join_str(gen.chains, ',');
+        else if (!gen.subchains.empty())
+          std::cerr << " subchains: " << join_str(gen.subchains, ',');
+        std::cerr << std::endl;
+        for (const std::string& chain_name : gen.chains)
+          if (!model.find_chain(chain_name))
+            std::cerr << "Warning: no chain " << chain_name << std::endl;
+        for (const std::string& subchain_name : gen.subchains)
+          if (subs.find(subchain_name) == subs.end())
+            std::cerr << "Warning: no subchain " << subchain_name << std::endl;
+      }
+      if (!gen.chains.empty()) {
+        // chains are not merged here, multiple chains may have the same name
+        std::map<std::string, std::string> new_names;
+        size_t orig_size = model.chains.size();
+        for (size_t i = 0; i != orig_size; ++i) {
+          if (in_vector(model.chains[i].name, gen.chains)) {
+            model.chains.push_back(model.chains[i]);
+            Chain& new_chain = model.chains.back();
+            auto name_iter = new_names.find(model.chains[i].name);
+            if (name_iter == new_names.end()) {
+              new_chain.name = namegen.make_new_name(new_chain.name, 1);
+              new_names.emplace(model.chains[i].name, new_chain.name);
+            } else {
+              new_chain.name = name_iter->second;
+            }
+            for (Residue& res : new_chain.residues) {
+              for (Atom& a : res.atoms)
+                a.pos = Position(oper.transform.apply(a.pos));
+              if (!res.subchain.empty())
+                res.subchain = new_chain.name + ":" + res.subchain;
+            }
+          }
+        }
+      } else if (!gen.subchains.empty()) {
+        std::map<std::string, std::string> new_names;
+        for (const std::string& subchain_name : gen.subchains) {
+          auto sub_iter = subs.find(subchain_name);
+          if (sub_iter == subs.end())
+            continue;
+          const Chain& old_chain = *model.find_chain(sub_iter->second);
+          auto name_iter = new_names.find(old_chain.name);
+          Chain* new_chain;
+          if (name_iter == new_names.end()) {
+            std::string new_name = namegen.make_new_name(old_chain.name, 1);
+            new_names.emplace(old_chain.name, new_name);
+            model.chains.emplace_back(new_name);
+            new_chain = &model.chains.back();
+          } else {
+            new_chain = model.find_chain(name_iter->second);
+          }
+          for (const Residue& res : old_chain.get_subchain(subchain_name)) {
+            new_chain->residues.push_back(res);
+            Residue& new_res = new_chain->residues.back();
+            new_res.subchain = new_chain->name + ":" + res.subchain;
+            for (Atom& a : new_res.atoms)
+              a.pos = Position(oper.transform.apply(a.pos));
+          }
+        }
+      }
+    }
+}
 
 std::vector<gemmi::Chain> split_by_segments(gemmi::Chain& orig) {
   std::vector<gemmi::Chain> chains;
@@ -203,13 +305,26 @@ static void convert(gemmi::Structure& st,
     assign_label_seq_id(st);
   }
 
+  ChainNameGenerator::How how = ChainNameGenerator::How::AddNum;
+  if (output_type == CoorFormat::Pdb)
+    how = ChainNameGenerator::How::Short;
+  if (options[ExpandAssembly]) {
+    gemmi::Assembly* assembly = st.find_assembly(options[ExpandAssembly].arg);
+    if (!assembly) {
+      if (st.assemblies.empty())
+        gemmi::fail("no bioassemblies are listed for this structure");
+      gemmi::fail("wrong assembly name, use one of: " +
+                  gemmi::join_str(st.assemblies, ' ',
+                           [](const gemmi::Assembly& a) { return a.name; }));
+    }
+    for (gemmi::Model& model : st.models)
+      expand_assembly(model, *assembly, how, options[Verbose]);
+  }
+
   if (options[ExpandNcs]) {
-    ChainNaming ch_naming = ChainNaming::AddNum;
     if (options[ExpandNcs].arg[0] == 'd')
-     ch_naming = ChainNaming::Dup;
-    else if (output_type == CoorFormat::Pdb)
-      ch_naming = ChainNaming::Short;
-    expand_ncs(st, ch_naming);
+     how = ChainNameGenerator::How::Dup;
+    expand_ncs(st, how);
   }
 
   if (options[RemoveH])
