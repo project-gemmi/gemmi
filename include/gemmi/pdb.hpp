@@ -394,7 +394,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
             if (!assembly.generators.empty()) {
               auto& opers = assembly.generators.back().opers;
               opers.emplace_back();
-              opers.back().name = read_string(line+7, 3);
+              opers.back().name = read_string(line+20, 3);
               opers.back().transform = matrix;
               matrix.set_identity();
             }
