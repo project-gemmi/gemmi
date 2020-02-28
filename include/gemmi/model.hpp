@@ -783,6 +783,19 @@ struct Model {
     return impl::model_subchains<ConstResidueSpan>(this);
   }
 
+  std::map<std::string, std::string> subchain_to_chain() const {
+    std::map<std::string, std::string> mapping;
+    for (const Chain& chain : chains) {
+      std::string prev;
+      for (const Residue& res : chain.residues)
+        if (!res.subchain.empty() && res.subchain != prev) {
+          prev = res.subchain;
+          mapping[res.subchain] = chain.name;
+        }
+    }
+    return mapping;
+  }
+
   Residue* find_residue(const std::string& chain_name, const ResidueId& rid) {
     for (Chain& chain : chains)
       if (chain.name == chain_name)
@@ -973,6 +986,10 @@ struct Structure {
   }
   Entity* get_entity_of(const ConstResidueSpan& sub) {
     return const_cast<Entity*>(gemmi::get_entity_of(sub, entities));
+  }
+
+  Assembly* find_assembly(const std::string& assembly_id) {
+    return impl::find_or_null(assemblies, assembly_id);
   }
 
   Connection* find_connection_by_name(const std::string& conn_name) {
