@@ -37,6 +37,7 @@ static const option::Descriptor Usage[] = {
   MapUsage[Sample],
   MapUsage[AxesZyx],
   MapUsage[GridQuery],
+  MapUsage[TimingFft],
   { Normalize, 0, "", "normalize", Arg::None,
     "  --normalize  \tScale the map to standard deviation 1 and mean 0." },
   { 0, 0, 0, 0, 0, 0 }

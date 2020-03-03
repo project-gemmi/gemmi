@@ -61,6 +61,7 @@ static const option::Descriptor Usage[] = {
   MapUsage[ExactDims],
   MapUsage[Sample],
   MapUsage[GridQuery],
+  MapUsage[TimingFft],
   { 0, 0, 0, 0, 0, 0 }
 };
 

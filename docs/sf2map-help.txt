@@ -27,4 +27,5 @@ Options:
   --zyx                Output axes Z Y X as fast, medium, slow (default is X Y
                        Z).
   -G                   Print size of the grid that would be used and exit.
+  --timing             Print calculation times.
   --normalize          Scale the map to standard deviation 1 and mean 0.

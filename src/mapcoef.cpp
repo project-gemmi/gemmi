@@ -14,6 +14,7 @@
 #include <gemmi/refln.hpp>    // for ReflnBlock
 #include <gemmi/util.hpp>     // for fail, giends_with
 #include "mapcoef.h"
+#include "timer.h"
 
 #define GEMMI_PROG n/a
 #include "options.h"
@@ -45,6 +46,8 @@ const option::Descriptor MapUsage[] = {
     "  --zyx  \tOutput axes Z Y X as fast, medium, slow (default is X Y Z)." },
   { GridQuery, 0, "G", "", Arg::None,
     "  -G  \tPrint size of the grid that would be used and exit." },
+  { TimingFft, 0, "", "timing", Arg::None,
+    "  --timing  \tPrint calculation times." },
 };
 
 
@@ -136,6 +139,7 @@ read_sf_and_fft_to_map(const char* input_path,
   std::vector<int> vsize{0, 0, 0};
   if (options[GridDims])
     vsize = parse_comma_separated_ints(options[GridDims].arg);
+  Timer timer(options[TimingFft]);
   std::array<int,3> size = {{vsize[0], vsize[1], vsize[2]}};
   double sample_rate = 0.;
   if (options[Sample])
@@ -181,7 +185,9 @@ read_sf_and_fft_to_map(const char* input_path,
           data_proxy, rblock.find_column_index(weight_label),
           size, half_l, axis_order);
   } else {
+    timer.start();
     Mtz mtz = gemmi::read_mtz(gemmi::MaybeGzipped(input_path), true);
+    timer.print("MTZ read in");
     auto cols = get_mtz_map_columns(mtz, section, diff_map, f_label, ph_label);
     gemmi::MtzDataProxy data_proxy{mtz};
     adjust_size(data_proxy, size, sample_rate,
@@ -189,9 +195,11 @@ read_sf_and_fft_to_map(const char* input_path,
     if (output)
       fprintf(output, "Putting data from columns %s and %s into matrix...\n",
               cols[0]->label.c_str(), cols[1]->label.c_str());
+    timer.start();
     grid = gemmi::get_f_phi_on_grid<float>(data_proxy,
                                            cols[0]->idx, cols[1]->idx,
                                            size, half_l, axis_order);
+    timer.print("F/Phi grid prepared in");
     if (weight_label) {
       const Mtz::Column& col = get_mtz_column(mtz, section, weight_label);
       weight_grid = gemmi::get_value_on_grid<float>(data_proxy, col.idx,
@@ -203,7 +211,9 @@ read_sf_and_fft_to_map(const char* input_path,
       grid.data[i] *= weight_grid.data[i];
   if (output)
     fprintf(output, "Fourier transform...\n");
+  timer.start();
   gemmi::Grid<float> map = gemmi::transform_f_phi_grid_to_map(std::move(grid));
+  timer.print("FFT in");
   if (output)
     fprintf(output, "Map size: %d x %d x %d\n", map.nu, map.nv, map.nw);
   return map;

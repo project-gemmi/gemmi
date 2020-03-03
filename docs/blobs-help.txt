@@ -33,3 +33,4 @@ Options for map calculation:
   --exact               Use the exact grid size specified by --grid.
   -s, --sample=NUMBER   Set spacing to d_min/NUMBER (3 is usual).
   -G                    Print size of the grid that would be used and exit.
+  --timing              Print calculation times.

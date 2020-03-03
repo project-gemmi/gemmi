@@ -6,7 +6,8 @@
 
 // used by sf2map and blobs
 enum MapOptions { Diff=4, Section, FLabel, PhLabel, WeightLabel, GridDims,
-                  ExactDims, Sample, AxesZyx, GridQuery, AfterMapOptions };
+                  ExactDims, Sample, AxesZyx, GridQuery, TimingFft,
+                  AfterMapOptions };
 
 extern const option::Descriptor MapUsage[];
 
