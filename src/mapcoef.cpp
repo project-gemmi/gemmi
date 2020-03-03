@@ -215,6 +215,7 @@ read_sf_and_fft_to_map(const char* input_path,
   timer.start();
   gemmi::Grid<float> map = gemmi::transform_f_phi_grid_to_map(std::move(grid));
   timer.print("FFT in");
+  assert(map.axis_order == axis_order);
   if (output)
     fprintf(output, "Map size: %d x %d x %d\n", map.nu, map.nv, map.nw);
   return map;

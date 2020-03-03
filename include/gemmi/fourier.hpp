@@ -239,6 +239,8 @@ void transform_f_phi_grid_to_map_(FPhiGrid<T>&& hkl, Grid<T>& map) {
     check_grid_factors(map.spacegroup, hkl.nw, hkl.nv, nu);
     map.set_size_without_checking(nu, hkl.nv, hkl.nw);
   }
+  // FIXME set_size_without_checking is changing axis_order - bad
+  map.axis_order = hkl.axis_order;
   pocketfft::shape_t shape{(size_t)hkl.nw, (size_t)hkl.nv, (size_t)hkl.nu};
   std::ptrdiff_t s = sizeof(T);
   pocketfft::stride_t stride{2*s * hkl.nv * hkl.nu, 2*s * hkl.nu, 2*s};
@@ -277,22 +279,26 @@ Grid<T> transform_f_phi_to_map(const DataProxy& data,
                                size_t f_col, size_t phi_col,
                                std::array<int, 3> size,
                                double sample_rate,
-                               bool exact_size=false) {
+                               bool exact_size=false,
+                               AxisOrder order=AxisOrder::XYZ) {
   if (exact_size) {
     gemmi::check_grid_factors(data.spacegroup(), size[0], size[1], size[2]);
   } else {
     size = get_size_for_hkl(data, size, sample_rate);
   }
   return transform_f_phi_grid_to_map(get_f_phi_on_grid<T>(data, f_col, phi_col,
-                                                          size, true));
+                                                          size, true, order));
 }
 
 template<typename T>
 FPhiGrid<T> transform_map_to_f_phi(const Grid<T>& map, bool half_l) {
+  if (half_l and map.axis_order == AxisOrder::ZYX)
+    fail("transform_map_to_f_phi(): half_l + ZYX order are not supported yet");
   FPhiGrid<T> hkl;
   hkl.unit_cell = map.unit_cell;
-  hkl.half_l = half_l;
   hkl.spacegroup = map.spacegroup;
+  hkl.axis_order = map.axis_order;
+  hkl.half_l = half_l;
   int half_nw = map.nw / 2 + 1;
   hkl.set_size_without_checking(map.nu, map.nv, half_l ? half_nw : map.nw);
   T norm = T(map.unit_cell.volume / map.point_count());

@@ -108,6 +108,7 @@ void add_grid(py::module& m, const std::string& name) {
 
   using ReGr = ReciprocalGrid<T>;
   py::class_<ReGr, GrBase>(m, ("Reciprocal" + name).c_str())
+    .def_readonly("half_l", &ReGr::half_l)
     .def(py::init<>())
     .def("get_value", &ReGr::get_value)
     .def("get_value_or_zero", &ReGr::get_value_or_zero)

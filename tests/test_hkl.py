@@ -13,23 +13,32 @@ def compare_maps(self, a, b, atol):
     #print(abs(numpy.array(a) - b).max())
     self.assertTrue(numpy.allclose(a, b, atol=atol, rtol=0))
 
-def fft_test(self, data, f, phi, size):
+def fft_test(self, data, f, phi, size, order=gemmi.AxisOrder.XYZ):
     if numpy is None:
         return
-    grid_full = data.get_f_phi_on_grid(f, phi, size, half_l=False)
+    self.assertTrue(data.data_fits_into(size))
+    grid_full = data.get_f_phi_on_grid(f, phi, size, half_l=False, order=order)
+    self.assertEqual(grid_full.axis_order, order)
     array_full = numpy.array(grid_full, copy=False)
     map1 = gemmi.transform_f_phi_grid_to_map(grid_full)
+    self.assertEqual(map1.axis_order, order)
     map2 = numpy.fft.ifftn(array_full.conj())
     map2 = numpy.real(map2) * (map2.size / grid_full.unit_cell.volume)
     compare_maps(self, map1, map2, atol=6e-7)
-    map3 = data.transform_f_phi_to_map(f, phi, size)
+    map3 = data.transform_f_phi_to_map(f, phi, size, order=order)
     compare_maps(self, map1, map3, atol=6e-7)
 
     grid2 = gemmi.transform_map_to_f_phi(map1, half_l=False)
+    self.assertFalse(grid2.half_l)
+    self.assertEqual(grid2.axis_order, order)
     compare_maps(self, grid2, array_full, atol=1e-4)
 
-    grid_half = data.get_f_phi_on_grid(f, phi, size, half_l=True)
+    grid_half = data.get_f_phi_on_grid(f, phi, size, half_l=True, order=order)
+    if order == gemmi.AxisOrder.ZYX:  # half_l+ZYX not supported yet
+        return
     grid3 = gemmi.transform_map_to_f_phi(map1, half_l=True)
+    self.assertTrue(grid3.half_l)
+    self.assertEqual(grid3.axis_order, order)
     compare_maps(self, grid3, grid_half, atol=1e-4)
 
 class TestMtz(unittest.TestCase):
@@ -58,6 +67,7 @@ class TestMtz(unittest.TestCase):
             self.assertTrue((array2 == array1.transpose(2,1,0)).all())
 
         fft_test(self, mtz, 'FWT', 'PHWT', size)
+        fft_test(self, mtz, 'FWT', 'PHWT', size, order=gemmi.AxisOrder.ZYX)
 
 
 class TestSfMmcif(unittest.TestCase):
@@ -67,7 +77,8 @@ class TestSfMmcif(unittest.TestCase):
         self.assertEqual(rblock.spacegroup.hm, 'C 1 2 1')
 
         size = rblock.get_size_for_hkl()
-        fft_test(self, rblock, 'pdbx_FWT', 'pdbx_PHWT', size)
+        for order in (gemmi.AxisOrder.XYZ, gemmi.AxisOrder.ZYX):
+            fft_test(self, rblock, 'pdbx_FWT', 'pdbx_PHWT', size)
 
 if __name__ == '__main__':
     unittest.main()
