@@ -110,7 +110,8 @@ template<typename DataProxy>
 void adjust_size(const DataProxy& data, std::array<int, 3>& size,
                  double sample_rate, bool exact_dims, bool grid_query) {
   if (exact_dims) {
-    gemmi::check_if_hkl_fits_in(data, size);
+    if (!gemmi::data_fits_into(data, size))
+      gemmi::fail("grid size is too small for hkl data");
     gemmi::check_grid_factors(data.spacegroup(), size[0], size[1], size[2]);
   } else {
     size = gemmi::get_size_for_hkl(data, size, sample_rate);

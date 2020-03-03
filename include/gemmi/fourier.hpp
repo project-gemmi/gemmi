@@ -65,14 +65,15 @@ std::array<int, 3> get_size_for_hkl(const DataProxy& data,
 }
 
 template<typename DataProxy>
-void check_if_hkl_fits_in(const DataProxy& data, std::array<int, 3> size) {
+bool data_fits_into(const DataProxy& data, std::array<int, 3> size) {
   auto hkl_col = data.hkl_col();
   for (size_t i = 0; i < data.size(); i += data.stride())
     for (int j = 0; j != 3; ++j) {
       int index = data.get_int(i + hkl_col[j]);
       if (2 * std::abs(index) >= size[j])
-        fail("grid size is too small for hkl data");
+        return false;
     }
+  return true;
 }
 
 inline float friedel_mate_value(float v) { return v; }
@@ -173,6 +174,8 @@ FPhiGrid<T> get_f_phi_on_grid(const DataProxy& data,
         int lp = hklp[2];
         if (axis_order == AxisOrder::ZYX)
           std::swap(hklp[0], hklp[2]);
+        if (!grid.has_index(hklp[0], hklp[1], hklp[2]))
+          continue;
         int sign = (!half_l || lp >= 0 ? 1 : -1);
         int idx = grid.index_n(sign * hklp[0], sign * hklp[1], sign * hklp[2]);
         if (grid.data[idx] == default_val)
@@ -205,6 +208,8 @@ ReciprocalGrid<T> get_value_on_grid(const DataProxy& data, size_t column,
         int lp = hklp[2];
         if (axis_order == AxisOrder::ZYX)
           std::swap(hklp[0], hklp[2]);
+        if (!grid.has_index(hklp[0], hklp[1], hklp[2]))
+          continue;
         int sign = (!half_l || lp >= 0 ? 1 : -1);
         int idx = grid.index_n(sign * hklp[0], sign * hklp[1], sign * hklp[2]);
         if (grid.data[idx] == 0.)  // 0 is the default value
@@ -274,7 +279,6 @@ Grid<T> transform_f_phi_to_map(const DataProxy& data,
                                double sample_rate,
                                bool exact_size=false) {
   if (exact_size) {
-    gemmi::check_if_hkl_fits_in(data, size);
     gemmi::check_grid_factors(data.spacegroup(), size[0], size[1], size[2]);
   } else {
     size = get_size_for_hkl(data, size, sample_rate);

@@ -622,18 +622,27 @@ All the missing values are set to 0:
 
 .. doctest::
 
-  >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', [54,6,18])
+  >>> grid = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', [54,6,18])
+  >>> grid
   <gemmi.ReciprocalComplexGrid(54, 6, 18)>
 
 The grid above has capacity to store reflections with -27<*h*\ <27,
--3<*k*\ <3 and -9<*l*\ <9.
+-3<*k*\ <3 and -9<*l*\ <9. Reflections outside of this range would be
+silently ignored. To check if the size is big enough you can call:
+
+.. doctest::
+
+  >>> rblock.data_fits_into([54,6,18])
+  True
+  >>> rblock.data_fits_into([52,6,18])
+  False
+
 To access the data you can use the buffer protocol
 (:ref:`in the same way <buffer_protocol>` as in the Grid class),
 or getter and setter:
 
 .. doctest::
 
-  >>> grid = _
   >>> grid.get_value(7, 1, -5)
   (31.747737884521484-57.06287384033203j)
   >>> grid.set_value(7, 1, -5, 12+34j)

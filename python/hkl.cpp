@@ -140,6 +140,9 @@ void add_hkl(py::module& m) {
           return get_size_for_hkl(MtzDataProxy{self}, min_size, sample_rate);
     }, py::arg("min_size")=std::array<int,3>{{0,0,0}},
        py::arg("sample_rate")=0.)
+    .def("data_fits_into", [](const Mtz& self, std::array<int,3> size) {
+        return data_fits_into(MtzDataProxy{self}, size);
+    }, py::arg("size"))
     .def("get_f_phi_on_grid", [](const Mtz& self,
                                  const std::string& f_col,
                                  const std::string& phi_col,
@@ -151,7 +154,6 @@ void add_hkl(py::module& m) {
         if (!f || !phi)
           fail("Column labels not found.");
         MtzDataProxy data{self};
-        check_if_hkl_fits_in(data, size);
         return get_f_phi_on_grid<float>(data, f->idx, phi->idx, size,
                                         half_l, order);
     }, py::arg("f"), py::arg("phi"), py::arg("size"),
@@ -284,6 +286,9 @@ void add_hkl(py::module& m) {
           return get_size_for_hkl(ReflnDataProxy{self}, min_size, sample_rate);
     }, py::arg("min_size")=std::array<int,3>{{0,0,0}},
        py::arg("sample_rate")=0.)
+    .def("data_fits_into", [](const ReflnBlock& self, std::array<int,3> size) {
+        return data_fits_into(ReflnDataProxy{self}, size);
+    }, py::arg("size"))
     .def("get_f_phi_on_grid", [](const ReflnBlock& self,
                                  const std::string& f_col,
                                  const std::string& phi_col,
@@ -292,7 +297,6 @@ void add_hkl(py::module& m) {
         size_t f_idx = self.get_column_index(f_col);
         size_t phi_idx = self.get_column_index(phi_col);
         ReflnDataProxy data{self};
-        check_if_hkl_fits_in(data, size);
         return get_f_phi_on_grid<float>(data, f_idx, phi_idx, size,
                                         half_l, order);
     }, py::arg("f"), py::arg("phi"), py::arg("size"),
