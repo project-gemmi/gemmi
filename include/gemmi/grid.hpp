@@ -471,9 +471,11 @@ template<typename T>
 struct ReciprocalGrid : GridBase<T> {
   bool half_l = false; // hkl grid that stores only l>=0
   bool has_index(int u, int v, int w) const {
-    return 2 * std::abs(u) < this->nu &&
-           2 * std::abs(v) < this->nv &&
-           2 * std::abs(w) < this->nw;
+    bool half_u = (half_l && this->axis_order == AxisOrder::ZYX);
+    bool half_w = (half_l && this->axis_order != AxisOrder::ZYX);
+    return std::abs(half_u ? u : 2 * u) < this->nu &&
+           std::abs(2 * v) < this->nv &&
+           std::abs(half_w ? w : 2 * w) < this->nw;
   }
   void check_index(int u, int v, int w) const {
     if (!has_index(u, v, w))
