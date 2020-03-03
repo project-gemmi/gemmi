@@ -292,7 +292,7 @@ Grid<T> transform_f_phi_to_map(const DataProxy& data,
 
 template<typename T>
 FPhiGrid<T> transform_map_to_f_phi(const Grid<T>& map, bool half_l) {
-  if (half_l and map.axis_order == AxisOrder::ZYX)
+  if (half_l && map.axis_order == AxisOrder::ZYX)
     fail("transform_map_to_f_phi(): half_l + ZYX order are not supported yet");
   FPhiGrid<T> hkl;
   hkl.unit_cell = map.unit_cell;
