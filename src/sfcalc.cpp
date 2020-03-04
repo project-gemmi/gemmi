@@ -167,16 +167,16 @@ void print_structure_factors(const Structure& st,
 
   Comparator comparator;
   double max_1_d = 1. / dencalc.d_min;
-  gemmi::HklAsuChecker hkl_asu(dencalc.grid.spacegroup);
+  gemmi::ReciprocalAsuChecker asu(dencalc.grid.spacegroup);
   int max_h = std::min(sf.nu / 2, int(max_1_d / st.cell.ar));
   int max_k = std::min(sf.nv / 2, int(max_1_d / st.cell.br));
   int max_l = std::min(sf.nw, int(max_1_d / st.cell.cr));
   for (int h = -max_h; h <= max_h; ++h)
     for (int k = -max_k; k <= max_k; ++k)
       for (int l = 0; l <= max_l; ++l) {
-        if (!hkl_asu.is_in(h, k, l))
-          continue;
         Miller hkl{{h, k, l}};
+        if (!asu.is_in(hkl))
+          continue;
         double hkl_1_d2 = sf.unit_cell.calculate_1_d2(hkl);
         if (hkl_1_d2 < max_1_d * max_1_d) {
           int idx_h = h < 0 ? h + sf.nu : h;
@@ -239,13 +239,13 @@ void print_structure_factors_sm(const SmallStructure& small,
   int max_l = int(max_1_d / small.cell.cr);
   const SpaceGroup* sg = find_spacegroup_by_name(small.spacegroup_hm,
                                            small.cell.alpha, small.cell.gamma);
-  gemmi::HklAsuChecker hkl_asu(sg ? sg : &get_spacegroup_p1());
+  gemmi::ReciprocalAsuChecker asu(sg ? sg : &get_spacegroup_p1());
   for (int h = -max_h; h <= max_h; ++h)
     for (int k = -max_k; k <= max_k; ++k)
       for (int l = 0; l <= max_l; ++l) {
-        if (!hkl_asu.is_in(h, k, l))
-          continue;
         Miller hkl{{h, k, l}};
+        if (!asu.is_in(hkl))
+          continue;
         double hkl_1_d2 = small.cell.calculate_1_d2(hkl);
         if (hkl_1_d2 < max_1_d * max_1_d) {
           auto value = calc.calculate_sf_from_small_structure(small, hkl);

@@ -683,13 +683,14 @@ struct UnmergedHklMover {
   int move_to_asu(std::array<int, 3>& hkl) {
     int isym = 1;
     for (Op op : group_ops_) {
-      auto new_hkl = op.apply_to_hkl(hkl);
-      if (asu_checker_.is_in(new_hkl[0], new_hkl[1], new_hkl[2])) {
+      Miller new_hkl = op.apply_to_hkl(hkl);
+      if (asu_checker_.is_in(new_hkl)) {
         hkl = new_hkl;
         return isym;
       }
-      if (asu_checker_.is_in(-new_hkl[0], -new_hkl[1], -new_hkl[2])) {
-        hkl = {{-new_hkl[0], -new_hkl[1], -new_hkl[2]}};
+      Miller negated_new_hkl{{-new_hkl[0], -new_hkl[1], -new_hkl[2]}};
+      if (asu_checker_.is_in(negated_new_hkl)) {
+        hkl = negated_new_hkl;
         return isym + 1;
       }
       isym += 2;
@@ -698,7 +699,7 @@ struct UnmergedHklMover {
   }
 
 private:
-  HklAsuChecker asu_checker_;
+  ReciprocalAsuChecker asu_checker_;
   GroupOps group_ops_;
 };
 

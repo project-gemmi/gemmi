@@ -149,6 +149,11 @@ void add_symmetry(py::module& m) {
     .def("is_reference_setting", &SpaceGroup::is_reference_setting)
     .def("operations", &SpaceGroup::operations, "Group of operations");
 
+  py::class_<ReciprocalAsuChecker>(m, "ReciprocalAsuChecker")
+    .def(py::init<const SpaceGroup*>())
+    .def("is_in", &ReciprocalAsuChecker::is_in, py::arg("hkl"))
+    ;
+
   m.def("spacegroup_table", []() {
             return py::make_iterator(spacegroup_tables::main);
         }, py::return_value_policy::reference);

@@ -126,17 +126,17 @@ static void check_asu(const Mtz& mtz) {
   if (!sg)
     gemmi::fail("no spacegroup in the MTZ file.");
   int counter = 0;
-  gemmi::HklAsuChecker hkl_asu(sg);
+  gemmi::ReciprocalAsuChecker asu(sg);
   for (int i = 0; i < mtz.nreflections; ++i) {
     int h = (int) mtz.data[i * ncol + 0];
     int k = (int) mtz.data[i * ncol + 1];
     int l = (int) mtz.data[i * ncol + 2];
-    if (hkl_asu.is_in(h, k, l))
+    if (asu.is_in({{h, k, l}}))
       ++counter;
   }
   printf("spacegroup: %s\n", sg->xhm().c_str());
   printf("ccp4 ASU convention wrt. standard setting: %s\n",
-         hkl_asu.condition_str());
+         asu.condition_str());
   printf("inside / outside of ASU: %d / %d\n",
          counter, mtz.nreflections - counter);
 }

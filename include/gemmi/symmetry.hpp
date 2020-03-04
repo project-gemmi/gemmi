@@ -1691,22 +1691,22 @@ inline const SpaceGroup* find_spacegroup_by_ops(const GroupOps& gops) {
 
 // Reciprocal space asu (asymmetric unit).
 // The same 12 choices of ASU as in CCP4 symlib and cctbx.
-struct HklAsuChecker {
+struct ReciprocalAsuChecker {
   int idx;
   Op::Rot rot;
 
-  HklAsuChecker(const SpaceGroup* sg) {
+  ReciprocalAsuChecker(const SpaceGroup* sg) {
     if (sg == nullptr)
       fail("Missing space group");
     rot = sg->basisop().inverse().rot;
     idx = spacegroup_tables::ccp4_hkl_asu[sg->number - 1];
   }
 
-  bool is_in(int h, int k, int l) const {
+  bool is_in(const Op::Miller& hkl) const {
     return is_in_reference_setting(
-        rot[0][0] * h + rot[0][1] * k + rot[0][2] * l,
-        rot[1][0] * h + rot[1][1] * k + rot[1][2] * l,
-        rot[2][0] * h + rot[2][1] * k + rot[2][2] * l);
+        rot[0][0] * hkl[0] + rot[0][1] * hkl[1] + rot[0][2] * hkl[2],
+        rot[1][0] * hkl[0] + rot[1][1] * hkl[1] + rot[1][2] * hkl[2],
+        rot[2][0] * hkl[0] + rot[2][1] * hkl[1] + rot[2][2] * hkl[2]);
   }
 
   bool is_in_reference_setting(int h, int k, int l) const {
