@@ -69,6 +69,39 @@ class TestMtz(unittest.TestCase):
         fft_test(self, mtz, 'FWT', 'PHWT', size)
         fft_test(self, mtz, 'FWT', 'PHWT', size, order=gemmi.AxisOrder.ZYX)
 
+    def test_value_grid(self):
+        #path = full_path('5wkd_phases.mtz.gz')
+        path = full_path('5e5z.mtz')
+        mtz = gemmi.read_mtz_file(path)
+        size = mtz.get_size_for_hkl()
+        if numpy is None:
+            return
+        asu = gemmi.ReciprocalAsuChecker(mtz.spacegroup)
+        mtz_data = numpy.array(mtz, copy=False)
+        fp_idx = mtz.column_labels().index('FP')
+        fp_map = {}
+        for row in mtz_data:
+            fp_map[tuple(row[0:3])] = row[fp_idx]
+        for order in (gemmi.AxisOrder.XYZ, gemmi.AxisOrder.ZYX):
+            for half_l in (True, False):
+                grid = mtz.get_value_on_grid('FP', size,
+                                             half_l=half_l, order=order)
+                counter = 0
+                for point in grid:
+                    hkl = grid.to_hkl(point)
+                    value = fp_map.get(tuple(hkl))
+                    if asu.is_in(hkl):
+                        if value is not None:
+                            self.assertTrue(point.value == value or
+                                            (numpy.isnan(point.value) and
+                                             numpy.isnan(value)))
+                            counter += 1
+                        else:
+                            self.assertEqual(point.value, 0.)
+                    else:
+                        self.assertIsNone(value)
+                self.assertEqual(counter, mtz_data.shape[0])
+
 
 class TestSfMmcif(unittest.TestCase):
     def test_reading(self):
