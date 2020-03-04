@@ -149,15 +149,22 @@ void add_hkl(py::module& m) {
                                  std::array<int, 3> size,
                                  bool half_l,
                                  AxisOrder order) {
-        const Mtz::Column* f = self.column_with_label(f_col);
-        const Mtz::Column* phi = self.column_with_label(phi_col);
-        if (!f || !phi)
-          fail("Column labels not found.");
-        MtzDataProxy data{self};
-        return get_f_phi_on_grid<float>(data, f->idx, phi->idx, size,
-                                        half_l, order);
+        const Mtz::Column& f = self.get_column_with_label(f_col);
+        const Mtz::Column& phi = self.get_column_with_label(phi_col);
+        return get_f_phi_on_grid<float>(MtzDataProxy{self}, f.idx, phi.idx,
+                                        size, half_l, order);
     }, py::arg("f"), py::arg("phi"), py::arg("size"),
        py::arg("half_l")=false, py::arg("order")=AxisOrder::XYZ)
+    .def("get_value_on_grid", [](const Mtz& self,
+                                 const std::string& label,
+                                 std::array<int, 3> size,
+                                 bool half_l,
+                                 AxisOrder order) {
+        const Mtz::Column& col = self.get_column_with_label(label);
+        return get_value_on_grid<float>(MtzDataProxy{self}, col.idx,
+                                        size, half_l, order);
+    }, py::arg("label"), py::arg("size"), py::arg("half_l")=false,
+       py::arg("order")=AxisOrder::XYZ)
     .def("transform_f_phi_to_map", [](const Mtz& self,
                                       const std::string& f_col,
                                       const std::string& phi_col,
@@ -298,11 +305,19 @@ void add_hkl(py::module& m) {
                                  bool half_l, AxisOrder order) {
         size_t f_idx = self.get_column_index(f_col);
         size_t phi_idx = self.get_column_index(phi_col);
-        ReflnDataProxy data{self};
-        return get_f_phi_on_grid<float>(data, f_idx, phi_idx, size,
-                                        half_l, order);
+        return get_f_phi_on_grid<float>(ReflnDataProxy{self}, f_idx, phi_idx,
+                                        size, half_l, order);
     }, py::arg("f"), py::arg("phi"), py::arg("size"),
        py::arg("half_l")=false, py::arg("order")=AxisOrder::XYZ)
+    .def("get_value_on_grid", [](const ReflnBlock& self,
+                                 const std::string& column,
+                                 std::array<int, 3> size,
+                                 bool half_l, AxisOrder order) {
+        size_t col_idx = self.get_column_index(column);
+        return get_value_on_grid<float>(ReflnDataProxy{self}, col_idx,
+                                        size, half_l, order);
+    }, py::arg("column"), py::arg("size"), py::arg("half_l")=false,
+       py::arg("order")=AxisOrder::XYZ)
     .def("transform_f_phi_to_map", [](const ReflnBlock& self,
                                       const std::string& f_col,
                                       const std::string& phi_col,

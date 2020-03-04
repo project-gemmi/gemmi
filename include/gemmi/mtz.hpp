@@ -229,6 +229,12 @@ struct Mtz {
                                   const Dataset* ds=nullptr) const {
     return const_cast<Mtz*>(this)->column_with_label(label, ds);
   }
+  const Column& get_column_with_label(const std::string& label,
+                                      const Dataset* ds=nullptr) const {
+    if (const Column* col = column_with_label(label, ds))
+      return *col;
+    fail("Column label not found: " + label);
+  }
   std::vector<const Column*> columns_with_type(char type) const {
     std::vector<const Column*> cols;
     for (const Column& col : columns)
