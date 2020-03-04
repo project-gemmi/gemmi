@@ -113,6 +113,7 @@ void add_grid(py::module& m, const std::string& name) {
     .def("get_value", &ReGr::get_value)
     .def("get_value_or_zero", &ReGr::get_value_or_zero)
     .def("set_value", &ReGr::set_value)
+    .def("to_hkl", &ReGr::to_hkl)
     .def("__repr__", [=](const ReGr& self) {
         return tostr("<gemmi.Reciprocal", name, '(', grid_dim_str(self), ")>");
     });

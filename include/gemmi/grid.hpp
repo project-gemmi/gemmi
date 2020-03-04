@@ -431,7 +431,6 @@ template<typename T, typename V> struct MaskedGrid {
     mask.data = mask_data;
   }
 
-  struct iterator;
   struct iterator {
     MaskedGrid& parent;
     size_t index;
@@ -499,6 +498,20 @@ struct ReciprocalGrid : GridBase<T> {
   }
   void set_value(int u, int v, int w, T x) {
     this->data[index_checked(u, v, w)] = x;
+  }
+  Miller to_hkl(const typename GridBase<T>::Point& point) const {
+    Miller hkl{{point.u, point.v, point.w}};
+    if (2 * point.u >= this->nu &&
+        !(half_l && this->axis_order == AxisOrder::ZYX))
+      hkl[0] -= this->nu;
+    if (2 * point.v >= this->nv)
+      hkl[1] -= this->nv;
+    if (2 * point.w >= this->nw &&
+        !(half_l && this->axis_order != AxisOrder::ZYX))
+      hkl[2] -= this->nw;
+    if (this->axis_order == AxisOrder::ZYX)
+      std::swap(hkl[0], hkl[2]);
+    return hkl;
   }
 };
 
