@@ -529,7 +529,7 @@ Each block has a name:
   >>> block.name
   '1PFE'
 
-and a list of items:
+and a list of items (class Item):
 
 .. doctest::
 
@@ -654,11 +654,23 @@ Accessing name-value pairs:
 
 .. doctest::
 
+  >>> # (1) tag and value
   >>> block.find_pair('_cell.length_a')
   ['_cell.length_a', '39.374']
+  >>> block.find_pair('_no_such_tag')  # return None
+
+  >>> # (2) only value
   >>> block.find_value('_cell.length_b')
   '39.374'
   >>> block.find_value('_cell.no_such_tag')  # returns None
+
+  >>> # (3) Item
+  >>> item = block.find_pair_item('_cell.length_c')
+  >>> item.pair
+  ['_cell.length_c', '79.734']
+  >>> item.line_number
+  72
+  >>> block.find_pair_item('_nothing')  # return None
 
 To add a name-value pair, replacing current item if it exists,
 use function ``set_pair``:
@@ -667,7 +679,7 @@ use function ``set_pair``:
 
   >>> block.set_pair('_year', '2030')
 
-If the value needs to be quoting, it must be passed quoted:
+If the value needs quoting, it must be passed quoted:
 
 .. doctest::
 

@@ -157,6 +157,8 @@ To get the first column with the specified label use functions:
 
 If the column names are not unique, you may specify the dataset:
 
+.. doctest::
+
   >>> mtz.column_with_label('FREE', mtz.dataset(0))
   >>> # None
   >>> mtz.column_with_label('FREE', mtz.dataset(1))
@@ -270,8 +272,28 @@ to integer type:
 Modifying
 ---------
 
-To show how the data and metadata in an ``Mtz`` object can be modified,
-we will create a complete ``Mtz`` object from scratch.
+To change the data in Mtz object we can use function set_data().
+In Python, we pass to this function a 2D NumPy array of floating point numbers.
+
+In the previous section, we got such an array (``all_data``)
+with the original data.
+Now, as an example, let us remove reflections with the resolution
+above 2Å (i.e. *d* < 2Å) and copy the result back into ``mtz``.
+To show that it really has an effect we print the appropriate
+:ref:`grid size <grid_size>` before and after:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> mtz.get_size_for_hkl()
+  [12, 12, 24]
+  >>> mtz.set_data(all_data[mtz.make_d_array() >= 2.0])
+  >>> mtz.get_size_for_hkl()
+  [10, 10, 20]
+
+
+The metadata in an ``Mtz`` object can also be modified.
+To illustrate it, we will create a complete ``Mtz`` object from scratch.
 The code below is in Python, but all the functions and properties have
 equivalents with the same names in C++.
 
@@ -331,7 +353,7 @@ But we can choose any dataset and position:
   ['H', 'K', 'L', 'FREE', 'F', 'SIGF']
 
 Now it is time to add data.
-In Python we have function ``set_data()`` that expects 2D NumPy array
+We will use the ``set_data()`` function that takes 2D NumPy array
 of floating point numbers (even indices are converted to floats,
 but they need to be converted at some point anyway -- the MTZ format
 stores all numbers as 32-bit floats).
@@ -626,9 +648,18 @@ All the missing values are set to 0:
   >>> grid
   <gemmi.ReciprocalComplexGrid(54, 6, 18)>
 
-The grid above has capacity to store reflections with -27<*h*\ <27,
--3<*k*\ <3 and -9<*l*\ <9. Reflections outside of this range would be
-silently ignored. To check if the size is big enough you can call:
+If we'd ever need data from a single column put on a grid,
+we can use analogical function:
+
+.. doctest::
+
+  >>> rblock.get_value_on_grid('F_meas_au', [54,6,18])
+  <gemmi.ReciprocalFloatGrid(54, 6, 18)>
+
+The grids in examples above have capacity to store reflections
+with -27<*h*\ <27, -3<*k*\ <3 and -9<*l*\ <9.
+Reflections outside of this range would be silently ignored.
+To check if the size is big enough you can call:
 
 .. doctest::
 
@@ -637,7 +668,7 @@ silently ignored. To check if the size is big enough you can call:
   >>> rblock.data_fits_into([52,6,18])
   False
 
-To access the data you can use the buffer protocol
+To access the data you can use either the buffer protocol
 (:ref:`in the same way <buffer_protocol>` as in the Grid class),
 or getter and setter:
 
@@ -656,6 +687,20 @@ If you prefer zero instead of the error, use:
 
   >>> grid.get_value_or_zero(20, 30, 40)
   0j
+
+We can also iterate over points of the grid.
+
+.. doctest::
+
+  >>> for point in grid:
+  ...    pass
+  >>> point.value  # point is the last point from the iteration
+  (-178.310546875+99.20561218261719j)
+  >>> grid.to_hkl(point)
+  [-1, -1, -1]
+
+
+.. _grid_size:
 
 Grid size
 ---------

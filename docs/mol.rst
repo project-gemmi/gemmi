@@ -1296,13 +1296,16 @@ in sequence are separated by commas:
   ['DSN', 'ALA', 'N2C,NCY', 'MVA', 'DSN', 'ALA', 'NCY,N2C', 'MVA']
   >>> #           ^^^^^^^  microheterogeneity     ^^^^^^^
 
-To ingore point mutations we can use a helper function ``Entity::first_mon``:
+To ignore point mutations we can use a helper function ``Entity::first_mon``:
 
 .. doctest::
 
   >>> [gemmi.Entity.first_mon(item) for item in seq]
   ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
 
+The sequence from SEQRES may differ from what we have in the model,
+but in this file they are the same. In the section about Chain
+we :ref:`get the same sequence from the model <polymer_b_sequence>`.
 
 Another helper function calculates molecular weight from the sequence.
 It uses the :ref:`built-in table <find_tabulated_residue>` of popular
@@ -1719,6 +1722,8 @@ For quick and approximate analysis of the structure, one may get by
 with ignoring all but the first (main) conformer.
 Both ``Chain`` and ``ResidueSpan`` have function ``first_conformer()``
 which returns iterator over residues of the main conformer.
+
+.. _polymer_b_sequence:
 
 .. doctest::
 
