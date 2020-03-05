@@ -378,7 +378,8 @@ void add_mol(py::module& m) {
     .def("count_occupancies", &count_occupancies<Chain>)
     .def("trim_to_alanine", (void (*)(Chain&)) &trim_to_alanine)
     .def("first_conformer",
-         (UniqProxy<Residue> (Chain::*)()) &Chain::first_conformer)
+         (UniqProxy<Residue> (Chain::*)()) &Chain::first_conformer,
+         py::keep_alive<0, 1>())
     .def("__repr__", [](const Chain& self) {
         return tostr("<gemmi.Chain ", self.name,
                      " with ", self.residues.size(), " res>");
@@ -402,8 +403,10 @@ void add_mol(py::module& m) {
     .def("add_residue", add_item<ResidueSpan, Residue>,
          py::arg("residue"), py::arg("pos")=-1,
          py::return_value_policy::reference_internal)
-    .def("first_conformer", (UniqProxy<Residue, ResidueSpan> (ResidueSpan::*)())
-                            &ResidueSpan::first_conformer)
+    .def("first_conformer",
+         (UniqProxy<Residue, ResidueSpan> (ResidueSpan::*)())
+                                                &ResidueSpan::first_conformer,
+         py::keep_alive<0, 1>())
     .def("length", &ResidueSpan::length)
     .def("subchain_id", &ResidueSpan::subchain_id)
     .def("check_polymer_type", [](const ResidueSpan& span) {
@@ -507,7 +510,8 @@ void add_mol(py::module& m) {
          py::arg("atom"), py::arg("pos")=-1,
          py::return_value_policy::reference_internal)
     .def("first_conformer",
-         (UniqProxy<Atom> (Residue::*)()) &Residue::first_conformer)
+         (UniqProxy<Atom> (Residue::*)()) &Residue::first_conformer,
+         py::keep_alive<0, 1>())
     .def("sole_atom", &Residue::sole_atom)
     .def("is_water", &Residue::is_water)
     .def("trim_to_alanine", (bool (*)(Residue&)) &trim_to_alanine)
