@@ -110,6 +110,8 @@ void add_cif(py::module& cif) {
          py::keep_alive<0, 1>())
     .def("find_pair", &Block::find_pair, py::arg("tag"),
          py::return_value_policy::reference_internal)
+    .def("find_pair_item", &Block::find_pair_item, py::arg("tag"),
+         py::return_value_policy::reference_internal)
     .def("find_value", &Block::find_value, py::arg("tag"),
          py::return_value_policy::reference)
     .def("find_loop", &Block::find_loop, py::arg("tag"),
