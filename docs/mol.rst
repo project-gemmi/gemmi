@@ -1307,21 +1307,40 @@ The sequence from SEQRES may differ from what we have in the model,
 but in this file they are the same. In the section about Chain
 we :ref:`get the same sequence from the model <polymer_b_sequence>`.
 
+If you'd need the sequence in FASTA or similar format, you could use
+the :ref:`built-in table <find_tabulated_residue>` of popular
+residues to get one-letter codes:
+
+.. doctest::
+
+  >>> [gemmi.find_tabulated_residue(resname).one_letter_code for resname in _]
+  ['s', 'A', ' ', 'v', 's', 'A', ' ', 'v']
+
+``one_letter_code`` is lowercase for non-standard residues where it denotes
+the parent component. If the code is blank, either the parent component is
+not known, or the component is not tabulated in Gemmi (i.e. it's not in the
+top 300-400 of the most popular components in the PDB).
+To get a FASTA-like string, you could continue the previous line with:
+
+.. doctest::
+
+  >>> ''.join((code if code.isupper() else 'X') for code in _)
+  'XAXXXAXX'
+
 Another helper function calculates molecular weight from the sequence.
-It uses the :ref:`built-in table <find_tabulated_residue>` of popular
-residues.
-In this example, we have a few rare residues that are not tabulated.
-We can specify the avarage weight of unknown residue:
+It uses the same built-in table of popular residues.
+Since in this example we have two rare components that are not tabulated,
+we must specify the avarage weight of unknown residue:
 
 .. doctest::
 
   >>> gemmi.calculate_sequence_weight(seq, unknown=130.0)
   910.7184143066406
 
-but the result is not accurate. Fortunately, it does not happen often.
+In such case the result is not accurate, but this is not a typical case.
 
-Now we will take another PDB file, with more common residues,
-and excercise this function to calculate Matthews coefficient:
+Now we will take a PDB file with standard residues
+and calculate the Matthews coefficient:
 
 .. doctest::
 
@@ -1354,8 +1373,8 @@ number and Å\ :sup:`3`/cm\ :sup:`3` = 10\ :sup:`-24`):
   >>> print('Solvent content: {:.1f}%'.format(100 * (1 - protein_fraction)))
   Solvent content: 55.1%
 
-Note: if you just want to calculate solvent content, use
-:ref:`gemmi-content <gemmi-content>`.
+Gemmi also includes a program that calculates the solvent content:
+:ref:`gemmi-contents <gemmi-contents>`.
 
 Connection
 ----------
