@@ -352,6 +352,7 @@ struct ConstResidueSpan : Span<const Residue> {
 // and get_subchain().
 struct ResidueSpan : MutableVectorSpan<Residue> {
   using Parent = MutableVectorSpan<Residue>;
+  struct GroupingProxy;
   ResidueSpan() = default;
   ResidueSpan(Parent&& span) : Parent(std::move(span)) {}
   ResidueSpan(vector_type& v, iterator begin, std::size_t n)
@@ -363,6 +364,7 @@ struct ResidueSpan : MutableVectorSpan<Residue> {
   SeqId::OptionalNum max_label_seq() const { return const_().max_label_seq(); }
   UniqProxy<Residue, ResidueSpan> first_conformer() { return {*this}; }
   ConstUniqProxy<Residue, ResidueSpan> first_conformer() const { return {*this}; }
+  GroupingProxy residue_groups();
   const std::string& subchain_id() const { return const_().subchain_id(); }
   ResidueGroup find_residue_group(SeqId id);
   ConstResidueGroup find_residue_group(SeqId id) const;
@@ -395,6 +397,21 @@ struct ConstResidueGroup : ConstResidueSpan {
 
 inline ResidueGroup ResidueSpan::find_residue_group(SeqId id) {
   return ResidueSpan(subspan([&](const Residue& r) { return r.seqid == id; }));
+}
+
+struct ResidueSpan::GroupingProxy {
+  ResidueSpan& span;
+  using iterator = GroupingIter<ResidueSpan, ResidueGroup>;
+  iterator begin() {
+    return ++iterator{ResidueGroup(span.sub(span.begin(), span.begin()))};
+  }
+  iterator end() {
+    return iterator{ResidueGroup(span.sub(span.end(), span.end()))};
+  }
+};
+
+inline ResidueSpan::GroupingProxy ResidueSpan::residue_groups() {
+  return {*this};
 }
 
 

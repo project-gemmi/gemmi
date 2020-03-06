@@ -334,6 +334,11 @@ void add_mol(py::module& m) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
 
+  py::class_<ResidueSpan::GroupingProxy>(m, "ResidueSpanGroups")
+    .def("__iter__", [](ResidueSpan::GroupingProxy& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>());
+
   py::class_<Chain>(m, "Chain")
     .def(py::init<std::string>())
     .def_readwrite("name", &Chain::name)
@@ -385,8 +390,7 @@ void add_mol(py::module& m) {
                      " with ", self.residues.size(), " res>");
     });
 
-  py::class_<ResidueSpan> residue_span(m, "ResidueSpan");
-  residue_span
+  py::class_<ResidueSpan>(m, "ResidueSpan")
     .def("__len__", &ResidueSpan::size)
     .def("__iter__", [](ResidueSpan& g) { return py::make_iterator(g); },
          py::keep_alive<0, 1>())
@@ -407,6 +411,7 @@ void add_mol(py::module& m) {
          (UniqProxy<Residue, ResidueSpan> (ResidueSpan::*)())
                                                 &ResidueSpan::first_conformer,
          py::keep_alive<0, 1>())
+    .def("residue_groups", &ResidueSpan::residue_groups, py::keep_alive<0, 1>())
     .def("length", &ResidueSpan::length)
     .def("subchain_id", &ResidueSpan::subchain_id)
     .def("check_polymer_type", [](const ResidueSpan& span) {
@@ -427,7 +432,7 @@ void add_mol(py::module& m) {
         return r + "]>";
     });
 
-  py::class_<ResidueGroup>(m, "ResidueGroup", residue_span)
+  py::class_<ResidueGroup, ResidueSpan>(m, "ResidueGroup")
     // need to duplicate it so it is visible
     .def("__getitem__", [](ResidueGroup& g, int index) -> Residue& {
         return g.at(index >= 0 ? index : index + g.size());
@@ -441,7 +446,7 @@ void add_mol(py::module& m) {
                "]>";
     });
 
-  py::class_<AtomGroup>(m, "AtomGroup", residue_span)
+  py::class_<AtomGroup>(m, "AtomGroup")
     .def("__len__", &AtomGroup::size)
     .def("__iter__", [](AtomGroup& g) { return py::make_iterator(g); },
          py::keep_alive<0, 1>())

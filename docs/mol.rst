@@ -1740,7 +1740,11 @@ A more complex approach is to group together the alternatives.
 Such a group is represented by ``ResidueGroup``, which is derived from
 ``ResidueSpan``.
 
-TODO
+.. doctest::
+
+  >>> for group in polymer_b.residue_groups():
+  ...     print(','.join(residue.name for residue in group), end='  ')  # doctest: +NORMALIZE_WHITESPACE
+  DSN  ALA  N2C,NCY  MVA  DSN  ALA  NCY,N2C  MVA
 
 ----
 

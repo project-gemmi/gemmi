@@ -29,6 +29,8 @@ template<typename Item> struct Span {
   Span(iterator begin, std::size_t n) : begin_(begin), size_(n) {}
   Span(const Span<value_type>& o) : begin_(o.begin_), size_(o.size_) {}
 
+  void set_begin(iterator begin) { begin_ = begin; }
+  void set_size(std::size_t n) { size_ = n; }
   const_iterator begin() const { return begin_; }
   const_iterator end() const { return begin_ + size_; }
   iterator begin() { return begin_; }
@@ -109,6 +111,9 @@ template<typename Item> struct MutableVectorSpan : Span<Item> {
     vector_->erase(vector_->begin() + (pos - vector_->data()));
     --this->size_;
   }
+
+  bool is_beginning() const { return this->begin() == vector_->data(); }
+  bool is_ending() const { return this->end() == vector_->data() + vector_->size(); }
 
 private:
   vector_type* vector_ = nullptr;  // for insert() and erase()

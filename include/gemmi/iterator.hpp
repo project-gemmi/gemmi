@@ -130,6 +130,40 @@ struct ConstUniqProxy {
 };
 
 
+template<typename Vector, typename Value>
+class GroupingIterPolicy {
+public:
+  typedef Value value_type;
+  GroupingIterPolicy() = default;
+  GroupingIterPolicy(const Value& span) : span_(span) {}
+  void increment() {
+    span_.set_begin(span_.end());
+    span_.set_size(0);
+    while (!span_.is_ending() && span_.front().same_group(*span_.end()))
+      span_.set_size(span_.size() + 1);
+  }
+  void decrement() {
+    span_.set_begin(span_.begin() - 1);
+    span_.set_size(1);
+    while (!span_.is_beginning() &&
+           span_.front().same_group(*(span_.begin() - 1))) {
+      span_.set_begin(span_.begin() - 1);
+      span_.set_size(span_.size() + 1);
+    }
+  }
+  bool equal(const GroupingIterPolicy& o) const {
+    return span_.begin() == o.span_.begin();
+  }
+  Value& dereference() { return span_; }
+  using const_policy = GroupingIterPolicy<Vector const, Value const>;
+  operator const_policy() const { return const_policy(span_); }
+private:
+  Value span_;
+};
+template<typename Vector, typename Value>
+using GroupingIter = BidirIterator<GroupingIterPolicy<Vector, Value>>;
+
+
 template<typename Filter, typename Vector, typename Value>
 class FilterIterPolicy {
 public:
@@ -137,7 +171,8 @@ public:
   FilterIterPolicy() : vec_(nullptr), pos_(0) {}
   FilterIterPolicy(const Filter* filter, Vector* vec, std::size_t pos)
       : filter_(filter), vec_(vec), pos_(pos) {
-    while (pos_ != vec_->size() && !matches(pos_)) ++pos_;
+    while (pos_ != vec_->size() && !matches(pos_))
+      ++pos_;
   }
   bool matches(std::size_t p) const { return filter_->matches((*vec_)[p]); }
   void increment() { while (pos_ != vec_->size() && !matches(++pos_)) {} }
