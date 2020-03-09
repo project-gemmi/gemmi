@@ -191,6 +191,10 @@ It has the properties listed at the beginning of this section
   'R 3:H'
   >>> sg.short_name()             # short name
   'H3'
+  >>> sg.is_enantiomorphic()      # is it one of 22 chiral space groups?
+  False
+  >>> sg.is_sohncke()             # is it one of 65 Sohncke space group?
+  True
   >>> sg.point_group_hm()         # H-M name of the point group
   '3'
   >>> sg.laue_str()               # name of the Laue class
@@ -203,6 +207,21 @@ It has the properties listed at the beginning of this section
   >>> sg.operations()             #doctest: +ELLIPSIS
   <gemmi.GroupOps object at 0x...>
 
+Categories related to chirality can be confusing.
+Here, we follow the IUCr dictionary:
+
+* `Sohncke groups <https://dictionary.iucr.org/Sohncke_groups>`_
+  (a.k.a. non-enantiogenic space groups)
+  are "the three-dimensional space groups containing only operations
+  of the first kind (rotations, rototranslations, translations)";
+  65 groups in which chiral structures crystallize.
+* Enantiomorphic space groups
+  (a.k.a. `chiral groups <https://dictionary.iucr.org/Chiral_space_group>`_)
+  are those whose *group* structure is chiral;
+  22 groups forming 11 enantiomorphic pairs.
+  (So chiral structures can crystallize not only in the chiral space groups
+  but also in 43 of the achiral ones.)
+
 If you would like to ignore entries that are absent in SgInfo, sgtbx, spglib
 and in the International Tables vol. B, use only the first 530 entries
 of the gemmi table. In Python, we have a helper function for this:
@@ -211,8 +230,9 @@ of the gemmi table. In Python, we have a helper function for this:
 
   >>> for sg in gemmi.spacegroup_table_itb():
   ...     pass
-  >>> sg.ccp4  # sg is now the last spacegroup iterated
+  >>> sg.ccp4  # sg here is the last space group that was iterated
   230
+
 
 Implementation notes
 --------------------

@@ -139,6 +139,8 @@ void add_symmetry(py::module& m) {
     .def("xhm", &SpaceGroup::xhm, "extended Hermann-Mauguin name")
     .def("short_name", &SpaceGroup::short_name,
          "H-M name w/o spaces and with 1's removed in '1 ... 1'.")
+    .def("is_enantiomorphic", &SpaceGroup::is_enantiomorphic)
+    .def("is_sohncke", &SpaceGroup::is_sohncke)
     .def("point_group_hm", &SpaceGroup::point_group_hm,
          "Returns H-M name of the point group.")
     .def("laue_str", &SpaceGroup::laue_str,

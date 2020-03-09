@@ -139,14 +139,17 @@ class TestSymmetry(unittest.TestCase):
                              cctbx_sg.point_group_type())
             self.assertEqual(gemmi_sg.crystal_system_str(),
                              cctbx_sg.crystal_system().lower())
+            self.assertEqual(gemmi_sg.is_sohncke(), cctbx_sg.is_chiral())
+            self.assertEqual(gemmi_sg.is_enantiomorphic(),
+                             cctbx_sg.type().is_enantiomorphic())
         else:
             self.assertIsNone(gemmi_sg)
 
     def test_with_sgtbx(self):
         if sgtbx is None:
             return
-        for s in sgtbx.space_group_symbol_iterator():
-            self.compare_hall_symops_with_sgtbx(s.hall())
+        for s in gemmi.spacegroup_table():
+            self.compare_hall_symops_with_sgtbx(s.hall.encode())
         self.compare_hall_symops_with_sgtbx('C -4 -2b', existing_group=False)
 
     def test_table(self):
@@ -168,6 +171,12 @@ class TestSymmetry(unittest.TestCase):
             ops = gemmi.get_spacegroup_reference_setting(sg.number).operations()
             ops.change_basis(sg.basisop)
             self.assertEqual(ops, sg.operations())
+        itb = gemmi.spacegroup_table_itb()
+        if sgtbx:
+            for s in sgtbx.space_group_symbol_iterator():
+                self.assertEqual(s.hall().strip(), next(itb).hall)
+            with self.assertRaises(StopIteration):
+                next(itb)
 
     def test_find_spacegroup(self):
         self.assertEqual(gemmi.SpaceGroup('P21212').hm, 'P 21 21 2')
