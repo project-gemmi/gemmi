@@ -40,6 +40,9 @@ or clone the `project <https://github.com/project-gemmi/gemmi/>`_
 
     pip install .
 
+If gemmi is already installed, uninstall the old version first
+(``pip uninstall``) or add option ``--upgrade``.
+
 On Windows Python 3.5+ should automatically find an appropriate compiler
 (MSVC 2015+) . If the compiler is not installed, pip shows a message
 with a download link.

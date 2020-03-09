@@ -203,6 +203,16 @@ It has the properties listed at the beginning of this section
   >>> sg.operations()             #doctest: +ELLIPSIS
   <gemmi.GroupOps object at 0x...>
 
+If you would like to ignore entries that are absent in SgInfo, sgtbx, spglib
+and in the International Tables vol. B, use only the first 530 entries
+of the gemmi table. In Python, we have a helper function for this:
+
+.. doctest::
+
+  >>> for sg in gemmi.spacegroup_table_itb():
+  ...     pass
+  >>> sg.ccp4  # sg is now the last spacegroup iterated
+  230
 
 Implementation notes
 --------------------

@@ -157,6 +157,10 @@ void add_symmetry(py::module& m) {
   m.def("spacegroup_table", []() {
             return py::make_iterator(spacegroup_tables::main);
         }, py::return_value_policy::reference);
+  m.def("spacegroup_table_itb", []() {
+            return py::make_iterator(spacegroup_tables::main,
+                                     spacegroup_tables::main + 530);
+        }, py::return_value_policy::reference);
   m.def("generators_from_hall", &generators_from_hall, py::arg("hall"),
         "Parse Hall notation.");
   m.def("symops_from_hall", &symops_from_hall, py::arg("hall"),
