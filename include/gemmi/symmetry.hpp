@@ -1708,6 +1708,18 @@ inline const SpaceGroup* find_spacegroup_by_ops(const GroupOps& gops) {
   return nullptr;
 }
 
+inline
+const SpaceGroup* find_spacegroup_by_change_of_basis(const SpaceGroup* sg,
+                                                     const Op& cob) {
+  if (sg) {
+    GroupOps gops = sg->operations();
+    gops.change_basis(cob);
+    if (const SpaceGroup* new_sg = find_spacegroup_by_ops(gops))
+      return new_sg;
+  }
+  return nullptr;
+}
+
 // Reciprocal space asu (asymmetric unit).
 // The same 12 choices of ASU as in CCP4 symlib and cctbx.
 struct ReciprocalAsuChecker {

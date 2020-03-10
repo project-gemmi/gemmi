@@ -138,7 +138,7 @@ always the reference setting:
   >>> gemmi.get_spacegroup_reference_setting(48)
   <gemmi.SpaceGroup("P n n n:2")>
 
-The last function for searching the space group table checks
+The next function for searching the space group table checks
 symmetry operations:
 
 .. doctest::
@@ -149,10 +149,10 @@ symmetry operations:
   <gemmi.SpaceGroup("I 1 2 1")>
 
 This example shows also how to find space group corresponding to a Hall symbol.
-The Hall notation, devised in 1981, encodes all the group operations.
+The Hall notation encodes all the group operations.
 Unfortunately, in a non-unique way.
-Different Hall symbols can be used to encode the same symmetry operations.
-For example, "C 2y (x,y,-x+z)" is equivalent to "I 2y".
+Different Hall symbols can be used to encode the same symmetry operations,
+for example, "C 2y (x,y,-x+z)" is equivalent to "I 2y".
 Therefore, we compare operations rather than the symbols.
 
 Actually, as will be discussed later, Hall symbols encode only *generators*:
@@ -164,6 +164,20 @@ Actually, as will be discussed later, Hall symbols encode only *generators*:
 
 Combining these generators reconstructs all the symmetry operations
 (total 8 for this space group). But this was only a digression.
+
+The last function for searching space group is also comparing operations.
+It takes two arguments: a space group and a change-of-basis operator,
+and searches for space group settings that match the transformed operations
+of the original space group:
+
+.. doctest::
+
+  >>> # I2 -> C2
+  >>> gemmi.find_spacegroup_by_change_of_basis(gemmi.SpaceGroup('I2'), gemmi.Op('x,y,x+z'))
+  <gemmi.SpaceGroup("C 1 2 1")>
+  >>> # enantiomorphic pair
+  >>> gemmi.find_spacegroup_by_change_of_basis(gemmi.SpaceGroup('P 41'), gemmi.Op('-x,-y,-z'))
+  <gemmi.SpaceGroup("P 43")>
 
 Finally, we may iterate over the space group table:
 
@@ -472,7 +486,7 @@ A few functions allow us to examine the obtained symmetry group:
   >>> gemmi.find_spacegroup_by_ops(new_ops)
   <gemmi.SpaceGroup("C 1 c 1")>
 
-Finally, we can modify GroupOps by apply a change-of-basis operator:
+Finally, we can modify GroupOps by applying a change-of-basis operator:
 
 .. doctest::
 

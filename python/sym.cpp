@@ -179,4 +179,7 @@ void add_symmetry(py::module& m) {
   m.def("find_spacegroup_by_ops", &find_spacegroup_by_ops,
         py::arg("group_ops"), py::return_value_policy::reference,
         "Returns space-group with identical operations.");
+  m.def("find_spacegroup_by_change_of_basis",
+        &find_spacegroup_by_change_of_basis,
+        py::return_value_policy::reference);
 }
