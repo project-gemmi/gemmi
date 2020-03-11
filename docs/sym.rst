@@ -1,7 +1,7 @@
 Symmetry
 ########
 
-The Gemmi symmetry module provides space-group related functionality
+The Gemmi symmetry module provides space group related functionality
 needed in other parts of the library -- when working with coordinate
 files, electron density maps and reflections.
 
@@ -39,7 +39,7 @@ The data from sgtbx is also available in the older SgInfo_ library,
 as well as in the `International Tables <http://it.iucr.org/>`_
 for Crystallography Vol. B ch. 1.4 (in 2010 ed.). It has 530 entries
 including 3 duplicates (different names for the same settings)
-in space-group 68.
+in the space group 68.
 
 Gemmi includes also settings from OpenBabel_ that are absent in
 :file:`syminfo.lib`. If needed we will add more entries in the future.
@@ -54,7 +54,7 @@ and mentioned in the 2015 edition of ITfC Vol.A, Table 1.5.4.4).
 
 We also tabulated alternative names.
 For now this only includes new standard names introduced in 1990's by the IUCr
-committee. For example, the space-group no. 39 is now officially, in the
+committee. For example, the space group no. 39 is now officially, in the
 Volume A of the `International Tables <http://it.iucr.org/>`_,
 named Aem2 not Abm2.
 Most of the crystallographic software (as well as the Volume B of the Tables)
@@ -120,7 +120,7 @@ You can also get space group by number:
   <gemmi.SpaceGroup("C 1 2 1")>
 
 The number is the ccp4 number mentioned above,
-so some 4-digit values are also defined:
+so some 4-digit numbers are also recognized:
 
 .. doctest::
 
@@ -147,23 +147,15 @@ symmetry operations:
   <gemmi.GroupOps object at 0x...>
   >>> gemmi.find_spacegroup_by_ops(_)
   <gemmi.SpaceGroup("I 1 2 1")>
+  >>> _.hall
+  'I 2y'
 
 This example shows also how to find space group corresponding to a Hall symbol.
 The Hall notation encodes all the group operations.
 Unfortunately, in a non-unique way.
-Different Hall symbols can be used to encode the same symmetry operations,
-for example, "C 2y (x,y,-x+z)" is equivalent to "I 2y".
-Therefore, we compare operations rather than the symbols.
-
-Actually, as will be discussed later, Hall symbols encode only *generators*:
-
-.. doctest::
-
-    >>> list(gemmi.generators_from_hall("P 4w 2c"))  # no.93
-    [<gemmi.Op("x,y,z")>, <gemmi.Op("-y,x,z+1/4")>, <gemmi.Op("x,-y,-z+1/2")>]
-
-Combining these generators reconstructs all the symmetry operations
-(total 8 for this space group). But this was only a digression.
+Different Hall symbols can be used to encode the same symmetry operations.
+In the example above "C 2y (x,y,-x+z)" is equivalent to "I 2y".
+That's why we compare operations not symbols.
 
 The last function for searching space group is also comparing operations.
 It takes two arguments: a space group and a change-of-basis operator,
@@ -438,7 +430,7 @@ the translational part -- phase shift.
 Groups of Operations
 ====================
 
-Each space-group setting corresponds to a unique set of operations.
+Each space group setting corresponds to a unique set of operations.
 This set is represented by class ``GroupOps``.
 
 Symmetry operations (rotation + translation) and
@@ -468,14 +460,41 @@ but they are be combined on the fly:
   x+1/2,y+1/2,z+1/2
   -x+1/2,y+1/2,-z+1/2
 
-We can also do the opposite -- create GroupOps from the operations:
+We can apply a change-of-basis operator to GroupOps:
+
+.. doctest::
+
+  >>> ops.change_basis(gemmi.Op('x,y,x+z'))  # I2 -> C2
+  >>> gemmi.find_spacegroup_by_ops(ops)
+  <gemmi.SpaceGroup("C 1 2 1")>
+
+We can create GroupOps from a list of operations:
 
 .. doctest::
 
   >>> op_list = ['x,y,z', 'x,-y,z+1/2', 'x+1/2,y+1/2,z', 'x+1/2,-y+1/2,z+1/2']
   >>> new_ops = gemmi.GroupOps([gemmi.Op(o) for o in op_list])
 
-A few functions allow us to examine the obtained symmetry group:
+or from a Hall symbol:
+
+.. doctest::
+
+  >>> gemmi.symops_from_hall('P 4w 2c')  #doctest: +ELLIPSIS
+  <gemmi.GroupOps object at 0x...>
+  >>> len(_)
+  8
+
+The Hall symbols encode *generators* which are then used to obtain
+all the operations. If you'd wonder what generators are encoded, use:
+
+.. doctest::
+
+    >>> list(gemmi.generators_from_hall('P 4w 2c'))  # no.93
+    [<gemmi.Op("x,y,z")>, <gemmi.Op("-y,x,z+1/4")>, <gemmi.Op("x,-y,-z+1/2")>]
+
+Combining these 3 generators reconstructs all the 8 symmetry operations.
+
+The GroupOps object has a couple of functions:
 
 .. doctest::
 
@@ -483,16 +502,13 @@ A few functions allow us to examine the obtained symmetry group:
   False
   >>> new_ops.find_centering()
   'C'
-  >>> gemmi.find_spacegroup_by_ops(new_ops)
-  <gemmi.SpaceGroup("C 1 c 1")>
 
-Finally, we can modify GroupOps by applying a change-of-basis operator:
+and, again, it can be used to search in the space group table:
 
 .. doctest::
 
-  >>> ops.change_basis(gemmi.Op('x,y,x+z'))  # I2 -> C2
-  >>> gemmi.find_spacegroup_by_ops(ops)
-  <gemmi.SpaceGroup("C 1 2 1")>
+  >>> gemmi.find_spacegroup_by_ops(new_ops)
+  <gemmi.SpaceGroup("C 1 c 1")>
 
 C++ Example
 ===========
