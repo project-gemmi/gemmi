@@ -5,6 +5,8 @@
 #include "gemmi/linkhunt.hpp"
 #include "gemmi/monlib.hpp"
 #include "gemmi/topo.hpp"
+#include "gemmi/seqalign.hpp"  // for align_string_sequences
+#include "gemmi/labelseq.hpp"  // for align_sequence_to_polymer
 
 #include <fstream>
 #include <pybind11/pybind11.h>
@@ -199,4 +201,40 @@ void add_monlib(py::module& m) {
     .def_readonly("bond_length", &LinkHunt::Match::bond_length)
     .def_readonly("conn", &LinkHunt::Match::conn)
     ;
+
+  py::class_<AlignmentResult>(m, "AlignmentResult")
+    .def_readonly("score", &AlignmentResult::score)
+    .def("cigar_str", &AlignmentResult::cigar_str)
+    ;
+
+  m.def("align_string_sequences", [](const std::vector<std::string>& query,
+                                     const std::vector<std::string>& target,
+                                     const std::vector<bool>& free_gapo,
+                                     int match, int mismatch,
+                                     int gapo, int gape) {
+      AlignmentScoring sco;
+      sco.match = match;
+      sco.mismatch = mismatch;
+      sco.gapo = gapo;
+      sco.gape = gape;
+      return align_string_sequences(query, target, free_gapo, sco);
+    }, py::arg("query"), py::arg("target"), py::arg("free_gapo"),
+       py::arg("match")=1, py::arg("mismatch")=-1,
+       py::arg("gapo")=-1, py::arg("gape")=-1
+  );
+
+  m.def("align_sequence_to_polymer",
+        [](const std::vector<std::string>& full_seq,
+           const ResidueSpan& polymer, PolymerType polymer_type,
+           int match, int mismatch, int gapo, int gape) {
+      AlignmentScoring sco;
+      sco.match = match;
+      sco.mismatch = mismatch;
+      sco.gapo = gapo;
+      sco.gape = gape;
+      return align_sequence_to_polymer(full_seq, polymer, polymer_type, sco);
+    }, py::arg("full_seq"), py::arg("polymer"), py::arg("polymer_type"),
+       py::arg("match")=1, py::arg("mismatch")=-1,
+       py::arg("gapo")=-1, py::arg("gape")=-1
+  );
 }

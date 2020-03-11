@@ -10,8 +10,17 @@
 #include <algorithm> // for reverse
 #include <string>
 #include <vector>
+#include "fail.hpp"
 
 namespace gemmi {
+
+struct AlignmentScoring {
+  int match = 1;
+  int mismatch = -1;
+  int gapo = -1;
+  int gape = -1;
+  std::vector<std::int8_t> score_matrix;
+};
 
 struct AlignmentResult {
   struct Item {
@@ -42,7 +51,7 @@ struct AlignmentResult {
     while (i >= 0 && j >= 0) {
       // at the beginning of the loop, _state_ tells us which state to check
       // if requesting the H state, find state one maximizes it.
-      uint32_t tmp = p[(size_t)i * j0 + j];
+      uint32_t tmp = p[(std::size_t)i * j0 + j];
       if (state == 0 || (tmp & (1 << (state + 2))) == 0)
         state = tmp & 7;
       if (state == 0) { // match
@@ -73,51 +82,62 @@ private:
   }
 };
 
+// All values in query and target must be less then m.
+// free_gapo marks positions in target where gap opening is free.
 inline
-AlignmentResult align_sequences(int qlen, const std::uint8_t *query,
-                                int tlen, const std::uint8_t *target,
+AlignmentResult align_sequences(const std::vector<std::uint8_t>& query,
+                                const std::vector<std::uint8_t>& target,
                                 const std::vector<bool>& free_gapo,
-                                std::int8_t m, const std::int8_t *mat,
-                                std::int8_t gapo, std::int8_t gape) {
+                                std::uint8_t m,
+                                const AlignmentScoring& scoring) {
+  if (!scoring.score_matrix.empty() && scoring.score_matrix.size() != m * m)
+    fail("wrong size of score_matrix");
   // generate the query profile
-  std::int8_t *query_profile = new std::int8_t[qlen * m];
-  for (std::int32_t k = 0, i = 0; k < m; ++k)
-    for (std::int32_t j = 0; j < qlen; ++j)
-      query_profile[i++] = mat[k * m + query[j]];
+  std::int8_t *query_profile = new std::int8_t[query.size() * m];
+  {
+    std::int32_t i = 0;
+    for (std::uint8_t k = 0; k < m; ++k)
+      for (std::uint8_t q : query)
+        if (!scoring.score_matrix.empty())
+          query_profile[i++] = scoring.score_matrix[k * m + q];
+        else
+          query_profile[i++] = (k == q ? scoring.match : scoring.mismatch);
+  }
 
   struct eh_t { std::int32_t h, e; };
-  eh_t *eh = new eh_t[qlen + 1];
-  std::int32_t gapoe = gapo + gape;
+  eh_t *eh = new eh_t[query.size() + 1];
+  std::int32_t gape = scoring.gape;
+  std::int32_t gapoe = scoring.gapo + gape;
 
   // fill the first row
   {
     std::int32_t gap0 = !free_gapo.empty() && free_gapo[0] ? gape : gapoe;
     eh[0].h = 0;
-    eh[0].e = -gap0 - gapoe;
-    for (std::int32_t j = 1; j <= qlen; ++j) {
-      eh[j].h = -(gap0 + gape * (j - 1));
-      eh[j].e = -(gap0 + gapoe + gape * j);
+    eh[0].e = gap0 + gapoe;
+    for (std::int32_t j = 1; j <= (std::int32_t)query.size(); ++j) {
+      eh[j].h = gap0 + gape * (j - 1);
+      eh[j].e = gap0 + gapoe + gape * j;
     }
   }
 
   // backtrack matrix; in each cell: f<<4|e<<2|h
-  std::uint8_t *z = new std::uint8_t[(size_t)qlen * tlen];
+  std::uint8_t *z = new std::uint8_t[query.size() * target.size()];
   // DP loop
-  for (std::int32_t i = 0; i < tlen; ++i) {
+  for (std::int32_t i = 0; i < (std::int32_t)target.size(); ++i) {
     std::uint8_t target_item = target[i];
-    std::int8_t *scores = &query_profile[target_item * qlen];
-    std::uint8_t *zi = &z[(size_t)i * qlen];
-    std::int32_t h1 = -(gapoe + gape * i);
-    std::int32_t f = -(gapoe + gapoe + gape * i);
+    std::int8_t *scores = &query_profile[target_item * query.size()];
+    std::uint8_t *zi = &z[i * query.size()];
+    std::int32_t h1 = gapoe + gape * i;
+    std::int32_t f = gapoe + gapoe + gape * i;
     std::int32_t gapx = i+1 < (std::int32_t)free_gapo.size() && free_gapo[i+1]
                         ? gape : gapoe;
-    for (std::int32_t j = 0; j < qlen; ++j) {
+    for (std::size_t j = 0; j < query.size(); ++j) {
       // At the beginning of the loop:
       //  eh[j] = { H(i-1,j-1), E(i,j) }, f = F(i,j) and h1 = H(i,j-1)
       // Cells are computed in the following order:
       //   H(i,j)   = max{H(i-1,j-1) + S(i,j), E(i,j), F(i,j)}
-      //   E(i+1,j) = max{H(i,j)-gapo, E(i,j)} - gape
-      //   F(i,j+1) = max{H(i,j)-gapo, F(i,j)} - gape
+      //   E(i+1,j) = max{H(i,j)+gapo, E(i,j)} + gape
+      //   F(i,j+1) = max{H(i,j)+gapo, F(i,j)} + gape
       eh_t *p = &eh[j];
       std::int32_t h = p->h;
       std::int32_t e = p->e;
@@ -134,16 +154,16 @@ AlignmentResult align_sequences(int qlen, const std::uint8_t *query,
       }
       h1 = h;
 
-      h -= gapoe;
-      e -= gape;
+      h += gapoe;
+      e += gape;
       if (e > h)
         direction |= 0x08;
       else
         e = h;
 
-      h = h1 - gapx;
+      h = h1 + gapx;
       p->e = e;
-      f -= gape;
+      f += gape;
       if (f > h)
         direction |= 0x10;
       else
@@ -152,17 +172,37 @@ AlignmentResult align_sequences(int qlen, const std::uint8_t *query,
       // z[i,j] keeps h for the current cell and e/f for the next cell
       zi[j] = direction;
     }
-    eh[qlen].h = h1;
-    eh[qlen].e = -0x40000000; // -infinity
+    eh[query.size()].h = h1;
+    eh[query.size()].e = -0x40000000; // -infinity
   }
 
   AlignmentResult result;
-  result.score = eh[qlen].h;
+  result.score = eh[query.size()].h;
   delete [] query_profile;
   delete [] eh;
-  result.backtrack_to_cigar(z, tlen, qlen);
+  result.backtrack_to_cigar(z, target.size(), query.size());
   delete [] z;
   return result;
+}
+
+inline
+AlignmentResult align_string_sequences(const std::vector<std::string>& query,
+                                       const std::vector<std::string>& target,
+                                       const std::vector<bool>& free_gapo,
+                                       const AlignmentScoring& scoring) {
+  std::map<std::string, std::uint8_t> encoding;
+  for (const std::string& s : query)
+    encoding.emplace(s, encoding.size());
+  for (const std::string& s : target)
+    encoding.emplace(s, encoding.size());
+  std::vector<std::uint8_t> encoded_query(query.size());
+  for (size_t i = 0; i != query.size(); ++i)
+    encoded_query[i] = encoding.at(query[i]);
+  std::vector<std::uint8_t> encoded_target(target.size());
+  for (size_t i = 0; i != target.size(); ++i)
+    encoded_target[i] = encoding.at(target[i]);
+  return align_sequences(encoded_query, encoded_target,
+                         free_gapo, encoding.size(), scoring);
 }
 
 } // namespace gemmi

@@ -330,6 +330,11 @@ class TestMol(unittest.TestCase):
         self.assertEqual(A['56'][0].seqid.icode, ' ')
         self.assertEqual(A['56c'][0].seqid.icode, 'C')
 
+        result = gemmi.align_sequence_to_polymer(st.entities[0].full_sequence,
+                                                 A.get_polymer(),
+                                                 gemmi.PolymerType.Unknown)
+        print(result.cigar_str())
+
     def write_and_read(self, st, via_cif):
         if via_cif:
             doc = st.make_mmcif_document()
@@ -570,6 +575,15 @@ class TestMol(unittest.TestCase):
                     'AAPLMYNARLYNPGDTDSVHATGVQLMGTVPRTVRLTPRVGQNNWFFGNT'
                     'EEAETILAIDGLVSTKGANAPSNTVIVTGCFRLAPSELQSS')
         self.assertEqual(polymer.make_one_letter_sequence(), expected)
+
+    def test_string_align(self):
+        result = gemmi.align_string_sequences(list('AABCC'),
+                                              list('ABC'), [True])
+        self.assertEqual(result.score, 0)
+        self.assertEqual(result.cigar_str(), '1I3M1I')
+        result = gemmi.align_string_sequences(list('SIMILARITY'),
+                                              list('PILLAR'), [])
+        self.assertEqual(result.cigar_str(), '3M1I3M3I')
 
 
 if __name__ == '__main__':

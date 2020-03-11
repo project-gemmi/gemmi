@@ -14,6 +14,6 @@ Currently, we only use match/mismatch scoring matrix.
 
 Scoring (absolute values):
   --match=INT    Match score (default: 1).
-  --mism=INT     Mismatch penalty (default: 1).
-  --gapo=INT     Gap opening penalty (default: 1).
-  --gape=INT     Gap extension penalty (default: 1).
+  --mism=INT     Mismatch penalty (default: -1).
+  --gapo=INT     Gap opening penalty (default: -1).
+  --gape=INT     Gap extension penalty (default: -1).

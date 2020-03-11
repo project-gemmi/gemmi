@@ -36,34 +36,25 @@ static const option::Descriptor Usage[] = {
   { Match, 0, "", "match", Arg::Int,
     "  --match=INT  \tMatch score (default: 1)." },
   { Mismatch, 0, "", "mism", Arg::Int,
-    "  --mism=INT  \tMismatch penalty (default: 1)." },
+    "  --mism=INT  \tMismatch penalty (default: -1)." },
   { GapOpen, 0, "", "gapo", Arg::Int,
-    "  --gapo=INT  \tGap opening penalty (default: 1)." },
+    "  --gapo=INT  \tGap opening penalty (default: -1)." },
   { GapExt, 0, "", "gape", Arg::Int,
-    "  --gape=INT  \tGap extension penalty (default: 1)." },
+    "  --gape=INT  \tGap extension penalty (default: -1)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
 static void print_text_alignment(const char* text1, const char* text2,
                                  const gemmi::AlignmentScoring& scoring) {
-  int len1 = (int) std::strlen(text1);
-  int len2 = (int) std::strlen(text2);
-  std::vector<uint8_t> v1(len1);
-  for (int i = 0; i != len1; ++i)
-    v1[i] = text1[i] >= 32 && text1[i] < 127 ? text1[i] - 32 : 0;
-  std::vector<uint8_t> v2(len2);
-  for (int i = 0; i != len2; ++i)
-    v2[i] = text2[i] >= 32 && text2[i] < 127 ? text2[i] - 32 : 0;
-  int m = 127 - 32;
-  std::vector<int8_t> score_matrix(m * m, scoring.mismatch);
-  for (int i = 0; i < m; ++i)
-    score_matrix[i * m + i] = scoring.match;
+  std::vector<std::string> v1(std::strlen(text1));
+  for (size_t i = 0; i != v1.size(); ++i)
+    v1[i] = text1[i];
+  std::vector<std::string> v2(std::strlen(text2));
+  for (size_t i = 0; i != v2.size(); ++i)
+    v2[i] = text2[i];
   std::vector<bool> free_gapo(1, 1);
-  gemmi::AlignmentResult result = gemmi::align_sequences(
-      len1, v1.data(),
-      len2, v2.data(),
-      free_gapo, m, score_matrix.data(),
-      scoring.gapo, scoring.gape);
+  gemmi::AlignmentResult result
+      = gemmi::align_string_sequences(v1, v2, free_gapo, scoring);
   printf("Score: %d   CIGAR: %s\n", result.score, result.cigar_str().c_str());
   size_t pos1 = 0;
   size_t pos2 = 0;
@@ -80,7 +71,7 @@ static void print_text_alignment(const char* text1, const char* text2,
         out1 += '-';
         out2 += text2[pos2++];
       } else /* if (op == 'M') */ {
-        match += v1[pos1] == v2[pos2] ? '=' : 'X';
+        match += text1[pos1] == text2[pos2] ? '=' : 'X';
         out1 += text1[pos1++];
         out2 += text2[pos2++];
       }
@@ -150,13 +141,13 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.simple_parse(argc, argv, Usage);
   gemmi::AlignmentScoring scoring;
   if (p.options[Match])
-    scoring.match = std::abs(std::atoi(p.options[Match].arg));
+    scoring.match = std::atoi(p.options[Match].arg);
   if (p.options[Mismatch])
-    scoring.mismatch = -std::abs(std::atoi(p.options[Mismatch].arg));
+    scoring.mismatch = std::atoi(p.options[Mismatch].arg);
   if (p.options[GapOpen])
-    scoring.gapo = std::abs(std::atoi(p.options[GapOpen].arg));
+    scoring.gapo = std::atoi(p.options[GapOpen].arg);
   if (p.options[GapExt])
-    scoring.gape = std::abs(std::atoi(p.options[GapExt].arg));
+    scoring.gape = std::atoi(p.options[GapExt].arg);
   if (p.options[TextAlign]) {
     p.require_positional_args(2);
     print_text_alignment(p.nonOption(0), p.nonOption(1), scoring);
@@ -187,7 +178,9 @@ int GEMMI_MAIN(int argc, char **argv) {
           gemmi::fail("No sequence (SEQRES) for chain " + chain.name);
         if (gemmi::seqid_matches_seqres(polymer, *ent))
           printf("Sequence numbers are wrt the full sequence (SEQRES).\n");
-        gemmi::AlignmentResult result = align_polymer(polymer, *ent, scoring);
+        gemmi::AlignmentResult result =
+            gemmi::align_sequence_to_polymer(ent->full_sequence, polymer,
+                                             ent->polymer_type, scoring);
         printf("%s chain %s CIGAR: %s\n",
                st.name.c_str(), chain.name.c_str(), result.cigar_str().c_str());
         if (p.options[CheckMmcif])

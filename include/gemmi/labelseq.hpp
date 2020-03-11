@@ -12,13 +12,6 @@
 
 namespace gemmi {
 
-struct AlignmentScoring {
-  int match = 1;
-  int mismatch = -1;
-  int gapo = 1;
-  int gape = 1;
-};
-
 inline std::vector<bool> prepare_free_gapo(const ConstResidueSpan& polymer,
                                            PolymerType polymer_type) {
   std::vector<bool> gaps;
@@ -32,32 +25,29 @@ inline std::vector<bool> prepare_free_gapo(const ConstResidueSpan& polymer,
 }
 
 // pre: !!polymer
-inline AlignmentResult align_polymer(const ConstResidueSpan& polymer,
-                                     const Entity& ent,
+inline AlignmentResult align_sequence_to_polymer(
+                                     const std::vector<std::string>& full_seq,
+                                     const ConstResidueSpan& polymer,
+                                     PolymerType polymer_type,
                                      const AlignmentScoring& scoring) {
   std::map<std::string, std::uint8_t> encoding;
   for (const Residue& res : polymer)
     encoding.emplace(res.name, encoding.size());
-  for (const std::string& mon_list : ent.full_sequence)
+  for (const std::string& mon_list : full_seq)
     encoding.emplace(Entity::first_mon(mon_list), encoding.size());
-  size_t n_mon = encoding.size();
-  std::vector<std::uint8_t> model_seq;
-  model_seq.reserve(polymer.size());
-  auto first_conformer = polymer.first_conformer();
-  for (const Residue& res : first_conformer)
-    model_seq.push_back(encoding.at(res.name));
-  std::vector<std::uint8_t> full_seq;
-  full_seq.reserve(ent.full_sequence.size());
-  for (const std::string& mon_list : ent.full_sequence)
-    full_seq.push_back(encoding.at(Entity::first_mon(mon_list)));
-  std::vector<std::int8_t> score_matrix(n_mon * n_mon, scoring.mismatch);
-  for (size_t i = 0; i != n_mon; ++i)
-    score_matrix[i * n_mon + i] = scoring.match;
-  return align_sequences(full_seq.size(), full_seq.data(),
-                         model_seq.size(), model_seq.data(),
-                         prepare_free_gapo(polymer, ent.polymer_type),
-                         n_mon, score_matrix.data(),
-                         scoring.gapo, scoring.gape);
+
+  std::vector<std::uint8_t> encoded_full_seq(full_seq.size());
+  for (size_t i = 0; i != full_seq.size(); ++i)
+    encoded_full_seq[i] = encoding.at(Entity::first_mon(full_seq[i]));
+
+  std::vector<std::uint8_t> encoded_model_seq;
+  encoded_model_seq.reserve(polymer.size());
+  for (const Residue& res : polymer.first_conformer())
+    encoded_model_seq.push_back(encoding.at(res.name));
+
+  return align_sequences(encoded_full_seq, encoded_model_seq,
+                         prepare_free_gapo(polymer, polymer_type),
+                         encoding.size(), scoring);
 }
 
 inline bool seqid_matches_seqres(const ConstResidueSpan& polymer,
@@ -79,7 +69,8 @@ inline void assign_label_seq_id(ResidueSpan& polymer, const Entity& ent) {
     return;
   }
   AlignmentScoring scoring;
-  AlignmentResult result = align_polymer(polymer, ent, scoring);
+  AlignmentResult result = align_sequence_to_polymer(ent.full_sequence, polymer,
+                                                     ent.polymer_type, scoring);
   auto res_group = polymer.first_conformer().begin();
   int id = 1;
   for (AlignmentResult::Item item : result.cigar) {
