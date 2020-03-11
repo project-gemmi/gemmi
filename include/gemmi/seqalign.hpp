@@ -13,7 +13,7 @@
 
 namespace gemmi {
 
-struct Alignment {
+struct AlignmentResult {
   struct Item {
     std::uint32_t value;
     char op() const { return "MID"[value & 0xf]; }
@@ -74,11 +74,11 @@ private:
 };
 
 inline
-Alignment align_sequences(int qlen, const std::uint8_t *query,
-                          int tlen, const std::uint8_t *target,
-                          const std::vector<bool>& free_gapo,
-                          std::int8_t m, const std::int8_t *mat,
-                          std::int8_t gapo, std::int8_t gape) {
+AlignmentResult align_sequences(int qlen, const std::uint8_t *query,
+                                int tlen, const std::uint8_t *target,
+                                const std::vector<bool>& free_gapo,
+                                std::int8_t m, const std::int8_t *mat,
+                                std::int8_t gapo, std::int8_t gape) {
   // generate the query profile
   std::int8_t *query_profile = new std::int8_t[qlen * m];
   for (std::int32_t k = 0, i = 0; k < m; ++k)
@@ -156,7 +156,7 @@ Alignment align_sequences(int qlen, const std::uint8_t *query,
     eh[qlen].e = -0x40000000; // -infinity
   }
 
-  Alignment result;
+  AlignmentResult result;
   result.score = eh[qlen].h;
   delete [] query_profile;
   delete [] eh;

@@ -32,21 +32,15 @@ inline std::vector<bool> prepare_free_gapo(const ConstResidueSpan& polymer,
 }
 
 // pre: !!polymer
-inline Alignment align_polymer(const ConstResidueSpan& polymer,
-                               const Entity& ent,
-                               const AlignmentScoring& scoring) {
+inline AlignmentResult align_polymer(const ConstResidueSpan& polymer,
+                                     const Entity& ent,
+                                     const AlignmentScoring& scoring) {
   std::map<std::string, std::uint8_t> encoding;
   for (const Residue& res : polymer)
-    encoding.emplace(res.name, 0);
+    encoding.emplace(res.name, encoding.size());
   for (const std::string& mon_list : ent.full_sequence)
-    encoding.emplace(Entity::first_mon(mon_list), 0);
-  std::vector<std::string> all_monomers;
+    encoding.emplace(Entity::first_mon(mon_list), encoding.size());
   size_t n_mon = encoding.size();
-  all_monomers.reserve(n_mon);
-  for (auto& item : encoding) {
-    item.second = (std::uint8_t) all_monomers.size();
-    all_monomers.push_back(item.first);
-  }
   std::vector<std::uint8_t> model_seq;
   model_seq.reserve(polymer.size());
   auto first_conformer = polymer.first_conformer();
@@ -85,10 +79,10 @@ inline void assign_label_seq_id(ResidueSpan& polymer, const Entity& ent) {
     return;
   }
   AlignmentScoring scoring;
-  Alignment result = align_polymer(polymer, ent, scoring);
+  AlignmentResult result = align_polymer(polymer, ent, scoring);
   auto res_group = polymer.first_conformer().begin();
   int id = 1;
-  for (Alignment::Item item : result.cigar) {
+  for (AlignmentResult::Item item : result.cigar) {
     switch (item.op()) {
       case 'I':
         id += item.len();

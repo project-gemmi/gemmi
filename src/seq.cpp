@@ -59,7 +59,7 @@ static void print_text_alignment(const char* text1, const char* text2,
   for (int i = 0; i < m; ++i)
     score_matrix[i * m + i] = scoring.match;
   std::vector<bool> free_gapo(1, 1);
-  gemmi::Alignment result = gemmi::align_sequences(
+  gemmi::AlignmentResult result = gemmi::align_sequences(
       len1, v1.data(),
       len2, v2.data(),
       free_gapo, m, score_matrix.data(),
@@ -68,7 +68,7 @@ static void print_text_alignment(const char* text1, const char* text2,
   size_t pos1 = 0;
   size_t pos2 = 0;
   std::string match, out1, out2;
-  for (gemmi::Alignment::Item item : result.cigar) {
+  for (gemmi::AlignmentResult::Item item : result.cigar) {
     char op = item.op();
     for (uint32_t i = 0; i < item.len(); ++i) {
       if (op == 'I') {
@@ -89,7 +89,7 @@ static void print_text_alignment(const char* text1, const char* text2,
   printf("%s\n%s\n%s\n", match.c_str(), out1.c_str(), out2.c_str());
 }
 
-static void print_alignment_details(const gemmi::Alignment& result,
+static void print_alignment_details(const gemmi::AlignmentResult& result,
                                     const std::string& chain_name,
                                     const gemmi::ConstResidueSpan& polymer,
                                     const gemmi::Entity& ent) {
@@ -98,7 +98,7 @@ static void print_alignment_details(const gemmi::Alignment& result,
   int seq_pos = 0;
   auto model_residues = polymer.first_conformer();
   auto res = model_residues.begin();
-  for (gemmi::Alignment::Item item : result.cigar) {
+  for (gemmi::AlignmentResult::Item item : result.cigar) {
     char op = item.op();
     for (uint32_t i = 0; i < item.len(); ++i) {
       std::string fmon = gemmi::Entity::first_mon(ent.full_sequence[seq_pos]);
@@ -125,12 +125,12 @@ static void print_alignment_details(const gemmi::Alignment& result,
   }
 }
 
-static void check_label_seq_id(const gemmi::Alignment& result,
+static void check_label_seq_id(const gemmi::AlignmentResult& result,
                                const gemmi::ConstResidueSpan& polymer) {
   int seq_pos = 1;
   auto residues = polymer.first_conformer();
   auto res = residues.begin();
-  for (gemmi::Alignment::Item item : result.cigar) {
+  for (gemmi::AlignmentResult::Item item : result.cigar) {
     char op = item.op();
     for (uint32_t i = 0; i < item.len(); ++i) {
       if (op == 'D' || op == 'M') {
@@ -187,7 +187,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           gemmi::fail("No sequence (SEQRES) for chain " + chain.name);
         if (gemmi::seqid_matches_seqres(polymer, *ent))
           printf("Sequence numbers are wrt the full sequence (SEQRES).\n");
-        gemmi::Alignment result = align_polymer(polymer, *ent, scoring);
+        gemmi::AlignmentResult result = align_polymer(polymer, *ent, scoring);
         printf("%s chain %s CIGAR: %s\n",
                st.name.c_str(), chain.name.c_str(), result.cigar_str().c_str());
         if (p.options[CheckMmcif])
