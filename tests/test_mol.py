@@ -333,7 +333,7 @@ class TestMol(unittest.TestCase):
         result = gemmi.align_sequence_to_polymer(st.entities[0].full_sequence,
                                                  A.get_polymer(),
                                                  gemmi.PolymerType.Unknown)
-        print(result.cigar_str())
+        self.assertEqual(result.cigar_str(), '2I64M5I')
 
     def write_and_read(self, st, via_cif):
         if via_cif:
@@ -580,9 +580,11 @@ class TestMol(unittest.TestCase):
         result = gemmi.align_string_sequences(list('AABCC'),
                                               list('ABC'), [True])
         self.assertEqual(result.score, 0)
+        self.assertEqual(result.identity(), 100.)
         self.assertEqual(result.cigar_str(), '1I3M1I')
         result = gemmi.align_string_sequences(list('SIMILARITY'),
                                               list('PILLAR'), [])
+        self.assertEqual(result.match_count, 4)
         self.assertEqual(result.cigar_str(), '3M1I3M3I')
 
 

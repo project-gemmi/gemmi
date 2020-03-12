@@ -29,6 +29,7 @@ struct AlignmentResult {
     std::uint32_t len() const { return value >> 4; }
   };
   int score;
+  int match_count;
   std::vector<Item> cigar;
 
   std::string cigar_str() const {
@@ -38,6 +39,19 @@ struct AlignmentResult {
       s += item.op();
     }
     return s;
+  }
+
+  // 1=query, 2=target, other=shorter
+  std::size_t input_length(int which) const {
+    std::size_t counters[3] = {0, 0, 0};
+    for (Item item : cigar)
+      counters[item.value & 0xf] += item.len();
+    if (which == 1 || which == 2)
+      return counters[0] + counters[which];
+    return counters[0] + std::min(counters[1], counters[2]);
+  }
+  double identity(int which=0) const {
+    return 100. * match_count / input_length(which);
   }
 
   // In the backtrack matrix, value p[] has the following structure:
@@ -71,6 +85,22 @@ struct AlignmentResult {
     else if (j >= 0)
       push_cigar(1, j + 1); // first insertion
     std::reverse(cigar.begin(), cigar.end());
+  }
+
+  void count_matches(const std::vector<std::uint8_t>& query,
+                     const std::vector<std::uint8_t>& target) {
+    match_count = 0;
+    size_t pos1 = 0, pos2 = 0;
+    for (Item item : cigar)
+      if (item.op() == 'M') {
+        for (uint32_t i = 0; i < item.len(); ++i)
+          if (query[pos1++] == target[pos2++])
+            ++match_count;
+      } else if (item.op() == 'I') {
+        pos1 += item.len();
+      } else /*item.op() == 'D'*/ {
+        pos2 += item.len();
+      }
   }
 
 private:
@@ -182,6 +212,7 @@ AlignmentResult align_sequences(const std::vector<std::uint8_t>& query,
   delete [] eh;
   result.backtrack_to_cigar(z, target.size(), query.size());
   delete [] z;
+  result.count_matches(query, target);
   return result;
 }
 

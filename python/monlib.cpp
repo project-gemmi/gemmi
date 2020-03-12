@@ -204,7 +204,9 @@ void add_monlib(py::module& m) {
 
   py::class_<AlignmentResult>(m, "AlignmentResult")
     .def_readonly("score", &AlignmentResult::score)
+    .def_readonly("match_count", &AlignmentResult::match_count)
     .def("cigar_str", &AlignmentResult::cigar_str)
+    .def("identity", &AlignmentResult::identity, py::arg("which")=0)
     ;
 
   m.def("align_string_sequences", [](const std::vector<std::string>& query,
