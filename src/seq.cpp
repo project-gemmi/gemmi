@@ -15,7 +15,8 @@
 
 using std::printf;
 
-enum OptionIndex { Match=4, Mismatch, GapOpen, GapExt, CheckMmcif, TextAlign };
+enum OptionIndex { Match=4, Mismatch, GapOpen, GapExt,
+                   CheckMmcif, PrintOneLetter, TextAlign };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -29,6 +30,8 @@ static const option::Descriptor Usage[] = {
   CommonUsage[Verbose],
   { CheckMmcif, 0, "", "check-mmcif", Arg::None,
     "  --check-mmcif  \tCompare alignment with mmCIF _atom_site.label_seq_id" },
+  { PrintOneLetter, 0, "p", "", Arg::None,
+    "  -p  \tprint formatted alignment with one-letter codes." },
   { TextAlign, 0, "", "text-align", Arg::None,
     "  --text-align  \tAlign characters in two strings (for testing)." },
 
@@ -45,7 +48,8 @@ static const option::Descriptor Usage[] = {
 };
 
 static void print_text_alignment(const char* text1, const char* text2,
-                                 const gemmi::AlignmentScoring& scoring) {
+                                 const gemmi::AlignmentScoring& scoring,
+                                 bool print_one_letter) {
   std::vector<std::string> v1(std::strlen(text1));
   for (size_t i = 0; i != v1.size(); ++i)
     v1[i] = text1[i];
@@ -56,28 +60,11 @@ static void print_text_alignment(const char* text1, const char* text2,
   gemmi::AlignmentResult result
       = gemmi::align_string_sequences(v1, v2, free_gapo, scoring);
   printf("Score: %d   CIGAR: %s\n", result.score, result.cigar_str().c_str());
-  size_t pos1 = 0;
-  size_t pos2 = 0;
-  std::string match, out1, out2;
-  for (gemmi::AlignmentResult::Item item : result.cigar) {
-    char op = item.op();
-    for (uint32_t i = 0; i < item.len(); ++i) {
-      if (op == 'I') {
-        match += 'I';
-        out1 += text1[pos1++];
-        out2 += '-';
-      } else if (op == 'D') {
-        match += 'D';
-        out1 += '-';
-        out2 += text2[pos2++];
-      } else /* if (op == 'M') */ {
-        match += text1[pos1] == text2[pos2] ? '=' : 'X';
-        out1 += text1[pos1++];
-        out2 += text2[pos2++];
-      }
-    }
+  if (print_one_letter) {
+    printf("%s\n", result.add_gaps(text1, 1).c_str());
+    printf("%s\n", result.match_string.c_str());
+    printf("%s\n", result.add_gaps(text2, 2).c_str());
   }
-  printf("%s\n%s\n%s\n", match.c_str(), out1.c_str(), out2.c_str());
 }
 
 static void print_alignment_details(const gemmi::AlignmentResult& result,
@@ -150,7 +137,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     scoring.gape = std::atoi(p.options[GapExt].arg);
   if (p.options[TextAlign]) {
     p.require_positional_args(2);
-    print_text_alignment(p.nonOption(0), p.nonOption(1), scoring);
+    print_text_alignment(p.nonOption(0), p.nonOption(1), scoring,
+                         p.options[PrintOneLetter]);
     return 0;
   }
   p.require_input_files_as_args();
@@ -185,6 +173,13 @@ int GEMMI_MAIN(int argc, char **argv) {
                st.name.c_str(), chain.name.c_str(), result.cigar_str().c_str());
         if (p.options[CheckMmcif])
           check_label_seq_id(result, polymer);
+        if (p.options[PrintOneLetter]) {
+          std::string text1 = gemmi::one_letter_code(ent->full_sequence);
+          std::string text2 = gemmi::one_letter_code(polymer);
+          printf("%s\n", result.add_gaps(text1, 1).c_str());
+          printf("%s\n", result.match_string.c_str());
+          printf("%s\n", result.add_gaps(text2, 2).c_str());
+        }
         if (verbose)
           print_alignment_details(result, chain.name, polymer, *ent);
       }

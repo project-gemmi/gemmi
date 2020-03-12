@@ -10,6 +10,7 @@ Currently, we only use match/mismatch scoring matrix.
   -V, --version  Print version and exit.
   -v, --verbose  Verbose output.
   --check-mmcif  Compare alignment with mmCIF _atom_site.label_seq_id
+  -p             print formatted alignment with one-letter codes.
   --text-align   Align characters in two strings (for testing).
 
 Scoring (absolute values):

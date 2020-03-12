@@ -30,6 +30,7 @@ struct AlignmentResult {
   };
   int score;
   int match_count;
+  std::string match_string;
   std::vector<Item> cigar;
 
   std::string cigar_str() const {
@@ -50,7 +51,7 @@ struct AlignmentResult {
       return counters[0] + counters[which];
     return counters[0] + std::min(counters[1], counters[2]);
   }
-  double identity(int which=0) const {
+  double calculate_identity(int which=0) const {
     return 100. * match_count / input_length(which);
   }
 
@@ -87,6 +88,7 @@ struct AlignmentResult {
     std::reverse(cigar.begin(), cigar.end());
   }
 
+
   void count_matches(const std::vector<std::uint8_t>& query,
                      const std::vector<std::uint8_t>& target) {
     match_count = 0;
@@ -94,13 +96,30 @@ struct AlignmentResult {
     for (Item item : cigar)
       if (item.op() == 'M') {
         for (uint32_t i = 0; i < item.len(); ++i)
-          if (query[pos1++] == target[pos2++])
+          if (query[pos1++] == target[pos2++]) {
             ++match_count;
+            match_string += '|';
+          } else {
+            match_string += '.';
+          }
       } else if (item.op() == 'I') {
         pos1 += item.len();
+        match_string.append(item.len(), ' ');
       } else /*item.op() == 'D'*/ {
         pos2 += item.len();
+        match_string.append(item.len(), ' ');
       }
+  }
+
+  std::string add_gaps(const std::string& s, unsigned which) {
+    std::string out;
+    size_t pos = 0;
+    for (Item item : cigar) {
+      bool show = (item.value & 0xf) == 0 || (item.value & 0xf) == which;
+      for (uint32_t i = 0; i < item.len(); ++i)
+        out += show ? s.at(pos++) : '-';
+    }
+    return out;
   }
 
 private:

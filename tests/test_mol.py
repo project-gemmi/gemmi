@@ -580,8 +580,13 @@ class TestMol(unittest.TestCase):
         result = gemmi.align_string_sequences(list('AABCC'),
                                               list('ABC'), [True])
         self.assertEqual(result.score, 0)
-        self.assertEqual(result.identity(), 100.)
         self.assertEqual(result.cigar_str(), '1I3M1I')
+        self.assertEqual(result.add_gaps('AABCC', 1), 'AABCC')
+        self.assertEqual(result.add_gaps('ABC', 2), '-ABC-')
+        self.assertEqual(result.calculate_identity(), 100.)
+        self.assertEqual(result.calculate_identity(1), 60.)
+        self.assertEqual(result.calculate_identity(2), 100.)
+        self.assertEqual(result.match_string, ' ||| ')
         result = gemmi.align_string_sequences(list('SIMILARITY'),
                                               list('PILLAR'), [])
         self.assertEqual(result.match_count, 4)
