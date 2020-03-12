@@ -60,6 +60,20 @@ inline double calculate_sequence_weight(const std::vector<std::string>& seq,
   return weight;
 }
 
+inline std::string one_letter_code(const std::vector<std::string>& seq) {
+  std::string r;
+  for (const std::string& item : seq)
+    r += find_tabulated_residue(Entity::first_mon(item)).fasta_code();
+  return r;
+}
+
+inline std::string one_letter_code(const ConstResidueSpan& polymer) {
+  std::string r;
+  for (const Residue& res : polymer.first_conformer())
+    r += find_tabulated_residue(res.name).fasta_code();
+  return r;
+}
+
 inline bool is_polymer_residue(const Residue& res, PolymerType ptype) {
   ResidueInfo info = find_tabulated_residue(res.name);
   // If a standard residue is HETATM we assume that it is in the buffer.
