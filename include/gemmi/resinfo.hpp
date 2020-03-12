@@ -44,6 +44,7 @@ struct ResidueInfo {
   bool is_buffer_or_water() const { return kind == HOH || kind == BUF; }
   // PDB format has non-standard residues (modified AA) marked as HETATM.
   bool is_standard() const { return (one_letter_code & 0x20) == 0; }
+  char fasta_code() const { return is_standard() ? one_letter_code : 'X'; }
 };
 
 // hyderogen_count needs to be verified
