@@ -227,10 +227,10 @@ which has three numeric properties: ``x``, ``y`` and ``z``.
 .. doctest::
 
     >>> v = gemmi.Vec3(1.2, 3.4, 5.6)
-    >>> v.y
-    3.4
+    >>> v.y = -v.y
+    >>> # it can also be indexed
     >>> v[1]
-    3.4
+    -3.4
 
 The only reason to have separate types is to prevent functions that
 expect fractional coordinates from accepting orthogonal ones, and vice versa.
@@ -258,6 +258,8 @@ other functions. See headers ``gemmi/math.hpp`` and ``gemmi/calculate.hpp``.
 
 ----
 
+.. _transform:
+
 Working with macromolecular coordinates involves 3D transformations,
 such as crystallographic and non-crystallographic symmetry operations,
 and fractionalization and orthogonalization of coordinates.
@@ -267,14 +269,41 @@ This requires a tiny bit of linear algebra.
 or by a 3x3 matrix and a translation vector. Gemmi uses the latter.
 Transformations are represented by the ``Transform`` class
 that has two member variables:
-``mat`` (of type ``Mat33``) and ``vec`` (of type ``Vec3``).
+``mat`` (of type ``Mat33``) and ``vec`` (of type ``Vec3``, which was
+introduced above).
 
-To avoid mixing of orthogonal and fractional coordinates
-Gemmi also has ``FTransform``, which is like ``Transform``,
-but can be applied only to ``Fractional`` coordinates.
-In C++ all these types are defined in ``gemmi/math.hpp``.
+.. doctest::
 
-**Python**
+    >>> tr = gemmi.Transform()  # identity
+    >>> tr.mat
+    <gemmi.Mat33 [1, 0, 0]
+                 [0, 1, 0]
+                 [0, 0, 1]>
+    >>> tr.vec
+    <gemmi.Vec3(0, 0, 0)>
+
+Both ``Vec3`` and ``Mat33`` can be converted to and from Python's list:
+In case of ``Mat33`` it is a nested list:
+
+.. doctest::
+
+    >>> tr.vec.fromlist([3.0, 4.5, 5])
+    >>> tr.vec.tolist()
+    [3.0, 4.5, 5.0]
+
+    >>> # nested listed for Mat33
+    >>> m = tr.mat.tolist()
+    >>> m
+    [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    >>> m[1][2] = -5
+    >>> tr.mat.fromlist(m)
+    >>> tr.mat
+    <gemmi.Mat33 [1, 0, 0]
+                 [0, 1, -5]
+                 [0, 0, 1]>
+
+
+Here is an example that shows a few other properties:
 
 .. doctest::
 
@@ -290,16 +319,23 @@ In C++ all these types are defined in ``gemmi/math.hpp``.
     1.000003887799667
     >>> ncs_op.vec
     <gemmi.Vec3(-14.1959, 0.72997, -30.5229)>
+
     >>> # is the 3x3 matrix above orthogonal?
     >>> mat = ncs_op.mat
     >>> identity = gemmi.Mat33()
     >>> mat.multiply(mat.transpose()).approx(identity, epsilon=1e-5)
     True
+
     >>> ncs_op.apply(gemmi.Vec3(20, 30, 40))
     <gemmi.Vec3(1.8895, 28.4929, 12.7262)>
     >>> ncs_op.inverse().apply(_)
     <gemmi.Vec3(20, 30, 40)>
 
+To avoid mixing of orthogonal and fractional coordinates
+Gemmi also has ``FTransform``, which is like ``Transform``,
+but can be applied only to ``Fractional`` coordinates.
+
+In C++ all these types are defined in ``gemmi/math.hpp``.
 
 .. _unitcell:
 

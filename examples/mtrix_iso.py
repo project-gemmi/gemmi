@@ -11,7 +11,7 @@ def check_mtrix_rot(path):
     st = gemmi.read_structure(path)
     for ncs in st.ncs:
         mat = ncs.tr.mat
-        m_mt = mat.multiply(mat.transpose()).as_list()
+        m_mt = mat.multiply(mat.transpose()).tolist()
         eps = max(abs(m_mt[i][j] - (i == j))
                   for i in [0, 1, 2] for j in [0, 1, 2])
         det = mat.determinant()

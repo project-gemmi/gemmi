@@ -25,7 +25,18 @@ void add_unitcell(py::module& m) {
     .def_readwrite("x", &Vec3::x)
     .def_readwrite("y", &Vec3::y)
     .def_readwrite("z", &Vec3::z)
+    .def("tolist", [](const Vec3& self) {
+        return std::array<double,3>{{self.x, self.y, self.z}};
+    })
+    .def("fromlist", [](Vec3& self, std::array<double,3>& v) {
+        self.x = v[0];
+        self.y = v[1];
+        self.z = v[2];
+    })
     .def("__getitem__", (double (Vec3::*)(int) const) &Vec3::at)
+    .def("__setitem__", [](Vec3& self, int idx, double value) {
+        self.at(idx) = value;
+    })
     .def("__repr__", [](const Vec3& self) {
         return "<gemmi.Vec3(" + triple(self.x, self.y, self.z) + ")>";
     });
@@ -37,10 +48,15 @@ void add_unitcell(py::module& m) {
     .def("approx", &Mat33::approx, py::arg("other"), py::arg("epsilon"))
     .def("determinant", &Mat33::determinant)
     .def("inverse", &Mat33::inverse)
-    .def("as_list", [](const Mat33& m) -> std::array<std::array<double,3>,3> {
+    .def("tolist", [](const Mat33& m) -> std::array<std::array<double,3>,3> {
         return {{{{m[0][0], m[0][1], m[0][2]}},
                  {{m[1][0], m[1][1], m[1][2]}},
                  {{m[2][0], m[2][1], m[2][2]}}}};
+    })
+    .def("fromlist", [](Mat33& self, std::array<std::array<double,3>,3>& m) {
+        for (int i = 0; i < 3; ++i)
+          for (int j = 0; j < 3; ++j)
+            self.a[i][j] = m[i][j];
     })
     .def("__repr__", [](const Mat33& self) {
         const auto& a = self.a;
@@ -49,6 +65,7 @@ void add_unitcell(py::module& m) {
                "             [" + triple(a[2][0], a[2][1], a[2][2]) + "]>";
     });
   py::class_<Transform>(m, "Transform")
+    .def(py::init<>())
     .def_readonly("mat", &Transform::mat)
     .def_readonly("vec", &Transform::vec)
     .def("inverse", &Transform::inverse)
