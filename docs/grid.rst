@@ -211,6 +211,26 @@ This function can also take fractional position:
   >>> grid.interpolate_value(gemmi.Fractional(1/24, 1/24, 1/24))
   0.890625
 
+If you need to interpolate values at so many points on a regular 3D grid
+that calling ``interpolate_value()`` for each point would be too slow,
+use ``interpolate_values()`` (with s at the end) instead.
+It takes a 3D numpy array and a :ref:`Transform <transform>` that
+relates indices of the array to positions in the grid,
+and fills the array with the interpolated values:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> # first we create a numpy array of the same type as the grid
+  >>> arr = numpy.zeros([32, 32, 32], dtype=numpy.float32)
+  >>> # then we setup a transformation (array indices) -> (position [A]).
+  >>> tr = gemmi.Transform()
+  >>> tr.mat.fromlist([[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]])
+  >>> tr.vec.fromlist([1, 2, 3])
+  >>> grid.interpolate_values(arr, tr)
+  >>> arr[10, 10, 10]  # -> corresponds to Position(2, 3, 4)
+  2.0333264
+
 If you would like to set grid points near a specified position
 use the ``set_points_around()`` function:
 
