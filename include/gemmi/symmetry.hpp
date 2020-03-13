@@ -910,6 +910,8 @@ struct SpaceGroup { // typically 44 bytes
 
   std::string colon_ext() const { return ext ? std::string(":") + ext : ""; }
   std::string xhm() const { return hm + colon_ext(); }
+  // (old) CCP4 spacegroup names start with H for hexagonal setting
+  char ccp4_lattice_type() const { return ext == 'H' ? 'H' : hm[0]; }
 
   // P 1 2 1 -> P2, but P 1 1 2 -> P112. R 3:H -> H3.
   std::string short_name() const {

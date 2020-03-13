@@ -787,13 +787,15 @@ void Mtz::write_to_stream(std::FILE* stream) const {
   WRITE("SORT  %3d %3d %3d %3d %3d", sort_order[0], sort_order[1],
         sort_order[2], sort_order[3], sort_order[4]);
   GroupOps ops = spacegroup->operations();
-  WRITE("SYMINF %3d %2d %c %5d %*s'%s' PG%s",
+  char lat_type = spacegroup->ccp4_lattice_type();
+  WRITE("SYMINF %3d %2d %c %5d %*s'%c%s' PG%s",
         ops.order(),               // number of symmetry operations
         (int) ops.sym_ops.size(),  // number of primitive operations
-        spacegroup->hm[0],         // lattice type
+        lat_type,                  // lattice type
         spacegroup->ccp4,          // space group number 
         20 - (int) std::strlen(spacegroup->hm), "",
-        spacegroup->hm,            // space group name
+        lat_type,                  // space group name (first letter)
+        spacegroup->hm + 1,        // space group name (the rest)
         spacegroup->point_group_hm()); // point group name
   for (Op op : ops)
     WRITE("SYMM %s", to_upper(op.triplet()).c_str());
