@@ -19,6 +19,7 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 #include <pybind11/complex.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
+#include <pybind11/numpy.h>
 
 namespace py = pybind11;
 using namespace gemmi;
@@ -74,6 +75,16 @@ void add_grid(py::module& m, const std::string& name) {
          (T (Gr::*)(const Fractional&) const) &Gr::interpolate_value)
     .def("interpolate_value",
          (T (Gr::*)(const Position&) const) &Gr::interpolate_value)
+    .def("interpolate_values",
+         [](const Gr& self, py::array_t<T> arr, const Transform& tr) {
+        auto r = arr.template mutable_unchecked<3>();
+        for (int i = 0; i < r.shape(0); ++i)
+          for (int j = 0; j < r.shape(1); ++j)
+            for (int k = 0; k < r.shape(2); ++k) {
+              Position pos(tr.apply(Vec3(i, j, k)));
+              r(i, j, k) = self.interpolate_value(pos);
+            }
+    }, py::arg().noconvert(), py::arg())
     .def("set_unit_cell", (void (Gr::*)(const UnitCell&)) &Gr::set_unit_cell)
     .def("set_points_around", &Gr::set_points_around,
          py::arg("position"), py::arg("radius"), py::arg("value"))
