@@ -342,7 +342,7 @@ inline std::vector<Op::Tran> centring_vectors(char lattice_symbol) {
     // hall_symbols.html has no H, ITfC 2010 has no S and T
     case 'S': return {{0, 0, 0}, {t, t, d}, {d, t, d}};
     case 'T': return {{0, 0, 0}, {t, d, t}, {d, t, d}};
-    case 'H': return {{0, 0, 0}, {t, d, 0}, {d, t, 0}};
+    case 'H': return {{0, 0, 0}, {d, t, 0}, {t, d, 0}};
     case 'F': return {{0, 0, 0}, {0, h, h}, {h, 0, h}, {h, h, 0}};
     default: fail(std::string("not a lattice symbol: ") + lattice_symbol);
   }
