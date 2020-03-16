@@ -797,8 +797,12 @@ void Mtz::write_to_stream(std::FILE* stream) const {
         lat_type,                  // space group name (first letter)
         spacegroup->hm + 1,        // space group name (the rest)
         spacegroup->point_group_hm()); // point group name
-  for (Op op : ops)
-    WRITE("SYMM %s", to_upper(op.triplet()).c_str());
+  if (!symops.empty() && ops.is_same_as(split_centering_vectors(symops)))
+    for (Op op : symops)
+      WRITE("SYMM %s", to_upper(op.triplet()).c_str());
+  else
+    for (Op op : ops)
+      WRITE("SYMM %s", to_upper(op.triplet()).c_str());
   auto reso = calculate_min_max_1_d2();
   WRITE("RESO %-20.12f %-20.12f", reso[0], reso[1]);
   if (std::isnan(valm))
