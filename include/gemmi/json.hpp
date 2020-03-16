@@ -60,7 +60,8 @@ inline void fill_document_from_sajson(Document& d, const sajson::document& s) {
     fail("not mmJSON");
   std::string block_name = root.get_object_key(0).as_string();
   if (!starts_with(block_name, "data_"))
-    fail("top level key should start with data_");
+    fail("not mmJSON - top level key should start with data_\n"
+         "(if you use gemmi-cif2json to write JSON, use -m for mmJSON)");
   d.blocks.emplace_back(block_name.substr(5));
   std::vector<Item>& items = d.blocks[0].items;
   sajson::value top = root.get_object_value(0);

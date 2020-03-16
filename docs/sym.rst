@@ -199,7 +199,7 @@ It has the properties listed at the beginning of this section
   'H3'
   >>> sg.is_enantiomorphic()      # is it one of 22 chiral space groups?
   False
-  >>> sg.is_sohncke()             # is it one of 65 Sohncke space group?
+  >>> sg.is_sohncke()             # is it one of 65 Sohncke space groups?
   True
   >>> sg.point_group_hm()         # H-M name of the point group
   '3'

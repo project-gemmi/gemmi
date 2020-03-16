@@ -3,7 +3,8 @@ Usage:
  gemmi cif2json [options] INPUT_FILE OUTPUT_FILE
 
 Convert CIF file (any CIF files, including mmCIF) to JSON.
-The output can be COMCIFS CIF-JSON, mmJSON, or a custom JSON flavor.
+The output can be COMCIFS CIF-JSON (-c), mmJSON (-m),
+or a custom JSON flavor (default).
 
 General options:
   -h, --help             Print usage and exit.

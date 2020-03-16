@@ -26,7 +26,8 @@ static const option::Descriptor Usage[] = {
     "Usage:"
     "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
     "\n\nConvert CIF file (any CIF files, including mmCIF) to JSON."
-    "\nThe output can be COMCIFS CIF-JSON, mmJSON, or a custom JSON flavor."
+    "\nThe output can be COMCIFS CIF-JSON (-c), mmJSON (-m),"
+    "\nor a custom JSON flavor (default)."
     "\n\nGeneral options:" },
   CommonUsage[Help],
   CommonUsage[Version],
