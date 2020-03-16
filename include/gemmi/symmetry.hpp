@@ -338,7 +338,7 @@ inline std::vector<Op::Tran> centring_vectors(char lattice_symbol) {
     case 'B': return {{0, 0, 0}, {h, 0, h}};
     case 'C': return {{0, 0, 0}, {h, h, 0}};
     case 'I': return {{0, 0, 0}, {h, h, h}};
-    case 'R': return {{0, 0, 0}, {t, d, d}, {d, t, t}};
+    case 'R': return {{0, 0, 0}, {d, t, t}, {t, d, d}};
     // hall_symbols.html has no H, ITfC 2010 has no S and T
     case 'S': return {{0, 0, 0}, {t, t, d}, {d, t, d}};
     case 'T': return {{0, 0, 0}, {t, d, t}, {d, t, d}};
