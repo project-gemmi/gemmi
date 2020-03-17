@@ -22,7 +22,7 @@ namespace pegtl = tao::pegtl;
 namespace cif = gemmi::cif;
 namespace rules = gemmi::cif::rules;
 
-enum OptionIndex { CountFiles=3, Full=4, EntriesIdx, Sf };
+enum OptionIndex { CountFiles=3, Glob, Full, EntriesIdx, Sf };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -31,7 +31,9 @@ static const option::Descriptor Usage[] = {
   CommonUsage[Help],
   CommonUsage[Version],
   { CountFiles, 0, "", "count-files", Arg::None,
-    "  --count-files  \tCount files instead of blocks.\n" },
+    "  --count-files  \tCount files instead of blocks." },
+  { Glob, 0, "", "glob", Arg::Required,
+    "  --glob=GLOB  \tProcess files matching glob pattern.\n" },
   { NoOp, 0, "", "", Arg::None,
     "Options for making https://project-gemmi.github.io/pdb-stats/tags.html" },
   { Full, 0, "", "full", Arg::None, "  --full  \tGather data for tags.html" },
@@ -334,8 +336,13 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
   } else {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
-      for (const std::string& path : gemmi::CifWalk(p.nonOption(i)))
-        process(ctx, path);
+      if (p.options[Glob])
+        for (const std::string& path : gemmi::GlobWalk(p.nonOption(i),
+                                                       p.options[Glob].arg))
+          process(ctx, path);
+      else
+        for (const std::string& path : gemmi::CifWalk(p.nonOption(i)))
+          process(ctx, path);
     }
   }
   if (p.options[Full])
