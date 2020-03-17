@@ -5,4 +5,8 @@ List CIF tags with counts of blocks and values.
   -h, --help     Print usage and exit.
   -V, --version  Print version and exit.
   --count-files  Count files instead of blocks.
-  --full         Gather data for project-gemmi.github.io/pdb-stats/tags.html
+
+Options for making https://project-gemmi.github.io/pdb-stats/tags.html
+  --full         Gather data for tags.html
+  --entries-idx  Use entries.idx to read more recent entries first.
+  --sf           (for use with --entries-idx) Read SF mmCIF files.

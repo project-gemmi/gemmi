@@ -355,7 +355,7 @@ void compare_with_mtz(const Model& model, const UnitCell& cell,
   }
 }
 
-void process(const std::string& input, const OptParser& p) {
+static void process(const std::string& input, const OptParser& p) {
   // read (Small)Structure
   gemmi::Structure st = gemmi::read_structure_gz(input);
   gemmi::SmallStructure small;
