@@ -760,6 +760,9 @@ struct Model {
   Chain* find_chain(const std::string& chain_name) {
     return impl::find_or_null(chains, chain_name);
   }
+  const Chain* find_chain(const std::string& chain_name) const {
+    return const_cast<Model*>(this)->find_chain(chain_name);
+  }
 
   // Returns the last chain with given name, or nullptr.
   Chain* find_last_chain(const std::string& chain_name) {

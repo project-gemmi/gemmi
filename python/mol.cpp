@@ -295,7 +295,8 @@ void add_mol(py::module& m) {
          py::return_value_policy::reference_internal)
     .def("get_all_residue_names", &Model::get_all_residue_names)
     .def("find_cra", (CRA (Model::*)(const AtomAddress&)) &Model::find_cra)
-    .def("find_chain", &Model::find_chain,
+    .def("find_chain",
+         (Chain* (Model::*)(const std::string&))&Model::find_chain,
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("find_last_chain", &Model::find_last_chain,
          py::arg("name"), py::return_value_policy::reference_internal)
