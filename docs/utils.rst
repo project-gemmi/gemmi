@@ -539,21 +539,21 @@ Example::
   A   85  CYS: N CA C O CB SG H HA HB2 HB3 HG
   A  152  CSD: N CA CB SG C O OD1 OD2 HA HB2 HB3
 
-seq
-===
+align
+=====
 
 Sequence alignment (global, pairwise, affine gap penalty).
 Used primarily for aligning the residues in the model's chains
 to the full sequence from the SEQRES record.
 
-.. literalinclude:: seq-help.txt
+.. literalinclude:: align-help.txt
    :language: console
 
 For the testing purpose, it can align text strings.
 For example, the Levenshtein distance can be calculated by setting
 the gap opening penalty to zero::
 
-    $ ./gemmi seq --match=0 --gapo=0 --text-align Saturday Sunday
+    $ ./gemmi align --match=0 --gapo=0 --text-align Saturday Sunday
     Score: -3   CIGAR: 1M2I5M
     =II=X===
     Saturday

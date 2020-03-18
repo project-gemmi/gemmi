@@ -10,7 +10,7 @@
 
 #include <cstdio>   // for printf, fprintf, putchar
 #include <cstring>  // for strlen
-#define GEMMI_PROG seq
+#define GEMMI_PROG align
 #include "options.h"
 
 using std::printf;

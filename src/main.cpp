@@ -23,7 +23,7 @@ int mtz_main(int argc, char** argv);
 int mtz2cif_main(int argc, char** argv);
 int residues_main(int argc, char** argv);
 int rmsz_main(int argc, char** argv);
-int seq_main(int argc, char** argv);
+int align_main(int argc, char** argv);
 int sf2map_main(int argc, char** argv);
 int sfcalc_main(int argc, char** argv);
 int sg_main(int argc, char** argv);
@@ -41,6 +41,7 @@ struct SubCmd {
 
 #define CMD(s, desc) { #s, &s##_main, desc }
 static SubCmd subcommands[] = {
+  CMD(align, "sequence alignment (global, pairwise, affine gap penalty)"),
   CMD(blobs, "list unmodelled electron density blobs"),
   CMD(cif2mtz, "convert structure factor mmCIF to MTZ"),
   CMD(cif2json, "translate (mm)CIF to (mm)JSON"),
@@ -59,7 +60,6 @@ static SubCmd subcommands[] = {
   CMD(mtz2cif, "convert MTZ to structure factor mmCIF"),
   CMD(residues, "list residues from a coordinate file"),
   CMD(rmsz, "validate geometry using monomer library"),
-  CMD(seq, "sequence alignment (global, pairwise, affine gap penalty)"),
   CMD(sf2map, "transform map coefficients (from MTZ or mmCIF) to map"),
   CMD(sfcalc, "calculate structure factors from a model"),
   CMD(sg, "info about space groups"),

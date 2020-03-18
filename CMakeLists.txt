@@ -205,9 +205,9 @@ add_executable(gemmi-rmsz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/rmsz.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-rmsz)
 
-add_executable(gemmi-seq EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/seq.cpp $<TARGET_OBJECTS:input>)
-support_gz(gemmi-seq)
+add_executable(gemmi-align EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/align.cpp $<TARGET_OBJECTS:input>)
+support_gz(gemmi-align)
 
 add_executable(gemmi-sf2map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/sf2map.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:input>)
@@ -233,13 +233,14 @@ add_executable(gemmi-wcn EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-wcn)
 
 add_executable(gemmi-prog
-               src/blobs.cpp src/cif2mtz.cpp src/cif2json.cpp src/contact.cpp
+               src/align.cpp src/blobs.cpp
+               src/cif2mtz.cpp src/cif2json.cpp src/contact.cpp
                src/contents.cpp src/convert.cpp src/fprime.cpp
                src/grep.cpp src/h.cpp src/json2cif.cpp
                src/main.cpp src/map.cpp src/map2sf.cpp
                src/mask.cpp src/mondiff.cpp src/mtz.cpp src/mtz2cif.cpp
                src/residues.cpp src/rmsz.cpp
-               src/seq.cpp src/sf2map.cpp src/sfcalc.cpp src/sg.cpp
+               src/sf2map.cpp src/sfcalc.cpp src/sg.cpp
                src/tags.cpp src/validate.cpp src/validate_mon.cpp src/wcn.cpp
                $<TARGET_OBJECTS:mapcoef>
                $<TARGET_OBJECTS:input>

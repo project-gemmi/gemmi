@@ -1,19 +1,19 @@
-$ gemmi seq -h
+$ gemmi align -h
 Pairwise, global alignment with scoring matrix and affine gap penalty.
 
 Usage:
 
-gemmi seq [options] FILE[...]
+gemmi align [options] FILE[...]
     Aligns model to the sequence (SEQRES) from the same FILE.
     The FILE can be either in the PDB or mmCIF format.
     If the mmCIF format is used, option --check-mmcif can be used.
 
-gemmi seq [options] --query=CHAIN1 --target=CHAIN2 FILE1 FILE2
+gemmi align [options] --query=CHAIN1 --target=CHAIN2 FILE1 FILE2
     Aligns CHAIN1 from FILE1 to CHAIN2 from FILE2.
     By default, the sequence of residues in the model is used.
     To use SEQRES prepend '+' to the chain name (e.g. --query=+A).
 
-gemmi seq [options] --text-align STRING1 STRING2
+gemmi align [options] --text-align STRING1 STRING2
     Aligns two ASCII strings (used for testing).
 
 Options:

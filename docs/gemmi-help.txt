@@ -9,6 +9,7 @@ https://github.com/project-gemmi/gemmi
 Usage: gemmi [--version] [--help] <command> [<args>]
 
 Commands:
+ align         sequence alignment (global, pairwise, affine gap penalty)
  blobs         list unmodelled electron density blobs
  cif2mtz       convert structure factor mmCIF to MTZ
  cif2json      translate (mm)CIF to (mm)JSON
@@ -27,7 +28,6 @@ Commands:
  mtz2cif       convert MTZ to structure factor mmCIF
  residues      list residues from a coordinate file
  rmsz          validate geometry using monomer library
- seq           sequence alignment (global, pairwise, affine gap penalty)
  sf2map        transform map coefficients (from MTZ or mmCIF) to map
  sfcalc        calculate structure factors from a model
  sg            info about space groups
