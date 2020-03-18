@@ -25,6 +25,7 @@ PDB input options:
 PDB output options:
   --short-ter            Write PDB TER records without numbers (iotbx compat.).
   --linkr                Write LINKR record (for Refmac) if link_id is known.
+  --minimal-pdb          Write only the most essential records.
 
 Macromolecular operations:
   --expand-ncs=dup|new   Expand strict NCS specified in MTRIXn or equivalent.

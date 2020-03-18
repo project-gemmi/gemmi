@@ -22,7 +22,8 @@ struct PdbWriteOptions {
 
 void write_pdb(const Structure& st, std::ostream& os,
                PdbWriteOptions opt=PdbWriteOptions());
-void write_minimal_pdb(const Structure& st, std::ostream& os);
+void write_minimal_pdb(const Structure& st, std::ostream& os,
+                       PdbWriteOptions opt=PdbWriteOptions());
 std::string make_pdb_headers(const Structure& st);
 
 // Name as a string left-padded like in the PDB format:
@@ -602,10 +603,11 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
   WRITE("%-80s\n", "END");
 }
 
-void write_minimal_pdb(const Structure& st, std::ostream& os) {
+void write_minimal_pdb(const Structure& st, std::ostream& os,
+                       PdbWriteOptions opt) {
   impl::write_cryst1(st, os);
   impl::write_ncs(st, os);
-  impl::write_atoms(st, os, PdbWriteOptions());
+  impl::write_atoms(st, os, opt);
 }
 
 #undef WRITE

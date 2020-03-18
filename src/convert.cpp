@@ -40,7 +40,7 @@ struct ConvArg: public Arg {
 enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, PdbxStyle, BlockName,
   ExpandNcs, ExpandAssembly, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
-  ShortTer, Linkr, SegmentAsChain,
+  ShortTer, Linkr, MinimalPdb, SegmentAsChain,
 };
 
 static const option::Descriptor Usage[] = {
@@ -75,6 +75,8 @@ static const option::Descriptor Usage[] = {
     "  --short-ter  \tWrite PDB TER records without numbers (iotbx compat.)." },
   { Linkr, 0, "", "linkr", Arg::None,
     "  --linkr  \tWrite LINKR record (for Refmac) if link_id is known." },
+  { MinimalPdb, 0, "", "minimal-pdb", Arg::None,
+    "  --minimal-pdb  \tWrite only the most essential records." },
 
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular operations:" },
   { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
@@ -380,7 +382,10 @@ static void convert(gemmi::Structure& st,
       opt.numbered_ter = false;
     if (options[Linkr])
       opt.use_linkr = true;
-    gemmi::write_pdb(st, os.ref(), opt);
+    if (options[MinimalPdb])
+      gemmi::write_minimal_pdb(st, os.ref(), opt);
+    else
+      gemmi::write_pdb(st, os.ref(), opt);
   }
 }
 
