@@ -230,7 +230,7 @@ struct Residue : public ResidueId {
                                              char altloc, El el=El::X) {
     if (Atom* a = find_atom(atom_name, altloc, el))
       return atoms.begin() + (a - atoms.data());
-    fail("Atom to be removed not found.");
+    fail("Atom not found.");
   }
 
   AtomGroup get(const std::string& atom_name) {
