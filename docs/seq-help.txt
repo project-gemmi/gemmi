@@ -1,20 +1,35 @@
 $ gemmi seq -h
-Usage:
- gemmi seq [options] INPUT[...]
-Compares sequence (SEQRES) with model from a PDB or mmCIF file.
-For testing, it can also compare strings with option --text-align.
-Performs global alignment with scoring matrix and affine gap penalty.
-Currently, we only use match/mismatch scoring matrix.
+Pairwise, global alignment with scoring matrix and affine gap penalty.
 
-  -h, --help     Print usage and exit.
-  -V, --version  Print version and exit.
-  -v, --verbose  Verbose output.
-  --check-mmcif  Compare alignment with mmCIF _atom_site.label_seq_id
-  -p             print formatted alignment with one-letter codes.
-  --text-align   Align characters in two strings (for testing).
+Usage:
+
+gemmi seq [options] FILE[...]
+    Aligns model to the sequence (SEQRES) from the same FILE.
+    The FILE can be either in the PDB or mmCIF format.
+    If the mmCIF format is used, option --check-mmcif can be used.
+
+gemmi seq [options] --query=CHAIN1 --target=CHAIN2 FILE1 FILE2
+    Aligns CHAIN1 from FILE1 to CHAIN2 from FILE2.
+    By default, the sequence of residues in the model is used.
+    To use SEQRES prepend '+' to the chain name (e.g. --query=+A).
+
+gemmi seq [options] --text-align STRING1 STRING2
+    Aligns two ASCII strings (used for testing).
+
+Options:
+  -h, --help         Print usage and exit.
+  -V, --version      Print version and exit.
+  --check-mmcif      checks alignment agains _atom_site.label_seq_id
+  --query=[+]CHAIN   Align CHAIN from file INPUT1.
+  --target=[+]CHAIN  Align CHAIN from file INPUT2.
+  --text-align       Align characters in two strings (for testing).
 
 Scoring (absolute values):
-  --match=INT    Match score (default: 1).
-  --mism=INT     Mismatch penalty (default: -1).
-  --gapo=INT     Gap opening penalty (default: -1).
-  --gape=INT     Gap extension penalty (default: -1).
+  --match=INT        Match score (default: 1).
+  --mism=INT         Mismatch penalty (default: -1).
+  --gapo=INT         Gap opening penalty (default: -1).
+  --gape=INT         Gap extension penalty (default: -1).
+
+Output options:
+  -p                 Print formatted alignment with one-letter codes.
+  -v, --verbose      Verbose output.

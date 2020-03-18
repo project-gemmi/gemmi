@@ -16,22 +16,32 @@
 using std::printf;
 
 enum OptionIndex { Match=4, Mismatch, GapOpen, GapExt,
-                   CheckMmcif, PrintOneLetter, TextAlign };
+                   CheckMmcif, PrintOneLetter, Query, Target, TextAlign };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
-    "Usage:\n " EXE_NAME " [options] INPUT[...]"
-    "\nCompares sequence (SEQRES) with model from a PDB or mmCIF file."
-    "\nFor testing, it can also compare strings with option --text-align."
-    "\nPerforms global alignment with scoring matrix and affine gap penalty."
-    "\nCurrently, we only use match/mismatch scoring matrix.\n" },
+    "Pairwise, global alignment with scoring matrix and affine gap penalty."
+    "\n\nUsage:"
+    "\n\n" EXE_NAME " [options] FILE[...]"
+    "\n    Aligns model to the sequence (SEQRES) from the same FILE."
+    "\n    The FILE can be either in the PDB or mmCIF format."
+    "\n    If the mmCIF format is used, option --check-mmcif can be used."
+    "\n\n" EXE_NAME " [options] --query=CHAIN1 --target=CHAIN2 FILE1 FILE2"
+    "\n    Aligns CHAIN1 from FILE1 to CHAIN2 from FILE2."
+    "\n    By default, the sequence of residues in the model is used."
+    "\n    To use SEQRES prepend '+' to the chain name (e.g. --query=+A)."
+    "\n\n" EXE_NAME " [options] --text-align STRING1 STRING2"
+    "\n    Aligns two ASCII strings (used for testing)."
+    "\n\nOptions:" },
   CommonUsage[Help],
   CommonUsage[Version],
-  CommonUsage[Verbose],
+
   { CheckMmcif, 0, "", "check-mmcif", Arg::None,
-    "  --check-mmcif  \tCompare alignment with mmCIF _atom_site.label_seq_id" },
-  { PrintOneLetter, 0, "p", "", Arg::None,
-    "  -p  \tprint formatted alignment with one-letter codes." },
+    "  --check-mmcif  \tchecks alignment agains _atom_site.label_seq_id" },
+  { Query, 0, "", "query", Arg::Required,
+    "  --query=[+]CHAIN  \tAlign CHAIN from file INPUT1." },
+  { Target, 0, "", "target", Arg::Required,
+    "  --target=[+]CHAIN  \tAlign CHAIN from file INPUT2." },
   { TextAlign, 0, "", "text-align", Arg::None,
     "  --text-align  \tAlign characters in two strings (for testing)." },
 
@@ -44,28 +54,13 @@ static const option::Descriptor Usage[] = {
     "  --gapo=INT  \tGap opening penalty (default: -1)." },
   { GapExt, 0, "", "gape", Arg::Int,
     "  --gape=INT  \tGap extension penalty (default: -1)." },
+
+  { NoOp, 0, "", "", Arg::None, "\nOutput options:" },
+  { PrintOneLetter, 0, "p", "", Arg::None,
+    "  -p  \tPrint formatted alignment with one-letter codes." },
+  CommonUsage[Verbose],
   { 0, 0, 0, 0, 0, 0 }
 };
-
-static void print_text_alignment(const char* text1, const char* text2,
-                                 const gemmi::AlignmentScoring& scoring,
-                                 bool print_one_letter) {
-  std::vector<std::string> v1(std::strlen(text1));
-  for (size_t i = 0; i != v1.size(); ++i)
-    v1[i] = text1[i];
-  std::vector<std::string> v2(std::strlen(text2));
-  for (size_t i = 0; i != v2.size(); ++i)
-    v2[i] = text2[i];
-  std::vector<bool> free_gapo(1, 1);
-  gemmi::AlignmentResult result
-      = gemmi::align_string_sequences(v1, v2, free_gapo, scoring);
-  printf("Score: %d   CIGAR: %s\n", result.score, result.cigar_str().c_str());
-  if (print_one_letter) {
-    printf("%s\n", result.add_gaps(text1, 1).c_str());
-    printf("%s\n", result.match_string.c_str());
-    printf("%s\n", result.add_gaps(text2, 2).c_str());
-  }
-}
 
 static void print_alignment_details(const gemmi::AlignmentResult& result,
                                     const std::string& chain_name,
@@ -123,6 +118,54 @@ static void check_label_seq_id(const gemmi::AlignmentResult& result,
   }
 }
 
+static const gemmi::Model& get_first_model(gemmi::Structure& st) {
+  gemmi::setup_entities(st);
+  if (st.models.empty())
+    gemmi::fail("No atoms found. Wrong input file?");
+  return st.models[0];
+}
+
+static gemmi::ConstResidueSpan get_polymer(const gemmi::Model& model,
+                                           const std::string& chain_name) {
+  if (const gemmi::Chain* ch = model.find_chain(chain_name)) {
+    gemmi::ConstResidueSpan polymer = ch->get_polymer();
+    if (!polymer)
+      gemmi::fail("Polymer not found in chain " + chain_name);
+    return polymer;
+  } else {
+    gemmi::fail("No such chain: " + chain_name);
+  }
+}
+
+static const gemmi::Entity* get_entity(gemmi::Structure& st,
+                                       const std::string& chain_name) {
+  auto polymer = get_polymer(get_first_model(st), chain_name);
+  if (const gemmi::Entity* ent = st.get_entity_of(polymer))
+    return ent;
+  else
+    gemmi::fail("No sequence (SEQRES) for chain " + chain_name);
+}
+
+void print_one_letter_alignment(const gemmi::AlignmentResult& result,
+                                const std::string& a, const std::string& b) {
+  printf("%s\n", result.add_gaps(a, 1).c_str());
+  printf("%s\n", result.match_string.c_str());
+  printf("%s\n", result.add_gaps(b, 2).c_str());
+}
+
+void print_result_summary(const gemmi::AlignmentResult& result) {
+  printf("identity: %.2f%% / %.2f%%  CIGAR: %s\n",
+         result.calculate_identity(1), result.calculate_identity(2),
+         result.cigar_str().c_str());
+}
+
+std::vector<std::string> string_to_vector(const std::string& s) {
+  std::vector<std::string> v(s.size());
+  for (size_t i = 0; i != v.size(); ++i)
+    v[i] = s[i];
+  return v;
+}
+
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
@@ -135,15 +178,81 @@ int GEMMI_MAIN(int argc, char **argv) {
     scoring.gapo = std::atoi(p.options[GapOpen].arg);
   if (p.options[GapExt])
     scoring.gape = std::atoi(p.options[GapExt].arg);
+  bool verbose = p.options[Verbose];
+  if ((bool)p.options[Query] != (bool)p.options[Target]) {
+    std::fputs("Options --query and --target must be used together.\n", stderr);
+    return 1;
+  }
+  if (p.options[TextAlign] && p.options[Query]) {
+    std::fputs("Options --query and --text-align are exclusive.\n", stderr);
+    return 1;
+  }
+
   if (p.options[TextAlign]) {
     p.require_positional_args(2);
-    print_text_alignment(p.nonOption(0), p.nonOption(1), scoring,
-                         p.options[PrintOneLetter]);
+    if (p.nonOptionsCount() != 2) {
+      std::fputs("two input strings are expected with --text-align\n", stderr);
+      return 1;
+    }
+    std::string text1 = p.nonOption(0);
+    std::string text2 = p.nonOption(1);
+    std::vector<bool> free_gapo(1, 1);
+    gemmi::AlignmentResult result
+            = gemmi::align_string_sequences(string_to_vector(text1),
+                                            string_to_vector(text2),
+                                            free_gapo, scoring);
+    printf("Score: %d   CIGAR: %s\n", result.score, result.cigar_str().c_str());
+    if (p.options[PrintOneLetter])
+      print_one_letter_alignment(result, text1, text2);
     return 0;
   }
-  p.require_input_files_as_args();
-  bool verbose = p.options[Verbose];
+
   try {
+    if (p.options[Query]) {
+      if (p.nonOptionsCount() != 2)
+        gemmi::fail("two input files are expected with --query/--target");
+      using gemmi::read_structure_gz;
+      std::vector<std::string> query;
+      gemmi::PolymerType ptype = gemmi::PolymerType::Unknown;
+      {
+        gemmi::Structure st = read_structure_gz(p.coordinate_input_file(0));
+        if (p.options[Query].arg[0] == '+') {
+          const gemmi::Entity* ent = get_entity(st, p.options[Query].arg + 1);
+          query = ent->full_sequence;
+          ptype = ent->polymer_type;
+        } else {
+          auto polymer = get_polymer(get_first_model(st), p.options[Query].arg);
+          for (const gemmi::Residue& res : polymer.first_conformer())
+            query.push_back(res.name);
+        }
+      }
+      gemmi::AlignmentResult result;
+      gemmi::Structure st = read_structure_gz(p.coordinate_input_file(1));
+      if (p.options[Target].arg[0] == '+') {
+        const gemmi::Entity* ent = get_entity(st, p.options[Target].arg + 1);
+        std::vector<bool> free_gapo(1, 1);
+        result = gemmi::align_string_sequences(query, ent->full_sequence,
+                                               free_gapo, scoring);
+        print_result_summary(result);
+        if (p.options[PrintOneLetter])
+          print_one_letter_alignment(result, gemmi::one_letter_code(query),
+                                   gemmi::one_letter_code(ent->full_sequence));
+      } else {
+        auto polymer = get_polymer(get_first_model(st), p.options[Target].arg);
+        if (ptype == gemmi::PolymerType::Unknown)
+          if (const gemmi::Entity* ent = st.get_entity_of(polymer))
+            ptype = ent->polymer_type;
+        result = gemmi::align_sequence_to_polymer(query, polymer, ptype,
+                                                  scoring);
+        print_result_summary(result);
+        if (p.options[PrintOneLetter])
+          print_one_letter_alignment(result, gemmi::one_letter_code(query),
+                                     gemmi::one_letter_code(polymer));
+      }
+      return 0;
+    }
+
+    p.require_input_files_as_args();
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       std::string input = p.coordinate_input_file(i);
       if (i > 0)
@@ -151,12 +260,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (verbose || p.nonOptionsCount() > 1)
         printf("File: %s\n", input.c_str());
       gemmi::Structure st = gemmi::read_structure_gz(input);
-      gemmi::setup_entities(st);
-      if (st.models.empty())
-        gemmi::fail("No atoms found. Wrong input file?");
+      const gemmi::Model& model = get_first_model(st);
       if (st.models.size() > 1)
         printf("Warning: using only model 1 of %zu.\n", st.models.size());
-      const gemmi::Model& model = st.models[0];
       for (const gemmi::Chain& chain : model.chains) {
         gemmi::ConstResidueSpan polymer = chain.get_polymer();
         if (!polymer)
@@ -169,17 +275,14 @@ int GEMMI_MAIN(int argc, char **argv) {
         gemmi::AlignmentResult result =
             gemmi::align_sequence_to_polymer(ent->full_sequence, polymer,
                                              ent->polymer_type, scoring);
-        printf("%s chain %s CIGAR: %s\n",
-               st.name.c_str(), chain.name.c_str(), result.cigar_str().c_str());
+        printf("%s chain %s  ", st.name.c_str(), chain.name.c_str());
+        print_result_summary(result);
         if (p.options[CheckMmcif])
           check_label_seq_id(result, polymer);
-        if (p.options[PrintOneLetter]) {
-          std::string text1 = gemmi::one_letter_code(ent->full_sequence);
-          std::string text2 = gemmi::one_letter_code(polymer);
-          printf("%s\n", result.add_gaps(text1, 1).c_str());
-          printf("%s\n", result.match_string.c_str());
-          printf("%s\n", result.add_gaps(text2, 2).c_str());
-        }
+        if (p.options[PrintOneLetter])
+          print_one_letter_alignment(result,
+                                     gemmi::one_letter_code(ent->full_sequence),
+                                     gemmi::one_letter_code(polymer));
         if (verbose)
           print_alignment_details(result, chain.name, polymer, *ent);
       }

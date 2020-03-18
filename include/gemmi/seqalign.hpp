@@ -111,7 +111,7 @@ struct AlignmentResult {
       }
   }
 
-  std::string add_gaps(const std::string& s, unsigned which) {
+  std::string add_gaps(const std::string& s, unsigned which) const {
     std::string out;
     size_t pos = 0;
     for (Item item : cigar) {
