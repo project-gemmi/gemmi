@@ -69,6 +69,16 @@ $ gemmi sfcalc --blur=12 --dmin=2.5 --rate=2.5 --rcut=1e-7 --test -v tests/5wkd.
 RMSE=5.6297e-05  0.0001431%  max|dF|=0.0008977  R=0.000%
 ''')  # noqa: E501
 
+    # example from utils.rst
+    def test_align_text(self):
+        self.do('''\
+$ gemmi align -p --match=0 --gapo=0 --text-align Saturday Sunday
+Score: -3   CIGAR: 1M2I5M
+Saturday
+|  |.|||
+S--unday
+''')
+
 
 if __name__ == '__main__':
     unittest.main()

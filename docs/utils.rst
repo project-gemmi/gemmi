@@ -553,10 +553,10 @@ For the testing purpose, it can align text strings.
 For example, the Levenshtein distance can be calculated by setting
 the gap opening penalty to zero::
 
-    $ ./gemmi align --match=0 --gapo=0 --text-align Saturday Sunday
+    $ gemmi align -p --match=0 --gapo=0 --text-align Saturday Sunday
     Score: -3   CIGAR: 1M2I5M
-    =II=X===
     Saturday
+    |  |.|||
     S--unday
 
 This tool uses modified code from `ksw2 <https://github.com/lh3/ksw2>`_.
