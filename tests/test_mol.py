@@ -9,7 +9,7 @@ from common import full_path, get_path_for_tempfile
 
 def is_written_to_pdb(line, via_cif):
     if line[:6] in ['COMPND', 'SOURCE', 'MDLTYP', 'AUTHOR', 'REVDAT', 'JRNL  ',
-                    'DBREF ', 'SEQADV', 'HET   ', 'HETNAM', 'FORMUL',
+                    'SEQADV', 'HET   ', 'HETNAM', 'FORMUL',
                     'SITE  ', 'MASTER', 'CONECT']:
         return False
     # ORIGX is written only if it is a non-identity matrix
@@ -17,6 +17,8 @@ def is_written_to_pdb(line, via_cif):
     if line[:5] in ['ORIGX', 'SCALE']:
         return False
     if line[:6] == 'REMARK' and via_cif and line[7:10] not in ['  2', '350']:
+        return False
+    if line[:6] == 'DBREF ' and via_cif:  # temporary
         return False
     return True
 

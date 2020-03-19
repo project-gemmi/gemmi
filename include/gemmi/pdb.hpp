@@ -118,23 +118,26 @@ inline int read_matrix(Transform& t, char* line, size_t len) {
   return n;
 }
 
-inline ResidueId read_res_id(const char* seq_id, const char* name) {
-  ResidueId rid;
-  if (seq_id[4] != '\r' && seq_id[4] != '\n')
-    rid.seqid.icode = seq_id[4];
+inline SeqId read_seq_id(const char* str) {
+  SeqId seqid;
+  if (str[4] != '\r' && str[4] != '\n')
+    seqid.icode = str[4];
   // We support hybrid-36 extension, although it is never used in practice
   // as 9999 residues per chain are enough.
-  if (seq_id[0] < 'A') {
-    for (int i = 4; i != 0; --i, ++seq_id)
-      if (!is_space(*seq_id)) {
-        rid.seqid.num = read_int(seq_id, i);
+  if (str[0] < 'A') {
+    for (int i = 4; i != 0; --i, ++str)
+      if (!is_space(*str)) {
+        seqid.num = read_int(str, i);
         break;
       }
   } else {
-    rid.seqid.num = read_base36<4>(seq_id) - 466560 + 10000;
+    seqid.num = read_base36<4>(str) - 466560 + 10000;
   }
-  rid.name = read_string(name, 3);
-  return rid;
+  return seqid;
+}
+
+inline ResidueId read_res_id(const char* seq_id, const char* name) {
+  return {read_seq_id(seq_id), {}, read_string(name, 3)};
 }
 
 inline char read_altloc(char c) { return c == ' ' ? '\0' : c; }
@@ -438,6 +441,33 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
           ent.full_sequence.emplace_back(res_name);
       }
 
+    } else if (is_record_type(line, "DBREF")) { // DBREF or DBREF1 or DBREF2
+      std::string chain_name = read_string(line+12, 2);
+      Entity& ent = impl::find_or_add(st.entities, chain_name);
+      if (line[5] == ' ' || line[5] == '1')
+        ent.dbrefs.emplace_back();
+      else if (ent.dbrefs.empty()) // DBREF2 without DBREF1?
+        continue;
+      Entity::DbRef& dbref = ent.dbrefs.back();
+      if (line[5] == ' ' || line[5] == '1') {
+        dbref.seq_begin = read_seq_id(line+14);
+        dbref.seq_end = read_seq_id(line+20);
+        dbref.db_name = read_string(line+26, 6);
+        if (line[5] == ' ') {
+          dbref.accession_code = read_string(line+33, 8);
+          dbref.id_code = read_string(line+42, 12);
+          dbref.db_begin.num = read_int(line+55, 5);
+          dbref.db_begin.icode = line[60];
+          dbref.db_end.num = read_int(line+62, 5);
+          dbref.db_end.icode = line[67];
+        } else {  // line[5] == '1'
+          dbref.id_code = read_string(line+47, 20);
+        }
+      } else if (line[5] == '2') {
+        dbref.accession_code = read_string(line+18, 22);
+        dbref.db_begin.num = read_int(line+45, 10);
+        dbref.db_end.num = read_int(line+57, 10);
+      }
     } else if (is_record_type(line, "HEADER")) {
       if (len > 50)
         st.info["_struct_keywords.pdbx_keywords"] = rtrim_str(std::string(line+10, 40));

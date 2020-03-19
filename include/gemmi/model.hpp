@@ -112,10 +112,19 @@ inline bool is_polynucleotide(PolymerType pt) {
 }
 
 struct Entity {
+  struct DbRef {
+    std::string db_name;
+    std::string accession_code;
+    std::string id_code;
+    std::string isoform;  // pdbx_db_isoform
+    SeqId seq_begin, seq_end;
+    SeqId db_begin, db_end;
+  };
   std::string name;
   std::vector<std::string> subchains;
   EntityType entity_type = EntityType::Unknown;
   PolymerType polymer_type = PolymerType::Unknown;
+  std::vector<DbRef> dbrefs;
   // SEQRES or entity_poly_seq with microheterogeneity as comma-separated names
   std::vector<std::string> full_sequence;
 

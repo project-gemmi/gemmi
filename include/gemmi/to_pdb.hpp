@@ -118,9 +118,9 @@ inline char* encode_seq_num_in_hybrid36(char* str, int seq_id) {
   return base36_encode(str, 4, seq_id - 10000 + 10 * 36 * 36 * 36);
 }
 
-inline char* write_seq_id(char* str, const ResidueId& res) {
-  encode_seq_num_in_hybrid36(str, *res.seqid.num);
-  str[4] = res.seqid.icode;
+inline char* write_seq_id(char* str, const SeqId& seqid) {
+  encode_seq_num_in_hybrid36(str, *seqid.num);
+  str[4] = seqid.icode;
   str[5] = '\0';
   return str;
 }
@@ -293,7 +293,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
             a.altloc ? std::toupper(a.altloc) : ' ',
             res.name.c_str(),
             chain.name.c_str(),
-            impl::write_seq_id(buf8a, res),
+            impl::write_seq_id(buf8a, res.seqid),
             // We want to avoid negative zero and round them numbers up
             // if they originally had one digit more and that digit was 5.
             a.pos.x > -5e-4 && a.pos.x < 0 ? 0 : a.pos.x + 1e-10,
@@ -365,6 +365,7 @@ inline void write_atoms(const Structure& st, std::ostream& os,
 
 inline void write_header(const Structure& st, std::ostream& os,
                          PdbWriteOptions opt) {
+  const std::string& entry_id = st.get_info("_entry.id");
   char buf[88];
   { // header line
     const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
@@ -378,10 +379,9 @@ inline void write_header(const Structure& st, std::ostream& os,
     }
     // "classification" in PDB == _struct_keywords.pdbx_keywords in mmCIF
     const std::string& keywords = st.get_info("_struct_keywords.pdbx_keywords");
-    const std::string& id = st.get_info("_entry.id");
-    if (!pdb_date.empty() || !keywords.empty() || !id.empty())
+    if (!pdb_date.empty() || !keywords.empty() || !entry_id.empty())
       WRITEU("HEADER    %-40s%-9s   %-18s\n",
-             keywords.c_str(), pdb_date.c_str(), id.c_str());
+             keywords.c_str(), pdb_date.c_str(), entry_id.c_str());
   }
   write_multiline(os, "TITLE", st.get_info("_struct.title"), 80);
   write_multiline(os, "KEYWDS", st.get_info("_struct_keywords.text"), 79);
@@ -403,8 +403,10 @@ inline void write_header(const Structure& st, std::ostream& os,
     write_remarks(st, os);
   }
 
-  // SEQRES
+  // DBREF[12], SEQRES
   if (!st.models.empty() && opt.seqres_records) {
+    std::vector<const Entity*> entity_list;
+    entity_list.reserve(st.models[0].chains.size());
     for (const Chain& ch : st.models[0].chains) {
       const Entity* entity = st.get_entity_of(ch.get_polymer());
       // If the input pdb file has no TER records the subchains and entities
@@ -418,8 +420,45 @@ inline void write_header(const Structure& st, std::ostream& os,
         if (entity && !entity->subchains.empty())
           entity = nullptr;
       }
-
-      if (entity) {
+      entity_list.push_back(entity);
+    }
+    // DBREF / DBREF1 / DBREF2
+    for (size_t i = 0; i != entity_list.size(); ++i)
+      if (const Entity* entity = entity_list[i]) {
+        const Chain& ch = st.models[0].chains[i];
+        for (const Entity::DbRef& dbref : entity->dbrefs) {
+          bool short_record = *dbref.db_end.num < 100000 &&
+                              dbref.accession_code.size() < 9 &&
+                              dbref.id_code.size() < 13;
+          char buf8[8];
+          char buf8a[8];
+          gf_snprintf(buf, 82, "DBREF  %4s%2s %5s %5s %-6s  ",
+                      entry_id.c_str(), ch.name.c_str(),
+                      impl::write_seq_id(buf8, dbref.seq_begin),
+                      impl::write_seq_id(buf8a, dbref.seq_end),
+                      dbref.db_name.c_str());
+          if (short_record) {
+            gf_snprintf(buf+33, 82-33, "%-8s %-12s %5d%c %5d%c            \n",
+                        dbref.accession_code.c_str(), dbref.id_code.c_str(),
+                        *dbref.db_begin.num, dbref.db_begin.icode,
+                        *dbref.db_end.num, dbref.db_end.icode);
+          } else {
+            buf[5] = '1';
+            gf_snprintf(buf+33, 82-33, "              %-33s\n",
+                        dbref.id_code.c_str());
+          }
+          os.write(buf, 81);
+          if (!short_record)
+            WRITE("DBREF2 %4s%2s     %-22s     %10d  %10d             \n",
+                  entry_id.c_str(), ch.name.c_str(),
+                  dbref.accession_code.c_str(),
+                  *dbref.db_begin.num, *dbref.db_end.num);
+        }
+      }
+    // SEQRES
+    for (size_t i = 0; i != entity_list.size(); ++i)
+      if (const Entity* entity = entity_list[i]) {
+        const Chain& ch = st.models[0].chains[i];
         int row = 0;
         int col = 0;
         for (const std::string& monomers : entity->full_sequence) {
@@ -439,7 +478,6 @@ inline void write_header(const Structure& st, std::ostream& os,
         if (col != 0)
           os.write(buf, 81);
       }
-    }
   }
 
   if (!st.helices.empty()) {
@@ -453,9 +491,9 @@ inline void write_header(const Structure& st, std::ostream& os,
       WRITE("HELIX %4d%4d %3s%2s %5s %3s%2s %5s%2d %35d    \n",
             counter, counter,
             helix.start.res_id.name.c_str(), helix.start.chain_name.c_str(),
-            write_seq_id(buf8, helix.start.res_id),
+            write_seq_id(buf8, helix.start.res_id.seqid),
             helix.end.res_id.name.c_str(), helix.end.chain_name.c_str(),
-            write_seq_id(buf8a, helix.end.res_id),
+            write_seq_id(buf8a, helix.end.res_id.seqid),
             (int) helix.pdb_helix_class, helix.length);
     }
   }
@@ -472,15 +510,15 @@ inline void write_header(const Structure& st, std::ostream& os,
               " %-3s%3s%2s%5s          \n",
               ++strand_counter, sheet.name.c_str(), sheet.strands.size(),
               strand.start.res_id.name.c_str(), strand.start.chain_name.c_str(),
-              write_seq_id(buf8a, strand.start.res_id),
+              write_seq_id(buf8a, strand.start.res_id.seqid),
               strand.end.res_id.name.c_str(), strand.end.chain_name.c_str(),
-              write_seq_id(buf8b, strand.end.res_id), strand.sense,
+              write_seq_id(buf8b, strand.end.res_id.seqid), strand.sense,
               a2.atom_name.c_str(), a2.res_id.name.c_str(),
               a2.chain_name.c_str(),
-              a2.res_id.seqid.num ? write_seq_id(buf8c, a2.res_id) : "",
+              a2.res_id.seqid.num ? write_seq_id(buf8c, a2.res_id.seqid) : "",
               a1.atom_name.c_str(), a1.res_id.name.c_str(),
               a1.chain_name.c_str(),
-              a1.res_id.seqid.num ? write_seq_id(buf8d, a1.res_id) : "");
+              a1.res_id.seqid.num ? write_seq_id(buf8d, a1.res_id.seqid) : "");
       }
     }
   }
@@ -502,9 +540,9 @@ inline void write_header(const Structure& st, std::ostream& os,
           WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  \n",
              ++counter,
              cra1.residue->name.c_str(), cra1.chain->name.c_str(),
-             write_seq_id(buf8, *cra1.residue),
+             write_seq_id(buf8, cra1.residue->seqid),
              cra2.residue->name.c_str(), cra2.chain->name.c_str(),
-             write_seq_id(buf8a, *cra2.residue),
+             write_seq_id(buf8a, cra2.residue->seqid),
              "1555", im.pdb_symbol(false).c_str(), im.dist());
         }
     }
@@ -531,12 +569,12 @@ inline void write_header(const Structure& st, std::ostream& os,
                 cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
                 cra1.residue->name.c_str(),
                 cra1.chain->name.c_str(),
-                write_seq_id(buf8, *cra1.residue),
+                write_seq_id(buf8, cra1.residue->seqid),
                 padded_atom_name(*cra2.atom).c_str(),
                 cra2.atom->altloc ? std::toupper(cra2.atom->altloc) : ' ',
                 cra2.residue->name.c_str(),
                 cra2.chain->name.c_str(),
-                write_seq_id(buf8a, *cra2.residue),
+                write_seq_id(buf8a, cra2.residue->seqid),
                 "1555", im.pdb_symbol(false).c_str(), im.dist());
           if (opt.use_linkr && !con.link_id.empty()) {
             buf[4] = 'R';  // LINK -> LINKR
@@ -561,9 +599,9 @@ inline void write_header(const Structure& st, std::ostream& os,
                 WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s\n",
                       ++counter,
                       res.name.c_str(), chain.name.c_str(),
-                      write_seq_id(buf8, res),
+                      write_seq_id(buf8, res.seqid),
                       next->name.c_str(), chain.name.c_str(),
-                      write_seq_id(buf8a, *next),
+                      write_seq_id(buf8a, next->seqid),
                       st.models.size() > 1 ? model.name.c_str() : "0",
                       deg(calculate_omega(res, *next)),
                       "");

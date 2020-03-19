@@ -34,7 +34,7 @@ else
   echo "gemmi executable not found"
   exit 1
 fi
-CONVERT="$GEMMI convert --translate"
+CONVERT="$GEMMI convert"
 
 cut -f1,3 - | grep "$MONTH" | while read -r code date; do
   code=${code,,}
