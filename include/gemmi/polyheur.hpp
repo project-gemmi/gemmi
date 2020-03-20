@@ -248,13 +248,21 @@ inline void ensure_entities(Structure& st) {
       }
 }
 
+inline bool operator==(const Entity::DbRef& a, const Entity::DbRef& b) {
+  return a.db_name == b.db_name &&
+         a.id_code == b.id_code &&
+         a.isoform == b.isoform &&
+         a.seq_begin == b.seq_begin && a.seq_end == b.seq_end &&
+         a.db_begin == b.db_begin && a.db_end == b.db_end;
+}
 
 inline void deduplicate_entities(Structure& st) {
   for (auto i = st.entities.begin(); i != st.entities.end(); ++i)
     if (!i->full_sequence.empty())
       for (auto j = i + 1; j != st.entities.end(); ++j)
         if (j->polymer_type == i->polymer_type &&
-            j->full_sequence == i->full_sequence) {
+            j->full_sequence == i->full_sequence &&
+            j->dbrefs == i->dbrefs) {
           vector_move_extend(i->subchains, std::move(j->subchains));
           st.entities.erase(j--);
         }
