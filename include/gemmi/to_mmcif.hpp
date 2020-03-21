@@ -179,11 +179,11 @@ void write_assemblies(const Structure& st, cif::Block& block) {
     else if (as.software_determined)
       how_defined = "software_defined_assembly";
     else if (as.special_kind == Assembly::SpecialKind::CompleteIcosahedral)
-      how_defined = "complete icosahedral assembly";
+      how_defined = "'complete icosahedral assembly'";
     else if (as.special_kind == Assembly::SpecialKind::RepresentativeHelical)
-      how_defined = "representative helical assembly";
+      how_defined = "'representative helical assembly'";
     else if (as.special_kind == Assembly::SpecialKind::CompletePoint)
-      how_defined = "complete point assembly";
+      how_defined = "'complete point assembly'";
     std::string oligomer = to_lower(as.oligomeric_details);
     int nmer = as.oligomeric_count != 0 ? as.oligomeric_count
                                         : xmeric_to_number(oligomer);
@@ -191,7 +191,7 @@ void write_assemblies(const Structure& st, cif::Block& block) {
     a_loop.add_row({as.name,
                     how_defined,
                     impl::string_or_qmark(as.software_name),
-                    cif::quote(oligomer),
+                    impl::string_or_qmark(oligomer),
                     nmer == 0 ? "?" : std::to_string(nmer)});
 
     // _pdbx_struct_assembly_prop
