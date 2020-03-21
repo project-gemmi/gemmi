@@ -430,12 +430,21 @@ inline void write_header(const Structure& st, std::ostream& os,
           bool short_record = *dbref.db_end.num < 100000 &&
                               dbref.accession_code.size() < 9 &&
                               dbref.id_code.size() < 13;
+          SeqId seq_begin = dbref.seq_begin;
+          SeqId seq_end = dbref.seq_end;
+          if (!seq_begin.num || !seq_end.num) {
+            try {
+              ConstResidueGroup polymer = ch.get_polymer();
+              seq_begin = polymer.label_seq_id_to_auth(dbref.label_seq_begin);
+              seq_end = polymer.label_seq_id_to_auth(dbref.label_seq_end);
+            } catch (const std::runtime_error&) {}
+          }
           char buf8[8];
           char buf8a[8];
           gf_snprintf(buf, 82, "DBREF  %4s%2s %5s %5s %-6s  ",
                       entry_id.c_str(), ch.name.c_str(),
-                      impl::write_seq_id(buf8, dbref.seq_begin),
-                      impl::write_seq_id(buf8a, dbref.seq_end),
+                      impl::write_seq_id(buf8, seq_begin),
+                      impl::write_seq_id(buf8a, seq_end),
                       dbref.db_name.c_str());
           if (short_record) {
             gf_snprintf(buf+33, 82-33, "%-8s %-12s %5d%c %5d%c            \n",

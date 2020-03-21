@@ -25,6 +25,9 @@ template<int N> struct OptionalInt {
   OptionalInt& operator=(int n) { value = n; return *this; }
   bool operator==(const OptionalInt& o) const { return value == o.value; }
   bool operator!=(const OptionalInt& o) const { return value != o.value; }
+  bool operator<(const OptionalInt& o) const {
+    return has_value() && o.has_value() && value < o.value;
+  }
   bool operator==(int n) const { return value == n; }
   bool operator!=(int n) const { return value != n; }
   OptionalInt operator+(OptionalInt o) const {
@@ -52,6 +55,7 @@ struct SeqId {
 
   SeqId() = default;
   SeqId(int num_, char icode_) { num = num_; icode = icode_; }
+  SeqId(OptionalNum num_, char icode_) { num = num_; icode = icode_; }
   explicit SeqId(const std::string& str) {
     char* endptr;
     num = std::strtol(str.c_str(), &endptr, 10);

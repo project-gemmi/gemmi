@@ -119,6 +119,7 @@ struct Entity {
     std::string isoform;  // pdbx_db_isoform
     SeqId seq_begin, seq_end;
     SeqId db_begin, db_end;
+    SeqId::OptionalNum label_seq_begin, label_seq_end;
   };
   std::string name;
   std::vector<std::string> subchains;
@@ -354,6 +355,32 @@ struct ConstResidueSpan : Span<const Residue> {
   }
 
   ConstResidueGroup find_residue_group(SeqId id) const;
+
+  SeqId label_seq_id_to_auth(SeqId::OptionalNum label_seq_id) const {
+    if (size() != 0) {
+      for (const Residue& res : *this)
+        if (res.label_seq == label_seq_id)
+          return res.seqid;
+      if (label_seq_id < front().label_seq)
+        return {front().seqid.num + (label_seq_id - front().label_seq), ' '};
+      if (back().label_seq < label_seq_id)
+        return {back().seqid.num + (label_seq_id - back().label_seq), ' '};
+    }
+    fail("No such label_seq_id: " + label_seq_id.str());
+  }
+
+  SeqId::OptionalNum auth_seq_id_to_label(SeqId auth_seq_id) const {
+    if (size() != 0) {
+      for (const Residue& res : *this)
+        if (res.seqid == auth_seq_id)
+          return res.label_seq;
+      if (auth_seq_id.num < front().seqid.num)
+        return front().label_seq + (auth_seq_id.num - front().seqid.num);
+      if (back().seqid.num < auth_seq_id.num)
+        return back().label_seq + (auth_seq_id.num - back().seqid.num);
+    }
+    fail("No such auth_seq_id: " + auth_seq_id.str());
+  }
 };
 
 // ResidueSpan represents consecutive residues within the same chain.

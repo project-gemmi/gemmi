@@ -337,6 +337,48 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
     if (ent.entity_type == EntityType::Polymer)
       ent_poly_loop.add_row({ent.name, polymer_type_to_qstring(ent.polymer_type)});
 
+  // _struct_ref, _struct_ref_seq
+  {
+    block.items.reserve(block.items.size() + 2); // avoid re-allocation
+    cif::Loop& ref_loop = block.init_mmcif_loop("_struct_ref.",
+                                  {"id", "entity_id", "db_name", "db_code",
+                                   "pdbx_db_accession", "pdbx_db_isoform"});
+    cif::Loop& seq_loop = block.init_mmcif_loop("_struct_ref_seq.", {
+                                       "align_id", "ref_id", "pdbx_strand_id",
+                                       "seq_align_beg", "seq_align_end",
+                                       "db_align_beg", "db_align_end"});
+    int counter = 0;
+    int counter2 = 0;
+    for (const Entity& ent : st.entities)
+      for (const Entity::DbRef& dbref : ent.dbrefs) {
+        ref_loop.add_row({std::to_string(++counter),
+                          impl::string_or_dot(ent.name),
+                          impl::string_or_dot(dbref.db_name),
+                          impl::string_or_dot(dbref.id_code),
+                          impl::string_or_qmark(dbref.accession_code),
+                          impl::string_or_qmark(dbref.isoform)});
+        for (const std::string& subchain : ent.subchains) {
+          Residue::OptionalNum label_begin = dbref.label_seq_begin;
+          Residue::OptionalNum label_end = dbref.label_seq_end;
+          ConstResidueSpan span = st.models[0].get_subchain(subchain);
+          if (!label_begin) {
+            try {
+              label_begin = span.auth_seq_id_to_label(dbref.seq_begin);
+              label_end = span.auth_seq_id_to_label(dbref.seq_end);
+            } catch (const std::runtime_error&) {}
+          }
+          seq_loop.add_row({std::to_string(++counter2),
+                            std::to_string(counter),
+                            //chain.name,
+                            span.subchain_id(),
+                            std::to_string(*label_begin),
+                            std::to_string(*label_end),
+                            std::to_string(*dbref.db_begin.num),
+                            std::to_string(*dbref.db_end.num)});
+        }
+      }
+  }
+
   // _exptl
   if (!st.meta.experiments.empty()) {
     cif::Loop& loop = block.init_mmcif_loop("_exptl.",

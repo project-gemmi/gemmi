@@ -681,6 +681,32 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
       else if (pos >= 0 && pos < (int) ent->full_sequence.size())
         ent->full_sequence[pos] += "," + row.str(2);
     }
+
+  cif::Table struct_ref_seq = block.find("_struct_ref_seq.",
+                                {"ref_id", "seq_align_beg", "seq_align_end",
+                                 "db_align_beg", "db_align_end"});
+  for (auto row : block.find("_struct_ref.",
+                             {"id", "entity_id", "db_name", "db_code",
+                              "?pdbx_db_accession", "?pdbx_db_isoform"}))
+    if (Entity* ent = st.get_entity(row.str(1))) {
+      ent->dbrefs.emplace_back();
+      Entity::DbRef& dbref = ent->dbrefs.back();
+      dbref.db_name = row.str(2);
+      dbref.id_code = row.str(3);
+      if (row.has(4))
+        dbref.accession_code = row.str(4);
+      if (row.has(5))
+        dbref.isoform = row.str(5);
+      try { // find_row() throws if row is not found
+        cif::Table::Row seq = struct_ref_seq.find_row(row.str(0));
+        constexpr int None = SeqId::OptionalNum::None;
+        dbref.label_seq_begin = cif::as_int(seq[1], None);
+        dbref.label_seq_end = cif::as_int(seq[2], None);
+        dbref.db_begin.num = cif::as_int(seq[3], None);
+        dbref.db_end.num = cif::as_int(seq[4], None);
+      } catch (const std::runtime_error& e) {}
+    }
+
   for (auto row : block.find("_struct_asym.", {"id", "entity_id"}))
     if (Entity* ent = st.get_entity(row.str(1)))
       ent->subchains.push_back(row.str(0));

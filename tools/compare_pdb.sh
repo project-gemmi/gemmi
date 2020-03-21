@@ -60,7 +60,6 @@ absent="\
 ^CAVEAT|\
 ^COMPND|\
 ^CONECT|\
-^DBREF|\
 ^FORMUL|\
 ^HET   |\
 ^HETNAM|\
