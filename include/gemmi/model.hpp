@@ -328,19 +328,16 @@ struct ConstResidueSpan : Span<const Residue> {
     return length;
   }
 
-  SeqId::OptionalNum extreme_num(bool label, bool min) const {
+  // sign=-1 for min, sign=1 for max
+  SeqId::OptionalNum extreme_num(bool label, int sign) const {
     SeqId::OptionalNum result;
     for (const Residue& r : *this) {
       if (auto num = label ? r.label_seq : r.seqid.num)
-        if (!result || (min ? int(num) < int(result) : int(num) > int(result)))
+        if (!result || sign * int(num) > sign * int(result))
           result = num;
     }
     return result;
   }
-  SeqId::OptionalNum min_seqnum() const { return extreme_num(false, true); }
-  SeqId::OptionalNum max_seqnum() const { return extreme_num(false, false); }
-  SeqId::OptionalNum min_label_seq() const { return extreme_num(true, true); }
-  SeqId::OptionalNum max_label_seq() const { return extreme_num(true, false); }
 
   ConstUniqProxy<Residue, ConstResidueSpan> first_conformer() const {
     return {*this};
@@ -394,10 +391,9 @@ struct ResidueSpan : MutableVectorSpan<Residue> {
   ResidueSpan(vector_type& v, iterator begin, std::size_t n)
     : Parent(v, begin, n) {}
   int length() const { return const_().length(); }
-  SeqId::OptionalNum min_seqnum() const { return const_().min_seqnum(); }
-  SeqId::OptionalNum max_seqnum() const { return const_().max_seqnum(); }
-  SeqId::OptionalNum min_label_seq() const { return const_().min_label_seq(); }
-  SeqId::OptionalNum max_label_seq() const { return const_().max_label_seq(); }
+  SeqId::OptionalNum extreme_num(bool label, int sign) const {
+    return const_().extreme_num(label, sign);
+  }
   UniqProxy<Residue, ResidueSpan> first_conformer() { return {*this}; }
   ConstUniqProxy<Residue, ResidueSpan> first_conformer() const { return {*this}; }
   GroupingProxy residue_groups();
@@ -1105,12 +1101,12 @@ inline void Chain::append_residues(std::vector<Residue> new_resi, int min_sep) {
   if (min_sep > 0) {
     ConstResidueSpan new_span(&new_resi[0], new_resi.size());
     // adjust sequence numbers if necessary
-    auto diff = new_span.min_seqnum() - whole().max_seqnum();
+    auto diff = new_span.extreme_num(false, -1) - whole().extreme_num(false, 1);
     if (diff && int(diff) < min_sep)
       for (Residue& res : new_resi)
         res.seqid.num += min_sep - int(diff);
     // adjust label_seq_id if necessary
-    diff = new_span.min_label_seq() - whole().max_label_seq();
+    diff = new_span.extreme_num(true, -1) - whole().extreme_num(true, 1);
     if (diff && int(diff) < min_sep)
       for (Residue& res : new_resi)
         res.label_seq += min_sep - int(diff);
