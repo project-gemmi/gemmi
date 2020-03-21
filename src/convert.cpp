@@ -303,8 +303,7 @@ static void convert(gemmi::Structure& st,
 
   if (st.input_format == CoorFormat::Pdb) {
     gemmi::read_metadata_from_remarks(st);
-    setup_entities(st);
-    assign_label_seq_id(st);
+    setup_for_mmcif(st);
   }
 
   ChainNameGenerator::How how = ChainNameGenerator::How::AddNum;

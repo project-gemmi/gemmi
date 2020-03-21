@@ -62,15 +62,32 @@ inline bool seqid_matches_seqres(const ConstResidueSpan& polymer,
   return true;
 }
 
-inline void assign_label_seq_id(ResidueSpan& polymer, const Entity& ent) {
-  if (seqid_matches_seqres(polymer, ent)) {
+inline void assign_label_seq_id(ResidueSpan& polymer, const Entity* ent) {
+  // sequence not known
+  if (!ent || ent->full_sequence.empty()) {
+    int n = 1;
+    SeqId prev;
+    for (Residue& res : polymer) {
+      res.label_seq = n;
+      if (prev != res.seqid)
+        ++n;
+      prev = res.seqid;
+    }
+    return;
+  }
+
+  // exact match - common case that doesn't require alignment
+  if (seqid_matches_seqres(polymer, *ent)) {
     for (Residue& res : polymer)
       res.label_seq = res.seqid.num;
     return;
   }
+
+  // sequence alignment
   AlignmentScoring scoring;
-  AlignmentResult result = align_sequence_to_polymer(ent.full_sequence, polymer,
-                                                     ent.polymer_type, scoring);
+  AlignmentResult result =
+    align_sequence_to_polymer(ent->full_sequence, polymer, ent->polymer_type,
+                              scoring);
   auto res_group = polymer.first_conformer().begin();
   int id = 1;
   for (AlignmentResult::Item item : result.cigar) {
@@ -98,13 +115,19 @@ inline void clear_label_seq_id(Structure& st) {
         res.label_seq = Residue::OptionalNum();
 }
 
-inline void assign_label_seq_id(Structure& st) {
+inline void assign_label_seq_id(Structure& st, bool force) {
   for (Model& model : st.models)
-    for (Chain& chain : model.chains) {
-      ResidueSpan polymer = chain.get_polymer();
-      if (const Entity* ent = st.get_entity_of(polymer))
-        assign_label_seq_id(polymer, *ent);
-    }
+    for (Chain& chain : model.chains)
+      if (ResidueSpan polymer = chain.get_polymer())
+        if (force || !polymer.front().label_seq || !polymer.back().label_seq) {
+          const Entity* ent = st.get_entity_of(polymer);
+          assign_label_seq_id(polymer, ent);
+        }
+}
+
+inline void setup_for_mmcif(Structure& st) {
+  setup_entities(st);
+  assign_label_seq_id(st, false);
 }
 
 } // namespace gemmi

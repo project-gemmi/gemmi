@@ -339,6 +339,7 @@ class TestMol(unittest.TestCase):
 
     def write_and_read(self, st, via_cif):
         if via_cif:
+            st.setup_for_mmcif()
             doc = st.make_mmcif_document()
             st = gemmi.make_structure_from_block(doc[0])
         out_name = get_path_for_tempfile()
