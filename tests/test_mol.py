@@ -185,6 +185,9 @@ class TestMol(unittest.TestCase):
         # ALA has 5 atoms, except the last one which has OXT (hence +1)
         expected_count = sum(4 + (r.name != 'GLY') for r in model['A']) + 1
         self.assertEqual(model.count_occupancies(), expected_count)
+        st.remove_alternative_conformations()
+        self.assertEqual(model.count_occupancies(), expected_count - 5/2.)
+        self.assertTrue(not any(a.has_altloc() for a in lys12))
 
     def test_5i55_predefined_removals2(self):
         self.test_5i55_predefined_removals(clear_entities=True)

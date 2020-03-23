@@ -236,6 +236,8 @@ void add_mol(py::module& m) {
     .def("deduplicate_entities", &deduplicate_entities)
     .def("setup_entities", &setup_entities)
     .def("setup_for_mmcif", &setup_for_mmcif)
+    .def("remove_alternative_conformations",
+         remove_alternative_conformations<Structure>)
     .def("remove_hydrogens", remove_hydrogens<Structure>)
     .def("remove_waters", remove_waters<Structure>)
     .def("remove_ligands_and_waters",

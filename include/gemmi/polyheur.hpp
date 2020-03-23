@@ -274,6 +274,26 @@ inline void setup_entities(Structure& st) {
   deduplicate_entities(st);
 }
 
+// Remove alternative conformations.
+template<class T> void remove_alternative_conformations(T& obj) {
+  for (auto& child : obj.children())
+    remove_alternative_conformations(child);
+}
+template<class T> void uniquify_items(std::vector<T>& items) {
+  if (items.size() > 1)
+    for (size_t i = items.size() - 1; i != 0; --i)
+      if (items[i].same_group(items[i - 1]))
+        items.erase(items.begin() + i);
+}
+template<> inline void remove_alternative_conformations(Chain& chain) {
+  uniquify_items(chain.residues);
+  for (Residue& residue : chain.residues) {
+    uniquify_items(residue.atoms);
+    for (Atom& atom : residue.atoms)
+      atom.altloc = '\0';
+  }
+}
+
 // Remove hydrogens.
 template<class T> void remove_hydrogens(T& obj) {
   for (auto& child : obj.children())

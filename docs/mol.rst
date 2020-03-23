@@ -1527,6 +1527,7 @@ but often needed operations:
 
 .. doctest::
 
+  >>> st.remove_alternative_conformations()
   >>> st.remove_hydrogens()
   >>> st.remove_waters()
   >>> st.remove_ligands_and_waters()
