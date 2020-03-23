@@ -563,9 +563,9 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
       Sheet& sheet = impl::find_or_add(st.sheets, sheet_id);
       sheet.strands.emplace_back();
       Sheet::Strand& strand = sheet.strands.back();
-      strand.start.chain_name = read_string(line+21, 2);
+      strand.start.chain_name = read_string(line+20, 2);
       strand.start.res_id = read_res_id(line+22, line+17);
-      strand.end.chain_name = read_string(line+32, 2);
+      strand.end.chain_name = read_string(line+31, 2);
       strand.end.res_id = read_res_id(line+33, line+28);
       strand.sense = read_int(line+38, 2);
       if (len > 67) {
