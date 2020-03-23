@@ -5,7 +5,7 @@
 #ifndef GEMMI_MODEL_HPP_
 #define GEMMI_MODEL_HPP_
 
-#include <algorithm>  // for find_if, count_if
+#include <algorithm>  // for find_if, count_if, lower_bound
 #include <array>
 #include <bitset>
 #include <iterator>   // for back_inserter
@@ -353,30 +353,45 @@ struct ConstResidueSpan : Span<const Residue> {
 
   ConstResidueGroup find_residue_group(SeqId id) const;
 
+  // We assume residues are ordered. It works (approximately) also with
+  // missing numbers which can be present in DBREF.
   SeqId label_seq_id_to_auth(SeqId::OptionalNum label_seq_id) const {
-    if (size() != 0) {
-      for (const Residue& res : *this)
-        if (res.label_seq == label_seq_id)
-          return res.seqid;
-      if (label_seq_id < front().label_seq)
-        return {front().seqid.num + (label_seq_id - front().label_seq), ' '};
-      if (back().label_seq < label_seq_id)
-        return {back().seqid.num + (label_seq_id - back().label_seq), ' '};
-    }
-    fail("No such label_seq_id: " + label_seq_id.str());
+    if (size() == 0)
+      throw std::out_of_range("label_seq_id_to_auth(): empty span");
+    auto it = std::lower_bound(begin(), end(), label_seq_id,
+        [](const Residue& r, SeqId::OptionalNum v){ return r.label_seq < v; });
+    if (it == end())
+      --it;
+    else if (it->label_seq == label_seq_id)
+      return it->seqid;
+    else if (it != begin() &&
+             label_seq_id - (it-1)->label_seq < it->label_seq - label_seq_id)
+      --it;
+    return {it->seqid.num + (label_seq_id - it->label_seq), ' '};
   }
-
+  // The residue numbers (auth) are sometimes not ordered.
+  // That is why we use this multi-step heuristic.
   SeqId::OptionalNum auth_seq_id_to_label(SeqId auth_seq_id) const {
-    if (size() != 0) {
-      for (const Residue& res : *this)
-        if (res.seqid == auth_seq_id)
-          return res.label_seq;
-      if (auth_seq_id.num < front().seqid.num)
-        return front().label_seq + (auth_seq_id.num - front().seqid.num);
-      if (back().seqid.num < auth_seq_id.num)
-        return back().label_seq + (auth_seq_id.num - back().seqid.num);
+    if (size() == 0)
+      throw std::out_of_range("auth_seq_id_to_label(): empty span");
+    for (const Residue& r : *this)
+      if (r.seqid == auth_seq_id)
+        return r.label_seq;
+    const_iterator it;
+    if (auth_seq_id.num < front().seqid.num) {
+      it = begin();
+    } else if (back().seqid.num < auth_seq_id.num) {
+      it = end() - 1;
+    } else {
+      it = std::lower_bound(begin(), end(), auth_seq_id.num,
+        [](const Residue& r, SeqId::OptionalNum v){ return r.seqid.num < v; });
+      while (it != end() && it->seqid.num == auth_seq_id.num &&
+             it->seqid.icode != auth_seq_id.icode)
+        ++it;
+      if (it == end())
+        --it;
     }
-    fail("No such auth_seq_id: " + auth_seq_id.str());
+    return it->label_seq + (auth_seq_id.num - it->seqid.num);
   }
 };
 
