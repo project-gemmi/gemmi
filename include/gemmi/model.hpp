@@ -400,6 +400,12 @@ struct ResidueSpan : MutableVectorSpan<Residue> {
   const std::string& subchain_id() const { return const_().subchain_id(); }
   ResidueGroup find_residue_group(SeqId id);
   ConstResidueGroup find_residue_group(SeqId id) const;
+  SeqId label_seq_id_to_auth(SeqId::OptionalNum label_seq_id) const {
+    return const_().label_seq_id_to_auth(label_seq_id);
+  }
+  SeqId::OptionalNum auth_seq_id_to_label(SeqId auth_seq_id) const {
+    return const_().auth_seq_id_to_label(auth_seq_id);
+  }
 private:
   ConstResidueSpan const_() const { return ConstResidueSpan(begin(), size()); }
 };

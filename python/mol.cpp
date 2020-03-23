@@ -417,6 +417,8 @@ void add_mol(py::module& m) {
     .def("residue_groups", &ResidueSpan::residue_groups, py::keep_alive<0, 1>())
     .def("length", &ResidueSpan::length)
     .def("subchain_id", &ResidueSpan::subchain_id)
+    .def("label_seq_id_to_auth", &ResidueSpan::label_seq_id_to_auth)
+    .def("auth_seq_id_to_label", &ResidueSpan::auth_seq_id_to_label)
     .def("check_polymer_type", [](const ResidueSpan& span) {
         return check_polymer_type(span);
     })
