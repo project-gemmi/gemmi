@@ -28,7 +28,7 @@ void write_struct_conn(const Structure& st, cif::Block& block);
 #include <string>
 #include <utility>  // std::pair
 #include "sprintf.hpp"
-#include "entstr.hpp" // for entity_type_to_string, polymer_type_to_string
+#include "entstr.hpp" // for entity_type_to_string, polymer_type_to_qstring
 #include "calculate.hpp"  // for count_atom_sites
 
 namespace gemmi {
