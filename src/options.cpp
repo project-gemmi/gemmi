@@ -163,8 +163,8 @@ void OptParser::require_input_files_as_args(int other_args) {
     print_try_help_and_exit("No input files. Nothing to do.");
 }
 
-std::string OptParser::coordinate_input_file(int n) {
-  return gemmi::expand_if_pdb_code(nonOption(n));
+std::string OptParser::coordinate_input_file(int n, char pdb_code_type) {
+  return gemmi::expand_if_pdb_code(nonOption(n), pdb_code_type);
 }
 
 bool starts_with_pdb_code(const std::string& s) {

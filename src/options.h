@@ -54,7 +54,7 @@ struct OptParser : option::Parser {
   void require_positional_args(int n);
   void require_input_files_as_args(int other_args=0);
   // returns the nth arg except that a PDB code gets replaced by $PDB_DIR/...
-  std::string coordinate_input_file(int n);
+  std::string coordinate_input_file(int n, char pdb_code_type='M');
   std::vector<std::string> paths_from_args_or_file(int opt, int other);
   [[noreturn]] void print_try_help_and_exit(const char* msg);
   const char* given_name(int opt) const {  // sans one dash

@@ -394,21 +394,16 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.simple_parse(argc, argv, Usage);
   p.require_positional_args(2);
 
-  std::string input = p.coordinate_input_file(0);
-  const char* output = p.nonOption(1);
-
   std::map<std::string, CoorFormat> filetypes{{"pdb", CoorFormat::Pdb},
                                               {"mmcif", CoorFormat::Mmcif},
                                               {"mmjson", CoorFormat::Mmjson},
                                               {"ccd", CoorFormat::ChemComp}};
-
   CoorFormat in_type = p.options[FormatIn] ? filetypes[p.options[FormatIn].arg]
                                            : CoorFormat::UnknownAny;
-  if (in_type == CoorFormat::Unknown) {
-    std::cerr << "The input format cannot be determined from input"
-                 " filename. Use option --from.\n";
-    return 1;
-  }
+
+  char pdb_code_type = in_type == CoorFormat::Pdb ? 'P' : 'M';
+  std::string input = p.coordinate_input_file(0, pdb_code_type);
+  const char* output = p.nonOption(1);
 
   CoorFormat out_type = p.options[FormatOut]
     ? filetypes[p.options[FormatOut].arg]
