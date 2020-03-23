@@ -4,11 +4,12 @@
 #include <string>
 #include "gemmi/select.hpp"
 #include "gemmi/gzread.hpp"
+#include "gemmi/labelseq.hpp"  // for setup_for_mmcif
 
 #define GEMMI_PROG residues
 #include "options.h"
 
-enum OptionIndex { FormatIn=3, Match };
+enum OptionIndex { FormatIn=3, Match, Label };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -18,8 +19,10 @@ static const option::Descriptor Usage[] = {
   CommonUsage[Version],
   { FormatIn, 0, "", "format", Arg::CoorFormat,
     "  --format=FORMAT  \tInput format (default: from the file extension)." },
-  { Match, 0, "-m", "--match", Arg::Required,
+  { Match, 0, "m", "match", Arg::Required,
     "  -mSEL, --match=SEL  \tPrint residues/atoms matching the selection." },
+  { Label, 0, "l", "label", Arg::None,
+    "  -l, --label  \tPrint 'label' chain ID and seq ID in brackets." },
   { NoOp, 0, "", "", Arg::None,
     "INPUT is a coordinate file (mmCIF, PDB, etc)."
     "\nThe selection SEL has MMDB syntax:"
@@ -38,6 +41,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       std::string input = p.coordinate_input_file(i);
       gemmi::Structure st = gemmi::read_structure_gz(input, format);
+      if (p.options[Label] && st.input_format == gemmi::CoorFormat::Pdb)
+        gemmi::setup_for_mmcif(st);
       for (gemmi::Model& model : sel.models(st)) {
         if (st.models.size() != 1)
           printf("Model %s\n", model.name.c_str());
@@ -48,9 +53,17 @@ int GEMMI_MAIN(int argc, char **argv) {
             auto begin = sel_atoms.begin();
             auto end = sel_atoms.end();
             if (begin != end) {
-              printf("%s %4s%c %s:",
-                     chain.name.c_str(), res.seqid.num.str().c_str(),
-                     res.seqid.icode, res.name.c_str());
+              if (p.options[Label])
+                printf("%s (%-3s %4s%c (%-4s %s:",
+                       chain.name.c_str(), (res.subchain + ")").c_str(),
+                       res.seqid.num.str().c_str(), res.seqid.icode,
+                       (res.label_seq.str('.') + ")").c_str(),
+                       res.name.c_str());
+              else
+                printf("%s %4s%c %s:",
+                       chain.name.c_str(),
+                       res.seqid.num.str().c_str(), res.seqid.icode,
+                       res.name.c_str());
               for (auto at = begin; at != end; ++at)
                 printf(" %s", at->name.c_str());
               printf("\n");
