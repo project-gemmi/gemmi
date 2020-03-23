@@ -17,6 +17,8 @@ inline std::vector<bool> prepare_free_gapo(const ConstResidueSpan& polymer,
   std::vector<bool> gaps;
   gaps.reserve(polymer.size());
   gaps.push_back(true); // free gap opening at the beginning of sequence
+  if (!is_polypeptide(polymer_type) && !is_polynucleotide(polymer_type))
+    return gaps;
   auto first_conformer = polymer.first_conformer();
   auto res = first_conformer.begin();
   for (auto next_res = res; ++next_res != first_conformer.end(); res = next_res)
