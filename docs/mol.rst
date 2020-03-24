@@ -534,8 +534,40 @@ In particular, we support the following extensions:
   (although we are yet to find an examples for this),
 * hybrid-36_ encoding of serial numbers for more than 99,999 atoms.
 
-The PDB format is well-documented and widely used, nonetheless some of its
-features can be easily overlooked. The rest of the section describes
+Gemmi interprets more PDB records than most of programs and libraries,
+but supporting all the records is not a goal.
+The records that are interpreted can be converted from/to mmCIF:
+
+- HEADER
+- TITLE
+- KEYWDS
+- EXPDTA
+- NUMMDL
+- REMARK 2
+- REMARK 3 (read-only, i.e. only in PDB -> mmCIF conversion)
+- REMARK 200/230/240 (read-only)
+- REMARK 290 (partly-read, but not by default)
+- REMARK 300 (read-only)
+- REMARK 350
+- DBREF/DBREF1/DBREF2
+- SEQRES
+- HELIX
+- SHEET
+- SSBOND
+- LINK
+- CISPEP
+- CRYST1
+- ORIGXn
+- SCALEn
+- MTRIXn
+- MODEL/ENDMDL
+- ATOM/HETATM
+- ANISOU
+- TER
+- END
+
+Although the PDB format is widely used, some of its features can be easily
+overlooked. The rest of this section describes
 such features. It is for people who are interested in the details
 of the PDB format.
 You do not need to read it if you just want to use Gemmi and work with
