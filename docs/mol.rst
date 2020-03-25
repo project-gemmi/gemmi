@@ -1271,9 +1271,12 @@ In Python these functions are wrapped as ``__getitem__`` and ``__delitem__``:
 
 .. doctest::
 
-  >>> structure['1']
+  >>> structure[0]        # by 0-based index
   <gemmi.Model 1 with 6 chain(s)>
-  >>> del structure['1']
+  >>> structure['1']      # by name, which is usually a 1-based index as string
+  <gemmi.Model 1 with 6 chain(s)>
+  >>> del structure[1:]   # delete all models but the first one
+  >>> del structure['1']  # delete model "1" (normally, the first one)
 
 To add a model to the structure, in C++ use directly methods of::
 

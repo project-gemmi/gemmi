@@ -521,6 +521,16 @@ class TestMol(unittest.TestCase):
         self.assertEqual(st[0].name, '2')
         st.renumber_models()
         self.assertEqual(st[0].name, '1')
+        st.add_model(st[0])
+        st.add_model(st[0])
+        st.renumber_models()
+        self.assertEqual(st[0].name, '1')
+        self.assertEqual(st[-1].name, '3')
+        del st[:-1]
+        self.assertEqual(len(st), 1)
+        self.assertEqual(st[0].name, '3')
+        del st[0]
+        self.assertEqual(len(st), 0)
 
     def test_remove2(self):
         model = gemmi.read_structure(full_path('1pfe.cif.gz'))[0]

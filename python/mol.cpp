@@ -54,7 +54,7 @@ C& add_child(P& parent, C child, int pos) {
   return add_item(parent.children(), std::move(child), pos);
 }
 
-template<typename T> int normalize_index(int index, T& container) {
+template<typename T> int normalize_index(int index, const T& container) {
   if (index < 0)
     index += (int) container.size();
   if ((size_t) index >= container.size())
@@ -62,9 +62,25 @@ template<typename T> int normalize_index(int index, T& container) {
   return index;
 }
 
+template<typename P, typename C> C& get_child(P& parent, int index) {
+  auto& children = parent.children();
+  return children[normalize_index(index, children)];
+}
+
 template<typename P> void remove_child(P& parent, int index) {
   auto& children = parent.children();
   children.erase(children.begin() + normalize_index(index, children));
+}
+
+template<typename P> void remove_children(P& parent, py::slice slice) {
+  ssize_t start, stop, step, slength;
+  auto& children = parent.children();
+  if (!slice.compute(children.size(), &start, &stop, &step, &slength))
+    throw py::error_already_set();
+  for (int i = 0; i < slength; ++i) {
+    ssize_t idx = start + (step > 0 ? slength - 1 - i : i) * step;
+    children.erase(children.begin() + idx);
+  }
 }
 
 void add_mol(py::module& m) {
@@ -176,12 +192,13 @@ void add_mol(py::module& m) {
     .def("__iter__", [](const Structure& st) {
         return py::make_iterator(st.models);
     }, py::keep_alive<0, 1>())
-    .def("__getitem__", [](Structure& st, int index) -> Model& {
-        return st.models.at(index >= 0 ? index : index + st.models.size());
-    }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("__getitem__", &get_child<Structure, Model>, py::arg("index"),
+         py::return_value_policy::reference_internal)
     .def("__getitem__", [](Structure& st, const std::string& name) -> Model& {
         return *impl::find_iter(st.models, name);
     }, py::arg("name"), py::return_value_policy::reference_internal)
+    .def("__delitem__", &remove_child<Structure>, py::arg("index"))
+    .def("__delitem__", &remove_children<Structure>)
     .def("__delitem__", &Structure::remove_model, py::arg("name"))
     .def("find_connection", &Structure::find_connection,
          py::arg("partner1"), py::arg("partner2"),
@@ -280,12 +297,11 @@ void add_mol(py::module& m) {
     .def("__iter__", [](const Model& self) {
         return py::make_iterator(self.chains);
     }, py::keep_alive<0, 1>())
+    .def("__getitem__", &get_child<Model, Chain>, py::arg("index"),
+         py::return_value_policy::reference_internal)
     .def("__getitem__", [](Model& self, const std::string& name) -> Chain& {
         return *impl::find_iter(self.chains, name);
     }, py::arg("name"), py::return_value_policy::reference_internal)
-    .def("__getitem__", [](Model& self, int index) -> Chain& {
-        return self.chains.at(index >= 0 ? index : index + self.chains.size());
-    }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("get_subchain",
          (ResidueSpan (Model::*)(const std::string&)) &Model::get_subchain,
          py::arg("name"), py::return_value_policy::reference_internal)
@@ -314,6 +330,8 @@ void add_mol(py::module& m) {
      }, py::arg("name"), py::return_value_policy::reference_internal)
     .def("remove_chain", &Model::remove_chain, py::arg("name"))
     .def("__delitem__", &Model::remove_chain, py::arg("name"))
+    .def("__delitem__", remove_child<Model>, py::arg("index"))
+    .def("__delitem__", remove_children<Model>)
     .def("count_atom_sites", &count_atom_sites<Model>)
     .def("count_occupancies", &count_occupancies<Model>)
     .def("calculate_center_of_mass", [](const Model& self) {
@@ -354,19 +372,19 @@ void add_mol(py::module& m) {
     .def("__getitem__", [](Chain& ch, const std::string& seqid) {
         return ch.find_residue_group(SeqId(seqid));
     }, py::arg("pdb_seqid"), py::keep_alive<0, 1>())
-    .def("__getitem__", [](Chain& ch, int index) -> Residue& {
-        return ch.residues.at(index >= 0 ? index : index + ch.residues.size());
-    }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("__getitem__", &get_child<Chain, Residue>, py::arg("index"),
+         py::return_value_policy::reference_internal)
     .def("__getitem__", [](Chain &ch, py::slice slice) -> py::list {
-        size_t start, stop, step, slength;
+        ssize_t start, stop, step, slength;
         if (!slice.compute(ch.residues.size(), &start, &stop, &step, &slength))
           throw py::error_already_set();
         py::list l;
-        for (size_t i = 0; i < slength; ++i)
+        for (ssize_t i = 0; i < slength; ++i)
           l.append(py::cast(&ch.residues[start + i * step]));
         return l;
     }, py::return_value_policy::reference_internal)
     .def("__delitem__", remove_child<Chain>, py::arg("index"))
+    .def("__delitem__", remove_children<Chain>)
     .def("add_residue", add_child<Chain, Residue>,
          py::arg("residue"), py::arg("pos")=-1,
          py::return_value_policy::reference_internal)
@@ -401,7 +419,7 @@ void add_mol(py::module& m) {
          py::keep_alive<0, 1>())
     .def("__bool__", [](const ResidueSpan &g) -> bool { return !g.empty(); })
     .def("__getitem__", [](ResidueSpan& g, int index) -> Residue& {
-        return g.at(index >= 0 ? index : index + g.size());
+        return g[normalize_index(index, g)];
     }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("__getitem__", [](ResidueSpan& self, const std::string& seqid) {
         return self.find_residue_group(SeqId(seqid));
@@ -442,7 +460,7 @@ void add_mol(py::module& m) {
   py::class_<ResidueGroup, ResidueSpan>(m, "ResidueGroup")
     // need to duplicate it so it is visible
     .def("__getitem__", [](ResidueGroup& g, int index) -> Residue& {
-        return g.at(index >= 0 ? index : index + g.size());
+        return g[normalize_index(index, g)];
     }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("__getitem__", &ResidueGroup::by_resname,
          py::arg("name"), py::return_value_policy::reference_internal)
@@ -459,7 +477,7 @@ void add_mol(py::module& m) {
          py::keep_alive<0, 1>())
     .def("__bool__", [](const ResidueSpan &g) -> bool { return !g.empty(); })
     .def("__getitem__", [](AtomGroup& g, int index) -> Atom& {
-        return g.at(index >= 0 ? index : index + g.size());
+        return g[normalize_index(index, g)];
     }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("__getitem__", &AtomGroup::by_altloc,
          py::arg("altloc"), py::return_value_policy::reference_internal)
@@ -502,12 +520,12 @@ void add_mol(py::module& m) {
     .def("__iter__", [](const Residue& res) {
         return py::make_iterator(res.atoms);
     }, py::keep_alive<0, 1>())
-    .def("__getitem__", [](Residue& self, int index) -> Atom& {
-        return self.atoms.at(index >= 0 ? index : index + self.atoms.size());
-    }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("__getitem__", &get_child<Residue, Atom>, py::arg("index"),
+         py::return_value_policy::reference_internal)
     .def("__getitem__", &Residue::get,
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("__delitem__", remove_child<Residue>, py::arg("index"))
+    .def("__delitem__", remove_children<Residue>)
     .def("find_atom", [](Residue& self, const std::string& name, char altloc) {
            return self.find_atom(name, altloc);
          },
