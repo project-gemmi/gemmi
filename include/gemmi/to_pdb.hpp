@@ -497,13 +497,16 @@ inline void write_header(const Structure& st, std::ostream& os,
       ++counter;
       // According to the PDB spec serial number can be from 1 to 999.
       // Here, we allow for up to 9999 helices by using columns 7 and 11.
-      WRITE("HELIX %4d%4d %3s%2s %5s %3s%2s %5s%2d %35d    \n",
+      gf_snprintf(buf, 82, "HELIX %4d%4d %3s%2s %5s %3s%2s %5s%2d %35d    \n",
             counter, counter,
             helix.start.res_id.name.c_str(), helix.start.chain_name.c_str(),
             write_seq_id(buf8, helix.start.res_id.seqid),
             helix.end.res_id.name.c_str(), helix.end.chain_name.c_str(),
             write_seq_id(buf8a, helix.end.res_id.seqid),
             (int) helix.pdb_helix_class, helix.length);
+      if (helix.length < 0) // make 72-76 blank if the length is not given
+        std::memset(buf+71, ' ', 5);
+      os.write(buf, 81);
     }
   }
 
