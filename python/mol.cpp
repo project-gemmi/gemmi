@@ -96,6 +96,7 @@ void add_mol(py::module& m) {
 
   m.def("find_tabulated_residue", &find_tabulated_residue, py::arg("name"),
         "Find chemical component information in the internal table.");
+  m.def("expand_protein_one_letter", &expand_protein_one_letter);
 
   py::enum_<CoorFormat>(m, "CoorFormat")
     .value("Unknown", CoorFormat::Unknown)

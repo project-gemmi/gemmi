@@ -1398,6 +1398,15 @@ To get a FASTA-like string, you could continue the previous line with:
   >>> ''.join((code if code.isupper() else 'X') for code in _)
   'XAXXXAXX'
 
+To go in the opposite direction, use:
+
+.. doctest::
+
+  >>> gemmi.expand_protein_one_letter('A')
+  'ALA'
+  >>> gemmi.expand_protein_one_letter('X')
+  'UNK'
+
 Another helper function calculates molecular weight from the sequence.
 It uses the same built-in table of popular residues.
 Since in this example we have two rare components that are not tabulated,

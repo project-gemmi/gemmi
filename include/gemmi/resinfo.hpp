@@ -440,5 +440,14 @@ inline ResidueInfo find_tabulated_residue(const std::string& name) {
   return { RI::UNKNOWN, ' ', 0, 0.0f };
 }
 
+inline const char* expand_protein_one_letter(char c) {
+  static const char* data =
+    "ALA\0ASX\0CYS\0ASP\0GLU\0PHE\0GLY\0HIS\0ILE\0\0   LYS\0LEU\0MET\0" // A-M
+    "ASN\0PYL\0PRO\0GLN\0ARG\0SER\0THR\0SEC\0VAL\0TRP\0UNK\0TYR\0GLX";  // N-Z
+  if (c < 'A' || c > 'Z' || c == 'J')
+    return nullptr;
+  return &data[4 * (c - 'A')];
+}
+
 } // namespace gemmi
 #endif
