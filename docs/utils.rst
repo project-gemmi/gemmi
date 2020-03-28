@@ -539,6 +539,8 @@ Example::
   A   85  CYS: N CA C O CB SG H HA HB2 HB3 HG
   A  152  CSD: N CA CB SG C O OD1 OD2 HA HB2 HB3
 
+.. _gemmi-align:
+
 align
 =====
 
@@ -560,6 +562,7 @@ the gap opening penalty to zero::
     S--unday
 
 This tool uses modified code from `ksw2 <https://github.com/lh3/ksw2>`_.
+See the :ref:`Sequence alignment <sequence-alignment>` section for more details.
 
 sg
 ==

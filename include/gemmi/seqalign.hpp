@@ -20,6 +20,7 @@ struct AlignmentScoring {
   int gapo = -1;
   int gape = -1;
   std::vector<std::int8_t> score_matrix;
+  std::vector<std::string> matrix_encoding;
 };
 
 struct AlignmentResult {
@@ -122,6 +123,18 @@ struct AlignmentResult {
     return out;
   }
 
+  std::string formatted(const std::string& a, const std::string& b) const {
+    std::string r;
+    r.reserve((match_string.size() + 1) * 3);
+    r += add_gaps(a, 1);
+    r += '\n';
+    r += match_string;
+    r += '\n';
+    r += add_gaps(b, 2);
+    r += '\n';
+    return r;
+  }
+
 private:
   void push_cigar(std::uint32_t op, int len) {
     if (cigar.empty() || op != (cigar.back().value & 0xf))
@@ -139,15 +152,14 @@ AlignmentResult align_sequences(const std::vector<std::uint8_t>& query,
                                 const std::vector<bool>& free_gapo,
                                 std::uint8_t m,
                                 const AlignmentScoring& scoring) {
-  if (!scoring.score_matrix.empty() && scoring.score_matrix.size() != m * m)
-    fail("wrong size of score_matrix");
   // generate the query profile
   std::int8_t *query_profile = new std::int8_t[query.size() * m];
   {
+    std::uint32_t mat_size = (std::uint32_t) scoring.matrix_encoding.size();
     std::int32_t i = 0;
     for (std::uint8_t k = 0; k < m; ++k)
       for (std::uint8_t q : query)
-        if (!scoring.score_matrix.empty())
+        if (k < mat_size && q < mat_size)
           query_profile[i++] = scoring.score_matrix[k * m + q];
         else
           query_profile[i++] = (k == q ? scoring.match : scoring.mismatch);
@@ -241,6 +253,8 @@ AlignmentResult align_string_sequences(const std::vector<std::string>& query,
                                        const std::vector<bool>& free_gapo,
                                        const AlignmentScoring& scoring) {
   std::map<std::string, std::uint8_t> encoding;
+  for (const std::string& res_name : scoring.matrix_encoding)
+    encoding.emplace(res_name, encoding.size());
   for (const std::string& s : query)
     encoding.emplace(s, encoding.size());
   for (const std::string& s : target)

@@ -20,11 +20,11 @@ enum OptionIndex { Match=4, Mismatch, GapOpen, GapExt,
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
-    "Pairwise, global alignment with scoring matrix and affine gap penalty."
+    "Pairwise sequence alignment with scoring matrix and affine gap penalty."
     "\n\nUsage:"
     "\n\n" EXE_NAME " [options] FILE[...]"
-    "\n    Aligns model to the sequence (SEQRES) from the same FILE."
-    "\n    The FILE can be either in the PDB or mmCIF format."
+    "\n    Aligns sequence from the model to the full sequence (SEQRES)."
+    "\n    Both are from the same FILE - either in the PDB or mmCIF format."
     "\n    If the mmCIF format is used, option --check-mmcif can be used."
     "\n\n" EXE_NAME " [options] --query=CHAIN1 --target=CHAIN2 FILE1 FILE2"
     "\n    Aligns CHAIN1 from FILE1 to CHAIN2 from FILE2."
@@ -148,9 +148,7 @@ static const gemmi::Entity* get_entity(gemmi::Structure& st,
 
 void print_one_letter_alignment(const gemmi::AlignmentResult& result,
                                 const std::string& a, const std::string& b) {
-  printf("%s\n", result.add_gaps(a, 1).c_str());
-  printf("%s\n", result.match_string.c_str());
-  printf("%s\n", result.add_gaps(b, 2).c_str());
+  std::fputs(result.formatted(a, b).c_str(), stdout);
 }
 
 void print_result_summary(const gemmi::AlignmentResult& result) {

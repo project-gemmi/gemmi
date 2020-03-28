@@ -83,6 +83,15 @@ template<typename P> void remove_children(P& parent, py::slice slice) {
   }
 }
 
+static std::vector<std::string>
+expand_protein_one_letter_string(const std::string& s) {
+  std::vector<std::string> r;
+  r.reserve(s.size());
+  for (char c : s)
+    r.push_back(expand_protein_one_letter(c));
+  return r;
+}
+
 void add_mol(py::module& m) {
   py::class_<ResidueInfo>(m, "ResidueInfo")
     .def_readonly("one_letter_code", &ResidueInfo::one_letter_code)
@@ -97,6 +106,11 @@ void add_mol(py::module& m) {
   m.def("find_tabulated_residue", &find_tabulated_residue, py::arg("name"),
         "Find chemical component information in the internal table.");
   m.def("expand_protein_one_letter", &expand_protein_one_letter);
+  m.def("expand_protein_one_letter_string", &expand_protein_one_letter_string);
+  m.def("one_letter_code",
+        (std::string (*)(const std::vector<std::string>&)) &one_letter_code);
+  m.def("one_letter_code",
+        [](const ResidueSpan& span) { return one_letter_code(span); });
 
   py::enum_<CoorFormat>(m, "CoorFormat")
     .value("Unknown", CoorFormat::Unknown)

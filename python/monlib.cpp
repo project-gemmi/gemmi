@@ -201,7 +201,9 @@ void add_monlib(py::module& m) {
     .def_readonly("bond_length", &LinkHunt::Match::bond_length)
     .def_readonly("conn", &LinkHunt::Match::conn)
     ;
+}
 
+void add_alignment(py::module& m) {
   py::class_<AlignmentResult>(m, "AlignmentResult")
     .def_readonly("score", &AlignmentResult::score)
     .def_readonly("match_count", &AlignmentResult::match_count)
@@ -210,36 +212,26 @@ void add_monlib(py::module& m) {
     .def("calculate_identity", &AlignmentResult::calculate_identity,
          py::arg("which")=0)
     .def("add_gaps", &AlignmentResult::add_gaps, py::arg("s"), py::arg("which"))
+    .def("formatted", &AlignmentResult::formatted)
     ;
 
-  m.def("align_string_sequences", [](const std::vector<std::string>& query,
-                                     const std::vector<std::string>& target,
-                                     const std::vector<bool>& free_gapo,
-                                     int match, int mismatch,
-                                     int gapo, int gape) {
-      AlignmentScoring sco;
-      sco.match = match;
-      sco.mismatch = mismatch;
-      sco.gapo = gapo;
-      sco.gape = gape;
-      return align_string_sequences(query, target, free_gapo, sco);
-    }, py::arg("query"), py::arg("target"), py::arg("free_gapo"),
-       py::arg("match")=1, py::arg("mismatch")=-1,
-       py::arg("gapo")=-1, py::arg("gape")=-1
-  );
+  py::class_<AlignmentScoring>(m, "AlignmentScoring")
+    .def(py::init<>())
+    .def_readwrite("match", &AlignmentScoring::match)
+    .def_readwrite("mismatch", &AlignmentScoring::mismatch)
+    .def_readwrite("gapo", &AlignmentScoring::gapo)
+    .def_readwrite("gape", &AlignmentScoring::gape)
+    ;
 
+  m.def("prepare_blosum62_scoring", &prepare_blosum62_scoring);
+  m.def("align_string_sequences", &align_string_sequences,
+        py::arg("query"), py::arg("target"), py::arg("free_gapo"),
+        py::arg("scoring")=AlignmentScoring());
   m.def("align_sequence_to_polymer",
         [](const std::vector<std::string>& full_seq,
            const ResidueSpan& polymer, PolymerType polymer_type,
-           int match, int mismatch, int gapo, int gape) {
-      AlignmentScoring sco;
-      sco.match = match;
-      sco.mismatch = mismatch;
-      sco.gapo = gapo;
-      sco.gape = gape;
+           AlignmentScoring& sco) {
       return align_sequence_to_polymer(full_seq, polymer, polymer_type, sco);
-    }, py::arg("full_seq"), py::arg("polymer"), py::arg("polymer_type"),
-       py::arg("match")=1, py::arg("mismatch")=-1,
-       py::arg("gapo")=-1, py::arg("gape")=-1
-  );
+  }, py::arg("full_seq"), py::arg("polymer"), py::arg("polymer_type"),
+     py::arg("scoring")=AlignmentScoring());
 }

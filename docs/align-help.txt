@@ -1,11 +1,11 @@
 $ gemmi align -h
-Pairwise, global alignment with scoring matrix and affine gap penalty.
+Pairwise sequence alignment with scoring matrix and affine gap penalty.
 
 Usage:
 
 gemmi align [options] FILE[...]
-    Aligns model to the sequence (SEQRES) from the same FILE.
-    The FILE can be either in the PDB or mmCIF format.
+    Aligns sequence from the model to the full sequence (SEQRES).
+    Both are from the same FILE - either in the PDB or mmCIF format.
     If the mmCIF format is used, option --check-mmcif can be used.
 
 gemmi align [options] --query=CHAIN1 --target=CHAIN2 FILE1 FILE2

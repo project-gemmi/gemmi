@@ -1361,115 +1361,8 @@ Here we only show its properties in an example:
   >>> ent.full_sequence[:5]
   ['MET', 'GLU', 'GLN', 'ARG', 'ILE']
 
-The last property is the sequence.
-
-Sequence
---------
-
-``Entity.full_sequence`` represents sequence stored
-in the SEQRES record (pdb) or in the _entity_poly_seq category (mmCIF).
-It is a list (in C++: ``std::vector``) of residue names.
-In the case of microheterogeneity (point mutation),
-if the _entity_poly_seq category is read (the SEQRES record ignores
-point mutations), multiple residue names at the same point
-in sequence are separated by commas:
-
-.. doctest::
-
-  >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
-  >>> seq = st.get_entity('2').full_sequence
-  >>> seq
-  ['DSN', 'ALA', 'N2C,NCY', 'MVA', 'DSN', 'ALA', 'NCY,N2C', 'MVA']
-  >>> #           ^^^^^^^  microheterogeneity     ^^^^^^^
-
-To ignore point mutations we can use a helper function ``Entity::first_mon``:
-
-.. doctest::
-
-  >>> [gemmi.Entity.first_mon(item) for item in seq]
-  ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
-
-The sequence from SEQRES may differ from what we have in the model,
-but in this file they are the same. In the section about Chain
-we :ref:`get the same sequence from the model <polymer_b_sequence>`.
-
-If you'd need the sequence in FASTA or similar format, you could use
-the :ref:`built-in table <find_tabulated_residue>` of popular
-residues to get one-letter codes:
-
-.. doctest::
-
-  >>> [gemmi.find_tabulated_residue(resname).one_letter_code for resname in _]
-  ['s', 'A', ' ', 'v', 's', 'A', ' ', 'v']
-
-``one_letter_code`` is lowercase for non-standard residues where it denotes
-the parent component. If the code is blank, either the parent component is
-not known, or the component is not tabulated in Gemmi (i.e. it's not in the
-top 300-400 of the most popular components in the PDB).
-To get a FASTA-like string, you could continue the previous line with:
-
-.. doctest::
-
-  >>> ''.join((code if code.isupper() else 'X') for code in _)
-  'XAXXXAXX'
-
-To go in the opposite direction, use:
-
-.. doctest::
-
-  >>> gemmi.expand_protein_one_letter('A')
-  'ALA'
-  >>> gemmi.expand_protein_one_letter('X')
-  'UNK'
-
-Another helper function calculates molecular weight from the sequence.
-It uses the same built-in table of popular residues.
-Since in this example we have two rare components that are not tabulated,
-we must specify the avarage weight of unknown residue:
-
-.. doctest::
-
-  >>> gemmi.calculate_sequence_weight(seq, unknown=130.0)
-  910.7184143066406
-
-In such case the result is not accurate, but this is not a typical case.
-
-Now we will take a PDB file with standard residues
-and calculate the Matthews coefficient:
-
-.. doctest::
-
-  >>> st = gemmi.read_structure('../tests/5cvz_final.pdb')
-  >>> list(st[0])
-  [<gemmi.Chain A with 141 res>]
-  >>> # we have just a single chain, which makes this example simpler
-  >>> chain = st[0]['A']
-  >>> chain.get_polymer()
-  <gemmi.ResidueSpan of 0: []>
-  >>> # Not good. The chain parts where not assigned automatically,
-  >>> # because of the missing TER record in this file. We need to call:
-  >>> st.setup_entities()  # it should sort out chain parts
-  >>> chain.get_polymer()
-  <gemmi.ResidueSpan of 141: [17(ALA) 18(ALA) 19(ALA) ... 157(SER)]>
-  >>> st.get_entity_of(_)  # doctest: +ELLIPSIS
-  <gemmi.Entity 'A' polymer polypeptide(L) object at 0x...>
-  >>> weight = gemmi.calculate_sequence_weight(_.full_sequence)
-  >>> # Now we can calculate Matthews coefficient
-  >>> st.cell.volume_per_image() / weight
-  2.7407915442022364
-
-We could continue and calculate the solvent content, assuming the protein
-density of 1.35 g/cm\ :sup:`3` (the other constants below are the Avogadro
-number and Å\ :sup:`3`/cm\ :sup:`3` = 10\ :sup:`-24`):
-
-.. doctest::
-
-  >>> protein_fraction = 1. / (6.02214e23 * 1e-24 * 1.35 * _)
-  >>> print('Solvent content: {:.1f}%'.format(100 * (1 - protein_fraction)))
-  Solvent content: 55.1%
-
-Gemmi also includes a program that calculates the solvent content:
-:ref:`gemmi-contents <gemmi-contents>`.
+The last property is sequence from the PDB SEQRES record (or mmCIF equivalent).
+More details in the :ref:`section about sequence <sequence>`.
 
 Connection
 ----------
@@ -1595,6 +1488,310 @@ but often needed operations:
 In C++, the same functionality is provided by (templated) free functions
 from ``gemmi/polyheur.hpp``. These functions (in C++) can be applied not only
 to ``Structure``, but also to ``Model`` and ``Chain``.
+
+
+.. _sequence:
+
+Sequence
+========
+
+In the previous section we introduced sequence with the following example:
+
+.. doctest::
+
+  >>> ent.full_sequence[:5]
+  ['MET', 'GLU', 'GLN', 'ARG', 'ILE']
+
+``Entity.full_sequence`` is a list (in C++: ``std::vector``) of residue names.
+It stores sequence from the SEQRES record (pdb) or
+from the _entity_poly_seq category (mmCIF).
+The latter can contain microheterogeneity (point mutation).
+In such case, the residue names at the same point
+in sequence are separated by commas:
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
+  >>> seq = st.get_entity('2').full_sequence
+  >>> seq
+  ['DSN', 'ALA', 'N2C,NCY', 'MVA', 'DSN', 'ALA', 'NCY,N2C', 'MVA']
+  >>> #           ^^^^^^^  microheterogeneity     ^^^^^^^
+
+To ignore point mutations we can use a helper function ``Entity::first_mon``:
+
+.. doctest::
+
+  >>> [gemmi.Entity.first_mon(item) for item in seq]
+  ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
+
+An example in the section about Chain shows how to
+:ref:`extract corresponding sequence from the model <polymer_b_sequence>`.
+In general, the sequence in SEQRES and the sequence in model differ, but
+in this file they are the same.
+
+To get a sequence as one-letter codes you can use
+the :ref:`built-in table <find_tabulated_residue>` of popular residues:
+
+.. doctest::
+
+  >>> [gemmi.find_tabulated_residue(resname).one_letter_code for resname in _]
+  ['s', 'A', ' ', 'v', 's', 'A', ' ', 'v']
+
+``one_letter_code`` is lowercase for non-standard residues where it denotes
+the parent component. If the code is blank, either the parent component is
+not known, or the component is not tabulated in Gemmi (i.e. it's not in the
+top 300+ most popular components in the PDB).
+To get a FASTA-like string, you could continue the previous line with:
+
+.. doctest::
+
+  >>> ''.join((code if code.isupper() else 'X') for code in _)
+  'XAXXXAXX'
+
+or use:
+
+.. doctest::
+
+  >>> gemmi.one_letter_code(seq)
+  'XAXXXAXX'
+
+To go in the opposite direction, use:
+
+.. doctest::
+
+  >>> [gemmi.expand_protein_one_letter(letter) for letter in _]
+  ['UNK', 'ALA', 'UNK', 'UNK', 'UNK', 'ALA', 'UNK', 'UNK']
+
+or
+
+.. doctest::
+
+  >>> gemmi.expand_protein_one_letter_string('XAXXXAXX')
+  ['UNK', 'ALA', 'UNK', 'UNK', 'UNK', 'ALA', 'UNK', 'UNK']
+
+Molecular weight
+----------------
+
+Gemmi provides a simple function to calculate molecular weight
+from the sequence. It uses the same built-in table of popular residues.
+Since in this example we have two rare components that are not tabulated,
+we must specify the avarage weight of unknown residue:
+
+.. doctest::
+
+  >>> gemmi.calculate_sequence_weight(seq, unknown=130.0)
+  910.7184143066406
+
+In such case the result is not accurate, but this is not a typical case.
+
+Now we will take a PDB file with standard residues
+and calculate the Matthews coefficient:
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/5cvz_final.pdb')
+  >>> list(st[0])
+  [<gemmi.Chain A with 141 res>]
+  >>> # we have just a single chain, which makes this example simpler
+  >>> chain = st[0]['A']
+  >>> chain.get_polymer()
+  <gemmi.ResidueSpan of 0: []>
+  >>> # Not good. The chain parts where not assigned automatically,
+  >>> # because of the missing TER record in this file. We need to call:
+  >>> st.setup_entities()  # it should sort out chain parts
+  >>> chain.get_polymer()
+  <gemmi.ResidueSpan of 141: [17(ALA) 18(ALA) 19(ALA) ... 157(SER)]>
+  >>> st.get_entity_of(_)  # doctest: +ELLIPSIS
+  <gemmi.Entity 'A' polymer polypeptide(L) object at 0x...>
+  >>> weight = gemmi.calculate_sequence_weight(_.full_sequence)
+  >>> # Now we can calculate Matthews coefficient
+  >>> st.cell.volume_per_image() / weight
+  2.7407915442022364
+
+We could continue and calculate the solvent content, assuming the protein
+density of 1.35 g/cm\ :sup:`3` (the other constants below are the Avogadro
+number and Å\ :sup:`3`/cm\ :sup:`3` = 10\ :sup:`-24`):
+
+.. doctest::
+
+  >>> protein_fraction = 1. / (6.02214e23 * 1e-24 * 1.35 * _)
+  >>> print('Solvent content: {:.1f}%'.format(100 * (1 - protein_fraction)))
+  Solvent content: 55.1%
+
+Gemmi also includes a program that calculates the solvent content:
+:ref:`gemmi-contents <gemmi-contents>`.
+
+.. _sequence-alignment:
+
+Sequence alignment
+------------------
+
+Gemmi includes a sequence alignment algorithm based on the simplest
+function (ksw_gg) from the `ksw2 project <https://github.com/lh3/ksw2>`_
+of `Heng Li <https://www.ncbi.nlm.nih.gov/pubmed/29750242>`_.
+
+It is a pairwise, global alignment with substitution matrix (or just
+match/mismatch values) and affine gap penalty.
+Additionally, in Gemmi the gap openings at selected positions can be made free.
+
+Let say that we want to align residues in the model to the full sequence.
+Sometimes, the alignment is ambiguous. If we'd align texts ABBC and ABC,
+both A-BC and AB-C would have the same score. In a 3D structure, the position
+of gap can be informed by inter-atomic distances.
+This information is used automatically in the ``align_sequence_to_polymer``
+function. Gap positions, determined by a simple heuristic, are passed
+to the alignment algorithm as places where the gap opening penalty
+is not to be imposed.
+
+.. doctest::
+
+  >>> st = gemmi.read_pdb('../tests/pdb1gdr.ent', max_line_length=72)
+  >>> result = gemmi.align_sequence_to_polymer(st.entities[0].full_sequence,
+  ...                                          st[0][0].get_polymer(),
+  ...                                          gemmi.PolymerType.PeptideL)
+
+The arguments of this functions are: sequence (a list of residue names),
+:ref:`ResidueSpan <residuespan>` (a span of residues in a chain),
+and the type of chain, which is used to infer gaps.
+(The type can be taken from Entity.polymer_type, but in this example
+we wanted to keep things simple).
+
+The result provides statistics and methods of summarizing the alignment:
+
+.. doctest::
+
+  >>> result  #doctest: +ELLIPSIS
+  <gemmi.AlignmentResult object at 0x...>
+
+  >>> # score calculated according AlignmentScoring explained below
+  >>> result.score
+  69
+
+  >>> # number of matching (identical) residues
+  >>> result.match_count
+  105
+  >>> # identity = match count / length of the shorter sequence
+  >>> result.calculate_identity()
+  100.0
+  >>> # identity wrt. the 1st sequence ( = match count / 1st sequence length)
+  >>> result.calculate_identity(1)
+  75.0
+  >>> # identity wrt. the 2nd sequence
+  >>> result.calculate_identity(2)
+  100.0
+
+  >>> # CIGAR = Concise Idiosyncratic Gapped Alignment Report
+  >>> result.cigar_str()
+  '11M3I23M7I71M25I'
+
+To print out the alignment, we can combine function ``add_gaps``
+and property ``match_string``:
+
+.. doctest::
+
+  >>> result.add_gaps(gemmi.one_letter_code(st.entities[0].full_sequence), 1)[:70]
+  'MRLFGYARVSTSQQSLDIQVRALKDAGVKANRIFTDKASGSSSDRKGLDLLRMKVEEGDVILVKKLDRLG'
+  >>> result.match_string[:70]
+  '|||||||||||   |||||||||||||||||||||||       ||||||||||||||||||||||||||'
+  >>> result.add_gaps(gemmi.one_letter_code(st[0][0].get_polymer()), 2)[:70]
+  'MRLFGYARVST---SLDIQVRALKDAGVKANRIFTDK-------RKGLDLLRMKVEEGDVILVKKLDRLG'
+
+or we can use function ``AlignmentResult.formatted()``.
+
+We also have a function that aligns two sequences.
+We can exercise it by comparing two strings:
+
+.. doctest::
+
+  >>> result = gemmi.align_string_sequences(list('kitten'), list('sitting'), [])
+
+The third argument above is a list of free gap openings.
+Now we can visualize the match:
+
+.. doctest::
+
+  >>> print(result.formatted('kitten', 'sitting'), end='')  # doctest: +NORMALIZE_WHITESPACE
+  kitten-
+  .|||.| 
+  sitting
+  >>> result.score
+  0
+
+The alignment and the score is calculate according to AlignmentScoring,
+which can be passed as the last argument to both ``align_string_sequences``
+and ``align_sequence_to_polymer`` functions.
+The default scoring is +1 for match, -1 for mismatch, -1 for gap opening,
+and -1 for each residue in the gap.
+If we would like to calculate the
+`Levenshtein distance <https://en.wikipedia.org/wiki/Levenshtein_distance>`_,
+we would use the following scoring:
+
+.. doctest::
+
+  >>> scoring = gemmi.AlignmentScoring()
+  >>> scoring.match = 0
+  >>> scoring.mismatch = -1
+  >>> scoring.gapo = 0
+  >>> scoring.gape = -1
+  >>> gemmi.align_string_sequences(list('kitten'), list('sitting'), [], scoring) # doctest: +ELLIPSIS
+  <gemmi.AlignmentResult object at 0x...>
+  >>> _.score
+  -3
+
+So the distance is 3, as expected.
+
+In addition to the scoring parameters above, we can define a substitution
+matrix. Gemmi includes ready-to-use BLOSUM62 matrix with the gap cost 10/1,
+like in `BLAST <https://www.ncbi.nlm.nih.gov/blast/html/sub_matrix.html>`_.
+
+.. doctest::
+
+  >>> blosum62 = gemmi.prepare_blosum62_scoring()
+  >>> blosum62.gapo, blosum62.gape
+  (-10, -1)
+
+Now we can test it on one of examples from the
+`BioPython tutorial <http://biopython.org/DIST/docs/tutorial/Tutorial.html>`_.
+First, we try global alignment:
+
+.. doctest::
+
+  >>> result = gemmi.align_string_sequences(
+  ...         gemmi.expand_protein_one_letter_string('LSPADKTNVKAA'),
+  ...         gemmi.expand_protein_one_letter_string('PEEKSAV'),
+  ...         [], blosum62)
+  >>> print(result.formatted('LSPADKTNVKAA', 'PEEKSAV'), end='')
+  LSPADKTNVKAA
+    |..|.   |.
+  --PEEKS---AV
+  >>> result.score
+  -7
+
+We have only global aligment available, but we can use free-gaps to
+approximate a semi-global alignment (infix method) where gaps at the start
+and at the end of the second sequence are not penalized.
+Approximate -- because only gap openings are not penalized,
+residues in the gap still decrease the score:
+
+.. doctest::
+
+  >>> result = gemmi.align_string_sequences(
+  ...         gemmi.expand_protein_one_letter_string('LSPADKTNVKAA'),
+  ...         gemmi.expand_protein_one_letter_string('PEEKSAV'),
+  ...         # free gaps at 0 (start) and 7 (end):   01234567
+  ...         [i in (0, 7) for i in range(8)],
+  ...         blosum62)
+  >>> print(result.formatted('LSPADKTNVKAA', 'PEEKSAV'), end='')  #doctest: +NORMALIZE_WHITESPACE
+  LSPADKTNVKAA
+    |..|..|   
+  --PEEKSAV---
+  >>> result.score
+  11
+
+The real infix method (or local alignment) would yield the score 16 (11+5),
+because we have 5 missing residues at the ends.
+
+See also the :ref:`gemmi-align <gemmi-align>` program.
 
 
 Model
@@ -1880,6 +2077,8 @@ and a function that changes a polypeptide chain into polyalanine:
   >>> chain_a.trim_to_alanine()
 
 In C++ ``trim_to_alanine()`` is defined in ``gemmi/polyheur.hpp``.
+
+.. _residuespan:
 
 ResidueSpan, ResidueGroup
 =========================
@@ -2212,6 +2411,7 @@ corresponds to Connection that contains two addresses:
 
 .. doctest::
 
+  >>> st = gemmi.read_structure('../tests/4oz7.pdb')
   >>> st.connections[2]
   <gemmi.Connection covale1  A/22Q 1/C - A/ALA 2/N>
 
@@ -2245,7 +2445,7 @@ the Chain, Residue and Atom together:
   >>> cra
   <gemmi.CRA A/ALA 2/N>
   >>> cra.chain
-  <gemmi.Chain A with 10 res>
+  <gemmi.Chain A with 21 res>
   >>> cra.residue
   <gemmi.Residue 2(ALA) with 5 atoms>
   >>> cra.atom
