@@ -40,7 +40,7 @@ struct ConvArg: public Arg {
 enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, PdbxStyle, BlockName,
   ExpandNcs, ExpandAssembly, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
-  ShortTer, Linkr, MinimalPdb, SegmentAsChain,
+  ShortTer, Linkr, MinimalPdb, SegmentAsChain, OldPdb
 };
 
 static const option::Descriptor Usage[] = {
@@ -70,6 +70,9 @@ static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "\nPDB input options:" },
   { SegmentAsChain, 0, "", "segment-as-chain", Arg::None,
     "  --segment-as-chain \tAppend segment id to label_asym_id (chain name)." },
+  { OldPdb, 0, "", "old-pdb", Arg::None,
+    "  --old-pdb \tRead only the first 72 characters in line." },
+
   { NoOp, 0, "", "", Arg::None, "\nPDB output options:" },
   { ShortTer, 0, "", "short-ter", Arg::None,
     "  --short-ter  \tWrite PDB TER records without numbers (iotbx compat.)." },
@@ -421,7 +424,11 @@ int GEMMI_MAIN(int argc, char **argv) {
     std::cerr << "Converting " << input << " to " << format_as_string(out_type)
               << "..." << std::endl;
   try {
-    gemmi::Structure st = gemmi::read_structure_gz(input, in_type);
+    gemmi::Structure st;
+    if (p.options[OldPdb])
+      st = gemmi::read_pdb_gz(input, 72);
+    else
+      st = gemmi::read_structure_gz(input, in_type);
     convert(st, output, out_type, p.options);
   } catch (tao::pegtl::parse_error& e) {
     std::cerr << e.what() << std::endl;

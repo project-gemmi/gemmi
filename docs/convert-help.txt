@@ -21,6 +21,7 @@ CIF output options:
 
 PDB input options:
   --segment-as-chain     Append segment id to label_asym_id (chain name).
+  --old-pdb              Read only the first 72 characters in line.
 
 PDB output options:
   --short-ter            Write PDB TER records without numbers (iotbx compat.).
