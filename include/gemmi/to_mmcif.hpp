@@ -65,6 +65,13 @@ inline std::string string_or_qmark(const std::string& s) {
   return s.empty() ? "?" : cif::quote(s);
 }
 
+// Quote chain name or entity id if necessary. It is necessary
+// only if the chain name is missing, which was OK in the past.
+// Here we use '' rather than . or ?.
+inline std::string qchain(const std::string& s) {
+  return cif::quote(s);
+}
+
 
 inline void add_cif_atoms(const Structure& st, cif::Block& block) {
   // atom list
@@ -111,7 +118,7 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
           vv.emplace_back(to_str(a.b_iso));
           vv.emplace_back(a.charge == 0 ? "?" : std::to_string(a.charge));
           vv.emplace_back(auth_seq_id);
-          vv.emplace_back(cif::quote(chain.name));
+          vv.emplace_back(impl::qchain(chain.name));
           vv.emplace_back(model.name);
           if (a.u11 != 0.f)
             aniso.emplace_back(serial, &a);
@@ -267,7 +274,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
     conn_loop.add_row({
         con.name,                                  // id
         get_mmcif_connection_type_id(con.type),    // conn_type_id
-        cra1.chain->name,                          // ptnr1_auth_asym_id
+        impl::qchain(cra1.chain->name),            // ptnr1_auth_asym_id
         subchain_or_dot(*cra1.residue),            // ptnr1_label_asym_id
         cra1.residue->name,                        // ptnr1_label_comp_id
         cra1.residue->label_seq.str('.'),          // ptnr1_label_seq_id
@@ -276,7 +283,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
         cra1.residue->seqid.num.str(),             // ptnr1_auth_seq_id
         pdbx_icode(con.partner1.res_id),           // ptnr1_PDB_ins_code
         "1_555",                                   // ptnr1_symmetry
-        cra2.chain->name,                          // ptnr2_auth_asym_id
+        impl::qchain(cra2.chain->name),            // ptnr2_auth_asym_id
         subchain_or_dot(*cra2.residue),            // ptnr2_label_asym_id
         cra2.residue->name,                        // ptnr2_label_comp_id
         cra2.residue->label_seq.str('.'),          // ptnr2_label_seq_id
@@ -329,13 +336,15 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
   // _entity
   cif::Loop& entity_loop = block.init_mmcif_loop("_entity.", {"id", "type"});
   for (const Entity& ent : st.entities)
-    entity_loop.add_row({ent.name, entity_type_to_string(ent.entity_type)});
+    entity_loop.add_row({impl::qchain(ent.name),
+                         entity_type_to_string(ent.entity_type)});
 
   // _entity_poly
   cif::Loop& ent_poly_loop = block.init_mmcif_loop("_entity_poly.", {"entity_id", "type"});
   for (const Entity& ent : st.entities)
     if (ent.entity_type == EntityType::Polymer)
-      ent_poly_loop.add_row({ent.name, polymer_type_to_qstring(ent.polymer_type)});
+      ent_poly_loop.add_row({impl::qchain(ent.name),
+                             polymer_type_to_qstring(ent.polymer_type)});
 
   // _struct_ref, _struct_ref_seq
   {
@@ -352,7 +361,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
     for (const Entity& ent : st.entities)
       for (const Entity::DbRef& dbref : ent.dbrefs) {
         ref_loop.add_row({std::to_string(++counter),
-                          impl::string_or_dot(ent.name),
+                          impl::qchain(ent.name),
                           impl::string_or_dot(dbref.db_name),
                           impl::string_or_dot(dbref.id_code),
                           impl::string_or_qmark(dbref.accession_code),
@@ -675,7 +684,8 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
     for (ConstResidueSpan& sub : chain.subchains())
       if (!sub.subchain_id().empty()) {
         const Entity* ent = st.get_entity_of(sub);
-        asym_loop.add_row({sub.subchain_id(), (ent ? ent->name : "?")});
+        asym_loop.add_row({sub.subchain_id(),
+                           (ent ? impl::qchain(ent->name) : "?")});
       }
 
   // _database_PDB_matrix (ORIGX)
@@ -708,13 +718,13 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
       struct_conf_loop.add_row({
         "HELX_P",                                     // conf_type_id
         "H" + std::to_string(++count),                // id
-        cra1.chain->name,                             // beg_auth_asym_id
+        impl::qchain(cra1.chain->name),               // beg_auth_asym_id
         impl::subchain_or_dot(*cra1.residue),         // beg_label_asym_id
         cra1.residue->name,                           // beg_label_comp_id
         cra1.residue->label_seq.str(),                // beg_label_seq_id
         cra1.residue->seqid.num.str(),                // beg_auth_seq_id
         impl::pdbx_icode(*cra1.residue),              // beg_PDB_ins_code
-        cra2.chain->name,                             // end_auth_asym_id
+        impl::qchain(cra2.chain->name),               // end_auth_asym_id
         impl::subchain_or_dot(*cra2.residue),         // end_label_asym_id
         cra2.residue->name,                           // end_label_comp_id
         cra2.residue->label_seq.str(),                // end_label_seq_id
@@ -762,13 +772,13 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
         range_loop.add_row({
           sheet.name,                                 // sheet_id
           std::to_string(i+1),                        // id
-          cra1.chain->name,                           // beg_auth_asym_id
+          impl::qchain(cra1.chain->name),             // beg_auth_asym_id
           impl::subchain_or_dot(*cra1.residue),       // beg_label_asym_id
           cra1.residue->name,                         // beg_label_comp_id
           cra1.residue->label_seq.str(),              // beg_label_seq_id
           cra1.residue->seqid.num.str(),              // beg_auth_seq_id
           impl::pdbx_icode(*cra1.residue),            // beg_PDB_ins_code
-          cra2.chain->name,                           // end_auth_asym_id
+          impl::qchain(cra2.chain->name),             // end_auth_asym_id
           impl::subchain_or_dot(*cra2.residue),       // end_label_asym_id
           cra2.residue->name,                         // end_label_comp_id
           cra2.residue->label_seq.str(),              // end_label_seq_id
@@ -799,14 +809,14 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
           sheet.name,                                 // sheet_id
           std::to_string(i),                          // range_id_1
           std::to_string(i+1),                        // range_id_2
-          cra1.chain->name,                           // range_1_auth_asym_id
+          impl::qchain(cra1.chain->name),             // range_1_auth_asym_id
           impl::subchain_or_dot(*cra1.residue),       // range_1_label_asym_id
           cra1.residue->name,                         // range_1_label_comp_id
           cra1.residue->label_seq.str(),              // range_1_label_seq_id
           cra1.residue->seqid.num.str(),              // range_1_auth_seq_id
           impl::pdbx_icode(*cra1.residue),            // range_1_PDB_ins_code
           strand.hbond_atom1.atom_name.c_str(),       // range_1_label_atom_id
-          cra2.chain->name,                           // range_2_auth_asym_id
+          impl::qchain(cra2.chain->name),             // range_2_auth_asym_id
           impl::subchain_or_dot(*cra2.residue),       // range_2_label_asym_id
           cra2.residue->name,                         // range_2_label_comp_id
           cra2.residue->label_seq.str(),              // range_2_label_seq_id
@@ -838,7 +848,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
         if (res.is_cis)
           prot_cis_loop.add_row({to_string(prot_cis_loop.length()+1),
                                  model.name, impl::subchain_or_dot(res),
-                                 res.label_seq.str(), chain.name,
+                                 res.label_seq.str(), impl::qchain(chain.name),
                                  res.seqid.num.str(), impl::pdbx_icode(res),
                                  res.name, "."});
 
@@ -867,10 +877,11 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
         std::string num = std::to_string(i+1);
         size_t start = 0, end;
         while ((end = mon_ids.find(',', start)) != std::string::npos) {
-          poly_loop.add_row({ent.name, num, mon_ids.substr(start, end-start)});
+          poly_loop.add_row({impl::qchain(ent.name), num,
+                             mon_ids.substr(start, end-start)});
           start = end + 1;
         }
-        poly_loop.add_row({ent.name, num, mon_ids.substr(start)});
+        poly_loop.add_row({impl::qchain(ent.name), num, mon_ids.substr(start)});
       }
 
   if (with_atoms)
