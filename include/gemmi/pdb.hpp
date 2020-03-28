@@ -280,7 +280,8 @@ inline bool same_str(const std::string& s, const char (&literal)[N]) {
 }
 
 template<typename Input>
-Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
+Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
+                                   int max_line_length) {
   using namespace pdb_impl;
   int line_num = 0;
   auto wrong = [&line_num](const std::string& msg) {
@@ -295,9 +296,11 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
   Chain *chain = nullptr;
   Residue *resi = nullptr;
   char line[122] = {0};
+  if (max_line_length <= 0 || max_line_length > 120)
+    max_line_length = 120;
   bool after_ter = false;
   Transform matrix;
-  while (size_t len = copy_line_from_stream(line, 121, infile)) {
+  while (size_t len = copy_line_from_stream(line, max_line_length+1, infile)) {
     ++line_num;
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
       if (len < 66)
@@ -609,15 +612,15 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source) {
 
 }  // namespace pdb_impl
 
-inline Structure read_pdb_file(const std::string& path) {
+inline Structure read_pdb_file(const std::string& path, int linelen=0) {
   auto f = file_open(path.c_str(), "rb");
-  return pdb_impl::read_pdb_from_line_input(FileStream{f.get()}, path);
+  return pdb_impl::read_pdb_from_line_input(FileStream{f.get()}, path, linelen);
 }
 
 inline Structure read_pdb_from_memory(const char* data, size_t size,
-                                      const std::string& name) {
+                                      const std::string& name, int linelen=0) {
   return pdb_impl::read_pdb_from_line_input(MemoryStream{data, data + size},
-                                            name);
+                                            name, linelen);
 }
 
 inline Structure read_pdb_string(const std::string& str,
@@ -627,13 +630,14 @@ inline Structure read_pdb_string(const std::string& str,
 
 // A function for transparent reading of stdin and/or gzipped files.
 template<typename T>
-inline Structure read_pdb(T&& input) {
+inline Structure read_pdb(T&& input, int linelen=0) {
   if (input.is_stdin())
-    return pdb_impl::read_pdb_from_line_input(FileStream{stdin}, "stdin");
+    return pdb_impl::read_pdb_from_line_input(FileStream{stdin},
+                                              "stdin", linelen);
   if (input.is_compressed())
     return pdb_impl::read_pdb_from_line_input(input.get_uncompressing_stream(),
-                                              input.path());
-  return read_pdb_file(input.path());
+                                              input.path(), linelen);
+  return read_pdb_file(input.path(), linelen);
 }
 
 } // namespace gemmi

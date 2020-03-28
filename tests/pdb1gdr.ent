@@ -1,0 +1,215 @@
+HEADER    SITE-SPECIFIC RECOMBINASE               31-AUG-93   1GDR      1GDR   2
+COMPND    GAMMA DELTA RESOLVASE                                         1GDR   3
+SOURCE    (ESCHERICHIA COLI)                                            1GDR   4
+AUTHOR    P.A.RICE,T.A.STEITZ                                           1GDR   5
+REVDAT   1   30-APR-94 1GDR    0                                        1GDR   6
+JRNL        AUTH   P.A.RICE,T.A.STEITZ                                  1GDR   7
+JRNL        TITL   MODEL FOR A DNA MEDIATED SYNAPTIC COMPLEX            1GDR   8
+JRNL        TITL 2 SUGGESTED BY CRYSTAL PACKING OF GAMMA DELTA          1GDR   9
+JRNL        TITL 3 RESOLVASE SUBUNITS                                   1GDR  10
+JRNL        REF    TO BE PUBLISHED                                      1GDR  11
+JRNL        REFN                                                   353  1GDR  12
+REMARK   1                                                              1GDR  13
+REMARK   1 REFERENCE 1                                                  1GDR  14
+REMARK   1  AUTH   M.R.SANDERSON,P.S.FREEMONT,P.A.RICE,A.GOLDMAN,       1GDR  15
+REMARK   1  AUTH 2 G.F.HATFULL,N.D.F.GRINDLEY                           1GDR  16
+REMARK   1  TITL   THE CRYSTAL STRUCTURE OF THE CATALYTIC DOMAIN OF     1GDR  17
+REMARK   1  TITL 2 THE SITE SPECIFIC RECOMBINATION ENZYME GD            1GDR  18
+REMARK   1  TITL 3 RESOLVASE AT 2.7 RESOLUTION                          1GDR  19
+REMARK   1  REF    CELL(CAMBRIDGE,MASS.)         V.  63  1323 1990      1GDR  20
+REMARK   1  REFN   ASTM CELLB5  US ISSN 0092-8674                  998  1GDR  21
+REMARK   1 REFERENCE 2                                                  1GDR  22
+REMARK   1  AUTH   S.S.ABDEL-MEGUID,H.M.K.MURTHY,T.A.STEITZ             1GDR  23
+REMARK   1  TITL   PRELIMINARY X-RAY DIFFRACTION STUDIES OF THE         1GDR  24
+REMARK   1  TITL 2 PUTATIVE CATALYTIC DOMAIN OF GD RESOLVASE FROM       1GDR  25
+REMARK   1  TITL 3 ESCHERICHIA COLI                                     1GDR  26
+REMARK   1  REF    J.BIOL.CHEM.                  V. 261 15934 1986      1GDR  27
+REMARK   1  REFN   ASTM JBCHA3  US ISSN 0021-9258                  071  1GDR  28
+REMARK   1 REFERENCE 3                                                  1GDR  29
+REMARK   1  AUTH   S.S.ABDEL-MUGUID,N.D.F.GRINDLEY,N.S.TEMPLETON,       1GDR  30
+REMARK   1  AUTH 2 T.A.STEITZ                                           1GDR  31
+REMARK   1  TITL   CLEAVAGE OF THE SITE-SPECIFIC RECOMBINATION          1GDR  32
+REMARK   1  TITL 2 PROTEIN GD RESOLVASE:  THE SMALLER OF TWO            1GDR  33
+REMARK   1  TITL 3 FRAGMENTS BINDS DNA SPECIFICALLY                     1GDR  34
+REMARK   1  REF    PROC.NAT.ACAD.SCI.USA         V.  81  2001 1984      1GDR  35
+REMARK   1  REFN   ASTM PNASA6  US ISSN 0027-8424                  040  1GDR  36
+REMARK   1 REFERENCE 4                                                  1GDR  37
+REMARK   1  AUTH   P.C.WEBER,D.L.OLLIS,W.R.BEBRIN,S.S.ABDEL-MEGUID,     1GDR  38
+REMARK   1  AUTH 2 T.A.STEITZ                                           1GDR  39
+REMARK   1  TITL   CRYSTALLIZATION OF RESOLVASE, A REPRESSOR THAT       1GDR  40
+REMARK   1  TITL 2 ALSO CATALYZES SITE-SPECIFIC DNA RECOMBINATION       1GDR  41
+REMARK   1  REF    J.MOL.BIOL.                   V. 157   689 1982      1GDR  42
+REMARK   1  REFN   ASTM JMOBAK  UK ISSN 0022-2836                  070  1GDR  43
+REMARK   2                                                              1GDR  44
+REMARK   2 RESOLUTION. 3.5  ANGSTROMS.                                  1GDR  45
+REMARK   3                                                              1GDR  46
+REMARK   3 REFINEMENT.                                                  1GDR  47
+REMARK   3   PROGRAM                    X-PLOR                          1GDR  48
+REMARK   3   AUTHORS                    BRUNGER                         1GDR  49
+REMARK   3   R VALUE                    0.310                           1GDR  50
+REMARK   3   RMSD BOND DISTANCES        0.015  ANGSTROMS                1GDR  51
+REMARK   3   RMSD BOND ANGLES           3.55   DEGREES                  1GDR  52
+REMARK   3                                                              1GDR  53
+REMARK   3  THE DATA ARE VERY BADLY ANISOTROPIC AND ONLY EXTEND TO 2.8  1GDR  54
+REMARK   3  ANGSTROMS IN ONE DIRECTION; IN THE OTHER TWO DIRECTIONS     1GDR  55
+REMARK   3  THE RESOLUTION LIMIT IS 3.5 ANGSTROMS.                      1GDR  56
+REMARK   4                                                              1GDR  57
+REMARK   4 INTACT RESOLVASE AND THE LARGE FRAGMENT CRYSTALLIZE          1GDR  58
+REMARK   4 ISOMORPHOUSLY IN THIS CRYSTAL FORM, BUT THE DNA BINDING      1GDR  59
+REMARK   4 DOMAIN AND THE LAST 25 RESIDUES OF THE LARGE FRAGMENT ARE    1GDR  60
+REMARK   4 DISORDERED IN THE CRYSTAL.                                   1GDR  61
+REMARK   5                                                              1GDR  62
+REMARK   5 THESE CRYSTALS DO NOT DIFFRACT AS WELL AS THE C2221          1GDR  63
+REMARK   5 CRYSTAL FORM (PDB ENTRY 2RSL) AND ARE MAINLY OF INTEREST     1GDR  64
+REMARK   5 IN REGARDS TO CRYSTAL PACKING.  THE AUTHORS HAVE PROPOSED    1GDR  65
+REMARK   5 A MODEL OF THE SYNAPTIC COMPLEX BASED ON THE PACKING OF      1GDR  66
+REMARK   5 PROTOMERS IN THIS UNIT CELL.                                 1GDR  67
+REMARK   6                                                              1GDR  68
+REMARK   6 THE MATRIX GIVEN BELOW WILL APPROXIMATELY SUPERIMPOSE        1GDR  69
+REMARK   6 MONOMER-B FROM THE C2221 CRYSTAL STRUCTURE ONTO THE          1GDR  70
+REMARK   6 THE STRUCTURE PRESENTED IN THIS ENTRY.                       1GDR  71
+REMARK   6                                                              1GDR  72
+REMARK   6 0.77672    0.02093  -0.62949  (X - 25.22352)  +  -9.96070    1GDR  73
+REMARK   6 0.62967   -0.00232   0.77686  (X - 53.97461)  +  43.29039    1GDR  74
+REMARK   6 0.01480   -0.99978  -0.01498  (X - 47.00185)  +  12.88526    1GDR  75
+REMARK   7                                                              1GDR  76
+REMARK   7 RESIDUES 12 - 14, 38 - 44, AND 116 - C-TERMINUS ARE NOT      1GDR  77
+REMARK   7 INCLUDED IN THIS ENTRY AS THEY ARE EITHER VERY POORLY        1GDR  78
+REMARK   7 ORDERED OR COMPLETELY MISSING FROM THE ELECTRON DENSITY      1GDR  79
+REMARK   7 MAP.                                                         1GDR  80
+SEQRES   1    140  MET ARG LEU PHE GLY TYR ALA ARG VAL SER THR SER GLN  1GDR  81
+SEQRES   2    140  GLN SER LEU ASP ILE GLN VAL ARG ALA LEU LYS ASP ALA  1GDR  82
+SEQRES   3    140  GLY VAL LYS ALA ASN ARG ILE PHE THR ASP LYS ALA SER  1GDR  83
+SEQRES   4    140  GLY SER SER SER ASP ARG LYS GLY LEU ASP LEU LEU ARG  1GDR  84
+SEQRES   5    140  MET LYS VAL GLU GLU GLY ASP VAL ILE LEU VAL LYS LYS  1GDR  85
+SEQRES   6    140  LEU ASP ARG LEU GLY ARG ASP THR ALA ASP MET ILE GLN  1GDR  86
+SEQRES   7    140  LEU ILE LYS GLU PHE ASP ALA GLN GLY VAL SER ILE ARG  1GDR  87
+SEQRES   8    140  PHE ILE ASP ASP GLY ILE SER THR ASP GLY GLU MET GLY  1GDR  88
+SEQRES   9    140  LYS MET VAL VAL THR ILE LEU SER ALA VAL ALA GLN ALA  1GDR  89
+SEQRES  10    140  GLU ARG GLN ARG ILE LEU GLU ARG THR ASN GLU GLY ARG  1GDR  90
+SEQRES  11    140  GLN GLU ALA MET ALA LYS GLY VAL VAL PHE              1GDR  91
+HELIX    1 A   SER     12  GLY     27  1                                1GDR  92
+HELIX    2 B   GLY     47  VAL     55  1                                1GDR  93
+HELIX    3 C   LYS     65  LEU     69  1                                1GDR  94
+HELIX    4 D   ASP     72  GLY     87  1                                1GDR  95
+HELIX    5 E   GLY    101  ALA    115  1                                1GDR  96
+SHEET    1 S1  5 ARG    32  ALA    37  0                                1GDR  97
+SHEET    2 S1  5 MET     1  SER    10  1                                1GDR  98
+SHEET    3 S1  5 GLY    58  LYS    64  1                                1GDR  99
+SHEET    4 S1  5 GLY    87  ILE    93  1                                1GDR 100
+SHEET    5 S1  5 GLY    96  ASP   100 -1                                1GDR 101
+CRYST1   60.200   60.200  170.100  90.00  90.00 120.00 P 64 2 2     12  1GDR 102
+ORIGX1      1.000000  0.000000  0.000000        0.00000                 1GDR 103
+ORIGX2      0.000000  1.000000  0.000000        0.00000                 1GDR 104
+ORIGX3      0.000000  0.000000  1.000000        0.00000                 1GDR 105
+SCALE1      0.016611  0.009591  0.000000        0.00000                 1GDR 106
+SCALE2      0.000000  0.019181  0.000000        0.00000                 1GDR 107
+SCALE3      0.000000  0.000000  0.005879        0.00000                 1GDR 108
+ATOM      1  CA  MET     1     -19.201  51.101   6.138  1.00 35.00      1GDR 109
+ATOM      2  CA  ARG     2     -17.008  48.871   4.008  1.00 35.00      1GDR 110
+ATOM      3  CA  LEU     3     -16.130  45.625   5.844  1.00 35.00      1GDR 111
+ATOM      4  CA  PHE     4     -12.757  44.016   5.186  1.00 35.00      1GDR 112
+ATOM      5  CA  GLY     5     -11.666  40.707   6.561  1.00 35.00      1GDR 113
+ATOM      6  CA  TYR     6      -8.374  39.950   8.162  1.00 35.00      1GDR 114
+ATOM      7  CA  ALA     7      -6.911  36.602   9.087  1.00 35.00      1GDR 115
+ATOM      8  CA  ARG     8      -3.628  34.987   9.895  1.00 35.00      1GDR 116
+ATOM      9  CA  VAL     9      -2.514  31.493   8.924  1.00 35.00      1GDR 117
+ATOM     10  CA  SER    10       0.976  31.920  10.131  1.00 35.00      1GDR 118
+ATOM     11  CA  THR    11       1.469  28.272  10.011  1.00 35.00      1GDR 119
+ATOM     12  CA  SER    15      -5.893  26.989   6.102  1.00 35.00      1GDR 120
+ATOM     13  CA  LEU    16      -5.938  30.460   4.686  1.00 35.00      1GDR 121
+ATOM     14  CA  ASP    17      -9.047  28.861   3.133  1.00 35.00      1GDR 122
+ATOM     15  CA  ILE    18     -11.309  28.084   6.038  1.00 35.00      1GDR 123
+ATOM     16  CA  GLN    19     -10.527  31.399   7.503  1.00 35.00      1GDR 124
+ATOM     17  CA  VAL    20     -10.915  33.263   4.146  1.00 35.00      1GDR 125
+ATOM     18  CA  ARG    21     -14.184  31.342   3.848  1.00 35.00      1GDR 126
+ATOM     19  CA  ALA    22     -15.520  32.653   7.143  1.00 35.00      1GDR 127
+ATOM     20  CA  LEU    23     -14.463  36.067   5.976  1.00 35.00      1GDR 128
+ATOM     21  CA  LYS    24     -16.282  35.703   2.603  1.00 35.00      1GDR 129
+ATOM     22  CA  ASP    25     -18.953  34.132   4.649  1.00 35.00      1GDR 130
+ATOM     23  CA  ALA    26     -19.317  37.104   6.922  1.00 35.00      1GDR 131
+ATOM     24  CA  GLY    27     -20.427  39.609   4.198  1.00 35.00      1GDR 132
+ATOM     25  CA  VAL    28     -16.875  40.410   3.411  1.00 35.00      1GDR 133
+ATOM     26  CA  LYS    29     -16.376  40.398  -0.340  1.00 35.00      1GDR 134
+ATOM     27  CA  ALA    30     -13.102  38.687  -1.327  1.00 35.00      1GDR 135
+ATOM     28  CA  ASN    31     -11.564  41.956  -2.667  1.00 35.00      1GDR 136
+ATOM     29  CA  ARG    32     -11.407  43.032   1.029  1.00 35.00      1GDR 137
+ATOM     30  CA  ILE    33      -9.899  39.922   2.658  1.00 35.00      1GDR 138
+ATOM     31  CA  PHE    34      -6.220  40.482   3.394  1.00 35.00      1GDR 139
+ATOM     32  CA  THR    35      -4.109  37.679   4.986  1.00 35.00      1GDR 140
+ATOM     33  CA  ASP    36      -0.637  36.384   5.897  1.00 35.00      1GDR 141
+ATOM     34  CA  LYS    37       1.860  34.005   7.648  1.00 35.00      1GDR 142
+ATOM     35  CA  ARG    45       3.297  41.917   7.421  1.00 35.00      1GDR 143
+ATOM     36  CA  LYS    46       2.245  42.800   3.882  1.00 35.00      1GDR 144
+ATOM     37  CA  GLY    47      -1.191  41.511   4.607  1.00 35.00      1GDR 145
+ATOM     38  CA  LEU    48      -2.236  44.138   7.111  1.00 35.00      1GDR 146
+ATOM     39  CA  ASP    49      -0.187  47.104   5.727  1.00 35.00      1GDR 147
+ATOM     40  CA  LEU    50      -2.416  47.102   2.693  1.00 35.00      1GDR 148
+ATOM     41  CA  LEU    51      -5.540  47.094   4.870  1.00 35.00      1GDR 149
+ATOM     42  CA  ARG    52      -4.071  50.046   6.743  1.00 35.00      1GDR 150
+ATOM     43  CA  MET    53      -4.155  51.798   3.301  1.00 35.00      1GDR 151
+ATOM     44  CA  LYS    54      -7.542  50.625   2.030  1.00 35.00      1GDR 152
+ATOM     45  CA  VAL    55      -9.565  51.087   5.212  1.00 35.00      1GDR 153
+ATOM     46  CA  GLU    56     -11.299  54.469   5.512  1.00 35.00      1GDR 154
+ATOM     47  CA  GLU    57     -12.834  56.138   8.575  1.00 35.00      1GDR 155
+ATOM     48  CA  GLY    58     -16.194  54.427   9.423  1.00 35.00      1GDR 156
+ATOM     49  CA  ASP    59     -15.642  50.698   8.626  1.00 35.00      1GDR 157
+ATOM     50  CA  VAL    60     -15.074  47.308  10.030  1.00 35.00      1GDR 158
+ATOM     51  CA  ILE    61     -12.370  44.757   9.802  1.00 35.00      1GDR 159
+ATOM     52  CA  LEU    62     -13.944  41.302  10.489  1.00 35.00      1GDR 160
+ATOM     53  CA  VAL    63     -11.370  39.032  12.032  1.00 35.00      1GDR 161
+ATOM     54  CA  LYS    64     -12.085  35.345  13.033  1.00 35.00      1GDR 162
+ATOM     55  CA  LYS    65     -10.540  34.862  16.548  1.00 35.00      1GDR 163
+ATOM     56  CA  LEU    66      -8.228  37.006  18.708  1.00 35.00      1GDR 164
+ATOM     57  CA  ASP    67      -5.062  35.091  17.734  1.00 35.00      1GDR 165
+ATOM     58  CA  ARG    68      -5.362  35.742  14.022  1.00 35.00      1GDR 166
+ATOM     59  CA  LEU    69      -5.249  39.507  14.620  1.00 35.00      1GDR 167
+ATOM     60  CA  GLY    70      -2.356  39.924  16.864  1.00 35.00      1GDR 168
+ATOM     61  CA  ARG    71       0.390  37.568  17.375  1.00 35.00      1GDR 169
+ATOM     62  CA  ASP    72      -0.190  38.141  21.070  1.00 35.00      1GDR 170
+ATOM     63  CA  THR    73      -2.061  40.287  23.585  1.00 35.00      1GDR 171
+ATOM     64  CA  ALA    74       0.373  43.114  23.256  1.00 35.00      1GDR 172
+ATOM     65  CA  ASP    75       0.244  43.024  19.427  1.00 35.00      1GDR 173
+ATOM     66  CA  MET    76      -3.511  42.985  19.758  1.00 35.00      1GDR 174
+ATOM     67  CA  ILE    77      -3.651  46.105  21.947  1.00 35.00      1GDR 175
+ATOM     68  CA  GLN    78      -1.320  47.960  19.561  1.00 35.00      1GDR 176
+ATOM     69  CA  LEU    79      -3.383  47.025  16.578  1.00 35.00      1GDR 177
+ATOM     70  CA  ILE    80      -6.772  47.734  18.223  1.00 35.00      1GDR 178
+ATOM     71  CA  LYS    81      -5.616  51.300  18.964  1.00 35.00      1GDR 179
+ATOM     72  CA  GLU    82      -4.239  51.841  15.456  1.00 35.00      1GDR 180
+ATOM     73  CA  PHE    83      -7.413  51.025  13.655  1.00 35.00      1GDR 181
+ATOM     74  CA  ASP    84      -9.257  52.626  16.527  1.00 35.00      1GDR 182
+ATOM     75  CA  ALA    85      -7.237  55.690  15.474  1.00 35.00      1GDR 183
+ATOM     76  CA  GLN    86      -8.579  55.460  11.991  1.00 35.00      1GDR 184
+ATOM     77  CA  GLY    87     -11.982  54.854  13.518  1.00 35.00      1GDR 185
+ATOM     78  CA  VAL    88     -12.075  51.221  12.210  1.00 35.00      1GDR 186
+ATOM     79  CA  SER    89     -13.907  48.879  14.612  1.00 35.00      1GDR 187
+ATOM     80  CA  ILE    90     -12.368  45.328  14.818  1.00 35.00      1GDR 188
+ATOM     81  CA  ARG    91     -14.977  42.554  15.242  1.00 35.00      1GDR 189
+ATOM     82  CA  PHE    92     -13.796  39.136  16.252  1.00 35.00      1GDR 190
+ATOM     83  CA  ILE    93     -16.060  36.636  14.519  1.00 35.00      1GDR 191
+ATOM     84  CA  ASP    94     -16.322  33.662  16.791  1.00 35.00      1GDR 192
+ATOM     85  CA  ASP    95     -15.681  35.292  20.250  1.00 35.00      1GDR 193
+ATOM     86  CA  GLY    96     -18.570  37.831  20.034  1.00 35.00      1GDR 194
+ATOM     87  CA  ILE    97     -16.493  40.796  21.138  1.00 35.00      1GDR 195
+ATOM     88  CA  SER    98     -15.957  43.779  18.951  1.00 35.00      1GDR 196
+ATOM     89  CA  THR    99     -13.989  47.003  19.595  1.00 35.00      1GDR 197
+ATOM     90  CA  ASP   100     -17.024  49.161  18.999  1.00 35.00      1GDR 198
+ATOM     91  CA  GLY   101     -16.473  51.913  21.462  1.00 35.00      1GDR 199
+ATOM     92  CA  GLU   102     -18.339  51.458  24.777  1.00 35.00      1GDR 200
+ATOM     93  CA  MET   103     -18.327  47.650  24.530  1.00 35.00      1GDR 201
+ATOM     94  CA  GLY   104     -14.796  47.927  23.067  1.00 35.00      1GDR 202
+ATOM     95  CA  LYS   105     -12.661  49.918  25.527  1.00 35.00      1GDR 203
+ATOM     96  CA  MET   106     -13.636  47.156  27.830  1.00 35.00      1GDR 204
+ATOM     97  CA  VAL   107     -11.761  44.729  25.505  1.00 35.00      1GDR 205
+ATOM     98  CA  VAL   108      -8.640  46.789  25.741  1.00 35.00      1GDR 206
+ATOM     99  CA  THR   109      -8.564  47.035  29.594  1.00 35.00      1GDR 207
+ATOM    100  CA  ILE   110      -8.557  43.281  30.193  1.00 35.00      1GDR 208
+ATOM    101  CA  LEU   111      -6.125  42.788  27.348  1.00 35.00      1GDR 209
+ATOM    102  CA  SER   112      -3.878  45.361  28.957  1.00 35.00      1GDR 210
+ATOM    103  CA  ALA   113      -3.972  43.917  32.403  1.00 35.00      1GDR 211
+ATOM    104  CA  VAL   114      -3.609  40.406  31.049  1.00 35.00      1GDR 212
+ATOM    105  CA  ALA   115       0.121  40.545  30.273  1.00 35.00      1GDR 213
+TER     106      ALA   115                                              1GDR 214
+MASTER       68    0    0    5    5    0    0    6  105    1    0   11  1GDR 215
+END                                                                     1GDR 216

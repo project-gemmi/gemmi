@@ -708,6 +708,9 @@ The content of the file can also be read from a string or from memory::
     # just use interface common for all file formats
     structure = gemmi.read_structure(path)
 
+    # or a function that reads only pdb files
+    structure = gemmi.read_pdb(path)
+
     # if you have the content of the PDB file in a string:
     structure = gemmi.read_pdb_string(string)
 
@@ -724,6 +727,18 @@ by first putting it into a cif.Block:
   {'id': ['1', '2'], 'crystal_id': ['1', '2'], 'ambient_temp': ['295', '295']}
   >>> block.get_mmcif_category('_diffrn_radiation')
   {'diffrn_id': ['1', '2'], 'pdbx_scattering_type': ['x-ray', 'neutron'], 'pdbx_monochromatic_or_laue_m_l': ['M', None], 'monochromator': [None, None]}
+
+PDB files are expected to have 80 columns, although trailing spaces are
+often not included. Some programs in certain situations produce longer lines,
+so Gemmi reads lines up to 120 characters. In some old files from
+the `wwPDB snapshots <ftp://snapshots.rcsb.org/20050106/>`_
+columns 73-80 contain PDB ID and line number (such as "1ABC 205").
+It confuses the PDB parser and it is not handled automatically -- such
+files are not in use nowadays. Nevertheless, they can be read by manually
+limiting the line length:
+
+  >>> gemmi.read_pdb('../tests/pdb1gdr.ent', max_line_length=72)
+  <gemmi.Structure pdb1gdr.ent with 1 model(s)>
 
 Writing
 -------
