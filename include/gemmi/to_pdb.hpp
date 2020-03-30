@@ -494,7 +494,8 @@ inline void write_header(const Structure& st, std::ostream& os,
     char buf8a[8];
     int counter = 0;
     for (const Helix& helix : st.helices) {
-      ++counter;
+      if (++counter == 10000)
+        counter = 0;
       // According to the PDB spec serial number can be from 1 to 999.
       // Here, we allow for up to 9999 helices by using columns 7 and 11.
       gf_snprintf(buf, 82, "HELIX %4d%4d %3s%2s %5s %3s%2s %5s%2d %35d    \n",
@@ -518,7 +519,7 @@ inline void write_header(const Structure& st, std::ostream& os,
         const AtomAddress& a2 = strand.hbond_atom2;
         const AtomAddress& a1 = strand.hbond_atom1;
         // H-bond atom names are expected to be O and N
-        WRITE("SHEET %4d %3.3s%2zu %3s%2s%5s %3s%2s%5s%2d  %-3s%3s%2s%5s "
+        WRITE("SHEET%5d %3.3s%2zu %3s%2s%5s %3s%2s%5s%2d  %-3s%3s%2s%5s "
               " %-3s%3s%2s%5s          \n",
               ++strand_counter, sheet.name.c_str(), sheet.strands.size(),
               strand.start.res_id.name.c_str(), strand.start.chain_name.c_str(),
@@ -549,8 +550,10 @@ inline void write_header(const Structure& st, std::ostream& os,
             continue;
           SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
                                                    cra2.atom->pos, con.asu);
+          if (++counter == 10000)
+            counter = 0;
           WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  \n",
-             ++counter,
+             counter,
              cra1.residue->name.c_str(), cra1.chain->name.c_str(),
              write_seq_id(buf8, cra1.residue->seqid),
              cra2.residue->name.c_str(), cra2.chain->name.c_str(),
@@ -608,8 +611,10 @@ inline void write_header(const Structure& st, std::ostream& os,
           for (const Residue& res : chain.residues)
             if (res.is_cis)
               if (const Residue* next = chain.next_bonded_aa(res)) {
+                if (++counter == 10000)
+                  counter = 0;
                 WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s\n",
-                      ++counter,
+                      counter,
                       res.name.c_str(), chain.name.c_str(),
                       write_seq_id(buf8, res.seqid),
                       next->name.c_str(), chain.name.c_str(),
