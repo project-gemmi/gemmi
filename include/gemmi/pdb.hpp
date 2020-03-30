@@ -445,7 +445,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
       }
 
     } else if (is_record_type(line, "DBREF")) { // DBREF or DBREF1 or DBREF2
-      std::string chain_name = read_string(line+12, 2);
+      std::string chain_name = read_string(line+11, 2);
       Entity& ent = impl::find_or_add(st.entities, chain_name);
       if (line[5] == ' ' || line[5] == '1')
         ent.dbrefs.emplace_back();
@@ -550,9 +550,9 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
       if (len < 40)
         continue;
       Helix helix;
-      helix.start.chain_name = read_string(line+19, 2);
+      helix.start.chain_name = read_string(line+18, 2);
       helix.start.res_id = read_res_id(line+21, line+15);
-      helix.end.chain_name = read_string(line+31, 2);
+      helix.end.chain_name = read_string(line+30, 2);
       helix.end.res_id = read_res_id(line+33, line+27);
       helix.set_helix_class_as_int(read_int(line+38, 2));
       if (len > 72)
