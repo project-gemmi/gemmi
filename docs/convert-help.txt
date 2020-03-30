@@ -28,6 +28,9 @@ PDB output options:
   --linkr                Write LINKR record (for Refmac) if link_id is known.
   --minimal-pdb          Write only the most essential records.
 
+Any output options:
+  --shorten              Shorten chain names to 1 (if # < 63) or 2 characters.
+
 Macromolecular operations:
   --expand-ncs=dup|new   Expand strict NCS specified in MTRIXn or equivalent.
                          New chain names are the same or have added numbers.

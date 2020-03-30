@@ -40,7 +40,7 @@ struct ConvArg: public Arg {
 enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, PdbxStyle, BlockName,
   ExpandNcs, ExpandAssembly, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
-  ShortTer, Linkr, MinimalPdb, SegmentAsChain, OldPdb
+  ShortTer, Linkr, MinimalPdb, ShortenCN, SegmentAsChain, OldPdb
 };
 
 static const option::Descriptor Usage[] = {
@@ -81,6 +81,10 @@ static const option::Descriptor Usage[] = {
   { MinimalPdb, 0, "", "minimal-pdb", Arg::None,
     "  --minimal-pdb  \tWrite only the most essential records." },
 
+  { NoOp, 0, "", "", Arg::None, "\nAny output options:" },
+  { ShortenCN, 0, "", "shorten", Arg::None,
+    "  --shorten  \tShorten chain names to 1 (if # < 63) or 2 characters." },
+
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular operations:" },
   { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
     "  --expand-ncs=dup|new  \tExpand strict NCS specified in MTRIXn or"
@@ -106,6 +110,7 @@ struct ChainNameGenerator {
   How how;
   std::vector<std::string> used_names;
 
+  ChainNameGenerator(How how_) : how(how_) {}
   ChainNameGenerator(const gemmi::Model& model, How how_) : how(how_) {
     if (how != How::Dup)
       for (const gemmi::Chain& chain : model.chains)
@@ -138,6 +143,12 @@ struct ChainNameGenerator {
       }
     }
     gemmi::fail("run out of 1- and 2-letter chain names");
+  }
+
+  std::string preferred_or_short_name(const std::string& preferred) {
+    if (!has(preferred))
+      return added(preferred);
+    return make_short_name();
   }
 
   std::string make_name_with_numeric_postfix(const std::string& base, int n) {
@@ -298,6 +309,42 @@ static std::string format_as_string(CoorFormat format) {
   gemmi::unreachable();
 }
 
+static void rename_chain_in_address(gemmi::AtomAddress& aa,
+                                    const std::string& old_name,
+                                    const std::string& new_name) {
+  if (aa.chain_name == old_name)
+    aa.chain_name = new_name;
+}
+
+// chain is assumed to be from st.models[0]
+static void rename_chain(gemmi::Structure& st, gemmi::Chain& chain,
+                         const std::string& new_name) {
+  for (gemmi::Connection& con : st.connections) {
+    rename_chain_in_address(con.partner1, chain.name, new_name);
+    rename_chain_in_address(con.partner2, chain.name, new_name);
+  }
+  for (gemmi::Helix& helix : st.helices) {
+    rename_chain_in_address(helix.start, chain.name, new_name);
+    rename_chain_in_address(helix.end, chain.name, new_name);
+  }
+  for (gemmi::Sheet& sheet : st.sheets)
+    for (gemmi::Sheet::Strand& strand : sheet.strands) {
+      rename_chain_in_address(strand.start, chain.name, new_name);
+      rename_chain_in_address(strand.end, chain.name, new_name);
+      rename_chain_in_address(strand.hbond_atom2, chain.name, new_name);
+      rename_chain_in_address(strand.hbond_atom1, chain.name, new_name);
+    }
+  for (gemmi::RefinementInfo& ri : st.meta.refinement)
+    for (gemmi::TlsGroup& tls : ri.tls_groups)
+      for (gemmi::TlsGroup::Selection& sel : tls.selections)
+        if (sel.chain == chain.name)
+          sel.chain = new_name;
+  for (auto it = st.models.begin() + 1; it != st.models.end(); ++it)
+    if (gemmi::Chain* ch = it->find_chain(chain.name))
+      ch->name = new_name;
+  chain.name = new_name;
+}
+
 static void convert(gemmi::Structure& st,
                     const std::string& output, CoorFormat output_type,
                     const std::vector<option::Option>& options) {
@@ -307,6 +354,24 @@ static void convert(gemmi::Structure& st,
   if (st.input_format == CoorFormat::Pdb) {
     gemmi::read_metadata_from_remarks(st);
     setup_for_mmcif(st);
+  }
+
+  if (options[ShortenCN]) {
+    ChainNameGenerator namegen(ChainNameGenerator::How::Short);
+    gemmi::Model& model0 = st.models[0];
+    size_t max_len = model0.chains.size() < 63 ? 1 : 2;
+    for (const gemmi::Chain& chain : model0.chains)
+      if (chain.name.length() <= max_len)
+        namegen.used_names.push_back(chain.name);
+    for (gemmi::Chain& chain : model0.chains)
+      if (chain.name.length() > max_len)
+        rename_chain(st, chain, namegen.preferred_or_short_name(
+                                                chain.name.substr(0, max_len)));
+  } else if (output_type == CoorFormat::Pdb) {
+    for (const gemmi::Chain& chain : st.models[0].chains)
+      if (chain.name.size() > 2)
+        gemmi::fail("long chain name cannot be written in the PDB format: " +
+                    chain.name + "\nTry option --shorten");
   }
 
   ChainNameGenerator::How how = ChainNameGenerator::How::AddNum;
