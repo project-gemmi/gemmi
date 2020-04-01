@@ -1254,6 +1254,10 @@ the ``Structure`` has the following properties:
 * ``connections`` (C++ type: ``vector<Connection>``) -- list of connections
   corresponding to the _struct_conn category in mmCIF, or to the pdb records
   LINK and SSBOND,
+* ``assemblies`` (C++ type: ``vector<Assembly>``) -- list of biological
+  assemblies defined in the REMARK 350 in pdb, or in corresponding mmCIF
+  categories (_pdbx_struct_assembly, _pdbx_struct_assembly_gen,
+  _pdbx_struct_assembly_prop and _pdbx_struct_oper_list)
 * ``info`` (C++ type: ``map<string, string>``) --
   minimal metadata with keys being mmcif tags (_entry.id, _exptl.method, ...),
 * ``raw_remarks`` (C++ type: ``vector<string>``) -- REMARK records
@@ -1470,6 +1474,55 @@ The vast majority of connections is intramolecular, so usually you get:
 
 The section about :ref:`AtomAddress <atom_address>`
 has an example that shows how to create a new connection.
+
+Assembly
+--------
+
+Biological assemblies are nicely
+`introduced in PDB-101 <https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/biological-assemblies>`_.
+The description of a biological assembly read from a coordinate file
+is represented in Gemmi by the ``Assembly`` class.
+It contains a recipe how to construct the assembly from a model.
+In the PDB format, REMARK 350 says what operations should be applied
+to what chains. In the PDBx/mmCIF format it is similar, but the
+:ref:`subchains <subchain>` are used instead of chains.
+
+.. doctest::
+
+  >>> for assembly in st.assemblies:
+  ...   print(assembly.name, assembly.oligomeric_details)
+  1 MONOMERIC
+  2 MONOMERIC
+
+As always, naming things is hard.
+Here, one chain from the original model can have a number of copies in
+the bio-assembly. Each copy needs to be named. Gemmi provides three options:
+
+- HowToNameCopiedChains.Dup (in C++: HowToNameCopiedChains::Dup) --
+  simply leaves the original chain name in all copies,
+- HowToNameCopiedChains.AddNumber -- copies of chain A are named
+  A1, A2, ..., copies of chain B -- B1, B2, ..., etc,
+- HowToNameCopiedChains.Short -- unique one-character chain names are used
+  until exhausted (after 26*2+10=62 chains), then two-character names are used.
+  This option is appropriate when the output is to be stored in the PDB format.
+
+The assembly can be generated using function ``make_assembly``
+(in C++ this function is in ``<gemmi/assembly.hpp>``):
+
+.. doctest::
+
+  >>> st.assemblies[0].make_assembly(st[0], gemmi.HowToNameCopiedChains.AddNumber)
+  <gemmi.Model 1 with 1 chain(s)>
+  >>> list(_)
+  [<gemmi.Chain A1 with 21 res>]
+  >>> st.assemblies[1].make_assembly(st[0], gemmi.HowToNameCopiedChains.AddNumber)
+  <gemmi.Model 1 with 1 chain(s)>
+  >>> list(_)
+  [<gemmi.Chain B1 with 26 res>]
+
+To get biological assembly in a coordinate file,
+you may use the command-line program
+:ref:`gemmi-convert <convert>` with option ``--assembly``.
 
 Common operations
 -----------------

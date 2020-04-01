@@ -23,7 +23,7 @@
 
 namespace cif = gemmi::cif;
 using gemmi::CoorFormat;
-using gemmi::ChainNameGenerator;
+using gemmi::HowToNameCopiedChains;
 
 struct ConvArg: public Arg {
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
@@ -107,14 +107,14 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-static void expand_ncs(gemmi::Structure& st, ChainNameGenerator::How how) {
+static void expand_ncs(gemmi::Structure& st, HowToNameCopiedChains how) {
   for (gemmi::Model& model : st.models) {
     size_t orig_size = model.chains.size();
-    ChainNameGenerator namegen(model, how);
+    gemmi::ChainNameGenerator namegen(model, how);
     for (const gemmi::NcsOp& op : st.ncs)
       if (!op.given) {
         for (size_t i = 0; i != orig_size; ++i) {
-          if (how == ChainNameGenerator::How::Dup)
+          if (how == HowToNameCopiedChains::Dup)
             for (gemmi::Residue& res : model.chains[i].residues)
               res.segment = "0";
 
@@ -127,7 +127,7 @@ static void expand_ncs(gemmi::Structure& st, ChainNameGenerator::How how) {
               a.pos = op.apply(a.pos);
             if (!res.subchain.empty())
               res.subchain = new_chain.name + ":" + res.subchain;
-            if (how == ChainNameGenerator::How::Dup)
+            if (how == HowToNameCopiedChains::Dup)
               res.segment = op.id;
           }
         }
@@ -220,7 +220,7 @@ static void convert(gemmi::Structure& st,
   }
 
   if (options[ShortenCN]) {
-    ChainNameGenerator namegen(ChainNameGenerator::How::Short);
+    gemmi::ChainNameGenerator namegen(HowToNameCopiedChains::Short);
     gemmi::Model& model0 = st.models[0];
     size_t max_len = model0.chains.size() < 63 ? 1 : 2;
     for (const gemmi::Chain& chain : model0.chains)
@@ -228,7 +228,7 @@ static void convert(gemmi::Structure& st,
         namegen.used_names.push_back(chain.name);
     for (gemmi::Chain& chain : model0.chains)
       if (chain.name.length() > max_len)
-        rename_chain(st, chain, namegen.preferred_or_short_name(
+        rename_chain(st, chain, namegen.make_short_name(
                                                 chain.name.substr(0, max_len)));
   } else if (output_type == CoorFormat::Pdb) {
     for (const gemmi::Chain& chain : st.models[0].chains)
@@ -237,16 +237,16 @@ static void convert(gemmi::Structure& st,
                     chain.name + "\nTry option --shorten");
   }
 
-  ChainNameGenerator::How how = ChainNameGenerator::How::AddNum;
+  HowToNameCopiedChains how = HowToNameCopiedChains::AddNumber;
   if (output_type == CoorFormat::Pdb)
-    how = ChainNameGenerator::How::Short;
+    how = HowToNameCopiedChains::Short;
   if (options[AsAssembly])
     gemmi::change_to_assembly(st, options[AsAssembly].arg, how,
                               options[Verbose] ? &std::cerr : nullptr);
 
   if (options[ExpandNcs]) {
     if (options[ExpandNcs].arg[0] == 'd')
-     how = ChainNameGenerator::How::Dup;
+     how = HowToNameCopiedChains::Dup;
     expand_ncs(st, how);
   }
 

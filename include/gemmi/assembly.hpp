@@ -12,8 +12,10 @@
 
 namespace gemmi {
 
+enum class HowToNameCopiedChains { Short, AddNumber, Dup };
+
 struct ChainNameGenerator {
-  enum class How { Short, AddNum, Dup };
+  using How = HowToNameCopiedChains;
   How how;
   std::vector<std::string> used_names;
 
@@ -31,9 +33,11 @@ struct ChainNameGenerator {
     return name;
   }
 
-  std::string make_short_name() {
+  std::string make_short_name(const std::string& preferred) {
     static const char symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                                   "abcdefghijklmnopqrstuvwxyz0123456789";
+    if (!has(preferred))
+      return added(preferred);
     std::string name(1, 'A');
     for (char symbol : symbols) {
       name[0] = symbol;
@@ -52,12 +56,6 @@ struct ChainNameGenerator {
     fail("run out of 1- and 2-letter chain names");
   }
 
-  std::string preferred_or_short_name(const std::string& preferred) {
-    if (!has(preferred))
-      return added(preferred);
-    return make_short_name();
-  }
-
   std::string make_name_with_numeric_postfix(const std::string& base, int n) {
     std::string name = base;
     name += std::to_string(n);
@@ -70,18 +68,18 @@ struct ChainNameGenerator {
 
   std::string make_new_name(const std::string& old, int n) {
     switch (how) {
-      case How::Short: return make_short_name();
-      case How::AddNum: return make_name_with_numeric_postfix(old, n);
+      case How::Short: return make_short_name(old);
+      case How::AddNumber: return make_name_with_numeric_postfix(old, n);
       case How::Dup: return old;
     }
     unreachable();
   }
 };
 
-inline Model expand_assembly(const Model& model, const Assembly& assembly,
-                             ChainNameGenerator::How how, std::ostream* out) {
+inline Model make_assembly(const Assembly& assembly, const Model& model,
+                           HowToNameCopiedChains how, std::ostream* out) {
   Model new_model(model.name);
-  ChainNameGenerator namegen(model, how);
+  ChainNameGenerator namegen(how);
   std::map<std::string, std::string> subs = model.subchain_to_chain();
   for (const Assembly::Gen& gen : assembly.generators)
     for (const Assembly::Oper& oper : gen.opers) {
@@ -129,18 +127,17 @@ inline Model expand_assembly(const Model& model, const Assembly& assembly,
           auto sub_iter = subs.find(subchain_name);
           if (sub_iter == subs.end())
             continue;
-          const Chain& old_chain = *model.find_chain(sub_iter->second);
-          auto name_iter = new_names.find(old_chain.name);
+          auto name_iter = new_names.find(sub_iter->second);
           Chain* new_chain;
           if (name_iter == new_names.end()) {
-            std::string new_name = namegen.make_new_name(old_chain.name, 1);
-            new_names.emplace(old_chain.name, new_name);
+            std::string new_name = namegen.make_new_name(sub_iter->second, 1);
+            new_names.emplace(sub_iter->second, new_name);
             new_model.chains.emplace_back(new_name);
             new_chain = &new_model.chains.back();
           } else {
             new_chain = new_model.find_chain(name_iter->second);
           }
-          for (const Residue& res : old_chain.get_subchain(subchain_name)) {
+          for (const Residue& res : model.get_subchain(subchain_name)) {
             new_chain->residues.push_back(res);
             Residue& new_res = new_chain->residues.back();
             new_res.subchain = new_chain->name + ":" + res.subchain;
@@ -154,7 +151,7 @@ inline Model expand_assembly(const Model& model, const Assembly& assembly,
 }
 
 inline void change_to_assembly(Structure& st, const std::string& assembly_name,
-                               ChainNameGenerator::How how, std::ostream* out) {
+                               HowToNameCopiedChains how, std::ostream* out) {
   Assembly* assembly = st.find_assembly(assembly_name);
   if (!assembly) {
     if (st.assemblies.empty())
@@ -163,7 +160,7 @@ inline void change_to_assembly(Structure& st, const std::string& assembly_name,
         join_str(st.assemblies, ' ', [](const Assembly& a) { return a.name; }));
   }
   for (Model& model : st.models)
-    model = expand_assembly(model, *assembly, how, out);
+    model = make_assembly(*assembly, model, how, out);
 }
 
 } // namespace gemmi

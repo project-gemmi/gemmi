@@ -6,6 +6,7 @@
 #include "gemmi/model.hpp"
 #include "gemmi/calculate.hpp"
 #include "gemmi/polyheur.hpp"
+#include "gemmi/assembly.hpp"
 #include "gemmi/labelseq.hpp"   // for setup_for_mmcif
 #include "gemmi/to_pdb.hpp"
 #include "gemmi/to_mmcif.hpp"
@@ -23,6 +24,7 @@ using namespace gemmi;
 PYBIND11_MAKE_OPAQUE(std::vector<Connection>)
 PYBIND11_MAKE_OPAQUE(std::vector<NcsOp>)
 PYBIND11_MAKE_OPAQUE(std::vector<Entity>)
+PYBIND11_MAKE_OPAQUE(std::vector<Assembly>)
 using info_map_type = std::map<std::string, std::string>;
 PYBIND11_MAKE_OPAQUE(info_map_type)
 
@@ -139,6 +141,12 @@ void add_mol(py::module& m) {
     .value("Other", PolymerType::Other)
     .value("Unknown", PolymerType::Unknown);
 
+  py::enum_<HowToNameCopiedChains>(m, "HowToNameCopiedChains")
+    .value("Short", HowToNameCopiedChains::Short)
+    .value("AddNumber", HowToNameCopiedChains::AddNumber)
+    .value("Dup", HowToNameCopiedChains::Dup)
+    ;
+
   py::class_<Entity>(m, "Entity")
     .def(py::init<std::string>())
     .def_readwrite("name", &Entity::name)
@@ -160,6 +168,15 @@ void add_mol(py::module& m) {
                      " |shift|=", self.tr.vec.length(),
                      (self.given ? " (" : " (not "), "given)>");
     });
+
+  py::class_<Assembly>(m, "Assembly")
+    .def_readonly("name", &Assembly::name)
+    .def_readonly("oligomeric_details", &Assembly::oligomeric_details)
+    .def("make_assembly", [](const Assembly& self, const Model& model,
+                             HowToNameCopiedChains how) {
+        return make_assembly(self, model, how, nullptr);
+    })
+    ;
 
   py::enum_<Connection::Type>(m, "ConnectionType")
     .value("Covale", Connection::Type::Covale)
@@ -185,6 +202,7 @@ void add_mol(py::module& m) {
   py::bind_vector<std::vector<Connection>>(m, "ConnectionList");
   py::bind_vector<std::vector<NcsOp>>(m, "NcsOpList");
   py::bind_vector<std::vector<Entity>>(m, "EntityList");
+  py::bind_vector<std::vector<Assembly>>(m, "AssemblyList");
   py::bind_map<info_map_type>(m, "InfoMap");
 
   py::class_<Structure>(m, "Structure")
@@ -196,6 +214,7 @@ void add_mol(py::module& m) {
     .def_readwrite("resolution", &Structure::resolution)
     .def_readwrite("entities", &Structure::entities)
     .def_readwrite("connections", &Structure::connections)
+    .def_readwrite("assemblies", &Structure::assemblies)
     .def_readwrite("info", &Structure::info)
     .def("get_entity",
          (Entity* (Structure::*)(const std::string&)) &Structure::get_entity,
