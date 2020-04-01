@@ -1892,6 +1892,8 @@ In Python, ``Model`` has also methods for often needed calculations:
   342
   >>> model.count_occupancies()
   302.9999997317791
+  >>> model.calculate_mass()
+  4395.826034891504
   >>> model.calculate_center_of_mass()
   <gemmi.Position(-5.7572, 16.4099, 2.88299)>
 
@@ -2061,7 +2063,7 @@ Such a group is represented by ``ResidueGroup``, which is derived from
 ----
 
 In Python, Chain has a few specialized, but commonly used functions.
-Two that are present also in the Model class:
+Three that are present also in the Model class:
 
 .. doctest::
 
@@ -2069,6 +2071,8 @@ Two that are present also in the Model class:
   242
   >>> chain_a.count_occupancies()
   216.9999997317791
+  >>> chain_a.calculate_mass()
+  3211.093834891507
 
 and a function that changes a polypeptide chain into polyalanine:
 

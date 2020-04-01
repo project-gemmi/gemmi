@@ -349,6 +349,7 @@ void add_mol(py::module& m) {
     .def("__delitem__", remove_children<Model>)
     .def("count_atom_sites", &count_atom_sites<Model>)
     .def("count_occupancies", &count_occupancies<Model>)
+    .def("calculate_mass", &calculate_mass<Model>)
     .def("calculate_center_of_mass", [](const Model& self) {
         return calculate_center_of_mass(self).get();
     })
@@ -419,6 +420,7 @@ void add_mol(py::module& m) {
          py::arg("new_residues"), py::arg("min_sep")=0)
     .def("count_atom_sites", &count_atom_sites<Chain>)
     .def("count_occupancies", &count_occupancies<Chain>)
+    .def("calculate_mass", &calculate_mass<Chain>)
     .def("trim_to_alanine", (void (*)(Chain&)) &trim_to_alanine)
     .def("first_conformer",
          (UniqProxy<Residue> (Chain::*)()) &Chain::first_conformer,

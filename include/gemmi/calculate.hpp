@@ -31,6 +31,16 @@ template<> inline double count_occupancies(const Atom& atom) {
   return atom.occ;
 }
 
+template<class T> double calculate_mass(const T& obj) {
+  double sum = 0;
+  for (const auto& child : obj.children())
+    sum += calculate_mass(child);
+  return sum;
+}
+template<> inline double calculate_mass(const Atom& atom) {
+  return atom.occ * atom.element.weight();
+}
+
 struct CenterOfMass {
   Position weighted_sum;
   double mass;
