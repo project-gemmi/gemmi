@@ -8,9 +8,9 @@
 
 #include <cstdint>
 #include <algorithm> // for reverse
+#include <map>
 #include <string>
 #include <vector>
-#include "fail.hpp"
 
 namespace gemmi {
 
