@@ -224,7 +224,7 @@ void add_hkl(py::module& m) {
   py::class_<Mtz::Column>(mtz, "Column", py::buffer_protocol())
     .def_buffer([](Mtz::Column& self) {
       return py::buffer_info(self.parent->data.data() + self.idx,
-                             {self.size()},         // dimensions
+                             std::vector<ssize_t>(1, self.size()), // dimensions
                              {4 * self.stride()});  // strides
     })
     .def_property_readonly("array", [](const Mtz::Column& self) {
