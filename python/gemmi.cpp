@@ -41,6 +41,7 @@ void add_misc(py::module& m) {
     .def_property_readonly("weight", &Element::weight)
     .def_property_readonly("covalent_r", &Element::covalent_r)
     .def_property_readonly("atomic_number", &Element::atomic_number)
+    .def_property_readonly("is_metal", &Element::is_metal)
     .def_property_readonly("it92", [](const Element& self) {
         return IT92::get_ptr(self.elem);
     }, py::return_value_policy::reference_internal)

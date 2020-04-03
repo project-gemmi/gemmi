@@ -48,6 +48,25 @@ from the periodic table at hand.
     >>> gemmi.Element('Mo').atomic_number
     42
 
+We also included covalent radii of elements from a
+`Wikipedia page <https://en.wikipedia.org/wiki/Covalent_radius>`_,
+which has data from
+Cordero *et al* (2008), *Covalent radii revisited*, Dalton Trans. 21, 2832.
+
+.. doctest::
+
+    >>> gemmi.Element('Zr').covalent_r
+    1.75
+
+and a flag for metals (the classification is somewhat arbitrary):
+
+.. doctest::
+
+    >>> gemmi.Element('Mg').is_metal
+    True
+    >>> gemmi.Element('C').is_metal
+    False
+
 Small Molecules
 ===============
 

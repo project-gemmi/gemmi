@@ -254,6 +254,7 @@ struct Element {
   int atomic_number() const { return elem == El::D ? 1 : ordinal(); }
   double weight() const { return molecular_weight(elem); }
   float covalent_r() const { return covalent_radius(elem); }
+  bool is_metal() const { return gemmi::is_metal(elem); }
   // return name such as Mg (not MG)
   const char* name() const { return element_name(elem); }
   // return uppercase name such as MG
