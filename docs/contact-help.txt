@@ -9,7 +9,8 @@ Searches for contacts in a model (PDB or mmCIF).
   --cov=TOL      Use max distance = covalent radii sum + TOL [A].
   --covmult=M    Use max distance = M * covalent radii sum + TOL [A].
   --minocc=MIN   Ignore atoms with occupancy < MIN.
-  --any          Output any atom pair, even from the same residue.
+  --ignore=N     Ignores atom pairs from the same: 0=none, 1=residue, 2=same or
+                 adjacent residue, 3=chain, 4=asu.
   --noh          Ignore hydrogen (and deuterium) atoms.
   --nosym        Ignore contacts with symmetry mates.
   --count        Print only a count of atom pairs.

@@ -17,7 +17,7 @@
 using namespace gemmi;
 using std::printf;
 
-enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Any, NoH, NoSym, Count,
+enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Ignore, NoH, NoSym, Count,
                    Twice };
 
 static const option::Descriptor Usage[] = {
@@ -35,8 +35,9 @@ static const option::Descriptor Usage[] = {
     "  --covmult=M  \tUse max distance = M * covalent radii sum + TOL [A]." },
   { Occ, 0, "", "minocc", Arg::Float,
     "  --minocc=MIN  \tIgnore atoms with occupancy < MIN." },
-  { Any, 0, "", "any", Arg::None,
-    "  --any  \tOutput any atom pair, even from the same residue." },
+  { Ignore, 0, "", "ignore", Arg::Int,
+    "  --ignore=N  \tIgnores atom pairs from the same: 0=none, 1=residue, "
+    "2=same or adjacent residue, 3=chain, 4=asu." },
   { NoH, 0, "", "noh", Arg::None,
     "  --noh  \tIgnore hydrogen (and deuterium) atoms." },
   { NoSym, 0, "", "nosym", Arg::None,
@@ -50,7 +51,7 @@ static const option::Descriptor Usage[] = {
 
 struct Parameters {
   bool use_cov_radius;
-  bool any;
+  ContactSearch::Ignore ignore = ContactSearch::Ignore::AdjacentResidues;
   bool print_count;
   bool no_hydrogens;
   bool no_symmetry;
@@ -88,8 +89,7 @@ static void print_contacts(Structure& st, const Parameters& params) {
   int counter = 0;
   ContactSearch contacts(max_r);
   contacts.twice = params.twice;
-  contacts.skip_intra_residue = !params.any;
-  contacts.skip_adjacent_residue = !params.any;
+  contacts.ignore = params.ignore;
   if (params.use_cov_radius)
     contacts.setup_atomic_radii(params.cov_mult, params.cov_tol);
   contacts.for_each_contact(sc, [&](const CRA& cra1, const CRA& cra2,
@@ -137,7 +137,14 @@ int GEMMI_MAIN(int argc, char **argv) {
     params.max_dist = std::strtof(p.options[MaxDist].arg, nullptr);
   if (p.options[Occ])
     params.min_occ = std::strtof(p.options[Occ].arg, nullptr);
-  params.any = p.options[Any];
+  if (p.options[Ignore]) {
+    int ignore_level = std::atoi(p.options[Ignore].arg);
+    if (ignore_level < 0 || ignore_level > 4) {
+      std::fprintf(stderr, "Error: value of --ignore is out of range.\n");
+      return 1;
+    }
+    params.ignore = (ContactSearch::Ignore) ignore_level;
+  }
   params.print_count = p.options[Count];
   params.no_hydrogens = p.options[NoH];
   params.no_symmetry = p.options[NoSym];
@@ -149,6 +156,8 @@ int GEMMI_MAIN(int argc, char **argv) {
           (p.nonOptionsCount() > 1 && !params.print_count))
         std::printf("%sFile: %s\n", (i > 0 ? "\n" : ""), input.c_str());
       Structure st = read_structure_gz(input);
+      if (params.ignore == ContactSearch::Ignore::AdjacentResidues)
+        setup_entities(st);
       if (params.no_symmetry)
         st.cell = UnitCell();
       print_contacts(st, params);

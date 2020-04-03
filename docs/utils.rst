@@ -589,6 +589,8 @@ It has options to print other information -- see the help message below.
 .. literalinclude:: contents-help.txt
    :language: console
 
+.. _gemmi-contact:
+
 contact
 =======
 

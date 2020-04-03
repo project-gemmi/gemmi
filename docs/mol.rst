@@ -48,6 +48,8 @@ from the periodic table at hand.
     >>> gemmi.Element('Mo').atomic_number
     42
 
+.. _covalent_radius:
+
 We also included covalent radii of elements from a
 `Wikipedia page <https://en.wikipedia.org/wiki/Covalent_radius>`_,
 which has data from
@@ -179,6 +181,8 @@ the number of hydrogens and molecular weight:
     >>> gemmi.find_tabulated_residue('MSE').is_standard()
     False
 
+
+.. _CCD_etc:
 
 CCD and monomer libraries
 -------------------------
@@ -2511,9 +2515,11 @@ Let us check the properties of the second address:
   >>> addr.altloc
   '\x00'
 
+.. _CRA:
+
 A valid AtomAddress points to a chain, residue and atom in a model.
-So we have another small structure, called CRA, for keeping pointers to
-the Chain, Residue and Atom together:
+Pointers to the Chain, Residue and Atom can be kept together in
+another small structure, called CRA:
 
 .. doctest::
 

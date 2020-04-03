@@ -66,7 +66,7 @@ struct LinkHunt {
   std::vector<Match> find_possible_links(Structure& st,
                                          double bond_margin,
                                          double radius_margin,
-                                         bool skip_intra_residue_links=true) {
+                                         ContactSearch::Ignore ignore) {
     std::vector<Match> results;
     Model& model = st.first_model();
     double search_radius = std::max(global_max_dist * bond_margin,
@@ -75,7 +75,7 @@ struct LinkHunt {
     sc.populate();
 
     ContactSearch contacts((float) search_radius);
-    contacts.skip_intra_residue = skip_intra_residue_links;
+    contacts.ignore = ignore;
     contacts.for_each_contact(sc, [&](const CRA& cra1, const CRA& cra2,
                                       int image_idx, float dist_sq) {
         Match match;

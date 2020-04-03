@@ -157,7 +157,139 @@ In this example the "original" atom is in a different location:
 Contact search
 ==============
 
-TODO
+Contacts in a molecule or in a crystal can be found using the neighbor search
+described in the previous section. But to make it easier we have a dedicated
+class ContactSearch. It uses the neighbor search to find pairs of atoms
+close to each other and applies the filters described below.
+
+When constructing ContactSearch we set the overall maximum search distance.
+This distance is stored as the ``search_radius`` property:
+
+.. doctest::
+
+  >>> cs = gemmi.ContactSearch(4.0)
+  >>> cs.search_radius
+  4.0
+
+Additionally, we can set up per-element radii.
+This excludes pairs of atoms in a distance larger than the sum
+of their per-element radii.
+The radii are initialized as a linear function of the
+:ref:`covalent radius <covalent_radius>`:
+*r* = *a* × *r*\ :sub:`cov` + *b*/2.
+
+.. doctest::
+
+  >>> cs.setup_atomic_radii(1.0, 1.5)
+
+Then each radius can be accessed and modified individually:
+
+.. doctest::
+
+  >>> cs.get_radius(gemmi.Element('Zr'))
+  2.5
+  >>> cs.set_radius(gemmi.Element('Hg'), 1.5)
+
+
+Next, we have the ``ignore`` property that can take
+one of the following values:
+
+* ContactSearch.Ignore.Nothing -- no filtering here,
+* ContactSearch.Ignore.SameResidue -- ignore atom pairs from the same residue,
+* ContactSearch.Ignore.AdjacentResidues -- ignore atom pairs from the same or
+  adjacent residues,
+* ContactSearch.Ignore.SameChain -- show only inter-chain contacts
+  (including contacts between different symmetry images of one chain),
+* ContactSearch.Ignore.SameAsu -- show only contacts between different
+  asymmetric units.
+
+.. doctest::
+
+  >>> cs.ignore = gemmi.ContactSearch.Ignore.AdjacentResidues
+
+You can also ignore atoms that have occupancy below the specified
+threshold:
+
+.. doctest::
+
+  >>> cs.min_occupancy = 0.01
+
+Sometimes, it is handy to get each atom pair twice (as A-B and B-A).
+In such case make the ``twice`` property true. By default, it is false:
+
+.. doctest::
+
+  >>> cs.twice
+  False
+
+Next property deals with atoms at special positions (such as rotation axis).
+Such atoms can be slightly off the special position (because macromolecular
+refinement programs usually don't constrain coordinates), so we must ensure
+that an atom that should sit on the special position and its apparent symmetry
+image are not regarded a contact. We assume that if the distance between
+an atom and its image is small, it is not a real thing.
+For larger distances we assume it is a real contact with atom's symmetry mate.
+To tell apart the two cases we use a cut-off distance that can be modified:
+
+.. doctest::
+
+  >>> cs.special_pos_cutoff_sq = 0.5 ** 2  # setting cut-off to 0.5A
+
+The contact search uses an instance of SubCells.
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/5cvz_final.pdb')
+  >>> st.setup_entities()
+  >>> subcells = gemmi.SubCells(st[0], st.cell, 5)
+  >>> subcells.populate()
+
+If you'd like to ignore hydrogens from the model,
+call ``subcells.populate(include_h=False)``.
+
+If you'd like to ignore waters, either remove waters from the Model
+(function ``remove_waters()``) or ignore results that contain waters.
+
+The actual contact search is done by:
+
+.. doctest::
+
+  >>> results = cs.find_contacts(subcells)
+
+  >>> len(results)
+  49
+  >>> results[0]  # doctest: +ELLIPSIS
+  <gemmi.ContactSearch.Result object at 0x...>
+
+The ContactSearch.Result class has four properties:
+
+.. doctest::
+
+  >>> results[0].partner1
+  <gemmi.CRA A/SER 21/OG>
+  >>> results[0].partner2
+  <gemmi.CRA A/TYR 24/N>
+  >>> results[0].image_idx
+  52
+  >>> results[0].dist
+  2.8613362312316895
+
+The first two properties are :ref:`CRA <CRA>`\ s for the involved atoms.
+The ``image_idx`` is an index of the symmetry image (both crystallographic
+symmetry and strict NCS count).
+Value 0 would mean that both atoms (``partner1`` and ``partner2``)
+are in the same unit.
+In this example the value can be high because it is a structure of
+icosahedral viral capsid with 240 identical units in the unit cell.
+The last property is the distance between atoms.
+
+See also command-line program :ref:`gemmi-contact <gemmi-contact>`.
+
+Gemmi provides also an undocumented class LinkHunt which matches
+contacts to links definitions from :ref:`monomer library <CCD_etc>`
+and to connections (LINK, SSBOND) from the structure.
+If you would find it useful, contact the author.
+
 
 Selections
 ==========

@@ -12,10 +12,12 @@
 namespace gemmi {
 
 struct ContactSearch {
+  enum class Ignore {
+    Nothing=0, SameResidue, AdjacentResidues, SameChain, SameAsu
+  };
   // parameters used to configure the search
   float search_radius;
-  bool skip_intra_residue = true;  // ignore "contacts" in the same residue
-  bool skip_adjacent_residue = false;  // ignore contacts with prev/next res.
+  Ignore ignore = Ignore::SameResidue;
   bool twice = false;  // report both A-B and B-A
   float special_pos_cutoff_sq = 0.8f * 0.8f;
   float min_occupancy = 0.f;
@@ -37,6 +39,20 @@ struct ContactSearch {
 
   template<typename Func>
   void for_each_contact(SubCells& sc, const Func& func);
+
+  struct Result {
+    CRA partner1, partner2;
+    int image_idx;
+    float dist_sq;
+  };
+  std::vector<Result> find_contacts(SubCells& sc) {
+    std::vector<Result> out;
+    for_each_contact(sc, [&out](const CRA& cra1, const CRA& cra2,
+                                int image_idx, float dist_sq) {
+        out.push_back({cra1, cra2, image_idx, dist_sq});
+    });
+    return out;
+  }
 };
 
 template<typename Func>
@@ -46,7 +62,7 @@ void ContactSearch::for_each_contact(SubCells& sc, const Func& func) {
   for (int n_ch = 0; n_ch != (int) sc.model->chains.size(); ++n_ch) {
     Chain& chain = sc.model->chains[n_ch];
     PolymerType pt = PolymerType::Unknown;
-    if (skip_adjacent_residue)
+    if (ignore == Ignore::AdjacentResidues)
       pt = check_polymer_type(chain.get_polymer());
     for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
       Residue& res = chain.residues[n_res];
@@ -59,21 +75,39 @@ void ContactSearch::for_each_contact(SubCells& sc, const Func& func) {
         sc.for_each(atom.pos, atom.altloc, search_radius,
                     [&](SubCells::Mark& m, float dist_sq) {
             // do not consider connections inside a residue
-            if (skip_intra_residue && m.image_idx == 0 &&
+            if (ignore != Ignore::Nothing && m.image_idx == 0 &&
                 m.chain_idx == n_ch && m.residue_idx == n_res)
               return;
+            switch (ignore) {
+              case Ignore::Nothing:
+                break;
+              case Ignore::SameResidue:
+                if (m.image_idx == 0 && m.chain_idx == n_ch)
+                  if (m.residue_idx == n_res)
+                    return;
+                break;
+              case Ignore::AdjacentResidues:
+                if (m.image_idx == 0 && m.chain_idx == n_ch)
+                  if (m.residue_idx == n_res ||
+                      are_connected(res, chain.residues[m.residue_idx], pt) ||
+                      are_connected(chain.residues[m.residue_idx], res, pt))
+                    return;
+                break;
+              case Ignore::SameChain:
+                if (m.image_idx == 0 && m.chain_idx == n_ch)
+                  return;
+                break;
+              case Ignore::SameAsu:
+                if (m.image_idx == 0)
+                  return;
+                break;
+            }
             // additionally, we may have per-element distances
             if (!radii.empty()) {
               float d = radii[atom.element.ordinal()] + radii[(int)m.element];
               if (d < 0 || dist_sq > d * d)
                 return;
             }
-            // do not consider connections between adjacent residues
-            if (skip_adjacent_residue && m.image_idx == 0 &&
-                m.chain_idx == n_ch)
-              if (are_connected(res, chain.residues[m.residue_idx], pt) ||
-                  are_connected(chain.residues[m.residue_idx], res, pt))
-                return;
             // avoid reporting connections twice (A-B and B-A)
             if (!twice)
               if (m.chain_idx < n_ch || (m.chain_idx == n_ch &&

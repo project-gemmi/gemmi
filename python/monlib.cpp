@@ -183,6 +183,41 @@ void add_monlib(py::module& m) {
          py::arg("max_distance")=4)
     ;
 
+  py::class_<ContactSearch> contactsearch(m, "ContactSearch");
+  contactsearch
+    .def(py::init<float>())
+    .def_readwrite("search_radius", &ContactSearch::search_radius)
+    .def_readwrite("ignore", &ContactSearch::ignore)
+    .def_readwrite("twice", &ContactSearch::twice)
+    .def_readwrite("twice", &ContactSearch::twice)
+    .def_readwrite("special_pos_cutoff_sq", &ContactSearch::special_pos_cutoff_sq)
+    .def_readwrite("min_occupancy", &ContactSearch::min_occupancy)
+    .def("setup_atomic_radii", &ContactSearch::setup_atomic_radii)
+    .def("get_radius", [](const ContactSearch& self, Element el) {
+        return self.get_radius(el.elem);
+    })
+    .def("set_radius", [](ContactSearch& self, Element el, float r) {
+        self.set_radius(el.elem, r);
+    })
+    .def("find_contacts", &ContactSearch::find_contacts)
+    ;
+
+  py::enum_<ContactSearch::Ignore>(contactsearch, "Ignore")
+    .value("Nothing", ContactSearch::Ignore::Nothing)
+    .value("SameResidue", ContactSearch::Ignore::SameResidue)
+    .value("AdjacentResidues", ContactSearch::Ignore::AdjacentResidues)
+    .value("SameChain", ContactSearch::Ignore::SameChain)
+    .value("SameAsu", ContactSearch::Ignore::SameAsu);
+
+  py::class_<ContactSearch::Result>(contactsearch, "Result")
+    .def_readonly("partner1", &ContactSearch::Result::partner1)
+    .def_readonly("partner2", &ContactSearch::Result::partner2)
+    .def_readonly("image_idx", &ContactSearch::Result::image_idx)
+    .def_property_readonly("dist", [](ContactSearch::Result& self) {
+        return std::sqrt(self.dist_sq);
+    })
+    ;
+
   py::class_<LinkHunt> linkhunt(m, "LinkHunt");
   linkhunt
     .def(py::init<>())
@@ -190,7 +225,7 @@ void add_monlib(py::module& m) {
          py::arg("monlib"), py::keep_alive<1, 2>())
     .def("find_possible_links", &LinkHunt::find_possible_links,
          py::arg("st"), py::arg("bond_margin"), py::arg("radius_margin"),
-         py::arg("skip_intra_residue_links")=true)
+         py::arg("ignore")=ContactSearch::Ignore::SameResidue)
     ;
   py::class_<LinkHunt::Match>(linkhunt, "Match")
     .def_readonly("chem_link", &LinkHunt::Match::chem_link)

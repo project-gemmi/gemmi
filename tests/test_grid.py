@@ -136,5 +136,15 @@ class TestSubCells(unittest.TestCase):
         marks2 = subcells.find_neighbors(a1, 0.1, 3)
         self.assertEqual(len(marks2), 0)
 
+class TestContactSearch(unittest.TestCase):
+    def test_contact_search(self):
+        cs = gemmi.ContactSearch(4.0)
+        hg = gemmi.Element('Hg')
+        self.assertEqual(cs.get_radius(hg), 0)
+        cs.setup_atomic_radii(1, 0)
+        cs.set_radius(hg, 1.5)
+        self.assertEqual(cs.get_radius(hg), 1.5)
+
+
 if __name__ == '__main__':
     unittest.main()
