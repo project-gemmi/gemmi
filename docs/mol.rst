@@ -400,12 +400,37 @@ when the file defines strict NCS operarations that are not "given"
 the list contains also the NCS operations.
 With this list we can use:
 
-* ``UnitCell::volume_per_image() -> double`` - returns ``UnitCell::volume``
+* ``UnitCell::volume_per_image() -> double`` -- returns ``UnitCell::volume``
   divided by the number of the molecule images in the unit cell,
+
+  .. doctest::
+
+    >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
+    >>> st.spacegroup_hm
+    'P 63 2 2'
+    >>> st.cell.volume / st.cell.volume_per_image()
+    12.0
+
 * ``UnitCell::is_special_position(const Position& pos, double max_dist=0.8) -> int`` --
   returns the number of nearby symmetry mates of an atom.
   Non-zero only for atoms on special positions.
   For example, returns 3 for an atom on 4-fold symmetry axis.
+
+  .. doctest::
+
+    >>> # chloride ion in 1PFE is significantly off the special position
+    >>> cl = st[0].sole_residue('A', gemmi.SeqId('20'))[0]
+    >>> cl
+    <gemmi.Atom CL at (-0.3, 23.0, -19.6)>
+    >>> round(1.0 / cl.occ)
+    6
+    >>> st.cell.is_special_position(cl.pos, max_dist=0.5)
+    0
+    >>> st.cell.is_special_position(cl.pos, max_dist=0.8)
+    3
+    >>> st.cell.is_special_position(cl.pos, max_dist=1.2)
+    5
+
 * ``UnitCell::find_nearest_image(const Position& ref, const Position& pos, Asu asu) -> SymImage`` --
   with the last argument set to ``Asu::Any``,
   it returns the symmetric image of ``pos`` that is nearest to ``ref``.
