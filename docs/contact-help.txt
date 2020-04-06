@@ -11,7 +11,9 @@ Searches for contacts in a model (PDB or mmCIF).
   --minocc=MIN   Ignore atoms with occupancy < MIN.
   --ignore=N     Ignores atom pairs from the same: 0=none, 1=residue, 2=same or
                  adjacent residue, 3=chain, 4=asu.
+  --nosym        Ignore contacts between symmetry mates.
   --noh          Ignore hydrogen (and deuterium) atoms.
-  --nosym        Ignore contacts with symmetry mates.
+  --nowater      Ignore water.
+  --noligand     Ignore ligands and water.
   --count        Print only a count of atom pairs.
   --twice        Print each atom pair A-B twice (A-B and B-A).

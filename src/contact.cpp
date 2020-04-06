@@ -17,8 +17,8 @@
 using namespace gemmi;
 using std::printf;
 
-enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Ignore, NoH, NoSym, Count,
-                   Twice };
+enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Ignore, NoSym,
+                   NoH, NoWater, NoLigand, Count, Twice };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -38,10 +38,14 @@ static const option::Descriptor Usage[] = {
   { Ignore, 0, "", "ignore", Arg::Int,
     "  --ignore=N  \tIgnores atom pairs from the same: 0=none, 1=residue, "
     "2=same or adjacent residue, 3=chain, 4=asu." },
+  { NoSym, 0, "", "nosym", Arg::None,
+    "  --nosym  \tIgnore contacts between symmetry mates." },
   { NoH, 0, "", "noh", Arg::None,
     "  --noh  \tIgnore hydrogen (and deuterium) atoms." },
-  { NoSym, 0, "", "nosym", Arg::None,
-    "  --nosym  \tIgnore contacts with symmetry mates." },
+  { NoWater, 0, "", "nowater", Arg::None,
+    "  --nowater  \tIgnore water." },
+  { NoLigand, 0, "", "noligand", Arg::None,
+    "  --noligand  \tIgnore ligands and water." },
   { Count, 0, "", "count", Arg::None,
     "  --count  \tPrint only a count of atom pairs." },
   { Twice, 0, "", "twice", Arg::None,
@@ -104,8 +108,12 @@ static void print_contacts(Structure& st, const Parameters& params) {
         sym1 = "1555";
         sym2 = im.pdb_symbol(false);
       }
-      printf("            %-4s%c%3s%2s%5s   "
-             "            %-4s%c%3s%2s%5s  %6s %6s %5.2f\n",
+      std::string conn_info;
+      if (Connection* conn = st.find_connection_by_cra(cra1, cra2))
+        conn_info = conn->name.empty() ? "(link)" : conn->name;
+      printf("%-11s %-4s%c%3s%2s%5s         "
+             "      %-4s%c%3s%2s%5s  %6s %6s %5.2f\n",
+             conn_info.c_str(),
              padded_atom_name(*cra1.atom).c_str(),
              cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
              cra1.residue->name.c_str(),
@@ -158,6 +166,10 @@ int GEMMI_MAIN(int argc, char **argv) {
       Structure st = read_structure_gz(input);
       if (params.ignore == ContactSearch::Ignore::AdjacentResidues)
         setup_entities(st);
+      if (p.options[NoWater])
+        remove_waters(st);
+      if (p.options[NoLigand])
+        remove_ligands_and_waters(st);
       if (params.no_symmetry)
         st.cell = UnitCell();
       print_contacts(st, params);
