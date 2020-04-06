@@ -161,6 +161,7 @@ inline void change_to_assembly(Structure& st, const std::string& assembly_name,
   }
   for (Model& model : st.models)
     model = make_assembly(*assembly, model, how, out);
+  st.connections.clear();
 }
 
 } // namespace gemmi

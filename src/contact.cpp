@@ -11,13 +11,14 @@
 #include <gemmi/elem.hpp>      // for is_hydrogen
 #include <gemmi/gzread.hpp>
 #include <gemmi/to_pdb.hpp>    // for padded_atom_name
+#include "gemmi/assembly.hpp"  // for change_to_assembly
 #define GEMMI_PROG contact
 #include "options.h"
 
 using namespace gemmi;
 using std::printf;
 
-enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Ignore, NoSym,
+enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Ignore, NoSym, AsAssembly,
                    NoH, NoWater, NoLigand, Count, Twice };
 
 static const option::Descriptor Usage[] = {
@@ -40,6 +41,8 @@ static const option::Descriptor Usage[] = {
     "2=same or adjacent residue, 3=chain, 4=asu." },
   { NoSym, 0, "", "nosym", Arg::None,
     "  --nosym  \tIgnore contacts between symmetry mates." },
+  { AsAssembly, 0, "", "assembly", Arg::Required,
+    "  --assembly=ID  \tOutput bioassembly with given ID (1, 2, ...)." },
   { NoH, 0, "", "noh", Arg::None,
     "  --noh  \tIgnore hydrogen (and deuterium) atoms." },
   { NoWater, 0, "", "nowater", Arg::None,
@@ -170,7 +173,10 @@ int GEMMI_MAIN(int argc, char **argv) {
         remove_waters(st);
       if (p.options[NoLigand])
         remove_ligands_and_waters(st);
-      if (params.no_symmetry)
+      if (p.options[AsAssembly])
+        change_to_assembly(st, p.options[AsAssembly].arg,
+                           HowToNameCopiedChains::Short, nullptr);
+      if (params.no_symmetry || p.options[AsAssembly])
         st.cell = UnitCell();
       print_contacts(st, params);
     }

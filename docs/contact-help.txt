@@ -12,6 +12,7 @@ Searches for contacts in a model (PDB or mmCIF).
   --ignore=N     Ignores atom pairs from the same: 0=none, 1=residue, 2=same or
                  adjacent residue, 3=chain, 4=asu.
   --nosym        Ignore contacts between symmetry mates.
+  --assembly=ID  Output bioassembly with given ID (1, 2, ...).
   --noh          Ignore hydrogen (and deuterium) atoms.
   --nowater      Ignore water.
   --noligand     Ignore ligands and water.
