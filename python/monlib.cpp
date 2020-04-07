@@ -7,6 +7,7 @@
 #include "gemmi/topo.hpp"
 #include "gemmi/seqalign.hpp"  // for align_string_sequences
 #include "gemmi/labelseq.hpp"  // for align_sequence_to_polymer
+#include "gemmi/select.hpp"
 
 #include <fstream>
 #include <pybind11/pybind11.h>
@@ -236,6 +237,43 @@ void add_monlib(py::module& m) {
     .def_readonly("bond_length", &LinkHunt::Match::bond_length)
     .def_readonly("conn", &LinkHunt::Match::conn)
     ;
+}
+
+void add_select(py::module& m) {
+  m.def("parse_cid", &parse_cid);
+  py::class_<Selection>(m, "Selection")
+    .def("models", &Selection::models)
+    .def("chains", &Selection::chains)
+    .def("residues", &Selection::residues)
+    .def("atoms", &Selection::atoms)
+    .def("first_in_model", &Selection::first_in_model,
+         py::keep_alive<1, 2>())
+    .def("first", &Selection::first, py::return_value_policy::reference,
+         py::keep_alive<1, 2>())
+    .def("to_cid", &Selection::to_cid)
+    .def("__repr__", [](const Selection& self) {
+        return "<gemmi.Selection CID: " + self.to_cid() + ">";
+    });
+
+    py::class_<FilterProxy<Selection, Model>>(m, "SelectionModelsProxy")
+    .def("__iter__", [](FilterProxy<Selection, Model>& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>());
+
+    py::class_<FilterProxy<Selection, Chain>>(m, "SelectionChainsProxy")
+    .def("__iter__", [](FilterProxy<Selection, Chain>& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>());
+
+    py::class_<FilterProxy<Selection, Residue>>(m, "SelectionResidusProxy")
+    .def("__iter__", [](FilterProxy<Selection, Residue>& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>());
+
+    py::class_<FilterProxy<Selection, Atom>>(m, "SelectionAtomsProxy")
+    .def("__iter__", [](FilterProxy<Selection, Atom>& self) {
+        return py::make_iterator(self);
+    }, py::keep_alive<0, 1>());
 }
 
 void add_alignment(py::module& m) {

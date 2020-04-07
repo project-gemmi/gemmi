@@ -291,12 +291,48 @@ and to connections (LINK, SSBOND) from the structure.
 If you would find it useful, contact the author.
 
 
+.. _selections:
+
 Selections
 ==========
 
-For now, Gemmi supports only the selection syntax from MMDB.
+For now, Gemmi supports only the selection syntax from MMDB,
+called CID (Coordinate ID). The syntax is described at the bottom
+of the `pdbcur documentation <http://www.ccp4.ac.uk/html/pdbcur.html>`_.
 
-TODO
+The selections in Gemmi are not widely used yet and the API may evolve.
+The example below demonstrates currently provided functions:
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
+
+  >>> # select all Cl atoms
+  >>> sel = gemmi.parse_cid('[CL]')
+  >>> # get the first result as pointer to model and CRA (chain, residue, atom)
+  >>> sel.first(st)
+  (<gemmi.Model 1 with 2 chain(s)>, <gemmi.CRA A/CL 20/CL>)
+
+  >>> sel = gemmi.parse_cid('A/1-4/N9')
+  >>> sel.to_cid()
+  '//A/1.-4./N9'
+  >>> # iterate over hierarchy filtered by the selection
+  >>> for model in sel.models(st):
+  ...     for chain in sel.chains(model):
+  ...         print('-', chain.name)
+  ...         for residue in sel.residues(chain):
+  ...             print('   -', str(residue))
+  ...             for atom in sel.atoms(residue):
+  ...                 print('          -', atom.name)
+  ...
+  - A
+     - 1(DG)
+            - N9
+     - 2(DC)
+     - 3(DG)
+            - N9
+     - 4(DT)
+
 
 .. _graph_analysis:
 

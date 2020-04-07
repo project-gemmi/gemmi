@@ -93,24 +93,6 @@ struct Selection {
     return cid;
   }
 
-  static bool find_in_comma_separated_string(const std::string& name,
-                                             const std::string& str) {
-    if (name.length() >= str.length())
-      return name == str;
-    for (size_t start=0, end=0; end != std::string::npos; start=end+1) {
-      end = str.find(',', start);
-      if (str.compare(start, end - start, name) == 0)
-        return true;
-    }
-    return false;
-  }
-
-  // assumes that list.all is checked before this function is called
-  static bool find_in_list(const std::string& name, const List& list) {
-    bool found = find_in_comma_separated_string(name, list.list);
-    return list.inverted ? !found : found;
-  }
-
   bool matches(const gemmi::Model& model) const {
     return mdl == 0 || std::to_string(mdl) == model.name;
   }
@@ -135,16 +117,56 @@ struct Selection {
   }
 
   FilterProxy<Selection, Model> models(Structure& st) const {
-    return FilterProxy<Selection, Model>{*this, st.models};
+    return {*this, st.models};
   }
   FilterProxy<Selection, Chain> chains(Model& model) const {
-    return FilterProxy<Selection, Chain>{*this, model.chains};
+    return {*this, model.chains};
   }
   FilterProxy<Selection, Residue> residues(Chain& chain) const {
-    return FilterProxy<Selection, Residue>{*this, chain.residues};
+    return {*this, chain.residues};
   }
   FilterProxy<Selection, Atom> atoms(Residue& residue) const {
-    return FilterProxy<Selection, Atom>{*this, residue.atoms};
+    return {*this, residue.atoms};
+  }
+
+  CRA first_in_model(Model& model) const {
+    if (matches(model))
+      for (Chain& chain : model.chains)
+        if (matches(chain))
+          for (Residue& res : chain.residues)
+            if (matches(res))
+              for (Atom& atom : res.atoms)
+                if (matches(atom))
+                  return {&chain, &res, &atom};
+    return {nullptr, nullptr, nullptr};
+  }
+
+  std::pair<Model*, CRA> first(Structure& st) const {
+    for (Model& model : st.models) {
+      CRA cra = first_in_model(model);
+      if (cra.chain)
+        return {&model, cra};
+    }
+    return {nullptr, {nullptr, nullptr, nullptr}};
+  }
+
+private:
+  static bool find_in_comma_separated_string(const std::string& name,
+                                             const std::string& str) {
+    if (name.length() >= str.length())
+      return name == str;
+    for (size_t start=0, end=0; end != std::string::npos; start=end+1) {
+      end = str.find(',', start);
+      if (str.compare(start, end - start, name) == 0)
+        return true;
+    }
+    return false;
+  }
+
+  // assumes that list.all is checked before this function is called
+  static bool find_in_list(const std::string& name, const List& list) {
+    bool found = find_in_comma_separated_string(name, list.list);
+    return list.inverted ? !found : found;
   }
 };
 

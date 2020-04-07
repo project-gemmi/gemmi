@@ -21,6 +21,7 @@ void add_read_structure(py::module& m); // read.cpp
 void add_cif_read(py::module& cif); // read.cpp
 void add_monlib(py::module& m); // monlib.cpp
 void add_alignment(py::module& m); // monlib.cpp
+void add_select(py::module& m); // monlib.cpp
 
 void add_misc(py::module& m) {
   using gemmi::Element;
@@ -126,6 +127,7 @@ PYBIND11_MODULE(gemmi, mg) {
   add_mol(mg);
   add_monlib(mg);
   add_alignment(mg);
+  add_select(mg);
   add_read_structure(mg);
   py::module cif = mg.def_submodule("cif", "CIF file format");
   add_cif(cif);
