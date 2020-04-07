@@ -328,7 +328,7 @@ struct ChemComp {
     auto it = find_atom(atom_id);
     if (it == atoms.end())
       fail("Chemical componenent ", name, " has no atom ", atom_id);
-    return it - atoms.begin();
+    return int(it - atoms.begin());
   }
 
   const Atom& get_atom(const std::string& atom_id) const {

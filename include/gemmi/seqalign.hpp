@@ -29,8 +29,8 @@ struct AlignmentResult {
     char op() const { return "MID"[value & 0xf]; }
     std::uint32_t len() const { return value >> 4; }
   };
-  int score;
-  int match_count;
+  int score = 0;
+  int match_count = 0;
   std::string match_string;
   std::vector<Item> cigar;
 
@@ -254,11 +254,13 @@ AlignmentResult align_string_sequences(const std::vector<std::string>& query,
                                        const AlignmentScoring& scoring) {
   std::map<std::string, std::uint8_t> encoding;
   for (const std::string& res_name : scoring.matrix_encoding)
-    encoding.emplace(res_name, encoding.size());
+    encoding.emplace(res_name, (std::uint8_t)encoding.size());
   for (const std::string& s : query)
-    encoding.emplace(s, encoding.size());
+    encoding.emplace(s, (std::uint8_t)encoding.size());
   for (const std::string& s : target)
-    encoding.emplace(s, encoding.size());
+    encoding.emplace(s, (std::uint8_t)encoding.size());
+  if (encoding.size() > 255)
+    return AlignmentResult();
   std::vector<std::uint8_t> encoded_query(query.size());
   for (size_t i = 0; i != query.size(); ++i)
     encoded_query[i] = encoding.at(query[i]);
@@ -266,7 +268,7 @@ AlignmentResult align_string_sequences(const std::vector<std::string>& query,
   for (size_t i = 0; i != target.size(); ++i)
     encoded_target[i] = encoding.at(target[i]);
   return align_sequences(encoded_query, encoded_target,
-                         free_gapo, encoding.size(), scoring);
+                         free_gapo, (std::uint8_t)encoding.size(), scoring);
 }
 
 } // namespace gemmi

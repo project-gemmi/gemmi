@@ -33,7 +33,7 @@ struct MemoryStream {
     if (cur >= end)
       return nullptr;
     if (size > end - cur)
-      size = end - cur;
+      size = int(end - cur);
     const char* nl = (const char*) std::memchr(cur, '\n', size);
     size_t len = nl ? nl - cur + 1 : size;
     std::memcpy(line, cur, len);

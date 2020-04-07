@@ -69,11 +69,13 @@ inline AlignmentResult align_sequence_to_polymer(
                                      const AlignmentScoring& scoring) {
   std::map<std::string, std::uint8_t> encoding;
   for (const std::string& res_name : scoring.matrix_encoding)
-    encoding.emplace(res_name, encoding.size());
+    encoding.emplace(res_name, (std::uint8_t)encoding.size());
   for (const Residue& res : polymer)
-    encoding.emplace(res.name, encoding.size());
+    encoding.emplace(res.name, (std::uint8_t)encoding.size());
   for (const std::string& mon_list : full_seq)
-    encoding.emplace(Entity::first_mon(mon_list), encoding.size());
+    encoding.emplace(Entity::first_mon(mon_list), (std::uint8_t)encoding.size());
+  if (encoding.size() > 255)
+    return AlignmentResult();
 
   std::vector<std::uint8_t> encoded_full_seq(full_seq.size());
   for (size_t i = 0; i != full_seq.size(); ++i)
@@ -86,7 +88,7 @@ inline AlignmentResult align_sequence_to_polymer(
 
   return align_sequences(encoded_full_seq, encoded_model_seq,
                          prepare_free_gapo(polymer, polymer_type),
-                         encoding.size(), scoring);
+                         (std::uint8_t)encoding.size(), scoring);
 }
 
 inline bool seqid_matches_seqres(const ConstResidueSpan& polymer,

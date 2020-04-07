@@ -131,13 +131,16 @@ struct Selection {
 
   CRA first_in_model(Model& model) const {
     if (matches(model))
-      for (Chain& chain : model.chains)
+      for (Chain& chain : model.chains) {
         if (matches(chain))
-          for (Residue& res : chain.residues)
+          for (Residue& res : chain.residues) {
             if (matches(res))
-              for (Atom& atom : res.atoms)
+              for (Atom& atom : res.atoms) {
                 if (matches(atom))
                   return {&chain, &res, &atom};
+              }
+          }
+      }
     return {nullptr, nullptr, nullptr};
   }
 

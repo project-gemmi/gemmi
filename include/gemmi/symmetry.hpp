@@ -831,12 +831,12 @@ inline PointGroup point_group(int space_group_number) {
 
 // true for 65 Sohncke (non-enantiogenic) space groups
 inline bool is_sohncke(int space_group_number) {
-  return point_group_index_and_category(space_group_number) & 0x20;
+  return (point_group_index_and_category(space_group_number) & 0x20) != 0;
 }
 
 // true for 22 space groups (11 enantiomorphic pairs)
 inline bool is_enantiomorphic(int space_group_number) {
-  return point_group_index_and_category(space_group_number) & 0x40;
+  return (point_group_index_and_category(space_group_number) & 0x40) != 0;
 }
 
 
