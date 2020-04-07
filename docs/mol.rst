@@ -1530,7 +1530,7 @@ Assembly
 
 Biological assemblies are nicely
 `introduced in PDB-101 <https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/biological-assemblies>`_.
-The description of a biological assembly read from a coordinate file
+Description of a biological assembly read from a coordinate file
 is represented in Gemmi by the ``Assembly`` class.
 It contains a recipe how to construct the assembly from a model.
 In the PDB format, REMARK 350 says what operations should be applied
@@ -1545,8 +1545,8 @@ to what chains. In the PDBx/mmCIF format it is similar, but the
   2 MONOMERIC
 
 As always, naming things is hard.
-Here, one chain from the original model can have a number of copies in
-the bio-assembly. Each copy needs to be named. Gemmi provides three options:
+Biological unit may contain a number of copies of one chain.
+Each copy needs to be named. Gemmi provides three options:
 
 - HowToNameCopiedChains.Dup (in C++: HowToNameCopiedChains::Dup) --
   simply leaves the original chain name in all copies,
@@ -1556,8 +1556,9 @@ the bio-assembly. Each copy needs to be named. Gemmi provides three options:
   until exhausted (after 26*2+10=62 chains), then two-character names are used.
   This option is appropriate when the output is to be stored in the PDB format.
 
-The assembly can be generated using function ``make_assembly``
-(in C++ this function is in ``<gemmi/assembly.hpp>``):
+Function ``make_assembly`` takes Model and one of the naming options above,
+and returns a new Model that represents the assembly.
+In C++ this function is in ``<gemmi/assembly.hpp>``.
 
 .. doctest::
 
@@ -1570,9 +1571,8 @@ The assembly can be generated using function ``make_assembly``
   >>> list(_)
   [<gemmi.Chain B1 with 26 res>]
 
-To get biological assembly in a coordinate file,
-you may use the command-line program
-:ref:`gemmi-convert <convert>` with option ``--assembly``.
+See also the ``--assembly`` option in command-line program
+:ref:`gemmi-convert <convert>`.
 
 Common operations
 -----------------
