@@ -328,7 +328,7 @@ void add_mol(py::module& m) {
     .def(py::init<std::string>())
     .def_readwrite("name", &Model::name)
     .def("__len__", [](const Model& self) { return self.chains.size(); })
-    .def("__iter__", [](const Model& self) {
+    .def("__iter__", [](Model& self) {
         return py::make_iterator(self.chains);
     }, py::keep_alive<0, 1>())
     .def("__getitem__", &get_child<Model, Chain>, py::arg("index"),
@@ -336,6 +336,7 @@ void add_mol(py::module& m) {
     .def("__getitem__", [](Model& self, const std::string& name) -> Chain& {
         return *impl::find_iter(self.chains, name);
     }, py::arg("name"), py::return_value_policy::reference_internal)
+    .def("all", (CraProxy (Model::*)()) &Model::all, py::keep_alive<0, 1>())
     .def("get_subchain",
          (ResidueSpan (Model::*)(const std::string&)) &Model::get_subchain,
          py::arg("name"), py::return_value_policy::reference_internal)
@@ -396,6 +397,10 @@ void add_mol(py::module& m) {
     .def("__iter__", [](ResidueSpan::GroupingProxy& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
+
+  py::class_<CraProxy>(m, "CraGenerator")
+    .def("__iter__", [](CraProxy& self) { return py::make_iterator(self); },
+         py::keep_alive<0, 1>());
 
   py::class_<Chain>(m, "Chain")
     .def(py::init<std::string>())

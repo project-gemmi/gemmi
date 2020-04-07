@@ -1277,6 +1277,8 @@ and mutates methionine residues (MET) to selenomethionine (MSE).
   >>> met_to_mse(st)
   >>> st[0].sole_residue('A', gemmi.SeqId('12'))
   <gemmi.Residue 12(MSE) with 8 atoms>
+  >>> _.sole_atom('SE').element
+  <gemmi.Element: Se>
 
 
 Structure
@@ -1917,6 +1919,35 @@ can be accessed by index or by name::
   >>> model['A']
   <gemmi.Chain A with 121 res>
   >>> del model['A']  # deletes chain A
+
+As it was shown in the :ref:`MET to MSE example <met_mse_example>`,
+you can iterate over chains in the model.
+You can also use function ``all()`` to iterate over all atoms in the model,
+getting objects of the :ref:`CRA <CRA>` class which holds three pointers --
+chain, residue and atom. The function mutating MET to MSE could be
+alternatively implemented as:
+
+.. testcode::
+
+  def met_to_mse2(st: gemmi.Structure) -> None:
+      for model in st:
+          for cra in model.all():
+              if cra.residue.name == 'MET' and cra.atom.name == 'SD':
+                  cra.residue.name = 'MSE'
+                  cra.atom.name = 'SE'
+                  cra.atom.element = gemmi.Element('Se')
+
+.. doctest::
+  :hide:
+
+  >>> st = gemmi.read_structure('../tests/1orc.pdb')
+  >>> st[0].sole_residue('A', gemmi.SeqId('12'))
+  <gemmi.Residue 12(MET) with 8 atoms>
+  >>> met_to_mse2(st)
+  >>> st[0].sole_residue('A', gemmi.SeqId('12'))
+  <gemmi.Residue 12(MSE) with 8 atoms>
+  >>> _.sole_atom('SE').element
+  <gemmi.Element: Se>
 
 To add a chain to the model, in C++ use directly methods of ``Model::chains``
 and in Python use:

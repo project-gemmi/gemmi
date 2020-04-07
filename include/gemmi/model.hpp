@@ -759,8 +759,7 @@ class CraIterPolicy {
 public:
   typedef CraT value_type;
   CraIterPolicy() : chains_end(nullptr), cra{nullptr, nullptr, nullptr} {}
-  CraIterPolicy(const Chain* end, CraT cra_)
-    : chains_end(end), cra(cra_) {}
+  CraIterPolicy(const Chain* end, CraT cra_) : chains_end(end), cra(cra_) {}
   void increment() {
     if (cra.atom)
       if (++cra.atom == vector_end_ptr(cra.residue->atoms)) {
@@ -791,17 +790,22 @@ private:
   CraT cra;
 };
 
-struct ConstCraProxy {
-  const std::vector<Chain>& chains;
-  using iterator = BidirIterator<CraIterPolicy<const_CRA>>;
+template<typename CraT, typename ChainsRefT>
+struct CraProxy_ {
+  ChainsRefT chains;
+  using iterator = BidirIterator<CraIterPolicy<CraT>>;
   iterator begin() {
-    auto chain = &chains.at(0);
-    auto residue = &chain->residues.at(0);
-    auto atom = &residue->atoms.at(0);
-    return CraIterPolicy<const_CRA>{vector_end_ptr(chains), {chain, residue, atom}};
+    CraT cra;
+    cra.chain = &chains.at(0);
+    cra.residue = &cra.chain->residues.at(0);
+    cra.atom = &cra.residue->atoms.at(0);
+    return CraIterPolicy<CraT>{vector_end_ptr(chains), cra};
   }
   iterator end() { return {}; }
 };
+
+using CraProxy = CraProxy_<CRA, std::vector<Chain>&>;
+using ConstCraProxy = CraProxy_<const_CRA, const std::vector<Chain>&>;
 
 struct Model {
   static const char* what() { return "Model"; }
@@ -917,6 +921,7 @@ struct Model {
     return const_cast<Model*>(this)->find_cra(address);
   }
 
+  CraProxy all() { return {chains}; }
   ConstCraProxy all() const { return {chains}; }
 
   Atom* find_atom(const AtomAddress& address) { return find_cra(address).atom; }
