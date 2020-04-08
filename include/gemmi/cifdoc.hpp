@@ -910,13 +910,31 @@ struct Document {
 
 
 [[noreturn]]
-inline void cif_fail(const Document& d, const Block& b, const Item& item,
-                     const std::string& s) {
-  fail(tostr(d.source, ':', item.line_number, " in data_", b.name, ": ", s));
+inline void cif_fail(const std::string& source, const Block& b,
+                     const Item& item, const std::string& s) {
+  fail(tostr(source, ':', item.line_number, " in data_", b.name, ": ", s));
+}
+
+inline void check_for_missing_values_in_block(const Block& block,
+                                              const std::string& source) {
+  for (const Item& item : block.items) {
+    if (item.type == ItemType::Pair) {
+      if (item.pair[1].empty())
+        cif_fail(source, block, item, item.pair[0] + " has no value");
+    } else if (item.type == ItemType::Frame) {
+      check_for_missing_values_in_block(item.frame, source);
+    }
+  }
+}
+
+// Throw an error if any item (pair) value is missing
+inline void check_for_missing_values(const Document& d) {
+  for (const Block& block : d.blocks)
+    check_for_missing_values_in_block(block, d.source);
 }
 
 // Throw an error if any block name, frame name or tag is duplicated.
-inline void check_duplicates(const Document& d) {
+inline void check_for_duplicates(const Document& d) {
   // check for duplicate block names (except empty "" which is global_)
   std::unordered_set<std::string> names;
   for (const Block& block : d.blocks) {
@@ -933,17 +951,17 @@ inline void check_duplicates(const Document& d) {
       if (item.type == ItemType::Pair) {
         bool ok = names.insert(gemmi::to_lower(item.pair[0])).second;
         if (!ok)
-          cif_fail(d, block, item, "duplicate tag " + item.pair[0]);
+          cif_fail(d.source, block, item, "duplicate tag " + item.pair[0]);
       } else if (item.type == ItemType::Loop) {
         for (const std::string& t : item.loop.tags) {
           bool ok = names.insert(gemmi::to_lower(t)).second;
           if (!ok)
-            cif_fail(d, block, item, "duplicate tag " + t);
+            cif_fail(d.source, block, item, "duplicate tag " + t);
         }
       } else if (item.type == ItemType::Frame) {
         bool ok = frame_names.insert(gemmi::to_lower(item.frame.name)).second;
         if (!ok)
-          cif_fail(d, block, item, "duplicate save_" + item.frame.name);
+          cif_fail(d.source, block, item, "duplicate save_" + item.frame.name);
       }
     }
   }

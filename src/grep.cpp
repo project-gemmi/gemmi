@@ -240,7 +240,7 @@ template<> struct Search<rules::endframe> {
     p.block_name.erase(p.block_name.rfind(' '));
   }
 };
-template<> struct Search<rules::tag> {
+template<> struct Search<rules::item_tag> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     if (!p.globbing) {
       if (p.search_tag.size() == in.size() && p.search_tag == in.string())
@@ -255,7 +255,7 @@ template<> struct Search<rules::tag> {
   }
 };
 
-template<> struct Search<rules::value> {
+template<> struct Search<rules::item_value> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     if (p.match_value) {
       p.match_value = 0;
@@ -330,7 +330,7 @@ template<typename T> bool any_empty(const std::vector<T>& v) {
 
 template<typename Rule> struct MultiSearch : Search<Rule> {};
 
-template<> struct MultiSearch<rules::tag> {
+template<> struct MultiSearch<rules::item_tag> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     const std::string s = in.string();
     for (int i = 0; i < static_cast<int>(p.multi_tags.size()); ++i)
@@ -338,7 +338,7 @@ template<> struct MultiSearch<rules::tag> {
         p.match_value = i + 1;
   }
 };
-template<> struct MultiSearch<rules::value> {
+template<> struct MultiSearch<rules::item_value> {
   template<typename Input> static void apply(const Input& in, Parameters& p) {
     if (p.match_value) {
       if (p.raw || !cif::is_null(in.string()))

@@ -704,7 +704,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
         dbref.label_seq_end = cif::as_int(seq[2], None);
         dbref.db_begin.num = cif::as_int(seq[3], None);
         dbref.db_end.num = cif::as_int(seq[4], None);
-      } catch (const std::runtime_error& e) {}
+      } catch (const std::runtime_error&) {}
     }
 
   for (auto row : block.find("_struct_asym.", {"id", "entity_id"}))

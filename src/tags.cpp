@@ -132,12 +132,12 @@ template<> struct Counter<rules::str_global> {
 };
 
 // tag-value pairs
-template<> struct Counter<rules::tag> {
+template<> struct Counter<rules::item_tag> {
   template<typename Input> static void apply(const Input& in, Context& ctx) {
     ctx.tag = in.string();
   }
 };
-template<> struct Counter<rules::value> {
+template<> struct Counter<rules::item_value> {
   template<typename Input> static void apply(const Input& in, Context& ctx) {
     if (!cif::is_null(in.string())) {
       TagStats& st = ctx.stats[ctx.tag];

@@ -168,7 +168,12 @@ the following rules to relax the syntax:
 * unquoted strings cannot start with keywords (STAR spec is ambiguous
   about this -- see
   `StarTools doc <http://www.globalphasing.com/startools/>`_ for details;
-  this rule is actually about simplifying not relaxing).
+  this rule is actually about simplifying not relaxing),
+* missing value in a key-value pair is optionally allowed
+  if whitespace after the tag ends with a new-line character.
+  More specifically, the parsing step allows for missing value in such case,
+  but the next validation step (which can be skipped when using using
+  low-level functions, such as ``parse_file()``) throws an error.
 
 
 Getting started
@@ -348,13 +353,45 @@ Python
   from gemmi import cif
 
   # read and parse a CIF file
-  doc = cif.read_file("components.cif")
+  doc = cif.read_file('components.cif')
 
   # the same, but if the filename ends with .gz it is uncompressed on the fly
-  doc = cif.read("../tests/1pfe.cif.gz")
+  doc = cif.read('../tests/1pfe.cif.gz')
 
   # read content of a CIF file from string
-  doc = cif.read_string("data_this _is valid _cif content")
+  doc = cif.read_string('data_this _is valid _cif content')
+
+Low-level functions
+-------------------
+
+The ``read_file()`` call is equivalent to the following sequence:
+
+.. testcode::
+
+  path = 'components.cif'
+  doc = cif.Document()
+  doc.source = path
+  doc.parse_file(path)
+  doc.check_for_missing_values()
+  doc.check_for_duplicates()
+
+The last two functions check for, respectively, missing values in tag-value
+pairs and duplicated names.
+It is possible to read erroneous CIF files by skipping these checks.
+
+Analogically, function ``read_string()`` can be replaced by a similar
+sequence with ``Document.parse_string()`` doing the main job:
+
+.. doctest::
+
+  >>> doc = cif.Document()
+  >>> doc.parse_string('data_this _tag_has_no_value\n')
+  >>> doc[0].find_value('_tag_has_no_value')
+  ''
+  >>> try: doc.check_for_missing_values()
+  ... except RuntimeError: print('missing value')
+  ...
+  missing value
 
 
 Writing a file

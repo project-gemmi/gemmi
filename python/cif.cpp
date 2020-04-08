@@ -12,6 +12,10 @@
 namespace py = pybind11;
 using namespace gemmi::cif;
 
+// defined in read.cpp
+void cif_parse_string(Document& doc, const std::string& data);
+void cif_parse_file(Document& doc, const std::string& filename);
+
 void add_cif(py::module& cif) {
   py::enum_<Style>(cif, "Style")
     .value("Simple", Style::Simple)
@@ -64,6 +68,10 @@ void add_cif(py::module& cif) {
          py::arg("name"), py::arg("pos")=-1,
          py::return_value_policy::reference_internal)
     .def("clear", &Document::clear)
+    .def("parse_string", &cif_parse_string)
+    .def("parse_file", &cif_parse_file)
+    .def("check_for_missing_values", &check_for_missing_values)
+    .def("check_for_duplicates", &check_for_duplicates)
     .def("sole_block", (Block& (Document::*)()) &Document::sole_block,
          py::return_value_policy::reference_internal,
          "Returns the only block if there is exactly one")

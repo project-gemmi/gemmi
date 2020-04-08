@@ -79,3 +79,13 @@ void add_read_structure(py::module& m) {
         py::arg("path"),
         "Returns uncompressed size of a .gz file (not always reliable)");
 }
+
+// used in cif.cpp
+void cif_parse_string(cif::Document& doc, const std::string& data) {
+  tao::pegtl::memory_input<> in(data, "string");
+  cif::parse_input(doc, in);
+}
+void cif_parse_file(cif::Document& doc, const std::string& filename) {
+  GEMMI_CIF_FILE_INPUT(in, filename);
+  cif::parse_input(doc, in);
+}
