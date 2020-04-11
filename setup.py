@@ -21,7 +21,6 @@ __version__ = read_version_from_header()
 
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path
-
     The purpose of this class is to postpone importing pybind11
     until it is actually installed, so that the ``get_include()``
     method can be invoked. """
@@ -30,23 +29,7 @@ class get_pybind_include(object):
         self.user = user
 
     def __str__(self):
-        # We should have pybind11 installed by now, but old pip
-        # before https://github.com/pypa/pip/pull/2616
-        # would not handle dependencies properly.
-        # So in such case at least hint a workaround to the user.
-        try:
-            import pybind11
-        except ImportError:
-            print('\n' + 50*'*')
-            print('*****  Please try to install pybind11 first  *****')
-            print(50*'*' + '\n')
-            sys.exit(1)
-        if pybind11.__version__ < MIN_PYBIND_VER:
-            print('\n' + 50*'*')
-            print('Use pybind11 >= %s.' % MIN_PYBIND_VER)
-            print('You have pybind11 %s in %s'
-                  % (pybind11.__version__, os.path.dirname(pybind11.__file__)))
-            sys.exit(1)
+        import pybind11
         return pybind11.get_include(self.user)
 
 if USE_SYSTEM_ZLIB:
@@ -166,6 +149,7 @@ setup(
     packages=['gemmi-examples'],
     package_dir={'gemmi-examples': 'examples'},
     install_requires=['pybind11>=' + MIN_PYBIND_VER],
+    setup_requires=['pybind11>=' + MIN_PYBIND_VER],
     cmdclass={'build_ext': BuildExt},
     zip_safe=False,
     license='MPL-2.0',
