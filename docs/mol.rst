@@ -2497,9 +2497,11 @@ function ``is_hydrogen()`` which returns true for both H and D:
   >>> atom.is_hydrogen()
   False
 
-Following the convention used in wwPDB, the values of isotropic and
-anisotropic ADPs are in different units (*B* = 8\ *π*\ :sup:`2`\ *U*).
-Files from the PDB should have full isotropic B-factors:
+**B-factors** -- atomic displacement parameters.
+
+The PDB format stores isotropic ADP as *B* and
+anisotropic as *U* (*B* = 8\ *π*\ :sup:`2`\ *U*).
+So is Gemmi:
 
 .. doctest::
 
@@ -2516,17 +2518,24 @@ Files from the PDB should have full isotropic B-factors:
   >>> '%g ~= %g' % (atom.b_iso, 8 * pi**2 * U_eq)
   '9.44 ~= 9.44324'
 
-Unfortunately, as discussed in the
+Anisotropic models also contain *B*\ :sub:`iso`, which should be
+a full isotropic B-factor. But, as discussed in the
 `BDB paper <http://dx.doi.org/10.1093/protein/gzu044>`_,
-some PDB entries instead of the full isotropic ADP
-contain "residual" B-factor or a different metric.
-If anisotropic ADPs are present, one can use the following function
-to calculate corresponding isotropic ADP:
+some PDB entries contain "residual" B-factors instead.
+Moreover, "full isotropic ADP" can mean different things.
+Usually, *B*\ :sub:`eq` is used (*B*\ :sub:`eq` ~ tr(*U*\ :sub:`ij`)).
+But because *B*\ :sub:`eq` tends to give values larger than the B-factors
+that would be obtained in isotropic refinement,
+`Ethan Merrit proposed <https://doi.org/10.1107/S0108767311034350>`_
+a metric named *B*\ :sub:`est`, more similar to the would-be isotropic *B*\ s.
+Gemmi can calculate both:
 
 .. doctest::
 
-  >>> atom.b_iso_from_aniso()
+  >>> atom.b_eq()                    # B_eq
   9.443238117199861
+  >>> gemmi.calculate_b_est(atom)    # B_est
+  9.154483139112026
 
 
 .. _atom_address:

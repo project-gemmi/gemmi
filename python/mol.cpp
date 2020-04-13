@@ -611,7 +611,7 @@ void add_mol(py::module& m) {
     .def("is_hydrogen", &Atom::is_hydrogen)
     .def("has_altloc", &Atom::has_altloc)
     .def("has_anisou", &Atom::has_anisou)
-    .def("b_iso_from_aniso", &Atom::b_iso_from_aniso)
+    .def("b_eq", &Atom::b_eq)
     .def("__repr__", [](const Atom& self) {
         std::string r = "<gemmi.Atom " + self.name;
         if (self.altloc) {
@@ -625,6 +625,7 @@ void add_mol(py::module& m) {
         return r + buf;
     });
 
+  m.def("calculate_b_est", &calculate_b_est);
   m.def("calculate_angle", &calculate_angle,
         "Input: three points. Output: angle in radians.");
   m.def("calculate_dihedral", &calculate_dihedral,

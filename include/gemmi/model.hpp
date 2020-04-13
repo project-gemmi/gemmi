@@ -149,6 +149,7 @@ struct Atom {
   int serial = 0;
   Position pos;
   float occ = 1.0f;
+  // ADP - in MX it's usual to give isotropic ADP as B and anisotropic as U
   float b_iso = 20.0f; // arbitrary default value
   float u11=0, u22=0, u33=0, u12=0, u13=0, u23=0;
 
@@ -163,7 +164,7 @@ struct Atom {
     return u11 != 0.f || u22 != 0.f || u33 != 0.f ||
            u12 != 0.f || u13 != 0.f || u23 != 0.f;
   }
-  double b_iso_from_aniso() const {
+  double b_eq() const {
     return 8 * pi() * pi() / 3. * (u11 + u22 + u33);
   }
   bool is_hydrogen() const { return gemmi::is_hydrogen(element); }
