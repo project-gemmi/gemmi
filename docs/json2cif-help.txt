@@ -9,6 +9,7 @@ Options:
   -V, --version        Print version and exit.
   -v, --verbose        Verbose output.
   --pdbx-style         Similar styling (formatting) as in wwPDB.
+  --cif2cif            Read CIF not JSON.
   --skip-category=CAT  Do not output tags starting with _CAT
   --sort               Sort tags in alphabetical order.
 

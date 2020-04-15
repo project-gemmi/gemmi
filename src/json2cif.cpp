@@ -12,7 +12,7 @@
 #include "options.h"
 #include "cifmod.h"  // for apply_cif_doc_modifications, ...
 
-enum OptionIndex { PdbxStyle=AfterCifModOptions, };
+enum OptionIndex { PdbxStyle=AfterCifModOptions, Cif2Cif };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -26,6 +26,8 @@ static const option::Descriptor Usage[] = {
 
   { PdbxStyle, 0, "", "pdbx-style", Arg::None,
     "  --pdbx-style  \tSimilar styling (formatting) as in wwPDB." },
+  { Cif2Cif, 0, "", "cif2cif", Arg::None,
+    "  --cif2cif  \tRead CIF not JSON." },
   CifModUsage[SkipCat],
   CifModUsage[SortCif],
 
@@ -43,13 +45,15 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   const char* input = p.nonOption(0);
   const char* output = p.nonOption(1);
-  auto style = p.options[PdbxStyle] ? gemmi::cif::Style::Pdbx
-                                    : gemmi::cif::Style::PreferPairs;
+  namespace cif = gemmi::cif;
+  auto style = p.options[PdbxStyle] ? cif::Style::Pdbx
+                                    : cif::Style::PreferPairs;
 
   if (p.options[Verbose])
-    std::cerr << "Transcribing " << input << " to json ..." << std::endl;
+    std::cerr << "Transcribing " << input << " to cif ..." << std::endl;
   try {
-    gemmi::cif::Document doc = gemmi::read_mmjson_gz(input);
+    cif::Document doc = p.options[Cif2Cif] ? gemmi::read_cif_gz(input)
+                                           : gemmi::read_mmjson_gz(input);
     apply_cif_doc_modifications(doc, p.options);
     gemmi::Ofstream os(output, &std::cout);
     write_cif_to_stream(os.ref(), doc, style);
