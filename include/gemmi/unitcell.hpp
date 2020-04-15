@@ -337,8 +337,8 @@ struct UnitCell {
     double brk = br * k;
     double crl = cr * l;
     return arh * arh + brk * brk + crl * crl + 2 * (arh * brk * cos_gammar +
-                                                    brk * crl * cos_alphar +
-                                                    arh * crl * cos_betar);
+                                                    arh * crl * cos_betar +
+                                                    brk * crl * cos_alphar);
   }
   double calculate_1_d2(const Miller& hkl) const {
     return calculate_1_d2(hkl[0], hkl[1], hkl[2]);
