@@ -289,14 +289,12 @@ void compare_with_hkl(const SmallStructure& small,
   cif::Table table = block.find("_refln_", tags);
   if (!table.ok())
     fail("_refln_index_ category not found in ", path);
-  if (table.has_column(3)) {
-    if (verbose)
-      fprintf(stderr, "Checking _refln_%s from %s\n", tags[3].c_str()+1, path);
-  } else if (tags.size() > 4 && table.has_column(4)) {
-    if (verbose)
-      fprintf(stderr, "Checking sqrt of _refln_%s from %s\n",
-              tags[4].c_str()+1, path);
-  } else {
+  int col = 0;
+  if (table.has_column(3))
+    col = 3;
+  else if (tags.size() > 4 && table.has_column(4))
+    col = 4;
+  if (col == 0) {
     std::string msg;
     if (label.empty())
       msg = "Neither _refln_F_calc nor _refln_F_squared_calc";
@@ -304,16 +302,32 @@ void compare_with_hkl(const SmallStructure& small,
       msg = "_refln_" + label;
     fail(msg + " not found in: ", path);
   }
+  bool use_sqrt = (col == 4 ||
+                   label == "F_squared_calc" || label == "F_squared_meas");
+  if (verbose)
+    fprintf(stderr, "Checking %s_refln_%s from %s\n",
+            use_sqrt ? "sqrt of " : "", tags[col].c_str()+1, path);
   Miller hkl;
+  int missing = 0;
+  int negative = 0;
   for (auto row : table) {
+    if (!row.has2(col)) {
+      missing++;
+      continue;
+    }
     double f_from_file = NAN;
     try {
       for (int i = 0; i != 3; ++i)
         hkl[i] = cif::as_int(row[i]);
-      if (row.has(3))
-        f_from_file = cif::as_number(row[3]);
-      else if (row.has(4))
-        f_from_file = std::sqrt(cif::as_number(row[4]));
+      f_from_file = cif::as_number(row[col]);
+      if (use_sqrt) {
+        if (f_from_file >= 0) {
+          f_from_file = std::sqrt(f_from_file);
+        } else {
+          negative++;
+          f_from_file = 0;
+        }
+      }
     } catch(std::runtime_error& e) {
       fprintf(stderr, "Error in _refln_[] in %s: %s\n", path, e.what());
       continue;
@@ -329,6 +343,10 @@ void compare_with_hkl(const SmallStructure& small,
              hkl[0], hkl[1], hkl[2], f_from_file, f,
              small.cell.calculate_d(hkl));
   }
+  if (missing)
+    fprintf(stderr, "missing value in %d rows\n", missing);
+  if (negative)
+    fprintf(stderr, "negative value in %d rows\n", negative);
 }
 
 template<typename Table>
