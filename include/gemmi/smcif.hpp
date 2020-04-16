@@ -37,7 +37,7 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
       break;
     }
 
-  enum { kLabel, kSymbol, kX, kY, kZ, kUiso, kOcc, kDisorderGroup };
+  enum { kLabel, kSymbol, kX, kY, kZ, kUiso, kBiso, kOcc, kDisorderGroup };
   cif::Table atom_table = block.find("_atom_site_",
                                      {"label",
                                       "?type_symbol",
@@ -45,6 +45,7 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
                                       "?fract_y",
                                       "?fract_z",
                                       "?U_iso_or_equiv",
+                                      "?B_iso_or_equiv",
                                       "?occupancy",
                                       "?disorder_group"});
   for (auto row : atom_table) {
@@ -62,6 +63,8 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
       site.fract.z = as_number(row[kZ]);
     if (row.has(kUiso))
       site.u_iso = as_number(row[kUiso], 0.0);
+    else if (row.has(kBiso))
+      site.u_iso = as_number(row[kBiso], 0.0) / (8 * pi() * pi());
     if (row.has(kOcc))
       site.occ = as_number(row[kOcc], 1.0);
     if (row.has2(kDisorderGroup))
