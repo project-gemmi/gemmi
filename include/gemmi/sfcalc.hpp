@@ -13,6 +13,16 @@
 
 namespace gemmi {
 
+// calculate s.U.s
+template<typename Site>
+double calculate_s_u_s(const UnitCell& cell, const Site& site, const Vec3& hkl) {
+  double arh = cell.ar * hkl.x;
+  double brk = cell.br * hkl.y;
+  double crl = cell.cr * hkl.z;
+  return arh * arh * site.u11 + brk * brk * site.u22 + crl * crl * site.u33 +
+    2 * (arh * brk * site.u12 + arh * crl * site.u13 + brk * crl * site.u23);
+}
+
 template <typename Table>
 class StructureFactorCalculator {
 public:
@@ -42,25 +52,20 @@ public:
     return sfactor;
   }
 
-  std::complex<double> get_contribution(Element el, const Fractional& fpos,
-                                        double b_iso) {
-    double scat_factor = get_scattering_factor(el);
-    std::complex<double> part = calculate_sf_part(fpos);
-    for (const FTransform& image : cell_.images)
-      part += calculate_sf_part(image.apply(fpos));
-    return scat_factor * std::exp(-b_iso * stol2_) * part;
-  }
-
   std::complex<double> calculate_sf_from_model(const Model& model,
                                                const Miller& hkl) {
     std::complex<double> sf = 0.;
     set_hkl(hkl);
     for (const Chain& chain : model.chains)
       for (const Residue& res : chain.residues)
-        for (const Atom& a : res.atoms)
-          sf += (double)a.occ * get_contribution(a.element,
-                                                 cell_.fractionalize(a.pos),
-                                                 a.b_iso);
+        for (const Atom& a : res.atoms) {
+          Fractional fpos = cell_.fractionalize(a.pos);
+          std::complex<double> part = calculate_sf_part(fpos);
+          for (const FTransform& image : cell_.images)
+            part += calculate_sf_part(image.apply(fpos));
+          sf += (double)a.occ * get_scattering_factor(a.element) *
+                std::exp(-a.b_iso * stol2_) * part;
+        }
     return sf;
   }
 
@@ -69,11 +74,26 @@ public:
   std::complex<double>
   calculate_sf_from_small_structure(const SmallStructure& small,
                                     const Miller& hkl) {
+    constexpr double mtwo_pi2 = -2 * pi() * pi();
     std::complex<double> sf = 0.;
     set_hkl(hkl);
     for (const SmallStructure::Site& site : small.sites) {
-      double b_iso = 8 * pi() * pi() * site.u_iso;
-      sf += site.occ * get_contribution(site.element, site.fract, b_iso);
+      double oc_sf = site.occ * get_scattering_factor(site.element);
+      std::complex<double> factor = calculate_sf_part(site.fract);
+      if (site.u11 == 0.) {
+        for (const FTransform& image : cell_.images)
+          factor += calculate_sf_part(image.apply(site.fract));
+        sf += oc_sf * std::exp(4 * mtwo_pi2 * stol2_ * site.u_iso) * factor;
+      } else {
+        Vec3 vhkl(hkl[0], hkl[1], hkl[2]);
+        factor *= std::exp(mtwo_pi2 * calculate_s_u_s(cell_, site, vhkl));
+        for (const FTransform& image : cell_.images) {
+          factor += calculate_sf_part(image.apply(site.fract)) *
+                    std::exp(mtwo_pi2 * calculate_s_u_s(cell_, site,
+                                               image.mat.left_multiply(vhkl)));
+        }
+        sf += oc_sf * factor;
+      }
     }
     return sf;
   }
@@ -81,7 +101,6 @@ public:
   void set_fprime(El el, double val) { fprimes_[el] = val; }
   void set_fprime_if_not_set(El el, double val) { fprimes_.emplace(el, val); }
   const std::map<El, double>& fprimes() const { return fprimes_; }
-
 
 private:
   // calculate part of the structure factor: exp(2 pi i r * s)

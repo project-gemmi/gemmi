@@ -98,6 +98,11 @@ struct Mat33 {
             a[1][0] * p.x + a[1][1] * p.y + a[1][2] * p.z,
             a[2][0] * p.x + a[2][1] * p.y + a[2][2] * p.z};
   }
+  Vec3 left_multiply(const Vec3& p) const {
+    return {a[0][0] * p.x + a[1][0] * p.y + a[2][0] * p.z,
+            a[0][1] * p.x + a[1][1] * p.y + a[2][1] * p.z,
+            a[0][2] * p.x + a[1][2] * p.y + a[2][2] * p.z};
+  }
   Mat33 multiply(const Mat33& b) const {
     Mat33 r;
     for (int i = 0; i != 3; ++i)
