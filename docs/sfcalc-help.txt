@@ -19,6 +19,7 @@ Options:
   --wavelength=NUM  Wavelength [A] for calculation of f' (use --wavelength=0 or
                     -w0 to ignore anomalous scattering).
   --unknown=SYMBOL  Use form factor of SYMBOL for unknown atoms.
+  --noaniso         Ignore anisotropic ADPs.
 
 Options for FFT-based calculations:
   --rate=NUM        Shannon rate used for grid spacing (default: 1.5).

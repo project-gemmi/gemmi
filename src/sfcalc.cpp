@@ -20,7 +20,8 @@
 #include "options.h"
 
 enum OptionIndex { Hkl=4, Dmin, Rate, Blur, RCut, Test, Check,
-                   CifFp, Wavelength, Unknown, FLabel, PhiLabel, Scale };
+                   CifFp, Wavelength, Unknown, NoAniso, FLabel,
+                   PhiLabel, Scale };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -45,6 +46,9 @@ static const option::Descriptor Usage[] = {
     "(use --wavelength=0 or -w0 to ignore anomalous scattering)." },
   { Unknown, 0, "", "unknown", Arg::Required,
     "  --unknown=SYMBOL  \tUse form factor of SYMBOL for unknown atoms." },
+  { NoAniso, 0, "", "noaniso", Arg::None,
+    "  --noaniso  \tIgnore anisotropic ADPs." },
+
   { NoOp, 0, "", "", Arg::None, "\nOptions for FFT-based calculations:" },
   { Rate, 0, "", "rate", Arg::Float,
     "  --rate=NUM  \tShannon rate used for grid spacing (default: 1.5)." },
@@ -54,6 +58,7 @@ static const option::Descriptor Usage[] = {
     "  --rcut=Y  \tUse atomic radius r such that rho(r) < Y (default: 5e-5)." },
   { Test, 0, "", "test", Arg::Optional,
     "  --test[=CACHE]  \tCalculate exact values and report differences (slow)." },
+
   { NoOp, 0, "", "", Arg::None,
     "\nOptions for comparing calculated values with values from a file:" },
   { Check, 0, "", "check", Arg::Required,
@@ -398,6 +403,16 @@ static void process(const std::string& input, const OptParser& p) {
   const UnitCell& cell = use_st ? st.cell : small.cell;
   using Table = IT92<double>;
   StructureFactorCalculator<Table> calc(cell);
+
+  if (p.options[NoAniso]) {
+    if (use_st) {
+      for (CRA& cra : st.models[0].all())
+        cra.atom->u11 = cra.atom->u22 = cra.atom->u33 = 0;
+    } else {
+      for (SmallStructure::Site& site : small.sites)
+        site.u11 = site.u22 = site.u33 = 0;
+    }
+  }
 
   // assign f'
   if (p.options[CifFp]) {
