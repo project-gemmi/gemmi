@@ -951,8 +951,11 @@ The ``cromer_libermann`` function is available in both C++ and Python:
 
   >>> gemmi.Element('Se').atomic_number
   34
-  >>> gemmi.cromer_libermann(_, 10332.0)
+  >>> gemmi.cromer_libermann(z=_, energy=10332.0) # energy in eV
   (-1.4186231113544407, 0.7238969498014027)
+  >>> # use gemmi.hc to convert wavelength [A] to energy [eV]
+  >>> gemmi.cromer_libermann(z=34, energy=gemmi.hc/0.71073)
+  (-0.09201659699543367, 2.2333699118331087)
 
 The same values can be printed from the command line program
 :ref:`gemmi-fprime <fprime>`.

@@ -114,6 +114,7 @@ void add_misc(py::module& m) {
   m.def("expand_pdb_code_to_path", &gemmi::expand_pdb_code_to_path);
   m.def("expand_if_pdb_code", &gemmi::expand_if_pdb_code,
         py::arg("code"), py::arg("filetype")='M');
+  m.attr("hc") = py::float_(gemmi::hc());
 }
 
 PYBIND11_MODULE(gemmi, mg) {
