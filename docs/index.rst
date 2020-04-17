@@ -51,8 +51,8 @@ Contents
    :maxdepth: 2
 
    install
-   cif-parser
-   sym
+   cif
+   symmetry
    mol
    analysis
    grid
