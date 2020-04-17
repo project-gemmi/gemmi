@@ -744,8 +744,9 @@ struct MtzExternalDataProxy : MtzDataProxy {
   size_t size() const { return mtz_.columns.size() * mtz_.nreflections; }
   int get_int(size_t n) const { return (int) data_[n]; }
   float get_num(size_t n) const { return data_[n]; }
-private:
-  void get_hkl() const {} // disable for now
+  Miller get_hkl(size_t offset, const std::array<size_t,3>&) const {
+    return {{get_int(offset + 0), get_int(offset + 1), get_int(offset + 2)}};
+  }
 };
 
 } // namespace gemmi
