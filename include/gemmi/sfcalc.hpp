@@ -1,7 +1,10 @@
 // Copyright 2019 Global Phasing Ltd.
 //
-// Direct calculation of structure factors
-// (see rhogrid.hpp + fourier.hpp for FFT-based calculation)
+// Direct calculation of structure factors.
+// It does not use optimizations described in the literature,
+// cf. Bourhis et al (2014) https://doi.org/10.1107/S2053273314022207,
+// because direct calculations are not used in MX if performance is important.
+// For FFT-based calculations see rhogrid.hpp + fourier.hpp.
 
 #ifndef GEMMI_SFCALC_HPP_
 #define GEMMI_SFCALC_HPP_
@@ -13,14 +16,27 @@
 
 namespace gemmi {
 
-// calculate s.U.s
+// calculate exp(-2 pi^2 s.U.s)
 template<typename Site>
-double calculate_s_u_s(const UnitCell& cell, const Site& site, const Vec3& hkl) {
+double calculate_aniso_part(const UnitCell& cell, const Site& site,
+                            const Vec3& hkl) {
   double arh = cell.ar * hkl.x;
   double brk = cell.br * hkl.y;
   double crl = cell.cr * hkl.z;
-  return arh * arh * site.u11 + brk * brk * site.u22 + crl * crl * site.u33 +
-    2 * (arh * brk * site.u12 + arh * crl * site.u13 + brk * crl * site.u23);
+  double sus = arh * arh * site.u11 +
+               brk * brk * site.u22 +
+               crl * crl * site.u33 +
+               2 * (arh * brk * site.u12 +
+                    arh * crl * site.u13 +
+                    brk * crl * site.u23);
+  return std::exp(-2 * pi() * pi() * sus);
+}
+
+// calculate part of the structure factor: exp(2 pi i r * s)
+std::complex<double> calculate_sf_part(const Fractional& fpos,
+                                       const Miller& hkl) {
+  double arg = 2 * pi() * (hkl[0]*fpos.x + hkl[1]*fpos.y + hkl[2]*fpos.z);
+  return std::complex<double>{std::cos(arg), std::sin(arg)};
 }
 
 template <typename Table>
@@ -28,8 +44,7 @@ class StructureFactorCalculator {
 public:
   StructureFactorCalculator(const UnitCell& cell) : cell_(cell) {}
 
-  void set_hkl(const Miller& hkl) {
-    hkl_ = hkl;
+  void set_stol2_and_scattering_factors(const Miller& hkl) {
     stol2_ = 0.25 * cell_.calculate_1_d2(hkl);
     scattering_factors_.clear();
     scattering_factors_.resize((int) El::END, 0.);
@@ -55,16 +70,27 @@ public:
   std::complex<double> calculate_sf_from_model(const Model& model,
                                                const Miller& hkl) {
     std::complex<double> sf = 0.;
-    set_hkl(hkl);
+    set_stol2_and_scattering_factors(hkl);
     for (const Chain& chain : model.chains)
       for (const Residue& res : chain.residues)
-        for (const Atom& a : res.atoms) {
-          Fractional fpos = cell_.fractionalize(a.pos);
-          std::complex<double> part = calculate_sf_part(fpos);
-          for (const FTransform& image : cell_.images)
-            part += calculate_sf_part(image.apply(fpos));
-          sf += (double)a.occ * get_scattering_factor(a.element) *
-                std::exp(-a.b_iso * stol2_) * part;
+        for (const Atom& site : res.atoms) {
+          Fractional fract = cell_.fractionalize(site.pos);
+          double oc_sf = site.occ * get_scattering_factor(site.element);
+          std::complex<double> factor = calculate_sf_part(fract, hkl);
+          if (!site.has_anisou()) {
+            for (const FTransform& image : cell_.images)
+              factor += calculate_sf_part(image.apply(fract), hkl);
+            sf += oc_sf * std::exp(-site.b_iso * stol2_) * factor;
+          } else {
+            Vec3 vhkl(hkl[0], hkl[1], hkl[2]);
+            factor *= calculate_aniso_part(cell_, site, vhkl);
+            for (const FTransform& image : cell_.images) {
+              factor += calculate_sf_part(image.apply(fract), hkl) *
+                        calculate_aniso_part(cell_, site,
+                                             image.mat.left_multiply(vhkl));
+            }
+            sf += oc_sf * factor;
+          }
         }
     return sf;
   }
@@ -74,23 +100,22 @@ public:
   std::complex<double>
   calculate_sf_from_small_structure(const SmallStructure& small,
                                     const Miller& hkl) {
-    constexpr double mtwo_pi2 = -2 * pi() * pi();
     std::complex<double> sf = 0.;
-    set_hkl(hkl);
+    set_stol2_and_scattering_factors(hkl);
     for (const SmallStructure::Site& site : small.sites) {
       double oc_sf = site.occ * get_scattering_factor(site.element);
-      std::complex<double> factor = calculate_sf_part(site.fract);
-      if (site.u11 == 0.) {
+      std::complex<double> factor = calculate_sf_part(site.fract, hkl);
+      if (!site.has_anisou()) {
         for (const FTransform& image : cell_.images)
-          factor += calculate_sf_part(image.apply(site.fract));
-        sf += oc_sf * std::exp(4 * mtwo_pi2 * stol2_ * site.u_iso) * factor;
+          factor += calculate_sf_part(image.apply(site.fract), hkl);
+        sf += oc_sf * std::exp(-8 * pi() * pi() * stol2_ * site.u_iso) * factor;
       } else {
         Vec3 vhkl(hkl[0], hkl[1], hkl[2]);
-        factor *= std::exp(mtwo_pi2 * calculate_s_u_s(cell_, site, vhkl));
+        factor *= calculate_aniso_part(cell_, site, vhkl);
         for (const FTransform& image : cell_.images) {
-          factor += calculate_sf_part(image.apply(site.fract)) *
-                    std::exp(mtwo_pi2 * calculate_s_u_s(cell_, site,
-                                               image.mat.left_multiply(vhkl)));
+          factor += calculate_sf_part(image.apply(site.fract), hkl) *
+                    calculate_aniso_part(cell_, site,
+                                         image.mat.left_multiply(vhkl));
         }
         sf += oc_sf * factor;
       }
@@ -103,19 +128,11 @@ public:
   const std::map<El, double>& fprimes() const { return fprimes_; }
 
 private:
-  // calculate part of the structure factor: exp(2 pi i r * s)
-  std::complex<double> calculate_sf_part(const Fractional& fpos) const {
-    double arg = 2 * pi() * (hkl_[0]*fpos.x + hkl_[1]*fpos.y + hkl_[2]*fpos.z);
-    return std::complex<double>{std::cos(arg), std::sin(arg)};
-  }
-
   const UnitCell& cell_;
-  Miller hkl_;
   double stol2_;
   std::map<El, double> fprimes_;
   std::vector<double> scattering_factors_;
 };
-
 
 } // namespace gemmi
 #endif
