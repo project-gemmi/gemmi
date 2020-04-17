@@ -82,3 +82,53 @@ The library comes with a command-line program. To build it from source::
     cd gemmi
     cmake .
     make
+
+Credits
+-------
+
+This project is using code from a number of third-party open-source projects.
+
+Projects used in the C++ library and included under
+``include/gemmi/third_party/``:
+
+* `PEGTL <https://github.com/taocpp/PEGTL/>`_ -- library for creating PEG
+  parsers. License: MIT.
+* `sajson <https://github.com/chadaustin/sajson>`_ -- high-performance
+  JSON parser. License: MIT.
+* `PocketFFT <https://gitlab.mpcdf.mpg.de/mtr/pocketfft>`_ -- FFT library.
+  License: 3-clause BSD.
+* `stb_sprintf <https://github.com/nothings/stb>`_ -- locale-independent
+  snprintf() implementation. License: Public Domain.
+* `tinydir <https://github.com/cxong/tinydir>`_ -- directory (filesystem)
+  reader. License: 2-clause BSD.
+
+Code derived from the following projects is used in the library:
+
+* `ksw2 <https://github.com/lh3/ksw2>`_ -- sequence alignment in
+  ``seqalign.hpp`` is based on the ksw_gg function from ksw2. License: MIT.
+* `Larch <https://github.com/xraypy/xraylarch>`_ -- calculation of f' and f"
+  in ``fprime.hpp`` is based on CromerLiberman code from Larch.
+  License: 2-clause BSD.
+
+Projects included under ``third_party/``, not used in the library itself,
+but used in command-line utilities, python bindings or tests that are
+distributed with the library:
+
+* `The Lean Mean C++ Option Parser <http://optionparser.sourceforge.net/>`_ --
+  command-line option parser. License: MIT.
+* `doctest <https://github.com/onqtam/doctest>`_ -- testing framework.
+  License: MIT.
+* `linalg.h <http://github.com/sgorsten/linalg/>`_ -- linear algebra library.
+  License: Public Domain.
+* `zlib <https://github.com/madler/zlib>`_ -- a subset of the zlib library
+  for uncompressing gz files, used as a fallback when the zlib library
+  is not found in the system. License: zlib.
+
+Not distributed with Gemmi:
+
+* `pybind11 <https://github.com/pybind/pybind11>`_ -- used for creating
+  Python bindings. License: 3-clause BSD.
+* `cctbx <https://github.com/cctbx/cctbx_project>`_ -- used in tests and
+  in scripts that generated space group data. License: 3-clause BSD.
+
+Email me if I forgot about something.
