@@ -28,10 +28,7 @@ struct SmallStructure {
     Element element = El::X;
     signed char charge = 0;  // [-8, +8]
 
-    bool has_anisou() const {
-      return u11 != 0. || u22 != 0. || u33 != 0. ||
-             u12 != 0. || u13 != 0. || u23 != 0.;
-    }
+    bool has_anisou() const { return u11 + u22 + u33 != 0.; }
     Position orth(const gemmi::UnitCell& cell_) const {
       return cell_.orthogonalize(fract);
     }

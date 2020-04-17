@@ -160,10 +160,7 @@ struct Atom {
   // same_group() is for use in UniqIter
   bool same_group(const Atom& other) const { return name == other.name; }
   bool has_altloc() const { return altloc != '\0'; }
-  bool has_anisou() const {
-    return u11 != 0.f || u22 != 0.f || u33 != 0.f ||
-           u12 != 0.f || u13 != 0.f || u23 != 0.f;
-  }
+  bool has_anisou() const { return u11 + u22 + u33 != 0.f; }
   double b_eq() const {
     return 8 * pi() * pi() / 3. * (u11 + u22 + u33);
   }
