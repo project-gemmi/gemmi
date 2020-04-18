@@ -118,7 +118,7 @@ void add_misc(py::module& m) {
 }
 
 PYBIND11_MODULE(gemmi, mg) {
-  mg.doc() = "General MacroMolecular I/O";
+  mg.doc() = "GEneral MacroMolecular I/O";
   mg.attr("__version__") = GEMMI_VERSION;
   add_symmetry(mg);
   add_grid(mg);

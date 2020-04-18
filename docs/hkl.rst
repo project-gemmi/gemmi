@@ -269,6 +269,10 @@ to integer type:
 
   >>> df = df.astype({name: 'int32' for name in ['H', 'K', 'L']})
 
+You may also have a look at a different project (not associated with Gemmi)
+for working with reflection data in Python:
+`ReciprocalSpaceship <https://hekstra-lab.github.io/reciprocalspaceship/>`_.
+
 Modifying
 ---------
 

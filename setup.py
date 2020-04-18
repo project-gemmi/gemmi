@@ -138,7 +138,7 @@ setup(
     author='Marcin Wojdyr',
     author_email='wojdyr@gmail.com',
     url='https://project-gemmi.github.io/',
-    description='General MacroMolecular I/O',
+    description='library for structural biology',
     long_description='''\
     Library for macromolecular crystallography and structural bioinformatics.
     For working with coordinate files (mmCIF, PDB, mmJSON),

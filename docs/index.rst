@@ -1,11 +1,11 @@
 .. meta::
    :google-site-verification: LsEfb1rjo2RL8WOSZGigV11Kgyhtk9v1Vb-6GZFnHKo
 
-GEMMI - GEneral MacroMolecular I/O
-==================================
+GEMMI - library for structural biology
+======================================
 
-Gemmi is a library developed primarily for use in
-**macromolecular crystallography** (MX) programs.
+Gemmi is a library, accompanied by a set of programs,
+developed primarily for use in **macromolecular crystallography** (MX).
 For working with:
 
 * macromolecular models (content of PDB, PDBx/mmCIF and mmJSON files),
@@ -36,6 +36,7 @@ and `CCP4 <http://www.ccp4.ac.uk>`_.
 
 The project is named after
 `Gemmi Pass <https://goo.gl/maps/akBLbGfrGE9j1oWC7>`_.
+The name can also be expanded as *GEneral MacroMolecular I/o*.
 
 Source code repository: https://github.com/project-gemmi/gemmi
 
