@@ -53,12 +53,12 @@ TEST_CASE("Transform::combine") {
     CHECK_EQ(result1.at(i), doctest::Approx(result2.at(i)));
 }
 
-TEST_CASE("Mat33::smallest_eigenvalue") {
-  auto ev = gemmi::Mat33(3, 2, 4, 2, 0, 2, 4, 2, 3).calculate_eigenvalues();
+TEST_CASE("SMat33::smallest_eigenvalue") {
+  auto ev = gemmi::SMat33<double>{3, 0, 3, 2, 4, 2}.calculate_eigenvalues();
   CHECK_EQ(ev[0], doctest::Approx(8));
   CHECK_EQ(ev[1], doctest::Approx(-1));
   CHECK_EQ(ev[2], doctest::Approx(-1));
-  gemmi::Mat33 m2(3, 1, -1, 1, 3, -1, -1, -1, 5);
+  gemmi::SMat33<double> m2{3, 3, 5, 1, -1, -1};
   auto ev2 = m2.calculate_eigenvalues();
   CHECK_EQ(ev2[0], doctest::Approx(6));
   CHECK_EQ(ev2[1], doctest::Approx(3));

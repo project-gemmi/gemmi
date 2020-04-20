@@ -64,9 +64,7 @@ template<> inline CenterOfMass calculate_center_of_mass(const Atom& atom) {
 // Acta Cryst. A67, 512 (2011)
 // http://skuld.bmsc.washington.edu/parvati/ActaA_67_512.pdf
 inline double calculate_b_est(const Atom& atom) {
-  Mat33 m(atom.u11, atom.u12, atom.u13,
-          atom.u12, atom.u22, atom.u23,
-          atom.u13, atom.u23, atom.u33);
+  SMat33<float> m{atom.u11, atom.u22, atom.u33, atom.u12, atom.u13, atom.u23};
   auto eig = m.calculate_eigenvalues();
   return 8 * pi() * pi() * std::sqrt((eig[0] + eig[1] + eig[2]) /
                                      (1/eig[0] + 1/eig[1] + 1/eig[2]));
@@ -132,19 +130,16 @@ inline std::array<double, 4> find_best_plane(const std::vector<Atom*>& atoms) {
   for (const Atom* atom : atoms)
     mean += atom->pos;
   mean /= (double) atoms.size();
-  Mat33 m(0, 0, 0, 0, 0, 0, 0, 0, 0);
+  SMat33<double> m{0, 0, 0, 0, 0, 0};
   for (const Atom* atom : atoms) {
     Vec3 p = Vec3(atom->pos) - mean;
-    m[0][0] += p.x * p.x;
-    m[0][1] += p.x * p.y;
-    m[0][2] += p.x * p.z;
-    m[1][1] += p.y * p.y;
-    m[1][2] += p.y * p.z;
-    m[2][2] += p.z * p.z;
+    m.u11 += p.x * p.x;
+    m.u22 += p.y * p.y;
+    m.u33 += p.z * p.z;
+    m.u12 += p.x * p.y;
+    m.u13 += p.x * p.z;
+    m.u23 += p.y * p.z;
   }
-  m[1][0] = m[0][1];
-  m[2][0] = m[0][2];
-  m[2][1] = m[1][2];
   auto eig = m.calculate_eigenvalues();
   double smallest = eig[0];
   for (double d : {eig[1], eig[2]})

@@ -139,13 +139,13 @@ void print_structure_factors(const Structure& st,
     start = Clock::now();
   }
   FPhiGrid<float> sf = transform_map_to_f_phi(grid, /*half_l=*/true);
-  StructureFactorCalculator<Table> calc(st.cell);
   if (verbose) {
     std::chrono::duration<double> elapsed = Clock::now() - start;
     fprintf(stderr, "...took %g s.\n", elapsed.count());
     fprintf(stderr, "Printing results...\n");
     fflush(stderr);
   }
+  StructureFactorCalculator<Table> calc(st.cell);
   gemmi::fileptr_t cache(nullptr, nullptr);
   std::map<Miller, std::complex<double>> mtz_data;
   if (mode == 'T' && file_path) {

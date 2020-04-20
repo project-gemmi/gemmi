@@ -46,12 +46,13 @@ double determine_cutoff_radius(const F& func, float cutoff_level) {
 }
 
 // Usual usage:
-// - set d_min and optionally also other parameters
-// - set grid's unit cell and space group using set_grid_cell_and_spacegroup()
+// - set d_min and optionally also other parameters,
+// - set fprimes to f' values for your wavelength (see fprime.hpp)
+// - use set_grid_cell_and_spacegroup() to set grid's unit cell and space group
 // - check that Table has SF coefficients for all elements that are to be used
 // - call put_model_density_on_grid()
-// - if blur is used, the SF must be then multiplied by the value returned by
-//   reciprocal_space_multiplier()
+// - do FFT using transform_map_to_f_phi()
+// - if blur is used, multiply the SF by reciprocal_space_multiplier()
 template <typename Table, typename Real>
 struct DensityCalculator {
   Grid<Real> grid;

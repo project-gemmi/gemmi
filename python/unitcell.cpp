@@ -19,6 +19,22 @@ static std::string triple(double x, double y, double z) {
   return std::string(buf);
 }
 
+template<typename T> void add_smat33(py::module& m, const char* name) {
+  using M = SMat33<T>;
+  py::class_<M>(m, name)
+    .def_readwrite("u11", &M::u11)
+    .def_readwrite("u22", &M::u22)
+    .def_readwrite("u33", &M::u33)
+    .def_readwrite("u12", &M::u12)
+    .def_readwrite("u13", &M::u13)
+    .def_readwrite("u23", &M::u23)
+    .def("trace", &M::trace)
+    .def("determinant", &M::determinant)
+    .def("inverse", &M::inverse)
+    .def("calculate_eigenvalues", &M::calculate_eigenvalues)
+    ;
+}
+
 void add_unitcell(py::module& m) {
   py::class_<Vec3>(m, "Vec3")
     .def(py::init<double,double,double>())
@@ -64,6 +80,10 @@ void add_unitcell(py::module& m) {
                "             [" + triple(a[1][0], a[1][1], a[1][2]) + "]\n"
                "             [" + triple(a[2][0], a[2][1], a[2][2]) + "]>";
     });
+
+  add_smat33<float>(m, "SMat33f");
+  add_smat33<double>(m, "SMat33d");
+
   py::class_<Transform>(m, "Transform")
     .def(py::init<>())
     .def_readonly("mat", &Transform::mat)

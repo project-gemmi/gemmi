@@ -147,18 +147,40 @@ struct Mat33 {
            a[1][0] == 0 && a[1][1] == 1 && a[1][2] == 0 &&
            a[2][0] == 0 && a[2][1] == 0 && a[2][2] == 1;
   }
-  // Calculate eigenvalues of **symmetric** matrix.
+};
+
+// Symmetric matrix 3x3. Used primarily for an ADP tensor.
+template<typename T> struct SMat33 {
+  T u11, u22, u33, u12, u13, u23;
+
+  T trace() const { return u11 + u22 + u33; }
+
+  T determinant() const {
+    return u11 * (u22*u33 - u23*u23) +
+           u12 * (u23*u13 - u33*u12) +
+           u13 * (u12*u23 - u13*u22);
+  }
+
+  SMat33 inverse() const {
+    SMat33 inv;
+    float inv_det = T(1.0 / determinant());
+    inv.u11 = inv_det * (u22 * u33 - u23 * u23);
+    inv.u22 = inv_det * (u11 * u33 - u13 * u13);
+    inv.u33 = inv_det * (u11 * u22 - u12 * u12);
+    inv.u12 = inv_det * (u13 * u23 - u12 * u33);
+    inv.u13 = inv_det * (u12 * u23 - u13 * u22);
+    inv.u23 = inv_det * (u12 * u13 - u11 * u23);
+    return inv;
+  }
+
   // Based on https://en.wikipedia.org/wiki/Eigenvalue_algorithm
   std::array<double, 3> calculate_eigenvalues() const {
-    double p1 = a[0][1] * a[0][1] + a[0][2] * a[0][2] + a[1][2] * a[1][2];
+    double p1 = u12*u12 + u13*u13 + u23*u23;
     if (p1 == 0)
-      return {{a[0][0], a[1][1], a[2][2]}};
-    double q = (1./3.) * (a[0][0] + a[1][1] + a[2][2]);
-    Mat33 b(a[0][0] - q, a[0][1], a[0][2],
-            a[1][0], a[1][1] - q, a[1][2],
-            a[2][0], a[2][1], a[2][2] - q);
-    double p2 = b[0][0] * b[0][0] + b[1][1] * b[1][1] + b[2][2] * b[2][2]
-                + 2 * p1;
+      return {{u11, u22, u33}};
+    double q = (1./3.) * trace();
+    SMat33<double> b{u11 - q, u22 - q, u33 - q, u12, u13, u23};
+    double p2 = sq(b.u11) + sq(b.u22) + sq(b.u33) + 2 * p1;
     double p = std::sqrt((1./6.) * p2);
     double r = b.determinant() / ((1./3.) * p2 * p);
     double phi = 0;
@@ -171,12 +193,12 @@ struct Mat33 {
     return {{eig1, 3 * q - eig1 - eig3, eig3}};
   }
 
-  // Assumes symmetric matrix and one of the eigenvalue calculate above.
+  // Assumes one of the eigenvalue calculate above.
   // May not work if eigenvalues are not distinct.
   Vec3 calculate_eigenvector(double eigenvalue) const {
-    Vec3 r0(a[0][0] - eigenvalue, a[0][1], a[0][2]);
-    Vec3 r1(a[1][0], a[1][1] - eigenvalue, a[1][2]);
-    Vec3 r2(a[2][0], a[2][1], a[2][2] - eigenvalue);
+    Vec3 r0(u11 - eigenvalue, u12, u13);
+    Vec3 r1(u12, u22 - eigenvalue, u23);
+    Vec3 r2(u13, u23, u33 - eigenvalue);
     Vec3 cr[3] = {r0.cross(r1), r0.cross(r2), r1.cross(r2)};
     int idx = 0;
     double lensq = 0;
