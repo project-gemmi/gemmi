@@ -85,12 +85,12 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
       if (aniso_site == st.sites.end())
         continue;
     }
-    aniso_site->u11 = as_number(row[1], 0.0);
-    aniso_site->u22 = as_number(row[2], 0.0);
-    aniso_site->u33 = as_number(row[3], 0.0);
-    aniso_site->u12 = as_number(row[4], 0.0);
-    aniso_site->u13 = as_number(row[5], 0.0);
-    aniso_site->u23 = as_number(row[6], 0.0);
+    aniso_site->aniso.u11 = as_number(row[1], 0.0);
+    aniso_site->aniso.u22 = as_number(row[2], 0.0);
+    aniso_site->aniso.u33 = as_number(row[3], 0.0);
+    aniso_site->aniso.u12 = as_number(row[4], 0.0);
+    aniso_site->aniso.u13 = as_number(row[5], 0.0);
+    aniso_site->aniso.u23 = as_number(row[6], 0.0);
     ++aniso_site;
   }
 

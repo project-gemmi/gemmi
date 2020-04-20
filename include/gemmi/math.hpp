@@ -153,7 +153,12 @@ struct Mat33 {
 template<typename T> struct SMat33 {
   T u11, u22, u33, u12, u13, u23;
 
+  Mat33 as_mat33() const {
+    return Mat33(u11, u12, u13, u12, u22, u23, u13, u23, u33);
+  }
+
   T trace() const { return u11 + u22 + u33; }
+  bool nonzero() const { return trace() != 0; }
 
   T determinant() const {
     return u11 * (u22*u33 - u23*u23) +
@@ -163,7 +168,7 @@ template<typename T> struct SMat33 {
 
   SMat33 inverse() const {
     SMat33 inv;
-    float inv_det = T(1.0 / determinant());
+    T inv_det = 1.0f / determinant();
     inv.u11 = inv_det * (u22 * u33 - u23 * u23);
     inv.u22 = inv_det * (u11 * u33 - u13 * u13);
     inv.u33 = inv_det * (u11 * u22 - u12 * u12);

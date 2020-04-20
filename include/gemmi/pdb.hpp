@@ -362,14 +362,14 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
       // We assume that ANISOU refers to the last atom.
       // Can it not be the case?
       Atom &atom = resi->atoms.back();
-      if (atom.u11 != 0.)
+      if (atom.aniso.u11 != 0.)
         wrong("Duplicated ANISOU record or not directly after ATOM/HETATM.");
-      atom.u11 = read_int(line+28, 7) * 1e-4f;
-      atom.u22 = read_int(line+35, 7) * 1e-4f;
-      atom.u33 = read_int(line+42, 7) * 1e-4f;
-      atom.u12 = read_int(line+49, 7) * 1e-4f;
-      atom.u13 = read_int(line+56, 7) * 1e-4f;
-      atom.u23 = read_int(line+63, 7) * 1e-4f;
+      atom.aniso.u11 = read_int(line+28, 7) * 1e-4f;
+      atom.aniso.u22 = read_int(line+35, 7) * 1e-4f;
+      atom.aniso.u33 = read_int(line+42, 7) * 1e-4f;
+      atom.aniso.u12 = read_int(line+49, 7) * 1e-4f;
+      atom.aniso.u13 = read_int(line+56, 7) * 1e-4f;
+      atom.aniso.u23 = read_int(line+63, 7) * 1e-4f;
 
     } else if (is_record_type(line, "REMARK")) {
       st.raw_remarks.push_back(line);

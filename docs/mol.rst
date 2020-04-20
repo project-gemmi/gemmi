@@ -115,22 +115,22 @@ We will need another cif file to show anisotropic ADPs and disorder_group:
 
     >>> perovskite = gemmi.read_small_structure('../tests/4003024.cif')
     >>> for site in perovskite.sites:
-    ...   print(site.label, site.has_anisou(), site.disorder_group or 'n/a')
+    ...   print(site.label, site.aniso.nonzero(), site.disorder_group or 'n/a')
     Cs1 True n/a
     Sn2 False 1
     Cl1 True n/a
     In False 2
-    >>> perovskite.sites[2].u11
+    >>> perovskite.sites[2].aniso.u11
     0.10300000000000001
-    >>> perovskite.sites[2].u22
+    >>> perovskite.sites[2].aniso.u22
     0.15600000000000003
-    >>> perovskite.sites[2].u33
+    >>> perovskite.sites[2].aniso.u33
     0.15600000000000003
-    >>> perovskite.sites[2].u12
+    >>> perovskite.sites[2].aniso.u12
     0.0
-    >>> perovskite.sites[2].u13
+    >>> perovskite.sites[2].aniso.u13
     0.0
-    >>> perovskite.sites[2].u23
+    >>> perovskite.sites[2].aniso.u23
     0.0
 
 .. _chemcomp:
@@ -276,8 +276,8 @@ and dihedral angles:
     >>> degrees(gemmi.calculate_dihedral(p1, p2, p3, p4))
     90.0
 
-It can be done similarly in C++. Additionally, in C++ you have a number of
-other functions. See headers ``gemmi/math.hpp`` and ``gemmi/calculate.hpp``.
+Additionally, in C++ you have other functions.
+See headers ``gemmi/math.hpp`` and ``gemmi/calculate.hpp``.
 
 ----
 
@@ -357,6 +357,28 @@ Here is an example that shows a few other properties:
 To avoid mixing of orthogonal and fractional coordinates
 Gemmi also has ``FTransform``, which is like ``Transform``,
 but can be applied only to ``Fractional`` coordinates.
+
+----
+
+We have special classes for symmetric 3x3 matrices: SMat33f and SMat33d
+(for 32- and 64-bit floating point numbers, respectively).
+These classes are used primarily for anisotropic ADP tensors;
+their member variables are named ``u11``, ``u22``, ``u33``,
+``u12``, ``u13`` and ``u23``. SMat33 classes provide a few methods,
+including calculations of eigenvalues and eigenvectors.
+
+.. doctest::
+
+    >>> aniso = perovskite.sites[2].aniso
+    >>> aniso.u11
+    0.10300000000000001
+    >>> aniso.trace()
+    0.41500000000000004
+    >>> aniso.determinant()
+    0.002506608000000001
+    >>> aniso.calculate_eigenvalues()
+    [0.10300000000000001, 0.15600000000000003, 0.15600000000000003]
+
 
 In C++ all these types are defined in ``gemmi/math.hpp``.
 
@@ -2444,8 +2466,7 @@ Atom (more accurately: atom site) has the following properties:
 * ``occ`` -- occupancy,
 * ``b_iso`` -- isotropic temperature factor or, more accurately,
   atomic displacement parameter (ADP),
-* ``u11``, ``u22``, ``u33``, ``u12``, ``u13``, ``u23`` -- anisotropic atomic
-  displacement parameters (U not B).
+* ``aniso`` -- anisotropic atomic displacement parameters (U not B).
 * ``serial`` -- atom serial number (integer).
 * ``flag`` -- custom flag, a single character that can be used for anything
   by the user.
@@ -2507,13 +2528,13 @@ So is Gemmi:
 
   >>> atom.b_iso
   9.4399995803833
-  >>> atom.has_anisou()  # has non-zero anisotropic ADP
+  >>> atom.aniso.nonzero()  # has non-zero anisotropic ADP
   True
-  >>> '%g %g %g' % (atom.u11, atom.u22, atom.u33)
+  >>> '%g %g %g' % (atom.aniso.u11, atom.aniso.u22, atom.aniso.u33)
   '0.1386 0.1295 0.0907'
-  >>> '%g %g %g' % (atom.u12, atom.u23, atom.u23)
+  >>> '%g %g %g' % (atom.aniso.u12, atom.aniso.u23, atom.aniso.u23)
   '-0.0026 0.0068 0.0068'
-  >>> U_eq = (atom.u11 + atom.u22 + atom.u33) / 3
+  >>> U_eq = atom.aniso.trace() / 3
   >>> from math import pi
   >>> '%g ~= %g' % (atom.b_iso, 8 * pi**2 * U_eq)
   '9.44 ~= 9.44324'

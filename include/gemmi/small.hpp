@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include "elem.hpp"      // Element
+#include "math.hpp"      // SMat33
 #include "unitcell.hpp"  // UnitCell, Fractional
 
 namespace gemmi {
@@ -23,12 +24,11 @@ struct SmallStructure {
     Fractional fract;
     double occ = 1.0;
     double u_iso = 0.;
-    double u11=0, u22=0, u33=0, u12=0, u13=0, u23=0;
+    SMat33<double> aniso = {0, 0, 0, 0, 0, 0};
     int disorder_group = 0;
     Element element = El::X;
     signed char charge = 0;  // [-8, +8]
 
-    bool has_anisou() const { return u11 + u22 + u33 != 0.; }
     Position orth(const gemmi::UnitCell& cell_) const {
       return cell_.orthogonalize(fract);
     }

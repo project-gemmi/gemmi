@@ -23,12 +23,12 @@ double calculate_aniso_part(const UnitCell& cell, const Site& site,
   double arh = cell.ar * hkl.x;
   double brk = cell.br * hkl.y;
   double crl = cell.cr * hkl.z;
-  double sus = arh * arh * site.u11 +
-               brk * brk * site.u22 +
-               crl * crl * site.u33 +
-               2 * (arh * brk * site.u12 +
-                    arh * crl * site.u13 +
-                    brk * crl * site.u23);
+  double sus = arh * arh * site.aniso.u11 +
+               brk * brk * site.aniso.u22 +
+               crl * crl * site.aniso.u33 +
+               2 * (arh * brk * site.aniso.u12 +
+                    arh * crl * site.aniso.u13 +
+                    brk * crl * site.aniso.u23);
   return std::exp(-2 * pi() * pi() * sus);
 }
 
@@ -77,7 +77,7 @@ public:
           Fractional fract = cell_.fractionalize(site.pos);
           double oc_sf = site.occ * get_scattering_factor(site.element);
           std::complex<double> factor = calculate_sf_part(fract, hkl);
-          if (!site.has_anisou()) {
+          if (!site.aniso.nonzero()) {
             for (const FTransform& image : cell_.images)
               factor += calculate_sf_part(image.apply(fract), hkl);
             sf += oc_sf * std::exp(-site.b_iso * stol2_) * factor;
@@ -105,7 +105,7 @@ public:
     for (const SmallStructure::Site& site : small.sites) {
       double oc_sf = site.occ * get_scattering_factor(site.element);
       std::complex<double> factor = calculate_sf_part(site.fract, hkl);
-      if (!site.has_anisou()) {
+      if (!site.aniso.nonzero()) {
         for (const FTransform& image : cell_.images)
           factor += calculate_sf_part(image.apply(site.fract), hkl);
         sf += oc_sf * std::exp(-8 * pi() * pi() * stol2_ * site.u_iso) * factor;

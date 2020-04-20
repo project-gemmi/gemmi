@@ -33,20 +33,20 @@ inline void copy_string(const cif::Table::Row& row, int n, std::string& dest) {
     dest = cif::as_string(row[n]);
 }
 
-inline std::unordered_map<std::string, std::array<float,6>>
+inline std::unordered_map<std::string, SMat33<float>>
 get_anisotropic_u(cif::Block& block) {
   cif::Table aniso_tab = block.find("_atom_site_anisotrop.",
                                     {"id", "U[1][1]", "U[2][2]", "U[3][3]",
                                      "U[1][2]", "U[1][3]", "U[2][3]"});
-  std::unordered_map<std::string, std::array<float,6>> aniso_map;
+  std::unordered_map<std::string, SMat33<float>> aniso_map;
   for (auto ani : aniso_tab)
-    aniso_map.emplace(ani[0], std::array<float,6>{{
+    aniso_map.emplace(ani[0], SMat33<float>{
                                 (float) cif::as_number(ani[1]),
                                 (float) cif::as_number(ani[2]),
                                 (float) cif::as_number(ani[3]),
                                 (float) cif::as_number(ani[4]),
                                 (float) cif::as_number(ani[5]),
-                                (float) cif::as_number(ani[6])}});
+                                (float) cif::as_number(ani[6])});
   return aniso_map;
 }
 
@@ -645,14 +645,8 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
 
     if (!aniso_map.empty()) {
       auto ani = aniso_map.find(row[kId]);
-      if (ani != aniso_map.end()) {
-        atom.u11 = ani->second[0];
-        atom.u22 = ani->second[1];
-        atom.u33 = ani->second[2];
-        atom.u12 = ani->second[3];
-        atom.u13 = ani->second[4];
-        atom.u23 = ani->second[5];
-      }
+      if (ani != aniso_map.end())
+        atom.aniso = ani->second;
     }
     resi->atoms.emplace_back(atom);
   }

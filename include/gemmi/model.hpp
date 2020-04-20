@@ -151,7 +151,7 @@ struct Atom {
   float occ = 1.0f;
   // ADP - in MX it's usual to give isotropic ADP as B and anisotropic as U
   float b_iso = 20.0f; // arbitrary default value
-  float u11=0, u22=0, u33=0, u12=0, u13=0, u23=0;
+  SMat33<float> aniso = {0, 0, 0, 0, 0, 0};
 
   char altloc_or(char null_char) const { return altloc ? altloc : null_char; }
   bool same_conformer(const Atom& other) const {
@@ -160,9 +160,8 @@ struct Atom {
   // same_group() is for use in UniqIter
   bool same_group(const Atom& other) const { return name == other.name; }
   bool has_altloc() const { return altloc != '\0'; }
-  bool has_anisou() const { return u11 + u22 + u33 != 0.f; }
   double b_eq() const {
-    return 8 * pi() * pi() / 3. * (u11 + u22 + u33);
+    return 8 * pi() * pi() / 3. * aniso.trace();
   }
   bool is_hydrogen() const { return gemmi::is_hydrogen(element); }
 };

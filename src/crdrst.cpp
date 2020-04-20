@@ -58,7 +58,7 @@ static bool has_anisou(const gemmi::Model& model) {
   for (const gemmi::Chain& chain : model.chains)
     for (const gemmi::Residue& res : chain.residues)
       for (const gemmi::Atom& a : res.atoms)
-        if (a.has_anisou())
+        if (a.aniso.nonzero())
           return true;
   return false;
 }
@@ -231,8 +231,9 @@ static cif::Document make_crd(const gemmi::Structure& st,
         vv.emplace_back(a.name); // again
         vv.emplace_back(cc.get_atom(a.name).chem_type); // label_chem_id
         if (write_anisou) {
-          if (a.has_anisou()) {
-            for (float u : {a.u11, a.u22, a.u33, a.u12, a.u13, a.u23})
+          if (a.aniso.nonzero()) {
+            for (float u : {a.aniso.u11, a.aniso.u22, a.aniso.u33,
+                            a.aniso.u12, a.aniso.u13, a.aniso.u23})
               vv.push_back(to_str(u));
           } else {
             vv.resize(vv.size() + 6, ".");

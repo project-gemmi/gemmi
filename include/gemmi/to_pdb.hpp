@@ -312,13 +312,14 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
             // Sometimes PDB files have explicit 0s (5M05); we ignore them.
             a.charge ? a.charge > 0 ? '0'+a.charge : '0'-a.charge : ' ',
             a.charge ? a.charge > 0 ? '+' : '-' : ' ');
-      if (a.u11 != 0.0f) {
+      if (a.aniso.nonzero()) {
         // re-using part of the buffer
         std::memcpy(buf, "ANISOU", 6);
         const double eps = 1e-6;
         gf_snprintf(buf+28, 43, "%7.0f%7.0f%7.0f%7.0f%7.0f%7.0f",
-                    a.u11*1e4 + eps, a.u22*1e4 + eps, a.u33*1e4 + eps,
-                    a.u12*1e4 + eps, a.u13*1e4 + eps, a.u23*1e4 + eps);
+                    a.aniso.u11*1e4 + eps, a.aniso.u22*1e4 + eps,
+                    a.aniso.u33*1e4 + eps, a.aniso.u12*1e4 + eps,
+                    a.aniso.u13*1e4 + eps, a.aniso.u23*1e4 + eps);
         buf[28+42] = ' ';
         os.write(buf, 81);
       }

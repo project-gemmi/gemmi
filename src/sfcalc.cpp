@@ -407,10 +407,10 @@ static void process(const std::string& input, const OptParser& p) {
   if (p.options[NoAniso]) {
     if (use_st) {
       for (CRA& cra : st.models[0].all())
-        cra.atom->u11 = cra.atom->u22 = cra.atom->u33 = 0;
+        cra.atom->aniso.u11 = cra.atom->aniso.u22 = cra.atom->aniso.u33 = 0;
     } else {
       for (SmallStructure::Site& site : small.sites)
-        site.u11 = site.u22 = site.u33 = 0;
+        site.aniso.u11 = site.aniso.u22 = site.aniso.u33 = 0;
     }
   }
 

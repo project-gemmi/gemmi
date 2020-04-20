@@ -600,17 +600,11 @@ void add_mol(py::module& m) {
     .def_readwrite("pos", &Atom::pos)
     .def_readwrite("occ", &Atom::occ)
     .def_readwrite("b_iso", &Atom::b_iso)
-    .def_readwrite("u11", &Atom::u11)
-    .def_readwrite("u22", &Atom::u22)
-    .def_readwrite("u33", &Atom::u33)
-    .def_readwrite("u12", &Atom::u12)
-    .def_readwrite("u13", &Atom::u13)
-    .def_readwrite("u23", &Atom::u23)
+    .def_readwrite("aniso", &Atom::aniso)
     .def_readwrite("serial", &Atom::serial)
     .def_readwrite("flag", &Atom::flag)
     .def("is_hydrogen", &Atom::is_hydrogen)
     .def("has_altloc", &Atom::has_altloc)
-    .def("has_anisou", &Atom::has_anisou)
     .def("b_eq", &Atom::b_eq)
     .def("__repr__", [](const Atom& self) {
         std::string r = "<gemmi.Atom " + self.name;

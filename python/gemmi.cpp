@@ -60,13 +60,7 @@ void add_misc(py::module& m) {
     .def_readonly("element", &SmallStructure::Site::element)
     .def_readonly("charge", &SmallStructure::Site::charge)
     .def_readonly("disorder_group", &SmallStructure::Site::disorder_group)
-    .def_readonly("u11", &SmallStructure::Site::u11)
-    .def_readonly("u22", &SmallStructure::Site::u22)
-    .def_readonly("u33", &SmallStructure::Site::u33)
-    .def_readonly("u12", &SmallStructure::Site::u12)
-    .def_readonly("u13", &SmallStructure::Site::u13)
-    .def_readonly("u23", &SmallStructure::Site::u23)
-    .def("has_anisou", &SmallStructure::Site::has_anisou)
+    .def_readonly("aniso", &SmallStructure::Site::aniso)
     .def("orth", &SmallStructure::Site::orth)
     .def("__repr__", [](const SmallStructure::Site& self) {
         return "<gemmi.SmallStructure.Site " + self.label + ">";

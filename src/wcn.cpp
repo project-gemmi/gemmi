@@ -235,8 +235,8 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
         b_predict.push_back(value);
         // re-purposing u11, u22 and name
         atom.flag = 1;
-        atom.u11 = (float) value;
-        atom.u22 = (float) r2;
+        atom.aniso.u11 = (float) value;
+        atom.aniso.u22 = (float) r2;
         std::string names = chain.name;
         names += '\t';
         names += res->seqid.str();
@@ -262,7 +262,7 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
             float weight = std::exp(mult * dist_sq);
             if (atom.altloc == '\0' && cra.atom != &atom)
               weight *= cra.atom->occ;
-            b_sum += weight * cra.atom->u11;
+            b_sum += weight * cra.atom->aniso.u11;
             weight_sum += weight;
           }
       });
@@ -281,7 +281,7 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
     for (size_t i = 0; i != b_predict.size(); ++i)
       fprintf(f.get(), "%g\t%g\t%.2f\t%s\t%s\n",
               b_predict[i], b_exper[i],
-              atom_ptr[i]->u22, // squared distance to the center of mass
+              atom_ptr[i]->aniso.u22, // squared distance to the center of mass
               // Atom::name was used here to store also chain and seqid
               atom_ptr[i]->name.c_str(),
               atom_ptr[i]->element.name());

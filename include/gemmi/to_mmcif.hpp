@@ -102,26 +102,26 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
       for (const Residue& res : chain.residues) {
         std::string label_seq_id = res.label_seq.str('.');
         std::string auth_seq_id = res.seqid.num.str();
-        for (const Atom& a : res.atoms) {
+        for (const Atom& atom : res.atoms) {
           vv.emplace_back(std::to_string(++serial));
-          vv.emplace_back(a.element.uname());
-          vv.emplace_back(a.name);
-          vv.emplace_back(1, a.altloc_or('.'));
+          vv.emplace_back(atom.element.uname());
+          vv.emplace_back(atom.name);
+          vv.emplace_back(1, atom.altloc_or('.'));
           vv.emplace_back(res.name);
           vv.emplace_back(subchain_or_dot(res));
           vv.emplace_back(label_seq_id);
           vv.emplace_back(pdbx_icode(res));
-          vv.emplace_back(to_str(a.pos.x));
-          vv.emplace_back(to_str(a.pos.y));
-          vv.emplace_back(to_str(a.pos.z));
-          vv.emplace_back(to_str(a.occ));
-          vv.emplace_back(to_str(a.b_iso));
-          vv.emplace_back(a.charge == 0 ? "?" : std::to_string(a.charge));
+          vv.emplace_back(to_str(atom.pos.x));
+          vv.emplace_back(to_str(atom.pos.y));
+          vv.emplace_back(to_str(atom.pos.z));
+          vv.emplace_back(to_str(atom.occ));
+          vv.emplace_back(to_str(atom.b_iso));
+          vv.emplace_back(atom.charge == 0 ? "?" : std::to_string(atom.charge));
           vv.emplace_back(auth_seq_id);
           vv.emplace_back(impl::qchain(chain.name));
           vv.emplace_back(model.name);
-          if (a.u11 != 0.f)
-            aniso.emplace_back(serial, &a);
+          if (atom.aniso.nonzero())
+            aniso.emplace_back(serial, &atom);
         }
       }
     }
@@ -136,12 +136,12 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
     aniso_val.reserve(aniso_loop.tags.size() * aniso.size());
     for (const auto& a : aniso) {
       aniso_val.emplace_back(std::to_string(a.first));
-      aniso_val.emplace_back(to_str(a.second->u11));
-      aniso_val.emplace_back(to_str(a.second->u22));
-      aniso_val.emplace_back(to_str(a.second->u33));
-      aniso_val.emplace_back(to_str(a.second->u12));
-      aniso_val.emplace_back(to_str(a.second->u13));
-      aniso_val.emplace_back(to_str(a.second->u23));
+      aniso_val.emplace_back(to_str(a.second->aniso.u11));
+      aniso_val.emplace_back(to_str(a.second->aniso.u22));
+      aniso_val.emplace_back(to_str(a.second->aniso.u33));
+      aniso_val.emplace_back(to_str(a.second->aniso.u12));
+      aniso_val.emplace_back(to_str(a.second->aniso.u13));
+      aniso_val.emplace_back(to_str(a.second->aniso.u23));
     }
   }
 }

@@ -40,6 +40,17 @@ TEST_CASE("Transform::inverse") {
   }
 }
 
+TEST_CASE("SMat33::inverse") {
+  gemmi::SMat33<double> sm{draw(), draw(), draw(), draw(), draw(), draw()};
+  gemmi::Mat33 m = sm.as_mat33();
+  CHECK_EQ(sm.determinant(), m.determinant());
+  gemmi::Mat33 inv1 = m.inverse();
+  gemmi::Mat33 inv2 = sm.inverse().as_mat33();
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j)
+      CHECK_EQ(inv1.a[i][j], inv2.a[i][j]);
+}
+
 TEST_CASE("Transform::combine") {
   std::srand(12345);
   gemmi::Transform a = random_transform();
