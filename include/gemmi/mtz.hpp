@@ -812,7 +812,7 @@ void Mtz::write_to_stream(std::FILE* stream) const {
     WRITE("VALM %f", valm);
   for (const Column& col : columns) {
     auto minmax = calculate_min_max_disregarding_nans(col.begin(), col.end());
-    WRITE("COLUMN %-30s %c %17.9g %17.9g %4d",
+    WRITE("COLUMN %-30s %c %17.9f %17.9f %4d",
           col.label.c_str(), col.type, minmax[0], minmax[1], col.dataset_id);
     if (!col.source.empty())
       WRITE("COLSRC %-30s %-36s  %4d",
