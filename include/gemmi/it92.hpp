@@ -51,7 +51,7 @@ struct IT92 {
       return sf;
     }
 
-    Real calculate_density(Real r2, Real B) const {
+    Real calculate_density_iso(Real r2, Real B) const {
       constexpr Real _4pi = 4 * pi();
       Real r2pi = r2 * pi();
       Real density = c * pow15(_4pi / B) * std::exp(-(_4pi / B) * r2pi);
@@ -62,7 +62,7 @@ struct IT92 {
       return density;
     }
 
-    ExpSum<5,float> precalculate_density(Real B, Real fprime=0) const {
+    ExpSum<5,float> precalculate_density_iso(Real B, Real fprime=0) const {
       ExpSum<5,float> prec;
       constexpr Real _4pi = 4 * pi();
       for (int i = 0; i < 4; ++i) {

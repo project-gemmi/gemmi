@@ -90,7 +90,7 @@ void add_misc(py::module& m) {
 
   py::class_<IT92::Coef>(m, "IT92Coef")
     .def("calculate_sf", &IT92::Coef::calculate_sf, py::arg("stol2"))
-    .def("calculate_density", &IT92::Coef::calculate_density,
+    .def("calculate_density_iso", &IT92::Coef::calculate_density_iso,
          py::arg("r2"), py::arg("B"))
     ;
 

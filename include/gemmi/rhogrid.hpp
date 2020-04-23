@@ -67,7 +67,7 @@ struct DensityCalculator {
     auto& scat = Table::get(atom.element);
     float fprime = fprimes[atom.element.ordinal()];
     double b = atom.b_iso + blur;
-    auto precal = scat.precalculate_density(b, fprime);
+    auto precal = scat.precalculate_density_iso(b, fprime);
     double radius = determine_cutoff_radius(
                               [&](float r) { return precal.calculate(r*r); },
                               r_cut);
