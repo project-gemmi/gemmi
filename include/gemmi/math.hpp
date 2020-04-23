@@ -160,6 +160,21 @@ template<typename T> struct SMat33 {
   T trace() const { return u11 + u22 + u33; }
   bool nonzero() const { return trace() != 0; }
 
+  void scale(T s) const {
+    u11 *= s; u22 *= s; u33 *= s; u12 *= s; u13 *= s; u23 *= s;
+  };
+
+  template<typename Real>
+  SMat33<Real> scaled(Real s) const {
+    return SMat33<Real>{u11*s, u22*s, u33*s, u12*s, u13*s, u23*s};
+  }
+
+  // returns r . U . r where vector r is argument and U is this matrix
+  double r_u_r(const Vec3& r) const {
+    return r.x * r.x * u11 + r.y * r.y * u22 + r.z * r.z * u33 +
+      2 * (r.x * r.y * u12 + r.x * r.z * u13 + r.y * r.z * u23);
+  }
+
   T determinant() const {
     return u11 * (u22*u33 - u23*u23) +
            u12 * (u23*u13 - u33*u12) +
