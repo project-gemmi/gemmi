@@ -66,7 +66,7 @@ RMSE=0.019724  0.2307%  max|dF|=0.04863  R=0.196%  sum(F^2)_ratio=1.00101
         self.do('''\
 $ gemmi sfcalc --blur=12 --dmin=2.5 --rate=2.5 --rcut=1e-7 --test -v tests/5wkd.pdb
 [...]
-RMSE=5.6297e-05  0.0001431%  max|dF|=0.0008977  R=0.000%
+RMSE=5.5654e-05  0.0001415%  max|dF|=0.0008977  R=0.000%
 ''')  # noqa: E501
 
     # example from utils.rst

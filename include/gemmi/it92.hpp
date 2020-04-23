@@ -62,8 +62,8 @@ struct IT92 {
       return density;
     }
 
-    ExpSum<5,float> precalculate_density_iso(Real B, Real fprime=0) const {
-      ExpSum<5,float> prec;
+    ExpSum<5,Real> precalculate_density_iso(Real B, Real fprime=0) const {
+      ExpSum<5,Real> prec;
       constexpr Real _4pi = 4 * pi();
       for (int i = 0; i < 4; ++i) {
         Real t = _4pi / (b[i]+B);
