@@ -6,6 +6,7 @@
 #include <climits>  // for INT_MIN, INT_MAX
 #include <gemmi/atox.hpp>
 #include <gemmi/math.hpp>
+#include <gemmi/it92.hpp>
 #include <linalg.h>
 
 static double draw() { return 10.0 * std::rand() / RAND_MAX - 5; }
@@ -130,4 +131,14 @@ TEST_CASE("string_to_int") {
   CHECK_EQ(gemmi::string_to_int(std::to_string(INT_MAX), true), INT_MAX);
   CHECK_EQ(gemmi::string_to_int(std::to_string(INT_MIN), true), INT_MIN);
   CHECK_EQ(gemmi::string_to_int("", false), 0);
+}
+
+TEST_CASE("IT92") {
+  using Table = gemmi::IT92<double>;
+  const Table::Coef& coef = Table::get(gemmi::El::Mg);
+  double B = 23.4;
+  double r2 = 1.5 * 1.5;
+  double dens1 = coef.calculate_density_iso(r2, B);
+  double dens2 = coef.precalculate_density_iso(B).calculate(r2);
+  CHECK_EQ(dens1, doctest::Approx(dens2));
 }
