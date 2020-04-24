@@ -4,6 +4,7 @@ set -eu
 cd "$(dirname "$0")"
 BUILD_DIR="$(pwd)"
 [ -e build ] && BUILD_DIR="$(pwd)/build"
+
 (cd $BUILD_DIR && make -j4 all gemmi-crdrst check)
 ./tools/docs-help.sh
 (cd docs && make -j4 html SPHINXOPTS="-q -n")
@@ -15,9 +16,28 @@ python3.7 -m unittest discover -s tests
 (cd docs && make doctest SPHINXOPTS="-q -n -E")
 flake8 docs/ examples/ tests/ tools/ setup.py
 
-# check if each header can be compiled on its own
-#for f in include/gemmi/*.hpp; do gcc-9 -c -fsyntax-only $f; done
+[ $# = 0 ] && exit;
 
-# run tests under valgrind
-#valgrind $BUILD_DIR/cpptest
-#PYTHONMALLOC=malloc valgrind python3.7 -m unittest discover -s tests
+if [ $1 = h -o $1 = a ]; then
+    echo "check if each header can be compiled on its own"
+    for f in include/gemmi/*.hpp; do gcc-9 -c -fsyntax-only $f; done
+fi
+
+if [ $1 = v -o $1 = a ]; then
+    echo "running tests under valgrind"
+    valgrind $BUILD_DIR/cpptest
+    PYTHONMALLOC=malloc valgrind python3.7 -m unittest discover -s tests
+fi
+
+if [ $1 = p -o $1 = a ]; then
+    echo "check if pdb->cif conversion produces valid CIF files"
+    for i in $PDB_DIR/structures/divided/pdb/z[h-z]; do
+        echo $i
+        for j in $i/pdb*; do
+            #echo $j
+            gemmi convert $j /tmp/converted.cif
+            gemmi validate /tmp/converted.cif
+        done
+        #echo -n .
+    done
+fi
