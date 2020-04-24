@@ -17,19 +17,11 @@
 namespace gemmi {
 
 // calculate exp(-2 pi^2 s.U.s)
-template<typename Site>
-double calculate_aniso_part(const UnitCell& cell, const Site& site,
+template<typename T>
+double calculate_aniso_part(const UnitCell& cell, const SMat33<T>& aniso,
                             const Vec3& hkl) {
-  double arh = cell.ar * hkl.x;
-  double brk = cell.br * hkl.y;
-  double crl = cell.cr * hkl.z;
-  double sus = arh * arh * site.aniso.u11 +
-               brk * brk * site.aniso.u22 +
-               crl * crl * site.aniso.u33 +
-               2 * (arh * brk * site.aniso.u12 +
-                    arh * crl * site.aniso.u13 +
-                    brk * crl * site.aniso.u23);
-  return std::exp(-2 * pi() * pi() * sus);
+  Vec3 arh(cell.ar * hkl.x, cell.br * hkl.y, cell.cr * hkl.z);
+  return std::exp(-2 * pi() * pi() * aniso.r_u_r(arh));
 }
 
 // calculate part of the structure factor: exp(2 pi i r * s)
@@ -83,10 +75,10 @@ public:
             sf += oc_sf * std::exp(-site.b_iso * stol2_) * factor;
           } else {
             Vec3 vhkl(hkl[0], hkl[1], hkl[2]);
-            factor *= calculate_aniso_part(cell_, site, vhkl);
+            factor *= calculate_aniso_part(cell_, site.aniso, vhkl);
             for (const FTransform& image : cell_.images) {
               factor += calculate_sf_part(image.apply(fract), hkl) *
-                        calculate_aniso_part(cell_, site,
+                        calculate_aniso_part(cell_, site.aniso,
                                              image.mat.left_multiply(vhkl));
             }
             sf += oc_sf * factor;
@@ -111,10 +103,10 @@ public:
         sf += oc_sf * std::exp(-8 * pi() * pi() * stol2_ * site.u_iso) * factor;
       } else {
         Vec3 vhkl(hkl[0], hkl[1], hkl[2]);
-        factor *= calculate_aniso_part(cell_, site, vhkl);
+        factor *= calculate_aniso_part(cell_, site.aniso, vhkl);
         for (const FTransform& image : cell_.images) {
           factor += calculate_sf_part(image.apply(site.fract), hkl) *
-                    calculate_aniso_part(cell_, site,
+                    calculate_aniso_part(cell_, site.aniso,
                                          image.mat.left_multiply(vhkl));
         }
         sf += oc_sf * factor;
