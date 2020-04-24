@@ -1,0 +1,215 @@
+#------------------------------------------------------------------------------
+#$Date: 2017-10-13 03:48:21 +0300 (Fri, 13 Oct 2017) $
+#$Revision: 201957 $
+#$URL: file:///home/coder/svn-repositories/cod/cif/2/01/35/2013551.cif $
+#------------------------------------------------------------------------------
+#
+# This file is available in the Crystallography Open Database (COD),
+# http://www.crystallography.net/. The original data for this entry
+# were provided by IUCr Journals, http://journals.iucr.org/.
+#
+# The file may be used within the scientific community so long as
+# proper attribution is given to the journal article from which the
+# data were obtained.
+#
+data_2013551
+loop_
+_publ_author_name
+'Brogan, Michael A.'
+'Blake, Alexander J.'
+'Wilson, Claire'
+'Gregory, Duncan H.'
+_publ_section_title
+;
+ Magnesium diiodide, MgI~2~
+;
+_journal_issue                   12
+_journal_name_full               'Acta Crystallographica Section C'
+_journal_page_first              i136
+_journal_page_last               i138
+_journal_paper_doi               10.1107/S0108270103025769
+_journal_volume                  59
+_journal_year                    2003
+_chemical_formula_iupac          'Mg I2'
+_chemical_formula_moiety         'Mg 2+, 2I -'
+_chemical_formula_sum            'I2 Mg'
+_chemical_formula_weight         278.11
+_space_group_IT_number           164
+_symmetry_cell_setting           trigonal
+_symmetry_space_group_name_Hall  '-P 3 2"'
+_symmetry_space_group_name_H-M   'P -3 m 1'
+_atom_sites_solution_primary     direct
+_audit_creation_method           SHELXL-97
+_cell_angle_alpha                90.00
+_cell_angle_beta                 90.00
+_cell_angle_gamma                120.00
+_cell_formula_units_Z            1
+_cell_length_a                   4.1537(7)
+_cell_length_b                   4.1537(7)
+_cell_length_c                   6.862(2)
+_cell_measurement_reflns_used    529
+_cell_measurement_temperature    150(2)
+_cell_measurement_theta_max      27.3
+_cell_measurement_theta_min      2.95
+_cell_volume                     102.53(4)
+_computing_cell_refinement       'SAINT (Bruker, 2002)'
+_computing_data_collection       'SMART (Bruker, 2001)'
+_computing_data_reduction        'SAINT and SHELXTL (Bruker, 2001)'
+_computing_molecular_graphics    'ATOMS (Dowty, 1998)'
+_computing_publication_material
+;
+enCIFer (CCDC, 2003), PLATON (Spek, 1990, 2002) and WinGX (Farrugia, 1998)
+;
+_computing_structure_refinement  'SHELXL97 (Sheldrick, 1997)'
+_computing_structure_solution    'SIR97 (Altomare et al., 1999)'
+_diffrn_ambient_temperature      150(2)
+_diffrn_measured_fraction_theta_full 1.000
+_diffrn_measured_fraction_theta_max 1.000
+_diffrn_measurement_device_type  'Bruker SMART1000 CCD area-detector'
+_diffrn_measurement_method       \w
+_diffrn_radiation_monochromator  graphite
+_diffrn_radiation_type           MoK\a
+_diffrn_radiation_wavelength     0.71073
+_diffrn_reflns_av_R_equivalents  0.081
+_diffrn_reflns_av_sigmaI/netI    0.014
+_diffrn_reflns_limit_h_max       4
+_diffrn_reflns_limit_h_min       -5
+_diffrn_reflns_limit_k_max       4
+_diffrn_reflns_limit_k_min       -5
+_diffrn_reflns_limit_l_max       5
+_diffrn_reflns_limit_l_min       -8
+_diffrn_reflns_number            623
+_diffrn_reflns_theta_full        27.32
+_diffrn_reflns_theta_max         27.32
+_diffrn_reflns_theta_min         2.97
+_diffrn_standards_decay_%        0
+_exptl_absorpt_coefficient_mu    15.24
+_exptl_absorpt_correction_T_max  0.505
+_exptl_absorpt_correction_T_min  0.093
+_exptl_absorpt_correction_type   integration
+_exptl_absorpt_process_details   '(SHELXTL; Bruker, 2001)'
+_exptl_crystal_colour            colourless
+_exptl_crystal_density_diffrn    4.504
+_exptl_crystal_density_method    'not measured'
+_exptl_crystal_description       plate
+_exptl_crystal_F_000             118
+_exptl_crystal_size_max          0.20
+_exptl_crystal_size_mid          0.20
+_exptl_crystal_size_min          0.075
+_refine_diff_density_max         0.86
+_refine_diff_density_min         -0.91
+_refine_ls_extinction_method     none
+_refine_ls_goodness_of_fit_ref   1.13
+_refine_ls_matrix_type           full
+_refine_ls_number_parameters     7
+_refine_ls_number_reflns         115
+_refine_ls_number_restraints     0
+_refine_ls_restrained_S_all      1.13
+_refine_ls_R_factor_all          0.0209
+_refine_ls_R_factor_gt           0.0208
+_refine_ls_shift/su_max          0.001
+_refine_ls_shift/su_mean         0.000
+_refine_ls_structure_factor_coef Fsqd
+_refine_ls_weighting_details
+'calc w = 1/[\s^2^(Fo^2^)+(0.037)^2^+ 0.102P] where P = (Fo^2^+2Fc^2^)/3'
+_refine_ls_weighting_scheme      calc
+_refine_ls_wR_factor_gt          0.0627
+_refine_ls_wR_factor_ref         0.0628
+_reflns_number_gt                112
+_reflns_number_total             115
+_reflns_threshold_expression     I>2\s(I)
+_cod_data_source_file            bc1028.cif
+_cod_data_source_block           I
+_cod_depositor_comments
+;
+The following automatic conversions were performed:
+'_geom_bond_publ_flag' value 'Yes' changed to 'yes' according to
+'/home/saulius/struct/CIF-dictionaries/cif_core.dic' dictionary named
+'cif_core.dic' version 2.4.1 from 2010-06-29.
+
+Automatic conversion script
+Id: cif_fix_enum 1527 2010-12-29 10:47:43Z saulius 
+
+The following automatic conversions were performed:
+
+'_geom_bond_publ_flag' value 'Yes' changed to 'yes' according to
+/home/saulius/struct/CIF-dictionaries/cif_core.dic dictionary named
+'cif_core.dic' version 2.4.1 from
+2010-06-29.
+
+'_geom_angle_publ_flag' value 'Yes' changed to 'yes'
+according to /home/saulius/struct/CIF-dictionaries/cif_core.dic
+dictionary named 'cif_core.dic' version 2.4.1 from 2010-06-29.
+
+Automatic conversion script
+Id: cif_fix_values 1715 2011-07-08 13:25:40Z adriana 
+;
+_cod_database_code               2013551
+_cod_database_fobs_code          2013551
+loop_
+_symmetry_equiv_pos_as_xyz
+'x, y, z'
+'-y, x-y, z'
+'y, x, -z'
+'-x+y, -x, z'
+'-x, -x+y, -z'
+'x-y, -y, -z'
+'-x, -y, -z'
+'y, -x+y, -z'
+'-y, -x, z'
+'x-y, x, -z'
+'x, x-y, z'
+'-x+y, y, z'
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_U_iso_or_equiv
+_atom_site_adp_type
+_atom_site_calc_flag
+_atom_site_refinement_flags
+_atom_site_occupancy
+_atom_site_disorder_assembly
+_atom_site_disorder_group
+_atom_site_type_symbol
+Mg 0.0000 1.0000 1.0000 0.0142(9) Uani d S 1 . . Mg
+I 0.3333 0.6667 0.75763(6) 0.0120(3) Uani d S 1 . . I
+loop_
+_atom_site_aniso_label
+_atom_site_aniso_U_11
+_atom_site_aniso_U_22
+_atom_site_aniso_U_33
+_atom_site_aniso_U_12
+_atom_site_aniso_U_13
+_atom_site_aniso_U_23
+Mg 0.0091(11) 0.0091(11) 0.024(2) 0.0045(6) 0.000 0.000
+I 0.0105(4) 0.0105(4) 0.0150(5) 0.00525(18) 0.000 0.000
+loop_
+_atom_type_symbol
+_atom_type_description
+_atom_type_scat_dispersion_real
+_atom_type_scat_dispersion_imag
+_atom_type_scat_source
+I I -0.4742 1.8119 'International Tables Vol C Tables 4.2.6.8 and 6.1.1.4'
+Mg Mg 0.0486 0.0363 'International Tables Vol C Tables 4.2.6.8 and 6.1.1.4'
+loop_
+_geom_angle_atom_site_label_1
+_geom_angle_atom_site_label_2
+_geom_angle_atom_site_label_3
+_geom_angle_site_symmetry_1
+_geom_angle
+_geom_angle_publ_flag
+Mg I Mg 1_655 90.739(17) yes
+loop_
+_geom_bond_atom_site_label_1
+_geom_bond_atom_site_label_2
+_geom_bond_site_symmetry_2
+_geom_bond_distance
+_geom_bond_publ_flag
+Mg I . 2.9183(5) yes
+loop_
+_cod_related_entry_id
+_cod_related_entry_database
+_cod_related_entry_code
+1 ChemSpider 59700

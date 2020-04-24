@@ -61,6 +61,14 @@ $ gemmi sfcalc --ciffp --check=tests/2242624.hkl tests/2242624.cif
 RMSE=0.019724  0.2307%  max|dF|=0.04863  R=0.196%  sum(F^2)_ratio=1.00101
 ''')
 
+    def test_sfcalc4(self):
+        self.do('''\
+$ gemmi sfcalc -w0 --hkl=4,9,0 --hkl=5,6,4 --hkl=1,1,1 tests/2013551.cif
+ (4 9 0)	1.123146675874	180.000000000000
+ (5 6 4)	1.490896188423	180.000000000000
+ (1 1 1)	11.221590341903	0.000000000000
+''')
+
     @unittest.skipIf(sys.platform == 'win32', 'with MSVC it differs slightly')
     def test_sfcalc_5wkd(self):
         self.do('''\
