@@ -17,28 +17,13 @@ tags
 /CTestTestfile.cmake
 /Makefile
 
-# binaries
-gemmi-contents
-gemmi-convert
-gemmi-grep
-gemmi-map
-gemmi-mask
-gemmi-sg
-gemmi-validate
-bench_elem
-bench_mod
-bench_sym
-hello
-doc_example
-doc_example2
-doc_maybegz
-
 # local pybind11 is used for testing new versions, don't add to the repo
 third_party/pybind11
 
 # ignore random data files in the top and source directory
 /*.cif
 /*.pdb
+/*.ent
 /*.json
 /*.mtz
 src/*.cif
@@ -50,6 +35,16 @@ docs/A.cif
 docs/new.cif
 docs/1pfe-*.cif
 docs/X12.cif
+docs/5wkd.ccp4
+docs/out.cif
+docs/output.mtz
+
+# temporary files
+/out/
+/out.*
+/out?.*
+/tmp/
+/tmp.*
 
 # wasm
 /wasm/*/*.wasm
