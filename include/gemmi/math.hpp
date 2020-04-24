@@ -169,6 +169,11 @@ template<typename T> struct SMat33 {
     return SMat33<Real>{u11*s, u22*s, u33*s, u12*s, u13*s, u23*s};
   }
 
+  // returns U + kI
+  SMat33<T> added_kI(T k) const {
+    return {u11+k, u22+k, u33+k, u12, u13, u23};
+  }
+
   // returns r . U . r where vector r is argument and U is this matrix
   double r_u_r(const Vec3& r) const {
     return r.x * r.x * u11 + r.y * r.y * u22 + r.z * r.z * u33 +

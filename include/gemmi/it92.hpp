@@ -38,7 +38,7 @@ struct ExpSum {
 
 template<class Real>
 struct IT92 {
-  static Real pow15(Real x) { return x * std::sqrt(x); }
+  static constexpr Real pow15(Real x) { return x * std::sqrt(x); }
 
   struct Coef {
     Real a[4], b[4], c;
@@ -74,6 +74,18 @@ struct IT92 {
       prec.a[4] = (c + fprime) * pow15(t);
       prec.b[4] = -t * pi();
       return prec;
+    }
+
+    Real calculate_density_aniso(const Vec3& r, const SMat33<float>& U) const {
+      const SMat33<Real> B = U.scaled(Real(8 * sq(pi())));
+      Real density = c * pow15(4 * pi()) / std::sqrt(B.determinant()) *
+                     std::exp(-sq(2 * pi()) * B.inverse().r_u_r(r));
+      for (int i = 0; i < 4; ++i) {
+        SMat33<Real> Bb = B.added_kI(b[i]);
+        density += a[i] * pow15(4 * pi()) / std::sqrt(Bb.determinant()) *
+                   std::exp(-sq(2 * pi()) * Bb.inverse().r_u_r(r));
+      }
+      return density;
     }
   };
 

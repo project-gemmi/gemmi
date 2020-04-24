@@ -137,8 +137,15 @@ TEST_CASE("IT92") {
   using Table = gemmi::IT92<double>;
   const Table::Coef& coef = Table::get(gemmi::El::Mg);
   double B = 23.4;
-  double r2 = 1.5 * 1.5;
-  double dens1 = coef.calculate_density_iso(r2, B);
-  double dens2 = coef.precalculate_density_iso(B).calculate(r2);
+  double r = 1.5;
+  double dens1 = coef.calculate_density_iso(r*r, B);
+  double dens2 = coef.precalculate_density_iso(B).calculate(r*r);
   CHECK_EQ(dens1, doctest::Approx(dens2));
+  double U = B / (8 * gemmi::pi() * gemmi::pi());
+  gemmi::SMat33<float> mat{(float)U, (float)U, (float)U, 0, 0, 0};
+  double dens3 = coef.calculate_density_aniso(gemmi::Vec3(r, 0, 0), mat);
+  CHECK_EQ(dens1, doctest::Approx(dens3));
+  double xr = r * std::sqrt(1./3);
+  double dens4 = coef.calculate_density_aniso(gemmi::Vec3(xr, xr, xr), mat);
+  CHECK_EQ(dens1, doctest::Approx(dens4));
 }
