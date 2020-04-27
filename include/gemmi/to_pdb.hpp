@@ -644,15 +644,24 @@ inline void write_header(const Structure& st, std::ostream& os,
   write_ncs(st, os);
 }
 
+inline void check_if_structure_can_be_written_as_pdb(const Structure& st) {
+  for (const gemmi::Model& model : st.models)
+    for (const gemmi::Chain& chain : model.chains)
+      if (chain.name.size() > 2)
+        gemmi::fail("chain name too long for the PDB format: " + chain.name);
+}
+
 } // namespace impl
 
 std::string make_pdb_headers(const Structure& st) {
+  impl::check_if_structure_can_be_written_as_pdb(st);
   std::ostringstream os;
   impl::write_header(st, os, PdbWriteOptions());
   return os.str();
 }
 
 void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
+  impl::check_if_structure_can_be_written_as_pdb(st);
   impl::write_header(st, os, opt);
   impl::write_atoms(st, os, opt);
   char buf[88];
@@ -661,6 +670,7 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
 
 void write_minimal_pdb(const Structure& st, std::ostream& os,
                        PdbWriteOptions opt) {
+  impl::check_if_structure_can_be_written_as_pdb(st);
   impl::write_cryst1(st, os);
   impl::write_ncs(st, os);
   impl::write_atoms(st, os, opt);
