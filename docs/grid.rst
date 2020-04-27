@@ -336,8 +336,8 @@ number (as in the format description) as a location in the header::
 
 For example::
 
-    int mode = grid.header_i32(4);
-    float x = grid.header_float(11);
+    int mode = map.header_i32(4);
+    float x = map.header_float(11);
 
 setup()
 ~~~~~~~
@@ -360,9 +360,9 @@ To write a map to a file::
     // the file header needs to be prepared/updated with an explicit call
     int mode = 2; // ccp4 file mode: 2 for floating-point data, 0 for masks
     bool update_stats = true; // update min/max/mean/rms values in the header
-    grid.update_ccp4_header(mode, update_stats);
+    map.update_ccp4_header(mode, update_stats);
 
-    grid.write_ccp4_map(filename);
+    map.write_ccp4_map(filename);
 
 Python
 ------
@@ -383,6 +383,7 @@ The Python API is similar.
     >>> m.setup()
     >>> m.grid
     <gemmi.FloatGrid(60, 24, 60)>
+    >>> m.write_ccp4_map('out.ccp4')
 
 For the low-level access to header one can use the same getters and
 setters as in the C++ version.
