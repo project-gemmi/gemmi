@@ -16,12 +16,21 @@
 
 namespace gemmi {
 
-// calculate exp(-2 pi^2 s.U.s)
-template<typename T>
-double calculate_aniso_part(const UnitCell& cell, const SMat33<T>& aniso,
-                            const Vec3& hkl) {
+// Calculation of Debye-Waller factor exp(-2 pi^2 s.U.s)
+// cf. B. Rupp's book, p. 641 or RWGK & Adams 2002, J. Appl. Cryst. 35, 477
+// Small molecule and macromolecular anisotropic U's are defined differently,
+// so we have two functions.
+inline double calculate_dw_factor(const UnitCell& cell,
+                                  const SmallStructure::Site& site,
+                                  const Vec3& hkl) {
   Vec3 arh(cell.ar * hkl.x, cell.br * hkl.y, cell.cr * hkl.z);
-  return std::exp(-2 * pi() * pi() * aniso.r_u_r(arh));
+  return std::exp(-2 * pi() * pi() * site.aniso.r_u_r(arh));
+}
+inline double calculate_dw_factor(const UnitCell& cell,
+                                  const Atom& atom,
+                                  const Vec3& hkl) {
+  return std::exp(-2 * pi() * pi() *
+                  atom.aniso.transformed_by(cell.frac.mat).r_u_r(hkl));
 }
 
 // calculate part of the structure factor: exp(2 pi i r * s)
@@ -75,11 +84,11 @@ public:
             sf += oc_sf * std::exp(-site.b_iso * stol2_) * factor;
           } else {
             Vec3 vhkl(hkl[0], hkl[1], hkl[2]);
-            factor *= calculate_aniso_part(cell_, site.aniso, vhkl);
+            factor *= calculate_dw_factor(cell_, site, vhkl);
             for (const FTransform& image : cell_.images) {
               factor += calculate_sf_part(image.apply(fract), hkl) *
-                        calculate_aniso_part(cell_, site.aniso,
-                                             image.mat.left_multiply(vhkl));
+                        calculate_dw_factor(cell_, site,
+                                            image.mat.left_multiply(vhkl));
             }
             sf += oc_sf * factor;
           }
@@ -103,11 +112,11 @@ public:
         sf += oc_sf * std::exp(-8 * pi() * pi() * stol2_ * site.u_iso) * factor;
       } else {
         Vec3 vhkl(hkl[0], hkl[1], hkl[2]);
-        factor *= calculate_aniso_part(cell_, site.aniso, vhkl);
+        factor *= calculate_dw_factor(cell_, site, vhkl);
         for (const FTransform& image : cell_.images) {
           factor += calculate_sf_part(image.apply(site.fract), hkl) *
-                    calculate_aniso_part(cell_, site.aniso,
-                                         image.mat.left_multiply(vhkl));
+                    calculate_dw_factor(cell_, site,
+                                        image.mat.left_multiply(vhkl));
         }
         sf += oc_sf * factor;
       }
