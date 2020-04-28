@@ -35,6 +35,18 @@ struct ExpSum {
   }
 };
 
+template<int N, typename Real>
+struct ExpAnisoSum {
+  Real a[N];
+  SMat33<Real> b[N];
+
+  Real calculate(const Vec3& r) const {
+    Real density = 0;
+    for (int i = 0; i < N; ++i)
+      density += a[i] * std::exp(b[i].r_u_r(r));
+    return density;
+  }
+};
 
 template<class Real>
 struct IT92 {
@@ -77,15 +89,31 @@ struct IT92 {
     }
 
     Real calculate_density_aniso(const Vec3& r, const SMat33<float>& U) const {
-      const SMat33<Real> B = U.scaled(Real(8 * sq(pi())));
+      constexpr Real pi2 = sq(pi());
+      const SMat33<Real> B = U.scaled(8 * pi2);
       Real density = c * pow15(4 * pi()) / std::sqrt(B.determinant()) *
-                     std::exp(-sq(2 * pi()) * B.inverse().r_u_r(r));
+                     std::exp(-4 * pi2 * B.inverse().r_u_r(r));
       for (int i = 0; i < 4; ++i) {
         SMat33<Real> Bb = B.added_kI(b[i]);
         density += a[i] * pow15(4 * pi()) / std::sqrt(Bb.determinant()) *
-                   std::exp(-sq(2 * pi()) * Bb.inverse().r_u_r(r));
+                   std::exp(-4 * pi2 * Bb.inverse().r_u_r(r));
       }
       return density;
+    }
+
+    ExpAnisoSum<5,Real> precalculate_density_aniso(const SMat33<float>& U,
+                                                   Real fprime=0) const {
+      constexpr Real pi2 = sq(pi());
+      ExpAnisoSum<5,Real> prec;
+      const SMat33<Real> B = U.scaled(8 * pi2);
+      for (int i = 0; i < 4; ++i) {
+        SMat33<Real> Bb = B.added_kI(b[i]);
+        prec.a[i] = a[i] * pow15(4 * pi()) / std::sqrt(Bb.determinant());
+        prec.b[i] = Bb.inverse().scaled(-4 * pi2);
+      }
+      prec.a[4] = (c + fprime) * pow15(4 * pi()) / std::sqrt(B.determinant());
+      prec.b[4] = B.inverse().scaled(-4 * pi2);
+      return prec;
     }
   };
 
