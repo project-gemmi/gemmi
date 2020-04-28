@@ -3,7 +3,21 @@
 import unittest
 from math import pi  # , isnan
 from random import random
-from gemmi import Position, Fractional, UnitCell, calculate_dihedral
+from gemmi import (Position, Fractional, UnitCell, calculate_dihedral,
+                   Mat33, SMat33f)
+
+class TestMath(unittest.TestCase):
+    def test_SMat33_transformed_by(self):
+        tensor = SMat33f(random(), random(), random(),
+                         random(), random(), random())
+        mat = Mat33()
+        mat.fromlist([[random() for _ in range(3)] for _ in range(3)])
+        t1 = tensor.transformed_by(mat).as_mat33().tolist()
+        t2 = mat.multiply(tensor.as_mat33()).multiply(mat.transpose()).tolist()
+        for i in range(3):
+            for j in range(3):
+                self.assertAlmostEqual(t1[i][j], t2[i][j])
+
 
 class TestUnitCell(unittest.TestCase):
     def test_dummy_cell(self):

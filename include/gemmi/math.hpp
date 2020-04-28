@@ -180,6 +180,18 @@ template<typename T> struct SMat33 {
       2 * (r.x * r.y * u12 + r.x * r.z * u13 + r.y * r.z * u23);
   }
 
+  // return M U M^T
+  SMat33<double> transformed_by(const Mat33& m) const {
+    // slightly faster than m.multiply(as_mat33()).multiply(m.transpose());
+    auto elem = [&](int i, int j) {
+      return m[i][0] * (m[j][0] * u11 + m[j][1] * u12 + m[j][2] * u13) +
+             m[i][1] * (m[j][0] * u12 + m[j][1] * u22 + m[j][2] * u23) +
+             m[i][2] * (m[j][0] * u13 + m[j][1] * u23 + m[j][2] * u33);
+    };
+    return SMat33<double>{elem(0, 0), elem(1, 1), elem(2, 2),
+                          elem(0, 1), elem(0, 2), elem(1, 2)};
+  }
+
   T determinant() const {
     return u11 * (u22*u33 - u23*u23) +
            u12 * (u23*u13 - u33*u12) +

@@ -22,6 +22,10 @@ static std::string triple(double x, double y, double z) {
 template<typename T> void add_smat33(py::module& m, const char* name) {
   using M = SMat33<T>;
   py::class_<M>(m, name)
+    .def(py::init([](T u11, T u22, T u33, T u12, T u13, T u23) {
+           return M{u11, u22, u33, u12, u13, u23};
+         }), py::arg("u11"), py::arg("u22"), py::arg("u33"),
+             py::arg("u12"), py::arg("u13"), py::arg("u23"))
     .def_readwrite("u11", &M::u11)
     .def_readwrite("u22", &M::u22)
     .def_readwrite("u33", &M::u33)
@@ -33,6 +37,7 @@ template<typename T> void add_smat33(py::module& m, const char* name) {
     .def("nonzero", &M::nonzero)
     .def("determinant", &M::determinant)
     .def("inverse", &M::inverse)
+    .def("transformed_by", &M::transformed_by)
     .def("calculate_eigenvalues", &M::calculate_eigenvalues)
     ;
 }
