@@ -16,23 +16,6 @@
 
 namespace gemmi {
 
-// Calculation of Debye-Waller factor exp(-2 pi^2 s.U.s)
-// cf. B. Rupp's book, p. 641 or RWGK & Adams 2002, J. Appl. Cryst. 35, 477
-// Small molecule and macromolecular anisotropic U's are defined differently,
-// so we have two functions.
-inline double calculate_dw_factor(const UnitCell& cell,
-                                  const SmallStructure::Site& site,
-                                  const Vec3& hkl) {
-  Vec3 arh(cell.ar * hkl.x, cell.br * hkl.y, cell.cr * hkl.z);
-  return std::exp(-2 * pi() * pi() * site.aniso.r_u_r(arh));
-}
-inline double calculate_dw_factor(const UnitCell& cell,
-                                  const Atom& atom,
-                                  const Vec3& hkl) {
-  return std::exp(-2 * pi() * pi() *
-                  atom.aniso.transformed_by(cell.frac.mat).r_u_r(hkl));
-}
-
 // calculate part of the structure factor: exp(2 pi i r * s)
 std::complex<double> calculate_sf_part(const Fractional& fpos,
                                        const Miller& hkl) {
@@ -68,31 +51,56 @@ public:
     return sfactor;
   }
 
+  // Calculation of Debye-Waller factor with isotropic ADPs
+  double dwf_iso(const SmallStructure::Site& site) const {
+    return std::exp(-8 * pi() * pi() * stol2_ * site.u_iso);
+  }
+  double dwf_iso(const Atom& atom) const {
+    return std::exp(-stol2_ * atom.b_iso);
+  }
+
+  // Calculation of Debye-Waller factor exp(-2 pi^2 s.U.s)
+  // cf. B. Rupp's book, p. 641 or RWGK & Adams 2002, J. Appl. Cryst. 35, 477
+  // Small molecule and macromolecular anisotropic U's are defined differently,
+  // so we have two functions.
+  double dwf_aniso(const SmallStructure::Site& site, const Vec3& hkl) const {
+    Vec3 arh(cell_.ar * hkl.x, cell_.br * hkl.y, cell_.cr * hkl.z);
+    return std::exp(-2 * pi() * pi() * site.aniso.r_u_r(arh));
+  }
+  double dwf_aniso(const Atom& atom, const Vec3& hkl) const {
+    return std::exp(-2 * pi() * pi() *
+                    atom.aniso.transformed_by(cell_.frac.mat).r_u_r(hkl));
+  }
+
+  template<typename Site>
+  std::complex<double> calculate_sf_from_atom(const Fractional& fract,
+                                              const Site& site,
+                                              const Miller& hkl) {
+    double oc_sf = site.occ * get_scattering_factor(site.element);
+    std::complex<double> sum = calculate_sf_part(fract, hkl);
+    if (!site.aniso.nonzero()) {
+      for (const FTransform& image : cell_.images)
+        sum += calculate_sf_part(image.apply(fract), hkl);
+      return oc_sf * dwf_iso(site) * sum;
+    } else {
+      Vec3 vhkl(hkl[0], hkl[1], hkl[2]);
+      sum *= dwf_aniso(site, vhkl);
+      for (const FTransform& image : cell_.images)
+        sum += calculate_sf_part(image.apply(fract), hkl) *
+               dwf_aniso(site, image.mat.left_multiply(vhkl));
+      return oc_sf * sum;
+    }
+  }
+
   std::complex<double> calculate_sf_from_model(const Model& model,
                                                const Miller& hkl) {
     std::complex<double> sf = 0.;
     set_stol2_and_scattering_factors(hkl);
     for (const Chain& chain : model.chains)
       for (const Residue& res : chain.residues)
-        for (const Atom& site : res.atoms) {
-          Fractional fract = cell_.fractionalize(site.pos);
-          double oc_sf = site.occ * get_scattering_factor(site.element);
-          std::complex<double> factor = calculate_sf_part(fract, hkl);
-          if (!site.aniso.nonzero()) {
-            for (const FTransform& image : cell_.images)
-              factor += calculate_sf_part(image.apply(fract), hkl);
-            sf += oc_sf * std::exp(-site.b_iso * stol2_) * factor;
-          } else {
-            Vec3 vhkl(hkl[0], hkl[1], hkl[2]);
-            factor *= calculate_dw_factor(cell_, site, vhkl);
-            for (const FTransform& image : cell_.images) {
-              factor += calculate_sf_part(image.apply(fract), hkl) *
-                        calculate_dw_factor(cell_, site,
-                                            image.mat.left_multiply(vhkl));
-            }
-            sf += oc_sf * factor;
-          }
-        }
+        for (const Atom& site : res.atoms)
+          sf += calculate_sf_from_atom(cell_.fractionalize(site.pos),
+                                       site, hkl);
     return sf;
   }
 
@@ -103,24 +111,8 @@ public:
                                     const Miller& hkl) {
     std::complex<double> sf = 0.;
     set_stol2_and_scattering_factors(hkl);
-    for (const SmallStructure::Site& site : small.sites) {
-      double oc_sf = site.occ * get_scattering_factor(site.element);
-      std::complex<double> factor = calculate_sf_part(site.fract, hkl);
-      if (!site.aniso.nonzero()) {
-        for (const FTransform& image : cell_.images)
-          factor += calculate_sf_part(image.apply(site.fract), hkl);
-        sf += oc_sf * std::exp(-8 * pi() * pi() * stol2_ * site.u_iso) * factor;
-      } else {
-        Vec3 vhkl(hkl[0], hkl[1], hkl[2]);
-        factor *= calculate_dw_factor(cell_, site, vhkl);
-        for (const FTransform& image : cell_.images) {
-          factor += calculate_sf_part(image.apply(site.fract), hkl) *
-                    calculate_dw_factor(cell_, site,
-                                        image.mat.left_multiply(vhkl));
-        }
-        sf += oc_sf * factor;
-      }
-    }
+    for (const SmallStructure::Site& site : small.sites)
+      sf += calculate_sf_from_atom(site.fract, site, hkl);
     return sf;
   }
 
