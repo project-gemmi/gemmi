@@ -37,7 +37,8 @@ namespace tao
 
       inline std::ostream& operator<<( std::ostream& o, const position& p )
       {
-         return o << p.source << ':' << p.line << ':' << p.byte_in_line << '(' << p.byte << ')';
+         //return o << p.source << ':' << p.line << ':' << p.byte_in_line << '(' << p.byte << ')';
+         return o << p.source << ':' << p.line << ':' << p.byte_in_line + 1;
       }
 
       inline std::string to_string( const position& p )
