@@ -116,9 +116,9 @@ void print_to_stderr(const Comparator& c) {
 
 using namespace gemmi;
 
-template<typename Table>
+template<typename Table, typename Real>
 void print_structure_factors(const Structure& st,
-                             DensityCalculator<Table,float>& dencalc,
+                             DensityCalculator<Table, Real>& dencalc,
                              bool verbose, char mode, const char* file_path,
                              const std::string& f_label,
                              const std::string& phi_label) {
@@ -130,7 +130,7 @@ void print_structure_factors(const Structure& st,
   auto start = Clock::now();
   dencalc.set_grid_cell_and_spacegroup(st);
   dencalc.put_model_density_on_grid(st.models[0]);
-  const Grid<float>& grid = dencalc.grid;
+  const Grid<Real>& grid = dencalc.grid;
   if (verbose) {
     std::chrono::duration<double> elapsed = Clock::now() - start;
     fprintf(stderr, "...took %g s.\n", elapsed.count());
@@ -138,7 +138,7 @@ void print_structure_factors(const Structure& st,
     fflush(stderr);
     start = Clock::now();
   }
-  FPhiGrid<float> sf = transform_map_to_f_phi(grid, /*half_l=*/true);
+  FPhiGrid<Real> sf = transform_map_to_f_phi(grid, /*half_l=*/true);
   if (verbose) {
     std::chrono::duration<double> elapsed = Clock::now() - start;
     fprintf(stderr, "...took %g s.\n", elapsed.count());
