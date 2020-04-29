@@ -276,6 +276,12 @@ struct Mtz {
     return {{min_value, max_value}};
   }
 
+  void update_reso() {
+    std::array<double,2> reso = calculate_min_max_1_d2();
+    min_1_d2 = reso[0];
+    max_1_d2 = reso[1];
+  }
+
   // Functions for reading MTZ headers and data.
 
   void toggle_endiannes() {

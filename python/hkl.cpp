@@ -207,6 +207,7 @@ void add_hkl(py::module& m) {
            for (ssize_t col = 0; col < ncol; col++)
              self.data[row*ncol+col] = r(row, col);
     }, py::arg("array"))
+    .def("update_reso", &Mtz::update_reso)
     .def("write_to_file", &Mtz::write_to_file, py::arg("path"))
     .def("__repr__", [](const Mtz& self) {
         return tostr("<gemmi.Mtz with ", self.columns.size(), " columns, ",

@@ -376,6 +376,18 @@ and its size (columns x rows)::
 
   void Mtz::set_data(const float* new_data, size_t n)
 
+To update properties ``min_1_d2`` and ``max_1_d2`` call ``update_reso()``:
+
+.. doctest::
+
+  >>> mtz.update_reso()
+  >>> mtz.min_1_d2, mtz.max_1_d2
+  (0.02664818727144997, 0.03101414716625602)
+
+You do not need to call ``update_reso()`` before writing an MTZ file --
+the values for the RESO record are re-calculated automatically when the file
+is written.
+
 Writing
 -------
 
