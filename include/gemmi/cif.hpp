@@ -136,9 +136,10 @@ namespace rules {
                                 endframe, ws_or_eof> {};
   struct datablock : pegtl::seq<datablockheading, ws_or_eof,
                              pegtl::star<pegtl::sor<dataitem, loop, frame>>> {};
-  struct file : pegtl::must<pegtl::opt<whitespace>,
-                            pegtl::star<datablock>,
-                            pegtl::eof> {};
+  struct content : pegtl::plus<datablock> {};
+  struct file : pegtl::seq<pegtl::opt<whitespace>,
+                           pegtl::if_must<pegtl::not_at<pegtl::eof>,
+                                          content, pegtl::eof>> {};
 
 } // namespace rules
 
@@ -158,6 +159,7 @@ error_msg(rules::quoted_tail<pegtl::one<'\''>>, "unterminated 'string'")
 error_msg(rules::quoted_tail<pegtl::one<'"'>>, "unterminated \"string\"")
 error_msg(pegtl::until<rules::field_sep>, "unterminated text field")
 error_msg(rules::framename, "unnamed save_ frame")
+error_msg(rules::content, "expected block header (data_)")
 #undef error_msg
 
 template<typename Rule> struct Errors : public pegtl::normal<Rule> {
