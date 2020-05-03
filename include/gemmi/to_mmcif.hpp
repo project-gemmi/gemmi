@@ -293,7 +293,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
         pdbx_icode(con.partner2.res_id),           // ptnr2_PDB_ins_code
         im.pdb_symbol(true),                       // ptnr2_symmetry
         "?",                                       // details
-        to_str(im.dist()),                         // pdbx_dist_value
+        to_str_prec<4>(im.dist()),                 // pdbx_dist_value
         impl::string_or_qmark(con.link_id)         // ccp4_link_id
     });
   }
