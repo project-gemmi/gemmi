@@ -1610,10 +1610,21 @@ but often needed operations:
   >>> st.remove_ligands_and_waters()
   >>> st.remove_empty_chains()
 
-In C++, the same functionality is provided by (templated) free functions
-from ``gemmi/polyheur.hpp``. These functions (in C++) can be applied not only
-to ``Structure``, but also to ``Model`` and ``Chain``.
+In C++ the functions above are provided in ``gemmi/polyheur.hpp``.
+They are implemented as templated free functions that can be applied
+not only to ``Structure``, but also to ``Model`` and ``Chain``.
 
+----
+
+Occasionally, you may come across an mmCIF file with chain names longer
+than necessary. To store such structure in a PDB format you need to shorten
+the chain names first:
+
+.. doctest::
+
+  >>> st.shorten_chain_names()
+
+In C++ this functions is in ``gemmi/assembly.hpp``.
 
 .. _sequence:
 

@@ -294,6 +294,7 @@ void add_mol(py::module& m) {
     .def("remove_ligands_and_waters",
          (void (*)(Structure&)) &remove_ligands_and_waters)
     .def("remove_empty_chains", (void (*)(Structure&)) &remove_empty_chains)
+    .def("shorten_chain_names", &shorten_chain_names)
     .def("__repr__", [](const Structure& self) {
         return tostr("<gemmi.Structure ", self.name, " with ",
                      self.models.size(), " model(s)>");

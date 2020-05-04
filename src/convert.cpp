@@ -172,42 +172,6 @@ static std::string format_as_string(CoorFormat format) {
   gemmi::unreachable();
 }
 
-static void rename_chain_in_address(gemmi::AtomAddress& aa,
-                                    const std::string& old_name,
-                                    const std::string& new_name) {
-  if (aa.chain_name == old_name)
-    aa.chain_name = new_name;
-}
-
-// chain is assumed to be from st.models[0]
-static void rename_chain(gemmi::Structure& st, gemmi::Chain& chain,
-                         const std::string& new_name) {
-  for (gemmi::Connection& con : st.connections) {
-    rename_chain_in_address(con.partner1, chain.name, new_name);
-    rename_chain_in_address(con.partner2, chain.name, new_name);
-  }
-  for (gemmi::Helix& helix : st.helices) {
-    rename_chain_in_address(helix.start, chain.name, new_name);
-    rename_chain_in_address(helix.end, chain.name, new_name);
-  }
-  for (gemmi::Sheet& sheet : st.sheets)
-    for (gemmi::Sheet::Strand& strand : sheet.strands) {
-      rename_chain_in_address(strand.start, chain.name, new_name);
-      rename_chain_in_address(strand.end, chain.name, new_name);
-      rename_chain_in_address(strand.hbond_atom2, chain.name, new_name);
-      rename_chain_in_address(strand.hbond_atom1, chain.name, new_name);
-    }
-  for (gemmi::RefinementInfo& ri : st.meta.refinement)
-    for (gemmi::TlsGroup& tls : ri.tls_groups)
-      for (gemmi::TlsGroup::Selection& sel : tls.selections)
-        if (sel.chain == chain.name)
-          sel.chain = new_name;
-  for (auto it = st.models.begin() + 1; it != st.models.end(); ++it)
-    if (gemmi::Chain* ch = it->find_chain(chain.name))
-      ch->name = new_name;
-  chain.name = new_name;
-}
-
 static void convert(gemmi::Structure& st,
                     const std::string& output, CoorFormat output_type,
                     const std::vector<option::Option>& options) {
@@ -220,16 +184,7 @@ static void convert(gemmi::Structure& st,
   }
 
   if (options[ShortenCN]) {
-    gemmi::ChainNameGenerator namegen(HowToNameCopiedChains::Short);
-    gemmi::Model& model0 = st.models[0];
-    size_t max_len = model0.chains.size() < 63 ? 1 : 2;
-    for (const gemmi::Chain& chain : model0.chains)
-      if (chain.name.length() <= max_len)
-        namegen.used_names.push_back(chain.name);
-    for (gemmi::Chain& chain : model0.chains)
-      if (chain.name.length() > max_len)
-        rename_chain(st, chain, namegen.make_short_name(
-                                                chain.name.substr(0, max_len)));
+    shorten_chain_names(st);
   } else if (output_type == CoorFormat::Pdb) {
     for (const gemmi::Chain& chain : st.models[0].chains)
       if (chain.name.size() > 2)

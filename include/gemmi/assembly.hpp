@@ -2,6 +2,7 @@
 //
 // A function that generates biological assemblies by applying operations
 // from struct Assembly to a Model.
+// And chain (re)naming utilities.
 
 #ifndef GEMMI_ASSEMBLY_HPP_
 #define GEMMI_ASSEMBLY_HPP_
@@ -162,6 +163,52 @@ inline void change_to_assembly(Structure& st, const std::string& assembly_name,
   for (Model& model : st.models)
     model = make_assembly(*assembly, model, how, out);
   st.connections.clear();
+}
+
+// chain is assumed to be from st.models[0]
+inline void rename_chain(Structure& st, Chain& chain,
+                         const std::string& new_name) {
+  auto rename_if_matches = [&](AtomAddress& aa) {
+    if (aa.chain_name == chain.name)
+      aa.chain_name = new_name;
+  };
+  for (Connection& con : st.connections) {
+    rename_if_matches(con.partner1);
+    rename_if_matches(con.partner2);
+  }
+  for (Helix& helix : st.helices) {
+    rename_if_matches(helix.start);
+    rename_if_matches(helix.end);
+  }
+  for (Sheet& sheet : st.sheets)
+    for (Sheet::Strand& strand : sheet.strands) {
+      rename_if_matches(strand.start);
+      rename_if_matches(strand.end);
+      rename_if_matches(strand.hbond_atom2);
+      rename_if_matches(strand.hbond_atom1);
+    }
+  for (RefinementInfo& ri : st.meta.refinement)
+    for (TlsGroup& tls : ri.tls_groups)
+      for (TlsGroup::Selection& sel : tls.selections)
+        if (sel.chain == chain.name)
+          sel.chain = new_name;
+  for (auto it = st.models.begin() + 1; it != st.models.end(); ++it)
+    if (Chain* ch = it->find_chain(chain.name))
+      ch->name = new_name;
+  chain.name = new_name;
+}
+
+inline void shorten_chain_names(Structure& st) {
+  ChainNameGenerator namegen(HowToNameCopiedChains::Short);
+  Model& model0 = st.models[0];
+  size_t max_len = model0.chains.size() < 63 ? 1 : 2;
+  for (const Chain& chain : model0.chains)
+    if (chain.name.length() <= max_len)
+      namegen.used_names.push_back(chain.name);
+  for (Chain& chain : model0.chains)
+    if (chain.name.length() > max_len)
+      rename_chain(st, chain,
+                   namegen.make_short_name(chain.name.substr(0, max_len)));
 }
 
 } // namespace gemmi
