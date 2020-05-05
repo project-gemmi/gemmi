@@ -64,17 +64,39 @@ struct DensityCalculator {
 
   // pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {
+    constexpr double UtoB = 8 * sq(pi());
     auto& scat = Table::get(atom.element);
     float fprime = fprimes[atom.element.ordinal()];
-    double b = atom.b_iso + blur;
-    auto precal = scat.precalculate_density_iso(b, fprime);
-    double radius = determine_cutoff_radius(
-                              [&](float r) { return precal.calculate(r*r); },
-                              r_cut);
     Fractional fpos = grid.unit_cell.fractionalize(atom.pos);
-    grid.use_points_around(fpos, radius, [&](Real& point, double r2) {
-        point += Real(atom.occ * precal.calculate((Real)r2));
-    }, /*fail_on_too_large_radius=*/false);
+    if (!atom.aniso.nonzero()) {
+      // isotropic
+      double b = atom.b_iso + blur;
+      auto precal = scat.precalculate_density_iso(b, fprime);
+      double radius = determine_cutoff_radius(
+          [&](float r) { return (float)precal.calculate(r*r); },
+          r_cut);
+      grid.use_points_around(fpos, radius, [&](Real& point, double r2) {
+          point += Real(atom.occ * precal.calculate((Real)r2));
+      }, /*fail_on_too_large_radius=*/false);
+    } else {
+      // anisotropic
+      SMat33<double> aniso_b = atom.aniso.scaled(UtoB).added_kI(blur);
+      // rough estimate, so we don't calculate eigenvalues
+      double b_max = std::max(std::max(aniso_b.u11, aniso_b.u22), aniso_b.u33);
+      auto precal_iso = scat.precalculate_density_iso(b_max, fprime);
+      double radius = determine_cutoff_radius(
+          [&](float r) { return (float)precal_iso.calculate(r*r); },
+          r_cut);
+      auto precal = scat.precalculate_density_aniso_b(aniso_b, fprime);
+      int du = (int) std::ceil(radius / grid.spacing[0]);
+      int dv = (int) std::ceil(radius / grid.spacing[1]);
+      int dw = (int) std::ceil(radius / grid.spacing[2]);
+      grid.use_points_in_box(fpos, du, dv, dw,
+                             [&](Real& point, const Position& delta) {
+        if (delta.length_sq() < radius * radius)
+          point += Real(atom.occ * precal.calculate(delta));
+      }, false);
+    }
   }
 
   void add_model_density_to_grid(const Model& model) {

@@ -146,6 +146,9 @@ void print_structure_factors(const Structure& st,
     fflush(stderr);
   }
   StructureFactorCalculator<Table> calc(st.cell);
+  for (int i = 0; i != (int)El::END; ++i)
+    if (dencalc.fprimes[i] != 0.f)
+      calc.set_fprime((El)i, dencalc.fprimes[i]);
   gemmi::fileptr_t cache(nullptr, nullptr);
   std::map<Miller, std::complex<double>> mtz_data;
   if (mode == 'T' && file_path) {

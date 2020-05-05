@@ -143,9 +143,19 @@ TEST_CASE("IT92") {
   CHECK_EQ(dens1, doctest::Approx(dens2));
   double U = B / (8 * gemmi::pi() * gemmi::pi());
   gemmi::SMat33<float> mat{(float)U, (float)U, (float)U, 0, 0, 0};
-  double dens3 = coef.calculate_density_aniso(gemmi::Vec3(r, 0, 0), mat);
+  gemmi::Vec3 v1(r, 0, 0);
+  double dens3 = coef.calculate_density_aniso(v1, mat);
   CHECK_EQ(dens1, doctest::Approx(dens3));
-  double xr = r * std::sqrt(1./3);
-  double dens4 = coef.calculate_density_aniso(gemmi::Vec3(xr, xr, xr), mat);
+  double dens4 = coef.precalculate_density_aniso_u(mat).calculate(v1);
   CHECK_EQ(dens1, doctest::Approx(dens4));
+  double xr = r * std::sqrt(1./3);
+  gemmi::Vec3 v2(xr, xr, xr);
+  double dens5 = coef.calculate_density_aniso(v2, mat);
+  CHECK_EQ(dens1, doctest::Approx(dens5));
+  double dens6 = coef.precalculate_density_aniso_u(mat).calculate(v2);
+  CHECK_EQ(dens1, doctest::Approx(dens6));
+
+  double dens_a = coef.precalculate_density_iso(B, 0.8).calculate(r*r);
+  double dens_b = coef.precalculate_density_aniso_u(mat, 0.8).calculate(v2);
+  CHECK_EQ(dens_a, doctest::Approx(dens_b));
 }

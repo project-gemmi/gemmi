@@ -77,6 +77,14 @@ $ gemmi sfcalc --blur=12 --dmin=2.5 --rate=2.5 --rcut=1e-7 --test -v tests/5wkd.
 RMSE=5.5654e-05  0.0001415%  max|dF|=0.0008977  R=0.000%
 ''')  # noqa: E501
 
+    @unittest.skipIf(sys.platform == 'win32', 'with MSVC it differs slightly')
+    def test_sfcalc_1pfe(self):
+        self.do('''\
+$ gemmi sfcalc --dmin=9 --rate=4 --blur=60 --rcut=1e-7 --test -v tests/1pfe.cif.gz
+[...]
+RMSE=0.0041127  0.0003866%  max|dF|=0.02913  R=0.000%
+''')  # noqa: E501
+
     # example from utils.rst
     def test_align_text(self):
         self.do('''\

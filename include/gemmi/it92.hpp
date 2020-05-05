@@ -101,11 +101,10 @@ struct IT92 {
       return density;
     }
 
-    ExpAnisoSum<5,Real> precalculate_density_aniso(const SMat33<float>& U,
-                                                   Real fprime=0) const {
+    ExpAnisoSum<5,Real> precalculate_density_aniso_b(const SMat33<Real>& B,
+                                                     Real fprime=0) const {
       constexpr Real pi2 = sq(pi());
       ExpAnisoSum<5,Real> prec;
-      const SMat33<Real> B = U.scaled(8 * pi2);
       for (int i = 0; i < 4; ++i) {
         SMat33<Real> Bb = B.added_kI(b[i]);
         prec.a[i] = a[i] * pow15(4 * pi()) / std::sqrt(Bb.determinant());
@@ -114,6 +113,11 @@ struct IT92 {
       prec.a[4] = (c + fprime) * pow15(4 * pi()) / std::sqrt(B.determinant());
       prec.b[4] = B.inverse().scaled(-4 * pi2);
       return prec;
+    }
+    ExpAnisoSum<5,Real> precalculate_density_aniso_u(const SMat33<float>& U,
+                                                     Real fprime=0) const {
+      constexpr Real UtoB = 8 * sq(pi());
+      return precalculate_density_aniso_b(U.scaled(UtoB), fprime);
     }
   };
 
