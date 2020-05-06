@@ -39,16 +39,20 @@ inline size_t estimate_uncompressed_size(const std::string& path) {
   return orig_size;
 }
 
-inline bool big_gzread(gzFile file, void* buf, size_t len) {
+inline size_t big_gzread(gzFile file, void* buf, size_t len) {
   // In zlib >= 1.2.9 we could use gzfread()
   // return gzfread(buf, len, 1, f) == 1;
+  size_t read_bytes = 0;
   while (len > INT_MAX) {
-    if (gzread(file, buf, INT_MAX) != INT_MAX)
-      return false;
+    int ret = gzread(file, buf, INT_MAX);
+    read_bytes += ret;
+    if (ret != INT_MAX)
+      return read_bytes;
     len -= INT_MAX;
     buf = (char*) buf + INT_MAX;
   }
-  return gzread(file, buf, (unsigned) len) == (int) len;
+  read_bytes += gzread(file, buf, (unsigned) len);
+  return read_bytes;
 }
 
 class MaybeGzipped : public BasicInput {
@@ -57,7 +61,7 @@ public:
     gzFile f;
     char* gets(char* line, int size) { return gzgets(f, line, size); }
     int getc() { return gzgetc(f); }
-    bool read(void* buf, size_t len) { return big_gzread(f, buf, len); }
+    bool read(void* buf, size_t len) { return big_gzread(f, buf, len) == len; }
   };
 
   explicit MaybeGzipped(const std::string& path)
@@ -69,6 +73,19 @@ public:
 #else
       gzclose(file_);
 #endif
+  }
+
+  size_t gzread_checked(void* buf, size_t len) {
+    size_t read_bytes = big_gzread(file_, buf, len);
+    if (read_bytes != len && !gzeof(file_)) {
+      int errnum;
+      std::string err_str = gzerror(file_, &errnum);
+      if (errnum)
+        fail("Error reading " + path() + ": " + err_str);
+    }
+    if (read_bytes > len)  // should never happen
+      fail("Error reading " + path());
+    return read_bytes;
   }
 
   bool is_compressed() const { return iends_with(path(), ".gz"); }
@@ -85,12 +102,22 @@ public:
     if (memory_size_ > 3221225471)
       fail("For now gz files above 3 GiB uncompressed are not supported.");
     std::unique_ptr<char[]> mem(new char[memory_size_]);
-    bool ok = big_gzread(file_, mem.get(), memory_size_);
-    if (!ok && !gzeof(file_)) {
-      int errnum;
-      std::string err_str = gzerror(file_, &errnum);
-      if (errnum)
-        fail("Error reading " + path() + ": " + err_str);
+    size_t read_bytes = gzread_checked(mem.get(), memory_size_);
+    // if the file is shorter than the size from header, adjust memory_size_
+    if (read_bytes < memory_size_) {
+      memory_size_ = read_bytes;
+    } else { // read_bytes == memory_size_
+    // if the file is longer than the size from header, read in the rest
+      int next_char;
+      while (!gzeof(file_) && (next_char = gzgetc(file_)) != -1) {
+        if (memory_size_ > 3221225471)
+          fail("For now gz files above 3 GiB uncompressed are not supported.");
+        gzungetc(next_char, file_);
+        std::unique_ptr<char[]> mem2(new char[2 * memory_size_]);
+        std::memcpy(mem2.get(), mem.get(), memory_size_);
+        memory_size_ += gzread_checked(mem2.get() + memory_size_, memory_size_);
+        mem2.swap(mem);
+      }
     }
     return mem;
   }
