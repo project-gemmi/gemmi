@@ -9,7 +9,7 @@ import os
 import sys
 
 USE_SYSTEM_ZLIB = False
-MIN_PYBIND_VER = '2.4.3'
+MIN_PYBIND_VER = '2.5.0'
 
 def read_version_from_header():
     with open('include/gemmi/version.hpp') as f:
