@@ -73,7 +73,7 @@ static const option::Descriptor Usage[] = {
 struct Trans {
   int col_idx;
   bool is_status = false;
-  std::string refln_tag;
+  std::string tag;  // excluding category
   std::string format = "%g";
   int min_width = 0;
 };
@@ -88,7 +88,7 @@ struct Options {
   double wavelength = NAN;
 };
 
-static const char* default_spec[] = {
+static const char* default_merged_spec[] = {
   "H H index_h",
   "K H index_k",
   "L H index_l",
@@ -109,6 +109,14 @@ static const char* default_spec[] = {
   "& PHWT|PH2FOFCWT   P pdbx_PHWT",
   "? DELFWT|FOFCWT    F pdbx_DELFWT",
   "& DELPHWT|PHDELWT|PHFOFCWT P pdbx_DELPHWT",
+};
+
+static const char* default_unmerged_spec[] = {
+  "H H index_h",
+  "K H index_k",
+  "L H index_l",
+  "? I       J intensity_net",
+  "& SIGI    Q intensity_sigma",
 };
 
 static int find_column_index(const std::string& column, const gemmi::Mtz& mtz) {
@@ -177,10 +185,10 @@ static std::vector<Trans> parse_spec(const gemmi::Mtz& mtz,
     if (type.size() != 1)
       gemmi::fail("Spec error: MTZ type '" + type + "' is not one character,"
                   "\nin line: " + line);
-    tr.refln_tag = gemmi::read_word(p, &p);
-    if (tr.refln_tag[0] == '_' || tr.refln_tag.find('.') != std::string::npos)
+    tr.tag = gemmi::read_word(p, &p);
+    if (tr.tag[0] == '_' || tr.tag.find('.') != std::string::npos)
       gemmi::fail("Spec error: expected tag part after _refln., got: " +
-                  tr.refln_tag + "\nin line: " + line);
+                  tr.tag + "\nin line: " + line);
     tr.col_idx = find_column_index(column, mtz);
     if (tr.col_idx == -1) {
       if (!optional)
@@ -193,7 +201,7 @@ static std::vector<Trans> parse_spec(const gemmi::Mtz& mtz,
     if (type[0] != '*' && col.type != type[0])
       gemmi::fail("Column " + col.label + " has type " +
                   std::string(1, col.type) + " not " + type);
-    tr.is_status = gemmi::iequal(tr.refln_tag, "status");
+    tr.is_status = gemmi::iequal(tr.tag, "status");
     std::string fmt = gemmi::read_word(p, &p);
     if (!fmt.empty() && !tr.is_status) {
       tr.min_width = check_format(fmt);
@@ -207,16 +215,16 @@ static std::vector<Trans> parse_spec(const gemmi::Mtz& mtz,
     gemmi::fail("Empty translation spec");
   for (size_t i = 0; i != spec.size(); ++i)
     for (size_t j = i + 1; j != spec.size(); ++j)
-      if (spec[i].refln_tag == spec[j].refln_tag)
-        gemmi::fail("duplicated output tag: " + spec[i].refln_tag);
+      if (spec[i].tag == spec[j].tag)
+        gemmi::fail("duplicated output tag: " + spec[i].tag);
   // H, K, L must be the first columns in MTZ and are required in _refln
   for (int i = 2; i != -1; --i)
     if (!gemmi::in_vector_f([&](const Trans& t) { return t.col_idx == i; },
                             spec)) {
       Trans tr;
       tr.col_idx = i;
-      tr.refln_tag = "index_";
-      tr.refln_tag += ('h' + i); // h, k or l
+      tr.tag = "index_";
+      tr.tag += ('h' + i); // h, k or l
       spec.insert(spec.begin(), tr);
     }
   return spec;
@@ -262,6 +270,13 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
   }
   fprintf(out, "data_%s\n\n", opt.block_name);
   fprintf(out, "_entry.id %s\n\n", id.c_str());
+
+  if (!mtz.batches.empty()) {
+    fprintf(out, "_exptl_crystal.id 1\n");
+    fprintf(out, "_diffrn.id 1\n");
+    fprintf(out, "_diffrn.crystal_id 1\n\n");
+  }
+
   const gemmi::UnitCell& cell = mtz.get_cell();
   fprintf(out, "_cell.entry_id %s\n", id.c_str());
   fprintf(out, "_cell.length_a    %8.3f\n", cell.a);
@@ -283,16 +298,26 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
     // could write _symmetry_equiv.pos_as_xyz, but would it be useful?
   }
   fprintf(out, "loop_\n");
+  if (!mtz.batches.empty()) {
+    fprintf(out, "_diffrn_refln.diffrn_id\n");
+    fprintf(out, "_diffrn_refln.standard_code\n");
+    fprintf(out, "_diffrn_refln.scale_group_code\n");
+    fprintf(out, "_diffrn_refln.id\n");
+  }
   for (const Trans& tr : opt.spec) {
     const gemmi::Mtz::Column& col = mtz.columns.at(tr.col_idx);
     const gemmi::Mtz::Dataset& ds = mtz.dataset(col.dataset_id);
+    if (!mtz.batches.empty())
+      fprintf(out, "_diffrn");
     if (opt.with_comments)
       fprintf(out, "_refln.%-26s # %-14s from dataset %s\n",
-              tr.refln_tag.c_str(), col.label.c_str(), ds.dataset_name.c_str());
+              tr.tag.c_str(), col.label.c_str(), ds.dataset_name.c_str());
     else
-      fprintf(out, "_refln.%s\n", tr.refln_tag.c_str());
+      fprintf(out, "_refln.%s\n", tr.tag.c_str());
   }
   for (int i = 0; i != mtz.nreflections; ++i) {
+    if (!mtz.batches.empty())
+      fprintf(out, "1 1 1 %d ", i + 1);
     const float* row = &mtz.data[i * mtz.columns.size()];
     if (!opt.value_indices.empty())
       if (std::all_of(opt.value_indices.begin(), opt.value_indices.end(),
@@ -328,7 +353,11 @@ int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   if (p.options[PrintSpec]) {
-    for (const char* line : default_spec)
+    std::printf("                                for merged mtz\n");
+    for (const char* line : default_merged_spec)
+      std::printf("%s\n", line);
+    std::printf("\n                             for unmerged mtz\n");
+    for (const char* line : default_unmerged_spec)
       std::printf("%s\n", line);
     return 0;
   }
@@ -363,9 +392,13 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (*start != '\0' && *start != '\r' && *start != '\n' && *start != '#')
           lines.emplace_back(start);
       }
+    } else if (mtz.batches.empty()) {
+      lines.reserve(sizeof(default_merged_spec) / sizeof(char*));
+      for (const char* line : default_merged_spec)
+        lines.emplace_back(line);
     } else {
-      lines.reserve(sizeof(default_spec) / sizeof(default_spec[0]));
-      for (const char* line : default_spec)
+      lines.reserve(sizeof(default_unmerged_spec) / sizeof(char*));
+      for (const char* line : default_unmerged_spec)
         lines.emplace_back(line);
     }
     options.spec = parse_spec(mtz, lines);
