@@ -349,6 +349,7 @@ struct Mtz {
     char line[81] = {0};
     seek_headers(stream);
     int ncol = 0;
+    bool has_batch = false;
     while (stream.read(line, 80) && ialpha3_id(line) != ialpha3_id("END")) {
       const char* args = skip_word(line);
       switch (ialpha4_id(line)) {
@@ -461,7 +462,9 @@ struct Mtz {
             warn("MTZ DWAV line: unusual numbering.");
           break;
         case ialpha4_id("BATCH"):
-          // this header is not used for anything?
+          // We take number of batches from the NCOL record and serial numbers
+          // from BH. This header could be used only to check consistency.
+          has_batch = true;
           break;
         default:
           warn("Unknown header: " + rtrim_str(line));
@@ -469,6 +472,8 @@ struct Mtz {
     }
     if (ncol != (int) columns.size())
       fail("Number of COLU records inconsistent with NCOL record.");
+    if (has_batch != !batches.empty())
+      fail("BATCH header inconsistent with NCOL record.");
   }
 
   // read the part between END and MTZENDOFHEADERS
