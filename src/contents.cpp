@@ -55,6 +55,20 @@ static void print_atoms_on_special_positions(const Structure& st) {
   printf("\n");
 }
 
+static void print_solvent_content(const UnitCell& cell, double mol_weight) {
+  if (cell.is_crystal()) {
+    double Vm = cell.volume_per_image() / mol_weight;
+    printf(" Matthews coefficient: %29.3f\n", Vm);
+    double Na = 0.602214;  // Avogadro number x 10^-24 (cm^3->A^3)
+    // rwcontents uses 1.34, Rupp's papers 1.35
+    for (double ro : { 1.35, 1.34 })
+      printf(" Solvent %% (for protein density %g): %13.3f\n",
+             ro, 100. * (1. - 1. / (ro * Vm * Na)));
+  } else {
+    printf(" Not a crystal / unit cell not known.\n");
+  }
+}
+
 static void print_content_info(const Structure& st, bool /*verbose*/) {
   printf(" Spacegroup   %s\n", st.spacegroup_hm.c_str());
   int order = 1;
@@ -119,17 +133,7 @@ static void print_content_info(const Structure& st, bool /*verbose*/) {
   printf("Solvent content based on the model (excl. solvent and buffer)\n");
   printf(" Estimated hydrogen count: %21d\n", mol_h_count);
   printf(" Estimated molecular weight: %23.3f\n", mol_weight);
-  if (st.cell.is_crystal()) {
-    double Vm = st.cell.volume_per_image() / mol_weight;
-    printf(" Matthews coefficient: %29.3f\n", Vm);
-    double Na = 0.602214;  // Avogadro number x 10^-24 (cm^3->A^3)
-    // rwcontents uses 1.34, Rupp's papers 1.35
-    for (double ro : { 1.35, 1.34 })
-      printf(" Solvent %% (for protein density %g): %13.3f\n",
-             ro, 100. * (1. - 1. / (ro * Vm * Na)));
-  } else {
-    printf(" Not a crystal / unit cell not known.\n");
-  }
+  print_solvent_content(st.cell, mol_weight);
   printf("Solvent content based on SEQRES\n");
   mol_weight = 0.;
   bool missing = false;
@@ -145,17 +149,7 @@ static void print_content_info(const Structure& st, bool /*verbose*/) {
   if (missing)
     return;
   printf(" Molecular weight from sequence: %19.3f\n", mol_weight);
-  if (st.cell.is_crystal()) {
-    double Vm = st.cell.volume_per_image() / mol_weight;
-    printf(" Matthews coefficient: %29.3f\n", Vm);
-    double Na = 0.602214;  // Avogadro number x 10^-24 (cm^3->A^3)
-    // rwcontents uses 1.34, Rupp's papers 1.35
-    for (double ro : { 1.35, 1.34 })
-      printf(" Solvent %% (for protein density %g): %13.3f\n",
-             ro, 100. * (1. - 1. / (ro * Vm * Na)));
-  } else {
-    printf(" Not a crystal / unit cell not known.\n");
-  }
+  print_solvent_content(st.cell, mol_weight);
 }
 
 static void print_dihedrals(const Structure& st) {
