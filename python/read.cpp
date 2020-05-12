@@ -57,8 +57,11 @@ void add_read_structure(py::module& m) {
           read_metadata_from_remarks(*st);
           return st;
         }, py::arg("s"), "Reads a string as PDB file.");
-  m.def("read_pdb", &read_pdb_gz,
-        py::arg("filename"), py::arg("max_line_length")=0);
+  m.def("read_pdb", [](const std::string& path, int max_line_length) {
+          Structure* st = new Structure(read_pdb_gz(path, max_line_length));
+          read_metadata_from_remarks(*st);
+          return st;
+        }, py::arg("filename"), py::arg("max_line_length")=0);
 
   // from smcif.hpp
   m.def("read_small_structure", [](const std::string& path) {

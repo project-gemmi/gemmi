@@ -61,8 +61,8 @@ void add_grid(py::module& m, const std::string& name) {
   gr
     .def(py::init<>())
     .def(py::init([](int nx, int ny, int nz) {
-      Gr grid;
-      grid.set_size(nx, ny, nz);
+      Gr* grid = new Gr();
+      grid->set_size(nx, ny, nz);
       return grid;
     }), py::arg("nx"), py::arg("ny"), py::arg("nz"))
     .def("get_value", &Gr::get_value)

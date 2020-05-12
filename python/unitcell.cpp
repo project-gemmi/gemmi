@@ -132,13 +132,9 @@ void add_unitcell(py::module& m) {
 
   py::class_<UnitCell>(m, "UnitCell")
     .def(py::init<>())
-    .def(py::init([](double a, double b, double c,
-                     double alpha, double beta, double gamma) {
-           UnitCell cell;
-           cell.set(a, b, c, alpha, beta, gamma);
-           return cell;
-         }), py::arg("a"), py::arg("b"), py::arg("c"),
-             py::arg("alpha"), py::arg("beta"), py::arg("gamma"))
+    .def(py::init<double,double,double,double,double,double>(),
+         py::arg("a"), py::arg("b"), py::arg("c"),
+         py::arg("alpha"), py::arg("beta"), py::arg("gamma"))
     .def_readonly("a", &UnitCell::a)
     .def_readonly("b", &UnitCell::b)
     .def_readonly("c", &UnitCell::c)

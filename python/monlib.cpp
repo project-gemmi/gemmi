@@ -190,7 +190,6 @@ void add_monlib(py::module& m) {
     .def_readwrite("search_radius", &ContactSearch::search_radius)
     .def_readwrite("ignore", &ContactSearch::ignore)
     .def_readwrite("twice", &ContactSearch::twice)
-    .def_readwrite("twice", &ContactSearch::twice)
     .def_readwrite("special_pos_cutoff_sq", &ContactSearch::special_pos_cutoff_sq)
     .def_readwrite("min_occupancy", &ContactSearch::min_occupancy)
     .def("setup_atomic_radii", &ContactSearch::setup_atomic_radii)
