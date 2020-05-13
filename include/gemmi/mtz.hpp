@@ -114,6 +114,8 @@ struct Mtz {
       floats[4] = (float) uc.beta;
       floats[5] = (float) uc.gamma;
     }
+
+    int dataset_id() const { return ints[20]; }
   };
 
   bool same_byte_order = true;
@@ -516,7 +518,7 @@ struct Mtz {
           stream.read(buf, 80);
           if (ialpha4_id(buf) != ialpha4_id("BHCH"))
             fail("Missing BHCH header");
-          split_str_into(buf + 5, ' ', batch.axes);
+          split_str_into_multi(buf + 5, " \t", batch.axes);
         }
       }
     }

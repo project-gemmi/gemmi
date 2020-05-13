@@ -7,6 +7,7 @@ Print informations from an mtz file.
   -v, --verbose    Verbose output.
   -H, --headers    Print raw headers, until the END record.
   -d, --dump       Print a subset of CCP4 mtzdmp informations.
+  -b, --batches    Print data from batch headers.
   --tsv            Print all the data as tab-separated values.
   --stats          Print column statistics (completeness, mean, etc).
   --check-asu      Check if reflections are in conventional ASU.

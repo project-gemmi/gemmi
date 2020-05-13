@@ -13,7 +13,7 @@
 using gemmi::Mtz;
 using std::printf;
 
-enum OptionIndex { Headers=4, Dump, PrintTsv, PrintStats,
+enum OptionIndex { Headers=4, Dump, PrintBatches, PrintTsv, PrintStats,
                    CheckAsu, ToggleEndian, NoIsym };
 
 static const option::Descriptor Usage[] = {
@@ -27,6 +27,8 @@ static const option::Descriptor Usage[] = {
     "  -H, --headers  \tPrint raw headers, until the END record." },
   { Dump, 0, "d", "dump", Arg::None,
     "  -d, --dump  \tPrint a subset of CCP4 mtzdmp informations." },
+  { PrintBatches, 0, "b", "batches", Arg::None,
+    "  -b, --batches  \tPrint data from batch headers." },
   { PrintTsv, 0, "", "tsv", Arg::None,
     "  --tsv  \tPrint all the data as tab-separated values." },
   { PrintStats, 0, "", "stats", Arg::None,
@@ -77,6 +79,57 @@ static void dump(const Mtz& mtz) {
     printf("\nHistory (%zu lines):\n", mtz.history.size());
     for (const std::string& hline : mtz.history)
       printf("%s\n", hline.c_str());
+  }
+  if (!mtz.batches.empty()) {
+    printf("\nBatch counts:\n");
+    int max_dataset_id = 0;
+    for (const Mtz::Dataset& ds : mtz.datasets)
+      max_dataset_id = std::max(max_dataset_id, ds.id);
+    if (max_dataset_id < 1000000) {
+      std::vector<int> batch_count(max_dataset_id + 1, 0);
+      std::vector<int> batch_min(batch_count.size(), INT_MAX);
+      std::vector<int> batch_max(batch_count.size(), -1);
+      for (const Mtz::Batch& batch : mtz.batches) {
+        int ds_id = batch.dataset_id();
+        batch_count[ds_id]++;
+        batch_min[ds_id] = std::min(batch_min[ds_id], batch.number);
+        batch_max[ds_id] = std::max(batch_max[ds_id], batch.number);
+      }
+      for (int i = 0; i <= max_dataset_id; ++i)
+        if (batch_count[i] != 0)
+          printf(" dataset %d: %d batches (%d - %d)\n",
+                 i, batch_count[i], batch_min[i], batch_max[i]);
+    }
+  }
+}
+
+static void print_batches(const Mtz& mtz) {
+  for (const Mtz::Batch& b : mtz.batches) {
+    printf("Batch %d - %s\n", b.number, b.title.c_str());
+    printf("    %zu %s: %s\n", b.axes.size(),
+           b.axes.size() == 1 ? "axis" : "axes",
+           gemmi::join_str(b.axes, ", ").c_str());
+    printf("  %4zu integers:", b.ints.size());
+    for (size_t i = 0; i != b.ints.size(); ++i) {
+      if (i != 0 && i % 10 == 0)
+        printf("\n                ");
+      printf(" %5d", b.ints[i]);
+    }
+    printf("\n  %4zu floats:", b.floats.size());
+    size_t last_non_zero = b.floats.size();
+    while (last_non_zero != 0 && b.floats[last_non_zero - 1] == 0.f)
+      --last_non_zero;
+    for (size_t i = 0; i != b.floats.size(); ++i) {
+      if (i != 0 && i % 5 == 0) {
+        printf("\n       %4zu|  ", i);
+        if (i >= last_non_zero) {
+          printf("          ...");
+          break;
+        }
+      }
+      printf(" %12.5g", b.floats[i]);
+    }
+    printf("\n    dataset: %d\n", b.dataset_id());
   }
 }
 
@@ -167,9 +220,11 @@ void print_mtz_info(Stream&& stream, const char* path,
   mtz.read_history_and_batch_headers(stream);
   mtz.setup_spacegroup();
   if (options[Dump] ||
-      !(options[PrintTsv] || options[PrintStats] || options[CheckAsu] ||
-        options[Headers]))
+      !(options[PrintBatches] || options[PrintTsv] || options[PrintStats] ||
+        options[CheckAsu] || options[Headers]))
     dump(mtz);
+  if (options[PrintBatches])
+    print_batches(mtz);
   if (options[PrintTsv] || options[PrintStats] || options[CheckAsu]) {
     mtz.read_raw_data(stream);
     if (!options[NoIsym])
