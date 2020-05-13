@@ -332,6 +332,7 @@ inline std::vector<Op::Tran> centring_vectors(char lattice_symbol) {
   constexpr int h = Op::DEN / 2;
   constexpr int t = Op::DEN / 3;
   constexpr int d = 2 * t;
+  // note: find_centering() depends on the order of operations in vector
   switch (lattice_symbol & ~0x20) {
     case 'P': return {{0, 0, 0}};
     case 'A': return {{0, 0, 0}, {0, h, h}};
@@ -340,9 +341,9 @@ inline std::vector<Op::Tran> centring_vectors(char lattice_symbol) {
     case 'I': return {{0, 0, 0}, {h, h, h}};
     case 'R': return {{0, 0, 0}, {d, t, t}, {t, d, d}};
     // hall_symbols.html has no H, ITfC 2010 has no S and T
+    case 'H': return {{0, 0, 0}, {d, t, 0}, {t, d, 0}};
     case 'S': return {{0, 0, 0}, {t, t, d}, {d, t, d}};
     case 'T': return {{0, 0, 0}, {t, d, t}, {d, t, d}};
-    case 'H': return {{0, 0, 0}, {d, t, 0}, {t, d, 0}};
     case 'F': return {{0, 0, 0}, {0, h, h}, {h, 0, h}, {h, h, 0}};
     default: fail(std::string("not a lattice symbol: ") + lattice_symbol);
   }
@@ -362,9 +363,13 @@ struct GroupOps {
       return 'P';
     std::vector<Op::Tran> trans = cen_ops;
     std::sort(trans.begin(), trans.end());
-    for (char c : {'A', 'B', 'C', 'I', 'F', 'R', 'S', 'T', 'H'})
-      if (trans == centring_vectors(c))
+    for (char c : {'A', 'B', 'C', 'I', 'F', 'R', 'H', 'S', 'T'}) {
+      std::vector<Op::Tran> c_vectors = centring_vectors(c);
+      if (c == 'R' || c == 'H') // these two are returned not sorted
+        std::swap(c_vectors[1], c_vectors[2]);
+      if (trans == c_vectors)
         return c;
+    }
     return 0;
   }
 
