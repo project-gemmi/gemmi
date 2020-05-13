@@ -95,6 +95,20 @@ expand_protein_one_letter_string(const std::string& s) {
 }
 
 void add_mol(py::module& m) {
+
+  // "Forward declaration" of python classes to avoid
+  // C++ signatures in docstrings
+  py::class_<AtomAddress> pyAtomAddress(m, "AtomAddress");
+  py::class_<ResidueId> pyResidueId(m, "ResidueId");
+  py::class_<Atom> pyAtom(m, "Atom");
+  py::class_<Residue, ResidueId> pyResidue(m, "Residue");
+  py::class_<Chain> pyChain(m, "Chain");
+  py::class_<Model> pyModel(m, "Model");
+  py::class_<SeqId> pySeqId(m, "SeqId");
+  py::class_<ResidueSpan> pyResidueSpan(m, "ResidueSpan");
+  py::class_<ResidueGroup, ResidueSpan> pyResidueGroup(m, "ResidueGroup");
+  py::class_<CraProxy> pyCraGenerator(m, "CraGenerator");
+
   py::class_<ResidueInfo>(m, "ResidueInfo")
     .def_readonly("one_letter_code", &ResidueInfo::one_letter_code)
     .def_readonly("hydrogen_count", &ResidueInfo::hydrogen_count)
@@ -300,7 +314,7 @@ void add_mol(py::module& m) {
                      self.models.size(), " model(s)>");
     });
 
-  py::class_<AtomAddress>(m, "AtomAddress")
+  pyAtomAddress
     .def(py::init<>())
     .def(py::init<const Chain&, const Residue&, const Atom&>())
     .def(py::init<const std::string&, const SeqId&, const std::string&,
@@ -325,7 +339,7 @@ void add_mol(py::module& m) {
         return tostr("<gemmi.CRA ", atom_str(self), '>');
     });
 
-  py::class_<Model>(m, "Model")
+  pyModel
     .def(py::init<std::string>())
     .def_readwrite("name", &Model::name)
     .def("__len__", [](const Model& self) { return self.chains.size(); })
@@ -399,11 +413,11 @@ void add_mol(py::module& m) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
 
-  py::class_<CraProxy>(m, "CraGenerator")
+  pyCraGenerator
     .def("__iter__", [](CraProxy& self) { return py::make_iterator(self); },
          py::keep_alive<0, 1>());
 
-  py::class_<Chain>(m, "Chain")
+  pyChain
     .def(py::init<std::string>())
     .def_readwrite("name", &Chain::name)
     .def("__len__", [](const Chain& ch) { return ch.residues.size(); })
@@ -455,7 +469,7 @@ void add_mol(py::module& m) {
                      " with ", self.residues.size(), " res>");
     });
 
-  py::class_<ResidueSpan>(m, "ResidueSpan")
+  pyResidueSpan
     .def("__len__", &ResidueSpan::size)
     .def("__iter__", [](ResidueSpan& g) { return py::make_iterator(g); },
          py::keep_alive<0, 1>())
@@ -499,7 +513,7 @@ void add_mol(py::module& m) {
         return r + "]>";
     });
 
-  py::class_<ResidueGroup, ResidueSpan>(m, "ResidueGroup")
+  pyResidueGroup
     // need to duplicate it so it is visible
     .def("__getitem__", [](ResidueGroup& g, int index) -> Residue& {
         return g[normalize_index(index, g)];
@@ -529,7 +543,7 @@ void add_mol(py::module& m) {
                      self.size(), '>');
     });
 
-  py::class_<SeqId>(m, "SeqId")
+  pySeqId
     .def(py::init<int, char>())
     .def(py::init<const std::string&>())
     .def_readwrite("num", &SeqId::num)
@@ -539,7 +553,7 @@ void add_mol(py::module& m) {
         return tostr("<gemmi.SeqId ", self.str(), '>');
     });
 
-  py::class_<ResidueId>(m, "ResidueId")
+  pyResidueId
     .def(py::init<>())
     .def_readwrite("name", &ResidueId::name)
     .def_readwrite("seqid", &ResidueId::seqid)
@@ -549,7 +563,7 @@ void add_mol(py::module& m) {
         return tostr("<gemmi.ResidueId ", self.str(), '>');
     });
 
-  py::class_<Residue, ResidueId>(m, "Residue")
+  pyResidue
     .def(py::init<>())
     .def_readwrite("subchain", &Residue::subchain)
     .def_readwrite("entity_type", &Residue::entity_type)
@@ -592,7 +606,7 @@ void add_mol(py::module& m) {
                      self.atoms.size(), " atoms>");
     });
 
-  py::class_<Atom>(m, "Atom")
+  pyAtom
     .def(py::init<>())
     .def_readwrite("name", &Atom::name)
     .def_readwrite("altloc", &Atom::altloc)

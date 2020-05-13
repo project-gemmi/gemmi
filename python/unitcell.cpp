@@ -88,8 +88,8 @@ void add_unitcell(py::module& m) {
                "             [" + triple(a[2][0], a[2][1], a[2][2]) + "]>";
     });
 
-  add_smat33<float>(m, "SMat33f");
   add_smat33<double>(m, "SMat33d");
+  add_smat33<float>(m, "SMat33f");
 
   py::class_<Transform>(m, "Transform")
     .def(py::init<>())

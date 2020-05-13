@@ -17,6 +17,13 @@ void cif_parse_string(Document& doc, const std::string& data);
 void cif_parse_file(Document& doc, const std::string& filename);
 
 void add_cif(py::module& cif) {
+  py::class_<Block> pyCifBlock(cif, "Block");
+  py::class_<Item> pyCifItem(cif, "Item");
+  py::class_<Loop> lp(cif, "Loop");
+  py::class_<Column> pyCifColumn(cif, "Column");
+  py::class_<Table> lt(cif, "Table");
+  py::class_<Table::Row> pyCifTableRow(lt, "Row");
+
   py::enum_<Style>(cif, "Style")
     .value("Simple", Style::Simple)
     .value("NoBlankLines", Style::NoBlankLines)
@@ -111,7 +118,7 @@ void add_cif(py::module& cif) {
         return s;
     });
 
-  py::class_<Block>(cif, "Block")
+  pyCifBlock
     .def(py::init<const std::string &>())
     .def_readwrite("name", &Block::name)
     .def("__iter__", [](Block& self) { return py::make_iterator(self.items); },
@@ -215,7 +222,8 @@ void add_cif(py::module& cif) {
         return gemmi::tostr("<gemmi.cif.Block ", self.name, '>');
     });
 
-  py::class_<Item> (cif, "Item")
+
+  pyCifItem
     .def("erase", &Item::erase)
     .def_readonly("line_number", &Item::line_number)
     .def_property_readonly("pair", [](Item& self) {
@@ -229,7 +237,6 @@ void add_cif(py::module& cif) {
     }, py::return_value_policy::reference_internal)
     ;
 
-  py::class_<Loop> lp(cif, "Loop");
   lp.def(py::init<>())
     .def("width", &Loop::width, "Returns number of columns")
     .def("length", &Loop::length, "Returns number of rows")
@@ -243,7 +250,8 @@ void add_cif(py::module& cif) {
                             self.width(), '>');
     });
 
-  py::class_<Column>(cif, "Column")
+
+  pyCifColumn
     .def(py::init<>())
     .def("get_loop", &Column::get_loop,
          py::return_value_policy::reference_internal)
@@ -263,7 +271,6 @@ void add_cif(py::module& cif) {
         return "<gemmi.cif.Column " + desc + ">";
     });
 
-  py::class_<Table> lt(cif, "Table");
   lt.def("width", &Table::width)
     .def_readonly("prefix_length", &Table::prefix_length)
     .def_property_readonly("loop", &Table::get_loop,
@@ -292,7 +299,7 @@ void add_cif(py::module& cif) {
                ">";
     });
 
-  py::class_<Table::Row>(lt, "Row")
+  pyCifTableRow
     .def("str", &Table::Row::str)
     .def("__len__", &Table::Row::size)
     .def("__getitem__", (std::string& (Table::Row::*)(int)) &Table::Row::at)

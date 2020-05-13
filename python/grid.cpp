@@ -35,7 +35,16 @@ std::string grid_dim_str(const GridBase<T>& g) {
 template<typename T>
 void add_grid(py::module& m, const std::string& name) {
   using GrBase = GridBase<T>;
-  py::class_<GrBase> (m, (name + "Base").c_str(), py::buffer_protocol())
+  using Gr = Grid<T>;
+  using Masked = MaskedGrid<T>;
+  using GrPoint = typename Gr::Point;
+
+  py::class_<GrBase> pyGridBase(m, (name + "Base").c_str(), py::buffer_protocol());
+  py::class_<Gr, GrBase> gr(m, name.c_str());
+  py::class_<Masked> pyMaskedGrid (m, ("Masked" + name).c_str());
+  py::class_<GrPoint> pyGrPoint(gr, "Point");
+
+  pyGridBase
     .def_buffer([](GrBase &g) {
       return py::buffer_info(g.data.data(),
                              {g.nu, g.nv, g.nw},       // dimensions
@@ -56,8 +65,6 @@ void add_grid(py::module& m, const std::string& name) {
          py::keep_alive<0, 1>())
     ;
 
-  using Gr = Grid<T>;
-  py::class_<Gr, GrBase> gr(m, name.c_str());
   gr
     .def(py::init<>())
     .def(py::init([](int nx, int ny, int nz) {
@@ -95,8 +102,7 @@ void add_grid(py::module& m, const std::string& name) {
         return tostr("<gemmi.", name, '(', grid_dim_str(self), ")>");
     });
 
-  using GrPoint = typename Gr::Point;
-  py::class_<GrPoint>(gr, "Point")
+  pyGrPoint
     .def_readonly("u", &GrPoint::u)
     .def_readonly("v", &GrPoint::v)
     .def_readonly("w", &GrPoint::w)
@@ -109,8 +115,7 @@ void add_grid(py::module& m, const std::string& name) {
     });
     ;
 
-  using Masked = MaskedGrid<T>;
-  py::class_<Masked>(m, ("Masked" + name).c_str())
+  pyMaskedGrid
     .def_readonly("grid", &Masked::grid, py::return_value_policy::reference)
     .def_readonly("mask", &Masked::mask)
     .def("__iter__", [](Masked& self) { return py::make_iterator(self); },
@@ -153,8 +158,10 @@ py::class_<T> add_ccp4(py::module& m, const char* name) {
 }
 
 void add_grid(py::module& m) {
-  add_grid<float>(m, "FloatGrid");
+  py::enum_<AxisOrder> pyAxisOrder(m, "AxisOrder");
+
   add_grid<int8_t>(m, "Int8Grid");
+  add_grid<float>(m, "FloatGrid");
   add_grid<std::complex<float>>(m, "ComplexGrid");
   add_ccp4<float>(m, "Ccp4Map")
     .def("setup", [](Ccp4<float>& self, float default_value) {
@@ -177,7 +184,7 @@ void add_grid(py::module& m) {
         }, py::arg("path"), py::return_value_policy::move,
         "Reads a CCP4 file, mode 0 (int8_t data, usually 0/1 masks).");
 
-  py::enum_<AxisOrder>(m, "AxisOrder")
+  pyAxisOrder
     .value("XYZ", AxisOrder::XYZ)
     .value("ZYX", AxisOrder::ZYX);
 
