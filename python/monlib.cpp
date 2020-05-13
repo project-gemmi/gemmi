@@ -29,6 +29,22 @@ PYBIND11_MAKE_OPAQUE(links_type)
 PYBIND11_MAKE_OPAQUE(modifications_type)
 
 void add_monlib(py::module& m) {
+
+  py::class_<ChemMod> pyChemMod(m, "ChemMod");
+  py::class_<ChemLink> chemlink(m, "ChemLink");
+  py::class_<ChemComp> chemcomp(m, "ChemComp");
+
+  py::class_<ChemLink::Side> pyChemLinkSide(chemlink, "Side");
+
+  py::class_<Restraints> restraints(m, "Restraints");
+  py::class_<Restraints::Bond> pyRestraintsBond(restraints, "Bond");
+
+  py::class_<Topo> topo(m, "Topo");
+  py::class_<Topo::Bond> pyTopoBond(topo, "Bond");
+  py::class_<Topo::ExtraLink> pyTopoExtraLink(topo, "ExtraLink");
+
+  py::class_<ChemComp::Atom> pyChemCompAtom(chemcomp, "Atom");
+
   py::bind_vector<std::vector<Restraints::Bond>>(m, "RestraintsBonds");
   py::bind_vector<std::vector<ChemComp::Atom>>(m, "ChemCompAtoms");
   py::bind_vector<std::vector<Topo::Bond>>(m, "TopoBonds");
@@ -46,7 +62,7 @@ void add_monlib(py::module& m) {
     .value("Deloc", BondType::Deloc)
     .value("Metal", BondType::Metal);
 
-  py::class_<Restraints> restraints(m, "Restraints");
+
   py::class_<Restraints::AtomId>(restraints, "AtomId")
     .def_readwrite("comp", &Restraints::AtomId::comp)
     .def_readwrite("atom", &Restraints::AtomId::atom)
@@ -56,7 +72,7 @@ void add_monlib(py::module& m) {
          py::arg("res1"), py::arg("res2"), py::arg("altloc"),
          py::return_value_policy::reference)
     ;
-  py::class_<Restraints::Bond>(restraints, "Bond")
+  pyRestraintsBond
     .def_readwrite("id1", &Restraints::Bond::id1)
     .def_readwrite("id2", &Restraints::Bond::id2)
     .def_readwrite("type", &Restraints::Bond::type)
@@ -82,8 +98,7 @@ void add_monlib(py::module& m) {
          }, py::return_value_policy::reference_internal)
     ;
 
-  py::class_<ChemComp> chemcomp(m, "ChemComp");
-  py::class_<ChemComp::Atom>(chemcomp, "Atom")
+  pyChemCompAtom
     .def_readonly("id", &ChemComp::Atom::id)
     .def_readonly("el", &ChemComp::Atom::el)
     .def_readonly("charge", &ChemComp::Atom::charge)
@@ -100,7 +115,6 @@ void add_monlib(py::module& m) {
     ;
   m.def("make_chemcomp_from_block", &make_chemcomp_from_block);
 
-  py::class_<ChemLink> chemlink(m, "ChemLink");
   chemlink
     .def_readwrite("id", &ChemLink::id)
     .def_readwrite("name", &ChemLink::name)
@@ -110,7 +124,9 @@ void add_monlib(py::module& m) {
     .def("__repr__", [](const ChemLink& self) {
         return "<gemmi.ChemLink " + self.id + ">";
     });
-  py::class_<ChemLink::Side>(chemlink, "Side")
+
+
+  pyChemLinkSide
     .def_readwrite("comp", &ChemLink::Side::comp)
     .def_readwrite("mod", &ChemLink::Side::mod)
     .def_readwrite("group", &ChemLink::Side::group)
@@ -119,7 +135,7 @@ void add_monlib(py::module& m) {
                ChemLink::group_str(self.group) + ">";
     });
 
-  py::class_<ChemMod>(m, "ChemMod")
+  pyChemMod
     .def_readwrite("id", &ChemMod::id)
     .def("__repr__", [](const ChemLink& self) {
         return "<gemmi.ChemMod " + self.id + ">";
@@ -141,14 +157,13 @@ void add_monlib(py::module& m) {
                std::to_string(self.modifications.size()) + " modifications>";
     });
 
-  py::class_<Topo> topo(m, "Topo");
-  py::class_<Topo::Bond>(topo, "Bond")
+  pyTopoBond
     .def_readonly("restr", &Topo::Bond::restr)
     .def_readonly("atoms", &Topo::Bond::atoms)
     .def("calculate", &Topo::Bond::calculate)
     .def("calculate_z", &Topo::Bond::calculate_z)
     ;
-  py::class_<Topo::ExtraLink>(topo, "ExtraLink")
+  pyTopoExtraLink
     .def_readonly("res1", &Topo::ExtraLink::res1)
     .def_readonly("res2", &Topo::ExtraLink::res2)
     .def_readonly("alt1", &Topo::ExtraLink::alt1)
@@ -185,6 +200,9 @@ void add_monlib(py::module& m) {
     ;
 
   py::class_<ContactSearch> contactsearch(m, "ContactSearch");
+  py::class_<ContactSearch::Result> pyContactSearchResult(contactsearch, "Result");
+  py::enum_<ContactSearch::Ignore> pyContactSearchIgnore(contactsearch, "Ignore");
+
   contactsearch
     .def(py::init<float>())
     .def_readwrite("search_radius", &ContactSearch::search_radius)
@@ -202,14 +220,14 @@ void add_monlib(py::module& m) {
     .def("find_contacts", &ContactSearch::find_contacts)
     ;
 
-  py::enum_<ContactSearch::Ignore>(contactsearch, "Ignore")
+  pyContactSearchIgnore
     .value("Nothing", ContactSearch::Ignore::Nothing)
     .value("SameResidue", ContactSearch::Ignore::SameResidue)
     .value("AdjacentResidues", ContactSearch::Ignore::AdjacentResidues)
     .value("SameChain", ContactSearch::Ignore::SameChain)
     .value("SameAsu", ContactSearch::Ignore::SameAsu);
 
-  py::class_<ContactSearch::Result>(contactsearch, "Result")
+  pyContactSearchResult
     .def_readonly("partner1", &ContactSearch::Result::partner1)
     .def_readonly("partner2", &ContactSearch::Result::partner2)
     .def_readonly("image_idx", &ContactSearch::Result::image_idx)
@@ -219,6 +237,7 @@ void add_monlib(py::module& m) {
     ;
 
   py::class_<LinkHunt> linkhunt(m, "LinkHunt");
+  py::class_<LinkHunt::Match> pyLinkHuntMatch(linkhunt, "Match");
   linkhunt
     .def(py::init<>())
     .def("index_chem_links", &LinkHunt::index_chem_links,
@@ -227,7 +246,8 @@ void add_monlib(py::module& m) {
          py::arg("st"), py::arg("bond_margin"), py::arg("radius_margin"),
          py::arg("ignore")=ContactSearch::Ignore::SameResidue)
     ;
-  py::class_<LinkHunt::Match>(linkhunt, "Match")
+
+  pyLinkHuntMatch
     .def_readonly("chem_link", &LinkHunt::Match::chem_link)
     .def_readonly("chem_link_count", &LinkHunt::Match::chem_link_count)
     .def_readonly("cra1", &LinkHunt::Match::cra1)
@@ -239,8 +259,14 @@ void add_monlib(py::module& m) {
 }
 
 void add_select(py::module& m) {
+  py::class_<Selection> pySelection(m, "Selection");
+  py::class_<FilterProxy<Selection, Model>> pySelectionModelsProxy(m, "SelectionModelsProxy");
+  py::class_<FilterProxy<Selection, Chain>> pySelectionChainsProxy(m, "SelectionChainsProxy");
+  py::class_<FilterProxy<Selection, Residue>> pySelectionResidusProxy(m, "SelectionResidusProxy");
+  py::class_<FilterProxy<Selection, Atom>> pySelectionAtomsProxy(m, "SelectionAtomsProxy");
+
   m.def("parse_cid", &parse_cid);
-  py::class_<Selection>(m, "Selection")
+  pySelection
     .def("models", &Selection::models)
     .def("chains", &Selection::chains)
     .def("residues", &Selection::residues)
@@ -254,22 +280,22 @@ void add_select(py::module& m) {
         return "<gemmi.Selection CID: " + self.to_cid() + ">";
     });
 
-    py::class_<FilterProxy<Selection, Model>>(m, "SelectionModelsProxy")
+    pySelectionModelsProxy
     .def("__iter__", [](FilterProxy<Selection, Model>& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
 
-    py::class_<FilterProxy<Selection, Chain>>(m, "SelectionChainsProxy")
+    pySelectionChainsProxy
     .def("__iter__", [](FilterProxy<Selection, Chain>& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
 
-    py::class_<FilterProxy<Selection, Residue>>(m, "SelectionResidusProxy")
+    pySelectionResidusProxy
     .def("__iter__", [](FilterProxy<Selection, Residue>& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
 
-    py::class_<FilterProxy<Selection, Atom>>(m, "SelectionAtomsProxy")
+    pySelectionAtomsProxy
     .def("__iter__", [](FilterProxy<Selection, Atom>& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());

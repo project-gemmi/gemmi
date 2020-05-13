@@ -27,6 +27,7 @@ void add_misc(py::module& m) {
   using gemmi::Element;
   using gemmi::SmallStructure;
   using IT92 = gemmi::IT92<double>;
+  py::class_<IT92::Coef> pyIT92Coef(m, "IT92Coef");
   py::class_<Element>(m, "Element")
     .def(py::init<const std::string &>())
     .def(py::init<int>())
@@ -88,7 +89,7 @@ void add_misc(py::module& m) {
         return "<gemmi.SmallStructure: " + std::string(self.name) + ">";
     });
 
-  py::class_<IT92::Coef>(m, "IT92Coef")
+  pyIT92Coef
     .def("calculate_sf", &IT92::Coef::calculate_sf, py::arg("stol2"))
     .def("calculate_density_iso", &IT92::Coef::calculate_density_iso,
          py::arg("r2"), py::arg("B"))
@@ -114,17 +115,17 @@ void add_misc(py::module& m) {
 PYBIND11_MODULE(gemmi, mg) {
   mg.doc() = "GEneral MacroMolecular I/O";
   mg.attr("__version__") = GEMMI_VERSION;
+  py::module cif = mg.def_submodule("cif", "CIF file format");
+  add_cif(cif);
   add_symmetry(mg);
-  add_grid(mg);
   add_unitcell(mg);
-  add_hkl(mg);
   add_misc(mg);
   add_mol(mg);
+  add_grid(mg);
+  add_cif_read(cif);
+  add_hkl(mg);
   add_monlib(mg);
   add_alignment(mg);
   add_select(mg);
   add_read_structure(mg);
-  py::module cif = mg.def_submodule("cif", "CIF file format");
-  add_cif(cif);
-  add_cif_read(cif);
 }

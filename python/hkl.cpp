@@ -85,13 +85,19 @@ py::array_t<T> py_array_from_vector(std::vector<T>&& original_vec) {
 }
 
 void add_hkl(py::module& m) {
+
+  py::class_<Mtz> mtz(m, "Mtz", py::buffer_protocol());
+  py::class_<Mtz::Dataset> pyMtzDataset(mtz, "Dataset");
+  py::class_<Mtz::Column> pyMtzColumn(mtz, "Column", py::buffer_protocol());
+  py::class_<Mtz::Batch> pyMtzBatch(mtz, "Batch");
+  py::class_<ReflnBlock> pyReflnBlock(m, "ReflnBlock");
+
   py::bind_vector<std::vector<Mtz::Dataset>>(m, "MtzDatasets");
   py::bind_vector<std::vector<Mtz::Column>>(m, "MtzColumns");
   py::bind_vector<std::vector<Mtz::Batch>>(m, "MtzBatches");
   py::bind_vector<std::vector<ReflnBlock>>(m, "ReflnBlocks");
   py::bind_vector<std::vector<const Mtz::Column*>>(m, "MtzColumnRefs");
 
-  py::class_<Mtz> mtz(m, "Mtz", py::buffer_protocol());
   mtz.def(py::init<>())
     .def_buffer([](Mtz &self) {
       int nrow = self.has_data() ? self.nreflections : 0;
@@ -213,7 +219,8 @@ void add_hkl(py::module& m) {
         return tostr("<gemmi.Mtz with ", self.columns.size(), " columns, ",
                      self.nreflections, " reflections>");
     });
-  py::class_<Mtz::Dataset>(mtz, "Dataset")
+
+  pyMtzDataset
     .def_readwrite("id", &Mtz::Dataset::id)
     .def_readwrite("project_name", &Mtz::Dataset::project_name)
     .def_readwrite("crystal_name", &Mtz::Dataset::crystal_name)
@@ -222,7 +229,7 @@ void add_hkl(py::module& m) {
     .def_readwrite("wavelength", &Mtz::Dataset::wavelength)
     .def("__repr__", [](const Mtz::Dataset& self) { return tostr(self); })
     ;
-  py::class_<Mtz::Column>(mtz, "Column", py::buffer_protocol())
+  pyMtzColumn
     .def_buffer([](Mtz::Column& self) {
       return py::buffer_info(self.parent->data.data() + self.idx,
                              std::vector<ssize_t>(1, self.size()), // dimensions
@@ -252,7 +259,7 @@ void add_hkl(py::module& m) {
     }, py::keep_alive<0, 1>())
     .def("__repr__", [](const Mtz::Column& self) { return tostr(&self); })
     ;
-  py::class_<Mtz::Batch>(mtz, "Batch")
+  pyMtzBatch
     .def_readwrite("number", &Mtz::Batch::number)
     .def_readwrite("title", &Mtz::Batch::title)
     .def_readonly("ints", &Mtz::Batch::ints)
@@ -264,7 +271,7 @@ void add_hkl(py::module& m) {
       return read_mtz(MaybeGzipped(path), true);
   }, py::arg("path"), py::return_value_policy::move);
 
-  py::class_<ReflnBlock>(m, "ReflnBlock")
+  pyReflnBlock
     .def_readonly("block", &ReflnBlock::block)
     .def_readonly("entry_id", &ReflnBlock::entry_id)
     .def_readonly("cell", &ReflnBlock::cell)
