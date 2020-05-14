@@ -31,14 +31,24 @@ MTZ format
 MTZ format has textual headers and a binary data table, where all numbers
 are stored in a 32-bit floating point format.
 The headers, as well as data, are stored in class ``Mtz``.
-The columns of data are grouped hierarchically (Project -> Crystal -> Dataset
--> Column), but normally the column name is all that is needed,
-and the hierarchy can be ignored. In Gemmi, the hierarchy is flattened:
+We have two types of MTZ files:
+
+* merged -- single record per (*hkl*) reflection
+* unmerged -- multi-record
+
+In merged files the columns of data are grouped hierarchically
+(Project -> Crystal -> Dataset -> Column).
+Normally, the column name is all that is needed; the hierarchy can be ignored.
+In Gemmi, the hierarchy is flattened:
 we have a list of columns and a list of datasets.
 Each columns is associated with one dataset, and each dataset has properties
 ``dataset_name``, ``project_name`` and ``crystal_name``,
 which is enough to reconstruct the tree-like hierarchy if needed.
 
+In unmerged files it is records, not columns, that are the associated
+with datasets. The BATCH column links records to batches
+(~ diffraction images).
+The batch header, in turn, stores dataset ID.
 
 Reading
 -------
@@ -136,6 +146,14 @@ Python bindings provide the same properties:
   >>> mtz.dataset(0).wavelength
   0.0
 
+Unmerged MTZ files store also a list of batches::
+
+  std::vector<Mtz::Batch> Mtz::batches
+
+.. doctest::
+
+  >>> for batch in mtz.batches:  # this is a merged file - no batch data
+  ...     print(batch.number, batch.dataset_id, batch.title)
 
 Columns are stored in variable ``columns``::
 

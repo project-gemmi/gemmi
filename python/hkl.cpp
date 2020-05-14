@@ -261,6 +261,7 @@ void add_hkl(py::module& m) {
     ;
   pyMtzBatch
     .def_readwrite("number", &Mtz::Batch::number)
+    .def_property_readonly("dataset_id", &Mtz::Batch::dataset_id)
     .def_readwrite("title", &Mtz::Batch::title)
     .def_readonly("ints", &Mtz::Batch::ints)
     .def_readonly("floats", &Mtz::Batch::floats)
