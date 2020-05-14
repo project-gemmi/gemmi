@@ -183,7 +183,7 @@ void add_mol(py::module& m) {
     .value("Disulf", Connection::Type::Disulf)
     .value("Hydrog", Connection::Type::Hydrog)
     .value("MetalC", Connection::Type::MetalC)
-    .value("None",   Connection::Type::None);
+    .value("Unknown", Connection::Type::Unknown);
 
   py::class_<Connection>(m, "Connection")
     .def(py::init<>())

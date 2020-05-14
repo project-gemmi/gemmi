@@ -690,10 +690,10 @@ inline bool atom_matches(const const_CRA& cra, const AtomAddress& addr) {
 // Symmetry operators are not trusted and not stored.
 // We assume that the nearest symmetry mate is connected.
 struct Connection {
-  enum Type { Covale, Disulf, Hydrog, MetalC, None };
+  enum Type { Covale, Disulf, Hydrog, MetalC, Unknown };
   std::string name;
   std::string link_id;  // _struct_conn.ccp4_link_id (== _chem_link.id)
-  Type type = None;
+  Type type = Unknown;
   Asu asu = Asu::Any;
   AtomAddress partner1, partner2;
   double reported_distance = 0.0;

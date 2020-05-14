@@ -567,7 +567,7 @@ inline void write_header(const Structure& st, std::ostream& os,
     if (!st.models.empty() && opt.link_records) {
       for (const Connection& con : st.connections)
         if (con.type == Connection::Covale || con.type == Connection::MetalC ||
-            con.type == Connection::None) {
+            con.type == Connection::Unknown) {
           const_CRA cra1 = st.models[0].find_cra(con.partner1);
           const_CRA cra2 = st.models[0].find_cra(con.partner2);
           if (!cra1.atom || !cra2.atom)

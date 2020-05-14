@@ -212,7 +212,7 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
     c.name = row.str(kId);
     copy_string(row, kLinkId, c.link_id);
     std::string type = row.str(kConnTypeId);
-    for (int i = 0; i != Connection::None; ++i)
+    for (int i = 0; i != Connection::Unknown; ++i)
       if (get_mmcif_connection_type_id(Connection::Type(i)) == type) {
         c.type = Connection::Type(i);
         break;
