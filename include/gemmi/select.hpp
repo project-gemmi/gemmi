@@ -153,6 +153,41 @@ struct Selection {
     return {nullptr, {nullptr, nullptr, nullptr}};
   }
 
+  static Structure copy_empty(const Structure& orig) {
+    Structure st(orig);
+    st.models.clear(); // it may be inefficient
+    return st;
+  }
+  static Model copy_empty(const Model& orig) { return Model(orig.name); }
+  static Chain copy_empty(const Chain& orig) { return Chain(orig.name); }
+  static Residue copy_empty(const Residue& orig) {
+    Residue res((ResidueId&)orig);
+    res.subchain = orig.subchain;
+    res.label_seq = orig.label_seq;
+    res.entity_type = orig.entity_type;
+    res.het_flag = orig.het_flag;
+    res.is_cis = orig.is_cis;
+    return res;
+  }
+  static Atom copy_empty(const Atom& orig) { return Atom(orig); }
+
+  template<typename T>
+  void add_matching_children(const T& orig, T& target) {
+    for (const auto& orig_child : orig.children())
+      if (matches(orig_child)) {
+        target.children().push_back(copy_empty(orig_child));
+        add_matching_children(orig_child, target.children().back());
+      }
+  }
+  void add_matching_children(const Atom&, Atom&) {}
+
+  template<typename T>
+  T copy_subset(const T& orig) {
+    T copied = copy_empty(orig);
+    add_matching_children(orig, copied);
+    return copied;
+  }
+
 private:
   static bool find_in_comma_separated_string(const std::string& name,
                                              const std::string& str) {

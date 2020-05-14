@@ -276,6 +276,8 @@ void add_select(py::module& m) {
     .def("first", &Selection::first, py::return_value_policy::reference,
          py::keep_alive<1, 2>())
     .def("to_cid", &Selection::to_cid)
+    .def("copy_model_subset", &Selection::copy_subset<Model>)
+    .def("copy_structure_subset", &Selection::copy_subset<Structure>)
     .def("__repr__", [](const Selection& self) {
         return "<gemmi.Selection CID: " + self.to_cid() + ">";
     });

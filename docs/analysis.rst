@@ -301,7 +301,9 @@ called CID (Coordinate ID). The syntax is described at the bottom
 of the `pdbcur documentation <http://www.ccp4.ac.uk/html/pdbcur.html>`_.
 
 The selections in Gemmi are not widely used yet and the API may evolve.
-The example below demonstrates currently provided functions:
+The examples below demonstrates currently provided functions.
+
+**Example 1**
 
 .. doctest::
 
@@ -332,6 +334,28 @@ The example below demonstrates currently provided functions:
      - 3(DG)
             - N9
      - 4(DT)
+
+
+**Example 2**
+
+Copy alpha-carbon atoms to a new structure (or a model).
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/1orc.pdb')
+  >>> st[0].count_atom_sites()
+  559
+  >>> selection = gemmi.parse_cid('CA[C]')
+
+  >>> # create a new structure
+  >>> ca_st = selection.copy_structure_subset(st)
+  >>> ca_st[0].count_atom_sites()
+  64
+
+  >>> # create a new model
+  >>> ca_model = selection.copy_model_subset(st[0])
+  >>> ca_model.count_atom_sites()
+  64
 
 
 .. _graph_analysis:
