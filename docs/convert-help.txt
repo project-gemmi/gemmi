@@ -26,9 +26,9 @@ PDB input options:
 PDB output options:
   --short-ter            Write PDB TER records without numbers (iotbx compat.).
   --linkr                Write LINKR record (for Refmac) if link_id is known.
-  --minimal-pdb          Write only the most essential records.
 
 Any output options:
+  --minimal              Write only the most essential records.
   --shorten              Shorten chain names to 1 (if # < 63) or 2 characters.
 
 Macromolecular operations:

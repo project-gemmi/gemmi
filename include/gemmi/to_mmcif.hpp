@@ -13,6 +13,7 @@ namespace gemmi {
 void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms);
 cif::Document make_mmcif_document(const Structure& st);
 cif::Block make_mmcif_headers(const Structure& st);
+void add_minimal_mmcif_data(const Structure& st, cif::Block& block);
 
 // temporarily we use it in crdrst.cpp
 namespace impl {
@@ -299,6 +300,34 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
   }
 }
 
+void write_cell_parameters(const UnitCell& cell, cif::Block& block) {
+  block.set_pair("_cell.length_a",    to_str(cell.a));
+  block.set_pair("_cell.length_b",    to_str(cell.b));
+  block.set_pair("_cell.length_c",    to_str(cell.c));
+  block.set_pair("_cell.angle_alpha", to_str(cell.alpha));
+  block.set_pair("_cell.angle_beta",  to_str(cell.beta));
+  block.set_pair("_cell.angle_gamma", to_str(cell.gamma));
+}
+
+void write_ncs_oper(const Structure& st, cif::Block& block) {
+  // _struct_ncs_oper (MTRIX)
+  if (!st.ncs.empty()) {
+    cif::Loop& ncs_oper = block.init_mmcif_loop("_struct_ncs_oper.",
+        {"id", "code",
+         "matrix[1][1]", "matrix[1][2]", "matrix[1][3]", "vector[1]",
+         "matrix[2][1]", "matrix[2][2]", "matrix[2][3]", "vector[2]",
+         "matrix[3][1]", "matrix[3][2]", "matrix[3][3]", "vector[3]"});
+    for (const NcsOp& op : st.ncs) {
+      ncs_oper.values.emplace_back(op.id);
+      ncs_oper.values.emplace_back(op.given ? "given" : "generate");
+      for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j)
+          ncs_oper.values.emplace_back(to_str(op.tr.mat[i][j]));
+        ncs_oper.values.emplace_back(to_str(op.tr.vec.at(i)));
+      }
+    }
+  }
+}
 } // namespace impl
 
 void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
@@ -318,12 +347,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
 
   // unit cell and symmetry
   block.set_pair("_cell.entry_id", id);
-  block.set_pair("_cell.length_a",    to_str(st.cell.a));
-  block.set_pair("_cell.length_b",    to_str(st.cell.b));
-  block.set_pair("_cell.length_c",    to_str(st.cell.c));
-  block.set_pair("_cell.angle_alpha", to_str(st.cell.alpha));
-  block.set_pair("_cell.angle_beta",  to_str(st.cell.beta));
-  block.set_pair("_cell.angle_gamma", to_str(st.cell.gamma));
+  impl::write_cell_parameters(st.cell, block);
   auto z_pdb = st.info.find("_cell.Z_PDB");
   if (z_pdb != st.info.end())
     block.set_pair(z_pdb->first, z_pdb->second);
@@ -659,23 +683,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
   if (keywords != st.info.end())
     block.set_pair(keywords->first, cif::quote(keywords->second));
 
-  // _struct_ncs_oper (MTRIX)
-  if (!st.ncs.empty()) {
-    cif::Loop& ncs_oper = block.init_mmcif_loop("_struct_ncs_oper.",
-        {"id", "code",
-         "matrix[1][1]", "matrix[1][2]", "matrix[1][3]", "vector[1]",
-         "matrix[2][1]", "matrix[2][2]", "matrix[2][3]", "vector[2]",
-         "matrix[3][1]", "matrix[3][2]", "matrix[3][3]", "vector[3]"});
-    for (const NcsOp& op : st.ncs) {
-      ncs_oper.values.emplace_back(op.id);
-      ncs_oper.values.emplace_back(op.given ? "given" : "generate");
-      for (int i = 0; i < 3; ++i) {
-        for (int j = 0; j < 3; ++j)
-          ncs_oper.values.emplace_back(to_str(op.tr.mat[i][j]));
-        ncs_oper.values.emplace_back(to_str(op.tr.vec.at(i)));
-      }
-    }
-  }
+  impl::write_ncs_oper(st, block);
 
   // _struct_asym
   cif::Loop& asym_loop = block.init_mmcif_loop("_struct_asym.",
@@ -952,6 +960,14 @@ cif::Block make_mmcif_headers(const Structure& st) {
   cif::Block block;
   gemmi::update_cif_block(st, block, false);
   return block;
+}
+
+void add_minimal_mmcif_data(const Structure& st, cif::Block& block) {
+  impl::write_cell_parameters(st.cell, block);
+  block.set_pair("_symmetry.space_group_name_H-M",
+                 cif::quote(st.spacegroup_hm));
+  impl::write_ncs_oper(st, block);
+  impl::add_cif_atoms(st, block);
 }
 
 } // namespace gemmi

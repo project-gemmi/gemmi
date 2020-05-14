@@ -42,7 +42,7 @@ struct ConvArg: public Arg {
 enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, PdbxStyle, BlockName,
   ExpandNcs, AsAssembly, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
-  ShortTer, Linkr, MinimalPdb, ShortenCN, SegmentAsChain, OldPdb
+  ShortTer, Linkr, Minimal, ShortenCN, SegmentAsChain, OldPdb
 };
 
 static const option::Descriptor Usage[] = {
@@ -80,10 +80,10 @@ static const option::Descriptor Usage[] = {
     "  --short-ter  \tWrite PDB TER records without numbers (iotbx compat.)." },
   { Linkr, 0, "", "linkr", Arg::None,
     "  --linkr  \tWrite LINKR record (for Refmac) if link_id is known." },
-  { MinimalPdb, 0, "", "minimal-pdb", Arg::None,
-    "  --minimal-pdb  \tWrite only the most essential records." },
 
   { NoOp, 0, "", "", Arg::None, "\nAny output options:" },
+  { Minimal, 0, "", "minimal", Arg::None,
+    "  --minimal  \tWrite only the most essential records." },
   { ShortenCN, 0, "", "shorten", Arg::None,
     "  --shorten  \tShorten chain names to 1 (if # < 63) or 2 characters." },
 
@@ -239,7 +239,10 @@ static void convert(gemmi::Structure& st,
       st.name = options[BlockName].arg;
     cif::Document doc;
     doc.blocks.resize(1);
-    update_cif_block(st, doc.blocks[0], /*with_atoms=*/true);
+    if (options[Minimal])
+      gemmi::add_minimal_mmcif_data(st, doc.blocks[0]);
+    else
+      gemmi::update_cif_block(st, doc.blocks[0], /*with_atoms=*/true);
     apply_cif_doc_modifications(doc, options);
 
     if (output_type == CoorFormat::Mmcif) {
@@ -258,7 +261,7 @@ static void convert(gemmi::Structure& st,
       opt.numbered_ter = false;
     if (options[Linkr])
       opt.use_linkr = true;
-    if (options[MinimalPdb])
+    if (options[Minimal])
       gemmi::write_minimal_pdb(st, os.ref(), opt);
     else
       gemmi::write_pdb(st, os.ref(), opt);
