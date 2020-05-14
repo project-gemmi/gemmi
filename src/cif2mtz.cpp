@@ -180,7 +180,7 @@ void convert_cif_block_to_mtz(const gemmi::ReflnBlock& rb,
 
     mtz.batches.emplace_back();
     mtz.batches.back().set_cell(mtz.cell);
-    hkl_mover.reset(new gemmi::UnmergedHklMover(mtz));
+    hkl_mover.reset(new gemmi::UnmergedHklMover(mtz.spacegroup));
   }
   for (size_t i = 0; i != mtz.columns.size(); ++i) {
     mtz.columns[i].parent = &mtz;

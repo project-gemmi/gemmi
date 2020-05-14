@@ -687,9 +687,9 @@ struct Mtz {
 // Unmerged MTZ files always store in-asu hkl indices and symmetry operation
 // encoded in the M/ISYM column. Here is a helper for writing such files.
 struct UnmergedHklMover {
-  UnmergedHklMover(const Mtz& mtz)
-    : asu_checker_(mtz.spacegroup),
-      group_ops_(mtz.spacegroup->operations())
+  UnmergedHklMover(const SpaceGroup* spacegroup)
+    : asu_checker_(spacegroup),
+      group_ops_(spacegroup->operations())
   {}
 
   // Modifies hkl and returns ISYM value for M/ISYM
