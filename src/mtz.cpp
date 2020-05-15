@@ -228,7 +228,7 @@ void print_mtz_info(Stream&& stream, const char* path,
   if (options[PrintTsv] || options[PrintStats] || options[CheckAsu]) {
     mtz.read_raw_data(stream);
     if (!options[NoIsym])
-      mtz.apply_isym();
+      mtz.switch_to_real_hkl();
   }
   if (options[PrintTsv])
     print_tsv(mtz);

@@ -372,7 +372,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   try {
     mtz.read_input(gemmi::MaybeGzipped(mtz_path), true);
-    mtz.apply_isym();
+    mtz.switch_to_real_hkl();
   } catch (std::runtime_error& e) {
     fprintf(stderr, "ERROR reading %s: %s\n", mtz_path, e.what());
     return 1;

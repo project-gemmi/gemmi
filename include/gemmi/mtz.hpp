@@ -43,6 +43,39 @@ std::array<FP,2> calculate_min_max_disregarding_nans(T begin, T end) {
   return minmax;
 }
 
+// Unmerged MTZ files always store in-asu hkl indices and symmetry operation
+// encoded in the M/ISYM column. Here is a helper for writing such files.
+struct UnmergedHklMover {
+  UnmergedHklMover(const SpaceGroup* spacegroup) : asu_checker_(spacegroup) {
+    if (spacegroup)
+      group_ops_ = spacegroup->operations();
+  }
+
+  // Modifies hkl and returns ISYM value for M/ISYM
+  int move_to_asu(std::array<int, 3>& hkl) {
+    int isym = 1;
+    for (Op op : group_ops_) {
+      Miller new_hkl = op.apply_to_hkl(hkl);
+      if (asu_checker_.is_in(new_hkl)) {
+        hkl = new_hkl;
+        return isym;
+      }
+      Miller negated_new_hkl{{-new_hkl[0], -new_hkl[1], -new_hkl[2]}};
+      if (asu_checker_.is_in(negated_new_hkl)) {
+        hkl = negated_new_hkl;
+        return isym + 1;
+      }
+      isym += 2;
+    }
+    return 0;
+  }
+
+private:
+  ReciprocalAsuChecker asu_checker_;
+  GroupOps group_ops_;
+};
+
+
 struct Mtz {
   struct Dataset {
     int id;
@@ -604,13 +637,13 @@ struct Mtz {
     return indices;
   }
 
-  // Change HKL according to M/ISYM
-  void apply_isym() {
+  // (for unmerged MTZ only) change HKL according to M/ISYM
+  bool switch_to_real_hkl() {
     if (!has_data())
-      fail("apply_isym(): data not read yet");
+      fail("switch_to_real_hkl(): data not read yet");
     const Column* col = column_with_label("M/ISYM");
     if (col == nullptr || col->type != 'Y' || col->idx < 3)
-      return;
+      return false;
     std::vector<Op> inv_symops;
     inv_symops.reserve(symops.size());
     for (const Op& op : symops)
@@ -624,6 +657,27 @@ struct Mtz {
       for (int i = 0; i < 3; ++i)
         data[n+i] = static_cast<float>(sign * hkl[i]);
     }
+    return true;
+  }
+
+  // (for unmerged MTZ only) change HKL to ASU equivalent and set ISYM
+  bool switch_to_asu_hkl() {
+    if (!has_data())
+      fail("switch_to_asu_hkl(): data not read yet");
+    const Column* col = column_with_label("M/ISYM");
+    if (col == nullptr || col->type != 'Y' || col->idx < 3 || !spacegroup)
+      return false;
+    int misym_idx = col->idx;
+    UnmergedHklMover hkl_mover(spacegroup);
+    for (size_t n = 0; n + col->idx < data.size(); n += columns.size()) {
+      std::array<int,3> hkl{{(int)data[n], (int)data[n+1], (int)data[n+2]}};
+      int isym = hkl_mover.move_to_asu(hkl);
+      for (int i = 0; i != 3; ++i)
+        data[n + i] = (float)hkl[i];
+      float& misym = data[n + misym_idx];
+      misym = float(((int)misym & ~0xff) | isym);
+    }
+    return true;
   }
 
   Dataset& add_dataset(const std::string& name) {
@@ -682,38 +736,6 @@ struct Mtz {
   // Function for writing MTZ file
   void write_to_stream(std::FILE* stream) const;
   void write_to_file(const std::string& path) const;
-};
-
-// Unmerged MTZ files always store in-asu hkl indices and symmetry operation
-// encoded in the M/ISYM column. Here is a helper for writing such files.
-struct UnmergedHklMover {
-  UnmergedHklMover(const SpaceGroup* spacegroup)
-    : asu_checker_(spacegroup),
-      group_ops_(spacegroup->operations())
-  {}
-
-  // Modifies hkl and returns ISYM value for M/ISYM
-  int move_to_asu(std::array<int, 3>& hkl) {
-    int isym = 1;
-    for (Op op : group_ops_) {
-      Miller new_hkl = op.apply_to_hkl(hkl);
-      if (asu_checker_.is_in(new_hkl)) {
-        hkl = new_hkl;
-        return isym;
-      }
-      Miller negated_new_hkl{{-new_hkl[0], -new_hkl[1], -new_hkl[2]}};
-      if (asu_checker_.is_in(negated_new_hkl)) {
-        hkl = negated_new_hkl;
-        return isym + 1;
-      }
-      isym += 2;
-    }
-    return 0;
-  }
-
-private:
-  ReciprocalAsuChecker asu_checker_;
-  GroupOps group_ops_;
 };
 
 
