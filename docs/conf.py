@@ -75,6 +75,12 @@ try:
 except ImportError:
     print('Tests that use networkx are disabled.')
     networkx = None
+import os
+mdm2_unmerged_mtz_path = os.getenv('CCP4')
+if mdm2_unmerged_mtz_path:
+    mdm2_unmerged_mtz_path += '/share/ccp4i2/demo_data/mdm2/mdm2_unmerged.mtz'
+    if not os.path.isfile(mdm2_unmerged_mtz_path):
+        mdm2_unmerged_mtz_path = None
 '''
 
 def setup(app):

@@ -146,15 +146,6 @@ Python bindings provide the same properties:
   >>> mtz.dataset(0).wavelength
   0.0
 
-Unmerged MTZ files store also a list of batches::
-
-  std::vector<Mtz::Batch> Mtz::batches
-
-.. doctest::
-
-  >>> for batch in mtz.batches:  # this is a merged file - no batch data
-  ...     print(batch.number, batch.dataset_id, batch.title)
-
 Columns are stored in variable ``columns``::
 
   std::vector<Mtz::Column> Mtz::columns
@@ -234,7 +225,72 @@ In both C++ and Python ``Column`` supports the iteration protocol:
   >>> numpy.nanmean(intensity)
   11.505858
 
-In Python we also have a read-only ``array`` property that provides
+Unmerged MTZ
+------------
+
+Unmerged (multi-record) MTZ files store a list of batches::
+
+  std::vector<Mtz::Batch> Mtz::batches
+
+.. doctest::
+  :skipif: mdm2_unmerged_mtz_path is None
+
+  >>> # here we use mdm2_unmerged.mtz file distributed with CCP4 7.1
+  >>> mdm2 = gemmi.read_mtz_file(mdm2_unmerged_mtz_path)
+  >>> len(mdm2.batches)
+  60
+
+Each batch has a number of properties:
+
+.. doctest::
+  :skipif: mdm2_unmerged_mtz_path is None
+
+  >>> batch = mdm2.batches[0]
+  >>> batch.number
+  1
+  >>> batch.title
+  'TITLE Batch 2'
+  >>> batch.axes
+  ['AXIS']
+  >>> batch.dataset_id  # link to a dataset
+  2
+  >>> mdm2.dataset(2).wavelength
+  0.8726000000000002
+
+Most of the batch header properties are not decoded,
+but they can be accessed directly if needed:
+
+.. doctest::
+  :skipif: mdm2_unmerged_mtz_path is None
+
+  >>> batch.ints
+  [185, 29, 156, 0, -1, 1, -1, 0, 0, 0, 0, 0, 1, 0, 2, 1, 0, 1, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0]
+  >>> batch.floats[36:38]  # start and end of phi
+  [80.0, 80.5]
+
+One pecularity of the MTZ format is that instead of the original Miller
+indices it stores indices of the equivalent reflection in the ASU
++ the index of the symmetry operation that transforms the former to the latter.
+It can be useful to switch between the two:
+
+.. doctest::
+  :skipif: mdm2_unmerged_mtz_path is None
+
+  >>> mdm2.switch_to_original_hkl()
+  True
+  >>> mdm2.switch_to_asu_hkl()
+  True
+
+The return value indicates that the indices were switched.
+It would be ``False`` only if it was a merged MTZ file.
+Keeping track what the current indices mean is up to the user.
+They are "asu" after reading a file and they must be "asu" before writing
+to a file.
+
+Data in NumPy and pandas
+------------------------
+
+In Python Column has a read-only ``array`` property that provides
 a view of the data compatible with NumPy. It does not copy the data,
 so the data is not contiguous (because it's stored row-wise in MTZ):
 
