@@ -638,9 +638,9 @@ struct Mtz {
   }
 
   // (for unmerged MTZ only) change HKL according to M/ISYM
-  bool switch_to_real_hkl() {
+  bool switch_to_original_hkl() {
     if (!has_data())
-      fail("switch_to_real_hkl(): data not read yet");
+      fail("switch_to_original_hkl(): data not read yet");
     const Column* col = column_with_label("M/ISYM");
     if (col == nullptr || col->type != 'Y' || col->idx < 3)
       return false;
