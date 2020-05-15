@@ -309,6 +309,7 @@ void add_mol(py::module& m) {
          (void (*)(Structure&)) &remove_ligands_and_waters)
     .def("remove_empty_chains", (void (*)(Structure&)) &remove_empty_chains)
     .def("shorten_chain_names", &shorten_chain_names)
+    .def("clone", [](const Structure& self) { return new Structure(self); })
     .def("__repr__", [](const Structure& self) {
         return tostr("<gemmi.Structure ", self.name, " with ",
                      self.models.size(), " model(s)>");
@@ -388,6 +389,7 @@ void add_mol(py::module& m) {
     .def("calculate_center_of_mass", [](const Model& self) {
         return calculate_center_of_mass(self).get();
     })
+    .def("clone", [](const Model& self) { return new Model(self); })
     .def("__repr__", [](const Model& self) {
         return tostr("<gemmi.Model ", self.name, " with ",
                      self.chains.size(), " chain(s)>");
@@ -464,6 +466,7 @@ void add_mol(py::module& m) {
     .def("first_conformer",
          (UniqProxy<Residue> (Chain::*)()) &Chain::first_conformer,
          py::keep_alive<0, 1>())
+    .def("clone", [](const Chain& self) { return new Chain(self); })
     .def("__repr__", [](const Chain& self) {
         return tostr("<gemmi.Chain ", self.name,
                      " with ", self.residues.size(), " res>");
@@ -601,6 +604,7 @@ void add_mol(py::module& m) {
     .def("sole_atom", &Residue::sole_atom)
     .def("is_water", &Residue::is_water)
     .def("trim_to_alanine", (bool (*)(Residue&)) &trim_to_alanine)
+    .def("clone", [](const Residue& self) { return new Residue(self); })
     .def("__repr__", [](const Residue& self) {
         return tostr("<gemmi.Residue ", self.str(), " with ",
                      self.atoms.size(), " atoms>");
@@ -621,6 +625,7 @@ void add_mol(py::module& m) {
     .def("is_hydrogen", &Atom::is_hydrogen)
     .def("has_altloc", &Atom::has_altloc)
     .def("b_eq", &Atom::b_eq)
+    .def("clone", [](const Atom& self) { return new Atom(self); })
     .def("__repr__", [](const Atom& self) {
         std::string r = "<gemmi.Atom " + self.name;
         if (self.altloc) {
