@@ -571,6 +571,7 @@ void add_mol(py::module& m) {
     .def_readwrite("subchain", &Residue::subchain)
     .def_readwrite("entity_type", &Residue::entity_type)
     .def_readwrite("het_flag", &Residue::het_flag)
+    .def_readwrite("flag", &Residue::flag)
     .def_readwrite("label_seq", &Residue::label_seq)
     .def("__len__", [](const Residue& res) { return res.atoms.size(); })
     .def("__contains__", [](const Residue& res, const std::string& name) {

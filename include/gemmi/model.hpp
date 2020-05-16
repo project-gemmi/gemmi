@@ -203,6 +203,7 @@ struct Residue : public ResidueId {
   EntityType entity_type = EntityType::Unknown;
   char het_flag = '\0';   // 'A' = ATOM, 'H' = HETATM, 0 = unspecified
   bool is_cis = false;    // bond to the next residue marked as cis
+  char flag = '\0';       // custom flag
   std::vector<Atom> atoms;
 
   Residue() = default;

@@ -167,6 +167,7 @@ struct Selection {
     res.entity_type = orig.entity_type;
     res.het_flag = orig.het_flag;
     res.is_cis = orig.is_cis;
+    res.flag = orig.flag;
     return res;
   }
   static Atom copy_empty(const Atom& orig) { return Atom(orig); }
