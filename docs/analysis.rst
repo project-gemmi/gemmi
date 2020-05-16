@@ -68,11 +68,10 @@ An example in Python:
 
   >>> import gemmi
   >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
-  >>> subcells = gemmi.SubCells(st[0], st.cell, 3)
-  >>> subcells.populate()
+  >>> subcells = gemmi.SubCells(st[0], st.cell, 3).populate()
 
 If we'd like to choose which atoms to add, for example to ignore hydrogens,
-we could use ``add_atom()`` instead:
+we could use ``add_atom()`` instead of ``populate()``:
 
 .. doctest::
 
@@ -106,6 +105,11 @@ The following functions search for atoms near the specified atom or point::
 Non-negative ``min_dist`` in the ``find_neighbors()`` call prevents
 the atom whose neighbors we search from being included in the results
 (the distance of the atom to itself is zero).
+
+The first function, which takes atom as an argument, checks altloc of the
+atom and considers as potential neighbors only atoms from the same
+conformation. In particular, if altloc is empty all atoms are considered.
+The second function takes position and altloc as explicit arguments.
 
 Additionally, in C++ you may use a function that takes a callback
 as the last argument (usage examples are in the source code)::
@@ -241,8 +245,7 @@ The contact search uses an instance of SubCells.
 
   >>> st = gemmi.read_structure('../tests/5cvz_final.pdb')
   >>> st.setup_entities()
-  >>> subcells = gemmi.SubCells(st[0], st.cell, 5)
-  >>> subcells.populate()
+  >>> subcells = gemmi.SubCells(st[0], st.cell, 5).populate()
 
 If you'd like to ignore hydrogens from the model,
 call ``subcells.populate(include_h=False)``.

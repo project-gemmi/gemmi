@@ -62,7 +62,7 @@ struct SubCells {
     initialize(model_, cell, max_radius);
   }
   void initialize(Model& model, const UnitCell& cell, double max_radius);
-  void populate(bool include_h_=true);
+  SubCells& populate(bool include_h_=true);
   void add_atom(const Atom& atom, int n_ch, int n_res, int n_atom);
 
   // assumes data in [0, 1), but uses index_n to handle numeric deviations
@@ -134,7 +134,7 @@ inline void SubCells::initialize(Model& model_, const UnitCell& cell,
                                    std::max(grid.nw, 3));
 }
 
-inline void SubCells::populate(bool include_h_) {
+inline SubCells& SubCells::populate(bool include_h_) {
   if (!model)
     fail("SubCells not initialized");
   include_h = include_h_;
@@ -149,6 +149,7 @@ inline void SubCells::populate(bool include_h_) {
       }
     }
   }
+  return *this;
 }
 
 inline void SubCells::add_atom(const Atom& atom,
