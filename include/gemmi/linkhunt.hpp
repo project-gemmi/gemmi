@@ -10,7 +10,7 @@
 #include "elem.hpp"
 #include "model.hpp"
 #include "monlib.hpp"
-#include "subcells.hpp"
+#include "neighbor.hpp"
 #include "contact.hpp"
 
 namespace gemmi {
@@ -71,12 +71,12 @@ struct LinkHunt {
     Model& model = st.first_model();
     double search_radius = std::max(global_max_dist * bond_margin,
                                     /*max r1+r2 ~=*/3.0 * radius_margin);
-    SubCells sc(model, st.cell, std::max(5.0, search_radius));
-    sc.populate();
+    NeighborSearch ns(model, st.cell, std::max(5.0, search_radius));
+    ns.populate();
 
     ContactSearch contacts((float) search_radius);
     contacts.ignore = ignore;
-    contacts.for_each_contact(sc, [&](const CRA& cra1, const CRA& cra2,
+    contacts.for_each_contact(ns, [&](const CRA& cra1, const CRA& cra2,
                                       int image_idx, float dist_sq) {
         Match match;
 

@@ -1,11 +1,11 @@
 // This is a manually run test. It searches for disulfide (SG-SG only)
 // bonds in two ways:
 // - using a simple search - find_disulfide_bonds1()
-// - using cell-linked lists method from subcells.hpp - find_disulfide_bonds2()
+// - using cell-linked lists method from neighbor.hpp - find_disulfide_bonds2()
 // and compares the results.
 // It was run for all PDB entries to test the cell lists implementation.
 
-#include <gemmi/subcells.hpp>
+#include <gemmi/neighbor.hpp>
 #include <gemmi/contact.hpp>
 #include <gemmi/model.hpp>
 #include <gemmi/mmread.hpp>
@@ -63,21 +63,21 @@ std::vector<BondInfo> find_disulfide_bonds1(const Model& model,
   return ret;
 }
 
-// use SubCells (cell list method) to find disulfide SG-SG bonds
+// use NeighborSearch (cell list method) to find disulfide SG-SG bonds
 static std::vector<BondInfo> find_disulfide_bonds2(Model& model,
                                                    const UnitCell& cell) {
   const double max_dist = 3.0;
   const std::string sg = "SG";
-  SubCells sc(model, cell, 5.0);
+  NeighborSearch ns(model, cell, 5.0);
 #if 0
-  sc.populate();
+  ns.populate();
 #else
   for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms)
         if (atom.element == El::S && atom.name == sg) {
           auto indices = model.get_indices(&chain, &res, &atom);
-          sc.add_atom(atom, indices[0], indices[1], indices[2]);
+          ns.add_atom(atom, indices[0], indices[1], indices[2]);
         }
 #endif
   std::vector<BondInfo> ret;
@@ -87,8 +87,8 @@ static std::vector<BondInfo> find_disulfide_bonds2(Model& model,
       for (const Atom& atom : res.atoms)
         if (atom.element == El::S && atom.name == sg) {
           auto indices = model.get_indices(&chain, &res, &atom);
-          sc.for_each(atom.pos, atom.altloc, max_dist,
-                      [&](const SubCells::Mark& m, float dist_sq) {
+          ns.for_each(atom.pos, atom.altloc, max_dist,
+                      [&](const NeighborSearch::Mark& m, float dist_sq) {
               if (m.element != El::S)
                 return;
               if (indices[0] > m.chain_idx || (indices[0] == m.chain_idx &&
@@ -103,7 +103,7 @@ static std::vector<BondInfo> find_disulfide_bonds2(Model& model,
         }
 #else  // slower, but simpler
   ContactSearch contacts(max_dist);
-  contacts.for_each_contact(sc, [&](const CRA& cra1, const CRA& cra2,
+  contacts.for_each_contact(ns, [&](const CRA& cra1, const CRA& cra2,
                                     int image_idx, float dist_sq) {
       if (cra1.atom->element == El::S && cra1.atom->name == sg &&
           cra2.atom->element == El::S && cra2.atom->name == sg)

@@ -1,10 +1,10 @@
 // Copyright 2018 Global Phasing Ltd.
 //
 // Cell-linked lists method for atom searching (a.k.a. grid search, binning,
-// bucketing, cell technique for neighbours search, etc).
+// bucketing, cell technique for neighbor search, etc).
 
-#ifndef GEMMI_SUBCELLS_HPP_
-#define GEMMI_SUBCELLS_HPP_
+#ifndef GEMMI_NEIGHBOR_HPP_
+#define GEMMI_NEIGHBOR_HPP_
 
 #include <vector>
 #include <cmath>  // for INFINITY, sqrt
@@ -15,7 +15,7 @@
 
 namespace gemmi {
 
-struct SubCells {
+struct NeighborSearch {
 
   struct Mark {
     float x, y, z;
@@ -56,13 +56,13 @@ struct SubCells {
   Model* model = nullptr;
   bool include_h = true;
 
-  SubCells() = default;
+  NeighborSearch() = default;
   // Model is not const so it can be modified in for_each_contact()
-  SubCells(Model& model_, const UnitCell& cell, double max_radius) {
+  NeighborSearch(Model& model_, const UnitCell& cell, double max_radius) {
     initialize(model_, cell, max_radius);
   }
   void initialize(Model& model, const UnitCell& cell, double max_radius);
-  SubCells& populate(bool include_h_=true);
+  NeighborSearch& populate(bool include_h_=true);
   void add_atom(const Atom& atom, int n_ch, int n_res, int n_atom);
 
   // assumes data in [0, 1), but uses index_n to handle numeric deviations
@@ -118,8 +118,8 @@ struct SubCells {
 };
 
 
-inline void SubCells::initialize(Model& model_, const UnitCell& cell,
-                                 double max_radius) {
+inline void NeighborSearch::initialize(Model& model_, const UnitCell& cell,
+                                       double max_radius) {
   model = &model_;
   radius_specified = max_radius;
   if (cell.is_crystal()) {
@@ -140,9 +140,9 @@ inline void SubCells::initialize(Model& model_, const UnitCell& cell,
                                    std::max(grid.nw, 3));
 }
 
-inline SubCells& SubCells::populate(bool include_h_) {
+inline NeighborSearch& NeighborSearch::populate(bool include_h_) {
   if (!model)
-    fail("SubCells not initialized");
+    fail("NeighborSearch not initialized");
   include_h = include_h_;
   for (int n_ch = 0; n_ch != (int) model->chains.size(); ++n_ch) {
     const Chain& chain = model->chains[n_ch];
@@ -158,8 +158,8 @@ inline SubCells& SubCells::populate(bool include_h_) {
   return *this;
 }
 
-inline void SubCells::add_atom(const Atom& atom,
-                               int n_ch, int n_res, int n_atom) {
+inline void NeighborSearch::add_atom(const Atom& atom,
+                                     int n_ch, int n_res, int n_atom) {
   const UnitCell& gcell = grid.unit_cell;
   Fractional frac0 = gcell.fractionalize(atom.pos);
   {
@@ -177,8 +177,8 @@ inline void SubCells::add_atom(const Atom& atom,
 }
 
 template<typename Func>
-void SubCells::for_each(const Position& pos, char alt, float radius,
-                        const Func& func) {
+void NeighborSearch::for_each(const Position& pos, char alt, float radius,
+                              const Func& func) {
   if (radius <= 0.f)
     return;
   Fractional fr = grid.unit_cell.fractionalize(pos).wrap_to_unit();

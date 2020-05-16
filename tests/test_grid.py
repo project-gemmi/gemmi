@@ -96,27 +96,27 @@ ATOM    635  SG  CYS A  85      42.948   6.483  17.913  0.48 23.86           S
 ATOM   2293  SG  CYS B  85      42.948   6.483  17.913  0.52 23.86           S
 """
 
-class TestSubCells(unittest.TestCase):
+class TestNeighborSearch(unittest.TestCase):
     def test_5a11(self, use_populate=True):
         st = gemmi.read_pdb_string(FRAGMENT_5A11)
         a1 = st[0].sole_residue('A', gemmi.SeqId(37, ' '))[0]
-        sc = gemmi.SubCells(st[0], st.cell, 5)
+        ns = gemmi.NeighborSearch(st[0], st.cell, 5)
         if use_populate:
-            sc.populate()
+            ns.populate()
         else:
             for n_ch, chain in enumerate(st[0]):
                 for n_res, res in enumerate(chain):
                     for n_atom, atom in enumerate(res):
-                        sc.add_atom(atom, n_ch, n_res, n_atom)
-        marks = sc.find_atoms(a1.pos, a1.altloc, 3)
-        m1, m2 = sorted(marks, key=lambda m: sc.dist(a1.pos, m.pos()))
-        self.assertAlmostEqual(sc.dist(a1.pos, m1.pos()), 0, delta=5e-6)
-        self.assertAlmostEqual(sc.dist(a1.pos, m2.pos()), 0.13, delta=5e-3)
+                        ns.add_atom(atom, n_ch, n_res, n_atom)
+        marks = ns.find_atoms(a1.pos, a1.altloc, 3)
+        m1, m2 = sorted(marks, key=lambda m: ns.dist(a1.pos, m.pos()))
+        self.assertAlmostEqual(ns.dist(a1.pos, m1.pos()), 0, delta=5e-6)
+        self.assertAlmostEqual(ns.dist(a1.pos, m2.pos()), 0.13, delta=5e-3)
         cra2 = m2.to_cra(st[0])
         self.assertEqual(cra2.chain.name, 'B')
         self.assertEqual(str(cra2.residue.seqid), '37')
         self.assertEqual(cra2.atom.name, 'SG')
-        marks2 = sc.find_neighbors(a1, 0.1, 3)
+        marks2 = ns.find_neighbors(a1, 0.1, 3)
         self.assertEqual(len(marks2), 1)
         self.assertEqual(marks2[0], m2)
 
@@ -126,14 +126,14 @@ class TestSubCells(unittest.TestCase):
     def test_1gtv(self):
         st = gemmi.read_pdb_string(FRAGMENT_1GTV)
         a1 = st[0].sole_residue('A', gemmi.SeqId(85, ' '))[0]
-        subcells = gemmi.SubCells(st[0], st.cell, 5)
-        subcells.populate()
-        marks = subcells.find_atoms(a1.pos, a1.altloc, 3)
+        ns = gemmi.NeighborSearch(st[0], st.cell, 5)
+        ns.populate()
+        marks = ns.find_atoms(a1.pos, a1.altloc, 3)
         self.assertEqual(len(marks), 2)
         for mark in marks:
-            d = subcells.dist(a1.pos, mark.pos())
+            d = ns.dist(a1.pos, mark.pos())
             self.assertAlmostEqual(d, 0, delta=5e-6)
-        marks2 = subcells.find_neighbors(a1, 0.1, 3)
+        marks2 = ns.find_neighbors(a1, 0.1, 3)
         self.assertEqual(len(marks2), 0)
 
 class TestContactSearch(unittest.TestCase):

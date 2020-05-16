@@ -4,7 +4,7 @@
 
 #include "gemmi/pdb.hpp"
 #include "gemmi/calculate.hpp"
-#include "gemmi/subcells.hpp"
+#include "gemmi/neighbor.hpp"
 #include <benchmark/benchmark.h>
 #include <algorithm>
 
@@ -34,36 +34,37 @@ static void find_atom_image(benchmark::State& state) {
   }
 }
 
-static void subcells_ctor(benchmark::State& state) {
+static void neighbor_search_ctor(benchmark::State& state) {
   using namespace gemmi;
   Structure st = read_pdb_file(path);
   while (state.KeepRunning()) {
-    SubCells sc(st.models.at(0), st.cell, 5.0);
-    benchmark::DoNotOptimize(sc);
+    NeighborSearch ns(st.models.at(0), st.cell, 5.0);
+    benchmark::DoNotOptimize(ns);
   }
 }
 
-static void subcells_find(benchmark::State& state) {
+static void neighbor_search_find(benchmark::State& state) {
   using namespace gemmi;
   Structure st = read_pdb_file(path);
   const Model& model = st.models[0];
   Position ref = model.chains.at(0).residues.at(2).atoms.at(0).pos;
-  SubCells sc(st.models.at(0), st.cell, 5.0);
+  NeighborSearch ns(st.models.at(0), st.cell, 5.0);
   while (state.KeepRunning()) {
-    auto r = sc.find_atoms(ref, '\0', 4);
+    auto r = ns.find_atoms(ref, '\0', 4);
     benchmark::DoNotOptimize(r);
   }
 }
 
-static void subcells_for_each(benchmark::State& state) {
+static void neighbor_search_for_each(benchmark::State& state) {
   using namespace gemmi;
   Structure st = read_pdb_file(path);
   const Model& model = st.models[0];
   Position ref = model.chains.at(0).residues.at(2).atoms.at(0).pos;
-  SubCells sc(st.models.at(0), st.cell, 5.0);
+  NeighborSearch ns(st.models.at(0), st.cell, 5.0);
   while (state.KeepRunning()) {
     double sum = 0;
-    sc.for_each(ref, '\0', 4, [&sum](SubCells::Mark&, float d) { sum += d; });
+    ns.for_each(ref, '\0', 4,
+                [&sum](NeighborSearch::Mark&, float d) { sum += d; });
     benchmark::DoNotOptimize(sum);
   }
 }
@@ -81,9 +82,10 @@ int main(int argc, char** argv) {
   }
   benchmark::RegisterBenchmark("read_pdb_file", read_pdb_file);
   benchmark::RegisterBenchmark("find_atom_image", find_atom_image);
-  benchmark::RegisterBenchmark("subcells_ctor", subcells_ctor);
-  benchmark::RegisterBenchmark("subcells_find", subcells_find);
-  benchmark::RegisterBenchmark("subcells_for_each", subcells_for_each);
+  benchmark::RegisterBenchmark("neighbor_search_ctor", neighbor_search_ctor);
+  benchmark::RegisterBenchmark("neighbor_search_find", neighbor_search_find);
+  benchmark::RegisterBenchmark("neighbor_search_for_each",
+                               neighbor_search_for_each);
   benchmark::Initialize(&argc, argv);
   benchmark::RunSpecifiedBenchmarks();
 }

@@ -1,12 +1,12 @@
 // Copyright 2020 Global Phasing Ltd.
 //
-// Contact search, based on SubCells from subcells.hpp.
+// Contact search, based on NeighborSearch from neighbor.hpp.
 
 #ifndef GEMMI_CONTACT_HPP_
 #define GEMMI_CONTACT_HPP_
 
 #include "model.hpp"
-#include "subcells.hpp"
+#include "neighbor.hpp"
 #include "polyheur.hpp"  // for check_polymer_type, are_connected
 
 namespace gemmi {
@@ -38,16 +38,16 @@ struct ContactSearch {
   }
 
   template<typename Func>
-  void for_each_contact(SubCells& sc, const Func& func);
+  void for_each_contact(NeighborSearch& ns, const Func& func);
 
   struct Result {
     CRA partner1, partner2;
     int image_idx;
     float dist_sq;
   };
-  std::vector<Result> find_contacts(SubCells& sc) {
+  std::vector<Result> find_contacts(NeighborSearch& ns) {
     std::vector<Result> out;
-    for_each_contact(sc, [&out](const CRA& cra1, const CRA& cra2,
+    for_each_contact(ns, [&out](const CRA& cra1, const CRA& cra2,
                                 int image_idx, float dist_sq) {
         out.push_back({cra1, cra2, image_idx, dist_sq});
     });
@@ -56,11 +56,11 @@ struct ContactSearch {
 };
 
 template<typename Func>
-void ContactSearch::for_each_contact(SubCells& sc, const Func& func) {
-  if (!sc.model)
-    fail("SubCells not initialized");
-  for (int n_ch = 0; n_ch != (int) sc.model->chains.size(); ++n_ch) {
-    Chain& chain = sc.model->chains[n_ch];
+void ContactSearch::for_each_contact(NeighborSearch& ns, const Func& func) {
+  if (!ns.model)
+    fail("NeighborSearch not initialized");
+  for (int n_ch = 0; n_ch != (int) ns.model->chains.size(); ++n_ch) {
+    Chain& chain = ns.model->chains[n_ch];
     PolymerType pt = PolymerType::Unknown;
     if (ignore == Ignore::AdjacentResidues)
       pt = check_polymer_type(chain.get_polymer());
@@ -68,12 +68,12 @@ void ContactSearch::for_each_contact(SubCells& sc, const Func& func) {
       Residue& res = chain.residues[n_res];
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
         Atom& atom = res.atoms[n_atom];
-        if (!sc.include_h && is_hydrogen(atom.element))
+        if (!ns.include_h && is_hydrogen(atom.element))
           continue;
         if (atom.occ < min_occupancy)
           continue;
-        sc.for_each(atom.pos, atom.altloc, search_radius,
-                    [&](SubCells::Mark& m, float dist_sq) {
+        ns.for_each(atom.pos, atom.altloc, search_radius,
+                    [&](NeighborSearch::Mark& m, float dist_sq) {
             // do not consider connections inside a residue
             if (ignore != Ignore::Nothing && m.image_idx == 0 &&
                 m.chain_idx == n_ch && m.residue_idx == n_res)
@@ -119,7 +119,7 @@ void ContactSearch::for_each_contact(SubCells& sc, const Func& func) {
             if (m.chain_idx == n_ch && m.residue_idx == n_res &&
                 m.atom_idx == n_atom && dist_sq < special_pos_cutoff_sq)
               return;
-            CRA cra2 = m.to_cra(*sc.model);
+            CRA cra2 = m.to_cra(*ns.model);
             // ignore atoms with occupancy below the specified value
             if (cra2.atom->occ < min_occupancy)
               return;

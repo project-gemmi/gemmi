@@ -6,7 +6,7 @@
 #include "gemmi/gzread.hpp"
 #include "gemmi/polyheur.hpp"  // for remove_hydrogens
 #include "gemmi/math.hpp"      // for Variance
-#include "gemmi/subcells.hpp"  // for SubCells
+#include "gemmi/neighbor.hpp"  // for NeighborSearch
 #include "mapcoef.h"
 
 #define GEMMI_PROG blobs
@@ -245,10 +245,10 @@ static int run(OptParser& p) {
   std::sort(blobs.begin(), blobs.end(),
             [](const Blob& a, const Blob& b) { return a.score > b.score; });
 
-  gemmi::SubCells sc(model, grid.unit_cell, 10.0);
-  sc.populate();
+  gemmi::NeighborSearch ns(model, grid.unit_cell, 10.0);
+  ns.populate();
   for (Blob& blob : blobs)
-    if (const gemmi::SubCells::Mark* mark = sc.find_nearest_atom(blob.pos)) {
+    if (const auto* mark = ns.find_nearest_atom(blob.pos)) {
       blob.cra = mark->to_cra(model);
       const gemmi::Position& ref = blob.cra.atom->pos;
       gemmi::Fractional fpos = grid.unit_cell.fractionalize(blob.pos);

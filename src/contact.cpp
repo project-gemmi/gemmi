@@ -6,7 +6,7 @@
 #include <cstdlib>    // for strtod
 #include <algorithm>  // for min, max
 #include <gemmi/contact.hpp>
-#include <gemmi/subcells.hpp>
+#include <gemmi/neighbor.hpp>
 #include <gemmi/polyheur.hpp>  // for are_connected
 #include <gemmi/elem.hpp>      // for is_hydrogen
 #include <gemmi/gzread.hpp>
@@ -72,8 +72,8 @@ struct Parameters {
 
 static void print_contacts(Structure& st, const Parameters& params) {
   float max_r = params.use_cov_radius ? 4.f + params.cov_tol : params.max_dist;
-  SubCells sc(st.first_model(), st.cell, std::max(5.0f, max_r));
-  sc.populate(/*include_h=*/!params.no_hydrogens);
+  NeighborSearch ns(st.first_model(), st.cell, std::max(5.0f, max_r));
+  ns.populate(/*include_h=*/!params.no_hydrogens);
 
   if (params.verbose > 0) {
     if (params.verbose > 1) {
@@ -81,15 +81,15 @@ static void print_contacts(Structure& st, const Parameters& params) {
         printf(" Using fractionalization matrix from the file.\n");
       printf(" Each atom has %zu extra images.\n", st.cell.images.size());
     }
-    printf(" Cell grid: %d x %d x %d\n", sc.grid.nu, sc.grid.nv, sc.grid.nw);
+    printf(" Cell grid: %d x %d x %d\n", ns.grid.nu, ns.grid.nv, ns.grid.nw);
     size_t min_count = SIZE_MAX, max_count = 0, total_count = 0;
-    for (const auto& el : sc.grid.data) {
+    for (const auto& el : ns.grid.data) {
       min_count = std::min(min_count, el.size());
       max_count = std::max(max_count, el.size());
       total_count += el.size();
     }
     printf(" Items per cell: from %zu to %zu, average: %.2g\n",
-           min_count, max_count, double(total_count) / sc.grid.data.size());
+           min_count, max_count, double(total_count) / ns.grid.data.size());
   }
 
   // the code here is similar to LinkHunt::find_possible_links()
@@ -99,7 +99,7 @@ static void print_contacts(Structure& st, const Parameters& params) {
   contacts.ignore = params.ignore;
   if (params.use_cov_radius)
     contacts.setup_atomic_radii(params.cov_mult, params.cov_tol);
-  contacts.for_each_contact(sc, [&](const CRA& cra1, const CRA& cra2,
+  contacts.for_each_contact(ns, [&](const CRA& cra1, const CRA& cra2,
                                     int image_idx, float dist_sq) {
       ++counter;
       if (params.print_count)

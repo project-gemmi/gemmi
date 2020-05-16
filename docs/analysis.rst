@@ -15,8 +15,7 @@ located) is divided into small cells. The size of these cells depends
 on the search radius. Each cell stores the list of atoms in its area;
 these lists are used for fast lookup of atoms.
 
-In Gemmi the cell technique is implemented in a class named ``SubCells``
-("sub-" because these cells are subdivision of the unit cell).
+In Gemmi the cell technique is implemented in a class named ``NeighborSearch``.
 The implementation works with both crystal and non-crystal system and:
 
 * handles crystallographic symmetry (including non-standard settings with
@@ -37,26 +36,26 @@ Note that while an atom can be bonded with its own symmetric image,
 it sometimes happens that an atom meant to be on a special position
 is slightly off, and its symmetric images represent the same atom
 (so we may have four nearby images each with occupancy 0.25).
-Such images will be returned by the SubCells class as neighbors
+Such images will be returned by the NeighborSearch class as neighbors
 and need to be filtered out by the users.
 
-The constructor of SubCells divides the unit cell into bins.
+The NeighborSearch constructor divides the unit cell into bins.
 For this it needs to know the the maximum radius that will be used in searches,
 as well as the unit cell. Since the system may be non-periodic,
 the constructor also takes the model as an argument -- it is used to
 calculate the bounding box for the model if there is no unit cell.
 It is also stored and used if ``populate()`` is called.
-The C++ signature (in ``gemmi/subcells.hpp``) is::
+The C++ signature (in ``gemmi/neighbor.hpp``) is::
 
-  SubCells::SubCells(Model& model, const UnitCell& cell, double max_radius)
+  NeighborSearch::NeighborSearch(Model& model, const UnitCell& cell, double max_radius)
 
 Then the cell lists need to be populated with items either by calling::
 
-  void SubCells::populate(bool include_h=true)
+  void NeighborSearch::populate(bool include_h=true)
 
 or by adding individual atoms::
 
-  void SubCells::add_atom(const Atom& atom, int n_ch, int n_res, int n_atom)
+  void NeighborSearch::add_atom(const Atom& atom, int n_ch, int n_res, int n_atom)
 
 where ``n_ch`` is the index of the chain in the model, ``n_res`` is the index
 of the residue in the chain, and ``n_atom`` is the index of the atom
@@ -68,39 +67,39 @@ An example in Python:
 
   >>> import gemmi
   >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
-  >>> subcells = gemmi.SubCells(st[0], st.cell, 3).populate()
+  >>> ns = gemmi.NeighborSearch(st[0], st.cell, 3).populate()
 
 If we'd like to choose which atoms to add, for example to ignore hydrogens,
 we could use ``add_atom()`` instead of ``populate()``:
 
 .. doctest::
 
-  >>> subcells = gemmi.SubCells(st[0], st.cell, 3)
+  >>> ns = gemmi.NeighborSearch(st[0], st.cell, 3)
   >>> for n_ch, chain in enumerate(st[0]):
   ...     for n_res, res in enumerate(chain):
   ...         for n_atom, atom in enumerate(res):
   ...             if not atom.is_hydrogen():
-  ...                 subcells.add_atom(atom, n_ch, n_res, n_atom)
+  ...                 ns.add_atom(atom, n_ch, n_res, n_atom)
   ...
 
 
 The following functions search for atoms near the specified atom or point::
 
-  std::vector<Mark*> SubCells::find_neighbors(const Atom& atom, float min_dist, float max_dist)
-  std::vector<Mark*> SubCells::find_atoms(const Position& pos, char altloc, float radius)
+  std::vector<Mark*> NeighborSearch::find_neighbors(const Atom& atom, float min_dist, float max_dist)
+  std::vector<Mark*> NeighborSearch::find_atoms(const Position& pos, char altloc, float radius)
 
 .. doctest::
 
   >>> ref_atom = st[0].sole_residue('A', gemmi.SeqId('3')).sole_atom('P')
-  >>> marks = subcells.find_neighbors(ref_atom, min_dist=0.1, max_dist=3)
+  >>> marks = ns.find_neighbors(ref_atom, min_dist=0.1, max_dist=3)
   >>> len(marks)
   6
   >>> point = gemmi.Position(20, 20, 20)
-  >>> marks = subcells.find_atoms(point, '\0', radius=3)
+  >>> marks = ns.find_atoms(point, '\0', radius=3)
   >>> len(marks)
   7
   >>> marks[0]
-  <gemmi.SubCells.Mark O of atom 0/7/3>
+  <gemmi.NeighborSearch.Mark O of atom 0/7/3>
 
 Non-negative ``min_dist`` in the ``find_neighbors()`` call prevents
 the atom whose neighbors we search from being included in the results
@@ -115,7 +114,7 @@ Additionally, in C++ you may use a function that takes a callback
 as the last argument (usage examples are in the source code)::
 
   template<typename T>
-  void SubCells::for_each(const Position& pos, char altloc, float radius, const T& func)
+  void NeighborSearch::for_each(const Position& pos, char altloc, float radius, const T& func)
 
 Cell-lists store ``Mark``\ s. When searching for neighbors you get references
 (in C++ -- pointers) to these marks.
@@ -128,7 +127,7 @@ The references to the original model and to atoms are not stored.
 ``Mark`` has a method ``to_cra()`` that needs to be called with ``Model``
 as an argument to get a triple of Chain, Residue and Atom::
 
-  CRA SubCells::Mark::to_cra(Model& model) const
+  CRA NeighborSearch::Mark::to_cra(Model& model) const
 
 .. doctest::
 
@@ -143,7 +142,7 @@ as an argument to get a triple of Chain, Residue and Atom::
 ``Mark`` also has a little helper method ``pos()`` that returns
 ``Position(x, y, z)``::
 
-  Position SubCells::Mark::pos() const
+  Position NeighborSearch::Mark::pos() const
 
 .. doctest::
 
@@ -239,16 +238,16 @@ To tell apart the two cases we use a cut-off distance that can be modified:
 
   >>> cs.special_pos_cutoff_sq = 0.5 ** 2  # setting cut-off to 0.5A
 
-The contact search uses an instance of SubCells.
+The contact search uses an instance of NeighborSearch.
 
 .. doctest::
 
   >>> st = gemmi.read_structure('../tests/5cvz_final.pdb')
   >>> st.setup_entities()
-  >>> subcells = gemmi.SubCells(st[0], st.cell, 5).populate()
+  >>> ns = gemmi.NeighborSearch(st[0], st.cell, 5).populate()
 
 If you'd like to ignore hydrogens from the model,
-call ``subcells.populate(include_h=False)``.
+call ``ns.populate(include_h=False)``.
 
 If you'd like to ignore waters, either remove waters from the Model
 (function ``remove_waters()``) or ignore results that contain waters.
@@ -257,7 +256,7 @@ The actual contact search is done by:
 
 .. doctest::
 
-  >>> results = cs.find_contacts(subcells)
+  >>> results = cs.find_contacts(ns)
 
   >>> len(results)
   49
@@ -369,12 +368,12 @@ Select residues in the radius of 8Å from a selected point.
 .. doctest::
 
   >>> selected_point = gemmi.Position(20, 40, 30)
-  >>> ns = gemmi.SubCells(st[0], st.cell, 7.0).populate()
+  >>> ns = gemmi.NeighborSearch(st[0], st.cell, 8.0).populate()
   >>> for mark in ns.find_atoms(selected_point):
   ...     mark.to_cra(st[0]).residue.flag = 's'
   >>> selection = gemmi.Selection().set_residue_flags('s')
   >>> selection.copy_model_selection(st[0]).count_atom_sites()
-  70
+  121
 
 .. _graph_analysis:
 

@@ -2,7 +2,7 @@
 //
 // B-factor model testing
 
-#include <gemmi/subcells.hpp>
+#include <gemmi/neighbor.hpp>
 #include <gemmi/elem.hpp>  // for is_hydrogen
 #include <gemmi/math.hpp>  // for Correlation
 #include <gemmi/resinfo.hpp>  // for find_tabulated_residue
@@ -163,9 +163,9 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
   Model& model = st.first_model();
 
   // prepare cell lists for neighbour search
-  SubCells sc;
+  NeighborSearch ns;
   if (!params.rotation_only || params.blur != 0) {
-    sc.initialize(model, st.cell, params.max_dist);
+    ns.initialize(model, st.cell, params.max_dist);
     for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
       const Chain& chain = model.chains[n_ch];
       for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
@@ -175,7 +175,7 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
         for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
           const Atom& atom = res.atoms[n_atom];
           if (!atom.is_hydrogen())
-            sc.add_atom(atom, n_ch, n_res, n_atom);
+            ns.add_atom(atom, n_ch, n_res, n_atom);
         }
       }
     }
@@ -211,8 +211,8 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
             value = std::pow(r2, 0.5 * params.exponent);
         } else {
           double wcn = 0;
-          sc.for_each(atom.pos, atom.altloc, params.max_dist,
-                      [&](const SubCells::Mark& m, float dist_sq) {
+          ns.for_each(atom.pos, atom.altloc, params.max_dist,
+                      [&](const NeighborSearch::Mark& m, float dist_sq) {
               if (dist_sq > sq(params.min_dist)) {
                 CRA cra = m.to_cra(model);
                 float weight = calculate_weight(dist_sq, params);
@@ -255,8 +255,8 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
       const Atom& atom = *atom_ptr[i];
       double b_sum = 0;
       double weight_sum = 0;
-      sc.for_each(atom.pos, atom.altloc, 3 * params.blur,
-                  [&](const SubCells::Mark& m, float dist_sq) {
+      ns.for_each(atom.pos, atom.altloc, 3 * params.blur,
+                  [&](const NeighborSearch::Mark& m, float dist_sq) {
           const_CRA cra = m.to_cra(model);
           if (cra.atom->flag) {
             float weight = std::exp(mult * dist_sq);

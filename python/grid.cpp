@@ -12,7 +12,7 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 
 #include "gemmi/ccp4.hpp"
 #include "gemmi/gz.hpp"  // for MaybeGzipped
-#include "gemmi/subcells.hpp"
+#include "gemmi/neighbor.hpp"
 #include "gemmi/tostr.hpp"
 
 #include <pybind11/pybind11.h>
@@ -24,7 +24,7 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 namespace py = pybind11;
 using namespace gemmi;
 
-PYBIND11_MAKE_OPAQUE(std::vector<SubCells::Mark*>)
+PYBIND11_MAKE_OPAQUE(std::vector<NeighborSearch::Mark*>)
 
 template<typename T>
 std::string grid_dim_str(const GridBase<T>& g) {
@@ -188,47 +188,48 @@ void add_grid(py::module& m) {
     .value("XYZ", AxisOrder::XYZ)
     .value("ZYX", AxisOrder::ZYX);
 
-  py::class_<SubCells> subcells(m, "SubCells");
-  py::class_<SubCells::Mark>(subcells, "Mark")
-    .def_readonly("x", &SubCells::Mark::x)
-    .def_readonly("y", &SubCells::Mark::y)
-    .def_readonly("z", &SubCells::Mark::z)
-    .def_readonly("altloc", &SubCells::Mark::altloc)
-    .def_readonly("element", &SubCells::Mark::element)
-    .def_readonly("image_idx", &SubCells::Mark::image_idx)
-    .def_readonly("chain_idx", &SubCells::Mark::chain_idx)
-    .def_readonly("residue_idx", &SubCells::Mark::residue_idx)
-    .def_readonly("atom_idx", &SubCells::Mark::atom_idx)
-    .def("pos", &SubCells::Mark::pos)
-    .def("to_cra",
-         (CRA (SubCells::Mark::*)(Model&) const) &SubCells::Mark::to_cra)
-    .def("__repr__", [](const SubCells::Mark& self) {
-        return tostr("<gemmi.SubCells.Mark ", self.element.name(),
+  py::class_<NeighborSearch> neighbor_search(m, "NeighborSearch");
+  py::class_<NeighborSearch::Mark>(neighbor_search, "Mark")
+    .def_readonly("x", &NeighborSearch::Mark::x)
+    .def_readonly("y", &NeighborSearch::Mark::y)
+    .def_readonly("z", &NeighborSearch::Mark::z)
+    .def_readonly("altloc", &NeighborSearch::Mark::altloc)
+    .def_readonly("element", &NeighborSearch::Mark::element)
+    .def_readonly("image_idx", &NeighborSearch::Mark::image_idx)
+    .def_readonly("chain_idx", &NeighborSearch::Mark::chain_idx)
+    .def_readonly("residue_idx", &NeighborSearch::Mark::residue_idx)
+    .def_readonly("atom_idx", &NeighborSearch::Mark::atom_idx)
+    .def("pos", &NeighborSearch::Mark::pos)
+    .def("to_cra", (CRA (NeighborSearch::Mark::*)(Model&) const)
+                   &NeighborSearch::Mark::to_cra)
+    .def("__repr__", [](const NeighborSearch::Mark& self) {
+        return tostr("<gemmi.NeighborSearch.Mark ", self.element.name(),
                      " of atom ", self.chain_idx, '/', self.residue_idx, '/',
                      self.atom_idx, '>');
     });
-  py::bind_vector<std::vector<SubCells::Mark*>>(m, "VectorSubCellsMarkPtr");
-  subcells
+  py::bind_vector<std::vector<NeighborSearch::Mark*>>(m, "VectorMarkPtr");
+  neighbor_search
     .def(py::init<Model&, const UnitCell&, double>(),
          py::arg("model"), py::arg("cell"), py::arg("max_radius")/*,
          py::keep_alive<1, 2>()*/)
     .def(py::init([](Structure& st, double max_radius, int model_index) {
-      return new SubCells(st.models.at(model_index), st.cell, max_radius);
+      return new NeighborSearch(st.models.at(model_index), st.cell, max_radius);
     }), py::arg("st"), py::arg("max_radius"), py::arg("model_index")=0,
         py::keep_alive<1, 2>())
-    .def("populate", &SubCells::populate, py::arg("include_h")=true,
-         "Usually run after constructing SubCells.")
-    .def("add_atom", &SubCells::add_atom,
+    .def("populate", &NeighborSearch::populate, py::arg("include_h")=true,
+         "Usually run after constructing NeighborSearch.")
+    .def("add_atom", &NeighborSearch::add_atom,
          py::arg("atom"), py::arg("n_ch"), py::arg("n_res"), py::arg("n_atom"),
          "Lower-level alternative to populate()")
-    .def("find_atoms", &SubCells::find_atoms,
+    .def("find_atoms", &NeighborSearch::find_atoms,
          py::arg("pos"), py::arg("alt")='\0', py::arg("radius")=0,
          py::return_value_policy::move, py::keep_alive<0, 1>())
-    .def("find_neighbors", &SubCells::find_neighbors,
+    .def("find_neighbors", &NeighborSearch::find_neighbors,
          py::arg("atom"), py::arg("min_dist")=0, py::arg("max_dist")=0,
          py::return_value_policy::move, py::keep_alive<0, 1>())
-    .def("dist", &SubCells::dist)
-    .def("__repr__", [](const SubCells& self) {
-        return tostr("<gemmi.SubCells with grid ",grid_dim_str(self.grid),'>');
+    .def("dist", &NeighborSearch::dist)
+    .def("__repr__", [](const NeighborSearch& self) {
+        return tostr("<gemmi.NeighborSearch with grid ",
+                     grid_dim_str(self.grid), '>');
     });
 }
