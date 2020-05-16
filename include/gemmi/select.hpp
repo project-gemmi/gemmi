@@ -34,6 +34,27 @@ struct Selection {
         return "*";
       return inverted ? "!" + list : list;
     }
+
+    // assumes that list.all is checked before this function is called
+    bool has(const std::string& name) const {
+      if (all)
+        return true;
+      bool found = is_in_list(name);
+      return inverted ? !found : found;
+    }
+
+  private:
+    // list is a comma separated string
+    bool is_in_list(const std::string& name) const {
+      if (name.length() >= list.length())
+        return name == list;
+      for (size_t start=0, end=0; end != std::string::npos; start=end+1) {
+        end = list.find(',', start);
+        if (list.compare(start, end - start, name) == 0)
+          return true;
+      }
+      return false;
+    }
   };
 
   struct SequenceId {
@@ -97,18 +118,17 @@ struct Selection {
     return mdl == 0 || std::to_string(mdl) == model.name;
   }
   bool matches(const gemmi::Chain& chain) const {
-    return chain_ids.all || find_in_list(chain.name, chain_ids);
+    return chain_ids.has(chain.name);
   }
   bool matches(const gemmi::Residue& res) const {
-    return (residue_names.all || find_in_list(res.name, residue_names)) &&
+    return residue_names.has(res.name) &&
             from_seqid.compare(res.seqid) <= 0 &&
             to_seqid.compare(res.seqid) >= 0;
   }
   bool matches(const gemmi::Atom& a) const {
-    return (atom_names.all || find_in_list(a.name, atom_names)) &&
-           (elements.all || find_in_list(a.element.uname(), elements)) &&
-           (altlocs.all ||
-            find_in_list(std::string(a.altloc ? 0 : 1, a.altloc), altlocs));
+    return atom_names.has(a.name) &&
+           elements.has(a.element.uname()) &&
+           altlocs.has(std::string(a.altloc ? 0 : 1, a.altloc));
   }
   bool matches(const gemmi::CRA& cra) const {
     return (cra.chain == nullptr || matches(*cra.chain)) &&
@@ -187,25 +207,6 @@ struct Selection {
     T copied = copy_empty(orig);
     add_matching_children(orig, copied);
     return copied;
-  }
-
-private:
-  static bool find_in_comma_separated_string(const std::string& name,
-                                             const std::string& str) {
-    if (name.length() >= str.length())
-      return name == str;
-    for (size_t start=0, end=0; end != std::string::npos; start=end+1) {
-      end = str.find(',', start);
-      if (str.compare(start, end - start, name) == 0)
-        return true;
-    }
-    return false;
-  }
-
-  // assumes that list.all is checked before this function is called
-  static bool find_in_list(const std::string& name, const List& list) {
-    bool found = find_in_comma_separated_string(name, list.list);
-    return list.inverted ? !found : found;
   }
 };
 
