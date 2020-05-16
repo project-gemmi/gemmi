@@ -203,7 +203,7 @@ void add_grid(py::module& m) {
     .def("to_cra",
          (CRA (SubCells::Mark::*)(Model&) const) &SubCells::Mark::to_cra)
     .def("__repr__", [](const SubCells::Mark& self) {
-        return tostr("<gemmi.SubCells.Mark ", element_name(self.element),
+        return tostr("<gemmi.SubCells.Mark ", self.element.name(),
                      " of atom ", self.chain_idx, '/', self.residue_idx, '/',
                      self.atom_idx, '>');
     });

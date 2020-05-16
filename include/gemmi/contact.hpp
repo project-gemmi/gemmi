@@ -104,7 +104,7 @@ void ContactSearch::for_each_contact(SubCells& sc, const Func& func) {
             }
             // additionally, we may have per-element distances
             if (!radii.empty()) {
-              float d = radii[atom.element.ordinal()] + radii[(int)m.element];
+              float d = radii[atom.element.ordinal()] + radii[m.element.ordinal()];
               if (d < 0 || dist_sq > d * d)
                 return;
             }
