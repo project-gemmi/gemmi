@@ -164,6 +164,8 @@ struct Atom {
     return 8 * pi() * pi() / 3. * aniso.trace();
   }
   bool is_hydrogen() const { return gemmi::is_hydrogen(element); }
+  // a method present in Atom, Residue, ... Structure - used in templates
+  Atom empty_copy() const { return Atom(*this); }
 };
 
 struct AtomGroup : MutableVectorSpan<Atom> {
@@ -209,6 +211,17 @@ struct Residue : public ResidueId {
   Residue() = default;
   explicit Residue(const ResidueId& rid) noexcept : ResidueId(rid) {}
 
+  // copy all but atoms (children) - for use in templates
+  Residue empty_copy() const {
+    Residue res((ResidueId&)*this);
+    res.subchain = subchain;
+    res.label_seq = label_seq;
+    res.entity_type = entity_type;
+    res.het_flag = het_flag;
+    res.is_cis = is_cis;
+    res.flag = flag;
+    return res;
+  }
   std::vector<Atom>& children() { return atoms; }
   const std::vector<Atom>& children() const { return atoms; }
 
@@ -558,6 +571,9 @@ struct Chain {
 
   Residue* find_or_add_residue(const ResidueId& rid);
   void append_residues(std::vector<Residue> new_resi, int min_sep=0);
+
+  // methods present in Structure, Model, ... - used in templates
+  Chain empty_copy() const { return Chain(name); }
   std::vector<Residue>& children() { return residues; }
   const std::vector<Residue>& children() const { return residues; }
 
@@ -940,6 +956,8 @@ struct Model {
     return table;
   }
 
+  // methods present in Structure, Model, ... - used in templates
+  Model empty_copy() const { return Model(name); }
   std::vector<Chain>& children() { return chains; }
   const std::vector<Chain>& children() const { return chains; }
 };
@@ -1100,8 +1118,30 @@ struct Structure {
       model.merge_chain_parts(min_sep);
   }
 
+  // copy all but models (in general, empty_copy copies all but children)
+  Structure empty_copy() const {
+    Structure st;
+    st.name = name;
+    st.cell = cell;
+    st.spacegroup_hm = spacegroup_hm;
+    st.ncs = ncs;
+    st.entities = entities;
+    st.connections = connections;
+    st.helices = helices;
+    st.sheets = sheets;
+    st.assemblies = assemblies;
+    st.meta = meta;
+    st.has_origx = has_origx;
+    st.origx = origx;
+    st.info = info;
+    st.raw_remarks = raw_remarks;
+    st.resolution = resolution;
+    st.input_format = input_format;
+    return st;
+  }
   std::vector<Model>& children() { return models; }
   const std::vector<Model>& children() const { return models; }
+
   void setup_cell_images();
 };
 
