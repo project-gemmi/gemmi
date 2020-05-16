@@ -20,7 +20,7 @@ struct SubCells {
   struct Mark {
     float x, y, z;
     char altloc;
-    El element;
+    Element element;
     int image_idx;
     int chain_idx;
     int residue_idx;
