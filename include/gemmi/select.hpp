@@ -57,6 +57,17 @@ struct Selection {
     }
   };
 
+  struct FlagList {
+    std::string pattern;
+    bool has(char flag) const {
+      if (pattern.empty())
+        return true;
+      bool invert = (pattern[0] == '!');
+      bool found = (pattern.find(flag, invert ? 1 : 0) != std::string::npos);
+      return invert ? !found : found;
+    }
+  };
+
   struct SequenceId {
     int seqnum;
     char icode;
@@ -90,6 +101,8 @@ struct Selection {
   List atom_names;
   List elements;
   List altlocs;
+  FlagList residue_flags;
+  FlagList atom_flags;
 
   std::string to_cid() const {
     std::string cid(1, '/');
@@ -122,13 +135,15 @@ struct Selection {
   }
   bool matches(const gemmi::Residue& res) const {
     return residue_names.has(res.name) &&
-            from_seqid.compare(res.seqid) <= 0 &&
-            to_seqid.compare(res.seqid) >= 0;
+           from_seqid.compare(res.seqid) <= 0 &&
+           to_seqid.compare(res.seqid) >= 0 &&
+           residue_flags.has(res.flag);
   }
   bool matches(const gemmi::Atom& a) const {
     return atom_names.has(a.name) &&
            elements.has(a.element.uname()) &&
-           altlocs.has(std::string(a.altloc ? 0 : 1, a.altloc));
+           altlocs.has(std::string(a.altloc ? 0 : 1, a.altloc)) &&
+           atom_flags.has(a.flag);
   }
   bool matches(const gemmi::CRA& cra) const {
     return (cra.chain == nullptr || matches(*cra.chain)) &&
@@ -201,6 +216,15 @@ struct Selection {
       }
   }
   void add_matching_children(const Atom&, Atom&) {}
+
+  Selection& set_residue_flags(const std::string& pattern) {
+    residue_flags.pattern = pattern;
+    return *this;
+  }
+  Selection& set_atom_flags(const std::string& pattern) {
+    atom_flags.pattern = pattern;
+    return *this;
+  }
 
   template<typename T>
   T copy_subset(const T& orig) {
