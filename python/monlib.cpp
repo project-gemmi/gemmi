@@ -125,6 +125,13 @@ void add_monlib(py::module& m) {
         return "<gemmi.ChemLink " + self.id + ">";
     });
 
+  py::enum_<ChemLink::Group>(pyChemLinkSide, "Group")
+      .value("Peptide",  ChemLink::Group::Peptide)
+      .value("PPeptide", ChemLink::Group::PPeptide)
+      .value("MPeptide", ChemLink::Group::MPeptide)
+      .value("Pyranose", ChemLink::Group::Pyranose)
+      .value("DnaRna",   ChemLink::Group::DnaRna)
+      .value("Null",     ChemLink::Group::Null);
 
   pyChemLinkSide
     .def_readwrite("comp", &ChemLink::Side::comp)
