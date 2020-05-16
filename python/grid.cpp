@@ -222,10 +222,10 @@ void add_grid(py::module& m) {
          py::arg("atom"), py::arg("n_ch"), py::arg("n_res"), py::arg("n_atom"),
          "Lower-level alternative to populate()")
     .def("find_atoms", &SubCells::find_atoms,
-         py::arg("pos"), py::arg("alt"), py::arg("radius"),
+         py::arg("pos"), py::arg("alt")='\0', py::arg("radius")=0,
          py::return_value_policy::move, py::keep_alive<0, 1>())
     .def("find_neighbors", &SubCells::find_neighbors,
-         py::arg("atom"), py::arg("min_dist"), py::arg("max_dist"),
+         py::arg("atom"), py::arg("min_dist")=0, py::arg("max_dist")=0,
          py::return_value_policy::move, py::keep_alive<0, 1>())
     .def("dist", &SubCells::dist)
     .def("__repr__", [](const SubCells& self) {

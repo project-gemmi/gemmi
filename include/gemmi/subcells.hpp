@@ -75,17 +75,23 @@ struct SubCells {
   template<typename Func>
   void for_each(const Position& pos, char alt, float radius, const Func& func);
 
+  // with radius==0 it uses radius_specified
   std::vector<Mark*> find_atoms(const Position& pos, char alt, float radius) {
+    if (radius == 0.f)
+      radius = (float) radius_specified;
     std::vector<Mark*> out;
     for_each(pos, alt, radius, [&out](Mark& a, float) { out.push_back(&a); });
     return out;
   }
 
+  // with max_dist==0 it uses radius_specified
   std::vector<Mark*> find_neighbors(const Atom& atom,
                                     float min_dist, float max_dist) {
     std::vector<Mark*> out;
+    if (max_dist == 0.f)
+      max_dist = (float) radius_specified;
     for_each(atom.pos, atom.altloc, max_dist, [&](Mark& a, float dist_sq) {
-        if (dist_sq > sq(min_dist))
+        if (dist_sq >= sq(min_dist))
           out.push_back(&a);
     });
     return out;
