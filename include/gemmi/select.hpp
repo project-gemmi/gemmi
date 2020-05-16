@@ -208,7 +208,7 @@ struct Selection {
   }
 
   template<typename T>
-  T copy_subset(const T& orig) {
+  T copy_selection(const T& orig) {
     T copied = orig.empty_copy();
     add_matching_children(orig, copied);
     return copied;

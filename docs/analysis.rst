@@ -308,6 +308,8 @@ The examples below demonstrates currently provided functions.
 
 **Example 1**
 
+Working with CID selections.
+
 .. doctest::
 
   >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
@@ -351,15 +353,28 @@ Copy alpha-carbon atoms to a new structure (or a model).
   >>> selection = gemmi.parse_cid('CA[C]')
 
   >>> # create a new structure
-  >>> ca_st = selection.copy_structure_subset(st)
+  >>> ca_st = selection.copy_structure_selection(st)
   >>> ca_st[0].count_atom_sites()
   64
 
   >>> # create a new model
-  >>> ca_model = selection.copy_model_subset(st[0])
+  >>> ca_model = selection.copy_model_selection(st[0])
   >>> ca_model.count_atom_sites()
   64
 
+**Example 3**
+
+Select residues in the radius of 8Å from a selected point.
+
+.. doctest::
+
+  >>> selected_point = gemmi.Position(20, 40, 30)
+  >>> ns = gemmi.SubCells(st[0], st.cell, 7.0).populate()
+  >>> for mark in ns.find_atoms(selected_point):
+  ...     mark.to_cra(st[0]).residue.flag = 's'
+  >>> selection = gemmi.Selection().set_residue_flags('s')
+  >>> selection.copy_model_selection(st[0]).count_atom_sites()
+  70
 
 .. _graph_analysis:
 

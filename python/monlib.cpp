@@ -286,8 +286,8 @@ void add_select(py::module& m) {
     .def("to_cid", &Selection::to_cid)
     .def("set_residue_flags", &Selection::set_residue_flags)
     .def("set_atom_flags", &Selection::set_atom_flags)
-    .def("copy_model_subset", &Selection::copy_subset<Model>)
-    .def("copy_structure_subset", &Selection::copy_subset<Structure>)
+    .def("copy_model_selection", &Selection::copy_selection<Model>)
+    .def("copy_structure_selection", &Selection::copy_selection<Structure>)
     .def("__repr__", [](const Selection& self) {
         return "<gemmi.Selection CID: " + self.to_cid() + ">";
     });
