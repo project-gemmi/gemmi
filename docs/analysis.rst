@@ -375,6 +375,24 @@ Select residues in the radius of 8Å from a selected point.
   >>> selection.copy_model_selection(st[0]).count_atom_sites()
   121
 
+Note: NeighborSearch searches for atoms in all symmetry images.
+This is why it takes UnitCell as a parameter.
+To search only in atoms directly listed in the file pass empty cell
+(``gemmi.UnitCell()``).
+
+**Example 3a**
+
+Select atoms in the radius of 8Å from a selected point.
+
+.. doctest::
+
+  >>> # selected_point and ns are reused from the previous example
+  >>> for mark in ns.find_atoms(selected_point):
+  ...     mark.to_cra(st[0]).atom.flag = 's'
+  >>> selection = gemmi.Selection().set_atom_flags('s')
+  >>> selection.copy_model_selection(st[0]).count_atom_sites()
+  59
+
 .. _graph_analysis:
 
 Graph analysis
