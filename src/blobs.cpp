@@ -68,7 +68,7 @@ static const option::Descriptor Usage[] = {
 
 struct GridPos {
   int u, v, w;
-  int idx;
+  size_t idx;
 };
 
 struct Blob {
@@ -127,7 +127,7 @@ std::vector<Blob> find_blobs_by_flood_fill(const gemmi::Grid<float>& grid,
   // -1=in blob,  0=in asu, not in blob (so far),  1=in neither
   std::vector<std::int8_t> mask = grid.get_asu_mask<std::int8_t>();
   std::vector<gemmi::GridOp> ops = grid.get_scaled_ops_except_id();
-  int idx = 0;
+  size_t idx = 0;
   for (int w = 0; w != grid.nw; ++w)
     for (int v = 0; v != grid.nv; ++v)
       for (int u = 0; u != grid.nu; ++u, ++idx) {
@@ -190,7 +190,7 @@ static int run(OptParser& p) {
   gemmi::Grid<float> grid = read_sf_and_fft_to_map(sf_path.c_str(), p.options,
                                                    verbose_output, true);
   if (p.options[Verbose])
-    printf("Unit cell: %g A^3, grid points: %d, volume/point: %g A^3.\n",
+    printf("Unit cell: %g A^3, grid points: %zu, volume/point: %g A^3.\n",
            grid.unit_cell.volume, grid.point_count(),
            grid.unit_cell.volume / grid.point_count());
   // move blob position to the symmetry image nearest to the model
@@ -235,7 +235,7 @@ static int run(OptParser& p) {
   grid.symmetrize_min();
   if (p.options[Verbose]) {
     int n = std::count(grid.data.begin(), grid.data.end(), -INFINITY);
-    printf("Masked points: %d of %d.\n", n, grid.point_count());
+    printf("Masked points: %d of %zu.\n", n, grid.point_count());
   }
 
   // find and sort blobs

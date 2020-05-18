@@ -123,15 +123,17 @@ struct GridBase {
   AxisOrder axis_order = AxisOrder::Unknown;
 
 
-  int point_count() const { return nu * nv * nw; }
+  size_t point_count() const { return (size_t)nu * nv * nw; }
 
   void set_size_without_checking(int u, int v, int w) {
     nu = u, nv = v, nw = w;
-    data.resize(u * v * w);
+    data.resize((size_t)u * v * w);
   }
 
   // Quick but unsafe. assumes (for efficiency) that 0 <= u < nu, etc.
-  int index_q(int u, int v, int w) const { return w * nu * nv + v * nu + u; }
+  size_t index_q(int u, int v, int w) const {
+    return size_t(w * nv + v) * nu + u;
+  }
   T get_value_q(int u, int v, int w) const { return data[index_q(u, v, w)]; }
 
   Fractional point_to_fractional(const Point& p) const {
@@ -223,7 +225,7 @@ struct Grid : GridBase<T> {
   }
 
   // Assumes (for efficiency) that -nu <= u < 2*nu, etc.
-  int index_n(int u, int v, int w) const {
+  size_t index_n(int u, int v, int w) const {
     if (u >= nu) u -= nu; else if (u < 0) u += nu;
     if (v >= nv) v -= nv; else if (v < 0) v += nv;
     if (w >= nw) w -= nw; else if (w < 0) w += nw;
@@ -231,7 +233,7 @@ struct Grid : GridBase<T> {
   }
 
   // Safe but slower.
-  int index_s(int u, int v, int w) const {
+  size_t index_s(int u, int v, int w) const {
     return this->index_q(modulo(u, nu), modulo(v, nv), modulo(w, nw));
   }
 
@@ -365,7 +367,7 @@ struct Grid : GridBase<T> {
   void symmetrize_using_ops(const std::vector<GridOp>& ops, Func func) {
     std::vector<int> mates(ops.size(), 0);
     std::vector<bool> visited(data.size(), false);
-    int idx = 0;
+    size_t idx = 0;
     for (int w = 0; w != nw; ++w)
       for (int v = 0; v != nv; ++v)
         for (int u = 0; u != nu; ++u, ++idx) {
@@ -388,7 +390,7 @@ struct Grid : GridBase<T> {
             visited[k] = true;
           }
         }
-    assert(idx == (int) data.size());
+    assert(idx == data.size());
   }
 
   // Use provided function to reduce values of all symmetry mates of each

@@ -253,7 +253,7 @@ void transform_f_phi_grid_to_map_(FPhiGrid<T>&& hkl, Grid<T>& map) {
     axes.pop_back();
     pocketfft::c2c<T>(shape, stride, stride, axes, pocketfft::BACKWARD,
                       &hkl.data[0], &hkl.data[0], norm);
-    pocketfft::stride_t stride_out{map.nv * map.nu * s, map.nu * s, s};
+    pocketfft::stride_t stride_out{s * map.nu * map.nv, s * map.nu, s};
     shape[0] = (size_t) map.nw;
     shape[2] = (size_t) map.nu;
     pocketfft::c2r<T>(shape, stride, stride_out, last_axis, pocketfft::BACKWARD,

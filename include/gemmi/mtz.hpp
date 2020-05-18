@@ -100,7 +100,7 @@ struct Mtz {
     const Dataset& dataset() const { return parent->dataset(dataset_id); }
     bool has_data() const { return parent->has_data(); }
     int size() const { return has_data() ? parent->nreflections : 0; }
-    unsigned stride() const { return (unsigned) parent->columns.size(); }
+    size_t stride() const { return parent->columns.size(); }
     float& operator[](int n) { return parent->data[idx + n * stride()]; }
     float operator[](int n) const { return parent->data[idx + n * stride()]; }
     float& at(int n) { return parent->data.at(idx + n * stride()); }

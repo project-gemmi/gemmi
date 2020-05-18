@@ -285,7 +285,7 @@ void write_data(const std::vector<TMem>& content, FILE* f) {
 template<typename T> template<typename Stream>
 void Ccp4<T>::read_ccp4_stream(Stream f, const std::string& path) {
   read_ccp4_header(f, path);
-  grid.data.resize(grid.nu * grid.nv * grid.nw);
+  grid.data.resize(grid.point_count());
   int mode = header_i32(4);
   if (mode == 0)
     impl::read_data<Stream, std::int8_t>(f, grid.data);
@@ -353,7 +353,7 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
   set_header_3i32(1, grid.nu, grid.nv, grid.nw); // NX, NY, NZ
   set_header_3i32(17, 1, 2, 3); // axes (MAPC, MAPR, MAPS)
   // now set the data
-  std::vector<T> full(grid.nu * grid.nv * grid.nw, default_value);
+  std::vector<T> full(grid.point_count(), default_value);
   int it[3];
   int idx = 0;
   for (it[2] = start[2]; it[2] < end[2]; it[2]++) // sections

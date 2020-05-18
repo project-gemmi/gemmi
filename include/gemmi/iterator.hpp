@@ -48,8 +48,8 @@ class StrideIterPolicy {
 public:
   typedef Value value_type;
   StrideIterPolicy() : cur_(nullptr), offset_(0), stride_(0) {}
-  StrideIterPolicy(Value* ptr, std::size_t offset, unsigned stride)
-    : cur_(ptr), offset_(offset), stride_(stride) {}
+  StrideIterPolicy(Value* ptr, std::size_t offset, size_t stride)
+    : cur_(ptr), offset_(offset), stride_((unsigned)stride) {}
   void increment() { cur_ += stride_; }
   void decrement() { cur_ -= stride_; }
   bool equal(const StrideIterPolicy& o) const { return cur_ == o.cur_; }
