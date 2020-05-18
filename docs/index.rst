@@ -59,3 +59,4 @@ Contents
    grid
    hkl
    utils
+   Python API <https://project-gemmi.github.io/gemmi/api/python>

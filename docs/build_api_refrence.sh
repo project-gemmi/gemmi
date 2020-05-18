@@ -2,6 +2,8 @@
 
 wd="$PWD"
 
+cd .. # project root
+
 if [[ ! -d m.css ]]; then
   # TODO: switch to official repo once PR#143 is accepted
   # git clone git://github.com/mosra/m.css

@@ -20,6 +20,9 @@ tags
 # local pybind11 is used for testing new versions, don't add to the repo
 third_party/pybind11
 
+# 3rd party doc generator
+m.css
+
 # ignore random data files in the top and source directory
 /*.cif
 /*.pdb
