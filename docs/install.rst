@@ -26,6 +26,9 @@ it is assumed to be in ASCII or UTF-8.
 Python 2.7/3.x module
 ---------------------
 
+From source
+~~~~~~~~~~~
+
 To install the gemmi module you need pip, git and not too old
 C++ compiler (GCC 4.8+, Clang 3.4+, MSVC 2015+, ICC 17+)::
 
@@ -53,8 +56,22 @@ set the compiler environment with one of these commands::
     "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" x64
     "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat"
 
-If you'd like to use PyPy instead of CPython
-we support PyPy2.7 >= 5.7 (although we test it only occasionally).
+If you'd like to use PyPy instead of CPython -- PyPy2.7 >= 5.7 is supported
+(although only occasionally tested -- open an issue if it doesn't work).
+
+Binaries
+~~~~~~~~
+
+If you use the `CCP4 suite <https://www.ccp4.ac.uk/>`_,
+you can find gemmi there.
+
+If you use Anaconda Python, you can install
+`package conda <https://github.com/conda-forge/gemmi-feedstock>`_
+from conda-forge::
+
+    conda install -c conda-forge gemmi
+
+These distribution channels may have a previous version of gemmi.
 
 Fortran and C bindings
 ----------------------
