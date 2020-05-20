@@ -318,8 +318,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
           model = &st.models.back();
         }
         const Chain* prev_part = model->find_chain(chain_name);
-        after_ter = prev_part &&
-                    prev_part->residues[0].entity_type == EntityType::Polymer;
+        after_ter = false;
         model->chains.emplace_back(chain_name);
         chain = &model->chains.back();
         resi = nullptr;
@@ -536,6 +535,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
       for (Residue& res : chain->residues)
         res.entity_type = EntityType::Polymer;
       after_ter = true;
+      chain = nullptr;
     } else if (is_record_type(line, "SCALEn")) {
       if (read_matrix(matrix, line, len) == 3) {
         st.cell.set_matrices_from_fract(matrix);
