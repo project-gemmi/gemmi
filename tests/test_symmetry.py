@@ -276,5 +276,11 @@ class TestSymmetry(unittest.TestCase):
             shift = math.degrees(op.phase_shift(refl))
             self.assertAlmostEqual((shift - expected) % 360, 0)
 
+    def test_reciprocal_asu_checker(self):
+        sg = gemmi.SpaceGroup('I 1 2 1')
+        checker = gemmi.ReciprocalAsuChecker(sg)
+        self.assertTrue(checker.is_in([-5, 5, 1]))
+        self.assertFalse(checker.is_in([5, 5, -1]))
+
 if __name__ == '__main__':
     unittest.main()
