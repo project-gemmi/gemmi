@@ -529,7 +529,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
       model = nullptr;
       chain = nullptr;
 
-    } else if (is_record_type(line, "TER")) { // finishes polymer chains
+    } else if (starts_with(line, "TER")) { // finishes polymer chains
       // we don't expect more than one TER record in one chain
       if (!chain || after_ter)
         continue;
