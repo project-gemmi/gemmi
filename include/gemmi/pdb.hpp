@@ -88,6 +88,10 @@ inline std::string read_string(const char* p, int field_length) {
 inline bool is_record_type(const char* s, const char* record) {
   return ialpha4_id(s) == ialpha4_id(record);
 }
+// for record "TER": "TER ", TER\n, TER\r, TER\t match, TERE, TER1 don't
+inline bool is_record_type3(const char* s, const char* record) {
+  return (ialpha4_id(s) & ~0xf) == ialpha4_id(record);
+}
 
 // The standard charge format is 2+, but some files have +2.
 inline signed char read_charge(char digit, char sign) {
@@ -529,7 +533,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
       model = nullptr;
       chain = nullptr;
 
-    } else if (is_record_type(line, "TER")) { // finishes polymer chains
+    } else if (is_record_type3(line, "TER")) { // finishes polymer chains
       // we don't expect more than one TER record in one chain
       if (!chain || after_ter)
         continue;
@@ -586,7 +590,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
                is_record_type(line, "CISPEP")) {
       conn_records.emplace_back(line);
 
-    } else if (is_record_type(line, "END")) {  // NUL == ' ' & ~0x20
+    } else if (is_record_type3(line, "END")) {
       break;
     } else if (is_record_type(line, "data")) {
       if (line[4] == '_' && model && model->chains.empty())
