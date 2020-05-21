@@ -78,6 +78,12 @@ template<typename T, typename M> std::vector<T> model_subchains(M* model) {
 // UnknownAny = any format (coordinate file for a monomer/ligand/chemcomp)
 enum class CoorFormat { Unknown, UnknownAny, Pdb, Mmcif, Mmjson, ChemComp };
 
+// options affecting how pdb file is read
+struct PdbReadOptions {
+  int max_line_length = 0;
+  bool split_chain_on_ter = false;
+};
+
 enum class EntityType : unsigned char {
   Unknown,
   Polymer,

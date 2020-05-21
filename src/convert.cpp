@@ -302,10 +302,13 @@ int GEMMI_MAIN(int argc, char **argv) {
               << "..." << std::endl;
   try {
     gemmi::Structure st;
-    if (p.options[OldPdb])
-      st = gemmi::read_pdb_gz(input, 72);
-    else
+    if (p.options[OldPdb]) {
+      gemmi::PdbReadOptions options;
+      options.max_line_length = 72;
+      st = gemmi::read_pdb_gz(input, options);
+    } else {
       st = gemmi::read_structure_gz(input, in_type);
+    }
     convert(st, output, out_type, p.options);
   } catch (tao::pegtl::parse_error& e) {
     std::cerr << e.what() << std::endl;

@@ -285,7 +285,7 @@ inline bool same_str(const std::string& s, const char (&literal)[N]) {
 
 template<typename Input>
 Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
-                                   int max_line_length) {
+                                   const PdbReadOptions& options) {
   using namespace pdb_impl;
   int line_num = 0;
   auto wrong = [&line_num](const std::string& msg) {
@@ -300,6 +300,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
   Chain *chain = nullptr;
   Residue *resi = nullptr;
   char line[122] = {0};
+  int max_line_length = options.max_line_length;
   if (max_line_length <= 0 || max_line_length > 120)
     max_line_length = 120;
   bool after_ter = false;
@@ -537,6 +538,12 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
       // we don't expect more than one TER record in one chain
       if (!chain || after_ter)
         continue;
+      if (options.split_chain_on_ter) {
+        chain = nullptr;
+        // split_chain_on_ter is used for AMBER files that can have TER records
+        // in various places. So in such case TER doesn't imply entity_type.
+        continue;
+      }
       for (Residue& res : chain->residues)
         res.entity_type = EntityType::Polymer;
       after_ter = true;
@@ -616,32 +623,35 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
 
 }  // namespace pdb_impl
 
-inline Structure read_pdb_file(const std::string& path, int linelen=0) {
+inline Structure read_pdb_file(const std::string& path,
+                               PdbReadOptions options=PdbReadOptions()) {
   auto f = file_open(path.c_str(), "rb");
-  return pdb_impl::read_pdb_from_line_input(FileStream{f.get()}, path, linelen);
+  return pdb_impl::read_pdb_from_line_input(FileStream{f.get()}, path, options);
 }
 
 inline Structure read_pdb_from_memory(const char* data, size_t size,
-                                      const std::string& name, int linelen=0) {
+                                      const std::string& name,
+                                      PdbReadOptions options=PdbReadOptions()) {
   return pdb_impl::read_pdb_from_line_input(MemoryStream{data, data + size},
-                                            name, linelen);
+                                            name, options);
 }
 
 inline Structure read_pdb_string(const std::string& str,
-                                 const std::string& name) {
-  return read_pdb_from_memory(str.c_str(), str.length(), name);
+                                 const std::string& name,
+                                 PdbReadOptions options=PdbReadOptions()) {
+  return read_pdb_from_memory(str.c_str(), str.length(), name, options);
 }
 
 // A function for transparent reading of stdin and/or gzipped files.
 template<typename T>
-inline Structure read_pdb(T&& input, int linelen=0) {
+inline Structure read_pdb(T&& input, PdbReadOptions options=PdbReadOptions()) {
   if (input.is_stdin())
     return pdb_impl::read_pdb_from_line_input(FileStream{stdin},
-                                              "stdin", linelen);
+                                              "stdin", options);
   if (input.is_compressed())
     return pdb_impl::read_pdb_from_line_input(input.get_uncompressing_stream(),
-                                              input.path(), linelen);
-  return read_pdb_file(input.path(), linelen);
+                                              input.path(), options);
+  return read_pdb_file(input.path(), options);
 }
 
 } // namespace gemmi

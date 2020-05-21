@@ -52,16 +52,26 @@ void add_read_structure(py::module& m) {
         "Reads a coordinate file into Structure.");
   m.def("make_structure_from_block", &make_structure_from_block,
         py::arg("block"), "Takes mmCIF block and returns Structure.");
-  m.def("read_pdb_string", [](const std::string& s) {
-          Structure* st = new Structure(read_pdb_string(s, "string"));
+  m.def("read_pdb_string", [](const std::string& s, int max_line_length,
+                              bool split_chain_on_ter) {
+          PdbReadOptions options;
+          options.max_line_length = max_line_length;
+          options.split_chain_on_ter = split_chain_on_ter;
+          Structure* st = new Structure(read_pdb_string(s, "string", options));
           read_metadata_from_remarks(*st);
           return st;
-        }, py::arg("s"), "Reads a string as PDB file.");
-  m.def("read_pdb", [](const std::string& path, int max_line_length) {
-          Structure* st = new Structure(read_pdb_gz(path, max_line_length));
+        }, py::arg("s"), py::arg("max_line_length")=0,
+           py::arg("split_chain_on_ter")=false, "Reads a string as PDB file.");
+  m.def("read_pdb", [](const std::string& path, int max_line_length,
+                       bool split_chain_on_ter) {
+          PdbReadOptions options;
+          options.max_line_length = max_line_length;
+          options.split_chain_on_ter = split_chain_on_ter;
+          Structure* st = new Structure(read_pdb_gz(path, options));
           read_metadata_from_remarks(*st);
           return st;
-        }, py::arg("filename"), py::arg("max_line_length")=0);
+        }, py::arg("filename"), py::arg("max_line_length")=0,
+           py::arg("split_chain_on_ter")=false);
 
   // from smcif.hpp
   m.def("read_small_structure", [](const std::string& path) {
