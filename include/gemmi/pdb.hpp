@@ -355,9 +355,14 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
       atom.pos.z = read_double(line+46, 8);
       atom.occ = (float) read_double(line+54, 6);
       atom.b_iso = (float) read_double(line+60, 6);
-      bool has_elem = len > 76 && (std::isalpha(line[76]) ||
-                                   std::isalpha(line[77]));
-      atom.element = Element(line + (has_elem ? 76 : 12));
+      if (len > 76 && (std::isalpha(line[76]) || std::isalpha(line[77])))
+        atom.element = Element(line + 76);
+      // Atom names HXXX are ambiguous, but Hg, He, Hf, Ho and Hs (almost)
+      // never have 4-character names, so H is assumed.
+      else if (alpha_up(line[12]) == 'H' && line[15] != ' ')
+        atom.element = El::H;
+      else
+        atom.element = Element(line + 12);
       atom.charge = (len > 78 ? read_charge(line[78], line[79]) : 0);
       resi->atoms.emplace_back(atom);
 

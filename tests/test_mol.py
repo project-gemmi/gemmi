@@ -58,6 +58,14 @@ ATOM     12  N   ARG     3      10.892  -5.446  10.311  1.00 21.86
 ATOM     13  CA  ARG     3       9.875  -6.426  10.119  1.00 19.82
 """
 
+# from https://github.com/project-gemmi/gemmi/issues/37
+AMBER_FRAGMENT = """\
+ATOM      7  CB  VAL     1     -14.375 -11.856  27.866  1.00  0.00
+ATOM      8  HB  VAL     1     -14.217 -11.118  27.080  1.00  0.00
+ATOM      9  CG1 VAL     1     -13.033 -12.232  28.471  1.00  0.00
+ATOM     10 HG11 VAL     1     -12.398 -12.673  27.702  1.00  0.00
+"""
+
 def read_lines_and_remove(path):
     with open(path) as f:
         out_lines = f.readlines()
@@ -440,6 +448,14 @@ class TestMol(unittest.TestCase):
             st = gemmi.read_pdb_string(line)
             atom = st[0].sole_residue('A', gemmi.SeqId('7')).sole_atom('S')
             self.assertEqual(atom.element.name, 'S')
+
+    def test_pdb_element_names_from_amber(self):
+        st = gemmi.read_pdb_string(AMBER_FRAGMENT)
+        residue = st[0][''][0]
+        self.assertEqual(residue.sole_atom('CB').element, gemmi.Element('C'))
+        self.assertEqual(residue.sole_atom('HB').element, gemmi.Element('H'))
+        self.assertEqual(residue.sole_atom('CG1').element, gemmi.Element('C'))
+        self.assertEqual(residue.sole_atom('HG11').element, gemmi.Element('H'))
 
     def test_4hhh_frag(self):
         path = full_path('4hhh_frag.pdb')
