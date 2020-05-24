@@ -106,7 +106,7 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
         for (const Atom& atom : res.atoms) {
           vv.emplace_back(std::to_string(++serial));
           vv.emplace_back(atom.element.uname());
-          vv.emplace_back(atom.name);
+          vv.emplace_back(cif::quote(atom.name));
           vv.emplace_back(1, atom.altloc_or('.'));
           vv.emplace_back(res.name);
           vv.emplace_back(subchain_or_dot(res));
@@ -279,7 +279,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
         subchain_or_dot(*cra1.residue),            // ptnr1_label_asym_id
         cra1.residue->name,                        // ptnr1_label_comp_id
         cra1.residue->label_seq.str('.'),          // ptnr1_label_seq_id
-        cra1.atom->name,                           // ptnr1_label_atom_id
+        cif::quote(cra1.atom->name),               // ptnr1_label_atom_id
         std::string(1, cra1.atom->altloc_or('?')), // pdbx_ptnr1_label_alt_id
         cra1.residue->seqid.num.str(),             // ptnr1_auth_seq_id
         pdbx_icode(con.partner1.res_id),           // ptnr1_PDB_ins_code
@@ -288,7 +288,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
         subchain_or_dot(*cra2.residue),            // ptnr2_label_asym_id
         cra2.residue->name,                        // ptnr2_label_comp_id
         cra2.residue->label_seq.str('.'),          // ptnr2_label_seq_id
-        cra2.atom->name,                           // ptnr2_label_atom_id
+        cif::quote(cra2.atom->name),               // ptnr2_label_atom_id
         std::string(1, cra2.atom->altloc_or('?')), // pdbx_ptnr2_label_alt_id
         cra2.residue->seqid.num.str(),             // ptnr2_auth_seq_id
         pdbx_icode(con.partner2.res_id),           // ptnr2_PDB_ins_code
@@ -823,14 +823,14 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
           cra1.residue->label_seq.str(),              // range_1_label_seq_id
           cra1.residue->seqid.num.str(),              // range_1_auth_seq_id
           impl::pdbx_icode(*cra1.residue),            // range_1_PDB_ins_code
-          strand.hbond_atom1.atom_name.c_str(),       // range_1_label_atom_id
+          cif::quote(strand.hbond_atom1.atom_name),   // range_1_label_atom_id
           impl::qchain(cra2.chain->name),             // range_2_auth_asym_id
           impl::subchain_or_dot(*cra2.residue),       // range_2_label_asym_id
           cra2.residue->name,                         // range_2_label_comp_id
           cra2.residue->label_seq.str(),              // range_2_label_seq_id
           cra2.residue->seqid.num.str(),              // range_2_auth_seq_id
           impl::pdbx_icode(*cra2.residue),            // range_2_PDB_ins_code
-          strand.hbond_atom2.atom_name.c_str()        // range_2_label_atom_id
+          cif::quote(strand.hbond_atom2.atom_name)    // range_2_label_atom_id
         });
     }
   }
