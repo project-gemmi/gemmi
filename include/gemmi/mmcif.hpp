@@ -565,9 +565,9 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
                                      {"id",
                                       "?group_PDB",
                                       "type_symbol",
-                                      "label_atom_id",
+                                      "?label_atom_id",
                                       "label_alt_id",
-                                      "label_comp_id",
+                                      "?label_comp_id",
                                       "label_asym_id",
                                       "?label_seq_id",
                                       "?pdbx_PDB_ins_code",
@@ -582,73 +582,79 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
                                       "?auth_asym_id",
                                       "?auth_atom_id",
                                       "?pdbx_PDB_model_num"});
-  const int kCompId = atom_table.has_column(kAuthCompId) ? kAuthCompId
-                                                         : kLabelCompId;
-  const int kAsymId = atom_table.has_column(kAuthAsymId) ? kAuthAsymId
-                                                         : kLabelAsymId;
-  const int kAtomId = atom_table.has_column(kAuthAtomId) ? kAuthAtomId
-                                                         : kLabelAtomId;
-  Model *model = nullptr;
-  Chain *chain = nullptr;
-  Residue *resi = nullptr;
   if (atom_table.length() != 0) {
+    const int kAsymId = atom_table.has_column(kAuthAsymId) ? kAuthAsymId
+                                                           : kLabelAsymId;
+    // we use only one comp (residue) and one atom name
+    const int kCompId = atom_table.has_column(kLabelCompId) ? kLabelCompId
+                                                            : kAuthCompId;
+    const int kAtomId = atom_table.has_column(kLabelAtomId) ? kLabelAtomId
+                                                            : kAuthAtomId;
+    if (kCompId == kAuthCompId && !atom_table.has_column(kCompId))
+      fail("Neither _atom_site.label_comp_id nor auth_comp_id found");
+    if (kAtomId == kAuthAtomId && !atom_table.has_column(kAtomId))
+      fail("Neither _atom_site.label_atom_id nor auth_atom_id found");
+
+    Model *model = nullptr;
+    Chain *chain = nullptr;
+    Residue *resi = nullptr;
     if (atom_table.has_column(kModelNum))
       model = &st.find_or_add_model(atom_table[0].str(kModelNum));
     else
       model = &st.find_or_add_model("1");
-  }
-  for (auto row : atom_table) {
-    if (row.has(kModelNum) && row[kModelNum] != model->name) {
-      model = &st.find_or_add_model(row.str(kModelNum));
-      chain = nullptr;
-    }
-    if (!chain || as_string(row[kAsymId]) != chain->name) {
-      model->chains.emplace_back(as_string(row[kAsymId]));
-      chain = &model->chains.back();
-      resi = nullptr;
-    }
-    ResidueId rid = make_resid(as_string(row[kCompId]),
-                               as_string(row[kAuthSeqId]),
-                               row.has(kInsCode) ? &row[kInsCode] : nullptr);
-    if (!resi || !resi->matches(rid)) {
-      resi = chain->find_or_add_residue(rid);
-      if (resi->atoms.empty()) {
-        if (row.has2(kLabelSeqId))
-          resi->label_seq = cif::as_int(row[kLabelSeqId]);
-        resi->subchain = row.str(kLabelAsymId);
-        // don't check if group_PDB is consistent, it's not that important
-        if (row.has2(kGroupPdb))
-          for (int i = 0; i < 2; ++i) { // first character could be " or '
-            const char c = alpha_up(row[kGroupPdb][i]);
-            if (c == 'A' || c == 'H' || c == '\0')
-              resi->het_flag = c;
-          }
+    for (auto row : atom_table) {
+      if (row.has(kModelNum) && row[kModelNum] != model->name) {
+        model = &st.find_or_add_model(row.str(kModelNum));
+        chain = nullptr;
       }
-    } else if (resi->seqid != rid.seqid) {
-      fail("Inconsistent sequence ID: " + resi->str() + " / " + rid.str());
-    }
-    Atom atom;
-    atom.name = as_string(row[kAtomId]);
-    // altloc is always a single letter (not guaranteed by the mmCIF spec)
-    atom.altloc = cif::as_char(row[kAltId], '\0');
-    atom.charge = row.has2(kCharge) ? cif::as_int(row[kCharge]) : 0;
-    atom.element = gemmi::Element(as_string(row[kSymbol]));
-    // According to the PDBx/mmCIF spec _atom_site.id can be a string,
-    // but in all the files it is a serial number; its value is not essential,
-    // so we just ignore non-integer ids.
-    atom.serial = string_to_int(row[kId], false);
-    atom.pos.x = cif::as_number(row[kX]);
-    atom.pos.y = cif::as_number(row[kY]);
-    atom.pos.z = cif::as_number(row[kZ]);
-    atom.occ = (float) cif::as_number(row[kOcc], 1.0);
-    atom.b_iso = (float) cif::as_number(row[kBiso], 50.0);
+      if (!chain || as_string(row[kAsymId]) != chain->name) {
+        model->chains.emplace_back(as_string(row[kAsymId]));
+        chain = &model->chains.back();
+        resi = nullptr;
+      }
+      ResidueId rid = make_resid(as_string(row[kCompId]),
+                                 as_string(row[kAuthSeqId]),
+                                 row.has(kInsCode) ? &row[kInsCode] : nullptr);
+      if (!resi || !resi->matches(rid)) {
+        resi = chain->find_or_add_residue(rid);
+        if (resi->atoms.empty()) {
+          if (row.has2(kLabelSeqId))
+            resi->label_seq = cif::as_int(row[kLabelSeqId]);
+          resi->subchain = row.str(kLabelAsymId);
+          // don't check if group_PDB is consistent, it's not that important
+          if (row.has2(kGroupPdb))
+            for (int i = 0; i < 2; ++i) { // first character could be " or '
+              const char c = alpha_up(row[kGroupPdb][i]);
+              if (c == 'A' || c == 'H' || c == '\0')
+                resi->het_flag = c;
+            }
+        }
+      } else if (resi->seqid != rid.seqid) {
+        fail("Inconsistent sequence ID: " + resi->str() + " / " + rid.str());
+      }
+      Atom atom;
+      atom.name = as_string(row[kAtomId]);
+      // altloc is always a single letter (not guaranteed by the mmCIF spec)
+      atom.altloc = cif::as_char(row[kAltId], '\0');
+      atom.charge = row.has2(kCharge) ? cif::as_int(row[kCharge]) : 0;
+      atom.element = gemmi::Element(as_string(row[kSymbol]));
+      // According to the PDBx/mmCIF spec _atom_site.id can be a string,
+      // but in all the files it is a serial number; its value is not essential,
+      // so we just ignore non-integer ids.
+      atom.serial = string_to_int(row[kId], false);
+      atom.pos.x = cif::as_number(row[kX]);
+      atom.pos.y = cif::as_number(row[kY]);
+      atom.pos.z = cif::as_number(row[kZ]);
+      atom.occ = (float) cif::as_number(row[kOcc], 1.0);
+      atom.b_iso = (float) cif::as_number(row[kBiso], 50.0);
 
-    if (!aniso_map.empty()) {
-      auto ani = aniso_map.find(row[kId]);
-      if (ani != aniso_map.end())
-        atom.aniso = ani->second;
+      if (!aniso_map.empty()) {
+        auto ani = aniso_map.find(row[kId]);
+        if (ani != aniso_map.end())
+          atom.aniso = ani->second;
+      }
+      resi->atoms.emplace_back(atom);
     }
-    resi->atoms.emplace_back(atom);
   }
 
   cif::Table polymer_types = block.find("_entity_poly.", {"entity_id", "type"});

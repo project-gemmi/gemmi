@@ -914,7 +914,8 @@ Here we focus on things specific to mmCIF:
   (``.auth_*``) that have similar meaning to the "primary" identifiers
   (``.label_*``).
   Two of them, atom name (``atom_id``) and residue name (``comp_id``)
-  :ref:`almost never <auth_label_example>` differ.
+  :ref:`almost never <auth_label_example>` differ (update: these few
+  differences were removed from the PDB in 2018).
   The other two, chain name (``asym_id``) and sequence number (``seq_id``)
   may differ in a confusing way (A,B,C <-> C,A,B).
   Which one is presented to the user depends on a program (usually
@@ -945,16 +946,16 @@ and the corresponding lines from PDBx/mmCIF v5 (as served by the PDB in 2018):
     ATOM   1033 N N   A ARG B 2  73  A -4.657  24.646  -55.236 0.11 20.46 ? 77   ARG H N   1
     ATOM   1034 N N   B ARG B 2  73  A -4.641  24.646  -55.195 0.82 22.07 ? 77   ARG H N   1
      |       |  | |   |  |  | |   |  |    |       |       |     |    |    |  |    |  | |   |
-     1       2 14 N   4  N  N N   N  8    9       10      11    12   13   15 7    5  6 3   N
+     1       2 14 x   4  x  x x   x  8    9       10      11    12   13   15 7    5  6 3   x
      |       |  | |   |  label_comp_id    Cartn_x |       |     |    B_iso_or_equiv  | auth_atom_id
      |       id | |   label_alt_id|  pdbx_PDB_ins_code    |     occupancy |  |    |  auth_asym_id
      group_PDB  | label_atom_id   label_seq_id    |       Cartn_z         |  |    auth_comp_id
                 type_symbol | label_entity_id     Cartn_y                 |  auth_seq_id   pdbx_PDB_model_num
                             label_asym_id                                 pdbx_formal_charge
 
-``N`` marks columns not present in the PDB file.
-Numbers in column 2 differ because in the PDB file the TER record (that mark
-end of a polymer) is also assigned a number.
+``x`` marks columns not present in the PDB file.
+The numbers in column 2 differ because in the PDB file the TER record
+(that marks the end of a polymer) is also assigned a number.
 
 ``auth_seq_id`` used to be the full author's sequence ID,
 but currently in the wwPDB entries it is only the sequence number;
@@ -966,10 +967,10 @@ with the insertion code).
 
 As mentioned above, the mmCIF format has two sets of names/numbers:
 *label* and *auth* (for "author").
-``label_atom_id`` and ``auth_atom_id`` almost never differ, the same
-about ``label_comp_id`` and ``auth_comp_id``.
-Gemmi uses author-defined atom and component IDs if they are present,
-otherwise it uses *label* ones.
+Both atom names (``label_atom_id`` and ``auth_atom_id``) are normally the same.
+Both residue names (``label_comp_id`` and ``auth_comp_id``) are also normally
+the same. So Gemmi reads and stores only one name: *label* if it is present,
+otherwise *auth*.
 
 On the other hand, chain names (``asym_id``) and sequence numbers often
 differ and in the user interface it is better to use the author-defined
