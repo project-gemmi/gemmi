@@ -21,6 +21,7 @@ int mask_main(int argc, char** argv);
 int mondiff_main(int argc, char** argv);
 int mtz_main(int argc, char** argv);
 int mtz2cif_main(int argc, char** argv);
+int reindex_main(int argc, char** argv);
 int residues_main(int argc, char** argv);
 int rmsz_main(int argc, char** argv);
 int align_main(int argc, char** argv);
@@ -58,6 +59,7 @@ static SubCmd subcommands[] = {
   CMD(mondiff, "compare two monomer CIF files"),
   CMD(mtz, "print info about MTZ reflection file"),
   CMD(mtz2cif, "convert MTZ to structure factor mmCIF"),
+  CMD(reindex, "reindex MTZ file"),
   CMD(residues, "list residues from a coordinate file"),
   CMD(rmsz, "validate geometry using monomer library"),
   CMD(sf2map, "transform map coefficients (from MTZ or mmCIF) to map"),

@@ -26,6 +26,7 @@ Commands:
  mondiff       compare two monomer CIF files
  mtz           print info about MTZ reflection file
  mtz2cif       convert MTZ to structure factor mmCIF
+ reindex       reindex MTZ file
  residues      list residues from a coordinate file
  rmsz          validate geometry using monomer library
  sf2map        transform map coefficients (from MTZ or mmCIF) to map

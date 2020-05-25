@@ -197,6 +197,10 @@ add_executable(gemmi-mtz2cif EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/mtz2cif.cpp)
 support_gz(gemmi-mtz2cif)
 
+add_executable(gemmi-reindex EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/reindex.cpp)
+support_gz(gemmi-reindex)
+
 add_executable(gemmi-residues EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/residues.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-residues)
@@ -239,7 +243,7 @@ add_executable(gemmi-prog
                src/grep.cpp src/h.cpp src/json2cif.cpp
                src/main.cpp src/map.cpp src/map2sf.cpp
                src/mask.cpp src/mondiff.cpp src/mtz.cpp src/mtz2cif.cpp
-               src/residues.cpp src/rmsz.cpp
+               src/reindex.cpp src/residues.cpp src/rmsz.cpp
                src/sf2map.cpp src/sfcalc.cpp src/sg.cpp
                src/tags.cpp src/validate.cpp src/validate_mon.cpp src/wcn.cpp
                $<TARGET_OBJECTS:mapcoef>

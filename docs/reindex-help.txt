@@ -1,0 +1,11 @@
+$ gemmi reindex -h
+Usage:
+  gemmi reindex [options] INPUT_MTZ OUTPUT_MTZ
+Options:
+  -h, --help     Print usage and exit.
+  -V, --version  Print version and exit.
+  -v, --verbose  Verbose output.
+  --hkl=OP       Reindexing transform as triplet (e.g. k,h,-l).
+  --no-history   Do not add 'Reindexed with...' line to mtz HISTORY
+
+Input file can be gzipped.

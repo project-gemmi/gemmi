@@ -9,7 +9,7 @@ echo "\$ gemmi -h" > docs/gemmi-help.txt
 $BIN/gemmi -h >> docs/gemmi-help.txt
 for prog in align blobs cif2json cif2mtz contact contents convert \
     fprime grep h json2cif map map2sf mask mondiff mtz mtz2cif \
-    residues rmsz sf2map sfcalc sg tags validate wcn; do
+    reindex residues rmsz sf2map sfcalc sg tags validate wcn; do
   echo "\$ gemmi $prog -h" > docs/$prog-help.txt
   $BIN/gemmi $prog -h >> docs/$prog-help.txt
 done

@@ -524,6 +524,15 @@ the most reliable one::
     diff f''=-2.29 %
 
 
+reindex
+=======
+
+Reindex reflections in MTZ file.
+
+.. literalinclude:: reindex-help.txt
+   :language: console
+
+
 residues
 ========
 
