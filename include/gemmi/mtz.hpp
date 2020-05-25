@@ -637,6 +637,14 @@ struct Mtz {
     return indices;
   }
 
+  Miller get_hkl(size_t offset) const {
+    return {{(int)data[offset], (int)data[offset+1], (int)data[offset+2]}};
+  }
+  void set_hkl(size_t offset, const Miller& hkl) {
+    for (int i = 0; i != 3; ++i)
+      data[offset + i] = static_cast<float>(hkl[i]);
+  }
+
   // (for unmerged MTZ only) change HKL according to M/ISYM
   bool switch_to_original_hkl() {
     if (!has_data())
@@ -651,8 +659,7 @@ struct Mtz {
     for (size_t n = 0; n + col->idx < data.size(); n += columns.size()) {
       int isym = static_cast<int>(data[n + col->idx]) & 0xFF;
       const Op& op = inv_symops.at((isym - 1) / 2);
-      std::array<int,3> hkl = {{(int)data[n], (int)data[n+1], (int)data[n+2]}};
-      hkl = op.apply_to_hkl(hkl);
+      Miller hkl = op.apply_to_hkl(get_hkl(n));
       int sign = (isym & 1) ? 1 : -1;
       for (int i = 0; i < 3; ++i)
         data[n+i] = static_cast<float>(sign * hkl[i]);
@@ -670,10 +677,9 @@ struct Mtz {
     int misym_idx = col->idx;
     UnmergedHklMover hkl_mover(spacegroup);
     for (size_t n = 0; n + col->idx < data.size(); n += columns.size()) {
-      std::array<int,3> hkl{{(int)data[n], (int)data[n+1], (int)data[n+2]}};
-      int isym = hkl_mover.move_to_asu(hkl);
-      for (int i = 0; i != 3; ++i)
-        data[n + i] = (float)hkl[i];
+      Miller hkl = get_hkl(n);
+      int isym = hkl_mover.move_to_asu(hkl);  // modifies hkl
+      set_hkl(n, hkl);
       float& misym = data[n + misym_idx];
       misym = float(((int)misym & ~0xff) | isym);
     }
@@ -765,7 +771,7 @@ struct MtzDataProxy {
   const UnitCell& unit_cell() const { return mtz_.cell; }
   const SpaceGroup* spacegroup() const { return mtz_.spacegroup; }
   Miller get_hkl(size_t offset, const std::array<size_t,3>&) const {
-    return {{get_int(offset + 0), get_int(offset + 1), get_int(offset + 2)}};
+    return mtz_.get_hkl(offset);
   }
 };
 
