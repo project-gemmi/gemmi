@@ -70,7 +70,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       // negate anomalous difference
       if (column.type == 'D') {
         for (float& value : column)
-          value -= value;
+          value = -value;
         if (verbose)
           fprintf(stderr, "Column %s: anomalous difference negated.\n",
                   column.label.c_str());
