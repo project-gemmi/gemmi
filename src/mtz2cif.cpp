@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstdlib>            // for strtod
 #include <algorithm>
+#include <map>
 #include <gemmi/mtz.hpp>
 #include <gemmi/fileutil.hpp> // for file_open
 #include <gemmi/atox.hpp>     // for read_word
@@ -259,6 +260,27 @@ double get_wavelength(const gemmi::Mtz& mtz, const std::vector<Trans>& spec) {
   return 0.;
 }
 
+static std::map<int,int> get_batch_count(const gemmi::Mtz& mtz) {
+  std::map<int, int> batch_count;
+  for (const gemmi::Mtz::Dataset& ds : mtz.datasets)
+    batch_count.emplace(ds.id, 0);
+  for (const gemmi::Mtz::Batch& batch : mtz.batches) {
+    int sweep_id = batch.dataset_id();
+    auto it = batch_count.find(sweep_id);
+    if (it != batch_count.end())
+      it->second++;
+    else
+      fprintf(stderr, "Warning: reference to absent batch: %d\n", sweep_id);
+  }
+  for (auto it = batch_count.begin(); it != batch_count.end(); ) {
+    if (it->second == 0)
+      it = batch_count.erase(it);
+    else
+      ++it;
+  }
+  return batch_count;
+}
+
 static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
   std::string id = ".";
   if (opt.with_comments) {
@@ -272,9 +294,45 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
   fprintf(out, "_entry.id %s\n\n", id.c_str());
 
   if (!mtz.batches.empty()) {
-    fprintf(out, "_exptl_crystal.id 1\n");
-    fprintf(out, "_diffrn.id 1\n");
-    fprintf(out, "_diffrn.crystal_id 1\n\n");
+    fprintf(out, "_exptl_crystal.id 1\n\n");
+    bool scaled = (mtz.column_with_label("SCALEUSED") != nullptr);
+    std::map<int,int> batch_count = get_batch_count(mtz);
+
+    fprintf(out, "loop_\n_diffrn.id\n_diffrn.crystal_id\n_diffrn.details\n");
+    for (auto pair : batch_count)
+      fprintf(out, "%d 1 '%sunmerged data'\n",
+              pair.first, scaled ? "scaled " : "");
+    fprintf(out, "\n");
+
+    fprintf(out, "loop_\n"
+                 "_diffrn_measurement.diffrn_id\n"
+                 "_diffrn_measurement.details\n");
+    for (auto pair : batch_count)
+      fprintf(out, "%d '%d frames'\n", pair.first, pair.second);
+    fprintf(out, "\n");
+
+    fprintf(out, "loop_\n"
+                 "_diffrn_radiation.diffrn_id\n"
+                 "_diffrn_radiation.wavelength_id\n");
+    for (auto pair : batch_count)
+      fprintf(out, "%d %d\n", pair.first, pair.first);
+    fprintf(out, "\n");
+
+    fprintf(out, "loop_\n"
+                 "_diffrn_radiation_wavelength.id\n"
+                 "_diffrn_radiation_wavelength.wavelength\n");
+    for (const gemmi::Mtz::Dataset& ds : mtz.datasets)
+      if (batch_count.count(ds.id) != 0)
+        fprintf(out, "%d %g\n", ds.id, ds.wavelength);
+    fprintf(out, "\n");
+  }
+
+  double wavelength = std::isnan(opt.wavelength) ? get_wavelength(mtz, opt.spec)
+                                                 : opt.wavelength;
+  if (mtz.batches.empty() && wavelength != 0.) {
+    fprintf(out, "_diffrn_radiation.diffrn_id 1\n");
+    fprintf(out, "_diffrn_radiation_wavelength.id 1\n");
+    fprintf(out, "_diffrn_radiation_wavelength.wavelength %g\n\n", wavelength);
   }
 
   const gemmi::UnitCell& cell = mtz.get_cell();
@@ -285,12 +343,7 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
   fprintf(out, "_cell.angle_alpha %8.3f\n", cell.alpha);
   fprintf(out, "_cell.angle_beta  %8.3f\n", cell.beta);
   fprintf(out, "_cell.angle_gamma %8.3f\n\n", cell.gamma);
-  double wavelength = std::isnan(opt.wavelength) ? get_wavelength(mtz, opt.spec)
-                                                 : opt.wavelength;
-  if (wavelength != 0.) {
-    fprintf(out, "_diffrn_radiation_wavelength.id 1\n");
-    fprintf(out, "_diffrn_radiation_wavelength.wavelength %g\n\n", wavelength);
-  }
+
   if (const gemmi::SpaceGroup* sg = mtz.spacegroup) {
     fprintf(out, "_symmetry.entry_id %s\n", id.c_str());
     fprintf(out, "_symmetry.space_group_name_H-M '%s'\n", sg->hm);
@@ -315,14 +368,26 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
     else
       fprintf(out, "_refln.%s\n", tr.tag.c_str());
   }
+  int batch_idx = find_column_index("BATCH", mtz);
+  std::map<int,int> batch_to_sweep;
+  for (const gemmi::Mtz::Batch& b : mtz.batches)
+    batch_to_sweep.emplace(b.number, b.dataset_id());
   for (int i = 0; i != mtz.nreflections; ++i) {
-    if (!mtz.batches.empty())
-      fprintf(out, "1 1 1 %d ", i + 1);
     const float* row = &mtz.data[i * mtz.columns.size()];
     if (!opt.value_indices.empty())
       if (std::all_of(opt.value_indices.begin(), opt.value_indices.end(),
                       [&](int n) { return std::isnan(row[n]); }))
         continue;
+    if (!mtz.batches.empty()) {
+      if (batch_idx == -1)
+        gemmi::fail("BATCH column not found");
+      int batch_number = (int) row[batch_idx];
+      auto it = batch_to_sweep.find(batch_number);
+      if (it == batch_to_sweep.end())
+        gemmi::fail("unexpected values in column BATCHES");
+      int sweep_id = it->second;
+      fprintf(out, "%d . . %d ", sweep_id, i + 1);
+    }
     bool first = true;
     for (const Trans& tr : opt.spec) {
       if (first)
