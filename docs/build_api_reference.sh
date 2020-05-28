@@ -16,3 +16,7 @@ python python.py "$wd/api/python/conf.py"
 # dirty hack:
 cd "$wd/_build/html/api/python/"
 cp gemmi.html index.html
+
+# Build C++ reference
+cd "$wd/../m.css/documentation"
+python doxygen.py "$wd/api/c++/Doxyfile-mcss"
