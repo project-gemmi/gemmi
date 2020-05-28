@@ -8,5 +8,7 @@ GENERATE_XML   = YES
 
 XML_NS_MEMB_FILE_SCOPE = YES
 
+TAGFILES       = stl.tag=http://en.cppreference.com/w/
+
 ##! M_MAIN_PROJECT_URL = ../..
 ##! M_SHOW_UNDOCUMENTED = YES
