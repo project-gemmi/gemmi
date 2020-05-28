@@ -20,3 +20,8 @@ cp gemmi.html index.html
 # Build C++ reference
 cd "$wd/../m.css/documentation"
 python doxygen.py "$wd/api/c++/Doxyfile-mcss"
+
+# same dirty hack
+cd "$wd/_build/html/api/c++/"
+cp namespaces.html index.html
+

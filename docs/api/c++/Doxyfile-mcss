@@ -12,3 +12,9 @@ TAGFILES       = stl.tag=http://en.cppreference.com/w/
 
 ##! M_MAIN_PROJECT_URL = ../..
 ##! M_SHOW_UNDOCUMENTED = YES
+##! M_LINKS_NAVBAR1 =
+##! M_LINKS_NAVBAR2 = \
+##!  "namespaces" \
+##!  "annotated" \
+##!  "files" \
+##!  "<a href="../python/">Python API</a>"

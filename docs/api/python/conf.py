@@ -20,7 +20,7 @@ M_SPHINX_INVENTORIES = [
 LINKS_NAVBAR1 = [
     ('Modules', 'modules', []),
     ('Classes', 'classes', []),
-    ('Github', 'https://github.com/project-gemmi/gemmi', [])
+    ('C++ API', '../c++', [])
 ]
 
 OUTPUT = "../../_build/html/api/python"
