@@ -293,7 +293,14 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
   fprintf(out, "data_%s\n\n", opt.block_name);
   fprintf(out, "_entry.id %s\n\n", id.c_str());
 
+  bool write_angle_phi = false;
   if (!mtz.batches.empty()) {
+    // don't write angle_phi if it has the same value in all batches
+    for (size_t i = 1; i != mtz.batches.size(); ++i)
+      if (mtz.batches[i].phi_start() != mtz.batches[0].phi_start()) {
+        write_angle_phi = true;
+        break;
+      }
     fprintf(out, "_exptl_crystal.id 1\n\n");
     bool scaled = (mtz.column_with_label("SCALEUSED") != nullptr);
     std::map<int,int> batch_count = get_batch_count(mtz);
@@ -356,22 +363,30 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
     fprintf(out, "_diffrn_refln.standard_code\n");
     fprintf(out, "_diffrn_refln.scale_group_code\n");
     fprintf(out, "_diffrn_refln.id\n");
+    if (write_angle_phi)
+      fprintf(out, "_diffrn_refln.angle_phi%s\n",
+              opt.with_comments ? "                  # phistt from batch header"
+                                : "");
   }
   for (const Trans& tr : opt.spec) {
     const gemmi::Mtz::Column& col = mtz.columns.at(tr.col_idx);
     const gemmi::Mtz::Dataset& ds = mtz.dataset(col.dataset_id);
-    if (!mtz.batches.empty())
-      fprintf(out, "_diffrn");
-    if (opt.with_comments)
-      fprintf(out, "_refln.%-26s # %-14s from dataset %s\n",
-              tr.tag.c_str(), col.label.c_str(), ds.dataset_name.c_str());
-    else
-      fprintf(out, "_refln.%s\n", tr.tag.c_str());
+    fprintf(out, mtz.batches.empty() ? "_refln." : "_diffrn_refln.");
+    if (opt.with_comments) {
+      // dataset is assigned to column only in merged MTZ
+      if (mtz.batches.empty())
+        fprintf(out, "%-26s # %-14s from dataset %s\n",
+                tr.tag.c_str(), col.label.c_str(), ds.dataset_name.c_str());
+      else
+        fprintf(out, "%-26s # %s\n", tr.tag.c_str(), col.label.c_str());
+    } else {
+      fprintf(out, "%s\n", tr.tag.c_str());
+    }
   }
   int batch_idx = find_column_index("BATCH", mtz);
-  std::map<int,int> batch_to_sweep;
+  std::map<int, const gemmi::Mtz::Batch*> batch_by_number;
   for (const gemmi::Mtz::Batch& b : mtz.batches)
-    batch_to_sweep.emplace(b.number, b.dataset_id());
+    batch_by_number.emplace(b.number, &b);
   for (int i = 0; i != mtz.nreflections; ++i) {
     const float* row = &mtz.data[i * mtz.columns.size()];
     if (!opt.value_indices.empty())
@@ -382,11 +397,13 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
       if (batch_idx == -1)
         gemmi::fail("BATCH column not found");
       int batch_number = (int) row[batch_idx];
-      auto it = batch_to_sweep.find(batch_number);
-      if (it == batch_to_sweep.end())
-        gemmi::fail("unexpected values in column BATCHES");
-      int sweep_id = it->second;
-      fprintf(out, "%d . . %d ", sweep_id, i + 1);
+      auto it = batch_by_number.find(batch_number);
+      if (it == batch_by_number.end())
+        gemmi::fail("unexpected values in column BATCH");
+      const gemmi::Mtz::Batch& batch = *it->second;
+      fprintf(out, "%d . . %d ", batch.dataset_id(), i + 1);
+      if (write_angle_phi)
+        fprintf(out, "%.2f ", batch.phi_start());
     }
     bool first = true;
     for (const Trans& tr : opt.spec) {
