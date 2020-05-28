@@ -139,6 +139,10 @@ struct Mtz {
     std::vector<float> floats;
     std::vector<std::string> axes;
 
+    UnitCell get_cell() const {
+      return UnitCell(floats[0], floats[1], floats[2],
+                      floats[3], floats[4], floats[5]);
+    }
     void set_cell(const UnitCell& uc) {
       floats[0] = (float) uc.a;
       floats[1] = (float) uc.b;
@@ -149,6 +153,8 @@ struct Mtz {
     }
 
     int dataset_id() const { return ints[20]; }
+    float phi_start() const { return floats[36]; }
+    float phi_end() const { return floats[37]; }
   };
 
   bool same_byte_order = true;

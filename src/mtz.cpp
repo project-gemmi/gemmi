@@ -13,8 +13,8 @@
 using gemmi::Mtz;
 using std::printf;
 
-enum OptionIndex { Headers=4, Dump, PrintBatches, PrintTsv, PrintStats,
-                   CheckAsu, ToggleEndian, NoIsym };
+enum OptionIndex { Headers=4, Dump, PrintBatch, PrintBatches, PrintTsv,
+                   PrintStats, CheckAsu, ToggleEndian, NoIsym };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -27,8 +27,10 @@ static const option::Descriptor Usage[] = {
     "  -H, --headers  \tPrint raw headers, until the END record." },
   { Dump, 0, "d", "dump", Arg::None,
     "  -d, --dump  \tPrint a subset of CCP4 mtzdmp informations." },
+  { PrintBatch, 0, "B", "batch", Arg::Int,
+    "  -B N, --batch=N  \tPrint data from batch header N." },
   { PrintBatches, 0, "b", "batches", Arg::None,
-    "  -b, --batches  \tPrint data from batch headers." },
+    "  -b, --batches  \tPrint data from all batch headers." },
   { PrintTsv, 0, "", "tsv", Arg::None,
     "  --tsv  \tPrint all the data as tab-separated values." },
   { PrintStats, 0, "", "stats", Arg::None,
@@ -103,34 +105,39 @@ static void dump(const Mtz& mtz) {
   }
 }
 
-static void print_batches(const Mtz& mtz) {
-  for (const Mtz::Batch& b : mtz.batches) {
-    printf("Batch %d - %s\n", b.number, b.title.c_str());
-    printf("    %zu %s: %s\n", b.axes.size(),
-           b.axes.size() == 1 ? "axis" : "axes",
-           gemmi::join_str(b.axes, ", ").c_str());
-    printf("  %4zu integers:", b.ints.size());
-    for (size_t i = 0; i != b.ints.size(); ++i) {
-      if (i != 0 && i % 10 == 0)
-        printf("\n                ");
-      printf(" %5d", b.ints[i]);
-    }
-    printf("\n  %4zu floats:", b.floats.size());
-    size_t last_non_zero = b.floats.size();
-    while (last_non_zero != 0 && b.floats[last_non_zero - 1] == 0.f)
-      --last_non_zero;
-    for (size_t i = 0; i != b.floats.size(); ++i) {
-      if (i != 0 && i % 5 == 0) {
-        printf("\n       %4zu|  ", i);
-        if (i >= last_non_zero) {
-          printf("          ...");
-          break;
-        }
-      }
-      printf(" %12.5g", b.floats[i]);
-    }
-    printf("\n    dataset: %d\n", b.dataset_id());
+static void print_batch(const Mtz::Batch& b) {
+  printf("Batch %d - %s\n", b.number, b.title.c_str());
+  printf("    %zu %s: %s\n", b.axes.size(),
+         b.axes.size() == 1 ? "axis" : "axes",
+         gemmi::join_str(b.axes, ", ").c_str());
+  printf("  %4zu integers:", b.ints.size());
+  for (size_t i = 0; i != b.ints.size(); ++i) {
+    if (i != 0 && i % 10 == 0)
+      printf("\n                ");
+    printf(" %5d", b.ints[i]);
   }
+  printf("\n  %4zu floats:", b.floats.size());
+  size_t last_non_zero = b.floats.size();
+  while (last_non_zero != 0 && b.floats[last_non_zero - 1] == 0.f)
+    --last_non_zero;
+  for (size_t i = 0; i != b.floats.size(); ++i) {
+    if (i != 0 && i % 5 == 0) {
+      printf("\n       %4zu|  ", i);
+      if (i >= last_non_zero) {
+        printf("          ...");
+        break;
+      }
+    }
+    printf(" %12.5g", b.floats[i]);
+  }
+  printf("\n    dataset: %d\n", b.dataset_id());
+}
+
+static void print_batch_extra_info(const Mtz::Batch& b) {
+  gemmi::UnitCell uc = b.get_cell();
+  printf("\nUnit cell parameters: %g %g %g   %g %g %g\n",
+         uc.a, uc.b, uc.c, uc.alpha, uc.beta, uc.gamma);
+  printf("Phi start - end: %g - %g\n", b.phi_start(), b.phi_end());
 }
 
 static void print_tsv(const Mtz& mtz) {
@@ -220,11 +227,22 @@ void print_mtz_info(Stream&& stream, const char* path,
   mtz.read_history_and_batch_headers(stream);
   mtz.setup_spacegroup();
   if (options[Dump] ||
-      !(options[PrintBatches] || options[PrintTsv] || options[PrintStats] ||
-        options[CheckAsu] || options[Headers]))
+      !(options[PrintBatch] || options[PrintBatches] || options[PrintTsv] ||
+        options[PrintStats] || options[CheckAsu] || options[Headers]))
     dump(mtz);
+  if (options[PrintBatch]) {
+    for (const option::Option* o = options[PrintBatch]; o; o = o->next()) {
+      int number = std::atoi(o->arg);
+      for (const Mtz::Batch& b : mtz.batches)
+        if (b.number == number) {
+          print_batch(b);
+          print_batch_extra_info(b);
+        }
+    }
+  }
   if (options[PrintBatches])
-    print_batches(mtz);
+    for (const Mtz::Batch& b : mtz.batches)
+      print_batch(b);
   if (options[PrintTsv] || options[PrintStats] || options[CheckAsu]) {
     mtz.read_raw_data(stream);
     if (!options[NoIsym])
