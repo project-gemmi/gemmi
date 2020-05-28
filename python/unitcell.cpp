@@ -143,6 +143,10 @@ void add_unitcell(py::module& m) {
     .def_readonly("gamma", &UnitCell::gamma)
     .def_readonly("volume", &UnitCell::volume)
     .def_readonly("images", &UnitCell::images)
+    .def_property_readonly("fractionalization_matrix",
+                           [](const UnitCell& self) { return self.frac.mat; })
+    .def_property_readonly("orthogonalization_matrix",
+                           [](const UnitCell& self) { return self.orth.mat; })
     .def("set", &UnitCell::set)
     .def("is_crystal", &UnitCell::is_crystal)
     .def("fractionalize", &UnitCell::fractionalize)

@@ -409,8 +409,16 @@ Here are the most important properties and methods of the ``UnitCell`` class:
     (90.0, 90.0, 90.0)
     >>> cell.volume
     44755.8621
+    >>> cell.fractionalization_matrix
+    <gemmi.Mat33 [0.0397772, -0, -0]
+                 [0, 0.0253165, 0]
+                 [0, 0, 0.0221877]>
     >>> cell.fractionalize(gemmi.Position(10, 10, 10))
     <gemmi.Fractional(0.397772, 0.253165, 0.221877)>
+    >>> cell.orthogonalization_matrix
+    <gemmi.Mat33 [25.14, 0, 0]
+                 [0, 39.5, -0]
+                 [0, 0, 45.07]>
     >>> cell.orthogonalize(gemmi.Fractional(0.5, 0.5, 0.5))
     <gemmi.Position(12.57, 19.75, 22.535)>
 
