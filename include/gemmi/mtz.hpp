@@ -155,6 +155,11 @@ struct Mtz {
     int dataset_id() const { return ints[20]; }
     float phi_start() const { return floats[36]; }
     float phi_end() const { return floats[37]; }
+    Mat33 matrix_U() const {
+      return Mat33(floats[6], floats[9],  floats[12],
+                   floats[7], floats[10], floats[13],
+                   floats[8], floats[11], floats[14]);
+    }
   };
 
   bool same_byte_order = true;

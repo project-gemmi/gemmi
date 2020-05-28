@@ -135,9 +135,14 @@ static void print_batch(const Mtz::Batch& b) {
 
 static void print_batch_extra_info(const Mtz::Batch& b) {
   gemmi::UnitCell uc = b.get_cell();
-  printf("\nUnit cell parameters: %g %g %g   %g %g %g\n",
+  printf("    Unit cell parameters: %g %g %g   %g %g %g\n",
          uc.a, uc.b, uc.c, uc.alpha, uc.beta, uc.gamma);
-  printf("Phi start - end: %g - %g\n", b.phi_start(), b.phi_end());
+  printf("    Phi start - end: %g - %g\n", b.phi_start(), b.phi_end());
+  gemmi::Mat33 u = b.matrix_U();
+  for (int i = 0; i != 3; ++i)
+    printf("    %s % 10.6f % 10.6f % 10.6f\n",
+           i == 0 ? "Orientation matrix U:" : "                     ",
+           u.a[i][0], u.a[i][1], u.a[i][2]);
 }
 
 static void print_tsv(const Mtz& mtz) {
