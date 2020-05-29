@@ -121,14 +121,13 @@ struct UnitCell {
   }
 
   void calculate_properties() {
-    constexpr double deg2rad = pi() / 180.0;
     // ensure exact values for right angles
-    double cos_alpha = alpha == 90. ? 0. : std::cos(deg2rad * alpha);
-    double cos_beta  = beta  == 90. ? 0. : std::cos(deg2rad * beta);
-    double cos_gamma = gamma == 90. ? 0. : std::cos(deg2rad * gamma);
-    double sin_alpha = alpha == 90. ? 1. : std::sin(deg2rad * alpha);
-    double sin_beta  = beta  == 90. ? 1. : std::sin(deg2rad * beta);
-    double sin_gamma = gamma == 90. ? 1. : std::sin(deg2rad * gamma);
+    double cos_alpha = alpha == 90. ? 0. : std::cos(rad(alpha));
+    double cos_beta  = beta  == 90. ? 0. : std::cos(rad(beta));
+    double cos_gamma = gamma == 90. ? 0. : std::cos(rad(gamma));
+    double sin_alpha = alpha == 90. ? 1. : std::sin(rad(alpha));
+    double sin_beta  = beta  == 90. ? 1. : std::sin(rad(beta));
+    double sin_gamma = gamma == 90. ? 1. : std::sin(rad(gamma));
     if (sin_alpha == 0 || sin_beta == 0 || sin_gamma == 0)
       fail("Impossible angle - N*180deg.");
 
