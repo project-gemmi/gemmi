@@ -170,6 +170,17 @@ struct UnitCell {
     frac.vec = {0., 0., 0.};
   }
 
+  // B matrix following convention from Busing & Levy (1967), not from cctbx.
+  // Cf. https://dials.github.io/documentation/conventions.html
+  Mat33 calculate_matrix_B() const {
+    double cos_alpha = alpha == 90. ? 0. : std::cos(rad(alpha));
+    double sin_gammar = std::sqrt(1 - cos_gammar);
+    double sin_betar = std::sqrt(1 - cos_betar);
+    return Mat33(ar, br * cos_gammar, cr * cos_betar,
+                 0., br * sin_gammar, -cr * sin_betar * cos_alpha,
+                 0., 0., 1.0 / c);
+  }
+
   void set_matrices_from_fract(const Transform& f) {
     // mmCIF _atom_sites.fract_transf_* and PDB SCALEn records usually
     // have less significant digits than unit cell parameters, and should

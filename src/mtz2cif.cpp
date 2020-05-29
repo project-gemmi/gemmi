@@ -84,7 +84,7 @@ struct Options {
   std::vector<int> value_indices;  // used for --skip_empty
   std::vector<int> sigma_indices;  // used for status 'x'
   bool with_comments;
-  const char* block_name;
+  const char* block_name = nullptr;
   const char* mtz_path;
   double wavelength = NAN;
 };
@@ -260,25 +260,36 @@ double get_wavelength(const gemmi::Mtz& mtz, const std::vector<Trans>& spec) {
   return 0.;
 }
 
-static std::map<int,int> get_batch_count(const gemmi::Mtz& mtz) {
-  std::map<int, int> batch_count;
-  for (const gemmi::Mtz::Dataset& ds : mtz.datasets)
-    batch_count.emplace(ds.id, 0);
+struct SweepData {
+  int id;
+  int batch_count;
+  const gemmi::Mtz::Batch* first_batch;
+  const gemmi::Mtz::Dataset* dataset;
+};
+
+static std::vector<SweepData> gather_sweep_data(const gemmi::Mtz& mtz) {
+  std::vector<SweepData> data;
+  //for (const gemmi::Mtz::Dataset& ds : mtz.datasets)
+  //  data.emplace_back(ds.id, 0);
   for (const gemmi::Mtz::Batch& batch : mtz.batches) {
     int sweep_id = batch.dataset_id();
-    auto it = batch_count.find(sweep_id);
-    if (it != batch_count.end())
-      it->second++;
+    auto it = std::find_if(data.begin(), data.end(),
+                 [&](const SweepData& sweep) { return sweep.id == sweep_id; });
+    if (it == data.end())
+      data.push_back({sweep_id, 1, &batch, nullptr});
     else
-      fprintf(stderr, "Warning: reference to absent batch: %d\n", sweep_id);
+      it->batch_count++;
   }
-  for (auto it = batch_count.begin(); it != batch_count.end(); ) {
-    if (it->second == 0)
-      it = batch_count.erase(it);
-    else
-      ++it;
+  for (SweepData& sweep : data) {
+    for (const gemmi::Mtz::Dataset& d : mtz.datasets)
+      if (d.id == sweep.id) {
+        sweep.dataset = &d;
+        break;
+      }
+    if (!sweep.dataset)
+      fprintf(stderr, "Warning: reference to absent dataset: %d\n", sweep.id);
   }
-  return batch_count;
+  return data;
 }
 
 static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
@@ -290,11 +301,13 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
     for (size_t i = 0; i != mtz.history.size(); ++i)
       fprintf(out, "# MTZ history #%zu: %s\n", i, mtz.history[i].c_str());
   }
-  fprintf(out, "data_%s\n\n", opt.block_name);
+  const bool unmerged = !mtz.batches.empty();
+  fprintf(out, "data_%s\n\n", opt.block_name ? opt.block_name
+                                             : unmerged ? "unmerged" : "mtz");
   fprintf(out, "_entry.id %s\n\n", id.c_str());
 
   bool write_angle_phi = false;
-  if (!mtz.batches.empty()) {
+  if (unmerged) {
     // don't write angle_phi if it has the same value in all batches
     for (size_t i = 1; i != mtz.batches.size(); ++i)
       if (mtz.batches[i].phi_start() != mtz.batches[0].phi_start()) {
@@ -303,40 +316,65 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
       }
     fprintf(out, "_exptl_crystal.id 1\n\n");
     bool scaled = (mtz.column_with_label("SCALEUSED") != nullptr);
-    std::map<int,int> batch_count = get_batch_count(mtz);
+    std::vector<SweepData> sweep_data = gather_sweep_data(mtz);
 
     fprintf(out, "loop_\n_diffrn.id\n_diffrn.crystal_id\n_diffrn.details\n");
-    for (auto pair : batch_count)
+    for (const SweepData& sweep : sweep_data)
       fprintf(out, "%d 1 '%sunmerged data'\n",
-              pair.first, scaled ? "scaled " : "");
+              sweep.id, scaled ? "scaled " : "");
     fprintf(out, "\n");
 
     fprintf(out, "loop_\n"
                  "_diffrn_measurement.diffrn_id\n"
                  "_diffrn_measurement.details\n");
-    for (auto pair : batch_count)
-      fprintf(out, "%d '%d frames'\n", pair.first, pair.second);
+    for (const SweepData& sweep : sweep_data)
+      fprintf(out, "%d '%d frames'\n", sweep.id, sweep.batch_count);
     fprintf(out, "\n");
 
     fprintf(out, "loop_\n"
                  "_diffrn_radiation.diffrn_id\n"
                  "_diffrn_radiation.wavelength_id\n");
-    for (auto pair : batch_count)
-      fprintf(out, "%d %d\n", pair.first, pair.first);
+    for (const SweepData& sweep : sweep_data)
+      fprintf(out, "%d %d\n", sweep.id, sweep.id);
     fprintf(out, "\n");
 
     fprintf(out, "loop_\n"
                  "_diffrn_radiation_wavelength.id\n"
                  "_diffrn_radiation_wavelength.wavelength\n");
-    for (const gemmi::Mtz::Dataset& ds : mtz.datasets)
-      if (batch_count.count(ds.id) != 0)
-        fprintf(out, "%d %g\n", ds.id, ds.wavelength);
+    for (const SweepData& sweep : sweep_data) {
+      if (sweep.dataset)
+        fprintf(out, "%d %g\n", sweep.id, sweep.dataset->wavelength);
+      else
+        fprintf(out, "%d ?\n", sweep.id);
+    }
+    fprintf(out, "\n");
+
+    fprintf(out, "loop_\n"
+                 "_diffrn_orient_matrix.diffrn_id\n"
+                 "_diffrn_orient_matrix.UB[1][1]\n"
+                 "_diffrn_orient_matrix.UB[1][2]\n"
+                 "_diffrn_orient_matrix.UB[1][3]\n"
+                 "_diffrn_orient_matrix.UB[2][1]\n"
+                 "_diffrn_orient_matrix.UB[2][2]\n"
+                 "_diffrn_orient_matrix.UB[2][3]\n"
+                 "_diffrn_orient_matrix.UB[3][1]\n"
+                 "_diffrn_orient_matrix.UB[3][2]\n"
+                 "_diffrn_orient_matrix.UB[3][3]\n");
+    for (const SweepData& sweep : sweep_data) {
+      gemmi::Mat33 u = sweep.first_batch->matrix_U();
+      gemmi::Mat33 b = sweep.first_batch->get_cell().calculate_matrix_B();
+      gemmi::Mat33 ub = u.multiply(b);
+      fprintf(out, "%d  %#g %#g %#g  %#g %#g %#g  %#g %#g %#g\n", sweep.id,
+              ub.a[0][0], ub.a[0][1], ub.a[0][2],
+              ub.a[1][0], ub.a[1][1], ub.a[1][2],
+              ub.a[2][0], ub.a[2][1], ub.a[2][2]);
+    }
     fprintf(out, "\n");
   }
 
   double wavelength = std::isnan(opt.wavelength) ? get_wavelength(mtz, opt.spec)
                                                  : opt.wavelength;
-  if (mtz.batches.empty() && wavelength != 0.) {
+  if (!unmerged && wavelength != 0.) {
     fprintf(out, "_diffrn_radiation.diffrn_id 1\n");
     fprintf(out, "_diffrn_radiation_wavelength.id 1\n");
     fprintf(out, "_diffrn_radiation_wavelength.wavelength %g\n\n", wavelength);
@@ -358,7 +396,7 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
     // could write _symmetry_equiv.pos_as_xyz, but would it be useful?
   }
   fprintf(out, "loop_\n");
-  if (!mtz.batches.empty()) {
+  if (unmerged) {
     fprintf(out, "_diffrn_refln.diffrn_id\n");
     fprintf(out, "_diffrn_refln.standard_code\n");
     fprintf(out, "_diffrn_refln.scale_group_code\n");
@@ -371,14 +409,14 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
   for (const Trans& tr : opt.spec) {
     const gemmi::Mtz::Column& col = mtz.columns.at(tr.col_idx);
     const gemmi::Mtz::Dataset& ds = mtz.dataset(col.dataset_id);
-    fprintf(out, mtz.batches.empty() ? "_refln." : "_diffrn_refln.");
+    fprintf(out, unmerged ? "_diffrn_refln." : "_refln.");
     if (opt.with_comments) {
       // dataset is assigned to column only in merged MTZ
-      if (mtz.batches.empty())
+      if (unmerged)
+        fprintf(out, "%-26s # %s\n", tr.tag.c_str(), col.label.c_str());
+      else
         fprintf(out, "%-26s # %-14s from dataset %s\n",
                 tr.tag.c_str(), col.label.c_str(), ds.dataset_name.c_str());
-      else
-        fprintf(out, "%-26s # %s\n", tr.tag.c_str(), col.label.c_str());
     } else {
       fprintf(out, "%s\n", tr.tag.c_str());
     }
@@ -393,7 +431,7 @@ static void write_cif(const gemmi::Mtz& mtz, const Options& opt, FILE* out) {
       if (std::all_of(opt.value_indices.begin(), opt.value_indices.end(),
                       [&](int n) { return std::isnan(row[n]); }))
         continue;
-    if (!mtz.batches.empty()) {
+    if (unmerged) {
       if (batch_idx == -1)
         gemmi::fail("BATCH column not found");
       int batch_number = (int) row[batch_idx];
@@ -495,7 +533,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (col.type != 'Q' && col.type != 'L' && col.type != 'M')
       options.sigma_indices.push_back(tr.col_idx);
   }
-  options.block_name = p.options[BlockName] ? p.options[BlockName].arg : "mtz";
+  if (p.options[BlockName])
+    options.block_name = p.options[BlockName].arg;
   options.with_comments = !p.options[NoComments];
   if (p.options[Wavelength])
     options.wavelength = std::strtod(p.options[Wavelength].arg, nullptr);
