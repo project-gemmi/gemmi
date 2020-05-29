@@ -27,7 +27,12 @@ template<typename Item> struct Span {
 
   Span() = default;
   Span(iterator begin, std::size_t n) : begin_(begin), size_(n) {}
-  Span(const Span<value_type>& o) : begin_(o.begin_), size_(o.size_) {}
+
+  // constructor only for const Item, to allow non-const -> const conversion
+  template<typename T=Item>
+  Span(const Span<value_type>& o,
+       typename std::enable_if<std::is_const<T>::value>::type* = 0)
+    : begin_(o.begin_), size_(o.size_) {}
 
   void set_begin(iterator begin) { begin_ = begin; }
   void set_size(std::size_t n) { size_ = n; }
