@@ -1395,6 +1395,30 @@ for example,
   structure.add_model(gemmi.Model('7'))  # add a new model
   structure.add_model(structure[0])      # add a copy of model #0
 
+.. warning::
+
+   Adding and removing models may invalidate references to other models
+   from the same Structure. This is expected when working with a C++ vector,
+   but when using Gemmi from Python it is a flaw. More precisely:
+
+   * ``add_model`` may cause memory re-allocation invalidating references
+     to all other models,
+   * ``remove_model`` and ``__delitem__`` invalidate references only to
+     models  that are after the removed one.
+
+   This means that you need to update a reference before using it:
+
+    .. code-block:: python
+
+       model_reference = st[0]
+       st.add_model(...)         # model_reference gets invalidated
+       model_reference = st[0]   # model_reference is valid again
+
+
+   The same rules apply to functions that add and remove chains, residues
+   and atoms (``add_chain``, ``add_residue``, ``add_atom``, ``__delitem__``).
+
+
 After adding or removing models you may call:
 
 .. doctest::
