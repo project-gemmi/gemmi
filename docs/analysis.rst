@@ -83,10 +83,10 @@ we could use ``add_atom()`` instead of ``populate()``:
   ...
 
 
-The following functions search for atoms near the specified atom or point::
+NeighborSearch has a couple of functions for searching.
+The first one takes atom as an argument::
 
   std::vector<Mark*> NeighborSearch::find_neighbors(const Atom& atom, float min_dist, float max_dist)
-  std::vector<Mark*> NeighborSearch::find_atoms(const Position& pos, char altloc, float radius)
 
 .. doctest::
 
@@ -94,21 +94,24 @@ The following functions search for atoms near the specified atom or point::
   >>> marks = ns.find_neighbors(ref_atom, min_dist=0.1, max_dist=3)
   >>> len(marks)
   6
-  >>> point = gemmi.Position(20, 20, 20)
-  >>> marks = ns.find_atoms(point, '\0', radius=3)
-  >>> len(marks)
-  7
-  >>> marks[0]
-  <gemmi.NeighborSearch.Mark O of atom 0/7/3>
 
+``find_neighbors()`` checks altloc of the atom and
+considers as potential neighbors only atoms from the same
+conformation. In particular, if altloc is empty all atoms are considered.
 Non-negative ``min_dist`` in the ``find_neighbors()`` call prevents
 the atom whose neighbors we search from being included in the results
 (the distance of the atom to itself is zero).
 
-The first function, which takes atom as an argument, checks altloc of the
-atom and considers as potential neighbors only atoms from the same
-conformation. In particular, if altloc is empty all atoms are considered.
-The second function takes position and altloc as explicit arguments.
+The second one takes position and altloc as explicit arguments::
+
+  std::vector<Mark*> NeighborSearch::find_atoms(const Position& pos, char altloc, float radius)
+
+.. doctest::
+
+  >>> point = gemmi.Position(20, 20, 20)
+  >>> marks = ns.find_atoms(point, '\0', radius=3)
+  >>> len(marks)
+  7
 
 Additionally, in C++ you may use a function that takes a callback
 as the last argument (usage examples are in the source code)::
@@ -123,6 +126,22 @@ Cell-lists store ``Mark``\ s. When searching for neighbors you get references
 that was used to generate this mark, 0 for identity),
 ``chain_idx``, ``residue_idx`` and ``atom_idx``.
 
+.. doctest::
+
+  >>> mark = marks[0]
+  >>> mark
+  <gemmi.NeighborSearch.Mark O of atom 0/7/3>
+  >>> mark.x, mark.y, mark.z
+  (19.659000396728516, 20.248884201049805, 17.645000457763672)
+  >>> mark.altloc
+  '\x00'
+  >>> mark.element
+  <gemmi.Element: O>
+  >>> mark.image_idx
+  11
+  >>> mark.chain_idx, mark.residue_idx, mark.atom_idx
+  (0, 7, 3)
+
 The references to the original model and to atoms are not stored.
 ``Mark`` has a method ``to_cra()`` that needs to be called with ``Model``
 as an argument to get a triple of Chain, Residue and Atom::
@@ -131,7 +150,7 @@ as an argument to get a triple of Chain, Residue and Atom::
 
 .. doctest::
 
-  >>> cra = marks[0].to_cra(st[0])
+  >>> cra = mark.to_cra(st[0])
   >>> cra.chain
   <gemmi.Chain A with 79 res>
   >>> cra.residue
@@ -139,14 +158,14 @@ as an argument to get a triple of Chain, Residue and Atom::
   >>> cra.atom
   <gemmi.Atom O5' at (-0.0, 13.9, -17.6)>
 
-``Mark`` also has a little helper method ``pos()`` that returns
+``Mark`` also has a helper method ``pos()`` that returns
 ``Position(x, y, z)``::
 
   Position NeighborSearch::Mark::pos() const
 
 .. doctest::
 
-  >>> marks[0].pos()
+  >>> mark.pos()
   <gemmi.Position(19.659, 20.2489, 17.645)>
 
 Note that it can be the position of a symmetric image of the atom.
