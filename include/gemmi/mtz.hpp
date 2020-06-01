@@ -377,7 +377,7 @@ struct Mtz {
     return UnitCell(a, b, c, alpha, beta, gamma);
   }
 
-  void warn(const std::string& text) {
+  void warn(const std::string& text) const {
     if (warnings)
       std::fprintf(warnings, "%s\n", text.c_str());
   }
