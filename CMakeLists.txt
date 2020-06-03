@@ -71,9 +71,6 @@ endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-  # /wd4244 - conversion from 'type1' to 'type2', possible loss of data
-  # /wd4267 - conversion from 'size_t' to 'type2'
-  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /wd4267")
   #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Qvec-report:1")
 endif()
 
@@ -101,11 +98,10 @@ else()
       "third_party/zlib/inffast.c"
       "third_party/zlib/zutil.c")
   check_include_file(unistd.h has_unistd_h)
-  set(Z_DEF "-DNO_GZCOMPRESS")
+  target_compile_definitions(ungz PRIVATE NO_GZCOMPRESS=1)
   if (has_unistd_h)
-    set(Z_DEF "${Z_DEF} -DZ_HAVE_UNISTD_H")
+    target_compile_definitions(ungz PRIVATE Z_HAVE_UNISTD_H=1)
   endif()
-  set_target_properties(ungz PROPERTIES COMPILE_DEFINITIONS "${Z_DEF}")
   if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     # /wd4996 - the POSIX name for this item is deprecated.
     # /wd4267 - conversion from 'size_t' to 'unsigned int', possible loss of data
