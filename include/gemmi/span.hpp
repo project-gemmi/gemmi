@@ -28,10 +28,15 @@ template<typename Item> struct Span {
   Span() = default;
   Span(iterator begin, std::size_t n) : begin_(begin), size_(n) {}
 
+#if !defined(_MSC_VER) || _MSC_VER-0 >= 1926
   // constructor only for const Item, to allow non-const -> const conversion
   template<typename T=Item>
   Span(const Span<value_type>& o,
        typename std::enable_if<std::is_const<T>::value>::type* = 0)
+#else
+  // older MSVC don't like the version above
+  Span(const Span<value_type>& o)
+#endif
     : begin_(o.begin_), size_(o.size_) {}
 
   void set_begin(iterator begin) { begin_ = begin; }
