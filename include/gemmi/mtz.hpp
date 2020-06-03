@@ -685,7 +685,7 @@ struct Mtz {
     const Column* col = column_with_label("M/ISYM");
     if (col == nullptr || col->type != 'Y' || col->idx < 3 || !spacegroup)
       return false;
-    int misym_idx = col->idx;
+    size_t misym_idx = col->idx;
     UnmergedHklMover hkl_mover(spacegroup);
     for (size_t n = 0; n + col->idx < data.size(); n += columns.size()) {
       Miller hkl = get_hkl(n);

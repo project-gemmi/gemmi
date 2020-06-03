@@ -241,7 +241,7 @@ AlignmentResult align_sequences(const std::vector<std::uint8_t>& query,
   result.score = eh[query.size()].h;
   delete [] query_profile;
   delete [] eh;
-  result.backtrack_to_cigar(z, target.size(), query.size());
+  result.backtrack_to_cigar(z, (int)target.size(), (int)query.size());
   delete [] z;
   result.count_matches(query, target);
   return result;

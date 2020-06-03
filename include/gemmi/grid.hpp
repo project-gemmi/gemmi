@@ -263,9 +263,9 @@ struct Grid : GridBase<T> {
     T avg[2];
     for (int i = 0; i < 2; ++i) {
       int wi = (i == 0 || w + 1 != nw ? w + i : 0);
-      int idx1 = this->index_q(u, v, wi);
+      size_t idx1 = this->index_q(u, v, wi);
       int v2 = v + 1 != nv ? v + 1 : 0;
-      int idx2 = this->index_q(u, v2, wi);
+      size_t idx2 = this->index_q(u, v2, wi);
       int u_add = u + 1 != nu ? 1 : -u;
       avg[i] = (T) lerp_(lerp_(data[idx1], data[idx1 + u_add], xd),
                          lerp_(data[idx2], data[idx2 + u_add], xd),
@@ -365,7 +365,7 @@ struct Grid : GridBase<T> {
 
   template<typename Func>
   void symmetrize_using_ops(const std::vector<GridOp>& ops, Func func) {
-    std::vector<int> mates(ops.size(), 0);
+    std::vector<size_t> mates(ops.size(), 0);
     std::vector<bool> visited(data.size(), false);
     size_t idx = 0;
     for (int w = 0; w != nw; ++w)
@@ -379,13 +379,13 @@ struct Grid : GridBase<T> {
             mates[k] = index_n(t[0], t[1], t[2]);
           }
           T value = data[idx];
-          for (int k : mates) {
+          for (size_t k : mates) {
             assert(!visited[k]);
             value = func(value, data[k]);
           }
           data[idx] = value;
           visited[idx] = true;
-          for (int k : mates) {
+          for (size_t k : mates) {
             data[k] = value;
             visited[k] = true;
           }
@@ -413,14 +413,14 @@ struct Grid : GridBase<T> {
   template<typename V> std::vector<V> get_asu_mask() const {
     std::vector<V> mask(data.size(), 0);
     std::vector<GridOp> ops = get_scaled_ops_except_id();
-    int idx = 0;
+    size_t idx = 0;
     for (int w = 0; w != nw; ++w)
       for (int v = 0; v != nv; ++v)
         for (int u = 0; u != nu; ++u, ++idx)
           if (mask[idx] == 0)
             for (const GridOp& op : ops) {
               std::array<int, 3> t = op.apply(u, v, w);
-              int mate_idx = index_n(t[0], t[1], t[2]);
+              size_t mate_idx = index_n(t[0], t[1], t[2]);
               // grid point can be on special position
               if (mate_idx != idx)
                 mask[mate_idx] = 1;
@@ -494,12 +494,12 @@ struct ReciprocalGrid : GridBase<T> {
       throw std::out_of_range("ReciprocalGrid: index out of grid.");
   }
   // Similar to Grid::index_n(), but works only for -nu <= u < nu, etc.
-  int index_n(int u, int v, int w) const {
+  size_t index_n(int u, int v, int w) const {
     return this->index_q(u >= 0 ? u : u + this->nu,
                          v >= 0 ? v : v + this->nv,
                          w >= 0 ? w : w + this->nw);
   }
-  int index_checked(int u, int v, int w) const {
+  size_t index_checked(int u, int v, int w) const {
     check_index(u, v, w);
     return index_n(u, v, w);
   }

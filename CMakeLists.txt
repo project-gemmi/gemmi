@@ -73,7 +73,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
   # /wd4244 - conversion from 'type1' to 'type2', possible loss of data
   # /wd4267 - conversion from 'size_t' to 'type2'
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /wd4267")
+  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /wd4267")
   #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Qvec-report:1")
 endif()
 
@@ -105,7 +105,12 @@ else()
   if (has_unistd_h)
     set(Z_DEF "${Z_DEF} -DZ_HAVE_UNISTD_H")
   endif()
-  set_target_properties(ungz PROPERTIES COMPILE_FLAGS "${Z_DEF}")
+  set_target_properties(ungz PROPERTIES COMPILE_DEFINITIONS "${Z_DEF}")
+  if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    # /wd4996 - the POSIX name for this item is deprecated.
+    # /wd4267 - conversion from 'size_t' to 'unsigned int', possible loss of data
+    target_compile_options(ungz PRIVATE /wd4996 /wd4267)
+  endif()
   macro(support_gz exe)
     target_sources(${exe} PUBLIC $<TARGET_OBJECTS:ungz>)
   endmacro()

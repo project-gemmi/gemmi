@@ -191,9 +191,9 @@ void NeighborSearch::for_each(const Position& pos, char alt, float radius,
       int dv = v >= grid.nv ? -1 : v < 0 ? 1 : 0;
       for (int u = u0 - 1; u < u0 + 2; ++u) {
         int du = u >= grid.nu ? -1 : u < 0 ? 1 : 0;
-        int idx = grid.index_q(u + du * grid.nu,
-                               v + dv * grid.nv,
-                               w + dw * grid.nw);
+        size_t idx = grid.index_q(u + du * grid.nu,
+                                  v + dv * grid.nv,
+                                  w + dw * grid.nw);
         Position p = grid.unit_cell.orthogonalize(Fractional(fr.x + du,
                                                              fr.y + dv,
                                                              fr.z + dw));

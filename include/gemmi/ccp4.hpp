@@ -360,7 +360,7 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
     for (it[1] = start[1]; it[1] < end[1]; it[1]++) // rows
       for (it[0] = start[0]; it[0] < end[0]; it[0]++) { // cols
         T val = grid.data[idx++];
-        int new_index = grid.index_s(it[pos[0]], it[pos[1]], it[pos[2]]);
+        size_t new_index = grid.index_s(it[pos[0]], it[pos[1]], it[pos[2]]);
         full[new_index] = val;
       }
   grid.data = std::move(full);

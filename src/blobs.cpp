@@ -151,7 +151,7 @@ std::vector<Blob> find_blobs_by_flood_fill(const gemmi::Grid<float>& grid,
               if (mask[nabe.idx] != 0)
                 for (const gemmi::GridOp& op : ops) {
                   auto t = op.apply(nabe.u, nabe.v, nabe.w);
-                  int mate_idx = grid.index_s(t[0], t[1], t[2]);
+                  size_t mate_idx = grid.index_s(t[0], t[1], t[2]);
                   if (mask[mate_idx] == 0)
                     mask[mate_idx] = 1;
                 }
@@ -234,8 +234,8 @@ static int run(OptParser& p) {
         grid.set_points_around(atom.pos, radius, -INFINITY);
   grid.symmetrize_min();
   if (p.options[Verbose]) {
-    int n = std::count(grid.data.begin(), grid.data.end(), -INFINITY);
-    printf("Masked points: %d of %zu.\n", n, grid.point_count());
+    size_t n = std::count(grid.data.begin(), grid.data.end(), -INFINITY);
+    printf("Masked points: %zu of %zu.\n", n, grid.point_count());
   }
 
   // find and sort blobs

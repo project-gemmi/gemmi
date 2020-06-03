@@ -149,7 +149,7 @@ inline void write_multiline(std::ostream& os, const char* record_name,
   for (int n = 2; n < 1000 && *end != '\0'; ++n) {
     start = end;
     end = find_last_break(start, lastcol-11);
-    int len = end - start;
+    int len = int(end - start);
     WRITEU("%-6s %3d %-69.*s\n", record_name, n, len, start);
   }
 }

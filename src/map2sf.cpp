@@ -97,7 +97,7 @@ static void transform_map_to_sf(OptParser& p) {
                                 [](const Mtz::Column& c) { return c.label; }
                                ).c_str());
       mtz.add_column(f_col, f_type, dataset_id);
-      int f_idx = mtz.columns.back().idx;
+      size_t f_idx = mtz.columns.back().idx;
       mtz.add_column(phi_col, phi_type, dataset_id);
       mtz.expand_data_rows(2);
       size_t ncol = mtz.columns.size();

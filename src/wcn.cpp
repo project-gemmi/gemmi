@@ -294,7 +294,7 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
   Result r;
   r.b_mean = cc.mean_y;
   r.b_stddev = std::sqrt(cc.y_variance());
-  r.n = b_exper.size();
+  r.n = (int) b_exper.size();
   r.cc = cc.coefficient();
   r.rank_cc = rank_cc.coefficient();
   {
@@ -386,7 +386,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       sum_rmad += r.relative_mean_abs_dev;
       sum_rank_cc += r.rank_cc;
     }
-    int N = paths.size();
+    int N = (int) paths.size();
     if (N > 1)
       fprintf(stderr,
               "average of %4d files    CC=%#.4g  1-RMAD=%#.4g  rankCC=%#.4g\n",

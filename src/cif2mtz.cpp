@@ -186,7 +186,7 @@ void convert_cif_block_to_mtz(const gemmi::ReflnBlock& rb,
     mtz.columns[i].parent = &mtz;
     mtz.columns[i].idx = i;
   }
-  mtz.nreflections = loop->length();
+  mtz.nreflections = (int) loop->length();
   mtz.data.resize(mtz.columns.size() * mtz.nreflections);
   int k = 0;
   for (size_t i = 0; i < loop->values.size(); i += loop->tags.size()) {

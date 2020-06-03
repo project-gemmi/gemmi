@@ -559,7 +559,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
 
          l = (stbsp__uint32)(sn - s);
 #else
-         l = strlen(s);
+         l = (stbsp__uint32)strlen(s);
 #endif
          // clamp to precision
          if (l > (stbsp__uint32)pr)

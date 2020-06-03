@@ -322,7 +322,7 @@ void add_cif(py::module& cif) {
     .def("__repr__", [](const Table::Row& self) {
         std::string items;
         for (size_t i = 0; i != self.size(); ++i)
-          items += " " + (self.has(i) ? self[i] : "None");
+          items += " " + (self.has((int)i) ? self[i] : "None");
         return "<gemmi.cif.Table.Row:" + items + ">";
     });
 

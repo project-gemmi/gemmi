@@ -93,10 +93,10 @@ void add_friedel_mates(ReciprocalGrid<T>& grid) {
       for (int v = 0; v != grid.nv; ++v) {
         int v_ = v == 0 ? 0 : grid.nv - v;
         for (int u = 0; u != grid.nu; ++u) {
-          int idx = grid.index_q(u, v, w);
+          size_t idx = grid.index_q(u, v, w);
           if (grid.data[idx] == default_val) {
             int u_ = u == 0 ? 0 : grid.nu - u;
-            int inv_idx = grid.index_q(u_, v_, w_);
+            size_t inv_idx = grid.index_q(u_, v_, w_);
             grid.data[idx] = friedel_mate_value(grid.data[inv_idx]);
           }
         }
@@ -108,17 +108,17 @@ void add_friedel_mates(ReciprocalGrid<T>& grid) {
       for (int v = 0; v != grid.nv; ++v) {
         int v_ = v == 0 ? 0 : grid.nv - v;
         if (grid.half_l) {
-          int idx = grid.index_q(0, v, w);
+          size_t idx = grid.index_q(0, v, w);
           if (grid.data[idx] == default_val) {
-            int inv_idx = grid.index_q(0, v_, w_);
+            size_t inv_idx = grid.index_q(0, v_, w_);
             grid.data[idx] = friedel_mate_value(grid.data[inv_idx]);
           }
         } else {
           for (int u = 0; u != grid.nu; ++u) {
-            int idx = grid.index_q(u, v, w);
+            size_t idx = grid.index_q(u, v, w);
             if (grid.data[idx] == default_val) {
               int u_ = u == 0 ? 0 : grid.nu - u;
-              int inv_idx = grid.index_q(u_, v_, w_);
+              size_t inv_idx = grid.index_q(u_, v_, w_);
               grid.data[idx] = friedel_mate_value(grid.data[inv_idx]);
             }
           }
@@ -177,7 +177,7 @@ FPhiGrid<T> get_f_phi_on_grid(const DataProxy& data,
         if (!grid.has_index(hklp[0], hklp[1], hklp[2]))
           continue;
         int sign = (!half_l || lp >= 0 ? 1 : -1);
-        int idx = grid.index_n(sign * hklp[0], sign * hklp[1], sign * hklp[2]);
+        size_t idx = grid.index_n(sign * hklp[0], sign * hklp[1], sign * hklp[2]);
         if (grid.data[idx] == default_val)
           grid.data[idx] = std::polar(f, (T) (sign * shifted_phi));
       }
@@ -211,7 +211,7 @@ ReciprocalGrid<T> get_value_on_grid(const DataProxy& data, size_t column,
         if (!grid.has_index(hklp[0], hklp[1], hklp[2]))
           continue;
         int sign = (!half_l || lp >= 0 ? 1 : -1);
-        int idx = grid.index_n(sign * hklp[0], sign * hklp[1], sign * hklp[2]);
+        size_t idx = grid.index_n(sign * hklp[0], sign * hklp[1], sign * hklp[2]);
         if (grid.data[idx] == 0.)  // 0 is the default value
           grid.data[idx] = val;
       }
@@ -318,8 +318,8 @@ FPhiGrid<T> transform_map_to_f_phi(const Grid<T>& map, bool half_l) {
         int v_ = v == 0 ? 0 : hkl.nv - v;
         for (int u = 0; u != hkl.nu; ++u) {
           int u_ = u == 0 ? 0 : hkl.nu - u;
-          int idx = hkl.index_q(u, v, w);
-          int inv_idx = hkl.index_q(u_, v_, w_);
+          size_t idx = hkl.index_q(u, v, w);
+          size_t inv_idx = hkl.index_q(u_, v_, w_);
           hkl.data[idx] = hkl.data[inv_idx];  // conj() is called later
         }
       }
