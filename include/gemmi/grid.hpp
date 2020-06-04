@@ -526,6 +526,39 @@ struct ReciprocalGrid : GridBase<T> {
       std::swap(hkl[0], hkl[2]);
     return hkl;
   }
+
+  struct HklValue {
+    Miller hkl;
+    T value;
+  };
+
+  std::vector<HklValue> make_asu_array(double dmin=0, bool with_000=false) {
+    std::vector<HklValue> array;
+    if (this->axis_order == AxisOrder::ZYX)
+      fail("get_asu_values(): ZYX order is not supported yet");
+    int max_h = (this->nu - 1) / 2;
+    int max_k = (this->nv - 1) / 2;
+    int max_l = half_l ? this->nw - 1 : (this->nw - 1) / 2;
+    double max_1_d2 = 0.;
+    if (dmin != 0.)
+      max_1_d2 = 1. / (dmin * dmin);
+    gemmi::ReciprocalAsuChecker asu(this->spacegroup);
+    Miller hkl;
+    for (hkl[0] = -max_h; hkl[0] < max_h + 1; ++hkl[0]) {
+      int hi = hkl[0] >= 0 ? hkl[0] : hkl[0] + this->nu;
+      for (hkl[1] = -max_k; hkl[1] < max_k + 1; ++hkl[1]) {
+        int ki = hkl[1] >= 0 ? hkl[1] : hkl[1] + this->nv;
+        for (hkl[2] = (half_l ? 0 : -max_l); hkl[2] < max_l + 1; ++hkl[2])
+          if (asu.is_in(hkl) &&
+              (max_1_d2 == 0. || this->unit_cell.calculate_1_d2(hkl) < max_1_d2) &&
+              (with_000 || !(hkl[0] == 0 && hkl[1] == 0 && hkl[2] == 0))) {
+            int li = hkl[2] >= 0 ? hkl[2] : hkl[2] + this->nw;
+            array.push_back({hkl, this->get_value_q(hi, ki, li)});
+          }
+      }
+    }
+    return array;
+  }
 };
 
 template<typename T> using FPhiGrid = ReciprocalGrid<std::complex<T>>;

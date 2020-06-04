@@ -58,13 +58,7 @@ static void transform_map_to_sf(OptParser& p) {
   const char* f_col = p.nonOption(2);
   const char* phi_col = p.nonOption(3);
   char f_type = p.options[FType] ? std::toupper(p.options[FType].arg[0]) : 'F';
-  char phi_type = p.options[PhiType] ? std::toupper(p.options[PhiType].arg[0])
-                                     : 'P';
-  double min_1_d2 = 0;
-  if (p.options[DMin]) {
-    double dmin = std::strtod(p.options[DMin].arg, nullptr);
-    min_1_d2 = 1. / (dmin * dmin);
-  }
+  char phi_type = p.options[PhiType] ? std::toupper(p.options[PhiType].arg[0]) : 'P';
   if (verbose)
     fprintf(stderr, "Reading %s ...\n", map_path);
   gemmi::Ccp4<float> map;
@@ -76,7 +70,7 @@ static void transform_map_to_sf(OptParser& p) {
   if (verbose)
     fprintf(stderr, "Fourier transform of grid %d x %d x %d...\n",
             map.grid.nu, map.grid.nv, map.grid.nw);
-  auto hkl = gemmi::transform_map_to_f_phi(map.grid, /*half_l=*/true);
+  gemmi::FPhiGrid<float> hkl = gemmi::transform_map_to_f_phi(map.grid, /*half_l=*/true);
   if (gemmi::iends_with(output_path, ".mtz")) {
     gemmi::Mtz mtz;
     if (p.options[Base]) {
@@ -100,16 +94,19 @@ static void transform_map_to_sf(OptParser& p) {
       size_t f_idx = mtz.columns.back().idx;
       mtz.add_column(phi_col, phi_type, dataset_id);
       mtz.expand_data_rows(2);
-      size_t ncol = mtz.columns.size();
       for (int i = 0; i != mtz.nreflections; ++i) {
-        int h = (int) mtz.data[i * ncol + 0];
-        int k = (int) mtz.data[i * ncol + 1];
-        int l = (int) mtz.data[i * ncol + 2];
+        size_t offset = i * mtz.columns.size();
+        int h = (int) mtz.data[offset + 0];
+        int k = (int) mtz.data[offset + 1];
+        int l = (int) mtz.data[offset + 2];
         std::complex<float> v = hkl.get_value(h, k, l);
-        mtz.data[i * ncol + f_idx] = (float) std::abs(v);
-        mtz.data[i * ncol + f_idx + 1] = (float) gemmi::phase_in_angles(v);
+        mtz.data[offset + f_idx] = (float) std::abs(v);
+        mtz.data[offset + f_idx + 1] = (float) gemmi::phase_in_angles(v);
       }
     } else {
+      double dmin = 0;
+      if (p.options[DMin])
+        dmin = std::strtod(p.options[DMin].arg, nullptr);
       mtz.cell = map.grid.unit_cell;
       mtz.spacegroup = map.grid.spacegroup;
       mtz.sort_order = {{1, 2, 3, 0, 0}};
@@ -120,27 +117,15 @@ static void transform_map_to_sf(OptParser& p) {
       mtz.add_dataset(p.options[Section] ? p.options[Section].arg : "unknown");
       mtz.add_column(f_col, f_type);
       mtz.add_column(phi_col, phi_type);
-      int max_h = (hkl.nu - 1) / 2;
-      int max_k = (hkl.nv - 1) / 2;
-      int max_l = hkl.nw - 1;
-      gemmi::ReciprocalAsuChecker asu(mtz.spacegroup);
-      for (int h = -max_h; h < max_h + 1; ++h)
-        for (int k = -max_k; k < max_k + 1; ++k)
-          for (int l = 0; l < max_l + 1; ++l)
-            if (asu.is_in({{h, k, l}}) &&
-                (min_1_d2 == 0. ||
-                 mtz.cell.calculate_1_d2(h, k, l) < min_1_d2) &&
-                !(h == 0 && k == 0 && l == 0)) {
-              std::complex<float> v = hkl.get_value_q(h >= 0 ? h : h + hkl.nu,
-                                                      k >= 0 ? k : k + hkl.nv,
-                                                      l);
-              mtz.data.push_back((float) h);
-              mtz.data.push_back((float) k);
-              mtz.data.push_back((float) l);
-              mtz.data.push_back(std::abs(v));
-              mtz.data.push_back((float) gemmi::phase_in_angles(v));
-              ++mtz.nreflections;
-            }
+      auto data = hkl.make_asu_array(dmin);
+      mtz.nreflections = (int) data.size();
+      mtz.data.reserve(mtz.nreflections * mtz.columns.size());
+      for (const gemmi::FPhiGrid<float>::HklValue& item : data) {
+        for (int i = 0; i != 3; ++i)
+          mtz.data.push_back((float) item.hkl[i]);
+        mtz.data.push_back(std::abs(item.value));
+        mtz.data.push_back((float) gemmi::phase_in_angles(item.value));
+      }
     }
     if (verbose)
       fprintf(stderr, "Writing %s ...\n", output_path);
