@@ -10,7 +10,7 @@
 #endif
 #include <gemmi/mtz.hpp>      // for Mtz
 #include <gemmi/ccp4.hpp>     // for Ccp4
-#include <gemmi/fourier.hpp>  // for transform_map_to_sf
+#include <gemmi/fourier.hpp>  // for transform_map_to_f_phi
 #include <gemmi/gzread.hpp>   // for read_cif_gz
 #include <gemmi/refln.hpp>    // for ReflnBlock
 #include <gemmi/util.hpp>     // for fail, iends_with

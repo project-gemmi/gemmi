@@ -163,9 +163,8 @@ void print_structure_factors(const Structure& st,
     if (!phi_col)
       fail("MTZ file has no column with label: " + phi_label);
     gemmi::MtzDataProxy data_proxy{mtz};
-    auto hkl_col = data_proxy.hkl_col();
     for (size_t i = 0; i < data_proxy.size(); i += data_proxy.stride()) {
-      Miller hkl = data_proxy.get_hkl(i, hkl_col);
+      Miller hkl = data_proxy.get_hkl(i);
       double f_abs = data_proxy.get_num(i + f_col->idx);
       double f_deg = data_proxy.get_num(i + phi_col->idx);
       if (!std::isnan(f_abs) && !std::isnan(f_deg))
@@ -368,9 +367,8 @@ void compare_with_mtz(const Model& model, const UnitCell& cell,
   if (!col)
     fail("MTZ file has no column with label: " + label);
   gemmi::MtzDataProxy data_proxy{mtz};
-  auto hkl_col = data_proxy.hkl_col();
   for (size_t i = 0; i < data_proxy.size(); i += data_proxy.stride()) {
-    Miller hkl = data_proxy.get_hkl(i, hkl_col);
+    Miller hkl = data_proxy.get_hkl(i);
     double f_from_file = data_proxy.get_num(i + col->idx);
     double f = std::abs(calc.calculate_sf_from_model(model, hkl));
     f *= scale;

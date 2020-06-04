@@ -205,20 +205,22 @@ inline ReflnBlock hkl_cif_as_refln_block(cif::Block& block) {
 // Abstraction of data source, cf. MtzDataProxy.
 struct ReflnDataProxy {
   const ReflnBlock& rb_;
-  const cif::Loop& loop() const { rb_.check_ok(); return *rb_.default_loop; }
-  bool ok() const { return rb_.ok(); }
-  std::array<size_t,3> hkl_col() const { return rb_.get_hkl_column_indices(); }
+  std::array<size_t,3> hkl_cols_;
+  ReflnDataProxy(const ReflnBlock& rb)
+    : rb_(rb), hkl_cols_(rb_.get_hkl_column_indices()) {}
   size_t stride() const { return loop().tags.size(); }
   size_t size() const { return loop().values.size(); }
-  int get_int(size_t n) const { return cif::as_int(loop().values[n]); }
   double get_num(size_t n) const { return cif::as_number(loop().values[n]); }
   const UnitCell& unit_cell() const { return rb_.cell; }
   const SpaceGroup* spacegroup() const { return rb_.spacegroup; }
-  Miller get_hkl(size_t offset, const std::array<size_t,3>& hkl_cols) const {
-    return {{get_int(offset + hkl_cols[0]),
-             get_int(offset + hkl_cols[1]),
-             get_int(offset + hkl_cols[2])}};
+  Miller get_hkl(size_t offset) const {
+    return {{get_int(offset + hkl_cols_[0]),
+             get_int(offset + hkl_cols_[1]),
+             get_int(offset + hkl_cols_[2])}};
   }
+private:
+  const cif::Loop& loop() const { rb_.check_ok(); return *rb_.default_loop; }
+  int get_int(size_t n) const { return cif::as_int(loop().values[n]); }
 };
 
 } // namespace gemmi

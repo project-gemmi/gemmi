@@ -303,11 +303,11 @@ void add_hkl(py::module& m) {
     .def("get_size_for_hkl",
          [](const ReflnBlock& self,
             std::array<int,3> min_size, double sample_rate) {
-          return get_size_for_hkl(ReflnDataProxy{self}, min_size, sample_rate);
+          return get_size_for_hkl(ReflnDataProxy(self), min_size, sample_rate);
     }, py::arg("min_size")=std::array<int,3>{{0,0,0}},
        py::arg("sample_rate")=0.)
     .def("data_fits_into", [](const ReflnBlock& self, std::array<int,3> size) {
-        return data_fits_into(ReflnDataProxy{self}, size);
+        return data_fits_into(ReflnDataProxy(self), size);
     }, py::arg("size"))
     .def("get_f_phi_on_grid", [](const ReflnBlock& self,
                                  const std::string& f_col,
@@ -316,7 +316,7 @@ void add_hkl(py::module& m) {
                                  bool half_l, AxisOrder order) {
         size_t f_idx = self.get_column_index(f_col);
         size_t phi_idx = self.get_column_index(phi_col);
-        return get_f_phi_on_grid<float>(ReflnDataProxy{self}, f_idx, phi_idx,
+        return get_f_phi_on_grid<float>(ReflnDataProxy(self), f_idx, phi_idx,
                                         size, half_l, order);
     }, py::arg("f"), py::arg("phi"), py::arg("size"),
        py::arg("half_l")=false, py::arg("order")=AxisOrder::XYZ)
@@ -325,7 +325,7 @@ void add_hkl(py::module& m) {
                                  std::array<int, 3> size,
                                  bool half_l, AxisOrder order) {
         size_t col_idx = self.get_column_index(column);
-        return get_value_on_grid<float>(ReflnDataProxy{self}, col_idx,
+        return get_value_on_grid<float>(ReflnDataProxy(self), col_idx,
                                         size, half_l, order);
     }, py::arg("column"), py::arg("size"), py::arg("half_l")=false,
        py::arg("order")=AxisOrder::XYZ)
@@ -340,7 +340,7 @@ void add_hkl(py::module& m) {
         size_t phi_idx = self.get_column_index(phi_col);
         bool exact = (exact_size[0] != 0 || exact_size[1] != 0 ||
                       exact_size[2] != 0);
-        return transform_f_phi_to_map<float>(ReflnDataProxy{self},
+        return transform_f_phi_to_map<float>(ReflnDataProxy(self),
                                              f_idx, phi_idx,
                                              exact ? exact_size : min_size,
                                              sample_rate, exact, order);

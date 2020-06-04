@@ -37,25 +37,22 @@ std::array<int, 3> get_size_for_hkl(const DataProxy& data,
                                     std::array<int, 3> min_size,
                                     double sample_rate) {
   // adjust min_size by checking Miller indices in the data
-  auto hkl_col = data.hkl_col();
-  for (size_t i = 0; i < data.size(); i += data.stride())
+  for (size_t i = 0; i < data.size(); i += data.stride()) {
+    Miller hkl = data.get_hkl(i);
     for (int j = 0; j != 3; ++j) {
-      int v = 2 * std::abs(data.get_int(i + hkl_col[j])) + 1;
+      int v = 2 * std::abs(hkl[j]) + 1;
       if (v > min_size[j])
         min_size[j] = v;
     }
+  }
   std::array<double, 3> dsize{{(double)min_size[0],
                                (double)min_size[1],
                                (double)min_size[2]}};
   if (sample_rate > 0) {
     const UnitCell& cell = data.unit_cell();
     double max_1_d2 = 0;
-    for (size_t i = 0; i < data.size(); i += data.stride()) {
-      int h = data.get_int(i + hkl_col[0]);
-      int k = data.get_int(i + hkl_col[1]);
-      int l = data.get_int(i + hkl_col[2]);
-      max_1_d2 = std::max(max_1_d2, cell.calculate_1_d2(h, k, l));
-    }
+    for (size_t i = 0; i < data.size(); i += data.stride())
+      max_1_d2 = std::max(max_1_d2, cell.calculate_1_d2(data.get_hkl(i)));
     double inv_d_min = std::sqrt(max_1_d2);
     std::array<double, 3> cellr = {{cell.ar, cell.br, cell.cr}};
     for (int i = 0; i < 3; ++i)
@@ -66,13 +63,12 @@ std::array<int, 3> get_size_for_hkl(const DataProxy& data,
 
 template<typename DataProxy>
 bool data_fits_into(const DataProxy& data, std::array<int, 3> size) {
-  auto hkl_col = data.hkl_col();
-  for (size_t i = 0; i < data.size(); i += data.stride())
-    for (int j = 0; j != 3; ++j) {
-      int index = data.get_int(i + hkl_col[j]);
-      if (2 * std::abs(index) >= size[j])
+  for (size_t i = 0; i < data.size(); i += data.stride()) {
+    Miller hkl = data.get_hkl(i);
+    for (int j = 0; j != 3; ++j)
+      if (2 * std::abs(hkl[j]) >= size[j])
         return false;
-    }
+  }
   return true;
 }
 
@@ -132,7 +128,7 @@ template<typename T, typename DataProxy>
 void initialize_hkl_grid(ReciprocalGrid<T>& grid, const DataProxy& data,
                          std::array<int, 3> size, bool half_l,
                          AxisOrder axis_order) {
-  if (!data.ok() || data.stride() < 5)
+  if (data.size() == 0 || data.stride() < 5)
     fail("No data.");
   if (!data.spacegroup())
     fail("No spacegroup.");
@@ -162,9 +158,8 @@ FPhiGrid<T> get_f_phi_on_grid(const DataProxy& data,
     fail("Map coefficients not found.");
   const std::complex<T> default_val; // initialized to 0+0i
   GroupOps ops = grid.spacegroup->operations();
-  auto hkl_col = data.hkl_col();
   for (size_t i = 0; i < data.size(); i += data.stride()) {
-    Miller hkl = data.get_hkl(i, hkl_col);
+    Miller hkl = data.get_hkl(i);
     T f = (T) data.get_num(i + f_col);
     if (f > 0.f) {
       double phi = rad(data.get_num(i + phi_col));
@@ -198,9 +193,8 @@ ReciprocalGrid<T> get_value_on_grid(const DataProxy& data, size_t column,
   if (column >= data.stride())
     fail("Map coefficients not found.");
   GroupOps ops = grid.spacegroup->operations();
-  auto hkl_col = data.hkl_col();
   for (size_t i = 0; i < data.size(); i += data.stride()) {
-    Miller hkl = data.get_hkl(i, hkl_col);
+    Miller hkl = data.get_hkl(i);
     T val = (T) data.get_num(i + column);
     if (val != 0.) {
       for (const Op& op : ops.sym_ops) {

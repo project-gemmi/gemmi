@@ -170,13 +170,13 @@ read_sf_and_fft_to_map(const char* input_path,
     gemmi::ReflnBlock rblock = gemmi::get_refln_block(
                                    gemmi::read_cif_gz(input_path).blocks,
                                    {f_label, ph_label}, section);
-    gemmi::ReflnDataProxy data{rblock};
+    gemmi::ReflnDataProxy data(rblock);
     adjust_size(data, size, sample_rate,
                 options[ExactDims], options[GridQuery]);
     if (output)
       fprintf(output, "Putting data from block %s into matrix...\n",
               rblock.block.name.c_str());
-    gemmi::ReflnDataProxy data_proxy{rblock};
+    gemmi::ReflnDataProxy data_proxy(rblock);
     grid = gemmi::get_f_phi_on_grid<float>(data_proxy,
                                            rblock.find_column_index(f_label),
                                            rblock.find_column_index(ph_label),
