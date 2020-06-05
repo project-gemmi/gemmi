@@ -13,6 +13,21 @@ def compare_maps(self, a, b, atol):
     #print(abs(numpy.array(a) - b).max())
     self.assertTrue(numpy.allclose(a, b, atol=atol, rtol=0))
 
+def compare_asu_data(self, asu_data, data, f, phi):
+    asu_dict = {tuple(a.hkl): a.value for a in asu_data}
+    data_hkl = data.make_miller_array()
+    if type(data) is gemmi.ReflnBlock:
+        data_f = data.make_float_array(f)
+        data_phi = data.make_float_array(phi)
+    else:
+        data_f = data.column_with_label(f).array
+        data_phi = data.column_with_label(phi).array
+    self.assertTrue(len(data_f) > 100)
+    asu_val = numpy.array([asu_dict[tuple(hkl)] for hkl in data_hkl])
+    self.assertTrue(numpy.allclose(data_f, abs(asu_val), atol=5e-5, rtol=0))
+    x180 = abs(180 - abs(data_phi - numpy.angle(asu_val, deg=True)))
+    self.assertTrue(numpy.allclose(x180, 180, atol=2e-2, rtol=0.))
+
 def fft_test(self, data, f, phi, size, order=gemmi.AxisOrder.XYZ):
     if numpy is None:
         return
@@ -32,7 +47,8 @@ def fft_test(self, data, f, phi, size, order=gemmi.AxisOrder.XYZ):
     self.assertFalse(grid2.half_l)
     self.assertEqual(grid2.axis_order, order)
     compare_maps(self, grid2, array_full, atol=1e-4)
-
+    if grid2.axis_order != gemmi.AxisOrder.ZYX:
+        compare_asu_data(self, grid2.prepare_asu_data(), data, f, phi)
     grid_half = data.get_f_phi_on_grid(f, phi, size, half_l=True, order=order)
     if order == gemmi.AxisOrder.ZYX:  # half_l+ZYX not supported yet
         return
@@ -40,6 +56,8 @@ def fft_test(self, data, f, phi, size, order=gemmi.AxisOrder.XYZ):
     self.assertTrue(grid3.half_l)
     self.assertEqual(grid3.axis_order, order)
     compare_maps(self, grid3, grid_half, atol=1e-4)
+    compare_asu_data(self, grid3.prepare_asu_data(), data, f, phi)
+
 
 class TestMtz(unittest.TestCase):
     def test_read_write(self):

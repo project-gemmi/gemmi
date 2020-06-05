@@ -206,7 +206,7 @@ inline ReflnBlock hkl_cif_as_refln_block(cif::Block& block) {
 struct ReflnDataProxy {
   const ReflnBlock& rb_;
   std::array<size_t,3> hkl_cols_;
-  ReflnDataProxy(const ReflnBlock& rb)
+  explicit ReflnDataProxy(const ReflnBlock& rb)
     : rb_(rb), hkl_cols_(rb_.get_hkl_column_indices()) {}
   size_t stride() const { return loop().tags.size(); }
   size_t size() const { return loop().values.size(); }

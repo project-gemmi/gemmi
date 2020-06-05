@@ -799,6 +799,17 @@ We can also iterate over points of the grid.
   >>> grid.to_hkl(point)
   [-1, -1, -1]
 
+Often, one is only interested in unique points of the grid.
+We have a function that makes a table of H, K, L and values.
+
+.. doctest::
+
+  >>> grid.prepare_asu_data()
+  <gemmi.ReciprocalComplexGrid.AsuData with 1352 values>
+  >>> _[500]
+  <gemmi.Reciprocal.HklValue (-6,2,5) (-1.37694,-0.190087)>
+  >>> _.hkl, _.value
+  ([-6, 2, 5], (-1.376941204071045-0.19008657336235046j))
 
 .. _grid_size:
 

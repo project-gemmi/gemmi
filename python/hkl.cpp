@@ -139,6 +139,15 @@ void add_hkl(py::module& m) {
     })
     .def("get_cell", (UnitCell& (Mtz::*)(int)) &Mtz::get_cell,
          py::arg("dataset")=-1)
+    .def("make_miller_array", [](const Mtz& self) {
+        py::array_t<int> arr({self.nreflections, 3});
+        py::buffer_info buf = arr.request();
+        int* ptr = (int*) buf.ptr;
+        for (int i = 0; i < self.nreflections; ++i)
+          for (int j = 0; j != 3; ++j)
+            ptr[3*i + j] = (int) self.data[self.columns.size() * i + j];
+        return arr;
+    })
     .def("make_1_d2_array", &make_1_d2_array, py::arg("dataset")=-1)
     .def("make_d_array", &make_d_array, py::arg("dataset")=-1)
     .def("get_size_for_hkl",
@@ -196,7 +205,7 @@ void add_hkl(py::module& m) {
     .def("add_dataset", &Mtz::add_dataset, py::arg("name"),
          py::return_value_policy::reference_internal)
     .def("add_column", &Mtz::add_column, py::arg("label"), py::arg("type"),
-         py::arg("dataset_id")=-1, py::arg("pos")=-1,
+         py::arg("dataset_id")=-1, py::arg("pos")=-1, py::arg("expand_data")=true,
          py::return_value_policy::reference_internal)
     .def("set_data", [](Mtz& self, py::array_t<float> arr) {
          if (arr.ndim() != 2)
@@ -213,6 +222,13 @@ void add_hkl(py::module& m) {
            for (ssize_t col = 0; col < ncol; col++)
              self.data[row*ncol+col] = r(row, col);
     }, py::arg("array"))
+    .def("set_data", [](Mtz& self, const FPhiGrid<float>::AsuData& asu_data) {
+         if (self.columns.size() != 5)
+           fail("Mtz.set_data(): Mtz must have 5 columns to put H,K,L,F,Phi.");
+         self.nreflections = (int) asu_data.v.size();
+         self.data.clear();
+         add_asu_f_phi_to_float_vector(self.data, asu_data);
+    }, py::arg("asu_data"))
     .def("update_reso", &Mtz::update_reso)
     .def("switch_to_original_hkl", &Mtz::switch_to_original_hkl)
     .def("switch_to_asu_hkl", &Mtz::switch_to_asu_hkl)

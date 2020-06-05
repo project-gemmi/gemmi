@@ -17,6 +17,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
+#include "common.h"  // for normalize_index
 
 namespace py = pybind11;
 using namespace gemmi;
@@ -54,14 +55,6 @@ C& add_item(T& container, C child, int pos) {
 template<typename P, typename C>
 C& add_child(P& parent, C child, int pos) {
   return add_item(parent.children(), std::move(child), pos);
-}
-
-template<typename T> int normalize_index(int index, const T& container) {
-  if (index < 0)
-    index += (int) container.size();
-  if ((size_t) index >= container.size())
-    throw py::index_error();
-  return index;
 }
 
 template<typename P, typename C> C& get_child(P& parent, int index) {

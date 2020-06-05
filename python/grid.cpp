@@ -20,6 +20,7 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 #include <pybind11/numpy.h>
+#include "common.h"  // for normalize_index
 
 namespace py = pybind11;
 using namespace gemmi;
@@ -123,13 +124,38 @@ void add_grid(py::module& m, const std::string& name) {
     ;
 
   using ReGr = ReciprocalGrid<T>;
-  py::class_<ReGr, GrBase>(m, ("Reciprocal" + name).c_str())
+  py::class_<ReGr, GrBase> regr(m, ("Reciprocal" + name).c_str());
+
+  py::class_<typename ReGr::HklValue>(regr, "HklValue")
+    .def_readonly("hkl", &ReGr::HklValue::hkl)
+    .def_readonly("value", &ReGr::HklValue::value)
+    .def("__repr__", [&name](const typename ReGr::HklValue& self) {
+        return tostr("<gemmi.Reciprocal", name, ".HklValue (",
+                     self.hkl[0], ',', self.hkl[1], ',', self.hkl[2], ") ",
+                     self.value, '>');
+    });
+
+  using AsuData = typename ReGr::AsuData;
+  py::class_<AsuData>(regr, "AsuData")
+    .def("__iter__", [](AsuData& self) { return py::make_iterator(self.v); },
+         py::keep_alive<0, 1>())
+    .def("__len__", [](const AsuData& self) { return self.v.size(); })
+    .def("__getitem__", [](AsuData& self, int index) -> typename ReGr::HklValue& {
+        return self.v.at(normalize_index(index, self.v));
+    }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def("__repr__", [=](const AsuData& self) {
+        return tostr("<gemmi.Reciprocal", name, ".AsuData with ", self.v.size(), " values>");
+    });
+
+  regr
     .def_readonly("half_l", &ReGr::half_l)
     .def(py::init<>())
     .def("get_value", &ReGr::get_value)
     .def("get_value_or_zero", &ReGr::get_value_or_zero)
     .def("set_value", &ReGr::set_value)
     .def("to_hkl", &ReGr::to_hkl)
+    .def("prepare_asu_data", &ReGr::prepare_asu_data,
+         py::arg("dmin")=0., py::arg("with_000")=false)
     .def("__repr__", [=](const ReGr& self) {
         return tostr("<gemmi.Reciprocal", name, '(', grid_dim_str(self), ")>");
     });

@@ -117,15 +117,9 @@ static void transform_map_to_sf(OptParser& p) {
       mtz.add_dataset(p.options[Section] ? p.options[Section].arg : "unknown");
       mtz.add_column(f_col, f_type);
       mtz.add_column(phi_col, phi_type);
-      auto data = hkl.make_asu_array(dmin);
-      mtz.nreflections = (int) data.size();
-      mtz.data.reserve(mtz.nreflections * mtz.columns.size());
-      for (const gemmi::FPhiGrid<float>::HklValue& item : data) {
-        for (int i = 0; i != 3; ++i)
-          mtz.data.push_back((float) item.hkl[i]);
-        mtz.data.push_back(std::abs(item.value));
-        mtz.data.push_back((float) gemmi::phase_in_angles(item.value));
-      }
+      gemmi::FPhiGrid<float>::AsuData data = hkl.prepare_asu_data(dmin);
+      mtz.nreflections = (int) data.v.size();
+      add_asu_f_phi_to_float_vector(mtz.data, data);
     }
     if (verbose)
       fprintf(stderr, "Writing %s ...\n", output_path);

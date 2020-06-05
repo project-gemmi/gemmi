@@ -707,7 +707,7 @@ struct Mtz {
   }
 
   Column& add_column(const std::string& label, char type,
-                     int dataset_id=-1, int pos=-1) {
+                     int dataset_id=-1, int pos=-1, bool expand_data=false) {
     if (datasets.empty())
       fail("No datasets.");
     if (dataset_id < 0)
@@ -726,6 +726,8 @@ struct Mtz {
     col->label = label;
     col->parent = this;
     col->idx = pos;
+    if (expand_data)
+      expand_data_rows(1);
     return *col;
   }
 

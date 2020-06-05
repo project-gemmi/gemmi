@@ -531,9 +531,12 @@ struct ReciprocalGrid : GridBase<T> {
     Miller hkl;
     T value;
   };
+  struct AsuData {
+    std::vector<HklValue> v;
+  };
 
-  std::vector<HklValue> make_asu_array(double dmin=0, bool with_000=false) {
-    std::vector<HklValue> array;
+  AsuData prepare_asu_data(double dmin=0, bool with_000=false) {
+    AsuData asu_data;
     if (this->axis_order == AxisOrder::ZYX)
       fail("get_asu_values(): ZYX order is not supported yet");
     int max_h = (this->nu - 1) / 2;
@@ -553,11 +556,11 @@ struct ReciprocalGrid : GridBase<T> {
               (max_1_d2 == 0. || this->unit_cell.calculate_1_d2(hkl) < max_1_d2) &&
               (with_000 || !(hkl[0] == 0 && hkl[1] == 0 && hkl[2] == 0))) {
             int li = hkl[2] >= 0 ? hkl[2] : hkl[2] + this->nw;
-            array.push_back({hkl, this->get_value_q(hi, ki, li)});
+            asu_data.v.push_back({hkl, this->get_value_q(hi, ki, li)});
           }
       }
     }
-    return array;
+    return asu_data;
   }
 };
 
