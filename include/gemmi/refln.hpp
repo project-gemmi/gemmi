@@ -107,7 +107,7 @@ struct ReflnBlock {
              get_column_index("index_l")}};
   }
 
-  std::vector<std::array<int,3>> make_index_vector() const {
+  std::vector<std::array<int,3>> make_miller_vector() const {
     auto hkl_idx = get_hkl_column_indices();
     std::vector<std::array<int,3>> v(default_loop->length());
     for (size_t j = 0, n = 0; j != v.size(); j++, n += default_loop->width())

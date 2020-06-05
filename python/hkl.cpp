@@ -291,8 +291,8 @@ void add_hkl(py::module& m) {
     }, py::arg("tag"), py::arg("null")=NAN)
     .def("make_float_array", &ReflnBlock::make_vector<double>,
          py::arg("tag"), py::arg("null")=NAN)
-    .def("make_index_array", [](ReflnBlock& self) {
-        return py::array(py::cast((self.make_index_vector())));
+    .def("make_miller_array", [](ReflnBlock& self) {
+        return py::array(py::cast((self.make_miller_vector())));
     })
     .def("make_1_d2_array", [](ReflnBlock& self) {
         return py_array_from_vector(self.make_1_d2_vector());

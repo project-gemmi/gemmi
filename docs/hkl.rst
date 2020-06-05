@@ -605,6 +605,16 @@ the selected column in an array. In Python -- in NumPy array:
   >>> rblock.make_float_array('F_meas_au', 0.0)  # use 0.0 for nulls
   array([12.66, 13.82, 24.11, ...,  0.  ,  9.02,  0.  ])
 
+  >>> # Miller indices hkl are often used together, so we have a dedicated function
+  >>> rblock.make_miller_array()
+  array([[-26,   0,   1],
+         [-26,   0,   2],
+         [-26,   0,   3],
+         ...,
+         [ 25,   1,   0],
+         [ 26,   0,   0],
+         [ 26,   0,   1]])
+
 We also have convenience functions that returns arrays of 1/*d*:sup:`2`
 or just *d* values:
 
