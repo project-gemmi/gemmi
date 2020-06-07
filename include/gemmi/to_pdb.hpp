@@ -17,6 +17,7 @@ struct PdbWriteOptions {
   bool cispep_records = true;
   bool ter_records = true;
   bool numbered_ter = true;
+  bool ter_ignores_type = false;
   bool use_linkr = false;
 };
 
@@ -324,9 +325,11 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
         os.write(buf, 81);
       }
     }
-    if (opt.ter_records && res.entity_type == EntityType::Polymer &&
-        (&res == &chain.residues.back() ||
-         (&res + 1)->entity_type != EntityType::Polymer)) {
+    if (opt.ter_records &&
+        (opt.ter_ignores_type ? &res == &chain.residues.back()
+                              : (res.entity_type == EntityType::Polymer &&
+                                (&res == &chain.residues.back() ||
+                                 (&res + 1)->entity_type != EntityType::Polymer)))) {
       if (opt.numbered_ter) {
         // re-using part of the buffer in the middle, e.g.:
         // TER    4153      LYS B 286
