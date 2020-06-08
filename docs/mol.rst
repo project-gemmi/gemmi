@@ -873,6 +873,7 @@ Here is the full signature:
             cispep_records: bool = True,
             ter_records: bool = True,
             numbered_ter: bool = True,
+            ter_ignores_type: bool = False,
             use_linkr: bool = False) -> None
   <BLANKLINE>
 
