@@ -228,7 +228,7 @@ void DDL::check_audit_conform(const cif::Document& doc) const {
     const std::string* raw_name = b.find_value(audit_conform + "dict_name");
     if (!raw_name) {
       std::cout << "Note: the cif file (block " << b.name << ") is missing "
-                << audit_conform << ".dict_name";
+                << audit_conform << ".dict_name\n";
       continue;
     }
     std::string name = cif::as_string(*raw_name);
@@ -238,10 +238,11 @@ void DDL::check_audit_conform(const cif::Document& doc) const {
         std::string version = cif::as_string(*dict_ver);
         if (version != dict_version_)
           std::cout << "CIF conforms to " << name << " ver. " << version
-                    << " while DDL has ver. " << dict_version_;
+                    << " while DDL has ver. " << dict_version_ << '\n';
       }
     } else {
-      std::cout << "Note: dictionary name mismatch: " << name << " vs " << dict_name_;
+      std::cout << "Note: dictionary name mismatch: " << name
+                << " vs " << dict_name_ << '\n';
     }
   }
 }
