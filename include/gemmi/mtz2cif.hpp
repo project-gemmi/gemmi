@@ -28,6 +28,7 @@ struct MtzToCif {
   bool with_comments = true;            // write comments
   bool skip_empty = false;              // skip reflections with no values
   double wavelength = NAN;              // user-specified wavelength
+  int trim = 0;                         // output only reflections -N<=h,k,l<=N
 
   static const char** default_spec(bool for_merged) {
     static const char* merged[] = {
@@ -407,8 +408,15 @@ inline void MtzToCif::write_cif(const Mtz& mtz, std::ostream& os) {
   std::map<int, const Mtz::Batch*> batch_by_number;
   for (const Mtz::Batch& b : mtz.batches)
     batch_by_number.emplace(b.number, &b);
-  for (int i = 0; i != mtz.nreflections; ++i) {
+  for (int i = 0, id = 0; i != mtz.nreflections; ++i) {
     const float* row = &mtz.data[i * mtz.columns.size()];
+    if (trim > 0) {
+      if (row[0] < -trim || row[0] > trim ||
+          row[1] < -trim || row[1] > trim ||
+          row[2] < -trim || row[2] > trim) {
+        continue;
+      }
+    }
     if (!value_indices.empty())
       if (std::all_of(value_indices.begin(), value_indices.end(),
                       [&](int n) { return std::isnan(row[n]); }))
@@ -421,7 +429,7 @@ inline void MtzToCif::write_cif(const Mtz& mtz, std::ostream& os) {
       if (it == batch_by_number.end())
         fail("unexpected values in column BATCH");
       const Mtz::Batch& batch = *it->second;
-      os << batch.dataset_id() << " . . " << i + 1 << ' ';
+      os << batch.dataset_id() << " . . " << ++id << ' ';
       if (write_angle_phi)
         WRITE("%.2f ", batch.phi_start());
     }

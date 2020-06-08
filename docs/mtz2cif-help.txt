@@ -11,6 +11,7 @@ Options:
   --skip-empty           Skip reflections with no values.
   --no-comments          Do not write comments in the mmCIF file.
   --wavelength=LAMBDA    Set wavelengths (default: from input file).
+  --trim=N               (for testing) output only reflections -N <= h,k,l <=N.
 
 If CIF_FILE is -, the output is printed to stdout.
 If spec is -, it is read from stdin.

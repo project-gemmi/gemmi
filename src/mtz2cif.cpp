@@ -12,7 +12,7 @@
 #include "options.h"
 
 enum OptionIndex { Spec=4, PrintSpec, BlockName, SkipEmpty, NoComments,
-                   Wavelength };
+                   Wavelength, Trim };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -33,6 +33,8 @@ static const option::Descriptor Usage[] = {
     "  --no-comments  \tDo not write comments in the mmCIF file." },
   { Wavelength, 0, "", "wavelength", Arg::Float,
     "  --wavelength=LAMBDA  \tSet wavelengths (default: from input file)." },
+  { Trim, 0, "", "trim", Arg::Int,
+    "  --trim=N  \t(for testing) output only reflections -N <= h,k,l <=N." },
   { NoOp, 0, "", "", Arg::None,
     "\nIf CIF_FILE is -, the output is printed to stdout."
     "\nIf spec is -, it is read from stdin."
@@ -114,10 +116,13 @@ int GEMMI_MAIN(int argc, char **argv) {
   mtz_to_cif.mtz_path = mtz_path;
   mtz_to_cif.with_comments = !p.options[NoComments];
   mtz_to_cif.skip_empty = p.options[SkipEmpty];
+
   if (p.options[BlockName])
     mtz_to_cif.block_name = p.options[BlockName].arg;
   if (p.options[Wavelength])
     mtz_to_cif.wavelength = std::strtod(p.options[Wavelength].arg, nullptr);
+  if (p.options[Trim])
+    mtz_to_cif.trim = std::atoi(p.options[Trim].arg);
   try {
     gemmi::Ofstream os(cif_path, &std::cout);
     mtz_to_cif.write_cif(mtz, os.ref());

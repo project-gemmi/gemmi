@@ -237,7 +237,7 @@ void DDL::check_audit_conform(const cif::Document& doc) const {
       if (dict_ver) {
         std::string version = cif::as_string(*dict_ver);
         if (version != dict_version_)
-          std::cout << "CIF conforms to " << name << " ver. " << version
+          std::cout << "Note: CIF conforms to " << name << " ver. " << version
                     << " while DDL has ver. " << dict_version_ << '\n';
       }
     } else {
