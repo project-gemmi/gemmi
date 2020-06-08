@@ -167,8 +167,8 @@ public:
       read_ddl2();
     }
   }
-  // does the dictionary name/version correspond to _audit_conform_dict_*
-  bool check_audit_conform(const cif::Document& doc, std::string* msg) const;
+  // check if the dictionary name/version correspond to _audit_conform_dict_*
+  void check_audit_conform(const cif::Document& doc) const;
   template <class Output>
   bool validate(cif::Document& doc, Output& out, bool quiet);
 
@@ -222,33 +222,28 @@ private:
 };
 
 
-bool DDL::check_audit_conform(const cif::Document& doc,
-                              std::string* msg) const {
+void DDL::check_audit_conform(const cif::Document& doc) const {
   std::string audit_conform = "_audit_conform" + sep_;
   for (const cif::Block& b : doc.blocks) {
-    const std::string* dict_name = b.find_value(audit_conform + "dict_name");
-    if (!dict_name)
+    const std::string* raw_name = b.find_value(audit_conform + "dict_name");
+    if (!raw_name) {
+      std::cout << "Note: the cif file (block " << b.name << ") is missing "
+                << audit_conform << ".dict_name";
       continue;
-    std::string name = cif::as_string(*dict_name);
-    if (name != dict_name_) {
-      if (msg)
-          *msg = "Dictionary name mismatch: " + name + " vs " + dict_name_;
-      return false;
     }
-    const std::string* dict_ver = b.find_value(audit_conform + "dict_version");
-    if (dict_ver) {
-      std::string version = cif::as_string(*dict_ver);
-      if (version != dict_version_) {
-        if (msg)
-          *msg = "CIF conforms to " + name + " ver. " + version
-                 + " while DDL has ver. " + dict_version_;
-        return false;
+    std::string name = cif::as_string(*raw_name);
+    if (name == dict_name_) {
+      const std::string* dict_ver = b.find_value(audit_conform + "dict_version");
+      if (dict_ver) {
+        std::string version = cif::as_string(*dict_ver);
+        if (version != dict_version_)
+          std::cout << "CIF conforms to " << name << " ver. " << version
+                    << " while DDL has ver. " << dict_version_;
       }
+    } else {
+      std::cout << "Note: dictionary name mismatch: " << name << " vs " << dict_name_;
     }
   }
-  if (msg)
-    *msg = "The cif file is missing " + audit_conform + "dict_(name|version)";
-  return true;
 }
 
 enum class Trinary : char { Unset, Yes, No };
@@ -456,10 +451,8 @@ int GEMMI_MAIN(int argc, char **argv) {
           DDL dict;
           for (option::Option* ddl = p.options[Ddl]; ddl; ddl = ddl->next())
             dict.open_file(ddl->arg);
-          std::string ver_msg;
-          dict.check_audit_conform(d, &ver_msg);
-          if (!ver_msg.empty() && !quiet)
-            std::cout << "Note: " << ver_msg << std::endl;
+          if (p.options[Verbose])
+            dict.check_audit_conform(d);
           ok = dict.validate(d, std::cout, quiet);
         }
         if (p.options[Monomer])
