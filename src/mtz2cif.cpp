@@ -27,8 +27,9 @@ static const option::Descriptor Usage[] = {
     "  --print-spec  \tPrint default spec and exit." },
   { BlockName, 0, "b", "block", Arg::Required,
     "  -b NAME, --block=NAME  \tmmCIF block name: data_NAME (default: mtz)." },
-  { SkipEmpty, 0, "", "skip-empty", Arg::None,
-    "  --skip-empty  \tSkip reflections with no values." },
+  { SkipEmpty, 0, "", "skip-empty", Arg::Optional,
+    "  --skip-empty[=COLS]  \tSkip reflections with no values. If COLS are "
+    "given, eg. 'I(+),I(-)', only values in those columns are checked." },
   { NoComments, 0, "", "no-comments", Arg::None,
     "  --no-comments  \tDo not write comments in the mmCIF file." },
   { Wavelength, 0, "", "wavelength", Arg::Float,
@@ -115,8 +116,11 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   mtz_to_cif.mtz_path = mtz_path;
   mtz_to_cif.with_comments = !p.options[NoComments];
-  mtz_to_cif.skip_empty = p.options[SkipEmpty];
-
+  if (p.options[SkipEmpty]) {
+    mtz_to_cif.skip_empty = true;
+    if (p.options[SkipEmpty].arg)
+      mtz_to_cif.skip_empty_cols = p.options[SkipEmpty].arg;
+  }
   if (p.options[BlockName])
     mtz_to_cif.block_name = p.options[BlockName].arg;
   if (p.options[Wavelength])

@@ -27,6 +27,7 @@ struct MtzToCif {
   std::string mtz_path;                 // path written in a comment
   bool with_comments = true;            // write comments
   bool skip_empty = false;              // skip reflections with no values
+  std::string skip_empty_cols;          // columns used to determine "emptiness"
   double wavelength = NAN;              // user-specified wavelength
   int trim = 0;                         // output only reflections -N<=h,k,l<=N
 
@@ -182,7 +183,7 @@ private:
     bool discard_next_line = false;
   };
 
-  void parse_spec(const Mtz& mtz) {
+  void prepare_recipe(const Mtz& mtz) {
     SpecParserState state;
     if (!spec_lines.empty()) {
       for (const std::string& line : spec_lines)
@@ -258,14 +259,17 @@ private:
 
 inline void MtzToCif::write_cif(const Mtz& mtz, std::ostream& os) {
   recipe.clear();
-  parse_spec(mtz);
+  prepare_recipe(mtz);
   // prepare indices
   std::vector<int> value_indices;  // used for --skip_empty
   std::vector<int> sigma_indices;  // used for status 'x'
   for (const Trans& tr : recipe) {
     const Mtz::Column& col = mtz.columns[tr.col_idx];
-    if (skip_empty && col.type != 'H' && col.type != 'I')
-      value_indices.push_back(tr.col_idx);
+    if (skip_empty) {
+      if (skip_empty_cols.empty() ? col.type != 'H' && col.type != 'I'
+                                  : is_in_list(col.label, skip_empty_cols))
+        value_indices.push_back(tr.col_idx);
+    }
     if (col.type != 'Q' && col.type != 'L' && col.type != 'M')
       sigma_indices.push_back(tr.col_idx);
   }
@@ -408,7 +412,7 @@ inline void MtzToCif::write_cif(const Mtz& mtz, std::ostream& os) {
   std::map<int, const Mtz::Batch*> batch_by_number;
   for (const Mtz::Batch& b : mtz.batches)
     batch_by_number.emplace(b.number, &b);
-  for (int i = 0, id = 0; i != mtz.nreflections; ++i) {
+  for (int i = 0, idx = 0; i != mtz.nreflections; ++i) {
     const float* row = &mtz.data[i * mtz.columns.size()];
     if (trim > 0) {
       if (row[0] < -trim || row[0] > trim ||
@@ -429,7 +433,7 @@ inline void MtzToCif::write_cif(const Mtz& mtz, std::ostream& os) {
       if (it == batch_by_number.end())
         fail("unexpected values in column BATCH");
       const Mtz::Batch& batch = *it->second;
-      os << batch.dataset_id() << " . . " << ++id << ' ';
+      os << batch.dataset_id() << " . . " << ++idx << ' ';
       if (write_angle_phi)
         WRITE("%.2f ", batch.phi_start());
     }
