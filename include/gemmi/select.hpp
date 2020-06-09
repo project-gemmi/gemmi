@@ -10,6 +10,7 @@
 #include <cctype>    // for isalpha
 #include <climits>   // for INT_MIN, INT_MAX
 #include "fail.hpp"  // for fail
+#include "util.hpp"  // for is_in_list
 #include "model.hpp" // for Model, Chain, etc
 #include "iterator.hpp" // for FilterProxy
 
@@ -39,21 +40,8 @@ struct Selection {
     bool has(const std::string& name) const {
       if (all)
         return true;
-      bool found = is_in_list(name);
+      bool found = is_in_list(name, list);
       return inverted ? !found : found;
-    }
-
-  private:
-    // list is a comma separated string
-    bool is_in_list(const std::string& name) const {
-      if (name.length() >= list.length())
-        return name == list;
-      for (size_t start=0, end=0; end != std::string::npos; start=end+1) {
-        end = list.find(',', start);
-        if (list.compare(start, end - start, name) == 0)
-          return true;
-      }
-      return false;
     }
   };
 

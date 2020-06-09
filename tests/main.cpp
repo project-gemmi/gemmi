@@ -7,6 +7,7 @@
 #include <gemmi/atox.hpp>
 #include <gemmi/math.hpp>
 #include <gemmi/it92.hpp>
+#include <gemmi/util.hpp>  // for is_in_list
 #include <linalg.h>
 
 static double draw() { return 10.0 * std::rand() / RAND_MAX - 5; }
@@ -131,6 +132,15 @@ TEST_CASE("string_to_int") {
   CHECK_EQ(gemmi::string_to_int(std::to_string(INT_MAX), true), INT_MAX);
   CHECK_EQ(gemmi::string_to_int(std::to_string(INT_MIN), true), INT_MIN);
   CHECK_EQ(gemmi::string_to_int("", false), 0);
+}
+
+TEST_CASE("is_in_list") {
+  CHECK(gemmi::is_in_list("abc", "abc"));
+  CHECK(gemmi::is_in_list("abc", "a,abc"));
+  CHECK(gemmi::is_in_list("abc", "xyz,ab,abc,"));
+  CHECK(!gemmi::is_in_list("abc", ",abcd"));
+  CHECK(!gemmi::is_in_list("abc", "abc , abc"));
+  CHECK(!gemmi::is_in_list("abc", "a,"));
 }
 
 TEST_CASE("IT92") {
