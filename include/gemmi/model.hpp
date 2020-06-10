@@ -468,6 +468,12 @@ struct ConstResidueGroup : ConstResidueSpan {
 inline ResidueGroup ResidueSpan::find_residue_group(SeqId id) {
   return ResidueSpan(subspan([&](const Residue& r) { return r.seqid == id; }));
 }
+inline ConstResidueGroup ResidueSpan::find_residue_group(SeqId id) const {
+  return const_().find_residue_group(id);
+}
+inline ConstResidueGroup ConstResidueSpan::find_residue_group(SeqId id) const {
+  return ConstResidueSpan(subspan([&](const Residue& r) { return r.seqid == id; }));
+}
 
 struct ResidueSpan::GroupingProxy {
   ResidueSpan& span;
