@@ -8,6 +8,7 @@ TOP_DIR = os.path.join(os.path.dirname(__file__), "..")
 PDB_FILE = os.path.join(TOP_DIR, "tests", "1orc.pdb")
 CIF_FILE = os.path.join(TOP_DIR, "tests", "5i55.cif")
 JSON_FILE = os.path.join(TOP_DIR, "tests", "1pfe.json")
+MAP_FILE = os.path.join(TOP_DIR, "tests", "5i55_tiny.ccp4")
 EXAMPLE_DIR = os.path.join(TOP_DIR, "examples")
 sys.path.insert(0, EXAMPLE_DIR)
 
@@ -42,6 +43,9 @@ class TestExamples2(unittest.TestCase):
     def test_from_json(self):
         sys.argv = ['from_json.py', JSON_FILE, os.devnull]
         import from_json  # noqa: F401
+    def test_map2mtz(self):
+        sys.argv = ['map2mtz.py', MAP_FILE, os.devnull]
+        import map2mtz  # noqa: F401
 
 if __name__ == '__main__':
     unittest.main()

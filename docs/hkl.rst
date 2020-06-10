@@ -1001,6 +1001,16 @@ with negative Miller index l, but you can use its Friedel mate:
 Then again, you can use ``transform_f_phi_grid_to_map()``
 to transform it back to the direct space, and so on...
 
+Example
+-------
+
+This script converts CCP4 map to MTZ file with map coefficients.
+
+.. literalinclude:: ../examples/map2mtz.py
+  :language: python
+  :lines: 4-
+
+
 Scattering factors
 ==================
 
