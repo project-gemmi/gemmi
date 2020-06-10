@@ -207,6 +207,13 @@ void add_hkl(py::module& m) {
     .def("add_column", &Mtz::add_column, py::arg("label"), py::arg("type"),
          py::arg("dataset_id")=-1, py::arg("pos")=-1, py::arg("expand_data")=true,
          py::return_value_policy::reference_internal)
+    .def("set_data", [](Mtz& self, const FPhiGrid<float>::AsuData& asu_data) {
+         if (self.columns.size() != 5)
+           fail("Mtz.set_data(): Mtz must have 5 columns to put H,K,L,F,Phi.");
+         self.nreflections = (int) asu_data.v.size();
+         self.data.clear();
+         add_asu_f_phi_to_float_vector(self.data, asu_data);
+    }, py::arg("asu_data"))
     .def("set_data", [](Mtz& self, py::array_t<float> arr) {
          if (arr.ndim() != 2)
            fail("Mtz.set_data(): expected 2D array.");
@@ -222,13 +229,6 @@ void add_hkl(py::module& m) {
            for (ssize_t col = 0; col < ncol; col++)
              self.data[row*ncol+col] = r(row, col);
     }, py::arg("array"))
-    .def("set_data", [](Mtz& self, const FPhiGrid<float>::AsuData& asu_data) {
-         if (self.columns.size() != 5)
-           fail("Mtz.set_data(): Mtz must have 5 columns to put H,K,L,F,Phi.");
-         self.nreflections = (int) asu_data.v.size();
-         self.data.clear();
-         add_asu_f_phi_to_float_vector(self.data, asu_data);
-    }, py::arg("asu_data"))
     .def("update_reso", &Mtz::update_reso)
     .def("switch_to_original_hkl", &Mtz::switch_to_original_hkl)
     .def("switch_to_asu_hkl", &Mtz::switch_to_asu_hkl)
