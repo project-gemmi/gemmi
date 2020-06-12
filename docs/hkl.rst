@@ -807,7 +807,7 @@ We have a function that makes a table of H, K, L and values.
   >>> grid.prepare_asu_data()
   <gemmi.ReciprocalComplexGrid.AsuData with 1352 values>
   >>> _[500]
-  <gemmi.Reciprocal.HklValue (-6,2,5) (-1.37694,-0.190087)>
+  <gemmi.ReciprocalComplexGrid.HklValue (-6,2,5) (-1.37694,-0.190087)>
   >>> _.hkl, _.value
   ([-6, 2, 5], (-1.376941204071045-0.19008657336235046j))
 

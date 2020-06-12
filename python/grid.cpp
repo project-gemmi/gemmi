@@ -129,7 +129,7 @@ void add_grid(py::module& m, const std::string& name) {
   py::class_<typename ReGr::HklValue>(regr, "HklValue")
     .def_readonly("hkl", &ReGr::HklValue::hkl)
     .def_readonly("value", &ReGr::HklValue::value)
-    .def("__repr__", [&name](const typename ReGr::HklValue& self) {
+    .def("__repr__", [name](const typename ReGr::HklValue& self) {
         return tostr("<gemmi.Reciprocal", name, ".HklValue (",
                      self.hkl[0], ',', self.hkl[1], ',', self.hkl[2], ") ",
                      self.value, '>');
@@ -143,7 +143,7 @@ void add_grid(py::module& m, const std::string& name) {
     .def("__getitem__", [](AsuData& self, int index) -> typename ReGr::HklValue& {
         return self.v.at(normalize_index(index, self.v));
     }, py::arg("index"), py::return_value_policy::reference_internal)
-    .def("__repr__", [=](const AsuData& self) {
+    .def("__repr__", [name](const AsuData& self) {
         return tostr("<gemmi.Reciprocal", name, ".AsuData with ", self.v.size(), " values>");
     });
 
