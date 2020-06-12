@@ -287,6 +287,8 @@ class TestSymmetry(unittest.TestCase):
         gops = sg.operations()
         self.assertTrue(gops.is_reflection_centric([3,0,3]))
         self.assertFalse(gops.is_reflection_centric([3,3,3]))
+        self.assertEqual(gops.epsilon_factor([3,0,3]), 1)
+        self.assertEqual(gops.epsilon_factor([0,3,0]), 2)
 
 if __name__ == '__main__':
     unittest.main()

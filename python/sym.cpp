@@ -106,6 +106,7 @@ void add_symmetry(py::module& m) {
     .def("find_centering", &GroupOps::find_centering)
     .def("is_centric", &GroupOps::is_centric)
     .def("is_reflection_centric", &GroupOps::is_reflection_centric)
+    .def("epsilon_factor", &GroupOps::epsilon_factor)
     .def("find_grid_factors", &GroupOps::find_grid_factors,
          "Minimal multiplicity for real-space grid (e.g. 1,1,6 for P61).")
     .def("change_basis", &GroupOps::change_basis, py::arg("cob"),

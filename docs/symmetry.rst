@@ -527,6 +527,16 @@ to it by symmetry):
   >>> new_ops.is_reflection_centric([0, 2, 0])
   True
 
+Another property, the epsilon factor ε, tells how many time the point group symmetry
+operations map the reflection onto itself:
+
+.. doctest::
+
+  >>> new_ops.epsilon_factor([1, 2, 3])
+  1
+  >>> new_ops.epsilon_factor([1, 0, 3])
+  2
+
 C++ Example
 ===========
 

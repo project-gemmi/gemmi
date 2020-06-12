@@ -399,6 +399,15 @@ struct GroupOps {
     return false;
   }
 
+  int epsilon_factor(const Op::Miller& hkl) const {
+    Op::Miller denh = {{Op::DEN * hkl[0], Op::DEN * hkl[1], Op::DEN * hkl[2]}};
+    int epsilon = 0;
+    for (const Op& op : sym_ops)
+      if (op.apply_to_hkl_without_division(hkl) == denh)
+        ++epsilon;
+    return epsilon;
+  }
+
   void change_basis(const Op& cob) {
     if (sym_ops.empty() || cen_ops.empty())
       return;
