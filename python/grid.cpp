@@ -143,6 +143,19 @@ void add_grid(py::module& m, const std::string& name) {
     .def("__getitem__", [](AsuData& self, int index) -> typename ReGr::HklValue& {
         return self.v.at(normalize_index(index, self.v));
     }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def_property_readonly("miller_array", [](const AsuData& self) {
+      const typename ReGr::HklValue* data = self.v.data();
+      py::array::ShapeContainer shape({(ssize_t)self.v.size(), 3});
+      py::array::StridesContainer strides({(const char*)(data+1) - (const char*)data,
+                                           sizeof(int)});
+      return py::array_t<int>(shape, strides, &data->hkl[0], py::cast(self));
+    }, py::return_value_policy::reference_internal)
+    .def_property_readonly("value_array", [](const AsuData& self) {
+      const typename ReGr::HklValue* data = self.v.data();
+      ssize_t stride = (const char*)(data+1) - (const char*)data;
+      return py::array_t<T>({(ssize_t)self.v.size()}, {stride},
+                            &data->value, py::cast(self));
+    }, py::return_value_policy::reference_internal)
     .def("__repr__", [name](const AsuData& self) {
         return tostr("<gemmi.Reciprocal", name, ".AsuData with ", self.v.size(), " values>");
     });

@@ -804,12 +804,34 @@ We have a function that makes a table of H, K, L and values.
 
 .. doctest::
 
-  >>> grid.prepare_asu_data()
-  <gemmi.ReciprocalComplexGrid.AsuData with 1352 values>
-  >>> _[500]
+  >>> asu_data = grid.prepare_asu_data(dmin=1.8, with_000=False)
+  >>> asu_data
+  <gemmi.ReciprocalComplexGrid.AsuData with 810 values>
+  >>> asu_data[311]
   <gemmi.ReciprocalComplexGrid.HklValue (-6,2,5) (-1.37694,-0.190087)>
   >>> _.hkl, _.value
   ([-6, 2, 5], (-1.376941204071045-0.19008657336235046j))
+
+Arguments of the ``prepare_asu_data`` function are optional.
+By default, the resolution is not limited and the (000) reflection
+is not included.
+
+Both Miller indicies and values can be accessed as NumPy arrays:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> asu_data.miller_array
+  array([[-26,   0,   1],
+         [-26,   0,   2],
+         [-26,   0,   3],
+         ...,
+         [ 25,   1,   0],
+         [ 26,   0,   0],
+         [ 26,   0,   1]], dtype=int32)
+  >>> asu_data.value_array[311:312]
+  array([-1.3769412-0.19008657j], dtype=complex64)
+
 
 .. _grid_size:
 
