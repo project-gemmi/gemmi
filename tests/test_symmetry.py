@@ -282,5 +282,11 @@ class TestSymmetry(unittest.TestCase):
         self.assertTrue(checker.is_in([-5, 5, 1]))
         self.assertFalse(checker.is_in([5, 5, -1]))
 
+    def test_reflection_properties(self):
+        sg = gemmi.SpaceGroup('I 1 2 1')
+        gops = sg.operations()
+        self.assertTrue(gops.is_reflection_centric([3,0,3]))
+        self.assertFalse(gops.is_reflection_centric([3,3,3]))
+
 if __name__ == '__main__':
     unittest.main()

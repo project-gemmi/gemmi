@@ -124,12 +124,15 @@ struct Op {
   // Miller is defined in the same way in namespace gemmi in unitcell.hpp
   using Miller = std::array<int, 3>;
 
-  Miller apply_to_hkl(const Miller& hkl) const {
+  Miller apply_to_hkl_without_division(const Miller& hkl) const {
     Miller r;
     for (int i = 0; i != 3; ++i)
-      r[i] = (rot[0][i] * hkl[0] + rot[1][i] * hkl[1] + rot[2][i] * hkl[2])
-             / Op::DEN;
+      r[i] = (rot[0][i] * hkl[0] + rot[1][i] * hkl[1] + rot[2][i] * hkl[2]);
     return r;
+  }
+  Miller apply_to_hkl(const Miller& hkl) const {
+    Miller r = apply_to_hkl_without_division(hkl);
+    return {{ r[0] / Op::DEN, r[1] / Op::DEN, r[2] / Op::DEN }};
   }
 
   double phase_shift(const Miller& hkl) const {
@@ -386,6 +389,14 @@ struct GroupOps {
 
   bool is_centric() const {
     return find_by_rotation({-Op::DEN,0,0, 0,-Op::DEN,0, 0,0,-Op::DEN}) != nullptr;
+  }
+
+  bool is_reflection_centric(const Op::Miller& hkl) const {
+    Op::Miller mhkl = {{-Op::DEN * hkl[0], -Op::DEN * hkl[1], -Op::DEN * hkl[2]}};
+    for (const Op& op : sym_ops)
+      if (op.apply_to_hkl_without_division(hkl) == mhkl)
+        return true;
+    return false;
   }
 
   void change_basis(const Op& cob) {

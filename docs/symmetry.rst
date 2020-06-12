@@ -494,21 +494,38 @@ all the operations. If you'd wonder what generators are encoded, use:
 
 Combining these 3 generators reconstructs all the 8 symmetry operations.
 
-The GroupOps object has a couple of functions:
-
-.. doctest::
-
-  >>> new_ops.is_centric()
-  False
-  >>> new_ops.find_centering()
-  'C'
-
-and, again, it can be used to search in the space group table:
+A GroupOps object can be used to search the space group table for a matching
+space group:
 
 .. doctest::
 
   >>> gemmi.find_spacegroup_by_ops(new_ops)
   <gemmi.SpaceGroup("C 1 c 1")>
+
+To check only the lattice centering we can use:
+
+.. doctest::
+
+  >>> new_ops.find_centering()
+  'C'
+
+We can check if the space group is centric:
+
+.. doctest::
+
+  >>> new_ops.is_centric()
+  False
+
+and we can tell which reflections are centric (as opposed to acentric; a reflection
+is centric in the given space group if its Friedel mate (-*h*,-*k*,-*l*) is equivalent
+to it by symmetry):
+
+.. doctest::
+
+  >>> new_ops.is_reflection_centric([1, 2, 3])
+  False
+  >>> new_ops.is_reflection_centric([0, 2, 0])
+  True
 
 C++ Example
 ===========
