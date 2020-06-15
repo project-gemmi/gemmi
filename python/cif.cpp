@@ -255,6 +255,12 @@ void add_cif(py::module& cif) {
     .def(py::init<>())
     .def("get_loop", &Column::get_loop,
          py::return_value_policy::reference_internal)
+    .def_property("tag",
+                  [](const Column& self) { return self.get_tag(); },
+                  [](Column& self, const std::string& s) {
+                      if (std::string* tag = self.get_tag())
+                          *tag = s;
+                  })
     .def("__iter__", [](const Column& self) { return py::make_iterator(self); },
          py::keep_alive<0, 1>())
     .def("__bool__", [](const Column &self) { return self.item() != nullptr; })

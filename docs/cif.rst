@@ -886,7 +886,14 @@ the method ``str``:
   >>> column.str(7)  # short-cut for cif.as_string(column[7])
   'H2 O'
 
-If the tag is found in a loop, method ``get_loop`` returns a reference
+The tag is accessible (read/write) throught the ``tag`` property:
+
+.. doctest::
+
+  >>> column.tag
+  '_chem_comp.formula'
+
+If the tag was found in a loop, method ``get_loop`` returns a reference
 to this ``Loop`` in the DOM. Otherwise it returns ``None``.
 
 .. doctest::
