@@ -1039,9 +1039,82 @@ Scattering factors
 Atomic form factor
 ------------------
 
-TODO
+The X-ray scattering contribution from an isolated atom is described by the
+atomic form factor. Nowadays, two form factor parametrizations are commonly
+used: one from the International Tables of Crystallography Vol. C
+(4 Gaussians + constant factor), and the other from Waasmaier & Kirfel (1995),
+`Acta Cryst. A51, 416 <https://doi.org/10.1107/S0108767394013292>`_
+(one Gaussian more).
+Other parametrizations exist (for example, with only two Gaussians),
+but are not widely used.
 
-(also: direct calculation or FFT, tradoffs between performance and accuracy)
+Currently, Gemmi includes only the ITC parametrization.
+The other ones will be added if needed. Furthermore, we ignore charges
+of atoms. For example, the ITC provides separate form factors for Cu, Cu1+
+and Cu2+, but we use only the first one. Again, if it turns out to be useful,
+we will add also the charged parametrizations.
+
+In C++, the form factor coefficients are listed in the :file:`it92.hpp` header.
+In Python, they can be accessed as a property of an element (this may change).
+
+.. doctest::
+
+  >>> gemmi.Element('Fe').it92  #doctest: +ELLIPSIS
+  <gemmi.IT92Coef object at 0x...>
+  >>> gemmi.Element('Es').it92  # -> None (no parametrization for Einsteinium)
+
+You can get the coefficients as numbers:
+
+.. doctest::
+
+  >>> fe_coef = gemmi.Element('Fe').it92
+  >>> fe_coef.a
+  [11.7695, 7.3573, 3.5222, 2.3045]
+  >>> fe_coef.b
+  [4.7611, 0.3072, 15.3535, 76.8805]
+  >>> fe_coef.c
+  1.0369
+
+or you can used them to directly calculate the sum of Gaussians --
+the structure factor contribution:
+
+.. doctest::
+
+  >>> fe_coef.calculate_sf(stol2=0.4)  # argument: (sin(theta)/lambda)^2
+  9.303602485040315
+
+The large number of reflections in macromolecular crystallography makes direct
+calculation of structure factors inefficient. Instead, we can calculate electron
+density on a grid and use FFT to obtain structure factors.
+In the simplest case, the atom's contribution to the electron density at a grid
+point can be calculated as:
+
+.. doctest::
+
+  >>> # arguments are distance^2 and isotropic ADP
+  >>> fe_coef.calculate_density_iso(r2=2.3, B=50)
+  0.5279340932571192
+
+The C++ interface provides more functions to calculate the electron density.
+We have separate functions to work with isotropic and anisotropic ADPs.
+And for efficiency, the computations are split into two stages: the first one is
+performed once per atom, the second one -- for each nearby grid point.
+
+In the usual scenario, we add *f'* (the real component of anomalous
+scattering -- see the next section) to the constant coefficient *c*.
+
+We may also want to add a Gaussian dampening *B*\ :sub:`extra` to ADPs.
+The *B*\ :sub:`extra` parameter is discussed in
+the `ITfC vol B <https://it.iucr.org/Bb/contents/>`_,
+in chapter 1.3 (section 1.3.4.4.5) by G. Bricogne;
+and further in papers by `J. Navaza (2002) <https://doi.org/10.1107/S0108767302016318>`_
+and by `P. Afonine and A. Urzhumtsev (2003) <https://doi.org/10.1107/S0108767303022062>`_.
+It is a trick that improves the accuracy. The *B*\ :sub:`extra` added
+in the real space is then cancelled out in the reciprocal space by re-scaling
+the structure factors.
+
+The C++ interface to all this functionality is expected to evolve
+and for now it is left undocumented.
 
 .. _anomalous:
 
