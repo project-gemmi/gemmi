@@ -66,6 +66,11 @@ ATOM      9  CG1 VAL     1     -13.033 -12.232  28.471  1.00  0.00
 ATOM     10 HG11 VAL     1     -12.398 -12.673  27.702  1.00  0.00
 """
 
+FRAGMENT_WITH_HG = """\
+HETATM 4406 HG    HG P 693      28.820  31.751  40.919  0.20 25.99
+HETATM 4407 HG1   HG P 694      27.455  32.086  39.686  0.20 35.18
+"""
+
 def read_lines_and_remove(path):
     with open(path) as f:
         out_lines = f.readlines()
@@ -456,6 +461,9 @@ class TestMol(unittest.TestCase):
         self.assertEqual(residue.sole_atom('HB').element, gemmi.Element('H'))
         self.assertEqual(residue.sole_atom('CG1').element, gemmi.Element('C'))
         self.assertEqual(residue.sole_atom('HG11').element, gemmi.Element('H'))
+        chain = gemmi.read_pdb_string(FRAGMENT_WITH_HG)[0]['P']
+        self.assertEqual(chain[0].sole_atom('HG').element, gemmi.Element('Hg'))
+        self.assertEqual(chain[1].sole_atom('HG1').element, gemmi.Element('Hg'))
 
     def test_4hhh_frag(self):
         path = full_path('4hhh_frag.pdb')
