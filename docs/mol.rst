@@ -978,8 +978,8 @@ As mentioned above, the mmCIF format has two sets of names/numbers:
 *label* and *auth* (for "author").
 Both atom names (``label_atom_id`` and ``auth_atom_id``) are normally the same.
 Both residue names (``label_comp_id`` and ``auth_comp_id``) are also normally
-the same. So Gemmi reads and stores only one name: *label* if it is present,
-otherwise *auth*.
+the same. So Gemmi reads and stores only one name: *auth* if it is present,
+otherwise *label*.
 
 On the other hand, chain names (``asym_id``) and sequence numbers often
 differ and in the user interface it is better to use the author-defined

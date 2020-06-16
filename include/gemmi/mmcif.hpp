@@ -583,16 +583,13 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
                                       "?auth_atom_id",
                                       "?pdbx_PDB_model_num"});
   if (atom_table.length() != 0) {
-    const int kAsymId = atom_table.has_column(kAuthAsymId) ? kAuthAsymId
-                                                           : kLabelAsymId;
+    const int kAsymId = atom_table.first_of(kAuthAsymId, kLabelAsymId);
     // we use only one comp (residue) and one atom name
-    const int kCompId = atom_table.has_column(kLabelCompId) ? kLabelCompId
-                                                            : kAuthCompId;
-    const int kAtomId = atom_table.has_column(kLabelAtomId) ? kLabelAtomId
-                                                            : kAuthAtomId;
-    if (kCompId == kAuthCompId && !atom_table.has_column(kCompId))
+    const int kCompId = atom_table.first_of(kAuthCompId, kLabelCompId);
+    const int kAtomId = atom_table.first_of(kAuthAtomId, kLabelAtomId);
+    if (!atom_table.has_column(kCompId))
       fail("Neither _atom_site.label_comp_id nor auth_comp_id found");
-    if (kAtomId == kAuthAtomId && !atom_table.has_column(kAtomId))
+    if (!atom_table.has_column(kAtomId))
       fail("Neither _atom_site.label_atom_id nor auth_atom_id found");
 
     Model *model = nullptr;

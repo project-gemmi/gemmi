@@ -298,6 +298,7 @@ struct Table {
   size_t width() const { return positions.size(); }
   size_t length() const;
   bool has_column(int n) const { return ok() && positions.at(n) >= 0; }
+  int first_of(int n1, int n2) const { return positions.at(n1) >= 0 ? n1 : n2; }
   Row tags() { return Row{*this, -1}; }
   Row operator[](int n) { return Row{*this, n}; }
 
