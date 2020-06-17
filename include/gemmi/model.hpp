@@ -174,18 +174,22 @@ struct Atom {
   Atom empty_copy() const { return Atom(*this); }
 };
 
-struct AtomGroup : MutableVectorSpan<Atom> {
-  using MutableVectorSpan::MutableVectorSpan;
-  std::string name() const { return size() != 0 ? front().name : ""; }
-  Atom& by_altloc(char alt) { return impl::get_by_altloc(*this, alt); }
+template<typename AtomType>
+struct AtomGroup_ : ItemGroup<AtomType> {
+  using ItemGroup<AtomType>::ItemGroup;
+  std::string name() const { return !this->empty() ? this->front().name : ""; }
+  AtomType& by_altloc(char alt) {
+    for (int i = 0; i != this->extent(); ++i) {
+      AtomType* a = &this->front() + i;
+      if (a->altloc == alt && (a->name == this->front().name))
+        return *a;
+    }
+    fail("No such altloc");
+  }
 };
 
-struct ConstAtomGroup : Span<const Atom> {
-  ConstAtomGroup(const Atom* begin, size_t n) : Span(begin, n) {}
-  ConstAtomGroup(const AtomGroup& o) : Span(o.begin(), o.size()) {}
-  std::string name() const { return size() != 0 ? front().name : ""; }
-  const Atom& by_altloc(char a) const { return impl::get_by_altloc(*this, a); }
-};
+using AtomGroup = AtomGroup_<Atom>;
+using ConstAtomGroup = AtomGroup_<const Atom>;
 
 // Sequence ID (sequence number + insertion code) + residue name + segment ID
 struct ResidueId {
@@ -261,21 +265,17 @@ struct Residue : public ResidueId {
   }
 
   AtomGroup get(const std::string& atom_name) {
-    auto func = [&](const Atom& a) { return a.name == atom_name; };
-    auto g_begin = std::find_if(atoms.begin(), atoms.end(), func);
-    if (g_begin == atoms.end())
-      fail("No such atom: " + atom_name);
-    auto g_end = std::find_if_not(g_begin, atoms.end(), func);
-    if (std::find_if(g_end, atoms.end(), func) != atoms.end())
-      fail("Non-consecutive alternative location of the atom");
-    return AtomGroup(atoms, &*g_begin, g_end - g_begin);
+    for (Atom& atom : atoms)
+      if (atom.name == atom_name)
+        return AtomGroup(&atom, atoms.data() + atoms.size());
+    fail("No such atom: " + atom_name);
   }
 
   Atom& sole_atom(const std::string& atom_name) {
     AtomGroup aa = get(atom_name);
     if (aa.size() != 1)
       fail("Multiple alternative atoms " + atom_name);
-    return aa[0];
+    return aa.front();
   }
 
   // short-cuts to access peptide backbone atoms

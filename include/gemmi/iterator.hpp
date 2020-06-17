@@ -29,9 +29,9 @@ struct BidirIterator : Policy {
   BidirIterator() = default;
   BidirIterator(Policy&& p) : Policy(p) {}
 
-  BidirIterator &operator++() { Policy::increment(); return *this; }
+  BidirIterator& operator++() { Policy::increment(); return *this; }
   BidirIterator operator++(int) { BidirIterator x = *this; ++*this; return x; }
-  BidirIterator &operator--() { Policy::decrement(); return *this; }
+  BidirIterator& operator--() { Policy::decrement(); return *this; }
   BidirIterator operator--(int) { BidirIterator x = *this; --*this; return x; }
   bool operator==(const BidirIterator &o) const { return Policy::equal(o); }
   bool operator!=(const BidirIterator &o) const { return !Policy::equal(o); }
@@ -205,6 +205,62 @@ struct ConstFilterProxy {
   using iterator = FilterIter<Filter, const std::vector<Value>, const Value>;
   iterator begin() const { return {{&filter, &vec, 0}}; }
   iterator end() const { return {{&filter, &vec, vec.size()}}; }
+};
+
+
+template<typename Item>
+struct ItemGroup {
+  using element_type = Item;
+
+  ItemGroup(Item* start, const Item* end)
+      : size_(end - start), extent_(end - start), start_(start) {
+    for (const Item* i = start + 1; i != end; ++i)
+      if (!i->same_group(*start))
+        --size_;
+  }
+
+  struct iterator {
+    Item* ptr;
+    const Item* end;
+    bool operator==(const iterator& o) const { return ptr == o.ptr; }
+    bool operator!=(const iterator& o) const { return ptr != o.ptr; }
+    iterator& operator++() {
+      const Item* prev = ptr++;
+      while (ptr != end && !ptr->same_group(*prev))
+        ++ptr;
+      return *this;
+    }
+    Item& operator*() { return *ptr; }
+    Item* operator->() { return ptr; }
+  };
+  iterator begin() { return iterator{start_, start_+extent_}; }
+  iterator end() { return iterator{start_+extent_, start_+extent_}; }
+
+  size_t size() const { return (size_t) size_; }
+  int extent() const { return extent_; }
+  bool empty() const { return size_ == 0; }
+  Item& front() { return *start_; }
+  const Item& front() const { return *start_; }
+  Item& back() { return start_[extent_ - 1]; }
+  const Item& back() const { return start_[extent_ - 1]; }
+
+  // constant time unless sparse (extend_ > size_)
+  Item& operator[](std::size_t i) {
+    if (size_ == extent_ || i == 0)
+      return start_[i];
+    for (Item* ptr = start_ + 1; ; ++ptr)
+      if (ptr->same_group(*start_))
+        if (--i == 0)
+          return *ptr;
+  }
+  const Item& operator[](std::size_t i) const {
+    return const_cast<ItemGroup*>(this)->operator[](i);
+  }
+
+private:
+  int size_ = 0;
+  int extent_ = 0;
+  Item* start_ = nullptr;
 };
 
 } // namespace gemmi
