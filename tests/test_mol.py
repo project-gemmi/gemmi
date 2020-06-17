@@ -71,6 +71,38 @@ HETATM 4406 HG    HG P 693      28.820  31.751  40.919  0.20 25.99
 HETATM 4407 HG1   HG P 694      27.455  32.086  39.686  0.20 35.18
 """
 
+# from $CCP4/examples/data/insulin.pdb
+UNORDERED_ALTLOC_FRAGMENT = """\
+ATOM     54  CB  THR A   8      21.486  49.557  34.680  1.00 17.33           C  
+ANISOU   54  CB  THR A   8     2677   1737   2168   -147    348    -77       C  
+ATOM     55  N  ASER A   9      22.340  46.718  36.111  0.50 15.13           N  
+ANISOU   55  N  ASER A   9     2397   1624   1726    -74    278    -66       N  
+ATOM     56  CA ASER A   9      22.426  45.878  37.287  0.50 14.83           C  
+ANISOU   56  CA ASER A   9     2219   1729   1687    -83    202    -92       C  
+ATOM     57  C  ASER A   9      23.045  44.544  36.849  0.50 13.99           C  
+ANISOU   57  C  ASER A   9     2072   1701   1540   -107    221    -92       C  
+ATOM     58  O  ASER A   9      23.264  44.329  35.667  0.50 13.72           O  
+ANISOU   58  O  ASER A   9     2090   1725   1397   -111    331    -63       O  
+ATOM     59  CB ASER A   9      21.034  45.674  37.848  0.50 15.28           C  
+ANISOU   59  CB ASER A   9     2236   1828   1740      0    251   -242       C  
+ATOM     60  OG ASER A   9      20.347  46.901  38.012  0.50 19.98           O  
+ANISOU   60  OG ASER A   9     2799   2271   2521    150    548     90       O  
+ATOM     61  N  BSER A   9      22.313  46.728  36.138  0.50 14.71           N  
+ANISOU   61  N  BSER A   9     2322   1562   1703    -78    282    -86       N  
+ATOM     62  CA BSER A   9      22.511  45.877  37.303  0.50 14.08           C  
+ANISOU   62  CA BSER A   9     2078   1645   1625   -106    203   -118       C  
+ATOM     63  C  BSER A   9      22.951  44.499  36.837  0.50 13.55           C  
+ANISOU   63  C  BSER A   9     1971   1640   1538   -117    232   -119       C  
+ATOM     64  O  BSER A   9      22.899  44.194  35.639  0.50 12.89           O  
+ANISOU   64  O  BSER A   9     1807   1651   1438    -89    415    -90       O  
+ATOM     65  CB BSER A   9      21.244  45.783  38.133  0.50 14.46           C  
+ANISOU   65  CB BSER A   9     1987   1655   1851    -61    227   -231       C  
+ATOM     66  OG BSER A   9      20.199  45.110  37.441  0.50 13.08           O  
+ANISOU   66  OG BSER A   9     1812   1758   1398    -16    450     56       O  
+ATOM     67  N   VAL A  10      23.342  43.662  37.798  1.00 13.44           N  
+ANISOU   67  N   VAL A  10     2079   1653   1371   -123    133   -148       N  
+"""  # noqa: W291 - trailing whitespace
+
 def read_lines_and_remove(path):
     with open(path) as f:
         out_lines = f.readlines()
@@ -602,6 +634,21 @@ class TestMol(unittest.TestCase):
         res1 = model.sole_residue('A', gemmi.SeqId('1'))
         self.assertEqual([atom.name for atom in res1.first_conformer()],
                          [atom.name for atom in res1 if atom.altloc != 'B'])
+
+    def test_different_altloc_order(self):
+        st = gemmi.read_pdb_string(UNORDERED_ALTLOC_FRAGMENT)
+        chain = st[0]['A']
+        cb = chain['9']['SER']['CB']
+        cb_numbers = [atom.serial for atom in cb]
+        self.assertEqual(cb_numbers, [59, 65])
+        self.assertEqual(cb[0].serial, 59)
+        self.assertEqual(cb[1].serial, 65)
+        self.assertEqual(cb[-1].serial, 65)
+        self.assertEqual(cb[-2].serial, 59)
+        self.assertEqual(chain.count_atom_sites(), 14)
+        self.assertEqual(chain.count_occupancies(), 8)
+        st.remove_alternative_conformations()
+        self.assertEqual(chain.count_atom_sites(), 8)
 
     def test_extract_sequence_info(self):
         st = gemmi.read_structure(full_path('5cvz_final.pdb'))

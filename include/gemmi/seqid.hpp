@@ -68,6 +68,9 @@ struct SeqId {
     return num == o.num && (icode | 0x20) == (o.icode | 0x20);
   }
   bool operator!=(const SeqId& o) const { return !operator==(o); }
+  bool operator<(const SeqId& o) const {
+    return (*num * 256 + icode) < (*o.num * 256 + o.icode);
+  }
 
   char has_icode() const { return icode != ' '; }
 

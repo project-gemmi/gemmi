@@ -7,6 +7,7 @@
 #define GEMMI_POLYHEUR_HPP_
 
 #include <vector>
+#include <set>
 #include "model.hpp"
 #include "resinfo.hpp"  // for find_tabulated_residue
 #include "util.hpp"     // for vector_remove_if
@@ -279,18 +280,24 @@ template<class T> void remove_alternative_conformations(T& obj) {
   for (auto& child : obj.children())
     remove_alternative_conformations(child);
 }
-template<class T> void uniquify_items(std::vector<T>& items) {
-  if (items.size() > 1)
-    for (size_t i = items.size() - 1; i != 0; --i)
-      if (items[i].same_group(items[i - 1]))
-        items.erase(items.begin() + i);
-}
 template<> inline void remove_alternative_conformations(Chain& chain) {
-  uniquify_items(chain.residues);
+  std::set<SeqId> seqids;
+  for (size_t i = 0; i < chain.residues.size(); ) {
+    if (seqids.insert(chain.residues[i].seqid).second)
+      ++i;
+    else
+      chain.residues.erase(chain.residues.begin() + i);
+  }
   for (Residue& residue : chain.residues) {
-    uniquify_items(residue.atoms);
-    for (Atom& atom : residue.atoms)
+    std::set<std::string> names;
+    for (size_t i = 0; i < residue.atoms.size(); ) {
+      Atom& atom = residue.atoms[i];
       atom.altloc = '\0';
+      if (names.insert(atom.name).second)
+        ++i;
+      else
+        residue.atoms.erase(residue.atoms.begin() + i);
+    }
   }
 }
 
