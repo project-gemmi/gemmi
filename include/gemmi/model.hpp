@@ -163,8 +163,8 @@ struct Atom {
   bool same_conformer(const Atom& other) const {
     return is_same_conformer(altloc, other.altloc);
   }
-  // same_group() is for use in UniqIter
-  bool same_group(const Atom& other) const { return name == other.name; }
+  // group_key() is used in UniqIter and similar tools
+  const std::string& group_key() const { return name; }
   bool has_altloc() const { return altloc != '\0'; }
   double b_eq() const {
     return 8 * pi() * pi() / 3. * aniso.trace();
@@ -197,8 +197,8 @@ struct ResidueId {
   std::string segment; // segid - up to 4 characters in the PDB file
   std::string name;
 
-  // checks for equality of sequence ID; used for first_conformation iterators
-  bool same_group(const ResidueId& o) const { return seqid == o.seqid; }
+  // used for first_conformation iterators, etc.
+  SeqId group_key() const { return seqid; }
 
   bool matches(const ResidueId& o) const {
     return seqid == o.seqid && segment == o.segment && name == o.name;
@@ -340,7 +340,7 @@ struct ConstResidueSpan : Span<const Residue> {
   int length() const {
     int length = (int) size();
     for (int n = length - 1; n > 0; --n)
-      if ((begin() + n)->same_group(*(begin() + n - 1)))
+      if ((begin() + n)->group_key() == (begin() + n - 1)->group_key())
         --length;
     return length;
   }
@@ -591,7 +591,7 @@ struct Chain {
 
   // Returns false only for alternative conformation (microheterogeneity).
   bool is_first_in_group(const Residue& res) const {
-    return &res == residues.data() || !(&res - 1)->same_group(res);
+    return &res == residues.data() || (&res - 1)->group_key() != res.group_key();
   }
 
   // Returns the previous residue or nullptr.
@@ -599,8 +599,8 @@ struct Chain {
   const Residue* previous_residue(const Residue& res) const {
     const Residue* start = residues.data();
     for (const Residue* p = &res; p != start; )
-      if (!res.same_group(*--p)) {
-        while (p != start && p->same_group(*(p-1)) &&
+      if (res.group_key() != (--p)->group_key()) {
+        while (p != start && p->group_key() == (p-1)->group_key() &&
                (res.atoms.at(0).altloc == '\0' || !res.same_conformer(*p)))
           --p;
         return p;
@@ -612,8 +612,9 @@ struct Chain {
   const Residue* next_residue(const Residue& res) const {
     const Residue* end = residues.data() + residues.size();
     for (const Residue* p = &res + 1; p != end; ++p)
-      if (!res.same_group(*p)) {
-        while (p+1 != end && p->same_group(*(p+1)) && !res.same_conformer(*p))
+      if (res.group_key() != p->group_key()) {
+        while (p+1 != end && p->group_key() == (p+1)->group_key() &&
+               !res.same_conformer(*p))
           ++p;
         return p;
       }

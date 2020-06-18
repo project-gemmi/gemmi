@@ -94,14 +94,17 @@ public:
   UniqIterPolicy() : vec_(nullptr), pos_(0) {}
   UniqIterPolicy(Vector* vec, std::size_t pos) : vec_(vec), pos_(pos) {}
   void increment() {
-    std::size_t old = pos_++;
-    while (pos_ != vec_->size() && (*vec_)[old].same_group((*vec_)[pos_]))
+    // move to the first element of the next group
+    const auto& key = (*vec_)[pos_].group_key();
+    ++pos_;
+    while (pos_ != vec_->size() && (*vec_)[pos_].group_key() == key)
       ++pos_;
   }
   void decrement() {
-    --pos_;
-    while (pos_ != 0 && (*vec_)[pos_ - 1].same_group((*vec_)[pos_]))
-      --pos_;
+    --pos_; // now we are at the last element of the previous group
+    const auto& key = (*vec_)[pos_].group_key();
+    while (pos_ != 0 && (*vec_)[pos_-1].group_key() == key)
+      --pos_; // move to the group beginning
   }
   bool equal(const UniqIterPolicy& o) const { return pos_ == o.pos_; }
   Value& dereference() { return (*vec_)[pos_]; }
@@ -139,14 +142,15 @@ public:
   void increment() {
     span_.set_begin(span_.end());
     span_.set_size(0);
-    while (!span_.is_ending() && span_.front().same_group(*span_.end()))
+    while (!span_.is_ending() &&
+           span_.begin()->group_key() == span_.end()->group_key())
       span_.set_size(span_.size() + 1);
   }
   void decrement() {
     span_.set_begin(span_.begin() - 1);
     span_.set_size(1);
     while (!span_.is_beginning() &&
-           span_.front().same_group(*(span_.begin() - 1))) {
+           span_.begin()->group_key() == (span_.begin() - 1)->group_key()) {
       span_.set_begin(span_.begin() - 1);
       span_.set_size(span_.size() + 1);
     }
@@ -215,7 +219,7 @@ struct ItemGroup {
   ItemGroup(Item* start, const Item* end)
       : size_(end - start), extent_(end - start), start_(start) {
     for (const Item* i = start + 1; i != end; ++i)
-      if (!i->same_group(*start))
+      if (i->group_key() != start->group_key())
         --size_;
   }
 
@@ -226,7 +230,7 @@ struct ItemGroup {
     bool operator!=(const iterator& o) const { return ptr != o.ptr; }
     iterator& operator++() {
       const Item* prev = ptr++;
-      while (ptr != end && !ptr->same_group(*prev))
+      while (ptr != end && ptr->group_key() != prev->group_key())
         ++ptr;
       return *this;
     }
@@ -249,7 +253,7 @@ struct ItemGroup {
     if (size_ == extent_ || i == 0)
       return start_[i];
     for (Item* ptr = start_ + 1; ; ++ptr)
-      if (ptr->same_group(*start_))
+      if (ptr->group_key() == start_->group_key())
         if (--i == 0)
           return *ptr;
   }
