@@ -290,6 +290,12 @@ to a file.
 Data in NumPy and pandas
 ------------------------
 
+.. doctest::
+  :skipif: numpy is None
+  :hide:
+
+  >>> numpy.set_printoptions(threshold=5)
+
 In Python Column has a read-only ``array`` property that provides
 a view of the data compatible with NumPy. It does not copy the data,
 so the data is not contiguous (because it's stored row-wise in MTZ):
@@ -342,6 +348,31 @@ to integer type:
   :skipif: pandas is None
 
   >>> df = df.astype({name: 'int32' for name in ['H', 'K', 'L']})
+
+Another way to get Miller indices as a N×3 array of integers is:
+
+.. doctest::
+
+  >>> hkl = mtz.make_miller_array()
+
+The same method is available also in ReflnBlock (which represents SF-mmCIF
+and is described in a later section). Similarly, :ref:`AsuData <asu_data>`
+has a property ``miller_array``. The N×3 array of Miller indices can be
+used with a number of vectorized functions:
+
+.. doctest::
+
+  >>> gops = mtz.spacegroup.operations()
+  >>> gops.centric_flag_array(hkl)           # vectorized is_reflection_centric()
+  array([ True,  True,  True, ..., False, False, False])
+  >>> gops.epsilon_factor_array(hkl)         # vectorized epsilon_factor()
+  array([1, 1, 1, ..., 1, 1, 1], dtype=int32)
+  >>> mtz.cell.calculate_d_array(hkl)        # vectorized calculate_d()
+  array([1.91993507, 1.92853496, 1.91671381, ..., 1.76018669, 1.72347773,
+         1.67531162])
+  >>> mtz.cell.calculate_1_d2_array(hkl)     # vectorized calculate_1_d2()
+  array([0.27128571, 0.26887162, 0.27219833, ..., 0.3227621 , 0.33665777,
+         0.35629424])
 
 You may also have a look at a different project (not associated with Gemmi)
 for working with reflection data in Python:
@@ -590,12 +621,6 @@ the selected column in an array. In Python -- in NumPy array:
 
 .. doctest::
   :skipif: numpy is None
-  :hide:
-
-  >>> numpy.set_printoptions(threshold=5)
-
-.. doctest::
-  :skipif: numpy is None
 
   >>> rblock.make_int_array('index_h', -1000)  # 2nd arg - value for nulls
   array([-26, -26, -26, ...,  25,  26,  26], dtype=int32)
@@ -798,6 +823,8 @@ We can also iterate over points of the grid.
   (-178.310546875+99.20561218261719j)
   >>> grid.to_hkl(point)
   [-1, -1, -1]
+
+.. _asu_data:
 
 Often, one is only interested in unique points of the grid.
 We have a function that makes a table of H, K, L and values.

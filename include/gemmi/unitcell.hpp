@@ -342,7 +342,7 @@ struct UnitCell {
   // 1/d^2 = (2*sin(theta)/lambda)^2
   // The indices are integers, but they may be stored as floating-point
   // numbers (MTZ format) so we use double to avoid conversions.
-  double calculate_1_d2(double h, double k, double l) const {
+  double calculate_1_d2_double(double h, double k, double l) const {
     double arh = ar * h;
     double brk = br * k;
     double crl = cr * l;
@@ -351,7 +351,7 @@ struct UnitCell {
                                                     brk * crl * cos_alphar);
   }
   double calculate_1_d2(const Miller& hkl) const {
-    return calculate_1_d2(hkl[0], hkl[1], hkl[2]);
+    return calculate_1_d2_double(hkl[0], hkl[1], hkl[2]);
   }
 
   // Calculate d-spacing.

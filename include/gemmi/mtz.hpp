@@ -295,7 +295,7 @@ struct Mtz {
 
   void extend_min_max_1_d2(const UnitCell& uc, double& min, double& max) const {
     for (size_t i = 0; i < data.size(); i += columns.size()) {
-      double res = uc.calculate_1_d2(data[i+0], data[i+1], data[i+2]);
+      double res = uc.calculate_1_d2_double(data[i+0], data[i+1], data[i+2]);
       if (res < min)
         min = res;
       if (res > max)

@@ -6,8 +6,8 @@
 #include <array>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-//#include <pybind11/stl_bind.h>
-//#include <pybind11/numpy.h>
+#include <pybind11/numpy.h>
+#include "miller_a.h"
 
 namespace py = pybind11;
 using namespace gemmi;
@@ -162,10 +162,14 @@ void add_unitcell(py::module& m) {
          (int (UnitCell::*)(const Fractional&, double) const)
            &UnitCell::is_special_position,
          py::arg("fpos"), py::arg("max_dist"))
-    .def("calculate_1_d2",
-         (double (UnitCell::*)(const Miller&)const) &UnitCell::calculate_1_d2,
-         py::arg("hkl"))
+    .def("calculate_1_d2", &UnitCell::calculate_1_d2, py::arg("hkl"))
+    .def("calculate_1_d2_array", [](const UnitCell& u, py::array_t<int> hkl) {
+        return miller_function<double>(u, &UnitCell::calculate_1_d2, hkl);
+    })
     .def("calculate_d", &UnitCell::calculate_d, py::arg("hkl"))
+    .def("calculate_d_array", [](const UnitCell& u, py::array_t<int> hkl) {
+        return miller_function<double>(u, &UnitCell::calculate_d, hkl);
+    })
     .def("__repr__", [](const UnitCell& self) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
              + ", " + triple(self.alpha, self.beta, self.gamma) + ")>";

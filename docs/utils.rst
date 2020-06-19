@@ -719,7 +719,7 @@ It uses 10 parameters (anisotropic TLS requires 20) as described in a
 `paper by Kuriyan and Weis <https://doi.org/10.1073/pnas.88.7.2773>`_ (1991).
 `Soheilifard et al (2008) <https://doi.org/10.1088/1478-3975/5/2/026008>`_
 got even better results by increasing B-factors at the protein ends,
-using 13 parameters all together. This model was named eTLS (e = extended).
+using 13 parameters altogether. This model was named eTLS (e = extended).
 
 The high effectiveness of the TLS model does not mean that B-factors
 are dominated by the rigid-body motion. As noted by Kuriyan and Weis,
@@ -779,7 +779,7 @@ function with three parameters improved CC by 0.012 comparing with linear
 function (that has two parameters). Here, to keep it simple, we only do
 linear scaling.
 
-As noted by Halle, Pearson CC as well as mean-square deviation
+As noted by Halle, Pearson's CC as well as the mean-square deviation
 can be dominated by a few outliers. Therefore Halle used relative mean
 absolute deviation (RMAD): sum of absolute differences divided
 by the average absolute deviation in the experimantal values.
@@ -812,7 +812,7 @@ To be wrapped up and published. But in the meantime here are some thoughts:
 * Averaging predicted B-factors of nearby atoms helps; we use Gaussian
   smoothing (blurring) with σ around 2A.
 
-* Pearson CC around 0.8 may seem high, but it corresponds to R2=0.64,
+* Pearson's CC around 0.8 may seem high, but it corresponds to R2=0.64,
   i.e. it we explain only 64% of the B-factor variance.
   Even less of the absolute deviation -- below 50%.
 

@@ -5,6 +5,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
+#include <pybind11/numpy.h>
+#include "miller_a.h"
 
 namespace py = pybind11;
 using namespace gemmi;
@@ -106,7 +108,13 @@ void add_symmetry(py::module& m) {
     .def("find_centering", &GroupOps::find_centering)
     .def("is_centric", &GroupOps::is_centric)
     .def("is_reflection_centric", &GroupOps::is_reflection_centric)
+    .def("centric_flag_array", [](const GroupOps& g, py::array_t<int> hkl) {
+        return miller_function<bool>(g, &GroupOps::is_reflection_centric, hkl);
+    })
     .def("epsilon_factor", &GroupOps::epsilon_factor)
+    .def("epsilon_factor_array", [](const GroupOps& g, py::array_t<int> hkl) {
+        return miller_function<int>(g, &GroupOps::epsilon_factor, hkl);
+    })
     .def("find_grid_factors", &GroupOps::find_grid_factors,
          "Minimal multiplicity for real-space grid (e.g. 1,1,6 for P61).")
     .def("change_basis", &GroupOps::change_basis, py::arg("cob"),
