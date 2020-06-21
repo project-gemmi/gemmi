@@ -217,7 +217,7 @@ struct ItemGroup {
   using element_type = Item;
 
   ItemGroup(Item* start, const Item* end)
-      : size_(end - start), extent_(end - start), start_(start) {
+      : size_(int(end - start)), extent_(int(end - start)), start_(start) {
     for (const Item* i = start + 1; i != end; ++i)
       if (i->group_key() != start->group_key())
         --size_;
