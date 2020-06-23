@@ -481,6 +481,16 @@ and its size (columns x rows)::
 
   void Mtz::set_data(const float* new_data, size_t n)
 
+We can also start the file history:
+
+.. doctest::
+
+  mtz.history = ['This MTZ file was created today.']
+
+``mtz.history`` in Python is a property that gets a copy of the C++ data.
+Changing it (for example, ``mtz.history.append()``) won't affect the original data.
+Only assignment works: ``mtz.history = ...`` or ``mtz.history += ...``.
+
 To update properties ``min_1_d2`` and ``max_1_d2`` call ``update_reso()``:
 
 .. doctest::
