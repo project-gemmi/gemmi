@@ -12,6 +12,7 @@
 #include "fail.hpp"      // for fail
 #include "grid.hpp"
 #include "model.hpp"
+#include "small.hpp"
 
 namespace gemmi {
 
@@ -44,7 +45,12 @@ struct NeighborSearch {
       const Atom& a = r.atoms.at(atom_idx);
       return {&c, &r, &a};
     }
-
+    SmallStructure::Site& to_site(SmallStructure& small) const {
+      return small.sites.at(atom_idx);
+    }
+    const SmallStructure::Site& to_site(const SmallStructure& small) const {
+      return small.sites.at(atom_idx);
+    }
     float dist_sq(const Position& p) const {
       return sq((float)p.x - x) + sq((float)p.y - y) + sq((float)p.z - z);
     }
@@ -54,6 +60,7 @@ struct NeighborSearch {
   Grid<item_type> grid;
   double radius_specified = 0.;
   Model* model = nullptr;
+  SmallStructure* small_structure = nullptr;
   bool include_h = true;
 
   NeighborSearch() = default;
@@ -61,9 +68,16 @@ struct NeighborSearch {
   NeighborSearch(Model& model_, const UnitCell& cell, double max_radius) {
     initialize(model_, cell, max_radius);
   }
+  NeighborSearch(SmallStructure& small, double max_radius) {
+    small_structure = &small;
+    radius_specified = max_radius;
+    grid.unit_cell = small.cell;
+    set_grid_size();
+  }
   void initialize(Model& model, const UnitCell& cell, double max_radius);
   NeighborSearch& populate(bool include_h_=true);
   void add_atom(const Atom& atom, int n_ch, int n_res, int n_atom);
+  void add_site(const SmallStructure::Site& site, int n);
 
   // assumes data in [0, 1), but uses index_n to handle numeric deviations
   item_type& get_subcell(const Fractional& fr) {
@@ -85,16 +99,25 @@ struct NeighborSearch {
   }
 
   // with max_dist==0 it uses radius_specified
-  std::vector<Mark*> find_neighbors(const Atom& atom,
-                                    float min_dist, float max_dist) {
+  std::vector<Mark*> find_neighbors_(const Position& pos, char altloc,
+                                     float min_dist, float max_dist) {
     std::vector<Mark*> out;
     if (max_dist == 0.f)
       max_dist = (float) radius_specified;
-    for_each(atom.pos, atom.altloc, max_dist, [&](Mark& a, float dist_sq) {
+    for_each(pos, altloc, max_dist, [&](Mark& a, float dist_sq) {
         if (dist_sq >= sq(min_dist))
           out.push_back(&a);
     });
     return out;
+  }
+  std::vector<Mark*> find_neighbors(const Atom& atom,
+                                    float min_dist, float max_dist) {
+    return find_neighbors_(atom.pos, atom.altloc, min_dist, max_dist);
+  }
+  std::vector<Mark*> find_site_neighbors(const SmallStructure::Site& site,
+                                         float min_dist, float max_dist) {
+    Position pos = grid.unit_cell.orthogonalize(site.fract);
+    return find_neighbors_(pos, '\0', min_dist, max_dist);
   }
 
   Mark* find_nearest_atom(const Position& pos) {
@@ -115,6 +138,15 @@ struct NeighborSearch {
   float dist(const Position& pos1, const Position& pos2) const {
     return std::sqrt(dist_sq(pos1, pos2));
   }
+
+private:
+  void set_grid_size() {
+    grid.set_size_from_spacing(radius_specified, false);
+    if (grid.nu < 3 || grid.nv < 3 || grid.nw < 3)
+      grid.set_size_without_checking(std::max(grid.nu, 3),
+                                     std::max(grid.nv, 3),
+                                     std::max(grid.nw, 3));
+  }
 };
 
 
@@ -134,26 +166,31 @@ inline void NeighborSearch::initialize(Model& model_, const UnitCell& cell,
     Vec3 size = box.get_size() + Vec3(margin, margin, margin);
     grid.unit_cell.set(size.x, size.y, size.z, 90, 90, 90);
   }
-  grid.set_size_from_spacing(max_radius, false);
-  if (grid.nu < 3 || grid.nv < 3 || grid.nw < 3)
-    grid.set_size_without_checking(std::max(grid.nu, 3), std::max(grid.nv, 3),
-                                   std::max(grid.nw, 3));
+  set_grid_size();
 }
 
 inline NeighborSearch& NeighborSearch::populate(bool include_h_) {
-  if (!model)
-    fail("NeighborSearch not initialized");
   include_h = include_h_;
-  for (int n_ch = 0; n_ch != (int) model->chains.size(); ++n_ch) {
-    const Chain& chain = model->chains[n_ch];
-    for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
-      const Residue& res = chain.residues[n_res];
-      for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
-        const Atom& atom = res.atoms[n_atom];
-        if (include_h || !atom.is_hydrogen())
-          add_atom(atom, n_ch, n_res, n_atom);
+  if (model) {
+    for (int n_ch = 0; n_ch != (int) model->chains.size(); ++n_ch) {
+      const Chain& chain = model->chains[n_ch];
+      for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
+        const Residue& res = chain.residues[n_res];
+        for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
+          const Atom& atom = res.atoms[n_atom];
+          if (include_h || !atom.is_hydrogen())
+            add_atom(atom, n_ch, n_res, n_atom);
+        }
       }
     }
+  } else if (small_structure) {
+    for (int n = 0; n != (int) small_structure->sites.size(); ++n) {
+      SmallStructure::Site& site = small_structure->sites[n];
+      if (include_h || !site.element.is_hydrogen())
+        add_site(site, n);
+    }
+  } else {
+    fail("NeighborSearch not initialized");
   }
   return *this;
 }
@@ -176,20 +213,51 @@ inline void NeighborSearch::add_atom(const Atom& atom,
   }
 }
 
+// We exclude special position images of atoms here, but not in add_atom.
+// This choice is somewhat arbitrary, but it also reflects the fact that
+// in MX files occupances of atoms on special positions are (almost always)
+// fractional and all images are to be taken into account.
+inline void NeighborSearch::add_site(const SmallStructure::Site& site, int n) {
+  const double SPECIAL_POS_TOL = 0.4;
+  const UnitCell& gcell = grid.unit_cell;
+  std::vector<Fractional> others;
+  others.reserve(gcell.images.size());
+  Fractional frac0 = site.fract.wrap_to_unit();
+  {
+    Position pos = gcell.orthogonalize(frac0);
+    get_subcell(frac0).emplace_back(pos, '\0', site.element.elem, 0, -1, -1, n);
+  }
+  for (int n_im = 0; n_im != (int) gcell.images.size(); ++n_im) {
+    Fractional frac = gcell.images[n_im].apply(site.fract).wrap_to_unit();
+    if (gcell.distance_sq(frac, frac0) < sq(SPECIAL_POS_TOL) ||
+        std::any_of(others.begin(), others.end(), [&](const Fractional& f) {
+          return gcell.distance_sq(frac, f) < sq(SPECIAL_POS_TOL);
+        }))
+      continue;
+    Position pos = gcell.orthogonalize(frac);
+    get_subcell(frac).emplace_back(pos, '\0', site.element.elem,
+                                   n_im + 1, -1, -1, n);
+    others.push_back(frac);
+  }
+}
+
 template<typename Func>
 void NeighborSearch::for_each(const Position& pos, char alt, float radius,
                               const Func& func) {
   if (radius <= 0.f)
     return;
   Fractional fr = grid.unit_cell.fractionalize(pos).wrap_to_unit();
-  int u0 = int(fr.x * grid.nu);
-  int v0 = int(fr.y * grid.nv);
-  int w0 = int(fr.z * grid.nw);
-  for (int w = w0 - 1; w < w0 + 2; ++w) {
+  const int u0 = int(fr.x * grid.nu);
+  const int v0 = int(fr.y * grid.nv);
+  const int w0 = int(fr.z * grid.nw);
+  const int uend = u0 + std::min(3, grid.nu) - 1;
+  const int vend = v0 + std::min(3, grid.nv) - 1;
+  const int wend = w0 + std::min(3, grid.nw) - 1;
+  for (int w = w0 - 1; w < wend; ++w) {
     int dw = w >= grid.nw ? -1 : w < 0 ? 1 : 0;
-    for (int v = v0 - 1; v < v0 + 2; ++v) {
+    for (int v = v0 - 1; v < vend; ++v) {
       int dv = v >= grid.nv ? -1 : v < 0 ? 1 : 0;
-      for (int u = u0 - 1; u < u0 + 2; ++u) {
+      for (int u = u0 - 1; u < uend; ++u) {
         int du = u >= grid.nu ? -1 : u < 0 ? 1 : 0;
         size_t idx = grid.index_q(u + du * grid.nu,
                                   v + dv * grid.nv,

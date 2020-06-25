@@ -176,6 +176,23 @@ In this example the "original" atom is in a different location:
   >>> cra.atom.pos
   <gemmi.Position(-0.028, 13.85, -17.645)>
 
+
+The neighbor search can also be used with small molecule structures.
+
+.. doctest::
+
+  >>> small = gemmi.read_small_structure('../tests/2013551.cif')
+  >>> mg_site = small.sites[0]
+  >>> mg_pos = small.cell.orthogonalize(mg_site.fract)
+  >>> ns = gemmi.NeighborSearch(small, 4.0).populate()
+  >>> for mark in ns.find_site_neighbors(mg_site, min_dist=0.1):
+  ...   site = mark.to_site(small)
+  ...   dist = ns.dist(mark.pos(), mg_pos)
+  ...   print(site.label, 'image #%d' % mark.image_idx, 'dist=%.2f' % dist)
+  I image #0 dist=2.92
+  I image #3 dist=2.92
+
+
 Contact search
 ==============
 

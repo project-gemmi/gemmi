@@ -80,6 +80,7 @@ inline void split_element_and_charge(const std::string& label, T* dest) {
 
 inline std::vector<SmallStructure::Site>
 SmallStructure::get_all_unit_cell_sites() const {
+  const double SPECIAL_POS_TOL = 0.4;
   std::vector<Site> all;
   for (const Site& site : sites) {
     size_t start = all.size();
@@ -87,7 +88,7 @@ SmallStructure::get_all_unit_cell_sites() const {
     for (const FTransform& image : cell.images) {
       Fractional fpos = image.apply(site.fract);
       if (std::any_of(all.begin() + start, all.end(), [&](const Site& other) {
-            return cell.distance_sq(fpos, other.fract) < 0.5 * 0.5;
+            return cell.distance_sq(fpos, other.fract) < sq(SPECIAL_POS_TOL);
           }))
         continue;
       all.push_back(site);

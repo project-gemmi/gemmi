@@ -241,6 +241,8 @@ void add_grid(py::module& m) {
     .def("pos", &NeighborSearch::Mark::pos)
     .def("to_cra", (CRA (NeighborSearch::Mark::*)(Model&) const)
                    &NeighborSearch::Mark::to_cra)
+    .def("to_site", (SmallStructure::Site& (NeighborSearch::Mark::*)(SmallStructure&) const)
+                    &NeighborSearch::Mark::to_site)
     .def("__repr__", [](const NeighborSearch::Mark& self) {
         return tostr("<gemmi.NeighborSearch.Mark ", self.element.name(),
                      " of atom ", self.chain_idx, '/', self.residue_idx, '/',
@@ -255,6 +257,9 @@ void add_grid(py::module& m) {
       return new NeighborSearch(st.models.at(model_index), st.cell, max_radius);
     }), py::arg("st"), py::arg("max_radius"), py::arg("model_index")=0,
         py::keep_alive<1, 2>())
+    .def(py::init<SmallStructure&, double>(),
+         py::arg("small_structure"), py::arg("max_radius"),
+         py::keep_alive<1, 2>())
     .def("populate", &NeighborSearch::populate, py::arg("include_h")=true,
          "Usually run after constructing NeighborSearch.")
     .def("add_atom", &NeighborSearch::add_atom,
@@ -264,6 +269,9 @@ void add_grid(py::module& m) {
          py::arg("pos"), py::arg("alt")='\0', py::arg("radius")=0,
          py::return_value_policy::move, py::keep_alive<0, 1>())
     .def("find_neighbors", &NeighborSearch::find_neighbors,
+         py::arg("atom"), py::arg("min_dist")=0, py::arg("max_dist")=0,
+         py::return_value_policy::move, py::keep_alive<0, 1>())
+    .def("find_site_neighbors", &NeighborSearch::find_site_neighbors,
          py::arg("atom"), py::arg("min_dist")=0, py::arg("max_dist")=0,
          py::return_value_policy::move, py::keep_alive<0, 1>())
     .def("dist", &NeighborSearch::dist)
