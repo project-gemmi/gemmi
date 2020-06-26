@@ -93,10 +93,14 @@ static void print_info(const gemmi::SpaceGroup* sg, bool verbose) {
   printf("CCP4 number: %d\n", sg->ccp4);
   printf("Hermann-Mauguin: %s\n", sg->hm);
   printf("Extended H-M: %s\n", sg->xhm().c_str());
+  printf("Short name: %s\n", sg->short_name().c_str());
   printf("Hall symbol: %s\n", sg->hall);
   printf("Point group: %s\n", sg->point_group_hm());
+  printf("Laue class: %s\n", sg->laue_str());
+  printf("Crystal system: %s\n", sg->crystal_system_str());
   gemmi::GroupOps ops = sg->operations();
   printf("Is centric: %s\n", ops.is_centric() ? "yes" : "no");
+  printf("Is enantiomorphic: %s\n", sg->is_enantiomorphic() ? "yes" : "no");
   std::array<int, 3> gf = ops.find_grid_factors();
   printf("Grid restrictions: NX=%dn NY=%dn NZ=%dn\n", gf[0], gf[1], gf[2]);
   printf("Reciprocal space ASU%s: %s\n",
