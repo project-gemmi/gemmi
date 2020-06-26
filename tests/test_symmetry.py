@@ -289,6 +289,8 @@ class TestSymmetry(unittest.TestCase):
         self.assertFalse(gops.is_reflection_centric([3,3,3]))
         self.assertEqual(gops.epsilon_factor([3,0,3]), 1)
         self.assertEqual(gops.epsilon_factor([0,3,0]), 2)
+        self.assertFalse(gops.is_systematically_absent([1,2,3]))
+        self.assertTrue(gops.is_systematically_absent([1,2,4]))
 
 if __name__ == '__main__':
     unittest.main()

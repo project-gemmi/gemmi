@@ -367,6 +367,8 @@ used with a number of vectorized functions:
   array([ True,  True,  True, ..., False, False, False])
   >>> gops.epsilon_factor_array(hkl)         # vectorized epsilon_factor()
   array([1, 1, 1, ..., 1, 1, 1], dtype=int32)
+  >>> gops.systematic_absences(hkl)          # vectorized is_systematically_absent()
+  array([False, False, False, ..., False, False, False])
   >>> mtz.cell.calculate_d_array(hkl)        # vectorized calculate_d()
   array([1.91993507, 1.92853496, 1.91671381, ..., 1.76018669, 1.72347773,
          1.67531162])

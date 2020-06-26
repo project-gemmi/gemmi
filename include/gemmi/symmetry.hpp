@@ -408,6 +408,26 @@ struct GroupOps {
     return epsilon;
   }
 
+  static bool has_phase_shift(const Op::Tran& c, const Op::Miller& hkl) {
+    return (hkl[0] * c[0] + hkl[1] * c[1] + hkl[2] * c[2]) % Op::DEN != 0;
+  }
+
+  bool is_systematically_absent(const Op::Miller& hkl) const {
+    for (auto i = cen_ops.begin() + 1; i != cen_ops.end(); ++i)
+      if (has_phase_shift(*i, hkl))
+        return true;
+    Op::Miller denh = {{Op::DEN * hkl[0], Op::DEN * hkl[1], Op::DEN * hkl[2]}};
+    for (auto op = sym_ops.begin() + 1; op != sym_ops.end(); ++op)
+      if (op->apply_to_hkl_without_division(hkl) == denh) {
+        for (const Op::Tran& c : cen_ops)
+          if (has_phase_shift({{op->tran[0] + c[0],
+                                op->tran[1] + c[1],
+                                op->tran[2] + c[2]}}, hkl))
+            return true;
+      }
+    return false;
+  }
+
   void change_basis(const Op& cob) {
     if (sym_ops.empty() || cen_ops.empty())
       return;

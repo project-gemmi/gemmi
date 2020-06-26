@@ -527,7 +527,16 @@ to it by symmetry):
   >>> new_ops.is_reflection_centric([0, 2, 0])
   True
 
-Another property, the epsilon factor ε, tells how many time the point group symmetry
+Similarly, we can check for systematic absences:
+
+.. doctest::
+
+  >>> new_ops.is_systematically_absent([1, 2, 3])
+  True
+  >>> new_ops.is_systematically_absent([1, 3, 2])
+  False
+
+Another property, the epsilon factor ε, tells how many times the point group symmetry
 operations map the reflection onto itself:
 
 .. doctest::

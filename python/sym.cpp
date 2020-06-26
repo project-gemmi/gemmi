@@ -115,6 +115,10 @@ void add_symmetry(py::module& m) {
     .def("epsilon_factor_array", [](const GroupOps& g, py::array_t<int> hkl) {
         return miller_function<int>(g, &GroupOps::epsilon_factor, hkl);
     })
+    .def("is_systematically_absent", &GroupOps::is_systematically_absent)
+    .def("systematic_absences", [](const GroupOps& g, py::array_t<int> hkl) {
+        return miller_function<bool>(g, &GroupOps::is_systematically_absent, hkl);
+    })
     .def("find_grid_factors", &GroupOps::find_grid_factors,
          "Minimal multiplicity for real-space grid (e.g. 1,1,6 for P61).")
     .def("change_basis", &GroupOps::change_basis, py::arg("cob"),
