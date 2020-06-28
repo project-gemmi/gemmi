@@ -37,12 +37,25 @@ struct ConvArg: public Arg {
   static option::ArgStatus NcsChoice(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"dup", "new"});
   }
+
+  static option::ArgStatus OldNew(const option::Option& option, bool msg) {
+    if (option.arg) {
+      const char* sep = std::strchr(option.arg, ':');
+      if (sep != nullptr && std::strchr(sep+1, ':') == nullptr)
+        return option::ARG_OK;
+    }
+    if (msg)
+      fprintf(stderr, "Option '%.*s' requires two colon-separated names "
+                      "as an argument,\n for example: %.*s=A:B\n",
+                      option.namelen, option.name, option.namelen, option.name);
+    return option::ARG_ILLEGAL;
+  }
 };
 
 enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, PdbxStyle, BlockName,
   ExpandNcs, AsAssembly, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
-  ShortTer, Linkr, Minimal, ShortenCN, SegmentAsChain, OldPdb
+  ShortTer, Linkr, Minimal, ShortenCN, RenameChain, SegmentAsChain, OldPdb
 };
 
 static const option::Descriptor Usage[] = {
@@ -86,7 +99,9 @@ static const option::Descriptor Usage[] = {
     "  --minimal  \tWrite only the most essential records." },
   { ShortenCN, 0, "", "shorten", Arg::None,
     "  --shorten  \tShorten chain names to 1 (if # < 63) or 2 characters." },
-
+  { RenameChain, 0, "", "rename-chain", ConvArg::OldNew,
+    "  --rename-chain=OLD:NEW  \tRename chain OLD to NEW "
+    "(--rename-chain=:A adds missing chain IDs)." },
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular operations:" },
   { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
     "  --expand-ncs=dup|new  \tExpand strict NCS specified in MTRIXn or"
@@ -183,6 +198,13 @@ static void convert(gemmi::Structure& st,
     setup_for_mmcif(st);
   }
 
+  for (const option::Option* opt = options[RenameChain]; opt; opt = opt->next()) {
+    const char* sep = std::strchr(opt->arg, ':');
+    std::string old_name(opt->arg, sep);
+    std::string new_name(sep+1);
+    if (gemmi::Chain* chain = st.first_model().find_chain(old_name))
+      gemmi::rename_chain(st, *chain, new_name);
+  }
   if (options[ShortenCN]) {
     shorten_chain_names(st);
   } else if (output_type == CoorFormat::Pdb) {

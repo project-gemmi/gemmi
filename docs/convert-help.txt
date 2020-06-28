@@ -7,37 +7,39 @@ FORMAT can be specified as one of: mmcif, mmjson, pdb, ccd (read-only).
 ccd = coordinates of a chemical component from CCD or monomer library.
 
 General options:
-  -h, --help             Print usage and exit.
-  -V, --version          Print version and exit.
-  -v, --verbose          Verbose output.
-  --from=FORMAT          Input format (default: from the file extension).
-  --to=FORMAT            Output format (default: from the file extension).
+  -h, --help              Print usage and exit.
+  -V, --version           Print version and exit.
+  -v, --verbose           Verbose output.
+  --from=FORMAT           Input format (default: from the file extension).
+  --to=FORMAT             Output format (default: from the file extension).
 
 CIF output options:
-  --pdbx-style           Similar styling (formatting) as in wwPDB.
-  -b NAME, --block=NAME  Set block name and default _entry.id
-  --sort                 Sort tags in alphabetical order.
-  --skip-category=CAT    Do not output tags starting with _CAT
+  --pdbx-style            Similar styling (formatting) as in wwPDB.
+  -b NAME, --block=NAME   Set block name and default _entry.id
+  --sort                  Sort tags in alphabetical order.
+  --skip-category=CAT     Do not output tags starting with _CAT
 
 PDB input options:
-  --segment-as-chain     Append segment id to label_asym_id (chain name).
-  --old-pdb              Read only the first 72 characters in line.
+  --segment-as-chain      Append segment id to label_asym_id (chain name).
+  --old-pdb               Read only the first 72 characters in line.
 
 PDB output options:
-  --short-ter            Write PDB TER records without numbers (iotbx compat.).
-  --linkr                Write LINKR record (for Refmac) if link_id is known.
+  --short-ter             Write PDB TER records without numbers (iotbx compat.).
+  --linkr                 Write LINKR record (for Refmac) if link_id is known.
 
 Any output options:
-  --minimal              Write only the most essential records.
-  --shorten              Shorten chain names to 1 (if # < 63) or 2 characters.
+  --minimal               Write only the most essential records.
+  --shorten               Shorten chain names to 1 (if # < 63) or 2 characters.
+  --rename-chain=OLD:NEW  Rename chain OLD to NEW (--rename-chain=:A adds
+                          missing chain IDs).
 
 Macromolecular operations:
-  --expand-ncs=dup|new   Expand strict NCS specified in MTRIXn or equivalent.
-                         New chain names are the same or have added numbers.
-  --assembly=ID          Output bioassembly with given ID (1, 2, ...).
-  --remove-h             Remove hydrogens.
-  --remove-waters        Remove waters.
-  --remove-lig-wat       Remove ligands and waters.
-  --trim-to-ala          Trim aminoacids to alanine.
+  --expand-ncs=dup|new    Expand strict NCS specified in MTRIXn or equivalent.
+                          New chain names are the same or have added numbers.
+  --assembly=ID           Output bioassembly with given ID (1, 2, ...).
+  --remove-h              Remove hydrogens.
+  --remove-waters         Remove waters.
+  --remove-lig-wat        Remove ligands and waters.
+  --trim-to-ala           Trim aminoacids to alanine.
 
 When output file is -, write to standard output.

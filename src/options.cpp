@@ -81,7 +81,7 @@ option::ArgStatus Arg::Int3(const option::Option& option, bool msg) {
     return option::ARG_OK;
   if (msg)
     fprintf(stderr, "Option '%.*s' requires three comma-separated integers "
-                    "as an argument,\n for example: %.*s=11,12,13",
+                    "as an argument,\n for example: %.*s=11,12,13\n",
                     option.namelen, option.name, option.namelen, option.name);
   return option::ARG_ILLEGAL;
 }
