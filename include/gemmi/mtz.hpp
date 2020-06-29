@@ -22,26 +22,9 @@
 #include "symmetry.hpp"  // for find_spacegroup_by_name, SpaceGroup
 #include "unitcell.hpp"  // for UnitCell
 #include "util.hpp"      // for ialpha4_id, rtrim_str, ialpha3_id, ...
+#include "reciproc.hpp"  // for calculate_min_max_disregarding_nans
 
 namespace gemmi {
-
-template <typename T, typename FP=typename std::iterator_traits<T>::value_type>
-std::array<FP,2> calculate_min_max_disregarding_nans(T begin, T end) {
-  std::array<FP,2> minmax = {{NAN, NAN}};
-  T i = begin;
-  while (i != end && std::isnan(*i))
-    ++i;
-  if (i != end) {
-    minmax[0] = minmax[1] = *i;
-    while (++i != end) {
-      if (*i < minmax[0])
-        minmax[0] = *i;
-      else if (*i > minmax[1])
-        minmax[1] = *i;
-    }
-  }
-  return minmax;
-}
 
 // Unmerged MTZ files always store in-asu hkl indices and symmetry operation
 // encoded in the M/ISYM column. Here is a helper for writing such files.

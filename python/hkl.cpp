@@ -383,4 +383,13 @@ void add_hkl(py::module& m) {
           r.first = cromer_libermann(z, energy, &r.second);
           return r;
         }, py::arg("z"), py::arg("energy"));
+  m.def("count_reflections", &count_reflections,
+        py::arg("cell"), py::arg("spacegroup"), py::arg("dmin"),
+        py::arg("dmax")=0., py::arg("unique")=true);
+  m.def("make_miller_array", [](const UnitCell& cell, const SpaceGroup* sg,
+                                double dmin, double dmax, bool unique) {
+          return py::array(py::cast(
+                      gemmi::make_miller_vector(cell, sg, dmin, dmax, unique)));
+        }, py::arg("cell"), py::arg("spacegroup"), py::arg("dmin"),
+           py::arg("dmax")=0., py::arg("unique")=true);
 }
