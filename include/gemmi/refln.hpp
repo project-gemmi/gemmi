@@ -107,9 +107,9 @@ struct ReflnBlock {
              get_column_index("index_l")}};
   }
 
-  std::vector<std::array<int,3>> make_miller_vector() const {
+  std::vector<Miller> make_miller_vector() const {
     auto hkl_idx = get_hkl_column_indices();
-    std::vector<std::array<int,3>> v(default_loop->length());
+    std::vector<Miller> v(default_loop->length());
     for (size_t j = 0, n = 0; j != v.size(); j++, n += default_loop->width())
       for (int i = 0; i != 3; ++i)
         v[j][i] = cif::as_int(default_loop->values[n + hkl_idx[i]]);
