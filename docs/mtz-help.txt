@@ -10,7 +10,8 @@ Print informations from an mtz file.
   -B N, --batch=N  Print data from batch header N.
   -b, --batches    Print data from all batch headers.
   --tsv            Print all the data as tab-separated values.
-  --stats          Print column statistics (completeness, mean, etc).
+  -s, --stats      Print column statistics (completeness, mean, etc).
   --check-asu      Check if reflections are in conventional ASU.
   --toggle-endian  Toggle assumed endiannes (little <-> big).
   --no-isym        Do not apply symmetry from M/ISYM column.
+  --update-reso    Recalculate resolution limits before printing.

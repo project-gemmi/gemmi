@@ -14,7 +14,7 @@ using gemmi::Mtz;
 using std::printf;
 
 enum OptionIndex { Headers=4, Dump, PrintBatch, PrintBatches, PrintTsv,
-                   PrintStats, CheckAsu, ToggleEndian, NoIsym };
+                   PrintStats, CheckAsu, ToggleEndian, NoIsym, UpdateReso };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -33,14 +33,16 @@ static const option::Descriptor Usage[] = {
     "  -b, --batches  \tPrint data from all batch headers." },
   { PrintTsv, 0, "", "tsv", Arg::None,
     "  --tsv  \tPrint all the data as tab-separated values." },
-  { PrintStats, 0, "", "stats", Arg::None,
-    "  --stats  \tPrint column statistics (completeness, mean, etc)." },
+  { PrintStats, 0, "s", "stats", Arg::None,
+    "  -s, --stats  \tPrint column statistics (completeness, mean, etc)." },
   { CheckAsu, 0, "", "check-asu", Arg::None,
     "  --check-asu  \tCheck if reflections are in conventional ASU." },
   { ToggleEndian, 0, "", "toggle-endian", Arg::None,
     "  --toggle-endian  \tToggle assumed endiannes (little <-> big)." },
   { NoIsym, 0, "", "no-isym", Arg::None,
     "  --no-isym  \tDo not apply symmetry from M/ISYM column." },
+  { UpdateReso, 0, "", "update-reso", Arg::None,
+    "  --update-reso  \tRecalculate resolution limits before printing." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -69,8 +71,9 @@ static void dump(const Mtz& mtz) {
          mtz.sort_order[0], mtz.sort_order[1], mtz.sort_order[2],
          mtz.sort_order[3], mtz.sort_order[4]);
   printf("Space Group: %s\n", mtz.spacegroup_name.c_str());
-  printf("Space Group Number: %d\n", mtz.spacegroup_number);
-  printf("\nColumn    Type  Dataset    Min        Max\n");
+  printf("Space Group Number: %d\n\n", mtz.spacegroup_number);
+  printf("Header info (run with option -s for recalculated statistics):\n");
+  printf("Column    Type  Dataset    Min        Max\n");
   for (const Mtz::Column& col : mtz.columns)
     printf("%-12s %c %2d %12.6g %10.6g\n",
            col.label.c_str(), col.type, col.dataset_id,
@@ -204,6 +207,9 @@ static void check_asu(const Mtz& mtz) {
          asu.condition_str());
   printf("inside / outside of ASU: %d / %d\n",
          counter, mtz.nreflections - counter);
+  double dmin = mtz.resolution_high() - 1e-6;
+  printf("All unique reflections up to d=%g: %d\n",
+         dmin, gemmi::count_reflections(mtz.cell, mtz.spacegroup, dmin));
 }
 
 template<typename Stream>
@@ -231,6 +237,11 @@ void print_mtz_info(Stream&& stream, const char* path,
   mtz.read_main_headers(stream);
   mtz.read_history_and_batch_headers(stream);
   mtz.setup_spacegroup();
+  if (options[PrintTsv] || options[PrintStats] || options[CheckAsu] ||
+      options[UpdateReso])
+    mtz.read_raw_data(stream);
+  if (options[UpdateReso])
+    mtz.update_reso();
   if (options[Dump] ||
       !(options[PrintBatch] || options[PrintBatches] || options[PrintTsv] ||
         options[PrintStats] || options[CheckAsu] || options[Headers]))
@@ -248,11 +259,8 @@ void print_mtz_info(Stream&& stream, const char* path,
   if (options[PrintBatches])
     for (const Mtz::Batch& b : mtz.batches)
       print_batch(b);
-  if (options[PrintTsv] || options[PrintStats] || options[CheckAsu]) {
-    mtz.read_raw_data(stream);
-    if (!options[NoIsym])
-      mtz.switch_to_original_hkl();
-  }
+  if (mtz.has_data() && !options[NoIsym])
+    mtz.switch_to_original_hkl();
   if (options[PrintTsv])
     print_tsv(mtz);
   if (options[PrintStats])
