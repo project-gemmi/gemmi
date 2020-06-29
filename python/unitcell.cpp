@@ -170,6 +170,7 @@ void add_unitcell(py::module& m) {
     .def("calculate_d_array", [](const UnitCell& u, py::array_t<int> hkl) {
         return miller_function<double>(u, &UnitCell::calculate_d, hkl);
     })
+    .def("get_hkl_limits", &UnitCell::get_hkl_limits, py::arg("dmin"))
     .def("__repr__", [](const UnitCell& self) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
              + ", " + triple(self.alpha, self.beta, self.gamma) + ")>";

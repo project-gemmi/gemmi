@@ -359,6 +359,10 @@ struct UnitCell {
   double calculate_d(const Miller& hkl) const {
     return 1.0 / std::sqrt(calculate_1_d2(hkl));
   }
+
+  Miller get_hkl_limits(double dmin) const {
+    return {{int(1 / (dmin * ar)), int(1 / (dmin * br)), int(1 / (dmin * cr))}};
+  }
 };
 
 } // namespace gemmi
