@@ -357,7 +357,41 @@ Another way to get Miller indices as a N×3 array of integers is:
 
 The same method is available also in ReflnBlock (which represents SF-mmCIF
 and is described in a later section). Similarly, :ref:`AsuData <asu_data>`
-has a property ``miller_array``. The N×3 array of Miller indices can be
+has a property ``miller_array``.
+And finally, gemmi has a standalone function ``make_miller_array()``
+that returns all reflections in a resolution shell.
+To get all unique reflections up to the same resolution
+as the example mtz file we can do:
+
+.. doctest::
+
+  >>> dmin = mtz.resolution_high() - 1e-6  # the 1e-6 margin is for numerical errors
+  >>> gemmi.make_miller_array(mtz.cell, mtz.spacegroup, dmin)
+  array([[-5,  0,  1],
+         [-5,  0,  2],
+         [-5,  0,  3],
+         ...,
+         [ 5,  2,  0],
+         [ 5,  2,  1],
+         [ 5,  2,  2]])
+
+We also have two optional parameters (not used above): ``dmax`` and ``unique``.
+Setting ``unique=False`` returns all equivalent reflections.
+By default, only reflections from the reciprocal space ASU are returned.
+
+Note: if you'd like to only count the reflections, use function
+``count_reflections`` that takes the same parameters:
+
+.. doctest::
+
+  >>> gemmi.count_reflections(mtz.cell, mtz.spacegroup, dmin)
+  441
+  >>> gemmi.count_reflections(mtz.cell, mtz.spacegroup, 2.5, dmax=3.0)
+  52
+  >>> gemmi.count_reflections(mtz.cell, mtz.spacegroup, 2.5, dmax=3.0, unique=False)
+  188
+
+Back to NumPy arrays. The N×3 array of Miller indices can be
 used with a number of vectorized functions:
 
 .. doctest::
@@ -376,7 +410,7 @@ used with a number of vectorized functions:
   array([0.27128571, 0.26887162, 0.27219833, ..., 0.3227621 , 0.33665777,
          0.35629424])
 
-You may also have a look at a different project (not associated with Gemmi)
+You may also check a different project (not associated with Gemmi)
 for working with reflection data in Python:
 `ReciprocalSpaceship <https://hekstra-lab.github.io/reciprocalspaceship/>`_.
 
