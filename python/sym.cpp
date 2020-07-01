@@ -132,9 +132,6 @@ void add_symmetry(py::module& m) {
     .def(py::init([](const std::string& s) {
            return const_cast<SpaceGroup&>(get_spacegroup_by_name(s));
          }), py::arg("hm"), py::return_value_policy::reference)
-    .def("__repr__", [](const SpaceGroup &self) {
-        return "<gemmi.SpaceGroup(\"" + self.xhm() + "\")>";
-    })
     .def_readonly("number", &SpaceGroup::number, "number 1-230.")
     .def_readonly("ccp4", &SpaceGroup::ccp4, "ccp4 number")
     // Intel Compiler would not compile .def_readonly("hm", ...),
@@ -163,11 +160,16 @@ void add_symmetry(py::module& m) {
     .def("crystal_system_str", &SpaceGroup::crystal_system_str,
          "Returns lower-case name of the crystal system.")
     .def("is_reference_setting", &SpaceGroup::is_reference_setting)
-    .def("operations", &SpaceGroup::operations, "Group of operations");
+    .def("operations", &SpaceGroup::operations, "Group of operations")
+    .def("__repr__", [](const SpaceGroup &self) {
+        return "<gemmi.SpaceGroup(\"" + self.xhm() + "\")>";
+    });
 
-  py::class_<ReciprocalAsuChecker>(m, "ReciprocalAsuChecker")
+  py::class_<ReciprocalAsu>(m, "ReciprocalAsu")
     .def(py::init<const SpaceGroup*>())
-    .def("is_in", &ReciprocalAsuChecker::is_in, py::arg("hkl"))
+    .def("is_in", &ReciprocalAsu::is_in, py::arg("hkl"))
+    .def("condition_str", &ReciprocalAsu::condition_str)
+    .def("to_asu", &ReciprocalAsu::to_asu, py::arg("hkl"), py::arg("group_ops"))
     ;
 
   m.def("spacegroup_table", []() {

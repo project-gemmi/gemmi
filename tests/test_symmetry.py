@@ -278,7 +278,7 @@ class TestSymmetry(unittest.TestCase):
 
     def test_reciprocal_asu_checker(self):
         sg = gemmi.SpaceGroup('I 1 2 1')
-        checker = gemmi.ReciprocalAsuChecker(sg)
+        checker = gemmi.ReciprocalAsu(sg)
         self.assertTrue(checker.is_in([-5, 5, 1]))
         self.assertFalse(checker.is_in([5, 5, -1]))
 

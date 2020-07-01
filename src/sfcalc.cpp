@@ -174,7 +174,7 @@ void print_structure_factors(const Structure& st,
 
   Comparator comparator;
   double max_1_d = 1. / dencalc.d_min;
-  gemmi::ReciprocalAsuChecker asu(dencalc.grid.spacegroup);
+  gemmi::ReciprocalAsu asu(dencalc.grid.spacegroup);
   int max_h = std::min(sf.nu / 2, int(max_1_d / st.cell.ar));
   int max_k = std::min(sf.nv / 2, int(max_1_d / st.cell.br));
   int max_l = std::min(sf.nw, int(max_1_d / st.cell.cr));
@@ -246,7 +246,7 @@ void print_structure_factors_sm(const SmallStructure& small,
   int max_l = int(max_1_d / small.cell.cr);
   const SpaceGroup* sg = find_spacegroup_by_name(small.spacegroup_hm,
                                            small.cell.alpha, small.cell.gamma);
-  gemmi::ReciprocalAsuChecker asu(sg ? sg : &get_spacegroup_p1());
+  gemmi::ReciprocalAsu asu(sg ? sg : &get_spacegroup_p1());
   for (int h = -max_h; h <= max_h; ++h)
     for (int k = -max_k; k <= max_k; ++k)
       for (int l = 0; l <= max_l; ++l) {

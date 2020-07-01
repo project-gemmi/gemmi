@@ -194,7 +194,7 @@ static void check_asu(const Mtz& mtz) {
   if (!sg)
     gemmi::fail("no spacegroup in the MTZ file.");
   int counter = 0;
-  gemmi::ReciprocalAsuChecker asu(sg);
+  gemmi::ReciprocalAsu asu(sg);
   for (int i = 0; i < mtz.nreflections; ++i) {
     int h = (int) mtz.data[i * ncol + 0];
     int k = (int) mtz.data[i * ncol + 1];

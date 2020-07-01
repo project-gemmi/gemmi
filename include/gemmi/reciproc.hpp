@@ -38,13 +38,13 @@ void for_all_reflections(Func func,
   Miller lim = cell.get_hkl_limits(dmin);
   double inv_dmin2 = 1. / sq(dmin);
   double inv_dmax2 = dmax > 0 ? 1. / sq(dmax) : 0;
-  ReciprocalAsuChecker asu_checker(spacegroup);
+  ReciprocalAsu asu(spacegroup);
   GroupOps gops = spacegroup->operations();
   Miller hkl;
   for (hkl[0] = -lim[0]; hkl[0] <= lim[0]; ++hkl[0])
     for (hkl[1] = -lim[1]; hkl[1] <= lim[1]; ++hkl[1])
       for (hkl[2] = -lim[2]; hkl[2] <= lim[2]; ++hkl[2])
-        if (!unique || asu_checker.is_in(hkl)) {
+        if (!unique || asu.is_in(hkl)) {
           double inv_d2 = cell.calculate_1_d2(hkl);
           if (inv_d2 <= inv_dmin2 && inv_d2 > inv_dmax2 &&
               !gops.is_systematically_absent(hkl))

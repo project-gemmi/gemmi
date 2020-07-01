@@ -545,7 +545,7 @@ struct ReciprocalGrid : GridBase<T> {
     double max_1_d2 = 0.;
     if (dmin != 0.)
       max_1_d2 = 1. / (dmin * dmin);
-    gemmi::ReciprocalAsuChecker asu(this->spacegroup);
+    gemmi::ReciprocalAsu asu(this->spacegroup);
     Miller hkl;
     for (hkl[0] = -max_h; hkl[0] < max_h + 1; ++hkl[0]) {
       int hi = hkl[0] >= 0 ? hkl[0] : hkl[0] + this->nu;

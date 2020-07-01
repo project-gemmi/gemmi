@@ -130,9 +130,11 @@ struct Op {
       r[i] = (rot[0][i] * hkl[0] + rot[1][i] * hkl[1] + rot[2][i] * hkl[2]);
     return r;
   }
+  static Miller divide_hkl_by_DEN(const Miller& hkl) {
+    return {{ hkl[0] / DEN, hkl[1] / DEN, hkl[2] / DEN }};
+  }
   Miller apply_to_hkl(const Miller& hkl) const {
-    Miller r = apply_to_hkl_without_division(hkl);
-    return {{ r[0] / Op::DEN, r[1] / Op::DEN, r[2] / Op::DEN }};
+    return divide_hkl_by_DEN(apply_to_hkl_without_division(hkl));
   }
 
   double phase_shift(const Miller& hkl) const {
@@ -1769,11 +1771,11 @@ const SpaceGroup* find_spacegroup_by_change_of_basis(const SpaceGroup* sg,
 
 // Reciprocal space asu (asymmetric unit).
 // The same 12 choices of ASU as in CCP4 symlib and cctbx.
-struct ReciprocalAsuChecker {
+struct ReciprocalAsu {
   int idx;
   Op::Rot rot;
 
-  ReciprocalAsuChecker(const SpaceGroup* sg) {
+  ReciprocalAsu(const SpaceGroup* sg) {
     if (sg == nullptr)
       fail("Missing space group");
     rot = sg->basisop().rot;
@@ -1817,6 +1819,18 @@ struct ReciprocalAsuChecker {
       case 9: return "k>=l and l>=h and h>=0";
     }
     unreachable();
+  }
+
+  Op::Miller to_asu(Op::Miller hkl, const GroupOps& gops) const {
+    for (const Op& op : gops.sym_ops) {
+      Op::Miller new_hkl = op.apply_to_hkl_without_division(hkl);
+      if (is_in(new_hkl))
+        return Op::divide_hkl_by_DEN(new_hkl);
+      Op::Miller negated_new_hkl{{-new_hkl[0], -new_hkl[1], -new_hkl[2]}};
+      if (is_in(negated_new_hkl))
+        return Op::divide_hkl_by_DEN(negated_new_hkl);
+    }
+    fail("Oops, maybe inconsistent GroupOps?");
   }
 };
 

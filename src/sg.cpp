@@ -105,7 +105,7 @@ static void print_info(const gemmi::SpaceGroup* sg, bool verbose) {
   printf("Grid restrictions: NX=%dn NY=%dn NZ=%dn\n", gf[0], gf[1], gf[2]);
   printf("Reciprocal space ASU%s: %s\n",
          is_reference ? "" : " wrt. standard setting",
-         gemmi::ReciprocalAsuChecker(sg).condition_str());
+         gemmi::ReciprocalAsu(sg).condition_str());
   print_symmetry_operations(ops);
   if (verbose)
     print_verbose_info(sg->hall);

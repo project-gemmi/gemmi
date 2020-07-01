@@ -94,7 +94,7 @@ class TestMtz(unittest.TestCase):
         size = mtz.get_size_for_hkl()
         if numpy is None:
             return
-        asu = gemmi.ReciprocalAsuChecker(mtz.spacegroup)
+        asu = gemmi.ReciprocalAsu(mtz.spacegroup)
         mtz_data = numpy.array(mtz, copy=False)
         fp_idx = mtz.column_labels().index('FP')
         fp_map = {}

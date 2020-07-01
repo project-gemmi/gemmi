@@ -546,6 +546,54 @@ operations map the reflection onto itself:
   >>> new_ops.epsilon_factor([1, 0, 3])
   2
 
+ASU
+===
+
+The asymmetric unit (ASU) of a space group is a non-redundant part of the unit cell,
+a part that can be used to generate the complete unit cell by application
+of the symmetry operations.
+
+Real space
+----------
+
+TODO
+
+Reciprocal space
+----------------
+
+Reciprocal asymmetric unit also could be choosen in different ways,
+but both CCP4 and cctbx are consistent here, and gemmi is consistent with them.
+
+.. doctest::
+
+  >>> p2 = gemmi.SpaceGroup('P 1 2 1')
+  >>> asu = gemmi.ReciprocalAsu(p2)
+  >>> asu.condition_str()
+  'k>=0 and (l>0 or (l=0 and h>=0))'
+
+The condition returned from ``condition_str()`` refers to standard settings
+of the space group, so it is the same for P 1 2 1 and P 1 1 2.
+But other functions take settings into account.
+These function can check if a reflection is in the ASU:
+
+.. doctest::
+
+  >>> asu.is_in([1, -2, 3])
+  False
+  >>> gemmi.ReciprocalAsu(gemmi.SpaceGroup('P 1 1 2')).is_in([1, -2, 3])
+  True
+
+and what is equivalent reflection in the ASU (``to_asu()``):
+
+.. doctest::
+
+  >>> asu.to_asu([1, -2, 3], p2.operations())
+  [1, 2, 3]
+
+The last function takes GroupOps as an argument to avoid determining
+operations many times when ``to_asu()`` is in a loop.
+
+
 C++ Example
 ===========
 

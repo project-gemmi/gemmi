@@ -29,7 +29,7 @@ namespace gemmi {
 // Unmerged MTZ files always store in-asu hkl indices and symmetry operation
 // encoded in the M/ISYM column. Here is a helper for writing such files.
 struct UnmergedHklMover {
-  UnmergedHklMover(const SpaceGroup* spacegroup) : asu_checker_(spacegroup) {
+  UnmergedHklMover(const SpaceGroup* spacegroup) : asu_(spacegroup) {
     if (spacegroup)
       group_ops_ = spacegroup->operations();
   }
@@ -39,12 +39,12 @@ struct UnmergedHklMover {
     int isym = 1;
     for (Op op : group_ops_) {
       Miller new_hkl = op.apply_to_hkl(hkl);
-      if (asu_checker_.is_in(new_hkl)) {
+      if (asu_.is_in(new_hkl)) {
         hkl = new_hkl;
         return isym;
       }
       Miller negated_new_hkl{{-new_hkl[0], -new_hkl[1], -new_hkl[2]}};
-      if (asu_checker_.is_in(negated_new_hkl)) {
+      if (asu_.is_in(negated_new_hkl)) {
         hkl = negated_new_hkl;
         return isym + 1;
       }
@@ -54,7 +54,7 @@ struct UnmergedHklMover {
   }
 
 private:
-  ReciprocalAsuChecker asu_checker_;
+  ReciprocalAsu asu_;
   GroupOps group_ops_;
 };
 
