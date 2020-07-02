@@ -16,6 +16,7 @@ def compare_maps(self, a, b, atol):
 def compare_asu_data(self, asu_data, data, f, phi):
     asu_dict = {tuple(a.hkl): a.value for a in asu_data}
     data_hkl = data.make_miller_array()
+    self.assertEqual(data_hkl.dtype, 'int32')
     if type(data) is gemmi.ReflnBlock:
         data_f = data.make_float_array(f)
         data_phi = data.make_float_array(phi)

@@ -373,7 +373,7 @@ as the example mtz file we can do:
          ...,
          [ 5,  2,  0],
          [ 5,  2,  1],
-         [ 5,  2,  2]])
+         [ 5,  2,  2]], dtype=int32)
 
 We also have two optional parameters (not used above): ``dmax`` and ``unique``.
 Setting ``unique=False`` returns all equivalent reflections.
@@ -684,7 +684,7 @@ the selected column in an array. In Python -- in NumPy array:
          ...,
          [ 25,   1,   0],
          [ 26,   0,   0],
-         [ 26,   0,   1]])
+         [ 26,   0,   1]], dtype=int32)
 
 We also have convenience functions that returns arrays of 1/*d*:sup:`2`
 or just *d* values:

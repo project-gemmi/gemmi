@@ -308,7 +308,7 @@ void add_hkl(py::module& m) {
     .def("make_float_array", &ReflnBlock::make_vector<double>,
          py::arg("tag"), py::arg("null")=NAN)
     .def("make_miller_array", [](ReflnBlock& self) {
-        return py::array(py::cast((self.make_miller_vector())));
+        return py::array_t<int>(py::cast(self.make_miller_vector()));
     })
     .def("make_1_d2_array", [](ReflnBlock& self) {
         return py_array_from_vector(self.make_1_d2_vector());
@@ -388,7 +388,7 @@ void add_hkl(py::module& m) {
         py::arg("dmax")=0., py::arg("unique")=true);
   m.def("make_miller_array", [](const UnitCell& cell, const SpaceGroup* sg,
                                 double dmin, double dmax, bool unique) {
-          return py::array(py::cast(
+          return py::array_t<int>(py::cast(
                       gemmi::make_miller_vector(cell, sg, dmin, dmax, unique)));
         }, py::arg("cell"), py::arg("spacegroup"), py::arg("dmin"),
            py::arg("dmax")=0., py::arg("unique")=true);
