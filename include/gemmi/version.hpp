@@ -3,6 +3,6 @@
 #ifndef GEMMI_VERSION_HPP_
 #define GEMMI_VERSION_HPP_
 
-#define GEMMI_VERSION "0.3.8"
+#define GEMMI_VERSION "0.4.0"
 
 #endif
