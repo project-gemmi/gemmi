@@ -161,6 +161,18 @@ void add_symmetry(py::module& m) {
          "Returns lower-case name of the crystal system.")
     .def("is_reference_setting", &SpaceGroup::is_reference_setting)
     .def("operations", &SpaceGroup::operations, "Group of operations")
+    .def("switch_to_asu", [](const SpaceGroup& sg, py::array_t<int> hkl) {
+        auto h = hkl.mutable_unchecked<2>();
+        if (h.shape(1) < 3)
+          throw std::domain_error("error: the size of the second dimension < 3");
+        GroupOps gops = sg.operations();
+        ReciprocalAsu asu(&sg);
+        for (ssize_t i = 0; i < h.shape(0); ++i) {
+          Op::Miller hkl = asu.to_asu({{h(i, 0), h(i, 1), h(i, 2)}}, gops);
+          for (int j = 0; j != 3; ++j)
+            h(i, j) = hkl[j];
+        }
+    }, py::arg("miller_array").noconvert())
     .def("__repr__", [](const SpaceGroup &self) {
         return "<gemmi.SpaceGroup(\"" + self.xhm() + "\")>";
     });
