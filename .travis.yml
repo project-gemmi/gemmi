@@ -14,7 +14,9 @@ matrix:
     env:
       - COMPILER=g++-4.8
       - FC=gfortran-4.8
-      - PYTHON=python
+    after_script:
+      - python setup.py install --user --prefix=
+      - python -m unittest discover -v -s tests/
 
   - os: linux
     dist: trusty
@@ -23,7 +25,9 @@ matrix:
         packages: [libz-dev, python3-pip, clang-3.4]
     env:
       - COMPILER=/usr/bin/clang++
-      - PYTHON=python3
+    after_script:
+      - python3 setup.py install --user --prefix=
+      - python3 -m unittest discover -v -s tests/
 
   - os: linux
     dist: xenial
@@ -32,28 +36,33 @@ matrix:
         packages: [g++]
     env:
       - COMPILER=/usr/bin/g++
-      - PYTHON=/bin/true
+      - CMAKE_ARGS="-D USE_PYTHON=1"
+    after_script:
+      - python -m unittest discover -v -s tests/
+
+  - os: linux
+    dist: bionic
+    addons:
+      apt:
+        packages: [g++, gfortran, libz-dev]
+    env:
+      - COMPILER=/usr/bin/g++
+      - FC=gfortran
+    after_script:
+      - python setup.py sdist
+      - python -m pip install dist/gemmi-*.tar.gz
+      - python -m unittest discover -v -s tests/
 
   - os: osx
     #osx_image: xcode8.3
     compiler: clang
-    env: COMPILER=clang++ PYTHON=python3
-    #before_install:
-    #  - brew update
-    #  - brew install $PYTHON || brew upgrade $PYTHON
+    env: COMPILER=clang++
+    after_script:
+      - python3 setup.py install --user --prefix=
+      - python3 -m unittest discover -v -s tests/
 
-# - os: osx
-#   osx_image: xcode6.4
-#   compiler: clang
-#   env: COMPILER=clang++ PYTHON=python EXTRA_WFLAGS=-Wno-shorten-64-to-32
-
-install:
-- |
-  $PYTHON -m pip --version || $PYTHON -m ensurepip --user
 script:
   - $COMPILER --version
-  - CXX=$COMPILER cmake .
+  - CXX=$COMPILER cmake . $CMAKE_ARGS
   - make -j2
   - make check -j2
-  - $PYTHON setup.py install --user --prefix=
-  - $PYTHON -m unittest discover -v -s tests/
