@@ -51,7 +51,8 @@ matrix:
         git clone --depth=1 https://github.com/pybind/pybind11.git
         cd pybind11
         cmake -DPYTHON_EXECUTABLE:FILEPATH=/usr/bin/python3 -DPYBIND11_TEST=OFF .
-        make install
+        make
+        sudo make install
         cd ../build
         CXX=$COMPILER cmake -DUSE_PYTHON=1 -DPYTHON_EXECUTABLE:FILEPATH=/usr/bin/python3 ..
         make -j2
