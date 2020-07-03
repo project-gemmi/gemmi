@@ -14,7 +14,11 @@ matrix:
     env:
       - COMPILER=g++-4.8
       - FC=gfortran-4.8
-    after_script:
+    script:
+      - $COMPILER --version
+      - CXX=$COMPILER cmake .
+      - make -j2
+      - make check -j2
       - python setup.py install --user --prefix=
       - python -m unittest discover -v -s tests/
 
@@ -25,7 +29,11 @@ matrix:
         packages: [libz-dev, python3-pip, clang-3.4]
     env:
       - COMPILER=/usr/bin/clang++
-    after_script:
+    script:
+      - $COMPILER --version
+      - CXX=$COMPILER cmake .
+      - make -j2
+      - make check -j2
       - python3 setup.py install --user --prefix=
       - python3 -m unittest discover -v -s tests/
 
@@ -36,9 +44,15 @@ matrix:
         packages: [g++]
     env:
       - COMPILER=/usr/bin/g++
-      - CMAKE_ARGS="-D USE_PYTHON=1"
-    after_script:
-      - python -m unittest discover -v -s tests/
+    script:
+      - |
+        $COMPILER --version
+        mkdir build
+        cd build
+        CXX=$COMPILER cmake -D USE_PYTHON=1 ..
+        make -j2
+        make check -j2
+        python -m unittest discover -v -s ../tests/
 
   - os: linux
     dist: bionic
@@ -48,7 +62,11 @@ matrix:
     env:
       - COMPILER=/usr/bin/g++
       - FC=gfortran
-    after_script:
+    script:
+      - $COMPILER --version
+      - CXX=$COMPILER cmake .
+      - make -j2
+      - make check -j2
       - python setup.py sdist
       - python -m pip install dist/gemmi-*.tar.gz
       - python -m unittest discover -v -s tests/
@@ -57,12 +75,10 @@ matrix:
     #osx_image: xcode8.3
     compiler: clang
     env: COMPILER=clang++
-    after_script:
+    script:
+      - $COMPILER --version
+      - CXX=$COMPILER cmake .
+      - make -j2
+      - make check -j2
       - python3 setup.py install --user --prefix=
       - python3 -m unittest discover -v -s tests/
-
-script:
-  - $COMPILER --version
-  - CXX=$COMPILER cmake . $CMAKE_ARGS
-  - make -j2
-  - make check -j2
