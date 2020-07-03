@@ -83,6 +83,7 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
       "label_alt_id",
       "label_comp_id",
       "label_asym_id",
+      "label_entity_id",
       "label_seq_id",
       "pdbx_PDB_ins_code",
       "Cartn_x",
@@ -103,6 +104,9 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
       for (const Residue& res : chain.residues) {
         std::string label_seq_id = res.label_seq.str('.');
         std::string auth_seq_id = res.seqid.num.str();
+        std::string entity_id(1, '.');
+        if (const Entity* ent = gemmi::find_entity(res.subchain, st.entities))
+          entity_id = cif::quote(ent->name);
         for (const Atom& atom : res.atoms) {
           vv.emplace_back(std::to_string(++serial));
           vv.emplace_back(atom.element.uname());
@@ -110,6 +114,7 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
           vv.emplace_back(1, atom.altloc_or('.'));
           vv.emplace_back(res.name);
           vv.emplace_back(subchain_or_dot(res));
+          vv.emplace_back(entity_id);
           vv.emplace_back(label_seq_id);
           vv.emplace_back(pdbx_icode(res));
           vv.emplace_back(to_str(atom.pos.x));
