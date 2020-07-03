@@ -368,7 +368,7 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
   // initialize chains and residues
   for (Chain& chain : model0.chains)
     for (ResidueSpan& sub : chain.subchains()) {
-      const Entity* ent = get_entity_of(sub, st.entities);
+      const Entity* ent = st.get_entity_of(sub);
       chains.emplace_back();
       chains.back().initialize(sub, ent);
     }

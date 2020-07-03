@@ -1011,13 +1011,17 @@ struct Assembly {
   Assembly(const std::string& name_) : name(name_) {}
 };
 
-inline const Entity* get_entity_of(const ConstResidueSpan& sub,
-                                   const std::vector<Entity>& entities) {
-  if (sub && !sub.subchain_id().empty())
-    for (const Entity& ent : entities)
-      if (in_vector(sub.subchain_id(), ent.subchains))
+inline Entity* find_entity(const std::string& subchain_id,
+                           std::vector<Entity>& entities) {
+  if (!subchain_id.empty())
+    for (Entity& ent : entities)
+      if (in_vector(subchain_id, ent.subchains))
         return &ent;
   return nullptr;
+}
+inline const Entity* find_entity(const std::string& subchain_id,
+                                 const std::vector<Entity>& entities) {
+  return find_entity(subchain_id, const_cast<std::vector<Entity>&>(entities));
 }
 
 struct Structure {
@@ -1088,11 +1092,11 @@ struct Structure {
     return const_cast<Structure*>(this)->get_entity(ent_id);
   }
 
-  const Entity* get_entity_of(const ConstResidueSpan& sub) const {
-    return gemmi::get_entity_of(sub, entities);
-  }
   Entity* get_entity_of(const ConstResidueSpan& sub) {
-    return const_cast<Entity*>(gemmi::get_entity_of(sub, entities));
+    return sub ? find_entity(sub.subchain_id(), entities) : nullptr;
+  }
+  const Entity* get_entity_of(const ConstResidueSpan& sub) const {
+    return const_cast<Structure*>(this)->get_entity_of(sub);
   }
 
   Assembly* find_assembly(const std::string& assembly_id) {
