@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <cstdlib>  // for getenv, strtol
+#include <cstring>  // for strstr
 #include <vector>
 
 #define USE_UNICODE
@@ -13,8 +14,9 @@
 template<typename T>
 void print_histogram(const std::vector<T>& data, double min, double max) {
 #ifdef USE_UNICODE
-  std::setlocale(LC_ALL, "");
-  constexpr int rows = 12;
+  const char* locale = std::setlocale(LC_CTYPE, "");
+  const bool use_utf = (locale && std::strstr(locale, "UTF-8") != nullptr);
+  const int rows = use_utf ? 12 : 24;
 #else
   constexpr int rows = 24;
 #endif
@@ -37,16 +39,19 @@ void print_histogram(const std::vector<T>& data, double min, double max) {
     for (int j = 0; j < cols; ++j) {
       double h = bins[j] / max_h * rows;
 #ifdef USE_UNICODE
-      std::wint_t c = ' ';
-      if (h > i) {
-        c = 0x2588; // 0x2581 = one eighth block, ..., 0x2588 = full block
-      } else if (h > i - 1) {
-        c = 0x2581 + static_cast<int>((h - (i - 1)) * 7);
-      }
-      std::printf("%lc", c);
-#else
-      std::putchar(h > i + 0.5 ? '#' : ' ');
+      if (use_utf) {
+        std::wint_t c = ' ';
+        if (h > i) {
+          c = 0x2588; // 0x2581 = one eighth block, ..., 0x2588 = full block
+        } else if (h > i - 1) {
+          c = 0x2581 + static_cast<int>((h - (i - 1)) * 7);
+        }
+        std::printf("%lc", c);
+      } else
 #endif
+      {
+        std::putchar(h > i + 0.5 ? '#' : ' ');
+      }
     }
     std::putchar('\n');
   }
