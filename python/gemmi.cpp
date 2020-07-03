@@ -120,7 +120,8 @@ void add_misc(py::module& m) {
 }
 
 PYBIND11_MODULE(gemmi, mg) {
-  mg.doc() = "GEneral MacroMolecular I/O";
+  mg.doc() = "Python bindings to GEMMI - a library used in macromolecular\n"
+             "crystallography and related fields";
   mg.attr("__version__") = GEMMI_VERSION;
   py::module cif = mg.def_submodule("cif", "CIF file format");
   add_cif(cif);
