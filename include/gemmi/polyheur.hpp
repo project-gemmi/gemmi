@@ -9,8 +9,9 @@
 #include <vector>
 #include <set>
 #include "model.hpp"
-#include "resinfo.hpp"  // for find_tabulated_residue
-#include "util.hpp"     // for vector_remove_if
+#include "resinfo.hpp"   // for find_tabulated_residue
+#include "seqalign.hpp"  // for align_sequences
+#include "util.hpp"      // for vector_remove_if
 
 namespace gemmi {
 
@@ -274,6 +275,136 @@ inline void setup_entities(Structure& st) {
   ensure_entities(st);
   deduplicate_entities(st);
 }
+
+// Sequence alignment and label_seq_id assignment
+
+// helper function for sequence alignment
+inline std::vector<bool> prepare_free_gapo(const ConstResidueSpan& polymer,
+                                           PolymerType polymer_type) {
+  std::vector<bool> gaps;
+  gaps.reserve(polymer.size());
+  gaps.push_back(true); // free gap opening at the beginning of sequence
+  if (!is_polypeptide(polymer_type) && !is_polynucleotide(polymer_type))
+    return gaps;
+  auto first_conformer = polymer.first_conformer();
+  auto res = first_conformer.begin();
+  for (auto next_res = res; ++next_res != first_conformer.end(); res = next_res)
+    gaps.push_back(!are_connected3(*res, *next_res, polymer_type));
+  return gaps;
+}
+
+// pre: !!polymer
+inline AlignmentResult align_sequence_to_polymer(
+                                     const std::vector<std::string>& full_seq,
+                                     const ConstResidueSpan& polymer,
+                                     PolymerType polymer_type,
+                                     const AlignmentScoring& scoring) {
+  std::map<std::string, std::uint8_t> encoding;
+  for (const std::string& res_name : scoring.matrix_encoding)
+    encoding.emplace(res_name, (std::uint8_t)encoding.size());
+  for (const Residue& res : polymer)
+    encoding.emplace(res.name, (std::uint8_t)encoding.size());
+  for (const std::string& mon_list : full_seq)
+    encoding.emplace(Entity::first_mon(mon_list), (std::uint8_t)encoding.size());
+  if (encoding.size() > 255)
+    return AlignmentResult();
+
+  std::vector<std::uint8_t> encoded_full_seq(full_seq.size());
+  for (size_t i = 0; i != full_seq.size(); ++i)
+    encoded_full_seq[i] = encoding.at(Entity::first_mon(full_seq[i]));
+
+  std::vector<std::uint8_t> encoded_model_seq;
+  encoded_model_seq.reserve(polymer.size());
+  for (const Residue& res : polymer.first_conformer())
+    encoded_model_seq.push_back(encoding.at(res.name));
+
+  return align_sequences(encoded_full_seq, encoded_model_seq,
+                         prepare_free_gapo(polymer, polymer_type),
+                         (std::uint8_t)encoding.size(), scoring);
+}
+
+// check for exact match between model sequence and full sequence (SEQRES)
+inline bool seqid_matches_seqres(const ConstResidueSpan& polymer,
+                                 const Entity& ent) {
+  for (const Residue& res : polymer.first_conformer()) {
+    size_t seqid = (size_t) *res.seqid.num;
+    if (res.seqid.has_icode() ||
+        seqid >= ent.full_sequence.size() ||
+        Entity::first_mon(ent.full_sequence[seqid]) != res.name)
+      return false;
+  }
+  return true;
+}
+
+// Uses sequence alignment (model to SEQRES) to assign label_seq.
+// force: assign label_seq even if full sequence is not known (assumes no gaps)
+inline void assign_label_seq_to_polymer(ResidueSpan& polymer,
+                                        const Entity* ent, bool force) {
+  // sequence not known
+  if (!ent || ent->full_sequence.empty()) {
+    if (force) {
+      int n = 1;
+      SeqId prev;
+      for (Residue& res : polymer) {
+        res.label_seq = n;
+        if (prev != res.seqid)
+          ++n;
+        prev = res.seqid;
+      }
+    }
+    return;
+  }
+
+  // exact match - common case that doesn't require alignment
+  if (seqid_matches_seqres(polymer, *ent)) {
+    for (Residue& res : polymer)
+      res.label_seq = res.seqid.num;
+    return;
+  }
+
+  // sequence alignment
+  AlignmentScoring scoring;
+  AlignmentResult result =
+    align_sequence_to_polymer(ent->full_sequence, polymer, ent->polymer_type,
+                              scoring);
+  auto res_group = polymer.first_conformer().begin();
+  int id = 1;
+  for (AlignmentResult::Item item : result.cigar) {
+    switch (item.op()) {
+      case 'I':
+        id += item.len();
+        break;
+      case 'D':  // leaving label_seq as it is
+        for (uint32_t i = 0; i < item.len(); ++i)
+          res_group++;
+        break;
+      case 'M':  // not checking for mismatches
+        for (uint32_t i = 0; i < item.len(); ++i, ++id)
+          for (Residue* res = &*res_group++; res != &*res_group; ++res)
+            res->label_seq = id;
+        break;
+    }
+  }
+}
+
+inline void clear_label_seq_id(Structure& st) {
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      for (Residue& res : chain.residues)
+        res.label_seq = Residue::OptionalNum();
+}
+
+inline void assign_label_seq_id(Structure& st, bool force) {
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      if (ResidueSpan polymer = chain.get_polymer())
+        if (!polymer.front().label_seq || !polymer.back().label_seq) {
+          const Entity* ent = st.get_entity_of(polymer);
+          assign_label_seq_to_polymer(polymer, ent, force);
+        }
+}
+// end of sequence alignment and label_seq_id business
+
 
 // Remove alternative conformations.
 template<class T> void remove_alternative_conformations(T& obj) {

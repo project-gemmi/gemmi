@@ -7,7 +7,6 @@
 #include "gemmi/calculate.hpp"
 #include "gemmi/polyheur.hpp"
 #include "gemmi/assembly.hpp"
-#include "gemmi/labelseq.hpp"   // for setup_for_mmcif
 #include "gemmi/to_pdb.hpp"
 #include "gemmi/to_mmcif.hpp"
 #include "gemmi/tostr.hpp"
@@ -294,7 +293,7 @@ void add_mol(py::module& m) {
     .def("ensure_entities", &ensure_entities)
     .def("deduplicate_entities", &deduplicate_entities)
     .def("setup_entities", &setup_entities)
-    .def("setup_for_mmcif", &setup_for_mmcif)
+    .def("assign_label_seq_id", &assign_label_seq_id, py::arg("force")=false)
     .def("remove_alternative_conformations",
          remove_alternative_conformations<Structure>)
     .def("remove_hydrogens", remove_hydrogens<Structure>)

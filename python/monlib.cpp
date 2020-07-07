@@ -6,7 +6,7 @@
 #include "gemmi/monlib.hpp"
 #include "gemmi/topo.hpp"
 #include "gemmi/seqalign.hpp"  // for align_string_sequences
-#include "gemmi/labelseq.hpp"  // for align_sequence_to_polymer
+#include "gemmi/polyheur.hpp"  // for align_sequence_to_polymer
 #include "gemmi/select.hpp"
 
 #include <fstream>

@@ -4,7 +4,7 @@
 #include <string>
 #include "gemmi/select.hpp"
 #include "gemmi/gzread.hpp"
-#include "gemmi/labelseq.hpp"  // for setup_for_mmcif
+#include "gemmi/polyheur.hpp"  // for setup_entities
 
 #define GEMMI_PROG residues
 #include "options.h"
@@ -41,8 +41,10 @@ int GEMMI_MAIN(int argc, char **argv) {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       std::string input = p.coordinate_input_file(i);
       gemmi::Structure st = gemmi::read_structure_gz(input, format);
-      if (p.options[Label] && st.input_format == gemmi::CoorFormat::Pdb)
-        gemmi::setup_for_mmcif(st);
+      if (p.options[Label] && st.input_format == gemmi::CoorFormat::Pdb) {
+        gemmi::setup_entities(st);
+        gemmi::assign_label_seq_id(st, false);
+      }
       for (gemmi::Model& model : sel.models(st)) {
         if (st.models.size() != 1)
           printf("Model %s\n", model.name.c_str());

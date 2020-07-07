@@ -1449,7 +1449,14 @@ Calling ``setup_entities`` is useful when converting from PDB to mmCIF
 
   >>> st = gemmi.read_structure('../tests/1orc.pdb')
   >>> st.setup_entities()
+  >>> st.assign_label_seq_id()
   >>> st.make_mmcif_document().write_file('out.cif')
+
+The ``assign_label_seq_id()`` function above :ref:`aligns <sequence-alignment>`
+sequence from the model to the full sequence (SEQRES) and sets
+``Residue.label_seq`` (which corresponds to _atom_site.label_seq_id)
+accordingly. It doesn't do anything if ``label_seq`` is already set or
+if the full sequence is not known.
 
 The Entity object may change in the future.
 Here we only show its properties in an example:

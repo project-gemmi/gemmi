@@ -4,12 +4,11 @@
 #include "gemmi/mmread.hpp"    // for CoorFormat
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
-#include "gemmi/polyheur.hpp"  // for remove_hydrogens, ...
+#include "gemmi/polyheur.hpp"  // for setup_entities, remove_hydrogens, ...
 #include "gemmi/to_pdb.hpp"    // for write_pdb, ...
 #include "gemmi/ofstream.hpp"  // for Ofstream
 #include "gemmi/to_mmcif.hpp"  // for update_cif_block
 #include "gemmi/remarks.hpp"   // for read_metadata_from_remarks
-#include "gemmi/labelseq.hpp"  // for assign_label_seq_id
 #include "gemmi/assembly.hpp"  // for ChainNameGenerator, change_to_assembly
 
 #include <cstring>
@@ -195,7 +194,8 @@ static void convert(gemmi::Structure& st,
 
   if (st.input_format == CoorFormat::Pdb) {
     gemmi::read_metadata_from_remarks(st);
-    setup_for_mmcif(st);
+    gemmi::setup_entities(st);
+    gemmi::assign_label_seq_id(st, false);
   }
 
   for (const option::Option* opt = options[RenameChain]; opt; opt = opt->next()) {

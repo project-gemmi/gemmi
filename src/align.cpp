@@ -4,9 +4,8 @@
 
 #include <gemmi/model.hpp>
 #include <gemmi/gzread.hpp>
-#include <gemmi/polyheur.hpp>  // for setup_entities
-#include <gemmi/seqalign.hpp>  // for align_sequences
-#include <gemmi/labelseq.hpp>  // for align_polymer
+#include <gemmi/polyheur.hpp>  // for setup_entities, align_sequence_to_polymer
+#include <gemmi/seqalign.hpp>  // for align_string_sequences
 
 #include <cstdio>   // for printf, fprintf, putchar
 #include <cstring>  // for strlen
@@ -240,8 +239,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (ptype == gemmi::PolymerType::Unknown)
           if (const gemmi::Entity* ent = st.get_entity_of(polymer))
             ptype = ent->polymer_type;
-        result = gemmi::align_sequence_to_polymer(query, polymer, ptype,
-                                                  scoring);
+        result = gemmi::align_sequence_to_polymer(query, polymer, ptype, scoring);
         print_result_summary(result);
         if (p.options[PrintOneLetter])
           print_one_letter_alignment(result, gemmi::one_letter_code(query),
