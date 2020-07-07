@@ -561,8 +561,9 @@ TODO
 Reciprocal space
 ----------------
 
-Reciprocal asymmetric unit also could be choosen in different ways,
-but both CCP4 and cctbx are consistent here, and gemmi is consistent with them.
+The reciprocal asymmetric unit can also be chosen in various ways.
+Gemmi is consistent with both CCP4 and cctbx here (but some programs,
+such as TNT, use different ASU choice).
 
 .. doctest::
 

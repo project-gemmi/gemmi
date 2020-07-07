@@ -1,7 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/gzread.hpp"
-#include "gemmi/mmread.hpp"    // for CoorFormat
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/polyheur.hpp"  // for setup_entities, remove_hydrogens, ...

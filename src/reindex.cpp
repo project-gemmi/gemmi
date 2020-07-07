@@ -4,14 +4,11 @@
 // TODO: handle operations that results in non-integral indices.
 
 #include <cstdio>
-#include <cstdlib>            // for strtod
 #include <algorithm>
 #ifndef GEMMI_ALL_IN_ONE
 # define GEMMI_WRITE_IMPLEMENTATION 1
 #endif
 #include <gemmi/mtz.hpp>
-#include <gemmi/fileutil.hpp> // for file_open
-#include <gemmi/atox.hpp>     // for read_word
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/version.hpp>  // for GEMMI_VERSION
 #define GEMMI_PROG reindex

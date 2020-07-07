@@ -8,7 +8,7 @@
 #include <gemmi/seqalign.hpp>  // for align_string_sequences
 
 #include <cstdio>   // for printf, fprintf, putchar
-#include <cstring>  // for strlen
+#include <cstdlib>  // for atoi
 #define GEMMI_PROG align
 #include "options.h"
 

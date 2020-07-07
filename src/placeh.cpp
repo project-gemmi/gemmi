@@ -2,12 +2,10 @@
 //
 // for testing placeh.hpp
 
-#include <cmath> // for sqrt, sin, cos
 #include <gemmi/placeh.hpp>
-
 #include <stdio.h>
 #include <gemmi/cif.hpp>   // for read_file
-#include <gemmi/util.hpp>  // for fail
+#include <gemmi/fail.hpp>  // for fail
 
 using namespace gemmi;
 

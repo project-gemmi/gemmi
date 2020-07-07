@@ -8,12 +8,13 @@
 #ifndef GEMMI_ALL_IN_ONE
 # define GEMMI_WRITE_IMPLEMENTATION 1
 #endif
-#include <gemmi/atox.hpp>     // for read_word
-#include <gemmi/fileutil.hpp> // for file_open
+#include <gemmi/cifdoc.hpp>   // for Loop, as_int, ...
+#include <gemmi/fail.hpp>     // for fail
 #include <gemmi/gzread.hpp>   // for read_cif_gz
 #include <gemmi/mtz.hpp>      // for Mtz
+#include <gemmi/numb.hpp>     // for as_number
 #include <gemmi/refln.hpp>    // for ReflnBlock
-#include <gemmi/version.hpp>  // for GEMMI_VERSION
+
 #define GEMMI_PROG cif2mtz
 #include "options.h"
 
