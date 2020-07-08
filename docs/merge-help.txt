@@ -1,0 +1,11 @@
+$ gemmi merge -h
+Usage:
+  gemmi merge [options] INPUT_FILE OUTPUT_FILE
+Options:
+  -h, --help             Print usage and exit.
+  -V, --version          Print version and exit.
+  -v, --verbose          Verbose output.
+  -b NAME, --block=NAME  output mmCIF block name: data_NAME (default: merged).
+
+The input file can be either SF-mmCIF with _diffrn_refln or MTZ.
+The output file can be either SF-mmCIF or MTZ.

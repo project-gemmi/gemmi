@@ -127,6 +127,10 @@ add_library(options OBJECT src/options.cpp)
 add_library(output OBJECT src/output.cpp)
 add_library(mapcoef OBJECT src/mapcoef.cpp)
 
+add_executable(gemmi-align EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/align.cpp $<TARGET_OBJECTS:input>)
+support_gz(gemmi-align)
+
 add_executable(gemmi-blobs EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/blobs.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:input>)
 support_gz(gemmi-blobs)
@@ -186,6 +190,10 @@ support_gz(gemmi-mask)
 add_executable(gemmi-mixmtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/mixmtz.cpp $<TARGET_OBJECTS:output>)
 
+add_executable(gemmi-merge EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/merge.cpp $<TARGET_OBJECTS:input>)
+support_gz(gemmi-merge)
+
 add_executable(gemmi-mondiff EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/mondiff.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-mondiff)
@@ -209,10 +217,6 @@ support_gz(gemmi-residues)
 add_executable(gemmi-rmsz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/rmsz.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-rmsz)
-
-add_executable(gemmi-align EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/align.cpp $<TARGET_OBJECTS:input>)
-support_gz(gemmi-align)
 
 add_executable(gemmi-sf2map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/sf2map.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:input>)
@@ -242,8 +246,8 @@ add_executable(gemmi-prog
                src/cif2mtz.cpp src/cif2json.cpp src/contact.cpp
                src/contents.cpp src/convert.cpp src/fprime.cpp
                src/grep.cpp src/h.cpp src/json2cif.cpp
-               src/main.cpp src/map.cpp src/map2sf.cpp
-               src/mask.cpp src/mondiff.cpp src/mtz.cpp src/mtz2cif.cpp
+               src/main.cpp src/map.cpp src/map2sf.cpp src/mask.cpp
+               src/merge.cpp src/mondiff.cpp src/mtz.cpp src/mtz2cif.cpp
                src/reindex.cpp src/residues.cpp src/rmsz.cpp
                src/sf2map.cpp src/sfcalc.cpp src/sg.cpp
                src/tags.cpp src/validate.cpp src/validate_mon.cpp src/wcn.cpp

@@ -23,6 +23,7 @@ Commands:
  map           print info or modify a CCP4 map
  map2sf        transform CCP4 map to map coefficients (in MTZ or mmCIF)
  mask          make mask in the CCP4 format
+ merge         merge intensities from multi-record reflection file
  mondiff       compare two monomer CIF files
  mtz           print info about MTZ reflection file
  mtz2cif       convert MTZ to structure factor mmCIF

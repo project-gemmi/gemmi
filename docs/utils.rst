@@ -408,6 +408,14 @@ Transforms CCP4 map into map coefficients.
 .. literalinclude:: map2sf-help.txt
    :language: console
 
+merge
+=====
+
+Merge intensities from multi-record reflection file.
+
+.. literalinclude:: merge-help.txt
+   :language: console
+
 sfcalc
 ======
 
