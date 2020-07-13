@@ -31,9 +31,9 @@ def calculate_formula_weight(formula):
     return total
 
 
-pattern = re.compile("""case ID\("([A-Z0-9]+)"\): """
-                     """return .*'(.)',( +\d+), [\d.]+f """)
-#pattern = re.compile("""case '([A-Z])': return .*'(.)',( +\d+), [\d.]+f """)
+pattern = re.compile(r'case ID\("([A-Z0-9]+)"\): '
+                     r"return .*'(.)',( +\d+), [\d.]+f ")
+#pattern = re.compile(r"case '([A-Z])': return .*'(.)',( +\d+), [\d.]+f ")
 for line in open('include/gemmi/resinfo.hpp'):
     m = pattern.search(line)
     if m:

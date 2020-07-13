@@ -58,8 +58,8 @@ def verify_hall_symbol(entry):
     assert len(hall_ops.sym_ops) == len(entry['symops'])
     assert len(hall_ops.cen_ops) == len(entry['cenops'])
     # centering vectors are exactly the same
-    assert (set(gemmi.Op().translated(tr) for tr in hall_ops.cen_ops) ==
-            set(gemmi.Op(e) for e in entry['cenops'])), entry
+    assert (set(gemmi.Op().translated(tr) for tr in hall_ops.cen_ops)
+            == set(gemmi.Op(e) for e in entry['cenops'])), entry
     # symops differ in some cases but are the same modulo centering vectors
     given = set(gemmi.Op(s) * c for s in entry['symops']
                 for c in entry['cenops'])
@@ -122,8 +122,8 @@ for s in sgtbx.space_group_symbol_iterator():
     from_ref, basisop_idx = get_basisop(cctbx_info)
     assert from_ref == info['basisop'], (from_ref, info['basisop'])
     if gemmi:
-        assert (set(gemmi.symops_from_hall(s.hall())) ==
-                set(gemmi.symops_from_hall(info['hall']))), xhm
+        assert (set(gemmi.symops_from_hall(s.hall()))
+                == set(gemmi.symops_from_hall(info['hall']))), xhm
     print(fmt % (s.number(), info['ccp4'], quot(s.hermann_mauguin()),
                  ext, quot(s.qualifier()), quot(s.hall().strip()),
                  basisop_idx, counter))
@@ -143,8 +143,8 @@ for info in syminfo_data:
             ext = "'%c'" % ext
         hall = shorter_halls[info['hall']]
         if gemmi:
-            assert (set(gemmi.symops_from_hall(hall)) ==
-                    set(gemmi.symops_from_hall(info['hall']))), hm
+            assert (set(gemmi.symops_from_hall(hall))
+                    == set(gemmi.symops_from_hall(info['hall']))), hm
         cctbx_sg = sgtbx.space_group(hall)
         cctbx_info = sgtbx.space_group_info(group=cctbx_sg)
         from_ref, basisop_idx = get_basisop(cctbx_info)

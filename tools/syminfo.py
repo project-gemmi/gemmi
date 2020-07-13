@@ -75,8 +75,8 @@ def main():
                 print('Hall symbol "%s" w/o basisop: %s' % (hall, basisop))
         hall_ops = gemmi.symops_from_hall(hall)
         assert len(hall_ops.cen_ops) == len(entry['cenops'])
-        assert (set(gemmi.Op().translated(tr) for tr in hall_ops.cen_ops) ==
-                set(entry['cenops']))
+        assert (set(gemmi.Op().translated(tr) for tr in hall_ops.cen_ops)
+                == set(entry['cenops']))
         assert len(hall_ops.sym_ops) == len(entry['symops'])
         # symops differ in about dozen cases but are the same modulo
         # centering vectors

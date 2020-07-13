@@ -111,9 +111,9 @@ class TestMtz(unittest.TestCase):
                     value = fp_map.get(tuple(hkl))
                     if asu.is_in(hkl):
                         if value is not None:
-                            self.assertTrue(point.value == value or
-                                            (numpy.isnan(point.value) and
-                                             numpy.isnan(value)))
+                            self.assertTrue(point.value == value
+                                            or (numpy.isnan(point.value)
+                                                and numpy.isnan(value)))
                             counter += 1
                         else:
                             self.assertEqual(point.value, 0.)

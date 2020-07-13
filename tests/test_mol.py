@@ -430,9 +430,9 @@ class TestMol(unittest.TestCase):
         path = full_path('5cvz_final.pdb')
         with open(path) as f:
             expected = [line.rstrip() for line in f
-                        if is_written_to_pdb(line, via_cif) and
+                        if is_written_to_pdb(line, via_cif)
                         # SCALE is not written b/c CRYST1 has more precision.
-                        line[:5] != 'SCALE']
+                        and line[:5] != 'SCALE']
         st = gemmi.read_structure(path)
         if via_cif:
             # input file w/o TER record -> subchains not setup automatically
@@ -449,8 +449,8 @@ class TestMol(unittest.TestCase):
             out_lines = [line for line in out_lines
                          # input file has no REMARK 2, but it gets generated
                          # from REMARK 3 when going pdb->cif->pdb
-                         if line[:10] != 'REMARK   2' and
-                         line[:5] != 'TER  ']
+                         if line[:10] != 'REMARK   2'
+                         and line[:5] != 'TER  ']
         self.assertEqual(expected, [line.rstrip() for line in out_lines])
 
     def test_read_write_5cvz_final_via_cif(self):
@@ -555,8 +555,8 @@ class TestMol(unittest.TestCase):
         st = gemmi.read_pdb_string(SHORT_SSBOND)
         out = st.make_pdb_headers()
         self.assertEqual(out.splitlines()[0],
-                         SHORT_SSBOND.splitlines()[0] +
-                         "                          1555   1555  2.06  ")
+                         SHORT_SSBOND.splitlines()[0]
+                         + "                          1555   1555  2.06  ")
 
     def test_add_remove(self):
         st = gemmi.read_pdb_string(SSBOND_FRAGMENT)
