@@ -75,6 +75,10 @@ Intensities read_unmerged_intensities(const char* input_path,
       if (verbose)
         mtz.warnings = stderr;
       mtz.read_input(gemmi::MaybeGzipped(input_path), /*with_data=*/true);
+      if (mtz.batches.empty() && !mtz.column_with_label("M/ISYM")) {
+        std::fprintf(stderr, "The input mtz file should be unmerged.\n");
+        std::exit(1);
+      }
       const gemmi::Mtz::Column& col = mtz.get_column_with_label("I");
       size_t value_idx = col.idx;
       size_t sigma_idx = mtz.get_column_with_label("SIGI").idx;
@@ -153,8 +157,8 @@ void write_merged_intensities(const Intensities& intensities, const char* output
   mtz.add_column("K", 'H');
   mtz.add_column("L", 'H');
   mtz.add_dataset("unknown").wavelength = intensities.wavelength;
-  mtz.add_column("I", 'J');
-  mtz.add_column("SIGI", 'Q');
+  mtz.add_column("IMEAN", 'J');
+  mtz.add_column("SIGIMEAN", 'Q');
   mtz.nreflections = (int) intensities.data.size();
   mtz.data.resize(intensities.data.size() * mtz.columns.size());
   for (size_t i = 0; i != intensities.data.size(); ++i) {
