@@ -169,7 +169,7 @@ struct Ccp4 {
   }
 
   template<typename Stream>
-  void read_ccp4_header(Stream f, const std::string& path) {
+  void read_ccp4_header(Stream& f, const std::string& path) {
     const size_t hsize = 256;
     ccp4_header.resize(hsize);
     if (!f.read(ccp4_header.data(), 4 * hsize))
