@@ -273,8 +273,12 @@ int GEMMI_MAIN(int argc, char **argv) {
                                              ent->polymer_type, scoring);
         printf("%s chain %s  ", st.name.c_str(), chain.name.c_str());
         print_result_summary(result);
-        if (p.options[CheckMmcif])
-          check_label_seq_id(result, polymer);
+        if (p.options[CheckMmcif]) {
+          if (st.input_format == gemmi::CoorFormat::Pdb)
+            printf("Option --check-mmcif ignored for PDB file: %s\n", input.c_str());
+          else
+            check_label_seq_id(result, polymer);
+        }
         if (p.options[PrintOneLetter])
           print_one_letter_alignment(result,
                                      gemmi::one_letter_code(ent->full_sequence),
