@@ -43,7 +43,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::Structure st = gemmi::read_structure_gz(input, format);
       if (p.options[Label] && st.input_format == gemmi::CoorFormat::Pdb) {
         gemmi::setup_entities(st);
-        gemmi::assign_label_seq_id(st, false);
+        // hidden feature: -ll generates label_seq even if SEQRES is missing
+        bool force = p.options[Label].count() > 1;
+        gemmi::assign_label_seq_id(st, force);
       }
       for (gemmi::Model& model : sel.models(st)) {
         if (st.models.size() != 1)
