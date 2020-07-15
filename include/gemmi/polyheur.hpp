@@ -326,11 +326,12 @@ inline AlignmentResult align_sequence_to_polymer(
 // check for exact match between model sequence and full sequence (SEQRES)
 inline bool seqid_matches_seqres(const ConstResidueSpan& polymer,
                                  const Entity& ent) {
-  for (const Residue& res : polymer.first_conformer()) {
-    size_t seqid = (size_t) *res.seqid.num;
-    if (res.seqid.has_icode() ||
-        seqid >= ent.full_sequence.size() ||
-        Entity::first_mon(ent.full_sequence[seqid]) != res.name)
+  if (ent.full_sequence.size() != polymer.size())
+    return false;
+  int idx = 0;
+  for (const Residue& res : polymer) {
+    if (ent.full_sequence[idx] != res.name ||
+        ++idx != *res.seqid.num || res.seqid.has_icode())
       return false;
   }
   return true;
@@ -340,33 +341,34 @@ inline bool seqid_matches_seqres(const ConstResidueSpan& polymer,
 // force: assign label_seq even if full sequence is not known (assumes no gaps)
 inline void assign_label_seq_to_polymer(ResidueSpan& polymer,
                                         const Entity* ent, bool force) {
+  AlignmentResult result;
+
   // sequence not known
   if (!ent || ent->full_sequence.empty()) {
-    if (force) {
-      int n = 1;
-      SeqId prev;
-      for (Residue& res : polymer) {
-        res.label_seq = n;
-        if (prev != res.seqid)
-          ++n;
-        prev = res.seqid;
-      }
+    if (!force)
+      return;
+    PolymerType ptype = (ent && ent->polymer_type != PolymerType::Unknown
+                         ? ent->polymer_type
+                         : check_polymer_type(polymer));
+    const Residue* prev = nullptr;
+    for (const Residue& res : polymer.first_conformer()) {
+      if (prev && !are_connected3(*prev, res, ptype))
+        result.push_cigar(1, 1);  // assume a single insertion
+      result.push_cigar(0, 1);
+      prev = &res;
     }
-    return;
-  }
 
   // exact match - common case that doesn't require alignment
-  if (seqid_matches_seqres(polymer, *ent)) {
-    for (Residue& res : polymer)
-      res.label_seq = res.seqid.num;
-    return;
-  }
+  } else if (seqid_matches_seqres(polymer, *ent)) {
+    result.push_cigar(0, (int)ent->full_sequence.size());
 
   // sequence alignment
-  AlignmentScoring scoring;
-  AlignmentResult result =
-    align_sequence_to_polymer(ent->full_sequence, polymer, ent->polymer_type,
-                              scoring);
+  } else {
+    AlignmentScoring scoring;
+    result = align_sequence_to_polymer(ent->full_sequence, polymer,
+                                       ent->polymer_type, scoring);
+  }
+
   auto res_group = polymer.first_conformer().begin();
   int id = 1;
   for (AlignmentResult::Item item : result.cigar) {

@@ -135,7 +135,7 @@ struct AlignmentResult {
     return r;
   }
 
-private:
+  // op: 0=match/mismatch, 1=insertion, 2=deletion
   void push_cigar(std::uint32_t op, int len) {
     if (cigar.empty() || op != (cigar.back().value & 0xf))
       cigar.push_back({len<<4 | op});
