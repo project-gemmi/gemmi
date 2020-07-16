@@ -179,7 +179,7 @@ public:
       ++pos_;
   }
   bool matches(std::size_t p) const { return filter_->matches((*vec_)[p]); }
-  void increment() { while (pos_ != vec_->size() && !matches(++pos_)) {} }
+  void increment() { while (++pos_ < vec_->size() && !matches(pos_)) {} }
   void decrement() { while (pos_ != 0 && !matches(--pos_)) {} }
   bool equal(const FilterIterPolicy& o) const { return pos_ == o.pos_; }
   Value& dereference() { return (*vec_)[pos_]; }
