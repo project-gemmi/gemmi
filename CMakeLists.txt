@@ -66,7 +66,9 @@ include_directories("${CMAKE_SOURCE_DIR}/include"
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" AND EXTRA_WARNINGS)
   set(CMAKE_CXX_FLAGS
       "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wformat=2 -Wredundant-decls -Wfloat-conversion -Wdisabled-optimization -Wshadow $ENV{EXTRA_WFLAGS}")
-  message(STATUS "C++ flags set to: ${CMAKE_CXX_FLAGS}")
+  message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+  string(TOUPPER "CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}" cxx_flags_config)
+  message(STATUS "C++ flags set to: ${CMAKE_CXX_FLAGS} ${${cxx_flags_config}}")
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
