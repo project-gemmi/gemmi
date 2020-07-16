@@ -1,6 +1,7 @@
 $ gemmi merge -h
 Usage:
   gemmi merge [options] INPUT_FILE OUTPUT_FILE
+  gemmi merge --compare [options] UNMERGED_FILE MERGED_FILE
 Options:
   -h, --help             Print usage and exit.
   -V, --version          Print version and exit.
