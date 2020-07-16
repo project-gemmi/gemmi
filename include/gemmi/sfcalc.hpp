@@ -17,8 +17,8 @@
 namespace gemmi {
 
 // calculate part of the structure factor: exp(2 pi i r * s)
-std::complex<double> calculate_sf_part(const Fractional& fpos,
-                                       const Miller& hkl) {
+inline std::complex<double> calculate_sf_part(const Fractional& fpos,
+                                              const Miller& hkl) {
   double arg = 2 * pi() * (hkl[0]*fpos.x + hkl[1]*fpos.y + hkl[2]*fpos.z);
   return std::complex<double>{std::cos(arg), std::sin(arg)};
 }
