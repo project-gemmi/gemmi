@@ -44,7 +44,7 @@ struct Intensity {
   double value;
   double sigma;
 
-  bool operator<(const Intensity& o) {
+  bool operator<(const Intensity& o) const {
     return std::tie(hkl[0], hkl[1], hkl[2]) < std::tie(o.hkl[0], o.hkl[1], o.hkl[2]);
   }
 };
