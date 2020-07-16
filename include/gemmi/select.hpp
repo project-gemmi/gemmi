@@ -36,7 +36,6 @@ struct Selection {
       return inverted ? "!" + list : list;
     }
 
-    // assumes that list.all is checked before this function is called
     bool has(const std::string& name) const {
       if (all)
         return true;
@@ -129,8 +128,8 @@ struct Selection {
   }
   bool matches(const gemmi::Atom& a) const {
     return atom_names.has(a.name) &&
-           elements.has(a.element.uname()) &&
-           altlocs.has(std::string(a.altloc ? 0 : 1, a.altloc)) &&
+           (elements.all || elements.has(a.element.uname())) &&
+           (altlocs.all || altlocs.has(std::string(a.altloc ? 1 : 0, a.altloc))) &&
            atom_flags.has(a.flag);
   }
   bool matches(const gemmi::CRA& cra) const {
