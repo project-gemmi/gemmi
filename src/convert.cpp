@@ -53,7 +53,8 @@ struct ConvArg: public Arg {
 enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, PdbxStyle, BlockName,
   ExpandNcs, AsAssembly, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
-  ShortTer, Linkr, Minimal, ShortenCN, RenameChain, SegmentAsChain, OldPdb
+  ShortTer, Linkr, Minimal, ShortenCN, RenameChain,
+  SegmentAsChain, OldPdb, ForceLabel
 };
 
 static const option::Descriptor Usage[] = {
@@ -85,6 +86,8 @@ static const option::Descriptor Usage[] = {
     "  --segment-as-chain \tAppend segment id to label_asym_id (chain name)." },
   { OldPdb, 0, "", "old-pdb", Arg::None,
     "  --old-pdb \tRead only the first 72 characters in line." },
+  { ForceLabel, 0, "L", "force-label", Arg::Required,
+    "  -L, --force-label  \tAdd label_seq_id even if SEQRES is missing" },
 
   { NoOp, 0, "", "", Arg::None, "\nPDB output options:" },
   { ShortTer, 0, "", "short-ter", Arg::None,
@@ -194,7 +197,7 @@ static void convert(gemmi::Structure& st,
   if (st.input_format == CoorFormat::Pdb) {
     gemmi::read_metadata_from_remarks(st);
     gemmi::setup_entities(st);
-    gemmi::assign_label_seq_id(st, false);
+    gemmi::assign_label_seq_id(st, options[ForceLabel]);
   }
 
   for (const option::Option* opt = options[RenameChain]; opt; opt = opt->next()) {
