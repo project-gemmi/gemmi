@@ -584,6 +584,8 @@ struct Mtz {
     read_main_headers(stream);
     read_history_and_batch_headers(stream);
     setup_spacegroup();
+    if (datasets.empty())
+      datasets.push_back({0, "HKL_base", "HKL_base", "HKL_base", cell, 0.});
   }
 
   template<typename Stream>
