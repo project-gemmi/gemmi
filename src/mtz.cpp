@@ -48,7 +48,7 @@ static const option::Descriptor Usage[] = {
 
 static void dump(const Mtz& mtz) {
   printf("Title: %s\n", mtz.title.c_str());
-  printf("Number of Datasets = %zu\n\n", mtz.datasets.size());
+  printf("Total Number of Datasets = %zu\n\n", mtz.datasets.size());
   for (const Mtz::Dataset& ds : mtz.datasets) {
     printf("Dataset %4d   %s > %s > %s:\n",
            ds.id, ds.project_name.c_str(),
