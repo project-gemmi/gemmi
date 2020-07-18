@@ -58,7 +58,8 @@ struct ContactSearch {
 template<typename Func>
 void ContactSearch::for_each_contact(NeighborSearch& ns, const Func& func) {
   if (!ns.model)
-    fail("NeighborSearch not initialized");
+    fail(ns.small_structure ? "ContactSearch does not work with SmallStructure"
+                            : "NeighborSearch not initialized");
   for (int n_ch = 0; n_ch != (int) ns.model->chains.size(); ++n_ch) {
     Chain& chain = ns.model->chains[n_ch];
     PolymerType pt = PolymerType::Unknown;
