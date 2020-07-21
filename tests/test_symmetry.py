@@ -287,10 +287,15 @@ class TestSymmetry(unittest.TestCase):
         gops = sg.operations()
         self.assertTrue(gops.is_reflection_centric([3,0,3]))
         self.assertFalse(gops.is_reflection_centric([3,3,3]))
-        self.assertEqual(gops.epsilon_factor([3,0,3]), 1)
-        self.assertEqual(gops.epsilon_factor([0,3,0]), 2)
+        self.assertEqual(gops.epsilon_factor([3,0,3]), 2)
+        self.assertEqual(gops.epsilon_factor([0,3,0]), 4)
         self.assertFalse(gops.is_systematically_absent([1,2,3]))
         self.assertTrue(gops.is_systematically_absent([1,2,4]))
+        sg = gemmi.SpaceGroup('F 4 3 2')
+        gops = sg.operations()
+        self.assertEqual(gops.epsilon_factor([2,0,0]), 16)
+        self.assertEqual(gops.epsilon_factor([3,3,3]), 12)
+        self.assertEqual(gops.epsilon_factor_without_centering([2,0,0]), 4)
 
 if __name__ == '__main__':
     unittest.main()

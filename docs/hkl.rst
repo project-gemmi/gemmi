@@ -401,6 +401,8 @@ used with a number of vectorized functions:
   array([ True,  True,  True, ..., False, False, False])
   >>> gops.epsilon_factor_array(hkl)         # vectorized epsilon_factor()
   array([1, 1, 1, ..., 1, 1, 1], dtype=int32)
+  >>> gops.epsilon_factor_without_centering_array(hkl)  # epsilon_factor_without_centering()
+  array([1, 1, 1, ..., 1, 1, 1], dtype=int32)
   >>> gops.systematic_absences(hkl)          # vectorized is_systematically_absent()
   array([False, False, False, ..., False, False, False])
   >>> mtz.cell.calculate_d_array(hkl)        # vectorized calculate_d()

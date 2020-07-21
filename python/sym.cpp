@@ -111,9 +111,14 @@ void add_symmetry(py::module& m) {
     .def("centric_flag_array", [](const GroupOps& g, py::array_t<int> hkl) {
         return miller_function<bool>(g, &GroupOps::is_reflection_centric, hkl);
     })
+    .def("epsilon_factor_without_centering", &GroupOps::epsilon_factor_without_centering)
     .def("epsilon_factor", &GroupOps::epsilon_factor)
     .def("epsilon_factor_array", [](const GroupOps& g, py::array_t<int> hkl) {
         return miller_function<int>(g, &GroupOps::epsilon_factor, hkl);
+    })
+    .def("epsilon_factor_without_centering_array", [](const GroupOps& g,
+                                                      py::array_t<int> hkl) {
+        return miller_function<int>(g, &GroupOps::epsilon_factor_without_centering, hkl);
     })
     .def("is_systematically_absent", &GroupOps::is_systematically_absent)
     .def("systematic_absences", [](const GroupOps& g, py::array_t<int> hkl) {

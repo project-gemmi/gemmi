@@ -536,14 +536,24 @@ Similarly, we can check for systematic absences:
   >>> new_ops.is_systematically_absent([1, 3, 2])
   False
 
-Another property, the epsilon factor ε, tells how many times the point group symmetry
+Another property, the epsilon factor ε, tells how many times the symmetry
 operations map the reflection onto itself:
 
 .. doctest::
 
-  >>> new_ops.epsilon_factor([1, 2, 3])
+  >>> new_ops.epsilon_factor([1, 3, 2])
+  2
+  >>> new_ops.epsilon_factor([2, 0, 2])
+  4
+
+We also have a function that calculates ε ignoring centering vectors
+(equivalent to the ``epsilon()`` function in cctbx):
+
+.. doctest::
+
+  >>> new_ops.epsilon_factor_without_centering([1, 3, 2])
   1
-  >>> new_ops.epsilon_factor([1, 0, 3])
+  >>> new_ops.epsilon_factor_without_centering([2, 0, 2])
   2
 
 ASU

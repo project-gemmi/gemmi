@@ -401,13 +401,16 @@ struct GroupOps {
     return false;
   }
 
-  int epsilon_factor(const Op::Miller& hkl) const {
+  int epsilon_factor_without_centering(const Op::Miller& hkl) const {
     Op::Miller denh = {{Op::DEN * hkl[0], Op::DEN * hkl[1], Op::DEN * hkl[2]}};
     int epsilon = 0;
     for (const Op& op : sym_ops)
       if (op.apply_to_hkl_without_division(hkl) == denh)
         ++epsilon;
     return epsilon;
+  }
+  int epsilon_factor(const Op::Miller& hkl) const {
+    return epsilon_factor_without_centering(hkl) * cen_ops.size();
   }
 
   static bool has_phase_shift(const Op::Tran& c, const Op::Miller& hkl) {
