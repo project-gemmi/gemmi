@@ -98,7 +98,8 @@ void add_hkl(py::module& m) {
   py::bind_vector<std::vector<ReflnBlock>>(m, "ReflnBlocks");
   py::bind_vector<std::vector<const Mtz::Column*>>(m, "MtzColumnRefs");
 
-  mtz.def(py::init<>())
+  mtz
+    .def(py::init<bool>(), py::arg("with_base")=false)
     .def_buffer([](Mtz &self) {
       int nrow = self.has_data() ? self.nreflections : 0;
       int ncol = (int) self.columns.size();
@@ -139,6 +140,7 @@ void add_hkl(py::module& m) {
     })
     .def("get_cell", (UnitCell& (Mtz::*)(int)) &Mtz::get_cell,
          py::arg("dataset")=-1)
+    .def("set_cell_for_all", &Mtz::set_cell_for_all)
     .def("make_miller_array", [](const Mtz& self) {
         py::array_t<int> arr({self.nreflections, 3});
         py::buffer_info buf = arr.request();

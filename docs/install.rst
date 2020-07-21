@@ -128,8 +128,7 @@ Code derived from the following projects is used in the library:
   License: 2-clause BSD.
 
 Projects included under ``third_party/``, not used in the library itself,
-but used in command-line utilities, python bindings or tests that are
-distributed with the library:
+but used in command-line utilities, python bindings or tests:
 
 * `The Lean Mean C++ Option Parser <http://optionparser.sourceforge.net/>`_ --
   command-line option parser. License: MIT.

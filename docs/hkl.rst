@@ -442,45 +442,49 @@ To illustrate it, we will create a complete ``Mtz`` object from scratch.
 The code below is in Python, but all the functions and properties have
 equivalents with the same names in C++.
 
-We start from creating an object and setting its space group and unit cell:
+We start from creating an object:
 
 .. doctest::
 
-  >>> mtz = gemmi.Mtz()
+  >>> mtz = gemmi.Mtz(with_base=True)
+
+``with_base=True`` automatically added the base dataset (HKL_base)
+with columns H, K and L.
+
+Then we set its space group and unit cell:
+
+.. doctest::
+
   >>> mtz.spacegroup = gemmi.find_spacegroup_by_name('P 21 21 2')
-  >>> mtz.cell.set(77.7, 149.5, 62.4, 90, 90, 90)
+  >>> mtz.set_cell_for_all(gemmi.UnitCell(77.7, 149.5, 62.4, 90, 90, 90))
 
-Now we need to add datasets and columns.
-
-.. doctest::
-
-  >>> mtz.add_dataset('HKL_base')
-  <gemmi.Mtz.Dataset 0 HKL_base/HKL_base/HKL_base>
-
-The name passed to ``add_dataset()`` is used to set ``dataset_name``,
-``crystal_name`` and ``project_name``. These three names are often
-kept the same, but if needed, they can be changed afterwards.
-
-The MTZ format stores general, per file cell dimensions (keyword CELL),
-as well per dataset ones (keyword DCELL).
-Function ``add_dataset`` initializes the latter from the former.
-This also can be changed afterwards.
-
-The first three columns must always be Miller indices:
+The MTZ format evolved -- first it stored "general" cell dimensions
+(keyword CELL), then separate cell dimensions for datasets were added
+(keyword DCELL). ``set_cell_for_all()`` sets all of them:
 
 .. doctest::
 
-  >>> for label in ['H', 'K', 'L']: mtz.add_column(label, 'H')
-  <gemmi.Mtz.Column H type H>
-  <gemmi.Mtz.Column K type H>
-  <gemmi.Mtz.Column L type H>
+  >>> mtz.cell
+  <gemmi.UnitCell(77.7, 149.5, 62.4, 90, 90, 90)>
+  >>> mtz.datasets[0].cell
+  <gemmi.UnitCell(77.7, 149.5, 62.4, 90, 90, 90)>
 
-Let's add two more columns in a separate dataset:
+Now we need to add remaining datasets and columns.
 
 .. doctest::
 
   >>> mtz.add_dataset('synthetic')
   <gemmi.Mtz.Dataset 1 synthetic/synthetic/synthetic>
+
+The name passed to ``add_dataset()`` is used to set ``dataset_name``,
+``crystal_name`` and ``project_name``. These three names are often
+kept the same, but if needed, they can be changed afterwards.
+The cell dimensions of the new dataset are a copy of the "general" CELL.
+
+Let's add two columns:
+
+.. doctest::
+
   >>> mtz.add_column('F', 'F')
   <gemmi.Mtz.Column F type F>
   >>> mtz.add_column('SIGF', 'Q')

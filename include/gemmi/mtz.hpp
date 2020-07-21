@@ -168,7 +168,13 @@ struct Mtz {
 
   FILE* warnings = nullptr;
 
-  Mtz() = default;
+  explicit Mtz(bool with_base=false) {
+    if (with_base) {
+      datasets.push_back({0, "HKL_base", "HKL_base", "HKL_base", cell, 0.});
+      for (int i = 0; i != 3; ++i)
+        add_column(std::string(1, "HKL"[i]), 'H', 0, i);
+    }
+  }
   Mtz(Mtz&& o) noexcept { *this = std::move(o); }
   Mtz& operator=(Mtz&& o) noexcept {
     same_byte_order = o.same_byte_order;
@@ -213,6 +219,13 @@ struct Mtz {
 
   const UnitCell& get_cell(int dataset=-1) const {
     return const_cast<Mtz*>(this)->get_cell(dataset);
+  }
+
+  void set_cell_for_all(const UnitCell& new_cell) {
+    cell = new_cell;
+    cell.set_cell_images_from_spacegroup(spacegroup);  // probably not needed
+    for (Dataset& ds : datasets)
+      ds.cell = cell;
   }
 
   Dataset& last_dataset() {
@@ -856,9 +869,9 @@ void Mtz::write_to_stream(std::FILE* stream) const {
     WRITE("PROJECT %7d %s", ds.id, ds.project_name.c_str());
     WRITE("CRYSTAL %7d %s", ds.id, ds.crystal_name.c_str());
     WRITE("DATASET %7d %s", ds.id, ds.dataset_name.c_str());
+    const UnitCell& uc = (ds.cell.is_crystal() && ds.cell.a > 0 ? ds.cell : cell);
     WRITE("DCELL %9d %10.4f%10.4f%10.4f%10.4f%10.4f%10.4f",
-          ds.id, ds.cell.a, ds.cell.b, ds.cell.c,
-          ds.cell.alpha, ds.cell.beta, ds.cell.gamma);
+          ds.id, uc.a, uc.b, uc.c, uc.alpha, uc.beta, uc.gamma);
     WRITE("DWAVEL %8d %10.5f", ds.id, ds.wavelength);
     for (size_t i = 0; i < batches.size(); i += 12) {
       std::memcpy(buf, "BATCH ", 6);
