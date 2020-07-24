@@ -3,6 +3,7 @@ project(gemmi C CXX)
 
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
+option(INSTALL_EGG_INFO "Install .egg-info via setup.py" OFF)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" OFF)
 
@@ -373,4 +374,10 @@ if (USE_PYTHON AND DEFINED PYTHON_INSTALL_DIR)
   install(TARGETS gemmi DESTINATION ${PYTHON_INSTALL_DIR})
   install(DIRECTORY examples/ DESTINATION ${PYTHON_INSTALL_DIR}/gemmi-examples
           FILES_MATCHING PATTERN "*.py")
+  if (INSTALL_EGG_INFO)
+    install(CODE
+     "execute_process(COMMAND \"${PYTHON_EXECUTABLE}\" setup.py install_egg_info --install-dir \"\$ENV{DESTDIR}${PYTHON_INSTALL_DIR}\"
+                      WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\")"
+    )
+  endif()
 endif()
