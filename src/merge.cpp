@@ -1,6 +1,7 @@
 // Copyright 2020 Global Phasing Ltd.
 //
-// merge multi-record (unmerged) data - I and sigma(I)
+// Merges multi-record (unmerged) data - I and sigma(I)
+// Uses Inverse-variance weighting.
 
 #include <cmath>              // for sqrt
 #include <cstdio>
