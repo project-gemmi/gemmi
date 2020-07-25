@@ -32,6 +32,7 @@ template<typename T> void add_smat33(py::module& m, const char* name) {
     .def_readwrite("u12", &M::u12)
     .def_readwrite("u13", &M::u13)
     .def_readwrite("u23", &M::u23)
+    .def("elements", &M::elements)
     .def("as_mat33", &M::as_mat33)
     .def("trace", &M::trace)
     .def("nonzero", &M::nonzero)
@@ -170,6 +171,8 @@ void add_unitcell(py::module& m) {
     .def("calculate_d_array", [](const UnitCell& u, py::array_t<int> hkl) {
         return miller_function<double>(u, &UnitCell::calculate_d, hkl);
     })
+    .def("metric_tensor", &UnitCell::metric_tensor)
+    .def("reciprocal_metric_tensor", &UnitCell::reciprocal_metric_tensor)
     .def("get_hkl_limits", &UnitCell::get_hkl_limits, py::arg("dmin"))
     .def("__repr__", [](const UnitCell& self) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)

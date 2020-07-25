@@ -369,15 +369,17 @@ including calculations of eigenvalues and eigenvectors.
 
 .. doctest::
 
-    >>> aniso = perovskite.sites[2].aniso
-    >>> aniso.u11
-    0.10300000000000001
-    >>> aniso.trace()
-    0.41500000000000004
-    >>> aniso.determinant()
-    0.002506608000000001
-    >>> aniso.calculate_eigenvalues()
-    [0.10300000000000001, 0.15600000000000003, 0.15600000000000003]
+  >>> aniso = perovskite.sites[2].aniso
+  >>> aniso.u11
+  0.10300000000000001
+  >>> aniso.elements()  # (u11, u22, u33, u12, u13, u23)
+  [0.10300000000000001, 0.15600000000000003, 0.15600000000000003, 0.0, 0.0, 0.0]
+  >>> aniso.trace()
+  0.41500000000000004
+  >>> aniso.determinant()
+  0.002506608000000001
+  >>> aniso.calculate_eigenvalues()
+  [0.10300000000000001, 0.15600000000000003, 0.15600000000000003]
 
 
 In C++ all these types are defined in ``gemmi/math.hpp``.
@@ -421,6 +423,16 @@ Here are the most important properties and methods of the ``UnitCell`` class:
                  [0, 0, 45.07]>
     >>> cell.orthogonalize(gemmi.Fractional(0.5, 0.5, 0.5))
     <gemmi.Position(12.57, 19.75, 22.535)>
+
+Next, we have `metric tensors <https://dictionary.iucr.org/Metric_tensor>`_
+in the direct and reciprocal space:
+
+.. doctest::
+
+    >>> cell.metric_tensor().u22
+    1560.25
+    >>> cell.reciprocal_metric_tensor().u23
+    0.0
 
 The UnitCell object can also store a list of symmetry transformations.
 This list is populated automatically when reading a coordinate file.
@@ -466,8 +478,8 @@ With this list we can use:
   it returns the symmetric image of ``pos`` that is nearest to ``ref``.
   The last argument can also be set to ``Asu::Same`` or ``Asu::Different``.
 
-In the reciprocal space, the unit cell can be used to determine interplanar
-spacing *d*:sub:`hkl` (the resolution corresponding to reflection):
+The unit cell can be used to determine interplanar spacing *d*:sub:`hkl`
+in the reciprocal space (the resolution corresponding to a reflection):
 
 .. doctest::
 

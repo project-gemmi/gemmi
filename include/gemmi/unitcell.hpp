@@ -360,6 +360,16 @@ struct UnitCell {
     return 1.0 / std::sqrt(calculate_1_d2(hkl));
   }
 
+  // https://dictionary.iucr.org/Metric_tensor
+  SMat33<double> metric_tensor() const {
+    double cos_alpha = alpha == 90. ? 0. : std::cos(rad(alpha));
+    return {a*a, b*b, c*c, a*orth.mat[0][1], a*orth.mat[0][2], b*c*cos_alpha};
+  }
+
+  SMat33<double> reciprocal_metric_tensor() const {
+    return {ar*ar, br*br, cr*cr, ar*br*cos_gammar, ar*cr*cos_betar, br*cr*cos_alphar};
+  }
+
   Miller get_hkl_limits(double dmin) const {
     return {{int(1 / (dmin * ar)), int(1 / (dmin * br)), int(1 / (dmin * cr))}};
   }

@@ -59,6 +59,18 @@ class TestUnitCell(unittest.TestCase):
                                0.0128229081865688, delta=1e-17)
         self.assertAlmostEqual(cell.calculate_d([3, 4, 5]),
                                7.7319559244298, delta=1e-13)
+        #  uc.metrical_matrix()
+        cctbx_mm = [1295.712016, 1730.643201, 2093.611536,
+                    391.3591013825865, 646.1921687548228, 731.5043620154578]
+        mt = cell.metric_tensor()
+        for a, b in zip(mt.elements(), cctbx_mm):
+            self.assertAlmostEqual(a, b, delta=1e-12)
+        #  uc.reciprocal_metrical_matrix()
+        cctbx_rmm = [0.00092792089082916, 0.000689632633981, 0.0006277651322979,
+                     -0.000104162588996, -0.000250008091601, -0.000208806754807]
+        rmt = cell.reciprocal_metric_tensor()
+        for a, b in zip(rmt.elements(), cctbx_rmm):
+            self.assertAlmostEqual(a, b, delta=1e-15)
 
 
 class TestAngles(unittest.TestCase):

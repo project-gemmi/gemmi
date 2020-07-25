@@ -153,6 +153,10 @@ struct Mat33 {
 template<typename T> struct SMat33 {
   T u11, u22, u33, u12, u13, u23;
 
+  std::array<T, 6> elements() const {
+    return {{u11, u22, u33, u12, u13, u23}};
+  }
+
   Mat33 as_mat33() const {
     return Mat33(u11, u12, u13, u12, u22, u23, u13, u23, u33);
   }
