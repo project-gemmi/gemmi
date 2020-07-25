@@ -38,6 +38,7 @@ template<typename T> void add_smat33(py::module& m, const char* name) {
     .def("nonzero", &M::nonzero)
     .def("determinant", &M::determinant)
     .def("inverse", &M::inverse)
+    .def("r_u_r", &M::r_u_r)
     .def("transformed_by", &M::transformed_by)
     .def("calculate_eigenvalues", &M::calculate_eigenvalues)
     ;
@@ -49,6 +50,8 @@ void add_unitcell(py::module& m) {
     .def_readwrite("x", &Vec3::x)
     .def_readwrite("y", &Vec3::y)
     .def_readwrite("z", &Vec3::z)
+    .def("dot", &Vec3::dot)
+    .def("cross", &Vec3::cross)
     .def("tolist", [](const Vec3& self) {
         return std::array<double,3>{{self.x, self.y, self.z}};
     })
@@ -68,6 +71,7 @@ void add_unitcell(py::module& m) {
     .def(py::init<>())
     .def("multiply", (Mat33 (Mat33::*)(const Mat33&) const) &Mat33::multiply)
     .def("multiply", (Vec3 (Mat33::*)(const Vec3&) const) &Mat33::multiply)
+    .def("left_multiply", &Mat33::left_multiply)
     .def("transpose", &Mat33::transpose)
     .def("approx", &Mat33::approx, py::arg("other"), py::arg("epsilon"))
     .def("determinant", &Mat33::determinant)

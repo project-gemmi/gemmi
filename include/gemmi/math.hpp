@@ -178,7 +178,7 @@ template<typename T> struct SMat33 {
     return {u11+k, u22+k, u33+k, u12, u13, u23};
   }
 
-  // returns r . U . r where vector r is argument and U is this matrix
+  // returns squared norm r^T U r where U is this matrix and vector r is arg
   double r_u_r(const Vec3& r) const {
     return r.x * r.x * u11 + r.y * r.y * u22 + r.z * r.z * u33 +
       2 * (r.x * r.y * u12 + r.x * r.z * u13 + r.y * r.z * u23);
