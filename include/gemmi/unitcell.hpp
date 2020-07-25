@@ -174,8 +174,8 @@ struct UnitCell {
   // Cf. https://dials.github.io/documentation/conventions.html
   Mat33 calculate_matrix_B() const {
     double cos_alpha = alpha == 90. ? 0. : std::cos(rad(alpha));
-    double sin_gammar = std::sqrt(1 - cos_gammar);
-    double sin_betar = std::sqrt(1 - cos_betar);
+    double sin_gammar = std::sqrt(1 - cos_gammar * cos_gammar);
+    double sin_betar = std::sqrt(1 - cos_betar * cos_betar);
     return Mat33(ar, br * cos_gammar, cr * cos_betar,
                  0., br * sin_gammar, -cr * sin_betar * cos_alpha,
                  0., 0., 1.0 / c);
