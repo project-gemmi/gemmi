@@ -8,6 +8,7 @@
 #include <cassert>
 #include <complex>
 #include <algorithm>  // for fill
+#include <memory>     // for unique_ptr
 #include <numeric>    // for accumulate
 #include <vector>
 #include "unitcell.hpp"
@@ -535,7 +536,7 @@ struct ReciprocalGrid : GridBase<T> {
     std::vector<HklValue> v;
   };
 
-  AsuData prepare_asu_data(double dmin=0, bool with_000=false) {
+  AsuData prepare_asu_data(double dmin=0, bool with_000=false, bool with_sys_abs=false) {
     AsuData asu_data;
     if (this->axis_order == AxisOrder::ZYX)
       fail("get_asu_values(): ZYX order is not supported yet");
@@ -546,6 +547,9 @@ struct ReciprocalGrid : GridBase<T> {
     if (dmin != 0.)
       max_1_d2 = 1. / (dmin * dmin);
     gemmi::ReciprocalAsu asu(this->spacegroup);
+    std::unique_ptr<GroupOps> gops;
+    if (!with_sys_abs && this->spacegroup)
+      gops.reset(new GroupOps(this->spacegroup->operations()));
     Miller hkl;
     for (hkl[0] = -max_h; hkl[0] < max_h + 1; ++hkl[0]) {
       int hi = hkl[0] >= 0 ? hkl[0] : hkl[0] + this->nu;
@@ -554,6 +558,7 @@ struct ReciprocalGrid : GridBase<T> {
         for (hkl[2] = (half_l ? 0 : -max_l); hkl[2] < max_l + 1; ++hkl[2])
           if (asu.is_in(hkl) &&
               (max_1_d2 == 0. || this->unit_cell.calculate_1_d2(hkl) < max_1_d2) &&
+              (with_sys_abs || !gops->is_systematically_absent(hkl)) &&
               (with_000 || !(hkl[0] == 0 && hkl[1] == 0 && hkl[2] == 0))) {
             int li = hkl[2] >= 0 ? hkl[2] : hkl[2] + this->nw;
             asu_data.v.push_back({hkl, this->get_value_q(hi, ki, li)});
