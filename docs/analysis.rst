@@ -657,7 +657,7 @@ a :ref:`local copy of the PDB archive <pdb_dir>`
 in the PDB format takes about 20 minutes.
 
 In the second step we plot the data points with matplotlib.
-We use a script that can be found in :file:`examples/rama_gather.py`.
+We use a script that can be found in :file:`examples/rama_plot.py`.
 Six of the resulting plots are shown here (click to enlarge):
 
 .. image:: img/ramachandran-per-aa.png

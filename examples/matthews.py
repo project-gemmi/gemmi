@@ -10,9 +10,49 @@
 from __future__ import print_function
 import datetime
 import sys
+import os
 import csv
-from gemmi import cif
-import util
+import argparse
+from gemmi import cif, expand_if_pdb_code
+
+
+# the same function as in examples/weight.py
+def get_file_paths_from_args():
+    """\
+    Process arguments as filenames or directories with .cif(.gz) files,
+    and yield the file paths.
+    Normally we first test our scripts on a few files:
+      ./myscript 1mru.cif another.cif
+    and then do pdb-wide analysis:
+      ./myscript $PDB_DIR/structures/divided/mmCIF
+    If $PDB_DIR is set you can check the specifies PDB entries:
+      ./myscript 1ABC 2def
+    If you have a list of PDB codes to analyze (one code per line, the code
+    must be the first word, but may be followed by others), do:
+      ./myscript --only=my-list.txt $PDB_DIR/structures/divided/mmCIF
+    """
+    parser = argparse.ArgumentParser(usage='%(prog)s [options] path [...]')
+    parser.add_argument('path', nargs='+', help=argparse.SUPPRESS)
+    parser.add_argument('--only', metavar='LIST',
+                        help='Use only files that match names in this file')
+    args = parser.parse_args()
+    only = None
+    if args.only:
+        with open(args.only) as list_file:
+            only = set(line.split()[0].lower() for line in list_file
+                       if line.strip())
+    for arg in args.path:
+        if os.path.isdir(arg):
+            for root, dirs, files in os.walk(arg):
+                dirs.sort()
+                for name in sorted(files):
+                    for ext in ['.cif', '.cif.gz']:
+                        if name.endswith(ext):
+                            if not only or name[:-len(ext)].lower() in only:
+                                yield os.path.join(root, name)
+                                break
+        else:
+            yield expand_if_pdb_code(arg)
 
 
 def parse_date(date_str):
@@ -24,7 +64,7 @@ def gather_data():
     "read mmCIF files and write down a few numbers (one file -> one line)"
     writer = csv.writer(sys.stdout, dialect='excel-tab')
     writer.writerow(['code', 'na_chains', 'vs', 'vm', 'd_min', 'date', 'group'])
-    for path in util.get_file_paths_from_args():
+    for path in get_file_paths_from_args():
         block = cif.read(path).sole_block()
         code = cif.as_string(block.find_value('_entry.id'))
         na = sum('nucleotide' in t[0]

@@ -1,14 +1,21 @@
 #!/usr/bin/env python
+# Check amino-acid frequency in the PDB database (or it's subset)
+# by reading meta-data from mmCIF files.
+
 from __future__ import print_function
+import sys
+import os
 from collections import Counter
-from gemmi import cif
+from gemmi import cif, CifWalk, expand_if_pdb_code
 
-# To keep this example small we moved handling of command-line args to util.py.
-# When a directory is given as an argument get_file_paths_from_args()
-# yields all the cif(.gz) paths under this directory.
-from util import get_file_paths_from_args
+def get_file_paths_from_args():
+    for arg in sys.argv[1:]:
+        if os.path.isdir(arg):
+            for path in CifWalk(arg):
+                yield path
+        else:
+            yield expand_if_pdb_code(arg)
 
-# Check amino-acid frequency in the PDB database
 totals = Counter()
 for path in get_file_paths_from_args():
     # read file (uncompressing on the fly) and get the only block

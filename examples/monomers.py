@@ -5,7 +5,6 @@ import sys
 import argparse
 from collections import Counter
 from gemmi import cif
-import util
 
 
 def to_formula(cnt):
@@ -13,13 +12,27 @@ def to_formula(cnt):
     return ' '.join(k + (str(v) if v != 1 else '')
                     for k, v in sorted(cnt.items()))
 
+def formula_to_dict(formula):
+    '"O4 P -3" -> {O:4, P:1}'
+    fdict = {}
+    for elnum in formula.split():
+        na = sum(e.isalpha() for e in elnum)
+        if na == len(elnum):
+            fdict[elnum] = 1
+        elif na != 0:
+            fdict[elnum[:na]] = int(elnum[na:])
+    return fdict
 
 def get_monomer_cifs(mon_path):
     'yield all files mon_path/?/*.cif in alphabetic order'
-    for root, name in util.sorted_cif_search(mon_path):
-        if '_' not in name:  # heuristic to skip weird things in $CLIBD_MON
-            yield os.path.join(root, name)
-
+    for root, dirs, files in os.walk(mon_path):
+        dirs.sort()
+        for name in sorted(files):
+            # in $CLIBD_MON, files with '_' in the name are not monomers
+            if name.endswith('.cif') and '_' not in name:
+                yield os.path.join(root, name)
+            elif name.endswith('.cif.gz'):
+                yield os.path.join(root, name)
 
 def check_formulas(ccd):
     '''\
@@ -27,10 +40,10 @@ def check_formulas(ccd):
     formula not consistent with the list of atoms.
     '''
     for b in ccd:
-        atoms = Counter(a.as_str(0).upper() for a in
-                        b.find('_chem_comp_atom.type_symbol'))
+        atoms = Counter(a.upper()
+                        for a in b.find_values('_chem_comp_atom.type_symbol'))
         formula = cif.as_string(b.find_value('_chem_comp.formula')).upper()
-        fdict = util.formula_to_dict(formula)
+        fdict = formula_to_dict(formula)
         if fdict != atoms:
             print('[%s]' % b.name, formula, '<>', to_formula(atoms))
 
@@ -57,7 +70,7 @@ def compare_monlib_with_ccd(mon_path, ccd):
 
 def get_heavy_atom_names(block):
     cca = block.find('_chem_comp_atom.', ['atom_id', 'type_symbol'])
-    d = {a.as_str(0).upper(): a.as_str(1).upper() for a in cca if a[1] != 'H'}
+    d = {a.str(0).upper(): a.str(1).upper() for a in cca if a[1] != 'H'}
     assert len(d) == sum(a[1] != 'H' for a in cca), (d, cca)
     return d
 
@@ -76,9 +89,9 @@ def bond_info(id1, id2, order, aromatic):
 
 def bond_dict(block, ccb_names, atom_names):
     table = block.find('_chem_comp_bond.', ccb_names)
-    return dict(bond_info(r.as_str(0), r.as_str(1), r.as_str(2), r.as_str(3))
+    return dict(bond_info(r.str(0), r.str(1), r.str(2), r.str(3))
                 for r in table
-                if r.as_str(0) in atom_names and r.as_str(1) in atom_names)
+                if r.str(0) in atom_names and r.str(1) in atom_names)
 
 
 def compare_chem_comp(mb, cb):
