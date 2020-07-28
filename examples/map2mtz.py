@@ -14,12 +14,10 @@ m.setup()
 sf = gemmi.transform_map_to_f_phi(m.grid, half_l=True)
 data = sf.prepare_asu_data(dmin=RESOLUTION_LIMIT)
 
-mtz = gemmi.Mtz()
+mtz = gemmi.Mtz(with_base=True)
 mtz.spacegroup = sf.spacegroup
-mtz.cell = sf.unit_cell
-mtz.add_dataset('HKL_base')
-for label in ['H', 'K', 'L']:
-    mtz.add_column(label, 'H')
+mtz.set_cell_for_all(sf.unit_cell)
+mtz.add_dataset('unknown')
 mtz.add_column('FWT', 'F')
 mtz.add_column('PHWT', 'P')
 mtz.set_data(data)
