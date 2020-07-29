@@ -74,7 +74,7 @@ inline void split_element_and_charge(const std::string& label, T* dest) {
                            : find_element(label.c_str());
   if (dest->element != El::X && label[len] >= '0' && label[len] <= '9')
     dest->charge = label[len] - '0';
-  if (label[len+1] == '-')
+  if (len < label.size() && label[len+1] == '-')
     dest->charge = -dest->charge;
 }
 
