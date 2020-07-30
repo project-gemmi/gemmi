@@ -24,6 +24,11 @@
 # define EXE_NAME "gemmi-" GEMMI_XSTRINGIZE(GEMMI_PROG)
 #endif
 
+#if defined(_MSC_VER) && _MSC_VER+0 <= 1900
+// warning C4800: 'option::Option *': forcing value to bool 'true' or 'false'
+#pragma warning(disable: 4800)
+#endif
+
 enum { NoOp=0, Help=1, Version=2, Verbose=3 };
 
 extern const option::Descriptor CommonUsage[];
