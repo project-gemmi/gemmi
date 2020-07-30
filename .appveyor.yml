@@ -1,42 +1,66 @@
-version: '{branch}-{build}'
+-
+  skip_tags: true
+  version: '{branch}-{build}'
+  environment:
+    matrix:
+      - arch: x86
+        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+        CMAKE_GENERATOR: Visual Studio 14 2015
+        CMAKE_CONFIG: Debug
+        PY_PYTHON: 2.7-32
+        USE_PIP: 1
+      - arch: x64
+        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+        CMAKE_GENERATOR: Visual Studio 15 2017 Win64
+        CMAKE_CONFIG: Release
+        PY_PYTHON: 3.5
+      - arch: x64
+        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+        CMAKE_GENERATOR: Visual Studio 16 2019
+        CMAKE_CONFIG: RelWithDebInfo
+        USE_PIP: 1
+      - arch: x64
+        CMAKE_GENERATOR: MSYS Makefiles
+        COMPILER: MinGW64-gcc-7.2.0
+        CMAKE_CONFIG: MinSizeRel
+        PY_PYTHON: 3.5-32
+        BINDIR: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin;C:\msys64\usr\bin
 
-environment:
-  matrix:
-    - arch: x86
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      CMAKE_GENERATOR: Visual Studio 14 2015
-      CMAKE_CONFIG: Debug
-      PY_PYTHON: 2.7-32
-      USE_PIP: 1
-    - arch: x64
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      CMAKE_GENERATOR: Visual Studio 15 2017 Win64
-      CMAKE_CONFIG: Release
-      PY_PYTHON: 3.5
-    - arch: x64
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-      CMAKE_GENERATOR: Visual Studio 16 2019
-      CMAKE_CONFIG: RelWithDebInfo
-      USE_PIP: 1
-    - arch: x64
-      CMAKE_GENERATOR: MSYS Makefiles
-      COMPILER: MinGW64-gcc-7.2.0
-      CMAKE_CONFIG: MinSizeRel
-      PY_PYTHON: 3.5-32
-      BINDIR: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin;C:\msys64\usr\bin
+  build_script:
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (del "C:\Program Files (x86)\MSBuild\14.0\Microsoft.Common.targets\ImportAfter\Xamarin.Common.targets")
+  - if defined BINDIR (set "PATH=%BINDIR%;%PATH%")
+  - path
+  - cmake -G "%CMAKE_GENERATOR%" .
+  - cmake --build . --config %CMAKE_CONFIG%
+  - cmake --build . --config %CMAKE_CONFIG% --target check
+  - py -c "import sys; print(sys.version+'\n'+sys.executable)"
+  - if not defined USE_PIP (py setup.py install)
+  - cmd: '"%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
+  - if     defined USE_PIP (py -m pip install --upgrade .)
 
-build_script:
-- if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (del "C:\Program Files (x86)\MSBuild\14.0\Microsoft.Common.targets\ImportAfter\Xamarin.Common.targets")
-- if defined BINDIR (set "PATH=%BINDIR%;%PATH%")
-- path
-- cmake -G "%CMAKE_GENERATOR%" .
-- cmake --build . --config %CMAKE_CONFIG%
-- cmake --build . --config %CMAKE_CONFIG% --target check
-- py -c "import sys; print(sys.version+'\n'+sys.executable)"
-- if not defined USE_PIP (py setup.py install)
-- cmd: '"%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
-- if     defined USE_PIP (py -m pip install --upgrade .)
+  test_script:
+  - ctest -C "%CMAKE_CONFIG%" --output-on-failure
+  - py -m unittest discover -v -s tests/
 
-test_script:
-- ctest -C "%CMAKE_CONFIG%" --output-on-failure
-- py -m unittest discover -v -s tests/
+-
+  skip_non_tags: true
+  # see https://packaging.python.org/guides/supporting-windows-using-appveyor/
+  environment:
+    matrix:
+      # cf. https://www.appveyor.com/docs/windows-images-software/#python
+      - PYTHON: "C:\\Python36"
+      - PYTHON: "C:\\Python37"
+      - PYTHON: "C:\\Python38"
+      - PYTHON: "C:\\Python36-x64"
+      - PYTHON: "C:\\Python37-x64"
+      - PYTHON: "C:\\Python38-x64"
+  install:
+    - "%PYTHON%\\python.exe -m pip install wheel pybind11"
+  build_script:
+    - "%PYTHON%\\python.exe setup.py install"
+  test_script:
+    - "%PYTHON%\\python.exe -m unittest discover -s tests"
+  after_test:
+    - "%PYTHON%\\python.exe setup.py bdist_wheel"
+  artifacts:
+    - path: dist\*
