@@ -139,7 +139,7 @@ template<typename T, typename DataProxy>
 void initialize_hkl_grid(ReciprocalGrid<T>& grid, const DataProxy& data,
                          std::array<int, 3> size, bool half_l,
                          AxisOrder axis_order) {
-  if (data.size() == 0 || data.stride() < 5)
+  if (data.size() == 0)
     fail("No data.");
   if (!data.spacegroup())
     fail("No spacegroup.");
@@ -155,25 +155,35 @@ void initialize_hkl_grid(ReciprocalGrid<T>& grid, const DataProxy& data,
   grid.set_size_without_checking(size[0], size[1], size[2]);
 }
 
+template<typename DataProxy>
+struct FPhiProxy : DataProxy {
+  FPhiProxy(const DataProxy& data_proxy, size_t f_col, size_t phi_col)
+      : DataProxy(data_proxy), f_col_(f_col), phi_col_(phi_col) {
+    if (f_col >= data_proxy.stride() || phi_col >= data_proxy.stride())
+      fail("Map coefficients not found.");
+  }
+  using real = typename DataProxy::num_type;
+  real get_f(size_t offset) const { return this->get_num(offset + f_col_); }
+  double get_phi(size_t offset) const { return rad(this->get_num(offset + phi_col_)); }
+private:
+  size_t f_col_, phi_col_;
+};
+
 // If half_l is true, grid has only data with l>=0.
 // Parameter size can be obtained from get_size_for_hkl().
-template<typename T, typename DataProxy>
-FPhiGrid<T> get_f_phi_on_grid(const DataProxy& data,
-                              size_t f_col, size_t phi_col,
+template<typename T, typename FPhi>
+FPhiGrid<T> get_f_phi_on_grid(const FPhi& fphi,
                               std::array<int, 3> size, bool half_l,
                               AxisOrder axis_order=AxisOrder::XYZ) {
   FPhiGrid<T> grid;
-  initialize_hkl_grid(grid, data, size, half_l, axis_order);
-
-  if (f_col >= data.stride() || phi_col >= data.stride())
-    fail("Map coefficients not found.");
+  initialize_hkl_grid(grid, fphi, size, half_l, axis_order);
   const std::complex<T> default_val; // initialized to 0+0i
   GroupOps ops = grid.spacegroup->operations();
-  for (size_t i = 0; i < data.size(); i += data.stride()) {
-    Miller hkl = data.get_hkl(i);
-    T f = (T) data.get_num(i + f_col);
+  for (size_t i = 0; i < fphi.size(); i += fphi.stride()) {
+    Miller hkl = fphi.get_hkl(i);
+    T f = (T) fphi.get_f(i);
     if (f > 0.f) {
-      double phi = rad(data.get_num(i + phi_col));
+      double phi = fphi.get_phi(i);
       for (const Op& op : ops.sym_ops) {
         auto hklp = op.apply_to_hkl(hkl);
         double shifted_phi = phi + op.phase_shift(hkl);
@@ -291,8 +301,8 @@ Grid<T> transform_f_phi_to_map(const DataProxy& data,
   } else {
     size = get_size_for_hkl(data, size, sample_rate);
   }
-  return transform_f_phi_grid_to_map(get_f_phi_on_grid<T>(data, f_col, phi_col,
-                                                          size, true, order));
+  FPhiProxy<DataProxy> fphi(data, f_col, phi_col);
+  return transform_f_phi_grid_to_map(get_f_phi_on_grid<T>(fphi, size, true, order));
 }
 
 template<typename T>

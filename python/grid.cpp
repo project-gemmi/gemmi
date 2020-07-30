@@ -14,6 +14,7 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 #include "gemmi/gz.hpp"  // for MaybeGzipped
 #include "gemmi/neighbor.hpp"
 #include "gemmi/tostr.hpp"
+#include "gemmi/fourier.hpp"  // for get_f_phi_on_grid
 
 #include <pybind11/pybind11.h>
 #include <pybind11/complex.h>
@@ -31,6 +32,13 @@ template<typename T>
 std::string grid_dim_str(const GridBase<T>& g) {
   return std::to_string(g.nu) + ", " + std::to_string(g.nv) + ", " +
          std::to_string(g.nw);
+}
+
+
+template<typename T> void add_to_asu_data(T&) {}
+template<> void add_to_asu_data(py::class_<FPhiGrid<float>::AsuData>& cl) {
+  cl.def("get_f_phi_on_grid", get_f_phi_on_grid<float, FPhiGrid<float>::AsuData>,
+         py::arg("size"), py::arg("half_l")=false, py::arg("order")=AxisOrder::XYZ);
 }
 
 template<typename T>
@@ -136,7 +144,8 @@ void add_grid(py::module& m, const std::string& name) {
     });
 
   using AsuData = typename ReGr::AsuData;
-  py::class_<AsuData>(regr, "AsuData")
+  py::class_<AsuData> asu_data(regr, "AsuData");
+  asu_data
     .def("__iter__", [](AsuData& self) { return py::make_iterator(self.v); },
          py::keep_alive<0, 1>())
     .def("__len__", [](const AsuData& self) { return self.v.size(); })
@@ -159,6 +168,7 @@ void add_grid(py::module& m, const std::string& name) {
     .def("__repr__", [name](const AsuData& self) {
         return tostr("<gemmi.Reciprocal", name, ".AsuData with ", self.v.size(), " values>");
     });
+    add_to_asu_data(asu_data);
 
   regr
     .def_readonly("half_l", &ReGr::half_l)

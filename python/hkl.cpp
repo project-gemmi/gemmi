@@ -168,8 +168,8 @@ void add_hkl(py::module& m) {
                                  AxisOrder order) {
         const Mtz::Column& f = self.get_column_with_label(f_col);
         const Mtz::Column& phi = self.get_column_with_label(phi_col);
-        return get_f_phi_on_grid<float>(MtzDataProxy{self}, f.idx, phi.idx,
-                                        size, half_l, order);
+        FPhiProxy<MtzDataProxy> fphi(MtzDataProxy{self}, f.idx, phi.idx);
+        return get_f_phi_on_grid<float>(fphi, size, half_l, order);
     }, py::arg("f"), py::arg("phi"), py::arg("size"),
        py::arg("half_l")=false, py::arg("order")=AxisOrder::XYZ)
     .def("get_value_on_grid", [](const Mtz& self,
@@ -334,8 +334,8 @@ void add_hkl(py::module& m) {
                                  bool half_l, AxisOrder order) {
         size_t f_idx = self.get_column_index(f_col);
         size_t phi_idx = self.get_column_index(phi_col);
-        return get_f_phi_on_grid<float>(ReflnDataProxy(self), f_idx, phi_idx,
-                                        size, half_l, order);
+        FPhiProxy<ReflnDataProxy> fphi(ReflnDataProxy{self}, f_idx, phi_idx);
+        return get_f_phi_on_grid<float>(fphi, size, half_l, order);
     }, py::arg("f"), py::arg("phi"), py::arg("size"),
        py::arg("half_l")=false, py::arg("order")=AxisOrder::XYZ)
     .def("get_value_on_grid", [](const ReflnBlock& self,

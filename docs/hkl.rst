@@ -911,6 +911,13 @@ Both Miller indicies and values can be accessed as NumPy arrays:
   >>> asu_data.value_array[158:159]
   array([-1.3769412-0.19008657j], dtype=complex64)
 
+We can also go back from AsuData to ReciprocalComplexGrid:
+
+.. doctest::
+
+  >>> asu_data.get_f_phi_on_grid([54,6,18])
+  <gemmi.ReciprocalComplexGrid(54, 6, 18)>
+
 
 .. _grid_size:
 

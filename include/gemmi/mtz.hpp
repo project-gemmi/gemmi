@@ -775,6 +775,7 @@ struct MtzDataProxy {
   const Mtz& mtz_;
   size_t stride() const { return mtz_.columns.size(); }
   size_t size() const { return mtz_.data.size(); }
+  using num_type = float;
   float get_num(size_t n) const { return mtz_.data[n]; }
   const UnitCell& unit_cell() const { return mtz_.cell; }
   const SpaceGroup* spacegroup() const { return mtz_.spacegroup; }

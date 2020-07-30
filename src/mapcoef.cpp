@@ -177,10 +177,10 @@ read_sf_and_fft_to_map(const char* input_path,
       fprintf(output, "Putting data from block %s into matrix...\n",
               rblock.block.name.c_str());
     gemmi::ReflnDataProxy data_proxy(rblock);
-    grid = gemmi::get_f_phi_on_grid<float>(data_proxy,
-                                           rblock.find_column_index(f_label),
-                                           rblock.find_column_index(ph_label),
-                                           size, half_l, axis_order);
+    int f_col = rblock.find_column_index(f_label);
+    int phi_col = rblock.find_column_index(ph_label);
+    gemmi::FPhiProxy<gemmi::ReflnDataProxy> fphi(data_proxy, f_col, phi_col);
+    grid = gemmi::get_f_phi_on_grid<float>(fphi, size, half_l, axis_order);
     if (weight_label)
       weight_grid = gemmi::get_value_on_grid<float>(
           data_proxy, rblock.find_column_index(weight_label),
@@ -197,9 +197,8 @@ read_sf_and_fft_to_map(const char* input_path,
       fprintf(output, "Putting data from columns %s and %s into matrix...\n",
               cols[0]->label.c_str(), cols[1]->label.c_str());
     timer.start();
-    grid = gemmi::get_f_phi_on_grid<float>(data_proxy,
-                                           cols[0]->idx, cols[1]->idx,
-                                           size, half_l, axis_order);
+    gemmi::FPhiProxy<gemmi::MtzDataProxy> fphi(data_proxy, cols[0]->idx, cols[1]->idx);
+    grid = gemmi::get_f_phi_on_grid<float>(fphi, size, half_l, axis_order);
     timer.print("F/Phi grid prepared in");
     if (weight_label) {
       const Mtz::Column& col = get_mtz_column(mtz, section, weight_label);

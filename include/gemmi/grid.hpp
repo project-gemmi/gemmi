@@ -534,6 +534,16 @@ struct ReciprocalGrid : GridBase<T> {
   };
   struct AsuData {
     std::vector<HklValue> v;
+    UnitCell unit_cell_;
+    const SpaceGroup* spacegroup_ = nullptr;
+    // function defining FPhiProxy interface
+    size_t stride() const { return 1; }
+    size_t size() const { return v.size(); }
+    Miller get_hkl(size_t n) const { return v[n].hkl; }
+    double get_f(size_t n) const { return std::abs(v[n].value); }
+    double get_phi(size_t n) const { return std::arg(v[n].value); }
+    const UnitCell& unit_cell() const { return unit_cell_; }
+    const SpaceGroup* spacegroup() const { return spacegroup_; }
   };
 
   AsuData prepare_asu_data(double dmin=0, bool with_000=false, bool with_sys_abs=false) {
@@ -565,6 +575,8 @@ struct ReciprocalGrid : GridBase<T> {
           }
       }
     }
+    asu_data.unit_cell_ = this->unit_cell;
+    asu_data.spacegroup_ = this->spacegroup;
     return asu_data;
   }
 };

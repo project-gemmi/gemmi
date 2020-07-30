@@ -210,6 +210,7 @@ struct ReflnDataProxy {
     : rb_(rb), hkl_cols_(rb_.get_hkl_column_indices()) {}
   size_t stride() const { return loop().tags.size(); }
   size_t size() const { return loop().values.size(); }
+  using num_type = double;
   double get_num(size_t n) const { return cif::as_number(loop().values[n]); }
   const UnitCell& unit_cell() const { return rb_.cell; }
   const SpaceGroup* spacegroup() const { return rb_.spacegroup; }
