@@ -3,27 +3,24 @@
   version: '{branch}-{build}'
   environment:
     matrix:
-      - configuration: vs16
+      - job_name: vs2019
         arch: x64
         APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
         CMAKE_GENERATOR: Visual Studio 16 2019
         CMAKE_CONFIG: RelWithDebInfo
         USE_PIP: 1
-      - configuration: vs15
-        arch: x64
+      - arch: x64
         APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
         CMAKE_GENERATOR: Visual Studio 15 2017 Win64
         CMAKE_CONFIG: Release
         PY_PYTHON: 3.5
-      - configuration: vs14
-        arch: x86
+      - arch: x86
         APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
         CMAKE_GENERATOR: Visual Studio 14 2015
         CMAKE_CONFIG: Debug
         PY_PYTHON: 2.7-32
         USE_PIP: 1
-      - configuration: mingw64
-        arch: x64
+      - arch: x64
         CMAKE_GENERATOR: MSYS Makefiles
         COMPILER: MinGW64-gcc-7.2.0
         CMAKE_CONFIG: MinSizeRel
@@ -38,7 +35,7 @@
   - cmake -G "%CMAKE_GENERATOR%" .
   - cmake --build . --config %CMAKE_CONFIG%
   - cmake --build . --config %CMAKE_CONFIG% --target check
-  - cmd: 'if exist "%CMAKE_CONFIG%\gemmi.exe" copy "%CMAKE_CONFIG%\gemmi.exe" . /y'
+  - if exist "%CMAKE_CONFIG%\gemmi.exe" copy "%CMAKE_CONFIG%\gemmi.exe" . /y
   - py -c "import sys; print(sys.version+'\n'+sys.executable)"
   - if not defined USE_PIP (py setup.py install)
   - cmd: '"%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
