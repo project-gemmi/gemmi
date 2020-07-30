@@ -38,7 +38,7 @@
   - cmake -G "%CMAKE_GENERATOR%" .
   - cmake --build . --config %CMAKE_CONFIG%
   - cmake --build . --config %CMAKE_CONFIG% --target check
-  - cmd: 'if exists "%CMAKE_CONFIG%\gemmi.exe" copy "%CMAKE_CONFIG%\gemmi.exe" . /y'
+  - cmd: 'if exist "%CMAKE_CONFIG%\gemmi.exe" copy "%CMAKE_CONFIG%\gemmi.exe" . /y'
   - py -c "import sys; print(sys.version+'\n'+sys.executable)"
   - if not defined USE_PIP (py setup.py install)
   - cmd: '"%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
