@@ -72,10 +72,13 @@ inline void split_element_and_charge(const std::string& label, T* dest) {
   int len = label.size() > 1 && std::isalpha(label[1]) ? 2 : 1;
   dest->element = len == 1 ? impl::find_single_letter_element(label[0] & ~0x20)
                            : find_element(label.c_str());
-  if (dest->element != El::X && label[len] >= '0' && label[len] <= '9')
-    dest->charge = label[len] - '0';
-  if (len < label.size() && label[len+1] == '-')
-    dest->charge = -dest->charge;
+  if (dest->element != El::X && (label.back() == '+' || label.back() == '-')) {
+    int sign = label.back() == '+' ? 1 : -1;
+    if (label.size() - len == 1)
+      dest->charge = sign;
+    else if (label.size() - len == 2 && label[len] >= '0' && label[len] <= '9')
+      dest->charge = sign * (label[len] - '0');
+  }
 }
 
 inline std::vector<SmallStructure::Site>
