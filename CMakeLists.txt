@@ -3,7 +3,7 @@ project(gemmi C CXX)
 
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
-option(INSTALL_EGG_INFO "Install .egg-info via setup.py" OFF)
+option(INSTALL_EGG_INFO "Install .egg-info via setup.py" ON)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" OFF)
 
