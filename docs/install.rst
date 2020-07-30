@@ -34,6 +34,9 @@ C++ compiler (GCC 4.8+, Clang 3.4+, MSVC 2015+, ICC 17+)::
 
     pip install gemmi
 
+(We have binary wheels for some Python versions on Windows, so the command
+above may actually download binaries).
+
 Alternatively, to install the latest version directly from the repository::
 
     pip install git+https://github.com/project-gemmi/gemmi.git
@@ -99,6 +102,9 @@ The library comes with a command-line program. To build it from source::
     cd gemmi
     cmake .
     make
+
+Binaries are distributed with the CCP4 suite and with Global Phasing software.
+They are also included in the conda-forge packages mentioned above.
 
 Credits
 -------

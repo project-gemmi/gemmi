@@ -3,23 +3,27 @@
   version: '{branch}-{build}'
   environment:
     matrix:
-      - arch: x86
+      - configuration: vs16
+        arch: x64
+        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+        CMAKE_GENERATOR: Visual Studio 16 2019
+        CMAKE_CONFIG: RelWithDebInfo
+        USE_PIP: 1
+      - configuration: vs15
+        arch: x64
+        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+        CMAKE_GENERATOR: Visual Studio 15 2017 Win64
+        CMAKE_CONFIG: Release
+        PY_PYTHON: 3.5
+      - configuration: vs14
+        arch: x86
         APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
         CMAKE_GENERATOR: Visual Studio 14 2015
         CMAKE_CONFIG: Debug
         PY_PYTHON: 2.7-32
         USE_PIP: 1
-      - arch: x64
-        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-        CMAKE_GENERATOR: Visual Studio 15 2017 Win64
-        CMAKE_CONFIG: Release
-        PY_PYTHON: 3.5
-      - arch: x64
-        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-        CMAKE_GENERATOR: Visual Studio 16 2019
-        CMAKE_CONFIG: RelWithDebInfo
-        USE_PIP: 1
-      - arch: x64
+      - configuration: mingw64
+        arch: x64
         CMAKE_GENERATOR: MSYS Makefiles
         COMPILER: MinGW64-gcc-7.2.0
         CMAKE_CONFIG: MinSizeRel
@@ -30,9 +34,11 @@
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (del "C:\Program Files (x86)\MSBuild\14.0\Microsoft.Common.targets\ImportAfter\Xamarin.Common.targets")
   - if defined BINDIR (set "PATH=%BINDIR%;%PATH%")
   - path
+  - cmake --version
   - cmake -G "%CMAKE_GENERATOR%" .
   - cmake --build . --config %CMAKE_CONFIG%
   - cmake --build . --config %CMAKE_CONFIG% --target check
+  - cmd: 'if exists "%CMAKE_CONFIG%\gemmi.exe" copy "%CMAKE_CONFIG%\gemmi.exe" . /y'
   - py -c "import sys; print(sys.version+'\n'+sys.executable)"
   - if not defined USE_PIP (py setup.py install)
   - cmd: '"%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
@@ -41,6 +47,9 @@
   test_script:
   - ctest -C "%CMAKE_CONFIG%" --output-on-failure
   - py -m unittest discover -v -s tests/
+
+  artifacts:
+    - path: gemmi.exe
 
 -
   skip_non_tags: true
