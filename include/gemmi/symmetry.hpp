@@ -410,7 +410,7 @@ struct GroupOps {
     return epsilon;
   }
   int epsilon_factor(const Op::Miller& hkl) const {
-    return epsilon_factor_without_centering(hkl) * cen_ops.size();
+    return epsilon_factor_without_centering(hkl) * (int) cen_ops.size();
   }
 
   static bool has_phase_shift(const Op::Tran& c, const Op::Miller& hkl) {
