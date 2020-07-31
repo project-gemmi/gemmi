@@ -40,10 +40,10 @@ public:
       const float* raw_data = (const float*)(data_ + 80);
       gemmi::MtzExternalDataProxy proxy(mtz_, raw_data);
       auto size = gemmi::get_size_for_hkl(proxy, {{0, 0, 0}}, 3.);
-      gemmi::FPhiGrid<float> coefs
-        = gemmi::get_f_phi_on_grid<float>(proxy, f_col->idx, phi_col->idx,
-                                          size, /*half_l=*/true,
-                                          gemmi::AxisOrder::ZYX);
+      using namespace gemmi;
+      FPhiProxy<MtzExternalDataProxy> fphi(proxy, f_col->idx, phi_col->idx);
+      FPhiGrid<float> coefs = get_f_phi_on_grid<float>(fphi, size, /*half_l=*/true,
+                                                       gemmi::AxisOrder::ZYX);
       gemmi::transform_f_phi_grid_to_map_(std::move(coefs), grid_);
     } catch (std::runtime_error& e) {
       last_error_ = e.what();
