@@ -104,7 +104,12 @@ The library comes with a command-line program. To build it from source::
     make
 
 Binaries are distributed with the CCP4 suite and with Global Phasing software.
-They are also included in the conda-forge packages mentioned above.
+They are also included in
+`conda-forge packages <https://anaconda.org/conda-forge/gemmi/files>`_.
+Additionally, the very latest Windows builds (as well as older ones)
+can be downloaded from
+`AppVeyor CI <https://ci.appveyor.com/project/wojdyr/gemmi>`_:
+click the first job, then in the Artifacts tab you should find gemmi.exe.
 
 Credits
 -------
