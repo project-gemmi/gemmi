@@ -272,8 +272,8 @@ endif()
 
 ### tests and examples ###
 
-add_executable(ctest EXCLUDE_FROM_ALL fortran/ctest.c)
-target_link_libraries(ctest PRIVATE cgemmi)
+add_executable(c_test EXCLUDE_FROM_ALL fortran/c_test.c)
+target_link_libraries(c_test PRIVATE cgemmi)
 
 add_executable(cpptest EXCLUDE_FROM_ALL tests/main.cpp tests/cif.cpp)
 
@@ -317,7 +317,7 @@ add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION>)
 add_test(NAME cpptest COMMAND cpptest)
 
 add_dependencies(check
-    ctest cpptest hello doc_example doc_example2 doc_maybegz
+    c_test cpptest hello doc_example doc_example2 doc_maybegz
     test_disulf check_conn print-version)
 
 if (USE_FORTRAN)

@@ -16,15 +16,15 @@
         USE_PIP: 1
       - arch: x64
         CMAKE_GENERATOR: Visual Studio 14 2015 Win64
-        CMAKE_CONFIG: Release
+        CMAKE_CONFIG: MinSizeRel
         APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-        PY_PYTHON: 3.5
+        PY_PYTHON: 3.6
       - arch: x64
         CMAKE_GENERATOR: MSYS Makefiles
         COMPILER: MinGW64-gcc-7.2.0
-        CMAKE_CONFIG: MinSizeRel
-        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-        PY_PYTHON: 3.5-32
+        CMAKE_CONFIG: Release
+        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+        PY_PYTHON: 3.7-32
         BINDIR: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin;C:\msys64\usr\bin
 
   build_script:
@@ -35,7 +35,10 @@
   - cmake -G "%CMAKE_GENERATOR%" .
   - cmake --build . --config %CMAKE_CONFIG%
   - cmake --build . --config %CMAKE_CONFIG% --target check
+  - if exist gemmi.exe  strip gemmi.exe
   - if exist "%CMAKE_CONFIG%\gemmi.exe" copy "%CMAKE_CONFIG%\gemmi.exe" . /y
+  - dir gemmi.exe
+  - dir C:\mingw-w64\
   - py -c "import sys; print(sys.version+'\n'+sys.executable)"
   - if not defined USE_PIP (py setup.py install)
   - cmd: '"%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
