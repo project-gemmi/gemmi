@@ -22,7 +22,6 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 #include <pybind11/stl_bind.h>
 #include <pybind11/numpy.h>
 #include "common.h"  // for normalize_index
-
 namespace py = pybind11;
 using namespace gemmi;
 
@@ -37,9 +36,25 @@ std::string grid_dim_str(const GridBase<T>& g) {
 
 template<typename T> void add_to_asu_data(T&) {}
 template<> void add_to_asu_data(py::class_<FPhiGrid<float>::AsuData>& cl) {
+  cl.def("get_size_for_hkl", &get_size_for_hkl<FPhiGrid<float>::AsuData>,
+         py::arg("min_size")=std::array<int,3>{{0,0,0}}, py::arg("sample_rate")=0.);
+  cl.def("data_fits_into", &data_fits_into<FPhiGrid<float>::AsuData>, py::arg("size"));
   cl.def("get_f_phi_on_grid", get_f_phi_on_grid<float, FPhiGrid<float>::AsuData>,
          py::arg("size"), py::arg("half_l")=false, py::arg("order")=AxisOrder::XYZ);
 }
+
+template<typename AsuData, typename F>
+py::array_t<float> make_new_column(const AsuData& asu_data, F f) {
+  if (!asu_data.unit_cell().is_crystal())
+    throw std::runtime_error("AsuData: unknown unit cell parameters");
+  py::array_t<float> arr(asu_data.size());
+  py::buffer_info buf = arr.request();
+  float* ptr = (float*) buf.ptr;
+  for (size_t i = 0; i < asu_data.size(); ++i)
+    ptr[i] = static_cast<float>(f(asu_data.unit_cell(), asu_data.get_hkl(i)));
+  return arr;
+}
+
 
 template<typename T>
 void add_grid(py::module& m, const std::string& name) {
@@ -146,6 +161,19 @@ void add_grid(py::module& m, const std::string& name) {
   using AsuData = typename ReGr::AsuData;
   py::class_<AsuData> asu_data(regr, "AsuData");
   asu_data
+    .def(py::init([](py::array_t<int> hkl, py::array_t<T> values) {
+      auto h = hkl.unchecked<2>();
+      if (h.shape(1) != 3)
+        throw std::domain_error("error: the size of the second dimension != 3");
+      auto v = values.template unchecked<1>();
+      if (h.shape(0) != v.shape(0))
+        throw std::domain_error("error: arrays have different lengths");
+      AsuData* ret = new AsuData;
+      ret->v.reserve(h.shape(0));
+      for (ssize_t i = 0; i < h.shape(0); ++i)
+        ret->v.push_back({{{h(i, 0), h(i, 1), h(i, 2)}}, v(i)});
+      return ret;
+    }), py::arg("miller_array"), py::arg("value_array"))
     .def("__iter__", [](AsuData& self) { return py::make_iterator(self.v); },
          py::keep_alive<0, 1>())
     .def("__len__", [](const AsuData& self) { return self.v.size(); })
@@ -165,6 +193,16 @@ void add_grid(py::module& m, const std::string& name) {
       return py::array_t<T>({(ssize_t)self.v.size()}, {stride},
                             &data->value, py::cast(self));
     }, py::return_value_policy::reference_internal)
+    .def("make_1_d2_array", [](const AsuData& asu_data) {
+      return make_new_column(asu_data, [](const UnitCell& cell, Miller hkl) {
+        return cell.calculate_1_d2(hkl);
+      });
+    })
+    .def("make_d_array", [](const AsuData& asu_data) {
+      return make_new_column(asu_data, [](const UnitCell& cell, Miller hkl) {
+        return cell.calculate_d(hkl);
+      });
+    })
     .def("__repr__", [name](const AsuData& self) {
         return tostr("<gemmi.Reciprocal", name, ".AsuData with ", self.v.size(), " values>");
     });

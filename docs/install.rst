@@ -96,7 +96,9 @@ together with the :file:`fortran/*.h` headers.
 Gemmi program
 -------------
 
-The library comes with a command-line program. To build it from source::
+The library comes with a command-line program. To build it from source,
+first make sure you have git, cmake and C++ compiler installed
+(on Ubuntu: ``sudo apt install git cmake make g++``), then::
 
     git clone https://github.com/project-gemmi/gemmi.git
     cd gemmi
@@ -108,8 +110,8 @@ They are also included in
 `conda-forge packages <https://anaconda.org/conda-forge/gemmi/files>`_.
 Additionally, the very latest Windows builds (as well as older ones)
 can be downloaded from
-`AppVeyor CI <https://ci.appveyor.com/project/wojdyr/gemmi>`_:
-click the first job, then in the Artifacts tab you should find gemmi.exe.
+`AppVeyor CI <https://ci.appveyor.com/project/wojdyr/gemmi>`_: click
+the first (green) job, then in the Artifacts tab you should find gemmi.exe.
 
 Credits
 -------

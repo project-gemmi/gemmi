@@ -876,7 +876,11 @@ We can also iterate over points of the grid.
   >>> grid.to_hkl(point)
   [-1, -1, -1]
 
+
 .. _asu_data:
+
+AsuData
+-------
 
 Often, one is only interested in unique points of the grid.
 We have a function that makes a table of H, K, L and values.
@@ -895,7 +899,7 @@ Arguments of the ``prepare_asu_data`` function are optional.
 By default, the resolution is not limited, the (000) reflection is not included
 and systematic absences are also not included.
 
-Both Miller indicies and values can be accessed as NumPy arrays:
+Both Miller indices and values can be accessed as NumPy arrays:
 
 .. doctest::
   :skipif: numpy is None
@@ -917,6 +921,31 @@ We can also go back from AsuData to ReciprocalComplexGrid:
 
   >>> asu_data.get_f_phi_on_grid([54,6,18])
   <gemmi.ReciprocalComplexGrid(54, 6, 18)>
+
+and we can use other method common for Mtz and ReflnBlock:
+
+.. doctest::
+
+  >>> asu_data.get_size_for_hkl(sample_rate=1.5)
+  [54, 6, 18]
+  >>> asu_data.data_fits_into([54,6,18])
+  True
+  >>> asu_data.make_1_d2_array()
+  array([0.268129  , 0.26766333, 0.27679217, ..., 0.30102324, 0.27818915,
+         0.2978438 ], dtype=float32)
+  >>> asu_data.make_d_array()
+  array([1.9312037, 1.9328829, 1.9007417, ..., 1.8226361, 1.8959632,
+         1.8323385], dtype=float32)
+
+The data can be edited as two NumPy arrays and then copied into new AsuData
+object. Here we exclude low-resolution data:
+
+.. doctest::
+
+  >>> d = asu_data.make_d_array()
+  >>> gemmi.ReciprocalComplexGrid.AsuData(asu_data.miller_array[d < 8],
+  ...                                     asu_data.value_array[d < 8])
+  <gemmi.ReciprocalComplexGrid.AsuData with 399 values>
 
 
 .. _grid_size:
