@@ -189,16 +189,11 @@ void add_hkl(py::module& m) {
                                       std::array<int, 3> exact_size,
                                       double sample_rate,
                                       AxisOrder order) {
-        const Mtz::Column* f = self.column_with_label(f_col);
-        const Mtz::Column* phi = self.column_with_label(phi_col);
-        if (!f || !phi)
-          fail("Column labels not found.");
-        bool exact = (exact_size[0] != 0 || exact_size[1] != 0 ||
-                      exact_size[2] != 0);
-        return transform_f_phi_to_map<float>(MtzDataProxy{self},
-                                             f->idx, phi->idx,
-                                             exact ? exact_size : min_size,
-                                             sample_rate, exact, order);
+        const Mtz::Column& f = self.get_column_with_label(f_col);
+        const Mtz::Column& phi = self.get_column_with_label(phi_col);
+        FPhiProxy<MtzDataProxy> fphi(MtzDataProxy{self}, f.idx, phi.idx);
+        return transform_f_phi_to_map2<float>(fphi, min_size, sample_rate,
+                                              exact_size, order);
     }, py::arg("f"), py::arg("phi"),
        py::arg("min_size")=std::array<int,3>{{0,0,0}},
        py::arg("exact_size")=std::array<int,3>{{0,0,0}},
@@ -356,12 +351,9 @@ void add_hkl(py::module& m) {
                                       AxisOrder order) {
         size_t f_idx = self.get_column_index(f_col);
         size_t phi_idx = self.get_column_index(phi_col);
-        bool exact = (exact_size[0] != 0 || exact_size[1] != 0 ||
-                      exact_size[2] != 0);
-        return transform_f_phi_to_map<float>(ReflnDataProxy(self),
-                                             f_idx, phi_idx,
-                                             exact ? exact_size : min_size,
-                                             sample_rate, exact, order);
+        FPhiProxy<ReflnDataProxy> fphi(ReflnDataProxy{self}, f_idx, phi_idx);
+        return transform_f_phi_to_map2<float>(fphi, min_size, sample_rate,
+                                              exact_size, order);
     }, py::arg("f"), py::arg("phi"),
        py::arg("min_size")=std::array<int,3>{{0,0,0}},
        py::arg("exact_size")=std::array<int,3>{{0,0,0}},

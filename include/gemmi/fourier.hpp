@@ -289,20 +289,29 @@ Grid<T> transform_f_phi_grid_to_map(FPhiGrid<T>&& hkl) {
   return map;
 }
 
-template<typename T, typename DataProxy>
-Grid<T> transform_f_phi_to_map(const DataProxy& data,
-                               size_t f_col, size_t phi_col,
+template<typename T, typename FPhi>
+Grid<T> transform_f_phi_to_map(const FPhi& fphi,
                                std::array<int, 3> size,
                                double sample_rate,
                                bool exact_size=false,
                                AxisOrder order=AxisOrder::XYZ) {
   if (exact_size) {
-    gemmi::check_grid_factors(data.spacegroup(), size[0], size[1], size[2]);
+    gemmi::check_grid_factors(fphi.spacegroup(), size[0], size[1], size[2]);
   } else {
-    size = get_size_for_hkl(data, size, sample_rate);
+    size = get_size_for_hkl(fphi, size, sample_rate);
   }
-  FPhiProxy<DataProxy> fphi(data, f_col, phi_col);
   return transform_f_phi_grid_to_map(get_f_phi_on_grid<T>(fphi, size, true, order));
+}
+
+template<typename T, typename FPhi>
+Grid<T> transform_f_phi_to_map2(const FPhi& fphi,
+                                std::array<int, 3> min_size,
+                                double sample_rate,
+                                std::array<int, 3> exact_size,
+                                AxisOrder order=AxisOrder::XYZ) {
+  bool exact = (exact_size[0] != 0 || exact_size[1] != 0 || exact_size[2] != 0);
+  return transform_f_phi_to_map<float>(fphi, exact ? exact_size : min_size,
+                                       sample_rate, exact, order);
 }
 
 template<typename T>
