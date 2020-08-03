@@ -958,8 +958,15 @@ struct SpaceGroup { // typically 44 bytes
   char hall[15];
   int basisop_idx;
 
-  std::string colon_ext() const { return ext ? std::string(":") + ext : ""; }
-  std::string xhm() const { return hm + colon_ext(); }
+  std::string xhm() const {
+    std::string ret = hm;
+    if (ext) {
+      ret += ':';
+      ret += ext;
+    }
+    return ret;
+  }
+
   // (old) CCP4 spacegroup names start with H for hexagonal setting
   char ccp4_lattice_type() const { return ext == 'H' ? 'H' : hm[0]; }
 
