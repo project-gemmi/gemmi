@@ -129,13 +129,12 @@ void add_symmetry(py::module& m) {
     .def("change_basis", &GroupOps::change_basis, py::arg("cob"),
          "Applies the change-of-basis operator (in place).");
 
-  py::class_<SpaceGroup>(m, "SpaceGroup")
-    .def(py::init<>())
+  py::class_<SpaceGroup, std::unique_ptr<SpaceGroup, py::nodelete>>(m, "SpaceGroup")
     .def(py::init([](int n) {
-           return const_cast<SpaceGroup&>(get_spacegroup_by_number(n));
+           return const_cast<SpaceGroup*>(&get_spacegroup_by_number(n));
          }), py::arg("ccp4"), py::return_value_policy::reference)
     .def(py::init([](const std::string& s) {
-           return const_cast<SpaceGroup&>(get_spacegroup_by_name(s));
+           return const_cast<SpaceGroup*>(&get_spacegroup_by_name(s));
          }), py::arg("hm"), py::return_value_policy::reference)
     .def_readonly("number", &SpaceGroup::number, "number 1-230.")
     .def_readonly("ccp4", &SpaceGroup::ccp4, "ccp4 number")
