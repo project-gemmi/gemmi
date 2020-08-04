@@ -810,9 +810,9 @@ In C++, the ``<gemmi/fourier.hpp>`` header defines templated function
 ``get_f_phi_on_grid()`` that can be used with both MTZ and SF mmCIF data.
 Here, we focus on the usage from Python.
 
-Both Mtz and ReflnBlock classes have method ``get_f_phi_on_grid``
-that takes three mandatory arguments: column names for the amplitude and phase,
-and the grid size.
+Both Mtz and ReflnBlock classes (as well as the AsuData class introduced below)
+have method ``get_f_phi_on_grid`` that takes three mandatory arguments:
+column names for the amplitude and phase, and the grid size.
 It returns reciprocal grid of complex numbers
 (``ReciprocalGrid<std::complex<float>>`` in C++,
 ``ReciprocalComplexGrid`` in Python).
@@ -882,14 +882,19 @@ We can also iterate over points of the grid.
 AsuData
 -------
 
-Often, one is only interested in unique points of the grid.
-We have a function that makes a table of H, K, L and values.
+AsuData is an array of symmetry-unique Miller indices and values
+that can be extracted from a reciprocal-space grid:
 
 .. doctest::
 
   >>> asu_data = grid.prepare_asu_data(dmin=1.8, with_000=False, with_sys_abs=False)
   >>> asu_data
   <gemmi.ReciprocalComplexGrid.AsuData with 407 values>
+
+Each item in AsuData has two properties, hkl and value:
+
+.. doctest::
+
   >>> asu_data[158]
   <gemmi.ReciprocalComplexGrid.HklValue (-6,2,5) (-1.37694,-0.190087)>
   >>> _.hkl, _.value
@@ -938,14 +943,27 @@ and we can use other method common for Mtz and ReflnBlock:
          1.8323385], dtype=float32)
 
 The data can be edited as two NumPy arrays and then copied into new AsuData
-object. Here we exclude low-resolution data:
+object. In this example we exclude low-resolution data:
 
 .. doctest::
 
   >>> d = asu_data.make_d_array()
-  >>> gemmi.ReciprocalComplexGrid.AsuData(asu_data.miller_array[d < 8],
-  ...                                     asu_data.value_array[d < 8])
+  >>> new_data = gemmi.ReciprocalComplexGrid.AsuData(asu_data.unit_cell,
+  ...                                                asu_data.spacegroup,
+  ...                                                asu_data.miller_array[d<8],
+  ...                                                asu_data.value_array[d<8])
+  >>> new_data
   <gemmi.ReciprocalComplexGrid.AsuData with 399 values>
+  >>> hkl_grid = new_data.get_f_phi_on_grid([54, 6, 18])
+  >>> gemmi.transform_f_phi_grid_to_map(hkl_grid)
+  <gemmi.FloatGrid(54, 6, 18)>
+
+The last two calls could be replaced with:
+
+.. doctest::
+
+  >>> new_data.transform_f_phi_to_map(exact_size=[54, 6, 18])
+  <gemmi.FloatGrid(54, 6, 18)>
 
 
 .. _grid_size:

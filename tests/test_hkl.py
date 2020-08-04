@@ -79,6 +79,18 @@ class TestMtz(unittest.TestCase):
         os.remove(out_name)
         self.assertEqual(mtz2.spacegroup.hm, 'P 1 21 1')
 
+    def asu_data_test(self, grid):
+        asu = grid.prepare_asu_data()
+        d = asu.make_d_array()
+        asu2 = gemmi.ReciprocalComplexGrid.AsuData(asu.unit_cell,
+                                                   asu.spacegroup,
+                                                   asu.miller_array[d > 2.5],
+                                                   asu.value_array[d > 2.5])
+        ngrid = asu2.transform_f_phi_to_map(sample_rate=1.5)
+        hkl_grid = asu2.get_f_phi_on_grid([ngrid.nu, ngrid.nv, ngrid.nw])
+        alt_ngrid = gemmi.transform_f_phi_grid_to_map(hkl_grid)
+        compare_maps(self, ngrid, alt_ngrid, atol=1e-6)
+
     def test_f_phi_grid(self):
         path = full_path('5wkd_phases.mtz.gz')
         mtz = gemmi.read_mtz_file(path)
@@ -92,6 +104,7 @@ class TestMtz(unittest.TestCase):
             array1 = numpy.array(grid1, copy=False)
             array2 = numpy.array(grid2, copy=False)
             self.assertTrue((array2 == array1.transpose(2,1,0)).all())
+            self.asu_data_test(grid1)
 
         fft_test(self, mtz, 'FWT', 'PHWT', size)
         fft_test(self, mtz, 'FWT', 'PHWT', size, order=gemmi.AxisOrder.ZYX)

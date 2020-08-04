@@ -36,11 +36,17 @@ std::string grid_dim_str(const GridBase<T>& g) {
 
 template<typename T> void add_to_asu_data(T&) {}
 template<> void add_to_asu_data(py::class_<FPhiGrid<float>::AsuData>& cl) {
-  cl.def("get_size_for_hkl", &get_size_for_hkl<FPhiGrid<float>::AsuData>,
+  using AsuData = typename FPhiGrid<float>::AsuData;
+  cl.def("get_size_for_hkl", &get_size_for_hkl<AsuData>,
          py::arg("min_size")=std::array<int,3>{{0,0,0}}, py::arg("sample_rate")=0.);
-  cl.def("data_fits_into", &data_fits_into<FPhiGrid<float>::AsuData>, py::arg("size"));
-  cl.def("get_f_phi_on_grid", get_f_phi_on_grid<float, FPhiGrid<float>::AsuData>,
+  cl.def("data_fits_into", &data_fits_into<AsuData>, py::arg("size"));
+  cl.def("get_f_phi_on_grid", get_f_phi_on_grid<float, AsuData>,
          py::arg("size"), py::arg("half_l")=false, py::arg("order")=AxisOrder::XYZ);
+  cl.def("transform_f_phi_to_map", &transform_f_phi_to_map2<float, AsuData>,
+         py::arg("min_size")=std::array<int,3>{{0,0,0}},
+         py::arg("sample_rate")=0.,
+         py::arg("exact_size")=std::array<int,3>{{0,0,0}},
+         py::arg("order")=AxisOrder::XYZ);
 }
 
 template<typename AsuData, typename F>
@@ -161,7 +167,8 @@ void add_grid(py::module& m, const std::string& name) {
   using AsuData = typename ReGr::AsuData;
   py::class_<AsuData> asu_data(regr, "AsuData");
   asu_data
-    .def(py::init([](py::array_t<int> hkl, py::array_t<T> values) {
+    .def(py::init([](const UnitCell& unit_cell, const SpaceGroup* sg,
+                     py::array_t<int> hkl, py::array_t<T> values) {
       auto h = hkl.unchecked<2>();
       if (h.shape(1) != 3)
         throw std::domain_error("error: the size of the second dimension != 3");
@@ -169,17 +176,23 @@ void add_grid(py::module& m, const std::string& name) {
       if (h.shape(0) != v.shape(0))
         throw std::domain_error("error: arrays have different lengths");
       AsuData* ret = new AsuData;
+      ret->spacegroup_ = sg;
+      ret->unit_cell_ = unit_cell;
+      ret->unit_cell_.set_cell_images_from_spacegroup(ret->spacegroup_);
       ret->v.reserve(h.shape(0));
       for (ssize_t i = 0; i < h.shape(0); ++i)
         ret->v.push_back({{{h(i, 0), h(i, 1), h(i, 2)}}, v(i)});
       return ret;
-    }), py::arg("miller_array"), py::arg("value_array"))
+    }), py::arg("cell"), py::arg("sg").none(false),
+        py::arg("miller_array"), py::arg("value_array"))
     .def("__iter__", [](AsuData& self) { return py::make_iterator(self.v); },
          py::keep_alive<0, 1>())
     .def("__len__", [](const AsuData& self) { return self.v.size(); })
     .def("__getitem__", [](AsuData& self, int index) -> typename ReGr::HklValue& {
         return self.v.at(normalize_index(index, self.v));
     }, py::arg("index"), py::return_value_policy::reference_internal)
+    .def_readwrite("spacegroup", &AsuData::spacegroup_)
+    .def_readwrite("unit_cell", &AsuData::unit_cell_)
     .def_property_readonly("miller_array", [](const AsuData& self) {
       const typename ReGr::HklValue* data = self.v.data();
       py::array::ShapeContainer shape({(ssize_t)self.v.size(), 3});
