@@ -55,6 +55,9 @@ class TestFloatGrid(unittest.TestCase):
             arr = numpy.array(m.grid, copy=False)
             self.assertEqual(arr.shape, (60, 24, 60))
             self.assertEqual(arr[3][4][5], 100)
+            grid2 = gemmi.FloatGrid(arr)
+            self.assertTrue(numpy.allclose(m.grid, grid2, atol=0.0, rtol=0,
+                                           equal_nan=True))
 
     def test_new(self):
         N = 24

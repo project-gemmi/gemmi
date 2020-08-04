@@ -102,6 +102,16 @@ void add_grid(py::module& m, const std::string& name) {
       grid->set_size(nx, ny, nz);
       return grid;
     }), py::arg("nx"), py::arg("ny"), py::arg("nz"))
+    .def(py::init([](py::array_t<T> arr) {
+      auto r = arr.template unchecked<3>();
+      Gr* grid = new Gr();
+      grid->set_size(r.shape(0), r.shape(1), r.shape(2));
+      for (int i = 0; i < r.shape(0); ++i)
+        for (int j = 0; j < r.shape(1); ++j)
+          for (int k = 0; k < r.shape(2); ++k)
+            grid->data[grid->index_q(i, j, k)] = r(i, j, k);
+      return grid;
+    }), py::arg().noconvert())
     .def("get_value", &Gr::get_value)
     .def("set_value", &Gr::set_value)
     .def("get_point", &Gr::get_point)
