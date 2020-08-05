@@ -154,6 +154,7 @@ void add_unitcell(py::module& m) {
                            [](const UnitCell& self) { return self.orth.mat; })
     .def("set", &UnitCell::set)
     .def("is_crystal", &UnitCell::is_crystal)
+    .def("calculate_u_eq", &UnitCell::calculate_u_eq)
     .def("fractionalize", &UnitCell::fractionalize)
     .def("orthogonalize", &UnitCell::orthogonalize)
     .def("volume_per_image", &UnitCell::volume_per_image)

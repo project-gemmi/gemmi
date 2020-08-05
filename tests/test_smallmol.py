@@ -41,6 +41,12 @@ class TestRealCif(unittest.TestCase):
         disorder_groups = [site.disorder_group for site in small.sites]
         self.assertEqual(disorder_groups, [0, 1, 0, 2])
 
+    def test_mgi2(self):
+        small = gemmi.read_small_structure(full_path('2013551.cif'))
+        for site in small.sites:
+            u_eq = small.cell.calculate_u_eq(site.aniso)
+            self.assertAlmostEqual(u_eq, site.u_iso, delta=0.00012)
+
 # tests for gemmi/chemcomp_xyz.hpp
 class TestChemCompXyz(unittest.TestCase):
     def test_reading_monomer_SO3_coordinates(self):

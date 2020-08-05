@@ -181,6 +181,23 @@ struct UnitCell {
                  0., 0., 1.0 / c);
   }
 
+  // based on Fischer & Tillmanns (1988). Acta Cryst. C44, 775-776.
+  // "The equivalent isotropic displacement factor."
+  // The argument is a non-orthogonalized tensor U,
+  // i.e. the one from SmallStructure::Site, but not from Atom.
+  double calculate_u_eq(const SMat33<double>& ani) const {
+    double aar = a * ar;
+    double bbr = b * br;
+    double ccr = c * cr;
+    double cos_alpha = alpha == 90. ? 0. : std::cos(rad(alpha));
+    double cos_beta  = beta  == 90. ? 0. : std::cos(rad(beta));
+    double cos_gamma = gamma == 90. ? 0. : std::cos(rad(gamma));
+    return 1/3. * (sq(aar) * ani.u11 + sq(bbr) * ani.u22 + sq(ccr) * ani.u33 +
+                   2 * (aar * bbr * cos_gamma * ani.u12 +
+                        aar * ccr * cos_beta * ani.u13 +
+                        bbr * ccr * cos_alpha * ani.u23));
+  }
+
   void set_matrices_from_fract(const Transform& f) {
     // mmCIF _atom_sites.fract_transf_* and PDB SCALEn records usually
     // have less significant digits than unit cell parameters, and should
