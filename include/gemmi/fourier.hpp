@@ -315,7 +315,7 @@ Grid<T> transform_f_phi_to_map2(const FPhi& fphi,
 }
 
 template<typename T>
-FPhiGrid<T> transform_map_to_f_phi(const Grid<T>& map, bool half_l) {
+FPhiGrid<T> transform_map_to_f_phi(const Grid<T>& map, bool half_l, bool use_scale=true) {
   if (half_l && map.axis_order == AxisOrder::ZYX)
     fail("transform_map_to_f_phi(): half_l + ZYX order are not supported yet");
   FPhiGrid<T> hkl;
@@ -325,7 +325,7 @@ FPhiGrid<T> transform_map_to_f_phi(const Grid<T>& map, bool half_l) {
   hkl.half_l = half_l;
   int half_nw = map.nw / 2 + 1;
   hkl.set_size_without_checking(map.nu, map.nv, half_l ? half_nw : map.nw);
-  T norm = T(map.unit_cell.volume / map.point_count());
+  T norm = use_scale ? T(map.unit_cell.volume / map.point_count()) : 1;
   pocketfft::shape_t shape{(size_t)map.nw, (size_t)map.nv, (size_t)map.nu};
   std::ptrdiff_t s = sizeof(T);
   pocketfft::stride_t stride_in{s * hkl.nv * hkl.nu, s * hkl.nu, s};
