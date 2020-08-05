@@ -106,9 +106,9 @@ void add_grid(py::module& m, const std::string& name) {
       auto r = arr.template unchecked<3>();
       Gr* grid = new Gr();
       grid->set_size(r.shape(0), r.shape(1), r.shape(2));
-      for (int i = 0; i < r.shape(0); ++i)
+      for (int k = 0; k < r.shape(2); ++k)
         for (int j = 0; j < r.shape(1); ++j)
-          for (int k = 0; k < r.shape(2); ++k)
+          for (int i = 0; i < r.shape(0); ++i)
             grid->data[grid->index_q(i, j, k)] = r(i, j, k);
       return grid;
     }), py::arg().noconvert())
