@@ -65,6 +65,10 @@ struct SmallStructure {
       table.set((size_t)atom.element.elem);
     return table;
   }
+
+  void remove_hydrogens() {
+    vector_remove_if(sites, [](const Site& a) { return a.element.is_hydrogen(); });
+  }
 };
 
 template<typename T>

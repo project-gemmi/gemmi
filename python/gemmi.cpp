@@ -85,6 +85,7 @@ void add_misc(py::module& m) {
     .def_readonly("sites", &SmallStructure::sites)
     .def_readonly("atom_types", &SmallStructure::atom_types)
     .def("get_all_unit_cell_sites", &SmallStructure::get_all_unit_cell_sites)
+    .def("remove_hydrogens", &SmallStructure::remove_hydrogens)
     .def("__repr__", [](const SmallStructure& self) {
         return "<gemmi.SmallStructure: " + std::string(self.name) + ">";
     });
