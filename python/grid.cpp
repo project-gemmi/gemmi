@@ -102,7 +102,7 @@ void add_grid(py::module& m, const std::string& name) {
       grid->set_size(nx, ny, nz);
       return grid;
     }), py::arg("nx"), py::arg("ny"), py::arg("nz"))
-    .def(py::init([](py::array_t<T> arr) {
+    .def(py::init([](py::array_t<T> arr, const UnitCell *cell, const SpaceGroup* sg) {
       auto r = arr.template unchecked<3>();
       Gr* grid = new Gr();
       grid->set_size(r.shape(0), r.shape(1), r.shape(2));
@@ -110,8 +110,12 @@ void add_grid(py::module& m, const std::string& name) {
         for (int j = 0; j < r.shape(1); ++j)
           for (int i = 0; i < r.shape(0); ++i)
             grid->data[grid->index_q(i, j, k)] = r(i, j, k);
+      if (cell)
+        grid->set_unit_cell(*cell);
+      if (sg)
+        grid->spacegroup = sg;
       return grid;
-    }), py::arg().noconvert())
+    }), py::arg().noconvert(), py::arg("cell")=nullptr, py::arg("spacegroup")=nullptr)
     .def("get_value", &Gr::get_value)
     .def("set_value", &Gr::set_value)
     .def("get_point", &Gr::get_point)
