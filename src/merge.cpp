@@ -31,10 +31,11 @@ static const option::Descriptor Usage[] = {
   CommonUsage[Verbose],
   { BlockName, 0, "b", "block", Arg::Required,
     "  -b NAME, --block=NAME  \toutput mmCIF block name: data_NAME (default: merged)." },
-  { Compare, 0, "", "compare", Arg::None, "" },
+  { Compare, 0, "", "compare", Arg::None,
+    "  --compare  \tcompare unmerged and merged data (no output file)." },
   { NoOp, 0, "", "", Arg::None,
-    "The input file can be either SF-mmCIF with _diffrn_refln or MTZ.\n"
-    "The output file can be either SF-mmCIF or MTZ."
+    "\nThe input file can be either SF-mmCIF with _diffrn_refln or MTZ."
+    "\nThe output file can be either SF-mmCIF or MTZ."
   },
   { 0, 0, 0, 0, 0, 0 }
 };
