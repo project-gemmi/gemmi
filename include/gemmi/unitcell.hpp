@@ -387,6 +387,12 @@ struct UnitCell {
     return {ar*ar, br*br, cr*cr, ar*br*cos_gammar, ar*cr*cos_betar, br*cr*cos_alphar};
   }
 
+  UnitCell reciprocal() const {
+    auto acosd = [](float c) { return std::acos(c)/pi()*180.0; };
+    return UnitCell(ar, br, cr,
+                    acosd(cos_alphar), acosd(cos_betar), acosd(cos_gammar));
+  }
+
   Miller get_hkl_limits(double dmin) const {
     return {{int(a / dmin), int(b / dmin), int(c / dmin)}};
   }

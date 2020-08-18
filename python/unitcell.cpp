@@ -178,6 +178,7 @@ void add_unitcell(py::module& m) {
     })
     .def("metric_tensor", &UnitCell::metric_tensor)
     .def("reciprocal_metric_tensor", &UnitCell::reciprocal_metric_tensor)
+    .def("reciprocal", &UnitCell::reciprocal)
     .def("get_hkl_limits", &UnitCell::get_hkl_limits, py::arg("dmin"))
     .def("__repr__", [](const UnitCell& self) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
