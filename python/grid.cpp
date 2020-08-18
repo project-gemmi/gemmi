@@ -238,6 +238,27 @@ void add_grid(py::module& m, const std::string& name) {
   regr
     .def_readonly("half_l", &ReGr::half_l)
     .def(py::init<>())
+    .def(py::init([](int nx, int ny, int nz) {
+      ReGr* grid = new ReGr();
+      grid->set_size_without_checking(nx, ny, nz);
+      grid->axis_order = AxisOrder::XYZ;
+      return grid;
+    }), py::arg("nx"), py::arg("ny"), py::arg("nz"))
+    .def(py::init([](py::array_t<T> arr, const UnitCell *cell, const SpaceGroup* sg) {
+      auto r = arr.template unchecked<3>();
+      ReGr* grid = new ReGr();
+      grid->set_size_without_checking(r.shape(0), r.shape(1), r.shape(2));
+      grid->axis_order = AxisOrder::XYZ;
+      for (int k = 0; k < r.shape(2); ++k)
+        for (int j = 0; j < r.shape(1); ++j)
+          for (int i = 0; i < r.shape(0); ++i)
+            grid->data[grid->index_q(i, j, k)] = r(i, j, k);
+      if (cell)
+        grid->unit_cell = *cell;
+      if (sg)
+        grid->spacegroup = sg;
+      return grid;
+    }), py::arg().noconvert(), py::arg("cell")=nullptr, py::arg("spacegroup")=nullptr)
     .def("get_value", &ReGr::get_value)
     .def("get_value_or_zero", &ReGr::get_value_or_zero)
     .def("set_value", &ReGr::set_value)
