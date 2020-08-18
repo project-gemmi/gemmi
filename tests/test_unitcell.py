@@ -41,6 +41,9 @@ class TestUnitCell(unittest.TestCase):
         self.assertAlmostEqual(corner.x, cell.a, delta=1e-12)
         self.assertAlmostEqual(corner.y, cell.b, delta=1e-12)
         self.assertAlmostEqual(corner.z, cell.c, delta=1e-12)
+        rec = cell.reciprocal()
+        self.assertEqual([rec.alpha, rec.beta, rec.gamma], [90, 90, 90])
+        self.assertAlmostEqual(rec.a, 1 / cell.a, delta=1e-17)
 
     def test_triclinic_cell(self):
         cell = UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)

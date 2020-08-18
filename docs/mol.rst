@@ -424,7 +424,14 @@ Here are the most important properties and methods of the ``UnitCell`` class:
     >>> cell.orthogonalize(gemmi.Fractional(0.5, 0.5, 0.5))
     <gemmi.Position(12.57, 19.75, 22.535)>
 
-Next, we have `metric tensors <https://dictionary.iucr.org/Metric_tensor>`_
+Next, we can obtain the reciprocal cell:
+
+.. doctest::
+
+    >>> cell.reciprocal()
+    <gemmi.UnitCell(0.0397772, 0.0253165, 0.0221877, 90, 90, 90)>
+
+and `metric tensors <https://dictionary.iucr.org/Metric_tensor>`_
 in the direct and reciprocal space:
 
 .. doctest::

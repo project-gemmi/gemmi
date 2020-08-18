@@ -388,7 +388,7 @@ struct UnitCell {
   }
 
   UnitCell reciprocal() const {
-    auto acosd = [](float c) { return std::acos(c)/pi()*180.0; };
+    auto acosd = [](double x) { return deg(std::acos(x)); };
     return UnitCell(ar, br, cr,
                     acosd(cos_alphar), acosd(cos_betar), acosd(cos_gammar));
   }
