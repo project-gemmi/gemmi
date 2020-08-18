@@ -211,6 +211,19 @@ void add_hkl(py::module& m) {
          self.data.clear();
          add_asu_f_phi_to_float_vector(self.data, asu_data);
     }, py::arg("asu_data"))
+    .def("set_data", [](Mtz& self, const ReciprocalGrid<float>::AsuData& asu_data) {
+         if (self.columns.size() != 4)
+           fail("Mtz.set_data(): Mtz must have 4 columns.");
+         self.nreflections = (int) asu_data.v.size();
+         self.data.clear();
+
+         self.data.reserve(self.data.size() + asu_data.v.size() * 4);
+         for (const auto& item : asu_data.v) {
+           for (int i = 0; i != 3; ++i)
+             self.data.push_back((float) item.hkl[i]);
+           self.data.push_back(item.value);
+         }
+    }, py::arg("asu_data"))
     .def("set_data", [](Mtz& self, py::array_t<float> arr) {
          if (arr.ndim() != 2)
            fail("Mtz.set_data(): expected 2D array.");
