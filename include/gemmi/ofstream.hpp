@@ -8,7 +8,10 @@
 #ifndef GEMMI_OFSTREAM_HPP_
 #define GEMMI_OFSTREAM_HPP_
 
-#if defined(_MSC_VER) && !defined(GEMMI_USE_FOPEN)
+#if defined(_MSC_VER)
+# include "utf.hpp"
+#elif defined(_WIN32) && defined(__has_include) && __has_include(<filesystem>)
+# include <filesystem>
 # include "utf.hpp"
 #endif
 #include <fstream>
@@ -26,9 +29,12 @@ struct Ofstream {
       return;
     }
     keeper_.reset(new std::ofstream);
-#if defined(_MSC_VER) && !defined(GEMMI_USE_FOPEN)
+#if defined(_MSC_VER)
     std::wstring wfilename = UTF8_to_wchar(filename.c_str());
     keeper_->open(wfilename.c_str());
+#elif defined(_WIN32) && defined(__cpp_lib_filesystem)
+    std::wstring wfilename = UTF8_to_wchar(filename.c_str());
+    keeper_->open(std::filesystem::path(wfilename));
 #else
     keeper_->open(filename);
 #endif
