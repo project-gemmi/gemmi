@@ -160,7 +160,7 @@ template<typename T> class arr
     static T *ralloc(size_t num)
       {
       if (num==0) return nullptr;
-      void *res = aligned_alloc(64,num*sizeof(T));
+      void *res = std::aligned_alloc(64,num*sizeof(T));
       if (!res) throw std::bad_alloc();
       return reinterpret_cast<T *>(res);
       }
