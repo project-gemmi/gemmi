@@ -5,7 +5,7 @@
 #include "gemmi/to_json.hpp"
 #include "gemmi/polyheur.hpp"  // for setup_entities, remove_hydrogens, ...
 #include "gemmi/to_pdb.hpp"    // for write_pdb, ...
-#include "gemmi/ofstream.hpp"  // for Ofstream
+#include "gemmi/fstream.hpp"   // for Ofstream
 #include "gemmi/to_mmcif.hpp"  // for update_cif_block
 #include "gemmi/remarks.hpp"   // for read_metadata_from_remarks
 #include "gemmi/assembly.hpp"  // for ChainNameGenerator, change_to_assembly

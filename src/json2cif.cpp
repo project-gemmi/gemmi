@@ -1,8 +1,8 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#include "gemmi/gzread.hpp"    // for read_cif_gz
+#include "gemmi/gzread.hpp"   // for read_cif_gz
 #include "gemmi/to_cif.hpp"   // for JsonWriter
-#include "gemmi/ofstream.hpp"  // for Ofstream
+#include "gemmi/fstream.hpp"  // for Ofstream
 
 #include <cstring>
 #include <iostream>

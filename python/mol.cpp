@@ -10,7 +10,7 @@
 #include "gemmi/to_pdb.hpp"
 #include "gemmi/to_mmcif.hpp"
 #include "gemmi/tostr.hpp"
-#include "gemmi/ofstream.hpp"
+#include "gemmi/fstream.hpp"
 
 #include <fstream>
 #include <pybind11/pybind11.h>

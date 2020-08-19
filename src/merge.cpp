@@ -14,7 +14,7 @@
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/gzread.hpp>
 #include <gemmi/mtz2cif.hpp>  // for MtzToCif
-#include <gemmi/ofstream.hpp> // for Ofstream
+#include <gemmi/fstream.hpp>  // for Ofstream
 #include <gemmi/refln.hpp>
 #define GEMMI_PROG merge
 #include "options.h"

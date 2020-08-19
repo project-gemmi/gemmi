@@ -7,7 +7,7 @@
 #include <iostream>
 #include <gemmi/mtz2cif.hpp>
 #include <gemmi/gz.hpp>       // for MaybeGzipped
-#include <gemmi/ofstream.hpp> // for Ofstream
+#include <gemmi/fstream.hpp>  // for Ofstream
 #define GEMMI_PROG mtz2cif
 #include "options.h"
 

@@ -7,7 +7,7 @@
 #include "gemmi/gzread.hpp"
 #include "gemmi/chemcomp.hpp"  // for ChemComp
 #include "gemmi/to_cif.hpp"    // for write_cif_to_stream
-#include "gemmi/ofstream.hpp"  // for Ofstream
+#include "gemmi/fstream.hpp"   // for Ofstream
 #include "gemmi/entstr.hpp"    // for entity_type_to_string
 #include "gemmi/to_mmcif.hpp"  // for write_struct_conn
 #include "gemmi/sprintf.hpp"   // for to_str, to_str_prec

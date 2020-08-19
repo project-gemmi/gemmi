@@ -4,7 +4,7 @@
 #include "gemmi/tostr.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
-#include "gemmi/ofstream.hpp"
+#include "gemmi/fstream.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>

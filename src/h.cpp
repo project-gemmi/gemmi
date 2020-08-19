@@ -12,7 +12,7 @@
 #include "gemmi/to_pdb.hpp"    // for write_pdb
 #include "gemmi/monlib.hpp"    // for MonLib, read_monomer_lib
 #include "gemmi/topo.hpp"      // for Topo
-#include "gemmi/ofstream.hpp"  // for Ostream
+#include "gemmi/fstream.hpp"   // for Ofstream
 #include <gemmi/placeh.hpp>    // for place_hydrogens
 
 #define GEMMI_PROG h
