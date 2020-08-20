@@ -92,12 +92,12 @@ void add_misc(py::module& m) {
 
   pyIT92Coef
     .def_property_readonly("a", [](IT92::Coef& c) -> std::array<double,4> {
-        return {{ c.a[0], c.a[1], c.a[2], c.a[3] }};
+        return {{ c.a(0), c.a(1), c.a(2), c.a(3) }};
     })
     .def_property_readonly("b", [](IT92::Coef& c) -> std::array<double,4> {
-        return {{ c.b[0], c.b[1], c.b[2], c.b[3] }};
+        return {{ c.b(0), c.b(1), c.b(2), c.b(3) }};
     })
-    .def_readonly("c", &IT92::Coef::c)
+    .def_property_readonly("c", &IT92::Coef::c)
     .def("calculate_sf", &IT92::Coef::calculate_sf, py::arg("stol2"))
     .def("calculate_density_iso", &IT92::Coef::calculate_density_iso,
          py::arg("r2"), py::arg("B"))
