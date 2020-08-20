@@ -550,6 +550,11 @@ Writing
 
 In C++, the MTZ file can be written to a file using one of the functions::
 
+  // In exactly one compilation unit define this before including one of
+  // mtz.hpp, to_mmcif.hpp, to_pdb.hpp.
+  #define GEMMI_WRITE_IMPLEMENTATION
+  #include <gemmi/mtz.hpp>
+
   void Mtz::write_to_stream(std::FILE* stream) const
   void Mtz::write_to_file(const std::string& path) const
 

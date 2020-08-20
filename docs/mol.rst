@@ -858,6 +858,11 @@ is guarded by a macro. In exactly one file you need to add::
   #define GEMMI_WRITE_IMPLEMENTATION
   #include <gemmi/to_pdb.hpp>
 
+Moreover, the same holds for functions writing MTZ and mmCIF files defined in
+``gemmi/mtz.hpp`` and ``gemmi/to_mmcif.hpp``.
+In the source of the gemmi program all these functions are compiled in
+one compilation unit -- see :file:`src/output.cpp`.
+
 **Python**
 
 To output a file or string in the PDB format use one of the functions:
@@ -1123,11 +1128,15 @@ and then it is written to disk.
 
 ::
 
-    #include <gemmi/to_mmcif.hpp>  // Structure -> cif::Document
-    #include <gemmi/to_cif.hpp>    // cif::Document -> file
+  #include <gemmi/to_cif.hpp>    // cif::Document -> file
 
-    std::ofstream os("new.cif");
-    gemmi::write_cif_to_file(os, gemmi::make_mmcif_document(structure));
+  // In exactly one compilation unit define this before including one of
+  // mtz.hpp, to_mmcif.hpp, to_pdb.hpp.
+  #define GEMMI_WRITE_IMPLEMENTATION
+  #include <gemmi/to_mmcif.hpp>  // Structure -> cif::Document
+
+  std::ofstream os("new.cif");
+  gemmi::write_cif_to_file(os, gemmi::make_mmcif_document(structure));
 
 **Python**
 
