@@ -23,12 +23,12 @@ matrix:
       - python -m unittest discover -v -s tests/
 
   - os: linux
-    dist: trusty
+    dist: xenial
     addons:
       apt:
-        packages: [libz-dev, python3-pip, clang-3.4]
+        packages: [libz-dev, python3-pip, clang-3.5]
     env:
-      - COMPILER=/usr/bin/clang++
+      - COMPILER=/usr/bin/clang++-3.5
     script:
       - $COMPILER --version
       - CXX=$COMPILER cmake .
