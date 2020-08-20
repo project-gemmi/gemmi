@@ -5,10 +5,12 @@
 #include "gemmi/to_json.hpp"
 #include "gemmi/polyheur.hpp"  // for setup_entities, remove_hydrogens, ...
 #include "gemmi/to_pdb.hpp"    // for write_pdb, ...
-#include "gemmi/fstream.hpp"   // for Ofstream
+#include "gemmi/fstream.hpp"   // for Ofstream, Ifstream
 #include "gemmi/to_mmcif.hpp"  // for update_cif_block
 #include "gemmi/remarks.hpp"   // for read_metadata_from_remarks
 #include "gemmi/assembly.hpp"  // for ChainNameGenerator, change_to_assembly
+#include "gemmi/pirfasta.hpp"  // for read_pir_or_fasta
+#include "gemmi/resinfo.hpp"   // for expand_protein_one_letter
 
 #include <cstring>
 #include <iostream>
@@ -53,7 +55,7 @@ struct ConvArg: public Arg {
 enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, PdbxStyle, BlockName,
   ExpandNcs, AsAssembly, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
-  ShortTer, Linkr, Minimal, ShortenCN, RenameChain,
+  ShortTer, Linkr, Minimal, ShortenCN, RenameChain, SetSeq,
   SegmentAsChain, OldPdb, ForceLabel
 };
 
@@ -103,6 +105,10 @@ static const option::Descriptor Usage[] = {
   { RenameChain, 0, "", "rename-chain", ConvArg::OldNew,
     "  --rename-chain=OLD:NEW  \tRename chain OLD to NEW "
     "(--rename-chain=:A adds missing chain IDs)." },
+  { SetSeq, 0, "s", "", Arg::Required,
+    "  -s FILE  \tUse sequence from FILE (PIR or FASTA format), "
+    "which must contain either one sequence (for all chains) "
+    "or as many sequences as there are chains." },
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular operations:" },
   { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
     "  --expand-ncs=dup|new  \tExpand strict NCS specified in MTRIXn or"
@@ -197,7 +203,8 @@ static void convert(gemmi::Structure& st,
   if (st.input_format == CoorFormat::Pdb) {
     gemmi::read_metadata_from_remarks(st);
     gemmi::setup_entities(st);
-    gemmi::assign_label_seq_id(st, options[ForceLabel]);
+    if (!options[SetSeq])
+      gemmi::assign_label_seq_id(st, options[ForceLabel]);
   }
 
   for (const option::Option* opt = options[RenameChain]; opt; opt = opt->next()) {
@@ -214,6 +221,22 @@ static void convert(gemmi::Structure& st,
       if (chain.name.size() > 2)
         gemmi::fail("long chain name cannot be written in the PDB format: " +
                     chain.name + "\nTry option --shorten");
+  }
+  if (options[SetSeq]) {
+    gemmi::Ifstream stream(options[SetSeq].arg);
+    std::string seq = gemmi::read_pir_or_fasta(stream.ref());
+    for (gemmi::Entity& ent : st.entities)
+      if (ent.entity_type == gemmi::EntityType::Polymer) {
+        ent.full_sequence.clear();
+        for (char letter : seq) {
+          const char* str = gemmi::expand_protein_one_letter(letter);
+          if (!str)
+            gemmi::fail("unexpected letter in protein sequence: ", letter);
+          ent.full_sequence.emplace_back(str);
+        }
+      }
+    gemmi::deduplicate_entities(st);
+    gemmi::assign_label_seq_id(st, options[ForceLabel]);
   }
 
   HowToNameCopiedChains how = HowToNameCopiedChains::AddNumber;
