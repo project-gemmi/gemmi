@@ -156,7 +156,7 @@ template<typename T> class arr
       }
     static void dealloc(T *ptr)
       { free(ptr); }
-#elif __cplusplus >= 201703L && !defined(__APPLE__) && \
+#elif __cplusplus >= 201703L && !defined(_LIBCPP_HAS_NO_ALIGNED_ALLOCATION) && \
   (!defined(__MINGW32__) || defined(_GLIBCXX_HAVE_ALIGNED_ALLOC))
     static T *ralloc(size_t num)
       {
