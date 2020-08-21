@@ -26,7 +26,7 @@ matrix:
     dist: xenial
     addons:
       apt:
-        packages: [libz-dev, python3-pip, clang-3.5]
+        packages: [libz-dev, python3-pip, clang-3.5, python3-setuptools]
     env:
       - COMPILER=/usr/bin/clang++-3.5
     script:
