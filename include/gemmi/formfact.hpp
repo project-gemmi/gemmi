@@ -44,7 +44,7 @@ struct GaussianCoef {
   Real coef[2*N+WithC];
   Real a(int n) const { return coef[n]; }
   Real b(int n) const { return coef[N+n]; }
-  Real c() const { return coef[2*N]; }
+  Real c() const { return WithC ? coef[2*N] : 0; }
 
   // argument: (sin(theta)/lambda)^2
   Real calculate_sf(Real stol2) const {

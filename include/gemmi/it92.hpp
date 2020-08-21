@@ -1,6 +1,6 @@
 // Copyright 2019 Global Phasing Ltd.
 
-// Scattering factor coefficients from International Tables
+// X-ray scattering factor coefficients from International Tables
 // for Crystallography Volume C, edition from 1992 or later.
 // The same data is in CCP4 (file atomsf.lib) and in cctbx (table="it1992").
 // But here we have only one entry per element. The original table also
@@ -25,7 +25,7 @@ namespace gemmi {
 template<class Real>
 struct IT92 {
   using Coef = GaussianCoef<4, 1, Real>;
-  static const Coef it92[98];
+  static const Coef data[98];
 
   static bool has(El el) {
     return el != El::X && (el <= El::Cf || el == El::D);
@@ -34,7 +34,7 @@ struct IT92 {
   static const Coef& get(El el) {
     if (el == El::D)
       el = El::H;
-    return it92[(int)el - 1];
+    return data[(int)el - 1];
   }
 
   static const Coef* get_ptr(El el) {
@@ -43,7 +43,7 @@ struct IT92 {
 };
 
 template<class Real>
-const typename IT92<Real>::Coef IT92<Real>::it92[98] = {
+const typename IT92<Real>::Coef IT92<Real>::data[98] = {
   // a1, a2, a3, a4, b1, b2, b3, b4, c
   {0.493002, 0.322912, 0.140191, 0.04081, 10.5109, 26.1257, 3.14236, 57.7997, 0.003038}, // H
   {0.8734, 0.6309, 0.3112, 0.178, 9.1037, 3.3568, 22.9276, 0.9821, 0.0064}, // He
