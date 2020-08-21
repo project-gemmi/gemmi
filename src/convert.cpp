@@ -88,7 +88,7 @@ static const option::Descriptor Usage[] = {
     "  --segment-as-chain \tAppend segment id to label_asym_id (chain name)." },
   { OldPdb, 0, "", "old-pdb", Arg::None,
     "  --old-pdb \tRead only the first 72 characters in line." },
-  { ForceLabel, 0, "L", "force-label", Arg::Required,
+  { ForceLabel, 0, "L", "force-label", Arg::None,
     "  -L, --force-label  \tAdd label_seq_id even if SEQRES is missing" },
 
   { NoOp, 0, "", "", Arg::None, "\nPDB output options:" },
