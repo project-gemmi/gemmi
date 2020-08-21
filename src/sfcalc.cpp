@@ -7,7 +7,8 @@
 #include <complex>
 #include <gemmi/fourier.hpp>
 #include <gemmi/gzread.hpp>
-#include <gemmi/it92.hpp>
+#include <gemmi/it92.hpp>      // for IT92
+#include <gemmi/itc4322.hpp>   // for ITC4322
 #include <gemmi/fileutil.hpp>  // for file_open
 #include <gemmi/math.hpp>      // for sq
 #include <gemmi/rhogrid.hpp>   // for put_model_density_on_grid
@@ -19,9 +20,16 @@
 #define GEMMI_PROG sfcalc
 #include "options.h"
 
-enum OptionIndex { Hkl=4, Dmin, Rate, Blur, RCut, Test, Check,
+enum OptionIndex { Hkl=4, Dmin, For, Rate, Blur, RCut, Test, Check,
                    CifFp, Wavelength, Unknown, NoAniso, FLabel,
                    PhiLabel, Scale };
+
+struct SfCalcArg: public Arg {
+  static option::ArgStatus FormFactors(const option::Option& option, bool msg) {
+    return Arg::Choice(option, msg, {"xray", "electron"});
+  }
+};
+
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -39,6 +47,8 @@ static const option::Descriptor Usage[] = {
     "  --hkl=H,K,L  \tCalculate structure factor F_hkl." },
   { Dmin, 0, "", "dmin", Arg::Float,
     "  --dmin=NUM  \tCalculate structure factors up to given resolution." },
+  { For, 0, "", "for", SfCalcArg::FormFactors,
+    "  --for=TYPE  \tTYPE is xray (default) or electron." },
   { CifFp, 0, "", "ciffp", Arg::None,
     "  --ciffp  \tRead f' from _atom_type_scat_dispersion_real in CIF." },
   { Wavelength, 0, "w", "wavelength", Arg::Float,
@@ -379,41 +389,11 @@ void compare_with_mtz(const Model& model, const UnitCell& cell,
   }
 }
 
-static void process(const std::string& input, const OptParser& p) {
-  // read (Small)Structure
-  gemmi::Structure st = gemmi::read_structure_gz(input);
-  gemmi::SmallStructure small;
-  bool use_st = !st.models.empty();
-  if (!use_st) {
-    if (giends_with(input, ".cif"))
-      small = gemmi::make_small_structure_from_block(
-                                gemmi::read_cif_gz(input).sole_block());
-    if (small.sites.empty() ||
-        // COD can have a row of nulls as a placeholder (e.g. 2211708)
-        (small.sites.size() == 1 && small.sites[0].element == El::X))
-      gemmi::fail("no atoms in the file");
-    // SM CIF files specify full occupancy for atoms on special positions.
-    // We need to adjust it for symmetry calculations.
-    for (SmallStructure::Site& site : small.sites) {
-      int n_mates = small.cell.is_special_position(site.fract, 0.4);
-      if (n_mates != 0)
-        site.occ /= (n_mates + 1);
-    }
-  }
-
+template<typename Table>
+void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStructure& small,
+                        double wavelength, const OptParser& p) {
   const UnitCell& cell = use_st ? st.cell : small.cell;
-  using Table = IT92<double>;
   StructureFactorCalculator<Table> calc(cell);
-
-  if (p.options[NoAniso]) {
-    if (use_st) {
-      for (CRA& cra : st.models[0].all())
-        cra.atom->aniso.u11 = cra.atom->aniso.u22 = cra.atom->aniso.u33 = 0;
-    } else {
-      for (SmallStructure::Site& site : small.sites)
-        site.aniso.u11 = site.aniso.u22 = site.aniso.u33 = 0;
-    }
-  }
 
   // assign f'
   if (p.options[CifFp]) {
@@ -428,34 +408,7 @@ static void process(const std::string& input, const OptParser& p) {
         calc.set_fprime(atom_type.element, atom_type.dispersion_real);
     }
   }
-  double wavelength = 0;
-  if (p.options[Wavelength]) {
-    wavelength = std::atof(p.options[Wavelength].arg);
-  } else {
-    if (use_st) {
-      // reading wavelength from PDB and mmCIF files needs to be revisited
-      //if (!st.crystals.empty() && !st.crystals[0].diffractions.empty())
-      //  wavelength_list = st.crystals[0].diffractions[0].wavelengths;
-    } else {
-      wavelength = small.wavelength;
-    }
-  }
-  if (p.options[Unknown]) {
-    El new_el = find_element(p.options[Unknown].arg);
-    if (new_el == El::X)
-      fail("--unknown must specify chemical element symbol.");
-    if (use_st) {
-      for (Chain& chain : st.models[0].chains)
-        for (Residue& residue : chain.residues)
-          for (Atom& atom : residue.atoms)
-            if (atom.element == El::X)
-              atom.element = new_el;
-    } else {
-      for (SmallStructure::Site& atom : small.sites)
-        if (atom.element == El::X)
-          atom.element = new_el;
-    }
-  }
+
   auto present_elems = use_st ? st.models[0].present_elements()
                               : small.present_elements();
   if (present_elems[(int)El::X])
@@ -559,6 +512,78 @@ static void process(const std::string& input, const OptParser& p) {
                        p.options[Verbose], path, comparator);
     print_to_stderr(comparator);
     fprintf(stderr, "  sum(F^2)_ratio=%g\n", comparator.scale());
+  }
+}
+
+static void process(const std::string& input, const OptParser& p) {
+  // read (Small)Structure
+  gemmi::Structure st = gemmi::read_structure_gz(input);
+  gemmi::SmallStructure small;
+  bool use_st = !st.models.empty();
+  if (!use_st) {
+    if (giends_with(input, ".cif"))
+      small = gemmi::make_small_structure_from_block(
+                                gemmi::read_cif_gz(input).sole_block());
+    if (small.sites.empty() ||
+        // COD can have a row of nulls as a placeholder (e.g. 2211708)
+        (small.sites.size() == 1 && small.sites[0].element == El::X))
+      gemmi::fail("no atoms in the file");
+    // SM CIF files specify full occupancy for atoms on special positions.
+    // We need to adjust it for symmetry calculations.
+    for (SmallStructure::Site& site : small.sites) {
+      int n_mates = small.cell.is_special_position(site.fract, 0.4);
+      if (n_mates != 0)
+        site.occ /= (n_mates + 1);
+    }
+  }
+
+  if (p.options[NoAniso]) {
+    if (use_st) {
+      for (CRA& cra : st.models[0].all())
+        cra.atom->aniso.u11 = cra.atom->aniso.u22 = cra.atom->aniso.u33 = 0;
+    } else {
+      for (SmallStructure::Site& site : small.sites)
+        site.aniso.u11 = site.aniso.u22 = site.aniso.u33 = 0;
+    }
+  }
+
+  double wavelength = 0;
+  if (p.options[Wavelength]) {
+    wavelength = std::atof(p.options[Wavelength].arg);
+  } else {
+    if (use_st) {
+      // reading wavelength from PDB and mmCIF files needs to be revisited
+      //if (!st.crystals.empty() && !st.crystals[0].diffractions.empty())
+      //  wavelength_list = st.crystals[0].diffractions[0].wavelengths;
+    } else {
+      wavelength = small.wavelength;
+    }
+  }
+
+  if (p.options[Unknown]) {
+    El new_el = find_element(p.options[Unknown].arg);
+    if (new_el == El::X)
+      fail("--unknown must specify chemical element symbol.");
+    if (use_st) {
+      for (Chain& chain : st.models[0].chains)
+        for (Residue& residue : chain.residues)
+          for (Atom& atom : residue.atoms)
+            if (atom.element == El::X)
+              atom.element = new_el;
+    } else {
+      for (SmallStructure::Site& atom : small.sites)
+        if (atom.element == El::X)
+          atom.element = new_el;
+    }
+  }
+
+  char table = p.options[For] ? p.options[For].arg[0] : 'x';
+  if (table == 'x') {
+    process_with_table<IT92<double>>(use_st, st, small, wavelength, p);
+  } else if (table == 'e') {
+    if (p.options[CifFp])
+      fail("Electron scattering has no dispersive part (--ciffp)");
+    process_with_table<ITC4322<double>>(use_st, st, small, 0., p);
   }
 }
 
