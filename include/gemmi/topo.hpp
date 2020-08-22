@@ -79,11 +79,11 @@ struct Topo {
     std::vector<Force> forces;
 
     ResInfo(Residue* r) : res(r), prev_idx(0) {}
-    Residue* prev_res() {
-      return prev_idx != 0 ? (this + prev_idx)->res : nullptr;
+    ResInfo* prev_resinfo() {
+      return prev_idx != 0 ? this + prev_idx : nullptr;
     }
-    const Residue* prev_res() const {
-      return const_cast<ResInfo*>(this)->prev_res();
+    const ResInfo* prev_resinfo() const {
+      return const_cast<ResInfo*>(this)->prev_resinfo();
     }
     void add_mod(const std::string& m) {
       if (!m.empty())
@@ -245,14 +245,12 @@ struct Topo {
   }
 
   void apply_restraints_to_residue(ResInfo& ri, const MonLib& monlib) {
-    if (Residue* prev = ri.prev_res()) {
+    if (ResInfo* prev = ri.prev_resinfo()) {
       if (const ChemLink* link = monlib.find_link(ri.prev_link)) {
-        auto forces = apply_restraints(link->rt, *prev, ri.res);
+        auto forces = apply_restraints(link->rt, *prev->res, ri.res);
         for (const auto& f : forces) {
           ri.forces.push_back({Provenance::PrevLink, f.rkind, f.index});
-          if (ri.prev_idx != 0)
-            (&ri + ri.prev_idx)->forces.push_back({Provenance::NextLink,
-                                                   f.rkind, f.index});
+          prev->forces.push_back({Provenance::NextLink, f.rkind, f.index});
         }
       }
     }
@@ -383,7 +381,7 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
     // add modifications from standard links
     for (ResInfo& ri : ci.residues)
       if (const ChemLink* link = monlib.find_link(ri.prev_link)) {
-        (&ri + ri.prev_idx)->add_mod(link->side1.mod);
+        ri.prev_resinfo()->add_mod(link->side1.mod);
         ri.add_mod(link->side2.mod);
       }
   }

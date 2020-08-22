@@ -113,13 +113,13 @@ static cif::Document make_crd(const gemmi::Structure& st,
     if (!chain_info.polymer)
       continue;
     for (const Topo::ResInfo& res_info : chain_info.residues) {
-      std::string prev = res_info.prev_idx ? res_info.prev_res()->seqid.str()
-                                           : "n/a";
+      const Topo::ResInfo* prev = res_info.prev_resinfo();
+      std::string prev_seqid = prev ? prev->res->seqid.str() : "n/a";
       std::string mod = get_ccp4_mod_id(res_info.mods);
       poly_loop.add_row({res_info.res->name, res_info.res->seqid.str(),
                          chain_info.entity_id,
                          res_info.prev_idx ? res_info.prev_link : ".",
-                         prev, mod});
+                         prev_seqid, mod});
     }
   }
   items.emplace_back(cif::CommentArg{"##########\n"
@@ -327,11 +327,11 @@ static cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
   for (const Topo::ChainInfo& chain_info : topo.chains) {
     for (const Topo::ResInfo& ri : chain_info.residues) {
       // write link
-      if (const gemmi::Residue* prev = ri.prev_res()) {
+      if (const Topo::ResInfo* prev = ri.prev_resinfo()) {
         const gemmi::ChemLink* link = monlib.find_link(ri.prev_link);
         if (link && count_provenance(ri.forces, Provenance::PrevLink) > 0) {
           std::string comment = " link " + ri.prev_link + " " +
-                                 prev->seqid.str() + " " + prev->name + " - " +
+                                 prev->res->seqid.str() + " " + prev->res->name + " - " +
                                  ri.res->seqid.str() + " " + ri.res->name;
           restr_loop.add_comment_and_row({comment, "LINK", ".",
                                           cif::quote(ri.prev_link), ".",
