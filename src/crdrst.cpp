@@ -109,10 +109,10 @@ static cif::Document make_crd(const gemmi::Structure& st,
   cif::Loop& poly_loop = block.init_mmcif_loop("_entity_poly_seq.", {
               "mon_id", "ccp4_auth_seq_id", "entity_id",
               "ccp4_back_connect_type", "ccp4_num_mon_back", "ccp4_mod_id"});
-  for (const Topo::ChainInfo& chain_info : topo.chains) {
+  for (const Topo::ChainInfo& chain_info : topo.chain_infos) {
     if (!chain_info.polymer)
       continue;
-    for (const Topo::ResInfo& res_info : chain_info.residues) {
+    for (const Topo::ResInfo& res_info : chain_info.res_infos) {
       const Topo::ResInfo* prev = res_info.prev_resinfo();
       std::string prev_seqid = prev ? prev->res->seqid.str() : "n/a";
       std::string mod = get_ccp4_mod_id(res_info.mods);
@@ -324,8 +324,8 @@ static cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
               "atom_id_1", "atom_id_2", "atom_id_3", "atom_id_4",
               "value", "dev", "val_obs"});
   int counters[5] = {0, 0, 0, 0, 0};
-  for (const Topo::ChainInfo& chain_info : topo.chains) {
-    for (const Topo::ResInfo& ri : chain_info.residues) {
+  for (const Topo::ChainInfo& chain_info : topo.chain_infos) {
+    for (const Topo::ResInfo& ri : chain_info.res_infos) {
       // write link
       if (const Topo::ResInfo* prev = ri.prev_resinfo()) {
         const gemmi::ChemLink* link = monlib.find_link(ri.prev_link);
@@ -409,8 +409,8 @@ int GEMMI_MAIN(int argc, char **argv) {
 
     // add H, sort atoms in residues and assign serial numbers
     int serial = 0;
-    for (Topo::ChainInfo& chain_info : topo.chains)
-      for (Topo::ResInfo& ri : chain_info.residues) {
+    for (Topo::ChainInfo& chain_info : topo.chain_infos)
+      for (Topo::ResInfo& ri : chain_info.res_infos) {
         const gemmi::ChemComp &cc = ri.chemcomp;
         gemmi::Residue &res = *ri.res;
         if (!p.options[KeepHydrogens]) {
@@ -450,8 +450,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     topo.finalize_refmac_topology(monlib);
 
     if (!p.options[KeepHydrogens] && !p.options[NoHydrogens])
-      for (Topo::ChainInfo& chain_info : topo.chains)
-        for (Topo::ResInfo& ri : chain_info.residues)
+      for (Topo::ChainInfo& chain_info : topo.chain_infos)
+        for (Topo::ResInfo& ri : chain_info.res_infos)
           for (gemmi::Atom& atom : ri.res->atoms)
             if (!atom.is_hydrogen()) {
               try {

@@ -171,8 +171,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       topo.finalize_refmac_topology(monlib);
 
       RMSes rmses;
-      for (const Topo::ChainInfo& chain_info : topo.chains)
-        for (const Topo::ResInfo& ri : chain_info.residues) {
+      for (const Topo::ChainInfo& chain_info : topo.chain_infos)
+        for (const Topo::ResInfo& ri : chain_info.res_infos) {
           std::string res = chain_info.name + " " + ri.res->str();
           for (const Topo::Force& force : ri.forces)
             if (force.provenance == Topo::Provenance::PrevLink ||

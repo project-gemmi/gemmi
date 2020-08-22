@@ -99,11 +99,11 @@ void print_outliers(const Topo& topo, const char* tag) {
 static void check_xyz_consistency(const gemmi::ChemComp& cc,
                                   gemmi::Residue& res) {
   Topo topo;
-  topo.chains.resize(1);
+  topo.chain_infos.resize(1);
   Topo::ResInfo ri(&res);
   ri.chemcomp = cc;
   topo.apply_internal_restraints_to_residue(ri);
-  topo.chains[0].residues.push_back(ri);
+  topo.chain_infos[0].res_infos.push_back(ri);
   print_outliers(topo, (cc.name + " [atom.xyz]").c_str());
 }
 

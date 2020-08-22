@@ -50,8 +50,8 @@ static const option::Descriptor Usage[] = {
 
 void remove_add_sort(Topo& topo, const std::vector<option::Option>& options) {
   int serial = 0;
-  for (Topo::ChainInfo& chain_info : topo.chains)
-    for (Topo::ResInfo& ri : chain_info.residues) {
+  for (Topo::ChainInfo& chain_info : topo.chain_infos)
+    for (Topo::ResInfo& ri : chain_info.res_infos) {
       const gemmi::ChemComp &cc = ri.chemcomp;
       gemmi::Residue &res = *ri.res;
       if (!options[KeepH]) {
@@ -128,8 +128,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       topo.initialize_refmac_topology(st, model, monlib);
       remove_add_sort(topo, p.options);
       topo.finalize_refmac_topology(monlib);
-      for (Topo::ChainInfo& chain_info : topo.chains)
-        for (Topo::ResInfo& ri : chain_info.residues)
+      for (Topo::ChainInfo& chain_info : topo.chain_infos)
+        for (Topo::ResInfo& ri : chain_info.res_infos)
           for (gemmi::Atom& atom : ri.res->atoms)
             if (!atom.is_hydrogen()) {
               try {

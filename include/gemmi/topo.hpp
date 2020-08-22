@@ -96,7 +96,7 @@ struct Topo {
     std::string entity_id;
     bool polymer;
     PolymerType polymer_type;
-    std::vector<ResInfo> residues;
+    std::vector<ResInfo> res_infos;
 
     void initialize(ResidueSpan& subchain, const Entity* ent);
     void setup_polymer_links();
@@ -120,7 +120,7 @@ struct Topo {
     return -1;
   }
 
-  std::vector<ChainInfo> chains;
+  std::vector<ChainInfo> chain_infos;
   std::vector<ExtraLink> extras;
 
   // Restraints applied to Model
@@ -131,8 +131,8 @@ struct Topo {
   std::vector<Plane> planes;
 
   ResInfo* find_resinfo(const Residue* res) {
-    for (ChainInfo& ci : chains)
-      for (ResInfo& ri : ci.residues)
+    for (ChainInfo& ci : chain_infos)
+      for (ResInfo& ri : ci.res_infos)
         if (ri.res == res)
           return &ri;
     return nullptr;
@@ -291,8 +291,8 @@ struct Topo {
   // so after this step don't add or remove atoms.
   // monlib is needed only for links.
   void finalize_refmac_topology(const MonLib& monlib) {
-    for (ChainInfo& chain_info : chains)
-      for (ResInfo& ri : chain_info.residues)
+    for (ChainInfo& chain_info : chain_infos)
+      for (ResInfo& ri : chain_info.res_infos)
         apply_restraints_to_residue(ri, monlib);
     for (ExtraLink& link : extras)
       apply_restraints_to_extra_link(link, monlib);
@@ -301,7 +301,7 @@ struct Topo {
 
 inline
 void Topo::ChainInfo::initialize(ResidueSpan& subchain, const Entity* ent) {
-  residues.reserve(subchain.size());
+  res_infos.reserve(subchain.size());
   name = subchain.at(0).subchain;
   if (ent) {
     entity_id = ent->name;
@@ -312,13 +312,13 @@ void Topo::ChainInfo::initialize(ResidueSpan& subchain, const Entity* ent) {
     polymer_type = PolymerType::Unknown;
   }
   for (Residue& res : subchain)
-    residues.emplace_back(&res);
+    res_infos.emplace_back(&res);
 }
 
 inline void Topo::ChainInfo::setup_polymer_links() {
-  if (!polymer || residues.empty())
+  if (!polymer || res_infos.empty())
     return;
-  for (auto ri = residues.begin() + 1; ri != residues.end(); ++ri) {
+  for (auto ri = res_infos.begin() + 1; ri != res_infos.end(); ++ri) {
     // For now we ignore microheterogeneity.
     ri->prev_idx = -1;
     const Residue* prev_res = (ri + ri->prev_idx)->res;
@@ -341,13 +341,13 @@ inline void Topo::ChainInfo::setup_polymer_links() {
 }
 
 inline void Topo::ChainInfo::add_refmac_builtin_modifications() {
-  if (polymer && !residues.empty()) {
+  if (polymer && !res_infos.empty()) {
     // we try to get exactly the same numbers that makecif produces
-    for (Topo::ResInfo& ri : residues)
+    for (Topo::ResInfo& ri : res_infos)
       if (polymer_type == PolymerType::PeptideL)
         ri.mods.emplace_back("AA-STAND");
-    Topo::ResInfo& front = residues.front();
-    Topo::ResInfo& back = residues.back();
+    Topo::ResInfo& front = res_infos.front();
+    Topo::ResInfo& back = res_infos.back();
     if (is_polypeptide(polymer_type)) {
       front.mods.emplace_back("NH3");
       back.mods.emplace_back(back.res->find_atom("OXT", '*') ? "COO" : "TERMINUS");
@@ -366,12 +366,12 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
   for (Chain& chain : model0.chains)
     for (ResidueSpan& sub : chain.subchains()) {
       const Entity* ent = st.get_entity_of(sub);
-      chains.emplace_back();
-      chains.back().initialize(sub, ent);
+      chain_infos.emplace_back();
+      chain_infos.back().initialize(sub, ent);
     }
-  for (ChainInfo& ci : chains) {
+  for (ChainInfo& ci : chain_infos) {
     // copy monomer description
-    for (ResInfo& ri : ci.residues)
+    for (ResInfo& ri : ci.res_infos)
       ri.chemcomp = monlib.monomers.at(ri.res->name);
 
     ci.setup_polymer_links();
@@ -379,7 +379,7 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
     ci.add_refmac_builtin_modifications();
 
     // add modifications from standard links
-    for (ResInfo& ri : ci.residues)
+    for (ResInfo& ri : ci.res_infos)
       if (const ChemLink* link = monlib.find_link(ri.prev_link)) {
         ri.prev_resinfo()->add_mod(link->side1.mod);
         ri.add_mod(link->side2.mod);
@@ -433,8 +433,8 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
     extras.push_back(extra);
   }
 
-  for (ChainInfo& chain_info : chains)
-    for (ResInfo& ri : chain_info.residues) {
+  for (ChainInfo& chain_info : chain_infos)
+    for (ResInfo& ri : chain_info.res_infos) {
       // apply modifications
       for (const std::string& modif : ri.mods) {
         if (const ChemMod* chem_mod = monlib.find_mod(modif))
