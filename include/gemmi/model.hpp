@@ -499,20 +499,6 @@ template<typename T, typename Ch> std::vector<T> chain_subchains(Ch* ch) {
 }
 } // namespace impl
 
-inline bool are_connected(const Residue& r1, const Residue& r2, PolymerType ptype) {
-  if (is_polypeptide(ptype)) {
-    const Atom* a1 = r1.get_c();
-    const Atom* a2 = r2.get_n();
-    return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(1.341 * 1.5);
-  }
-  if (is_polynucleotide(ptype)) {
-    const Atom* a1 = r1.get_o3prim();
-    const Atom* a2 = r2.get_p();
-    return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(1.6 * 1.5);
-  }
-  return false;
-}
-
 struct Chain {
   static const char* what() { return "Chain"; }
   std::string name;

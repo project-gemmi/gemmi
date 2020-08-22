@@ -7,7 +7,7 @@
 
 #include "model.hpp"
 #include "neighbor.hpp"
-#include "polyheur.hpp"  // for check_polymer_type
+#include "polyheur.hpp"  // for check_polymer_type, are_connected
 
 namespace gemmi {
 

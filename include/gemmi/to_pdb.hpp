@@ -6,6 +6,7 @@
 #define GEMMI_TO_PDB_HPP_
 
 #include "model.hpp"
+#include "polyheur.hpp"  // for are_connected
 #include <ostream>
 
 namespace gemmi {
