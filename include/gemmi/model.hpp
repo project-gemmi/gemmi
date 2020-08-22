@@ -606,8 +606,8 @@ struct Chain {
   // Got complicated by handling of multi-conformations / microheterogeneity.
   const Residue* previous_residue(const Residue& res) const {
     const Residue* start = residues.data();
-    for (const Residue* p = &res; p != start; )
-      if (res.group_key() != (--p)->group_key()) {
+    for (const Residue* p = &res; p-- != start; )
+      if (res.group_key() != p->group_key()) {
         while (p != start && p->group_key() == (p-1)->group_key() &&
                (res.atoms.at(0).altloc == '\0' || !res.same_conformer(*p)))
           --p;
@@ -626,20 +626,6 @@ struct Chain {
           ++p;
         return p;
       }
-    return nullptr;
-  }
-
-  const Residue* previous_bonded_residue(const Residue& res, PolymerType ptype) const {
-    if (const Residue* prev = previous_residue(res))
-      if (are_connected(*prev, res, ptype))
-        return prev;
-    return nullptr;
-  }
-
-  const Residue* next_bonded_residue(const Residue& res, PolymerType ptype) const {
-    if (const Residue* next = next_residue(res))
-      if (are_connected(res, *next, ptype))
-        return next;
     return nullptr;
   }
 

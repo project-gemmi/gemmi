@@ -159,8 +159,12 @@ static void print_dihedrals(const Structure& st) {
     for (const Residue& res : chain.residues) {
       printf("%3s %4d%c %5s", chain.name.c_str(), *res.seqid.num,
                               res.seqid.icode, res.name.c_str());
-      const Residue* prev = chain.previous_bonded_residue(res, PolymerType::PeptideL);
-      const Residue* next = chain.next_bonded_residue(res, PolymerType::PeptideL);
+      const Residue* prev = chain.previous_residue(res);
+      if (!are_connected(*prev, res, PolymerType::PeptideL))
+        prev = nullptr;
+      const Residue* next = chain.next_residue(res);
+      if (!are_connected(res, *next, PolymerType::PeptideL))
+        next = nullptr;
       double omega = next ? calculate_omega(res, *next) : NAN;
       auto phi_psi = calculate_phi_psi(prev, res, next);
       if (prev || next)
