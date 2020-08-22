@@ -97,25 +97,9 @@ inline bool is_polymer_residue(const Residue& res, PolymerType ptype) {
   }
 }
 
-inline bool are_connected(const Residue& r1, const Residue& r2,
-                          PolymerType ptype) {
-  if (is_polypeptide(ptype)) {
-    // similar to has_peptide_bond_to()
-    const Atom* a1 = r1.get_c();
-    const Atom* a2 = r2.get_n();
-    return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(1.341 * 1.5);
-  }
-  if (is_polynucleotide(ptype)) {
-    const Atom* a1 = r1.get_o3prim();
-    const Atom* a2 = r2.get_p();
-    return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(1.6 * 1.5);
-  }
-  return false;
-}
-
-// not a good check, but requires only CA (or P) atoms
-inline bool are_connected2(const Residue& r1, const Residue& r2,
-                           PolymerType ptype) {
+// are_connected2/3() are similar to are_connected() from model.hpp.
+// are_connected2() is less exact, but requires only CA (or P) atoms.
+inline bool are_connected2(const Residue& r1, const Residue& r2, PolymerType ptype) {
   if (is_polypeptide(ptype)) {
     const Atom* a1 = r1.get_ca();
     const Atom* a2 = r2.get_ca();
@@ -130,8 +114,7 @@ inline bool are_connected2(const Residue& r1, const Residue& r2,
 }
 
 // are_connected3() = are_connected() + fallback to are_connected2()
-inline bool are_connected3(const Residue& r1, const Residue& r2,
-                           PolymerType ptype) {
+inline bool are_connected3(const Residue& r1, const Residue& r2, PolymerType ptype) {
   if (is_polypeptide(ptype)) {
     if (const Atom* a1 = r1.get_c())
       if (const Atom* a2 = r2.get_n())

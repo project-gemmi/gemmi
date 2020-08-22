@@ -9,7 +9,6 @@
 #include "monlib.hpp" // for MonLib
 #include "model.hpp" // for Residue, Atom
 #include "calculate.hpp" // for calculate_angle, calculate_dihedral
-#include "polyheur.hpp" // for are_connected
 
 namespace gemmi {
 

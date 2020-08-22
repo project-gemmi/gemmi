@@ -614,7 +614,8 @@ inline void write_header(const Structure& st, std::ostream& os,
         for (const Chain& chain : model.chains)
           for (const Residue& res : chain.residues)
             if (res.is_cis)
-              if (const Residue* next = chain.next_bonded_aa(res)) {
+              if (const Residue* next =
+                      chain.next_bonded_residue(res, PolymerType::PeptideL)) {
                 if (++counter == 10000)
                   counter = 0;
                 WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s\n",

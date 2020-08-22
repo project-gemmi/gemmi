@@ -308,12 +308,6 @@ struct Residue : public ResidueId {
            other.find_atom(other.atoms[0].name, atoms[0].altloc) != nullptr;
   }
 
-  bool has_peptide_bond_to(const Residue& next) const {
-    const Atom* a1 = get_c();
-    const Atom* a2 = next.get_n();
-    return a1 && a2 && a1->pos.dist_sq(a2->pos) < 2.0 * 2.0;
-  }
-
   // convenience function that duplicates functionality from resinfo.hpp
   bool is_water() const {
     if (name.length() != 3)
@@ -505,6 +499,20 @@ template<typename T, typename Ch> std::vector<T> chain_subchains(Ch* ch) {
 }
 } // namespace impl
 
+inline bool are_connected(const Residue& r1, const Residue& r2, PolymerType ptype) {
+  if (is_polypeptide(ptype)) {
+    const Atom* a1 = r1.get_c();
+    const Atom* a2 = r2.get_n();
+    return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(1.341 * 1.5);
+  }
+  if (is_polynucleotide(ptype)) {
+    const Atom* a1 = r1.get_o3prim();
+    const Atom* a2 = r2.get_p();
+    return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(1.6 * 1.5);
+  }
+  return false;
+}
+
 struct Chain {
   static const char* what() { return "Chain"; }
   std::string name;
@@ -621,16 +629,16 @@ struct Chain {
     return nullptr;
   }
 
-  const Residue* previous_bonded_aa(const Residue& res) const {
+  const Residue* previous_bonded_residue(const Residue& res, PolymerType ptype) const {
     if (const Residue* prev = previous_residue(res))
-      if (prev->has_peptide_bond_to(res))
+      if (are_connected(*prev, res, ptype))
         return prev;
     return nullptr;
   }
 
-  const Residue* next_bonded_aa(const Residue& res) const {
+  const Residue* next_bonded_residue(const Residue& res, PolymerType ptype) const {
     if (const Residue* next = next_residue(res))
-      if (res.has_peptide_bond_to(*next))
+      if (are_connected(res, *next, ptype))
         return next;
     return nullptr;
   }
