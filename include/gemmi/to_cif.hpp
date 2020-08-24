@@ -47,18 +47,7 @@ inline void write_out_pair(std::ostream& os, const std::string& name,
   os.put('\n');
 }
 
-inline void write_out_loop(std::ostream& os, const Loop& loop, Style style) {
-  if (loop.values.empty())
-    return;
-  if ((style == Style::PreferPairs || style == Style::Pdbx) &&
-      loop.length() == 1) {
-    for (size_t i = 0; i != loop.tags.size(); ++i)
-      write_out_pair(os, loop.tags[i], loop.values[i], style);
-    return;
-  }
-  os << "loop_";
-  for (const std::string& tag : loop.tags)
-    os << '\n' << tag;
+inline void write_out_loop_values(std::ostream& os, const Loop& loop) {
   size_t ncol = loop.tags.size();
   size_t col = 0;
   for (const std::string& val : loop.values) {
@@ -71,6 +60,21 @@ inline void write_out_loop(std::ostream& os, const Loop& loop, Style style) {
     if (col == ncol)
       col = 0;
   }
+}
+
+inline void write_out_loop(std::ostream& os, const Loop& loop, Style style) {
+  if (loop.values.empty())
+    return;
+  if ((style == Style::PreferPairs || style == Style::Pdbx) &&
+      loop.length() == 1) {
+    for (size_t i = 0; i != loop.tags.size(); ++i)
+      write_out_pair(os, loop.tags[i], loop.values[i], style);
+    return;
+  }
+  os << "loop_";
+  for (const std::string& tag : loop.tags)
+    os << '\n' << tag;
+  write_out_loop_values(os, loop);
   os.put('\n');
 }
 
