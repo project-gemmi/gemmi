@@ -73,19 +73,18 @@ struct Topo {
 
   struct ResInfo {
     Residue* res;
-    std::string prev_link;
-    int prev_idx; // relative to current index, 0 means n/a
+    struct Prev {
+      std::string link;
+      int idx; // relative to current index, 0 means n/a
+      const ResInfo* get(const ResInfo* t) const { return t + idx; }
+      ResInfo* get(ResInfo* t) const { return t + idx; }
+    };
+    std::vector<Prev> prev;
     std::vector<std::string> mods;
     ChemComp chemcomp;
     std::vector<Force> forces;
 
-    ResInfo(Residue* r) : res(r), prev_idx(0) {}
-    ResInfo* prev_resinfo() {
-      return prev_idx != 0 ? this + prev_idx : nullptr;
-    }
-    const ResInfo* prev_resinfo() const {
-      return const_cast<ResInfo*>(this)->prev_resinfo();
-    }
+    ResInfo(Residue* r) : res(r) {}
     void add_mod(const std::string& m) {
       if (!m.empty())
         mods.push_back(m);
@@ -102,6 +101,15 @@ struct Topo {
     void initialize(ResidueSpan& subchain, const Entity* ent);
     void setup_polymer_links();
     void add_refmac_builtin_modifications();
+    struct RGroup {
+      std::vector<ResInfo>::iterator begin, end;
+    };
+    RGroup group_from(std::vector<ResInfo>::iterator b) const {
+      auto e = b + 1;
+      while (e != res_infos.end() && e->res->group_key() == b->res->group_key())
+        ++e;
+      return RGroup{b, e};
+    }
   };
 
   struct ExtraLink {
@@ -246,12 +254,13 @@ struct Topo {
   }
 
   void apply_restraints_to_residue(ResInfo& ri, const MonLib& monlib) {
-    if (ResInfo* prev = ri.prev_resinfo()) {
-      if (const ChemLink* link = monlib.find_link(ri.prev_link)) {
-        auto forces = apply_restraints(link->rt, *prev->res, ri.res);
+    for (ResInfo::Prev& prev : ri.prev) {
+      if (const ChemLink* link = monlib.find_link(prev.link)) {
+        ResInfo* prev_ri = prev.get(&ri);
+        auto forces = apply_restraints(link->rt, *prev_ri->res, ri.res);
         for (const auto& f : forces) {
           ri.forces.push_back({Provenance::PrevLink, f.rkind, f.index});
-          prev->forces.push_back({Provenance::NextLink, f.rkind, f.index});
+          prev_ri->forces.push_back({Provenance::NextLink, f.rkind, f.index});
         }
       }
     }
@@ -300,8 +309,7 @@ struct Topo {
   }
 };
 
-inline
-void Topo::ChainInfo::initialize(ResidueSpan& subchain, const Entity* ent) {
+inline void Topo::ChainInfo::initialize(ResidueSpan& subchain, const Entity* ent) {
   res_infos.reserve(subchain.size());
   name = subchain.at(0).subchain;
   if (ent) {
@@ -319,25 +327,32 @@ void Topo::ChainInfo::initialize(ResidueSpan& subchain, const Entity* ent) {
 inline void Topo::ChainInfo::setup_polymer_links() {
   if (!polymer || res_infos.empty())
     return;
-  for (auto ri = res_infos.begin() + 1; ri != res_infos.end(); ++ri) {
-    // For now we ignore microheterogeneity.
-    ri->prev_idx = -1;
-    const Residue* prev_res = (ri + ri->prev_idx)->res;
-    if (!prev_res) {
-      ri->prev_link = ".";
-    } else if (!are_connected(*prev_res, *ri->res, polymer_type)) {
-      ri->prev_link = "gap";
-    } else if (is_polypeptide(polymer_type)) {
-      if (ri->chemcomp.group == "P-peptide")
-        ri->prev_link = "P";  // PCIS, PTRANS
-      else if (ri->chemcomp.group == "M-peptide")
-        ri->prev_link = "NM"; // NMCIS, NMTRANS
-      ri->prev_link += prev_res->is_cis ? "CIS" : "TRANS";
-    } else if (is_polynucleotide(polymer_type)) {
-      ri->prev_link = "p";
-    } else {
-      ri->prev_link = "?";
-    }
+  //ResidueGroup residue_groups()
+  RGroup prev_group = group_from(res_infos.begin());
+  while (prev_group.end != res_infos.end()) {
+    RGroup group = group_from(prev_group.end);
+    for (auto ri = group.begin; ri != group.end; ++ri)
+      for (auto prev_ri = prev_group.begin; prev_ri != prev_group.end; ++prev_ri) {
+        ResInfo::Prev p{{}, 0};
+        if (are_connected(*prev_ri->res, *ri->res, polymer_type)) {
+          p.idx = prev_ri - ri;
+          if (is_polypeptide(polymer_type)) {
+            if (ri->chemcomp.group == "P-peptide")
+              p.link = "P";  // PCIS, PTRANS
+            else if (ri->chemcomp.group == "M-peptide")
+              p.link = "NM"; // NMCIS, NMTRANS
+            p.link += prev_ri->res->is_cis ? "CIS" : "TRANS";
+          } else if (is_polynucleotide(polymer_type)) {
+            p.link = "p";
+          } else {
+            p.link = "?";
+          }
+        } else {
+          p.link = "gap";
+        }
+        ri->prev.push_back(p);
+      }
+    prev_group = group;
   }
 }
 
@@ -381,10 +396,11 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
 
     // add modifications from standard links
     for (ResInfo& ri : ci.res_infos)
-      if (const ChemLink* link = monlib.find_link(ri.prev_link)) {
-        ri.prev_resinfo()->add_mod(link->side1.mod);
-        ri.add_mod(link->side2.mod);
-      }
+      for (ResInfo::Prev& prev : ri.prev)
+        if (const ChemLink* link = monlib.find_link(prev.link)) {
+          prev.get(&ri)->add_mod(link->side1.mod);
+          ri.add_mod(link->side2.mod);
+        }
   }
   // add extra links
   for (const Connection& conn : st.connections) {

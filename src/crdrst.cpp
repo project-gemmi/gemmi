@@ -112,14 +112,14 @@ static cif::Document make_crd(const gemmi::Structure& st,
   for (const Topo::ChainInfo& chain_info : topo.chain_infos) {
     if (!chain_info.polymer)
       continue;
-    for (const Topo::ResInfo& res_info : chain_info.res_infos) {
-      const Topo::ResInfo* prev = res_info.prev_resinfo();
-      std::string prev_seqid = prev ? prev->res->seqid.str() : "n/a";
-      std::string mod = get_ccp4_mod_id(res_info.mods);
-      poly_loop.add_row({res_info.res->name, res_info.res->seqid.str(),
+    for (const Topo::ResInfo& ri : chain_info.res_infos) {
+      const Topo::ResInfo::Prev* prev = ri.prev.empty() ? nullptr : &ri.prev[0];
+      poly_loop.add_row({ri.res->name,
+                         ri.res->seqid.str(),
                          chain_info.entity_id,
-                         res_info.prev_idx ? res_info.prev_link : ".",
-                         prev_seqid, mod});
+                         prev ? prev->link : ".",
+                         prev ? prev->get(&ri)->res->seqid.str() : "n/a",
+                         get_ccp4_mod_id(ri.mods)});
     }
   }
   items.emplace_back(cif::CommentArg{"##########\n"
@@ -327,14 +327,16 @@ static cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
   for (const Topo::ChainInfo& chain_info : topo.chain_infos) {
     for (const Topo::ResInfo& ri : chain_info.res_infos) {
       // write link
-      if (const Topo::ResInfo* prev = ri.prev_resinfo()) {
-        const gemmi::ChemLink* link = monlib.find_link(ri.prev_link);
+      for (const Topo::ResInfo::Prev& prev : ri.prev) {
+        const gemmi::Residue* prev_res = prev.get(&ri)->res;
+        const gemmi::ChemLink* link = monlib.find_link(prev.link);
         if (link && count_provenance(ri.forces, Provenance::PrevLink) > 0) {
-          std::string comment = " link " + ri.prev_link + " " +
-                                 prev->res->seqid.str() + " " + prev->res->name + " - " +
-                                 ri.res->seqid.str() + " " + ri.res->name;
+          std::string comment = " link " + prev.link + " " +
+                                prev_res->seqid.str() + " " +
+                                prev_res->name + " - " +
+                                ri.res->seqid.str() + " " + ri.res->name;
           restr_loop.add_comment_and_row({comment, "LINK", ".",
-                                          cif::quote(ri.prev_link), ".",
+                                          cif::quote(prev.link), ".",
                                           ".", ".", ".", ".", ".", ".", "."});
           for (const Topo::Force& force : ri.forces)
             if (force.provenance == Provenance::PrevLink)
