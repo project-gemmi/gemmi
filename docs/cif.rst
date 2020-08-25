@@ -755,6 +755,14 @@ To add a row to an existing table (loop) use ``add_row``:
   >>> list(block.find_loop('_atom_type.symbol'))
   ['Au', 'C', 'CL', 'N', 'O', 'P', 'S', 'Zr']
 
+``add_row`` takes as an argument a list of strings, which should be quoted
+if necessary. If you have a list Python values use ``quote_list`` first:
+
+.. doctest::
+
+  >>> cif.quote_list([None, False, 3, -2.5, 'word', 'two words'])
+  ['?', '.', '3', '-2.5', 'word', "'two words'"]
+
 ``set_all_values`` sets all the data in a table. It takes as an argument
 a list of lists of string. The lists of strings correspond to columns.
 

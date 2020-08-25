@@ -16,6 +16,30 @@ using namespace gemmi::cif;
 void cif_parse_string(Document& doc, const std::string& data);
 void cif_parse_file(Document& doc, const std::string& filename);
 
+std::string pyobject_to_string(py::handle handle, bool raw) {
+  PyObject* ptr = handle.ptr();
+  if (ptr == Py_None) {
+    return "?";
+  } else if (ptr == Py_False) {
+    return ".";
+  } else if (ptr == Py_True) {
+    throw py::value_error("unexpected value True");
+  } else if (raw || PyFloat_Check(ptr) || PyLong_Check(ptr)) {
+    return py::str(handle);
+  } else {
+    return gemmi::cif::quote(py::str(handle));
+  }
+}
+
+std::vector<std::string> quote_list(py::list items) {
+  size_t size = items.size();
+  std::vector<std::string> ret;
+  ret.reserve(size);
+  for (auto handle : items)
+    ret.push_back(pyobject_to_string(handle, false));
+  return ret;
+}
+
 void add_cif(py::module& cif) {
   py::class_<Block> pyCifBlock(cif, "Block");
   py::class_<Item> pyCifItem(cif, "Item");
@@ -176,19 +200,7 @@ void add_cif(py::module& cif) {
            for (size_t col = 0; col != w; ++col) {
              size_t idx = col;
              for (auto handle : values[col]) {
-               std::string& val = loop.values[idx];
-               PyObject* ptr = handle.ptr();
-               if (handle.is_none()) {
-                 val = "?";
-               } else if (ptr == Py_False) {
-                 val = ".";
-               } else if (ptr == Py_True) {
-                 throw py::value_error("unexpected value True");
-               } else if (raw || PyFloat_Check(ptr) || PyLong_Check(ptr)) {
-                 val = py::str(handle);
-               } else {
-                 val = quote(py::str(handle));
-               }
+               loop.values[idx] = pyobject_to_string(handle, raw);
                idx += w;
              }
            }
@@ -333,4 +345,5 @@ void add_cif(py::module& cif) {
     });
 
   cif.def("quote", &quote, py::arg("string"));
+  cif.def("quote_list", &quote_list);
 }
