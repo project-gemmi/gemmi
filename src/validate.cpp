@@ -152,101 +152,6 @@ void check_empty_loops(const cif::Block& block) {
 }
 
 
-// Class DDL that represents DDL1 or DDL2 dictionary (ontology).
-class DDL {
-public:
-  void open_file(const std::string& filename) {
-    ddl_ = cif::read_file(filename);
-    if (ddl_.blocks.size() > 1) {
-      version_ = 1;
-      sep_ = "_";
-      read_ddl1();
-    } else {
-      version_ = 2;
-      sep_ = ".";
-      read_ddl2();
-    }
-  }
-  // check if the dictionary name/version correspond to _audit_conform_dict_*
-  void check_audit_conform(const cif::Document& doc) const;
-  template <class Output>
-  bool validate(cif::Document& doc, Output& out, bool quiet);
-
-private:
-  cif::Block* find_rules(const std::string& name) {
-    auto iter = name_index_.find(name);
-    return iter != name_index_.end() ? iter->second : nullptr;
-  }
-
-  void read_ddl1() {
-    for (cif::Block& b : ddl_.blocks) {
-      for (std::string& name : b.find_values("_name"))
-        name_index_.emplace(cif::as_string(name), &b);
-      if (b.name == "on_this_dictionary") {
-        const std::string* dic_name = b.find_value("_dictionary_name");
-        if (dic_name)
-          dict_name_ = cif::as_string(*dic_name);
-        const std::string* dic_ver = b.find_value("_dictionary_version");
-        if (dic_ver)
-          dict_version_ = cif::as_string(*dic_ver);
-      }
-    }
-  }
-
-  void read_ddl2() {
-    for (cif::Block& block : ddl_.blocks) // a single block is expected
-      for (cif::Item& item : block.items) {
-        if (item.type == cif::ItemType::Frame) {
-          for (const std::string& name : item.frame.find_values("_item.name"))
-            name_index_.emplace(cif::as_string(name), &item.frame);
-        } else if (item.type == cif::ItemType::Pair) {
-          if (item.pair[0] == "_dictionary.title")
-            dict_name_ = item.pair[1];
-          else if (item.pair[0] == "_dictionary.version")
-            dict_version_ = item.pair[1];
-        }
-      }
-  }
-
-  template <class Output, class TypeCheckDDL>
-  bool do_validate(cif::Document& doc, Output& out, bool quiet);
-
-  int version_;
-  cif::Document ddl_;
-  std::unordered_map<std::string, cif::Block*> name_index_;
-  std::string dict_name_;
-  std::string dict_version_;
-  // "_" or ".", used to unify handling of DDL1 and DDL2, for example when
-  // reading _audit_conform_dict_version and _audit_conform.dict_version.
-  std::string sep_;
-};
-
-
-void DDL::check_audit_conform(const cif::Document& doc) const {
-  std::string audit_conform = "_audit_conform" + sep_;
-  for (const cif::Block& b : doc.blocks) {
-    const std::string* raw_name = b.find_value(audit_conform + "dict_name");
-    if (!raw_name) {
-      std::cout << "Note: the cif file (block " << b.name << ") is missing "
-                << audit_conform << ".dict_name\n";
-      continue;
-    }
-    std::string name = cif::as_string(*raw_name);
-    if (name == dict_name_) {
-      const std::string* dict_ver = b.find_value(audit_conform + "dict_version");
-      if (dict_ver) {
-        std::string version = cif::as_string(*dict_ver);
-        if (version != dict_version_)
-          std::cout << "Note: CIF conforms to " << name << " ver. " << version
-                    << " while DDL has ver. " << dict_version_ << '\n';
-      }
-    } else {
-      std::cout << "Note: dictionary name mismatch: " << name
-                << " vs " << dict_name_ << '\n';
-    }
-  }
-}
-
 enum class Trinary : char { Unset, Yes, No };
 enum class ValType : char { Unset, Numb, Any };
 
@@ -364,14 +269,107 @@ private:
   std::string type_code_;
 };
 
-template <class Output>
-bool DDL::validate(cif::Document& doc, Output& out, bool quiet) {
-  return version_ == 1 ? do_validate<Output, TypeCheckDDL1>(doc, out, quiet)
-                       : do_validate<Output, TypeCheckDDL2>(doc, out, quiet);
+
+// Class DDL that represents DDL1 or DDL2 dictionary (ontology).
+class DDL {
+public:
+  void open_file(const std::string& filename) {
+    ddl_ = cif::read_file(filename);
+    if (ddl_.blocks.size() > 1) {
+      version_ = 1;
+      sep_ = "_";
+      read_ddl1();
+    } else {
+      version_ = 2;
+      sep_ = ".";
+      read_ddl2();
+    }
+  }
+  // check if the dictionary name/version correspond to _audit_conform_dict_*
+  void check_audit_conform(const cif::Document& doc) const;
+
+  bool validate(cif::Document& doc, std::ostream& out, bool quiet) {
+    return version_ == 1 ? do_validate<TypeCheckDDL1>(doc, out, quiet)
+                         : do_validate<TypeCheckDDL2>(doc, out, quiet);
+  }
+
+private:
+  cif::Block* find_rules(const std::string& name) {
+    auto iter = name_index_.find(name);
+    return iter != name_index_.end() ? iter->second : nullptr;
+  }
+
+  void read_ddl1() {
+    for (cif::Block& b : ddl_.blocks) {
+      for (std::string& name : b.find_values("_name"))
+        name_index_.emplace(cif::as_string(name), &b);
+      if (b.name == "on_this_dictionary") {
+        const std::string* dic_name = b.find_value("_dictionary_name");
+        if (dic_name)
+          dict_name_ = cif::as_string(*dic_name);
+        const std::string* dic_ver = b.find_value("_dictionary_version");
+        if (dic_ver)
+          dict_version_ = cif::as_string(*dic_ver);
+      }
+    }
+  }
+
+  void read_ddl2() {
+    for (cif::Block& block : ddl_.blocks) // a single block is expected
+      for (cif::Item& item : block.items) {
+        if (item.type == cif::ItemType::Frame) {
+          for (const std::string& name : item.frame.find_values("_item.name"))
+            name_index_.emplace(cif::as_string(name), &item.frame);
+        } else if (item.type == cif::ItemType::Pair) {
+          if (item.pair[0] == "_dictionary.title")
+            dict_name_ = item.pair[1];
+          else if (item.pair[0] == "_dictionary.version")
+            dict_version_ = item.pair[1];
+        }
+      }
+  }
+
+  template<class TypeCheckDDL>
+  bool do_validate(cif::Document& doc, std::ostream& out, bool quiet);
+
+  int version_;
+  cif::Document ddl_;
+  std::unordered_map<std::string, cif::Block*> name_index_;
+  std::string dict_name_;
+  std::string dict_version_;
+  // "_" or ".", used to unify handling of DDL1 and DDL2, for example when
+  // reading _audit_conform_dict_version and _audit_conform.dict_version.
+  std::string sep_;
+};
+
+
+void DDL::check_audit_conform(const cif::Document& doc) const {
+  std::string audit_conform = "_audit_conform" + sep_;
+  for (const cif::Block& b : doc.blocks) {
+    const std::string* raw_name = b.find_value(audit_conform + "dict_name");
+    if (!raw_name) {
+      std::cout << "Note: the cif file (block " << b.name << ") is missing "
+                << audit_conform << ".dict_name\n";
+      continue;
+    }
+    std::string name = cif::as_string(*raw_name);
+    if (name == dict_name_) {
+      const std::string* dict_ver = b.find_value(audit_conform + "dict_version");
+      if (dict_ver) {
+        std::string version = cif::as_string(*dict_ver);
+        if (version != dict_version_)
+          std::cout << "Note: CIF conforms to " << name << " ver. " << version
+                    << " while DDL has ver. " << dict_version_ << '\n';
+      }
+    } else {
+      std::cout << "Note: dictionary name mismatch: " << name
+                << " vs " << dict_name_ << '\n';
+    }
+  }
 }
 
-template <class Output, class TypeCheckDDL>
-bool DDL::do_validate(cif::Document& doc, Output& out, bool quiet) {
+template <class TypeCheckDDL>
+bool DDL::do_validate(cif::Document& doc, std::ostream& out, bool quiet) {
   std::string msg;
   bool ok = true;
   auto err = [&](const cif::Block& b, const cif::Item& item,
