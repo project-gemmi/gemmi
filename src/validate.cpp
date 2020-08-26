@@ -293,10 +293,9 @@ private:
       return true;
     // TODO: case-insensitive search when appropriate
     if (msg) {
-      *msg = "'" + val + "' is not one of:";
+      *msg = "\"" + val + "\" is not one of the allowed values:";
       for (const std::string& e : enumeration_)
-        *msg += " " + e + ",";
-      (*msg)[msg->size() - 1] = '.';
+        *msg += "\n\t" + e;
     }
     return false;
   }
