@@ -36,21 +36,9 @@ struct UnmergedHklMover {
 
   // Modifies hkl and returns ISYM value for M/ISYM
   int move_to_asu(std::array<int, 3>& hkl) {
-    int isym = 1;
-    for (Op op : group_ops_) {
-      Miller new_hkl = op.apply_to_hkl(hkl);
-      if (asu_.is_in(new_hkl)) {
-        hkl = new_hkl;
-        return isym;
-      }
-      Miller negated_new_hkl{{-new_hkl[0], -new_hkl[1], -new_hkl[2]}};
-      if (asu_.is_in(negated_new_hkl)) {
-        hkl = negated_new_hkl;
-        return isym + 1;
-      }
-      isym += 2;
-    }
-    return 0;
+    std::pair<Miller, int> hkl_isym = asu_.to_asu(hkl, group_ops_);
+    hkl = hkl_isym.first;
+    return hkl_isym.second;
   }
 
 private:

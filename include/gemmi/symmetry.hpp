@@ -1831,14 +1831,19 @@ struct ReciprocalAsu {
     unreachable();
   }
 
-  Op::Miller to_asu(Op::Miller hkl, const GroupOps& gops) const {
+  // Returns hkl in asu and MTZ ISYM - 2*n-1 for reflections in the positive
+  // asu (I+ of a Friedel pair), 2*n for reflections in the negative asu (I-).
+  std::pair<Op::Miller,int> to_asu(const Op::Miller& hkl, const GroupOps& gops) const {
+    int isym = 0;
     for (const Op& op : gops.sym_ops) {
+      ++isym;
       Op::Miller new_hkl = op.apply_to_hkl_without_division(hkl);
       if (is_in(new_hkl))
-        return Op::divide_hkl_by_DEN(new_hkl);
+        return {Op::divide_hkl_by_DEN(new_hkl), isym};
+      ++isym;
       Op::Miller negated_new_hkl{{-new_hkl[0], -new_hkl[1], -new_hkl[2]}};
       if (is_in(negated_new_hkl))
-        return Op::divide_hkl_by_DEN(negated_new_hkl);
+        return {Op::divide_hkl_by_DEN(negated_new_hkl), isym};
     }
     fail("Oops, maybe inconsistent GroupOps?");
   }

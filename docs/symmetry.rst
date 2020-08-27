@@ -582,10 +582,11 @@ such as TNT, use different ASU choice).
   >>> asu.condition_str()
   'k>=0 and (l>0 or (l=0 and h>=0))'
 
-The condition returned from ``condition_str()`` refers to standard settings
+The condition returned from ``condition_str()`` refers to the standard settings
 of the space group, so it is the same for P 1 2 1 and P 1 1 2.
-But other functions take settings into account.
-These function can check if a reflection is in the ASU:
+Other functions depend on the settings used.
+
+One can check if a reflection is in the ASU:
 
 .. doctest::
 
@@ -594,15 +595,19 @@ These function can check if a reflection is in the ASU:
   >>> gemmi.ReciprocalAsu(gemmi.SpaceGroup('P 1 1 2')).is_in([1, -2, 3])
   True
 
-and what is equivalent reflection in the ASU (``to_asu()``):
+and what is the equivalent reflection in the ASU:
 
 .. doctest::
 
   >>> asu.to_asu([1, -2, 3], p2.operations())
-  [1, 2, 3]
+  ([1, 2, 3], 4)
 
-The last function takes GroupOps as an argument to avoid determining
-operations many times when ``to_asu()`` is in a loop.
+``to_asu()`` returns also index of the symmetry operation between
+the original and the returned reflection -- the same number as ISYM in
+the MTZ format, odd for reflections in the positive asu (I+),
+even for negative (I-).
+The second argument (GroupOps) is passed explicitely to avoid determining
+space group operations many times when ``to_asu()`` is in a loop.
 
 
 C++ Example

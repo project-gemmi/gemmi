@@ -137,7 +137,7 @@ Intensities read_intensities(bool merged, const char* input_path,
             gemmi::GroupOps gops = intensities.spacegroup->operations();
             gemmi::ReciprocalAsu asu(intensities.spacegroup);
             for (Intensity& intensity : intensities.data)
-              intensity.hkl = asu.to_asu(intensity.hkl, gops);
+              intensity.hkl = asu.to_asu(intensity.hkl, gops).first;
           }
           break;
         }

@@ -172,7 +172,7 @@ void add_symmetry(py::module& m) {
         GroupOps gops = sg.operations();
         ReciprocalAsu asu(&sg);
         for (ssize_t i = 0; i < h.shape(0); ++i) {
-          Op::Miller hkl = asu.to_asu({{h(i, 0), h(i, 1), h(i, 2)}}, gops);
+          Op::Miller hkl = asu.to_asu({{h(i, 0), h(i, 1), h(i, 2)}}, gops).first;
           for (int j = 0; j != 3; ++j)
             h(i, j) = hkl[j];
         }
