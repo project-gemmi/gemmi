@@ -168,8 +168,9 @@ std::string OptParser::coordinate_input_file(int n, char pdb_code_type) {
 }
 
 bool starts_with_pdb_code(const std::string& s) {
-  return s.length() > 4 && std::strchr(" \t\r\n:,;|", s[4]) &&
-         gemmi::is_pdb_code(s.substr(0, 4));
+  return (s.length() == 4 && gemmi::is_pdb_code(s)) ||
+         (s.length() > 4 && std::strchr(" \t\r\n:,;|", s[4]) &&
+          gemmi::is_pdb_code(s.substr(0, 4)));
 }
 
 std::vector<std::string>

@@ -22,7 +22,7 @@ namespace cif = gemmi::cif;
 namespace rules = gemmi::cif::rules;
 
 
-enum OptionIndex { FromFile=3, NamePattern, Recurse, MaxCount, OneBlock, And,
+enum OptionIndex { FromFile=4, NamePattern, Recurse, MaxCount, OneBlock, And,
                    Delim, WithFileName, NoBlockName, WithLineNumbers, WithTag,
                    Summarize, MatchingFiles, NonMatchingFiles, Count, Raw };
 
@@ -38,6 +38,8 @@ static const option::Descriptor Usage[] = {
     "  -h, --help  \tdisplay this help and exit" },
   { Version, 0, "V", "version", Arg::None,
     "  -V, --version  \tdisplay version information and exit" },
+  { Verbose, 0, "v", "verbose", Arg::None,
+    "  -v, --verbose  \tprint additional messages to stderr" },
   { FromFile, 0, "f", "file", Arg::Required,
     "  -f, --file=FILE  \tobtain file (or PDB ID) list from FILE" },
   { NamePattern, 0, "", "name", Arg::Required,
@@ -78,6 +80,7 @@ struct GrepParams {
   // options
   std::string search_tag;
   int max_count = 0;
+  bool verbose = false;
   bool with_filename = false;
   bool with_blockname = true;
   bool with_line_numbers = false;
@@ -401,6 +404,8 @@ void run_parse(Input&& in, GrepParams& par) {
 
 static
 void grep_file(const std::string& path, GrepParams& par, int& err_count) {
+  if (par.verbose)
+    fprintf(stderr, "Reading %s ...\n", path.c_str());
   par.path = path.c_str();
   par.block_name.clear();
   par.counters.clear();
@@ -457,6 +462,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     params.max_count = std::strtol(p.options[MaxCount].arg, nullptr, 10);
   if (p.options[OneBlock])
     params.last_block = true;
+  if (p.options[Verbose])
+    params.verbose = true;
   if (p.options[WithFileName])
     params.with_filename = true;
   if (p.options[NoBlockName])
