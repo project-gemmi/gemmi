@@ -60,6 +60,8 @@ struct Intensities {
   gemmi::UnitCell unit_cell;
   double wavelength;
 
+  bool have_sign() const { return !data.empty() && data[0].isign != 0; }
+
   std::array<double,2> resolution_range() const {
     double min_1_d2 = INFINITY;
     double max_1_d2 = 0;
@@ -118,15 +120,6 @@ struct Intensities {
 
   void sort() { std::sort(data.begin(), data.end()); }
 };
-
-[[noreturn]]
-inline void exit_message(const char* msg, const char* path=nullptr) {
-  if (path)
-    std::fprintf(stderr, "%s: %s\n", msg, path);
-  else
-    std::fprintf(stderr, "%s\n", msg);
-  std::exit(1);
-}
 
 enum class ReadType { Unmerged, Mean, Anomalous };
 
@@ -246,6 +239,12 @@ Intensities read_intensities(ReadType itype, const char* input_path,
       if (verbose)
         mtz.warnings = stderr;
       mtz.read_input(gemmi::MaybeGzipped(input_path), /*with_data=*/true);
+      if (itype == ReadType::Mean && !mtz.column_with_label("IMEAN")) {
+        if (!mtz.column_with_label("I(+)"))
+          gemmi::fail("merged intensities not found");
+        std::fprintf(stderr, "No IMEAN, using I(+) and I(-) ...\n");
+        itype = ReadType::Anomalous;
+      }
       switch (itype) {
         case ReadType::Unmerged:
           return read_unmerged_intensities_from_mtz(mtz);
@@ -262,6 +261,12 @@ Intensities read_intensities(ReadType itype, const char* input_path,
           if (rb.default_loop) {
             if (verbose)
               std::fprintf(stderr, "Taking data from %s ...\n", rb.block.name.c_str());
+            if (itype == ReadType::Mean && rb.find_column_index("intensity_meas") < 0) {
+              if (rb.find_column_index("pdbx_I_plus") < 0)
+                gemmi::fail("merged intensities not found");
+              std::fprintf(stderr, "No _refln.intensity_meas, using pdbx_I_plus/minus ...\n");
+              itype = ReadType::Anomalous;
+            }
             switch (itype) {
               case ReadType::Unmerged:
                 return read_unmerged_intensities_from_mmcif(rb);
@@ -309,8 +314,6 @@ void merge_intensities_in_place(Intensities& intensities) {
 
 static
 void write_merged_intensities(const Intensities& intensities, const char* output_path) {
-  if (intensities.data.empty())
-    return;
   gemmi::Mtz mtz;
   mtz.cell = intensities.unit_cell;
   mtz.spacegroup = intensities.spacegroup;
@@ -319,8 +322,7 @@ void write_merged_intensities(const Intensities& intensities, const char* output
   mtz.add_column("K", 'H');
   mtz.add_column("L", 'H');
   mtz.add_dataset("unknown").wavelength = intensities.wavelength;
-  bool mean = intensities.data[0].isign == 0;
-  if (mean) {
+  if (!intensities.have_sign()) {
     mtz.add_column("IMEAN", 'J');
     mtz.add_column("SIGIMEAN", 'Q');
   } else {
@@ -398,7 +400,7 @@ void compare_intensities(Intensities& intensities, Intensities& ref) {
   ref.unit_cell = intensities.unit_cell;
   auto r_resol = ref.resolution_range();
   printf("Resolution: %g-%g    %g-%g\n", a_resol[0], a_resol[1], r_resol[0], r_resol[1]);
-  const char* what = intensities.data[0].isign == 0 ? "Imean" : "I+/I-";
+  const char* what = intensities.have_sign() ? "I+/I-" : "Imean";
   printf("%s CC: %.9g%% (mean ratio: %g)\n", what, 100 * ci.coefficient(), ci.mean_ratio());
   printf("Sigma CC: %.9g%% (mean ratio: %g)\n", 100 * cs.coefficient(), cs.mean_ratio());
 }
@@ -410,6 +412,15 @@ int GEMMI_MAIN(int argc, char **argv) {
   bool verbose = p.options[Verbose];
   const char* input_path = p.nonOption(0);
   const char* output_path = p.nonOption(1);
+
+  Intensities ref;
+  if (p.options[Compare]) {
+    if (verbose)
+      std::fprintf(stderr, "Reading merged reflections from %s ...\n", output_path);
+    ReadType itype = p.options[WriteAnom] ? ReadType::Anomalous : ReadType::Mean;
+    ref = read_intensities(itype, input_path, nullptr, verbose);
+  }
+
   if (verbose)
     std::fprintf(stderr, "Reading %s ...\n", input_path);
   const char* block_name = nullptr;
@@ -419,15 +430,12 @@ int GEMMI_MAIN(int argc, char **argv) {
                                              input_path, block_name, verbose);
   if (verbose)
     std::fprintf(stderr, "Merging observations (%zu total) ...\n", intensities.data.size());
-  if (!p.options[WriteAnom])
+  if (p.options[Compare] ? !ref.have_sign() : !p.options[WriteAnom])
+    // discard signs so that merging produces Imean
     for (Intensity& inten : intensities.data)
       inten.isign = 0;
   merge_intensities_in_place(intensities);
   if (p.options[Compare]) {
-    if (verbose)
-      std::fprintf(stderr, "Reading merged reflections from %s ...\n", output_path);
-    ReadType itype = p.options[WriteAnom] ? ReadType::Anomalous : ReadType::Mean;
-    Intensities ref = read_intensities(itype, input_path, nullptr, verbose);
     compare_intensities(intensities, ref);
   } else {
     if (verbose)
