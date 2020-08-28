@@ -1,6 +1,4 @@
 -
-  on:
-    APPVEYOR_REPO_TAG: xfalse
   version: '{branch}-{build}'
   environment:
     matrix:
@@ -53,7 +51,11 @@
     - path: gemmi.exe
 
 -
-  on:
+  branches:
+    only:
+      - master
+      - /v\d*\.\d*\.\d*/
+
     APPVEYOR_REPO_TAG: false
   # see https://packaging.python.org/guides/supporting-windows-using-appveyor/
   environment:
