@@ -1,5 +1,6 @@
 -
-  skip_tags: true
+  on:
+    APPVEYOR_REPO_TAG: xfalse
   version: '{branch}-{build}'
   environment:
     matrix:
@@ -52,7 +53,8 @@
     - path: gemmi.exe
 
 -
-  skip_non_tags: true
+  on:
+    APPVEYOR_REPO_TAG: false
   # see https://packaging.python.org/guides/supporting-windows-using-appveyor/
   environment:
     matrix:
