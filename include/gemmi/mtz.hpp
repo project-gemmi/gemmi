@@ -828,7 +828,7 @@ void Mtz::write_to_stream(std::FILE* stream) const {
         ops.order(),               // number of symmetry operations
         (int) ops.sym_ops.size(),  // number of primitive operations
         lat_type,                  // lattice type
-        spacegroup->ccp4,          // space group number 
+        spacegroup->ccp4,          // space group number
         20 - (int) std::strlen(spacegroup->hm), "",
         lat_type,                  // space group name (first letter)
         spacegroup->hm + 1,        // space group name (the rest)
