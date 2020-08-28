@@ -74,7 +74,7 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-struct Parameters {
+struct GrepParams {
   // options
   std::string search_tag;
   int max_count = 0;
@@ -105,7 +105,7 @@ struct Parameters {
 };
 
 template<typename Input>
-void process_match(const Input& in, Parameters& par, int n) {
+void process_match(const Input& in, GrepParams& par, int n) {
   if (cif::is_null(in.string()) && !par.raw)
     return;
   ++par.counters[0];
@@ -148,7 +148,7 @@ static std::string escape(const std::string& s, char delim) {
   return r;
 }
 
-static void process_multi_match(Parameters& par) {
+static void process_multi_match(GrepParams& par) {
   if (par.multi_values.empty())
     return;
   if (par.print_count || par.only_filenames) {
@@ -193,7 +193,7 @@ static void process_multi_match(Parameters& par) {
     mv.clear();
 }
 
-static void print_count(const Parameters& par) {
+static void print_count(const GrepParams& par) {
   const char* sep = par.delim.empty() ? ":" : par.delim.c_str();
   if (par.with_filename)
     printf("%s%s", par.path, sep);
@@ -213,7 +213,7 @@ static void print_count(const Parameters& par) {
 template<typename Rule> struct Search : pegtl::nothing<Rule> {};
 
 template<> struct Search<rules::datablockname> {
-  template<typename Input> static void apply(const Input& in, Parameters& p) {
+  template<typename Input> static void apply(const Input& in, GrepParams& p) {
     process_multi_match(p);
     if (!p.block_name.empty() && p.print_count && p.with_blockname) {
       print_count(p);
@@ -225,23 +225,23 @@ template<> struct Search<rules::datablockname> {
   }
 };
 template<> struct Search<rules::str_global> {
-  template<typename Input> static void apply(const Input& in, Parameters& p) {
+  template<typename Input> static void apply(const Input& in, GrepParams& p) {
     Search<rules::datablockname>::apply(in, p);
   }
 };
 template<> struct Search<rules::framename> {
-  template<typename Input> static void apply(const Input& in, Parameters& p) {
+  template<typename Input> static void apply(const Input& in, GrepParams& p) {
     p.block_name += " " + in.string();
   }
 };
 template<> struct Search<rules::endframe> {
-  template<typename Input> static void apply(const Input&, Parameters& p) {
+  template<typename Input> static void apply(const Input&, GrepParams& p) {
     process_multi_match(p);
     p.block_name.erase(p.block_name.rfind(' '));
   }
 };
 template<> struct Search<rules::item_tag> {
-  template<typename Input> static void apply(const Input& in, Parameters& p) {
+  template<typename Input> static void apply(const Input& in, GrepParams& p) {
     if (!p.globbing) {
       if (p.search_tag.size() == in.size() && p.search_tag == in.string())
         p.match_value = 1;
@@ -256,7 +256,7 @@ template<> struct Search<rules::item_tag> {
 };
 
 template<> struct Search<rules::item_value> {
-  template<typename Input> static void apply(const Input& in, Parameters& p) {
+  template<typename Input> static void apply(const Input& in, GrepParams& p) {
     if (p.match_value) {
       p.match_value = 0;
       process_match(in, p, p.globbing ? 0 : -1);
@@ -266,7 +266,7 @@ template<> struct Search<rules::item_value> {
   }
 };
 template<> struct Search<rules::str_loop> {
-  template<typename Input> static void apply(const Input&, Parameters& p) {
+  template<typename Input> static void apply(const Input&, GrepParams& p) {
     p.table_width = 0;
     if (p.globbing) {
       p.multi_tags.clear();
@@ -275,7 +275,7 @@ template<> struct Search<rules::str_loop> {
   }
 };
 template<> struct Search<rules::loop_tag> {
-  template<typename Input> static void apply(const Input& in, Parameters& p) {
+  template<typename Input> static void apply(const Input& in, GrepParams& p) {
     if (!p.globbing) {
       if (p.search_tag == in.string()) {
         p.match_column = p.table_width;
@@ -294,7 +294,7 @@ template<> struct Search<rules::loop_tag> {
 };
 
 template<> struct Search<rules::loop_end> {
-  template<typename Input> static void apply(const Input&, Parameters& p) {
+  template<typename Input> static void apply(const Input&, GrepParams& p) {
     if (p.match_column != -1) {
       p.match_column = -1;
       if (p.last_block && !p.globbing)
@@ -303,7 +303,7 @@ template<> struct Search<rules::loop_end> {
   }
 };
 template<> struct Search<rules::loop_value> {
-  template<typename Input> static void apply(const Input& in, Parameters& p) {
+  template<typename Input> static void apply(const Input& in, GrepParams& p) {
     if (p.match_column == -1)
       return;
     if (!p.globbing) {
@@ -331,7 +331,7 @@ template<typename T> bool any_empty(const std::vector<T>& v) {
 template<typename Rule> struct MultiSearch : Search<Rule> {};
 
 template<> struct MultiSearch<rules::item_tag> {
-  template<typename Input> static void apply(const Input& in, Parameters& p) {
+  template<typename Input> static void apply(const Input& in, GrepParams& p) {
     const std::string s = in.string();
     for (int i = 0; i < static_cast<int>(p.multi_tags.size()); ++i)
       if (p.multi_tags[i] == s)
@@ -339,7 +339,7 @@ template<> struct MultiSearch<rules::item_tag> {
   }
 };
 template<> struct MultiSearch<rules::item_value> {
-  template<typename Input> static void apply(const Input& in, Parameters& p) {
+  template<typename Input> static void apply(const Input& in, GrepParams& p) {
     if (p.match_value) {
       if (p.raw || !cif::is_null(in.string()))
         ++p.counters[p.match_value - 1];
@@ -351,7 +351,7 @@ template<> struct MultiSearch<rules::item_value> {
   }
 };
 template<> struct MultiSearch<rules::loop_tag> {
-  template<typename Input> static void apply(const Input& in, Parameters& p) {
+  template<typename Input> static void apply(const Input& in, GrepParams& p) {
     const std::string s = in.string();
     for (size_t i = 0; i != p.multi_tags.size(); ++i)
       if (p.multi_tags[i] == s) {
@@ -363,7 +363,7 @@ template<> struct MultiSearch<rules::loop_tag> {
   }
 };
 template<> struct MultiSearch<rules::loop_end> {
-  template<typename Input> static void apply(const Input&, Parameters& p) {
+  template<typename Input> static void apply(const Input&, GrepParams& p) {
     if (p.match_column == 0) {
       p.match_column = -1;
       for (int& c : p.multi_match_columns)
@@ -374,7 +374,7 @@ template<> struct MultiSearch<rules::loop_end> {
   }
 };
 template<> struct MultiSearch<rules::loop_value> {
-  template<typename Input> static void apply(const Input& in, Parameters& p) {
+  template<typename Input> static void apply(const Input& in, GrepParams& p) {
     if (p.match_column == 0) {
       for (size_t i = 0; i != p.multi_values.size(); ++i)
         if (p.column == p.multi_match_columns[i]) {
@@ -392,7 +392,7 @@ template<> struct MultiSearch<rules::loop_value> {
 };
 
 template<typename Input>
-void run_parse(Input&& in, Parameters& par) {
+void run_parse(Input&& in, GrepParams& par) {
   if (par.multi_values.empty())
     pegtl::parse<rules::file, Search, cif::Errors>(in, par);
   else
@@ -400,7 +400,7 @@ void run_parse(Input&& in, Parameters& par) {
 }
 
 static
-void grep_file(const std::string& path, Parameters& par, int& err_count) {
+void grep_file(const std::string& path, GrepParams& par, int& err_count) {
   par.path = path.c_str();
   par.block_name.clear();
   par.counters.clear();
@@ -452,7 +452,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
 
-  Parameters params;
+  GrepParams params;
   if (p.options[MaxCount])
     params.max_count = std::strtol(p.options[MaxCount].arg, nullptr, 10);
   if (p.options[OneBlock])

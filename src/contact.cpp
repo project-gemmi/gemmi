@@ -54,7 +54,7 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-struct Parameters {
+struct ContactParameters {
   bool use_cov_radius;
   ContactSearch::Ignore ignore = ContactSearch::Ignore::AdjacentResidues;
   bool print_count;
@@ -68,7 +68,7 @@ struct Parameters {
   int verbose;
 };
 
-static void print_contacts(Structure& st, const Parameters& params) {
+static void print_contacts(Structure& st, const ContactParameters& params) {
   float max_r = params.use_cov_radius ? 4.f + params.cov_tol : params.max_dist;
   NeighborSearch ns(st.first_model(), st.cell, std::max(5.0f, max_r));
   ns.populate(/*include_h=*/!params.no_hydrogens);
@@ -135,7 +135,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   p.require_input_files_as_args();
-  Parameters params;
+  ContactParameters params;
   params.verbose = p.options[Verbose].count();
   params.use_cov_radius = (p.options[Cov] || p.options[CovMult]);
   if (p.options[Cov])
