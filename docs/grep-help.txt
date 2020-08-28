@@ -8,6 +8,7 @@ To change it, specify --name=* or --name=*.hkl.
 Options:
   -h, --help               display this help and exit
   -V, --version            display version information and exit
+  -v, --verbose            print additional messages to stderr
   -f, --file=FILE          obtain file (or PDB ID) list from FILE
   --name=PATTERN           filename glob pattern used in recursive grep; by
                            default, *.cif and *.cif.gz files are searched

@@ -14,6 +14,7 @@
 #include "elem.hpp"      // Element
 #include "math.hpp"      // SMat33
 #include "unitcell.hpp"  // UnitCell, Fractional
+#include "util.hpp"      // vector_remove_if
 
 namespace gemmi {
 

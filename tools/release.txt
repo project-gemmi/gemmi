@@ -1,0 +1,10 @@
+
+- update version in include/gemmi/version.hpp
+- ./run-tests.sh a
+- python3 setup.py sdist
+- python3 -m pip uninstall gemmi
+- python3 -m pip install dist/gemmi-$VERSION.tar.gz
+- python3 setup.py sdist upload
+- git commit -a -m "change version number to $VERSION"
+- git tag -a v$VERSION -m v$VERSION
+- git push --follow-tags
