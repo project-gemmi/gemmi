@@ -19,7 +19,7 @@
 #define GEMMI_PROG merge
 #include "options.h"
 
-enum OptionIndex { WriteAnom=4, BlockName, Compare };
+enum OptionIndex { WriteAnom=4, BlockName, Compare, PrintAll };
 
 static const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -35,6 +35,8 @@ static const option::Descriptor Usage[] = {
     "  -b NAME, --block=NAME  \toutput mmCIF block name: data_NAME (default: merged)." },
   { Compare, 0, "", "compare", Arg::None,
     "  --compare  \tcompare unmerged and merged data (no output file)." },
+  { PrintAll, 0, "", "print-all", Arg::None,
+    "  --print-all  \tprint all compared reflections." },
   { NoOp, 0, "", "", Arg::None,
     "\nThe input file can be either SF-mmCIF with _diffrn_refln or MTZ."
     "\nThe output file can be either SF-mmCIF or MTZ."
@@ -259,14 +261,17 @@ Intensities read_intensities(ReadType itype, const char* input_path,
         if (!block_name || rb.block.name == block_name) {
           rb.use_unmerged(itype == ReadType::Unmerged);
           if (rb.default_loop) {
-            if (verbose)
-              std::fprintf(stderr, "Taking data from %s ...\n", rb.block.name.c_str());
             if (itype == ReadType::Mean && rb.find_column_index("intensity_meas") < 0) {
               if (rb.find_column_index("pdbx_I_plus") < 0)
                 gemmi::fail("merged intensities not found");
               std::fprintf(stderr, "No _refln.intensity_meas, using pdbx_I_plus/minus ...\n");
               itype = ReadType::Anomalous;
             }
+            if (verbose)
+              std::fprintf(stderr, "Taking %s from block %s ...\n",
+                           itype == ReadType::Unmerged ? "unmerged I" :
+                           itype == ReadType::Mean ? "<I>" : "I+/I-",
+                           rb.block.name.c_str());
             switch (itype) {
               case ReadType::Unmerged:
                 return read_unmerged_intensities_from_mmcif(rb);
@@ -364,7 +369,21 @@ void write_merged_intensities(const Intensities& intensities, const char* output
 }
 
 static
-void compare_intensities(Intensities& intensities, Intensities& ref) {
+void print_reflection(const Intensity* a, const Intensity* r) {
+  const Intensity& h = a ? *a : *r;
+  printf("   %3d %3d %3d  %c ",
+         h.hkl[0], h.hkl[1], h.hkl[2],
+         h.isign == 0 ? 'm' : h.isign > 0 ? '+' : '-');
+  if (a && r)
+    printf("%8.2f vs %8.2f\n", a->value, r->value);
+  else if (a)
+    printf("%8.2f vs   N/A\n", a->value);
+  else
+    printf("  N/A    vs %8.2f\n", r->value);
+}
+
+static
+void compare_intensities(Intensities& intensities, Intensities& ref, bool print_all) {
   if (intensities.spacegroup == ref.spacegroup)
     printf("Space group: %s\n", intensities.spacegroup_str().c_str());
   else
@@ -382,15 +401,25 @@ void compare_intensities(Intensities& intensities, Intensities& ref) {
   gemmi::Correlation ci, cs; // correlation of <I>, Isigma, I+, I-
   for (const Intensity& r : ref.data) {
     if (r.hkl != a->hkl || r.isign != a->isign) {
-      while (*a < r && ++a != intensities.data.end()) {
+      while (*a < r) {
+        if (print_all)
+          print_reflection(&*a, nullptr);
+        ++a;
+        if (a == intensities.data.end())
+          break;
       }
       if (a == intensities.data.end())
         break;
-      if (r.hkl != a->hkl || r.isign != a->isign)
+      if (r.hkl != a->hkl || r.isign != a->isign) {
+        if (print_all)
+          print_reflection(nullptr, &r);
         continue;
+      }
     }
     ci.add_point(r.value, a->value);
     cs.add_point(r.sigma, a->sigma);
+    if (print_all)
+      print_reflection(&*a, &r);
     ++a;
     if (a == intensities.data.end())
       break;
@@ -428,15 +457,25 @@ int GEMMI_MAIN(int argc, char **argv) {
     block_name = p.options[BlockName].arg;
   Intensities intensities = read_intensities(ReadType::Unmerged,
                                              input_path, block_name, verbose);
-  if (verbose)
-    std::fprintf(stderr, "Merging observations (%zu total) ...\n", intensities.data.size());
+  if (verbose) {
+    size_t plus_count = 0;
+    size_t minus_count = 0;
+    for (const Intensity& inten : intensities.data) {
+      if (inten.isign > 0)
+        ++plus_count;
+      else if (inten.isign < 0)
+        ++minus_count;
+    }
+    std::fprintf(stderr, "Merging observations (%zu total, %zu for I+, %zu for I-) ...\n",
+                 intensities.data.size(), plus_count, minus_count);
+  }
   if (p.options[Compare] ? !ref.have_sign() : !p.options[WriteAnom])
     // discard signs so that merging produces Imean
     for (Intensity& inten : intensities.data)
       inten.isign = 0;
   merge_intensities_in_place(intensities);
   if (p.options[Compare]) {
-    compare_intensities(intensities, ref);
+    compare_intensities(intensities, ref, p.options[PrintAll]);
   } else {
     if (verbose)
       std::fprintf(stderr, "Writing %zu reflections to %s ...\n",

@@ -9,6 +9,7 @@ Options:
   --write-anom           output I(+) and I(-) instead of IMEAN.
   -b NAME, --block=NAME  output mmCIF block name: data_NAME (default: merged).
   --compare              compare unmerged and merged data (no output file).
+  --print-all            print all compared reflections.
 
 The input file can be either SF-mmCIF with _diffrn_refln or MTZ.
 The output file can be either SF-mmCIF or MTZ.
