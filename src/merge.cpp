@@ -93,8 +93,9 @@ struct Intensities {
   }
 
   void add_if_valid(const Intensity& intensity) {
-      // XDS marks rejected reflections with negative sigma
-    if (!std::isnan(intensity.value) && intensity.sigma >= 0)
+      // XDS marks rejected reflections with negative sigma.
+      // Sigma 0.0 is also problematic - it rarely happens (e.g. 5tkn).
+    if (!std::isnan(intensity.value) && intensity.sigma > 0)
       data.push_back(intensity);
   }
 
