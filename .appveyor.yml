@@ -56,7 +56,6 @@
 -
   branches:
     only:
-      - master
       - /v\d*\.\d*\.\d*/
   # see https://packaging.python.org/guides/supporting-windows-using-appveyor/
   environment:
