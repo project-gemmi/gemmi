@@ -6,8 +6,9 @@
         CMAKE_GENERATOR: Visual Studio 16 2019
         CMAKE_CONFIG: RelWithDebInfo
         APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-        USE_PIP: 1
+        PY_PYTHON: 3.8
         CMAKE_PYTHON: 1
+        USE_PIP: 1
       - arch: x86
         CMAKE_GENERATOR: Visual Studio 15 2017
         CMAKE_CONFIG: Release
@@ -42,6 +43,7 @@
   - if exist gemmi.exe  strip gemmi.exe
   - if exist "%CMAKE_CONFIG%\gemmi.exe" copy "%CMAKE_CONFIG%\gemmi.exe" . /y
   - dir gemmi.exe
+  - if exist "%CMAKE_CONFIG%\gemmi.pyd" copy "%CMAKE_CONFIG%\gemmi.pyd" . /y
   - dir C:\mingw-w64\
   - py -c "import sys; print(sys.version+'\n'+sys.executable)"
   - if defined USE_SETUP_PY (py setup.py install)
@@ -53,7 +55,7 @@
   - py -m unittest discover -v -s tests/
 
   artifacts:
-    - path: gemmi.exe
+    - path: gemmi.*
 
 -
   branches:
