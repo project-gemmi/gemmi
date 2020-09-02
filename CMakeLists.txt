@@ -361,8 +361,13 @@ endif()
 
 if (USE_PYTHON)
   message(STATUS "The python module will be built.")
-  find_package(pybind11 2.5 CONFIG REQUIRED)
-  message(STATUS "Found pybind11 ${pybind11_VERSION}: ${pybind11_INCLUDE_DIRS}")
+  if (EXISTS ${CMAKE_HOME_DIRECTORY}/pybind11)
+    message(STATUS "Using ${CMAKE_HOME_DIRECTORY}/pybind11 (internal copy).")
+    add_subdirectory(pybind11)
+  else()
+    find_package(pybind11 2.5 CONFIG REQUIRED)
+    message(STATUS "Found pybind11 ${pybind11_VERSION}: ${pybind11_INCLUDE_DIRS}")
+  endif()
   pybind11_add_module(gemmi python/gemmi.cpp python/cif.cpp python/grid.cpp
                             python/hkl.cpp python/mol.cpp python/monlib.cpp
                             python/read.cpp python/sym.cpp

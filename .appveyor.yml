@@ -33,6 +33,7 @@
   - if defined BINDIR (set "PATH=%BINDIR%;%PATH%")
   - path
   - cmake --version
+  - if     defined CMAKE_PYTHON (git clone --depth=1 https://github.com/pybind/pybind11.git)
   - if     defined CMAKE_PYTHON (cmake -G "%CMAKE_GENERATOR%" -DUSE_PYTHON=1 .)
   - if not defined CMAKE_PYTHON (cmake -G "%CMAKE_GENERATOR%" .)
   - cmake --build . --config %CMAKE_CONFIG%
