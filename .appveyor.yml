@@ -7,6 +7,7 @@
         CMAKE_CONFIG: RelWithDebInfo
         APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
         USE_PIP: 1
+        CMAKE_PYTHON: 1
       - arch: x86
         CMAKE_GENERATOR: Visual Studio 15 2017
         CMAKE_CONFIG: Release
@@ -34,7 +35,7 @@
   - path
   - cmake --version
   - if     defined CMAKE_PYTHON (git clone --depth=1 https://github.com/pybind/pybind11.git)
-  - if     defined CMAKE_PYTHON (cmake -G "%CMAKE_GENERATOR%" -DUSE_PYTHON=1 .)
+  - if     defined CMAKE_PYTHON (cmake -G "%CMAKE_GENERATOR%" -DCMAKE_CXX_STANDARD=14 -DUSE_PYTHON=1 .)
   - if not defined CMAKE_PYTHON (cmake -G "%CMAKE_GENERATOR%" .)
   - cmake --build . --config %CMAKE_CONFIG%
   - cmake --build . --config %CMAKE_CONFIG% --target check
