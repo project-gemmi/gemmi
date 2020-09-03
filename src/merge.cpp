@@ -256,6 +256,7 @@ Intensities read_intensities(ReadType itype, const char* input_path,
         case ReadType::Anomalous:
           return read_anomalous_intensities_from_mtz(mtz);
       }
+      gemmi::unreachable();
     } else {
       auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(input_path).blocks);
       for (gemmi::ReflnBlock& rb : rblocks) {

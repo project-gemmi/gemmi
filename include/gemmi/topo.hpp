@@ -335,7 +335,7 @@ inline void Topo::ChainInfo::setup_polymer_links() {
       for (auto prev_ri = prev_group.begin; prev_ri != prev_group.end; ++prev_ri) {
         ResInfo::Prev p{{}, 0};
         if (are_connected(*prev_ri->res, *ri->res, polymer_type)) {
-          p.idx = prev_ri - ri;
+          p.idx = int(prev_ri - ri);
           if (is_polypeptide(polymer_type)) {
             if (ri->chemcomp.group == "P-peptide")
               p.link = "P";  // PCIS, PTRANS

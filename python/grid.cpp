@@ -105,7 +105,7 @@ void add_grid(py::module& m, const std::string& name) {
     .def(py::init([](py::array_t<T> arr, const UnitCell *cell, const SpaceGroup* sg) {
       auto r = arr.template unchecked<3>();
       Gr* grid = new Gr();
-      grid->set_size(r.shape(0), r.shape(1), r.shape(2));
+      grid->set_size((int)r.shape(0), (int)r.shape(1), (int)r.shape(2));
       for (int k = 0; k < r.shape(2); ++k)
         for (int j = 0; j < r.shape(1); ++j)
           for (int i = 0; i < r.shape(0); ++i)
@@ -247,7 +247,7 @@ void add_grid(py::module& m, const std::string& name) {
     .def(py::init([](py::array_t<T> arr, const UnitCell *cell, const SpaceGroup* sg) {
       auto r = arr.template unchecked<3>();
       ReGr* grid = new ReGr();
-      grid->set_size_without_checking(r.shape(0), r.shape(1), r.shape(2));
+      grid->set_size_without_checking((int)r.shape(0), (int)r.shape(1), (int)r.shape(2));
       grid->axis_order = AxisOrder::XYZ;
       for (int k = 0; k < r.shape(2); ++k)
         for (int j = 0; j < r.shape(1); ++j)

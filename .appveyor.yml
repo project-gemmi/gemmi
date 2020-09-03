@@ -35,14 +35,14 @@
   - if defined BINDIR (set "PATH=%BINDIR%;%PATH%")
   - path
   - cmake --version
-  - if defined CMAKE_ARGS (git clone --depth=1 https://github.com/pybind/pybind11.git)
+  - if defined CMAKE_ARGS (git clone --depth=1 -b stable https://github.com/pybind/pybind11.git)
   - cmake -G "%CMAKE_GENERATOR%" %CMAKE_ARGS% .
   - cmake --build . --config %CMAKE_CONFIG%
   - cmake --build . --config %CMAKE_CONFIG% --target check
   - if exist gemmi.exe  strip gemmi.exe
   - if exist "%CMAKE_CONFIG%\gemmi.exe" copy "%CMAKE_CONFIG%\gemmi.exe" . /y
   - dir gemmi.exe
-  - if exist "%CMAKE_CONFIG%\gemmi.pyd" copy "%CMAKE_CONFIG%\gemmi.pyd" . /y
+  - if defined CMAKE_ARGS (copy "%CMAKE_CONFIG%\gemmi*.pyd" . /y)
   - dir C:\mingw-w64\
   - py -c "import sys; print(sys.version+'\n'+sys.executable)"
   - if defined USE_SETUP_PY (py setup.py install)
@@ -55,7 +55,7 @@
 
   artifacts:
     - path: gemmi.exe
-    - path: gemmi.pyd
+    - path: gemmi*.pyd
 
 -
   branches:
