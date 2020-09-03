@@ -164,6 +164,8 @@ protected:
   std::vector<std::string> enumeration_;
 
 public:
+  bool validate_tag(std::string*) const { return true; }
+
   bool validate_value(const std::string& value, std::string* msg) const {
     if (cif::is_null(value))
       return true;
@@ -179,6 +181,7 @@ public:
       return false;
     return true;
   }
+
 
 private:
   bool validate_range(const std::string& value, std::string *msg) const {
@@ -215,8 +218,7 @@ public:
       else if (*list == "no")
         is_list_ = Trinary::No;
     }
-    const std::string* type = b.find_value("_type");
-    if (type)
+    if (const std::string* type = b.find_value("_type"))
       type_ = (*type == "numb" ? ValType::Numb : ValType::Any);
     // Hypotetically _type_conditions could be a list, but it never is.
     const std::string* conditions = b.find_value("_type_conditions");
@@ -250,6 +252,7 @@ private:
 
 class TypeCheckDDL2 : public TypeCheckCommon {
 public:
+  enum class ItemContext { Default, Local, Deprecated };
   void from_block(cif::Block& b) {
     if (const std::string* code = b.find_value("_item_type.code")) {
       type_code_ = cif::as_string(*code);
@@ -261,12 +264,43 @@ public:
                           cif::as_number(row[1], +INFINITY));
     for (const std::string& e : b.find_loop("_item_enumeration.value"))
       enumeration_.emplace_back(cif::as_string(e));
+    /* we could check for esd without value
+    for (auto row : b.find("_item_related.", {"related_name", "function_code"})) {
+      if (row[1] == "associated_value")
+        associated_value_ = row.str(0);
+    }
+    */
+    if (const std::string* context = b.find_value("_pdbx_item_context.type")) {
+      if (*context == "WWPDB_LOCAL")
+        context_ = ItemContext::Local;
+      else if (*context == "WWPDB_DEPRECATED")
+        context_ = ItemContext::Deprecated;
+    }
+  }
+
+  bool validate_value(const std::string& value, std::string* msg) const {
+    if (!TypeCheckCommon::validate_value(value, msg))
+      return false;
+    return true;
+  }
+
+  bool validate_tag(std::string* msg) const {
+    if (context_ == ItemContext::Deprecated) {
+      *msg = " is deprecated";
+      return false;
+    }
+    if (context_ == ItemContext::Local) {
+      *msg = " is for pdb internal use";
+      return false;
+    }
+    return true;
   }
 
   Trinary is_list() const { return Trinary::Unset; }
 
 private:
   std::string type_code_;
+  ItemContext context_ = ItemContext::Default;
 };
 
 
@@ -391,8 +425,8 @@ bool DDL::do_validate(cif::Document& doc, std::ostream& out, bool quiet) {
         tc.from_block(*dict_block);
         if (tc.is_list() == Trinary::Yes)
           err(b, item, item.pair[0] + " must be a list");
-        if (!tc.validate_value(item.pair[1], &msg))
-          err(b, item, msg);
+        if (!tc.validate_tag(&msg))
+          err(b, item, item.pair[0] + msg);
       } else if (item.type == cif::ItemType::Loop) {
         const size_t ncol = item.loop.tags.size();
         for (size_t i = 0; i != ncol; i++) {
@@ -407,6 +441,8 @@ bool DDL::do_validate(cif::Document& doc, std::ostream& out, bool quiet) {
           tc.from_block(*dict_block);
           if (tc.is_list() == Trinary::No)
             err(b, item, tag + " in list");
+          if (!tc.validate_tag(&msg))
+            err(b, item, tag + msg);
           for (size_t j = i; j < item.loop.values.size(); j += ncol)
             if (!tc.validate_value(item.loop.values[j], &msg)) {
               err(b, item, tag + ": " + msg);
