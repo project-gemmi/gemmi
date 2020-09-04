@@ -1,4 +1,4 @@
-// Copyright 2017 Global Phasing Ltd.
+// Copyright 2017-2020 Global Phasing Ltd.
 
 #include "gemmi/cif.hpp"
 #include "gemmi/gz.hpp"
@@ -174,6 +174,7 @@ protected:
   ValType type_ = ValType::Unset;
   bool has_su_ = false; // _type_conditions esd|su
   bool range_inclusive_ = false;
+  bool icase_ = false;
   std::vector<std::pair<double, double>> range_;
   std::vector<std::string> enumeration_;
 
@@ -211,14 +212,19 @@ private:
     return false;
   }
 
-  // takes raw value
+  // Takes raw value.
   bool validate_enumeration(const std::string& val, std::string *msg) const {
-    if (std::find(enumeration_.begin(), enumeration_.end(), cif::as_string(val))
-          != enumeration_.end())
+    std::string v = cif::as_string(val);
+    if (gemmi::in_vector(v, enumeration_))
       return true;
-    // TODO: case-insensitive search when appropriate
+    if (icase_) {
+      v = gemmi::to_lower(v);
+      if (gemmi::in_vector_f([&v](const std::string& x) { return gemmi::iequal(x, v); },
+                             enumeration_))
+      return true;
+    }
     if (msg) {
-      *msg = "\"" + val + "\" is not one of the allowed values:";
+      *msg = val + " is not one of the allowed values:";
       for (const std::string& e : enumeration_)
         *msg += "\n\t" + e;
     }
@@ -426,6 +432,7 @@ void TypeCheckDDL2::from_block(cif::Block& b, const DDL& ddl) {
                         cif::as_number(row[1], +INFINITY));
   for (const std::string& e : b.find_loop("_item_enumeration.value"))
     enumeration_.emplace_back(cif::as_string(e));
+  icase_ = (type_code_[0] == 'u');
   /* we could check for esd without value
   for (auto row : b.find("_item_related.", {"related_name", "function_code"})) {
     if (row[1] == "associated_value")
