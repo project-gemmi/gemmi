@@ -9,4 +9,5 @@ Options:
   -f, --fast      Syntax-only check.
   -s, --stat      Show token statistics
   -d, --ddl=PATH  DDL for validation.
+  --no-regex      Skip regex checking (when using DDL2)
   -m, --monomer   Extra checks for Refmac dictionary files.

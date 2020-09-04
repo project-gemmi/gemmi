@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <utility>    // for pair
 #include <vector>
+#include <regex>
 
 #ifdef ANALYZE_RULES
 # include <tao/pegtl/analyze.hpp>
@@ -27,7 +28,7 @@ namespace cif = gemmi::cif;
 // defined in validate_mon.cpp
 void check_monomer_doc(const cif::Document& doc);
 
-enum OptionIndex { Quiet=4, Fast, Stat, Ddl, Monomer };
+enum OptionIndex { Quiet=4, Fast, Stat, Ddl, NoRegex, Monomer };
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
                                 "\n\nOptions:" },
@@ -39,15 +40,18 @@ const option::Descriptor Usage[] = {
   { Stat, 0, "s", "stat", Arg::None, "  -s, --stat  \tShow token statistics" },
   { Ddl, 0, "d", "ddl", Arg::Required,
                                    "  -d, --ddl=PATH  \tDDL for validation." },
+  { NoRegex, 0, "", "no-regex", Arg::None,
+    "  --no-regex  \tSkip regex checking (when using DDL2)" },
   { Monomer, 0, "m", "monomer", Arg::None,
     "  -m, --monomer  \tExtra checks for Refmac dictionary files." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
+// basic types, used for token statistics only, cf. ValType
 enum class ValueType : unsigned char {
   NotSet,
-  Char, // Line/Text?
-  Numb, // Int/Float?
+  Char,
+  Numb,
   Dot,
   QuestionMark,
 };
@@ -151,9 +155,19 @@ void check_empty_loops(const cif::Block& block) {
   }
 }
 
-
 enum class Trinary : char { Unset, Yes, No };
-enum class ValType : char { Unset, Numb, Any };
+
+enum class ValType : char {
+  Unset,
+  Int,  // only in DDL2, in DDL1 it is also numb
+  Numb,
+  Any
+};
+
+static bool is_integer(const std::string& s) {
+  auto b = s.begin() + (s[0] == '+' || s[0] == '-' ? 1 : 0);
+  return b != s.end() && std::all_of(b, s.end(), gemmi::is_digit);
+}
 
 class TypeCheckCommon {
 protected:
@@ -163,16 +177,16 @@ protected:
   std::vector<std::pair<double, double>> range_;
   std::vector<std::string> enumeration_;
 
-public:
-  bool validate_tag(std::string*) const { return true; }
-
-  bool validate_value(const std::string& value, std::string* msg) const {
-    if (cif::is_null(value))
-      return true;
+  // takes raw value
+  bool validate_value_cmn(const std::string& value, std::string* msg) const {
     if (type_ == ValType::Numb && !cif::is_numb(value)) {
       if (msg)
         *msg = "expected number, got: " + value;
       return false;
+    }
+    if (type_ == ValType::Int && !is_integer(value)) {
+      if (msg)
+        *msg = "expected integer, got: " + value;
     }
     // ignoring has_su_ - not sure if we should check it
     if (!range_.empty() && !validate_range(value, msg))
@@ -182,6 +196,8 @@ public:
     return true;
   }
 
+public:
+  bool validate_tag(std::string*) const { return true; }
 
 private:
   bool validate_range(const std::string& value, std::string *msg) const {
@@ -195,6 +211,7 @@ private:
     return false;
   }
 
+  // takes raw value
   bool validate_enumeration(const std::string& val, std::string *msg) const {
     if (std::find(enumeration_.begin(), enumeration_.end(), cif::as_string(val))
           != enumeration_.end())
@@ -209,9 +226,11 @@ private:
   }
 };
 
+class DDL;
+
 class TypeCheckDDL1 : public TypeCheckCommon {
 public:
-  void from_block(cif::Block& b) {
+  void from_block(cif::Block& b, const DDL&) {
     if (const std::string* list = b.find_value("_list")) {
       if (*list == "yes")
         is_list_ = Trinary::Yes;
@@ -239,6 +258,12 @@ public:
       enumeration_.emplace_back(cif::as_string(e));
   }
 
+  bool validate_value(const std::string& value, std::string* msg) const {
+    if (cif::is_null(value))
+      return true;
+    return validate_value_cmn(value, msg);
+  }
+
   Trinary is_list() const { return is_list_; }
 
 private:
@@ -253,34 +278,17 @@ private:
 class TypeCheckDDL2 : public TypeCheckCommon {
 public:
   enum class ItemContext { Default, Local, Deprecated };
-  void from_block(cif::Block& b) {
-    if (const std::string* code = b.find_value("_item_type.code")) {
-      type_code_ = cif::as_string(*code);
-      if (type_code_ == "float" || type_code_ == "int")
-        type_ = ValType::Numb;
-    }
-    for (auto row : b.find("_item_range.", {"minimum", "maximum"}))
-      range_.emplace_back(cif::as_number(row[0], -INFINITY),
-                          cif::as_number(row[1], +INFINITY));
-    for (const std::string& e : b.find_loop("_item_enumeration.value"))
-      enumeration_.emplace_back(cif::as_string(e));
-    /* we could check for esd without value
-    for (auto row : b.find("_item_related.", {"related_name", "function_code"})) {
-      if (row[1] == "associated_value")
-        associated_value_ = row.str(0);
-    }
-    */
-    if (const std::string* context = b.find_value("_pdbx_item_context.type")) {
-      if (*context == "WWPDB_LOCAL")
-        context_ = ItemContext::Local;
-      else if (*context == "WWPDB_DEPRECATED")
-        context_ = ItemContext::Deprecated;
-    }
-  }
+  void from_block(cif::Block& b, const DDL& ddl);
 
   bool validate_value(const std::string& value, std::string* msg) const {
-    if (!TypeCheckCommon::validate_value(value, msg))
+    if (cif::is_null(value))
+      return true;
+    if (!validate_value_cmn(value, msg))
       return false;
+    if (re_ && !std::regex_match(cif::as_string(value), *re_)) {
+      *msg = value + " does not match the " + type_code_ + " regex";
+      return false;
+    }
     return true;
   }
 
@@ -301,12 +309,15 @@ public:
 private:
   std::string type_code_;
   ItemContext context_ = ItemContext::Default;
+  const std::regex* re_ = nullptr;
 };
 
 
 // Class DDL that represents DDL1 or DDL2 dictionary (ontology).
 class DDL {
 public:
+  DDL(bool enable_regex) : regex_enabled_(enable_regex) {}
+
   void open_file(const std::string& filename) {
     ddl_ = cif::read_file(filename);
     if (ddl_.blocks.size() > 1) {
@@ -325,6 +336,11 @@ public:
   bool validate(cif::Document& doc, std::ostream& out, bool quiet) {
     return version_ == 1 ? do_validate<TypeCheckDDL1>(doc, out, quiet)
                          : do_validate<TypeCheckDDL2>(doc, out, quiet);
+  }
+
+  const std::regex* get_regex_ptr(const std::string& code) const {
+    auto it = regexes_.find(code);
+    return it != regexes_.end() ? &it->second : nullptr;
   }
 
 private:
@@ -349,7 +365,7 @@ private:
   }
 
   void read_ddl2() {
-    for (cif::Block& block : ddl_.blocks) // a single block is expected
+    for (cif::Block& block : ddl_.blocks) { // a single block is expected
       for (cif::Item& item : block.items) {
         if (item.type == cif::ItemType::Frame) {
           for (const std::string& name : item.frame.find_values("_item.name"))
@@ -361,6 +377,22 @@ private:
             dict_version_ = item.pair[1];
         }
       }
+      if (regex_enabled_)
+        for (auto row : block.find("_item_type_list.", {"code", "construct"})) {
+          if (cif::is_text_field(row[1]))
+            // text field is problematic, but it's used only for "binary"
+            // which in turn is never used
+            continue;
+          try {
+            auto flag = std::regex::awk | std::regex::optimize;
+            regexes_.emplace(row.str(0), std::regex(row.str(1), flag));
+          } catch (const std::regex_error& e) {
+            std::cout << "Note: DDL has invalid regex for " << row[0] << ":\n      "
+                      << row.str(1) << "\n      "
+                      << e.what() << '\n';
+          }
+        }
+    }
   }
 
   template<class TypeCheckDDL>
@@ -371,11 +403,42 @@ private:
   std::unordered_map<std::string, cif::Block*> name_index_;
   std::string dict_name_;
   std::string dict_version_;
+  bool regex_enabled_;
+  std::map<std::string, std::regex> regexes_;
   // "_" or ".", used to unify handling of DDL1 and DDL2, for example when
   // reading _audit_conform_dict_version and _audit_conform.dict_version.
   std::string sep_;
 };
 
+void TypeCheckDDL2::from_block(cif::Block& b, const DDL& ddl) {
+  if (const std::string* code = b.find_value("_item_type.code")) {
+    type_code_ = cif::as_string(*code);
+    if (type_code_ == "float")
+      type_ = ValType::Numb;
+    else if (type_code_ == "int")
+      type_ = ValType::Int;
+    else
+      // to make it faster, we don't use regex for int and float
+      re_ = ddl.get_regex_ptr(*code);
+  }
+  for (auto row : b.find("_item_range.", {"minimum", "maximum"}))
+    range_.emplace_back(cif::as_number(row[0], -INFINITY),
+                        cif::as_number(row[1], +INFINITY));
+  for (const std::string& e : b.find_loop("_item_enumeration.value"))
+    enumeration_.emplace_back(cif::as_string(e));
+  /* we could check for esd without value
+  for (auto row : b.find("_item_related.", {"related_name", "function_code"})) {
+    if (row[1] == "associated_value")
+      associated_value_ = row.str(0);
+  }
+  */
+  if (const std::string* context = b.find_value("_pdbx_item_context.type")) {
+    if (*context == "WWPDB_LOCAL")
+      context_ = ItemContext::Local;
+    else if (*context == "WWPDB_DEPRECATED")
+      context_ = ItemContext::Deprecated;
+  }
+}
 
 void DDL::check_audit_conform(const cif::Document& doc) const {
   std::string audit_conform = "_audit_conform" + sep_;
@@ -383,7 +446,7 @@ void DDL::check_audit_conform(const cif::Document& doc) const {
     const std::string* raw_name = b.find_value(audit_conform + "dict_name");
     if (!raw_name) {
       std::cout << "Note: the cif file (block " << b.name << ") is missing "
-                << audit_conform << ".dict_name\n";
+                << audit_conform << "dict_name\n";
       continue;
     }
     std::string name = cif::as_string(*raw_name);
@@ -422,11 +485,13 @@ bool DDL::do_validate(cif::Document& doc, std::ostream& out, bool quiet) {
           continue;
         }
         TypeCheckDDL tc;
-        tc.from_block(*dict_block);
+        tc.from_block(*dict_block, *this);
         if (tc.is_list() == Trinary::Yes)
           err(b, item, item.pair[0] + " must be a list");
         if (!tc.validate_tag(&msg))
           err(b, item, item.pair[0] + msg);
+        if (!tc.validate_value(item.pair[1], &msg))
+          err(b, item, msg);
       } else if (item.type == cif::ItemType::Loop) {
         const size_t ncol = item.loop.tags.size();
         for (size_t i = 0; i != ncol; i++) {
@@ -438,7 +503,7 @@ bool DDL::do_validate(cif::Document& doc, std::ostream& out, bool quiet) {
             continue;
           }
           TypeCheckDDL tc;
-          tc.from_block(*dict_block);
+          tc.from_block(*dict_block, *this);
           if (tc.is_list() == Trinary::No)
             err(b, item, tag + " in list");
           if (!tc.validate_tag(&msg))
@@ -468,6 +533,16 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   bool quiet = p.options[Quiet];
   bool total_ok = true;
+#if __GNUC__+0 == 4 && __GNUC_MINOR__+0 < 9
+  DDL dict(false);
+  if (!p.options[NoRegex])
+    std::cerr << "Note: regex support disabled on GCC 4.8\n";
+#else
+  DDL dict(!p.options[NoRegex]);
+#endif
+  if (p.options[Ddl])
+    for (option::Option* ddl = p.options[Ddl]; ddl; ddl = ddl->next())
+      dict.open_file(ddl->arg);
   for (int i = 0; i < p.nonOptionsCount(); ++i) {
     const char* path = p.nonOption(i);
     std::string msg;
@@ -482,9 +557,6 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (p.options[Stat])
           msg = token_stats(d);
         if (p.options[Ddl]) {
-          DDL dict;
-          for (option::Option* ddl = p.options[Ddl]; ddl; ddl = ddl->next())
-            dict.open_file(ddl->arg);
           if (p.options[Verbose])
             dict.check_audit_conform(d);
           ok = dict.validate(d, std::cout, quiet);
