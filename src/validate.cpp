@@ -390,8 +390,15 @@ private:
             // which in turn is never used
             continue;
           try {
+            std::string re_str = row.str(1);
+            // mmcif_pdbx_v50.dic uses custom flavour of regex:
+            // character classes have unescaped \, but recognize \n, \t, etc.
+            // Here is a quick fix:
+            std::string::size_type pos = re_str.find("/\\{}");
+            if (pos != std::string::npos)
+              re_str.replace(pos, 4, "/\\\\{}");
             auto flag = std::regex::awk | std::regex::optimize;
-            regexes_.emplace(row.str(0), std::regex(row.str(1), flag));
+            regexes_.emplace(row.str(0), std::regex(re_str, flag));
           } catch (const std::regex_error& e) {
             std::cout << "Note: DDL has invalid regex for " << row[0] << ":\n      "
                       << row.str(1) << "\n      "
