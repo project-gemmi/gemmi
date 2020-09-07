@@ -473,7 +473,7 @@ void DDL::check_audit_conform(const cif::Document& doc) const {
                     << " while DDL has ver. " << dict_version_ << '\n';
       }
     } else {
-      std::cout << "Note: dictionary name mismatch: " << name
+      std::cout << "Note: dictionary name mismatch in " << b.name << ": " << name
                 << " vs " << dict_name_ << '\n';
     }
   }
@@ -495,7 +495,7 @@ bool DDL::do_validate(cif::Document& doc, std::ostream& out, bool quiet) {
         cif::Block* dict_block = find_rules(item.pair[0]);
         if (!dict_block) {
           if (!quiet)
-            out << "Note: unknown tag: " << item.pair[0] << "\n";
+            out << "Note: unknown tag in " << b.name << ": " << item.pair[0] << '\n';
           continue;
         }
         TypeCheckDDL tc;
@@ -513,7 +513,7 @@ bool DDL::do_validate(cif::Document& doc, std::ostream& out, bool quiet) {
           cif::Block* dict_block = find_rules(tag);
           if (!dict_block) {
             if (!quiet)
-              out << "Note: unknown tag: " << tag << "\n";
+              out << "Note: unknown tag in " << b.name << ": " << tag << '\n';
             continue;
           }
           TypeCheckDDL tc;
