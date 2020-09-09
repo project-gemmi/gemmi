@@ -83,6 +83,8 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
+enum class SfcMode { None, Test, Compare };
+
 static
 void print_sf(std::complex<double> sf, const gemmi::Miller& hkl) {
   printf(" (%d %d %d)\t%8.12f\t%6.12f\n",
@@ -97,6 +99,7 @@ struct Comparator {
   double max_abs_df = 0.;
   double sum_abs_diff = 0.;
   int count = 0;
+  double phi_diff_weighted_sum = 0.;
 
   template<typename T> void add(T value, T exact) {
     double abs_df = std::abs(value - exact);
@@ -110,11 +113,20 @@ struct Comparator {
     ++count;
   }
 
+  void add_complex(std::complex<double> value, std::complex<double> exact) {
+    add(value, exact);
+    double d = gemmi::angle_abs_diff(gemmi::deg(std::arg(value)),
+                                     gemmi::deg(std::arg(exact)));
+    printf("dphi=%g\n", d);
+    phi_diff_weighted_sum += std::abs(exact) * d;
+  }
+
   double rmse() const { return std::sqrt(sum_sq_diff / count); }
   double abs_avg() const { return sum_abs / count; }
   double weighted_rmse() const { return rmse() / abs_avg(); }
   double rfactor() const { return sum_abs_diff / sum_abs; }
   double scale() const { return std::sqrt(sum_sq1 / sum_sq2); }
+  double mean_dphi() const { return phi_diff_weighted_sum / sum_abs; }
 };
 
 static
@@ -129,7 +141,7 @@ using namespace gemmi;
 template<typename Table, typename Real>
 void print_structure_factors(const Structure& st,
                              DensityCalculator<Table, Real>& dencalc,
-                             bool verbose, char mode, const char* file_path,
+                             bool verbose, SfcMode mode, const char* file_path,
                              const std::string& f_label,
                              const std::string& phi_label) {
   using Clock = std::chrono::steady_clock;
@@ -161,9 +173,9 @@ void print_structure_factors(const Structure& st,
       calc.set_fprime((El)i, dencalc.fprimes[i]);
   gemmi::fileptr_t cache(nullptr, nullptr);
   std::map<Miller, std::complex<double>> mtz_data;
-  if (mode == 'T' && file_path) {
+  if (mode == SfcMode::Test && file_path) {
     cache = gemmi::file_open(file_path, "r");
-  } else if (mode == 'C' && file_path) {
+  } else if (mode == SfcMode::Compare && file_path) {
     Mtz mtz;
     mtz.read_input(gemmi::MaybeGzipped(file_path), true);
     Mtz::Column* f_col = mtz.column_with_label(f_label);
@@ -200,10 +212,10 @@ void print_structure_factors(const Structure& st,
           int idx_k = k < 0 ? k + sf.nv : k;
           std::complex<double> value = sf.get_value_q(idx_h, idx_k, l);
           value *= dencalc.reciprocal_space_multiplier(hkl_1_d2);
-          if (mode != ' ') {
+          if (mode != SfcMode::None) {
             std::complex<double> exact;
             if (file_path) {
-              if (mode == 'T') {
+              if (mode == SfcMode::Test) {
                 char cache_line[100];
                 if (fgets(cache_line, 99, cache.get()) == nullptr)
                   gemmi::fail("cannot read line from file");
@@ -214,7 +226,7 @@ void print_structure_factors(const Structure& st,
                 if (cache_h != h || cache_k != k || cache_l != l)
                   gemmi::fail("Different h k l order than in cache file.");
                 exact = std::polar(f_abs, gemmi::rad(f_deg));
-              } else if (mode == 'C') {
+              } else if (mode == SfcMode::Compare) {
                 auto it = mtz_data.find(hkl);
                 if (it == mtz_data.end())
                   continue;
@@ -223,7 +235,7 @@ void print_structure_factors(const Structure& st,
             } else {
               exact = calc.calculate_sf_from_model(st.models[0], hkl);
             }
-            comparator.add(value, exact);
+            comparator.add_complex(value, exact);
             printf(" (%d %d %d)\t%7.2f\t%8.3f \t%6.2f\t%7.3f\td=%5.2f\n",
                    h, k, l, std::abs(value), std::abs(exact),
                    gemmi::phase_in_angles(value), gemmi::phase_in_angles(exact),
@@ -233,8 +245,9 @@ void print_structure_factors(const Structure& st,
           }
         }
       }
-  if (mode != ' ') {
+  if (mode != SfcMode::None) {
     print_to_stderr(comparator);
+    fprintf(stderr, "  <dPhi>=%#.4g", comparator.mean_dphi());
     if (!verbose) {
       std::chrono::duration<double> elapsed = Clock::now() - start;
       fprintf(stderr, "   %#.5gs", elapsed.count());
@@ -478,13 +491,13 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
           fprintf(stderr, "B_min=%g, B_add=%g\n", b_min, dencalc.blur);
       }
 
-      char mode = ' ';
+      SfcMode mode = SfcMode::None;
       const char *file = nullptr;
       if (p.options[Test]) {
-        mode = 'T';
+        mode = SfcMode::Test;
         file = p.options[Test].arg;
       } else if (p.options[Check]) {
-        mode = 'C';
+        mode = SfcMode::Compare;
         file = p.options[Check].arg;
       }
       print_structure_factors(st, dencalc, p.options[Verbose], mode, file,

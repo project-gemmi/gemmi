@@ -74,7 +74,7 @@ $ gemmi sfcalc -w0 --hkl=4,9,0 --hkl=5,6,4 --hkl=1,1,1 tests/2013551.cif
         self.do('''\
 $ gemmi sfcalc --blur=12 --dmin=2.5 --rate=2.5 --rcut=1e-7 --test -v tests/5wkd.pdb
 [...]
-RMSE=5.5654e-05  0.0001415%  max|dF|=0.0008977  R=0.000%
+RMSE=5.5654e-05  0.0001415%  max|dF|=0.0008977  R=0.000%  <dPhi>=4.080e-06
 ''')  # noqa: E501
 
     @unittest.skipIf(sys.platform == 'win32', 'with MSVC it differs slightly')
@@ -82,7 +82,7 @@ RMSE=5.5654e-05  0.0001415%  max|dF|=0.0008977  R=0.000%
         self.do('''\
 $ gemmi sfcalc --dmin=9 --rate=4 --blur=60 --rcut=1e-7 --test -v tests/1pfe.cif.gz
 [...]
-RMSE=0.0041127  0.0003866%  max|dF|=0.02913  R=0.000%
+RMSE=0.0041127  0.0003866%  max|dF|=0.02913  R=0.000%  <dPhi>=4.118e-06
 ''')  # noqa: E501
 
     # example from utils.rst
