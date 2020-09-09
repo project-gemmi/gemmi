@@ -28,6 +28,13 @@ constexpr double sq(double x) { return x * x; }
 
 inline int iround(double d) { return static_cast<int>(std::round(d)); }
 
+inline double angle_abs_diff(double a, double b) {
+  double d = std::abs(a - b);
+  if (d > 360.0)
+    d -= std::floor(d / 360.0) * 360.0;
+  return d < 180.0 ? d : 360.0 - d;
+}
+
 struct Vec3 {
   double x, y, z;
 
