@@ -37,19 +37,6 @@ struct ConvArg: public Arg {
   static option::ArgStatus NcsChoice(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"dup", "new"});
   }
-
-  static option::ArgStatus OldNew(const option::Option& option, bool msg) {
-    if (option.arg) {
-      const char* sep = std::strchr(option.arg, ':');
-      if (sep != nullptr && std::strchr(sep+1, ':') == nullptr)
-        return option::ARG_OK;
-    }
-    if (msg)
-      fprintf(stderr, "Option '%.*s' requires two colon-separated names "
-                      "as an argument,\n for example: %.*s=A:B\n",
-                      option.namelen, option.name, option.namelen, option.name);
-    return option::ARG_ILLEGAL;
-  }
 };
 
 enum OptionIndex {
@@ -102,7 +89,7 @@ static const option::Descriptor Usage[] = {
     "  --minimal  \tWrite only the most essential records." },
   { ShortenCN, 0, "", "shorten", Arg::None,
     "  --shorten  \tShorten chain names to 1 (if # < 63) or 2 characters." },
-  { RenameChain, 0, "", "rename-chain", ConvArg::OldNew,
+  { RenameChain, 0, "", "rename-chain", Arg::ColonPair,
     "  --rename-chain=OLD:NEW  \tRename chain OLD to NEW "
     "(--rename-chain=:A adds missing chain IDs)." },
   { SetSeq, 0, "s", "", Arg::Required,
