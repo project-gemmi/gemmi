@@ -554,18 +554,22 @@ struct ReciprocalGrid : GridBase<T> {
     int max_k = (this->nv - 1) / 2;
     int max_l = half_l ? this->nw - 1 : (this->nw - 1) / 2;
     double max_1_d2 = 0.;
-    if (dmin != 0.)
+    if (dmin != 0.) {
       max_1_d2 = 1. / (dmin * dmin);
+      max_h = std::min(max_h, int(1. / (dmin * this->unit_cell.ar)));
+      max_k = std::min(max_k, int(1. / (dmin * this->unit_cell.br)));
+      max_l = std::min(max_l, int(1. / (dmin * this->unit_cell.cr)));
+    }
     gemmi::ReciprocalAsu asu(this->spacegroup);
     std::unique_ptr<GroupOps> gops;
     if (!with_sys_abs && this->spacegroup)
       gops.reset(new GroupOps(this->spacegroup->operations()));
     Miller hkl;
-    for (hkl[0] = -max_h; hkl[0] < max_h + 1; ++hkl[0]) {
+    for (hkl[0] = -max_h; hkl[0] <= max_h; ++hkl[0]) {
       int hi = hkl[0] >= 0 ? hkl[0] : hkl[0] + this->nu;
-      for (hkl[1] = -max_k; hkl[1] < max_k + 1; ++hkl[1]) {
+      for (hkl[1] = -max_k; hkl[1] <= max_k; ++hkl[1]) {
         int ki = hkl[1] >= 0 ? hkl[1] : hkl[1] + this->nv;
-        for (hkl[2] = (half_l ? 0 : -max_l); hkl[2] < max_l + 1; ++hkl[2])
+        for (hkl[2] = (half_l ? 0 : -max_l); hkl[2] <= max_l; ++hkl[2])
           if (asu.is_in(hkl) &&
               (max_1_d2 == 0. || this->unit_cell.calculate_1_d2(hkl) < max_1_d2) &&
               (with_sys_abs || !gops->is_systematically_absent(hkl)) &&

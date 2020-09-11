@@ -58,6 +58,10 @@ static const option::Descriptor Usage[] = {
     "  --unknown=SYMBOL  \tUse form factor of SYMBOL for unknown atoms." },
   { NoAniso, 0, "", "noaniso", Arg::None,
     "  --noaniso  \tIgnore anisotropic ADPs." },
+  /*
+  { ScaleTo, 0, "", "scale-to", Arg::ColonPair,
+    "  --scale-to=FILE:COL  \tScale to |Fobs| by fitting k*exp(-B s^2/4)." },
+  */
 
   { NoOp, 0, "", "", Arg::None, "\nOptions for FFT-based calculations:" },
   { Rate, 0, "", "rate", Arg::Float,
@@ -87,7 +91,7 @@ enum class SfcMode { None, Test, Compare };
 
 static
 void print_sf(std::complex<double> sf, const gemmi::Miller& hkl) {
-  printf(" (%d %d %d)\t%8.12f\t%6.12f\n",
+  printf(" (%d %d %d)\t%.8f\t%.6f\n",
          hkl[0], hkl[1], hkl[2], std::abs(sf), gemmi::phase_in_angles(sf));
 }
 
@@ -117,7 +121,6 @@ struct Comparator {
     add(value, exact);
     double d = gemmi::angle_abs_diff(gemmi::deg(std::arg(value)),
                                      gemmi::deg(std::arg(exact)));
-    printf("dphi=%g\n", d);
     phi_diff_weighted_sum += std::abs(exact) * d;
   }
 
@@ -195,56 +198,42 @@ void print_structure_factors(const Structure& st,
   }
 
   Comparator comparator;
-  double max_1_d = 1. / dencalc.d_min;
-  gemmi::ReciprocalAsu asu(dencalc.grid.spacegroup);
-  int max_h = std::min(sf.nu / 2, int(max_1_d / st.cell.ar));
-  int max_k = std::min(sf.nv / 2, int(max_1_d / st.cell.br));
-  int max_l = std::min(sf.nw, int(max_1_d / st.cell.cr));
-  for (int h = -max_h; h <= max_h; ++h)
-    for (int k = -max_k; k <= max_k; ++k)
-      for (int l = 0; l <= max_l; ++l) {
-        Miller hkl{{h, k, l}};
-        if (!asu.is_in(hkl))
-          continue;
-        double hkl_1_d2 = sf.unit_cell.calculate_1_d2(hkl);
-        if (hkl_1_d2 < max_1_d * max_1_d) {
-          int idx_h = h < 0 ? h + sf.nu : h;
-          int idx_k = k < 0 ? k + sf.nv : k;
-          std::complex<double> value = sf.get_value_q(idx_h, idx_k, l);
-          value *= dencalc.reciprocal_space_multiplier(hkl_1_d2);
-          if (mode != SfcMode::None) {
-            std::complex<double> exact;
-            if (file_path) {
-              if (mode == SfcMode::Test) {
-                char cache_line[100];
-                if (fgets(cache_line, 99, cache.get()) == nullptr)
-                  gemmi::fail("cannot read line from file");
-                int cache_h, cache_k, cache_l;
-                double f_abs, f_deg;
-                sscanf(cache_line, " (%d %d %d) %*f %lf %*f %lf",
-                       &cache_h, &cache_k, &cache_l, &f_abs, &f_deg);
-                if (cache_h != h || cache_k != k || cache_l != l)
-                  gemmi::fail("Different h k l order than in cache file.");
-                exact = std::polar(f_abs, gemmi::rad(f_deg));
-              } else if (mode == SfcMode::Compare) {
-                auto it = mtz_data.find(hkl);
-                if (it == mtz_data.end())
-                  continue;
-                exact = it->second;
-              }
-            } else {
-              exact = calc.calculate_sf_from_model(st.models[0], hkl);
-            }
-            comparator.add_complex(value, exact);
-            printf(" (%d %d %d)\t%7.2f\t%8.3f \t%6.2f\t%7.3f\td=%5.2f\n",
-                   h, k, l, std::abs(value), std::abs(exact),
-                   gemmi::phase_in_angles(value), gemmi::phase_in_angles(exact),
-                   1. / std::sqrt(hkl_1_d2));
-          } else {
-            print_sf(value, hkl);
-          }
+  typename FPhiGrid<Real>::AsuData asu_data = sf.prepare_asu_data(dencalc.d_min);
+  for (typename FPhiGrid<Real>::HklValue& hv : asu_data.v) {
+    double hkl_1_d2 = sf.unit_cell.calculate_1_d2(hv.hkl);
+    hv.value *= dencalc.reciprocal_space_multiplier(hkl_1_d2);
+    if (mode == SfcMode::None) {
+      print_sf(hv.value, hv.hkl);
+    } else {
+      std::complex<double> exact;
+      if (file_path) {
+        if (mode == SfcMode::Test) {
+          char cache_line[100];
+          if (fgets(cache_line, 99, cache.get()) == nullptr)
+            gemmi::fail("cannot read line from file");
+          Miller cache_hkl;
+          double f_abs, f_deg;
+          sscanf(cache_line, " (%d %d %d) %*f %lf %*f %lf",
+                 &cache_hkl[0], &cache_hkl[1], &cache_hkl[2], &f_abs, &f_deg);
+          if (cache_hkl != hv.hkl)
+            gemmi::fail("Different h k l order than in cache file.");
+          exact = std::polar(f_abs, gemmi::rad(f_deg));
+        } else if (mode == SfcMode::Compare) {
+          auto it = mtz_data.find(hv.hkl);
+          if (it == mtz_data.end())
+            continue;
+          exact = it->second;
         }
+      } else {
+        exact = calc.calculate_sf_from_model(st.models[0], hv.hkl);
       }
+      comparator.add_complex(hv.value, exact);
+      printf(" (%d %d %d)\t%7.2f\t%8.3f \t%6.2f\t%7.3f\td=%5.2f\n",
+             hv.hkl[0], hv.hkl[1], hv.hkl[2], std::abs(hv.value), std::abs(exact),
+             gemmi::phase_in_angles(hv.value), gemmi::phase_in_angles(exact),
+             1. / std::sqrt(hkl_1_d2));
+    }
+  }
   if (mode != SfcMode::None) {
     print_to_stderr(comparator);
     fprintf(stderr, "  <dPhi>=%#.4g", comparator.mean_dphi());

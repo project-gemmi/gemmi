@@ -64,9 +64,9 @@ RMSE=0.019724  0.2307%  max|dF|=0.04863  R=0.196%  sum(F^2)_ratio=1.00101
     def test_sfcalc4(self):
         self.do('''\
 $ gemmi sfcalc -w0 --hkl=4,9,0 --hkl=5,6,4 --hkl=1,1,1 tests/2013551.cif
- (4 9 0)	1.123146675874	180.000000000000
- (5 6 4)	1.490896188423	180.000000000000
- (1 1 1)	11.221590341903	0.000000000000
+ (4 9 0)	1.12314668	180.000000
+ (5 6 4)	1.49089619	180.000000
+ (1 1 1)	11.22159034	0.000000
 ''')
 
     @unittest.skipIf(sys.platform == 'win32', 'with MSVC it differs slightly')
@@ -74,7 +74,7 @@ $ gemmi sfcalc -w0 --hkl=4,9,0 --hkl=5,6,4 --hkl=1,1,1 tests/2013551.cif
         self.do('''\
 $ gemmi sfcalc --blur=12 --dmin=2.5 --rate=2.5 --rcut=1e-7 --test -v tests/5wkd.pdb
 [...]
-RMSE=5.5654e-05  0.0001415%  max|dF|=0.0008977  R=0.000%  <dPhi>=4.080e-06
+RMSE=3.1854e-05  4.493e-05%  max|dF|=0.0001630  R=0.000%  <dPhi>=4.580e-06
 ''')  # noqa: E501
 
     @unittest.skipIf(sys.platform == 'win32', 'with MSVC it differs slightly')
@@ -82,7 +82,7 @@ RMSE=5.5654e-05  0.0001415%  max|dF|=0.0008977  R=0.000%  <dPhi>=4.080e-06
         self.do('''\
 $ gemmi sfcalc --dmin=9 --rate=4 --blur=60 --rcut=1e-7 --test -v tests/1pfe.cif.gz
 [...]
-RMSE=0.0041127  0.0003866%  max|dF|=0.02913  R=0.000%  <dPhi>=4.118e-06
+RMSE=0.0011646  0.0001833%  max|dF|=0.004507  R=0.000%  <dPhi>=7.624e-06
 ''')  # noqa: E501
 
     # example from utils.rst
