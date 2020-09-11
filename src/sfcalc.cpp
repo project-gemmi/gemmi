@@ -144,7 +144,8 @@ using namespace gemmi;
 template<typename Table, typename Real>
 void print_structure_factors(const Structure& st,
                              DensityCalculator<Table, Real>& dencalc,
-                             bool verbose, SfcMode mode, const char* file_path,
+                             bool verbose, SfcMode mode,
+                             const char* file_path,
                              const std::string& f_label,
                              const std::string& phi_label) {
   using Clock = std::chrono::steady_clock;
@@ -176,32 +177,32 @@ void print_structure_factors(const Structure& st,
       calc.set_fprime((El)i, dencalc.fprimes[i]);
   gemmi::fileptr_t cache(nullptr, nullptr);
   std::map<Miller, std::complex<double>> mtz_data;
-  if (mode == SfcMode::Test && file_path) {
-    cache = gemmi::file_open(file_path, "r");
-  } else if (mode == SfcMode::Compare && file_path) {
-    Mtz mtz;
-    mtz.read_input(gemmi::MaybeGzipped(file_path), true);
-    Mtz::Column* f_col = mtz.column_with_label(f_label);
-    if (!f_col)
-      fail("MTZ file has no column with label: " + f_label);
-    Mtz::Column* phi_col = mtz.column_with_label(phi_label);
-    if (!phi_col)
-      fail("MTZ file has no column with label: " + phi_label);
-    gemmi::MtzDataProxy data_proxy{mtz};
-    for (size_t i = 0; i < data_proxy.size(); i += data_proxy.stride()) {
-      Miller hkl = data_proxy.get_hkl(i);
-      double f_abs = data_proxy.get_num(i + f_col->idx);
-      double f_deg = data_proxy.get_num(i + phi_col->idx);
-      if (!std::isnan(f_abs) && !std::isnan(f_deg))
-        mtz_data.emplace(hkl, std::polar(f_abs, gemmi::rad(f_deg)));
+  if (file_path) {
+    if (mode == SfcMode::Test) {
+      cache = gemmi::file_open(file_path, "r");
+    } else if (mode == SfcMode::Compare) {
+      Mtz mtz;
+      mtz.read_input(gemmi::MaybeGzipped(file_path), true);
+      Mtz::Column* f_col = mtz.column_with_label(f_label);
+      if (!f_col)
+        fail("MTZ file has no column with label: " + f_label);
+      Mtz::Column* phi_col = mtz.column_with_label(phi_label);
+      if (!phi_col)
+        fail("MTZ file has no column with label: " + phi_label);
+      gemmi::MtzDataProxy data_proxy{mtz};
+      for (size_t i = 0; i < data_proxy.size(); i += data_proxy.stride()) {
+        Miller hkl = data_proxy.get_hkl(i);
+        double f_abs = data_proxy.get_num(i + f_col->idx);
+        double f_deg = data_proxy.get_num(i + phi_col->idx);
+        if (!std::isnan(f_abs) && !std::isnan(f_deg))
+          mtz_data.emplace(hkl, std::polar(f_abs, gemmi::rad(f_deg)));
+      }
     }
   }
 
   Comparator comparator;
-  typename FPhiGrid<Real>::AsuData asu_data = sf.prepare_asu_data(dencalc.d_min);
+  auto asu_data = sf.prepare_asu_data(dencalc.d_min, dencalc.blur);
   for (typename FPhiGrid<Real>::HklValue& hv : asu_data.v) {
-    double hkl_1_d2 = sf.unit_cell.calculate_1_d2(hv.hkl);
-    hv.value *= dencalc.reciprocal_space_multiplier(hkl_1_d2);
     if (mode == SfcMode::None) {
       print_sf(hv.value, hv.hkl);
     } else {
@@ -231,7 +232,7 @@ void print_structure_factors(const Structure& st,
       printf(" (%d %d %d)\t%7.2f\t%8.3f \t%6.2f\t%7.3f\td=%5.2f\n",
              hv.hkl[0], hv.hkl[1], hv.hkl[2], std::abs(hv.value), std::abs(exact),
              gemmi::phase_in_angles(hv.value), gemmi::phase_in_angles(exact),
-             1. / std::sqrt(hkl_1_d2));
+             sf.unit_cell.calculate_d(hv.hkl));
     }
   }
   if (mode != SfcMode::None) {

@@ -264,7 +264,8 @@ void add_grid(py::module& m, const std::string& name) {
     .def("set_value", &ReGr::set_value)
     .def("to_hkl", &ReGr::to_hkl)
     .def("prepare_asu_data", &ReGr::prepare_asu_data,
-         py::arg("dmin")=0., py::arg("with_000")=false, py::arg("with_sys_abs")=false)
+         py::arg("dmin")=0., py::arg("unblur")=0.,
+         py::arg("with_000")=false, py::arg("with_sys_abs")=false)
     .def("__repr__", [=](const ReGr& self) {
         return tostr("<gemmi.Reciprocal", name, '(', grid_dim_str(self), ")>");
     });

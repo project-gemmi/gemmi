@@ -546,7 +546,8 @@ struct ReciprocalGrid : GridBase<T> {
     const SpaceGroup* spacegroup() const { return spacegroup_; }
   };
 
-  AsuData prepare_asu_data(double dmin=0, bool with_000=false, bool with_sys_abs=false) {
+  AsuData prepare_asu_data(double dmin=0, double unblur=0,
+                           bool with_000=false, bool with_sys_abs=false) {
     AsuData asu_data;
     if (this->axis_order == AxisOrder::ZYX)
       fail("get_asu_values(): ZYX order is not supported yet");
@@ -579,6 +580,12 @@ struct ReciprocalGrid : GridBase<T> {
           }
       }
     }
+    if (unblur != 0.)
+      for (HklValue& hv : asu_data.v) {
+        double inv_d2 = this->unit_cell.calculate_1_d2(hv.hkl);
+        // cf. reciprocal_space_multiplier()
+        hv.value *= (T) std::exp(unblur * 0.25 * inv_d2);
+      }
     asu_data.unit_cell_ = this->unit_cell;
     asu_data.spacegroup_ = this->spacegroup;
     return asu_data;
