@@ -14,6 +14,7 @@
 #include <array>
 #include <string>
 #include <vector>
+#include "asudata.hpp"   // for AsuData
 #include "atox.hpp"      // for simple_atof, simple_atoi, read_word
 #include "input.hpp"     // for FileStream
 #include "iterator.hpp"  // for StrideIter
@@ -271,6 +272,27 @@ struct Mtz {
       if (col.type == type)
         cols.push_back(&col);
     return cols;
+  }
+
+  template<typename T>
+  AsuData<std::complex<T>> get_f_phi(const std::string& f_label,
+                                     const std::string& phi_label) const {
+    const Column* f_col = column_with_label(f_label);
+    if (!f_col)
+      fail("MTZ file has no column with label: " + f_label);
+    const Column* phi_col = column_with_label(phi_label);
+    if (!phi_col)
+      fail("MTZ file has no column with label: " + phi_label);
+    AsuData<std::complex<T>> ret;
+    ret.unit_cell_ = cell;
+    ret.spacegroup_ = spacegroup;
+    for (size_t i = 0; i < data.size(); i += columns.size()) {
+      T f_abs = data[i + f_col->idx];
+      T f_deg = data[i + phi_col->idx];
+      if (!std::isnan(f_abs) && !std::isnan(f_deg))
+        ret.v.push_back({get_hkl(i), std::polar(f_abs, gemmi::rad(f_deg))});
+    }
+    return ret;
   }
 
   bool has_data() const {

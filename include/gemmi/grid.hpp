@@ -13,6 +13,7 @@
 #include <vector>
 #include "unitcell.hpp"
 #include "symmetry.hpp"
+#include "asudata.hpp"
 #include "fail.hpp"  // for fail
 
 namespace gemmi {
@@ -528,23 +529,8 @@ struct ReciprocalGrid : GridBase<T> {
     return hkl;
   }
 
-  struct HklValue {
-    Miller hkl;
-    T value;
-  };
-  struct AsuData {
-    std::vector<HklValue> v;
-    UnitCell unit_cell_;
-    const SpaceGroup* spacegroup_ = nullptr;
-    // function defining FPhiProxy interface
-    size_t stride() const { return 1; }
-    size_t size() const { return v.size(); }
-    Miller get_hkl(size_t n) const { return v[n].hkl; }
-    double get_f(size_t n) const { return std::abs(v[n].value); }
-    double get_phi(size_t n) const { return std::arg(v[n].value); }
-    const UnitCell& unit_cell() const { return unit_cell_; }
-    const SpaceGroup* spacegroup() const { return spacegroup_; }
-  };
+  using HklValue = gemmi::HklValue<T>;
+  using AsuData = gemmi::AsuData<T>;
 
   AsuData prepare_asu_data(double dmin=0, double unblur=0,
                            bool with_000=false, bool with_sys_abs=false) {

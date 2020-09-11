@@ -176,27 +176,15 @@ void print_structure_factors(const Structure& st,
     if (dencalc.fprimes[i] != 0.f)
       calc.set_fprime((El)i, dencalc.fprimes[i]);
   gemmi::fileptr_t cache(nullptr, nullptr);
-  std::map<Miller, std::complex<double>> mtz_data;
+  AsuData<std::complex<double>> compared_data;
   if (file_path) {
     if (mode == SfcMode::Test) {
       cache = gemmi::file_open(file_path, "r");
     } else if (mode == SfcMode::Compare) {
       Mtz mtz;
       mtz.read_input(gemmi::MaybeGzipped(file_path), true);
-      Mtz::Column* f_col = mtz.column_with_label(f_label);
-      if (!f_col)
-        fail("MTZ file has no column with label: " + f_label);
-      Mtz::Column* phi_col = mtz.column_with_label(phi_label);
-      if (!phi_col)
-        fail("MTZ file has no column with label: " + phi_label);
-      gemmi::MtzDataProxy data_proxy{mtz};
-      for (size_t i = 0; i < data_proxy.size(); i += data_proxy.stride()) {
-        Miller hkl = data_proxy.get_hkl(i);
-        double f_abs = data_proxy.get_num(i + f_col->idx);
-        double f_deg = data_proxy.get_num(i + phi_col->idx);
-        if (!std::isnan(f_abs) && !std::isnan(f_deg))
-          mtz_data.emplace(hkl, std::polar(f_abs, gemmi::rad(f_deg)));
-      }
+      compared_data = mtz.get_f_phi<double>(f_label, phi_label);
+      std::sort(compared_data.v.begin(), compared_data.v.end());
     }
   }
 
@@ -220,10 +208,10 @@ void print_structure_factors(const Structure& st,
             gemmi::fail("Different h k l order than in cache file.");
           exact = std::polar(f_abs, gemmi::rad(f_deg));
         } else if (mode == SfcMode::Compare) {
-          auto it = mtz_data.find(hv.hkl);
-          if (it == mtz_data.end())
+          auto it = std::lower_bound(compared_data.v.begin(), compared_data.v.end(), hv.hkl);
+          if (it == compared_data.v.end())
             continue;
-          exact = it->second;
+          exact = it->value;
         }
       } else {
         exact = calc.calculate_sf_from_model(st.models[0], hv.hkl);
