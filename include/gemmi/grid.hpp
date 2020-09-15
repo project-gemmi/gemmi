@@ -532,6 +532,7 @@ struct ReciprocalGrid : GridBase<T> {
   using HklValue = gemmi::HklValue<T>;
   using AsuData = gemmi::AsuData<T>;
 
+  // the result is always sorted by h,k,l
   AsuData prepare_asu_data(double dmin=0, double unblur=0,
                            bool with_000=false, bool with_sys_abs=false) {
     AsuData asu_data;

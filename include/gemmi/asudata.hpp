@@ -7,6 +7,7 @@
 
 #include <complex>       // for arg, abs
 #include <tuple>         // for tie
+#include <algorithm>     // for sort, is_sorted
 #include "unitcell.hpp"
 #include "symmetry.hpp"
 
@@ -22,7 +23,6 @@ struct HklValue {
   }
   bool operator<(const HklValue& o) const { return operator<(o.hkl); }
 };
-//bool operator<(const Miller& hkl, const HklValue& b) const { return hkl < b.hkl; }
 
 
 template<typename T>
@@ -38,6 +38,10 @@ struct AsuData {
   double get_phi(size_t n) const { return std::arg(v[n].value); }
   const UnitCell& unit_cell() const { return unit_cell_; }
   const SpaceGroup* spacegroup() const { return spacegroup_; }
+  void ensure_sorted() {
+    if (!std::is_sorted(v.begin(), v.end()))
+      std::sort(v.begin(), v.end());
+  }
 };
 
 } // namespace gemmi
