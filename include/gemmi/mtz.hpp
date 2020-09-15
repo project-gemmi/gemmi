@@ -10,7 +10,7 @@
 #include <cstdio>    // for FILE, fread
 #include <cstring>   // for memcpy
 #include <cmath>     // for isnan
-#include <algorithm> // for sort
+#include <algorithm> // for sort, any_of
 #include <array>
 #include <string>
 #include <vector>
@@ -291,6 +291,28 @@ struct Mtz {
       T f_deg = data[i + phi_col->idx];
       if (!std::isnan(f_abs) && !std::isnan(f_deg))
         ret.v.push_back({get_hkl(i), std::polar(f_abs, gemmi::rad(f_deg))});
+    }
+    return ret;
+  }
+
+  template<typename T, int N>
+  AsuData<std::array<T,N>> get_values(const std::array<std::string,N>& labels) const {
+    std::array<std::size_t, N> cols;
+    for (int i = 0; i < N; ++i) {
+      const Column* col = column_with_label(labels[i]);
+      if (!col)
+        fail("MTZ file has no column with label: " + labels[i]);
+      cols[i] = col->idx;
+    }
+    AsuData<std::array<T,N>> ret;
+    ret.unit_cell_ = cell;
+    ret.spacegroup_ = spacegroup;
+    for (size_t i = 0; i < data.size(); i += columns.size()) {
+      std::array<T, N> values;
+      for (int j = 0; j < N; ++j)
+        values[j] = data[i + cols[j]];
+      if (!std::any_of(values.begin(), values.end(), [](T f) { return std::isnan(f); }))
+        ret.v.push_back({get_hkl(i), values});
     }
     return ret;
   }
