@@ -20,8 +20,8 @@
 #define GEMMI_PROG sfcalc
 #include "options.h"
 
-enum OptionIndex { Hkl=4, Dmin, For, Rate, Blur, RCut, Test, Check,
-                   CifFp, Wavelength, Unknown, NoAniso, FLabel,
+enum OptionIndex { Hkl=4, Dmin, For, Rate, Blur, RCut, Test, Compare,
+                   CifFp, Wavelength, Unknown, NoAniso, ScaleTo, FLabel,
                    PhiLabel, Scale };
 
 struct SfCalcArg: public Arg {
@@ -58,10 +58,8 @@ static const option::Descriptor Usage[] = {
     "  --unknown=SYMBOL  \tUse form factor of SYMBOL for unknown atoms." },
   { NoAniso, 0, "", "noaniso", Arg::None,
     "  --noaniso  \tIgnore anisotropic ADPs." },
-  /*
   { ScaleTo, 0, "", "scale-to", Arg::ColonPair,
     "  --scale-to=FILE:COL  \tScale to |Fobs| by fitting k*exp(-B s^2/4)." },
-  */
 
   { NoOp, 0, "", "", Arg::None, "\nOptions for FFT-based calculations:" },
   { Rate, 0, "", "rate", Arg::Float,
@@ -75,8 +73,8 @@ static const option::Descriptor Usage[] = {
 
   { NoOp, 0, "", "", Arg::None,
     "\nOptions for comparing calculated values with values from a file:" },
-  { Check, 0, "", "check", Arg::Required,
-    "  --check=FILE  \tRe-calculate Fcalc and report differences." },
+  { Compare, 0, "", "compare", Arg::Required,
+    "  --compare=FILE  \tRe-calculate Fcalc and report differences." },
   { FLabel, 0, "", "f", Arg::Required,
     "  --f=LABEL  \tMTZ column label (default: FC) or small molecule cif"
     " tag (default: F_calc or F_squared_calc)." },
@@ -141,13 +139,77 @@ void print_to_stderr(const Comparator& c) {
 
 using namespace gemmi;
 
+template<typename Real>
+struct BulkSolvent {
+  struct Point {
+    Real stol2, fcalc, fobs, sigma;
+  };
+  std::vector<Point> data;
+  UnitCell cell;
+  // model parameters
+  double k_overall;
+  double B_overall;
+
+  // pre: calc and obs are sorted
+  BulkSolvent(AsuData<std::complex<Real>>& calc,
+              const AsuData<std::array<Real,2>>& obs) {
+    data.reserve(std::min(calc.size(), obs.size()));
+    cell = calc.unit_cell();
+    auto c = calc.v.begin();
+    for (const HklValue<std::array<Real,2>>& o : obs.v) {
+      if (c->hkl != o.hkl) {
+        while (*c < o.hkl) {
+          ++c;
+          if (c == calc.v.end())
+            return;
+        }
+        if (c->hkl != o.hkl)
+          continue;
+      }
+      Real stol2 = cell.calculate_stol_sq(o.hkl);
+      data.push_back({stol2, std::abs(c->value), o.value[0], o.value[1]});
+      ++c;
+      if (c == calc.v.end())
+        return;
+    }
+  }
+
+  double get_scale_factor(const Miller& hkl) const {
+    Real stol2 = cell.calculate_stol_sq(hkl);
+    return k_overall * std::exp(-B_overall * stol2);
+  }
+  void scale(HklValue<std::complex<Real>>& hv) {
+    hv.value *= get_scale_factor(hv.hkl);
+  }
+
+  // ignoring sigma
+  void quick_iso_fit() {
+    double sx = 0, sy = 0, sxx = 0, sxy = 0;
+    for (const Point& p : data) {
+      double x = p.stol2;
+      double y = std::log(static_cast<float>(p.fobs / p.fcalc));
+      sx += x;
+      sy += y;
+      sxx += x * x;
+      sxy += x * y;
+    }
+    double n = data.size();
+    double slope = (n * sxy - sx * sy) / (n * sxx - sx * sx);
+    double intercept = (sy - slope * sx) / n;
+    B_overall = -slope;
+    k_overall = exp(intercept);
+  }
+};
+
+
 template<typename Table, typename Real>
 void print_structure_factors(const Structure& st,
                              DensityCalculator<Table, Real>& dencalc,
                              bool verbose, SfcMode mode,
                              const char* file_path,
                              const std::string& f_label,
-                             const std::string& phi_label) {
+                             const std::string& phi_label,
+                             const AsuData<std::array<Real,2>>& scale_to) {
   using Clock = std::chrono::steady_clock;
   if (verbose) {
     fprintf(stderr, "Preparing electron density on a grid...\n");
@@ -184,12 +246,20 @@ void print_structure_factors(const Structure& st,
       Mtz mtz;
       mtz.read_input(gemmi::MaybeGzipped(file_path), true);
       compared_data = mtz.get_f_phi<double>(f_label, phi_label);
-      std::sort(compared_data.v.begin(), compared_data.v.end());
+      compared_data.ensure_sorted();
     }
   }
 
   Comparator comparator;
   auto asu_data = sf.prepare_asu_data(dencalc.d_min, dencalc.blur);
+  if (scale_to.size() != 0) {
+    BulkSolvent<Real> bulk(asu_data, scale_to);
+    printf("Calculating scale factors using %zu points...\n", bulk.data.size());
+    bulk.quick_iso_fit();
+    printf("k_ov=%g B_ov=%g\n", bulk.k_overall, bulk.B_overall);
+    for (typename FPhiGrid<Real>::HklValue& hv : asu_data.v)
+      bulk.scale(hv);
+  }
   for (typename FPhiGrid<Real>::HklValue& hv : asu_data.v) {
     if (mode == SfcMode::None) {
       print_sf(hv.value, hv.hkl);
@@ -209,7 +279,7 @@ void print_structure_factors(const Structure& st,
           exact = std::polar(f_abs, gemmi::rad(f_deg));
         } else if (mode == SfcMode::Compare) {
           auto it = std::lower_bound(compared_data.v.begin(), compared_data.v.end(), hv.hkl);
-          if (it == compared_data.v.end())
+          if (it == compared_data.v.end() || it->hkl != hv.hkl)
             continue;
           exact = it->value;
         }
@@ -439,11 +509,26 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
   else if (use_st)
     phi_label = "PHIC";
 
+  using Real = float;
+  AsuData<std::array<Real,2>> scale_to;
+  if (p.options[ScaleTo]) {
+    if (!p.options[Dmin])
+      fail("Currently option --scale-to works only when used with --dmin");
+    const char* arg = p.options[ScaleTo].arg;
+    const char* sep = std::strchr(arg, ':');
+    std::string path(arg, sep);
+    std::string label(sep+1);
+    Mtz mtz;
+    mtz.read_input(gemmi::MaybeGzipped(path), true);
+    scale_to = mtz.get_values<Real,2>({label, "SIG"+label});
+    scale_to.ensure_sorted();
+  }
+
   // handle option --dmin
   if (p.options[Dmin]) {
     double d_min = std::strtod(p.options[Dmin].arg, nullptr);
     if (use_st) {
-      DensityCalculator<Table, float> dencalc;
+      DensityCalculator<Table, Real> dencalc;
       dencalc.d_min = d_min;
       if (p.options[Rate])
         dencalc.rate = std::strtod(p.options[Rate].arg, nullptr);
@@ -474,12 +559,12 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
       if (p.options[Test]) {
         mode = SfcMode::Test;
         file = p.options[Test].arg;
-      } else if (p.options[Check]) {
+      } else if (p.options[Compare]) {
         mode = SfcMode::Compare;
-        file = p.options[Check].arg;
+        file = p.options[Compare].arg;
       }
       print_structure_factors(st, dencalc, p.options[Verbose], mode, file,
-                              f_label, phi_label);
+                              f_label, phi_label, scale_to);
     } else {
       if (p.options[Rate] || p.options[RCut] || p.options[Blur] ||
           p.options[Test])
@@ -488,12 +573,12 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
       print_structure_factors_sm(small, calc, d_min, p.options[Verbose]);
     }
 
-  // handle option --check
-  } else if (p.options[Check]) {
+  // handle option --compare
+  } else if (p.options[Compare]) {
     double scale = 1.0;
     if (p.options[Scale])
       scale = std::strtod(p.options[Scale].arg, nullptr);
-    const char* path = p.options[Check].arg;
+    const char* path = p.options[Compare].arg;
     Comparator comparator;
     if (use_st)
       compare_with_mtz(st.models[0], st.cell, calc, f_label, scale,

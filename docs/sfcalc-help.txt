@@ -10,27 +10,28 @@ This program can also compare F's calculated directly with values
 calculated through FFT or with values read from a reflection file.
 
 Options:
-  -h, --help        Print usage and exit.
-  -V, --version     Print version and exit.
-  -v, --verbose     Verbose output.
-  --hkl=H,K,L       Calculate structure factor F_hkl.
-  --dmin=NUM        Calculate structure factors up to given resolution.
-  --for=TYPE        TYPE is xray (default) or electron.
-  --ciffp           Read f' from _atom_type_scat_dispersion_real in CIF.
-  --wavelength=NUM  Wavelength [A] for calculation of f' (use --wavelength=0 or
-                    -w0 to ignore anomalous scattering).
-  --unknown=SYMBOL  Use form factor of SYMBOL for unknown atoms.
-  --noaniso         Ignore anisotropic ADPs.
+  -h, --help           Print usage and exit.
+  -V, --version        Print version and exit.
+  -v, --verbose        Verbose output.
+  --hkl=H,K,L          Calculate structure factor F_hkl.
+  --dmin=NUM           Calculate structure factors up to given resolution.
+  --for=TYPE           TYPE is xray (default) or electron.
+  --ciffp              Read f' from _atom_type_scat_dispersion_real in CIF.
+  --wavelength=NUM     Wavelength [A] for calculation of f' (use --wavelength=0
+                       or -w0 to ignore anomalous scattering).
+  --unknown=SYMBOL     Use form factor of SYMBOL for unknown atoms.
+  --noaniso            Ignore anisotropic ADPs.
+  --scale-to=FILE:COL  Scale to |Fobs| by fitting k*exp(-B s^2/4).
 
 Options for FFT-based calculations:
-  --rate=NUM        Shannon rate used for grid spacing (default: 1.5).
-  --blur=NUM        B added for Gaussian blurring (default: auto).
-  --rcut=Y          Use atomic radius r such that rho(r) < Y (default: 5e-5).
-  --test[=CACHE]    Calculate exact values and report differences (slow).
+  --rate=NUM           Shannon rate used for grid spacing (default: 1.5).
+  --blur=NUM           B added for Gaussian blurring (default: auto).
+  --rcut=Y             Use atomic radius r such that rho(r) < Y (default: 5e-5).
+  --test[=CACHE]       Calculate exact values and report differences (slow).
 
 Options for comparing calculated values with values from a file:
-  --check=FILE      Re-calculate Fcalc and report differences.
-  --f=LABEL         MTZ column label (default: FC) or small molecule cif tag
-                    (default: F_calc or F_squared_calc).
-  --phi=LABEL       MTZ column label (default: PHIC)
-  --scale=S         Multiply calculated F by sqrt(S) (default: 1).
+  --compare=FILE       Re-calculate Fcalc and report differences.
+  --f=LABEL            MTZ column label (default: FC) or small molecule cif tag
+                       (default: F_calc or F_squared_calc).
+  --phi=LABEL          MTZ column label (default: PHIC)
+  --scale=S            Multiply calculated F by sqrt(S) (default: 1).

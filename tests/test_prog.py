@@ -45,19 +45,19 @@ Se	12345.0	 1.00433	 -3.1985	0.52258
 
     def test_sfcalc1(self):
         self.do('''\
-$ gemmi sfcalc --check=tests/2242624.hkl tests/2242624.cif
+$ gemmi sfcalc --compare=tests/2242624.hkl tests/2242624.cif
 RMSE=0.019256  0.2252%  max|dF|=0.04784  R=0.191%  sum(F^2)_ratio=1.00094
 ''')
 
     def test_sfcalc2(self):
         self.do('''\
-$ gemmi sfcalc --wavelength=0 --check=tests/2242624.hkl tests/2242624.cif
+$ gemmi sfcalc --wavelength=0 --compare=tests/2242624.hkl tests/2242624.cif
 RMSE=0.10942  1.295%  max|dF|=0.1498  R=1.279%  sum(F^2)_ratio=1.01019
 ''')
 
     def test_sfcalc3(self):
         self.do('''\
-$ gemmi sfcalc --ciffp --check=tests/2242624.hkl tests/2242624.cif
+$ gemmi sfcalc --ciffp --compare=tests/2242624.hkl tests/2242624.cif
 RMSE=0.019724  0.2307%  max|dF|=0.04863  R=0.196%  sum(F^2)_ratio=1.00101
 ''')
 
