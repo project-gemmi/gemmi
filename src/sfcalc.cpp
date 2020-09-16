@@ -22,7 +22,7 @@
 
 enum OptionIndex { Hkl=4, Dmin, For, Rate, Blur, RCut, Test, Compare,
                    CifFp, Wavelength, Unknown, NoAniso, ScaleTo, FLabel,
-                   PhiLabel, Scale };
+                   PhiLabel };
 
 struct SfCalcArg: public Arg {
   static option::ArgStatus FormFactors(const option::Option& option, bool msg) {
@@ -80,8 +80,6 @@ static const option::Descriptor Usage[] = {
     " tag (default: F_calc or F_squared_calc)." },
   { PhiLabel, 0, "", "phi", Arg::Required,
     "  --phi=LABEL  \tMTZ column label (default: PHIC)" },
-  { Scale, 0, "", "scale", Arg::Float,
-    "  --scale=S  \tMultiply calculated F by sqrt(S) (default: 1)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -147,8 +145,8 @@ struct BulkSolvent {
   std::vector<Point> data;
   UnitCell cell;
   // model parameters
-  double k_overall;
-  double B_overall;
+  double k_overall = 1.;
+  double B_overall = 0.;
 
   // pre: calc and obs are sorted
   BulkSolvent(AsuData<std::complex<Real>>& calc,
@@ -353,7 +351,7 @@ double get_minimum_b_iso(const Model& model) {
 template<typename Table>
 void compare_with_hkl(const SmallStructure& small,
                       StructureFactorCalculator<Table>& calc,
-                      const std::string& label, double scale,
+                      const std::string& label,
                       bool verbose, const char* path,
                       Comparator& comparator) {
   cif::Document hkl_doc = read_cif_gz(path);
@@ -414,7 +412,6 @@ void compare_with_hkl(const SmallStructure& small,
       continue;
     }
     double f = std::abs(calc.calculate_sf_from_small_structure(small, hkl));
-    f *= scale;
     comparator.add(f_from_file, f);
     if (verbose)
       printf(" (%d %d %d)\t%7.2f\t%8.3f \td=%5.2f\n",
@@ -430,7 +427,7 @@ void compare_with_hkl(const SmallStructure& small,
 template<typename Table>
 void compare_with_mtz(const Model& model, const UnitCell& cell,
                       StructureFactorCalculator<Table>& calc,
-                      const std::string& label, double scale, bool verbose,
+                      const std::string& label, bool verbose,
                       const char* path, Comparator& comparator) {
   Mtz mtz;
   mtz.read_input(gemmi::MaybeGzipped(path), true);
@@ -442,7 +439,6 @@ void compare_with_mtz(const Model& model, const UnitCell& cell,
     Miller hkl = data_proxy.get_hkl(i);
     double f_from_file = data_proxy.get_num(i + col->idx);
     double f = std::abs(calc.calculate_sf_from_model(model, hkl));
-    f *= scale;
     comparator.add(f_from_file, f);
     if (verbose)
       printf(" (%d %d %d)\t%7.2f\t%8.3f \td=%5.2f\n",
@@ -501,7 +497,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
 
   std::string f_label, phi_label;
   if (p.options[FLabel])
-   f_label = p.options[FLabel].arg;
+    f_label = p.options[FLabel].arg;
   else if (use_st)
     f_label = "FC";
   if (p.options[PhiLabel])
@@ -575,16 +571,13 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
 
   // handle option --compare
   } else if (p.options[Compare]) {
-    double scale = 1.0;
-    if (p.options[Scale])
-      scale = std::strtod(p.options[Scale].arg, nullptr);
     const char* path = p.options[Compare].arg;
     Comparator comparator;
     if (use_st)
-      compare_with_mtz(st.models[0], st.cell, calc, f_label, scale,
+      compare_with_mtz(st.models[0], st.cell, calc, f_label,
                        p.options[Verbose], path, comparator);
     else
-      compare_with_hkl(small, calc, f_label, scale,
+      compare_with_hkl(small, calc, f_label,
                        p.options[Verbose], path, comparator);
     print_to_stderr(comparator);
     fprintf(stderr, "  sum(F^2)_ratio=%g\n", comparator.scale());

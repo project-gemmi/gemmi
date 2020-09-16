@@ -34,4 +34,3 @@ Options for comparing calculated values with values from a file:
   --f=LABEL            MTZ column label (default: FC) or small molecule cif tag
                        (default: F_calc or F_squared_calc).
   --phi=LABEL          MTZ column label (default: PHIC)
-  --scale=S            Multiply calculated F by sqrt(S) (default: 1).
