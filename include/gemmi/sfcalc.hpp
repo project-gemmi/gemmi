@@ -29,7 +29,7 @@ public:
   StructureFactorCalculator(const UnitCell& cell) : cell_(cell) {}
 
   void set_stol2_and_scattering_factors(const Miller& hkl) {
-    stol2_ = 0.25 * cell_.calculate_1_d2(hkl);
+    stol2_ = cell_.calculate_stol_sq(hkl);
     scattering_factors_.clear();
     scattering_factors_.resize((int) El::END, 0.);
     for (auto const& fprime : fprimes_) {

@@ -377,6 +377,11 @@ struct UnitCell {
     return 1.0 / std::sqrt(calculate_1_d2(hkl));
   }
 
+  // Calculate (sin(theta)/lambda)^2 = d*^2/4
+  double calculate_stol_sq(const Miller& hkl) const {
+    return 0.25 * calculate_1_d2(hkl);
+  }
+
   // https://dictionary.iucr.org/Metric_tensor
   SMat33<double> metric_tensor() const {
     double cos_alpha = alpha == 90. ? 0. : std::cos(rad(alpha));
