@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <chrono>
 #include <complex>
+#include <gemmi/bulksol.hpp>
 #include <gemmi/fourier.hpp>
 #include <gemmi/gzread.hpp>
 #include <gemmi/it92.hpp>      // for IT92
@@ -135,79 +136,14 @@ void print_to_stderr(const Comparator& c) {
           c.rmse(), 100 * c.weighted_rmse(), c.max_abs_df, 100 * c.rfactor());
 }
 
-using namespace gemmi;
-
-template<typename Real>
-struct BulkSolvent {
-  struct Point {
-    Real stol2, fcalc, fobs, sigma;
-  };
-  std::vector<Point> data;
-  UnitCell cell;
-  // model parameters
-  double k_overall = 1.;
-  double B_overall = 0.;
-
-  // pre: calc and obs are sorted
-  BulkSolvent(AsuData<std::complex<Real>>& calc,
-              const AsuData<std::array<Real,2>>& obs) {
-    data.reserve(std::min(calc.size(), obs.size()));
-    cell = calc.unit_cell();
-    auto c = calc.v.begin();
-    for (const HklValue<std::array<Real,2>>& o : obs.v) {
-      if (c->hkl != o.hkl) {
-        while (*c < o.hkl) {
-          ++c;
-          if (c == calc.v.end())
-            return;
-        }
-        if (c->hkl != o.hkl)
-          continue;
-      }
-      Real stol2 = cell.calculate_stol_sq(o.hkl);
-      data.push_back({stol2, std::abs(c->value), o.value[0], o.value[1]});
-      ++c;
-      if (c == calc.v.end())
-        return;
-    }
-  }
-
-  double get_scale_factor(const Miller& hkl) const {
-    Real stol2 = cell.calculate_stol_sq(hkl);
-    return k_overall * std::exp(-B_overall * stol2);
-  }
-  void scale(HklValue<std::complex<Real>>& hv) {
-    hv.value *= get_scale_factor(hv.hkl);
-  }
-
-  // ignoring sigma
-  void quick_iso_fit() {
-    double sx = 0, sy = 0, sxx = 0, sxy = 0;
-    for (const Point& p : data) {
-      double x = p.stol2;
-      double y = std::log(static_cast<float>(p.fobs / p.fcalc));
-      sx += x;
-      sy += y;
-      sxx += x * x;
-      sxy += x * y;
-    }
-    double n = data.size();
-    double slope = (n * sxy - sx * sy) / (n * sxx - sx * sx);
-    double intercept = (sy - slope * sx) / n;
-    B_overall = -slope;
-    k_overall = exp(intercept);
-  }
-};
-
-
 template<typename Table, typename Real>
-void print_structure_factors(const Structure& st,
-                             DensityCalculator<Table, Real>& dencalc,
+void print_structure_factors(const gemmi::Structure& st,
+                             gemmi::DensityCalculator<Table, Real>& dencalc,
                              bool verbose, SfcMode mode,
                              const char* file_path,
                              const std::string& f_label,
                              const std::string& phi_label,
-                             const AsuData<std::array<Real,2>>& scale_to) {
+                             const gemmi::AsuData<std::array<Real,2>>& scale_to) {
   using Clock = std::chrono::steady_clock;
   if (verbose) {
     fprintf(stderr, "Preparing electron density on a grid...\n");
@@ -216,7 +152,7 @@ void print_structure_factors(const Structure& st,
   auto start = Clock::now();
   dencalc.set_grid_cell_and_spacegroup(st);
   dencalc.put_model_density_on_grid(st.models[0]);
-  const Grid<Real>& grid = dencalc.grid;
+  const gemmi::Grid<Real>& grid = dencalc.grid;
   if (verbose) {
     std::chrono::duration<double> elapsed = Clock::now() - start;
     fprintf(stderr, "...took %g s.\n", elapsed.count());
@@ -224,24 +160,24 @@ void print_structure_factors(const Structure& st,
     fflush(stderr);
     start = Clock::now();
   }
-  FPhiGrid<Real> sf = transform_map_to_f_phi(grid, /*half_l=*/true);
+  gemmi::FPhiGrid<Real> sf = transform_map_to_f_phi(grid, /*half_l=*/true);
   if (verbose) {
     std::chrono::duration<double> elapsed = Clock::now() - start;
     fprintf(stderr, "...took %g s.\n", elapsed.count());
     fprintf(stderr, "Printing results...\n");
     fflush(stderr);
   }
-  StructureFactorCalculator<Table> calc(st.cell);
-  for (int i = 0; i != (int)El::END; ++i)
+  gemmi::StructureFactorCalculator<Table> calc(st.cell);
+  for (int i = 0; i != (int)gemmi::El::END; ++i)
     if (dencalc.fprimes[i] != 0.f)
-      calc.set_fprime((El)i, dencalc.fprimes[i]);
+      calc.set_fprime((gemmi::El)i, dencalc.fprimes[i]);
   gemmi::fileptr_t cache(nullptr, nullptr);
-  AsuData<std::complex<double>> compared_data;
+  gemmi::AsuData<std::complex<double>> compared_data;
   if (file_path) {
     if (mode == SfcMode::Test) {
       cache = gemmi::file_open(file_path, "r");
     } else if (mode == SfcMode::Compare) {
-      Mtz mtz;
+      gemmi::Mtz mtz;
       mtz.read_input(gemmi::MaybeGzipped(file_path), true);
       compared_data = mtz.get_f_phi<double>(f_label, phi_label);
       compared_data.ensure_sorted();
@@ -251,14 +187,15 @@ void print_structure_factors(const Structure& st,
   Comparator comparator;
   auto asu_data = sf.prepare_asu_data(dencalc.d_min, dencalc.blur);
   if (scale_to.size() != 0) {
-    BulkSolvent<Real> bulk(asu_data, scale_to);
+    gemmi::BulkSolvent<Real> bulk(asu_data, scale_to);
     printf("Calculating scale factors using %zu points...\n", bulk.data.size());
     bulk.quick_iso_fit();
+    bulk.aniso_fit();
     printf("k_ov=%g B_ov=%g\n", bulk.k_overall, bulk.B_overall);
-    for (typename FPhiGrid<Real>::HklValue& hv : asu_data.v)
-      bulk.scale(hv);
+    for (typename gemmi::FPhiGrid<Real>::HklValue& hv : asu_data.v)
+      hv.value *= bulk.get_scale_factor_aniso(hv.hkl);
   }
-  for (typename FPhiGrid<Real>::HklValue& hv : asu_data.v) {
+  for (typename gemmi::FPhiGrid<Real>::HklValue& hv : asu_data.v) {
     if (mode == SfcMode::None) {
       print_sf(hv.value, hv.hkl);
     } else {
@@ -268,7 +205,7 @@ void print_structure_factors(const Structure& st,
           char cache_line[100];
           if (fgets(cache_line, 99, cache.get()) == nullptr)
             gemmi::fail("cannot read line from file");
-          Miller cache_hkl;
+          gemmi::Miller cache_hkl;
           double f_abs, f_deg;
           sscanf(cache_line, " (%d %d %d) %*f %lf %*f %lf",
                  &cache_hkl[0], &cache_hkl[1], &cache_hkl[2], &f_abs, &f_deg);
@@ -303,8 +240,8 @@ void print_structure_factors(const Structure& st,
 }
 
 template<typename Table>
-void print_structure_factors_sm(const SmallStructure& small,
-                                StructureFactorCalculator<Table>& calc,
+void print_structure_factors_sm(const gemmi::SmallStructure& small,
+                                gemmi::StructureFactorCalculator<Table>& calc,
                                 double d_min, bool verbose) {
   using Clock = std::chrono::steady_clock;
   auto start = Clock::now();
@@ -313,13 +250,13 @@ void print_structure_factors_sm(const SmallStructure& small,
   int max_h = int(max_1_d / small.cell.ar);
   int max_k = int(max_1_d / small.cell.br);
   int max_l = int(max_1_d / small.cell.cr);
-  const SpaceGroup* sg = find_spacegroup_by_name(small.spacegroup_hm,
-                                           small.cell.alpha, small.cell.gamma);
-  gemmi::ReciprocalAsu asu(sg ? sg : &get_spacegroup_p1());
+  const gemmi::SpaceGroup* sg = gemmi::find_spacegroup_by_name(small.spacegroup_hm,
+                                                       small.cell.alpha, small.cell.gamma);
+  gemmi::ReciprocalAsu asu(sg ? sg : &gemmi::get_spacegroup_p1());
   for (int h = -max_h; h <= max_h; ++h)
     for (int k = -max_k; k <= max_k; ++k)
       for (int l = 0; l <= max_l; ++l) {
-        Miller hkl{{h, k, l}};
+        gemmi::Miller hkl{{h, k, l}};
         if (!asu.is_in(hkl))
           continue;
         double hkl_1_d2 = small.cell.calculate_1_d2(hkl);
@@ -338,23 +275,24 @@ void print_structure_factors_sm(const SmallStructure& small,
 }
 
 static
-double get_minimum_b_iso(const Model& model) {
+double get_minimum_b_iso(const gemmi::Model& model) {
   double b_min = 1000.;
-  for (const Chain& chain : model.chains)
-    for (const Residue& residue : chain.residues)
-      for (const Atom& atom : residue.atoms)
+  for (const gemmi::Chain& chain : model.chains)
+    for (const gemmi::Residue& residue : chain.residues)
+      for (const gemmi::Atom& atom : residue.atoms)
         if (atom.b_iso < b_min)
           b_min = atom.b_iso;
   return b_min;
 }
 
 template<typename Table>
-void compare_with_hkl(const SmallStructure& small,
-                      StructureFactorCalculator<Table>& calc,
+void compare_with_hkl(const gemmi::SmallStructure& small,
+                      gemmi::StructureFactorCalculator<Table>& calc,
                       const std::string& label,
                       bool verbose, const char* path,
                       Comparator& comparator) {
-  cif::Document hkl_doc = read_cif_gz(path);
+  namespace cif = gemmi::cif;
+  cif::Document hkl_doc = gemmi::read_cif_gz(path);
   cif::Block& block = hkl_doc.blocks.at(0);
   std::vector<std::string> tags =
     {"index_h", "index_k", "index_l", "?F_calc", "?F_squared_calc"};
@@ -364,7 +302,7 @@ void compare_with_hkl(const SmallStructure& small,
   }
   cif::Table table = block.find("_refln_", tags);
   if (!table.ok())
-    fail("_refln_index_ category not found in ", path);
+    gemmi::fail("_refln_index_ category not found in ", path);
   int col = 0;
   if (table.has_column(3))
     col = 3;
@@ -376,14 +314,14 @@ void compare_with_hkl(const SmallStructure& small,
       msg = "Neither _refln_F_calc nor _refln_F_squared_calc";
     else
       msg = "_refln_" + label;
-    fail(msg + " not found in: ", path);
+    gemmi::fail(msg + " not found in: ", path);
   }
   bool use_sqrt = (col == 4 ||
                    label == "F_squared_calc" || label == "F_squared_meas");
   if (verbose)
     fprintf(stderr, "Checking %s_refln_%s from %s\n",
             use_sqrt ? "sqrt of " : "", tags[col].c_str()+1, path);
-  Miller hkl;
+  gemmi::Miller hkl;
   int missing = 0;
   int negative = 0;
   for (auto row : table) {
@@ -425,18 +363,18 @@ void compare_with_hkl(const SmallStructure& small,
 }
 
 template<typename Table>
-void compare_with_mtz(const Model& model, const UnitCell& cell,
-                      StructureFactorCalculator<Table>& calc,
+void compare_with_mtz(const gemmi::Model& model, const gemmi::UnitCell& cell,
+                      gemmi::StructureFactorCalculator<Table>& calc,
                       const std::string& label, bool verbose,
                       const char* path, Comparator& comparator) {
-  Mtz mtz;
+  gemmi::Mtz mtz;
   mtz.read_input(gemmi::MaybeGzipped(path), true);
-  Mtz::Column* col = mtz.column_with_label(label);
+  gemmi::Mtz::Column* col = mtz.column_with_label(label);
   if (!col)
-    fail("MTZ file has no column with label: " + label);
+    gemmi::fail("MTZ file has no column with label: " + label);
   gemmi::MtzDataProxy data_proxy{mtz};
   for (size_t i = 0; i < data_proxy.size(); i += data_proxy.stride()) {
-    Miller hkl = data_proxy.get_hkl(i);
+    gemmi::Miller hkl = data_proxy.get_hkl(i);
     double f_from_file = data_proxy.get_num(i + col->idx);
     double f = std::abs(calc.calculate_sf_from_model(model, hkl));
     comparator.add(f_from_file, f);
@@ -449,8 +387,8 @@ void compare_with_mtz(const Model& model, const UnitCell& cell,
 template<typename Table>
 void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStructure& small,
                         double wavelength, const OptParser& p) {
-  const UnitCell& cell = use_st ? st.cell : small.cell;
-  StructureFactorCalculator<Table> calc(cell);
+  const gemmi::UnitCell& cell = use_st ? st.cell : small.cell;
+  gemmi::StructureFactorCalculator<Table> calc(cell);
 
   // assign f'
   if (p.options[CifFp]) {
@@ -461,24 +399,24 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
       if (p.options[Verbose])
         fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
                 (unsigned) small.atom_types.size());
-      for (const SmallStructure::AtomType& atom_type : small.atom_types)
+      for (const gemmi::SmallStructure::AtomType& atom_type : small.atom_types)
         calc.set_fprime(atom_type.element, atom_type.dispersion_real);
     }
   }
 
   auto present_elems = use_st ? st.models[0].present_elements()
                               : small.present_elements();
-  if (present_elems[(int)El::X])
-    fail("unknown element. Add --unknown=O to treat unknown atoms as oxygen.");
+  if (present_elems[(int)gemmi::El::X])
+    gemmi::fail("unknown element. Add --unknown=O to treat unknown atoms as oxygen.");
   for (size_t i = 1; i != present_elems.size(); ++i)
-    if (present_elems[i] && !Table::has((El)i))
-      fail("Missing form factor for element ", element_name((El)i));
+    if (present_elems[i] && !Table::has((gemmi::El)i))
+      gemmi::fail("Missing form factor for element ", element_name((gemmi::El)i));
   if (wavelength > 0) {
-    double energy = hc() / wavelength;
+    double energy = gemmi::hc() / wavelength;
     for (int z = 1; z <= 92; ++z)
       if (present_elems[z]) {
-        double fprime = cromer_libermann(z, energy, nullptr);
-        calc.set_fprime_if_not_set((El)z, fprime);
+        double fprime = gemmi::cromer_libermann(z, energy, nullptr);
+        calc.set_fprime_if_not_set((gemmi::El)z, fprime);
       }
   }
 
@@ -506,15 +444,15 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
     phi_label = "PHIC";
 
   using Real = float;
-  AsuData<std::array<Real,2>> scale_to;
+  gemmi::AsuData<std::array<Real,2>> scale_to;
   if (p.options[ScaleTo]) {
     if (!p.options[Dmin])
-      fail("Currently option --scale-to works only when used with --dmin");
+      gemmi::fail("Currently option --scale-to works only when used with --dmin");
     const char* arg = p.options[ScaleTo].arg;
     const char* sep = std::strchr(arg, ':');
     std::string path(arg, sep);
     std::string label(sep+1);
-    Mtz mtz;
+    gemmi::Mtz mtz;
     mtz.read_input(gemmi::MaybeGzipped(path), true);
     scale_to = mtz.get_values<Real,2>({label, "SIG"+label});
     scale_to.ensure_sorted();
@@ -524,7 +462,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
   if (p.options[Dmin]) {
     double d_min = std::strtod(p.options[Dmin].arg, nullptr);
     if (use_st) {
-      DensityCalculator<Table, Real> dencalc;
+      gemmi::DensityCalculator<Table, Real> dencalc;
       dencalc.d_min = d_min;
       if (p.options[Rate])
         dencalc.rate = std::strtod(p.options[Rate].arg, nullptr);
@@ -564,8 +502,8 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
     } else {
       if (p.options[Rate] || p.options[RCut] || p.options[Blur] ||
           p.options[Test])
-        fail("Small molecule SFs are calculated directly. Do not use any\n"
-             "of the FFT-related options: --rate, --blur, --rcut, --test.");
+        gemmi::fail("Small molecule SFs are calculated directly. Do not use any\n"
+                    "of the FFT-related options: --rate, --blur, --rcut, --test.");
       print_structure_factors_sm(small, calc, d_min, p.options[Verbose]);
     }
 
@@ -590,16 +528,16 @@ static void process(const std::string& input, const OptParser& p) {
   gemmi::SmallStructure small;
   bool use_st = !st.models.empty();
   if (!use_st) {
-    if (giends_with(input, ".cif"))
+    if (gemmi::giends_with(input, ".cif"))
       small = gemmi::make_small_structure_from_block(
                                 gemmi::read_cif_gz(input).sole_block());
     if (small.sites.empty() ||
         // COD can have a row of nulls as a placeholder (e.g. 2211708)
-        (small.sites.size() == 1 && small.sites[0].element == El::X))
+        (small.sites.size() == 1 && small.sites[0].element == gemmi::El::X))
       gemmi::fail("no atoms in the file");
     // SM CIF files specify full occupancy for atoms on special positions.
     // We need to adjust it for symmetry calculations.
-    for (SmallStructure::Site& site : small.sites) {
+    for (gemmi::SmallStructure::Site& site : small.sites) {
       int n_mates = small.cell.is_special_position(site.fract, 0.4);
       if (n_mates != 0)
         site.occ /= (n_mates + 1);
@@ -608,10 +546,10 @@ static void process(const std::string& input, const OptParser& p) {
 
   if (p.options[NoAniso]) {
     if (use_st) {
-      for (CRA& cra : st.models[0].all())
+      for (gemmi::CRA& cra : st.models[0].all())
         cra.atom->aniso.u11 = cra.atom->aniso.u22 = cra.atom->aniso.u33 = 0;
     } else {
-      for (SmallStructure::Site& site : small.sites)
+      for (gemmi::SmallStructure::Site& site : small.sites)
         site.aniso.u11 = site.aniso.u22 = site.aniso.u33 = 0;
     }
   }
@@ -630,29 +568,29 @@ static void process(const std::string& input, const OptParser& p) {
   }
 
   if (p.options[Unknown]) {
-    El new_el = find_element(p.options[Unknown].arg);
-    if (new_el == El::X)
-      fail("--unknown must specify chemical element symbol.");
+    gemmi::El new_el = gemmi::find_element(p.options[Unknown].arg);
+    if (new_el == gemmi::El::X)
+      gemmi::fail("--unknown must specify chemical element symbol.");
     if (use_st) {
-      for (Chain& chain : st.models[0].chains)
-        for (Residue& residue : chain.residues)
-          for (Atom& atom : residue.atoms)
-            if (atom.element == El::X)
+      for (gemmi::Chain& chain : st.models[0].chains)
+        for (gemmi::Residue& residue : chain.residues)
+          for (gemmi::Atom& atom : residue.atoms)
+            if (atom.element == gemmi::El::X)
               atom.element = new_el;
     } else {
-      for (SmallStructure::Site& atom : small.sites)
-        if (atom.element == El::X)
+      for (gemmi::SmallStructure::Site& atom : small.sites)
+        if (atom.element == gemmi::El::X)
           atom.element = new_el;
     }
   }
 
   char table = p.options[For] ? p.options[For].arg[0] : 'x';
   if (table == 'x') {
-    process_with_table<IT92<double>>(use_st, st, small, wavelength, p);
+    process_with_table<gemmi::IT92<double>>(use_st, st, small, wavelength, p);
   } else if (table == 'e') {
     if (p.options[CifFp])
-      fail("Electron scattering has no dispersive part (--ciffp)");
-    process_with_table<ITC4322<double>>(use_st, st, small, 0., p);
+      gemmi::fail("Electron scattering has no dispersive part (--ciffp)");
+    process_with_table<gemmi::ITC4322<double>>(use_st, st, small, 0., p);
   }
 }
 
