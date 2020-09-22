@@ -187,11 +187,15 @@ void print_structure_factors(const gemmi::Structure& st,
   Comparator comparator;
   auto asu_data = sf.prepare_asu_data(dencalc.d_min, dencalc.blur);
   if (scale_to.size() != 0) {
-    gemmi::BulkSolvent<Real> bulk(asu_data, scale_to);
-    printf("Calculating scale factors using %zu points...\n", bulk.data.size());
-    bulk.quick_iso_fit();
-    bulk.aniso_fit();
-    printf("k_ov=%g B_ov=%g\n", bulk.k_overall, bulk.B_overall);
+    std::vector<gemmi::FcFo<Real>> data = prepare_fc_fo(asu_data, scale_to);
+    gemmi::BulkSolvent<Real> bulk(asu_data.unit_cell());
+    printf("Calculating scale factors using %zu points...\n", data.size());
+    bulk.quick_iso_fit(data);
+    //fprintf(stderr, "k_ov=%g B_ov=%g\n", bulk.k_overall, bulk.B_aniso.u11);
+    bulk.aniso_fit(data);
+    fprintf(stderr, "k_ov=%g B11=%g B22=%g B33=%g B12=%g B13=%g B23=%g\n",
+            bulk.k_overall, bulk.B_aniso.u11, bulk.B_aniso.u22, bulk.B_aniso.u33,
+                            bulk.B_aniso.u12, bulk.B_aniso.u13, bulk.B_aniso.u23);
     for (typename gemmi::FPhiGrid<Real>::HklValue& hv : asu_data.v)
       hv.value *= bulk.get_scale_factor_aniso(hv.hkl);
   }
