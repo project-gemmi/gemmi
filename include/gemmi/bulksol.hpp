@@ -47,22 +47,68 @@ template<typename Real>
 struct BulkSolvent {
   using Point = FcFo<Real>;
   UnitCell cell;
+  CrystalSystem crystal_system;
   // model parameters
   double k_overall = 1.;
   SMat33<double> B_aniso{0, 0, 0, 0, 0, 0};
 
   // pre: calc and obs are sorted
-  BulkSolvent(const UnitCell& cell_) : cell(cell_) {}
+  BulkSolvent(const UnitCell& cell_, const SpaceGroup* sg)
+    : cell(cell_),
+      crystal_system(sg ? sg->crystal_system() : CrystalSystem::Triclinic) {}
 
   std::vector<double> get_parameters() const {
-    return {k_overall,
-            B_aniso.u11, B_aniso.u22, B_aniso.u33,
-            B_aniso.u12, B_aniso.u13, B_aniso.u23};
+    switch (crystal_system) {
+      case CrystalSystem::Triclinic:
+      case CrystalSystem::Monoclinic: // ignoring that two (e.g. U13 and U23) are 0
+        return {k_overall,
+                B_aniso.u11, B_aniso.u22, B_aniso.u33,
+                B_aniso.u12, B_aniso.u13, B_aniso.u23};
+      case CrystalSystem::Orthorhombic:
+        return {k_overall, B_aniso.u11, B_aniso.u22, B_aniso.u33};
+      case CrystalSystem::Tetragonal:
+        return {k_overall, B_aniso.u11, B_aniso.u33};
+      case CrystalSystem::Trigonal:
+        return {k_overall, B_aniso.u11, B_aniso.u12};
+      case CrystalSystem::Hexagonal:
+        return {k_overall, B_aniso.u11, B_aniso.u33, B_aniso.u12};
+      case CrystalSystem::Cubic:
+        return {k_overall, B_aniso.u11};
+    }
+    unreachable();
   }
 
   void set_parameters(const std::vector<double>& p) {
     k_overall = p[0];
-    B_aniso = {p[1], p[2], p[3], p[4], p[5], p[6]};
+    switch (crystal_system) {
+      case CrystalSystem::Triclinic:
+      case CrystalSystem::Monoclinic:
+        B_aniso = {p[1], p[2], p[3], p[4], p[5], p[6]}; break;
+      case CrystalSystem::Orthorhombic:
+        B_aniso = {p[1], p[2], p[3], 0., 0., 0.}; break;
+      case CrystalSystem::Tetragonal:
+        B_aniso = {p[1], p[1], p[2], 0., 0., 0.}; break;
+      case CrystalSystem::Trigonal:
+        B_aniso = {p[1], p[1], p[1], p[2], p[2], p[2]}; break;
+      case CrystalSystem::Hexagonal:
+        B_aniso = {p[1], p[1], p[2], p[3], 0., 0.}; break;
+      case CrystalSystem::Cubic:
+        B_aniso = {p[1], p[1], p[1], 0., 0., 0.}; break;
+    }
+  }
+
+  int count_parameters() const {
+    switch (crystal_system) {
+      case CrystalSystem::Triclinic: return 1 + 6;
+      // for consistency - ignoring that two parameters (e.g. U13 and U23) are 0
+      case CrystalSystem::Monoclinic: return 1 + 6;
+      case CrystalSystem::Orthorhombic: return 1 + 3;
+      case CrystalSystem::Tetragonal: return 1 + 2;
+      case CrystalSystem::Trigonal: return 1 + 2;
+      case CrystalSystem::Hexagonal: return 1 + 3;
+      case CrystalSystem::Cubic: return 1 + 1;
+    }
+    unreachable();
   }
 
   double get_scale_factor_iso(const Miller& hkl) const {
@@ -120,7 +166,8 @@ struct BulkSolvent {
                                       std::vector<double>& yy,
                                       std::vector<double>& dy_da) const {
     assert(data.size() == yy.size());
-    assert(dy_da.size() == 7 * data.size());
+    int npar = count_parameters();
+    assert(dy_da.size() == npar * data.size());
     for (size_t i = 0; i != data.size(); ++i) {
       const Miller& hkl = data[i].hkl;
       double arh = cell.ar * hkl[0];
@@ -134,13 +181,43 @@ struct BulkSolvent {
                     brk * crl * cell.cos_alphar * B_aniso.u23);
       double fe = data[i].fcalc * std::exp(-0.25 * sbs);
       yy[i] = k_overall * fe;
-      dy_da[i*7 + 0] = fe; // k_overall
-      dy_da[i*7 + 1] = -0.25 * yy[i] * (arh * arh);  // u11
-      dy_da[i*7 + 2] = -0.25 * yy[i] * (brk * brk);  // u22
-      dy_da[i*7 + 3] = -0.25 * yy[i] * (crl * crl);  // u33
-      dy_da[i*7 + 4] = -0.5 * yy[i] * (arh * brk * cell.cos_gammar);  // u12
-      dy_da[i*7 + 5] = -0.5 * yy[i] * (arh * crl * cell.cos_betar);   // u13
-      dy_da[i*7 + 6] = -0.5 * yy[i] * (brk * crl * cell.cos_alphar);  // u23
+      dy_da[i * npar + 0] = fe; // k_overall
+      double du[6] = {
+        -0.25 * yy[i] * (arh * arh),
+        -0.25 * yy[i] * (brk * brk),
+        -0.25 * yy[i] * (crl * crl),
+        -0.5 * yy[i] * (arh * brk * cell.cos_gammar),
+        -0.5 * yy[i] * (arh * crl * cell.cos_betar),
+        -0.5 * yy[i] * (brk * crl * cell.cos_alphar),
+      };
+      double* dy_db = &dy_da[i * npar + 1];
+      switch (crystal_system) {
+        case CrystalSystem::Triclinic:
+        case CrystalSystem::Monoclinic:
+          for (int j = 0; j < 6; ++j)
+            dy_db[j] = du[j];
+          break;
+        case CrystalSystem::Orthorhombic:
+          for (int j = 0; j < 3; ++j)
+            dy_db[j] = du[j];
+          break;
+        case CrystalSystem::Tetragonal:
+          dy_db[0] = du[0] + du[1];
+          dy_db[1] = du[2];
+          break;
+        case CrystalSystem::Trigonal:
+          dy_db[0] = du[0] + du[1] + du[2];
+          dy_db[1] = du[3] + du[4] + du[5];
+          break;
+        case CrystalSystem::Hexagonal:
+          dy_db[0] = du[0] + du[1];
+          dy_db[1] = du[2];
+          dy_db[2] = du[3];
+          break;
+        case CrystalSystem::Cubic:
+          dy_db[0] = du[0] + du[1] + du[2];
+          break;
+      }
     }
   }
 };

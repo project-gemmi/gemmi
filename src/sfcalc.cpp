@@ -188,7 +188,7 @@ void print_structure_factors(const gemmi::Structure& st,
   auto asu_data = sf.prepare_asu_data(dencalc.d_min, dencalc.blur);
   if (scale_to.size() != 0) {
     std::vector<gemmi::FcFo<Real>> data = prepare_fc_fo(asu_data, scale_to);
-    gemmi::BulkSolvent<Real> bulk(asu_data.unit_cell());
+    gemmi::BulkSolvent<Real> bulk(asu_data.unit_cell(), asu_data.spacegroup());
     printf("Calculating scale factors using %zu points...\n", data.size());
     bulk.quick_iso_fit(data);
     //fprintf(stderr, "k_ov=%g B_ov=%g\n", bulk.k_overall, bulk.B_aniso.u11);

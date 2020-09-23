@@ -12,8 +12,9 @@
 #include <vector>
 #include "fail.hpp"   // for fail
 
-namespace gemmi {
+//#define GEMMI_DEBUG_LEVMAR
 
+namespace gemmi {
 
 /// This function solves a set of linear algebraic equations using
 /// Gauss-Jordan elimination with partial pivoting.
@@ -119,14 +120,20 @@ struct LevMar {
       // Matrix solution (Ax=b)  temp_alpha * da == temp_beta
       jordan_solve(temp_alpha, temp_beta);
 
-      for (size_t i = 0; i < na; i++)
+      for (size_t i = 0; i < na; i++) {
+#ifdef GEMMI_DEBUG_LEVMAR
+        fprintf(stderr, "%+g ", temp_beta[i]);
+#endif
         // put new a[] into temp_beta[]
         temp_beta[i] = best_a[i] + temp_beta[i];
+      }
 
       model.set_parameters(temp_beta);
       double new_wssr = this->compute_wssr(model.compute_values(data), data);
-      //fprintf(stderr, "WSSR=%g (%g%%) lambda=%g\n",
-      //        new_wssr, 100. * new_wssr / initial_wssr, lambda);
+#ifdef GEMMI_DEBUG_LEVMAR
+      fprintf(stderr, "\nWSSR=%g (%g%%) lambda=%g\n",
+              new_wssr, 100. * new_wssr / initial_wssr, lambda);
+#endif
       if (new_wssr < wssr) {
         double rel_change = (wssr - new_wssr) / wssr;
         wssr = new_wssr;
@@ -179,13 +186,13 @@ private:
       for (int i = 0; i != tsize; ++i) {
         double weight = data[tstart + i].get_weight();
         double dy_sig = weight * (data[tstart + i].get_y() - yy[i]);
-        std::vector<double>::iterator t = dy_da.begin() + i * der_size;
+        double* t = &dy_da[i * der_size];
         for (int j = 0; j != na; ++j) {
-          if (*(t+j) != 0) {
-            *(t+j) *= weight;
+          if (t[j] != 0) {
+            t[j] *= weight;
             for (int k = j; k != -1; --k)
-              alpha[na * j + k] += *(t+j) * *(t+k);
-            beta[j] += dy_sig * *(t+j);
+              alpha[na * j + k] += t[j] * t[k];
+            beta[j] += dy_sig * t[j];
           }
         }
       }
