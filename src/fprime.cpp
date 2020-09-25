@@ -42,10 +42,10 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
     std::vector<double> energies;
     for (const option::Option* opt = p.options[Energy]; opt; opt = opt->next())
-      energies.push_back(atof(opt->arg));
+      energies.push_back(std::atof(opt->arg));
     double hc = gemmi::hc();
     for (const option::Option* opt = p.options[Wavelen]; opt; opt = opt->next())
-      energies.push_back(hc / atof(opt->arg));
+      energies.push_back(hc / std::atof(opt->arg));
     std::vector<double> fp(energies.size(), 0);
     std::vector<double> fpp(energies.size(), 0);
     printf("Element\t E[eV]\tWavelength[A]\t   f'   \t  f\"\n");

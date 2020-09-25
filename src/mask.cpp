@@ -1,17 +1,18 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include <cstdio>   // for printf, fprintf
-#include <cstdlib>  // for strtod
+#include <cstdlib>  // for atof
 #include "gemmi/ccp4.hpp"
 #include "gemmi/symmetry.hpp"
 #include "gemmi/gzread.hpp"
 #include "gemmi/gz.hpp"  // for MaybeGzipped
+#include "gemmi/mask.hpp"
 
 #define GEMMI_PROG mask
 #include "options.h"
 
 enum OptionIndex { FormatIn=4, Threshold, Fraction, GridSpac,
-                   GridDims, Radius };
+                   GridDims, Radius, RProbe, RShrink };
 
 struct MaskArg {
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
@@ -30,18 +31,24 @@ static const option::Descriptor Usage[] = {
   CommonUsage[Verbose],
   { FormatIn, 0, "", "from", MaskArg::FileFormat,
     "  --from=coor|map  \tInput type (default: from file extension)." },
+
   { NoOp, 0, "", "", Arg::None, "\nOptions for making a mask from a map:" },
   { Threshold, 0, "t", "threshold", Arg::Float,
     "  -t, --threshold  \tThe density cutoff value." },
   { Fraction, 0, "f", "fraction", Arg::Float,
     "  -f, --fraction  \tThe volume fraction to be above the threshold." },
+
   { NoOp, 0, "", "", Arg::None, "\nOptions for masking a model:" },
   { GridSpac, 0, "s", "spacing", Arg::Float,
     "  -s, --spacing=D  \tMax. sampling for the grid (default: 1A)." },
   { GridDims, 0, "g", "grid", Arg::Int3,
     "  -g, --grid=NX,NY,NZ  \tGrid sampling." },
   { Radius, 0, "r", "radius", Arg::Float,
-    "  -r, --radius  \tRadius of atom spheres (default: 3.0A)." },
+    "  -r, --radius=R  \tUse constant radius of atom spheres." },
+  { RProbe, 0, "", "r-probe", Arg::Float,
+    "  --r-probe=Rp  \tUse VdW radius + Rp (default: 1.0A)." },
+  { RShrink, 0, "", "r-shrink", Arg::Float,
+    "  --r-shrink=Rs  \tFinally, remove a shell of thickness Rs (default: 1.0A)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -92,9 +99,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::Ccp4<std::int8_t> mask;
       mask.read_ccp4(gemmi::MaybeGzipped(input));
       if (p.options[Threshold]) {
-        threshold = std::strtod(p.options[Threshold].arg, nullptr);
+        threshold = std::atof(p.options[Threshold].arg);
       } else if (p.options[Fraction]) {
-        double fraction = std::strtod(p.options[Fraction].arg, nullptr);
+        double fraction = std::atof(p.options[Fraction].arg);
         if (fraction < 0) {
           std::fprintf(stderr, "Cannot use negative fraction.\n");
           return 2;
@@ -118,9 +125,6 @@ int GEMMI_MAIN(int argc, char **argv) {
 
     // model -> mask
     } else {
-      double radius = (p.options[Radius]
-                       ? std::strtod(p.options[Radius].arg, nullptr)
-                       : 3.0);
       gemmi::Structure st = gemmi::read_structure_gz(input);
       gemmi::Ccp4<std::int8_t> mask;
       mask.grid.unit_cell = st.cell;
@@ -131,7 +135,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       } else {
         double spac = 1;
         if (p.options[GridSpac])
-          spac = std::strtod(p.options[GridSpac].arg, nullptr);
+          spac = std::atof(p.options[GridSpac].arg);
         mask.grid.set_size_from_spacing(spac, true);
       }
       if (p.options[Verbose]) {
@@ -155,17 +159,35 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
       if (st.models.size() > 1)
         std::fprintf(stderr, "Note: only the first model is used.\n");
-      for (const gemmi::Chain& chain : st.models[0].chains)
-        for (const gemmi::Residue& res : chain.residues)
-          for (const gemmi::Atom& atom : res.atoms)
-            mask.grid.set_points_around(atom.pos, radius, 1);
+      const std::int8_t value = 1;
+      if (p.options[Radius]) {
+        if (p.options[RProbe]) {
+          std::fprintf(stderr, "Options --radius and --r-probe are exclusive.");
+          return 1;
+        }
+        double radius = std::atof(p.options[Radius].arg);
+        gemmi::mask_points_in_constant_radius(mask.grid, st.models[0], radius, value);
+      } else {
+        double rprobe = 1.0;
+        if (p.options[RProbe])
+          rprobe = std::atof(p.options[RProbe].arg);
+        gemmi::mask_points_in_vdw_radius(mask.grid, st.models[0], rprobe, value);
+      }
+      double rshrink = 1.0;
+      if (p.options[RShrink])
+        rshrink = std::atof(p.options[RShrink].arg);
+      if (rshrink > 0) {
+        gemmi::set_margin_around_mask(mask.grid, rshrink, (std::int8_t)0, (std::int8_t)2);
+        mask.grid.change_values(2, 0);
+      }
+
       if (p.options[Verbose]) {
-        size_t n = std::count(mask.grid.data.begin(), mask.grid.data.end(), 1);
+        size_t n = std::count(mask.grid.data.begin(), mask.grid.data.end(), value);
         std::fprintf(stderr, "Points masked by model: %zu\n", n);
       }
       mask.grid.symmetrize_max();
       if (p.options[Verbose]) {
-        size_t n = std::count(mask.grid.data.begin(), mask.grid.data.end(), 1);
+        size_t n = std::count(mask.grid.data.begin(), mask.grid.data.end(), value);
         std::fprintf(stderr, "After symmetrizing: %zu\n", n);
       }
       mask.update_ccp4_header(0, true);

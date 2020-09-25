@@ -343,6 +343,12 @@ struct Grid : GridBase<T> {
       d = d > threshold ? 1 : 0;
   }
 
+  void change_values(T old_value, T new_value) {
+    for (auto& d : data)
+      if (d == old_value)
+        d = new_value;
+  }
+
   // operations re-scaled for faster later calculations; identity not included
   std::vector<GridOp> get_scaled_ops_except_id() const {
     GroupOps gops = spacegroup->operations();
