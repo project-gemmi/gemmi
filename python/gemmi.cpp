@@ -42,6 +42,7 @@ void add_misc(py::module& m) {
     .def_property_readonly("name", &Element::name)
     .def_property_readonly("weight", &Element::weight)
     .def_property_readonly("covalent_r", &Element::covalent_r)
+    .def_property_readonly("vdw_r", &Element::vdw_r)
     .def_property_readonly("atomic_number", &Element::atomic_number)
     .def_property_readonly("is_metal", &Element::is_metal)
     .def_property_readonly("it92", [](const Element& self) {

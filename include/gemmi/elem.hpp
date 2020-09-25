@@ -144,6 +144,52 @@ inline float covalent_radius(El el) {
   return radii[static_cast<int>(el)];
 }
 
+// Van der Waals radii. Taken from:
+// https://en.wikipedia.org/wiki/Atomic_radii_of_the_elements_(data_page)
+// which cites two sources:
+// J. Phys. Chem. A 2009, 113, 19, 5806 https://doi.org/10.1021/jp8111556
+// J. Phys. Chem. 1964, 68, 3, 441 https://doi.org/10.1021/j100785a001
+// Missing values (and values for a lot of elements were missing)
+// were substitued with values from cctbx van_der_waals_radii.py.
+inline float vdw_radius(El el) {
+  static constexpr float radii[] = {
+    /*X*/  1.00f,
+    /*H*/  1.20f, /*He*/ 1.40f,
+    /*Li*/ 1.82f, /*Be*/ 1.53f, /*B*/  1.92f, /*C*/ 1.70f, /*N*/ 1.55f,
+    /*O*/  1.52f, /*F*/  1.47f, /*Ne*/ 1.54f,
+    /*Na*/ 2.27f, /*Mg*/ 1.73f, /*Al*/ 1.84f, /*Si*/ 2.10f, /*P*/ 1.80f,
+    /*S*/  1.80f, /*Cl*/ 1.75f, /*Ar*/ 1.88f,
+    /*K*/  2.75f, /*Ca*/ 2.31f, /*Sc*/ 2.11f, /*Ti*/ 1.95f, /*V*/  1.06f,
+    /*Cr*/ 1.13f, /*Mn*/ 1.19f, /*Fe*/ 1.26f, /*Co*/ 1.13f, /*Ni*/ 1.63f,
+    /*Cu*/ 1.40f, /*Zn*/ 1.39f, /*Ga*/ 1.87f, /*Ge*/ 2.11f, /*As*/ 1.85f,
+    /*Se*/ 1.90f, /*Br*/ 1.85f, /*Kr*/ 2.02f,
+    /*Rb*/ 3.03f, /*Sr*/ 2.49f, /*Y*/  1.61f, /*Zr*/ 1.42f, /*Nb*/ 1.33f,
+    /*Mo*/ 1.75f, /*Tc*/ 2.00f, /*Ru*/ 1.20f, /*Rh*/ 1.22f, /*Pd*/ 1.63f,
+    /*Ag*/ 1.72f, /*Cd*/ 1.58f, /*In*/ 1.93f, /*Sn*/ 2.17f, /*Sb*/ 2.06f,
+    /*Te*/ 2.06f, /*I*/  1.98f, /*Xe*/ 2.16f,
+    /*Cs*/ 3.43f, /*Ba*/ 2.68f, /*La*/ 1.83f, /*Ce*/ 1.86f, /*Pr*/ 1.62f,
+    /*Nd*/ 1.79f, /*Pm*/ 1.76f, /*Sm*/ 1.74f, /*Eu*/ 1.96f, /*Gd*/ 1.69f,
+    /*Tb*/ 1.66f, /*Dy*/ 1.63f, /*Ho*/ 1.61f, /*Er*/ 1.59f, /*Tm*/ 1.57f,
+    /*Yb*/ 1.54f, /*Lu*/ 1.53f, /*Hf*/ 1.40f, /*Ta*/ 1.22f, /*W*/  1.26f,
+    /*Re*/ 1.30f, /*Os*/ 1.58f, /*Ir*/ 1.22f, /*Pt*/ 1.75f, /*Au*/ 1.66f,
+    /*Hg*/ 1.55f, /*Tl*/ 1.96f, /*Pb*/ 2.02f, /*Bi*/ 2.07f, /*Po*/ 1.97f,
+    /*At*/ 2.02f, /*Rn*/ 2.20f,
+    /*Fr*/ 3.48f, /*Ra*/ 2.83f, /*Ac*/ 2.12f, /*Th*/ 1.84f, /*Pa*/ 1.60f,
+    /*U*/  1.86f, /*Np*/ 1.71f, /*Pu*/ 1.67f, /*Am*/ 1.66f, /*Cm*/ 1.65f,
+    /*Bk*/ 1.64f, /*Cf*/ 1.63f, /*Es*/ 1.62f, /*Fm*/ 1.61f, /*Md*/ 1.60f,
+    /*No*/ 1.59f, /*Lr*/ 1.58f, /*Rf*/ 1.00f, /*Db*/ 1.00f, /*Sg*/ 1.00f,
+    /*Bh*/ 1.00f, /*Hs*/ 1.00f, /*Mt*/ 1.00f, /*Ds*/ 1.00f, /*Rg*/ 1.00f,
+    /*Cn*/ 1.00f, /*Nh*/ 1.00f, /*Fl*/ 1.00f, /*Mc*/ 1.00f, /*Lv*/ 1.00f,
+    /*Ts*/ 1.00f, /*Og*/ 1.00f,
+    /*D*/  1.20f, /*END*/0.f
+  };
+  static_assert(radii[static_cast<int>(El::D)] == 1.2f, "Hmm");
+  static_assert(sizeof(radii) / sizeof(radii[0]) ==
+                static_cast<int>(El::END) + 1, "Hmm");
+  return radii[static_cast<int>(el)];
+}
+
+
 typedef const char elname_t[3];
 
 inline const char* element_name(El el) {
@@ -255,6 +301,7 @@ struct Element {
   bool is_hydrogen() const { return gemmi::is_hydrogen(elem); }
   double weight() const { return molecular_weight(elem); }
   float covalent_r() const { return covalent_radius(elem); }
+  float vdw_r() const { return vdw_radius(elem); }
   bool is_metal() const { return gemmi::is_metal(elem); }
   // return name such as Mg (not MG)
   const char* name() const { return element_name(elem); }

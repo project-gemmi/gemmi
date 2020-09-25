@@ -29,6 +29,9 @@ class TestElem(unittest.TestCase):
         for n in range(119):
             self.assertEqual(Element(n).atomic_number, n)
 
+    def test_properties(self):
+        self.assertEqual(Element('K').vdw_r, 2.75)
+
 
 ELEMENT_MASS = {
     'H': 1.00794, 'He': 4.0026, 'Li': 6.941, 'Be': 9.012182, 'B': 10.811,

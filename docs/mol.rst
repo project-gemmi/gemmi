@@ -60,6 +60,13 @@ Cordero *et al* (2008), *Covalent radii revisited*, Dalton Trans. 21, 2832.
     >>> gemmi.Element('Zr').covalent_r
     1.75
 
+van der Waals radii taken from Wikipedia and cctbx:
+
+.. doctest::
+
+    >>> gemmi.Element('K').vdw_r
+    2.75
+
 and a flag for metals (the classification is somewhat arbitrary):
 
 .. doctest::
