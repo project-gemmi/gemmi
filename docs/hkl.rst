@@ -1174,7 +1174,7 @@ This script converts CCP4 map to MTZ file with map coefficients.
 Scattering factors
 ==================
 
-Atomic form factor
+X-ray form factors
 ------------------
 
 The X-ray scattering contribution from an isolated atom is described by the
@@ -1313,6 +1313,23 @@ The ``cromer_libermann`` function is available in both C++ and Python:
 
 The same values can be printed from the command line program
 :ref:`gemmi-fprime <fprime>`.
+
+
+Electron form factors
+---------------------
+
+The electron form factors are parametrized as 5 Gaussians,
+using coefficients from International Tables for Crystallography
+Volume C, edition 2011, table 4.3.2.2 (pp. 282-283),
+"Elastic atomic scattering factors of electrons for neutral atoms
+and *s* up to 2.0 A\ :sup:`-1`".
+The same parametrization is used in cctbx and in CCP4.
+
+For C++, the form factor coefficients are tabulated
+in the :file:`itc4322.hpp` header.
+
+Unlike for X-ray form factors, we do not add anomalous scattering here.
+
 
 Bulk solvent correction
 -----------------------
