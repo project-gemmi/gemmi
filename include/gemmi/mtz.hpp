@@ -838,7 +838,8 @@ namespace gemmi {
 
 #define WRITE(...) do { \
     int len = gf_snprintf(buf, 81, __VA_ARGS__); \
-    std::memset(buf + len, ' ', 80 - len); \
+    if (len < 80) \
+      std::memset(buf + len, ' ', 80 - len); \
     if (std::fwrite(buf, 80, 1, stream) != 1) \
       fail("Writing MTZ file failed"); \
   } while(0)
@@ -889,10 +890,17 @@ void Mtz::write_to_stream(std::FILE* stream) const {
     WRITE("VALM NAN");
   else
     WRITE("VALM %f", valm);
+  auto format17 = [](float f) {
+    char buf[18];
+    int len = gf_snprintf(buf, 18, "%.9f", f);
+    return std::string(buf, len > 0 ? std::min(len, 17) : 0);
+  };
   for (const Column& col : columns) {
     auto minmax = calculate_min_max_disregarding_nans(col.begin(), col.end());
-    WRITE("COLUMN %-30s %c %17.9f %17.9f %4d",
-          col.label.c_str(), col.type, minmax[0], minmax[1], col.dataset_id);
+    WRITE("COLUMN %-30s %c %17s %17s %4d",
+          col.label.c_str(), col.type,
+          format17(minmax[0]).c_str(), format17(minmax[1]).c_str(),
+          col.dataset_id);
     if (!col.source.empty())
       WRITE("COLSRC %-30s %-36s  %4d",
             col.label.c_str(), col.source.c_str(), col.dataset_id);
