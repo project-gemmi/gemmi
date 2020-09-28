@@ -19,4 +19,4 @@ Options for masking a model:
   -g, --grid=NX,NY,NZ  Grid sampling.
   -r, --radius=R       Use constant radius of atom spheres.
   --r-probe=Rp         Use VdW radius + Rp (default: 1.0A).
-  --r-shrink=Rs        Finally, remove a shell of thickness Rs (default: 1.0A).
+  --r-shrink=Rs        Finally, remove a shell of thickness Rs (default: 1.1A).

@@ -1334,5 +1334,25 @@ Unlike for X-ray form factors, we do not add anomalous scattering here.
 Bulk solvent correction
 -----------------------
 
-TODO
+The bulk solvent occupies significant volume of a macromolecular crystal,
+so we must account for it.
+Usually, this volume is modelled as a flat scatterer.
+First, we create a mask of the bulk solvent.
+Then, we Fourier-transform the mask, getting a contribution
+to the structure factors. This contribution is scaled by
+*k*\ :sub:`s` exp(-\ *B*\ :sub:`s` *s*\ :sup:`2`/4),
+where *k*\ :sub:`s` and *B*\ :sub:`s` are optimized to make the total
+calculated structure factors *F*\ :sub:`calc` match the diffraction data.
+This optimization is performed together with the anisotropic scaling
+of *F*\ :sub:`calc`.
 
+A popular procedure of masking the solvent, introduced in CNS,
+uses van der Waals radii and two parameters:
+*r*\ :sub:`probe` and *r*\ :sub:`shrink`.
+First, all grid points in the distance *r*\ :sub:`vdW` + *r*\ :sub:`probe`
+are marked as 0 (the rest -- as 1). Then, all the 0's in a distance
+*r*\ :sub:`shrink` from 1's are changed to 1, shrinking the solvent volume.
+`Jiang & Brünger (1994) <https://doi.org/10.1006/jmbi.1994.1633>`_
+proposed *r*\ :sub:`probe` = 1.0 Å and *r*\ :sub:`shrink` = 1.1 Å.
+
+TBC

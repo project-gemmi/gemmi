@@ -48,7 +48,7 @@ static const option::Descriptor Usage[] = {
   { RProbe, 0, "", "r-probe", Arg::Float,
     "  --r-probe=Rp  \tUse VdW radius + Rp (default: 1.0A)." },
   { RShrink, 0, "", "r-shrink", Arg::Float,
-    "  --r-shrink=Rs  \tFinally, remove a shell of thickness Rs (default: 1.0A)." },
+    "  --r-shrink=Rs  \tFinally, remove a shell of thickness Rs (default: 1.1A)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -173,7 +173,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           rprobe = std::atof(p.options[RProbe].arg);
         gemmi::mask_points_in_vdw_radius(mask.grid, st.models[0], rprobe, value);
       }
-      double rshrink = 1.0;
+      double rshrink = 1.1;
       if (p.options[RShrink])
         rshrink = std::atof(p.options[RShrink].arg);
       if (rshrink > 0) {
