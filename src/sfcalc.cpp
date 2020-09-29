@@ -6,17 +6,17 @@
 #include <chrono>
 #include <complex>
 #include <gemmi/bulksol.hpp>
+#include <gemmi/fileutil.hpp>  // for file_open
 #include <gemmi/fourier.hpp>
+#include <gemmi/gz.hpp>        // for MaybeGzipped
 #include <gemmi/gzread.hpp>
 #include <gemmi/it92.hpp>      // for IT92
 #include <gemmi/itc4322.hpp>   // for ITC4322
-#include <gemmi/fileutil.hpp>  // for file_open
 #include <gemmi/math.hpp>      // for sq
+#include <gemmi/mtz.hpp>       // for read_mtz_file
 #include <gemmi/rhogrid.hpp>   // for put_model_density_on_grid
 #include <gemmi/sfcalc.hpp>    // for calculate_structure_factor
 #include <gemmi/smcif.hpp>     // for make_small_structure_from_block
-#include <gemmi/mtz.hpp>       // for read_mtz_file
-#include <gemmi/gz.hpp>        // for MaybeGzipped
 
 #define GEMMI_PROG sfcalc
 #include "options.h"

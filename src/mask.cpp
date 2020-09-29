@@ -3,10 +3,10 @@
 #include <cstdio>   // for printf, fprintf
 #include <cstdlib>  // for atof
 #include "gemmi/ccp4.hpp"
-#include "gemmi/symmetry.hpp"
+#include "gemmi/gz.hpp"       // for MaybeGzipped
 #include "gemmi/gzread.hpp"
-#include "gemmi/gz.hpp"  // for MaybeGzipped
-#include "gemmi/mask.hpp"
+#include "gemmi/rhogrid.hpp"  // for mask_points_in_constant_radius, etc
+#include "gemmi/symmetry.hpp"
 
 #define GEMMI_PROG mask
 #include "options.h"
