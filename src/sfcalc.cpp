@@ -21,9 +21,11 @@
 #define GEMMI_PROG sfcalc
 #include "options.h"
 
+namespace {
+
 enum OptionIndex { Hkl=4, Dmin, For, Rate, Blur, RCut, Test, Compare,
                    CifFp, Wavelength, Unknown, NoAniso, ScaleTo, FLabel,
-                   PhiLabel };
+                   PhiLabel, Ksolv, Bsolv, Rprobe, Rshrink };
 
 struct SfCalcArg: public Arg {
   static option::ArgStatus FormFactors(const option::Option& option, bool msg) {
@@ -32,7 +34,7 @@ struct SfCalcArg: public Arg {
 };
 
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n  " EXE_NAME " [options] INPUT_FILE\n\n"
     "Calculates structure factors of a model (PDB, mmCIF or SMX CIF file).\n\n"
@@ -59,8 +61,6 @@ static const option::Descriptor Usage[] = {
     "  --unknown=SYMBOL  \tUse form factor of SYMBOL for unknown atoms." },
   { NoAniso, 0, "", "noaniso", Arg::None,
     "  --noaniso  \tIgnore anisotropic ADPs." },
-  { ScaleTo, 0, "", "scale-to", Arg::ColonPair,
-    "  --scale-to=FILE:COL  \tScale to |Fobs| by fitting k*exp(-B s^2/4)." },
 
   { NoOp, 0, "", "", Arg::None, "\nOptions for FFT-based calculations:" },
   { Rate, 0, "", "rate", Arg::Float,
@@ -71,6 +71,17 @@ static const option::Descriptor Usage[] = {
     "  --rcut=Y  \tUse atomic radius r such that rho(r) < Y (default: 5e-5)." },
   { Test, 0, "", "test", Arg::Optional,
     "  --test[=CACHE]  \tCalculate exact values and report differences (slow)." },
+  { ScaleTo, 0, "", "scale-to", Arg::ColonPair,
+    "  --scale-to=FILE:COL  \tAnisotropic scaling to F from MTZ file." },
+  { NoOp, 0, "", "", Arg::None, "\nOptions for bulk solvent correction (only w/ FFT):" },
+  { Rprobe, 0, "", "r-probe", Arg::Float,
+    "  --r-probe=NUM  \tValue added to VdW radius (default: 1.0A)." },
+  { Rshrink, 0, "", "r-shrink", Arg::Float,
+    "  --r-shrink=NUM  \tValue for shrinking the solvent area (default: 1.1A)." },
+  { Ksolv, 0, "", "ksolv", Arg::Float,
+    "  --ksolv=NUM  \tValue (if optimizing: initial value) of k_solv." },
+  { Bsolv, 0, "", "bsolv", Arg::Float,
+    "  --bsolv=NUM  \tValue (if optimizing: initial value) of B_solv." },
 
   { NoOp, 0, "", "", Arg::None,
     "\nOptions for comparing calculated values with values from a file:" },
@@ -84,9 +95,25 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-enum class SfcMode { None, Test, Compare };
+struct RefFile {
+  enum class Mode { None, Test, Compare };
+  Mode mode = Mode::None;
+  const char* path = nullptr;
+  std::string f_label;
+  std::string phi_label;
+};
 
-static
+struct SolventParam {
+  bool use_solvent = false;
+  // initialize with average values (Fokine & Urzhumtsev, 2002)
+  double k = 0.35;
+  double B = 46.0;
+
+  double calculate_scale(double stol2) const {
+    return k * std::exp(-B * stol2);
+  }
+};
+
 void print_sf(std::complex<double> sf, const gemmi::Miller& hkl) {
   printf(" (%d %d %d)\t%.8f\t%.6f\n",
          hkl[0], hkl[1], hkl[2], std::abs(sf), gemmi::phase_in_angles(sf));
@@ -129,7 +156,6 @@ struct Comparator {
   double mean_dphi() const { return phi_diff_weighted_sum / sum_abs; }
 };
 
-static
 void print_to_stderr(const Comparator& c) {
   fflush(stdout);
   fprintf(stderr, "RMSE=%#.5g  %#.4g%%  max|dF|=%#.4g  R=%.3f%%",
@@ -139,10 +165,8 @@ void print_to_stderr(const Comparator& c) {
 template<typename Table, typename Real>
 void print_structure_factors(const gemmi::Structure& st,
                              gemmi::DensityCalculator<Table, Real>& dencalc,
-                             bool verbose, SfcMode mode,
-                             const char* file_path,
-                             const std::string& f_label,
-                             const std::string& phi_label,
+                             const SolventParam& solvent,
+                             bool verbose, const RefFile& file,
                              const gemmi::AsuData<std::array<Real,2>>& scale_to) {
   using Clock = std::chrono::steady_clock;
   if (verbose) {
@@ -173,19 +197,32 @@ void print_structure_factors(const gemmi::Structure& st,
       calc.set_fprime((gemmi::El)i, dencalc.fprimes[i]);
   gemmi::fileptr_t cache(nullptr, nullptr);
   gemmi::AsuData<std::complex<double>> compared_data;
-  if (file_path) {
-    if (mode == SfcMode::Test) {
-      cache = gemmi::file_open(file_path, "r");
-    } else if (mode == SfcMode::Compare) {
+  if (file.path) {
+    if (file.mode == RefFile::Mode::Test) {
+      cache = gemmi::file_open(file.path, "r");
+    } else if (file.mode == RefFile::Mode::Compare) {
       gemmi::Mtz mtz;
-      mtz.read_input(gemmi::MaybeGzipped(file_path), true);
-      compared_data = mtz.get_f_phi<double>(f_label, phi_label);
+      mtz.read_input(gemmi::MaybeGzipped(file.path), true);
+      compared_data = mtz.get_f_phi<double>(file.f_label, file.phi_label);
       compared_data.ensure_sorted();
+    }
+  }
+  auto asu_data = sf.prepare_asu_data(dencalc.d_min, dencalc.blur);
+
+  if (solvent.use_solvent) {
+    dencalc.put_solvent_mask_on_grid(st.models[0]);
+    auto asu_mask = transform_map_to_f_phi(dencalc.grid, /*half_l=*/true)
+                    .prepare_asu_data(dencalc.d_min, 0);
+    assert(asu_mask.v.size() == asu_data.v.size());
+    for (size_t i = 0; i != asu_data.v.size(); ++i) {
+      const gemmi::HklValue<std::complex<Real>>& m = asu_mask.v[i];
+      assert(asu_data.v[i].hkl == m.hkl);
+      double stol2 = asu_data.unit_cell().calculate_stol_sq(m.hkl);
+      asu_data.v[i].value += (Real) solvent.calculate_scale(stol2) * m.value;
     }
   }
 
   Comparator comparator;
-  auto asu_data = sf.prepare_asu_data(dencalc.d_min, dencalc.blur);
   if (scale_to.size() != 0) {
     std::vector<gemmi::FcFo<Real>> data = prepare_fc_fo(asu_data, scale_to);
     gemmi::BulkSolvent<Real> bulk(asu_data.unit_cell(), asu_data.spacegroup());
@@ -200,12 +237,12 @@ void print_structure_factors(const gemmi::Structure& st,
       hv.value *= bulk.get_scale_factor_aniso(hv.hkl);
   }
   for (typename gemmi::FPhiGrid<Real>::HklValue& hv : asu_data.v) {
-    if (mode == SfcMode::None) {
+    if (file.mode == RefFile::Mode::None) {
       print_sf(hv.value, hv.hkl);
     } else {
       std::complex<double> exact;
-      if (file_path) {
-        if (mode == SfcMode::Test) {
+      if (file.path) {
+        if (file.mode == RefFile::Mode::Test) {
           char cache_line[100];
           if (fgets(cache_line, 99, cache.get()) == nullptr)
             gemmi::fail("cannot read line from file");
@@ -216,7 +253,7 @@ void print_structure_factors(const gemmi::Structure& st,
           if (cache_hkl != hv.hkl)
             gemmi::fail("Different h k l order than in cache file.");
           exact = std::polar(f_abs, gemmi::rad(f_deg));
-        } else if (mode == SfcMode::Compare) {
+        } else if (file.mode == RefFile::Mode::Compare) {
           auto it = std::lower_bound(compared_data.v.begin(), compared_data.v.end(), hv.hkl);
           if (it == compared_data.v.end() || it->hkl != hv.hkl)
             continue;
@@ -232,7 +269,7 @@ void print_structure_factors(const gemmi::Structure& st,
              sf.unit_cell.calculate_d(hv.hkl));
     }
   }
-  if (mode != SfcMode::None) {
+  if (file.mode != RefFile::Mode::None) {
     print_to_stderr(comparator);
     fprintf(stderr, "  <dPhi>=%#.4g", comparator.mean_dphi());
     if (!verbose) {
@@ -278,7 +315,6 @@ void print_structure_factors_sm(const gemmi::SmallStructure& small,
   }
 }
 
-static
 double get_minimum_b_iso(const gemmi::Model& model) {
   double b_min = 1000.;
   for (const gemmi::Chain& chain : model.chains)
@@ -292,21 +328,21 @@ double get_minimum_b_iso(const gemmi::Model& model) {
 template<typename Table>
 void compare_with_hkl(const gemmi::SmallStructure& small,
                       gemmi::StructureFactorCalculator<Table>& calc,
-                      const std::string& label,
-                      bool verbose, const char* path,
+                      const RefFile& file,
+                      bool verbose,
                       Comparator& comparator) {
   namespace cif = gemmi::cif;
-  cif::Document hkl_doc = gemmi::read_cif_gz(path);
+  cif::Document hkl_doc = gemmi::read_cif_gz(file.path);
   cif::Block& block = hkl_doc.blocks.at(0);
   std::vector<std::string> tags =
     {"index_h", "index_k", "index_l", "?F_calc", "?F_squared_calc"};
-  if (!label.empty()) {
+  if (!file.f_label.empty()) {
     tags.pop_back();
-    tags.back().replace(1, std::string::npos, label);
+    tags.back().replace(1, std::string::npos, file.f_label);
   }
   cif::Table table = block.find("_refln_", tags);
   if (!table.ok())
-    gemmi::fail("_refln_index_ category not found in ", path);
+    gemmi::fail("_refln_index_ category not found in ", file.path);
   int col = 0;
   if (table.has_column(3))
     col = 3;
@@ -314,17 +350,18 @@ void compare_with_hkl(const gemmi::SmallStructure& small,
     col = 4;
   if (col == 0) {
     std::string msg;
-    if (label.empty())
+    if (file.f_label.empty())
       msg = "Neither _refln_F_calc nor _refln_F_squared_calc";
     else
-      msg = "_refln_" + label;
-    gemmi::fail(msg + " not found in: ", path);
+      msg = "_refln_" + file.f_label;
+    gemmi::fail(msg + " not found in: ", file.path);
   }
   bool use_sqrt = (col == 4 ||
-                   label == "F_squared_calc" || label == "F_squared_meas");
+                   file.f_label == "F_squared_calc" ||
+                   file.f_label == "F_squared_meas");
   if (verbose)
     fprintf(stderr, "Checking %s_refln_%s from %s\n",
-            use_sqrt ? "sqrt of " : "", tags[col].c_str()+1, path);
+            use_sqrt ? "sqrt of " : "", tags[col].c_str()+1, file.path);
   gemmi::Miller hkl;
   int missing = 0;
   int negative = 0;
@@ -347,10 +384,10 @@ void compare_with_hkl(const gemmi::SmallStructure& small,
         }
       }
     } catch(std::runtime_error& e) {
-      fprintf(stderr, "Error in _refln_[] in %s: %s\n", path, e.what());
+      fprintf(stderr, "Error in _refln_[] in %s: %s\n", file.path, e.what());
       continue;
     } catch(std::invalid_argument& e) {
-      fprintf(stderr, "Error in _refln_[] in %s: %s\n", path, e.what());
+      fprintf(stderr, "Error in _refln_[] in %s: %s\n", file.path, e.what());
       continue;
     }
     double f = std::abs(calc.calculate_sf_from_small_structure(small, hkl));
@@ -369,13 +406,12 @@ void compare_with_hkl(const gemmi::SmallStructure& small,
 template<typename Table>
 void compare_with_mtz(const gemmi::Model& model, const gemmi::UnitCell& cell,
                       gemmi::StructureFactorCalculator<Table>& calc,
-                      const std::string& label, bool verbose,
-                      const char* path, Comparator& comparator) {
+                      const RefFile& file, bool verbose, Comparator& comparator) {
   gemmi::Mtz mtz;
-  mtz.read_input(gemmi::MaybeGzipped(path), true);
-  gemmi::Mtz::Column* col = mtz.column_with_label(label);
+  mtz.read_input(gemmi::MaybeGzipped(file.path), true);
+  gemmi::Mtz::Column* col = mtz.column_with_label(file.f_label);
   if (!col)
-    gemmi::fail("MTZ file has no column with label: " + label);
+    gemmi::fail("MTZ file has no column with label: " + file.f_label);
   gemmi::MtzDataProxy data_proxy{mtz};
   for (size_t i = 0; i < data_proxy.size(); i += data_proxy.stride()) {
     gemmi::Miller hkl = data_proxy.get_hkl(i);
@@ -437,21 +473,26 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
       print_sf(calc.calculate_sf_from_small_structure(small, hkl), hkl);
   }
 
-  std::string f_label, phi_label;
+  RefFile file;
+  if (p.options[Test]) {
+    file.mode = RefFile::Mode::Test;
+    file.path = p.options[Test].arg;
+  } else if (p.options[Compare]) {
+    file.mode = RefFile::Mode::Compare;
+    file.path = p.options[Compare].arg;
+  }
   if (p.options[FLabel])
-    f_label = p.options[FLabel].arg;
+    file.f_label = p.options[FLabel].arg;
   else if (use_st)
-    f_label = "FC";
+    file.f_label = "FC";
   if (p.options[PhiLabel])
-   phi_label = p.options[PhiLabel].arg;
+   file.phi_label = p.options[PhiLabel].arg;
   else if (use_st)
-    phi_label = "PHIC";
+    file.phi_label = "PHIC";
 
   using Real = float;
   gemmi::AsuData<std::array<Real,2>> scale_to;
   if (p.options[ScaleTo]) {
-    if (!p.options[Dmin])
-      gemmi::fail("Currently option --scale-to works only when used with --dmin");
     const char* arg = p.options[ScaleTo].arg;
     const char* sep = std::strchr(arg, ':');
     std::string path(arg, sep);
@@ -464,18 +505,18 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
 
   // handle option --dmin
   if (p.options[Dmin]) {
-    double d_min = std::strtod(p.options[Dmin].arg, nullptr);
+    double d_min = std::atof(p.options[Dmin].arg);
     if (use_st) {
       gemmi::DensityCalculator<Table, Real> dencalc;
       dencalc.d_min = d_min;
       if (p.options[Rate])
-        dencalc.rate = std::strtod(p.options[Rate].arg, nullptr);
+        dencalc.rate = std::atof(p.options[Rate].arg);
       if (p.options[RCut])
-        dencalc.r_cut = (float) std::strtod(p.options[RCut].arg, nullptr);
+        dencalc.r_cut = (float) std::atof(p.options[RCut].arg);
       for (auto& it : calc.fprimes())
         dencalc.fprimes[(int)it.first] = (float) it.second;
       if (p.options[Blur]) {
-        dencalc.blur = std::strtod(p.options[Blur].arg, nullptr);
+        dencalc.blur = std::atof(p.options[Blur].arg);
       } else if (dencalc.rate < 3) {
         // ITfC vol B section 1.3.4.4.5 has formula
         // B = log Q / (sigma * (sigma - 1) * d*_max ^2)
@@ -491,18 +532,21 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         if (p.options[Verbose])
           fprintf(stderr, "B_min=%g, B_add=%g\n", b_min, dencalc.blur);
       }
+      if (p.options[Rprobe])
+        dencalc.rprobe = std::atof(p.options[Rprobe].arg);
+      if (p.options[Rshrink])
+        dencalc.rshrink = std::atof(p.options[Rshrink].arg);
 
-      SfcMode mode = SfcMode::None;
-      const char *file = nullptr;
-      if (p.options[Test]) {
-        mode = SfcMode::Test;
-        file = p.options[Test].arg;
-      } else if (p.options[Compare]) {
-        mode = SfcMode::Compare;
-        file = p.options[Compare].arg;
+      SolventParam solvent;
+      if (p.options[Ksolv] || p.options[Bsolv]) {
+        solvent.use_solvent = true;
+        if (p.options[Ksolv])
+          solvent.k = std::atof(p.options[Ksolv].arg);
+        if (p.options[Bsolv])
+          solvent.B = std::atof(p.options[Bsolv].arg);
       }
-      print_structure_factors(st, dencalc, p.options[Verbose], mode, file,
-                              f_label, phi_label, scale_to);
+
+      print_structure_factors(st, dencalc, solvent, p.options[Verbose], file, scale_to);
     } else {
       if (p.options[Rate] || p.options[RCut] || p.options[Blur] ||
           p.options[Test])
@@ -512,21 +556,18 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
     }
 
   // handle option --compare
-  } else if (p.options[Compare]) {
-    const char* path = p.options[Compare].arg;
+  } else if (file.mode == RefFile::Mode::Compare) {
     Comparator comparator;
     if (use_st)
-      compare_with_mtz(st.models[0], st.cell, calc, f_label,
-                       p.options[Verbose], path, comparator);
+      compare_with_mtz(st.models[0], st.cell, calc, file, p.options[Verbose], comparator);
     else
-      compare_with_hkl(small, calc, f_label,
-                       p.options[Verbose], path, comparator);
+      compare_with_hkl(small, calc, file, p.options[Verbose], comparator);
     print_to_stderr(comparator);
     fprintf(stderr, "  sum(F^2)_ratio=%g\n", comparator.scale());
   }
 }
 
-static void process(const std::string& input, const OptParser& p) {
+void process(const std::string& input, const OptParser& p) {
   // read (Small)Structure
   gemmi::Structure st = gemmi::read_structure_gz(input);
   gemmi::SmallStructure small;
@@ -546,6 +587,16 @@ static void process(const std::string& input, const OptParser& p) {
       if (n_mates != 0)
         site.occ /= (n_mates + 1);
     }
+  }
+
+  if (p.options[ScaleTo] || p.options[Ksolv] || p.options[Bsolv] ||
+      p.options[Rprobe] || p.options[Rshrink]) {
+    static const char* msg =
+      "Options --scale-to, --ksolv, --bsolv, --r-probe, --r-shrink works only with ";
+    if (!p.options[Dmin])
+      gemmi::fail(msg, "--dmin");
+    if (!use_st)
+      gemmi::fail(msg, "macromolecular structures");
   }
 
   if (p.options[NoAniso]) {
@@ -597,6 +648,8 @@ static void process(const std::string& input, const OptParser& p) {
     process_with_table<gemmi::ITC4322<double>>(use_st, st, small, 0., p);
   }
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

@@ -7,6 +7,7 @@
 #ifndef GEMMI_RHOGRID_HPP_
 #define GEMMI_RHOGRID_HPP_
 
+#include <cassert>
 #include "grid.hpp"    // for Grid
 #include "model.hpp"   // for Structure, ...
 
@@ -110,6 +111,9 @@ struct DensityCalculator {
   double blur = 0.;
   float r_cut = 5e-5f;
   std::vector<float> fprimes = std::vector<float>((int)El::END, 0.f);
+  // parameters for used only in put_solvent_mask_on_grid()
+  double rprobe = 1.0;
+  double rshrink = 1.1;
 
   // pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {
@@ -170,6 +174,14 @@ struct DensityCalculator {
   // The argument is 1/d^2 - as outputted by unit_cell.calculate_1_d2(hkl).
   double reciprocal_space_multiplier(double inv_d2) {
     return std::exp(blur * 0.25 * inv_d2);
+  }
+
+  void put_solvent_mask_on_grid(const Model& model) {
+    assert(!grid.data.empty());
+    std::fill(grid.data.begin(), grid.data.end(), 1);
+    mask_points_in_vdw_radius<Real>(grid, model, rprobe, 0);
+    set_margin_around_mask<Real>(grid, rshrink, 1, -1);
+    grid.change_values(-1, 1);
   }
 };
 

@@ -177,8 +177,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (p.options[RShrink])
         rshrink = std::atof(p.options[RShrink].arg);
       if (rshrink > 0) {
-        gemmi::set_margin_around_mask(mask.grid, rshrink, (std::int8_t)0, (std::int8_t)2);
-        mask.grid.change_values(2, 0);
+        gemmi::set_margin_around_mask(mask.grid, rshrink, (std::int8_t)0, (std::int8_t)-1);
+        mask.grid.change_values(-1, 0);
       }
 
       if (p.options[Verbose]) {

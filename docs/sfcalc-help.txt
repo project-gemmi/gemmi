@@ -21,13 +21,19 @@ Options:
                        or -w0 to ignore anomalous scattering).
   --unknown=SYMBOL     Use form factor of SYMBOL for unknown atoms.
   --noaniso            Ignore anisotropic ADPs.
-  --scale-to=FILE:COL  Scale to |Fobs| by fitting k*exp(-B s^2/4).
 
 Options for FFT-based calculations:
   --rate=NUM           Shannon rate used for grid spacing (default: 1.5).
   --blur=NUM           B added for Gaussian blurring (default: auto).
   --rcut=Y             Use atomic radius r such that rho(r) < Y (default: 5e-5).
   --test[=CACHE]       Calculate exact values and report differences (slow).
+  --scale-to=FILE:COL  Anisotropic scaling to F from MTZ file.
+
+Options for bulk solvent correction (only w/ FFT):
+  --r-probe=NUM        Value added to VdW radius (default: 1.0A).
+  --r-shrink=NUM       Value for shrinking the solvent area (default: 1.1A).
+  --ksolv=NUM          Value (if optimizing: initial value) of k_solv.
+  --bsolv=NUM          Value (if optimizing: initial value) of B_solv.
 
 Options for comparing calculated values with values from a file:
   --compare=FILE       Re-calculate Fcalc and report differences.
