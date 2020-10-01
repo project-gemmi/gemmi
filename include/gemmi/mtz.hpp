@@ -20,6 +20,7 @@
 #include "iterator.hpp"  // for StrideIter
 #include "fail.hpp"      // for fail
 #include "fileutil.hpp"  // for file_open, is_little_endian, fileptr_t, ...
+#include "math.hpp"      // for rad, Mat33
 #include "symmetry.hpp"  // for find_spacegroup_by_name, SpaceGroup
 #include "unitcell.hpp"  // for UnitCell
 #include "util.hpp"      // for ialpha4_id, rtrim_str, ialpha3_id, ...
