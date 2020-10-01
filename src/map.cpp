@@ -11,9 +11,11 @@
 #define GEMMI_PROG map
 #include "options.h"
 
-enum OptionIndex { Deltas=4, CheckSym, Reorder, Full };
+namespace {
 
-static const option::Descriptor Usage[] = {
+enum OptionIndex { Deltas=4, CheckSym, Reorder, Full, Mask, Threshold, Fraction };
+
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] CCP4_MAP[...]\n" },
   CommonUsage[Help],
@@ -27,6 +29,13 @@ static const option::Descriptor Usage[] = {
     "  --write-xyz=FILE  \tWrite transposed map with fast X axis and slow Z." },
   { Full, 0, "", "write-full", Arg::Required,
     "  --write-full=FILE  \tWrite map extended to cover whole unit cell." },
+  { Mask, 0, "", "write-mask", Arg::Required,
+    "  --write-mask=FILE  \tMake a mask by thresholding the map." },
+  { NoOp, 0, "", "", Arg::None, "\nOptions for making a mask:" },
+  { Threshold, 0, "", "threshold", Arg::Float,
+    "  --threshold  \tExplicit threshold value for 0/1 mask." },
+  { Fraction, 0, "", "fraction", Arg::Float,
+    "  --fraction  \tThreshold is selected to have this fraction of 1's." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -120,8 +129,11 @@ void print_deltas(const gemmi::Grid<T>& grid, double dmin, double dmax) {
   }
 }
 
+} // anonymous namespace
+
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
+  p.exclusive_groups.push_back({Threshold, Fraction});
   p.simple_parse(argc, argv, Usage);
   p.require_input_files_as_args();
   bool verbose = p.options[Verbose];
@@ -168,16 +180,49 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (max_err != 0.0)
           std::printf("Max. difference in symmetry images: %g\n", max_err);
       }
-      if (p.options[Full]) {
+      if (p.options[Full] || p.options[Mask]) {
         double err = map.setup(gemmi::GridSetup::FullCheck, NAN);
-        size_t nn = std::count_if(map.grid.data.begin(), map.grid.data.end(),
-                                  [](float x) { return std::isnan(x); });
         if (err != 0.0)
           std::fprintf(stderr, "WARNING: different values for equivalent "
                                "points, max diff: %g\n", err);
+      }
+      if (p.options[Full]) {
+        size_t nn = std::count_if(map.grid.data.begin(), map.grid.data.end(),
+                                  [](float x) { return std::isnan(x); });
         if (nn != 0)
           std::fprintf(stderr, "WARNING: %zu unknown values set to NAN\n", nn);
         map.write_ccp4_map(p.options[Full].arg);
+      }
+      if (p.options[Mask]) {
+        double threshold;
+        if (p.options[Threshold]) {
+          threshold = std::atof(p.options[Threshold].arg);
+        } else if (p.options[Fraction]) {
+          double fraction = std::atof(p.options[Fraction].arg);
+          if (fraction < 0. || fraction > 1.) {
+            std::fprintf(stderr, "Fraction must be between 0 and 1.\n");
+            return 2;
+          }
+          auto data = map.grid.data;  // making a copy for nth_element()
+          size_t n = std::min(static_cast<size_t>(data.size() * (1.0 - fraction)),
+                              data.size() - 1);
+          std::nth_element(data.begin(), data.begin() + n, data.end());
+          threshold = data[n];
+        } else {
+          std::fprintf(stderr, "You need to use --threshold or --fraction.\n");
+          return 2;
+        }
+        gemmi::Ccp4<std::int8_t> mask;
+        mask.grid.copy_metadata_from(map.grid);
+        mask.grid.data.reserve(map.grid.data.size());
+        for (auto& d : map.grid.data)
+          mask.grid.data.push_back(d > threshold ? 1 : 0);
+        size_t ones = std::count(mask.grid.data.begin(), mask.grid.data.end(), 1);
+        size_t all = mask.grid.data.size();
+        std::fprintf(stderr, "Masked %zu of %zu points (%.1f%%) above %g\n",
+                     ones, all, 100.0 * ones / all, threshold);
+        mask.update_ccp4_header(0);
+        mask.write_ccp4_map(p.options[Mask].arg);
       }
     }
   } catch (std::runtime_error& e) {

@@ -2,21 +2,14 @@ $ gemmi mask -h
 Usage:
  gemmi mask [options] INPUT output.msk
 
-Makes a mask in the CCP4 format.
-If INPUT is a CCP4 map the mask is created by thresholding the map.
-If INPUT is a coordinate file (mmCIF, PDB, etc) the atoms are masked.
+Makes a bulk-solvent mask in the CCP4 format.
+INPUT is a coordinate file (mmCIF, PDB, etc).
   -h, --help           Print usage and exit.
   -V, --version        Print version and exit.
   -v, --verbose        Verbose output.
-  --from=coor|map      Input type (default: from file extension).
-
-Options for making a mask from a map:
-  -t, --threshold      The density cutoff value.
-  -f, --fraction       The volume fraction to be above the threshold.
-
-Options for masking a model:
   -s, --spacing=D      Max. sampling for the grid (default: 1A).
   -g, --grid=NX,NY,NZ  Grid sampling.
   -r, --radius=R       Use constant radius of atom spheres.
   --r-probe=Rp         Use VdW radius + Rp (default: 1.0A).
   --r-shrink=Rs        Finally, remove a shell of thickness Rs (default: 1.1A).
+  -I, --invert         0 for solvent, 1 for molecule.

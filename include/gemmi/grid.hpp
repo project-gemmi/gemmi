@@ -188,6 +188,18 @@ struct Grid : GridBase<T> {
 
   double spacing[3];
 
+  template<typename T2>
+  void copy_metadata_from(const Grid<T2>& g) {
+    unit_cell = g.unit_cell;
+    spacegroup = g.spacegroup;
+    nu = g.nu;
+    nv = g.nv;
+    nw = g.nw;
+    this->axis_order = g.axis_order;
+    for (size_t i = 0; i != 3; ++i)
+      spacing[i] = g.spacing[i];
+  }
+
   void calculate_spacing() {
     spacing[0] = 1.0 / (nu * unit_cell.ar);
     spacing[1] = 1.0 / (nv * unit_cell.br);
@@ -338,11 +350,6 @@ struct Grid : GridBase<T> {
     set_points_around(Position(x, y, z), radius, 1);
   }
 
-  void make_zeros_and_ones(double threshold) {
-    for (auto& d : data)
-      d = d > threshold ? 1 : 0;
-  }
-
   void change_values(T old_value, T new_value) {
     for (auto& d : data)
       if (d == old_value)
@@ -445,10 +452,7 @@ template<typename T, typename V> struct MaskedGrid {
   Grid<V> mask; // should we simply store the mask as vector?
 
   MaskedGrid(Grid<T>& grid_, std::vector<V>&& mask_data) : grid(&grid_) {
-    mask.nu = grid_.nu;
-    mask.nv = grid_.nv;
-    mask.nw = grid_.nw;
-    mask.spacegroup = grid_.spacegroup;
+    mask.copy_metadata_from(grid_);
     mask.data = mask_data;
   }
 

@@ -9,3 +9,8 @@ Usage:
   --check-symmetry   Compare the values of symmetric points.
   --write-xyz=FILE   Write transposed map with fast X axis and slow Z.
   --write-full=FILE  Write map extended to cover whole unit cell.
+  --write-mask=FILE  Make a mask by thresholding the map.
+
+Options for making a mask:
+  --threshold        Explicit threshold value for 0/1 mask.
+  --fraction         Threshold is selected to have this fraction of 1's.

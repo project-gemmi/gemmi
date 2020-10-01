@@ -775,11 +775,11 @@ struct Mtz {
     }
   }
 
-  void set_data(const float* new_data, int n) {
-    int ncols = (int) columns.size();
+  void set_data(const float* new_data, size_t n) {
+    size_t ncols = columns.size();
     if (n % ncols != 0)
       fail("Mtz.set_data(): expected " + std::to_string(ncols) + " columns.");
-    nreflections = n / ncols;
+    nreflections = int(n / ncols);
     data.assign(new_data, new_data + n);
   }
 

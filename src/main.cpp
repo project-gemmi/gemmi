@@ -56,7 +56,7 @@ static SubCmd subcommands[] = {
   CMD(json2cif, "translate mmJSON to mmCIF"),
   CMD(map, "print info or modify a CCP4 map"),
   CMD(map2sf, "transform CCP4 map to map coefficients (in MTZ or mmCIF)"),
-  CMD(mask, "make mask in the CCP4 format"),
+  CMD(mask, "make a bulk-solvent mask in the CCP4 format"),
   CMD(merge, "merge intensities from multi-record reflection file"),
   CMD(mondiff, "compare two monomer CIF files"),
   CMD(mtz, "print info about MTZ reflection file"),
