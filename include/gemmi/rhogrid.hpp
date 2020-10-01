@@ -33,31 +33,36 @@ void mask_points_in_vdw_radius(Grid<Real>& mask, const Model& model,
 }
 
 template<typename Real>
-void set_margin_around_mask(Grid<Real>& mask, double r, Real old_value, Real new_value) {
+void set_margin_around_mask(Grid<Real>& mask, double r, Real in_value, Real margin_value) {
   int du = (int) std::floor(r / mask.spacing[0]);
   int dv = (int) std::floor(r / mask.spacing[1]);
   int dw = (int) std::floor(r / mask.spacing[2]);
   if (2 * du >= mask.nu || 2 * dv >= mask.nv || 2 * dw >= mask.nw)
     fail("grid operation failed: radius bigger than half the unit cell?");
-  std::vector<std::array<int,3>> neighbour_indices;
+  std::vector<std::int8_t> in_radius;
+  in_radius.reserve((2*dw+1) * (2*dv+1) * (2*du+1));
   for (int w = -dw; w <= dw; ++w)
     for (int v = -dv; v <= dv; ++v)
       for (int u = -du; u <= du; ++u) {
         Fractional fdelta{u * (1.0 / mask.nu), v * (1.0 / mask.nv), w * (1.0 / mask.nw)};
-        Position delta = mask.unit_cell.orthogonalize_difference(fdelta);
-        if (delta.length_sq() <= r * r)
-          neighbour_indices.push_back({{u, v, w}});
+        double r2 = mask.unit_cell.orthogonalize_difference(fdelta).length_sq();
+        in_radius.push_back(r2 <= r * r && r2 != 0.);
       }
   for (int w = 0; w < mask.nw; ++w)
     for (int v = 0; v < mask.nv; ++v)
-      for (int u = 0; u < mask.nu; ++u)
-        if (mask.data[mask.index_q(u, v, w)] == old_value) {
-          for (const std::array<int,3>& d : neighbour_indices) {
-            Real& point = mask.data[mask.index_n(u+d[0], v+d[1], w+d[2])];
-            if (point != old_value)
-              point = new_value;
-          }
+      for (int u = 0; u < mask.nu; ++u) {
+        Real& point = mask.data[mask.index_q(u, v, w)];
+        if (point != in_value) {
+          for (int w2 = w-dw, idx = 0; w2 <= w+dw; ++w2)
+            for (int v2 = v-dv; v2 <= v+dv; ++v2)
+              for (int u2 = u-du; u2 <= u+du; ++u2, ++idx)
+                if (in_radius[idx] && mask.data[mask.index_n(u2, v2, w2)] == in_value) {
+                  point = margin_value;
+                  goto nextpoint;
+                }
         }
+nextpoint: ;
+      }
 }
 
 
