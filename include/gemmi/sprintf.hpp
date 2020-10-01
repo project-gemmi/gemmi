@@ -41,6 +41,14 @@ std::string to_str_prec(double d) {
   return std::string(buf, len > 0 ? len : 0);
 }
 
+#ifdef USE_STD_SNPRINTF
+# ifdef _MSC_VER // VS2015/17 doesn't like std::snprintf
+#  define gf_snprintf snprintf
+# else
+#  define gf_snprintf std::snprintf
+# endif
+#else
+
 // this is equivalent of stbsp_snprintf, but with __attribute__(format)
 #if (defined(__GNUC__) && !defined(__MINGW32__)) || defined(__clang)
 __attribute__((format(printf, 3, 4)))
@@ -54,6 +62,7 @@ inline int gf_snprintf(char *buf, int count, char const *fmt, ...) {
    return result;
 }
 
+#endif
 
 } // namespace gemmi
 #endif
