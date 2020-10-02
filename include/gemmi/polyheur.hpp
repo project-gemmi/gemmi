@@ -205,6 +205,7 @@ inline void assign_subchain_names(Chain& chain) {
       case EntityType::Polymer:    res.subchain += "poly";          break;
       case EntityType::NonPolymer: res.subchain += res.seqid.str(); break;
       case EntityType::Water:      res.subchain += "wat";           break;
+      case EntityType::Branched:  // FIXME
       case EntityType::Unknown: break; // should not happen
     }
   }

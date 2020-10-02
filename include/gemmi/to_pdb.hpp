@@ -82,7 +82,8 @@ bool use_hetatm(const Residue& res) {
     return true;
   if (res.het_flag == 'A')
     return false;
-  if (res.entity_type == EntityType::NonPolymer ||
+  if (res.entity_type == EntityType::Branched ||
+      res.entity_type == EntityType::NonPolymer ||
       res.entity_type == EntityType::Water)
     return true;
   return !find_tabulated_residue(res.name).is_standard();

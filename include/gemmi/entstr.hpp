@@ -13,6 +13,7 @@ namespace gemmi {
 inline std::string entity_type_to_string(EntityType entity_type) {
   switch (entity_type) {
     case EntityType::Polymer: return "polymer";
+    case EntityType::Branched: return "branched";
     case EntityType::NonPolymer: return "non-polymer";
     case EntityType::Water: return "water";
     default /*EntityType::Unknown*/: return "?";
@@ -21,6 +22,7 @@ inline std::string entity_type_to_string(EntityType entity_type) {
 
 inline EntityType entity_type_from_string(const std::string& t) {
   if (t == "polymer")     return EntityType::Polymer;
+  if (t == "branched")    return EntityType::Branched;
   if (t == "non-polymer") return EntityType::NonPolymer;
   if (t == "water")       return EntityType::Water;
   return EntityType::Unknown;

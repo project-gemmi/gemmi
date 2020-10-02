@@ -88,6 +88,7 @@ enum class EntityType : unsigned char {
   Unknown,
   Polymer,
   NonPolymer,
+  Branched, // introduced in 2020
   // _entity.type macrolide is in PDBx/mmCIF, but no PDB entry uses it
   //Macrolide,
   Water
@@ -533,7 +534,8 @@ struct Chain {
 
   ResidueSpan get_ligands() {
     return get_residue_span([](const Residue& r) {
-        return r.entity_type == EntityType::NonPolymer;
+        return r.entity_type == EntityType::NonPolymer ||
+               r.entity_type == EntityType::Branched;
     });
   }
   ConstResidueSpan get_ligands() const {
