@@ -297,6 +297,7 @@ add_executable(doc_maybegz EXCLUDE_FROM_ALL
                docs/code/maybegz.cpp
                docs/code/mutate.cpp)
 support_gz(doc_maybegz)
+add_executable(doc_newmtz EXCLUDE_FROM_ALL docs/code/newmtz.cpp)
 
 # always compile these tests with assertions enabled
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU|Intel")
@@ -328,7 +329,7 @@ add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION>)
 add_test(NAME cpptest COMMAND cpptest)
 
 add_dependencies(check
-    c_test cpptest hello doc_example doc_example2 doc_maybegz
+    c_test cpptest hello doc_example doc_example2 doc_maybegz doc_newmtz
     test_disulf check_conn print-version)
 
 if (USE_FORTRAN)

@@ -564,6 +564,10 @@ and in Python using:
 
   >>> mtz.write_to_file('output.mtz')
 
+Here is a complete C++ example how to create a new MTZ file:
+
+.. literalinclude:: code/newmtz.cpp
+
 
 SF mmCIF
 ========
