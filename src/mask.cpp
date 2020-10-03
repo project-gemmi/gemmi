@@ -113,6 +113,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         rprobe = std::atof(p.options[RProbe].arg);
       gemmi::mask_points_in_vdw_radius(mask.grid, st.models[0], rprobe, vmol);
     }
+    mask.grid.symmetrize(
+        [&](int8_t a, int8_t b) { return a == vmol || b == vmol ? vmol : vsol; });
     double rshrink = 1.1;
     if (p.options[RShrink])
       rshrink = std::atof(p.options[RShrink].arg);
@@ -120,16 +122,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::set_margin_around_mask(mask.grid, rshrink, vsol, (int8_t)-1);
       mask.grid.change_values(-1, vsol);
     }
-
     if (p.options[Verbose]) {
       size_t n = std::count(mask.grid.data.begin(), mask.grid.data.end(), vmol);
       std::fprintf(stderr, "Points masked by model: %zu\n", n);
-    }
-    mask.grid.symmetrize(
-        [&](int8_t a, int8_t b) { return a == vmol || b == vmol ? vmol : vsol; });
-    if (p.options[Verbose]) {
-      size_t n = std::count(mask.grid.data.begin(), mask.grid.data.end(), vmol);
-      std::fprintf(stderr, "After symmetrizing: %zu\n", n);
     }
     if (!p.options[Invert])
       for (int8_t& v : mask.grid.data)
