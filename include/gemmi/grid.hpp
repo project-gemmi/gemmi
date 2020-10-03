@@ -6,10 +6,12 @@
 #define GEMMI_GRID_HPP_
 
 #include <cassert>
+#include <cstddef>    // for ptrdiff_t
 #include <complex>
 #include <algorithm>  // for fill
 #include <memory>     // for unique_ptr
 #include <numeric>    // for accumulate
+#include <type_traits>
 #include <vector>
 #include "unitcell.hpp"
 #include "symmetry.hpp"
@@ -144,7 +146,10 @@ struct GridBase {
   size_t point_to_index(const Point& p) const { return p.value - data.data(); }
 
   void fill(T value) { std::fill(data.begin(), data.end(), value); }
-  T sum() const { return std::accumulate(data.begin(), data.end(), T()); }
+
+  using Tsum = typename std::conditional<std::is_integral<T>::value,
+                                         std::ptrdiff_t, T>::type;
+  Tsum sum() const { return std::accumulate(data.begin(), data.end(), Tsum()); }
 
 
   struct iterator {
