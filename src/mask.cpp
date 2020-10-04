@@ -13,7 +13,8 @@
 
 namespace {
 
-enum OptionIndex { GridSpac=4, GridDims, Radius, RProbe, RShrink, Invert };
+enum OptionIndex { GridSpac=4, GridDims, Radius, RProbe, RShrink,
+                   CctbxCompat, Invert };
 
 struct MaskArg {
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
@@ -39,6 +40,8 @@ const option::Descriptor Usage[] = {
     "  --r-probe=Rp  \tUse VdW radius + Rp (default: 1.0A)." },
   { RShrink, 0, "", "r-shrink", Arg::Float,
     "  --r-shrink=Rs  \tFinally, remove a shell of thickness Rs (default: 1.1A)." },
+  { CctbxCompat, 0, "", "cctbx-compat", Arg::None,
+    "  --cctbx-compat  \tUse vdW, Rprobe, Rshrink radii from cctbx." },
   { Invert, 0, "I", "invert", Arg::None,
     "  -I, --invert  \t0 for solvent, 1 for molecule." },
   { 0, 0, 0, 0, 0, 0 }
@@ -100,26 +103,32 @@ int GEMMI_MAIN(int argc, char **argv) {
 
     const int8_t vmol = 1;
     const int8_t vsol = 0;
+    double rshrink = 1.1;
     if (p.options[Radius]) {
-      if (p.options[RProbe]) {
-        std::fprintf(stderr, "Options --radius and --r-probe are exclusive.");
-        return 1;
-      }
+      if (p.options[RProbe])
+        p.exit_exclusive(Radius, RProbe);
+      if (p.options[CctbxCompat])
+        p.exit_exclusive(Radius, CctbxCompat);
       double radius = std::atof(p.options[Radius].arg);
       gemmi::mask_points_in_constant_radius(mask.grid, st.models[0], radius, vmol);
     } else {
       double rprobe = 1.0;
+      bool cctbx_compat = false;
+      if (p.options[CctbxCompat]) {
+        cctbx_compat = true;
+        rprobe = 1.11;
+        rshrink = 0.9;
+      }
       if (p.options[RProbe])
         rprobe = std::atof(p.options[RProbe].arg);
-      gemmi::mask_points_in_vdw_radius(mask.grid, st.models[0], rprobe, vmol);
+      gemmi::mask_points_in_vdw_radius(mask.grid, st.models[0], rprobe, vmol, cctbx_compat);
     }
     mask.grid.symmetrize(
         [&](int8_t a, int8_t b) { return a == vmol || b == vmol ? vmol : vsol; });
-    double rshrink = 1.1;
     if (p.options[RShrink])
       rshrink = std::atof(p.options[RShrink].arg);
     if (rshrink > 0) {
-      gemmi::set_margin_around_mask(mask.grid, rshrink, vsol, (int8_t)-1);
+      gemmi::set_margin_around(mask.grid, rshrink, vsol, (int8_t)-1);
       mask.grid.change_values(-1, vsol);
     }
     if (p.options[Verbose]) {

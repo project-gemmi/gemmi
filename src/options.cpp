@@ -146,13 +146,10 @@ void OptParser::simple_parse(int argc, char** argv,
     int first = 0;
     for (int opt : group)
       if (options[opt]) {
-        if (first == 0) {
+        if (first == 0)
           first = opt;
-        } else {
-          fprintf(stderr, "Options -%s and -%s cannot be used together.\n",
-                  given_name(first), given_name(opt));
-          std::exit(2);
-        }
+        else
+          exit_exclusive(first, opt);
       }
   }
 }
@@ -174,6 +171,12 @@ void OptParser::require_positional_args(int n) {
 void OptParser::require_input_files_as_args(int other_args) {
   if (nonOptionsCount() <= other_args)
     print_try_help_and_exit("No input files. Nothing to do.");
+}
+
+void OptParser::exit_exclusive(int opt1, int opt2) {
+  std::fprintf(stderr, "Options -%s and -%s cannot be used together.\n",
+               given_name(opt1), given_name(opt2));
+  std::exit(1);
 }
 
 std::string OptParser::coordinate_input_file(int n, char pdb_code_type) {

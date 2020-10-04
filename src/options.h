@@ -63,6 +63,7 @@ struct OptParser : option::Parser {
   std::string coordinate_input_file(int n, char pdb_code_type='M');
   std::vector<std::string> paths_from_args_or_file(int opt, int other);
   [[noreturn]] void print_try_help_and_exit(const char* msg);
+  [[noreturn]] void exit_exclusive(int opt1, int opt2);
   const char* given_name(int opt) const {  // sans one dash
     return options[opt].namelen > 1 ? options[opt].name + 1
                                     : options[opt].desc->shortopt;
