@@ -398,8 +398,10 @@ setters as in the C++ version.
     >>> m.header_str(57, 80).strip()
     'Created by MAPMAN V. 080625/7.8.5 at Wed Jan 3 12:57:38 2018 for A. Nonymous'
 
-Let us end with a short code that draws a contour plot similar to mapslicer
-plots
+Let us end with two examples.
+
+**Example 1.**
+A short code that draws a contour plot similar to mapslicer plots
 (see Fig. 3 in `this CCP4 paper <http://dx.doi.org/10.1107/S0907444902016116>`_
 if you wonder what is mapslicer).
 To keep the example short we assume that the lattice vectors are orthogonal.
@@ -411,4 +413,24 @@ To keep the example short we assume that the lattice vectors are orthogonal.
 .. image:: img/patterson_slice.png
     :align: center
     :scale: 100
+
+**Example 2.**
+A tiny utility that compares two masks (maps with 0/1 values)
+of the same size, printing a summary of matches and mismatches:
+
+.. code-block:: console
+
+  $ python examples/maskdiff.py old_mask.ccp4 new_mask.ccp4
+  Size: 240 x 300 x 270  and  240 x 300 x 270
+  0-0      5006818  25.76%
+  1-1     13496058  69.42%
+  0-1       937124   4.82%
+  1-0            0   0.00%
+  total   19440000
+
+Here is the script:
+
+.. literalinclude:: ../examples/maskdiff.py
+   :language: python
+   :lines: 3-
 
