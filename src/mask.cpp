@@ -14,7 +14,7 @@
 namespace {
 
 enum OptionIndex { GridSpac=4, GridDims, Radius, RProbe, RShrink,
-                   CctbxCompat, Invert };
+                   CctbxCompat, RefmacCompat, Invert };
 
 struct MaskArg {
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
@@ -42,6 +42,8 @@ const option::Descriptor Usage[] = {
     "  --r-shrink=Rs  \tFinally, remove a shell of thickness Rs (default: 1.1A)." },
   { CctbxCompat, 0, "", "cctbx-compat", Arg::None,
     "  --cctbx-compat  \tUse vdW, Rprobe, Rshrink radii from cctbx." },
+  { RefmacCompat, 0, "", "refmac-compat", Arg::None,
+    "  --refmac-compat  \tUse radii compatible with Refmac." },
   { Invert, 0, "I", "invert", Arg::None,
     "  -I, --invert  \t0 for solvent, 1 for molecule." },
   { 0, 0, 0, 0, 0, 0 }
@@ -109,19 +111,27 @@ int GEMMI_MAIN(int argc, char **argv) {
         p.exit_exclusive(Radius, RProbe);
       if (p.options[CctbxCompat])
         p.exit_exclusive(Radius, CctbxCompat);
+      if (p.options[RefmacCompat])
+        p.exit_exclusive(Radius, RefmacCompat);
       double radius = std::atof(p.options[Radius].arg);
       gemmi::mask_points_in_constant_radius(mask.grid, st.models[0], radius, vmol);
     } else {
       double rprobe = 1.0;
-      bool cctbx_compat = false;
+      gemmi::AtomicRadiiSet radii_set = gemmi::AtomicRadiiSet::VanDerWaals;
       if (p.options[CctbxCompat]) {
-        cctbx_compat = true;
+        if (p.options[RefmacCompat])
+          p.exit_exclusive(CctbxCompat, RefmacCompat);
+        radii_set = gemmi::AtomicRadiiSet::Cctbx;
         rprobe = 1.11;
         rshrink = 0.9;
+      } else if (p.options[RefmacCompat]) {
+        radii_set = gemmi::AtomicRadiiSet::Refmac;
+        rprobe = 1.0;
+        rshrink = 0.8;
       }
       if (p.options[RProbe])
         rprobe = std::atof(p.options[RProbe].arg);
-      gemmi::mask_points_in_vdw_radius(mask.grid, st.models[0], rprobe, vmol, cctbx_compat);
+      gemmi::mask_points_in_vdw_radius(mask.grid, st.models[0], radii_set, rprobe, vmol);
     }
     mask.grid.symmetrize(
         [&](int8_t a, int8_t b) { return a == vmol || b == vmol ? vmol : vsol; });

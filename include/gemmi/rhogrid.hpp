@@ -13,6 +13,8 @@
 
 namespace gemmi {
 
+enum class AtomicRadiiSet { VanDerWaals, Cctbx, Refmac };
+
 // data from cctbx/eltbx/van_der_waals_radii.py used to generate identical mask
 inline float cctbx_vdw_radius(El el) {
   static constexpr float radii[] = {
@@ -52,6 +54,55 @@ inline float cctbx_vdw_radius(El el) {
   return radii[static_cast<int>(el)];
 }
 
+// Data from Refmac's ener_lib.cif: ionic radius - 0.2A or vdW radius + 0.2A.
+// For full compatibility use r_probe=1.0A and r_shrink=0.8A.
+inline float refmac_radius_for_bulk_solvent(El el) {
+#if 0
+  static constexpr float radii[] = {
+    /*X*/  1.00f,
+    /*H*/  1.40f, /*He*/ 1.60f,
+    /*Li*/ 0.53f, /*Be*/ 0.21f, /*B*/  0.05f, /*C*/  1.90f, /*N*/  1.12f,
+    /*O*/  1.08f, /*F*/  0.99f, /*Ne*/ 0.92f,
+    /*Na*/ 0.93f, /*Mg*/ 0.51f, /*Al*/ 0.33f, /*Si*/ 0.20f, /*P*/  0.39f,
+    /*S*/  0.20f, /*Cl*/ 1.47f, /*Ar*/ 1.34f,
+    /*K*/  1.31f, /*Ca*/ 0.94f, /*Sc*/ 0.69f, /*Ti*/ 0.36f, /*V*/  0.48f,
+    /*Cr*/ 0.33f, /*Mn*/ 0.26f, /*Fe*/ 0.48f, /*Co*/ 0.34f, /*Ni*/ 0.43f,
+    /*Cu*/ 0.51f, /*Zn*/ 0.54f, /*Ga*/ 0.41f, /*Ge*/ 0.20f, /*As*/ 0.28f,
+    /*Se*/ 0.22f, /*Br*/ 0.53f, /*Kr*/ 1.49f,
+    /*Rb*/ 1.28f, /*Sr*/ 1.12f, /*Y*/  0.84f, /*Zr*/ 0.53f, /*Nb*/ 0.42f,
+    /*Mo*/ 0.35f, /*Tc*/ 0.31f, /*Ru*/ 0.32f, /*Rh*/ 0.49f, /*Pd*/ 0.58f,
+    /*Ag*/ 0.61f, /*Cd*/ 0.72f, /*In*/ 0.56f, /*Sn*/ 0.49f, /*Sb*/ 0.70f,
+    /*Te*/ 0.37f, /*I*/  0.36f, /*Xe*/ 1.70f,
+    /*Cs*/ 1.61f, /*Ba*/ 1.29f, /*La*/ 0.97f, /*Ce*/ 0.81f, /*Pr*/ 0.79f,
+    /*Nd*/ 0.92f, /*Pm*/ 0.91f, /*Sm*/ 0.90f, /*Eu*/ 0.89f, /*Gd*/ 0.88f,
+    /*Tb*/ 0.70f, /*Dy*/ 0.85f, /*Ho*/ 0.84f, /*Er*/ 0.83f, /*Tm*/ 0.82f,
+    /*Yb*/ 0.81f, /*Lu*/ 0.80f, /*Hf*/ 0.52f, /*Ta*/ 0.58f, /*W*/  0.36f,
+    /*Re*/ 0.32f, /*Os*/ 0.33f, /*Ir*/ 0.51f, /*Pt*/ 0.51f, /*Au*/ 0.51f,
+    /*Hg*/ 0.90f, /*Tl*/ 0.69f, /*Pb*/ 0.59f, /*Bi*/ 0.70f, /*Po*/ 0.61f,
+    /*At*/ 0.56f, /*Rn*/ 1.80f,
+    /*Fr*/ 1.74f, /*Ra*/ 1.42f, /*Ac*/ 1.06f, /*Th*/ 0.88f, /*Pa*/ 0.72f,
+    /*U*/  0.46f, /*Np*/ 0.65f, /*Pu*/ 0.65f, /*Am*/ 0.79f, /*Cm*/ 0.79f,
+    /*Bk*/ 0.77f, /*Cf*/ 0.76f, /*Es*/ 1.00f, /*Fm*/ 1.00f, /*Md*/ 1.00f,
+    /*No*/ 1.00f, /*Lr*/ 1.00f, /*Rf*/ 1.00f, /*Db*/ 1.00f, /*Sg*/ 1.00f,
+    /*Bh*/ 1.00f, /*Hs*/ 1.00f, /*Mt*/ 1.00f, /*Ds*/ 1.00f, /*Rg*/ 1.00f,
+    /*Cn*/ 1.00f, /*Nh*/ 1.00f, /*Fl*/ 1.00f, /*Mc*/ 1.00f, /*Lv*/ 1.00f,
+    /*Ts*/ 1.00f, /*Og*/ 1.00f,
+    /*D*/  1.40f, /*END*/0.f
+  };
+  static_assert(radii[static_cast<int>(El::D)] == 1.40f, "Hmm");
+  return radii[static_cast<int>(el)];
+#else
+  // temporary solution used in Refmac
+  switch (el) {
+    case El::H: return 1.4f;
+    case El::O: return 1.08f;
+    case El::C: return 2.0f;
+    case El::N: return 1.12f;
+    default: return 1.6f;
+  };
+#endif
+}
+
 // mask utilities
 template<typename Real>
 void mask_points_in_constant_radius(Grid<Real>& mask, const Model& model,
@@ -64,12 +115,18 @@ void mask_points_in_constant_radius(Grid<Real>& mask, const Model& model,
 
 template<typename Real>
 void mask_points_in_vdw_radius(Grid<Real>& mask, const Model& model,
-                               double r_probe, Real value, bool cctbx_compat) {
+                               AtomicRadiiSet radii_set, double r_probe,
+                               Real value) {
   for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms) {
-        double r = cctbx_compat ? cctbx_vdw_radius(atom.element.elem)
-                                : vdw_radius(atom.element.elem);
+        El elem = atom.element.elem;
+        double r;
+        switch (radii_set) {
+          case AtomicRadiiSet::VanDerWaals: r = vdw_radius(elem); break;
+          case AtomicRadiiSet::Cctbx: r = cctbx_vdw_radius(elem); break;
+          case AtomicRadiiSet::Refmac: r = refmac_radius_for_bulk_solvent(elem); break;
+        }
         mask.set_points_around(atom.pos, r + r_probe, value);
       }
 }
@@ -159,9 +216,9 @@ struct DensityCalculator {
   float r_cut = 5e-5f;
   std::vector<float> fprimes = std::vector<float>((int)El::END, 0.f);
   // parameters for used only in put_solvent_mask_on_grid()
+  AtomicRadiiSet radii_set = AtomicRadiiSet::VanDerWaals;
   double rprobe = 1.0;
   double rshrink = 1.1;
-  bool cctbx_vdw = false;
 
   // pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {
@@ -227,7 +284,7 @@ struct DensityCalculator {
   void put_solvent_mask_on_grid(const Model& model) {
     assert(!grid.data.empty());
     std::fill(grid.data.begin(), grid.data.end(), 1);
-    mask_points_in_vdw_radius<Real>(grid, model, rprobe, 0, cctbx_vdw);
+    mask_points_in_vdw_radius<Real>(grid, model, radii_set, rprobe, 0);
     set_margin_around<Real>(grid, rshrink, 1, -1);
     grid.change_values(-1, 1);
   }
