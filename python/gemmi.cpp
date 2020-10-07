@@ -8,6 +8,7 @@
 #include "gemmi/elem.hpp"
 #include "gemmi/it92.hpp"
 #include "gemmi/small.hpp"    // for SmallStructure
+#include "gemmi/interop.hpp"  // for atom_to_site
 
 namespace py = pybind11;
 
@@ -54,6 +55,8 @@ void add_misc(py::module& m) {
 
   py::class_<SmallStructure> small_structure(m, "SmallStructure");
   py::class_<SmallStructure::Site>(small_structure, "Site")
+    .def(py::init<>())
+    .def(py::init(&gemmi::atom_to_site))
     .def_readonly("label", &SmallStructure::Site::label)
     .def_readonly("type_symbol", &SmallStructure::Site::type_symbol)
     .def_readonly("fract", &SmallStructure::Site::fract)

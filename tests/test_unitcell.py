@@ -3,14 +3,14 @@
 import unittest
 from math import pi  # , isnan
 from random import random
-from gemmi import (Position, Fractional, UnitCell, calculate_dihedral,
-                   Mat33, SMat33f)
+import gemmi
+from gemmi import Position, UnitCell
 
 class TestMath(unittest.TestCase):
     def test_SMat33_transformed_by(self):
-        tensor = SMat33f(random(), random(), random(),
-                         random(), random(), random())
-        mat = Mat33()
+        tensor = gemmi.SMat33f(random(), random(), random(),
+                               random(), random(), random())
+        mat = gemmi.Mat33()
         mat.fromlist([[random() for _ in range(3)] for _ in range(3)])
         t1 = tensor.transformed_by(mat).as_mat33().tolist()
         t2 = mat.multiply(tensor.as_mat33()).multiply(mat.transpose()).tolist()
@@ -37,7 +37,7 @@ class TestUnitCell(unittest.TestCase):
         self.assertAlmostEqual(pos.x, pos2.x, delta=1e-12)
         self.assertAlmostEqual(pos.y, pos2.y, delta=1e-12)
         self.assertAlmostEqual(pos.z, pos2.z, delta=1e-12)
-        corner = cell.orthogonalize(Fractional(1, 1, 1))
+        corner = cell.orthogonalize(gemmi.Fractional(1, 1, 1))
         self.assertAlmostEqual(corner.x, cell.a, delta=1e-12)
         self.assertAlmostEqual(corner.y, cell.b, delta=1e-12)
         self.assertAlmostEqual(corner.z, cell.c, delta=1e-12)
@@ -75,20 +75,34 @@ class TestUnitCell(unittest.TestCase):
         for a, b in zip(rmt.elements(), cctbx_rmm):
             self.assertAlmostEqual(a, b, delta=1e-15)
 
+    def test_atom_to_site(self):
+        cell = UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
+        atom = gemmi.Atom()
+        atom.aniso = gemmi.SMat33f(13.1, 20.1, 11.1, -3.5, 5.5, -0.4)
+        site = gemmi.SmallStructure.Site(atom, cell)
+        # tested against values from cctbx:
+        # from cctbx import uctbx, adptbx
+        # uc = uctbx.unit_cell((35.996, 41.601, 45.756, 67.40, 66.90, 74.85))
+        # aniso = (13.1, 20.1, 11.1, -3.5, 5.5, -0.4)
+        # ucif = adptbx.u_cart_as_u_cif(uc, aniso)
+        ucif = [11.537759976524049, 19.43436271641311, 11.1,
+                -8.078683096677723, 1.4787260755519491, -3.9018967241279157]
+        for a, b in zip(site.aniso.elements(), ucif):
+            self.assertAlmostEqual(a, b, delta=1e-6)
 
 class TestAngles(unittest.TestCase):
     def test_dihedral_special_cases(self):
         a = Position(random(), random(), random())
         # not sure what it should be in such undefined cases
-        #self.assertTrue(isnan(calculate_dihedral(a, a, a, a)))
-        self.assertEqual(calculate_dihedral(a, a, a, a), 0.0)
+        #self.assertTrue(isnan(gemmi.calculate_dihedral(a, a, a, a)))
+        self.assertEqual(gemmi.calculate_dihedral(a, a, a, a), 0.0)
         # Special cases from scitbx tst_math.py
         # atan2 is guaranteed to give exact values (I think)
         p000 = Position(0, 0, 0)
         p100 = Position(1, 0, 0)
         p010 = Position(0, 1, 0)
         def xy_dihedral(last_point):
-            return calculate_dihedral(p100, p000, p010, last_point)
+            return gemmi.calculate_dihedral(p100, p000, p010, last_point)
         self.assertEqual(xy_dihedral(Position(1, 1, 0)), 0.0)
         self.assertEqual(xy_dihedral(Position(-1, 1, 0)), pi)
         p01_ = Position(0, 1, -1)
@@ -107,7 +121,7 @@ class TestAngles(unittest.TestCase):
         p6 = Position(23.691,  9.935, 28.389)  # CD1
         p7 = Position(22.557,  9.096, 30.459)  # CD2
         def check_dihedral(a, b, c, d, angle):
-            deg = calculate_dihedral(a, b, c, d) * 180 / pi
+            deg = gemmi.calculate_dihedral(a, b, c, d) * 180 / pi
             self.assertAlmostEqual(deg, angle, places=4)
         check_dihedral(p0, p1, p2, p3, -71.21515)
         check_dihedral(p0, p1, p4, p5, -171.94319)
