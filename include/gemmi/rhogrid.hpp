@@ -222,7 +222,6 @@ struct DensityCalculator {
 
   // pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {
-    constexpr double UtoB = 8 * sq(pi());
     auto& scat = Table::get(atom.element);
     float fprime = fprimes[atom.element.ordinal()];
     Fractional fpos = grid.unit_cell.fractionalize(atom.pos);
@@ -238,7 +237,7 @@ struct DensityCalculator {
       }, /*fail_on_too_large_radius=*/false);
     } else {
       // anisotropic
-      SMat33<double> aniso_b = atom.aniso.scaled(UtoB).added_kI(blur);
+      SMat33<double> aniso_b = atom.aniso.scaled(u_to_b()).added_kI(blur);
       // rough estimate, so we don't calculate eigenvalues
       double b_max = std::max(std::max(aniso_b.u11, aniso_b.u22), aniso_b.u33);
       auto precal_iso = scat.precalculate_density_iso(b_max, fprime);

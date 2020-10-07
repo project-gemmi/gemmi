@@ -65,8 +65,8 @@ template<> inline CenterOfMass calculate_center_of_mass(const Atom& atom) {
 // http://skuld.bmsc.washington.edu/parvati/ActaA_67_512.pdf
 inline double calculate_b_est(const Atom& atom) {
   auto eig = atom.aniso.calculate_eigenvalues();
-  return 8 * pi() * pi() * std::sqrt((eig[0] + eig[1] + eig[2]) /
-                                     (1/eig[0] + 1/eig[1] + 1/eig[2]));
+  return u_to_b() * std::sqrt((eig[0] + eig[1] + eig[2]) /
+                              (1/eig[0] + 1/eig[1] + 1/eig[2]));
 }
 
 inline double calculate_angle_v(const Vec3& a, const Vec3& b) {

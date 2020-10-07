@@ -53,7 +53,7 @@ public:
 
   // Calculation of Debye-Waller factor with isotropic ADPs
   double dwf_iso(const SmallStructure::Site& site) const {
-    return std::exp(-8 * pi() * pi() * stol2_ * site.u_iso);
+    return std::exp(-u_to_b() * stol2_ * site.u_iso);
   }
   double dwf_iso(const Atom& atom) const {
     return std::exp(-stol2_ * atom.b_iso);

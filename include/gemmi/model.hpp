@@ -167,9 +167,7 @@ struct Atom {
   // group_key() is used in UniqIter and similar tools
   const std::string& group_key() const { return name; }
   bool has_altloc() const { return altloc != '\0'; }
-  double b_eq() const {
-    return 8 * pi() * pi() / 3. * aniso.trace();
-  }
+  double b_eq() const { return u_to_b() / 3. * aniso.trace(); }
   bool is_hydrogen() const { return gemmi::is_hydrogen(element); }
   // a method present in Atom, Residue, ... Structure - used in templates
   Atom empty_copy() const { return Atom(*this); }

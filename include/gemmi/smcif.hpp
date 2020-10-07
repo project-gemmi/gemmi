@@ -64,7 +64,7 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
     if (row.has(kUiso))
       site.u_iso = as_number(row[kUiso], 0.0);
     else if (row.has(kBiso))
-      site.u_iso = as_number(row[kBiso], 0.0) / (8 * pi() * pi());
+      site.u_iso = as_number(row[kBiso], 0.0) / u_to_b();
     if (row.has(kOcc))
       site.occ = as_number(row[kOcc], 1.0);
     if (row.has2(kDisorderGroup))
