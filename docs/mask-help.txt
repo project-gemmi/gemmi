@@ -7,6 +7,7 @@ INPUT is a coordinate file (mmCIF, PDB, etc).
   -h, --help           Print usage and exit.
   -V, --version        Print version and exit.
   -v, --verbose        Verbose output.
+  --timing             Print how long individual steps take.
   -s, --spacing=D      Max. sampling for the grid (default: 1A).
   -g, --grid=NX,NY,NZ  Grid sampling.
   -r, --radius=R       Use constant radius of atom spheres.

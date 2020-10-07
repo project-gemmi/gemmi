@@ -114,9 +114,9 @@ void mask_points_in_constant_radius(Grid<Real>& mask, const Model& model,
 }
 
 template<typename Real>
-void mask_points_in_vdw_radius(Grid<Real>& mask, const Model& model,
-                               AtomicRadiiSet radii_set, double r_probe,
-                               Real value) {
+void mask_points_in_varied_radius(Grid<Real>& mask, const Model& model,
+                                  AtomicRadiiSet radii_set, double r_probe,
+                                  Real value) {
   for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms) {
@@ -284,7 +284,7 @@ struct DensityCalculator {
   void put_solvent_mask_on_grid(const Model& model) {
     assert(!grid.data.empty());
     std::fill(grid.data.begin(), grid.data.end(), 1);
-    mask_points_in_vdw_radius<Real>(grid, model, radii_set, rprobe, 0);
+    mask_points_in_varied_radius<Real>(grid, model, radii_set, rprobe, 0);
     set_margin_around<Real>(grid, rshrink, 1, -1);
     grid.change_values(-1, 1);
   }

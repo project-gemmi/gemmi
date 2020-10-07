@@ -7,13 +7,14 @@
 #include "gemmi/gzread.hpp"
 #include "gemmi/rhogrid.hpp"  // for mask_points_in_constant_radius, etc
 #include "gemmi/symmetry.hpp"
+#include "timer.h"
 
 #define GEMMI_PROG mask
 #include "options.h"
 
 namespace {
 
-enum OptionIndex { GridSpac=4, GridDims, Radius, RProbe, RShrink,
+enum OptionIndex { Timing=4, GridSpac, GridDims, Radius, RProbe, RShrink,
                    CctbxCompat, RefmacCompat, Invert };
 
 struct MaskArg {
@@ -30,6 +31,8 @@ const option::Descriptor Usage[] = {
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
+  { Timing, 0, "", "timing", Arg::None,
+    "  --timing  \tPrint how long individual steps take." },
   { GridSpac, 0, "s", "spacing", Arg::Float,
     "  -s, --spacing=D  \tMax. sampling for the grid (default: 1A)." },
   { GridDims, 0, "g", "grid", Arg::Int3,
@@ -58,16 +61,17 @@ int GEMMI_MAIN(int argc, char **argv) {
   const char* input = p.nonOption(0);
   const char* output = p.nonOption(1);
 
-  if (p.options[Verbose])
-    std::fprintf(stderr, "Converting %s ...\n", input);
-
   if (p.options[GridDims] && p.options[GridSpac]) {
     std::fprintf(stderr, "Options --grid and --spacing are exclusive.");
     return 1;
   }
 
+  if (p.options[Verbose])
+    std::fprintf(stderr, "Converting %s ...\n", input);
+
   try {
     using std::int8_t;
+    Timer timer(p.options[Timing]);
     gemmi::Structure st = gemmi::read_structure_gz(input);
     gemmi::Ccp4<int8_t> mask;
     mask.grid.unit_cell = st.cell;
@@ -114,7 +118,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (p.options[RefmacCompat])
         p.exit_exclusive(Radius, RefmacCompat);
       double radius = std::atof(p.options[Radius].arg);
+      timer.start();
       gemmi::mask_points_in_constant_radius(mask.grid, st.models[0], radius, vmol);
+      timer.print("Points in constant radius masked in");
     } else {
       double rprobe = 1.0;
       gemmi::AtomicRadiiSet radii_set = gemmi::AtomicRadiiSet::VanDerWaals;
@@ -131,15 +137,21 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
       if (p.options[RProbe])
         rprobe = std::atof(p.options[RProbe].arg);
-      gemmi::mask_points_in_vdw_radius(mask.grid, st.models[0], radii_set, rprobe, vmol);
+      timer.start();
+      gemmi::mask_points_in_varied_radius(mask.grid, st.models[0], radii_set, rprobe, vmol);
+      timer.print("Points masked in");
     }
+    timer.start();
     mask.grid.symmetrize(
         [&](int8_t a, int8_t b) { return a == vmol || b == vmol ? vmol : vsol; });
+    timer.print("Mask symmetrized in");
     if (p.options[RShrink])
       rshrink = std::atof(p.options[RShrink].arg);
     if (rshrink > 0) {
+      timer.start();
       gemmi::set_margin_around(mask.grid, rshrink, vsol, (int8_t)-1);
       mask.grid.change_values(-1, vsol);
+      timer.print("Mask shrunken in");
     }
     if (p.options[Verbose]) {
       size_t n = std::count(mask.grid.data.begin(), mask.grid.data.end(), vmol);
