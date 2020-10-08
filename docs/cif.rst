@@ -740,10 +740,17 @@ To access values in loop:
 
 .. doctest::
 
+  >>> # (1) get a Column in Loop
   >>> block.find_loop('_atom_type.symbol')
   <gemmi.cif.Column _atom_type.symbol length 6>
   >>> list(_)
   ['C', 'CL', 'N', 'O', 'P', 'S']
+
+  >>> # (2) get Item containing the Loop
+  >>> block.find_loop_item('_atom_type.symbol')  # doctest: +ELLIPSIS
+  <gemmi.cif.Item object at 0x...>
+  >>> _.loop
+  <gemmi.cif.Loop 6 x 1>
 
 To add a row to an existing table (loop) use ``add_row``:
 
@@ -768,7 +775,7 @@ a list of lists of string. The lists of strings correspond to columns.
 
 .. doctest::
 
-  >>> loop = block.find_loop('_citation_author.citation_id').get_loop()
+  >>> loop = block.find_loop_item('_citation_author.citation_id').loop
   >>> loop.tags
   ['_citation_author.citation_id', '_citation_author.name', '_citation_author.ordinal']
   >>> loop.set_all_values([['primary']*2, [cif.quote('Alice A.'), cif.quote('Bob B.')], ['1', '2']])
@@ -809,6 +816,16 @@ The current position of a tag can be obtained using ``block.get_index(tag)``.
   >>> block.get_index('_ocean_id')
   384
   >>> block.move_item(385, 0)  # let's move it back (385 == -1 here)
+
+To copy an item:
+
+.. doctest::
+
+  >>> item = block.find_loop_item('_ocean_id')
+  >>> new_block = cif.Block('new_block')
+  >>> new_block.add_item(item)  # doctest: +ELLIPSIS
+  <gemmi.cif.Item object at 0x...>
+
 
 Column
 ======

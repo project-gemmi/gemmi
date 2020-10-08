@@ -385,6 +385,7 @@ struct Block {
     return pair ? &(*pair)[1] : nullptr;
   }
   Column find_loop(const std::string& tag);
+  const Item* find_loop_item(const std::string& tag) const;
   Column find_values(const std::string& tag);
   bool has_tag(const std::string& tag) const {
     return const_cast<Block*>(this)->find_values(tag).item() != nullptr;
@@ -680,6 +681,13 @@ inline void Block::set_pair(const std::string& tag, const std::string& value) {
 inline Column Block::find_loop(const std::string& tag) {
   Column c = find_values(tag);
   return c.item() && c.item()->type == ItemType::Loop ? c : Column();
+}
+
+inline const Item* Block::find_loop_item(const std::string& tag) const {
+  for (const Item& i : items)
+    if (i.type == ItemType::Loop && i.loop.find_tag(tag) != -1)
+      return &i;
+  return nullptr;
 }
 
 inline Column Block::find_values(const std::string& tag) {

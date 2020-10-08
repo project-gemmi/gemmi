@@ -40,6 +40,16 @@ std::vector<std::string> quote_list(py::list items) {
   return ret;
 }
 
+template<typename T>
+T& add_to_vector(std::vector<T>& vec, const T& new_item, int pos) {
+  if (pos < 0)
+    pos = (int) vec.size();
+  else if (pos > (int) vec.size())
+    throw py::index_error();
+  vec.insert(vec.begin() + pos, new_item);
+  return vec[pos];
+}
+
 void add_cif(py::module& cif) {
   py::class_<Block> pyCifBlock(cif, "Block");
   py::class_<Item> pyCifItem(cif, "Item");
@@ -86,13 +96,8 @@ void add_cif(py::module& cif) {
           throw py::index_error();
         d.blocks.erase(d.blocks.begin() + index);
     }, py::arg("index"))
-    .def("add_copied_block", [](Document& d, const Block& block, int pos) {
-        if (pos < 0)
-          pos = (int) d.blocks.size();
-        else if (pos > (int) d.blocks.size())
-          throw py::index_error();
-        d.blocks.insert(d.blocks.begin() + pos, block);
-        return d.blocks[pos];
+    .def("add_copied_block", [](Document& d, const Block& block, int pos) -> Block& {
+        return add_to_vector(d.blocks, block, pos);
     }, py::arg("block"), py::arg("pos")=-1,
        py::return_value_policy::reference_internal)
     .def("add_new_block", &Document::add_new_block,
@@ -155,6 +160,8 @@ void add_cif(py::module& cif) {
          py::return_value_policy::reference)
     .def("find_loop", &Block::find_loop, py::arg("tag"),
          py::keep_alive<0, 1>())
+    .def("find_loop_item", &Block::find_loop_item, py::arg("tag"),
+         py::return_value_policy::reference_internal)
     .def("find_values", &Block::find_values, py::arg("tag"),
          py::keep_alive<0, 1>())
     .def("find", (Table (Block::*)(const std::string&,
@@ -165,6 +172,10 @@ void add_cif(py::module& cif) {
          py::arg("tags"), py::keep_alive<0, 1>())
     .def("find_or_add", &Block::find_or_add,
          py::arg("prefix"), py::arg("tags"), py::keep_alive<0, 1>())
+    .def("add_item", [](Block& block, const Item& item, int pos) {
+        return add_to_vector(block.items, item, pos);
+    }, py::arg("item"), py::arg("pos")=-1,
+       py::return_value_policy::reference_internal)
     .def("find_frame", &Block::find_frame, py::arg("name"),
          py::return_value_policy::reference_internal)
     .def("get_index", &Block::get_index, py::arg("tag"))
