@@ -24,9 +24,11 @@ namespace cif = gemmi::cif;
 using gemmi::Topo;
 using gemmi::Restraints;
 
+namespace {
+
 enum OptionIndex { Monomers=4, NoHydrogens, KeepHydrogens, NoZeroOccRestr };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
     "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_BASENAME"
@@ -48,13 +50,12 @@ static const option::Descriptor Usage[] = {
 
 
 // Topology: restraints applied to a model
-static int count_provenance(const std::vector<Topo::Force>& forces,
-                            Topo::Provenance p) {
+int count_provenance(const std::vector<Topo::Force>& forces, Topo::Provenance p) {
   return std::count_if(forces.begin(), forces.end(),
                        [&](const Topo::Force& f) { return f.provenance == p; });
 }
 
-static bool has_anisou(const gemmi::Model& model) {
+bool has_anisou(const gemmi::Model& model) {
   for (const gemmi::Chain& chain : model.chains)
     for (const gemmi::Residue& res : chain.residues)
       for (const gemmi::Atom& a : res.atoms)
@@ -64,7 +65,7 @@ static bool has_anisou(const gemmi::Model& model) {
 }
 
 // for compatibility with makecif, not sure what ccp4_mod_id is really used for
-static std::string get_ccp4_mod_id(const std::vector<std::string>& mods) {
+std::string get_ccp4_mod_id(const std::vector<std::string>& mods) {
   for (const std::string& m : mods)
     if (m != "AA-STAND" && !gemmi::starts_with(m, "DEL-OXT") &&
         !gemmi::starts_with(m, "DEL-HN") && m != "DEL-NMH")
@@ -72,9 +73,9 @@ static std::string get_ccp4_mod_id(const std::vector<std::string>& mods) {
   return ".";
 }
 
-static cif::Document make_crd(const gemmi::Structure& st,
-                              const gemmi::MonLib& monlib,
-                              const Topo& topo) {
+cif::Document make_crd(const gemmi::Structure& st,
+                       const gemmi::MonLib& monlib,
+                       const Topo& topo) {
   using gemmi::to_str;
   cif::Document crd;
   auto e_id = st.info.find("_entry.id");
@@ -245,9 +246,9 @@ static cif::Document make_crd(const gemmi::Structure& st,
   return crd;
 }
 
-static void add_restraints(const Topo::Force force,
-                           const Topo& topo, const Restraints& rt,
-                           cif::Loop& restr_loop, int (&counters)[5]) {
+void add_restraints(const Topo::Force force,
+                    const Topo& topo, const Restraints& rt,
+                    cif::Loop& restr_loop, int (&counters)[5]) {
   //using gemmi::to_str;
   const auto& to_str = gemmi::to_str_prec<3>; // to make comparisons easier
   const auto& to_str3 = gemmi::to_str_prec<3>;
@@ -314,7 +315,7 @@ static void add_restraints(const Topo::Force force,
   }
 }
 
-static cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
+cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
   using Provenance = Topo::Provenance;
   cif::Document doc;
   doc.blocks.emplace_back("restraints");
@@ -376,6 +377,8 @@ static cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
   }
   return doc;
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

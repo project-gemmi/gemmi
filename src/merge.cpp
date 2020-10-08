@@ -19,9 +19,11 @@
 #define GEMMI_PROG merge
 #include "options.h"
 
+namespace {
+
 enum OptionIndex { WriteAnom=4, BlockName, Compare, PrintAll };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n  " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
     "\n  " EXE_NAME " --compare [options] UNMERGED_FILE MERGED_FILE"
@@ -126,7 +128,6 @@ struct Intensities {
 
 enum class ReadType { Unmerged, Mean, Anomalous };
 
-static
 Intensities read_unmerged_intensities_from_mtz(const gemmi::Mtz& mtz) {
   if (mtz.batches.empty())
     gemmi::fail("expected unmerged file");
@@ -149,7 +150,6 @@ Intensities read_unmerged_intensities_from_mtz(const gemmi::Mtz& mtz) {
   return intensities;
 }
 
-static
 Intensities read_mean_intensities_from_mtz(const gemmi::Mtz& mtz) {
   if (!mtz.batches.empty())
     gemmi::fail("expected merged file");
@@ -162,7 +162,6 @@ Intensities read_mean_intensities_from_mtz(const gemmi::Mtz& mtz) {
   return intensities;
 }
 
-static
 Intensities read_anomalous_intensities_from_mtz(const gemmi::Mtz& mtz) {
   if (!mtz.batches.empty())
     gemmi::fail("expected merged file");
@@ -184,7 +183,6 @@ Intensities read_anomalous_intensities_from_mtz(const gemmi::Mtz& mtz) {
   return intensities;
 }
 
-static
 Intensities read_unmerged_intensities_from_mmcif(const gemmi::ReflnBlock& rb) {
   size_t value_idx = rb.get_column_index("intensity_net");
   size_t sigma_idx = rb.get_column_index("intensity_sigma");
@@ -202,7 +200,6 @@ Intensities read_unmerged_intensities_from_mmcif(const gemmi::ReflnBlock& rb) {
   return intensities;
 }
 
-static
 Intensities read_mean_intensities_from_mmcif(const gemmi::ReflnBlock& rb) {
   size_t value_idx = rb.get_column_index("intensity_meas");
   size_t sigma_idx = rb.get_column_index("intensity_sigma");
@@ -212,7 +209,6 @@ Intensities read_mean_intensities_from_mmcif(const gemmi::ReflnBlock& rb) {
   return intensities;
 }
 
-static
 Intensities read_anomalous_intensities_from_mmcif(const gemmi::ReflnBlock& rb) {
   size_t value_idx[2] = {rb.get_column_index("pdbx_I_plus"),
                          rb.get_column_index("pdbx_I_minus")};
@@ -233,7 +229,6 @@ Intensities read_anomalous_intensities_from_mmcif(const gemmi::ReflnBlock& rb) {
   return intensities;
 }
 
-static
 Intensities read_intensities(ReadType itype, const char* input_path,
                              const char* block_name, bool verbose) {
   try {
@@ -293,7 +288,6 @@ Intensities read_intensities(ReadType itype, const char* input_path,
   }
 }
 
-static
 void merge_intensities_in_place(Intensities& intensities) {
   intensities.sort();
   std::vector<Intensity>::iterator out = intensities.data.begin();
@@ -319,7 +313,6 @@ void merge_intensities_in_place(Intensities& intensities) {
   intensities.data.erase(++out, intensities.data.end());
 }
 
-static
 void write_merged_intensities(const Intensities& intensities, const char* output_path) {
   gemmi::Mtz mtz;
   mtz.cell = intensities.unit_cell;
@@ -370,7 +363,6 @@ void write_merged_intensities(const Intensities& intensities, const char* output
   }
 }
 
-static
 void print_reflection(const Intensity* a, const Intensity* r) {
   const Intensity& h = a ? *a : *r;
   printf("   %3d %3d %3d  %c ",
@@ -384,7 +376,6 @@ void print_reflection(const Intensity* a, const Intensity* r) {
     printf("  N/A    vs %8.2f\n", r->value);
 }
 
-static
 void compare_intensities(Intensities& intensities, Intensities& ref, bool print_all) {
   if (intensities.spacegroup == ref.spacegroup)
     printf("Space group: %s\n", intensities.spacegroup_str().c_str());
@@ -435,6 +426,8 @@ void compare_intensities(Intensities& intensities, Intensities& ref, bool print_
   printf("%s CC: %.9g%% (mean ratio: %g)\n", what, 100 * ci.coefficient(), ci.mean_ratio());
   printf("Sigma CC: %.9g%% (mean ratio: %g)\n", 100 * cs.coefficient(), cs.mean_ratio());
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

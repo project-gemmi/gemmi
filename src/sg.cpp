@@ -10,9 +10,11 @@
 
 using std::printf;
 
+namespace {
+
 enum OptionIndex { Asu=4 };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] SPACEGROUP[...]"
     "\nPrints information about the space group."},
@@ -24,14 +26,14 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-static void print_symmetry_operations(const gemmi::GroupOps& ops) {
+void print_symmetry_operations(const gemmi::GroupOps& ops) {
   printf("%zu x %zu symmetry operations:\n",
          ops.cen_ops.size(), ops.sym_ops.size());
   for (const gemmi::Op& op : ops)
     printf("    %s\n", op.triplet().c_str());
 }
 
-static void print_verbose_info(const char* hall) {
+void print_verbose_info(const char* hall) {
   using gemmi::Op;
   printf("The operations are generated from Hall symbol: %s\n", hall);
   gemmi::GroupOps ops = gemmi::generators_from_hall(hall);
@@ -48,7 +50,7 @@ static void print_verbose_info(const char* hall) {
     printf("    %s\n", symop.triplet().c_str());
 }
 
-static void draw_asu(const gemmi::SpaceGroup* sg, int n) {
+void draw_asu(const gemmi::SpaceGroup* sg, int n) {
   gemmi::Grid<float> grid;
   grid.spacegroup = sg;
   grid.set_size(n, n, n);
@@ -64,7 +66,7 @@ static void draw_asu(const gemmi::SpaceGroup* sg, int n) {
   }
 }
 
-static const gemmi::SpaceGroup* find_spacegroup(const char* arg, bool verbose) {
+const gemmi::SpaceGroup* find_spacegroup(const char* arg, bool verbose) {
   const gemmi::SpaceGroup* sg = gemmi::find_spacegroup_by_name(arg);
   if (sg == nullptr) {
     try {
@@ -82,7 +84,7 @@ static const gemmi::SpaceGroup* find_spacegroup(const char* arg, bool verbose) {
   return sg;
 }
 
-static void print_info(const gemmi::SpaceGroup* sg, bool verbose) {
+void print_info(const gemmi::SpaceGroup* sg, bool verbose) {
   printf("Number: %d\n", sg->number);
   bool is_reference = sg->is_reference_setting();
   printf("Is standard setting for this space group: %s\n",
@@ -111,6 +113,8 @@ static void print_info(const gemmi::SpaceGroup* sg, bool verbose) {
     print_verbose_info(sg->hall);
   printf("\n");
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

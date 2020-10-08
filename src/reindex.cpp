@@ -16,9 +16,11 @@
 
 using std::fprintf;
 
+namespace {
+
 enum OptionIndex { Hkl=4, NoHistory };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n  " EXE_NAME " [options] INPUT_MTZ OUTPUT_MTZ"
     "\nOptions:"},
@@ -33,6 +35,8 @@ static const option::Descriptor Usage[] = {
     "\nInput file can be gzipped." },
   { 0, 0, 0, 0, 0, 0 }
 };
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

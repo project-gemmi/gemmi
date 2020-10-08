@@ -12,9 +12,11 @@
 
 using namespace gemmi;
 
+namespace {
+
 enum OptionIndex { Bond=4, BondEsd, Angle, AngleEsd, Relative };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
     "\n  " EXE_NAME " [options] FILE1 FILE2"
@@ -44,14 +46,12 @@ struct MinDelta {
   double rel = 0.0;
 };
 
-static
 std::string str(const ChemComp& cc, const Restraints::Bond& b) {
   return gemmi::tostr("bond ", b.id1.atom, '-', b.id2.atom,
                       " (", cc.get_atom(b.id1.atom).chem_type,
                       '-', cc.get_atom(b.id2.atom).chem_type, ')');
 }
 
-static
 std::string str(const ChemComp& cc, const Restraints::Angle& a) {
   return gemmi::tostr("angle ", a.id1.atom, '-', a.id2.atom, '-', a.id3.atom,
                       " (", cc.get_atom(a.id1.atom).chem_type,
@@ -59,17 +59,14 @@ std::string str(const ChemComp& cc, const Restraints::Angle& a) {
                       '-', cc.get_atom(a.id3.atom).chem_type, ')');
 }
 
-static
 std::string str(const ChemComp&, const Restraints::Torsion& a) {
   return "torsion " + a.str();
 }
 
-static
 std::string str(const ChemComp&, const Restraints::Chirality& a) {
   return "chirality " + a.str();
 }
 
-static
 const char* mark(double delta, double eps) {
   if (delta < eps) return "";
   if (delta < 2*eps) return "*";
@@ -78,7 +75,6 @@ const char* mark(double delta, double eps) {
   return "****";
 }
 
-static
 void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
                        const MinDelta& delta) {
   // atoms
@@ -203,6 +199,8 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
     if (!planes2[i].empty())
       printf("+ plane %s\n", cc2.rt.planes[i].str().c_str());
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

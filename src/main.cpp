@@ -33,6 +33,8 @@ int tags_main(int argc, char** argv);
 int validate_main(int argc, char** argv);
 int wcn_main(int argc, char** argv);
 
+namespace {
+
 typedef int (*main_type)(int argc, char** argv);
 
 struct SubCmd {
@@ -72,7 +74,7 @@ static SubCmd subcommands[] = {
   CMD(wcn, "calculate local density / contact numbers (WCN, CN, ACN, LDM)"),
 };
 
-static void print_usage() {
+void print_usage() {
   printf("gemmi " GEMMI_VERSION "\n"
          "Command-line utility that accompanies the GEMMI library,\n"
          "which is a joint project of CCP4 and Global Phasing Ltd.\n"
@@ -85,14 +87,16 @@ static void print_usage() {
     printf(" %-13s %s\n", sub.cmd, sub.desc);
 }
 
-static bool eq(const char* a, const char* b) { return std::strcmp(a, b) == 0; }
+bool eq(const char* a, const char* b) { return std::strcmp(a, b) == 0; }
 
-static main_type get_subcommand_function(const char* cmd) {
+main_type get_subcommand_function(const char* cmd) {
   for (SubCmd& sub : subcommands)
     if (eq(cmd, sub.cmd))
       return sub.func;
   return nullptr;
 }
+
+} // anonymous namespace
 
 #if defined(_WIN32) && defined(_UNICODE)
 #include <vector>

@@ -12,9 +12,11 @@
 #include "options.h"
 #include "cifmod.h"  // for apply_cif_doc_modifications, ...
 
+namespace {
+
 enum OptionIndex { PdbxStyle=AfterCifModOptions, Cif2Cif };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
     "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
@@ -36,6 +38,7 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   std::ios_base::sync_with_stdio(false);

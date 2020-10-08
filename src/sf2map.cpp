@@ -11,9 +11,11 @@
 #define GEMMI_PROG sf2map
 #include "options.h"
 
+namespace {
+
 enum OptionIndex { Normalize=AfterMapOptions };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n  " EXE_NAME " [options] INPUT_FILE MAP_FILE\n\n"
     "INPUT_FILE must be either MTZ or mmCIF with map coefficients.\n\n"
@@ -44,7 +46,7 @@ static const option::Descriptor Usage[] = {
 };
 
 
-static void transform_sf_to_map(OptParser& p) {
+void transform_sf_to_map(OptParser& p) {
   const char* input_path = p.nonOption(0);
   const char* map_path = p.options[GridQuery] ? nullptr : p.nonOption(1);
   gemmi::Ccp4<float> ccp4;
@@ -61,6 +63,7 @@ static void transform_sf_to_map(OptParser& p) {
   ccp4.write_ccp4_map(map_path);
 }
 
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

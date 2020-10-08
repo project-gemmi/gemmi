@@ -12,12 +12,14 @@
 #define GEMMI_PROG align
 #include "options.h"
 
+namespace {
+
 using std::printf;
 
 enum OptionIndex { Match=4, Mismatch, GapOpen, GapExt,
                    CheckMmcif, PrintOneLetter, Query, Target, TextAlign };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Pairwise sequence alignment with scoring matrix and affine gap penalty."
     "\n\nUsage:"
@@ -61,10 +63,10 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-static void print_alignment_details(const gemmi::AlignmentResult& result,
-                                    const std::string& chain_name,
-                                    const gemmi::ConstResidueSpan& polymer,
-                                    const gemmi::Entity& ent) {
+void print_alignment_details(const gemmi::AlignmentResult& result,
+                             const std::string& chain_name,
+                             const gemmi::ConstResidueSpan& polymer,
+                             const gemmi::Entity& ent) {
   std::vector<bool> gaps = prepare_free_gapo(polymer, ent.polymer_type);
   auto gap = gaps.begin();
   int seq_pos = 0;
@@ -97,8 +99,8 @@ static void print_alignment_details(const gemmi::AlignmentResult& result,
   }
 }
 
-static void check_label_seq_id(const gemmi::AlignmentResult& result,
-                               const gemmi::ConstResidueSpan& polymer) {
+void check_label_seq_id(const gemmi::AlignmentResult& result,
+                        const gemmi::ConstResidueSpan& polymer) {
   int seq_pos = 1;
   auto residues = polymer.first_conformer();
   auto res = residues.begin();
@@ -117,15 +119,15 @@ static void check_label_seq_id(const gemmi::AlignmentResult& result,
   }
 }
 
-static const gemmi::Model& get_first_model(gemmi::Structure& st) {
+const gemmi::Model& get_first_model(gemmi::Structure& st) {
   gemmi::setup_entities(st);
   if (st.models.empty())
     gemmi::fail("No atoms found. Wrong input file?");
   return st.models[0];
 }
 
-static gemmi::ConstResidueSpan get_polymer(const gemmi::Model& model,
-                                           const std::string& chain_name) {
+gemmi::ConstResidueSpan get_polymer(const gemmi::Model& model,
+                                    const std::string& chain_name) {
   if (const gemmi::Chain* ch = model.find_chain(chain_name)) {
     gemmi::ConstResidueSpan polymer = ch->get_polymer();
     if (!polymer)
@@ -136,8 +138,8 @@ static gemmi::ConstResidueSpan get_polymer(const gemmi::Model& model,
   }
 }
 
-static const gemmi::Entity* get_entity(gemmi::Structure& st,
-                                       const std::string& chain_name) {
+const gemmi::Entity* get_entity(gemmi::Structure& st,
+                                const std::string& chain_name) {
   auto polymer = get_polymer(get_first_model(st), chain_name);
   if (const gemmi::Entity* ent = st.get_entity_of(polymer))
     return ent;
@@ -162,6 +164,8 @@ std::vector<std::string> string_to_vector(const std::string& s) {
     v[i] = s[i];
   return v;
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

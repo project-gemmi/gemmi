@@ -9,9 +9,11 @@
 #define GEMMI_PROG fprime
 #include "options.h"
 
+namespace {
+
 enum OptionIndex { Energy=4, Wavelen };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] ELEMENT[...]"
     "\nPrints anomalous scattering factors f' and f\"."
@@ -25,6 +27,8 @@ static const option::Descriptor Usage[] = {
     "  -w, --wavelength=LAMBDA  \tWavelength [A]" },
   { 0, 0, 0, 0, 0, 0 }
 };
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

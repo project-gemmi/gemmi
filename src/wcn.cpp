@@ -17,6 +17,8 @@
 
 using namespace gemmi;
 
+namespace {
+
 enum OptionIndex { FromFile=4, ListResidues, MinDist, MaxDist,
                    Exponent, Blur, Rom, ChainName, Sanity, SideChains,
                    NoCrystal, OmitEnds, PrintRes, XyOut };
@@ -26,7 +28,7 @@ struct WcnArg {
     return Arg::Choice(option, msg, {"include", "exclude", "only"});
   }
 };
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] INPUT[...]\n"
     "Calculation of local density / contact numbers: WCN, CN, ACN, LDM, etc."},
@@ -88,7 +90,7 @@ const Position calculate_center_of_mass(const ResidueSpan& residue_span) {
   return Position(sum / mass);
 }
 
-static bool check_sanity(const Model& model) {
+bool check_sanity(const Model& model) {
   for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms) {
@@ -109,7 +111,7 @@ static bool check_sanity(const Model& model) {
 }
 
 // ranks are from 1 to data.size()
-static std::vector<int> get_ranks(const std::vector<double>& data) {
+std::vector<int> get_ranks(const std::vector<double>& data) {
   std::vector<int> indices(data.size());
   for (size_t i = 0; i != indices.size(); ++i)
     indices[i] = (int) i;
@@ -142,7 +144,7 @@ struct Result {
   double relative_mean_abs_dev;
 };
 
-static float calculate_weight(float dist_sq, const Params& params) {
+float calculate_weight(float dist_sq, const Params& params) {
   if (params.exponent == 2.0)  // canonical WCN
     return 1.0f / dist_sq;
   if (params.exponent == 0.0) // CN (a.k.a ACN)
@@ -151,7 +153,7 @@ static float calculate_weight(float dist_sq, const Params& params) {
 }
 
 // CA,N,C,O
-static bool is_protein_backbone(const std::string& name) {
+bool is_protein_backbone(const std::string& name) {
   switch (name.size()) {
     case 1: return name[0] == 'N' || name[0] == 'C' || name[0] == 'O';
     case 2: return name[0] == 'C' && name[1] == 'A';
@@ -159,7 +161,7 @@ static bool is_protein_backbone(const std::string& name) {
   }
 }
 
-static Result test_bfactor_models(Structure& st, const Params& params) {
+Result test_bfactor_models(Structure& st, const Params& params) {
   Model& model = st.first_model();
 
   // prepare cell lists for neighbour search
@@ -313,6 +315,8 @@ static Result test_bfactor_models(Structure& st, const Params& params) {
   r.n_residues = n_residues;
   return r;
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

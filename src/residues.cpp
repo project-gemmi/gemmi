@@ -9,9 +9,11 @@
 #define GEMMI_PROG residues
 #include "options.h"
 
+namespace {
+
 enum OptionIndex { FormatIn=3, Match, Label };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] INPUT[...]"
     "\nPrints one residue per line, with atom names." },
@@ -29,6 +31,8 @@ static const option::Descriptor Usage[] = {
     "\n/mdl/chn/s1.i1(res)-s2.i2/at[el]:aloc (all fields are optional)\n" },
   { 0, 0, 0, 0, 0, 0 }
 };
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

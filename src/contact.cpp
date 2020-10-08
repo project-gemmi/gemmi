@@ -13,13 +13,15 @@
 #define GEMMI_PROG contact
 #include "options.h"
 
+namespace {
+
 using namespace gemmi;
 using std::printf;
 
 enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Ignore, NoSym, AsAssembly,
                    NoH, NoWater, NoLigand, Count, Twice };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] INPUT[...]"
     "\nSearches for contacts in a model (PDB or mmCIF)."},
@@ -68,7 +70,7 @@ struct ContactParameters {
   int verbose;
 };
 
-static void print_contacts(Structure& st, const ContactParameters& params) {
+void print_contacts(Structure& st, const ContactParameters& params) {
   float max_r = params.use_cov_radius ? 4.f + params.cov_tol : params.max_dist;
   NeighborSearch ns(st.first_model(), st.cell, std::max(5.0f, max_r));
   ns.populate(/*include_h=*/!params.no_hydrogens);
@@ -130,6 +132,8 @@ static void print_contacts(Structure& st, const ContactParameters& params) {
   if (params.print_count)
     printf("%s:%g\n", st.name.c_str(), 0.5 * counter);
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

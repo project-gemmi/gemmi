@@ -22,9 +22,11 @@ namespace cif = gemmi::cif;
 using gemmi::Topo;
 using gemmi::Restraints;
 
+namespace {
+
 enum OptionIndex { Monomers=4, RemoveH, KeepH, Water, Sort };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
     "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
@@ -90,6 +92,7 @@ int count_h(const gemmi::Structure& st) {
   return n;
 }
 
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

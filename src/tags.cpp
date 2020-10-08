@@ -22,9 +22,11 @@ namespace pegtl = tao::pegtl;
 namespace cif = gemmi::cif;
 namespace rules = gemmi::cif::rules;
 
+namespace {
+
 enum OptionIndex { CountFiles=3, Glob, Full, EntriesIdx, Sf };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] FILE_OR_DIR[...]"
     "\nList CIF tags with counts of blocks and values."},
@@ -192,12 +194,11 @@ template<> struct Counter<rules::loop_end> {
   }
 };
 
-static void print_value_count_for_tsv(const char* item,
-                                      const TagStats::CountAndExample &val) {
+void print_value_count_for_tsv(const char* item, const TagStats::CountAndExample &val) {
   std::printf("\t%d %s %s", val.count, val.example.c_str(), item);
 }
 
-static void print_data_for_html(const Context& ctx) {
+void print_data_for_html(const Context& ctx) {
   //std::printf("tag\tfiles\tnmin\tnavg\tnmax\n");
   for (auto& item : ctx.stats) {
     const TagStats& st = item.second;
@@ -241,7 +242,7 @@ static void print_data_for_html(const Context& ctx) {
   }
 }
 
-static void print_tag_list(const Context& ctx) {
+void print_tag_list(const Context& ctx) {
   std::printf("tag\t%s-count\tvalue-count\n", ctx.per_block ? "block" : "file");
   for (auto& item : ctx.stats) {
     const TagStats& st = item.second;
@@ -252,7 +253,7 @@ static void print_tag_list(const Context& ctx) {
   }
 }
 
-static void process(Context& ctx, const std::string& path) {
+void process(Context& ctx, const std::string& path) {
   try {
     gemmi::MaybeGzipped input(path);
     if (input.is_stdin()) {
@@ -281,13 +282,15 @@ static void process(Context& ctx, const std::string& path) {
   }
 }
 
-static bool file_exists(const std::string& path) {
+bool file_exists(const std::string& path) {
   if (FILE *file = std::fopen(path.c_str(), "rb")) {
     fclose(file);
     return true;
   }
   return false;
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

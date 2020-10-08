@@ -12,6 +12,8 @@
 #define GEMMI_PROG blobs
 #include "options.h"
 
+namespace {
+
 namespace cif = gemmi::cif;
 using std::printf;
 
@@ -19,7 +21,7 @@ enum OptionIndex { SigmaCutoff=AfterMapOptions, AbsCutoff,
                    MaskRadius, MaskWater,
                    MinVolume, MinScore, MinSigma, MinDensity };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
     "\n " EXE_NAME " [options] MTZ_OR_MMCIF PDB_OR_MMCIF"
@@ -166,7 +168,7 @@ std::vector<Blob> find_blobs_by_flood_fill(const gemmi::Grid<float>& grid,
 }
 
 
-static int run(OptParser& p) {
+int run(OptParser& p) {
   std::string sf_path = p.nonOption(0);
   std::string model_path = p.coordinate_input_file(1);
 
@@ -269,6 +271,8 @@ static int run(OptParser& p) {
   }
   return 0;
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

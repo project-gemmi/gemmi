@@ -19,12 +19,13 @@
 #define GEMMI_PROG map2sf
 #include "options.h"
 
+namespace {
+
 using gemmi::Mtz;
-using options_type = std::vector<option::Option>;
 
 enum OptionIndex { Base=4, Section, DMin, FType, PhiType };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n  " EXE_NAME " [options] MAP_FILE OUTPUT_FILE COL_F COL_PH\n\n"
     "Writes map coefficients (amplitude and phase) of a map to OUTPUT_FILE.\n"
@@ -46,12 +47,7 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-inline float get_phase_for_mtz(std::complex<float> v) {
-  float angle = (float) gemmi::deg(std::arg(v));
-  return angle >= 0.f ? angle : angle + 360.f;
-}
-
-static void transform_map_to_sf(OptParser& p) {
+void transform_map_to_sf(OptParser& p) {
   bool verbose = p.options[Verbose];
   const char* map_path = p.nonOption(0);
   const char* output_path = p.nonOption(1);
@@ -129,6 +125,7 @@ static void transform_map_to_sf(OptParser& p) {
   }
 }
 
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

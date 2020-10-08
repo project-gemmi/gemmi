@@ -9,6 +9,8 @@
 #include "options.h"
 #include "cifmod.h"  // for apply_cif_doc_modifications, ...
 
+namespace {
+
 namespace cif = gemmi::cif;
 
 struct ConvArg: public Arg {
@@ -18,7 +20,7 @@ struct ConvArg: public Arg {
 };
 
 enum OptionIndex { Comcifs=AfterCifModOptions, Mmjson, Bare, Numb, CifDot, };
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
     "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
@@ -55,12 +57,10 @@ static const option::Descriptor Usage[] = {
 };
 
 
-static void convert(const std::string& input, const std::string& output,
-                    const std::vector<option::Option>& options) {
+void convert(const std::string& input, const std::string& output,
+             const std::vector<option::Option>& options) {
   cif::Document doc = gemmi::read_cif_gz(input);
   apply_cif_doc_modifications(doc, options);
-
-
   gemmi::Ofstream os(output, &std::cout);
   cif::JsonWriter writer(os.ref());
   if (options[Comcifs])
@@ -80,6 +80,8 @@ static void convert(const std::string& input, const std::string& output,
     writer.cif_dot = options[CifDot].arg;
   writer.write_json(doc);
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   std::ios_base::sync_with_stdio(false);

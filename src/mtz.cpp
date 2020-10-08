@@ -13,10 +13,12 @@
 using gemmi::Mtz;
 using std::printf;
 
+namespace {
+
 enum OptionIndex { Headers=4, Dump, PrintBatch, PrintBatches, PrintTsv,
                    PrintStats, CheckAsu, ToggleEndian, NoIsym, UpdateReso };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] MTZ_FILE[...]"
     "\nPrint informations from an mtz file."},
@@ -46,7 +48,7 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-static void dump(const Mtz& mtz) {
+void dump(const Mtz& mtz) {
   printf("Title: %s\n", mtz.title.c_str());
   printf("Total Number of Datasets = %zu\n\n", mtz.datasets.size());
   for (const Mtz::Dataset& ds : mtz.datasets) {
@@ -108,7 +110,7 @@ static void dump(const Mtz& mtz) {
   }
 }
 
-static void print_batch(const Mtz::Batch& b) {
+void print_batch(const Mtz::Batch& b) {
   printf("Batch %d - %s\n", b.number, b.title.c_str());
   printf("    %zu %s: %s\n", b.axes.size(),
          b.axes.size() == 1 ? "axis" : "axes",
@@ -136,7 +138,7 @@ static void print_batch(const Mtz::Batch& b) {
   printf("\n    dataset: %d\n", b.dataset_id());
 }
 
-static void print_batch_extra_info(const Mtz::Batch& b) {
+void print_batch_extra_info(const Mtz::Batch& b) {
   gemmi::UnitCell uc = b.get_cell();
   printf("    Unit cell parameters: %g %g %g   %g %g %g\n",
          uc.a, uc.b, uc.c, uc.alpha, uc.beta, uc.gamma);
@@ -148,7 +150,7 @@ static void print_batch_extra_info(const Mtz::Batch& b) {
            u.a[i][0], u.a[i][1], u.a[i][2]);
 }
 
-static void print_tsv(const Mtz& mtz) {
+void print_tsv(const Mtz& mtz) {
   size_t ncol = mtz.columns.size();
   for (size_t i = 0; i < ncol; ++i)
     printf("%s%c", mtz.columns[i].label.c_str(), i + 1 != ncol ? '\t' : '\n');
@@ -162,7 +164,7 @@ struct ColumnStats {
   gemmi::Variance var;
 };
 
-static void print_stats(const Mtz& mtz) {
+void print_stats(const Mtz& mtz) {
   std::vector<ColumnStats> column_stats(mtz.columns.size());
   for (size_t i = 0; i != mtz.data.size(); ++i) {
     float v = mtz.data[i];
@@ -188,7 +190,7 @@ static void print_stats(const Mtz& mtz) {
   }
 }
 
-static void check_asu(const Mtz& mtz) {
+void check_asu(const Mtz& mtz) {
   size_t ncol = mtz.columns.size();
   const gemmi::SpaceGroup* sg = mtz.spacegroup;
   if (!sg)
@@ -268,6 +270,8 @@ void print_mtz_info(Stream&& stream, const char* path,
   if (options[CheckAsu])
     check_asu(mtz);
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

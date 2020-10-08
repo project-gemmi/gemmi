@@ -17,9 +17,11 @@
 using namespace gemmi;
 using std::printf;
 
+namespace {
+
 enum OptionIndex { Dihedrals=4, Bfactors, NoContentInfo };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] INPUT[...]"
     "\nAnalyses content of a PDB or mmCIF."},
@@ -35,7 +37,7 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-static void print_atoms_on_special_positions(const Structure& st) {
+void print_atoms_on_special_positions(const Structure& st) {
   printf(" Atoms on special positions:");
   bool found = false;
   for (const Chain& chain : st.first_model().chains)
@@ -55,7 +57,7 @@ static void print_atoms_on_special_positions(const Structure& st) {
   printf("\n");
 }
 
-static void print_solvent_content(const UnitCell& cell, double mol_weight) {
+void print_solvent_content(const UnitCell& cell, double mol_weight) {
   if (cell.is_crystal()) {
     double Vm = cell.volume_per_image() / mol_weight;
     printf(" Matthews coefficient: %29.3f\n", Vm);
@@ -69,7 +71,7 @@ static void print_solvent_content(const UnitCell& cell, double mol_weight) {
   }
 }
 
-static void print_content_info(const Structure& st, bool /*verbose*/) {
+void print_content_info(const Structure& st, bool /*verbose*/) {
   printf(" Spacegroup   %s\n", st.spacegroup_hm.c_str());
   int order = 1;
   const SpaceGroup* sg = st.find_spacegroup();
@@ -152,7 +154,7 @@ static void print_content_info(const Structure& st, bool /*verbose*/) {
   print_solvent_content(st.cell, mol_weight);
 }
 
-static void print_dihedrals(const Structure& st) {
+void print_dihedrals(const Structure& st) {
   printf(" Chain Residue      Psi      Phi    Omega\n");
   const Model& model = st.first_model();
   for (const Chain& chain : model.chains) {
@@ -177,7 +179,7 @@ static void print_dihedrals(const Structure& st) {
   printf("\n");
 }
 
-static void print_bfactor_info(const gemmi::Model& model) {
+void print_bfactor_info(const gemmi::Model& model) {
   std::vector<double> bfactors;
   for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)
@@ -191,6 +193,8 @@ static void print_bfactor_info(const gemmi::Model& model) {
   if (stats.dmin < stats.dmax)
     print_histogram(bfactors, stats.dmin, stats.dmax);
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

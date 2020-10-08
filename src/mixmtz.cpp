@@ -10,9 +10,11 @@
 
 using gemmi::Mtz;
 
+namespace {
+
 enum OptionIndex { Force=4, Asu, ToggleEndian };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] MTZ_IN1[...] MTZ_OUT"
     "\nWrite selected columns from one or more MTZ files to a new file."},
@@ -31,7 +33,7 @@ struct InputSpec {
   Mtz mtz;
 };
 
-static Mtz merge(const std::vector<InputSpec>& input_list) {
+Mtz merge(const std::vector<InputSpec>& input_list) {
   assert(!input_list.empty());
   const InputSpec& input0 = input_list[0];
   const Mtz& mtz0 = input0.mtz;
@@ -52,6 +54,8 @@ static Mtz merge(const std::vector<InputSpec>& input_list) {
                     mtz0.data.begin() + (idx + 1) * out.ncol);
   return out;
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

@@ -21,12 +21,13 @@ namespace pegtl = tao::pegtl;
 namespace cif = gemmi::cif;
 namespace rules = gemmi::cif::rules;
 
+namespace {
 
 enum OptionIndex { FromFile=4, NamePattern, Recurse, MaxCount, OneBlock, And,
                    Delim, WithFileName, NoBlockName, WithLineNumbers, WithTag,
                    Summarize, MatchingFiles, NonMatchingFiles, Count, Raw };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage: " EXE_NAME " [options] TAG FILE_OR_DIR_OR_PDBID[...]\n"
     "       " EXE_NAME " -f FILE [options] TAG\n"
@@ -137,7 +138,7 @@ void process_match(const Input& in, GrepParams& par, int n) {
 }
 
 // Escape delim (which normally is a a single character) with backslash.
-static std::string escape(const std::string& s, char delim) {
+std::string escape(const std::string& s, char delim) {
   std::string r;
   for (char c : s) {
     if (c == '\n') {
@@ -151,7 +152,7 @@ static std::string escape(const std::string& s, char delim) {
   return r;
 }
 
-static void process_multi_match(GrepParams& par) {
+void process_multi_match(GrepParams& par) {
   if (par.multi_values.empty())
     return;
   if (par.print_count || par.only_filenames) {
@@ -196,7 +197,7 @@ static void process_multi_match(GrepParams& par) {
     mv.clear();
 }
 
-static void print_count(const GrepParams& par) {
+void print_count(const GrepParams& par) {
   const char* sep = par.delim.empty() ? ":" : par.delim.c_str();
   if (par.with_filename)
     printf("%s%s", par.path, sep);
@@ -402,7 +403,6 @@ void run_parse(Input&& in, GrepParams& par) {
     pegtl::parse<rules::file, MultiSearch, cif::Errors>(in, par);
 }
 
-static
 void grep_file(const std::string& path, GrepParams& par, int& err_count) {
   if (par.verbose)
     fprintf(stderr, "Reading %s ...\n", path.c_str());
@@ -452,6 +452,7 @@ void grep_file(const std::string& path, GrepParams& par, int& err_count) {
   std::fflush(stdout);
 }
 
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

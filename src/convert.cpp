@@ -25,6 +25,8 @@ namespace cif = gemmi::cif;
 using gemmi::CoorFormat;
 using gemmi::HowToNameCopiedChains;
 
+namespace {
+
 struct ConvArg: public Arg {
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"mmjson", "pdb", "mmcif", "ccd"});
@@ -46,7 +48,7 @@ enum OptionIndex {
   SegmentAsChain, OldPdb, ForceLabel
 };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
     "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
@@ -116,7 +118,7 @@ static const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-static void expand_ncs(gemmi::Structure& st, HowToNameCopiedChains how) {
+void expand_ncs(gemmi::Structure& st, HowToNameCopiedChains how) {
   for (gemmi::Model& model : st.models) {
     size_t orig_size = model.chains.size();
     gemmi::ChainNameGenerator namegen(model, how);
@@ -169,7 +171,7 @@ std::vector<gemmi::Chain> split_by_segments(gemmi::Chain& orig) {
   return chains;
 }
 
-static std::string format_as_string(CoorFormat format) {
+std::string format_as_string(CoorFormat format) {
   switch (format) {
     case CoorFormat::Unknown: return "unknown";
     case CoorFormat::UnknownAny: return "unknown";
@@ -181,9 +183,9 @@ static std::string format_as_string(CoorFormat format) {
   gemmi::unreachable();
 }
 
-static void convert(gemmi::Structure& st,
-                    const std::string& output, CoorFormat output_type,
-                    const std::vector<option::Option>& options) {
+void convert(gemmi::Structure& st,
+             const std::string& output, CoorFormat output_type,
+             const std::vector<option::Option>& options) {
   if (st.models.empty())
     gemmi::fail("No atoms in the input file. Wrong file format?");
 
@@ -301,6 +303,8 @@ static void convert(gemmi::Structure& st,
       gemmi::write_pdb(st, os.ref(), opt);
   }
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   std::ios_base::sync_with_stdio(false);

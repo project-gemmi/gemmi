@@ -18,12 +18,14 @@
 #define GEMMI_PROG cif2mtz
 #include "options.h"
 
+namespace {
+
 namespace cif = gemmi::cif;
 using std::fprintf;
 
 enum OptionIndex { BlockName=4, Dir, Title, History, Unmerged };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
     "\n  " EXE_NAME " [options] CIF_FILE MTZ_FILE"
@@ -61,7 +63,7 @@ struct Entry {
 
 // When we have a few alternative mmCIF tags for the same MTZ label,
 // they are in consecutive rows and all but the last one have null col_label.
-static Entry conv_table[] = {
+Entry conv_table[] = {
   {"index_h",                    "H",          'H', 0},
   {"index_k",                    "K",          'H', 0},
   {"index_l",                    "L",          'H', 0},
@@ -107,7 +109,6 @@ inline float status_to_freeflag(const std::string& str) {
   return NAN;
 }
 
-static
 gemmi::ReflnBlock& get_block_by_name(std::vector<gemmi::ReflnBlock>& rblocks,
                                      const std::string& name) {
   for (gemmi::ReflnBlock& rb : rblocks)
@@ -116,7 +117,6 @@ gemmi::ReflnBlock& get_block_by_name(std::vector<gemmi::ReflnBlock>& rblocks,
   gemmi::fail("block not found: " + name);
 }
 
-static
 void convert_cif_block_to_mtz(const gemmi::ReflnBlock& rb,
                               const std::string& mtz_path,
                               const std::vector<option::Option>& options) {
@@ -229,6 +229,8 @@ void convert_cif_block_to_mtz(const gemmi::ReflnBlock& rb,
     std::exit(3);
   }
 }
+
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);

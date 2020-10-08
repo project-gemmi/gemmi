@@ -28,6 +28,8 @@ namespace cif = gemmi::cif;
 // defined in validate_mon.cpp
 void check_monomer_doc(const cif::Document& doc);
 
+namespace {
+
 enum OptionIndex { Quiet=4, Fast, Stat, Ddl, NoRegex, Monomer };
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
@@ -79,13 +81,13 @@ inline ValueType infer_value_type(const std::string& val) {
   return ValueType::Char;
 }
 
-static std::string format_7zd(size_t k) {
+std::string format_7zd(size_t k) {
   char buf[64];
   snprintf(buf, 63, "%7zu", k);
   return buf;
 }
 
-static std::string token_stats(const cif::Document& d) {
+std::string token_stats(const cif::Document& d) {
   std::string info;
   size_t nframes = 0, nvals = 0, nloops = 0, nlooptags = 0, nloopvals = 0;
   size_t vals_by_type[5] = {0};
@@ -164,7 +166,7 @@ enum class ValType : char {
   Any
 };
 
-static bool is_integer(const std::string& s) {
+bool is_integer(const std::string& s) {
   auto b = s.begin() + (s[0] == '+' || s[0] == '-' ? 1 : 0);
   return b != s.end() && std::all_of(b, s.end(), gemmi::is_digit);
 }
@@ -534,6 +536,7 @@ bool DDL::do_validate(cif::Document& doc, std::ostream& out, bool quiet) {
   return ok;
 }
 
+} // anonymous namespace
 
 
 int GEMMI_MAIN(int argc, char **argv) {

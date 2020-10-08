@@ -17,9 +17,11 @@
 namespace cif = gemmi::cif;
 using gemmi::Topo;
 
+namespace {
+
 enum OptionIndex { Monomers=4, FormatIn, Cutoff };
 
-static const option::Descriptor Usage[] = {
+const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
     "\n " EXE_NAME " [options] INPUT_FILE"
@@ -57,12 +59,12 @@ struct RMSes {
   int all_chiralities = 0;
 };
 
-static double check_restraint(const Topo::Force force,
-                              const Topo& topo,
-                              double cutoff,
-                              const char* tag,
-                              RMSes* rmses,
-                              bool verbose) {
+double check_restraint(const Topo::Force force,
+                       const Topo& topo,
+                       double cutoff,
+                       const char* tag,
+                       RMSes* rmses,
+                       bool verbose) {
   switch (force.rkind) {
     case Topo::RKind::Bond: {
       const Topo::Bond& t = topo.bonds[force.index];
@@ -139,6 +141,7 @@ static double check_restraint(const Topo::Force force,
   gemmi::unreachable();
 }
 
+} // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
