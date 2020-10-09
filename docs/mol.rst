@@ -140,6 +140,16 @@ We will need another cif file to show anisotropic ADPs and disorder_group:
     >>> perovskite.sites[2].aniso.u23
     0.0
 
+If your structure is stored in a macromolecular format (PDB, mmCIF)
+you can read it first as macromolecular :ref:`hierarchy <mcra>`
+and convert to SmallStructure:
+
+.. doctest::
+
+  >>> gemmi.mx_to_sx_structure(gemmi.read_structure('../tests/HEM.pdb'))
+  <gemmi.SmallStructure: HEM>
+
+
 .. _chemcomp:
 
 Chemical Components

@@ -8,7 +8,7 @@
 #include "gemmi/elem.hpp"
 #include "gemmi/it92.hpp"
 #include "gemmi/small.hpp"    // for SmallStructure
-#include "gemmi/interop.hpp"  // for atom_to_site
+#include "gemmi/interop.hpp"  // for atom_to_site, mx_to_sx_structure
 
 namespace py = pybind11;
 
@@ -93,6 +93,8 @@ void add_misc(py::module& m) {
     .def("__repr__", [](const SmallStructure& self) {
         return "<gemmi.SmallStructure: " + std::string(self.name) + ">";
     });
+  m.def("mx_to_sx_structure", &gemmi::mx_to_sx_structure,
+        py::arg("st"), py::arg("n")=0);
 
   pyIT92Coef
     .def_property_readonly("a", [](IT92::Coef& c) -> std::array<double,4> {
