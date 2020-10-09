@@ -125,6 +125,7 @@ class TestBlock(unittest.TestCase):
         block = cif.read_string('data_a loop_ _x _y 1 2 3 4')[0]
         loop = block.find_loop('_x').get_loop()
         loop.add_row(['5', '6'])
+        self.assertEqual(loop.values, ['1', '2', '3', '4', '5', '6'])
         loop.add_row(['?', '0'], 0)
         self.assertEqual(list(block.find_values('_y')), '0 2 4 6'.split())
         self.assertEqual(loop.length(), 4)

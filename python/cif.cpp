@@ -6,7 +6,7 @@
 #include "gemmi/to_json.hpp"
 #include "gemmi/fstream.hpp"
 
-#include <pybind11/pybind11.h>
+//#include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
@@ -264,6 +264,7 @@ void add_cif(py::module& cif) {
     .def("width", &Loop::width, "Returns number of columns")
     .def("length", &Loop::length, "Returns number of rows")
     .def_readonly("tags", &Loop::tags)
+    .def_readonly("values", &Loop::values)
     .def("val", &Loop::val, py::arg("row"), py::arg("col"))
     .def("add_row", &Loop::add_row<std::vector<std::string>>,
          py::arg("new_values"), py::arg("pos")=-1)
