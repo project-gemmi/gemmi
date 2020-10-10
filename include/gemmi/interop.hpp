@@ -1,4 +1,4 @@
-// Copyright 2017 Global Phasing Ltd.
+// Copyright 2020 Global Phasing Ltd.
 //
 // interoperability between Model (MX) and SmallStructure (SX)
 
