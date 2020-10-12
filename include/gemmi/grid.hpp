@@ -86,11 +86,17 @@ struct GridOp {
   }
 };
 
-inline void check_grid_factors(const SpaceGroup* sg, int u, int v, int w) {
+inline void check_grid_factors(const SpaceGroup* sg, std::array<int,3> size) {
   if (sg) {
-    auto factors = sg->operations().find_grid_factors();
-    if (u % factors[0] != 0 || v % factors[1] != 0 || w % factors[2] != 0)
-      fail("Grid not compatible with the space group " + sg->xhm());
+    GroupOps gops = sg->operations();
+    auto factors = gops.find_grid_factors();
+    for (int i = 0; i != 3; ++i)
+      if (size[i] % factors[i] != 0)
+        fail("Grid not compatible with the space group " + sg->xhm());
+    for (int i = 1; i != 3; ++i)
+      for (int j = 0; j != i; ++j)
+        if (gops.are_directions_symmetry_related(i, j) && size[i] != size[j])
+          fail("Grid must have the same size in symmetry-related directions");
   }
 }
 
@@ -218,7 +224,7 @@ struct Grid : GridBase<T> {
   }
 
   void set_size(int u, int v, int w) {
-    check_grid_factors(spacegroup, u, v, w);
+    check_grid_factors(spacegroup, {{u, v, w}});
     set_size_without_checking(u, v, w);
   }
 

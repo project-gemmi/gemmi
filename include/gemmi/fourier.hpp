@@ -143,7 +143,7 @@ void initialize_hkl_grid(ReciprocalGrid<T>& grid, const DataProxy& data,
     fail("No data.");
   if (!data.spacegroup())
     fail("No spacegroup.");
-  check_grid_factors(data.spacegroup(), size[0], size[1], size[2]);
+  check_grid_factors(data.spacegroup(), size);
   grid.unit_cell = data.unit_cell();
   grid.half_l = half_l;
   grid.axis_order = axis_order;
@@ -251,7 +251,7 @@ void transform_f_phi_grid_to_map_(FPhiGrid<T>&& hkl, Grid<T>& map) {
     map.set_size(hkl.nu, hkl.nv, nw);
   } else { // hkl.axis_order == AxisOrder::ZYX
     int nu = hkl.half_l ? 2 * (hkl.nu - 1) : hkl.nu;
-    check_grid_factors(map.spacegroup, hkl.nw, hkl.nv, nu);
+    check_grid_factors(map.spacegroup, {{hkl.nw, hkl.nv, nu}});
     map.set_size_without_checking(nu, hkl.nv, hkl.nw);
   }
   // FIXME set_size_without_checking is changing axis_order - bad
@@ -296,7 +296,7 @@ Grid<T> transform_f_phi_to_map(const FPhi& fphi,
                                bool exact_size=false,
                                AxisOrder order=AxisOrder::XYZ) {
   if (exact_size) {
-    gemmi::check_grid_factors(fphi.spacegroup(), size[0], size[1], size[2]);
+    gemmi::check_grid_factors(fphi.spacegroup(), size);
   } else {
     size = get_size_for_hkl(fphi, size, sample_rate);
   }
