@@ -15,7 +15,7 @@
 namespace {
 
 enum OptionIndex { Timing=4, GridSpac, GridDims, Radius, RProbe, RShrink,
-                   CctbxCompat, RefmacCompat, Invert };
+                   IslandLimit, CctbxCompat, RefmacCompat, Invert };
 
 struct MaskArg {
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
@@ -43,6 +43,8 @@ const option::Descriptor Usage[] = {
     "  --r-probe=Rp  \tUse VdW radius + Rp (default: 1.0A)." },
   { RShrink, 0, "", "r-shrink", Arg::Float,
     "  --r-shrink=Rs  \tFinally, remove a shell of thickness Rs (default: 1.1A)." },
+  { IslandLimit, 0, "", "island-limit", Arg::Float,
+    "  --island-limit=VOL  \tRemove \"islands\" up to VOL A^3." },
   { CctbxCompat, 0, "", "cctbx-compat", Arg::None,
     "  --cctbx-compat  \tUse vdW, Rprobe, Rshrink radii from cctbx." },
   { RefmacCompat, 0, "", "refmac-compat", Arg::None,
@@ -110,6 +112,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     const int8_t vmol = 1;
     const int8_t vsol = 0;
     double rshrink = 1.1;
+    double island_vol = 0.;
     if (p.options[Radius]) {
       if (p.options[RProbe])
         p.exit_exclusive(Radius, RProbe);
@@ -134,6 +137,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         radii_set = gemmi::AtomicRadiiSet::Refmac;
         rprobe = 1.0;
         rshrink = 0.8;
+        island_vol = 50;  // the exact value used in Refmac is yet to be found
       }
       if (p.options[RProbe])
         rprobe = std::atof(p.options[RProbe].arg);
@@ -152,6 +156,18 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::set_margin_around(mask.grid, rshrink, vsol, (int8_t)-1);
       mask.grid.change_values(-1, vsol);
       timer.print("Mask shrunken in");
+    }
+
+    if (p.options[IslandLimit])
+      island_vol = std::atof(p.options[IslandLimit].arg);
+    if (island_vol > 0.) {
+      size_t limit = static_cast<size_t>(island_vol * mask.grid.point_count()
+                                         / mask.grid.unit_cell.volume);
+      timer.start();
+      int n = gemmi::remove_islands_in_mask(mask.grid, limit);
+      timer.print("Islands removed in");
+      if (p.options[Verbose])
+        std::fprintf(stderr, "Islands removed: %d\n", n);
     }
     if (p.options[Verbose]) {
       size_t n = std::count(mask.grid.data.begin(), mask.grid.data.end(), vmol);

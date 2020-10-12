@@ -13,6 +13,7 @@ INPUT is a coordinate file (mmCIF, PDB, etc).
   -r, --radius=R       Use constant radius of atom spheres.
   --r-probe=Rp         Use VdW radius + Rp (default: 1.0A).
   --r-shrink=Rs        Finally, remove a shell of thickness Rs (default: 1.1A).
+  --island-limit=VOL   Remove "islands" up to VOL A^3.
   --cctbx-compat       Use vdW, Rprobe, Rshrink radii from cctbx.
   --refmac-compat      Use radii compatible with Refmac.
   -I, --invert         0 for solvent, 1 for molecule.

@@ -136,7 +136,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.exclusive_groups.push_back({Threshold, Fraction});
   p.simple_parse(argc, argv, Usage);
   p.require_input_files_as_args();
-  bool verbose = p.options[Verbose];
+  //bool verbose = p.options[Verbose];
 
   if (p.nonOptionsCount() > 1 && (p.options[Reorder] || p.options[Full])) {
     std::fprintf(stderr, "Option --write-... can be only used "
@@ -150,8 +150,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::Ccp4<> map;
       if (i != 0)
         std::printf("\n\n");
-      if (verbose)
-        std::fprintf(stderr, "Reading %s ...\n", input);
+      std::printf("File: %s\n", input);
       map.read_ccp4(gemmi::MaybeGzipped(input));
       gemmi::DataStats stats = print_info(map);
       if (p.options[Deltas])

@@ -131,6 +131,7 @@ void mask_points_in_varied_radius(Grid<Real>& mask, const Model& model,
       }
 }
 
+// All points != value in a distance < r from value are set to margin_value
 template<typename Real>
 void set_margin_around(Grid<Real>& mask, double r, Real value, Real margin_value) {
   int du = (int) std::floor(r / mask.spacing[0]);
@@ -162,6 +163,60 @@ void set_margin_around(Grid<Real>& mask, double r, Real value, Real margin_value
         }
 nextpoint: ;
       }
+}
+
+// Finds all 6-way (in 3D) connected points with value 0. Masks with '|= 2'.
+template<typename T>
+std::vector<typename Grid<T>::Point>
+flood_fill_mask(Grid<T>& mask, int u, int v, int w) {
+  static std::array<std::array<int,3>,6> moves = {{{{-1, 0, 0}}, {{1, 0, 0}},
+                                                   {{0 ,-1, 0}}, {{0, 1, 0}},
+                                                   {{0, 0, -1}}, {{0, 0, 1}}}};
+  std::vector<typename Grid<T>::Point> points;
+  size_t idx = mask.index_q(u, v, w);
+  points.push_back({u, v, w, &mask.data[idx]});
+  for (size_t j = 0; j < points.size()/*increasing!*/; ++j)
+    for (const std::array<int,3>& mv : moves) {
+      int u1 = points[j].u + mv[0];
+      int v1 = points[j].v + mv[1];
+      int w1 = points[j].w + mv[2];
+      if (u1 >= mask.nu) u1 -= mask.nu; else if (u1 < 0) u1 += mask.nu;
+      if (v1 >= mask.nv) v1 -= mask.nv; else if (v1 < 0) v1 += mask.nv;
+      if (w1 >= mask.nw) w1 -= mask.nw; else if (w1 < 0) w1 += mask.nw;
+      size_t idx1 = mask.index_q(u1, v1, w1);
+      T* ptr = &mask.data[idx1];
+      if (*ptr == 0) {
+        *ptr |= 2;
+        points.push_back({u1, v1, w1, ptr});
+      }
+    }
+  return points;
+}
+
+// Removes islands of 1's in the oceans of 0's. Uses flood fill.
+// cf. find_blobs_by_flood_fill()
+template<typename T>
+int remove_islands_in_mask(Grid<T>& mask, size_t limit) {
+  using Point = typename Grid<T>::Point;
+  int counter = 0;
+  size_t idx = 0;
+  for (int w = 0; w != mask.nw; ++w)
+    for (int v = 0; v != mask.nv; ++v)
+      for (int u = 0; u != mask.nu; ++u, ++idx) {
+        assert(idx == mask.index_q(u, v, w));
+        if (mask.data[idx] == 0) {
+          // current island is temporarily marked with |=2
+          std::vector<Point> points = flood_fill_mask(mask, u, v, w);
+          if (points.size() <= limit) {
+            ++counter;
+            for (Point& point : points)
+              *point.value = 1;
+          }
+        }
+      }
+  for (T& p : mask.data)
+    p &= ~2;
+  return counter;
 }
 
 
