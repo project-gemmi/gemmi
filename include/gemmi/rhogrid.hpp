@@ -282,10 +282,31 @@ struct DensityCalculator {
 
   void put_solvent_mask_on_grid(const Model& model) {
     assert(!grid.data.empty());
+#if 0
+    // use twice finer grid for solvent mask
+    Grid<std::int8_t> mask;
+    mask.copy_metadata_from(grid);
+    mask.set_size(2*grid.nu, 2*grid.nv, 2*grid.nw);
+    mask.data.resize(8 * grid.data.size(), 1);
+    mask_points_in_varied_radius<std::int8_t>(mask, model, radii_set, rprobe, 0);
+    set_margin_around<std::int8_t>(mask, rshrink, 1, -1);
+    mask.change_values(-1, 1);
+    for (int w = 0, idx = 0; w < grid.nw; ++w)
+      for (int v = 0; v < grid.nv; ++v)
+        for (int u = 0; u < grid.nu; ++u, ++idx) {
+          grid.data[idx] = 0;
+          for (int wa = 0; wa < 2; ++wa)
+            for (int va = 0; va < 2; ++va)
+              for (int ua = 0; ua < 2; ++ua)
+                grid.data[idx] += mask.get_value_q(2*u + ua, 2*v + va, 2*w + wa);
+          grid.data[idx] *= 1. / 8;
+        }
+#else
     std::fill(grid.data.begin(), grid.data.end(), 1);
     mask_points_in_varied_radius<Real>(grid, model, radii_set, rprobe, 0);
     set_margin_around<Real>(grid, rshrink, 1, -1);
     grid.change_values(-1, 1);
+#endif
   }
 };
 
