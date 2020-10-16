@@ -7,6 +7,7 @@
 #include <gemmi/fileutil.hpp> // for file_open
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/input.hpp>    // for FileStream, MemoryStream
+#include <gemmi/reciproc.hpp> // for count_reflections
 #define GEMMI_PROG mtz
 #include "options.h"
 

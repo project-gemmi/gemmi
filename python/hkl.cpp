@@ -7,6 +7,7 @@
 #include "gemmi/tostr.hpp"
 #include "gemmi/gz.hpp"
 #include "gemmi/fprime.hpp"
+#include "gemmi/reciproc.hpp"  // for count_reflections, make_miller_vector
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
