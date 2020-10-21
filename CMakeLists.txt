@@ -367,7 +367,7 @@ if (USE_PYTHON)
     message(STATUS "Using ${CMAKE_HOME_DIRECTORY}/pybind11 (internal copy).")
     add_subdirectory(pybind11)
   else()
-    find_package(pybind11 2.5 CONFIG REQUIRED)
+    find_package(pybind11 2.6 CONFIG REQUIRED)
     message(STATUS "Found pybind11 ${pybind11_VERSION}: ${pybind11_INCLUDE_DIRS}")
   endif()
   pybind11_add_module(gemmi python/gemmi.cpp python/cif.cpp python/grid.cpp
