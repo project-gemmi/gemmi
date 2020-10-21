@@ -27,6 +27,7 @@ Options for FFT-based calculations:
   --blur=NUM           B added for Gaussian blurring (default: auto).
   --rcut=Y             Use atomic radius r such that rho(r) < Y (default: 5e-5).
   --test[=CACHE]       Calculate exact values and report differences (slow).
+  --to-mtz=FILE        Write Fcalc to a new MTZ file.
   --scale-to=FILE:COL  Anisotropic scaling to F from MTZ file.
 
 Options for bulk solvent correction (only w/ FFT):

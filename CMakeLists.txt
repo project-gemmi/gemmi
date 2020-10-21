@@ -238,7 +238,7 @@ add_executable(gemmi-sf2map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-sf2map)
 
 add_executable(gemmi-sfcalc EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/sfcalc.cpp $<TARGET_OBJECTS:input>)
+               src/sfcalc.cpp $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:output>)
 support_gz(gemmi-sfcalc)
 
 add_executable(gemmi-sg EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
