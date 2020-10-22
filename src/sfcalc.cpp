@@ -3,7 +3,6 @@
 // Calculate structure factors from a molecular model.
 
 #include <stdio.h>
-#include <chrono>
 #include <complex>
 #include <gemmi/bulksol.hpp>
 #include <gemmi/fileutil.hpp>  // for file_open
@@ -17,6 +16,7 @@
 #include <gemmi/rhogrid.hpp>   // for put_model_density_on_grid
 #include <gemmi/sfcalc.hpp>    // for calculate_structure_factor
 #include <gemmi/smcif.hpp>     // for make_small_structure_from_block
+#include "timer.h"             // for Timer
 
 #define GEMMI_PROG sfcalc
 #include "options.h"
@@ -170,26 +170,24 @@ void print_structure_factors(const gemmi::Structure& st,
                              const SolventParam& solvent,
                              bool verbose, const RefFile& file,
                              const gemmi::AsuData<std::array<Real,2>>& scale_to) {
-  using Clock = std::chrono::steady_clock;
+  Timer timer(true);
   if (verbose) {
     fprintf(stderr, "Preparing electron density on a grid...\n");
     fflush(stderr);
   }
-  auto start = Clock::now();
+  timer.start();
   dencalc.set_grid_cell_and_spacegroup(st);
   dencalc.put_model_density_on_grid(st.models[0]);
-  const gemmi::Grid<Real>& grid = dencalc.grid;
   if (verbose) {
-    std::chrono::duration<double> elapsed = Clock::now() - start;
-    fprintf(stderr, "...took %g s.\n", elapsed.count());
-    fprintf(stderr, "FFT of grid %d x %d x %d\n", grid.nu, grid.nv, grid.nw);
+    timer.print("...took");
+    fprintf(stderr, "FFT of grid %d x %d x %d\n",
+            dencalc.grid.nu, dencalc.grid.nv, dencalc.grid.nw);
     fflush(stderr);
-    start = Clock::now();
+    timer.start();
   }
-  gemmi::FPhiGrid<Real> sf = transform_map_to_f_phi(grid, /*half_l=*/true);
+  gemmi::FPhiGrid<Real> sf = transform_map_to_f_phi(dencalc.grid, /*half_l=*/true);
   if (verbose) {
-    std::chrono::duration<double> elapsed = Clock::now() - start;
-    fprintf(stderr, "...took %g s.\n", elapsed.count());
+    timer.print("...took");
     fprintf(stderr, "Printing results...\n");
     fflush(stderr);
   }
@@ -291,10 +289,8 @@ void print_structure_factors(const gemmi::Structure& st,
   if (file.mode == RefFile::Mode::Test || file.mode == RefFile::Mode::Compare) {
     print_to_stderr(comparator);
     fprintf(stderr, "  <dPhi>=%#.4g", comparator.mean_dphi());
-    if (!verbose) {
-      std::chrono::duration<double> elapsed = Clock::now() - start;
-      fprintf(stderr, "   %#.5gs", elapsed.count());
-    }
+    if (!verbose)
+      fprintf(stderr, "   %#.5gs", timer.count());
     fprintf(stderr, "\n");
   } else if (file.mode == RefFile::Mode::WriteMtz) {
     output_mtz->write_to_file(file.path);
@@ -305,8 +301,8 @@ template<typename Table>
 void print_structure_factors_sm(const gemmi::SmallStructure& small,
                                 gemmi::StructureFactorCalculator<Table>& calc,
                                 double d_min, bool verbose) {
-  using Clock = std::chrono::steady_clock;
-  auto start = Clock::now();
+  Timer timer(verbose);
+  timer.start();
   int counter = 0;
   double max_1_d = 1. / d_min;
   int max_h = int(max_1_d / small.cell.ar);
@@ -329,9 +325,8 @@ void print_structure_factors_sm(const gemmi::SmallStructure& small,
         }
       }
   if (verbose) {
-    std::chrono::duration<double> elapsed = Clock::now() - start;
     fflush(stdout);
-    fprintf(stderr, "Calculated %d SFs in %g s.\n", counter, elapsed.count());
+    fprintf(stderr, "Calculated %d SFs in %g s.\n", counter, timer.count());
     fflush(stderr);
   }
 }
