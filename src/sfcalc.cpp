@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <complex>
 #include <gemmi/bulksol.hpp>
+#include <gemmi/ccp4.hpp>      // for Ccp4
 #include <gemmi/fileutil.hpp>  // for file_open
 #include <gemmi/fourier.hpp>
 #include <gemmi/gz.hpp>        // for MaybeGzipped
@@ -25,7 +26,7 @@ namespace {
 
 enum OptionIndex { Hkl=4, Dmin, For, Rate, Blur, RCut, Test, ToMtz, Compare,
                    CifFp, Wavelength, Unknown, NoAniso, ScaleTo, FLabel,
-                   PhiLabel, Ksolv, Bsolv, Rprobe, Rshrink };
+                   PhiLabel, Ksolv, Bsolv, Rprobe, Rshrink, WriteMap };
 
 struct SfCalcArg: public Arg {
   static option::ArgStatus FormFactors(const option::Option& option, bool msg) {
@@ -71,6 +72,8 @@ const option::Descriptor Usage[] = {
     "  --rcut=Y  \tUse atomic radius r such that rho(r) < Y (default: 5e-5)." },
   { Test, 0, "", "test", Arg::Optional,
     "  --test[=CACHE]  \tCalculate exact values and report differences (slow)." },
+  { WriteMap, 0, "", "write-map", Arg::Required,
+    "  --write-map=FILE  \tWrite density (excl. bulk solvent) as CCP4 map." },
   { ToMtz, 0, "", "to-mtz", Arg::Required,
     "  --to-mtz=FILE  \tWrite Fcalc to a new MTZ file." },
   { ScaleTo, 0, "", "scale-to", Arg::ColonPair,
@@ -169,17 +172,9 @@ void print_structure_factors(const gemmi::Structure& st,
                              gemmi::DensityCalculator<Table, Real>& dencalc,
                              const SolventParam& solvent,
                              bool verbose, const RefFile& file,
-                             const gemmi::AsuData<std::array<Real,2>>& scale_to) {
-  Timer timer(true);
+                             const gemmi::AsuData<std::array<Real,2>>& scale_to,
+                             Timer& timer) {
   if (verbose) {
-    fprintf(stderr, "Preparing electron density on a grid...\n");
-    fflush(stderr);
-  }
-  timer.start();
-  dencalc.set_grid_cell_and_spacegroup(st);
-  dencalc.put_model_density_on_grid(st.models[0]);
-  if (verbose) {
-    timer.print("...took");
     fprintf(stderr, "FFT of grid %d x %d x %d\n",
             dencalc.grid.nu, dencalc.grid.nv, dencalc.grid.nw);
     fflush(stderr);
@@ -565,7 +560,24 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
           solvent.B = std::atof(p.options[Bsolv].arg);
       }
 
-      print_structure_factors(st, dencalc, solvent, p.options[Verbose], file, scale_to);
+      // prepare electron density map
+      if (p.options[Verbose]) {
+        fprintf(stderr, "Preparing electron density on a grid...\n");
+        fflush(stderr);
+      }
+      Timer timer(p.options[Verbose]);
+      timer.start();
+      dencalc.set_grid_cell_and_spacegroup(st);
+      dencalc.put_model_density_on_grid(st.models[0]);
+      timer.print("...took");
+      if (p.options[WriteMap]) {
+        gemmi::Ccp4<Real> ccp4;
+        ccp4.grid = dencalc.grid;
+        ccp4.update_ccp4_header(2, true);
+        ccp4.write_ccp4_map(p.options[WriteMap].arg);
+      }
+      print_structure_factors(st, dencalc, solvent, p.options[Verbose], file,
+                              scale_to, timer);
     } else {
       if (p.options[Rate] || p.options[RCut] || p.options[Blur] ||
           p.options[Test])
@@ -608,16 +620,11 @@ void process(const std::string& input, const OptParser& p) {
     }
   }
 
-  if (p.options[ToMtz] || p.options[ScaleTo] ||
-      p.options[Ksolv] || p.options[Bsolv] ||
-      p.options[Rprobe] || p.options[Rshrink]) {
-    static const char* msg =
-      "Options --to-mtz, --scale-to, --ksolv, --bsolv, --r-probe, --r-shrink "
-      "work only with ";
-    if (!p.options[Dmin])
-      gemmi::fail(msg, "--dmin");
-    if (!use_st)
-      gemmi::fail(msg, "macromolecular structures");
+  if (!p.options[Dmin] || !use_st) {
+    for (OptionIndex opt : {ToMtz, WriteMap, ScaleTo, Ksolv, Bsolv, Rprobe, Rshrink})
+      if (p.options[opt])
+        gemmi::fail("Option ", p.options[opt].name, " works only with ",
+                    !p.options[Dmin] ? "--dmin" : "macromolecular structures");
   }
 
   if (p.options[NoAniso]) {
