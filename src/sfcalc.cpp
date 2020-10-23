@@ -96,7 +96,7 @@ const option::Descriptor Usage[] = {
     "  --f=LABEL  \tMTZ column label (default: FC) or small molecule cif"
     " tag (default: F_calc or F_squared_calc)." },
   { PhiLabel, 0, "", "phi", Arg::Required,
-    "  --phi=LABEL  \tMTZ column label (default: PHIC)" },
+    "  --phi=LABEL  \tMTZ column label (default: PHIC)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -168,12 +168,30 @@ void print_to_stderr(const Comparator& c) {
 }
 
 template<typename Table, typename Real>
-void print_structure_factors(const gemmi::Structure& st,
-                             gemmi::DensityCalculator<Table, Real>& dencalc,
-                             const SolventParam& solvent,
-                             bool verbose, const RefFile& file,
-                             const gemmi::AsuData<std::array<Real,2>>& scale_to,
-                             Timer& timer) {
+void process_with_fft(const gemmi::Structure& st,
+                      gemmi::DensityCalculator<Table, Real>& dencalc,
+                      const SolventParam& solvent,
+                      bool verbose, const RefFile& file,
+                      const gemmi::AsuData<std::array<Real,2>>& scale_to,
+                      const char* map_file) {
+  // prepare electron density map
+  if (verbose) {
+    fprintf(stderr, "Preparing electron density on a grid...\n");
+    fflush(stderr);
+  }
+  Timer timer(true);
+  timer.start();
+  dencalc.set_grid_cell_and_spacegroup(st);
+  dencalc.put_model_density_on_grid(st.models[0]);
+  if (verbose)
+    timer.print("...took");
+  if (map_file) {
+    gemmi::Ccp4<Real> ccp4;
+    ccp4.grid = dencalc.grid;
+    ccp4.update_ccp4_header(2, true);
+    ccp4.write_ccp4_map(map_file);
+  }
+
   if (verbose) {
     fprintf(stderr, "FFT of grid %d x %d x %d\n",
             dencalc.grid.nu, dencalc.grid.nv, dencalc.grid.nw);
@@ -559,25 +577,8 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         if (p.options[Bsolv])
           solvent.B = std::atof(p.options[Bsolv].arg);
       }
-
-      // prepare electron density map
-      if (p.options[Verbose]) {
-        fprintf(stderr, "Preparing electron density on a grid...\n");
-        fflush(stderr);
-      }
-      Timer timer(p.options[Verbose]);
-      timer.start();
-      dencalc.set_grid_cell_and_spacegroup(st);
-      dencalc.put_model_density_on_grid(st.models[0]);
-      timer.print("...took");
-      if (p.options[WriteMap]) {
-        gemmi::Ccp4<Real> ccp4;
-        ccp4.grid = dencalc.grid;
-        ccp4.update_ccp4_header(2, true);
-        ccp4.write_ccp4_map(p.options[WriteMap].arg);
-      }
-      print_structure_factors(st, dencalc, solvent, p.options[Verbose], file,
-                              scale_to, timer);
+      const char* map_file = p.options[WriteMap] ? p.options[WriteMap].arg : nullptr;
+      process_with_fft(st, dencalc, solvent, p.options[Verbose], file, scale_to, map_file);
     } else {
       if (p.options[Rate] || p.options[RCut] || p.options[Blur] ||
           p.options[Test])

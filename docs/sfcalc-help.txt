@@ -41,4 +41,4 @@ Options for comparing calculated values with values from a file:
   --compare=FILE       Re-calculate Fcalc and report differences.
   --f=LABEL            MTZ column label (default: FC) or small molecule cif tag
                        (default: F_calc or F_squared_calc).
-  --phi=LABEL          MTZ column label (default: PHIC)
+  --phi=LABEL          MTZ column label (default: PHIC).
