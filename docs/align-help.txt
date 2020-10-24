@@ -32,4 +32,6 @@ Scoring (absolute values):
 
 Output options:
   -p                 Print formatted alignment with one-letter codes.
+  --rmsd             In addition to aligning two CHAINs (--query and --target),
+                     superpose structures and print RMSD.
   -v, --verbose      Verbose output.

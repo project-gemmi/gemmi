@@ -5,6 +5,7 @@
 #include <gemmi/model.hpp>
 #include <gemmi/gzread.hpp>
 #include <gemmi/polyheur.hpp>  // for setup_entities, align_sequence_to_polymer
+#include <gemmi/align.hpp>     // for align_sequence_to_polymer
 #include <gemmi/seqalign.hpp>  // for align_string_sequences
 
 #include <cstdio>   // for printf, fprintf, putchar
@@ -17,7 +18,7 @@ namespace {
 using std::printf;
 
 enum OptionIndex { Match=4, Mismatch, GapOpen, GapExt,
-                   CheckMmcif, PrintOneLetter, Query, Target, TextAlign };
+                   CheckMmcif, PrintOneLetter, Query, Target, TextAlign, Rmsd };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -59,6 +60,9 @@ const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "\nOutput options:" },
   { PrintOneLetter, 0, "p", "", Arg::None,
     "  -p  \tPrint formatted alignment with one-letter codes." },
+  { Rmsd, 0, "", "rmsd", Arg::None,
+    "  --rmsd  \tIn addition to aligning two CHAINs (--query and --target), "
+                 "superpose structures and print RMSD." },
   CommonUsage[Verbose],
   { 0, 0, 0, 0, 0, 0 }
 };
@@ -128,14 +132,13 @@ const gemmi::Model& get_first_model(gemmi::Structure& st) {
 
 gemmi::ConstResidueSpan get_polymer(const gemmi::Model& model,
                                     const std::string& chain_name) {
-  if (const gemmi::Chain* ch = model.find_chain(chain_name)) {
-    gemmi::ConstResidueSpan polymer = ch->get_polymer();
-    if (!polymer)
-      gemmi::fail("Polymer not found in chain " + chain_name);
-    return polymer;
-  } else {
+  const gemmi::Chain* ch = model.find_chain(chain_name);
+  if (!ch)
     gemmi::fail("No such chain: " + chain_name);
-  }
+  gemmi::ConstResidueSpan polymer = ch->get_polymer();
+  if (!polymer)
+    gemmi::fail("Polymer not found in chain " + chain_name);
+  return polymer;
 }
 
 const gemmi::Entity* get_entity(gemmi::Structure& st,
@@ -210,27 +213,28 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   try {
     if (p.options[Query]) {
-      if (p.nonOptionsCount() != 2)
-        gemmi::fail("two input files are expected with --query/--target");
+      int n_files = p.nonOptionsCount();
+      if (n_files != 2 && n_files != 1)
+        gemmi::fail("one or two input files are expected with --query/--target");
       using gemmi::read_structure_gz;
       std::vector<std::string> query;
       gemmi::PolymerType ptype = gemmi::PolymerType::Unknown;
-      {
-        gemmi::Structure st = read_structure_gz(p.coordinate_input_file(0));
-        if (p.options[Query].arg[0] == '+') {
-          const gemmi::Entity* ent = get_entity(st, p.options[Query].arg + 1);
-          query = ent->full_sequence;
-          ptype = ent->polymer_type;
-        } else {
-          auto polymer = get_polymer(get_first_model(st), p.options[Query].arg);
-          for (const gemmi::Residue& res : polymer.first_conformer())
-            query.push_back(res.name);
-        }
+      gemmi::Structure st1 = read_structure_gz(p.coordinate_input_file(0));
+      if (p.options[Query].arg[0] == '+') {
+        const gemmi::Entity* ent = get_entity(st1, p.options[Query].arg + 1);
+        query = ent->full_sequence;
+        ptype = ent->polymer_type;
+      } else {
+        query = get_polymer(get_first_model(st1), p.options[Query].arg)
+                .extract_sequence();
       }
       gemmi::AlignmentResult result;
-      gemmi::Structure st = read_structure_gz(p.coordinate_input_file(1));
+      gemmi::Structure st2_;
+      if (n_files == 2)
+        st2_ = read_structure_gz(p.coordinate_input_file(1));
+      gemmi::Structure& st2 = n_files == 2 ? st2_ : st1;
       if (p.options[Target].arg[0] == '+') {
-        const gemmi::Entity* ent = get_entity(st, p.options[Target].arg + 1);
+        const gemmi::Entity* ent = get_entity(st2, p.options[Target].arg + 1);
         std::vector<bool> free_gapo(1, 1);
         result = gemmi::align_string_sequences(query, ent->full_sequence,
                                                free_gapo, scoring);
@@ -239,15 +243,32 @@ int GEMMI_MAIN(int argc, char **argv) {
           print_one_letter_alignment(result, gemmi::one_letter_code(query),
                                    gemmi::one_letter_code(ent->full_sequence));
       } else {
-        auto polymer = get_polymer(get_first_model(st), p.options[Target].arg);
+        auto polymer = get_polymer(get_first_model(st2), p.options[Target].arg);
         if (ptype == gemmi::PolymerType::Unknown)
-          if (const gemmi::Entity* ent = st.get_entity_of(polymer))
+          if (const gemmi::Entity* ent = st2.get_entity_of(polymer))
             ptype = ent->polymer_type;
         result = gemmi::align_sequence_to_polymer(query, polymer, ptype, scoring);
         print_result_summary(result);
         if (p.options[PrintOneLetter])
           print_one_letter_alignment(result, gemmi::one_letter_code(query),
                                      gemmi::one_letter_code(polymer));
+      }
+      if (p.options[Rmsd]) {
+        auto poly1 = get_polymer(st1.models.at(0), p.options[Query].arg);
+        auto poly2 = get_polymer(st2.models.at(0), p.options[Target].arg);
+        printf("We superpose polymers using only matching residues and atoms w/o altloc.\n");
+        gemmi::SupResult r;
+        r = gemmi::calculate_superposition(poly1, poly2, ptype, gemmi::SupSelect::All);
+        printf("RMSD of %zu atoms: %g\n", r.count, r.rmsd);
+        r = gemmi::calculate_superposition(poly1, poly2, ptype, gemmi::SupSelect::CaP);
+        printf("RMSD of %zu CA/P atoms: %g\n", r.count, r.rmsd);
+
+        // this last part is not particularly useful
+        auto mpoly2 = st2.models[0].find_chain(p.options[Target].arg)->get_polymer();
+        gemmi::apply_superposition(r, mpoly2);
+        r = gemmi::calculate_superposition(poly1, mpoly2, ptype, gemmi::SupSelect::All,
+                                           '\0', true);
+        printf("   the same rotation+shift applied to %zu atoms: %g\n", r.count, r.rmsd);
       }
       return 0;
     }

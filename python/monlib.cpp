@@ -1,12 +1,12 @@
 // Copyright 2018 Global Phasing Ltd.
 
+#include "gemmi/align.hpp"     // for align_sequence_to_polymer
 #include "gemmi/chemcomp.hpp"
-#include "gemmi/gzread.hpp" // read_cif_gz
+#include "gemmi/gzread.hpp"    // for read_cif_gz
 #include "gemmi/linkhunt.hpp"
 #include "gemmi/monlib.hpp"
 #include "gemmi/topo.hpp"
 #include "gemmi/seqalign.hpp"  // for align_string_sequences
-#include "gemmi/polyheur.hpp"  // for align_sequence_to_polymer
 #include "gemmi/select.hpp"
 
 #include <fstream>

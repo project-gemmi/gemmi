@@ -4,6 +4,7 @@
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/polyheur.hpp"  // for setup_entities, remove_hydrogens, ...
+#include "gemmi/align.hpp"     // for assign_label_seq_id
 #include "gemmi/to_pdb.hpp"    // for write_pdb, ...
 #include "gemmi/fstream.hpp"   // for Ofstream, Ifstream
 #include "gemmi/to_mmcif.hpp"  // for update_cif_block

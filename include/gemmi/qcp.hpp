@@ -85,15 +85,16 @@ namespace gemmi {
 
 struct SupResult {
   double rmsd;
+  size_t count;
   Position center1, center2;
-  Mat33 rot;
+  Transform transform;
 };
 
 // helper function
 inline double qcp_inner_product(Mat33& mat, const Position* pos1, const Position* pos2,
-                                int len, const double* weight) {
+                                size_t len, const double* weight) {
   double G1 = 0.0, G2 = 0.0;
-  for (int i = 0; i < len; ++i) {
+  for (size_t i = 0; i < len; ++i) {
     const Position& f1 = pos1[i];
     const Position& f2 = pos2[i];
     double w = (weight != nullptr ? weight[i] : 1.);
@@ -276,16 +277,16 @@ inline int fast_calc_rmsd_and_rotation(Mat33& rot, const Mat33& A, double *rmsd,
 }
 
 // helper function
-inline Position qcp_center_coords(Position* pos, const int len, const double *weight) {
+inline Position qcp_center_coords(Position* pos, size_t len, const double *weight) {
   double wsum = 0.0;
   Position ctr;
-  for (int i = 0; i < len; ++i) {
+  for (size_t i = 0; i < len; ++i) {
     double w = (weight != nullptr ? weight[i] : 1.);
     ctr += w * pos[i];
     wsum += w;
   }
   ctr /= wsum;
-  for (int i = 0; i < len; ++i)
+  for (size_t i = 0; i < len; ++i)
     pos[i] -= ctr;
   return ctr;
 }
@@ -294,8 +295,9 @@ inline Position qcp_center_coords(Position* pos, const int len, const double *we
 // Does not perform the superposition, only returns the operation to be used.
 // As a side effect, both pos1 and pos2 are shifted (centered at 0).
 inline SupResult superpose_positions(Position* pos1, Position *pos2,
-                                     int len, const double *weight) {
+                                     size_t len, const double *weight) {
   SupResult result;
+  result.count = len;
 
   /* center the structures -- if precentered you can omit this step */
   result.center1 = qcp_center_coords(pos1, len, weight);
@@ -305,7 +307,7 @@ inline SupResult superpose_positions(Position* pos1, Position *pos2,
   if (weight == nullptr)
     wsum = len;
   else
-    for (int i = 0; i < len; ++i)
+    for (size_t i = 0; i < len; ++i)
       wsum += weight[i];
 
   Mat33 A(0);
@@ -313,7 +315,8 @@ inline SupResult superpose_positions(Position* pos1, Position *pos2,
   double E0 = qcp_inner_product(A, pos1, pos2, len, weight);
 
   /* calculate the RMSD & rotational matrix */
-  fast_calc_rmsd_and_rotation(result.rot, A, &result.rmsd, E0, wsum, -1);
+  fast_calc_rmsd_and_rotation(result.transform.mat, A, &result.rmsd, E0, wsum, -1);
+  result.transform.vec = Vec3(result.center1) - result.transform.mat.multiply(result.center2);
 
   return result;
 }

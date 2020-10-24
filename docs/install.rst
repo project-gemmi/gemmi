@@ -136,6 +136,8 @@ Code derived from the following projects is used in the library:
 
 * `ksw2 <https://github.com/lh3/ksw2>`_ -- sequence alignment in
   ``seqalign.hpp`` is based on the ksw_gg function from ksw2. License: MIT.
+* `QCProt <https://theobald.brandeis.edu/qcp/>`_ -- superposition method
+  in ``qcp.hpp`` is taken from QCProt and adapted to our project. License: BSD.
 * `Larch <https://github.com/xraypy/xraylarch>`_ -- calculation of f' and f"
   in ``fprime.hpp`` is based on CromerLiberman code from Larch.
   License: 2-clause BSD.

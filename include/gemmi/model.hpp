@@ -363,6 +363,13 @@ struct ConstResidueSpan : Span<const Residue> {
 
   ConstResidueGroup find_residue_group(SeqId id) const;
 
+  std::vector<std::string> extract_sequence() const {
+    std::vector<std::string> seq;
+    for (const Residue& res : first_conformer())
+      seq.push_back(res.name);
+    return seq;
+  }
+
   // We assume residues are ordered. It works (approximately) also with
   // missing numbers which can be present in DBREF.
   SeqId label_seq_id_to_auth(SeqId::OptionalNum label_seq_id) const {

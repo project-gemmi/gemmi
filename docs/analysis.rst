@@ -328,6 +328,14 @@ contacts to links definitions from :ref:`monomer library <CCD_etc>`
 and to connections (LINK, SSBOND) from the structure.
 If you would find it useful, contact the author.
 
+Structure superposition
+=======================
+
+Gemmi includes the `QCP <https://theobald.brandeis.edu/qcp/>`_ algorithm
+for superposing two lists of positions.
+
+TBC
+
 
 .. _selections:
 

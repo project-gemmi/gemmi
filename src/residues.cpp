@@ -5,6 +5,7 @@
 #include "gemmi/select.hpp"
 #include "gemmi/gzread.hpp"
 #include "gemmi/polyheur.hpp"  // for setup_entities
+#include "gemmi/align.hpp"     // for assign_label_seq_id
 
 #define GEMMI_PROG residues
 #include "options.h"

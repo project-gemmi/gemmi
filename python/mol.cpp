@@ -1,5 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
+#include "gemmi/align.hpp"     // for assign_label_seq_id
 #include "gemmi/elem.hpp"
 #include "gemmi/entstr.hpp"
 #include "gemmi/resinfo.hpp"
