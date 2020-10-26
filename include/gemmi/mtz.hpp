@@ -909,9 +909,9 @@ void Mtz::write_to_stream(std::FILE* stream) const {
   else
     WRITE("VALM %f", valm);
   auto format17 = [](float f) {
-    char buf[18];
-    int len = gf_snprintf(buf, 18, "%.9f", f);
-    return std::string(buf, len > 0 ? std::min(len, 17) : 0);
+    char buffer[18];
+    int len = gf_snprintf(buffer, 18, "%.9f", f);
+    return std::string(buffer, len > 0 ? std::min(len, 17) : 0);
   };
   for (const Column& col : columns) {
     auto minmax = calculate_min_max_disregarding_nans(col.begin(), col.end());
