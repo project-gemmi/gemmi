@@ -1517,9 +1517,9 @@ Here we only show its properties in an example:
   >>> ent.subchains
   ['Apoly']
   >>> ent.entity_type
-  EntityType.Polymer
+  <EntityType.Polymer: 1>
   >>> ent.polymer_type
-  PolymerType.PeptideL
+  <PolymerType.PeptideL: 1>
   >>> ent.full_sequence[:5]
   ['MET', 'GLU', 'GLN', 'ARG', 'ILE']
 
@@ -1561,7 +1561,7 @@ Each connection stores:
   .. doctest::
 
     >>> st.connections[0].type
-    ConnectionType.Disulf
+    <ConnectionType.Disulf: 1>
 
 * name -- a unique name corresponding to _struct_conn.id in the mmCIF format;
   it is auto-generated the connections are read from the PDB format,
@@ -1592,9 +1592,9 @@ Each connection stores:
   .. doctest::
 
     >>> st.connections[2].asu
-    Asu.Same
+    <Asu.Same: 0>
     >>> st.connections[-1].asu
-    Asu.Different
+    <Asu.Different: 1>
 
 * and a distance read from the file.
 
@@ -2396,7 +2396,7 @@ If it's a polymer, we can ask for polymer type and sequence:
 .. doctest::
 
   >>> polymer_b.check_polymer_type()
-  PolymerType.PeptideL
+  <PolymerType.PeptideL: 1>
   >>> polymer_b.make_one_letter_sequence()
   'sAXvsAXv'
 
@@ -2497,7 +2497,7 @@ Residue contains also a number of properties:
   >>> residue.label_seq
   2
   >>> residue.entity_type
-  EntityType.Polymer
+  <EntityType.Polymer: 1>
   >>> residue.het_flag
   'A'
 
