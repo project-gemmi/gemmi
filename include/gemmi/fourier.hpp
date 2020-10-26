@@ -33,7 +33,7 @@ double phase_in_angles(const std::complex<T>& v) {
 
 // the first arg is usually Mtz::data
 inline void add_asu_f_phi_to_float_vector(std::vector<float>& float_data,
-                                          const FPhiGrid<float>::AsuData& asu_data) {
+                                          const AsuData<std::complex<float>>& asu_data) {
   float_data.reserve(float_data.size() + asu_data.v.size() * 5);
   for (const auto& item : asu_data.v) {
     for (int i = 0; i != 3; ++i)

@@ -35,8 +35,8 @@ std::string grid_dim_str(const GridBase<T>& g) {
 
 
 template<typename T> void add_to_asu_data(T&) {}
-template<> void add_to_asu_data(py::class_<FPhiGrid<float>::AsuData>& cl) {
-  using AsuData = typename FPhiGrid<float>::AsuData;
+template<> void add_to_asu_data(py::class_<AsuData<std::complex<float>>>& cl) {
+  using AsuData = AsuData<std::complex<float>>;
   cl.def("get_size_for_hkl", &get_size_for_hkl<AsuData>,
          py::arg("min_size")=std::array<int,3>{{0,0,0}}, py::arg("sample_rate")=0.);
   cl.def("data_fits_into", &data_fits_into<AsuData>, py::arg("size"));
@@ -49,8 +49,8 @@ template<> void add_to_asu_data(py::class_<FPhiGrid<float>::AsuData>& cl) {
          py::arg("order")=AxisOrder::XYZ);
 }
 
-template<typename AsuData, typename F>
-py::array_t<float> make_new_column(const AsuData& asu_data, F f) {
+template<typename T, typename F>
+py::array_t<float> make_new_column(const AsuData<T>& asu_data, F f) {
   if (!asu_data.unit_cell().is_crystal())
     throw std::runtime_error("AsuData: unknown unit cell parameters");
   py::array_t<float> arr(asu_data.size());
@@ -169,16 +169,16 @@ void add_grid(py::module& m, const std::string& name) {
   using ReGr = ReciprocalGrid<T>;
   py::class_<ReGr, GrBase> regr(m, ("Reciprocal" + name).c_str());
 
-  py::class_<typename ReGr::HklValue>(regr, "HklValue")
-    .def_readonly("hkl", &ReGr::HklValue::hkl)
-    .def_readonly("value", &ReGr::HklValue::value)
-    .def("__repr__", [name](const typename ReGr::HklValue& self) {
+  py::class_<HklValue<T>>(regr, "HklValue")
+    .def_readonly("hkl", &HklValue<T>::hkl)
+    .def_readonly("value", &HklValue<T>::value)
+    .def("__repr__", [name](const HklValue<T>& self) {
         return tostr("<gemmi.Reciprocal", name, ".HklValue (",
                      self.hkl[0], ',', self.hkl[1], ',', self.hkl[2], ") ",
                      self.value, '>');
     });
 
-  using AsuData = typename ReGr::AsuData;
+  using AsuData = AsuData<T>;
   py::class_<AsuData> asu_data(regr, "AsuData");
   asu_data
     .def(py::init([](const UnitCell& unit_cell, const SpaceGroup* sg,
@@ -202,20 +202,20 @@ void add_grid(py::module& m, const std::string& name) {
     .def("__iter__", [](AsuData& self) { return py::make_iterator(self.v); },
          py::keep_alive<0, 1>())
     .def("__len__", [](const AsuData& self) { return self.v.size(); })
-    .def("__getitem__", [](AsuData& self, int index) -> typename ReGr::HklValue& {
+    .def("__getitem__", [](AsuData& self, int index) -> HklValue<T>& {
         return self.v.at(normalize_index(index, self.v));
     }, py::arg("index"), py::return_value_policy::reference_internal)
     .def_readwrite("spacegroup", &AsuData::spacegroup_)
     .def_readwrite("unit_cell", &AsuData::unit_cell_)
     .def_property_readonly("miller_array", [](const AsuData& self) {
-      const typename ReGr::HklValue* data = self.v.data();
+      const HklValue<T>* data = self.v.data();
       py::array::ShapeContainer shape({(ssize_t)self.v.size(), 3});
       py::array::StridesContainer strides({(const char*)(data+1) - (const char*)data,
                                            sizeof(int)});
       return py::array_t<int>(shape, strides, &data->hkl[0], py::cast(self));
     }, py::return_value_policy::reference_internal)
     .def_property_readonly("value_array", [](const AsuData& self) {
-      const typename ReGr::HklValue* data = self.v.data();
+      const HklValue<T>* data = self.v.data();
       ssize_t stride = (const char*)(data+1) - (const char*)data;
       return py::array_t<T>({(ssize_t)self.v.size()}, {stride},
                             &data->value, py::cast(self));

@@ -246,8 +246,8 @@ void process_with_fft(const gemmi::Structure& st,
     fprintf(stderr, "k_ov=%g B11=%g B22=%g B33=%g B12=%g B13=%g B23=%g\n",
             bulk.k_overall, bulk.B_aniso.u11, bulk.B_aniso.u22, bulk.B_aniso.u33,
                             bulk.B_aniso.u12, bulk.B_aniso.u13, bulk.B_aniso.u23);
-    for (typename gemmi::FPhiGrid<Real>::HklValue& hv : asu_data.v)
-      hv.value *= bulk.get_scale_factor_aniso(hv.hkl);
+    for (gemmi::HklValue<std::complex<Real>>& hv : asu_data.v)
+      hv.value *= (Real) bulk.get_scale_factor_aniso(hv.hkl);
   }
   std::unique_ptr<gemmi::Mtz> output_mtz;
   if (file.mode == RefFile::Mode::WriteMtz) {
@@ -261,14 +261,14 @@ void process_with_fft(const gemmi::Structure& st,
     output_mtz->nreflections = (int) asu_data.v.size();
     output_mtz->data.reserve(5 * asu_data.v.size());
   }
-  for (typename gemmi::FPhiGrid<Real>::HklValue& hv : asu_data.v) {
+  for (gemmi::HklValue<std::complex<Real>>& hv : asu_data.v) {
     if (file.mode == RefFile::Mode::None) {
       print_sf(hv.value, hv.hkl);
     } else if (file.mode == RefFile::Mode::WriteMtz) {
       for (int i = 0; i != 3; ++i)
         output_mtz->data.push_back(hv.hkl[i]);
       output_mtz->data.push_back(std::abs(hv.value));
-      output_mtz->data.push_back(gemmi::phase_in_angles(hv.value));
+      output_mtz->data.push_back((float) gemmi::phase_in_angles(hv.value));
     } else {
       std::complex<double> exact;
       if (file.path) {
