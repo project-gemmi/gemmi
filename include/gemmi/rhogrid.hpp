@@ -121,7 +121,7 @@ void mask_points_in_varied_radius(Grid<Real>& mask, const Model& model,
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms) {
         El elem = atom.element.elem;
-        double r;
+        double r = 0;
         switch (radii_set) {
           case AtomicRadiiSet::VanDerWaals: r = vdw_radius(elem); break;
           case AtomicRadiiSet::Cctbx: r = cctbx_vdw_radius(elem); break;
