@@ -52,6 +52,9 @@ int GEMMI_MAIN(int argc, char **argv) {
         bool force = p.options[Label].count() > 1;
         gemmi::assign_label_seq_id(st, force);
       }
+      if (i != 0)
+        putchar('\n');
+      printf("%s\n", input.c_str());
       for (gemmi::Model& model : sel.models(st)) {
         if (st.models.size() != 1)
           printf("Model %s\n", model.name.c_str());
