@@ -41,7 +41,7 @@ std::vector<FcFo<Real>> prepare_fc_fo(const AsuData<std::complex<Real>>& calc,
       break;
   }
   return data;
-};
+}
 
 template<typename Real>
 struct BulkSolvent {
