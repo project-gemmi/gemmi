@@ -294,7 +294,6 @@ void add_mol(py::module& m) {
     .def("ensure_entities", &ensure_entities)
     .def("deduplicate_entities", &deduplicate_entities)
     .def("setup_entities", &setup_entities)
-    .def("assign_label_seq_id", &assign_label_seq_id, py::arg("force")=false)
     .def("remove_alternative_conformations",
          remove_alternative_conformations<Structure>)
     .def("remove_hydrogens", remove_hydrogens<Structure>)
@@ -302,6 +301,7 @@ void add_mol(py::module& m) {
     .def("remove_ligands_and_waters",
          (void (*)(Structure&)) &remove_ligands_and_waters)
     .def("remove_empty_chains", (void (*)(Structure&)) &remove_empty_chains)
+    .def("assign_label_seq_id", &assign_label_seq_id, py::arg("force")=false)
     .def("shorten_chain_names", &shorten_chain_names)
     .def("clone", [](const Structure& self) { return new Structure(self); })
     .def("__repr__", [](const Structure& self) {
@@ -634,6 +634,19 @@ void add_mol(py::module& m) {
         return r + buf;
     });
 
+  py::enum_<SupSelect>(m, "SupSelect")
+    .value("CaP", SupSelect::CaP)
+    .value("All", SupSelect::All);
+
+  py::class_<SupResult>(m, "SupResult")
+    .def_readonly("rmsd", &SupResult::rmsd)
+    .def_readonly("count", &SupResult::count)
+    .def_readonly("center1", &SupResult::center1)
+    .def_readonly("center2", &SupResult::center2)
+    .def_readonly("transform", &SupResult::transform)
+    .def("apply", &apply_superposition)
+    ;
+
   m.def("calculate_b_est", &calculate_b_est);
   m.def("calculate_angle", &calculate_angle,
         "Input: three points. Output: angle in radians.");
@@ -645,4 +658,10 @@ void add_mol(py::module& m) {
         py::arg("residue"), py::arg("next_residue"));
   m.def("calculate_sequence_weight", &calculate_sequence_weight,
         py::arg("sequence"), py::arg("unknown")=0.);
+  m.def("calculate_superposition",
+        [](const ResidueSpan& fixed, const ResidueSpan& movable,
+           PolymerType ptype, SupSelect sel, char altloc, bool current_rmsd) {
+          return calculate_superposition(fixed, movable, ptype, sel, altloc, current_rmsd);
+        }, py::arg("fixed"), py::arg("movable"), py::arg("ptype"), py::arg("sel"),
+           py::arg("altloc")='\0', py::arg("current_rmsd")=false);
 }

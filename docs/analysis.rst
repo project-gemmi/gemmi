@@ -328,13 +328,82 @@ contacts to links definitions from :ref:`monomer library <CCD_etc>`
 and to connections (LINK, SSBOND) from the structure.
 If you would find it useful, contact the author.
 
-Structure superposition
-=======================
+Superposition
+=============
 
-Gemmi includes the `QCP <https://theobald.brandeis.edu/qcp/>`_ algorithm
-for superposing two lists of positions.
+Gemmi includes the `QCP method <https://theobald.brandeis.edu/qcp/>`_
+(Liu P, Agrafiotis DK, & Theobald DL, 2010)
+for superposing two lists of points in 3D.
+The C++ function ``superpose_positions()`` takes two arrays of positions
+and an optional array of weights. Before applying this function to chains
+it would be necessary to determine pairs of corresponding atoms.
 
-TBC
+To make it easier, we also have a higher-level function
+``calculate_superposition()`` that operates on ``ResidueSpan``\ s.
+This function first performs the sequence alignment.
+Then the maching residues are superposed, using either
+all atoms in both residues, or only Cα atoms (for peptides)
+and P atoms (for nucleotides).
+Atom that don't have counterparts in the other span are skipped.
+The returned object (SupResult) contains RMSD and the transformation
+(rotation matrix + translation vector) that superposes the second span
+onto the first one. Here is a usage example:
+
+.. doctest::
+
+  >>> model = gemmi.read_structure('../tests/4oz7.pdb')[0]
+  >>> polymer1 = model['A'].get_polymer()
+  >>> polymer2 = model['B'].get_polymer()
+  >>> ptype = polymer1.check_polymer_type()
+  >>> sup = gemmi.calculate_superposition(polymer1, polymer2, ptype, gemmi.SupSelect.CaP)
+  >>> sup.count  # number of atoms used
+  10
+  >>> sup.rmsd
+  0.14626891689944363
+  >>> sup.transform.mat
+  <gemmi.Mat33 [-0.0271652, 0.995789, 0.0875545]
+               [0.996396, 0.034014, -0.0777057]
+               [-0.0803566, 0.085128, -0.993124]>
+  >>> sup.transform.vec
+  <gemmi.Vec3(-17.764, 16.9915, -1.77262)>
+
+The arguments to ``calculate_superposition()`` are:
+
+- two ``ResidueSpan``\ s,
+- polymer type (to avoid determining it when it's already known).
+  The information whether it's protein or nucleic acid is used
+  during sequence alignment (to detect gaps between residues in the polymer --
+  it helps in rare cases when the sequence alignment alone is ambiguous),
+  and it decides whether to use Cα or P atoms (see the next point),
+- atom selection: one of ``SupSelect.CaP`` (only Cα or P atoms),
+  ``SupSelect.All`` (all atoms),
+- (optionally) altloc -- the conformer choice.
+  By default, atoms with non-blank altloc are ignored.
+  With altloc='A', only the A conformer is considered
+  (atoms with altloc either blank or A). Etc.
+- (optionally) ``current_rmsd=true`` -- the functions does not perform
+  the superposition, it returns the current RMSD between atoms that would be
+  used for the superposition, and also the number of atoms that would be used.
+
+  .. doctest::
+  
+    >>> gemmi.calculate_superposition(polymer1, polymer2, ptype,
+    ...                               gemmi.SupSelect.CaP, current_rmsd=True).rmsd
+    19.660883858565462
+
+The calculated superposition can be applied to a span of residues,
+changing the atomic positions in-place:
+
+.. doctest::
+
+  >>> polymer2[2].sole_atom('CB')  # before
+  <gemmi.Atom CB at (-30.3, -10.6, -11.6)>
+  >>> sup.apply(polymer2)
+  >>> polymer2[2].sole_atom('CB')  # after
+  <gemmi.Atom CB at (-28.5, -12.6, 11.2)>
+  >>> # it is now nearby the corresponding atom in chain A:
+  >>> polymer1[2].sole_atom('CB')
+  <gemmi.Atom CB at (-28.6, -12.7, 11.3)>
 
 
 .. _selections:
@@ -600,7 +669,7 @@ and subgraph isomorphisms.
    :end-before: minimal program
 
 
-Torsion Angles
+Torsion angles
 ==============
 
 This section presents functions dedicated to calculation of the dihedral angles
