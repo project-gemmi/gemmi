@@ -11,7 +11,6 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
 #include <utility>    // for pair
 #include <vector>
 #include <regex>
@@ -30,7 +29,7 @@ void check_monomer_doc(const cif::Document& doc);
 
 namespace {
 
-enum OptionIndex { Quiet=4, Fast, Stat, Ddl, NoRegex, Monomer };
+enum OptionIndex { Quiet=4, Fast, Stat, Ddl, NoRegex, NoMandatory, Monomer };
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
                                 "\n\nOptions:" },
@@ -40,10 +39,11 @@ const option::Descriptor Usage[] = {
   { Quiet, 0, "q", "quiet", Arg::None, "  -q, --quiet  \tShow only errors." },
   { Fast, 0, "f", "fast", Arg::None, "  -f, --fast  \tSyntax-only check." },
   { Stat, 0, "s", "stat", Arg::None, "  -s, --stat  \tShow token statistics" },
-  { Ddl, 0, "d", "ddl", Arg::Required,
-                                   "  -d, --ddl=PATH  \tDDL for validation." },
+  { Ddl, 0, "d", "ddl", Arg::Required, "  -d, --ddl=PATH  \tDDL for validation." },
   { NoRegex, 0, "", "no-regex", Arg::None,
     "  --no-regex  \tSkip regex checking (when using DDL2)" },
+  { NoMandatory, 0, "", "no-mandatory", Arg::None,
+    "  --no-mandatory  \tSkip checking if mandatory tags are present." },
   { Monomer, 0, "m", "monomer", Arg::None,
     "  -m, --monomer  \tExtra checks for Refmac dictionary files." },
   { 0, 0, 0, 0, 0, 0 }
@@ -351,6 +351,49 @@ public:
     return it != regexes_.end() ? &it->second : nullptr;
   }
 
+  void check_mandatory_items(cif::Block& b, std::ostream& out) {
+    if (version_ != 2)
+      return;
+    // make a list of items in each category in the block
+    std::map<std::string, std::vector<std::string>> categories;
+    auto add_category = [&](const std::string& tag) {
+      size_t pos = tag.find('.');
+      if (pos != std::string::npos)
+        categories[tag.substr(0, pos+1)].emplace_back(tag, pos+1);
+    };
+    for (const cif::Item& item : b.items) {
+      if (item.type == cif::ItemType::Pair)
+        add_category(item.pair[0]);
+      else if (item.type == cif::ItemType::Loop)
+        for (const std::string& tag : item.loop.tags)
+          add_category(tag);
+    }
+    // go over categories and check if nothing is missing
+    for (const auto& cat : categories) {
+      cif::Block* cat_block = find_rules(cat.first.substr(1, cat.first.size()-2));
+      if (!cat_block) { // should not happen
+        out << "Category not in the dictionary: " << cat.first << std::endl;
+        continue;
+      }
+      // check key items
+      for (const std::string& v : cat_block->find_values("_category_key.name")) {
+        std::string key = cif::as_string(v);
+        assert(gemmi::starts_with(key, cat.first));
+        if (!gemmi::in_vector(key.substr(cat.first.size()), cat.second))
+          out << "Missing category key: " << key << std::endl;
+      }
+      // check mandatory items
+      for (auto i = name_index_.lower_bound(cat.first);
+           i != name_index_.end() && gemmi::starts_with(i->first, cat.first);
+           ++i) {
+        cif::Table items = i->second->find("_item.", {"name", "mandatory_code"});
+        if (items.find_row(i->first).str(1)[0] == 'y')
+          if (!gemmi::in_vector(i->first.substr(cat.first.size()), cat.second))
+            out << "Missing mandatory tag: " << i->first << std::endl;
+      }
+    }
+  }
+
 private:
   cif::Block* find_rules(const std::string& name) {
     auto iter = name_index_.find(name);
@@ -376,8 +419,13 @@ private:
     for (cif::Block& block : ddl_.blocks) { // a single block is expected
       for (cif::Item& item : block.items) {
         if (item.type == cif::ItemType::Frame) {
-          for (const std::string& name : item.frame.find_values("_item.name"))
-            name_index_.emplace(cif::as_string(name), &item.frame);
+          for (const std::string& tag : {"_item.name", "_category.id"}) {
+            if (cif::Column col = item.frame.find_values(tag)) {
+              for (const std::string& name : col)
+                name_index_.emplace(cif::as_string(name), &item.frame);
+              break;
+            }
+          }
         } else if (item.type == cif::ItemType::Pair) {
           if (item.pair[0] == "_dictionary.title")
             dict_name_ = item.pair[1];
@@ -415,7 +463,7 @@ private:
 
   int version_;
   cif::Document ddl_;
-  std::unordered_map<std::string, cif::Block*> name_index_;
+  std::map<std::string, cif::Block*> name_index_;
   std::string dict_name_;
   std::string dict_version_;
   bool regex_enabled_;
@@ -577,6 +625,9 @@ int GEMMI_MAIN(int argc, char **argv) {
           if (p.options[Verbose])
             dict.check_audit_conform(d);
           ok = dict.validate(d, std::cout, quiet);
+          if (!p.options[NoMandatory])
+            for (cif::Block& block : d.blocks)
+              dict.check_mandatory_items(block, std::cout);
         }
         if (p.options[Monomer])
           check_monomer_doc(d);

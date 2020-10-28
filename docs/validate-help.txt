@@ -10,4 +10,5 @@ Options:
   -s, --stat      Show token statistics
   -d, --ddl=PATH  DDL for validation.
   --no-regex      Skip regex checking (when using DDL2)
+  --no-mandatory  Skip checking if mandatory tags are present.
   -m, --monomer   Extra checks for Refmac dictionary files.
