@@ -216,7 +216,7 @@ void process_with_fft(const gemmi::Structure& st,
     } else if (file.mode == RefFile::Mode::Compare) {
       gemmi::Mtz mtz;
       mtz.read_input(gemmi::MaybeGzipped(file.path), true);
-      compared_data = mtz.get_f_phi<double>(file.f_label, file.phi_label);
+      compared_data.load_values<2>(gemmi::MtzDataProxy{mtz}, {file.f_label, file.phi_label});
       compared_data.ensure_sorted();
     }
   }
@@ -531,7 +531,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
     std::string label(sep+1);
     gemmi::Mtz mtz;
     mtz.read_input(gemmi::MaybeGzipped(path), true);
-    scale_to = mtz.get_values<Real,2>({label, "SIG"+label});
+    scale_to.load_values<2>(gemmi::MtzDataProxy{mtz}, {label, "SIG"+label});
     scale_to.ensure_sorted();
   }
 
