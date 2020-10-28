@@ -22,14 +22,16 @@ namespace gemmi {
 
 struct MtzToCif {
   // options that can be set directly
-  std::vector<std::string> spec_lines;  // conversion specification (cf. default_spec)
-  const char* block_name = nullptr;     // NAME in data_NAME
-  std::string mtz_path;                 // path written in a comment
-  bool with_comments = true;            // write comments
-  bool skip_empty = false;              // skip reflections with no values
-  std::string skip_empty_cols;          // columns used to determine "emptiness"
-  double wavelength = NAN;              // user-specified wavelength
-  int trim = 0;                         // output only reflections -N<=h,k,l<=N
+  std::vector<std::string> spec_lines; // conversion specification (cf. default_spec)
+  const char* block_name = nullptr;  // NAME in data_NAME
+  std::string mtz_path;              // path written in a comment
+  bool with_comments = true;         // write comments
+  bool skip_empty = false;           // skip reflections with no values
+  bool enable_UB = false;            // write _diffrn_orient_matrix.UB
+  bool enable_angle_phi = false;     // write phistt as _diffrn_refln.angle_phi
+  std::string skip_empty_cols;       // columns used to determine "emptiness"
+  double wavelength = NAN;           // user-specified wavelength
+  int trim = 0;                      // output only reflections -N<=h,k,l<=N
 
   static const char** default_spec(bool for_merged) {
     static const char* merged[] = {
@@ -291,13 +293,15 @@ inline void MtzToCif::write_cif(const Mtz& mtz, std::ostream& os) {
      << "\n\n_entry.id " << id << "\n\n";
 
   bool write_angle_phi = false;
-  if (unmerged) {
+  if (enable_angle_phi) {
     // don't write angle_phi if it has the same value in all batches
-    for (size_t i = 1; i != mtz.batches.size(); ++i)
+    for (size_t i = 1; i < mtz.batches.size(); ++i)
       if (mtz.batches[i].phi_start() != mtz.batches[0].phi_start()) {
         write_angle_phi = true;
         break;
       }
+    }
+  if (unmerged) {
     os << "_exptl_crystal.id 1\n\n";
     bool scaled = (mtz.column_with_label("SCALEUSED") != nullptr);
     std::vector<SweepData> sweep_data = gather_sweep_data(mtz);
@@ -334,27 +338,29 @@ inline void MtzToCif::write_cif(const Mtz& mtz, std::ostream& os) {
          << '\n';
     os << '\n';
 
-    os << "loop_\n"
-          "_diffrn_orient_matrix.diffrn_id\n"
-          "_diffrn_orient_matrix.UB[1][1]\n"
-          "_diffrn_orient_matrix.UB[1][2]\n"
-          "_diffrn_orient_matrix.UB[1][3]\n"
-          "_diffrn_orient_matrix.UB[2][1]\n"
-          "_diffrn_orient_matrix.UB[2][2]\n"
-          "_diffrn_orient_matrix.UB[2][3]\n"
-          "_diffrn_orient_matrix.UB[3][1]\n"
-          "_diffrn_orient_matrix.UB[3][2]\n"
-          "_diffrn_orient_matrix.UB[3][3]\n";
-    for (const SweepData& sweep : sweep_data) {
-      Mat33 u = sweep.first_batch->matrix_U();
-      Mat33 b = sweep.first_batch->get_cell().calculate_matrix_B();
-      Mat33 ub = u.multiply(b);
-      WRITE("%d  %#g %#g %#g  %#g %#g %#g  %#g %#g %#g\n", sweep.id,
-            ub.a[0][0], ub.a[0][1], ub.a[0][2],
-            ub.a[1][0], ub.a[1][1], ub.a[1][2],
-            ub.a[2][0], ub.a[2][1], ub.a[2][2]);
+    if (enable_UB) {
+      os << "loop_\n"
+            "_diffrn_orient_matrix.diffrn_id\n"
+            "_diffrn_orient_matrix.UB[1][1]\n"
+            "_diffrn_orient_matrix.UB[1][2]\n"
+            "_diffrn_orient_matrix.UB[1][3]\n"
+            "_diffrn_orient_matrix.UB[2][1]\n"
+            "_diffrn_orient_matrix.UB[2][2]\n"
+            "_diffrn_orient_matrix.UB[2][3]\n"
+            "_diffrn_orient_matrix.UB[3][1]\n"
+            "_diffrn_orient_matrix.UB[3][2]\n"
+            "_diffrn_orient_matrix.UB[3][3]\n";
+      for (const SweepData& sweep : sweep_data) {
+        Mat33 u = sweep.first_batch->matrix_U();
+        Mat33 b = sweep.first_batch->get_cell().calculate_matrix_B();
+        Mat33 ub = u.multiply(b);
+        WRITE("%d  %#g %#g %#g  %#g %#g %#g  %#g %#g %#g\n", sweep.id,
+              ub.a[0][0], ub.a[0][1], ub.a[0][2],
+              ub.a[1][0], ub.a[1][1], ub.a[1][2],
+              ub.a[2][0], ub.a[2][1], ub.a[2][2]);
+      }
+      os << '\n';
     }
-    os << '\n';
   }
 
   if (!unmerged) {
