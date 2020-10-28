@@ -11,8 +11,8 @@ int main() {
   mtz.datasets.back().wavelength = 0.8;
   mtz.add_column("F", 'F');
   mtz.add_column("SIGF", 'Q');
-  const float data[] = { 2, 3, 4, 200.4, 10.5,
-                         2, 3, 5, 596.1, 7.35 };
+  const float data[] = { 2, 3, 4, 200.4f, 10.5f,
+                         2, 3, 5, 596.1f, 7.35f };
   mtz.set_data(data, 2*5);
   mtz.write_to_file("my_new.mtz");
 }
