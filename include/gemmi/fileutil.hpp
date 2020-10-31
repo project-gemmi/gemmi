@@ -98,7 +98,7 @@ inline std::string expand_if_pdb_code(const std::string& input, char type='M') {
   if (is_pdb_code(input)) {
     path = gemmi::expand_pdb_code_to_path(input, type);
     if (path.empty())
-      fail(input + " is a PDB code, but $PDB_DIR is not set.\n");
+      fail(input + " is a PDB code, but $PDB_DIR is not set.");
   } else {
     path = input;
   }

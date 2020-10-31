@@ -522,19 +522,19 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   size_t file_count = 0;
   int err_count = 0;
-  for (const std::string& path : paths) {
-    if (path == "-") {
-      grep_file(path, params, err_count);
-      file_count++;
-    } else if (p.options[FromFile] ? starts_with_pdb_code(path)
-                                   : gemmi::is_pdb_code(path)) {
-      std::string real_path = gemmi::expand_if_pdb_code(path.substr(0, 4));
-      params.last_block = true;  // PDB code implies -O
-      grep_file(real_path, params, err_count);
-      params.last_block = p.options[OneBlock];
-      file_count++;
-    } else {
-      try {
+  try {
+    for (const std::string& path : paths) {
+      if (path == "-") {
+        grep_file(path, params, err_count);
+        file_count++;
+      } else if (p.options[FromFile] ? starts_with_pdb_code(path)
+                                     : gemmi::is_pdb_code(path)) {
+        std::string real_path = gemmi::expand_if_pdb_code(path.substr(0, 4));
+        params.last_block = true;  // PDB code implies -O
+        grep_file(real_path, params, err_count);
+        params.last_block = p.options[OneBlock];
+        file_count++;
+      } else {
         if (p.options[NamePattern]) {
           std::string pattern = p.options[NamePattern].arg;
           for (const std::string& file : gemmi::GlobWalk(path, pattern)) {
@@ -547,11 +547,11 @@ int GEMMI_MAIN(int argc, char **argv) {
             file_count++;
           }
         }
-      } catch (std::runtime_error &e) {
-        fprintf(stderr, "Error: %s\n", e.what());
-        return 2;
       }
     }
+  } catch (std::runtime_error &e) {
+    fprintf(stderr, "Error: %s\n", e.what());
+    return 2;
   }
   if (p.options[Summarize]) {
     printf("Total count in %zu files: %zu\n", file_count, params.total_count);
