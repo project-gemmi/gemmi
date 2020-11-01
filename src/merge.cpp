@@ -201,7 +201,7 @@ void write_merged_intensities(const Intensities& intensities, const char* output
       mtz_to_cif.with_comments = false;
       mtz_to_cif.block_name = "merged";
       gemmi::Ofstream os(output_path, /*dash=*/&std::cout);
-      mtz_to_cif.write_cif(mtz, os.ref());
+      mtz_to_cif.write_cif(mtz, nullptr, os.ref());
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR while writing %s: %s\n", output_path, e.what());
@@ -288,7 +288,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (verbose)
       std::fprintf(stderr, "Reading merged reflections from %s ...\n", output_path);
     ReadType itype = p.options[WriteAnom] ? ReadType::Anomalous : ReadType::Mean;
-    ref = read_intensities(itype, input_path, nullptr, verbose);
+    ref = read_intensities(itype, output_path, nullptr, verbose);
   }
 
   if (verbose)
@@ -310,11 +310,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     std::fprintf(stderr, "Merging observations (%zu total, %zu for I+, %zu for I-) ...\n",
                  intensities.data.size(), plus_count, minus_count);
   }
-  if (p.options[Compare] ? !ref.have_sign() : !p.options[WriteAnom])
-    // discard signs so that merging produces Imean
-    for (Intensities::Refl& refl : intensities.data)
-      refl.isign = 0;
-  intensities.merge_in_place();
+  bool output_plus_minus = (p.options[Compare] ? ref.have_sign() : p.options[WriteAnom]);
+  intensities.merge_in_place(output_plus_minus);
   if (p.options[Compare]) {
     compare_intensities(intensities, ref, p.options[PrintAll]);
   } else {

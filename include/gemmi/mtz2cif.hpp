@@ -15,6 +15,7 @@
 #include <algorithm>     // for all_of
 #include "mtz.hpp"       // for Mtz
 #include "atox.hpp"      // for read_word
+#include "merge.hpp"     // for Intensities, read_unmerged_intensities_from_mtz
 #include "sprintf.hpp"   // for gf_snprintf, to_str
 #include "version.hpp"   // for GEMMI_VERSION
 
@@ -38,8 +39,8 @@ struct MtzToCif {
       "H H index_h",
       "K H index_k",
       "L H index_l",
-      "? I       J intensity_meas",
-      "& SIGI    Q intensity_sigma",
+      "? IMEAN|I J intensity_meas",
+      "& SIGIMEAN|SIGI Q intensity_sigma",
       "? I(+)    K pdbx_I_plus",
       "& SIGI(+) M pdbx_I_plus_sigma",
       "? I(-)    K pdbx_I_minus",
@@ -74,7 +75,7 @@ struct MtzToCif {
     return for_merged ? merged : unmerged;
   }
 
-  void write_cif(const Mtz& mtz, std::ostream& os);
+  void write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& os);
 
 private:
   // describes which MTZ column is to be translated to what mmCIF column
@@ -186,6 +187,7 @@ private:
   };
 
   void prepare_recipe(const Mtz& mtz) {
+    recipe.clear();
     SpecParserState state;
     if (!spec_lines.empty()) {
       for (const std::string& line : spec_lines)
@@ -257,24 +259,53 @@ private:
     }
     recipe.push_back(tr);
   }
+
+  void write_main_loop(const Mtz& mtz, char* buf, std::ostream& os);
 };
 
-inline void MtzToCif::write_cif(const Mtz& mtz, std::ostream& os) {
-  recipe.clear();
-  prepare_recipe(mtz);
-  // prepare indices
-  std::vector<int> value_indices;  // used for --skip_empty
-  std::vector<int> sigma_indices;  // used for status 'x'
-  for (const Trans& tr : recipe) {
-    const Mtz::Column& col = mtz.columns[tr.col_idx];
-    if (skip_empty) {
-      if (skip_empty_cols.empty() ? col.type != 'H' && col.type != 'I'
-                                  : is_in_list(col.label, skip_empty_cols))
-        value_indices.push_back(tr.col_idx);
+// pre: unmerged MTZ is after switch_to_original_hkl()
+inline void validate_merged_intensities(const Mtz& mtz1, const Mtz& mtz2) {
+  if (mtz1.is_merged() == mtz2.is_merged())
+    fail("both files are ", mtz1.is_merged() ? "merged" : "unmerged");
+  const Mtz& merged = mtz1.is_merged() ? mtz1 : mtz2;
+  const Mtz& unmerged = mtz1.is_merged() ? mtz2 : mtz1;
+  Intensities in1 = read_unmerged_intensities_from_mtz(unmerged);
+  size_t before = in1.data.size();
+  in1.merge_in_place(/*output_plus_minus=*/false);  // it also sorts
+  size_t after = in1.data.size();
+  in1.remove_systematic_absences();
+  Intensities in2 = read_mean_intensities_from_mtz(merged);
+  in2.sort();
+  if (in1.spacegroup != in2.spacegroup)
+    fprintf(stderr, "Warning: different space groups in two MTZ files:\n%s and %s\n",
+            in1.spacegroup_str().c_str(), in2.spacegroup_str().c_str());
+  fprintf(stderr, "Reflections: %zu -> %zu (merged) -> %zu (no sysabs)  vs  %zu\n",
+          before, after, in1.data.size(), in2.data.size());
+  gemmi::Correlation corr;
+  auto r1 = in1.data.begin();
+  auto r2 = in2.data.begin();
+  while (r1 != in1.data.end() && r2 != in2.data.end()) {
+    if (r1->hkl == r2->hkl) {
+      corr.add_point(r1->value, r2->value);
+      ++r1;
+      ++r2;
+    } else if (std::tie(r1->hkl[0], r1->hkl[1], r1->hkl[2]) <
+               std::tie(r2->hkl[0], r2->hkl[1], r2->hkl[2])) {
+      ++r1;
+    } else {
+      ++r2;
     }
-    if (col.type != 'Q' && col.type != 'L' && col.type != 'M')
-      sigma_indices.push_back(tr.col_idx);
   }
+  fprintf(stderr, "IMEAN CC of %d values: %.7g%% (mean ratio: %g)\n",
+          corr.n, 100 * corr.coefficient(), corr.mean_ratio());
+}
+
+inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& os) {
+  if (mtz2 && mtz.is_merged() == mtz2->is_merged())
+    fail("If two MTZ files are given, one must be merged and one unmerged,\n"
+         "got two ", mtz.is_merged() ? "merged" : "unmerged");
+  const Mtz* merged = mtz.is_merged() ? &mtz : mtz2;
+  const Mtz* unmerged = mtz.is_merged() ? mtz2 : &mtz;
 
   char buf[256];
 #define WRITE(...) os.write(buf, gf_snprintf(buf, 255, __VA_ARGS__))
@@ -283,28 +314,22 @@ inline void MtzToCif::write_cif(const Mtz& mtz, std::ostream& os) {
     os << "# Converted by gemmi-mtz2cif " GEMMI_VERSION "\n";
     if (!mtz_path.empty())
       os << "# from: " << mtz_path << '\n';
-    os << "# MTZ title: " << mtz.title << '\n';
-    for (size_t i = 0; i != mtz.history.size(); ++i)
-      os << "# MTZ history #" << i << ": " << mtz.history[i] << '\n';
-  }
-  const bool unmerged = !mtz.batches.empty();
-  os << "data_"
-     << (block_name ? block_name : unmerged ? "unmerged" : "merged")
-     << "\n\n_entry.id " << id << "\n\n";
-
-  bool write_angle_phi = false;
-  if (enable_angle_phi) {
-    // don't write angle_phi if it has the same value in all batches
-    for (size_t i = 1; i < mtz.batches.size(); ++i)
-      if (mtz.batches[i].phi_start() != mtz.batches[0].phi_start()) {
-        write_angle_phi = true;
-        break;
+    for (const Mtz* m : {merged, unmerged})
+      if (m) {
+        os << "# title of " << (m->is_merged() ? "" : "un") << "merged MTZ: "
+           << m->title << '\n';
+        for (size_t i = 0; i != m->history.size(); ++i)
+          os << "# MTZ history #" << i << ": " << m->history[i] << '\n';
       }
-    }
+  }
+  os << "data_" << (block_name ? block_name : "mtz");
+
+  os << "\n\n_entry.id " << id << "\n\n";
+
   if (unmerged) {
     os << "_exptl_crystal.id 1\n\n";
-    bool scaled = (mtz.column_with_label("SCALEUSED") != nullptr);
-    std::vector<SweepData> sweep_data = gather_sweep_data(mtz);
+    bool scaled = (unmerged->column_with_label("SCALEUSED") != nullptr);
+    std::vector<SweepData> sweep_data = gather_sweep_data(*unmerged);
 
     os << "loop_\n_diffrn.id\n_diffrn.crystal_id\n_diffrn.details\n";
     for (const SweepData& sweep : sweep_data) {
@@ -361,12 +386,11 @@ inline void MtzToCif::write_cif(const Mtz& mtz, std::ostream& os) {
       }
       os << '\n';
     }
-  }
-
-  if (!unmerged) {
+  } else {
     double w = std::isnan(wavelength) ? get_wavelength(mtz, recipe) : wavelength;
     if (w != 0.)
       os << "_diffrn_radiation.diffrn_id 1\n"
+         << "_diffrn_radiation.wavelength_id 1\n"
          << "_diffrn_radiation_wavelength.id 1\n"
          << "_diffrn_radiation_wavelength.wavelength " << to_str(w) << "\n\n";
   }
@@ -383,11 +407,47 @@ inline void MtzToCif::write_cif(const Mtz& mtz, std::ostream& os) {
   if (const SpaceGroup* sg = mtz.spacegroup) {
     os << "_symmetry.entry_id " << id << "\n"
           "_symmetry.space_group_name_H-M '" << sg->hm << "'\n"
-          "_symmetry.Int_Tables_number " << sg->number << "\n\n";
+          "_symmetry.Int_Tables_number " << sg->number << '\n';
     // could write _symmetry_equiv.pos_as_xyz, but would it be useful?
   }
-  os << "loop_\n";
-  if (unmerged) {
+
+  if (merged)
+    write_main_loop(*merged, buf, os);
+  if (unmerged)
+    write_main_loop(*unmerged, buf, os);
+}
+
+inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& os) {
+  prepare_recipe(mtz);
+  // prepare indices
+  std::vector<int> value_indices;  // used for --skip_empty
+  std::vector<int> sigma_indices;  // used for status 'x'
+  for (const Trans& tr : recipe) {
+    const Mtz::Column& col = mtz.columns[tr.col_idx];
+    if (skip_empty) {
+      if (skip_empty_cols.empty() ? col.type != 'H' && col.type != 'I'
+                                  : is_in_list(col.label, skip_empty_cols))
+        value_indices.push_back(tr.col_idx);
+    }
+    if (col.type != 'Q' && col.type != 'L' && col.type != 'M')
+      sigma_indices.push_back(tr.col_idx);
+  }
+
+  bool write_angle_phi = false;
+  if (enable_angle_phi) {
+    // don't write angle_phi if it has the same value in all batches
+    for (size_t i = 1; i < mtz.batches.size(); ++i)
+      if (mtz.batches[i].phi_start() != mtz.batches[0].phi_start()) {
+        write_angle_phi = true;
+        break;
+      }
+    }
+
+  bool unmerged = !mtz.is_merged();
+  os << "\nloop_\n";
+  if (unmerged) {  // prepended tags that are not in the recipe
+    // ccp4_centroid_of_image_numbers is a proposed real number corresponding
+    // to ITEM_ZD in XDS, BATCH (integer) in MTZ, etc.
     os << "_diffrn_refln.diffrn_id\n"
           "_diffrn_refln.standard_code\n"
           "_diffrn_refln.scale_group_code\n"
@@ -414,6 +474,8 @@ inline void MtzToCif::write_cif(const Mtz& mtz, std::ostream& os) {
       os << tr.tag << '\n';
     }
   }
+  if (unmerged) // appended tag that is not in the recipe
+    os << "_diffrn_refln.ccp4_centroid_of_image_numbers\n";
   int batch_idx = find_column_index("BATCH", mtz);
   std::map<int, const Mtz::Batch*> batch_by_number;
   for (const Mtz::Batch& b : mtz.batches)
@@ -431,14 +493,16 @@ inline void MtzToCif::write_cif(const Mtz& mtz, std::ostream& os) {
       if (std::all_of(value_indices.begin(), value_indices.end(),
                       [&](int n) { return std::isnan(row[n]); }))
         continue;
+    int batch_number = 0;
     if (unmerged) {
       if (batch_idx == -1)
         fail("BATCH column not found");
-      int batch_number = (int) row[batch_idx];
+      batch_number = (int) row[batch_idx];
       auto it = batch_by_number.find(batch_number);
       if (it == batch_by_number.end())
         fail("unexpected values in column BATCH");
       const Mtz::Batch& batch = *it->second;
+      // values for prepended tags
       os << batch.dataset_id() << " . . " << ++idx << ' ';
       if (write_angle_phi)
         WRITE("%.2f ", batch.phi_start());
@@ -472,10 +536,12 @@ inline void MtzToCif::write_cif(const Mtz& mtz, std::ostream& os) {
 #endif
       }
     }
+    if (unmerged) // value for appended tag
+      os << ' ' << batch_number;
     os << '\n';
   }
-#undef WRITE
 }
+#undef WRITE
 
 } // namespace gemmi
 #endif

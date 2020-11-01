@@ -14,11 +14,11 @@
 namespace {
 
 enum OptionIndex { Spec=4, PrintSpec, BlockName, SkipEmpty, NoComments,
-                   Wavelength, Trim };
+                   Wavelength, ValidateMerge, Trim };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
-    "Usage:\n  " EXE_NAME " [options] MTZ_FILE CIF_FILE"
+    "Usage:\n  " EXE_NAME " [options] MTZ_FILE [MTZ_FILE] CIF_FILE"
     "\nOptions:"},
   CommonUsage[Help],
   CommonUsage[Version],
@@ -36,9 +36,13 @@ const option::Descriptor Usage[] = {
     "  --no-comments  \tDo not write comments in the mmCIF file." },
   { Wavelength, 0, "", "wavelength", Arg::Float,
     "  --wavelength=LAMBDA  \tSet wavelengths (default: from input file)." },
+  { ValidateMerge, 0, "", "validate-merge", Arg::None,
+    "  --validate-merge  \tFor two MTZ files: validate the intensities match." },
   { Trim, 0, "", "trim", Arg::Int,
     "  --trim=N  \t(for testing) output only reflections -N <= h,k,l <=N." },
   { NoOp, 0, "", "", Arg::None,
+    "\nOne or two MTZ files are taken as the input. If two files are given,"
+    "\none must be merged and the other unmerged."
     "\nIf CIF_FILE is -, the output is printed to stdout."
     "\nIf spec is -, it is read from stdin."
     "\n\nLines in the spec file have format:"
@@ -81,22 +85,32 @@ int GEMMI_MAIN(int argc, char **argv) {
       std::printf("%s\n", *lines);
     return 0;
   }
-  p.require_positional_args(2);
+  int nargs = p.nonOptionsCount();
+  if (nargs != 2 && nargs != 3) {
+    fprintf(stderr, "%s requires 2 or 3 arguments, got %d.", p.program_name, nargs);
+    p.print_try_help_and_exit("");
+  }
   bool verbose = p.options[Verbose];
-  const char* mtz_path = p.nonOption(0);
-  const char* cif_path = p.nonOption(1);
-  gemmi::Mtz mtz;
-  if (verbose) {
-    std::fprintf(stderr, "Reading %s ...\n", mtz_path);
-    mtz.warnings = stderr;
-  }
-  try {
-    mtz.read_input(gemmi::MaybeGzipped(mtz_path), true);
-  } catch (std::runtime_error& e) {
-    std::fprintf(stderr, "ERROR reading %s: %s\n", mtz_path, e.what());
-    return 1;
-  }
-  mtz.switch_to_original_hkl();
+  const char* mtz_paths[2];
+  mtz_paths[0] = p.nonOption(0);
+  mtz_paths[1] = (nargs == 3 ? p.nonOption(1) : nullptr);
+  const char* cif_path = p.nonOption(nargs == 3 ? 2 : 1);
+  std::unique_ptr<gemmi::Mtz> mtz[2];
+  for (int i = 0; i < 2; ++i)
+    if (mtz_paths[i]) {
+      mtz[i].reset(new gemmi::Mtz);
+      if (verbose) {
+        std::fprintf(stderr, "Reading %s ...\n", mtz_paths[i]);
+        mtz[i]->warnings = stderr;
+      }
+      try {
+        mtz[i]->read_input(gemmi::MaybeGzipped(mtz_paths[i]), true);
+      } catch (std::runtime_error& e) {
+        std::fprintf(stderr, "ERROR reading %s: %s\n", mtz_paths[i], e.what());
+        return 1;
+      }
+    }
+
   if (verbose)
     std::fprintf(stderr, "Writing %s ...\n", cif_path);
 
@@ -118,7 +132,11 @@ int GEMMI_MAIN(int argc, char **argv) {
     return 2;
   }
 
-  mtz_to_cif.mtz_path = mtz_path;
+  mtz_to_cif.mtz_path = mtz_paths[0];
+  if (mtz_paths[1]) {
+    mtz_to_cif.mtz_path += " and ";
+    mtz_to_cif.mtz_path += mtz_paths[1];
+  }
   mtz_to_cif.with_comments = !p.options[NoComments];
   if (p.options[SkipEmpty]) {
     mtz_to_cif.skip_empty = true;
@@ -129,11 +147,21 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz_to_cif.block_name = p.options[BlockName].arg;
   if (p.options[Wavelength])
     mtz_to_cif.wavelength = std::strtod(p.options[Wavelength].arg, nullptr);
+  if (p.options[ValidateMerge] && nargs == 3) {
+    try {
+      gemmi::validate_merged_intensities(*mtz[0], *mtz[1]);
+    } catch (std::runtime_error& e) {
+      fprintf(stderr, "Intensity merging not validated: %s\n", e.what());
+    }
+  }
   if (p.options[Trim])
     mtz_to_cif.trim = std::atoi(p.options[Trim].arg);
   try {
     gemmi::Ofstream os(cif_path, &std::cout);
-    mtz_to_cif.write_cif(mtz, os.ref());
+    mtz[0]->switch_to_original_hkl();
+    if (mtz[1])
+      mtz[1]->switch_to_original_hkl();
+    mtz_to_cif.write_cif(*mtz[0], mtz[1].get(), os.ref());
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR writing %s: %s\n", cif_path, e.what());
     return 3;

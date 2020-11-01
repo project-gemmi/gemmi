@@ -85,7 +85,11 @@ struct Intensities {
 
   void sort() { std::sort(data.begin(), data.end()); }
 
-  void merge_in_place() {
+  void merge_in_place(bool output_plus_minus) {
+    if (!output_plus_minus)
+      // discard signs so that merging produces Imean
+      for (Refl& refl : data)
+        refl.isign = 0;
     sort();
     std::vector<Refl>::iterator out = data.begin();
     double sum_wI = 0.;
