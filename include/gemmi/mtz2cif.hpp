@@ -446,8 +446,6 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
   bool unmerged = !mtz.is_merged();
   os << "\nloop_\n";
   if (unmerged) {  // prepended tags that are not in the recipe
-    // ccp4_centroid_of_image_numbers is a proposed real number corresponding
-    // to ITEM_ZD in XDS, BATCH (integer) in MTZ, etc.
     os << "_diffrn_refln.diffrn_id\n"
           "_diffrn_refln.standard_code\n"
           "_diffrn_refln.scale_group_code\n"
@@ -475,11 +473,24 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
     }
   }
   if (unmerged) // appended tag that is not in the recipe
+    // ccp4_centroid_of_image_numbers is a proposed real number corresponding
+    // to ITEM_ZD in XDS, BATCH (integer, with subtracted offset) in MTZ, etc.
     os << "_diffrn_refln.ccp4_centroid_of_image_numbers\n";
   int batch_idx = find_column_index("BATCH", mtz);
   std::map<int, const Mtz::Batch*> batch_by_number;
   for (const Mtz::Batch& b : mtz.batches)
     batch_by_number.emplace(b.number, &b);
+
+  // prepare offsets
+  std::map<int, int> batch_offset;
+  for (const Mtz::Batch& b : mtz.batches) {
+    auto result = batch_offset.emplace(b.dataset_id(), b.number);
+    if (!result.second && result.first->second < b.number)
+      result.first->second = b.number;
+  }
+  for (auto& it : batch_offset)
+    it.second -= it.second % 1000;
+
   for (int i = 0, idx = 0; i != mtz.nreflections; ++i) {
     const float* row = &mtz.data[i * mtz.columns.size()];
     if (trim > 0) {
@@ -506,6 +517,7 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
       os << batch.dataset_id() << " . . " << ++idx << ' ';
       if (write_angle_phi)
         WRITE("%.2f ", batch.phi_start());
+      batch_number -= batch_offset.at(batch.dataset_id());
     }
     bool first = true;
     for (const Trans& tr : recipe) {
