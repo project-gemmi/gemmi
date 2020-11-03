@@ -605,9 +605,15 @@ int GEMMI_MAIN(int argc, char **argv) {
 #else
   DDL dict(!p.options[NoRegex]);
 #endif
-  if (p.options[Ddl])
-    for (option::Option* ddl = p.options[Ddl]; ddl; ddl = ddl->next())
-      dict.open_file(ddl->arg);
+  if (p.options[Ddl]) {
+    try {
+      for (option::Option* ddl = p.options[Ddl]; ddl; ddl = ddl->next())
+        dict.open_file(ddl->arg);
+    } catch (std::runtime_error& e) {
+      std::cerr << "Error when reading dictionary: " << e.what() << std::endl;
+      return EXIT_FAILURE;
+    }
+  }
   for (int i = 0; i < p.nonOptionsCount(); ++i) {
     const char* path = p.nonOption(i);
     std::string msg;
