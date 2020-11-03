@@ -598,7 +598,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   bool quiet = p.options[Quiet];
   bool total_ok = true;
-#if __GNUC__+0 == 4 && __GNUC_MINOR__+0 < 9
+#if __GNUC__+0 == 4 && __GNUC_MINOR__+0 < 9 && !defined(__clang__)
   DDL dict(false);
   if (!p.options[NoRegex])
     std::cerr << "Note: regex support disabled on GCC 4.8\n";
