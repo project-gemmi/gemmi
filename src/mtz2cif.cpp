@@ -4,7 +4,7 @@
 
 #include <cstdio>
 #include <cstdlib>            // for strtod
-#include <iostream>
+#include <iostream>           // for cout, cerr
 #include <gemmi/mtz2cif.hpp>
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/fstream.hpp>  // for Ofstream
@@ -149,7 +149,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz_to_cif.wavelength = std::strtod(p.options[Wavelength].arg, nullptr);
   if (p.options[ValidateMerge] && nargs == 3) {
     try {
-      gemmi::validate_merged_intensities(*mtz[0], *mtz[1]);
+      gemmi::validate_merged_intensities(*mtz[0], *mtz[1], std::cerr);
     } catch (std::runtime_error& e) {
       fprintf(stderr, "Intensity merging not validated: %s\n", e.what());
     }

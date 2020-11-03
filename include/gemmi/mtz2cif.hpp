@@ -264,7 +264,7 @@ private:
 };
 
 // pre: unmerged MTZ is after switch_to_original_hkl()
-inline void validate_merged_intensities(const Mtz& mtz1, const Mtz& mtz2) {
+inline void validate_merged_intensities(const Mtz& mtz1, const Mtz& mtz2, std::ostream& out) {
   if (mtz1.is_merged() == mtz2.is_merged())
     fail("both files are ", mtz1.is_merged() ? "merged" : "unmerged");
   const Mtz& merged = mtz1.is_merged() ? mtz1 : mtz2;
@@ -277,10 +277,10 @@ inline void validate_merged_intensities(const Mtz& mtz1, const Mtz& mtz2) {
   Intensities in2 = read_mean_intensities_from_mtz(merged);
   in2.sort();
   if (in1.spacegroup != in2.spacegroup)
-    fprintf(stderr, "Warning: different space groups in two MTZ files:\n%s and %s\n",
-            in1.spacegroup_str().c_str(), in2.spacegroup_str().c_str());
-  fprintf(stderr, "Reflections: %zu -> %zu (merged) -> %zu (no sysabs)  vs  %zu\n",
-          before, after, in1.data.size(), in2.data.size());
+    out << "Warning: different space groups in two MTZ files:\n"
+        << in1.spacegroup_str() << " and " << in2.spacegroup_str() << '\n';
+  out << "Reflections: " << before << " -> " << after << " (merged) -> "
+      << in1.data.size() << " (no sysabs)  vs  " << in2.data.size() << '\n';
   gemmi::Correlation corr;
   auto r1 = in1.data.begin();
   auto r2 = in2.data.begin();
@@ -296,8 +296,8 @@ inline void validate_merged_intensities(const Mtz& mtz1, const Mtz& mtz2) {
       ++r2;
     }
   }
-  fprintf(stderr, "IMEAN CC of %d values: %.7g%% (mean ratio: %g)\n",
-          corr.n, 100 * corr.coefficient(), corr.mean_ratio());
+  out << "IMEAN CC of " << corr.n << " values: " << 100 * corr.coefficient()
+      << "% (mean ratio: " << corr.mean_ratio() << ")\n";
 }
 
 inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& os) {
