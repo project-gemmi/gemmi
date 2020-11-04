@@ -47,9 +47,12 @@ const option::Descriptor Usage[] = {
     "\nIf spec is -, it is read from stdin."
     "\n\nLines in the spec file have format:"
     "\n  [FLAG] COLUMN TYPE TAG [FORMAT]"
+    "\n or"
+    "\n  $SPECIAL TAG"
     "\nfor example:"
     "\n  SIGF_native * SIGF_meas_au 12.5e"
     "\n  FREE I pdbx_r_free_flag 3.0f"
+    "\n  $counter id"
     "\nFLAG (optional) is either ? or &:"
     "\n  ? = ignored if no column in the MTZ file has this name."
     "\n  & = ignored if the previous line was ignored."
@@ -65,6 +68,8 @@ const option::Descriptor Usage[] = {
     "\n - flag is one of + - # _; '_' stands for ' ', for example '_.4f'"
     "\n - since all numbers in MTZ are stored as float, the integer columns use"
     "\n   the same format as float. The format of _refln.status is ignored."
+    "\n$SPECIAL is $counter, $dataset, $image, $. or $?, as appropriate for"
+    "\n  _diffrn_refln.id, _diffrn_refln.diffrn_id, image number or null (./?)"
   },
   { 0, 0, 0, 0, 0, 0 }
 };

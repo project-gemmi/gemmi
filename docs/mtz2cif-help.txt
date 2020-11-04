@@ -22,9 +22,12 @@ If spec is -, it is read from stdin.
 
 Lines in the spec file have format:
   [FLAG] COLUMN TYPE TAG [FORMAT]
+ or
+  $SPECIAL TAG
 for example:
   SIGF_native * SIGF_meas_au 12.5e
   FREE I pdbx_r_free_flag 3.0f
+  $counter id
 FLAG (optional) is either ? or &:
   ? = ignored if no column in the MTZ file has this name.
   & = ignored if the previous line was ignored.
@@ -40,3 +43,5 @@ FORMAT (optional) is printf-like floating-point format:
  - flag is one of + - # _; '_' stands for ' ', for example '_.4f'
  - since all numbers in MTZ are stored as float, the integer columns use
    the same format as float. The format of _refln.status is ignored.
+$SPECIAL is $counter, $dataset, $image, $. or $?, as appropriate for
+  _diffrn_refln.id, _diffrn_refln.diffrn_id, image number or null (./?)

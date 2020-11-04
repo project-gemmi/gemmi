@@ -22,6 +22,8 @@
 namespace gemmi {
 
 struct MtzToCif {
+  enum Var { Dot=-1, Qmark=-2, Counter=-3, DatasetId=-4, Image=-5 };
+
   // options that can be set directly
   std::vector<std::string> spec_lines; // conversion specification (cf. default_spec)
   const char* block_name = nullptr;  // NAME in data_NAME
@@ -29,7 +31,6 @@ struct MtzToCif {
   bool with_comments = true;         // write comments
   bool skip_empty = false;           // skip reflections with no values
   bool enable_UB = false;            // write _diffrn_orient_matrix.UB
-  bool enable_angle_phi = false;     // write phistt as _diffrn_refln.angle_phi
   std::string skip_empty_cols;       // columns used to determine "emptiness"
   double wavelength = NAN;           // user-specified wavelength
   int trim = 0;                      // output only reflections -N<=h,k,l<=N
@@ -59,17 +60,18 @@ struct MtzToCif {
       nullptr
     };
     static const char* unmerged[] = {
-      // The first few columns of _diffrn_refln are set automatically:
-      //   diffrn_id - based on BATCH
-      //   standard_code - dummy mandatory column (set to 1)
-      //   scale_group_code - dummy mandatory column (set to 1)
-      //   id - reflection counter (1, 2, ...)
-      //   angle_phi - (optional) phistt from batch header, written if phistt is changing
+      "$dataset diffrn_id",  // diffrn_id - sweep id deduced from BATCH
+      "$. standard_code",    // dummy mandatory column
+      "$. scale_group_code", // dummy mandatory column
+      "$counter id",         // reflection counter (1, 2, ...)
       "H H index_h",
       "K H index_k",
       "L H index_l",
       "? I       J intensity_net",
       "& SIGI    Q intensity_sigma .5g",
+      // ccp4_centroid_of_image_numbers is a proposed real number corresponding
+      // to ITEM_ZD in XDS, BATCH (integer, with subtracted offset) in MTZ, etc.
+      "$image ccp4_centroid_of_image_numbers",
       nullptr
     };
     return for_merged ? merged : unmerged;
@@ -125,6 +127,8 @@ private:
   // or sigma column from the template.
   static double get_wavelength(const Mtz& mtz, const std::vector<Trans>& spec) {
     for (const Trans& tr : spec) {
+      if (tr.col_idx < 0)
+        continue;
       const Mtz::Column& col = mtz.columns.at(tr.col_idx);
       if (col.type == 'F' || col.type == 'J' ||
           col.type == 'K' || col.type == 'G' ||
@@ -229,27 +233,51 @@ private:
     if (optional)
       ++p;
     std::string column = read_word(p, &p);
-    std::string type = read_word(p, &p);
-    if (type.size() != 1)
-      fail("Spec error: MTZ type '" + type + "' is not one character,"
-           "\nin line: " + line);
+
+    char ctype = '\0';
+    if (column[0] != '$') {
+      std::string type = read_word(p, &p);
+      if (type.size() != 1)
+        fail("Spec error: MTZ type '" + type + "' is not one character,"
+             "\nin line: " + line);
+      ctype = type[0];
+    }
+
     tr.tag = read_word(p, &p);
     if (tr.tag[0] == '_' || tr.tag.find('.') != std::string::npos)
       fail("Spec error: expected tag part after _refln., got: " +
            tr.tag + "\nin line: " + line);
-    tr.col_idx = find_column_index(column, mtz);
-    if (tr.col_idx == -1) {
-      if (!optional)
-        fail("Column not found: " + column);
-      recipe.resize(state.verified_spec_size);
-      state.discard_next_line = true;
-      return;
+
+    if (column[0] == '$') {
+      if (column.size() == 2 && column[1] == '.')
+        tr.col_idx = Var::Dot;
+      else if (column.size() == 2 && column[1] == '?')
+        tr.col_idx = Var::Qmark;
+      else if (mtz.is_merged())
+        fail("Variables other than $. and $? can be used only for unmerged files");
+      else if (column.compare(1, 7, "counter") == 0)
+        tr.col_idx = Var::Counter;
+      else if (column.compare(1, 7, "dataset") == 0)
+        tr.col_idx = Var::DatasetId;
+      else if (column.compare(1, 5, "image") == 0)
+        tr.col_idx = Var::Image;
+      else
+        fail("Unknown variable in the spec: " + column);
+    } else {
+      tr.col_idx = find_column_index(column, mtz);
+      if (tr.col_idx == -1) {
+        if (!optional)
+          fail("Column not found: " + column);
+        recipe.resize(state.verified_spec_size);
+        state.discard_next_line = true;
+        return;
+      }
+      const Mtz::Column& col = mtz.columns[tr.col_idx];
+      if (ctype != '*' && col.type != ctype)
+        fail("Column ", col.label, " has type ", col.type, " not ", ctype);
+      tr.is_status = iequal(tr.tag, "status");
     }
-    const Mtz::Column& col = mtz.columns[tr.col_idx];
-    if (type[0] != '*' && col.type != type[0])
-      fail("Column " + col.label + " has type " +
-           std::string(1, col.type) + " not " + type);
-    tr.is_status = iequal(tr.tag, "status");
+
     std::string fmt = read_word(p, &p);
     if (!fmt.empty() && !tr.is_status) {
       tr.min_width = check_format(fmt);
@@ -257,6 +285,7 @@ private:
       if (tr.format[1] == '_')
         tr.format[1] = ' ';
     }
+
     recipe.push_back(tr);
   }
 
@@ -423,6 +452,8 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
   std::vector<int> value_indices;  // used for --skip_empty
   std::vector<int> sigma_indices;  // used for status 'x'
   for (const Trans& tr : recipe) {
+    if (tr.col_idx < 0)
+      continue;
     const Mtz::Column& col = mtz.columns[tr.col_idx];
     if (skip_empty) {
       if (skip_empty_cols.empty() ? col.type != 'H' && col.type != 'I'
@@ -433,49 +464,24 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
       sigma_indices.push_back(tr.col_idx);
   }
 
-  bool write_angle_phi = false;
-  if (enable_angle_phi) {
-    // don't write angle_phi if it has the same value in all batches
-    for (size_t i = 1; i < mtz.batches.size(); ++i)
-      if (mtz.batches[i].phi_start() != mtz.batches[0].phi_start()) {
-        write_angle_phi = true;
-        break;
-      }
-    }
-
   bool unmerged = !mtz.is_merged();
   os << "\nloop_\n";
-  if (unmerged) {  // prepended tags that are not in the recipe
-    os << "_diffrn_refln.diffrn_id\n"
-          "_diffrn_refln.standard_code\n"
-          "_diffrn_refln.scale_group_code\n"
-          "_diffrn_refln.id\n";
-    if (write_angle_phi) {
-      os << "_diffrn_refln.angle_phi";
-      if (with_comments)
-        os << "                  # phistt from batch header";
-      os << '\n';
-    }
-  }
   for (const Trans& tr : recipe) {
-    const Mtz::Column& col = mtz.columns.at(tr.col_idx);
-    const Mtz::Dataset& ds = mtz.dataset(col.dataset_id);
     os << (unmerged ? "_diffrn_refln." : "_refln.");
-    if (with_comments) {
+    if (with_comments && tr.col_idx >= 0) {
+      WRITE("%-26s # ", tr.tag.c_str());
+      const Mtz::Column& col = mtz.columns.at(tr.col_idx);
+      const Mtz::Dataset& ds = mtz.dataset(col.dataset_id);
       // dataset is assigned to column only in merged MTZ
       if (unmerged)
-        WRITE("%-26s # %s\n", tr.tag.c_str(), col.label.c_str());
+        os << col.label;
       else
-        WRITE("%-26s # %-14s from dataset %s\n",
-              tr.tag.c_str(), col.label.c_str(), ds.dataset_name.c_str());
+        WRITE("%-14s from dataset %s\n", col.label.c_str(), ds.dataset_name.c_str());
     } else {
-      os << tr.tag << '\n';
+      os << tr.tag;
     }
+    os << '\n';
   }
-  if (unmerged) // appended tag that is not in the recipe
-    // ccp4_centroid_of_image_numbers is a proposed real number corresponding
-    // to ITEM_ZD in XDS, BATCH (integer, with subtracted offset) in MTZ, etc.
-    os << "_diffrn_refln.ccp4_centroid_of_image_numbers\n";
   int batch_idx = find_column_index("BATCH", mtz);
   std::map<int, const Mtz::Batch*> batch_by_number;
   for (const Mtz::Batch& b : mtz.batches)
@@ -505,6 +511,7 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
                       [&](int n) { return std::isnan(row[n]); }))
         continue;
     int batch_number = 0;
+    int dataset_id = 0;
     if (unmerged) {
       if (batch_idx == -1)
         fail("BATCH column not found");
@@ -513,11 +520,7 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
       if (it == batch_by_number.end())
         fail("unexpected values in column BATCH");
       const Mtz::Batch& batch = *it->second;
-      // values for prepended tags
-      os << batch.dataset_id() << " . . " << ++idx << ' ';
-      if (write_angle_phi)
-        WRITE("%.2f ", batch.phi_start());
-      batch_number -= batch_offset.at(batch.dataset_id());
+      dataset_id = batch.dataset_id();
     }
     bool first = true;
     for (const Trans& tr : recipe) {
@@ -525,31 +528,39 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
         first = false;
       else
         os << ' ';
-      float v = row[tr.col_idx];
-      if (tr.is_status) {
-        char status = 'x';
-        if (sigma_indices.empty() ||
-            !std::all_of(sigma_indices.begin(), sigma_indices.end(),
-                         [&](int n) { return std::isnan(row[n]); }))
-          status = v == 0. ? 'f' : 'o';
-        os << status;
-      } else if (std::isnan(v)) {
-        for (int j = 1; j < tr.min_width; ++j)
-          os << ' ';
-        os << '?';
+      if (tr.col_idx < 0) {
+        switch (tr.col_idx) {
+          case Dot: os << '.'; break;
+          case Qmark: os << '?'; break;
+          case Counter: os << ++idx; break;
+          case DatasetId: os << dataset_id; break;
+          case Image: os << batch_number - batch_offset.at(dataset_id); break;
+        }
       } else {
+        float v = row[tr.col_idx];
+        if (tr.is_status) {
+          char status = 'x';
+          if (sigma_indices.empty() ||
+              !std::all_of(sigma_indices.begin(), sigma_indices.end(),
+                           [&](int n) { return std::isnan(row[n]); }))
+            status = v == 0. ? 'f' : 'o';
+          os << status;
+        } else if (std::isnan(v)) {
+          for (int j = 1; j < tr.min_width; ++j)
+            os << ' ';
+          os << '?';
+        } else {
 #if defined(__GNUC__)
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wformat-nonliteral"
 #endif
-        WRITE(tr.format.c_str(), v);
+          WRITE(tr.format.c_str(), v);
 #if defined(__GNUC__)
 # pragma GCC diagnostic pop
 #endif
+        }
       }
     }
-    if (unmerged) // value for appended tag
-      os << ' ' << batch_number;
     os << '\n';
   }
 }
