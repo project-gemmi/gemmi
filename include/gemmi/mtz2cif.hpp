@@ -476,7 +476,7 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
       if (unmerged)
         os << col.label;
       else
-        WRITE("%-14s from dataset %s\n", col.label.c_str(), ds.dataset_name.c_str());
+        WRITE("%-14s from dataset %s", col.label.c_str(), ds.dataset_name.c_str());
     } else {
       os << tr.tag;
     }
