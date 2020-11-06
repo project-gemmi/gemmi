@@ -3,6 +3,7 @@
 // MTZ info
 
 #include <cstdio>
+#include <unordered_map>
 #include <gemmi/mtz.hpp>
 #include <gemmi/fileutil.hpp> // for file_open
 #include <gemmi/gz.hpp>       // for MaybeGzipped
@@ -89,25 +90,24 @@ void dump(const Mtz& mtz) {
       printf("%s\n", hline.c_str());
   }
   if (!mtz.batches.empty()) {
-    printf("\nBatch counts:\n");
-    int max_dataset_id = 0;
-    for (const Mtz::Dataset& ds : mtz.datasets)
-      max_dataset_id = std::max(max_dataset_id, ds.id);
-    if (max_dataset_id < 1000000) {
-      std::vector<int> batch_count(max_dataset_id + 1, 0);
-      std::vector<int> batch_min(batch_count.size(), INT_MAX);
-      std::vector<int> batch_max(batch_count.size(), -1);
-      for (const Mtz::Batch& batch : mtz.batches) {
-        int ds_id = batch.dataset_id();
-        batch_count[ds_id]++;
-        batch_min[ds_id] = std::min(batch_min[ds_id], batch.number);
-        batch_max[ds_id] = std::max(batch_max[ds_id], batch.number);
+    int prev_ds_id = -INT_MAX;
+    int bspan[2] = {-INT_MAX, -INT_MAX};
+    printf("\nBatch numbers:");
+    for (size_t i = 0; i < mtz.batches.size(); ++i) {
+      const Mtz::Batch& batch = mtz.batches[i];
+      int ds_id = batch.dataset_id();
+      if (ds_id != prev_ds_id || batch.number != bspan[1] + 1) {
+        if (i != 0)
+          printf(" %d-%d", bspan[0], bspan[1]);
+        bspan[0] = batch.number;
+        if (ds_id != prev_ds_id) {
+          printf("\n dataset %d:", ds_id);
+          prev_ds_id = ds_id;
+        }
       }
-      for (int i = 0; i <= max_dataset_id; ++i)
-        if (batch_count[i] != 0)
-          printf(" dataset %d: %d batches (%d - %d)\n",
-                 i, batch_count[i], batch_min[i], batch_max[i]);
+      bspan[1] = batch.number;
     }
+    printf(" %d-%d\n", bspan[0], bspan[1]);
   }
 }
 
@@ -188,6 +188,35 @@ void print_stats(const Mtz& mtz) {
            stat.var.n, 100.0 * stat.var.n / mtz.nreflections,
            stat.min_value, stat.max_value,
            stat.var.mean_x, std::sqrt(stat.var.for_population()));
+  }
+
+  if (!mtz.batches.empty()) {
+    const Mtz::Column* col = mtz.column_with_label("BATCH");
+    if (!col) {
+      printf("Missing column BATCH\n");
+      return;
+    }
+    std::unordered_map<int,int> batch_stat;
+    for (float b : *col)
+      batch_stat[(int)b]++;
+    int min_loc = 0;
+    int min_val = INT_MAX;
+    int max_loc = 0;
+    int max_val = -INT_MAX;
+    for (auto b : batch_stat) {
+      if (b.second < min_val) {
+        min_loc = b.first;
+        min_val = b.second;
+      }
+      if (b.second > max_val) {
+        max_loc = b.first;
+        max_val = b.second;
+      }
+    }
+    printf("\n%zu MTZ batches, including %d empty. Non-empty batches have\n",
+           mtz.batches.size(), (int)mtz.batches.size() - (int)batch_stat.size());
+    printf("from %d (in BATCH %d) to %d (in BATCH %d) reflections.\n",
+           min_val, min_loc, max_val, max_loc);
   }
 }
 
