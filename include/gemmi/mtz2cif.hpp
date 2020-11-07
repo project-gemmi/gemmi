@@ -11,7 +11,9 @@
 #define GEMMI_MTZ2CIF_HPP_
 
 #include <ostream>
-#include <map>
+#include <unordered_map>
+#include <climits>       // for INT_MIN
+#include <set>
 #include <algorithm>     // for all_of
 #include "mtz.hpp"       // for Mtz
 #include "atox.hpp"      // for read_word
@@ -69,9 +71,10 @@ struct MtzToCif {
       "L H index_l",
       "? I       J intensity_net",
       "& SIGI    Q intensity_sigma .5g",
-      // ccp4_centroid_of_image_numbers is a proposed real number corresponding
-      // to ITEM_ZD in XDS, BATCH (integer, with subtracted offset) in MTZ, etc.
-      "$image ccp4_centroid_of_image_numbers",
+      // ccp4_image_number is a proposed item. Perhaps it should be
+      // ccp4_centroid_of_image_numbers - real number corresponding
+      // to ITEM_ZD in XDS.
+      "$image ccp4_image_number",
       nullptr
     };
     return for_merged ? merged : unmerged;
@@ -93,34 +96,43 @@ private:
   struct SweepData {
     int id;
     int batch_count;
+    int offset;
     const Mtz::Batch* first_batch;
     const Mtz::Dataset* dataset;
   };
 
+  std::vector<SweepData> sweeps;
+  std::unordered_map<int, int> sweep_indices;
+
   std::vector<Trans> recipe;
 
-  static std::vector<SweepData> gather_sweep_data(const Mtz& mtz) {
-    std::vector<SweepData> data;
+  void gather_sweep_data(const Mtz& mtz) {
+    int prev_number = INT_MIN;
+    int prev_dataset = INT_MIN;
+    SweepData sweep{0, 0, 0, nullptr, nullptr};
     for (const Mtz::Batch& batch : mtz.batches) {
-      int sweep_id = batch.dataset_id();
-      auto it = std::find_if(data.begin(), data.end(),
-                 [&](const SweepData& sweep) { return sweep.id == sweep_id; });
-      if (it == data.end())
-        data.push_back({sweep_id, 1, &batch, nullptr});
-      else
-        it->batch_count++;
-    }
-    for (SweepData& sweep : data) {
-      for (const Mtz::Dataset& d : mtz.datasets)
-        if (d.id == sweep.id) {
-          sweep.dataset = &d;
-          break;
+      int dataset_id = batch.dataset_id();
+      if (dataset_id != prev_dataset || batch.number != prev_number + 1) {
+        prev_dataset = dataset_id;
+        if (sweep.id != 0)
+          sweeps.push_back(sweep);
+        sweep.id++;
+        sweep.batch_count = 0;
+        sweep.first_batch = &batch;
+        sweep.offset = batch.number - (batch.number % 100);
+        try {
+          sweep.dataset = &mtz.dataset(dataset_id);
+        } catch (std::runtime_error&) {
+          sweep.dataset = nullptr;
+          mtz.warn("Reference to absent dataset: " + std::to_string(dataset_id));
         }
-      if (!sweep.dataset) {
-        mtz.warn("Reference to absent dataset: " + std::to_string(sweep.id));
       }
+      sweep_indices.emplace(batch.number, sweep.id - 1);
+      sweep.batch_count++;
+      prev_number = batch.number;
     }
-    return data;
+    if (sweep.id != 0)
+      sweeps.push_back(sweep);
   }
 
   // Get the first (non-zero) DWAVEL corresponding to an intensity, amplitude
@@ -358,10 +370,10 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
   if (unmerged) {
     os << "_exptl_crystal.id 1\n\n";
     bool scaled = (unmerged->column_with_label("SCALEUSED") != nullptr);
-    std::vector<SweepData> sweep_data = gather_sweep_data(*unmerged);
+    gather_sweep_data(*unmerged);
 
     os << "loop_\n_diffrn.id\n_diffrn.crystal_id\n_diffrn.details\n";
-    for (const SweepData& sweep : sweep_data) {
+    for (const SweepData& sweep : sweeps) {
       os << sweep.id << " 1 '";
       if (scaled)
         os << "scaled ";
@@ -372,24 +384,30 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
     os << "loop_\n"
           "_diffrn_measurement.diffrn_id\n"
           "_diffrn_measurement.details\n";
-    for (const SweepData& sweep : sweep_data)
+    for (const SweepData& sweep : sweeps)
       os << sweep.id << " '" << sweep.batch_count << " frames'\n";
     os << '\n';
 
     os << "loop_\n"
           "_diffrn_radiation.diffrn_id\n"
           "_diffrn_radiation.wavelength_id\n";
-    for (const SweepData& sweep : sweep_data)
-      os << sweep.id << ' ' << sweep.id << '\n';
+    std::set<const Mtz::Dataset*> used_datasets;
+    for (const SweepData& sweep : sweeps) {
+      os << sweep.id << ' ';
+      if (sweep.dataset) {
+        used_datasets.insert(sweep.dataset);
+        os << sweep.dataset->id << '\n';
+      } else {
+        os << "?\n";
+      }
+    }
     os << '\n';
 
     os << "loop_\n"
           "_diffrn_radiation_wavelength.id\n"
           "_diffrn_radiation_wavelength.wavelength\n";
-    for (const SweepData& sweep : sweep_data)
-      os << sweep.id << ' '
-         << (sweep.dataset ? to_str(sweep.dataset->wavelength) : " ")
-         << '\n';
+    for (const Mtz::Dataset* ds : used_datasets)
+        os << ds->id << ' ' << ds->wavelength << '\n';
     os << '\n';
 
     if (enable_UB) {
@@ -404,7 +422,7 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
             "_diffrn_orient_matrix.UB[3][1]\n"
             "_diffrn_orient_matrix.UB[3][2]\n"
             "_diffrn_orient_matrix.UB[3][3]\n";
-      for (const SweepData& sweep : sweep_data) {
+      for (const SweepData& sweep : sweeps) {
         Mat33 u = sweep.first_batch->matrix_U();
         Mat33 b = sweep.first_batch->get_cell().calculate_matrix_B();
         Mat33 ub = u.multiply(b);
@@ -483,19 +501,9 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
     os << '\n';
   }
   int batch_idx = find_column_index("BATCH", mtz);
-  std::map<int, const Mtz::Batch*> batch_by_number;
+  std::unordered_map<int, const Mtz::Batch*> batch_by_number;
   for (const Mtz::Batch& b : mtz.batches)
     batch_by_number.emplace(b.number, &b);
-
-  // prepare offsets
-  std::map<int, int> batch_offset;
-  for (const Mtz::Batch& b : mtz.batches) {
-    auto result = batch_offset.emplace(b.dataset_id(), b.number);
-    if (!result.second && result.first->second < b.number)
-      result.first->second = b.number;
-  }
-  for (auto& it : batch_offset)
-    it.second -= it.second % 1000;
 
   for (int i = 0, idx = 0; i != mtz.nreflections; ++i) {
     const float* row = &mtz.data[i * mtz.columns.size()];
@@ -511,7 +519,7 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
                       [&](int n) { return std::isnan(row[n]); }))
         continue;
     int batch_number = 0;
-    int dataset_id = 0;
+    SweepData* sweep = nullptr;
     if (unmerged) {
       if (batch_idx == -1)
         fail("BATCH column not found");
@@ -520,7 +528,7 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
       if (it == batch_by_number.end())
         fail("unexpected values in column BATCH");
       const Mtz::Batch& batch = *it->second;
-      dataset_id = batch.dataset_id();
+      sweep = &sweeps[sweep_indices.at(batch.number)];
     }
     bool first = true;
     for (const Trans& tr : recipe) {
@@ -533,8 +541,8 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
           case Dot: os << '.'; break;
           case Qmark: os << '?'; break;
           case Counter: os << ++idx; break;
-          case DatasetId: os << dataset_id; break;
-          case Image: os << batch_number - batch_offset.at(dataset_id); break;
+          case DatasetId: os << sweep->id; break;
+          case Image: os << batch_number - sweep->offset; break;
         }
       } else {
         float v = row[tr.col_idx];
