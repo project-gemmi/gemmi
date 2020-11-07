@@ -23,9 +23,13 @@ class TestProg(unittest.TestCase):
                                          stderr=subprocess.STDOUT)
         expected_lines = rest.splitlines()
         output_lines = output.decode().splitlines()
-        if expected_lines[0].strip() == '[...]':
-            expected_lines.pop(0)
-            output_lines = output_lines[-len(expected_lines):]
+        if expected_lines[0].startswith('[...]'):
+            t = expected_lines.pop(0)
+            if len(t) > 8:
+                n1, n2 = t[5:].split()
+                output_lines = output_lines[int(n1):int(n2)]
+            else:
+                output_lines = output_lines[-len(expected_lines):]
         self.assertEqual(expected_lines, output_lines)
 
     def test_fprime1(self):
@@ -95,6 +99,14 @@ Saturday
 S--unday
 ''')
 
+    def test_cif2mtz_5e5z(self):
+        self.do('''\
+$ gemmi mtz2cif tests/5e5z.mtz -
+[...] -158 -155
+1 2 0 46.859 0.6285 68.443 0.4591 o
+1 2 1 ? ? ? ? o
+1 2 2 38.249 0.3855 61.841 0.3117 f
+''')
 
 if __name__ == '__main__':
     unittest.main()
