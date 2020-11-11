@@ -337,7 +337,7 @@ inline void validate_merged_intensities(const Mtz& mtz1, const Mtz& mtz2, std::o
       ++r2;
     }
   }
-  out << "IMEAN CC of " << corr.n << " values: " << 100 * corr.coefficient()
+  out << "Corr. coef. of " << corr.n << " IMEAN values: " << 100 * corr.coefficient()
       << "% (mean ratio: " << corr.mean_ratio() << ")\n";
 }
 
