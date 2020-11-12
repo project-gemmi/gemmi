@@ -173,11 +173,11 @@ public:
     ddl_ = cif::read_file(filename);
     if (ddl_.blocks.size() > 1) {
       version_ = 1;
-      sep_ = "_";
+      sep_ = '_';
       read_ddl1();
     } else {
       version_ = 2;
-      sep_ = ".";
+      sep_ = '.';
       read_ddl2();
     }
   }
@@ -302,7 +302,7 @@ private:
   std::map<std::string, std::regex> regexes_;
   // "_" or ".", used to unify handling of DDL1 and DDL2, for example when
   // reading _audit_conform_dict_version and _audit_conform.dict_version.
-  std::string sep_;
+  char sep_;
 };
 
 
@@ -507,7 +507,8 @@ private:
 
 
 void DDL::check_audit_conform(const cif::Document& doc) const {
-  std::string audit_conform = "_audit_conform" + sep_;
+  std::string audit_conform = "_audit_conform";
+  audit_conform += sep_;
   for (const cif::Block& b : doc.blocks) {
     const std::string* raw_name = b.find_value(audit_conform + "dict_name");
     if (!raw_name) {
