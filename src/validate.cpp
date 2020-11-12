@@ -49,7 +49,7 @@ const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-// basic types, used for token statistics only, cf. ValType
+// basic types, used for token statistics only
 enum class ValueType : unsigned char {
   NotSet,
   Char,
@@ -159,167 +159,10 @@ void check_empty_loops(const cif::Block& block) {
 
 enum class Trinary : char { Unset, Yes, No };
 
-enum class ValType : char {
-  Unset,
-  Int,  // only in DDL2, in DDL1 it is also numb
-  Numb,
-  Any
-};
-
 bool is_integer(const std::string& s) {
   auto b = s.begin() + (s[0] == '+' || s[0] == '-' ? 1 : 0);
   return b != s.end() && std::all_of(b, s.end(), gemmi::is_digit);
 }
-
-class TypeCheckCommon {
-protected:
-  ValType type_ = ValType::Unset;
-  bool has_su_ = false; // _type_conditions esd|su
-  bool range_inclusive_ = false;
-  bool icase_ = false;
-  std::vector<std::pair<double, double>> range_;
-  std::vector<std::string> enumeration_;
-
-  // takes raw value
-  bool validate_value_cmn(const std::string& value, std::string* msg) const {
-    if (type_ == ValType::Numb && !cif::is_numb(value)) {
-      if (msg)
-        *msg = "expected number, got: " + value;
-      return false;
-    }
-    if (type_ == ValType::Int && !is_integer(value)) {
-      if (msg)
-        *msg = "expected integer, got: " + value;
-    }
-    // ignoring has_su_ - not sure if we should check it
-    if (!range_.empty() && !validate_range(value, msg))
-      return false;
-    if (!enumeration_.empty() && !validate_enumeration(value, msg))
-      return false;
-    return true;
-  }
-
-public:
-  bool validate_tag(std::string*) const { return true; }
-
-private:
-  bool validate_range(const std::string& value, std::string *msg) const {
-    const double x = cif::as_number(value);
-    for (const auto& r : range_)
-      if (r.first == r.second ? x == r.first
-                              : r.first < x && x < r.second)
-        return true;
-    if (msg)
-      *msg = "value out of expected range: " + value;
-    return false;
-  }
-
-  // Takes raw value.
-  bool validate_enumeration(const std::string& val, std::string *msg) const {
-    std::string v = cif::as_string(val);
-    if (gemmi::in_vector(v, enumeration_))
-      return true;
-    if (icase_) {
-      v = gemmi::to_lower(v);
-      if (gemmi::in_vector_f([&v](const std::string& x) { return gemmi::iequal(x, v); },
-                             enumeration_))
-      return true;
-    }
-    if (msg) {
-      *msg = val + " is not one of the allowed values:";
-      for (const std::string& e : enumeration_)
-        *msg += "\n\t" + e;
-    }
-    return false;
-  }
-};
-
-class DDL;
-
-class TypeCheckDDL1 : public TypeCheckCommon {
-public:
-  void from_block(cif::Block& b, const DDL&) {
-    if (const std::string* list = b.find_value("_list")) {
-      if (*list == "yes")
-        is_list_ = Trinary::Yes;
-      else if (*list == "no")
-        is_list_ = Trinary::No;
-    }
-    if (const std::string* type = b.find_value("_type"))
-      type_ = (*type == "numb" ? ValType::Numb : ValType::Any);
-    // Hypotetically _type_conditions could be a list, but it never is.
-    const std::string* conditions = b.find_value("_type_conditions");
-    if (conditions)
-      has_su_ = (*conditions == "esd" || *conditions == "su");
-    const std::string* range = b.find_value("_enumeration_range");
-    if (range) {
-      size_t colon_pos = range->find(':');
-      if (colon_pos != std::string::npos) {
-        std::string low = range->substr(0, colon_pos);
-        std::string high = range->substr(colon_pos+1);
-        range_inclusive_ = true;
-        range_.emplace_back(low.empty() ? -INFINITY : cif::as_number(low),
-                            high.empty() ? INFINITY : cif::as_number(high));
-      }
-    }
-    for (const std::string& e : b.find_loop("_enumeration"))
-      enumeration_.emplace_back(cif::as_string(e));
-  }
-
-  bool validate_value(const std::string& value, std::string* msg) const {
-    if (cif::is_null(value))
-      return true;
-    return validate_value_cmn(value, msg);
-  }
-
-  Trinary is_list() const { return is_list_; }
-
-private:
-  Trinary is_list_ = Trinary::Unset; // _list yes
-  // type_construct regex - it is rarely used, ignore for now
-  // type_conditions seq - seems to be never used, ignore it
-  // For now we don't check at all relational attributes, i.e.
-  // _category, _list_* and _related_*
-};
-
-
-class TypeCheckDDL2 : public TypeCheckCommon {
-public:
-  enum class ItemContext { Default, Local, Deprecated };
-  void from_block(cif::Block& b, const DDL& ddl);
-
-  bool validate_value(const std::string& value, std::string* msg) const {
-    if (cif::is_null(value))
-      return true;
-    if (!validate_value_cmn(value, msg))
-      return false;
-    if (re_ && !std::regex_match(cif::as_string(value), *re_)) {
-      *msg = value + " does not match the " + type_code_ + " regex";
-      return false;
-    }
-    return true;
-  }
-
-  bool validate_tag(std::string* msg) const {
-    if (context_ == ItemContext::Deprecated) {
-      *msg = " is deprecated";
-      return false;
-    }
-    if (context_ == ItemContext::Local) {
-      *msg = " is for pdb internal use";
-      return false;
-    }
-    return true;
-  }
-
-  Trinary is_list() const { return Trinary::Unset; }
-
-private:
-  std::string type_code_;
-  ItemContext context_ = ItemContext::Default;
-  const std::regex* re_ = nullptr;
-};
-
 
 // Class DDL that represents DDL1 or DDL2 dictionary (ontology).
 class DDL {
@@ -341,15 +184,7 @@ public:
   // check if the dictionary name/version correspond to _audit_conform_dict_*
   void check_audit_conform(const cif::Document& doc) const;
 
-  bool validate(cif::Document& doc, std::ostream& out, bool quiet) {
-    return version_ == 1 ? do_validate<TypeCheckDDL1>(doc, out, quiet)
-                         : do_validate<TypeCheckDDL2>(doc, out, quiet);
-  }
-
-  const std::regex* get_regex_ptr(const std::string& code) const {
-    auto it = regexes_.find(code);
-    return it != regexes_.end() ? &it->second : nullptr;
-  }
+  bool validate(cif::Document& doc, std::ostream& out, bool quiet);
 
   void check_mandatory_items(cif::Block& b, std::ostream& out) {
     if (version_ != 2)
@@ -458,9 +293,6 @@ private:
     }
   }
 
-  template<class TypeCheckDDL>
-  bool do_validate(cif::Document& doc, std::ostream& out, bool quiet);
-
   int version_;
   cif::Document ddl_;
   std::map<std::string, cif::Block*> name_index_;
@@ -473,36 +305,206 @@ private:
   std::string sep_;
 };
 
-void TypeCheckDDL2::from_block(cif::Block& b, const DDL& ddl) {
-  if (const std::string* code = b.find_value("_item_type.code")) {
-    type_code_ = cif::as_string(*code);
-    if (type_code_ == "float")
-      type_ = ValType::Numb;
-    else if (type_code_ == "int")
-      type_ = ValType::Int;
-    else
-      // to make it faster, we don't use regex for int and float
-      re_ = ddl.get_regex_ptr(*code);
+
+class Validator1 {
+public:
+  Validator1(cif::Block& b) {
+    if (const std::string* list = b.find_value("_list")) {
+      if (*list == "yes")
+        is_list_ = Trinary::Yes;
+      else if (*list == "no")
+        is_list_ = Trinary::No;
+    }
+    if (const std::string* type = b.find_value("_type"))
+      if (*type == "numb")
+        numb_only_ = true;
+    /*
+    // Hypotetically _type_conditions could be a list, but it never is.
+    // It is commented out b/c we don't check esd/su - should we?
+    const std::string* conditions = b.find_value("_type_conditions");
+    if (conditions)
+      has_su_ = (*conditions == "esd" || *conditions == "su");
+    */
+    const std::string* range = b.find_value("_enumeration_range");
+    if (range) {
+      size_t colon_pos = range->find(':');
+      if (colon_pos != std::string::npos) {
+        std::string low = range->substr(0, colon_pos);
+        std::string high = range->substr(colon_pos+1);
+        range_low_ = low.empty() ? -INFINITY : cif::as_number(low);
+        range_high_ = high.empty() ? INFINITY : cif::as_number(high);
+        has_range_ = true;
+      }
+    }
+    for (const std::string& e : b.find_values("_enumeration"))
+      enumeration_.emplace_back(cif::as_string(e));
   }
-  for (auto row : b.find("_item_range.", {"minimum", "maximum"}))
-    range_.emplace_back(cif::as_number(row[0], -INFINITY),
-                        cif::as_number(row[1], +INFINITY));
-  for (const std::string& e : b.find_loop("_item_enumeration.value"))
-    enumeration_.emplace_back(cif::as_string(e));
-  icase_ = (type_code_[0] == 'u');
-  /* we could check for esd without value
-  for (auto row : b.find("_item_related.", {"related_name", "function_code"})) {
-    if (row[1] == "associated_value")
-      associated_value_ = row.str(0);
+
+  // takes raw value
+  bool validate_value(const std::string& value, std::string* msg) const {
+    if (cif::is_null(value))
+      return true;
+
+    if (numb_only_ && !cif::is_numb(value)) {
+      if (msg)
+        *msg = "expected number, got: " + value;
+      return false;
+    }
+
+    if (has_range_) {
+      const double x = cif::as_number(value);
+      if (x < range_low_ || x > range_high_) {
+        if (msg)
+          *msg = "value out of expected range: " + value;
+        return false;
+      }
+    }
+
+    if (!enumeration_.empty()) {
+      std::string v = cif::as_string(value);
+      if (!gemmi::in_vector(v, enumeration_)) {
+        if (msg) {
+          *msg = value + " is not one of the allowed values:";
+          for (const std::string& e : enumeration_)
+            *msg += "\n\t" + e;
+        }
+        return false;
+      }
+    }
+    return true;
   }
-  */
-  if (const std::string* context = b.find_value("_pdbx_item_context.type")) {
-    if (*context == "WWPDB_LOCAL")
-      context_ = ItemContext::Local;
-    else if (*context == "WWPDB_DEPRECATED")
-      context_ = ItemContext::Deprecated;
+
+  Trinary is_list() const { return is_list_; }
+
+private:
+  Trinary is_list_ = Trinary::Unset; // _list yes
+  bool has_range_ = false;
+  bool numb_only_ = false;
+  double range_low_;
+  double range_high_;
+  std::vector<std::string> enumeration_;
+  // type_construct regex - it is rarely used, ignore for now
+  // type_conditions seq - seems to be never used, ignore it
+  // For now we don't check at all relational attributes, i.e.
+  // _category, _list_* and _related_*
+};
+
+
+class Validator2 {
+public:
+  enum class Type : char { Unset, Int, Float };
+  enum class ItemContext { Default, Local, Deprecated };
+
+  Validator2(cif::Block& b, const std::map<std::string, std::regex>& regexes) {
+    if (const std::string* code = b.find_value("_item_type.code")) {
+      type_code_ = cif::as_string(*code);
+      if (type_code_ == "float") {
+        type_ = Type::Float;
+      } else if (type_code_ == "int") {
+        type_ = Type::Int;
+      } else {  // to make it faster, we don't use regex for int and float
+        auto it = regexes.find(*code);
+        if (it != regexes.end())
+          re_ = &it->second;
+      }
+    }
+    for (auto row : b.find("_item_range.", {"minimum", "maximum"}))
+      range_.emplace_back(cif::as_number(row[0], -INFINITY),
+                          cif::as_number(row[1], +INFINITY));
+    for (const std::string& e : b.find_values("_item_enumeration.value"))
+      enumeration_.emplace_back(cif::as_string(e));
+    icase_ = (type_code_[0] == 'u');
+    /* we could check for esd without value
+    for (auto row : b.find("_item_related.", {"related_name", "function_code"})) {
+      if (row[1] == "associated_value")
+        associated_value_ = row.str(0);
+    }
+    */
+    if (const std::string* context = b.find_value("_pdbx_item_context.type")) {
+      if (*context == "WWPDB_LOCAL")
+        context_ = ItemContext::Local;
+      else if (*context == "WWPDB_DEPRECATED")
+        context_ = ItemContext::Deprecated;
+    }
   }
-}
+
+  // takes raw value
+  bool validate_value(const std::string& value, std::string* msg) const {
+    if (cif::is_null(value))
+      return true;
+    // int and float have hard-coded checks to avoid more expensive regex checks
+    if (type_ == Type::Float && !cif::is_numb(value)) {
+      if (msg)
+        *msg = "expected number, got: " + value;
+      return false;
+    }
+    if (type_ == Type::Int && !is_integer(value)) {
+      if (msg)
+        *msg = "expected integer, got: " + value;
+    }
+    if (!range_.empty()) {
+      const double x = cif::as_number(value);
+      bool matches = false;
+      for (const auto& r : range_)
+        if (r.first == r.second ? x == r.first
+                                : r.first < x && x < r.second) {
+          matches = true;
+          break;
+        }
+      if (!matches) {
+        *msg = "value out of expected range: " + value;
+        return false;
+      }
+    }
+    if (!enumeration_.empty() && !validate_enumeration(value, msg))
+      return false;
+    if (re_ && !std::regex_match(cif::as_string(value), *re_)) {
+      *msg = value + " does not match the " + type_code_ + " regex";
+      return false;
+    }
+    return true;
+  }
+
+  bool validate_enumeration(const std::string& val, std::string *msg) const {
+    std::string v = cif::as_string(val);
+    if (gemmi::in_vector(v, enumeration_))
+      return true;
+    if (icase_) {
+      v = gemmi::to_lower(v);
+      if (gemmi::in_vector_f([&v](const std::string& x) { return gemmi::iequal(x, v); },
+                             enumeration_))
+      return true;
+    }
+    if (msg) {
+      *msg = val + " is not one of the allowed values:";
+      for (const std::string& e : enumeration_)
+        *msg += "\n\t" + e;
+    }
+    return false;
+  }
+
+  bool validate_tag(std::string* msg) const {
+    if (context_ == ItemContext::Deprecated) {
+      *msg = " is deprecated";
+      return false;
+    }
+    if (context_ == ItemContext::Local) {
+      *msg = " is for pdb internal use";
+      return false;
+    }
+    return true;
+  }
+
+private:
+  Type type_ = Type::Unset;
+  bool icase_ = false;
+  ItemContext context_ = ItemContext::Default;
+  std::vector<std::string> enumeration_;
+  std::string type_code_;
+  std::vector<std::pair<double, double>> range_;
+  const std::regex* re_ = nullptr;
+};
+
 
 void DDL::check_audit_conform(const cif::Document& doc) const {
   std::string audit_conform = "_audit_conform" + sep_;
@@ -529,8 +531,7 @@ void DDL::check_audit_conform(const cif::Document& doc) const {
   }
 }
 
-template <class TypeCheckDDL>
-bool DDL::do_validate(cif::Document& doc, std::ostream& out, bool quiet) {
+bool DDL::validate(cif::Document& doc, std::ostream& out, bool quiet) {
   std::string msg;
   bool ok = true;
   auto err = [&](const cif::Block& b, const cif::Item& item,
@@ -548,14 +549,20 @@ bool DDL::do_validate(cif::Document& doc, std::ostream& out, bool quiet) {
             out << "Note: unknown tag in " << b.name << ": " << item.pair[0] << '\n';
           continue;
         }
-        TypeCheckDDL tc;
-        tc.from_block(*dict_block, *this);
-        if (tc.is_list() == Trinary::Yes)
-          err(b, item, item.pair[0] + " must be a list");
-        if (!tc.validate_tag(&msg))
-          err(b, item, item.pair[0] + msg);
-        if (!tc.validate_value(item.pair[1], &msg))
-          err(b, item, msg);
+        // validate pair
+        if (version_ == 1) {
+          Validator1 tc(*dict_block);
+          if (tc.is_list() == Trinary::Yes)
+            err(b, item, item.pair[0] + " must be a list");
+          if (!tc.validate_value(item.pair[1], &msg))
+            err(b, item, msg);
+        } else {
+          Validator2 tc(*dict_block, regexes_);
+          if (!tc.validate_tag(&msg))
+            err(b, item, item.pair[0] + msg);
+          if (!tc.validate_value(item.pair[1], &msg))
+            err(b, item, msg);
+        }
       } else if (item.type == cif::ItemType::Loop) {
         const size_t ncol = item.loop.tags.size();
         for (size_t i = 0; i != ncol; i++) {
@@ -566,17 +573,26 @@ bool DDL::do_validate(cif::Document& doc, std::ostream& out, bool quiet) {
               out << "Note: unknown tag in " << b.name << ": " << tag << '\n';
             continue;
           }
-          TypeCheckDDL tc;
-          tc.from_block(*dict_block, *this);
-          if (tc.is_list() == Trinary::No)
-            err(b, item, tag + " in list");
-          if (!tc.validate_tag(&msg))
-            err(b, item, tag + msg);
-          for (size_t j = i; j < item.loop.values.size(); j += ncol)
-            if (!tc.validate_value(item.loop.values[j], &msg)) {
-              err(b, item, tag + ": " + msg);
-              break; // stop after first error to avoid clutter
-            }
+          // validate column in loop
+          if (version_ == 1) {
+            Validator1 tc(*dict_block);
+            if (tc.is_list() == Trinary::No)
+              err(b, item, tag + " in list");
+            for (size_t j = i; j < item.loop.values.size(); j += ncol)
+              if (!tc.validate_value(item.loop.values[j], &msg)) {
+                err(b, item, tag + ": " + msg);
+                break; // stop after first error to avoid clutter
+              }
+          } else {
+            Validator2 tc(*dict_block, regexes_);
+            if (!tc.validate_tag(&msg))
+              err(b, item, tag + msg);
+            for (size_t j = i; j < item.loop.values.size(); j += ncol)
+              if (!tc.validate_value(item.loop.values[j], &msg)) {
+                err(b, item, tag + ": " + msg);
+                break; // stop after first error to avoid clutter
+              }
+          }
         }
       }
     }
