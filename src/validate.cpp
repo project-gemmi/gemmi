@@ -29,7 +29,8 @@ void check_monomer_doc(const cif::Document& doc);
 
 namespace {
 
-enum OptionIndex { Quiet=4, Fast, Stat, Ddl, NoRegex, NoMandatory, Monomer };
+enum OptionIndex { Quiet=4, Fast, Stat, Ddl, NoRegex, NoMandatory, Parents,
+                   Monomer };
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
                                 "\n\nOptions:" },
@@ -44,6 +45,8 @@ const option::Descriptor Usage[] = {
     "  --no-regex  \tSkip regex checking (when using DDL2)" },
   { NoMandatory, 0, "", "no-mandatory", Arg::None,
     "  --no-mandatory  \tSkip checking if mandatory tags are present." },
+  { Parents, 0, "p", "", Arg::None,
+    "  -p  \tCheck if parent items (DDL2) are present." },
   { Monomer, 0, "m", "monomer", Arg::None,
     "  -m, --monomer  \tExtra checks for Refmac dictionary files." },
   { 0, 0, 0, 0, 0, 0 }
@@ -181,6 +184,29 @@ public:
       read_ddl2();
     }
   }
+
+  // use _pdbx_item_linked_group_list
+  void read_parent_links() {
+    cif::Table tab = ddl_.blocks.at(0).find("_pdbx_item_linked_group_list.",
+                                            {"child_category_id", "link_group_id",
+                                             "child_name", "parent_name"});
+    std::string prev_group;
+    ParentLink* it = nullptr;
+    for (cif::Table::Row row : tab) {
+      std::string group = row.str(0);
+      group += ' ';
+      group += row[1];
+      // here we assume the table is ordered
+      if (!it || group != prev_group) {
+        parents_.emplace_back();
+        it = &parents_.back();
+        prev_group = group;
+      }
+      it->child_tags.push_back(row.str(2));
+      it->parent_tags.push_back(row.str(3));
+    }
+  }
+
   // check if the dictionary name/version correspond to _audit_conform_dict_*
   void check_audit_conform(const cif::Document& doc) const;
 
@@ -229,7 +255,90 @@ public:
     }
   }
 
+  void check_parents(cif::Block& b, std::ostream& out) {
+    if (version_ != 2)
+      return;
+    std::unordered_set<std::string> present;
+    for (const cif::Item& item : b.items) {
+      if (item.type == cif::ItemType::Pair) {
+        if (!cif::is_null(item.pair[1]))
+          present.insert(item.pair[0]);
+      } else if (item.type == cif::ItemType::Loop) {
+        for (const std::string& tag : item.loop.tags)
+          present.insert(tag);
+      }
+    }
+    for (const ParentLink& link : parents_)
+      if (present.find(link.child_tags[0]) != present.end())
+        check_parent_for(link, b, out);
+  }
+
 private:
+  struct ParentLink {
+    std::vector<std::string> child_tags;
+    std::vector<std::string> parent_tags;
+  };
+
+  static bool equal_rows(cif::Table::Row r1, cif::Table::Row r2) {
+    assert(r1.size() == r2.size());
+    for (size_t i = 0; i != r1.size(); ++i) {
+      if (cif::is_null(r1[i]) != cif::is_null(r2[i]))
+        return false;
+      if (cif::as_string(r1[i]) != cif::as_string(r2[i]))
+        return false;
+    }
+    return true;
+  }
+
+  static std::string row_as_string(cif::Table::Row row) {
+    return gemmi::join_str(row, '\v', [](const std::string& v) {
+        return cif::is_null(v) ? std::string(1, '\0') : cif::as_string(v);
+    });
+  }
+
+  void check_parent_for(const ParentLink& link, cif::Block& b, std::ostream& out) {
+    cif::Table child_tab = b.find(link.child_tags);
+    if (!child_tab.ok())
+      return;
+    cif::Table parent_tab = b.find(link.parent_tags);
+    if (!parent_tab.ok()) {
+      out << "In data_" << b.name << ": missing "
+          << gemmi::join_str(link.parent_tags, '+') << "\n  parent of "
+          << gemmi::join_str(link.child_tags, '+') << std::endl;
+      return;
+    }
+    std::unordered_set<std::string> parent_hashes;
+    //int dup_counter = 0;
+    for (cif::Table::Row row : parent_tab) {
+      parent_hashes.insert(row_as_string(row));
+      /* apparently parent group doesn't need to be unique
+      auto ret = parent_hashes.insert(row_as_string(row));
+      if (!ret.second) {
+        ++dup_counter;
+        if (dup_counter < 2)
+          out << "In data_" << b.name << ": duplicated parent group "
+              << gemmi::join_str(link.parent_tags, '+') << ":\n  "
+              << gemmi::join_str(row, '+') << std::endl;
+      }
+      */
+    }
+    int miss_counter = 0;
+    for (cif::Table::Row row : child_tab) {
+      if (std::all_of(row.begin(), row.end(), cif::is_null))
+        continue;
+      if (parent_hashes.count(row_as_string(row)) == 0) {
+        ++miss_counter;
+        if (miss_counter < 2)
+          out << "In data_" << b.name << ": "
+              << gemmi::join_str(row, '+') << " from "
+              << gemmi::join_str(link.child_tags, '+') << "\n  not in "
+              << gemmi::join_str(link.parent_tags, '+') << std::endl;
+      }
+    }
+    if (miss_counter > 1)
+      out << "  [total " << miss_counter << " missing parents in this group]\n";
+  }
+
   cif::Block* find_rules(const std::string& name) {
     auto iter = name_index_.find(name);
     return iter != name_index_.end() ? iter->second : nullptr;
@@ -300,6 +409,7 @@ private:
   std::string dict_version_;
   bool regex_enabled_;
   std::map<std::string, std::regex> regexes_;
+  std::vector<ParentLink> parents_;
   // "_" or ".", used to unify handling of DDL1 and DDL2, for example when
   // reading _audit_conform_dict_version and _audit_conform.dict_version.
   char sep_;
@@ -624,8 +734,11 @@ int GEMMI_MAIN(int argc, char **argv) {
 #endif
   if (p.options[Ddl]) {
     try {
-      for (option::Option* ddl = p.options[Ddl]; ddl; ddl = ddl->next())
+      for (option::Option* ddl = p.options[Ddl]; ddl; ddl = ddl->next()) {
         dict.open_file(ddl->arg);
+        if (p.options[Parents])
+          dict.read_parent_links();
+      }
     } catch (std::runtime_error& e) {
       std::cerr << "Error when reading dictionary: " << e.what() << std::endl;
       return EXIT_FAILURE;
@@ -651,6 +764,9 @@ int GEMMI_MAIN(int argc, char **argv) {
           if (!p.options[NoMandatory])
             for (cif::Block& block : d.blocks)
               dict.check_mandatory_items(block, std::cout);
+          if (p.options[Parents])
+            for (cif::Block& block : d.blocks)
+              dict.check_parents(block, std::cout);
         }
         if (p.options[Monomer])
           check_monomer_doc(d);
