@@ -5,6 +5,7 @@
 #ifndef GEMMI_TO_MMCIF_HPP_
 #define GEMMI_TO_MMCIF_HPP_
 
+#include <set>
 #include "model.hpp"
 #include "cifdoc.hpp"
 
@@ -422,6 +423,18 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
                             std::to_string(*dbref.db_end.num)});
         }
       }
+  }
+
+  // _chem_comp
+  {
+    std::set<std::string> resnames;
+    for (const Model& model : st.models)
+      for (const Chain& chain : model.chains)
+        for (const Residue& res : chain.residues)
+          resnames.insert(res.name);
+    cif::Loop& chem_comp_loop = block.init_mmcif_loop("_chem_comp.", {"id", "type"});
+    for (const std::string& name : resnames)
+      chem_comp_loop.add_row({name, "."});
   }
 
   // _exptl
@@ -886,6 +899,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
     }
   }
 
+  // _atom_type
   {
     std::array<bool, (int)El::END> types{};
     for (const Model& model : st.models)
