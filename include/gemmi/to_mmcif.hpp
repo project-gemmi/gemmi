@@ -886,6 +886,19 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
     }
   }
 
+  {
+    std::array<bool, (int)El::END> types{};
+    for (const Model& model : st.models)
+      for (const Chain& chain : model.chains)
+        for (const Residue& res : chain.residues)
+          for (const Atom& atom : res.atoms)
+            types[atom.element.ordinal()] = true;
+    cif::Loop& atom_type_loop = block.init_mmcif_loop("_atom_type.", {"symbol"});
+    for (int i = 0; i < (int)El::END; ++i)
+      if (types[i])
+        atom_type_loop.add_row({Element((El)i).uname()});
+  }
+
   // SEQRES from PDB doesn't record microheterogeneity, so if the resulting
   // cif has unknown("?") _entity_poly_seq.num, it cannot be trusted.
   cif::Loop& poly_loop = block.init_mmcif_loop("_entity_poly_seq.",

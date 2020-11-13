@@ -169,10 +169,10 @@ class TestMol(unittest.TestCase):
                       if len(output_block.find_mmcif_category(name)) > 0]
         common_categories = [name for name in cnames_out if name in cnames]
         common_categories.sort()
-        cc = ['_atom_site.', '_cell.', '_diffrn.', '_diffrn_detector.',
-              '_diffrn_radiation.', '_diffrn_source.', '_entity.',
-              '_entity_poly.', '_entity_poly_seq.', '_entry.', '_exptl.',
-              '_exptl_crystal.', '_pdbx_database_status.',
+        cc = ['_atom_site.', '_atom_type.', '_cell.', '_diffrn.',
+              '_diffrn_detector.', '_diffrn_radiation.', '_diffrn_source.',
+              '_entity.', '_entity_poly.', '_entity_poly_seq.', '_entry.',
+              '_exptl.', '_exptl_crystal.', '_pdbx_database_status.',
               '_pdbx_struct_assembly.', '_pdbx_struct_assembly_gen.',
               '_pdbx_struct_oper_list.', '_refine.', '_reflns.', '_software.',
               '_struct.', '_struct_asym.', '_struct_conf.',
