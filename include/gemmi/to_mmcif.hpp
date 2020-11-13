@@ -261,6 +261,7 @@ void write_assemblies(const Structure& st, cif::Block& block) {
 void write_struct_conn(const Structure& st, cif::Block& block) {
   // example:
   // disulf1 disulf A CYS 3  SG ? 3 ? 1_555 A CYS 18 SG ? 18 ?  1_555 ? 2.045
+  std::array<bool,(int)Connection::Type::Unknown+1> type_ids{};
   cif::Loop& conn_loop = block.init_mmcif_loop("_struct_conn.",
       {"id", "conn_type_id",
        "ptnr1_auth_asym_id", "ptnr1_label_asym_id", "ptnr1_label_comp_id",
@@ -302,7 +303,13 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
         to_str_prec<4>(im.dist()),                 // pdbx_dist_value
         impl::string_or_qmark(con.link_id)         // ccp4_link_id
     });
+    type_ids[int(con.type)] = true;
   }
+
+  cif::Loop& type_loop = block.init_mmcif_loop("_struct_conn_type.", {"id"});
+  for (int i = 0; i < (int)type_ids.size() - 1; ++i)
+    if (type_ids[i])
+      type_loop.add_row({get_mmcif_connection_type_id((Connection::Type)i)});
 }
 
 void write_cell_parameters(const UnitCell& cell, cif::Block& block) {

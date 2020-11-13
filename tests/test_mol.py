@@ -176,8 +176,9 @@ class TestMol(unittest.TestCase):
               '_pdbx_struct_assembly.', '_pdbx_struct_assembly_gen.',
               '_pdbx_struct_oper_list.', '_refine.', '_reflns.', '_software.',
               '_struct.', '_struct_asym.', '_struct_conf.',
-              '_struct_conf_type.', '_struct_conn.', '_struct_keywords.',
-              '_struct_ref.', '_struct_ref_seq.', '_symmetry.']
+              '_struct_conf_type.', '_struct_conn.', '_struct_conn_type.',
+              '_struct_keywords.', '_struct_ref.', '_struct_ref_seq.',
+              '_symmetry.']
         self.assertEqual(common_categories, cc)
         for name in common_categories:
             cat_in = block.get_mmcif_category(name)
