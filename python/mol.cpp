@@ -303,6 +303,8 @@ void add_mol(py::module& m) {
     .def("remove_empty_chains", (void (*)(Structure&)) &remove_empty_chains)
     .def("assign_label_seq_id", &assign_label_seq_id, py::arg("force")=false)
     .def("shorten_chain_names", &shorten_chain_names)
+    .def("calculate_box", &calculate_box)
+    .def("calculate_fractional_box", &calculate_fractional_box)
     .def("clone", [](const Structure& self) { return new Structure(self); })
     .def("__repr__", [](const Structure& self) {
         return tostr("<gemmi.Structure ", self.name, " with ",

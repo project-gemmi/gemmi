@@ -60,6 +60,27 @@ template<> inline CenterOfMass calculate_center_of_mass(const Atom& atom) {
   return CenterOfMass{Position(atom.pos * w_mass), w_mass};
 }
 
+inline Box<Position> calculate_box(const Structure& st) {
+  Box<Position> box;
+  for (const Model& model : st.models)
+    for (const Chain& chain : model.chains)
+      for (const Residue& res : chain.residues)
+        for (const Atom& atom : res.atoms)
+          box.extend(atom.pos);
+  return box;
+}
+
+inline Box<Fractional> calculate_fractional_box(const Structure& st) {
+  Box<Fractional> box;
+  for (const Model& model : st.models)
+    for (const Chain& chain : model.chains)
+      for (const Residue& res : chain.residues)
+        for (const Atom& atom : res.atoms)
+          box.extend(st.cell.fractionalize(atom.pos));
+  return box;
+}
+
+
 // Calculate B_est from E. Merritt, Some B_eq are more equivalent than others,
 // Acta Cryst. A67, 512 (2011)
 // http://skuld.bmsc.washington.edu/parvati/ActaA_67_512.pdf

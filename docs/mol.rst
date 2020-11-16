@@ -377,7 +377,7 @@ but can be applied only to ``Fractional`` coordinates.
 
 ----
 
-We have special classes for symmetric 3x3 matrices: SMat33f and SMat33d
+Separate classes are used for symmetric 3x3 matrices: SMat33f and SMat33d
 (for 32- and 64-bit floating point numbers, respectively).
 These classes are used primarily for anisotropic ADP tensors;
 their member variables are named ``u11``, ``u22``, ``u33``,
@@ -398,6 +398,32 @@ including calculations of eigenvalues and eigenvectors.
   >>> aniso.calculate_eigenvalues()
   [0.10300000000000001, 0.15600000000000003, 0.15600000000000003]
 
+----
+
+.. _box:
+
+We also have a little utility for calculation of bounding boxes.
+In two variants: for ``Position`` and ``Fractional``:
+
+.. doctest::
+
+  >>> box = gemmi.PositionBox()
+  >>> box.extend(gemmi.Position(-5, 5, 0))
+  >>> box.extend(gemmi.Position(4, 4, -1))
+  >>> box.minimum
+  <gemmi.Position(-5, 4, -1)>
+  >>> box.maximum
+  <gemmi.Position(4, 5, 0)>
+  >>> box.get_size()
+  <gemmi.Position(9, 1, 1)>
+  >>> box.add_margin(0.5)  # changes both minimum and maximum
+  >>> box.get_size()
+  <gemmi.Position(10, 2, 2)>
+
+  >>> # Fractional variant works in the same way
+  >>> box = gemmi.FractionalBox()
+
+----
 
 In C++ all these types are defined in ``gemmi/math.hpp``.
 
@@ -1711,6 +1737,27 @@ the chain names first:
   >>> st.shorten_chain_names()
 
 In C++ this functions is in ``gemmi/assembly.hpp``.
+
+----
+
+In Python, ``Structure`` has also methods to calculate the
+:ref:`bounding box <box>` for the models,
+in either Cartesian or fractional coordinates.
+Symmetry mates are not taken into account here.
+
+.. doctest::
+
+  >>> box = st.calculate_box()
+  >>> box.minimum
+  <gemmi.Position(-41.767, -24.85, -21.453)>
+  >>> box.maximum
+  <gemmi.Position(-20.313, -1.804, 21.746)>
+
+  >>> fbox = st.calculate_fractional_box()
+  >>> fbox.get_size()
+  <gemmi.Fractional(0.584259, 0.584627, 1.07353)>
+
+In C++ these are stand-alone functions in ``gemmi/calculate.hpp``.
 
 .. _sequence:
 

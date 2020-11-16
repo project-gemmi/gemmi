@@ -69,6 +69,24 @@ static void neighbor_search_for_each(benchmark::State& state) {
   }
 }
 
+static void calculate_box(benchmark::State& state) {
+  using namespace gemmi;
+  Structure st = read_pdb_file(path);
+  while (state.KeepRunning()) {
+    Box<Position> box = calculate_box(st);
+    benchmark::DoNotOptimize(box);
+  }
+}
+
+static void fractional_box(benchmark::State& state) {
+  using namespace gemmi;
+  Structure st = read_pdb_file(path);
+  while (state.KeepRunning()) {
+    Box<Fractional> box = calculate_fractional_box(st);
+    benchmark::DoNotOptimize(box);
+  }
+}
+
 int main(int argc, char** argv) {
   if (argc < 2) {
     printf("Call it with path to a pdb file as an argument.\n");
@@ -86,6 +104,8 @@ int main(int argc, char** argv) {
   benchmark::RegisterBenchmark("neighbor_search_find", neighbor_search_find);
   benchmark::RegisterBenchmark("neighbor_search_for_each",
                                neighbor_search_for_each);
+  benchmark::RegisterBenchmark("calculate_box", calculate_box);
+  benchmark::RegisterBenchmark("fractional_box", fractional_box);
   benchmark::Initialize(&argc, argv);
   benchmark::RunSpecifiedBenchmarks();
 }

@@ -44,6 +44,18 @@ template<typename T> void add_smat33(py::module& m, const char* name) {
     ;
 }
 
+template<typename T> void add_box(py::module& m, const char* name) {
+  using M = Box<T>;
+  py::class_<M>(m, name)
+    .def(py::init<>())
+    .def_readwrite("minimum", &M::minimum)
+    .def_readwrite("maximum", &M::maximum)
+    .def("get_size", &M::get_size)
+    .def("extend", &M::extend)
+    .def("add_margin", &M::add_margin)
+    ;
+}
+
 void add_unitcell(py::module& m) {
   py::class_<Vec3>(m, "Vec3")
     .def(py::init<double,double,double>())
@@ -102,6 +114,9 @@ void add_unitcell(py::module& m) {
     .def_readonly("vec", &Transform::vec)
     .def("inverse", &Transform::inverse)
     .def("apply", &Transform::apply);
+
+  add_box<Position>(m, "PositionBox");
+  add_box<Fractional>(m, "FractionalBox");
 
   py::class_<Position, Vec3>(m, "Position")
     .def(py::init<double,double,double>())
