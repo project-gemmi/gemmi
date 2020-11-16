@@ -364,6 +364,13 @@ To write a map to a file::
 
     map.write_ccp4_map(filename);
 
+By default, the map written to a file covers the whole unit cell.
+To cover only a given box, call ``set_extent()`` before writing the map.
+Traditionally, CCP4 program MAPMASK was used for this.
+To cover a molecule with 5Å margin do::
+
+    map.set_extent(calculate_fractional_box(structure, 5));
+
 Python
 ------
 
@@ -397,6 +404,15 @@ setters as in the C++ version.
     >>> m.set_header_i32(28, 20140)
     >>> m.header_str(57, 80).strip()
     'Created by MAPMAN V. 080625/7.8.5 at Wed Jan 3 12:57:38 2018 for A. Nonymous'
+
+To write map covering the model with 5Å margin
+(equivalent of running MAPMASK with XYZIN and BORDER 5) do:
+
+.. doctest::
+
+    >>> st = gemmi.read_structure('../tests/5i55.cif')
+    >>> m.set_extent(st.calculate_fractional_box(margin=5))
+    >>> m.write_ccp4_map('out.ccp4')
 
 Let us end with two examples.
 

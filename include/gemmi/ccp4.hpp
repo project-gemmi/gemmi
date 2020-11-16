@@ -211,6 +211,7 @@ struct Ccp4 {
   }
 
   double setup(GridSetup mode, T default_value);
+  void set_extent(const Box<Fractional>& box);
 
   template<typename Stream>
   void read_ccp4_stream(Stream f, const std::string& path);
@@ -386,6 +387,34 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
       grid.axis_order = AxisOrder::XYZ;
   }
   return max_error;
+}
+
+template<typename T>
+void Ccp4<T>::set_extent(const Box<Fractional>& box) {
+  if (!full_cell())
+    fail("Ccp4::set_extent() works only after setup()");
+  if (grid.axis_order != AxisOrder::XYZ)
+    fail("Ccp4::set_extent() works only with XYZ order");
+  int u0 = (int)std::ceil(box.minimum.x * grid.nu);
+  int v0 = (int)std::ceil(box.minimum.y * grid.nv);
+  int w0 = (int)std::ceil(box.minimum.z * grid.nw);
+  int nu = (int)std::floor(box.maximum.x * grid.nu) - u0 + 1;
+  int nv = (int)std::floor(box.maximum.y * grid.nv) - v0 + 1;
+  int nw = (int)std::floor(box.maximum.z * grid.nw) - w0 + 1;
+  // set the data
+  std::vector<T> data(nu * nv * nw);
+  int idx = 0;
+  for (int w = 0; w < nw; w++) // sections
+    for (int v = 0; v < nv; v++) // rows
+      for (int u = 0; u < nu; u++) // cols
+        data[idx++] = grid.get_value(u0 + u, v0 + v, w0 + w);
+  grid.data = std::move(data);
+  // and metadata
+  grid.nu = nu;
+  grid.nv = nv;
+  grid.nw = nw;
+  set_header_3i32(1, grid.nu, grid.nv, grid.nw); // NX, NY, NZ
+  set_header_3i32(5, u0, v0, w0);
 }
 
 template<typename T>

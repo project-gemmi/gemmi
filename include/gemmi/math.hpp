@@ -304,10 +304,8 @@ struct Box {
     if (p.z > maximum.z) maximum.z = p.z;
   }
   Pos get_size() const { return maximum - minimum; }
-  void add_margin(double m) {
-    minimum -= Pos(m, m, m);
-    maximum += Pos(m, m, m);
-  }
+  void add_margins(const Pos& p) { minimum -= p; maximum += p; }
+  void add_margin(double m) { add_margins(Pos(m, m, m)); }
 };
 
 // popular single-pass algorithm for calculating variance and mean

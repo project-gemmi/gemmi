@@ -286,6 +286,7 @@ py::class_<T> add_ccp4(py::module& m, const char* name) {
     .def("update_ccp4_header", &Map::update_ccp4_header,
          py::arg("mode"), py::arg("update_stats"))
     .def("write_ccp4_map", &Map::write_ccp4_map, py::arg("filename"))
+    .def("set_extent", &Map::set_extent)
     .def("__repr__", [=](const Map& self) {
         const SpaceGroup* sg = self.grid.spacegroup;
         return tostr("<gemmi.", name, " with grid (", grid_dim_str(self.grid),
