@@ -60,23 +60,27 @@ template<> inline CenterOfMass calculate_center_of_mass(const Atom& atom) {
   return CenterOfMass{Position(atom.pos * w_mass), w_mass};
 }
 
-inline Box<Position> calculate_box(const Structure& st) {
+inline Box<Position> calculate_box(const Structure& st, double margin=0.) {
   Box<Position> box;
   for (const Model& model : st.models)
     for (const Chain& chain : model.chains)
       for (const Residue& res : chain.residues)
         for (const Atom& atom : res.atoms)
           box.extend(atom.pos);
+  if (margin != 0.)
+    box.add_margin(margin);
   return box;
 }
 
-inline Box<Fractional> calculate_fractional_box(const Structure& st) {
+inline Box<Fractional> calculate_fractional_box(const Structure& st, double margin=0.) {
   Box<Fractional> box;
   for (const Model& model : st.models)
     for (const Chain& chain : model.chains)
       for (const Residue& res : chain.residues)
         for (const Atom& atom : res.atoms)
           box.extend(st.cell.fractionalize(atom.pos));
+  if (margin != 0.)
+    box.add_margins({margin * st.cell.ar, margin * st.cell.br, margin * st.cell.cr});
   return box;
 }
 

@@ -1756,6 +1756,8 @@ Symmetry mates are not taken into account here.
   >>> fbox = st.calculate_fractional_box()
   >>> fbox.get_size()
   <gemmi.Fractional(0.584259, 0.584627, 1.07353)>
+  >>> st.calculate_fractional_box(margin=5).get_size()
+  <gemmi.Fractional(0.85659, 0.838305, 1.32204)>
 
 In C++ these are stand-alone functions in ``gemmi/calculate.hpp``.
 
