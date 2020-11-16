@@ -157,13 +157,13 @@ inline void NeighborSearch::initialize(Model& model_, const UnitCell& cell,
   if (cell.is_crystal()) {
     grid.unit_cell = cell;
   } else {
-    BoundingBox box;
+    Box<Position> box;
     for (const Chain& chain : model->chains)
       for (const Residue& res : chain.residues)
         for (const Atom& atom : res.atoms)
-          box.add(atom.pos);
-    double margin = 4 * max_radius;
-    Vec3 size = box.get_size() + Vec3(margin, margin, margin);
+          box.extend(atom.pos);
+    box.add_margin(1.5 * max_radius);  // much more than needed
+    Position size = box.get_size();
     grid.unit_cell.set(size.x, size.y, size.z, 90, 90, 90);
   }
   set_grid_size();

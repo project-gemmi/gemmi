@@ -291,18 +291,23 @@ struct Transform {
   }
 };
 
-struct BoundingBox {
-  Vec3 low = Vec3(INFINITY, INFINITY, INFINITY);
-  Vec3 high = Vec3(-INFINITY, -INFINITY, -INFINITY);
-  void add(const Vec3& p) {
-    if (p.x < low.x) low.x = p.x;
-    if (p.x > high.x) high.x = p.x;
-    if (p.y < low.y) low.y = p.y;
-    if (p.y > high.y) high.y = p.y;
-    if (p.z < low.z) low.z = p.z;
-    if (p.z > high.z) high.z = p.z;
+template<typename Pos>
+struct Box {
+  Pos minimum = Pos(INFINITY, INFINITY, INFINITY);
+  Pos maximum = Pos(-INFINITY, -INFINITY, -INFINITY);
+  void extend(const Pos& p) {
+    if (p.x < minimum.x) minimum.x = p.x;
+    if (p.y < minimum.y) minimum.y = p.y;
+    if (p.z < minimum.z) minimum.z = p.z;
+    if (p.x > maximum.x) maximum.x = p.x;
+    if (p.y > maximum.y) maximum.y = p.y;
+    if (p.z > maximum.z) maximum.z = p.z;
   }
-  Vec3 get_size() const { return high - low; }
+  Pos get_size() const { return maximum - minimum; }
+  void add_margin(double m) {
+    minimum -= Pos(m, m, m);
+    maximum += Pos(m, m, m);
+  }
 };
 
 // popular single-pass algorithm for calculating variance and mean
