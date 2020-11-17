@@ -276,12 +276,7 @@ struct Grid : GridBase<T> {
 
   static double grid_modulo(double x, int n, int* iptr) {
     double f = std::floor(x);
-    int i = (int)f;
-    if (i >= n)
-      i %= n;
-    else if (i < 0)
-      i = (i+1) % n + (n-1);
-    *iptr = i;
+    *iptr = modulo((int)f, n);
     return x - f;
   }
 
