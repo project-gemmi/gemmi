@@ -3,9 +3,9 @@
 // Transform MTZ or SF-mmCIF map coefficients to CCP4 map.
 
 #include <stdio.h>
-#include <gemmi/ccp4.hpp>     // for Ccp4
-//#include <gemmi/util.hpp>     // for fail, giends_with
-//#include <gemmi/version.hpp>  // for GEMMI_VERSION
+#include <gemmi/ccp4.hpp>      // for Ccp4
+#include <gemmi/gzread.hpp>    // for read_structure_gz
+#include <gemmi/calculate.hpp> // for calculate_fractional_box
 #include "mapcoef.h"
 
 #define GEMMI_PROG sf2map
@@ -13,7 +13,7 @@
 
 namespace {
 
-enum OptionIndex { Normalize=AfterMapOptions };
+enum OptionIndex { Normalize=AfterMapOptions, MapMask, Margin };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -42,6 +42,11 @@ const option::Descriptor Usage[] = {
   MapUsage[TimingFft],
   { Normalize, 0, "", "normalize", Arg::None,
     "  --normalize  \tScale the map to standard deviation 1 and mean 0." },
+  { MapMask, 0, "", "mapmask", Arg::Required,
+    "  --mapmask=FILE  \tOutput only map covering the structure,"
+    " similarly to CCP4 MAPMASK with XYZIN." },
+  { Margin, 0, "", "margin", Arg::Float,
+    "  --margin=N  \t(for use w/ --mapmask) Border in Angstrom (default: 5)" },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -59,6 +64,13 @@ void transform_sf_to_map(OptParser& p) {
     double mult = 1.0 / ccp4.hstats.rms;
     for (float& x : ccp4.grid.data)
       x = float((x - ccp4.hstats.dmean) * mult);
+  }
+  if (p.options[MapMask]) {
+    double margin = 5;
+    if (p.options[Margin])
+      margin = std::atof(p.options[Margin].arg);
+    gemmi::Structure st = gemmi::read_structure_gz(p.options[MapMask].arg);
+    ccp4.set_extent(gemmi::calculate_fractional_box(st, margin));
   }
   ccp4.write_ccp4_map(map_path);
 }
