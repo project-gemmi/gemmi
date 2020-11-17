@@ -284,7 +284,7 @@ py::class_<T> add_ccp4(py::module& m, const char* name) {
     .def("set_header_float", &Map::set_header_float)
     .def("set_header_str", &Map::set_header_str)
     .def("update_ccp4_header", &Map::update_ccp4_header,
-         py::arg("mode"), py::arg("update_stats"))
+         py::arg("mode")=-1, py::arg("update_stats")=true)
     .def("write_ccp4_map", &Map::write_ccp4_map, py::arg("filename"))
     .def("set_extent", &Map::set_extent)
     .def("__repr__", [=](const Map& self) {

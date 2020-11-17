@@ -81,7 +81,8 @@ struct Ccp4 {
     std::memcpy(header_word(w), str.c_str(), str.size());
   }
 
-  void prepare_ccp4_header(int mode) {
+  // this function assumes that the whole unit cell is covered with offset 0
+  void prepare_ccp4_header_except_mode_and_stats() {
     GroupOps ops;
     if (grid.spacegroup)
       ops = grid.spacegroup->operations();
@@ -117,25 +118,39 @@ struct Ccp4 {
       set_header_str(n, op.triplet());
       n += 20;
     }
-    update_ccp4_header(mode);
   }
 
-  void update_ccp4_header(int mode, bool update_stats=false) {
+  void update_ccp4_header(int mode=-1, bool update_stats=true) {
+    if (mode > 2 && mode != 6)
+      fail("Only modes 0, 1, 2 and 6 are supported.");
     if (update_stats)
       hstats = calculate_data_statistics(grid.data);
-    if (mode != 0 && mode != 1 && mode != 2 && mode != 6)
-      fail("Only modes 0, 1, 2 and 6 are supported.");
-    if (ccp4_header.empty()) {
-      prepare_ccp4_header(mode);
-      return;
-    }
+    if (ccp4_header.empty())
+      prepare_ccp4_header_except_mode_and_stats();
     assert(ccp4_header.size() >= 256);
+    if (mode < 0) {
+      mode = mode_for_data();
+      if (mode < 0)
+        fail("update_ccp4_header: specify map mode explicitely (usually 2)");
+    }
     set_header_i32(4, mode);
     set_header_float(20, (float) hstats.dmin);
     set_header_float(21, (float) hstats.dmax);
     set_header_float(22, (float) hstats.dmean);
     set_header_float(55, (float) hstats.rms);
     // labels could be modified but it's not important
+  }
+
+  static int mode_for_data() {
+    if (typeid(T) == typeid(std::int8_t))
+      return 0;
+    if (typeid(T) == typeid(std::int16_t))
+      return 1;
+    if (typeid(T) == typeid(float))
+      return 2;
+    if (typeid(T) == typeid(std::uint16_t))
+      return 6;
+    return -1;
   }
 
   bool full_cell() const {
@@ -297,7 +312,8 @@ void Ccp4<T>::read_ccp4_stream(Stream f, const std::string& path) {
   else if (mode == 6)
     impl::read_data<Stream, std::uint16_t>(f, grid.data);
   else
-    fail("Only modes 0, 1, 2 and 6 are supported.");
+    fail("Mode " + std::to_string(mode) + " is not supported "
+         "(only 0, 1, 2 and 6 are supported).");
   //if (std::fgetc(f) != EOF)
   //  fail("The map file is longer then expected.");
 
