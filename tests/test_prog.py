@@ -4,15 +4,18 @@ import os
 import sys
 import subprocess
 import unittest
+import gemmi
 
 TOP_DIR = os.path.join(os.path.dirname(__file__), "..")
 
+# Skip tests if the program is not installed,
+# or the installed version doesn't match the library.
 def has_gemmi():
     try:
-        subprocess.check_output(['gemmi', '--version'], cwd=TOP_DIR)
+        v = subprocess.check_output(['gemmi', '--version'], cwd=TOP_DIR)
     except OSError:
         return False
-    return True
+    return v.split()[1].decode() == gemmi.__version__
 
 @unittest.skipIf(not has_gemmi(), "Program gemmi not found.")
 class TestProg(unittest.TestCase):
