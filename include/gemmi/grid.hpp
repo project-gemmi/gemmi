@@ -274,15 +274,23 @@ struct Grid : GridBase<T> {
     return unit_cell.orthogonalize(this->point_to_fractional(p));
   }
 
+  static double grid_modulo(double x, int n, int* iptr) {
+    double f = std::floor(x);
+    int i = (int)f;
+    if (i >= n)
+      i %= n;
+    else if (i < 0)
+      i = (i+1) % n + (n-1);
+    *iptr = i;
+    return x - f;
+  }
+
   // https://en.wikipedia.org/wiki/Trilinear_interpolation
   T interpolate_value(double x, double y, double z) const {
-    double tmp;
-    double xd = std::modf(x, &tmp);
-    int u = (int) tmp;
-    double yd = std::modf(y, &tmp);
-    int v = (int) tmp;
-    double zd = std::modf(z, &tmp);
-    int w = (int) tmp;
+    int u, v, w;
+    double xd = grid_modulo(x, nu, &u);
+    double yd = grid_modulo(y, nv, &v);
+    double zd = grid_modulo(z, nw, &w);
     assert(u >= 0 && v >= 0 && w >= 0);
     assert(u < nu && v < nv && w < nw);
     T avg[2];
@@ -299,8 +307,7 @@ struct Grid : GridBase<T> {
     return (T) lerp_(avg[0], avg[1], zd);
   }
   T interpolate_value(const Fractional& fctr) const {
-    Fractional f = fctr.wrap_to_unit();
-    return interpolate_value(f.x * nu, f.y * nv, f.z * nw);
+    return interpolate_value(fctr.x * nu, fctr.y * nv, fctr.z * nw);
   }
   T interpolate_value(const Position& ctr) const {
     return interpolate_value(unit_cell.fractionalize(ctr));
