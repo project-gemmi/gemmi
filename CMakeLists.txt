@@ -394,7 +394,11 @@ if (USE_PYTHON AND DEFINED PYTHON_INSTALL_DIR)
   if (INSTALL_EGG_INFO)
     install(CODE
      "execute_process(COMMAND \"${PYTHON_EXECUTABLE}\" setup.py install_egg_info --install-dir \"\$ENV{DESTDIR}${PYTHON_INSTALL_DIR}\"
-                      WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\")"
+                      WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
+                      RESULT_VARIABLE EGG_STATUS)"
     )
+    if (EGG_STATUS AND NOT EGG_STATUS EQUAL 0)
+      message(FATAL_ERROR "Failed to install egg-info. Use -D INSTALL_EGG_INFO=OFF to disable.")
+    endif()
   endif()
 endif()
