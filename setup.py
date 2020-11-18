@@ -163,7 +163,7 @@ setup(
     ext_modules=ext_modules,
     packages=['gemmi-examples'],
     package_dir={'gemmi-examples': 'examples'},
-    install_requires=['pybind11>=' + MIN_PYBIND_VER],
+    install_requires=[],
     setup_requires=['pybind11>=' + MIN_PYBIND_VER],
     cmdclass={'build_ext': BuildExt},
     zip_safe=False,
