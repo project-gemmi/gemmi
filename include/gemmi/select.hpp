@@ -204,7 +204,7 @@ struct Selection {
 
 namespace impl {
 
-int determine_omitted_cid_fields(const std::string& cid) {
+inline int determine_omitted_cid_fields(const std::string& cid) {
   if (cid[0] == '/')
     return 0; // model
   if (std::isdigit(cid[0]) || cid[0] == '.' || cid[0] == '(' || cid[0] == '-')
@@ -217,7 +217,7 @@ int determine_omitted_cid_fields(const std::string& cid) {
   return 3;  // atom
 }
 
-Selection::List make_cid_list(const std::string& cid, size_t pos, size_t end) {
+inline Selection::List make_cid_list(const std::string& cid, size_t pos, size_t end) {
   Selection::List list;
   list.all = (cid[pos] == '*');
   if (cid[pos] == '!') {
@@ -228,8 +228,8 @@ Selection::List make_cid_list(const std::string& cid, size_t pos, size_t end) {
   return list;
 }
 
-Selection::SequenceId parse_cid_seqid(const std::string& cid, size_t& pos,
-                                      int default_seqnum) {
+inline Selection::SequenceId parse_cid_seqid(const std::string& cid, size_t& pos,
+                                             int default_seqnum) {
   size_t initial_pos = pos;
   int seqnum = default_seqnum;
   char icode = ' ';
