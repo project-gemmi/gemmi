@@ -6,6 +6,7 @@
 #include <gemmi/ccp4.hpp>      // for Ccp4
 #include <gemmi/gzread.hpp>    // for read_structure_gz
 #include <gemmi/calculate.hpp> // for calculate_fractional_box
+#include <gemmi/select.hpp>    // for parse_cid
 #include "mapcoef.h"
 
 #define GEMMI_PROG sf2map
@@ -13,7 +14,7 @@
 
 namespace {
 
-enum OptionIndex { Normalize=AfterMapOptions, MapMask, Margin };
+enum OptionIndex { Normalize=AfterMapOptions, MapMask, Margin, Select };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -46,7 +47,9 @@ const option::Descriptor Usage[] = {
     "  --mapmask=FILE  \tOutput only map covering the structure,"
     " similarly to CCP4 MAPMASK with XYZIN." },
   { Margin, 0, "", "margin", Arg::Float,
-    "  --margin=N  \t(for use w/ --mapmask) Border in Angstrom (default: 5)" },
+    "  --margin=N  \t(w/ --mapmask) Border in Angstrom (default: 5)." },
+  { Select, 0, "", "select", Arg::Required,
+    "  --select=SEL  \t(w/ --mapmask) Selection of atoms in FILE, MMDB syntax." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -70,7 +73,19 @@ void transform_sf_to_map(OptParser& p) {
     if (p.options[Margin])
       margin = std::atof(p.options[Margin].arg);
     gemmi::Structure st = gemmi::read_structure_gz(p.options[MapMask].arg);
-    ccp4.set_extent(gemmi::calculate_fractional_box(st, margin));
+    gemmi::Box<gemmi::Fractional> box;
+    if (p.options[Select]) {
+      gemmi::Selection sel = gemmi::parse_cid(p.options[Select].arg);
+      for (gemmi::Model& model : sel.models(st))
+        for (gemmi::Chain& chain : sel.chains(model))
+          for (gemmi::Residue& res : sel.residues(chain))
+            for (gemmi::Atom& atom : sel.atoms(res))
+              box.extend(st.cell.fractionalize(atom.pos));
+      box.add_margins({margin * st.cell.ar, margin * st.cell.br, margin * st.cell.cr});
+    } else {
+      box = gemmi::calculate_fractional_box(st, margin);
+    }
+    ccp4.set_extent(box);
   }
   ccp4.write_ccp4_map(map_path);
 }

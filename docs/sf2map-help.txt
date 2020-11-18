@@ -31,4 +31,5 @@ Options:
   --normalize          Scale the map to standard deviation 1 and mean 0.
   --mapmask=FILE       Output only map covering the structure, similarly to CCP4
                        MAPMASK with XYZIN.
-  --margin=N           (for use w/ --mapmask) Border in Angstrom (default: 5)
+  --margin=N           (w/ --mapmask) Border in Angstrom (default: 5).
+  --select=SEL         (w/ --mapmask) Selection of atoms in FILE, MMDB syntax.
