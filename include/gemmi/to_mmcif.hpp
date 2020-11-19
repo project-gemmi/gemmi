@@ -400,6 +400,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
         "pdbx_auth_seq_align_end", "pdbx_seq_align_end_ins_code"});
     int counter = 0;
     int counter2 = 0;
+    std::map<std::string, std::string> subs = st.models[0].subchain_to_chain();
     for (const Entity& ent : st.entities)
       for (const Entity::DbRef& dbref : ent.dbrefs) {
         ref_loop.add_row({std::to_string(++counter),
@@ -420,8 +421,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
           }
           seq_loop.add_row({std::to_string(++counter2),
                             std::to_string(counter),
-                            //chain.name,
-                            span.subchain_id(),
+                            subs.at(subchain),  // pdbx_strand_id
                             std::to_string(*label_begin),
                             std::to_string(*label_end),
                             std::to_string(*dbref.db_begin.num),
