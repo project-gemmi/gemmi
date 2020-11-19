@@ -37,8 +37,11 @@ namespace gemmi {
 
 namespace impl {
 
+inline std::string pdbx_icode(const SeqId& seqid) {
+  return std::string(1, seqid.has_icode() ? seqid.icode : '?');
+}
 inline std::string pdbx_icode(const ResidueId& rid) {
-  return std::string(1, rid.seqid.has_icode() ? rid.seqid.icode : '?');
+  return pdbx_icode(rid.seqid);
 }
 
 inline std::string subchain_or_dot(const Residue& res) {
@@ -390,9 +393,11 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
                                   {"id", "entity_id", "db_name", "db_code",
                                    "pdbx_db_accession", "pdbx_db_isoform"});
     cif::Loop& seq_loop = block.init_mmcif_loop("_struct_ref_seq.", {
-                                       "align_id", "ref_id", "pdbx_strand_id",
-                                       "seq_align_beg", "seq_align_end",
-                                       "db_align_beg", "db_align_end"});
+        "align_id", "ref_id", "pdbx_strand_id",
+        "seq_align_beg", "seq_align_end",
+        "db_align_beg", "db_align_end",
+        "pdbx_auth_seq_align_beg", "pdbx_seq_align_beg_ins_code",
+        "pdbx_auth_seq_align_end", "pdbx_seq_align_end_ins_code"});
     int counter = 0;
     int counter2 = 0;
     for (const Entity& ent : st.entities)
@@ -420,7 +425,11 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
                             std::to_string(*label_begin),
                             std::to_string(*label_end),
                             std::to_string(*dbref.db_begin.num),
-                            std::to_string(*dbref.db_end.num)});
+                            std::to_string(*dbref.db_end.num),
+                            dbref.seq_begin.num.str(),
+                            impl::pdbx_icode(dbref.seq_begin),
+                            dbref.seq_end.num.str(),
+                            impl::pdbx_icode(dbref.seq_end)});
         }
       }
   }
