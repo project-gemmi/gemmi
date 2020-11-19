@@ -67,27 +67,30 @@ inline Transform get_transform_matrix(const cif::Table::Row& r) {
   return t;
 }
 
-inline ResidueId make_resid(const std::string& name,
-                            const std::string& seqid,
-                            const std::string* icode) {
-  ResidueId rid;
-  rid.name = name;
+inline SeqId make_seqid(const std::string& seqid, const std::string* icode) {
+  SeqId ret;
   if (icode)
     // the insertion code happens to be always a single letter
-    rid.seqid.icode = cif::as_char(*icode, ' ');
+    ret.icode = cif::as_char(*icode, ' ');
   if (!seqid.empty()) {
     // old mmCIF files have auth_seq_id as number + icode (e.g. 15A)
     if (seqid.back() >= 'A') {
-      if (rid.seqid.icode == ' ')
-        rid.seqid.icode = seqid.back();
-      else if (rid.seqid.icode != seqid.back())
+      if (ret.icode == ' ')
+        ret.icode = seqid.back();
+      else if (ret.icode != seqid.back())
         fail("Inconsistent insertion code in " + seqid);
-      rid.seqid.num = cif::as_int(seqid.substr(0, seqid.size() - 1));
+      ret.num = cif::as_int(seqid.substr(0, seqid.size() - 1));
     } else {
-      rid.seqid.num = cif::as_int(seqid, Residue::OptionalNum::None);
+      ret.num = cif::as_int(seqid, Residue::OptionalNum::None);
     }
   }
-  return rid;
+  return ret;
+}
+
+inline ResidueId make_resid(const std::string& name,
+                            const std::string& seqid,
+                            const std::string* icode) {
+  return ResidueId{make_seqid(seqid, icode), {}, name};
 }
 
 inline std::vector<Helix> read_helices(cif::Block& block) {
@@ -680,8 +683,10 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
     }
 
   cif::Table struct_ref_seq = block.find("_struct_ref_seq.",
-                                {"ref_id", "seq_align_beg", "seq_align_end",
-                                 "db_align_beg", "db_align_end"});
+      {"ref_id", "seq_align_beg", "seq_align_end",                   // 0-2
+       "db_align_beg", "db_align_end",                               // 3-4
+       "?pdbx_auth_seq_align_beg", "?pdbx_seq_align_beg_ins_code",   // 5-6
+       "?pdbx_auth_seq_align_end", "?pdbx_seq_align_end_ins_code"}); // 7-8
   for (auto row : block.find("_struct_ref.",
                              {"id", "entity_id", "db_name", "db_code",
                               "?pdbx_db_accession", "?pdbx_db_isoform"}))
@@ -701,6 +706,10 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
         dbref.label_seq_end = cif::as_int(seq[2], None);
         dbref.db_begin.num = cif::as_int(seq[3], None);
         dbref.db_end.num = cif::as_int(seq[4], None);
+        if (seq.has(5))
+          dbref.seq_begin = make_seqid(seq.str(5), seq.ptr_at(6));
+        if (seq.has(7))
+          dbref.seq_end = make_seqid(seq.str(7), seq.ptr_at(8));
       } catch (const std::runtime_error&) {}
     }
 
