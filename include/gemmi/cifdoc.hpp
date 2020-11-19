@@ -617,7 +617,7 @@ inline Table::Row Table::find_row(const std::string& s) {
   } else if (as_string(bloc.items[pos].pair[1]) == s) {
     return Row{*this, 0};
   }
-  fail("Not found in the first column: " + s);
+  fail("Not found in " + *column_at_pos(pos).get_tag() + ": " + s);
 }
 
 template <typename T> void Table::append_row(T new_values) {
@@ -718,7 +718,7 @@ inline size_t Block::get_index(const std::string& tag) const {
         (item.type == ItemType::Loop && item.loop.find_tag(tag) != -1))
       return i;
   }
-  fail(tag + "is not in block");
+  fail(tag + " not found in block");
 }
 
 inline void Block::move_item(int old_pos, int new_pos) {
