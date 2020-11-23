@@ -69,10 +69,11 @@ struct MtzToCif {
       "L H index_l",
       "? I       J intensity_net",
       "& SIGI    Q intensity_sigma .5g",
-      // ccp4_image_number is a proposed item. Perhaps it should be
-      // ccp4_centroid_of_image_numbers - real number corresponding
-      // to ITEM_ZD in XDS.
-      "$image ccp4_image_number",
+      // ccp4_z_calc is a proposed item:
+      // Calculated image number of reflection at diffraction maximum.
+      // Calculated Z position of reflection centre on the detector (with Z
+      // in image number space).
+      "$image ccp4_calculated_z",
       nullptr
     };
     return for_merged ? merged : unmerged;
@@ -364,6 +365,14 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
   os << "data_" << (block_name ? block_name : "mtz");
 
   os << "\n\n_entry.id " << id << "\n\n";
+
+  // for now write this only merged+unmerged dataset
+  if (mtz2)
+    os << "###                   IMPORTANT                   ###\n"
+          "### If you modify this file, remove this category ###\n"
+          "_pdbx_dataset_provider_software.ordinal 1\n"
+          "_pdbx_dataset_provider_software.name gemmi\n"
+          "_pdbx_dataset_provider_software.version " GEMMI_VERSION "\n\n";
 
   if (unmerged) {
     os << "_exptl_crystal.id 1\n\n";
