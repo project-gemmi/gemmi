@@ -339,13 +339,17 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
   } else {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
-      if (p.options[Glob])
-        for (const std::string& path : gemmi::GlobWalk(p.nonOption(i),
-                                                       p.options[Glob].arg))
-          process(ctx, path);
-      else
-        for (const std::string& path : gemmi::CifWalk(p.nonOption(i)))
-          process(ctx, path);
+      try { // DirWalk can throw
+        if (p.options[Glob])
+          for (const std::string& path : gemmi::GlobWalk(p.nonOption(i), p.options[Glob].arg))
+            process(ctx, path);
+        else
+          for (const std::string& path : gemmi::CifWalk(p.nonOption(i)))
+            process(ctx, path);
+      } catch (std::runtime_error &e) {
+        std::fprintf(stderr, "Error. %s.\n", e.what());
+        return 1;
+      }
     }
   }
   if (p.options[Full])
