@@ -100,7 +100,8 @@ public:
     memory_size_ = estimate_uncompressed_size(path());
     open();
     if (memory_size_ > 3221225471)
-      fail("For now gz files above 3 GiB uncompressed are not supported.");
+      fail("For now gz files above 3 GiB uncompressed are not supported.\n"
+           "To read " + path() + " first uncompress it.");
     std::unique_ptr<char[]> mem(new char[memory_size_]);
     size_t read_bytes = gzread_checked(mem.get(), memory_size_);
     // if the file is shorter than the size from header, adjust memory_size_
@@ -111,7 +112,8 @@ public:
       int next_char;
       while (!gzeof(file_) && (next_char = gzgetc(file_)) != -1) {
         if (memory_size_ > 3221225471)
-          fail("For now gz files above 3 GiB uncompressed are not supported.");
+          fail("For now gz files above 3 GiB uncompressed are not supported.\n"
+               "To read " + path() + " first uncompress it.");
         gzungetc(next_char, file_);
         std::unique_ptr<char[]> mem2(new char[2 * memory_size_]);
         std::memcpy(mem2.get(), mem.get(), memory_size_);
