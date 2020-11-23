@@ -350,9 +350,9 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
   using std::to_string;
   if (st.models.empty())
     return;
-  block.name = st.name;
+  block.name = (!st.name.empty() ? st.name : "xxxx");
   auto e_id = st.info.find("_entry.id");
-  std::string id = impl::string_or_dot(e_id != st.info.end() ? e_id->second : st.name);
+  std::string id = cif::quote(e_id != st.info.end() ? e_id->second : block.name);
   block.set_pair("_entry.id", id);
   auto initial_date =
          st.info.find("_pdbx_database_status.recvd_initial_deposition_date");
