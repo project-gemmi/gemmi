@@ -350,7 +350,7 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
 
   char buf[256];
 #define WRITE(...) os.write(buf, gf_snprintf(buf, 255, __VA_ARGS__))
-  std::string id = ".";
+  std::string id = "xxxx";
   if (with_comments) {
     os << "# Converted by gemmi-mtz2cif " GEMMI_VERSION "\n";
     if (!mtz_path.empty())
