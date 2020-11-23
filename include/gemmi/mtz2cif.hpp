@@ -63,8 +63,6 @@ struct MtzToCif {
     };
     static const char* unmerged[] = {
       "$dataset diffrn_id",  // diffrn_id - sweep id deduced from BATCH
-      "$. standard_code",    // dummy mandatory column
-      "$. scale_group_code", // dummy mandatory column
       "$counter id",         // reflection counter (1, 2, ...)
       "H H index_h",
       "K H index_k",
