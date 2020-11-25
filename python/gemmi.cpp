@@ -21,8 +21,8 @@ void add_cif(py::module& cif); // cif.cpp
 void add_read_structure(py::module& m); // read.cpp
 void add_cif_read(py::module& cif); // read.cpp
 void add_monlib(py::module& m); // monlib.cpp
-void add_alignment(py::module& m); // monlib.cpp
-void add_select(py::module& m); // monlib.cpp
+void add_alignment(py::module& m); // align.cpp
+void add_select(py::module& m); // align.cpp
 
 void add_misc(py::module& m) {
   using gemmi::Element;

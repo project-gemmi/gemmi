@@ -1,15 +1,11 @@
 // Copyright 2018 Global Phasing Ltd.
 
-#include "gemmi/align.hpp"     // for align_sequence_to_polymer
 #include "gemmi/chemcomp.hpp"
 #include "gemmi/gzread.hpp"    // for read_cif_gz
 #include "gemmi/linkhunt.hpp"
 #include "gemmi/monlib.hpp"
 #include "gemmi/topo.hpp"
-#include "gemmi/seqalign.hpp"  // for align_string_sequences
-#include "gemmi/select.hpp"
 
-#include <fstream>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
@@ -29,21 +25,18 @@ PYBIND11_MAKE_OPAQUE(links_type)
 PYBIND11_MAKE_OPAQUE(modifications_type)
 
 void add_monlib(py::module& m) {
-
-  py::class_<ChemMod> pyChemMod(m, "ChemMod");
+  py::class_<ChemMod> chemmod(m, "ChemMod");
   py::class_<ChemLink> chemlink(m, "ChemLink");
+  py::class_<ChemLink::Side> chemlinkside(chemlink, "Side");
   py::class_<ChemComp> chemcomp(m, "ChemComp");
-
-  py::class_<ChemLink::Side> pyChemLinkSide(chemlink, "Side");
+  py::class_<ChemComp::Atom> chemcompatom(chemcomp, "Atom");
 
   py::class_<Restraints> restraints(m, "Restraints");
-  py::class_<Restraints::Bond> pyRestraintsBond(restraints, "Bond");
+  py::class_<Restraints::Bond> restraintsbond(restraints, "Bond");
 
   py::class_<Topo> topo(m, "Topo");
-  py::class_<Topo::Bond> pyTopoBond(topo, "Bond");
-  py::class_<Topo::ExtraLink> pyTopoExtraLink(topo, "ExtraLink");
-
-  py::class_<ChemComp::Atom> pyChemCompAtom(chemcomp, "Atom");
+  py::class_<Topo::Bond> topobond(topo, "Bond");
+  py::class_<Topo::ExtraLink> topoextralink(topo, "ExtraLink");
 
   py::bind_vector<std::vector<Restraints::Bond>>(m, "RestraintsBonds");
   py::bind_vector<std::vector<ChemComp::Atom>>(m, "ChemCompAtoms");
@@ -72,7 +65,7 @@ void add_monlib(py::module& m) {
          py::arg("res1"), py::arg("res2"), py::arg("altloc"),
          py::return_value_policy::reference)
     ;
-  pyRestraintsBond
+  restraintsbond
     .def_readwrite("id1", &Restraints::Bond::id1)
     .def_readwrite("id2", &Restraints::Bond::id2)
     .def_readwrite("type", &Restraints::Bond::type)
@@ -98,7 +91,7 @@ void add_monlib(py::module& m) {
          }, py::return_value_policy::reference_internal)
     ;
 
-  pyChemCompAtom
+  chemcompatom
     .def_readonly("id", &ChemComp::Atom::id)
     .def_readonly("el", &ChemComp::Atom::el)
     .def_readonly("charge", &ChemComp::Atom::charge)
@@ -125,7 +118,7 @@ void add_monlib(py::module& m) {
         return "<gemmi.ChemLink " + self.id + ">";
     });
 
-  py::enum_<ChemLink::Group>(pyChemLinkSide, "Group")
+  py::enum_<ChemLink::Group>(chemlinkside, "Group")
       .value("Peptide",  ChemLink::Group::Peptide)
       .value("PPeptide", ChemLink::Group::PPeptide)
       .value("MPeptide", ChemLink::Group::MPeptide)
@@ -133,7 +126,7 @@ void add_monlib(py::module& m) {
       .value("DnaRna",   ChemLink::Group::DnaRna)
       .value("Null",     ChemLink::Group::Null);
 
-  pyChemLinkSide
+  chemlinkside
     .def_readwrite("comp", &ChemLink::Side::comp)
     .def_readwrite("mod", &ChemLink::Side::mod)
     .def_readwrite("group", &ChemLink::Side::group)
@@ -142,7 +135,7 @@ void add_monlib(py::module& m) {
                ChemLink::group_str(self.group) + ">";
     });
 
-  pyChemMod
+  chemmod
     .def_readwrite("id", &ChemMod::id)
     .def("__repr__", [](const ChemLink& self) {
         return "<gemmi.ChemMod " + self.id + ">";
@@ -164,13 +157,13 @@ void add_monlib(py::module& m) {
                std::to_string(self.modifications.size()) + " modifications>";
     });
 
-  pyTopoBond
+  topobond
     .def_readonly("restr", &Topo::Bond::restr)
     .def_readonly("atoms", &Topo::Bond::atoms)
     .def("calculate", &Topo::Bond::calculate)
     .def("calculate_z", &Topo::Bond::calculate_z)
     ;
-  pyTopoExtraLink
+  topoextralink
     .def_readonly("res1", &Topo::ExtraLink::res1)
     .def_readonly("res2", &Topo::ExtraLink::res2)
     .def_readonly("alt1", &Topo::ExtraLink::alt1)
@@ -207,8 +200,8 @@ void add_monlib(py::module& m) {
     ;
 
   py::class_<ContactSearch> contactsearch(m, "ContactSearch");
-  py::class_<ContactSearch::Result> pyContactSearchResult(contactsearch, "Result");
-  py::enum_<ContactSearch::Ignore> pyContactSearchIgnore(contactsearch, "Ignore");
+  py::enum_<ContactSearch::Ignore> csignore(contactsearch, "Ignore");
+  py::class_<ContactSearch::Result> csresult(contactsearch, "Result");
 
   contactsearch
     .def(py::init<float>())
@@ -227,14 +220,14 @@ void add_monlib(py::module& m) {
     .def("find_contacts", &ContactSearch::find_contacts)
     ;
 
-  pyContactSearchIgnore
+  csignore
     .value("Nothing", ContactSearch::Ignore::Nothing)
     .value("SameResidue", ContactSearch::Ignore::SameResidue)
     .value("AdjacentResidues", ContactSearch::Ignore::AdjacentResidues)
     .value("SameChain", ContactSearch::Ignore::SameChain)
     .value("SameAsu", ContactSearch::Ignore::SameAsu);
 
-  pyContactSearchResult
+  csresult
     .def_readonly("partner1", &ContactSearch::Result::partner1)
     .def_readonly("partner2", &ContactSearch::Result::partner2)
     .def_readonly("image_idx", &ContactSearch::Result::image_idx)
@@ -244,7 +237,7 @@ void add_monlib(py::module& m) {
     ;
 
   py::class_<LinkHunt> linkhunt(m, "LinkHunt");
-  py::class_<LinkHunt::Match> pyLinkHuntMatch(linkhunt, "Match");
+  py::class_<LinkHunt::Match> linkhuntmatch(linkhunt, "Match");
   linkhunt
     .def(py::init<>())
     .def("index_chem_links", &LinkHunt::index_chem_links,
@@ -254,7 +247,7 @@ void add_monlib(py::module& m) {
          py::arg("ignore")=ContactSearch::Ignore::SameResidue)
     ;
 
-  pyLinkHuntMatch
+  linkhuntmatch
     .def_readonly("chem_link", &LinkHunt::Match::chem_link)
     .def_readonly("chem_link_count", &LinkHunt::Match::chem_link_count)
     .def_readonly("cra1", &LinkHunt::Match::cra1)
@@ -263,85 +256,4 @@ void add_monlib(py::module& m) {
     .def_readonly("bond_length", &LinkHunt::Match::bond_length)
     .def_readonly("conn", &LinkHunt::Match::conn)
     ;
-}
-
-void add_select(py::module& m) {
-  py::class_<Selection> pySelection(m, "Selection");
-  py::class_<FilterProxy<Selection, Model>> pySelectionModelsProxy(m, "SelectionModelsProxy");
-  py::class_<FilterProxy<Selection, Chain>> pySelectionChainsProxy(m, "SelectionChainsProxy");
-  py::class_<FilterProxy<Selection, Residue>> pySelectionResidusProxy(m, "SelectionResidusProxy");
-  py::class_<FilterProxy<Selection, Atom>> pySelectionAtomsProxy(m, "SelectionAtomsProxy");
-
-  m.def("parse_cid", &parse_cid);
-  pySelection
-    .def(py::init<>())
-    .def("models", &Selection::models)
-    .def("chains", &Selection::chains)
-    .def("residues", &Selection::residues)
-    .def("atoms", &Selection::atoms)
-    .def("first_in_model", &Selection::first_in_model,
-         py::keep_alive<1, 2>())
-    .def("first", &Selection::first, py::return_value_policy::reference,
-         py::keep_alive<1, 2>())
-    .def("to_cid", &Selection::to_cid)
-    .def("set_residue_flags", &Selection::set_residue_flags)
-    .def("set_atom_flags", &Selection::set_atom_flags)
-    .def("copy_model_selection", &Selection::copy_selection<Model>)
-    .def("copy_structure_selection", &Selection::copy_selection<Structure>)
-    .def("__repr__", [](const Selection& self) {
-        return "<gemmi.Selection CID: " + self.to_cid() + ">";
-    });
-
-    pySelectionModelsProxy
-    .def("__iter__", [](FilterProxy<Selection, Model>& self) {
-        return py::make_iterator(self);
-    }, py::keep_alive<0, 1>());
-
-    pySelectionChainsProxy
-    .def("__iter__", [](FilterProxy<Selection, Chain>& self) {
-        return py::make_iterator(self);
-    }, py::keep_alive<0, 1>());
-
-    pySelectionResidusProxy
-    .def("__iter__", [](FilterProxy<Selection, Residue>& self) {
-        return py::make_iterator(self);
-    }, py::keep_alive<0, 1>());
-
-    pySelectionAtomsProxy
-    .def("__iter__", [](FilterProxy<Selection, Atom>& self) {
-        return py::make_iterator(self);
-    }, py::keep_alive<0, 1>());
-}
-
-void add_alignment(py::module& m) {
-  py::class_<AlignmentResult>(m, "AlignmentResult")
-    .def_readonly("score", &AlignmentResult::score)
-    .def_readonly("match_count", &AlignmentResult::match_count)
-    .def_readonly("match_string", &AlignmentResult::match_string)
-    .def("cigar_str", &AlignmentResult::cigar_str)
-    .def("calculate_identity", &AlignmentResult::calculate_identity,
-         py::arg("which")=0)
-    .def("add_gaps", &AlignmentResult::add_gaps, py::arg("s"), py::arg("which"))
-    .def("formatted", &AlignmentResult::formatted)
-    ;
-
-  py::class_<AlignmentScoring>(m, "AlignmentScoring")
-    .def(py::init<>())
-    .def_readwrite("match", &AlignmentScoring::match)
-    .def_readwrite("mismatch", &AlignmentScoring::mismatch)
-    .def_readwrite("gapo", &AlignmentScoring::gapo)
-    .def_readwrite("gape", &AlignmentScoring::gape)
-    ;
-
-  m.def("prepare_blosum62_scoring", &prepare_blosum62_scoring);
-  m.def("align_string_sequences", &align_string_sequences,
-        py::arg("query"), py::arg("target"), py::arg("free_gapo"),
-        py::arg_v("scoring", AlignmentScoring(), "gemmi.AlignmentScoring()"));
-  m.def("align_sequence_to_polymer",
-        [](const std::vector<std::string>& full_seq,
-           const ResidueSpan& polymer, PolymerType polymer_type,
-           AlignmentScoring& sco) {
-      return align_sequence_to_polymer(full_seq, polymer, polymer_type, sco);
-  }, py::arg("full_seq"), py::arg("polymer"), py::arg("polymer_type"),
-     py::arg_v("scoring", AlignmentScoring(), "gemmi.AlignmentScoring()"));
 }
