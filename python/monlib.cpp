@@ -2,7 +2,6 @@
 
 #include "gemmi/chemcomp.hpp"
 #include "gemmi/gzread.hpp"    // for read_cif_gz
-#include "gemmi/linkhunt.hpp"
 #include "gemmi/monlib.hpp"
 #include "gemmi/topo.hpp"
 
@@ -197,63 +196,5 @@ void add_monlib(py::module& m) {
     .def("graph_distance", &BondIndex::graph_distance,
          py::arg("a"), py::arg("b"), py::arg("same_index"),
          py::arg("max_distance")=4)
-    ;
-
-  py::class_<ContactSearch> contactsearch(m, "ContactSearch");
-  py::enum_<ContactSearch::Ignore> csignore(contactsearch, "Ignore");
-  py::class_<ContactSearch::Result> csresult(contactsearch, "Result");
-
-  contactsearch
-    .def(py::init<float>())
-    .def_readwrite("search_radius", &ContactSearch::search_radius)
-    .def_readwrite("ignore", &ContactSearch::ignore)
-    .def_readwrite("twice", &ContactSearch::twice)
-    .def_readwrite("special_pos_cutoff_sq", &ContactSearch::special_pos_cutoff_sq)
-    .def_readwrite("min_occupancy", &ContactSearch::min_occupancy)
-    .def("setup_atomic_radii", &ContactSearch::setup_atomic_radii)
-    .def("get_radius", [](const ContactSearch& self, Element el) {
-        return self.get_radius(el.elem);
-    })
-    .def("set_radius", [](ContactSearch& self, Element el, float r) {
-        self.set_radius(el.elem, r);
-    })
-    .def("find_contacts", &ContactSearch::find_contacts)
-    ;
-
-  csignore
-    .value("Nothing", ContactSearch::Ignore::Nothing)
-    .value("SameResidue", ContactSearch::Ignore::SameResidue)
-    .value("AdjacentResidues", ContactSearch::Ignore::AdjacentResidues)
-    .value("SameChain", ContactSearch::Ignore::SameChain)
-    .value("SameAsu", ContactSearch::Ignore::SameAsu);
-
-  csresult
-    .def_readonly("partner1", &ContactSearch::Result::partner1)
-    .def_readonly("partner2", &ContactSearch::Result::partner2)
-    .def_readonly("image_idx", &ContactSearch::Result::image_idx)
-    .def_property_readonly("dist", [](ContactSearch::Result& self) {
-        return std::sqrt(self.dist_sq);
-    })
-    ;
-
-  py::class_<LinkHunt> linkhunt(m, "LinkHunt");
-  py::class_<LinkHunt::Match> linkhuntmatch(linkhunt, "Match");
-  linkhunt
-    .def(py::init<>())
-    .def("index_chem_links", &LinkHunt::index_chem_links,
-         py::arg("monlib"), py::keep_alive<1, 2>())
-    .def("find_possible_links", &LinkHunt::find_possible_links,
-         py::arg("st"), py::arg("bond_margin"), py::arg("radius_margin"),
-         py::arg("ignore")=ContactSearch::Ignore::SameResidue)
-    ;
-
-  linkhuntmatch
-    .def_readonly("chem_link", &LinkHunt::Match::chem_link)
-    .def_readonly("chem_link_count", &LinkHunt::Match::chem_link_count)
-    .def_readonly("cra1", &LinkHunt::Match::cra1)
-    .def_readonly("cra2", &LinkHunt::Match::cra2)
-    .def_readonly("same_image", &LinkHunt::Match::same_image)
-    .def_readonly("bond_length", &LinkHunt::Match::bond_length)
-    .def_readonly("conn", &LinkHunt::Match::conn)
     ;
 }

@@ -52,7 +52,7 @@ ext_modules = [
     Extension('gemmi',
               ['python/%s.cpp' % name for name in
                   ['gemmi', 'align', 'cif', 'hkl', 'grid', 'mol', 'read',
-                   'monlib', 'sym', 'unitcell', 'write']],
+                   'monlib', 'search', 'sym', 'unitcell', 'write']],
               include_dirs=zlib_include_dirs + [
                   'include',
                   'third_party',

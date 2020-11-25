@@ -12,27 +12,22 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 
 #include "gemmi/ccp4.hpp"
 #include "gemmi/gz.hpp"  // for MaybeGzipped
-#include "gemmi/neighbor.hpp"
 #include "gemmi/tostr.hpp"
 #include "gemmi/fourier.hpp"  // for get_f_phi_on_grid
 
 #include <pybind11/pybind11.h>
 #include <pybind11/complex.h>
 #include <pybind11/stl.h>
-#include <pybind11/stl_bind.h>
 #include <pybind11/numpy.h>
 #include "common.h"  // for normalize_index
 namespace py = pybind11;
 using namespace gemmi;
-
-PYBIND11_MAKE_OPAQUE(std::vector<NeighborSearch::Mark*>)
 
 template<typename T>
 std::string grid_dim_str(const GridBase<T>& g) {
   return std::to_string(g.nu) + ", " + std::to_string(g.nv) + ", " +
          std::to_string(g.nw);
 }
-
 
 template<typename T> void add_to_asu_data(T&) {}
 template<> void add_to_asu_data(py::class_<AsuData<std::complex<float>>>& cl) {
@@ -295,7 +290,9 @@ py::class_<T> add_ccp4(py::module& m, const char* name) {
 }
 
 void add_grid(py::module& m) {
-  py::enum_<AxisOrder> pyAxisOrder(m, "AxisOrder");
+  py::enum_<AxisOrder>(m, "AxisOrder")
+    .value("XYZ", AxisOrder::XYZ)
+    .value("ZYX", AxisOrder::ZYX);
 
   add_grid<int8_t>(m, "Int8Grid");
   add_grid<float>(m, "FloatGrid");
@@ -320,61 +317,4 @@ void add_grid(py::module& m) {
           return grid;
         }, py::arg("path"), py::return_value_policy::move,
         "Reads a CCP4 file, mode 0 (int8_t data, usually 0/1 masks).");
-
-  pyAxisOrder
-    .value("XYZ", AxisOrder::XYZ)
-    .value("ZYX", AxisOrder::ZYX);
-
-  py::class_<NeighborSearch> neighbor_search(m, "NeighborSearch");
-  py::class_<NeighborSearch::Mark>(neighbor_search, "Mark")
-    .def_readonly("x", &NeighborSearch::Mark::x)
-    .def_readonly("y", &NeighborSearch::Mark::y)
-    .def_readonly("z", &NeighborSearch::Mark::z)
-    .def_readonly("altloc", &NeighborSearch::Mark::altloc)
-    .def_readonly("element", &NeighborSearch::Mark::element)
-    .def_readonly("image_idx", &NeighborSearch::Mark::image_idx)
-    .def_readonly("chain_idx", &NeighborSearch::Mark::chain_idx)
-    .def_readonly("residue_idx", &NeighborSearch::Mark::residue_idx)
-    .def_readonly("atom_idx", &NeighborSearch::Mark::atom_idx)
-    .def("pos", &NeighborSearch::Mark::pos)
-    .def("to_cra", (CRA (NeighborSearch::Mark::*)(Model&) const)
-                   &NeighborSearch::Mark::to_cra)
-    .def("to_site", (SmallStructure::Site& (NeighborSearch::Mark::*)(SmallStructure&) const)
-                    &NeighborSearch::Mark::to_site)
-    .def("__repr__", [](const NeighborSearch::Mark& self) {
-        return tostr("<gemmi.NeighborSearch.Mark ", self.element.name(),
-                     " of atom ", self.chain_idx, '/', self.residue_idx, '/',
-                     self.atom_idx, '>');
-    });
-  py::bind_vector<std::vector<NeighborSearch::Mark*>>(m, "VectorMarkPtr");
-  neighbor_search
-    .def(py::init<Model&, const UnitCell&, double>(),
-         py::arg("model"), py::arg("cell"), py::arg("max_radius")/*,
-         py::keep_alive<1, 2>()*/)
-    .def(py::init([](Structure& st, double max_radius, int model_index) {
-      return new NeighborSearch(st.models.at(model_index), st.cell, max_radius);
-    }), py::arg("st"), py::arg("max_radius"), py::arg("model_index")=0,
-        py::keep_alive<1, 2>())
-    .def(py::init<SmallStructure&, double>(),
-         py::arg("small_structure"), py::arg("max_radius"),
-         py::keep_alive<1, 2>())
-    .def("populate", &NeighborSearch::populate, py::arg("include_h")=true,
-         "Usually run after constructing NeighborSearch.")
-    .def("add_atom", &NeighborSearch::add_atom,
-         py::arg("atom"), py::arg("n_ch"), py::arg("n_res"), py::arg("n_atom"),
-         "Lower-level alternative to populate()")
-    .def("find_atoms", &NeighborSearch::find_atoms,
-         py::arg("pos"), py::arg("alt")='\0', py::arg("radius")=0,
-         py::return_value_policy::move, py::keep_alive<0, 1>())
-    .def("find_neighbors", &NeighborSearch::find_neighbors,
-         py::arg("atom"), py::arg("min_dist")=0, py::arg("max_dist")=0,
-         py::return_value_policy::move, py::keep_alive<0, 1>())
-    .def("find_site_neighbors", &NeighborSearch::find_site_neighbors,
-         py::arg("atom"), py::arg("min_dist")=0, py::arg("max_dist")=0,
-         py::return_value_policy::move, py::keep_alive<0, 1>())
-    .def("dist", &NeighborSearch::dist)
-    .def("__repr__", [](const NeighborSearch& self) {
-        return tostr("<gemmi.NeighborSearch with grid ",
-                     grid_dim_str(self.grid), '>');
-    });
 }
