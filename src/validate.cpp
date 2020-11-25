@@ -231,11 +231,15 @@ public:
     }
     // go over categories and check if nothing is missing
     for (const auto& cat : categories) {
-      cif::Block* cat_block = find_rules(cat.first.substr(1, cat.first.size()-2));
+      std::string cat_name = cat.first.substr(1, cat.first.size()-2);
+      cif::Block* cat_block = find_rules(cat_name);
       if (!cat_block) { // should not happen
-        out << "Category not in the dictionary: " << cat.first << std::endl;
+        out << "Category not in the dictionary: " << cat_name << std::endl;
         continue;
       }
+      // check context type
+      if (const std::string* context = cat_block->find_value("_pdbx_category_context.type"))
+        out << "Category indicated as " << *context << ": " << cat_name << std::endl;
       // check key items
       for (const std::string& v : cat_block->find_values("_category_key.name")) {
         std::string key = cif::as_string(v);
