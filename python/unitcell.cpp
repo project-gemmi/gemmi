@@ -115,9 +115,6 @@ void add_unitcell(py::module& m) {
     .def("inverse", &Transform::inverse)
     .def("apply", &Transform::apply);
 
-  add_box<Position>(m, "PositionBox");
-  add_box<Fractional>(m, "FractionalBox");
-
   py::class_<Position, Vec3>(m, "Position")
     .def(py::init<double,double,double>())
     .def("dist", [](const Position& self, const Position& other) {
@@ -132,6 +129,9 @@ void add_unitcell(py::module& m) {
     .def("__repr__", [](const Fractional& self) {
         return "<gemmi.Fractional(" + triple(self.x, self.y, self.z) + ")>";
     });
+
+  add_box<Position>(m, "PositionBox");
+  add_box<Fractional>(m, "FractionalBox");
 
   py::class_<FTransform, Transform>(m, "FTransform")
     .def("apply", &FTransform::apply);
