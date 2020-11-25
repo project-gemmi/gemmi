@@ -8,6 +8,7 @@ Options:
   --spec=FILE            Column and format specification.
   --print-spec           Print default spec and exit.
   -b NAME, --block=NAME  mmCIF block name: data_NAME (default: mtz).
+  --id=ID                value for _entry.id (default: xxxx).
   --skip-empty[=COLS]    Skip reflections with no values. If COLS are given, eg.
                          'I(+),I(-)', only values in those columns are checked.
   --no-comments          Do not write comments in the mmCIF file.

@@ -29,6 +29,7 @@ struct MtzToCif {
   // options that can be set directly
   std::vector<std::string> spec_lines; // conversion specification (cf. default_spec)
   const char* block_name = nullptr;  // NAME in data_NAME
+  std::string entry_id = "xxxx";     // _entry.id
   std::string mtz_path;              // path written in a comment
   bool with_comments = true;         // write comments
   bool skip_empty = false;           // skip reflections with no values
@@ -349,7 +350,6 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
 
   char buf[256];
 #define WRITE(...) os.write(buf, gf_snprintf(buf, 255, __VA_ARGS__))
-  std::string id = "xxxx";
   if (with_comments) {
     os << "# Converted by gemmi-mtz2cif " GEMMI_VERSION "\n";
     if (!mtz_path.empty())
@@ -364,7 +364,7 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
   }
   os << "data_" << (block_name ? block_name : "mtz");
 
-  os << "\n\n_entry.id " << id << "\n\n";
+  os << "\n\n_entry.id " << entry_id << "\n\n";
 
   // for now write this only merged+unmerged dataset
   if (mtz2)
@@ -450,7 +450,7 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
   }
 
   const UnitCell& cell = mtz.get_cell();
-  os << "_cell.entry_id " << id << '\n';
+  os << "_cell.entry_id " << entry_id << '\n';
   WRITE("_cell.length_a    %8.3f\n", cell.a);
   WRITE("_cell.length_b    %8.3f\n", cell.b);
   WRITE("_cell.length_c    %8.3f\n", cell.c);
@@ -459,7 +459,7 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
   WRITE("_cell.angle_gamma %8.3f\n\n", cell.gamma);
 
   if (const SpaceGroup* sg = mtz.spacegroup) {
-    os << "_symmetry.entry_id " << id << "\n"
+    os << "_symmetry.entry_id " << entry_id << "\n"
           "_symmetry.space_group_name_H-M '" << sg->hm << "'\n"
           "_symmetry.Int_Tables_number " << sg->number << '\n';
     // could write _symmetry_equiv.pos_as_xyz, but would it be useful?

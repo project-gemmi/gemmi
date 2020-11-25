@@ -13,8 +13,8 @@
 
 namespace {
 
-enum OptionIndex { Spec=4, PrintSpec, BlockName, SkipEmpty, NoComments,
-                   Wavelength, ValidateMerge, Trim };
+enum OptionIndex { Spec=4, PrintSpec, BlockName, EntryId, SkipEmpty,
+                   NoComments, Wavelength, ValidateMerge, Trim };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -29,6 +29,8 @@ const option::Descriptor Usage[] = {
     "  --print-spec  \tPrint default spec and exit." },
   { BlockName, 0, "b", "block", Arg::Required,
     "  -b NAME, --block=NAME  \tmmCIF block name: data_NAME (default: mtz)." },
+  { EntryId, 0, "", "id", Arg::Required,
+    "  --id=ID  \tvalue for _entry.id (default: xxxx)." },
   { SkipEmpty, 0, "", "skip-empty", Arg::Optional,
     "  --skip-empty[=COLS]  \tSkip reflections with no values. If COLS are "
     "given, eg. 'I(+),I(-)', only values in those columns are checked." },
@@ -150,6 +152,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   if (p.options[BlockName])
     mtz_to_cif.block_name = p.options[BlockName].arg;
+  if (p.options[EntryId])
+    mtz_to_cif.entry_id = p.options[EntryId].arg;
   if (p.options[Wavelength])
     mtz_to_cif.wavelength = std::strtod(p.options[Wavelength].arg, nullptr);
   if (p.options[ValidateMerge] && nargs == 3) {
