@@ -11,7 +11,7 @@
 #include <gemmi/gz.hpp>        // for MaybeGzipped
 #include <gemmi/gzread.hpp>
 #include <gemmi/it92.hpp>      // for IT92
-#include <gemmi/itc4322.hpp>   // for ITC4322
+#include <gemmi/c4322.hpp>     // for C4322
 #include <gemmi/math.hpp>      // for sq
 #include <gemmi/mtz.hpp>       // for read_mtz_file
 #include <gemmi/rhogrid.hpp>   // for put_model_density_on_grid
@@ -674,7 +674,7 @@ void process(const std::string& input, const OptParser& p) {
   } else if (table == 'e') {
     if (p.options[CifFp])
       gemmi::fail("Electron scattering has no dispersive part (--ciffp)");
-    process_with_table<gemmi::ITC4322<double>>(use_st, st, small, 0., p);
+    process_with_table<gemmi::C4322<double>>(use_st, st, small, 0., p);
   }
 }
 

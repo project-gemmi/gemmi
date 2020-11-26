@@ -6,8 +6,8 @@
 // and s up to 2.0 A^-1".
 // The same data is included in cctbx and in CCP4 (file atomsf_electron.lib).
 
-#ifndef GEMMI_ITC4322_HPP_
-#define GEMMI_ITC4322_HPP_
+#ifndef GEMMI_C4322_HPP_
+#define GEMMI_C4322_HPP_
 
 #include "formfact.hpp"  // for GaussianCoef
 #include "elem.hpp"      // for El
@@ -20,7 +20,7 @@ namespace gemmi {
 #endif
 
 template<class Real>
-struct ITC4322 {
+struct C4322 {
   using Coef = GaussianCoef<5, 0, Real>;
   static const Coef data[98];
 
@@ -40,7 +40,7 @@ struct ITC4322 {
 };
 
 template<class Real>
-const typename ITC4322<Real>::Coef ITC4322<Real>::data[98] = {
+const typename C4322<Real>::Coef C4322<Real>::data[98] = {
   // a1, a2, a3, a4, a5, b1, b2, b3, b4, b5
   {0.0349, 0.1201, 0.197, 0.0573, 0.1195, 0.5347, 3.5867, 12.3471, 18.9525, 38.6269}, // H
   {0.0317, 0.0838, 0.1526, 0.1334, 0.0164, 0.2507, 1.4751, 4.4938, 12.6646, 31.1653}, // He
