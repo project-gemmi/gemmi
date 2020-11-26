@@ -12,7 +12,6 @@
 #include <complex>
 #include "model.hpp"   // for Structure, ...
 #include "small.hpp"   // for SmallStructure
-#include "fprime.hpp"  // for cromer_libermann
 
 namespace gemmi {
 
@@ -32,10 +31,10 @@ public:
     stol2_ = cell_.calculate_stol_sq(hkl);
     scattering_factors_.clear();
     scattering_factors_.resize((int) El::END, 0.);
-    for (auto const& fprime : fprimes_) {
-      El el = fprime.first;
+    for (auto const& addend : addends_) {
+      El el = addend.first;
       if (Table::has(el)) {
-        double sf = Table::get(el).calculate_sf(stol2_) + fprime.second;
+        double sf = Table::get(el).calculate_sf(stol2_) + addend.second;
         scattering_factors_[(int)el] = sf;
       }
     }
@@ -116,14 +115,14 @@ public:
     return sf;
   }
 
-  void set_fprime(El el, double val) { fprimes_[el] = val; }
-  void set_fprime_if_not_set(El el, double val) { fprimes_.emplace(el, val); }
-  const std::map<El, double>& fprimes() const { return fprimes_; }
+  void set_addend(El el, double val) { addends_[el] = val; }
+  void set_addend_if_not_set(El el, double val) { addends_.emplace(el, val); }
+  const std::map<El, double>& addends() const { return addends_; }
 
 private:
   const UnitCell& cell_;
   double stol2_;
-  std::map<El, double> fprimes_;
+  std::map<El, double> addends_;  // usually f' for X-rays
   std::vector<double> scattering_factors_;
 };
 
