@@ -5,8 +5,6 @@
 #include "gemmi/version.hpp"
 #include "gemmi/dirwalk.hpp"
 #include "gemmi/fileutil.hpp"  // for expand_if_pdb_code
-#include "gemmi/elem.hpp"
-#include "gemmi/it92.hpp"
 #include "gemmi/small.hpp"    // for SmallStructure
 #include "gemmi/interop.hpp"  // for atom_to_site, mx_to_sx_structure
 
@@ -24,36 +22,10 @@ void add_monlib(py::module& m); // monlib.cpp
 void add_alignment(py::module& m); // align.cpp
 void add_select(py::module& m); // align.cpp
 void add_search(py::module& m); // search.cpp
+void add_sf(py::module& m); // sf.cpp
 
 void add_misc(py::module& m) {
-  using gemmi::Element;
   using gemmi::SmallStructure;
-  using IT92 = gemmi::IT92<double>;
-  py::class_<IT92::Coef> pyIT92Coef(m, "IT92Coef");
-  py::class_<Element>(m, "Element")
-    .def(py::init<const std::string &>())
-    .def(py::init<int>())
-    .def("__eq__",
-         [](const Element &a, const Element &b) { return a.elem == b.elem; },
-         py::is_operator())
-#if PY_MAJOR_VERSION < 3  // in Py3 != is inferred from ==
-    .def("__ne__",
-         [](const Element &a, const Element &b) { return a.elem != b.elem; },
-         py::is_operator())
-#endif
-    .def_property_readonly("name", &Element::name)
-    .def_property_readonly("weight", &Element::weight)
-    .def_property_readonly("covalent_r", &Element::covalent_r)
-    .def_property_readonly("vdw_r", &Element::vdw_r)
-    .def_property_readonly("atomic_number", &Element::atomic_number)
-    .def_property_readonly("is_metal", &Element::is_metal)
-    .def_property_readonly("it92", [](const Element& self) {
-        return IT92::get_ptr(self.elem);
-    }, py::return_value_policy::reference_internal)
-    .def("__repr__", [](const Element& self) {
-        return "<gemmi.Element: " + std::string(self.name()) + ">";
-    });
-
   py::class_<SmallStructure> small_structure(m, "SmallStructure");
   py::class_<SmallStructure::Site>(small_structure, "Site")
     .def(py::init<>())
@@ -97,19 +69,6 @@ void add_misc(py::module& m) {
   m.def("mx_to_sx_structure", &gemmi::mx_to_sx_structure,
         py::arg("st"), py::arg("n")=0);
 
-  pyIT92Coef
-    .def_property_readonly("a", [](IT92::Coef& c) -> std::array<double,4> {
-        return {{ c.a(0), c.a(1), c.a(2), c.a(3) }};
-    })
-    .def_property_readonly("b", [](IT92::Coef& c) -> std::array<double,4> {
-        return {{ c.b(0), c.b(1), c.b(2), c.b(3) }};
-    })
-    .def_property_readonly("c", &IT92::Coef::c)
-    .def("calculate_sf", &IT92::Coef::calculate_sf, py::arg("stol2"))
-    .def("calculate_density_iso", &IT92::Coef::calculate_density_iso,
-         py::arg("r2"), py::arg("B"))
-    ;
-
   py::class_<gemmi::CifWalk>(m, "CifWalk")
     .def(py::init<const char*>())
     .def("__iter__", [](gemmi::CifWalk& self) {
@@ -136,6 +95,7 @@ PYBIND11_MODULE(gemmi, mg) {
   add_symmetry(mg);
   add_unitcell(mg);
   add_mol(mg);
+  add_sf(mg);
   add_misc(mg);
   add_grid(mg);
   add_cif_read(cif);

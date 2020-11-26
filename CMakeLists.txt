@@ -373,7 +373,8 @@ if (USE_PYTHON)
   pybind11_add_module(gemmi python/gemmi.cpp python/align.cpp python/cif.cpp
                             python/grid.cpp python/hkl.cpp python/mol.cpp
                             python/monlib.cpp python/read.cpp python/search.cpp
-                            python/sym.cpp python/unitcell.cpp python/write.cpp)
+                            python/sf.cpp python/sym.cpp python/unitcell.cpp
+                            python/write.cpp)
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
     target_compile_options(gemmi PRIVATE "-Wno-shadow")
   endif()

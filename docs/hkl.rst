@@ -1329,11 +1329,81 @@ Volume C, edition 2011, table 4.3.2.2 (pp. 282-283),
 and *s* up to 2.0 A\ :sup:`-1`".
 The same parametrization is used in cctbx and in CCP4.
 
+In gemmi, were refer to these coefficients as C4322 (after the volume and
+table number in the International Tables).
 For C++, the form factor coefficients are tabulated
-in the :file:`itc4322.hpp` header.
+in the :file:`c4322.hpp` header.
+In Python, they can be accessed as a property of an element:
+
+.. doctest::
+
+  >>> fe_coef = gemmi.Element('Fe').c4322
+  >>> fe_coef.a
+  [0.3946, 1.2725, 1.7031, 2.314, 1.4795]
+  >>> fe_coef.b
+  [0.2717, 2.0443, 7.6007, 29.9714, 86.2265]
+
+and, similarly to the X-ray coefficients, they can be used to calculate
+structure factors and density:
+
+.. doctest::
+
+  >>> fe_coef.calculate_sf(stol2=0.4)  # argument: (sin(theta)/lambda)^2
+  0.9971508092073326
+  >>> fe_coef.calculate_density_iso(r2=2.3, B=50)
+  0.13794779230350634
 
 Unlike for X-ray form factors, we do not add anomalous scattering here.
 
+
+Direct summation
+----------------
+
+Gemmi has functions to calculate structure factor by direct summation
+of structure factors from individual atoms. This route is not commonly used
+in macromolecular crystallography and it was implemented primarily to check
+the accuracy of FFT-based computations. Therefore, the efficiency was not
+a priority here. In particular, space group specific optimizations, described
+by `Bourhis et al (2014) <https://doi.org/10.1107/S2053273314022207>`_,
+are not included. If you would like to use it in performance sensitive
+contact us.
+
+In Python classes StructureFactorCalculatorX and StructureFactorCalculatorE
+perform direct summation using X-ray and electron form factors, respectively.
+These classes are constructed with UnitCell as a parameter (we don't pass
+SpaceGroup because UnitCell already contains a list of symmetry operations).
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/4oz7.pdb')
+  >>> calc_x = gemmi.StructureFactorCalculatorX(st.cell)
+  >>> calc_e = gemmi.StructureFactorCalculatorE(st.cell)
+
+When calculating structure factor for X-ray, one may want to include  *f'*
+(real part of the :ref:`anomalous scattering <anomalous>`).
+To do this, one needs to set *f'* for each element present in the system.
+This is done with function set_addend(), which sets angle-independent value
+that will be added to the value calculated from form factors.
+
+.. doctest::
+
+  >>> energy = gemmi.hc / 0.8 # for wavelength 0.8A
+  >>> for symbol in ['C', 'N', 'O', 'S', 'Cu']:
+  ...     el = gemmi.Element(symbol)
+  ...     fp, _ = gemmi.cromer_libermann(z=el.atomic_number, energy=energy)
+  ...     calc_x.set_addend(el, fp)
+
+Now we can compute structure factors from Model for any (hkl):
+
+.. doctest::
+
+  >>> calc_x.calculate_sf_from_model(st[0], (3,4,5))
+  (182.36559663469512+269.0002624990091j)
+  >>> calc_e.calculate_sf_from_model(st[0], (3,4,5))
+  (54.50873699946013+53.39498671218216j)
+
+The C++ interface is similar, although it uses a single templated class
+StructureFactorCalculator.
 
 Bulk solvent correction
 -----------------------
