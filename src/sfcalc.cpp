@@ -207,8 +207,8 @@ void process_with_fft(const gemmi::Structure& st,
   }
   gemmi::StructureFactorCalculator<Table> calc(st.cell);
   for (int i = 0; i != (int)gemmi::El::END; ++i)
-    if (dencalc.fprimes[i] != 0.f)
-      calc.set_addend((gemmi::El)i, dencalc.fprimes[i]);
+    if (dencalc.addends[i] != 0.f)
+      calc.set_addend((gemmi::El)i, dencalc.addends[i]);
   gemmi::fileptr_t cache(nullptr, nullptr);
   gemmi::AsuData<std::complex<double>> compared_data;
   if (file.path) {
@@ -547,7 +547,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
       if (p.options[RCut])
         dencalc.r_cut = (float) std::atof(p.options[RCut].arg);
       for (auto& it : calc.addends())
-        dencalc.fprimes[(int)it.first] = (float) it.second;
+        dencalc.addends[(int)it.first] = (float) it.second;
       if (p.options[Blur]) {
         dencalc.blur = std::atof(p.options[Blur].arg);
       } else if (dencalc.rate < 3) {

@@ -67,8 +67,8 @@ struct GaussianCoef {
     return density;
   }
 
-  // note: fprime is considered only if WithC
-  ExpSum<N+WithC,Real> precalculate_density_iso(Real B, Real fprime=0) const {
+  // note: addend is considered only if WithC (addend is usually dispersion f')
+  ExpSum<N+WithC,Real> precalculate_density_iso(Real B, Real addend=0) const {
     ExpSum<N+WithC,Real> prec;
     constexpr Real _4pi = 4 * pi();
     for (int i = 0; i < N; ++i) {
@@ -78,7 +78,7 @@ struct GaussianCoef {
     }
     if (WithC) {
       Real t = _4pi / B;
-      prec.a[N] = (c() + fprime) * pow15(t);
+      prec.a[N] = (c() + addend) * pow15(t);
       prec.b[N] = -t * pi();
     }
     return prec;
@@ -98,7 +98,7 @@ struct GaussianCoef {
   }
 
   ExpAnisoSum<N+WithC,Real> precalculate_density_aniso_b(const SMat33<Real>& B,
-                                                         Real fprime=0) const {
+                                                         Real addend=0) const {
     constexpr Real m4pi2 = -4 * sq(pi());
     ExpAnisoSum<N+WithC,Real> prec;
     for (int i = 0; i < N; ++i) {
@@ -107,16 +107,16 @@ struct GaussianCoef {
       prec.b[i] = Bb.inverse().scaled(m4pi2);
     }
     if (WithC) {
-      prec.a[N] = (c() + fprime) * pow15(4 * pi()) / std::sqrt(B.determinant());
+      prec.a[N] = (c() + addend) * pow15(4 * pi()) / std::sqrt(B.determinant());
       prec.b[N] = B.inverse().scaled(m4pi2);
     }
     return prec;
   }
 
   ExpAnisoSum<N+WithC,Real> precalculate_density_aniso_u(const SMat33<float>& U,
-                                                         Real fprime=0) const {
+                                                         Real addend=0) const {
     constexpr Real UtoB = 8 * sq(pi());
-    return precalculate_density_aniso_b(U.scaled(UtoB), fprime);
+    return precalculate_density_aniso_b(U.scaled(UtoB), addend);
   }
 };
 

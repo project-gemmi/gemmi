@@ -201,7 +201,7 @@ double determine_cutoff_radius(const F& func, float cutoff_level) {
 
 // Usual usage:
 // - set d_min and optionally also other parameters,
-// - set fprimes to f' values for your wavelength (see fprime.hpp)
+// - set addends to f' values for your wavelength (see fprime.hpp)
 // - use set_grid_cell_and_spacegroup() to set grid's unit cell and space group
 // - check that Table has SF coefficients for all elements that are to be used
 // - call put_model_density_on_grid()
@@ -214,7 +214,7 @@ struct DensityCalculator {
   double rate = 1.5;
   double blur = 0.;
   float r_cut = 5e-5f;
-  std::vector<float> fprimes = std::vector<float>((int)El::END, 0.f);
+  std::vector<float> addends = std::vector<float>((int)El::END, 0.f);
   // parameters for used only in put_solvent_mask_on_grid()
   AtomicRadiiSet radii_set = AtomicRadiiSet::VanDerWaals;
   double rprobe = 1.0;
@@ -223,12 +223,12 @@ struct DensityCalculator {
   // pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {
     auto& scat = Table::get(atom.element);
-    float fprime = fprimes[atom.element.ordinal()];
+    float addend = addends[atom.element.ordinal()];
     Fractional fpos = grid.unit_cell.fractionalize(atom.pos);
     if (!atom.aniso.nonzero()) {
       // isotropic
       double b = atom.b_iso + blur;
-      auto precal = scat.precalculate_density_iso(b, fprime);
+      auto precal = scat.precalculate_density_iso(b, addend);
       double radius = determine_cutoff_radius(
           [&](float r) { return (float)precal.calculate(r*r); },
           r_cut);
@@ -240,11 +240,11 @@ struct DensityCalculator {
       SMat33<double> aniso_b = atom.aniso.scaled(u_to_b()).added_kI(blur);
       // rough estimate, so we don't calculate eigenvalues
       double b_max = std::max(std::max(aniso_b.u11, aniso_b.u22), aniso_b.u33);
-      auto precal_iso = scat.precalculate_density_iso(b_max, fprime);
+      auto precal_iso = scat.precalculate_density_iso(b_max, addend);
       double radius = determine_cutoff_radius(
           [&](float r) { return (float)precal_iso.calculate(r*r); },
           r_cut);
-      auto precal = scat.precalculate_density_aniso_b(aniso_b, fprime);
+      auto precal = scat.precalculate_density_aniso_b(aniso_b, addend);
       int du = (int) std::ceil(radius / grid.spacing[0]);
       int dv = (int) std::ceil(radius / grid.spacing[1]);
       int dw = (int) std::ceil(radius / grid.spacing[2]);
