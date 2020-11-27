@@ -1074,6 +1074,8 @@ using complex-to-real FFT on a half of the data:
   >>> round(real_map.std(), 5)
   0.66338
 
+.. _fft:
+
 FFT
 ===
 
@@ -1404,6 +1406,61 @@ Now we can compute structure factors from Model for any (hkl):
 
 The C++ interface is similar, although it uses a single templated class
 StructureFactorCalculator.
+
+Density for FFT
+---------------
+
+To use FFT to calculate structure factors, we first need to calculate
+density of the scatterer (usually electrons) on a grid.
+In Python we have classes DensityCalculatorX (corresponding to X-ray
+form factors) and DensityCalculatorE (electron form factors).
+
+.. doctest::
+
+  >>> dencalc_x = gemmi.DensityCalculatorX()
+
+DensityCalculator contains a grid. The size of the grid is determined
+from two parameters that we need to set: ``d_min`` which corresponds to
+our resolution limit, and ``rate`` -- oversampling rate (1.5 by default).
+
+.. doctest::
+
+  >>> dencalc = gemmi.DensityCalculatorE()
+  >>> dencalc.d_min = 2.5 # 2.5A
+  >>> dencalc.rate = 1.5  # we could skip it
+
+As with StructureFactorCalculator, here we also have addends,
+used primarily for *f'*, that can be set using function ``set_addend()``.
+
+To create the grid and calculate the density we use two function calls.
+Almost all the work is in the latter:
+
+.. doctest::
+
+  >>> dencalc.set_grid_cell_and_spacegroup(st)
+  >>> dencalc.put_model_density_on_grid(st[0])
+
+Now we have density calculated on the grid:
+
+.. doctest::
+
+  >>> dencalc.grid
+  <gemmi.FloatGrid(48, 48, 50)>
+
+which we can transform (as described :ref:`above <fft>`)
+into a structure factor grid:
+
+.. doctest::
+
+  >>> sf_grid = gemmi.transform_map_to_f_phi(dencalc.grid)
+  >>> sf_grid
+  <gemmi.ReciprocalComplexGrid(48, 48, 50)>
+  >>> sf_grid.get_value(3, 4, 5)
+  (54.534080505371094+53.421836853027344j)
+
+The C++ interface is similar, although it uses a single templated class
+DensityCalculator.
+
 
 Bulk solvent correction
 -----------------------

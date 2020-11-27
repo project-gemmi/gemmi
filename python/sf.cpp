@@ -7,6 +7,7 @@
 #include "gemmi/it92.hpp"
 #include "gemmi/c4322.hpp"
 #include "gemmi/sfcalc.hpp"   // for StructureFactorCalculator
+#include "gemmi/rhogrid.hpp"  // for DensityCalculator
 
 namespace py = pybind11;
 using gemmi::Element;
@@ -18,6 +19,24 @@ void add_sfcalc(py::module& m, const char* name) {
     .def(py::init<const gemmi::UnitCell&>())
     .def("set_addend", [](SFC& self, Element el, double val) { self.set_addend(el, val); })
     .def("calculate_sf_from_model", &SFC::calculate_sf_from_model)
+    ;
+}
+
+template<typename Table>
+void add_dencalc(py::module& m, const char* name) {
+  using DenCalc = gemmi::DensityCalculator<Table, float>;
+  py::class_<DenCalc>(m, name)
+    .def(py::init<>())
+    .def_readonly("grid", &DenCalc::grid)
+    .def_readwrite("d_min", &DenCalc::d_min)
+    .def_readwrite("rate", &DenCalc::rate)
+    .def_readwrite("blur", &DenCalc::blur)
+    .def_readwrite("r_cut", &DenCalc::r_cut)
+    .def("set_addend",
+         [](DenCalc& self, Element el, float val) { self.addends[el.ordinal()] = val; })
+    .def("put_model_density_on_grid", &DenCalc::put_model_density_on_grid)
+    .def("set_grid_cell_and_spacegroup", &DenCalc::set_grid_cell_and_spacegroup)
+    .def("reciprocal_space_multiplier", &DenCalc::reciprocal_space_multiplier)
     ;
 }
 
@@ -79,4 +98,6 @@ void add_sf(py::module& m) {
 
   add_sfcalc<IT92>(m, "StructureFactorCalculatorX");
   add_sfcalc<C4322>(m, "StructureFactorCalculatorE");
+  add_dencalc<IT92>(m, "DensityCalculatorX");
+  add_dencalc<C4322>(m, "DensityCalculatorE");
 }
