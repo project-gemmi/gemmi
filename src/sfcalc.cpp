@@ -206,9 +206,7 @@ void process_with_fft(const gemmi::Structure& st,
     fflush(stderr);
   }
   gemmi::StructureFactorCalculator<Table> calc(st.cell);
-  for (int i = 0; i != (int)gemmi::El::END; ++i)
-    if (dencalc.addends[i] != 0.f)
-      calc.set_addend((gemmi::El)i, dencalc.addends[i]);
+  calc.addends = dencalc.addends;
   gemmi::fileptr_t cache(nullptr, nullptr);
   gemmi::AsuData<std::complex<double>> compared_data;
   if (file.path) {
@@ -470,7 +468,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
                 (unsigned) small.atom_types.size());
       for (const gemmi::SmallStructure::AtomType& atom_type : small.atom_types)
-        calc.set_addend(atom_type.element, atom_type.dispersion_real);
+        calc.set_addend(atom_type.element, (float)atom_type.dispersion_real);
     }
   }
 
@@ -484,9 +482,8 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
   if (wavelength > 0) {
     double energy = gemmi::hc() / wavelength;
     for (int z = 1; z <= 92; ++z)
-      if (present_elems[z]) {
-        double fprime = gemmi::cromer_libermann(z, energy, nullptr);
-        calc.set_addend_if_not_set((gemmi::El)z, fprime);
+      if (present_elems[z] && calc.addends[z] == 0) {
+        calc.addends[z] = (float) gemmi::cromer_libermann(z, energy, nullptr);
       }
   }
 
@@ -546,8 +543,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         dencalc.rate = std::atof(p.options[Rate].arg);
       if (p.options[RCut])
         dencalc.r_cut = (float) std::atof(p.options[RCut].arg);
-      for (auto& it : calc.addends())
-        dencalc.addends[(int)it.first] = (float) it.second;
+      dencalc.addends = calc.addends;
       if (p.options[Blur]) {
         dencalc.blur = std::atof(p.options[Blur].arg);
       } else if (dencalc.rate < 3) {

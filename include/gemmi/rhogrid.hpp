@@ -8,6 +8,7 @@
 #define GEMMI_RHOGRID_HPP_
 
 #include <cassert>
+#include <array>
 #include "grid.hpp"    // for Grid
 #include "model.hpp"   // for Structure, ...
 
@@ -214,11 +215,14 @@ struct DensityCalculator {
   double rate = 1.5;
   double blur = 0.;
   float r_cut = 5e-5f;
-  std::vector<float> addends = std::vector<float>((int)El::END, 0.f);
+  std::array<float, (int)El::END> addends = {};
   // parameters for used only in put_solvent_mask_on_grid()
   AtomicRadiiSet radii_set = AtomicRadiiSet::VanDerWaals;
   double rprobe = 1.0;
   double rshrink = 1.1;
+
+  void set_addend(Element el, float val) { addends[el.ordinal()] = val; }
+  float get_addend(Element el) { return addends[el.ordinal()]; }
 
   // pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {

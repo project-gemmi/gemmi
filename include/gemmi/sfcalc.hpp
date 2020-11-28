@@ -9,6 +9,7 @@
 #ifndef GEMMI_SFCALC_HPP_
 #define GEMMI_SFCALC_HPP_
 
+#include <array>
 #include <complex>
 #include "model.hpp"   // for Structure, ...
 #include "small.hpp"   // for SmallStructure
@@ -30,14 +31,7 @@ public:
   void set_stol2_and_scattering_factors(const Miller& hkl) {
     stol2_ = cell_.calculate_stol_sq(hkl);
     scattering_factors_.clear();
-    scattering_factors_.resize((int) El::END, 0.);
-    for (auto const& addend : addends_) {
-      El el = addend.first;
-      if (Table::has(el)) {
-        double sf = Table::get(el).calculate_sf(stol2_) + addend.second;
-        scattering_factors_[(int)el] = sf;
-      }
-    }
+    scattering_factors_.resize(addends.size(), 0.);
   }
 
   double get_scattering_factor(Element element) {
@@ -45,7 +39,7 @@ public:
     if (sfactor == 0.) {
       if (!Table::has(element.elem))
         fail("Missing scattering factor for ", element.name());
-      sfactor = Table::get(element.elem).calculate_sf(stol2_);
+      sfactor = Table::get(element.elem).calculate_sf(stol2_) + get_addend(element);
     }
     return sfactor;
   }
@@ -115,15 +109,15 @@ public:
     return sf;
   }
 
-  void set_addend(El el, double val) { addends_[el] = val; }
-  void set_addend_if_not_set(El el, double val) { addends_.emplace(el, val); }
-  const std::map<El, double>& addends() const { return addends_; }
+  void set_addend(Element el, float val) { addends[el.ordinal()] = val; }
+  float get_addend(Element el) { return addends[el.ordinal()]; }
 
 private:
   const UnitCell& cell_;
   double stol2_;
-  std::map<El, double> addends_;  // usually f' for X-rays
   std::vector<double> scattering_factors_;
+public:
+  std::array<float, (int)El::END> addends = {};  // usually f' for X-rays
 };
 
 } // namespace gemmi

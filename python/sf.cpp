@@ -17,7 +17,8 @@ void add_sfcalc(py::module& m, const char* name) {
   using SFC = gemmi::StructureFactorCalculator<Table>;
   py::class_<SFC>(m, name)
     .def(py::init<const gemmi::UnitCell&>())
-    .def("set_addend", [](SFC& self, Element el, double val) { self.set_addend(el, val); })
+    .def("set_addend", &SFC::set_addend)
+    .def("get_addend", &SFC::get_addend)
     .def("calculate_sf_from_model", &SFC::calculate_sf_from_model)
     ;
 }
@@ -32,8 +33,8 @@ void add_dencalc(py::module& m, const char* name) {
     .def_readwrite("rate", &DenCalc::rate)
     .def_readwrite("blur", &DenCalc::blur)
     .def_readwrite("r_cut", &DenCalc::r_cut)
-    .def("set_addend",
-         [](DenCalc& self, Element el, float val) { self.addends[el.ordinal()] = val; })
+    .def("set_addend", &DenCalc::set_addend)
+    .def("get_addend", &DenCalc::get_addend)
     .def("put_model_density_on_grid", &DenCalc::put_model_density_on_grid)
     .def("set_grid_cell_and_spacegroup", &DenCalc::set_grid_cell_and_spacegroup)
     .def("reciprocal_space_multiplier", &DenCalc::reciprocal_space_multiplier)

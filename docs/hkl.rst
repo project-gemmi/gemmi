@@ -1394,13 +1394,16 @@ that will be added to the value calculated from form factors.
   ...     el = gemmi.Element(symbol)
   ...     fp, _ = gemmi.cromer_libermann(z=el.atomic_number, energy=energy)
   ...     calc_x.set_addend(el, fp)
+  ...
+  >>> calc_x.get_addend(gemmi.Element('Cu'))
+  0.265503853559494
 
 Now we can compute structure factors from Model for any (hkl):
 
 .. doctest::
 
   >>> calc_x.calculate_sf_from_model(st[0], (3,4,5))
-  (182.36559663469512+269.0002624990091j)
+  (182.3655966448982+269.0002625524398j)
   >>> calc_e.calculate_sf_from_model(st[0], (3,4,5))
   (54.50873699946013+53.39498671218216j)
 
@@ -1430,7 +1433,8 @@ our resolution limit, and ``rate`` -- oversampling rate (1.5 by default).
   >>> dencalc.rate = 1.5  # we could skip it
 
 As with StructureFactorCalculator, here we also have addends,
-used primarily for *f'*, that can be set using function ``set_addend()``.
+used primarily for *f'*, that can be accessed ``get_addend()``
+and ``set_addend()``.
 
 To create the grid and calculate the density we use two function calls.
 Almost all the work is in the latter:
