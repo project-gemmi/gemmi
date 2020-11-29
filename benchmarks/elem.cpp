@@ -5,6 +5,8 @@
 // c++ -Wall -O2 -I../include -I$GB/include bench_elem.cpp $GB/src/libbenchmark.a -pthread
 
 #include "gemmi/elem.hpp"
+#include "gemmi/fprime.hpp"
+#include <stdlib.h> // for rand
 #include <benchmark/benchmark.h>
 
 inline void run(benchmark::State& state, const char (&el)[10][3]) {
@@ -37,10 +39,18 @@ static void heavy_elements(benchmark::State& state) {
   run(state, el);
 }
 
+static void run_fprime(benchmark::State& state) {
+  const double energy = 12398.4197386209 / (0.5 + (double)rand() / RAND_MAX);
+  while (state.KeepRunning())
+    for (int i = 3; i != 50; ++i)
+      benchmark::DoNotOptimize(gemmi::cromer_libermann(i, energy, nullptr));
+}
+
 BENCHMARK(pyridoxine_elements);
 BENCHMARK(common_elements);
 BENCHMARK(various_elements);
 BENCHMARK(heavy_elements);
+BENCHMARK(run_fprime);
 BENCHMARK_MAIN();
 
 /* Output from my desktop:
