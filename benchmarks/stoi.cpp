@@ -1,6 +1,5 @@
 
-#include <cstdlib>
-#include <cctype>
+#include <cstdio>
 #include <string>
 #include <vector>
 #include <benchmark/benchmark.h>

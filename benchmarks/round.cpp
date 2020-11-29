@@ -1,6 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include <cmath>
+#include <cstdlib> // for rand
 #include <benchmark/benchmark.h>
 
 static double use_round(double x) { return std::round(x); }

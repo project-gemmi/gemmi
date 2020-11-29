@@ -5,7 +5,6 @@
 // c++ -Wall -O2 -I../include -I$GB/include bench_mod.cpp $GB/src/libbenchmark.a -pthread
 
 #include <climits>
-#include <cmath>
 #include <cstdio>
 #include <cstdlib>  // for rand
 #include <benchmark/benchmark.h>

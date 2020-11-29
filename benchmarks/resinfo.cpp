@@ -6,8 +6,7 @@
 
 #include "gemmi/resinfo.hpp"
 #include <benchmark/benchmark.h>
-#include <cstring>
-#include <algorithm>
+#include <stdlib.h>               // for rand
 
 static const std::string residue_names[10] =
     { "GLY", "ASN", "ASN", "HOH", "LEU", "DC", "G", "GLU", "ALA", "SER" };

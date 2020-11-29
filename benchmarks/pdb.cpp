@@ -2,11 +2,11 @@
 
 // Microbenchmark of gemmi::UnitCell::find_nearest_image().
 
+#include "gemmi/model.hpp"
 #include "gemmi/pdb.hpp"
 #include "gemmi/calculate.hpp"
 #include "gemmi/neighbor.hpp"
 #include <benchmark/benchmark.h>
-#include <algorithm>
 
 static const char* path;
 
