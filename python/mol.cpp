@@ -176,9 +176,22 @@ void add_mol(py::module& m) {
                      (self.given ? " (" : " (not "), "given)>");
     });
 
+  py::class_<Assembly::Oper>(m, "AssemblyOper")
+    .def(py::init<>())
+    .def_readonly("name", &Assembly::Oper::name)
+    .def_readonly("type", &Assembly::Oper::type)
+    .def_readonly("transform", &Assembly::Oper::transform);
+
+  py::class_<Assembly::Gen>(m, "AssemblyGen")
+    .def(py::init<>())
+    .def_readonly("chains", &Assembly::Gen::chains)
+    .def_readonly("subchains", &Assembly::Gen::subchains)
+    .def_readonly("opers", &Assembly::Gen::opers);
+
   py::class_<Assembly>(m, "Assembly")
     .def_readonly("name", &Assembly::name)
     .def_readonly("oligomeric_details", &Assembly::oligomeric_details)
+    .def_readonly("generators", &Assembly::generators)
     .def("make_assembly", [](const Assembly& self, const Model& model,
                              HowToNameCopiedChains how) {
         return make_assembly(self, model, how, nullptr);
