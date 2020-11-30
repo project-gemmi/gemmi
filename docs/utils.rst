@@ -416,6 +416,8 @@ Merge intensities from multi-record reflection file.
 .. literalinclude:: merge-help.txt
    :language: console
 
+.. _sfcalc:
+
 sfcalc
 ======
 
@@ -439,24 +441,13 @@ The errors depend on
 * atomic radius -- we neglect electron density of the atom beyond this radius;
   only density contributions above the (absolute) value specified with
   ``--rcut`` are taken into account,
-* Gaussian dampening (blurring) factor -- artificial temperature factor
-  *B*\ :sub:`extra` added to all atomic B-factors (the structure factors
-  are later corrected to cancel it out); either specified with ``--blur``
-  or picked automatically.
+* :ref:`Gaussian dampening (blurring) factor <blur>` --
+  artificial temperature factor *B*\ :sub:`extra` added to all atomic
+  B-factors (the structure factors are later corrected to cancel it out);
+  either specified with ``--blur`` or picked automatically.
 
-Choosing these parameters is a trade-off between efficiency and accuracy.
-*B*\ :sub:`extra` is the most interesting one.
-It is discussed in the `ITfC vol B <https://it.iucr.org/Bb/contents/>`_,
-chapter 1.3 by G. Bricogne, section 1.3.4.4.5, and further in papers by
-`J. Navaza (2002) <https://doi.org/10.1107/S0108767302016318>`_ and by
-`P. Afonine and A. Urzhumtsev (2003) <https://doi.org/10.1107/S0108767303022062>`_.
-Still, I have not found a practical recipe how to pick a good value.
-Increasing the dampening makes the computations slower (because it
-increases atomic radius), while the value of *B*\ :sub:`extra` that
-gives the most accurate results depends on the resolution, oversampling,
-atomic radius cut-off, and on the distribution of B-factors
-(normally, only the minimal B-factor in the model is considered).
-
+Choosing these parameters is a trade-off between efficiency and accuracy,
+as described :ref:`elsewhere <blur>`.
 The option ``--test`` can be used to see how accuracy and efficiency
 depends on the choice of parameters.  For example, this shell script
 performs a series of calculations with differing *B*\ :sub:`extra`:

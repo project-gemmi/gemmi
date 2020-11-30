@@ -17,13 +17,15 @@ template<typename T>
 void add_addends(py::class_<T>& c) {
    c.def("set_addend", &T::set_addend)
     .def("get_addend", &T::get_addend)
-    .def("zero_addends", [](T& self) {
+    .def("clear_addends", [](T& self) {
         for (size_t i = 0; i != self.addends.size(); ++i)
           self.addends[i] = 0.;
     })
     .def("add_cl_fprime_to_addends", [](T& self, double energy) {
         gemmi::add_cl_fprime_for_all_elements(&self.addends[1], energy);
     }, py::arg("energy"))
+    .def("subtract_z_from_addends", &T::subtract_z_from_addends,
+         py::arg("except_hydrogen")=false)
     ;
 }
 
@@ -35,6 +37,7 @@ void add_sfcalc(py::module& m, const char* name) {
   sfc
     .def(py::init<const gemmi::UnitCell&>())
     .def("calculate_sf_from_model", &SFC::calculate_sf_from_model)
+    .def("mott_bethe_factor", &SFC::mott_bethe_factor)
     ;
 }
 
@@ -53,6 +56,7 @@ void add_dencalc(py::module& m, const char* name) {
     .def("put_model_density_on_grid", &DenCalc::put_model_density_on_grid)
     .def("set_grid_cell_and_spacegroup", &DenCalc::set_grid_cell_and_spacegroup)
     .def("reciprocal_space_multiplier", &DenCalc::reciprocal_space_multiplier)
+    .def("mott_bethe_factor", &DenCalc::mott_bethe_factor)
     ;
 }
 

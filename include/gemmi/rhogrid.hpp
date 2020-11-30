@@ -221,8 +221,17 @@ struct DensityCalculator {
   double rprobe = 1.0;
   double rshrink = 1.1;
 
+  // addend functions are the same as in StructureFactorCalculator
   void set_addend(Element el, float val) { addends[el.ordinal()] = val; }
   float get_addend(Element el) { return addends[el.ordinal()]; }
+  void subtract_z_from_addends(bool except_hydrogen=false) {
+    for (int z = 2; z < (int)El::D; ++z)
+      addends[z] -= z;
+    if (!except_hydrogen) {
+      addends[(int)El::H] -= 1;
+      addends[(int)El::D] -= 1;
+    }
+  }
 
   // pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {
@@ -280,8 +289,13 @@ struct DensityCalculator {
   }
 
   // The argument is 1/d^2 - as outputted by unit_cell.calculate_1_d2(hkl).
-  double reciprocal_space_multiplier(double inv_d2) {
+  double reciprocal_space_multiplier(double inv_d2) const {
     return std::exp(blur * 0.25 * inv_d2);
+  }
+
+  double mott_bethe_factor(const Miller& hkl) const {
+    double inv_d2 = grid.unit_cell.calculate_1_d2(hkl);
+    return -1. / (2 * pi() * pi() * bohrradius()) / inv_d2;
   }
 
   void put_solvent_mask_on_grid(const Model& model) {

@@ -97,6 +97,10 @@ public:
     return sf;
   }
 
+  double mott_bethe_factor() const {
+    return -1. / (8 * pi() * pi() * bohrradius()) / stol2_;
+  }
+
   // The occupancy is assumed to take into account symmetry,
   // i.e. to be fractional if the atom is on special position.
   std::complex<double>
@@ -109,8 +113,17 @@ public:
     return sf;
   }
 
+  // addend functions are the same as in DensityCalculator
   void set_addend(Element el, float val) { addends[el.ordinal()] = val; }
   float get_addend(Element el) { return addends[el.ordinal()]; }
+  void subtract_z_from_addends(bool except_hydrogen=false) {
+    for (int z = 2; z < (int)El::D; ++z)
+      addends[z] -= z;
+    if (except_hydrogen) {
+      addends[(int)El::H] -= 1;
+      addends[(int)El::D] -= 1;
+    }
+  }
 
 private:
   const UnitCell& cell_;

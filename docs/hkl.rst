@@ -1247,18 +1247,11 @@ performed once per atom, the second one -- for each nearby grid point.
 In the usual scenario, we add *f'* (the real component of anomalous
 scattering -- see the next section) to the constant coefficient *c*.
 
-We may also want to add a Gaussian dampening *B*\ :sub:`extra` to ADPs.
-The *B*\ :sub:`extra` parameter is discussed in
-the `ITfC vol B <https://it.iucr.org/Bb/contents/>`_,
-in chapter 1.3 (section 1.3.4.4.5) by G. Bricogne;
-and further in papers by `J. Navaza (2002) <https://doi.org/10.1107/S0108767302016318>`_
-and by `P. Afonine and A. Urzhumtsev (2003) <https://doi.org/10.1107/S0108767303022062>`_.
-It is a trick that improves the accuracy. The *B*\ :sub:`extra` added
+We may also want to add a Gaussian :ref:`dampening <blur>`
+*B*\ :sub:`extra` to ADPs.
+It is a trick that improves the accuracy. *B*\ :sub:`extra` added
 in the real space is then cancelled out in the reciprocal space by re-scaling
 the structure factors.
-
-The C++ interface to all this functionality is expected to evolve
-and for now it is left undocumented.
 
 .. _anomalous:
 
@@ -1372,24 +1365,38 @@ contact us.
 
 In Python classes StructureFactorCalculatorX and StructureFactorCalculatorE
 perform direct summation using X-ray and electron form factors, respectively.
+The C++ interface is similar, although it uses a single templated class
+StructureFactorCalculator.
 These classes are constructed with UnitCell as a parameter (we don't pass
 SpaceGroup because UnitCell already contains a list of symmetry operations).
 
 .. doctest::
 
   >>> st = gemmi.read_structure('../tests/4oz7.pdb')
-  >>> calc_x = gemmi.StructureFactorCalculatorX(st.cell)
   >>> calc_e = gemmi.StructureFactorCalculatorE(st.cell)
 
-When calculating structure factor for X-ray, one may want to include  *f'*
-(real part of the :ref:`anomalous scattering <anomalous>`).
-To do this, one needs to set *f'* for each element present in the system.
-This is done with function set_addend(), which sets angle-independent value
-that will be added to the value calculated from form factors.
+Now we can compute structure factors from Model for any (hkl):
 
 .. doctest::
 
-  >>> energy = gemmi.hc / 0.8 # for wavelength 0.8A
+  >>> calc_e.calculate_sf_from_model(st[0], (3,4,5))
+  (54.50873699946013+53.39498671218216j)
+
+.. _addends:
+
+Addends
+~~~~~~~
+
+When calculating X-ray structure factors, one may want to include *f'*
+(real part of the :ref:`anomalous scattering <anomalous>`).
+To do this, *f'* needs to be set for each element present in the system.
+This is done with function ``set_addend()``, which sets angle-independent
+value that will be added to the value calculated from the form factors.
+
+.. doctest::
+
+  >>> calc_x = gemmi.StructureFactorCalculatorX(st.cell)
+  >>> energy = gemmi.hc / 0.8  # for wavelength 0.8A
   >>> for symbol in ['C', 'N', 'O', 'S', 'Cu']:
   ...     el = gemmi.Element(symbol)
   ...     fp, _ = gemmi.cromer_libermann(z=el.atomic_number, energy=energy)
@@ -1403,36 +1410,41 @@ to remove the previous values, so it makes two functions):
 
 .. doctest::
 
-  >>> calc_x.zero_addends()
+  >>> calc_x.clear_addends()
   >>> calc_x.add_cl_fprime_to_addends(energy)
 
 which calculates *f'* for all elements handled by the Cromer-Libermann
 algorithm (*Z* from 3 to 92). Although it seems wasteful, it takes
 well below 1ms.
 
-Now we can compute structure factors from Model for any (hkl):
+Structure factors calculated at this point incorporate the addends:
 
 .. doctest::
 
   >>> calc_x.calculate_sf_from_model(st[0], (3,4,5))
   (182.3655966448982+269.0002625524398j)
-  >>> calc_e.calculate_sf_from_model(st[0], (3,4,5))
-  (54.50873699946013+53.39498671218216j)
 
-The C++ interface is similar, although it uses a single templated class
-StructureFactorCalculator.
+Addends can also be employed to calculate the electron scattering
+from X-ray form factors, according to the Mott–Bethe formula:
+
+.. doctest::
+
+  >>> calc_x.clear_addends()
+  >>> calc_x.subtract_z_from_addends()
+  >>> calc_x.mott_bethe_factor() * calc_x.calculate_sf_from_model(st[0], (3,4,5))
+  (54.065658093072436+52.968332363622224j)
+
+The next section gives slightly more details on the Mott-Bethe formula.
 
 Density for FFT
 ---------------
 
 To use FFT to calculate structure factors, we first need to calculate
-density of the scatterer (usually electrons) on a grid.
-In Python we have classes DensityCalculatorX (corresponding to X-ray
-form factors) and DensityCalculatorE (electron form factors).
+density of the scatterer (usually electrons) on a grid. For this we use
 
-.. doctest::
-
-  >>> dencalc_x = gemmi.DensityCalculatorX()
+* in C++ -- class DensityCalculator templated with a form factor table,
+* in Python -- classes DensityCalculatorX (corresponding to X-ray
+  form factors) and DensityCalculatorE (electron form factors).
 
 DensityCalculator contains a grid. The size of the grid is determined
 from two parameters that we need to set: ``d_min`` which corresponds to
@@ -1442,13 +1454,14 @@ our resolution limit, and ``rate`` -- oversampling rate (1.5 by default).
 
   >>> dencalc = gemmi.DensityCalculatorE()
   >>> dencalc.d_min = 2.5 # 2.5A
-  >>> dencalc.rate = 1.5  # we could skip it
+  >>> dencalc.rate = 1.5  # we could skip it, this is the default value
 
-As with StructureFactorCalculator, here we also have addends,
-used primarily for *f'*, that can be accessed ``get_addend()``
-and ``set_addend()``, ``zero_addends``, ``add_cl_fprime_to_addends``.
+As with StructureFactorCalculator, here we also have :ref:`addends <addends>`,
+used primarily for *f'*, with functions ``get_addend()``,
+``set_addend()``, ``clear_addends``, ``add_cl_fprime_to_addends``,
+``subtract_z_from_addends``.
 
-To create the grid and calculate the density we use two function calls.
+To create a grid and calculate the density we use two function calls.
 Almost all the work is in the latter:
 
 .. doctest::
@@ -1474,8 +1487,78 @@ into a structure factor grid:
   >>> sf_grid.get_value(3, 4, 5)
   (54.534080505371094+53.421836853027344j)
 
-The C++ interface is similar, although it uses a single templated class
-DensityCalculator.
+In addition to ``d_min`` and ``rate``, which govern the grid density,
+DensityCalculator have two more parameters that affect accuracy
+of the calculated structure factors:
+
+* ``r_cut`` (default: 5e-5) -- density cut-off. Atomic radius in which
+  we calculate the density is picked in such a way that, approximately,
+  we include only points with values greater than ``r_cut``
+  (note: this variable may change in the future).
+* ``blur`` (default: 0) -- Gaussian dampening (blurring) factor --
+  artificial temperature factor *B*\ :sub:`extra` added to all atomic B-factors
+  (the structure factors must be later corrected to cancel it out).
+
+.. _blur:
+
+Choosing these parameters is a trade-off between efficiency and accuracy.
+*B*\ :sub:`extra` is the most interesting one.
+It is discussed in the `ITfC vol B <https://it.iucr.org/Bb/contents/>`_,
+chapter 1.3 by G. Bricogne, section 1.3.4.4.5, and further in papers by
+`J. Navaza (2002) <https://doi.org/10.1107/S0108767302016318>`_ and by
+`P. Afonine and A. Urzhumtsev (2003) <https://doi.org/10.1107/S0108767303022062>`_.
+Still, I have not found a practical recipe how to pick a good value.
+Increasing the dampening makes the computations slower (because it
+increases atomic radius), while the value of *B*\ :sub:`extra` that
+gives the most accurate results depends on the resolution, oversampling,
+atomic radius cut-off, and on the distribution of B-factors
+(in particular, on the minimal B-factor in the model).
+The :ref:`sfcalc <sfcalc>` program can be used to test different choices
+of *B*\ :sub:`extra`.
+
+If the density was blurred, you need to calculate it by either
+adding option ``unblur`` to ``prepare_asu_data()``:
+
+.. doctest::
+
+  >>> asu_data = grid.prepare_asu_data(dmin=dencalc.d_min, unblur=dencalc.blur)
+
+or multiplying individual structure factor by
+``dencalc.reciprocal_space_multiplier(inv_d2)``.
+
+Mott-Bethe formula
+~~~~~~~~~~~~~~~~~~
+
+Addends in DensityCalculator can be employed to calculate
+*Z*\ --\ *f*\ :sub:`x` (part of the Mott-Bethe formula):
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> dc = gemmi.DensityCalculatorX()
+  >>> dc.d_min = 2.5
+  >>> dc.subtract_z_from_addends()
+  >>> dc.set_grid_cell_and_spacegroup(st)
+  >>> dc.put_model_density_on_grid(st[0])
+  >>> grid = gemmi.transform_map_to_f_phi(dc.grid)
+
+At this point the grid contains *f*\ :sub:`x`\ --\ *Z*.
+To get *f*\ :sub:`e` we need to multiply it by
+–1/(2\ *π*:sup:`2`\ *a*:sub:`0`\ *d*:sup:`2`).
+Either using ``mott_bethe_factor()`` to multiply individual values:
+
+.. doctest::
+
+  >>> dc.mott_bethe_factor([3,4,5]) * grid.get_value(3,4,5)
+  (54.6320307666462+53.82081715028121j)
+
+or by calling ``prepare_asu_data()`` with ``mott_bethe=True``:
+
+.. doctest::
+
+  >>> asu_data = grid.prepare_asu_data(dmin=2.5, mott_bethe=True)
+  >>> asu_data.value_array[numpy.all(asu_data.miller_array == [3,4,5], axis=1)]
+  array([54.63203+53.820816j], dtype=complex64)
 
 
 Bulk solvent correction

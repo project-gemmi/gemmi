@@ -20,6 +20,9 @@ constexpr double pi() { return 3.1415926535897932384626433832795029; }
 // $ units -d15 'h * c / eV / angstrom'
 constexpr double hc() { return 12398.4197386209; }
 
+// The Bohr radius (a0) in Angstroms.
+constexpr double bohrradius() { return 0.529177210903; }
+
 // Used in conversion of ADPs (atomic displacement parameters).
 constexpr double u_to_b() { return 8 * pi() * pi(); }
 

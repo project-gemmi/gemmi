@@ -554,7 +554,8 @@ struct ReciprocalGrid : GridBase<T> {
 
   // the result is always sorted by h,k,l
   AsuData<T> prepare_asu_data(double dmin=0, double unblur=0,
-                              bool with_000=false, bool with_sys_abs=false) {
+                              bool with_000=false, bool with_sys_abs=false,
+                              bool mott_bethe=false) {
     AsuData<T> asu_data;
     if (this->axis_order == AxisOrder::ZYX)
       fail("get_asu_values(): ZYX order is not supported yet");
@@ -587,11 +588,16 @@ struct ReciprocalGrid : GridBase<T> {
           }
       }
     }
-    if (unblur != 0.)
+    if (unblur != 0. || mott_bethe)
       for (HklValue<T>& hv : asu_data.v) {
         double inv_d2 = this->unit_cell.calculate_1_d2(hv.hkl);
-        // cf. reciprocal_space_multiplier()
-        double mult = std::exp(unblur * 0.25 * inv_d2);
+        double mult = 1;
+        if (unblur != 0)
+          // cf. reciprocal_space_multiplier()
+          mult = std::exp(unblur * 0.25 * inv_d2);
+        if (mott_bethe)
+          // cf. mott_bethe_factor
+          mult *= -1. / (2 * pi() * pi() * bohrradius()) / inv_d2;
         hv.value *= static_cast<decltype(std::abs(hv.value))>(mult);
       }
     asu_data.unit_cell_ = this->unit_cell;
