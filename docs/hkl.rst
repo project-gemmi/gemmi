@@ -1398,6 +1398,18 @@ that will be added to the value calculated from form factors.
   >>> calc_x.get_addend(gemmi.Element('Cu'))
   0.265503853559494
 
+Alternatively, you could call a single function (here we first need
+to remove the previous values, so it makes two functions):
+
+.. doctest::
+
+  >>> calc_x.zero_addends()
+  >>> calc_x.add_cl_fprime_to_addends(energy)
+
+which calculates *f'* for all elements handled by the Cromer-Libermann
+algorithm (*Z* from 3 to 92). Although it seems wasteful, it takes
+well below 1ms.
+
 Now we can compute structure factors from Model for any (hkl):
 
 .. doctest::
@@ -1434,7 +1446,7 @@ our resolution limit, and ``rate`` -- oversampling rate (1.5 by default).
 
 As with StructureFactorCalculator, here we also have addends,
 used primarily for *f'*, that can be accessed ``get_addend()``
-and ``set_addend()``.
+and ``set_addend()``, ``zero_addends``, ``add_cl_fprime_to_addends``.
 
 To create the grid and calculate the density we use two function calls.
 Almost all the work is in the latter:

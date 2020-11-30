@@ -8,17 +8,32 @@
 #include "gemmi/c4322.hpp"
 #include "gemmi/sfcalc.hpp"   // for StructureFactorCalculator
 #include "gemmi/rhogrid.hpp"  // for DensityCalculator
+#include "gemmi/fprime.hpp"   // for cromer_libermann_fprime_for_all_elements
 
 namespace py = pybind11;
 using gemmi::Element;
 
+template<typename T>
+void add_addends(py::class_<T>& c) {
+   c.def("set_addend", &T::set_addend)
+    .def("get_addend", &T::get_addend)
+    .def("zero_addends", [](T& self) {
+        for (size_t i = 0; i != self.addends.size(); ++i)
+          self.addends[i] = 0.;
+    })
+    .def("add_cl_fprime_to_addends", [](T& self, double energy) {
+        gemmi::add_cl_fprime_for_all_elements(&self.addends[1], energy);
+    }, py::arg("energy"))
+    ;
+}
+
 template<typename Table>
 void add_sfcalc(py::module& m, const char* name) {
   using SFC = gemmi::StructureFactorCalculator<Table>;
-  py::class_<SFC>(m, name)
+  py::class_<SFC> sfc(m, name);
+  add_addends(sfc);
+  sfc
     .def(py::init<const gemmi::UnitCell&>())
-    .def("set_addend", &SFC::set_addend)
-    .def("get_addend", &SFC::get_addend)
     .def("calculate_sf_from_model", &SFC::calculate_sf_from_model)
     ;
 }
@@ -26,15 +41,15 @@ void add_sfcalc(py::module& m, const char* name) {
 template<typename Table>
 void add_dencalc(py::module& m, const char* name) {
   using DenCalc = gemmi::DensityCalculator<Table, float>;
-  py::class_<DenCalc>(m, name)
+  py::class_<DenCalc> dencalc(m, name);
+  add_addends(dencalc);
+  dencalc
     .def(py::init<>())
     .def_readonly("grid", &DenCalc::grid)
     .def_readwrite("d_min", &DenCalc::d_min)
     .def_readwrite("rate", &DenCalc::rate)
     .def_readwrite("blur", &DenCalc::blur)
     .def_readwrite("r_cut", &DenCalc::r_cut)
-    .def("set_addend", &DenCalc::set_addend)
-    .def("get_addend", &DenCalc::get_addend)
     .def("put_model_density_on_grid", &DenCalc::put_model_density_on_grid)
     .def("set_grid_cell_and_spacegroup", &DenCalc::set_grid_cell_and_spacegroup)
     .def("reciprocal_space_multiplier", &DenCalc::reciprocal_space_multiplier)

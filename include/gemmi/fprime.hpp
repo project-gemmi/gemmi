@@ -2964,5 +2964,13 @@ inline double cromer_libermann(int z, double energy, double* fpp) {
   return fp;
 }
 
+// out must point to
+template <typename Iter>
+void add_cl_fprime_for_all_elements(Iter out, double energy) {
+  using Real = decltype(*out+0.f);  // used to avoid conversion warning
+  for (int z = 1; z <= 92; ++z, ++out)
+    *out += (Real) cromer_libermann(z, energy, nullptr);
+}
+
 } // namespace gemmi
 #endif
