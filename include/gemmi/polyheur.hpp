@@ -112,14 +112,17 @@ inline bool are_connected(const Residue& r1, const Residue& r2, PolymerType ptyp
 
 // are_connected2() is less exact, but requires only CA (or P) atoms.
 inline bool are_connected2(const Residue& r1, const Residue& r2, PolymerType ptype) {
+  auto this_or_first = [](const Atom* a, const Residue& r) -> const Atom* {
+    return a || r.atoms.empty() ? a : &r.atoms.front();
+  };
   if (is_polypeptide(ptype)) {
-    const Atom* a1 = r1.get_ca();
-    const Atom* a2 = r2.get_ca();
+    const Atom* a1 = this_or_first(r1.get_ca(), r1);
+    const Atom* a2 = this_or_first(r2.get_ca(), r2);
     return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(5.0);
   }
   if (is_polynucleotide(ptype)) {
-    const Atom* a1 = r1.get_p();
-    const Atom* a2 = r2.get_p();
+    const Atom* a1 = this_or_first(r1.get_p(), r1);
+    const Atom* a2 = this_or_first(r2.get_p(), r2);
     return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(7.5);
   }
   return false;
@@ -133,7 +136,7 @@ inline bool are_connected3(const Residue& r1, const Residue& r2, PolymerType pty
         return a1->pos.dist_sq(a2->pos) < sq(1.341 * 1.5);
     if (const Atom* a1 = r1.get_ca())
       if (const Atom* a2 = r2.get_ca())
-        return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(5.0);
+        return a1->pos.dist_sq(a2->pos) < sq(5.0);
   } else if (is_polynucleotide(ptype)) {
     if (const Atom* a1 = r1.get_o3prim())
       if (const Atom* a2 = r2.get_p())
