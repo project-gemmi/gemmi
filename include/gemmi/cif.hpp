@@ -120,9 +120,9 @@ namespace rules {
                   whitespace,
                   pegtl::plus<pegtl::seq<loop_tag, whitespace, pegtl::discard>>,
                   pegtl::sor<pegtl::plus<pegtl::seq<loop_value, ws_or_eof,
-                                                     pegtl::discard>>,
-                  // handle incorrect CIF with empty loop
-                  pegtl::at<pegtl::sor<str_loop, pegtl::eof>>>,
+                                                    pegtl::discard>>,
+                             // handle incorrect CIF with empty loop
+                             pegtl::at<pegtl::sor<keyword, pegtl::eof>>>,
                   loop_end> {};
   struct missing_value : pegtl::bol {};
   struct dataitem : pegtl::if_must<item_tag, whitespace,
