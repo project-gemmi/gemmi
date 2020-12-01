@@ -19,7 +19,7 @@ gemmi align [options] --text-align STRING1 STRING2
 Options:
   -h, --help         Print usage and exit.
   -V, --version      Print version and exit.
-  --check-mmcif      checks alignment agains _atom_site.label_seq_id
+  --check-mmcif      checks alignment against _atom_site.label_seq_id
   --query=[+]CHAIN   Align CHAIN from file INPUT1.
   --target=[+]CHAIN  Align CHAIN from file INPUT2.
   --text-align       Align characters in two strings (for testing).

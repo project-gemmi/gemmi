@@ -39,7 +39,7 @@ const option::Descriptor Usage[] = {
   CommonUsage[Version],
 
   { CheckMmcif, 0, "", "check-mmcif", Arg::None,
-    "  --check-mmcif  \tchecks alignment agains _atom_site.label_seq_id" },
+    "  --check-mmcif  \tchecks alignment against _atom_site.label_seq_id" },
   { Query, 0, "", "query", Arg::Required,
     "  --query=[+]CHAIN  \tAlign CHAIN from file INPUT1." },
   { Target, 0, "", "target", Arg::Required,
