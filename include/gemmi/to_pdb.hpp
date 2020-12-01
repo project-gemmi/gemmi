@@ -243,7 +243,7 @@ inline void write_remarks(const Structure& st, std::ostream& os) {
           WRITELN("REMARK 350                    AND CHAINS: %s",
                   chains_str.substr(begin, end - begin).c_str());
         }
-        for (const Assembly::Oper& oper : gen.opers) {
+        for (const Assembly::Operator& oper : gen.operators) {
           ++oper_cnt;
           const Transform& tr = oper.transform;
           for (int i = 0; i < 3; ++i)

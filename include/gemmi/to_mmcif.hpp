@@ -186,7 +186,7 @@ void write_assemblies(const Structure& st, cif::Block& block) {
        "matrix[1][1]", "matrix[1][2]", "matrix[1][3]", "vector[1]",
        "matrix[2][1]", "matrix[2][2]", "matrix[2][3]", "vector[2]",
        "matrix[3][1]", "matrix[3][2]", "matrix[3][3]", "vector[3]"});
-  std::vector<const Assembly::Oper*> distinct_oper;
+  std::vector<const Assembly::Operator*> distinct_oper;
   for (const Assembly& as : st.assemblies) {
     std::string how_defined = "?";
     if (as.author_determined && as.software_determined)
@@ -230,7 +230,7 @@ void write_assemblies(const Structure& st, cif::Block& block) {
             for (const auto& sub : chain.subchains())
               string_append_sep(subchain_str, ',', sub.front().subchain);
       std::string oper_str;
-      for (const Assembly::Oper& oper : gen.opers) {
+      for (const Assembly::Operator& oper : gen.operators) {
         size_t k = 0;
         for (; k != distinct_oper.size(); ++k)
           if (distinct_oper[k]->transform.approx(oper.transform, 1e-9))

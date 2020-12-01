@@ -408,7 +408,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
         if (starts_with(line+11, "  BIOMT")) {
           if (read_matrix(matrix, line+13, len-13) == 3)
             if (!assembly.generators.empty()) {
-              auto& opers = assembly.generators.back().opers;
+              auto& opers = assembly.generators.back().operators;
               opers.emplace_back();
               opers.back().name = read_string(line+20, 3);
               opers.back().transform = matrix;

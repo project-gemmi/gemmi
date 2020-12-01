@@ -972,7 +972,7 @@ struct NcsOp {
 
 // bioassembly / biomolecule
 struct Assembly {
-  struct Oper {
+  struct Operator {
     std::string name; // optional
     std::string type; // optional (from mmCIF only)
     Transform transform;
@@ -980,7 +980,7 @@ struct Assembly {
   struct Gen {
     std::vector<std::string> chains;
     std::vector<std::string> subchains;
-    std::vector<Oper> opers;
+    std::vector<Operator> operators;
   };
   enum class SpecialKind {
     NA, CompleteIcosahedral, RepresentativeHelical, CompletePoint

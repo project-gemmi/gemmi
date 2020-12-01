@@ -281,7 +281,7 @@ inline std::vector<Assembly> read_assemblies(cif::Block& block) {
                                    {"biol_id", "type", "value"});
   cif::Table gen_tab = block.find("_pdbx_struct_assembly_gen.",
                           {"assembly_id", "oper_expression", "asym_id_list"});
-  std::vector<Assembly::Oper> oper_list;
+  std::vector<Assembly::Operator> oper_list;
   std::vector<std::string> oper_list_tags = transform_tags("matrix", "vector");
   oper_list_tags.emplace_back("id");  // 12
   oper_list_tags.emplace_back("type");  // 13
@@ -336,8 +336,8 @@ inline std::vector<Assembly> read_assemblies(cif::Block& block) {
         Assembly::Gen& gen = a.generators.back();
         split_str_into(row_g.str(2), ',', gen.subchains);
         for (const std::string& name : parse_operation_expr(row_g.str(1)))
-          if (const Assembly::Oper* oper = impl::find_or_null(oper_list, name))
-            gen.opers.push_back(*oper);
+          if (const Assembly::Operator* oper = impl::find_or_null(oper_list, name))
+            gen.operators.push_back(*oper);
       }
   }
   return assemblies;

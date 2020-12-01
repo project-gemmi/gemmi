@@ -1665,18 +1665,57 @@ Assembly
 Biological assemblies are nicely
 `introduced in PDB-101 <https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/biological-assemblies>`_.
 Description of a biological assembly read from a coordinate file
-is represented in Gemmi by the ``Assembly`` class.
+is represented in Gemmi by the Assembly class.
 It contains a recipe how to construct the assembly from a model.
 In the PDB format, REMARK 350 says what operations should be applied
-to what chains. In the PDBx/mmCIF format it is similar, but the
+to what chains. Similarly in the PDBx/mmCIF format, but
 :ref:`subchains <subchain>` are used instead of chains.
+
+Class Assembly has a list of generators and couple of properties:
 
 .. doctest::
 
   >>> for assembly in st.assemblies:
-  ...   print(assembly.name, assembly.oligomeric_details)
-  1 MONOMERIC
-  2 MONOMERIC
+  ...   print(assembly.name, assembly.oligomeric_details, len(assembly.generators))
+  1 MONOMERIC 1
+  2 MONOMERIC 1
+
+Each generator has a list of chain names and a list of subchain names
+(only one of them is normally used), and a list of operators:
+
+.. doctest::
+
+  >>> gen = st.assemblies[0].generators[0]
+  >>> gen.chains
+  ['A']
+  >>> gen.subchains
+  []
+  >>> len(gen.operators)
+  1
+
+Each Operator has a :ref:`Transform <transform>`,
+and optionally also a name and type:
+
+.. doctest::
+
+  >>> oper = gen.operators[0]
+  >>> oper.name
+  '1'
+  >>> oper.type
+  ''
+  >>> oper.transform  # doctest: +ELLIPSIS
+  <gemmi.Transform object at 0x...>
+  >>> _.mat, _.vec
+  (<gemmi.Mat33 [1, 0, 0]
+               [0, 1, 0]
+               [0, 0, 1]>, <gemmi.Vec3(0, 0, 0)>)
+
+This is how the assembly is stored in the PDBx/mmCIF file.
+Storing it differently in Gemmi would complicate reading and writing files.
+
+----
+
+To actually construct the assembly as a new Model use ``make_assembly()``.
 
 As always, naming things is hard.
 Biological unit may contain a number of copies of one chain.
@@ -1692,7 +1731,6 @@ Each copy needs to be named. Gemmi provides three options:
 
 Function ``make_assembly`` takes Model and one of the naming options above,
 and returns a new Model that represents the assembly.
-In C++ this function is in ``<gemmi/assembly.hpp>``.
 
 .. doctest::
 
@@ -1704,6 +1742,8 @@ In C++ this function is in ``<gemmi/assembly.hpp>``.
   <gemmi.Model 1 with 1 chain(s)>
   >>> list(_)
   [<gemmi.Chain B1 with 26 res>]
+
+In C++ ``make_assembly()`` is defined in ``<gemmi/assembly.hpp>``.
 
 See also the ``--assembly`` option in command-line program
 :ref:`gemmi-convert <convert>`.

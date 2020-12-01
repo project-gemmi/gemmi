@@ -83,7 +83,7 @@ inline Model make_assembly(const Assembly& assembly, const Model& model,
   ChainNameGenerator namegen(how);
   std::map<std::string, std::string> subs = model.subchain_to_chain();
   for (const Assembly::Gen& gen : assembly.generators)
-    for (const Assembly::Oper& oper : gen.opers) {
+    for (const Assembly::Operator& oper : gen.operators) {
       if (out) {
         *out << "Applying " << oper.name << " to";
         if (!gen.chains.empty())
