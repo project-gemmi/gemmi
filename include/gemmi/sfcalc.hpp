@@ -9,8 +9,8 @@
 #ifndef GEMMI_SFCALC_HPP_
 #define GEMMI_SFCALC_HPP_
 
-#include <array>
 #include <complex>
+#include "addends.hpp" // for Addends
 #include "model.hpp"   // for Structure, ...
 #include "small.hpp"   // for SmallStructure
 
@@ -39,7 +39,7 @@ public:
     if (sfactor == 0.) {
       if (!Table::has(element.elem))
         fail("Missing scattering factor for ", element.name());
-      sfactor = Table::get(element.elem).calculate_sf(stol2_) + get_addend(element);
+      sfactor = Table::get(element.elem).calculate_sf(stol2_) + addends.get(element);
     }
     return sfactor;
   }
@@ -113,24 +113,12 @@ public:
     return sf;
   }
 
-  // addend functions are the same as in DensityCalculator
-  void set_addend(Element el, float val) { addends[el.ordinal()] = val; }
-  float get_addend(Element el) { return addends[el.ordinal()]; }
-  void subtract_z_from_addends(bool except_hydrogen=false) {
-    for (int z = 2; z < (int)El::D; ++z)
-      addends[z] -= z;
-    if (except_hydrogen) {
-      addends[(int)El::H] -= 1;
-      addends[(int)El::D] -= 1;
-    }
-  }
-
 private:
   const UnitCell& cell_;
   double stol2_;
   std::vector<double> scattering_factors_;
 public:
-  std::array<float, (int)El::END> addends = {};  // usually f' for X-rays
+  Addends addends;  // usually f' for X-rays
 };
 
 } // namespace gemmi

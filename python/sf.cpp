@@ -13,29 +13,12 @@
 namespace py = pybind11;
 using gemmi::Element;
 
-template<typename T>
-void add_addends(py::class_<T>& c) {
-   c.def("set_addend", &T::set_addend)
-    .def("get_addend", &T::get_addend)
-    .def("clear_addends", [](T& self) {
-        for (size_t i = 0; i != self.addends.size(); ++i)
-          self.addends[i] = 0.;
-    })
-    .def("add_cl_fprime_to_addends", [](T& self, double energy) {
-        gemmi::add_cl_fprime_for_all_elements(&self.addends[1], energy);
-    }, py::arg("energy"))
-    .def("subtract_z_from_addends", &T::subtract_z_from_addends,
-         py::arg("except_hydrogen")=false)
-    ;
-}
-
 template<typename Table>
 void add_sfcalc(py::module& m, const char* name) {
   using SFC = gemmi::StructureFactorCalculator<Table>;
-  py::class_<SFC> sfc(m, name);
-  add_addends(sfc);
-  sfc
+  py::class_<SFC>(m, name)
     .def(py::init<const gemmi::UnitCell&>())
+    .def_readwrite("addends", &SFC::addends)
     .def("calculate_sf_from_model", &SFC::calculate_sf_from_model)
     .def("mott_bethe_factor", &SFC::mott_bethe_factor)
     ;
@@ -44,15 +27,14 @@ void add_sfcalc(py::module& m, const char* name) {
 template<typename Table>
 void add_dencalc(py::module& m, const char* name) {
   using DenCalc = gemmi::DensityCalculator<Table, float>;
-  py::class_<DenCalc> dencalc(m, name);
-  add_addends(dencalc);
-  dencalc
+  py::class_<DenCalc>(m, name)
     .def(py::init<>())
     .def_readonly("grid", &DenCalc::grid)
     .def_readwrite("d_min", &DenCalc::d_min)
     .def_readwrite("rate", &DenCalc::rate)
     .def_readwrite("blur", &DenCalc::blur)
     .def_readwrite("r_cut", &DenCalc::r_cut)
+    .def_readwrite("addends", &DenCalc::addends)
     .def("put_model_density_on_grid", &DenCalc::put_model_density_on_grid)
     .def("set_grid_cell_and_spacegroup", &DenCalc::set_grid_cell_and_spacegroup)
     .def("reciprocal_space_multiplier", &DenCalc::reciprocal_space_multiplier)
@@ -61,6 +43,18 @@ void add_dencalc(py::module& m, const char* name) {
 }
 
 void add_sf(py::module& m) {
+
+  py::class_<gemmi::Addends>(m, "Addends")
+    .def("set", &gemmi::Addends::set)
+    .def("get", &gemmi::Addends::get)
+    .def("clear", &gemmi::Addends::clear)
+    .def("add_cl_fprime", [](gemmi::Addends& self, double energy) {
+        gemmi::add_cl_fprime_for_all_elements(&self.values[1], energy);
+    }, py::arg("energy"))
+    .def("subtract_z", &gemmi::Addends::subtract_z,
+         py::arg("except_hydrogen")=false)
+    ;
+
   using IT92 = gemmi::IT92<double>;
 
   py::class_<IT92::Coef>(m, "IT92Coef")

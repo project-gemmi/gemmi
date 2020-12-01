@@ -1387,22 +1387,32 @@ Now we can compute structure factors from Model for any (hkl):
 Addends
 ~~~~~~~
 
+StructureFactorCalculator contains also addends -- per-element values
+that are to be added to the form factor coefficient *c*
+(which is the same as adding it to the total atomic contribution
+to the structure factor):
+
+.. doctest::
+
+  >>> calc_x = gemmi.StructureFactorCalculatorX(st.cell)
+  >>> calc_x.addends  #doctest: +ELLIPSIS
+  <gemmi.Addends object at 0x...>
+
 When calculating X-ray structure factors, one may want to include *f'*
 (real part of the :ref:`anomalous scattering <anomalous>`).
-To do this, *f'* needs to be set for each element present in the system.
+To do this, *f'* needs to be set for each element present in the system:
 This is done with function ``set_addend()``, which sets angle-independent
 value that will be added to the value calculated from the form factors.
 
 .. doctest::
 
-  >>> calc_x = gemmi.StructureFactorCalculatorX(st.cell)
   >>> energy = gemmi.hc / 0.8  # for wavelength 0.8A
   >>> for symbol in ['C', 'N', 'O', 'S', 'Cu']:
   ...     el = gemmi.Element(symbol)
   ...     fp, _ = gemmi.cromer_libermann(z=el.atomic_number, energy=energy)
-  ...     calc_x.set_addend(el, fp)
+  ...     calc_x.addends.set(el, fp)
   ...
-  >>> calc_x.get_addend(gemmi.Element('Cu'))
+  >>> calc_x.addends.get(gemmi.Element('Cu'))
   0.265503853559494
 
 Alternatively, you could call a single function (here we first need
@@ -1410,8 +1420,8 @@ to remove the previous values, so it makes two functions):
 
 .. doctest::
 
-  >>> calc_x.clear_addends()
-  >>> calc_x.add_cl_fprime_to_addends(energy)
+  >>> calc_x.addends.clear()
+  >>> calc_x.addends.add_cl_fprime(energy)
 
 which calculates *f'* for all elements handled by the Cromer-Libermann
 algorithm (*Z* from 3 to 92). Although it seems wasteful, it takes
@@ -1429,8 +1439,8 @@ from X-ray form factors, according to the Mott–Bethe formula:
 
 .. doctest::
 
-  >>> calc_x.clear_addends()
-  >>> calc_x.subtract_z_from_addends()
+  >>> calc_x.addends.clear()
+  >>> calc_x.addends.subtract_z()
   >>> calc_x.mott_bethe_factor() * calc_x.calculate_sf_from_model(st[0], (3,4,5))
   (54.065658093072436+52.968332363622224j)
 
@@ -1456,10 +1466,12 @@ our resolution limit, and ``rate`` -- oversampling rate (1.5 by default).
   >>> dencalc.d_min = 2.5 # 2.5A
   >>> dencalc.rate = 1.5  # we could skip it, this is the default value
 
-As with StructureFactorCalculator, here we also have :ref:`addends <addends>`,
-used primarily for *f'*, with functions ``get_addend()``,
-``set_addend()``, ``clear_addends``, ``add_cl_fprime_to_addends``,
-``subtract_z_from_addends``.
+As with StructureFactorCalculator, here we also have :ref:`addends <addends>`:
+
+.. doctest::
+
+  >>> dencalc.addends  #doctest: +ELLIPSIS
+  <gemmi.Addends object at 0x...>
 
 To create a grid and calculate the density we use two function calls.
 Almost all the work is in the latter:
@@ -1529,30 +1541,30 @@ or multiplying individual structure factor by
 Mott-Bethe formula
 ~~~~~~~~~~~~~~~~~~
 
-Addends in DensityCalculator can be employed to calculate
-*Z*\ --\ *f*\ :sub:`x` (part of the Mott-Bethe formula):
+To calculate *f*\ :sub:`e` according to the Mott-Bethe formula
+we first employ addends to calculate *f*\ :sub:`x`\ --\ *Z*:
 
 .. doctest::
   :skipif: numpy is None
 
   >>> dc = gemmi.DensityCalculatorX()
   >>> dc.d_min = 2.5
-  >>> dc.subtract_z_from_addends()
+  >>> dc.addends.subtract_z()
   >>> dc.set_grid_cell_and_spacegroup(st)
   >>> dc.put_model_density_on_grid(st[0])
   >>> grid = gemmi.transform_map_to_f_phi(dc.grid)
 
-At this point the grid contains *f*\ :sub:`x`\ --\ *Z*.
-To get *f*\ :sub:`e` we need to multiply it by
-–1/(2\ *π*:sup:`2`\ *a*:sub:`0`\ *d*:sup:`2`).
-Either using ``mott_bethe_factor()`` to multiply individual values:
+Then we multiply it by –1/(2\ *π*:sup:`2`\ *a*:sub:`0`\ *d*:sup:`2`)
+to get *f*\ :sub:`e`.
+
+We either multiply individual values by ``mott_bethe_factor()``:
 
 .. doctest::
 
   >>> dc.mott_bethe_factor([3,4,5]) * grid.get_value(3,4,5)
   (54.6320307666462+53.82081715028121j)
 
-or by calling ``prepare_asu_data()`` with ``mott_bethe=True``:
+or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
 
 .. doctest::
 
@@ -1560,6 +1572,15 @@ or by calling ``prepare_asu_data()`` with ``mott_bethe=True``:
   >>> asu_data.value_array[numpy.all(asu_data.miller_array == [3,4,5], axis=1)]
   array([54.63203+53.820816j], dtype=complex64)
 
+That is all. If you would like to separate positions of nuclei and
+the electron clouds in hydrogens then, assuming that the model
+has positions for electrons, call ``subtract_z()`` as:
+
+.. doctest::
+
+  >>> dc.addends.subtract_z(except_hydrogen=True)
+
+and separately add the contribution from hydrogen nuclei. (TBC)
 
 Bulk solvent correction
 -----------------------

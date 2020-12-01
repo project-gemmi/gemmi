@@ -468,7 +468,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
                 (unsigned) small.atom_types.size());
       for (const gemmi::SmallStructure::AtomType& atom_type : small.atom_types)
-        calc.set_addend(atom_type.element, (float)atom_type.dispersion_real);
+        calc.addends.set(atom_type.element, (float)atom_type.dispersion_real);
     }
   }
 
@@ -482,8 +482,8 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
   if (wavelength > 0) {
     double energy = gemmi::hc() / wavelength;
     for (int z = 1; z <= 92; ++z)
-      if (present_elems[z] && calc.addends[z] == 0) {
-        calc.addends[z] = (float) gemmi::cromer_libermann(z, energy, nullptr);
+      if (present_elems[z] && calc.addends.values[z] == 0) {
+        calc.addends.values[z] = (float) gemmi::cromer_libermann(z, energy, nullptr);
       }
   }
 

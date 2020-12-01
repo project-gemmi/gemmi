@@ -8,7 +8,7 @@
 #define GEMMI_DENCALC_HPP_
 
 #include <cassert>
-#include <array>
+#include "addends.hpp" // for Addends
 #include "grid.hpp"    // for Grid
 #include "model.hpp"   // for Structure, ...
 
@@ -215,28 +215,16 @@ struct DensityCalculator {
   double rate = 1.5;
   double blur = 0.;
   float r_cut = 5e-5f;
-  std::array<float, (int)El::END> addends = {};
+  Addends addends;
   // parameters for used only in put_solvent_mask_on_grid()
   AtomicRadiiSet radii_set = AtomicRadiiSet::VanDerWaals;
   double rprobe = 1.0;
   double rshrink = 1.1;
 
-  // addend functions are the same as in StructureFactorCalculator
-  void set_addend(Element el, float val) { addends[el.ordinal()] = val; }
-  float get_addend(Element el) { return addends[el.ordinal()]; }
-  void subtract_z_from_addends(bool except_hydrogen=false) {
-    for (int z = 2; z < (int)El::D; ++z)
-      addends[z] -= z;
-    if (!except_hydrogen) {
-      addends[(int)El::H] -= 1;
-      addends[(int)El::D] -= 1;
-    }
-  }
-
   // pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {
     auto& scat = Table::get(atom.element);
-    float addend = addends[atom.element.ordinal()];
+    float addend = addends.get(atom.element);
     Fractional fpos = grid.unit_cell.fractionalize(atom.pos);
     if (!atom.aniso.nonzero()) {
       // isotropic
