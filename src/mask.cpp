@@ -6,7 +6,7 @@
 #include "gemmi/floodfill.hpp" // for remove_islands_in_mask
 #include "gemmi/gz.hpp"        // for MaybeGzipped
 #include "gemmi/gzread.hpp"
-#include "gemmi/rhogrid.hpp"   // for mask_points_in_constant_radius, etc
+#include "gemmi/dencalc.hpp"   // for mask_points_in_constant_radius, etc
 #include "gemmi/symmetry.hpp"
 #include "timer.h"
 

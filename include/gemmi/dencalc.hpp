@@ -4,8 +4,8 @@
 // - values of electron density of a model,
 // - bulk solvent mask.
 
-#ifndef GEMMI_RHOGRID_HPP_
-#define GEMMI_RHOGRID_HPP_
+#ifndef GEMMI_DENCALC_HPP_
+#define GEMMI_DENCALC_HPP_
 
 #include <cassert>
 #include <array>

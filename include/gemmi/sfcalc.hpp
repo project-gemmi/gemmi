@@ -4,7 +4,7 @@
 // It does not use optimizations described in the literature,
 // cf. Bourhis et al (2014) https://doi.org/10.1107/S2053273314022207,
 // because direct calculations are not used in MX if performance is important.
-// For FFT-based calculations see rhogrid.hpp + fourier.hpp.
+// For FFT-based calculations see dencalc.hpp + fourier.hpp.
 
 #ifndef GEMMI_SFCALC_HPP_
 #define GEMMI_SFCALC_HPP_
