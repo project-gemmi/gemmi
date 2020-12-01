@@ -2489,7 +2489,11 @@ If it's a polymer, we can ask for polymer type and sequence:
   >>> polymer_b.make_one_letter_sequence()
   'sAXvsAXv'
 
-(In C++ these two functions are available in ``gemmi/polyheur.hpp``.)
+In C++ these two functions are available in ``gemmi/polyheur.hpp``.
+
+The latter function uses a simple heuristic to check for gaps
+and the result includes a single dash (``-``) in places
+where the distance between residues suggests a gap.
 
 In addition to the numeric indexing,
 ``ResidueSpan.__getitem__`` (like ``Chain.__getitem__``) can take
