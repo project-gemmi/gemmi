@@ -162,7 +162,8 @@ the following rules to relax the syntax:
 * quoted strings may contain non-ascii characters (if nothing has changed
   one entry in the PDB has byte A0 corresponding to non-breaking space),
 * a table (loop) can have no values if it is followed by a keyword or EOF
-  (because Refmac monomer library),
+  (such files were written by old versions of Refmac and SHELXL,
+  and were also present in the CCP4 monomer library),
 * block name (*blockcode*) can be empty, i.e. the block can start
   with bare ``data_`` keyword (RELION writes such files),
 * unquoted strings cannot start with keywords (STAR spec is ambiguous
