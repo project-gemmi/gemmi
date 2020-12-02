@@ -43,18 +43,6 @@ void add_dencalc(py::module& m, const char* name) {
 }
 
 void add_sf(py::module& m) {
-
-  py::class_<gemmi::Addends>(m, "Addends")
-    .def("set", &gemmi::Addends::set)
-    .def("get", &gemmi::Addends::get)
-    .def("clear", &gemmi::Addends::clear)
-    .def("add_cl_fprime", [](gemmi::Addends& self, double energy) {
-        gemmi::add_cl_fprime_for_all_elements(&self.values[1], energy);
-    }, py::arg("energy"))
-    .def("subtract_z", &gemmi::Addends::subtract_z,
-         py::arg("except_hydrogen")=false)
-    ;
-
   using IT92 = gemmi::IT92<double>;
 
   py::class_<IT92::Coef>(m, "IT92Coef")
@@ -109,6 +97,17 @@ void add_sf(py::module& m) {
     .def("__repr__", [](const Element& self) {
         return "<gemmi.Element: " + std::string(self.name()) + ">";
     });
+
+  py::class_<gemmi::Addends>(m, "Addends")
+    .def("set", &gemmi::Addends::set)
+    .def("get", &gemmi::Addends::get)
+    .def("clear", &gemmi::Addends::clear)
+    .def("add_cl_fprime", [](gemmi::Addends& self, double energy) {
+        gemmi::add_cl_fprime_for_all_elements(&self.values[1], energy);
+    }, py::arg("energy"))
+    .def("subtract_z", &gemmi::Addends::subtract_z,
+         py::arg("except_hydrogen")=false)
+    ;
 
   add_sfcalc<IT92>(m, "StructureFactorCalculatorX");
   add_sfcalc<C4322>(m, "StructureFactorCalculatorE");

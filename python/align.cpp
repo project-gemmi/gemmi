@@ -60,6 +60,8 @@ void add_select(py::module& m) {
 }
 
 void add_alignment(py::module& m) {
+
+  // sequence alignment
   py::class_<AlignmentResult>(m, "AlignmentResult")
     .def_readonly("score", &AlignmentResult::score)
     .def_readonly("match_count", &AlignmentResult::match_count)
@@ -90,5 +92,25 @@ void add_alignment(py::module& m) {
       return align_sequence_to_polymer(full_seq, polymer, polymer_type, sco);
   }, py::arg("full_seq"), py::arg("polymer"), py::arg("polymer_type"),
      py::arg_v("scoring", AlignmentScoring(), "gemmi.AlignmentScoring()"));
-}
 
+  // structure superposition
+  py::enum_<SupSelect>(m, "SupSelect")
+    .value("CaP", SupSelect::CaP)
+    .value("All", SupSelect::All);
+
+  py::class_<SupResult>(m, "SupResult")
+    .def_readonly("rmsd", &SupResult::rmsd)
+    .def_readonly("count", &SupResult::count)
+    .def_readonly("center1", &SupResult::center1)
+    .def_readonly("center2", &SupResult::center2)
+    .def_readonly("transform", &SupResult::transform)
+    .def("apply", &apply_superposition)
+    ;
+
+  m.def("calculate_superposition",
+        [](const ResidueSpan& fixed, const ResidueSpan& movable,
+           PolymerType ptype, SupSelect sel, char altloc, bool current_rmsd) {
+          return calculate_superposition(fixed, movable, ptype, sel, altloc, current_rmsd);
+        }, py::arg("fixed"), py::arg("movable"), py::arg("ptype"), py::arg("sel"),
+           py::arg("altloc")='\0', py::arg("current_rmsd")=false);
+}
