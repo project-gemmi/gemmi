@@ -1572,8 +1572,9 @@ or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
   >>> asu_data.value_array[numpy.all(asu_data.miller_array == [3,4,5], axis=1)]
   array([54.63203+53.820816j], dtype=complex64)
 
-That is all. If you would like to separate positions of nuclei and
-the electron clouds in hydrogens then, assuming that the model
+That is all.
+If you would like to separate positions of hydrogen nuclei
+and electron clouds then, assuming that the model
 has positions for electrons, call ``subtract_z()`` as:
 
 .. doctest::

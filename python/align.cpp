@@ -113,4 +113,11 @@ void add_alignment(py::module& m) {
           return calculate_superposition(fixed, movable, ptype, sel, altloc, current_rmsd);
         }, py::arg("fixed"), py::arg("movable"), py::arg("ptype"), py::arg("sel"),
            py::arg("altloc")='\0', py::arg("current_rmsd")=false);
+
+  m.def("superpose_positions",
+        [](std::vector<Position> pos1, std::vector<Position> pos2,
+           const std::vector<double>& weight) {
+          return superpose_positions(pos1.data(), pos2.data(), pos1.size(),
+                                     weight.empty() ? nullptr : weight.data());
+        }, py::arg("pos1"), py::arg("pos2"), py::arg("weight")=std::vector<int>{});
 }

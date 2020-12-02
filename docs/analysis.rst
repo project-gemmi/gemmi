@@ -336,7 +336,20 @@ Gemmi includes the `QCP method <https://theobald.brandeis.edu/qcp/>`_
 for superposing two lists of points in 3D.
 The C++ function ``superpose_positions()`` takes two arrays of positions
 and an optional array of weights. Before applying this function to chains
-it would be necessary to determine pairs of corresponding atoms.
+it is necessary to determine pairs of corresponding atoms.
+Here, as a minimal example, we superpose backbone of the third residue:
+
+.. doctest::
+
+  >>> model = gemmi.read_structure('../tests/4oz7.pdb')[0]
+  >>> res1 = model['A'][2]
+  >>> res2 = model['B'][2]
+  >>> atoms = ['N', 'CA', 'C', 'O']
+  >>> gemmi.superpose_positions([res1.sole_atom(a).pos for a in atoms],
+  ...                           [res2.sole_atom(a).pos for a in atoms])  #doctest: +ELLIPSIS
+  <gemmi.SupResult object at 0x...>
+  >>> _.rmsd
+  0.006558389527556187
 
 To make it easier, we also have a higher-level function
 ``calculate_superposition()`` that operates on ``ResidueSpan``\ s.
@@ -344,7 +357,7 @@ This function first performs the sequence alignment.
 Then the maching residues are superposed, using either
 all atoms in both residues, or only Cα atoms (for peptides)
 and P atoms (for nucleotides).
-Atom that don't have counterparts in the other span are skipped.
+Atoms that don't have counterparts in the other span are skipped.
 The returned object (SupResult) contains RMSD and the transformation
 (rotation matrix + translation vector) that superposes the second span
 onto the first one. Here is a usage example:
