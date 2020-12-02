@@ -31,7 +31,7 @@ enum OptionIndex { Hkl=4, Dmin, For, Rate, Blur, RCut, Test, ToMtz, Compare,
 
 struct SfCalcArg: public Arg {
   static option::ArgStatus FormFactors(const option::Option& option, bool msg) {
-    return Arg::Choice(option, msg, {"xray", "electron"});
+    return Arg::Choice(option, msg, {"xray", "electron", "mott-bethe"});
   }
 };
 
@@ -53,7 +53,7 @@ const option::Descriptor Usage[] = {
   { Dmin, 0, "", "dmin", Arg::Float,
     "  --dmin=NUM  \tCalculate structure factors up to given resolution." },
   { For, 0, "", "for", SfCalcArg::FormFactors,
-    "  --for=TYPE  \tTYPE is xray (default) or electron." },
+    "  --for=TYPE  \tTYPE is xray (default), electron or mott-bethe." },
   { CifFp, 0, "", "ciffp", Arg::None,
     "  --ciffp  \tRead f' from _atom_type_scat_dispersion_real in CIF." },
   { Wavelength, 0, "w", "wavelength", Arg::Float,
@@ -171,6 +171,7 @@ void print_to_stderr(const Comparator& c) {
 template<typename Table, typename Real>
 void process_with_fft(const gemmi::Structure& st,
                       gemmi::DensityCalculator<Table, Real>& dencalc,
+                      bool mott_bethe,
                       const SolventParam& solvent,
                       bool verbose, const RefFile& file,
                       const gemmi::AsuData<std::array<Real,2>>& scale_to,
@@ -219,7 +220,7 @@ void process_with_fft(const gemmi::Structure& st,
       compared_data.ensure_sorted();
     }
   }
-  auto asu_data = sf.prepare_asu_data(dencalc.d_min, dencalc.blur);
+  auto asu_data = sf.prepare_asu_data(dencalc.d_min, dencalc.blur, false, false, mott_bethe);
 
   if (solvent.use_solvent) {
     dencalc.put_solvent_mask_on_grid(st.models[0]);
@@ -290,6 +291,8 @@ void process_with_fft(const gemmi::Structure& st,
         }
       } else {
         exact = calc.calculate_sf_from_model(st.models[0], hv.hkl);
+        if (mott_bethe)
+          exact *= calc.mott_bethe_factor();
       }
       comparator.add_complex(hv.value, exact);
       printf(" (%d %d %d)\t%7.2f\t%8.3f \t%6.2f\t%7.3f\td=%5.2f\n",
@@ -312,7 +315,7 @@ void process_with_fft(const gemmi::Structure& st,
 template<typename Table>
 void print_structure_factors_sm(const gemmi::SmallStructure& small,
                                 gemmi::StructureFactorCalculator<Table>& calc,
-                                double d_min, bool verbose) {
+                                double d_min, bool verbose, bool mott_bethe) {
   Timer timer(verbose);
   timer.start();
   int counter = 0;
@@ -332,6 +335,8 @@ void print_structure_factors_sm(const gemmi::SmallStructure& small,
         double hkl_1_d2 = small.cell.calculate_1_d2(hkl);
         if (hkl_1_d2 < max_1_d * max_1_d) {
           auto value = calc.calculate_sf_from_small_structure(small, hkl);
+          if (mott_bethe)
+            value *= calc.mott_bethe_factor();
           print_sf(value, hkl);
           ++counter;
         }
@@ -358,7 +363,8 @@ void compare_with_hkl(const gemmi::SmallStructure& small,
                       gemmi::StructureFactorCalculator<Table>& calc,
                       const RefFile& file,
                       bool verbose,
-                      Comparator& comparator) {
+                      Comparator& comparator,
+                      bool mott_bethe) {
   namespace cif = gemmi::cif;
   cif::Document hkl_doc = gemmi::read_cif_gz(file.path);
   cif::Block& block = hkl_doc.blocks.at(0);
@@ -419,6 +425,8 @@ void compare_with_hkl(const gemmi::SmallStructure& small,
       continue;
     }
     double f = std::abs(calc.calculate_sf_from_small_structure(small, hkl));
+    if (mott_bethe)
+      f *= calc.mott_bethe_factor();
     comparator.add(f_from_file, f);
     if (verbose)
       printf(" (%d %d %d)\t%7.2f\t%8.3f \td=%5.2f\n",
@@ -434,7 +442,8 @@ void compare_with_hkl(const gemmi::SmallStructure& small,
 template<typename Table>
 void compare_with_mtz(const gemmi::Model& model, const gemmi::UnitCell& cell,
                       gemmi::StructureFactorCalculator<Table>& calc,
-                      const RefFile& file, bool verbose, Comparator& comparator) {
+                      const RefFile& file, bool verbose, Comparator& comparator,
+                      bool mott_bethe) {
   gemmi::Mtz mtz;
   mtz.read_input(gemmi::MaybeGzipped(file.path), true);
   gemmi::Mtz::Column* col = mtz.column_with_label(file.f_label);
@@ -445,6 +454,8 @@ void compare_with_mtz(const gemmi::Model& model, const gemmi::UnitCell& cell,
     gemmi::Miller hkl = data_proxy.get_hkl(i);
     double f_from_file = data_proxy.get_num(i + col->idx);
     double f = std::abs(calc.calculate_sf_from_model(model, hkl));
+    if (mott_bethe)
+      f *= calc.mott_bethe_factor();
     comparator.add(f_from_file, f);
     if (verbose)
       printf(" (%d %d %d)\t%7.2f\t%8.3f \td=%5.2f\n",
@@ -454,11 +465,11 @@ void compare_with_mtz(const gemmi::Model& model, const gemmi::UnitCell& cell,
 
 template<typename Table>
 void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStructure& small,
-                        double wavelength, const OptParser& p) {
+                        double wavelength, bool mott_bethe, const OptParser& p) {
   const gemmi::UnitCell& cell = use_st ? st.cell : small.cell;
   gemmi::StructureFactorCalculator<Table> calc(cell);
 
-  // assign f'
+  // assign f' given explicitely in a file
   if (p.options[CifFp]) {
     if (use_st) {
       // _atom_type.scat_dispersion_real is almost never used,
@@ -486,6 +497,8 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         calc.addends.values[z] = (float) gemmi::cromer_libermann(z, energy, nullptr);
       }
   }
+  if (mott_bethe)
+    calc.addends.subtract_z();
 
   // handle option --hkl
   for (const option::Option* opt = p.options[Hkl]; opt; opt = opt->next()) {
@@ -494,10 +507,14 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
     if (p.options[Verbose])
       fprintf(stderr, "hkl=(%d %d %d) -> d=%g\n", hkl[0], hkl[1], hkl[2],
               cell.calculate_d(hkl));
+    std::complex<double> sf;
     if (use_st)
-      print_sf(calc.calculate_sf_from_model(st.models[0], hkl), hkl);
+      sf = calc.calculate_sf_from_model(st.models[0], hkl);
     else
-      print_sf(calc.calculate_sf_from_small_structure(small, hkl), hkl);
+      sf = calc.calculate_sf_from_small_structure(small, hkl);
+    if (mott_bethe)
+      sf *= calc.mott_bethe_factor();
+    print_sf(sf, hkl);
   }
 
   RefFile file;
@@ -575,22 +592,24 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
           solvent.B = std::atof(p.options[Bsolv].arg);
       }
       const char* map_file = p.options[WriteMap] ? p.options[WriteMap].arg : nullptr;
-      process_with_fft(st, dencalc, solvent, p.options[Verbose], file, scale_to, map_file);
+      process_with_fft(st, dencalc, mott_bethe, solvent,
+                       p.options[Verbose], file, scale_to, map_file);
     } else {
       if (p.options[Rate] || p.options[RCut] || p.options[Blur] ||
           p.options[Test])
         gemmi::fail("Small molecule SFs are calculated directly. Do not use any\n"
                     "of the FFT-related options: --rate, --blur, --rcut, --test.");
-      print_structure_factors_sm(small, calc, d_min, p.options[Verbose]);
+      print_structure_factors_sm(small, calc, d_min, p.options[Verbose], mott_bethe);
     }
 
   // handle option --compare
   } else if (file.mode == RefFile::Mode::Compare) {
     Comparator comparator;
     if (use_st)
-      compare_with_mtz(st.models[0], st.cell, calc, file, p.options[Verbose], comparator);
+      compare_with_mtz(st.models[0], st.cell, calc, file, p.options[Verbose],
+                       comparator, mott_bethe);
     else
-      compare_with_hkl(small, calc, file, p.options[Verbose], comparator);
+      compare_with_hkl(small, calc, file, p.options[Verbose], comparator, mott_bethe);
     print_to_stderr(comparator);
     fprintf(stderr, "  sum(F^2)_ratio=%g\n", comparator.scale());
   }
@@ -647,6 +666,9 @@ void process(const std::string& input, const OptParser& p) {
       wavelength = small.wavelength;
     }
   }
+  if (wavelength < 0)
+    gemmi::fail("wavelength should not be negative");
+
 
   if (p.options[Unknown]) {
     gemmi::El new_el = gemmi::find_element(p.options[Unknown].arg);
@@ -666,12 +688,13 @@ void process(const std::string& input, const OptParser& p) {
   }
 
   char table = p.options[For] ? p.options[For].arg[0] : 'x';
-  if (table == 'x') {
-    process_with_table<gemmi::IT92<double>>(use_st, st, small, wavelength, p);
+  if (p.options[CifFp] && table != 'x')
+    gemmi::fail("Electron scattering has no dispersive part (--ciffp)");
+  if (table == 'x' || table == 'm') {
+    process_with_table<gemmi::IT92<double>>(use_st, st, small, wavelength,
+                                            table == 'm', p);
   } else if (table == 'e') {
-    if (p.options[CifFp])
-      gemmi::fail("Electron scattering has no dispersive part (--ciffp)");
-    process_with_table<gemmi::C4322<double>>(use_st, st, small, 0., p);
+    process_with_table<gemmi::C4322<double>>(use_st, st, small, 0., false, p);
   }
 }
 
