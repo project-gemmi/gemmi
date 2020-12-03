@@ -1729,16 +1729,16 @@ Each copy needs to be named. Gemmi provides three options:
   until exhausted (after 26*2+10=62 chains), then two-character names are used.
   This option is appropriate when the output is to be stored in the PDB format.
 
-Function ``make_assembly`` takes Model and one of the naming options above,
-and returns a new Model that represents the assembly.
+Function ``make_assembly`` takes Assembly, Model and one of the naming
+options above, and returns a new Model that represents the assembly.
 
 .. doctest::
 
-  >>> st.assemblies[0].make_assembly(st[0], gemmi.HowToNameCopiedChains.AddNumber)
+  >>> gemmi.make_assembly(st.assemblies[0], st[0], gemmi.HowToNameCopiedChains.AddNumber)
   <gemmi.Model 1 with 1 chain(s)>
   >>> list(_)
   [<gemmi.Chain A1 with 21 res>]
-  >>> st.assemblies[1].make_assembly(st[0], gemmi.HowToNameCopiedChains.AddNumber)
+  >>> gemmi.make_assembly(st.assemblies[1], st[0], gemmi.HowToNameCopiedChains.AddNumber)
   <gemmi.Model 1 with 1 chain(s)>
   >>> list(_)
   [<gemmi.Chain B1 with 26 res>]
@@ -2826,8 +2826,8 @@ Now, as an exercise, we will delete and re-create a disulfide bond:
   >>> chain_a = st[0]['A']
   >>> res4 = chain_a['4']['CYS']
   >>> res10 = chain_a['10']['CYS']
-  >>> con.partner1 = gemmi.AtomAddress(chain_a, res4, res4.sole_atom('SG'))
-  >>> con.partner2 = gemmi.AtomAddress(chain_a, res10, res10.sole_atom('SG'))
+  >>> con.partner1 = gemmi.make_address(chain_a, res4, res4.sole_atom('SG'))
+  >>> con.partner2 = gemmi.make_address(chain_a, res10, res10.sole_atom('SG'))
   >>> st.connections.append(con)
   >>> st.connections[-1]
   <gemmi.Connection new_disulf  A/CYS 4/SG - A/CYS 10/SG>

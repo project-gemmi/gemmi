@@ -84,63 +84,6 @@ struct PdbReadOptions {
   bool split_chain_on_ter = false;
 };
 
-enum class EntityType : unsigned char {
-  Unknown,
-  Polymer,
-  NonPolymer,
-  Branched, // introduced in 2020
-  // _entity.type macrolide is in PDBx/mmCIF, but no PDB entry uses it
-  //Macrolide,
-  Water
-};
-
-// values corresponding to mmCIF _entity_poly.type
-enum class PolymerType : unsigned char {
-  Unknown,       // unknown or not applicable
-  PeptideL,      // polypeptide(L) in mmCIF (168923 values in the PDB in 2017)
-  PeptideD,      // polypeptide(D) (57 values)
-  Dna,           // polydeoxyribonucleotide (9905)
-  Rna,           // polyribonucleotide (4559)
-  DnaRnaHybrid,  // polydeoxyribonucleotide/polyribonucleotide hybrid (156)
-  SaccharideD,   // polysaccharide(D) (18)
-  SaccharideL,   // polysaccharide(L) (0)
-  Pna,           // peptide nucleic acid (2)
-  CyclicPseudoPeptide,  // cyclic-pseudo-peptide (1)
-  Other,         // other (4)
-};
-
-inline bool is_polypeptide(PolymerType pt) {
-  return pt == PolymerType::PeptideL || pt == PolymerType::PeptideD;
-}
-
-inline bool is_polynucleotide(PolymerType pt) {
-  return pt == PolymerType::Dna || pt == PolymerType::Rna ||
-         pt == PolymerType::DnaRnaHybrid;
-}
-
-struct Entity {
-  struct DbRef {
-    std::string db_name;
-    std::string accession_code;
-    std::string id_code;
-    std::string isoform;  // pdbx_db_isoform
-    SeqId seq_begin, seq_end;
-    SeqId db_begin, db_end;
-    SeqId::OptionalNum label_seq_begin, label_seq_end;
-  };
-  std::string name;
-  std::vector<std::string> subchains;
-  EntityType entity_type = EntityType::Unknown;
-  PolymerType polymer_type = PolymerType::Unknown;
-  std::vector<DbRef> dbrefs;
-  // SEQRES or entity_poly_seq with microheterogeneity as comma-separated names
-  std::vector<std::string> full_sequence;
-
-  explicit Entity(std::string name_) noexcept : name(name_) {}
-  static std::string first_mon(const std::string& mon_list) {
-    return mon_list.substr(0, mon_list.find(','));
-  }
-};
 
 inline bool is_same_conformer(char altloc1, char altloc2) {
   return altloc1 == '\0' || altloc2 == '\0' || altloc1 == altloc2;
@@ -189,21 +132,6 @@ struct AtomGroup_ : ItemGroup<AtomType> {
 
 using AtomGroup = AtomGroup_<Atom>;
 using ConstAtomGroup = AtomGroup_<const Atom>;
-
-// Sequence ID (sequence number + insertion code) + residue name + segment ID
-struct ResidueId {
-  SeqId seqid;
-  std::string segment; // segid - up to 4 characters in the PDB file
-  std::string name;
-
-  // used for first_conformation iterators, etc.
-  SeqId group_key() const { return seqid; }
-
-  bool matches(const ResidueId& o) const {
-    return seqid == o.seqid && segment == o.segment && name == o.name;
-  }
-  std::string str() const { return seqid.str() + "(" + name + ")"; }
-};
 
 struct Residue : public ResidueId {
   using OptionalNum = SeqId::OptionalNum;
@@ -628,52 +556,11 @@ struct Chain {
   ConstUniqProxy<Residue> first_conformer() const { return {residues}; }
 };
 
-inline std::string atom_str(const std::string& chain_name,
-                            const ResidueId& res_id,
-                            const std::string& atom_name,
-                            char altloc) {
-  std::string r = chain_name;
-  r += '/';
-  r += res_id.name;
-  r += ' ';
-  r += res_id.seqid.str();
-  r += '/';
-  r += atom_name;
-  if (altloc) {
-    r += '.';
-    r += altloc;
-  }
-  return r;
-}
-
 inline std::string atom_str(const Chain& chain,
                             const ResidueId& res_id,
                             const Atom& atom) {
   return atom_str(chain.name, res_id, atom.name, atom.altloc);
 }
-
-struct AtomAddress {
-  std::string chain_name;
-  ResidueId res_id;
-  std::string atom_name;
-  char altloc = '\0';
-
-  AtomAddress() = default;
-  AtomAddress(const std::string& ch, const SeqId& seqid, const std::string& res,
-              const std::string& atom, char alt='\0')
-    : chain_name(ch), res_id({seqid, "", res}), atom_name(atom), altloc(alt) {}
-  AtomAddress(const Chain& ch, const Residue& res, const Atom& at)
-    : chain_name(ch.name), res_id(res), atom_name(at.name), altloc(at.altloc) {}
-
-  bool operator==(const AtomAddress& o) const {
-    return chain_name == o.chain_name && res_id.matches(o.res_id) &&
-           atom_name == o.atom_name && altloc == o.altloc;
-  }
-
-  std::string str() const {
-    return atom_str(chain_name, res_id, atom_name, altloc);
-  }
-};
 
 struct const_CRA {
   const Chain* chain;
@@ -703,70 +590,9 @@ inline bool atom_matches(const const_CRA& cra, const AtomAddress& addr) {
          cra.atom->altloc == addr.altloc;
 }
 
-// A connection. Corresponds to _struct_conn.
-// Symmetry operators are not trusted and not stored.
-// We assume that the nearest symmetry mate is connected.
-struct Connection {
-  // in write_struct_conn() we assume that Unknown is at the end
-  enum Type { Covale=0, Disulf, Hydrog, MetalC, Unknown };
-  std::string name;
-  std::string link_id;  // _struct_conn.ccp4_link_id (== _chem_link.id)
-  Type type = Unknown;
-  Asu asu = Asu::Any;
-  AtomAddress partner1, partner2;
-  double reported_distance = 0.0;
-};
-
-inline const char* get_mmcif_connection_type_id(Connection::Type t) {
-  static constexpr const char* type_ids[] = {
-    "covale", "disulf", "hydrog", "metalc", "." };
-  return type_ids[t];
+inline AtomAddress make_address(const Chain& ch, const Residue& res, const Atom& at) {
+  return AtomAddress(ch.name, res, at.name, at.altloc);
 }
-
-// Secondary structure. PDBx/mmCIF stores helices and sheets separately.
-
-// mmCIF spec defines 32 possible values for _struct_conf.conf_type_id -
-// "the type of the conformation of the backbone of the polymer (whether
-// protein or nucleic acid)". But as of 2019 only HELX_P is used (not counting
-// TURN_P that occurs in only 6 entries). The actual helix type is given
-// by numeric value of _struct_conf.pdbx_PDB_helix_class, which corresponds
-// to helixClass from the PDB HELIX record. These values are in the range 1-10.
-// As of 2019 it's almost only type 1 and 5:
-// 3116566 of  1 - right-handed alpha
-//      16 of  2 - right-handed omega
-//      84 of  3 - right-handed pi
-//      79 of  4 - right-handed gamma
-// 1063337 of  5 - right-handed 3-10
-//      27 of  6 - left-handed alpha
-//       5 of  7 - left-handed omega
-//       2 of  8 - left-handed gamma
-//       8 of  9 - 2-7 ribbon/helix
-//      46 of 10 - polyproline
-struct Helix {
-  enum HelixClass {
-    UnknownHelix, RAlpha, ROmega, RPi, RGamma, R310,
-    LAlpha, LOmega, LGamma, Helix27, HelixPolyProlineNone
-  };
-  AtomAddress start, end;
-  HelixClass pdb_helix_class = UnknownHelix;
-  int length = -1;
-  void set_helix_class_as_int(int n) {
-    if (n >= 1 && n <= 10)
-      pdb_helix_class = static_cast<HelixClass>(n);
-  }
-};
-
-struct Sheet {
-  struct Strand {
-    AtomAddress start, end;
-    AtomAddress hbond_atom2, hbond_atom1;
-    int sense;  // 0 = first strand, 1 = parallel, -1 = anti-parallel.
-    std::string name; // optional, _struct_sheet_range.id if from mmCIF
-  };
-  std::string name;
-  std::vector<Strand> strands;
-  explicit Sheet(std::string sheet_id) noexcept : name(sheet_id) {}
-};
 
 
 template<typename CraT>
@@ -961,42 +787,6 @@ struct Model {
   Model empty_copy() const { return Model(name); }
   std::vector<Chain>& children() { return chains; }
   const std::vector<Chain>& children() const { return chains; }
-};
-
-struct NcsOp {
-  std::string id;
-  bool given;
-  Transform tr;
-  Position apply(const Position& p) const { return Position(tr.apply(p)); }
-};
-
-// bioassembly / biomolecule
-struct Assembly {
-  struct Operator {
-    std::string name; // optional
-    std::string type; // optional (from mmCIF only)
-    Transform transform;
-  };
-  struct Gen {
-    std::vector<std::string> chains;
-    std::vector<std::string> subchains;
-    std::vector<Operator> operators;
-  };
-  enum class SpecialKind {
-    NA, CompleteIcosahedral, RepresentativeHelical, CompletePoint
-  };
-  std::string name;
-  bool author_determined = false;
-  bool software_determined = false;
-  SpecialKind special_kind = SpecialKind::NA;
-  int oligomeric_count = 0;
-  std::string oligomeric_details;
-  std::string software_name;
-  double absa = NAN; // TOTAL BURIED SURFACE AREA: ... ANGSTROM**2
-  double ssa = NAN;  // SURFACE AREA OF THE COMPLEX: ... ANGSTROM**2
-  double more = NAN; // CHANGE IN SOLVENT FREE ENERGY: ... KCAL/MOL
-  std::vector<Gen> generators;
-  Assembly(const std::string& name_) : name(name_) {}
 };
 
 inline Entity* find_entity(const std::string& subchain_id,

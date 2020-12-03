@@ -1,23 +1,20 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/align.hpp"     // for assign_label_seq_id
-#include "gemmi/elem.hpp"
-#include "gemmi/entstr.hpp"
-#include "gemmi/resinfo.hpp"
 #include "gemmi/model.hpp"
 #include "gemmi/calculate.hpp"
-#include "gemmi/polyheur.hpp"
-#include "gemmi/assembly.hpp"
+//#include "gemmi/polyheur.hpp"
+#include "gemmi/assembly.hpp"  // for make_assembly
 #include "gemmi/to_pdb.hpp"
 #include "gemmi/to_mmcif.hpp"
 #include "gemmi/tostr.hpp"
 #include "gemmi/fstream.hpp"
 
-#include <fstream>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 #include "common.h"  // for normalize_index
+#include "meta.h"
 
 namespace py = pybind11;
 using namespace gemmi;
@@ -26,26 +23,9 @@ PYBIND11_MAKE_OPAQUE(std::vector<Connection>)
 PYBIND11_MAKE_OPAQUE(std::vector<NcsOp>)
 PYBIND11_MAKE_OPAQUE(std::vector<Entity>)
 PYBIND11_MAKE_OPAQUE(std::vector<Assembly>)
-PYBIND11_MAKE_OPAQUE(std::vector<Assembly::Gen>)
-PYBIND11_MAKE_OPAQUE(std::vector<Assembly::Operator>)
 using info_map_type = std::map<std::string, std::string>;
 PYBIND11_MAKE_OPAQUE(info_map_type)
 
-namespace gemmi {
-  inline std::ostream& operator<< (std::ostream& os, const Entity& ent) {
-    os << "<gemmi.Entity '" << ent.name << "' "
-       << entity_type_to_string(ent.entity_type);
-    if (ent.polymer_type != PolymerType::Unknown)
-      os << ' ' << polymer_type_to_qstring(ent.polymer_type);
-    os << " object at " << (void*)&ent << '>';
-    return os;
-  }
-}
-
-namespace pybind11 { namespace detail {
-  template<> struct type_caster<SeqId::OptionalNum>
-    : optional_caster<SeqId::OptionalNum> {};
-}} // namespace pybind11::detail
 
 template<typename T, typename C>
 C& add_item(T& container, C child, int pos) {
@@ -80,48 +60,23 @@ template<typename P> void remove_children(P& parent, py::slice slice) {
   }
 }
 
-static std::vector<std::string>
-expand_protein_one_letter_string(const std::string& s) {
-  std::vector<std::string> r;
-  r.reserve(s.size());
-  for (char c : s)
-    r.push_back(expand_protein_one_letter(c));
-  return r;
-}
-
 void add_mol(py::module& m) {
 
   // "Forward declaration" of python classes to avoid
   // C++ signatures in docstrings
-  py::class_<AtomAddress> pyAtomAddress(m, "AtomAddress");
-  py::class_<ResidueId> pyResidueId(m, "ResidueId");
   py::class_<Atom> pyAtom(m, "Atom");
   py::class_<Residue, ResidueId> pyResidue(m, "Residue");
   py::class_<Chain> pyChain(m, "Chain");
   py::class_<Model> pyModel(m, "Model");
-  py::class_<SeqId> pySeqId(m, "SeqId");
   py::class_<ResidueSpan> pyResidueSpan(m, "ResidueSpan");
   py::class_<ResidueGroup, ResidueSpan> pyResidueGroup(m, "ResidueGroup");
   py::class_<CraProxy> pyCraGenerator(m, "CraGenerator");
 
-  py::class_<ResidueInfo>(m, "ResidueInfo")
-    .def_readonly("one_letter_code", &ResidueInfo::one_letter_code)
-    .def_readonly("hydrogen_count", &ResidueInfo::hydrogen_count)
-    .def_readonly("weight", &ResidueInfo::weight)
-    .def("found", &ResidueInfo::found)
-    .def("is_standard", &ResidueInfo::is_standard)
-    .def("is_water", &ResidueInfo::is_water)
-    .def("is_nucleic_acid", &ResidueInfo::is_nucleic_acid)
-    .def("is_amino_acid", &ResidueInfo::is_amino_acid);
-
-  m.def("find_tabulated_residue", &find_tabulated_residue, py::arg("name"),
-        "Find chemical component information in the internal table.");
-  m.def("expand_protein_one_letter", &expand_protein_one_letter);
-  m.def("expand_protein_one_letter_string", &expand_protein_one_letter_string);
   m.def("one_letter_code",
         (std::string (*)(const std::vector<std::string>&)) &one_letter_code);
   m.def("one_letter_code",
         [](const ResidueSpan& span) { return one_letter_code(span); });
+  m.def("make_address", &make_address);
 
   py::enum_<CoorFormat>(m, "CoorFormat")
     .value("Unknown", CoorFormat::Unknown)
@@ -131,103 +86,10 @@ void add_mol(py::module& m) {
     .value("Mmjson", CoorFormat::Mmjson)
     .value("ChemComp", CoorFormat::ChemComp);
 
-  py::enum_<EntityType>(m, "EntityType")
-    .value("Unknown", EntityType::Unknown)
-    .value("Polymer", EntityType::Polymer)
-    .value("NonPolymer", EntityType::NonPolymer)
-    .value("Water", EntityType::Water);
-
-  py::enum_<PolymerType>(m, "PolymerType")
-    .value("PeptideL", PolymerType::PeptideL)
-    .value("PeptideD", PolymerType::PeptideD)
-    .value("Dna", PolymerType::Dna)
-    .value("Rna", PolymerType::Rna)
-    .value("DnaRnaHybrid", PolymerType::DnaRnaHybrid)
-    .value("SaccharideD", PolymerType::SaccharideD)
-    .value("SaccharideL", PolymerType::SaccharideL)
-    .value("Pna", PolymerType::Pna)
-    .value("CyclicPseudoPeptide", PolymerType::CyclicPseudoPeptide)
-    .value("Other", PolymerType::Other)
-    .value("Unknown", PolymerType::Unknown);
-
-  py::enum_<HowToNameCopiedChains>(m, "HowToNameCopiedChains")
-    .value("Short", HowToNameCopiedChains::Short)
-    .value("AddNumber", HowToNameCopiedChains::AddNumber)
-    .value("Dup", HowToNameCopiedChains::Dup)
-    ;
-
-  py::class_<Entity>(m, "Entity")
-    .def(py::init<std::string>())
-    .def_readwrite("name", &Entity::name)
-    .def_readwrite("subchains", &Entity::subchains)
-    .def_readwrite("entity_type", &Entity::entity_type)
-    .def_readwrite("polymer_type", &Entity::polymer_type)
-    .def_readwrite("full_sequence", &Entity::full_sequence)
-    .def_static("first_mon", &Entity::first_mon)
-    .def("__repr__", [](const Entity& self) { return tostr(self); });
-
-  py::class_<NcsOp>(m, "NcsOp")
-    .def(py::init<>())
-    .def_readwrite("id", &NcsOp::id)
-    .def_readwrite("given", &NcsOp::given)
-    .def_readonly("tr", &NcsOp::tr)
-    .def("apply", &NcsOp::apply)
-    .def("__repr__", [](const NcsOp& self) {
-        return tostr("<gemmi.NcsOp ", self.id,
-                     " |shift|=", self.tr.vec.length(),
-                     (self.given ? " (" : " (not "), "given)>");
-    });
-
-  py::class_<Assembly> assembly(m, "Assembly");
-  py::class_<Assembly::Operator>(assembly, "Operator")
-    .def(py::init<>())
-    .def_readonly("name", &Assembly::Operator::name)
-    .def_readonly("type", &Assembly::Operator::type)
-    .def_readonly("transform", &Assembly::Operator::transform);
-
-  py::class_<Assembly::Gen>(assembly, "Gen")
-    .def(py::init<>())
-    .def_readonly("chains", &Assembly::Gen::chains)
-    .def_readonly("subchains", &Assembly::Gen::subchains)
-    .def_readonly("operators", &Assembly::Gen::operators);
-
-  assembly
-    .def_readonly("name", &Assembly::name)
-    .def_readonly("oligomeric_details", &Assembly::oligomeric_details)
-    .def_readonly("generators", &Assembly::generators)
-    .def("make_assembly", [](const Assembly& self, const Model& model,
-                             HowToNameCopiedChains how) {
-        return make_assembly(self, model, how, nullptr);
-    })
-    ;
-
-  py::enum_<Connection::Type>(m, "ConnectionType")
-    .value("Covale", Connection::Type::Covale)
-    .value("Disulf", Connection::Type::Disulf)
-    .value("Hydrog", Connection::Type::Hydrog)
-    .value("MetalC", Connection::Type::MetalC)
-    .value("Unknown", Connection::Type::Unknown);
-
-  py::class_<Connection>(m, "Connection")
-    .def(py::init<>())
-    .def_readwrite("name", &Connection::name)
-    .def_readwrite("link_id", &Connection::link_id)
-    .def_readwrite("type", &Connection::type)
-    .def_readwrite("asu", &Connection::asu)
-    .def_readwrite("partner1", &Connection::partner1)
-    .def_readwrite("partner2", &Connection::partner2)
-    .def_readwrite("reported_distance", &Connection::reported_distance)
-    .def("__repr__", [](const Connection& self) {
-        return tostr("<gemmi.Connection ", self.name, "  ",
-                     self.partner1.str(), " - ", self.partner2.str(), '>');
-    });
-
   py::bind_vector<std::vector<Connection>>(m, "ConnectionList");
   py::bind_vector<std::vector<NcsOp>>(m, "NcsOpList");
   py::bind_vector<std::vector<Entity>>(m, "EntityList");
   py::bind_vector<std::vector<Assembly>>(m, "AssemblyList");
-  py::bind_vector<std::vector<Assembly::Gen>>(assembly, "GenList");
-  py::bind_vector<std::vector<Assembly::Operator>>(assembly, "OperatorList");
   py::bind_map<info_map_type>(m, "InfoMap");
 
   py::class_<Structure>(m, "Structure")
@@ -305,6 +167,7 @@ void add_mol(py::module& m) {
     })
     .def("make_mmcif_document", &make_mmcif_document)
     .def("make_mmcif_headers", &make_mmcif_headers)
+    //.def("update_mmcif_block", &update_mmcif_block)
     .def("add_entity_types", (void (*)(Structure&, bool)) &add_entity_types,
          py::arg("overwrite")=false)
     .def("assign_subchains", (void (*)(Structure&, bool)) &assign_subchains,
@@ -327,22 +190,6 @@ void add_mol(py::module& m) {
     .def("__repr__", [](const Structure& self) {
         return tostr("<gemmi.Structure ", self.name, " with ",
                      self.models.size(), " model(s)>");
-    });
-
-  pyAtomAddress
-    .def(py::init<>())
-    .def(py::init<const Chain&, const Residue&, const Atom&>())
-    .def(py::init<const std::string&, const SeqId&, const std::string&,
-                  const std::string&, char>(),
-         py::arg("chain"), py::arg("seqid"), py::arg("resname"),
-         py::arg("atom"), py::arg("altloc")='\0')
-    .def_readwrite("chain_name", &AtomAddress::chain_name)
-    .def_readwrite("res_id", &AtomAddress::res_id)
-    .def_readwrite("atom_name", &AtomAddress::atom_name)
-    .def_readwrite("altloc", &AtomAddress::altloc)
-    .def("__str__", &AtomAddress::str)
-    .def("__repr__", [](const AtomAddress& self) {
-        return tostr("<gemmi.AtomAddress ", self.str(), '>');
     });
 
   py::class_<CRA>(m, "CRA")
@@ -560,26 +407,6 @@ void add_mol(py::module& m) {
                      self.size(), '>');
     });
 
-  pySeqId
-    .def(py::init<int, char>())
-    .def(py::init<const std::string&>())
-    .def_readwrite("num", &SeqId::num)
-    .def_readwrite("icode", &SeqId::icode)
-    .def("__str__", &SeqId::str)
-    .def("__repr__", [](const SeqId& self) {
-        return tostr("<gemmi.SeqId ", self.str(), '>');
-    });
-
-  pyResidueId
-    .def(py::init<>())
-    .def_readwrite("name", &ResidueId::name)
-    .def_readwrite("seqid", &ResidueId::seqid)
-    .def_readwrite("segment", &ResidueId::segment)
-    .def("__str__", &ResidueId::str)
-    .def("__repr__", [](const ResidueId& self) {
-        return tostr("<gemmi.ResidueId ", self.str(), '>');
-    });
-
   pyResidue
     .def(py::init<>())
     .def_readwrite("subchain", &Residue::subchain)
@@ -665,4 +492,16 @@ void add_mol(py::module& m) {
         py::arg("residue"), py::arg("next_residue"));
   m.def("calculate_sequence_weight", &calculate_sequence_weight,
         py::arg("sequence"), py::arg("unknown")=0.);
+
+  py::enum_<HowToNameCopiedChains>(m, "HowToNameCopiedChains")
+    .value("Short", HowToNameCopiedChains::Short)
+    .value("AddNumber", HowToNameCopiedChains::AddNumber)
+    .value("Dup", HowToNameCopiedChains::Dup)
+    ;
+
+  m.def("make_assembly", [](const Assembly& assembly, const Model& model,
+                            HowToNameCopiedChains how) {
+        return make_assembly(assembly, model, how, nullptr);
+  })
+  ;
 }

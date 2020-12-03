@@ -326,7 +326,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
                                              cra2.atom->pos, con.asu);
     conn_loop.add_row({
         con.name,                                  // id
-        get_mmcif_connection_type_id(con.type),    // conn_type_id
+        connection_type_to_string(con.type),       // conn_type_id
         impl::qchain(cra1.chain->name),            // ptnr1_auth_asym_id
         subchain_or_dot(*cra1.residue),            // ptnr1_label_asym_id
         cra1.residue->name,                        // ptnr1_label_comp_id
@@ -355,7 +355,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
   cif::Loop& type_loop = block.init_mmcif_loop("_struct_conn_type.", {"id"});
   for (int i = 0; i < (int)type_ids.size() - 1; ++i)
     if (type_ids[i])
-      type_loop.add_row({get_mmcif_connection_type_id((Connection::Type)i)});
+      type_loop.add_row({connection_type_to_string((Connection::Type)i)});
 }
 
 void write_cell_parameters(const UnitCell& cell, cif::Block& block) {

@@ -1,6 +1,8 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/unitcell.hpp"
+#include "gemmi/resinfo.hpp"
+#include "gemmi/seqid.hpp"
 
 #include <cstdio>  // for snprintf
 #include <array>
@@ -17,6 +19,15 @@ static std::string triple(double x, double y, double z) {
   char buf[128];
   snprintf(buf, 128, "%g, %g, %g", x, y, z);
   return std::string(buf);
+}
+
+static std::vector<std::string>
+expand_protein_one_letter_string(const std::string& s) {
+  std::vector<std::string> r;
+  r.reserve(s.size());
+  for (char c : s)
+    r.push_back(expand_protein_one_letter(c));
+  return r;
 }
 
 template<typename T> void add_smat33(py::module& m, const char* name) {
@@ -199,5 +210,21 @@ void add_unitcell(py::module& m) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
              + ", " + triple(self.alpha, self.beta, self.gamma) + ")>";
     });
-}
 
+
+  // resinfo.hpp
+  py::class_<ResidueInfo>(m, "ResidueInfo")
+    .def_readonly("one_letter_code", &ResidueInfo::one_letter_code)
+    .def_readonly("hydrogen_count", &ResidueInfo::hydrogen_count)
+    .def_readonly("weight", &ResidueInfo::weight)
+    .def("found", &ResidueInfo::found)
+    .def("is_standard", &ResidueInfo::is_standard)
+    .def("is_water", &ResidueInfo::is_water)
+    .def("is_nucleic_acid", &ResidueInfo::is_nucleic_acid)
+    .def("is_amino_acid", &ResidueInfo::is_amino_acid);
+
+  m.def("find_tabulated_residue", &find_tabulated_residue, py::arg("name"),
+        "Find chemical component information in the internal table.");
+  m.def("expand_protein_one_letter", &expand_protein_one_letter);
+  m.def("expand_protein_one_letter_string", &expand_protein_one_letter_string);
+}

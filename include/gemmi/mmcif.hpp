@@ -214,12 +214,7 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
     Connection c;
     c.name = row.str(kId);
     copy_string(row, kLinkId, c.link_id);
-    std::string type = row.str(kConnTypeId);
-    for (int i = 0; i != Connection::Unknown; ++i)
-      if (get_mmcif_connection_type_id(Connection::Type(i)) == type) {
-        c.type = Connection::Type(i);
-        break;
-      }
+    c.type = connection_type_from_string(row.str(kConnTypeId));
     if (row.has2(kSym1) && row.has2(kSym2)) {
       c.asu = (row.str(kSym1) == row.str(kSym2) ? Asu::Same : Asu::Different);
     }

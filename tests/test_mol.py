@@ -723,7 +723,8 @@ class TestMol(unittest.TestCase):
 
         self.assertEqual(len(st.assemblies), 1)
         asem = st.assemblies[0]
-        bio = asem.make_assembly(model, gemmi.HowToNameCopiedChains.Short)
+        bio = gemmi.make_assembly(asem, model,
+                                  gemmi.HowToNameCopiedChains.Short)
         self.assertEqual([ch.name for ch in bio], ['A', 'B', 'C', 'D'])
         self.assertAlmostEqual(bio.calculate_mass(), 2 * model_mass)
         self.assertAlmostEqual(bio[0].calculate_mass(), a_mass)
@@ -731,18 +732,20 @@ class TestMol(unittest.TestCase):
         self.assertAlmostEqual(bio[2].calculate_mass(), a_mass)
         self.assertAlmostEqual(bio[3].calculate_mass(), b_mass)
 
-        bio = asem.make_assembly(model, gemmi.HowToNameCopiedChains.AddNumber)
+        bio = gemmi.make_assembly(asem, model,
+                                  gemmi.HowToNameCopiedChains.AddNumber)
         self.assertEqual([ch.name for ch in bio], ['A1', 'B1', 'A2', 'B2'])
 
     def test_assembly_naming(self):
         st = gemmi.read_structure(full_path('4oz7.pdb'))
         model = st[0]
         a1 = st.assemblies[1]
-        bio = a1.make_assembly(model, gemmi.HowToNameCopiedChains.AddNumber)
+        bio = gemmi.make_assembly(a1, model,
+                                  gemmi.HowToNameCopiedChains.AddNumber)
         self.assertEqual([ch.name for ch in bio], ['B1'])
-        bio = a1.make_assembly(model, gemmi.HowToNameCopiedChains.Dup)
+        bio = gemmi.make_assembly(a1, model, gemmi.HowToNameCopiedChains.Dup)
         self.assertEqual([ch.name for ch in bio], ['B'])
-        bio = a1.make_assembly(model, gemmi.HowToNameCopiedChains.Short)
+        bio = gemmi.make_assembly(a1, model, gemmi.HowToNameCopiedChains.Short)
         self.assertEqual([ch.name for ch in bio], ['B'])
 
 
