@@ -9,6 +9,7 @@
 #include <vector>
 #include <set>
 #include "model.hpp"
+#include "assembly.hpp"  // for HowToNameCopiedChains
 #include "resinfo.hpp"   // for find_tabulated_residue
 #include "util.hpp"      // for vector_remove_if
 
@@ -371,6 +372,36 @@ inline bool trim_to_alanine(Residue& res) {
 inline void trim_to_alanine(Chain& chain) {
   for (Residue& res : chain.residues)
     trim_to_alanine(res);
+}
+
+inline void expand_ncs(Structure& st, HowToNameCopiedChains how) {
+  for (Model& model : st.models) {
+    size_t orig_size = model.chains.size();
+    ChainNameGenerator namegen(model, how);
+    for (const NcsOp& op : st.ncs)
+      if (!op.given) {
+        for (size_t i = 0; i != orig_size; ++i) {
+          if (how == HowToNameCopiedChains::Dup)
+            for (Residue& res : model.chains[i].residues)
+              res.segment = "0";
+
+          model.chains.push_back(model.chains[i]);
+          Chain& new_chain = model.chains.back();
+          new_chain.name = namegen.make_new_name(new_chain.name, (int)i+1);
+
+          for (Residue& res : new_chain.residues) {
+            for (Atom& a : res.atoms)
+              a.pos = op.apply(a.pos);
+            if (!res.subchain.empty())
+              res.subchain = new_chain.name + ":" + res.subchain;
+            if (how == HowToNameCopiedChains::Dup)
+              res.segment = op.id;
+          }
+        }
+      }
+  }
+  for (NcsOp& op : st.ncs)
+    op.given = true;
 }
 
 } // namespace gemmi
