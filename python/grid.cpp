@@ -15,11 +15,11 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 #include "gemmi/tostr.hpp"
 #include "gemmi/fourier.hpp"  // for get_f_phi_on_grid
 
-#include <pybind11/pybind11.h>
+#include "common.h"
 #include <pybind11/complex.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
-#include "common.h"  // for normalize_index
+
 namespace py = pybind11;
 using namespace gemmi;
 

@@ -6,7 +6,7 @@
 
 #include <cstdio>  // for snprintf
 #include <array>
-#include <pybind11/pybind11.h>
+#include "common.h"
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include "miller_a.h"

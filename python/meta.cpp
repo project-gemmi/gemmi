@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#include <pybind11/pybind11.h>
+#include "common.h"
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 #include <ostream>

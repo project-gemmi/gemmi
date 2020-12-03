@@ -5,7 +5,7 @@
 #include "gemmi/monlib.hpp"
 #include "gemmi/topo.hpp"
 
-#include <pybind11/pybind11.h>
+#include "common.h"
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 

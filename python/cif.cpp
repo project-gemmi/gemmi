@@ -6,15 +6,11 @@
 #include "gemmi/to_json.hpp"
 #include "gemmi/fstream.hpp"
 
-//#include <pybind11/pybind11.h>
+#include "common.h"
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
 using namespace gemmi::cif;
-
-// defined in read.cpp
-void cif_parse_string(Document& doc, const std::string& data);
-void cif_parse_file(Document& doc, const std::string& filename);
 
 std::string pyobject_to_string(py::handle handle, bool raw) {
   PyObject* ptr = handle.ptr();

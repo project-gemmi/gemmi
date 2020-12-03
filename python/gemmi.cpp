@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#include <pybind11/pybind11.h>
+#include "common.h"
 #include <pybind11/stl.h>
 #include "gemmi/version.hpp"
 #include "gemmi/dirwalk.hpp"
@@ -9,21 +9,6 @@
 #include "gemmi/interop.hpp"  // for atom_to_site, mx_to_sx_structure
 
 namespace py = pybind11;
-
-void add_symmetry(py::module& m); // sym.cpp
-void add_grid(py::module& m); // grid.cpp
-void add_unitcell(py::module& m); // unitcell.cpp
-void add_hkl(py::module& m); // hkl.cpp
-void add_meta(py::module& m); // meta.cpp
-void add_mol(py::module& m); // mol.cpp
-void add_cif(py::module& cif); // cif.cpp
-void add_read_structure(py::module& m); // read.cpp
-void add_cif_read(py::module& cif); // read.cpp
-void add_monlib(py::module& m); // monlib.cpp
-void add_alignment(py::module& m); // align.cpp
-void add_select(py::module& m); // align.cpp
-void add_search(py::module& m); // search.cpp
-void add_sf(py::module& m); // sf.cpp
 
 void add_misc(py::module& m) {
   using gemmi::SmallStructure;

@@ -3,7 +3,7 @@
 #include "gemmi/neighbor.hpp"
 #include "gemmi/linkhunt.hpp"
 #include "gemmi/tostr.hpp"
-#include <pybind11/pybind11.h>
+#include "common.h"
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 

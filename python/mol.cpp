@@ -1,16 +1,12 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#include "gemmi/align.hpp"     // for assign_label_seq_id
 #include "gemmi/model.hpp"
 #include "gemmi/calculate.hpp"
-//#include "gemmi/polyheur.hpp"
+#include "gemmi/polyheur.hpp"
 #include "gemmi/assembly.hpp"  // for make_assembly
-#include "gemmi/to_pdb.hpp"
-#include "gemmi/to_mmcif.hpp"
 #include "gemmi/tostr.hpp"
-#include "gemmi/fstream.hpp"
 
-#include <pybind11/pybind11.h>
+#include "common.h"
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 #include "common.h"  // for normalize_index
@@ -92,7 +88,9 @@ void add_mol(py::module& m) {
   py::bind_vector<std::vector<Assembly>>(m, "AssemblyList");
   py::bind_map<info_map_type>(m, "InfoMap");
 
-  py::class_<Structure>(m, "Structure")
+
+  py::class_<Structure> structure(m, "Structure");
+  structure
     .def(py::init<>())
     .def_readwrite("name", &Structure::name)
     .def_readwrite("cell", &Structure::cell)
@@ -133,41 +131,6 @@ void add_mol(py::module& m) {
     .def("merge_chain_parts", &Structure::merge_chain_parts,
          py::arg("min_sep")=0)
     .def("setup_cell_images", &Structure::setup_cell_images)
-    .def("make_pdb_headers", &make_pdb_headers)
-    .def("write_pdb", [](const Structure& st, const std::string& path,
-                         bool seqres_records, bool ssbond_records,
-                         bool link_records, bool cispep_records,
-                         bool ter_records, bool numbered_ter,
-                         bool ter_ignores_type, bool use_linkr) {
-       PdbWriteOptions options;
-       options.seqres_records = seqres_records;
-       options.ssbond_records = ssbond_records;
-       options.link_records = link_records;
-       options.cispep_records = cispep_records;
-       options.ter_records = ter_records;
-       options.numbered_ter = numbered_ter;
-       options.ter_ignores_type = ter_ignores_type;
-       options.use_linkr = use_linkr;
-       Ofstream f(path);
-       write_pdb(st, f.ref(), options);
-    }, py::arg("path"),
-       py::arg("seqres_records")=true, py::arg("ssbond_records")=true,
-       py::arg("link_records")=true, py::arg("cispep_records")=true,
-       py::arg("ter_records")=true, py::arg("numbered_ter")=true,
-       py::arg("ter_ignores_type")=false, py::arg("use_linkr")=false)
-    .def("write_minimal_pdb",
-         [](const Structure& st, const std::string& path) {
-       Ofstream f(path);
-       write_minimal_pdb(st, f.ref());
-    }, py::arg("path"))
-    .def("make_minimal_pdb", [](const Structure& st) -> std::string {
-       std::ostringstream os;
-       write_minimal_pdb(st, os);
-       return os.str();
-    })
-    .def("make_mmcif_document", &make_mmcif_document)
-    .def("make_mmcif_headers", &make_mmcif_headers)
-    //.def("update_mmcif_block", &update_mmcif_block)
     .def("add_entity_types", (void (*)(Structure&, bool)) &add_entity_types,
          py::arg("overwrite")=false)
     .def("assign_subchains", (void (*)(Structure&, bool)) &assign_subchains,
@@ -182,7 +145,6 @@ void add_mol(py::module& m) {
     .def("remove_ligands_and_waters",
          (void (*)(Structure&)) &remove_ligands_and_waters)
     .def("remove_empty_chains", (void (*)(Structure&)) &remove_empty_chains)
-    .def("assign_label_seq_id", &assign_label_seq_id, py::arg("force")=false)
     .def("shorten_chain_names", &shorten_chain_names)
     .def("calculate_box", &calculate_box, py::arg("margin")=0.)
     .def("calculate_fractional_box", &calculate_fractional_box, py::arg("margin")=0.)
@@ -191,6 +153,8 @@ void add_mol(py::module& m) {
         return tostr("<gemmi.Structure ", self.name, " with ",
                      self.models.size(), " model(s)>");
     });
+    add_assign_label_seq_id(structure);
+    add_write(m, structure);
 
   py::class_<CRA>(m, "CRA")
     .def_readonly("chain", &CRA::chain)

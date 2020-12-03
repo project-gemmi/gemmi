@@ -4,7 +4,7 @@
 #include "gemmi/seqalign.hpp"  // for align_string_sequences
 #include "gemmi/select.hpp"
 
-#include <pybind11/pybind11.h>
+#include "common.h"
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
@@ -120,4 +120,9 @@ void add_alignment(py::module& m) {
           return superpose_positions(pos1.data(), pos2.data(), pos1.size(),
                                      weight.empty() ? nullptr : weight.data());
         }, py::arg("pos1"), py::arg("pos2"), py::arg("weight")=std::vector<int>{});
+}
+
+void add_assign_label_seq_id(py::class_<Structure>& structure) {
+  structure
+    .def("assign_label_seq_id", &assign_label_seq_id, py::arg("force")=false);
 }

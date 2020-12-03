@@ -9,7 +9,7 @@
 #include "gemmi/fprime.hpp"
 #include "gemmi/reciproc.hpp"  // for count_reflections, make_miller_vector
 
-#include <pybind11/pybind11.h>
+#include "common.h"
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 #include <pybind11/numpy.h>

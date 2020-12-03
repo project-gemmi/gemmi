@@ -10,7 +10,7 @@
 #include "gemmi/chemcomp_xyz.hpp"
 #include "gemmi/remarks.hpp"
 
-#include <pybind11/pybind11.h>
+#include "common.h"
 
 namespace py = pybind11;
 using namespace gemmi;
