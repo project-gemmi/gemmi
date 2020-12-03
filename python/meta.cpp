@@ -7,7 +7,7 @@
 
 #include "gemmi/seqid.hpp"
 #include "gemmi/metadata.hpp"
-#include "gemmi/entstr.hpp"
+#include "gemmi/enumstr.hpp"
 #include "gemmi/tostr.hpp"
 #include "meta.h"
 

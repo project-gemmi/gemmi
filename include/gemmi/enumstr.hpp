@@ -1,11 +1,10 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// EntityType, PolymerType <-> PDBx/mmCIF names
-// PolymerType <-> 3-letter string
-// SoftwareItem::Classification <-> PDBx/mmCIF string
+// To and from strings PDBx/mmCIF:
+// EntityType, PolymerType, Connection::Type , SoftwareItem::Classification
 
-#ifndef GEMMI_ENTSTR_HPP_
-#define GEMMI_ENTSTR_HPP_
+#ifndef GEMMI_ENUMSTR_HPP_
+#define GEMMI_ENUMSTR_HPP_
 
 #include "metadata.hpp"  // for EntityType, PolymerType, SoftwareItem
 #include "util.hpp"      // for iequal

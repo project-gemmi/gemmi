@@ -9,11 +9,11 @@
 #include <string>
 #include <unordered_map>
 #include "cifdoc.hpp"
-#include "fail.hpp"   // for fail
-#include "numb.hpp"   // for as_number
-#include "atox.hpp"   // for string_to_int
+#include "fail.hpp"    // for fail
+#include "numb.hpp"    // for as_number
+#include "atox.hpp"    // for string_to_int
 #include "model.hpp"
-#include "entstr.hpp" // for entity_type_from_string, polymer_type_from_string
+#include "enumstr.hpp" // for entity_type_from_string, polymer_type_from_string
 #include "mmcif_impl.hpp" // for set_cell_from_mmcif
 
 namespace gemmi {
