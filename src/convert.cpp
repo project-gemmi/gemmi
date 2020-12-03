@@ -7,7 +7,7 @@
 #include "gemmi/align.hpp"     // for assign_label_seq_id
 #include "gemmi/to_pdb.hpp"    // for write_pdb, ...
 #include "gemmi/fstream.hpp"   // for Ofstream, Ifstream
-#include "gemmi/to_mmcif.hpp"  // for update_cif_block
+#include "gemmi/to_mmcif.hpp"  // for update_mmcif_block
 #include "gemmi/remarks.hpp"   // for read_metadata_from_remarks
 #include "gemmi/assembly.hpp"  // for ChainNameGenerator, change_to_assembly
 #include "gemmi/pirfasta.hpp"  // for read_pir_or_fasta
@@ -279,7 +279,7 @@ void convert(gemmi::Structure& st,
     if (options[Minimal])
       gemmi::add_minimal_mmcif_data(st, doc.blocks[0]);
     else
-      gemmi::update_cif_block(st, doc.blocks[0], /*with_atoms=*/true);
+      gemmi::update_mmcif_block(st, doc.blocks[0], gemmi::MmcifOutputGroups(true));
     apply_cif_doc_modifications(doc, options);
 
     if (output_type == CoorFormat::Mmcif) {

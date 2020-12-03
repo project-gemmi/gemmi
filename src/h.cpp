@@ -8,7 +8,7 @@
 #include "gemmi/chemcomp.hpp"  // for ChemComp
 #include "gemmi/polyheur.hpp"  // for remove_hydrogens
 #include "gemmi/to_cif.hpp"    // for write_cif_to_file
-#include "gemmi/to_mmcif.hpp"  // for update_cif_block
+#include "gemmi/to_mmcif.hpp"  // for make_mmcif_document
 #include "gemmi/to_pdb.hpp"    // for write_pdb
 #include "gemmi/monlib.hpp"    // for MonLib, read_monomer_lib
 #include "gemmi/topo.hpp"      // for Topo

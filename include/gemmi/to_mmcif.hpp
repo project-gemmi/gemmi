@@ -11,7 +11,49 @@
 
 namespace gemmi {
 
-void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms);
+struct MmcifOutputGroups {
+  bool atoms:1;
+  bool block_name:1;
+  bool entry:1;
+  bool database_status:1;
+  bool cell:1;
+  bool symmetry:1;
+  bool entity:1;
+  bool entity_poly:1;
+  bool struct_ref:1;
+  bool chem_comp:1;
+  bool exptl:1;
+  bool diffrn:1;
+  bool reflns:1;
+  bool refine:1;
+  bool title_keywords:1;
+  bool ncs:1;
+  bool struct_asym:1;
+  bool origx:1;
+  bool struct_conf:1;
+  bool struct_sheet:1;
+  bool struct_biol:1;
+  bool assembly:1;
+  bool conn:1;
+  bool cis:1;
+  bool scale:1;
+  bool atom_type:1;
+  bool entity_poly_seq:1;
+  bool tls:1;
+  bool software:1;
+
+  explicit MmcifOutputGroups(bool all)
+    : atoms(all), block_name(all), entry(all), database_status(all),
+      cell(all), symmetry(all), entity(all), entity_poly(all),
+      struct_ref(all), chem_comp(all), exptl(all), diffrn(all),
+      reflns(all), refine(all), title_keywords(all), ncs(all),
+      struct_asym(all), origx(all), struct_conf(all), struct_sheet(all),
+      struct_biol(all), assembly(all), conn(all), cis(all),
+      scale(all), atom_type(all), entity_poly_seq(all), tls(all),
+      software(all) {}
+};
+
+void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroups groups);
 cif::Document make_mmcif_document(const Structure& st);
 cif::Block make_mmcif_headers(const Structure& st);
 void add_minimal_mmcif_data(const Structure& st, cif::Block& block);
@@ -346,48 +388,62 @@ void write_ncs_oper(const Structure& st, cif::Block& block) {
 }
 } // namespace impl
 
-void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
+void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroups groups) {
   using std::to_string;
   if (st.models.empty())
     return;
-  block.name = (!st.name.empty() ? st.name : "xxxx");
+
+  if (groups.block_name)
+    block.name = (!st.name.empty() ? st.name : "xxxx");
+
   auto e_id = st.info.find("_entry.id");
   std::string id = cif::quote(e_id != st.info.end() ? e_id->second : block.name);
-  block.set_pair("_entry.id", id);
-  auto initial_date =
-         st.info.find("_pdbx_database_status.recvd_initial_deposition_date");
-  if (initial_date != st.info.end() && !initial_date->second.empty()) {
-    block.set_pair("_pdbx_database_status.entry_id", id);
-    block.set_pair(initial_date->first, initial_date->second);
+  if (groups.entry)
+    block.set_pair("_entry.id", id);
+  else if (const std::string* val = block.find_value("_entry.id"))
+    id = *val;
+
+  if (groups.database_status) {
+    auto initial_date =
+           st.info.find("_pdbx_database_status.recvd_initial_deposition_date");
+    if (initial_date != st.info.end() && !initial_date->second.empty()) {
+      block.set_pair("_pdbx_database_status.entry_id", id);
+      block.set_pair(initial_date->first, initial_date->second);
+    }
   }
 
-  // unit cell and symmetry
-  block.set_pair("_cell.entry_id", id);
-  impl::write_cell_parameters(st.cell, block);
-  auto z_pdb = st.info.find("_cell.Z_PDB");
-  if (z_pdb != st.info.end())
-    block.set_pair(z_pdb->first, z_pdb->second);
-  block.set_pair("_symmetry.entry_id", id);
-  block.set_pair("_symmetry.space_group_name_H-M",
-                 cif::quote(st.spacegroup_hm));
-  if (const SpaceGroup* sg = st.find_spacegroup())
-    block.set_pair("_symmetry.Int_Tables_number", to_string(sg->number));
+  if (groups.cell) {
+    block.set_pair("_cell.entry_id", id);
+    impl::write_cell_parameters(st.cell, block);
+    auto z_pdb = st.info.find("_cell.Z_PDB");
+    if (z_pdb != st.info.end())
+      block.set_pair(z_pdb->first, z_pdb->second);
+  }
 
-  // _entity
-  cif::Loop& entity_loop = block.init_mmcif_loop("_entity.", {"id", "type"});
-  for (const Entity& ent : st.entities)
-    entity_loop.add_row({impl::qchain(ent.name),
-                         entity_type_to_string(ent.entity_type)});
+  if (groups.symmetry) {
+    block.set_pair("_symmetry.entry_id", id);
+    block.set_pair("_symmetry.space_group_name_H-M",
+                   cif::quote(st.spacegroup_hm));
+    if (const SpaceGroup* sg = st.find_spacegroup())
+      block.set_pair("_symmetry.Int_Tables_number", to_string(sg->number));
+  }
 
-  // _entity_poly
-  cif::Loop& ent_poly_loop = block.init_mmcif_loop("_entity_poly.", {"entity_id", "type"});
-  for (const Entity& ent : st.entities)
-    if (ent.entity_type == EntityType::Polymer)
-      ent_poly_loop.add_row({impl::qchain(ent.name),
-                             polymer_type_to_qstring(ent.polymer_type)});
+  if (groups.entity) {
+    cif::Loop& entity_loop = block.init_mmcif_loop("_entity.", {"id", "type"});
+    for (const Entity& ent : st.entities)
+      entity_loop.add_row({impl::qchain(ent.name),
+                           entity_type_to_string(ent.entity_type)});
+  }
 
-  // _struct_ref, _struct_ref_seq
-  {
+  if (groups.entity_poly) {
+    cif::Loop& ent_poly_loop = block.init_mmcif_loop("_entity_poly.", {"entity_id", "type"});
+    for (const Entity& ent : st.entities)
+      if (ent.entity_type == EntityType::Polymer)
+        ent_poly_loop.add_row({impl::qchain(ent.name),
+                               polymer_type_to_qstring(ent.polymer_type)});
+  }
+
+  if (groups.struct_ref) { // _struct_ref, _struct_ref_seq
     block.items.reserve(block.items.size() + 2); // avoid re-allocation
     cif::Loop& ref_loop = block.init_mmcif_loop("_struct_ref.",
                                   {"id", "entity_id", "db_name", "db_code",
@@ -434,8 +490,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
       }
   }
 
-  // _chem_comp
-  {
+  if (groups.chem_comp) {
     std::set<std::string> resnames;
     for (const Model& model : st.models)
       for (const Chain& chain : model.chains)
@@ -446,43 +501,45 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
       chem_comp_loop.add_row({name, "."});
   }
 
-  // _exptl
-  if (!st.meta.experiments.empty()) {
-    cif::Loop& loop = block.init_mmcif_loop("_exptl.",
-                                            {"entry_id", "method", "crystals_number"});
-    for (const ExperimentInfo& exper : st.meta.experiments)
-      loop.add_row({id, cif::quote(exper.method),
-                    impl::int_or_qmark(exper.number_of_crystals)});
-  } else {
-    auto exptl_method = st.info.find("_exptl.method");
-    if (exptl_method != st.info.end()) {
-      cif::Loop& loop = block.init_mmcif_loop("_exptl.", {"entry_id", "method"});
-      for (const std::string& m : gemmi::split_str(exptl_method->second, "; "))
-        loop.add_row({id, cif::quote(m)});
+  if (groups.exptl) {
+    // _exptl
+    if (!st.meta.experiments.empty()) {
+      cif::Loop& loop = block.init_mmcif_loop("_exptl.",
+                                              {"entry_id", "method", "crystals_number"});
+      for (const ExperimentInfo& exper : st.meta.experiments)
+        loop.add_row({id, cif::quote(exper.method),
+                      impl::int_or_qmark(exper.number_of_crystals)});
+    } else {
+      auto exptl_method = st.info.find("_exptl.method");
+      if (exptl_method != st.info.end()) {
+        cif::Loop& loop = block.init_mmcif_loop("_exptl.", {"entry_id", "method"});
+        for (const std::string& m : gemmi::split_str(exptl_method->second, "; "))
+          loop.add_row({id, cif::quote(m)});
+      }
+    }
+
+    // _exptl_crystal
+    if (!st.meta.crystals.empty()) {
+      cif::Loop& loop = block.init_mmcif_loop("_exptl_crystal.",
+                                              {"id", "description"});
+      for (const CrystalInfo& cryst : st.meta.crystals)
+        loop.add_row({cryst.id, impl::string_or_qmark(cryst.description)});
+    }
+
+    // _exptl_crystal_grow
+    if (std::any_of(st.meta.crystals.begin(), st.meta.crystals.end(),
+          [](const CrystalInfo& c) { return !c.ph_range.empty() || !std::isnan(c.ph); })) {
+      cif::Loop& grow_loop = block.init_mmcif_loop("_exptl_crystal_grow.",
+                                                   {"crystal_id", "pH", "pdbx_pH_range"});
+      for (const CrystalInfo& crystal : st.meta.crystals)
+        grow_loop.add_row({cif::quote(crystal.id),
+                           impl::number_or_qmark(crystal.ph),
+                           impl::string_or_qmark(crystal.ph_range)});
     }
   }
 
-  // _exptl_crystal
-  if (!st.meta.crystals.empty()) {
-    cif::Loop& loop = block.init_mmcif_loop("_exptl_crystal.",
-                                            {"id", "description"});
-    for (const CrystalInfo& cryst : st.meta.crystals)
-      loop.add_row({cryst.id, impl::string_or_qmark(cryst.description)});
-  }
-
-  // _exptl_crystal_grow
-  if (std::any_of(st.meta.crystals.begin(), st.meta.crystals.end(),
-            [](const CrystalInfo& c) { return !c.ph_range.empty() || !std::isnan(c.ph); })) {
-    cif::Loop& grow_loop = block.init_mmcif_loop("_exptl_crystal_grow.",
-                                                 {"crystal_id", "pH", "pdbx_pH_range"});
-    for (const CrystalInfo& crystal : st.meta.crystals)
-      grow_loop.add_row({cif::quote(crystal.id),
-                         impl::number_or_qmark(crystal.ph),
-                         impl::string_or_qmark(crystal.ph_range)});
-  }
-
-  // _diffrn
-  if (std::any_of(st.meta.crystals.begin(), st.meta.crystals.end(),
+  if (groups.diffrn &&
+      std::any_of(st.meta.crystals.begin(), st.meta.crystals.end(),
                   [](const CrystalInfo& c) { return !c.diffractions.empty(); })) {
 
     cif::Loop& loop = block.init_mmcif_loop("_diffrn.", {"id", "crystal_id", "ambient_temp"});
@@ -534,8 +591,8 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
                              impl::string_or_qmark(diffr.wavelengths)});
   }
 
-  // _reflns
-  if (!st.meta.experiments.empty()) {
+  if (groups.reflns && !st.meta.experiments.empty()) {
+    // _reflns
     cif::Loop& loop = block.init_mmcif_loop("_reflns.", {
         "entry_id",
         "pdbx_ordinal",
@@ -591,8 +648,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
     }
   }
 
-  // _refine
-  if (!st.meta.refinement.empty()) {
+  if (groups.refine && !st.meta.refinement.empty()) {
     block.items.reserve(block.items.size() + 4);
     cif::Loop& loop = block.init_mmcif_loop("_refine.", {
         "entry_id",
@@ -702,48 +758,52 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
     assert(loop.values.size() % loop.tags.size() == 0);
   }
 
-  // title, keywords
-  auto title = st.info.find("_struct.title");
-  if (title != st.info.end()) {
-    block.set_pair("_struct.entry_id", id);
-    block.set_pair(title->first, cif::quote(title->second));
+  if (groups.title_keywords) {
+    auto title = st.info.find("_struct.title");
+    if (title != st.info.end()) {
+      block.set_pair("_struct.entry_id", id);
+      block.set_pair(title->first, cif::quote(title->second));
+    }
+    auto pdbx_keywords = st.info.find("_struct_keywords.pdbx_keywords");
+    auto keywords = st.info.find("_struct_keywords.text");
+    if (pdbx_keywords != st.info.end() || keywords != st.info.end())
+      block.set_pair("_struct_keywords.entry_id", id);
+    if (pdbx_keywords != st.info.end())
+      block.set_pair(pdbx_keywords->first, cif::quote(pdbx_keywords->second));
+    if (keywords != st.info.end())
+      block.set_pair(keywords->first, cif::quote(keywords->second));
   }
-  auto pdbx_keywords = st.info.find("_struct_keywords.pdbx_keywords");
-  auto keywords = st.info.find("_struct_keywords.text");
-  if (pdbx_keywords != st.info.end() || keywords != st.info.end())
-    block.set_pair("_struct_keywords.entry_id", id);
-  if (pdbx_keywords != st.info.end())
-    block.set_pair(pdbx_keywords->first, cif::quote(pdbx_keywords->second));
-  if (keywords != st.info.end())
-    block.set_pair(keywords->first, cif::quote(keywords->second));
 
-  impl::write_ncs_oper(st, block);
+  if (groups.ncs)
+    impl::write_ncs_oper(st, block);
 
-  // _struct_asym
-  cif::Loop& asym_loop = block.init_mmcif_loop("_struct_asym.",
-                                               {"id", "entity_id"});
-  for (const Chain& chain : st.models[0].chains)
-    for (ConstResidueSpan& sub : chain.subchains())
-      if (!sub.subchain_id().empty()) {
-        const Entity* ent = st.get_entity_of(sub);
-        asym_loop.add_row({sub.subchain_id(),
-                           (ent ? impl::qchain(ent->name) : "?")});
+  if (groups.struct_asym) {
+    cif::Loop& asym_loop = block.init_mmcif_loop("_struct_asym.",
+                                                 {"id", "entity_id"});
+    for (const Chain& chain : st.models[0].chains)
+      for (ConstResidueSpan& sub : chain.subchains())
+        if (!sub.subchain_id().empty()) {
+          const Entity* ent = st.get_entity_of(sub);
+          asym_loop.add_row({sub.subchain_id(),
+                             (ent ? impl::qchain(ent->name) : "?")});
+        }
+  }
+
+  if (groups.origx) { // _database_PDB_matrix (ORIGX)
+    if (st.has_origx && !st.origx.is_identity()) {
+      block.set_pair("_database_PDB_matrix.entry_id", id);
+      std::string prefix = "_database_PDB_matrix.origx";
+      for (int i = 0; i < 3; ++i) {
+        std::string s = "[" + to_string(i+1) + "]";
+        block.set_pair(prefix + s + "[1]", to_str(st.origx.mat[i][0]));
+        block.set_pair(prefix + s + "[2]", to_str(st.origx.mat[i][1]));
+        block.set_pair(prefix + s + "[3]", to_str(st.origx.mat[i][2]));
+        block.set_pair(prefix + "_vector" + s, to_str(st.origx.vec.at(i)));
       }
-
-  // _database_PDB_matrix (ORIGX)
-  if (st.has_origx && !st.origx.is_identity()) {
-    block.set_pair("_database_PDB_matrix.entry_id", id);
-    std::string prefix = "_database_PDB_matrix.origx";
-    for (int i = 0; i < 3; ++i) {
-      std::string s = "[" + to_string(i+1) + "]";
-      block.set_pair(prefix + s + "[1]", to_str(st.origx.mat[i][0]));
-      block.set_pair(prefix + s + "[2]", to_str(st.origx.mat[i][1]));
-      block.set_pair(prefix + s + "[3]", to_str(st.origx.mat[i][2]));
-      block.set_pair(prefix + "_vector" + s, to_str(st.origx.vec.at(i)));
     }
   }
 
-  if (!st.helices.empty()) {
+  if (groups.struct_conf && !st.helices.empty()) {
     cif::Loop& struct_conf_loop = block.init_mmcif_loop("_struct_conf.",
         {"conf_type_id", "id",
          "beg_auth_asym_id", "beg_label_asym_id", "beg_label_comp_id",
@@ -781,7 +841,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
   }
 
   // _struct_sheet*
-  if (!st.sheets.empty()) {
+  if (groups.struct_sheet && !st.sheets.empty()) {
     cif::Loop& sheet_loop = block.init_mmcif_loop("_struct_sheet.",
                                                   {"id", "number_strands"});
     for (const Sheet& sheet : st.sheets)
@@ -869,33 +929,35 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
     }
   }
 
-  // _pdbx_struct_assembly* and _struct_biol (REMARK 300/350)
-  if (!st.meta.remark_300_detail.empty()) {
+  // _pdbx_struct_assembly* and _struct_biol are REMARK 300/350 in PDB
+  if (groups.struct_biol && !st.meta.remark_300_detail.empty()) {
     block.set_pair("_struct_biol.id", "1");
     block.set_pair("_struct_biol.details", cif::quote(st.meta.remark_300_detail));
   }
-  if (!st.assemblies.empty())
+  if (groups.assembly && !st.assemblies.empty())
     impl::write_assemblies(st, block);
 
-  impl::write_struct_conn(st, block);
+  if (groups.conn)
+    impl::write_struct_conn(st, block);
 
-  // _struct_mon_prot_cis
-  cif::Loop& prot_cis_loop = block.init_mmcif_loop("_struct_mon_prot_cis.",
-      {"pdbx_id", "pdbx_PDB_model_num", "label_asym_id", "label_seq_id",
-       "auth_asym_id", "auth_seq_id", "pdbx_PDB_ins_code",
-       "label_comp_id", "label_alt_id"});
-  for (const Model& model : st.models)
-    for (const Chain& chain : model.chains)
-      for (const Residue& res : chain.residues)
-        if (res.is_cis)
-          prot_cis_loop.add_row({to_string(prot_cis_loop.length()+1),
-                                 model.name, impl::subchain_or_dot(res),
-                                 res.label_seq.str(), impl::qchain(chain.name),
-                                 res.seqid.num.str(), impl::pdbx_icode(res),
-                                 res.name, "."});
+  if ( groups.cis) {  // _struct_mon_prot_cis
+    cif::Loop& prot_cis_loop = block.init_mmcif_loop("_struct_mon_prot_cis.",
+        {"pdbx_id", "pdbx_PDB_model_num", "label_asym_id", "label_seq_id",
+         "auth_asym_id", "auth_seq_id", "pdbx_PDB_ins_code",
+         "label_comp_id", "label_alt_id"});
+    for (const Model& model : st.models)
+      for (const Chain& chain : model.chains)
+        for (const Residue& res : chain.residues)
+          if (res.is_cis)
+            prot_cis_loop.add_row({to_string(prot_cis_loop.length()+1),
+                                   model.name, impl::subchain_or_dot(res),
+                                   res.label_seq.str(), impl::qchain(chain.name),
+                                   res.seqid.num.str(), impl::pdbx_icode(res),
+                                   res.name, "."});
+  }
 
   // _atom_sites (SCALE)
-  if (st.has_origx || st.cell.explicit_matrices) {
+  if (groups.scale && (st.has_origx || st.cell.explicit_matrices)) {
     block.set_pair("_atom_sites.entry_id", id);
     std::string prefix = "_atom_sites.fract_transf_";
     for (int i = 0; i < 3; ++i) {
@@ -909,7 +971,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
   }
 
   // _atom_type
-  {
+  if (groups.atom_type) {
     std::array<bool, (int)El::END> types{};
     for (const Model& model : st.models)
       for (const Chain& chain : model.chains)
@@ -922,28 +984,30 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
         atom_type_loop.add_row({Element((El)i).uname()});
   }
 
-  // SEQRES from PDB doesn't record microheterogeneity, so if the resulting
-  // cif has unknown("?") _entity_poly_seq.num, it cannot be trusted.
-  cif::Loop& poly_loop = block.init_mmcif_loop("_entity_poly_seq.",
-                                         {"entity_id", "num", "mon_id"});
-  for (const Entity& ent : st.entities)
-    if (ent.entity_type == EntityType::Polymer)
-      for (size_t i = 0; i != ent.full_sequence.size(); ++i) {
-        const std::string& mon_ids = ent.full_sequence[i];
-        std::string num = std::to_string(i+1);
-        size_t start = 0, end;
-        while ((end = mon_ids.find(',', start)) != std::string::npos) {
-          poly_loop.add_row({impl::qchain(ent.name), num,
-                             mon_ids.substr(start, end-start)});
-          start = end + 1;
+  if (groups.entity_poly_seq) {
+    // SEQRES from PDB doesn't record microheterogeneity, so if the resulting
+    // cif has unknown("?") _entity_poly_seq.num, it cannot be trusted.
+    cif::Loop& poly_loop = block.init_mmcif_loop("_entity_poly_seq.",
+                                           {"entity_id", "num", "mon_id"});
+    for (const Entity& ent : st.entities)
+      if (ent.entity_type == EntityType::Polymer)
+        for (size_t i = 0; i != ent.full_sequence.size(); ++i) {
+          const std::string& mon_ids = ent.full_sequence[i];
+          std::string num = std::to_string(i+1);
+          size_t start = 0, end;
+          while ((end = mon_ids.find(',', start)) != std::string::npos) {
+            poly_loop.add_row({impl::qchain(ent.name), num,
+                               mon_ids.substr(start, end-start)});
+            start = end + 1;
+          }
+          poly_loop.add_row({impl::qchain(ent.name), num, mon_ids.substr(start)});
         }
-        poly_loop.add_row({impl::qchain(ent.name), num, mon_ids.substr(start)});
-      }
+  }
 
-  if (with_atoms)
+  if (groups.atoms)
     impl::add_cif_atoms(st, block);
 
-  if (st.meta.has_tls()) {
+  if (groups.tls && st.meta.has_tls()) {
     cif::Loop& loop = block.init_mmcif_loop("_pdbx_refine_tls.", {
         "pdbx_refine_id", "id",
         "T[1][1]", "T[2][2]", "T[3][3]", "T[1][2]", "T[1][3]", "T[2][3]",
@@ -984,7 +1048,7 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
                               impl::string_or_qmark(sel.details)});
   }
 
-  if (!st.meta.software.empty()) {
+  if (groups.software && !st.meta.software.empty()) {
     cif::Loop& loop = block.init_mmcif_loop("_software.",
                  {"pdbx_ordinal", "classification", "name", "version", "date"});
     for (const SoftwareItem& item : st.meta.software)
@@ -1000,13 +1064,15 @@ void update_cif_block(const Structure& st, cif::Block& block, bool with_atoms) {
 cif::Document make_mmcif_document(const Structure& st) {
   cif::Document doc;
   doc.blocks.resize(1);
-  gemmi::update_cif_block(st, doc.blocks[0], true);
+  update_mmcif_block(st, doc.blocks[0], MmcifOutputGroups(true));
   return doc;
 }
 
 cif::Block make_mmcif_headers(const Structure& st) {
   cif::Block block;
-  gemmi::update_cif_block(st, block, false);
+  MmcifOutputGroups groups(true);
+  groups.atoms = false;
+  update_mmcif_block(st, block, groups);
   return block;
 }
 
