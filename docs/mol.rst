@@ -1791,6 +1791,17 @@ not only to ``Structure``, but also to ``Model`` and ``Chain``.
 
 ----
 
+When the file has NCS operarations that are not "given",
+you can add NCS copies with:
+
+.. doctest::
+
+  >>> st.expand_ncs(gemmi.HowToNameCopiedChains.Short)
+
+The meaning of the argument is the same as in ``make_assembly()`` above.
+
+----
+
 Occasionally, you may come across an mmCIF file with chain names longer
 than necessary. To store such structure in a PDB format you need to shorten
 the chain names first:

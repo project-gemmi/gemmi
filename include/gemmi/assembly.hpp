@@ -211,5 +211,38 @@ inline void shorten_chain_names(Structure& st) {
                    namegen.make_short_name(chain.name.substr(0, max_len)));
 }
 
+
+inline void expand_ncs(gemmi::Structure& st, HowToNameCopiedChains how) {
+  for (gemmi::Model& model : st.models) {
+    size_t orig_size = model.chains.size();
+    gemmi::ChainNameGenerator namegen(model, how);
+    for (const gemmi::NcsOp& op : st.ncs)
+      if (!op.given) {
+        for (size_t i = 0; i != orig_size; ++i) {
+          if (how == HowToNameCopiedChains::Dup)
+            for (gemmi::Residue& res : model.chains[i].residues)
+              res.segment = "0";
+
+          model.chains.push_back(model.chains[i]);
+          gemmi::Chain& new_chain = model.chains.back();
+          new_chain.name = namegen.make_new_name(new_chain.name, (int)i+1);
+
+          for (gemmi::Residue& res : new_chain.residues) {
+            for (gemmi::Atom& a : res.atoms)
+              a.pos = op.apply(a.pos);
+            if (!res.subchain.empty())
+              res.subchain = new_chain.name + ":" + res.subchain;
+            if (how == HowToNameCopiedChains::Dup)
+              res.segment = op.id;
+          }
+        }
+      }
+  }
+  for (gemmi::NcsOp& op : st.ncs)
+    op.given = true;
+  st.setup_cell_images();
+}
+
+
 } // namespace gemmi
 #endif

@@ -68,6 +68,12 @@ void add_mol(py::module& m) {
   py::class_<ResidueGroup, ResidueSpan> pyResidueGroup(m, "ResidueGroup");
   py::class_<CraProxy> pyCraGenerator(m, "CraGenerator");
 
+  py::enum_<HowToNameCopiedChains>(m, "HowToNameCopiedChains")
+    .value("Short", HowToNameCopiedChains::Short)
+    .value("AddNumber", HowToNameCopiedChains::AddNumber)
+    .value("Dup", HowToNameCopiedChains::Dup)
+    ;
+
   m.def("one_letter_code",
         (std::string (*)(const std::vector<std::string>&)) &one_letter_code);
   m.def("one_letter_code",
@@ -146,6 +152,7 @@ void add_mol(py::module& m) {
          (void (*)(Structure&)) &remove_ligands_and_waters)
     .def("remove_empty_chains", (void (*)(Structure&)) &remove_empty_chains)
     .def("shorten_chain_names", &shorten_chain_names)
+    .def("expand_ncs", &expand_ncs, py::arg("how"))
     .def("calculate_box", &calculate_box, py::arg("margin")=0.)
     .def("calculate_fractional_box", &calculate_fractional_box, py::arg("margin")=0.)
     .def("clone", [](const Structure& self) { return new Structure(self); })
@@ -456,13 +463,6 @@ void add_mol(py::module& m) {
         py::arg("residue"), py::arg("next_residue"));
   m.def("calculate_sequence_weight", &calculate_sequence_weight,
         py::arg("sequence"), py::arg("unknown")=0.);
-
-  py::enum_<HowToNameCopiedChains>(m, "HowToNameCopiedChains")
-    .value("Short", HowToNameCopiedChains::Short)
-    .value("AddNumber", HowToNameCopiedChains::AddNumber)
-    .value("Dup", HowToNameCopiedChains::Dup)
-    ;
-
   m.def("make_assembly", [](const Assembly& assembly, const Model& model,
                             HowToNameCopiedChains how) {
         return make_assembly(assembly, model, how, nullptr);
