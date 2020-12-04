@@ -1187,6 +1187,29 @@ and then it is written to disk.
 
   >>> structure.make_mmcif_document().write_file('new.cif')
 
+----
+
+We also have function ``make_mmcif_headers()`` that writes everything except
+the list of atoms (categories ``_atom_site`` and ``_atom_site_anisotrop``).
+
+More fine-grained control of the output is possible with
+the function ``update_mmcif_block()``.
+It takes as parameters: Block and specification what groups (categories)
+are to be updated (added or replaced) in this block.
+In this example we output only cell parameters and atoms:
+
+.. doctest::
+
+  >>> groups = gemmi.MmcifOutputGroups(False)  # False -> start with all groups disabled
+  >>> groups.cell = True
+  >>> groups.atoms = True
+  >>> doc = gemmi.cif.Document()
+  >>> block = doc.add_new_block('new')
+  >>> structure.update_mmcif_block(block, groups)
+  >>> doc.write_file('new2.cif')
+
+All group names (about 30) are listed in ``gemmi/to_mmcif.hpp``.
+
 mmJSON format
 =============
 

@@ -13,6 +13,42 @@ namespace py = pybind11;
 using namespace gemmi;
 
 void add_write(py::module& m, py::class_<Structure>& structure) {
+  py::class_<MmcifOutputGroups>(m, "MmcifOutputGroups")
+    .def(py::init<bool>())
+#define DEF_BIT_PROPERTY(name) \
+  .def_property(#name, [](MmcifOutputGroups g) { return g.name; }, \
+                       [](MmcifOutputGroups& g, bool v) { g.name = v; })
+    DEF_BIT_PROPERTY(atoms)
+    DEF_BIT_PROPERTY(block_name)
+    DEF_BIT_PROPERTY(entry)
+    DEF_BIT_PROPERTY(database_status)
+    DEF_BIT_PROPERTY(cell)
+    DEF_BIT_PROPERTY(symmetry)
+    DEF_BIT_PROPERTY(entity)
+    DEF_BIT_PROPERTY(entity_poly)
+    DEF_BIT_PROPERTY(struct_ref)
+    DEF_BIT_PROPERTY(chem_comp)
+    DEF_BIT_PROPERTY(exptl)
+    DEF_BIT_PROPERTY(diffrn)
+    DEF_BIT_PROPERTY(reflns)
+    DEF_BIT_PROPERTY(refine)
+    DEF_BIT_PROPERTY(title_keywords)
+    DEF_BIT_PROPERTY(ncs)
+    DEF_BIT_PROPERTY(struct_asym)
+    DEF_BIT_PROPERTY(origx)
+    DEF_BIT_PROPERTY(struct_conf)
+    DEF_BIT_PROPERTY(struct_sheet)
+    DEF_BIT_PROPERTY(struct_biol)
+    DEF_BIT_PROPERTY(assembly)
+    DEF_BIT_PROPERTY(conn)
+    DEF_BIT_PROPERTY(cis)
+    DEF_BIT_PROPERTY(scale)
+    DEF_BIT_PROPERTY(atom_type)
+    DEF_BIT_PROPERTY(entity_poly_seq)
+    DEF_BIT_PROPERTY(tls)
+    DEF_BIT_PROPERTY(software)
+    ;
+
   structure
     .def("make_pdb_headers", &make_pdb_headers)
     .def("write_pdb", [](const Structure& st, const std::string& path,
@@ -48,6 +84,6 @@ void add_write(py::module& m, py::class_<Structure>& structure) {
     })
     .def("make_mmcif_document", &make_mmcif_document)
     .def("make_mmcif_headers", &make_mmcif_headers)
-    //.def("update_mmcif_block", &update_mmcif_block)
+    .def("update_mmcif_block", &update_mmcif_block)
     ;
 }
