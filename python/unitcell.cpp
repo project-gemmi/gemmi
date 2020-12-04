@@ -9,6 +9,7 @@
 #include "common.h"
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
+#include <pybind11/operators.h>
 #include "miller_a.h"
 
 namespace py = pybind11;
@@ -84,6 +85,16 @@ void add_unitcell(py::module& m) {
         self.y = v[1];
         self.z = v[2];
     })
+    .def(py::self + py::self)
+    .def(py::self - py::self)
+    .def(py::self += py::self)
+    .def(py::self -= py::self)
+    .def(py::self * float())
+    .def(py::self *= float())
+    .def(float() * py::self)
+    .def(py::self / float())
+    .def(py::self /= float())
+    .def(-py::self)
     .def("__getitem__", (double (Vec3::*)(int) const) &Vec3::at)
     .def("__setitem__", [](Vec3& self, int idx, double value) {
         self.at(idx) = value;
@@ -123,6 +134,12 @@ void add_unitcell(py::module& m) {
 
   py::class_<Transform>(m, "Transform")
     .def(py::init<>())
+    .def(py::init([](const Mat33& m, const Vec3& v) {
+      Transform* tr = new Transform();
+      tr->mat = m;
+      tr->vec = v;
+      return tr;
+    }), py::arg("mat33"), py::arg("vec3"))
     .def_readonly("mat", &Transform::mat)
     .def_readonly("vec", &Transform::vec)
     .def("inverse", &Transform::inverse)

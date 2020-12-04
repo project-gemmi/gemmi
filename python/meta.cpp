@@ -73,6 +73,13 @@ void add_meta(py::module& m) {
 
   py::class_<NcsOp>(m, "NcsOp")
     .def(py::init<>())
+    .def(py::init([](const Transform& tr, const std::string& id, bool given) {
+      NcsOp* op = new NcsOp();
+      op->tr = tr;
+      op->id = id;
+      op->given = given;
+      return op;
+    }), py::arg("tr"), py::arg("id")="", py::arg("given")=false)
     .def_readwrite("id", &NcsOp::id)
     .def_readwrite("given", &NcsOp::given)
     .def_readonly("tr", &NcsOp::tr)
