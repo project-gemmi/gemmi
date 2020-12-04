@@ -173,14 +173,15 @@ inline void write_ncs(const Structure& st, std::ostream& os) {
       WRITE("MTRIX%d %3.3s%10.6f%10.6f%10.6f %14.5f    %-21c\n", i+1,
             op.id.c_str(), op.tr.mat[i][0], op.tr.mat[i][1], op.tr.mat[i][2],
             op.tr.vec.at(i), op.given ? '1' : ' '); };
+  if (!st.ncs.empty()) {
+    NcsOp id_op;
+    id_op.given = true;
+    id_op.id = "1";
+    write_op(id_op);
 
-  NcsOp id_op;
-  id_op.given = true;
-  id_op.id = "1";
-  write_op(id_op);
-
-  for (const NcsOp& op : st.ncs)
+    for (const NcsOp& op : st.ncs)
       write_op(op);
+  }
 }
 
 inline void write_remarks(const Structure& st, std::ostream& os) {
