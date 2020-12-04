@@ -75,6 +75,7 @@ void add_unitcell(py::module& m) {
     .def_readwrite("z", &Vec3::z)
     .def("dot", &Vec3::dot)
     .def("cross", &Vec3::cross)
+    .def("approx", &Vec3::approx, py::arg("other"), py::arg("epsilon"))
     .def("tolist", [](const Vec3& self) {
         return std::array<double,3>{{self.x, self.y, self.z}};
     })
@@ -99,6 +100,7 @@ void add_unitcell(py::module& m) {
     .def("approx", &Mat33::approx, py::arg("other"), py::arg("epsilon"))
     .def("determinant", &Mat33::determinant)
     .def("inverse", &Mat33::inverse)
+    .def("is_identity", &Mat33::is_identity)
     .def("tolist", [](const Mat33& m) -> std::array<std::array<double,3>,3> {
         return {{{{m[0][0], m[0][1], m[0][2]}},
                  {{m[1][0], m[1][1], m[1][2]}},
@@ -124,7 +126,9 @@ void add_unitcell(py::module& m) {
     .def_readonly("mat", &Transform::mat)
     .def_readonly("vec", &Transform::vec)
     .def("inverse", &Transform::inverse)
-    .def("apply", &Transform::apply);
+    .def("apply", &Transform::apply)
+    .def("is_identity", &Transform::is_identity)
+    .def("approx", &Transform::approx);
 
   py::class_<Position, Vec3>(m, "Position")
     .def(py::init<double,double,double>())
