@@ -88,7 +88,8 @@ void add_unitcell(py::module& m) {
     .def(py::self + py::self)
     .def(py::self - py::self)
     .def(py::self += py::self)
-    .def(py::self -= py::self)
+    //.def(py::self -= py::self)  // Clang warning -Wself-assign-overloaded
+    .def(operator-=(py::self, py::self))
     .def(py::self * float())
     .def(py::self *= float())
     .def(float() * py::self)

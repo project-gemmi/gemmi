@@ -7,6 +7,17 @@ import gemmi
 from gemmi import Position, UnitCell
 
 class TestMath(unittest.TestCase):
+    def test_Vec3(self):
+        a = gemmi.Vec3(-3, 3, 13)
+        b = gemmi.Vec3(2, 0, -2)
+        self.assertEqual((-a).tolist(), [3, -3, -13])
+        self.assertEqual((a+b).tolist(), [-1, 3, 11])
+        self.assertEqual((a-b).tolist(), [-5, 3, 15])
+        a -= b
+        self.assertEqual(a.tolist(), [-5, 3, 15])
+        a += b
+        self.assertEqual(a.tolist(), [-3, 3, 13])
+
     def test_SMat33_transformed_by(self):
         tensor = gemmi.SMat33f(random(), random(), random(),
                                random(), random(), random())
