@@ -305,7 +305,7 @@ inline SupResult superpose_positions(Position* pos1, Position *pos2,
 
   double wsum = 0.0;
   if (weight == nullptr)
-    wsum = len;
+    wsum = (double) len;
   else
     for (size_t i = 0; i < len; ++i)
       wsum += weight[i];

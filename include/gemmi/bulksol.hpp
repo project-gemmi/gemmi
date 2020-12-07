@@ -140,7 +140,7 @@ struct BulkSolvent {
       sxx += x * x;
       sxy += x * y;
     }
-    double n = data.size();
+    double n = (double) data.size();
     double slope = (n * sxy - sx * sy) / (n * sxx - sx * sx);
     double intercept = (sy - slope * sx) / n;
     B_aniso.u11 = B_aniso.u22 = B_aniso.u33 = -slope;

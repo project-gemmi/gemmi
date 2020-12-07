@@ -285,7 +285,7 @@ private:
 
   static bool equal_rows(cif::Table::Row r1, cif::Table::Row r2) {
     assert(r1.size() == r2.size());
-    for (size_t i = 0; i != r1.size(); ++i) {
+    for (int i = 0; i != (int) r1.size(); ++i) {
       if (cif::is_null(r1[i]) != cif::is_null(r2[i]))
         return false;
       if (cif::as_string(r1[i]) != cif::as_string(r2[i]))

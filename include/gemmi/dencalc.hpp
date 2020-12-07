@@ -308,7 +308,7 @@ struct DensityCalculator {
           grid.data[idx] *= 1. / 8;
         }
 #else
-    std::fill(grid.data.begin(), grid.data.end(), 1);
+    std::fill(grid.data.begin(), grid.data.end(), 1.f);
     mask_points_in_varied_radius<Real>(grid, model, radii_set, rprobe, 0);
     set_margin_around<Real>(grid, rshrink, 1, -1);
     grid.change_values(-1, 1);

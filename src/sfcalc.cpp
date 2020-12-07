@@ -266,7 +266,7 @@ void process_with_fft(const gemmi::Structure& st,
       print_sf(hv.value, hv.hkl);
     } else if (file.mode == RefFile::Mode::WriteMtz) {
       for (int i = 0; i != 3; ++i)
-        output_mtz->data.push_back(hv.hkl[i]);
+        output_mtz->data.push_back((float) hv.hkl[i]);
       output_mtz->data.push_back(std::abs(hv.value));
       output_mtz->data.push_back((float) gemmi::phase_in_angles(hv.value));
     } else {
