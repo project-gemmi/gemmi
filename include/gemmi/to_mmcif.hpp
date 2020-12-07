@@ -142,15 +142,20 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
       "auth_asym_id",
       "pdbx_PDB_model_num"});
   bool has_calc_flag = false;
+  bool has_tls_group_id = false;
   for (const Model& model : st.models)
     for (const Chain& chain : model.chains)
       for (const Residue& res : chain.residues)
         for (const Atom& atom : res.atoms) {
           if (atom.calc_flag != CalcFlag::NotSet)
             has_calc_flag = true;
+          if (atom.tls_group_id >= 0)
+            has_tls_group_id = true;
         }
   if (has_calc_flag)
     atom_loop.tags.emplace_back("_atom_site.calc_flag");
+  if (has_tls_group_id)
+    atom_loop.tags.emplace_back("_atom_site.pdbx_tls_group_id");
 
   std::vector<std::string>& vv = atom_loop.values;
   vv.reserve(count_atom_sites(st) * atom_loop.tags.size());
@@ -185,6 +190,8 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
           vv.emplace_back(model.name);
           if (has_calc_flag)
             vv.emplace_back(&".\0d\0c\0dum"[2 * (int) atom.calc_flag]);
+          if (has_tls_group_id)
+            vv.emplace_back(int_or_qmark(atom.tls_group_id));
           if (atom.aniso.nonzero())
             aniso.emplace_back(serial, &atom);
         }

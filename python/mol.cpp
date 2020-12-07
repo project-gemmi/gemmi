@@ -442,6 +442,7 @@ void add_mol(py::module& m) {
     .def_readwrite("serial", &Atom::serial)
     .def_readwrite("calc_flag", &Atom::calc_flag)
     .def_readwrite("flag", &Atom::flag)
+    .def_readwrite("tls_group_id", &Atom::tls_group_id)
     .def("is_hydrogen", &Atom::is_hydrogen)
     .def("has_altloc", &Atom::has_altloc)
     .def("b_eq", &Atom::b_eq)

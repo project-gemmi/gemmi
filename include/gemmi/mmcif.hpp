@@ -559,7 +559,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
   enum { kId=0, kGroupPdb, kSymbol, kLabelAtomId, kAltId, kLabelCompId,
          kLabelAsymId, kLabelSeqId, kInsCode, kX, kY, kZ, kOcc, kBiso, kCharge,
          kAuthSeqId, kAuthCompId, kAuthAsymId, kAuthAtomId, kModelNum,
-         kCalcFlag };
+         kCalcFlag, kTlsGroupId };
   cif::Table atom_table = block.find("_atom_site.",
                                      {"id",
                                       "?group_PDB",
@@ -581,7 +581,9 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
                                       "?auth_asym_id",
                                       "?auth_atom_id",
                                       "?pdbx_PDB_model_num",
-                                      "?calc_flag"});
+                                      "?calc_flag",
+                                      "?pdbx_tls_group_id",
+                                     });
   if (atom_table.length() != 0) {
     const int kAsymId = atom_table.first_of(kAuthAsymId, kLabelAsymId);
     // we use only one comp (residue) and one atom name
@@ -646,6 +648,13 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
         if (cf[0] == 'd')
           atom.calc_flag = cf[1] == 'u' ? CalcFlag::Dummy
                                         : CalcFlag::Determined;
+      }
+      if (row.has2(kTlsGroupId)) {
+        const char* str = row[kTlsGroupId].c_str();
+        const char* endptr;
+        int tls_id = no_sign_atoi(str, &endptr);
+        if (endptr != str)
+          atom.tls_group_id = (short) tls_id;
       }
       atom.pos.x = cif::as_number(row[kX]);
       atom.pos.y = cif::as_number(row[kY]);
