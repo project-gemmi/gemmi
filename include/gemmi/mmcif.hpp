@@ -558,7 +558,8 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
   // atom list
   enum { kId=0, kGroupPdb, kSymbol, kLabelAtomId, kAltId, kLabelCompId,
          kLabelAsymId, kLabelSeqId, kInsCode, kX, kY, kZ, kOcc, kBiso, kCharge,
-         kAuthSeqId, kAuthCompId, kAuthAsymId, kAuthAtomId, kModelNum };
+         kAuthSeqId, kAuthCompId, kAuthAsymId, kAuthAtomId, kModelNum,
+         kCalcFlag };
   cif::Table atom_table = block.find("_atom_site.",
                                      {"id",
                                       "?group_PDB",
@@ -579,7 +580,8 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
                                       "?auth_comp_id",
                                       "?auth_asym_id",
                                       "?auth_atom_id",
-                                      "?pdbx_PDB_model_num"});
+                                      "?pdbx_PDB_model_num",
+                                      "?calc_flag"});
   if (atom_table.length() != 0) {
     const int kAsymId = atom_table.first_of(kAuthAsymId, kLabelAsymId);
     // we use only one comp (residue) and one atom name
@@ -637,6 +639,14 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
       // but in all the files it is a serial number; its value is not essential,
       // so we just ignore non-integer ids.
       atom.serial = string_to_int(row[kId], false);
+      if (row.has2(kCalcFlag)) {
+        const std::string& cf = row[kCalcFlag];
+        if (cf[0] == 'c')
+          atom.calc_flag = CalcFlag::Calculated;
+        if (cf[0] == 'd')
+          atom.calc_flag = cf[1] == 'u' ? CalcFlag::Dummy
+                                        : CalcFlag::Determined;
+      }
       atom.pos.x = cif::as_number(row[kX]);
       atom.pos.y = cif::as_number(row[kY]);
       atom.pos.z = cif::as_number(row[kZ]);

@@ -78,6 +78,9 @@ template<typename T, typename M> std::vector<T> model_subchains(M* model) {
 // UnknownAny = any format (coordinate file for a monomer/ligand/chemcomp)
 enum class CoorFormat { Unknown, UnknownAny, Pdb, Mmcif, Mmjson, ChemComp };
 
+// corresponds to _atom_site.calc_flag in mmCIF
+enum class CalcFlag : signed char { NotSet=0, Determined, Calculated, Dummy };
+
 // options affecting how pdb file is read
 struct PdbReadOptions {
   int max_line_length = 0;
@@ -95,7 +98,8 @@ struct Atom {
   char altloc = '\0'; // 0 if not set
   signed char charge = 0;  // [-8, +8]
   Element element = El::X;
-  char flag = '\0'; // custom flag
+  CalcFlag calc_flag = CalcFlag::NotSet;  // mmCIF _atom_site.calc_flag
+  char flag = '\0';  // a custom flag
   int serial = 0;
   Position pos;
   float occ = 1.0f;

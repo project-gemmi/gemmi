@@ -34,7 +34,7 @@ inline void add_hydrogens(const ChemComp& cc, Residue& res) {
           atom.altloc = parent.altloc;
           atom.occ = parent.occ;
           atom.b_iso = parent.b_iso;
-          atom.flag = 'R';
+          atom.calc_flag = CalcFlag::Calculated;
           res.atoms.push_back(atom);
           break;
         }

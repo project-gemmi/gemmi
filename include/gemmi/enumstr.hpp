@@ -65,7 +65,8 @@ inline PolymerType polymer_type_from_string(const std::string& t) {
 
 inline const char* connection_type_to_string(Connection::Type t) {
   static constexpr const char* type_ids[] = {
-    "covale", "disulf", "hydrog", "metalc", "." };
+    "covale", "disulf", "hydrog", "metalc", "."
+  };
   return type_ids[t];
 }
 

@@ -141,6 +141,17 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
       "auth_seq_id",
       "auth_asym_id",
       "pdbx_PDB_model_num"});
+  bool has_calc_flag = false;
+  for (const Model& model : st.models)
+    for (const Chain& chain : model.chains)
+      for (const Residue& res : chain.residues)
+        for (const Atom& atom : res.atoms) {
+          if (atom.calc_flag != CalcFlag::NotSet)
+            has_calc_flag = true;
+        }
+  if (has_calc_flag)
+    atom_loop.tags.emplace_back("_atom_site.calc_flag");
+
   std::vector<std::string>& vv = atom_loop.values;
   vv.reserve(count_atom_sites(st) * atom_loop.tags.size());
   std::vector<std::pair<int, const Atom*>> aniso;
@@ -172,6 +183,8 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
           vv.emplace_back(auth_seq_id);
           vv.emplace_back(impl::qchain(chain.name));
           vv.emplace_back(model.name);
+          if (has_calc_flag)
+            vv.emplace_back(&".\0d\0c\0dum"[2 * (int) atom.calc_flag]);
           if (atom.aniso.nonzero())
             aniso.emplace_back(serial, &atom);
         }

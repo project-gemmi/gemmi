@@ -423,6 +423,12 @@ void add_mol(py::module& m) {
                      self.atoms.size(), " atoms>");
     });
 
+  py::enum_<CalcFlag>(m, "CalcFlag")
+    .value("NotSet", CalcFlag::NotSet)
+    .value("Determined", CalcFlag::Determined)
+    .value("Calculated", CalcFlag::Calculated)
+    .value("Dummy", CalcFlag::Dummy);
+
   pyAtom
     .def(py::init<>())
     .def_readwrite("name", &Atom::name)
@@ -434,6 +440,7 @@ void add_mol(py::module& m) {
     .def_readwrite("b_iso", &Atom::b_iso)
     .def_readwrite("aniso", &Atom::aniso)
     .def_readwrite("serial", &Atom::serial)
+    .def_readwrite("calc_flag", &Atom::calc_flag)
     .def_readwrite("flag", &Atom::flag)
     .def("is_hydrogen", &Atom::is_hydrogen)
     .def("has_altloc", &Atom::has_altloc)

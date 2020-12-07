@@ -48,8 +48,11 @@ struct Restraints {
         residue = res2;
       else
         throw std::out_of_range("Unexpected component ID");
-      const Atom* ret = residue->find_atom(atom, altloc);
-      return ret && ret->flag != 'M' ? ret : nullptr;
+      if (const Atom* ret = residue->find_atom(atom, altloc))
+        // skip riding hydrogens, they won't be restrained
+        if (ret->calc_flag != CalcFlag::Calculated || !ret->is_hydrogen())
+          return ret;
+      return nullptr;
     }
     Atom* get_from(Residue& res1, Residue* res2, char altloc) const {
       const Residue& cres1 = res1;
@@ -294,7 +297,7 @@ struct ChemComp {
     gemmi::Atom to_full_atom() const {
       gemmi::Atom atom;
       atom.name = id;
-      atom.flag = 'M'; // refmac convention for "modelled" missing atoms
+      atom.calc_flag = CalcFlag::Calculated;
       atom.occ = 0.0f;
       atom.b_iso = 0.0f;
       atom.element = el;

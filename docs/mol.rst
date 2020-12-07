@@ -2692,6 +2692,7 @@ Atom (more accurately: atom site) has the following properties:
   atomic displacement parameter (ADP),
 * ``aniso`` -- anisotropic atomic displacement parameters (U not B).
 * ``serial`` -- atom serial number (integer).
+* ``calc_flag`` -- mmCIF _atom_site.calc_flag (used since 2020).
 * ``flag`` -- custom flag, a single character that can be used for anything
   by the user.
 
