@@ -940,8 +940,10 @@ and we can use other method common for Mtz and ReflnBlock:
 
 .. doctest::
 
-  >>> asu_data.get_size_for_hkl(sample_rate=1.5)
+  >>> asu_data.get_size_for_hkl()
   [54, 6, 18]
+  >>> asu_data.get_size_for_hkl(sample_rate=3.0)  # explained in the next section
+  [90, 8, 30]
   >>> asu_data.data_fits_into([54,6,18])
   True
   >>> asu_data.make_1_d2_array()
