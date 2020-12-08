@@ -326,6 +326,7 @@ void add_cif(py::module& cif) {
     });
 
   pyCifTableRow
+    .def_readonly("row_index", &Table::Row::row_index)
     .def("str", &Table::Row::str)
     .def("__len__", &Table::Row::size)
     .def("__getitem__", (std::string& (Table::Row::*)(int)) &Table::Row::at)

@@ -1116,6 +1116,13 @@ and a few convenience functions, including::
   >>> row.has(2)  # the same as table.has_column(2)
   True
 
+and a property:
+
+.. doctest::
+
+  >>> row.row_index
+  9
+
 The tags and value can be modified. As an example, let us swap two tag names
 (these two tend to have identical values, so no one will notice):
 
