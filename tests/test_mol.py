@@ -442,11 +442,6 @@ class TestMol(unittest.TestCase):
             st.setup_entities()
             doc = st.make_mmcif_document()
             st = gemmi.make_structure_from_block(doc[0])
-        # First MTRIX which is identity is not stored. Let's add it here.
-        identity_ncs = gemmi.NcsOp()
-        identity_ncs.id = '1'
-        identity_ncs.given = True
-        st.ncs.insert(0, identity_ncs)
         out_lines = self.write_and_read(st, via_cif=False)
         if via_cif:
             out_lines = [line for line in out_lines

@@ -389,22 +389,28 @@ void write_cell_parameters(const UnitCell& cell, cif::Block& block) {
 
 void write_ncs_oper(const Structure& st, cif::Block& block) {
   // _struct_ncs_oper (MTRIX)
-  if (!st.ncs.empty()) {
-    cif::Loop& ncs_oper = block.init_mmcif_loop("_struct_ncs_oper.",
-        {"id", "code",
-         "matrix[1][1]", "matrix[1][2]", "matrix[1][3]", "vector[1]",
-         "matrix[2][1]", "matrix[2][2]", "matrix[2][3]", "vector[2]",
-         "matrix[3][1]", "matrix[3][2]", "matrix[3][3]", "vector[3]"});
-    for (const NcsOp& op : st.ncs) {
-      ncs_oper.values.emplace_back(op.id);
-      ncs_oper.values.emplace_back(op.given ? "given" : "generate");
-      for (int i = 0; i < 3; ++i) {
-        for (int j = 0; j < 3; ++j)
-          ncs_oper.values.emplace_back(to_str(op.tr.mat[i][j]));
-        ncs_oper.values.emplace_back(to_str(op.tr.vec.at(i)));
-      }
+  if (st.ncs.empty())
+    return;
+  cif::Loop& ncs_oper = block.init_mmcif_loop("_struct_ncs_oper.",
+      {"id", "code",
+       "matrix[1][1]", "matrix[1][2]", "matrix[1][3]", "vector[1]",
+       "matrix[2][1]", "matrix[2][2]", "matrix[2][3]", "vector[2]",
+       "matrix[3][1]", "matrix[3][2]", "matrix[3][3]", "vector[3]"});
+  auto add_op = [&ncs_oper](const NcsOp& op) {
+    ncs_oper.values.emplace_back(op.id);
+    ncs_oper.values.emplace_back(op.given ? "given" : "generate");
+    for (int i = 0; i < 3; ++i) {
+      for (int j = 0; j < 3; ++j)
+        ncs_oper.values.emplace_back(to_str(op.tr.mat[i][j]));
+      ncs_oper.values.emplace_back(to_str(op.tr.vec.at(i)));
     }
-  }
+  };
+  auto identity = st.info.find("_struct_ncs_oper.id");
+  if (identity != st.info.end() &&
+      !in_vector_f([&](const NcsOp& op) { return op.id == identity->second; }, st.ncs))
+    add_op(NcsOp{identity->second, true, {}});
+  for (const NcsOp& op : st.ncs)
+    add_op(op);
 }
 } // namespace impl
 

@@ -166,14 +166,24 @@ inline void write_cryst1(const Structure& st, std::ostream& os) {
         st.get_info("_cell.Z_PDB").c_str());
 }
 
-inline void write_ncs(const Structure& st, std::ostream& os) {
+inline void write_ncs_op(const NcsOp& op, std::ostream& os) {
   char buf[88];
+  for (int i = 0; i < 3; ++i) {
+    WRITE("MTRIX%d %3.3s%10.6f%10.6f%10.6f %14.5f    %-21c\n", i+1,
+          op.id.c_str(), op.tr.mat[i][0], op.tr.mat[i][1], op.tr.mat[i][2],
+          op.tr.vec.at(i), op.given ? '1' : ' ');
+  }
+}
+
+inline void write_ncs(const Structure& st, std::ostream& os) {
+  if (st.ncs.empty())
+    return;
+  auto identity = st.info.find("_struct_ncs_oper.id");
+  if (identity != st.info.end() &&
+      !in_vector_f([&](const NcsOp& op) { return op.id == identity->second; }, st.ncs))
+    write_ncs_op(NcsOp{identity->second, true, {}}, os);
   for (const NcsOp& op : st.ncs)
-    for (int i = 0; i < 3; ++i) {
-      WRITE("MTRIX%d %3.3s%10.6f%10.6f%10.6f %14.5f    %-21c\n", i+1,
-            op.id.c_str(), op.tr.mat[i][0], op.tr.mat[i][1], op.tr.mat[i][2],
-            op.tr.vec.at(i), op.given ? '1' : ' ');
-    }
+    write_ncs_op(op, os);
 }
 
 inline void write_remarks(const Structure& st, std::ostream& os) {

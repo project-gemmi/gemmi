@@ -531,7 +531,10 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
   for (auto op : ncs_oper) {
     bool given = op.has(13) && op.str(13) == "given";
     Transform tr = get_transform_matrix(op);
-    if (!tr.is_identity())
+    if (tr.is_identity())
+      // ignore identity, but store its id so we can write it back to mmCIF
+      st.info["_struct_ncs_oper.id"] = op.str(12);
+    else
       st.ncs.push_back({op.str(12), given, tr});
   }
 

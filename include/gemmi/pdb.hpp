@@ -520,11 +520,16 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
           st.info["_cell.Z_PDB"] = z;
       }
     } else if (is_record_type(line, "MTRIXn")) {
-      if (read_matrix(matrix, line, len) == 3 && !matrix.is_identity()) {
+      if (read_matrix(matrix, line, len) == 3) {
         std::string id = read_string(line+7, 3);
-        bool given = len > 59 && line[59] == '1';
-        st.ncs.push_back({id, given, matrix});
-        matrix.set_identity();
+        if (matrix.is_identity()) {
+          // store only ID that will be used when writing to file
+          st.info["_struct_ncs_oper.id"] = id;
+        } else {
+          bool given = len > 59 && line[59] == '1';
+          st.ncs.push_back({id, given, matrix});
+          matrix.set_identity();
+        }
       }
     } else if (is_record_type(line, "MODEL")) {
       if (model && chain)
