@@ -27,23 +27,34 @@
 
 set -eu
 cd `dirname $0`
-PDB_COPY="$PDB_DIR/structures/divided"
+LOCAL_COPY="$PDB_DIR/structures/divided"
+REMOTE_COPY="http://ftp.ebi.ac.uk/pub/databases/rcsb/pdb-remediated/data/structures/divided"
+TEMPDIR=${TMPDIR-/tmp}/gemmi
 BIN=..
 [ -e ../build ] && BIN=../build ||:
 code=${1,,}
-tempd=/run/gemmi
-[ -d "$tempd" ] || ls "$tempd" # ls just triggers error
-pout="$tempd/$code-p.pdb"
-gout="$tempd/$code-g.pdb"
-cifout="$tempd/$code.cif"  # used with VIA_CIF=1
-cif=${PDB_COPY}/mmCIF/${code:1:2}/${code}.cif.gz
-if [[ -d ${PDB_COPY}/pdb ]]; then
-  pdb=${PDB_COPY}/pdb/${code:1:2}/pdb${code}.ent.gz
+mkdir -p "$TEMPDIR"
+pout="$TEMPDIR/$code-p.pdb"
+gout="$TEMPDIR/$code-g.pdb"
+cifout="$TEMPDIR/$code.cif"  # used with VIA_CIF=1
+
+cif_tail="mmCIF/${code:1:2}/${code}.cif.gz"
+if [[ -d ${LOCAL_COPY}/mmCIF ]]; then
+  cif=$LOCAL_COPY/$cif_tail
 else
-  pdb=$tempd/pdb${code}.ent.gz
+  cif=$TEMPDIR/${code}.cif.gz
+  if [[ ! -e $cif ]]; then
+    curl $REMOTE_COPY/$cif_tail -o $cif
+  fi
+fi
+
+pdb_tail="pdb/${code:1:2}/pdb${code}.ent.gz"
+if [[ -d $LOCAL_COPY/pdb ]]; then
+  pdb=$LOCAL_COPY/$pdb_tail
+else
+  pdb=$TEMPDIR/pdb${code}.ent.gz
   if [[ ! -e $pdb ]]; then
-      remote=http://ftp.ebi.ac.uk/pub/databases/rcsb/pdb-remediated/data/structures/divided/pdb/${code:1:2}/pdb${code}.ent.gz
-      curl $remote -o $pdb
+    curl $REMOTE_COPY/$pdb_tail -o $pdb
   fi
 fi
 
