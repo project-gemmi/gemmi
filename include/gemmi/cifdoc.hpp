@@ -10,9 +10,10 @@
 #include "fail.hpp"  // for fail
 #include "util.hpp"  // for starts_with, to_lower
 #include "tostr.hpp"  // for tostr
+#include <cassert>
+#include <cstring>   // for memchr
 #include <algorithm> // for move, find_if, all_of, min, rotate
 #include <array>
-#include <cstring>   // for memchr
 #include <initializer_list>
 #include <iosfwd>    // for size_t, ptrdiff_t
 #include <new>
@@ -355,6 +356,8 @@ struct Table {
 
   void erase();
 
+  void convert_pair_to_loop();
+
   // It is not a proper input iterator, but just enough for using range-for.
   struct iterator {
     Table& parent;
@@ -626,8 +629,7 @@ template <typename T> void Table::append_row(T new_values) {
   if (new_values.size() != width())
     fail("append_row(): wrong row length");
   if (!loop_item)
-    // this limitation could be lifted if needed
-    fail("append_row(): existing data must be in loop_");
+    convert_pair_to_loop();
   Loop& loop = loop_item->loop;
   size_t cur_size = loop.values.size();
   loop.values.resize(cur_size + loop.width(), ".");
@@ -635,7 +637,6 @@ template <typename T> void Table::append_row(T new_values) {
   for (const auto& value : new_values)
     loop.values[cur_size + positions[n++]] = value;
 }
-
 
 inline Column Table::column_at_pos(int pos) {
   if (loop_item)
@@ -649,6 +650,21 @@ inline void Table::erase() {
   else
     for (int pos : positions)
       bloc.items[pos].erase();
+}
+
+inline void Table::convert_pair_to_loop() {
+  assert(loop_item == nullptr);
+  Item new_item(LoopArg{});
+  new_item.loop.tags.resize(positions.size());
+  new_item.loop.values.resize(positions.size());
+  for (size_t i = 0; i != positions.size(); ++i) {
+    Item& item = bloc.items[positions[i]];
+    new_item.loop.tags[i].swap(item.pair[0]);
+    new_item.loop.values[i].swap(item.pair[1]);
+    item.erase();
+  }
+  loop_item = &bloc.items.at(positions[0]);
+  loop_item->set_value(std::move(new_item));
 }
 
 inline const Item* Block::find_pair_item(const std::string& tag) const {
