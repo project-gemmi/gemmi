@@ -331,6 +331,7 @@ struct Table {
   void append_row(std::initializer_list<std::string> new_values) {
     append_row<std::initializer_list<std::string>>(new_values);
   }
+  void remove_row(int row_index);
   Column column_at_pos(int pos);
   Column column(int n) {
     int pos = positions.at(n);
@@ -636,6 +637,19 @@ template <typename T> void Table::append_row(T new_values) {
   int n = 0;
   for (const auto& value : new_values)
     loop.values[cur_size + positions[n++]] = value;
+}
+
+inline void Table::remove_row(int row_index) {
+  if (!ok())
+    fail("remove_row(): table not found");
+  if (!loop_item)
+    convert_pair_to_loop();
+  Loop& loop = loop_item->loop;
+  size_t pos = row_index * loop.width();
+  if (row_index < 0 || pos >= loop.values.size())
+    throw std::out_of_range("remove_row(): invalid index");
+  loop.values.erase(loop.values.begin() + pos,
+                    loop.values.begin() + pos + loop.width());
 }
 
 inline Column Table::column_at_pos(int pos) {

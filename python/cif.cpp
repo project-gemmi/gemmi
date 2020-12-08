@@ -310,6 +310,7 @@ void add_cif(py::module& cif) {
     .def("erase", &Table::erase)
     .def("append_row", &Table::append_row<std::vector<std::string>>,
          py::arg("new_values"))
+    .def("remove_row", &Table::remove_row, py::arg("row_index"))
     .def_property_readonly("tags",
             py::cpp_function(&Table::tags, py::keep_alive<0, 1>()))
     .def("__iter__", [](Table& self) {

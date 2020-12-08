@@ -1116,14 +1116,35 @@ and a few convenience functions, including::
   >>> row.has(2)  # the same as table.has_column(2)
   True
 
-and a property:
+and a property::
+
+  int row_index
 
 .. doctest::
 
   >>> row.row_index
   9
 
-The tags and value can be modified. As an example, let us swap two tag names
+----
+
+We can append a row to Table (function ``Table::append_row``):
+
+.. doctest::
+
+  >>> table.append_row(['3', '4', 'new'])
+  >>> table[-1]
+  <gemmi.cif.Table.Row: 3 4 new>
+  >>> _.row_index
+  18
+
+and remove a row from Table (function ``Table::remove_row``):
+
+.. doctest::
+
+  >>> table.remove_row(18)
+
+Individual tags and values can also be modified.
+As an example, let us swap two tag names
 (these two tend to have identical values, so no one will notice):
 
 .. literalinclude:: code/cif_cc.cpp
