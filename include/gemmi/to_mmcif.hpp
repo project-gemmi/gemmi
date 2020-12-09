@@ -338,36 +338,44 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
        "ptnr2_auth_seq_id", "pdbx_ptnr2_PDB_ins_code", "ptnr2_symmetry",
        "details", "pdbx_dist_value", "ccp4_link_id"});
   for (const Connection& con : st.connections) {
-    const_CRA cra1 = st.models[0].find_cra(con.partner1);
-    const_CRA cra2 = st.models[0].find_cra(con.partner2);
-    if (!cra1.atom || !cra2.atom)
+    const Residue* res1 = st.models[0].find_residue(con.partner1.chain_name, con.partner1.res_id);
+    const Residue* res2 = st.models[0].find_residue(con.partner2.chain_name, con.partner2.res_id);
+    if (!res1 || !res2)
       continue;
-    SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
-                                             cra2.atom->pos, con.asu);
+    const Atom* at1 = res1->find_atom(con.partner1.atom_name, con.partner1.altloc);
+    const Atom* at2 = res2->find_atom(con.partner2.atom_name, con.partner2.altloc);
+    
+    std::string im_pdb_symbol = "?", im_dist_str = "?";
+    if (at1 && at2) {
+      SymImage im = st.cell.find_nearest_image(at1->pos,
+                                               at2->pos, con.asu);
+      im_pdb_symbol = im.pdb_symbol(true);
+      im_dist_str = to_str_prec<4>(im.dist());
+    }
     conn_loop.add_row({
-        con.name,                                  // id
-        connection_type_to_string(con.type),       // conn_type_id
-        impl::qchain(cra1.chain->name),            // ptnr1_auth_asym_id
-        subchain_or_dot(*cra1.residue),            // ptnr1_label_asym_id
-        cra1.residue->name,                        // ptnr1_label_comp_id
-        cra1.residue->label_seq.str('.'),          // ptnr1_label_seq_id
-        cif::quote(cra1.atom->name),               // ptnr1_label_atom_id
-        std::string(1, cra1.atom->altloc_or('?')), // pdbx_ptnr1_label_alt_id
-        cra1.residue->seqid.num.str(),             // ptnr1_auth_seq_id
-        pdbx_icode(con.partner1.res_id),           // ptnr1_PDB_ins_code
-        "1_555",                                   // ptnr1_symmetry
-        impl::qchain(cra2.chain->name),            // ptnr2_auth_asym_id
-        subchain_or_dot(*cra2.residue),            // ptnr2_label_asym_id
-        cra2.residue->name,                        // ptnr2_label_comp_id
-        cra2.residue->label_seq.str('.'),          // ptnr2_label_seq_id
-        cif::quote(cra2.atom->name),               // ptnr2_label_atom_id
-        std::string(1, cra2.atom->altloc_or('?')), // pdbx_ptnr2_label_alt_id
-        cra2.residue->seqid.num.str(),             // ptnr2_auth_seq_id
-        pdbx_icode(con.partner2.res_id),           // ptnr2_PDB_ins_code
-        im.pdb_symbol(true),                       // ptnr2_symmetry
-        "?",                                       // details
-        to_str_prec<4>(im.dist()),                 // pdbx_dist_value
-        impl::string_or_qmark(con.link_id)         // ccp4_link_id
+        con.name,                                        // id
+        connection_type_to_string(con.type),             // conn_type_id
+        impl::qchain(con.partner1.chain_name),           // ptnr1_auth_asym_id
+        subchain_or_dot(*res1),                          // ptnr1_label_asym_id
+        res1->name,                                      // ptnr1_label_comp_id
+        res1->label_seq.str('.'),                        // ptnr1_label_seq_id
+        at1 ? cif::quote(at1->name) : "?",               // ptnr1_label_atom_id
+        at1 ? std::string(1, at1->altloc_or('?')) : "?", // pdbx_ptnr1_label_alt_id
+        res1->seqid.num.str(),                           // ptnr1_auth_seq_id
+        pdbx_icode(con.partner1.res_id),                 // ptnr1_PDB_ins_code
+        "1_555",                                         // ptnr1_symmetry
+        impl::qchain(con.partner2.chain_name),           // ptnr2_auth_asym_id
+        subchain_or_dot(*res2),                          // ptnr2_label_asym_id
+        res2->name,                                      // ptnr2_label_comp_id
+        res2->label_seq.str('.'),                        // ptnr2_label_seq_id
+        at2 ? cif::quote(at2->name) : "?",               // ptnr2_label_atom_id
+        at2 ? std::string(1, at2->altloc_or('?')) : "?", // pdbx_ptnr2_label_alt_id
+        res2->seqid.num.str(),                           // ptnr2_auth_seq_id
+        pdbx_icode(con.partner2.res_id),                 // ptnr2_PDB_ins_code
+        im_pdb_symbol,                                   // ptnr2_symmetry
+        "?",                                             // details
+        im_dist_str,                                     // pdbx_dist_value
+        impl::string_or_qmark(con.link_id)               // ccp4_link_id
     });
     type_ids[int(con.type)] = true;
   }

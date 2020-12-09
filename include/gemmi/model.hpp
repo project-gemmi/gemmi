@@ -726,6 +726,10 @@ struct Model {
           return residue;
     return nullptr;
   }
+  const Residue* find_residue(const std::string& chain_name, const ResidueId& rid) const {
+    return const_cast<Model*>(this)->find_residue(chain_name, rid);
+  }
+
 
   ResidueGroup find_residue_group(const std::string& chain_name, SeqId seqid) {
     for (Chain& chain : chains)
