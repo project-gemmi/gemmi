@@ -583,33 +583,43 @@ inline void write_header(const Structure& st, std::ostream& os,
       for (const Connection& con : st.connections)
         if (con.type == Connection::Covale || con.type == Connection::MetalC ||
             con.type == Connection::Unknown) {
-          const_CRA cra1 = st.models[0].find_cra(con.partner1);
-          const_CRA cra2 = st.models[0].find_cra(con.partner2);
-          if (!cra1.atom || !cra2.atom)
+          const Residue* res1 = st.models[0].find_residue(con.partner1.chain_name, con.partner1.res_id);
+          const Residue* res2 = st.models[0].find_residue(con.partner2.chain_name, con.partner2.res_id);
+          if (!res1 || !res2)
             continue;
-          SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
-                                                   cra2.atom->pos, con.asu);
+          const Atom* at1 = res1->find_atom(con.partner1.atom_name, con.partner1.altloc);
+          const Atom* at2 = res2->find_atom(con.partner2.atom_name, con.partner2.altloc);
+          
+          std::string im_pdb_symbol = "", im_dist_str = "";
+          bool im_same_asu = true;
+          if (at1 && at2) {
+            SymImage im = st.cell.find_nearest_image(at1->pos,
+                                                     at2->pos, con.asu);
+            im_pdb_symbol = im.pdb_symbol(false);
+            im_dist_str = to_str_prec<2>(im.dist());
+            im_same_asu = im.same_asu();
+          }
           // Pdb spec: "sym1 and sym2 are right justified and are given as
           // blank when the identity operator (and no cell translation) is
           // to be applied to the atom." But all files from wwPDB have
           // 1555 not blank, so here we also write 1555,
           // except for LINKR (Refmac variant of LINK).
           gf_snprintf(buf, 82, "LINK        %-4s%c%3s%2s%5s   "
-                "            %-4s%c%3s%2s%5s  %6s %6s %5.2f  \n",
-                padded_atom_name(*cra1.atom).c_str(),
-                cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
-                cra1.residue->name.c_str(),
-                cra1.chain->name.c_str(),
-                write_seq_id(buf8, cra1.residue->seqid),
-                padded_atom_name(*cra2.atom).c_str(),
-                cra2.atom->altloc ? std::toupper(cra2.atom->altloc) : ' ',
-                cra2.residue->name.c_str(),
-                cra2.chain->name.c_str(),
-                write_seq_id(buf8a, cra2.residue->seqid),
-                "1555", im.pdb_symbol(false).c_str(), im.dist());
+                "            %-4s%c%3s%2s%5s  %6s %6s %5s  \n",
+                at1 ? padded_atom_name(*at1).c_str() : "",
+                at1 && at1->altloc ? std::toupper(at1->altloc) : ' ',
+                res1->name.c_str(),
+                con.partner1.chain_name.c_str(),
+                write_seq_id(buf8, res1->seqid),
+                at2 ? padded_atom_name(*at2).c_str() : "",
+                at2 && at2->altloc ? std::toupper(at2->altloc) : ' ',
+                res2->name.c_str(),
+                con.partner2.chain_name.c_str(),
+                write_seq_id(buf8a, res2->seqid),
+                "1555", im_pdb_symbol.c_str(), im_dist_str.c_str());
           if (opt.use_linkr && !con.link_id.empty()) {
             buf[4] = 'R';  // LINK -> LINKR
-            if (im.same_asu())
+            if (im_same_asu)
               std::memset(buf+58, ' ', 14); // erase symmetry
             // overwrite distance with link_id
             gf_snprintf(buf+72, 82-72, "%-8s\n", con.link_id.c_str());
