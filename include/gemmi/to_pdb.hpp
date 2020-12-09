@@ -396,9 +396,8 @@ inline void write_header(const Structure& st, std::ostream& os,
     // "classification" in PDB == _struct_keywords.pdbx_keywords in mmCIF
     const std::string& keywords = st.get_info("_struct_keywords.pdbx_keywords");
     if (!pdb_date.empty() || !keywords.empty() || !entry_id.empty())
-      WRITEU("HEADER    %-40s%-9s   %-18s\n",
-             keywords.substr(0, 40).c_str(), pdb_date.substr(0, 9).c_str(),
-             entry_id.substr(0, 18).c_str());
+      WRITEU("HEADER    %-40.40s%-9s   %-18.18s\n",
+             keywords.c_str(), pdb_date.c_str(), entry_id.c_str());
   }
   write_multiline(os, "TITLE", st.get_info("_struct.title"), 80);
   write_multiline(os, "KEYWDS", st.get_info("_struct_keywords.text"), 79);
