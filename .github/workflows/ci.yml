@@ -9,8 +9,8 @@ jobs:
         include:
           - os: ubuntu-16.04
             build: Release
-            cc: gcc-4.8
-            cxx: g++-4.8
+            cc: clang-3.5
+            cxx: clang++-3.5
           - os: ubuntu-20.04
             build: Debug
             cc: gcc
@@ -26,7 +26,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Create Build Environment
+    - name: mkdir build
       run: cmake -E make_directory ${{runner.workspace}}/build
 
     - name: Configure CMake
@@ -43,3 +43,14 @@ jobs:
       working-directory: ${{runner.workspace}}/build
       shell: bash
       run: ctest -C ${{ matrix.build }}
+
+  centos:
+    runs-on: ubuntu-latest
+    name: "CentOS 7"
+    container: centos:7
+    steps:
+    - uses: actions/checkout@v2
+    - run: yum install -y gcc-c++ cmake3 make git
+    - run: cmake3 .
+    - run: make -j2 all check
+    - run: ctest3

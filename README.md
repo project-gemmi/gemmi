@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/project-gemmi/gemmi.svg?branch=master)](https://travis-ci.org/project-gemmi/gemmi)
+![CI](https://github.com/project-gemmi/gemmi/workflows/CI/badge.svg)
 [![Build status](https://ci.appveyor.com/api/projects/status/cv5hu6h6hmxd9k5a?svg=true)](https://ci.appveyor.com/project/wojdyr/gemmi)
 
 GEMMI can help if you work with:
