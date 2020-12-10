@@ -7,28 +7,14 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-16.04
-            build: Release
-            cc: clang-3.5
-            cxx: clang++-3.5
           - os: ubuntu-20.04
             build: Debug
-            cc: gcc
-            cxx: g++
           - os: macos-10.15
-            cc: clang
-            cxx: clang++
+            build: Release
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    env:
-      CC: ${{ matrix.cc }}
-      CXX: ${{ matrix.cxx }}
     steps:
     - uses: actions/checkout@v2
-
-    - name: apt-get
-      if: matrix.cc == 'clang-3.5'
-      run: sudo apt-get install libz-dev python3-pip clang-3.5 python3-setuptools
 
     - name: mkdir build
       run: cmake -E make_directory ${{runner.workspace}}/build
@@ -41,12 +27,32 @@ jobs:
     - name: Build
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: cmake --build . --config ${{ matrix.build }} --target all check
+      run: cmake --build . --config ${{ matrix.build }}
 
     - name: Test
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: ctest -C ${{ matrix.build }}
+      run: cmake --build . --config ${{ matrix.build }} --target check
+
+  clang35:
+    name: "Ubuntu 16.04, Clang 3.5"
+    runs-on: ubuntu-16.04
+    env:
+      CC: clang-3.5
+      CXX: clang++-3.5
+    steps:
+    - uses: actions/checkout@v2
+    - run: sudo apt-get install libz-dev python3-pip clang-3.5 python3-setuptools
+    - run: mkdir build
+    - run: cmake .. -DCMAKE_CXX_STANDARD=11
+      working-directory: ${{runner.workspace}}/build
+    - run: make -j2 all
+      working-directory: ${{runner.workspace}}/build
+    - run: make -j2 check
+      working-directory: ${{runner.workspace}}/build
+    - run: python3 setup.py install --user --prefix=
+    - run: python3 -m unittest discover -v -s tests/
+
 
   centos:
     runs-on: ubuntu-latest
@@ -54,7 +60,8 @@ jobs:
     container: centos:7
     steps:
     - uses: actions/checkout@v2
+    - run: yum update -y && yum install -y epel-release
     - run: yum install -y gcc-c++ cmake3 make git
     - run: cmake3 .
-    - run: make -j2 all check
-    - run: ctest3
+    - run: make -j2
+    - run: make -j2 check
