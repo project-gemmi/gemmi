@@ -1646,6 +1646,8 @@ const char Tables_<Dummy>::ccp4_hkl_asu[230] = {
 using spacegroup_tables = impl::Tables_<void>;
 
 inline const SpaceGroup* find_spacegroup_by_number(int ccp4) noexcept {
+  if (ccp4 == 0)
+    return &spacegroup_tables::main[0];
   for (const SpaceGroup& sg : spacegroup_tables::main)
     if (sg.ccp4 == ccp4)
       return &sg;
