@@ -27,8 +27,8 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: apt-get
-    - if: matrix.cc == 'clang-3.5'
-    - run: sudo apt-get libz-dev python3-pip clang-3.5 python3-setuptools
+      if: matrix.cc == 'clang-3.5'
+      run: sudo apt-get libz-dev python3-pip clang-3.5 python3-setuptools
 
     - name: mkdir build
       run: cmake -E make_directory ${{runner.workspace}}/build
