@@ -51,7 +51,7 @@ template<typename T> void add_smat33(py::module& m, const char* name) {
     .def("determinant", &M::determinant)
     .def("inverse", &M::inverse)
     .def("r_u_r", &M::r_u_r)
-    .def("transformed_by", &M::transformed_by)
+    .def("transformed_by", &M::template transformed_by<double>)
     .def("calculate_eigenvalues", &M::calculate_eigenvalues)
     ;
 }

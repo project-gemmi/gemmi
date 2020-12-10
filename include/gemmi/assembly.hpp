@@ -230,11 +230,8 @@ inline void expand_ncs(gemmi::Structure& st, HowToNameCopiedChains how) {
           for (gemmi::Residue& res : new_chain.residues) {
             for (gemmi::Atom& a : res.atoms) {
               a.pos = op.apply(a.pos);
-              if (a.aniso.nonzero()) {
-                SMat33<double> u = a.aniso.transformed_by(op.tr.mat);
-                a.aniso = {static_cast<float>(u.u11), static_cast<float>(u.u22), static_cast<float>(u.u33),
-                           static_cast<float>(u.u12), static_cast<float>(u.u13), static_cast<float>(u.u23)};
-              }
+              if (a.aniso.nonzero())
+                a.aniso = a.aniso.transformed_by<float>(op.tr.mat);
             }
             if (!res.subchain.empty())
               res.subchain = new_chain.name + ":" + res.subchain;

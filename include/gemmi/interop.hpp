@@ -28,7 +28,7 @@ inline SmallStructure::Site atom_to_site(const Atom& atom, const UnitCell& cell)
     if (cell.alpha == 90. || cell.beta == 90. || cell.gamma == 90.) {
       site.aniso = atom.aniso.scaled(1.0);
     } else {
-      SMat33<double> t = atom.aniso.transformed_by(cell.frac.mat);
+      SMat33<double> t = atom.aniso.transformed_by<>(cell.frac.mat);
       Vec3 v = {1.0 / cell.ar, 1.0 / cell.br, 1.0 / cell.cr};
       site.aniso = {t.u11 * v.x * v.x,
                     t.u22 * v.y * v.y,

@@ -62,7 +62,7 @@ public:
   }
   double dwf_aniso(const Atom& atom, const Vec3& hkl) const {
     return std::exp(-2 * pi() * pi() *
-                    atom.aniso.transformed_by(cell_.frac.mat).r_u_r(hkl));
+                    atom.aniso.transformed_by<>(cell_.frac.mat).r_u_r(hkl));
   }
 
   template<typename Site>
