@@ -51,6 +51,18 @@ template<typename T> void add_smat33(py::module& m, const char* name) {
     .def("determinant", &M::determinant)
     .def("inverse", &M::inverse)
     .def("r_u_r", &M::r_u_r)
+    .def("r_u_r", [](const M& self, py::array_t<int> arr) {
+        int nrow = (int) arr.shape(0);
+        int ncol = (int) arr.shape(1);
+        if (ncol != 3)
+           fail("SMat33::r_u_r(): expected 3 columns.");
+        std::vector<T> v;
+        v.reserve(nrow);
+        auto r = arr.unchecked<2>();
+        for (ssize_t row = 0; row < nrow; ++row)
+           v.push_back(self.r_u_r(Vec3(r(row, 0), r(row, 1), r(row, 2))));
+        return py_array_from_vector(std::move(v));
+    }, py::arg().noconvert())
     .def("transformed_by", &M::template transformed_by<double>)
     .def("calculate_eigenvalues", &M::calculate_eigenvalues)
     ;
@@ -103,8 +115,13 @@ void add_unitcell(py::module& m) {
     .def("__repr__", [](const Vec3& self) {
         return "<gemmi.Vec3(" + triple(self.x, self.y, self.z) + ")>";
     });
-  py::class_<Mat33>(m, "Mat33")
+  py::class_<Mat33>(m, "Mat33", py::buffer_protocol())
     .def(py::init<>())
+    .def_buffer([](Mat33 &self) {
+      return py::buffer_info(&self.a[0][0],
+                             {3, 3}, // dimensions
+                             {sizeof(double)*3, sizeof(double)});  // strides
+    })
     .def("multiply", (Mat33 (Mat33::*)(const Mat33&) const) &Mat33::multiply)
     .def("multiply", (Vec3 (Mat33::*)(const Vec3&) const) &Mat33::multiply)
     .def("left_multiply", &Mat33::left_multiply)
