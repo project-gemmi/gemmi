@@ -78,13 +78,6 @@ static py::array_t<float> make_d_array(const Mtz& mtz, int dataset) {
                          });
 }
 
-template<typename T>
-py::array_t<T> py_array_from_vector(std::vector<T>&& original_vec) {
-  auto v = new std::vector<T>(std::move(original_vec));
-  py::capsule cap(v, [](void* p) { delete (std::vector<T>*) p; });
-  return py::array_t<T>(v->size(), v->data(), cap);
-}
-
 void add_hkl(py::module& m) {
 
   py::class_<Mtz> mtz(m, "Mtz", py::buffer_protocol());

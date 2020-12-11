@@ -225,6 +225,9 @@ void add_grid(py::module& m, const std::string& name) {
         return cell.calculate_d(hkl);
       });
     })
+    .def("copy", [](const AsuData& self) {
+      return new AsuData(self);
+    })
     .def("__repr__", [name](const AsuData& self) {
         return tostr("<gemmi.Reciprocal", name, ".AsuData with ", self.v.size(), " values>");
     });
