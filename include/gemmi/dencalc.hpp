@@ -166,39 +166,58 @@ nextpoint: ;
       }
 }
 
-template <typename F>
-double determine_cutoff_radius(const F& func, float cutoff_level) {
-  float x1 = 3.5f;
-  float y1 = func(x1);
-  float x2 = x1;
-  float y2 = y1;
-  if (y1 < cutoff_level)
+template <typename PrecalExpSum>
+double determine_cutoff_radius(double x1, const PrecalExpSum& precal, double cutoff_level) {
+  double y1, dy;
+  std::tie(y1, dy) = precal.calculate_with_derivative(x1);
+  // Generally, density is supposed to decrease with radius.
+  // But if we have addends (in particular -Z for Mott-Bothe),
+  // it can first rise, then decrease. We want to be after the maximum.
+  while (dy > 0) { // unlikely
+    x1 += 1.0;
+    std::tie(y1, dy) = precal.calculate_with_derivative(x1);
+  }
+  double x2 = x1;
+  double y2 = y1;
+  if (y1 < cutoff_level) {
     while (y1 < cutoff_level) {
       x2 = x1;
       y2 = y1;
       x1 -= 0.5f;
-      y1 = func(x1);
+      std::tie(y1, dy) = precal.calculate_with_derivative(x1);
+      // with addends it's possible to land on the left side of the maximum
+      if (dy > 0) { // unlikely
+        while (dy > 0 && x1 + 0.1 < x2) {
+          x1 += 0.1;
+          std::tie(y1, dy) = precal.calculate_with_derivative(x1);
+        }
+        if (y1 < cutoff_level)
+          return x1;
+        break;
+      }
+      if (x1 < 0) { // unlikely
+        x1 = 0;
+        y1 = precal.calculate(x1 * x1);
+        break;
+      }
     }
-  else
+  } else {
     while (y2 > cutoff_level) {
       x1 = x2;
       y1 = y2;
       x2 += 0.5f;
-      y2 = func(x2);
-    }
-  while (x2 - x1 > 0.02f) {
-    float new_x = 0.5f * (x2 + x1);
-    float new_y = func(new_x);
-    if (new_y < cutoff_level) {
-      x2 = new_x;
-      y2 = new_y;
-    } else {
-      x1 = new_x;
-      y1 = new_y;
+      y2 = precal.calculate(x2 * x2);
     }
   }
-  return x2;
+
+  return x1 + (x1 - x2) / (y1 - y2) * (cutoff_level - y1);
 }
+
+// approximated radius of electron density (IT92) above r_cut=1e-5 for C
+inline double it92_radius_approx(double b) {
+  return (8.5 + 0.075 * b) / (2.4 + 0.0045 * b);
+}
+
 
 // Usual usage:
 // - set d_min and optionally also other parameters,
@@ -230,9 +249,8 @@ struct DensityCalculator {
       // isotropic
       double b = atom.b_iso + blur;
       auto precal = scat.precalculate_density_iso(b, addend);
-      double radius = determine_cutoff_radius(
-          [&](float r) { return (float)precal.calculate(r*r); },
-          r_cut);
+      double x1 = it92_radius_approx(b);
+      double radius = determine_cutoff_radius(x1, precal, r_cut);
       grid.use_points_around(fpos, radius, [&](Real& point, double r2) {
           point += Real(atom.occ * precal.calculate((Real)r2));
       }, /*fail_on_too_large_radius=*/false);
@@ -242,9 +260,8 @@ struct DensityCalculator {
       // rough estimate, so we don't calculate eigenvalues
       double b_max = std::max(std::max(aniso_b.u11, aniso_b.u22), aniso_b.u33);
       auto precal_iso = scat.precalculate_density_iso(b_max, addend);
-      double radius = determine_cutoff_radius(
-          [&](float r) { return (float)precal_iso.calculate(r*r); },
-          r_cut);
+      double x1 = it92_radius_approx(b_max);
+      double radius = determine_cutoff_radius(x1, precal_iso, r_cut);
       auto precal = scat.precalculate_density_aniso_b(aniso_b, addend);
       int du = (int) std::ceil(radius / grid.spacing[0]);
       int dv = (int) std::ceil(radius / grid.spacing[1]);

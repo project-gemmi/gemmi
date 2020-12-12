@@ -7,6 +7,7 @@
 #define GEMMI_FORMFACT_HPP_
 
 #include <cmath>     // for exp, sqrt
+#include <utility>   // for pair
 #include "math.hpp"  // for pi()
 
 namespace gemmi {
@@ -21,6 +22,17 @@ struct ExpSum {
     for (int i = 0; i < N; ++i)
       density += a[i] * std::exp(b[i] * r2);
     return density;
+  }
+
+  std::pair<Real,Real> calculate_with_derivative(Real r) const {
+    Real density = 0;
+    Real derivative = 0;
+    for (int i = 0; i < N; ++i) {
+      Real y = a[i] * std::exp(b[i] * r * r);
+      density += y;
+      derivative += 2 * b[i] * r * y;
+    }
+    return std::make_pair(density, derivative);
   }
 };
 
