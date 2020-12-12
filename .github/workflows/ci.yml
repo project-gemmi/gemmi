@@ -34,6 +34,7 @@ jobs:
       shell: bash
       run: cmake --build . --config ${{ matrix.build }} --target check
 
+
   clang35:
     name: "Ubuntu 16.04, Clang 3.5"
     runs-on: ubuntu-16.04
@@ -43,13 +44,14 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: sudo apt-get install libz-dev python3-pip clang-3.5 python3-setuptools
-    - run: mkdir build
-    - run: cmake .. -DCMAKE_CXX_STANDARD=11
-      working-directory: ${{runner.workspace}}/build
-    - run: make -j2 all
-      working-directory: ${{runner.workspace}}/build
-    - run: make -j2 check
-      working-directory: ${{runner.workspace}}/build
+    - run: |
+        mkdir build
+        cd build
+        cmake --version
+        cmake .. -DCMAKE_CXX_STANDARD=11
+        $CXX --version
+        make -j2 all
+        make -j2 check
     - run: python3 setup.py install --user --prefix=
     - run: python3 -m unittest discover -v -s tests/
 
