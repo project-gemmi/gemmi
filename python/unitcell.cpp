@@ -60,7 +60,7 @@ template<typename T> void add_smat33(py::module& m, const char* name) {
         v.reserve(nrow);
         auto r = arr.unchecked<2>();
         for (ssize_t row = 0; row < nrow; ++row)
-           v.push_back(self.r_u_r(Vec3(r(row, 0), r(row, 1), r(row, 2))));
+           v.push_back((T)self.r_u_r(Vec3(r(row, 0), r(row, 1), r(row, 2))));
         return py_array_from_vector(std::move(v));
     }, py::arg().noconvert())
     .def("transformed_by", &M::template transformed_by<double>)
