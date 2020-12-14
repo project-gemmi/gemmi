@@ -137,6 +137,8 @@ void add_grid(py::module& m, const std::string& name) {
     .def("symmetrize_min", &Gr::symmetrize_min)
     .def("symmetrize_max", &Gr::symmetrize_max)
     .def("asu", &Gr::asu)
+    .def("mask_points_in_constant_radius", &mask_points_in_constant_radius<T>,
+         py::arg("model"), py::arg("radius"), py::arg("value"))
     .def("__repr__", [=](const Gr& self) {
         return tostr("<gemmi.", name, '(', grid_dim_str(self), ")>");
     });
