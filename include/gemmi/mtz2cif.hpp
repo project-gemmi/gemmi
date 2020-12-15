@@ -70,11 +70,9 @@ struct MtzToCif {
       "L H index_l",
       "? I       J intensity_net",
       "& SIGI    Q intensity_sigma .5g",
-      // ccp4_z_calc is a proposed item:
-      // Calculated image number of reflection at diffraction maximum.
-      // Calculated Z position of reflection centre on the detector (with Z
-      // in image number space).
-      "$image ccp4_calculated_z",
+      // new! https://github.com/wwpdb-dictionaries/mmcif_pdbx/pull/33
+      "?ROT R pdbx_scan_angle",
+      "$image pdbx_image_id",
       nullptr
     };
     return for_merged ? merged : unmerged;
