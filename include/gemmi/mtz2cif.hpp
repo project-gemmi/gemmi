@@ -285,15 +285,18 @@ private:
       const Mtz::Column& col = mtz.columns[tr.col_idx];
       if (ctype != '*' && col.type != ctype)
         fail("Column ", col.label, " has type ", col.type, " not ", ctype);
-      tr.is_status = iequal(tr.tag, "status");
     }
 
     std::string fmt = read_word(p, &p);
-    if (!fmt.empty() && !tr.is_status) {
-      tr.min_width = check_format(fmt);
-      tr.format = "%" + fmt;
-      if (tr.format[1] == '_')
-        tr.format[1] = ' ';
+    if (!fmt.empty()) {
+      if (fmt.size() == 1 && fmt[0] == 'S') {
+        tr.is_status = true;
+      } else {
+        tr.min_width = check_format(fmt);
+        tr.format = "%" + fmt;
+        if (tr.format[1] == '_')
+          tr.format[1] = ' ';
+      }
     }
 
     recipe.push_back(tr);
