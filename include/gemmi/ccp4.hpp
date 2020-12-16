@@ -205,9 +205,7 @@ struct Ccp4 {
       if (!f.read(ccp4_header.data() + hsize, 4 * ext_w))
         fail("Failed to read extended header: " + path);
     }
-    grid.nu = header_i32(1);
-    grid.nv = header_i32(2);
-    grid.nw = header_i32(3);
+    grid.set_size_without_checking(header_i32(1), header_i32(2), header_i32(3));
     for (int i = 0; i < 3; ++i) {
       int axis = header_i32(17 + i);
       if (axis < 1 || axis > 3)
@@ -358,13 +356,9 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
       start[i] = 0;
     }
     int crs[3] = { grid.nu, grid.nv, grid.nw };
-    grid.nu = crs[pos[0]];
-    grid.nv = crs[pos[1]];
-    grid.nw = crs[pos[2]];
+    grid.set_size_without_checking(crs[pos[0]], crs[pos[1]], crs[pos[2]]);
   } else {
-    grid.nu = sampl[0];
-    grid.nv = sampl[1];
-    grid.nw = sampl[2];
+    grid.set_size_without_checking(sampl[0], sampl[1], sampl[2]);
     set_header_3i32(5, 0, 0, 0); // start
   }
   set_header_3i32(1, grid.nu, grid.nv, grid.nw); // NX, NY, NZ
@@ -426,9 +420,7 @@ void Ccp4<T>::set_extent(const Box<Fractional>& box) {
         data[idx++] = grid.get_value(u0 + u, v0 + v, w0 + w);
   grid.data = std::move(data);
   // and metadata
-  grid.nu = nu;
-  grid.nv = nv;
-  grid.nw = nw;
+  grid.set_size_without_checking(nu, nv, nw);
   set_header_3i32(1, grid.nu, grid.nv, grid.nw); // NX, NY, NZ
   set_header_3i32(5, u0, v0, w0);
 }
