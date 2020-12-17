@@ -81,6 +81,8 @@ void add_grid(py::module& m, const std::string& name) {
     .def_readonly("nu", &GrBase::nu, "size in the first (fastest-changing) dim")
     .def_readonly("nv", &GrBase::nv, "size in the second dimension")
     .def_readonly("nw", &GrBase::nw, "size in the third (slowest-changing) dim")
+    .def_property_readonly("shape", [](const GrBase &self){
+                           return py::make_tuple(self.nu, self.nv, self.nw);})
     .def_readwrite("spacegroup", &GrBase::spacegroup)
     .def_readwrite("unit_cell", &GrBase::unit_cell)
     .def_readonly("axis_order", &GrBase::axis_order)
@@ -93,11 +95,16 @@ void add_grid(py::module& m, const std::string& name) {
 
   gr
     .def(py::init<>())
-    .def(py::init([](int nx, int ny, int nz) {
+    .def(py::init([](int nx, int ny, int nz, const UnitCell *cell, const SpaceGroup* sg) {
       Gr* grid = new Gr();
       grid->set_size(nx, ny, nz);
+      if (cell)
+        grid->set_unit_cell(*cell);
+      if (sg)
+        grid->spacegroup = sg;
       return grid;
-    }), py::arg("nx"), py::arg("ny"), py::arg("nz"))
+    }), py::arg("nx"), py::arg("ny"), py::arg("nz"),
+        py::arg("cell")=nullptr, py::arg("spacegroup")=nullptr)
     .def(py::init([](py::array_t<T> arr, const UnitCell *cell, const SpaceGroup* sg) {
       auto r = arr.template unchecked<3>();
       Gr* grid = new Gr();
@@ -112,11 +119,17 @@ void add_grid(py::module& m, const std::string& name) {
         grid->spacegroup = sg;
       return grid;
     }), py::arg().noconvert(), py::arg("cell")=nullptr, py::arg("spacegroup")=nullptr)
+    .def_property_readonly("spacing", [](const Gr &self){
+                           return py::array({3}, self.spacing);})
     .def("get_value", &Gr::get_value)
     .def("set_value", &Gr::set_value)
     .def("get_point", &Gr::get_point)
     .def("point_to_fractional", &Gr::point_to_fractional)
     .def("point_to_position", &Gr::point_to_position)
+    .def("point_to_position", [](const Gr &self, int u, int v, int w) {
+         GrPoint p = {u, v, w, nullptr};
+         return self.point_to_position(p);
+         }, py::arg("u"), py::arg("v"), py::arg("w"))
     .def("point_to_index", &Gr::point_to_index)
     .def("interpolate_value",
          (T (Gr::*)(const Fractional&) const) &Gr::interpolate_value)
