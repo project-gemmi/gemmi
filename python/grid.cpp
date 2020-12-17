@@ -120,7 +120,7 @@ void add_grid(py::module& m, const std::string& name) {
       return grid;
     }), py::arg().noconvert(), py::arg("cell")=nullptr, py::arg("spacegroup")=nullptr)
     .def_property_readonly("spacing", [](const Gr &self){
-                           return py::array({3}, self.spacing);})
+                           return py::make_tuple(self.spacing[0], self.spacing[1], self.spacing[2]);})
     .def("get_value", &Gr::get_value)
     .def("set_value", &Gr::set_value)
     .def("get_point", &Gr::get_point)
