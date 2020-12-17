@@ -371,6 +371,9 @@ To cover a molecule with 5Å margin do::
 
     map.set_extent(calculate_fractional_box(structure, 5));
 
+After calling ``set_extent()`` we have the same situation as before calling
+``setup()`` -- some grid functions may not work correctly.
+
 Python
 ------
 
