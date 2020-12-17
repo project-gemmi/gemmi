@@ -95,16 +95,11 @@ void add_grid(py::module& m, const std::string& name) {
 
   gr
     .def(py::init<>())
-    .def(py::init([](int nx, int ny, int nz, const UnitCell *cell, const SpaceGroup* sg) {
+    .def(py::init([](int nx, int ny, int nz) {
       Gr* grid = new Gr();
       grid->set_size(nx, ny, nz);
-      if (cell)
-        grid->set_unit_cell(*cell);
-      if (sg)
-        grid->spacegroup = sg;
       return grid;
-    }), py::arg("nx"), py::arg("ny"), py::arg("nz"),
-        py::arg("cell")=nullptr, py::arg("spacegroup")=nullptr)
+    }), py::arg("nx"), py::arg("ny"), py::arg("nz"))
     .def(py::init([](py::array_t<T> arr, const UnitCell *cell, const SpaceGroup* sg) {
       auto r = arr.template unchecked<3>();
       Gr* grid = new Gr();
