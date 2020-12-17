@@ -167,9 +167,20 @@ void add_unitcell(py::module& m) {
 
   py::class_<Position, Vec3>(m, "Position")
     .def(py::init<double,double,double>())
+    .def(py::init<const Vec3&>())
     .def("dist", [](const Position& self, const Position& other) {
         return self.dist(other);
     })
+    .def(py::self + py::self)
+    .def(py::self - py::self)
+    .def(py::self += py::self)
+    .def(operator-=(py::self, py::self))
+    .def(py::self * float())
+    .def(py::self *= float())
+    .def(float() * py::self)
+    .def(py::self / float())
+    .def(py::self /= float())
+    .def(-py::self)
     .def("__repr__", [](const Position& self) {
         return "<gemmi.Position(" + triple(self.x, self.y, self.z) + ")>";
     });

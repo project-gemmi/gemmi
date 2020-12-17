@@ -18,13 +18,18 @@ struct Position : Vec3 {
   Position(double x_, double y_, double z_) : Vec3{x_, y_, z_} {}
   explicit Position(Vec3&& v) : Vec3(v) {}
   explicit Position(const Vec3& v) : Vec3(v) {}
-  Position operator-(const Position& o) const {
-    return Position(Vec3::operator-(o));
-  }
-  Position operator+(const Position& o) const {
-    return Position(Vec3::operator+(o));
-  }
+  Position operator-() const { return Position(Vec3::operator-()); }
+  Position operator-(const Position& o) const { return Position(Vec3::operator-(o)); }
+  Position operator+(const Position& o) const { return Position(Vec3::operator+(o)); }
+  Position operator*(double d) const { return Position(Vec3::operator*(d)); }
+  Position operator/(double d) const { return Position(Vec3::operator/(d)); }
+  Position& operator-=(const Position& o) { *this = *this - o; return *this; }
+  Position& operator+=(const Position& o) { *this = *this + o; return *this; }
+  Position& operator*=(double d) { *this = *this * d; return *this; }
+  Position& operator/=(double d) { return operator*=(1.0/d); }
 };
+
+inline Position operator*(double d, const Position& v) { return v * d; }
 
 // fractional coordinates
 struct Fractional : Vec3 {
