@@ -213,6 +213,9 @@ void add_unitcell(py::module& m) {
     .def_readonly("gamma", &UnitCell::gamma)
     .def_readonly("volume", &UnitCell::volume)
     .def_readonly("images", &UnitCell::images)
+    .def_property_readonly("parameters", [](const UnitCell& self) {
+        return py::make_tuple(self.a, self.b, self.c, self.alpha, self.beta, self.gamma);
+    })
     .def_property_readonly("fractionalization_matrix",
                            [](const UnitCell& self) { return self.frac.mat; })
     .def_property_readonly("orthogonalization_matrix",
@@ -245,6 +248,7 @@ void add_unitcell(py::module& m) {
     .def("reciprocal_metric_tensor", &UnitCell::reciprocal_metric_tensor)
     .def("reciprocal", &UnitCell::reciprocal)
     .def("get_hkl_limits", &UnitCell::get_hkl_limits, py::arg("dmin"))
+    .def(py::self == py::self)
     .def("__repr__", [](const UnitCell& self) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
              + ", " + triple(self.alpha, self.beta, self.gamma) + ")>";
