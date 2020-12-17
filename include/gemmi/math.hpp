@@ -46,6 +46,7 @@ struct Vec3 {
 
   Vec3() : x(0), y(0), z(0) {}
   Vec3(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
+  virtual ~Vec3() = default;
 
   double& at(int i) {
     switch (i) {
