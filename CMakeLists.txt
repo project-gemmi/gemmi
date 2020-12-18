@@ -22,9 +22,13 @@ if (DEFINED ENV{EXTRA_WFLAGS})
 endif()
 
 if (NOT CMAKE_CXX_STANDARD)
-  # Python bindings don't compile as C++17 in VS 2017
-  if (CMAKE_CXX17_STANDARD_COMPILE_OPTION AND NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-    set(CMAKE_CXX_STANDARD 17)
+  if (CMAKE_CXX17_STANDARD_COMPILE_OPTION)
+    # Python bindings don't compile as C++17 in VS 2017
+    if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+      set(CMAKE_CXX_STANDARD 14)
+    else()
+      set(CMAKE_CXX_STANDARD 17)
+    endif()
   elseif (CMAKE_CXX11_STANDARD_COMPILE_OPTION)
     set(CMAKE_CXX_STANDARD 11)
   endif()
