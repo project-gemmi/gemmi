@@ -66,13 +66,17 @@ jobs:
         yum update -y && yum install -y epel-release
         yum install -y gcc-c++ cmake3 make git python3-devel
         g++ --version
-        mkdir build
+    - run: |
+        pwd
+        which python3
         git clone --depth=1 https://github.com/pybind/pybind11.git
         cd pybind11
-        cmake -DPYTHON_EXECUTABLE=$(which python3) -DPYBIND11_TEST=OFF .
+        cmake3 -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYBIND11_TEST=OFF .
         make
         sudo make install
-        cmake3 . -DUSE_PYTHON=1 -DPYTHON_EXECUTABLE=$(which python3)
+    - run: |
+        pwd
+        cmake3 . -DUSE_PYTHON=1 -DPYTHON_EXECUTABLE=/usr/bin/python3
         make -j2
         make -j2 check
         python3 -m unittest discover -v -s ./tests/
