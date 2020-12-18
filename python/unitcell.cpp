@@ -30,6 +30,11 @@ expand_protein_one_letter_string(const std::string& s) {
     r.push_back(expand_protein_one_letter(c));
   return r;
 }
+void mat33_from_list(Mat33& self, std::array<std::array<double,3>,3>& m) {
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j)
+      self.a[i][j] = m[i][j];
+}
 
 template<typename T> void add_smat33(py::module& m, const char* name) {
   using M = SMat33<T>;
@@ -117,6 +122,11 @@ void add_unitcell(py::module& m) {
     });
   py::class_<Mat33>(m, "Mat33", py::buffer_protocol())
     .def(py::init<>())
+    .def(py::init([](std::array<std::array<double,3>,3>& m) {
+       Mat33 *mat = new Mat33();
+       mat33_from_list(*mat, m);
+       return mat;
+     }))
     .def_buffer([](Mat33 &self) {
       return py::buffer_info(&self.a[0][0],
                              {3, 3}, // dimensions
@@ -135,11 +145,7 @@ void add_unitcell(py::module& m) {
                  {{m[1][0], m[1][1], m[1][2]}},
                  {{m[2][0], m[2][1], m[2][2]}}}};
     })
-    .def("fromlist", [](Mat33& self, std::array<std::array<double,3>,3>& m) {
-        for (int i = 0; i < 3; ++i)
-          for (int j = 0; j < 3; ++j)
-            self.a[i][j] = m[i][j];
-    })
+    .def("fromlist", mat33_from_list)
     .def("__repr__", [](const Mat33& self) {
         const auto& a = self.a;
         return "<gemmi.Mat33 [" + triple(a[0][0], a[0][1], a[0][2]) + "]\n"
