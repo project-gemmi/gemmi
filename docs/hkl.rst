@@ -1499,13 +1499,13 @@ into a structure factor grid:
   >>> sf_grid
   <gemmi.ReciprocalComplexGrid(48, 48, 50)>
   >>> sf_grid.get_value(3, 4, 5)
-  (54.5291748046875+53.41844177246094j)
+  (54.52764892578125+53.418941497802734j)
 
 In addition to ``d_min`` and ``rate``, which govern the grid density,
 DensityCalculator have two more parameters that affect accuracy
 of the calculated structure factors:
 
-* ``r_cut`` (default: 5e-5) -- density cut-off. Atomic radius in which
+* ``r_cut`` (default: 1e-5) -- density cut-off. Atomic radius in which
   we calculate the density is picked in such a way that, approximately,
   we include only points with values greater than ``r_cut``
   (note: this variable may change in the future).
@@ -1564,7 +1564,7 @@ We either multiply individual values by ``mott_bethe_factor()``:
 .. doctest::
 
   >>> dc.mott_bethe_factor([3,4,5]) * grid.get_value(3,4,5)
-  (54.62775457913616+53.83474433806095j)
+  (54.65960344342374+53.85765208300935j)
 
 or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
 
@@ -1572,7 +1572,7 @@ or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
 
   >>> asu_data = grid.prepare_asu_data(dmin=2.5, mott_bethe=True)
   >>> asu_data.value_array[numpy.all(asu_data.miller_array == [3,4,5], axis=1)]
-  array([54.627754+53.834743j], dtype=complex64)
+  array([54.659603+53.85765j], dtype=complex64)
 
 That is all.
 If you would like to separate positions of hydrogen nuclei

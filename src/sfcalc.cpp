@@ -70,7 +70,7 @@ const option::Descriptor Usage[] = {
   { Blur, 0, "", "blur", Arg::Float,
     "  --blur=NUM  \tB added for Gaussian blurring (default: auto)." },
   { RCut, 0, "", "rcut", Arg::Float,
-    "  --rcut=Y  \tUse atomic radius r such that rho(r) < Y (default: 5e-5)." },
+    "  --rcut=Y  \tUse atomic radius r such that rho(r) < Y (default: 1e-5)." },
   { Test, 0, "", "test", Arg::Optional,
     "  --test[=CACHE]  \tCalculate exact values and report differences (slow)." },
   { WriteMap, 0, "", "write-map", Arg::Required,

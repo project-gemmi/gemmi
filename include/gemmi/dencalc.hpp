@@ -233,7 +233,7 @@ struct DensityCalculator {
   double d_min = 0.;
   double rate = 1.5;
   double blur = 0.;
-  float r_cut = 5e-5f;
+  float r_cut = 1e-5f;
   Addends addends;
   // parameters for used only in put_solvent_mask_on_grid()
   AtomicRadiiSet radii_set = AtomicRadiiSet::VanDerWaals;

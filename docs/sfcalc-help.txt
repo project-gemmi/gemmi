@@ -25,7 +25,7 @@ Options:
 Options for FFT-based calculations:
   --rate=NUM           Shannon rate used for grid spacing (default: 1.5).
   --blur=NUM           B added for Gaussian blurring (default: auto).
-  --rcut=Y             Use atomic radius r such that rho(r) < Y (default: 5e-5).
+  --rcut=Y             Use atomic radius r such that rho(r) < Y (default: 1e-5).
   --test[=CACHE]       Calculate exact values and report differences (slow).
   --write-map=FILE     Write density (excl. bulk solvent) as CCP4 map.
   --to-mtz=FILE        Write Fcalc to a new MTZ file.
