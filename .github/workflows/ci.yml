@@ -68,7 +68,7 @@ jobs:
         g++ --version
     - run: |
         pwd
-        which python3
+        type python3
         git clone --depth=1 https://github.com/pybind/pybind11.git
         cd pybind11
         cmake3 -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYBIND11_TEST=OFF .
