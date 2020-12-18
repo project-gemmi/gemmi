@@ -134,7 +134,7 @@ void OptParser::simple_parse(int argc, char** argv,
     std::exit(0);
   }
   if (options[Version]) {
-    printf("%s %s\n", program_name, GEMMI_VERSION);
+    print_version(program_name);
     std::exit(0);
   }
   if (options[NoOp]) {
@@ -231,4 +231,10 @@ gemmi::CoorFormat coor_format_as_enum(const option::Option& format_in) {
   return format;
 }
 
-// vim:sw=2:ts=2:et:path^=../include,../third_party
+void print_version(const char* program_name) {
+  std::printf("%s " GEMMI_VERSION
+#ifdef GEMMI_VERSION_INFO
+         " (" GEMMI_XSTRINGIZE(GEMMI_VERSION_INFO) ")"
+#endif
+         "\n", program_name);
+}

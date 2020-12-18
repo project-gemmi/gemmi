@@ -78,4 +78,4 @@ gemmi::CoorFormat coor_format_as_enum(const option::Option& format_in);
 // can be used with paths_from_args_or_file()
 bool starts_with_pdb_code(const std::string& s);
 
-// vim:sw=2:ts=2:et:path^=../include,../third_party
+void print_version(const char* program_name);

@@ -3,7 +3,8 @@
 
 #include <stdio.h>
 #include <cstring>
-#include "gemmi/version.hpp"
+
+void print_version(const char* program_name);  // in options.h
 
 int blobs_main(int argc, char** argv);
 int cif2mtz_main(int argc, char** argv);
@@ -75,8 +76,8 @@ static SubCmd subcommands[] = {
 };
 
 void print_usage() {
-  printf("gemmi " GEMMI_VERSION "\n"
-         "Command-line utility that accompanies the GEMMI library,\n"
+  print_version("gemmi");
+  printf("Command-line utility that accompanies the GEMMI library,\n"
          "which is a joint project of CCP4 and Global Phasing Ltd.\n"
          "Licence: Mozilla Public License 2.0.\n"
          "Copyright 2017-2020 Global Phasing Ltd.\n"
@@ -121,7 +122,7 @@ int main(int argc, char** argv)
   }
 #endif
   if (eq(argv[1], "--version") || eq(argv[1], "-V")) {
-    printf("gemmi %s\n", GEMMI_VERSION);
+    print_version("gemmi");
     return 0;
   }
   if (eq(argv[1], "--help") || eq(argv[1], "-h") || eq(argv[1], "help")) {

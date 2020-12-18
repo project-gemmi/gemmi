@@ -11,6 +11,10 @@ if (DEFINED ENV{FC} OR CMAKE_Fortran_COMPILER)
   set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
 endif()
 
+if (INFO)
+  set(GEMMI_VERSION_INFO ${INFO} CACHE STRING "Extra text for gemmi -V" FORCE)
+endif()
+
 if (USE_FORTRAN)
   enable_language(Fortran)
 else()
@@ -143,6 +147,9 @@ endif()
 
 add_library(input OBJECT src/input.cpp)
 add_library(options OBJECT src/options.cpp)
+if (GEMMI_VERSION_INFO)
+  target_compile_definitions(options PRIVATE GEMMI_VERSION_INFO=${GEMMI_VERSION_INFO})
+endif()
 add_library(output OBJECT src/output.cpp)
 add_library(mapcoef OBJECT src/mapcoef.cpp)
 
