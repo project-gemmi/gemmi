@@ -14,9 +14,6 @@
 namespace py = pybind11;
 using namespace gemmi;
 
-PYBIND11_MAKE_OPAQUE(std::vector<Assembly::Gen>)
-PYBIND11_MAKE_OPAQUE(std::vector<Assembly::Operator>)
-
 namespace gemmi {
   // not inline
   std::ostream& operator<< (std::ostream& os, const Entity& ent) {
@@ -143,23 +140,24 @@ void add_meta(py::module& m) {
 
 
   py::class_<Assembly> assembly(m, "Assembly");
-  py::bind_vector<std::vector<Assembly::Gen>>(assembly, "GenList");
-  py::bind_vector<std::vector<Assembly::Operator>>(assembly, "OperatorList");
   py::class_<Assembly::Operator>(assembly, "Operator")
     .def(py::init<>())
     .def_readonly("name", &Assembly::Operator::name)
     .def_readonly("type", &Assembly::Operator::type)
     .def_readonly("transform", &Assembly::Operator::transform);
+  py::bind_vector<std::vector<Assembly::Operator>>(assembly, "OperatorList");
 
   py::class_<Assembly::Gen>(assembly, "Gen")
     .def(py::init<>())
     .def_readonly("chains", &Assembly::Gen::chains)
     .def_readonly("subchains", &Assembly::Gen::subchains)
     .def_readonly("operators", &Assembly::Gen::operators);
+  py::bind_vector<std::vector<Assembly::Gen>>(assembly, "GenList");
 
   assembly
     .def_readonly("name", &Assembly::name)
     .def_readonly("oligomeric_details", &Assembly::oligomeric_details)
     .def_readonly("generators", &Assembly::generators)
     ;
+  py::bind_vector<std::vector<Assembly>>(m, "AssemblyList");
 }

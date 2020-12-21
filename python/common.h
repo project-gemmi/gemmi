@@ -3,6 +3,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 
+void add_elem(pybind11::module& m); // elem.cpp
 void add_symmetry(pybind11::module& m); // sym.cpp
 void add_grid(pybind11::module& m); // grid.cpp
 void add_unitcell(pybind11::module& m); // unitcell.cpp

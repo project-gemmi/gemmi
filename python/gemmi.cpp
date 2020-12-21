@@ -80,11 +80,12 @@ PYBIND11_MODULE(gemmi, mg) {
   add_cif(cif);
   add_symmetry(mg);
   add_unitcell(mg);
+  add_elem(mg);
   add_meta(mg);
   add_mol(mg);
-  add_sf(mg);
   add_misc(mg);
   add_grid(mg);
+  add_sf(mg);
   add_cif_read(cif);
   add_hkl(mg);
   add_monlib(mg);

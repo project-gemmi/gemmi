@@ -18,7 +18,6 @@ using namespace gemmi;
 PYBIND11_MAKE_OPAQUE(std::vector<Connection>)
 PYBIND11_MAKE_OPAQUE(std::vector<NcsOp>)
 PYBIND11_MAKE_OPAQUE(std::vector<Entity>)
-PYBIND11_MAKE_OPAQUE(std::vector<Assembly>)
 using info_map_type = std::map<std::string, std::string>;
 PYBIND11_MAKE_OPAQUE(info_map_type)
 
@@ -91,7 +90,6 @@ void add_mol(py::module& m) {
   py::bind_vector<std::vector<Connection>>(m, "ConnectionList");
   py::bind_vector<std::vector<NcsOp>>(m, "NcsOpList");
   py::bind_vector<std::vector<Entity>>(m, "EntityList");
-  py::bind_vector<std::vector<Assembly>>(m, "AssemblyList");
   py::bind_map<info_map_type>(m, "InfoMap");
 
 
