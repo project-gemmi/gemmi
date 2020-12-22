@@ -236,6 +236,8 @@ void add_grid(py::module& m, const std::string& name) {
         return cell.calculate_d(hkl);
       });
     })
+    .def("ensure_sorted", &AsuData::ensure_sorted)
+    .def("ensure_asu", &AsuData::ensure_asu)
     .def("copy", [](const AsuData& self) {
       return new AsuData(self);
     })

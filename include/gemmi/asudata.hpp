@@ -24,6 +24,26 @@ struct HklValue {
   bool operator<(const HklValue& o) const { return operator<(o.hkl); }
 };
 
+namespace impl {
+template<typename T>
+void move_to_asu(const GroupOps&, const Miller& hkl, int, HklValue<T>& hkl_value) {
+  hkl_value.hkl = hkl;
+}
+
+template<typename R>
+void move_to_asu(const GroupOps& gops, const Miller& hkl, int isym,
+                 HklValue<std::complex<R>>& hkl_value) {
+  hkl_value.hkl = hkl;
+  const Op& op = gops.sym_ops[(isym - 1) / 2];
+  double shift = op.phase_shift(hkl);
+  if (shift != 0) {
+    if (isym % 2 == 0)
+      shift = -shift;
+    double phase = std::arg(hkl_value.value) + shift;
+    hkl_value.value = std::polar(std::abs(hkl_value.value), (R)phase);
+  }
+}
+} // namespace impl
 
 template<typename T>
 struct AsuData {
@@ -41,6 +61,19 @@ struct AsuData {
   void ensure_sorted() {
     if (!std::is_sorted(v.begin(), v.end()))
       std::sort(v.begin(), v.end());
+  }
+
+  void ensure_asu() {
+    if (!spacegroup_)
+      fail("AsuData::ensure_asu(): space group not set");
+    GroupOps gops = spacegroup_->operations();
+    ReciprocalAsu asu(spacegroup_);
+    for (HklValue<T>& hkl_value : v) {
+      if (asu.is_in(hkl_value.hkl))
+        continue;
+      auto result = asu.to_asu(hkl_value.hkl, gops);
+      impl::move_to_asu(gops, result.first, result.second, hkl_value);
+    }
   }
 
   template<int N, typename DataProxy>
