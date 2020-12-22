@@ -21,7 +21,14 @@ flake8 docs/ examples/ tests/ tools/ setup.py
 
 if [ $1 = h -o $1 = a ]; then
     echo "check if each header can be compiled on its own"
-    for f in include/gemmi/*.hpp; do gcc-9 -c -fsyntax-only $f; done
+    # skip to_mmdb.hpp which requires also mmdb2 headers
+    for f in include/gemmi/*.hpp; do
+        if [ $f != include/gemmi/to_mmdb.hpp ]; then
+            echo -n .
+            gcc-9 -c -fsyntax-only $f
+        fi
+    done
+    echo
 fi
 
 if [ $1 = v -o $1 = a ]; then
