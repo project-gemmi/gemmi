@@ -90,6 +90,7 @@ PYBIND11_MODULE(gemmi, mg) {
   add_sf(mg);
   add_cif_read(cif);
   add_hkl(mg);
+  add_mtz(mg);
   add_monlib(mg);
   add_alignment(mg);
   add_select(mg);

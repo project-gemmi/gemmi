@@ -11,6 +11,7 @@ void add_unitcell(pybind11::module& m); // unitcell.cpp
 void add_hkl(pybind11::module& m); // hkl.cpp
 void add_meta(pybind11::module& m); // meta.cpp
 void add_mol(pybind11::module& m); // mol.cpp
+void add_mtz(pybind11::module& m); // mtz.cpp
 void add_cif(pybind11::module& cif); // cif.cpp
 void add_read_structure(pybind11::module& m); // read.cpp
 void add_cif_read(pybind11::module& cif); // read.cpp
