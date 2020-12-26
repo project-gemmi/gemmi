@@ -186,7 +186,7 @@ struct Restraints {
     visited.push_back(b);
     std::vector<int> parent(visited.size(), -1);
     for (int n = start; end == -1 && n != (int) visited.size(); ++n) {
-      for_each_bonded_atom(visited[n], [&](const AtomId& id) {
+      for_each_bonded_atom(AtomId(visited[n]), [&](const AtomId& id) {
           if (id == a)
             end = (int) visited.size();
           if (!in_vector(id, visited)) {
