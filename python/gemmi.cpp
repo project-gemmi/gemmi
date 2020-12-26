@@ -85,6 +85,7 @@ PYBIND11_MODULE(gemmi, mg) {
   add_mol(mg);
   add_misc(mg);
   add_grid(mg);
+  add_ccp4(mg);
   add_sf(mg);
   add_cif_read(cif);
   add_hkl(mg);

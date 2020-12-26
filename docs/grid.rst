@@ -383,7 +383,7 @@ The Python API is similar.
 
     >>> m = gemmi.read_ccp4_map('../tests/5i55_tiny.ccp4')
     >>> m
-    <gemmi.Ccp4Map with grid (8, 6, 10) in SG #4>
+    <gemmi.Ccp4Map with grid 8x6x10 in SG #4>
     >>> m.grid  # tiny grid as it is a toy example
     <gemmi.FloatGrid(8, 6, 10)>
     >>> m.grid.spacegroup

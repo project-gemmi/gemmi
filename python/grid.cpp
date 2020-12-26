@@ -10,8 +10,6 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
     return std::norm(a) > std::norm(b);
 }
 
-#include "gemmi/ccp4.hpp"
-#include "gemmi/gz.hpp"  // for MaybeGzipped
 #include "gemmi/tostr.hpp"
 #include "gemmi/fourier.hpp"  // for get_f_phi_on_grid
 #include "gemmi/dencalc.hpp"  // for mask_points_in_constant_radius
@@ -172,10 +170,10 @@ void add_grid(py::module& m, const std::string& name) {
          py::keep_alive<0, 1>())
     ;
 
-  using ReGr = ReciprocalGrid<T>;
-  py::class_<ReGr, GrBase> regr(m, ("Reciprocal" + name).c_str());
+  using RecGr = ReciprocalGrid<T>;
+  py::class_<RecGr, GrBase> recgr(m, ("Reciprocal" + name).c_str());
 
-  py::class_<HklValue<T>>(regr, "HklValue")
+  py::class_<HklValue<T>>(recgr, "HklValue")
     .def_readonly("hkl", &HklValue<T>::hkl)
     .def_readonly("value", &HklValue<T>::value)
     .def("__repr__", [name](const HklValue<T>& self) {
@@ -185,7 +183,7 @@ void add_grid(py::module& m, const std::string& name) {
     });
 
   using AsuData = AsuData<T>;
-  py::class_<AsuData> asu_data(regr, "AsuData");
+  py::class_<AsuData> asu_data(recgr, "AsuData");
   asu_data
     .def(py::init([](const UnitCell& unit_cell, const SpaceGroup* sg,
                      py::array_t<int> hkl, py::array_t<T> values) {
@@ -246,18 +244,18 @@ void add_grid(py::module& m, const std::string& name) {
     });
     add_to_asu_data(asu_data);
 
-  regr
-    .def_readonly("half_l", &ReGr::half_l)
+  recgr
+    .def_readonly("half_l", &RecGr::half_l)
     .def(py::init<>())
     .def(py::init([](int nx, int ny, int nz) {
-      ReGr* grid = new ReGr();
+      RecGr* grid = new RecGr();
       grid->set_size_without_checking(nx, ny, nz);
       grid->axis_order = AxisOrder::XYZ;
       return grid;
     }), py::arg("nx"), py::arg("ny"), py::arg("nz"))
     .def(py::init([](py::array_t<T> arr, const UnitCell *cell, const SpaceGroup* sg) {
       auto r = arr.template unchecked<3>();
-      ReGr* grid = new ReGr();
+      RecGr* grid = new RecGr();
       grid->set_size_without_checking((int)r.shape(0), (int)r.shape(1), (int)r.shape(2));
       grid->axis_order = AxisOrder::XYZ;
       for (int k = 0; k < r.shape(2); ++k)
@@ -270,39 +268,16 @@ void add_grid(py::module& m, const std::string& name) {
         grid->spacegroup = sg;
       return grid;
     }), py::arg().noconvert(), py::arg("cell")=nullptr, py::arg("spacegroup")=nullptr)
-    .def("get_value", &ReGr::get_value)
-    .def("get_value_or_zero", &ReGr::get_value_or_zero)
-    .def("set_value", &ReGr::set_value)
-    .def("to_hkl", &ReGr::to_hkl)
-    .def("prepare_asu_data", &ReGr::prepare_asu_data,
+    .def("get_value", &RecGr::get_value)
+    .def("get_value_or_zero", &RecGr::get_value_or_zero)
+    .def("set_value", &RecGr::set_value)
+    .def("to_hkl", &RecGr::to_hkl)
+    .def("prepare_asu_data", &RecGr::prepare_asu_data,
          py::arg("dmin")=0., py::arg("unblur")=0.,
          py::arg("with_000")=false, py::arg("with_sys_abs")=false,
          py::arg("mott_bethe")=false)
-    .def("__repr__", [=](const ReGr& self) {
+    .def("__repr__", [=](const RecGr& self) {
         return tostr("<gemmi.Reciprocal", name, '(', grid_dim_str(self), ")>");
-    });
-}
-
-template<typename T>
-py::class_<T> add_ccp4(py::module& m, const char* name) {
-  using Map = Ccp4<T>;
-  return py::class_<Map>(m, name)
-    .def(py::init<>())
-    .def_readwrite("grid", &Map::grid)
-    .def("header_i32", &Map::header_i32)
-    .def("header_float", &Map::header_float)
-    .def("header_str", &Map::header_str)
-    .def("set_header_i32", &Map::set_header_i32)
-    .def("set_header_float", &Map::set_header_float)
-    .def("set_header_str", &Map::set_header_str)
-    .def("update_ccp4_header", &Map::update_ccp4_header,
-         py::arg("mode")=-1, py::arg("update_stats")=true)
-    .def("write_ccp4_map", &Map::write_ccp4_map, py::arg("filename"))
-    .def("set_extent", &Map::set_extent)
-    .def("__repr__", [=](const Map& self) {
-        const SpaceGroup* sg = self.grid.spacegroup;
-        return tostr("<gemmi.", name, " with grid (", grid_dim_str(self.grid),
-                     ") in SG #", sg ? std::to_string(sg->ccp4) : "?", '>');
     });
 }
 
@@ -314,24 +289,4 @@ void add_grid(py::module& m) {
   add_grid<int8_t>(m, "Int8Grid");
   add_grid<float>(m, "FloatGrid");
   add_grid<std::complex<float>>(m, "ComplexGrid");
-  add_ccp4<float>(m, "Ccp4Map")
-    .def("setup", [](Ccp4<float>& self, float default_value) {
-            self.setup(GridSetup::Full, default_value);
-         }, py::arg("default_value")=NAN);
-  add_ccp4<int8_t>(m, "Ccp4Mask")
-    .def("setup", [](Ccp4<int8_t>& self, int8_t default_value) {
-            self.setup(GridSetup::Full, default_value);
-         }, py::arg("default_value")=-1);
-  m.def("read_ccp4_map", [](const std::string& path) {
-          Ccp4<float> grid;
-          grid.read_ccp4(MaybeGzipped(path));
-          return grid;
-        }, py::arg("path"), py::return_value_policy::move,
-        "Reads a CCP4 file, mode 2 (floating-point data).");
-  m.def("read_ccp4_mask", [](const std::string& path) {
-          Ccp4<int8_t> grid;
-          grid.read_ccp4(MaybeGzipped(path));
-          return grid;
-        }, py::arg("path"), py::return_value_policy::move,
-        "Reads a CCP4 file, mode 0 (int8_t data, usually 0/1 masks).");
 }

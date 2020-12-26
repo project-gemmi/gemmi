@@ -6,6 +6,7 @@
 #include <cstdio>  // for snprintf
 #include <array>
 #include "common.h"
+#include "arrvec.h"  // py_array_from_vector
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include <pybind11/operators.h>

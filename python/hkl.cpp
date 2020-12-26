@@ -10,6 +10,7 @@
 #include "gemmi/reciproc.hpp"  // for count_reflections, make_miller_vector
 
 #include "common.h"
+#include "arrvec.h"  // py_array_from_vector
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 #include <pybind11/numpy.h>
