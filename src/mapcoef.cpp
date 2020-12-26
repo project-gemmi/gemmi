@@ -11,6 +11,7 @@
 #include <gemmi/mtz.hpp>      // for Mtz
 #include <gemmi/fourier.hpp>  // for get_f_phi_on_grid, transform_f_phi_..
 #include <gemmi/gzread.hpp>   // for read_cif_gz
+#include <gemmi/recgrid.hpp>  // for ReciprocalGrid
 #include <gemmi/refln.hpp>    // for ReflnBlock
 #include <gemmi/util.hpp>     // for fail, giends_with
 #include "mapcoef.h"

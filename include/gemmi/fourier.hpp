@@ -7,7 +7,7 @@
 
 #include <array>
 #include <complex>       // for std::conj
-#include "grid.hpp"      // for Grid
+#include "recgrid.hpp"   // for ReciprocalGrid
 #include "math.hpp"      // for rad
 #include "symmetry.hpp"  // for GroupOps, Op
 #include "fail.hpp"      // for fail
