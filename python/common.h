@@ -6,6 +6,7 @@ void add_elem(pybind11::module& m); // elem.cpp
 void add_symmetry(pybind11::module& m); // sym.cpp
 void add_ccp4(pybind11::module& m); // ccp4.cpp
 void add_grid(pybind11::module& m); // grid.cpp
+void add_recgrid(pybind11::module& m); // recgrid.cpp
 void add_unitcell(pybind11::module& m); // unitcell.cpp
 void add_hkl(pybind11::module& m); // hkl.cpp
 void add_meta(pybind11::module& m); // meta.cpp

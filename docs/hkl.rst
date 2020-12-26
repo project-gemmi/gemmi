@@ -898,14 +898,14 @@ that can be extracted from a reciprocal-space grid:
 
   >>> asu_data = grid.prepare_asu_data(dmin=1.8, with_000=False, with_sys_abs=False)
   >>> asu_data
-  <gemmi.ReciprocalComplexGrid.AsuData with 407 values>
+  <gemmi.ComplexAsuData with 407 values>
 
 Each item in AsuData has two properties, hkl and value:
 
 .. doctest::
 
   >>> asu_data[158]
-  <gemmi.ReciprocalComplexGrid.HklValue (-6,2,5) (-1.37694,-0.190087)>
+  <gemmi.ComplexHklValue (-6,2,5) (-1.37694,-0.190087)>
   >>> _.hkl, _.value
   ([-6, 2, 5], (-1.376941204071045-0.19008657336235046j))
 
@@ -959,12 +959,12 @@ object. In this example we exclude low-resolution data:
 .. doctest::
 
   >>> d = asu_data.make_d_array()
-  >>> new_data = gemmi.ReciprocalComplexGrid.AsuData(asu_data.unit_cell,
+  >>> new_data = gemmi.ComplexAsuData(asu_data.unit_cell,
   ...                                                asu_data.spacegroup,
   ...                                                asu_data.miller_array[d<8],
   ...                                                asu_data.value_array[d<8])
   >>> new_data
-  <gemmi.ReciprocalComplexGrid.AsuData with 399 values>
+  <gemmi.ComplexAsuData with 399 values>
   >>> hkl_grid = new_data.get_f_phi_on_grid([54, 6, 18])
   >>> gemmi.transform_f_phi_grid_to_map(hkl_grid)
   <gemmi.FloatGrid(54, 6, 18)>

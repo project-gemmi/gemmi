@@ -82,10 +82,10 @@ class TestMtz(unittest.TestCase):
     def asu_data_test(self, grid):
         asu = grid.prepare_asu_data()
         d = asu.make_d_array()
-        asu2 = gemmi.ReciprocalComplexGrid.AsuData(asu.unit_cell,
-                                                   asu.spacegroup,
-                                                   asu.miller_array[d > 2.5],
-                                                   asu.value_array[d > 2.5])
+        asu2 = gemmi.ComplexAsuData(asu.unit_cell,
+                                    asu.spacegroup,
+                                    asu.miller_array[d > 2.5],
+                                    asu.value_array[d > 2.5])
         ngrid = asu2.transform_f_phi_to_map(sample_rate=1.5)
         hkl_grid = asu2.get_f_phi_on_grid([ngrid.nu, ngrid.nv, ngrid.nw])
         alt_ngrid = gemmi.transform_f_phi_grid_to_map(hkl_grid)

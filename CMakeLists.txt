@@ -385,7 +385,7 @@ if (USE_PYTHON)
                             python/ccp4.cpp python/cif.cpp
                             python/elem.cpp python/grid.cpp python/hkl.cpp
                             python/meta.cpp python/mol.cpp python/monlib.cpp
-                            python/read.cpp python/search.cpp
+                            python/read.cpp python/recgrid.cpp python/search.cpp
                             python/sf.cpp python/sym.cpp python/unitcell.cpp
                             python/write.cpp)
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
