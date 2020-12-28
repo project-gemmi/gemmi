@@ -5,14 +5,14 @@
 #include <stdexcept>
 #include <iostream>  // for cout
 #include <gemmi/gzread.hpp>
-#include "gemmi/chemcomp.hpp"  // for ChemComp
-#include "gemmi/polyheur.hpp"  // for remove_hydrogens
-#include "gemmi/to_cif.hpp"    // for write_cif_to_file
-#include "gemmi/to_mmcif.hpp"  // for make_mmcif_document
-#include "gemmi/to_pdb.hpp"    // for write_pdb
-#include "gemmi/monlib.hpp"    // for MonLib, read_monomer_lib
-#include "gemmi/topo.hpp"      // for Topo
-#include "gemmi/fstream.hpp"   // for Ofstream
+#include <gemmi/chemcomp.hpp>  // for ChemComp
+#include <gemmi/polyheur.hpp>  // for remove_hydrogens, setup_entities
+#include <gemmi/to_cif.hpp>    // for write_cif_to_file
+#include <gemmi/to_mmcif.hpp>  // for make_mmcif_document
+#include <gemmi/to_pdb.hpp>    // for write_pdb
+#include <gemmi/monlib.hpp>    // for MonLib, read_monomer_lib
+#include <gemmi/topo.hpp>      // for Topo
+#include <gemmi/fstream.hpp>   // for Ofstream
 #include <gemmi/placeh.hpp>    // for place_hydrogens
 
 #define GEMMI_PROG h
@@ -117,6 +117,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       std::fprintf(stderr, "No atoms in the input file. Wrong format?\n");
       return 1;
     }
+    gemmi::setup_entities(st);
     int initial_h = 0;
     if (p.options[Verbose])
       initial_h = count_h(st);
