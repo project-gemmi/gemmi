@@ -84,5 +84,20 @@ class TestChemComp(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             cc.rt.get_bond("O2", "O3")
 
+    def test_shortest_path(self):
+        path = full_path('HEM.cif')
+        block = gemmi.cif.read(path)[-1]
+        cc = gemmi.make_chemcomp_from_block(block)
+        A = gemmi.Restraints.AtomId
+        result = cc.rt.find_shortest_path(A('FE'), A('CMD'), [])
+        self.assertEqual([aid.atom for aid in result],
+                         ['FE', 'ND', 'C1D', 'C2D', 'CMD'])
+        result = cc.rt.find_shortest_path(A('CMD'), A('FE'), [])
+        self.assertEqual([aid.atom for aid in result],
+                         ['CMD', 'C2D', 'C1D', 'ND', 'FE'])
+        result = cc.rt.find_shortest_path(A('FE'), A('CMD'), [A('C1D')])
+        self.assertEqual([aid.atom for aid in result],
+                         ['FE', 'ND', 'C4D', 'C3D', 'C2D', 'CMD'])
+
 if __name__ == '__main__':
     unittest.main()

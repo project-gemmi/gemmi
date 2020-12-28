@@ -4,6 +4,7 @@
 #include "gemmi/gzread.hpp"    // for read_cif_gz
 #include "gemmi/monlib.hpp"
 #include "gemmi/topo.hpp"
+#include "gemmi/tostr.hpp"
 
 #include "common.h"
 #include <pybind11/stl.h>
@@ -56,6 +57,12 @@ void add_monlib(py::module& m) {
 
 
   py::class_<Restraints::AtomId>(restraints, "AtomId")
+    .def(py::init([](int comp, const std::string& atom) {
+          return new Restraints::AtomId{comp, atom};
+    }))
+    .def(py::init([](const std::string& atom) {
+          return new Restraints::AtomId{1, atom};
+    }))
     .def_readwrite("comp", &Restraints::AtomId::comp)
     .def_readwrite("atom", &Restraints::AtomId::atom)
     .def("get_from",
@@ -63,7 +70,9 @@ void add_monlib(py::module& m) {
          &Restraints::AtomId::get_from,
          py::arg("res1"), py::arg("res2"), py::arg("altloc"),
          py::return_value_policy::reference)
-    ;
+    .def("__repr__", [](const Restraints::AtomId& self) {
+        return tostr("<gemmi.Restraints.AtomId ", self.comp, ' ', self.atom, '>');
+    });
   restraintsbond
     .def_readwrite("id1", &Restraints::Bond::id1)
     .def_readwrite("id2", &Restraints::Bond::id2)
@@ -88,6 +97,7 @@ void add_monlib(py::module& m) {
               fail("Bond restraint not found: " + a1 + "-" + a2);
             return *it;
          }, py::return_value_policy::reference_internal)
+    .def("find_shortest_path", &Restraints::find_shortest_path)
     ;
 
   chemcompatom
