@@ -49,7 +49,7 @@ struct Restraints {
       else
         throw std::out_of_range("Unexpected component ID");
       if (const Atom* ret = residue->find_atom(atom, altloc))
-        // skip riding hydrogens, they won't be restrained
+        // skip riding hydrogens, they won't be restrained (to be revised)
         if (ret->calc_flag != CalcFlag::Calculated || !ret->is_hydrogen())
           return ret;
       return nullptr;

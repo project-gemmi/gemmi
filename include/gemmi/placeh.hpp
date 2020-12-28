@@ -34,7 +34,8 @@ inline void add_hydrogens(const ChemComp& cc, Residue& res) {
           atom.altloc = parent.altloc;
           atom.occ = parent.occ;
           atom.b_iso = parent.b_iso;
-          atom.calc_flag = CalcFlag::Calculated;
+          // calc_flag will be changed to Calculated when the position is set
+          atom.calc_flag = CalcFlag::Dummy;
           res.atoms.push_back(atom);
           break;
         }
@@ -151,6 +152,9 @@ inline void place_hydrogens(const Atom& atom, Topo::ResInfo& ri,
       bonded_h.ptr->occ = 0;
     fail(message);
   };
+
+  for (BondedAtom& bonded_h : hs)
+    bonded_h.ptr->calc_flag = CalcFlag::Calculated;
 
   // ==== only hydrogens ====
   if (known.size() == 0) {
