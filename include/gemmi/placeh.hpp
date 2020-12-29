@@ -139,6 +139,14 @@ inline void place_hydrogens(const Atom& atom, Topo::ResInfo& ri,
       int n = Topo::has_atom(&atom, t);
       if (n == 0 || n == 1) {
         Atom* other = t.atoms[1-n];
+        if (other->altloc) {
+          if (atom.altloc && atom.altloc != other->altloc)
+            continue;
+          if (atom.altloc == '\0' &&
+              in_vector_f([&](const BondedAtom& a) { return a.ptr->name == other->name; },
+                          known))
+            continue;
+        }
         auto& atom_list = other->is_hydrogen() ? hs : known;
         atom_list.push_back({other, other->pos, t.restr->value});
       }
@@ -281,7 +289,8 @@ inline void place_hydrogens(const Atom& atom, Topo::ResInfo& ri,
     const Angle* ang3 = topo.take_angle(known[0].ptr, &atom, known[1].ptr);
 
     if (!ang1 || !ang2)
-      giveup("Missing angle restraint.\n");
+      giveup(tostr("Missing angle restraint ", hs[0].ptr->name, '-', atom.name,
+                   '-', known[ang1 ? 1 : 0].ptr->name, ".\n"));
     double theta1 = ang1->radians();
     double theta2 = ang2->radians();
     if (ang3) {
