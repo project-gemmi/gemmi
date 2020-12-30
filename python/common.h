@@ -43,3 +43,26 @@ template<typename T> int normalize_index(int index, const T& container) {
     throw pybind11::index_error();
   return index;
 }
+
+template<typename Item>
+void delitem_at_index(std::vector<Item>& items, ssize_t idx) {
+  items.erase(items.begin() + idx);
+}
+
+template<typename Item>
+void delitem_range(std::vector<Item>& items, ssize_t start, ssize_t end) {
+  items.erase(items.begin() + start, items.begin() + end);
+}
+
+template<typename Items>
+void delitem_slice(Items& items, pybind11::slice slice) {
+  ssize_t start, stop, step, slength;
+  if (!slice.compute(items.size(), &start, &stop, &step, &slength))
+    throw pybind11::error_already_set();
+  if (step == 1) {
+    delitem_range(items, start, start + slength);
+  } else {
+    for (int i = 0; i < slength; ++i)
+      delitem_at_index(items, start + (step > 0 ? slength - 1 - i : i) * step);
+  }
+}

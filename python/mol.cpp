@@ -9,7 +9,6 @@
 #include "common.h"
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
-#include "common.h"  // for normalize_index
 #include "meta.h"
 
 namespace py = pybind11;
@@ -45,14 +44,7 @@ template<typename P> void remove_child(P& parent, int index) {
 }
 
 template<typename P> void remove_children(P& parent, py::slice slice) {
-  ssize_t start, stop, step, slength;
-  auto& children = parent.children();
-  if (!slice.compute(children.size(), &start, &stop, &step, &slength))
-    throw py::error_already_set();
-  for (int i = 0; i < slength; ++i) {
-    ssize_t idx = start + (step > 0 ? slength - 1 - i : i) * step;
-    children.erase(children.begin() + idx);
-  }
+  delitem_slice(parent.children(), slice);
 }
 
 void add_mol(py::module& m) {
