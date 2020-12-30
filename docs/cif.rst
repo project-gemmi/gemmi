@@ -1150,7 +1150,14 @@ and remove a row from Table (function ``Table::remove_row``):
 
 .. doctest::
 
-  >>> table.remove_row(18)
+  >>> table.remove_row(18)  # or: del table[18]
+
+To efficiently remove multiple consecutive rows use
+C++ function ``Table::remove_row`` or in Python:
+
+.. doctest::
+
+  >>> del table[12:15]
 
 Individual tags and values can also be modified.
 As an example, let us swap two tag names
@@ -1179,9 +1186,9 @@ introduced ``Column``::
 .. doctest::
 
   >>> table.column(0)
-  <gemmi.cif.Column _entity_poly_seq.entity_id length 18>
+  <gemmi.cif.Column _entity_poly_seq.entity_id length 15>
   >>> table.find_column('_entity_poly_seq.mon_id')
-  <gemmi.cif.Column _entity_poly_seq.mon_id length 18>
+  <gemmi.cif.Column _entity_poly_seq.mon_id length 15>
 
 If the table is created in a function that uses prefix,
 the prefix can be omitted in ``find_column``::
@@ -1196,7 +1203,7 @@ the prefix can be omitted in ``find_column``::
 .. doctest::
 
   >>> table.find_column('mon_id')
-  <gemmi.cif.Column _entity_poly_seq.mon_id length 18>
+  <gemmi.cif.Column _entity_poly_seq.mon_id length 15>
 
 C++ note:
 both ``Column`` and ``Table::Row`` have functions ``begin()`` and ``end()``

@@ -192,6 +192,21 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(cc_cat['mon_nstd_flag'][:2], [False, 'y'])
         self.assertEqual(cc_cat['pdbx_synonyms'][:2], [None, None])
 
+        # test __delitem__
+        del block.find(['_entry.id'])[0]
+        entry_cat = block.get_mmcif_category('_entry')
+        self.assertEqual(entry_cat, {'id': []})
+        def nums():
+            return list(block.find_values('_entity_poly_seq.num'))
+        tab = block.find(['_entity_poly_seq.mon_id'])
+        self.assertEqual(nums(), [str(i) for i in range(1, 23)])
+        del tab[1::2]
+        self.assertEqual(nums(), [str(i) for i in range(1, 23, 2)])
+        del tab[3:]
+        self.assertEqual(nums(), ['1', '3', '5'])
+        del tab[:-1]
+        self.assertEqual(nums(), ['5'])
+
     def test_reading_gzipped_file(self):
         path = os.path.join(os.path.dirname(__file__), '1pfe.cif.gz')
         cif_doc = cif.read(path)

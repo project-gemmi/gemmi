@@ -298,6 +298,7 @@ struct Table {
   bool ok() const { return !positions.empty(); }
   size_t width() const { return positions.size(); }
   size_t length() const;
+  size_t size() const { return length(); }
   bool has_column(int n) const { return ok() && positions.at(n) >= 0; }
   int first_of(int n1, int n2) const { return positions.at(n1) >= 0 ? n1 : n2; }
   Row tags() { return Row{*this, -1}; }
@@ -331,7 +332,8 @@ struct Table {
   void append_row(std::initializer_list<std::string> new_values) {
     append_row<std::initializer_list<std::string>>(new_values);
   }
-  void remove_row(int row_index);
+  void remove_row(int row_index) { remove_rows(row_index, row_index+1); }
+  void remove_rows(int start, int end);
   Column column_at_pos(int pos);
   Column column(int n) {
     int pos = positions.at(n);
@@ -639,17 +641,19 @@ template <typename T> void Table::append_row(T new_values) {
     loop.values[cur_size + positions[n++]] = value;
 }
 
-inline void Table::remove_row(int row_index) {
+inline void Table::remove_rows(int start, int end) {
   if (!ok())
+    // this function is used mostly through remove_row()
     fail("remove_row(): table not found");
   if (!loop_item)
     convert_pair_to_loop();
   Loop& loop = loop_item->loop;
-  size_t pos = row_index * loop.width();
-  if (row_index < 0 || pos >= loop.values.size())
+  size_t start_pos = start * loop.width();
+  size_t end_pos = end * loop.width();
+  if (start_pos >= end_pos || end_pos > loop.values.size())
     throw std::out_of_range("remove_row(): invalid index");
-  loop.values.erase(loop.values.begin() + pos,
-                    loop.values.begin() + pos + loop.width());
+  loop.values.erase(loop.values.begin() + start_pos,
+                    loop.values.begin() + end_pos);
 }
 
 inline Column Table::column_at_pos(int pos) {

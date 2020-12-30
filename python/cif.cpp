@@ -46,6 +46,12 @@ T& add_to_vector(std::vector<T>& vec, const T& new_item, int pos) {
   return vec[pos];
 }
 
+// for delitem_slice
+namespace gemmi { namespace cif {
+void delitem_at_index(Table& t, ssize_t idx) { t.remove_row(idx); }
+void delitem_range(Table& t, ssize_t start, ssize_t end) { t.remove_rows(start, end); }
+} }
+
 void add_cif(py::module& cif) {
   py::class_<Block> cif_block(cif, "Block");
   py::class_<Item> cif_item(cif, "Item");
@@ -330,6 +336,8 @@ void add_cif(py::module& cif) {
         return py::make_iterator(self, py::keep_alive<0, 1>());
     }, py::keep_alive<0, 1>())
     .def("__getitem__", &Table::at, py::keep_alive<0, 1>())
+    .def("__delitem__", &Table::remove_row)
+    .def("__delitem__", &delitem_slice<Table>)
     .def("__bool__", &Table::ok)
     .def("__len__", &Table::length)
     .def("__repr__", [](const Table& self) {
