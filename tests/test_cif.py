@@ -228,6 +228,7 @@ class TestBlock(unittest.TestCase):
 
     def test_write_style(self):
         doc = cif.read_string('data_one _x y')
+        self.assertEqual(doc.as_string(), doc[0].as_string())
         self.assertEqual(doc.as_string().splitlines(), ['data_one', '_x y'])
         self.assertEqual(doc.as_string(style=cif.Style.Indent35).splitlines(),
                          ['data_one', '_x                                y'])

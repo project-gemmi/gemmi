@@ -398,6 +398,10 @@ sequence with ``Document.parse_string()`` doing the main job:
 Writing a file
 ==============
 
+One often wants to write a modified Document back to a file.
+That file will contain blocks separated with blank lines.
+It is also possible to write only a single block.
+
 Reading and writing a file does not preserve whitespaces.
 Instead, we have a few choices for "styling" of the output:
 
@@ -411,13 +415,15 @@ Instead, we have a few choices for "styling" of the output:
   option ``--ignore-space-change``.
 * ``Style::Indent35`` writes values from pairs from 35th column,
 
+
 C++
 ---
 
-The functions writing ``cif::Document`` to C++ stream
+The functions writing ``cif::Document`` and ``cif::Block`` to C++ stream
 is in a separate header ``gemmi/to_cif.hpp``::
 
   void write_cif_to_stream(std::ostream& os, const Document& doc, Style style)
+  void write_cif_block_to_stream(std::ostream& os, const Block& block, Style style)
 
 Python
 ------
@@ -438,6 +444,9 @@ It can take the style as optional, second argument:
 
 The ``Document`` class also has a method ``as_string()`` which returns
 the text that would be written by ``write_file()``.
+
+The ``Block`` class also has methods ``write_file()`` and ``as_string()``
+with the same arguments.
 
 Document
 ========
@@ -2067,9 +2076,15 @@ one block, and we write it to a file:
 
     >>> block = ccd['X12']
     >>> d = cif.Document()
-    >>> d.add_copied_block(ccd['X12'])
+    >>> d.add_copied_block(block)
     <gemmi.cif.Block X12>
     >>> d.write_file('X12.cif')
+
+Alternatively, we could do:
+
+.. doctest::
+
+    >>> block.write_file('X12.cif')
 
 In the next example we delete things we do not need.
 Let us write only components on letter A to a new file.

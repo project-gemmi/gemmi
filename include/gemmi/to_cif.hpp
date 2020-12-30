@@ -100,7 +100,7 @@ inline void write_out_item(std::ostream& os, const Item& item, Style style) {
   }
 }
 
-inline bool should_be_separted_(const Item& a, const Item& b) {
+inline bool should_be_separated_(const Item& a, const Item& b) {
   if (a.type == ItemType::Comment || b.type == ItemType::Comment)
     return false;
   if (a.type != ItemType::Pair || b.type != ItemType::Pair)
@@ -113,27 +113,32 @@ inline bool should_be_separted_(const Item& a, const Item& b) {
   return adot != bdot || a.pair[0].compare(0, adot, b.pair[0], 0, adot) != 0;
 }
 
-inline void write_cif_to_stream(std::ostream& os, const Document& doc,
-                                Style s=Style::Simple) {
-  bool first = true;
-  for (const Block& block : doc.blocks) {
-    if (!first)
-      os.put('\n'); // extra blank line for readability
+inline void write_cif_block_to_stream(std::ostream& os, const Block& block,
+                                      Style style=Style::Simple) {
     os << "data_" << block.name << '\n';
-    if (s == Style::Pdbx)
+    if (style == Style::Pdbx)
       os << "#\n";
     const Item* prev = nullptr;
     for (const Item& item : block.items)
       if (item.type != ItemType::Erased) {
-        if (prev && s != Style::NoBlankLines &&
-            should_be_separted_(*prev, item))
-          os << (s == Style::Pdbx ? "#\n" : "\n");
-        write_out_item(os, item, s);
+        if (prev && style != Style::NoBlankLines &&
+            should_be_separated_(*prev, item))
+          os << (style == Style::Pdbx ? "#\n" : "\n");
+        write_out_item(os, item, style);
         prev = &item;
       }
-    first = false;
-    if (s == Style::Pdbx)
+    if (style == Style::Pdbx)
       os << "#\n";
+}
+
+inline void write_cif_to_stream(std::ostream& os, const Document& doc,
+                                Style style=Style::Simple) {
+  bool first = true;
+  for (const Block& block : doc.blocks) {
+    if (!first)
+      os.put('\n'); // extra blank line for readability
+    write_cif_block_to_stream(os, block, style);
+    first = false;
   }
 }
 

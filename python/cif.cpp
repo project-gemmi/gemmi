@@ -237,6 +237,17 @@ void add_cif(py::module& cif) {
            }
            return data;
          }, py::arg("name"), py::arg("raw")=false)
+    .def("write_file",
+         [](const Block& self, const std::string& filename, Style s) {
+        gemmi::Ofstream os(filename);
+        write_cif_block_to_stream(os.ref(), self, s);
+    }, py::arg("filename"), py::arg("style")=Style::Simple,
+    "Write data to a CIF file.")
+    .def("as_string", [](const Block& self, Style style) {
+        std::ostringstream os;
+        write_cif_block_to_stream(os, self, style);
+        return os.str();
+    }, py::arg("style")=Style::Simple, "Returns a string in CIF format.")
     .def("__repr__", [](const Block &self) {
         return gemmi::tostr("<gemmi.cif.Block ", self.name, '>');
     });
