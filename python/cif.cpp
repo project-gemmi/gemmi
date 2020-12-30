@@ -47,12 +47,12 @@ T& add_to_vector(std::vector<T>& vec, const T& new_item, int pos) {
 }
 
 void add_cif(py::module& cif) {
-  py::class_<Block> pyCifBlock(cif, "Block");
-  py::class_<Item> pyCifItem(cif, "Item");
-  py::class_<Loop> lp(cif, "Loop");
-  py::class_<Column> pyCifColumn(cif, "Column");
-  py::class_<Table> lt(cif, "Table");
-  py::class_<Table::Row> pyCifTableRow(lt, "Row");
+  py::class_<Block> cif_block(cif, "Block");
+  py::class_<Item> cif_item(cif, "Item");
+  py::class_<Loop> cif_loop(cif, "Loop");
+  py::class_<Column> cif_column(cif, "Column");
+  py::class_<Table> cif_table(cif, "Table");
+  py::class_<Table::Row> cif_table_row(cif_table, "Row");
 
   py::enum_<Style>(cif, "Style")
     .value("Simple", Style::Simple)
@@ -143,7 +143,7 @@ void add_cif(py::module& cif) {
         return s;
     });
 
-  pyCifBlock
+  cif_block
     .def(py::init<const std::string &>())
     .def_readwrite("name", &Block::name)
     .def("__iter__", [](Block& self) { return py::make_iterator(self.items); },
@@ -253,7 +253,7 @@ void add_cif(py::module& cif) {
     });
 
 
-  pyCifItem
+  cif_item
     .def("erase", &Item::erase)
     .def_readonly("line_number", &Item::line_number)
     .def_property_readonly("pair", [](Item& self) {
@@ -267,7 +267,8 @@ void add_cif(py::module& cif) {
     }, py::return_value_policy::reference_internal)
     ;
 
-  lp.def(py::init<>())
+  cif_loop
+    .def(py::init<>())
     .def("width", &Loop::width, "Returns number of columns")
     .def("length", &Loop::length, "Returns number of rows")
     .def_readonly("tags", &Loop::tags)
@@ -282,7 +283,7 @@ void add_cif(py::module& cif) {
     });
 
 
-  pyCifColumn
+  cif_column
     .def(py::init<>())
     .def("get_loop", &Column::get_loop,
          py::return_value_policy::reference_internal)
@@ -308,7 +309,8 @@ void add_cif(py::module& cif) {
         return "<gemmi.cif.Column " + desc + ">";
     });
 
-  lt.def("width", &Table::width)
+  cif_table
+    .def("width", &Table::width)
     .def_readonly("prefix_length", &Table::prefix_length)
     .def_property_readonly("loop", &Table::get_loop,
                            py::return_value_policy::reference_internal)
@@ -337,7 +339,7 @@ void add_cif(py::module& cif) {
                ">";
     });
 
-  pyCifTableRow
+  cif_table_row
     .def_readonly("row_index", &Table::Row::row_index)
     .def("str", &Table::Row::str)
     .def("__len__", &Table::Row::size)
