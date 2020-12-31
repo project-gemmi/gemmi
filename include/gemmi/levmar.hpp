@@ -91,11 +91,11 @@ struct LevMar {
   std::vector<double> temp_alpha, temp_beta; // working arrays
 
 
-  template<typename Model, typename Point>
-  double fit(Model& model, const std::vector<Point>& data) {
+  template<typename Function, typename Point>
+  double fit(Function& func, const std::vector<Point>& data) {
     eval_count = 0;
-    std::vector<double> initial_a = model.get_parameters();
-    initial_wssr = this->compute_wssr(model.compute_values(data), data);
+    std::vector<double> initial_a = func.get_parameters();
+    initial_wssr = this->compute_wssr(func.compute_values(data), data);
     std::vector<double> best_a = initial_a;
     size_t na = initial_a.size();
 
@@ -104,7 +104,7 @@ struct LevMar {
     beta.resize(na);
 
     double wssr = initial_wssr;
-    this->compute_derivatives(model, data);
+    this->compute_derivatives(func, data);
 
     int small_change_counter = 0;
     for (int iter = 0; ; iter++) {
@@ -128,8 +128,8 @@ struct LevMar {
         temp_beta[i] = best_a[i] + temp_beta[i];
       }
 
-      model.set_parameters(temp_beta);
-      double new_wssr = this->compute_wssr(model.compute_values(data), data);
+      func.set_parameters(temp_beta);
+      double new_wssr = this->compute_wssr(func.compute_values(data), data);
 #ifdef GEMMI_DEBUG_LEVMAR
       fprintf(stderr, "\nWSSR=%g (%g%%) lambda=%g\n",
               new_wssr, 100. * new_wssr / initial_wssr, lambda);
@@ -148,7 +148,7 @@ struct LevMar {
         } else {
           small_change_counter = 0;
         }
-        this->compute_derivatives(model, data);
+        this->compute_derivatives(func, data);
         lambda *= lambda_down_factor;
       } else { // worse fitting
         if (lambda > lambda_limit) // termination criterium: large lambda
@@ -157,13 +157,13 @@ struct LevMar {
       }
     }
 
-    model.set_parameters(wssr < initial_wssr ? best_a : initial_a);
+    func.set_parameters(wssr < initial_wssr ? best_a : initial_a);
     return wssr;
   }
 
 private:
-  template<typename Model, typename Point>
-  void compute_derivatives(const Model& model, const std::vector<Point>& data) {
+  template<typename Function, typename Point>
+  void compute_derivatives(const Function& func, const std::vector<Point>& data) {
     assert(alpha.size() == beta.size() * beta.size());
     int na = (int)beta.size();
     assert(na != 0);
@@ -177,12 +177,12 @@ private:
     for (int tstart = 0; tstart < n; tstart += kMaxTileSize) {
       const int der_size = na; // + 1;
       int tsize = std::min(n - tstart, kMaxTileSize);
-      std::vector<typename Model::Point> xx(data.begin() + tstart,
-                                            data.begin() + tstart + tsize);
+      std::vector<typename Function::Point> xx(data.begin() + tstart,
+                                               data.begin() + tstart + tsize);
       std::vector<double> yy(tsize, 0.);
       dy_da.resize(tsize * der_size);
       fill(dy_da.begin(), dy_da.end(), 0.);
-      model.compute_values_and_derivatives(xx, yy, dy_da);
+      func.compute_values_and_derivatives(xx, yy, dy_da);
       for (int i = 0; i != tsize; ++i) {
         double weight = data[tstart + i].get_weight();
         double dy_sig = weight * (data[tstart + i].get_y() - yy[i]);
