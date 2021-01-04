@@ -77,8 +77,9 @@ const option::Descriptor Usage[] = {
     "  --write-map=FILE  \tWrite density (excl. bulk solvent) as CCP4 map." },
   { ToMtz, 0, "", "to-mtz", Arg::Required,
     "  --to-mtz=FILE  \tWrite Fcalc to a new MTZ file." },
-  { ScaleTo, 0, "", "scale-to", Arg::ColonPair,
-    "  --scale-to=FILE:COL  \tAnisotropic scaling to F from MTZ file." },
+  { ScaleTo, 0, "", "scale-to", Arg::Required,
+    "  --scale-to=FILE:COL  \tAnisotropic scaling to F from MTZ file."
+    "\n\tArgument: FILE[:FCOL[:SIGFCOL]] (defaults: F and SIGF)." },
   { NoOp, 0, "", "", Arg::None, "\nOptions for bulk solvent correction (only w/ FFT):" },
   { Rprobe, 0, "", "r-probe", Arg::Float,
     "  --r-probe=NUM  \tValue added to VdW radius (default: 1.0A)." },
@@ -540,13 +541,22 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
   using Real = float;
   gemmi::AsuData<std::array<Real,2>> scale_to;
   if (p.options[ScaleTo]) {
-    const char* arg = p.options[ScaleTo].arg;
-    const char* sep = std::strchr(arg, ':');
-    std::string path(arg, sep);
-    std::string label(sep+1);
+    std::string path = p.options[ScaleTo].arg;
+    std::string flabel = "F";
+    std::string siglabel = "SIGF";
+    size_t sep2 = path.rfind(':');
+    if (sep2 != std::string::npos && sep2 != 0) {
+      size_t sep = path.rfind(':', sep2 - 1);
+      if (sep == std::string::npos)
+        std::swap(sep, sep2);
+      flabel = path.substr(sep+1, sep2 - (sep+1));
+      if (sep2 != std::string::npos)
+        siglabel = path.substr(sep2+1);
+      path.resize(sep);
+    }
     gemmi::Mtz mtz;
     mtz.read_input(gemmi::MaybeGzipped(path), true);
-    scale_to.load_values<2>(gemmi::MtzDataProxy{mtz}, {label, "SIG"+label});
+    scale_to.load_values<2>(gemmi::MtzDataProxy{mtz}, {flabel, siglabel});
     scale_to.ensure_sorted();
   }
 

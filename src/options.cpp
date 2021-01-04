@@ -65,11 +65,11 @@ option::ArgStatus Arg::Choice(const option::Option& option, bool msg,
 }
 
 option::ArgStatus Arg::ColonPair(const option::Option& option, bool msg) {
-  if (option.arg) {
-    const char* sep = std::strchr(option.arg, ':');
-    if (sep != nullptr && std::strchr(sep+1, ':') == nullptr)
-      return option::ARG_OK;
-  }
+  if (Required(option, msg) == option::ARG_ILLEGAL)
+    return option::ARG_ILLEGAL;
+  const char* sep = std::strchr(option.arg, ':');
+  if (sep != nullptr && std::strchr(sep+1, ':') == nullptr)
+    return option::ARG_OK;
   if (msg)
     fprintf(stderr, "Option '%.*s' requires two colon-separated names "
                     "as an argument,\n for example: %.*s=A:B\n",

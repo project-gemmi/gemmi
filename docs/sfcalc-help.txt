@@ -30,6 +30,7 @@ Options for FFT-based calculations:
   --write-map=FILE     Write density (excl. bulk solvent) as CCP4 map.
   --to-mtz=FILE        Write Fcalc to a new MTZ file.
   --scale-to=FILE:COL  Anisotropic scaling to F from MTZ file.
+                       Argument: FILE[:FCOL[:SIGFCOL]] (defaults: F and SIGF).
 
 Options for bulk solvent correction (only w/ FFT):
   --r-probe=NUM        Value added to VdW radius (default: 1.0A).
