@@ -37,6 +37,10 @@ struct ConvArg: public Arg {
     return Arg::Choice(option, msg, {"quote", "nosu", "mix"});
   }
 
+  static option::ArgStatus AnisouChoice(const option::Option& option, bool msg) {
+    return Arg::Choice(option, msg, {"yes", "no", "heavy"});
+  }
+
   static option::ArgStatus NcsChoice(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"dup", "new"});
   }
@@ -45,7 +49,7 @@ struct ConvArg: public Arg {
 enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, PdbxStyle, BlockName,
   ExpandNcs, AsAssembly, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
-  ShortTer, Linkr, Minimal, ShortenCN, RenameChain, SetSeq,
+  ShortTer, Linkr, Minimal, ShortenCN, RenameChain, SetSeq, Anisou,
   SegmentAsChain, OldPdb, ForceLabel
 };
 
@@ -99,6 +103,9 @@ const option::Descriptor Usage[] = {
     "  -s FILE  \tUse sequence from FILE (PIR or FASTA format), "
     "which must contain either one sequence (for all chains) "
     "or as many sequences as there are chains." },
+  { Anisou, 0, "", "anisou", ConvArg::AnisouChoice,
+    "  --anisou=yes|no|heavy  \tAdd or remove ANISOU records." },
+
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular operations:" },
   { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
     "  --expand-ncs=dup|new  \tExpand strict NCS specified in MTRIXn or"
@@ -165,6 +172,22 @@ void convert(gemmi::Structure& st,
     gemmi::setup_entities(st);
     if (!options[SetSeq])
       gemmi::assign_label_seq_id(st, options[ForceLabel]);
+  }
+
+  if (options[Anisou]) {
+    char anisou_opt = options[Anisou].arg[0];
+    if (anisou_opt == 'n') {
+      gemmi::remove_anisou(st);
+    } else if (anisou_opt == 'y') {
+      gemmi::ensure_anisou(st);
+    } else if (anisou_opt == 'h') {
+      for (gemmi::Model& model : st.models)
+        for (gemmi::Chain& chain : model.chains)
+          for (gemmi::Residue& res : chain.residues)
+            for (gemmi::Atom& atom : res.atoms)
+              if (!atom.is_hydrogen())
+                gemmi::ensure_anisou(atom);
+    }
   }
 
   for (const option::Option* opt = options[RenameChain]; opt; opt = opt->next()) {

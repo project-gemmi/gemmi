@@ -373,5 +373,26 @@ inline void trim_to_alanine(Chain& chain) {
     trim_to_alanine(res);
 }
 
+// Remove anisotropic ADP
+template<class T> void remove_anisou(T& obj) {
+  for (auto& child : obj.children())
+    remove_anisou(child);
+}
+template<> inline void remove_anisou(Atom& atom) {
+  atom.aniso = {0, 0, 0, 0, 0, 0};
+}
+
+// Set absent ANISOU to value from B_iso
+template<class T> void ensure_anisou(T& obj) {
+  for (auto& child : obj.children())
+    ensure_anisou(child);
+}
+template<> inline void ensure_anisou(Atom& atom) {
+  if (!atom.aniso.nonzero()) {
+    float u = float(1. / gemmi::u_to_b() * atom.b_iso);
+    atom.aniso = {u, u, u, 0.f, 0.f, 0.f};
+  }
+}
+
 } // namespace gemmi
 #endif
