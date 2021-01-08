@@ -590,8 +590,6 @@ class TestMol(unittest.TestCase):
     def test_remove2(self):
         model = gemmi.read_structure(full_path('1pfe.cif.gz'))[0]
         self.assertEqual(len(model), 2)
-        del model['A']
-        self.assertEqual(len(model), 1)
         b = model['B']
         self.assertEqual(b[0].name, 'DSN')
         del b['1']['DSN']
@@ -608,6 +606,19 @@ class TestMol(unittest.TestCase):
         new_chain = gemmi.Chain('X')
         new_chain.append_residues(b[:5], min_sep=1)
         self.assertEqual(len(new_chain), 5)
+
+        # test adding and removing chains
+        model.add_chain(new_chain, unique_name=False)
+        model.add_chain(new_chain, unique_name=True)
+        model.add_chain(new_chain)
+        self.assertEqual([chain.name for chain in model], list('ABXCX'))
+        del model[2:]
+        model.add_chain(new_chain, unique_name=True)
+        self.assertEqual([chain.name for chain in model], list('ABX'))
+        del model[-1]
+        del model['A']
+        self.assertEqual(len(model), 1)
+        self.assertEqual(model[0].name, 'B')
 
     def test_first_conformer(self):
         model = gemmi.read_structure(full_path('1pfe.cif.gz'))[0]

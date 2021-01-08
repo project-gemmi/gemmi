@@ -1744,6 +1744,8 @@ As always, naming things is hard.
 Biological unit may contain a number of copies of one chain.
 Each copy needs to be named. Gemmi provides three options:
 
+.. _how_to_name_copied_chain:
+
 - HowToNameCopiedChains.Dup (in C++: HowToNameCopiedChains::Dup) --
   simply leaves the original chain name in all copies,
 - HowToNameCopiedChains.AddNumber -- copies of chain A are named
@@ -2196,7 +2198,7 @@ and in Python use:
 
 .. code-block:: python
 
-  Model.add_chain(chain, pos=-1)
+  Model.add_chain(chain, pos=-1, unique_name=False)
 
 for example,
 
@@ -2204,6 +2206,11 @@ for example,
 
   model.add_chain(gemmi.Chain('E'))  # add a new (empty) chain
   model.add_chain(model[0])          # add a copy of chain #0
+  model.add_chain(model[0], unique_name=True)
+
+In the example with ``unique_name=True``, if the model already has a chain
+with the same name, the added chain is assigned a new name
+(see :ref:`HowToNameCopiedChains.Short <how_to_name_copied_chain>`).
 
 Each ``Model`` in a Structure must have a unique name (``string name``).
 Normally, models are numbered and the name is a number.

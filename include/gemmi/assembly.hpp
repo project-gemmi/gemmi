@@ -77,6 +77,14 @@ struct ChainNameGenerator {
   }
 };
 
+inline void ensure_unique_chain_name(const Model& model, Chain& chain) {
+  ChainNameGenerator namegen(HowToNameCopiedChains::Short);
+  for (const Chain& ch : model.chains)
+    if (&ch != &chain && !namegen.has(ch.name))
+      namegen.added(ch.name);
+  chain.name = namegen.make_short_name(chain.name);
+}
+
 inline Model make_assembly(const Assembly& assembly, const Model& model,
                            HowToNameCopiedChains how, std::ostream* out) {
   Model new_model(model.name);

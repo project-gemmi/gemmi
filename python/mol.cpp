@@ -194,9 +194,14 @@ void add_mol(py::module& m) {
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("find_last_chain", &Model::find_last_chain,
          py::arg("name"), py::return_value_policy::reference_internal)
-    .def("add_chain", add_child<Model, Chain>,
-         py::arg("chain"), py::arg("pos")=-1,
-         py::return_value_policy::reference_internal)
+    .def("add_chain",
+         [](Model& self, const Chain& chain, int pos, bool unique_name) -> Chain& {
+           Chain& ref = add_child<Model, Chain>(self, chain, pos);
+           if (unique_name)
+             ensure_unique_chain_name(self, ref);
+           return ref;
+    }, py::arg("chain"), py::arg("pos")=-1, py::arg("unique_name")=false,
+       py::return_value_policy::reference_internal)
     // for compatibility with older gemmi version
     .def("add_chain", [](Model& self, const std::string& name) -> Chain& {
         self.chains.emplace_back(name);
