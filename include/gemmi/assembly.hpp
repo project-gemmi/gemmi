@@ -13,10 +13,10 @@
 
 namespace gemmi {
 
-enum class HowToNameCopiedChains { Short, AddNumber, Dup };
+enum class HowToNameCopiedChain { Short, AddNumber, Dup };
 
 struct ChainNameGenerator {
-  using How = HowToNameCopiedChains;
+  using How = HowToNameCopiedChain;
   How how;
   std::vector<std::string> used_names;
 
@@ -78,7 +78,7 @@ struct ChainNameGenerator {
 };
 
 inline void ensure_unique_chain_name(const Model& model, Chain& chain) {
-  ChainNameGenerator namegen(HowToNameCopiedChains::Short);
+  ChainNameGenerator namegen(HowToNameCopiedChain::Short);
   for (const Chain& ch : model.chains)
     if (&ch != &chain && !namegen.has(ch.name))
       namegen.added(ch.name);
@@ -86,7 +86,7 @@ inline void ensure_unique_chain_name(const Model& model, Chain& chain) {
 }
 
 inline Model make_assembly(const Assembly& assembly, const Model& model,
-                           HowToNameCopiedChains how, std::ostream* out) {
+                           HowToNameCopiedChain how, std::ostream* out) {
   Model new_model(model.name);
   ChainNameGenerator namegen(how);
   std::map<std::string, std::string> subs = model.subchain_to_chain();
@@ -160,7 +160,7 @@ inline Model make_assembly(const Assembly& assembly, const Model& model,
 }
 
 inline void change_to_assembly(Structure& st, const std::string& assembly_name,
-                               HowToNameCopiedChains how, std::ostream* out) {
+                               HowToNameCopiedChain how, std::ostream* out) {
   Assembly* assembly = st.find_assembly(assembly_name);
   if (!assembly) {
     if (st.assemblies.empty())
@@ -207,7 +207,7 @@ inline void rename_chain(Structure& st, Chain& chain,
 }
 
 inline void shorten_chain_names(Structure& st) {
-  ChainNameGenerator namegen(HowToNameCopiedChains::Short);
+  ChainNameGenerator namegen(HowToNameCopiedChain::Short);
   Model& model0 = st.models[0];
   size_t max_len = model0.chains.size() < 63 ? 1 : 2;
   for (const Chain& chain : model0.chains)
@@ -220,14 +220,14 @@ inline void shorten_chain_names(Structure& st) {
 }
 
 
-inline void expand_ncs(gemmi::Structure& st, HowToNameCopiedChains how) {
+inline void expand_ncs(gemmi::Structure& st, HowToNameCopiedChain how) {
   for (gemmi::Model& model : st.models) {
     size_t orig_size = model.chains.size();
     gemmi::ChainNameGenerator namegen(model, how);
     for (const gemmi::NcsOp& op : st.ncs)
       if (!op.given) {
         for (size_t i = 0; i != orig_size; ++i) {
-          if (how == HowToNameCopiedChains::Dup)
+          if (how == HowToNameCopiedChain::Dup)
             for (gemmi::Residue& res : model.chains[i].residues)
               res.segment = "0";
 
@@ -243,7 +243,7 @@ inline void expand_ncs(gemmi::Structure& st, HowToNameCopiedChains how) {
             }
             if (!res.subchain.empty())
               res.subchain = new_chain.name + ":" + res.subchain;
-            if (how == HowToNameCopiedChains::Dup)
+            if (how == HowToNameCopiedChain::Dup)
               res.segment = op.id;
           }
         }

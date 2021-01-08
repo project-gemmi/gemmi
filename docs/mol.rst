@@ -1746,11 +1746,11 @@ Each copy needs to be named. Gemmi provides three options:
 
 .. _how_to_name_copied_chain:
 
-- HowToNameCopiedChains.Dup (in C++: HowToNameCopiedChains::Dup) --
+- HowToNameCopiedChain.Dup (in C++: HowToNameCopiedChain::Dup) --
   simply leaves the original chain name in all copies,
-- HowToNameCopiedChains.AddNumber -- copies of chain A are named
+- HowToNameCopiedChain.AddNumber -- copies of chain A are named
   A1, A2, ..., copies of chain B -- B1, B2, ..., etc,
-- HowToNameCopiedChains.Short -- unique one-character chain names are used
+- HowToNameCopiedChain.Short -- unique one-character chain names are used
   until exhausted (after 26*2+10=62 chains), then two-character names are used.
   This option is appropriate when the output is to be stored in the PDB format.
 
@@ -1759,11 +1759,11 @@ options above, and returns a new Model that represents the assembly.
 
 .. doctest::
 
-  >>> gemmi.make_assembly(st.assemblies[0], st[0], gemmi.HowToNameCopiedChains.AddNumber)
+  >>> gemmi.make_assembly(st.assemblies[0], st[0], gemmi.HowToNameCopiedChain.AddNumber)
   <gemmi.Model 1 with 1 chain(s)>
   >>> list(_)
   [<gemmi.Chain A1 with 21 res>]
-  >>> gemmi.make_assembly(st.assemblies[1], st[0], gemmi.HowToNameCopiedChains.AddNumber)
+  >>> gemmi.make_assembly(st.assemblies[1], st[0], gemmi.HowToNameCopiedChain.AddNumber)
   <gemmi.Model 1 with 1 chain(s)>
   >>> list(_)
   [<gemmi.Chain B1 with 26 res>]
@@ -1798,7 +1798,7 @@ you can add NCS copies with:
 
 .. doctest::
 
-  >>> st.expand_ncs(gemmi.HowToNameCopiedChains.Short)
+  >>> st.expand_ncs(gemmi.HowToNameCopiedChain.Short)
 
 The meaning of the argument is the same as in ``make_assembly()`` above.
 
@@ -2210,7 +2210,7 @@ for example,
 
 In the example with ``unique_name=True``, if the model already has a chain
 with the same name, the added chain is assigned a new name
-(see :ref:`HowToNameCopiedChains.Short <how_to_name_copied_chain>`).
+(see :ref:`HowToNameCopiedChain.Short <how_to_name_copied_chain>`).
 
 Each ``Model`` in a Structure must have a unique name (``string name``).
 Normally, models are numbered and the name is a number.

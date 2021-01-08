@@ -24,7 +24,7 @@
 
 namespace cif = gemmi::cif;
 using gemmi::CoorFormat;
-using gemmi::HowToNameCopiedChains;
+using gemmi::HowToNameCopiedChain;
 
 namespace {
 
@@ -222,16 +222,16 @@ void convert(gemmi::Structure& st,
     gemmi::assign_label_seq_id(st, options[ForceLabel]);
   }
 
-  HowToNameCopiedChains how = HowToNameCopiedChains::AddNumber;
+  HowToNameCopiedChain how = HowToNameCopiedChain::AddNumber;
   if (output_type == CoorFormat::Pdb)
-    how = HowToNameCopiedChains::Short;
+    how = HowToNameCopiedChain::Short;
   if (options[AsAssembly])
     gemmi::change_to_assembly(st, options[AsAssembly].arg, how,
                               options[Verbose] ? &std::cerr : nullptr);
 
   if (options[ExpandNcs]) {
     if (options[ExpandNcs].arg[0] == 'd')
-     how = HowToNameCopiedChains::Dup;
+     how = HowToNameCopiedChain::Dup;
     gemmi::expand_ncs(st, how);
   }
 

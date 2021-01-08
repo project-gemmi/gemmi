@@ -3,7 +3,7 @@
 #include "gemmi/model.hpp"
 #include "gemmi/calculate.hpp"  // for calculate_mass, count_atom_sites
 #include "gemmi/polyheur.hpp"   // for one_letter_code, trim_to_alanine
-#include "gemmi/assembly.hpp"   // for expand_ncs, HowToNameCopiedChains
+#include "gemmi/assembly.hpp"   // for expand_ncs, HowToNameCopiedChain
 #include "gemmi/tostr.hpp"
 
 #include "common.h"
@@ -59,10 +59,10 @@ void add_mol(py::module& m) {
   py::class_<ResidueGroup, ResidueSpan> pyResidueGroup(m, "ResidueGroup");
   py::class_<CraProxy> pyCraGenerator(m, "CraGenerator");
 
-  py::enum_<HowToNameCopiedChains>(m, "HowToNameCopiedChains")
-    .value("Short", HowToNameCopiedChains::Short)
-    .value("AddNumber", HowToNameCopiedChains::AddNumber)
-    .value("Dup", HowToNameCopiedChains::Dup)
+  py::enum_<HowToNameCopiedChain>(m, "HowToNameCopiedChain")
+    .value("Short", HowToNameCopiedChain::Short)
+    .value("AddNumber", HowToNameCopiedChain::AddNumber)
+    .value("Dup", HowToNameCopiedChain::Dup)
     ;
 
   m.def("one_letter_code",
@@ -468,7 +468,7 @@ void add_mol(py::module& m) {
   m.def("calculate_sequence_weight", &calculate_sequence_weight,
         py::arg("sequence"), py::arg("unknown")=0.);
   m.def("make_assembly", [](const Assembly& assembly, const Model& model,
-                            HowToNameCopiedChains how) {
+                            HowToNameCopiedChain how) {
         return make_assembly(assembly, model, how, nullptr);
   })
   ;
