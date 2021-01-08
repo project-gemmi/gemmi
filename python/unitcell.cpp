@@ -1,7 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/unitcell.hpp"
-#include "gemmi/seqid.hpp"
 
 #include <cstdio>  // for snprintf
 #include <array>

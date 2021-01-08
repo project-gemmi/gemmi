@@ -1,9 +1,9 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/model.hpp"
-#include "gemmi/calculate.hpp"
-#include "gemmi/polyheur.hpp"
-#include "gemmi/assembly.hpp"  // for make_assembly
+#include "gemmi/calculate.hpp"  // for calculate_mass, count_atom_sites
+#include "gemmi/polyheur.hpp"   // for one_letter_code, trim_to_alanine
+#include "gemmi/assembly.hpp"   // for expand_ncs, HowToNameCopiedChains
 #include "gemmi/tostr.hpp"
 
 #include "common.h"
