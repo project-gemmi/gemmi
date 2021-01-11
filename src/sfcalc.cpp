@@ -556,7 +556,13 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
     }
     gemmi::Mtz mtz;
     mtz.read_input(gemmi::MaybeGzipped(path), true);
-    scale_to.load_values<2>(gemmi::MtzDataProxy{mtz}, {flabel, siglabel});
+    if (siglabel.empty()) {
+      scale_to.load_values<2>(gemmi::MtzDataProxy{mtz}, {flabel, flabel});
+      for (auto& hkl_value : scale_to.v)
+        hkl_value.value[1] = 1.f;
+    } else {
+      scale_to.load_values<2>(gemmi::MtzDataProxy{mtz}, {flabel, siglabel});
+    }
     scale_to.ensure_sorted();
   }
 
