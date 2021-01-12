@@ -46,7 +46,7 @@ template<typename T> void add_smat33(py::module& m, const char* name) {
     .def("nonzero", &M::nonzero)
     .def("determinant", &M::determinant)
     .def("inverse", &M::inverse)
-    .def("r_u_r", &M::r_u_r)
+    .def("r_u_r", (double (M::*)(const Vec3&) const) &M::r_u_r)
     .def("r_u_r", [](const M& self, py::array_t<int> arr) {
         int nrow = (int) arr.shape(0);
         int ncol = (int) arr.shape(1);

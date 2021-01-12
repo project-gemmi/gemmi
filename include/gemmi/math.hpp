@@ -200,6 +200,12 @@ template<typename T> struct SMat33 {
     return r.x * r.x * u11 + r.y * r.y * u22 + r.z * r.z * u33 +
       2 * (r.x * r.y * u12 + r.x * r.z * u13 + r.y * r.z * u23);
   }
+  double r_u_r(const std::array<int,3>& h) const {
+    return r_u_r(Vec3(h[0], h[1], h[2]));
+    // this is slower:
+    //return h[0] * h[0] * u11 + h[1] * h[1] * u22 + h[2] * h[2] * u33 +
+    //  2 * (h[0] * h[1] * u12 + h[0] * h[2] * u13 + h[1] * h[2] * u23);
+  }
 
   // return M U M^T
   template<typename Real=double>

@@ -2,7 +2,7 @@
 
 // Microbenchmark of gemmi::find_element().
 // Requires the google/benchmark library. It can be built manually:
-// c++ -Wall -O2 -I../include -I$GB/include bench_elem.cpp $GB/src/libbenchmark.a -pthread
+// c++ -Wall -O2 -I../include -I$GB/include elem.cpp $GB/src/libbenchmark.a -pthread
 
 #include "gemmi/elem.hpp"
 #include "gemmi/fprime.hpp"

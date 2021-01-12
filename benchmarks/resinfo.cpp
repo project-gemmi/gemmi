@@ -2,7 +2,7 @@
 
 // Microbenchmark of gemmi::Residue::has_standard_pdb_name().
 // Requires the google/benchmark library. It can be built manually:
-// c++ -Wall -O2 -I../include -I$GB/include bench_resname.cpp $GB/src/libbenchmark.a -pthread
+// c++ -Wall -O2 -I../include -I$GB/include resinfo.cpp $GB/src/libbenchmark.a -pthread
 
 #include "gemmi/resinfo.hpp"
 #include <benchmark/benchmark.h>

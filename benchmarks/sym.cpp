@@ -2,7 +2,7 @@
 
 // Microbenchmark of functions from symmetry.hpp
 // Requires the google/benchmark library. It can be built manually:
-// c++ -Wall -O2 -I../include -I$GB/include bench_sym.cpp $GB/src/libbenchmark.a -pthread
+// c++ -Wall -O2 -I../include -I$GB/include sym.cpp $GB/src/libbenchmark.a -pthread
 
 #include <benchmark/benchmark.h>
 #include <gemmi/symmetry.hpp>

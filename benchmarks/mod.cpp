@@ -2,7 +2,7 @@
 
 // I couldn't decide how to implement positive modulo.
 // Requires the google/benchmark library. It can be built manually:
-// c++ -Wall -O2 -I../include -I$GB/include bench_mod.cpp $GB/src/libbenchmark.a -pthread
+// c++ -Wall -O2 -I../include -I$GB/include mod.cpp $GB/src/libbenchmark.a -pthread
 
 #include <climits>
 #include <cstdio>
