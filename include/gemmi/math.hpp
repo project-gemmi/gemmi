@@ -46,6 +46,7 @@ struct Vec3 {
 
   Vec3() : x(0), y(0), z(0) {}
   Vec3(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
+  explicit Vec3(std::array<int, 3> h) : x(h[0]), y(h[1]), z(h[2]) {}
 
   double& at(int i) {
     switch (i) {
@@ -201,7 +202,7 @@ template<typename T> struct SMat33 {
       2 * (r.x * r.y * u12 + r.x * r.z * u13 + r.y * r.z * u23);
   }
   double r_u_r(const std::array<int,3>& h) const {
-    return r_u_r(Vec3(h[0], h[1], h[2]));
+    return r_u_r(Vec3(h));
     // this is slower:
     //return h[0] * h[0] * u11 + h[1] * h[1] * u22 + h[2] * h[2] * u33 +
     //  2 * (h[0] * h[1] * u12 + h[0] * h[2] * u13 + h[1] * h[2] * u23);
