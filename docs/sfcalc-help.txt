@@ -37,6 +37,8 @@ Options for bulk solvent correction (only w/ FFT):
   --r-shrink=NUM       Value for shrinking the solvent area (default: 1.1A).
   --ksolv=NUM          Value (if optimizing: initial value) of k_solv.
   --bsolv=NUM          Value (if optimizing: initial value) of B_solv.
+  --baniso=B11:...:B23 Anisotropic scale matrix (6 colon-separated numbers: B11,
+                       B22, B33, B12, B13, B23).
 
 Options for comparing calculated values with values from a file:
   --compare=FILE       Re-calculate Fcalc and report differences.

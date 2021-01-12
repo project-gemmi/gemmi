@@ -51,6 +51,10 @@ struct BulkSolvent {
   // model parameters
   double k_overall = 1.;
   SMat33<double> B_aniso{0, 0, 0, 0, 0, 0};
+  bool use_solvent = false;
+  // initialize with average values (Fokine & Urzhumtsev, 2002)
+  double k_sol = 0.35;
+  double b_sol = 46.0;
 
   // pre: calc and obs are sorted
   BulkSolvent(const UnitCell& cell_, const SpaceGroup* sg)
@@ -109,6 +113,10 @@ struct BulkSolvent {
       case CrystalSystem::Cubic: return 1 + 1;
     }
     unreachable();
+  }
+
+  double solvent_scale(double stol2) const {
+    return k_sol * std::exp(-b_sol * stol2);
   }
 
   double get_scale_factor_iso(const Miller& hkl) const {

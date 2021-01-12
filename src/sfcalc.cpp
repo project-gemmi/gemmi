@@ -27,11 +27,29 @@ namespace {
 
 enum OptionIndex { Hkl=4, Dmin, For, Rate, Blur, RCut, Test, ToMtz, Compare,
                    CifFp, Wavelength, Unknown, NoAniso, ScaleTo, FLabel,
-                   PhiLabel, Ksolv, Bsolv, Rprobe, Rshrink, WriteMap };
+                   PhiLabel, Ksolv, Bsolv, Baniso, Rprobe, Rshrink, WriteMap };
 
 struct SfCalcArg: public Arg {
   static option::ArgStatus FormFactors(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"xray", "electron", "mott-bethe"});
+  }
+
+  static option::ArgStatus Float6(const option::Option& option, bool msg) {
+    if (option.arg) {
+      char* endptr = nullptr;
+      int counter = 0;
+      do {
+        (void) std::strtod(endptr ? endptr + 1 : option.arg, &endptr);
+        ++counter;
+      } while (*endptr == ':');
+      if (counter == 6 && *endptr == '\0')
+        return option::ARG_OK;
+    }
+    if (msg)
+      fprintf(stderr, "Option '%.*s' requires six colon-separated numbers "
+                      "as an argument,\n for example: %.*s=2.1:3:4:0:0:0\n",
+                      option.namelen, option.name, option.namelen, option.name);
+    return option::ARG_ILLEGAL;
   }
 };
 
@@ -89,6 +107,9 @@ const option::Descriptor Usage[] = {
     "  --ksolv=NUM  \tValue (if optimizing: initial value) of k_solv." },
   { Bsolv, 0, "", "bsolv", Arg::Float,
     "  --bsolv=NUM  \tValue (if optimizing: initial value) of B_solv." },
+  { Baniso, 0, "", "baniso", SfCalcArg::Float6,
+    "  --baniso=B11:...:B23 \tAnisotropic scale matrix (6 colon-separated numbers: "
+      "B11, B22, B33, B12, B13, B23)." },
 
   { NoOp, 0, "", "", Arg::None,
     "\nOptions for comparing calculated values with values from a file:" },
@@ -108,17 +129,6 @@ struct RefFile {
   const char* path = nullptr;
   std::string f_label;
   std::string phi_label;
-};
-
-struct SolventParam {
-  bool use_solvent = false;
-  // initialize with average values (Fokine & Urzhumtsev, 2002)
-  double k = 0.35;
-  double B = 46.0;
-
-  double calculate_scale(double stol2) const {
-    return k * std::exp(-B * stol2);
-  }
 };
 
 void print_sf(std::complex<double> sf, const gemmi::Miller& hkl) {
@@ -173,7 +183,7 @@ template<typename Table, typename Real>
 void process_with_fft(const gemmi::Structure& st,
                       gemmi::DensityCalculator<Table, Real>& dencalc,
                       bool mott_bethe,
-                      const SolventParam& solvent,
+                      gemmi::BulkSolvent<Real>& bulk,
                       bool verbose, const RefFile& file,
                       const gemmi::AsuData<std::array<Real,2>>& scale_to,
                       const char* map_file) {
@@ -223,7 +233,7 @@ void process_with_fft(const gemmi::Structure& st,
   }
   auto asu_data = sf.prepare_asu_data(dencalc.d_min, dencalc.blur, false, false, mott_bethe);
 
-  if (solvent.use_solvent) {
+  if (bulk.use_solvent) {
     dencalc.put_solvent_mask_on_grid(st.models[0]);
     auto asu_mask = transform_map_to_f_phi(dencalc.grid, /*half_l=*/true)
                     .prepare_asu_data(dencalc.d_min, 0);
@@ -232,14 +242,13 @@ void process_with_fft(const gemmi::Structure& st,
       const gemmi::HklValue<std::complex<Real>>& m = asu_mask.v[i];
       assert(asu_data.v[i].hkl == m.hkl);
       double stol2 = asu_data.unit_cell().calculate_stol_sq(m.hkl);
-      asu_data.v[i].value += (Real) solvent.calculate_scale(stol2) * m.value;
+      asu_data.v[i].value += (Real) bulk.solvent_scale(stol2) * m.value;
     }
   }
 
   Comparator comparator;
   if (scale_to.size() != 0) {
     std::vector<gemmi::FcFo<Real>> data = prepare_fc_fo(asu_data, scale_to);
-    gemmi::BulkSolvent<Real> bulk(asu_data.unit_cell(), asu_data.spacegroup());
     printf("Calculating scale factors using %zu points...\n", data.size());
     bulk.quick_iso_fit(data);
     //fprintf(stderr, "k_ov=%g B_ov=%g\n", bulk.k_overall, bulk.B_aniso.u11);
@@ -247,9 +256,10 @@ void process_with_fft(const gemmi::Structure& st,
     fprintf(stderr, "k_ov=%g B11=%g B22=%g B33=%g B12=%g B13=%g B23=%g\n",
             bulk.k_overall, bulk.B_aniso.u11, bulk.B_aniso.u22, bulk.B_aniso.u33,
                             bulk.B_aniso.u12, bulk.B_aniso.u13, bulk.B_aniso.u23);
+  }
+  if (bulk.k_overall != 1 || !bulk.B_aniso.all_zero())
     for (gemmi::HklValue<std::complex<Real>>& hv : asu_data.v)
       hv.value *= (Real) bulk.get_scale_factor_aniso(hv.hkl);
-  }
   std::unique_ptr<gemmi::Mtz> output_mtz;
   if (file.mode == RefFile::Mode::WriteMtz) {
     output_mtz.reset(new gemmi::Mtz(true));
@@ -599,16 +609,25 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
       if (p.options[Rshrink])
         dencalc.rshrink = std::atof(p.options[Rshrink].arg);
 
-      SolventParam solvent;
+      gemmi::BulkSolvent<Real> bulk(cell, st.find_spacegroup());
       if (p.options[Ksolv] || p.options[Bsolv]) {
-        solvent.use_solvent = true;
+        bulk.use_solvent = true;
         if (p.options[Ksolv])
-          solvent.k = std::atof(p.options[Ksolv].arg);
+          bulk.k_sol = std::atof(p.options[Ksolv].arg);
         if (p.options[Bsolv])
-          solvent.B = std::atof(p.options[Bsolv].arg);
+          bulk.b_sol = std::atof(p.options[Bsolv].arg);
+      }
+      if (p.options[Baniso]) {
+        char* endptr = nullptr;
+        bulk.B_aniso.u11 = std::strtod(p.options[Baniso].arg, &endptr);
+        bulk.B_aniso.u22 = std::strtod(endptr + 1, &endptr);
+        bulk.B_aniso.u33 = std::strtod(endptr + 1, &endptr);
+        bulk.B_aniso.u12 = std::strtod(endptr + 1, &endptr);
+        bulk.B_aniso.u13 = std::strtod(endptr + 1, &endptr);
+        bulk.B_aniso.u23 = std::strtod(endptr + 1, &endptr);
       }
       const char* map_file = p.options[WriteMap] ? p.options[WriteMap].arg : nullptr;
-      process_with_fft(st, dencalc, mott_bethe, solvent,
+      process_with_fft(st, dencalc, mott_bethe, bulk,
                        p.options[Verbose], file, scale_to, map_file);
     } else {
       if (p.options[Rate] || p.options[RCut] || p.options[Blur] ||

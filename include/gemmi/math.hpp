@@ -177,6 +177,10 @@ template<typename T> struct SMat33 {
   T trace() const { return u11 + u22 + u33; }
   bool nonzero() const { return trace() != 0; }
 
+  bool all_zero() const {
+    return u11 == 0 && u22 == 0 && u33 == 0 && u12 == 0 && u13 == 0 && u23 == 0;
+  }
+
   void scale(T s) const {
     u11 *= s; u22 *= s; u33 *= s; u12 *= s; u13 *= s; u23 *= s;
   };
