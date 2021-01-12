@@ -50,7 +50,8 @@ struct BulkSolvent {
   CrystalSystem crystal_system;
   // model parameters
   double k_overall = 1.;
-  SMat33<double> B_aniso{0, 0, 0, 0, 0, 0};
+  // b_star = F B_cart F^T, where F - fractionalization matrix
+  SMat33<double> b_star{0, 0, 0, 0, 0, 0};
   bool use_solvent = false;
   // initialize with average values (Fokine & Urzhumtsev, 2002)
   double k_sol = 0.35;
@@ -66,18 +67,18 @@ struct BulkSolvent {
       case CrystalSystem::Triclinic:
       case CrystalSystem::Monoclinic: // ignoring that two (e.g. U13 and U23) are 0
         return {k_overall,
-                B_aniso.u11, B_aniso.u22, B_aniso.u33,
-                B_aniso.u12, B_aniso.u13, B_aniso.u23};
+                b_star.u11, b_star.u22, b_star.u33,
+                b_star.u12, b_star.u13, b_star.u23};
       case CrystalSystem::Orthorhombic:
-        return {k_overall, B_aniso.u11, B_aniso.u22, B_aniso.u33};
+        return {k_overall, b_star.u11, b_star.u22, b_star.u33};
       case CrystalSystem::Tetragonal:
-        return {k_overall, B_aniso.u11, B_aniso.u33};
+        return {k_overall, b_star.u11, b_star.u33};
       case CrystalSystem::Trigonal:
-        return {k_overall, B_aniso.u11, B_aniso.u12};
+        return {k_overall, b_star.u11, b_star.u12};
       case CrystalSystem::Hexagonal:
-        return {k_overall, B_aniso.u11, B_aniso.u33, B_aniso.u12};
+        return {k_overall, b_star.u11, b_star.u33, b_star.u12};
       case CrystalSystem::Cubic:
-        return {k_overall, B_aniso.u11};
+        return {k_overall, b_star.u11};
     }
     unreachable();
   }
@@ -87,17 +88,17 @@ struct BulkSolvent {
     switch (crystal_system) {
       case CrystalSystem::Triclinic:
       case CrystalSystem::Monoclinic:
-        B_aniso = {p[1], p[2], p[3], p[4], p[5], p[6]}; break;
+        b_star = {p[1], p[2], p[3], p[4], p[5], p[6]}; break;
       case CrystalSystem::Orthorhombic:
-        B_aniso = {p[1], p[2], p[3], 0., 0., 0.}; break;
+        b_star = {p[1], p[2], p[3], 0., 0., 0.}; break;
       case CrystalSystem::Tetragonal:
-        B_aniso = {p[1], p[1], p[2], 0., 0., 0.}; break;
+        b_star = {p[1], p[1], p[2], 0., 0., 0.}; break;
       case CrystalSystem::Trigonal:
-        B_aniso = {p[1], p[1], p[1], p[2], p[2], p[2]}; break;
+        b_star = {p[1], p[1], p[1], p[2], p[2], p[2]}; break;
       case CrystalSystem::Hexagonal:
-        B_aniso = {p[1], p[1], p[2], p[3], 0., 0.}; break;
+        b_star = {p[1], p[1], p[2], p[3], 0., 0.}; break;
       case CrystalSystem::Cubic:
-        B_aniso = {p[1], p[1], p[1], 0., 0., 0.}; break;
+        b_star = {p[1], p[1], p[1], 0., 0., 0.}; break;
     }
   }
 
@@ -120,21 +121,18 @@ struct BulkSolvent {
   }
 
   double get_scale_factor_iso(const Miller& hkl) const {
-    Real stol2 = cell.calculate_stol_sq(hkl);
-    return k_overall * std::exp(-B_aniso.u11 * stol2);
+    return k_overall * std::exp(-b_star.u11 * Vec3(hkl).length_sq());
+  }
+
+  void set_b_overall(const SMat33<double>& b_overall) {
+    b_star = b_overall.transformed_by(cell.frac.mat);
+  }
+  SMat33<double> get_b_overall() const {
+    return b_star.transformed_by(cell.orth.mat);
   }
 
   double get_scale_factor_aniso(const Miller& hkl) const {
-    double arh = cell.ar * hkl[0];
-    double brk = cell.br * hkl[1];
-    double crl = cell.cr * hkl[2];
-    double sbs = B_aniso.u11 * arh * arh +
-                 B_aniso.u22 * brk * brk +
-                 B_aniso.u33 * crl * crl +
-             2 * (B_aniso.u12 * arh * brk * cell.cos_gammar +
-                  B_aniso.u13 * arh * crl * cell.cos_betar +
-                  B_aniso.u23 * brk * crl * cell.cos_alphar);
-    return k_overall * std::exp(-0.25 * sbs);
+    return k_overall * std::exp(-0.25 * b_star.r_u_r(hkl));
   }
 
   // quick linear fit (ignoring sigma) to get initial parameters
@@ -151,9 +149,9 @@ struct BulkSolvent {
     double n = (double) data.size();
     double slope = (n * sxy - sx * sy) / (n * sxx - sx * sx);
     double intercept = (sy - slope * sx) / n;
-    B_aniso.u11 = B_aniso.u22 = B_aniso.u33 = -slope;
-    B_aniso.u12 = B_aniso.u13 = B_aniso.u23 = 0;
+    double b_iso = -slope;
     k_overall = exp(intercept);
+    set_b_overall({b_iso, b_iso, b_iso, 0, 0, 0});
   }
 
   void aniso_fit(const std::vector<Point>& data) {
@@ -177,26 +175,17 @@ struct BulkSolvent {
     int npar = count_parameters();
     assert(dy_da.size() == npar * data.size());
     for (size_t i = 0; i != data.size(); ++i) {
-      const Miller& hkl = data[i].hkl;
-      double arh = cell.ar * hkl[0];
-      double brk = cell.br * hkl[1];
-      double crl = cell.cr * hkl[2];
-      double sbs = arh * arh * B_aniso.u11 +
-                   brk * brk * B_aniso.u22 +
-                   crl * crl * B_aniso.u33 +
-               2 * (arh * brk * cell.cos_gammar * B_aniso.u12 +
-                    arh * crl * cell.cos_betar * B_aniso.u13 +
-                    brk * crl * cell.cos_alphar * B_aniso.u23);
-      double fe = data[i].fcalc * std::exp(-0.25 * sbs);
+      Vec3 h(data[i].hkl);
+      double fe = data[i].fcalc * std::exp(-0.25 * b_star.r_u_r(h));
       yy[i] = k_overall * fe;
       dy_da[i * npar + 0] = fe; // k_overall
       double du[6] = {
-        -0.25 * yy[i] * (arh * arh),
-        -0.25 * yy[i] * (brk * brk),
-        -0.25 * yy[i] * (crl * crl),
-        -0.5 * yy[i] * (arh * brk * cell.cos_gammar),
-        -0.5 * yy[i] * (arh * crl * cell.cos_betar),
-        -0.5 * yy[i] * (brk * crl * cell.cos_alphar),
+        -0.25 * yy[i] * (h.x * h.x),
+        -0.25 * yy[i] * (h.y * h.y),
+        -0.25 * yy[i] * (h.z * h.z),
+        -0.5 * yy[i] * (h.x * h.y),
+        -0.5 * yy[i] * (h.x * h.z),
+        -0.5 * yy[i] * (h.y * h.z),
       };
       double* dy_db = &dy_da[i * npar + 1];
       switch (crystal_system) {

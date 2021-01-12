@@ -70,8 +70,6 @@ inline void jordan_solve(std::vector<double>& a, std::vector<double>& b) {
 }
 
 
-//#define GEMMI_DEBUG_LEVMAR
-
 #ifdef GEMMI_DEBUG_LEVMAR
 void debug_print(const std::string& name, std::vector<double> &a) {
   fprintf(stderr, " %s:", name.c_str());

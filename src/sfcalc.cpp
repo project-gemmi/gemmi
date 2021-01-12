@@ -251,13 +251,14 @@ void process_with_fft(const gemmi::Structure& st,
     std::vector<gemmi::FcFo<Real>> data = prepare_fc_fo(asu_data, scale_to);
     printf("Calculating scale factors using %zu points...\n", data.size());
     bulk.quick_iso_fit(data);
-    //fprintf(stderr, "k_ov=%g B_ov=%g\n", bulk.k_overall, bulk.B_aniso.u11);
+    //fprintf(stderr, "k_ov=%g B_ov=%g\n", bulk.k_overall, bulk.get_b_overall().u11);
     bulk.aniso_fit(data);
+    gemmi::SMat33<double> b_aniso = bulk.get_b_overall();
     fprintf(stderr, "k_ov=%g B11=%g B22=%g B33=%g B12=%g B13=%g B23=%g\n",
-            bulk.k_overall, bulk.B_aniso.u11, bulk.B_aniso.u22, bulk.B_aniso.u33,
-                            bulk.B_aniso.u12, bulk.B_aniso.u13, bulk.B_aniso.u23);
+            bulk.k_overall, b_aniso.u11, b_aniso.u22, b_aniso.u33,
+                            b_aniso.u12, b_aniso.u13, b_aniso.u23);
   }
-  if (bulk.k_overall != 1 || !bulk.B_aniso.all_zero())
+  if (bulk.k_overall != 1 || !bulk.b_star.all_zero())
     for (gemmi::HklValue<std::complex<Real>>& hv : asu_data.v)
       hv.value *= (Real) bulk.get_scale_factor_aniso(hv.hkl);
   std::unique_ptr<gemmi::Mtz> output_mtz;
@@ -619,12 +620,14 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
       }
       if (p.options[Baniso]) {
         char* endptr = nullptr;
-        bulk.B_aniso.u11 = std::strtod(p.options[Baniso].arg, &endptr);
-        bulk.B_aniso.u22 = std::strtod(endptr + 1, &endptr);
-        bulk.B_aniso.u33 = std::strtod(endptr + 1, &endptr);
-        bulk.B_aniso.u12 = std::strtod(endptr + 1, &endptr);
-        bulk.B_aniso.u13 = std::strtod(endptr + 1, &endptr);
-        bulk.B_aniso.u23 = std::strtod(endptr + 1, &endptr);
+        gemmi::SMat33<double> b_aniso;
+        b_aniso.u11 = std::strtod(p.options[Baniso].arg, &endptr);
+        b_aniso.u22 = std::strtod(endptr + 1, &endptr);
+        b_aniso.u33 = std::strtod(endptr + 1, &endptr);
+        b_aniso.u12 = std::strtod(endptr + 1, &endptr);
+        b_aniso.u13 = std::strtod(endptr + 1, &endptr);
+        b_aniso.u23 = std::strtod(endptr + 1, &endptr);
+        bulk.set_b_overall(b_aniso);
       }
       const char* map_file = p.options[WriteMap] ? p.options[WriteMap].arg : nullptr;
       process_with_fft(st, dencalc, mott_bethe, bulk,
