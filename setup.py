@@ -160,6 +160,7 @@ setup(
     The setup.py script builds only Python extension.
     Use cmake to build also a command-line program.
     ''',
+    long_description_content_type='text/plain',
     libraries=build_libs,
     ext_modules=ext_modules,
     packages=['gemmi-examples'],
