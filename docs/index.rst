@@ -33,17 +33,21 @@ Occasionally, the project gets sidetracked into
 Gemmi is a joint project of
 `Global Phasing Ltd <https://www.globalphasing.com/>`_
 and `CCP4 <http://www.ccp4.ac.uk>`_.
-
-The project is named after
+It is named after
 `Gemmi Pass <https://goo.gl/maps/akBLbGfrGE9j1oWC7>`_.
 The name can also be expanded as *GEneral MacroMolecular I/o*.
 
 Source code repository: https://github.com/project-gemmi/gemmi
 
-.. important::
+.. note::
 
-    As of 2020 the library is under intensive development and not
+    As of 2021 the library is under intensive development and not
     everything is documented yet. Just ask questions.
+    It's OK to drop me_ an email asking how to implement this and that,
+    but add some context (is it for a student assignment, research project,
+    in-house software?).
+
+.. _me: wojdyr+gemmi@gmail.com
 
 Contents
 --------
@@ -51,6 +55,7 @@ Contents
 .. toctree::
    :maxdepth: 2
 
+   Introduction <self>
    install
    cif
    symmetry

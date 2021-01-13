@@ -1,20 +1,12 @@
 Symmetry
 ########
 
-The Gemmi symmetry module provides space group related functionality
-needed in other parts of the library -- when working with coordinate
-files, electron density maps and reflections.
+This section describes functionality related to the 3D space groups.
 
-Although the Gemmi project is developed for macromolecular crystallography,
-for which only 65 space groups are relevant,
-we cover all the 230 crystallographic space groups
-for the sake of completeness.
+In C++: ``#include <gemmi/symmetry.hpp>`` (it's header-only).
 
-For C++: this part of Gemmi has no dependencies,
-all is in a single header :file:`symmetry.hpp`.
-
-Space group table
-=================
+Space groups
+============
 
 Gemmi tabulates 550+ settings of the 230 crystallographic space groups.
 Each entry includes:
