@@ -5,7 +5,7 @@ option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
 option(INSTALL_EGG_INFO "Install .egg-info via setup.py" ON)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
-option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" OFF)
+option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" ON)
 
 if (DEFINED ENV{FC} OR CMAKE_Fortran_COMPILER)
   set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
@@ -133,6 +133,10 @@ else()
   macro(support_gz exe)
     target_sources(${exe} PUBLIC $<TARGET_OBJECTS:ungz>)
   endmacro()
+endif()
+
+if (WIN32 AND USE_WMAIN)
+  add_definitions(-D_UNICODE=1)
 endif()
 
 add_library(cgemmi STATIC fortran/grid.cpp fortran/symmetry.cpp)
@@ -284,8 +288,9 @@ add_executable(gemmi-prog
 support_gz(gemmi-prog)
 target_compile_definitions(gemmi-prog PRIVATE GEMMI_ALL_IN_ONE=1)
 set_target_properties(gemmi-prog PROPERTIES OUTPUT_NAME gemmi)
-if (USE_WMAIN)
-  target_compile_definitions(gemmi-prog PRIVATE _UNICODE=1)
+if (WIN32 AND USE_WMAIN)
+  # _UNICODE=1 is now set globally
+  #target_compile_definitions(gemmi-prog PRIVATE _UNICODE=1)
   if(MINGW)
     # target_link_options were added in cmake 3.13
     set_target_properties(gemmi-prog PROPERTIES LINK_FLAGS "-municode")
