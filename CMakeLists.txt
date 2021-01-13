@@ -392,6 +392,10 @@ if (USE_PYTHON)
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
     target_compile_options(gemmi PRIVATE "-Wno-shadow")
   endif()
+  # avoid GCC warning: the ABI of passing structure with 'complex float' member
+  # has changed in GCC 4.4
+  set_source_files_properties(python/recgrid.cpp PROPERTIES COMPILE_FLAGS
+                              $<$<CXX_COMPILER_ID:GNU>:-Wno-psabi>)
   support_gz(gemmi)
   if (NOT DEFINED PYTHON_INSTALL_DIR)
     set(PYTHON_INSTALL_DIR ${PYTHON_SITE_PACKAGES})
