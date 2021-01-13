@@ -41,6 +41,23 @@ jobs:
       run: python3 -m unittest discover -v -s tests/
 
 
+  ubuntu1804:
+    name: "Ubuntu 18.04 with sdist"
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+    - run: sudo apt-get install libz-dev python3-pip g++ gfortran python3-setuptools
+    - name: build and test
+      run: |
+        g++ --version
+        python3 setup.py sdist
+        python3 -m pip install dist/gemmi-*.tar.gz
+        python3 -m unittest discover -v -s tests/
+        cmake -DCMAKE_CXX_STANDARD=14 -DUSE_FORTRAN=1 -DEXTRA_WARNINGS=1 .
+        make
+        make check
+
+
   clang35:
     name: "Ubuntu 16.04, Clang 3.5"
     runs-on: ubuntu-16.04
