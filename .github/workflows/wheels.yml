@@ -1,0 +1,70 @@
+# Based on:
+# https://github.com/pybind/python_example/blob/master/.github/workflows/wheels.yml
+name: Wheels
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - published
+
+env:
+  CIBW_TEST_COMMAND: python -m unittest discover -v -s {project}/tests/
+
+
+jobs:
+  build_sdist:
+    name: Build SDist
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+
+    - name: Install deps
+      run: python -m pip install twine build
+
+    - name: Build SDist
+      run: python -m build -s
+
+    - name: Check metadata
+      run: twine check dist/*
+
+    - uses: actions/upload-artifact@v2
+      with:
+        path: dist/*.tar.gz
+
+
+  build_wheels:
+    name: Wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/setup-python@v2
+
+    - name: Install cibuildwheel
+      run: python -m pip install cibuildwheel==1.6.3
+
+    - name: Build wheel
+      run: python -m cibuildwheel --output-dir wheelhouse
+      env:
+        # Python 2.7 on Windows requires a workaround for C++11 support,
+        CIBW_SKIP: cp27-win*
+
+    - name: Show files
+      run: ls -lh wheelhouse
+      shell: bash
+
+    - name: Verify clean directory
+      run: git diff --exit-code
+      shell: bash
+
+    - name: Upload wheels
+      uses: actions/upload-artifact@v2
+      with:
+        path: wheelhouse/*.whl
