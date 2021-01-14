@@ -210,8 +210,8 @@ void add_mtz(py::module& m) {
          self.nreflections = nrow;
          self.data.resize(nrow * ncol);
          auto r = arr.unchecked<2>();
-         for (ssize_t row = 0; row < nrow; row++)
-           for (ssize_t col = 0; col < ncol; col++)
+         for (py::ssize_t row = 0; row < nrow; row++)
+           for (py::ssize_t col = 0; col < ncol; col++)
              self.data[row*ncol+col] = r(row, col);
     }, py::arg("array"))
     .def("update_reso", &Mtz::update_reso)
@@ -235,7 +235,7 @@ void add_mtz(py::module& m) {
   pyMtzColumn
     .def_buffer([](Mtz::Column& self) {
       return py::buffer_info(self.parent->data.data() + self.idx,
-                             std::vector<ssize_t>(1, self.size()), // dimensions
+                             std::vector<py::ssize_t>(1, self.size()), // dimensions
                              {4 * self.stride()});  // strides
     })
     .def_property_readonly("array", [](const Mtz::Column& self) {

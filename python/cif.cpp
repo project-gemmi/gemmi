@@ -48,8 +48,8 @@ T& add_to_vector(std::vector<T>& vec, const T& new_item, int pos) {
 
 // for delitem_slice
 namespace gemmi { namespace cif {
-void delitem_at_index(Table& t, ssize_t idx) { t.remove_row((int)idx); }
-void delitem_range(Table& t, ssize_t start, ssize_t end) {
+void delitem_at_index(Table& t, py::ssize_t idx) { t.remove_row((int)idx); }
+void delitem_range(Table& t, py::ssize_t start, py::ssize_t end) {
   t.remove_rows((int)start, (int)end);
 }
 } } // namespace gemmi::cif

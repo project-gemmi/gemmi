@@ -45,12 +45,12 @@ template<typename T> int normalize_index(int index, const T& container) {
 }
 
 template<typename Item>
-void delitem_at_index(std::vector<Item>& items, ssize_t idx) {
+void delitem_at_index(std::vector<Item>& items, pybind11::ssize_t idx) {
   items.erase(items.begin() + idx);
 }
 
 template<typename Item>
-void delitem_range(std::vector<Item>& items, ssize_t start, ssize_t end) {
+void delitem_range(std::vector<Item>& items, pybind11::ssize_t start, pybind11::ssize_t end) {
   items.erase(items.begin() + start, items.begin() + end);
 }
 

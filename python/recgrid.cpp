@@ -69,7 +69,7 @@ void add_recgrid(py::module& m, const std::string& name) {
       ret->unit_cell_ = unit_cell;
       ret->unit_cell_.set_cell_images_from_spacegroup(ret->spacegroup_);
       ret->v.reserve(h.shape(0));
-      for (ssize_t i = 0; i < h.shape(0); ++i)
+      for (py::ssize_t i = 0; i < h.shape(0); ++i)
         ret->v.push_back({{{h(i, 0), h(i, 1), h(i, 2)}}, v(i)});
       return ret;
     }), py::arg("cell"), py::arg("sg").none(false),
@@ -84,15 +84,15 @@ void add_recgrid(py::module& m, const std::string& name) {
     .def_readwrite("unit_cell", &AsuData::unit_cell_)
     .def_property_readonly("miller_array", [](const AsuData& self) {
       const HklValue<T>* data = self.v.data();
-      py::array::ShapeContainer shape({(ssize_t)self.v.size(), 3});
+      py::array::ShapeContainer shape({(py::ssize_t)self.v.size(), 3});
       py::array::StridesContainer strides({(const char*)(data+1) - (const char*)data,
                                            sizeof(int)});
       return py::array_t<int>(shape, strides, &data->hkl[0], py::cast(self));
     }, py::return_value_policy::reference_internal)
     .def_property_readonly("value_array", [](const AsuData& self) {
       const HklValue<T>* data = self.v.data();
-      ssize_t stride = (const char*)(data+1) - (const char*)data;
-      return py::array_t<T>({(ssize_t)self.v.size()}, {stride},
+      py::ssize_t stride = (const char*)(data+1) - (const char*)data;
+      return py::array_t<T>({(py::ssize_t)self.v.size()}, {stride},
                             &data->value, py::cast(self));
     }, py::return_value_policy::reference_internal)
     .def("make_1_d2_array", [](const AsuData& asu_data) {

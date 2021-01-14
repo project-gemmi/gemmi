@@ -1,8 +1,6 @@
 
 #include <pybind11/numpy.h>
 
-namespace py = pybind11;
-
 template<typename Ret, typename Obj, typename Func>
 pybind11::array_t<Ret>
 miller_function(const Obj& obj, Func func, pybind11::array_t<int> hkl) {
@@ -12,8 +10,7 @@ miller_function(const Obj& obj, Func func, pybind11::array_t<int> hkl) {
   auto result = pybind11::array_t<Ret>(h.shape(0));
   pybind11::buffer_info rbuf = result.request();
   Ret* rptr = (Ret*) rbuf.ptr;
-  for (ssize_t i = 0; i < h.shape(0); ++i)
+  for (pybind11::ssize_t i = 0; i < h.shape(0); ++i)
     rptr[i] = (obj.*func)({{h(i, 0), h(i, 1), h(i, 2)}});
   return result;
 }
-
