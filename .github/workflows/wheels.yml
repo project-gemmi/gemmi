@@ -54,17 +54,15 @@ jobs:
       run: python -m cibuildwheel --output-dir wheelhouse
       env:
         # Python 2.7 on Windows requires a workaround for C++11 support,
-        CIBW_SKIP: cp27-win*
+        # Python 3.5 is EOL.
+        CIBW_SKIP: cp27-win* cp35-*
+        # increase pip debugging output
+        CIBW_BUILD_VERBOSITY: 1
 
-    - name: Show files
-      run: ls -lh wheelhouse
+    - run: ls -lh wheelhouse
       shell: bash
 
-    - name: Verify clean directory
-      run: git diff --exit-code
-      shell: bash
-
-    - name: Upload wheels
-      uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v2
       with:
+        name: wheels
         path: wheelhouse/*.whl

@@ -401,6 +401,11 @@ class TestMol(unittest.TestCase):
         with open(path) as f:
             expected = [line for line in f if is_written_to_pdb(line, via_cif)]
         out_lines = self.write_and_read(gemmi.read_structure(path), via_cif)
+        if expected != out_lines:
+            print('expected')
+            print(expected)
+            print('out_lines')
+            print(out_lines)
         self.assertEqual(expected, out_lines)
 
     def test_read_write_1orc_via_cif(self):
