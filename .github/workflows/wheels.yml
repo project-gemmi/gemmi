@@ -4,8 +4,9 @@ name: Wheels
 
 on:
   workflow_dispatch:
-    cibw_build:
-      description: 'CIBW_BUILD (leave empty for all)'
+    inputs:
+      cibw_build:
+        description: 'CIBW_BUILD (leave empty for all)'
   release:
     types:
       - published

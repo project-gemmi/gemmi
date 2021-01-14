@@ -13,6 +13,7 @@ jobs:
             build: Release
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
     - uses: actions/checkout@v2
 
@@ -44,6 +45,7 @@ jobs:
   ubuntu1804:
     name: "Ubuntu 18.04 with sdist"
     runs-on: ubuntu-18.04
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
     - uses: actions/checkout@v2
     - run: sudo apt-get install libz-dev python3-pip g++ gfortran python3-setuptools
@@ -61,6 +63,7 @@ jobs:
   clang35:
     name: "Ubuntu 16.04, Clang 3.5"
     runs-on: ubuntu-16.04
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     env:
       CC: clang-3.5
       CXX: clang++-3.5
@@ -90,6 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     name: "CentOS 7"
     container: centos:7
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
     - uses: actions/checkout@v2
     - name: yum
