@@ -382,7 +382,11 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
       atom.aniso.u23 = read_int(line+63, 7) * 1e-4f;
 
     } else if (is_record_type(line, "REMARK")) {
-      st.raw_remarks.push_back(line);
+      if (line[len-1] != '\n')
+        --len;
+      if (line[len-1] != '\r')
+        --len;
+      st.raw_remarks.emplace_back(line, line+len);
       if (len <= 11)
         continue;
       int num = read_int(line + 7, 3);
