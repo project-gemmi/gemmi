@@ -6,7 +6,8 @@ on:
   workflow_dispatch:
     inputs:
       cibw_build:
-        description: 'CIBW_BUILD (leave empty for all)'
+        description: 'CIBW_BUILD'
+        default: '*'
   release:
     types:
       - published

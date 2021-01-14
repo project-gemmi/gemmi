@@ -57,7 +57,7 @@ void delitem_range(std::vector<Item>& items, ssize_t start, ssize_t end) {
 template<typename Items>
 void delitem_slice(Items& items, pybind11::slice slice) {
   ssize_t start, stop, step, slength;
-  if (!slice.compute(items.size(), &start, &stop, &step, &slength))
+  if (!slice.compute((ssize_t)items.size(), &start, &stop, &step, &slength))
     throw pybind11::error_already_set();
   if (step == 1) {
     delitem_range(items, start, start + slength);
