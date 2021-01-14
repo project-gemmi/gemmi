@@ -400,12 +400,13 @@ class TestMol(unittest.TestCase):
         path = full_path('1orc.pdb')
         with open(path) as f:
             expected = [line for line in f if is_written_to_pdb(line, via_cif)]
-        out_lines = self.write_and_read(gemmi.read_structure(path), via_cif)
+        st = gemmi.read_structure(path)
+        out_lines = self.write_and_read(st, via_cif)
         if expected != out_lines:
-            print('expected')
-            print(expected)
+            print('st.raw_remarks')
+            print(st.raw_remarks[:4])
             print('out_lines')
-            print(out_lines)
+            print(out_lines[:10])
         self.assertEqual(expected, out_lines)
 
     def test_read_write_1orc_via_cif(self):
