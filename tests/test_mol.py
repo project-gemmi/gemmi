@@ -402,11 +402,6 @@ class TestMol(unittest.TestCase):
             expected = [line for line in f if is_written_to_pdb(line, via_cif)]
         st = gemmi.read_structure(path)
         out_lines = self.write_and_read(st, via_cif)
-        if expected != out_lines:
-            print('st.raw_remarks')
-            print(st.raw_remarks[:4])
-            print('out_lines')
-            print(out_lines[:10])
         self.assertEqual(expected, out_lines)
 
     def test_read_write_1orc_via_cif(self):
@@ -542,6 +537,12 @@ class TestMol(unittest.TestCase):
         nearest_image = st.cell.find_nearest_image(first_atom.pos, ne2.pos)
         nearest_dist = nearest_image.dist()
         self.assertAlmostEqual(nearest_dist, 8.02, delta=1e-2)
+
+        # test __getitem__(splice) - unrelated to NCS (sometimes we put
+        # unrelated tests together to avoid the same file again)
+        chain = st[0]['A']
+        res = chain.next_residue(chain[:5][0])
+        self.assertTrue(res is chain[1])
 
     def test_ssbond(self):
         st = gemmi.read_pdb_string(SSBOND_FRAGMENT)

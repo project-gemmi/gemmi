@@ -85,14 +85,8 @@ void add_cif(py::module& cif) {
         return d.blocks.at(index >= 0 ? index : index + d.blocks.size());
     }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("__getitem__", [](Document &d, py::slice slice) -> py::list {
-        size_t start, stop, step, slicelength;
-        if (!slice.compute(d.blocks.size(), &start, &stop, &step, &slicelength))
-          throw py::error_already_set();
-        py::list l;
-        for (size_t i = 0; i < slicelength; ++i)
-          l.append(py::cast(d.blocks[start + i * step]));
-        return l;
-    })
+        return getitem_slice(d.blocks, slice);
+    }, py::return_value_policy::reference_internal)
     .def("__delitem__", [](Document &d, int index) {
         if (index < 0)
           index += (int) d.blocks.size();

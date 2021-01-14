@@ -8,9 +8,11 @@ on:
       cibw_build:
         description: 'CIBW_BUILD'
         default: '*'
-  release:
-    types:
-      - published
+      cibw_skip:
+        description: 'CIBW_SKIP'
+        # Python 2.7 on Windows requires a workaround for C++11 support,
+        # Python 3.5 is EOL, PyPy 2.7 is skipped to limit the number of builds.
+        default: 'cp27-win* cp35-* pp27-*'
 
 env:
   CIBW_TEST_COMMAND: python -m unittest discover -v -s {project}/tests/
@@ -57,9 +59,7 @@ jobs:
       run: python -m cibuildwheel --output-dir wheelhouse
       env:
         CIBW_BUILD: ${{ github.event.inputs.cibw_build }}
-        # Python 2.7 on Windows requires a workaround for C++11 support,
-        # Python 3.5 is EOL, PyPy 2.7 is skipped to limit the number of builds.
-        CIBW_SKIP: cp27-win* cp35-* pp27-*
+        CIBW_SKIP: ${{ github.event.inputs.cibw_skip }}
         # increase pip debugging output
         CIBW_BUILD_VERBOSITY: 1
 

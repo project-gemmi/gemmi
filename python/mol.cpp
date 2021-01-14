@@ -260,13 +260,7 @@ void add_mol(py::module& m) {
     .def("__getitem__", &get_child<Chain, Residue>, py::arg("index"),
          py::return_value_policy::reference_internal)
     .def("__getitem__", [](Chain &ch, py::slice slice) -> py::list {
-        ssize_t start, stop, step, slength;
-        if (!slice.compute(ch.residues.size(), &start, &stop, &step, &slength))
-          throw py::error_already_set();
-        py::list l;
-        for (ssize_t i = 0; i < slength; ++i)
-          l.append(py::cast(&ch.residues[start + i * step]));
-        return l;
+        return getitem_slice(ch.residues, slice);
     }, py::return_value_policy::reference_internal)
     .def("__delitem__", remove_child<Chain>, py::arg("index"))
     .def("__delitem__", remove_children<Chain>)
