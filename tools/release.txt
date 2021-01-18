@@ -2,6 +2,7 @@
 - update version in include/gemmi/version.hpp
 - ./run-tests.sh a
 
+(this is obsolete, wheels are now built on GitHub)
 - make Linux wheels (the existing build/ directory may get in the way):
   DOCKER_IMAGE=quay.io/pypa/manylinux2010_x86_64
   docker pull $DOCKER_IMAGE

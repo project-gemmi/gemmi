@@ -36,6 +36,7 @@ jobs:
 
     - uses: actions/upload-artifact@v2
       with:
+        name: sdist
         path: dist/*.tar.gz
 
 
