@@ -344,7 +344,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
       continue;
     const Atom* at1 = res1->find_atom(con.partner1.atom_name, con.partner1.altloc);
     const Atom* at2 = res2->find_atom(con.partner2.atom_name, con.partner2.altloc);
-    
+
     std::string im_pdb_symbol = "?", im_dist_str = "?";
     if (at1 && at2) {
       SymImage im = st.cell.find_nearest_image(at1->pos,
@@ -509,17 +509,19 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
               label_end = span.auth_seq_id_to_label(dbref.seq_end);
             } catch (const std::runtime_error&) {}
           }
-          seq_loop.add_row({std::to_string(++counter2),
-                            std::to_string(counter),
-                            subs.at(subchain),  // pdbx_strand_id
-                            std::to_string(*label_begin),
-                            std::to_string(*label_end),
-                            std::to_string(*dbref.db_begin.num),
-                            std::to_string(*dbref.db_end.num),
-                            dbref.seq_begin.num.str(),
-                            impl::pdbx_icode(dbref.seq_begin),
-                            dbref.seq_end.num.str(),
-                            impl::pdbx_icode(dbref.seq_end)});
+          auto strand_id = subs.find(subchain);
+          if (strand_id != subs.end())
+            seq_loop.add_row({std::to_string(++counter2),
+                              std::to_string(counter),
+                              strand_id->second,  // pdbx_strand_id
+                              std::to_string(*label_begin),
+                              std::to_string(*label_end),
+                              std::to_string(*dbref.db_begin.num),
+                              std::to_string(*dbref.db_end.num),
+                              dbref.seq_begin.num.str(),
+                              impl::pdbx_icode(dbref.seq_begin),
+                              dbref.seq_end.num.str(),
+                              impl::pdbx_icode(dbref.seq_end)});
         }
       }
   }
