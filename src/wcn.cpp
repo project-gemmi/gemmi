@@ -261,7 +261,7 @@ Result test_bfactor_models(Structure& st, const Params& params) {
                   [&](const NeighborSearch::Mark& m, float dist_sq) {
           const_CRA cra = m.to_cra(model);
           if (cra.atom->flag) {
-            float weight = std::exp(mult * dist_sq);
+            double weight = std::exp(mult * dist_sq);
             if (atom.altloc == '\0' && cra.atom != &atom)
               weight *= cra.atom->occ;
             b_sum += weight * cra.atom->aniso.u11;

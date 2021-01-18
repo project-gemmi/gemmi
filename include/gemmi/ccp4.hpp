@@ -422,7 +422,7 @@ void Ccp4<T>::set_extent(const Box<Fractional>& box) {
   int nv = (int)std::floor(box.maximum.y * grid.nv) - v0 + 1;
   int nw = (int)std::floor(box.maximum.z * grid.nw) - w0 + 1;
   // set the data
-  std::vector<T> data(nu * nv * nw);
+  std::vector<T> data((size_t)nu * nv * nw);
   int idx = 0;
   for (int w = 0; w < nw; w++) // sections
     for (int v = 0; v < nv; v++) // rows

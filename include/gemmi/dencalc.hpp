@@ -141,7 +141,7 @@ void set_margin_around(Grid<Real>& mask, double r, Real value, Real margin_value
   if (2 * du >= mask.nu || 2 * dv >= mask.nv || 2 * dw >= mask.nw)
     fail("grid operation failed: radius bigger than half the unit cell?");
   std::vector<std::int8_t> stencil;
-  stencil.reserve((2*dw+1) * (2*dv+1) * (2*du+1));
+  stencil.reserve(size_t(2*dw+1) * (2*dv+1) * (2*du+1));
   for (int w = -dw; w <= dw; ++w)
     for (int v = -dv; v <= dv; ++v)
       for (int u = -du; u <= du; ++u) {
