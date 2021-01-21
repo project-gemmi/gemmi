@@ -388,16 +388,14 @@ void add_mol(py::module& m) {
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("__delitem__", remove_child<Residue>, py::arg("index"))
     .def("__delitem__", remove_children<Residue>)
-    .def("find_atom", [](Residue& self, const std::string& name, char altloc) {
-           return self.find_atom(name, altloc);
-         },
-         //(Atom* (Residue::*)(const std::string&, char, El)) &Residue::find_atom,
-         py::arg("name"), py::arg("altloc"), /*py::arg("el")=El::X,*/
-         py::return_value_policy::reference_internal)
+    .def("find_atom", [](Residue& self, const std::string& name, char altloc, Element el) {
+           return self.find_atom(name, altloc, el);
+         }, py::arg("name"), py::arg("altloc"), py::arg("el")=Element(El::X),
+            py::return_value_policy::reference_internal)
     .def("remove_atom",
-         [](Residue& self, const std::string& name, char altloc/*, El el*/) {
-           self.atoms.erase(self.find_atom_iter(name, altloc/*, el*/));
-    }, py::arg("name"), py::arg("altloc") /*, py::arg("el")=El::X*/)
+         [](Residue& self, const std::string& name, char altloc, Element el) {
+           self.atoms.erase(self.find_atom_iter(name, altloc, el));
+    }, py::arg("name"), py::arg("altloc"), py::arg("el")=Element(El::X))
     .def("add_atom", add_child<Residue, Atom>,
          py::arg("atom"), py::arg("pos")=-1,
          py::return_value_policy::reference_internal)
@@ -405,6 +403,8 @@ void add_mol(py::module& m) {
          (UniqProxy<Atom> (Residue::*)()) &Residue::first_conformer,
          py::keep_alive<0, 1>())
     .def("sole_atom", &Residue::sole_atom)
+    .def("get_ca", &Residue::get_ca, py::return_value_policy::reference_internal)
+    .def("get_p", &Residue::get_p, py::return_value_policy::reference_internal)
     .def("is_water", &Residue::is_water)
     .def("trim_to_alanine", (bool (*)(Residue&)) &trim_to_alanine)
     .def("clone", [](const Residue& self) { return new Residue(self); })

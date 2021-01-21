@@ -360,7 +360,14 @@ and P atoms (for nucleotides).
 Atoms that don't have counterparts in the other span are skipped.
 The returned object (SupResult) contains RMSD and the transformation
 (rotation matrix + translation vector) that superposes the second span
-onto the first one. Here is a usage example:
+onto the first one.
+
+Note that RMSD can be defined in two ways:
+the sum of squared deviations is divided either by 3N (PyMOL)
+or by N (SciPy).
+QCP (and gemmi) returns the former. To get the latter multiply it by √3.
+
+Here is a usage example:
 
 .. doctest::
 
