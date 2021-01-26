@@ -4,6 +4,7 @@
 
 #include <cstdlib>  // for rand
 #include <climits>  // for INT_MIN, INT_MAX
+#include <vector>
 #include <gemmi/atox.hpp>
 #include <gemmi/math.hpp>
 #include <gemmi/it92.hpp>
@@ -168,4 +169,13 @@ TEST_CASE("IT92") {
   double dens_a = coef.precalculate_density_iso(B, 0.8).calculate(r*r);
   double dens_b = coef.precalculate_density_aniso_u(mat, 0.8).calculate(v2);
   CHECK_EQ(dens_a, doctest::Approx(dens_b));
+}
+
+TEST_CASE("vector_Vec3") {
+  // superpose_positions depends on the memory layout of Vec3/Position array.
+  std::vector<gemmi::Vec3> vec(5);
+  const double* x0 = &vec[0].x;
+  const double* x1 = &vec[1].x;
+  auto offset = x1 - x0;
+  CHECK_EQ(offset, 3);
 }

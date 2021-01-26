@@ -595,7 +595,8 @@ class TestMol(unittest.TestCase):
         self.assertEqual(len(st), 0)
 
     def test_remove2(self):
-        model = gemmi.read_structure(full_path('1pfe.cif.gz'))[0]
+        st = gemmi.read_structure(full_path('1pfe.cif.gz'))
+        model = st[0]
         self.assertEqual(len(model), 2)
         b = model['B']
         self.assertEqual(b[0].name, 'DSN')
@@ -626,6 +627,9 @@ class TestMol(unittest.TestCase):
         del model['A']
         self.assertEqual(len(model), 1)
         self.assertEqual(model[0].name, 'B')
+        doc = st.make_mmcif_document()
+        ref_seq = doc[0].get_mmcif_category('_struct_ref_seq')
+        self.assertEqual(ref_seq['pdbx_strand_id'], ['B'])
 
     def test_first_conformer(self):
         model = gemmi.read_structure(full_path('1pfe.cif.gz'))[0]
