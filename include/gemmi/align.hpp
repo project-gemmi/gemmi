@@ -181,10 +181,11 @@ inline SupResult calculate_superposition(ConstResidueSpan fixed,
           }
         } else {
           for (const Atom& a1 : it1->atoms)
-            if (const Atom* a2 = it2->find_atom(a1.name, altloc, a1.element)) {
-              pos1.push_back(a1.pos);
-              pos2.push_back(a2->pos);
-            }
+            if (a1.altloc_matches(altloc))
+              if (const Atom* a2 = it2->find_atom(a1.name, altloc, a1.element)) {
+                pos1.push_back(a1.pos);
+                pos2.push_back(a2->pos);
+              }
         }
       }
       if (op == 'M' || op == 'I')

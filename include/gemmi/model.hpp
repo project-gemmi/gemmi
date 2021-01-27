@@ -112,6 +112,9 @@ struct Atom {
   bool same_conformer(const Atom& other) const {
     return is_same_conformer(altloc, other.altloc);
   }
+  bool altloc_matches(char request) const {
+    return request == '*' || altloc == '\0' || altloc == request;
+  }
   // group_key() is used in UniqIter and similar tools
   const std::string& group_key() const { return name; }
   bool has_altloc() const { return altloc != '\0'; }
@@ -178,8 +181,7 @@ struct Residue : public ResidueId {
   const Atom* find_atom(const std::string& atom_name, char altloc,
                         El el=El::X) const {
     for (const Atom& a : atoms)
-      if (a.name == atom_name
-          && (altloc == '*' || a.altloc == '\0' || a.altloc == altloc)
+      if (a.name == atom_name && a.altloc_matches(altloc)
           && (el == El::X || a.element == el))
         return &a;
     return nullptr;
