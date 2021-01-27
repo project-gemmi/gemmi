@@ -10,7 +10,7 @@
 
 namespace gemmi {
 
-// Land is either 0 (when 1=sea, 0=island) or 1 (when 0=sea, 1=island)
+// Land is either 0 (when 1=sea, 0=land) or 1 (when 0=sea, 1=land)
 template<typename T, int Land>
 struct FloodFill {
   Grid<T>& mask;
@@ -31,7 +31,9 @@ struct FloodFill {
     }
   };
 
-  void set_line_values(Line& line, int value) const {
+  static constexpr T this_island() { return T(Land|2); }
+
+  void set_line_values(Line& line, T value) const {
     for (int i = 0; i < std::min(line.ulen, mask.nu - line.u); ++i) {
       assert(line.ptr[i] != value);
       line.ptr[i] = value;
@@ -42,17 +44,17 @@ struct FloodFill {
     }
   }
 
-  void set_volume_values(Result& r, int value) const {
+  void set_volume_values(Result& r, T value) const {
     for (Line& line : r.lines)
       set_line_values(line, value);
   }
 
-  // Find all connected points with value Land. Change them to Land|2.
+  // Find all connected points with value Land. Change them to this_island().
   Result find_volume(int u, int v, int w) {
     Result r;
     T* ptr = &mask.data[mask.index_q(u, v, w)];
     r.lines.push_back(line_from_point(u, v, w, ptr));
-    set_line_values(r.lines.back(), (Land|2));
+    set_line_values(r.lines.back(), this_island());
     for (size_t i = 0; i < r.lines.size()/*increasing!*/; ++i) {
       int u_ = r.lines[i].u;
       int v_ = r.lines[i].v;
@@ -75,7 +77,7 @@ struct FloodFill {
         for (int u = 0; u != mask.nu; ++u, ++idx) {
           assert(idx == mask.index_q(u, v, w));
           if (mask.data[idx] == Land) {
-            // it temporarily marks current island as Land|2
+            // it temporarily marks current island as this_island()
             Result r = find_volume(u, v, w);
             func(r);
           }
@@ -91,12 +93,12 @@ private:
     for (int i = 0; i < std::min(ulen, mask.nu - u); ++i)
       if (ptr[i] == Land) {
         r.lines.push_back(line_from_point(u + i, v, w, ptr + i));
-        set_line_values(r.lines.back(), (Land|2));
+        set_line_values(r.lines.back(), this_island());
       }
     for (int i = -u; i < ulen - mask.nu; ++i)
       if (ptr[i] == Land) {
         r.lines.push_back(line_from_point(u + i, v, w, ptr + i));
-        set_line_values(r.lines.back(), (Land|2));
+        set_line_values(r.lines.back(), this_island());
       }
   }
 

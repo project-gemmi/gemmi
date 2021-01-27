@@ -236,7 +236,7 @@ struct SolventMasker {
         //       counter, r.point_count(), lines.size(), limit);
         if (r.point_count() <= limit) {
           ++counter;
-          flood_fill.set_volume_values(r, 0);
+          flood_fill.set_volume_values(r, (T)0);
         }
     });
     return counter;
