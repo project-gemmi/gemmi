@@ -14,7 +14,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 project = u'Gemmi'
-copyright = u'2017-2020 Global Phasing Ltd'
+copyright = u'2017-2021 Global Phasing Ltd'
 author = u'Marcin Wojdyr'
 
 with open('../include/gemmi/version.hpp') as _f:

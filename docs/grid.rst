@@ -57,7 +57,7 @@ or orthogonal coordinates), use::
   T Grid<T>::interpolate_value(const Position& ctr) const
 
 We also have a few more specialized functions.
-For example, a member function used primarily for masking area around atoms:
+For example, a member function used primarily for masking area around atoms::
 
   void Grid<T>::set_points_around(const Position& ctr, double radius, T value)
 
