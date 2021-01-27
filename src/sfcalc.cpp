@@ -15,7 +15,7 @@
 #include <gemmi/c4322.hpp>     // for C4322
 #include <gemmi/math.hpp>      // for sq
 #include <gemmi/mtz.hpp>       // for read_mtz_file
-#include <gemmi/dencalc.hpp>   // for put_model_density_on_grid
+#include <gemmi/dencalc.hpp>   // for DensityCalculator
 #include <gemmi/sfcalc.hpp>    // for calculate_structure_factor
 #include <gemmi/smcif.hpp>     // for make_small_structure_from_block
 #include "timer.h"             // for Timer
@@ -27,11 +27,15 @@ namespace {
 
 enum OptionIndex { Hkl=4, Dmin, For, Rate, Blur, RCut, Test, ToMtz, Compare,
                    CifFp, Wavelength, Unknown, NoAniso, ScaleTo, FLabel,
-                   PhiLabel, Ksolv, Bsolv, Baniso, Rprobe, Rshrink, WriteMap };
+                   PhiLabel, Ksolv, Bsolv, Baniso, RadiiSet, Rprobe, Rshrink,
+                   WriteMap };
 
 struct SfCalcArg: public Arg {
   static option::ArgStatus FormFactors(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"xray", "electron", "mott-bethe"});
+  }
+  static option::ArgStatus Radii(const option::Option& option, bool msg) {
+    return Arg::Choice(option, msg, {"vdw", "cctbx", "refmac"});
   }
 
   static option::ArgStatus Float6(const option::Option& option, bool msg) {
@@ -99,6 +103,8 @@ const option::Descriptor Usage[] = {
     "  --scale-to=FILE:COL  \tAnisotropic scaling to F from MTZ file."
     "\n\tArgument: FILE[:FCOL[:SIGFCOL]] (defaults: F and SIGF)." },
   { NoOp, 0, "", "", Arg::None, "\nOptions for bulk solvent correction (only w/ FFT):" },
+  { RadiiSet, 0, "", "radii-set", SfCalcArg::Radii,
+    "  --radii-set=SET  \tSet of per-element radii, one of: vdw, cctbx, refmac." },
   { Rprobe, 0, "", "r-probe", Arg::Float,
     "  --r-probe=NUM  \tValue added to VdW radius (default: 1.0A)." },
   { Rshrink, 0, "", "r-shrink", Arg::Float,
@@ -234,7 +240,7 @@ void process_with_fft(const gemmi::Structure& st,
   auto asu_data = sf.prepare_asu_data(dencalc.d_min, dencalc.blur, false, false, mott_bethe);
 
   if (bulk.use_solvent) {
-    dencalc.put_solvent_mask_on_grid(st.models[0]);
+    dencalc.masker.put_mask_on_grid(dencalc.grid, st.models[0]);
     auto asu_mask = transform_map_to_f_phi(dencalc.grid, /*half_l=*/true)
                     .prepare_asu_data(dencalc.d_min, 0);
     assert(asu_mask.v.size() == asu_data.v.size());
@@ -605,10 +611,19 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         if (p.options[Verbose])
           fprintf(stderr, "B_min=%g, B_add=%g\n", b_min, dencalc.blur);
       }
+      if (p.options[RadiiSet]) {
+        char c = p.options[RadiiSet].arg[0];
+        if (c == 'v')
+          dencalc.masker.set_radii_set(gemmi::AtomicRadiiSet::VanDerWaals);
+        else if (c == 'c')
+          dencalc.masker.set_radii_set(gemmi::AtomicRadiiSet::Cctbx);
+        else if (c == 'r')
+          dencalc.masker.set_radii_set(gemmi::AtomicRadiiSet::Refmac);
+      }
       if (p.options[Rprobe])
-        dencalc.rprobe = std::atof(p.options[Rprobe].arg);
+        dencalc.masker.rprobe = std::atof(p.options[Rprobe].arg);
       if (p.options[Rshrink])
-        dencalc.rshrink = std::atof(p.options[Rshrink].arg);
+        dencalc.masker.rshrink = std::atof(p.options[Rshrink].arg);
 
       gemmi::BulkSolvent<Real> bulk(cell, st.find_spacegroup());
       if (p.options[Ksolv] || p.options[Bsolv]) {
@@ -676,7 +691,8 @@ void process(const std::string& input, const OptParser& p) {
   }
 
   if (!p.options[Dmin] || !use_st) {
-    for (OptionIndex opt : {ToMtz, WriteMap, ScaleTo, Ksolv, Bsolv, Rprobe, Rshrink})
+    for (OptionIndex opt : {ToMtz, WriteMap, ScaleTo, Ksolv, Bsolv,
+                            RadiiSet, Rprobe, Rshrink})
       if (p.options[opt])
         gemmi::fail("Option ", p.options[opt].name, " works only with ",
                     !p.options[Dmin] ? "--dmin" : "macromolecular structures");

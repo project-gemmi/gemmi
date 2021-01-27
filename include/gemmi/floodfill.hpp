@@ -10,7 +10,8 @@
 
 namespace gemmi {
 
-template<typename T>
+// Land is either 0 (when 1=sea, 0=island) or 1 (when 0=sea, 1=island)
+template<typename T, int Land>
 struct FloodFill {
   Grid<T>& mask;
 
@@ -46,12 +47,12 @@ struct FloodFill {
       set_line_values(line, value);
   }
 
-  // Find all connected points with value 0. Change them to 2.
+  // Find all connected points with value Land. Change them to Land|2.
   Result find_volume(int u, int v, int w) {
     Result r;
     T* ptr = &mask.data[mask.index_q(u, v, w)];
     r.lines.push_back(line_from_point(u, v, w, ptr));
-    set_line_values(r.lines.back(), 2);
+    set_line_values(r.lines.back(), (Land|2));
     for (size_t i = 0; i < r.lines.size()/*increasing!*/; ++i) {
       int u_ = r.lines[i].u;
       int v_ = r.lines[i].v;
@@ -66,68 +67,57 @@ struct FloodFill {
     return r;
   }
 
+  template<typename Func>
+  void for_each_islands(Func func) {
+    size_t idx = 0;
+    for (int w = 0; w != mask.nw; ++w)
+      for (int v = 0; v != mask.nv; ++v)
+        for (int u = 0; u != mask.nu; ++u, ++idx) {
+          assert(idx == mask.index_q(u, v, w));
+          if (mask.data[idx] == Land) {
+            // it temporarily marks current island as Land|2
+            Result r = find_volume(u, v, w);
+            func(r);
+          }
+        }
+    // set big islands (continents) back to Land
+    for (T& p : mask.data)
+      p = T((int)p & 1);
+  }
+
 private:
   void add_lines(int u, int v, int w, int ulen, Result& r) {
     T* ptr = &mask.data[mask.index_q(u, v, w)];
     for (int i = 0; i < std::min(ulen, mask.nu - u); ++i)
-      if (ptr[i] == 0) {
+      if (ptr[i] == Land) {
         r.lines.push_back(line_from_point(u + i, v, w, ptr + i));
-        set_line_values(r.lines.back(), 2);
+        set_line_values(r.lines.back(), (Land|2));
       }
     for (int i = -u; i < ulen - mask.nu; ++i)
-      if (ptr[i] == 0) {
+      if (ptr[i] == Land) {
         r.lines.push_back(line_from_point(u + i, v, w, ptr + i));
-        set_line_values(r.lines.back(), 2);
+        set_line_values(r.lines.back(), (Land|2));
       }
   }
 
   Line line_from_point(int u, int v, int w, T* ptr) const {
     int len = 1;
-    while (u + len < mask.nu && ptr[len] == 0)
+    while (u + len < mask.nu && ptr[len] == Land)
       ++len;
     if (u + len == mask.nu)
-      while (len < mask.nu && ptr[len - mask.nu] == 0)
+      while (len < mask.nu && ptr[len - mask.nu] == Land)
         ++len;
     for (int i = 0; i > -u; --i)
-      if (ptr[i-1] != 0)
+      if (ptr[i-1] != Land)
         return {u + i, v, w, len - i, ptr + i};
-    if (ptr[mask.nu-1-u] != 0)
+    if (ptr[mask.nu-1-u] != Land)
       return {0, v, w, len + u, ptr - u};
     for (int i = mask.nu - 1 - u; i > 1; --i)
-      if (ptr[i-1] != 0)
+      if (ptr[i-1] != Land)
         return {u + i, v, w, len + mask.nu - 2 - i, ptr + i};
     return {u, v, w, mask.nu, ptr};
   }
 };
-
-
-// Removes islands of 1's in the oceans of 0's. Uses flood fill.
-// cf. find_blobs_by_flood_fill()
-template<typename T>
-int remove_islands_in_mask(Grid<T>& mask, size_t limit) {
-  using Result = typename FloodFill<T>::Result;
-  int counter = 0;
-  size_t idx = 0;
-  FloodFill<T> flood_fill{mask};
-  for (int w = 0; w != mask.nw; ++w)
-    for (int v = 0; v != mask.nv; ++v)
-      for (int u = 0; u != mask.nu; ++u, ++idx) {
-        assert(idx == mask.index_q(u, v, w));
-        if (mask.data[idx] == 0) {
-          // current island is temporarily marked as 2
-          Result r = flood_fill.find_volume(u, v, w);
-          //printf("island %d: %zu in %zu (limit: %zu)\n",
-          //       counter, r.point_count(), lines.size(), limit);
-          if (r.point_count() <= limit) {
-            ++counter;
-            flood_fill.set_volume_values(r, 1);
-          }
-        }
-      }
-  for (T& p : mask.data)
-    p &= 1;
-  return counter;
-}
 
 } // namespace gemmi
 #endif

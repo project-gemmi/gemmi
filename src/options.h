@@ -64,6 +64,10 @@ struct OptParser : option::Parser {
   std::vector<std::string> paths_from_args_or_file(int opt, int other);
   [[noreturn]] void print_try_help_and_exit(const char* msg);
   [[noreturn]] void exit_exclusive(int opt1, int opt2);
+  void check_exclusive_pair(int opt1, int opt2) {
+    if (options[opt1] && options[opt2])
+      exit_exclusive(opt1, opt2);
+  }
   const char* given_name(int opt) const {  // sans one dash
     return options[opt].namelen > 1 ? options[opt].name + 1
                                     : options[opt].desc->shortopt;

@@ -11,7 +11,7 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 }
 
 #include "gemmi/grid.hpp"
-#include "gemmi/dencalc.hpp"  // for mask_points_in_constant_radius
+#include "gemmi/solmask.hpp"  // for mask_points_in_constant_radius
 #include "gemmi/tostr.hpp"
 
 #include "common.h"

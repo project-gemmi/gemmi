@@ -6,7 +6,7 @@
 #include "gemmi/floodfill.hpp" // for remove_islands_in_mask
 #include "gemmi/gz.hpp"        // for MaybeGzipped
 #include "gemmi/gzread.hpp"
-#include "gemmi/dencalc.hpp"   // for mask_points_in_constant_radius, etc
+#include "gemmi/solmask.hpp"   // for SolventMasker
 #include "gemmi/symmetry.hpp"
 #include "timer.h"
 
@@ -64,10 +64,11 @@ int GEMMI_MAIN(int argc, char **argv) {
   const char* input = p.nonOption(0);
   const char* output = p.nonOption(1);
 
-  if (p.options[GridDims] && p.options[GridSpac]) {
-    std::fprintf(stderr, "Options --grid and --spacing are exclusive.");
-    return 1;
-  }
+  p.check_exclusive_pair(GridDims, GridSpac);
+  p.check_exclusive_pair(CctbxCompat, RefmacCompat);
+  p.check_exclusive_pair(Radius, RProbe);
+  p.check_exclusive_pair(Radius, CctbxCompat);
+  p.check_exclusive_pair(Radius, RefmacCompat);
 
   if (p.options[Verbose])
     std::fprintf(stderr, "Converting %s ...\n", input);
@@ -110,73 +111,52 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (st.models.size() > 1)
       std::fprintf(stderr, "Note: only the first model is used.\n");
 
-    const int8_t vmol = 1;
-    const int8_t vsol = 0;
-    double rshrink = 1.1;
-    double island_vol = 0.;
-    if (p.options[Radius]) {
-      if (p.options[RProbe])
-        p.exit_exclusive(Radius, RProbe);
-      if (p.options[CctbxCompat])
-        p.exit_exclusive(Radius, CctbxCompat);
-      if (p.options[RefmacCompat])
-        p.exit_exclusive(Radius, RefmacCompat);
-      double radius = std::atof(p.options[Radius].arg);
-      timer.start();
-      gemmi::mask_points_in_constant_radius(mask.grid, st.models[0], radius, vmol);
-      timer.print("Points in constant radius masked in");
-    } else {
-      double rprobe = 1.0;
-      gemmi::AtomicRadiiSet radii_set = gemmi::AtomicRadiiSet::VanDerWaals;
-      if (p.options[CctbxCompat]) {
-        if (p.options[RefmacCompat])
-          p.exit_exclusive(CctbxCompat, RefmacCompat);
-        radii_set = gemmi::AtomicRadiiSet::Cctbx;
-        rprobe = 1.11;
-        rshrink = 0.9;
-      } else if (p.options[RefmacCompat]) {
-        radii_set = gemmi::AtomicRadiiSet::Refmac;
-        rprobe = 1.0;
-        rshrink = 0.8;
-        island_vol = 50;  // the exact value used in Refmac is yet to be found
-      }
-      if (p.options[RProbe])
-        rprobe = std::atof(p.options[RProbe].arg);
-      timer.start();
-      gemmi::mask_points_in_varied_radius(mask.grid, st.models[0], radii_set, rprobe, vmol);
-      timer.print("Points masked in");
-    }
-    timer.start();
-    mask.grid.symmetrize(
-        [&](int8_t a, int8_t b) { return a == vmol || b == vmol ? vmol : vsol; });
-    timer.print("Mask symmetrized in");
+    gemmi::SolventMasker masker;
+    if (p.options[Radius])
+      masker.set_radii_set(gemmi::AtomicRadiiSet::Constant,
+                           std::atof(p.options[Radius].arg));
+    else if (p.options[CctbxCompat])
+      masker.set_radii_set(gemmi::AtomicRadiiSet::Cctbx);
+    else if (p.options[RefmacCompat])
+      masker.set_radii_set(gemmi::AtomicRadiiSet::Refmac);
+    if (p.options[RProbe])
+      masker.rprobe = std::atof(p.options[RProbe].arg);
     if (p.options[RShrink])
-      rshrink = std::atof(p.options[RShrink].arg);
-    if (rshrink > 0) {
+      masker.rshrink = std::atof(p.options[RShrink].arg);
+
+    timer.start();
+    masker.clear(mask.grid);
+    masker.mask_points(mask.grid, st.models[0]);
+    timer.print("Points masked in");
+
+    timer.start();
+    masker.symmetrize(mask.grid);
+    timer.print("Mask symmetrized in");
+
+    if (masker.rshrink > 0) {
       timer.start();
-      gemmi::set_margin_around(mask.grid, rshrink, vsol, (int8_t)-1);
-      mask.grid.change_values(-1, vsol);
+      masker.shrink(mask.grid);
       timer.print("Mask shrunken in");
     }
 
     if (p.options[IslandLimit])
-      island_vol = std::atof(p.options[IslandLimit].arg);
-    if (island_vol > 0.) {
-      size_t limit = static_cast<size_t>(island_vol * mask.grid.point_count()
-                                         / mask.grid.unit_cell.volume);
+      masker.island_vol = std::atof(p.options[IslandLimit].arg);
+    if (masker.island_vol > 0.) {
       timer.start();
-      int n = gemmi::remove_islands_in_mask(mask.grid, limit);
+      int n = masker.remove_islands(mask.grid);
       timer.print("Islands removed in");
       if (p.options[Verbose])
         std::fprintf(stderr, "Islands removed: %d\n", n);
     }
+
     if (p.options[Verbose]) {
-      size_t n = std::count(mask.grid.data.begin(), mask.grid.data.end(), vmol);
+      size_t n = std::count(mask.grid.data.begin(), mask.grid.data.end(), 0);
       std::fprintf(stderr, "Points masked by model: %zu\n", n);
     }
-    if (!p.options[Invert])
-      for (int8_t& v : mask.grid.data)
-        v = (int8_t)1 - v;
+
+    if (p.options[Invert])
+      masker.invert(mask.grid);
+
     mask.update_ccp4_header(0, true);
     mask.write_ccp4_map(output);
   } catch (std::runtime_error& e) {

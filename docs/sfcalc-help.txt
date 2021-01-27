@@ -33,6 +33,7 @@ Options for FFT-based calculations:
                        Argument: FILE[:FCOL[:SIGFCOL]] (defaults: F and SIGF).
 
 Options for bulk solvent correction (only w/ FFT):
+  --radii-set=SET      Set of per-element radii, one of: vdw, cctbx, refmac.
   --r-probe=NUM        Value added to VdW radius (default: 1.0A).
   --r-shrink=NUM       Value for shrinking the solvent area (default: 1.1A).
   --ksolv=NUM          Value (if optimizing: initial value) of k_solv.
