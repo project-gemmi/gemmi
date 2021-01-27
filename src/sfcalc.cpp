@@ -756,8 +756,8 @@ void process(const std::string& input, const OptParser& p) {
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
-  p.exclusive_groups.push_back({ToMtz, Test, Compare});
   p.simple_parse(argc, argv, Usage);
+  p.check_exclusive_group({ToMtz, Test, Compare});
   p.require_input_files_as_args();
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {

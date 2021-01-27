@@ -53,7 +53,6 @@ struct OptParser : option::Parser {
   const char* program_name;
   std::vector<option::Option> options;
   std::vector<option::Option> buffer;
-  std::vector<std::vector<int>> exclusive_groups;
 
   explicit OptParser(const char* prog) : program_name(prog) {}
   void simple_parse(int argc, char** argv, const option::Descriptor usage[]);
@@ -68,6 +67,7 @@ struct OptParser : option::Parser {
     if (options[opt1] && options[opt2])
       exit_exclusive(opt1, opt2);
   }
+  void check_exclusive_group(const std::vector<int>& group);
   const char* given_name(int opt) const {  // sans one dash
     return options[opt].namelen > 1 ? options[opt].name + 1
                                     : options[opt].desc->shortopt;

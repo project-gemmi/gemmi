@@ -187,10 +187,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     std::fputs("Options --query and --target must be used together.\n", stderr);
     return 1;
   }
-  if (p.options[TextAlign] && p.options[Query]) {
-    std::fputs("Options --query and --text-align are exclusive.\n", stderr);
-    return 1;
-  }
+  p.check_exclusive_pair(TextAlign, Query);
 
   if (p.options[TextAlign]) {
     p.require_positional_args(2);

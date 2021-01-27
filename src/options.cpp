@@ -142,16 +142,17 @@ void OptParser::simple_parse(int argc, char** argv,
     option::printUsage(write_func, stderr, usage);
     std::exit(2);
   }
-  for (const auto& group : exclusive_groups) {
-    int first = 0;
-    for (int opt : group)
-      if (options[opt]) {
-        if (first == 0)
-          first = opt;
-        else
-          exit_exclusive(first, opt);
-      }
-  }
+}
+
+void OptParser::check_exclusive_group(const std::vector<int>& group) {
+  int first = -1;
+  for (int opt : group)
+    if (options[opt]) {
+      if (first == -1)
+        first = opt;
+      else
+        exit_exclusive(first, opt);
+    }
 }
 
 void OptParser::print_try_help_and_exit(const char* msg) {

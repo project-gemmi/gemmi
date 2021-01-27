@@ -133,9 +133,9 @@ void print_deltas(const gemmi::Grid<T>& grid, double dmin, double dmax) {
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
-  p.exclusive_groups.push_back({Threshold, Fraction});
   p.simple_parse(argc, argv, Usage);
   p.require_input_files_as_args();
+  p.check_exclusive_pair(Threshold, Fraction);
   //bool verbose = p.options[Verbose];
 
   if (p.nonOptionsCount() > 1 && (p.options[Reorder] || p.options[Full])) {
