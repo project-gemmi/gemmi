@@ -65,7 +65,10 @@ jobs:
         python3 -m unittest discover -v -s tests/
     - name: run doctest
       working-directory: ${{runner.workspace}}/docs
-      run: make doctest SPHINXOPTS="-n -E"
+      run: |
+        pwd
+        type sphinx-build
+        sphinx-build -M doctest . _build -n -E
     - name: run tests under valgrind
       run: PYTHONMALLOC=malloc valgrind python3 -m unittest discover -v -s tests/
 

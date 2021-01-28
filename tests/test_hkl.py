@@ -47,7 +47,7 @@ def fft_test(self, data, f, phi, size, order=gemmi.AxisOrder.XYZ):
     grid2 = gemmi.transform_map_to_f_phi(map1, half_l=False)
     self.assertFalse(grid2.half_l)
     self.assertEqual(grid2.axis_order, order)
-    compare_maps(self, grid2, array_full, atol=1e-4)
+    compare_maps(self, grid2, array_full, atol=2e-4)
     if grid2.axis_order != gemmi.AxisOrder.ZYX:
         compare_asu_data(self, grid2.prepare_asu_data(), data, f, phi)
     grid_half = data.get_f_phi_on_grid(f, phi, size, half_l=True, order=order)
