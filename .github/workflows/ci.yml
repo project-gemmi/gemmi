@@ -60,6 +60,7 @@ jobs:
         cmake .. -DCMAKE_BUILD_TYPE=Debug
         cmake --build . --config Debug
         cmake --build . --config Debug --target check
+        cd ..
         python3 setup.py install --user --prefix=
         python3 -m unittest discover -v -s tests/
     - name: run doctest

@@ -51,6 +51,7 @@
 
   test_script:
   - ctest -C "%CMAKE_CONFIG%" --output-on-failure
+  - if defined USE_PIP (py -m pip install pandas)
   - py -m unittest discover -v -s tests/
   - cd docs
   - set PYTHONPATH=..

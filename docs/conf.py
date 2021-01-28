@@ -60,20 +60,21 @@ latex_documents = [
 ]
 
 doctest_global_setup = '''
+import sys
 try:
     import numpy
 except ImportError:
-    print('Tests that use NumPy are disabled.')
+    print('Tests that use NumPy are disabled.', file=sys.stderr)
     numpy = None
 try:
     import pandas
 except ImportError:
-    print('Tests that use pandas are disabled.')
+    print('Tests that use pandas are disabled.', file=sys.stderr)
     pandas = None
 try:
     import networkx
 except ImportError:
-    print('Tests that use networkx are disabled.')
+    print('Tests that use networkx are disabled.', file=sys.stderr)
     networkx = None
 import os
 mdm2_unmerged_mtz_path = os.getenv('CCP4')
