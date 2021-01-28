@@ -46,11 +46,10 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
     - uses: actions/checkout@v2
-    - name: apt-get and pip
+    - name: apt-get
       run: |
         sudo apt-get update
-        sudo apt-get install libz-dev python3-pip g++ gfortran python3-setuptools valgrind
-        sudo pip install -U sphinx
+        sudo apt-get install libz-dev python3-pip g++ gfortran python3-setuptools python3-numpy valgrind
     - name: build and test
       run: |
         g++ --version
@@ -64,10 +63,11 @@ jobs:
         python3 setup.py install --user --prefix=
         python3 -m unittest discover -v -s tests/
     - name: run doctest
-      working-directory: ${{runner.workspace}}/docs
       run: |
-        pwd
+        sudo pip3 install -U sphinx
         type sphinx-build
+        cd docs
+        pwd
         sphinx-build -M doctest . _build -n -E
     - name: run tests under valgrind
       run: PYTHONMALLOC=malloc valgrind python3 -m unittest discover -v -s tests/
@@ -78,7 +78,7 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
     - uses: actions/checkout@v2
-    - run: sudo apt-get install libz-dev python3-pip g++ gfortran python3-setuptools
+    - run: sudo apt-get install libz-dev python3-pip g++ gfortran python3-setuptools python3-numpy
     - name: build and test
       run: |
         g++ --version
@@ -99,7 +99,7 @@ jobs:
       CXX: clang++-3.5
     steps:
     - uses: actions/checkout@v2
-    - run: sudo apt-get install libz-dev python3-pip clang-3.5 python3-setuptools
+    - run: sudo apt-get install libz-dev python3-pip clang-3.5 python3-setuptools python3-numpy
     - name: install pybind11
       run: |
         cmake --version
@@ -129,7 +129,7 @@ jobs:
     - name: yum
       run: |
         yum update -y && yum install -y epel-release
-        yum install -y gcc-c++ cmake3 make git python3-devel
+        yum install -y gcc-c++ cmake3 make git python3-devel python3-numpy
         g++ --version
         python3 --version
         cmake3 --version

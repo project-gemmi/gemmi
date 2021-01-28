@@ -364,6 +364,7 @@ To get all unique reflections up to the same resolution
 as the example mtz file we can do:
 
 .. doctest::
+  :skipif: sys.platform == 'win32'
 
   >>> dmin = mtz.resolution_high() - 1e-6  # the 1e-6 margin is for numerical errors
   >>> gemmi.make_miller_array(mtz.cell, mtz.spacegroup, dmin)
@@ -395,6 +396,7 @@ Back to NumPy arrays. The N×3 array of Miller indices can be
 used with a number of vectorized functions:
 
 .. doctest::
+  :skipif: sys.platform == 'win32'
 
   >>> gops = mtz.spacegroup.operations()
   >>> gops.centric_flag_array(hkl)           # vectorized is_reflection_centric()
@@ -681,7 +683,7 @@ All the data is stored as strings. We can get integer or real values from
 the selected column in an array. In Python -- in NumPy array:
 
 .. doctest::
-  :skipif: numpy is None
+  :skipif: numpy is None or sys.platform == 'win32'
 
   >>> rblock.make_int_array('index_h', -1000)  # 2nd arg - value for nulls
   array([-26, -26, -26, ...,  25,  26,  26], dtype=int32)
@@ -916,7 +918,7 @@ and systematic absences are also not included.
 Both Miller indices and values can be accessed as NumPy arrays:
 
 .. doctest::
-  :skipif: numpy is None
+  :skipif: numpy is None or sys.platform == 'win32'
 
   >>> asu_data.miller_array
   array([[-26,   0,   1],
@@ -1303,6 +1305,7 @@ which was contributed to CCP4 directly by Don Cromer in the 1990's.
 The ``cromer_libermann`` function is available in both C++ and Python:
 
 .. doctest::
+  :skipif: sys.platform == 'win32'
 
   >>> gemmi.Element('Se').atomic_number
   34
@@ -1380,6 +1383,7 @@ SpaceGroup because UnitCell already contains a list of symmetry operations).
 Now we can compute structure factors from Model for any (hkl):
 
 .. doctest::
+  :skipif: sys.platform == 'win32'
 
   >>> calc_e.calculate_sf_from_model(st[0], (3,4,5))
   (54.50873699946013+53.39498671218216j)

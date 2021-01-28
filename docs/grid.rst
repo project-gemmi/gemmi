@@ -126,7 +126,7 @@ It means that you can use it as a NumPy array (Fortran-style contiguous)
 without copying the data:
 
 .. doctest::
-  :skipif: numpy is None
+  :skipif: numpy is None or sys.platform == 'win32'
 
   >>> import numpy
   >>> array = numpy.array(grid, copy=False)
@@ -235,7 +235,7 @@ If you would like to set grid points near a specified position
 use the ``set_points_around()`` function:
 
 .. doctest::
-  :skipif: numpy is None
+  :skipif: numpy is None or sys.platform == 'win32'
 
   >>> grid.set_points_around(gemmi.Position(25, 25, 25), radius=3, value=10)
   >>> numpy.argwhere(array == 10)

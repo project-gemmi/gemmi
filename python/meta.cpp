@@ -21,7 +21,7 @@ namespace gemmi {
        << entity_type_to_string(ent.entity_type);
     if (ent.polymer_type != PolymerType::Unknown)
       os << ' ' << polymer_type_to_qstring(ent.polymer_type);
-    os << " object at " << (void*)&ent << '>';
+    os << " object at 0x" << std::hex << (size_t)&ent << std::dec << '>';
     return os;
   }
 }
