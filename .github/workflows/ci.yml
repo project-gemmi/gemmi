@@ -47,9 +47,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: apt-get and pip
-      run:
-        - sudo apt-get install libz-dev python3-pip g++ gfortran python3-setuptools valgrind
-        - sudo pip install -U sphinx
+      run: |
+        sudo apt-get install libz-dev python3-pip g++ gfortran python3-setuptools valgrind
+        sudo pip install -U sphinx
     - name: build and test
       run: |
         g++ --version
