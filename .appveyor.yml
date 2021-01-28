@@ -53,9 +53,9 @@
   - ctest -C "%CMAKE_CONFIG%" --output-on-failure
   - py -m unittest discover -v -s tests/
   - cd docs
-  - py -m pip install sphinx
   - set PYTHONPATH=..
-  - sphinx-build -M doctest . _build -n -E
+  - py -m pip install --no-warn-script-location sphinx
+  - py -m sphinx -M doctest . _build -n -E
 
   artifacts:
     - path: gemmi.exe
