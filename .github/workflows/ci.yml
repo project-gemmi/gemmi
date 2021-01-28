@@ -65,9 +65,7 @@ jobs:
     - name: run doctest
       run: |
         sudo pip3 install -U sphinx
-        type sphinx-build
         cd docs
-        pwd
         sphinx-build -M doctest . _build -n -E
     - name: run tests under valgrind
       run: PYTHONMALLOC=malloc valgrind python3 -m unittest discover -v -s tests/
@@ -117,6 +115,11 @@ jobs:
         make -j2 all
         make -j2 check
         python -m unittest discover -v -s ../tests/
+    - name: run doctest
+      run: |
+        sudo pip3 install -U sphinx
+        cd docs
+        sphinx-build -M doctest . _build -n -E
 
 
   centos:

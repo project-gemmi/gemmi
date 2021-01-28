@@ -11,10 +11,7 @@
 namespace py = pybind11;
 using namespace gemmi;
 
-PYBIND11_MAKE_OPAQUE(std::vector<Op::Tran>)
-
 void add_symmetry(py::module& m) {
-  py::bind_vector<std::vector<Op::Tran>>(m, "TranList");
   py::class_<Op>(m, "Op")
     .def(py::init<>(&Op::identity))
     .def(py::init(&parse_triplet))

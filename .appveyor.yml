@@ -54,6 +54,7 @@
   - py -m pip install numpy
   - if defined USE_PIP (py -m pip install pandas)
   - py -m unittest discover -v -s tests/
+  - if "%PY_PYTHON%"=="2.7-32" (appveyor exit)
   - cd docs
   - set PYTHONPATH=..
   - py -m pip install --no-warn-script-location sphinx

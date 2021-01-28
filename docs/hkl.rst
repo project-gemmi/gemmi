@@ -364,17 +364,16 @@ To get all unique reflections up to the same resolution
 as the example mtz file we can do:
 
 .. doctest::
-  :skipif: sys.platform == 'win32'
 
   >>> dmin = mtz.resolution_high() - 1e-6  # the 1e-6 margin is for numerical errors
-  >>> gemmi.make_miller_array(mtz.cell, mtz.spacegroup, dmin)
+  >>> gemmi.make_miller_array(mtz.cell, mtz.spacegroup, dmin)  # doctest: +ELLIPSIS
   array([[-5,  0,  1],
          [-5,  0,  2],
          [-5,  0,  3],
          ...,
          [ 5,  2,  0],
          [ 5,  2,  1],
-         [ 5,  2,  2]], dtype=int32)
+         [ 5,  2,  2]]...)
 
 We also have two optional parameters (not used above): ``dmax`` and ``unique``.
 Setting ``unique=False`` returns all equivalent reflections.
