@@ -7,8 +7,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-20.04
-            build: Debug
           - os: macos-10.15
             build: Release
     name: ${{ matrix.os }}
@@ -41,6 +39,32 @@ jobs:
     - name: Python Tests
       run: python3 -m unittest discover -v -s tests/
 
+
+  ubuntu2004:
+    name: "Ubuntu 20.04"
+    runs-on: ubuntu-20.04
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+    - uses: actions/checkout@v2
+    - name: apt-get and pip
+      run: sudo apt-get install libz-dev python3-pip g++ gfortran python3-setuptools valgrind
+      run: sudo pip install -U sphinx
+    - name: build and test
+      run: |
+        g++ --version
+        cmake --version
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Debug
+        cmake --build . --config Debug
+        cmake --build . --config Debug --target check
+        python3 setup.py install --user --prefix=
+        python3 -m unittest discover -v -s tests/
+    - name: run doctest
+      working-directory: ${{runner.workspace}}/docs
+      run: make doctest SPHINXOPTS="-n -E"
+    - name: run tests under valgrind
+      run: PYTHONMALLOC=malloc valgrind python3 -m unittest discover -v -s tests/
 
   ubuntu1804:
     name: "Ubuntu 18.04 with sdist"
