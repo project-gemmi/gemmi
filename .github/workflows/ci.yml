@@ -148,6 +148,6 @@ jobs:
         python3 -m unittest discover -v -s ./tests/
     - name: run doctest
       run: |
-        sudo pip3 install -U sphinx
+        pip3 install -U sphinx
         cd docs
         PYTHONPATH=.. sphinx-build -M doctest . _build -n -E

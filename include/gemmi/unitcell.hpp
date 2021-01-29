@@ -314,14 +314,14 @@ struct UnitCell {
     return image;
   }
 
-  void apply_transform(Fractional& fpos, int image_idx) const {
-    if (image_idx > 0)
-      fpos = images.at(image_idx - 1).apply(fpos);
-  }
-
-  void apply_transform_inverse(Fractional& fpos, int image_idx) const {
-    if (image_idx > 0)
-      fpos = FTransform(images.at(image_idx - 1).inverse()).apply(fpos);
+  void apply_transform(Fractional& fpos, int image_idx, bool inverse) const {
+    if (image_idx > 0) {
+      const FTransform& t = images.at(image_idx - 1);
+      if (!inverse)
+        fpos = t.apply(fpos);
+      else
+        fpos = FTransform(t.inverse()).apply(fpos);
+    }
   }
 
   SymImage find_nearest_pbc_image(const Position& ref, const Position& pos,
@@ -331,7 +331,7 @@ struct UnitCell {
     sym_image.sym_id = image_idx;
     Fractional fref = fractionalize(ref);
     Fractional fpos = fractionalize(pos);
-    apply_transform(fpos, image_idx);
+    apply_transform(fpos, image_idx, false);
     if (is_crystal())
       search_pbc_images(fpos - fref, sym_image);
     else
@@ -348,10 +348,7 @@ struct UnitCell {
   Position find_nearest_pbc_position(const Position& ref, const Position& pos,
                                      int image_idx, bool inverse=false) const {
     Fractional fpos = fractionalize(pos);
-    if (inverse)
-      apply_transform_inverse(fpos, image_idx);
-    else
-      apply_transform(fpos, image_idx);
+    apply_transform(fpos, image_idx, inverse);
     return orthogonalize_in_pbc(ref, fpos);
   }
 
