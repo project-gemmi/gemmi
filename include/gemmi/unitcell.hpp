@@ -345,6 +345,16 @@ struct UnitCell {
     return orthogonalize_difference((fpos - fref).wrap_to_zero()) + ref;
   }
 
+  Position find_nearest_pbc_position(const Position& ref, const Position& pos,
+                                     int image_idx, bool inverse=false) const {
+    Fractional fpos = fractionalize(pos);
+    if (inverse)
+      apply_transform_inverse(fpos, image_idx);
+    else
+      apply_transform(fpos, image_idx);
+    return orthogonalize_in_pbc(ref, fpos);
+  }
+
   // return number of nearby symmetry mates (0 = none, 3 = 4-fold axis, etc)
   int is_special_position(const Fractional& fpos, double max_dist) const {
     const double max_dist_sq = max_dist * max_dist;

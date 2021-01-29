@@ -321,7 +321,37 @@ In this example the value can be high because it is a structure of
 icosahedral viral capsid with 240 identical units in the unit cell.
 The last property is the distance between atoms.
 
-See also command-line program :ref:`gemmi-contact <gemmi-contact>`.
+Atoms pointed to by ``partner1`` and ``partner2`` can be far apart
+in the asymmetric unit:
+
+.. doctest::
+
+  >>> results[0].partner1.atom.pos
+  <gemmi.Position(42.221, 46.34, 19.436)>
+  >>> results[0].partner2.atom.pos
+  <gemmi.Position(49.409, 39.333, 19.524)>
+
+But you can find the position of symmetry image of ``partner2`` that
+is in contact with ``partner1`` with:
+
+.. doctest::
+
+  >>> st.cell.find_nearest_pbc_position(results[0].partner1.atom.pos,
+  ...                                   results[0].partner2.atom.pos,
+  ...                                   results[0].image_idx)
+  <gemmi.Position(42.6647, 47.5137, 16.8644)>
+
+You could also find the symmetry image of ``partner1``
+that is near the orignal position of ``partner2``:
+
+.. doctest::
+
+  >>> st.cell.find_nearest_pbc_position(results[0].partner2.atom.pos,
+  ...                                   results[0].partner1.atom.pos,
+  ...                                   results[0].image_idx, inverse=True)
+  <gemmi.Position(49.2184, 39.9091, 16.7278)>
+
+See also the command-line program :ref:`gemmi-contact <gemmi-contact>`.
 
 Gemmi provides also an undocumented class LinkHunt which matches
 contacts to links definitions from :ref:`monomer library <CCD_etc>`

@@ -253,9 +253,8 @@ int run(OptParser& p) {
     if (const auto* mark = ns.find_nearest_atom(blob.pos)) {
       blob.cra = mark->to_cra(model);
       const gemmi::Position& ref = blob.cra.atom->pos;
-      gemmi::Fractional fpos = grid.unit_cell.fractionalize(blob.pos);
-      grid.unit_cell.apply_transform_inverse(fpos, mark->image_idx);
-      blob.pos = grid.unit_cell.orthogonalize_in_pbc(ref, fpos);
+      blob.pos = grid.unit_cell.find_nearest_pbc_position(ref, blob.pos,
+                                                          mark->image_idx, true);
     }
 
   // output results

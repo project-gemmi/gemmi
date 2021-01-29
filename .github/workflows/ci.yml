@@ -115,11 +115,6 @@ jobs:
         make -j2 all
         make -j2 check
         python -m unittest discover -v -s ../tests/
-    - name: run doctest
-      run: |
-        sudo pip3 install -U sphinx
-        cd docs
-        sphinx-build -M doctest . _build -n -E
 
 
   centos:
@@ -151,3 +146,8 @@ jobs:
         make -j2
         make -j2 check
         python3 -m unittest discover -v -s ./tests/
+    - name: run doctest
+      run: |
+        sudo pip3 install -U sphinx
+        cd docs
+        PYTHONPATH=.. sphinx-build -M doctest . _build -n -E
