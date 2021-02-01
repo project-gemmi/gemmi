@@ -35,6 +35,7 @@ void add_dencalc(py::module& m, const char* name) {
     .def_readwrite("r_cut", &DenCalc::r_cut)
     .def_readwrite("addends", &DenCalc::addends)
     .def("put_model_density_on_grid", &DenCalc::put_model_density_on_grid)
+    .def("add_c_contribution_to_grid", &DenCalc::add_c_contribution_to_grid)
     .def("set_grid_cell_and_spacegroup", &DenCalc::set_grid_cell_and_spacegroup)
     .def("reciprocal_space_multiplier", &DenCalc::reciprocal_space_multiplier)
     .def("mott_bethe_factor", &DenCalc::mott_bethe_factor)

@@ -89,13 +89,24 @@ struct DensityCalculator {
 
   // pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {
-    auto& scat = Table::get(atom.element);
-    float addend = addends.get(atom.element);
+    Element el = atom.element;
+    do_add_atom_density_to_grid(atom, Table::get(el), addends.get(el));
+  }
+
+  // Parameter c is a constant factor and has the same meaning as either addend
+  // or c in scattering factor coefficients (a1, b1, ..., c).
+  void add_c_contribution_to_grid(const Atom& atom, float c) {
+    using type = typename Table::Coef::coef_type;
+    do_add_atom_density_to_grid(atom, GaussianCoef<0, 1, type>{0}, c);
+  }
+
+  template<typename Coef>
+  void do_add_atom_density_to_grid(const Atom& atom, const Coef& coef, float addend) {
     Fractional fpos = grid.unit_cell.fractionalize(atom.pos);
     if (!atom.aniso.nonzero()) {
       // isotropic
       double b = atom.b_iso + blur;
-      auto precal = scat.precalculate_density_iso(b, addend);
+      auto precal = coef.precalculate_density_iso(b, addend);
       double x1 = it92_radius_approx(b);
       double radius = determine_cutoff_radius(x1, precal, r_cut);
       grid.use_points_around(fpos, radius, [&](Real& point, double r2) {
@@ -106,10 +117,10 @@ struct DensityCalculator {
       SMat33<double> aniso_b = atom.aniso.scaled(u_to_b()).added_kI(blur);
       // rough estimate, so we don't calculate eigenvalues
       double b_max = std::max(std::max(aniso_b.u11, aniso_b.u22), aniso_b.u33);
-      auto precal_iso = scat.precalculate_density_iso(b_max, addend);
+      auto precal_iso = coef.precalculate_density_iso(b_max, addend);
       double x1 = it92_radius_approx(b_max);
       double radius = determine_cutoff_radius(x1, precal_iso, r_cut);
-      auto precal = scat.precalculate_density_aniso_b(aniso_b, addend);
+      auto precal = coef.precalculate_density_aniso_b(aniso_b, addend);
       int du = (int) std::ceil(radius / grid.spacing[0]);
       int dv = (int) std::ceil(radius / grid.spacing[1]);
       int dw = (int) std::ceil(radius / grid.spacing[2]);

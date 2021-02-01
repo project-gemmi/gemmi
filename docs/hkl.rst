@@ -1586,7 +1586,14 @@ has positions for electrons, call ``subtract_z()`` as:
 
   >>> dc.addends.subtract_z(except_hydrogen=True)
 
-and separately add the contribution from hydrogen nuclei. (TBC)
+change hydrogen coordinates to proton positions
+and subtract Z=1 using:
+
+.. doctest::
+
+  >>> for cra in st[0].all():
+  ...     if cra.atom.is_hydrogen():
+  ...         dc.add_c_contribution_to_grid(cra.atom, -1)
 
 Bulk solvent correction
 -----------------------

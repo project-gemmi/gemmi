@@ -50,9 +50,10 @@ struct ExpAnisoSum {
   }
 };
 
-// Gaussian coefficients with functions to calculat sf and density.
+// Gaussian coefficients with functions to calculate sf and density.
 template<int N, int WithC, typename Real>
 struct GaussianCoef {
+  using coef_type = Real;
   Real coef[2*N+WithC];
   Real a(int n) const { return coef[n]; }
   Real b(int n) const { return coef[N+n]; }

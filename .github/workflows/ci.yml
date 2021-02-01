@@ -127,7 +127,8 @@ jobs:
     - name: yum
       run: |
         yum update -y && yum install -y epel-release
-        yum install -y gcc-c++ cmake3 make git python3-devel python3-numpy
+        yum install -y gcc-c++ cmake3 make git python3-devel
+        pip3 install -U numpy
         g++ --version
         python3 --version
         cmake3 --version
