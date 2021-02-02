@@ -1304,15 +1304,14 @@ which was contributed to CCP4 directly by Don Cromer in the 1990's.
 The ``cromer_libermann`` function is available in both C++ and Python:
 
 .. doctest::
-  :skipif: sys.platform == 'win32'
 
   >>> gemmi.Element('Se').atomic_number
   34
-  >>> gemmi.cromer_libermann(z=_, energy=10332.0) # energy in eV
-  (-1.4186231113544407, 0.7238969498014027)
+  >>> gemmi.cromer_libermann(z=_, energy=10332.0) # energy in eV  #doctest: +ELLIPSIS
+  (-1.41862..., 0.72389...)
   >>> # use gemmi.hc to convert wavelength [A] to energy [eV]
-  >>> gemmi.cromer_libermann(z=34, energy=gemmi.hc/0.71073)
-  (-0.09201659699543367, 2.2333699118331087)
+  >>> gemmi.cromer_libermann(z=34, energy=gemmi.hc/0.71073)  #doctest: +ELLIPSIS
+  (-0.09201..., 2.23336...)
 
 The same values can be printed from the command line program
 :ref:`gemmi-fprime <fprime>`.
