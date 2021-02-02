@@ -368,24 +368,22 @@ DiffractionInfo* find_diffrn(Metadata& meta, const std::string& diffrn_id) {
 }
 
 inline Structure make_structure_from_block(const cif::Block& block_) {
-  using cif::as_number;
-  using cif::as_string;
   // find() and Table don't have const variants, but we don't change anything.
   cif::Block& block = const_cast<cif::Block&>(block_);
   Structure st;
   st.input_format = CoorFormat::Mmcif;
   st.name = block.name;
   set_cell_from_mmcif(block, st.cell);
-  st.spacegroup_hm = as_string(impl::find_spacegroup_hm_value(block));
+  st.spacegroup_hm = cif::as_string(impl::find_spacegroup_hm_value(block));
 
   auto add_info = [&](std::string tag) {
     bool first = true;
     for (const std::string& v : block.find_values(tag))
       if (!cif::is_null(v)) {
         if (first)
-          st.info[tag] = as_string(v);
+          st.info[tag] = cif::as_string(v);
         else
-          st.info[tag] += "; " + as_string(v);
+          st.info[tag] += "; " + cif::as_string(v);
         first = false;
       }
   };
@@ -609,13 +607,13 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
         model = &st.find_or_add_model(row.str(kModelNum));
         chain = nullptr;
       }
-      if (!chain || as_string(row[kAsymId]) != chain->name) {
-        model->chains.emplace_back(as_string(row[kAsymId]));
+      if (!chain || cif::as_string(row[kAsymId]) != chain->name) {
+        model->chains.emplace_back(cif::as_string(row[kAsymId]));
         chain = &model->chains.back();
         resi = nullptr;
       }
-      ResidueId rid = make_resid(as_string(row[kCompId]),
-                                 as_string(row[kAuthSeqId]),
+      ResidueId rid = make_resid(cif::as_string(row[kCompId]),
+                                 cif::as_string(row[kAuthSeqId]),
                                  row.has(kInsCode) ? &row[kInsCode] : nullptr);
       if (!resi || !resi->matches(rid)) {
         resi = chain->find_or_add_residue(rid);
@@ -635,11 +633,11 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
         fail("Inconsistent sequence ID: " + resi->str() + " / " + rid.str());
       }
       Atom atom;
-      atom.name = as_string(row[kAtomId]);
+      atom.name = cif::as_string(row[kAtomId]);
       // altloc is always a single letter (not guaranteed by the mmCIF spec)
       atom.altloc = cif::as_char(row[kAltId], '\0');
       atom.charge = row.has2(kCharge) ? cif::as_int(row[kCharge]) : 0;
-      atom.element = gemmi::Element(as_string(row[kSymbol]));
+      atom.element = gemmi::Element(cif::as_string(row[kSymbol]));
       // According to the PDBx/mmCIF spec _atom_site.id can be a string,
       // but in all the files it is a serial number; its value is not essential,
       // so we just ignore non-integer ids.
