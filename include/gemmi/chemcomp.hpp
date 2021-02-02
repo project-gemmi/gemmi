@@ -66,6 +66,7 @@ struct Restraints {
   }
 
   struct Bond {
+    enum class DistanceOf { ElectronCloud, Nucleus };
     AtomId id1, id2;
     BondType type;
     bool aromatic;
@@ -75,6 +76,9 @@ struct Restraints {
     std::string str() const { return id1.atom + "-" + id2.atom; }
     std::string lexicographic_str() const {
       return Restraints::lexicographic_str(id1.atom, id2.atom);
+    }
+    double distance(DistanceOf of) const {
+      return of == DistanceOf::ElectronCloud ? value : value_nucleus;
     }
   };
 

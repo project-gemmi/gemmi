@@ -3,6 +3,7 @@
 #include "gemmi/chemcomp.hpp"
 #include "gemmi/gzread.hpp"    // for read_cif_gz
 #include "gemmi/monlib.hpp"
+#include "gemmi/placeh.hpp"    // for adjust_hydrogen_distances
 #include "gemmi/topo.hpp"
 #include "gemmi/tostr.hpp"
 
@@ -55,6 +56,9 @@ void add_monlib(py::module& m) {
     .value("Deloc", BondType::Deloc)
     .value("Metal", BondType::Metal);
 
+  py::enum_<Restraints::Bond::DistanceOf>(restraintsbond, "DistanceOf")
+    .value("ElectronCloud", Restraints::Bond::DistanceOf::ElectronCloud)
+    .value("Nucleus", Restraints::Bond::DistanceOf::Nucleus);
 
   py::class_<Restraints::AtomId>(restraints, "AtomId")
     .def(py::init([](int comp, const std::string& atom) {
@@ -187,6 +191,7 @@ void add_monlib(py::module& m) {
         self.initialize_refmac_topology(st, st.first_model(), monlib);
         self.finalize_refmac_topology(monlib);
     })
+    .def("adjust_hydrogen_distances", &adjust_hydrogen_distances)
     .def_readonly("bonds", &Topo::bonds)
     .def_readonly("extras", &Topo::extras)
     ;

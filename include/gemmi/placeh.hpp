@@ -346,5 +346,25 @@ inline void place_hydrogens(const Atom& atom, Topo::ResInfo& ri,
   }
 }
 
+inline void adjust_hydrogen_distances(Topo& topo, Restraints::Bond::DistanceOf of) {
+  for (Topo::ChainInfo& chain_info : topo.chain_infos)
+    for (Topo::ResInfo& ri : chain_info.res_infos)
+      for (const Topo::Force& force : ri.forces)
+        if (force.rkind == Topo::RKind::Bond) {
+          const Topo::Bond& t = topo.bonds[force.index];
+          assert(t.atoms[0] != nullptr && t.atoms[1] != nullptr);
+          if (t.atoms[0]->is_hydrogen() || t.atoms[1]->is_hydrogen()) {
+            Position u = t.atoms[1]->pos - t.atoms[0]->pos;
+            double scale = t.restr->distance(of) / u.length();
+            if (!std::isnan(scale)) {
+              if (t.atoms[1]->is_hydrogen())
+                t.atoms[1]->pos = t.atoms[0]->pos + u * scale;
+              else
+                t.atoms[0]->pos = t.atoms[1]->pos - u * scale;
+            }
+          }
+        }
+}
+
 } // namespace gemmi
 #endif

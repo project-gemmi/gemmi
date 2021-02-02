@@ -54,8 +54,8 @@ void remove_add_sort(Topo& topo, const std::vector<option::Option>& options) {
   int serial = 0;
   for (Topo::ChainInfo& chain_info : topo.chain_infos)
     for (Topo::ResInfo& ri : chain_info.res_infos) {
-      const gemmi::ChemComp &cc = ri.chemcomp;
-      gemmi::Residue &res = *ri.res;
+      const gemmi::ChemComp& cc = ri.chemcomp;
+      gemmi::Residue& res = *ri.res;
       if (!options[KeepH]) {
         gemmi::remove_hydrogens(res);
         if (!options[RemoveH])
