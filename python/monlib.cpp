@@ -80,6 +80,7 @@ void add_monlib(py::module& m) {
     .def_readwrite("aromatic", &Restraints::Bond::aromatic)
     .def_readwrite("value", &Restraints::Bond::value)
     .def_readwrite("esd", &Restraints::Bond::esd)
+    .def_readwrite("value_nucleus", &Restraints::Bond::value_nucleus)
     .def("lexicographic_str", &Restraints::Bond::lexicographic_str)
     .def("__repr__", [](const Restraints::Bond& self) {
         return "<gemmi.Restraints.Bond " + self.str() + ">";

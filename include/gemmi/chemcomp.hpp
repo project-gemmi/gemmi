@@ -71,6 +71,7 @@ struct Restraints {
     bool aromatic;
     double value;
     double esd;
+    double value_nucleus;
     std::string str() const { return id1.atom + "-" + id2.atom; }
     std::string lexicographic_str() const {
       return Restraints::lexicographic_str(id1.atom, id2.atom);
@@ -451,13 +452,15 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
                              {"atom_id_1", "atom_id_2",              // 0, 1
                               "?type", "?value_order",               // 2, 3
                               "?aromatic", "?pdbx_aromatic_flag",    // 4, 5
-                              "?value_dist", "?value_dist_esd"})) {  // 6, 7
+                              "?value_dist", "?value_dist_esd",      // 6, 7
+                              "?value_dist_nucleus"})) {             // 8
     bool aromatic_flag = (row.one_of(4, 5)[0] | 0x20) == 'y';
     double dist = row.has(6) ? cif::as_number(row[6]) : NAN;
     double esd = row.has(7) ? cif::as_number(row[7]) : NAN;
+    double dist_nucl = row.has(8) ? cif::as_number(row[8]) : NAN;
     cc.rt.bonds.push_back({{1, row.str(0)}, {1, row.str(1)},
                           bond_type_from_string(row.one_of(2, 3)),
-                          aromatic_flag, dist, esd});
+                          aromatic_flag, dist, esd, dist_nucl});
   }
   for (auto row : block.find("_chem_comp_angle.",
                              {"atom_id_1", "atom_id_2", "atom_id_3",

@@ -1587,7 +1587,7 @@ has positions for electrons, call ``subtract_z()`` as:
   >>> dc.addends.subtract_z(except_hydrogen=True)
 
 change hydrogen coordinates to proton positions
-and subtract Z=1 using:
+and subtract Z=1 by adding c=-1:
 
 .. doctest::
 

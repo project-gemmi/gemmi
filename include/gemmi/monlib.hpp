@@ -168,7 +168,7 @@ inline Restraints read_link_restraints(const cif::Block& block_) {
                               "value_dist", "value_dist_esd"}))
     rt.bonds.push_back({read_aid(row, 0), read_aid(row, 2),
                         bond_type_from_string(row[4]), false,
-                        cif::as_number(row[5]), cif::as_number(row[6])});
+                        cif::as_number(row[5]), cif::as_number(row[6]), NAN});
   for (auto row : block.find("_chem_link_angle.",
                              {"atom_1_comp_id", "atom_id_1",
                               "atom_2_comp_id", "atom_id_2",
@@ -284,7 +284,7 @@ inline Restraints read_restraint_modifications(const cif::Block& block_) {
                               "new_value_dist", "new_value_dist_esd"}))
     rt.bonds.push_back({{chem_mod_type(row[0]), row.str(1)}, {1, row.str(2)},
                         bond_type_from_string(row[3]), false,
-                        cif::as_number(row[4]), cif::as_number(row[5])});
+                        cif::as_number(row[4]), cif::as_number(row[5]), NAN});
   for (auto row : block.find("_chem_mod_angle.",
                              {"function", "atom_id_1",
                               "atom_id_2", "atom_id_3",
