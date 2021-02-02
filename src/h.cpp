@@ -60,7 +60,7 @@ void remove_add_sort(Topo& topo, const std::vector<option::Option>& options) {
         gemmi::remove_hydrogens(res);
         if (!options[RemoveH])
           if (options[Water] || !res.is_water())
-            add_hydrogens(cc, res);
+            add_hydrogens_without_positions(cc, res);
       }
       if (options[Sort]) {
         for (gemmi::Atom& atom : res.atoms) {

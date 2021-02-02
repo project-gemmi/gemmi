@@ -422,7 +422,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           gemmi::remove_hydrogens(res);
           if (!p.options[NoHydrogens])
             if (cc.name != "HOH") // for compatibility with refmac/makecif
-              add_hydrogens(cc, res);
+              add_hydrogens_without_positions(cc, res);
         }
         for (gemmi::Atom& atom : res.atoms) {
           auto it = cc.find_atom(atom.name);

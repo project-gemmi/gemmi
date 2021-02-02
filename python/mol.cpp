@@ -212,6 +212,7 @@ void add_mol(py::module& m) {
     .def("__delitem__", remove_child<Model>, py::arg("index"))
     .def("__delitem__", remove_children<Model>)
     .def("count_atom_sites", &count_atom_sites<Model>)
+    .def("count_hydrogen_sites", &count_hydrogen_sites<Model>)
     .def("count_occupancies", &count_occupancies<Model>)
     .def("calculate_mass", &calculate_mass<Model>)
     .def("calculate_center_of_mass", [](const Model& self) {
@@ -406,6 +407,7 @@ void add_mol(py::module& m) {
     .def("get_ca", &Residue::get_ca, py::return_value_policy::reference_internal)
     .def("get_p", &Residue::get_p, py::return_value_policy::reference_internal)
     .def("is_water", &Residue::is_water)
+    .def("remove_hydrogens", &remove_hydrogens<Residue>)
     .def("trim_to_alanine", (bool (*)(Residue&)) &trim_to_alanine)
     .def("clone", [](const Residue& self) { return new Residue(self); })
     .def("__repr__", [](const Residue& self) {

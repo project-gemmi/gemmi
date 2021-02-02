@@ -21,7 +21,7 @@ struct BondedAtom {
 
 // Assumes no hydrogens in the residue.
 // Position and serial number are not assigned for new atoms.
-inline void add_hydrogens(const ChemComp& cc, Residue& res) {
+inline void add_hydrogens_without_positions(const ChemComp& cc, Residue& res) {
   for (auto it = cc.atoms.begin(); it != cc.atoms.end(); ++it) {
     if (!it->is_hydrogen())
       continue;

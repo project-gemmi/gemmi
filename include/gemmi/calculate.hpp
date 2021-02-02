@@ -20,6 +20,15 @@ template<> inline size_t count_atom_sites(const Residue& res) {
   return res.atoms.size();
 }
 
+template<class T> size_t count_hydrogen_sites(const T& obj) {
+  size_t sum = 0;
+  for (const auto& child : obj.children())
+    sum += count_hydrogen_sites(child);
+  return sum;
+}
+template<> inline size_t count_hydrogen_sites(const Atom& atom) {
+  return (size_t) atom.is_hydrogen();
+}
 
 template<class T> double count_occupancies(const T& obj) {
   double sum = 0;
