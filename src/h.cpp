@@ -13,14 +13,12 @@
 #include <gemmi/monlib.hpp>    // for MonLib, read_monomer_lib
 #include <gemmi/topo.hpp>      // for Topo
 #include <gemmi/fstream.hpp>   // for Ofstream
-#include <gemmi/placeh.hpp>    // for place_hydrogens
+#include <gemmi/placeh.hpp>    // for prepare_topology
 
 #define GEMMI_PROG h
 #include "options.h"
 
 namespace cif = gemmi::cif;
-using gemmi::Topo;
-using gemmi::Restraints;
 
 namespace {
 
@@ -50,36 +48,6 @@ const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-void remove_add_sort(Topo& topo, const std::vector<option::Option>& options) {
-  int serial = 0;
-  for (Topo::ChainInfo& chain_info : topo.chain_infos)
-    for (Topo::ResInfo& ri : chain_info.res_infos) {
-      const gemmi::ChemComp& cc = ri.chemcomp;
-      gemmi::Residue& res = *ri.res;
-      if (!options[KeepH]) {
-        gemmi::remove_hydrogens(res);
-        if (!options[RemoveH])
-          if (options[Water] || !res.is_water())
-            add_hydrogens_without_positions(cc, res);
-      }
-      if (options[Sort]) {
-        for (gemmi::Atom& atom : res.atoms) {
-          auto it = cc.find_atom(atom.name);
-          if (it == cc.atoms.end())
-            gemmi::fail("No atom ", atom.name, " expected in ", res.name);
-          atom.serial = int(it - cc.atoms.begin()); // temporary, for sorting only
-        }
-        std::sort(res.atoms.begin(), res.atoms.end(),
-                  [](const gemmi::Atom& a, const gemmi::Atom& b) {
-                    return a.serial != b.serial ? a.serial < b.serial
-                                                : a.altloc < b.altloc;
-                  });
-      }
-      if (!options[KeepH] || options[Sort])
-        for (gemmi::Atom& atom : res.atoms)
-          atom.serial = ++serial;
-    }
-}
 
 int count_h(const gemmi::Structure& st) {
   int n = 0;
@@ -106,8 +74,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   std::string input = p.coordinate_input_file(0);
   std::string output = p.nonOption(1);
-  if (p.options[KeepH] && p.options[RemoveH])
-    gemmi::fail("cannot use both --remove and --keep");
+  p.check_exclusive_pair(KeepH, RemoveH);
   if (p.options[Verbose])
     std::printf("Reading coordinates from %s\n", input.c_str());
   try {
@@ -127,25 +94,16 @@ int GEMMI_MAIN(int argc, char **argv) {
                   res_names.size(), input.c_str());
     gemmi::MonLib monlib = gemmi::read_monomer_lib(monomer_dir, res_names,
                                                    gemmi::read_cif_gz);
-    for (gemmi::Model& model : st.models) {
-      Topo topo;
-      topo.initialize_refmac_topology(st, model, monlib);
-      remove_add_sort(topo, p.options);
-      topo.finalize_refmac_topology(monlib);
-      for (Topo::ChainInfo& chain_info : topo.chain_infos)
-        for (Topo::ResInfo& ri : chain_info.res_infos)
-          for (gemmi::Atom& atom : ri.res->atoms)
-            if (!atom.is_hydrogen()) {
-              try {
-                place_hydrogens(atom, ri, topo);
-              } catch (const std::runtime_error& e) {
-                std::string loc = gemmi::atom_str(chain_info.name, *ri.res,
-                                                  atom.name, atom.altloc);
-                std::printf("Placing of hydrogen bonded to %s failed:\n  %s\n",
-                            loc.c_str(), e.what());
-              }
-            }
-    }
+    gemmi::HydrogenChange h_change = gemmi::HydrogenChange::ReAddButWater;
+    if (p.options[RemoveH])
+      h_change = gemmi::HydrogenChange::Remove;
+    else if (p.options[KeepH])
+      h_change = gemmi::HydrogenChange::Shift;
+    else if (p.options[Water])
+      h_change = gemmi::HydrogenChange::ReAdd;
+    for (size_t i = 0; i != st.models.size(); ++i)
+      // preparing topology modifies hydrogens in the model
+      prepare_topology(st, monlib, i, h_change, p.options[Sort]);
     if (p.options[Verbose])
       std::printf("Hydrogen site count: %d in input, %d in output.\n",
                   initial_h, count_h(st));

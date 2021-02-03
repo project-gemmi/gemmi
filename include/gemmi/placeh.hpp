@@ -93,17 +93,17 @@ std::pair<Position, Position> trilaterate(const Position& p1, double r1sq,
                                           const Position& p3, double r3sq) {
   // variables have the same names as on the Wikipedia Trilateration page
   Vec3 ex = (p2 - p1).normalized();
-	double i = ex.dot(p3-p1);
+  double i = ex.dot(p3-p1);
   Vec3 ey = (Vec3(p3) - p1 - i*ex).normalized();
   Vec3 ez = ex.cross(ey);
-	double d = (p2-p1).length();
-	double j = ey.dot(p3-p1);
-	double x = (r1sq - r2sq + d*d) / (2*d);
-	double y = (r1sq - r3sq + i*i + j*j) / (2*j) - x*i/j;
+  double d = (p2-p1).length();
+  double j = ey.dot(p3-p1);
+  double x = (r1sq - r2sq + d*d) / (2*d);
+  double y = (r1sq - r3sq + i*i + j*j) / (2*j) - x*i/j;
   double z2 = r1sq - x*x - y*y;
-	double z = std::sqrt(z2);  // may result in NaN
-	return std::make_pair(p1 + Position(x*ex + y*ey + z*ez),
-	                      p1 + Position(x*ex + y*ey - z*ez));
+  double z = std::sqrt(z2);  // may result in NaN
+  return std::make_pair(p1 + Position(x*ex + y*ey + z*ez),
+                        p1 + Position(x*ex + y*ey - z*ez));
 }
 
 // Calculate position using two angles.
@@ -346,7 +346,7 @@ inline void place_hydrogens(const Atom& atom, Topo::ResInfo& ri,
   }
 }
 
-inline void adjust_hydrogen_distances(Topo& topo, Restraints::Bond::DistanceOf of) {
+inline void adjust_hydrogen_distances(Topo& topo, Restraints::DistanceOf of) {
   for (Topo::ChainInfo& chain_info : topo.chain_infos)
     for (Topo::ResInfo& ri : chain_info.res_infos)
       for (const Topo::Force& force : ri.forces)
@@ -364,6 +364,71 @@ inline void adjust_hydrogen_distances(Topo& topo, Restraints::Bond::DistanceOf o
             }
           }
         }
+}
+
+enum class HydrogenChange { None, Shift, Remove, ReAdd, ReAddButWater };
+
+inline std::unique_ptr<Topo>
+prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
+                 HydrogenChange h_change, bool reorder, bool raise_errors=false) {
+  std::unique_ptr<Topo> topo(new Topo);
+  if (model_index >= st.models.size())
+    fail("no such model index: " + std::to_string(model_index));
+  topo->initialize_refmac_topology(st, st.models[model_index], monlib);
+
+  bool keep = (h_change == HydrogenChange::None || h_change == HydrogenChange::Shift);
+  if (!keep || reorder) {
+    // remove/add hydrogens, sort atoms, set sequential serial numbers
+    int serial = 0;
+    for (Topo::ChainInfo& chain_info : topo->chain_infos)
+      for (Topo::ResInfo& ri : chain_info.res_infos) {
+        const ChemComp& cc = ri.chemcomp;
+        Residue& res = *ri.res;
+        if (!keep) {
+          remove_hydrogens(res);
+          if (h_change == HydrogenChange::ReAdd ||
+              (h_change == HydrogenChange::ReAddButWater && !res.is_water()))
+            add_hydrogens_without_positions(cc, res);
+        }
+        if (reorder) {
+          for (Atom& atom : res.atoms) {
+            auto it = cc.find_atom(atom.name);
+            if (it == cc.atoms.end())
+              fail("No atom ", atom.name, " expected in ", res.name);
+            atom.serial = int(it - cc.atoms.begin()); // temporary, for sorting only
+          }
+          std::sort(res.atoms.begin(), res.atoms.end(), [](const Atom& a, const Atom& b) {
+                      return a.serial != b.serial ? a.serial < b.serial
+                                                  : a.altloc < b.altloc;
+          });
+        }
+        for (Atom& atom : res.atoms)
+          atom.serial = ++serial;
+      }
+  }
+
+  topo->finalize_refmac_topology(monlib);
+
+  // the hydrogens added previously have positions not set
+  if (h_change != HydrogenChange::None) {
+    for (Topo::ChainInfo& chain_info : topo->chain_infos)
+      for (Topo::ResInfo& ri : chain_info.res_infos)
+        for (Atom& atom : ri.res->atoms)
+          if (!atom.is_hydrogen()) {
+            try {
+              place_hydrogens(atom, ri, *topo);
+            } catch (const std::runtime_error& e) {
+              std::string err = "Placing of hydrogen bonded to " +
+                                atom_str(chain_info.name, *ri.res, atom.name, atom.altloc) +
+                                " failed:\n  " + e.what();
+              if (raise_errors)
+                fail(err);
+              std::fprintf(stderr, "%s\n", err.c_str());
+            }
+          }
+  }
+
+  return topo;
 }
 
 } // namespace gemmi

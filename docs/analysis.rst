@@ -791,6 +791,65 @@ Six of the resulting plots are shown here (click to enlarge):
     :align: center
     :scale: 60
 
+Topology
+========
+
+A macromolecular refinement program typically starts from reading
+a coordinate file and a monomer library. The monomer library specifies
+restraints (bond distances, angles, ...) in monomers
+as well as modifications introduced by links between monomers.
+
+The coordinates and restraints are combined into
+what we call here a *topology*.
+It contains restraints applied to the model.
+A monomer library may specify angle CD2-CE2-NE1 in TRP.
+In contrast, the topology specifies angles between concrete atoms
+(say, angle #721-#720-#719).
+
+Together with preparing a topology, macromolecular programs
+(in particular, Refmac) may also add or shift hydrogens (to
+the riding positions) and reorder atoms.
+In Python we have one function that does it all:
+
+.. code-block:: python
+
+    gemmi.prepare_topology(st: gemmi.Structure,
+                           monlib: gemmi.MonLib,
+                           model_index: int = 0,
+                           h_change: gemmi.HydrogenChange = HydrogenChange.None,
+                           reorder: bool = False,
+                           raise_errors: bool = False) -> gemmi.Topo
+
+where
+
+* ``monlib`` is an instance of an undocumented MonLib class.
+  For now, here is an example how to read the CCP4 monomer library
+  (a.k.a Refmac dictionary):
+
+  .. code-block:: python
+
+    monlib_path = os.environ['CCP4'] + /lib/data/monomers
+    resnames = st[0].get_all_residue_names()
+    monlib = gemmi.read_monomer_lib(monlib_path, resnames)
+
+* ``h_change`` is one of:
+
+  * HydrogenChange.None -- no change,
+  * HydrogenChange.Shift -- shift existing hydrogens to ideal (riding) positions,
+  * HydrogenChange.Remove -- remove all H and D atoms,
+  * HydrogenChange.ReAdd -- discard and re-create hydrogens in ideal positions,
+  * HydrogenChange.ReAddButWater -- the same, but doesn't add H in waters,
+
+* ``reorder`` -- changes the order of atoms inside each residue
+  to match the order in the corresponding monomer cif file,
+
+* ``raise_errors`` --  raises an exception when the hydrogen adding
+  procedure comes across an unexpected configuration.
+  By default, a message is printed to stderr and the function continues.
+
+If hydrogen position is not uniquely determined its occupancy is set to zero.
+
+TBC
 
 .. _pdb_dir:
 

@@ -56,9 +56,17 @@ void add_monlib(py::module& m) {
     .value("Deloc", BondType::Deloc)
     .value("Metal", BondType::Metal);
 
-  py::enum_<Restraints::Bond::DistanceOf>(restraintsbond, "DistanceOf")
-    .value("ElectronCloud", Restraints::Bond::DistanceOf::ElectronCloud)
-    .value("Nucleus", Restraints::Bond::DistanceOf::Nucleus);
+  py::enum_<HydrogenChange>(m, "HydrogenChange")
+    .value("None", HydrogenChange::None)
+    .value("Shift", HydrogenChange::Shift)
+    .value("Remove", HydrogenChange::Remove)
+    .value("ReAdd", HydrogenChange::ReAdd)
+    .value("ReAddButWater", HydrogenChange::ReAddButWater);
+
+  py::enum_<Restraints::DistanceOf>(restraints, "DistanceOf")
+    .value("ElectronCloud", Restraints::DistanceOf::ElectronCloud)
+    .value("Nucleus", Restraints::DistanceOf::Nucleus);
+
 
   py::class_<Restraints::AtomId>(restraints, "AtomId")
     .def(py::init([](int comp, const std::string& atom) {
@@ -186,15 +194,15 @@ void add_monlib(py::module& m) {
     ;
   topo
     .def(py::init<>())
-    .def("prepare_refmac_topology",
-         [](Topo& self, Structure& st, MonLib& monlib) {
-        self.initialize_refmac_topology(st, st.first_model(), monlib);
-        self.finalize_refmac_topology(monlib);
-    })
     .def("adjust_hydrogen_distances", &adjust_hydrogen_distances)
     .def_readonly("bonds", &Topo::bonds)
     .def_readonly("extras", &Topo::extras)
     ;
+
+  m.def("prepare_topology", &prepare_topology,
+        py::arg("st"), py::arg("monlib"), py::arg("model_index")=0,
+        py::arg("h_change")=HydrogenChange::None, py::arg("reorder")=false,
+        py::arg("raise_errors")=false);
 
   m.def("read_monomer_lib", [](const std::string& monomer_dir,
                                const std::vector<std::string>& resnames) {

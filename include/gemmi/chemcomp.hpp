@@ -65,8 +65,9 @@ struct Restraints {
     return name1 < name2 ? name1 + "-" + name2 : name2 + "-" + name1;
   }
 
+  enum class DistanceOf { ElectronCloud, Nucleus };
+
   struct Bond {
-    enum class DistanceOf { ElectronCloud, Nucleus };
     AtomId id1, id2;
     BondType type;
     bool aromatic;
