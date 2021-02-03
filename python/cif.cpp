@@ -82,7 +82,7 @@ void add_cif(py::module& cif) {
         return *b;
     }, py::arg("name"), py::return_value_policy::reference_internal)
     .def("__getitem__", [](Document& d, int index) -> Block& {
-        return d.blocks.at(index >= 0 ? index : index + d.blocks.size());
+        return d.blocks[normalize_index(index, d.blocks)];
     }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("__getitem__", [](Document &d, py::slice slice) -> py::list {
         return getitem_slice(d.blocks, slice);
@@ -150,6 +150,9 @@ void add_cif(py::module& cif) {
     .def_readwrite("name", &Block::name)
     .def("__iter__", [](Block& self) { return py::make_iterator(self.items); },
          py::keep_alive<0, 1>())
+    .def("__getitem__", [](Block& self, int index) -> Item& {
+        return self.items[normalize_index(index, self.items)];
+    }, py::arg("index"), py::return_value_policy::reference_internal)
     .def("find_pair", &Block::find_pair, py::arg("tag"),
          py::return_value_policy::reference_internal)
     .def("find_pair_item", &Block::find_pair_item, py::arg("tag"),

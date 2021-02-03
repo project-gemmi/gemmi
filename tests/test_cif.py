@@ -39,6 +39,12 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(list(rows[0]), ['B', 'A'])
         self.assertEqual(rows[1][1], 'C')
 
+        self.assertEqual(block.get_index('_nonloop_b'), 4)
+        self.assertIsNone(block[4].loop)
+        self.assertEqual(block[4].pair[0], '_nonloop_b')
+        self.assertEqual(block.get_index('_lb'), 5)
+        self.assertEqual(block[5].loop.tags[1], '_lb')
+
         rows = list(block.find('_nonloop_', ['a', 'b']))
         gc.collect()
         self.assertEqual([list(r) for r in rows], [['alpha', 'beta']])
