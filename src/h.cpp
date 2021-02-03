@@ -48,18 +48,6 @@ const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-
-int count_h(const gemmi::Structure& st) {
-  int n = 0;
-  for (const gemmi::Model& model : st.models)
-    for (const gemmi::Chain& chain : model.chains)
-      for (const gemmi::Residue& residue : chain.residues)
-        for (const gemmi::Atom& atom : residue.atoms)
-          if (atom.is_hydrogen())
-            ++n;
-  return n;
-}
-
 } // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
@@ -85,9 +73,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       return 1;
     }
     gemmi::setup_entities(st);
-    int initial_h = 0;
+    size_t initial_h = 0;
     if (p.options[Verbose])
-      initial_h = count_h(st);
+      initial_h = gemmi::count_hydrogen_sites(st);
     std::vector<std::string> res_names = st.models[0].get_all_residue_names();
     if (p.options[Verbose])
       std::printf("Reading %zu monomers and all links from %s\n",
@@ -105,8 +93,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       // preparing topology modifies hydrogens in the model
       prepare_topology(st, monlib, i, h_change, p.options[Sort]);
     if (p.options[Verbose])
-      std::printf("Hydrogen site count: %d in input, %d in output.\n",
-                  initial_h, count_h(st));
+      std::printf("Hydrogen site count: %zu in input, %zu in output.\n",
+                  initial_h, gemmi::count_hydrogen_sites(st));
     if (p.options[Verbose])
       std::printf("Writing coordinates to %s\n", output.c_str());
     gemmi::Ofstream os(output, &std::cout);
