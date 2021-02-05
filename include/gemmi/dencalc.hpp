@@ -82,6 +82,8 @@ struct DensityCalculator {
   float r_cut = 1e-5f;
   Addends addends;
 
+  using coef_type = typename Table::Coef::coef_type;
+
   // pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {
     Element el = atom.element;
@@ -91,8 +93,17 @@ struct DensityCalculator {
   // Parameter c is a constant factor and has the same meaning as either addend
   // or c in scattering factor coefficients (a1, b1, ..., c).
   void add_c_contribution_to_grid(const Atom& atom, float c) {
-    using type = typename Table::Coef::coef_type;
-    do_add_atom_density_to_grid(atom, GaussianCoef<0, 1, type>{0}, c);
+    do_add_atom_density_to_grid(atom, GaussianCoef<0, 1, coef_type>{0}, c);
+  }
+
+  template<int N>
+  double estimate_radius(const ExpSum<N, coef_type>& precal, double b) {
+    if (N == 1) {
+      return std::sqrt(std::log(r_cut / std::abs(precal.a[0])) / precal.b[0]);
+    } else {
+      double x1 = it92_radius_approx(b);
+      return determine_cutoff_radius(x1, precal, r_cut);
+    }
   }
 
   template<typename Coef>
@@ -102,8 +113,7 @@ struct DensityCalculator {
       // isotropic
       double b = atom.b_iso + blur;
       auto precal = coef.precalculate_density_iso(b, addend);
-      double x1 = it92_radius_approx(b);
-      double radius = determine_cutoff_radius(x1, precal, r_cut);
+      double radius = estimate_radius(precal, b);
       grid.use_points_around(fpos, radius, [&](Real& point, double r2) {
           point += Real(atom.occ * precal.calculate((Real)r2));
       }, /*fail_on_too_large_radius=*/false);
@@ -113,8 +123,7 @@ struct DensityCalculator {
       // rough estimate, so we don't calculate eigenvalues
       double b_max = std::max(std::max(aniso_b.u11, aniso_b.u22), aniso_b.u33);
       auto precal_iso = coef.precalculate_density_iso(b_max, addend);
-      double x1 = it92_radius_approx(b_max);
-      double radius = determine_cutoff_radius(x1, precal_iso, r_cut);
+      double radius = estimate_radius(precal_iso, b_max);
       auto precal = coef.precalculate_density_aniso_b(aniso_b, addend);
       int du = (int) std::ceil(radius / grid.spacing[0]);
       int dv = (int) std::ceil(radius / grid.spacing[1]);
