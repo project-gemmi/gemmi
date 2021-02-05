@@ -127,6 +127,11 @@ struct DensityCalculator {
     }
   }
 
+  void initialize_grid() {
+    grid.data.clear();
+    grid.set_size_from_spacing(d_min / (2 * rate), true);
+  }
+
   void add_model_density_to_grid(const Model& model) {
     for (const Chain& chain : model.chains)
       for (const Residue& res : chain.residues)
@@ -134,11 +139,14 @@ struct DensityCalculator {
           add_atom_density_to_grid(atom);
   }
 
-  void put_model_density_on_grid(const Model& model) {
-    grid.data.clear();
-    grid.set_size_from_spacing(d_min / (2 * rate), true);
-    add_model_density_to_grid(model);
+  void sum_symmetry_equivalent_grid_points() {
     grid.symmetrize([](Real a, Real b) { return a + b; });
+  }
+
+  void put_model_density_on_grid(const Model& model) {
+    initialize_grid();
+    add_model_density_to_grid(model);
+    sum_symmetry_equivalent_grid_points();
   }
 
   void set_grid_cell_and_spacegroup(const Structure& st) {

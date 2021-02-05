@@ -1485,6 +1485,14 @@ Almost all the work is in the latter:
   >>> dencalc.set_grid_cell_and_spacegroup(st)
   >>> dencalc.put_model_density_on_grid(st[0])
 
+Calling ``put_model_density_on_grid`` is equivalent to these three functions:
+
+.. doctest::
+
+  >>> dencalc.initialize_grid()
+  >>> dencalc.add_model_density_to_grid(st[0])
+  >>> dencalc.sum_symmetry_equivalent_grid_points()
+
 Now we have density calculated on the grid:
 
 .. doctest::
