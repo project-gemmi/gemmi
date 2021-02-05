@@ -195,28 +195,25 @@ struct SolventMasker {
     }
   }
 
+  template<typename T> void clear(Grid<T>& grid) const { grid.fill((T)1); }
 
-  template<typename T> void clear(Grid<T>& grid) {
-    std::fill(grid.data.begin(), grid.data.end(), (T)1);
-  }
-
-  template<typename T> void mask_points(Grid<T>& grid, const Model& model) {
+  template<typename T> void mask_points(Grid<T>& grid, const Model& model) const {
     if (radii_set == AtomicRadiiSet::Constant)
       mask_points_in_constant_radius(grid, model, constant_r + rprobe, (T)0);
     else
       mask_points_in_varied_radius(grid, model, radii_set, rprobe, (T)0);
   }
 
-  template<typename T> void symmetrize(Grid<T>& grid) {
+  template<typename T> void symmetrize(Grid<T>& grid) const {
     grid.symmetrize([&](T a, T b) { return a == (T)0 || b == (T)0 ? (T)0 : (T)1; });
   }
 
-  template<typename T> void shrink(Grid<T>& grid) {
+  template<typename T> void shrink(Grid<T>& grid) const {
     set_margin_around(grid, rshrink, (T)1, (T)-1);
     grid.change_values((T)-1, (T)1);
   }
 
-  template<typename T> void invert(Grid<T>& grid) {
+  template<typename T> void invert(Grid<T>& grid) const {
     for (auto& v : grid.data)
       v = (T)1 - v;
   }
@@ -224,7 +221,7 @@ struct SolventMasker {
 
   // Removes small islands of Land=1 in the sea of 0. Uses flood fill.
   // cf. find_blobs_by_flood_fill()
-  template<typename T> int remove_islands(Grid<T>& grid) {
+  template<typename T> int remove_islands(Grid<T>& grid) const {
     if (island_vol <= 0)
       return 0;
     size_t limit = static_cast<size_t>(island_vol * grid.point_count()
@@ -242,7 +239,7 @@ struct SolventMasker {
     return counter;
   }
 
-  template<typename T> void put_mask_on_grid(Grid<T>& grid, const Model& model) {
+  template<typename T> void put_mask_on_grid(Grid<T>& grid, const Model& model) const {
     assert(!grid.data.empty());
     clear(grid);
     mask_points(grid, model);

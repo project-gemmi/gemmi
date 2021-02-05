@@ -828,7 +828,7 @@ where
 
   .. code-block:: python
 
-    monlib_path = os.environ['CCP4'] + /lib/data/monomers
+    monlib_path = os.environ['CCP4'] + '/lib/data/monomers'
     resnames = st[0].get_all_residue_names()
     monlib = gemmi.read_monomer_lib(monlib_path, resnames)
 

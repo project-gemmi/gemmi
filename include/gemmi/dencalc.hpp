@@ -1,8 +1,6 @@
 // Copyright 2019 Global Phasing Ltd.
 //
-// Tools to make a grid with:
-// - values of electron density of a model,
-// - bulk solvent mask.
+// Tools to prepare a grid with values of electron density of a model.
 
 #ifndef GEMMI_DENCALC_HPP_
 #define GEMMI_DENCALC_HPP_
@@ -11,10 +9,8 @@
 #include "addends.hpp" // for Addends
 #include "grid.hpp"    // for Grid
 #include "model.hpp"   // for Structure, ...
-#include "solmask.hpp" // for SolventMasker
 
 namespace gemmi {
-
 
 template <typename PrecalExpSum>
 double determine_cutoff_radius(double x1, const PrecalExpSum& precal, double cutoff_level) {
@@ -85,7 +81,6 @@ struct DensityCalculator {
   double blur = 0.;
   float r_cut = 1e-5f;
   Addends addends;
-  SolventMasker masker;
 
   // pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {

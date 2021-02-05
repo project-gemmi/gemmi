@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 #include <complex>
-#include <gemmi/bulksol.hpp>
+#include <gemmi/bulksol.hpp>   // for BulkSolvent
 #include <gemmi/ccp4.hpp>      // for Ccp4
 #include <gemmi/fileutil.hpp>  // for file_open
 #include <gemmi/fourier.hpp>
@@ -18,6 +18,7 @@
 #include <gemmi/dencalc.hpp>   // for DensityCalculator
 #include <gemmi/sfcalc.hpp>    // for calculate_structure_factor
 #include <gemmi/smcif.hpp>     // for make_small_structure_from_block
+#include <gemmi/solmask.hpp>   // for SolventMasker
 #include "timer.h"             // for Timer
 
 #define GEMMI_PROG sfcalc
@@ -189,6 +190,7 @@ template<typename Table, typename Real>
 void process_with_fft(const gemmi::Structure& st,
                       gemmi::DensityCalculator<Table, Real>& dencalc,
                       bool mott_bethe,
+                      const gemmi::SolventMasker& masker,
                       gemmi::BulkSolvent<Real>& bulk,
                       bool verbose, const RefFile& file,
                       const gemmi::AsuData<std::array<Real,2>>& scale_to,
@@ -240,33 +242,26 @@ void process_with_fft(const gemmi::Structure& st,
   auto asu_data = sf.prepare_asu_data(dencalc.d_min, dencalc.blur, false, false, mott_bethe);
 
   if (bulk.use_solvent) {
-    dencalc.masker.put_mask_on_grid(dencalc.grid, st.models[0]);
-    auto asu_mask = transform_map_to_f_phi(dencalc.grid, /*half_l=*/true)
-                    .prepare_asu_data(dencalc.d_min, 0);
-    assert(asu_mask.v.size() == asu_data.v.size());
-    for (size_t i = 0; i != asu_data.v.size(); ++i) {
-      const gemmi::HklValue<std::complex<Real>>& m = asu_mask.v[i];
-      assert(asu_data.v[i].hkl == m.hkl);
-      double stol2 = asu_data.unit_cell().calculate_stol_sq(m.hkl);
-      asu_data.v[i].value += (Real) bulk.solvent_scale(stol2) * m.value;
-    }
+    // uses bulk.grid as a temporary array
+    masker.put_mask_on_grid(dencalc.grid, st.models[0]);
+    bulk.mask_data = transform_map_to_f_phi(dencalc.grid, /*half_l=*/true)
+                     .prepare_asu_data(dencalc.d_min, 0);
   }
 
   Comparator comparator;
   if (scale_to.size() != 0) {
-    std::vector<gemmi::FcFo<Real>> data = prepare_fc_fo(asu_data, scale_to);
-    printf("Calculating scale factors using %zu points...\n", data.size());
-    bulk.quick_iso_fit(data);
+    bulk.prepare_points(asu_data, scale_to);
+    printf("Calculating scale factors using %zu points...\n", bulk.points.size());
+    bulk.fit_isotropic_b_approximately();
     //fprintf(stderr, "k_ov=%g B_ov=%g\n", bulk.k_overall, bulk.get_b_overall().u11);
-    bulk.aniso_fit(data);
+    //TODO bulk.fit_parameters();
     gemmi::SMat33<double> b_aniso = bulk.get_b_overall();
     fprintf(stderr, "k_ov=%g B11=%g B22=%g B33=%g B12=%g B13=%g B23=%g\n",
             bulk.k_overall, b_aniso.u11, b_aniso.u22, b_aniso.u33,
                             b_aniso.u12, b_aniso.u13, b_aniso.u23);
   }
-  if (bulk.k_overall != 1 || !bulk.b_star.all_zero())
-    for (gemmi::HklValue<std::complex<Real>>& hv : asu_data.v)
-      hv.value *= (Real) bulk.get_scale_factor_aniso(hv.hkl);
+  bulk.add_solvent_and_scale(asu_data);
+
   std::unique_ptr<gemmi::Mtz> output_mtz;
   if (file.mode == RefFile::Mode::WriteMtz) {
     output_mtz.reset(new gemmi::Mtz(true));
@@ -576,7 +571,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
     if (siglabel.empty()) {
       scale_to.load_values<2>(gemmi::MtzDataProxy{mtz}, {flabel, flabel});
       for (auto& hkl_value : scale_to.v)
-        hkl_value.value[1] = 1.f;
+        hkl_value.value[1] = std::sqrt(hkl_value.value[1]);
     } else {
       scale_to.load_values<2>(gemmi::MtzDataProxy{mtz}, {flabel, siglabel});
     }
@@ -611,19 +606,21 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         if (p.options[Verbose])
           fprintf(stderr, "B_min=%g, B_add=%g\n", b_min, dencalc.blur);
       }
+
+      gemmi::SolventMasker masker;
       if (p.options[RadiiSet]) {
         char c = p.options[RadiiSet].arg[0];
         if (c == 'v')
-          dencalc.masker.set_radii_set(gemmi::AtomicRadiiSet::VanDerWaals);
+          masker.set_radii_set(gemmi::AtomicRadiiSet::VanDerWaals);
         else if (c == 'c')
-          dencalc.masker.set_radii_set(gemmi::AtomicRadiiSet::Cctbx);
+          masker.set_radii_set(gemmi::AtomicRadiiSet::Cctbx);
         else if (c == 'r')
-          dencalc.masker.set_radii_set(gemmi::AtomicRadiiSet::Refmac);
+          masker.set_radii_set(gemmi::AtomicRadiiSet::Refmac);
       }
       if (p.options[Rprobe])
-        dencalc.masker.rprobe = std::atof(p.options[Rprobe].arg);
+        masker.rprobe = std::atof(p.options[Rprobe].arg);
       if (p.options[Rshrink])
-        dencalc.masker.rshrink = std::atof(p.options[Rshrink].arg);
+        masker.rshrink = std::atof(p.options[Rshrink].arg);
 
       gemmi::BulkSolvent<Real> bulk(cell, st.find_spacegroup());
       if (p.options[Ksolv] || p.options[Bsolv]) {
@@ -645,7 +642,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         bulk.set_b_overall(b_aniso);
       }
       const char* map_file = p.options[WriteMap] ? p.options[WriteMap].arg : nullptr;
-      process_with_fft(st, dencalc, mott_bethe, bulk,
+      process_with_fft(st, dencalc, mott_bethe, masker, bulk,
                        p.options[Verbose], file, scale_to, map_file);
     } else {
       if (p.options[Rate] || p.options[RCut] || p.options[Blur] ||

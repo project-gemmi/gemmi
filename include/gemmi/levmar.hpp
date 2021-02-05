@@ -102,12 +102,12 @@ struct LevMar {
   std::vector<double> temp_alpha, temp_beta; // working arrays
 
 
-  template<typename Function, typename Point>
-  double fit(Function& func, const std::vector<Point>& data) {
+  template<typename Function>
+  double fit(Function& func) {
     eval_count = 0;
     std::vector<double> initial_a = func.get_parameters();
     debug_print("ini", initial_a);
-    initial_wssr = this->compute_wssr(func.compute_values(data), data);
+    initial_wssr = this->compute_wssr(func.compute_values(), func.points);
     std::vector<double> best_a = initial_a;
     size_t na = initial_a.size();
 
@@ -116,7 +116,7 @@ struct LevMar {
     beta.resize(na);
 
     double wssr = initial_wssr;
-    this->compute_derivatives(func, data);
+    this->compute_derivatives(func, func.points);
 
     int small_change_counter = 0;
     for (int iter = 0; ; iter++) {
@@ -137,7 +137,7 @@ struct LevMar {
         temp_beta[i] += best_a[i];
 
       func.set_parameters(temp_beta);
-      double new_wssr = this->compute_wssr(func.compute_values(data), data);
+      double new_wssr = this->compute_wssr(func.compute_values(), func.points);
 #ifdef GEMMI_DEBUG_LEVMAR
       fprintf(stderr, " WSSR=%.8g (%+g%%) lambda=%g\n",
               new_wssr, 100. * (new_wssr / initial_wssr - 1.), lambda);
@@ -157,7 +157,7 @@ struct LevMar {
         } else {
           small_change_counter = 0;
         }
-        this->compute_derivatives(func, data);
+        this->compute_derivatives(func);
         lambda *= lambda_down_factor;
       } else { // worse fitting
         if (lambda > lambda_limit) // termination criterium: large lambda
@@ -172,12 +172,12 @@ struct LevMar {
 
 private:
   template<typename Function, typename Point>
-  void compute_derivatives(const Function& func, const std::vector<Point>& data) {
+  void compute_derivatives(const Function& func) {
     assert(alpha.size() == beta.size() * beta.size());
     int na = (int)beta.size();
     assert(na != 0);
 #ifdef GEMMI_DEBUG_LEVMAR
-    check_derivatives(const_cast<Function&>(func), data);
+    check_derivatives(const_cast<Function&>(func));
 #endif
     std::fill(alpha.begin(), alpha.end(), 0.0);
     std::fill(beta.begin(), beta.end(), 0.0);
@@ -185,18 +185,18 @@ private:
     // faster than a single loop over all points for large number of points.
     const int kMaxTileSize = 1024;
     std::vector<double> dy_da;
-    int n = (int)data.size();
+    int n = (int)func.points.size();
     for (int tstart = 0; tstart < n; tstart += kMaxTileSize) {
       int tsize = std::min(n - tstart, kMaxTileSize);
-      std::vector<typename Function::Point> xx(data.begin() + tstart,
-                                               data.begin() + tstart + tsize);
+      std::vector<typename Function::Point> xx(func.points.begin() + tstart,
+                                               func.points.begin() + tstart + tsize);
       std::vector<double> yy(tsize, 0.);
       dy_da.resize(tsize * na);
       std::fill(dy_da.begin(), dy_da.end(), 0.);
       func.compute_values_and_derivatives(xx, yy, dy_da);
       for (int i = 0; i != tsize; ++i) {
-        double weight = data[tstart + i].get_weight();
-        double dy_sig = weight * (data[tstart + i].get_y() - yy[i]);
+        double weight = func.points[tstart + i].get_weight();
+        double dy_sig = weight * (func.points[tstart + i].get_y() - yy[i]);
         double* t = &dy_da[i * na];
         for (int j = 0; j != na; ++j) {
           if (t[j] != 0) {
@@ -216,14 +216,14 @@ private:
   }
 
 #ifdef GEMMI_DEBUG_LEVMAR
-  template<typename Function, typename Point>
-  void check_derivatives(Function& func, const std::vector<Point>& data) {
+  template<typename Function>
+  void check_derivatives(Function& func) {
     assert(!beta.empty());
     assert(alpha.size() == beta.size() * beta.size());
-    std::vector<double> yy(data.size(), 0.);
-    std::vector<double> dy_da(data.size() * beta.size());
-    func.compute_values_and_derivatives(data, yy, dy_da);
-    std::vector<double> yy2 = func.compute_values(data);
+    std::vector<double> yy(func.points.size(), 0.);
+    std::vector<double> dy_da(func.points.size() * beta.size());
+    func.compute_values_and_derivatives(yy, dy_da);
+    std::vector<double> yy2 = func.compute_values();
     assert(yy.size() == yy2.size());
     for (size_t i = 0; i != yy.size(); ++i) {
       double m = std::max(std::fabs(yy[i]), std::fabs(yy2[i]));
@@ -239,12 +239,12 @@ private:
       double h = std::max(std::fabs(acopy), small_number) * numerical_h;
       aa[k] -= h;
       func.set_parameters(aa);
-      std::vector<double> y_left = func.compute_values(data);
+      std::vector<double> y_left = func.compute_values();
       aa[k] = acopy + h;
       func.set_parameters(aa);
-      std::vector<double> y_right = func.compute_values(data);
+      std::vector<double> y_right = func.compute_values();
       aa[k] = acopy;
-      for (size_t i = 0; i != data.size(); ++i) {
+      for (size_t i = 0; i != func.points.size(); ++i) {
         double symbolic = dy_da[i * aa.size() + k];
         double numeric = (y_right[i] - y_left[i]) / (2 * h);
         double m = std::max(std::fabs(symbolic), std::fabs(numeric));

@@ -10,42 +10,18 @@
 namespace gemmi {
 
 template<typename Real>
-struct FcFo {
-  Miller hkl;
-  Real fcalc, fobs, sigma;
-
-  Miller get_x() const { return hkl; }
-  double get_y() const { return fobs; }
-  double get_weight() const { return 1.0 / sigma; }
-};
-
-template<typename Real>
-std::vector<FcFo<Real>> prepare_fc_fo(const AsuData<std::complex<Real>>& calc,
-                                      const AsuData<std::array<Real,2>>& obs) {
-  std::vector<FcFo<Real>> data;
-  data.reserve(std::min(calc.size(), obs.size()));
-  auto c = calc.v.begin();
-  for (const HklValue<std::array<Real,2>>& o : obs.v) {
-    if (c->hkl != o.hkl) {
-      while (*c < o.hkl) {
-        ++c;
-        if (c == calc.v.end())
-          return data;
-      }
-      if (c->hkl != o.hkl)
-        continue;
-    }
-    data.push_back({o.hkl, std::abs(c->value), o.value[0], o.value[1]});
-    ++c;
-    if (c == calc.v.end())
-      break;
-  }
-  return data;
-}
-
-template<typename Real>
 struct BulkSolvent {
-  using Point = FcFo<Real>;
+  struct Point {
+    Miller hkl;
+    double stol2;
+    std::complex<Real> fcmol, fmask;
+    Real fobs, sigma;
+
+    Miller get_x() const { return hkl; }
+    double get_y() const { return fobs; }
+    double get_weight() const { return 1.0 / sigma; }
+  };
+
   UnitCell cell;
   CrystalSystem crystal_system;
   // model parameters
@@ -56,11 +32,27 @@ struct BulkSolvent {
   // initialize with average values (Fokine & Urzhumtsev, 2002)
   double k_sol = 0.35;
   double b_sol = 46.0;
+  gemmi::AsuData<std::complex<Real>> mask_data;
+  std::vector<Point> points;
 
   // pre: calc and obs are sorted
   BulkSolvent(const UnitCell& cell_, const SpaceGroup* sg)
     : cell(cell_),
       crystal_system(sg ? sg->crystal_system() : CrystalSystem::Triclinic) {}
+
+  void add_solvent_and_scale(AsuData<std::complex<Real>>& asu_data) const {
+    bool use_scaling = (k_overall != 1 || !b_star.all_zero());
+    for (size_t i = 0; i != asu_data.v.size(); ++i) {
+      HklValue<std::complex<Real>>& hv = asu_data.v[i];
+      if (use_solvent) {
+        assert(hv.hkl == mask_data.v[i].hkl);
+        double stol2 = cell.calculate_stol_sq(hv.hkl);
+        hv.value += (Real) solvent_scale(stol2) * mask_data.v[i].value;
+      }
+      if (use_scaling)
+        hv.value *= (Real) get_scale_factor_aniso(hv.hkl);
+    }
+  }
 
   std::vector<double> get_parameters() const {
     switch (crystal_system) {
@@ -116,6 +108,38 @@ struct BulkSolvent {
     unreachable();
   }
 
+  void prepare_points(const AsuData<std::complex<Real>>& calc,
+                      const AsuData<std::array<Real,2>>& obs) {
+    if (use_solvent && mask_data.size() != calc.size())
+      fail("prepare_points(): mask data not prepared");
+    std::complex<Real> fmask;
+    points.reserve(std::min(calc.size(), obs.size()));
+    auto c = calc.v.begin();
+    for (const HklValue<std::array<Real,2>>& o : obs.v) {
+      if (c->hkl != o.hkl) {
+        while (*c < o.hkl) {
+          ++c;
+          if (c == calc.v.end())
+            return;
+        }
+        if (c->hkl != o.hkl)
+          continue;
+      }
+      if (use_solvent) {
+        const HklValue<std::complex<Real>>& m = mask_data.v[c - calc.v.begin()];
+        if (m.hkl != c->hkl)
+          fail("prepare_points(): unexpected data");
+        fmask = m.value;
+      }
+      double stol2 = cell.calculate_stol_sq(o.hkl);
+      points.push_back({o.hkl, stol2, c->value, fmask, o.value[0], o.value[1]});
+      ++c;
+      if (c == calc.v.end())
+        break;
+    }
+  }
+
+
   double solvent_scale(double stol2) const {
     return k_sol * std::exp(-b_sol * stol2);
   }
@@ -136,17 +160,18 @@ struct BulkSolvent {
   }
 
   // quick linear fit (ignoring sigma) to get initial parameters
-  void quick_iso_fit(const std::vector<Point>& data) {
+  void fit_isotropic_b_approximately() {
     double sx = 0, sy = 0, sxx = 0, sxy = 0;
-    for (const Point& p : data) {
-      double x = cell.calculate_stol_sq(p.hkl);
-      double y = std::log(static_cast<float>(p.fobs / p.fcalc));
+    for (const Point& p : points) {
+      double x = p.stol2;
+      double fcalc = std::abs(p.fcmol + (Real)solvent_scale(x) * p.fmask);
+      double y = std::log(static_cast<float>(p.fobs / fcalc));
       sx += x;
       sy += y;
       sxx += x * x;
       sxy += x * y;
     }
-    double n = (double) data.size();
+    double n = (double) points.size();
     double slope = (n * sxy - sx * sy) / (n * sxx - sx * sx);
     double intercept = (sy - slope * sx) / n;
     double b_iso = -slope;
@@ -154,29 +179,38 @@ struct BulkSolvent {
     set_b_overall({b_iso, b_iso, b_iso, 0, 0, 0});
   }
 
-  void aniso_fit(const std::vector<Point>& data) {
+  void fit_parameters() {
     LevMar levmar;
-    levmar.fit(*this, data);
+    levmar.fit(*this, points);
   }
 
 
   // interface for fitting
-  std::vector<double> compute_values(const std::vector<Point>& data) const {
-    std::vector<double> values(data.size());
-    for (size_t i = 0; i != data.size(); ++i)
-      values[i] = data[i].fcalc * get_scale_factor_aniso(data[i].hkl);
+  std::vector<double> compute_values() const {
+    std::vector<double> values;
+    values.reserve(points.size());
+    for (const Point& p : points) {
+      double fcalc = std::abs(p.fcmol + (Real)solvent_scale(p.stol2) * p.fmask);
+      values.push_back(fcalc * (Real) get_scale_factor_aniso(p.hkl));
+    }
     return values;
   }
 
-  void compute_values_and_derivatives(const std::vector<Point>& data,
-                                      std::vector<double>& yy,
+  void compute_values_and_derivatives(std::vector<double>& yy,
                                       std::vector<double>& dy_da) const {
-    assert(data.size() == yy.size());
+    assert(yy.size() == points.size());
     int npar = count_parameters();
-    assert(dy_da.size() == npar * data.size());
-    for (size_t i = 0; i != data.size(); ++i) {
-      Vec3 h(data[i].hkl);
-      double fe = data[i].fcalc * std::exp(-0.25 * b_star.r_u_r(h));
+    assert(dy_da.size() == npar * points.size());
+    for (size_t i = 0; i != points.size(); ++i) {
+      Vec3 h(points[i].hkl);
+      double fcalc;
+      if (use_solvent) {
+        double solv_scale = k_sol * std::exp(-b_sol * points[i].stol2);
+        fcalc = std::abs(points[i].fcmol + (Real)solv_scale * points[i].fmask);
+      } else {
+        fcalc = std::abs(points[i].fcmol);
+      }
+      double fe = fcalc * std::exp(-0.25 * b_star.r_u_r(h));
       yy[i] = k_overall * fe;
       dy_da[i * npar + 0] = fe; // k_overall
       double du[6] = {
