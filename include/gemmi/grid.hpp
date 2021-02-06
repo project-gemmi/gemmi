@@ -424,9 +424,12 @@ struct Grid : GridBase<T> {
   // grid point, then assign the result to all the points.
   template<typename Func>
   void symmetrize(Func func) {
-    if (spacegroup && spacegroup->number != 1 &&
-        this->axis_order == AxisOrder::XYZ)
-      symmetrize_using_ops(get_scaled_ops_except_id(), func);
+    if (spacegroup && spacegroup->number != 1) {
+      if (this->axis_order == AxisOrder::XYZ)
+        symmetrize_using_ops(get_scaled_ops_except_id(), func);
+      else
+        fail("cannot 'symmetrize' grid in order other than XYZ");
+    }
   }
 
   // two most common symmetrize functions

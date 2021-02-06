@@ -1,8 +1,9 @@
 // Copyright 2020 Global Phasing Ltd.
 //
+// Anisotropic scaling of data (includes scaling of bulk solvent parameters)
 
-#ifndef GEMMI_BULKSOL_HPP_
-#define GEMMI_BULKSOL_HPP_
+#ifndef GEMMI_SCALING_HPP_
+#define GEMMI_SCALING_HPP_
 
 #include "asudata.hpp"
 #include "levmar.hpp"
@@ -10,7 +11,7 @@
 namespace gemmi {
 
 template<typename Real>
-struct BulkSolvent {
+struct Scaling {
   struct Point {
     Miller hkl;
     double stol2;
@@ -29,23 +30,38 @@ struct BulkSolvent {
   // b_star = F B_cart F^T, where F - fractionalization matrix
   SMat33<double> b_star{0, 0, 0, 0, 0, 0};
   bool use_solvent = false;
+  bool fix_k_sol = false;
+  bool fix_b_sol = false;
   // initialize with average values (Fokine & Urzhumtsev, 2002)
   double k_sol = 0.35;
   double b_sol = 46.0;
-  gemmi::AsuData<std::complex<Real>> mask_data;
   std::vector<Point> points;
 
   // pre: calc and obs are sorted
-  BulkSolvent(const UnitCell& cell_, const SpaceGroup* sg)
+  Scaling(const UnitCell& cell_, const SpaceGroup* sg)
     : cell(cell_),
       crystal_system(sg ? sg->crystal_system() : CrystalSystem::Triclinic) {}
 
-  void add_solvent_and_scale(AsuData<std::complex<Real>>& asu_data) const {
+  // B_{overall} is stored as B* not B_{cartesian}.
+  // Use getter and setter to convert from/to B_{cartesian}.
+  void set_b_overall(const SMat33<double>& b_overall) {
+    b_star = b_overall.transformed_by(cell.frac.mat);
+  }
+  SMat33<double> get_b_overall() const {
+    return b_star.transformed_by(cell.orth.mat);
+  }
+
+  // Scale data, optionally adding bulk solvent correction.
+  void scale_data(AsuData<std::complex<Real>>& asu_data,
+                  const AsuData<std::complex<Real>>& mask_data) const {
+    if (use_solvent && mask_data.size() != asu_data.size())
+      fail("scale_data(): mask data not prepared");
     bool use_scaling = (k_overall != 1 || !b_star.all_zero());
     for (size_t i = 0; i != asu_data.v.size(); ++i) {
       HklValue<std::complex<Real>>& hv = asu_data.v[i];
       if (use_solvent) {
-        assert(hv.hkl == mask_data.v[i].hkl);
+        if (hv.hkl != mask_data.v[i].hkl)
+          fail("scale_data(): data arrays don't match");
         double stol2 = cell.calculate_stol_sq(hv.hkl);
         hv.value += (Real) solvent_scale(stol2) * mask_data.v[i].value;
       }
@@ -55,61 +71,68 @@ struct BulkSolvent {
   }
 
   std::vector<double> get_parameters() const {
+    std::vector<double> ret;
+    ret.push_back(k_overall);
+    if (use_solvent) {
+      if (!fix_k_sol)
+        ret.push_back(k_sol);
+      if (!fix_b_sol)
+        ret.push_back(b_sol);
+    }
     switch (crystal_system) {
       case CrystalSystem::Triclinic:
       case CrystalSystem::Monoclinic: // ignoring that two (e.g. U13 and U23) are 0
-        return {k_overall,
-                b_star.u11, b_star.u22, b_star.u33,
-                b_star.u12, b_star.u13, b_star.u23};
+        ret.insert(ret.end(), {b_star.u11, b_star.u22, b_star.u33,
+                               b_star.u12, b_star.u13, b_star.u23});
+        break;
       case CrystalSystem::Orthorhombic:
-        return {k_overall, b_star.u11, b_star.u22, b_star.u33};
+        ret.insert(ret.end(), {b_star.u11, b_star.u22, b_star.u33});
+        break;
       case CrystalSystem::Tetragonal:
-        return {k_overall, b_star.u11, b_star.u33};
+        ret.insert(ret.end(), {b_star.u11, b_star.u33});
+        break;
       case CrystalSystem::Trigonal:
-        return {k_overall, b_star.u11, b_star.u12};
+        ret.insert(ret.end(), {b_star.u11, b_star.u12});
+        break;
       case CrystalSystem::Hexagonal:
-        return {k_overall, b_star.u11, b_star.u33, b_star.u12};
+        ret.insert(ret.end(), {b_star.u11, b_star.u33, b_star.u12});
+        break;
       case CrystalSystem::Cubic:
-        return {k_overall, b_star.u11};
+        ret.push_back(b_star.u11);
+        break;
     }
-    unreachable();
+    return ret;
   }
 
   void set_parameters(const std::vector<double>& p) {
     k_overall = p[0];
+    int n = 0;
+    if (use_solvent) {
+      if (!fix_k_sol)
+        k_sol = p[++n];
+      if (!fix_b_sol)
+        b_sol = p[++n];
+    }
     switch (crystal_system) {
       case CrystalSystem::Triclinic:
       case CrystalSystem::Monoclinic:
-        b_star = {p[1], p[2], p[3], p[4], p[5], p[6]}; break;
+        b_star = {p[n+1], p[n+2], p[n+3], p[n+4], p[n+5], p[n+6]}; break;
       case CrystalSystem::Orthorhombic:
-        b_star = {p[1], p[2], p[3], 0., 0., 0.}; break;
+        b_star = {p[n+1], p[n+2], p[n+3], 0., 0., 0.}; break;
       case CrystalSystem::Tetragonal:
-        b_star = {p[1], p[1], p[2], 0., 0., 0.}; break;
+        b_star = {p[n+1], p[n+1], p[n+2], 0., 0., 0.}; break;
       case CrystalSystem::Trigonal:
-        b_star = {p[1], p[1], p[1], p[2], p[2], p[2]}; break;
+        b_star = {p[n+1], p[n+1], p[n+1], p[n+2], p[n+2], p[n+2]}; break;
       case CrystalSystem::Hexagonal:
-        b_star = {p[1], p[1], p[2], p[3], 0., 0.}; break;
+        b_star = {p[n+1], p[n+1], p[n+2], p[n+3], 0., 0.}; break;
       case CrystalSystem::Cubic:
-        b_star = {p[1], p[1], p[1], 0., 0., 0.}; break;
+        b_star = {p[n+1], p[n+1], p[n+1], 0., 0., 0.}; break;
     }
-  }
-
-  int count_parameters() const {
-    switch (crystal_system) {
-      case CrystalSystem::Triclinic: return 1 + 6;
-      // for consistency - ignoring that two parameters (e.g. U13 and U23) are 0
-      case CrystalSystem::Monoclinic: return 1 + 6;
-      case CrystalSystem::Orthorhombic: return 1 + 3;
-      case CrystalSystem::Tetragonal: return 1 + 2;
-      case CrystalSystem::Trigonal: return 1 + 2;
-      case CrystalSystem::Hexagonal: return 1 + 3;
-      case CrystalSystem::Cubic: return 1 + 1;
-    }
-    unreachable();
   }
 
   void prepare_points(const AsuData<std::complex<Real>>& calc,
-                      const AsuData<std::array<Real,2>>& obs) {
+                      const AsuData<std::array<Real,2>>& obs,
+                      const AsuData<std::complex<Real>>& mask_data) {
     if (use_solvent && mask_data.size() != calc.size())
       fail("prepare_points(): mask data not prepared");
     std::complex<Real> fmask;
@@ -148,13 +171,6 @@ struct BulkSolvent {
     return k_overall * std::exp(-b_star.u11 * Vec3(hkl).length_sq());
   }
 
-  void set_b_overall(const SMat33<double>& b_overall) {
-    b_star = b_overall.transformed_by(cell.frac.mat);
-  }
-  SMat33<double> get_b_overall() const {
-    return b_star.transformed_by(cell.orth.mat);
-  }
-
   double get_scale_factor_aniso(const Miller& hkl) const {
     return k_overall * std::exp(-0.25 * b_star.r_u_r(hkl));
   }
@@ -181,7 +197,7 @@ struct BulkSolvent {
 
   void fit_parameters() {
     LevMar levmar;
-    levmar.fit(*this, points);
+    levmar.fit(*this);
   }
 
 
@@ -196,19 +212,31 @@ struct BulkSolvent {
     return values;
   }
 
-  void compute_values_and_derivatives(std::vector<double>& yy,
+  // the tile_* parameters allow tiling: computing derivatives from a span
+  // of points at one time, which limits memory usage.
+  void compute_values_and_derivatives(size_t tile_start, size_t tile_size,
+                                      std::vector<double>& yy,
                                       std::vector<double>& dy_da) const {
-    assert(yy.size() == points.size());
-    int npar = count_parameters();
-    assert(dy_da.size() == npar * points.size());
-    for (size_t i = 0; i != points.size(); ++i) {
-      Vec3 h(points[i].hkl);
+    assert(tile_size == yy.size());
+    size_t npar = dy_da.size() / tile_size;
+    assert(dy_da.size() == npar * tile_size);
+    int n = 1;
+    if (use_solvent)
+      n += int(!fix_k_sol) + int(!fix_b_sol);
+    for (size_t i = 0; i != tile_size; ++i) {
+      const Point& pt = points[tile_start+i];
+      Vec3 h(pt.hkl);
       double fcalc;
       if (use_solvent) {
-        double solv_scale = k_sol * std::exp(-b_sol * points[i].stol2);
-        fcalc = std::abs(points[i].fcmol + (Real)solv_scale * points[i].fmask);
+        double solv_scale = k_sol * std::exp(-b_sol * pt.stol2);
+        fcalc = std::abs(pt.fcmol + (Real)solv_scale * pt.fmask);
+        size_t offset = i * npar + 1;
+        if (!fix_k_sol)
+          dy_da[offset++] = 0; // TODO
+        if (!fix_b_sol)
+          dy_da[offset] = 0; // TODO
       } else {
-        fcalc = std::abs(points[i].fcmol);
+        fcalc = std::abs(pt.fcmol);
       }
       double fe = fcalc * std::exp(-0.25 * b_star.r_u_r(h));
       yy[i] = k_overall * fe;
@@ -221,7 +249,7 @@ struct BulkSolvent {
         -0.5 * yy[i] * (h.x * h.z),
         -0.5 * yy[i] * (h.y * h.z),
       };
-      double* dy_db = &dy_da[i * npar + 1];
+      double* dy_db = &dy_da[i * npar + n];
       switch (crystal_system) {
         case CrystalSystem::Triclinic:
         case CrystalSystem::Monoclinic:
