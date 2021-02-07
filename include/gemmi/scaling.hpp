@@ -63,10 +63,10 @@ struct Scaling {
         if (hv.hkl != mask_data.v[i].hkl)
           fail("scale_data(): data arrays don't match");
         double stol2 = cell.calculate_stol_sq(hv.hkl);
-        hv.value += (Real) solvent_scale(stol2) * mask_data.v[i].value;
+        hv.value += (Real)get_solvent_scale(stol2) * mask_data.v[i].value;
       }
       if (use_scaling)
-        hv.value *= (Real) get_scale_factor_aniso(hv.hkl);
+        hv.value *= (Real) get_overall_scale_factor(hv.hkl);
     }
   }
 
@@ -163,15 +163,15 @@ struct Scaling {
   }
 
 
-  double solvent_scale(double stol2) const {
+  double get_solvent_scale(double stol2) const {
     return k_sol * std::exp(-b_sol * stol2);
   }
 
-  double get_scale_factor_iso(const Miller& hkl) const {
+  double get_overall_isotropic_scale_factor(const Miller& hkl) const {
     return k_overall * std::exp(-b_star.u11 * Vec3(hkl).length_sq());
   }
 
-  double get_scale_factor_aniso(const Miller& hkl) const {
+  double get_overall_scale_factor(const Miller& hkl) const {
     return k_overall * std::exp(-0.25 * b_star.r_u_r(hkl));
   }
 
@@ -180,7 +180,7 @@ struct Scaling {
     double sx = 0, sy = 0, sxx = 0, sxy = 0;
     for (const Point& p : points) {
       double x = p.stol2;
-      double fcalc = std::abs(p.fcmol + (Real)solvent_scale(x) * p.fmask);
+      double fcalc = std::abs(p.fcmol + (Real)get_solvent_scale(x) * p.fmask);
       double y = std::log(static_cast<float>(p.fobs / fcalc));
       sx += x;
       sy += y;
@@ -206,8 +206,8 @@ struct Scaling {
     std::vector<double> values;
     values.reserve(points.size());
     for (const Point& p : points) {
-      double fcalc = std::abs(p.fcmol + (Real)solvent_scale(p.stol2) * p.fmask);
-      values.push_back(fcalc * (Real) get_scale_factor_aniso(p.hkl));
+      double fcalc = std::abs(p.fcmol + (Real)get_solvent_scale(p.stol2) * p.fmask);
+      values.push_back(fcalc * (Real) get_overall_scale_factor(p.hkl));
     }
     return values;
   }

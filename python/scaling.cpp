@@ -19,6 +19,8 @@ void add_scaling(py::module& m) {
     .def("prepare_points", &Scaling::prepare_points)
     .def("fit_isotropic_b_approximately", &Scaling::fit_isotropic_b_approximately)
     .def("fit_parameters", &Scaling::fit_parameters)
+    .def("get_overall_scale_factor", &Scaling::get_overall_scale_factor, py::arg("hkl"))
+    .def("get_solvent_scale", &Scaling::get_solvent_scale, py::arg("stol2"))
     .def("scale_data", &Scaling::scale_data)
     ;
 }
