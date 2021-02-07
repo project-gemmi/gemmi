@@ -12,6 +12,15 @@ namespace py = pybind11;
 using namespace gemmi;
 
 void add_symmetry(py::module& m) {
+  py::enum_<CrystalSystem>(m, "CrystalSystem")
+    .value("Triclinic", CrystalSystem::Triclinic)
+    .value("Monoclinic", CrystalSystem::Monoclinic)
+    .value("Orthorhombic", CrystalSystem::Orthorhombic)
+    .value("Tetragonal", CrystalSystem::Tetragonal)
+    .value("Trigonal", CrystalSystem::Trigonal)
+    .value("Hexagonal", CrystalSystem::Hexagonal)
+    .value("Cubic", CrystalSystem::Cubic)
+    ;
   py::class_<Op>(m, "Op")
     .def(py::init<>(&Op::identity))
     .def(py::init(&parse_triplet))
@@ -158,6 +167,7 @@ void add_symmetry(py::module& m) {
     .def("laue_str", &SpaceGroup::laue_str,
          "Returns name of the Laue class (for centrosymmetric groups "
          "the same as point_group_hm).")
+    .def("crystal_system", &SpaceGroup::crystal_system)
     .def("crystal_system_str", &SpaceGroup::crystal_system_str,
          "Returns lower-case name of the crystal system.")
     .def("is_reference_setting", &SpaceGroup::is_reference_setting)
