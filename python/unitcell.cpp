@@ -1,6 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/unitcell.hpp"
+#include "gemmi/tostr.hpp"  // tostr
 
 #include <cstdio>  // for snprintf
 #include <array>
@@ -61,7 +62,10 @@ template<typename T> void add_smat33(py::module& m, const char* name) {
     }, py::arg().noconvert())
     .def("transformed_by", &M::template transformed_by<double>)
     .def("calculate_eigenvalues", &M::calculate_eigenvalues)
-    ;
+    .def("__repr__", [name](const M& m) {
+        return tostr("<gemmi.", name, '(', m.u11, ", ", m.u22, ", ", m.u33, ", ",
+                     m.u12, ", ", m.u13, ", ", m.u23, + ")>");
+    });
 }
 
 template<typename T> void add_box(py::module& m, const char* name) {
