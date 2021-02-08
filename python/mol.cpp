@@ -222,7 +222,14 @@ void add_mol(py::module& m) {
     .def("__repr__", [](const Model& self) {
         return tostr("<gemmi.Model ", self.name, " with ",
                      self.chains.size(), " chain(s)>");
-    });
+    })
+    .def("transform", [](Model& self, const Transform& tr) {
+        for (CRA &cra : self.all()) {
+          cra.atom->pos = Position(tr.apply(cra.atom->pos));
+          if (cra.atom->aniso.nonzero())
+            cra.atom->aniso = cra.atom->aniso.transformed_by<float>(tr.mat);
+        }
+     }, py::arg("tr"));
 
   py::class_<UniqProxy<Residue>>(m, "FirstConformerRes")
     .def("__iter__", [](UniqProxy<Residue>& self) {
