@@ -269,6 +269,14 @@ struct Grid : GridBase<T> {
     return {u, v, w, &data[index_s(u, v, w)]};
   }
 
+  Point get_nearest_point(const Fractional& f) {
+    return get_point(iround(f.x * nu), iround(f.y * nv), iround(f.z * nw));
+  }
+
+  Point get_nearest_point(const Position& pos) {
+    return get_nearest_point(unit_cell.fractionalize(pos));
+  }
+
   Position point_to_position(const Point& p) const {
     return unit_cell.orthogonalize(this->point_to_fractional(p));
   }

@@ -116,7 +116,7 @@ The point that you get when iterating over grid has four properties:
   (0, 0, 0, 0.125)
 
 The point can also be converted to index and to fractional and orthoghonal
-c oordinates, as will be demonstrated later.
+coordinates, as will be demonstrated later.
 
 .. _buffer_protocol:
 
@@ -194,17 +194,22 @@ This allows us to translate location on the grid to position in Angstroms:
   >>> grid.point_to_position(point)
   <gemmi.Position(25.4368, 22.5, 22.3075)>
 
+and the other way around:
 
-And the other way around.
-We can translate position in Angstroms to the location in grid,
-and get an interpolated value (with trilinear interpolation) at any point:
+.. doctest::
+
+  >>> grid.get_nearest_point(_)
+  <gemmi.FloatGridPoint (6, 6, 6) -> 0>
+
+We can also get an interpolated value (with trilinear interpolation)
+of the grid at any position:
 
 .. doctest::
 
   >>> grid.interpolate_value(gemmi.Position(2, 3, 4))
   2.0333263874053955
 
-This function can also take fractional position:
+or using fractional coordinates:
 
 .. doctest::
 
