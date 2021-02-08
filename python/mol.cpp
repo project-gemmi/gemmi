@@ -224,12 +224,9 @@ void add_mol(py::module& m) {
                      self.chains.size(), " chain(s)>");
     })
     .def("transform", [](Model& self, const Transform& tr) {
-        for (CRA &cra : self.all()) {
-          cra.atom->pos = Position(tr.apply(cra.atom->pos));
-          if (cra.atom->aniso.nonzero())
-            cra.atom->aniso = cra.atom->aniso.transformed_by<float>(tr.mat);
-        }
-     }, py::arg("tr"));
+        for (CRA& cra : self.all())
+          transform_atom(*cra.atom, tr);
+    }, py::arg("tr"));
 
   py::class_<UniqProxy<Residue>>(m, "FirstConformerRes")
     .def("__iter__", [](UniqProxy<Residue>& self) {

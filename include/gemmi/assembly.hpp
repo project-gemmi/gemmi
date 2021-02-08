@@ -77,6 +77,12 @@ struct ChainNameGenerator {
   }
 };
 
+inline void transform_atom(Atom& atom, const Transform& tr) {
+  atom.pos = Position(tr.apply(atom.pos));
+  if (atom.aniso.nonzero())
+    atom.aniso = atom.aniso.transformed_by<float>(tr.mat);
+}
+
 inline void ensure_unique_chain_name(const Model& model, Chain& chain) {
   ChainNameGenerator namegen(HowToNameCopiedChain::Short);
   for (const Chain& ch : model.chains)
@@ -124,7 +130,7 @@ inline Model make_assembly(const Assembly& assembly, const Model& model,
             }
             for (Residue& res : new_chain.residues) {
               for (Atom& a : res.atoms)
-                a.pos = Position(oper.transform.apply(a.pos));
+                transform_atom(a, oper.transform);
               if (!res.subchain.empty())
                 res.subchain = new_chain.name + ":" + res.subchain;
             }
@@ -151,7 +157,7 @@ inline Model make_assembly(const Assembly& assembly, const Model& model,
             Residue& new_res = new_chain->residues.back();
             new_res.subchain = new_chain->name + ":" + res.subchain;
             for (Atom& a : new_res.atoms)
-              a.pos = Position(oper.transform.apply(a.pos));
+              transform_atom(a, oper.transform);
           }
         }
       }
@@ -236,11 +242,8 @@ inline void expand_ncs(gemmi::Structure& st, HowToNameCopiedChain how) {
           new_chain.name = namegen.make_new_name(new_chain.name, (int)i+1);
 
           for (gemmi::Residue& res : new_chain.residues) {
-            for (gemmi::Atom& a : res.atoms) {
-              a.pos = op.apply(a.pos);
-              if (a.aniso.nonzero())
-                a.aniso = a.aniso.transformed_by<float>(op.tr.mat);
-            }
+            for (gemmi::Atom& a : res.atoms)
+              transform_atom(a, op.tr);
             if (!res.subchain.empty())
               res.subchain = new_chain.name + ":" + res.subchain;
             if (how == HowToNameCopiedChain::Dup)
