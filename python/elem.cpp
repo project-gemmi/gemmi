@@ -66,6 +66,7 @@ void add_elem(py::module& m) {
     .def_property_readonly("covalent_r", &Element::covalent_r)
     .def_property_readonly("vdw_r", &Element::vdw_r)
     .def_property_readonly("atomic_number", &Element::atomic_number)
+    .def_property_readonly("is_hydrogen", &Element::is_hydrogen)
     .def_property_readonly("is_metal", &Element::is_metal)
     .def_property_readonly("it92", [](const Element& self) {
         return IT92::get_ptr(self.elem);
