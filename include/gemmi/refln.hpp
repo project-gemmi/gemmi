@@ -219,6 +219,7 @@ struct ReflnDataProxy {
              get_int(offset + hkl_cols_[1]),
              get_int(offset + hkl_cols_[2])}};
   }
+  size_t column_index(const std::string& label) const { return rb_.get_column_index(label); }
 private:
   const cif::Loop& loop() const { rb_.check_ok(); return *rb_.default_loop; }
   int get_int(size_t n) const { return cif::as_int(loop().values[n]); }

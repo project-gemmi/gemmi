@@ -107,6 +107,18 @@ void add_hkl(py::module& m) {
        py::arg("exact_size")=std::array<int,3>{{0,0,0}},
        py::arg("sample_rate")=0.,
        py::arg("order")=AxisOrder::XYZ)
+    .def("get_f_phi", [](const ReflnBlock& self, const std::string& f_col,
+                                                 const std::string& phi_col) {
+        auto asu_data = new AsuData<std::complex<float>>;
+        asu_data->load_values<2>(gemmi::ReflnDataProxy{self}, {f_col, phi_col});
+        return asu_data;
+    }, py::arg("f"), py::arg("phi"))
+    .def("get_f_sigma", [](const ReflnBlock& self, const std::string& f_col,
+                                                   const std::string& sigma_col) {
+        auto asu_data = new AsuData<ValueSigma<float>>;
+        asu_data->load_values<2>(gemmi::ReflnDataProxy{self}, {f_col, sigma_col});
+        return asu_data;
+    }, py::arg("f"), py::arg("sigma"))
     .def("is_unmerged", &ReflnBlock::is_unmerged)
     .def("use_unmerged", &ReflnBlock::use_unmerged)
     .def("__bool__", [](const ReflnBlock& self) { return self.ok(); })

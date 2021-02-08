@@ -24,6 +24,12 @@ struct HklValue {
   bool operator<(const HklValue& o) const { return operator<(o.hkl); }
 };
 
+template<typename T>
+struct ValueSigma {
+  using value_type = T;
+  T value, sigma;
+};
+
 namespace impl {
 template<typename T>
 void move_to_asu(const GroupOps&, const Miller& hkl, int, HklValue<T>& hkl_value) {
@@ -102,7 +108,12 @@ private:
   static void set_value_from_array(T& val, const T& nums) { val = nums; }
   template<typename R>
   static void set_value_from_array(std::complex<R>& val, const std::array<R,2>& nums) {
-    val = std::polar(nums[0], gemmi::rad(nums[1]));
+    val = std::polar(nums[0], (R)gemmi::rad(nums[1]));
+  }
+  template<typename R>
+  static void set_value_from_array(ValueSigma<R>& val, const std::array<R,2>& nums) {
+    val.value = nums[0];
+    val.sigma = nums[1];
   }
 };
 

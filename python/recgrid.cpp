@@ -11,6 +11,13 @@
 namespace py = pybind11;
 using namespace gemmi;
 
+namespace gemmi {
+  std::ostream& operator<< (std::ostream& os, const ValueSigma<float>& vs) {
+    os << vs.value << " +/- " << vs.sigma;
+    return os;
+  }
+}
+
 template<typename T, typename F>
 py::array_t<float> make_new_column(const AsuData<T>& asu_data, F f) {
   if (!asu_data.unit_cell().is_crystal())
@@ -39,8 +46,7 @@ template<> void add_to_asu_data(py::class_<AsuData<std::complex<float>>>& cl) {
 }
 
 template<typename T>
-void add_recgrid(py::module& m, const std::string& name) {
-
+void add_asudata(py::module& m, const std::string& name) {
   py::class_<HklValue<T>>(m, (name + "HklValue").c_str())
     .def_readonly("hkl", &HklValue<T>::hkl)
     .def_readonly("value", &HklValue<T>::value)
@@ -49,9 +55,6 @@ void add_recgrid(py::module& m, const std::string& name) {
                      self.hkl[0], ',', self.hkl[1], ',', self.hkl[2], ") ",
                      self.value, '>');
     });
-
-  using RecGr = ReciprocalGrid<T>;
-  py::class_<RecGr, GridBase<T>> recgrid(m, ("Reciprocal" + name + "Grid").c_str());
 
   using AsuData = AsuData<T>;
   py::class_<AsuData> asu_data(m, (name + "AsuData").c_str());
@@ -114,6 +117,15 @@ void add_recgrid(py::module& m, const std::string& name) {
         return tostr("<gemmi.", name, "AsuData with ", self.v.size(), " values>");
     });
     add_to_asu_data(asu_data);
+}
+
+template<typename T>
+void add_recgrid(py::module& m, const std::string& name) {
+
+  using RecGr = ReciprocalGrid<T>;
+  py::class_<RecGr, GridBase<T>> recgrid(m, ("Reciprocal" + name + "Grid").c_str());
+
+  add_asudata<T>(m, name);
 
   recgrid
     .def_readonly("half_l", &RecGr::half_l)
@@ -154,7 +166,15 @@ void add_recgrid(py::module& m, const std::string& name) {
 }
 
 void add_recgrid(py::module& m) {
+  using VS = ValueSigma<float>;
+  py::class_<VS>(m, "ValueSigma")
+    .def_readwrite("value", &VS::value)
+    .def_readwrite("sigma", &VS::sigma)
+    .def("__repr__", [](const VS& self) {
+        return tostr("<gemmi.ValueSigma(", self.value, ", ", self.sigma, ")>");
+    });
   add_recgrid<int8_t>(m, "Int8");
   add_recgrid<float>(m, "Float");
   add_recgrid<std::complex<float>>(m, "Complex");
+  add_asudata<VS>(m, "ValueSigma");
 }

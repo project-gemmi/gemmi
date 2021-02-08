@@ -131,14 +131,14 @@ struct Scaling {
   }
 
   void prepare_points(const AsuData<std::complex<Real>>& calc,
-                      const AsuData<std::array<Real,2>>& obs,
+                      const AsuData<ValueSigma<Real>>& obs,
                       const AsuData<std::complex<Real>>& mask_data) {
     if (use_solvent && mask_data.size() != calc.size())
       fail("prepare_points(): mask data not prepared");
     std::complex<Real> fmask;
     points.reserve(std::min(calc.size(), obs.size()));
     auto c = calc.v.begin();
-    for (const HklValue<std::array<Real,2>>& o : obs.v) {
+    for (const HklValue<ValueSigma<Real>>& o : obs.v) {
       if (c->hkl != o.hkl) {
         while (*c < o.hkl) {
           ++c;
@@ -155,7 +155,7 @@ struct Scaling {
         fmask = m.value;
       }
       double stol2 = cell.calculate_stol_sq(o.hkl);
-      points.push_back({o.hkl, stol2, c->value, fmask, o.value[0], o.value[1]});
+      points.push_back({o.hkl, stol2, c->value, fmask, o.value.value, o.value.sigma});
       ++c;
       if (c == calc.v.end())
         break;

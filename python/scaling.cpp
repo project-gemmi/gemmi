@@ -1,12 +1,13 @@
 // Copyright 2020 Global Phasing Ltd.
 
 #include "common.h"
+#include <pybind11/stl.h>
 #include "gemmi/scaling.hpp"
 
 namespace py = pybind11;
 
 void add_scaling(py::module& m) {
-  using Scaling = gemmi::Scaling<double>;
+  using Scaling = gemmi::Scaling<float>;
   py::class_<Scaling>(m, "Scaling")
     .def(py::init<const gemmi::UnitCell&, const gemmi::SpaceGroup*>())
     .def_readwrite("cell", &Scaling::cell)

@@ -193,7 +193,7 @@ void process_with_fft(const gemmi::Structure& st,
                       const gemmi::SolventMasker& masker,
                       gemmi::Scaling<Real>& scaling,
                       bool verbose, const RefFile& file,
-                      const gemmi::AsuData<std::array<Real,2>>& scale_to,
+                      const gemmi::AsuData<gemmi::ValueSigma<Real>>& scale_to,
                       const char* map_file) {
   // prepare electron density map
   if (verbose) {
@@ -552,7 +552,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
     file.phi_label = "PHIC";
 
   using Real = float;
-  gemmi::AsuData<std::array<Real,2>> scale_to;
+  gemmi::AsuData<gemmi::ValueSigma<Real>> scale_to;
   if (p.options[ScaleTo]) {
     std::string path = p.options[ScaleTo].arg;
     std::string flabel = "F";
@@ -572,7 +572,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
     if (siglabel.empty()) {
       scale_to.load_values<2>(gemmi::MtzDataProxy{mtz}, {flabel, flabel});
       for (auto& hkl_value : scale_to.v)
-        hkl_value.value[1] = std::sqrt(hkl_value.value[1]);
+        hkl_value.value.sigma = std::sqrt(hkl_value.value.sigma);
     } else {
       scale_to.load_values<2>(gemmi::MtzDataProxy{mtz}, {flabel, siglabel});
     }
