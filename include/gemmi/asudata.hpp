@@ -93,7 +93,7 @@ struct AsuData {
     for (size_t i = 0; i < proxy.size(); i += proxy.stride()) {
       std::array<Val, N> nums;
       for (int j = 0; j < N; ++j)
-        nums[j] = proxy.get_num(i + cols[j]);
+        nums[j] = (Val) proxy.get_num(i + cols[j]);
       if (!std::any_of(nums.begin(), nums.end(), [](Val f) { return std::isnan(f); })) {
         v.emplace_back();
         v.back().hkl = proxy.get_hkl(i);

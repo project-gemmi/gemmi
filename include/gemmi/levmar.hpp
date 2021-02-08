@@ -189,12 +189,12 @@ private:
     std::vector<double> dy_da;
     size_t n = target.points.size();
     for (size_t tstart = 0; tstart < n; tstart += kMaxTileSize) {
-      int tsize = std::min(n - tstart, kMaxTileSize);
+      size_t tsize = std::min(n - tstart, kMaxTileSize);
       std::vector<double> yy(tsize, 0.);
       dy_da.resize(tsize * na);
       std::fill(dy_da.begin(), dy_da.end(), 0.);
       target.compute_values_and_derivatives(tstart, tsize, yy, dy_da);
-      for (int i = 0; i != tsize; ++i) {
+      for (size_t i = 0; i != tsize; ++i) {
         double weight = target.points[tstart + i].get_weight();
         double dy_sig = weight * (target.points[tstart + i].get_y() - yy[i]);
         double* t = &dy_da[i * na];

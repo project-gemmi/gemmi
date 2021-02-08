@@ -961,9 +961,9 @@ object. In this example we exclude low-resolution data:
 
   >>> d = asu_data.make_d_array()
   >>> new_data = gemmi.ComplexAsuData(asu_data.unit_cell,
-  ...                                                asu_data.spacegroup,
-  ...                                                asu_data.miller_array[d<8],
-  ...                                                asu_data.value_array[d<8])
+  ...                                 asu_data.spacegroup,
+  ...                                 asu_data.miller_array[d<8],
+  ...                                 asu_data.value_array[d<8])
   >>> new_data
   <gemmi.ComplexAsuData with 399 values>
   >>> hkl_grid = new_data.get_f_phi_on_grid([54, 6, 18])

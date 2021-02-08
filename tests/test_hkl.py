@@ -153,5 +153,25 @@ class TestSfMmcif(unittest.TestCase):
         for order in (gemmi.AxisOrder.XYZ, gemmi.AxisOrder.ZYX):
             fft_test(self, rblock, 'pdbx_FWT', 'pdbx_PHWT', size)
 
+    def test_scaling(self):
+        doc = gemmi.cif.read(full_path('r5wkdsf.ent'))
+        rblock = gemmi.as_refln_blocks(doc)[0]
+        fobs_data = rblock.get_f_sigma('F_meas_au', 'F_meas_sigma_au')
+
+        # without mask
+        fc_data = rblock.get_f_phi('F_calc_au', 'phase_calc')
+        scaling = gemmi.Scaling(fc_data.unit_cell, fc_data.spacegroup)
+        scaling.prepare_points(fc_data, fobs_data)
+        scaling.fit_isotropic_b_approximately()
+        scaling.fit_parameters()
+        #print(scaling.k_overall, scaling.b_overall)
+        scaling.scale_data(fc_data)
+
+        # with mask
+        # TODO
+        #fc_data = rblock.get_f_phi('F_calc_au', 'phase_calc')
+        #st = gemmi.read_structure(full_path('5wkd.pdb'))
+        #fmask = ...
+
 if __name__ == '__main__':
     unittest.main()
