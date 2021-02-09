@@ -6,6 +6,7 @@
 #include <iostream>  // for cout
 #include <gemmi/gzread.hpp>
 #include <gemmi/chemcomp.hpp>  // for ChemComp
+#include <gemmi/mmcif.hpp>     // for make_structure
 #include <gemmi/polyheur.hpp>  // for remove_hydrogens, setup_entities
 #include <gemmi/to_cif.hpp>    // for write_cif_to_file
 #include <gemmi/to_mmcif.hpp>  // for make_mmcif_document
@@ -70,9 +71,19 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   if (p.options[Verbose])
     std::printf("Reading coordinates from %s\n", input.c_str());
+  gemmi::CoorFormat input_format = gemmi::coor_format_from_ext_gz(input);
+  gemmi::CoorFormat output_format = gemmi::coor_format_from_ext_gz(output);
+  bool preserve_doc = (input_format == gemmi::CoorFormat::Mmcif &&
+                       output_format == gemmi::CoorFormat::Mmcif);
   try {
-    gemmi::Structure st = gemmi::read_structure_gz(input,
-                                            gemmi::CoorFormat::UnknownAny);
+    gemmi::Structure st;
+    cif::Document doc;
+    if (preserve_doc) {
+      doc = gemmi::read_cif_gz(input);
+      st = gemmi::make_structure(doc);
+    } else {
+      st = gemmi::read_structure_gz(input, input_format);
+    }
     if (st.models.empty() || st.models[0].chains.empty()) {
       std::fprintf(stderr, "No atoms in the input file. Wrong format?\n");
       return 1;
@@ -104,11 +115,18 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (p.options[Verbose])
       std::printf("Writing coordinates to %s\n", output.c_str());
     gemmi::Ofstream os(output, &std::cout);
-    if (gemmi::coor_format_from_ext_gz(output) == gemmi::CoorFormat::Pdb)
+    if (gemmi::coor_format_from_ext_gz(output) == gemmi::CoorFormat::Pdb) {
       gemmi::write_pdb(st, os.ref());
-    else
-      cif::write_cif_to_stream(os.ref(), gemmi::make_mmcif_document(st),
-                               cif::Style::PreferPairs);
+    } else {
+      if (preserve_doc) {
+        gemmi::MmcifOutputGroups groups(false);
+        groups.atoms = true;
+        gemmi::update_mmcif_block(st, doc.blocks[0], groups);
+      } else {
+        doc = gemmi::make_mmcif_document(st);
+      }
+      cif::write_cif_to_stream(os.ref(), doc, cif::Style::PreferPairs);
+    }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
