@@ -56,13 +56,18 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.require_positional_args(2);
   const char* monomer_dir = p.options[Monomers] ? p.options[Monomers].arg
                                                 : std::getenv("CLIBD_MON");
-  if (monomer_dir == nullptr || *monomer_dir == '\0') {
-    std::fprintf(stderr, "Set $CLIBD_MON or use option --monomers.\n");
-    return 1;
-  }
   std::string input = p.coordinate_input_file(0);
   std::string output = p.nonOption(1);
   p.check_exclusive_pair(KeepH, RemoveH);
+
+  gemmi::HydrogenChange h_change = gemmi::HydrogenChange::ReAddButWater;
+  if (p.options[RemoveH])
+    h_change = gemmi::HydrogenChange::Remove;
+  else if (p.options[KeepH])
+    h_change = gemmi::HydrogenChange::Shift;
+  else if (p.options[Water])
+    h_change = gemmi::HydrogenChange::ReAdd;
+
   if (p.options[Verbose])
     std::printf("Reading coordinates from %s\n", input.c_str());
   try {
@@ -76,22 +81,23 @@ int GEMMI_MAIN(int argc, char **argv) {
     size_t initial_h = 0;
     if (p.options[Verbose])
       initial_h = gemmi::count_hydrogen_sites(st);
-    std::vector<std::string> res_names = st.models[0].get_all_residue_names();
-    if (p.options[Verbose])
-      std::printf("Reading %zu monomers and all links from %s\n",
-                  res_names.size(), input.c_str());
-    gemmi::MonLib monlib = gemmi::read_monomer_lib(monomer_dir, res_names,
-                                                   gemmi::read_cif_gz);
-    gemmi::HydrogenChange h_change = gemmi::HydrogenChange::ReAddButWater;
-    if (p.options[RemoveH])
-      h_change = gemmi::HydrogenChange::Remove;
-    else if (p.options[KeepH])
-      h_change = gemmi::HydrogenChange::Shift;
-    else if (p.options[Water])
-      h_change = gemmi::HydrogenChange::ReAdd;
-    for (size_t i = 0; i != st.models.size(); ++i)
-      // preparing topology modifies hydrogens in the model
-      prepare_topology(st, monlib, i, h_change, p.options[Sort]);
+    if (h_change == gemmi::HydrogenChange::Remove) {
+      gemmi::remove_hydrogens(st);
+    } else {
+      if (monomer_dir == nullptr || *monomer_dir == '\0') {
+        std::fprintf(stderr, "Set $CLIBD_MON or use option --monomers.\n");
+        return 1;
+      }
+      std::vector<std::string> res_names = st.models[0].get_all_residue_names();
+      if (p.options[Verbose])
+        std::printf("Reading %zu monomers and all links from %s\n",
+                    res_names.size(), input.c_str());
+      gemmi::MonLib monlib = gemmi::read_monomer_lib(monomer_dir, res_names,
+                                                     gemmi::read_cif_gz);
+      for (size_t i = 0; i != st.models.size(); ++i)
+        // preparing topology modifies hydrogens in the model
+        prepare_topology(st, monlib, i, h_change, p.options[Sort]);
+    }
     if (p.options[Verbose])
       std::printf("Hydrogen site count: %zu in input, %zu in output.\n",
                   initial_h, gemmi::count_hydrogen_sites(st));
