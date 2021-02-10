@@ -127,7 +127,7 @@ void add_grid(py::module& m, const std::string& name) {
                   [](const GrPoint& self) { return *self.value; },
                   [](GrPoint& self, T x) { *self.value = x; })
     .def("__repr__", [=](const GrPoint& self) {
-        return tostr("<gemmi.", name, "Point (", self.u, ", ", self.v, ", ",
+        return tostr("<gemmi.", name, ".Point (", self.u, ", ", self.v, ", ",
                      self.w, ") -> ", +*self.value, '>');
     });
     ;

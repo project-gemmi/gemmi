@@ -7,25 +7,32 @@ Grids and maps
 Volumetric grid
 ===============
 
+Introduction
+------------
+
 Macromolecular models are often accompanied by 3D data on an evenly spaced,
-rectangular grid.
+rectangular grid (but note that the spacing in different directions may differ).
 The data may represent electron density, a mask of the protein area,
 or any other scalar data.
 
 In Gemmi such a data is stored in a class called Grid.
 Actually, it is a set of classes for storing
 different types of data: floating point numbers, integers or boolean masks.
-These classes also store:
 
-* unit cell dimensions (so the grid nodes can be assigned atomic coordinates),
-* and crystallographic symmetry (that determines which points on the grid
-  are equivalent under the symmetry).
+Grid dimension are given in variables nu, nv, nw.
+The data layout is Fortran-style contiguous, i.e. point (1,1,1) is followed
+by (2,1,1).
+
+Grid classes also store:
+
+* unit cell dimensions (to know Cartesian coordinates of grid nodes),
+* and crystallographic symmetry (to know symmetry-equivalent grid nodes).
 
 If the symmetry is not set (or is set to P1)
-then we effectively have a box with periodic boundary conditions.
+we effectively have a box with periodic boundary conditions (PBC).
 
 C++
----
+~~~
 
 The ``gemmi/grid.hpp`` header defines::
 
@@ -41,46 +48,31 @@ The data point can be accessed with::
   T Grid<T>::get_value(int u, int v, int w) const
   void Grid<T>::set_value(int u, int v, int w, T x)
 
-The unit cell and symmetry::
-
-  UnitCell unit_cell;
-  const SpaceGroup* spacegroup;
-
-can be accessed directly, except that ``unit_cell`` should
-be set using ``Grid<T>::set_unit_cell()``.
-
-Unit cell parameters enable conversion between coordinates and grid
-points. To get an interpolated value at any position (in either fractional
-or orthogonal coordinates), use::
-
-  T Grid<T>::interpolate_value(const Fractional& fctr) const
-  T Grid<T>::interpolate_value(const Position& ctr) const
-
-We also have a few more specialized functions.
-For example, a member function used primarily for masking area around atoms::
-
-  void Grid<T>::set_points_around(const Position& ctr, double radius, T value)
-
-To make it more efficient, the function above does not consider symmetry.
-At the end, we should call one of the *symmetrizing* functions.
-In this case, if two symmetry-related grid point have values 0 and 1
-we want to set both to 1. It can be done by calling::
-
-  void Grid<T>::symmetrize_max()
-
-This illustrates how the Grid is meant to be used.
-For more information consult the source code or contact the author.
-
 Python
-------
+~~~~~~
 
-Let us create a new grid:
+In Python we have classes FloatGrid (for maps), Int8Grid (for masks),
+and ComplexGrid (that stores complex numbers; not widely used,
+but the CCP4 map format may contain such data).
+
+The constructor may take grid dimensions or a NumPy array as an argument:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> import gemmi
   >>>
   >>> grid = gemmi.FloatGrid(12, 12, 12)
+  >>> grid.nu, grid.nv, grid.nw
+  (12, 12, 12)
+  >>> grid2 = gemmi.FloatGrid(numpy.zeros((30, 31, 32), dtype=numpy.float32))
+  >>> grid2.nu, grid2.nv, grid2.nw
+  (30, 31, 32)
+
+Values are accessed with functions get_value() and set_value():
+
+.. doctest::
+
   >>> grid.set_value(1, 1, 1, 7.0)
   >>> grid.get_value(1, 1, 1)
   7.0
@@ -88,39 +80,9 @@ Let us create a new grid:
   >>> grid.get_value(-11, 13, 25)
   7.0
 
-The main advantage of Grid over generic 3D arrays is that
-it understands crystallographic symmetry.
-
-.. doctest::
-
-  >>> grid.spacegroup = gemmi.find_spacegroup_by_name('P2')
-  >>> grid.set_value(0, 0, 0, 0.125)  # a special position
-  >>> grid.sum()  # for now only two points: 7.0 + 0.125
-  7.125
-  >>> grid.symmetrize_max()  # applying symmetry
-  >>> grid.sum()  # one point got duplicated, the other is on rotation axis
-  14.125
-  >>> for point in grid:
-  ...   if point.value != 0.: print(point)
-  <gemmi.FloatGridPoint (0, 0, 0) -> 0.125>
-  <gemmi.FloatGridPoint (1, 1, 1) -> 7>
-  <gemmi.FloatGridPoint (11, 1, 11) -> 7>
-
-The point that you get when iterating over grid has four properties:
-
-.. doctest::
-
-  >>> grid.get_point(0, 0, 0)
-  <gemmi.FloatGridPoint (0, 0, 0) -> 0.125>
-  >>> _.u, _.v, _.w, _.value
-  (0, 0, 0, 0.125)
-
-The point can also be converted to index and to fractional and orthoghonal
-coordinates, as will be demonstrated later.
-
 .. _buffer_protocol:
 
-The data can be also acesssed through the
+The data can be also accessed through the
 `buffer protocol <https://docs.python.org/3/c-api/buffer.html>`_.
 It means that you can use it as a NumPy array (Fortran-style contiguous)
 without copying the data:
@@ -135,20 +97,175 @@ without copying the data:
   >>> array.shape
   (12, 12, 12)
   >>> numpy.argwhere(array == 7.0)
-  array([[ 1,  1,  1],
-         [11,  1, 11]])
+  array([[1, 1, 1]])
 
 (It does not make gemmi dependent on NumPy -- gemmi talks with NumPy
 through the buffer protocol, and it can talk with any other Python library
 that supports this protocol.)
 
-We may be interested only in selected part of the map.
-For this, we have MaskedGrid that combines two Grid objects,
+Symmetry
+--------
+
+The main advantage that Grid has over a generic 3D array is that
+it understands crystallographic symmetry.
+After setting the symmetry we can use a family of *symmetrize* functions
+that performs operations on symmetry-equivalent grid points.
+For example, we can set all equivalent points to the value calculated
+as a minimum, maximum or a sum of values of the equivalent points.
+
+In C++ we directly set the spacegroup property::
+
+  const SpaceGroup* spacegroup;
+
+Similarly in Python:
+
+.. doctest::
+
+  >>> grid.spacegroup = gemmi.find_spacegroup_by_name('P2')
+  
+Now let us use one of the symmetrizing functions:
+
+.. doctest::
+
+  >>> # the point (1, 1, 1) was already set to 7.0
+  >>> grid.set_value(0, 0, 0, 0.125)  # a special position
+  >>> grid.sum()  # for now only two points: 7.0 + 0.125
+  7.125
+  >>> grid.symmetrize_max()  # applying symmetry
+  >>> grid.sum()  # one point got duplicated, the other is on rotation axis
+  14.125
+
+
+Unit cell
+---------
+
+The unit cell parameters (in a member variable ``unit_cell``: UnitCell),
+enable conversion between coordinates and grid points.
+
+The unit cell should be set using ``Grid<T>::set_unit_cell()``,
+which in addition to setting ``unit_cell`` sets also ``spacing``,
+the spacing between grid points that is precalculated for efficiency.
+
+.. doctest::
+
+  >>> grid.set_unit_cell(gemmi.UnitCell(45, 45, 45, 90, 82.5, 90))
+  >>> grid.unit_cell
+  <gemmi.UnitCell(45, 45, 45, 90, 82.5, 90)>
+  >>> grid.spacing  #doctest: +ELLIPSIS
+  (3.7179..., 3.75..., 3.7179...)
+
+Grid point
+----------
+
+Grid contains a little helper class (Grid<T>::Point in C++)
+that bundles grid point coordinates (u, v, w: int) and a pointer
+to the value in grid (value). This bundle is obtained with getter:
+
+.. doctest::
+
+  >>> grid.get_point(0, 0, 0)
+  <gemmi.FloatGrid.Point (0, 0, 0) -> 0.125>
+  >>> _.u, _.v, _.w, _.value
+  (0, 0, 0, 0.125)
+
+or when iterating over grid points:
+
+.. doctest::
+
+  >>> for point in grid:
+  ...   if point.value != 0.: print(point)
+  <gemmi.FloatGrid.Point (0, 0, 0) -> 0.125>
+  <gemmi.FloatGrid.Point (1, 1, 1) -> 7>
+  <gemmi.FloatGrid.Point (11, 1, 11) -> 7>
+
+The point can be converted to its index (position in the array):
+
+.. doctest::
+
+  >>> point = grid.get_point(6, 6, 6)
+  >>> grid.point_to_index(point)
+  942
+
+to fractional coordinates:
+
+.. doctest::
+
+  >>> grid.point_to_fractional(point)
+  <gemmi.Fractional(0.5, 0.5, 0.5)>
+
+and to orthogonal (Cartesian) coordinates in Angstroms:
+
+.. doctest::
+
+  >>> grid.point_to_position(point)
+  <gemmi.Position(25.4368, 22.5, 22.3075)>
+
+The other way around, we can find the grid point nearest to a position:
+
+.. doctest::
+
+  >>> grid.get_nearest_point(_)
+  <gemmi.FloatGrid.Point (6, 6, 6) -> 0>
+
+
+Interpolation
+-------------
+
+To get a value corresponding to an arbitrary position,
+we use trilinear interpolation of the 8 nearest nodes.
+
+**C++**
+
+::
+
+  T Grid<T>::interpolate_value(const Fractional& fctr) const
+  T Grid<T>::interpolate_value(const Position& ctr) const
+
+**Python**
+
+.. doctest::
+
+  >>> grid.interpolate_value(gemmi.Fractional(1/24, 1/24, 1/24))
+  0.890625
+  >>> grid.interpolate_value(gemmi.Position(2, 3, 4))
+  2.0333263874053955
+
+If you have a large number of points, making a Python function call
+each time would be slow.
+If these points are on a regular 3D grid (which may not be aligned
+with our grid) call ``interpolate_values()`` (with s at the end).
+It takes as arguments a 3D numpy array (for storing the results)
+and a :ref:`Transform <transform>` that relates indices of the array
+to positions in the grid:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> # first we create a numpy array of the same type as the grid
+  >>> arr = numpy.zeros([32, 32, 32], dtype=numpy.float32)
+  >>> # then we setup a transformation (array indices) -> (position [A]).
+  >>> tr = gemmi.Transform()
+  >>> tr.mat.fromlist([[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]])
+  >>> tr.vec.fromlist([1, 2, 3])
+  >>> # finally we calculate interpolated values
+  >>> grid.interpolate_values(arr, tr)
+  >>> arr[10, 10, 10]  # -> corresponds to Position(2, 3, 4)
+  2.0333264
+
+(If your points are not on the grid -- get in touch -- there might be
+another way.)
+
+
+ASU and MaskedGrid
+------------------
+
+Sometimes we want to focus on a part of the grid only.
+For this, we have class MaskedGrid that combines two Grid objects,
 using one of them as a mask for the other.
 
 When an element of the mask is 0 (false), the corresponding element
-of the other grid is unmasked and is to be used. The same convention
-is used in numpy MaskedArray.
+of the other grid is unmasked and is to be used. This is the same convention
+as in NumPy MaskedArray.
 
 The primary use for MaskedGrid is working with asymmetric unit (asu) only:
 
@@ -165,79 +282,22 @@ The primary use for MaskedGrid is working with asymmetric unit (asu) only:
   7.125
   >>> for point in asu:
   ...   if point.value != 0: print(point)
-  <gemmi.FloatGridPoint (0, 0, 0) -> 0.125>
-  <gemmi.FloatGridPoint (1, 1, 1) -> 7>
-
-To convert a point to index or to fractional coordinates use:
-
-.. doctest::
-
-  >>> point = grid.get_point(6, 6, 6)
-  >>> grid.point_to_index(point)
-  942
-  >>> grid.point_to_fractional(point)
-  <gemmi.Fractional(0.5, 0.5, 0.5)>
+  <gemmi.FloatGrid.Point (0, 0, 0) -> 0.125>
+  <gemmi.FloatGrid.Point (1, 1, 1) -> 7>
 
 
-In addition to the symmetry, Grid may also have associated unit cell.
+Solvent mask
+------------
+
+First, to set the whole grid to the same value use:
 
 .. doctest::
 
-  >>> grid.set_unit_cell(gemmi.UnitCell(45, 45, 45, 90, 82.5, 90))
-  >>> grid.unit_cell
-  <gemmi.UnitCell(45, 45, 45, 90, 82.5, 90)>
+  >>> grid.fill(0)
 
-This allows us to translate location on the grid to position in Angstroms:
+To set the grid points in a certain radius from a specified position use::
 
-.. doctest::
-
-  >>> grid.point_to_position(point)
-  <gemmi.Position(25.4368, 22.5, 22.3075)>
-
-and the other way around:
-
-.. doctest::
-
-  >>> grid.get_nearest_point(_)
-  <gemmi.FloatGridPoint (6, 6, 6) -> 0>
-
-We can also get an interpolated value (with trilinear interpolation)
-of the grid at any position:
-
-.. doctest::
-
-  >>> grid.interpolate_value(gemmi.Position(2, 3, 4))
-  2.0333263874053955
-
-or using fractional coordinates:
-
-.. doctest::
-
-  >>> grid.interpolate_value(gemmi.Fractional(1/24, 1/24, 1/24))
-  0.890625
-
-If you need to interpolate values at so many points on a regular 3D grid
-that calling ``interpolate_value()`` for each point would be too slow,
-use ``interpolate_values()`` (with s at the end) instead.
-It takes a 3D numpy array and a :ref:`Transform <transform>` that
-relates indices of the array to positions in the grid,
-and fills the array with the interpolated values:
-
-.. doctest::
-  :skipif: numpy is None
-
-  >>> # first we create a numpy array of the same type as the grid
-  >>> arr = numpy.zeros([32, 32, 32], dtype=numpy.float32)
-  >>> # then we setup a transformation (array indices) -> (position [A]).
-  >>> tr = gemmi.Transform()
-  >>> tr.mat.fromlist([[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]])
-  >>> tr.vec.fromlist([1, 2, 3])
-  >>> grid.interpolate_values(arr, tr)
-  >>> arr[10, 10, 10]  # -> corresponds to Position(2, 3, 4)
-  2.0333264
-
-If you would like to set grid points near a specified position
-use the ``set_points_around()`` function:
+  void Grid<T>::set_points_around(const Position& ctr, double radius, T value)
 
 .. doctest::
   :skipif: numpy is None or sys.platform == 'win32'
@@ -246,13 +306,19 @@ use the ``set_points_around()`` function:
   >>> numpy.argwhere(array == 10)
   array([[6, 6, 7],
          [6, 7, 7]])
-  >>> # now the data does not obey symmetry, we should call symmetrize*()
 
-To set all point values, do:
+This function, to be efficient, ignores symmetry.
+At the end we should call one of the *symmetrizing* functions:
 
 .. doctest::
 
-  >>> grid.fill(1.23)
+  >>> grid.symmetrize_max()
+
+We could use the above functions for masking the molecule (or bulk solvent)
+area, but for this we have higher level functions.
+
+TBC
+
 
 MRC/CCP4 maps
 =============
