@@ -1298,7 +1298,7 @@ in the chapter 4.2.6 of `ITvC <https://it.iucr.org/Cb/contents/>`_)
 and the `Kissel and Pratt (1990) <https://doi.org/10.1107/S0108767389010718>`_
 correction has been added.
 Therefore, it gives different results than the
-`crossec <http://www.ccp4.ac.uk/html/crossec.html>`_ program,
+`crossec <http://legacy.ccp4.ac.uk/html/crossec.html>`_ program,
 which was contributed to CCP4 directly by Don Cromer in the 1990's.
 
 The ``cromer_libermann`` function is available in both C++ and Python:

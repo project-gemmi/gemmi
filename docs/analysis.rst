@@ -463,7 +463,7 @@ Selections
 
 For now, Gemmi supports only the selection syntax from MMDB,
 called CID (Coordinate ID). The syntax is described at the bottom
-of the `pdbcur documentation <http://www.ccp4.ac.uk/html/pdbcur.html>`_.
+of the `pdbcur documentation <http://legacy.ccp4.ac.uk/html/pdbcur.html>`_.
 
 The selections in Gemmi are not widely used yet and the API may evolve.
 The examples below demonstrates currently provided functions.

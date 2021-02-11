@@ -296,7 +296,7 @@ and up to a few microseconds for the highest symmetry group Fm3̅m
 .. _SgInfo: https://github.com/rwgk/sginfo
 .. _SgLite: https://github.com/rwgk/sglite
 .. _sgtbx: https://github.com/rwgk/sglite
-.. _csymlib: http://www.ccp4.ac.uk/html/C_library/csymlib_8h.html
+.. _csymlib: http://legacy.ccp4.ac.uk/html/C_library/csymlib_8h.html
 .. _spglib: https://atztogo.github.io/spglib/
 .. _Clipper: http://www.ysbl.york.ac.uk/~cowtan/clipper/doc/
 .. _OpenBabel: https://github.com/openbabel/openbabel
