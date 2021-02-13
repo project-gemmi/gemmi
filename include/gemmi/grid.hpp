@@ -145,9 +145,6 @@ struct GridBase {
   }
   T get_value_q(int u, int v, int w) const { return data[index_q(u, v, w)]; }
 
-  Fractional point_to_fractional(const Point& p) const {
-    return {p.u * (1.0 / nu), p.v * (1.0 / nv), p.w * (1.0 / nw)};
-  }
   size_t point_to_index(const Point& p) const { return p.value - data.data(); }
 
   void fill(T value) { std::fill(data.begin(), data.end(), value); }
@@ -277,8 +274,11 @@ struct Grid : GridBase<T> {
     return get_nearest_point(unit_cell.fractionalize(pos));
   }
 
+  Fractional point_to_fractional(const Point& p) const {
+    return {p.u * (1.0 / nu), p.v * (1.0 / nv), p.w * (1.0 / nw)};
+  }
   Position point_to_position(const Point& p) const {
-    return unit_cell.orthogonalize(this->point_to_fractional(p));
+    return unit_cell.orthogonalize(point_to_fractional(p));
   }
 
   static double grid_modulo(double x, int n, int* iptr) {

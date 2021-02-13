@@ -51,9 +51,9 @@ The data point can be accessed with::
 Python
 ~~~~~~
 
-In Python we have classes FloatGrid (for maps), Int8Grid (for masks),
-and ComplexGrid (that stores complex numbers; not widely used,
-but the CCP4 map format may contain such data).
+In Python we have classes FloatGrid (for maps), Int8Grid (for masks).
+(We will add other classes such and ComplexGrid when we see
+a use for it.)
 
 The constructor may take grid dimensions or a NumPy array as an argument:
 
@@ -139,7 +139,7 @@ Now let us use one of the symmetrizing functions:
 Unit cell
 ---------
 
-The unit cell parameters (in a member variable ``unit_cell``: UnitCell),
+The unit cell parameters (in a member variable ``unit_cell``: UnitCell)
 enable conversion between coordinates and grid points.
 
 The unit cell should be set using ``Grid<T>::set_unit_cell()``,
@@ -157,26 +157,26 @@ the spacing between grid points that is precalculated for efficiency.
 Grid point
 ----------
 
-Grid contains a little helper class (Grid<T>::Point in C++)
+Grid contains a little helper class (GridBase<T>::Point in C++)
 that bundles grid point coordinates (u, v, w: int) and a pointer
 to the value in grid (value). This bundle is obtained with getter:
 
 .. doctest::
 
   >>> grid.get_point(0, 0, 0)
-  <gemmi.FloatGrid.Point (0, 0, 0) -> 0.125>
+  <gemmi.FloatGridBase.Point (0, 0, 0) -> 0.125>
   >>> _.u, _.v, _.w, _.value
   (0, 0, 0, 0.125)
 
-or when iterating over grid points:
+or when iterating the grid:
 
 .. doctest::
 
   >>> for point in grid:
   ...   if point.value != 0.: print(point)
-  <gemmi.FloatGrid.Point (0, 0, 0) -> 0.125>
-  <gemmi.FloatGrid.Point (1, 1, 1) -> 7>
-  <gemmi.FloatGrid.Point (11, 1, 11) -> 7>
+  <gemmi.FloatGridBase.Point (0, 0, 0) -> 0.125>
+  <gemmi.FloatGridBase.Point (1, 1, 1) -> 7>
+  <gemmi.FloatGridBase.Point (11, 1, 11) -> 7>
 
 The point can be converted to its index (position in the array):
 
@@ -205,7 +205,7 @@ The other way around, we can find the grid point nearest to a position:
 .. doctest::
 
   >>> grid.get_nearest_point(_)
-  <gemmi.FloatGrid.Point (6, 6, 6) -> 0>
+  <gemmi.FloatGridBase.Point (6, 6, 6) -> 0>
 
 
 Interpolation
@@ -233,8 +233,8 @@ we use trilinear interpolation of the 8 nearest nodes.
 If you have a large number of points, making a Python function call
 each time would be slow.
 If these points are on a regular 3D grid (which may not be aligned
-with our grid) call ``interpolate_values()`` (with s at the end).
-It takes as arguments a 3D numpy array (for storing the results)
+with our grid) call ``interpolate_values()`` (with s at the end)
+with two arguments: a 3D numpy array (for storing the results)
 and a :ref:`Transform <transform>` that relates indices of the array
 to positions in the grid:
 
@@ -252,7 +252,7 @@ to positions in the grid:
   >>> arr[10, 10, 10]  # -> corresponds to Position(2, 3, 4)
   2.0333264
 
-(If your points are not on the grid -- get in touch -- there might be
+(If your points are not on a regular grid -- get in touch -- there might be
 another way.)
 
 
@@ -282,8 +282,8 @@ The primary use for MaskedGrid is working with asymmetric unit (asu) only:
   7.125
   >>> for point in asu:
   ...   if point.value != 0: print(point)
-  <gemmi.FloatGrid.Point (0, 0, 0) -> 0.125>
-  <gemmi.FloatGrid.Point (1, 1, 1) -> 7>
+  <gemmi.FloatGridBase.Point (0, 0, 0) -> 0.125>
+  <gemmi.FloatGridBase.Point (1, 1, 1) -> 7>
 
 
 Solvent mask
@@ -314,8 +314,9 @@ At the end we should call one of the *symmetrizing* functions:
 
   >>> grid.symmetrize_max()
 
-We could use the above functions for masking the molecule (or bulk solvent)
-area, but for this we have higher level functions.
+While we could use the above functions for masking the molecule
+(or bulk solvent) area, we have specialized functions to create
+a bulk solvent mask.
 
 TBC
 

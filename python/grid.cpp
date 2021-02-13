@@ -23,18 +23,24 @@ namespace py = pybind11;
 using namespace gemmi;
 
 template<typename T>
-void add_grid(py::module& m, const std::string& name) {
+void add_grid_base(py::module& m, const char* name) {
   using GrBase = GridBase<T>;
-  using Gr = Grid<T>;
-  using Masked = MaskedGrid<T>;
-  using GrPoint = typename Gr::Point;
+  using GrPoint = typename GridBase<T>::Point;
 
-  py::class_<GrBase> pyGridBase(m, (name + "Base").c_str(), py::buffer_protocol());
-  py::class_<Gr, GrBase> gr(m, name.c_str());
-  py::class_<Masked> pyMaskedGrid (m, ("Masked" + name).c_str());
-  py::class_<GrPoint> pyGrPoint(gr, "Point");
+  py::class_<GrBase> grid_base(m, name, py::buffer_protocol());
+  py::class_<GrPoint>(grid_base, "Point")
+    .def_readonly("u", &GrPoint::u)
+    .def_readonly("v", &GrPoint::v)
+    .def_readonly("w", &GrPoint::w)
+    .def_property("value",
+                  [](const GrPoint& self) { return *self.value; },
+                  [](GrPoint& self, T x) { *self.value = x; })
+    .def("__repr__", [=](const GrPoint& self) {
+        return tostr("<gemmi.", name, ".Point (", self.u, ", ", self.v, ", ",
+                     self.w, ") -> ", +*self.value, '>');
+    });
 
-  pyGridBase
+  grid_base
     .def_buffer([](GrBase &g) {
       return py::buffer_info(g.data.data(),
                              {g.nu, g.nv, g.nw},       // dimensions
@@ -57,8 +63,16 @@ void add_grid(py::module& m, const std::string& name) {
     .def("__iter__", [](GrBase& self) { return py::make_iterator(self); },
          py::keep_alive<0, 1>())
     ;
+}
 
-  gr
+template<typename T>
+void add_grid(py::module& m, const std::string& name) {
+  using Gr = Grid<T>;
+  using GrPoint = typename GridBase<T>::Point;
+  using Masked = MaskedGrid<T>;
+  py::class_<Masked> masked_grid (m, ("Masked" + name).c_str());
+
+  py::class_<Gr, GridBase<T>>(m, name.c_str())
     .def(py::init<>())
     .def(py::init([](int nx, int ny, int nz) {
       Gr* grid = new Gr();
@@ -119,20 +133,7 @@ void add_grid(py::module& m, const std::string& name) {
         return tostr("<gemmi.", name, '(', self.nu, ", ", self.nv, ", ", self.nw, ")>");
     });
 
-  pyGrPoint
-    .def_readonly("u", &GrPoint::u)
-    .def_readonly("v", &GrPoint::v)
-    .def_readonly("w", &GrPoint::w)
-    .def_property("value",
-                  [](const GrPoint& self) { return *self.value; },
-                  [](GrPoint& self, T x) { *self.value = x; })
-    .def("__repr__", [=](const GrPoint& self) {
-        return tostr("<gemmi.", name, ".Point (", self.u, ", ", self.v, ", ",
-                     self.w, ") -> ", +*self.value, '>');
-    });
-    ;
-
-  pyMaskedGrid
+  masked_grid
     .def_readonly("grid", &Masked::grid, py::return_value_policy::reference)
     .def_readonly("mask", &Masked::mask)
     .def("__iter__", [](Masked& self) { return py::make_iterator(self); },
@@ -160,8 +161,10 @@ void add_grid(py::module& m) {
   py::enum_<AxisOrder>(m, "AxisOrder")
     .value("XYZ", AxisOrder::XYZ)
     .value("ZYX", AxisOrder::ZYX);
+  add_grid_base<int8_t>(m, "Int8GridBase");
   add_grid<int8_t>(m, "Int8Grid");
+  add_grid_base<float>(m, "FloatGridBase");
   add_grid<float>(m, "FloatGrid");
-  add_grid<std::complex<float>>(m, "ComplexGrid");
+  add_grid_base<std::complex<float>>(m, "ComplexGridBase");
   m.def("interpolate_positions", &interpolate_positions);
 }
