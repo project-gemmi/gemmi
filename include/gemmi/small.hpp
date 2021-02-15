@@ -13,6 +13,7 @@
 #include <vector>
 #include "elem.hpp"      // Element
 #include "math.hpp"      // SMat33
+#include "symmetry.hpp"  // find_spacegroup_by_name
 #include "unitcell.hpp"  // UnitCell, Fractional
 #include "util.hpp"      // vector_remove_if
 
@@ -51,6 +52,10 @@ struct SmallStructure {
   double wavelength = 0.; // the first wavelength if multiple
 
   std::vector<Site> get_all_unit_cell_sites() const;
+
+  const SpaceGroup* find_spacegroup() const {
+    return find_spacegroup_by_name(spacegroup_hm, cell.alpha, cell.gamma);
+  }
 
   const AtomType* get_atom_type(const std::string& symbol) const {
     for (const AtomType& at : atom_types)
