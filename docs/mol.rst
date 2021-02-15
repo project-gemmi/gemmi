@@ -96,6 +96,8 @@ together with the unit cell and symmetry.
     4.358
     >>> SiC.spacegroup_hm
     'F -4 3 m'
+    >>> SiC.find_spacegroup()
+    <gemmi.SpaceGroup("F -4 3 m")>
     >>> SiC.sites
     [<gemmi.SmallStructure.Site Si1>, <gemmi.SmallStructure.Site C1>]
     >>> len(SiC.get_all_unit_cell_sites())
@@ -1522,6 +1524,16 @@ After adding or removing models you may call:
 
 which will set model *names* to sequential numbers (next section
 explains why models have names).
+
+The space group string is stored as ``spacegroup_hm``.
+To get a matching entry in the table of space groups use ``find_spacegroup()``
+(which uses angles to distinguish hexagonal and rhombohedral settings
+for names such as "R 3"):
+
+.. doctest::
+
+  >>> structure.find_spacegroup()
+  <gemmi.SpaceGroup("P 63 2 2")>
 
 Entity
 ------

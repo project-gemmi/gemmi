@@ -98,6 +98,7 @@ void add_mol(py::module& m) {
     .def_readwrite("assemblies", &Structure::assemblies)
     .def_readwrite("info", &Structure::info)
     .def_readwrite("raw_remarks", &Structure::raw_remarks)
+    .def("find_spacegroup", &Structure::find_spacegroup)
     .def("get_entity",
          (Entity* (Structure::*)(const std::string&)) &Structure::get_entity,
          py::arg("subchain"), py::return_value_policy::reference_internal)

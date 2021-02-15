@@ -47,6 +47,7 @@ void add_misc(py::module& m) {
     .def_readonly("spacegroup_hm", &SmallStructure::spacegroup_hm)
     .def_readonly("sites", &SmallStructure::sites)
     .def_readonly("atom_types", &SmallStructure::atom_types)
+    .def("find_spacegroup", &SmallStructure::find_spacegroup)
     .def("get_all_unit_cell_sites", &SmallStructure::get_all_unit_cell_sites)
     .def("remove_hydrogens", &SmallStructure::remove_hydrogens)
     .def("__repr__", [](const SmallStructure& self) {
