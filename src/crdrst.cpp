@@ -156,7 +156,7 @@ cif::Document make_crd(const gemmi::Structure& st,
   items.emplace_back("_symmetry.entry_id", id);
   const std::string& hm = st.spacegroup_hm;
   items.emplace_back("_symmetry.space_group_name_H-M", cif::quote(hm));
-  if (const gemmi::SpaceGroup* sg = gemmi::find_spacegroup_by_name(hm))
+  if (const gemmi::SpaceGroup* sg = st.find_spacegroup())
     items.emplace_back("_symmetry.Int_Tables_number",
                        std::to_string(sg->number));
   const gemmi::Model& model0 = st.first_model();
