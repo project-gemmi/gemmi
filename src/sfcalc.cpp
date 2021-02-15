@@ -606,17 +606,17 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         if (p.options[Verbose])
           fprintf(stderr, "B_min=%g, B_add=%g\n", b_min, dencalc.blur);
       }
-
-      gemmi::SolventMasker masker;
+      gemmi::AtomicRadiiSet radii_choice = gemmi::AtomicRadiiSet::VanDerWaals;
       if (p.options[RadiiSet]) {
         char c = p.options[RadiiSet].arg[0];
         if (c == 'v')
-          masker.set_radii(gemmi::AtomicRadiiSet::VanDerWaals);
+          radii_choice = gemmi::AtomicRadiiSet::VanDerWaals;
         else if (c == 'c')
-          masker.set_radii(gemmi::AtomicRadiiSet::Cctbx);
+          radii_choice = gemmi::AtomicRadiiSet::Cctbx;
         else if (c == 'r')
-          masker.set_radii(gemmi::AtomicRadiiSet::Refmac);
+          radii_choice = gemmi::AtomicRadiiSet::Refmac;
       }
+      gemmi::SolventMasker masker(radii_choice);
       if (p.options[Rprobe])
         masker.rprobe = std::atof(p.options[Rprobe].arg);
       if (p.options[Rshrink])

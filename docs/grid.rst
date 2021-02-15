@@ -318,6 +318,64 @@ While we could use the above functions for masking the molecule
 (or bulk solvent) area, we have specialized functions to create
 a bulk solvent mask.
 
+Gemmi implements the mainstream method of calculating the bulk solvent area.
+
+* We mark the area in radius *r* + *r*\ :sub:`probe` of each
+  atom as non-solvent. *r* is usually can be a van der Waals (or similar)
+  radius of the atom, but some programs use the same radius
+  for all atoms. *r*\ :sub:`probe` is an extra margin
+  that is mostly cancelled in the next step.
+* We shrink the non-solvent area by *r*\ :sub:`shrink`.
+  Both *r*\ :sub:`probe` and *r*\ :sub:`shrink` have the same
+  order of magnitude, about 1Å.
+* The above procedure eliminates small solvent islands.
+  But if we want to remove also larger ones,
+  we can explicitely remove islands up to a certain volume as the last step.
+
+At this moment neither the documentation nor implementation is finished.
+Here is how to create a mask identical as a program phenix.mask:
+
+.. doctest::
+
+  >>> masker = gemmi.SolventMasker(gemmi.AtomicRadiiSet.Cctbx)
+  >>> st = gemmi.read_structure('../tests/1orc.pdb')
+  >>> grid = gemmi.Int8Grid()
+  >>> # take space group and unit cell from Structure,
+  >>> # and set size based on the specified minimal spacing
+  >>> grid.setup_from(st, spacing=1.0)
+  >>> grid.spacegroup = st.find_spacegroup()
+  >>> grid.set_unit_cell(st.cell)
+  >>> masker.put_mask_on_int8_grid(grid, st[0])
+
+
+The parameters of SolventMasker can be inspected and changed:
+
+.. doctest::
+
+  >>> masker.atomic_radii_set
+  <AtomicRadiiSet.Cctbx: 1>
+  >>> masker.rprobe
+  1.11
+  >>> masker.rshrink
+  0.9
+  >>> masker.island_min_volume  # 0 = unused
+  0.0
+  >>> masker.constant_r  # 0 = unused
+  0.0
+
+We can also create mask similar to Refmac (but due to unintended features
+of solvent masking in Refmac, the results are not identical):
+
+.. doctest::
+
+  >>> masker = gemmi.SolventMasker(gemmi.AtomicRadiiSet.Refmac)
+
+or with constant radius, similarly to the NCSMASK program from CCP4:
+
+.. doctest::
+
+  >>> masker = gemmi.SolventMasker(gemmi.AtomicRadiiSet.Constant, 3.0)
+
 TBC
 
 

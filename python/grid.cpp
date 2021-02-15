@@ -11,7 +11,7 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 }
 
 #include "gemmi/grid.hpp"
-#include "gemmi/solmask.hpp"  // for mask_points_in_constant_radius
+#include "gemmi/solmask.hpp"  // for SolventMasker, mask_points_in_constant_radius
 #include "gemmi/tostr.hpp"
 
 #include "common.h"
@@ -121,6 +121,10 @@ void add_grid(py::module& m, const std::string& name) {
               r(i, j, k) = self.interpolate_value(pos);
             }
     }, py::arg().noconvert(), py::arg())
+    .def("copy_metadata_from", &Gr::template copy_metadata_from<int8_t>)
+    .def("copy_metadata_from", &Gr::template copy_metadata_from<float>)
+    .def("setup_from", &Gr::template setup_from<Structure>,
+         py::arg("st"), py::arg("spacing"))
     .def("set_unit_cell", (void (Gr::*)(const UnitCell&)) &Gr::set_unit_cell)
     .def("set_points_around", &Gr::set_points_around,
          py::arg("position"), py::arg("radius"), py::arg("value"))
@@ -167,4 +171,24 @@ void add_grid(py::module& m) {
   add_grid<float>(m, "FloatGrid");
   add_grid_base<std::complex<float>>(m, "ComplexGridBase");
   m.def("interpolate_positions", &interpolate_positions);
+
+  // from solmask.hpp
+  py::enum_<AtomicRadiiSet>(m, "AtomicRadiiSet")
+    .value("VanDerWaals", AtomicRadiiSet::VanDerWaals)
+    .value("Cctbx", AtomicRadiiSet::Cctbx)
+    .value("Refmac", AtomicRadiiSet::Refmac)
+    .value("Constant", AtomicRadiiSet::Constant);
+  py::class_<SolventMasker>(m, "SolventMasker")
+    .def(py::init<AtomicRadiiSet, double>(),
+         py::arg("choice"), py::arg("constant_r")=0.)
+    .def_readwrite("atomic_radii_set", &SolventMasker::atomic_radii_set)
+    .def_readwrite("rprobe", &SolventMasker::rprobe)
+    .def_readwrite("rshrink", &SolventMasker::rshrink)
+    .def_readwrite("island_min_volume", &SolventMasker::island_min_volume)
+    .def_readwrite("constant_r", &SolventMasker::constant_r)
+    .def("set_radii", &SolventMasker::set_radii,
+         py::arg("choice"), py::arg("constant_r")=0.)
+    .def("put_mask_on_int8_grid", &SolventMasker::put_mask_on_grid<int8_t>)
+    .def("put_mask_on_float_grid", &SolventMasker::put_mask_on_grid<float>)
+    ;
 }

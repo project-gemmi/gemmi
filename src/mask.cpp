@@ -111,7 +111,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (st.models.size() > 1)
       std::fprintf(stderr, "Note: only the first model is used.\n");
 
-    gemmi::SolventMasker masker;
+    gemmi::SolventMasker masker(gemmi::AtomicRadiiSet::VanDerWaals);
     if (p.options[Radius])
       masker.set_radii(gemmi::AtomicRadiiSet::Constant,
                        std::atof(p.options[Radius].arg));
@@ -119,6 +119,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       masker.set_radii(gemmi::AtomicRadiiSet::Cctbx);
     else if (p.options[RefmacCompat])
       masker.set_radii(gemmi::AtomicRadiiSet::Refmac);
+
     if (p.options[RProbe])
       masker.rprobe = std::atof(p.options[RProbe].arg);
     if (p.options[RShrink])

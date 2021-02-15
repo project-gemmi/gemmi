@@ -167,10 +167,14 @@ nextpoint: ;
 struct SolventMasker {
   // parameters for used only in put_solvent_mask_on_grid()
   AtomicRadiiSet atomic_radii_set = AtomicRadiiSet::VanDerWaals;
-  double rprobe = 1.0;
-  double rshrink = 1.1;
-  double island_min_volume = 0.;
-  double constant_r = 0.;
+  double rprobe;
+  double rshrink;
+  double island_min_volume;
+  double constant_r;
+
+  SolventMasker(AtomicRadiiSet choice, double constant_r_=0.) {
+    set_radii(choice, constant_r_);
+  }
 
   void set_radii(AtomicRadiiSet choice, double constant_r_=0.) {
     atomic_radii_set = choice;
@@ -179,10 +183,12 @@ struct SolventMasker {
       case AtomicRadiiSet::VanDerWaals:
         rprobe = 1.0;
         rshrink = 1.1;
+        island_min_volume = 0.;
         break;
       case AtomicRadiiSet::Cctbx:
         rprobe = 1.11;
         rshrink = 0.9;
+        island_min_volume = 0.;
         break;
       case AtomicRadiiSet::Refmac:
         rprobe = 1.0;
@@ -192,6 +198,7 @@ struct SolventMasker {
       case AtomicRadiiSet::Constant:
         rprobe = 0;
         rshrink = 0;
+        island_min_volume = 0.;
         break;
     }
   }
@@ -241,8 +248,8 @@ struct SolventMasker {
   }
 
   template<typename T> void put_mask_on_grid(Grid<T>& grid, const Model& model) const {
-    assert(!grid.data.empty());
     clear(grid);
+    assert(!grid.data.empty());
     mask_points(grid, model);
     symmetrize(grid);
     shrink(grid);
