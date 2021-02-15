@@ -612,11 +612,11 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
       if (p.options[RadiiSet]) {
         char c = p.options[RadiiSet].arg[0];
         if (c == 'v')
-          masker.set_radii_set(gemmi::AtomicRadiiSet::VanDerWaals);
+          masker.set_radii(gemmi::AtomicRadiiSet::VanDerWaals);
         else if (c == 'c')
-          masker.set_radii_set(gemmi::AtomicRadiiSet::Cctbx);
+          masker.set_radii(gemmi::AtomicRadiiSet::Cctbx);
         else if (c == 'r')
-          masker.set_radii_set(gemmi::AtomicRadiiSet::Refmac);
+          masker.set_radii(gemmi::AtomicRadiiSet::Refmac);
       }
       if (p.options[Rprobe])
         masker.rprobe = std::atof(p.options[Rprobe].arg);

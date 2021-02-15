@@ -113,12 +113,12 @@ int GEMMI_MAIN(int argc, char **argv) {
 
     gemmi::SolventMasker masker;
     if (p.options[Radius])
-      masker.set_radii_set(gemmi::AtomicRadiiSet::Constant,
-                           std::atof(p.options[Radius].arg));
+      masker.set_radii(gemmi::AtomicRadiiSet::Constant,
+                       std::atof(p.options[Radius].arg));
     else if (p.options[CctbxCompat])
-      masker.set_radii_set(gemmi::AtomicRadiiSet::Cctbx);
+      masker.set_radii(gemmi::AtomicRadiiSet::Cctbx);
     else if (p.options[RefmacCompat])
-      masker.set_radii_set(gemmi::AtomicRadiiSet::Refmac);
+      masker.set_radii(gemmi::AtomicRadiiSet::Refmac);
     if (p.options[RProbe])
       masker.rprobe = std::atof(p.options[RProbe].arg);
     if (p.options[RShrink])
@@ -140,8 +140,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
 
     if (p.options[IslandLimit])
-      masker.island_vol = std::atof(p.options[IslandLimit].arg);
-    if (masker.island_vol > 0.) {
+      masker.island_min_volume = std::atof(p.options[IslandLimit].arg);
+    if (masker.island_min_volume > 0.) {
       timer.start();
       int n = masker.remove_islands(mask.grid);
       timer.print("Islands removed in");

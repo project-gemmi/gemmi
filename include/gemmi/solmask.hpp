@@ -113,13 +113,14 @@ void mask_points_in_constant_radius(Grid<T>& mask, const Model& model,
 
 template<typename T>
 void mask_points_in_varied_radius(Grid<T>& mask, const Model& model,
-                                  AtomicRadiiSet radii_set, double r_probe, T value) {
+                                  AtomicRadiiSet atomic_radii_set,
+                                  double r_probe, T value) {
   for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms) {
         El elem = atom.element.elem;
         double r = 0;
-        switch (radii_set) {
+        switch (atomic_radii_set) {
           case AtomicRadiiSet::VanDerWaals: r = vdw_radius(elem); break;
           case AtomicRadiiSet::Cctbx: r = cctbx_vdw_radius(elem); break;
           case AtomicRadiiSet::Refmac: r = refmac_radius_for_bulk_solvent(elem); break;
@@ -165,14 +166,14 @@ nextpoint: ;
 
 struct SolventMasker {
   // parameters for used only in put_solvent_mask_on_grid()
-  AtomicRadiiSet radii_set = AtomicRadiiSet::VanDerWaals;
+  AtomicRadiiSet atomic_radii_set = AtomicRadiiSet::VanDerWaals;
   double rprobe = 1.0;
   double rshrink = 1.1;
-  double island_vol = 0.;
+  double island_min_volume = 0.;
   double constant_r = 0.;
 
-  void set_radii_set(AtomicRadiiSet choice, double constant_r_=0.) {
-    radii_set = choice;
+  void set_radii(AtomicRadiiSet choice, double constant_r_=0.) {
+    atomic_radii_set = choice;
     constant_r = constant_r_;
     switch (choice) {
       case AtomicRadiiSet::VanDerWaals:
@@ -186,7 +187,7 @@ struct SolventMasker {
       case AtomicRadiiSet::Refmac:
         rprobe = 1.0;
         rshrink = 0.8;
-        island_vol = 50;  // the exact value used in Refmac is yet to be found
+        island_min_volume = 50;  // the exact value used in Refmac is yet to be found
         break;
       case AtomicRadiiSet::Constant:
         rprobe = 0;
@@ -198,10 +199,10 @@ struct SolventMasker {
   template<typename T> void clear(Grid<T>& grid) const { grid.fill((T)1); }
 
   template<typename T> void mask_points(Grid<T>& grid, const Model& model) const {
-    if (radii_set == AtomicRadiiSet::Constant)
+    if (atomic_radii_set == AtomicRadiiSet::Constant)
       mask_points_in_constant_radius(grid, model, constant_r + rprobe, (T)0);
     else
-      mask_points_in_varied_radius(grid, model, radii_set, rprobe, (T)0);
+      mask_points_in_varied_radius(grid, model, atomic_radii_set, rprobe, (T)0);
   }
 
   template<typename T> void symmetrize(Grid<T>& grid) const {
@@ -222,9 +223,9 @@ struct SolventMasker {
   // Removes small islands of Land=1 in the sea of 0. Uses flood fill.
   // cf. find_blobs_by_flood_fill()
   template<typename T> int remove_islands(Grid<T>& grid) const {
-    if (island_vol <= 0)
+    if (island_min_volume <= 0)
       return 0;
-    size_t limit = static_cast<size_t>(island_vol * grid.point_count()
+    size_t limit = static_cast<size_t>(island_min_volume * grid.point_count()
                                        / grid.unit_cell.volume);
     int counter = 0;
     FloodFill<T,1> flood_fill{grid};

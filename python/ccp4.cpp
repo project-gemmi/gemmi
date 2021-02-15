@@ -42,15 +42,15 @@ void add_ccp4(py::module& m) {
             self.setup(GridSetup::Full, default_value);
          }, py::arg("default_value")=-1);
   m.def("read_ccp4_map", [](const std::string& path) {
-          Ccp4<float> grid;
-          grid.read_ccp4(MaybeGzipped(path));
-          return grid;
+          Ccp4<float> ccp4;
+          ccp4.read_ccp4(MaybeGzipped(path));
+          return ccp4;
         }, py::arg("path"), py::return_value_policy::move,
         "Reads a CCP4 file, mode 2 (floating-point data).");
   m.def("read_ccp4_mask", [](const std::string& path) {
-          Ccp4<int8_t> grid;
-          grid.read_ccp4(MaybeGzipped(path));
-          return grid;
+          Ccp4<int8_t> ccp4;
+          ccp4.read_ccp4(MaybeGzipped(path));
+          return ccp4;
         }, py::arg("path"), py::return_value_policy::move,
         "Reads a CCP4 file, mode 0 (int8_t data, usually 0/1 masks).");
 }
