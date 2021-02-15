@@ -147,7 +147,10 @@ struct GridBase {
 
   size_t point_to_index(const Point& p) const { return p.value - data.data(); }
 
-  void fill(T value) { std::fill(data.begin(), data.end(), value); }
+  void fill(T value) {
+    data.resize(point_count());
+    std::fill(data.begin(), data.end(), value);
+  }
 
   using Tsum = typename std::conditional<std::is_integral<T>::value,
                                          std::ptrdiff_t, T>::type;
