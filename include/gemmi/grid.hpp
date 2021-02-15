@@ -248,6 +248,14 @@ struct Grid : GridBase<T> {
     calculate_spacing();
   }
 
+  template<typename S>
+  void setup_from(const S& st, double approx_spacing) {
+    bool denser = true;
+    spacegroup = st.find_spacegroup();
+    set_unit_cell(st.cell);
+    set_size_from_spacing(approx_spacing, denser);
+  }
+
   // Assumes (for efficiency) that -nu <= u < 2*nu, etc.
   size_t index_n(int u, int v, int w) const {
     if (u >= nu) u -= nu; else if (u < 0) u += nu;
