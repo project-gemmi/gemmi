@@ -286,8 +286,8 @@ The primary use for MaskedGrid is working with asymmetric unit (asu) only:
   <gemmi.FloatGridBase.Point (1, 1, 1) -> 7>
 
 
-Solvent mask
-------------
+Setting value in areas
+----------------------
 
 First, to set the whole grid to the same value use:
 
@@ -318,22 +318,33 @@ While we could use the above functions for masking the molecule
 (or bulk solvent) area, we have specialized functions to create
 a bulk solvent mask.
 
-Gemmi implements the mainstream method of calculating the bulk solvent area.
+.. _solventmask:
+
+Solvent mask
+------------
+
+Gemmi implements a variant of the most popular method for calculating
+the bulk solvent area. This method was introduced in CNS.
+It uses van der Waals (or similar) atomic radii *r* and two parameters:
+*r*\ :sub:`probe` and *r*\ :sub:`shrink`.
 
 * We mark the area in radius *r* + *r*\ :sub:`probe` of each
-  atom as non-solvent. *r* is usually can be a van der Waals (or similar)
-  radius of the atom, but some programs use the same radius
-  for all atoms. *r*\ :sub:`probe` is an extra margin
-  that is mostly cancelled in the next step.
+  atom as non-solvent (0). *r* usually depends on the element,
+  but some programs use the same radius for all atoms.
+  The extra margin *r*\ :sub:`probe` is largely cancelled in the next step.
 * We shrink the non-solvent area by *r*\ :sub:`shrink`.
+  All the 0's in a distance *r*\ :sub:`shrink` from 1's are changed to 1,
+  shrinking the solvent volume.
   Both *r*\ :sub:`probe` and *r*\ :sub:`shrink` have the same
-  order of magnitude, about 1Å.
+  order of magnitude.
+  `Jiang & Brünger (1994) <https://doi.org/10.1006/jmbi.1994.1633>`_
+  proposed *r*\ :sub:`probe` = 1.0 Å and *r*\ :sub:`shrink` = 1.1 Å.
 * The above procedure eliminates small solvent islands.
-  But if we want to remove also larger ones,
-  we can explicitely remove islands up to a certain volume as the last step.
+  If it is not sufficient, we can explicitely remove islands
+  (contiguous areas of 1's) up to a certain volume.
+  This step was added for compatibility with Refmac.
 
-At this moment neither the documentation nor implementation is finished.
-Here is how to create a mask identical as a program phenix.mask:
+Here is how to create a mask identical as ``phenix.mask``:
 
 .. doctest::
 
@@ -343,10 +354,7 @@ Here is how to create a mask identical as a program phenix.mask:
   >>> # take space group and unit cell from Structure,
   >>> # and set size based on the specified minimal spacing
   >>> grid.setup_from(st, spacing=1.0)
-  >>> grid.spacegroup = st.find_spacegroup()
-  >>> grid.set_unit_cell(st.cell)
   >>> masker.put_mask_on_int8_grid(grid, st[0])
-
 
 The parameters of SolventMasker can be inspected and changed:
 
@@ -363,12 +371,23 @@ The parameters of SolventMasker can be inspected and changed:
   >>> masker.constant_r  # 0 = unused
   0.0
 
-We can also create mask similar to Refmac (but due to unintended features
+The example above uses a parameter set based on cctbx.
+We also have a few others sets.
+You can create mask similar to Refmac (but due to unintended features
 of solvent masking in Refmac, the results are not identical):
 
 .. doctest::
 
   >>> masker = gemmi.SolventMasker(gemmi.AtomicRadiiSet.Refmac)
+
+or a mask with Van der Waals radii from
+`Wikipedia <https://en.wikipedia.org/wiki/Atomic_radii_of_the_elements_(data_page)>`_
+and *r*\ :sub:`probe` = 1.0 Å and *r*\ :sub:`shrink` = 1.1 Å,
+as in the original Jiang & Brünger paper:
+
+.. doctest::
+
+  >>> masker = gemmi.SolventMasker(gemmi.AtomicRadiiSet.VanDerWaals)
 
 or with constant radius, similarly to the NCSMASK program from CCP4:
 
@@ -376,7 +395,9 @@ or with constant radius, similarly to the NCSMASK program from CCP4:
 
   >>> masker = gemmi.SolventMasker(gemmi.AtomicRadiiSet.Constant, 3.0)
 
-TBC
+If the mask is to be FFT-ed to structure factors, store it on FloatGrid.
+See the section about :ref:`bulk solvent coorection <scaling>`
+for details and examples.
 
 
 MRC/CCP4 maps

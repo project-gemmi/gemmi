@@ -1602,28 +1602,44 @@ and subtract Z=1 by adding c=-1:
   ...     if cra.atom.is_hydrogen():
   ...         dc.add_c_contribution_to_grid(cra.atom, -1)
 
-Bulk solvent correction
------------------------
 
-The bulk solvent occupies significant volume of a macromolecular crystal,
-so we must account for it.
-Usually, this volume is modelled as a flat scatterer.
-First, we create a mask of the bulk solvent.
-Then, we Fourier-transform the mask, getting a contribution
-to the structure factors. This contribution is scaled by
-*k*\ :sub:`s` exp(-\ *B*\ :sub:`s` *s*\ :sup:`2`/4),
-where *k*\ :sub:`s` and *B*\ :sub:`s` are optimized to make the total
-calculated structure factors *F*\ :sub:`calc` match the diffraction data.
-This optimization is performed together with the anisotropic scaling
-of *F*\ :sub:`calc`.
+.. _scaling:
 
-A popular procedure of masking the solvent, introduced in CNS,
-uses van der Waals radii and two parameters:
-*r*\ :sub:`probe` and *r*\ :sub:`shrink`.
-First, all grid points in the distance *r*\ :sub:`vdW` + *r*\ :sub:`probe`
-are marked as 0 (the rest -- as 1). Then, all the 0's in a distance
-*r*\ :sub:`shrink` from 1's are changed to 1, shrinking the solvent volume.
-`Jiang & Brünger (1994) <https://doi.org/10.1006/jmbi.1994.1633>`_
-proposed *r*\ :sub:`probe` = 1.0 Å and *r*\ :sub:`shrink` = 1.1 Å.
+Scaling and bulk solvent correction
+-----------------------------------
+
+Since anisotropic scaling and fitting of the bulk solvent parameters are
+performed together, both are covered in the same section.
+But it doesn't prevent you from scaling *F*\ s without any bulk solvent,
+or from calculating the bulk solvent correction without anisotropic scaling.
+
+The bulk solvent occupies significant volume of a macromolecular crystal;
+adding it to the model significantly changes structure factors.
+Usually, the bulk solvent is modelled as a flat scatterer.
+First, we create a mask of the bulk solvent, as described in
+a section about :ref:`solvent masking <solventmask>`.
+Then, we Fourier-transform the mask and obtain *F*\ :sub:`mask`.
+Usually, the solvent correction has two parameters:
+
+*F*\ :sub:`sol` = *k*\ :sub:`sol` exp(-\ *B*\ :sub:`sol` *s*\ :sup:`2`/4) *F*\ :sub:`mask`,
+
+and we also have overall anisotropic scaling parameters
+(*k*\ :sub:`ov` and **B**\ :sub:`ov`).
+All the parameters, i.e. *k*\ :sub:`ov`, **B**\ :sub:`ov`,
+*k*\ :sub:`sol` and *B*\ :sub:`sol`, or only selected ones,
+are optimized to make the total calculated structure factors *F*\ :sub:`calc`
+match the diffraction data *F*\ :sub:`obs`.
 
 TBC
+
+class Scaling
+
+.. doctest::
+
+  >>> grid = gemmi.FloatGrid()
+  >>> grid.setup_from(st, spacing=1.0)
+  >>> masker = gemmi.SolventMasker(gemmi.AtomicRadiiSet.Cctbx)
+  >>> masker.put_mask_on_float_grid(grid, st[0])
+  >>> gemmi.transform_map_to_f_phi(grid, half_l=False).prepare_asu_data(dmin=2.1)
+  <gemmi.ComplexAsuData with 1848 values>
+
