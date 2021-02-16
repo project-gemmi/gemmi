@@ -101,6 +101,10 @@ void add_grid(py::module& m, const std::string& name) {
     .def("get_point", &Gr::get_point)
     .def("get_nearest_point", (GrPoint (Gr::*)(const Position&)) &Gr::get_nearest_point)
     .def("point_to_fractional", &Gr::point_to_fractional)
+    .def("point_to_fractional", [](const Gr& self, int u, int v, int w) {
+      GrPoint p = {u, v, w, nullptr};
+      return self.point_to_fractional(p);
+    }, py::arg("u"), py::arg("v"), py::arg("w"))
     .def("point_to_position", &Gr::point_to_position)
     .def("point_to_position", [](const Gr& self, int u, int v, int w) {
       GrPoint p = {u, v, w, nullptr};
