@@ -158,43 +158,35 @@ void set_margin_around(Grid<T>& mask, double r, T value, T margin_value) {
         }
       }
   if (stencil2.empty()) {
-    size_t offset = 0;
-    for (int w = 0; w < mask.nw; ++w)
-      for (int v = 0; v < mask.nv; ++v)
-        for (int u = 0; u < mask.nu; ++u, ++offset) {
-          T& point = mask.data[offset];
-          if (point != value) {
-            for (const auto& wvu : stencil1) {
-              size_t idx = mask.index_near_zero(u + wvu[2], v + wvu[1], w + wvu[0]);
-              if (mask.data[idx] == value) {
-                point = margin_value;
-                break;
-              }
-            }
+    for (const typename Grid<T>::Point& p : mask)
+      if (*p.value != value) {
+        for (const auto& wvu : stencil1) {
+          size_t idx = mask.index_near_zero(p.u + wvu[2], p.v + wvu[1], p.w + wvu[0]);
+          if (mask.data[idx] == value) {
+            *p.value = margin_value;
+            break;
           }
         }
+      }
   } else {
-    size_t offset = 0;
-    for (int w = 0; w < mask.nw; ++w)
-      for (int v = 0; v < mask.nv; ++v)
-        for (int u = 0; u < mask.nu; ++u, ++offset) {
-          if (mask.data[offset] == value) {
-            bool found = false;
-            for (const auto& wvu : stencil1) {
-              size_t idx = mask.index_near_zero(u + wvu[2], v + wvu[1], w + wvu[0]);
-              if (mask.data[idx] != value) {
-                mask.data[idx] = margin_value;
-                found = true;
-              }
-            }
-            if (found)
-              for (const auto& wvu : stencil2) {
-                size_t idx = mask.index_near_zero(u + wvu[2], v + wvu[1], w + wvu[0]);
-                if (mask.data[idx] != value)
-                  mask.data[idx] = margin_value;
-              }
+    for (const typename Grid<T>::Point& p : mask) {
+      if (*p.value == value) {
+        bool found = false;
+        for (const auto& wvu : stencil1) {
+          size_t idx = mask.index_near_zero(p.u + wvu[2], p.v + wvu[1], p.w + wvu[0]);
+          if (mask.data[idx] != value) {
+            mask.data[idx] = margin_value;
+            found = true;
           }
         }
+        if (found)
+          for (const auto& wvu : stencil2) {
+            size_t idx = mask.index_near_zero(p.u + wvu[2], p.v + wvu[1], p.w + wvu[0]);
+            if (mask.data[idx] != value)
+              mask.data[idx] = margin_value;
+          }
+      }
+    }
   }
   //printf("stencil sizes: %zu\n", stencil1.size(), stencil2.size());
   //printf("margin: %zu\n", std::count(mask.data.begin(), mask.data.end(), margin_value));
