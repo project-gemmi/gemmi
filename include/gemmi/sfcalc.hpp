@@ -66,10 +66,10 @@ public:
   }
 
   template<typename Site>
-  std::complex<double> calculate_sf_from_atom(const Fractional& fract,
+  std::complex<double> calculate_sf_from_oc_sf(const Fractional& fract,
                                               const Site& site,
-                                              const Miller& hkl) {
-    double oc_sf = site.occ * get_scattering_factor(site.element);
+                                              const Miller& hkl,
+                                              double oc_sf) {
     std::complex<double> sum = calculate_sf_part(fract, hkl);
     if (!site.aniso.nonzero()) {
       for (const FTransform& image : cell_.images)
@@ -85,15 +85,37 @@ public:
     }
   }
 
+  template<typename Site>
+  std::complex<double> calculate_sf_from_atom(const Fractional& fract,
+                                              const Site& site,
+                                              const Miller& hkl) {
+    double oc_sf = site.occ * get_scattering_factor(site.element);
+    return calculate_sf_from_oc_sf(fract, site, hkl, oc_sf);
+  }
+
+  template<typename Site>
+  std::complex<double> calculate_sf_from_proton(const Fractional& fract,
+                                              const Site& site,
+                                              const Miller& hkl) {
+    double oc_sf = -site.occ;
+    return calculate_sf_from_oc_sf(fract, site, hkl, oc_sf);
+  }
+
   std::complex<double> calculate_sf_from_model(const Model& model,
-                                               const Miller& hkl) {
+                                               const Miller& hkl,
+                                               bool proton_only=false) {
     std::complex<double> sf = 0.;
     set_stol2_and_scattering_factors(hkl);
     for (const Chain& chain : model.chains)
       for (const Residue& res : chain.residues)
         for (const Atom& site : res.atoms)
-          sf += calculate_sf_from_atom(cell_.fractionalize(site.pos),
-                                       site, hkl);
+          if (proton_only) {
+            if (site.element.is_hydrogen())
+              sf += calculate_sf_from_proton(cell_.fractionalize(site.pos),
+                                             site, hkl);
+          } else 
+            sf += calculate_sf_from_atom(cell_.fractionalize(site.pos),
+                                         site, hkl);
     return sf;
   }
 

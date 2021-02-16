@@ -18,7 +18,8 @@ void add_sfcalc(py::module& m, const char* name) {
   py::class_<SFC>(m, name)
     .def(py::init<const gemmi::UnitCell&>())
     .def_readwrite("addends", &SFC::addends)
-    .def("calculate_sf_from_model", &SFC::calculate_sf_from_model)
+    .def("calculate_sf_from_model", &SFC::calculate_sf_from_model,
+         py::arg("model"), py::arg("hkl"), py::arg("proton_only")=false)
     .def("mott_bethe_factor", &SFC::mott_bethe_factor)
     ;
 }
