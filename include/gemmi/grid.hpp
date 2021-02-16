@@ -264,6 +264,13 @@ struct Grid : GridBase<T> {
     return this->index_q(u, v, w);
   }
 
+  // Assumes (for efficiency) that -nu <= u < nu, etc.
+  size_t index_near_zero(int u, int v, int w) const {
+    return this->index_q(u >= 0 ? u : u + nu,
+                         v >= 0 ? v : v + nv,
+                         w >= 0 ? w : w + nw);
+  }
+
   // Safe but slower.
   size_t index_s(int u, int v, int w) const {
     return this->index_q(modulo(u, nu), modulo(v, nv), modulo(w, nw));

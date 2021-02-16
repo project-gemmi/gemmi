@@ -136,32 +136,68 @@ void set_margin_around(Grid<T>& mask, double r, T value, T margin_value) {
   int du = (int) std::floor(r / mask.spacing[0]);
   int dv = (int) std::floor(r / mask.spacing[1]);
   int dw = (int) std::floor(r / mask.spacing[2]);
+  double max_spacing2 = sq(std::max(std::max(mask.spacing[0], mask.spacing[1]),
+                                    mask.spacing[2])) + 1e-6;
   if (2 * du >= mask.nu || 2 * dv >= mask.nv || 2 * dw >= mask.nw)
     fail("grid operation failed: radius bigger than half the unit cell?");
-  std::vector<std::int8_t> stencil;
-  stencil.reserve(size_t(2*dw+1) * (2*dv+1) * (2*du+1));
+  std::vector<std::array<int,3>> stencil1;
+  std::vector<std::array<int,3>> stencil2;
   for (int w = -dw; w <= dw; ++w)
     for (int v = -dv; v <= dv; ++v)
       for (int u = -du; u <= du; ++u) {
         Fractional fdelta{u * (1.0 / mask.nu), v * (1.0 / mask.nv), w * (1.0 / mask.nw)};
         double r2 = mask.unit_cell.orthogonalize_difference(fdelta).length_sq();
-        stencil.push_back(r2 <= r * r && r2 != 0.);
-      }
-  for (int w = 0; w < mask.nw; ++w)
-    for (int v = 0; v < mask.nv; ++v)
-      for (int u = 0; u < mask.nu; ++u) {
-        T& point = mask.data[mask.index_q(u, v, w)];
-        if (point != value) {
-          for (int w2 = w-dw, idx = 0; w2 <= w+dw; ++w2)
-            for (int v2 = v-dv; v2 <= v+dv; ++v2)
-              for (int u2 = u-du; u2 <= u+du; ++u2, ++idx)
-                if (stencil[idx] && mask.data[mask.index_n(u2, v2, w2)] == value) {
-                  point = margin_value;
-                  goto nextpoint;
-                }
+        if (r2 <= r * r && r2 != 0.) {
+          std::array<int,3> wvu{{w <= 0 ? w : w - mask.nw,
+                                 v <= 0 ? v : v - mask.nv,
+                                 u <= 0 ? u : u - mask.nu}};
+          if (r2 < max_spacing2)
+            stencil1.push_back(wvu);
+          else
+            stencil2.push_back(wvu);
         }
-nextpoint: ;
       }
+  if (stencil2.empty()) {
+    size_t offset = 0;
+    for (int w = 0; w < mask.nw; ++w)
+      for (int v = 0; v < mask.nv; ++v)
+        for (int u = 0; u < mask.nu; ++u, ++offset) {
+          T& point = mask.data[offset];
+          if (point != value) {
+            for (const auto& wvu : stencil1) {
+              size_t idx = mask.index_near_zero(u + wvu[2], v + wvu[1], w + wvu[0]);
+              if (mask.data[idx] == value) {
+                point = margin_value;
+                break;
+              }
+            }
+          }
+        }
+  } else {
+    size_t offset = 0;
+    for (int w = 0; w < mask.nw; ++w)
+      for (int v = 0; v < mask.nv; ++v)
+        for (int u = 0; u < mask.nu; ++u, ++offset) {
+          if (mask.data[offset] == value) {
+            bool found = false;
+            for (const auto& wvu : stencil1) {
+              size_t idx = mask.index_near_zero(u + wvu[2], v + wvu[1], w + wvu[0]);
+              if (mask.data[idx] != value) {
+                mask.data[idx] = margin_value;
+                found = true;
+              }
+            }
+            if (found)
+              for (const auto& wvu : stencil2) {
+                size_t idx = mask.index_near_zero(u + wvu[2], v + wvu[1], w + wvu[0]);
+                if (mask.data[idx] != value)
+                  mask.data[idx] = margin_value;
+              }
+          }
+        }
+  }
+  //printf("stencil sizes: %zu\n", stencil1.size(), stencil2.size());
+  //printf("margin: %zu\n", std::count(mask.data.begin(), mask.data.end(), margin_value));
 }
 
 struct SolventMasker {
