@@ -284,6 +284,13 @@ struct Grid : GridBase<T> {
     return {u, v, w, &data[index_s(u, v, w)]};
   }
 
+  Fractional get_fractional(int u, int v, int w) const {
+    return {u * (1.0 / nu), v * (1.0 / nv), w * (1.0 / nw)};
+  }
+  Position get_position(int u, int v, int w) const {
+    return unit_cell.orthogonalize(get_fractional(u, v, w));
+  }
+
   Point get_nearest_point(const Fractional& f) {
     return get_point(iround(f.x * nu), iround(f.y * nv), iround(f.z * nw));
   }
@@ -293,10 +300,10 @@ struct Grid : GridBase<T> {
   }
 
   Fractional point_to_fractional(const Point& p) const {
-    return {p.u * (1.0 / nu), p.v * (1.0 / nv), p.w * (1.0 / nw)};
+    return get_fractional(p.u, p.v, p.w);
   }
   Position point_to_position(const Point& p) const {
-    return unit_cell.orthogonalize(point_to_fractional(p));
+    return get_position(p.u, p.v, p.w);
   }
 
   static double grid_modulo(double x, int n, int* iptr) {
@@ -355,9 +362,7 @@ struct Grid : GridBase<T> {
     for (int w = w0-dw; w <= w0+dw; ++w)
       for (int v = v0-dv; v <= v0+dv; ++v)
         for (int u = u0-du; u <= u0+du; ++u) {
-          Fractional fdelta{fctr.x - u * (1.0 / nu),
-                            fctr.y - v * (1.0 / nv),
-                            fctr.z - w * (1.0 / nw)};
+          Fractional fdelta = fctr - get_fractional(u, v, w);
           Position delta = unit_cell.orthogonalize_difference(fdelta);
           func(data[index_n(u, v, w)], delta);
         }

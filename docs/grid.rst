@@ -154,6 +154,16 @@ the spacing between grid points that is precalculated for efficiency.
   >>> grid.spacing  #doctest: +ELLIPSIS
   (3.7179..., 3.75..., 3.7179...)
 
+Each grid point (*u*, *v*, *w*) can now be expressed in fractional or Cartesian
+coordinates:
+
+.. doctest::
+
+  >>> grid.get_fractional(6, 6, 6)
+  <gemmi.Fractional(0.5, 0.5, 0.5)>
+  >>> grid.get_position(6, 6, 6)
+  <gemmi.Position(25.4368, 22.5, 22.3075)>
+
 Grid point
 ----------
 
