@@ -66,10 +66,11 @@ public:
   }
 
   template<typename Site>
-  std::complex<double> calculate_sf_from_atom(const Fractional& fract,
-                                              const Site& site,
-                                              const Miller& hkl) {
-    double oc_sf = site.occ * get_scattering_factor(site.element);
+  std::complex<double> calculate_sf_from_atom_sf(const Fractional& fract,
+                                                 const Site& site,
+                                                 const Miller& hkl,
+                                                 double sf) {
+    double oc_sf = site.occ * sf;
     std::complex<double> sum = calculate_sf_part(fract, hkl);
     if (!site.aniso.nonzero()) {
       for (const FTransform& image : cell_.images)
@@ -85,15 +86,32 @@ public:
     }
   }
 
-  std::complex<double> calculate_sf_from_model(const Model& model,
-                                               const Miller& hkl) {
+  template<typename Site>
+  std::complex<double> calculate_sf_from_atom(const Fractional& fract,
+                                              const Site& site,
+                                              const Miller& hkl) {
+    return calculate_sf_from_atom_sf(fract, site, hkl, get_scattering_factor(site.element));
+  }
+
+  std::complex<double> calculate_sf_from_model(const Model& model, const Miller& hkl) {
     std::complex<double> sf = 0.;
     set_stol2_and_scattering_factors(hkl);
     for (const Chain& chain : model.chains)
       for (const Residue& res : chain.residues)
         for (const Atom& site : res.atoms)
-          sf += calculate_sf_from_atom(cell_.fractionalize(site.pos),
-                                       site, hkl);
+          sf += calculate_sf_from_atom(cell_.fractionalize(site.pos), site, hkl);
+    return sf;
+  }
+
+  // part of Mott-Bethe formula from hydrogen (-Z -> -1)
+  std::complex<double> calculate_mb_z_from_h(const Model& model, const Miller& hkl) {
+    std::complex<double> sf = 0.;
+    stol2_ = cell_.calculate_stol_sq(hkl);
+    for (const Chain& chain : model.chains)
+      for (const Residue& res : chain.residues)
+        for (const Atom& site : res.atoms)
+          if (site.element.is_hydrogen())
+            sf += calculate_sf_from_atom_sf(cell_.fractionalize(site.pos), site, hkl, -1.);
     return sf;
   }
 
@@ -103,9 +121,8 @@ public:
 
   // The occupancy is assumed to take into account symmetry,
   // i.e. to be fractional if the atom is on special position.
-  std::complex<double>
-  calculate_sf_from_small_structure(const SmallStructure& small,
-                                    const Miller& hkl) {
+  std::complex<double> calculate_sf_from_small_structure(const SmallStructure& small,
+                                                         const Miller& hkl) {
     std::complex<double> sf = 0.;
     set_stol2_and_scattering_factors(hkl);
     for (const SmallStructure::Site& site : small.sites)

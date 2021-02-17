@@ -13,14 +13,17 @@ namespace py = pybind11;
 using gemmi::Element;
 
 template<typename Table>
-void add_sfcalc(py::module& m, const char* name) {
+void add_sfcalc(py::module& m, const char* name, bool with_mb) {
   using SFC = gemmi::StructureFactorCalculator<Table>;
-  py::class_<SFC>(m, name)
+  py::class_<SFC> sfc(m, name);
+  sfc
     .def(py::init<const gemmi::UnitCell&>())
     .def_readwrite("addends", &SFC::addends)
-    .def("calculate_sf_from_model", &SFC::calculate_sf_from_model)
-    .def("mott_bethe_factor", &SFC::mott_bethe_factor)
-    ;
+    .def("calculate_sf_from_model", &SFC::calculate_sf_from_model);
+  if (with_mb)
+    sfc
+      .def("mott_bethe_factor", &SFC::mott_bethe_factor)
+      .def("calculate_mb_z_from_h", &SFC::calculate_mb_z_from_h);
 }
 
 template<typename Table>
@@ -58,8 +61,8 @@ void add_sf(py::module& m) {
 
   using IT92 = gemmi::IT92<double>;
   using C4322 = gemmi::C4322<double>;
-  add_sfcalc<IT92>(m, "StructureFactorCalculatorX");
-  add_sfcalc<C4322>(m, "StructureFactorCalculatorE");
+  add_sfcalc<IT92>(m, "StructureFactorCalculatorX", true);
+  add_sfcalc<C4322>(m, "StructureFactorCalculatorE", false);
   add_dencalc<IT92>(m, "DensityCalculatorX");
   add_dencalc<C4322>(m, "DensityCalculatorE");
 }
