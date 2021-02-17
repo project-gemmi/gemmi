@@ -148,14 +148,10 @@ struct DensityCalculator {
           add_atom_density_to_grid(atom);
   }
 
-  void sum_symmetry_equivalent_grid_points() {
-    grid.symmetrize([](Real a, Real b) { return a + b; });
-  }
-
   void put_model_density_on_grid(const Model& model) {
     initialize_grid();
     add_model_density_to_grid(model);
-    sum_symmetry_equivalent_grid_points();
+    grid.symmetrize_sum();
   }
 
   void set_grid_cell_and_spacegroup(const Structure& st) {

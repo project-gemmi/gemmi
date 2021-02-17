@@ -147,7 +147,7 @@ Python bindings provide the following specializations:
   >>> grid.symmetrize_min()      # minimum of equivalent values
   >>> grid.symmetrize_max()      # maximum
   >>> grid.symmetrize_abs_max()  # value corresponding to max(|x|)
-  >>> grid.symmetrize_sum()      # sum of symmetry-equivalent nodes
+  >>> #grid.symmetrize_sum()     # sum symmetry-equivalent nodes
 
 Unit cell
 ---------

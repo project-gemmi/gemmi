@@ -1491,7 +1491,7 @@ Calling ``put_model_density_on_grid`` is equivalent to these three functions:
 
   >>> dencalc.initialize_grid()
   >>> dencalc.add_model_density_to_grid(st[0])
-  >>> dencalc.sum_symmetry_equivalent_grid_points()
+  >>> dencalc.grid.symmetrize_sum()
 
 Now we have density calculated on the grid:
 
