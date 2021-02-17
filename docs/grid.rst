@@ -135,6 +135,19 @@ Now let us use one of the symmetrizing functions:
   >>> grid.sum()  # one point got duplicated, the other is on rotation axis
   14.125
 
+In C++ we have a templated function that can perform any operation
+on symmetry-equivalent points::
+
+    template<typename Func> void Grid::symmetrize(Func func)
+
+Python bindings provide the following specializations:
+
+.. doctest::
+
+  >>> grid.symmetrize_min()      # minimum of equivalent values
+  >>> grid.symmetrize_max()      # maximum
+  >>> grid.symmetrize_abs_max()  # value corresponding to max(|x|)
+  >>> grid.symmetrize_sum()      # sum of symmetry-equivalent nodes
 
 Unit cell
 ---------

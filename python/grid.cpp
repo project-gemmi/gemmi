@@ -129,6 +129,8 @@ void add_grid(py::module& m, const std::string& name) {
          py::arg("position"), py::arg("radius"), py::arg("value"))
     .def("symmetrize_min", &Gr::symmetrize_min)
     .def("symmetrize_max", &Gr::symmetrize_max)
+    .def("symmetrize_abs_max", &Gr::symmetrize_abs_max)
+    .def("symmetrize_sum", &Gr::symmetrize_sum)
     .def("asu", &Gr::asu)
     .def("mask_points_in_constant_radius", &mask_points_in_constant_radius<T>,
          py::arg("model"), py::arg("radius"), py::arg("value"))

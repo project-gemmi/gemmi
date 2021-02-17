@@ -481,6 +481,14 @@ struct Grid : GridBase<T> {
   void symmetrize_max() {
     symmetrize([](T a, T b) { return (a > b || !(b == b)) ? a : b; });
   }
+  void symmetrize_abs_max() {
+    symmetrize([](T a, T b) { return (std::abs(a) > std::abs(b) || !(b == b)) ? a : b; });
+  }
+  // multiplies grid points on special position
+  void symmetrize_sum() {
+    symmetrize([](T a, T b) { return a + b; });
+  }
+
 
   template<typename V> std::vector<V> get_asu_mask() const {
     std::vector<V> mask(data.size(), 0);
