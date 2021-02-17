@@ -147,6 +147,16 @@ struct GridBase {
 
   size_t point_to_index(const Point& p) const { return p.value - data.data(); }
 
+  Point index_to_point(size_t idx) {
+    auto d1 = std::div((ptrdiff_t)idx, (ptrdiff_t)nu);
+    auto d2 = std::div(d1.quot, (ptrdiff_t)nv);
+    int u = (int) d1.rem;
+    int v = (int) d2.rem;
+    int w = (int) d2.quot;
+    assert(index_q(u, v, w) == idx);
+    return {u, v, w, &data.at(idx)};
+  }
+
   void fill(T value) {
     data.resize(point_count());
     std::fill(data.begin(), data.end(), value);

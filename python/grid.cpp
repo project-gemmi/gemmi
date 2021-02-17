@@ -58,6 +58,8 @@ void add_grid_base(py::module& m, const char* name) {
     .def_readwrite("unit_cell", &GrBase::unit_cell)
     .def_readonly("axis_order", &GrBase::axis_order)
     .def_property_readonly("point_count", &GrBase::point_count)
+    .def("point_to_index", &GrBase::point_to_index)
+    .def("index_to_point", &GrBase::index_to_point)
     .def("fill", &GrBase::fill, py::arg("value"))
     .def("sum", &GrBase::sum)
     .def("__iter__", [](GrBase& self) { return py::make_iterator(self); },
@@ -104,7 +106,6 @@ void add_grid(py::module& m, const std::string& name) {
     .def("get_nearest_point", (GrPoint (Gr::*)(const Position&)) &Gr::get_nearest_point)
     .def("point_to_fractional", &Gr::point_to_fractional)
     .def("point_to_position", &Gr::point_to_position)
-    .def("point_to_index", &Gr::point_to_index)
     .def("interpolate_value",
          (T (Gr::*)(const Fractional&) const) &Gr::interpolate_value)
     .def("interpolate_value",
