@@ -448,7 +448,8 @@ struct Grid : GridBase<T> {
           }
           T value = data[idx];
           for (size_t k : mates) {
-            assert(!visited[k]);
+            if (visited[k])
+              fail("grid size is not compatible with space group");
             value = func(value, data[k]);
           }
           data[idx] = value;
