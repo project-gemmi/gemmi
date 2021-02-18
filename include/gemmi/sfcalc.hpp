@@ -103,15 +103,15 @@ public:
     return sf;
   }
 
-  // part of Mott-Bethe formula from hydrogen (-Z -> -1)
-  std::complex<double> calculate_mb_z_from_h(const Model& model, const Miller& hkl) {
+  // Z part of Mott-Bethe formula (when need to use different model)
+  std::complex<double> calculate_mb_z(const Model& model, const Miller& hkl, bool only_h) {
     std::complex<double> sf = 0.;
     stol2_ = cell_.calculate_stol_sq(hkl);
     for (const Chain& chain : model.chains)
       for (const Residue& res : chain.residues)
         for (const Atom& site : res.atoms)
-          if (site.element.is_hydrogen())
-            sf += calculate_sf_from_atom_sf(cell_.fractionalize(site.pos), site, hkl, -1.);
+          if (!only_h || site.element.is_hydrogen())
+            sf += calculate_sf_from_atom_sf(cell_.fractionalize(site.pos), site, hkl, -1.*site.element.atomic_number());
     return sf;
   }
 

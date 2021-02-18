@@ -23,7 +23,8 @@ void add_sfcalc(py::module& m, const char* name, bool with_mb) {
   if (with_mb)
     sfc
       .def("mott_bethe_factor", &SFC::mott_bethe_factor)
-      .def("calculate_mb_z_from_h", &SFC::calculate_mb_z_from_h);
+      .def("calculate_mb_z", &SFC::calculate_mb_z,
+           py::arg("model"), py::arg("hkl"), py::arg("only_h")=false);
 }
 
 template<typename Table>
