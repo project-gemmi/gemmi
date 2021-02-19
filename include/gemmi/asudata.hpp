@@ -140,7 +140,7 @@ AsuData<T> make_asu_data(Data& data, const std::array<std::string,N>& labels) {
 template<typename T, typename Data>
 AsuData<T> make_asu_data(Data& data, const std::string& label) {
   AsuData<T> asu_data;
-  asu_data.template load_values(data_proxy(data), label);
+  asu_data.load_values(data_proxy(data), label);
   return asu_data;
 }
 

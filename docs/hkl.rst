@@ -1535,6 +1535,9 @@ our resolution limit, and ``rate`` -- oversampling rate (1.5 by default).
   >>> dencalc.d_min = 2.5 # 2.5A
   >>> dencalc.rate = 1.5  # we could skip it, this is the default value
 
+All these two parameters mean is that the spacing between grid planes
+needs to be at least 2.5Å / (2 \* 1.5) = 0.67Å.
+
 As with StructureFactorCalculator, here we also have :ref:`addends <addends>`:
 
 .. doctest::
