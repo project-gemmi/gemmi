@@ -810,6 +810,8 @@ struct MtzExternalDataProxy : MtzDataProxy {
   }
 };
 
+inline MtzDataProxy data_proxy(const Mtz& mtz) { return {mtz}; }
+
 } // namespace gemmi
 
 #ifdef GEMMI_WRITE_IMPLEMENTATION

@@ -82,6 +82,20 @@ struct AsuData {
     }
   }
 
+  // load values from one column
+  template<typename DataProxy>
+  void load_values(const DataProxy& proxy, const std::string& label) {
+    std::size_t col = proxy.column_index(label);
+    unit_cell_ = proxy.unit_cell();
+    spacegroup_ = proxy.spacegroup();
+    for (size_t i = 0; i < proxy.size(); i += proxy.stride()) {
+      T num = (T) proxy.get_num(i + col);
+      if (!std::isnan(num))
+        v.push_back({proxy.get_hkl(i), num});
+    }
+  }
+
+  // load values from two or more columns
   template<int N, typename DataProxy>
   void load_values(const DataProxy& proxy, const std::array<std::string,N>& labels) {
     std::array<std::size_t, N> cols;
@@ -116,6 +130,19 @@ private:
     val.sigma = nums[1];
   }
 };
+
+template<typename T, int N, typename Data>
+AsuData<T> make_asu_data(Data& data, const std::array<std::string,N>& labels) {
+  AsuData<T> asu_data;
+  asu_data.template load_values<N>(data_proxy(data), labels);
+  return asu_data;
+}
+template<typename T, typename Data>
+AsuData<T> make_asu_data(Data& data, const std::string& label) {
+  AsuData<T> asu_data;
+  asu_data.template load_values(data_proxy(data), label);
+  return asu_data;
+}
 
 } // namespace gemmi
 #endif

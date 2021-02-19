@@ -225,5 +225,7 @@ private:
   int get_int(size_t n) const { return cif::as_int(loop().values[n]); }
 };
 
+inline ReflnDataProxy data_proxy(const ReflnBlock& rb) { return ReflnDataProxy(rb); }
+
 } // namespace gemmi
 #endif

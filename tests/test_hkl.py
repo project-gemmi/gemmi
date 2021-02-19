@@ -156,7 +156,7 @@ class TestSfMmcif(unittest.TestCase):
     def test_scaling(self):
         doc = gemmi.cif.read(full_path('r5wkdsf.ent'))
         rblock = gemmi.as_refln_blocks(doc)[0]
-        fobs_data = rblock.get_f_sigma('F_meas_au', 'F_meas_sigma_au')
+        fobs_data = rblock.get_value_sigma('F_meas_au', 'F_meas_sigma_au')
 
         # without mask
         fc_data = rblock.get_f_phi('F_calc_au', 'phase_calc')

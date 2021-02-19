@@ -175,17 +175,16 @@ void add_mtz(py::module& m) {
        py::arg("exact_size")=std::array<int,3>{{0,0,0}},
        py::arg("sample_rate")=0.,
        py::arg("order")=AxisOrder::XYZ)
-    .def("get_f_phi", [](const Mtz& mtz, const std::string& f_col,
-                                         const std::string& phi_col) {
-        auto asu_data = new AsuData<std::complex<float>>;
-        asu_data->load_values<2>(gemmi::MtzDataProxy{mtz}, {f_col, phi_col});
-        return asu_data;
+    .def("get_float", [](const Mtz& self, const std::string& col) {
+        return make_asu_data<float>(self, col);
+    }, py::arg("col"))
+    .def("get_f_phi", [](const Mtz& self, const std::string& f_col,
+                                          const std::string& phi_col) {
+        return make_asu_data<std::complex<float>, 2>(self, {f_col, phi_col});
     }, py::arg("f"), py::arg("phi"))
-    .def("get_f_sigma", [](const Mtz& mtz, const std::string& f_col,
-                                           const std::string& sigma_col) {
-        auto asu_data = new AsuData<ValueSigma<float>>;
-        asu_data->load_values<2>(gemmi::MtzDataProxy{mtz}, {f_col, sigma_col});
-        return asu_data;
+    .def("get_value_sigma", [](const Mtz& self, const std::string& f_col,
+                                                const std::string& sigma_col) {
+        return make_asu_data<ValueSigma<float>, 2>(self, {f_col, sigma_col});
     }, py::arg("f"), py::arg("sigma"))
     .def("add_dataset", &Mtz::add_dataset, py::arg("name"),
          py::return_value_policy::reference_internal)

@@ -68,6 +68,9 @@ In Python, we have a single function for reading MTZ files:
   >>> import gemmi
   >>> mtz = gemmi.read_mtz_file('../tests/5e5z.mtz')
 
+Metadata
+--------
+
 The Mtz class has a number of properties read from the MTZ header
 (they are the same in C++ and Python):
 
@@ -180,6 +183,10 @@ To get all columns of the specified type use:
   >>> mtz.columns_with_type('Q')
   MtzColumnRefs[<gemmi.Mtz.Column SIGFP type Q>, <gemmi.Mtz.Column SIGI type Q>]
 
+
+Column
+------
+
 Column has properties read from MTZ headers COLUMN and COLSRC::
 
   struct Column {
@@ -225,8 +232,41 @@ In both C++ and Python ``Column`` supports the iteration protocol:
   >>> numpy.nanmean(intensity)
   11.505858
 
-Unmerged MTZ
-------------
+
+Data
+----
+
+All the data in MTZ file is stored as one array of 32-bit floating point
+numbers. This includes integers such as Miller indices.
+In MTZ class this data is stored in a C++ container::
+
+  std::vector<float> Mtz::data
+
+In Python, this data can be conveniently accessed as NumPy array,
+as described in a separate :ref:`section <mtz_numpy>` below.
+
+The Column class from the previous section provides another way
+to access the data.
+
+We can also copy selected columns into :ref:`AsuData <asu_data>` --
+a class that stores values together with Miller indices:
+
+.. doctest::
+
+  >>> mtz_5wkd = gemmi.read_mtz_file('../tests/5wkd_phases.mtz.gz')
+  >>> mtz_5wkd.get_float('FOM')
+  <gemmi.FloatAsuData with 367 values>
+  >>> mtz_5wkd.get_f_phi('FWT', 'PHWT')
+  <gemmi.ComplexAsuData with 367 values>
+  >>> mtz_5wkd.get_value_sigma('FP', 'SIGFP')
+  <gemmi.ValueSigmaAsuData with 367 values>
+
+These functions are also available for data from SF-mmCIF.
+Missing values (MNF in the MTZ format) are skipped.
+In case of value-sigma pairs both numbers must be present.
+
+Batch headers
+-------------
 
 Unmerged (multi-record) MTZ files store a list of batches::
 
@@ -286,6 +326,8 @@ It would be ``False`` only if it was a merged MTZ file.
 Keeping track what the current indices mean is up to the user.
 They are "asu" after reading a file and they must be "asu" before writing
 to a file.
+
+.. _mtz_numpy:
 
 Data in NumPy and pandas
 ------------------------
@@ -892,14 +934,37 @@ We can also iterate over points of the grid.
 AsuData
 -------
 
-AsuData is an array of symmetry-unique Miller indices and values
-that can be extracted from a reciprocal-space grid:
+AsuData is an array of symmetry-unique Miller indices and values.
 
-.. doctest::
+In C++, in principle, the values can be of any type.
 
-  >>> asu_data = grid.prepare_asu_data(dmin=1.8, with_000=False, with_sys_abs=False)
-  >>> asu_data
-  <gemmi.ComplexAsuData with 407 values>
+In Python, we have separate classes for different value types:
+Int8AsuData, FloatAsuData, ComplexAsuData, ValueSigmaAsuData.
+The last one is for a pair of numbers, typically a float value
+with associated sigma.
+
+Such an array can be created in two ways:
+
+1. From reflection data (which was read from an MTZ or SF-mmCIF file):
+
+  .. doctest::
+
+    >>> asu_data = mtz.get_value_sigma('F', 'SIGF')
+    >>> asu_data.ensure_asu()
+    >>> asu_data  #doctest:+ELLIPSIS
+    <gemmi.ValueSigmaAsuData with ... values>
+
+  The choice of ASU differs between programs, so if this matters,
+  calling ``ensure_asu()`` will switch to
+  the :ref:`ASU used in CCP4 <reciprocal_asu>`.
+
+2. From a reciprocal-space grid:
+
+  .. doctest::
+
+    >>> asu_data = grid.prepare_asu_data(dmin=1.8, with_000=False, with_sys_abs=False)
+    >>> asu_data
+    <gemmi.ComplexAsuData with 407 values>
 
 Each item in AsuData has two properties, hkl and value:
 
@@ -1608,13 +1673,13 @@ and subtract Z=1 by adding c=-1:
 Scaling and bulk solvent correction
 -----------------------------------
 
-Since anisotropic scaling and fitting of the bulk solvent parameters are
-performed together, both are covered in the same section.
-But it doesn't prevent you from scaling *F*\ s without any bulk solvent,
+Anisotropic scaling and fitting of the bulk solvent parameters are usually
+performed together. Both are implemented in the same class (Scaling),
+but it doesn't prevent you from scaling *F*\ s without any bulk solvent,
 or from calculating the bulk solvent correction without anisotropic scaling.
 
 The bulk solvent occupies significant volume of a macromolecular crystal;
-adding it to the model significantly changes structure factors.
+adding its contribution significantly changes structure factors.
 Usually, the bulk solvent is modelled as a flat scatterer.
 First, we create a mask of the bulk solvent, as described in
 a section about :ref:`solvent masking <solventmask>`.

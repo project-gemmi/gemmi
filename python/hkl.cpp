@@ -2,7 +2,7 @@
 
 #include "gemmi/unitcell.hpp"
 #include "gemmi/refln.hpp"
-#include "gemmi/fourier.hpp"
+#include "gemmi/fourier.hpp"  // for get_size_for_hkl, get_f_phi_on_grid, ...
 #include "gemmi/tostr.hpp"
 #include "gemmi/fprime.hpp"
 #include "gemmi/reciproc.hpp"  // for count_reflections, make_miller_vector
@@ -107,17 +107,16 @@ void add_hkl(py::module& m) {
        py::arg("exact_size")=std::array<int,3>{{0,0,0}},
        py::arg("sample_rate")=0.,
        py::arg("order")=AxisOrder::XYZ)
+    .def("get_float", [](const ReflnBlock& self, const std::string& col) {
+        return make_asu_data<float>(self, col);
+    }, py::arg("col"))
     .def("get_f_phi", [](const ReflnBlock& self, const std::string& f_col,
                                                  const std::string& phi_col) {
-        auto asu_data = new AsuData<std::complex<float>>;
-        asu_data->load_values<2>(gemmi::ReflnDataProxy{self}, {f_col, phi_col});
-        return asu_data;
+        return make_asu_data<std::complex<float>, 2>(self, {f_col, phi_col});
     }, py::arg("f"), py::arg("phi"))
-    .def("get_f_sigma", [](const ReflnBlock& self, const std::string& f_col,
-                                                   const std::string& sigma_col) {
-        auto asu_data = new AsuData<ValueSigma<float>>;
-        asu_data->load_values<2>(gemmi::ReflnDataProxy{self}, {f_col, sigma_col});
-        return asu_data;
+    .def("get_value_sigma", [](const ReflnBlock& self, const std::string& f_col,
+                                                       const std::string& sigma_col) {
+        return make_asu_data<ValueSigma<float>, 2>(self, {f_col, sigma_col});
     }, py::arg("f"), py::arg("sigma"))
     .def("is_unmerged", &ReflnBlock::is_unmerged)
     .def("use_unmerged", &ReflnBlock::use_unmerged)
