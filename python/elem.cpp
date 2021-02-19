@@ -30,6 +30,7 @@ void add_elem(py::module& m) {
         return {{ c.b(0), c.b(1), c.b(2), c.b(3) }};
     })
     .def_property_readonly("c", &IT92::Coef::c)
+    .def("set_coefs", &IT92::Coef::set_coefs)
     .def("calculate_sf", &IT92::Coef::calculate_sf, py::arg("stol2"))
     .def("calculate_density_iso", &IT92::Coef::calculate_density_iso,
          py::arg("r2"), py::arg("B"))
@@ -44,6 +45,7 @@ void add_elem(py::module& m) {
     .def_property_readonly("b", [](C4322::Coef& c) -> std::array<double,5> {
         return {{ c.b(0), c.b(1), c.b(2), c.b(3), c.b(4) }};
     })
+    .def("set_coefs", &C4322::Coef::set_coefs)
     .def("calculate_sf", &C4322::Coef::calculate_sf, py::arg("stol2"))
     .def("calculate_density_iso", &C4322::Coef::calculate_density_iso,
          py::arg("r2"), py::arg("B"))

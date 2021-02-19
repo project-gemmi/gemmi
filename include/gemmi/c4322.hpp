@@ -22,25 +22,25 @@ namespace gemmi {
 template<class Real>
 struct C4322 {
   using Coef = GaussianCoef<5, 0, Real>;
-  static const Coef data[98];
+  static Coef data[98];
 
   static bool has(El el) {
     return el != El::X && (el <= El::Cf || el == El::D);
   }
 
-  static const Coef& get(El el) {
+  static Coef& get(El el) {
     if (el == El::D)
       el = El::H;
     return data[(int)el - 1];
   }
 
-  static const Coef* get_ptr(El el) {
+  static Coef* get_ptr(El el) {
     return has(el) ? &get(el) : nullptr;
   }
 };
 
 template<class Real>
-const typename C4322<Real>::Coef C4322<Real>::data[98] = {
+typename C4322<Real>::Coef C4322<Real>::data[98] = {
   // a1, a2, a3, a4, a5, b1, b2, b3, b4, b5
   {0.0349, 0.1201, 0.197, 0.0573, 0.1195, 0.5347, 3.5867, 12.3471, 18.9525, 38.6269}, // H
   {0.0317, 0.0838, 0.1526, 0.1334, 0.0164, 0.2507, 1.4751, 4.4938, 12.6646, 31.1653}, // He

@@ -1287,13 +1287,32 @@ You can get the coefficients as numbers:
   >>> fe_coef.c
   1.0369
 
+Fun fact: for neutral atoms the *a*'s and *c* should sum up to *Z*,
+but the numbers from the Tables may differ slightly:
+
+.. doctest::
+
+  >>> gemmi.Element('Fe').atomic_number
+  26
+  >>> sum(fe_coef.a) + fe_coef.c  # doctest: +ELLIPSIS
+  25.9904...
+
+Some programs (Refmac) normalize them.
+To change the coefficients use function ``set_coefs()``.
+Here, to make it simple, we change only c:
+
+.. doctest::
+
+  >>> new_c = 26 - sum(fe_coef.a)
+  >>> fe_coef.set_coefs(fe_coef.a + fe_coef.b + [new_c])
+
 or you can used them to directly calculate the sum of Gaussians --
 the structure factor contribution:
 
 .. doctest::
 
   >>> fe_coef.calculate_sf(stol2=0.4)  # argument: (sin(theta)/lambda)^2
-  9.303602485040315
+  9.31320248504031
 
 The large number of reflections in macromolecular crystallography makes direct
 calculation of structure factors inefficient. Instead, we can calculate electron
@@ -1305,7 +1324,7 @@ point can be calculated as:
 
   >>> # arguments are distance^2 and isotropic ADP
   >>> fe_coef.calculate_density_iso(r2=2.3, B=50)
-  0.5279340932571192
+  0.5281308588290554
 
 The C++ interface provides more functions to calculate the electron density.
 We have separate functions to work with isotropic and anisotropic ADPs.
