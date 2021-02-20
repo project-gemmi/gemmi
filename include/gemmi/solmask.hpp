@@ -136,8 +136,9 @@ void set_margin_around(Grid<T>& mask, double r, T value, T margin_value) {
   int du = (int) std::floor(r / mask.spacing[0]);
   int dv = (int) std::floor(r / mask.spacing[1]);
   int dw = (int) std::floor(r / mask.spacing[2]);
-  double max_spacing2 = sq(std::max(std::max(mask.spacing[0], mask.spacing[1]),
-                                    mask.spacing[2])) + 1e-6;
+  double max_spacing2 = sq(std::max(std::max(mask.unit_cell.a / mask.nu,
+                                             mask.unit_cell.b / mask.nv),
+                                             mask.unit_cell.c / mask.nw)) + 1e-6;
   if (2 * du >= mask.nu || 2 * dv >= mask.nv || 2 * dw >= mask.nw)
     fail("grid operation failed: radius bigger than half the unit cell?");
   std::vector<std::array<int,3>> stencil1;
@@ -145,7 +146,7 @@ void set_margin_around(Grid<T>& mask, double r, T value, T margin_value) {
   for (int w = -dw; w <= dw; ++w)
     for (int v = -dv; v <= dv; ++v)
       for (int u = -du; u <= du; ++u) {
-        Fractional fdelta{u * (1.0 / mask.nu), v * (1.0 / mask.nv), w * (1.0 / mask.nw)};
+        Fractional fdelta = mask.get_fractional(u, v, w);
         double r2 = mask.unit_cell.orthogonalize_difference(fdelta).length_sq();
         if (r2 <= r * r && r2 != 0.) {
           std::array<int,3> wvu{{w <= 0 ? w : w - mask.nw,
