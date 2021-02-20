@@ -849,10 +849,10 @@ as a text value of _shelx_hkl_file:
      0   0   1   19.76    0.73
 
 
-Data on 3D grid
-===============
+Reciprocal-space grid
+=====================
 
-The reciprocal space data can be alternatively presented on a 3D grid
+The reciprocal-space data can be alternatively presented on a 3D grid
 indexed by Miller indices.
 This grid is represented by C++ class ReciprocalGrid,
 which shares most of the properties with the real-space
@@ -877,7 +877,7 @@ All the missing values are set to 0:
   >>> grid
   <gemmi.ReciprocalComplexGrid(54, 6, 18)>
 
-If we'd ever need data from a single column put on a grid,
+If we'd ever need to put data from a single column on a grid,
 we can use analogical function:
 
 .. doctest::
@@ -925,8 +925,17 @@ We can also iterate over points of the grid.
   ...    pass
   >>> point.value  # point is the last point from the iteration
   (-178.310546875+99.20561218261719j)
+
+Miller indices and resolution corresponding to the point can be obtained with:
+
+.. doctest::
+
   >>> grid.to_hkl(point)
   [-1, -1, -1]
+  >>> grid.calculate_1_d2(point)
+  0.04960193997923228
+  >>> grid.calculate_d(point)
+  4.490044743125198
 
 
 .. _asu_data:

@@ -155,6 +155,8 @@ void add_recgrid(py::module& m, const std::string& name) {
     .def("get_value_or_zero", &RecGr::get_value_or_zero)
     .def("set_value", &RecGr::set_value)
     .def("to_hkl", &RecGr::to_hkl)
+    .def("calculate_1_d2", &RecGr::calculate_1_d2)
+    .def("calculate_d", &RecGr::calculate_d)
     .def("prepare_asu_data", &RecGr::prepare_asu_data,
          py::arg("dmin")=0., py::arg("unblur")=0.,
          py::arg("with_000")=false, py::arg("with_sys_abs")=false,

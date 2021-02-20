@@ -58,6 +58,13 @@ struct ReciprocalGrid : GridBase<T> {
     return hkl;
   }
 
+  double calculate_1_d2(const typename GridBase<T>::Point& point) const {
+    return this->unit_cell.calculate_1_d2(to_hkl(point));
+  }
+  double calculate_d(const typename GridBase<T>::Point& point) const {
+    return this->unit_cell.calculate_d(to_hkl(point));
+  }
+
   // the result is always sorted by h,k,l
   AsuData<T> prepare_asu_data(double dmin=0, double unblur=0,
                               bool with_000=false, bool with_sys_abs=false,
