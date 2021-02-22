@@ -268,5 +268,14 @@ void add_unitcell(py::module& m) {
     .def("__repr__", [](const UnitCell& self) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
              + ", " + triple(self.alpha, self.beta, self.gamma) + ")>";
-    });
+    })
+    .def(py::pickle(
+         [](const UnitCell &self) {
+           return py::make_tuple(self.a, self.b, self.c, self.alpha, self.beta, self.gamma);
+         },
+         [](const py::tuple p) {
+           UnitCell uc(p[0].cast<double>(), p[1].cast<double>(), p[2].cast<double>(), p[3].cast<double>(), p[4].cast<double>(), p[5].cast<double>());
+           return uc;
+         }
+    ));
 }

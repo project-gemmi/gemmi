@@ -186,7 +186,15 @@ void add_symmetry(py::module& m) {
     }, py::arg("miller_array").noconvert())
     .def("__repr__", [](const SpaceGroup &self) {
         return "<gemmi.SpaceGroup(\"" + self.xhm() + "\")>";
-    });
+    })
+    .def(py::pickle(
+        [](const SpaceGroup &self) {
+          return self.xhm();
+        },
+        [](const std::string &s) {
+          return const_cast<SpaceGroup*>(&get_spacegroup_by_name(s));
+        }
+    ));
 
   py::class_<ReciprocalAsu>(m, "ReciprocalAsu")
     .def(py::init<const SpaceGroup*>())
