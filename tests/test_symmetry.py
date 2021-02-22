@@ -298,20 +298,16 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(gops.epsilon_factor_without_centering([2,0,0]), 4)
 
     def test_pickling(self):
-        import os
         try:
             import cPickle as pickle  # Use cPickle on Python 2.7
         except ImportError:
             import pickle
-            
-        sg =  gemmi.SpaceGroup("P 31 2 1")
-        with open("temp.pkl", "wb") as temp:
-            pickle.dump(sg, temp)
-        with open("temp.pkl", "rb") as temp:
-            result = pickle.load(temp)
+
+        sg = gemmi.SpaceGroup("P 31 2 1")
+        pkl_string = pickle.dumps(sg, protocol=pickle.HIGHEST_PROTOCOL)
+        result = pickle.loads(pkl_string)
         self.assertTrue(isinstance(result, gemmi.SpaceGroup))
         self.assertEqual(sg.xhm(), result.xhm())
-        os.remove("temp.pkl")
-    
+
 if __name__ == '__main__':
     unittest.main()

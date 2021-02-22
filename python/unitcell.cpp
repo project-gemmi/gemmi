@@ -22,10 +22,14 @@ static std::string triple(double x, double y, double z) {
   return std::string(buf);
 }
 
-void mat33_from_list(Mat33& self, std::array<std::array<double,3>,3>& m) {
+static void mat33_from_list(Mat33& self, std::array<std::array<double,3>,3>& m) {
   for (int i = 0; i < 3; ++i)
     for (int j = 0; j < 3; ++j)
       self.a[i][j] = m[i][j];
+}
+
+static py::tuple make_parameters_tuple(const UnitCell& u) {
+  return py::make_tuple(u.a, u.b, u.c, u.alpha, u.beta, u.gamma);
 }
 
 template<typename T> void add_smat33(py::module& m, const char* name) {
@@ -225,9 +229,7 @@ void add_unitcell(py::module& m) {
     .def_readonly("gamma", &UnitCell::gamma)
     .def_readonly("volume", &UnitCell::volume)
     .def_readonly("images", &UnitCell::images)
-    .def_property_readonly("parameters", [](const UnitCell& self) {
-        return py::make_tuple(self.a, self.b, self.c, self.alpha, self.beta, self.gamma);
-    })
+    .def_property_readonly("parameters", &make_parameters_tuple)
     .def_property_readonly("fractionalization_matrix",
                            [](const UnitCell& self) { return self.frac.mat; })
     .def_property_readonly("orthogonalization_matrix",
@@ -270,12 +272,10 @@ void add_unitcell(py::module& m) {
              + ", " + triple(self.alpha, self.beta, self.gamma) + ")>";
     })
     .def(py::pickle(
-         [](const UnitCell &self) {
-           return py::make_tuple(self.a, self.b, self.c, self.alpha, self.beta, self.gamma);
-         },
+         &make_parameters_tuple,
          [](const py::tuple p) {
-           UnitCell uc(p[0].cast<double>(), p[1].cast<double>(), p[2].cast<double>(), p[3].cast<double>(), p[4].cast<double>(), p[5].cast<double>());
-           return uc;
+            return UnitCell (p[0].cast<double>(), p[1].cast<double>(), p[2].cast<double>(),
+                             p[3].cast<double>(), p[4].cast<double>(), p[5].cast<double>());
          }
     ));
 }
