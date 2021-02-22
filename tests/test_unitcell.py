@@ -101,6 +101,22 @@ class TestUnitCell(unittest.TestCase):
         for a, b in zip(site.aniso.elements(), ucif):
             self.assertAlmostEqual(a, b, delta=1e-6)
 
+    def test_pickling(self):
+        import os
+        try:
+            import cPickle as pickle  # Use cPickle on Python 2.7
+        except ImportError:
+            import pickle
+
+        cell = UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
+        with open("temp.pkl", "wb") as temp:
+            pickle.dump(cell, temp)
+        with open("temp.pkl", "rb") as temp:
+            result = pickle.load(temp)
+        self.assertTrue(isinstance(result, UnitCell))
+        self.assertEqual(cell.parameters, result.parameters)
+        os.remove("temp.pkl")
+        
 class TestAngles(unittest.TestCase):
     def test_dihedral_special_cases(self):
         a = Position(random(), random(), random())
