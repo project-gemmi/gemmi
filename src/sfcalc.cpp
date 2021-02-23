@@ -361,16 +361,6 @@ void print_structure_factors_sm(const gemmi::SmallStructure& small,
   }
 }
 
-double get_minimum_b_iso(const gemmi::Model& model) {
-  double b_min = 1000.;
-  for (const gemmi::Chain& chain : model.chains)
-    for (const gemmi::Residue& residue : chain.residues)
-      for (const gemmi::Atom& atom : residue.atoms)
-        if (atom.b_iso < b_min)
-          b_min = atom.b_iso;
-  return b_min;
-}
-
 template<typename Table>
 void compare_with_hkl(const gemmi::SmallStructure& small,
                       gemmi::StructureFactorCalculator<Table>& calc,
@@ -598,13 +588,11 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         // This value is not optimal.
         // The optimal value would depend on the distribution of B-factors
         // and on the atomic cutoff radius, and probably it would be too
-        // hard to estimate.
-        // Here we use a simple ad-hoc rule:
-        double sqrtB = 4 * dencalc.d_min * (1./dencalc.rate - 0.2);
-        double b_min = get_minimum_b_iso(st.models[0]);
-        dencalc.blur = sqrtB * sqrtB - b_min;
+        // hard to estimate. Here we use the same formula as in Refmac.
+        dencalc.set_refmac_compatible_blur(st.models[0]);
         if (p.options[Verbose])
-          fprintf(stderr, "B_min=%g, B_add=%g\n", b_min, dencalc.blur);
+          fprintf(stderr, "B_min=%g, B_add=%g\n",
+                  gemmi::get_minimum_b_iso(st.models[0]), dencalc.blur);
       }
       gemmi::AtomicRadiiSet radii_choice = gemmi::AtomicRadiiSet::VanDerWaals;
       if (p.options[RadiiSet]) {

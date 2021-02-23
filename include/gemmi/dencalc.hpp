@@ -64,6 +64,15 @@ inline double it92_radius_approx(double b) {
   return (8.5 + 0.075 * b) / (2.4 + 0.0045 * b);
 }
 
+inline double get_minimum_b_iso(const Model& model) {
+  double b_min = 1000.;
+  for (const Chain& chain : model.chains)
+    for (const Residue& residue : chain.residues)
+      for (const Atom& atom : residue.atoms)
+        if (atom.b_iso < b_min)
+          b_min = atom.b_iso;
+  return b_min;
+}
 
 // Usual usage:
 // - set d_min and optionally also other parameters,
@@ -83,6 +92,13 @@ struct DensityCalculator {
   Addends addends;
 
   using coef_type = typename Table::Coef::coef_type;
+
+  double requested_grid_spacing() const { return d_min / (2 * rate); }
+
+  void set_refmac_compatible_blur(const Model& model) {
+    double b_min = get_minimum_b_iso(model);
+    blur = std::max(u_to_b() / 1.1 * sq(requested_grid_spacing()) - b_min, 0.);
+  }
 
   // pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {
@@ -138,7 +154,7 @@ struct DensityCalculator {
 
   void initialize_grid() {
     grid.data.clear();
-    grid.set_size_from_spacing(d_min / (2 * rate), true);
+    grid.set_size_from_spacing(requested_grid_spacing(), true);
   }
 
   void add_model_density_to_grid(const Model& model) {
@@ -166,7 +182,8 @@ struct DensityCalculator {
 
   double mott_bethe_factor(const Miller& hkl) const {
     double inv_d2 = grid.unit_cell.calculate_1_d2(hkl);
-    return -1. / (2 * pi() * pi() * bohrradius()) / inv_d2;
+    double factor = -1. / (2 * pi() * pi() * bohrradius()) / inv_d2;
+    return blur == 0 ? factor : factor * reciprocal_space_multiplier(inv_d2);
   }
 };
 

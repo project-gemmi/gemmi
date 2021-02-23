@@ -1626,13 +1626,29 @@ Choosing these parameters is a trade-off between efficiency and accuracy.
 It is discussed in the `ITfC vol B <https://it.iucr.org/Bb/contents/>`_,
 chapter 1.3 by G. Bricogne, section 1.3.4.4.5, and further in papers by
 `J. Navaza (2002) <https://doi.org/10.1107/S0108767302016318>`_ and by
-`P. Afonine and A. Urzhumtsev (2003) <https://doi.org/10.1107/S0108767303022062>`_.
-Still, I have not found a practical recipe how to pick a good value.
-Increasing the dampening makes the computations slower (because it
-increases atomic radius), while the value of *B*\ :sub:`extra` that
+`P. Afonine and A. Urzhumtsev (2003) <https://doi.org/10.1107/S0108767303022062>`_,
+but without a formula for optimal value.
+The value of *B*\ :sub:`extra` that
 gives the most accurate results depends on the resolution, oversampling,
 atomic radius cut-off, and on the distribution of B-factors
 (in particular, on the minimal B-factor in the model).
+Additionally, increasing the dampening makes the computations slower
+(because it increases atomic radius).
+
+*B*\ :sub:`extra` can be set explicitely (it can be negative):
+
+.. doctest::
+
+  >>> dencalc.blur = 10
+
+or using the formula from Refmac:
+
+.. doctest::
+
+  >>> dencalc.set_refmac_compatible_blur(st[0])
+  >>> dencalc.blur
+  31.01648695048263
+
 The :ref:`sfcalc <sfcalc>` program can be used to test different choices
 of *B*\ :sub:`extra`.
 
@@ -1659,26 +1675,28 @@ we first employ addends to calculate *f*\ :sub:`x`\ --\ *Z*:
   >>> dc.d_min = 2.5
   >>> dc.addends.subtract_z()
   >>> dc.set_grid_cell_and_spacegroup(st)
+  >>> dc.set_refmac_compatible_blur(st[0])
   >>> dc.put_model_density_on_grid(st[0])
   >>> grid = gemmi.transform_map_to_f_phi(dc.grid)
 
 Then we multiply it by –1/(2\ *π*:sup:`2`\ *a*:sub:`0`\ *d*:sup:`2`)
 to get *f*\ :sub:`e`.
 
-We either multiply individual values by ``mott_bethe_factor()``:
+We either multiply individual values by ``mott_bethe_factor()``
+(which includes ``reciprocal_space_multiplier()``):
 
 .. doctest::
 
   >>> dc.mott_bethe_factor([3,4,5]) * grid.get_value(3,4,5)
-  (54.65960344342374+53.85765208300935j)
+  (54.063699106275386+52.97058061981685j)
 
 or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
 
 .. doctest::
 
-  >>> asu_data = grid.prepare_asu_data(dmin=2.5, mott_bethe=True)
+  >>> asu_data = grid.prepare_asu_data(dmin=2.5, mott_bethe=True, unblur=dencalc.blur)
   >>> asu_data.value_array[numpy.all(asu_data.miller_array == [3,4,5], axis=1)]
-  array([54.659603+53.85765j], dtype=complex64)
+  array([54.063698+52.97058j], dtype=complex64)
 
 That is all.
 If you would like to separate positions of hydrogen nuclei
