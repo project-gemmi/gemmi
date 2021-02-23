@@ -27,7 +27,7 @@ void add_grid_base(py::module& m, const char* name) {
   using GrBase = GridBase<T>;
   using GrPoint = typename GridBase<T>::Point;
 
-  py::class_<GrBase> grid_base(m, name, py::buffer_protocol());
+  py::class_<GrBase, GridMeta> grid_base(m, name, py::buffer_protocol());
   py::class_<GrPoint>(grid_base, "Point")
     .def_readonly("u", &GrPoint::u)
     .def_readonly("v", &GrPoint::v)
@@ -48,16 +48,6 @@ void add_grid_base(py::module& m, const char* name) {
                               sizeof(T) * g.nu,
                               sizeof(T) * g.nu * g.nv});
     })
-    .def_readonly("nu", &GrBase::nu, "size in the first (fastest-changing) dim")
-    .def_readonly("nv", &GrBase::nv, "size in the second dimension")
-    .def_readonly("nw", &GrBase::nw, "size in the third (slowest-changing) dim")
-    .def_property_readonly("shape", [](const GrBase& self){
-      return py::make_tuple(self.nu, self.nv, self.nw);
-    })
-    .def_readwrite("spacegroup", &GrBase::spacegroup)
-    .def_readwrite("unit_cell", &GrBase::unit_cell)
-    .def_readonly("axis_order", &GrBase::axis_order)
-    .def_property_readonly("point_count", &GrBase::point_count)
     .def("point_to_index", &GrBase::point_to_index)
     .def("index_to_point", &GrBase::index_to_point)
     .def("fill", &GrBase::fill, py::arg("value"))
@@ -120,8 +110,7 @@ void add_grid(py::module& m, const std::string& name) {
               r(i, j, k) = self.interpolate_value(pos);
             }
     }, py::arg().noconvert(), py::arg())
-    .def("copy_metadata_from", &Gr::template copy_metadata_from<int8_t>)
-    .def("copy_metadata_from", &Gr::template copy_metadata_from<float>)
+    .def("copy_metadata_from", &Gr::copy_metadata_from)
     .def("setup_from", &Gr::template setup_from<Structure>,
          py::arg("st"), py::arg("spacing"))
     .def("set_unit_cell", (void (Gr::*)(const UnitCell&)) &Gr::set_unit_cell)
@@ -166,6 +155,19 @@ void add_grid(py::module& m) {
   py::enum_<AxisOrder>(m, "AxisOrder")
     .value("XYZ", AxisOrder::XYZ)
     .value("ZYX", AxisOrder::ZYX);
+
+  py::class_<GridMeta>(m, "Point")
+    .def_readwrite("spacegroup", &GridMeta::spacegroup)
+    .def_readwrite("unit_cell", &GridMeta::unit_cell)
+    .def_readonly("nu", &GridMeta::nu, "size in the first (fastest-changing) dim")
+    .def_readonly("nv", &GridMeta::nv, "size in the second dimension")
+    .def_readonly("nw", &GridMeta::nw, "size in the third (slowest-changing) dim")
+    .def_readonly("axis_order", &GridMeta::axis_order)
+    .def_property_readonly("point_count", &GridMeta::point_count)
+    .def_property_readonly("shape", [](const GridMeta& self){
+      return py::make_tuple(self.nu, self.nv, self.nw);
+    });
+
   add_grid_base<int8_t>(m, "Int8GridBase");
   add_grid<int8_t>(m, "Int8Grid");
   add_grid_base<float>(m, "FloatGridBase");

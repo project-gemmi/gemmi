@@ -118,21 +118,23 @@ enum class AxisOrder : unsigned char {
   ZYX   // fast Z (or L), may not be fully supported everywhere
 };
 
+struct GridMeta {
+  UnitCell unit_cell;
+  const SpaceGroup* spacegroup = nullptr;
+  int nu = 0, nv = 0, nw = 0;
+  AxisOrder axis_order = AxisOrder::Unknown;
+
+  size_t point_count() const { return (size_t)nu * nv * nw; }
+};
+
 template<typename T>
-struct GridBase {
+struct GridBase : GridMeta {
   struct Point {
     int u, v, w;
     T* value;
   };
 
-  UnitCell unit_cell;
-  const SpaceGroup* spacegroup = nullptr;
   std::vector<T> data;
-  int nu = 0, nv = 0, nw = 0;
-  AxisOrder axis_order = AxisOrder::Unknown;
-
-
-  size_t point_count() const { return (size_t)nu * nv * nw; }
 
   void set_size_without_checking(int u, int v, int w) {
     nu = u, nv = v, nw = w;
@@ -206,18 +208,16 @@ struct Grid : GridBase<T> {
   using GridBase<T>::spacegroup;
   using GridBase<T>::data;
 
-  double spacing[3];
+  double spacing[3];  // spacing between virtual planes, not between points
 
-  template<typename T2>
-  void copy_metadata_from(const Grid<T2>& g) {
+  void copy_metadata_from(const GridMeta& g) {
     unit_cell = g.unit_cell;
     spacegroup = g.spacegroup;
     nu = g.nu;
     nv = g.nv;
     nw = g.nw;
     this->axis_order = g.axis_order;
-    for (size_t i = 0; i != 3; ++i)
-      spacing[i] = g.spacing[i];
+    calculate_spacing();
   }
 
   void calculate_spacing() {
