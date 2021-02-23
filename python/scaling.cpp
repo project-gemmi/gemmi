@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include <pybind11/stl.h>
+#include <pybind11/complex.h>
 #include "gemmi/scaling.hpp"
 
 namespace py = pybind11;
@@ -26,5 +27,7 @@ void add_scaling(py::module& m) {
     .def("get_solvent_scale", &Scaling::get_solvent_scale, py::arg("stol2"))
     .def("scale_data", &Scaling::scale_data,
          py::arg("asu_data"), py::arg("mask_data")=FPhiData())
+    .def("scale_value", &Scaling::scale_value,
+         py::arg("hkl"), py::arg("f_value"), py::arg("mask_value"))
     ;
 }

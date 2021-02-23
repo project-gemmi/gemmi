@@ -70,6 +70,15 @@ struct Scaling {
     }
   }
 
+  std::complex<Real> scale_value(const Miller& hkl, std::complex<Real> f_value,
+                                 std::complex<Real> mask_value) {
+    if (use_solvent) {
+      double stol2 = cell.calculate_stol_sq(hkl);
+      f_value += (Real)get_solvent_scale(stol2) * mask_value;
+    }
+    return f_value * (Real) get_overall_scale_factor(hkl);
+  }
+
   std::vector<double> get_parameters() const {
     std::vector<double> ret;
     ret.push_back(k_overall);
