@@ -5,6 +5,7 @@
 #define GEMMI_TO_MMDB_HPP_
 
 #include <cstdlib>           // for atoi
+#include <cstring>           // for strcpy
 #include <gemmi/model.hpp>
 #include <gemmi/to_pdb.hpp>  // for padded_atom_name
 #include <gemmi/util.hpp>    // for rtrim_str
@@ -21,18 +22,29 @@ inline void copy_transform_to_mmdb(const Transform& tr,
   }
 }
 
-inline mmdb::Manager* copy_to_mmdb(const Structure& st) {
-  mmdb::Manager* M2 = new mmdb::Manager();
+template<int N>
+void strcpy_to_mmdb(char (&dest)[N], const std::string& src) {
+  if (src.size() >= N+1)
+    fail("This string is too long: " + src);
+  std::strcpy(dest, src.c_str());
+}
 
+inline void set_seqid_in_mmdb(int* seqnum, mmdb::InsCode& icode, SeqId seqid) {
+  *seqnum = *seqid.num;
+  icode[0] = seqid.icode;
+  icode[1] = '\0';
+}
+
+inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) {
   for (const std::string& s : st.raw_remarks) {
     std::string line = rtrim_str(s);
-    M2->PutPDBString(line.c_str());
+    manager->PutPDBString(line.c_str());
   }
 
   for (int imodel = 0; imodel < (int) st.models.size(); ++imodel) {
     const Model& model = st.models[imodel];
     mmdb::PModel model2 = mmdb::newModel();
-    model2->SetMMDBManager(M2, imodel);
+    model2->SetMMDBManager(manager, imodel);
 
     for (const Chain& chain : model.chains) {
       mmdb::PChain chain2 = model2->CreateChain(chain.name.c_str());
@@ -42,6 +54,20 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st) {
                                                        *res.seqid.num,
                                                        icode,
                                                        true);
+        if (res.is_cis) {
+          if (const Residue* next = chain.next_residue(res)) {
+            mmdb::CisPep* cispep = new mmdb::CisPep();
+            cispep->serNum = model2->GetCisPeps()->Length() + 1;
+            strcpy_to_mmdb(cispep->chainID1, chain.name);
+            strcpy_to_mmdb(cispep->pep1, res.name);
+            set_seqid_in_mmdb(&cispep->seqNum1, cispep->icode1, res.seqid);
+            strcpy_to_mmdb(cispep->chainID2, chain.name);
+            strcpy_to_mmdb(cispep->pep2, next->name);
+            set_seqid_in_mmdb(&cispep->seqNum2, cispep->icode2, next->seqid);
+            cispep->modNum = imodel;
+            model2->AddCisPep(cispep);
+          }
+        }
         for (const Atom& atom : res.atoms) {
           mmdb::PAtom atom2 = mmdb::newAtom();
           const char altloc[2] = {atom.altloc, '\0'};
@@ -74,11 +100,12 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st) {
         }
       }
     }
-    M2->AddModel(model2);
-    M2->PutCell(st.cell.a, st.cell.b, st.cell.c,
-                st.cell.alpha, st.cell.beta, st.cell.gamma, 1);
-    M2->SetSpaceGroup(st.spacegroup_hm.c_str());
-    mmdb::Cryst* cryst = M2->GetCrystData();
+    int n_model = manager->AddModel(model2);
+    manager->GetModel(n_model)->CopyCisPeps(model2);
+    manager->PutCell(st.cell.a, st.cell.b, st.cell.c,
+                     st.cell.alpha, st.cell.beta, st.cell.gamma, 1);
+    manager->SetSpaceGroup(st.spacegroup_hm.c_str());
+    mmdb::Cryst* cryst = manager->GetCrystData();
     auto z = st.info.find("_cell.Z_PDB");
     if (z != st.info.end() && !z->second.empty()) {
       cryst->Z = std::atoi(z->second.c_str());
@@ -105,7 +132,7 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st) {
       }
     }
   }
-  return M2;
+  return manager;
 }
 
 } // namespace gemmi
@@ -120,16 +147,22 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st) {
 #include <gemmi/to_mmdb.hpp>
 
 // two arguments expected: input and output paths.
-int main (int argc, char ** argv) {
+int main (int argc, char** argv) {
   if (argc != 3)
     return 1;
 
-  gemmi::Structure st = gemmi::read_structure_file(argv[1]);
-  st.merge_chain_parts();
-
   mmdb::InitMatType();
-  mmdb::Manager* M2 = gemmi::copy_to_mmdb(st);
-  mmdb::ERROR_CODE rc = M2->WritePDBASCII(argv[2]);
+  mmdb::Manager* manager = new mmdb::Manager();
+  try {
+    gemmi::Structure st = gemmi::read_structure_file(argv[1]);
+    st.merge_chain_parts();
+    gemmi::copy_to_mmdb(st, manager);
+  } catch(std::runtime_error& e) {
+    printf("File reading failed: %s\n", e.what());
+    return 1;
+  }
+
+  mmdb::ERROR_CODE rc = manager->WritePDBASCII(argv[2]);
   if (rc)
     printf(" ***** ERROR #%i WRITE:\n\n %s\n\n",
            rc, mmdb::GetErrorDescription(rc));

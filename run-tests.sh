@@ -16,9 +16,16 @@ $PYTHON -m unittest discover -s tests
 # So 'make doctest' works only if sphinx-build was installed for python3.
 (cd docs && make doctest SPHINXOPTS="-q -n -E")
 flake8 docs/ examples/ tests/ tools/ setup.py
-$PYTHON -m pydoc gemmi | grep ::
+$PYTHON -m pydoc gemmi | grep :: |:
 
 [ $# = 0 ] && exit;
+
+if [ $1 = m -o $1 = a ]; then
+    echo 'Creating, compiling and removing test_mmdb.cpp'
+    awk '/Example that/,/^}/' include/gemmi/to_mmdb.hpp > test_mmdb.cpp
+    c++ -O -Wall -Wextra -pedantic -Wshadow -Iinclude test_mmdb.cpp -lmmdb2 -o test_mmdb
+    rm -f test_mmdb.cpp
+fi
 
 if [ $1 = h -o $1 = a ]; then
     echo "check if each header can be compiled on its own"
