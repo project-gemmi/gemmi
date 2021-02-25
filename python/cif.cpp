@@ -179,6 +179,7 @@ void add_cif(py::module& cif) {
        py::return_value_policy::reference_internal)
     .def("find_frame", &Block::find_frame, py::arg("name"),
          py::return_value_policy::reference_internal)
+    .def("item_as_table", &Block::item_as_table)
     .def("get_index", &Block::get_index, py::arg("tag"))
     .def("set_pair", &Block::set_pair, py::arg("tag"), py::arg("value"))
     .def("init_loop", &Block::init_loop, py::arg("prefix"), py::arg("tags"),

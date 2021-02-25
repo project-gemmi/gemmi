@@ -416,6 +416,7 @@ struct Block {
     return t;
   }
   Block* find_frame(std::string name);
+  Table item_as_table(Item& item);
 
   size_t get_index(const std::string& tag) const;
 
@@ -745,6 +746,15 @@ inline Block* Block::find_frame(std::string frame_name) {
   return nullptr;
 }
 
+inline Table Block::item_as_table(Item& item) {
+  if (item.type != ItemType::Loop)
+    fail("item_as_table: item is not Loop");
+  std::vector<int> indices(item.loop.tags.size());
+  for (size_t j = 0; j != indices.size(); ++j)
+    indices[j] = (int) j;
+  return Table{&item, *this, indices, 0};
+}
+
 inline size_t Block::get_index(const std::string& tag) const {
   for (size_t i = 0; i != items.size(); ++i) {
     const Item& item = items[i];
@@ -892,7 +902,6 @@ inline Table Block::find_mmcif_category(std::string cat) {
   for (Item& i : items)
     if (i.has_prefix(cat)) {
       if (i.type == ItemType::Loop) {
-        indices.clear();
         indices.resize(i.loop.tags.size());
         for (size_t j = 0; j != indices.size(); ++j) {
           indices[j] = j;
