@@ -1939,7 +1939,7 @@ we must specify the avarage weight of unknown residue:
 .. doctest::
 
   >>> gemmi.calculate_sequence_weight(seq, unknown=130.0)
-  910.7184143066406
+  784.6114543066407
 
 In such case the result is not accurate, but this is not a typical case.
 
@@ -1965,7 +1965,7 @@ and calculate the Matthews coefficient:
   >>> weight = gemmi.calculate_sequence_weight(_.full_sequence)
   >>> # Now we can calculate Matthews coefficient
   >>> st.cell.volume_per_image() / weight
-  2.7407915442022364
+  3.1983428753317016
 
 We could continue and calculate the solvent content, assuming the protein
 density of 1.35 g/cm\ :sup:`3` (the other constants below are the Avogadro
@@ -1975,7 +1975,7 @@ number and Å\ :sup:`3`/cm\ :sup:`3` = 10\ :sup:`-24`):
 
   >>> protein_fraction = 1. / (6.02214e23 * 1e-24 * 1.35 * _)
   >>> print('Solvent content: {:.1f}%'.format(100 * (1 - protein_fraction)))
-  Solvent content: 55.1%
+  Solvent content: 61.5%
 
 Gemmi also includes a program that calculates the solvent content:
 :ref:`gemmi-contents <gemmi-contents>`.

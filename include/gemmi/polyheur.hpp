@@ -58,7 +58,7 @@ inline double calculate_sequence_weight(const std::vector<std::string>& seq,
     ResidueInfo res_info = find_tabulated_residue(Entity::first_mon(item));
     weight += res_info.found() ? res_info.weight : unknown;
   }
-  return weight;
+  return weight - (seq.size() - 1) * h2o_weight();
 }
 
 inline std::string one_letter_code(const std::vector<std::string>& seq) {
