@@ -264,8 +264,7 @@ struct Restraints {
     for (double a : {get_angle(ch.id1, ch.id_ctr, ch.id2).value,
                      get_angle(ch.id2, ch.id_ctr, ch.id3).value,
                      get_angle(ch.id3, ch.id_ctr, ch.id1).value}) {
-      constexpr double deg2rad = pi() / 180.0;
-      double cosine = a == 90. ? 0. : std::cos(deg2rad * a);
+      double cosine = a == 90. ? 0. : std::cos(rad(a));
       x -= cosine * cosine;
       y *= cosine;
     }
