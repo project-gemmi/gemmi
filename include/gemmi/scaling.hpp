@@ -235,21 +235,26 @@ struct Scaling {
     for (size_t i = 0; i != tile_size; ++i) {
       const Point& pt = points[tile_start+i];
       Vec3 h(pt.hkl);
-      double fcalc;
+      double kaniso = std::exp(-0.25 * b_star.r_u_r(h));
+      double fcalc_abs;
       if (use_solvent) {
-        double solv_scale = k_sol * std::exp(-b_sol * pt.stol2);
-        fcalc = std::abs(pt.fcmol + (Real)solv_scale * pt.fmask);
+        double solv_b = std::exp(-b_sol * pt.stol2);
+        double solv_scale = k_sol * solv_b;
+        auto fcalc = pt.fcmol + (Real)solv_scale * pt.fmask;
+        fcalc_abs = std::abs(fcalc);
         size_t offset = i * npar + 1;
+        double dy_dsol = (fcalc.real() * pt.fmask.real() +
+                          fcalc.imag() * pt.fmask.imag()) / fcalc_abs * k_overall * kaniso;
         if (!fix_k_sol)
-          dy_da[offset++] = 0; // TODO
+          dy_da[offset++] = solv_b * dy_dsol;
         if (!fix_b_sol)
-          dy_da[offset] = 0; // TODO
+          dy_da[offset] = -pt.stol2 * solv_scale * dy_dsol;
       } else {
-        fcalc = std::abs(pt.fcmol);
+        fcalc_abs = std::abs(pt.fcmol);
       }
-      double fe = fcalc * std::exp(-0.25 * b_star.r_u_r(h));
+      double fe = fcalc_abs * kaniso;
       yy[i] = k_overall * fe;
-      dy_da[i * npar + 0] = fe; // k_overall
+      dy_da[i * npar + 0] = fe; // dy/d k_overall
       double du[6] = {
         -0.25 * yy[i] * (h.x * h.x),
         -0.25 * yy[i] * (h.y * h.y),
