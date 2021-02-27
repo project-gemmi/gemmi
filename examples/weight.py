@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+# This script reads mmCIF file(s) and compares weights:
+# * _entity.formula_weight with _entity_poly_seq and _chem_comp.formula_weight,
+# * _chem_comp.formula_weight with _chem_comp.formula and atomic weights.
+
 import os
 import argparse
 import collections
