@@ -24,7 +24,13 @@ struct Scaling {
   };
 
   UnitCell cell;
-  CrystalSystem crystal_system;
+  // SpaceGroup is not stored, but we have special handling of monoclinic
+  // groups (to handle settings with either angle alpha or gamma being != 90),
+  // and trigonal space groups in hexagonal settings are regarded (for the
+  // purpose of scaling constraints) to be hexagonal.
+  CrystalSystem crystal_system = CrystalSystem::Triclinic;
+  signed char monoclinic_angle_idx = 4;
+  double SMat33<double>::*monoclinic_angle = &SMat33<double>::u13;
   // model parameters
   double k_overall = 1.;
   // b_star = F B_cart F^T, where F - fractionalization matrix
@@ -39,8 +45,25 @@ struct Scaling {
 
   // pre: calc and obs are sorted
   Scaling(const UnitCell& cell_, const SpaceGroup* sg)
-    : cell(cell_),
-      crystal_system(sg ? sg->crystal_system() : CrystalSystem::Triclinic) {}
+      : cell(cell_) {
+    if (sg) {
+      crystal_system = sg->crystal_system();
+      if (crystal_system == CrystalSystem::Monoclinic) {
+        // take first letter in "c" or "c1", but second in "-c1"
+        char letter = sg->qualifier[sg->qualifier[0] == '-'];
+        if (letter == 'a') {
+          monoclinic_angle_idx = 5;
+          monoclinic_angle = &SMat33<double>::u23;
+        } else if (letter == 'c') {
+          monoclinic_angle_idx = 3;
+          monoclinic_angle = &SMat33<double>::u12;
+        }
+      } else if (crystal_system == CrystalSystem::Trigonal) {
+        if (sg->ext != 'R')
+          crystal_system = CrystalSystem::Hexagonal;
+      }
+    }
+  }
 
   // B_{overall} is stored as B* not B_{cartesian}.
   // Use getter and setter to convert from/to B_{cartesian}.
@@ -90,9 +113,12 @@ struct Scaling {
     }
     switch (crystal_system) {
       case CrystalSystem::Triclinic:
-      case CrystalSystem::Monoclinic: // ignoring that two (e.g. U13 and U23) are 0
         ret.insert(ret.end(), {b_star.u11, b_star.u22, b_star.u33,
                                b_star.u12, b_star.u13, b_star.u23});
+        break;
+      case CrystalSystem::Monoclinic:
+        ret.insert(ret.end(), {b_star.u11, b_star.u22, b_star.u33,
+                               b_star.*monoclinic_angle});
         break;
       case CrystalSystem::Orthorhombic:
         ret.insert(ret.end(), {b_star.u11, b_star.u22, b_star.u33});
@@ -104,7 +130,7 @@ struct Scaling {
         ret.insert(ret.end(), {b_star.u11, b_star.u12});
         break;
       case CrystalSystem::Hexagonal:
-        ret.insert(ret.end(), {b_star.u11, b_star.u33, b_star.u12});
+        ret.insert(ret.end(), {b_star.u11, b_star.u33});
         break;
       case CrystalSystem::Cubic:
         ret.push_back(b_star.u11);
@@ -124,8 +150,11 @@ struct Scaling {
     }
     switch (crystal_system) {
       case CrystalSystem::Triclinic:
-      case CrystalSystem::Monoclinic:
         b_star = {p[n+1], p[n+2], p[n+3], p[n+4], p[n+5], p[n+6]}; break;
+      case CrystalSystem::Monoclinic:
+        b_star = {p[n+1], p[n+2], p[n+3], 0, 0, 0};
+        b_star.*monoclinic_angle = p[n+4];
+        break;
       case CrystalSystem::Orthorhombic:
         b_star = {p[n+1], p[n+2], p[n+3], 0., 0., 0.}; break;
       case CrystalSystem::Tetragonal:
@@ -133,7 +162,7 @@ struct Scaling {
       case CrystalSystem::Trigonal:
         b_star = {p[n+1], p[n+1], p[n+1], p[n+2], p[n+2], p[n+2]}; break;
       case CrystalSystem::Hexagonal:
-        b_star = {p[n+1], p[n+1], p[n+2], p[n+3], 0., 0.}; break;
+        b_star = {p[n+1], p[n+1], p[n+2], 0.5*p[n+1], 0., 0.}; break;
       case CrystalSystem::Cubic:
         b_star = {p[n+1], p[n+1], p[n+1], 0., 0., 0.}; break;
     }
@@ -188,6 +217,8 @@ struct Scaling {
   void fit_isotropic_b_approximately() {
     double sx = 0, sy = 0, sxx = 0, sxy = 0;
     for (const Point& p : points) {
+      if (p.fobs < 1 || p.fobs < p.sigma)  // skip weak reflections
+        continue;
       double x = p.stol2;
       double fcalc = std::abs(p.fcmol + (Real)get_solvent_scale(x) * p.fmask);
       double y = std::log(static_cast<float>(p.fobs / fcalc));
@@ -196,6 +227,8 @@ struct Scaling {
       sxx += x * x;
       sxy += x * y;
     }
+    if (points.size() <= 5)  // this is not expected to happen
+      return;
     double n = (double) points.size();
     double slope = (n * sxy - sx * sy) / (n * sxx - sx * sx);
     double intercept = (sy - slope * sx) / n;
@@ -266,9 +299,13 @@ struct Scaling {
       double* dy_db = &dy_da[i * npar + n];
       switch (crystal_system) {
         case CrystalSystem::Triclinic:
-        case CrystalSystem::Monoclinic:
           for (int j = 0; j < 6; ++j)
             dy_db[j] = du[j];
+          break;
+        case CrystalSystem::Monoclinic:
+          for (int j = 0; j < 3; ++j)
+            dy_db[j] = du[j];
+          dy_db[3] = du[monoclinic_angle_idx];
           break;
         case CrystalSystem::Orthorhombic:
           for (int j = 0; j < 3; ++j)
@@ -283,9 +320,8 @@ struct Scaling {
           dy_db[1] = du[3] + du[4] + du[5];
           break;
         case CrystalSystem::Hexagonal:
-          dy_db[0] = du[0] + du[1];
+          dy_db[0] = du[0] + du[1] + 0.5 * du[3];
           dy_db[1] = du[2];
-          dy_db[2] = du[3];
           break;
         case CrystalSystem::Cubic:
           dy_db[0] = du[0] + du[1] + du[2];
