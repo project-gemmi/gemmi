@@ -274,12 +274,16 @@ void add_mol(py::module& m) {
          py::arg("residue"), py::arg("pos")=-1,
          py::return_value_policy::reference_internal)
     .def("subchains", (std::vector<ResidueSpan> (Chain::*)()) &Chain::subchains)
-    .def("whole", (ResidueSpan (Chain::*)()) &Chain::whole)
-    .def("get_polymer", (ResidueSpan (Chain::*)()) &Chain::get_polymer)
-    .def("get_ligands", (ResidueSpan (Chain::*)()) &Chain::get_ligands)
-    .def("get_waters", (ResidueSpan (Chain::*)()) &Chain::get_waters)
-    .def("get_subchain",
-         (ResidueSpan (Chain::*)(const std::string&)) &Chain::get_subchain)
+    .def("whole", (ResidueSpan (Chain::*)()) &Chain::whole,
+         py::keep_alive<0, 1>())
+    .def("get_polymer", (ResidueSpan (Chain::*)()) &Chain::get_polymer,
+         py::keep_alive<0, 1>())
+    .def("get_ligands", (ResidueSpan (Chain::*)()) &Chain::get_ligands,
+         py::keep_alive<0, 1>())
+    .def("get_waters", (ResidueSpan (Chain::*)()) &Chain::get_waters,
+         py::keep_alive<0, 1>())
+    .def("get_subchain", (ResidueSpan (Chain::*)(const std::string&)) &Chain::get_subchain,
+         py::keep_alive<0, 1>())
     .def("has_subchains_assigned", &has_subchains_assigned)
     .def("previous_residue", &Chain::previous_residue,
          py::return_value_policy::reference_internal)
