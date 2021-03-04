@@ -123,7 +123,19 @@ void add_grid(py::module& m, const std::string& name) {
     .def("asu", &Gr::asu)
     .def("mask_points_in_constant_radius", &mask_points_in_constant_radius<T>,
          py::arg("model"), py::arg("radius"), py::arg("value"))
-    .def("subgrid", &Gr::subgrid)
+    .def("get_subarray",
+         [](const Gr& self, int u0, int v0, int w0, int new_nu, int new_nv, int new_nw) {
+        py::array_t<T> arr({new_nu, new_nv, new_nw},
+                           {sizeof(T), sizeof(T)*new_nu, sizeof(T)*new_nu*new_nv});
+        py::buffer_info buf = arr.request();
+        T* ptr = (T*) buf.ptr;
+        int idx = 0;
+        for (int w = 0; w < new_nw; w++)
+          for (int v = 0; v < new_nv; v++)
+            for (int u = 0; u < new_nu; u++)
+              ptr[idx++] = self.get_value(u0 + u, v0 + v, w0 + w);
+        return arr;
+    })
     .def("__repr__", [=](const Gr& self) {
         return tostr("<gemmi.", name, '(', self.nu, ", ", self.nv, ", ", self.nw, ")>");
     });
