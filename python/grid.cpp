@@ -156,7 +156,7 @@ void add_grid(py::module& m) {
     .value("XYZ", AxisOrder::XYZ)
     .value("ZYX", AxisOrder::ZYX);
 
-  py::class_<GridMeta>(m, "Point")
+  py::class_<GridMeta>(m, "GridMeta")
     .def_readwrite("spacegroup", &GridMeta::spacegroup)
     .def_readwrite("unit_cell", &GridMeta::unit_cell)
     .def_readonly("nu", &GridMeta::nu, "size in the first (fastest-changing) dim")
