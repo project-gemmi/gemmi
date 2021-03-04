@@ -29,8 +29,8 @@ struct Scaling {
   // and trigonal space groups in hexagonal settings are regarded (for the
   // purpose of scaling constraints) to be hexagonal.
   CrystalSystem crystal_system = CrystalSystem::Triclinic;
-  signed char monoclinic_angle_idx = 4;
-  double SMat33<double>::*monoclinic_angle = &SMat33<double>::u13;
+  signed char monoclinic_angle_idx;
+  double SMat33<double>::*monoclinic_angle;
   // model parameters
   double k_overall = 1.;
   // b_star = F B_cart F^T, where F - fractionalization matrix
@@ -57,6 +57,9 @@ struct Scaling {
         } else if (letter == 'c') {
           monoclinic_angle_idx = 3;
           monoclinic_angle = &SMat33<double>::u12;
+        } else {
+          monoclinic_angle_idx = 4;
+          monoclinic_angle = &SMat33<double>::u13;
         }
       } else if (crystal_system == CrystalSystem::Trigonal) {
         if (sg->ext != 'R')
@@ -220,7 +223,8 @@ struct Scaling {
       if (p.fobs < 1 || p.fobs < p.sigma)  // skip weak reflections
         continue;
       double x = p.stol2;
-      double fcalc = std::abs(p.fcmol + (Real)get_solvent_scale(x) * p.fmask);
+      double fcalc = std::abs(use_solvent ? p.fcmol + (Real)get_solvent_scale(x) * p.fmask
+                                          : p.fcmol);
       double y = std::log(static_cast<float>(p.fobs / fcalc));
       sx += x;
       sy += y;

@@ -516,15 +516,19 @@ For example::
 setup()
 ~~~~~~~
 
-``read_ccp4_map()`` stores the data as it is written in the file.
-In many situation, it is convenient to have the data expanded to the whole
-unit cell, with axes in a specific order (X, Y, Z is the most conventional
-one). For this we have a function::
+``read_ccp4_map()`` reads the data from file into a Grid class,
+keeping the same axis order and the same dimensions as in the file.
+But the functions that operate on the grid data (such as ``get_position()``,
+``interpolate_value()``, ``symmetrize()``) expect that the grid covers
+the whole unit cell and that the axes are in the X,Y,Z order.
+So before calling a function that uses either the symmetry or the unit
+cell parameters we need to setup the grid as required::
 
-    map.setup(GridSetup::Full, NAN);  // unknown values are set to NAN
+    map.setup(GridSetup::Full, NAN);
 
-This call is required to make grid functions work correctly with the
-unit cell parameters.
+The second argument in this call is a value to be used for unknown values,
+i.e. for values absent in the input file (if the input file does not
+cover the whole asymmetric unit).
 
 Writing
 ~~~~~~~

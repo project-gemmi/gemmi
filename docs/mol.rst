@@ -2480,10 +2480,12 @@ In C++ ``trim_to_alanine()`` is defined in ``gemmi/polyheur.hpp``.
 ResidueSpan, ResidueGroup
 =========================
 
-ResidueSpan and ResidueGroup are lightweight structures that point
-to a consecutive span of residues in a chain.
-But as was was shown in the previous section, they are used for different
-things.
+ResidueSpan is a lightweight objects that refers
+to a contiguous sequence of residues in a chain.
+It does not hold a copy - it is only a view of a span of residues in Chain.
+
+ResidueGroup is a ResidueSpan for residues with the same sequence ID
+(microheterogeneities).
 
 Both allow addressing residue by (0-based) index:
 
