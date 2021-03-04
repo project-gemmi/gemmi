@@ -4,6 +4,7 @@
 #include "gemmi/gz.hpp"  // for MaybeGzipped
 #include "gemmi/tostr.hpp"
 #include "common.h"
+#include <pybind11/stl.h>
 
 namespace py = pybind11;
 using namespace gemmi;
@@ -22,6 +23,8 @@ py::class_<T> add_ccp4_common(py::module& m, const char* name) {
     .def("set_header_str", &Map::set_header_str)
     .def("update_ccp4_header", &Map::update_ccp4_header,
          py::arg("mode")=-1, py::arg("update_stats")=true)
+    .def("full_cell", &Map::full_cell)
+    .def("axis_positions", &Map::axis_positions)
     .def("write_ccp4_map", &Map::write_ccp4_map, py::arg("filename"))
     .def("set_extent", &Map::set_extent)
     .def("__repr__", [=](const Map& self) {
