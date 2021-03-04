@@ -508,6 +508,23 @@ struct Grid : GridBase<T> {
     return mask;
   }
 
+  Grid<T> subgrid(int u0, int v0, int w0, int new_nu, int new_nv, int new_nw) const {
+    Grid<T> newgrid;
+    newgrid.spacegroup = this->spacegroup;
+    UnitCell newcell = this->unit_cell;
+    newcell.a *= new_nu/(double)nu;
+    newcell.b *= new_nv/(double)nv;
+    newcell.c *= new_nw/(double)nw;
+    newgrid.set_unit_cell(newcell);
+    newgrid.set_size_without_checking(new_nu, new_nv, new_nw);
+    int idx = 0;
+    for (int w = 0; w < new_nw; w++)
+      for (int v = 0; v < new_nv; v++)
+        for (int u = 0; u < new_nu; u++)
+          newgrid.data[idx++] = get_value(u0 + u, v0 + v, w0 + w);
+    return newgrid;
+  }
+
   MaskedGrid<T> asu();
 };
 
