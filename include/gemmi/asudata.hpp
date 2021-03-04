@@ -74,17 +74,20 @@ struct AsuData {
       fail("AsuData::ensure_asu(): space group not set");
     GroupOps gops = spacegroup_->operations();
     ReciprocalAsu asu(spacegroup_);
+    bool is_ref = spacegroup_->is_reference_setting();
     for (HklValue<T>& hkl_value : v) {
-      if (asu.is_in(hkl_value.hkl))
+      const Miller& hkl = hkl_value.hkl;
+      if (is_ref ? asu.is_in_reference_setting(hkl[0], hkl[1], hkl[2]) : asu.is_in(hkl))
         continue;
-      auto result = asu.to_asu(hkl_value.hkl, gops);
+      auto result = asu.to_asu(hkl, gops);
       impl::move_to_asu(gops, result.first, result.second, hkl_value);
     }
   }
 
   // load values from one column
   template<typename DataProxy>
-  void load_values(const DataProxy& proxy, const std::string& label) {
+  void load_values(const DataProxy& proxy, const std::string& label,
+                   bool as_is=false) {
     std::size_t col = proxy.column_index(label);
     unit_cell_ = proxy.unit_cell();
     spacegroup_ = proxy.spacegroup();
@@ -93,11 +96,16 @@ struct AsuData {
       if (!std::isnan(num))
         v.push_back({proxy.get_hkl(i), num});
     }
+    if (!as_is) {
+      ensure_asu();
+      ensure_sorted();
+    }
   }
 
   // load values from two or more columns
   template<int N, typename DataProxy>
-  void load_values(const DataProxy& proxy, const std::array<std::string,N>& labels) {
+  void load_values(const DataProxy& proxy, const std::array<std::string,N>& labels,
+                   bool as_is=false) {
     std::array<std::size_t, N> cols;
     for (int i = 0; i < N; ++i)
       cols[i] = proxy.column_index(labels[i]);
@@ -113,6 +121,10 @@ struct AsuData {
         v.back().hkl = proxy.get_hkl(i);
         set_value_from_array(v.back().value, nums);
       }
+    }
+    if (!as_is) {
+      ensure_asu();
+      ensure_sorted();
     }
   }
 
@@ -132,15 +144,16 @@ private:
 };
 
 template<typename T, int N, typename Data>
-AsuData<T> make_asu_data(Data& data, const std::array<std::string,N>& labels) {
+AsuData<T> make_asu_data(const Data& data, const std::array<std::string,N>& labels,
+                         bool as_is=false) {
   AsuData<T> asu_data;
-  asu_data.template load_values<N>(data_proxy(data), labels);
+  asu_data.template load_values<N>(data_proxy(data), labels, as_is);
   return asu_data;
 }
 template<typename T, typename Data>
-AsuData<T> make_asu_data(Data& data, const std::string& label) {
+AsuData<T> make_asu_data(const Data& data, const std::string& label, bool as_is) {
   AsuData<T> asu_data;
-  asu_data.load_values(data_proxy(data), label);
+  asu_data.load_values(data_proxy(data), label, as_is);
   return asu_data;
 }
 

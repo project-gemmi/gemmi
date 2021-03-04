@@ -236,7 +236,6 @@ void process_with_fft(const gemmi::Structure& st,
       gemmi::Mtz mtz;
       mtz.read_input(gemmi::MaybeGzipped(file.path), true);
       compared_data.load_values<2>(gemmi::MtzDataProxy{mtz}, {file.f_label, file.phi_label});
-      compared_data.ensure_sorted();
     }
   }
   auto asu_data = sf.prepare_asu_data(dencalc.d_min, dencalc.blur, false, false, mott_bethe);
@@ -565,7 +564,6 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
     } else {
       scale_to.load_values<2>(gemmi::MtzDataProxy{mtz}, {flabel, siglabel});
     }
-    scale_to.ensure_sorted();
   }
 
   // handle option --dmin

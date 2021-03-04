@@ -175,17 +175,18 @@ void add_mtz(py::module& m) {
        py::arg("exact_size")=std::array<int,3>{{0,0,0}},
        py::arg("sample_rate")=0.,
        py::arg("order")=AxisOrder::XYZ)
-    .def("get_float", [](const Mtz& self, const std::string& col) {
-        return make_asu_data<float>(self, col);
-    }, py::arg("col"))
+    .def("get_float", &make_asu_data<float, Mtz>,
+         py::arg("col"), py::arg("as_is")=false)
     .def("get_f_phi", [](const Mtz& self, const std::string& f_col,
-                                          const std::string& phi_col) {
-        return make_asu_data<std::complex<float>, 2>(self, {f_col, phi_col});
-    }, py::arg("f"), py::arg("phi"))
+                                          const std::string& phi_col,
+                                          bool as_is) {
+        return make_asu_data<std::complex<float>, 2>(self, {f_col, phi_col}, as_is);
+    }, py::arg("f"), py::arg("phi"), py::arg("as_is")=false)
     .def("get_value_sigma", [](const Mtz& self, const std::string& f_col,
-                                                const std::string& sigma_col) {
-        return make_asu_data<ValueSigma<float>, 2>(self, {f_col, sigma_col});
-    }, py::arg("f"), py::arg("sigma"))
+                                                const std::string& sigma_col,
+                                                bool as_is) {
+        return make_asu_data<ValueSigma<float>, 2>(self, {f_col, sigma_col}, as_is);
+    }, py::arg("f"), py::arg("sigma"), py::arg("as_is")=false)
     .def("add_dataset", &Mtz::add_dataset, py::arg("name"),
          py::return_value_policy::reference_internal)
     .def("add_column", &Mtz::add_column, py::arg("label"), py::arg("type"),
