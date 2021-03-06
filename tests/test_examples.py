@@ -46,6 +46,10 @@ class TestExamples2(unittest.TestCase):
     def test_map2mtz(self):
         sys.argv = ['map2mtz.py', MAP_FILE, os.devnull]
         import map2mtz  # noqa: F401
+    def test_multiproc(self):
+        sys.stdout = open(os.devnull, 'w')
+        import multiproc  # noqa: F401
+        multiproc.main(PDB_FILE)
 
 if __name__ == '__main__':
     unittest.main()

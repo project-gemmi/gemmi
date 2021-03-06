@@ -893,3 +893,23 @@ once a week:
     #rsync_subdir structures/divided/pdb
     #rsync_subdir structures/divided/structure_factors
 
+
+Multiprocessing
+===============
+
+(Python-specific)
+
+Most of the gemmi objects cannot be pickled. Therefore, they cannot be
+passed between processes when using the multiprocessing module.
+Currently, the only picklable classes (with protocol >= 2) are:
+UnitCell and SpaceGroup.
+
+Usually, it is possible to organize multiprocessing in such a way that
+gemmi objects are not passed between processes. The example script below
+traverses subdirectories and asynchronously analyses coordinate files.
+It uses 4 worker processes in parallel. The processes get file path
+and return a tuple.
+
+.. literalinclude:: ../examples/multiproc.py
+   :language: python
+   :lines: 4-
