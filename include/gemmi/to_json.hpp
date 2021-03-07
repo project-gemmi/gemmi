@@ -21,7 +21,7 @@ public:
   bool with_data_keyword = false;  // for mmJSON
   bool bare_tags = false;  // "tag" instead of "_tag"
   bool values_as_arrays = false;  // "_tag": ["value"]
-  bool lc_names = true; // write case-insensitive names as lower case
+  bool lowercase_names = true; // write case-insensitive names as lower case
   int quote_numbers = 1;  // 0=never (no s.u.), 1=mix, 2=always
   std::string cif_dot = "null";  // how to convert '.' from CIF
   explicit JsonWriter(std::ostream& os) : os_(os), linesep_("\n ") {}
@@ -37,7 +37,7 @@ public:
     with_data_keyword = true;
     bare_tags = true;
     values_as_arrays = true;
-    lc_names = false;
+    lowercase_names = false;
     quote_numbers = 0;
   }
 
@@ -160,7 +160,7 @@ private:
   void open_cat(const std::string& cat, size_t* tag_pos) {
     if (!cat.empty()) {
       change_indent(+1);
-      write_string(cat.substr(0, cat.size() - 1), bare_tags ? 1 : 0, lc_names);
+      write_string(cat.substr(0, cat.size() - 1), bare_tags ? 1 : 0, lowercase_names);
       os_ << ": {" << linesep_;
       *tag_pos += cat.size() - 1;
     }
@@ -184,7 +184,7 @@ private:
     for (size_t i = 0; i < ncol; i++) {
       if (i != 0)
         os_ << "," << linesep_;
-      write_string(loop.tags[i], tag_pos, lc_names);
+      write_string(loop.tags[i], tag_pos, lowercase_names);
       os_ << ": [";
       for (size_t j = i; j < vals.size(); j += ncol) {
         if (j != i)
@@ -199,7 +199,7 @@ private:
 
   // works for both block and frame
   void write_map(const std::string& name, const std::vector<Item>& items) {
-    write_string(name, 0, lc_names);
+    write_string(name, 0, lowercase_names);
     os_ << ": ";
     change_indent(+1);
     char first = '{';
@@ -219,7 +219,7 @@ private:
             if (seen_cats.insert(cat).second)
               open_cat(cat, &tag_pos);
           }
-          write_string(item.pair[0], tag_pos, lc_names);
+          write_string(item.pair[0], tag_pos, lowercase_names);
           os_ << ": ";
           if (values_as_arrays)
             os_.put('[');

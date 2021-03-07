@@ -124,14 +124,19 @@ void add_cif(py::module& cif) {
         write_cif_to_stream(os, d, style);
         return os.str();
     }, py::arg("style")=Style::Simple, "Returns a string in CIF format.")
-    .def("as_json", [](const Document& d, bool mmjson) {
+    .def("as_json", [](const Document& d, bool mmjson, bool lowercase_names) {
         std::ostringstream os;
         JsonWriter writer(os);
-        if (mmjson)
+        if (mmjson) {
           writer.set_mmjson();
+        } else {
+          // in C++17 std::optional<bool> would be used
+          writer.lowercase_names = lowercase_names;
+        }
         writer.write_json(d);
         return os.str();
-    }, py::arg("mmjson")=false, "Returns JSON representation in a string.")
+    }, py::arg("mmjson")=false, py::arg("lowercase_names")=true,
+    "Returns JSON representation in a string.")
     .def("__repr__", [](const Document &d) {
         std::string s = "<gemmi.cif.Document with ";
         s += std::to_string(d.blocks.size());
