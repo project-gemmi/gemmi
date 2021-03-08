@@ -46,6 +46,7 @@ class TestExamples2(unittest.TestCase):
     def test_map2mtz(self):
         sys.argv = ['map2mtz.py', MAP_FILE, os.devnull]
         import map2mtz  # noqa: F401
+    @unittest.skipIf(sys.version_info[0] == 2, 'this example is Py3 only')
     def test_multiproc(self):
         sys.stdout = open(os.devnull, 'w')
         import multiproc  # noqa: F401
