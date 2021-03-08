@@ -369,11 +369,14 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
 
   // for now write this only merged+unmerged dataset
   if (mtz2)
-    os << "###                   IMPORTANT                   ###\n"
-          "### If you modify this file, remove this category ###\n"
-          "_pdbx_dataset_provider_software.ordinal 1\n"
-          "_pdbx_dataset_provider_software.name gemmi\n"
-          "_pdbx_dataset_provider_software.version " GEMMI_VERSION "\n\n";
+    os << "### If you modify this file, remove the following items: ###\n"
+          "_software.pdbx_ordinal 1\n"
+          "_software.classification 'data extraction'\n"
+          "_software.name gemmi\n"
+          "_software.version " GEMMI_VERSION "\n"
+          "_pdbx_audit_conform.dict_name mmcif_pdbx.dic\n"
+          "_pdbx_audit_conform.dict_version 5.339\n"
+          "_pdbx_audit_conform.dict_location https://mmcif.wwpdb.org/dictionaries/ascii/mmcif_pdbx_v50.dic\n\n";
 
   if (unmerged) {
     os << "_exptl_crystal.id 1\n\n";
