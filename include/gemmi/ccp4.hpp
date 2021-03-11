@@ -240,16 +240,17 @@ struct Ccp4 {
 
   inline void read_ccp4_from_memory(const char* data, size_t size,
                                     const std::string& name) {
-    return read_ccp4_stream(MemoryStream{data, data + size}, name);
+    read_ccp4_stream(MemoryStream{data, data + size}, name);
   }
 
   template<typename Input>
   void read_ccp4(Input&& input) {
     if (input.is_stdin())
-      return read_ccp4_stream(FileStream{stdin}, "stdin");
-    if (input.is_compressed())
-      return read_ccp4_stream(input.get_uncompressing_stream(), input.path());
-    return read_ccp4_file(input.path());
+      read_ccp4_stream(FileStream{stdin}, "stdin");
+    else if (input.is_compressed())
+      read_ccp4_stream(input.get_uncompressing_stream(), input.path());
+    else
+      read_ccp4_file(input.path());
   }
 
   void write_ccp4_map(const std::string& path) const;
