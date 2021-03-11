@@ -4,11 +4,14 @@
 #include "gemmi/cifdoc.hpp"
 #include "gemmi/cif.hpp"
 #include "gemmi/json.hpp"
-#include "gemmi/gzread.hpp"
-#include "gemmi/gzread_impl.hpp"
 #include "gemmi/smcif.hpp"         // for make_small_structure_from_block
 #include "gemmi/chemcomp_xyz.hpp"
 #include "gemmi/remarks.hpp"
+
+#define GEMMI_READ_CIF_IMPLEMENTATION
+#include "gemmi/read_cif.hpp" // for read_cif_gz, read_mmjson_gz
+#define GEMMI_READ_COOR_IMPLEMENTATION
+#include "gemmi/read_coor.hpp"  // for read_structure_gz
 
 #include "common.h"
 

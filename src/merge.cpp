@@ -12,11 +12,11 @@
 # define GEMMI_WRITE_IMPLEMENTATION 1
 #endif
 #include <gemmi/gz.hpp>       // for MaybeGzipped
-#include <gemmi/gzread.hpp>
 #include <gemmi/mtz2cif.hpp>  // for MtzToCif
 #include <gemmi/fstream.hpp>  // for Ofstream
 #include <gemmi/refln.hpp>
 #include <gemmi/merge.hpp>
+#include <gemmi/read_cif.hpp> // for read_cif_gz
 #define GEMMI_PROG merge
 #include "options.h"
 

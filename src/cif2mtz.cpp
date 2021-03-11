@@ -10,10 +10,10 @@
 #endif
 #include <gemmi/cifdoc.hpp>   // for Loop, as_int, ...
 #include <gemmi/fail.hpp>     // for fail
-#include <gemmi/gzread.hpp>   // for read_cif_gz
 #include <gemmi/mtz.hpp>      // for Mtz
 #include <gemmi/numb.hpp>     // for as_number
 #include <gemmi/refln.hpp>    // for ReflnBlock
+#include <gemmi/read_cif.hpp> // for read_cif_gz
 
 #define GEMMI_PROG cif2mtz
 #include "options.h"

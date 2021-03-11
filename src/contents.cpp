@@ -8,8 +8,8 @@
 #include <gemmi/symmetry.hpp>
 #include <gemmi/resinfo.hpp>
 #include <gemmi/calculate.hpp>
-#include <gemmi/gzread.hpp>
 #include <gemmi/polyheur.hpp>  // for setup_entities, calculate_sequence_weight
+#include <gemmi/read_coor.hpp> // for read_structure_gz
 #include "histogram.h"         // for print_histogram
 #define GEMMI_PROG contents
 #include "options.h"

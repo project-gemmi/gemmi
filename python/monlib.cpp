@@ -1,11 +1,11 @@
 // Copyright 2018 Global Phasing Ltd.
 
 #include "gemmi/chemcomp.hpp"
-#include "gemmi/gzread.hpp"    // for read_cif_gz
 #include "gemmi/monlib.hpp"
 #include "gemmi/placeh.hpp"    // for adjust_hydrogen_distances
 #include "gemmi/topo.hpp"
 #include "gemmi/tostr.hpp"
+#include "gemmi/read_cif.hpp"  // for read_cif_gz
 
 #include "common.h"
 #include <pybind11/stl.h>

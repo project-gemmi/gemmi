@@ -3,10 +3,10 @@
 #include <cstdio>
 #include <algorithm>  // count
 #include <stdexcept>
-#include "gemmi/gzread.hpp"
 #include "gemmi/polyheur.hpp"  // for remove_hydrogens
 #include "gemmi/math.hpp"      // for Variance
 #include "gemmi/neighbor.hpp"  // for NeighborSearch
+#include "gemmi/read_coor.hpp" // for read_structure_gz
 #include "mapcoef.h"
 
 #define GEMMI_PROG blobs
@@ -14,7 +14,6 @@
 
 namespace {
 
-namespace cif = gemmi::cif;
 using std::printf;
 
 enum OptionIndex { SigmaCutoff=AfterMapOptions, AbsCutoff,

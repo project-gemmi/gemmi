@@ -7,9 +7,9 @@
 #include <algorithm>  // for min, max
 #include <gemmi/contact.hpp>
 #include <gemmi/neighbor.hpp>
-#include <gemmi/gzread.hpp>
 #include <gemmi/to_pdb.hpp>    // for padded_atom_name
 #include "gemmi/assembly.hpp"  // for change_to_assembly
+#include <gemmi/read_coor.hpp> // for read_structure_gz
 #define GEMMI_PROG contact
 #include "options.h"
 

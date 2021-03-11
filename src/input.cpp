@@ -1,5 +1,6 @@
 // Copyright 2018 Global Phasing Ltd.
 
-// This file exists to make compilation of gemmi faster.
-
-#include <gemmi/gzread_impl.hpp>
+#define GEMMI_READ_CIF_IMPLEMENTATION
+#include "gemmi/read_cif.hpp"
+#define GEMMI_READ_COOR_IMPLEMENTATION
+#include "gemmi/read_coor.hpp"

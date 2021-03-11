@@ -7,8 +7,8 @@
 #include <gemmi/math.hpp>  // for Correlation
 #include <gemmi/resinfo.hpp>  // for find_tabulated_residue
 #include <gemmi/polyheur.hpp> // for assign_subchains
-#include <gemmi/gzread.hpp>
 #include <gemmi/fileutil.hpp> // for expand_if_pdb_code
+#include <gemmi/read_coor.hpp> // for read_structure_gz
 #define GEMMI_PROG wcn
 #include "options.h"
 #include <stdio.h>

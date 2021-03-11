@@ -4,7 +4,6 @@
 #include <cstdlib>   // for getenv
 #include <stdexcept>
 #include <iostream>  // for cout
-#include <gemmi/gzread.hpp>
 #include <gemmi/chemcomp.hpp>  // for ChemComp
 #include <gemmi/mmcif.hpp>     // for make_structure
 #include <gemmi/polyheur.hpp>  // for remove_hydrogens, setup_entities
@@ -15,6 +14,8 @@
 #include <gemmi/topo.hpp>      // for Topo
 #include <gemmi/fstream.hpp>   // for Ofstream
 #include <gemmi/placeh.hpp>    // for prepare_topology
+#include <gemmi/read_cif.hpp>  // for read_cif_gz
+#include <gemmi/read_coor.hpp> // for read_structure_gz
 
 #define GEMMI_PROG h
 #include "options.h"

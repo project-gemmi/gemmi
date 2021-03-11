@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <cstdlib>
 #include <set>
-#include <gemmi/gzread.hpp>    // for read_cif_gz
 #include <gemmi/chemcomp.hpp>  // for make_chemcomp_from_block
+#include <gemmi/read_cif.hpp>  // for read_cif_gz
 #define GEMMI_PROG mondiff
 #include "options.h"
 

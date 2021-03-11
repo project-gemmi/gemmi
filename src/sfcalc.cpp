@@ -9,7 +9,6 @@
 #include <gemmi/fourier.hpp>
 #include <gemmi/fprime.hpp>    // for cromer_libermann
 #include <gemmi/gz.hpp>        // for MaybeGzipped
-#include <gemmi/gzread.hpp>
 #include <gemmi/it92.hpp>      // for IT92
 #include <gemmi/c4322.hpp>     // for C4322
 #include <gemmi/math.hpp>      // for sq
@@ -19,6 +18,8 @@
 #include <gemmi/sfcalc.hpp>    // for calculate_structure_factor
 #include <gemmi/smcif.hpp>     // for make_small_structure_from_block
 #include <gemmi/solmask.hpp>   // for SolventMasker
+#include <gemmi/read_cif.hpp>  // for read_cif_gz
+#include <gemmi/read_coor.hpp> // for read_structure_gz
 #include "timer.h"             // for Timer
 
 #define GEMMI_PROG sfcalc

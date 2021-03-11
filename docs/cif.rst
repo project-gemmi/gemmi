@@ -324,6 +324,8 @@ C++
 
 The reading functions are in the ``gemmi::cif`` namespace::
 
+  #include <gemmi/cif.hpp>
+
   Document read_file(const std::string& filename)
   Document read_memory(const char* data, const size_t size, const char* name)
   Document read_cstream(std::FILE *f, size_t bufsize, const char* name)
@@ -345,6 +347,15 @@ If you use it, you must also link the program with zlib. On Unix systems
 it usually means adding ``-lz`` to the compiler invocation.
 
 And if the ``path`` above is ``-``, the standard input is read.
+
+If you use these functions in multiple compilation units, having
+the CIF parser implemented in headers makes the compilation time longer.
+To avoid it, include only ``<gemmi/read_cif.hpp>``
+and use functions declared there instead. In one compilation unit
+include this file after defining a macro that guards the implementation::
+
+  #define GEMMI_READ_CIF_IMPLEMENTATION
+  #include <gemmi/read_cif.cpp>
 
 Python
 ------

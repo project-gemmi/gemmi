@@ -5,9 +5,9 @@
 #include "gemmi/ccp4.hpp"
 #include "gemmi/floodfill.hpp" // for remove_islands_in_mask
 #include "gemmi/gz.hpp"        // for MaybeGzipped
-#include "gemmi/gzread.hpp"
 #include "gemmi/solmask.hpp"   // for SolventMasker
 #include "gemmi/symmetry.hpp"
+#include "gemmi/read_coor.hpp" // for read_structure_gz
 #include "timer.h"
 
 #define GEMMI_PROG mask

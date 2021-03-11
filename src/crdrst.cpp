@@ -4,7 +4,6 @@
 #include <cstdlib> // for getenv
 #include <algorithm> // for count_if
 #include <stdexcept>
-#include "gemmi/gzread.hpp"
 #include "gemmi/chemcomp.hpp"  // for ChemComp
 #include "gemmi/to_cif.hpp"    // for write_cif_to_stream
 #include "gemmi/fstream.hpp"   // for Ofstream
@@ -16,6 +15,8 @@
 #include "gemmi/monlib.hpp"    // for MonLib, read_monomer_lib
 #include "gemmi/topo.hpp"      // for Topo
 #include "gemmi/placeh.hpp"    // for place_hydrogens
+#include "gemmi/read_cif.hpp"  // for read_cif_gz
+#include "gemmi/read_coor.hpp" // for read_structure_gz
 
 #define GEMMI_PROG crdrst
 #include "options.h"

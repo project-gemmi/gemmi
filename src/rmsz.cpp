@@ -3,13 +3,14 @@
 #include <stdio.h>
 #include <cstdlib> // for getenv
 #include <stdexcept>
-#include "gemmi/gzread.hpp"
 #include "gemmi/model.hpp"     // for Structure, Atom, etc
 #include "gemmi/chemcomp.hpp"  // for ChemComp
 #include "gemmi/monlib.hpp"    // for MonLib, read_monomer_lib
 #include "gemmi/topo.hpp"      // for Topo
 #include "gemmi/calculate.hpp" // for find_best_plane, get_distance_from_plane
 #include "gemmi/polyheur.hpp"  // for setup_entities
+#include <gemmi/read_cif.hpp>  // for read_cif_gz
+#include <gemmi/read_coor.hpp> // for read_structure_gz
 
 #define GEMMI_PROG rmsz
 #include "options.h"

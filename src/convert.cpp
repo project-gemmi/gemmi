@@ -1,6 +1,5 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#include "gemmi/gzread.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/polyheur.hpp"  // for setup_entities, remove_hydrogens, ...
@@ -12,6 +11,7 @@
 #include "gemmi/assembly.hpp"  // for ChainNameGenerator, change_to_assembly
 #include "gemmi/pirfasta.hpp"  // for read_pir_or_fasta
 #include "gemmi/resinfo.hpp"   // for expand_protein_one_letter
+#include "gemmi/read_coor.hpp" // for read_structure_gz
 
 #include <cstring>
 #include <iostream>

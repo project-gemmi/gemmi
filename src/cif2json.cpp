@@ -2,9 +2,9 @@
 
 #include <iostream>
 #include "gemmi/cifdoc.hpp"    // for Document
-#include "gemmi/gzread.hpp"    // for read_cif_gz
 #include "gemmi/to_json.hpp"   // for JsonWriter
 #include "gemmi/fstream.hpp"   // for Ofstream
+#include "gemmi/read_cif.hpp"  // for read_cif_gz
 #define GEMMI_PROG cif2json
 #include "options.h"
 #include "cifmod.h"  // for apply_cif_doc_modifications, ...
