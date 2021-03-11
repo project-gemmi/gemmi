@@ -53,7 +53,8 @@ ext_modules = [
               ['python/%s.cpp' % name for name in
                   ['gemmi', 'align', 'ccp4', 'cif', 'custom', 'elem', 'hkl',
                    'grid', 'meta', 'mol', 'monlib', 'mtz', 'read', 'recgrid',
-                   'scaling', 'search', 'sf', 'sym', 'unitcell', 'write']],
+                   'scaling', 'search', 'sf', 'sym', 'topo',
+                   'unitcell', 'write']],
               include_dirs=zlib_include_dirs + [
                   'include',
                   'third_party',

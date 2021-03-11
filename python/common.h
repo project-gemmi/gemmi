@@ -16,6 +16,7 @@ void add_cif(pybind11::module& cif); // cif.cpp
 void add_read_structure(pybind11::module& m); // read.cpp
 void add_cif_read(pybind11::module& cif); // read.cpp
 void add_monlib(pybind11::module& m); // monlib.cpp
+void add_topo(pybind11::module& m); // topo.cpp
 void add_alignment(pybind11::module& m); // align.cpp
 void add_scaling(pybind11::module& m); // scaling.cpp
 void add_select(pybind11::module& m); // align.cpp

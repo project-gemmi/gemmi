@@ -5,9 +5,9 @@
 #ifndef GEMMI_TOPO_HPP_
 #define GEMMI_TOPO_HPP_
 
-#include "chemcomp.hpp" // for ChemComp
-#include "monlib.hpp" // for MonLib
-#include "model.hpp" // for Residue, Atom
+#include "chemcomp.hpp"  // for ChemComp
+#include "monlib.hpp"    // for MonLib
+#include "model.hpp"     // for Residue, Atom
 #include "calculate.hpp" // for calculate_angle, calculate_dihedral
 #include "polyheur.hpp"  // for are_connected
 

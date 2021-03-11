@@ -392,8 +392,8 @@ if (USE_PYTHON)
                             python/meta.cpp python/mol.cpp python/monlib.cpp
                             python/mtz.cpp python/read.cpp python/recgrid.cpp
                             python/scaling.cpp python/search.cpp
-                            python/sf.cpp python/sym.cpp python/unitcell.cpp
-                            python/write.cpp)
+                            python/sf.cpp python/sym.cpp python/topo.cpp
+                            python/unitcell.cpp python/write.cpp)
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
     target_compile_options(gemmi PRIVATE "-Wno-shadow")
   endif()

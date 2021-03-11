@@ -93,6 +93,7 @@ PYBIND11_MODULE(gemmi, mg) {
   add_hkl(mg);
   add_mtz(mg);
   add_monlib(mg);
+  add_topo(mg);
   add_alignment(mg);
   add_select(mg);
   add_search(mg);

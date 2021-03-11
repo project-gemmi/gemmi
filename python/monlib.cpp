@@ -2,8 +2,6 @@
 
 #include "gemmi/chemcomp.hpp"
 #include "gemmi/monlib.hpp"
-#include "gemmi/placeh.hpp"    // for adjust_hydrogen_distances
-#include "gemmi/topo.hpp"
 #include "gemmi/tostr.hpp"
 #include "gemmi/read_cif.hpp"  // for read_cif_gz
 
@@ -20,12 +18,6 @@ PYBIND11_MAKE_OPAQUE(std::vector<Restraints::Torsion>)
 PYBIND11_MAKE_OPAQUE(std::vector<Restraints::Chirality>)
 PYBIND11_MAKE_OPAQUE(std::vector<Restraints::Plane>)
 PYBIND11_MAKE_OPAQUE(std::vector<ChemComp::Atom>)
-PYBIND11_MAKE_OPAQUE(std::vector<Topo::Bond>)
-PYBIND11_MAKE_OPAQUE(std::vector<Topo::Angle>)
-PYBIND11_MAKE_OPAQUE(std::vector<Topo::Torsion>)
-PYBIND11_MAKE_OPAQUE(std::vector<Topo::Chirality>)
-PYBIND11_MAKE_OPAQUE(std::vector<Topo::Plane>)
-PYBIND11_MAKE_OPAQUE(std::vector<Topo::ExtraLink>)
 using monomers_type = std::map<std::string, ChemComp>;
 using links_type = std::map<std::string, ChemLink>;
 using modifications_type = std::map<std::string, ChemMod>;
@@ -47,26 +39,12 @@ void add_monlib(py::module& m) {
   py::class_<Restraints::Chirality> restraintschirality(restraints, "Chirality");
   py::class_<Restraints::Plane> restraintsplane(restraints, "Plane");
 
-  py::class_<Topo> topo(m, "Topo");
-  py::class_<Topo::Bond> topobond(topo, "Bond");
-  py::class_<Topo::Angle> topoangle(topo, "Angle");
-  py::class_<Topo::Torsion> topotorsion(topo, "Torsion");
-  py::class_<Topo::Chirality> topochirality(topo, "Chirality");
-  py::class_<Topo::Plane> topoplane(topo, "Plane");
-  py::class_<Topo::ExtraLink> topoextralink(topo, "ExtraLink");
-
   py::bind_vector<std::vector<Restraints::Bond>>(m, "RestraintsBonds");
   py::bind_vector<std::vector<Restraints::Angle>>(m, "RestraintsAngles");
   py::bind_vector<std::vector<Restraints::Torsion>>(m, "RestraintsTorsions");
   py::bind_vector<std::vector<Restraints::Chirality>>(m, "RestraintsChirs");
   py::bind_vector<std::vector<Restraints::Plane>>(m, "RestraintsPlanes");
   py::bind_vector<std::vector<ChemComp::Atom>>(m, "ChemCompAtoms");
-  py::bind_vector<std::vector<Topo::Bond>>(m, "TopoBonds");
-  py::bind_vector<std::vector<Topo::Angle>>(m, "TopoAngles");
-  py::bind_vector<std::vector<Topo::Torsion>>(m, "TopoTorsions");
-  py::bind_vector<std::vector<Topo::Chirality>>(m, "TopoChirs");
-  py::bind_vector<std::vector<Topo::Plane>>(m, "TopoPlanes");
-  py::bind_vector<std::vector<Topo::ExtraLink>>(m, "TopoExtraLinks");
   py::bind_map<monomers_type>(m, "ChemCompMap");
   py::bind_map<links_type>(m, "ChemLinkMap");
   py::bind_map<modifications_type>(m, "ChemModMap");
@@ -84,13 +62,6 @@ void add_monlib(py::module& m) {
     .value("Positive", ChiralityType::Positive)
     .value("Negative", ChiralityType::Negative)
     .value("Both", ChiralityType::Both);
-
-  py::enum_<HydrogenChange>(m, "HydrogenChange")
-    .value("None", HydrogenChange::None)
-    .value("Shift", HydrogenChange::Shift)
-    .value("Remove", HydrogenChange::Remove)
-    .value("ReAdd", HydrogenChange::ReAdd)
-    .value("ReAddButWater", HydrogenChange::ReAddButWater);
 
   py::enum_<Restraints::DistanceOf>(restraints, "DistanceOf")
     .value("ElectronCloud", Restraints::DistanceOf::ElectronCloud)
@@ -248,58 +219,6 @@ void add_monlib(py::module& m) {
                std::to_string(self.links.size()) + " links, " +
                std::to_string(self.modifications.size()) + " modifications>";
     });
-
-  topobond
-    .def_readonly("restr", &Topo::Bond::restr)
-    .def_readonly("atoms", &Topo::Bond::atoms)
-    .def("calculate", &Topo::Bond::calculate)
-    .def("calculate_z", &Topo::Bond::calculate_z)
-    ;
-  topoangle
-    .def_readonly("restr", &Topo::Angle::restr)
-    .def_readonly("atoms", &Topo::Angle::atoms)
-    .def("calculate", &Topo::Angle::calculate)
-    .def("calculate_z", &Topo::Angle::calculate_z)
-    ;
-  topotorsion
-    .def_readonly("restr", &Topo::Torsion::restr)
-    .def_readonly("atoms", &Topo::Torsion::atoms)
-    .def("calculate", &Topo::Torsion::calculate)
-    .def("calculate_z", &Topo::Torsion::calculate_z)
-    ;
-  topochirality
-    .def_readonly("restr", &Topo::Chirality::restr)
-    .def_readonly("atoms", &Topo::Chirality::atoms)
-    .def("calculate", &Topo::Chirality::calculate)
-    .def("check", &Topo::Chirality::check)
-    ;
-  topoplane
-    .def_readonly("restr", &Topo::Plane::restr)
-    .def_readonly("atoms", &Topo::Plane::atoms)
-    .def("has", &Topo::Plane::has)
-    ;
-  topoextralink
-    .def_readonly("res1", &Topo::ExtraLink::res1)
-    .def_readonly("res2", &Topo::ExtraLink::res2)
-    .def_readonly("alt1", &Topo::ExtraLink::alt1)
-    .def_readonly("alt2", &Topo::ExtraLink::alt2)
-    .def_readonly("link_id", &Topo::ExtraLink::link_id)
-    ;
-  topo
-    .def(py::init<>())
-    .def("adjust_hydrogen_distances", &adjust_hydrogen_distances)
-    .def_readonly("bonds", &Topo::bonds)
-    .def_readonly("angles", &Topo::angles)
-    .def_readonly("torsions", &Topo::torsions)
-    .def_readonly("chirs", &Topo::chirs)
-    .def_readonly("planes", &Topo::planes)
-    .def_readonly("extras", &Topo::extras)
-    ;
-
-  m.def("prepare_topology", &prepare_topology,
-        py::arg("st"), py::arg("monlib"), py::arg("model_index")=0,
-        py::arg("h_change")=HydrogenChange::None, py::arg("reorder")=false,
-        py::arg("raise_errors")=false);
 
   m.def("read_monomer_lib", [](const std::string& monomer_dir,
                                const std::vector<std::string>& resnames) {
