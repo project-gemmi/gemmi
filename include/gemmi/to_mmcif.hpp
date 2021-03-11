@@ -929,7 +929,8 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
     cif::Loop& sheet_loop = block.init_mmcif_loop("_struct_sheet.",
                                                   {"id", "number_strands"});
     for (const Sheet& sheet : st.sheets)
-      sheet_loop.add_row({sheet.name, std::to_string(sheet.strands.size())});
+      sheet_loop.add_row({impl::string_or_dot(sheet.name),
+                          std::to_string(sheet.strands.size())});
 
     cif::Loop& order_loop = block.init_mmcif_loop("_struct_sheet_order.",
                     {"sheet_id", "range_id_1", "range_id_2", "sense"});
@@ -937,7 +938,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
       for (size_t i = 1; i < sheet.strands.size(); ++i) {
         const Sheet::Strand& strand = sheet.strands[i];
         if (strand.sense != 0)
-          order_loop.add_row({sheet.name,
+          order_loop.add_row({impl::string_or_dot(sheet.name),
                               std::to_string(i), std::to_string(i+1),
                               strand.sense > 0 ? "parallel" : "anti-parallel"});
       }
@@ -956,7 +957,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
         if (!cra1.residue || !cra2.residue)
           continue;
         range_loop.add_row({
-          sheet.name,                                 // sheet_id
+          impl::string_or_dot(sheet.name),            // sheet_id
           std::to_string(i+1),                        // id
           impl::qchain(cra1.chain->name),             // beg_auth_asym_id
           impl::subchain_or_dot(*cra1.residue),       // beg_label_asym_id
@@ -992,7 +993,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
         if (!cra1.residue || !cra2.residue)
           continue;
         hbond_loop.add_row({
-          sheet.name,                                 // sheet_id
+          impl::string_or_dot(sheet.name),            // sheet_id
           std::to_string(i),                          // range_id_1
           std::to_string(i+1),                        // range_id_2
           impl::qchain(cra1.chain->name),             // range_1_auth_asym_id
