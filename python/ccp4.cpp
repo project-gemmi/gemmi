@@ -6,6 +6,9 @@
 #include "common.h"
 #include <pybind11/stl.h>
 
+#define GEMMI_READ_MAP_IMPLEMENTATION
+#include "gemmi/read_map.hpp"  // defines read_ccp4_map, read_ccp4_mask
+
 namespace py = pybind11;
 using namespace gemmi;
 
@@ -44,16 +47,10 @@ void add_ccp4(py::module& m) {
     .def("setup", [](Ccp4<int8_t>& self, int8_t default_value) {
             self.setup(GridSetup::Full, default_value);
          }, py::arg("default_value")=-1);
-  m.def("read_ccp4_map", [](const std::string& path) {
-          Ccp4<float> ccp4;
-          ccp4.read_ccp4(MaybeGzipped(path));
-          return ccp4;
-        }, py::arg("path"), py::return_value_policy::move,
+  m.def("read_ccp4_map", &read_ccp4_map,
+        py::arg("path"), py::arg("setup")=false, py::return_value_policy::move,
         "Reads a CCP4 file, mode 2 (floating-point data).");
-  m.def("read_ccp4_mask", [](const std::string& path) {
-          Ccp4<int8_t> ccp4;
-          ccp4.read_ccp4(MaybeGzipped(path));
-          return ccp4;
-        }, py::arg("path"), py::return_value_policy::move,
+  m.def("read_ccp4_mask", &read_ccp4_mask,
+        py::arg("path"), py::arg("setup")=false, py::return_value_policy::move,
         "Reads a CCP4 file, mode 0 (int8_t data, usually 0/1 masks).");
 }
