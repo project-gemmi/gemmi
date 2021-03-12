@@ -285,8 +285,9 @@ struct Restraints {
   }
 };
 
-template<typename Restr> double angle_z(double value_rad, const Restr& restr) {
-  return angle_abs_diff(deg(value_rad), restr.value) / restr.esd;
+template<typename Restr>
+double angle_z(double value_rad, const Restr& restr, double full=360.) {
+  return angle_abs_diff(deg(value_rad), restr.value, full) / restr.esd;
 }
 
 struct ChemComp {

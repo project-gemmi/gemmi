@@ -34,11 +34,11 @@ constexpr double sq(double x) { return x * x; }
 
 inline int iround(double d) { return static_cast<int>(std::round(d)); }
 
-inline double angle_abs_diff(double a, double b) {
+inline double angle_abs_diff(double a, double b, double full=360.0) {
   double d = std::abs(a - b);
-  if (d > 360.0)
-    d -= std::floor(d / 360.0) * 360.0;
-  return d < 180.0 ? d : 360.0 - d;
+  if (d > full)
+    d -= std::floor(d / full) * full;
+  return d < 0.5 * full ? d : full - d;
 }
 
 struct Vec3 {

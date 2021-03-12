@@ -44,7 +44,9 @@ struct Topo {
       return calculate_dihedral(atoms[0]->pos, atoms[1]->pos,
                                 atoms[2]->pos, atoms[3]->pos);
     }
-    double calculate_z() const { return angle_z(calculate(), *restr); }
+    double calculate_z() const {
+      return angle_z(calculate(), *restr, 360. / std::max(1, restr->period));
+    }
   };
   struct Chirality {
     const Restraints::Chirality* restr;
