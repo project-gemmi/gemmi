@@ -1,6 +1,5 @@
 library: gemmi
 namespace: gemmi
-cxx_header: gemmi/unitcell.hpp gemmi/ccp4.hpp
 format:
   C_prefix: ge_
 options:
@@ -95,6 +94,7 @@ declarations:
   declarations:
   - decl: int spacegroup_number;
   #- decl: string spacegroup_name;
+  #- decl: const SpaceGroup* spacegroup;
   - decl: Mtz(bool with_base)
   - decl: double resolution_high()
   - decl: double resolution_low()
