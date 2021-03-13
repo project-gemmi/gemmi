@@ -7,6 +7,7 @@
 
 #include <cmath>      // for fabs, cos, sqrt, round
 #include <cstdio>     // for snprintf
+#include <algorithm>  // for min
 #include <array>
 #include <stdexcept>  // for out_of_range
 #include <string>
@@ -38,7 +39,7 @@ inline double angle_abs_diff(double a, double b, double full=360.0) {
   double d = std::abs(a - b);
   if (d > full)
     d -= std::floor(d / full) * full;
-  return d < 0.5 * full ? d : full - d;
+  return std::min(d, full - d);
 }
 
 struct Vec3 {
