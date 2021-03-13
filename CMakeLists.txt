@@ -139,12 +139,12 @@ if (WIN32 AND USE_WMAIN)
   add_definitions(-D_UNICODE=1)
 endif()
 
-add_library(cgemmi STATIC fortran/grid.cpp fortran/symmetry.cpp)
-
-if (USE_FORTRAN)
-  add_library(fgemmi STATIC fortran/gemmi.f90)
-  target_link_libraries(fgemmi PRIVATE cgemmi)
-endif()
+#add_library(cgemmi STATIC fortran/grid.cpp fortran/symmetry.cpp)
+#
+#if (USE_FORTRAN)
+#  add_library(fgemmi STATIC fortran/gemmi.f90)
+#  target_link_libraries(fgemmi PRIVATE cgemmi)
+#endif()
 
 
 ### programs from src/ ###
@@ -299,8 +299,8 @@ endif()
 
 ### tests and examples ###
 
-add_executable(c_test EXCLUDE_FROM_ALL fortran/c_test.c)
-target_link_libraries(c_test PRIVATE cgemmi)
+#add_executable(c_test EXCLUDE_FROM_ALL fortran/c_test.c)
+#target_link_libraries(c_test PRIVATE cgemmi)
 
 add_executable(cpptest EXCLUDE_FROM_ALL tests/main.cpp tests/cif.cpp)
 
@@ -345,20 +345,20 @@ add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION>)
 add_test(NAME cpptest COMMAND cpptest)
 
 add_dependencies(check
-    c_test cpptest hello doc_example doc_example2 doc_maybegz doc_newmtz
+    cpptest hello doc_example doc_example2 doc_maybegz doc_newmtz
     test_disulf check_conn print-version)
 
 if (USE_FORTRAN)
-  add_executable(ftest EXCLUDE_FROM_ALL fortran/ftest.f90)
-  target_link_libraries(ftest PRIVATE fgemmi)
-  add_test(NAME ftest COMMAND ftest)
-  add_executable(ftest_grid EXCLUDE_FROM_ALL fortran/ftest_grid.f90)
-  target_link_libraries(ftest_grid PRIVATE fgemmi)
-  if("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "Intel")
-    set_property(TARGET ftest ftest_grid PROPERTY LINKER_LANGUAGE Fortran)
-  endif()
-  add_test(NAME ftest_grid COMMAND ftest_grid)
-  add_dependencies(check ftest ftest_grid)
+#  add_executable(ftest EXCLUDE_FROM_ALL fortran/ftest.f90)
+#  target_link_libraries(ftest PRIVATE fgemmi)
+#  add_test(NAME ftest COMMAND ftest)
+#  add_executable(ftest_grid EXCLUDE_FROM_ALL fortran/ftest_grid.f90)
+#  target_link_libraries(ftest_grid PRIVATE fgemmi)
+#  if("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "Intel")
+#    set_property(TARGET ftest ftest_grid PROPERTY LINKER_LANGUAGE Fortran)
+#  endif()
+#  add_test(NAME ftest_grid COMMAND ftest_grid)
+#  add_dependencies(check ftest ftest_grid)
 
 endif()
 

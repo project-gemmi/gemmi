@@ -398,11 +398,6 @@ struct Grid : GridBase<T> {
     use_points_around(fctr, radius, [&](T& point, double) { point = value; });
   }
 
-  // used in Fortran bindings
-  void mask_atom(double x, double y, double z, double radius) {
-    set_points_around(Position(x, y, z), radius, 1);
-  }
-
   void change_values(T old_value, T new_value) {
     for (auto& d : data)
       if (d == old_value)
