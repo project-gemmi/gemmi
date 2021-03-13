@@ -386,10 +386,11 @@ if (USE_PYTHON)
     find_package(pybind11 2.6 CONFIG REQUIRED)
     message(STATUS "Found pybind11 ${pybind11_VERSION}: ${pybind11_INCLUDE_DIRS}")
   endif()
-  pybind11_add_module(gemmi python/gemmi.cpp python/align.cpp
+  pybind11_add_module(gemmi python/monlib.cpp
+                            python/gemmi.cpp python/align.cpp
                             python/ccp4.cpp python/cif.cpp python/custom.cpp
                             python/elem.cpp python/grid.cpp python/hkl.cpp
-                            python/meta.cpp python/mol.cpp python/monlib.cpp
+                            python/meta.cpp python/mol.cpp
                             python/mtz.cpp python/read.cpp python/recgrid.cpp
                             python/scaling.cpp python/search.cpp
                             python/sf.cpp python/sym.cpp python/topo.cpp

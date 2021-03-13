@@ -86,6 +86,7 @@ void add_meta(py::module& m) {
                      " |shift|=", self.tr.vec.length(),
                      (self.given ? " (" : " (not "), "given)>");
     });
+  py::bind_vector<std::vector<NcsOp>>(m, "NcsOpList");
 
   py::enum_<EntityType>(m, "EntityType")
     .value("Unknown", EntityType::Unknown)
@@ -115,7 +116,7 @@ void add_meta(py::module& m) {
     .def_readwrite("full_sequence", &Entity::full_sequence)
     .def_static("first_mon", &Entity::first_mon)
     .def("__repr__", [](const Entity& self) { return tostr(self); });
-
+  py::bind_vector<std::vector<Entity>>(m, "EntityList");
 
   py::enum_<Connection::Type>(m, "ConnectionType")
     .value("Covale", Connection::Type::Covale)
@@ -137,6 +138,7 @@ void add_meta(py::module& m) {
         return tostr("<gemmi.Connection ", self.name, "  ",
                      self.partner1.str(), " - ", self.partner2.str(), '>');
     });
+  py::bind_vector<std::vector<Connection>>(m, "ConnectionList");
 
 
   py::class_<Assembly> assembly(m, "Assembly");

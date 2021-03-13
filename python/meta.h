@@ -11,3 +11,7 @@ namespace pybind11 { namespace detail {
 PYBIND11_MAKE_OPAQUE(std::vector<gemmi::Assembly::Gen>)
 PYBIND11_MAKE_OPAQUE(std::vector<gemmi::Assembly::Operator>)
 PYBIND11_MAKE_OPAQUE(std::vector<gemmi::Assembly>)
+
+PYBIND11_MAKE_OPAQUE(std::vector<gemmi::Connection>)
+PYBIND11_MAKE_OPAQUE(std::vector<gemmi::NcsOp>)
+PYBIND11_MAKE_OPAQUE(std::vector<gemmi::Entity>)

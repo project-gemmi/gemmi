@@ -14,12 +14,8 @@
 namespace py = pybind11;
 using namespace gemmi;
 
-PYBIND11_MAKE_OPAQUE(std::vector<Connection>)
-PYBIND11_MAKE_OPAQUE(std::vector<NcsOp>)
-PYBIND11_MAKE_OPAQUE(std::vector<Entity>)
 using info_map_type = std::map<std::string, std::string>;
 PYBIND11_MAKE_OPAQUE(info_map_type)
-
 
 template<typename T, typename C>
 C& add_item(T& container, C child, int pos) {
@@ -79,11 +75,7 @@ void add_mol(py::module& m) {
     .value("Mmjson", CoorFormat::Mmjson)
     .value("ChemComp", CoorFormat::ChemComp);
 
-  py::bind_vector<std::vector<Connection>>(m, "ConnectionList");
-  py::bind_vector<std::vector<NcsOp>>(m, "NcsOpList");
-  py::bind_vector<std::vector<Entity>>(m, "EntityList");
   py::bind_map<info_map_type>(m, "InfoMap");
-
 
   py::class_<Structure> structure(m, "Structure");
   structure
