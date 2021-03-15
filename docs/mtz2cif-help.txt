@@ -12,6 +12,7 @@ Options:
   --skip-empty[=COLS]    Skip reflections with no values. If COLS are given, eg.
                          'I(+),I(-)', only values in those columns are checked.
   --no-comments          Do not write comments in the mmCIF file.
+  --no-history           Do not write MTZ history in the mmCIF file.
   --wavelength=LAMBDA    Set wavelengths (default: from input file).
   --validate-merge       For two MTZ files: validate the intensities match.
   --trim=N               (for testing) output only reflections -N <= h,k,l <=N.

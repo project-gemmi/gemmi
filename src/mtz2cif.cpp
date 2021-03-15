@@ -14,7 +14,7 @@
 namespace {
 
 enum OptionIndex { Spec=4, PrintSpec, BlockName, EntryId, SkipEmpty,
-                   NoComments, Wavelength, ValidateMerge, Trim };
+                   NoComments, NoHistory, Wavelength, ValidateMerge, Trim };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -36,6 +36,8 @@ const option::Descriptor Usage[] = {
     "given, eg. 'I(+),I(-)', only values in those columns are checked." },
   { NoComments, 0, "", "no-comments", Arg::None,
     "  --no-comments  \tDo not write comments in the mmCIF file." },
+  { NoHistory, 0, "", "no-history", Arg::None,
+    "  --no-history  \tDo not write MTZ history in the mmCIF file." },
   { Wavelength, 0, "", "wavelength", Arg::Float,
     "  --wavelength=LAMBDA  \tSet wavelengths (default: from input file)." },
   { ValidateMerge, 0, "", "validate-merge", Arg::None,
@@ -139,12 +141,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     return 2;
   }
 
-  mtz_to_cif.mtz_path = mtz_paths[0];
-  if (mtz_paths[1]) {
-    mtz_to_cif.mtz_path += " and ";
-    mtz_to_cif.mtz_path += mtz_paths[1];
-  }
   mtz_to_cif.with_comments = !p.options[NoComments];
+  mtz_to_cif.with_history = !p.options[NoHistory];
   if (p.options[SkipEmpty]) {
     mtz_to_cif.skip_empty = true;
     if (p.options[SkipEmpty].arg)

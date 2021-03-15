@@ -30,8 +30,8 @@ struct MtzToCif {
   std::vector<std::string> spec_lines; // conversion specification (cf. default_spec)
   const char* block_name = nullptr;  // NAME in data_NAME
   std::string entry_id = "xxxx";     // _entry.id
-  std::string mtz_path;              // path written in a comment
   bool with_comments = true;         // write comments
+  bool with_history = true;          // write MTZ history in comments
   bool skip_empty = false;           // skip reflections with no values
   bool enable_UB = false;            // write _diffrn_orient_matrix.UB
   std::string skip_empty_cols;       // columns used to determine "emptiness"
@@ -353,14 +353,14 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
 #define WRITE(...) os.write(buf, gf_snprintf(buf, 255, __VA_ARGS__))
   if (with_comments) {
     os << "# Converted by gemmi-mtz2cif " GEMMI_VERSION "\n";
-    if (!mtz_path.empty())
-      os << "# from: " << mtz_path << '\n';
     for (const Mtz* m : {merged, unmerged})
       if (m) {
-        os << "# title of " << (m->is_merged() ? "" : "un") << "merged MTZ: "
-           << m->title << '\n';
-        for (size_t i = 0; i != m->history.size(); ++i)
-          os << "# MTZ history #" << i << ": " << m->history[i] << '\n';
+        os << "# from " << (m->is_merged() ? "" : "un") << "merged MTZ: "
+           << m->source_path << '\n';
+        os << "#   title: " << m->title << '\n';
+        if (with_history)
+          for (size_t i = 0; i != m->history.size(); ++i)
+            os << "#   history #" << i << ": " << m->history[i] << '\n';
       }
   }
   os << "data_" << (block_name ? block_name : "mtz");
