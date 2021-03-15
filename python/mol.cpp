@@ -358,7 +358,7 @@ void add_mol(py::module& m) {
     .def("__len__", &AtomGroup::size)
     .def("__iter__", [](AtomGroup& g) { return py::make_iterator(g); },
          py::keep_alive<0, 1>())
-    .def("__bool__", [](const ResidueSpan &g) -> bool { return !g.empty(); })
+    .def("__bool__", [](const AtomGroup &g) -> bool { return !g.empty(); })
     .def("__getitem__", [](AtomGroup& g, int index) -> Atom& {
         return g[normalize_index(index, g)];
     }, py::arg("index"), py::return_value_policy::reference_internal)
