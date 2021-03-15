@@ -151,6 +151,7 @@ struct Mtz {
     }
   };
 
+  std::string source_path;  // input file path, if known
   bool same_byte_order = true;
   std::int32_t header_offset = 0;
   std::string version_stamp;
@@ -619,6 +620,7 @@ struct Mtz {
   void read_file(const std::string& path) {
     fileptr_t f = file_open(path.c_str(), "rb");
     try {
+      source_path = path;
       read_stream(FileStream{f.get()}, true);
     } catch (std::runtime_error& e) {
       fail(std::string(e.what()) + ": " + path);
@@ -627,6 +629,7 @@ struct Mtz {
 
   template<typename Input>
   void read_input(Input&& input, bool with_data) {
+    source_path = input.path();
     if (input.is_stdin()) {
       read_stream(FileStream{stdin}, with_data);
     } else if (std::unique_ptr<char[]> mem = input.memory()) {
