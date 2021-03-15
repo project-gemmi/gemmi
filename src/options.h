@@ -83,3 +83,5 @@ gemmi::CoorFormat coor_format_as_enum(const option::Option& format_in);
 bool starts_with_pdb_code(const std::string& s);
 
 void print_version(const char* program_name);
+
+void read_spec_file(const char* path, std::vector<std::string>& output);

@@ -5,10 +5,11 @@
 #include <cstdio>   // for fprintf, fopen
 #include <cstdlib>  // for strtol, strtod, exit
 #include <cstring>  // for strcmp, strchr
-#include <gemmi/fileutil.hpp>  // for expand_if_pdb_code
+#include <gemmi/fileutil.hpp>  // for expand_if_pdb_code, file_open_or
 #include <gemmi/version.hpp>   // for GEMMI_VERSION
 #include <gemmi/util.hpp>   // for trim_str
 #include <gemmi/model.hpp>  // for gemmi::CoorFormat
+#include <gemmi/atox.hpp>   // for skip_blank
 
 using std::fprintf;
 
@@ -238,4 +239,14 @@ void print_version(const char* program_name) {
          " (" GEMMI_XSTRINGIZE(GEMMI_VERSION_INFO) ")"
 #endif
          "\n", program_name);
+}
+
+void read_spec_file(const char* path, std::vector<std::string>& output) {
+  char buf[256];
+  gemmi::fileptr_t f_spec = gemmi::file_open_or(path, "r", stdin);
+  while (std::fgets(buf, sizeof(buf), f_spec.get()) != NULL) {
+    const char* start = gemmi::skip_blank(buf);
+    if (*start != '\0' && *start != '\r' && *start != '\n' && *start != '#')
+      output.emplace_back(start);
+  }
 }

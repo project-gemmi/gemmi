@@ -125,20 +125,13 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   gemmi::MtzToCif mtz_to_cif;
 
-  try {
-    if (p.options[Spec]) {
-      char buf[256];
-      const char* spec_path = p.options[Spec].arg;
-      gemmi::fileptr_t f_spec = gemmi::file_open_or(spec_path, "r", stdin);
-      while (fgets(buf, sizeof(buf), f_spec.get()) != NULL) {
-        const char* start = gemmi::skip_blank(buf);
-        if (*start != '\0' && *start != '\r' && *start != '\n' && *start != '#')
-          mtz_to_cif.spec_lines.emplace_back(start);
-      }
+  if (p.options[Spec]) {
+    try {
+      read_spec_file(p.options[Spec].arg, mtz_to_cif.spec_lines);
+    } catch (std::runtime_error& e) {
+      std::fprintf(stderr, "Problem in translation spec: %s\n", e.what());
+      return 2;
     }
-  } catch (std::runtime_error& e) {
-    std::fprintf(stderr, "Problem in translation spec: %s\n", e.what());
-    return 2;
   }
 
   mtz_to_cif.with_comments = !p.options[NoComments];
