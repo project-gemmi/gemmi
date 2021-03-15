@@ -8,6 +8,8 @@ Options:
   -v, --verbose            Verbose output.
   -b NAME, --block=NAME    mmCIF block to convert.
   -d DIR, --dir=NAME       Output directory.
+  --spec=FILE              Conversion spec.
+  --print-spec             Print default spec and exit.
   --title                  MTZ title.
   -H LINE, --history=LINE  Add a history line.
   -u, --unmerged           Write unmerged MTZ file(s).
