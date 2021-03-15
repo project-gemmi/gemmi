@@ -225,10 +225,12 @@ struct CifToMtz {
   void add_spec_line(const std::string& line) {
     std::vector<std::string> tokens;
     tokens.reserve(4);
-    gemmi::split_str_into_multi(line, " \t", tokens);
-    if (tokens.size() != 4 || tokens[2].size() != 1 || tokens[3].size() != 1 ||
+    gemmi::split_str_into_multi(line, " \t\r\n", tokens);
+    if (tokens.size() != 4)
+      gemmi::fail("line should have 4 words: " + line);
+    if (tokens[2].size() != 1 || tokens[3].size() != 1 ||
         (tokens[3][0] != '0' && tokens[3][0] != '1'))
-      gemmi::fail("Wrong spec line: " + line);
+      gemmi::fail("incorrect line: " + line);
     int dataset_id = tokens[3][0] - '0';
     spec_entries.push_back({tokens[0], tokens[1], tokens[2][0], dataset_id});
   }
@@ -274,21 +276,21 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   CifToMtz cif2mtz;
 
-  if (p.options[Spec]) {
-    std::vector<std::string> spec_lines;
-    try {
+  try {
+    if (p.options[Spec]) {
+      std::vector<std::string> spec_lines;
       read_spec_file(p.options[Spec].arg, spec_lines);
-    } catch (std::runtime_error& e) {
-      std::fprintf(stderr, "Problem in translation spec: %s\n", e.what());
-      return 2;
+      cif2mtz.spec_entries.reserve(spec_lines.size());
+      for (const std::string& line : spec_lines)
+        cif2mtz.add_spec_line(line);
+    } else {
+      cif2mtz.spec_entries.reserve(sizeof(default_spec) / sizeof(default_spec[0]));
+      for (const char* line : default_spec)
+        cif2mtz.add_spec_line(line);
     }
-    cif2mtz.spec_entries.reserve(spec_lines.size());
-    for (const std::string& line : spec_lines)
-      cif2mtz.add_spec_line(line);
-  } else {
-    cif2mtz.spec_entries.reserve(sizeof(default_spec) / sizeof(default_spec[0]));
-    for (const char* line : default_spec)
-      cif2mtz.add_spec_line(line);
+  } catch (std::runtime_error& e) {
+    std::fprintf(stderr, "Problem with spec: %s\n", e.what());
+    return 2;
   }
 
   cif2mtz.verbose = p.options[Verbose];
