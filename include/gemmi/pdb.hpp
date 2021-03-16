@@ -20,6 +20,7 @@
 #include <map>        // for map
 #include <string>     // for string
 #include <vector>     // for vector
+#include <unordered_map>
 
 #include "atox.hpp"     // for string_to_int, simple_atof
 #include "fail.hpp"     // for fail
@@ -284,8 +285,8 @@ inline bool same_str(const std::string& s, const char (&literal)[N]) {
 }
 
 template<typename Input>
-Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
-                                   const PdbReadOptions& options) {
+Structure read_pdb_from_input(Input&& infile, const std::string& source,
+                              const PdbReadOptions& options) {
   using namespace pdb_impl;
   int line_num = 0;
   auto wrong = [&line_num](const std::string& msg) {
@@ -305,6 +306,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
     max_line_length = 120;
   bool after_ter = false;
   Transform matrix;
+  std::unordered_map<ResidueId, int> resmap;
   while (size_t len = copy_line_from_stream(line, max_line_length+1, infile)) {
     ++line_num;
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
@@ -327,6 +329,7 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
                     prev_part->residues[0].entity_type == EntityType::Polymer;
         model->chains.emplace_back(chain_name);
         chain = &model->chains.back();
+        resmap.clear();
         resi = nullptr;
       }
       // Non-standard but widely used 4-character segment identifier.
@@ -335,14 +338,22 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
       if (len > 72)
         rid.segment = read_string(line+72, 4);
       if (!resi || !resi->matches(rid)) {
-        resi = chain->find_residue(rid);
-        if (!resi) {
+        auto it = resmap.find(rid);
+        // In normal PDB files it is fast enough to use
+        // resi = chain->find_residue(rid);
+        // but in pseudo-PDB files (such as MD files where millions
+        // of residues are in the same "chain") it is too slow.
+        if (it == resmap.end()) {
+          resmap.emplace(rid, (int) chain->residues.size());
           chain->residues.emplace_back(rid);
           resi = &chain->residues.back();
+
           resi->het_flag = line[0] & ~0x20;
           if (after_ter)
             resi->entity_type = resi->is_water() ? EntityType::Water
                                                  : EntityType::NonPolymer;
+        } else {
+          resi = &chain->residues[it->second];
         }
       }
 
@@ -640,14 +651,14 @@ Structure read_pdb_from_line_input(Input&& infile, const std::string& source,
 inline Structure read_pdb_file(const std::string& path,
                                PdbReadOptions options=PdbReadOptions()) {
   auto f = file_open(path.c_str(), "rb");
-  return pdb_impl::read_pdb_from_line_input(FileStream{f.get()}, path, options);
+  return pdb_impl::read_pdb_from_input(FileStream{f.get()}, path, options);
 }
 
 inline Structure read_pdb_from_memory(const char* data, size_t size,
                                       const std::string& name,
                                       PdbReadOptions options=PdbReadOptions()) {
-  return pdb_impl::read_pdb_from_line_input(MemoryStream{data, data + size},
-                                            name, options);
+  return pdb_impl::read_pdb_from_input(MemoryStream{data, data + size},
+                                       name, options);
 }
 
 inline Structure read_pdb_string(const std::string& str,
@@ -660,11 +671,10 @@ inline Structure read_pdb_string(const std::string& str,
 template<typename T>
 inline Structure read_pdb(T&& input, PdbReadOptions options=PdbReadOptions()) {
   if (input.is_stdin())
-    return pdb_impl::read_pdb_from_line_input(FileStream{stdin},
-                                              "stdin", options);
+    return pdb_impl::read_pdb_from_input(FileStream{stdin}, "stdin", options);
   if (input.is_compressed())
-    return pdb_impl::read_pdb_from_line_input(input.get_uncompressing_stream(),
-                                              input.path(), options);
+    return pdb_impl::read_pdb_from_input(input.get_uncompressing_stream(),
+                                         input.path(), options);
   return read_pdb_file(input.path(), options);
 }
 

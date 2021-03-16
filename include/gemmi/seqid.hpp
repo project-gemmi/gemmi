@@ -94,6 +94,7 @@ struct ResidueId {
   bool matches(const ResidueId& o) const {
     return seqid == o.seqid && segment == o.segment && name == o.name;
   }
+  bool operator==(const ResidueId& o) const { return matches(o); }
   std::string str() const { return seqid.str() + "(" + name + ")"; }
 };
 
@@ -139,4 +140,14 @@ struct AtomAddress {
 };
 
 } // namespace gemmi
+
+namespace std {
+template <> struct hash<gemmi::ResidueId> {
+  size_t operator()(const gemmi::ResidueId& r) const {
+    size_t seqid_hash = (*r.seqid.num << 7) + (r.seqid.icode | 0x20);
+    return seqid_hash ^ hash<string>()(r.segment) ^ hash<string>()(r.name);
+  }
+};
+} // namespace std
+
 #endif
