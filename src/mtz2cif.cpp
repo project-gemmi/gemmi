@@ -14,7 +14,8 @@
 namespace {
 
 enum OptionIndex { Spec=4, PrintSpec, BlockName, EntryId, SkipEmpty,
-                   NoComments, NoHistory, Wavelength, ValidateMerge, Trim };
+                   NoComments, NoHistory, Wavelength, ValidateMerge,
+                   Separate, Trim };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -42,6 +43,8 @@ const option::Descriptor Usage[] = {
     "  --wavelength=LAMBDA  \tSet wavelengths (default: from input file)." },
   { ValidateMerge, 0, "", "validate-merge", Arg::None,
     "  --validate-merge  \tFor two MTZ files: validate the intensities match." },
+  { Separate, 0, "", "separate", Arg::None,
+    "  --separate  \tWrite merged and unmerged data in separate blocks." },
   { Trim, 0, "", "trim", Arg::Int,
     "  --trim=N  \t(for testing) output only reflections -N <= h,k,l <=N." },
   { NoOp, 0, "", "", Arg::None,
@@ -123,6 +126,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (verbose)
     std::fprintf(stderr, "Writing %s ...\n", cif_path);
 
+  bool separate_blocks = p.options[Separate];
+
   gemmi::MtzToCif mtz_to_cif;
 
   if (p.options[Spec]) {
@@ -161,7 +166,16 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz[0]->switch_to_original_hkl();
     if (mtz[1])
       mtz[1]->switch_to_original_hkl();
-    mtz_to_cif.write_cif(*mtz[0], mtz[1].get(), os.ref());
+    mtz_to_cif.write_special_marker_for_pdb = !!mtz[1];
+    if (mtz[1] && separate_blocks) {
+      if (mtz[1]->is_merged())
+        mtz[0].swap(mtz[1]);
+      mtz_to_cif.write_cif(*mtz[0], nullptr, os.ref());
+      os.ref() << "\n\n";
+      mtz_to_cif.write_cif(*mtz[1], nullptr, os.ref());
+    } else {
+      mtz_to_cif.write_cif(*mtz[0], mtz[1].get(), os.ref());
+    }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR writing %s: %s\n", cif_path, e.what());
     return 3;

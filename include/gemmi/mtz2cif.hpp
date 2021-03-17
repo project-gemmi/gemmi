@@ -34,6 +34,7 @@ struct MtzToCif {
   bool with_history = true;          // write MTZ history in comments
   bool skip_empty = false;           // skip reflections with no values
   bool enable_UB = false;            // write _diffrn_orient_matrix.UB
+  bool write_special_marker_for_pdb = false;
   std::string skip_empty_cols;       // columns used to determine "emptiness"
   double wavelength = NAN;           // user-specified wavelength
   int trim = 0;                      // output only reflections -N<=h,k,l<=N
@@ -368,7 +369,7 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
   os << "\n\n_entry.id " << entry_id << "\n\n";
 
   // for now write this only merged+unmerged dataset
-  if (mtz2)
+  if (write_special_marker_for_pdb)
     os << "### If you modify this file, remove the following items: ###\n"
           "_software.pdbx_ordinal 1\n"
           "_software.classification 'data extraction'\n"
