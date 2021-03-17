@@ -7,6 +7,13 @@ options:
   C_line_length: 94
   F_line_length: 94
 
+splicer_code:
+  c:
+    CXX_definitions: |
+      // for read_ccp4_map() and read_ccp4_mask()
+      #define GEMMI_READ_MAP_IMPLEMENTATION
+      #include "gemmi/read_map.hpp"
+
 declarations:
 
 ### unitcell.hpp ###
@@ -68,7 +75,6 @@ declarations:
   - decl: GroupOps operations()
 
 - decl: const SpaceGroup* find_spacegroup_by_number(int ccp4) +owner(library)
-  cxx_header: gemmi/symmetry.hpp
 - decl: const SpaceGroup* find_spacegroup_by_name(string name) +owner(library)
 
 
@@ -83,8 +89,8 @@ declarations:
   - decl: Ccp4()
   - decl: void read_ccp4_file(const std::string& path)
 
-#- decl: Ccp4<float> read_ccp4_map(const std::string& path, bool setup)
-#  cxx_header: gemmi/read_map.hpp
+- decl: Ccp4<float> read_ccp4_map(const std::string& path, bool setup)
+- decl: Ccp4<int8_t> read_ccp4_mask(const std::string& path, bool setup)
 
 
 ### mtz.hpp ###
@@ -92,13 +98,14 @@ declarations:
 - decl: class Mtz
   cxx_header: gemmi/mtz.hpp
   declarations:
-  - decl: int spacegroup_number;
-  #- decl: string spacegroup_name;
+  - decl: string title;
+  - decl: int nreflections +readonly;
+  - decl: string spacegroup_name +readonly;
   #- decl: const SpaceGroup* spacegroup;
   - decl: Mtz(bool with_base)
   - decl: double resolution_high()
   - decl: double resolution_low()
   - decl: UnitCell& get_cell(int dataset)
   - decl: bool is_merged()
+  - decl: void write_to_file(const std::string& path)
 - decl: Mtz read_mtz_file(const std::string& path)
-  cxx_header: gemmi/mtz.hpp

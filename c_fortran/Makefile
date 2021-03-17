@@ -9,7 +9,7 @@ CFLAGS = -O -Wall -Wstrict-prototypes -fno-strict-aliasing -std=c99
 FFLAGS = -O -cpp -std=f2003 -ffree-form -Wall -fbounds-check
 CXXFLAGS = -O -Wall -std=c++11 -fno-strict-aliasing
 INCLUDE = -I../include
-FLIBS = -lstdc++
+FLIBS = -lstdc++ -lz
 
 C_OBJS = \
     wrapPosition.o \
@@ -26,31 +26,33 @@ C_OBJS = \
 
 F_OBJS = wrapfgemmi.o
 
-all: wrapfgemmi.f ftest fsym
+TEST_PROGS = ftest fsym
+
+all: $(TEST_PROGS)
 
 clean:
-	rm -f ftest *.o *.mod
+	rm -f $(TEST_PROGS) *.a *.o *.mod
 	rm -f wrap* types*.h util*.cpp *.json *.log gemmi_types.yaml
 
-wrapfgemmi.f: gemmi.yaml
+$(C_OBJS:.o=.cpp) $(F_OBJS:.o=.f): gemmi.yaml
 	shroud gemmi.yaml
 
-%.o: %.c
-	$(CC) $(CFLAGS) $(INCLUDE) -c -o $*.o $<
-
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -c -o $*.o $<
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $<
 
 %.o %.mod: %.f
-	$(FC) $(FFLAGS) $(INCLUDE) -c -o $*.o $<
+	$(FC) $(FFLAGS) $(INCLUDE) -c $<
 
-%.o %.mod: %.f90
-	$(FC) $(FFLAGS) $(INCLUDE) -c -o $*.o $<
+%.o: %.f90 wrapfgemmi.o
+	$(FC) $(FFLAGS) $(INCLUDE) -c $<
 
-ftest: $(C_OBJS) $(F_OBJS) ftest.o
+gemmi.a: $(C_OBJS) $(F_OBJS) write.o
+	ar rcs gemmi.a $^
+
+ftest: ftest.o gemmi.a
 	$(FC) $(FFLAGS) $^ -o $@ $(FLIBS)
 
-fsym: $(C_OBJS) $(F_OBJS) fsym.o
+fsym: fsym.o gemmi.a
 	$(FC) $(FFLAGS) $^ -o $@ $(FLIBS)
 
 .PHONY: clean all
