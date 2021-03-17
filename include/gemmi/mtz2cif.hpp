@@ -35,6 +35,7 @@ struct MtzToCif {
   bool skip_empty = false;           // skip reflections with no values
   bool enable_UB = false;            // write _diffrn_orient_matrix.UB
   bool write_special_marker_for_pdb = false;
+  bool no_anomalous = false;         // skip (+)/(-) columns even if in spec
   std::string skip_empty_cols;       // columns used to determine "emptiness"
   double wavelength = NAN;           // user-specified wavelength
   int trim = 0;                      // output only reflections -N<=h,k,l<=N
@@ -252,6 +253,12 @@ private:
         fail("Spec error: MTZ type '" + type + "' is not one character,"
              "\nin line: " + line);
       ctype = type[0];
+      if (no_anomalous && (ctype == 'G' || ctype == 'K' || ctype == 'D' ||
+                           ctype == 'L' || ctype == 'M')) {
+        recipe.resize(state.verified_spec_size);
+        state.discard_next_line = true;
+        return;
+      }
     }
 
     tr.tag = read_word(p, &p);

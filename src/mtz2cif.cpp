@@ -15,7 +15,7 @@ namespace {
 
 enum OptionIndex { Spec=4, PrintSpec, BlockName, EntryId, SkipEmpty,
                    NoComments, NoHistory, Wavelength, ValidateMerge,
-                   Separate, Trim };
+                   NoAnomalous, Separate, Trim };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -43,6 +43,8 @@ const option::Descriptor Usage[] = {
     "  --wavelength=LAMBDA  \tSet wavelengths (default: from input file)." },
   { ValidateMerge, 0, "", "validate-merge", Arg::None,
     "  --validate-merge  \tFor two MTZ files: validate the intensities match." },
+  { NoAnomalous, 0, "", "no-ano", Arg::None,
+    "  --no-ano  \tSkip anomalous columns (even if they are in the spec)." },
   { Separate, 0, "", "separate", Arg::None,
     "  --separate  \tWrite merged and unmerged data in separate blocks." },
   { Trim, 0, "", "trim", Arg::Int,
@@ -141,6 +143,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   mtz_to_cif.with_comments = !p.options[NoComments];
   mtz_to_cif.with_history = !p.options[NoHistory];
+  mtz_to_cif.no_anomalous = p.options[NoAnomalous];
   if (p.options[SkipEmpty]) {
     mtz_to_cif.skip_empty = true;
     if (p.options[SkipEmpty].arg)
