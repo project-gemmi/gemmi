@@ -424,9 +424,8 @@ void grep_file(const std::string& path, GrepParams& par, int& err_count) {
     if (input.is_stdin()) {
       pegtl::cstream_input<> in(stdin, 16*1024, "stdin");
       run_parse(in, par);
-    } else if (input.is_compressed()) {
-      std::unique_ptr<char[]> mem = input.memory();
-      pegtl::memory_input<> in(mem.get(), input.memory_size(), path);
+    } else if (gemmi::CharArray mem = input.memory()) {
+      pegtl::memory_input<> in(mem.data(), mem.size(), path);
       run_parse(in, par);
     } else {
       GEMMI_CIF_FILE_INPUT(in, path);

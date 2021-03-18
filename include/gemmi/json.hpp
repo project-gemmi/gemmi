@@ -116,13 +116,20 @@ inline Document read_mmjson_insitu(char* buffer, size_t size,
   return doc;
 }
 
-inline Document read_mmjson_file(const std::string& path) {
+inline std::unique_ptr<char[]> read_file_into_buffer(const std::string& path,
+                                                     size_t* buf_size) {
   fileptr_t f = file_open(path.c_str(), "rb");
-  size_t buf_size = file_size(f.get(), path);
-  std::vector<char> buffer(buf_size);
-  if (std::fread(buffer.data(), buffer.size(), 1, f.get()) != 1)
+  *buf_size = file_size(f.get(), path);
+  std::unique_ptr<char[]> buffer(new char[*buf_size]);
+  if (std::fread(buffer.get(), *buf_size, 1, f.get()) != 1)
     fail(path + ": fread failed");
-  return read_mmjson_insitu(buffer.data(), buffer.size(), path);
+  return buffer;
+}
+
+inline Document read_mmjson_file(const std::string& path) {
+  size_t buf_size;
+  std::unique_ptr<char[]> buffer = read_file_into_buffer(path, &buf_size);
+  return read_mmjson_insitu(buffer.get(), buf_size, path);
 }
 
 template<typename T>
@@ -134,8 +141,8 @@ Document read_mmjson(T&& input) {
       buffer.insert(buffer.end(), chunk, chunk + n);
     return read_mmjson_insitu(buffer.data(), buffer.size(), "stdin");
   }
-  if (std::unique_ptr<char[]> mem = input.memory())
-    return read_mmjson_insitu(mem.get(), input.memory_size(), input.path());
+  if (CharArray mem = input.memory())
+    return read_mmjson_insitu(mem.data(), mem.size(), input.path());
   return read_mmjson_file(input.path());
 }
 

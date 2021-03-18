@@ -632,9 +632,8 @@ struct Mtz {
     source_path = input.path();
     if (input.is_stdin()) {
       read_stream(FileStream{stdin}, with_data);
-    } else if (std::unique_ptr<char[]> mem = input.memory()) {
-      MemoryStream stream(mem.get(), mem.get() + input.memory_size());
-      read_stream(std::move(stream), with_data);
+    } else if (CharArray mem = input.memory()) {
+      read_stream(MemoryStream(mem.data(), mem.size()), with_data);
     } else {
       fileptr_t f = file_open(input.path().c_str(), "rb");
       read_stream(FileStream{f.get()}, true);

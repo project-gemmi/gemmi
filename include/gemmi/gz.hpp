@@ -65,7 +65,7 @@ public:
   };
 
   explicit MaybeGzipped(const std::string& path)
-    : BasicInput(path), memory_size_(0), file_(nullptr) {}
+    : BasicInput(path), file_(nullptr) {}
   ~MaybeGzipped() {
     if (file_)
 #if ZLIB_VERNUM >= 0x1235
@@ -92,33 +92,32 @@ public:
   std::string basepath() const {
     return is_compressed() ? path().substr(0, path().size() - 3) : path();
   }
-  size_t memory_size() const { return memory_size_; }
 
-  std::unique_ptr<char[]> memory() {
+  CharArray memory() {
     if (!is_compressed())
       return BasicInput::memory();
-    memory_size_ = estimate_uncompressed_size(path());
+    size_t size = estimate_uncompressed_size(path());
     open();
-    if (memory_size_ > 3221225471)
+    if (size > 3221225471)
       fail("For now gz files above 3 GiB uncompressed are not supported.\n"
            "To read " + path() + " first uncompress it.");
-    std::unique_ptr<char[]> mem(new char[memory_size_]);
-    size_t read_bytes = gzread_checked(mem.get(), memory_size_);
-    // if the file is shorter than the size from header, adjust memory_size_
-    if (read_bytes < memory_size_) {
-      memory_size_ = read_bytes;
-    } else { // read_bytes == memory_size_
+    CharArray mem(size);
+    size_t read_bytes = gzread_checked(mem.data(), size);
+    // if the file is shorter than the size from header, adjust size
+    if (read_bytes < size) {
+      mem.set_size(read_bytes);
+    } else { // read_bytes == size
     // if the file is longer than the size from header, read in the rest
       int next_char;
       while (!gzeof(file_) && (next_char = gzgetc(file_)) != -1) {
-        if (memory_size_ > 3221225471)
+        if (mem.size() > 3221225471)
           fail("For now gz files above 3 GiB uncompressed are not supported.\n"
                "To read " + path() + " first uncompress it.");
         gzungetc(next_char, file_);
-        std::unique_ptr<char[]> mem2(new char[2 * memory_size_]);
-        std::memcpy(mem2.get(), mem.get(), memory_size_);
-        memory_size_ += gzread_checked(mem2.get() + memory_size_, memory_size_);
-        mem2.swap(mem);
+        size_t old_size = mem.size();
+        mem.resize(2 * old_size);
+        size_t n = gzread_checked(mem.data() + old_size, old_size);
+        mem.set_size(old_size + n);
       }
     }
     return mem;
@@ -134,7 +133,6 @@ public:
   }
 
 private:
-  size_t memory_size_;
   gzFile file_;
 
   void open() {

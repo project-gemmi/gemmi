@@ -21,7 +21,7 @@ public:
   bool read(int32_t data, size_t size) {
     data_ = (char*) data;
     try {
-      mtz_.read_stream(gemmi::MemoryStream(data_, data_ + size), false);
+      mtz_.read_stream(gemmi::MemoryStream(data_, size), false);
     } catch (std::runtime_error& e) {
       last_error_ = "Failed to read MTZ file: ";
       last_error_ += e.what();

@@ -8,6 +8,7 @@
 
 #include <cassert>
 #include <cstring> // for memchr
+#include <cstdlib> // for malloc, realloc
 #include <memory>  // for unique_ptr
 #include <string>
 #include "fail.hpp"  // for unreachable
@@ -26,8 +27,8 @@ struct FileStream {
 };
 
 struct MemoryStream {
-  MemoryStream(const char* start_, const char* end_)
-    : start(start_), end(end_), cur(start_) {}
+  MemoryStream(const char* start_, size_t size)
+    : start(start_), end(start_ + size), cur(start_) {}
 
   char* gets(char* line, int size) {
     if (cur >= end)
@@ -61,6 +62,26 @@ private:
   const char* cur;
 };
 
+class CharArray {
+  std::unique_ptr<char[], decltype(std::free)*> ptr_;
+  size_t size_;
+public:
+  CharArray() : ptr_(nullptr, std::free), size_(0) {}
+  explicit CharArray(size_t n) : ptr_((char*)std::malloc(n), std::free), size_(n) {};
+  explicit operator bool() const { return (bool)ptr_; }
+  char* data() { return ptr_.get(); }
+  size_t size() const { return size_; }
+  void set_size(size_t n) { size_ = n; }
+
+  void resize(size_t n) {
+    char* new_ptr = (char*) std::realloc(ptr_.get(), n);
+    if (!new_ptr)
+      fail("Out of memory.");
+    ptr_.release();
+    ptr_.reset(new_ptr);
+    size_ = n;
+  }
+};
 
 class BasicInput {
 public:
@@ -78,8 +99,7 @@ public:
   bool is_compressed() const { return false; }
   FileStream get_uncompressing_stream() const { assert(0); unreachable(); }
   // for reading (uncompressing into memory) the whole file at once
-  std::unique_ptr<char[]> memory() { return nullptr; }
-  size_t memory_size() const { return 0; };
+  CharArray memory() { return {}; }
 
 private:
   std::string path_;

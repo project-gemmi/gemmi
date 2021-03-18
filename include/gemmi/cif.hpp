@@ -14,6 +14,7 @@
 //#include "third_party/tao/pegtl/contrib/tracer.hpp"  // for debugging
 
 #include "cifdoc.hpp" // for Document, etc
+#include "input.hpp"  // for CharArray
 #if defined(_WIN32)
 #include "fileutil.hpp" // for file_open
 #endif
@@ -320,15 +321,15 @@ template<typename T>
 Document read(T&& input) {
   if (input.is_stdin())
     return read_cstream(stdin, 16*1024, "stdin");
-  if (std::unique_ptr<char[]> mem = input.memory())
-    return read_memory(mem.get(), input.memory_size(), input.path().c_str());
+  if (CharArray mem = input.memory())
+    return read_memory(mem.data(), mem.size(), input.path().c_str());
   return read_file(input.path());
 }
 
 template<typename T>
 bool check_syntax_any(T&& input, std::string* msg) {
-  if (std::unique_ptr<char[]> mem = input.memory()) {
-    pegtl::memory_input<> in(mem.get(), input.memory_size(), input.path());
+  if (CharArray mem = input.memory()) {
+    pegtl::memory_input<> in(mem.data(), mem.size(), input.path());
     return check_syntax(in, msg);
   }
   GEMMI_CIF_FILE_INPUT(in, input.path());

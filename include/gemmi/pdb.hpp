@@ -657,8 +657,7 @@ inline Structure read_pdb_file(const std::string& path,
 inline Structure read_pdb_from_memory(const char* data, size_t size,
                                       const std::string& name,
                                       PdbReadOptions options=PdbReadOptions()) {
-  return pdb_impl::read_pdb_from_input(MemoryStream{data, data + size},
-                                       name, options);
+  return pdb_impl::read_pdb_from_input(MemoryStream(data, size), name, options);
 }
 
 inline Structure read_pdb_string(const std::string& str,

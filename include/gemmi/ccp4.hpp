@@ -240,7 +240,7 @@ struct Ccp4 {
 
   inline void read_ccp4_from_memory(const char* data, size_t size,
                                     const std::string& name) {
-    read_ccp4_stream(MemoryStream{data, data + size}, name);
+    read_ccp4_stream(MemoryStream(data, size), name);
   }
 
   template<typename Input>

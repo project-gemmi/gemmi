@@ -259,9 +259,8 @@ void process(Context& ctx, const std::string& path) {
     if (input.is_stdin()) {
       pegtl::cstream_input<> in(stdin, 16*1024, "stdin");
       pegtl::parse<rules::file, Counter, cif::Errors>(in, ctx);
-    } else if (input.is_compressed()) {
-      std::unique_ptr<char[]> mem = input.memory();
-      pegtl::memory_input<> in(mem.get(), input.memory_size(), path);
+    } else if (gemmi::CharArray mem = input.memory()) {
+      pegtl::memory_input<> in(mem.data(), mem.size(), path);
       pegtl::parse<rules::file, Counter, cif::Errors>(in, ctx);
     } else {
       GEMMI_CIF_FILE_INPUT(in, path);
