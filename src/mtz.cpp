@@ -317,7 +317,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::MaybeGzipped input(path);
       if (input.is_stdin()) {
         print_mtz_info(gemmi::FileStream{stdin}, path, p.options);
-      } else if (gemmi::CharArray mem = input.memory()) {
+      } else if (gemmi::CharArray mem = input.uncompress_into_buffer()) {
         gemmi::MemoryStream stream(mem.data(), mem.size());
         print_mtz_info(std::move(stream), path, p.options);
       } else {

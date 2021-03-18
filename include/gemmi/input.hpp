@@ -99,7 +99,7 @@ public:
   bool is_compressed() const { return false; }
   FileStream get_uncompressing_stream() const { assert(0); unreachable(); }
   // for reading (uncompressing into memory) the whole file at once
-  CharArray memory() { return {}; }
+  CharArray uncompress_into_buffer() { return {}; }
 
 private:
   std::string path_;

@@ -93,9 +93,9 @@ public:
     return is_compressed() ? path().substr(0, path().size() - 3) : path();
   }
 
-  CharArray memory() {
+  CharArray uncompress_into_buffer() {
     if (!is_compressed())
-      return BasicInput::memory();
+      return BasicInput::uncompress_into_buffer();
     size_t size = estimate_uncompressed_size(path());
     open();
     if (size > 3221225471)

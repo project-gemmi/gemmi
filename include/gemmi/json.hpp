@@ -145,7 +145,7 @@ inline CharArray read_into_buffer(T& input) {
   if (input.is_stdin())
     return read_stdin_into_buffer();
   if (input.is_compressed())
-    return input.memory();
+    return input.uncompress_into_buffer();
   return read_file_into_buffer(input.path());
 }
 

@@ -259,7 +259,7 @@ void process(Context& ctx, const std::string& path) {
     if (input.is_stdin()) {
       pegtl::cstream_input<> in(stdin, 16*1024, "stdin");
       pegtl::parse<rules::file, Counter, cif::Errors>(in, ctx);
-    } else if (gemmi::CharArray mem = input.memory()) {
+    } else if (gemmi::CharArray mem = input.uncompress_into_buffer()) {
       pegtl::memory_input<> in(mem.data(), mem.size(), path);
       pegtl::parse<rules::file, Counter, cif::Errors>(in, ctx);
     } else {

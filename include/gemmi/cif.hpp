@@ -321,14 +321,14 @@ template<typename T>
 Document read(T&& input) {
   if (input.is_stdin())
     return read_cstream(stdin, 16*1024, "stdin");
-  if (CharArray mem = input.memory())
+  if (CharArray mem = input.uncompress_into_buffer())
     return read_memory(mem.data(), mem.size(), input.path().c_str());
   return read_file(input.path());
 }
 
 template<typename T>
 bool check_syntax_any(T&& input, std::string* msg) {
-  if (CharArray mem = input.memory()) {
+  if (CharArray mem = input.uncompress_into_buffer()) {
     pegtl::memory_input<> in(mem.data(), mem.size(), input.path());
     return check_syntax(in, msg);
   }

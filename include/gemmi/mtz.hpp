@@ -632,7 +632,7 @@ struct Mtz {
     source_path = input.path();
     if (input.is_stdin()) {
       read_stream(FileStream{stdin}, with_data);
-    } else if (CharArray mem = input.memory()) {
+    } else if (CharArray mem = input.uncompress_into_buffer()) {
       read_stream(MemoryStream(mem.data(), mem.size()), with_data);
     } else {
       fileptr_t f = file_open(input.path().c_str(), "rb");
