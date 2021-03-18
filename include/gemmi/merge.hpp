@@ -9,6 +9,7 @@
 #include "unitcell.hpp"
 #include "util.hpp"     // for vector_remove_if
 #include "mtz.hpp"      // for Mtz
+#include "refln.hpp"    // for ReflnBlock
 
 namespace gemmi {
 
@@ -169,6 +170,56 @@ inline Intensities read_anomalous_intensities_from_mtz(const Mtz& mtz) {
       refl.isign = (j == 0 ? 1 : -1);
       refl.value = mtz.data[i + value_idx[j]];
       refl.sigma = mtz.data[i + sigma_idx[j]];
+      intensities.add_if_valid(refl);
+    }
+  return intensities;
+}
+
+
+inline Intensities read_unmerged_intensities_from_mmcif(const ReflnBlock& rb) {
+  size_t value_idx = rb.get_column_index("intensity_net");
+  size_t sigma_idx = rb.get_column_index("intensity_sigma");
+  Intensities intensities;
+  intensities.copy_metadata(rb);
+  intensities.wavelength = rb.wavelength;
+  intensities.read_data(ReflnDataProxy(rb), value_idx, sigma_idx);
+  // switch to ASU indices
+  GroupOps gops = intensities.spacegroup->operations();
+  ReciprocalAsu asu(intensities.spacegroup);
+  for (Intensities::Refl& refl : intensities.data) {
+    auto hkl_isym = asu.to_asu(refl.hkl, gops);
+    refl.hkl = hkl_isym.first;
+    refl.isign = (hkl_isym.second % 2 == 0 ? -1 : 1);
+  }
+  return intensities;
+}
+
+inline Intensities read_mean_intensities_from_mmcif(const ReflnBlock& rb) {
+  size_t value_idx = rb.get_column_index("intensity_meas");
+  size_t sigma_idx = rb.get_column_index("intensity_sigma");
+  Intensities intensities;
+  intensities.copy_metadata(rb);
+  intensities.wavelength = rb.wavelength;
+  intensities.read_data(ReflnDataProxy(rb), value_idx, sigma_idx);
+  return intensities;
+}
+
+inline Intensities read_anomalous_intensities_from_mmcif(const ReflnBlock& rb) {
+  size_t value_idx[2] = {rb.get_column_index("pdbx_I_plus"),
+                         rb.get_column_index("pdbx_I_minus")};
+  size_t sigma_idx[2] = {rb.get_column_index("pdbx_I_plus_sigma"),
+                         rb.get_column_index("pdbx_I_minus_sigma")};
+  Intensities intensities;
+  intensities.copy_metadata(rb);
+  intensities.wavelength = rb.wavelength;
+  ReflnDataProxy proxy(rb);
+  for (size_t i = 0; i < proxy.size(); i += proxy.stride())
+    for (int j = 0; j < 2; ++j) {
+      Intensities::Refl refl;
+      refl.hkl = proxy.get_hkl(i);
+      refl.isign = (j == 0 ? 1 : -1);
+      refl.value = proxy.get_num(i + value_idx[j]);
+      refl.sigma = proxy.get_num(i + sigma_idx[j]);
       intensities.add_if_valid(refl);
     }
   return intensities;
