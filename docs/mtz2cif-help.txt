@@ -21,6 +21,8 @@ Options:
 
 One or two MTZ files are taken as the input. If two files are given,
 one must be merged and the other unmerged.
+Alternatively, the two input files can be reflection mmCIF file and
+unmerged MTZ - this adds unmerged data block to the existing mmCIF file.
 If CIF_FILE is -, the output is printed to stdout.
 If spec is -, it is read from stdin.
 

@@ -8,6 +8,9 @@
 #include <gemmi/mtz2cif.hpp>
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/fstream.hpp>  // for Ofstream
+#include <gemmi/util.hpp>     // for giends_with
+#include <gemmi/merge.hpp>    // for Intensities
+#include <gemmi/read_cif.hpp> // for read_cif_gz
 #define GEMMI_PROG mtz2cif
 #include "options.h"
 
@@ -52,9 +55,12 @@ const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "\nOne or two MTZ files are taken as the input. If two files are given,"
     "\none must be merged and the other unmerged."
+    "\nAlternatively, the two input files can be reflection mmCIF file and"
+    "\nunmerged MTZ - this adds unmerged data block to the existing mmCIF file."
     "\nIf CIF_FILE is -, the output is printed to stdout."
     "\nIf spec is -, it is read from stdin."
-    "\n\nLines in the spec file have format:"
+    "\n"
+    "\nLines in the spec file have format:"
     "\n  [FLAG] COLUMN TYPE TAG [FORMAT]"
     "\n or"
     "\n  $SPECIAL TAG"
@@ -106,10 +112,19 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   bool verbose = p.options[Verbose];
   const char* mtz_paths[2];
+  const char* cif_input = nullptr;
   mtz_paths[0] = p.nonOption(0);
   mtz_paths[1] = (nargs == 3 ? p.nonOption(1) : nullptr);
-  const char* cif_path = p.nonOption(nargs == 3 ? 2 : 1);
+  const char* cif_output = p.nonOption(nargs == 3 ? 2 : 1);
   std::unique_ptr<gemmi::Mtz> mtz[2];
+  if (gemmi::giends_with(mtz_paths[0], ".cif") ||
+      gemmi::giends_with(mtz_paths[0], ".ent")) {
+    if (!mtz_paths[1]) {
+      std::fprintf(stderr, "Error: no MTZ file was given\n");
+      return 1;
+    }
+    std::swap(cif_input, mtz_paths[0]);
+  }
   for (int i = 0; i < 2; ++i)
     if (mtz_paths[i]) {
       mtz[i].reset(new gemmi::Mtz);
@@ -124,9 +139,25 @@ int GEMMI_MAIN(int argc, char **argv) {
         return 1;
       }
     }
+  if (cif_input && mtz[1]->is_merged()) {
+    std::fprintf(stderr, "Error: CIF file and merged MTZ files given\n");
+    return 1;
+  }
+  if (mtz[0] && mtz[1]) {
+    if (mtz[0]->is_merged() && mtz[1]->is_merged()) {
+      std::fprintf(stderr, "Error: two merged MTZ files given\n");
+      return 1;
+    }
+    if (!mtz[0]->is_merged() && !mtz[1]->is_merged()) {
+      std::fprintf(stderr, "Error: two unmerged MTZ files given\n");
+      return 1;
+    }
+    if (mtz[1]->is_merged())
+      mtz[0].swap(mtz[1]);
+  }
 
   if (verbose)
-    std::fprintf(stderr, "Writing %s ...\n", cif_path);
+    std::fprintf(stderr, "Writing %s ...\n", cif_output);
 
   bool separate_blocks = p.options[Separate];
 
@@ -155,9 +186,21 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz_to_cif.entry_id = p.options[EntryId].arg;
   if (p.options[Wavelength])
     mtz_to_cif.wavelength = std::strtod(p.options[Wavelength].arg, nullptr);
+  gemmi::CharArray cif_buf;
+  if (cif_input)
+    cif_buf = gemmi::read_into_buffer_gz(cif_input);
   if (p.options[ValidateMerge] && nargs == 3) {
     try {
-      gemmi::validate_merged_intensities(*mtz[0], *mtz[1], std::cerr);
+      gemmi::Intensities mi;
+      if (mtz[0]) {
+        mi = gemmi::read_mean_intensities_from_mtz(*mtz[0]);
+      } else {
+        gemmi::ReflnBlock rblock = gemmi::get_refln_block(
+            gemmi::read_cif_from_buffer(cif_buf, cif_input).blocks, {});
+        mi = gemmi::read_mean_intensities_from_mmcif(rblock);
+      }
+      mi.sort();
+      gemmi::validate_merged_intensities(*mtz[1], mi, std::cerr);
     } catch (std::runtime_error& e) {
       fprintf(stderr, "Intensity merging not validated: %s\n", e.what());
     }
@@ -165,14 +208,15 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (p.options[Trim])
     mtz_to_cif.trim = std::atoi(p.options[Trim].arg);
   try {
-    gemmi::Ofstream os(cif_path, &std::cout);
-    mtz[0]->switch_to_original_hkl();
+    gemmi::Ofstream os(cif_output, &std::cout);
     if (mtz[1])
       mtz[1]->switch_to_original_hkl();
     mtz_to_cif.write_special_marker_for_pdb = !!mtz[1];
-    if (mtz[1] && separate_blocks) {
-      if (mtz[1]->is_merged())
-        mtz[0].swap(mtz[1]);
+    if (cif_input) {
+      os.ref().write(cif_buf.data(), cif_buf.size());
+      os.ref() << "\n\n";
+      mtz_to_cif.write_cif(*mtz[1], nullptr, os.ref());
+    } else if (mtz[1] && separate_blocks) {
       mtz_to_cif.write_cif(*mtz[0], nullptr, os.ref());
       os.ref() << "\n\n";
       mtz_to_cif.write_cif(*mtz[1], nullptr, os.ref());
@@ -180,7 +224,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       mtz_to_cif.write_cif(*mtz[0], mtz[1].get(), os.ref());
     }
   } catch (std::runtime_error& e) {
-    std::fprintf(stderr, "ERROR writing %s: %s\n", cif_path, e.what());
+    std::fprintf(stderr, "ERROR writing %s: %s\n", cif_output, e.what());
     return 3;
   }
   return 0;

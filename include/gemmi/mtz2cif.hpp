@@ -313,28 +313,23 @@ private:
   void write_main_loop(const Mtz& mtz, char* buf, std::ostream& os);
 };
 
-// pre: unmerged MTZ is after switch_to_original_hkl()
-inline void validate_merged_intensities(const Mtz& mtz1, const Mtz& mtz2, std::ostream& out) {
-  if (mtz1.is_merged() == mtz2.is_merged())
-    fail("both files are ", mtz1.is_merged() ? "merged" : "unmerged");
-  const Mtz& merged = mtz1.is_merged() ? mtz1 : mtz2;
-  const Mtz& unmerged = mtz1.is_merged() ? mtz2 : mtz1;
-  Intensities in1 = read_unmerged_intensities_from_mtz(unmerged);
-  size_t before = in1.data.size();
-  in1.merge_in_place(/*output_plus_minus=*/false);  // it also sorts
-  size_t after = in1.data.size();
-  in1.remove_systematic_absences();
-  Intensities in2 = read_mean_intensities_from_mtz(merged);
-  in2.sort();
-  if (in1.spacegroup != in2.spacegroup)
+// pre: unmerged MTZ is before switch_to_original_hkl(), merged is sorted
+inline void validate_merged_intensities(const Mtz& unmerged, const Intensities& mi,
+                                        std::ostream& out) {
+  Intensities ui = read_unmerged_intensities_from_mtz(unmerged);
+  size_t before = ui.data.size();
+  ui.merge_in_place(/*output_plus_minus=*/false);  // it also sorts
+  size_t after = ui.data.size();
+  ui.remove_systematic_absences();
+  if (ui.spacegroup != mi.spacegroup)
     out << "Warning: different space groups in two MTZ files:\n"
-        << in1.spacegroup_str() << " and " << in2.spacegroup_str() << '\n';
+        << ui.spacegroup_str() << " and " << mi.spacegroup_str() << '\n';
   out << "Reflections: " << before << " -> " << after << " (merged) -> "
-      << in1.data.size() << " (no sysabs)  vs  " << in2.data.size() << '\n';
+      << ui.data.size() << " (no sysabs)  vs  " << mi.data.size() << '\n';
   gemmi::Correlation corr;
-  auto r1 = in1.data.begin();
-  auto r2 = in2.data.begin();
-  while (r1 != in1.data.end() && r2 != in2.data.end()) {
+  auto r1 = ui.data.begin();
+  auto r2 = mi.data.begin();
+  while (r1 != ui.data.end() && r2 != mi.data.end()) {
     if (r1->hkl == r2->hkl) {
       corr.add_point(r1->value, r2->value);
       ++r1;
