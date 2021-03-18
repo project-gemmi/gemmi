@@ -308,7 +308,7 @@ but they can be accessed directly if needed:
   >>> batch.floats[36:38]  # start and end of phi
   [80.0, 80.5]
 
-One pecularity of the MTZ format is that instead of the original Miller
+One peculiarity of the MTZ format is that instead of the original Miller
 indices it stores indices of the equivalent reflection in the ASU
 + the index of the symmetry operation that transforms the former to the latter.
 It can be useful to switch between the two:
@@ -383,7 +383,7 @@ is Pandas DataFrame:
   >>> # now we can handle columns using their labels:
   >>> I_over_sigma = df['I'] / df['SIGI']
 
-The data in numpy array is float32. To cast Miller indices in the DataFrame
+The data in NumPy array is float32. To cast Miller indices in the DataFrame
 to integer type:
 
 .. doctest::
@@ -403,7 +403,7 @@ has a property ``miller_array``.
 And finally, gemmi has a standalone function ``make_miller_array()``
 that returns all reflections in a resolution shell.
 To get all unique reflections up to the same resolution
-as the example mtz file we can do:
+as the example MTZ file we can do:
 
 .. doctest::
 
@@ -1059,7 +1059,7 @@ Grid size
 
 To get an appropriate size, we can use method ``get_size_for_hkl``
 that has two optional parameters: ``min_size`` and ``sample_rate``.
-``min_size`` sets explicitely the minimal size of the grid:
+``min_size`` sets explicitly the minimal size of the grid:
 
 .. doctest::
 
@@ -1137,7 +1137,7 @@ tool.
 Above, we could use ``fftn(array)`` instead of ``ifftn(array.conj())``,
 but the inverse FFT is more appropriate here (or so I think).
 
-Since the data is Hermitian, using complex-to-complex FFT is equivant to
+Since the data is Hermitian, using complex-to-complex FFT is equivalent to
 using complex-to-real FFT on a half of the data:
 
 .. doctest::
@@ -1635,7 +1635,7 @@ atomic radius cut-off, and on the distribution of B-factors
 Additionally, increasing the dampening makes the computations slower
 (because it increases atomic radius).
 
-*B*\ :sub:`extra` can be set explicitely (it can be negative):
+*B*\ :sub:`extra` can be set explicitly (it can be negative):
 
 .. doctest::
 

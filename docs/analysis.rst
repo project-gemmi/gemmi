@@ -40,7 +40,7 @@ Such images will be returned by the NeighborSearch class as neighbors
 and need to be filtered out by the users.
 
 The NeighborSearch constructor divides the unit cell into bins.
-For this it needs to know the the maximum radius that will be used in searches,
+For this it needs to know the maximum radius that will be used in searches,
 as well as the unit cell. Since the system may be non-periodic,
 the constructor also takes the model as an argument -- it is used to
 calculate the bounding box for the model if there is no unit cell.
@@ -342,7 +342,7 @@ is in contact with ``partner1`` with:
   <gemmi.Position(42.6647, 47.5137, 16.8644)>
 
 You could also find the symmetry image of ``partner1``
-that is near the orignal position of ``partner2``:
+that is near the original position of ``partner2``:
 
 .. doctest::
 
@@ -384,7 +384,7 @@ Here, as a minimal example, we superpose backbone of the third residue:
 To make it easier, we also have a higher-level function
 ``calculate_superposition()`` that operates on ``ResidueSpan``\ s.
 This function first performs the sequence alignment.
-Then the maching residues are superposed, using either
+Then the matching residues are superposed, using either
 all atoms in both residues, or only Cα atoms (for peptides)
 and P atoms (for nucleotides).
 Atoms that don't have counterparts in the other span are skipped.
@@ -653,7 +653,7 @@ Substructure matching
 
 Now a little script to illustrate subgraph isomorphism.
 The script takes a (three-letter-)code of a molecule that is to be used
-as a pattern and finds CCD entries that contain such a a substructure.
+as a pattern and finds CCD entries that contain such a substructure.
 As in the previous example, hydrogens and bond types are ignored.
 
 .. literalinclude:: ../examples/ccd_subgraph.py
@@ -783,7 +783,7 @@ supported by gemmi (PDB, mmCIF, mmJSON). As of 2019, processing
 a :ref:`local copy of the PDB archive <pdb_dir>`
 in the PDB format takes about 20 minutes.
 
-In the second step we plot the data points with matplotlib.
+In the second step we plot the data points with Matplotlib.
 We use a script that can be found in :file:`examples/rama_plot.py`.
 Six of the resulting plots are shown here (click to enlarge):
 

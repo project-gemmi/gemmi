@@ -635,7 +635,7 @@ or not) can be opened using:
 
 If the file format is not specified (example above) it is determined from
 the file extension. If the extension is not canonical you can specify
-the format explicitely:
+the format explicitly:
 
 .. doctest::
 
@@ -720,7 +720,7 @@ molecular models.
 
 ----
 
-Let us start with the the list of atoms:
+Let us start with the list of atoms:
 
 .. code-block:: none
 
@@ -1593,7 +1593,7 @@ More details in the :ref:`section about sequence <sequence>`.
 Connection
 ----------
 
-The list of connections contains bonds explicitely annotated in the file:
+The list of connections contains bonds explicitly annotated in the file:
 
 .. doctest::
 
@@ -1808,7 +1808,7 @@ not only to ``Structure``, but also to ``Model`` and ``Chain``.
 
 ----
 
-When the file has NCS operarations that are not "given",
+When the file has NCS operations that are not "given",
 you can add NCS copies with:
 
 .. doctest::
@@ -1937,7 +1937,7 @@ Molecular weight
 Gemmi provides a simple function to calculate molecular weight
 from the sequence. It uses the same built-in table of popular residues.
 Since in this example we have two rare components that are not tabulated,
-we must specify the avarage weight of unknown residue:
+we must specify the average weight of unknown residue:
 
 .. doctest::
 

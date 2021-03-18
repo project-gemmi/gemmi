@@ -87,7 +87,7 @@ The bindings and usage examples can be compiled with CMake::
     cmake -D USE_FORTRAN=1 .
     make
 
-The C bindings are used only for making Fortan bindings,
+The C bindings are used only for making Fortran bindings,
 but they should be usable on their own.
 If you use cmake to build the project
 you get a static library ``libcgemmi.a`` that can be used from C,

@@ -257,7 +257,7 @@ If you have a large number of points, making a Python function call
 each time would be slow.
 If these points are on a regular 3D grid (which may not be aligned
 with our grid) call ``interpolate_values()`` (with s at the end)
-with two arguments: a 3D numpy array (for storing the results)
+with two arguments: a 3D NumPy array (for storing the results)
 and a :ref:`Transform <transform>` that relates indices of the array
 to positions in the grid:
 
@@ -363,7 +363,7 @@ It uses van der Waals (or similar) atomic radii *r* and two parameters:
   `Jiang & Brünger (1994) <https://doi.org/10.1006/jmbi.1994.1633>`_
   proposed *r*\ :sub:`probe` = 1.0 Å and *r*\ :sub:`shrink` = 1.1 Å.
 * The above procedure eliminates small solvent islands.
-  If it is not sufficient, we can explicitely remove islands
+  If it is not sufficient, we can explicitly remove islands
   (contiguous areas of 1's) up to a certain volume.
   This step was added for compatibility with Refmac.
 

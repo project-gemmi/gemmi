@@ -600,7 +600,7 @@ and what is the equivalent reflection in the ASU:
 the original and the returned reflection -- the same number as ISYM in
 the MTZ format, odd for reflections in the positive asu (I+),
 even for negative (I-).
-The second argument (GroupOps) is passed explicitely to avoid determining
+The second argument (GroupOps) is passed explicitly to avoid determining
 space group operations many times when ``to_asu()`` is in a loop.
 
 

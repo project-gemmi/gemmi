@@ -91,7 +91,7 @@ but not _cell.angle_alpha_esd etc.
   2W1I 146.58
 
 The option ``-O`` is used to make gemmi-grep faster.
-With this option the program finds only the first occurence of the tag
+With this option the program finds only the first occurrence of the tag
 in file. Note that if the file has only one block (like mmCIF coordinate
 files) and the tag is specified without wildcards then we cannot have
 more than one match anyway.
@@ -781,7 +781,7 @@ linear scaling.
 As noted by Halle, Pearson's CC as well as the mean-square deviation
 can be dominated by a few outliers. Therefore Halle used relative mean
 absolute deviation (RMAD): sum of absolute differences divided
-by the average absolute deviation in the experimantal values.
+by the average absolute deviation in the experimental values.
 Halle justifies this normalization writing that it allows to compare
 structures determined at different temperatures.
 This is debatable as can be seen from ccp4bb

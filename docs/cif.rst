@@ -243,7 +243,7 @@ Gemmi can parse CIF files in two ways that correspond to DOM and SAX:
   for to the grammar rules from ``cif.hpp``.
   These actions will be triggered while reading a CIF file.
 
-This documention covers the DOM parsing only.
+This documentation covers the DOM parsing only.
 The hierarchy in the DOM reflects the structure of CIF 1.1:
 
 * Document contains blocks.
@@ -615,7 +615,7 @@ Frame
 
 The *named save frames* (keyword ``save_``) from the STAR specification
 are used in CIF files only as sub-sections of a block.
-The only place where they are enountered are mmCIF dictionaries.
+The only place where they are encountered are mmCIF dictionaries.
 
 The save-frame is stored as ``Block`` and can be accessed with::
 
@@ -932,7 +932,7 @@ the method ``str``:
   >>> column.str(7)  # short-cut for cif.as_string(column[7])
   'H2 O'
 
-The tag is accessible (read/write) throught the ``tag`` property:
+The tag is accessible (read/write) through the ``tag`` property:
 
 .. doctest::
 
@@ -1040,7 +1040,7 @@ If Table's data is in Loop, the Loop class can be accessed using::
   <gemmi.cif.Loop 18 x 4>
 
 If a prefix was specified when calling find, the prefix length is stored
-and the prefix can be retrived::
+and the prefix can be retrieved::
 
   size_t prefix_length;
   std::string get_prefix() const;
@@ -2036,7 +2036,7 @@ mmJSON-like data
 ----------------
 
 Gemmi has a built-in support for mmJSON and comes with
-a :ref:`converter <json>` utility, but just as an excercise
+a :ref:`converter <json>` utility, but just as an exercise
 let us convert mmJSON to mmCIF in Python:
 
 .. literalinclude:: ../examples/from_json.py
