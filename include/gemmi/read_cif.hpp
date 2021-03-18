@@ -11,11 +11,14 @@
 #define GEMMI_READ_CIF_HPP_
 
 #include "cifdoc.hpp" // for Document
+#include "input.hpp"  // for CharArray
 
 namespace gemmi {
 
 cif::Document read_cif_gz(const std::string& path);
 cif::Document read_mmjson_gz(const std::string& path);
+CharArray read_into_buffer_gz(const std::string& path);
+cif::Document read_cif_from_buffer(const CharArray& buffer, const char* name);
 
 inline cif::Document read_cif_or_mmjson_gz(const std::string& path) {
   if (giends_with(path, "json") || giends_with(path, "js"))
@@ -42,6 +45,14 @@ cif::Document read_cif_gz(const std::string& path) {
 
 cif::Document read_mmjson_gz(const std::string& path) {
   return cif::read_mmjson(MaybeGzipped(path));
+}
+
+CharArray read_into_buffer_gz(const std::string& path) {
+  return cif::read_into_buffer(MaybeGzipped(path));
+}
+
+cif::Document read_cif_from_buffer(const CharArray& buffer, const char* name) {
+  return cif::read_memory(buffer.data(), buffer.size(), name);
 }
 
 } // namespace gemmi

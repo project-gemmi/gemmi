@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 #include "atox.hpp"      // for simple_atof, simple_atoi, read_word
-#include "input.hpp"     // for FileStream
+#include "input.hpp"     // for FileStream, CharArray
 #include "iterator.hpp"  // for StrideIter
 #include "fail.hpp"      // for fail
 #include "fileutil.hpp"  // for file_open, is_little_endian, fileptr_t, ...

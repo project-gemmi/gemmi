@@ -141,7 +141,7 @@ inline CharArray read_stdin_into_buffer() {
 }
 
 template<typename T>
-inline CharArray read_into_buffer(T& input) {
+inline CharArray read_into_buffer(T&& input) {
   if (input.is_stdin())
     return read_stdin_into_buffer();
   if (input.is_compressed())
@@ -156,8 +156,8 @@ inline Document read_mmjson_file(const std::string& path) {
 
 template<typename T>
 Document read_mmjson(T&& input) {
-  CharArray buffer = read_into_buffer(input);
   std::string name = input.is_stdin() ? "stdin" : input.path();
+  CharArray buffer = read_into_buffer(std::forward<T>(input));
   return read_mmjson_insitu(buffer.data(), buffer.size(), name);
 }
 

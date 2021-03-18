@@ -70,6 +70,7 @@ public:
   explicit CharArray(size_t n) : ptr_((char*)std::malloc(n), std::free), size_(n) {};
   explicit operator bool() const { return (bool)ptr_; }
   char* data() { return ptr_.get(); }
+  const char* data() const { return ptr_.get(); }
   size_t size() const { return size_; }
   void set_size(size_t n) { size_ = n; }
 
