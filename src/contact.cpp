@@ -80,6 +80,18 @@ void print_contacts(Structure& st, const ContactParameters& params) {
       if (st.cell.explicit_matrices)
         printf(" Using fractionalization matrix from the file.\n");
       printf(" Each atom has %zu extra images.\n", st.cell.images.size());
+      // cf. Structure::setup_cell_images()
+      if (const SpaceGroup* sg = st.find_spacegroup()) {
+        gemmi::GroupOps group_ops = sg->operations();
+        int n = 0;
+        for (const gemmi::Op& op : group_ops)
+          printf("  %2d %s\n", ++n, op.triplet().c_str());
+        for (const NcsOp& ncs_op : st.ncs)
+          if (!ncs_op.given) {
+            for (const gemmi::Op& op : group_ops)
+              printf("  %2d NCS %s and %s\n", ++n, ncs_op.id.c_str(), op.triplet().c_str());
+          }
+      }
     }
     printf(" Cell grid: %d x %d x %d\n", ns.grid.nu, ns.grid.nv, ns.grid.nw);
     size_t min_count = SIZE_MAX, max_count = 0, total_count = 0;
