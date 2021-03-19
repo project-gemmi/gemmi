@@ -7,8 +7,9 @@
 #define GEMMI_INPUT_HPP_
 
 #include <cassert>
-#include <cstring> // for memchr
+#include <cstdio>  // for FILE, fseek, fread
 #include <cstdlib> // for malloc, realloc
+#include <cstring> // for memchr
 #include <memory>  // for unique_ptr
 #include <string>
 #include "fail.hpp"  // for unreachable
@@ -63,11 +64,11 @@ private:
 };
 
 class CharArray {
-  std::unique_ptr<char[], decltype(std::free)*> ptr_;
+  std::unique_ptr<char, decltype(&std::free)> ptr_;
   size_t size_;
 public:
-  CharArray() : ptr_(nullptr, std::free), size_(0) {}
-  explicit CharArray(size_t n) : ptr_((char*)std::malloc(n), std::free), size_(n) {};
+  CharArray() : ptr_(nullptr, &std::free), size_(0) {}
+  explicit CharArray(size_t n) : ptr_((char*)std::malloc(n), &std::free), size_(n) {};
   explicit operator bool() const { return (bool)ptr_; }
   char* data() { return ptr_.get(); }
   const char* data() const { return ptr_.get(); }
