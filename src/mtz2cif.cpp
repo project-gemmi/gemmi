@@ -209,8 +209,9 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz_to_cif.trim = std::atoi(p.options[Trim].arg);
   try {
     gemmi::Ofstream os(cif_output, &std::cout);
-    if (mtz[1])
-      mtz[1]->switch_to_original_hkl();
+    for (int i = 0; i < 2; ++i)
+      if (mtz[i] && !mtz[i]->is_merged())
+        mtz[i]->switch_to_original_hkl();
     mtz_to_cif.write_special_marker_for_pdb = !!mtz[1];
     if (cif_input) {
       os.ref().write(cif_buf.data(), cif_buf.size());
