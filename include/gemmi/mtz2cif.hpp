@@ -42,39 +42,40 @@ struct MtzToCif {
 
   static const char** default_spec(bool for_merged) {
     static const char* merged[] = {
-      "H H index_h",
-      "K H index_k",
-      "L H index_l",
-      "? IMEAN|I J intensity_meas",
-      "& SIGIMEAN|SIGI Q intensity_sigma",
-      "? I(+)    K pdbx_I_plus",
-      "& SIGI(+) M pdbx_I_plus_sigma",
-      "? I(-)    K pdbx_I_minus",
-      "& SIGI(-) M pdbx_I_minus_sigma",
-      "? FP      F F_meas_au",   // TODO: FP from Refmac should show warning or error
-      "& SIGFP   Q F_meas_sigma_au",
-      "? F(+)    G pdbx_F_plus",
-      "& SIGF(+) L pdbx_F_plus_sigma",
-      "? F(-)    G pdbx_F_minus",
-      "& SIGF(-) L pdbx_F_minus_sigma",
-      "? FREE|RFREE|FreeR_flag I status S",
-      "? FWT|2FOFCWT      F pdbx_FWT",
-      "& PHWT|PH2FOFCWT   P pdbx_PHWT",
-      "? DELFWT|FOFCWT    F pdbx_DELFWT",
+      "H                          H index_h",
+      "K                          H index_k",
+      "L                          H index_l",
+      "? IMEAN|I                  J intensity_meas",
+      "& SIGIMEAN|SIGI            Q intensity_sigma",
+      "? I(+)                     K pdbx_I_plus",
+      "& SIGI(+)                  M pdbx_I_plus_sigma",
+      "? I(-)                     K pdbx_I_minus",
+      "& SIGI(-)                  M pdbx_I_minus_sigma",
+      // TODO: FP from Refmac should show warning or error
+      "? F|FP                     F F_meas_au",
+      "& SIGF|SIGFP               Q F_meas_sigma_au",
+      "? F(+)                     G pdbx_F_plus",
+      "& SIGF(+)                  L pdbx_F_plus_sigma",
+      "? F(-)                     G pdbx_F_minus",
+      "& SIGF(-)                  L pdbx_F_minus_sigma",
+      "? FREE|RFREE|FreeR_flag    I status S",
+      "? FWT|2FOFCWT              F pdbx_FWT",
+      "& PHWT|PH2FOFCWT           P pdbx_PHWT",
+      "? DELFWT|FOFCWT            F pdbx_DELFWT",
       "& DELPHWT|PHDELWT|PHFOFCWT P pdbx_DELPHWT",
       nullptr
     };
     static const char* unmerged[] = {
-      "$dataset diffrn_id",  // diffrn_id - sweep id deduced from BATCH
-      "$counter id",         // reflection counter (1, 2, ...)
-      "H H index_h",
-      "K H index_k",
-      "L H index_l",
+      "$dataset    diffrn_id",  // diffrn_id - sweep id deduced from BATCH
+      "$counter    id",         // reflection counter (1, 2, ...)
+      "H         H index_h",
+      "K         H index_k",
+      "L         H index_l",
       "? I       J intensity_net",
       "& SIGI    Q intensity_sigma .5g",
       // new! https://github.com/wwpdb-dictionaries/mmcif_pdbx/pull/33
-      "?ROT R pdbx_scan_angle",
-      "$image pdbx_image_id",
+      "?ROT      R pdbx_scan_angle",
+      "$image      pdbx_image_id",
       nullptr
     };
     return for_merged ? merged : unmerged;
