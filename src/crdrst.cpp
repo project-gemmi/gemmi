@@ -253,6 +253,7 @@ void add_restraints(const Topo::Force force,
   //using gemmi::to_str;
   const auto& to_str = gemmi::to_str_prec<3>; // to make comparisons easier
   const auto& to_str3 = gemmi::to_str_prec<3>;
+  auto to_str_dot = [&](double x) { return std::isnan(x) ? "." : to_str(x); };
   if (force.rkind == Topo::RKind::Bond) {
     const Topo::Bond& t = topo.bonds[force.index];
     std::string obs = to_str3(t.calculate()) +
@@ -262,7 +263,10 @@ void add_restraints(const Topo::Force force,
                         std::to_string(t.atoms[0]->serial),
                         std::to_string(t.atoms[1]->serial),
                         ".", ".",
-                        to_str(t.restr->value), to_str(t.restr->esd), obs});
+                        to_str(t.restr->value), to_str(t.restr->esd),
+                        to_str_dot(t.restr->value_nucleus),
+                        to_str_dot(t.restr->esd_nucleus),
+                        obs});
   } else if (force.rkind == Topo::RKind::Angle) {
     const Topo::Angle& t = topo.angles[force.index];
     std::string obs = to_str3(gemmi::deg(t.calculate()));
@@ -275,7 +279,8 @@ void add_restraints(const Topo::Force force,
                         std::to_string(t.atoms[1]->serial),
                         std::to_string(t.atoms[2]->serial),
                         ".",
-                        to_str(t.restr->value), to_str(t.restr->esd), obs});
+                        to_str(t.restr->value), to_str(t.restr->esd),
+                        ".", ".", obs});
   } else if (force.rkind == Topo::RKind::Torsion) {
     const Topo::Torsion& t = topo.torsions[force.index];
     std::string obs = to_str3(gemmi::deg(t.calculate()));
@@ -287,7 +292,8 @@ void add_restraints(const Topo::Force force,
                         std::to_string(t.atoms[1]->serial),
                         std::to_string(t.atoms[2]->serial),
                         std::to_string(t.atoms[3]->serial),
-                        to_str(t.restr->value), to_str(t.restr->esd), obs});
+                        to_str(t.restr->value), to_str(t.restr->esd),
+                        ".", ".", obs});
   } else if (force.rkind == Topo::RKind::Chirality) {
     const Topo::Chirality& t = topo.chirs[force.index];
     double vol = rt.chiral_abs_volume(*t.restr);
@@ -301,7 +307,8 @@ void add_restraints(const Topo::Force force,
                         std::to_string(t.atoms[1]->serial),
                         std::to_string(t.atoms[2]->serial),
                         std::to_string(t.atoms[3]->serial),
-                        to_str3(vol), "0.020", obs});
+                        to_str3(vol), "0.020",
+                        ".", ".", obs});
   } else if (force.rkind == Topo::RKind::Plane) {
     const Topo::Plane& t = topo.planes[force.index];
     ++counters[4];
@@ -311,7 +318,8 @@ void add_restraints(const Topo::Force force,
       std::string obs = to_str3(dist) + " # " + atom->name;
       restr_loop.add_row({"PLAN", std::to_string(counters[4]), t.restr->label,
                           ".", std::to_string(atom->serial), ".", ".", ".",
-                          to_str(t.restr->esd), ".", obs});
+                          to_str(t.restr->esd), ".",
+                          ".", ".", obs});
     }
   }
 }
@@ -324,7 +332,7 @@ cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
   cif::Loop& restr_loop = block.init_mmcif_loop("_restr.", {
               "record", "number", "label", "period",
               "atom_id_1", "atom_id_2", "atom_id_3", "atom_id_4",
-              "value", "dev", "val_obs"});
+              "value", "dev", "value_nucleus", "dev_nucleus", "val_obs"});
   int counters[5] = {0, 0, 0, 0, 0};
   for (const Topo::ChainInfo& chain_info : topo.chain_infos) {
     for (const Topo::ResInfo& ri : chain_info.res_infos) {
@@ -339,7 +347,7 @@ cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
                                 ri.res->seqid.str() + " " + ri.res->name;
           restr_loop.add_comment_and_row({comment, "LINK", ".",
                                           cif::quote(prev.link), ".",
-                                          ".", ".", ".", ".", ".", ".", "."});
+                                          ".", ".", ".", ".", ".", ".", ".", ".", "."});
           for (const Topo::Force& force : ri.forces)
             if (force.provenance == Provenance::PrevLink)
               add_restraints(force, topo, link->rt, restr_loop, counters);
@@ -358,7 +366,7 @@ cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
           group = "L-peptid";
 
         restr_loop.add_comment_and_row({res_info, "MONO", ".", group, ".",
-                                        ".", ".", ".", ".", ".", ".", "."});
+                                        ".", ".", ".", ".", ".", ".", ".", ".", "."});
         for (const Topo::Force& force : ri.forces)
           if (force.provenance == Provenance::Monomer)
             add_restraints(force, topo, ri.chemcomp.rt, restr_loop, counters);
@@ -372,7 +380,7 @@ cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
     std::string comment = " link " + chem_link->id;
     restr_loop.add_comment_and_row({comment, "LINK", ".",
                                     cif::quote(chem_link->id), ".",
-                                    ".", ".", ".", ".", ".", ".", "."});
+                                    ".", ".", ".", ".", ".", ".", ".", ".", "."});
     for (const Topo::Force& force : extra_link.forces)
       add_restraints(force, topo, chem_link->rt, restr_loop, counters);
   }
