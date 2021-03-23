@@ -151,11 +151,10 @@ void add_meta(py::module& m) {
 
   py::class_<Assembly::Gen>(assembly, "Gen")
     .def(py::init<>())
-    .def_readonly("chains", &Assembly::Gen::chains)
-    .def_readonly("subchains", &Assembly::Gen::subchains)
+    .def_readwrite("chains", &Assembly::Gen::chains)
+    .def_readwrite("subchains", &Assembly::Gen::subchains)
     .def_readonly("operators", &Assembly::Gen::operators);
   py::bind_vector<std::vector<Assembly::Gen>>(assembly, "GenList");
-  py::bind_vector<std::vector<std::string>>(m, "StrList");
 
   assembly
     .def(py::init<const std::string&>())
