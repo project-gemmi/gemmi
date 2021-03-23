@@ -144,9 +144,9 @@ void add_meta(py::module& m) {
   py::class_<Assembly> assembly(m, "Assembly");
   py::class_<Assembly::Operator>(assembly, "Operator")
     .def(py::init<>())
-    .def_readonly("name", &Assembly::Operator::name)
-    .def_readonly("type", &Assembly::Operator::type)
-    .def_readonly("transform", &Assembly::Operator::transform);
+    .def_readwrite("name", &Assembly::Operator::name)
+    .def_readwrite("type", &Assembly::Operator::type)
+    .def_readwrite("transform", &Assembly::Operator::transform);
   py::bind_vector<std::vector<Assembly::Operator>>(assembly, "OperatorList");
 
   py::class_<Assembly::Gen>(assembly, "Gen")
@@ -155,11 +155,22 @@ void add_meta(py::module& m) {
     .def_readonly("subchains", &Assembly::Gen::subchains)
     .def_readonly("operators", &Assembly::Gen::operators);
   py::bind_vector<std::vector<Assembly::Gen>>(assembly, "GenList");
+  py::bind_vector<std::vector<std::string>>(m, "StrList");
 
   assembly
-    .def_readonly("name", &Assembly::name)
-    .def_readonly("oligomeric_details", &Assembly::oligomeric_details)
+    .def(py::init<const std::string&>())
+    .def_readwrite("name", &Assembly::name)
+    .def_readwrite("oligomeric_details", &Assembly::oligomeric_details)
     .def_readonly("generators", &Assembly::generators)
+    .def_readwrite("special_kind", &Assembly::special_kind)
     ;
   py::bind_vector<std::vector<Assembly>>(m, "AssemblyList");
+
+  py::enum_<Assembly::SpecialKind>(m, "AssemblySpecialKind")
+    .value("NA", Assembly::SpecialKind::NA)
+    .value("CompleteIcosahedral", Assembly::SpecialKind::CompleteIcosahedral)
+    .value("RepresentativeHelical", Assembly::SpecialKind::RepresentativeHelical)
+    .value("CompletePoint", Assembly::SpecialKind::CompletePoint);
+
+
 }
