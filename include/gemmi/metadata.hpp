@@ -179,14 +179,6 @@ struct Metadata {
 };
 
 
-struct NcsOp {
-  std::string id;
-  bool given;
-  Transform tr;
-  Position apply(const Position& p) const { return Position(tr.apply(p)); }
-};
-
-
 // Entity description.
 //
 // values corresponding to mmCIF _entity.type

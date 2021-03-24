@@ -5,6 +5,7 @@
 #ifndef GEMMI_UNITCELL_HPP_
 #define GEMMI_UNITCELL_HPP_
 
+#include <cassert>
 #include <cmath>      // for cos, sin, sqrt, floor, NAN
 #include <vector>
 #include "math.hpp"
@@ -86,6 +87,15 @@ struct FTransform : Transform {
 };
 
 
+// Non-crystallographic symmetry operation (such as in the MTRIXn record)
+struct NcsOp {
+  std::string id;
+  bool given;
+  Transform tr;
+  Position apply(const Position& p) const { return Position(tr.apply(p)); }
+};
+
+
 // a synonym for convenient passing of hkl
 using Miller = std::array<int, 3>;
 
@@ -105,6 +115,7 @@ struct UnitCell {
   double ar = 1.0, br = 1.0, cr = 1.0;
   double cos_alphar = 0.0, cos_betar = 0.0, cos_gammar = 0.0;
   bool explicit_matrices = false;
+  short cs_count = 0;  // crystallographic symmetries except identity
   std::vector<FTransform> images;
 
   // Non-crystalline (for example NMR) structures are supposed to use fake
@@ -234,10 +245,12 @@ struct UnitCell {
   // template to avoid dependency on symmetry.hpp
   template<typename SG> void set_cell_images_from_spacegroup(const SG* sg) {
     images.clear();
+    cs_count = 0;
     if (!sg)
       return;
     auto group_ops = sg->operations();
-    images.reserve(group_ops.order() - 1);
+    cs_count = (short) group_ops.order() - 1;
+    images.reserve(cs_count);
     for (const auto& op : group_ops) {
       if (op == op.identity())
         continue;
@@ -248,6 +261,18 @@ struct UnitCell {
       Vec3 tran(mult * op.tran[0], mult * op.tran[1], mult * op.tran[2]);
       images.emplace_back(rot, tran);
     }
+  }
+
+  void add_ncs_images_to_cs_images(const std::vector<NcsOp>& ncs) {
+    assert(cs_count == (short) images.size());
+    for (const NcsOp& ncs_op : ncs)
+      if (!ncs_op.given) {
+        // We need it to operates on fractional, not orthogonal coordinates.
+        FTransform f = frac.combine(ncs_op.tr.combine(orth));
+        images.emplace_back(f);
+        for (int i = 0; i < cs_count; ++i)
+          images.emplace_back(images[i].combine(f));
+      }
   }
 
   Position orthogonalize(const Fractional& f) const {

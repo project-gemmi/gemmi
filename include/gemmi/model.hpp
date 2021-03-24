@@ -987,17 +987,7 @@ inline void Chain::append_residues(std::vector<Residue> new_resi, int min_sep) {
 inline void Structure::setup_cell_images() {
   const SpaceGroup* sg = find_spacegroup();
   cell.set_cell_images_from_spacegroup(sg);
-
-  // Strict NCS from MTRIXn.
-  size_t n = cell.images.size();
-  for (const NcsOp& op : ncs)
-    if (!op.given) {
-      // We need it to operates on fractional, not orthogonal coordinates.
-      FTransform f = cell.frac.combine(op.tr.combine(cell.orth));
-      cell.images.emplace_back(f);
-      for (size_t i = 0; i < n; ++i)
-        cell.images.emplace_back(cell.images[i].combine(f));
-    }
+  cell.add_ncs_images_to_cs_images(ncs);
 }
 
 } // namespace gemmi
