@@ -162,9 +162,28 @@ inline void NeighborSearch::initialize(Model& model_, const UnitCell& cell,
       for (const Residue& res : chain.residues)
         for (const Atom& atom : res.atoms)
           box.extend(atom.pos);
+    // We need to take into account strict NCS from MTRIXn.
+    // To avoid additional function parameter that would pass Structure::ncs,
+    // here we reconstruct ncs transforms from cell.images.
+    // images store fractional ttransforms, but for non-crystal it should be
+    // the same as Cartesian transform.
+    std::vector<Transform> ncs;
+    for (size_t n = cell.cs_count; n < cell.images.size(); n += cell.cs_count + 1)
+      ncs.push_back(cell.images[n]);
+    // The box needs include all NCS images as well.
+    if (!ncs.empty()) {
+      for (const const_CRA& cra : model->all())
+        for (const Transform& tr : ncs)
+          box.extend(Position(tr.apply(cra.atom->pos)));
+    }
     box.add_margin(1.5 * max_radius);  // much more than needed
     Position size = box.get_size();
     grid.unit_cell.set(size.x, size.y, size.z, 90, 90, 90);
+    for (const Transform& tr : ncs) {
+      UnitCell& c = grid.unit_cell;
+      // cf. add_ncs_images_to_cs_images()
+      c.images.push_back(c.frac.combine(tr.combine(c.orth)));
+    }
   }
   set_grid_size();
 }

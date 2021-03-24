@@ -529,6 +529,7 @@ class TestMol(unittest.TestCase):
 
     def test_ncs(self):
         st = gemmi.read_structure(full_path('5cvz_final.pdb'))
+        self.assertEqual(len(st.cell.images), 20 * 12 - 1)
         self.assertEqual(st.resolution, 3.29)
         first_atom = st[0].sole_residue('A', gemmi.SeqId(17, ' '))[0]
         ne2 = st[0].sole_residue('A', gemmi.SeqId('63')).sole_atom('NE2')
