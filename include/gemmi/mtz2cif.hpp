@@ -39,6 +39,7 @@ struct MtzToCif {
   std::string skip_empty_cols;       // columns used to determine "emptiness"
   double wavelength = NAN;           // user-specified wavelength
   int trim = 0;                      // output only reflections -N<=h,k,l<=N
+  int free_flag_value = -1;          // -1 = auto: 0 or (if we have >50% of 0's) 1
 
   static const char** default_spec(bool for_merged) {
     static const char* merged[] = {
@@ -520,6 +521,20 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
   for (const Mtz::Batch& b : mtz.batches)
     batch_by_number.emplace(b.number, &b);
 
+  if (free_flag_value < 0) {
+    // CCP4 uses flags 0,...N-1 (usually N=20), with default free set 0
+    // PHENIX uses 0/1 flags with free set 1
+    auto tr_status = std::find_if(recipe.begin(), recipe.end(),
+                                  [](const Trans& tr) { return tr.is_status; });
+    if (tr_status != recipe.end()) {
+      int count = 0;
+      for (float val : mtz.columns[tr_status->col_idx])
+        if (val == 0.f)
+          count++;
+      free_flag_value = count < mtz.nreflections / 2 ? 0 : 1;
+    }
+  }
+
   for (int i = 0, idx = 0; i != mtz.nreflections; ++i) {
     const float* row = &mtz.data[i * mtz.columns.size()];
     if (trim > 0) {
@@ -566,7 +581,7 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
           if (sigma_indices.empty() ||
               !std::all_of(sigma_indices.begin(), sigma_indices.end(),
                            [&](int n) { return std::isnan(row[n]); }))
-            status = v == 0. ? 'f' : 'o';
+            status = int(v) == free_flag_value ? 'f' : 'o';
           os << status;
         } else if (std::isnan(v)) {
           for (int j = 1; j < tr.min_width; ++j)
