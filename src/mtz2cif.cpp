@@ -17,8 +17,8 @@
 namespace {
 
 enum OptionIndex { Spec=4, PrintSpec, BlockName, EntryId, SkipEmpty,
-                   NoComments, NoHistory, Wavelength, ValidateMerge,
-                   NoAnomalous, Separate, Trim };
+                   NoComments, NoHistory, Wavelength, Validate,
+                   NoAnomalous, Separate, Deposition, Trim };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -44,12 +44,14 @@ const option::Descriptor Usage[] = {
     "  --no-history  \tDo not write MTZ history in the mmCIF file." },
   { Wavelength, 0, "", "wavelength", Arg::Float,
     "  --wavelength=LAMBDA  \tSet wavelengths (default: from input file)." },
-  { ValidateMerge, 0, "", "validate-merge", Arg::None,
-    "  --validate-merge  \tFor two MTZ files: validate the intensities match." },
+  { Validate, 0, "", "validate", Arg::None,
+    "  --validate  \tFor two MTZ files: validate the intensities match." },
   { NoAnomalous, 0, "", "no-ano", Arg::None,
     "  --no-ano  \tSkip anomalous columns (even if they are in the spec)." },
   { Separate, 0, "", "separate", Arg::None,
     "  --separate  \tWrite merged and unmerged data in separate blocks." },
+  { Deposition, 0, "", "depo", Arg::None,
+    "  --depo  \tPrepare merged+unmerged mmCIF file for deposition." },
   { Trim, 0, "", "trim", Arg::Int,
     "  --trim=N  \t(for testing) output only reflections -N <= h,k,l <=N." },
   { NoOp, 0, "", "", Arg::None,
@@ -105,10 +107,15 @@ int GEMMI_MAIN(int argc, char **argv) {
       std::printf("%s\n", *lines);
     return 0;
   }
+
   int nargs = p.nonOptionsCount();
   if (nargs != 2 && nargs != 3) {
     fprintf(stderr, "%s requires 2 or 3 arguments, got %d.", p.program_name, nargs);
     p.print_try_help_and_exit("");
+  }
+  if (p.options[Deposition] && nargs != 3) {
+    fprintf(stderr, "Option --depo works only with 2 input files.");
+    return 1;
   }
   bool verbose = p.options[Verbose];
   const char* mtz_paths[2];
@@ -175,6 +182,12 @@ int GEMMI_MAIN(int argc, char **argv) {
   mtz_to_cif.with_comments = !p.options[NoComments];
   mtz_to_cif.with_history = !p.options[NoHistory];
   mtz_to_cif.no_anomalous = p.options[NoAnomalous];
+  bool validate = p.options[Validate];
+  if (p.options[Deposition]) {
+    mtz_to_cif.with_history = false;
+    separate_blocks = true;
+    validate = true;
+  }
   if (p.options[SkipEmpty]) {
     mtz_to_cif.skip_empty = true;
     if (p.options[SkipEmpty].arg)
@@ -189,7 +202,21 @@ int GEMMI_MAIN(int argc, char **argv) {
   gemmi::CharArray cif_buf;
   if (cif_input)
     cif_buf = gemmi::read_into_buffer_gz(cif_input);
-  if (p.options[ValidateMerge] && nargs == 3) {
+  if (validate) {
+    if (mtz[0]) {
+      if (!mtz[0]->column_with_label("FREE") &&
+          !mtz[0]->column_with_label("RFREE") &&
+          !mtz[0]->column_with_label("FreeR_flag"))
+        fprintf(stderr, "Merged file is missing free-set flag.\n");
+      if (!mtz[0]->column_with_label("I") &&
+          !mtz[0]->column_with_label("IMEAN") &&
+          !mtz[0]->column_with_label("I(+)"))
+        fprintf(stderr, "Merged file is missing intensities.\n");
+      if (!mtz[0]->column_with_label("F") &&
+          !mtz[0]->column_with_label("FP") &&
+          !mtz[0]->column_with_label("F(+)"))
+        fprintf(stderr, "Merged file is missing amplitudes.\n");
+    }
     try {
       gemmi::Intensities mi;
       if (mtz[0]) {
