@@ -18,7 +18,7 @@ namespace gemmi {
 // It returns PolymerType which corresponds to _entity_poly.type,
 // but here we use only PeptideL, Rna, Dna, DnaRnaHybrid and Unknown.
 inline PolymerType check_polymer_type(const ConstResidueSpan& polymer) {
-  if (polymer.size() < 2)
+  if (polymer.empty())
     return PolymerType::Unknown;
   size_t counts[ResidueInfo::ELS+1] = {0};
   size_t aa = 0;
@@ -37,10 +37,10 @@ inline PolymerType check_polymer_type(const ConstResidueSpan& polymer) {
   aa += counts[ResidueInfo::AA] + counts[ResidueInfo::AAD] +
         counts[ResidueInfo::PAA] + counts[ResidueInfo::MAA];
   na += counts[ResidueInfo::RNA] + counts[ResidueInfo::DNA];
-  if (aa == polymer.size() || (aa > 10 && 2 * aa > polymer.size()))
+  if (2 * aa > polymer.size())
     return counts[ResidueInfo::AA] >= counts[ResidueInfo::AAD]
            ? PolymerType::PeptideL : PolymerType::PeptideD;
-  if (na == polymer.size() || (na > 10 && 2 * na > polymer.size())) {
+  if (2 * na > polymer.size()) {
     if (counts[ResidueInfo::DNA] == 0)
       return PolymerType::Rna;
     else if (counts[ResidueInfo::RNA] == 0)
