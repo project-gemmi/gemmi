@@ -129,6 +129,8 @@ Projects used in the C++ library and included under
   License: 3-clause BSD.
 * `stb_sprintf <https://github.com/nothings/stb>`_ -- locale-independent
   snprintf() implementation. License: Public Domain.
+* `fast_float <https://github.com/fastfloat/fast_float>`_ -- locale-independent
+  number parsing. License: Apache 2.0.
 * `tinydir <https://github.com/cxong/tinydir>`_ -- directory (filesystem)
   reader. License: 2-clause BSD.
 
