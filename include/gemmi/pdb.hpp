@@ -179,18 +179,6 @@ inline std::string pdb_date_format_to_iso(const std::string& date) {
   return iso;
 }
 
-template<typename Input>
-inline size_t copy_line_from_stream(char* line, int size, Input&& in) {
-  if (!in.gets(line, size))
-    return 0;
-  size_t len = std::strlen(line);
-  // If a line is longer than size we discard the rest of it.
-  if (len > 0 && line[len-1] != '\n')
-    for (int c = in.getc(); c != 0 && c != EOF && c != '\n'; c = in.getc())
-      continue;
-  return len;
-}
-
 inline Asu compare_link_symops(const std::string& record) {
   if (record.size() < 72)
     return Asu::Any;  // it could be interpreted as Same

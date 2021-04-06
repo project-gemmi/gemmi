@@ -107,5 +107,17 @@ private:
   std::string path_;
 };
 
+template<typename Input>
+inline size_t copy_line_from_stream(char* line, int size, Input&& in) {
+  if (!in.gets(line, size))
+    return 0;
+  size_t len = std::strlen(line);
+  // If a line is longer than size we discard the rest of it.
+  if (len > 0 && line[len-1] != '\n')
+    for (int c = in.getc(); c != 0 && c != EOF && c != '\n'; c = in.getc())
+      continue;
+  return len;
+}
+
 } // namespace gemmi
 #endif
