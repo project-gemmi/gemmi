@@ -150,7 +150,7 @@ jobs:
     - name: run doctest
       run: |
         pip3 install -U sphinx
-        pip3 uninstall docutils==0.17  # becuase of bug in 0.17
+        pip3 uninstall -y docutils==0.17  # because of bug in 0.17
         pip3 install docutils==0.16
         cd docs
         PYTHONPATH=.. sphinx-build -M doctest . _build -n -E
