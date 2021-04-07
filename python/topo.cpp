@@ -73,7 +73,8 @@ void add_topo(py::module& m) {
 
   topo
     .def(py::init<>())
-    .def("adjust_hydrogen_distances", &adjust_hydrogen_distances)
+    .def("adjust_hydrogen_distances", &adjust_hydrogen_distances,
+         py::arg("of"), py::arg("default_scale")=1.)
     .def_readonly("bonds", &Topo::bonds)
     .def_readonly("angles", &Topo::angles)
     .def_readonly("torsions", &Topo::torsions)

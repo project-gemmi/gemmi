@@ -346,7 +346,7 @@ inline void place_hydrogens(const Atom& atom, Topo::ResInfo& ri,
   }
 }
 
-inline void adjust_hydrogen_distances(Topo& topo, Restraints::DistanceOf of) {
+inline void adjust_hydrogen_distances(Topo& topo, Restraints::DistanceOf of, double default_scale=1.) {
   for (Topo::ChainInfo& chain_info : topo.chain_infos)
     for (Topo::ResInfo& ri : chain_info.res_infos)
       for (const Topo::Force& force : ri.forces)
@@ -356,12 +356,11 @@ inline void adjust_hydrogen_distances(Topo& topo, Restraints::DistanceOf of) {
           if (t.atoms[0]->is_hydrogen() || t.atoms[1]->is_hydrogen()) {
             Position u = t.atoms[1]->pos - t.atoms[0]->pos;
             double scale = t.restr->distance(of) / u.length();
-            if (!std::isnan(scale)) {
-              if (t.atoms[1]->is_hydrogen())
-                t.atoms[1]->pos = t.atoms[0]->pos + u * scale;
-              else
-                t.atoms[0]->pos = t.atoms[1]->pos - u * scale;
-            }
+            if (std::isnan(scale)) scale = default_scale;
+            if (t.atoms[1]->is_hydrogen())
+              t.atoms[1]->pos = t.atoms[0]->pos + u * scale;
+            else
+              t.atoms[0]->pos = t.atoms[1]->pos - u * scale;
           }
         }
 }
