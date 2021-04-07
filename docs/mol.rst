@@ -668,16 +668,19 @@ uses PDBx/mmCIF as the primary format and the legacy PDB format is frozen.
    Do not read too much into the specification.
 
 Gemmi aims to support all flavours of PDB files that are in common use
-in the field of macromolecular crystallography. This includes files from
-wwPDB as well as files outputted by mainstream software.
+in the field of macromolecular crystallography (this format got adopted
+also in other fields, such as simulations of metals, ceramics, fluids).
+Here, we focus on files from macromolecular software and wwPDB.
 
-In particular, we support the following extensions:
+We support the following popular extensions of the format:
 
 * two-character chain IDs (columns 21 and 22),
 * segment ID (columns 73-76) from PDB v2,
 * hybrid-36_ encoding of sequence IDs for sequences longer than 9999
   (although we are yet to find an examples for this),
 * hybrid-36_ encoding of serial numbers for more than 99,999 atoms.
+
+.. _supported_records:
 
 Gemmi interprets more PDB records than most of programs and libraries,
 but supporting all the records is not a goal.
@@ -873,6 +876,8 @@ by first putting it into a cif.Block:
   >>> block.get_mmcif_category('_diffrn_radiation')
   {'diffrn_id': ['1', '2'], 'pdbx_scattering_type': ['x-ray', 'neutron'], 'pdbx_monochromatic_or_laue_m_l': ['M', None], 'monochromator': [None, None]}
 
+----
+
 PDB files are expected to have 80 columns, although trailing spaces are
 often not included. Some programs in certain situations produce longer lines,
 so Gemmi reads lines up to 120 characters. In some old files from
@@ -882,8 +887,22 @@ It confuses the PDB parser and it is not handled automatically -- such
 files are not in use nowadays. Nevertheless, they can be read by manually
 limiting the line length:
 
+.. doctest::
+
   >>> gemmi.read_pdb('../tests/pdb1gdr.ent', max_line_length=72)
   <gemmi.Structure pdb1gdr.ent with 1 model(s)>
+
+All remarks from the PDB file are stored in ``raw_remarks``. Some of them
+(as listed :ref:`above <supported_records>`) are parsed and interpreted.
+When writing a structure from the PDB format back to the PDB format,
+by default, remarks are copied over from ``raw_remarks``.
+To avoid it:
+
+.. doctest::
+
+  >>> gemmi.raw_remarks = []
+
+Then, only these records that can be parsed and formatted are written.
 
 Writing
 -------
