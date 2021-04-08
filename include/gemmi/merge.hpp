@@ -10,6 +10,7 @@
 #include "util.hpp"     // for vector_remove_if
 #include "mtz.hpp"      // for Mtz
 #include "refln.hpp"    // for ReflnBlock
+#include "xds_ascii.hpp" // for XdsAscii
 
 namespace gemmi {
 
@@ -114,6 +115,16 @@ struct Intensities {
     out->sigma = 1.0 / std::sqrt(sum_w);
     data.erase(++out, data.end());
   }
+
+  void switch_to_asu_indices() {
+    GroupOps gops = spacegroup->operations();
+    ReciprocalAsu asu(spacegroup);
+    for (Refl& refl : data) {
+      auto hkl_isym = asu.to_asu(refl.hkl, gops);
+      refl.hkl = hkl_isym.first;
+      refl.isign = (hkl_isym.second % 2 == 0 ? -1 : 1);
+    }
+  }
 };
 
 
@@ -183,14 +194,7 @@ inline Intensities read_unmerged_intensities_from_mmcif(const ReflnBlock& rb) {
   intensities.copy_metadata(rb);
   intensities.wavelength = rb.wavelength;
   intensities.read_data(ReflnDataProxy(rb), value_idx, sigma_idx);
-  // switch to ASU indices
-  GroupOps gops = intensities.spacegroup->operations();
-  ReciprocalAsu asu(intensities.spacegroup);
-  for (Intensities::Refl& refl : intensities.data) {
-    auto hkl_isym = asu.to_asu(refl.hkl, gops);
-    refl.hkl = hkl_isym.first;
-    refl.isign = (hkl_isym.second % 2 == 0 ? -1 : 1);
-  }
+  intensities.switch_to_asu_indices();
   return intensities;
 }
 
@@ -222,6 +226,23 @@ inline Intensities read_anomalous_intensities_from_mmcif(const ReflnBlock& rb) {
       refl.sigma = proxy.get_num(i + sigma_idx[j]);
       intensities.add_if_valid(refl);
     }
+  return intensities;
+}
+
+inline Intensities read_unmerged_intensities_from_xds(const XdsAscii& xds) {
+  Intensities intensities;
+  intensities.unit_cell = xds.unit_cell;
+  intensities.spacegroup = find_spacegroup_by_number(xds.spacegroup_number);
+  intensities.wavelength = xds.wavelength;
+  intensities.data.reserve(xds.data.size());
+  for (const XdsAscii::Refl& in : xds.data) {
+    Intensities::Refl refl;
+    refl.hkl = in.hkl;
+    refl.value = in.iobs;
+    refl.sigma = in.sigma;
+    intensities.add_if_valid(refl);
+  }
+  intensities.switch_to_asu_indices();
   return intensities;
 }
 

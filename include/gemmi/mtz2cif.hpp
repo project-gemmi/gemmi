@@ -16,6 +16,7 @@
 #include <set>
 #include <algorithm>     // for all_of
 #include "mtz.hpp"       // for Mtz
+#include "xds_ascii.hpp" // for XdsAscii
 #include "atox.hpp"      // for read_word
 #include "merge.hpp"     // for Intensities, read_unmerged_intensities_from_mtz
 #include "sprintf.hpp"   // for gf_snprintf, to_str
@@ -83,6 +84,7 @@ struct MtzToCif {
   }
 
   void write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& os);
+  void write_cif_from_xds(const XdsAscii& xds, std::ostream& os);
 
 private:
   // describes which MTZ column is to be translated to what mmCIF column
@@ -312,13 +314,30 @@ private:
     recipe.push_back(tr);
   }
 
+  void write_special_marker_if_requested(std::ostream& os) const {
+    if (write_special_marker_for_pdb)
+      os << "### If you modify this file, remove the following items: ###\n"
+            "_software.pdbx_ordinal 1\n"
+            "_software.classification 'data extraction'\n"
+            "_software.name gemmi\n"
+            "_software.version " GEMMI_VERSION "\n"
+            "_pdbx_audit_conform.dict_name mmcif_pdbx.dic\n"
+            "_pdbx_audit_conform.dict_version 5.339\n"
+            "_pdbx_audit_conform.dict_location "
+            "https://mmcif.wwpdb.org/dictionaries/ascii/mmcif_pdbx_v50.dic\n\n";
+  }
+
+  void write_cell_and_symmetry(const UnitCell& cell, const SpaceGroup* sg,
+                               char* buf, std::ostream& os);
+
+
   void write_main_loop(const Mtz& mtz, char* buf, std::ostream& os);
 };
 
-// pre: unmerged MTZ is before switch_to_original_hkl(), merged is sorted
-inline void validate_merged_intensities(const Mtz& unmerged, const Intensities& mi,
+// pre: unmerged data (ui) is in asu hkl, merged data (mi) is sorted
+inline void validate_merged_intensities(const Intensities& mi,
+                                        Intensities& ui,
                                         std::ostream& out) {
-  Intensities ui = read_unmerged_intensities_from_mtz(unmerged);
   size_t before = ui.data.size();
   ui.merge_in_place(/*output_plus_minus=*/false);  // it also sorts
   size_t after = ui.data.size();
@@ -372,16 +391,7 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
 
   os << "\n\n_entry.id " << entry_id << "\n\n";
 
-  // for now write this only merged+unmerged dataset
-  if (write_special_marker_for_pdb)
-    os << "### If you modify this file, remove the following items: ###\n"
-          "_software.pdbx_ordinal 1\n"
-          "_software.classification 'data extraction'\n"
-          "_software.name gemmi\n"
-          "_software.version " GEMMI_VERSION "\n"
-          "_pdbx_audit_conform.dict_name mmcif_pdbx.dic\n"
-          "_pdbx_audit_conform.dict_version 5.339\n"
-          "_pdbx_audit_conform.dict_location https://mmcif.wwpdb.org/dictionaries/ascii/mmcif_pdbx_v50.dic\n\n";
+  write_special_marker_if_requested(os);
 
   if (unmerged) {
     os << "_exptl_crystal.id 1\n\n";
@@ -423,7 +433,7 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
           "_diffrn_radiation_wavelength.id\n"
           "_diffrn_radiation_wavelength.wavelength\n";
     for (const Mtz::Dataset* ds : used_datasets)
-        os << ds->id << ' ' << ds->wavelength << '\n';
+      os << ds->id << ' ' << ds->wavelength << '\n';
     os << '\n';
 
     if (enable_UB) {
@@ -451,28 +461,14 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
     }
   } else {
     double w = std::isnan(wavelength) ? get_wavelength(mtz, recipe) : wavelength;
-    if (w != 0.)
+    if (w > 0.)
       os << "_diffrn_radiation.diffrn_id 1\n"
          << "_diffrn_radiation.wavelength_id 1\n"
          << "_diffrn_radiation_wavelength.id 1\n"
          << "_diffrn_radiation_wavelength.wavelength " << to_str(w) << "\n\n";
   }
 
-  const UnitCell& cell = mtz.get_cell();
-  os << "_cell.entry_id " << entry_id << '\n';
-  WRITE("_cell.length_a    %8.3f\n", cell.a);
-  WRITE("_cell.length_b    %8.3f\n", cell.b);
-  WRITE("_cell.length_c    %8.3f\n", cell.c);
-  WRITE("_cell.angle_alpha %8.3f\n", cell.alpha);
-  WRITE("_cell.angle_beta  %8.3f\n", cell.beta);
-  WRITE("_cell.angle_gamma %8.3f\n\n", cell.gamma);
-
-  if (const SpaceGroup* sg = mtz.spacegroup) {
-    os << "_symmetry.entry_id " << entry_id << "\n"
-          "_symmetry.space_group_name_H-M '" << sg->hm << "'\n"
-          "_symmetry.Int_Tables_number " << sg->number << '\n';
-    // could write _symmetry_equiv.pos_as_xyz, but would it be useful?
-  }
+  write_cell_and_symmetry(mtz.get_cell(), mtz.spacegroup, buf, os);
 
   if (merged)
     write_main_loop(*merged, buf, os);
@@ -602,6 +598,89 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
     os << '\n';
   }
 }
+
+inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) {
+  char buf[256];
+#define WRITE(...) os.write(buf, gf_snprintf(buf, 255, __VA_ARGS__))
+  if (with_comments) {
+    os << "# Converted by gemmi-mtz2cif " GEMMI_VERSION "\n";
+    os << "# from scaled unmerged XDS_ASCII: " << xds.source_path << '\n';
+  }
+  os << "data_" << (block_name ? block_name : "xds");
+  os << "\n\n_entry.id " << entry_id << "\n\n";
+
+  write_special_marker_if_requested(os);
+
+  os << "_exptl_crystal.id 1\n\n";
+
+  os << "loop_\n_diffrn.id\n_diffrn.crystal_id\n_diffrn.details\n";
+  // TODO
+  os << '\n';
+
+  double w = std::isnan(wavelength) ? xds.wavelength : wavelength;
+  // TODO wavelength per iset
+  if (w > 0.)
+    os << "_diffrn_radiation.diffrn_id 1\n"
+       << "_diffrn_radiation.wavelength_id 1\n"
+       << "_diffrn_radiation_wavelength.id 1\n"
+       << "_diffrn_radiation_wavelength.wavelength " << to_str(w) << "\n\n";
+
+  const SpaceGroup* sg = find_spacegroup_by_number(xds.spacegroup_number);
+  write_cell_and_symmetry(xds.unit_cell, sg, buf, os);
+
+  os << "\nloop_\n_diffrn.id\n_diffrn.crystal_id\n_diffrn.details\n";
+  // TODO
+  os << '\n';
+
+  os << "loop_\n"
+        "_diffrn_measurement.diffrn_id\n"
+        "_diffrn_measurement.details\n";
+  // TODO
+  os << '\n';
+
+  os << "loop_\n"
+        "_diffrn_radiation.diffrn_id\n"
+        "_diffrn_radiation.wavelength_id\n";
+  // TODO
+  os << '\n';
+
+  os << "loop_\n"
+        "_diffrn_radiation_wavelength.id\n"
+        "_diffrn_radiation_wavelength.wavelength\n";
+  // TODO
+  os << '\n';
+
+  os << "\nloop_"
+        "\n_diffrn_refln.diffrn_id"
+        "\n_diffrn_refln.id"
+        "\n_diffrn_refln.index_h"
+        "\n_diffrn_refln.index_k"
+        "\n_diffrn_refln.index_l"
+        "\n_diffrn_refln.intensity_net"
+        "\n_diffrn_refln.intensity_sigma"
+        "\n_diffrn_refln.pdbx_scan_angle"
+        "\n_diffrn_refln.pdbx_image_id\n";
+  // TODO
+}
+
+inline void MtzToCif::write_cell_and_symmetry(const UnitCell& cell, const SpaceGroup* sg,
+                                              char* buf, std::ostream& os) {
+  os << "_cell.entry_id " << entry_id << '\n';
+  WRITE("_cell.length_a    %8.3f\n", cell.a);
+  WRITE("_cell.length_b    %8.3f\n", cell.b);
+  WRITE("_cell.length_c    %8.3f\n", cell.c);
+  WRITE("_cell.angle_alpha %8.3f\n", cell.alpha);
+  WRITE("_cell.angle_beta  %8.3f\n", cell.beta);
+  WRITE("_cell.angle_gamma %8.3f\n\n", cell.gamma);
+
+  if (sg) {
+    os << "_symmetry.entry_id " << entry_id << "\n"
+          "_symmetry.space_group_name_H-M '" << sg->hm << "'\n"
+          "_symmetry.Int_Tables_number " << sg->number << '\n';
+    // could write _symmetry_equiv.pos_as_xyz, but would it be useful?
+  }
+}
+
 #undef WRITE
 
 } // namespace gemmi

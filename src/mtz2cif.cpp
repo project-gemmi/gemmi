@@ -11,6 +11,7 @@
 #include <gemmi/util.hpp>     // for giends_with
 #include <gemmi/merge.hpp>    // for Intensities
 #include <gemmi/read_cif.hpp> // for read_cif_gz
+#include <gemmi/xds_ascii.hpp>
 #define GEMMI_PROG mtz2cif
 #include "options.h"
 
@@ -119,11 +120,13 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   bool verbose = p.options[Verbose];
   const char* mtz_paths[2];
+  const char* xds_path = nullptr;
   const char* cif_input = nullptr;
   mtz_paths[0] = p.nonOption(0);
   mtz_paths[1] = (nargs == 3 ? p.nonOption(1) : nullptr);
   const char* cif_output = p.nonOption(nargs == 3 ? 2 : 1);
   std::unique_ptr<gemmi::Mtz> mtz[2];
+  std::unique_ptr<gemmi::XdsAscii> xds_ascii;
   if (gemmi::giends_with(mtz_paths[0], ".cif") ||
       gemmi::giends_with(mtz_paths[0], ".ent")) {
     if (!mtz_paths[1]) {
@@ -132,6 +135,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
     std::swap(cif_input, mtz_paths[0]);
   }
+  if (mtz_paths[nargs-2] && gemmi::giends_with(mtz_paths[nargs-2], ".hkl"))
+    std::swap(xds_path, mtz_paths[nargs-2]);
   for (int i = 0; i < 2; ++i)
     if (mtz_paths[i]) {
       mtz[i].reset(new gemmi::Mtz);
@@ -146,8 +151,20 @@ int GEMMI_MAIN(int argc, char **argv) {
         return 1;
       }
     }
-  if (cif_input && mtz[1]->is_merged()) {
+  if (xds_path) {
+    try {
+      xds_ascii.reset(new gemmi::XdsAscii(read_xds_ascii(gemmi::MaybeGzipped(xds_path))));
+    } catch (std::runtime_error& e) {
+      std::fprintf(stderr, "ERROR reading %s: %s\n", xds_path, e.what());
+      return 1;
+    }
+  }
+  if (cif_input && mtz[1] && mtz[1]->is_merged()) {
     std::fprintf(stderr, "Error: CIF file and merged MTZ files given\n");
+    return 1;
+  }
+  if (xds_ascii && mtz[0] && !mtz[0]->is_merged()) {
+    std::fprintf(stderr, "Error: Two unmerged files (MTZ and XDS_ASCII) given\n");
     return 1;
   }
   if (mtz[0] && mtz[1]) {
@@ -184,6 +201,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   mtz_to_cif.no_anomalous = p.options[NoAnomalous];
   bool validate = p.options[Validate];
   if (p.options[Deposition]) {
+    mtz_to_cif.write_special_marker_for_pdb = true;
     mtz_to_cif.with_history = false;
     separate_blocks = true;
     validate = true;
@@ -217,19 +235,26 @@ int GEMMI_MAIN(int argc, char **argv) {
           !mtz[0]->column_with_label("F(+)"))
         fprintf(stderr, "Merged file is missing amplitudes.\n");
     }
-    try {
-      gemmi::Intensities mi;
-      if (mtz[0]) {
-        mi = gemmi::read_mean_intensities_from_mtz(*mtz[0]);
-      } else {
-        gemmi::ReflnBlock rblock = gemmi::get_refln_block(
-            gemmi::read_cif_from_buffer(cif_buf, cif_input).blocks, {});
-        mi = gemmi::read_mean_intensities_from_mmcif(rblock);
+    if (nargs == 3) {
+      try {
+        gemmi::Intensities mi, ui;
+        if (mtz[0]) {
+          mi = gemmi::read_mean_intensities_from_mtz(*mtz[0]);
+        } else {
+          gemmi::ReflnBlock rblock = gemmi::get_refln_block(
+              gemmi::read_cif_from_buffer(cif_buf, cif_input).blocks, {});
+          mi = gemmi::read_mean_intensities_from_mmcif(rblock);
+        }
+        mi.sort();
+        if (mtz[1]) {
+          ui = read_unmerged_intensities_from_mtz(*mtz[1]);
+        } else if (xds_ascii) {
+          ui = read_unmerged_intensities_from_xds(*xds_ascii);
+        }
+        gemmi::validate_merged_intensities(mi, ui, std::cerr);
+      } catch (std::runtime_error& e) {
+        fprintf(stderr, "Intensity merging not validated: %s\n", e.what());
       }
-      mi.sort();
-      gemmi::validate_merged_intensities(*mtz[1], mi, std::cerr);
-    } catch (std::runtime_error& e) {
-      fprintf(stderr, "Intensity merging not validated: %s\n", e.what());
     }
   }
   if (p.options[Trim])
@@ -239,17 +264,20 @@ int GEMMI_MAIN(int argc, char **argv) {
     for (int i = 0; i < 2; ++i)
       if (mtz[i] && !mtz[i]->is_merged())
         mtz[i]->switch_to_original_hkl();
-    mtz_to_cif.write_special_marker_for_pdb = !!mtz[1];
-    if (cif_input) {
-      os.ref().write(cif_buf.data(), cif_buf.size());
-      os.ref() << "\n\n";
-      mtz_to_cif.write_cif(*mtz[1], nullptr, os.ref());
-    } else if (mtz[1] && separate_blocks) {
-      mtz_to_cif.write_cif(*mtz[0], nullptr, os.ref());
-      os.ref() << "\n\n";
-      mtz_to_cif.write_cif(*mtz[1], nullptr, os.ref());
-    } else {
+    if (mtz[0] && mtz[1] && !separate_blocks) {
       mtz_to_cif.write_cif(*mtz[0], mtz[1].get(), os.ref());
+    } else {
+      if (cif_input)
+        os.ref().write(cif_buf.data(), cif_buf.size());
+      else if (mtz[0])
+        mtz_to_cif.write_cif(*mtz[0], nullptr, os.ref());
+      if ((cif_input || mtz[0]) && (mtz[1] || xds_ascii))
+        os.ref() << "\n\n";
+      mtz_to_cif.block_name = "unmerged";
+      if (mtz[1])
+        mtz_to_cif.write_cif(*mtz[1], nullptr, os.ref());
+      else if (xds_ascii)
+        mtz_to_cif.write_cif_from_xds(*xds_ascii, os.ref());
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR writing %s: %s\n", cif_output, e.what());
