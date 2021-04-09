@@ -170,7 +170,7 @@ setup(
     setup_requires=['pybind11>=' + MIN_PYBIND_VER],
     cmdclass={'build_ext': BuildExt},
     zip_safe=False,
-    license='MPL-2.0',
+    license='MPL-2.0',  # or, at your option, LGPL-3.0
     keywords=('structural bioinformatics, structural biology, crystallography,'
               ' CIF, mmCIF, PDB, CCP4, MTZ'),
     classifiers=[
