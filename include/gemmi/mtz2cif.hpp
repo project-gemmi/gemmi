@@ -601,7 +601,6 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
 
 inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) {
   char buf[256];
-#define WRITE(...) os.write(buf, gf_snprintf(buf, 255, __VA_ARGS__))
   if (with_comments) {
     os << "# Converted by gemmi-mtz2cif " GEMMI_VERSION "\n";
     os << "# from scaled unmerged XDS_ASCII: " << xds.source_path << '\n';
@@ -614,41 +613,50 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
   os << "_exptl_crystal.id 1\n\n";
 
   os << "loop_\n_diffrn.id\n_diffrn.crystal_id\n_diffrn.details\n";
-  // TODO
-  os << '\n';
-
-  double w = std::isnan(wavelength) ? xds.wavelength : wavelength;
-  // TODO wavelength per iset
-  if (w > 0.)
-    os << "_diffrn_radiation.diffrn_id 1\n"
-       << "_diffrn_radiation.wavelength_id 1\n"
-       << "_diffrn_radiation_wavelength.id 1\n"
-       << "_diffrn_radiation_wavelength.wavelength " << to_str(w) << "\n\n";
-
-  const SpaceGroup* sg = find_spacegroup_by_number(xds.spacegroup_number);
-  write_cell_and_symmetry(xds.unit_cell, sg, buf, os);
-
-  os << "\nloop_\n_diffrn.id\n_diffrn.crystal_id\n_diffrn.details\n";
-  // TODO
+  for (const XdsAscii::Iset& iset : xds.isets)
+    os << iset.id << " 1 '" << iset.input_info << "'\n";
   os << '\n';
 
   os << "loop_\n"
         "_diffrn_measurement.diffrn_id\n"
         "_diffrn_measurement.details\n";
-  // TODO
+  for (const XdsAscii::Iset& iset : xds.isets) {
+    double max_zd = 0.;
+    for (const XdsAscii::Refl& refl : xds.data)
+      if (refl.iset == iset.id)
+        max_zd = std::max(max_zd, refl.zd);
+    int frame_count = (int)std::ceil(max_zd) - xds.starting_frame + 1;
+    os << iset.id << " '" << frame_count << " frames'\n";
+  }
   os << '\n';
+
+  double w_all = wavelength;
+  if (std::isnan(w_all) &&
+      std::all_of(xds.isets.begin(), xds.isets.end(),
+                  [&](const XdsAscii::Iset& i) { return i.wavelength == xds.wavelength; }))
+    w_all = xds.wavelength;
 
   os << "loop_\n"
         "_diffrn_radiation.diffrn_id\n"
         "_diffrn_radiation.wavelength_id\n";
-  // TODO
+  for (const XdsAscii::Iset& iset : xds.isets)
+    os << iset.id << ' ' << (std::isnan(w_all) ? iset.id : 1) << '\n';
   os << '\n';
 
   os << "loop_\n"
         "_diffrn_radiation_wavelength.id\n"
         "_diffrn_radiation_wavelength.wavelength\n";
-  // TODO
+  auto number_or_dot = [](double d) { return std::isnan(d) ? "." : to_str(d); };
+  if (std::isnan(w_all)) {
+    for (const XdsAscii::Iset& iset : xds.isets)
+      os << iset.id << ' ' << number_or_dot(iset.wavelength) << '\n';
+  } else {
+    os << '1' << ' ' << number_or_dot(w_all) << '\n';
+  }
   os << '\n';
+
+  const SpaceGroup* sg = find_spacegroup_by_number(xds.spacegroup_number);
+  write_cell_and_symmetry(xds.unit_cell, sg, buf, os);
 
   os << "\nloop_"
         "\n_diffrn_refln.diffrn_id"
@@ -657,10 +665,23 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
         "\n_diffrn_refln.index_k"
         "\n_diffrn_refln.index_l"
         "\n_diffrn_refln.intensity_net"
-        "\n_diffrn_refln.intensity_sigma"
-        "\n_diffrn_refln.pdbx_scan_angle"
-        "\n_diffrn_refln.pdbx_image_id\n";
-  // TODO
+        "\n_diffrn_refln.intensity_sigma";
+  if (xds.oscillation_range != 0.)
+    os << "\n_diffrn_refln.pdbx_scan_angle";
+  os << "\n_diffrn_refln.pdbx_image_id\n";
+  int idx = 0;
+  for (const XdsAscii::Refl& refl : xds.data) {
+    if (refl.sigma < 0)  // misfit
+      continue;
+    os << refl.iset << ' ' << ++idx << ' '
+       << refl.hkl[0] << ' ' << refl.hkl[1] << ' ' << refl.hkl[2] << ' ';
+    WRITE("%g %.5g ", refl.iobs, refl.sigma);
+    if (xds.oscillation_range != 0.) {
+      double z = refl.zd - xds.starting_frame + 1;
+      WRITE("%.5g ", xds.starting_angle + xds.oscillation_range * z);
+    }
+    os << int(std::ceil(refl.zd)) << '\n';
+  }
 }
 
 inline void MtzToCif::write_cell_and_symmetry(const UnitCell& cell, const SpaceGroup* sg,
