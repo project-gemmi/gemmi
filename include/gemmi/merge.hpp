@@ -88,6 +88,8 @@ struct Intensities {
   void sort() { std::sort(data.begin(), data.end()); }
 
   void merge_in_place(bool output_plus_minus) {
+    if (data.empty())
+      return;
     if (!output_plus_minus)
       // discard signs so that merging produces Imean
       for (Refl& refl : data)
@@ -102,10 +104,8 @@ struct Intensities {
         out->sigma = 1.0 / std::sqrt(sum_w);
         sum_wI = sum_w = 0.;
         ++out;
-        if (out != in) {
-          out->hkl = in->hkl;
-          out->isign = in->isign;
-        }
+        out->hkl = in->hkl;
+        out->isign = in->isign;
       }
       double w = 1. / (in->sigma * in->sigma);
       sum_wI += w * in->value;
@@ -116,13 +116,16 @@ struct Intensities {
     data.erase(++out, data.end());
   }
 
-  void switch_to_asu_indices() {
+  void switch_to_asu_indices(bool merged=false) {
     GroupOps gops = spacegroup->operations();
     ReciprocalAsu asu(spacegroup);
     for (Refl& refl : data) {
+      if (asu.is_in(refl.hkl))
+        continue;
       auto hkl_isym = asu.to_asu(refl.hkl, gops);
       refl.hkl = hkl_isym.first;
-      refl.isign = (hkl_isym.second % 2 == 0 ? -1 : 1);
+      if (!merged)
+        refl.isign = (hkl_isym.second % 2 == 0 ? -1 : 1);
     }
   }
 };

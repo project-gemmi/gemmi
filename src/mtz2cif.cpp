@@ -153,7 +153,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
   if (xds_path) {
     try {
-      xds_ascii.reset(new gemmi::XdsAscii(read_xds_ascii(gemmi::MaybeGzipped(xds_path))));
+      xds_ascii.reset(new gemmi::XdsAscii);
+      xds_ascii->read_input(gemmi::MaybeGzipped(xds_path));
     } catch (std::runtime_error& e) {
       std::fprintf(stderr, "ERROR reading %s: %s\n", xds_path, e.what());
       return 1;
@@ -236,6 +237,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         fprintf(stderr, "Merged file is missing amplitudes.\n");
     }
     if (nargs == 3) {
+      bool ok = true;
       try {
         gemmi::Intensities mi, ui;
         if (mtz[0]) {
@@ -245,15 +247,20 @@ int GEMMI_MAIN(int argc, char **argv) {
               gemmi::read_cif_from_buffer(cif_buf, cif_input).blocks, {});
           mi = gemmi::read_mean_intensities_from_mmcif(rblock);
         }
-        mi.sort();
         if (mtz[1]) {
           ui = read_unmerged_intensities_from_mtz(*mtz[1]);
         } else if (xds_ascii) {
           ui = read_unmerged_intensities_from_xds(*xds_ascii);
         }
-        gemmi::validate_merged_intensities(mi, ui, std::cerr);
+        ok = gemmi::validate_merged_intensities(mi, ui, std::cerr);
       } catch (std::runtime_error& e) {
         fprintf(stderr, "Intensity merging not validated: %s\n", e.what());
+        ok = false;
+      }
+      if (!ok) {
+        fprintf(stderr, "\nIf you think the files are correct, contact us:\n"
+                "see https://project-gemmi.github.io/depo.html\n");
+        return 4;
       }
     }
   }

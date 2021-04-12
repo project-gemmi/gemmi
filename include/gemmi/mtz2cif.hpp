@@ -334,36 +334,91 @@ private:
   void write_main_loop(const Mtz& mtz, char* buf, std::ostream& os);
 };
 
-// pre: unmerged data (ui) is in asu hkl, merged data (mi) is sorted
-inline void validate_merged_intensities(const Intensities& mi,
-                                        Intensities& ui,
+// note: both mi and ui get modified
+inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
                                         std::ostream& out) {
-  size_t before = ui.data.size();
-  ui.merge_in_place(/*output_plus_minus=*/false);  // it also sorts
-  size_t after = ui.data.size();
-  ui.remove_systematic_absences();
-  if (ui.spacegroup != mi.spacegroup)
-    out << "Warning: different space groups in two MTZ files:\n"
+  out << "Validating if both files match...\n";
+  bool ok = true;
+  if (ui.spacegroup != mi.spacegroup) {
+    out << "Different space groups in merged and unmerged files:\n"
         << ui.spacegroup_str() << " and " << mi.spacegroup_str() << '\n';
-  out << "Reflections: " << before << " -> " << after << " (merged) -> "
-      << ui.data.size() << " (no sysabs)  vs  " << mi.data.size() << '\n';
+    out << "(in the future, this app may recognize compatible space groups\n"
+           "and reindex unmerged data if needed; for now, it's on you)\n";
+    ok = false;
+  }
+  if (!ui.unit_cell.approx(mi.unit_cell, 0.01)) {
+    out << "Different unit cell parameters in merged and unmerged files.\n";
+    ok = false;
+  }
+
+  size_t ui_size1 = ui.data.size();
+  ui.merge_in_place(/*output_plus_minus=*/false);  // it also sorts
+  size_t ui_size2 = ui.data.size();
+  ui.remove_systematic_absences();
+  out << "Unmerged reflections: " << ui_size1 << " -> " << ui_size2
+      << " (merged) -> " << ui.data.size() << " (w/o sysabs)\n";
+  mi.switch_to_asu_indices(/*merged=*/true);
+  mi.sort();
+  size_t mi_size1 = mi.data.size();
+  mi.remove_systematic_absences();
+  out << "Merged reflections: " << mi_size1 << " -> " << mi.data.size()
+      << " (w/o sysabs)\n";
   gemmi::Correlation corr;
+
   auto r1 = ui.data.begin();
   auto r2 = mi.data.begin();
+  double max_rel_diff = 0.;
+  const Intensities::Refl* max_diff_r1 = nullptr;
+  const Intensities::Refl* max_diff_r2 = nullptr;
+  int differ_count = 0;
+  int missing_count = 0;
   while (r1 != ui.data.end() && r2 != mi.data.end()) {
     if (r1->hkl == r2->hkl) {
       corr.add_point(r1->value, r2->value);
+      if (r1->value >= 1) {
+        double rel_diff = std::fabs(r1->value - r2->value) / r1->value;
+        if (rel_diff > 0.001) {
+          if (differ_count == 0) {
+            out << "First difference: (" << r1->hkl[0] << ' ' << r1->hkl[1] << ' '
+                << r1->hkl[2] << ") " << r1->value << " vs " << r2->value << '\n';
+          }
+          ++differ_count;
+          if (rel_diff > max_rel_diff) {
+            max_rel_diff = rel_diff;
+            max_diff_r1 = &*r1;
+            max_diff_r2 = &*r2;
+          }
+          max_rel_diff = std::max(rel_diff, max_rel_diff);
+        }
+      }
       ++r1;
       ++r2;
     } else if (std::tie(r1->hkl[0], r1->hkl[1], r1->hkl[2]) <
                std::tie(r2->hkl[0], r2->hkl[1], r2->hkl[2])) {
       ++r1;
     } else {
+      if (missing_count == 0)
+        out << "First missing reflection in unmerged data: ("
+            << r1->hkl[0] << ' ' << r1->hkl[1] << ' ' << r1->hkl[2] << ")\n";
+      ++missing_count;
       ++r2;
     }
   }
-  out << "Corr. coef. of " << corr.n << " IMEAN values: " << 100 * corr.coefficient()
-      << "% (mean ratio: " << corr.mean_ratio() << ")\n";
+  if (missing_count != 0) {
+    out << missing_count << " out of " << mi.data.size()
+        << " reflections in the merged file not found in unmerged data\n";
+    ok = false;
+  }
+  out << "Corr. coef. of " << corr.n << " IMEAN values: "
+      << 100 * corr.coefficient() << "%\n";
+  if (differ_count != 0) {
+    const Miller& hkl = max_diff_r1->hkl;
+    out << "Max. difference: (" << hkl[0] << ' ' << hkl[1] << ' ' << hkl[2] << ") "
+        << max_diff_r1->value << " vs " << max_diff_r2->value << '\n';
+    out << differ_count << " of " << corr.n << " intensities differ too much (by >0.1%).\n";
+    ok = false;
+  }
+  return ok;
 }
 
 inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& os) {
