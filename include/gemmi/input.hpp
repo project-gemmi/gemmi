@@ -32,6 +32,7 @@ struct MemoryStream {
     : start(start_), end(start_ + size), cur(start_) {}
 
   char* gets(char* line, int size) {
+    --size; // fgets reads in at most one less than size characters
     if (cur >= end)
       return nullptr;
     if (size > end - cur)
@@ -39,6 +40,7 @@ struct MemoryStream {
     const char* nl = (const char*) std::memchr(cur, '\n', size);
     size_t len = nl ? nl - cur + 1 : size;
     std::memcpy(line, cur, len);
+    line[len] = '\0';
     cur += len;
     return line;
   }
