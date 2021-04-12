@@ -1786,15 +1786,20 @@ const SpaceGroup* find_spacegroup_by_change_of_basis(const SpaceGroup* sg,
 struct ReciprocalAsu {
   int idx;
   Op::Rot rot;
+  bool is_ref;
 
   ReciprocalAsu(const SpaceGroup* sg) {
     if (sg == nullptr)
       fail("Missing space group");
-    rot = sg->basisop().rot;
     idx = spacegroup_tables::ccp4_hkl_asu[sg->number - 1];
+    is_ref = sg->is_reference_setting();
+    if (!is_ref)
+      rot = sg->basisop().rot;
   }
 
   bool is_in(const Op::Miller& hkl) const {
+    if (is_ref)
+      return is_in_reference_setting(hkl[0], hkl[1], hkl[2]);
     Op::Miller r;
     for (int i = 0; i != 3; ++i)
       r[i] = rot[0][i] * hkl[0] + rot[1][i] * hkl[1] + rot[2][i] * hkl[2];

@@ -74,10 +74,9 @@ struct AsuData {
       fail("AsuData::ensure_asu(): space group not set");
     GroupOps gops = spacegroup_->operations();
     ReciprocalAsu asu(spacegroup_);
-    bool is_ref = spacegroup_->is_reference_setting();
     for (HklValue<T>& hkl_value : v) {
       const Miller& hkl = hkl_value.hkl;
-      if (is_ref ? asu.is_in_reference_setting(hkl[0], hkl[1], hkl[2]) : asu.is_in(hkl))
+      if (asu.is_in(hkl))
         continue;
       auto result = asu.to_asu(hkl, gops);
       impl::move_to_asu(gops, result.first, result.second, hkl_value);
