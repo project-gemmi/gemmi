@@ -375,21 +375,22 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   while (r1 != ui.data.end() && r2 != mi.data.end()) {
     if (r1->hkl == r2->hkl) {
       corr.add_point(r1->value, r2->value);
-      if (r1->value >= 1) {
-        double rel_diff = std::fabs(r1->value - r2->value) / r1->value;
-        if (rel_diff > 0.001) {
-          if (differ_count == 0) {
-            out << "First difference: (" << r1->hkl[0] << ' ' << r1->hkl[1] << ' '
-                << r1->hkl[2] << ") " << r1->value << " vs " << r2->value << '\n';
-          }
-          ++differ_count;
-          if (rel_diff > max_rel_diff) {
-            max_rel_diff = rel_diff;
-            max_diff_r1 = &*r1;
-            max_diff_r2 = &*r2;
-          }
-          max_rel_diff = std::max(rel_diff, max_rel_diff);
+      double value_max = std::max(std::fabs(r1->value), std::fabs(r2->value));
+      double rel_diff = std::fabs(r1->value - r2->value) / value_max;
+      // XDS files have 4 significant digits. Using accuracy 5x the precision.
+      // Just in case, we ignore near-zero values.
+      if (value_max > 1e-3 && rel_diff > 0.005) {
+        if (differ_count == 0) {
+          out << "First difference: (" << r1->hkl[0] << ' ' << r1->hkl[1] << ' '
+              << r1->hkl[2] << ") " << r1->value << " vs " << r2->value << '\n';
         }
+        ++differ_count;
+        if (rel_diff > max_rel_diff) {
+          max_rel_diff = rel_diff;
+          max_diff_r1 = &*r1;
+          max_diff_r2 = &*r2;
+        }
+        max_rel_diff = std::max(rel_diff, max_rel_diff);
       }
       ++r1;
       ++r2;
@@ -411,11 +412,12 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   }
   out << "Corr. coef. of " << corr.n << " IMEAN values: "
       << 100 * corr.coefficient() << "%\n";
+  out << "Ratio of total intensities (merged : unmerged): " <<  corr.mean_ratio() << '\n';
   if (differ_count != 0) {
     const Miller& hkl = max_diff_r1->hkl;
     out << "Max. difference: (" << hkl[0] << ' ' << hkl[1] << ' ' << hkl[2] << ") "
         << max_diff_r1->value << " vs " << max_diff_r2->value << '\n';
-    out << differ_count << " of " << corr.n << " intensities differ too much (by >0.1%).\n";
+    out << differ_count << " of " << corr.n << " intensities differ too much (by >0.5%).\n";
     ok = false;
   }
   return ok;
