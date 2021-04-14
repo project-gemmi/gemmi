@@ -96,9 +96,6 @@ int GEMMI_MAIN(int argc, char **argv) {
     std::cerr << "Transcribing " << input << " to json ..." << std::endl;
   try {
     convert(input, output, p.options);
-  } catch (tao::pegtl::parse_error& e) {
-    std::cerr << e.what() << std::endl;
-    return 1;
   } catch (std::runtime_error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl;
     return 2;

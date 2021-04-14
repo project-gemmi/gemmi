@@ -342,9 +342,6 @@ int GEMMI_MAIN(int argc, char **argv) {
       st = gemmi::read_structure_gz(input, in_type);
     }
     convert(st, output, out_type, p.options);
-  } catch (tao::pegtl::parse_error& e) {
-    std::cerr << e.what() << std::endl;
-    return 1;
   } catch (std::runtime_error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl;
     return 2;
