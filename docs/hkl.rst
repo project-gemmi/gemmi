@@ -1527,6 +1527,7 @@ well below 1ms.
 Structure factors calculated at this point incorporate the addends:
 
 .. doctest::
+  :skipif: sys.platform == 'win32'
 
   >>> calc_x.calculate_sf_from_model(st[0], (3,4,5))
   (182.36559664489897+269.0002625524421j)

@@ -355,14 +355,14 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   ui.merge_in_place(/*output_plus_minus=*/false);  // it also sorts
   size_t ui_size2 = ui.data.size();
   ui.remove_systematic_absences();
-  out << "Unmerged reflections: " << ui_size1 << " -> " << ui_size2
-      << " (merged) -> " << ui.data.size() << " (w/o sysabs)\n";
+  out << "Unmerged reflections: " << ui_size1
+      << " (" << ui_size2 << " merged, " << ui.data.size() << " w/o sysabs)\n";
   mi.switch_to_asu_indices(/*merged=*/true);
   mi.sort();
   size_t mi_size1 = mi.data.size();
   mi.remove_systematic_absences();
-  out << "Merged reflections: " << mi_size1 << " -> " << mi.data.size()
-      << " (w/o sysabs)\n";
+  out << "Merged reflections: " << mi_size1
+      << " (" << mi.data.size() << " w/o sysabs)\n";
   gemmi::Correlation corr;
 
   auto r1 = ui.data.begin();
