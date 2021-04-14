@@ -90,16 +90,16 @@ The Mtz class has a number of properties read from the MTZ header
   >>> mtz.nreflections   # from MTZ record NCOL
   441
   >>> mtz.min_1_d2       # from RESO
-  0.0028703967109323008
+  0.0028703967109323
   >>> mtz.max_1_d2       # from RESO
-  0.36117017269134527
+  0.3611701726913452
 
 The resolution can also be checked using functions:
 
 .. doctest::
 
   >>> mtz.resolution_low()   # sqrt(1 / min_1_d2)
-  18.665044863474492
+  18.665044863474495
   >>> mtz.resolution_high()  # sqrt(1 / max_1_d2)
   1.6639645192598425
 

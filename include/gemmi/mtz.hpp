@@ -14,7 +14,8 @@
 #include <array>
 #include <string>
 #include <vector>
-#include "atox.hpp"      // for simple_atof, simple_atoi, read_word
+#include "atox.hpp"      // for simple_atoi, read_word
+#include "atof.hpp"      // for fast_atof
 #include "input.hpp"     // for FileStream, CharArray
 #include "iterator.hpp"  // for StrideIter
 #include "fail.hpp"      // for fail
@@ -373,12 +374,12 @@ struct Mtz {
   }
 
   static UnitCell read_cell_parameters(const char* line) {
-    double a = simple_atof(line, &line);
-    double b = simple_atof(line, &line);
-    double c = simple_atof(line, &line);
-    double alpha = simple_atof(line, &line);
-    double beta = simple_atof(line, &line);
-    double gamma = simple_atof(line, &line);
+    double a = fast_atof(line, &line);
+    double b = fast_atof(line, &line);
+    double c = fast_atof(line, &line);
+    double alpha = fast_atof(line, &line);
+    double beta = fast_atof(line, &line);
+    double gamma = fast_atof(line, &line);
     return UnitCell(a, b, c, alpha, beta, gamma);
   }
 
@@ -444,13 +445,13 @@ struct Mtz {
           symops.push_back(parse_triplet(args));
           break;
         case ialpha4_id("RESO"):
-          min_1_d2 = simple_atof(args, &args);
-          max_1_d2 = simple_atof(args, &args);
+          min_1_d2 = fast_atof(args, &args);
+          max_1_d2 = fast_atof(args, &args);
           break;
         case ialpha4_id("VALM"):
           if (*args != 'N') {
             const char* endptr;
-            float v = (float) simple_atof(args, &endptr);
+            float v = (float) fast_atof(args, &endptr);
             if (*endptr == '\0' || is_space(*endptr))
               valm = v;
             else
@@ -462,8 +463,8 @@ struct Mtz {
           Column& col = columns.back();
           col.label = read_word(args, &args);
           col.type = read_word(args, &args)[0];
-          col.min_value = (float) simple_atof(args, &args);
-          col.max_value = (float) simple_atof(args, &args);
+          col.min_value = (float) fast_atof(args, &args);
+          col.max_value = (float) fast_atof(args, &args);
           col.dataset_id = simple_atoi(args);
           col.parent = this;
           col.idx = columns.size() - 1;
@@ -508,7 +509,7 @@ struct Mtz {
         // case("DRES"): not in use yet
         case ialpha4_id("DWAV"):
           if (simple_atoi(args, &args) == last_dataset().id)
-            datasets.back().wavelength = simple_atof(args);
+            datasets.back().wavelength = fast_atof(args);
           else
             warn("MTZ DWAV line: unusual numbering.");
           break;

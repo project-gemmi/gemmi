@@ -1,15 +1,14 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// Functions that convert string to integer or floating-point number,
-// and a few helper functions.
+// Locale-independent functions that convert string to integer,
+// equivalents of standard isspace and isdigit, and a few helper functions.
 //
 // This file is named similarly to the standard functions atoi() and atof().
 // But the functions here are not meant to be equivalent to the standard
 // library functions. They are locale-independent (a good thing when reading
 // numbers from files). They don't set errno, don't signal overflow and
-// underflow. Real number parsing many has other limitations.
-// Due to the limited scope these functions tend to be faster than
-// the standard-library ones.
+// underflow. Due to the limited scope these functions tend to be faster
+// than the standard-library ones.
 
 #ifndef GEMMI_ATOX_HPP_
 #define GEMMI_ATOX_HPP_
@@ -129,30 +128,6 @@ inline int no_sign_atoi(const char* p, const char** endptr=nullptr) {
   if (endptr)
     *endptr = p;
   return n;
-}
-
-
-// no checking for overflow
-// no support for scientific notation
-inline double simple_atof(const char* p, const char** endptr=nullptr) {
-  while (is_space(*p))
-    ++p;
-  int sign = 1;
-  if (*p == '-') {
-    ++p;
-    sign = -1;
-  } else if (*p == '+') {
-    ++p;
-  }
-  double d = 0;
-  for (; is_digit(*p); ++p)
-    d = d * 10 + (*p - '0');
-  if (*p == '.')
-    for (double mult = 0.1; is_digit(*++p); mult *= 0.1)
-      d += mult * (*p - '0');
-  if (endptr)
-    *endptr = p;
-  return sign * d;
 }
 
 } // namespace gemmi
