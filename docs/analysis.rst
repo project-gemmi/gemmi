@@ -379,7 +379,7 @@ Here, as a minimal example, we superpose backbone of the third residue:
   ...                           [res2.sole_atom(a).pos for a in atoms])  #doctest: +ELLIPSIS
   <gemmi.SupResult object at 0x...>
   >>> _.rmsd
-  0.006558389527556187
+  0.006558389527590043
 
 To make it easier, we also have a higher-level function
 ``calculate_superposition()`` that operates on ``ResidueSpan``\ s.
@@ -409,7 +409,7 @@ Here is a usage example:
   >>> sup.count  # number of atoms used
   10
   >>> sup.rmsd
-  0.14626891689944363
+  0.1462689168993659
   >>> sup.transform.mat
   <gemmi.Mat33 [-0.0271652, 0.995789, 0.0875545]
                [0.996396, 0.034014, -0.0777057]
@@ -735,18 +735,18 @@ which takes four points in the space as arguments.
   >>> from math import degrees
   >>> chain = gemmi.read_structure('../tests/5cvz_final.pdb')[0]['A']
   >>> degrees(gemmi.calculate_omega(chain[0], chain[1]))
-  159.90922150065668
+  159.9092215006572
   >>> for res in chain[:5]:
   ...     next_res = chain.next_residue(res)
   ...     if next_res:
   ...         omega = gemmi.calculate_omega(res, next_res)
   ...         print(res.name, degrees(omega))
   ...
-  ALA 159.90922150065668
-  ALA -165.26874513591105
-  ALA -165.85686681169656
-  THR -172.99968385093513
-  SER 176.74223937657646
+  ALA 159.9092215006572
+  ALA -165.26874513591127
+  ALA -165.85686681169696
+  THR -172.99968385093572
+  SER 176.74223937657652
 
 The φ and ψ angles are often used together, so they are calculated
 in one function ``calculate_phi_psi()``:

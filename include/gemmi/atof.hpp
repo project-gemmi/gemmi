@@ -14,9 +14,9 @@ namespace gemmi {
 using fast_float::from_chars_result;
 
 inline from_chars_result fast_from_chars(const char* start, const char* end, double& d) {
-  while (is_space(*start))
+  while (start < end && is_space(*start))
     ++start;
-  if (*start == '+')
+  if (start < end && *start == '+')
     ++start;
   return fast_float::from_chars(start, end, d);
 }
@@ -27,6 +27,14 @@ inline from_chars_result fast_from_chars(const char* start, double& d) {
   if (*start == '+')
     ++start;
   return fast_float::from_chars(start, start + std::strlen(start), d);
+}
+
+inline double fast_atof(const char* p, const char** endptr=nullptr) {
+  double d = 0;
+  auto result = fast_from_chars(p, d);
+  if (endptr)
+    *endptr = result.ptr;
+  return d;
 }
 
 } // namespace gemmi

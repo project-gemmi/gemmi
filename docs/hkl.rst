@@ -1477,7 +1477,7 @@ Now we can compute structure factors from Model for any (hkl):
   :skipif: sys.platform == 'win32'
 
   >>> calc_e.calculate_sf_from_model(st[0], (3,4,5))
-  (54.50873699946013+53.39498671218216j)
+  (54.50873699946033+53.39498671218277j)
 
 .. _addends:
 
@@ -1529,7 +1529,7 @@ Structure factors calculated at this point incorporate the addends:
 .. doctest::
 
   >>> calc_x.calculate_sf_from_model(st[0], (3,4,5))
-  (182.3655966448982+269.0002625524398j)
+  (182.36559664489897+269.0002625524421j)
 
 Addends can also be employed to calculate the electron scattering
 from X-ray form factors, according to the Mott–Bethe formula:
@@ -1539,7 +1539,7 @@ from X-ray form factors, according to the Mott–Bethe formula:
   >>> calc_x.addends.clear()
   >>> calc_x.addends.subtract_z()
   >>> calc_x.mott_bethe_factor() * calc_x.calculate_sf_from_model(st[0], (3,4,5))
-  (54.065658093072436+52.968332363622224j)
+  (54.0656580930728+52.96833236362286j)
 
 The next section gives slightly more details on the Mott-Bethe formula.
 
@@ -1688,7 +1688,7 @@ We either multiply individual values by ``mott_bethe_factor()``
 .. doctest::
 
   >>> dc.mott_bethe_factor([3,4,5]) * grid.get_value(3,4,5)
-  (54.063699106275386+52.97058061981685j)
+  (54.06369910627539+52.97058061981686j)
 
 or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
 

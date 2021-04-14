@@ -22,7 +22,8 @@
 #include <vector>     // for vector
 #include <unordered_map>
 
-#include "atox.hpp"     // for string_to_int, simple_atof
+#include "atox.hpp"     // for string_to_int
+#include "atof.hpp"     // for fast_from_chars
 #include "fail.hpp"     // for fail
 #include "fileutil.hpp" // for path_basename, file_open
 #include "input.hpp"    // for FileStream
@@ -45,25 +46,10 @@ template<int N> int read_base36(const char* p) {
 }
 
 inline double read_double(const char* p, int field_length) {
-  int sign = 1;
-  double d = 0;
-  int i = 0;
-  while (i < field_length && is_space(p[i]))
-    ++i;
-  if (p[i] == '-') {
-    ++i;
-    sign = -1;
-  } else if (p[i] == '+') {
-    ++i;
-  }
-  for (; i < field_length && p[i] >= '0' && p[i] <= '9'; ++i)
-    d = d * 10 + (p[i] - '0');
-  if (i < field_length && p[i] == '.') {
-    double mult = 0.1;
-    for (++i; i < field_length && p[i] >= '0' && p[i] <= '9'; ++i, mult *= 0.1)
-      d += mult * (p[i] - '0');
-  }
-  return sign * d;
+  double d = 0.;
+  // we don't check for errors here
+  fast_from_chars(p, p + field_length, d);
+  return d;
 }
 
 inline std::string read_string(const char* p, int field_length) {
@@ -398,7 +384,7 @@ Structure read_pdb_from_input(Input&& infile, const std::string& source,
         if (st.resolution == 0.0 &&
             std::strstr(line, "RESOLUTION RANGE HIGH (ANGSTROMS)"))
           if (const char* colon = std::strchr(line + 44, ':'))
-            st.resolution = simple_atof(colon + 1);
+            st.resolution = fast_atof(colon + 1);
       } else if (num == 350) {
         const char* colon = std::strchr(line+11, ':');
         if (colon == line+22 && starts_with(line+11, "BIOMOLECULE")) {

@@ -358,7 +358,7 @@ Here is an example that shows a few other properties:
                  [0.2156, 0.96659, -0.13867]
                  [-0.03885, 0.15039, 0.98786]>
     >>> _.determinant()
-    1.000003887799667
+    1.0000038877996669
     >>> ncs_op.vec
     <gemmi.Vec3(-14.1959, 0.72997, -30.5229)>
 
@@ -1697,7 +1697,7 @@ are recalculated like this:
   >>> st.cell.find_nearest_image(pos1, pos2, con.asu)
   <gemmi.SymImage box:[2, 1, 1] sym:5>
   >>> _.dist()
-  2.22115330402924
+  2.221153304029239
 
 The vast majority of connections is intramolecular, so usually you get:
 
@@ -1987,7 +1987,7 @@ and calculate the Matthews coefficient:
   >>> weight = gemmi.calculate_sequence_weight(_.full_sequence)
   >>> # Now we can calculate Matthews coefficient
   >>> st.cell.volume_per_image() / weight
-  3.1983428753317016
+  3.1983428753317003
 
 We could continue and calculate the solvent content, assuming the protein
 density of 1.35 g/cm\ :sup:`3` (the other constants below are the Avogadro
