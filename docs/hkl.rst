@@ -933,7 +933,7 @@ Miller indices and resolution corresponding to the point can be obtained with:
   >>> grid.to_hkl(point)
   [-1, -1, -1]
   >>> grid.calculate_1_d2(point)
-  0.04960193997923228
+  0.0496019399792323
   >>> grid.calculate_d(point)
   4.490044743125198
 

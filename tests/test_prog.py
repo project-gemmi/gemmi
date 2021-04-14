@@ -73,7 +73,7 @@ RMSE=0.019724  0.2307%  max|dF|=0.04863  R=0.196%  sum(F^2)_ratio=1.00101
 $ gemmi sfcalc -w0 --hkl=4,9,0 --hkl=5,6,4 --hkl=1,1,1 tests/2013551.cif
  (4 9 0)	1.12314668	180.000000
  (5 6 4)	1.49089619	180.000000
- (1 1 1)	11.22159034	0.000000
+ (1 1 1)	11.22159034	360.000000
 ''')
 
     @unittest.skipIf(sys.platform == 'win32', 'with MSVC it differs slightly')

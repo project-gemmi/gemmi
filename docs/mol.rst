@@ -130,11 +130,11 @@ We will need another cif file to show anisotropic ADPs and disorder_group:
     Cl1 True n/a
     In False 2
     >>> perovskite.sites[2].aniso.u11
-    0.10300000000000001
+    0.103
     >>> perovskite.sites[2].aniso.u22
-    0.15600000000000003
+    0.156
     >>> perovskite.sites[2].aniso.u33
-    0.15600000000000003
+    0.156
     >>> perovskite.sites[2].aniso.u12
     0.0
     >>> perovskite.sites[2].aniso.u13
@@ -390,15 +390,15 @@ including calculations of eigenvalues and eigenvectors.
 
   >>> aniso = perovskite.sites[2].aniso
   >>> aniso.u11
-  0.10300000000000001
+  0.103
   >>> aniso.elements()  # (u11, u22, u33, u12, u13, u23)
-  [0.10300000000000001, 0.15600000000000003, 0.15600000000000003, 0.0, 0.0, 0.0]
+  [0.103, 0.156, 0.156, 0.0, 0.0, 0.0]
   >>> aniso.trace()
   0.41500000000000004
   >>> aniso.determinant()
-  0.002506608000000001
+  0.002506608
   >>> aniso.calculate_eigenvalues()
-  [0.10300000000000001, 0.15600000000000003, 0.15600000000000003]
+  [0.103, 0.156, 0.156]
 
 ----
 

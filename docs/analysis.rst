@@ -156,7 +156,7 @@ as an argument to get a triple of Chain, Residue and Atom::
   >>> cra.residue
   <gemmi.Residue 8(DC) with 19 atoms>
   >>> cra.atom
-  <gemmi.Atom O5' at (-0.0, 13.9, -17.6)>
+  <gemmi.Atom O5' at (-0.0, 13.8, -17.6)>
 
 ``Mark`` also has a helper method ``pos()`` that returns
 ``Position(x, y, z)``::
