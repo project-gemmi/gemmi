@@ -6,6 +6,7 @@
 #define GEMMI_PLACEH_HPP_
 
 #include <cmath>         // for sqrt, sin, cos
+#include <memory>        // for unique_ptr
 #include "model.hpp"     // for Atom
 #include "topo.hpp"      // for Topo
 #include "chemcomp.hpp"  // for ChemComp

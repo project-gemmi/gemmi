@@ -10,7 +10,7 @@
 #include "input.hpp"     // for copy_line_from_stream
 #include "fileutil.hpp"  // for file_open
 #include "unitcell.hpp"  // for UnitCell
-#include "util.hpp"      // for fast_from_chars
+#include "util.hpp"      // for starts_with
 
 namespace gemmi {
 
