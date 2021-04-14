@@ -60,6 +60,8 @@ const option::Descriptor Usage[] = {
     "\none must be merged and the other unmerged."
     "\nAlternatively, the two input files can be reflection mmCIF file and"
     "\nunmerged MTZ - this adds unmerged data block to the existing mmCIF file."
+    "\nXDS_ASCII.HKL file can be used instead of unmerged MTZ file (also when"
+    "\nconverting a single file), but then the spec file is ignored."
     "\nIf CIF_FILE is -, the output is printed to stdout."
     "\nIf spec is -, it is read from stdin."
     "\n"

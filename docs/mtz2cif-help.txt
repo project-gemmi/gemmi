@@ -24,6 +24,8 @@ One or two MTZ files are taken as the input. If two files are given,
 one must be merged and the other unmerged.
 Alternatively, the two input files can be reflection mmCIF file and
 unmerged MTZ - this adds unmerged data block to the existing mmCIF file.
+XDS_ASCII.HKL file can be used instead of unmerged MTZ file (also when
+converting a single file), but then the spec file is ignored.
 If CIF_FILE is -, the output is printed to stdout.
 If spec is -, it is read from stdin.
 
