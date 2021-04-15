@@ -197,6 +197,8 @@ private:
     char c = alpha_up(*p);
     if (c != 'F' && c != 'G' && c != 'E')
       fail("expected floating-point format, got: " + fmt);
+    if (min_width > 32)
+      fail("the width exceeds 32: " + fmt);
     return min_width;
   }
 
@@ -588,6 +590,14 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
     }
   }
 
+  auto write_int = [](char* p, int num) {
+    //return gf_snprintf(p, 32, "%d", num);
+    std::string s = std::to_string(num);
+    std::memcpy(p, s.data(), s.size());
+    return s.size();
+  };
+
+  char* ptr = buf;
   for (int i = 0, idx = 0; i != mtz.nreflections; ++i) {
     const float* row = &mtz.data[i * mtz.columns.size()];
     if (trim > 0) {
@@ -618,14 +628,18 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
       if (first)
         first = false;
       else
-        os << ' ';
+        *ptr++ = ' ';
+      if (ptr - buf > 220) {
+        os.write(buf, ptr - buf);
+        ptr = buf;
+      }
       if (tr.col_idx < 0) {
         switch (tr.col_idx) {
-          case Dot: os << '.'; break;
-          case Qmark: os << '?'; break;
-          case Counter: os << ++idx; break;
-          case DatasetId: os << sweep->id; break;
-          case Image: os << batch_number - sweep->offset; break;
+          case Dot: *ptr++ = '.'; break;
+          case Qmark: *ptr++ = '?'; break;
+          case Counter: ptr += write_int(ptr, ++idx); break;
+          case DatasetId: ptr += write_int(ptr, sweep->id); break;
+          case Image: ptr += write_int(ptr, batch_number - sweep->offset); break;
         }
       } else {
         float v = row[tr.col_idx];
@@ -635,25 +649,27 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
               !std::all_of(sigma_indices.begin(), sigma_indices.end(),
                            [&](int n) { return std::isnan(row[n]); }))
             status = int(v) == free_flag_value ? 'f' : 'o';
-          os << status;
+          *ptr++ = status;
         } else if (std::isnan(v)) {
+          // we checked that min_width <= 32
           for (int j = 1; j < tr.min_width; ++j)
-            os << ' ';
-          os << '?';
+            *ptr++ = ' ';
+          *ptr++ = '?';
         } else {
 #if defined(__GNUC__)
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wformat-nonliteral"
 #endif
-          WRITE(tr.format.c_str(), v);
+          ptr += gf_snprintf(ptr, 32, tr.format.c_str(), v);
 #if defined(__GNUC__)
 # pragma GCC diagnostic pop
 #endif
         }
       }
     }
-    os << '\n';
+    *ptr++ = '\n';
   }
+  os.write(buf, ptr - buf);
 }
 
 inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) {
