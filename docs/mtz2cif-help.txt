@@ -15,7 +15,9 @@ Options:
   --no-history           Do not write MTZ history in the mmCIF file.
   --wavelength=LAMBDA    Set wavelengths (default: from input file).
   --validate             For two MTZ files: validate the intensities match.
-  --no-ano               Skip anomalous columns (even if they are in the spec).
+  --less-ano             Skip anomalous columns (even if they are in the spec).
+                         Used once, skips I(+)/I(-) if <I> and F(+)/F(-) are
+                         present. Used twice, skips all anomalous colums.
   --separate             Write merged and unmerged data in separate blocks.
   --depo                 Prepare merged+unmerged mmCIF file for deposition.
   --trim=N               (for testing) output only reflections -N <= h,k,l <=N.

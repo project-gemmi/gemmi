@@ -19,7 +19,7 @@ namespace {
 
 enum OptionIndex { Spec=4, PrintSpec, BlockName, EntryId, SkipEmpty,
                    NoComments, NoHistory, Wavelength, Validate,
-                   NoAnomalous, Separate, Deposition, Trim };
+                   LessAnomalous, Separate, Deposition, Trim };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -47,8 +47,11 @@ const option::Descriptor Usage[] = {
     "  --wavelength=LAMBDA  \tSet wavelengths (default: from input file)." },
   { Validate, 0, "", "validate", Arg::None,
     "  --validate  \tFor two MTZ files: validate the intensities match." },
-  { NoAnomalous, 0, "", "no-ano", Arg::None,
-    "  --no-ano  \tSkip anomalous columns (even if they are in the spec)." },
+  { LessAnomalous, 0, "", "less-ano", Arg::None,
+    "  --less-ano  \tSkip anomalous columns (even if they are in the spec)."
+    " Used once, skips I(+)/I(-) if <I> and F(+)/F(-) are present."
+    " Used twice, skips all anomalous colums."
+  },
   { Separate, 0, "", "separate", Arg::None,
     "  --separate  \tWrite merged and unmerged data in separate blocks." },
   { Deposition, 0, "", "depo", Arg::None,
@@ -201,7 +204,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   mtz_to_cif.with_comments = !p.options[NoComments];
   mtz_to_cif.with_history = !p.options[NoHistory];
-  mtz_to_cif.no_anomalous = p.options[NoAnomalous];
+  mtz_to_cif.less_anomalous = p.options[LessAnomalous].count();
   bool validate = p.options[Validate];
   if (p.options[Deposition]) {
     mtz_to_cif.write_special_marker_for_pdb = true;
