@@ -227,6 +227,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (mtz[0]) {
       if (!mtz[0]->column_with_label("FREE") &&
           !mtz[0]->column_with_label("RFREE") &&
+          !mtz[0]->column_with_label("FREER") &&
           !mtz[0]->column_with_label("FreeR_flag"))
         fprintf(stderr, "Merged file is missing free-set flag.\n");
       if (!mtz[0]->column_with_label("I") &&

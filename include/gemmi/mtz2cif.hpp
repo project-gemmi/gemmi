@@ -60,7 +60,7 @@ struct MtzToCif {
       "& SIGF(+)                  L pdbx_F_plus_sigma",
       "? F(-)                     G pdbx_F_minus",
       "& SIGF(-)                  L pdbx_F_minus_sigma",
-      "? FREE|RFREE|FreeR_flag    I status S",
+      "? FREE|RFREE|FREER|FreeR_flag I status S",
       "? FWT|2FOFCWT              F pdbx_FWT",
       "& PHWT|PH2FOFCWT           P pdbx_PHWT",
       "? DELFWT|FOFCWT            F pdbx_DELFWT",
