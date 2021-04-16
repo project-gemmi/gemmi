@@ -151,6 +151,9 @@ inline Intensities read_unmerged_intensities_from_mtz(const Mtz& mtz) {
     refl.sigma = mtz.data[i + sigma_idx];
     intensities.add_if_valid(refl);
   }
+  // Aimless >=0.7.6 (from 2021) has an option to output unmerged file
+  // with original indices instead of reduced indices, with all ISYM = 1.
+  intensities.switch_to_asu_indices();
   return intensities;
 }
 
