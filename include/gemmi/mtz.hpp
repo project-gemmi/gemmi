@@ -268,6 +268,13 @@ struct Mtz {
         ++n;
     return n;
   }
+  int count_type(char type) const {
+    int n = 0;
+    for (const Column& col : columns)
+      if (col.type == type)
+        ++n;
+    return n;
+  }
   Column* column_with_label(const std::string& label,
                             const Dataset* ds=nullptr) {
     for (Column& col : columns)
