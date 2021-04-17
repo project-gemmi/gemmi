@@ -160,9 +160,7 @@ inline Intensities read_unmerged_intensities_from_mtz(const Mtz& mtz) {
 inline Intensities read_mean_intensities_from_mtz(const Mtz& mtz) {
   if (!mtz.batches.empty())
     fail("expected merged file");
-  const Mtz::Column* col = mtz.column_with_label("IMEAN");;
-  if (!col)
-    col = mtz.column_with_label("I");;
+  const Mtz::Column* col = mtz.column_with_one_of_labels({"IMEAN", "I"});
   if (!col)
     fail("Mean intensities (IMEAN or I) not found.");
   size_t sigma_idx = mtz.get_column_with_label("SIG" + col->label).idx;

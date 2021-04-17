@@ -12,6 +12,7 @@
 #include <cmath>     // for isnan
 #include <algorithm> // for sort, any_of
 #include <array>
+#include <initializer_list>
 #include <string>
 #include <vector>
 #include "atox.hpp"      // for simple_atoi, read_word
@@ -298,6 +299,14 @@ struct Mtz {
       if (col.type == type)
         cols.push_back(&col);
     return cols;
+  }
+
+  const Column* column_with_one_of_labels(std::initializer_list<const char*> labels) const {
+    for (const char* label : labels) {
+      if (const Column* col = column_with_label(label))
+        return col;
+    }
+    return nullptr;
   }
 
   bool has_data() const {
