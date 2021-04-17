@@ -120,7 +120,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     p.print_try_help_and_exit("");
   }
   if (p.options[Deposition] && nargs != 3) {
-    fprintf(stderr, "Option --depo works only with 2 input files.");
+    fprintf(stderr, "Option --depo works only with 2 input files.\n");
     return 1;
   }
   bool verbose = p.options[Verbose];
@@ -206,11 +206,13 @@ int GEMMI_MAIN(int argc, char **argv) {
   mtz_to_cif.with_history = !p.options[NoHistory];
   mtz_to_cif.less_anomalous = p.options[LessAnomalous].count();
   bool validate = p.options[Validate];
+  bool check_merged_columns = false;
   if (p.options[Deposition]) {
     mtz_to_cif.write_special_marker_for_pdb = true;
     mtz_to_cif.with_history = false;
     separate_blocks = true;
     validate = true;
+    check_merged_columns = true;
   }
   if (p.options[SkipEmpty]) {
     mtz_to_cif.skip_empty = true;
@@ -226,50 +228,38 @@ int GEMMI_MAIN(int argc, char **argv) {
   gemmi::CharArray cif_buf;
   if (cif_input)
     cif_buf = gemmi::read_into_buffer_gz(cif_input);
-  if (validate) {
-    if (mtz[0]) {
-      if (!mtz[0]->column_with_label("FREE") &&
-          !mtz[0]->column_with_label("RFREE") &&
-          !mtz[0]->column_with_label("FREER") &&
-          !mtz[0]->column_with_label("FreeR_flag"))
-        fprintf(stderr, "Merged file is missing free-set flag.\n");
-      if (!mtz[0]->column_with_label("I") &&
-          !mtz[0]->column_with_label("IMEAN") &&
-          !mtz[0]->column_with_label("I(+)"))
-        fprintf(stderr, "Merged file is missing intensities.\n");
-      if (!mtz[0]->column_with_label("F") &&
-          !mtz[0]->column_with_label("FP") &&
-          !mtz[0]->column_with_label("F(+)"))
-        fprintf(stderr, "Merged file is missing amplitudes.\n");
-    }
-    if (nargs == 3) {
-      bool ok = true;
-      try {
-        gemmi::Intensities mi, ui;
-        if (mtz[0]) {
-          mi = gemmi::read_mean_intensities_from_mtz(*mtz[0]);
-        } else {
-          gemmi::ReflnBlock rblock = gemmi::get_refln_block(
-              gemmi::read_cif_from_buffer(cif_buf, cif_input).blocks, {});
-          mi = gemmi::read_mean_intensities_from_mmcif(rblock);
-        }
-        if (mtz[1]) {
-          ui = read_unmerged_intensities_from_mtz(*mtz[1]);
-        } else if (xds_ascii) {
-          ui = read_unmerged_intensities_from_xds(*xds_ascii);
-        }
-        ok = gemmi::validate_merged_intensities(mi, ui, std::cerr);
-      } catch (std::runtime_error& e) {
-        fprintf(stderr, "Intensity merging not validated: %s\n", e.what());
+
+  bool ok = true;
+  if (check_merged_columns && mtz[0])
+    ok = gemmi::validate_merged_mtz_deposition_columns(*mtz[0], std::cerr);
+  if (validate && nargs == 3) {
+    try {
+      gemmi::Intensities mi, ui;
+      if (mtz[0]) {
+        mi = gemmi::read_mean_intensities_from_mtz(*mtz[0]);
+      } else {
+        gemmi::ReflnBlock rblock = gemmi::get_refln_block(
+            gemmi::read_cif_from_buffer(cif_buf, cif_input).blocks, {});
+        mi = gemmi::read_mean_intensities_from_mmcif(rblock);
+      }
+      if (mtz[1]) {
+        ui = read_unmerged_intensities_from_mtz(*mtz[1]);
+      } else if (xds_ascii) {
+        ui = read_unmerged_intensities_from_xds(*xds_ascii);
+      }
+      if (!gemmi::validate_merged_intensities(mi, ui, std::cerr))
         ok = false;
-      }
-      if (!ok) {
-        fprintf(stderr, "\nIf you think the files are correct, contact us:\n"
-                "see https://project-gemmi.github.io/depo.html\n");
-        return 4;
-      }
+    } catch (std::runtime_error& e) {
+      fprintf(stderr, "Intensity merging not validated: %s\n", e.what());
+      ok = false;
     }
   }
+  if (!ok) {
+    fprintf(stderr, "\nIf you think the files are correct, contact us:\n"
+            "see https://project-gemmi.github.io/depo.html\n");
+    return 4;
+  }
+
   if (p.options[Trim])
     mtz_to_cif.trim = std::atoi(p.options[Trim].arg);
   try {

@@ -110,6 +110,13 @@ private:
 
   std::vector<Trans> recipe;
 
+  const Trans* get_status_translation() const {
+    for (const Trans& t: recipe)
+      if (t.is_status)
+        return &t;
+    return nullptr;
+  }
+
   void gather_sweep_data(const Mtz& mtz) {
     int prev_number = INT_MIN;
     int prev_dataset = INT_MIN;
@@ -339,6 +346,29 @@ private:
   void write_main_loop(const Mtz& mtz, char* buf, std::ostream& os);
 };
 
+inline bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream& out) {
+  bool ok = true;
+  if (!mtz.column_with_one_of_labels({"FREE", "RFREE", "FREER", "FreeR_flag"})) {
+    out << "Error. Merged file is missing free-set flag.\n";
+    ok = false;
+  }
+  if (!mtz.column_with_one_of_labels({"I", "IMEAN", "I(+)"})) {
+    out << "Error. Merged file is missing intensities.\n";
+    ok = false;
+  }
+  if (!mtz.column_with_one_of_labels({"F", "FP", "F(+)"})) {
+    out << "Merged file is missing amplitudes\n"
+           "(which is fine if intensities were used for refinement)\n";
+  }
+  if (!ok) {
+    out << "Columns in the merged file:";
+    for (const Mtz::Column& col : mtz.columns)
+      out << ' ' << col.label;
+    out << '\n';
+  }
+  return ok;
+}
+
 // note: both mi and ui get modified
 inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
                                         std::ostream& out) {
@@ -427,6 +457,8 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   out << "Corr. coef. of " << corr.n << " IMEAN values: "
       << 100 * corr.coefficient() << "%\n";
   out << "Ratio of total intensities (merged : unmerged): " <<  corr.mean_ratio() << '\n';
+  if (!ok)
+    out << "Error. Files do not match each other.\n";
   return ok;
 }
 
@@ -584,9 +616,7 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
   if (free_flag_value < 0) {
     // CCP4 uses flags 0,...N-1 (usually N=20), with default free set 0
     // PHENIX uses 0/1 flags with free set 1
-    auto tr_status = std::find_if(recipe.begin(), recipe.end(),
-                                  [](const Trans& tr) { return tr.is_status; });
-    if (tr_status != recipe.end()) {
+    if (const Trans* tr_status = get_status_translation()) {
       int count = 0;
       for (float val : mtz.columns[tr_status->col_idx])
         if (val == 0.f)
