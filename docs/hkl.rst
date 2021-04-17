@@ -295,7 +295,7 @@ Each batch has a number of properties:
   >>> batch.dataset_id  # link to a dataset
   2
   >>> mdm2.dataset(2).wavelength
-  0.8726000000000002
+  0.8726
 
 Most of the batch header properties are not decoded,
 but they can be accessed directly if needed:
