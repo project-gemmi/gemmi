@@ -160,13 +160,16 @@ inline Intensities read_unmerged_intensities_from_mtz(const Mtz& mtz) {
 inline Intensities read_mean_intensities_from_mtz(const Mtz& mtz) {
   if (!mtz.batches.empty())
     fail("expected merged file");
-  const Mtz::Column& col = mtz.get_column_with_label("IMEAN");
-  size_t value_idx = col.idx;
-  size_t sigma_idx = mtz.get_column_with_label("SIGIMEAN").idx;
+  const Mtz::Column* col = mtz.column_with_label("IMEAN");;
+  if (!col)
+    col = mtz.column_with_label("I");;
+  if (!col)
+    fail("Mean intensities (IMEAN or I) not found.");
+  size_t sigma_idx = mtz.get_column_with_label("SIG" + col->label).idx;
   Intensities intensities;
   intensities.copy_metadata(mtz);
-  intensities.wavelength = mtz.dataset(col.dataset_id).wavelength;
-  intensities.read_data(MtzDataProxy{mtz}, value_idx, sigma_idx);
+  intensities.wavelength = mtz.dataset(col->dataset_id).wavelength;
+  intensities.read_data(MtzDataProxy{mtz}, col->idx, sigma_idx);
   return intensities;
 }
 
