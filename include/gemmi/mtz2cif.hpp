@@ -336,14 +336,13 @@ private:
   void write_cell_and_symmetry(const UnitCell& cell, const SpaceGroup* sg,
                                char* buf, std::ostream& os);
 
-
   void write_main_loop(const Mtz& mtz, char* buf, std::ostream& os);
 };
 
 // note: both mi and ui get modified
 inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
                                         std::ostream& out) {
-  out << "Validating if both files match...\n";
+  out << "Checking if both files match...\n";
   bool ok = true;
   if (ui.spacegroup != mi.spacegroup) {
     out << "Different space groups in merged and unmerged files:\n"
@@ -373,7 +372,7 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
 
   auto r1 = ui.data.begin();
   auto r2 = mi.data.begin();
-  double max_rel_diff = 0.;
+  double max_diff_to_sigma = 0.;
   const Intensities::Refl* max_diff_r1 = nullptr;
   const Intensities::Refl* max_diff_r2 = nullptr;
   int differ_count = 0;
@@ -382,21 +381,22 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
     if (r1->hkl == r2->hkl) {
       corr.add_point(r1->value, r2->value);
       double value_max = std::max(std::fabs(r1->value), std::fabs(r2->value));
-      double rel_diff = std::fabs(r1->value - r2->value) / value_max;
+      double sigma_max = std::max(r1->sigma, r2->sigma);
+      double abs_diff = std::fabs(r1->value - r2->value);
+      double diff_to_sigma = abs_diff / sigma_max;
       // XDS files have 4 significant digits. Using accuracy 5x the precision.
       // Just in case, we ignore near-zero values.
-      if (value_max > 1e-3 && rel_diff > 0.005) {
+      if (value_max > 1e-3 && abs_diff > 0.005 * value_max) {
         if (differ_count == 0) {
           out << "First difference: (" << r1->hkl[0] << ' ' << r1->hkl[1] << ' '
               << r1->hkl[2] << ") " << r1->value << " vs " << r2->value << '\n';
         }
         ++differ_count;
-        if (rel_diff > max_rel_diff) {
-          max_rel_diff = rel_diff;
+        if (diff_to_sigma > max_diff_to_sigma) {
+          max_diff_to_sigma = diff_to_sigma;
           max_diff_r1 = &*r1;
           max_diff_r2 = &*r2;
         }
-        max_rel_diff = std::max(rel_diff, max_rel_diff);
       }
       ++r1;
       ++r2;
@@ -411,6 +411,14 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
       ++r2;
     }
   }
+  if (differ_count != 0) {
+    const Miller& hkl = max_diff_r1->hkl;
+    out << "Most significant difference: ("
+        << hkl[0] << ' ' << hkl[1] << ' ' << hkl[2] << ") "
+        << max_diff_r1->value << " vs " << max_diff_r2->value << '\n';
+    out << differ_count << " of " << corr.n << " intensities differ too much (by >0.5%).\n";
+    ok = false;
+  }
   if (missing_count != 0) {
     out << missing_count << " out of " << mi.data.size()
         << " reflections in the merged file not found in unmerged data\n";
@@ -419,13 +427,6 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   out << "Corr. coef. of " << corr.n << " IMEAN values: "
       << 100 * corr.coefficient() << "%\n";
   out << "Ratio of total intensities (merged : unmerged): " <<  corr.mean_ratio() << '\n';
-  if (differ_count != 0) {
-    const Miller& hkl = max_diff_r1->hkl;
-    out << "Max. difference: (" << hkl[0] << ' ' << hkl[1] << ' ' << hkl[2] << ") "
-        << max_diff_r1->value << " vs " << max_diff_r2->value << '\n';
-    out << differ_count << " of " << corr.n << " intensities differ too much (by >0.5%).\n";
-    ok = false;
-  }
   return ok;
 }
 
