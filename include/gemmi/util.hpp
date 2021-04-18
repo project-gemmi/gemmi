@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// Utilities.
+// Utilities. Mostly for working with strings and vectors.
 
 #ifndef GEMMI_UTIL_HPP_
 #define GEMMI_UTIL_HPP_

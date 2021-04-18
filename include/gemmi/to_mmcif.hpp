@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// Structure -> cif::Document -> mmcif (PDBx/mmCIF) file
+// Create cif::Document (for PDBx/mmCIF file) from Structure.
 
 #ifndef GEMMI_TO_MMCIF_HPP_
 #define GEMMI_TO_MMCIF_HPP_

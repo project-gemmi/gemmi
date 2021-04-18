@@ -1,3 +1,5 @@
+// Simple pairwise sequence alignment.
+//
 // Code in this file is based on and derived from files ksw2_gg.c and ksw2.h
 // from https://github.com/lh3/ksw2, which is under the MIT license.
 // The original code, written by Heng Li, has more features and has more

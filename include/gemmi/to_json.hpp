@@ -1,5 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
+// Writing cif::Document or its parts as JSON (mmJSON, CIF-JSON, etc).
+
 #ifndef GEMMI_TO_JSON_HPP_
 #define GEMMI_TO_JSON_HPP_
 #include <cctype>    // for isdigit

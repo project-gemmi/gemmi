@@ -1,7 +1,7 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// Chemical component represents a monomer from the Refmac monomer library,
-// or from PDB CCD.
+// ChemComp - chemical component that represents a monomer from Refmac
+// monomer library, or from PDB CCD.
 
 #ifndef GEMMI_CHEMCOMP_HPP_
 #define GEMMI_CHEMCOMP_HPP_

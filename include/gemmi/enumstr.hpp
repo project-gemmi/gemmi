@@ -1,7 +1,7 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// To and from strings PDBx/mmCIF:
-// EntityType, PolymerType, Connection::Type , SoftwareItem::Classification
+// Converts between enums (EntityType, PolymerType, Connection::Type,
+// SoftwareItem::Classification) and mmCIF strings.
 
 #ifndef GEMMI_ENUMSTR_HPP_
 #define GEMMI_ENUMSTR_HPP_

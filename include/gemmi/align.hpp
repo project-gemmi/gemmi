@@ -1,6 +1,6 @@
 // Copyright 2020 Global Phasing Ltd.
 //
-// Sequence alignment, label_seq_id assignemnt, structure superposition.
+// Sequence alignment, label_seq_id assignment, structure superposition.
 
 #ifndef GEMMI_ALIGN_HPP_
 #define GEMMI_ALIGN_HPP_

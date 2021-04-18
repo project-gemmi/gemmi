@@ -2,6 +2,7 @@
 //
 // Functions for reading possibly gzipped CCP4 map files.
 // Trivial wrappers that can make compilation faster.
+//
 // The definitions are guarded by #ifdef *_IMPLEMENTATION.
 // If you use this header in your program, you need in exactly one file:
 // #define GEMMI_READ_MAP_IMPLEMENTATION

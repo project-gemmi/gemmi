@@ -1,8 +1,8 @@
 // Copyright 2020 Global Phasing Ltd.
 //
-// A function that generates biological assemblies by applying operations
+// Generating biological assemblies by applying operations
 // from struct Assembly to a Model.
-// And chain (re)naming utilities.
+// Includes chain (re)naming utilities.
 
 #ifndef GEMMI_ASSEMBLY_HPP_
 #define GEMMI_ASSEMBLY_HPP_

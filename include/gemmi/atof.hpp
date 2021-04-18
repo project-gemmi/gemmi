@@ -1,7 +1,7 @@
 // Copyright 2020 Global Phasing Ltd.
 //
 // Functions that convert string to floating-point number ignoring locale.
-// Wrappers around https://github.com/fastfloat/fast_float/
+// Simple wrappers around fastfloat::from_chars().
 
 #ifndef GEMMI_ATOF_HPP_
 #define GEMMI_ATOF_HPP_

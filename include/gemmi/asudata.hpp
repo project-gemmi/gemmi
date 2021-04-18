@@ -1,6 +1,6 @@
 // Copyright 2020 Global Phasing Ltd.
 //
-// AsuData for storing reflection data
+// AsuData for storing reflection data.
 
 #ifndef GEMMI_ASUDATA_HPP_
 #define GEMMI_ASUDATA_HPP_

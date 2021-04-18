@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// to_str(float|double), handling -D USE_STD_SNPRINTF
+// to_str(float|double), gf_snprintf - wrappers around stb_sprintf.
 
 #ifndef GEMMI_SPRINTF_HPP_
 #define GEMMI_SPRINTF_HPP_

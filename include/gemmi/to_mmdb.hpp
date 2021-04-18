@@ -1,3 +1,4 @@
+// Copyright 2020 Global Phasing Ltd.
 //
 // copy_to_mmdb(): converts gemmi::Structure to mmdb::Manager.
 

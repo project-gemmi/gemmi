@@ -1,3 +1,5 @@
+// Conversion between UTF-8 and wchar. Used only for file names on Windows.
+
 #ifndef GEMMI_UTF_HPP_
 #define GEMMI_UTF_HPP_
 

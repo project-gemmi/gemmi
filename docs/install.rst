@@ -165,3 +165,11 @@ Not distributed with Gemmi:
   in scripts that generated space group data. License: 3-clause BSD.
 
 Email me if I forgot about something.
+
+List of C++ headers
+-------------------
+
+Here is a list of C++ headers in ``gemmi/include/``.
+This list also gives an overview of the library.
+
+.. include:: headers.rst

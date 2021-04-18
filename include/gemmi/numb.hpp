@@ -1,9 +1,10 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// Utilities for parsing numbers: integer, real and so-called numb.
-// Numb is the numeric type in CIF. It's a number with optional
+// Utilities for parsing CIF numbers (the CIF spec calls it 'numb').
+//
+// Numb - the numeric type in CIF - is a number with optional
 // standard uncertainty (s.u.) in brackets: 1.23(8).
-// mmcif file do not use s.u. though - they define own numeric categories.
+// Mmcif file do not use s.u. though - they define own numeric categories.
 
 #ifndef GEMMI_NUMB_HPP_
 #define GEMMI_NUMB_HPP_

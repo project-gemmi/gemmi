@@ -1,6 +1,6 @@
 // Copyright 2019 Global Phasing Ltd.
 //
-// gemmi::tostr() - uses ostringstream to convert to string and concatenate
+// gemmi::tostr() - converts a list of arguments to string (uses ostringstream).
 
 #ifndef GEMMI_TOSTR_HPP_
 #define GEMMI_TOSTR_HPP_

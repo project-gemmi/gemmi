@@ -1,6 +1,6 @@
 // Copyright 2020 Global Phasing Ltd.
 //
-// ReciprocalGrid -- grid for reciprocal space data
+// ReciprocalGrid -- grid for reciprocal space data.
 
 #ifndef GEMMI_RECGRID_HPP_
 #define GEMMI_RECGRID_HPP_

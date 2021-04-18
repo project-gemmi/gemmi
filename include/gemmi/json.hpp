@@ -1,7 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
 // Reading CIF-JSON (COMCIFS) and mmJSON (PDBj) formats into cif::Document.
-// Not finished yet!
 
 #ifndef GEMMI_JSON_HPP_
 #define GEMMI_JSON_HPP_

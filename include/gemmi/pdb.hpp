@@ -1,6 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// Read PDB format into a Structure from model.hpp.
+// Read PDB file format and store it in Structure.
+//
 // Based on the format spec:
 // https://www.wwpdb.org/documentation/file-format-content/format33/v3.3.html
 // + support for two-character chain IDs (columns 21 and 22)

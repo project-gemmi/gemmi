@@ -1,6 +1,6 @@
 // Copyright 2020 Global Phasing Ltd.
 //
-// interoperability between Model (MX) and SmallStructure (SX)
+// Interoperability between Model (MX) and SmallStructure (SX).
 
 #ifndef GEMMI_INTEROP_HPP_
 #define GEMMI_INTEROP_HPP_

@@ -1,6 +1,7 @@
 // Copyright 2019 Global Phasing Ltd.
 //
 // Direct calculation of structure factors.
+//
 // It does not use optimizations described in the literature,
 // cf. Bourhis et al (2014) https://doi.org/10.1107/S2053273314022207,
 // because direct calculations are not used in MX if performance is important.

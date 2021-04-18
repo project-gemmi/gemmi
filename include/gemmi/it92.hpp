@@ -2,6 +2,7 @@
 
 // X-ray scattering factor coefficients from International Tables
 // for Crystallography Volume C, edition from 1992 or later.
+//
 // The same data is in CCP4 (file atomsf.lib) and in cctbx (table="it1992").
 // But here we have only one entry per element. The original table also
 // lists ions, for example Fe2+ and Fe3+ in addition to Fe.

@@ -1,6 +1,7 @@
 // Copyright 2020 Global Phasing Ltd.
 //
 // Least-squares fitting - Levenberg-Marquardt method.
+//
 // Based on the code from fityk (but here it's under MPL 2.0).
 
 #ifndef GEMMI_LEVMAR_HPP_

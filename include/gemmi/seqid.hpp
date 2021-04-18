@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// SeqId -- residue number and insertion code together
+// SeqId -- residue number and insertion code together.
 
 #ifndef GEMMI_SEQID_HPP_
 #define GEMMI_SEQID_HPP_

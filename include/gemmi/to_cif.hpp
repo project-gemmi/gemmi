@@ -1,5 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
+// Writing cif::Document or its parts to std::ostream.
+
 #ifndef GEMMI_TO_CIF_HPP_
 #define GEMMI_TO_CIF_HPP_
 

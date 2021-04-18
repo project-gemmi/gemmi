@@ -3,6 +3,7 @@
 // Classes for iterating files in a directory tree, top-down,
 // in an alphabetical order.  It wraps the tinydir library (as we cannot
 // depend on C++17 <filesystem> yet).
+
 // DirWalk<> iterates through all files and directories.
 // CifWalk yields only cif files (either files that end with .cif or .cif.gz,
 // or files that look like SF mmCIF files from wwPDB, e.g. r3aaasf.ent.gz).
@@ -10,7 +11,6 @@
 // PdbWalk: .pdb or .ent (optionally with .gz) except r????sf.ent
 // CoorFileWalk: .cif, .pdb or .ent (optionally with .gz)
 //               except r????sf.ent and *-sf.cif
-//
 //
 // Usage:
 //   for (const std::string& file : gemmi::DirWalk<>(top_dir))

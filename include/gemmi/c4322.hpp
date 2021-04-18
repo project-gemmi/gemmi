@@ -1,9 +1,10 @@
 // Copyright 2020 Global Phasing Ltd.
 
-// Electron scattering factor coefficients from International Tables
-// for Crystallography Volume C, edition 2011, table 4.3.2.2 (pp. 282-283):
-// "Elastic atomic scattering factors of electrons for neutral atoms
-// and s up to 2.0 A^-1".
+// Electron scattering factor coefficients from the International Tables.
+//
+// Based on International Tables for Crystallography Volume C, edition 2011,
+// table 4.3.2.2 (pp. 282-283): "Elastic atomic scattering factors of electrons
+// for neutral atoms and s up to 2.0 A^-1".
 // The same data is included in cctbx and in CCP4 (file atomsf_electron.lib).
 
 #ifndef GEMMI_C4322_HPP_

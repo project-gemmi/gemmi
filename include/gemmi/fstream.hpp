@@ -1,10 +1,10 @@
 // Copyright 2019 Global Phasing Ltd.
 //
-// Ofstream - wrapper around std::ofstream with two extra features:
-//  - on MSVC supports Unicode filenames (the filename is passed in UTF-8)
-//  - Ofstream("-", ...) returns wrapper around the stream in the 2nd arg
-//    (which is used to interpret "-" as stdout or stderr).
-// Istream - similar wrapper around std::ifstream.
+// Ofstream and Ifstream: wrappers around std::ofstream and std::ifstream.
+//
+// They offer two extra features:
+//  - on MSVC supports Unicode filenames (the filename is passed in UTF-8),
+//  - optionally, filename "-" can be interpretet as stdout or stderr.
 
 #ifndef GEMMI_OFSTREAM_HPP_
 #define GEMMI_OFSTREAM_HPP_

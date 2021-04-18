@@ -2,6 +2,7 @@
 //
 // Functions for reading possibly gzipped CIF files.
 // Trivial wrappers that can make compilation faster.
+//
 // The definitions are guarded by #ifdef *_IMPLEMENTATION.
 // If you use this header in your program, you need in exactly one file:
 // #define GEMMI_READ_CIF_IMPLEMENTATION

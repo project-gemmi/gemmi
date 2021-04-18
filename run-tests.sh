@@ -12,6 +12,7 @@ PYTHON=`grep PYTHON_EXECUTABLE:FILEPATH= $BUILD_DIR/CMakeCache.txt | cut -d= -f2
 export PYTHONPATH=$BUILD_DIR
 export PATH="$BUILD_DIR:$PATH"
 $PYTHON -m unittest discover -s tests
+./tools/header-list.py >docs/headers.rst
 # Where python 2 and 3 output differ, the docs have output from v3.
 # So 'make doctest' works only if sphinx-build was installed for python3.
 (cd docs && make doctest SPHINXOPTS="-q -n -E")
