@@ -349,11 +349,11 @@ private:
 inline bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream& out) {
   bool ok = true;
   if (!mtz.column_with_one_of_labels({"FREE", "RFREE", "FREER", "FreeR_flag"})) {
-    out << "Error. Merged file is missing free-set flag.\n";
+    out << "ERROR. Merged file is missing free-set flag.\n";
     ok = false;
   }
   if (!mtz.column_with_one_of_labels({"I", "IMEAN", "I(+)"})) {
-    out << "Error. Merged file is missing intensities.\n";
+    out << "ERROR. Merged file is missing intensities.\n";
     ok = false;
   }
   if (!mtz.column_with_one_of_labels({"F", "FP", "F(+)"})) {
@@ -398,28 +398,52 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   mi.remove_systematic_absences();
   out << "Merged reflections: " << mi_size1
       << " (" << mi.data.size() << " w/o sysabs)\n";
-  gemmi::Correlation corr;
 
+  // first pass - calculate CC and scale
+  gemmi::Correlation corr;
   auto r1 = ui.data.begin();
   auto r2 = mi.data.begin();
+  while (r1 != ui.data.end() && r2 != mi.data.end()) {
+    if (r1->hkl == r2->hkl) {
+      corr.add_point(r1->value, r2->value);
+      ++r1;
+      ++r2;
+    } else if (std::tie(r1->hkl[0], r1->hkl[1], r1->hkl[2]) <
+               std::tie(r2->hkl[0], r2->hkl[1], r2->hkl[2])) {
+      ++r1;
+    } else {
+      ++r2;
+    }
+  }
+  out << "Corr. coef. of " << corr.n << " IMEAN values: "
+      << 100 * corr.coefficient() << "%\n";
+  double scale = corr.mean_ratio();
+  out << "Ratio of total intensities (merged : unmerged): " << scale << '\n';
+
+  // second pass - check that all reflections match
   double max_diff_to_sigma = 0.;
   const Intensities::Refl* max_diff_r1 = nullptr;
   const Intensities::Refl* max_diff_r2 = nullptr;
   int differ_count = 0;
   int missing_count = 0;
+  r1 = ui.data.begin();
+  r2 = mi.data.begin();
+  if (std::fabs(scale - 1.) > 1e-4)
+    out << "Assuming that the unmerged data is to be scaled by " << scale << ".\n";
   while (r1 != ui.data.end() && r2 != mi.data.end()) {
     if (r1->hkl == r2->hkl) {
-      corr.add_point(r1->value, r2->value);
-      double value_max = std::max(std::fabs(r1->value), std::fabs(r2->value));
-      double sigma_max = std::max(r1->sigma, r2->sigma);
-      double abs_diff = std::fabs(r1->value - r2->value);
+      double value1 = scale * r1->value;
+      double sigma1 = scale * r1->sigma; // is this approximately correct
+      double value_max = std::max(std::fabs(value1), std::fabs(r2->value));
+      double sigma_max = std::max(sigma1, r2->sigma);
+      double abs_diff = std::fabs(value1 - r2->value);
       double diff_to_sigma = abs_diff / sigma_max;
       // XDS files have 4 significant digits. Using accuracy 5x the precision.
       // Just in case, we ignore near-zero values.
       if (value_max > 1e-3 && abs_diff > 0.005 * value_max) {
         if (differ_count == 0) {
           out << "First difference: (" << r1->hkl[0] << ' ' << r1->hkl[1] << ' '
-              << r1->hkl[2] << ") " << r1->value << " vs " << r2->value << '\n';
+              << r1->hkl[2] << ") " << value1 << " vs " << r2->value << '\n';
         }
         ++differ_count;
         if (diff_to_sigma > max_diff_to_sigma) {
@@ -441,11 +465,12 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
       ++r2;
     }
   }
+
   if (differ_count != 0) {
     const Miller& hkl = max_diff_r1->hkl;
     out << "Most significant difference: ("
         << hkl[0] << ' ' << hkl[1] << ' ' << hkl[2] << ") "
-        << max_diff_r1->value << " vs " << max_diff_r2->value << '\n';
+        << scale * max_diff_r1->value << " vs " << max_diff_r2->value << '\n';
     out << differ_count << " of " << corr.n << " intensities differ too much (by >0.5%).\n";
     ok = false;
   }
@@ -454,11 +479,12 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
         << " reflections in the merged file not found in unmerged data\n";
     ok = false;
   }
-  out << "Corr. coef. of " << corr.n << " IMEAN values: "
-      << 100 * corr.coefficient() << "%\n";
-  out << "Ratio of total intensities (merged : unmerged): " <<  corr.mean_ratio() << '\n';
-  if (!ok)
-    out << "Error. Files do not match each other.\n";
+  if (differ_count != 0 || missing_count != 0)
+    out << "ERROR. Intensities do not match.\n";
+  else if (!ok)
+    out << "Intensities match, but other problems were found (see above).\n";
+  else
+    out << "The two files match each other.\n";
   return ok;
 }
 
