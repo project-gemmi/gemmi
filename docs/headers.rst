@@ -87,7 +87,7 @@ gemmi/fprime.hpp
     Single header. No dependencies.
 
 gemmi/fstream.hpp
-    Ofstream and Ifstream: wrappers around std::ofstream and std::ifstream
+    Ofstream and Ifstream: wrappers around std::ofstream and std::ifstream.
 
 gemmi/grid.hpp
     3d grids used by CCP4 maps, cell-method search and hkl data.
