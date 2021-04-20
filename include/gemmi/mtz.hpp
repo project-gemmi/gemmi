@@ -237,6 +237,22 @@ struct Mtz {
       ds.cell = cell;
   }
 
+  UnitCell get_average_cell_from_batch_headers() const {
+    double a_sum = 0, b_sum = 0, c_sum = 0;
+    double alpha_sum = 0, beta_sum = 0, gamma_sum = 0;
+    for (const Batch& batch : batches) {
+      a_sum += batch.floats[0];
+      b_sum += batch.floats[1];
+      c_sum += batch.floats[2];
+      alpha_sum += batch.floats[3];
+      beta_sum += batch.floats[4];
+      gamma_sum += batch.floats[5];
+    }
+    size_t n = batches.size();
+    return UnitCell(a_sum / n, b_sum / n, c_sum / n,
+                    alpha_sum / n, beta_sum / n, gamma_sum / n);
+  }
+
   Dataset& last_dataset() {
     if (datasets.empty())
       fail("MTZ dataset not found (missing DATASET header line?).");
