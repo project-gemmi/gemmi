@@ -371,18 +371,37 @@ inline bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream&
 
 // note: both mi and ui get modified
 inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
+                                        const UnitCell* avg_unmerged_cell,
                                         std::ostream& out) {
   out << "Checking if both files match...\n";
   bool ok = true;
-  if (ui.spacegroup != mi.spacegroup) {
-    out << "Different space groups in merged and unmerged files:\n"
-        << ui.spacegroup_str() << " and " << mi.spacegroup_str() << '\n';
+  if (ui.spacegroup == mi.spacegroup) {
+    out << "The same space group: " << mi.spacegroup_str() << '\n';
+  } else {
+    out << "ERROR. Different space groups in merged and unmerged files:\n"
+        << mi.spacegroup_str() << " and " << ui.spacegroup_str() << '\n';
     out << "(in the future, this app may recognize compatible space groups\n"
            "and reindex unmerged data if needed; for now, it's on you)\n";
     ok = false;
   }
-  if (!ui.unit_cell.approx(mi.unit_cell, 0.01)) {
-    out << "Different unit cell parameters in merged and unmerged files.\n";
+  if (ui.unit_cell.approx(mi.unit_cell, 0.01)) {
+    out << "The same unit cell parameters.\n";
+  } else if (avg_unmerged_cell && avg_unmerged_cell->approx(mi.unit_cell, 0.01)) {
+    out << "Unit cell parameters match (merged vs avarage from BATCH headers).\n";
+  } else {
+    const UnitCell& mc = mi.unit_cell;
+    const UnitCell& uc = ui.unit_cell;
+    out << "Unit cell parameters differ:";
+    out << "\n    merged: " << mc.a << ' ' << mc.b << ' ' << mc.c << "  "
+                            << mc.alpha << ' ' << mc.beta << ' ' << mc.gamma;
+    out << "\n  unmerged: " << uc.a << ' ' << uc.b << ' ' << uc.c << "  "
+                            << uc.alpha << ' ' << uc.beta << ' ' << uc.gamma;
+    if (avg_unmerged_cell) {
+      const UnitCell* ua = avg_unmerged_cell;
+      out << "\n avg batch: " << ua->a << ' ' << ua->b << ' ' << ua->c << "  "
+                              << ua->alpha << ' ' << ua->beta << ' ' << ua->gamma;
+    }
+    out << '\n';
     ok = false;
   }
 
@@ -415,7 +434,7 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
       ++r2;
     }
   }
-  out << "Corr. coef. of " << corr.n << " IMEAN values: "
+  out << "Corr. coef. of " << corr.n << " <I> values: "
       << 100 * corr.coefficient() << "%\n";
   double scale = corr.mean_ratio();
   out << "Ratio of total intensities (merged : unmerged): " << scale << '\n';
@@ -479,12 +498,14 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
         << " reflections in the merged file not found in unmerged data\n";
     ok = false;
   }
-  if (differ_count != 0 || missing_count != 0)
+  if (differ_count == 0 && missing_count == 0) {
+    out << "Intensities match.";
+    if (!ok)
+      out << " But other problems were found (see above).";
+    out << '\n';
+  } else {
     out << "ERROR. Intensities do not match.\n";
-  else if (!ok)
-    out << "Intensities match, but other problems were found (see above).\n";
-  else
-    out << "The two files match each other.\n";
+  }
   return ok;
 }
 

@@ -210,6 +210,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (p.options[Deposition]) {
     mtz_to_cif.write_special_marker_for_pdb = true;
     mtz_to_cif.with_history = false;
+    mtz_to_cif.less_anomalous = std::max(mtz_to_cif.less_anomalous, 1);
     separate_blocks = true;
     validate = true;
     check_merged_columns = true;
@@ -242,12 +243,15 @@ int GEMMI_MAIN(int argc, char **argv) {
             gemmi::read_cif_from_buffer(cif_buf, cif_input).blocks, {});
         mi = gemmi::read_mean_intensities_from_mmcif(rblock);
       }
+      std::unique_ptr<gemmi::UnitCell> avg_unmerged_cell;
       if (mtz[1]) {
+        avg_unmerged_cell.reset(new gemmi::UnitCell(
+              mtz[1]->get_average_cell_from_batch_headers()));
         ui = read_unmerged_intensities_from_mtz(*mtz[1]);
       } else if (xds_ascii) {
         ui = read_unmerged_intensities_from_xds(*xds_ascii);
       }
-      if (!gemmi::validate_merged_intensities(mi, ui, std::cerr))
+      if (!gemmi::validate_merged_intensities(mi, ui, avg_unmerged_cell.get(), std::cerr))
         ok = false;
     } catch (std::runtime_error& e) {
       fprintf(stderr, "Intensity merging not validated: %s\n", e.what());
