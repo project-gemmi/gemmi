@@ -66,7 +66,7 @@ void dump(const Mtz& mtz) {
   printf("Number of Reflections = %d\n", mtz.nreflections);
   printf("Number of Batches = %zu\n", mtz.batches.size());
   printf("Missing values marked as: %g\n", mtz.valm);
-  printf("Global Cell (obsolete):  %7.3f %7.3f %7.3f  %g %g %g\n",
+  printf("Global Cell (obsolete):  %g %7g %7g  %6g %6g %6g\n",
          mtz.cell.a, mtz.cell.b, mtz.cell.c,
          mtz.cell.alpha, mtz.cell.beta, mtz.cell.gamma);
   printf("Resolution: %.2f - %.2f A\n",
