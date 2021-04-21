@@ -42,6 +42,7 @@ void add_dencalc(py::module& m, const char* name) {
     .def("put_model_density_on_grid", &DenCalc::put_model_density_on_grid)
     .def("initialize_grid", &DenCalc::initialize_grid)
     .def("add_model_density_to_grid", &DenCalc::add_model_density_to_grid)
+    .def("add_atom_density_to_grid", &DenCalc::add_atom_density_to_grid)
     .def("add_c_contribution_to_grid", &DenCalc::add_c_contribution_to_grid)
     .def("set_grid_cell_and_spacegroup", &DenCalc::set_grid_cell_and_spacegroup)
     .def("reciprocal_space_multiplier", &DenCalc::reciprocal_space_multiplier)
