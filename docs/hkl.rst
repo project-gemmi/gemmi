@@ -1536,6 +1536,7 @@ Addends can also be employed to calculate the electron scattering
 from X-ray form factors, according to the Mott–Bethe formula:
 
 .. doctest::
+  :skipif: sys.platform == 'win32'
 
   >>> calc_x.addends.clear()
   >>> calc_x.addends.subtract_z()
@@ -1670,7 +1671,6 @@ To calculate *f*\ :sub:`e` according to the Mott-Bethe formula
 we first employ addends to calculate *f*\ :sub:`x`\ --\ *Z*:
 
 .. doctest::
-  :skipif: numpy is None
 
   >>> dc = gemmi.DensityCalculatorX()
   >>> dc.d_min = 2.5
