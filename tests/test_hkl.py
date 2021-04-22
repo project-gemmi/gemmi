@@ -157,7 +157,8 @@ class TestSfMmcif(unittest.TestCase):
         doc = gemmi.cif.read(full_path('r5wkdsf.ent'))
         rblock = gemmi.as_refln_blocks(doc)[0]
         fobs_data = rblock.get_value_sigma('F_meas_au', 'F_meas_sigma_au')
-        self.assertEqual(fobs_data.value_array.shape, (367,))
+        if numpy:
+            self.assertEqual(fobs_data.value_array.shape, (367,))
 
         # without mask
         fc_data = rblock.get_f_phi('F_calc_au', 'phase_calc')

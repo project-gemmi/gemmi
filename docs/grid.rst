@@ -58,13 +58,15 @@ a use for it.)
 The constructor may take grid dimensions or a NumPy array as an argument:
 
 .. doctest::
-  :skipif: numpy is None
 
   >>> import gemmi
-  >>>
   >>> grid = gemmi.FloatGrid(12, 12, 12)
   >>> grid.nu, grid.nv, grid.nw
   (12, 12, 12)
+
+.. doctest::
+  :skipif: numpy is None
+
   >>> grid2 = gemmi.FloatGrid(numpy.zeros((30, 31, 32), dtype=numpy.float32))
   >>> grid2.nu, grid2.nv, grid2.nw
   (30, 31, 32)

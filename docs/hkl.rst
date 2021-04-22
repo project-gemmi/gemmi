@@ -343,6 +343,7 @@ a view of the data compatible with NumPy. It does not copy the data,
 so the data is not contiguous (because it's stored row-wise in MTZ):
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> intensity.array.strides
   (32,)
@@ -394,6 +395,7 @@ to integer type:
 Another way to get Miller indices as a N×3 array of integers is:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> hkl = mtz.make_miller_array()
 
@@ -406,6 +408,7 @@ To get all unique reflections up to the same resolution
 as the example MTZ file we can do:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> dmin = mtz.resolution_high() - 1e-6  # the 1e-6 margin is for numerical errors
   >>> gemmi.make_miller_array(mtz.cell, mtz.spacegroup, dmin)  # doctest: +ELLIPSIS
@@ -425,6 +428,7 @@ Note: if you'd like to only count the reflections, use function
 ``count_reflections`` that takes the same parameters:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> gemmi.count_reflections(mtz.cell, mtz.spacegroup, dmin)
   441
@@ -437,7 +441,7 @@ Back to NumPy arrays. The N×3 array of Miller indices can be
 used with a number of vectorized functions:
 
 .. doctest::
-  :skipif: sys.platform == 'win32'
+  :skipif: sys.platform == 'win32' or numpy is None
 
   >>> gops = mtz.spacegroup.operations()
   >>> gops.centric_flag_array(hkl)           # vectorized is_reflection_centric()
@@ -579,6 +583,7 @@ Only assignment works: ``mtz.history = ...`` or ``mtz.history += ...``.
 To update properties ``min_1_d2`` and ``max_1_d2`` call ``update_reso()``:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> mtz.update_reso()
   >>> mtz.min_1_d2, mtz.max_1_d2
@@ -748,6 +753,7 @@ We also have convenience functions that returns arrays of 1/*d*:sup:`2`
 or just *d* values:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> rblock.make_1_d2_array().round(4)
   array([0.2681, 0.2677, 0.2768, ..., 0.301 , 0.2782, 0.2978])
@@ -829,6 +835,7 @@ the ReflnBlock class:
 The methods of ReflnBlock are the same as in the previous section.
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> print(_.make_d_array(), _.make_float_array('F_squared_meas'), sep='\n')
   [1.7710345  1.03448487 0.71839568 ... 0.67356073 0.69445847 0.56034145]
@@ -1014,6 +1021,7 @@ We can also go back from AsuData to ReciprocalComplexGrid:
 and we can use other method common for Mtz and ReflnBlock:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> asu_data.get_size_for_hkl()
   [54, 6, 18]
@@ -1032,6 +1040,7 @@ The data can be edited as two NumPy arrays and then copied into new AsuData
 object. In this example we exclude low-resolution data:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> d = asu_data.make_d_array()
   >>> new_data = gemmi.ComplexAsuData(asu_data.unit_cell,
@@ -1047,6 +1056,7 @@ object. In this example we exclude low-resolution data:
 The last two calls could be replaced with:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> new_data.transform_f_phi_to_map(exact_size=[54, 6, 18])
   <gemmi.FloatGrid(54, 6, 18)>
@@ -1171,6 +1181,7 @@ we can use ``gemmi.transform_f_phi_grid_to_map()``
 and we expect to get the same result (wrapped in a :ref:`Grid <grid>` class):
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> gemmi.transform_f_phi_grid_to_map(half)
   <gemmi.FloatGrid(72, 8, 24)>
@@ -1694,6 +1705,7 @@ We either multiply individual values by ``mott_bethe_factor()``
 or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> asu_data = grid.prepare_asu_data(dmin=2.5, mott_bethe=True, unblur=dencalc.blur)
   >>> asu_data.value_array[numpy.all(asu_data.miller_array == [3,4,5], axis=1)]
