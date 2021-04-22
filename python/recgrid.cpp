@@ -169,6 +169,7 @@ void add_recgrid(py::module& m, const std::string& name) {
 
 void add_recgrid(py::module& m) {
   using VS = ValueSigma<float>;
+  PYBIND11_NUMPY_DTYPE(VS, value, sigma);
   py::class_<VS>(m, "ValueSigma")
     .def_readwrite("value", &VS::value)
     .def_readwrite("sigma", &VS::sigma)
