@@ -44,7 +44,7 @@ struct MemoryStream {
     cur += len;
     return line;
   }
-  int getc() { return cur < end ? *++cur : EOF; }
+  int getc() { return cur < end ? *cur++ : EOF; }
 
   bool read(void* buf, size_t len) {
     if (cur + len > end)
