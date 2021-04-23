@@ -38,7 +38,6 @@ inline void add_hydrogens_without_positions(const ChemComp& cc, Residue& res) {
           // calc_flag will be changed to Calculated when the position is set
           atom.calc_flag = CalcFlag::Dummy;
           res.atoms.push_back(atom);
-          break;
         }
   }
 }
