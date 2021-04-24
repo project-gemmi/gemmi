@@ -329,7 +329,7 @@ private:
 
   void write_special_marker_if_requested(std::ostream& os) const {
     if (write_special_marker_for_pdb)
-      os << "### If you modify this file, remove the following items: ###\n"
+      os << "### IF YOU MODIFY THIS FILE, REMOVE THIS SIGNATURE: ###\n"
             "_software.pdbx_ordinal 1\n"
             "_software.classification 'data extraction'\n"
             "_software.name gemmi\n"
@@ -337,7 +337,8 @@ private:
             "_pdbx_audit_conform.dict_name mmcif_pdbx.dic\n"
             "_pdbx_audit_conform.dict_version 5.339\n"
             "_pdbx_audit_conform.dict_location "
-            "https://mmcif.wwpdb.org/dictionaries/ascii/mmcif_pdbx_v50.dic\n\n";
+            "https://mmcif.wwpdb.org/dictionaries/ascii/mmcif_pdbx_v50.dic\n"
+            "### END OF SIGNATURE ###\n\n";
   }
 
   void write_cell_and_symmetry(const UnitCell& cell, double* rmsds,
