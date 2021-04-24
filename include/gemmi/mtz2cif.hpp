@@ -777,14 +777,8 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
   os << "loop_\n"
         "_diffrn_measurement.diffrn_id\n"
         "_diffrn_measurement.details\n";
-  for (const XdsAscii::Iset& iset : xds.isets) {
-    double max_zd = 0.;
-    for (const XdsAscii::Refl& refl : xds.data)
-      if (refl.iset == iset.id)
-        max_zd = std::max(max_zd, refl.zd);
-    int frame_count = (int)std::ceil(max_zd) - xds.starting_frame + 1;
-    os << iset.id << " '" << frame_count << " frames'\n";
-  }
+  for (const XdsAscii::Iset& iset : xds.isets)
+    os << iset.id << " '" << iset.frame_count << " frames'\n";
   os << '\n';
 
   double w_all = wavelength;
@@ -813,7 +807,20 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
   os << '\n';
 
   const SpaceGroup* sg = find_spacegroup_by_number(xds.spacegroup_number);
-  write_cell_and_symmetry(xds.unit_cell, nullptr, sg, buf, os);
+  double rmsds[6] = {0., 0., 0., 0., 0., 0.};
+  if (xds.isets.size() > 1) {
+    double mean[6] = {xds.unit_cell.a, xds.unit_cell.b, xds.unit_cell.c,
+                      xds.unit_cell.alpha, xds.unit_cell.beta, xds.unit_cell.gamma};
+    int n = 0;
+    for (const XdsAscii::Iset& iset : xds.isets) {
+      for (int i = 0; i < 6; ++i)
+        rmsds[i] += sq(mean[i] - iset.cell_constants[i]) * iset.frame_count;
+      n += iset.frame_count;
+    }
+    for (int i = 0; i < 6; ++i)
+      rmsds[i] = std::sqrt(rmsds[i] / n);
+  }
+  write_cell_and_symmetry(xds.unit_cell, rmsds, sg, buf, os);
 
   os << "\nloop_"
         "\n_diffrn_refln.diffrn_id"

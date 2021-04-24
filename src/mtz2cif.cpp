@@ -160,6 +160,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     try {
       xds_ascii.reset(new gemmi::XdsAscii);
       xds_ascii->read_input(gemmi::MaybeGzipped(xds_path));
+      xds_ascii->set_frame_counts();
     } catch (std::runtime_error& e) {
       std::fprintf(stderr, "ERROR reading %s: %s\n", xds_path, e.what());
       return 1;
