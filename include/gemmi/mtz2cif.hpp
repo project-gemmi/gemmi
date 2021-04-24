@@ -340,7 +340,8 @@ private:
             "https://mmcif.wwpdb.org/dictionaries/ascii/mmcif_pdbx_v50.dic\n\n";
   }
 
-  void write_cell_and_symmetry(const UnitCell& cell, const SpaceGroup* sg,
+  void write_cell_and_symmetry(const UnitCell& cell, double* rmsds,
+                               const SpaceGroup* sg,
                                char* buf, std::ostream& os);
 
   void write_main_loop(const Mtz& mtz, char* buf, std::ostream& os);
@@ -371,7 +372,6 @@ inline bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream&
 
 // note: both mi and ui get modified
 inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
-                                        const UnitCell* avg_unmerged_cell,
                                         std::ostream& out) {
   out << "Checking if both files match...\n";
   bool ok = true;
@@ -384,10 +384,8 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
            "and reindex unmerged data if needed; for now, it's on you)\n";
     ok = false;
   }
-  if (ui.unit_cell.approx(mi.unit_cell, 0.01)) {
+  if (ui.unit_cell.approx(mi.unit_cell, 0.02)) {
     out << "The same unit cell parameters.\n";
-  } else if (avg_unmerged_cell && avg_unmerged_cell->approx(mi.unit_cell, 0.01)) {
-    out << "Unit cell parameters match (merged vs avarage from BATCH headers).\n";
   } else {
     const UnitCell& mc = mi.unit_cell;
     const UnitCell& uc = ui.unit_cell;
@@ -396,11 +394,6 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
                             << mc.alpha << ' ' << mc.beta << ' ' << mc.gamma;
     out << "\n  unmerged: " << uc.a << ' ' << uc.b << ' ' << uc.c << "  "
                             << uc.alpha << ' ' << uc.beta << ' ' << uc.gamma;
-    if (avg_unmerged_cell) {
-      const UnitCell* ua = avg_unmerged_cell;
-      out << "\n avg batch: " << ua->a << ' ' << ua->b << ' ' << ua->c << "  "
-                              << ua->alpha << ' ' << ua->beta << ' ' << ua->gamma;
-    }
     out << '\n';
     ok = false;
   }
@@ -611,7 +604,13 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
          << "_diffrn_radiation_wavelength.wavelength " << to_str(w) << "\n\n";
   }
 
-  write_cell_and_symmetry(mtz.get_cell(), mtz.spacegroup, buf, os);
+  if (merged) {
+    write_cell_and_symmetry(mtz.get_cell(), nullptr, mtz.spacegroup, buf, os);
+  } else {
+    double rmsds[6];
+    UnitCell cell = unmerged->get_average_cell_from_batch_headers(rmsds);
+    write_cell_and_symmetry(cell, rmsds, mtz.spacegroup, buf, os);
+  }
 
   if (merged)
     write_main_loop(*merged, buf, os);
@@ -811,7 +810,7 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
   os << '\n';
 
   const SpaceGroup* sg = find_spacegroup_by_number(xds.spacegroup_number);
-  write_cell_and_symmetry(xds.unit_cell, sg, buf, os);
+  write_cell_and_symmetry(xds.unit_cell, nullptr, sg, buf, os);
 
   os << "\nloop_"
         "\n_diffrn_refln.diffrn_id"
@@ -839,18 +838,30 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
   }
 }
 
-inline void MtzToCif::write_cell_and_symmetry(const UnitCell& cell, const SpaceGroup* sg,
+inline void MtzToCif::write_cell_and_symmetry(const UnitCell& cell, double* rmsds,
+                                              const SpaceGroup* sg,
                                               char* buf, std::ostream& os) {
   os << "_cell.entry_id " << entry_id << '\n';
   WRITE("_cell.length_a    %8.3f\n", cell.a);
+  if (rmsds && rmsds[0] != 0.)
+    WRITE("_cell.length_a_esd %7.3f\n", rmsds[0]);
   WRITE("_cell.length_b    %8.3f\n", cell.b);
+  if (rmsds && rmsds[1] != 0.)
+    WRITE("_cell.length_b_esd %7.3f\n", rmsds[1]);
   WRITE("_cell.length_c    %8.3f\n", cell.c);
+  if (rmsds && rmsds[2] != 0.)
+    WRITE("_cell.length_c_esd %7.3f\n", rmsds[2]);
   WRITE("_cell.angle_alpha %8.3f\n", cell.alpha);
+  if (rmsds && rmsds[3] != 0.)
+    WRITE("_cell.length_alpha_esd %7.3f\n", rmsds[3]);
   WRITE("_cell.angle_beta  %8.3f\n", cell.beta);
-  WRITE("_cell.angle_gamma %8.3f\n\n", cell.gamma);
-
+  if (rmsds && rmsds[4] != 0.)
+    WRITE("_cell.length_beta_esd %8.3f\n", rmsds[4]);
+  WRITE("_cell.angle_gamma %8.3f\n", cell.gamma);
+  if (rmsds && rmsds[5] != 0.)
+    WRITE("_cell.length_gamma_esd %7.3f\n", rmsds[5]);
   if (sg) {
-    os << "_symmetry.entry_id " << entry_id << "\n"
+    os << "\n_symmetry.entry_id " << entry_id << "\n"
           "_symmetry.space_group_name_H-M '" << sg->hm << "'\n"
           "_symmetry.Int_Tables_number " << sg->number << '\n';
     // could write _symmetry_equiv.pos_as_xyz, but would it be useful?

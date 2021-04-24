@@ -237,20 +237,24 @@ struct Mtz {
       ds.cell = cell;
   }
 
-  UnitCell get_average_cell_from_batch_headers() const {
-    double a_sum = 0, b_sum = 0, c_sum = 0;
-    double alpha_sum = 0, beta_sum = 0, gamma_sum = 0;
-    for (const Batch& batch : batches) {
-      a_sum += batch.floats[0];
-      b_sum += batch.floats[1];
-      c_sum += batch.floats[2];
-      alpha_sum += batch.floats[3];
-      beta_sum += batch.floats[4];
-      gamma_sum += batch.floats[5];
-    }
+  UnitCell get_average_cell_from_batch_headers(double* rmsd) const {
+    double avg[6] = {0., 0., 0., 0., 0., 0.};
+    for (const Batch& batch : batches)
+      for (int i = 0; i < 6; ++i)
+        avg[i] += batch.floats[i];
     size_t n = batches.size();
-    return UnitCell(a_sum / n, b_sum / n, c_sum / n,
-                    alpha_sum / n, beta_sum / n, gamma_sum / n);
+    for (int i = 0; i < 6; ++i)
+      avg[i] /= n;
+    if (rmsd) {
+      for (int i = 0; i < 6; ++i)
+        rmsd[i] = 0.;
+      for (const Batch& batch : batches)
+        for (int i = 0; i < 6; ++i)
+          rmsd[i] += sq(avg[i] - batch.floats[i]);
+      for (int i = 0; i < 6; ++i)
+        rmsd[i] = std::sqrt(rmsd[i] / n);
+    }
+    return UnitCell(avg[0], avg[1], avg[2], avg[3], avg[4], avg[5]);
   }
 
   Dataset& last_dataset() {

@@ -141,7 +141,10 @@ inline Intensities read_unmerged_intensities_from_mtz(const Mtz& mtz) {
   size_t value_idx = col.idx;
   size_t sigma_idx = mtz.get_column_with_label("SIGI").idx;
   Intensities intensities;
-  intensities.copy_metadata(mtz);
+  intensities.unit_cell = mtz.get_average_cell_from_batch_headers(nullptr);
+  intensities.spacegroup = mtz.spacegroup;
+  if (!intensities.spacegroup)
+    fail("unknown space group");
   intensities.wavelength = mtz.dataset(col.dataset_id).wavelength;
   for (size_t i = 0; i < mtz.data.size(); i += mtz.columns.size()) {
     Intensities::Refl refl;
