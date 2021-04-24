@@ -26,6 +26,7 @@ struct XdsAscii {
   };
   struct Iset {
     int id;
+    int frame_count = 0; // set by set_frame_counts()
     std::string input_file;
     double wavelength = 0.;
     double cell_constants[6] = {0., 0., 0., 0., 0., 0.};
@@ -61,6 +62,19 @@ struct XdsAscii {
     } else {
       auto f = file_open(input.path().c_str(), "r");
       read_stream(FileStream{f.get()}, input.path());
+    }
+  }
+
+  void set_frame_counts() {
+    for (Iset& iset : isets) {
+      double min_zd = 1e6;
+      double max_zd = 0.;
+      for (const XdsAscii::Refl& refl : data)
+        if (refl.iset == iset.id) {
+          min_zd = std::min(min_zd, refl.zd);
+          max_zd = std::max(max_zd, refl.zd);
+        }
+      iset.frame_count = (int)std::ceil(max_zd) - (int)std::ceil(min_zd) + 1;
     }
   }
 };
