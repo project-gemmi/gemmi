@@ -769,7 +769,9 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
 
   os << "loop_\n_diffrn.id\n_diffrn.crystal_id\n_diffrn.details\n";
   for (const XdsAscii::Iset& iset : xds.isets)
-    os << iset.id << " 1 '" << iset.input_info << "'\n";
+    // We could write iset.input_info as details, but then local paths
+    // could end up in the deposition.
+    os << iset.id << " 1 ?\n";
   os << '\n';
 
   os << "loop_\n"

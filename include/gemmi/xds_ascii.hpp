@@ -26,7 +26,7 @@ struct XdsAscii {
   };
   struct Iset {
     int id;
-    std::string input_info;
+    std::string input_file;
     double wavelength = 0.;
     double cell_constants[6] = {0., 0., 0., 0., 0., 0.};
     Iset(int id_) : id(id_) {}
@@ -125,7 +125,7 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
         XdsAscii::Iset& iset = find_or_add_iset(id);
         endptr = skip_blank(endptr);
         if (starts_with_ptr(endptr, "INPUT_FILE=", &rhs)) {
-          iset.input_info =  "scaled " + read_word(rhs);
+          iset.input_file = read_word(rhs);
         } else if (starts_with_ptr(endptr, "X-RAY_WAVELENGTH=", &rhs)) {
           double w;
           auto result = fast_from_chars(rhs, line+len, w);
@@ -155,7 +155,6 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
             refl.iset = 1;
           }
           isets.emplace_back(1);
-          isets.back().input_info = "from " + generated_by;
           isets.back().wavelength = wavelength;
         }
         return;
