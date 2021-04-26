@@ -26,10 +26,15 @@ struct XdsAscii {
   };
   struct Iset {
     int id;
-    int frame_count = 0; // set by set_frame_counts()
     std::string input_file;
     double wavelength = 0.;
     double cell_constants[6] = {0., 0., 0., 0., 0., 0.};
+    //statistics set by gather_iset_statistics()
+    int frame_number_min = -1;
+    int frame_number_max = -1;
+    int frame_count = -1;
+    int reflection_count = -1;
+
     Iset(int id_) : id(id_) {}
   };
   std::string source_path;
@@ -65,16 +70,25 @@ struct XdsAscii {
     }
   }
 
-  void set_frame_counts() {
+  void gather_iset_statistics() {
     for (Iset& iset : isets) {
       double min_zd = 1e6;
       double max_zd = 0.;
       for (const XdsAscii::Refl& refl : data)
         if (refl.iset == iset.id) {
+          ++iset.reflection_count;
           min_zd = std::min(min_zd, refl.zd);
           max_zd = std::max(max_zd, refl.zd);
         }
-      iset.frame_count = (int)std::ceil(max_zd) - (int)std::ceil(min_zd) + 1;
+      iset.frame_number_min = (int)std::ceil(min_zd);
+      iset.frame_number_max = (int)std::ceil(max_zd);
+      std::vector<uint8_t> frames(iset.frame_number_max - iset.frame_number_min + 1);
+      for (const XdsAscii::Refl& refl : data)
+        if (refl.iset == iset.id)
+          frames[(int)std::ceil(refl.zd) - iset.frame_number_min] = 1;
+      iset.frame_count = 0;
+      for (uint8_t f : frames)
+        iset.frame_count += f;
     }
   }
 };
