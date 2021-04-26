@@ -837,14 +837,17 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
   for (const XdsAscii::Refl& refl : xds.data) {
     if (refl.sigma < 0)  // misfit
       continue;
-    os << refl.iset << ' ' << ++idx << ' '
-       << refl.hkl[0] << ' ' << refl.hkl[1] << ' ' << refl.hkl[2] << ' ';
-    WRITE("%g %.5g ", refl.iobs, refl.sigma);
+    char* ptr = buf;
+    ptr += gf_snprintf(ptr, 128, "%d %d %d %d %d %g %.5g ",
+                       refl.iset, ++idx, refl.hkl[0], refl.hkl[1], refl.hkl[2],
+                       refl.iobs, refl.sigma);
     if (xds.oscillation_range != 0.) {
       double z = refl.zd - xds.starting_frame + 1;
-      WRITE("%.5g ", xds.starting_angle + xds.oscillation_range * z);
+      double angle = xds.starting_angle + xds.oscillation_range * z;
+      ptr += gf_snprintf(ptr, 16, "%.5g ", angle);
     }
-    os << int(std::ceil(refl.zd)) << '\n';
+    ptr += gf_snprintf(ptr, 16, "%d\n", int(std::ceil(refl.zd)));
+    os.write(buf, ptr - buf);
   }
 }
 
