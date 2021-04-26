@@ -777,8 +777,13 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
   os << "loop_\n"
         "_diffrn_measurement.diffrn_id\n"
         "_diffrn_measurement.details\n";
-  for (const XdsAscii::Iset& iset : xds.isets)
-    os << iset.id << " '" << iset.frame_count << " frames'\n";
+  for (const XdsAscii::Iset& iset : xds.isets) {
+    os << iset.id;
+    if (iset.frame_count >= 0)
+      os << " '" << iset.frame_count << " frames'\n";
+    else
+      os << " ?\n";
+  }
   os << '\n';
 
   double w_all = wavelength;
