@@ -392,8 +392,11 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
     }
   for (ChainInfo& ci : chain_infos) {
     // copy monomer description
-    for (ResInfo& ri : ci.res_infos)
-      ri.chemcomp = monlib.monomers.at(ri.res->name);
+    for (ResInfo& ri : ci.res_infos) {
+      auto it = monlib.monomers.find(ri.res->name);
+      if (it != monlib.monomers.end())
+        ri.chemcomp = it->second;
+    }
 
     ci.setup_polymer_links();
 
