@@ -50,7 +50,7 @@ const option::Descriptor Usage[] = {
   { LessAnomalous, 0, "", "less-ano", Arg::None,
     "  --less-ano  \tSkip anomalous columns (even if they are in the spec)."
     " Used once, skips I(+)/I(-) if <I> and F(+)/F(-) are present."
-    " Used twice, skips all anomalous colums."
+    " Used twice, skips all anomalous columns."
   },
   { Separate, 0, "", "separate", Arg::None,
     "  --separate  \tWrite merged and unmerged data in separate blocks." },

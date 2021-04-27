@@ -1,7 +1,7 @@
 // Copyright 2019 Global Phasing Ltd.
 
 // Calculation of atomic form factors approximated by a sum of Gaussians.
-// The tables with numeric coefficient are in separate files.
+// Tables with numeric coefficient are in it92.hpp and c4322.hpp.
 
 #ifndef GEMMI_FORMFACT_HPP_
 #define GEMMI_FORMFACT_HPP_

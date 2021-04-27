@@ -1,7 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// CIF parser (based on PEGTL), struct Document that represents the CIF file,
-// and a set of actions for the parser to prepare Document.
+// CIF parser (based on PEGTL) with pluggable actions,
+// and a set of actions that prepare Document.
 
 #ifndef GEMMI_CIF_HPP_
 #define GEMMI_CIF_HPP_

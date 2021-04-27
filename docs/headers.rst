@@ -39,12 +39,12 @@ gemmi/chemcomp_xyz.hpp
     Reading coordinates from chemical component or Refmac monomer library files.
 
 gemmi/cif.hpp
-    CIF parser (based on PEGTL), struct Document that represents the CIF file,
-    and a set of actions for the parser to prepare Document.
+    CIF parser (based on PEGTL) with pluggable actions,
+    and a set of actions that prepare Document.
 
 gemmi/cifdoc.hpp
-    struct Document that represents the CIF file (but could be also
-    read from, for example, JSON file (CIF-JSON or mmJSON).
+    struct Document that represents the CIF file (but can be also
+    read from JSON file, such as CIF-JSON or mmJSON).
 
 gemmi/contact.hpp
     Contact search, based on NeighborSearch from neighbor.hpp.
@@ -76,7 +76,7 @@ gemmi/floodfill.hpp
 
 gemmi/formfact.hpp
     Calculation of atomic form factors approximated by a sum of Gaussians.
-    The tables with numeric coefficient are in separate files.
+    Tables with numeric coefficient are in it92.hpp and c4322.hpp.
 
 gemmi/fourier.hpp
     Fourier transform applied to map coefficients.

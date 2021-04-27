@@ -1,7 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// struct Document that represents the CIF file (but could be also
-// read from, for example, JSON file (CIF-JSON or mmJSON).
+// struct Document that represents the CIF file (but can be also
+// read from JSON file, such as CIF-JSON or mmJSON).
 
 #ifndef GEMMI_CIFDOC_HPP_
 #define GEMMI_CIFDOC_HPP_

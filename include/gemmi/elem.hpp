@@ -152,7 +152,7 @@ inline float covalent_radius(El el) {
 // J. Phys. Chem. A 2009, 113, 19, 5806 https://doi.org/10.1021/jp8111556
 // J. Phys. Chem. 1964, 68, 3, 441 https://doi.org/10.1021/j100785a001
 // Missing values (and values for a lot of elements were missing)
-// were substitued with values from cctbx van_der_waals_radii.py.
+// were substituted with values from cctbx van_der_waals_radii.py.
 inline float vdw_radius(El el) {
   static constexpr float radii[] = {
     /*X*/  1.00f,

@@ -17,7 +17,7 @@ Options:
   --validate             For two MTZ files: validate the intensities match.
   --less-ano             Skip anomalous columns (even if they are in the spec).
                          Used once, skips I(+)/I(-) if <I> and F(+)/F(-) are
-                         present. Used twice, skips all anomalous colums.
+                         present. Used twice, skips all anomalous columns.
   --separate             Write merged and unmerged data in separate blocks.
   --depo                 Prepare merged+unmerged mmCIF file for deposition.
   --trim=N               (for testing) output only reflections -N <= h,k,l <=N.
