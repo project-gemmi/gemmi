@@ -83,7 +83,7 @@ void add_topo(py::module& m) {
   py::class_<Topo::ResInfo::Prev>(resinfo, "Prev")
     .def_readonly("link", &Topo::ResInfo::Prev::link)
     .def_readonly("idx", &Topo::ResInfo::Prev::idx)
-    .def("get", (Topo::ResInfo* (Topo::ResInfo::Prev::*)(Topo::ResInfo*)const) &Topo::ResInfo::Prev::get, py::keep_alive<0, 1>())
+    .def("get", (Topo::ResInfo* (Topo::ResInfo::Prev::*)(Topo::ResInfo*)const) &Topo::ResInfo::Prev::get, py::return_value_policy::reference_internal)
     ;
   resinfo
     .def_readonly("res", &Topo::ResInfo::res)
