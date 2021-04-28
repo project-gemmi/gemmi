@@ -7,6 +7,7 @@
 #include "gemmi/fileutil.hpp"  // for expand_if_pdb_code
 #include "gemmi/small.hpp"    // for SmallStructure
 #include "gemmi/interop.hpp"  // for atom_to_site, mx_to_sx_structure
+#include "gemmi/bessel.hpp"   // for bessel_i1_over_i0
 
 namespace py = pybind11;
 
@@ -71,6 +72,7 @@ void add_misc(py::module& m) {
   m.def("expand_if_pdb_code", &gemmi::expand_if_pdb_code,
         py::arg("code"), py::arg("filetype")='M');
   m.attr("hc") = py::float_(gemmi::hc());
+  m.def("bessel_i1_over_i0", &gemmi::bessel_i1_over_i0);
 }
 
 PYBIND11_MODULE(gemmi, mg) {

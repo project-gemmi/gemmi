@@ -22,6 +22,9 @@ gemmi/atox.hpp
     Locale-independent functions that convert string to integer,
     equivalents of standard isspace and isdigit, and a few helper functions.
 
+gemmi/bessel.hpp
+    Ratio of modified Bessel functions I1(x)/I0(x).
+
 gemmi/c4322.hpp
     Electron scattering factor coefficients from the International Tables.
 
