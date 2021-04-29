@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <algorithm>  // count
 #include <stdexcept>
+#include "gemmi/blob.hpp"
 #include "gemmi/polyheur.hpp"  // for remove_hydrogens
 #include "gemmi/math.hpp"      // for Variance
 #include "gemmi/neighbor.hpp"  // for NeighborSearch
@@ -66,106 +67,15 @@ const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-
-struct GridPos {
-  int u, v, w;
-  size_t idx;
-};
-
-struct Blob {
-  std::vector<GridPos> points;
-  gemmi::Position pos;
-  double volume = 0.0;
-  double score = 0.0;
-  double max_value = 0.0;
-  gemmi::const_CRA cra = {nullptr, nullptr, nullptr};
-};
-
-struct BlobCriteria {
-  double min_volume = 10.0;
-  double min_score = 15.0;
-  double min_peak = 0.0;
-  double cutoff;
-};
-
-inline bool finalize_blob(Blob& blob, const gemmi::Grid<float>& grid,
-                          const BlobCriteria& criteria) {
-  size_t point_count = blob.points.size();
-  double volume_per_point = grid.unit_cell.volume / grid.point_count();
-  blob.volume = point_count * volume_per_point;
-  if (point_count < 3 ||  blob.volume < criteria.min_volume)
-    return false;
-  double sum[3] = {0., 0., 0.};
-  for (const GridPos& point : blob.points) {
-    double value = grid.data[point.idx];
-    blob.score += value;
-    if (value > blob.max_value)
-      blob.max_value = value;
-    sum[0] += point.u * value;
-    sum[1] += point.v * value;
-    sum[2] += point.w * value;
+gemmi::const_CRA move_near_model(gemmi::NeighborSearch& ns, gemmi::Position& pos) {
+  if (const auto* mark = ns.find_nearest_atom(pos)) {
+    gemmi::const_CRA cra = mark->to_cra(*ns.model);
+    pos = ns.grid.unit_cell.find_nearest_pbc_position(cra.atom->pos, pos,
+                                                      mark->image_idx, true);
+    return cra;
   }
-  double sum_mult = 1.0 / blob.score;
-  if (blob.max_value < criteria.min_peak)
-    return false;
-  blob.score *= volume_per_point;
-  if (blob.score < criteria.min_score)
-    return false;
-  gemmi::Fractional fract(sum_mult * sum[0] / grid.nu,
-                          sum_mult * sum[1] / grid.nv,
-                          sum_mult * sum[2] / grid.nw);
-  blob.pos = grid.unit_cell.orthogonalize(fract);
-  return true;
+  return {nullptr, nullptr, nullptr};
 }
-
-std::vector<Blob> find_blobs_by_flood_fill(const gemmi::Grid<float>& grid,
-                                           const BlobCriteria& criteria) {
-  std::vector<Blob> blobs;
-  std::array<std::array<int, 3>, 6> moves = {{{{-1, 0, 0}}, {{1, 0, 0}},
-                                              {{0 ,-1, 0}}, {{0, 1, 0}},
-                                              {{0, 0, -1}}, {{0, 0, 1}}}};
-  // the mask will be used as follows:
-  // -1=in blob,  0=in asu, not in blob (so far),  1=in neither
-  std::vector<std::int8_t> mask = grid.get_asu_mask<std::int8_t>();
-  std::vector<gemmi::GridOp> ops = grid.get_scaled_ops_except_id();
-  size_t idx = 0;
-  for (int w = 0; w != grid.nw; ++w)
-    for (int v = 0; v != grid.nv; ++v)
-      for (int u = 0; u != grid.nu; ++u, ++idx) {
-        assert(idx == grid.index_q(u, v, w));
-        if (mask[idx] != 0)
-          continue;
-        float value = grid.data[idx];
-        if (value < criteria.cutoff)
-          continue;
-        Blob blob;
-        blob.points.push_back({u, v, w, idx});
-        mask[idx] = -1;
-        for (size_t j = 0; j < blob.points.size()/*increasing!*/; ++j)
-          for (const std::array<int, 3>& mv : moves) {
-            GridPos nabe = { blob.points[j].u + mv[0],
-                             blob.points[j].v + mv[1],
-                             blob.points[j].w + mv[2],
-                             0 };
-            nabe.idx = grid.index_s(nabe.u, nabe.v, nabe.w);
-            if (mask[nabe.idx] != -1 && grid.data[nabe.idx] > criteria.cutoff) {
-              if (mask[nabe.idx] != 0)
-                for (const gemmi::GridOp& op : ops) {
-                  auto t = op.apply(nabe.u, nabe.v, nabe.w);
-                  size_t mate_idx = grid.index_s(t[0], t[1], t[2]);
-                  if (mask[mate_idx] == 0)
-                    mask[mate_idx] = 1;
-                }
-              mask[nabe.idx] = -1;
-              blob.points.push_back(nabe);
-            }
-          }
-        if (finalize_blob(blob, grid, criteria))
-          blobs.push_back(blob);
-      }
-  return blobs;
-}
-
 
 int run(OptParser& p) {
   std::string sf_path = p.nonOption(0);
@@ -201,7 +111,7 @@ int run(OptParser& p) {
     std::fprintf(stderr, "Warning: different unit cells in model and data.");
 
   // calculate map RMSD and setup blob criteria
-  BlobCriteria criteria;
+  gemmi::BlobCriteria criteria;
   gemmi::Variance grid_variance(grid.data.begin(), grid.data.end());
   double rmsd = std::sqrt(grid_variance.for_population());
   double sigma_level = 1.0;
@@ -240,32 +150,27 @@ int run(OptParser& p) {
   }
 
   // find and sort blobs
-  std::vector<Blob> blobs = find_blobs_by_flood_fill(grid, criteria);
+  std::vector<gemmi::Blob> blobs = gemmi::find_blobs_by_flood_fill(grid, criteria);
   if (p.options[Verbose])
     printf("%zu blob%s found.\n", blobs.size(), blobs.size() == 1 ? "" : "s");
   std::sort(blobs.begin(), blobs.end(),
-            [](const Blob& a, const Blob& b) { return a.score > b.score; });
+            [](const gemmi::Blob& a, const gemmi::Blob& b) { return a.score > b.score; });
 
   gemmi::NeighborSearch ns(model, grid.unit_cell, 10.0);
   ns.populate();
-  for (Blob& blob : blobs)
-    if (const auto* mark = ns.find_nearest_atom(blob.pos)) {
-      blob.cra = mark->to_cra(model);
-      const gemmi::Position& ref = blob.cra.atom->pos;
-      blob.pos = grid.unit_cell.find_nearest_pbc_position(ref, blob.pos,
-                                                          mark->image_idx, true);
-    }
 
   // output results
-  int n = 0;
-  for (const Blob& b : blobs) {
+  for (size_t i = 0; i != blobs.size(); ++i) {
+    gemmi::const_CRA cra = move_near_model(ns, blobs[i].centroid);
+    // Blob::max_pos is left not moved, but we don't use it below
+    const gemmi::Blob& b = blobs[i];
     std::string residue_info = "none";
-    if (b.cra.chain && b.cra.residue)
-      residue_info = b.cra.chain->name + b.cra.residue->str();
-    printf("#%-2d %5.1f el in %5.1f A^3, %4.1f rmsd,"
+    if (cra.chain && cra.residue)
+      residue_info = cra.chain->name + cra.residue->str();
+    printf("#%-2zu %5.1f el in %5.1f A^3, %4.1f rmsd,"
            " (%6.1f,%6.1f,%6.1f) near %s\n",
-           n++, b.score, b.volume, b.max_value / rmsd,
-           b.pos.x, b.pos.y, b.pos.z, residue_info.c_str());
+           i, b.score, b.volume, b.max_value / rmsd,
+           b.centroid.x, b.centroid.y, b.centroid.z, residue_info.c_str());
   }
   return 0;
 }

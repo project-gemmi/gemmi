@@ -12,6 +12,7 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 
 #include "gemmi/grid.hpp"
 #include "gemmi/solmask.hpp"  // for SolventMasker, mask_points_in_constant_radius
+#include "gemmi/blob.hpp"     // for Blob, find_blobs_by_flood_fill
 #include "gemmi/tostr.hpp"
 
 #include "common.h"
@@ -207,4 +208,20 @@ void add_grid(py::module& m) {
     .def("put_mask_on_int8_grid", &SolventMasker::put_mask_on_grid<int8_t>)
     .def("put_mask_on_float_grid", &SolventMasker::put_mask_on_grid<float>)
     ;
+
+  py::class_<Blob>(m, "Blob")
+    .def_readonly("volume", &Blob::volume)
+    .def_readonly("score", &Blob::score)
+    .def_readonly("max_value", &Blob::max_value)
+    .def_readonly("centroid", &Blob::centroid)
+    .def_readonly("max_pos", &Blob::max_pos)
+    ;
+  py::class_<BlobCriteria>(m, "BlobCriteria")
+    .def(py::init<>())
+    .def_readwrite("min_volume", &BlobCriteria::min_volume)
+    .def_readwrite("min_score", &BlobCriteria::min_score)
+    .def_readwrite("min_peak", &BlobCriteria::min_peak)
+    .def_readwrite("cutoff", &BlobCriteria::cutoff)
+    ;
+  m.def("find_blobs_by_flood_fill", &gemmi::find_blobs_by_flood_fill);
 }

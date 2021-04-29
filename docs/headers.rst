@@ -25,6 +25,10 @@ gemmi/atox.hpp
 gemmi/bessel.hpp
     Ratio of modified Bessel functions I1(x)/I0(x).
 
+gemmi/blob.hpp
+    Finding maxima or "blobs" in a Grid (map).
+    Similar to CCP4 PEAKMAX and COOT's "Unmodelled blobs".
+
 gemmi/c4322.hpp
     Electron scattering factor coefficients from the International Tables.
 
