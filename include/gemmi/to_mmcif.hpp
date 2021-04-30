@@ -577,6 +577,9 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
       for (const Chain& chain : model.chains)
         for (const Residue& res : chain.residues)
           resnames.insert(res.name);
+    for (const Entity& ent : st.entities)
+      for (const std::string& item : ent.full_sequence)
+        resnames.insert(Entity::first_mon(item));
     cif::Loop& chem_comp_loop = block.init_mmcif_loop("_chem_comp.", {"id", "type"});
     for (const std::string& name : resnames)
       chem_comp_loop.add_row({name, "."});
