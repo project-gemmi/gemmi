@@ -479,9 +479,11 @@ Structure read_pdb_from_input(Input&& infile, const std::string& source,
         if (!date.empty())
           st.info["_pdbx_database_status.recvd_initial_deposition_date"] = date;
       }
-      if (len > 66)
-        st.info["_entry.id"] = rtrim_str(std::string(line+62, 4));
-
+      if (len > 66) {
+        std::string entry_id = rtrim_str(std::string(line+62, 4));
+        if (!entry_id.empty())
+          st.info["_entry.id"] = entry_id;
+      }
     } else if (is_record_type(line, "TITLE")) {
       if (len > 10)
         st.info["_struct.title"] += rtrim_str(std::string(line+10, len-10-1));
