@@ -466,6 +466,12 @@ void write_ncs_oper(const Structure& st, cif::Block& block) {
   for (const NcsOp& op : st.ncs)
     add_op(op);
 }
+
+bool is_valid_block_name(const std::string& name) {
+  return !name.empty() &&
+         std::all_of(name.begin(), name.end(), [](char c){ return c >= '!' && c <= '~'; });
+}
+
 } // namespace impl
 
 void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroups groups) {
@@ -474,7 +480,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
     return;
 
   if (groups.block_name)
-    block.name = (!st.name.empty() ? st.name : "xxxx");
+    block.name = impl::is_valid_block_name(st.name) ? st.name : "model";
 
   auto e_id = st.info.find("_entry.id");
   std::string id = cif::quote(e_id != st.info.end() ? e_id->second : block.name);
