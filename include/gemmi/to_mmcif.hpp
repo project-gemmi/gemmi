@@ -44,7 +44,8 @@ struct MmcifOutputGroups {
 
   explicit MmcifOutputGroups(bool all)
     : atoms(all), block_name(all), entry(all), database_status(all),
-      cell(all), symmetry(all), entity(all), entity_poly(all),
+      cell(all), symmetry(all), entity(all),
+      entity_poly(false),  // see the comment under "if (groups.entity_poly)"
       struct_ref(all), chem_comp(all), exptl(all), diffrn(all),
       reflns(all), refine(all), title_keywords(all), ncs(all),
       struct_asym(all), origx(all), struct_conf(all), struct_sheet(all),
@@ -525,6 +526,12 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   }
 
   if (groups.entity_poly) {
+    // In this category we write mandatory tags only.
+    // But if such a file is deposited to the wwPDB it causes:
+    //  ERROR: Missing '_entity_poly.pdbx_strand_id' item.
+    // If pdbx_strand_id was present, OneDep would complain about missing
+    // _entity_poly.pdbx_seq_one_letter_code. So just in case, by default
+    // MmcifOutputGroups::entity_poly is false.
     cif::Loop& ent_poly_loop = block.init_mmcif_loop("_entity_poly.", {"entity_id", "type"});
     for (const Entity& ent : st.entities)
       if (ent.entity_type == EntityType::Polymer)
