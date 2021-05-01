@@ -297,7 +297,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
       // 73-76      segment identifier, left-justified (non-standard)
       // 77-78  2s  element symbol, right-justified
       // 79-80  2s  charge
-      WRITE("%-6s%5s %-4s%c%3s"
+      WRITE("%-6s%5s %-4.4s%c%3s"
             "%2s%5s   %8.3f%8.3f%8.3f"
             "%6.2f%6.2f      %-4.4s%2s%c%c\n",
             as_het ? "HETATM" : "ATOM",
