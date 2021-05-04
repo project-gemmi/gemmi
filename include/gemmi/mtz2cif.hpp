@@ -372,8 +372,43 @@ inline bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream&
   return ok;
 }
 
+inline bool parse_voigt_notation(const char* start, const char* end, SMat33<double>& b) {
+  bool first = true;
+  for (double* u : {&b.u11, &b.u22, &b.u33, &b.u23, &b.u13, &b.u12}) {
+    if (*start != (first ? '(' : ','))
+      return false;
+    first = false;
+    auto result = fast_from_chars(++start, end, *u);
+    if (result.ec != std::errc())
+      return false;
+    start = skip_blank(result.ptr);
+  }
+  return *start == ')';
+}
+
+inline SMat33<double> get_staraniso_b(const Mtz* mtz, std::ostream& out) {
+  SMat33<double> b = {0., 0., 0., 0., 0., 0.};
+  if (mtz) {
+    size_t hlen = mtz->history.size();
+    for (size_t i = 0; i != hlen; ++i)
+      if (mtz->history[i].find("STARANISO") != std::string::npos) {
+        out << "MTZ history suggests that merged data was scaled STARANISO.\n";
+        for (size_t j = i+1; j < std::min(i+4, hlen); ++j) {
+          const std::string& line = mtz->history[j];
+          if (starts_with(line, "B=(")) {
+            bool ok = parse_voigt_notation(line.c_str() + 2, line.c_str() + line.size(), b);
+            if (!ok)
+              fail("failed to parse tensor Voigt notation: " + line);
+          }
+        }
+      }
+  }
+  return b;
+}
+
 // note: both mi and ui get modified
 inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
+                                        SMat33<double>& scale_aniso_b,
                                         std::ostream& out) {
   out << "Checking if both files match...\n";
   bool ok = true;
@@ -412,6 +447,15 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   mi.remove_systematic_absences();
   out << "Merged reflections: " << mi_size1
       << " (" << mi.data.size() << " w/o sysabs)\n";
+
+  if (!scale_aniso_b.all_zero()) {
+    out << "Taking into account the anisotropy tensor that was used for scaling\n";
+    for (Intensities::Refl& refl : ui.data) {
+      Vec3 hkl(refl.hkl[0], refl.hkl[1], refl.hkl[2]);
+      Vec3 s = ui.unit_cell.frac.mat.multiply(hkl);
+      refl.value *= std::exp(0.5 * scale_aniso_b.r_u_r(s));
+    }
+  }
 
   // first pass - calculate CC and scale
   gemmi::Correlation corr = calculate_hkl_value_correlation(ui.data, mi.data);

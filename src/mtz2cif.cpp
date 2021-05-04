@@ -248,7 +248,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         ui = read_unmerged_intensities_from_mtz(*mtz[1]);
       else if (xds_ascii)
         ui = read_unmerged_intensities_from_xds(*xds_ascii);
-      if (!gemmi::validate_merged_intensities(mi, ui, std::cerr))
+      gemmi::SMat33<double> aniso_scale_b = gemmi::get_staraniso_b(mtz[0].get(), std::cerr);
+      if (!gemmi::validate_merged_intensities(mi, ui, aniso_scale_b, std::cerr))
         ok = false;
     } catch (std::runtime_error& e) {
       fprintf(stderr, "Intensity merging not validated: %s\n", e.what());
