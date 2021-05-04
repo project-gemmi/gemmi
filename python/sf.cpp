@@ -47,6 +47,19 @@ void add_dencalc(py::module& m, const char* name) {
     .def("set_grid_cell_and_spacegroup", &DenCalc::set_grid_cell_and_spacegroup)
     .def("reciprocal_space_multiplier", &DenCalc::reciprocal_space_multiplier)
     .def("mott_bethe_factor", &DenCalc::mott_bethe_factor)
+    .def("estimate_radius", [](const DenCalc &self, const gemmi::Atom &atom){
+        double b;
+        if (!atom.aniso.nonzero())
+            b = atom.b_iso + self.blur;
+        else {
+            gemmi::SMat33<double> aniso_b = atom.aniso.scaled(gemmi::u_to_b()).added_kI(self.blur);
+            // rough estimate, so we don't calculate eigenvalues
+            b = std::max(std::max(aniso_b.u11, aniso_b.u22), aniso_b.u33);
+        }
+        auto coef = Table::get(atom.element);
+        auto precal = coef.precalculate_density_iso(b, self.addends.get(atom.element));
+        return self.estimate_radius(precal, b);
+    })
     ;
 }
 
