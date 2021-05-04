@@ -15,6 +15,7 @@
 #include <climits>       // for INT_MIN
 #include <set>
 #include <algorithm>     // for all_of
+#include "asudata.hpp"   // for calculate_hkl_value_correlation
 #include "mtz.hpp"       // for Mtz
 #include "xds_ascii.hpp" // for XdsAscii
 #include "atox.hpp"      // for read_word
@@ -413,21 +414,7 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
       << " (" << mi.data.size() << " w/o sysabs)\n";
 
   // first pass - calculate CC and scale
-  gemmi::Correlation corr;
-  auto r1 = ui.data.begin();
-  auto r2 = mi.data.begin();
-  while (r1 != ui.data.end() && r2 != mi.data.end()) {
-    if (r1->hkl == r2->hkl) {
-      corr.add_point(r1->value, r2->value);
-      ++r1;
-      ++r2;
-    } else if (std::tie(r1->hkl[0], r1->hkl[1], r1->hkl[2]) <
-               std::tie(r2->hkl[0], r2->hkl[1], r2->hkl[2])) {
-      ++r1;
-    } else {
-      ++r2;
-    }
-  }
+  gemmi::Correlation corr = calculate_hkl_value_correlation(ui.data, mi.data);
   out << "Corr. coef. of " << corr.n << " <I> values: "
       << 100 * corr.coefficient() << "%\n";
   double scale = corr.mean_ratio();
@@ -439,8 +426,8 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   const Intensities::Refl* max_diff_r2 = nullptr;
   int differ_count = 0;
   int missing_count = 0;
-  r1 = ui.data.begin();
-  r2 = mi.data.begin();
+  auto r1 = ui.data.begin();
+  auto r2 = mi.data.begin();
   if (std::fabs(scale - 1.) > 1e-4)
     out << "Assuming that the unmerged data is to be scaled by " << scale << ".\n";
   while (r1 != ui.data.end() && r2 != mi.data.end()) {

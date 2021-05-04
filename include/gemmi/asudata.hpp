@@ -13,6 +13,28 @@
 
 namespace gemmi {
 
+// pre: both are sorted
+template<typename T>
+Correlation calculate_hkl_value_correlation(const std::vector<T>& a,
+                                            const std::vector<T>& b) {
+  Correlation corr;
+  auto r1 = a.begin();
+  auto r2 = b.begin();
+  while (r1 != a.end() && r2 != b.end()) {
+    if (r1->hkl == r2->hkl) {
+      corr.add_point(r1->value, r2->value);
+      ++r1;
+      ++r2;
+    } else if (std::tie(r1->hkl[0], r1->hkl[1], r1->hkl[2]) <
+               std::tie(r2->hkl[0], r2->hkl[1], r2->hkl[2])) {
+      ++r1;
+    } else {
+      ++r2;
+    }
+  }
+  return corr;
+}
+
 template<typename T>
 struct HklValue {
   Miller hkl;
