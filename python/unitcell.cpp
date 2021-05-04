@@ -170,6 +170,11 @@ void add_unitcell(py::module& m) {
     .def("is_identity", &Transform::is_identity)
     .def("approx", &Transform::approx);
 
+  py::class_<Correlation>(m, "Correlation")
+    .def("coefficient", &Correlation::coefficient)
+    .def("mean_ratio", &Correlation::mean_ratio)
+    ;
+
   py::class_<Position, Vec3>(m, "Position")
     .def(py::init<double,double,double>())
     .def(py::init<const Vec3&>())

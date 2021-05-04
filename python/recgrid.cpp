@@ -44,12 +44,18 @@ template<> void add_to_asu_data(py::class_<AsuData<std::complex<float>>>& cl) {
          py::arg("exact_size")=std::array<int,3>{{0,0,0}},
          py::arg("order")=AxisOrder::XYZ);
 }
+template<> void add_to_asu_data(py::class_<AsuData<float>>& cl) {
+  using AsuData = AsuData<float>;
+  cl.def("calculate_correlation", [](const AsuData& self, const AsuData& other) {
+      return calculate_hkl_value_correlation(self.v, other.v);
+  });
+}
 
 template<typename T>
 void add_asudata(py::module& m, const std::string& name) {
   py::class_<HklValue<T>>(m, (name + "HklValue").c_str())
     .def_readonly("hkl", &HklValue<T>::hkl)
-    .def_readonly("value", &HklValue<T>::value)
+    .def_readwrite("value", &HklValue<T>::value)
     .def("__repr__", [name](const HklValue<T>& self) {
         return tostr("<gemmi.", name, "HklValue (",
                      self.hkl[0], ',', self.hkl[1], ',', self.hkl[2], ") ",
