@@ -114,7 +114,7 @@ struct DensityCalculator {
   }
 
   template<int N>
-  double estimate_radius(const ExpSum<N, coef_type>& precal, double b) {
+  double estimate_radius(const ExpSum<N, coef_type>& precal, double b) const {
     if (N == 1) {
       return std::sqrt(std::log(r_cut / std::abs(precal.a[0])) / precal.b[0]);
     } else {
