@@ -1624,10 +1624,10 @@ In addition to ``d_min`` and ``rate``, which govern the grid density,
 DensityCalculator have two more parameters that affect accuracy
 of the calculated structure factors:
 
-* ``r_cut`` (default: 1e-5) -- density cut-off. Atomic radius in which
-  we calculate the density is picked in such a way that, approximately,
-  we include only points with values greater than ``r_cut``
-  (note: this variable may change in the future).
+* ``cutoff`` (default: 1e-5) -- density cut-off in the same unit as the map.
+  It is used to determine atomic radius in which the density is calculated
+  (density in the radius distance should be approximately ``cutoff``).
+  Smaller cutoff means more accurate but slower calculations.
 * ``blur`` (default: 0) -- Gaussian dampening (blurring) factor --
   artificial temperature factor *B*\ :sub:`extra` added to all atomic B-factors
   (the structure factors must be later corrected to cancel it out).

@@ -60,7 +60,7 @@ double determine_cutoff_radius(double x1, const PrecalExpSum& precal, double cut
   return x1 + (x1 - x2) / (y1 - y2) * (cutoff_level - y1);
 }
 
-// approximated radius of electron density (IT92) above r_cut=1e-5 for C
+// approximated radius of electron density (IT92) above cutoff=1e-5 for C
 inline double it92_radius_approx(double b) {
   return (8.5 + 0.075 * b) / (2.4 + 0.0045 * b);
 }
@@ -89,7 +89,7 @@ struct DensityCalculator {
   double d_min = 0.;
   double rate = 1.5;
   double blur = 0.;
-  float r_cut = 1e-5f;
+  float cutoff = 1e-5f;
   Addends addends;
 
   using coef_type = typename Table::Coef::coef_type;
@@ -116,10 +116,10 @@ struct DensityCalculator {
   template<int N>
   double estimate_radius(const ExpSum<N, coef_type>& precal, double b) const {
     if (N == 1) {
-      return std::sqrt(std::log(r_cut / std::abs(precal.a[0])) / precal.b[0]);
+      return std::sqrt(std::log(cutoff / std::abs(precal.a[0])) / precal.b[0]);
     } else {
       double x1 = it92_radius_approx(b);
-      return determine_cutoff_radius(x1, precal, r_cut);
+      return determine_cutoff_radius(x1, precal, cutoff);
     }
   }
 

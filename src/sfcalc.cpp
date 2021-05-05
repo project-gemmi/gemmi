@@ -576,7 +576,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
       if (p.options[Rate])
         dencalc.rate = std::atof(p.options[Rate].arg);
       if (p.options[RCut])
-        dencalc.r_cut = (float) std::atof(p.options[RCut].arg);
+        dencalc.cutoff = (float) std::atof(p.options[RCut].arg);
       dencalc.addends = calc.addends;
       if (p.options[Blur]) {
         dencalc.blur = std::atof(p.options[Blur].arg);
