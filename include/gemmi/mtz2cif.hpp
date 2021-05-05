@@ -465,7 +465,7 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   out << "Ratio of total intensities (merged : unmerged): " << scale << '\n';
 
   // second pass - check that all reflections match
-  double max_diff_to_sigma = 0.;
+  double max_weighted_sq_diff = 0.;
   const Intensities::Refl* max_diff_r1 = nullptr;
   const Intensities::Refl* max_diff_r2 = nullptr;
   int differ_count = 0;
@@ -478,20 +478,19 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
     if (r1->hkl == r2->hkl) {
       double value1 = scale * r1->value;
       double sigma1 = scale * r1->sigma; // is this approximately correct
-      double value_max = std::max(std::fabs(value1), std::fabs(r2->value));
-      double sigma_max = std::max(sigma1, r2->sigma);
-      double abs_diff = std::fabs(value1 - r2->value);
-      double diff_to_sigma = abs_diff / sigma_max;
+      double sq_value_max = std::max(sq(value1), sq(r2->value));
+      double sq_diff = sq(value1 - r2->value);
+      double weighted_sq_diff = sq_diff / (sq(sigma1) + sq(r2->sigma));
       // XDS files have 4 significant digits. Using accuracy 5x the precision.
       // Just in case, we ignore near-zero values.
-      if (value_max > 1e-3 && abs_diff > 0.005 * value_max) {
+      if (sq_value_max > 1e-4 && sq_diff > sq(0.005) * sq_value_max) {
         if (differ_count == 0) {
           out << "First difference: (" << r1->hkl[0] << ' ' << r1->hkl[1] << ' '
               << r1->hkl[2] << ") " << value1 << " vs " << r2->value << '\n';
         }
         ++differ_count;
-        if (diff_to_sigma > max_diff_to_sigma) {
-          max_diff_to_sigma = diff_to_sigma;
+        if (weighted_sq_diff > max_weighted_sq_diff) {
+          max_weighted_sq_diff = weighted_sq_diff;
           max_diff_r1 = &*r1;
           max_diff_r2 = &*r2;
         }
