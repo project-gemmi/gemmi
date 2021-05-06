@@ -392,7 +392,7 @@ inline SMat33<double> get_staraniso_b(const Mtz* mtz, std::ostream& out) {
     size_t hlen = mtz->history.size();
     for (size_t i = 0; i != hlen; ++i)
       if (mtz->history[i].find("STARANISO") != std::string::npos) {
-        out << "MTZ history suggests that merged data was scaled STARANISO.\n";
+        out << "According to history in merged MTZ it was scaled by STARANISO.\n";
         for (size_t j = i+1; j < std::min(i+4, hlen); ++j) {
           const std::string& line = mtz->history[j];
           if (starts_with(line, "B=(")) {
@@ -436,20 +436,20 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   }
 
   size_t ui_size1 = ui.data.size();
-  ui.merge_in_place(/*output_plus_minus=*/false);  // it also sorts
+  ui.merge_in_place(mi.type);  // it also sorts
   size_t ui_size2 = ui.data.size();
   ui.remove_systematic_absences();
-  out << "Unmerged reflections: " << ui_size1
-      << " (" << ui_size2 << " merged, " << ui.data.size() << " w/o sysabs)\n";
+  out << "Unmerged reflections: " << ui_size1 << " (" << ui_size2 << " merged "
+      << mi.type_str() << ", " << ui.data.size() << " w/o sysabs)\n";
   mi.switch_to_asu_indices(/*merged=*/true);
   mi.sort();
   size_t mi_size1 = mi.data.size();
   mi.remove_systematic_absences();
-  out << "Merged reflections: " << mi_size1
+  out << "Merged reflections: " << mi_size1 << ' ' << mi.type_str()
       << " (" << mi.data.size() << " w/o sysabs)\n";
 
   if (!scale_aniso_b.all_zero()) {
-    out << "Taking into account the anisotropy tensor that was used for scaling\n";
+    out << "Taking into account the anisotropy tensor that was used for scaling.\n";
     for (Intensities::Refl& refl : ui.data) {
       Vec3 hkl(refl.hkl[0], refl.hkl[1], refl.hkl[2]);
       Vec3 s = ui.unit_cell.frac.mat.multiply(hkl);
@@ -459,10 +459,10 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
 
   // first pass - calculate CC and scale
   gemmi::Correlation corr = calculate_hkl_value_correlation(ui.data, mi.data);
-  out << "Corr. coef. of " << corr.n << " <I> values: "
+  out << "Corr. coef. of " << corr.n << ' ' << mi.type_str() << " values: "
       << 100 * corr.coefficient() << "%\n";
   double scale = corr.mean_ratio();
-  out << "Ratio of total intensities (merged : unmerged): " << scale << '\n';
+  out << "Ratio of compared intensities (merged : unmerged): " << scale << '\n';
 
   // second pass - check that all reflections match
   double max_weighted_sq_diff = 0.;
@@ -472,8 +472,6 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   int missing_count = 0;
   auto r1 = ui.data.begin();
   auto r2 = mi.data.begin();
-  if (std::fabs(scale - 1.) > 1e-4)
-    out << "Assuming that the unmerged data is to be scaled by " << scale << ".\n";
   while (r1 != ui.data.end() && r2 != mi.data.end()) {
     if (r1->hkl == r2->hkl) {
       double value1 = scale * r1->value;
@@ -485,8 +483,8 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
       // Just in case, we ignore near-zero values.
       if (sq_value_max > 1e-4 && sq_diff > sq(0.005) * sq_value_max) {
         if (differ_count == 0) {
-          out << "First difference: (" << r1->hkl[0] << ' ' << r1->hkl[1] << ' '
-              << r1->hkl[2] << ") " << value1 << " vs " << r2->value << '\n';
+          out << "First difference: " << miller_str(r1->hkl)
+              << ' ' << value1 << " vs " << r2->value << '\n';
         }
         ++differ_count;
         if (weighted_sq_diff > max_weighted_sq_diff) {
@@ -502,8 +500,7 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
       ++r1;
     } else {
       if (missing_count == 0)
-        out << "First missing reflection in unmerged data: ("
-            << r1->hkl[0] << ' ' << r1->hkl[1] << ' ' << r1->hkl[2] << ")\n";
+        out << "First missing reflection in unmerged data: " << miller_str(r1->hkl) << '\n';
       ++missing_count;
       ++r2;
     }
@@ -511,8 +508,7 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
 
   if (differ_count != 0) {
     const Miller& hkl = max_diff_r1->hkl;
-    out << "Most significant difference: ("
-        << hkl[0] << ' ' << hkl[1] << ' ' << hkl[2] << ") "
+    out << "Most significant difference: " << miller_str(hkl) << ' '
         << scale * max_diff_r1->value << " vs " << max_diff_r2->value << '\n';
     out << differ_count << " of " << corr.n << " intensities differ too much (by >0.5%).\n";
     ok = false;

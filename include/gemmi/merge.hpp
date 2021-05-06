@@ -1,10 +1,13 @@
 // Copyright 2020 Global Phasing Ltd.
 //
-// Reading intensities from MTZ. Merging multi-record or anomalous.
+// Class Intensities that reads multi-record data from MTZ, mmCIF or XDS_ASCII
+// and merges it into mean or anomalous intensities.
+// It can also read merged data.
 
 #ifndef GEMMI_MERGE_HPP_
 #define GEMMI_MERGE_HPP_
 
+#include <cassert>
 #include "symmetry.hpp"
 #include "unitcell.hpp"
 #include "util.hpp"     // for vector_remove_if
@@ -14,7 +17,18 @@
 
 namespace gemmi {
 
+inline std::string miller_str(const Miller& hkl) {
+  std::string s;
+  for (int i = 0; i < 3; ++i) {
+    s += (i == 0 ? '(' : ' ');
+    s += std::to_string(hkl[i]);
+  }
+  s += ')';
+  return s;
+}
+
 struct Intensities {
+  enum class Type { None, Unmerged, Mean, Anomalous };
 
   struct Refl {
     Miller hkl;
@@ -32,8 +46,21 @@ struct Intensities {
   const SpaceGroup* spacegroup = nullptr;
   UnitCell unit_cell;
   double wavelength;
+  Type type = Type::None;
 
-  bool have_sign() const { return !data.empty() && data[0].isign != 0; }
+  static const char* type_str(Type itype) {
+    switch (itype) {
+      case Type::None: return "n/a";
+      case Type::Unmerged: return "I";
+      case Type::Mean: return "<I>";
+      case Type::Anomalous: return "I+/I-";
+    }
+    unreachable();
+  }
+
+  const char* type_str() const { return Intensities::type_str(type); }
+
+  std::string spacegroup_str() const { return spacegroup ? spacegroup->xhm() : "none"; }
 
   std::array<double,2> resolution_range() const {
     double min_1_d2 = INFINITY;
@@ -48,6 +75,242 @@ struct Intensities {
     return { 1 / std::sqrt(min_1_d2), 1 / std::sqrt(max_1_d2) };
   }
 
+  // pre: both are sorted
+  Correlation calculate_correlation(const Intensities& other) const {
+    Correlation corr;
+    auto r1 = data.begin();
+    auto r2 = other.data.begin();
+    while (r1 != data.end() && r2 != other.data.end()) {
+      if (r1->hkl == r2->hkl && r1->isign == r2->isign) {
+        corr.add_point(r1->value, r2->value);
+        ++r1;
+        ++r2;
+      } else if (*r1 < *r2) {
+        ++r1;
+      } else {
+        ++r2;
+      }
+    }
+    return corr;
+  }
+
+  void remove_systematic_absences() {
+    if (!spacegroup)
+      return;
+    GroupOps gops = spacegroup->operations();
+    vector_remove_if(data, [&](Refl& x) {
+        return gops.is_systematically_absent(x.hkl);
+    });
+  }
+
+  void sort() { std::sort(data.begin(), data.end()); }
+
+  void merge_in_place(Type itype) {
+    if (data.empty())
+      return;
+    if (itype == Type::Mean)
+      // discard signs so that merging produces Imean
+      for (Refl& refl : data)
+        refl.isign = 0;
+    sort();
+    std::vector<Refl>::iterator out = data.begin();
+    double sum_wI = 0.;
+    double sum_w = 0.;
+    for (auto in = data.begin(); in != data.end(); ++in) {
+      if (out->hkl != in->hkl || out->isign != in->isign) {
+        out->value = sum_wI / sum_w;
+        out->sigma = 1.0 / std::sqrt(sum_w);
+        sum_wI = sum_w = 0.;
+        ++out;
+        out->hkl = in->hkl;
+        out->isign = in->isign;
+      }
+      double w = 1. / (in->sigma * in->sigma);
+      sum_wI += w * in->value;
+      sum_w += w;
+    }
+    out->value = sum_wI / sum_w;
+    out->sigma = 1.0 / std::sqrt(sum_w);
+    data.erase(++out, data.end());
+  }
+
+  // for unmerged centric reflections set isign=1.
+  void switch_to_asu_indices(bool merged=false) {
+    GroupOps gops = spacegroup->operations();
+    ReciprocalAsu asu(spacegroup);
+    for (Refl& refl : data) {
+      if (asu.is_in(refl.hkl)) {
+        if (!merged && refl.isign == -1 && gops.is_reflection_centric(refl.hkl))
+          refl.isign = 1;
+        continue;
+      }
+      auto hkl_isym = asu.to_asu(refl.hkl, gops);
+      refl.hkl = hkl_isym.first;
+      if (!merged) {
+        if (gops.is_reflection_centric(refl.hkl))
+          refl.isign = 1;
+        else
+          refl.isign = (hkl_isym.second % 2 == 0 ? -1 : 1);
+      }
+    }
+  }
+
+  void read_unmerged_intensities_from_mtz(const Mtz& mtz) {
+    if (mtz.batches.empty())
+      fail("expected unmerged file");
+    const Mtz::Column* isym_col = mtz.column_with_label("M/ISYM");
+    if (!isym_col || isym_col->idx != 3)
+      fail("unmerged file should have M/ISYM as 4th column");
+    const Mtz::Column& col = mtz.get_column_with_label("I");
+    size_t value_idx = col.idx;
+    size_t sigma_idx = mtz.get_column_with_label("SIGI").idx;
+    unit_cell = mtz.get_average_cell_from_batch_headers(nullptr);
+    spacegroup = mtz.spacegroup;
+    if (!spacegroup)
+      fail("unknown space group");
+    wavelength = mtz.dataset(col.dataset_id).wavelength;
+    for (size_t i = 0; i < mtz.data.size(); i += mtz.columns.size()) {
+      Refl refl;
+      refl.hkl = mtz.get_hkl(i);
+      refl.isign = ((int)mtz.data[i + 3] % 2 == 0 ? -1 : 1);
+      refl.value = mtz.data[i + value_idx];
+      refl.sigma = mtz.data[i + sigma_idx];
+      add_if_valid(refl);
+    }
+    // Aimless >=0.7.6 (from 2021) has an option to output unmerged file
+    // with original indices instead of reduced indices, with all ISYM = 1.
+    switch_to_asu_indices();
+    type = Type::Unmerged;
+  }
+
+  void read_mean_intensities_from_mtz(const Mtz& mtz) {
+    if (!mtz.batches.empty())
+      fail("expected merged file");
+    const Mtz::Column* col = mtz.column_with_one_of_labels({"IMEAN", "I"});
+    if (!col)
+      fail("Mean intensities (IMEAN or I) not found.");
+    size_t sigma_idx = mtz.get_column_with_label("SIG" + col->label).idx;
+    copy_metadata(mtz);
+    wavelength = mtz.dataset(col->dataset_id).wavelength;
+    read_data(MtzDataProxy{mtz}, col->idx, sigma_idx);
+    type = Type::Mean;
+  }
+
+  void read_anomalous_intensities_from_mtz(const Mtz& mtz, bool check_complete=false) {
+    if (!mtz.batches.empty())
+      fail("expected merged file");
+    const Mtz::Column& col = mtz.get_column_with_label("I(+)");
+    size_t value_idx[2] = {col.idx, mtz.get_column_with_label("I(-)").idx};
+    size_t sigma_idx[2] = {mtz.get_column_with_label("SIGI(+)").idx,
+                           mtz.get_column_with_label("SIGI(-)").idx};
+    int mean_idx = -1;
+    if (check_complete)
+      if (const Mtz::Column* mean_col = mtz.column_with_one_of_labels({"IMEAN", "I"}))
+        mean_idx = (int) mean_col->idx;
+    copy_metadata(mtz);
+    wavelength = mtz.dataset(col.dataset_id).wavelength;
+    read_anomalous_data(MtzDataProxy{mtz}, mean_idx, value_idx, sigma_idx);
+    type = Type::Anomalous;
+  }
+
+  void read_merged_intensities_from_mtz(const Mtz& mtz) {
+    if (mtz.column_with_label("I(+)"))
+      read_anomalous_intensities_from_mtz(mtz, true);
+    else
+      read_mean_intensities_from_mtz(mtz);
+  }
+
+  void read_mtz(const Mtz& mtz, Type itype) {
+    switch (itype) {
+      case Type::Unmerged:
+        read_unmerged_intensities_from_mtz(mtz);
+        break;
+      case Type::Mean:
+        read_mean_intensities_from_mtz(mtz);
+        break;
+      case Type::Anomalous:
+        read_anomalous_intensities_from_mtz(mtz);
+        break;
+      case Type::None:
+        assert(0);
+        break;
+    }
+  }
+
+  void read_unmerged_intensities_from_mmcif(const ReflnBlock& rb) {
+    size_t value_idx = rb.get_column_index("intensity_net");
+    size_t sigma_idx = rb.get_column_index("intensity_sigma");
+    copy_metadata(rb);
+    wavelength = rb.wavelength;
+    read_data(ReflnDataProxy(rb), value_idx, sigma_idx);
+    switch_to_asu_indices();
+    type = Type::Unmerged;
+  }
+
+  void read_mean_intensities_from_mmcif(const ReflnBlock& rb) {
+    size_t value_idx = rb.get_column_index("intensity_meas");
+    size_t sigma_idx = rb.get_column_index("intensity_sigma");
+    copy_metadata(rb);
+    wavelength = rb.wavelength;
+    read_data(ReflnDataProxy(rb), value_idx, sigma_idx);
+    type = Type::Mean;
+  }
+
+  void read_anomalous_intensities_from_mmcif(const ReflnBlock& rb,
+                                             bool check_complete=false) {
+    size_t value_idx[2] = {rb.get_column_index("pdbx_I_plus"),
+                           rb.get_column_index("pdbx_I_minus")};
+    size_t sigma_idx[2] = {rb.get_column_index("pdbx_I_plus_sigma"),
+                           rb.get_column_index("pdbx_I_minus_sigma")};
+    int mean_idx = -1;
+    if (check_complete)
+      mean_idx = rb.find_column_index("intensity_meas");
+    copy_metadata(rb);
+    wavelength = rb.wavelength;
+    read_anomalous_data(ReflnDataProxy(rb), mean_idx, value_idx, sigma_idx);
+    type = Type::Anomalous;
+  }
+
+  void read_merged_intensities_from_mmcif(const ReflnBlock& rb) {
+    if (rb.find_column_index("pdbx_I_plus"))
+      read_anomalous_intensities_from_mmcif(rb, true);
+    else
+      read_mean_intensities_from_mmcif(rb);
+  }
+
+  void read_mmcif(const ReflnBlock& rb, Type itype) {
+    switch (itype) {
+      case Type::Unmerged:
+        read_unmerged_intensities_from_mmcif(rb);
+        break;
+      case Type::Mean:
+        read_mean_intensities_from_mmcif(rb);
+        break;
+      case Type::Anomalous:
+        read_anomalous_intensities_from_mmcif(rb);
+        break;
+      case Type::None:
+        break;
+    }
+  }
+
+  void read_unmerged_intensities_from_xds(const XdsAscii& xds) {
+    unit_cell = xds.unit_cell;
+    spacegroup = find_spacegroup_by_number(xds.spacegroup_number);
+    wavelength = xds.wavelength;
+    data.reserve(xds.data.size());
+    for (const XdsAscii::Refl& in : xds.data) {
+      Refl refl;
+      refl.hkl = in.hkl;
+      refl.value = in.iobs;
+      refl.sigma = in.sigma;
+      add_if_valid(refl);
+    }
+    switch_to_asu_indices();
+    type = Type::Unmerged;
+  }
+
+private:
   template<typename Source>
   void copy_metadata(const Source& source) {
     unit_cell = source.cell;
@@ -74,187 +337,31 @@ struct Intensities {
     }
   }
 
-  std::string spacegroup_str() const { return spacegroup ? spacegroup->xhm() : "none"; }
-
-  void remove_systematic_absences() {
-    if (!spacegroup)
-      return;
+  // for centric reflections ignores I(-)
+  template<typename DataProxy>
+  void read_anomalous_data(const DataProxy& proxy, int mean_idx,
+                           size_t (&value_idx)[2], size_t (&sigma_idx)[2]) {
     GroupOps gops = spacegroup->operations();
-    vector_remove_if(data, [&](Refl& x) {
-        return gops.is_systematically_absent(x.hkl);
-    });
-  }
-
-  void sort() { std::sort(data.begin(), data.end()); }
-
-  void merge_in_place(bool output_plus_minus) {
-    if (data.empty())
-      return;
-    if (!output_plus_minus)
-      // discard signs so that merging produces Imean
-      for (Refl& refl : data)
-        refl.isign = 0;
-    sort();
-    std::vector<Refl>::iterator out = data.begin();
-    double sum_wI = 0.;
-    double sum_w = 0.;
-    for (auto in = data.begin(); in != data.end(); ++in) {
-      if (out->hkl != in->hkl || out->isign != in->isign) {
-        out->value = sum_wI / sum_w;
-        out->sigma = 1.0 / std::sqrt(sum_w);
-        sum_wI = sum_w = 0.;
-        ++out;
-        out->hkl = in->hkl;
-        out->isign = in->isign;
+    for (size_t i = 0; i < proxy.size(); i += proxy.stride()) {
+      Miller hkl = proxy.get_hkl(i);
+      if (mean_idx >= 0 && !std::isnan(proxy.get_num(i + mean_idx))) {
+        if (std::isnan(proxy.get_num(i + value_idx[0])) &&
+            std::isnan(proxy.get_num(i + value_idx[1])))
+          fail(miller_str(hkl), " has <I>, but I(+) and I(-) are both null");
       }
-      double w = 1. / (in->sigma * in->sigma);
-      sum_wI += w * in->value;
-      sum_w += w;
-    }
-    out->value = sum_wI / sum_w;
-    out->sigma = 1.0 / std::sqrt(sum_w);
-    data.erase(++out, data.end());
-  }
-
-  void switch_to_asu_indices(bool merged=false) {
-    GroupOps gops = spacegroup->operations();
-    ReciprocalAsu asu(spacegroup);
-    for (Refl& refl : data) {
-      if (asu.is_in(refl.hkl))
-        continue;
-      auto hkl_isym = asu.to_asu(refl.hkl, gops);
-      refl.hkl = hkl_isym.first;
-      if (!merged)
-        refl.isign = (hkl_isym.second % 2 == 0 ? -1 : 1);
+      for (int j = 0; j < 2; ++j) {
+        Refl refl;
+        refl.hkl = hkl;
+        refl.isign = (j == 0 ? 1 : -1);
+        refl.value = proxy.get_num(i + value_idx[j]);
+        refl.sigma = proxy.get_num(i + sigma_idx[j]);
+        add_if_valid(refl);
+        if (j == 0 && gops.is_reflection_centric(refl.hkl))  // skip I(-)
+          break;
+      }
     }
   }
 };
-
-
-inline Intensities read_unmerged_intensities_from_mtz(const Mtz& mtz) {
-  if (mtz.batches.empty())
-    fail("expected unmerged file");
-  const Mtz::Column* isym_col = mtz.column_with_label("M/ISYM");
-  if (!isym_col || isym_col->idx != 3)
-    fail("unmerged file should have M/ISYM as 4th column");
-  const Mtz::Column& col = mtz.get_column_with_label("I");
-  size_t value_idx = col.idx;
-  size_t sigma_idx = mtz.get_column_with_label("SIGI").idx;
-  Intensities intensities;
-  intensities.unit_cell = mtz.get_average_cell_from_batch_headers(nullptr);
-  intensities.spacegroup = mtz.spacegroup;
-  if (!intensities.spacegroup)
-    fail("unknown space group");
-  intensities.wavelength = mtz.dataset(col.dataset_id).wavelength;
-  for (size_t i = 0; i < mtz.data.size(); i += mtz.columns.size()) {
-    Intensities::Refl refl;
-    refl.hkl = mtz.get_hkl(i);
-    refl.isign = ((int)mtz.data[i + 3] % 2 == 0 ? -1 : 1);
-    refl.value = mtz.data[i + value_idx];
-    refl.sigma = mtz.data[i + sigma_idx];
-    intensities.add_if_valid(refl);
-  }
-  // Aimless >=0.7.6 (from 2021) has an option to output unmerged file
-  // with original indices instead of reduced indices, with all ISYM = 1.
-  intensities.switch_to_asu_indices();
-  return intensities;
-}
-
-inline Intensities read_mean_intensities_from_mtz(const Mtz& mtz) {
-  if (!mtz.batches.empty())
-    fail("expected merged file");
-  const Mtz::Column* col = mtz.column_with_one_of_labels({"IMEAN", "I"});
-  if (!col)
-    fail("Mean intensities (IMEAN or I) not found.");
-  size_t sigma_idx = mtz.get_column_with_label("SIG" + col->label).idx;
-  Intensities intensities;
-  intensities.copy_metadata(mtz);
-  intensities.wavelength = mtz.dataset(col->dataset_id).wavelength;
-  intensities.read_data(MtzDataProxy{mtz}, col->idx, sigma_idx);
-  return intensities;
-}
-
-inline Intensities read_anomalous_intensities_from_mtz(const Mtz& mtz) {
-  if (!mtz.batches.empty())
-    fail("expected merged file");
-  const Mtz::Column& col = mtz.get_column_with_label("I(+)");
-  size_t value_idx[2] = {col.idx, mtz.get_column_with_label("I(-)").idx};
-  size_t sigma_idx[2] = {mtz.get_column_with_label("SIGI(+)").idx,
-                         mtz.get_column_with_label("SIGI(-)").idx};
-  Intensities intensities;
-  intensities.copy_metadata(mtz);
-  intensities.wavelength = mtz.dataset(col.dataset_id).wavelength;
-  for (size_t i = 0; i < mtz.data.size(); i += mtz.columns.size())
-    for (int j = 0; j < 2; ++j) {
-      Intensities::Refl refl;
-      refl.hkl = mtz.get_hkl(i);
-      refl.isign = (j == 0 ? 1 : -1);
-      refl.value = mtz.data[i + value_idx[j]];
-      refl.sigma = mtz.data[i + sigma_idx[j]];
-      intensities.add_if_valid(refl);
-    }
-  return intensities;
-}
-
-
-inline Intensities read_unmerged_intensities_from_mmcif(const ReflnBlock& rb) {
-  size_t value_idx = rb.get_column_index("intensity_net");
-  size_t sigma_idx = rb.get_column_index("intensity_sigma");
-  Intensities intensities;
-  intensities.copy_metadata(rb);
-  intensities.wavelength = rb.wavelength;
-  intensities.read_data(ReflnDataProxy(rb), value_idx, sigma_idx);
-  intensities.switch_to_asu_indices();
-  return intensities;
-}
-
-inline Intensities read_mean_intensities_from_mmcif(const ReflnBlock& rb) {
-  size_t value_idx = rb.get_column_index("intensity_meas");
-  size_t sigma_idx = rb.get_column_index("intensity_sigma");
-  Intensities intensities;
-  intensities.copy_metadata(rb);
-  intensities.wavelength = rb.wavelength;
-  intensities.read_data(ReflnDataProxy(rb), value_idx, sigma_idx);
-  return intensities;
-}
-
-inline Intensities read_anomalous_intensities_from_mmcif(const ReflnBlock& rb) {
-  size_t value_idx[2] = {rb.get_column_index("pdbx_I_plus"),
-                         rb.get_column_index("pdbx_I_minus")};
-  size_t sigma_idx[2] = {rb.get_column_index("pdbx_I_plus_sigma"),
-                         rb.get_column_index("pdbx_I_minus_sigma")};
-  Intensities intensities;
-  intensities.copy_metadata(rb);
-  intensities.wavelength = rb.wavelength;
-  ReflnDataProxy proxy(rb);
-  for (size_t i = 0; i < proxy.size(); i += proxy.stride())
-    for (int j = 0; j < 2; ++j) {
-      Intensities::Refl refl;
-      refl.hkl = proxy.get_hkl(i);
-      refl.isign = (j == 0 ? 1 : -1);
-      refl.value = proxy.get_num(i + value_idx[j]);
-      refl.sigma = proxy.get_num(i + sigma_idx[j]);
-      intensities.add_if_valid(refl);
-    }
-  return intensities;
-}
-
-inline Intensities read_unmerged_intensities_from_xds(const XdsAscii& xds) {
-  Intensities intensities;
-  intensities.unit_cell = xds.unit_cell;
-  intensities.spacegroup = find_spacegroup_by_number(xds.spacegroup_number);
-  intensities.wavelength = xds.wavelength;
-  intensities.data.reserve(xds.data.size());
-  for (const XdsAscii::Refl& in : xds.data) {
-    Intensities::Refl refl;
-    refl.hkl = in.hkl;
-    refl.value = in.iobs;
-    refl.sigma = in.sigma;
-    intensities.add_if_valid(refl);
-  }
-  intensities.switch_to_asu_indices();
-  return intensities;
-}
 
 } // namespace gemmi
 #endif

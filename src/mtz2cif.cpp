@@ -238,16 +238,16 @@ int GEMMI_MAIN(int argc, char **argv) {
     try {
       gemmi::Intensities mi, ui;
       if (mtz[0]) {
-        mi = gemmi::read_mean_intensities_from_mtz(*mtz[0]);
+        mi.read_merged_intensities_from_mtz(*mtz[0]);
       } else {
         gemmi::ReflnBlock rblock = gemmi::get_refln_block(
             gemmi::read_cif_from_buffer(cif_buf, cif_input).blocks, {});
-        mi = gemmi::read_mean_intensities_from_mmcif(rblock);
+        mi.read_merged_intensities_from_mmcif(rblock);
       }
       if (mtz[1])
-        ui = read_unmerged_intensities_from_mtz(*mtz[1]);
+        ui.read_unmerged_intensities_from_mtz(*mtz[1]);
       else if (xds_ascii)
-        ui = read_unmerged_intensities_from_xds(*xds_ascii);
+        ui.read_unmerged_intensities_from_xds(*xds_ascii);
       gemmi::SMat33<double> aniso_scale_b = gemmi::get_staraniso_b(mtz[0].get(), std::cerr);
       if (!gemmi::validate_merged_intensities(mi, ui, aniso_scale_b, std::cerr))
         ok = false;

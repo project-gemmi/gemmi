@@ -129,7 +129,9 @@ gemmi/math.hpp
     Math utilities. 3D linear algebra.
 
 gemmi/merge.hpp
-    Reading intensities from MTZ. Merging multi-record or anomalous.
+    Class Intensities that reads multi-record data from MTZ, mmCIF or XDS_ASCII
+    and merges it into mean or anomalous intensities.
+    It can also read merged data.
 
 gemmi/metadata.hpp
     Metadata from coordinate files.
