@@ -385,7 +385,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
        "ptnr2_auth_seq_id", "pdbx_ptnr2_PDB_ins_code", "ptnr2_symmetry",
        "details", "pdbx_dist_value"});
   if (use_ccp4_link_id)
-    conn_loop.tags.push_back("ccp4_link_id");
+    conn_loop.tags.push_back("_struct_conn.ccp4_link_id");
   for (const Connection& con : st.connections) {
     const_CRA cra1 = st.models[0].find_cra(con.partner1);
     const_CRA cra2 = st.models[0].find_cra(con.partner2);
@@ -400,7 +400,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
       im_dist_str = to_str_prec<4>(im.dist());
     }
     auto& v = conn_loop.values;
-    v.emplace_back(con.name);                               // id
+    v.emplace_back(impl::string_or_qmark(con.name));        // id
     v.emplace_back(connection_type_to_string(con.type));    // conn_type_id
     v.emplace_back(impl::qchain(con.partner1.chain_name));  // ptnr1_auth_asym_id
     v.emplace_back(subchain_or_dot(*cra1.residue));         // ptnr1_label_asym_id
