@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include <pybind11/stl.h>
+#include <pybind11/numpy.h>
 #include "gemmi/version.hpp"
 #include "gemmi/dirwalk.hpp"
 #include "gemmi/fileutil.hpp"  // for expand_if_pdb_code
@@ -72,7 +73,7 @@ void add_misc(py::module& m) {
   m.def("expand_if_pdb_code", &gemmi::expand_if_pdb_code,
         py::arg("code"), py::arg("filetype")='M');
   m.attr("hc") = py::float_(gemmi::hc());
-  m.def("bessel_i1_over_i0", &gemmi::bessel_i1_over_i0);
+  m.def("bessel_i1_over_i0", py::vectorize(gemmi::bessel_i1_over_i0));
 }
 
 PYBIND11_MODULE(gemmi, mg) {
