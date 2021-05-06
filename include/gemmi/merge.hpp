@@ -170,12 +170,8 @@ struct Intensities {
       fail("unknown space group");
     wavelength = mtz.dataset(col.dataset_id).wavelength;
     for (size_t i = 0; i < mtz.data.size(); i += mtz.columns.size()) {
-      Refl refl;
-      refl.hkl = mtz.get_hkl(i);
-      refl.isign = ((int)mtz.data[i + 3] % 2 == 0 ? -1 : 1);
-      refl.value = mtz.data[i + value_idx];
-      refl.sigma = mtz.data[i + sigma_idx];
-      add_if_valid(refl);
+      int isign = ((int)mtz.data[i + 3] % 2 == 0 ? -1 : 1);
+      add_if_valid(mtz.get_hkl(i), isign, mtz.data[i + value_idx], mtz.data[i + sigma_idx]);
     }
     // Aimless >=0.7.6 (from 2021) has an option to output unmerged file
     // with original indices instead of reduced indices, with all ISYM = 1.
@@ -299,13 +295,8 @@ struct Intensities {
     spacegroup = find_spacegroup_by_number(xds.spacegroup_number);
     wavelength = xds.wavelength;
     data.reserve(xds.data.size());
-    for (const XdsAscii::Refl& in : xds.data) {
-      Refl refl;
-      refl.hkl = in.hkl;
-      refl.value = in.iobs;
-      refl.sigma = in.sigma;
-      add_if_valid(refl);
-    }
+    for (const XdsAscii::Refl& in : xds.data)
+      add_if_valid(in.hkl, 0, in.iobs, in.sigma);
     switch_to_asu_indices();
     type = Type::Unmerged;
   }
@@ -319,46 +310,38 @@ private:
       fail("unknown space group");
   }
 
-  void add_if_valid(const Refl& refl) {
-      // XDS marks rejected reflections with negative sigma.
-      // Sigma 0.0 is also problematic - it rarely happens (e.g. 5tkn).
-    if (!std::isnan(refl.value) && refl.sigma > 0)
-      data.push_back(refl);
+  void add_if_valid(const Miller& hkl, int isign, double value, double sigma) {
+    // XDS marks rejected reflections with negative sigma.
+    // Sigma 0.0 is also problematic - it rarely happens (e.g. 5tkn).
+    if (!std::isnan(value) && sigma > 0)
+      data.push_back({hkl, isign, value, sigma});
   }
 
   template<typename DataProxy>
   void read_data(const DataProxy& proxy, size_t value_idx, size_t sigma_idx) {
-    for (size_t i = 0; i < proxy.size(); i += proxy.stride()) {
-      Refl refl;
-      refl.hkl = proxy.get_hkl(i);
-      refl.value = proxy.get_num(i + value_idx);
-      refl.sigma = proxy.get_num(i + sigma_idx);
-      add_if_valid(refl);
-    }
+    for (size_t i = 0; i < proxy.size(); i += proxy.stride())
+      add_if_valid(proxy.get_hkl(i), 0,
+                   proxy.get_num(i + value_idx),
+                   proxy.get_num(i + sigma_idx));
   }
 
-  // for centric reflections ignores I(-)
   template<typename DataProxy>
   void read_anomalous_data(const DataProxy& proxy, int mean_idx,
                            size_t (&value_idx)[2], size_t (&sigma_idx)[2]) {
     GroupOps gops = spacegroup->operations();
     for (size_t i = 0; i < proxy.size(); i += proxy.stride()) {
       Miller hkl = proxy.get_hkl(i);
-      if (mean_idx >= 0 && !std::isnan(proxy.get_num(i + mean_idx))) {
+      bool centric = gops.is_reflection_centric(hkl);
+      if (mean_idx >= 0 && !std::isnan(proxy.get_num(i + mean_idx)) && !centric) {
         if (std::isnan(proxy.get_num(i + value_idx[0])) &&
             std::isnan(proxy.get_num(i + value_idx[1])))
           fail(miller_str(hkl), " has <I>, but I(+) and I(-) are both null");
       }
-      for (int j = 0; j < 2; ++j) {
-        Refl refl;
-        refl.hkl = hkl;
-        refl.isign = (j == 0 ? 1 : -1);
-        refl.value = proxy.get_num(i + value_idx[j]);
-        refl.sigma = proxy.get_num(i + sigma_idx[j]);
-        add_if_valid(refl);
-        if (j == 0 && gops.is_reflection_centric(refl.hkl))  // skip I(-)
-          break;
-      }
+      add_if_valid(hkl, 1, proxy.get_num(i + value_idx[0]),
+                           proxy.get_num(i + sigma_idx[0]));
+      if (!centric)  // ignore I(-) of centric reflections
+        add_if_valid(hkl, -1, proxy.get_num(i + value_idx[1]),
+                              proxy.get_num(i + sigma_idx[1]));
     }
   }
 };
