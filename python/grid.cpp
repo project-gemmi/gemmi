@@ -207,6 +207,7 @@ void add_grid(py::module& m) {
          py::arg("choice"), py::arg("constant_r")=0.)
     .def("put_mask_on_int8_grid", &SolventMasker::put_mask_on_grid<int8_t>)
     .def("put_mask_on_float_grid", &SolventMasker::put_mask_on_grid<float>)
+    .def("set_to_zero", &SolventMasker::set_to_zero)
     ;
 
   py::class_<Blob>(m, "Blob")

@@ -285,6 +285,11 @@ struct SolventMasker {
     remove_islands(grid);
   }
 
+  void set_to_zero(Grid<float>& grid, const Model& model) const {
+    mask_points(grid, model);
+    grid.symmetrize([&](float a, float b) { return b == 0.f ? 0.f : a; });
+  }
+
 #if 0
   template<typename T> void put_mask_on_grid(Grid<T>& grid, const Model& model) {
     // use twice finer grid for solvent mask
