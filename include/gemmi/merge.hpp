@@ -32,7 +32,7 @@ struct Intensities {
 
   struct Refl {
     Miller hkl;
-    int isign = 0;  // 1 for I(+), -1 for I(-)
+    int isign;  // 1 for I(+), -1 for I(-), 0 for mean
     double value;
     double sigma;
 
@@ -72,7 +72,7 @@ struct Intensities {
       if (a_1_d2 > max_1_d2)
         max_1_d2 = a_1_d2;
     }
-    return { 1 / std::sqrt(min_1_d2), 1 / std::sqrt(max_1_d2) };
+    return {{ 1 / std::sqrt(min_1_d2), 1 / std::sqrt(max_1_d2) }};
   }
 
   // pre: both are sorted
