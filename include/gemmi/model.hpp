@@ -913,10 +913,14 @@ struct Structure {
     return nullptr;
   }
 
+  size_t ncs_given_count() const {
+    return std::count_if(ncs.begin(), ncs.end(), [](const NcsOp& o) { return o.given; });
+  }
   double get_ncs_multiplier() const {
-    size_t given = std::count_if(ncs.begin(), ncs.end(),
-                                 [](const NcsOp& o) { return o.given; });
-    return (ncs.size() + 1.0) / (given + 1.0);  // +1 b/c identity not included
+    return (ncs.size() + 1.0) / (ncs_given_count() + 1.0);  // +1 b/c identity not included
+  }
+  bool ncs_not_expanded() const {
+    return std::any_of(ncs.begin(), ncs.end(), [](const NcsOp& o) { return !o.given; });
   }
 
   void merge_chain_parts(int min_sep=0) {

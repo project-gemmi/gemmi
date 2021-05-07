@@ -37,19 +37,19 @@ inline Blob make_blob_of_points(const std::vector<GridConstPoint>& points,
                                 const gemmi::Grid<float>& grid,
                                 const BlobCriteria& criteria) {
   Blob blob;
-  size_t point_count = points.size();
-  if (point_count < 3)
+  if (points.size() < 3)
     return blob;
   double volume_per_point = grid.unit_cell.volume / grid.point_count();
-  double volume = point_count * volume_per_point;
+  double volume = points.size() * volume_per_point;
   if (volume < criteria.min_volume)
     return blob;
   double sum[3] = {0., 0., 0.};
-  const GridConstPoint* max_point = nullptr;
+  const GridConstPoint* max_point = &points[0];
+  blob.max_value = points[0].value;
   double score = 0.;
   for (const GridConstPoint& point : points) {
     score += point.value;
-    if (max_point == nullptr || point.value > blob.max_value) {
+    if (point.value > blob.max_value) {
       blob.max_value = point.value;
       max_point = &point;
     }

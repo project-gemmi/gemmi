@@ -4,6 +4,7 @@
 #include <algorithm>  // count
 #include <stdexcept>
 #include "gemmi/blob.hpp"
+#include "gemmi/assembly.hpp"  // for expand_ncs
 #include "gemmi/polyheur.hpp"  // for remove_hydrogens
 #include "gemmi/math.hpp"      // for Variance
 #include "gemmi/neighbor.hpp"  // for NeighborSearch
@@ -105,10 +106,15 @@ int run(OptParser& p) {
            grid.unit_cell.volume, grid.point_count(),
            grid.unit_cell.volume / grid.point_count());
   // move blob position to the symmetry image nearest to the model
-  if (st.cell.images.size() != grid.unit_cell.images.size())
-    std::fprintf(stderr, "Warning: different space groups in model and data.");
+  if (st.find_spacegroup() != grid.spacegroup)
+    std::fprintf(stderr, "Warning: different space groups in model and data.\n");
   if (!st.cell.approx(grid.unit_cell, 0.1))
-    std::fprintf(stderr, "Warning: different unit cells in model and data.");
+    std::fprintf(stderr, "Warning: different unit cells in model and data.\n");
+
+  if (st.ncs_not_expanded()) {
+    std::fprintf(stderr, "Note: NCS is expanded, listed blobs may be redundant.\n");
+    gemmi::expand_ncs(st, gemmi::HowToNameCopiedChain::AddNumber);
+  }
 
   // calculate map RMSD and setup blob criteria
   gemmi::BlobCriteria criteria;
@@ -166,7 +172,7 @@ int run(OptParser& p) {
     const gemmi::Blob& b = blobs[i];
     std::string residue_info = "none";
     if (cra.chain && cra.residue)
-      residue_info = cra.chain->name + cra.residue->str();
+      residue_info = cra.chain->name + " " + cra.residue->str();
     printf("#%-2zu %5.1f el in %5.1f A^3, %4.1f rmsd,"
            " (%6.1f,%6.1f,%6.1f) near %s\n",
            i, b.score, b.volume, b.max_value / rmsd,
