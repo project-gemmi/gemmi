@@ -62,6 +62,7 @@ c_fortran/*_types.yaml
 c_fortran/types*.h
 c_fortran/util*.cpp
 c_fortran/wrap*
+c_fortran/*.a
 # test programs
 c_fortran/fsym
 c_fortran/ftest
