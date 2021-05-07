@@ -213,9 +213,9 @@ void add_grid(py::module& m) {
   py::class_<Blob>(m, "Blob")
     .def_readonly("volume", &Blob::volume)
     .def_readonly("score", &Blob::score)
-    .def_readonly("max_value", &Blob::max_value)
+    .def_readonly("peak_value", &Blob::peak_value)
     .def_readonly("centroid", &Blob::centroid)
-    .def_readonly("max_pos", &Blob::max_pos)
+    .def_readonly("peak_pos", &Blob::peak_pos)
     ;
   m.def("find_blobs_by_flood_fill",
         [](const Grid<float>& grid, double cutoff,

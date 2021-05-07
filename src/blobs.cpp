@@ -168,14 +168,14 @@ int run(OptParser& p) {
   // output results
   for (size_t i = 0; i != blobs.size(); ++i) {
     gemmi::const_CRA cra = move_near_model(ns, blobs[i].centroid);
-    // Blob::max_pos is left not moved, but we don't use it below
+    // Blob::peak_pos is left not moved, but we don't use it below
     const gemmi::Blob& b = blobs[i];
     std::string residue_info = "none";
     if (cra.chain && cra.residue)
       residue_info = cra.chain->name + " " + cra.residue->str();
     printf("#%-2zu %5.1f el in %5.1f A^3, %4.1f rmsd,"
            " (%6.1f,%6.1f,%6.1f) near %s\n",
-           i, b.score, b.volume, b.max_value / rmsd,
+           i, b.score, b.volume, b.peak_value / rmsd,
            b.centroid.x, b.centroid.y, b.centroid.z, residue_info.c_str());
   }
   return 0;

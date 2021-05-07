@@ -13,9 +13,9 @@ namespace gemmi {
 struct Blob {
   double volume = 0.0;
   double score = 0.0;
-  double max_value = 0.0;
+  double peak_value = 0.0;
   gemmi::Position centroid;
-  gemmi::Position max_pos;
+  gemmi::Position peak_pos;
   explicit operator bool() const { return volume != 0. ; }
 };
 
@@ -44,20 +44,20 @@ inline Blob make_blob_of_points(const std::vector<GridConstPoint>& points,
   if (volume < criteria.min_volume)
     return blob;
   double sum[3] = {0., 0., 0.};
-  const GridConstPoint* max_point = &points[0];
-  blob.max_value = points[0].value;
+  const GridConstPoint* peak_point = &points[0];
+  blob.peak_value = points[0].value;
   double score = 0.;
   for (const GridConstPoint& point : points) {
     score += point.value;
-    if (point.value > blob.max_value) {
-      blob.max_value = point.value;
-      max_point = &point;
+    if (point.value > blob.peak_value) {
+      blob.peak_value = point.value;
+      peak_point = &point;
     }
     sum[0] += point.u * point.value;
     sum[1] += point.v * point.value;
     sum[2] += point.w * point.value;
   }
-  if (blob.max_value < criteria.min_peak)
+  if (blob.peak_value < criteria.min_peak)
     return blob;
   blob.score = score * volume_per_point;
   if (blob.score < criteria.min_score)
@@ -66,7 +66,7 @@ inline Blob make_blob_of_points(const std::vector<GridConstPoint>& points,
                           sum[1] / (score * grid.nv),
                           sum[2] / (score * grid.nw));
   blob.centroid = grid.unit_cell.orthogonalize(fract);
-  blob.max_pos = grid.get_position(max_point->u, max_point->v, max_point->w);
+  blob.peak_pos = grid.get_position(peak_point->u, peak_point->v, peak_point->w);
   blob.volume = volume;
   return blob;
 }
