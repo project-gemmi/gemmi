@@ -420,9 +420,54 @@ or with constant radius, similarly to the NCSMASK program from CCP4:
 
   >>> masker = gemmi.SolventMasker(gemmi.AtomicRadiiSet.Constant, 3.0)
 
-If the mask is to be FFT-ed to structure factors, store it on FloatGrid.
+If the mask is to be FFT-ed to structure factors, store it on FloatGrid
+(function ``put_mask_on_float_grid`` in Python
+and ``put_mask_on_grid`` in C++).
 See the section about :ref:`bulk solvent coorection <scaling>`
 for details and examples.
+
+
+Blob search
+-----------
+
+When we have an electron density map on a Grid we may want to check *blobs* --
+unmodelled electron density, potential ligand sites.
+Similarly to the "Unmodelled blobs" function in COOT, Gemmi has a function
+that finds such blobs. It was added to be used in CCP4 Dimple.
+
+The blobs can be searched either in a difference map, or in a normal map
+with the model masked out. In this example we do the latter.
+
+.. doctest::
+
+  >>> # load map from MTZ
+  >>> mtz = gemmi.read_mtz_file('../tests/5wkd_phases.mtz.gz')
+  >>> grid = mtz.transform_f_phi_to_map('FWT', 'PHWT', sample_rate=3)
+  >>>
+  >>> # Load model. No real blobs in this tiny example,
+  >>> # so we remove water to get one water-sized blob.
+  >>> st = gemmi.read_structure('../tests/5wkd.pdb')
+  >>> st.remove_waters()
+  >>>
+  >>> # use SolventMasker to mask the models with zeros
+  >>> masker = gemmi.SolventMasker(gemmi.AtomicRadiiSet.Constant, 1.75)
+  >>> masker.set_to_zero(grid, st[0])
+  >>>
+  >>> # find the blob
+  >>> blobs = gemmi.find_blobs_by_flood_fill(grid, cutoff=0.5, min_volume=10,
+  ...                                        min_score=0, min_peak=0)
+  >>> blobs  #doctest: +ELLIPSIS
+  [<gemmi.Blob object at 0x...>]
+  >>> blobs[0].volume
+  11.574871592543811
+  >>> blobs[0].score
+  11.04299768996108
+  >>> blobs[0].peak_value
+  1.8486430644989014
+  >>> blobs[0].centroid
+  <gemmi.Position(12.5867, -0.38641, 0)>
+  >>> blobs[0].peak_pos
+  <gemmi.Position(12.307, 0, 0)>
 
 
 MRC/CCP4 maps
