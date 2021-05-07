@@ -142,11 +142,12 @@ void print_content_info(const Structure& st, bool /*verbose*/) {
   for (const Chain& chain : model.chains)
     if (ConstResidueSpan polymer = chain.get_polymer()) {
       const Entity* entity = st.get_entity_of(polymer);
-      if (!entity || entity->full_sequence.empty()) {
+      if (entity && !entity->full_sequence.empty()) {
+        mol_weight += calculate_sequence_weight(entity->full_sequence, 100.);
+      } else {
         printf(" Missing sequence for chain %s.\n", chain.name.c_str());
         missing = true;
       }
-      mol_weight += calculate_sequence_weight(entity->full_sequence, 100.);
     }
   if (missing)
     return;
