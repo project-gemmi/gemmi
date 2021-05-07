@@ -122,7 +122,7 @@ int run(OptParser& p) {
   double rmsd = std::sqrt(grid_variance.for_population());
   double sigma_level = 1.0;
   if (p.options[AbsCutoff]) {
-    criteria.cutoff = std::strtod(p.options[SigmaCutoff].arg, nullptr);
+    criteria.cutoff = std::strtod(p.options[AbsCutoff].arg, nullptr);
     sigma_level = criteria.cutoff / rmsd;
   } else {
     if (p.options[SigmaCutoff])
