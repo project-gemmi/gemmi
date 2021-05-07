@@ -217,12 +217,15 @@ void add_grid(py::module& m) {
     .def_readonly("centroid", &Blob::centroid)
     .def_readonly("max_pos", &Blob::max_pos)
     ;
-  py::class_<BlobCriteria>(m, "BlobCriteria")
-    .def(py::init<>())
-    .def_readwrite("min_volume", &BlobCriteria::min_volume)
-    .def_readwrite("min_score", &BlobCriteria::min_score)
-    .def_readwrite("min_peak", &BlobCriteria::min_peak)
-    .def_readwrite("cutoff", &BlobCriteria::cutoff)
-    ;
-  m.def("find_blobs_by_flood_fill", &gemmi::find_blobs_by_flood_fill);
+  m.def("find_blobs_by_flood_fill",
+        [](const Grid<float>& grid, double cutoff,
+           double min_volume, double min_score, double min_peak) {
+       BlobCriteria crit;
+       crit.cutoff = cutoff;
+       crit.min_volume = min_volume;
+       crit.min_score = min_score;
+       crit.min_peak = min_peak;
+       return find_blobs_by_flood_fill(grid, crit);
+    }, py::arg("grid"), py::arg("cutoff")=true,
+       py::arg("min_volume")=10., py::arg("min_score")=15, py::arg("min_peak")=0.);
 }
