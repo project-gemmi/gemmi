@@ -49,6 +49,9 @@ gemmi/cif.hpp
     CIF parser (based on PEGTL) with pluggable actions,
     and a set of actions that prepare Document.
 
+gemmi/cif2mtz.hpp
+    A class for converting SF-mmCIF to MTZ (merged or unmerged).
+
 gemmi/cifdoc.hpp
     struct Document that represents the CIF file (but can be also
     read from JSON file, such as CIF-JSON or mmJSON).
