@@ -454,18 +454,18 @@ with the model masked out. In this example we do the latter.
   >>> masker.set_to_zero(grid, st[0])
   >>>
   >>> # find the blob
-  >>> blobs = gemmi.find_blobs_by_flood_fill(grid, cutoff=0.5, min_volume=10,
+  >>> blobs = gemmi.find_blobs_by_flood_fill(grid, cutoff=0.6, min_volume=5,
   ...                                        min_score=0, min_peak=0)
   >>> blobs  #doctest: +ELLIPSIS
   [<gemmi.Blob object at 0x...>]
   >>> blobs[0].volume
-  11.574871592543811
+  9.967250538023837
   >>> blobs[0].score
-  11.04299768996108
+  10.181545879097678
   >>> blobs[0].peak_value
   1.8486430644989014
   >>> blobs[0].centroid
-  <gemmi.Position(12.5867, -0.38641, 0)>
+  <gemmi.Position(12.5867, -0.45056, 0)>
   >>> blobs[0].peak_pos
   <gemmi.Position(12.307, 0, 0)>
 
