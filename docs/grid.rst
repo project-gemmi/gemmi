@@ -465,7 +465,7 @@ with the model masked out. In this example we do the latter.
   >>> blobs[0].peak_value
   1.8486430644989014
   >>> blobs[0].centroid
-  <gemmi.Position(12.5867, -0.45056, 0)>
+  <gemmi.Position(12.5868, -0.45056, 0)>
   >>> blobs[0].peak_pos
   <gemmi.Position(12.307, 0, 0)>
 

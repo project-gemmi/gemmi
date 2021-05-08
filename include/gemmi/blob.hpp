@@ -53,9 +53,9 @@ inline Blob make_blob_of_points(const std::vector<GridConstPoint>& points,
       blob.peak_value = point.value;
       peak_point = &point;
     }
-    sum[0] += point.u * point.value;
-    sum[1] += point.v * point.value;
-    sum[2] += point.w * point.value;
+    sum[0] += double(point.u) * point.value;
+    sum[1] += double(point.v) * point.value;
+    sum[2] += double(point.w) * point.value;
   }
   if (blob.peak_value < criteria.min_peak)
     return blob;
