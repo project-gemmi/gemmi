@@ -5,6 +5,7 @@
 #ifndef GEMMI_CIF2MTZ_HPP_
 #define GEMMI_CIF2MTZ_HPP_
 
+#include <ostream>
 #include "cifdoc.hpp"   // for Loop, as_int, ...
 #include "fail.hpp"     // for fail
 #include "mtz.hpp"      // for Mtz
@@ -88,7 +89,7 @@ struct CifToMtz {
   std::vector<std::string> history;
   std::vector<std::string> spec_lines;
 
-  Mtz convert_block_to_mtz(const ReflnBlock& rb) {
+  Mtz convert_block_to_mtz(const ReflnBlock& rb, std::ostream& out) {
     Mtz mtz;
     if (title)
       mtz.title = title;
@@ -104,7 +105,7 @@ struct CifToMtz {
     if (!loop)
       fail("_refln category not found in mmCIF block: " + rb.block.name);
     if (verbose)
-      fprintf(stderr, "Searching tags with known MTZ equivalents ...\n");
+      out << "Searching tags with known MTZ equivalents ...\n";
     bool uses_status = false;
     std::vector<int> indices;
     std::string tag = loop->tags[0];
@@ -174,7 +175,7 @@ struct CifToMtz {
       }
       col->label = entry.col_label;
       if (verbose)
-        fprintf(stderr, "  %s -> %s\n", tag.c_str(), col->label.c_str());
+        out << "  " << tag << " -> " << col->label << '\n';
     }
     if (!column_added)
       fail(force_unmerged ? "Unmerged d" : "D", "ata not found in block ", rb.block.name);
@@ -187,7 +188,7 @@ struct CifToMtz {
 
     if (unmerged) {
       if (verbose)
-        fprintf(stderr, "The BATCH columns is set to dummy value 1.\n");
+        out << "The BATCH columns is set to dummy value 1.\n";
     }
 
     // fill in the data
@@ -217,8 +218,8 @@ struct CifToMtz {
         } else {
           mtz.data[k] = (float) cif::as_number(v);
           if (std::isnan(mtz.data[k]))
-            fprintf(stderr, "Value #%zu in the loop is not a number: %s\n",
-                    i + indices[j], v.c_str());
+            out << "Value #" << i + indices[j] << " in the loop is not a number: "
+                << v << '\n';
         }
         ++k;
       }

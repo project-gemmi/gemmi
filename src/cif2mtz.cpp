@@ -4,6 +4,7 @@
 
 #include <cstdio>             // for fprintf
 #include <cstdlib>            // for exit
+#include <iostream>           // for cerr
 #include <memory>             // for unique_ptr
 #ifndef GEMMI_ALL_IN_ONE
 # define GEMMI_WRITE_IMPLEMENTATION 1
@@ -106,7 +107,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         path += rb.block.name;
         path += ".mtz";
         try {
-          gemmi::Mtz mtz = cif2mtz.convert_block_to_mtz(rb);
+          gemmi::Mtz mtz = cif2mtz.convert_block_to_mtz(rb, std::cerr);
           if (cif2mtz.verbose)
             fprintf(stderr, "Writing %s ...\n", path.c_str());
           mtz.write_to_file(path);
@@ -122,7 +123,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       const gemmi::ReflnBlock& rb = p.options[BlockName]
         ? get_block_by_name(rblocks, p.options[BlockName].arg)
         : rblocks.at(0);
-      gemmi::Mtz mtz = cif2mtz.convert_block_to_mtz(rb);
+      gemmi::Mtz mtz = cif2mtz.convert_block_to_mtz(rb, std::cerr);
       if (cif2mtz.verbose)
         fprintf(stderr, "Writing %s ...\n", mtz_path);
       mtz.write_to_file(mtz_path);
