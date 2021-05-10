@@ -16,7 +16,9 @@ pdbx_I_plus I(+) K 1
 pdbx_I_plus_sigma SIGI(+) M 1
 pdbx_I_minus I(-) K 1
 pdbx_I_minus_sigma SIGI(-) M 1
+F_meas FP F 1
 F_meas_au FP F 1
+F_meas_sigma SIGFP Q 1
 F_meas_sigma_au SIGFP Q 1
 pdbx_F_plus F(+) G 1
 pdbx_F_plus_sigma SIGF(+) L 1
@@ -25,6 +27,7 @@ pdbx_F_minus_sigma SIGF(-) L 1
 pdbx_anom_difference DP D 1
 pdbx_anom_difference_sigma SIGDP Q 1
 F_calc FC F 1
+F_calc_au FC F 1
 phase_calc PHIC P 1
 fom FOM W 1
 weight FOM W 1

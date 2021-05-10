@@ -11,6 +11,7 @@
 #include "mtz.hpp"      // for Mtz
 #include "numb.hpp"     // for as_number
 #include "refln.hpp"    // for ReflnBlock
+#include "version.hpp"  // for GEMMI_VERSION
 
 namespace gemmi {
 
@@ -25,7 +26,9 @@ struct CifToMtz {
       "pdbx_I_plus_sigma SIGI(+) M 1",
       "pdbx_I_minus I(-) K 1",
       "pdbx_I_minus_sigma SIGI(-) M 1",
+      "F_meas FP F 1",
       "F_meas_au FP F 1",
+      "F_meas_sigma SIGFP Q 1",
       "F_meas_sigma_au SIGFP Q 1",
       "pdbx_F_plus F(+) G 1",
       "pdbx_F_plus_sigma SIGF(+) L 1",
@@ -34,6 +37,7 @@ struct CifToMtz {
       "pdbx_anom_difference DP D 1",
       "pdbx_anom_difference_sigma SIGDP Q 1",
       "F_calc FC F 1",
+      "F_calc_au FC F 1",
       "phase_calc PHIC P 1",
       "fom FOM W 1",
       "weight FOM W 1",
@@ -82,17 +86,15 @@ struct CifToMtz {
   };
 
   // Alternative mmCIF tags for the same MTZ label should be consecutive
-  std::vector<Entry> spec_entries;
   bool verbose = false;
   bool force_unmerged = false;
-  const char* title = nullptr;
-  std::vector<std::string> history;
+  std::string title;
+  std::vector<std::string> history = { "From GEMMI " GEMMI_VERSION };
   std::vector<std::string> spec_lines;
 
-  Mtz convert_block_to_mtz(const ReflnBlock& rb, std::ostream& out) {
+  Mtz convert_block_to_mtz(const ReflnBlock& rb, std::ostream& out) const {
     Mtz mtz;
-    if (title)
-      mtz.title = title;
+    mtz.title = title.empty() ? "Converted from mmCIF " + rb.block.name : title;
     if (!history.empty()) {
       mtz.history.reserve(mtz.history.size() + history.size());
       mtz.history.insert(mtz.history.end(), history.begin(), history.end());
@@ -113,6 +115,7 @@ struct CifToMtz {
 
     bool unmerged = force_unmerged || !rb.refln_loop;
 
+    std::vector<Entry> spec_entries;
     if (!spec_lines.empty()) {
       spec_entries.reserve(spec_lines.size());
       for (const std::string& line : spec_lines)
