@@ -798,7 +798,9 @@ struct Mtz {
   }
 
   // Function for writing MTZ file
-  void write_to_stream(std::FILE* stream) const;
+  void write_to_cstream(std::FILE* stream) const;
+  void write_to_string(std::string& str) const;
+  template<typename Stream> void write_to_stream(Stream stream) const;
   void write_to_file(const std::string& path) const;
 };
 
@@ -863,11 +865,12 @@ namespace gemmi {
     int len = gf_snprintf(buf, 81, __VA_ARGS__); \
     if (len < 80) \
       std::memset(buf + len, ' ', 80 - len); \
-    if (std::fwrite(buf, 80, 1, stream) != 1) \
+    if (write(buf, 80, 1) != 1) \
       fail("Writing MTZ file failed"); \
   } while(0)
 
-void Mtz::write_to_stream(std::FILE* stream) const {
+template<typename Write>
+void Mtz::write_to_stream(Write write) const {
   // uses: data, spacegroup, nreflections, batches, cell, sort_order,
   //       valm, columns, datasets, history
   if (!has_data())
@@ -879,8 +882,8 @@ void Mtz::write_to_stream(std::FILE* stream) const {
   std::memcpy(buf + 4, &header_start, 4);
   std::int32_t machst = is_little_endian() ? 0x00004144 : 0x11110000;
   std::memcpy(buf + 8, &machst, 4);
-  if (std::fwrite(buf, 80, 1, stream) != 1 ||
-      std::fwrite(data.data(), 4, data.size(), stream) != data.size())
+  if (write(buf, 80, 1) != 1 ||
+      write(data.data(), 4, data.size()) != data.size())
     fail("Writing MTZ file failed");
   WRITE("VERS MTZ:V1.1");
   WRITE("TITLE %s", title.c_str());
@@ -943,7 +946,7 @@ void Mtz::write_to_stream(std::FILE* stream) const {
       for (size_t j = i; j < std::min(batches.size(), i + 12); ++j, pos += 6)
         gf_snprintf(buf + pos, 7, "%6zu", j + 1);
       std::memset(buf + pos, ' ', 80 - pos);
-      if (std::fwrite(buf, 80, 1, stream) != 1)
+      if (write(buf, 80, 1) != 1)
         fail("Writing MTZ file failed");
     }
   }
@@ -966,8 +969,8 @@ void Mtz::write_to_stream(std::FILE* stream) const {
       WRITE("TITLE %.70s", batch.title.c_str());
       if (batch.ints.size() != 29 || batch.floats.size() != 156)
         fail("wrong size of binaries batch headers");
-      std::fwrite(batch.ints.data(), 4, batch.ints.size(), stream);
-      std::fwrite(batch.floats.data(), 4, batch.floats.size(), stream);
+      write(batch.ints.data(), 4, batch.ints.size());
+      write(batch.floats.data(), 4, batch.floats.size());
       WRITE("BHCH  %7.7s %7.7s %7.7s",
             batch.axes.size() > 0 ? batch.axes[0].c_str() : "",
             batch.axes.size() > 1 ? batch.axes[1].c_str() : "",
@@ -979,10 +982,23 @@ void Mtz::write_to_stream(std::FILE* stream) const {
 
 #undef WRITE
 
+void Mtz::write_to_cstream(std::FILE* stream) const {
+  write_to_stream([&](const void *ptr, size_t size, size_t nmemb) {
+      return std::fwrite(ptr, size, nmemb, stream);
+  });
+}
+
+void Mtz::write_to_string(std::string& str) const {
+  write_to_stream([&](const void *ptr, size_t size, size_t nmemb) {
+      str.append(static_cast<const char*>(ptr), size * nmemb);
+      return nmemb;
+  });
+}
+
 void Mtz::write_to_file(const std::string& path) const {
   fileptr_t f = file_open(path.c_str(), "wb");
   try {
-    return write_to_stream(f.get());
+    return write_to_cstream(f.get());
   } catch (std::runtime_error& e) {
     fail(std::string(e.what()) + ": " + path);
   }
