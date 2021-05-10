@@ -821,6 +821,17 @@ so we can use it for coloring.
 Apparently, some scaling has been applied. The scaling is anisotropic
 and is the strongest along the *k* axis.
 
+MTZ <-> mmCIF
+=============
+
+The library contains classes that facilitate conversions:
+MtzToCif and CifToMtz. This code is used in gemmi command-line utilities
+:ref:`mtz2cif` and :ref:`cif2mtz` and in WebAssembly
+`converters <https://project-gemmi.github.io/wasm/>`_.
+
+The converters can use *spec files* for customization, see the command-line
+program documentation for details.
+
 hkl CIF
 =======
 

@@ -14,6 +14,9 @@ for prog in align blobs cif2json cif2mtz contact contents convert \
   $BIN/gemmi $prog -h >> docs/$prog-help.txt
 done
 
+echo "\$ gemmi cif2mtz --print-spec" > docs/cif2mtz-spec.txt
+$BIN/gemmi cif2mtz --print-spec >> docs/cif2mtz-spec.txt
+
 $BIN/gemmi cif2json tests/misc.cif tests/misc.json
 
 git diff --stat docs/*-help.txt tests/misc.json

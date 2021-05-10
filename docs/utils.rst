@@ -371,6 +371,8 @@ mtz
 .. literalinclude:: mtz-help.txt
    :language: console
 
+.. _mtz2cif:
+
 mtz2cif
 =======
 
@@ -379,6 +381,8 @@ Converts reflection data from MTZ to mmCIF.
 .. literalinclude:: mtz2cif-help.txt
    :language: console
 
+.. _cif2mtz:
+
 cif2mtz
 =======
 
@@ -386,6 +390,13 @@ Converts reflection data from mmCIF to MTZ.
 
 .. literalinclude:: cif2mtz-help.txt
    :language: console
+
+Similarly to mtz2cif, this converter can also be customized using *spec files*.
+The default spec files can be generated using options
+``--print-spec`` for merged data and ``--print-spec --unmerged`` for unmerged.
+
+.. literalinclude:: cif2mtz-spec.txt
+   :language: none
 
 .. _sf2map:
 
