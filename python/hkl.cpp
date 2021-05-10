@@ -5,7 +5,8 @@
 #include "gemmi/fourier.hpp"  // for get_size_for_hkl, get_f_phi_on_grid, ...
 #include "gemmi/tostr.hpp"
 #include "gemmi/fprime.hpp"
-#include "gemmi/reciproc.hpp"  // for count_reflections, make_miller_vector
+#include "gemmi/reciproc.hpp" // for count_reflections, make_miller_vector
+#include "gemmi/cif2mtz.hpp"  // for CifToMtz
 
 #include "common.h"
 #include "arrvec.h"  // py_array_from_vector
@@ -146,4 +147,15 @@ void add_hkl(py::module& m) {
                       gemmi::make_miller_vector(cell, sg, dmin, dmax, unique)));
         }, py::arg("cell"), py::arg("spacegroup"), py::arg("dmin"),
            py::arg("dmax")=0., py::arg("unique")=true);
+
+  py::class_<CifToMtz>(m, "CifToMtz")
+    .def(py::init<>())
+    .def_readwrite("title", &CifToMtz::title)
+    .def_readwrite("history", &CifToMtz::history)
+    .def_readwrite("spec_lines", &CifToMtz::spec_lines)
+    .def("convert_block_to_mtz", [](const CifToMtz& self, const ReflnBlock& rb) {
+        std::ostringstream out;
+        return new Mtz(self.convert_block_to_mtz(rb, out));
+    })
+    ;
 }
