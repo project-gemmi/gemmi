@@ -7,6 +7,7 @@
 #define GEMMI_INPUT_HPP_
 
 #include <cassert>
+#include <cstddef> // for ptrdiff_t
 #include <cstdio>  // for FILE, fseek, fread
 #include <cstdlib> // for malloc, realloc
 #include <cstring> // for memchr
