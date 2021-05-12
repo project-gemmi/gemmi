@@ -426,9 +426,9 @@ struct Mtz {
 
   template<typename Stream>
   void seek_headers(Stream& stream) {
-    if (!stream.seek(4 * (header_offset - 1)))
-      fail("Cannot rewind to the MTZ header at byte "
-           + std::to_string(header_offset));
+    ptrdiff_t pos = 4 * ptrdiff_t(header_offset - 1);
+    if (!stream.seek(pos))
+      fail("Cannot rewind to the MTZ header at byte " + std::to_string(pos));
   }
 
   // read headers until END
