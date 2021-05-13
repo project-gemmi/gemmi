@@ -6,6 +6,9 @@
 #define GEMMI_CIF2MTZ_HPP_
 
 #include <ostream>
+#include <map>
+#include <set>
+#include <utility>
 #include "cifdoc.hpp"   // for Loop, as_int, ...
 #include "fail.hpp"     // for fail
 #include "mtz.hpp"      // for Mtz
@@ -89,12 +92,12 @@ struct CifToMtz {
   bool verbose = false;
   bool force_unmerged = false;
   std::string title;
-  std::vector<std::string> history = { "From GEMMI " GEMMI_VERSION };
+  std::vector<std::string> history = { "From gemmi-cif2mtz " GEMMI_VERSION };
   std::vector<std::string> spec_lines;
 
   Mtz convert_block_to_mtz(const ReflnBlock& rb, std::ostream& out) const {
     Mtz mtz;
-    mtz.title = title.empty() ? "Converted from mmCIF " + rb.block.name : title;
+    mtz.title = title.empty() ? "Converted from mmCIF block " + rb.block.name : title;
     if (!history.empty()) {
       mtz.history.reserve(mtz.history.size() + history.size());
       mtz.history.insert(mtz.history.end(), history.begin(), history.end());
@@ -140,7 +143,6 @@ struct CifToMtz {
       col->label = alpha_up(c);
     }
 
-    std::unique_ptr<UnmergedHklMover> hkl_mover;
     // M/ISYM and BATCH
     if (unmerged) {
       auto col = mtz.columns.emplace(mtz.columns.end());
@@ -152,10 +154,6 @@ struct CifToMtz {
       col->dataset_id = 0;
       col->type = 'B';
       col->label = "BATCH";
-
-      mtz.batches.emplace_back();
-      mtz.batches.back().set_cell(mtz.cell);
-      hkl_mover.reset(new UnmergedHklMover(mtz.spacegroup));
     }
 
     // other columns according to the spec
@@ -189,29 +187,92 @@ struct CifToMtz {
     }
     mtz.nreflections = (int) loop->length();
 
+    std::unique_ptr<UnmergedHklMover> hkl_mover;
+    std::vector<std::pair<int,int>> batch_nums;
     if (unmerged) {
-      if (verbose)
-        out << "The BATCH columns is set to dummy value 1.\n";
+      hkl_mover.reset(new UnmergedHklMover(mtz.spacegroup));
+      tag.replace(len, std::string::npos, "diffrn_id");
+      int sweep_id_index = loop->find_tag(tag);
+      tag.replace(len, std::string::npos, "pdbx_image_id");
+      int image_id_index = loop->find_tag(tag);
+      if (sweep_id_index == -1 || image_id_index == -1) {
+        if (verbose)
+          out << "No pdbx_image_id, setting BATCH to a dummy value.\n";
+        auto batch = mtz.batches.emplace(mtz.batches.end());
+        batch->number = 1;
+        batch->set_dataset_id(1);
+        batch->set_cell(mtz.cell);
+        // FIXME should we set more properties in BATCH header?
+      } else {
+        if (verbose)
+          out << "  " << tag << " & diffrn_id -> BATCH\n";
+        // store sweep and frame numbers corresponding to reflections
+        batch_nums.reserve(loop->length());
+        for (size_t i = 0; i < loop->values.size(); i += loop->tags.size()) {
+          int sweep_id = cif::as_int(loop->values[i + sweep_id_index], 0);
+          const std::string& frame_str = loop->values[i + image_id_index];
+          int frame = 1;
+          if (!cif::is_null(frame_str))
+            frame = (int) std::ceil(cif::as_number(frame_str));
+          batch_nums.emplace_back(sweep_id, frame);
+        }
+        // store unique frame numbers
+        std::map<int, std::set<int>> sets;
+        for (const std::pair<int,int>& p : batch_nums)
+          if (p.second >= 0)
+            sets[p.first].insert(p.second);
+        // add offset to frame numbers to make them unique
+        std::map<int, int> offsets;
+        int cap = 0;
+        for (const auto& it : sets) {
+          offsets.emplace(it.first, cap);
+          cap += *--it.second.end() + 1100;
+          cap -= cap % 1000;
+        }
+        for (std::pair<int,int>& p : batch_nums)
+          if (p.first >= 0 && p.second >= 0)
+            p.second += offsets.at(p.first);
+        for (const auto& sweep_frames : sets) {
+          Mtz::Batch batch;
+          batch.set_dataset_id(sweep_frames.first);
+          batch.set_cell(mtz.cell);
+          int min_frame = *sweep_frames.second.begin();
+          int max_frame = *--sweep_frames.second.end();
+          int offset = offsets.at(sweep_frames.first);
+          if (2 * sweep_frames.second.size() > size_t(max_frame - min_frame)) {
+            // probably consecutive range, even if some frames are missing
+            for (int n = min_frame; n <= max_frame; ++n) {
+              batch.number = n + offset;
+              mtz.batches.push_back(batch);
+            }
+          } else {
+            for (int n : sweep_frames.second) {
+              batch.number = n + offset;
+              mtz.batches.push_back(batch);
+            }
+          }
+        }
+      }
     }
 
     // fill in the data
     mtz.data.resize(mtz.columns.size() * mtz.nreflections);
-    int k = 0;
+    size_t k = 0, row = 0;
     for (size_t i = 0; i < loop->values.size(); i += loop->tags.size()) {
-      size_t j = 0;
       if (unmerged) {
         std::array<int, 3> hkl;
         for (int ii = 0; ii != 3; ++ii)
           hkl[ii] = cif::as_int(loop->values[i + indices[ii]]);
         int isym = hkl_mover->move_to_asu(hkl);
-        for (; j != 3; ++j)
+        for (int j = 0; j != 3; ++j)
           mtz.data[k++] = (float) hkl[j];
         mtz.data[k++] = (float) isym;
-        mtz.data[k++] = 1.0f; // batch number TODO "pdbx_image_id",
+        mtz.data[k++] = batch_nums.empty() ? 1.f : (float) batch_nums[row++].second;
       } else {
-        for (; j != 3; ++j)
+        for (int j = 0; j != 3; ++j)
           mtz.data[k++] = (float) cif::as_int(loop->values[i + indices[j]]);
       }
+      size_t j = 3;
       if (uses_status)
         mtz.data[k++] = status_to_freeflag(loop->values[i + indices[j++]]);
       for (; j != indices.size(); ++j) {

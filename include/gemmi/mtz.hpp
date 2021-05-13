@@ -144,6 +144,7 @@ struct Mtz {
     }
 
     int dataset_id() const { return ints[20]; }
+    void set_dataset_id(int id) { ints[20] = id; }
     float phi_start() const { return floats[36]; }
     float phi_end() const { return floats[37]; }
     Mat33 matrix_U() const {
@@ -960,11 +961,10 @@ void Mtz::write_to_stream(Write write) const {
   }
   if (!batches.empty()) {
     WRITE("MTZBATS");
-    int n = 0;
     for (const Batch& batch : batches) {
       // keep the numbers the same as in files written by libccp4
       WRITE("BH %8d %7zu %7zu %7zu",
-            ++n, batch.ints.size() + batch.floats.size(),
+            batch.number, batch.ints.size() + batch.floats.size(),
             batch.ints.size(), batch.floats.size());
       WRITE("TITLE %.70s", batch.title.c_str());
       if (batch.ints.size() != 29 || batch.floats.size() != 156)
