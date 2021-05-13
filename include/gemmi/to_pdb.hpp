@@ -71,7 +71,7 @@ namespace gemmi {
     int length__ = gf_snprintf(buf, 82, __VA_ARGS__); \
     if (length__ < 80) \
       std::memset(buf + length__, ' ', 80 - length__); \
-    buf[81] = '\n'; \
+    buf[80] = '\n'; \
     os.write(buf, 81); \
   } while(0)
 
@@ -297,34 +297,34 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
       // 73-76      segment identifier, left-justified (non-standard)
       // 77-78  2s  element symbol, right-justified
       // 79-80  2s  charge
-      WRITE("%-6s%5s %-4.4s%c%3s"
-            "%2s%5s   %8.3f%8.3f%8.3f"
-            "%6.2f%6.2f      %-4.4s%2s%c%c\n",
-            as_het ? "HETATM" : "ATOM",
-            impl::encode_serial_in_hybrid36(buf8, ++serial),
-            padded_atom_name(a).c_str(),
-            a.altloc ? std::toupper(a.altloc) : ' ',
-            res.name.c_str(),
-            chain.name.c_str(),
-            impl::write_seq_id(buf8a, res.seqid),
-            // We want to avoid negative zero and round them numbers up
-            // if they originally had one digit more and that digit was 5.
-            a.pos.x > -5e-4 && a.pos.x < 0 ? 0 : a.pos.x + 1e-10,
-            a.pos.y > -5e-4 && a.pos.y < 0 ? 0 : a.pos.y + 1e-10,
-            a.pos.z > -5e-4 && a.pos.z < 0 ? 0 : a.pos.z + 1e-10,
-            // Occupancy is stored as single prec, but we know it's <= 1,
-            // so no precision is lost even if it had 6 digits after dot.
-            a.occ + 1e-6,
-            // B is harder to get rounded right. It is stored as float,
-            // and may be given with more than single precision in mmCIF
-            // If it was originally %.5f (5TIS) we need to add 0.5 * 10^-5.
-            a.b_iso + 0.5e-5,
-            res.segment.c_str(),
-            a.element.uname(),
-            // Charge is written as 1+ or 2-, etc, or just empty space.
-            // Sometimes PDB files have explicit 0s (5M05); we ignore them.
-            a.charge ? a.charge > 0 ? '0'+a.charge : '0'-a.charge : ' ',
-            a.charge ? a.charge > 0 ? '+' : '-' : ' ');
+      WRITELN("%-6s%5s %-4.4s%c%3s"
+              "%2s%5s   %8.3f%8.3f%8.3f"
+              "%6.2f%6.2f      %-4.4s%2s%c%c\n",
+              as_het ? "HETATM" : "ATOM",
+              impl::encode_serial_in_hybrid36(buf8, ++serial),
+              padded_atom_name(a).c_str(),
+              a.altloc ? std::toupper(a.altloc) : ' ',
+              res.name.c_str(),
+              chain.name.c_str(),
+              impl::write_seq_id(buf8a, res.seqid),
+              // We want to avoid negative zero and round them numbers up
+              // if they originally had one digit more and that digit was 5.
+              a.pos.x > -5e-4 && a.pos.x < 0 ? 0 : a.pos.x + 1e-10,
+              a.pos.y > -5e-4 && a.pos.y < 0 ? 0 : a.pos.y + 1e-10,
+              a.pos.z > -5e-4 && a.pos.z < 0 ? 0 : a.pos.z + 1e-10,
+              // Occupancy is stored as single prec, but we know it's <= 1,
+              // so no precision is lost even if it had 6 digits after dot.
+              a.occ + 1e-6,
+              // B is harder to get rounded right. It is stored as float,
+              // and may be given with more than single precision in mmCIF
+              // If it was originally %.5f (5TIS) we need to add 0.5 * 10^-5.
+              a.b_iso + 0.5e-5,
+              res.segment.c_str(),
+              a.element.uname(),
+              // Charge is written as 1+ or 2-, etc, or just empty space.
+              // Sometimes PDB files have explicit 0s (5M05); we ignore them.
+              a.charge ? a.charge > 0 ? '0'+a.charge : '0'-a.charge : ' ',
+              a.charge ? a.charge > 0 ? '+' : '-' : ' ');
       if (a.aniso.nonzero()) {
         // re-using part of the buffer
         std::memcpy(buf, "ANISOU", 6);
