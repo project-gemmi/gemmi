@@ -71,7 +71,7 @@ namespace gemmi {
     int length__ = gf_snprintf(buf, 82, __VA_ARGS__); \
     if (length__ < 80) \
       std::memset(buf + length__, ' ', 80 - length__); \
-    buf[81] = '\n'; \
+    buf[80] = '\n'; \
     os.write(buf, 81); \
   } while(0)
 
@@ -307,7 +307,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
             res.name.c_str(),
             chain.name.c_str(),
             impl::write_seq_id(buf8a, res.seqid),
-            // We want to avoid negative zero and round them numbers up
+            // We want to avoid negative zero and round the numbers up
             // if they originally had one digit more and that digit was 5.
             a.pos.x > -5e-4 && a.pos.x < 0 ? 0 : a.pos.x + 1e-10,
             a.pos.y > -5e-4 && a.pos.y < 0 ? 0 : a.pos.y + 1e-10,
@@ -318,7 +318,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
             // B is harder to get rounded right. It is stored as float,
             // and may be given with more than single precision in mmCIF
             // If it was originally %.5f (5TIS) we need to add 0.5 * 10^-5.
-            a.b_iso + 0.5e-5,
+            std::min(a.b_iso + 0.5e-5, 999.99),
             res.segment.c_str(),
             a.element.uname(),
             // Charge is written as 1+ or 2-, etc, or just empty space.
@@ -589,7 +589,7 @@ inline void write_header(const Structure& st, std::ostream& os,
             continue;
           const Atom* at1 = res1->find_atom(con.partner1.atom_name, con.partner1.altloc);
           const Atom* at2 = res2->find_atom(con.partner2.atom_name, con.partner2.altloc);
-          
+
           std::string im_pdb_symbol = "", im_dist_str = "";
           bool im_same_asu = true;
           if (at1 && at2) {
