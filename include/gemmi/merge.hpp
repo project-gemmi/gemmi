@@ -268,7 +268,7 @@ struct Intensities {
   }
 
   void read_merged_intensities_from_mmcif(const ReflnBlock& rb) {
-    if (rb.find_column_index("pdbx_I_plus"))
+    if (rb.find_column_index("pdbx_I_plus") != -1)
       read_anomalous_intensities_from_mmcif(rb, true);
     else
       read_mean_intensities_from_mmcif(rb);
