@@ -95,6 +95,7 @@ void add_mtz(py::module& m) {
     .def_readwrite("columns", &Mtz::columns)
     .def_readwrite("batches", &Mtz::batches)
     .def_readwrite("history", &Mtz::history)
+    .def_readwrite("appended_text", &Mtz::appended_text)
     .def("resolution_high", &Mtz::resolution_high)
     .def("resolution_low", &Mtz::resolution_low)
     .def("dataset", (Mtz::Dataset& (Mtz::*)(int)) &Mtz::dataset,

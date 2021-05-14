@@ -174,6 +174,7 @@ struct Mtz {
   std::vector<Column> columns;
   std::vector<Batch> batches;
   std::vector<std::string> history;
+  std::string appended_text;
   std::vector<float> data;
 
   FILE* warnings = nullptr;
@@ -609,6 +610,7 @@ struct Mtz {
         }
       }
     }
+    appended_text = stream.read_rest();
   }
 
   void setup_spacegroup() {
@@ -978,6 +980,10 @@ void Mtz::write_to_stream(Write write) const {
     }
   }
   WRITE("MTZENDOFHEADERS");
+  if (!appended_text.empty()) {
+    if (write(appended_text.data(), appended_text.size(), 1) != 1)
+      fail("Writing MTZ file failed");
+  }
 }
 
 #undef WRITE

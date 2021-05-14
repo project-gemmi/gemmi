@@ -25,6 +25,24 @@ struct FileStream {
   int getc() { return std::fgetc(f); }
   // used in ccp4.hpp
   bool read(void* buf, size_t len) { return std::fread(buf, len, 1, f) == 1; }
+
+  // used in mtz.hpp
+  std::string read_rest() {
+    std::string ret;
+    int c = std::fgetc(f);
+    if (c != EOF) {
+      ret += (char)c;
+      char buf[512];
+      for (;;) {
+        size_t n = std::fread(buf, 1, sizeof(buf), f);
+        ret.append(buf, n);
+        if (n != sizeof(buf))
+          break;
+      }
+    }
+    return ret;
+  }
+
   bool seek(std::ptrdiff_t offset) {
 #if defined(_MSC_VER)
     return _fseeki64(f, offset, SEEK_SET) == 0;
@@ -61,6 +79,12 @@ struct MemoryStream {
     std::memcpy(buf, cur, len);
     cur += len;
     return true;
+  }
+
+  std::string read_rest() {
+    const char* last = cur;
+    cur = end;
+    return std::string(last, end);
   }
 
   int seek(std::ptrdiff_t offset) {
