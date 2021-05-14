@@ -410,6 +410,7 @@ inline SMat33<double> get_staraniso_b(const Mtz* mtz, std::ostream& out) {
 inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
                                         SMat33<double>& scale_aniso_b,
                                         std::ostream& out) {
+  const double max_diff = 0.005;
   out << "Checking if both files match...\n";
   bool ok = true;
   if (ui.spacegroup == mi.spacegroup) {
@@ -481,7 +482,7 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
       double weighted_sq_diff = sq_diff / (sq(sigma1) + sq(r2->sigma));
       // XDS files have 4 significant digits. Using accuracy 5x the precision.
       // Just in case, we ignore near-zero values.
-      if (sq_value_max > 1e-4 && sq_diff > sq(0.005) * sq_value_max) {
+      if (sq_value_max > 1e-4 && sq_diff > sq(max_diff) * sq_value_max) {
         if (differ_count == 0) {
           out << "First difference: " << miller_str(r1->hkl)
               << ' ' << value1 << " vs " << r2->value << '\n';
@@ -510,7 +511,8 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
     const Miller& hkl = max_diff_r1->hkl;
     out << "Most significant difference: " << miller_str(hkl) << ' '
         << scale * max_diff_r1->value << " vs " << max_diff_r2->value << '\n';
-    out << differ_count << " of " << corr.n << " intensities differ too much (by >0.5%).\n";
+    out << differ_count << " of " << corr.n << " intensities differ too much (by >"
+        << to_str(max_diff * 100) << "%).\n";
     ok = false;
   }
   if (missing_count != 0) {
