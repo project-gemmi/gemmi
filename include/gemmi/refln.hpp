@@ -88,7 +88,7 @@ struct ReflnBlock {
   size_t get_column_index(const std::string& tag) const {
     int idx = find_column_index(tag);
     if (idx == -1)
-      throw std::runtime_error("Column not found: " + tag);
+      fail("Column not found: " + tag);
     return idx;
   }
 
