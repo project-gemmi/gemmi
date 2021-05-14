@@ -106,6 +106,7 @@ struct Intensities {
   void sort() { std::sort(data.begin(), data.end()); }
 
   void merge_in_place(Type itype) {
+    type = itype;
     if (data.empty())
       return;
     if (itype == Type::Mean)
