@@ -275,6 +275,27 @@ struct Intensities {
       read_mean_intensities_from_mmcif(rb);
   }
 
+  void read_f_squared_from_mmcif(const ReflnBlock& rb) {
+    int value_idx = rb.find_column_index("F_meas");
+    if (value_idx == -1)
+      value_idx = rb.find_column_index("F_meas_au");
+    if (value_idx == -1)
+      fail("Column F_meas[_au] not found.");
+    int sigma_idx = rb.find_column_index("F_meas_sigma");
+    if (sigma_idx == -1)
+      sigma_idx = rb.find_column_index("F_meas_sigma_au");
+    if (sigma_idx == -1)
+      fail("Column F_meas_sigma[_au] not found.");
+    copy_metadata(rb);
+    wavelength = rb.wavelength;
+    read_data(ReflnDataProxy(rb), value_idx, sigma_idx);
+    for (Refl& r : data) {
+      r.value *= r.value;
+      r.sigma *= 2 * r.value;
+    }
+    type = Type::Mean;
+  }
+
   void read_mmcif(const ReflnBlock& rb, Type itype) {
     switch (itype) {
       case Type::Unmerged:
