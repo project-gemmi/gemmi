@@ -185,7 +185,7 @@ struct Intensities {
       fail("expected merged file");
     const Mtz::Column* col = mtz.column_with_one_of_labels({"IMEAN", "I"});
     if (!col)
-      fail("Mean intensities (IMEAN or I) not found.");
+      fail("Mean intensities (IMEAN or I) not found");
     size_t sigma_idx = mtz.get_column_with_label("SIG" + col->label).idx;
     copy_metadata(mtz);
     wavelength = mtz.dataset(col->dataset_id).wavelength;
@@ -271,8 +271,11 @@ struct Intensities {
   void read_merged_intensities_from_mmcif(const ReflnBlock& rb) {
     if (rb.find_column_index("pdbx_I_plus") != -1)
       read_anomalous_intensities_from_mmcif(rb, true);
-    else
+    else if (rb.find_column_index("intensity_meas") != -1)
       read_mean_intensities_from_mmcif(rb);
+    else
+      fail("Intensities not found in the mmCIF file, block ", rb.block.name,
+           " has neither intensity_meas nor pdbx_I_plus/minus");
   }
 
   void read_f_squared_from_mmcif(const ReflnBlock& rb) {

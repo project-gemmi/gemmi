@@ -252,7 +252,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (!gemmi::validate_merged_intensities(mi, ui, aniso_scale_b, std::cerr))
         ok = false;
     } catch (std::runtime_error& e) {
-      fprintf(stderr, "Intensity merging not validated: %s\n", e.what());
+      fprintf(stderr, "Error. Intensities could not be validated.\n%s.\n", e.what());
       ok = false;
     }
   }
