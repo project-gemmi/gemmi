@@ -17,8 +17,9 @@ using std::printf;
 
 namespace {
 
-enum OptionIndex { Headers=4, Dump, PrintBatch, PrintBatches, PrintTsv,
-                   PrintStats, CheckAsu, ToggleEndian, NoIsym, UpdateReso };
+enum OptionIndex { Headers=4, Dump, PrintBatch, PrintBatches,
+                   PrintAppendix, PrintTsv, PrintStats, CheckAsu,
+                   ToggleEndian, NoIsym, UpdateReso };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -35,6 +36,8 @@ const option::Descriptor Usage[] = {
     "  -B N, --batch=N  \tPrint data from batch header N." },
   { PrintBatches, 0, "b", "batches", Arg::None,
     "  -b, --batches  \tPrint data from all batch headers." },
+  { PrintAppendix, 0, "A", "appendix", Arg::None,
+    "  -A, --appendix  \tPrint appended text." },
   { PrintTsv, 0, "", "tsv", Arg::None,
     "  --tsv  \tPrint all the data as tab-separated values." },
   { PrintStats, 0, "s", "stats", Arg::None,
@@ -109,6 +112,8 @@ void dump(const Mtz& mtz) {
     }
     printf(" %d-%d\n", bspan[0], bspan[1]);
   }
+  if (!mtz.appended_text.empty())
+    printf("\nAppendix: %zu bytes.\n", mtz.appended_text.size());
 }
 
 void print_batch(const Mtz::Batch& b) {
@@ -276,7 +281,8 @@ void print_mtz_info(Stream&& stream, const char* path,
     mtz.update_reso();
   if (options[Dump] ||
       !(options[PrintBatch] || options[PrintBatches] || options[PrintTsv] ||
-        options[PrintStats] || options[CheckAsu] || options[Headers]))
+        options[PrintStats] || options[CheckAsu] || options[Headers] ||
+        options[PrintAppendix]))
     dump(mtz);
   if (options[PrintBatch]) {
     for (const option::Option* o = options[PrintBatch]; o; o = o->next()) {
@@ -291,6 +297,8 @@ void print_mtz_info(Stream&& stream, const char* path,
   if (options[PrintBatches])
     for (const Mtz::Batch& b : mtz.batches)
       print_batch(b);
+  if (options[PrintAppendix])
+    printf("%s", mtz.appended_text.c_str());
   if (mtz.has_data() && !options[NoIsym])
     mtz.switch_to_original_hkl();
   if (options[PrintTsv])

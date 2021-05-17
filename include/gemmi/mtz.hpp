@@ -207,6 +207,7 @@ struct Mtz {
     columns = std::move(o.columns);
     batches = std::move(o.batches);
     history = std::move(o.history);
+    appended_text = std::move(o.appended_text);
     data = std::move(o.data);
     warnings = o.warnings;
     for (Mtz::Column& col : columns)
