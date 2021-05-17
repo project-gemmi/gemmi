@@ -227,9 +227,16 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz_to_cif.entry_id = p.options[EntryId].arg;
   if (p.options[Wavelength])
     mtz_to_cif.wavelength = std::strtod(p.options[Wavelength].arg, nullptr);
+
   gemmi::CharArray cif_buf;
-  if (cif_input)
-    cif_buf = gemmi::read_into_buffer_gz(cif_input);
+  if (cif_input) {
+    try {
+      cif_buf = gemmi::read_into_buffer_gz(cif_input);
+    } catch (std::runtime_error& e) {
+      fprintf(stderr, "ERROR: %s\n", e.what());
+      return 1;
+    }
+  }
 
   bool ok = true;
   if (check_merged_columns && mtz[0])
@@ -242,6 +249,11 @@ int GEMMI_MAIN(int argc, char **argv) {
       } else {
         gemmi::ReflnBlock rblock = gemmi::get_refln_block(
             gemmi::read_cif_from_buffer(cif_buf, cif_input).blocks, {});
+        if (!rblock.entry_id.empty() && rblock.entry_id != mtz_to_cif.entry_id) {
+          fprintf(stderr, "Note: using _entry.id from mmCIF (%s) instead of %s.\n",
+                  rblock.entry_id.c_str(), mtz_to_cif.entry_id.c_str());
+          mtz_to_cif.entry_id = rblock.entry_id;
+        }
         mi.read_merged_intensities_from_mmcif(rblock);
       }
       if (mtz[1])
