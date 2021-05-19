@@ -1,4 +1,7 @@
 
+- update .github/workflows/wheels.yml
+  https://cibuildwheel.readthedocs.io/en/stable/setup/
+
 - update version in include/gemmi/version.hpp
 - ./run-tests.sh a
 - VERSION=$(grep -Po '\d\.\d\.\d' include/gemmi/version.hpp)
