@@ -562,28 +562,31 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
                           impl::string_or_qmark(dbref.accession_code),
                           impl::string_or_qmark(dbref.isoform)});
         for (const std::string& subchain : ent.subchains) {
+          auto strand_id = subs.find(subchain);
+          if (strand_id == subs.end())
+            continue;
+          // DbRef::label_seq_begin/end (_struct_ref_seq.seq_align_beg/end) is
+          // not filled in when reading PDB file, so we check it here.
           Residue::OptionalNum label_begin = dbref.label_seq_begin;
           Residue::OptionalNum label_end = dbref.label_seq_end;
-          ConstResidueSpan span = st.models[0].get_subchain(subchain);
-          if (!label_begin) {
+          if (!label_begin || !label_end) {
+            ConstResidueSpan span = st.models[0].get_subchain(subchain);
             try {
               label_begin = span.auth_seq_id_to_label(dbref.seq_begin);
               label_end = span.auth_seq_id_to_label(dbref.seq_end);
-            } catch (const std::runtime_error&) {}
+            } catch (const std::out_of_range&) {}
           }
-          auto strand_id = subs.find(subchain);
-          if (strand_id != subs.end())
-            seq_loop.add_row({std::to_string(++counter2),
-                              std::to_string(counter),
-                              strand_id->second,  // pdbx_strand_id
-                              std::to_string(*label_begin),
-                              std::to_string(*label_end),
-                              std::to_string(*dbref.db_begin.num),
-                              std::to_string(*dbref.db_end.num),
-                              dbref.seq_begin.num.str(),
-                              impl::pdbx_icode(dbref.seq_begin),
-                              dbref.seq_end.num.str(),
-                              impl::pdbx_icode(dbref.seq_end)});
+          seq_loop.add_row({std::to_string(++counter2),
+                            std::to_string(counter),
+                            strand_id->second,  // pdbx_strand_id
+                            label_begin.str(),
+                            label_end.str(),
+                            dbref.db_begin.num.str(),
+                            dbref.db_end.num.str(),
+                            dbref.seq_begin.num.str(),
+                            impl::pdbx_icode(dbref.seq_begin),
+                            dbref.seq_end.num.str(),
+                            impl::pdbx_icode(dbref.seq_end)});
         }
       }
   }
