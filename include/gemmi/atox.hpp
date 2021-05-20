@@ -30,7 +30,7 @@ inline bool is_space(char c) {
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0
   };
-  return (bool) table[(std::uint8_t)c];
+  return table[(std::uint8_t)c] != 0;
 }
 
 // equivalent of std::isblank for C locale (no handling of EOF)
