@@ -460,8 +460,8 @@ with the model masked out. In this example we do the latter.
   [<gemmi.Blob object at 0x...>]
   >>> blobs[0].volume
   9.967250538023837
-  >>> blobs[0].score
-  10.181545879097678
+  >>> blobs[0].score  #doctest: +ELLIPSIS
+  10.1815458...
   >>> blobs[0].peak_value
   1.8486430644989014
   >>> blobs[0].centroid
