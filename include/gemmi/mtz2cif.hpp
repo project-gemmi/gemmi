@@ -932,13 +932,13 @@ inline void MtzToCif::write_cell_and_symmetry(const UnitCell& cell, double* rmsd
     WRITE("_cell.length_c_esd %7.3f\n", rmsds[2]);
   WRITE("_cell.angle_alpha %8.3f\n", cell.alpha);
   if (rmsds && rmsds[3] != 0.)
-    WRITE("_cell.length_alpha_esd %7.3f\n", rmsds[3]);
+    WRITE("_cell.angle_alpha_esd %7.3f\n", rmsds[3]);
   WRITE("_cell.angle_beta  %8.3f\n", cell.beta);
   if (rmsds && rmsds[4] != 0.)
-    WRITE("_cell.length_beta_esd %8.3f\n", rmsds[4]);
+    WRITE("_cell.angle_beta_esd %8.3f\n", rmsds[4]);
   WRITE("_cell.angle_gamma %8.3f\n", cell.gamma);
   if (rmsds && rmsds[5] != 0.)
-    WRITE("_cell.length_gamma_esd %7.3f\n", rmsds[5]);
+    WRITE("_cell.angle_gamma_esd %7.3f\n", rmsds[5]);
   if (sg) {
     os << "\n_symmetry.entry_id " << entry_id << "\n"
           "_symmetry.space_group_name_H-M '" << sg->hm << "'\n"
