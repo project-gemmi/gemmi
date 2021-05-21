@@ -25,7 +25,22 @@
 
 namespace gemmi {
 
-struct MtzToCif {
+inline bool parse_voigt_notation(const char* start, const char* end, SMat33<double>& b) {
+  bool first = true;
+  for (double* u : {&b.u11, &b.u22, &b.u33, &b.u23, &b.u13, &b.u12}) {
+    if (*start != (first ? '(' : ','))
+      return false;
+    first = false;
+    auto result = fast_from_chars(++start, end, *u);
+    if (result.ec != std::errc())
+      return false;
+    start = skip_blank(result.ptr);
+  }
+  return *start == ')';
+}
+
+class MtzToCif {
+public:
   enum Var { Dot=-1, Qmark=-2, Counter=-3, DatasetId=-4, Image=-5 };
 
   // options that can be set directly
@@ -87,6 +102,38 @@ struct MtzToCif {
   void write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& os);
   void write_cif_from_xds(const XdsAscii& xds, std::ostream& os);
 
+  void check_staraniso(const Mtz& mtz, std::ostream& out) {
+    size_t hlen = mtz.history.size();
+    for (size_t i = 0; i != hlen; ++i)
+      if (mtz.history[i].find("STARANISO") != std::string::npos) {
+        size_t version_pos = mtz.history[i].find("version:");
+        if (version_pos != std::string::npos)
+          staraniso_version = read_word(mtz.history[i].c_str() + version_pos + 8);
+        out << "History in merged MTZ includes scaling with STARANISO "
+            << staraniso_version << ".\n";
+        // StarAniso 2.3.74 (24-Apr-2021) and later write B tensor in history
+        bool got_b = false;
+        for (size_t j = i+1; j < std::min(i+4, hlen); ++j) {
+          const std::string& line = mtz.history[j];
+          if (starts_with(line, "B=(")) {
+            got_b = parse_voigt_notation(line.c_str() + 2,
+                                         line.c_str() + line.size(),
+                                         staraniso_b);
+            if (!got_b)
+              fail("failed to parse tensor Voigt notation: " + line);
+            break;
+          }
+        }
+        if (!got_b) {
+          out << "StarAniso B tensor not found. Intensities won't be checked.\n";
+          staraniso_b.u11 = NAN;
+        }
+        break;
+      }
+  }
+
+  const SMat33<double>& get_staraniso_b() const { return staraniso_b; }
+
 private:
   // describes which MTZ column is to be translated to what mmCIF column
   struct Trans {
@@ -110,6 +157,9 @@ private:
   std::unordered_map<int, int> sweep_indices;
 
   std::vector<Trans> recipe;
+
+  SMat33<double> staraniso_b = {0., 0., 0., 0., 0., 0.};
+  std::string staraniso_version;
 
   const Trans* get_status_translation() const {
     for (const Trans& t: recipe)
@@ -270,7 +320,8 @@ private:
       if (less_anomalous > 0) {
         bool is_i_ano = (ctype == 'K' || ctype == 'M');
         if (less_anomalous == 1
-            ? is_i_ano && mtz.count_type('J') != 0 && mtz.count_type('G') > 1
+            ? is_i_ano && mtz.count_type('J') != 0 && mtz.count_type('G') > 1 &&
+                          staraniso_version.empty()
             : is_i_ano || ctype == 'G' || ctype == 'D' || ctype == 'L') {
           recipe.resize(state.verified_spec_size);
           state.discard_next_line = true;
@@ -328,18 +379,30 @@ private:
     recipe.push_back(tr);
   }
 
-  void write_special_marker_if_requested(std::ostream& os) const {
-    if (write_special_marker_for_pdb)
-      os << "### IF YOU MODIFY THIS FILE, REMOVE THIS SIGNATURE: ###\n"
-            "_software.pdbx_ordinal 1\n"
+  void write_special_marker_if_requested(std::ostream& os, bool merged) const {
+    if (!write_special_marker_for_pdb)
+      return;
+    os << "### IF YOU MODIFY THIS FILE, REMOVE THIS SIGNATURE: ###\n";
+    if (!merged || staraniso_version.empty()) {
+      os << "_software.pdbx_ordinal 1\n"
             "_software.classification 'data extraction'\n"
             "_software.name gemmi\n"
-            "_software.version " GEMMI_VERSION "\n"
-            "_pdbx_audit_conform.dict_name mmcif_pdbx.dic\n"
-            "_pdbx_audit_conform.dict_version 5.339\n"
-            "_pdbx_audit_conform.dict_location "
-            "https://mmcif.wwpdb.org/dictionaries/ascii/mmcif_pdbx_v50.dic\n"
-            "### END OF SIGNATURE ###\n\n";
+            "_software.version " GEMMI_VERSION "\n";
+    } else {
+      os << "loop_\n"
+            "_software.pdbx_ordinal\n"
+            "_software.classification\n"
+            "_software.name\n"
+            "_software.version\n"
+            "1 'data extraction' gemmi " GEMMI_VERSION "\n";
+      // STARANISO here tells that intensities were scaled anisotropically.
+      os << "2 'data scaling' STARANISO '" << staraniso_version << "'\n";
+    }
+    os << "_pdbx_audit_conform.dict_name mmcif_pdbx.dic\n"
+          "_pdbx_audit_conform.dict_version 5.339\n"
+          "_pdbx_audit_conform.dict_location "
+          "https://mmcif.wwpdb.org/dictionaries/ascii/mmcif_pdbx_v50.dic\n"
+          "### END OF SIGNATURE ###\n\n";
   }
 
   void write_cell_and_symmetry(const UnitCell& cell, double* rmsds,
@@ -372,43 +435,9 @@ inline bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream&
   return ok;
 }
 
-inline bool parse_voigt_notation(const char* start, const char* end, SMat33<double>& b) {
-  bool first = true;
-  for (double* u : {&b.u11, &b.u22, &b.u33, &b.u23, &b.u13, &b.u12}) {
-    if (*start != (first ? '(' : ','))
-      return false;
-    first = false;
-    auto result = fast_from_chars(++start, end, *u);
-    if (result.ec != std::errc())
-      return false;
-    start = skip_blank(result.ptr);
-  }
-  return *start == ')';
-}
-
-inline SMat33<double> get_staraniso_b(const Mtz* mtz, std::ostream& out) {
-  SMat33<double> b = {0., 0., 0., 0., 0., 0.};
-  if (mtz) {
-    size_t hlen = mtz->history.size();
-    for (size_t i = 0; i != hlen; ++i)
-      if (mtz->history[i].find("STARANISO") != std::string::npos) {
-        out << "According to history in merged MTZ it was scaled by STARANISO.\n";
-        for (size_t j = i+1; j < std::min(i+4, hlen); ++j) {
-          const std::string& line = mtz->history[j];
-          if (starts_with(line, "B=(")) {
-            bool ok = parse_voigt_notation(line.c_str() + 2, line.c_str() + line.size(), b);
-            if (!ok)
-              fail("failed to parse tensor Voigt notation: " + line);
-          }
-        }
-      }
-  }
-  return b;
-}
-
 // note: both mi and ui get modified
 inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
-                                        SMat33<double>& scale_aniso_b,
+                                        const SMat33<double>& scale_aniso_b,
                                         std::ostream& out) {
   const double max_diff = 0.005;
   out << "Checking if both files match...\n";
@@ -449,7 +478,9 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   out << "Merged reflections: " << mi_size1 << ' ' << mi.type_str()
       << " (" << mi.data.size() << " w/o sysabs)\n";
 
-  if (!scale_aniso_b.all_zero()) {
+  bool relaxed_check = std::isnan(scale_aniso_b.u11);
+
+  if (!relaxed_check && !scale_aniso_b.all_zero()) {
     out << "Taking into account the anisotropy tensor that was used for scaling.\n";
     for (Intensities::Refl& refl : ui.data) {
       Vec3 hkl(refl.hkl[0], refl.hkl[1], refl.hkl[2]);
@@ -482,7 +513,7 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
       double weighted_sq_diff = sq_diff / (sq(sigma1) + sq(r2->sigma));
       // XDS files have 4 significant digits. Using accuracy 5x the precision.
       // Just in case, we ignore near-zero values.
-      if (sq_value_max > 1e-4 && sq_diff > sq(max_diff) * sq_value_max) {
+      if (!relaxed_check && sq_value_max > 1e-4 && sq_diff > sq(max_diff) * sq_value_max) {
         if (differ_count == 0) {
           out << "First difference: " << miller_str(r1->hkl)
               << ' ' << value1 << " vs " << r2->value << '\n';
@@ -520,13 +551,15 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
         << " reflections in the merged file not found in unmerged data\n";
     ok = false;
   }
-  if (differ_count == 0 && missing_count == 0) {
-    out << "Intensities match.";
-    if (!ok)
-      out << " But other problems were found (see above).";
-    out << '\n';
-  } else {
-    out << "ERROR. Intensities do not match.\n";
+  if (!relaxed_check) {
+    if (differ_count == 0 && missing_count == 0) {
+      out << "Intensities match.";
+      if (!ok)
+        out << " But other problems were found (see above).";
+      out << '\n';
+    } else {
+      out << "ERROR. Intensities do not match.\n";
+    }
   }
   return ok;
 }
@@ -556,7 +589,7 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
 
   os << "\n\n_entry.id " << entry_id << "\n\n";
 
-  write_special_marker_if_requested(os);
+  write_special_marker_if_requested(os, merged);
 
   if (unmerged) {
     os << "_exptl_crystal.id 1\n\n";
@@ -791,7 +824,7 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
   os << "data_" << (block_name ? block_name : "xds");
   os << "\n\n_entry.id " << entry_id << "\n\n";
 
-  write_special_marker_if_requested(os);
+  write_special_marker_if_requested(os, false);
 
   os << "_exptl_crystal.id 1\n\n";
 

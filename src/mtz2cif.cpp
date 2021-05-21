@@ -246,6 +246,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::Intensities mi, ui;
       if (mtz[0]) {
         mi.read_merged_intensities_from_mtz(*mtz[0]);
+        mtz_to_cif.check_staraniso(*mtz[0], std::cerr);
       } else {
         gemmi::ReflnBlock rblock = gemmi::get_refln_block(
             gemmi::read_cif_from_buffer(cif_buf, cif_input).blocks, {});
@@ -260,8 +261,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         ui.read_unmerged_intensities_from_mtz(*mtz[1]);
       else if (xds_ascii)
         ui.read_unmerged_intensities_from_xds(*xds_ascii);
-      gemmi::SMat33<double> aniso_scale_b = gemmi::get_staraniso_b(mtz[0].get(), std::cerr);
-      if (!gemmi::validate_merged_intensities(mi, ui, aniso_scale_b, std::cerr))
+      if (!gemmi::validate_merged_intensities(mi, ui, mtz_to_cif.get_staraniso_b(),
+                                              std::cerr))
         ok = false;
     } catch (std::runtime_error& e) {
       fprintf(stderr, "Error. Intensities could not be validated.\n%s.\n", e.what());
