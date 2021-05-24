@@ -243,6 +243,10 @@ class TestBlock(unittest.TestCase):
         with self.assertRaises(IOError):
             cif.read('file-that-does-not-exist.cif')
 
+    def test_syntax_error(self):
+        with self.assertRaises(ValueError):
+            cif.read_string('data_a boom')
+
     def test_line_endings(self):
         lines = ['data_a', '_a_field', ';', 'text line', '2nd line', ';']
         for eol in ('\r\n', '\n'):

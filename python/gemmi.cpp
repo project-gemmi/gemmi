@@ -9,6 +9,7 @@
 #include "gemmi/small.hpp"    // for SmallStructure
 #include "gemmi/interop.hpp"  // for atom_to_site, mx_to_sx_structure
 #include "gemmi/bessel.hpp"   // for bessel_i1_over_i0
+#include "gemmi/third_party/tao/pegtl/parse_error.hpp" // for parse_error
 
 namespace py = pybind11;
 
@@ -88,6 +89,8 @@ PYBIND11_MODULE(gemmi, mg) {
     } catch (const std::system_error &e) {
       const int errornum = e.code().value();
       PyErr_SetObject(PyExc_IOError, py::make_tuple(errornum, e.what()).ptr());
+    } catch (const tao::pegtl::parse_error &e) {
+      PyErr_SetString(PyExc_ValueError, e.what());
     }
   });
 
