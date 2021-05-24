@@ -25,7 +25,7 @@
 namespace gemmi {
 
 [[noreturn]]
-inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
+inline void GEMMI_NOINLINE fail(const std::string& msg) { throw std::runtime_error(msg); }
 [[noreturn]]
 inline GEMMI_NOINLINE void fail(const char* msg) { throw std::runtime_error(msg); }
 
@@ -40,7 +40,7 @@ void fail(const std::string& str, T&& arg1, Args&&... args) {
 }
 
 [[noreturn]]
-inline void sys_fail(const std::string& msg) {
+inline void GEMMI_NOINLINE sys_fail(const std::string& msg) {
   throw std::system_error(errno, std::system_category(), msg);
 }
 [[noreturn]]
