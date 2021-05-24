@@ -12,11 +12,6 @@
 #include "symmetry.hpp"  // for GroupOps, Op
 #include "fail.hpp"      // for fail
 
-#ifdef  __INTEL_COMPILER
-// warning #2196: routine is both "inline" and "noinline"
-# pragma warning disable 2196
-#endif
-
 #ifdef __MINGW32__  // MinGW may have problem with std::mutex etc
 # define POCKETFFT_CACHE_SIZE 0
 #endif
