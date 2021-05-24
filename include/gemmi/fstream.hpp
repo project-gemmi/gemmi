@@ -47,7 +47,7 @@ struct Ofstream {
     keeper_.reset(new std::ofstream);
     open_stream_from_utf8_path(keeper_, filename);
     if (!*keeper_)
-      sys_fail("Failed to open file for writing: " + filename);
+      sys_fail("Failed to open " + filename + " for writing");
     ptr_ = keeper_.get();
   }
 
@@ -68,7 +68,7 @@ struct Ifstream {
     keeper_.reset(new std::ifstream);
     open_stream_from_utf8_path(keeper_, filename);
     if (!*keeper_)
-      sys_fail("Failed to open file: " + filename);
+      sys_fail("Failed to open " + filename);
     ptr_ = keeper_.get();
   }
 

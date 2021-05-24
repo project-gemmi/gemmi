@@ -42,7 +42,7 @@ namespace tao
    do {                                                                                 \
       const int errorno = errno;                                                        \
       std::ostringstream oss;                                                           \
-      oss << TAO_PEGTL_INTERNAL_UNWRAP( MESSAGE ) << " errno " << errorno; \
+      oss << TAO_PEGTL_INTERNAL_UNWRAP( MESSAGE ); \
       throw std::system_error( errorno, std::system_category(), oss.str() );            \
    } while( false )
 
