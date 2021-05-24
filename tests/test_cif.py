@@ -239,6 +239,10 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(len(nonexistent), 0)
         self.assertEqual(nonexistent.width(), 0)
 
+    def test_file_not_found(self):
+        with self.assertRaises(IOError):
+            cif.read('file-that-does-not-exist.cif')
+
     def test_line_endings(self):
         lines = ['data_a', '_a_field', ';', 'text line', '2nd line', ';']
         for eol in ('\r\n', '\n'):

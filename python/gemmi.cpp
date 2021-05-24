@@ -80,6 +80,17 @@ PYBIND11_MODULE(gemmi, mg) {
   mg.doc() = "Python bindings to GEMMI - a library used in macromolecular\n"
              "crystallography and related fields";
   mg.attr("__version__") = GEMMI_VERSION;
+
+  py::register_exception_translator([](std::exception_ptr p) {
+    try {
+      if (p)
+        std::rethrow_exception(p);
+    } catch (const std::system_error &e) {
+      const int errornum = e.code().value();
+      PyErr_SetObject(PyExc_IOError, py::make_tuple(errornum, e.what()).ptr());
+    }
+  });
+
   py::module cif = mg.def_submodule("cif", "CIF file format");
   add_cif(cif);
   add_symmetry(mg);
