@@ -23,12 +23,12 @@
         USE_SETUP_PY: 1
       - arch: x64
         CMAKE_GENERATOR: MSYS Makefiles
-        COMPILER: MinGW64-gcc-7.2.0
+        COMPILER: MinGW64-gcc-8.1.0
+        BINDIR: C:\mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0\mingw64\bin;C:\msys64\usr\bin
         CMAKE_CONFIG: Release
-        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-        PY_PYTHON: 3.7-32
+        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+        PY_PYTHON: 3.9-32
         USE_SETUP_PY: 1
-        BINDIR: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin;C:\msys64\usr\bin
 
   build_script:
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (del "C:\Program Files (x86)\MSBuild\14.0\Microsoft.Common.targets\ImportAfter\Xamarin.Common.targets")
@@ -64,31 +64,3 @@
     - path: gemmi.exe
     - path: gemmi*.pyd
 
--
-  branches:
-    only:
-      - /v\d*\.\d*\.\d*/
-  # see https://packaging.python.org/guides/supporting-windows-using-appveyor/
-  environment:
-    matrix:
-      # cf. https://www.appveyor.com/docs/windows-images-software/#python
-      # Python 3.9 is not visible by default,
-      # probably requires image: Visual Studio 2019
-      #- PYTHON: "C:\\Python39"
-      #- PYTHON: "C:\\Python39-x64"
-      - PYTHON: "C:\\Python36"
-      - PYTHON: "C:\\Python37"
-      - PYTHON: "C:\\Python38"
-      - PYTHON: "C:\\Python36-x64"
-      - PYTHON: "C:\\Python37-x64"
-      - PYTHON: "C:\\Python38-x64"
-  install:
-    - "%PYTHON%\\python.exe -m pip install wheel pybind11"
-  build_script:
-    - "%PYTHON%\\python.exe setup.py install"
-  test_script:
-    - "%PYTHON%\\python.exe -m unittest discover -s tests"
-  after_test:
-    - "%PYTHON%\\python.exe setup.py bdist_wheel"
-  artifacts:
-    - path: dist\*
