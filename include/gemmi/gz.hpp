@@ -10,7 +10,7 @@
 #include <memory>
 #include <string>
 #include <zlib.h>
-#include "fail.hpp"     // fail
+#include "fail.hpp"     // fail, sys_fail
 #include "fileutil.hpp" // file_open
 #include "input.hpp"    // BasicInput
 #include "util.hpp"     // iends_with
@@ -23,14 +23,14 @@ namespace gemmi {
 inline size_t estimate_uncompressed_size(const std::string& path) {
   fileptr_t f = file_open(path.c_str(), "rb");
   if (std::fseek(f.get(), -4, SEEK_END) != 0)
-    fail("fseek() failed (empty file?): " + path);
+    sys_fail("fseek() failed (empty file?): " + path);
   long pos = std::ftell(f.get());
   if (pos <= 0)
-    fail("ftell() failed on " + path);
+    sys_fail("ftell() failed on " + path);
   size_t gzipped_size = pos + 4;
   unsigned char buf[4];
   if (std::fread(buf, 1, 4, f.get()) != 4)
-    fail("Failed to read last 4 bytes of: " + path);
+    sys_fail("Failed to read last 4 bytes of: " + path);
   unsigned orig_size = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
   if (orig_size + 100 < gzipped_size || orig_size > 100 * gzipped_size)
     fail("Cannot determine uncompressed size of " + path +
@@ -80,6 +80,8 @@ public:
     if (read_bytes != len && !gzeof(file_)) {
       int errnum;
       std::string err_str = gzerror(file_, &errnum);
+      if (errnum == Z_ERRNO)
+        sys_fail("failed to read " + path());
       if (errnum)
         fail("Error reading " + path() + ": " + err_str);
     }
@@ -138,7 +140,7 @@ private:
   void open() {
     file_ = gzopen(path().c_str(), "rb");
     if (!file_)
-      fail("Failed to gzopen: " + path());
+      sys_fail("Failed to gzopen " + path());
   }
 };
 

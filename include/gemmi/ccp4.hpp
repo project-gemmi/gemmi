@@ -283,7 +283,7 @@ void write_data(const std::vector<TMem>& content, FILE* f) {
   if (typeid(TMem) == typeid(TFile)) {
     size_t len = content.size();
     if (std::fwrite(content.data(), sizeof(TFile), len, f) != len)
-      fail("Failed to write data to the map file.");
+      sys_fail("Failed to write data to the map file");
   } else {
     constexpr size_t chunk_size = 64 * 1024;
     std::vector<TFile> work(chunk_size);
@@ -292,7 +292,7 @@ void write_data(const std::vector<TMem>& content, FILE* f) {
       for (size_t j = 0; j < len; ++j)
         work[j] = static_cast<TFile>(content[i+j]);
       if (std::fwrite(work.data(), sizeof(TFile), len, f) != len)
-        fail("Failed to write data to the map file.");
+        sys_fail("Failed to write data to the map file");
     }
   }
 }

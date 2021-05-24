@@ -15,7 +15,7 @@
 #include "third_party/sajson.h"
 
 #include "cifdoc.hpp"   // for Document, etc
-#include "fail.hpp"     // for fail
+#include "fail.hpp"     // for fail, sys_fail
 #include "fileutil.hpp" // for file_open
 #include "input.hpp"    // for CharArray
 
@@ -121,7 +121,7 @@ inline CharArray read_file_into_buffer(const std::string& path) {
   size_t size = file_size(f.get(), path);
   CharArray buffer(size);
   if (std::fread(buffer.data(), size, 1, f.get()) != 1)
-    fail(path + ": fread failed");
+    sys_fail(path + ": fread failed");
   return buffer;
 }
 

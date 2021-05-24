@@ -33,6 +33,7 @@
 #include "third_party/tinydir.h"
 
 #include "util.hpp"  // for giends_with
+#include "fail.hpp"  // for sys_fail
 #if defined(_WIN32) && defined(_UNICODE)
  #include "utf.hpp"
 #endif
@@ -135,11 +136,8 @@ public:
 #else
     const char* xpath = path;
 #endif
-    if (tinydir_file_open(&top_, xpath) == -1) {
-      //std::perror(nullptr);
-      throw std::runtime_error("Cannot open file or directory: " +
-                               std::string(path));
-    }
+    if (tinydir_file_open(&top_, xpath) == -1)
+      sys_fail("Cannot open " + std::string(path));
   }
   explicit DirWalk(const std::string& path) : DirWalk(path.c_str()) {}
   ~DirWalk() {
@@ -150,7 +148,7 @@ public:
     dirs_.emplace_back();
     dirs_.back().first = cur_pos;
     if (tinydir_open_sorted(&dirs_.back().second, path) == -1)
-      throw std::runtime_error("Cannot open directory: " + as_utf8(path));
+      sys_fail("Cannot open directory " + as_utf8(path));
   }
   size_t pop_dir() {
     assert(!dirs_.empty());
