@@ -7,6 +7,7 @@
 #include <cerrno>
 #include <sstream>
 #include <stdexcept>
+#include <system_error>
 
 #include "config.hpp"
 
