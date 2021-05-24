@@ -12,7 +12,7 @@
 #include <initializer_list>
 #include <memory>    // for unique_ptr
 #include <string>
-#include "fail.hpp"  // for fail
+#include "fail.hpp"  // for fail, sys_fail
 #include "util.hpp"  // for to_lower
 
 #if defined(_WIN32) && !defined(GEMMI_USE_FOPEN)
@@ -47,8 +47,8 @@ inline fileptr_t file_open(const char* path, const char* mode) {
 #else
   if ((file = std::fopen(path, mode)) == nullptr)
 #endif
-    fail(std::string("Failed to open file") +
-         (*mode == 'w' ? " for writing: " : ": ") + path);
+    sys_fail(std::string("Failed to open file") +
+             (*mode == 'w' ? " for writing: " : ": ") + path);
   return fileptr_t(file, &std::fclose);
 }
 
@@ -62,12 +62,12 @@ inline fileptr_t file_open_or(const char* path, const char* mode,
 
 inline std::size_t file_size(std::FILE* f, const std::string& path) {
   if (std::fseek(f, 0, SEEK_END) != 0)
-    fail(path + ": fseek failed");
+    sys_fail(path + ": fseek failed");
   long length = std::ftell(f);
   if (length < 0)
-    fail(path + ": ftell failed");
+    sys_fail(path + ": ftell failed");
   if (std::fseek(f, 0, SEEK_SET) != 0)
-    fail(path + ": fseek failed");
+    sys_fail(path + ": fseek failed");
   return length;
 }
 

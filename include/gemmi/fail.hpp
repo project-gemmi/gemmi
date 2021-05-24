@@ -5,7 +5,9 @@
 #ifndef GEMMI_FAIL_HPP_
 #define GEMMI_FAIL_HPP_
 
+#include <cerrno>     // for errno
 #include <stdexcept>  // for runtime_error
+#include <system_error> // for system_error
 #include <string>
 #include <utility>    // for forward
 
@@ -24,6 +26,10 @@ void fail(const std::string& str, T&& arg1, Args&&... args) {
   fail(str + arg1, std::forward<Args>(args)...);
 }
 
+[[noreturn]]
+inline void sys_fail(const std::string& msg) {
+  throw std::system_error(errno, std::system_category(), msg);
+}
 
 // unreachable() is used to silence GCC -Wreturn-type and hint the compiler
 [[noreturn]] inline void unreachable() {

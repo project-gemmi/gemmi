@@ -7,7 +7,7 @@
 
 #include <cassert>
 #include <cstdint>   // for int32_t
-#include <cstdio>    // for FILE, fread
+#include <cstdio>    // for FILE, fprintf
 #include <cstring>   // for memcpy
 #include <cmath>     // for isnan
 #include <algorithm> // for sort, any_of
@@ -870,7 +870,7 @@ namespace gemmi {
     if (len < 80) \
       std::memset(buf + len, ' ', 80 - len); \
     if (write(buf, 80, 1) != 1) \
-      fail("Writing MTZ file failed"); \
+      sys_fail("Writing MTZ file failed"); \
   } while(0)
 
 template<typename Write>
