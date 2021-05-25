@@ -687,7 +687,7 @@ struct Mtz {
     std::vector<int> indices(nreflections);
     for (int i = 0; i != nreflections; ++i)
       indices[i] = i;
-    std::sort(indices.begin(), indices.end(), [&](int i, int j) {
+    std::stable_sort(indices.begin(), indices.end(), [&](int i, int j) {
       int a = i * (int) columns.size();
       int b = j * (int) columns.size();
       return data[a] < data[b] || (data[a] == data[b] && (
@@ -695,6 +695,19 @@ struct Mtz {
                  data[a+2] < data[b+2]))));
     });
     return indices;
+  }
+
+  bool sort() {
+    std::vector<int> indices = sorted_row_indices();
+    sort_order = {{1, 2, 3, 0, 0}};
+    if (std::is_sorted(indices.begin(), indices.end()))
+      return false;
+    std::vector<float> new_data(data.size());
+    size_t w = columns.size();
+    for (size_t i = 0; i != indices.size(); ++i)
+      std::memcpy(&new_data[i * w], &data[indices[i] * w], w * sizeof(float));
+    data.swap(new_data);
+    return true;
   }
 
   Miller get_hkl(size_t offset) const {
