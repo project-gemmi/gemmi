@@ -992,7 +992,7 @@ inline void check_for_duplicates(const Document& d) {
   for (const Block& block : d.blocks) {
     bool ok = names.insert(gemmi::to_lower(block.name)).second;
     if (!ok && !block.name.empty())
-      fail(d.source, ": duplicate block name: ", block.name);
+      fail(d.source + ": duplicate block name: ", block.name);
   }
   // check for dups inside each block
   std::unordered_set<std::string> frame_names;

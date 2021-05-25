@@ -109,7 +109,7 @@ inline Document read_mmjson_insitu(char* buffer, size_t size,
   sajson::document json = sajson::parse(sajson::dynamic_allocation(),
                                     sajson::mutable_string_view(size, buffer));
   if (!json.is_valid())
-    fail(name, ":", std::to_string(json.get_error_line()), " error: ",
+    fail(name + ":", std::to_string(json.get_error_line()), " error: ",
          json.get_error_message_as_string());
   fill_document_from_sajson(doc, json);
   doc.source = name;

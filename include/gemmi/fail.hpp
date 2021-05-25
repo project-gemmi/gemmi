@@ -25,22 +25,19 @@
 namespace gemmi {
 
 [[noreturn]]
-inline void GEMMI_NOINLINE fail(const std::string& msg) { throw std::runtime_error(msg); }
-[[noreturn]]
-inline GEMMI_NOINLINE void fail(const char* msg) { throw std::runtime_error(msg); }
+inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 
 template<typename T, typename... Args> [[noreturn]]
 void fail(std::string&& str, T&& arg1, Args&&... args) {
   str += arg1;
   fail(std::move(str), std::forward<Args>(args)...);
 }
-template<typename T, typename... Args> [[noreturn]]
-void fail(const std::string& str, T&& arg1, Args&&... args) {
-  fail(str + arg1, std::forward<Args>(args)...);
-}
 
 [[noreturn]]
-inline void GEMMI_NOINLINE sys_fail(const std::string& msg) {
+inline GEMMI_NOINLINE void fail(const char* msg) { throw std::runtime_error(msg); }
+
+[[noreturn]]
+inline GEMMI_NOINLINE void sys_fail(const std::string& msg) {
   throw std::system_error(errno, std::system_category(), msg);
 }
 [[noreturn]]
