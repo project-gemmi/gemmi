@@ -19,7 +19,8 @@ namespace {
 
 using std::fprintf;
 
-enum OptionIndex { BlockName=4, Dir, Spec, PrintSpec, Title, History, Unmerged };
+enum OptionIndex { BlockName=4, Dir, Spec, PrintSpec, Title, History,
+                   Unmerged, Sort };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -44,6 +45,8 @@ const option::Descriptor Usage[] = {
     "  -H LINE, --history=LINE  \tAdd a history line." },
   { Unmerged, 0, "u", "unmerged", Arg::None,
     "  -u, --unmerged  \tWrite unmerged MTZ file(s)." },
+  { Sort, 0, "", "sort", Arg::None,
+    "  --sort  \tOrder reflections according to Miller indices." },
   { NoOp, 0, "", "", Arg::None,
     "\nFirst variant: converts the first block of CIF_FILE, or the block"
     "\nspecified with --block=NAME, to MTZ file with given name."
@@ -124,6 +127,11 @@ int GEMMI_MAIN(int argc, char **argv) {
         ? get_block_by_name(rblocks, p.options[BlockName].arg)
         : rblocks.at(0);
       gemmi::Mtz mtz = cif2mtz.convert_block_to_mtz(rb, std::cerr);
+      if (p.options[Sort]) {
+        bool reordered = mtz.sort();
+        if (cif2mtz.verbose)
+          fprintf(stderr, "Reflection order has %schanged.\n", reordered ? "" : "not ");
+      }
       if (cif2mtz.verbose)
         fprintf(stderr, "Writing %s ...\n", mtz_path);
       mtz.write_to_file(mtz_path);
