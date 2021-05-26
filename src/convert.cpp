@@ -49,7 +49,7 @@ struct ConvArg: public Arg {
 enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, PdbxStyle, BlockName,
   ExpandNcs, AsAssembly, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
-  ShortTer, Linkr, Minimal, ShortenCN, RenameChain, SetSeq, Anisou,
+  ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain, SetSeq, Anisou,
   SegmentAsChain, OldPdb, ForceLabel
 };
 
@@ -90,6 +90,8 @@ const option::Descriptor Usage[] = {
     "  --short-ter  \tWrite PDB TER records without numbers (iotbx compat.)." },
   { Linkr, 0, "", "linkr", Arg::None,
     "  --linkr  \tWrite LINKR record (for Refmac) if link_id is known." },
+  { CopyRemarks, 0, "", "copy-remarks", Arg::None,
+    "  --copy-remarks  \t(pdb->pdb only) Copy REMARK records." },
 
   { NoOp, 0, "", "", Arg::None, "\nAny output options:" },
   { Minimal, 0, "", "minimal", Arg::None,
@@ -172,6 +174,8 @@ void convert(gemmi::Structure& st,
     gemmi::setup_entities(st);
     if (!options[SetSeq])
       gemmi::assign_label_seq_id(st, options[ForceLabel]);
+    if (!options[CopyRemarks])
+      st.raw_remarks.clear();
   }
 
   if (options[Anisou]) {

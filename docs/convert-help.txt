@@ -27,6 +27,7 @@ PDB input options:
 PDB output options:
   --short-ter             Write PDB TER records without numbers (iotbx compat.).
   --linkr                 Write LINKR record (for Refmac) if link_id is known.
+  --copy-remarks          (pdb->pdb only) Copy REMARK records.
 
 Any output options:
   --minimal               Write only the most essential records.
