@@ -609,12 +609,13 @@ Structure read_pdb_from_input(Input&& infile, const std::string& source,
 
   for (Model& mod : st.models)
     for (Chain& ch : mod.chains)
-      if (ch.residues[0].entity_type != EntityType::Unknown) {
+      if (ch.residues[0].entity_type != EntityType::Unknown)
         assign_subchain_names(ch);
-        if (Entity* entity = st.get_entity(ch.name))
-          if (auto polymer = ch.get_polymer())
-            entity->subchains.emplace_back(polymer.subchain_id());
-      }
+
+  for (Chain& ch : st.models[0].chains)
+    if (Entity* entity = st.get_entity(ch.name))
+      if (auto polymer = ch.get_polymer())
+        entity->subchains.emplace_back(polymer.subchain_id());
 
   st.setup_cell_images();
 
