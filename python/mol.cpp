@@ -181,7 +181,8 @@ void add_mol(py::module& m) {
          py::arg("chain"), py::arg("seqid"),
          py::return_value_policy::reference_internal)
     .def("get_all_residue_names", &Model::get_all_residue_names)
-    .def("find_cra", (CRA (Model::*)(const AtomAddress&)) &Model::find_cra)
+    .def("find_cra", (CRA (Model::*)(const AtomAddress&, bool)) &Model::find_cra,
+         py::arg(), py::arg("ignore_segment")=false)
     .def("find_chain",
          (Chain* (Model::*)(const std::string&))&Model::find_chain,
          py::arg("name"), py::return_value_policy::reference_internal)

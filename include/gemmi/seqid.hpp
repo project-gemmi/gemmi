@@ -94,6 +94,9 @@ struct ResidueId {
   bool matches(const ResidueId& o) const {
     return seqid == o.seqid && segment == o.segment && name == o.name;
   }
+  bool matches_noseg(const ResidueId& o) const {
+    return seqid == o.seqid && name == o.name;
+  }
   bool operator==(const ResidueId& o) const { return matches(o); }
   std::string str() const { return seqid.str() + "(" + name + ")"; }
 };

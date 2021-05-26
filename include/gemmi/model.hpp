@@ -757,20 +757,23 @@ struct Model {
     return names;
   }
 
-  CRA find_cra(const AtomAddress& address) {
+  CRA find_cra(const AtomAddress& address, bool ignore_segment=false) {
     for (Chain& chain : chains)
-      if (chain.name == address.chain_name)
-        if (Residue* res = chain.find_residue(address.res_id)) {
-          Atom *at = nullptr;
-          if (!address.atom_name.empty())
-            at = res->find_atom(address.atom_name, address.altloc);
-          return {&chain, res, at};
-        }
+      if (chain.name == address.chain_name) {
+        for (Residue& res : chain.residues)
+          if (address.res_id.matches_noseg(res) &&
+              (ignore_segment || address.res_id.segment == res.segment)) {
+            Atom *at = nullptr;
+            if (!address.atom_name.empty())
+              at = res.find_atom(address.atom_name, address.altloc);
+            return {&chain, &res, at};
+          }
+      }
     return {nullptr, nullptr, nullptr};
   }
 
-  const_CRA find_cra(const AtomAddress& address) const {
-    return const_cast<Model*>(this)->find_cra(address);
+  const_CRA find_cra(const AtomAddress& address, bool ignore_segment=false) const {
+    return const_cast<Model*>(this)->find_cra(address, ignore_segment);
   }
 
   CraProxy all() { return {chains}; }
