@@ -229,9 +229,13 @@ void convert(gemmi::Structure& st,
   HowToNameCopiedChain how = HowToNameCopiedChain::AddNumber;
   if (output_type == CoorFormat::Pdb)
     how = HowToNameCopiedChain::Short;
-  if (options[AsAssembly])
+  if (options[AsAssembly]) {
     gemmi::change_to_assembly(st, options[AsAssembly].arg, how,
                               options[Verbose] ? &std::cerr : nullptr);
+    // After this change Assembly instructions can be outdated.
+    // Should they be preserved anyway or removed? Currently - removing.
+    st.assemblies.clear();
+  }
 
   if (options[ExpandNcs]) {
     if (options[ExpandNcs].arg[0] == 'd')
