@@ -392,8 +392,8 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
   if (use_ccp4_link_id)
     conn_loop.tags.push_back("_struct_conn.ccp4_link_id");
   for (const Connection& con : st.connections) {
-    const_CRA cra1 = st.models[0].find_cra(con.partner1);
-    const_CRA cra2 = st.models[0].find_cra(con.partner2);
+    const_CRA cra1 = st.models[0].find_cra(con.partner1, true);
+    const_CRA cra2 = st.models[0].find_cra(con.partner2, true);
     if (!cra1.residue || !cra2.residue)
       continue;
     const Atom* at1 = cra1.atom;
