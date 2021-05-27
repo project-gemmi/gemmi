@@ -6,6 +6,7 @@
 #include "gemmi/it92.hpp"
 #include "gemmi/c4322.hpp"
 #include <pybind11/stl.h>
+#include <pybind11/numpy.h>
 
 namespace py = pybind11;
 using namespace gemmi;
@@ -31,8 +32,11 @@ void add_elem(py::module& m) {
     })
     .def_property_readonly("c", &IT92::Coef::c)
     .def("set_coefs", &IT92::Coef::set_coefs)
-    .def("calculate_sf", &IT92::Coef::calculate_sf, py::arg("stol2"))
-    .def("calculate_density_iso", &IT92::Coef::calculate_density_iso,
+    .def("calculate_sf", py::vectorize(&IT92::Coef::calculate_sf), py::arg("stol2"))
+    .def("calculate_density_iso", 
+         [](const IT92::Coef &self, py::array_t<double> r2, double B) {
+             return py::vectorize([self,B](double r2) { return self.calculate_density_iso(r2, B); })(r2);
+         },
          py::arg("r2"), py::arg("B"))
     ;
 
