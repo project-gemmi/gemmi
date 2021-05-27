@@ -47,6 +47,7 @@ void add_write(py::module& m, py::class_<Structure>& structure) {
     DEF_BIT_PROPERTY(entity_poly_seq)
     DEF_BIT_PROPERTY(tls)
     DEF_BIT_PROPERTY(software)
+    DEF_BIT_PROPERTY(group_pdb)
     ;
 
   structure

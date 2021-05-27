@@ -41,6 +41,7 @@ struct MmcifOutputGroups {
   bool entity_poly_seq:1;
   bool tls:1;
   bool software:1;
+  bool group_pdb:1;  // include _atom_site.group_PDB
 
   explicit MmcifOutputGroups(bool all)
     : atoms(all), block_name(all), entry(all), database_status(all),
@@ -51,7 +52,7 @@ struct MmcifOutputGroups {
       struct_asym(all), origx(all), struct_conf(all), struct_sheet(all),
       struct_biol(all), assembly(all), conn(all), cis(all),
       scale(all), atom_type(all), entity_poly_seq(all), tls(all),
-      software(all) {}
+      software(all), group_pdb(false) {}
 };
 
 void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroups groups);
@@ -163,7 +164,7 @@ inline std::string qchain(const std::string& s) {
 }
 
 
-inline void add_cif_atoms(const Structure& st, cif::Block& block) {
+inline void add_cif_atoms(const Structure& st, cif::Block& block, bool use_group_pdb) {
   // atom list
   cif::Loop& atom_loop = block.init_mmcif_loop("_atom_site.", {
       "id",
@@ -184,6 +185,8 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
       "auth_seq_id",
       "auth_asym_id",
       "pdbx_PDB_model_num"});
+  if (use_group_pdb)
+    atom_loop.tags.emplace(atom_loop.tags.begin(), "_atom_site.group_PDB");
   bool has_calc_flag = false;
   bool has_tls_group_id = false;
   for (const Model& model : st.models)
@@ -213,6 +216,8 @@ inline void add_cif_atoms(const Structure& st, cif::Block& block) {
         if (const Entity* ent = gemmi::find_entity(res.subchain, st.entities))
           entity_id = cif::quote(ent->name);
         for (const Atom& atom : res.atoms) {
+          if (use_group_pdb)
+            vv.emplace_back(res.het_flag != 'H' ? "ATOM" : "HETATM");
           vv.emplace_back(std::to_string(++serial));
           vv.emplace_back(atom.element.uname());
           vv.emplace_back(cif::quote(atom.name));
@@ -1115,7 +1120,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   }
 
   if (groups.atoms)
-    impl::add_cif_atoms(st, block);
+    impl::add_cif_atoms(st, block, groups.group_pdb);
 
   if (groups.tls && st.meta.has_tls()) {
     cif::Loop& loop = block.init_mmcif_loop("_pdbx_refine_tls.", {
@@ -1192,7 +1197,7 @@ void add_minimal_mmcif_data(const Structure& st, cif::Block& block) {
   block.set_pair("_symmetry.space_group_name_H-M",
                  cif::quote(st.spacegroup_hm));
   impl::write_ncs_oper(st, block);
-  impl::add_cif_atoms(st, block);
+  impl::add_cif_atoms(st, block, /*use_group_pdb=*/false);
 }
 
 } // namespace gemmi
