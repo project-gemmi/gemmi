@@ -61,6 +61,21 @@ void add_mol(py::module& m) {
     .value("Dup", HowToNameCopiedChain::Dup)
     ;
 
+  py::class_<ChainNameGenerator>(m, "ChainNameGenerator")
+    .def(py::init<HowToNameCopiedChain>())
+    .def(py::init<const Model&, HowToNameCopiedChain>())
+    .def_readwrite("how", &ChainNameGenerator::how)
+    .def_readwrite("used_names", &ChainNameGenerator::used_names)
+    .def("has", &ChainNameGenerator::has, py::arg("name"))
+    .def("added", &ChainNameGenerator::added, py::arg("name"))
+    .def("make_short_name", &ChainNameGenerator::make_short_name,
+         py::arg("preferred"))
+    .def("make_name_with_numeric_postfix", &ChainNameGenerator::make_name_with_numeric_postfix,
+         py::arg("base"), py::arg("n"))
+    .def("make_new_name", &ChainNameGenerator::make_new_name,
+         py::arg("old"), py::arg("n"))
+    ;
+
   m.def("one_letter_code",
         (std::string (*)(const std::vector<std::string>&)) &one_letter_code);
   m.def("one_letter_code",
