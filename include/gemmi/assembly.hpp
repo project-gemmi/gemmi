@@ -257,6 +257,35 @@ inline void expand_ncs(gemmi::Structure& st, HowToNameCopiedChain how) {
   st.setup_cell_images();
 }
 
+inline std::vector<Chain> split_chain_by_segments(Chain& orig) {
+  std::vector<Chain> chains;
+  std::vector<Residue> orig_res;
+  orig_res.swap(orig.residues);
+  for (auto start = orig_res.begin(); start != orig_res.end(); ) {
+    const std::string& seg = start->segment;
+    auto ch = std::find_if(chains.begin(), chains.end(), [&](Chain& c) {
+                return !c.residues.empty() && c.residues[0].segment == seg; });
+    if (ch == chains.end()) {
+      chains.push_back(orig);
+      ch = chains.end() - 1;
+      // it's not clear how chain naming should be handled
+      ch->name += seg;
+    }
+    auto end = std::find_if(start, orig_res.end(),
+                            [&](Residue& r) { return r.segment != seg; });
+    ch->residues.insert(ch->residues.end(), std::make_move_iterator(start),
+                                            std::make_move_iterator(end));
+    start = end;
+  }
+  return chains;
+}
+
+inline void split_chains_by_segments(Model& model) {
+  std::vector<Chain> new_chains;
+  for (Chain& chain : model.chains)
+    vector_move_extend(new_chains, split_chain_by_segments(chain));
+  model.chains = std::move(new_chains);
+}
 
 } // namespace gemmi
 #endif

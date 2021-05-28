@@ -212,15 +212,16 @@ void add_mol(py::module& m) {
     .def("calculate_center_of_mass", [](const Model& self) {
         return calculate_center_of_mass(self).get();
     })
+    .def("transform", [](Model& self, const Transform& tr) {
+        for (CRA& cra : self.all())
+          transform_atom(*cra.atom, tr);
+    }, py::arg("tr"))
+    .def("split_chains_by_segments", &split_chains_by_segments)
     .def("clone", [](const Model& self) { return new Model(self); })
     .def("__repr__", [](const Model& self) {
         return tostr("<gemmi.Model ", self.name, " with ",
                      self.chains.size(), " chain(s)>");
-    })
-    .def("transform", [](Model& self, const Transform& tr) {
-        for (CRA& cra : self.all())
-          transform_atom(*cra.atom, tr);
-    }, py::arg("tr"));
+    });
 
   py::class_<UniqProxy<Residue>>(m, "FirstConformerRes")
     .def("__iter__", [](UniqProxy<Residue>& self) {

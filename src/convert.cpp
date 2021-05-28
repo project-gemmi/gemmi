@@ -128,29 +128,6 @@ const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-std::vector<gemmi::Chain> split_by_segments(gemmi::Chain& orig) {
-  std::vector<gemmi::Chain> chains;
-  std::vector<gemmi::Residue> orig_res;
-  orig_res.swap(orig.residues);
-  for (auto seg_start = orig_res.begin(); seg_start != orig_res.end(); ) {
-    const std::string& sn = seg_start->segment;
-    auto ch = std::find_if(chains.begin(), chains.end(), [&](gemmi::Chain& c) {
-                return !c.residues.empty() && c.residues[0].segment == sn; });
-    if (ch == chains.end()) {
-      chains.push_back(orig);
-      ch = chains.end() - 1;
-      // it's not clear how chain naming should be handled
-      ch->name += sn;
-    }
-    auto seg_end = std::find_if(seg_start, orig_res.end(),
-                            [&](gemmi::Residue& r) { return r.segment != sn; });
-    ch->residues.insert(ch->residues.end(), std::make_move_iterator(seg_start),
-                                            std::make_move_iterator(seg_end));
-    seg_start = seg_end;
-  }
-  return chains;
-}
-
 std::string format_as_string(CoorFormat format) {
   switch (format) {
     case CoorFormat::Unknown: return "unknown";
@@ -263,12 +240,8 @@ void convert(gemmi::Structure& st,
 
 
   if (options[SegmentAsChain])
-    for (gemmi::Model& model : st.models) {
-      std::vector<gemmi::Chain> new_chains;
-      for (gemmi::Chain& chain : model.chains)
-        gemmi::vector_move_extend(new_chains, split_by_segments(chain));
-      model.chains = std::move(new_chains);
-    }
+    for (gemmi::Model& model : st.models)
+      split_chains_by_segments(model);
 
   gemmi::Ofstream os(output, &std::cout);
 
