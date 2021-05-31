@@ -660,6 +660,26 @@ class TestMol(unittest.TestCase):
         self.assertEqual([atom.name for atom in res1.first_conformer()],
                          [atom.name for atom in res1 if atom.altloc != 'B'])
 
+    def test_model_all(self):
+        model = gemmi.Model('1')
+        for name in 'ABCDEFG':
+            model.add_chain(gemmi.Chain(name))
+        expected = []
+        for cname in 'BCF':
+            chain = model[cname]
+            for _ in range(7):
+                chain.add_residue(gemmi.Residue())
+            for (r, name) in [(2, '0'), (2, '1'), (3, '2'), (5, '3')]:
+                a = gemmi.Atom()
+                a.name = cname + name
+                expected.append(a.name)
+                chain[r].add_atom(a)
+        self.assertEqual([cra.atom.name for cra in model.all()], expected)
+        st = gemmi.Structure()
+        st.add_model(model)
+        st.remove_empty_chains()
+        self.assertEqual([cra.atom.name for cra in model.all()], expected)
+
     def test_different_altloc_order(self):
         st = gemmi.read_pdb_string(UNORDERED_ALTLOC_FRAGMENT)
         chain = st[0]['A']

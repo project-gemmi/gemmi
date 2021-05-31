@@ -609,25 +609,34 @@ public:
   CraIterPolicy() : chains_end(nullptr), cra{nullptr, nullptr, nullptr} {}
   CraIterPolicy(const Chain* end, CraT cra_) : chains_end(end), cra(cra_) {}
   void increment() {
-    if (cra.atom)
-      if (++cra.atom == vector_end_ptr(cra.residue->atoms)) {
+    if (cra.atom == nullptr)
+      return;
+    if (++cra.atom == vector_end_ptr(cra.residue->atoms)) {
+      do {
         if (++cra.residue == vector_end_ptr(cra.chain->residues)) {
-          if (++cra.chain == chains_end) {
-            cra.atom = nullptr;
-            return;
-          }
-          cra.residue = &cra.chain->residues.at(0);
+          do {
+            if (++cra.chain == chains_end) {
+              cra.atom = nullptr;
+              return;
+            }
+          } while (cra.chain->residues.empty());
+          cra.residue = &cra.chain->residues[0];
         }
-        cra.atom = &cra.residue->atoms.at(0);
-      }
+      } while (cra.residue->atoms.empty());
+      cra.atom = &cra.residue->atoms[0];
+    }
   }
   void decrement() {
-    if (cra.atom)
-      if (cra.atom-- == cra.residue->atoms.data()) {
-        if (cra.residue-- == cra.chain->residues.data())
-          cra.residue = &(--cra.chain)->residues.back();
-        cra.atom = &cra.residue->atoms.back();
+    while (cra.atom == nullptr || cra.atom == cra.residue->atoms.data()) {
+      while (cra.residue == cra.chain->residues.data()) {
+        // iterating backward beyond begin() will have undefined effects
+        while ((--cra.chain)->residues.empty()) {}
+        cra.residue = vector_end_ptr(cra.chain->residues);
       }
+      --cra.residue;
+      cra.atom = vector_end_ptr(cra.residue->atoms);
+    }
+    --cra.atom;
   }
   bool equal(const CraIterPolicy& o) const { return cra.atom == o.cra.atom; }
   CraT& dereference() { return cra; }
@@ -643,13 +652,16 @@ struct CraProxy_ {
   ChainsRefT chains;
   using iterator = BidirIterator<CraIterPolicy<CraT>>;
   iterator begin() {
-    CraT cra;
-    cra.chain = &chains.at(0);
-    cra.residue = &cra.chain->residues.at(0);
-    cra.atom = &cra.residue->atoms.at(0);
-    return CraIterPolicy<CraT>{vector_end_ptr(chains), cra};
+    for (auto& chain : chains)
+      for (auto& residue : chain.residues)
+        for (auto& atom : residue.atoms)
+          return CraIterPolicy<CraT>{vector_end_ptr(chains), CraT{&chain, &residue, &atom}};
+    return {};
   }
-  iterator end() { return {}; }
+  iterator end() {
+    auto* chains_end = vector_end_ptr(chains);
+    return CraIterPolicy<CraT>{chains_end, CraT{chains_end, nullptr, nullptr}};
+  }
 };
 
 using CraProxy = CraProxy_<CRA, std::vector<Chain>&>;
