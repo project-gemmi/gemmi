@@ -628,7 +628,7 @@ public:
   }
   void decrement() {
     while (cra.atom == nullptr || cra.atom == cra.residue->atoms.data()) {
-      while (cra.residue == cra.chain->residues.data()) {
+      while (cra.residue == nullptr || cra.residue == cra.chain->residues.data()) {
         // iterating backward beyond begin() will have undefined effects
         while ((--cra.chain)->residues.empty()) {}
         cra.residue = vector_end_ptr(cra.chain->residues);
