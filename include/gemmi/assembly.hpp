@@ -226,23 +226,23 @@ inline void shorten_chain_names(Structure& st) {
 }
 
 
-inline void expand_ncs(gemmi::Structure& st, HowToNameCopiedChain how) {
-  for (gemmi::Model& model : st.models) {
+inline void expand_ncs(Structure& st, HowToNameCopiedChain how) {
+  for (Model& model : st.models) {
     size_t orig_size = model.chains.size();
-    gemmi::ChainNameGenerator namegen(model, how);
-    for (const gemmi::NcsOp& op : st.ncs)
+    ChainNameGenerator namegen(model, how);
+    for (const NcsOp& op : st.ncs)
       if (!op.given) {
         for (size_t i = 0; i != orig_size; ++i) {
           if (how == HowToNameCopiedChain::Dup)
-            for (gemmi::Residue& res : model.chains[i].residues)
+            for (Residue& res : model.chains[i].residues)
               res.segment = "0";
 
           model.chains.push_back(model.chains[i]);
-          gemmi::Chain& new_chain = model.chains.back();
+          Chain& new_chain = model.chains.back();
           new_chain.name = namegen.make_new_name(new_chain.name, (int)i+1);
 
-          for (gemmi::Residue& res : new_chain.residues) {
-            for (gemmi::Atom& a : res.atoms)
+          for (Residue& res : new_chain.residues) {
+            for (Atom& a : res.atoms)
               transform_atom(a, op.tr);
             if (!res.subchain.empty())
               res.subchain = new_chain.name + ":" + res.subchain;
@@ -252,7 +252,7 @@ inline void expand_ncs(gemmi::Structure& st, HowToNameCopiedChain how) {
         }
       }
   }
-  for (gemmi::NcsOp& op : st.ncs)
+  for (NcsOp& op : st.ncs)
     op.given = true;
   st.setup_cell_images();
 }
