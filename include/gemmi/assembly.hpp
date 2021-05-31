@@ -257,10 +257,11 @@ inline void expand_ncs(Structure& st, HowToNameCopiedChain how) {
   st.setup_cell_images();
 }
 
-inline std::vector<Chain> split_chain_by_segments(Chain& orig) {
+inline std::vector<Chain> split_chain_by_segments(Chain& orig, ChainNameGenerator& namegen) {
   std::vector<Chain> chains;
   std::vector<Residue> orig_res;
   orig_res.swap(orig.residues);
+  int n = 0;
   for (auto start = orig_res.begin(); start != orig_res.end(); ) {
     const std::string& seg = start->segment;
     auto ch = std::find_if(chains.begin(), chains.end(), [&](Chain& c) {
@@ -268,8 +269,18 @@ inline std::vector<Chain> split_chain_by_segments(Chain& orig) {
     if (ch == chains.end()) {
       chains.push_back(orig);
       ch = chains.end() - 1;
-      // it's not clear how chain naming should be handled
-      ch->name += seg;
+      // Naming. Here, Dup means chain name + segment.
+      switch (namegen.how) {
+        case HowToNameCopiedChain::Short:
+          ch->name = namegen.make_short_name(ch->name + seg);
+          break;
+        case HowToNameCopiedChain::AddNumber:
+          ch->name = namegen.make_name_with_numeric_postfix(ch->name, ++n);
+          break;
+        case HowToNameCopiedChain::Dup:
+          ch->name += seg;
+          break;
+      }
     }
     auto end = std::find_if(start, orig_res.end(),
                             [&](Residue& r) { return r.segment != seg; });
@@ -280,10 +291,12 @@ inline std::vector<Chain> split_chain_by_segments(Chain& orig) {
   return chains;
 }
 
-inline void split_chains_by_segments(Model& model) {
+// HowToNameCopiedChain::Dup adds segment name to
+inline void split_chains_by_segments(Model& model, HowToNameCopiedChain how) {
+  ChainNameGenerator namegen(model, how);
   std::vector<Chain> new_chains;
   for (Chain& chain : model.chains)
-    vector_move_extend(new_chains, split_chain_by_segments(chain));
+    vector_move_extend(new_chains, split_chain_by_segments(chain, namegen));
   model.chains = std::move(new_chains);
 }
 

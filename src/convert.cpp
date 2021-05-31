@@ -241,7 +241,7 @@ void convert(gemmi::Structure& st,
 
   if (options[SegmentAsChain])
     for (gemmi::Model& model : st.models)
-      split_chains_by_segments(model);
+      split_chains_by_segments(model, gemmi::HowToNameCopiedChain::Dup);
 
   gemmi::Ofstream os(output, &std::cout);
 
