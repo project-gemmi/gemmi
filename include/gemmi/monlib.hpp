@@ -230,9 +230,9 @@ inline ResidueInfo::Kind chemcomp_group_to_kind(const std::string& group) {
 }
 
 template<typename T>
-void insert_comp_list(cif::Document& doc, T& ri_map) {
-  if (cif::Block* list_block = doc.find_block("comp_list")) {
-    for (auto row : list_block->find("_chem_comp.",
+void insert_comp_list(const cif::Document& doc, T& ri_map) {
+  if (const cif::Block* list_block = doc.find_block("comp_list")) {
+    for (auto row : const_cast<cif::Block*>(list_block)->find("_chem_comp.",
                                 {"id", "group", "?number_atoms_nh"})) {
       ResidueInfo ri;
       ri.kind = chemcomp_group_to_kind(row[1]);
@@ -243,7 +243,7 @@ void insert_comp_list(cif::Document& doc, T& ri_map) {
   }
 }
 
-inline void insert_chemlinks(cif::Document& doc,
+inline void insert_chemlinks(const cif::Document& doc,
                              std::map<std::string,ChemLink>& links) {
   if (const cif::Block* list_block = doc.find_block("link_list")) {
     for (auto row : const_cast<cif::Block*>(list_block)->find("_chem_link.",
@@ -321,7 +321,7 @@ inline Restraints read_restraint_modifications(const cif::Block& block_) {
   return rt;
 }
 
-inline void insert_chemmods(cif::Document& doc,
+inline void insert_chemmods(const cif::Document& doc,
                             std::map<std::string, ChemMod>& mods) {
   if (const cif::Block* list_block = doc.find_block("mod_list")) {
     for (auto row : const_cast<cif::Block*>(list_block)->find("_chem_mod.",

@@ -212,8 +212,21 @@ void add_monlib(py::module& m) {
     .def_readonly("modifications", &MonLib::modifications)
     .def("find_link", &MonLib::find_link, py::arg("link_id"),
          py::return_value_policy::reference_internal)
+    .def("match_link", &MonLib::match_link,
+         py::arg("comp1"), py::arg("atom1"),
+         py::arg("comp2"), py::arg("atom2"),
+         py::return_value_policy::reference_internal)
     .def("add_monomer_if_present", &MonLib::add_monomer_if_present)
     .def("add_monomers_if_present", &MonLib::add_monomers_if_present)
+    .def("insert_chemlinks", [](MonLib &self, const cif::Document &doc) {
+        insert_chemlinks(doc, self.links);
+    })
+    .def("insert_chemmods", [](MonLib &self, const cif::Document &doc) {
+        insert_chemmods(doc, self.modifications);
+    })
+    .def("insert_comp_list", [](MonLib &self, const cif::Document &doc) {
+        insert_comp_list(doc, self.residue_infos);
+    })
     .def("__repr__", [](const MonLib& self) {
         return "<gemmi.MonLib with " +
                std::to_string(self.monomers.size()) + " monomers, " +
