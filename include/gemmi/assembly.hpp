@@ -293,7 +293,7 @@ inline std::vector<Chain> split_chain_by_segments(Chain& orig, ChainNameGenerato
 
 // HowToNameCopiedChain::Dup adds segment name to
 inline void split_chains_by_segments(Model& model, HowToNameCopiedChain how) {
-  ChainNameGenerator namegen(model, how);
+  ChainNameGenerator namegen(how);
   std::vector<Chain> new_chains;
   for (Chain& chain : model.chains)
     vector_move_extend(new_chains, split_chain_by_segments(chain, namegen));
