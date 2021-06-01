@@ -32,9 +32,7 @@ enum class GridSetup {
   FullCheck     // additionally consistency of redundant data
 };
 
-template<typename T=float>
-struct Ccp4 {
-  Grid<T> grid;
+struct Ccp4Base {
   DataStats hstats;  // data statistics read from / written to ccp4 map
   // stores raw headers if the grid was read from ccp4 map
   std::vector<int32_t> ccp4_header;
@@ -83,6 +81,44 @@ struct Ccp4 {
   void set_header_str(int w, const std::string& str) {
     std::memcpy(header_word(w), str.c_str(), str.size());
   }
+
+  std::array<int, 3> axis_positions() const {
+    if (ccp4_header.empty())
+      return {{0, 1, 2}}; // assuming it's X,Y,Z
+    std::array<int, 3> pos{{-1, -1, -1}};
+    for (int i = 0; i != 3; ++i) {
+      int mapi = header_i32(17 + i);
+      if (mapi <= 0 || mapi > 3 || pos[mapi - 1] != -1)
+        fail("Incorrect MAPC/MAPR/MAPS records");
+      pos[mapi - 1] = i;
+    }
+    return pos;
+  }
+
+  double header_rfloat(int w) const { // rounded to 5 digits
+    return std::round(1e5 * header_float(w)) / 1e5;
+  }
+
+  Box<Fractional> get_extent() const {
+    Box<Fractional> box;
+    // cf. setup()
+    auto pos = axis_positions();
+    std::array<int, 3> start = header_3i32(5);
+    std::array<int, 3> size = header_3i32(1);
+    std::array<int, 3> sampl = header_3i32(8);
+    for (int i = 0; i < 3; ++i) {
+      double scale = 1. / sampl[i];
+      int p = pos[i];
+      box.minimum.at(i) = scale * start[p] - 1e-9;
+      box.maximum.at(i) = scale * (start[p] + size[p] - 1) + 1e-9;
+    }
+    return box;
+  }
+};
+
+template<typename T=float>
+struct Ccp4 : public Ccp4Base {
+  Grid<T> grid;
 
   // this function assumes that the whole unit cell is covered with offset 0
   void prepare_ccp4_header_except_mode_and_stats() {
@@ -163,27 +199,9 @@ struct Ccp4 {
       // NXSTART et al. must be 0
       header_i32(5) == 0 && header_i32(6) == 0 && header_i32(7) == 0 &&
       // MX == NX
-      header_i32(8) == grid.nu && header_i32(9) == grid.nv &&
-                                  header_i32(10) == grid.nw &&
+      header_i32(8) == grid.nu && header_i32(9) == grid.nv && header_i32(10) == grid.nw &&
       // just in case, check ORIGIN
       header_i32(50) == 0 && header_i32(51) == 0 && header_i32(52) == 0;
-  }
-
-  std::array<int, 3> axis_positions() const {
-    if (ccp4_header.empty())
-      return {{0, 1, 2}}; // assuming it's X,Y,Z
-    std::array<int, 3> pos{{-1, -1, -1}};
-    for (int i = 0; i != 3; ++i) {
-      int mapi = header_i32(17 + i);
-      if (mapi <= 0 || mapi > 3 || pos[mapi - 1] != -1)
-        fail("Incorrect MAPC/MAPR/MAPS records");
-      pos[mapi - 1] = i;
-    }
-    return pos;
-  }
-
-  double header_rfloat(int w) const { // rounded to 5 digits
-    return std::round(1e5 * header_float(w)) / 1e5;
   }
 
   template<typename Stream>
@@ -231,7 +249,6 @@ struct Ccp4 {
   }
 
   double setup(GridSetup mode, T default_value);
-  Box<Fractional> get_extent() const;
   void set_extent(const Box<Fractional>& box);
 
   template<typename Stream>
@@ -412,23 +429,6 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
   if (grid.axis_order == AxisOrder::XYZ)
     grid.calculate_spacing();
   return max_error;
-}
-
-template<typename T>
-Box<Fractional> Ccp4<T>::get_extent() const {
-  Box<Fractional> box;
-  // cf. setup()
-  auto pos = axis_positions();
-  std::array<int, 3> start = header_3i32(5);
-  std::array<int, 3> size = header_3i32(1);
-  std::array<int, 3> sampl = header_3i32(8);
-  for (int i = 0; i < 3; ++i) {
-    double scale = 1. / sampl[i];
-    int p = pos[i];
-    box.minimum.at(i) = scale * start[p] - 1e-9;
-    box.maximum.at(i) = scale * (start[p] + size[p] - 1) + 1e-9;
-  }
-  return box;
 }
 
 template<typename T>

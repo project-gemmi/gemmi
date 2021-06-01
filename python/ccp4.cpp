@@ -15,21 +15,13 @@ using namespace gemmi;
 template<typename T>
 py::class_<T> add_ccp4_common(py::module& m, const char* name) {
   using Map = Ccp4<T>;
-  return py::class_<Map>(m, name)
+  return py::class_<Map, Ccp4Base>(m, name)
     .def(py::init<>())
     .def_readwrite("grid", &Map::grid)
-    .def("header_i32", &Map::header_i32)
-    .def("header_float", &Map::header_float)
-    .def("header_str", &Map::header_str)
-    .def("set_header_i32", &Map::set_header_i32)
-    .def("set_header_float", &Map::set_header_float)
-    .def("set_header_str", &Map::set_header_str)
     .def("update_ccp4_header", &Map::update_ccp4_header,
          py::arg("mode")=-1, py::arg("update_stats")=true)
     .def("full_cell", &Map::full_cell)
-    .def("axis_positions", &Map::axis_positions)
     .def("write_ccp4_map", &Map::write_ccp4_map, py::arg("filename"))
-    .def("get_extent", &Map::get_extent)
     .def("set_extent", &Map::set_extent)
     .def("__repr__", [=](const Map& self) {
         const SpaceGroup* sg = self.grid.spacegroup;
@@ -40,6 +32,17 @@ py::class_<T> add_ccp4_common(py::module& m, const char* name) {
 }
 
 void add_ccp4(py::module& m) {
+  py::class_<Ccp4Base>(m, "Ccp4Base")
+    .def("header_i32", &Ccp4Base::header_i32)
+    .def("header_float", &Ccp4Base::header_float)
+    .def("header_str", &Ccp4Base::header_str)
+    .def("set_header_i32", &Ccp4Base::set_header_i32)
+    .def("set_header_float", &Ccp4Base::set_header_float)
+    .def("set_header_str", &Ccp4Base::set_header_str)
+    .def("axis_positions", &Ccp4Base::axis_positions)
+    .def("get_extent", &Ccp4Base::get_extent)
+    ;
+
   add_ccp4_common<float>(m, "Ccp4Map")
     .def("setup", [](Ccp4<float>& self, float default_value) {
             self.setup(GridSetup::Full, default_value);
