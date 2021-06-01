@@ -231,6 +231,7 @@ struct Ccp4 {
   }
 
   double setup(GridSetup mode, T default_value);
+  Box<Fractional> get_extent() const;
   void set_extent(const Box<Fractional>& box);
 
   template<typename Stream>
@@ -411,6 +412,23 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
   if (grid.axis_order == AxisOrder::XYZ)
     grid.calculate_spacing();
   return max_error;
+}
+
+template<typename T>
+Box<Fractional> Ccp4<T>::get_extent() const {
+  Box<Fractional> box;
+  // cf. setup()
+  auto pos = axis_positions();
+  std::array<int, 3> start = header_3i32(5);
+  std::array<int, 3> size = header_3i32(1);
+  std::array<int, 3> sampl = header_3i32(8);
+  for (int i = 0; i < 3; ++i) {
+    double scale = 1. / sampl[i];
+    int p = pos[i];
+    box.minimum.at(i) = scale * start[p] - 1e-9;
+    box.maximum.at(i) = scale * (start[p] + size[p] - 1) + 1e-9;
+  }
+  return box;
 }
 
 template<typename T>

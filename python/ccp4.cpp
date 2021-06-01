@@ -29,6 +29,7 @@ py::class_<T> add_ccp4_common(py::module& m, const char* name) {
     .def("full_cell", &Map::full_cell)
     .def("axis_positions", &Map::axis_positions)
     .def("write_ccp4_map", &Map::write_ccp4_map, py::arg("filename"))
+    .def("get_extent", &Map::get_extent)
     .def("set_extent", &Map::set_extent)
     .def("__repr__", [=](const Map& self) {
         const SpaceGroup* sg = self.grid.spacegroup;
