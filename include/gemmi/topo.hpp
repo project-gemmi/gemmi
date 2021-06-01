@@ -416,8 +416,8 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
     if (conn.type == Connection::Hydrog || conn.type == Connection::MetalC)
       continue;
     ExtraLink extra;
-    extra.res1 = model0.find_cra(conn.partner1).residue;
-    extra.res2 = model0.find_cra(conn.partner2).residue;
+    extra.res1 = model0.find_cra(conn.partner1, true).residue;
+    extra.res2 = model0.find_cra(conn.partner2, true).residue;
     if (!extra.res1 || !extra.res2)
       continue;
     extra.alt1 = conn.partner1.altloc;
