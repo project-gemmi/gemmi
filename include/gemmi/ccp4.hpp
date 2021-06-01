@@ -50,6 +50,9 @@ struct Ccp4 {
       swap_four_bytes(&value);
     return value;
   }
+  std::array<int, 3> header_3i32(int w) const {
+    return {{ header_i32(w), header_i32(w+1), header_i32(w+2) }};
+  }
   float header_float(int w) const {
     int32_t int_value = header_i32(w);
     float f;
@@ -348,10 +351,10 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
   if (grid.axis_order == AxisOrder::XYZ || ccp4_header.empty())
     return max_error;
   // cell sampling does not change
-  int sampl[3] = { header_i32(8), header_i32(9), header_i32(10) };
+  std::array<int, 3> sampl = header_3i32(8);
   // get old metadata
   auto pos = axis_positions();
-  int start[3] = { header_i32(5), header_i32(6), header_i32(7) };
+  std::array<int, 3> start = header_3i32(5);
   int end[3] = { start[0] + grid.nu, start[1] + grid.nv, start[2] + grid.nw };
   // set new metadata
   if (mode == GridSetup::ReorderOnly) {
