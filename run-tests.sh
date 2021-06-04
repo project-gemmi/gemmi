@@ -17,7 +17,7 @@ $PYTHON -m unittest discover -s tests
 # So 'make doctest' works only if sphinx-build was installed for python3.
 (cd docs && make doctest SPHINXOPTS="-q -n -E")
 flake8 docs/ examples/ tests/ tools/ setup.py
-$PYTHON -m pydoc gemmi | grep :: |:
+$PYTHON -m pydoc gemmi | grep :: ||:
 
 [ $# = 0 ] && exit;
 
