@@ -110,6 +110,8 @@ void add_hkl(py::module& m) {
        py::arg("order")=AxisOrder::XYZ)
     .def("get_float", &make_asu_data<float, ReflnBlock>,
          py::arg("col"), py::arg("as_is")=false)
+    .def("get_int", &make_asu_data<int, ReflnBlock>,
+         py::arg("col"), py::arg("as_is")=false)
     .def("get_f_phi", [](const ReflnBlock& self, const std::string& f_col,
                                                  const std::string& phi_col,
                                                  bool as_is) {
