@@ -126,12 +126,12 @@ In the MTZ file, each dataset is identified internally by an integer
 Dataset has a few properties that can be accessed directly::
 
   struct Dataset {
-    int number;
+    int id;
     std::string project_name;
     std::string crystal_name;
     std::string dataset_name;
     UnitCell cell;
-    double wavelength = 0.;
+    double wavelength;  // 0 means not set
   };
 
 Python bindings provide the same properties:

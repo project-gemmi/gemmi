@@ -74,7 +74,7 @@ struct Mtz {
     std::string crystal_name;
     std::string dataset_name;
     UnitCell cell;
-    double wavelength;
+    double wavelength;  // 0 means not set
   };
 
   struct Column {
