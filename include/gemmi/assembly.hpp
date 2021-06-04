@@ -226,7 +226,8 @@ inline void shorten_chain_names(Structure& st) {
 }
 
 
-inline void expand_ncs(Structure& st, HowToNameCopiedChain how) {
+inline void expand_ncs(Structure& st, HowToNameCopiedChain how,
+                       bool copy_connections=false) {
   for (Model& model : st.models) {
     size_t orig_size = model.chains.size();
     ChainNameGenerator namegen(model, how);
@@ -244,6 +245,19 @@ inline void expand_ncs(Structure& st, HowToNameCopiedChain how) {
               res.subchain = new_chain.name + ":" + res.subchain;
             if (how == HowToNameCopiedChain::Dup)
               res.segment = op.id;
+          }
+        }
+      }
+  }
+  if (copy_connections) {
+    size_t orig_conn_size = st.connections.size();
+    for (const NcsOp& op : st.ncs)
+      if (!op.given) {
+        for (size_t i = 0; i != orig_conn_size; ++i) {
+          if (how == HowToNameCopiedChain::Dup) { // for now we handle only this case
+            auto c = st.connections.emplace(st.connections.end(), st.connections[i]);
+            c->partner1.res_id.segment = op.id;
+            c->partner2.res_id.segment = op.id;
           }
         }
       }
