@@ -251,11 +251,15 @@ to access the data.
 We can also copy selected columns into :ref:`AsuData <asu_data>` --
 a class that stores values together with Miller indices:
 
+.. _example_with_asudata:
+
 .. doctest::
 
   >>> mtz_5wkd = gemmi.read_mtz_file('../tests/5wkd_phases.mtz.gz')
   >>> mtz_5wkd.get_float('FOM')
   <gemmi.FloatAsuData with 367 values>
+  >>> mtz_5wkd.get_int('FREE')
+  <gemmi.IntAsuData with 367 values>
   >>> mtz_5wkd.get_f_phi('FWT', 'PHWT')
   <gemmi.ComplexAsuData with 367 values>
   >>> mtz_5wkd.get_value_sigma('FP', 'SIGFP')
@@ -844,8 +848,8 @@ CifToMtz has also Python bindings.
   <gemmi.Mtz with 6 columns, 406 reflections>
 
 
-hkl CIF
-=======
+SX hkl CIF
+==========
 
 In the small molecule world reflections are also stored in separate CIF files.
 Similarly to SF mmCIF files, we may take cif::Block and wrap it into
@@ -881,6 +885,124 @@ as a text value of _shelx_hkl_file:
      0   0   1   19.76    0.73
 
 
+.. _intensities:
+
+Intensity merging
+=================
+
+TBD
+
+
+.. _asu_data:
+
+AsuData: merged reflections
+=============================
+
+AsuData is an array of symmetry-unique Miller indices and values.
+
+In C++, in principle, the values can be of any type.
+
+In Python, we have separate classes for different value types:
+IntAsuData, FloatAsuData, ComplexAsuData, ValueSigmaAsuData.
+The last one is for a pair of numbers, typically a float value
+with associated sigma.
+
+Such an array can be created in two ways:
+
+1. From reflection data read from an MTZ or SF-mmCIF file, for example:
+
+  .. doctest::
+
+    >>> mtz.get_value_sigma('F', 'SIGF')  #doctest:+ELLIPSIS
+    <gemmi.ValueSigmaAsuData with ... values>
+
+  Examples of functions giving other AsuData classes were given
+  in an :ref:`example above <example_with_asudata>`.
+
+  The choice of ASU differs between programs. By default, reflections
+  in AsuData are moved to the :ref:`ASU used in CCP4 <reciprocal_asu>`
+  and sorted. If you want to keep original Miller indices and the order
+  from the file, add parameter ``as_is=True``. You can also switch the indices
+  and sort reflections using separate functions:
+
+  .. doctest::
+
+    >>> asu_data = mtz.get_value_sigma('F', 'SIGF', as_is=True)
+    >>> asu_data.ensure_asu()
+    >>> asu_data.ensure_sorted()
+    >>> asu_data  #doctest:+ELLIPSIS
+    <gemmi.ValueSigmaAsuData with ... values>
+
+2. From a reciprocal-space grid, which will be introduced in the next section:
+
+  .. doctest::
+
+    >>> grid = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', [54,6,18])
+    >>> asu_data = grid.prepare_asu_data(dmin=1.8, with_000=False, with_sys_abs=False)
+    >>> asu_data
+    <gemmi.ComplexAsuData with 407 values>
+
+  Arguments of the ``prepare_asu_data`` function are optional.
+  By default, the resolution is not limited, the (000) reflection is not
+  included and systematic absences are also not included.
+
+Each item in AsuData has two properties, hkl and value:
+
+.. doctest::
+
+  >>> asu_data[158]
+  <gemmi.ComplexHklValue (-6,2,5) (-1.37694,-0.190087)>
+  >>> _.hkl, _.value
+  ([-6, 2, 5], (-1.376941204071045-0.19008657336235046j))
+
+Both Miller indices and values can be accessed as NumPy arrays:
+
+.. doctest::
+  :skipif: numpy is None or sys.platform == 'win32'
+
+  >>> asu_data.miller_array
+  array([[-26,   0,   1],
+         [-26,   0,   2],
+         [-26,   0,   3],
+         ...,
+         [ 25,   1,   0],
+         [ 26,   0,   0],
+         [ 26,   0,   1]], dtype=int32)
+  >>> asu_data.value_array[158:159]
+  array([-1.3769412-0.19008657j], dtype=complex64)
+
+AsuData has several methods common with Mtz and ReflnBlock:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> asu_data.get_size_for_hkl()
+  [54, 6, 18]
+  >>> asu_data.get_size_for_hkl(sample_rate=3.0)  # explained in the next section
+  [90, 8, 30]
+  >>> asu_data.data_fits_into([54,6,18])
+  True
+  >>> asu_data.make_1_d2_array()
+  array([0.268129  , 0.26766333, 0.27679217, ..., 0.30102324, 0.27818915,
+         0.2978438 ], dtype=float32)
+  >>> asu_data.make_d_array()
+  array([1.9312037, 1.9328829, 1.9007417, ..., 1.8226361, 1.8959632,
+         1.8323385], dtype=float32)
+
+The data can be edited as two NumPy arrays and then copied into new AsuData
+object. In this example we exclude low-resolution data:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> d = asu_data.make_d_array()
+  >>> gemmi.ComplexAsuData(asu_data.unit_cell,
+  ...                      asu_data.spacegroup,
+  ...                      asu_data.miller_array[d<8],
+  ...                      asu_data.value_array[d<8])
+  <gemmi.ComplexAsuData with 399 values>
+
+
 Reciprocal-space grid
 =====================
 
@@ -891,10 +1013,11 @@ which shares most of the properties with the real-space
 class :ref:`Grid <grid>`.
 
 In C++, the ``<gemmi/fourier.hpp>`` header defines templated function
-``get_f_phi_on_grid()`` that can be used with both MTZ and SF mmCIF data.
+``get_f_phi_on_grid()`` that can be used with MTZ and SF mmCIF data,
+as well as with AsuData.
 Here, we focus on the usage from Python.
 
-Both Mtz and ReflnBlock classes (as well as the AsuData class introduced below)
+Mtz, ReflnBlock and ComplexAsuData classes
 have method ``get_f_phi_on_grid`` that takes three mandatory arguments:
 column names for the amplitude and phase, and the grid size.
 It returns reciprocal grid of complex numbers
@@ -969,122 +1092,6 @@ Miller indices and resolution corresponding to the point can be obtained with:
   >>> grid.calculate_d(point)
   4.490044743125198
 
-
-.. _asu_data:
-
-AsuData
--------
-
-AsuData is an array of symmetry-unique Miller indices and values.
-
-In C++, in principle, the values can be of any type.
-
-In Python, we have separate classes for different value types:
-Int8AsuData, FloatAsuData, ComplexAsuData, ValueSigmaAsuData.
-The last one is for a pair of numbers, typically a float value
-with associated sigma.
-
-Such an array can be created in two ways:
-
-1. From reflection data (which was read from an MTZ or SF-mmCIF file):
-
-  .. doctest::
-
-    >>> asu_data = mtz.get_value_sigma('F', 'SIGF')
-    >>> asu_data.ensure_asu()
-    >>> asu_data  #doctest:+ELLIPSIS
-    <gemmi.ValueSigmaAsuData with ... values>
-
-  The choice of ASU differs between programs, so if this matters,
-  calling ``ensure_asu()`` will switch to
-  the :ref:`ASU used in CCP4 <reciprocal_asu>`.
-
-2. From a reciprocal-space grid:
-
-  .. doctest::
-
-    >>> asu_data = grid.prepare_asu_data(dmin=1.8, with_000=False, with_sys_abs=False)
-    >>> asu_data
-    <gemmi.ComplexAsuData with 407 values>
-
-Each item in AsuData has two properties, hkl and value:
-
-.. doctest::
-
-  >>> asu_data[158]
-  <gemmi.ComplexHklValue (-6,2,5) (-1.37694,-0.190087)>
-  >>> _.hkl, _.value
-  ([-6, 2, 5], (-1.376941204071045-0.19008657336235046j))
-
-Arguments of the ``prepare_asu_data`` function are optional.
-By default, the resolution is not limited, the (000) reflection is not included
-and systematic absences are also not included.
-
-Both Miller indices and values can be accessed as NumPy arrays:
-
-.. doctest::
-  :skipif: numpy is None or sys.platform == 'win32'
-
-  >>> asu_data.miller_array
-  array([[-26,   0,   1],
-         [-26,   0,   2],
-         [-26,   0,   3],
-         ...,
-         [ 25,   1,   0],
-         [ 26,   0,   0],
-         [ 26,   0,   1]], dtype=int32)
-  >>> asu_data.value_array[158:159]
-  array([-1.3769412-0.19008657j], dtype=complex64)
-
-We can also go back from AsuData to ReciprocalComplexGrid:
-
-.. doctest::
-
-  >>> asu_data.get_f_phi_on_grid([54,6,18])
-  <gemmi.ReciprocalComplexGrid(54, 6, 18)>
-
-and we can use other method common for Mtz and ReflnBlock:
-
-.. doctest::
-  :skipif: numpy is None
-
-  >>> asu_data.get_size_for_hkl()
-  [54, 6, 18]
-  >>> asu_data.get_size_for_hkl(sample_rate=3.0)  # explained in the next section
-  [90, 8, 30]
-  >>> asu_data.data_fits_into([54,6,18])
-  True
-  >>> asu_data.make_1_d2_array()
-  array([0.268129  , 0.26766333, 0.27679217, ..., 0.30102324, 0.27818915,
-         0.2978438 ], dtype=float32)
-  >>> asu_data.make_d_array()
-  array([1.9312037, 1.9328829, 1.9007417, ..., 1.8226361, 1.8959632,
-         1.8323385], dtype=float32)
-
-The data can be edited as two NumPy arrays and then copied into new AsuData
-object. In this example we exclude low-resolution data:
-
-.. doctest::
-  :skipif: numpy is None
-
-  >>> d = asu_data.make_d_array()
-  >>> new_data = gemmi.ComplexAsuData(asu_data.unit_cell,
-  ...                                 asu_data.spacegroup,
-  ...                                 asu_data.miller_array[d<8],
-  ...                                 asu_data.value_array[d<8])
-  >>> new_data
-  <gemmi.ComplexAsuData with 399 values>
-  >>> hkl_grid = new_data.get_f_phi_on_grid([54, 6, 18])
-  >>> gemmi.transform_f_phi_grid_to_map(hkl_grid)
-  <gemmi.FloatGrid(54, 6, 18)>
-
-The last two calls could be replaced with:
-
-.. doctest::
-  :skipif: numpy is None
-
-  >>> new_data.transform_f_phi_to_map(exact_size=[54, 6, 18])
-  <gemmi.FloatGrid(54, 6, 18)>
 
 
 .. _grid_size:
@@ -1213,7 +1220,7 @@ and we expect to get the same result (wrapped in a :ref:`Grid <grid>` class):
   >>> round(_.get_value(1, 2, 3), 5)
   -0.40554
 
-Both Mtz and ReflnBlock classes have method ``transform_f_phi_to_map``
+Mtz, ReflnBlock and ComplexAsuData classes have method ``transform_f_phi_to_map``
 that combines ``get_f_phi_on_grid()`` with ``transform_f_phi_grid_to_map()``.
 
 ``transform_f_phi_to_map`` takes column names for amplitude and
