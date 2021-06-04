@@ -67,6 +67,15 @@ def fft_test(self, data, f, phi, size, order=gemmi.AxisOrder.XYZ):
     back_grid = asu_data.get_f_phi_on_grid(size, half_l=True, order=order)
     compare_maps(self, back_grid, grid3, atol=5e-5)
 
+    asu_data = data.get_f_phi(f, phi)
+    compare_asu_data(self, asu_data, data, f, phi)
+    hkl_grid = asu_data.get_f_phi_on_grid(size, order=order)
+    compare_maps(self, hkl_grid, grid_full, atol=1e-4)
+    if order != gemmi.AxisOrder.ZYX:
+        m1 = gemmi.transform_f_phi_grid_to_map(hkl_grid)
+        m2 = asu_data.transform_f_phi_to_map(exact_size=size)
+        compare_maps(self, m1, m2, atol=1e-6)
+
 
 class TestMtz(unittest.TestCase):
     def test_read_write(self):
