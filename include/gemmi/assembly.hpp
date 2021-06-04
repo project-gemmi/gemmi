@@ -233,10 +233,6 @@ inline void expand_ncs(Structure& st, HowToNameCopiedChain how) {
     for (const NcsOp& op : st.ncs)
       if (!op.given) {
         for (size_t i = 0; i != orig_size; ++i) {
-          if (how == HowToNameCopiedChain::Dup)
-            for (Residue& res : model.chains[i].residues)
-              res.segment = "0";
-
           model.chains.push_back(model.chains[i]);
           Chain& new_chain = model.chains.back();
           new_chain.name = namegen.make_new_name(new_chain.name, (int)i+1);
