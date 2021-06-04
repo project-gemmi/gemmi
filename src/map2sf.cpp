@@ -113,7 +113,7 @@ void transform_map_to_sf(OptParser& p) {
       mtz.add_dataset(p.options[Section] ? p.options[Section].arg : "unknown");
       mtz.add_column(f_col, f_type);
       mtz.add_column(phi_col, phi_type);
-      gemmi::AsuData<std::complex<float>> data = hkl.prepare_asu_data(dmin);
+      gemmi::AsuData<std::complex<float>> data = hkl.prepare_asu_data<>(dmin);
       mtz.nreflections = (int) data.v.size();
       add_asu_f_phi_to_float_vector(mtz.data, data);
     }

@@ -52,18 +52,18 @@ template<> void add_to_asu_data(py::class_<AsuData<float>>& cl) {
 }
 
 template<typename T>
-void add_asudata(py::module& m, const std::string& name) {
-  py::class_<HklValue<T>>(m, (name + "HklValue").c_str())
+void add_asudata(py::module& m, const std::string& prefix) {
+  py::class_<HklValue<T>>(m, (prefix + "HklValue").c_str())
     .def_readonly("hkl", &HklValue<T>::hkl)
     .def_readwrite("value", &HklValue<T>::value)
-    .def("__repr__", [name](const HklValue<T>& self) {
-        return tostr("<gemmi.", name, "HklValue (",
+    .def("__repr__", [prefix](const HklValue<T>& self) {
+        return tostr("<gemmi.", prefix, "HklValue (",
                      self.hkl[0], ',', self.hkl[1], ',', self.hkl[2], ") ",
                      self.value, '>');
     });
 
   using AsuData = AsuData<T>;
-  py::class_<AsuData> asu_data(m, (name + "AsuData").c_str());
+  py::class_<AsuData> asu_data(m, (prefix + "AsuData").c_str());
   asu_data
     .def(py::init([](const UnitCell& unit_cell, const SpaceGroup* sg,
                      py::array_t<int> hkl, py::array_t<T> values) {
@@ -119,19 +119,20 @@ void add_asudata(py::module& m, const std::string& name) {
     .def("copy", [](const AsuData& self) {
       return new AsuData(self);
     })
-    .def("__repr__", [name](const AsuData& self) {
-        return tostr("<gemmi.", name, "AsuData with ", self.v.size(), " values>");
+    .def("__repr__", [prefix](const AsuData& self) {
+        return tostr("<gemmi.", prefix, "AsuData with ", self.v.size(), " values>");
     });
     add_to_asu_data(asu_data);
 }
 
-template<typename T>
-void add_recgrid(py::module& m, const std::string& name) {
+template<typename TA, typename TG=TA>
+void add_asudata_and_recgrid(py::module& m,
+                             const std::string& prefix_asu,
+                             const std::string& rgrid_name) {
+  using RecGr = ReciprocalGrid<TG>;
+  py::class_<RecGr, GridBase<TG>> recgrid(m, rgrid_name.c_str());
 
-  using RecGr = ReciprocalGrid<T>;
-  py::class_<RecGr, GridBase<T>> recgrid(m, ("Reciprocal" + name + "Grid").c_str());
-
-  add_asudata<T>(m, name);
+  add_asudata<TA>(m, prefix_asu);
 
   recgrid
     .def_readonly("half_l", &RecGr::half_l)
@@ -142,7 +143,7 @@ void add_recgrid(py::module& m, const std::string& name) {
       grid->axis_order = AxisOrder::XYZ;
       return grid;
     }), py::arg("nx"), py::arg("ny"), py::arg("nz"))
-    .def(py::init([](py::array_t<T> arr, const UnitCell *cell, const SpaceGroup* sg) {
+    .def(py::init([](py::array_t<TG> arr, const UnitCell *cell, const SpaceGroup* sg) {
       auto r = arr.template unchecked<3>();
       RecGr* grid = new RecGr();
       grid->set_size_without_checking((int)r.shape(0), (int)r.shape(1), (int)r.shape(2));
@@ -163,13 +164,12 @@ void add_recgrid(py::module& m, const std::string& name) {
     .def("to_hkl", &RecGr::to_hkl)
     .def("calculate_1_d2", &RecGr::calculate_1_d2)
     .def("calculate_d", &RecGr::calculate_d)
-    .def("prepare_asu_data", &RecGr::prepare_asu_data,
+    .def("prepare_asu_data", &RecGr::template prepare_asu_data<TA>,
          py::arg("dmin")=0., py::arg("unblur")=0.,
          py::arg("with_000")=false, py::arg("with_sys_abs")=false,
          py::arg("mott_bethe")=false)
     .def("__repr__", [=](const RecGr& self) {
-        return tostr("<gemmi.Reciprocal", name, "Grid(",
-                     self.nu, ", ", self.nv, ", ", self.nw, ")>");
+        return tostr("<gemmi.", rgrid_name, '(', self.nu, ", ", self.nv, ", ", self.nw, ")>");
     });
 }
 
@@ -186,8 +186,8 @@ void add_recgrid(py::module& m) {
     .def("__repr__", [](const VS& self) {
         return tostr("<gemmi.ValueSigma(", self.value, ", ", self.sigma, ")>");
     });
-  add_recgrid<int8_t>(m, "Int8");
-  add_recgrid<float>(m, "Float");
-  add_recgrid<std::complex<float>>(m, "Complex");
+  add_asudata_and_recgrid<int, int8_t>(m, "Int", "ReciprocalInt8Grid");
+  add_asudata_and_recgrid<float>(m, "Float", "ReciprocalFloatGrid");
+  add_asudata_and_recgrid<std::complex<float>>(m, "Complex", "ReciprocalComplexGrid");
   add_asudata<VS>(m, "ValueSigma");
 }

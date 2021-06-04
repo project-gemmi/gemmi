@@ -66,10 +66,11 @@ struct ReciprocalGrid : GridBase<T> {
   }
 
   // the result is always sorted by h,k,l
-  AsuData<T> prepare_asu_data(double dmin=0, double unblur=0,
+  template <typename R=T>
+  AsuData<R> prepare_asu_data(double dmin=0, double unblur=0,
                               bool with_000=false, bool with_sys_abs=false,
                               bool mott_bethe=false) {
-    AsuData<T> asu_data;
+    AsuData<R> asu_data;
     if (this->axis_order == AxisOrder::ZYX)
       fail("get_asu_values(): ZYX order is not supported yet");
     int max_h = (this->nu - 1) / 2;
@@ -102,7 +103,7 @@ struct ReciprocalGrid : GridBase<T> {
       }
     }
     if (unblur != 0. || mott_bethe)
-      for (HklValue<T>& hv : asu_data.v) {
+      for (HklValue<R>& hv : asu_data.v) {
         double inv_d2 = this->unit_cell.calculate_1_d2(hv.hkl);
         double mult = 1;
         if (unblur != 0)
