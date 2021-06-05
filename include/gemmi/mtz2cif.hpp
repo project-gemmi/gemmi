@@ -64,18 +64,18 @@ public:
       "K                          H index_k",
       "L                          H index_l",
       "? IMEAN|I|IOBS|I-obs       J intensity_meas",
-      "& SIGIMEAN|SIGI|SIGIOBS|SIGI-obs Q intensity_sigma",
+      "& SIG{prev}                Q intensity_sigma",
       "? I(+)|IOBS(+)|I-obs(+)    K pdbx_I_plus",
-      "& SIGI(+)|SIGIOBS(+)|SIGI-obs(+) M pdbx_I_plus_sigma",
+      "& SIG{prev}                M pdbx_I_plus_sigma",
       "? I(-)|IOBS(-)|I-obs(-)    K pdbx_I_minus",
-      "& SIGI(-)|SIGIOBS(-)|SIGI-obs(-) M pdbx_I_minus_sigma",
+      "& SIG{prev}                M pdbx_I_minus_sigma",
       // TODO: FP from Refmac should show warning or error
       "? F|FP|FOBS|F-obs          F F_meas_au",
-      "& SIGF|SIGFP|SIGFOBS|SIGF-obs Q F_meas_sigma_au",
+      "& SIG{prev}                Q F_meas_sigma_au",
       "? F(+)|F-obs(+)            G pdbx_F_plus",
-      "& SIGF(+)|SIGF-obs(+)      L pdbx_F_plus_sigma",
+      "& SIG{prev}                L pdbx_F_plus_sigma",
       "? F(-)|F-obs(-)            G pdbx_F_minus",
-      "& SIGF(-)|SIGF-obs(-)      L pdbx_F_minus_sigma",
+      "& SIG{prev}                L pdbx_F_minus_sigma",
       "? FREE|RFREE|FREER|FreeR_flag|R-free-flags I status S",
       "? FWT|2FOFCWT              F pdbx_FWT",
       "& PHWT|PH2FOFCWT           P pdbx_PHWT",
@@ -351,6 +351,9 @@ private:
       else
         fail("Unknown variable in the spec: " + column);
     } else {
+      if (column.find('{') != std::string::npos &&
+          !recipe.empty() && recipe.back().col_idx >= 0)
+        replace_all(column, "{prev}", mtz.columns[recipe.back().col_idx].label);
       tr.col_idx = find_column_index(column, mtz);
       if (tr.col_idx == -1) {
         if (!optional)
