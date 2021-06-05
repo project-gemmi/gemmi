@@ -113,9 +113,9 @@ struct AsuData {
     unit_cell_ = proxy.unit_cell();
     spacegroup_ = proxy.spacegroup();
     for (size_t i = 0; i < proxy.size(); i += proxy.stride()) {
-      T num = (T) proxy.get_num(i + col);
+      auto num = proxy.get_num(i + col);
       if (!std::isnan(num))
-        v.push_back({proxy.get_hkl(i), num});
+        v.push_back({proxy.get_hkl(i), (T)num});
     }
     if (!as_is) {
       ensure_asu();
