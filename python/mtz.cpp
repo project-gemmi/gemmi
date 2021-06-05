@@ -106,6 +106,8 @@ void add_mtz(py::module& m) {
                                                      &Mtz::column_with_label,
          py::arg("label"), py::arg("dataset")=nullptr,
          py::return_value_policy::reference_internal)
+    .def("rfree_column", (Mtz::Column* (Mtz::*)()) &Mtz::rfree_column,
+          py::return_value_policy::reference_internal)
     .def("columns_with_type", &Mtz::columns_with_type,
          py::arg("type"), py::keep_alive<0, 1>())
     .def("column_labels", [](const Mtz& self) {

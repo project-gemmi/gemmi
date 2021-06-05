@@ -332,6 +332,21 @@ struct Mtz {
     return nullptr;
   }
 
+  Column* rfree_column() {
+    static const char* labels[] = {"FREE", "RFREE", "FREER", "FreeR_flag", "R-free-flags"};
+    for (Column& col : columns)
+      if (col.type == 'I') {
+        for (const char* label : labels)
+          if (col.label == label)
+            return &col;
+      }
+    return nullptr;
+  }
+
+  const Column* rfree_column() const {
+    return const_cast<Mtz*>(this)->rfree_column();
+  }
+
   bool has_data() const {
     return data.size() == columns.size() * nreflections;
   }

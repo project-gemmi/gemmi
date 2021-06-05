@@ -68,8 +68,8 @@ In Python, we have a single function for reading MTZ files:
   >>> import gemmi
   >>> mtz = gemmi.read_mtz_file('../tests/5e5z.mtz')
 
-Metadata
---------
+class Mtz
+---------
 
 The Mtz class has a number of properties read from the MTZ header
 (they are the same in C++ and Python):
@@ -182,6 +182,17 @@ To get all columns of the specified type use:
 
   >>> mtz.columns_with_type('Q')
   MtzColumnRefs[<gemmi.Mtz.Column SIGFP type Q>, <gemmi.Mtz.Column SIGI type Q>]
+
+Different programs use different column names for the same thing.
+To access the column free set flags you may use function ``rfree_column``
+which searches for column of type ``I`` named
+FREE, RFREE, FREER, FreeR_flag or R-free-flags:
+
+.. doctest::
+
+  >>> mtz.rfree_column()
+  <gemmi.Mtz.Column FREE type I>
+
 
 
 Column
