@@ -40,8 +40,9 @@ Any output options:
   --anisou=yes|no|heavy   Add or remove ANISOU records.
 
 Macromolecular operations:
-  --expand-ncs=dup|new    Expand strict NCS specified in MTRIXn or equivalent.
-                          New chain names are the same or have added numbers.
+  --expand-ncs=dup|num|x  Expand strict NCS from in MTRIXn or _struct_ncs_oper.
+                          New chain names are the same, have added numbers, or
+                          the shortest unused names are picked.
   --assembly=ID           Output bioassembly with given ID (1, 2, ...).
   --remove-h              Remove hydrogens.
   --remove-waters         Remove waters.

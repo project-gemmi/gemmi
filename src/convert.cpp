@@ -42,7 +42,7 @@ struct ConvArg: public Arg {
   }
 
   static option::ArgStatus NcsChoice(const option::Option& option, bool msg) {
-    return Arg::Choice(option, msg, {"dup", "new"});
+    return Arg::Choice(option, msg, {"dup", "num", "x"});
   }
 };
 
@@ -110,8 +110,9 @@ const option::Descriptor Usage[] = {
 
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular operations:" },
   { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
-    "  --expand-ncs=dup|new  \tExpand strict NCS specified in MTRIXn or"
-    " equivalent. New chain names are the same or have added numbers." },
+    "  --expand-ncs=dup|num|x  \tExpand strict NCS from in MTRIXn or"
+    " _struct_ncs_oper. New chain names are the same, have added numbers,"
+    " or the shortest unused names are picked."},
   { AsAssembly, 0, "", "assembly", Arg::Required,
     "  --assembly=ID  \tOutput bioassembly with given ID (1, 2, ...)." },
   { RemoveH, 0, "", "remove-h", Arg::None,
@@ -215,9 +216,13 @@ void convert(gemmi::Structure& st,
   }
 
   if (options[ExpandNcs]) {
-    if (options[ExpandNcs].arg[0] == 'd')
-     how = HowToNameCopiedChain::Dup;
-    gemmi::expand_ncs(st, how);
+    HowToNameCopiedChain how_ncs;
+    switch (options[ExpandNcs].arg[0]) {
+      case 'd': how_ncs = HowToNameCopiedChain::Dup; break;
+      case 'x': how_ncs = HowToNameCopiedChain::Short; break;
+      default: how_ncs = HowToNameCopiedChain::AddNumber; break;
+    }
+    gemmi::expand_ncs(st, how_ncs);
   }
 
   if (options[RemoveH])
