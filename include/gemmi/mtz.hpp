@@ -332,10 +332,10 @@ struct Mtz {
     return nullptr;
   }
 
-  Column* rfree_column() {
-    static const char* labels[] = {"FREE", "RFREE", "FREER", "FreeR_flag", "R-free-flags"};
+  Column* column_with_type_and_one_of_labels(char type,
+                                             std::initializer_list<const char*> labels) {
     for (Column& col : columns)
-      if (col.type == 'I') {
+      if (col.type == type) {
         for (const char* label : labels)
           if (col.label == label)
             return &col;
@@ -343,8 +343,33 @@ struct Mtz {
     return nullptr;
   }
 
+  Column* rfree_column() {
+    return column_with_type_and_one_of_labels('I',
+        {"FREE", "RFREE", "FREER", "FreeR_flag", "R-free-flags"});
+  }
   const Column* rfree_column() const {
     return const_cast<Mtz*>(this)->rfree_column();
+  }
+
+  Column* imean_column() {
+    return column_with_type_and_one_of_labels('J', {"IMEAN", "I", "IOBS", "I-obs"});
+  }
+  const Column* imean_column() const {
+    return const_cast<Mtz*>(this)->imean_column();
+  }
+
+  Column* iplus_column() {
+    return column_with_type_and_one_of_labels('K', {"I(+)", "IOBS(+)", "I-obs(+)"});
+  }
+  const Column* iplus_column() const {
+    return const_cast<Mtz*>(this)->iplus_column();
+  }
+
+  Column* iminus_column() {
+    return column_with_type_and_one_of_labels('K', {"I(-)", "IOBS(-)", "I-obs(-)"});
+  }
+  const Column* iminus_column() const {
+    return const_cast<Mtz*>(this)->iminus_column();
   }
 
   bool has_data() const {
