@@ -58,10 +58,14 @@ option::ArgStatus Arg::Choice(const option::Option& option, bool msg,
   for (const char* a : choices)
     if (std::strcmp(option.arg, a) == 0)
       return option::ARG_OK;
-  if (msg)
+  if (msg) {
     // option.name here is a string "--option=arg"
-    fprintf(stderr, "Invalid argument for %.*s: %s\n",
+    fprintf(stderr, "Invalid argument for %.*s: %s\nAllowed arguments:",
             option.namelen, option.name, option.arg);
+    for (const char* a : choices)
+      fprintf(stderr, " %s", a);
+    fprintf(stderr, "\n");
+  }
   return option::ARG_ILLEGAL;
 }
 
