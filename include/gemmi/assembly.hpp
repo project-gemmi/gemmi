@@ -234,15 +234,18 @@ inline void shorten_chain_names(Structure& st) {
 inline void expand_ncs(Structure& st, HowToNameCopiedChain how) {
   size_t orig_conn_size = st.connections.size();
   for (Model& model : st.models) {
+    if (how == HowToNameCopiedChain::Dup) {
+      // change segment of original chains to "0" - is this a good idea?
+      for (Chain& chain : model.chains)
+        for (Residue& res : chain.residues)
+          res.segment = "0";
+    }
     size_t orig_size = model.chains.size();
     ChainNameGenerator namegen(model, how);
     for (const NcsOp& op : st.ncs)
       if (!op.given) {
         std::map<std::string, std::string> chain_mapping;
         for (size_t i = 0; i != orig_size; ++i) {
-          if (how == HowToNameCopiedChain::Dup)
-            for (Residue& res : model.chains[i].residues)
-              res.segment = "0";
           model.chains.push_back(model.chains[i]);
           Chain& new_chain = model.chains.back();
           const std::string& old_name = model.chains[i].name;
@@ -285,6 +288,13 @@ inline void expand_ncs(Structure& st, HowToNameCopiedChain how) {
           }
         }
       }
+  }
+  // adjust connections after changing segment of original chains to "0"
+  if (how == HowToNameCopiedChain::Dup) {
+    for (size_t i = 0; i != orig_conn_size; ++i) {
+      st.connections[i].partner1.res_id.segment = "0";
+      st.connections[i].partner2.res_id.segment = "0";
+    }
   }
   for (NcsOp& op : st.ncs)
     op.given = true;
