@@ -72,9 +72,9 @@ public:
       // TODO: FP from Refmac should show warning or error
       "? F|FP|FOBS|F-obs          F F_meas_au",
       "& SIG{prev}                Q F_meas_sigma_au",
-      "? F(+)|F-obs(+)            G pdbx_F_plus",
+      "? F(+)|FOBS(+)|F-obs(+)    G pdbx_F_plus",
       "& SIG{prev}                L pdbx_F_plus_sigma",
-      "? F(-)|F-obs(-)            G pdbx_F_minus",
+      "? F(-)|FOBS(-)|F-obs(-)    G pdbx_F_minus",
       "& SIG{prev}                L pdbx_F_minus_sigma",
       "? FREE|RFREE|FREER|FreeR_flag|R-free-flags I status S",
       "? FWT|2FOFCWT              F pdbx_FWT",
@@ -426,7 +426,7 @@ inline bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream&
     ok = false;
   }
   if (!mtz.column_with_one_of_labels({"F", "FP", "FOBS", "F-obs"
-                                      "F(+)", "F-obs(+)"})) {
+                                      "F(+)", "FOBS(+)", "F-obs(+)"})) {
     out << "Merged file is missing amplitudes\n"
            "(which is fine if intensities were used for refinement)\n";
   }
