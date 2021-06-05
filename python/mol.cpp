@@ -136,7 +136,7 @@ void add_mol(py::module& m) {
          (void (*)(Structure&)) &remove_ligands_and_waters)
     .def("remove_empty_chains", (void (*)(Structure&)) &remove_empty_chains)
     .def("shorten_chain_names", &shorten_chain_names)
-    .def("expand_ncs", &expand_ncs, py::arg("how"), py::arg("copy_connections")=false)
+    .def("expand_ncs", &expand_ncs, py::arg("how"))
     .def("calculate_box", &calculate_box, py::arg("margin")=0.)
     .def("calculate_fractional_box", &calculate_fractional_box, py::arg("margin")=0.)
     .def("clone", [](const Structure& self) { return new Structure(self); })

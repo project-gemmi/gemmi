@@ -231,17 +231,28 @@ inline void shorten_chain_names(Structure& st) {
 }
 
 
-inline void expand_ncs(Structure& st, HowToNameCopiedChain how,
-                       bool copy_connections=false) {
+inline void expand_ncs(Structure& st, HowToNameCopiedChain how) {
+  size_t orig_conn_size = st.connections.size();
   for (Model& model : st.models) {
     size_t orig_size = model.chains.size();
     ChainNameGenerator namegen(model, how);
     for (const NcsOp& op : st.ncs)
       if (!op.given) {
+        std::map<std::string, std::string> chain_mapping;
         for (size_t i = 0; i != orig_size; ++i) {
+          if (how == HowToNameCopiedChain::Dup)
+            for (Residue& res : model.chains[i].residues)
+              res.segment = "0";
           model.chains.push_back(model.chains[i]);
           Chain& new_chain = model.chains.back();
-          new_chain.name = namegen.make_new_name(new_chain.name, (int)i+1);
+          const std::string& old_name = model.chains[i].name;
+          auto it = chain_mapping.find(old_name);
+          if (it == chain_mapping.end()) {
+            new_chain.name = namegen.make_new_name(old_name, (int)i+1);
+            chain_mapping.emplace(old_name, new_chain.name);
+          } else {
+            new_chain.name = it->second;
+          }
 
           for (Residue& res : new_chain.residues) {
             for (Atom& a : res.atoms)
@@ -252,17 +263,25 @@ inline void expand_ncs(Structure& st, HowToNameCopiedChain how,
               res.segment = op.id;
           }
         }
-      }
-  }
-  if (copy_connections) {
-    size_t orig_conn_size = st.connections.size();
-    for (const NcsOp& op : st.ncs)
-      if (!op.given) {
-        for (size_t i = 0; i != orig_conn_size; ++i) {
-          if (how == HowToNameCopiedChain::Dup) { // for now we handle only this case
-            auto c = st.connections.emplace(st.connections.end(), st.connections[i]);
-            c->partner1.res_id.segment = op.id;
-            c->partner2.res_id.segment = op.id;
+        // add connections when processing the first model
+        if (&model == &st.models[0]) {
+          for (size_t i = 0; i != orig_conn_size; ++i) {
+            st.connections.push_back(st.connections[i]);
+            Connection& c = st.connections.back();
+            c.name += '-';
+            c.name += op.id;
+            for (int j = 0; j < 2; ++j) {
+              AtomAddress& aa = j == 0 ? c.partner1 : c.partner2;
+              if (how == HowToNameCopiedChain::Dup) {
+                aa.res_id.segment = op.id;
+              } else {
+                auto it = chain_mapping.find(aa.chain_name);
+                if (it != chain_mapping.end())
+                  aa.chain_name = it->second;
+                else
+                  st.connections.pop_back();
+              }
+            }
           }
         }
       }
