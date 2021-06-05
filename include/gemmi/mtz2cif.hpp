@@ -63,20 +63,20 @@ public:
       "H                          H index_h",
       "K                          H index_k",
       "L                          H index_l",
-      "? IMEAN|I                  J intensity_meas",
-      "& SIGIMEAN|SIGI            Q intensity_sigma",
-      "? I(+)                     K pdbx_I_plus",
-      "& SIGI(+)                  M pdbx_I_plus_sigma",
-      "? I(-)                     K pdbx_I_minus",
-      "& SIGI(-)                  M pdbx_I_minus_sigma",
+      "? IMEAN|I|IOBS|I-obs       J intensity_meas",
+      "& SIGIMEAN|SIGI|SIGIOBS|SIGI-obs Q intensity_sigma",
+      "? I(+)|IOBS(+)|I-obs(+)    K pdbx_I_plus",
+      "& SIGI(+)|SIGIOBS(+)|SIGI-obs(+) M pdbx_I_plus_sigma",
+      "? I(-)|IOBS(-)|I-obs(-)    K pdbx_I_minus",
+      "& SIGI(-)|SIGIOBS(-)|SIGI-obs(-) M pdbx_I_minus_sigma",
       // TODO: FP from Refmac should show warning or error
-      "? F|FP                     F F_meas_au",
-      "& SIGF|SIGFP               Q F_meas_sigma_au",
-      "? F(+)                     G pdbx_F_plus",
-      "& SIGF(+)                  L pdbx_F_plus_sigma",
-      "? F(-)                     G pdbx_F_minus",
-      "& SIGF(-)                  L pdbx_F_minus_sigma",
-      "? FREE|RFREE|FREER|FreeR_flag I status S",
+      "? F|FP|FOBS|F-obs          F F_meas_au",
+      "& SIGF|SIGFP|SIGFOBS|SIGF-obs Q F_meas_sigma_au",
+      "? F(+)|F-obs(+)            G pdbx_F_plus",
+      "& SIGF(+)|SIGF-obs(+)      L pdbx_F_plus_sigma",
+      "? F(-)|F-obs(-)            G pdbx_F_minus",
+      "& SIGF(-)|SIGF-obs(-)      L pdbx_F_minus_sigma",
+      "? FREE|RFREE|FREER|FreeR_flag|R-free-flags I status S",
       "? FWT|2FOFCWT              F pdbx_FWT",
       "& PHWT|PH2FOFCWT           P pdbx_PHWT",
       "? DELFWT|FOFCWT            F pdbx_DELFWT",
@@ -414,15 +414,16 @@ private:
 
 inline bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream& out) {
   bool ok = true;
-  if (!mtz.column_with_one_of_labels({"FREE", "RFREE", "FREER", "FreeR_flag"})) {
+  if (!mtz.rfree_column()) {
     out << "ERROR. Merged file is missing free-set flag.\n";
     ok = false;
   }
-  if (!mtz.column_with_one_of_labels({"I", "IMEAN", "I(+)"})) {
+  if (!mtz.imean_column() && !mtz.iplus_column()) {
     out << "ERROR. Merged file is missing intensities.\n";
     ok = false;
   }
-  if (!mtz.column_with_one_of_labels({"F", "FP", "F(+)"})) {
+  if (!mtz.column_with_one_of_labels({"F", "FP", "FOBS", "F-obs"
+                                      "F(+)", "F-obs(+)"})) {
     out << "Merged file is missing amplitudes\n"
            "(which is fine if intensities were used for refinement)\n";
   }

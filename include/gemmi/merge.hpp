@@ -183,9 +183,9 @@ struct Intensities {
   void read_mean_intensities_from_mtz(const Mtz& mtz) {
     if (!mtz.batches.empty())
       fail("expected merged file");
-    const Mtz::Column* col = mtz.column_with_one_of_labels({"IMEAN", "I"});
+    const Mtz::Column* col = mtz.imean_column();
     if (!col)
-      fail("Mean intensities (IMEAN or I) not found");
+      fail("Mean intensities (IMEAN, I, IOBS or I-obs) not found");
     size_t sigma_idx = mtz.get_column_with_label("SIG" + col->label).idx;
     copy_metadata(mtz);
     wavelength = mtz.dataset(col->dataset_id).wavelength;
@@ -196,16 +196,17 @@ struct Intensities {
   void read_anomalous_intensities_from_mtz(const Mtz& mtz, bool check_complete=false) {
     if (!mtz.batches.empty())
       fail("expected merged file");
-    const Mtz::Column& col = mtz.get_column_with_label("I(+)");
-    size_t value_idx[2] = {col.idx, mtz.get_column_with_label("I(-)").idx};
-    size_t sigma_idx[2] = {mtz.get_column_with_label("SIGI(+)").idx,
-                           mtz.get_column_with_label("SIGI(-)").idx};
+    const Mtz::Column* colp = mtz.iplus_column();
+    const Mtz::Column* colm = mtz.iminus_column();
+    size_t value_idx[2] = {colp->idx, colm->idx};
+    size_t sigma_idx[2] = {mtz.get_column_with_label("SIG" + colp->label).idx,
+                           mtz.get_column_with_label("SIG" + colm->label).idx};
     int mean_idx = -1;
     if (check_complete)
-      if (const Mtz::Column* mean_col = mtz.column_with_one_of_labels({"IMEAN", "I"}))
+      if (const Mtz::Column* mean_col = mtz.imean_column())
         mean_idx = (int) mean_col->idx;
     copy_metadata(mtz);
-    wavelength = mtz.dataset(col.dataset_id).wavelength;
+    wavelength = mtz.dataset(colp->dataset_id).wavelength;
     read_anomalous_data(MtzDataProxy{mtz}, mean_idx, value_idx, sigma_idx);
     type = Type::Anomalous;
   }
