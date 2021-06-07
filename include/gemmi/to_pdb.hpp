@@ -274,6 +274,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
   char buf[88];
   char buf8[8];
   char buf8a[8];
+  buf[0] = '\0';
   if (chain.name.length() > 2)
     fail("long chain name: " + chain.name);
   for (const Residue& res : chain.residues) {
@@ -339,7 +340,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
         os.write(buf, 81);
       }
     }
-    if (opt.ter_records &&
+    if (opt.ter_records && buf[0] != '\0' &&
         (opt.ter_ignores_type ? &res == &chain.residues.back()
                               : (res.entity_type == EntityType::Polymer &&
                                 (&res == &chain.residues.back() ||
