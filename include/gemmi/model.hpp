@@ -167,6 +167,7 @@ struct Residue : public ResidueId {
     res.flag = flag;
     return res;
   }
+  using child_type = Atom;
   std::vector<Atom>& children() { return atoms; }
   const std::vector<Atom>& children() const { return atoms; }
 
@@ -522,6 +523,7 @@ struct Chain {
 
   // methods present in Structure, Model, ... - used in templates
   Chain empty_copy() const { return Chain(name); }
+  using child_type = Residue;
   std::vector<Residue>& children() { return residues; }
   const std::vector<Residue>& children() const { return residues; }
 
@@ -811,6 +813,7 @@ struct Model {
 
   // methods present in Structure, Model, ... - used in templates
   Model empty_copy() const { return Model(name); }
+  using child_type = Chain;
   std::vector<Chain>& children() { return chains; }
   const std::vector<Chain>& children() const { return chains; }
 };
@@ -964,6 +967,7 @@ struct Structure {
     st.input_format = input_format;
     return st;
   }
+  using child_type = Model;
   std::vector<Model>& children() { return models; }
   const std::vector<Model>& children() const { return models; }
 
