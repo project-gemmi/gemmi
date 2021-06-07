@@ -176,14 +176,14 @@ struct Selection {
   }
 
   template<typename T>
-  void add_matching_children(const T& orig, T& target) {
+  void add_matching_children(const T& orig, T& target) const {
     for (const auto& orig_child : orig.children())
       if (matches(orig_child)) {
         target.children().push_back(orig_child.empty_copy());
         add_matching_children(orig_child, target.children().back());
       }
   }
-  void add_matching_children(const Atom&, Atom&) {}
+  void add_matching_children(const Atom&, Atom&) const {}
 
   Selection& set_residue_flags(const std::string& pattern) {
     residue_flags.pattern = pattern;
@@ -195,11 +195,34 @@ struct Selection {
   }
 
   template<typename T>
-  T copy_selection(const T& orig) {
+  T copy_selection(const T& orig) const {
     T copied = orig.empty_copy();
     add_matching_children(orig, copied);
     return copied;
   }
+
+  template<typename T>
+  void remove_selected(T& t) const {
+    for (auto& child : t.children())
+      if (matches(child))
+        remove_selected(child);
+    vector_remove_if(t.children(),
+                     [&](typename T::child_type& c) { return c.children().empty(); });
+  }
+  void remove_selected(Residue& res) const {
+    if (atom_names.all && elements.all && altlocs.all && atom_flags.pattern.empty())
+      res.atoms.clear();
+    else
+      vector_remove_if(res.atoms, [&](Atom& c) { return matches(c); });
+  }
+
+  template<typename T>
+  void remove_not_selected(T& t) const {
+    vector_remove_if(t.children(), [&](typename T::child_type& c) { return !matches(c); });
+    for (auto& child : t.children())
+      remove_not_selected(child);
+  }
+  void remove_not_selected(Atom&) const {}
 };
 
 namespace impl {
