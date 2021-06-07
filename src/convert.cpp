@@ -12,6 +12,7 @@
 #include "gemmi/pirfasta.hpp"  // for read_pir_or_fasta
 #include "gemmi/resinfo.hpp"   // for expand_protein_one_letter
 #include "gemmi/read_coor.hpp" // for read_structure_gz
+#include "gemmi/select.hpp"    // for parse_cid
 
 #include <cstring>
 #include <iostream>
@@ -48,7 +49,8 @@ struct ConvArg: public Arg {
 
 enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, PdbxStyle, BlockName,
-  ExpandNcs, AsAssembly, RemoveH, RemoveWaters, RemoveLigWat, TrimAla,
+  ExpandNcs, AsAssembly,
+  RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove,
   ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain, SetSeq, Anisou,
   SegmentAsChain, OldPdb, ForceLabel
 };
@@ -123,6 +125,10 @@ const option::Descriptor Usage[] = {
     "  --remove-lig-wat  \tRemove ligands and waters." },
   { TrimAla, 0, "", "trim-to-ala", Arg::None,
     "  --trim-to-ala  \tTrim aminoacids to alanine." },
+  { Select, 0, "", "select", Arg::Required,
+    "  --select=CID  \tOutput only the selection." },
+  { Remove, 0, "", "remove", Arg::Required,
+    "  --remove=CID  \tRemove the selection." },
 
   { NoOp, 0, "", "", Arg::None,
     "\nWhen output file is -, write to standard output." },
@@ -171,6 +177,14 @@ void convert(gemmi::Structure& st,
                 gemmi::ensure_anisou(atom);
     }
   }
+
+  if (options[Select])
+    gemmi::parse_cid(options[Select].arg).remove_not_selected(st);
+  if (options[Remove])
+    gemmi::parse_cid(options[Remove].arg).remove_selected(st);
+  if (st.models.empty())
+    gemmi::fail("all models got removed");
+
 
   for (const option::Option* opt = options[RenameChain]; opt; opt = opt->next()) {
     const char* sep = std::strchr(opt->arg, ':');
