@@ -20,6 +20,7 @@ Options:
                          present. Used twice, skips all anomalous columns.
   --separate             Write merged and unmerged data in separate blocks.
   --depo                 Prepare merged+unmerged mmCIF file for deposition.
+  --nfree=N              Flag value used for the free set (default: auto)
   --trim=N               (for testing) output only reflections -N <= h,k,l <=N.
 
 One or two MTZ files are taken as the input. If two files are given,

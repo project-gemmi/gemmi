@@ -19,7 +19,7 @@ namespace {
 
 enum OptionIndex { Spec=4, PrintSpec, BlockName, EntryId, SkipEmpty,
                    NoComments, NoHistory, Wavelength, Validate,
-                   LessAnomalous, Separate, Deposition, Trim };
+                   LessAnomalous, Separate, Deposition, Nfree, Trim };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -56,6 +56,8 @@ const option::Descriptor Usage[] = {
     "  --separate  \tWrite merged and unmerged data in separate blocks." },
   { Deposition, 0, "", "depo", Arg::None,
     "  --depo  \tPrepare merged+unmerged mmCIF file for deposition." },
+  { Nfree, 0, "", "nfree", Arg::Int,
+    "  --nfree=N  \tFlag value used for the free set (default: auto)" },
   { Trim, 0, "", "trim", Arg::Int,
     "  --trim=N  \t(for testing) output only reflections -N <= h,k,l <=N." },
   { NoOp, 0, "", "", Arg::None,
@@ -206,6 +208,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   mtz_to_cif.with_comments = !p.options[NoComments];
   mtz_to_cif.with_history = !p.options[NoHistory];
   mtz_to_cif.less_anomalous = p.options[LessAnomalous].count();
+  if (p.options[Nfree])
+    mtz_to_cif.free_flag_value = std::atoi(p.options[Nfree].arg);
   bool validate = p.options[Validate];
   bool check_merged_columns = false;
   if (p.options[Deposition]) {
