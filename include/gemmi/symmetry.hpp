@@ -499,6 +499,32 @@ struct GroupOps {
     return all_ops_sorted() == other.all_ops_sorted();
   }
 
+  bool has_same_centring(const GroupOps& other) const {
+    if (cen_ops.size() != other.cen_ops.size())
+      return false;
+    if (std::is_sorted(cen_ops.begin(), cen_ops.end()) &&
+        std::is_sorted(other.cen_ops.begin(), other.cen_ops.end()))
+      return cen_ops == other.cen_ops;
+    std::vector<Op::Tran> v1 = cen_ops;
+    std::vector<Op::Tran> v2 = other.cen_ops;
+    std::sort(v1.begin(), v1.end());
+    std::sort(v2.begin(), v2.end());
+    return v1 == v2;
+  }
+
+  bool has_same_rotations(const GroupOps& other) const {
+    if (sym_ops.size() != other.sym_ops.size())
+      return false;
+    auto sorted_rotations = [](const GroupOps& g) {
+      std::vector<Op::Rot> r(g.sym_ops.size());
+      for (size_t i = 0; i != r.size(); ++i)
+        r[i] = g.sym_ops[i].rot;
+      std::sort(r.begin(), r.end());
+      return r;
+    };
+    return sorted_rotations(*this) == sorted_rotations(other);
+  }
+
   // minimal multiplicity for real-space grid in each direction
   // examples: 1,2,1 for P21, 1,1,6 for P61
   std::array<int, 3> find_grid_factors() const {
