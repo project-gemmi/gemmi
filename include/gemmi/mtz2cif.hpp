@@ -449,11 +449,15 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   if (ui.spacegroup == mi.spacegroup) {
     out << "The same space group: " << mi.spacegroup_str() << '\n';
   } else {
-    out << "ERROR. Different space groups in merged and unmerged files:\n"
+    GroupOps gops1 = ui.spacegroup->operations();
+    GroupOps gops2 = mi.spacegroup->operations();
+    if (!gops1.has_same_centring(gops2) || !gops1.has_same_rotations(gops2))
+      ok = false;
+    out << (ok ? "ERROR" : "WARNING")
+        << ". Different space groups in merged and unmerged files:\n"
         << mi.spacegroup_str() << " and " << ui.spacegroup_str() << '\n';
     out << "(in the future, this app may recognize compatible space groups\n"
            "and reindex unmerged data if needed; for now, it's on you)\n";
-    ok = false;
   }
   if (ui.unit_cell.approx(mi.unit_cell, 0.02)) {
     out << "The same unit cell parameters.\n";
