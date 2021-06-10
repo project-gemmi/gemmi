@@ -89,7 +89,13 @@ struct Op {
              -rot[2][0], -rot[2][1], -rot[2][2] };
   }
 
-  Op negated() { return { negated_rot(), { -tran[0], -tran[1], -tran[2] } }; }
+  Op negated() const { return { negated_rot(), { -tran[0], -tran[1], -tran[2] } }; }
+
+  Rot transposed_rot() const {
+    return { rot[0][0], rot[1][0], rot[2][0],
+             rot[0][1], rot[1][1], rot[2][1],
+             rot[0][2], rot[1][2], rot[2][2] };
+  }
 
   // DEN^3 for rotation, -DEN^3 for rotoinversion
   int det_rot() const {
