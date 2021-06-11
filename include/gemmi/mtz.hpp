@@ -758,6 +758,45 @@ struct Mtz {
       data[offset + i] = static_cast<float>(hkl[i]);
   }
 
+  std::vector<size_t> get_p_columns() const {
+    std::vector<size_t> cols;
+    for (size_t i = 0; i < columns.size(); ++i)
+      if (columns[i].type == 'P')
+        cols.push_back(i);
+    return cols;
+  }
+
+  // (for merged MTZ only) change HKL to ASU equivalent, adjust phases
+  void ensure_asu() {
+    if (!is_merged())
+      fail("Mtz::ensure_asu() is for merged MTZ only");
+    if (!spacegroup)
+      return;
+    GroupOps gops = spacegroup->operations();
+    ReciprocalAsu asu(spacegroup);
+    std::vector<size_t> phase_columns = get_p_columns();
+    for (size_t n = 0; n < data.size(); n += columns.size()) {
+      Miller hkl = get_hkl(n);
+      if (asu.is_in(hkl))
+        continue;
+      auto result = asu.to_asu(hkl, gops);
+      // cf. impl::move_to_asu() in asudata.hpp
+      set_hkl(n, result.first);
+      if (!phase_columns.empty()) {
+        int isym = result.second;
+        const Op& op = gops.sym_ops[(isym - 1) / 2];
+        double shift = op.phase_shift(hkl);
+        if (shift != 0) {
+          if (isym % 2 == 0)
+            shift = -shift;
+          double shift_deg = deg(shift);
+          for (size_t col : phase_columns)
+            data[n + col] = float(data[n + col] + shift_deg);
+        }
+      }
+    }
+  }
+
   // (for unmerged MTZ only) change HKL according to M/ISYM
   bool switch_to_original_hkl() {
     if (!has_data())

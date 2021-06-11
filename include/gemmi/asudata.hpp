@@ -62,6 +62,7 @@ template<typename R>
 void move_to_asu(const GroupOps& gops, const Miller& hkl, int isym,
                  HklValue<std::complex<R>>& hkl_value) {
   hkl_value.hkl = hkl;
+  // cf. Mtz::ensure_asu()
   const Op& op = gops.sym_ops[(isym - 1) / 2];
   double shift = op.phase_shift(hkl);
   if (shift != 0) {
