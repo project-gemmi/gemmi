@@ -537,6 +537,8 @@ the most reliable one::
 reindex
 =======
 
+Experimental. Do not use it yet for anything but testing.
+
 Reindex reflections in MTZ file.
 
 .. literalinclude:: reindex-help.txt

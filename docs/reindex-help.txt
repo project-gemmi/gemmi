@@ -6,6 +6,7 @@ Options:
   -V, --version  Print version and exit.
   -v, --verbose  Verbose output.
   --hkl=OP       Reindexing transform as triplet (e.g. k,h,-l).
-  --no-history   Do not add 'Reindexed with...' line to mtz HISTORY
+  --no-history   Do not add 'Reindexed with...' line to mtz HISTORY.
+  --no-sort      Do not reorder reflections.
 
 Input file can be gzipped.

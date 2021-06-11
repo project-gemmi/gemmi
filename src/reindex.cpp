@@ -4,6 +4,7 @@
 // TODO: handle operations that results in non-integral indices.
 
 #include <cstdio>
+#include <cstring>  // for strpbrk
 #include <algorithm>
 #ifndef GEMMI_ALL_IN_ONE
 # define GEMMI_WRITE_IMPLEMENTATION 1
@@ -18,7 +19,7 @@ using std::fprintf;
 
 namespace {
 
-enum OptionIndex { Hkl=4, NoHistory };
+enum OptionIndex { Hkl=4, NoHistory, NoSort };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -30,7 +31,9 @@ const option::Descriptor Usage[] = {
   { Hkl, 0, "", "hkl", Arg::Required,
     "  --hkl=OP  \tReindexing transform as triplet (e.g. k,h,-l)." },
   { NoHistory, 0, "", "no-history", Arg::None,
-    "  --no-history  \tDo not add 'Reindexed with...' line to mtz HISTORY" },
+    "  --no-history  \tDo not add 'Reindexed with...' line to mtz HISTORY." },
+  { NoSort, 0, "", "no-sort", Arg::None,
+    "  --no-sort  \tDo not reorder reflections." },
   { NoOp, 0, "", "", Arg::None,
     "\nInput file can be gzipped." },
   { 0, 0, 0, 0, 0, 0 }
@@ -49,7 +52,16 @@ int GEMMI_MAIN(int argc, char **argv) {
     fprintf(stderr, "Specify transform with option --hkl\n");
     return 1;
   }
-  gemmi::Op op = gemmi::parse_triplet(p.options[Hkl].arg);
+  const char* hkl_arg = p.options[Hkl].arg;
+  gemmi::Op op = gemmi::parse_triplet(hkl_arg);
+  if (std::strpbrk(hkl_arg, "xyzabcXYZABC"))
+    gemmi::fail("specify OP in terms of h, k and l");
+  if (op.tran != gemmi::Op::Tran{{0, 0, 0}})
+    gemmi::fail("reindexing operator should not have a translation");
+  // transpose rotation
+  op.rot = op.transposed_rot();
+  if (verbose)
+    fprintf(stderr, "real space transformation: %s\n", op.triplet().c_str());
   gemmi::Mtz mtz;
   if (verbose) {
     fprintf(stderr, "Reading %s ...\n", input_path);
@@ -98,7 +110,12 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
     }
 
-  mtz.switch_to_asu_hkl();
+  if (mtz.is_merged())
+    mtz.ensure_asu();
+  else
+    mtz.switch_to_asu_hkl();
+  if (!p.options[NoSort])
+    mtz.sort();
   if (!p.options[NoHistory])
     mtz.history.emplace(mtz.history.begin(),
                         "Reindexed with gemmi-reindex " GEMMI_VERSION);
