@@ -10,6 +10,7 @@
 #define GEMMI_NUMB_HPP_
 
 #include <cmath>   // for NAN
+#include <string>
 #include "third_party/fast_float/fast_float.h"
 
 namespace gemmi {
