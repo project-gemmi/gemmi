@@ -59,9 +59,10 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (op.tran != gemmi::Op::Tran{{0, 0, 0}})
     gemmi::fail("reindexing operator should not have a translation");
   // transpose rotation
-  op.rot = op.transposed_rot();
+  gemmi::Op real_space_op;
+  real_space_op.rot = op.transposed_rot();
   if (verbose)
-    fprintf(stderr, "real space transformation: %s\n", op.triplet().c_str());
+    fprintf(stderr, "real space transformation: %s\n", real_space_op.triplet().c_str());
   gemmi::Mtz mtz;
   if (verbose) {
     fprintf(stderr, "Reading %s ...\n", input_path);
@@ -76,7 +77,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   // reindex
   for (size_t n = 0; n < mtz.data.size(); n += mtz.columns.size())
-    mtz.set_hkl(n, op.apply_to_hkl(mtz.get_hkl(n)));
+    mtz.set_hkl(n, real_space_op.apply_to_hkl(mtz.get_hkl(n)));
   // hand change requires data modification
   if (op.det_rot() < 0)
     for (gemmi::Mtz::Column& column : mtz.columns) {
@@ -109,6 +110,15 @@ int GEMMI_MAIN(int argc, char **argv) {
         }
       }
     }
+  // change space group
+  mtz.spacegroup = gemmi::find_spacegroup_by_change_of_basis(mtz.spacegroup, op.inverse());
+  if (mtz.spacegroup) {
+    if (verbose)
+      fprintf(stderr, "Space group changed from %s to %s\n.",
+              mtz.spacegroup_name.c_str(), mtz.spacegroup->xhm().c_str());
+  } else {
+    fprintf(stderr, "WARNING: new space group name could not be determined.\n");
+  }
 
   if (mtz.is_merged())
     mtz.ensure_asu();
