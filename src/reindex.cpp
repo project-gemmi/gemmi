@@ -59,6 +59,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (op.tran != gemmi::Op::Tran{{0, 0, 0}})
     gemmi::fail("reindexing operator should not have a translation");
   // transpose rotation
+  // TODO: it may be wrong if op.rot is not a rotation matrix,
+  // i.e. when cell volume changes
   gemmi::Op real_space_op{op.transposed_rot(), {0, 0, 0}};
   if (verbose)
     fprintf(stderr, "real space transformation: %s\n", real_space_op.triplet().c_str());
@@ -118,6 +120,13 @@ int GEMMI_MAIN(int argc, char **argv) {
   } else {
     fprintf(stderr, "WARNING: new space group name could not be determined.\n");
   }
+  // change unit cell
+  // TODO: change each unit cell separately, including batch headers
+  gemmi::Mat33 mat = mtz.cell.orth.mat.multiply(gemmi::rot_as_mat33(real_space_op));
+  gemmi::UnitCell new_cell;
+  new_cell.set_from_vectors(mat.column_copy(0), mat.column_copy(1), mat.column_copy(2));
+  mtz.set_cell_for_all(new_cell);
+  mat = mtz.cell.orth.mat;
 
   if (mtz.is_merged())
     mtz.ensure_asu();
