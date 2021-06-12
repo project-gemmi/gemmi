@@ -59,8 +59,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (op.tran != gemmi::Op::Tran{{0, 0, 0}})
     gemmi::fail("reindexing operator should not have a translation");
   // transpose rotation
-  gemmi::Op real_space_op;
-  real_space_op.rot = op.transposed_rot();
+  gemmi::Op real_space_op{op.transposed_rot(), {0, 0, 0}};
   if (verbose)
     fprintf(stderr, "real space transformation: %s\n", real_space_op.triplet().c_str());
   gemmi::Mtz mtz;
