@@ -3,7 +3,6 @@
 import unittest
 from math import pi  # , isnan
 from random import random
-import sys
 import gemmi
 from gemmi import Position, UnitCell
 
@@ -63,9 +62,11 @@ class TestUnitCell(unittest.TestCase):
 
     def test_triclinic_cell(self):
         cell = UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
-        if sys.version_info >= (3,5):
-            o_f = cell.orthogonalization_matrix @ cell.fractionalization_matrix
-            self.assertTrue(o_f.approx(gemmi.Mat33(), 1e-15))
+        # this would give syntax error with Python < 3.5
+        #o_f = cell.orthogonalization_matrix @ cell.fractionalization_matrix
+        o_f = cell.orthogonalization_matrix.multiply(
+            cell.fractionalization_matrix)
+        self.assertTrue(o_f.approx(gemmi.Mat33(), 1e-15))
         pos = Position(-15, -17, 190)
         frac = cell.fractionalize(pos)
         pos2 = cell.orthogonalize(frac)
