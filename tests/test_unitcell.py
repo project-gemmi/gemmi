@@ -3,6 +3,7 @@
 import unittest
 from math import pi  # , isnan
 from random import random
+import sys
 import gemmi
 from gemmi import Position, UnitCell
 
@@ -39,6 +40,10 @@ class TestUnitCell(unittest.TestCase):
 
     def test_ortho_cell(self):
         cell = UnitCell(25.14, 39.50, 45.07, 90, 90, 90)
+        self.assertTrue(cell.orthogonalization_matrix.row_copy(1)
+                        .approx(gemmi.Vec3(0, 39.5, 0), 0))
+        self.assertTrue(cell.orthogonalization_matrix.column_copy(0)
+                        .approx(gemmi.Vec3(25.14, 0, 0), 0))
         pos = Position(5, -6, 7)
         frac = cell.fractionalize(pos)
         self.assertAlmostEqual(frac.x, 0.198886, delta=1e-6)
@@ -58,6 +63,9 @@ class TestUnitCell(unittest.TestCase):
 
     def test_triclinic_cell(self):
         cell = UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
+        if sys.version_info >= (3,5):
+            o_f = cell.orthogonalization_matrix @ cell.fractionalization_matrix
+            self.assertTrue(o_f.approx(gemmi.Mat33(), 1e-15))
         pos = Position(-15, -17, 190)
         frac = cell.fractionalize(pos)
         pos2 = cell.orthogonalize(frac)

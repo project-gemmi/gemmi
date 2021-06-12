@@ -92,6 +92,7 @@ void add_unitcell(py::module& m) {
     .def_readwrite("z", &Vec3::z)
     .def("dot", &Vec3::dot)
     .def("cross", &Vec3::cross)
+    .def("length", &Vec3::length)
     .def("approx", &Vec3::approx, py::arg("other"), py::arg("epsilon"))
     .def("tolist", [](const Vec3& self) {
         return std::array<double,3>{{self.x, self.y, self.z}};
@@ -119,7 +120,8 @@ void add_unitcell(py::module& m) {
     .def("__repr__", [](const Vec3& self) {
         return "<gemmi.Vec3(" + triple(self.x, self.y, self.z) + ")>";
     });
-  py::class_<Mat33>(m, "Mat33", py::buffer_protocol())
+  py::class_<Mat33> mat33(m, "Mat33", py::buffer_protocol());
+  mat33
     .def(py::init<>())
     .def(py::init([](std::array<std::array<double,3>,3>& m) {
        Mat33 *mat = new Mat33();
@@ -131,6 +133,8 @@ void add_unitcell(py::module& m) {
                              {3, 3}, // dimensions
                              {sizeof(double)*3, sizeof(double)});  // strides
     })
+    .def("row_copy", &Mat33::row_copy)
+    .def("column_copy", &Mat33::column_copy)
     .def("multiply", (Mat33 (Mat33::*)(const Mat33&) const) &Mat33::multiply)
     .def("multiply", (Vec3 (Mat33::*)(const Vec3&) const) &Mat33::multiply)
     .def("left_multiply", &Mat33::left_multiply)
@@ -151,6 +155,7 @@ void add_unitcell(py::module& m) {
                "             [" + triple(a[1][0], a[1][1], a[1][2]) + "]\n"
                "             [" + triple(a[2][0], a[2][1], a[2][2]) + "]>";
     });
+  mat33.attr("__matmul__") = mat33.attr("multiply");
 
   add_smat33<double>(m, "SMat33d");
   add_smat33<float>(m, "SMat33f");

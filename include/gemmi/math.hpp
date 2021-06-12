@@ -108,6 +108,18 @@ struct Mat33 {
         double c1, double c2, double c3)
   : a{{a1, a2, a3}, {b1, b2, b3}, {c1, c2, c3}} {}
 
+  Vec3 row_copy(int i) const {
+    if (i < 0 || i > 2)
+      throw std::out_of_range("Mat33 row index must be 0, 1 or 2.");
+    return Vec3(a[i][0], a[i][1], a[i][2]);
+  }
+
+  Vec3 column_copy(int i) const {
+    if (i < 0 || i > 2)
+      throw std::out_of_range("Mat33 column index must be 0, 1 or 2.");
+    return Vec3(a[0][i], a[1][i], a[2][i]);
+  }
+
   Vec3 multiply(const Vec3& p) const {
     return {a[0][0] * p.x + a[0][1] * p.y + a[0][2] * p.z,
             a[1][0] * p.x + a[1][1] * p.y + a[1][2] * p.z,
