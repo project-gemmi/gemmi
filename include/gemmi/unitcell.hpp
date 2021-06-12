@@ -255,6 +255,11 @@ struct UnitCell {
     calculate_properties();
   }
 
+  void set_from_vectors(const Vec3& va, const Vec3& vb, const Vec3& vc) {
+    set(va.length(), vb.length(), vc.length(),
+        deg(vb.angle(vc)), deg(vc.angle(va)), deg(va.angle(vb)));
+  }
+
   void set_cell_images_from_spacegroup(const SpaceGroup* sg) {
     images.clear();
     cs_count = 0;
