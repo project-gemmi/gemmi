@@ -300,7 +300,7 @@ inline void place_hydrogens(const Atom& atom, Topo::ResInfo& ri,
       Vec3 v12 = known[0].pos - atom.pos;
       Vec3 v13 = known[1].pos - atom.pos;
       // theta3 is the ideal restraint value, cur_theta3 is the current value
-      double cur_theta3 = calculate_angle_v(v12, v13);
+      double cur_theta3 = v12.angle(v13);
       constexpr double two_pi = 2 * pi();
       if (theta1 + theta2 + std::max(theta3, cur_theta3) + 0.01 > two_pi) {
         double ratio = (two_pi - cur_theta3) / (theta1 + theta2);
