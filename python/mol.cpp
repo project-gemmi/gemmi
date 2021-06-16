@@ -288,6 +288,9 @@ void add_mol(py::module& m) {
     .def("count_atom_sites", &count_atom_sites<Chain>)
     .def("count_occupancies", &count_occupancies<Chain>)
     .def("calculate_mass", &calculate_mass<Chain>)
+    .def("calculate_center_of_mass", [](const Chain& self) {
+          return calculate_center_of_mass(self).get();
+     })
     .def("trim_to_alanine", (void (*)(Chain&)) &trim_to_alanine)
     .def("first_conformer",
          (UniqProxy<Residue> (Chain::*)()) &Chain::first_conformer,
