@@ -2478,7 +2478,7 @@ Such a group is represented by ``ResidueGroup``, which is derived from
 ----
 
 In Python, Chain has a few specialized, but commonly used functions.
-Three that are present also in the Model class:
+Four that are present also in the Model class:
 
 .. doctest::
 
@@ -2488,6 +2488,8 @@ Three that are present also in the Model class:
   216.9999997317791
   >>> chain_a.calculate_mass()
   3211.093834891507
+  >>> chain_a.calculate_center_of_mass()
+  <gemmi.Position(-4.83382, 17.5981, 0.0296776)>
 
 and a function that changes a polypeptide chain into polyalanine:
 
