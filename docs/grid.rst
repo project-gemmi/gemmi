@@ -237,7 +237,8 @@ Interpolation
 -------------
 
 To get a value corresponding to an arbitrary position,
-we use trilinear interpolation of the 8 nearest nodes.
+you may use trilinear interpolation of the 8 nearest nodes,
+or tricubic interpolation that uses 64 nodes.
 
 **C++**
 
@@ -245,6 +246,9 @@ we use trilinear interpolation of the 8 nearest nodes.
 
   T Grid<T>::interpolate_value(const Fractional& fctr) const
   T Grid<T>::interpolate_value(const Position& ctr) const
+
+  double Grid<T>::tricubic_interpolation(const Fractional& fctr) const
+  double Grid<T>::tricubic_interpolation(const Position& ctr) const
 
 **Python**
 
@@ -254,6 +258,36 @@ we use trilinear interpolation of the 8 nearest nodes.
   0.890625
   >>> grid.interpolate_value(gemmi.Position(2, 3, 4))
   2.0333263874053955
+  >>> grid.tricubic_interpolation(gemmi.Fractional(1/24, 1/24, 1/24))
+  1.283477783203125
+  >>> grid.tricubic_interpolation(gemmi.Position(2, 3, 4))
+  2.607566173771505
+
+The cubic interpolation is smoother than linear, but may increase the noise.
+This is illustrated on the plots below, which shows density along two lines
+in a grid that was filled with random numbers from [0, 1).
+Trilinear interpolation is blue, tricubic -- red.
+The left plot shows density along a line in a random direction,
+the right plot -- along a line parallel to one of the axes.
+
+.. image:: img/trilinear-tricubic.png
+    :align: center
+    :scale: 100
+
+*Implementation notes*
+
+Tricubic interpolation, as described
+on `Wikipedia page <https://en.wikipedia.org/wiki/Tricubic_interpolation>`_ and in
+`Appendix B of a PHENIX paper <https://journals.iucr.org/d/issues/2018/06/00/ic5103/#APPB>`_,
+can be implemented either as 21 cubic interpolations, or using method
+introduced by `Lekien & Marsen <https://doi.org/10.1002/nme.1296>`_ in 2005,
+which involves 64x64 matrix of integral coefficients
+(see also this `blog post <http://ianfaust.com/2016/03/20/Tricubic/>`_).
+The latter method should be more efficient, but gemmi uses the former,
+which takes ~100 ns. If you'd like to speed it up or to get derivatives,
+contact developers.
+
+*Optimization for Python*
 
 If you have a large number of points, making a Python function call
 each time would be slow.

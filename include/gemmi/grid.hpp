@@ -107,6 +107,13 @@ std::complex<T> lerp_(std::complex<T> a, std::complex<T> b, double t) {
   return a + (b - a) * (T) t;
 }
 
+// Catmull–Rom spline interpolation CINT_u from:
+// https://en.wikipedia.org/wiki/Cubic_Hermite_spline
+inline double cubic_interpolation(double u, double a, double b, double c, double d) {
+  return u * (u * (u * (3*b - 3*c + d - a) + (2*a - 5*b + 4*c - d)) + (c - a)) / 2 + b;
+}
+
+
 template<typename T, typename V=std::int8_t> struct MaskedGrid;
 
 // Order of grid axis. Some Grid functionality works only with the XYZ order.
@@ -348,6 +355,50 @@ struct Grid : GridBase<T> {
   }
   T interpolate_value(const Position& ctr) const {
     return interpolate_value(unit_cell.fractionalize(ctr));
+  }
+
+  // https://en.wikipedia.org/wiki/Tricubic_interpolation
+  double tricubic_interpolation(double x, double y, double z) const {
+    std::array<std::array<std::array<T,4>,4>,4> copy;
+    copy_4x4x4(x, y, z, copy);
+    auto s = [&copy](int i, int j, int k) { return copy[i][j][k]; };
+    auto t = [&s, z](int i, int j) {
+      return cubic_interpolation(z, s(i,j,0), s(i,j,1), s(i,j,2), s(i,j,3));
+    };
+    auto u = [&t, y](int i) {
+      return cubic_interpolation(y, t(i,0), t(i,1), t(i,2), t(i,3));
+    };
+    return cubic_interpolation(x, u(0), u(1), u(2), u(3));
+  }
+  double tricubic_interpolation(const Fractional& fctr) const {
+    return tricubic_interpolation(fctr.x * nu, fctr.y * nv, fctr.z * nw);
+  }
+  double tricubic_interpolation(const Position& ctr) const {
+    return tricubic_interpolation(unit_cell.fractionalize(ctr));
+  }
+  void copy_4x4x4(double& x, double& y, double& z,
+                  std::array<std::array<std::array<T,4>,4>,4>& copy) const {
+    auto prepare_indices = [this](double& r, int nt, int (&indices)[4]) {
+      int t;
+      r = this->grid_modulo(r, nu, &t);
+      indices[0] = (t != 0 ? t : nt) - 1;
+      indices[1] = t;
+      if (t + 2 < nt) {
+        indices[2] = t + 1;
+        indices[3] = t + 2;
+      } else {
+        indices[2] = t + 2 == nt ? t + 1 : 0;
+        indices[3] = t + 2 == nt ? 0 : 1;
+      }
+    };
+    int u_indices[4], v_indices[4], w_indices[4];
+    prepare_indices(x, nu, u_indices);
+    prepare_indices(y, nv, v_indices);
+    prepare_indices(z, nw, w_indices);
+    for (int i = 0; i < 4; ++i)
+      for (int j = 0; j < 4; ++j)
+        for (int k = 0; k < 4; ++k)
+          copy[i][j][k] = this->get_value_q(u_indices[i], v_indices[j], w_indices[k]);
   }
 
   void set_value(int u, int v, int w, T x) { data[index_s(u, v, w)] = x; }

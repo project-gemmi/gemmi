@@ -111,6 +111,10 @@ void add_grid(py::module& m, const std::string& name) {
               r(i, j, k) = self.interpolate_value(pos);
             }
     }, py::arg().noconvert(), py::arg())
+    .def("tricubic_interpolation",
+         (double (Gr::*)(const Fractional&) const) &Gr::tricubic_interpolation)
+    .def("tricubic_interpolation",
+         (double (Gr::*)(const Position&) const) &Gr::tricubic_interpolation)
     .def("copy_metadata_from", &Gr::copy_metadata_from)
     .def("setup_from", &Gr::template setup_from<Structure>,
          py::arg("st"), py::arg("spacing"))
