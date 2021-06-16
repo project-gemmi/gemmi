@@ -77,10 +77,11 @@ struct Topo {
     Residue* res;
     struct Prev {
       std::string link;
-      int idx; // relative to current index, 0 means n/a
+      int idx; // relative to current index
       const ResInfo* get(const ResInfo* t) const { return t + idx; }
       ResInfo* get(ResInfo* t) const { return t + idx; }
     };
+    // in case of microheterogeneity we may have 2+ previous residues
     std::vector<Prev> prev;
     std::vector<std::string> mods;
     ChemComp chemcomp;
