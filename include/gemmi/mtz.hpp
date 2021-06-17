@@ -156,6 +156,7 @@ struct Mtz {
 
   std::string source_path;  // input file path, if known
   bool same_byte_order = true;
+  bool indices_switched_to_original = false;
   std::int32_t header_offset = 0;
   std::string version_stamp;
   std::string title;
@@ -799,6 +800,8 @@ struct Mtz {
 
   // (for unmerged MTZ only) change HKL according to M/ISYM
   bool switch_to_original_hkl() {
+    if (indices_switched_to_original)
+      return false;
     if (!has_data())
       fail("switch_to_original_hkl(): data not read yet");
     const Column* col = column_with_label("M/ISYM");
@@ -816,11 +819,14 @@ struct Mtz {
       for (int i = 0; i < 3; ++i)
         data[n+i] = static_cast<float>(sign * hkl[i]);
     }
+    indices_switched_to_original = true;
     return true;
   }
 
   // (for unmerged MTZ only) change HKL to ASU equivalent and set ISYM
   bool switch_to_asu_hkl() {
+    if (!indices_switched_to_original)
+      return false;
     if (!has_data())
       fail("switch_to_asu_hkl(): data not read yet");
     const Column* col = column_with_label("M/ISYM");
@@ -835,6 +841,7 @@ struct Mtz {
       float& misym = data[n + misym_idx];
       misym = float(((int)misym & ~0xff) | isym);
     }
+    indices_switched_to_original = false;
     return true;
   }
 
