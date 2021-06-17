@@ -1,7 +1,6 @@
 // Copyright 2020 Global Phasing Ltd.
 //
 // Reindex merged or unmerged MTZ file.
-// TODO: handle operations that results in non-integral indices.
 
 #include <cstdio>
 #include <cstring>  // for strpbrk
@@ -9,6 +8,7 @@
 #ifndef GEMMI_ALL_IN_ONE
 # define GEMMI_WRITE_IMPLEMENTATION 1
 #endif
+#include <gemmi/reindex.hpp>
 #include <gemmi/mtz.hpp>
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/version.hpp>  // for GEMMI_VERSION
@@ -53,94 +53,36 @@ int GEMMI_MAIN(int argc, char **argv) {
     return 1;
   }
   const char* hkl_arg = p.options[Hkl].arg;
-  gemmi::Op op = gemmi::parse_triplet(hkl_arg);
-  if (std::strpbrk(hkl_arg, "xyzabcXYZABC"))
-    gemmi::fail("specify OP in terms of h, k and l");
-  if (op.tran != gemmi::Op::Tran{{0, 0, 0}})
-    gemmi::fail("reindexing operator should not have a translation");
-  // transpose rotation
-  // TODO: it may be wrong if op.rot is not a rotation matrix,
-  // i.e. when cell volume changes
-  gemmi::Op real_space_op{op.transposed_rot(), {0, 0, 0}};
-  if (verbose)
-    fprintf(stderr, "real space transformation: %s\n", real_space_op.triplet().c_str());
-  gemmi::Mtz mtz;
-  if (verbose) {
-    fprintf(stderr, "Reading %s ...\n", input_path);
-    mtz.warnings = stderr;
-  }
   try {
+    gemmi::Op op = gemmi::parse_triplet(hkl_arg);
+    if (std::strpbrk(hkl_arg, "xyzabcXYZABC"))
+      gemmi::fail("specify OP in terms of h, k and l");
+    if (op.tran != gemmi::Op::Tran{{0, 0, 0}})
+      gemmi::fail("reindexing operator should not have a translation");
+    gemmi::Mtz mtz;
+    if (verbose) {
+      fprintf(stderr, "Reading %s ...\n", input_path);
+      mtz.warnings = stderr;
+    }
     mtz.read_input(gemmi::MaybeGzipped(input_path), true);
-    mtz.switch_to_original_hkl();
+
+    // for now we use mtz.warnings in reindex_mtz()
+    mtz.warnings = stderr;
+
+    reindex_mtz(mtz, op, verbose);
+
+    if (!p.options[NoSort])
+      mtz.sort();
+    if (!p.options[NoHistory])
+      mtz.history.emplace(mtz.history.begin(),
+                          "Reindexed with gemmi-reindex " GEMMI_VERSION);
+    if (verbose)
+      fprintf(stderr, "Writing %s ...\n", output_path);
+    mtz.write_to_file(output_path);
   } catch (std::runtime_error& e) {
-    fprintf(stderr, "ERROR reading %s: %s\n", input_path, e.what());
+    fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }
-  // reindex
-  for (size_t n = 0; n < mtz.data.size(); n += mtz.columns.size())
-    mtz.set_hkl(n, real_space_op.apply_to_hkl(mtz.get_hkl(n)));
-  // hand change requires data modification
-  if (op.det_rot() < 0)
-    for (gemmi::Mtz::Column& column : mtz.columns) {
-      // negate anomalous difference
-      if (column.type == 'D') {
-        for (float& value : column)
-          value = -value;
-        if (verbose)
-          fprintf(stderr, "Column %s: anomalous difference negated.\n",
-                  column.label.c_str());
-        continue;
-      }
-      // swap (+) and (-)
-      size_t pos = column.label.find("(+)");
-      if (pos != std::string::npos) {
-        std::string minus_label = column.label;
-        minus_label[pos+1] = '-';
-        gemmi::Mtz::Column* minus_column =
-            mtz.column_with_label(minus_label, &column.dataset());
-        if (minus_column) {
-          for (size_t n = 0; n < mtz.data.size(); n += mtz.columns.size())
-            std::swap(mtz.data[n + column.idx],
-                      mtz.data[n + minus_column->idx]);
-          if (verbose)
-            fprintf(stderr, "Swapped values from %s and %s.\n",
-                    column.label.c_str(), minus_label.c_str());
-        } else {
-          fprintf(stderr, "Warning: matching pair not found for: %s\n",
-                  column.label.c_str());
-        }
-      }
-    }
-  // change space group
-  mtz.spacegroup = gemmi::find_spacegroup_by_change_of_basis(mtz.spacegroup, op.inverse());
-  if (mtz.spacegroup) {
-    if (verbose)
-      fprintf(stderr, "Space group changed from %s to %s\n.",
-              mtz.spacegroup_name.c_str(), mtz.spacegroup->xhm().c_str());
-  } else {
-    fprintf(stderr, "WARNING: new space group name could not be determined.\n");
-  }
-  // change unit cell
-  // TODO: change each unit cell separately, including batch headers
-  gemmi::Mat33 mat = mtz.cell.orth.mat.multiply(gemmi::rot_as_mat33(real_space_op));
-  gemmi::UnitCell new_cell;
-  new_cell.set_from_vectors(mat.column_copy(0), mat.column_copy(1), mat.column_copy(2));
-  mtz.set_cell_for_all(new_cell);
-  mat = mtz.cell.orth.mat;
-
-  if (mtz.is_merged())
-    mtz.ensure_asu();
-  else
-    mtz.switch_to_asu_hkl();
-  if (!p.options[NoSort])
-    mtz.sort();
-  if (!p.options[NoHistory])
-    mtz.history.emplace(mtz.history.begin(),
-                        "Reindexed with gemmi-reindex " GEMMI_VERSION);
-  if (verbose)
-    fprintf(stderr, "Writing %s ...\n", output_path);
-  mtz.write_to_file(output_path);
   return 0;
 }
 
-// vim:sw=2:ts=2:et:path^=../include,../third_party

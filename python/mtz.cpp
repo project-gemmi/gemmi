@@ -1,6 +1,7 @@
 // Copyright 2019 Global Phasing Ltd.
 
 #include "gemmi/mtz.hpp"
+#include "gemmi/reindex.hpp"  // for reindex_mtz
 #include "gemmi/fourier.hpp"
 #include "gemmi/gz.hpp"
 #include "gemmi/tostr.hpp"
@@ -237,6 +238,7 @@ void add_mtz(py::module& m) {
     .def("switch_to_original_hkl", &Mtz::switch_to_original_hkl)
     .def("switch_to_asu_hkl", &Mtz::switch_to_asu_hkl)
     .def("write_to_file", &Mtz::write_to_file, py::arg("path"))
+    .def("reindex", &reindex_mtz, py::arg("op"), py::arg("verbose")=false)
     .def("__repr__", [](const Mtz& self) {
         return tostr("<gemmi.Mtz with ", self.columns.size(), " columns, ",
                      self.nreflections, " reflections>");
