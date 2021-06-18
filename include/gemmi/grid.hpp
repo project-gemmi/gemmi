@@ -109,10 +109,19 @@ std::complex<T> lerp_(std::complex<T> a, std::complex<T> b, double t) {
 
 // Catmull–Rom spline interpolation CINT_u from:
 // https://en.wikipedia.org/wiki/Cubic_Hermite_spline
+// The same as (24) in https://journals.iucr.org/d/issues/2018/06/00/ic5103/
 inline double cubic_interpolation(double u, double a, double b, double c, double d) {
-  return u * (u * (u * (3*b - 3*c + d - a) + (2*a - 5*b + 4*c - d)) + (c - a)) / 2 + b;
+  //return 0.5 * u * (u * (u * (3*b - 3*c + d - a) + (2*a - 5*b + 4*c - d)) + (c - a)) + b;
+  // equivalent form that is faster (on my computer with GCC):
+  return -0.5 * (a * u * ((u-2)*u + 1) - b * ((3*u - 5) * u*u + 2) +
+                 u * (c * ((3*u - 4) * u - 1) - d * (u-1) * u));
 }
 
+// df/du (from Wolfram Alpha)
+inline double cubic_interpolation_der(double u, double a, double b, double c, double d) {
+  return a * (-1.5*u*u + 2*u - 0.5) + c * (-4.5*u*u + 4*u + 0.5)
+         + u * (4.5*b*u - 5*b + 1.5*d*u - d);
+}
 
 template<typename T, typename V=std::int8_t> struct MaskedGrid;
 
@@ -362,19 +371,49 @@ struct Grid : GridBase<T> {
     std::array<std::array<std::array<T,4>,4>,4> copy;
     copy_4x4x4(x, y, z, copy);
     auto s = [&copy](int i, int j, int k) { return copy[i][j][k]; };
-    auto t = [&s, z](int i, int j) {
-      return cubic_interpolation(z, s(i,j,0), s(i,j,1), s(i,j,2), s(i,j,3));
-    };
-    auto u = [&t, y](int i) {
-      return cubic_interpolation(y, t(i,0), t(i,1), t(i,2), t(i,3));
-    };
-    return cubic_interpolation(x, u(0), u(1), u(2), u(3));
+    double a[4], b[4];
+    for (int i = 0; i < 4; ++i) {
+      for (int j = 0; j < 4; ++j)
+        a[j] = cubic_interpolation(z, s(i,j,0), s(i,j,1), s(i,j,2), s(i,j,3));
+      b[i] = cubic_interpolation(y, a[0], a[1], a[2], a[3]);
+    }
+    return cubic_interpolation(x, b[0], b[1], b[2], b[3]);
   }
   double tricubic_interpolation(const Fractional& fctr) const {
     return tricubic_interpolation(fctr.x * nu, fctr.y * nv, fctr.z * nw);
   }
   double tricubic_interpolation(const Position& ctr) const {
     return tricubic_interpolation(unit_cell.fractionalize(ctr));
+  }
+  // the same + derivatives df/dx, df/dy, df/dz
+  std::array<double,4> tricubic_interpolation_der(double x, double y, double z) const {
+    std::array<std::array<std::array<T,4>,4>,4> copy;
+    copy_4x4x4(x, y, z, copy);
+    auto s = [&copy](int i, int j, int k) { return copy[i][j][k]; };
+    double a[4][4];
+    double b[4];
+    for (int i = 0; i < 4; ++i)
+      for (int j = 0; j < 4; ++j)
+        a[i][j] = cubic_interpolation(z, s(i,j,0), s(i,j,1), s(i,j,2), s(i,j,3));
+    for (int i = 0; i < 4; ++i)
+      b[i] = cubic_interpolation(y, a[i][0], a[i][1], a[i][2], a[i][3]);
+    std::array<double, 4> ret;
+    ret[0] = cubic_interpolation(x, b[0], b[1], b[2], b[3]);
+    ret[1] = cubic_interpolation_der(x, b[0], b[1], b[2], b[3]);
+    for (int i = 0; i < 4; ++i)
+      b[i] = cubic_interpolation(x, a[0][i], a[1][i], a[2][i], a[3][i]);
+    ret[2] = cubic_interpolation_der(y, b[0], b[1], b[2], b[3]);
+    for (int i = 0; i < 4; ++i)
+      for (int j = 0; j < 4; ++j)
+        a[i][j] = cubic_interpolation(y, s(i,0,j), s(i,1,j), s(i,2,j), s(i,3,j));
+    for (int i = 0; i < 4; ++i)
+      b[i] = cubic_interpolation(x, a[0][i], a[1][i], a[2][i], a[3][i]);
+    ret[3] = cubic_interpolation_der(z, b[0], b[1], b[2], b[3]);
+    return ret;
+  }
+  std::array<double,4> tricubic_interpolation_der(const Fractional& fctr) const {
+    auto r = tricubic_interpolation_der(fctr.x * nu, fctr.y * nv, fctr.z * nw);
+    return {r[0], r[1] * nu, r[2] * nv, r[3] * nw};
   }
   void copy_4x4x4(double& x, double& y, double& z,
                   std::array<std::array<std::array<T,4>,4>,4>& copy) const {

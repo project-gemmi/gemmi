@@ -115,6 +115,9 @@ void add_grid(py::module& m, const std::string& name) {
          (double (Gr::*)(const Fractional&) const) &Gr::tricubic_interpolation)
     .def("tricubic_interpolation",
          (double (Gr::*)(const Position&) const) &Gr::tricubic_interpolation)
+    .def("tricubic_interpolation_der",
+         (std::array<double,4> (Gr::*)(const Fractional&) const)
+         &Gr::tricubic_interpolation_der)
     .def("copy_metadata_from", &Gr::copy_metadata_from)
     .def("setup_from", &Gr::template setup_from<Structure>,
          py::arg("st"), py::arg("spacing"))

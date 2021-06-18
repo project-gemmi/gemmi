@@ -250,6 +250,9 @@ or tricubic interpolation that uses 64 nodes.
   double Grid<T>::tricubic_interpolation(const Fractional& fctr) const
   double Grid<T>::tricubic_interpolation(const Position& ctr) const
 
+  // calculates also derivatives
+  std::array<double,4> Grid<T>::tricubic_interpolation_der(double x, double y, double z) const
+
 **Python**
 
 .. doctest::
@@ -261,7 +264,10 @@ or tricubic interpolation that uses 64 nodes.
   >>> grid.tricubic_interpolation(gemmi.Fractional(1/24, 1/24, 1/24))
   1.283477783203125
   >>> grid.tricubic_interpolation(gemmi.Position(2, 3, 4))
-  2.607566173771505
+  2.6075661737715046
+  >>> # calculate also derivatives in directions of unit cell axes
+  >>> grid.tricubic_interpolation_der(gemmi.Fractional(1/24, 1/24, 1/24))
+  [1.283477783203125, 35.523193359375, 36.343505859375, 35.523193359375]
 
 The cubic interpolation is smoother than linear, but may increase the noise.
 This is illustrated on the plots below, which shows density along two lines
