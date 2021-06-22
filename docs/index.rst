@@ -21,7 +21,9 @@ and in other molecular-structure sciences that use CIF files
 open-source CIF parser).
 
 Gemmi is open-source (MPL_) and portable -- it runs on Linux, Windows,
-MacOS and even inside a web browser if compiled to WebAssembly.
+MacOS and even inside a web browser if compiled to WebAssembly
+(`here <https://project-gemmi.github.io/wasm/>`__ and
+`here <https://www.npmjs.com/package/mtz>`__).
 It is written in C++11, with Python (2 and 3) bindings,
 and with partial C and Fortran 2003 interface.
 

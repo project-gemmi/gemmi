@@ -15,7 +15,8 @@ GEMMI is a header-only C++11 library accompanied by:
 * command-line [tools](https://gemmi.readthedocs.io/en/latest/utils.html),
 * Python bindings (CPython 2 and 3, PyPy),
 * Fortran 2003+ interface (in progress),
-* WebAssembly port,
+* WebAssembly ports (see [here](https://project-gemmi.github.io/wasm/) and
+  [here](https://www.npmjs.com/package/mtz)),
 * and little data viz [projects](https://project-gemmi.github.io/pdb-stats/).
 
 Documentation: http://gemmi.readthedocs.io/en/latest/
