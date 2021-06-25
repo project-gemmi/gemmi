@@ -326,10 +326,9 @@ inline void append_op_fraction(std::string& s, int w) {
 
 } // namespace impl
 
-inline std::string make_triplet_part(int x, int y, int z, int w,
+inline std::string make_triplet_part(const std::array<int, 3>& xyz, int w,
                                      char style='x') {
   std::string s;
-  int xyz[] = { x, y, z };
   for (int i = 0; i != 3; ++i)
     if (xyz[i] != 0) {
       impl::append_sign_of(s, xyz[i]);
@@ -348,9 +347,9 @@ inline std::string make_triplet_part(int x, int y, int z, int w,
 }
 
 inline std::string Op::triplet() const {
-  return make_triplet_part(rot[0][0], rot[0][1], rot[0][2], tran[0]) +
-   "," + make_triplet_part(rot[1][0], rot[1][1], rot[1][2], tran[1]) +
-   "," + make_triplet_part(rot[2][0], rot[2][1], rot[2][2], tran[2]);
+  return make_triplet_part(rot[0], tran[0]) +
+   "," + make_triplet_part(rot[1], tran[1]) +
+   "," + make_triplet_part(rot[2], tran[2]);
 }
 
 
