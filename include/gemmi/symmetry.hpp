@@ -10,7 +10,7 @@
 
 #include <cstdint>
 #include <cstdlib>    // for strtol
-#include <cstring>    // for memchr, strchr, strlen
+#include <cstring>    // for memchr, strchr
 #include <array>
 #include <algorithm>  // for count, sort, remove
 #include <functional> // for hash
@@ -206,6 +206,16 @@ inline Op Op::inverse() const {
 
 // TRIPLET -> OP
 
+inline int interpret_miller_character(char c, const std::string& s) {
+  static const signed char values[] =
+    //a  b  c  d  e  f  g  h  i  j  k  l  m  n  o  p  q  r  s  t  u  v  w  x  y  z
+    { 1, 2, 3, 0, 0, 0, 0, 1, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3 };
+  size_t idx = size_t((c | 0x20) - 'a');  // "|0x20" = to lower
+  if (idx >= sizeof(values) || values[idx] == 0)
+    fail("unexpected character '", c, "' in: ", s);
+  return values[idx] - 1;
+}
+
 inline std::array<int, 4> parse_triplet_part(const std::string& s) {
   std::array<int, 4> r = { 0, 0, 0, 0 };
   int num = Op::DEN;
@@ -217,30 +227,38 @@ inline std::array<int, 4> parse_triplet_part(const std::string& s) {
     }
     if (num == 0)
       fail("wrong or unsupported triplet format: " + s);
-    bool is_shift = false;
+    int r_idx;
+    int den = 1;
     if (*c >= '0' && *c <= '9') {
+      // syntax examples in this branch: "1", "-1/2", "+2*x", "1/2 * b"
       char* endptr;
       num *= std::strtol(c, &endptr, 10);
-      if (*endptr == '/') {
-        int den = std::strtol(endptr + 1, &endptr, 10);
-        if (den < 1 || Op::DEN % den != 0)
-          fail("Wrong denominator " + std::to_string(den) + " in: " + s);
-        num /= den;
+      if (*endptr == '/')
+        den = std::strtol(endptr + 1, &endptr, 10);
+      if (*endptr == '*') {
+        c = impl::skip_blank(endptr + 1);
+        r_idx = interpret_miller_character(*c, s);
+        ++c;
+      } else {
+        c = endptr;
+        r_idx = 3;
       }
-      is_shift = (*endptr != '*');
-      c = (is_shift ? endptr - 1 : impl::skip_blank(endptr + 1));
+    } else {
+      // syntax examples in this branch: "x", "+a", "-k/3"
+      r_idx = interpret_miller_character(*c, s);
+      c = impl::skip_blank(++c);
+      if (*c == '/') {
+        char* endptr;
+        den = std::strtol(c + 1, &endptr, 10);
+        c = endptr;
+      }
     }
-    if (is_shift)
-      r[3] += num;
-    else if (std::memchr("xXhHaA", *c, 6))
-      r[0] += num;
-    else if (std::memchr("yYkKbB", *c, 6))
-      r[1] += num;
-    else if (std::memchr("zZlLcC", *c, 6))
-      r[2] += num;
-    else
-      fail(std::string("unexpected character '") + *c + "' in: " + s);
-    ++c;
+    if (den != 1) {
+      if (den <= 0 || Op::DEN % den != 0)
+        fail("Wrong denominator " + std::to_string(den) + " in: " + s);
+      num /= den;
+    }
+    r[r_idx] += num;
     num = 0;
   }
   if (num != 0)
@@ -730,7 +748,7 @@ inline Op hall_matrix_symbol(const char* start, const char* end,
 // Parses either short (0 0 1) or long notation (x,y,z+1/12)
 // but without multpliers (such as 1/2x) to keep things simple for now.
 inline Op parse_hall_change_of_basis(const char* start, const char* end) {
-  if (memchr(start, ',', end - start) != nullptr) // long symbol
+  if (std::memchr(start, ',', end - start) != nullptr) // long symbol
     return parse_triplet(std::string(start, end));
   // short symbol (0 0 1)
   Op cob = Op::identity();

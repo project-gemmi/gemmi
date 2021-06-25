@@ -102,6 +102,9 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(gemmi.Op(expected_inv), inv)
         op = gemmi.Op('1/2*x+1/2*y,-1/2*x+1/2*y,z')
         self.assertEqual(op.inverse().triplet(), 'x-y,x+y,z')
+        # check also alternative writing
+        op2 = gemmi.Op('x/2+y/2,-a/2+k/2,z')
+        self.assertEqual(op, op2)
 
     def test_generators_from_hall(self):
         # first test on example matrices from
