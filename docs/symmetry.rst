@@ -394,7 +394,7 @@ purpose, but it can also represent different linear transformations:
 
     >>> enlarging_op = gemmi.Op("-y+z,x+z,-x+y+z")
     >>> enlarging_op.inverse()
-    <gemmi.Op("-1/3*x+2/3*y-1/3*z,-2/3*x+1/3*y+1/3*z,1/3*x+1/3*y+1/3*z")>
+    <gemmi.Op("-x/3+2/3*y-z/3,-2/3*x+y/3+z/3,x/3+y/3+z/3")>
     >>> _ * enlarging_op
     <gemmi.Op("x,y,z")>
 

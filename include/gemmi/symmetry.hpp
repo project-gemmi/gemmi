@@ -305,7 +305,7 @@ inline void append_sign_of(std::string& s, int n) {
 }
 
 // append w/DEN fraction reduced to the lowest terms
-inline void append_op_fraction(std::string& s, int w) {
+inline std::pair<int,int> get_op_fraction(int w) {
   // Op::DEN == 24 == 2 * 2 * 2 * 3
   int denom = 1;
   for (int i = 0; i != 3; ++i)
@@ -317,11 +317,7 @@ inline void append_op_fraction(std::string& s, int w) {
     w /= 3;
   else
     denom *= 3;
-  impl::append_small_number(s, w);
-  if (denom != 1) {
-    s += '/';
-    impl::append_small_number(s, denom);
-  }
+  return {w, denom};
 }
 
 } // namespace impl
@@ -334,14 +330,32 @@ inline std::string make_triplet_part(const std::array<int, 3>& xyz, int w,
       impl::append_sign_of(s, xyz[i]);
       int a = std::abs(xyz[i]);
       if (a != Op::DEN) {
-        impl::append_op_fraction(s, a);
-        s += '*';
+        std::pair<int,int> frac = impl::get_op_fraction(a);
+        if (frac.first == 1) {  // e.g. "x/3"
+          s += char(style + i);
+          s += '/';
+          impl::append_small_number(s, frac.second);
+        } else {  // e.g. "2/3*x"
+          impl::append_small_number(s, frac.first);
+          if (frac.second != 1) {
+            s += '/';
+            impl::append_small_number(s, frac.second);
+          }
+          s += '*';
+          s += char(style + i);
+        }
+      } else {
+        s += char(style + i);
       }
-      s += char(style + i);
     }
   if (w != 0) {
     impl::append_sign_of(s, w);
-    impl::append_op_fraction(s, std::abs(w));
+    std::pair<int,int> frac = impl::get_op_fraction(std::abs(w));
+    impl::append_small_number(s, frac.first);
+    if (frac.second != 1) {
+      s += '/';
+      impl::append_small_number(s, frac.second);
+    }
   }
   return s;
 }
@@ -983,14 +997,14 @@ inline const char* get_basisop(int basisop_idx) {
     "x+1/4,y+1/4,-x+z-1/4",
     "x+1/4,y,z",
     "x,y,z+1/4",
-    "-x,-1/2*y+1/2*z,1/2*y+1/2*z",
-    "-1/2*x+1/2*z,-y,1/2*x+1/2*z",
-    "1/2*x+1/2*y,1/2*x-1/2*y,-z",
-    "1/2*y+1/2*z,1/2*x+1/2*z,1/2*x+1/2*y",
-    "-1/2*x+1/2*y+1/2*z,1/2*x-1/2*y+1/2*z,1/2*x+1/2*y-1/2*z",
-    "-1/2*x+z,1/2*x,y",
-    "x-1/2*z,y,1/2*z",
-    "1/2*x+1/2*y,-1/2*x+1/2*y,z",
+    "-x,-y/2+z/2,y/2+z/2",
+    "-x/2+z/2,-y,x/2+z/2",
+    "x/2+y/2,x/2-y/2,-z",
+    "y/2+z/2,x/2+z/2,x/2+y/2",
+    "-x/2+y/2+z/2,x/2-y/2+z/2,x/2+y/2-z/2",
+    "-x/2+z,x/2,y",
+    "x-z/2,y,z/2",
+    "x/2+y/2,-x/2+y/2,z",
   };
   return basisops[basisop_idx];
 }

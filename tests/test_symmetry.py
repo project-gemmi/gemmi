@@ -97,7 +97,7 @@ class TestSymmetry(unittest.TestCase):
         inv = op.inverse()
         self.assertEqual(inv * op, 'x,y,z')
         self.assertEqual(op * inv, 'x,y,z')
-        expected_inv = '-1/3*x+2/3*y-1/3*z,-2/3*x+1/3*y+1/3*z,1/3*x+1/3*y+1/3*z'
+        expected_inv = '-x/3+2/3*y-z/3,-2/3*x+y/3+z/3,x/3+y/3+z/3'
         self.assertEqual(inv.triplet(), expected_inv)
         self.assertEqual(gemmi.Op(expected_inv), inv)
         op = gemmi.Op('1/2*x+1/2*y,-1/2*x+1/2*y,z')
