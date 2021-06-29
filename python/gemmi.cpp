@@ -19,15 +19,15 @@ void add_misc(py::module& m) {
   py::class_<SmallStructure::Site>(small_structure, "Site")
     .def(py::init<>())
     .def(py::init(&gemmi::atom_to_site))
-    .def_readonly("label", &SmallStructure::Site::label)
-    .def_readonly("type_symbol", &SmallStructure::Site::type_symbol)
-    .def_readonly("fract", &SmallStructure::Site::fract)
-    .def_readonly("occ", &SmallStructure::Site::occ)
-    .def_readonly("u_iso", &SmallStructure::Site::u_iso)
-    .def_readonly("element", &SmallStructure::Site::element)
-    .def_readonly("charge", &SmallStructure::Site::charge)
-    .def_readonly("disorder_group", &SmallStructure::Site::disorder_group)
-    .def_readonly("aniso", &SmallStructure::Site::aniso)
+    .def_readwrite("label", &SmallStructure::Site::label)
+    .def_readwrite("type_symbol", &SmallStructure::Site::type_symbol)
+    .def_readwrite("fract", &SmallStructure::Site::fract)
+    .def_readwrite("occ", &SmallStructure::Site::occ)
+    .def_readwrite("u_iso", &SmallStructure::Site::u_iso)
+    .def_readwrite("element", &SmallStructure::Site::element)
+    .def_readwrite("charge", &SmallStructure::Site::charge)
+    .def_readwrite("disorder_group", &SmallStructure::Site::disorder_group)
+    .def_readwrite("aniso", &SmallStructure::Site::aniso)
     .def("orth", &SmallStructure::Site::orth)
     .def("__repr__", [](const SmallStructure::Site& self) {
         return "<gemmi.SmallStructure.Site " + self.label + ">";
@@ -47,15 +47,19 @@ void add_misc(py::module& m) {
     .def(py::init<>())
     .def_readwrite("name", &SmallStructure::name)
     .def_readwrite("cell", &SmallStructure::cell)
-    .def_readonly("spacegroup_hm", &SmallStructure::spacegroup_hm)
+    .def_readwrite("spacegroup_hm", &SmallStructure::spacegroup_hm)
     .def_readonly("sites", &SmallStructure::sites)
     .def_readonly("atom_types", &SmallStructure::atom_types)
+    .def("add_site", [](SmallStructure& self, const SmallStructure::Site& site) {
+        self.sites.push_back(site);
+    })
     .def("find_spacegroup", &SmallStructure::find_spacegroup)
     .def("get_all_unit_cell_sites", &SmallStructure::get_all_unit_cell_sites)
     .def("remove_hydrogens", &SmallStructure::remove_hydrogens)
     .def("change_occupancies_to_crystallographic",
          &SmallStructure::change_occupancies_to_crystallographic,
          py::arg("max_dist")=0.4)
+    .def("setup_cell_images", &SmallStructure::setup_cell_images)
     .def("__repr__", [](const SmallStructure& self) {
         return "<gemmi.SmallStructure: " + std::string(self.name) + ">";
     });
