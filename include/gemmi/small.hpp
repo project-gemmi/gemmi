@@ -85,6 +85,10 @@ struct SmallStructure {
         site.occ /= (n_mates + 1);
     }
   }
+
+  void setup_cell_images() {
+    cell.set_cell_images_from_spacegroup(find_spacegroup());
+  }
 };
 
 template<typename T>
