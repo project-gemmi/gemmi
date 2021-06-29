@@ -1533,6 +1533,18 @@ Now we can compute structure factors from Model for any (hkl):
   >>> calc_e.calculate_sf_from_model(st[0], (3,4,5))
   (54.50873699946033+53.39498671218277j)
 
+Similarly, for small molecules:
+
+.. doctest::
+  :skipif: sys.platform == 'win32'
+
+  >>> small = gemmi.read_small_structure('../tests/1011031.cif')
+  >>> small.change_occupancies_to_crystallographic()
+  >>> calc_x = gemmi.StructureFactorCalculatorX(small.cell)
+  >>> calc_x.calculate_sf_from_small_structure(small, (0,2,4))
+  (17.814263474967163-6.544854223135837e-15j)
+
+
 .. _addends:
 
 Addends

@@ -75,6 +75,16 @@ struct SmallStructure {
   void remove_hydrogens() {
     vector_remove_if(sites, [](const Site& a) { return a.element.is_hydrogen(); });
   }
+
+  // pre: atoms on special positions have "chemical" occupancy (i.e. not divided
+  // by n for n-fold symmetry)
+  void change_occupancies_to_crystallographic(double max_dist=0.4) {
+    for (Site& site : sites) {
+      int n_mates = cell.is_special_position(site.fract, max_dist);
+      if (n_mates != 0)
+        site.occ /= (n_mates + 1);
+    }
+  }
 };
 
 template<typename T>

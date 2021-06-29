@@ -118,6 +118,20 @@ together with the unit cell and symmetry.
     >>> site.charge   # obtained from type_symbol 'Si4+'
     4
 
+Occupancies in small molecules normally represent the real, chemical occupancy.
+This differs from macromolecular crystallography, where models normally store
+"crystallographic" occupancy -- atoms on special positions have occupancy
+divided by the number of symmetry images in the same place.
+This reduction of occupancies simplifies calculation of structure factors.
+
+.. doctest::
+
+    >>> 1 / site.occ
+    1.0
+    >>> SiC.change_occupancies_to_crystallographic()
+    >>> 1 / site.occ
+    24.0
+
 We will need another cif file to show anisotropic ADPs and disorder_group:
 
 .. doctest::

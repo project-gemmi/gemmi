@@ -53,6 +53,9 @@ void add_misc(py::module& m) {
     .def("find_spacegroup", &SmallStructure::find_spacegroup)
     .def("get_all_unit_cell_sites", &SmallStructure::get_all_unit_cell_sites)
     .def("remove_hydrogens", &SmallStructure::remove_hydrogens)
+    .def("change_occupancies_to_crystallographic",
+         &SmallStructure::change_occupancies_to_crystallographic,
+         py::arg("max_dist")=0.4)
     .def("__repr__", [](const SmallStructure& self) {
         return "<gemmi.SmallStructure: " + std::string(self.name) + ">";
     });

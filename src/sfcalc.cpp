@@ -667,11 +667,7 @@ void process(const std::string& input, const OptParser& p) {
       gemmi::fail("no atoms in the file");
     // SM CIF files specify full occupancy for atoms on special positions.
     // We need to adjust it for symmetry calculations.
-    for (gemmi::SmallStructure::Site& site : small.sites) {
-      int n_mates = small.cell.is_special_position(site.fract, 0.4);
-      if (n_mates != 0)
-        site.occ /= (n_mates + 1);
-    }
+    small.change_occupancies_to_crystallographic();
   }
 
   if (!p.options[Dmin] || !use_st) {

@@ -19,7 +19,8 @@ void add_sfcalc(py::module& m, const char* name, bool with_mb) {
   sfc
     .def(py::init<const gemmi::UnitCell&>())
     .def_readwrite("addends", &SFC::addends)
-    .def("calculate_sf_from_model", &SFC::calculate_sf_from_model);
+    .def("calculate_sf_from_model", &SFC::calculate_sf_from_model)
+    .def("calculate_sf_from_small_structure", &SFC::calculate_sf_from_small_structure);
   if (with_mb)
     sfc
       .def("mott_bethe_factor", &SFC::mott_bethe_factor)
