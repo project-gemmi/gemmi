@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>  // for strpbrk
 #include <algorithm>
+#include <iostream>  // for cerr
 #ifndef GEMMI_ALL_IN_ONE
 # define GEMMI_WRITE_IMPLEMENTATION 1
 #endif
@@ -52,10 +53,10 @@ int GEMMI_MAIN(int argc, char **argv) {
     fprintf(stderr, "Specify transform with option --hkl\n");
     return 1;
   }
-  const char* hkl_arg = p.options[Hkl].arg;
+  std::string hkl_arg = p.options[Hkl].arg;
   try {
     gemmi::Op op = gemmi::parse_triplet(hkl_arg);
-    if (std::strpbrk(hkl_arg, "xyzabcXYZABC"))
+    if (std::strpbrk(hkl_arg.c_str(), "xyzabcXYZABC"))
       gemmi::fail("specify OP in terms of h, k and l");
     if (op.tran != gemmi::Op::Tran{{0, 0, 0}})
       gemmi::fail("reindexing operator should not have a translation");
@@ -69,13 +70,13 @@ int GEMMI_MAIN(int argc, char **argv) {
     // for now we use mtz.warnings in reindex_mtz()
     mtz.warnings = stderr;
 
-    reindex_mtz(mtz, op, verbose);
+    reindex_mtz(mtz, op, verbose, &std::cerr);
 
     if (!p.options[NoSort])
       mtz.sort();
     if (!p.options[NoHistory])
       mtz.history.emplace(mtz.history.begin(),
-                          "Reindexed with gemmi-reindex " GEMMI_VERSION);
+                          "From gemmi-reindex " GEMMI_VERSION " with [" + hkl_arg + "]");
     if (verbose)
       fprintf(stderr, "Writing %s ...\n", output_path);
     mtz.write_to_file(output_path);

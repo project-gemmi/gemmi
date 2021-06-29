@@ -5,24 +5,48 @@
 #ifndef GEMMI_REINDEX_HPP_
 #define GEMMI_REINDEX_HPP_
 
+#include <ostream>  // for Mtz
 #include "mtz.hpp"  // for Mtz
 
 namespace gemmi {
 
 // For now it's only partly-working
-// TODO: handle operations that results in non-integral indices.
-void reindex_mtz(Mtz& mtz, const Op& op, bool verbose) {
+void reindex_mtz(Mtz& mtz, const Op& op, bool verbose, std::ostream* out) {
   mtz.switch_to_original_hkl();
-  // transpose rotation matrix
-  // TODO: handle op.rot that is not a rotation matrix (i.e. cell volume change)
   Op real_space_op{op.transposed_rot(), {0, 0, 0}};
-  if (verbose)  { // for now we use mtz.warn for output
-    if (!mtz.warnings)
-      mtz.warnings = stderr;
-    mtz.warn("real space transformation: " + real_space_op.triplet());
+  if (verbose && out)
+    *out << "real space transformation: " << real_space_op.triplet() << '\n';
+  size_t replace_row = size_t(-1);
+  // change Miller indices
+  for (size_t n = 0; n < mtz.data.size(); n += mtz.columns.size()) {
+    Miller hkl_den = real_space_op.apply_to_hkl_without_division(mtz.get_hkl(n));
+    Miller hkl = Op::divide_hkl_by_DEN(hkl_den);
+    if (hkl[0] * Op::DEN == hkl_den[0] &&
+        hkl[1] * Op::DEN == hkl_den[1] &&
+        hkl[2] * Op::DEN == hkl_den[2]) {
+      mtz.set_hkl(n, hkl);
+    } else {
+      if (replace_row == size_t(-1))
+        replace_row = n;
+      mtz.data[n] = NAN;  // mark for removal
+    }
   }
-  for (size_t n = 0; n < mtz.data.size(); n += mtz.columns.size())
-    mtz.set_hkl(n, real_space_op.apply_to_hkl(mtz.get_hkl(n)));
+  // remove reflections that came out fractional
+  if (replace_row != size_t(-1)) {
+    size_t ncol = mtz.columns.size();
+    for (size_t n = replace_row + ncol; n < mtz.data.size(); n += ncol)
+      if (!std::isnan(mtz.data[n])) {
+        std::memcpy(mtz.data.data() + replace_row,
+                    mtz.data.data() + n,
+                    ncol * sizeof(float));
+        replace_row += ncol;
+      }
+    if (out)
+      *out << "Reflections removed (because of fractional indices): "
+           << (mtz.data.size() - replace_row) / ncol << '\n';
+    mtz.data.resize(replace_row);
+    mtz.nreflections = int(replace_row / ncol);
+  }
   // hand change requires data modification
   if (op.det_rot() < 0)
     for (Mtz::Column& column : mtz.columns) {
@@ -30,8 +54,8 @@ void reindex_mtz(Mtz& mtz, const Op& op, bool verbose) {
       if (column.type == 'D') {
         for (float& value : column)
           value = -value;
-        if (verbose)
-          mtz.warn("Column " + column.label + ": anomalous difference negated.");
+        if (verbose && out)
+          *out << "Column " << column.label << ": anomalous difference negated.\n";
         continue;
       }
       // swap (+) and (-)
@@ -45,26 +69,30 @@ void reindex_mtz(Mtz& mtz, const Op& op, bool verbose) {
           for (size_t n = 0; n < mtz.data.size(); n += mtz.columns.size())
             std::swap(mtz.data[n + column.idx],
                       mtz.data[n + minus_column->idx]);
-          if (verbose)
-            mtz.warn("Swapped values from " + column.label + " and " + minus_label + ".");
+          if (verbose && out)
+            *out << "Swapped columns " << column.label << " and " << minus_label << ".\n";
         } else {
-          mtz.warn("Warning: matching pair not found for: " + column.label);
+          if (out)
+            *out << "WARNING: matching pair not found for " << column.label << '\n';
         }
       }
     }
   // change space group
   mtz.spacegroup = find_spacegroup_by_change_of_basis(mtz.spacegroup, op.inverse());
   if (mtz.spacegroup) {
-    if (verbose)
-      mtz.warn("Space group changed from " + mtz.spacegroup_name + " to " +
-               mtz.spacegroup->xhm() + ".");
+    if (verbose && out)
+      *out << "Space group changed from " << mtz.spacegroup_name << " to "
+           << mtz.spacegroup->xhm() << ".\n";
   } else {
-    mtz.warn("WARNING: new space group name could not be determined.");
+    if (out)
+      *out << "WARNING: new space group name could not be determined.\n";
   }
-  // change unit cell
-  // TODO: change each unit cell separately, including batch headers
-  UnitCell new_cell = mtz.cell.change_basis(real_space_op, false);
-  mtz.set_cell_for_all(new_cell);
+  // change unit cell parameters
+  mtz.cell = mtz.cell.change_basis(real_space_op, false);
+  for (Mtz::Dataset& ds : mtz.datasets)
+    ds.cell = ds.cell.change_basis(real_space_op, false);
+  for (Mtz::Batch& batch : mtz.batches)
+    batch.set_cell(batch.get_cell().change_basis(real_space_op, false));
 
   if (mtz.is_merged())
     mtz.ensure_asu();
