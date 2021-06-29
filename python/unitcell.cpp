@@ -245,6 +245,7 @@ void add_unitcell(py::module& m) {
     .def_property_readonly("orthogonalization_matrix",
                            [](const UnitCell& self) { return self.orth.mat; })
     .def("set", &UnitCell::set)
+    .def("change_basis", &UnitCell::change_basis, py::arg("op"), py::arg("set_images"))
     .def("is_crystal", &UnitCell::is_crystal)
     .def("calculate_u_eq", &UnitCell::calculate_u_eq)
     .def("fractionalize", &UnitCell::fractionalize)

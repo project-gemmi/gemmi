@@ -63,9 +63,7 @@ void reindex_mtz(Mtz& mtz, const Op& op, bool verbose) {
   }
   // change unit cell
   // TODO: change each unit cell separately, including batch headers
-  Mat33 mat = mtz.cell.orth.mat.multiply(rot_as_mat33(real_space_op));
-  UnitCell new_cell;
-  new_cell.set_from_vectors(mat.column_copy(0), mat.column_copy(1), mat.column_copy(2));
+  UnitCell new_cell = mtz.cell.change_basis(real_space_op, false);
   mtz.set_cell_for_all(new_cell);
 
   if (mtz.is_merged())

@@ -95,6 +95,21 @@ class TestUnitCell(unittest.TestCase):
         for a, b in zip(rmt.elements(), cctbx_rmm):
             self.assertAlmostEqual(a, b, delta=1e-15)
 
+    def test_change_of_basis(self):
+        uc = gemmi.UnitCell(20, 30, 39, 73, 93, 99)
+        op = gemmi.Op('y-x/2,-2/3*z+2/3*y,3*x')
+        uc2 = uc.change_basis(op, set_images=False)
+        print(uc.volume, uc2.volume)
+        # compare with result from cctbx:
+        #  from cctbx import sgtbx, uctbx
+        #  u = uctbx.unit_cell((20,30,39, 73,93,99))
+        #  op = sgtbx.change_of_basis_op('y-x/2,-2/3*z+2/3*y,3*x').inverse()
+        #  print(u.change_basis(cb_op=op).parameters())
+        expected = (117.9468784563987, 25.977921933207348, 20.0,
+                    130.5, 107.65517573180257, 82.63132106791868)
+        for (p, q) in zip(uc2.parameters, expected):
+            self.assertAlmostEqual(p, q)
+
     def test_atom_to_site(self):
         cell = UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
         atom = gemmi.Atom()

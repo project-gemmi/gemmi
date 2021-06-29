@@ -546,6 +546,17 @@ need the latter you can calculate it directly:
     >>> cell.calculate_1_d2([8, -9, 10])
     0.20240687828293985
 
+When changing a symmetry setting of coordinates or reindexing reflections
+we need a new unit cell, which can be obtained with:
+
+.. doctest::
+
+    >>> cell.change_basis(gemmi.Op('y,z,x'), set_images=True)
+    <gemmi.UnitCell(45.07, 25.14, 39.5, 90, 90, 90)>
+
+With ``set_images=False`` the ``images`` list in the new unit cell is empty.
+With ``True`` -- it contains transformed original list
+(but it doesn't work correctly when the cell volume changes).
 
 Reading coordinate files
 ========================

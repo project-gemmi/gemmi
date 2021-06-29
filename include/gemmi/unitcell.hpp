@@ -260,6 +260,22 @@ struct UnitCell {
         deg(vb.angle(vc)), deg(vc.angle(va)), deg(va.angle(vb)));
   }
 
+  UnitCell change_basis(const Op& op, bool set_images) {
+    Mat33 mat = orth.mat.multiply(rot_as_mat33(op));
+    UnitCell new_cell;
+    new_cell.set_from_vectors(mat.column_copy(0),
+                              mat.column_copy(1),
+                              mat.column_copy(2));
+    if (set_images && !images.empty()) {
+      new_cell.images.reserve(images.size());
+      Transform tr{rot_as_mat33(op), tran_as_vec3(op)};
+      Transform tr_inv = tr.inverse();
+      for (const FTransform& im : images)
+        new_cell.images.push_back(tr.combine(im).combine(tr_inv));
+    }
+    return new_cell;
+  }
+
   void set_cell_images_from_spacegroup(const SpaceGroup* sg) {
     images.clear();
     cs_count = 0;
