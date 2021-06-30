@@ -419,7 +419,7 @@ struct Grid : GridBase<T> {
                   std::array<std::array<std::array<T,4>,4>,4>& copy) const {
     auto prepare_indices = [this](double& r, int nt, int (&indices)[4]) {
       int t;
-      r = this->grid_modulo(r, nu, &t);
+      r = this->grid_modulo(r, nt, &t);
       indices[0] = (t != 0 ? t : nt) - 1;
       indices[1] = t;
       if (t + 2 < nt) {
