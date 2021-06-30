@@ -401,6 +401,7 @@ if (USE_PYTHON)
   # avoid GCC warning: the ABI of passing structure with 'complex float' member
   # has changed in GCC 4.4
   set_source_files_properties(python/recgrid.cpp python/hkl.cpp python/mtz.cpp
+                              src/mtz.cpp
                               PROPERTIES COMPILE_FLAGS
                               $<$<CXX_COMPILER_ID:GNU>:-Wno-psabi>)
   support_gz(gemmi)

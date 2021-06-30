@@ -9,6 +9,7 @@
 #include <gemmi/math.hpp>
 #include <gemmi/it92.hpp>
 #include <gemmi/util.hpp>  // for is_in_list
+#include <gemmi/asudata.hpp>  // for ComplexCorrelation
 #include <linalg.h>
 
 static double draw() { return 10.0 * std::rand() / RAND_MAX - 5; }
@@ -127,6 +128,17 @@ TEST_CASE("Correlation") {
   // scipy.stats.linregress([2.1, 2.5, 4.0, 3.6], [8, 12, 14, 10])
   CHECK_EQ(cor.slope(), doctest::Approx(1.9087136929460577));
   CHECK_EQ(cor.intercept(), doctest::Approx(5.178423236514524));
+}
+
+TEST_CASE("ComplexCorrelation") {
+  gemmi::ComplexCorrelation cor;
+  cor.add_point(std::complex<double>{1., 2.},   std::complex<double>{2., 2.});
+  cor.add_point(std::complex<double>{2., 0.},   std::complex<double>{4., 0.});
+  cor.add_point(std::complex<double>{3., -0.3}, std::complex<double>{7., -0.1});
+  std::complex<double> cc = cor.coefficient();
+  // compare with value from numpy.corrcoef
+  CHECK(std::fabs(cc.real() - 0.8929758288830972) < 1e-17);
+  CHECK(std::fabs(cc.imag() - -0.37799898875604704) < 1e-16);
 }
 
 TEST_CASE("string_to_int") {

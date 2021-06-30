@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <unordered_map>
 #include <gemmi/mtz.hpp>
+#include <gemmi/asudata.hpp>  // for AsuData
 #include <gemmi/fileutil.hpp> // for file_open
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/input.hpp>    // for FileStream, MemoryStream
@@ -18,7 +19,7 @@ using std::printf;
 namespace {
 
 enum OptionIndex { Headers=4, Dump, PrintBatch, PrintBatches,
-                   PrintAppendix, PrintTsv, PrintStats, CheckAsu,
+                   PrintAppendix, PrintTsv, PrintStats, CheckAsu, Compare,
                    ToggleEndian, NoIsym, UpdateReso };
 
 const option::Descriptor Usage[] = {
@@ -44,6 +45,8 @@ const option::Descriptor Usage[] = {
     "  -s, --stats  \tPrint column statistics (completeness, mean, etc)." },
   { CheckAsu, 0, "", "check-asu", Arg::None,
     "  --check-asu  \tCheck if reflections are in conventional ASU." },
+  { Compare, 0, "", "compare", Arg::Required,
+    "  --compare=FILE  \tCompare two MTZ files." },
   { ToggleEndian, 0, "", "toggle-endian", Arg::None,
     "  --toggle-endian  \tToggle assumed endiannes (little <-> big)." },
   { NoIsym, 0, "", "no-isym", Arg::None,
@@ -249,6 +252,72 @@ void check_asu(const Mtz& mtz) {
          dmin, gemmi::count_reflections(mtz.cell, mtz.spacegroup, dmin));
 }
 
+void compare_mtz(Mtz& mtz1, const char* path2, bool verbose) {
+  Mtz mtz2;
+  mtz2.read_input(gemmi::MaybeGzipped(path2), true);
+  if (mtz1.spacegroup != mtz2.spacegroup)
+    printf("Spacegroup differs:  %s  and  %s\n",
+           mtz1.spacegroup_name.c_str(), mtz2.spacegroup_name.c_str());
+  else if (verbose)
+    printf("Spacegroup the same.\n");
+  if (mtz1.cell != mtz2.cell)
+    printf("Unit cell differs:\n    %g %g %g  %g %g %g\n    %g %g %g  %g %g %g\n",
+           mtz1.cell.a, mtz1.cell.b, mtz1.cell.c,
+           mtz1.cell.alpha, mtz1.cell.beta, mtz1.cell.gamma,
+           mtz2.cell.a, mtz2.cell.b, mtz2.cell.c,
+           mtz2.cell.alpha, mtz2.cell.beta, mtz2.cell.gamma);
+  else if (verbose)
+    printf("Unit cell the same.\n");
+  mtz1.sort();
+  mtz2.sort();
+  // Check if indices are the same. "H" is a dummy value for AsuData.
+  {
+    gemmi::AsuData<int> ad1 = gemmi::make_asu_data<int>(mtz1, "H", true);
+    gemmi::AsuData<int> ad2 = gemmi::make_asu_data<int>(mtz2, "H", true);
+    int n = gemmi::count_equal_values(ad1.v, ad2.v);
+    if (n != mtz1.nreflections || n != mtz2.nreflections)
+      printf("Miller indices differ: %d common (all: %d and %d).\n",
+              n, mtz1.nreflections, mtz2.nreflections);
+    else
+      printf("All Miller indices are the same. Count: %d\n", n);
+  }
+  for (auto col = mtz1.columns.begin() + 3; col < mtz1.columns.end(); ++col) {
+    const Mtz::Column* col2 = mtz2.column_with_label(col->label);
+    if (!col2) {
+      printf("Missing column: %s\n", col->label.c_str());
+      continue;
+    }
+    if (col->type != col2->type) {
+      printf("Type of column %s differs: %c and %c\n",
+             col->label.c_str(), col->type, col2->type);
+      continue;
+    }
+    if (col->type == 'F' && col+1 != mtz1.columns.end() && (col+1)->type == 'P') {
+      std::array<std::string,2> labels{{col->label, (col+1)->label}};
+      auto ad1 = gemmi::make_asu_data<std::complex<float>,2>(mtz1, labels, true);
+      auto ad2 = gemmi::make_asu_data<std::complex<float>,2>(mtz2, labels, true);
+      gemmi::ComplexCorrelation cor = gemmi::calculate_hkl_complex_correlation(ad1.v, ad2.v);
+      std::complex<double> cc = cor.coefficient();
+      printf("Column %s/%s: |CC|=%.8g  phase(CC)=%g deg  ratio=%g  n=%d\n",
+             col->label.c_str(), (col+1)->label.c_str(),
+             std::abs(cc), gemmi::deg(std::arg(cc)), cor.mean_ratio(), cor.n);
+      ++col;
+    } else if (col->type == 'I' || col->type == 'B' || col->type == 'Y') {
+      auto ad1 = gemmi::make_asu_data<float>(mtz1, col->label, true);
+      auto ad2 = gemmi::make_asu_data<float>(mtz2, col->label, true);
+      int n = gemmi::count_equal_values(ad1.v, ad2.v);
+      printf("Column %s: identical: %d  (all: %zu and %zu)\n",
+             col->label.c_str(), n, ad1.size(), ad2.size());
+    } else { // J, D, Q, G, L, K, M, E, P, A, Y
+      auto ad1 = gemmi::make_asu_data<float>(mtz1, col->label, true);
+      auto ad2 = gemmi::make_asu_data<float>(mtz2, col->label, true);
+      gemmi::Correlation cor = gemmi::calculate_hkl_value_correlation(ad1.v, ad2.v);
+      printf("Column %s: CC=%.8g  ratio=%.8g  n=%d\n",
+             col->label.c_str(), cor.coefficient(), cor.mean_ratio(), cor.n);
+    }
+  }
+}
+
 template<typename Stream>
 void print_mtz_info(Stream&& stream, const char* path,
                     const std::vector<option::Option>& options) {
@@ -275,14 +344,14 @@ void print_mtz_info(Stream&& stream, const char* path,
   mtz.read_history_and_batch_headers(stream);
   mtz.setup_spacegroup();
   if (options[PrintTsv] || options[PrintStats] || options[CheckAsu] ||
-      options[UpdateReso])
+      options[Compare] || options[UpdateReso])
     mtz.read_raw_data(stream);
   if (options[UpdateReso])
     mtz.update_reso();
   if (options[Dump] ||
       !(options[PrintBatch] || options[PrintBatches] || options[PrintTsv] ||
-        options[PrintStats] || options[CheckAsu] || options[Headers] ||
-        options[PrintAppendix]))
+        options[PrintStats] || options[CheckAsu] || options[Compare] ||
+        options[Headers] || options[PrintAppendix]))
     dump(mtz);
   if (options[PrintBatch]) {
     for (const option::Option* o = options[PrintBatch]; o; o = o->next()) {
@@ -307,6 +376,9 @@ void print_mtz_info(Stream&& stream, const char* path,
     print_stats(mtz);
   if (options[CheckAsu])
     check_asu(mtz);
+  if (options[Compare])
+    // here mtz gets sorted, so this option must be at the end
+    compare_mtz(mtz, options[Compare].arg, options[Verbose]);
 }
 
 } // anonymous namespace

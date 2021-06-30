@@ -76,6 +76,7 @@ struct Intensities {
   }
 
   // pre: both are sorted
+  // cf. calculate_hkl_value_correlation()
   Correlation calculate_correlation(const Intensities& other) const {
     Correlation corr;
     auto r1 = data.begin();

@@ -13,6 +13,7 @@ Print informations from an mtz file.
   --tsv            Print all the data as tab-separated values.
   -s, --stats      Print column statistics (completeness, mean, etc).
   --check-asu      Check if reflections are in conventional ASU.
+  --compare=FILE   Compare two MTZ files.
   --toggle-endian  Toggle assumed endiannes (little <-> big).
   --no-isym        Do not apply symmetry from M/ISYM column.
   --update-reso    Recalculate resolution limits before printing.

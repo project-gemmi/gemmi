@@ -12,7 +12,7 @@
 #include <gemmi/it92.hpp>      // for IT92
 #include <gemmi/c4322.hpp>     // for C4322
 #include <gemmi/math.hpp>      // for sq
-#include <gemmi/mtz.hpp>       // for read_mtz_file
+#include <gemmi/mtz.hpp>       // for Mtz
 #include <gemmi/dencalc.hpp>   // for DensityCalculator
 #include <gemmi/scaling.hpp>   // for Scaling
 #include <gemmi/sfcalc.hpp>    // for calculate_structure_factor
