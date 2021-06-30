@@ -1510,8 +1510,7 @@ in macromolecular crystallography and it was implemented primarily to check
 the accuracy of FFT-based computations. Therefore, the efficiency was not
 a priority here. In particular, space group specific optimizations, described
 by `Bourhis et al (2014) <https://doi.org/10.1107/S2053273314022207>`_,
-are not included. If you would like to use it in performance sensitive
-contact us.
+are not included.
 
 In Python classes StructureFactorCalculatorX and StructureFactorCalculatorE
 perform direct summation using X-ray and electron form factors, respectively.

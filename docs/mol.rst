@@ -165,6 +165,22 @@ and convert to SmallStructure:
   >>> gemmi.mx_to_sx_structure(gemmi.read_structure('../tests/HEM.pdb'))
   <gemmi.SmallStructure: HEM>
 
+You could also create SmallStructure from scratch:
+
+.. doctest::
+
+    >>> small = gemmi.SmallStructure()
+    >>> small.spacegroup_hm = 'F -4 3 m'
+    >>> small.cell = gemmi.UnitCell(4.358, 4.358, 4.358, 90, 90, 90)
+    >>> small.setup_cell_images()
+    >>> # add a single atom
+    >>> site = gemmi.SmallStructure.Site()
+    >>> site.label = 'C1'
+    >>> site.element = gemmi.Element('C')
+    >>> site.fract = gemmi.Fractional(0.25, 0.25, 0.25)
+    >>> site.occ = 1
+    >>> small.add_site(site)
+
 
 .. _chemcomp:
 
