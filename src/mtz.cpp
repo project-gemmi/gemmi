@@ -305,15 +305,21 @@ void compare_mtz(Mtz& mtz1, const char* path2, bool verbose) {
     } else if (col->type == 'I' || col->type == 'B' || col->type == 'Y') {
       auto ad1 = gemmi::make_asu_data<float>(mtz1, col->label, true);
       auto ad2 = gemmi::make_asu_data<float>(mtz2, col->label, true);
-      int n = gemmi::count_equal_values(ad1.v, ad2.v);
+      int nid = gemmi::count_equal_values(ad1.v, ad2.v);
       printf("Column %s: identical: %d  (all: %zu and %zu)\n",
-             col->label.c_str(), n, ad1.size(), ad2.size());
+             col->label.c_str(), nid, ad1.size(), ad2.size());
     } else { // J, D, Q, G, L, K, M, E, P, A, Y
       auto ad1 = gemmi::make_asu_data<float>(mtz1, col->label, true);
       auto ad2 = gemmi::make_asu_data<float>(mtz2, col->label, true);
-      gemmi::Correlation cor = gemmi::calculate_hkl_value_correlation(ad1.v, ad2.v);
-      printf("Column %s: CC=%.8g  ratio=%.8g  n=%d\n",
-             col->label.c_str(), cor.coefficient(), cor.mean_ratio(), cor.n);
+      int nid = gemmi::count_equal_values(ad1.v, ad2.v);
+      printf("Column %s: identical: %d ", col->label.c_str(), nid);
+      if ((size_t)nid == ad1.size() && ad1.size() == ad2.size()) {
+        printf("(all)\n");
+      } else {
+        gemmi::Correlation cor = gemmi::calculate_hkl_value_correlation(ad1.v, ad2.v);
+        printf("CC=%.8g  ratio=%.8g  n=%d\n",
+               cor.coefficient(), cor.mean_ratio(), cor.n);
+      }
     }
   }
 }
