@@ -325,6 +325,37 @@ struct Mtz {
     return cols;
   }
 
+  std::vector<int> positions_of_columns_with_type(char col_type) const {
+    std::vector<int> cols;
+    for (int i = 0; i < (int) columns.size(); ++i)
+      if (columns[i].type == col_type)
+        cols.push_back(i);
+    return cols;
+  }
+
+  // F(+)/(-) pairs should have type G (and L for sigma),
+  // I(+)/(-) -- K (M for sigma), but E(+)/(-) has no special column type,
+  // so here we use column labels not types.
+  std::vector<std::pair<int,int>> positions_of_plus_minus_columns() const {
+    std::vector<std::pair<int,int>> r;
+    for (int i = 0; i < (int) columns.size(); ++i) {
+      const Column& col = columns[i];
+      size_t sign_pos = col.label.find("(+)");
+      if (sign_pos != std::string::npos) {
+        std::string minus_label = columns[i].label;
+        minus_label[sign_pos+1] = '-';
+        for (int j = 0; j < (int) columns.size(); ++j)
+          if (columns[j].label == minus_label &&
+              columns[j].type == col.type &&
+              columns[j].dataset_id == col.dataset_id) {
+            r.emplace_back(i, j);
+            break;
+          }
+      }
+    }
+    return r;
+  }
+
   const Column* column_with_one_of_labels(std::initializer_list<const char*> labels) const {
     for (const char* label : labels) {
       if (const Column* col = column_with_label(label))
@@ -759,14 +790,6 @@ struct Mtz {
       data[offset + i] = static_cast<float>(hkl[i]);
   }
 
-  std::vector<size_t> get_p_columns() const {
-    std::vector<size_t> cols;
-    for (size_t i = 0; i < columns.size(); ++i)
-      if (columns[i].type == 'P')
-        cols.push_back(i);
-    return cols;
-  }
-
   // (for merged MTZ only) change HKL to ASU equivalent, adjust phases
   void ensure_asu() {
     if (!is_merged())
@@ -775,7 +798,13 @@ struct Mtz {
       return;
     GroupOps gops = spacegroup->operations();
     ReciprocalAsu asu(spacegroup);
-    std::vector<size_t> phase_columns = get_p_columns();
+    std::vector<int> phase_columns = positions_of_columns_with_type('P');
+    std::vector<int> abcd_columns = positions_of_columns_with_type('A');
+    std::vector<int> dano_columns = positions_of_columns_with_type('D');
+    std::vector<std::pair<int,int>> plus_minus_columns = positions_of_plus_minus_columns();
+    bool no_special_columns = phase_columns.empty() && abcd_columns.empty() &&
+                              plus_minus_columns.empty() && dano_columns.empty();
+    bool centric = no_special_columns || gops.is_centric();
     for (size_t n = 0; n < data.size(); n += columns.size()) {
       Miller hkl = get_hkl(n);
       if (asu.is_in(hkl))
@@ -783,8 +812,10 @@ struct Mtz {
       auto result = asu.to_asu(hkl, gops);
       // cf. impl::move_to_asu() in asudata.hpp
       set_hkl(n, result.first);
+      if (no_special_columns)
+        continue;
+      int isym = result.second;
       if (!phase_columns.empty()) {
-        int isym = result.second;
         const Op& op = gops.sym_ops[(isym - 1) / 2];
         double shift = op.phase_shift(hkl);
         if (shift != 0) {
@@ -795,6 +826,13 @@ struct Mtz {
             data[n + col] = float(data[n + col] + shift_deg);
         }
       }
+      if (isym % 2 == 0 && !centric) {
+        for (const std::pair<size_t,size_t>& cols : plus_minus_columns)
+          std::swap(data[n + cols.first], data[n + cols.second]);
+        for (size_t col : dano_columns)
+          data[n + col] = -data[n + col];
+      }
+      // TODO handle abcd_columns
     }
   }
 

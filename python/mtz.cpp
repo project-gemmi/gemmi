@@ -239,9 +239,11 @@ void add_mtz(py::module& m) {
     .def("switch_to_original_hkl", &Mtz::switch_to_original_hkl)
     .def("switch_to_asu_hkl", &Mtz::switch_to_asu_hkl)
     .def("write_to_file", &Mtz::write_to_file, py::arg("path"))
-    .def("reindex", [](Mtz& self, const Op& op, bool verbose) {
-        return reindex_mtz(self, op, verbose, &std::cerr);
-    }, py::arg("op"), py::arg("verbose")=false)
+    .def("reindex", [](Mtz& self, const Op& op) {
+        std::ostringstream out;
+        reindex_mtz(self, op, &out);
+        return out.str();
+    }, py::arg("op"))
     .def("__repr__", [](const Mtz& self) {
         return tostr("<gemmi.Mtz with ", self.columns.size(), " columns, ",
                      self.nreflections, " reflections>");

@@ -634,6 +634,38 @@ Here is a complete C++ example how to create a new MTZ file:
 .. literalinclude:: code/newmtz.cpp
 
 
+.. _reindexing:
+
+Reindexing
+----------
+
+Reindexing changes multiple things:
+
+* Miller indices of reflections
+  (if new indices would be fractional the reflection is removed),
+* space group,
+* unit cell parameters,
+* phases (column type P) can be shifted,
+* the same with phase probabilities -- Hendrickson-Lattman coefficients
+  (column type A) can be modified,
+* data in anomalous pairs, such as I(+)/I(-), F(+)/F(-) and E(+)/E(-),
+  can be swapped,
+* anomalous difference (column type D) can change the sign.
+
+Currently, gemmi provides a reindexing function that works only with Mtz
+objects. In C++, this function is in ``reindexing.hpp``.
+In Python, it is a method that returns a textual message for the user:
+
+.. doctest::
+
+  >>> mtz.reindex(gemmi.Op('k,l,h'))
+  'Real space transformation: z,x,y\nSpace group changed from P 21 21 2 to P 2 21 21.\n'
+
+**Current limitations:** H-L coefficients are not handled yet.
+In general, reindexing has not been tested enough. Bugs must be expected.
+
+See also: :ref:`gemmi-reindex <gemmi-reindex>`.
+
 SF mmCIF
 ========
 

@@ -11,11 +11,11 @@
 namespace gemmi {
 
 // For now it's only partly-working
-void reindex_mtz(Mtz& mtz, const Op& op, bool verbose, std::ostream* out) {
+void reindex_mtz(Mtz& mtz, const Op& op, std::ostream* out) {
   mtz.switch_to_original_hkl();
   Op real_space_op{op.transposed_rot(), {0, 0, 0}};
-  if (verbose && out)
-    *out << "real space transformation: " << real_space_op.triplet() << '\n';
+  if (out)
+    *out << "Real space transformation: " << real_space_op.triplet() << '\n';
   size_t replace_row = size_t(-1);
   // change Miller indices
   for (size_t n = 0; n < mtz.data.size(); n += mtz.columns.size()) {
@@ -47,45 +47,22 @@ void reindex_mtz(Mtz& mtz, const Op& op, bool verbose, std::ostream* out) {
     mtz.data.resize(replace_row);
     mtz.nreflections = int(replace_row / ncol);
   }
-  // hand change requires data modification
-  if (op.det_rot() < 0)
-    for (Mtz::Column& column : mtz.columns) {
-      // negate anomalous difference
-      if (column.type == 'D') {
-        for (float& value : column)
-          value = -value;
-        if (verbose && out)
-          *out << "Column " << column.label << ": anomalous difference negated.\n";
-        continue;
-      }
-      // swap (+) and (-)
-      size_t pos = column.label.find("(+)");
-      if (pos != std::string::npos) {
-        std::string minus_label = column.label;
-        minus_label[pos+1] = '-';
-        Mtz::Column* minus_column =
-            mtz.column_with_label(minus_label, &column.dataset());
-        if (minus_column) {
-          for (size_t n = 0; n < mtz.data.size(); n += mtz.columns.size())
-            std::swap(mtz.data[n + column.idx],
-                      mtz.data[n + minus_column->idx]);
-          if (verbose && out)
-            *out << "Swapped columns " << column.label << " and " << minus_label << ".\n";
-        } else {
-          if (out)
-            *out << "WARNING: matching pair not found for " << column.label << '\n';
-        }
-      }
-    }
   // change space group
+  const SpaceGroup* sg_before = mtz.spacegroup;
   mtz.spacegroup = find_spacegroup_by_change_of_basis(mtz.spacegroup, op.inverse());
   if (mtz.spacegroup) {
-    if (verbose && out)
-      *out << "Space group changed from " << mtz.spacegroup_name << " to "
-           << mtz.spacegroup->xhm() << ".\n";
+    if (mtz.spacegroup != sg_before) {
+      if (out)
+        *out << "Space group changed from " << sg_before->xhm() << " to "
+             << mtz.spacegroup->xhm() << ".\n";
+      mtz.spacegroup_number = mtz.spacegroup->ccp4;
+      mtz.spacegroup_name = mtz.spacegroup->hm;
+    } else {
+      if (out)
+        *out << "Space group stays the same:" << sg_before->xhm() << ".\n";
+    }
   } else {
-    if (out)
-      *out << "WARNING: new space group name could not be determined.\n";
+    fail("reindexing: failed to determine new space group name");
   }
   // change unit cell parameters
   mtz.cell = mtz.cell.change_basis(real_space_op, false);

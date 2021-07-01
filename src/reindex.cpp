@@ -70,7 +70,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     // for now we use mtz.warnings in reindex_mtz()
     mtz.warnings = stderr;
 
-    reindex_mtz(mtz, op, verbose, &std::cerr);
+    reindex_mtz(mtz, op, &std::cerr);
 
     if (!p.options[NoSort])
       mtz.sort();

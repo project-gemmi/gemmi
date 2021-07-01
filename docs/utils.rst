@@ -534,10 +534,13 @@ the most reliable one::
     diff f''=-2.29 %
 
 
+.. _gemmi-reindex:
+
 reindex
 =======
 
-Experimental. Do not use it yet for anything but testing.
+Experimental.
+See description of the :ref:`reindexing function <reindexing>` for more details.
 
 Reindex reflections in MTZ file.
 
