@@ -137,8 +137,8 @@ TEST_CASE("ComplexCorrelation") {
   cor.add_point(std::complex<double>{3., -0.3}, std::complex<double>{7., -0.1});
   std::complex<double> cc = cor.coefficient();
   // compare with value from numpy.corrcoef
-  CHECK(std::fabs(cc.real() - 0.8929758288830972) < 1e-17);
-  CHECK(std::fabs(cc.imag() - -0.37799898875604704) < 1e-16);
+  CHECK(std::fabs(cc.real() - 0.8929758288830972) < 1e-15);
+  CHECK(std::fabs(cc.imag() - -0.37799898875604704) < 1e-15);
 }
 
 TEST_CASE("string_to_int") {
