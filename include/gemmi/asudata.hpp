@@ -109,6 +109,10 @@ template<typename T>
 struct ValueSigma {
   using value_type = T;
   T value, sigma;
+
+  bool operator==(const ValueSigma& o) const {
+    return value == o.value && sigma == o.sigma;
+  }
 };
 
 namespace impl {

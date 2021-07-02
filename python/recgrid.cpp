@@ -43,6 +43,9 @@ template<> void add_to_asu_data(py::class_<AsuData<std::complex<float>>>& cl) {
          py::arg("sample_rate")=0.,
          py::arg("exact_size")=std::array<int,3>{{0,0,0}},
          py::arg("order")=AxisOrder::XYZ);
+  cl.def("calculate_correlation", [](const AsuData& self, const AsuData& other) {
+      return calculate_hkl_complex_correlation(self.v, other.v);
+  });
 }
 template<> void add_to_asu_data(py::class_<AsuData<float>>& cl) {
   using AsuData = AsuData<float>;
@@ -113,6 +116,9 @@ void add_asudata(py::module& m, const std::string& prefix) {
       return make_new_column(asu_data, [](const UnitCell& cell, Miller hkl) {
         return cell.calculate_d(hkl);
       });
+    })
+    .def("count_equal_values", [](const AsuData& self, const AsuData& other) {
+      return count_equal_values(self.v, other.v);
     })
     .def("ensure_sorted", &AsuData::ensure_sorted)
     .def("ensure_asu", &AsuData::ensure_asu)
@@ -186,6 +192,11 @@ void add_recgrid(py::module& m) {
     .def("__repr__", [](const VS& self) {
         return tostr("<gemmi.ValueSigma(", self.value, ", ", self.sigma, ")>");
     });
+  py::class_<ComplexCorrelation>(m, "ComplexCorrelation")
+    .def_readonly("n", &ComplexCorrelation::n)
+    .def("coefficient", &ComplexCorrelation::coefficient)
+    .def("mean_ratio", &ComplexCorrelation::mean_ratio)
+    ;
   add_asudata_and_recgrid<int, int8_t>(m, "Int", "ReciprocalInt8Grid");
   add_asudata_and_recgrid<float>(m, "Float", "ReciprocalFloatGrid");
   add_asudata_and_recgrid<std::complex<float>>(m, "Complex", "ReciprocalComplexGrid");

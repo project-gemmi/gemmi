@@ -644,7 +644,7 @@ Reindexing changes multiple things:
 * Miller indices of reflections
   (if new indices would be fractional the reflection is removed),
 * space group,
-* unit cell parameters,
+* unit cell parameters (in MTZ records CELL and DCELL, and in batch headers),
 * phases (column type P) can be shifted,
 * the same with phase probabilities -- Hendrickson-Lattman coefficients
   (column type A) can be modified,

@@ -176,6 +176,7 @@ void add_unitcell(py::module& m) {
     .def("approx", &Transform::approx);
 
   py::class_<Correlation>(m, "Correlation")
+    .def_readonly("n", &Correlation::n)
     .def("coefficient", &Correlation::coefficient)
     .def("mean_ratio", &Correlation::mean_ratio)
     ;
