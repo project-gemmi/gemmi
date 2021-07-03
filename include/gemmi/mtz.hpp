@@ -822,14 +822,14 @@ struct Mtz {
           if (isym % 2 == 0)
             shift = -shift;
           double shift_deg = deg(shift);
-          for (size_t col : phase_columns)
+          for (int col : phase_columns)
             data[n + col] = float(data[n + col] + shift_deg);
         }
       }
       if (isym % 2 == 0 && !centric) {
-        for (const std::pair<size_t,size_t>& cols : plus_minus_columns)
+        for (std::pair<int,int> cols : plus_minus_columns)
           std::swap(data[n + cols.first], data[n + cols.second]);
-        for (size_t col : dano_columns)
+        for (int col : dano_columns)
           data[n + col] = -data[n + col];
       }
       // TODO handle abcd_columns
