@@ -71,7 +71,8 @@ def has_flag(compiler, flagname):
     """
     import tempfile
     with tempfile.NamedTemporaryFile('w', suffix='.cpp', delete=False) as f:
-        f.write('int main (int argc, char **argv) { return 0; }')
+        # Don't trigger -Wunused-parameter.
+        f.write('int main (int, char **) { return 0; }')
         fname = f.name
     try:
         compiler.compile([fname], extra_postargs=[flagname])
@@ -91,6 +92,10 @@ def cpp_flag(compiler):
     The newer version is prefered over c++11 (when it is available).
     """
     flags = ['-std=c++17', '-std=c++14', '-std=c++11']
+
+    # C++17 on Mac requires higher -mmacosx-version-min, skip it for now
+    if sys.platform == 'darwin':
+        flags.pop(0)
 
     for flag in flags:
         if has_flag(compiler, flag):
@@ -112,7 +117,14 @@ class BuildExt(build_ext):
     }
 
     if sys.platform == 'darwin':
-        darwin_opts = ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+        darwin_opts = []
+        if 'MACOSX_DEPLOYMENT_TARGET' not in os.environ:
+            mac_ver = platform.mac_ver()
+            current_macos = tuple(int(x) for x in mac_ver[0].split(".")[:2])
+            if current_macos > (10, 9):
+                darwin_opts.append('-mmacosx-version-min=10.9')
+        if has_flag(self.compiler, '-stdlib=libc++'):
+            darwin_opts.append('-stdlib=libc++')
         c_opts['unix'] += darwin_opts
         l_opts['unix'] += darwin_opts
     elif sys.platform == 'win32':
@@ -136,8 +148,8 @@ class BuildExt(build_ext):
             if has_flag(self.compiler, '-Wl,-s'):
                 link_opts.append('-Wl,-s')
         elif ct.startswith('mingw'):
-            opts.append(cpp_flag(self.compiler))
             #opts.append('-std=c++14')
+            opts.append(cpp_flag(self.compiler))
             opts.append('-fvisibility=hidden')
             opts.append('-g0')
             link_opts.append('-Wl,-s')
