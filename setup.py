@@ -116,18 +116,7 @@ class BuildExt(build_ext):
         'unix': [],
     }
 
-    if sys.platform == 'darwin':
-        darwin_opts = []
-        if 'MACOSX_DEPLOYMENT_TARGET' not in os.environ:
-            mac_ver = platform.mac_ver()
-            current_macos = tuple(int(x) for x in mac_ver[0].split(".")[:2])
-            if current_macos > (10, 9):
-                darwin_opts.append('-mmacosx-version-min=10.9')
-        if has_flag(self.compiler, '-stdlib=libc++'):
-            darwin_opts.append('-stdlib=libc++')
-        c_opts['unix'] += darwin_opts
-        l_opts['unix'] += darwin_opts
-    elif sys.platform == 'win32':
+    if sys.platform == 'win32':
         if sys.version_info[0] == 2:
             # without these variables distutils insist on using VS 2008
             os.environ['DISTUTILS_USE_SDK'] = '1'
@@ -139,6 +128,20 @@ class BuildExt(build_ext):
         ct = self.compiler.compiler_type
         opts = self.c_opts.get(ct, [])
         link_opts = self.l_opts.get(ct, [])
+
+        if sys.platform == 'darwin':
+            darwin_opts = []
+            if 'MACOSX_DEPLOYMENT_TARGET' not in os.environ:
+                import platform
+                mac_ver = platform.mac_ver()
+                current_macos = tuple(int(x) for x in mac_ver[0].split(".")[:2])
+                if current_macos > (10, 9):
+                    darwin_opts.append('-mmacosx-version-min=10.9')
+            if has_flag(self.compiler, '-stdlib=libc++'):
+                darwin_opts.append('-stdlib=libc++')
+            opts += darwin_opts
+            link_opts += darwin_opts
+
         if ct == 'unix':
             opts.append(cpp_flag(self.compiler))
             if has_flag(self.compiler, '-fvisibility=hidden'):
