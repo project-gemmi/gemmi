@@ -25,12 +25,9 @@ class get_pybind_include(object):
     until it is actually installed, so that the ``get_include()``
     method can be invoked. """
 
-    def __init__(self, user=False):
-        self.user = user
-
     def __str__(self):
         import pybind11
-        return pybind11.get_include(self.user)
+        return pybind11.get_include()
 
 if USE_SYSTEM_ZLIB:
     zlib_library = 'z'
@@ -60,7 +57,6 @@ ext_modules = [
                   'third_party',
                   # Path to pybind11 headers
                   get_pybind_include(),
-                  get_pybind_include(user=True)
               ],
               libraries=[zlib_library],
               language='c++'),
@@ -74,27 +70,34 @@ def has_flag(compiler, flagname):
     the specified compiler.
     """
     import tempfile
-    with tempfile.NamedTemporaryFile('w', suffix='.cpp') as f:
+    with tempfile.NamedTemporaryFile('w', suffix='.cpp', delete=False) as f:
         f.write('int main (int argc, char **argv) { return 0; }')
+        fname = f.name
+    try:
+        compiler.compile([fname], extra_postargs=[flagname])
+    except distutils.errors.CompileError:
+        return False
+    finally:
         try:
-            compiler.compile([f.name], extra_postargs=[flagname])
-        except distutils.errors.CompileError:
-            return False
+            os.remove(fname)
+        except OSError:
+            pass
     return True
 
 
 def cpp_flag(compiler):
-    """Return the -std=c++[11/14] compiler flag.
+    """Return the -std=c++[11/14/17] compiler flag.
 
-    The c++14 is prefered over c++11 (when it is available).
+    The newer version is prefered over c++11 (when it is available).
     """
-    if has_flag(compiler, '-std=c++14'):
-        return '-std=c++14'
-    elif has_flag(compiler, '-std=c++11'):
-        return '-std=c++11'
-    else:
-        raise RuntimeError('Unsupported compiler -- at least C++11 support '
-                           'is needed!')
+    flags = ['-std=c++17', '-std=c++14', '-std=c++11']
+
+    for flag in flags:
+        if has_flag(compiler, flag):
+            return flag
+
+    raise RuntimeError('Unsupported compiler -- at least C++11 support '
+                       'is needed!')
 
 
 class BuildExt(build_ext):
@@ -103,9 +106,15 @@ class BuildExt(build_ext):
         'msvc': ['/EHsc', '/D_CRT_SECURE_NO_WARNINGS'],
         'unix': [],
     }
+    l_opts = {
+        'msvc': [],
+        'unix': [],
+    }
 
     if sys.platform == 'darwin':
-        c_opts['unix'] += ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+        darwin_opts = ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+        c_opts['unix'] += darwin_opts
+        l_opts['unix'] += darwin_opts
     elif sys.platform == 'win32':
         if sys.version_info[0] == 2:
             # without these variables distutils insist on using VS 2008
@@ -117,30 +126,26 @@ class BuildExt(build_ext):
     def build_extensions(self):
         ct = self.compiler.compiler_type
         opts = self.c_opts.get(ct, [])
-        extra_link_args = []
+        link_opts = self.l_opts.get(ct, [])
         if ct == 'unix':
-            opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())
             opts.append(cpp_flag(self.compiler))
             if has_flag(self.compiler, '-fvisibility=hidden'):
                 opts.append('-fvisibility=hidden')
             if has_flag(self.compiler, '-g0'):
                 opts.append('-g0')
             if has_flag(self.compiler, '-Wl,-s'):
-                extra_link_args.append('-Wl,-s')
-        elif ct == 'msvc':
-            opts.append('/DVERSION_INFO=\\"%s\\"' %
-                        self.distribution.get_version())
+                link_opts.append('-Wl,-s')
         elif ct.startswith('mingw'):
-            # avoid has_flag() - it didn't work for us in msys2/mingw setup
-            opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())
-            opts.append('-std=c++14')
+            opts.append(cpp_flag(self.compiler))
+            #opts.append('-std=c++14')
             opts.append('-fvisibility=hidden')
             opts.append('-g0')
-            extra_link_args.append('-Wl,-s')
+            link_opts.append('-Wl,-s')
         for ext in self.extensions:
+            ext.define_macros = [('VERSION_INFO',
+                                  '"%s"' % self.distribution.get_version())]
             ext.extra_compile_args = opts
-            if extra_link_args:
-                ext.extra_link_args = extra_link_args
+            ext.extra_link_args = link_opts
         build_ext.build_extensions(self)
 
 setup(
