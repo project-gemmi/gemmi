@@ -74,7 +74,8 @@ void print_outliers(const Topo& topo, const char* tag) {
   }
   for (const Topo::Torsion& t : topo.torsions) {
     double value = gemmi::deg(t.calculate());
-    if (gemmi::angle_abs_diff(value, t.restr->value) > esd_mult * t.restr->esd)
+    double full = 360. / std::max(1, t.restr->period);
+    if (gemmi::angle_abs_diff(value, t.restr->value, full) > esd_mult * t.restr->esd)
       printf("%s torsion %s should be %g (esd %g) but is %.2f\n", tag,
              t.restr->str().c_str(), t.restr->value, t.restr->esd, value);
   }
