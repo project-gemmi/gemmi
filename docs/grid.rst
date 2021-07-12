@@ -639,6 +639,10 @@ To cover a molecule with 5Å margin do::
 After calling ``set_extent()`` we have the same situation as before calling
 ``setup()`` -- some grid functions may not work correctly.
 
+The current extent of the map can be read using function ``get_extent()``.
+It can be used to write a map that covers the same area as the original map
+read from the file (see Python example below).
+
 Python
 ------
 
@@ -680,6 +684,18 @@ To write map covering the model with 5Å margin
 
     >>> st = gemmi.read_structure('../tests/5i55.cif')
     >>> m.set_extent(st.calculate_fractional_box(margin=5))
+    >>> m.write_ccp4_map('out.ccp4')
+
+To write map covering the same area as the original map read from a file
+use function ``get_extent()`` to store the original box:
+
+.. doctest::
+
+    >>> m = gemmi.read_ccp4_map('../tests/5i55_tiny.ccp4')
+    >>> box = m.get_extent()
+    >>> m.setup()
+    >>> # ... here the map gets modified ...
+    >>> m.set_extent(box)
     >>> m.write_ccp4_map('out.ccp4')
 
 Let us end with two examples.
