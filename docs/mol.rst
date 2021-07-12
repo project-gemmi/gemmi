@@ -2829,6 +2829,15 @@ function ``is_hydrogen()`` which returns true for both H and D:
   >>> atom.is_hydrogen()
   False
 
+Atom name in columns 13-16 of the PDB format is padded with a space
+when it causes columns 13-14 to contain the element name.
+We have a little helper function for this special purpose:
+
+.. doctest::
+
+  >>> atom.padded_name()
+  ' CA'
+
 **B-factors** -- atomic displacement parameters.
 
 The PDB format stores isotropic ADP as *B* and

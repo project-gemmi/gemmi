@@ -474,6 +474,7 @@ class TestMol(unittest.TestCase):
             residue = st[0].sole_residue('A', gemmi.SeqId(341, ' '))
             mg_atom = residue.sole_atom('MG')
             self.assertEqual(mg_atom.element.name, 'Mg')
+            self.assertEqual(mg_atom.padded_name(), 'MG')
             self.assertAlmostEqual(mg_atom.b_iso, 67.64, delta=1e-6)
         mg_atom.element = gemmi.Element('Cu')
         self.assertEqual(mg_atom.element.name, 'Cu')
@@ -493,6 +494,10 @@ class TestMol(unittest.TestCase):
         self.assertEqual(residue.sole_atom('HB').element, gemmi.Element('H'))
         self.assertEqual(residue.sole_atom('CG1').element, gemmi.Element('C'))
         self.assertEqual(residue.sole_atom('HG11').element, gemmi.Element('H'))
+        lines = AMBER_FRAGMENT.splitlines()
+        assert(len(lines) == 4)
+        for n, atom in enumerate(residue):
+            self.assertEqual(atom.padded_name(), lines[n][12:16].rstrip())
         chain = gemmi.read_pdb_string(FRAGMENT_WITH_HG)[0]['P']
         self.assertEqual(chain[0].sole_atom('HG').element, gemmi.Element('Hg'))
         self.assertEqual(chain[1].sole_atom('HG1').element, gemmi.Element('Hg'))

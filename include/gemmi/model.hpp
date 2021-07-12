@@ -120,6 +120,18 @@ struct Atom {
   bool has_altloc() const { return altloc != '\0'; }
   double b_eq() const { return u_to_b() / 3. * aniso.trace(); }
   bool is_hydrogen() const { return gemmi::is_hydrogen(element); }
+
+  // Name as a string left-padded like in the PDB format:
+  // the first two characters make the element name.
+  std::string padded_name() const {
+    std::string s;
+    const char* el = element.uname();
+    if (el[1] == '\0' && el[0] == alpha_up(name[0]) && name.size() < 4)
+      s += ' ';
+    s += name;
+    return s;
+  }
+
   // a method present in Atom, Residue, ... Structure - used in templates
   Atom empty_copy() const { return Atom(*this); }
 };

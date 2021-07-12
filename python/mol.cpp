@@ -444,6 +444,7 @@ void add_mol(py::module& m) {
     .def("is_hydrogen", &Atom::is_hydrogen)
     .def("has_altloc", &Atom::has_altloc)
     .def("b_eq", &Atom::b_eq)
+    .def("padded_name", &Atom::padded_name)
     .def("clone", [](const Atom& self) { return new Atom(self); })
     .def("__repr__", [](const Atom& self) {
         std::string r = "<gemmi.Atom " + self.name;

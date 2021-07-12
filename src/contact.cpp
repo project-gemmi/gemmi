@@ -7,7 +7,6 @@
 #include <algorithm>  // for min, max
 #include <gemmi/contact.hpp>
 #include <gemmi/neighbor.hpp>
-#include <gemmi/to_pdb.hpp>    // for padded_atom_name
 #include "gemmi/assembly.hpp"  // for change_to_assembly
 #include <gemmi/read_coor.hpp> // for read_structure_gz
 #define GEMMI_PROG contact
@@ -129,12 +128,12 @@ void print_contacts(Structure& st, const ContactParameters& params) {
       printf("%-11s %-4s%c%3s%2s%5s         "
              "      %-4s%c%3s%2s%5s  %6s %6s %5.2f\n",
              conn_info.c_str(),
-             padded_atom_name(*cra1.atom).c_str(),
+             cra1.atom->padded_name().c_str(),
              cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
              cra1.residue->name.c_str(),
              cra1.chain->name.c_str(),
              cra1.residue->seqid.str().c_str(),
-             padded_atom_name(*cra2.atom).c_str(),
+             cra2.atom->padded_name().c_str(),
              cra2.atom->altloc ? std::toupper(cra2.atom->altloc) : ' ',
              cra2.residue->name.c_str(),
              cra2.chain->name.c_str(),
