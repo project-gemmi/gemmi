@@ -97,8 +97,7 @@ double check_restraint(const Topo::Force force,
     }
     case Topo::RKind::Torsion: {
       const Topo::Torsion& t = topo.torsions[force.index];
-      // TODO consider torsion period
-      double z = t.calculate_z();
+      double z = t.calculate_z();  // takes into account t.restr->period
       if (z > cutoff) {
         int n = printf("%s torsion %s: |Z|=%.1f",
                        tag, t.restr->str().c_str(), z);
@@ -175,6 +174,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       topo.finalize_refmac_topology(monlib);
 
       RMSes rmses;
+      // We could iterate directly over Topo::bonds, Topo::angles, etc,
+      // but then we couldn't output the provenance (res or "link" below).
       for (const Topo::ChainInfo& chain_info : topo.chain_infos)
         for (const Topo::ResInfo& ri : chain_info.res_infos) {
           std::string res = chain_info.name + " " + ri.res->str();
