@@ -347,6 +347,10 @@ Structure read_pdb_from_input(Input&& infile, const std::string& source,
       // never have 4-character names, so H is assumed.
       else if (alpha_up(line[12]) == 'H' && line[15] != ' ')
         atom.element = El::H;
+      // Old versions of the PDB format had hydrogen names such as "1HB ".
+      // Some MD files use similar names for other elements ("1C4A" -> C).
+      else if (is_digit(line[12]))
+        atom.element = impl::find_single_letter_element(line[13]);
       else
         atom.element = Element(line + 12);
       atom.charge = (len > 78 ? read_charge(line[78], line[79]) : 0);

@@ -71,6 +71,18 @@ HETATM 4406 HG    HG P 693      28.820  31.751  40.919  0.20 25.99
 HETATM 4407 HG1   HG P 694      27.455  32.086  39.686  0.20 35.18
 """
 
+TRJCONV_FRAGMENT = """\
+ATOM  12609 5C'N NPH  6378     421.300 400.390 491.570  1.00  0.00
+ATOM  12610 1HN5 NPH  6378     422.020 400.650 490.790  1.00  0.00
+ATOM  12611 2HN5 NPH  6378     420.490 399.940 490.980  1.00  0.00
+ATOM  12612 5O'N NPH  6378     421.940 399.470 492.410  1.00  0.00
+ATOM  12613  PN  NPH  6378     422.280 397.980 491.900  1.00  0.00
+ATOM  12614 1OPN NPH  6378     422.690 397.240 493.120  1.00  0.00
+ATOM  12615 2OPN NPH  6378     423.260 398.170 490.810  1.00  0.00
+ATOM  12616  O3P NPH  6378     420.850 397.490 491.350  1.00  0.00
+"""
+
+
 # from $CCP4/examples/data/insulin.pdb
 UNORDERED_ALTLOC_FRAGMENT = """\
 ATOM     54  CB  THR A   8      21.486  49.557  34.680  1.00 17.33           C  
@@ -495,12 +507,20 @@ class TestMol(unittest.TestCase):
         self.assertEqual(residue.sole_atom('CG1').element, gemmi.Element('C'))
         self.assertEqual(residue.sole_atom('HG11').element, gemmi.Element('H'))
         lines = AMBER_FRAGMENT.splitlines()
-        assert(len(lines) == 4)
         for n, atom in enumerate(residue):
             self.assertEqual(atom.padded_name(), lines[n][12:16].rstrip())
         chain = gemmi.read_pdb_string(FRAGMENT_WITH_HG)[0]['P']
         self.assertEqual(chain[0].sole_atom('HG').element, gemmi.Element('Hg'))
         self.assertEqual(chain[1].sole_atom('HG1').element, gemmi.Element('Hg'))
+
+    def test_pdb_element_names_from_trjconv(self):
+        st = gemmi.read_pdb_string(TRJCONV_FRAGMENT)
+        residue = st[0][''][0]
+        expected = ['C', 'H', 'H', 'O', 'P', 'O', 'O', 'O']
+        lines = TRJCONV_FRAGMENT.splitlines()
+        for n, atom in enumerate(residue):
+            self.assertEqual(atom.element.name, expected[n])
+            self.assertEqual(atom.padded_name(), lines[n][12:16].rstrip())
 
     def test_4hhh_frag(self):
         path = full_path('4hhh_frag.pdb')
