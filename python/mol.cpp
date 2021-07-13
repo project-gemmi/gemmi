@@ -120,6 +120,7 @@ void add_mol(py::module& m) {
     .def("renumber_models", &Structure::renumber_models)
     .def("merge_chain_parts", &Structure::merge_chain_parts,
          py::arg("min_sep")=0)
+    .def("remove_empty_chains", &Structure::remove_empty_chains)
     .def("setup_cell_images", &Structure::setup_cell_images)
     .def("add_entity_types", (void (*)(Structure&, bool)) &add_entity_types,
          py::arg("overwrite")=false)
@@ -134,7 +135,6 @@ void add_mol(py::module& m) {
     .def("remove_waters", remove_waters<Structure>)
     .def("remove_ligands_and_waters",
          (void (*)(Structure&)) &remove_ligands_and_waters)
-    .def("remove_empty_chains", (void (*)(Structure&)) &remove_empty_chains)
     .def("shorten_chain_names", &shorten_chain_names)
     .def("expand_ncs", &expand_ncs, py::arg("how"))
     .def("calculate_box", &calculate_box, py::arg("margin")=0.)

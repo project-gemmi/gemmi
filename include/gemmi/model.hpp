@@ -87,6 +87,11 @@ struct PdbReadOptions {
   bool split_chain_on_ter = false;
 };
 
+// remove empty residues from chain, empty chains from model, etc
+template<class T> void remove_empty_children(T& obj) {
+  using Item = typename T::child_type;
+  vector_remove_if(obj.children(), [](const Item& x) { return x.children().empty(); });
+}
 
 inline bool is_same_conformer(char altloc1, char altloc2) {
   return altloc1 == '\0' || altloc2 == '\0' || altloc1 == altloc2;
@@ -956,6 +961,11 @@ struct Structure {
   void merge_chain_parts(int min_sep=0) {
     for (Model& model : models)
       model.merge_chain_parts(min_sep);
+  }
+
+  void remove_empty_chains() {
+    for (Model& model : models)
+      remove_empty_children(model);
   }
 
   // copy all but models (in general, empty_copy copies all but children)

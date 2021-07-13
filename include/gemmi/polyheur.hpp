@@ -341,16 +341,6 @@ inline void remove_ligands_and_waters(Structure& st) {
       remove_ligands_and_waters(chain);
 }
 
-// Remove empty chains.
-inline void remove_empty_chains(Model& m) {
-  vector_remove_if(m.chains,
-                   [](const Chain& chain) { return chain.residues.empty(); });
-}
-inline void remove_empty_chains(Structure& st) {
-  for (Model& model : st.models)
-    remove_empty_chains(model);
-}
-
 // Trim to alanine. Returns true if trimmed, false if it's (likely) not AA.
 inline bool trim_to_alanine(Residue& res) {
   static const std::pair<std::string, El> ala_atoms[6] = {

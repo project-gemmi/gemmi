@@ -244,12 +244,12 @@ void convert(gemmi::Structure& st,
 
   if (options[RemoveWaters]) {
     remove_waters(st);
-    remove_empty_chains(st);
+    st.remove_empty_chains();
   }
 
   if (options[RemoveLigWat]) {
     remove_ligands_and_waters(st);
-    remove_empty_chains(st);
+    st.remove_empty_chains();
   }
 
   if (options[TrimAla])
