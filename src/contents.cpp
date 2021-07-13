@@ -86,12 +86,15 @@ void print_content_info(const Structure& st, bool /*verbose*/) {
     printf("   The ORIGX matrix is not identity.\n");
   if (st.cell.explicit_matrices)
     printf("   Non-standard fractionalization matrix is given.\n");
-  print_atoms_on_special_positions(st);
+  if (st.cell.is_crystal())
+    print_atoms_on_special_positions(st);
   double n_molecules = order * st.get_ncs_multiplier();
   printf(" Number of images (symmetry * strict NCS): %5g\n", n_molecules);
   assert(n_molecules == st.cell.images.size() + 1);
-  printf(" Cell volume [A^3]: %30.1f\n", st.cell.volume);
-  printf(" ASU volume [A^3]:  %30.1f\n", st.cell.volume / order);
+  if (st.cell.is_crystal()) {
+    printf(" Cell volume [A^3]: %30.1f\n", st.cell.volume);
+    printf(" ASU volume [A^3]:  %30.1f\n", st.cell.volume / order);
+  }
   double water_count = 0;
   int residue_count = 0;
   int mol_h_count = 0;

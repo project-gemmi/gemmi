@@ -406,6 +406,7 @@ struct UnitCell {
   }
 
   // return number of nearby symmetry mates (0 = none, 3 = 4-fold axis, etc)
+  // precondition: is_crystal()
   int is_special_position(const Fractional& fpos, double max_dist) const {
     const double max_dist_sq = max_dist * max_dist;
     int n = 0;
