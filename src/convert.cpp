@@ -13,6 +13,7 @@
 #include "gemmi/resinfo.hpp"   // for expand_protein_one_letter
 #include "gemmi/read_coor.hpp" // for read_structure_gz
 #include "gemmi/select.hpp"    // for parse_cid
+#include "gemmi/neighbor.hpp"  // for merge_atoms_in_expanded_model
 
 #include <cstring>
 #include <iostream>
@@ -227,6 +228,8 @@ void convert(gemmi::Structure& st,
     // After this change Assembly instructions can be outdated.
     // Should they be preserved anyway or removed? Currently - removing.
     st.assemblies.clear();
+    for (gemmi::Model& model : st.models)
+      gemmi::merge_atoms_in_expanded_model(model, st.cell);
   }
 
   if (options[ExpandNcs]) {
@@ -237,6 +240,8 @@ void convert(gemmi::Structure& st,
       default: how_ncs = HowToNameCopiedChain::AddNumber; break;
     }
     gemmi::expand_ncs(st, how_ncs);
+    for (gemmi::Model& model : st.models)
+      gemmi::merge_atoms_in_expanded_model(model, st.cell);
   }
 
   if (options[RemoveH])

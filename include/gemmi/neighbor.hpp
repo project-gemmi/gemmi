@@ -56,8 +56,7 @@ struct NeighborSearch {
     }
   };
 
-  using item_type = std::vector<Mark>;
-  Grid<item_type> grid;
+  Grid<std::vector<Mark>> grid;
   double radius_specified = 0.;
   Model* model = nullptr;
   SmallStructure* small_structure = nullptr;
@@ -80,12 +79,14 @@ struct NeighborSearch {
   void add_site(const SmallStructure::Site& site, int n);
 
   // assumes data in [0, 1), but uses index_n to handle numeric deviations
-  item_type& get_subcell(const Fractional& fr) {
+  std::vector<Mark>& get_subcell(const Fractional& fr) {
     return grid.data[grid.index_n(int(fr.x * grid.nu),
                                   int(fr.y * grid.nv),
                                   int(fr.z * grid.nw))];
   }
 
+  template<typename Func>
+  void for_each_cell(const Position& pos, const Func& func);
   template<typename Func>
   void for_each(const Position& pos, char alt, float radius, const Func& func);
 
@@ -261,10 +262,7 @@ inline void NeighborSearch::add_site(const SmallStructure::Site& site, int n) {
 }
 
 template<typename Func>
-void NeighborSearch::for_each(const Position& pos, char alt, float radius,
-                              const Func& func) {
-  if (radius <= 0.f)
-    return;
+void NeighborSearch::for_each_cell(const Position& pos, const Func& func) {
   Fractional fr = grid.unit_cell.fractionalize(pos).wrap_to_unit();
   const int u0 = int(fr.x * grid.nu);
   const int v0 = int(fr.y * grid.nv);
@@ -281,19 +279,113 @@ void NeighborSearch::for_each(const Position& pos, char alt, float radius,
         size_t idx = grid.index_q(u + du * grid.nu,
                                   v + dv * grid.nv,
                                   w + dw * grid.nw);
-        Position p = grid.unit_cell.orthogonalize(Fractional(fr.x + du,
-                                                             fr.y + dv,
-                                                             fr.z + dw));
-        for (Mark& a : grid.data[idx]) {
-          float dist_sq = a.dist_sq(p);
-          if (a.dist_sq(p) < sq(radius) && is_same_conformer(alt, a.altloc))
-            func(a, dist_sq);
-        }
+        func(grid.data[idx], Fractional(fr.x + du, fr.y + dv, fr.z + dw));
       }
     }
   }
 }
 
+template<typename Func>
+void NeighborSearch::for_each(const Position& pos, char alt, float radius,
+                              const Func& func) {
+  if (radius <= 0.f)
+    return;
+  for_each_cell(pos, [&](std::vector<Mark>& marks, const Fractional& fr) {
+      Position p = grid.unit_cell.orthogonalize(fr);
+      for (Mark& m : marks) {
+        float dist_sq = m.dist_sq(p);
+        if (m.dist_sq(p) < sq(radius) && is_same_conformer(alt, m.altloc))
+          func(m, dist_sq);
+      }
+  });
+}
+
+
+inline void remove_cras(Model& model, std::vector<CRA>& vec) {
+  // sort in reverse order, so items can be erased without invalidating pointers
+  std::sort(vec.begin(), vec.end(), [](const CRA& a, const CRA& b) {
+      return std::tie(a.chain, a.residue, a.atom) > std::tie(b.chain, b.residue, b.atom);
+  });
+  const Atom* prev_a = nullptr;
+  for (CRA& cra : vec) {
+    if (cra.atom == prev_a)
+      continue;
+    prev_a = cra.atom;
+    auto atom_idx = cra.atom - cra.residue->atoms.data();
+    cra.residue->atoms.erase(cra.residue->atoms.begin() + atom_idx);
+    if (cra.residue->atoms.empty()) {
+      auto res_idx = cra.residue - cra.chain->residues.data();
+      cra.chain->residues.erase(cra.chain->residues.begin() + res_idx);
+      if (cra.chain->residues.empty()) {
+        auto chain_idx = cra.chain - model.chains.data();
+        model.chains.erase(model.chains.begin() + chain_idx);
+      }
+    }
+  }
+}
+
+// To be used after expand_ncs() and make_assembly().
+// Searches and merges overlapping equivalent atoms from different chains.
+inline void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell,
+                                          double max_dist=0.2) {
+  using Mark = NeighborSearch::Mark;
+  NeighborSearch ns(model, cell, 4.0);
+  ns.populate(true);
+  std::vector<CRA> to_be_deleted;
+  for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
+    Chain& chain = model.chains[n_ch];
+    for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
+      Residue& res = chain.residues[n_res];
+      for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
+        Atom& atom = res.atoms[n_atom];
+        std::vector<CRA> equiv;
+        ns.for_each_cell(atom.pos, [&](std::vector<Mark>& marks, const Fractional& fr) {
+            for (Mark& m : marks) {
+              // We look for the same atoms, but copied to a different chain.
+              // First quick check that filters out most of non-matching pairs.
+              if (m.altloc != atom.altloc || m.element != atom.element ||
+                  m.chain_idx == n_ch || m.atom_idx != n_atom)
+                continue;
+              // Now check if everything else matches.
+              CRA cra = m.to_cra(model);
+              if (cra.atom &&
+                  cra.atom->serial == atom.serial &&
+                  cra.atom->name == atom.name &&
+                  cra.atom->b_iso == atom.b_iso &&
+                  cra.residue->matches_noseg(res) &&
+                  m.dist_sq(ns.grid.unit_cell.orthogonalize(fr)) < sq(max_dist))
+              equiv.push_back(cra);
+            }
+        });
+        if (!equiv.empty()) {
+          // calculate new occupancy and position for the first atom
+          int n = 1;
+          if (cell.is_crystal())
+            n += cell.is_special_position(atom.pos, max_dist);
+          double occ_sum = n * atom.occ;
+          if (occ_sum > 0) {
+            atom.pos *= occ_sum;
+            for (CRA& cra : equiv) {
+              atom.pos += cra.atom->occ * cra.atom->pos;
+              occ_sum += cra.atom->occ;
+            }
+            atom.pos /= occ_sum;
+            atom.occ = float(occ_sum / n);
+          }
+          // discard overlapping equivalent atoms
+          for (CRA& cra : equiv) {
+            // change atoms to avoid processing them again
+            cra.atom->serial = -1;
+            cra.atom->name.clear();
+            // deleting now would invalidate indices in NeighborSearch
+            to_be_deleted.push_back(cra);
+          }
+        }
+      }
+    }
+  }
+  remove_cras(model, to_be_deleted);
+}
 
 } // namespace gemmi
 #endif

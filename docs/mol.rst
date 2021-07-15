@@ -1838,12 +1838,26 @@ options above, and returns a new Model that represents the assembly.
   <gemmi.Model 1 with 1 chain(s)>
   >>> list(_)
   [<gemmi.Chain A1 with 21 res>]
-  >>> gemmi.make_assembly(st.assemblies[1], st[0], gemmi.HowToNameCopiedChain.AddNumber)
-  <gemmi.Model 1 with 1 chain(s)>
-  >>> list(_)
+  >>> assem = gemmi.make_assembly(st.assemblies[1], st[0], gemmi.HowToNameCopiedChain.AddNumber)
+  >>> list(assem)
   [<gemmi.Chain B1 with 26 res>]
 
 In C++ ``make_assembly()`` is defined in ``<gemmi/assembly.hpp>``.
+
+Atoms at special position usually have fractional occupancy.
+When making an assembly such atoms are copied like all other atoms resulting in,
+for example, two overlapping atoms with occupancy 0.5.
+If you'd like to merge such overlapping identical atoms, use function:
+
+.. doctest::
+
+  >>> gemmi.merge_atoms_in_expanded_model(assem, gemmi.UnitCell(), max_dist=0.2)
+
+Atoms are sometimes slightly off the special position, which means
+a shift between overlapping images.
+The ``max_dist`` parameter specifies cut-off for merging -- atom copies
+are merged only if their distance is smaller. The merged atom has summed
+occupancy and averaged position. B-factors are not changed.
 
 See also the ``--assembly`` option in command-line program
 :ref:`gemmi-convert <convert>`.
@@ -1876,6 +1890,16 @@ you can add NCS copies with:
   >>> st.expand_ncs(gemmi.HowToNameCopiedChain.Short)
 
 The meaning of the argument is the same as in ``make_assembly()`` above.
+
+And as with making assemblies, expansion of NCS may produce overlapping
+identical atoms, which can be merged with:
+
+.. doctest::
+
+  >>> gemmi.merge_atoms_in_expanded_model(st[0], st.cell)
+
+See also the ``--expand-ncs`` option in command-line program
+:ref:`gemmi-convert <convert>`.
 
 ----
 

@@ -477,6 +477,5 @@ void add_mol(py::module& m) {
   m.def("make_assembly", [](const Assembly& assembly, const Model& model,
                             HowToNameCopiedChain how) {
         return make_assembly(assembly, model, how, nullptr);
-  })
-  ;
+  });
 }
