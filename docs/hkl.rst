@@ -1288,6 +1288,8 @@ The grid can be accessed as NumPy 3D array:
   >>> round(array.std(), 5)
   0.66338
 
+.. _map_from_rblock:
+
 and it can be stored in a CCP4 map format:
 
 .. doctest::

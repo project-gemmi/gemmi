@@ -526,8 +526,8 @@ data types. Gemmi supports:
 * and mode 6 -- uint16_t.
 
 CCP4 programs use mode 2 (float) for the electron density,
-and mode 0 (int8_t) for masks. Mask is 0/1 data that marks part of the volume
-(e.g. the solvent region). Other modes are not used in crystallography,
+and mode 0 (int8_t) for masks. A mask is 0/1 data that marks part of the volume,
+such as the solvent region. Other modes are not used in crystallography,
 but may be used for CryoEM data.
 
 The CCP4 format is quite flexible. The data is stored as sections,
@@ -537,9 +537,9 @@ The file can contain only a part of the asymmetric unit,
 or more than an asymmetric unit (i.e. redundant data).
 There are two typical approaches to generate a crystallographic map:
 
-* old-school way: a map covering a molecule with some margin
-  around it is produced using CCP4 utilities such as ``fft`` and ``mapmask``,
-* or a map is made for the asymmetric unit (asu), and the program that reads
+* old-school way: covering a molecule with some margin around it;
+  CCP4 utilities ``fft`` and ``mapmask`` make such a map,
+* or covering the asymmetric unit (asu); the program that reads
   the map is supposed to expand the symmetry. This approach is used by
   the CCP4 clipper library and by programs that use this library,
   such as ``cfft`` and Coot.
@@ -554,23 +554,24 @@ as compared in the
 Nowadays, the CCP4 format is rarely used in crystallography.
 Almost all programs read the reflection data and calculate maps on the fly.
 
-C++
----
-
 Reading
-~~~~~~~
+-------
 
-To read and write CCP4 maps you need::
+C++
+~~~
+
+To work with CCP4 maps you need::
 
     #include <gemmi/ccp4.hpp>
 
-We normally use float type when reading a map file::
+The Ccp4 class is templated with the data type.
+Normally, we use float type for a map::
 
     gemmi::Ccp4<float> map;
     map.read_ccp4_map("my_map.ccp4");
 
-and int8_t when reading a mask (mask typically has only values 0 and 1,
-but in principle it can have values from -127 to 128)::
+and int8_t for a mask (mask typically has only values 0 and 1,
+but in principle the values can be from -127 to 128)::
 
     gemmi::Ccp4<int8_t> mask;
     mask.read_ccp4_map("my_mask.ccp4");
@@ -578,13 +579,39 @@ but in principle it can have values from -127 to 128)::
 If the grid data type does not match the file data type, the library
 will attempt to convert the data when reading.
 
-Header
+Alternatively, you can use helper functions ``read_ccp4_map()``
+and ``read_ccp4_mask()`` defined in ``gemmi/read_map.hpp``.
+
+Python
 ~~~~~~
 
-The CCP4 map header is organised as 56 words followed by space for ten
+To read a ccp4 map:
+
+.. doctest::
+
+    >>> m = gemmi.read_ccp4_map('../tests/5i55_tiny.ccp4')
+    >>> m
+    <gemmi.Ccp4Map with grid 8x6x10 in SG #4>
+
+Similarly, to read a mask (ccp4 map in mode 0) call ``read_ccp4_mask()``.
+
+
+Header
+------
+
+The CCP4 map header is organised as 56 words (4-bytes that are interpreted
+as integer, float or 4 characters) followed by 800 bytes -- a space for ten
 80-character text labels.
-The member functions that access the data from the map header use the word
-number (as in the format description) as a location in the header::
+
+Low-level access to the header is provided by getters and setters
+that use the word number (as in the format description from
+`ccp4 <https://www.ccp4.ac.uk/html/maplib.html>`_
+or `ccp-em <https://www.ccpem.ac.uk/mrc_format/mrc2014.php>`_)
+as the first argument.
+
+**C++**
+
+::
 
     int32_t header_i32(int w) const;
     float header_float(int w) const;
@@ -600,72 +627,7 @@ For example::
     int mode = map.header_i32(4);
     float x = map.header_float(11);
 
-setup()
-~~~~~~~
-
-``read_ccp4_map()`` reads the data from file into a Grid class,
-keeping the same axis order and the same dimensions as in the file.
-But the functions that operate on the grid data (such as ``get_position()``,
-``interpolate_value()``, ``symmetrize()``) expect that the grid covers
-the whole unit cell and that the axes are in the X,Y,Z order.
-So before calling a function that uses either the symmetry or the unit
-cell parameters we need to setup the grid as required::
-
-    map.setup(GridSetup::Full, NAN);
-
-The second argument in this call is a value to be used for unknown values,
-i.e. for values absent in the input file (if the input file does not
-cover the whole asymmetric unit).
-
-Writing
-~~~~~~~
-
-To write a map to a file::
-
-    // the file header needs to be prepared/updated with an explicit call
-    int mode = 2; // ccp4 file mode: 2 for floating-point data, 0 for masks
-    bool update_stats = true; // update min/max/mean/rms values in the header
-    map.update_ccp4_header(mode, update_stats);
-
-    map.write_ccp4_map(filename);
-
-By default, the map written to a file covers the whole unit cell.
-To cover only a given box, call ``set_extent()`` before writing the map.
-Traditionally, CCP4 program MAPMASK was used for this.
-To cover a molecule with 5Å margin do::
-
-    map.set_extent(calculate_fractional_box(structure, 5));
-
-After calling ``set_extent()`` we have the same situation as before calling
-``setup()`` -- some grid functions may not work correctly.
-
-The current extent of the map can be read using function ``get_extent()``.
-It can be used to write a map that covers the same area as the original map
-read from the file (see Python example below).
-
-Python
-------
-
-The Python API is similar.
-
-.. doctest::
-
-    >>> m = gemmi.read_ccp4_map('../tests/5i55_tiny.ccp4')
-    >>> m
-    <gemmi.Ccp4Map with grid 8x6x10 in SG #4>
-    >>> m.grid  # tiny grid as it is a toy example
-    <gemmi.FloatGrid(8, 6, 10)>
-    >>> m.grid.spacegroup
-    <gemmi.SpaceGroup("P 1 21 1")>
-    >>> m.grid.unit_cell
-    <gemmi.UnitCell(29.45, 10.5, 29.7, 90, 111.975, 90)>
-    >>> m.setup()
-    >>> m.grid
-    <gemmi.FloatGrid(60, 24, 60)>
-    >>> m.write_ccp4_map('out.ccp4')
-
-For the low-level access to header one can use the same getters and
-setters as in the C++ version.
+**Python**
 
 .. doctest::
 
@@ -677,8 +639,94 @@ setters as in the C++ version.
     >>> m.header_str(57, 80).strip()
     'Created by MAPMAN V. 080625/7.8.5 at Wed Jan 3 12:57:38 2018 for A. Nonymous'
 
-To write map covering the model with 5Å margin
-(equivalent of running MAPMASK with XYZIN and BORDER 5) do:
+When the file is read, the header is used to set properties of the grid:
+
+.. doctest::
+
+    >>> m.grid  # tiny grid as it is a toy example
+    <gemmi.FloatGrid(8, 6, 10)>
+    >>> m.grid.spacegroup
+    <gemmi.SpaceGroup("P 1 21 1")>
+    >>> m.grid.unit_cell
+    <gemmi.UnitCell(29.45, 10.5, 29.7, 90, 111.975, 90)>
+
+If the grid changes, you may update the map header by calling
+``update_ccp4_header()``.
+
+
+setup()
+-------
+
+``read_ccp4_map()`` reads the data from file into a Grid class,
+keeping the same axis order and the same dimensions as in the file.
+But the functions that operate on the grid data (such as ``get_position()``,
+``interpolate_value()``, ``symmetrize()``) expect that the grid covers
+the whole unit cell and that the axes are in the X,Y,Z order.
+So before calling a function that uses either the symmetry or the unit
+cell parameters we need to setup the grid as required.
+
+We do this by calling function ``setup()`` with two arguments.
+The first argument is one of:
+
+* ReorderOnly -- only reorders axes to X, Y, Z (usually not sufficient),
+* Full -- reorders and expands the grid to cover to the whole unit cell,
+* FullCheck --  additionally, checks consistency of redundant data.
+
+The second argument is a value to be used for unknown values.
+It is used only when ``setup()`` expands the grid to cover the whole unit cell,
+but the input file does not cover the whole asymmetric unit.
+
+**C++**
+
+::
+
+    map.setup(GridSetup::Full, NAN);
+
+**Python**
+
+.. doctest::
+
+    >>> m.setup()  # gemmi.GridSetup.Full and NaN are the defaults
+    >>> # the grid dimensions were 8x6x10, now they are:
+    >>> m.grid
+    <gemmi.FloatGrid(60, 24, 60)>
+
+Writing
+-------
+
+To write a map to a file, update the header if necessary and
+call ``write_ccp4_map()``.
+
+**C++**
+
+::
+
+    // the file header needs to be prepared/updated with an explicit call
+    int mode = 2; // ccp4 file mode: 2 for floating-point data, 0 for masks
+    bool update_stats = true; // update min/max/mean/rms values in the header
+    map.update_ccp4_header(mode, update_stats);
+
+    map.write_ccp4_map(filename);
+
+**Python**
+
+.. doctest::
+
+    >>> m.update_ccp4_header()
+    >>> m.write_ccp4_map('out.ccp4')
+
+By default, the map written to a file covers the whole unit cell.
+To cover only a given box, call ``set_extent()`` before writing the map.
+As an example, let us cover a molecule with 5Å margin
+(equivalent of running CCP4 program MAPMASK with XYZIN and BORDER 5).
+
+**C++**
+
+::
+
+    map.set_extent(calculate_fractional_box(structure, 5));
+
+**Python**
 
 .. doctest::
 
@@ -686,8 +734,12 @@ To write map covering the model with 5Å margin
     >>> m.set_extent(st.calculate_fractional_box(margin=5))
     >>> m.write_ccp4_map('out.ccp4')
 
-To write map covering the same area as the original map read from a file
-use function ``get_extent()`` to store the original box:
+
+After calling ``set_extent()`` we have the same situation as before calling
+``setup()`` -- some grid functions may not work correctly.
+
+The current extent of the map can be read using function ``get_extent()``.
+To write a map that covers the same area as the original map, do:
 
 .. doctest::
 
@@ -698,7 +750,29 @@ use function ``get_extent()`` to store the original box:
     >>> m.set_extent(box)
     >>> m.write_ccp4_map('out.ccp4')
 
-Let us end with two examples.
+
+Map from Grid
+-------------
+
+To write grid data as a ccp4 file: create a new Ccp4 class,
+set the grid, call ``update_ccp4_header()`` and write the file.
+
+.. doctest::
+
+  >>> ccp4 = gemmi.Ccp4Map()
+  >>> ccp4.grid = gemmi.FloatGrid(numpy.zeros((10, 10, 10), dtype=numpy.float32))
+  >>> ccp4.grid.spacegroup = gemmi.find_spacegroup_by_name('P1')
+  >>> ccp4.grid.unit_cell.set(20, 20, 20, 90, 90, 90)
+  >>> ccp4.update_ccp4_header()
+  >>> ccp4.write_ccp4_map('out.ccp4')
+
+Maps are often calculated from map coefficients --
+:ref:`example in section about FFT <map_from_rblock>`
+shows how to calculate such a map and write it to a file.
+
+
+Examples
+--------
 
 **Example 1.**
 A short code that draws a contour plot similar to mapslicer plots

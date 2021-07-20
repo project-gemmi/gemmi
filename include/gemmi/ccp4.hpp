@@ -29,7 +29,7 @@ enum class GridSetup {
   ReorderOnly,  // reorder axes to X, Y, Z
   ResizeOnly,   // reorder and resize to the whole cell, but no symmetry ops
   Full,         // reorder and expand to the whole unit cell
-  FullCheck     // additionally consistency of redundant data
+  FullCheck     // additionally, check consistency of redundant data
 };
 
 struct Ccp4Base {
@@ -162,6 +162,8 @@ struct Ccp4 : public Ccp4Base {
   void update_ccp4_header(int mode=-1, bool update_stats=true) {
     if (mode > 2 && mode != 6)
       fail("Only modes 0, 1, 2 and 6 are supported.");
+    if (grid.point_count() == 0)
+      fail("update_ccp4_header(): set the grid first (it has size 0)");
     if (update_stats)
       hstats = calculate_data_statistics(grid.data);
     if (ccp4_header.empty())
