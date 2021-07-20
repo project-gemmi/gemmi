@@ -193,6 +193,8 @@ It has the properties listed at the beginning of this section
   False
   >>> sg.is_sohncke()             # is it one of 65 Sohncke space groups?
   True
+  >>> sg.is_symmorphic()          # is it one of 73 symmorphic space groups?
+  True
   >>> sg.point_group_hm()         # H-M name of the point group
   '3'
   >>> sg.laue_str()               # name of the Laue class

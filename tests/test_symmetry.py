@@ -147,6 +147,8 @@ class TestSymmetry(unittest.TestCase):
             self.assertEqual(gemmi_sg.is_sohncke(), cctbx_sg.is_chiral())
             self.assertEqual(gemmi_sg.is_enantiomorphic(),
                              cctbx_sg.type().is_enantiomorphic())
+            self.assertEqual(gemmi_sg.is_symmorphic(),
+                             cctbx_sg.type().is_symmorphic())
         else:
             self.assertIsNone(gemmi_sg)
 
