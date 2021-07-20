@@ -7,7 +7,7 @@
 #include "gemmi/c4322.hpp"
 #include "gemmi/sfcalc.hpp"   // for StructureFactorCalculator
 #include "gemmi/dencalc.hpp"  // for DensityCalculator
-#include "gemmi/fprime.hpp"   // for cromer_libermann_fprime_for_all_elements
+#include "gemmi/fprime.hpp"   // for add_cl_fprime_for_all_elements
 
 namespace py = pybind11;
 using gemmi::Element;

@@ -43,7 +43,7 @@ static void run_fprime(benchmark::State& state) {
   const double energy = 12398.4197386209 / (0.5 + (double)rand() / RAND_MAX);
   while (state.KeepRunning())
     for (int i = 3; i != 50; ++i)
-      benchmark::DoNotOptimize(gemmi::cromer_libermann(i, energy, nullptr));
+      benchmark::DoNotOptimize(gemmi::cromer_liberman(i, energy, nullptr));
 }
 
 BENCHMARK(pyridoxine_elements);

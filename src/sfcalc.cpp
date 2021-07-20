@@ -7,7 +7,7 @@
 #include <gemmi/ccp4.hpp>      // for Ccp4
 #include <gemmi/fileutil.hpp>  // for file_open
 #include <gemmi/fourier.hpp>
-#include <gemmi/fprime.hpp>    // for cromer_libermann
+#include <gemmi/fprime.hpp>    // for cromer_liberman
 #include <gemmi/gz.hpp>        // for MaybeGzipped
 #include <gemmi/it92.hpp>      // for IT92
 #include <gemmi/c4322.hpp>     // for C4322
@@ -497,7 +497,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
     double energy = gemmi::hc() / wavelength;
     for (int z = 1; z <= 92; ++z)
       if (present_elems[z] && calc.addends.values[z] == 0) {
-        calc.addends.values[z] = (float) gemmi::cromer_libermann(z, energy, nullptr);
+        calc.addends.values[z] = (float) gemmi::cromer_liberman(z, energy, nullptr);
       }
   }
   if (mott_bethe)

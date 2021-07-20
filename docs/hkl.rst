@@ -1443,11 +1443,11 @@ Anomalous scattering
 --------------------
 
 The anomalous dispersion is wavelength dependent.
-Gemmi provides function ``cromer_libermann`` that calculates
+Gemmi provides function ``cromer_liberman`` that calculates
 real and imaginary components *f'* and *f"*
 for isolated atoms from Z=3 to Z=92.
 
-As the name suggests, we use the Cromer-Libermann algorithm.
+As the name suggests, we use the Cromer-Liberman algorithm.
 This algorithm, as is noted on the
 `pyFprime website <https://subversion.xray.aps.anl.gov/trac/pyFprime/>`_,
 "fails in computing *f'* for wavelengths < 0.16 Å (> 77.48 keV)
@@ -1482,16 +1482,16 @@ Therefore, it gives different results than the
 `crossec <http://legacy.ccp4.ac.uk/html/crossec.html>`_ program,
 which was contributed to CCP4 directly by Don Cromer in the 1990's.
 
-The ``cromer_libermann`` function is available in both C++ and Python:
+The ``cromer_liberman`` function is available in both C++ and Python:
 
 .. doctest::
 
   >>> gemmi.Element('Se').atomic_number
   34
-  >>> gemmi.cromer_libermann(z=_, energy=10332.0) # energy in eV  #doctest: +ELLIPSIS
+  >>> gemmi.cromer_liberman(z=_, energy=10332.0) # energy in eV  #doctest: +ELLIPSIS
   (-1.41862..., 0.72389...)
   >>> # use gemmi.hc to convert wavelength [A] to energy [eV]
-  >>> gemmi.cromer_libermann(z=34, energy=gemmi.hc/0.71073)  #doctest: +ELLIPSIS
+  >>> gemmi.cromer_liberman(z=34, energy=gemmi.hc/0.71073)  #doctest: +ELLIPSIS
   (-0.09201..., 2.23336...)
 
 The same values can be printed from the command line program
@@ -1605,7 +1605,7 @@ value that will be added to the value calculated from the form factors.
   >>> energy = gemmi.hc / 0.8  # for wavelength 0.8A
   >>> for symbol in ['C', 'N', 'O', 'S', 'Cu']:
   ...     el = gemmi.Element(symbol)
-  ...     fp, _ = gemmi.cromer_libermann(z=el.atomic_number, energy=energy)
+  ...     fp, _ = gemmi.cromer_liberman(z=el.atomic_number, energy=energy)
   ...     calc_x.addends.set(el, fp)
   ...
   >>> calc_x.addends.get(gemmi.Element('Cu'))
@@ -1619,7 +1619,7 @@ to remove the previous values, so it makes two functions):
   >>> calc_x.addends.clear()
   >>> calc_x.addends.add_cl_fprime(energy)
 
-which calculates *f'* for all elements handled by the Cromer-Libermann
+which calculates *f'* for all elements handled by the Cromer-Liberman
 algorithm (*Z* from 3 to 92). Although it seems wasteful, it takes
 well below 1ms.
 

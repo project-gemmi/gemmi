@@ -135,9 +135,9 @@ void add_hkl(py::module& m) {
         }, py::arg("grid"));
   m.def("transform_map_to_f_phi", &transform_map_to_f_phi<float>,
         py::arg("map"), py::arg("half_l")=false, py::arg("use_scale")=true);
-  m.def("cromer_libermann", [](int z, double energy) {
+  m.def("cromer_liberman", [](int z, double energy) {
           std::pair<double, double> r;
-          r.first = cromer_libermann(z, energy, &r.second);
+          r.first = cromer_liberman(z, energy, &r.second);
           return r;
         }, py::arg("z"), py::arg("energy"));
   m.def("count_reflections", &count_reflections,

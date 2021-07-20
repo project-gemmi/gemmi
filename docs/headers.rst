@@ -92,7 +92,7 @@ gemmi/fourier.hpp
     Fourier transform applied to map coefficients.
 
 gemmi/fprime.hpp
-    C++ implementation of Cromer-Libermann calculation of anomalous scattering
+    C++ implementation of Cromer-Liberman calculation of anomalous scattering
     factors, with corrections from Kissel & Pratt, Acta Cryst. A46, 170 (1990).
     Single header. No dependencies.
 

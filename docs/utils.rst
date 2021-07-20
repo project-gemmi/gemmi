@@ -501,7 +501,7 @@ fprime
 ======
 
 Calculate anomalous scattering factors (*f\'* and *f\"*).
-Uses `Cromer-Libermann <https://doi.org/10.1107/S0567739481000600>`_
+Uses `Cromer-Liberman <https://doi.org/10.1107/S0567739481000600>`_
 algorithm with corrections from
 `Kissel and Pratt <https://doi.org/10.1107/S0108767389010718>`_.
 This and different approaches are discussed in the documentation
