@@ -43,6 +43,12 @@ which stores dimensions and data::
   int nu, nv, nw;
   std::vector<T> data;
 
+To specify the grid size use function ``set_size()``
+or ``set_size_from_spacing()``. They both check that the size
+is compatible with the space group (so it is better to call
+these functions after setting ``Grid::spacegroup``.
+The latter function additionally ensures that the size is FFT-friendly.
+
 The data point can be accessed with::
 
   T Grid<T>::get_value(int u, int v, int w) const
@@ -70,6 +76,18 @@ The constructor may take grid dimensions or a NumPy array as an argument:
   >>> grid2 = gemmi.FloatGrid(numpy.zeros((30, 31, 32), dtype=numpy.float32))
   >>> grid2.nu, grid2.nv, grid2.nw
   (30, 31, 32)
+
+Alternatively, you may set (or change) the size later on:
+
+.. doctest::
+
+  >>> grid3 = gemmi.FloatGrid()
+  >>> # grid3.spacegroup = ...
+  >>> grid3.set_size(12, 12, 12)
+
+The advantage of calling ``set_size()`` after a space group was set
+is that this function checks if the size is compatible with the space group
+(a symmetry operation cannot map a node to a point between nodes).
 
 Values are accessed with functions get_value() and set_value():
 

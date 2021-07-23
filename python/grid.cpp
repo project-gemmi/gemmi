@@ -89,6 +89,7 @@ void add_grid(py::module& m, const std::string& name) {
     .def_property_readonly("spacing", [](const Gr& self){
         return py::make_tuple(self.spacing[0], self.spacing[1], self.spacing[2]);
     })
+    .def("set_size", &Gr::set_size)
     .def("get_value", &Gr::get_value)
     .def("set_value", &Gr::set_value)
     .def("get_point", &Gr::get_point)
