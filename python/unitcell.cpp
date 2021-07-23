@@ -202,6 +202,7 @@ void add_unitcell(py::module& m) {
     });
   py::class_<Fractional, Vec3>(m, "Fractional")
     .def(py::init<double,double,double>())
+    .def("wrap_to_unit", &Fractional::wrap_to_unit)
     .def("__getitem__", (double (Fractional::*)(int) const) &Fractional::at)
     .def("__repr__", [](const Fractional& self) {
         return "<gemmi.Fractional(" + triple(self.x, self.y, self.z) + ")>";
