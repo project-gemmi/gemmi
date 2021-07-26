@@ -84,6 +84,7 @@ void add_write(py::module& m, py::class_<Structure>& structure) {
        return os.str();
     })
     .def("make_mmcif_document", &make_mmcif_document)
+    .def("make_mmcif_block", &make_mmcif_block)
     .def("make_mmcif_headers", &make_mmcif_headers)
     .def("update_mmcif_block", &update_mmcif_block)
     ;
