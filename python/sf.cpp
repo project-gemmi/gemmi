@@ -82,4 +82,5 @@ void add_sf(py::module& m) {
   add_sfcalc<C4322>(m, "StructureFactorCalculatorE", false);
   add_dencalc<IT92>(m, "DensityCalculatorX");
   add_dencalc<C4322>(m, "DensityCalculatorE");
+  m.def("IT92_normalize", &IT92::normalize);
 }

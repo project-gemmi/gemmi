@@ -41,6 +41,18 @@ struct IT92 {
   static Coef* get_ptr(El el) {
     return has(el) ? &get(el) : nullptr;
   }
+
+  // Make a1+a2+a3+a4+c equal exactly to Z (number of electrons).
+  // It changes the values from ITC only slightly (by not more than 0.12%).
+  static void normalize() {
+    for (int i = 0; i < 98; ++i) {
+      Coef& f = data[i];
+      double factor = (i + 1) / (f.a(0) + f.a(1) + f.a(2) + f.a(3) + f.c());
+      for (int j = 0; j < 4; ++j)
+        f.coefs[j] *= factor;
+      f.coefs[8] *= factor;
+    }
+  }
 };
 
 template<class Real>

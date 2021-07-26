@@ -1353,7 +1353,7 @@ atomic form factor. Nowadays, two form factor parametrizations are commonly
 used: one from the International Tables of Crystallography Vol. C
 (4 Gaussians + constant factor), and the other from Waasmaier & Kirfel (1995),
 `Acta Cryst. A51, 416 <https://doi.org/10.1107/S0108767394013292>`_
-(one Gaussian more).
+(5 Gaussians).
 Other parametrizations exist (for example, with only two Gaussians),
 but are not widely used.
 
@@ -1384,7 +1384,7 @@ You can get the coefficients as numbers:
   >>> fe_coef.c
   1.0369
 
-Fun fact: for neutral atoms the *a*'s and *c* should sum up to *Z*,
+For neutral atoms the *a*'s and *c* should sum up to *Z*,
 but the numbers from the Tables may differ slightly:
 
 .. doctest::
@@ -1394,22 +1394,34 @@ but the numbers from the Tables may differ slightly:
   >>> sum(fe_coef.a) + fe_coef.c  # doctest: +ELLIPSIS
   25.9904...
 
-Some programs (Refmac) normalize them.
-To change the coefficients use function ``set_coefs()``.
-Here, to make it simple, we change only c:
+Some programs (Refmac) normalize the coefficients,
+which means multiplying them by a factor between 0.99995 and 1.00113.
 
 .. doctest::
 
-  >>> new_c = 26 - sum(fe_coef.a)
-  >>> fe_coef.set_coefs(fe_coef.a + fe_coef.b + [new_c])
+  >>> # let's store the original values first
+  >>> orig_coefs = {i : gemmi.Element(i).it92.get_coefs() for i in range(1, 98)}
+  >>> # now we normalize the values
+  >>> gemmi.IT92_normalize()
+  >>> # and we can see that the values has changed
+  >>> fe_coef.a  # doctest: +ELLIPSIS
+  [11.7738..., 7.3600..., 3.5235..., 2.30535...]
 
-or you can used them to directly calculate the sum of Gaussians --
+Now let's use function ``set_coefs()`` to change the coefficients back
+to the original values:
+
+.. doctest::
+
+  >>> for i in range(1, 98):
+  ...     gemmi.Element(i).it92.set_coefs(orig_coefs[i])
+
+The coefficients can be used to directly calculate the sum of Gaussians --
 the structure factor contribution:
 
 .. doctest::
 
   >>> fe_coef.calculate_sf(stol2=0.4)  # argument: (sin(theta)/lambda)^2
-  9.31320248504031
+  9.303602485040315
 
 The large number of reflections in macromolecular crystallography makes direct
 calculation of structure factors inefficient. Instead, we can calculate electron
@@ -1421,7 +1433,7 @@ point can be calculated as:
 
   >>> # arguments are distance^2 and isotropic ADP
   >>> fe_coef.calculate_density_iso(r2=2.3, B=50)
-  0.5281308588290554
+  0.5279340932571192
 
 The C++ interface provides more functions to calculate the electron density.
 We have separate functions to work with isotropic and anisotropic ADPs.
@@ -1460,7 +1472,7 @@ The implementation is contained in a single C++ header file
 All the data is embedded in the code.
 The binary size after compilation is about 100kB.
 
-Admittedly, the data tables synthesised by C.T. Chantler are more accurate.
+Reportedly, the data tables synthesised by C.T. Chantler are more accurate.
 Consider using them instead. They are available from the
 `NIST website <https://www.nist.gov/pml/x-ray-form-factor-attenuation-and-scattering-tables>`_
 and from the `XrayDB <https://github.com/xraypy/XrayDB>`_ project.
