@@ -1774,9 +1774,17 @@ Class Assembly has a list of generators and couple of properties:
 .. doctest::
 
   >>> for assembly in st.assemblies:
-  ...   print(assembly.name, assembly.oligomeric_details, len(assembly.generators))
-  1 MONOMERIC 1
-  2 MONOMERIC 1
+  ...   print(assembly.name)
+  1
+  2
+  >>> assembly.author_determined
+  True
+  >>> assembly.software_determined
+  False
+  >>> assembly.oligomeric_details
+  'MONOMERIC'
+  >>> len(assembly.generators)
+  1
 
 Each generator has a list of chain names and a list of subchain names
 (only one of them is normally used), and a list of operators:

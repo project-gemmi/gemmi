@@ -159,6 +159,8 @@ void add_meta(py::module& m) {
   assembly
     .def(py::init<const std::string&>())
     .def_readwrite("name", &Assembly::name)
+    .def_readwrite("author_determined", &Assembly::author_determined)
+    .def_readwrite("software_determined", &Assembly::software_determined)
     .def_readwrite("oligomeric_details", &Assembly::oligomeric_details)
     .def_readonly("generators", &Assembly::generators)
     .def_readwrite("special_kind", &Assembly::special_kind)
