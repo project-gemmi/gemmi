@@ -131,7 +131,7 @@ struct DensityCalculator {
       double b = atom.b_iso + blur;
       auto precal = coef.precalculate_density_iso(b, addend);
       double radius = estimate_radius(precal, b);
-      grid.use_points_around(fpos, radius, [&](Real& point, double r2) {
+      grid.template use_points_around<true>(fpos, radius, [&](Real& point, double r2) {
           point += Real(atom.occ * precal.calculate((Real)r2));
       }, /*fail_on_too_large_radius=*/false);
     } else {
@@ -145,7 +145,7 @@ struct DensityCalculator {
       int du = (int) std::ceil(radius / grid.spacing[0]);
       int dv = (int) std::ceil(radius / grid.spacing[1]);
       int dw = (int) std::ceil(radius / grid.spacing[2]);
-      grid.use_points_in_box(fpos, du, dv, dw,
+      grid.template use_points_in_box<true>(fpos, du, dv, dw,
                              [&](Real& point, const Position& delta) {
         if (delta.length_sq() < radius * radius)
           point += Real(atom.occ * precal.calculate(delta));

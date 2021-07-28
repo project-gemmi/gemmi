@@ -124,7 +124,7 @@ void add_grid(py::module& m, const std::string& name) {
          py::arg("st"), py::arg("spacing"))
     .def("set_unit_cell", (void (Gr::*)(const UnitCell&)) &Gr::set_unit_cell)
     .def("set_points_around", &Gr::set_points_around,
-         py::arg("position"), py::arg("radius"), py::arg("value"))
+         py::arg("position"), py::arg("radius"), py::arg("value"), py::arg("use_pbc")=true)
     .def("symmetrize_min", &Gr::symmetrize_min)
     .def("symmetrize_max", &Gr::symmetrize_max)
     .def("symmetrize_abs_max", &Gr::symmetrize_abs_max)
