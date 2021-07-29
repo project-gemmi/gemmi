@@ -461,9 +461,48 @@ changing the atomic positions in-place:
 Selections
 ==========
 
-For now, Gemmi supports only the selection syntax from MMDB,
-called CID (Coordinate ID). The syntax is described at the bottom
-of the `pdbcur documentation <http://legacy.ccp4.ac.uk/html/pdbcur.html>`_.
+Gemmi selection syntax is based on the selection syntax from MMDB,
+which is sometimes called CID (Coordinate ID). The MMDB syntax is described
+at the bottom of
+the `pdbcur documentation <http://legacy.ccp4.ac.uk/html/pdbcur.html>`_.
+
+The selection has a form of /-separated parts:
+/models/chains/residues/atoms. Empty parts can be omitted when it's
+not ambiguous. Let us go through the individual filters first:
+
+* ``/1`` -- selects model 1 (if the PDB file doesn't have MODEL records,
+  it is assumed that the only model is model 1).
+* ``//D`` (or just ``D``) -- selects chain D.
+* ``///10-30`` (or ``10-30``) -- residues with sequence IDs from 10 to 30.
+* ``///10A-30A`` (or ``10A-30A`` or ``///10.A-30.A`` or ``10.A-30.A``) --
+  sequence ID can include insertion code. The MMDB syntax has dot between
+  sequence sequence number and insertion code. In Gemmi the dot is optional.
+* ``///(ALA)`` (or ``(ALA)``) -- selects residues with a given name.
+* ``////CB`` (or ``CB:*`` or ``CB[*]``) -- selects atoms with a given name.
+* ``////[P]`` (or just ``[P]``) -- selects phosphorus atoms.
+* ``////:B`` (or ``:B``) -- selects atoms with altloc B.
+* ``////;q<0.5`` (or ``;q<0.5``) -- selects atoms with occupancy below 0.5.
+  Atom properties after ``;`` are not in the original MMDB syntax.
+  The letters (q in this example) are the same as in the PyMOL selections.
+* ``////;b>40`` (or ``;b>40``) -- selects atoms with the isotropic B-factor
+  above a given value.
+* ``*`` -- selects all atoms.
+
+Note that the chain name and altloc can be an empty.
+The syntax supports also comma-separated lists and negations with ``!``:
+
+* ``(!ALA)`` -- all residues but alanine,
+* ``[C,N,O]`` -- all C, N and O atoms,
+* ``[!C,N,O]`` -- all atoms except C, N and O,
+* ``:,A`` -- altloc either empty or A (which makes one conformation),
+* ``/1/A,B/20-40/CA[C]:,A`` -- multiple selection criteria, all of them
+  must be fulfilled.
+
+Incompatibility with MMDB.
+In MMDB, if the atom name and chemical element name is specified
+(both may be '*'), then the alternative location indicator defaults to ""
+(no alternate location), otherwise the default is '*'.
+In Gemmi, if ':' is absent the default is always '*'.
 
 The selections in Gemmi are not widely used yet and the API may evolve.
 The examples below demonstrates currently provided functions.
@@ -546,6 +585,7 @@ To search only in atoms directly listed in the file pass empty cell
 **Example 3a**
 
 Select atoms in the radius of 8Å from a selected point.
+First, a flag is set for these 
 
 .. doctest::
 

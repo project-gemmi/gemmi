@@ -17,5 +17,9 @@ class TestMisc(unittest.TestCase):
         self.assertEqual(gemmi.expand_if_pdb_code('4XYZ', filetype='P'),
                          pdb_dir + '/structures/divided/pdb/xy/pdb4xyz.ent.gz')
 
+    def test_selections(self):
+        sel = gemmi.parse_cid('CA:*')
+        self.assertEqual(sel.to_cid(), '//*//CA')
+
 if __name__ == '__main__':
     unittest.main()
