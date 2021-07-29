@@ -62,17 +62,18 @@ struct Selection {
     char icode;
 
     bool empty() const {
-      return (seqnum == INT_MIN || seqnum == INT_MAX) && icode == '*';
+      return seqnum == INT_MIN || seqnum == INT_MAX;
     }
 
     std::string str() const {
       std::string s;
-      if (seqnum != INT_MIN && seqnum != INT_MAX)
+      if (!empty()) {
         s = std::to_string(seqnum);
-      if (icode != '*') {
-        s += '.';
-        if (icode != ' ')
-          s += icode;
+        if (icode != '*') {
+          s += '.';
+          if (icode != ' ')
+            s += icode;
+        }
       }
       return s;
     }
@@ -125,7 +126,10 @@ struct Selection {
   FlagList atom_flags;
   std::vector<AtomInequality> atom_inequalities;
 
-  std::string to_cid() const {
+  Selection() = default;
+  Selection(const std::string& cid);
+
+  std::string str() const {
     std::string cid = "/";
     if (mdl != 0)
       cid += std::to_string(mdl);
@@ -137,16 +141,23 @@ struct Selection {
       cid += '(';
       cid += residue_names.str();
       cid += ')';
-    } else if (!from_seqid.empty() || !to_seqid.empty()) {
+    }
+    if (!from_seqid.empty() || !to_seqid.empty()) {
       cid += '-';
       cid += to_seqid.str();
     }
     cid += '/';
-    cid += atom_names.str();
-    if (!elements.all)
-      cid += "[" + elements.str() + "]";
-    if (!altlocs.all)
-      cid += ":" + altlocs.str();
+    if (!atom_names.all)
+      cid += atom_names.str();
+    if (!elements.all) {
+      cid += '[';
+      cid += elements.str();
+      cid += ']';
+    }
+    if (!altlocs.all) {
+      cid += ':';
+      cid += altlocs.str();
+    }
     for (const AtomInequality& ai : atom_inequalities)
       cid += ai.str();
     return cid;
@@ -343,13 +354,10 @@ inline Selection::AtomInequality parse_atom_inequality(const std::string& cid,
   return r;
 }
 
-} // namespace impl
-
-inline Selection parse_cid(const std::string& cid) {
-  Selection sel;
+inline void parse_cid(const std::string& cid, Selection& sel) {
   if (cid.empty() || (cid.size() == 1 && cid[0] == '*'))
-    return sel;
-  int omit = impl::determine_omitted_cid_fields(cid);
+    return;
+  int omit = determine_omitted_cid_fields(cid);
   size_t sep = 0;
   // model
   if (omit == 0) {
@@ -367,7 +375,7 @@ inline Selection parse_cid(const std::string& cid) {
   if (omit <= 1 && sep != std::string::npos) {
     size_t pos = (sep == 0 ? 0 : sep + 1);
     sep = cid.find('/', pos);
-    sel.chain_ids = impl::make_cid_list(cid, pos, sep);
+    sel.chain_ids = make_cid_list(cid, pos, sep);
   }
 
   // residue; MMDB CID syntax: s1.i1-s2.i2 or *(res).ic
@@ -377,11 +385,11 @@ inline Selection parse_cid(const std::string& cid) {
   if (omit <= 2 && sep != std::string::npos) {
     size_t pos = (sep == 0 ? 0 : sep + 1);
     if (cid[pos] != '(')
-      sel.from_seqid = impl::parse_cid_seqid(cid, pos, INT_MIN);
+      sel.from_seqid = parse_cid_seqid(cid, pos, INT_MIN);
     if (cid[pos] == '(') {
       ++pos;
       size_t right_br = cid.find(')', pos);
-      sel.residue_names = impl::make_cid_list(cid, pos, right_br);
+      sel.residue_names = make_cid_list(cid, pos, right_br);
       pos = right_br + 1;
     }
     // allow "(RES)." and "(RES).*" and "(RES)*"
@@ -391,7 +399,7 @@ inline Selection parse_cid(const std::string& cid) {
       ++pos;
     if (cid[pos] == '-') {
       ++pos;
-      sel.to_seqid = impl::parse_cid_seqid(cid, pos, INT_MAX);
+      sel.to_seqid = parse_cid_seqid(cid, pos, INT_MAX);
     }
     sep = pos;
   }
@@ -402,34 +410,44 @@ inline Selection parse_cid(const std::string& cid) {
       fail("Invalid selection syntax: " + cid);
     size_t pos = (sep == 0 ? 0 : sep + 1);
     size_t end = cid.find_first_of("[:;", pos);
-    if (end != pos)
-      sel.atom_names = impl::make_cid_list(cid, pos, end);
+    if (end != pos) {
+      sel.atom_names = make_cid_list(cid, pos, end);
+      // Chain name can be empty, but not atom name,
+      // so we interpret empty atom name as *.
+      if (!sel.atom_names.inverted && sel.atom_names.list.empty())
+        sel.atom_names.all = true;
+    }
     if (end != std::string::npos) {
       if (cid[end] == '[') {
         pos = end + 1;
         end = cid.find(']', pos);
         if (end == std::string::npos)
           fail("Invalid selection syntax (no matching ']'): " + cid);
-        sel.elements = impl::make_cid_list(cid, pos, end);
+        sel.elements = make_cid_list(cid, pos, end);
         sel.elements.list = to_upper(sel.elements.list);
         ++end;
       }
       if (cid[end] == ':') {
         pos = end + 1;
         end = cid.find(';', pos);
-        sel.altlocs = impl::make_cid_list(cid, pos, end);
+        sel.altlocs = make_cid_list(cid, pos, end);
       }
       while (end != std::string::npos && cid[end] == ';') {
         pos = end + 1;
         end = cid.find(';', pos);
-        sel.atom_inequalities.push_back(impl::parse_atom_inequality(cid, pos, end));
+        sel.atom_inequalities.push_back(parse_atom_inequality(cid, pos, end));
       }
       if (end < cid.length())
         fail("Invalid selection syntax (atom properties): " + cid);
     }
   }
+}
 
-  return sel;
+} // namespace impl
+
+
+inline Selection::Selection(const std::string& cid) {
+  impl::parse_cid(cid, *this);
 }
 
 } // namespace gemmi

@@ -2732,6 +2732,7 @@ Residue contains also a number of properties:
 * ``het_flag`` -- a single character based on the PDB record or
   on the _atom_site.group_PDB field:
   ``A``\ =ATOM, ``H``\ =HETATM, ``\0``\ =unspecified,
+* ``flag`` -- custom flag, a single character that can be used for anything.
 
 .. doctest::
 
@@ -2745,6 +2746,8 @@ Residue contains also a number of properties:
   <EntityType.Polymer: 1>
   >>> residue.het_flag
   'A'
+  >>> residue.flag
+  '\x00'
 
 To check if a residue is water (normal or heavy) you may use a helper
 function:

@@ -75,7 +75,7 @@ void transform_sf_to_map(OptParser& p) {
     gemmi::Structure st = gemmi::read_structure_gz(p.options[MapMask].arg);
     gemmi::Box<gemmi::Fractional> box;
     if (p.options[Select]) {
-      gemmi::Selection sel = gemmi::parse_cid(p.options[Select].arg);
+      gemmi::Selection sel(p.options[Select].arg);
       for (gemmi::Model& model : sel.models(st))
         for (gemmi::Chain& chain : sel.chains(model))
           for (gemmi::Residue& res : sel.residues(chain))

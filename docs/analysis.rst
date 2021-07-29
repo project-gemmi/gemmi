@@ -468,7 +468,10 @@ the `pdbcur documentation <http://legacy.ccp4.ac.uk/html/pdbcur.html>`_.
 
 The selection has a form of /-separated parts:
 /models/chains/residues/atoms. Empty parts can be omitted when it's
-not ambiguous. Let us go through the individual filters first:
+not ambiguous. Gemmi (but not MMDB) can take additional properties
+added at the end after a semicolon (;).
+
+Let us go through the individual filters first:
 
 * ``/1`` -- selects model 1 (if the PDB file doesn't have MODEL records,
   it is assumed that the only model is model 1).
@@ -481,9 +484,8 @@ not ambiguous. Let us go through the individual filters first:
 * ``////CB`` (or ``CB:*`` or ``CB[*]``) -- selects atoms with a given name.
 * ``////[P]`` (or just ``[P]``) -- selects phosphorus atoms.
 * ``////:B`` (or ``:B``) -- selects atoms with altloc B.
-* ``////;q<0.5`` (or ``;q<0.5``) -- selects atoms with occupancy below 0.5.
-  Atom properties after ``;`` are not in the original MMDB syntax.
-  The letters (q in this example) are the same as in the PyMOL selections.
+* ``////;q<0.5`` (or ``;q<0.5``) -- selects atoms with occupancy below 0.5
+  (inspired by PyMOL, where it'd be ``q<0.5``).
 * ``////;b>40`` (or ``;b>40``) -- selects atoms with the isotropic B-factor
   above a given value.
 * ``*`` -- selects all atoms.
@@ -498,34 +500,49 @@ The syntax supports also comma-separated lists and negations with ``!``:
 * ``/1/A,B/20-40/CA[C]:,A`` -- multiple selection criteria, all of them
   must be fulfilled.
 
-Incompatibility with MMDB.
-In MMDB, if the atom name and chemical element name is specified
-(both may be '*'), then the alternative location indicator defaults to ""
-(no alternate location), otherwise the default is '*'.
-In Gemmi, if ':' is absent the default is always '*'.
+Note: the selections in Gemmi are not widely used yet and the API may evolve.
 
-The selections in Gemmi are not widely used yet and the API may evolve.
-The examples below demonstrates currently provided functions.
+A selection is is a standalone object with a list of filters that
+can be applied to any Structure, Model or its part.
+Empty selection matches all atoms:
 
-**Example 1**
+.. doctest::
 
-Working with CID selections.
+  >>> sel = gemmi.Selection()  # empty - no filters
+
+Selection initialized with a string parses the string and creates
+corresponding filters:
+
+.. doctest::
+
+  >>> # select all Cl atoms
+  >>> sel = gemmi.Selection('[CL]')
+
+The selection can then be used on any structure.
+A helper function ``first()`` returns the first matching atom:
 
 .. doctest::
 
   >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
-
-  >>> # select all Cl atoms
-  >>> sel = gemmi.parse_cid('[CL]')
   >>> # get the first result as pointer to model and CRA (chain, residue, atom)
   >>> sel.first(st)
   (<gemmi.Model 1 with 2 chain(s)>, <gemmi.CRA A/CL 20/CL>)
 
-  >>> sel = gemmi.parse_cid('A/1-4/N9')
-  >>> sel.to_cid()
+Function ``str()`` creates a string from the selection:
+
+.. doctest::
+
+  >>> sel = gemmi.Selection('A/1-4/N9')
+  >>> sel.str()
   '//A/1.-4./N9'
-  >>> # iterate over hierarchy filtered by the selection
+
+The Selection objects has methods for iterating over the selected items
+in the hierarchy:
+
+.. doctest::
+
   >>> for model in sel.models(st):
+  ...     print('Model', model.name)
   ...     for chain in sel.chains(model):
   ...         print('-', chain.name)
   ...         for residue in sel.residues(chain):
@@ -533,6 +550,7 @@ Working with CID selections.
   ...             for atom in sel.atoms(residue):
   ...                 print('          -', atom.name)
   ...
+  Model 1
   - A
      - 1(DG)
             - N9
@@ -542,16 +560,15 @@ Working with CID selections.
      - 4(DT)
 
 
-**Example 2**
-
-Copy alpha-carbon atoms to a new structure (or a model).
+Selection can be used to copy atoms to a new structure (or a model).
+In this example, we copy alpha-carbon atoms:
 
 .. doctest::
 
   >>> st = gemmi.read_structure('../tests/1orc.pdb')
   >>> st[0].count_atom_sites()
   559
-  >>> selection = gemmi.parse_cid('CA[C]')
+  >>> selection = gemmi.Selection('CA[C]')
 
   >>> # create a new structure
   >>> ca_st = selection.copy_structure_selection(st)
@@ -563,17 +580,41 @@ Copy alpha-carbon atoms to a new structure (or a model).
   >>> ca_model.count_atom_sites()
   64
 
-**Example 3**
+Selection can also be used to remove atoms.
+In this example we remove atoms with B-factor above 50:
 
-Select residues in the radius of 8Å from a selected point.
+.. doctest::
+
+  >>> sel = gemmi.Selection(';b>50')
+  >>> sel.remove_selected(ca_st)
+  >>> ca_st[0].count_atom_sites()
+  61
+  >>> sel.remove_selected(ca_model)
+  >>> ca_model.count_atom_sites()
+  61
+
+We can also do the opposite and remove atoms that are not selected:
+
+.. doctest::
+
+  >>> sel.remove_not_selected(ca_model)
+  >>> ca_model.count_atom_sites()
+  0
+
+Each residue and atom has a flag that can be set manually
+and used to create a selection.
+In this example we select residues in the radius of 8Å from a selected point:
 
 .. doctest::
 
   >>> selected_point = gemmi.Position(20, 40, 30)
   >>> ns = gemmi.NeighborSearch(st[0], st.cell, 8.0).populate()
+  >>> # First, a flag is set for neigbouring residues.
   >>> for mark in ns.find_atoms(selected_point):
   ...     mark.to_cra(st[0]).residue.flag = 's'
+  >>> # Then, we select residues with this flag.
   >>> selection = gemmi.Selection().set_residue_flags('s')
+  >>> # Next, we can use this selection.
   >>> selection.copy_model_selection(st[0]).count_atom_sites()
   121
 
@@ -582,17 +623,18 @@ This is why it takes UnitCell as a parameter.
 To search only in atoms directly listed in the file pass empty cell
 (``gemmi.UnitCell()``).
 
-**Example 3a**
-
-Select atoms in the radius of 8Å from a selected point.
-First, a flag is set for these 
+Instead of the whole residues, we can select atoms.
+Here, we select atoms in the radius of 8Å from a selected point:
 
 .. doctest::
 
   >>> # selected_point and ns are reused from the previous example
+  >>> # First, a flag is set for neigbouring atoms.
   >>> for mark in ns.find_atoms(selected_point):
   ...     mark.to_cra(st[0]).atom.flag = 's'
+  >>> # Then, we select atoms with this flag.
   >>> selection = gemmi.Selection().set_atom_flags('s')
+  >>> # Next, we can use this selection.
   >>> selection.copy_model_selection(st[0]).count_atom_sites()
   59
 

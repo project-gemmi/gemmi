@@ -12,7 +12,7 @@
 #include "gemmi/pirfasta.hpp"  // for read_pir_or_fasta
 #include "gemmi/resinfo.hpp"   // for expand_protein_one_letter
 #include "gemmi/read_coor.hpp" // for read_structure_gz
-#include "gemmi/select.hpp"    // for parse_cid
+#include "gemmi/select.hpp"    // for Selection
 #include "gemmi/neighbor.hpp"  // for merge_atoms_in_expanded_model
 
 #include <cstring>
@@ -180,9 +180,9 @@ void convert(gemmi::Structure& st,
   }
 
   if (options[Select])
-    gemmi::parse_cid(options[Select].arg).remove_not_selected(st);
+    gemmi::Selection(options[Select].arg).remove_not_selected(st);
   if (options[Remove])
-    gemmi::parse_cid(options[Remove].arg).remove_selected(st);
+    gemmi::Selection(options[Remove].arg).remove_selected(st);
   if (st.models.empty())
     gemmi::fail("all models got removed");
 

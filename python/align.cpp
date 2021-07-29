@@ -18,9 +18,9 @@ void add_select(py::module& m) {
   py::class_<FilterProxy<Selection, Residue>> pySelectionResidusProxy(m, "SelectionResidusProxy");
   py::class_<FilterProxy<Selection, Atom>> pySelectionAtomsProxy(m, "SelectionAtomsProxy");
 
-  m.def("parse_cid", &parse_cid);
   pySelection
     .def(py::init<>())
+    .def(py::init<const std::string&>())
     .def("models", &Selection::models)
     .def("chains", &Selection::chains)
     .def("residues", &Selection::residues)
@@ -29,34 +29,41 @@ void add_select(py::module& m) {
          py::keep_alive<1, 2>())
     .def("first", &Selection::first, py::return_value_policy::reference,
          py::keep_alive<1, 2>())
-    .def("to_cid", &Selection::to_cid)
+    .def("str", &Selection::str)
     .def("set_residue_flags", &Selection::set_residue_flags)
     .def("set_atom_flags", &Selection::set_atom_flags)
     .def("copy_model_selection", &Selection::copy_selection<Model>)
     .def("copy_structure_selection", &Selection::copy_selection<Structure>)
+    .def("remove_selected", &Selection::remove_selected<Structure>)
+    .def("remove_selected", &Selection::remove_selected<Model>)
+    .def("remove_not_selected", &Selection::remove_not_selected<Structure>)
+    .def("remove_not_selected", &Selection::remove_not_selected<Model>)
     .def("__repr__", [](const Selection& self) {
-        return "<gemmi.Selection CID: " + self.to_cid() + ">";
+        return "<gemmi.Selection CID: " + self.str() + ">";
     });
 
-    pySelectionModelsProxy
+  pySelectionModelsProxy
     .def("__iter__", [](FilterProxy<Selection, Model>& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
 
-    pySelectionChainsProxy
+  pySelectionChainsProxy
     .def("__iter__", [](FilterProxy<Selection, Chain>& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
 
-    pySelectionResidusProxy
+  pySelectionResidusProxy
     .def("__iter__", [](FilterProxy<Selection, Residue>& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
 
-    pySelectionAtomsProxy
+  pySelectionAtomsProxy
     .def("__iter__", [](FilterProxy<Selection, Atom>& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
+
+  // for backward compatibility only
+  m.def("parse_cid", [](const std::string& cid) { return Selection(cid); });
 }
 
 void add_alignment(py::module& m) {

@@ -42,7 +42,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   const char* cid = p.options[Match] ? p.options[Match].arg : "*";
   gemmi::CoorFormat format = coor_format_as_enum(p.options[FormatIn]);
   try {
-    gemmi::Selection sel = gemmi::parse_cid(cid);
+    gemmi::Selection sel(cid);
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       std::string input = p.coordinate_input_file(i);
       gemmi::Structure st = gemmi::read_structure_gz(input, format);
