@@ -500,6 +500,12 @@ The syntax supports also comma-separated lists and negations with ``!``:
 * ``/1/A,B/20-40/CA[C]:,A`` -- multiple selection criteria, all of them
   must be fulfilled.
 
+**Incompatibility** with MMDB.
+In MMDB, if the chemical element is specified (e.g. ``[C]`` or ``[*]``),
+the alternative location indicator defaults to "" (no altloc),
+rather than to "*" (any altloc). This might be surprising.
+In Gemmi, if ':' is absent the altloc is not checked ("*").
+
 Note: the selections in Gemmi are not widely used yet and the API may evolve.
 
 A selection is is a standalone object with a list of filters that
@@ -560,8 +566,8 @@ in the hierarchy:
      - 4(DT)
 
 
-Selection can be used to copy atoms to a new structure (or a model).
-In this example, we copy alpha-carbon atoms:
+Selection can be used to create a new structure (or model) with a copy
+of the selection. In this example, we copy alpha-carbon atoms:
 
 .. doctest::
 
