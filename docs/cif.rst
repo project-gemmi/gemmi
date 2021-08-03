@@ -1170,6 +1170,21 @@ C++ function ``Table::remove_row`` or in Python:
 
   >>> del table[12:15]
 
+As is usual with any containers (in both Python and C++)
+if you want to remove items while iterating over them,
+it's better to iterate backward.
+Here is an example that removes atoms with zero occupancy:
+
+.. doctest::
+
+  >>> doc = cif.read('../tests/3dg1_final.cif')
+  >>> atom_table = doc[0].find(['_atom_site.occupancy'])
+  >>> for i in range(len(atom_table)-1, -1, -1):
+  ...   if float(atom_table[i][0]) == 0:
+  ...     del atom_table[i]
+  ...
+  >>> doc.write_file('out.cif')
+
 Individual tags and values can also be modified.
 As an example, let us swap two tag names
 (these two tend to have identical values, so no one will notice):
