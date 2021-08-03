@@ -55,9 +55,12 @@ struct MmcifOutputGroups {
       software(all), group_pdb(false) {}
 };
 
-void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroups groups);
-cif::Document make_mmcif_document(const Structure& st);
-cif::Block make_mmcif_block(const Structure& st, MmcifOutputGroups groups);
+void update_mmcif_block(const Structure& st, cif::Block& block,
+                        MmcifOutputGroups groups=MmcifOutputGroups(true));
+cif::Document make_mmcif_document(const Structure& st,
+                                  MmcifOutputGroups groups=MmcifOutputGroups(true));
+cif::Block make_mmcif_block(const Structure& st,
+                            MmcifOutputGroups groups=MmcifOutputGroups(true));
 cif::Block make_mmcif_headers(const Structure& st);
 void add_minimal_mmcif_data(const Structure& st, cif::Block& block);
 
@@ -1177,10 +1180,10 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   }
 }
 
-cif::Document make_mmcif_document(const Structure& st) {
+cif::Document make_mmcif_document(const Structure& st, MmcifOutputGroups groups) {
   cif::Document doc;
   doc.blocks.resize(1);
-  update_mmcif_block(st, doc.blocks[0], MmcifOutputGroups(true));
+  update_mmcif_block(st, doc.blocks[0], groups);
   return doc;
 }
 

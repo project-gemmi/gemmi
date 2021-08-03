@@ -14,7 +14,15 @@ using namespace gemmi;
 
 void add_write(py::module& m, py::class_<Structure>& structure) {
   py::class_<MmcifOutputGroups>(m, "MmcifOutputGroups")
-    .def(py::init<bool>())
+    .def(py::init([](bool all, const py::kwargs& kwargs) {
+      MmcifOutputGroups g(all);
+      if (kwargs) {
+        py::object pyg = py::cast(&g);
+        for (const auto& kwarg : kwargs)
+          pyg.attr(kwarg.first) = kwarg.second.cast<bool>();
+      }
+      return g;
+    }), py::arg("all"))
 #define DEF_BIT_PROPERTY(name) \
   .def_property(#name, [](MmcifOutputGroups g) { return g.name; }, \
                        [](MmcifOutputGroups& g, bool v) { g.name = v; })
@@ -83,9 +91,12 @@ void add_write(py::module& m, py::class_<Structure>& structure) {
        write_minimal_pdb(st, os);
        return os.str();
     })
-    .def("make_mmcif_document", &make_mmcif_document)
-    .def("make_mmcif_block", &make_mmcif_block)
+    .def("make_mmcif_document", &make_mmcif_document,
+         py::arg_v("groups", MmcifOutputGroups(true), "MmcifOutputGroups(True)"))
+    .def("make_mmcif_block", &make_mmcif_block,
+         py::arg_v("groups", MmcifOutputGroups(true), "MmcifOutputGroups(True)"))
+    .def("update_mmcif_block", &update_mmcif_block, py::arg("block"),
+         py::arg_v("groups", MmcifOutputGroups(true), "MmcifOutputGroups(True)"))
     .def("make_mmcif_headers", &make_mmcif_headers)
-    .def("update_mmcif_block", &update_mmcif_block)
     ;
 }

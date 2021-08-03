@@ -1254,26 +1254,53 @@ and then it is written to disk.
 
 ----
 
-We also have function ``make_mmcif_headers()`` that writes everything except
-the list of atoms (categories ``_atom_site`` and ``_atom_site_anisotrop``).
+Similarly, instead of creating a CIF document we can create only a CIF block
+(because a CIF document created from Structure has only a single block):
 
-More fine-grained control of the output is possible with
-the function ``update_mmcif_block()``.
-It takes as parameters: Block and specification what groups (categories)
-are to be updated (added or replaced) in this block.
-In this example we output only cell parameters and atoms:
+.. doctest::
+
+  >>> structure.make_mmcif_block().write_file('new.cif')
+
+Or we can take an existing CIF block and add/change the categories
+that gemmi writes:
+
+.. doctest::
+
+  >>> cif_block = gemmi.cif.Block('name')
+  >>> structure.update_mmcif_block(cif_block)
+
+The functions above (make_mmcif_document, make_mmcif_block, update_mmcif_block)
+can take optional argument of type MmcifOutputGroups that provides fine-grained
+control of what is included in the output. For example, to write only cell
+parameters and atoms we would do:
 
 .. doctest::
 
   >>> groups = gemmi.MmcifOutputGroups(False)  # False -> start with all groups disabled
-  >>> groups.cell = True
-  >>> groups.atoms = True
-  >>> doc = gemmi.cif.Document()
-  >>> block = doc.add_new_block('new')
-  >>> structure.update_mmcif_block(block, groups)
+  >>> groups.cell = True   # enable category _cell
+  >>> groups.atoms = True  # enable _atom_site and _atom_site_anisotrop
+  >>> doc = structure.make_mmcif_document(groups)
   >>> doc.write_file('new2.cif')
 
 All group names (about 30) are listed in ``gemmi/to_mmcif.hpp``.
+
+The first three lines of the previous example can be replaced with:
+
+.. doctest::
+
+  >>> groups = gemmi.MmcifOutputGroups(False, cell=True, atoms=True)
+
+We also have a convenience function ``make_mmcif_headers()`` that writes everything except
+the list of atoms (categories ``_atom_site`` and ``_atom_site_anisotrop``).
+These two calls are equivalent:
+
+.. doctest::
+
+  >>> structure.make_mmcif_headers()
+  <gemmi.cif.Block 5I55>
+  >>> structure.make_mmcif_block(gemmi.MmcifOutputGroups(True, atoms=False))
+  <gemmi.cif.Block 5I55>
+
 
 mmJSON format
 =============
