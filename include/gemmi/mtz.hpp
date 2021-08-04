@@ -6,11 +6,11 @@
 #define GEMMI_MTZ_HPP_
 
 #include <cassert>
-#include <cstdint>   // for int32_t
-#include <cstdio>    // for FILE, fprintf
-#include <cstring>   // for memcpy
-#include <cmath>     // for isnan
-#include <algorithm> // for sort, any_of
+#include <cstdint>       // for int32_t
+#include <cstdio>        // for FILE, fprintf
+#include <cstring>       // for memcpy
+#include <cmath>         // for isnan
+#include <algorithm>     // for sort, any_of
 #include <array>
 #include <initializer_list>
 #include <string>
@@ -913,20 +913,41 @@ struct Mtz {
     col->parent = this;
     col->idx = pos;
     if (expand_data)
-      expand_data_rows(1);
+      expand_data_rows(1, pos);
     return *col;
   }
 
-  void expand_data_rows(int added) {
+  void remove_column(size_t idx) {
+    if (!has_data())
+      fail("remove_column(): data not read yet");
+    if (idx >= columns.size())
+      fail("remove_column(): no column with 0-based index " + std::to_string(idx));
+    columns.erase(columns.begin() + idx);
+    for (size_t i = idx; i < columns.size(); ++i)
+      --columns[i].idx;
+    for (size_t dest = idx, source = idx + 1; source < data.size(); ++source)
+      for (size_t i = 0; i < columns.size(); ++i)
+        data[dest++] = data[source++];
+    data.resize(columns.size() * nreflections);
+  }
+
+  void expand_data_rows(int added, int pos=-1) {
     int old_row_size = (int) columns.size() - added;
-    if ((int) data.size() != old_row_size * nreflections)
+    if (added < 0 || (int) data.size() != old_row_size * nreflections)
       fail("Internal error");
     data.resize(columns.size() * nreflections);
+    if (pos == -1)
+      pos = old_row_size;
+    else if (pos < 0 || pos > old_row_size)
+      fail("expand_data_rows(): pos out of range");
+    std::vector<float>::iterator dst = data.end();
     for (int i = nreflections; i-- != 0; ) {
+      for (int j = old_row_size; j-- != pos; )
+        *--dst = data[i * old_row_size + j];
       for (int j = added; j-- != 0; )
-        data[i * columns.size() + old_row_size + j] = NAN;
-      for (int j = old_row_size; j-- != 0; )
-        data[i * columns.size() + j] = data[i * old_row_size + j];
+        *--dst = NAN;
+      for (int j = pos; j-- != 0; )
+        *--dst = data[i * old_row_size + j];
     }
   }
 

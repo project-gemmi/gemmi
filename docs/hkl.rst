@@ -512,8 +512,17 @@ To sort data rows by the *h,k,l* indices call ``Mtz::sort()``:
   >>> mtz.sort_order  # sort() always sorts by h,k,l and sets sort_order to:
   [1, 2, 3, 0, 0]
 
-The metadata in an ``Mtz`` object can also be modified.
-To illustrate it, we will create a complete ``Mtz`` object from scratch.
+Columns can be removed with ``Mtz::remove_column(index)``,
+where index is 0-based column index:
+
+.. doctest::
+
+  >>> mtz.column_with_label('FREE').idx
+  3
+  >>> mtz.remove_column(_)  # removes column 3 (FREE)
+
+To demonstrate other functions, we will create a complete ``Mtz`` object
+from scratch.
 The code below is in Python, but all the functions and properties have
 equivalents with the same names in C++.
 
@@ -600,7 +609,7 @@ We can also start the file history:
 
 .. doctest::
 
-  mtz.history = ['This MTZ file was created today.']
+  >>> mtz.history = ['This MTZ file was created today.']
 
 ``mtz.history`` in Python is a property that gets a copy of the C++ data.
 Changing it (for example, ``mtz.history.append()``) won't affect the original data.

@@ -6,6 +6,7 @@ import gemmi
 from common import full_path, get_path_for_tempfile
 try:
     import numpy
+    numpy_version = tuple(int(n) for n in numpy.__version__.split('.')[:2])
 except ImportError:
     numpy = None
 
@@ -78,6 +79,12 @@ def fft_test(self, data, f, phi, size, order=gemmi.AxisOrder.XYZ):
 
 
 class TestMtz(unittest.TestCase):
+
+    def assert_numpy_equal(self, arr1, arr2):
+        # equal_nan arg was added in NumPy 1.19.0
+        if numpy and numpy_version >= (1,19):
+            self.assertTrue(numpy.array_equal(arr1, arr2, equal_nan=True))
+
     def test_read_write(self):
         path = full_path('5e5z.mtz')
         mtz = gemmi.read_mtz_file(path)
@@ -87,6 +94,28 @@ class TestMtz(unittest.TestCase):
         mtz2 = gemmi.read_mtz_file(out_name)
         os.remove(out_name)
         self.assertEqual(mtz2.spacegroup.hm, 'P 1 21 1')
+        self.assert_numpy_equal(numpy.array(mtz, copy=False),
+                                numpy.array(mtz2, copy=False))
+
+    def test_remove_and_add_column(self):
+        path = full_path('5e5z.mtz')
+        col_name = 'FREE'
+        mtz = gemmi.read_mtz_file(path)
+        col = mtz.column_with_label(col_name)
+        col_idx = col.idx
+        arr = col.array.copy()
+        ncol = len(mtz.columns)
+        if numpy is None:
+            return
+        mtz_data = numpy.array(mtz, copy=True)
+        self.assertEqual(mtz_data.shape, (mtz.nreflections, ncol))
+        mtz.remove_column(col_idx)
+        self.assertEqual(len(mtz.columns), ncol-1)
+        self.assertEqual(numpy.array(mtz, copy=False).shape,
+                         (mtz.nreflections, ncol-1))
+        col = mtz.add_column(col_name, 'I', dataset_id=0, pos=col_idx)
+        numpy.array(col, copy=False)[:] = arr
+        self.assert_numpy_equal(mtz_data, numpy.array(mtz, copy=False))
 
     def asu_data_test(self, grid):
         asu = grid.prepare_asu_data()
