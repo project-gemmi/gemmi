@@ -103,10 +103,10 @@ class TestMtz(unittest.TestCase):
         mtz = gemmi.read_mtz_file(path)
         col = mtz.column_with_label(col_name)
         col_idx = col.idx
-        arr = col.array.copy()
         ncol = len(mtz.columns)
         if numpy is None:
             return
+        arr = col.array.copy()
         mtz_data = numpy.array(mtz, copy=True)
         self.assertEqual(mtz_data.shape, (mtz.nreflections, ncol))
         mtz.remove_column(col_idx)
