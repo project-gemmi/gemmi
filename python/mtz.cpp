@@ -86,6 +86,7 @@ void add_mtz(py::module& m) {
     })
     .def_readwrite("title", &Mtz::title)
     .def_readwrite("nreflections", &Mtz::nreflections)
+    .def_readwrite("sort_order", &Mtz::sort_order)
     .def_readwrite("min_1_d2", &Mtz::min_1_d2)
     .def_readwrite("max_1_d2", &Mtz::max_1_d2)
     .def_readwrite("valm", &Mtz::valm)

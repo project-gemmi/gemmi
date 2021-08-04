@@ -89,6 +89,9 @@ The Mtz class has a number of properties read from the MTZ header
   >>> # although they could be recalculated from the data.
   >>> mtz.nreflections   # from MTZ record NCOL
   441
+  >>> # Header SORT contains 1-based column indices, 1,2,3,0,0 means H,K,L order.
+  >>> mtz.sort_order     # from SORT, 0,0,0,0,0 = unspecified, cf. Mtz::sort()
+  [0, 0, 0, 0, 0]
   >>> mtz.min_1_d2       # from RESO
   0.0028703967109323
   >>> mtz.max_1_d2       # from RESO
@@ -500,6 +503,14 @@ To show that it really has an effect we print the appropriate
   >>> mtz.get_size_for_hkl()
   [10, 10, 20]
 
+To sort data rows by the *h,k,l* indices call ``Mtz::sort()``:
+
+.. doctest::
+
+  >>> mtz.sort()  # returns False iff the data was already sorted
+  False
+  >>> mtz.sort_order  # sort() always sorts by h,k,l and sets sort_order to:
+  [1, 2, 3, 0, 0]
 
 The metadata in an ``Mtz`` object can also be modified.
 To illustrate it, we will create a complete ``Mtz`` object from scratch.
