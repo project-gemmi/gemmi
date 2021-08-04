@@ -363,6 +363,8 @@ so the data is not contiguous (because it's stored row-wise in MTZ):
 .. doctest::
   :skipif: numpy is None
 
+  >>> intensity.array.shape
+  (441,)
   >>> intensity.array.strides
   (32,)
 
@@ -380,15 +382,23 @@ similar to `#3 <http://www.auspex.de/pathol/#3>`_:
   :align: center
   :scale: 100
 
-Another way to access all the MTZ data in Python is through the
-`buffer protocol <https://docs.python.org/3/c-api/buffer.html>`_:
-For example, to view the data as 2D NumPy array (C-style contiguous)
-without copying do:
+The Mtz class also has a read-only property named ``array``.
+It provides access to all the MTZ data as 2D NumPy array
+(C-style contiguous), without copying it:
 
 .. doctest::
   :skipif: numpy is None
 
-  >>> import numpy
+  >>> mtz.array.shape
+  (441, 8)
+
+Another way to access MTZ data in Python is through the
+`buffer protocol <https://docs.python.org/3/c-api/buffer.html>`_.
+For example, here is equivalent of ``mtz.array``:
+
+.. doctest::
+  :skipif: numpy is None
+
   >>> all_data = numpy.array(mtz, copy=False)
 
 It helps to have labels on the columns. A good data structure for this

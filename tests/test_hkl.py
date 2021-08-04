@@ -94,8 +94,9 @@ class TestMtz(unittest.TestCase):
         mtz2 = gemmi.read_mtz_file(out_name)
         os.remove(out_name)
         self.assertEqual(mtz2.spacegroup.hm, 'P 1 21 1')
-        self.assert_numpy_equal(numpy.array(mtz, copy=False),
-                                numpy.array(mtz2, copy=False))
+        if numpy is not None:
+            self.assert_numpy_equal(numpy.array(mtz, copy=False), mtz.array)
+            self.assert_numpy_equal(mtz.array, mtz2.array)
 
     def test_remove_and_add_column(self):
         path = full_path('5e5z.mtz')
@@ -106,6 +107,7 @@ class TestMtz(unittest.TestCase):
         ncol = len(mtz.columns)
         if numpy is None:
             return
+        self.assert_numpy_equal(col.array, numpy.array(col, copy=False))
         arr = col.array.copy()
         mtz_data = numpy.array(mtz, copy=True)
         self.assertEqual(mtz_data.shape, (mtz.nreflections, ncol))

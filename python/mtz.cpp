@@ -84,6 +84,12 @@ void add_mtz(py::module& m) {
                              {nrow, ncol}, // dimensions
                              {4 * ncol, 4});  // strides
     })
+    .def_property_readonly("array", [](const Mtz& self) {
+      int nrow = self.has_data() ? self.nreflections : 0;
+      int ncol = (int) self.columns.size();
+      return py::array_t<float>({nrow, ncol}, {4 * ncol, 4},
+                                self.data.data(), py::cast(self));
+    }, py::return_value_policy::reference_internal)
     .def_readwrite("title", &Mtz::title)
     .def_readwrite("nreflections", &Mtz::nreflections)
     .def_readwrite("sort_order", &Mtz::sort_order)
