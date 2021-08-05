@@ -60,15 +60,15 @@ struct RMSes {
   int all_chiralities = 0;
 };
 
-double check_restraint(const Topo::Force force,
+double check_restraint(const Topo::Rule rule,
                        const Topo& topo,
                        double cutoff,
                        const char* tag,
                        RMSes* rmses,
                        bool verbose) {
-  switch (force.rkind) {
+  switch (rule.rkind) {
     case Topo::RKind::Bond: {
-      const Topo::Bond& t = topo.bonds[force.index];
+      const Topo::Bond& t = topo.bonds[rule.index];
       double z = t.calculate_z();
       if (z > cutoff) {
         int n = printf("%s bond %s: |Z|=%.1f", tag, t.restr->str().c_str(), z);
@@ -82,7 +82,7 @@ double check_restraint(const Topo::Force force,
       return z;
     }
     case Topo::RKind::Angle: {
-      const Topo::Angle& t = topo.angles[force.index];
+      const Topo::Angle& t = topo.angles[rule.index];
       double z = t.calculate_z();
       if (z > cutoff) {
         int n = printf("%s angle %s: |Z|=%.1f", tag, t.restr->str().c_str(), z);
@@ -96,7 +96,7 @@ double check_restraint(const Topo::Force force,
       return z;
     }
     case Topo::RKind::Torsion: {
-      const Topo::Torsion& t = topo.torsions[force.index];
+      const Topo::Torsion& t = topo.torsions[rule.index];
       double z = t.calculate_z();  // takes into account t.restr->period
       if (z > cutoff) {
         int n = printf("%s torsion %s: |Z|=%.1f",
@@ -111,7 +111,7 @@ double check_restraint(const Topo::Force force,
       return z;
     }
     case Topo::RKind::Chirality: {
-      const Topo::Chirality& t = topo.chirs[force.index];
+      const Topo::Chirality& t = topo.chirs[rule.index];
       rmses->all_chiralities++;
       if (!t.check()) {
         printf("%s wrong chirality of %s\n", tag, t.restr->str().c_str());
@@ -121,7 +121,7 @@ double check_restraint(const Topo::Force force,
       return 0.0;
     }
     case Topo::RKind::Plane: {
-      const Topo::Plane& t = topo.planes[force.index];
+      const Topo::Plane& t = topo.planes[rule.index];
       auto coeff = find_best_plane(t.atoms);
       double max_z = 0;
       for (const gemmi::Atom* atom : t.atoms) {
@@ -179,15 +179,15 @@ int GEMMI_MAIN(int argc, char **argv) {
       for (const Topo::ChainInfo& chain_info : topo.chain_infos)
         for (const Topo::ResInfo& ri : chain_info.res_infos) {
           std::string res = chain_info.name + " " + ri.res->str();
-          for (const Topo::Force& force : ri.forces)
-            if (force.provenance == Topo::Provenance::PrevLink ||
-                force.provenance == Topo::Provenance::Monomer)
-              check_restraint(force, topo, cutoff, res.c_str(), &rmses,
+          for (const Topo::Rule& rule : ri.rules)
+            if (rule.provenance == Topo::Provenance::PrevLink ||
+                rule.provenance == Topo::Provenance::Monomer)
+              check_restraint(rule, topo, cutoff, res.c_str(), &rmses,
                               p.options[Verbose]);
         }
       for (const Topo::ExtraLink& link : topo.extras) {
-        for (const Topo::Force& force : link.forces)
-          check_restraint(force, topo, cutoff, "link", &rmses,
+        for (const Topo::Rule& rule : link.rules)
+          check_restraint(rule, topo, cutoff, "link", &rmses,
                           p.options[Verbose]);
       }
       printf("Model rmsZ: "

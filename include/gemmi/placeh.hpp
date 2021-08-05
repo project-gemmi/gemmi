@@ -133,9 +133,9 @@ inline void place_hydrogens(const Atom& atom, Topo::ResInfo& ri,
   // put atoms bonded to atom into two lists
   std::vector<BondedAtom> known; // heavy atoms with known positions
   std::vector<BondedAtom> hs;    // H atoms (unknown)
-  for (const Topo::Force& force : ri.forces)
-    if (force.rkind == Topo::RKind::Bond) {
-      const Topo::Bond& t = topo.bonds[force.index];
+  for (const Topo::Rule& rule : ri.rules)
+    if (rule.rkind == Topo::RKind::Bond) {
+      const Topo::Bond& t = topo.bonds[rule.index];
       int n = Topo::has_atom(&atom, t);
       if (n == 0 || n == 1) {
         Atom* other = t.atoms[1-n];
@@ -349,9 +349,9 @@ inline void place_hydrogens(const Atom& atom, Topo::ResInfo& ri,
 inline void adjust_hydrogen_distances(Topo& topo, Restraints::DistanceOf of, double default_scale=1.) {
   for (Topo::ChainInfo& chain_info : topo.chain_infos)
     for (Topo::ResInfo& ri : chain_info.res_infos)
-      for (const Topo::Force& force : ri.forces)
-        if (force.rkind == Topo::RKind::Bond) {
-          const Topo::Bond& t = topo.bonds[force.index];
+      for (const Topo::Rule& rule : ri.rules)
+        if (rule.rkind == Topo::RKind::Bond) {
+          const Topo::Bond& t = topo.bonds[rule.index];
           assert(t.atoms[0] != nullptr && t.atoms[1] != nullptr);
           if (t.atoms[0]->is_hydrogen() || t.atoms[1]->is_hydrogen()) {
             Position u = t.atoms[1]->pos - t.atoms[0]->pos;

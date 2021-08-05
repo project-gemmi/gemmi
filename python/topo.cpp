@@ -19,7 +19,7 @@ PYBIND11_MAKE_OPAQUE(std::vector<Topo::ExtraLink>)
 PYBIND11_MAKE_OPAQUE(std::vector<Topo::ChainInfo>)
 PYBIND11_MAKE_OPAQUE(std::vector<Topo::ResInfo::Prev>)
 PYBIND11_MAKE_OPAQUE(std::vector<Topo::ResInfo>)
-PYBIND11_MAKE_OPAQUE(std::vector<Topo::Force>)
+PYBIND11_MAKE_OPAQUE(std::vector<Topo::Rule>)
 
 void add_topo(py::module& m) {
   py::class_<Topo> topo(m, "Topo");
@@ -74,10 +74,10 @@ void add_topo(py::module& m) {
     .value("Chirality", Topo::RKind::Chirality)
     .value("Plane", Topo::RKind::Plane)
     ;
-  py::class_<Topo::Force>(topo, "Force")
-    .def_readonly("provenance", &Topo::Force::provenance)
-    .def_readonly("rkind", &Topo::Force::rkind)
-    .def_readonly("index", &Topo::Force::index)
+  py::class_<Topo::Rule>(topo, "Rule")
+    .def_readonly("provenance", &Topo::Rule::provenance)
+    .def_readonly("rkind", &Topo::Rule::rkind)
+    .def_readonly("index", &Topo::Rule::index)
     ;
   py::class_<Topo::ResInfo> resinfo(topo, "ResInfo");
   py::class_<Topo::ResInfo::Prev>(resinfo, "Prev")
@@ -90,7 +90,7 @@ void add_topo(py::module& m) {
     .def_readonly("prev", &Topo::ResInfo::prev)
     .def_readonly("mods", &Topo::ResInfo::mods)
     .def_readonly("chemcomp", &Topo::ResInfo::chemcomp)
-    .def_readonly("forces", &Topo::ResInfo::forces)
+    .def_readonly("rules", &Topo::ResInfo::rules)
     ;
   py::class_<Topo::ChainInfo>(topo, "ChainInfo")
     .def_readonly("name", &Topo::ChainInfo::name)
@@ -113,7 +113,7 @@ void add_topo(py::module& m) {
   py::bind_vector<std::vector<Topo::Chirality>>(m, "TopoChirs");
   py::bind_vector<std::vector<Topo::Plane>>(m, "TopoPlanes");
   py::bind_vector<std::vector<Topo::ChainInfo>>(m, "TopoChainInfos");
-  py::bind_vector<std::vector<Topo::Force>>(m, "TopoForces");
+  py::bind_vector<std::vector<Topo::Rule>>(m, "TopoRules");
   py::bind_vector<std::vector<Topo::ResInfo::Prev>>(m, "TopoResInfoPrevs");
   py::bind_vector<std::vector<Topo::ResInfo>>(m, "TopoResInfos");
   py::bind_vector<std::vector<Topo::ExtraLink>>(m, "TopoExtraLinks");

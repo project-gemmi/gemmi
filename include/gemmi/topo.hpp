@@ -67,7 +67,7 @@ struct Topo {
 
   enum class Provenance { None, PrevLink, Monomer, NextLink, ExtraLink };
   enum class RKind { Bond, Angle, Torsion, Chirality, Plane };
-  struct Force {
+  struct Rule {
     Provenance provenance;
     RKind rkind;
     size_t index; // index in the respective vector (bonds, ...) in Topo
@@ -85,7 +85,7 @@ struct Topo {
     std::vector<Prev> prev;
     std::vector<std::string> mods;
     ChemComp chemcomp;
-    std::vector<Force> forces;
+    std::vector<Rule> rules;
 
     ResInfo(Residue* r) : res(r) {}
     void add_mod(const std::string& m) {
@@ -121,7 +121,7 @@ struct Topo {
     char alt1 = '\0';
     char alt2 = '\0';
     std::string link_id;
-    std::vector<Force> forces;
+    std::vector<Rule> rules;
   };
 
   template<typename T>
@@ -175,9 +175,9 @@ struct Topo {
     return nullptr;
   }
 
-  std::vector<Force> apply_restraints(const Restraints& rt,
-                                      Residue& res, Residue* res2,
-                                      char altloc='*') {
+  std::vector<Rule> apply_restraints(const Restraints& rt,
+                                     Residue& res, Residue* res2,
+                                     char altloc='*') {
     std::string altlocs;
     if (altloc == '*') {
       // find all distinct altlocs
@@ -188,13 +188,13 @@ struct Topo {
     if (altlocs.empty())
       altlocs += altloc;
 
-    std::vector<Force> forces;
+    std::vector<Rule> rules;
     Provenance pro = Provenance::None;
     for (const Restraints::Bond& bond : rt.bonds)
       for (char alt : altlocs)
         if (Atom* at1 = bond.id1.get_from(res, res2, alt))
           if (Atom* at2 = bond.id2.get_from(res, res2, alt)) {
-            forces.push_back({pro, RKind::Bond, bonds.size()});
+            rules.push_back({pro, RKind::Bond, bonds.size()});
             bonds.push_back({&bond, {{at1, at2}}});
             if (!at1->altloc && !at2->altloc)
               break;
@@ -204,7 +204,7 @@ struct Topo {
         if (Atom* at1 = angle.id1.get_from(res, res2, alt))
           if (Atom* at2 = angle.id2.get_from(res, res2, alt))
             if (Atom* at3 = angle.id3.get_from(res, res2, alt)) {
-              forces.push_back({pro, RKind::Angle, angles.size()});
+              rules.push_back({pro, RKind::Angle, angles.size()});
               angles.push_back({&angle, {{at1, at2, at3}}});
               if (!at1->altloc && !at2->altloc && !at3->altloc)
                 break;
@@ -215,7 +215,7 @@ struct Topo {
           if (Atom* at2 = tor.id2.get_from(res, res2, alt))
             if (Atom* at3 = tor.id3.get_from(res, res2, alt))
               if (Atom* at4 = tor.id4.get_from(res, res2, alt)) {
-                forces.push_back({pro, RKind::Torsion, torsions.size()});
+                rules.push_back({pro, RKind::Torsion, torsions.size()});
                 torsions.push_back({&tor, {{at1, at2, at3, at4}}});
                 if (!at1->altloc && !at2->altloc &&
                     !at3->altloc && !at4->altloc)
@@ -227,7 +227,7 @@ struct Topo {
           if (Atom* at2 = chir.id1.get_from(res, res2, alt))
             if (Atom* at3 = chir.id2.get_from(res, res2, alt))
               if (Atom* at4 = chir.id3.get_from(res, res2, alt)) {
-                forces.push_back({pro, RKind::Chirality, chirs.size()});
+                rules.push_back({pro, RKind::Chirality, chirs.size()});
                 chirs.push_back({&chir, {{at1, at2, at3, at4}}});
                 if (!at1->altloc && !at2->altloc &&
                     !at3->altloc && !at4->altloc)
@@ -240,30 +240,30 @@ struct Topo {
           if (Atom* atom = id.get_from(res, res2, alt))
             atoms.push_back(atom);
         if (atoms.size() >= 4) {
-          forces.push_back({pro, RKind::Plane, planes.size()});
+          rules.push_back({pro, RKind::Plane, planes.size()});
           planes.push_back({&plane, atoms});
         }
         if (std::all_of(atoms.begin(), atoms.end(),
                         [](Atom* a) { return !a->altloc; }))
           break;
       }
-    return forces;
+    return rules;
   }
 
   void apply_internal_restraints_to_residue(ResInfo& ri) {
-    auto forces = apply_restraints(ri.chemcomp.rt, *ri.res, nullptr);
-    for (const auto& f : forces)
-      ri.forces.push_back({Provenance::Monomer, f.rkind, f.index});
+    auto rules = apply_restraints(ri.chemcomp.rt, *ri.res, nullptr);
+    for (const auto& rule : rules)
+      ri.rules.push_back({Provenance::Monomer, rule.rkind, rule.index});
   }
 
   void apply_restraints_to_residue(ResInfo& ri, const MonLib& monlib) {
     for (ResInfo::Prev& prev : ri.prev) {
       if (const ChemLink* link = monlib.find_link(prev.link)) {
         ResInfo* prev_ri = prev.get(&ri);
-        auto forces = apply_restraints(link->rt, *prev_ri->res, ri.res);
-        for (const auto& f : forces) {
-          ri.forces.push_back({Provenance::PrevLink, f.rkind, f.index});
-          prev_ri->forces.push_back({Provenance::NextLink, f.rkind, f.index});
+        auto rules = apply_restraints(link->rt, *prev_ri->res, ri.res);
+        for (const auto& rule : rules) {
+          ri.rules.push_back({Provenance::PrevLink, rule.rkind, rule.index});
+          prev_ri->rules.push_back({Provenance::NextLink, rule.rkind, rule.index});
         }
       }
     }
@@ -283,14 +283,14 @@ struct Topo {
     char alt = link.alt1 ? link.alt1 : link.alt2;
     ResInfo* ri1 = find_resinfo(link.res1);
     ResInfo* ri2 = find_resinfo(link.res2);
-    auto forces = apply_restraints(cl->rt, *link.res1, link.res2, alt);
-    for (Force& f : forces) {
-      f.provenance = Provenance::ExtraLink;
-      link.forces.push_back(f);
+    auto rules = apply_restraints(cl->rt, *link.res1, link.res2, alt);
+    for (Rule& rule : rules) {
+      rule.provenance = Provenance::ExtraLink;
+      link.rules.push_back(rule);
       if (ri1)
-        ri1->forces.push_back(f);
+        ri1->rules.push_back(rule);
       if (ri2)
-        ri2->forces.push_back(f);
+        ri2->rules.push_back(rule);
     }
   }
 
