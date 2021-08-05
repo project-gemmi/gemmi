@@ -393,6 +393,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   p.require_positional_args(2);
+  p.check_exclusive_pair(KeepHydrogens, NoHydrogens);
   const char* monomer_dir = p.options[Monomers] ? p.options[Monomers].arg
                                                 : std::getenv("CLIBD_MON");
   if (monomer_dir == nullptr || *monomer_dir == '\0') {
@@ -401,8 +402,6 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   std::string input = p.coordinate_input_file(0);
   std::string output = p.nonOption(1);
-  if (p.options[KeepHydrogens] && p.options[NoHydrogens])
-    gemmi::fail("cannot use both --no-hydrogens and --keep-hydrogens");
   try {
     gemmi::Structure st = gemmi::read_structure_gz(input,
                                             gemmi::CoorFormat::UnknownAny);

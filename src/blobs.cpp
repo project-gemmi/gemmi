@@ -187,8 +187,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   p.require_positional_args(2);
-  if (p.options[SigmaCutoff] && p.options[AbsCutoff])
-    gemmi::fail("cannot use both --sigma and --abs");
+  p.check_exclusive_pair(SigmaCutoff, AbsCutoff);
   try {
     return run(p);
   } catch (std::runtime_error& e) {
