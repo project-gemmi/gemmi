@@ -95,13 +95,9 @@ Intensities read_intensities(Intensities::Type itype, const char* input_path,
 }
 
 void write_merged_intensities(const Intensities& intensities, const char* output_path) {
-  gemmi::Mtz mtz;
-  mtz.cell = intensities.unit_cell;
+  gemmi::Mtz mtz(/*with_base=*/true);
   mtz.spacegroup = intensities.spacegroup;
-  mtz.add_dataset("HKL_base");
-  mtz.add_column("H", 'H');
-  mtz.add_column("K", 'H');
-  mtz.add_column("L", 'H');
+  mtz.set_cell_for_all(intensities.unit_cell);
   mtz.add_dataset("unknown").wavelength = intensities.wavelength;
   if (intensities.type == Intensities::Type::Mean) {
     mtz.add_column("IMEAN", 'J');
