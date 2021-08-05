@@ -11,7 +11,7 @@
 namespace gemmi {
 
 // For now it's only partly-working
-void reindex_mtz(Mtz& mtz, const Op& op, std::ostream* out) {
+inline void reindex_mtz(Mtz& mtz, const Op& op, std::ostream* out) {
   mtz.switch_to_original_hkl();
   Op real_space_op{op.transposed_rot(), {0, 0, 0}};
   if (out)
