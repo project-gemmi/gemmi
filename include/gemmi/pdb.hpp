@@ -408,7 +408,7 @@ Structure read_pdb_from_input(Input&& infile, const std::string& source,
               opers.back().transform = matrix;
               matrix.set_identity();
             }
-#define CHECK(cpos, text) (colon == line+cpos && starts_with(line+11, text))
+#define CHECK(cpos, text) (colon == line+(cpos) && starts_with(line+11, text))
         } else if (CHECK(44, "AUTHOR DETERMINED")) {
           assembly.author_determined = true;
           assembly.oligomeric_details = read_string(line+45, 35);

@@ -43,10 +43,9 @@ inline PolymerType check_polymer_type(const ConstResidueSpan& polymer) {
   if (2 * na > polymer.size()) {
     if (counts[ResidueInfo::DNA] == 0)
       return PolymerType::Rna;
-    else if (counts[ResidueInfo::RNA] == 0)
+    if (counts[ResidueInfo::RNA] == 0)
       return PolymerType::Dna;
-    else
-      return PolymerType::DnaRnaHybrid;
+    return PolymerType::DnaRnaHybrid;
   }
   return PolymerType::Unknown;
 }

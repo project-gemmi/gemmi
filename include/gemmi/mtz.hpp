@@ -194,7 +194,7 @@ struct Mtz {
     version_stamp = std::move(o.version_stamp);
     title = std::move(o.title);
     nreflections = o.nreflections;
-    sort_order = std::move(o.sort_order);
+    sort_order = o.sort_order;
     min_1_d2 = o.min_1_d2;
     max_1_d2 = o.max_1_d2;
     valm = o.valm;

@@ -907,7 +907,7 @@ inline Table Block::find_mmcif_category(std::string cat) {
           indices[j] = j;
           const std::string& tag = i.loop.tags[j];
           if (!starts_with(tag, cat))
-            fail("Tag " + tag + " in loop with " + cat);
+            fail("Tag ", tag, " in loop with ", cat);
         }
         return Table{&i, *this, indices, cat.length()};
       } else {

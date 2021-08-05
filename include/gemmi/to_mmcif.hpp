@@ -1082,9 +1082,11 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
     for (int i = 0; i < 3; ++i) {
       std::string idx = "[" + std::to_string(i + 1) + "]";
       const auto& frac = st.cell.frac;
-      span.set_pair(prefix + "matrix" + idx + "[1]", to_str(frac.mat[i][0]));
-      span.set_pair(prefix + "matrix" + idx + "[2]", to_str(frac.mat[i][1]));
-      span.set_pair(prefix + "matrix" + idx + "[3]", to_str(frac.mat[i][2]));
+      std::string matrix_idx = prefix + "matrix";
+      matrix_idx += idx;
+      span.set_pair(matrix_idx + "[1]", to_str(frac.mat[i][0]));
+      span.set_pair(matrix_idx + "[2]", to_str(frac.mat[i][1]));
+      span.set_pair(matrix_idx + "[3]", to_str(frac.mat[i][2]));
       span.set_pair(prefix + "vector" + idx, to_str(frac.vec.at(i)));
     }
   }

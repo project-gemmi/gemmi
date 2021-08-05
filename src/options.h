@@ -39,7 +39,7 @@ struct Arg: public option::Arg {
   static option::ArgStatus Required(const option::Option& option, bool msg);
   static option::ArgStatus Char(const option::Option& option, bool msg);
   static option::ArgStatus Choice(const option::Option& option, bool msg,
-                                  std::vector<const char*> choices);
+                                  const std::vector<const char*>& choices);
   static option::ArgStatus ColonPair(const option::Option& option, bool msg);
   static option::ArgStatus Int(const option::Option& option, bool msg);
   static option::ArgStatus Int3(const option::Option& option, bool msg);

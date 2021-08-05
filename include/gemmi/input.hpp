@@ -114,7 +114,7 @@ public:
     char* new_ptr = (char*) std::realloc(ptr_.get(), n);
     if (!new_ptr)
       fail("Out of memory.");
-    ptr_.release();
+    (void) ptr_.release();
     ptr_.reset(new_ptr);
     size_ = n;
   }

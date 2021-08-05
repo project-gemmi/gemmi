@@ -363,7 +363,7 @@ template<> inline bool is_same(double a, double b) {
   return std::isnan(b) ? std::isnan(a) : a == b;
 }
 
-}
+} // namespace impl
 
 template<typename T>
 double Ccp4<T>::setup(GridSetup mode, T default_value) {
@@ -415,13 +415,11 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
   } else if (mode == GridSetup::FullCheck) {
     grid.axis_order = AxisOrder::XYZ;
     grid.symmetrize([&max_error, &default_value](T a, T b) {
-        if (impl::is_same(a, default_value)) {
+        if (impl::is_same(a, default_value))
           return b;
-        } else {
-          if (!impl::is_same(b, default_value))
-            max_error = std::max(max_error, std::fabs(double(a - b)));
-          return a;
-        }
+        if (!impl::is_same(b, default_value))
+          max_error = std::max(max_error, std::fabs(double(a - b)));
+        return a;
     });
   } else {
     grid.axis_order = AxisOrder::Unknown;

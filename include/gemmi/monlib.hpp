@@ -151,7 +151,7 @@ struct ChemMod {
   std::vector<AtomMod> atom_mods;
   Restraints rt;
 
-  void apply_to(ChemComp& cc) const;
+  void apply_to(ChemComp& chemcomp) const;
 };
 
 

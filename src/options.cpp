@@ -52,7 +52,7 @@ option::ArgStatus Arg::Char(const option::Option& option, bool msg) {
 }
 
 option::ArgStatus Arg::Choice(const option::Option& option, bool msg,
-                              std::vector<const char*> choices) {
+                              const std::vector<const char*>& choices) {
   if (Required(option, msg) == option::ARG_ILLEGAL)
     return option::ARG_ILLEGAL;
   for (const char* a : choices)

@@ -51,7 +51,7 @@ get_anisotropic_u(cif::Block& block) {
 }
 
 inline
-std::vector<std::string> transform_tags(std::string mstr, std::string vstr) {
+std::vector<std::string> transform_tags(const std::string& mstr, const std::string& vstr) {
   return {mstr + "[1][1]", mstr + "[1][2]", mstr + "[1][3]", vstr + "[1]",
           mstr + "[2][1]", mstr + "[2][2]", mstr + "[2][3]", vstr + "[2]",
           mstr + "[3][1]", mstr + "[3][2]", mstr + "[3][3]", vstr + "[3]"};
@@ -376,7 +376,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
   set_cell_from_mmcif(block, st.cell);
   st.spacegroup_hm = cif::as_string(impl::find_spacegroup_hm_value(block));
 
-  auto add_info = [&](std::string tag) {
+  auto add_info = [&](const std::string& tag) {
     bool first = true;
     for (const std::string& v : block.find_values(tag))
       if (!cif::is_null(v)) {
@@ -726,7 +726,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
       if (row.has(4))
         dbref.accession_code = row.str(4);
       if (row.has(5))
-      dbref.isoform = row.str(5);
+        dbref.isoform = row.str(5);
       constexpr int None = SeqId::OptionalNum::None;
       dbref.label_seq_begin = cif::as_int(seq[1], None);
       dbref.label_seq_end = cif::as_int(seq[2], None);

@@ -289,7 +289,7 @@ private:
         Trans tr;
         tr.col_idx = i;
         tr.tag = "index_";
-        tr.tag += ('h' + i); // h, k or l
+        tr.tag += "hkl"[i]; // h, k or l
         recipe.insert(recipe.begin(), tr);
       }
   }
@@ -410,7 +410,7 @@ private:
 
   void write_cell_and_symmetry(const UnitCell& cell, double* rmsds,
                                const SpaceGroup* sg,
-                               char* buf, std::ostream& os);
+                               char* buf, std::ostream& os) const;
 
   void write_main_loop(const Mtz& mtz, char* buf, std::ostream& os);
 };
@@ -425,7 +425,7 @@ inline bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream&
     out << "ERROR. Merged file is missing intensities.\n";
     ok = false;
   }
-  if (!mtz.column_with_one_of_labels({"F", "FP", "FOBS", "F-obs"
+  if (!mtz.column_with_one_of_labels({"F", "FP", "FOBS", "F-obs",
                                       "F(+)", "FOBS(+)", "F-obs(+)"})) {
     out << "Merged file is missing amplitudes\n"
            "(which is fine if intensities were used for refinement)\n";
@@ -928,7 +928,7 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
 
 inline void MtzToCif::write_cell_and_symmetry(const UnitCell& cell, double* rmsds,
                                               const SpaceGroup* sg,
-                                              char* buf, std::ostream& os) {
+                                              char* buf, std::ostream& os) const {
   os << "_cell.entry_id " << entry_id << '\n';
   WRITE("_cell.length_a    %8.3f\n", cell.a);
   if (rmsds && rmsds[0] != 0.)

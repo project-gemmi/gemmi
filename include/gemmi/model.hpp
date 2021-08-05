@@ -466,11 +466,11 @@ struct Chain {
   explicit Chain(std::string cname) noexcept : name(cname) {}
 
   ResidueSpan whole() {
-    auto begin = residues.empty() ? nullptr : &residues[0];
+    Residue* begin = residues.empty() ? nullptr : &residues[0];
     return ResidueSpan(residues, begin, residues.size());
   }
   ConstResidueSpan whole() const {
-    auto begin = residues.empty() ? nullptr : &residues[0];
+    const Residue* begin = residues.empty() ? nullptr : &residues[0];
     return ConstResidueSpan(begin, residues.size());
   }
 

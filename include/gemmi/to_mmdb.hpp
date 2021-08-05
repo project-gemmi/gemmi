@@ -6,7 +6,7 @@
 #define GEMMI_TO_MMDB_HPP_
 
 #include <cstdlib>           // for atoi
-#include <cstring>           // for strcpy
+#include <cstring>           // for memcpy
 #include <gemmi/model.hpp>
 #include <gemmi/util.hpp>    // for rtrim_str
 #include <mmdb2/mmdb_manager.h>
@@ -24,9 +24,9 @@ inline void copy_transform_to_mmdb(const Transform& tr,
 
 template<int N>
 void strcpy_to_mmdb(char (&dest)[N], const std::string& src) {
-  if (src.size() >= N+1)
+  if (src.size() >= N)
     fail("This string is too long: " + src);
-  std::strcpy(dest, src.c_str());
+  std::memcpy(dest, src.c_str(), src.size() + 1);
 }
 
 inline void set_seqid_in_mmdb(int* seqnum, mmdb::InsCode& icode, SeqId seqid) {

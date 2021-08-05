@@ -15,14 +15,14 @@
 namespace gemmi {
 
 inline Mat33 rot_as_mat33(const Op& op) {
-  double mult = 1.0 / op.DEN;
+  double mult = 1.0 / Op::DEN;
   return Mat33(mult * op.rot[0][0], mult * op.rot[0][1], mult * op.rot[0][2],
                mult * op.rot[1][0], mult * op.rot[1][1], mult * op.rot[1][2],
                mult * op.rot[2][0], mult * op.rot[2][1], mult * op.rot[2][2]);
 }
 
 inline Vec3 tran_as_vec3(const Op& op) {
-  double mult = 1.0 / op.DEN;
+  double mult = 1.0 / Op::DEN;
   return Vec3(mult * op.tran[0], mult * op.tran[1], mult * op.tran[2]);
 }
 
@@ -285,7 +285,7 @@ struct UnitCell {
     cs_count = (short) group_ops.order() - 1;
     images.reserve(cs_count);
     for (const auto& op : group_ops) {
-      if (op == op.identity())
+      if (op == Op::identity())
         continue;
       images.emplace_back(rot_as_mat33(op), tran_as_vec3(op));
     }

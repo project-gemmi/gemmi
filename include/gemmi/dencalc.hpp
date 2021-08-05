@@ -115,12 +115,10 @@ struct DensityCalculator {
 
   template<int N>
   double estimate_radius(const ExpSum<N, coef_type>& precal, double b) const {
-    if (N == 1) {
+    if (N == 1)
       return std::sqrt(std::log(cutoff / std::abs(precal.a[0])) / precal.b[0]);
-    } else {
-      double x1 = it92_radius_approx(b);
-      return determine_cutoff_radius(x1, precal, cutoff);
-    }
+    double x1 = it92_radius_approx(b);
+    return determine_cutoff_radius(x1, precal, cutoff);
   }
 
   template<typename Coef>
