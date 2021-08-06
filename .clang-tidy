@@ -1,0 +1,27 @@
+# clang-tidy-12 -p build ...
+
+Checks: '
+readability-*,
+-readability-braces-around-statements,
+-readability-container-size-empty,
+-readability-convert-member-functions-to-static,
+-readability-function-cognitive-complexity,
+-readability-implicit-bool-conversion,
+-readability-isolate-declaration,
+-readability-magic-numbers,
+-readability-named-parameter,
+-readability-qualified-auto,
+-readability-uppercase-literal-suffix,
+-readability-use-anyofallof,
+bugprone-*,
+-bugprone-branch-clone,
+-bugprone-narrowing-conversions,
+misc-*,
+-misc-no-recursion,
+-misc-non-private-member-variables-in-classes,
+performance-*,
+-performance-unnecessary-value-param,
+'
+
+HeaderFilterRegex: '(include/gemmi/[a-z0-9_]*\.hpp)|(src/.*\.h)'
+FormatStyle: none

@@ -420,10 +420,7 @@ void compare_with_hkl(const gemmi::SmallStructure& small,
           f_from_file = 0;
         }
       }
-    } catch(std::runtime_error& e) {
-      fprintf(stderr, "Error in _refln_[] in %s: %s\n", file.path, e.what());
-      continue;
-    } catch(std::invalid_argument& e) {
+    } catch(std::exception& e) {
       fprintf(stderr, "Error in _refln_[] in %s: %s\n", file.path, e.what());
       continue;
     }
@@ -748,7 +745,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
       process(input, p);
     }
-  } catch (std::runtime_error& e) {
+  } catch (std::exception& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }

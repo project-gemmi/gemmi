@@ -127,10 +127,15 @@ int GEMMI_MAIN(int argc, char **argv) {
       std::fprintf(stderr, "Space group not found: %s\n", arg);
       continue;
     }
-    if (p.options[Asu])
-      draw_asu(sg, std::atoi(p.options[Asu].arg));
-    else
-      print_info(sg, verbose);
+    try {
+      if (p.options[Asu])
+        draw_asu(sg, std::atoi(p.options[Asu].arg));
+      else
+        print_info(sg, verbose);
+    } catch (std::runtime_error& e) {
+      std::fprintf(stderr, "ERROR: %s\n", e.what());
+      return 1;
+    }
   }
   return 0;
 }

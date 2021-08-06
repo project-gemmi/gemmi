@@ -41,17 +41,16 @@ Mtz merge(const std::vector<InputSpec>& input_list) {
   Mtz out;
   out.data.reserve(mtz0.data.size());
   out.spacegroup = mtz0.spacegroup;
-  out.ncol = mtz0.ncol;
   out.nreflections = mtz0.nreflections;
-  out.nbatches = mtz0.nbatches;
   out.cell = mtz0.cell;
   out.sort_order = {{1, 2, 3, 0, 0}};
   out.columns = mtz0.columns;
   out.datasets = mtz0.datasets;
   out.history = mtz0.history;
-  for (int idx: indices0)
-    out.data.insert(out.data.end(), mtz0.data.begin() + idx * out.ncol,
-                    mtz0.data.begin() + (idx + 1) * out.ncol);
+  //for (int idx : indices0)
+  //  out.data.insert(out.data.end(),
+  //                  mtz0.data.begin() + idx * out.ncol,
+  //                  mtz0.data.begin() + (idx + 1) * out.ncol);
   return out;
 }
 

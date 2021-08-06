@@ -160,7 +160,7 @@ void OptParser::check_exclusive_group(const std::vector<int>& group) {
     }
 }
 
-void OptParser::print_try_help_and_exit(const char* msg) {
+void OptParser::print_try_help_and_exit(const char* msg) const {
   fprintf(stderr, "%s\nTry '%s --help' for more information.\n",
                   msg, program_name);
   std::exit(2);
@@ -179,7 +179,7 @@ void OptParser::require_input_files_as_args(int other_args) {
     print_try_help_and_exit("No input files. Nothing to do.");
 }
 
-void OptParser::exit_exclusive(int opt1, int opt2) {
+void OptParser::exit_exclusive(int opt1, int opt2) const {
   std::fprintf(stderr, "Options -%s and -%s cannot be used together.\n",
                given_name(opt1), given_name(opt2));
   std::exit(1);

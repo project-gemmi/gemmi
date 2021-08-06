@@ -581,7 +581,7 @@ inline void write_header(const Structure& st, std::ostream& os,
           // In special cases (LINKR gap) atoms are not there.
           if (!cra1.residue || !cra2.residue)
             continue;
-          std::string im_pdb_symbol = "", im_dist_str = "";
+          std::string im_pdb_symbol, im_dist_str;
           bool im_same_asu = true;
           if (cra1.atom && cra2.atom) {
             SymImage im = st.cell.find_nearest_image(cra1.atom->pos,

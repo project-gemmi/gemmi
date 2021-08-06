@@ -146,8 +146,7 @@ const gemmi::Entity* get_entity(gemmi::Structure& st,
   auto polymer = get_polymer(get_first_model(st), chain_name);
   if (const gemmi::Entity* ent = st.get_entity_of(polymer))
     return ent;
-  else
-    gemmi::fail("No sequence (SEQRES) for chain " + chain_name);
+  gemmi::fail("No sequence (SEQRES) for chain " + chain_name);
 }
 
 void print_one_letter_alignment(const gemmi::AlignmentResult& result,

@@ -61,8 +61,8 @@ struct OptParser : option::Parser {
   // returns the nth arg except that a PDB code gets replaced by $PDB_DIR/...
   std::string coordinate_input_file(int n, char pdb_code_type='M');
   std::vector<std::string> paths_from_args_or_file(int opt, int other);
-  [[noreturn]] void print_try_help_and_exit(const char* msg);
-  [[noreturn]] void exit_exclusive(int opt1, int opt2);
+  [[noreturn]] void print_try_help_and_exit(const char* msg) const;
+  [[noreturn]] void exit_exclusive(int opt1, int opt2) const;
   void check_exclusive_pair(int opt1, int opt2) {
     if (options[opt1] && options[opt2])
       exit_exclusive(opt1, opt2);

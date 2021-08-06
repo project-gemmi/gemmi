@@ -88,7 +88,7 @@ Intensities read_intensities(Intensities::Type itype, const char* input_path,
     if (intensities.data.empty())
       gemmi::fail("data not found");
     return intensities;
-  } catch (std::runtime_error& e) {
+  } catch (std::exception& e) {
     std::fprintf(stderr, "ERROR while reading %s: %s\n", input_path, e.what());
     std::exit(1);
   }
@@ -136,7 +136,7 @@ void write_merged_intensities(const Intensities& intensities, const char* output
       gemmi::Ofstream os(output_path, /*dash=*/&std::cout);
       mtz_to_cif.write_cif(mtz, nullptr, os.ref());
     }
-  } catch (std::runtime_error& e) {
+  } catch (std::exception& e) {
     std::fprintf(stderr, "ERROR while writing %s: %s\n", output_path, e.what());
     std::exit(1);
   }
@@ -244,15 +244,20 @@ int GEMMI_MAIN(int argc, char **argv) {
     std::fprintf(stderr, "Merging observations (%zu total, %zu for I+, %zu for I-) ...\n",
                  intensities.data.size(), plus_count, minus_count);
   }
-  if (p.options[Compare]) {
-    intensities.merge_in_place(ref.type);
-    compare_intensities(intensities, ref, p.options[PrintAll]);
-  } else {
-    intensities.merge_in_place(itype);
-    if (verbose)
-      std::fprintf(stderr, "Writing %zu reflections to %s ...\n",
-                   intensities.data.size(), output_path);
-    write_merged_intensities(intensities, output_path);
+  try {
+    if (p.options[Compare]) {
+      intensities.merge_in_place(ref.type);
+      compare_intensities(intensities, ref, p.options[PrintAll]);
+    } else {
+      intensities.merge_in_place(itype);
+      if (verbose)
+        std::fprintf(stderr, "Writing %zu reflections to %s ...\n",
+                     intensities.data.size(), output_path);
+      write_merged_intensities(intensities, output_path);
+    }
+  } catch (std::runtime_error& e) {
+    std::fprintf(stderr, "ERROR: %s\n", e.what());
+    return 1;
   }
   return 0;
 }

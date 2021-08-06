@@ -114,7 +114,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           if (cif2mtz.verbose)
             fprintf(stderr, "Writing %s ...\n", path.c_str());
           mtz.write_to_file(path);
-        } catch (std::runtime_error& e) {
+        } catch (std::exception& e) {
           fprintf(stderr, "ERROR: %s\n", e.what());
           ok = false;
         }
@@ -136,7 +136,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         fprintf(stderr, "Writing %s ...\n", mtz_path);
       mtz.write_to_file(mtz_path);
     }
-  } catch (std::runtime_error& e) {
+  } catch (std::exception& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }

@@ -133,7 +133,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.require_positional_args(4);
   try {
     transform_map_to_sf(p);
-  } catch (std::runtime_error& e) {
+  } catch (std::exception& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }

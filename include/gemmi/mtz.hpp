@@ -962,7 +962,7 @@ struct Mtz {
   // Function for writing MTZ file
   void write_to_cstream(std::FILE* stream) const;
   void write_to_string(std::string& str) const;
-  template<typename Stream> void write_to_stream(Stream stream) const;
+  template<typename Write> void write_to_stream(Write write) const;
   void write_to_file(const std::string& path) const;
 };
 

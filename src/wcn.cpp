@@ -78,7 +78,7 @@ struct Params {
   std::string xy_out;
 };
 
-const Position calculate_center_of_mass(const ResidueSpan& residue_span) {
+Position calculate_center_of_mass(const ResidueSpan& residue_span) {
   double mass = 0;
   Vec3 sum;
   for (const Residue& res : residue_span)

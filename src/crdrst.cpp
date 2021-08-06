@@ -503,10 +503,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::Ofstream os(output + ".rst");
       write_cif_to_stream(os.ref(), rst, cif::Style::NoBlankLines);
     }
-  } catch (std::runtime_error& e) {
-    fprintf(stderr, "ERROR: %s\n", e.what());
-    return 1;
-  } catch (std::out_of_range& e) {
+  } catch (std::exception& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }

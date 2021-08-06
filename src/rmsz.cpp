@@ -15,7 +15,6 @@
 #define GEMMI_PROG rmsz
 #include "options.h"
 
-namespace cif = gemmi::cif;
 using gemmi::Topo;
 
 namespace {
@@ -205,10 +204,7 @@ int GEMMI_MAIN(int argc, char **argv) {
              rmses.d_plane.get_value(),
              rmses.wrong_chirality, rmses.all_chiralities);
     }
-  } catch (std::runtime_error& e) {
-    fprintf(stderr, "ERROR: %s\n", e.what());
-    return 1;
-  } catch (std::out_of_range& e) {
+  } catch (std::exception& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }

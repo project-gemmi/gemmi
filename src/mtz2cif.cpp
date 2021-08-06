@@ -268,7 +268,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (!gemmi::validate_merged_intensities(mi, ui, mtz_to_cif.get_staraniso_b(),
                                               std::cerr))
         ok = false;
-    } catch (std::runtime_error& e) {
+    } catch (std::exception& e) {
       fprintf(stderr, "Error. Intensities could not be validated.\n%s.\n", e.what());
       ok = false;
     }

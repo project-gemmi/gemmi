@@ -168,7 +168,7 @@ inline std::string qchain(const std::string& s) {
 }
 
 
-inline void add_cif_atoms(const Structure& st, cif::Block& block, bool use_group_pdb) {
+void add_cif_atoms(const Structure& st, cif::Block& block, bool use_group_pdb) {
   // atom list
   cif::Loop& atom_loop = block.init_mmcif_loop("_atom_site.", {
       "id",
