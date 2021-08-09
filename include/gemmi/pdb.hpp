@@ -271,8 +271,7 @@ Structure read_pdb_from_input(Input&& infile, const std::string& source,
   st.input_format = CoorFormat::Pdb;
   st.name = path_basename(source, {".gz", ".pdb"});
   std::vector<std::string> conn_records;
-  st.models.emplace_back("1");
-  Model *model = &st.models.back();
+  Model *model = nullptr;
   Chain *chain = nullptr;
   Residue *resi = nullptr;
   char line[122] = {0};
@@ -292,6 +291,7 @@ Structure read_pdb_from_input(Input&& infile, const std::string& source,
 
       if (!chain || chain_name != chain->name) {
         if (!model) {
+          // A single model usually doesn't have the MODEL record. Also,
           // MD trajectories may have frames separated by ENDMDL without MODEL.
           std::string name = std::to_string(st.models.size() + 1);
           if (st.find_model(name))
@@ -610,6 +610,12 @@ Structure read_pdb_from_input(Input&& infile, const std::string& source,
         fail("Incorrect file format (perhaps it is cif not pdb?): " + source);
     }
   }
+
+  // If we read a PDB header (they can be downloaded from RSCB) we have no
+  // models. User's code may not expect this. Usually, empty model will be
+  // handled more gracefully than no models.
+  if (st.models.empty())
+    st.models.emplace_back("1");
 
   for (Model& mod : st.models)
     for (Chain& ch : mod.chains)
