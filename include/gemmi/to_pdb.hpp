@@ -435,6 +435,7 @@ inline void write_header(const Structure& st, std::ostream& os,
     for (size_t i = 0; i != entity_list.size(); ++i)
       if (const Entity* entity = entity_list[i]) {
         const Chain& ch = st.models[0].chains[i];
+        const char* dbref_entry_id = entry_id.size() <= 4 ? entry_id.c_str() : "";
         for (const Entity::DbRef& dbref : entity->dbrefs) {
           bool short_record = *dbref.db_end.num < 100000 &&
                               dbref.accession_code.size() < 9 &&
@@ -449,11 +450,14 @@ inline void write_header(const Structure& st, std::ostream& os,
           char buf8[8];
           char buf8a[8];
           gf_snprintf(buf, 82, "DBREF  %4s%2s %5s %5s %-6s  ",
-                      entry_id.c_str(), ch.name.c_str(),
+                      dbref_entry_id, ch.name.c_str(),
                       impl::write_seq_id(buf8, begin),
                       impl::write_seq_id(buf8a, end),
                       dbref.db_name.c_str());
-          if (!(dbref.db_name == "PDB" && dbref.id_code == entry_id)) {
+          if (dbref.db_name == "PDB" && dbref.id_code == entry_id) {
+            // PDB uses self-reference for fragments that don't have real
+            // reference. No idea why. In such case the same begin/end is used.
+          } else {
             begin = dbref.db_begin;
             end = dbref.db_end;
           }
@@ -462,14 +466,14 @@ inline void write_header(const Structure& st, std::ostream& os,
                         dbref.accession_code.c_str(), dbref.id_code.c_str(),
                         *begin.num, begin.icode, *end.num, end.icode);
           } else {
-            buf[5] = '1';
+            buf[5] = '1';  // -> DBREF1
             gf_snprintf(buf+33, 82-33, "              %-33s\n",
                         dbref.id_code.c_str());
           }
           os.write(buf, 81);
           if (!short_record)
             WRITE("DBREF2 %4s%2s     %-22s     %10d  %10d             ",
-                  entry_id.c_str(), ch.name.c_str(),
+                  dbref_entry_id, ch.name.c_str(),
                   dbref.accession_code.c_str(), *begin.num, *end.num);
         }
       }
