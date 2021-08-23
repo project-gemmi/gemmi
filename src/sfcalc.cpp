@@ -252,7 +252,8 @@ void process_with_fft(const gemmi::Structure& st,
   Comparator comparator;
   if (scale_to.size() != 0) {
     scaling.prepare_points(asu_data, scale_to, mask_data);
-    printf("Calculating scale factors using %zu points...\n", scaling.points.size());
+    printf("Calculating scale factors using %lu points...\n",
+           (unsigned long) scaling.points.size()); // %zu is absent in old MinGW
     scaling.fit_isotropic_b_approximately();
     //fprintf(stderr, "k_ov=%g B_ov=%g\n", scaling.k_overall, scaling.get_b_overall().u11);
     scaling.fit_parameters();
