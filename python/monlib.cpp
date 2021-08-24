@@ -108,10 +108,11 @@ void add_monlib(py::module& m) {
         return "<gemmi.Restraints.Angle " + self.str() + ">";
     });
   restraintstorsion
+    .def_readwrite("label", &Restraints::Torsion::label)
     .def_readwrite("id1", &Restraints::Torsion::id1)
     .def_readwrite("id2", &Restraints::Torsion::id2)
     .def_readwrite("id3", &Restraints::Torsion::id3)
-    .def_readwrite("id4", &Restraints::Torsion::id3)
+    .def_readwrite("id4", &Restraints::Torsion::id4)
     .def_readwrite("value", &Restraints::Torsion::value)
     .def_readwrite("esd", &Restraints::Torsion::esd)
     .def_readwrite("period", &Restraints::Torsion::period)
