@@ -52,7 +52,7 @@ TEST_CASE("SMat33::inverse") {
   gemmi::Mat33 inv2 = sm.inverse().as_mat33();
   for (int i = 0; i < 3; ++i)
     for (int j = 0; j < 3; ++j)
-      CHECK_EQ(inv1.a[i][j], inv2.a[i][j]);
+      CHECK(std::abs(inv1.a[i][j] - inv2.a[i][j]) < 1e-16);
 }
 
 TEST_CASE("Transform::combine") {
