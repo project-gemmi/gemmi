@@ -10,12 +10,12 @@
   python3 setup.py sdist
   python3 -m pip uninstall gemmi
   python3 -m pip install dist/gemmi-$VERSION.tar.gz
-  python3 setup.py sdist upload
 
 - git commit -a -m "change version number to $VERSION"
 
 - Run https://github.com/project-gemmi/gemmi/actions/workflows/wheels.yml
-  download artifacts and unpack to wheelhouse/
+  download wheels.zip and unpack to wheelhouse/
+- python3 setup.py sdist upload
 - twine upload wheelhouse/*.whl
 
 - tag:
