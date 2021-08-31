@@ -14,7 +14,14 @@
 #  define STB_SPRINTF_IMPLEMENTATION
 # endif
 # define STB_SPRINTF_DECORATE(name) gstb_##name
-# include "third_party/stb_sprintf.h"
+// To use system stb_sprintf.h (not recommended, but some Linux distros
+// don't like bundled libraries) just remove third_party/stb_sprintf.h.
+# if !defined(__has_include) || __has_include("third_party/stb_sprintf.h")
+#  include "third_party/stb_sprintf.h"
+# else
+#  warning "Using system stb_sprintf.h instead of the bundled one. May not work."
+#  include <stb/stb_sprintf.h>
+# endif
 #endif
 #include <string>
 
