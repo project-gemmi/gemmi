@@ -16,11 +16,16 @@
 # define STB_SPRINTF_DECORATE(name) gstb_##name
 // To use system stb_sprintf.h (not recommended, but some Linux distros
 // don't like bundled libraries) just remove third_party/stb_sprintf.h.
-# if !defined(__has_include) || __has_include("third_party/stb_sprintf.h")
-#  include "third_party/stb_sprintf.h"
-# else
-#  warning "Using system stb_sprintf.h instead of the bundled one. May not work."
+# if defined(__has_include)
+#  if !__has_include("third_party/stb_sprintf.h")
+#   define GEMMI_USE_SYSTEM_STB 1
+#  endif
+# endif
+# ifdef GEMMI_USE_SYSTEM_STB
+#  warning "Using system stb_sprintf.h, not the bundled one. It may not work."
 #  include <stb/stb_sprintf.h>
+# else
+#  include "third_party/stb_sprintf.h"
 # endif
 #endif
 #include <string>
