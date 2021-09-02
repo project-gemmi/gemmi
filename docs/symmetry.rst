@@ -15,7 +15,7 @@ Each entry includes:
 * ``ccp4`` -- ccp4 number (assigned to particular settings; modulo 1000
   they give space group number: 3 and 1003 correspond to
   ``P 1 2 1`` and ``P 1 1 2``; 0 means none),
-* ``hm`` -- Herman-Mauguin (H-M) symbol a.k.a. the international notation
+* ``hm`` -- Hermann-Mauguin (H-M) symbol a.k.a. the international notation
   (``I a -3 d``, ``C 1 2 1``),
 * ``ext`` -- extension to the H-M notations (none, ``1``, ``2``, ``H``
   or ``R``) that make extended H-M symbol (``R 3:H``, ``P 4/n:1``),
@@ -74,7 +74,7 @@ and in Python:
     The rest of this section has only Python examples mixed with the text.
     One longer C++ example is at the end.
 
-The name above is expected to be either a full international Herman-Mauguin
+The name above is expected to be either a full international Hermann-Mauguin
 symbol or a short symbol (*I2* instead of *I 1 2 1*).
 This functions also searches the tabulated alternative names:
 
