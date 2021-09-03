@@ -83,13 +83,17 @@ This functions also searches the tabulated alternative names:
     >>> gemmi.find_spacegroup_by_name('C m m e') # new names have 'e' and 'g'
     <gemmi.SpaceGroup("C m m a")>
 
-Sometimes in the PDB, the setting of the hexagonal crystal system
+Sometimes in the PDB, the setting of the hexagonal crystal family
 is not clear from the symmetry symbol alone. For instance, the H-M symbol
-"R 3" can mean either hexagonal or rhombohedral setting.
+"R 3" can mean either hexagonal or rhombohedral setting.
+Furthermore, ITC vol. A, PDB and SCALEPACK assign different meanings to
+"H 3" and similar symbols, as described in
+`Fuzzy space group symbols: H3 and H32 <http://www.phenix-online.org/newsletter/CCN_2011_01.pdf>`_.
 This ambiguity can be resolved by comparing angles of the unit cell.
-The ratio of gamma to alpha angles is 120:90 in the hexagonal system
-and 1:1 in rhombohedral. Therefore, ``find_spacegroup_by_name()``
-accepts also alpha and gamma angles. If the angles are not passed,
+The ratio of *γ* to *α* angles is 120:90 in the hexagonal system
+and 1:1 in rhombohedral. (Note: gemmi assumes that H3 refers to
+space group 146 (R3), not 143 (P3)). Therefore, ``find_spacegroup_by_name()``
+accepts also *α* and *γ* angles. If the angles are not passed,
 the hexagonal system is returned:
 
 .. doctest::
