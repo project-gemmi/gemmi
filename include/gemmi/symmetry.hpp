@@ -370,12 +370,12 @@ inline std::string Op::triplet() const {
 // GROUPS OF OPERATIONS
 
 // corresponds to Table A1.4.2.2 in ITfC vol.B (edition 2010)
-inline std::vector<Op::Tran> centring_vectors(char lattice_symbol) {
+inline std::vector<Op::Tran> centring_vectors(char centring_type) {
   constexpr int h = Op::DEN / 2;
   constexpr int t = Op::DEN / 3;
   constexpr int d = 2 * t;
   // note: find_centering() depends on the order of operations in vector
-  switch (lattice_symbol & ~0x20) {
+  switch (centring_type & ~0x20) {
     case 'P': return {{0, 0, 0}};
     case 'A': return {{0, 0, 0}, {0, h, h}};
     case 'B': return {{0, 0, 0}, {h, 0, h}};
@@ -387,7 +387,7 @@ inline std::vector<Op::Tran> centring_vectors(char lattice_symbol) {
     case 'S': return {{0, 0, 0}, {t, t, d}, {d, t, d}};
     case 'T': return {{0, 0, 0}, {t, d, t}, {d, t, d}};
     case 'F': return {{0, 0, 0}, {0, h, h}, {h, 0, h}, {h, h, 0}};
-    default: fail(std::string("not a lattice symbol: ") + lattice_symbol);
+    default: fail("not a centring type: ", centring_type);
   }
 }
 
