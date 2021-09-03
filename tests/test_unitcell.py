@@ -98,7 +98,7 @@ class TestUnitCell(unittest.TestCase):
     def test_change_of_basis(self):
         uc = gemmi.UnitCell(20, 30, 39, 73, 93, 99)
         op = gemmi.Op('y-x/2,-2/3*z+2/3*y,3*x')
-        uc2 = uc.change_basis(op, set_images=False)
+        uc2 = uc.changed_basis(op, set_images=False)
         print(uc.volume, uc2.volume)
         # compare with result from cctbx:
         #  from cctbx import sgtbx, uctbx

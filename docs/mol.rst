@@ -581,7 +581,7 @@ we need a new unit cell, which can be obtained with:
 
 .. doctest::
 
-    >>> cell.change_basis(gemmi.Op('y,z,x'), set_images=True)
+    >>> cell.changed_basis(gemmi.Op('y,z,x'), set_images=True)
     <gemmi.UnitCell(45.07, 25.14, 39.5, 90, 90, 90)>
 
 With ``set_images=False`` the ``images`` list in the new unit cell is empty.

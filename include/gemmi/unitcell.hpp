@@ -260,7 +260,7 @@ struct UnitCell {
         deg(vb.angle(vc)), deg(vc.angle(va)), deg(va.angle(vb)));
   }
 
-  UnitCell change_basis(const Op& op, bool set_images) {
+  UnitCell changed_basis(const Op& op, bool set_images) {
     Mat33 mat = orth.mat.multiply(rot_as_mat33(op));
     UnitCell new_cell;
     new_cell.set_from_vectors(mat.column_copy(0),
