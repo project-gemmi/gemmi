@@ -1743,8 +1743,6 @@ inline const SpaceGroup& get_spacegroup_reference_setting(int number) {
 // to distinguish hexagonal and rhombohedral settings (e.g. for "R 3").
 inline const SpaceGroup* find_spacegroup_by_name(std::string name,
                                   double alpha=0., double gamma=0.) noexcept {
-  if (name[0] == 'H')
-    name[0] = 'R';
   const char* p = impl::skip_blank(name.c_str());
   if (*p >= '0' && *p <= '9') { // handle numbers
     char *endptr;
@@ -1754,6 +1752,8 @@ inline const SpaceGroup* find_spacegroup_by_name(std::string name,
   char first = *p & ~0x20; // to uppercase
   if (first == '\0')
     return nullptr;
+  if (first == 'H')
+    first = 'R';
   p = impl::skip_blank(p+1);
   // change letters to lower case, except the letter after :
   for (size_t i = p - name.c_str(); i < name.size(); ++i) {

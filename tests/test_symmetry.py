@@ -195,6 +195,8 @@ class TestSymmetry(unittest.TestCase):
         check_xhm('R 3 2:h', 'R 3 2:H')
         check_xhm('R32:H', 'R 3 2:H')
         check_xhm('H32', 'R 3 2:H')
+        check_xhm(' R32:H ', 'R 3 2:H')
+        check_xhm('     H32', 'R 3 2:H')
         check_xhm('R 3 2:R', 'R 3 2:R')
         check_xhm('P6', 'P 6')
         check_xhm('P 6', 'P 6')
