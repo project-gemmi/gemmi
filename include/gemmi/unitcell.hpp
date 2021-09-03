@@ -276,15 +276,36 @@ struct UnitCell {
     return new_cell;
   }
 
+  bool is_compatible_with_groupops(const GroupOps& gops, double eps=1e-3) {
+    std::array<double,6> metric = metric_tensor().elements();
+    auto dot = [](const Mat33& m, int i, int j) {
+      return m.a[0][i] * m.a[0][j] + m.a[1][i] * m.a[1][j] + m.a[2][i] * m.a[2][j];
+    };
+    for (const Op& op : gops.sym_ops) {
+      Mat33 m = orth.mat.multiply(rot_as_mat33(op));
+      std::array<double,6> other = {{
+        dot(m,0,0), dot(m,1,1), dot(m,2,2), dot(m,0,1), dot(m,0,2), dot(m,1,2)
+      }};
+      for (int i = 0; i < 6; ++i)
+        if (std::fabs(metric[i] - other[i]) > eps)
+          return false;
+    }
+    return true;
+  }
+
+  bool is_compatible_with_spacegroup(const SpaceGroup* sg, double eps=1e-6) {
+    return sg ? is_compatible_with_groupops(sg->operations(), eps) : false;
+  }
+
   void set_cell_images_from_spacegroup(const SpaceGroup* sg) {
     images.clear();
     cs_count = 0;
     if (!sg)
       return;
-    auto group_ops = sg->operations();
+    GroupOps group_ops = sg->operations();
     cs_count = (short) group_ops.order() - 1;
     images.reserve(cs_count);
-    for (const auto& op : group_ops) {
+    for (const Op& op : group_ops) {
       if (op == Op::identity())
         continue;
       images.emplace_back(rot_as_mat33(op), tran_as_vec3(op));
