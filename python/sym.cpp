@@ -173,6 +173,7 @@ void add_symmetry(py::module& m) {
     .def("crystal_system_str", &SpaceGroup::crystal_system_str,
          "Returns lower-case name of the crystal system.")
     .def("is_reference_setting", &SpaceGroup::is_reference_setting)
+    .def("centred_to_primitive_inv", &SpaceGroup::centred_to_primitive_inv)
     .def("operations", &SpaceGroup::operations, "Group of operations")
     .def("switch_to_asu", [](const SpaceGroup& sg, py::array_t<int> hkl) {
         auto h = hkl.mutable_unchecked<2>();

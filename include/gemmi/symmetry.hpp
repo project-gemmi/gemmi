@@ -1014,6 +1014,24 @@ inline const char* get_basisop(int basisop_idx) {
   return basisops[basisop_idx];
 }
 
+// Returns the same operator for centred <-> primitive basis transformation
+// as sgtbx (z2p_op). Other libraries, such as spglib, use different operators.
+// The inverse of this matrix is used for centred -> primitive change-of-basis.
+inline Op::Rot centred_to_primitive_inv(char centring_type) {
+  constexpr int D = Op::DEN;
+  switch (centring_type) {
+    case 'P': return {D,0,0, 0,D,0, 0,0,D};
+    case 'A': return {-D,0,0, 0,-D,D, 0,D,D};
+    case 'B': return {-D,0,D, 0,-D,0, D,0,D};
+    case 'C': return {D,D,0, D,-D,0, 0,0,-D};
+    case 'I': return {0,D,D, D,0,D, D,D,0};
+    case 'R': return {D,0,D, -D,D,D, 0,-D,D};
+    case 'H': return {D,D,0, -D,2*D,0, 0,0,D};  // not used normally
+    case 'F': return {-D,D,D, D,-D,D, D,D,-D};
+    default: fail("not a centring type: ", centring_type);
+  }
+}
+
 
 // LIST OF CRYSTALLOGRAPHIC SPACE GROUPS
 
@@ -1034,6 +1052,8 @@ struct SpaceGroup { // typically 44 bytes
     }
     return ret;
   }
+
+  char centring_type() const { return ext == 'R' ? 'P' : hm[0]; }
 
   // (old) CCP4 spacegroup names start with H for hexagonal setting
   char ccp4_lattice_type() const { return ext == 'H' ? 'H' : hm[0]; }
@@ -1069,6 +1089,10 @@ struct SpaceGroup { // typically 44 bytes
   const char* basisop_str() const { return get_basisop(basisop_idx); }
   Op basisop() const { return parse_triplet(basisop_str()); }
   bool is_reference_setting() const { return basisop_idx == 0; }
+
+  Op centred_to_primitive_inv() const {
+    return {gemmi::centred_to_primitive_inv(centring_type()), {0,0,0}};
+  }
 
   GroupOps operations() const { return symops_from_hall(hall); }
 };
