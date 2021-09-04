@@ -1779,8 +1779,9 @@ inline const SpaceGroup* find_spacegroup_by_name(std::string name,
   if (first == 'H')
     first = 'R';
   p = impl::skip_blank(p+1);
+  size_t start = p - name.c_str();
   // change letters to lower case, except the letter after :
-  for (size_t i = p - name.c_str(); i < name.size(); ++i) {
+  for (size_t i = start; i < name.size(); ++i) {
     if (name[i] >= 'A' && name[i] <= 'Z')
       name[i] |= 0x20;  // to lowercase
     else if (name[i] == ':')
@@ -1788,6 +1789,10 @@ inline const SpaceGroup* find_spacegroup_by_name(std::string name,
         if (name[i] >= 'a' && name[i] <= 'z')
           name[i] &= ~0x20;  // to uppercase
   }
+  // The string that const char* p points to was just modified.
+  // This confuses some compilers (GCC 4.8), so let's re-assign p.
+  p = name.c_str() + start;
+
   for (const SpaceGroup& sg : spacegroup_tables::main)
     if (sg.hm[0] == first) {
       if (sg.hm[2] == *p) {
