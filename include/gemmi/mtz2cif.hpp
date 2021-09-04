@@ -443,6 +443,7 @@ inline bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream&
 inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
                                         const SMat33<double>& scale_aniso_b,
                                         std::ostream& out) {
+  // XDS files have 4 significant digits. Using accuracy 5x the precision.
   const double max_diff = 0.005;
   out << "Checking if both files match...\n";
   bool ok = true;
@@ -520,9 +521,9 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
       double sq_value_max = std::max(sq(value1), sq(r2->value));
       double sq_diff = sq(value1 - r2->value);
       double weighted_sq_diff = sq_diff / (sq(sigma1) + sq(r2->sigma));
-      // XDS files have 4 significant digits. Using accuracy 5x the precision.
-      // Just in case, we ignore near-zero values.
-      if (!relaxed_check && sq_value_max > 1e-4 && sq_diff > sq(max_diff) * sq_value_max) {
+      // Intensities may happen to be rounded to two decimal places,
+      // so if the absolute difference is <0.01 it's OK.
+      if (!relaxed_check && sq_diff > 1e-4 && sq_diff > sq(max_diff) * sq_value_max) {
         if (differ_count == 0) {
           out << "First difference: " << miller_str(r1->hkl)
               << ' ' << value1 << " vs " << r2->value << '\n';
