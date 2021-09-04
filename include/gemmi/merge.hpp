@@ -45,6 +45,7 @@ struct Intensities {
   std::vector<Refl> data;
   const SpaceGroup* spacegroup = nullptr;
   UnitCell unit_cell;
+  double unit_cell_rmsd[6] = {0., 0., 0., 0., 0., 0.};
   double wavelength;
   Type type = Type::None;
 
@@ -166,7 +167,7 @@ struct Intensities {
     const Mtz::Column& col = mtz.get_column_with_label("I");
     size_t value_idx = col.idx;
     size_t sigma_idx = mtz.get_column_with_label("SIGI").idx;
-    unit_cell = mtz.get_average_cell_from_batch_headers(nullptr);
+    unit_cell = mtz.get_average_cell_from_batch_headers(unit_cell_rmsd);
     spacegroup = mtz.spacegroup;
     if (!spacegroup)
       fail("unknown space group");

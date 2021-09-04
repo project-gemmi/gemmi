@@ -461,7 +461,13 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
       out << "(in the future, this app may recognize compatible space groups\n"
              "and reindex unmerged data if needed; for now, it's on you)\n";
   }
-  if (ui.unit_cell.approx(mi.unit_cell, 0.02)) {
+  auto eq = [](double x, double y, double rmsd) { return std::fabs(x - y) < rmsd + 0.02; };
+  if(eq(mi.unit_cell.a,     ui.unit_cell.a,     ui.unit_cell_rmsd[0]) &&
+     eq(mi.unit_cell.b,     ui.unit_cell.b,     ui.unit_cell_rmsd[1]) &&
+     eq(mi.unit_cell.c,     ui.unit_cell.c,     ui.unit_cell_rmsd[2]) &&
+     eq(mi.unit_cell.alpha, ui.unit_cell.alpha, ui.unit_cell_rmsd[3]) &&
+     eq(mi.unit_cell.beta,  ui.unit_cell.beta,  ui.unit_cell_rmsd[4]) &&
+     eq(mi.unit_cell.gamma, ui.unit_cell.gamma, ui.unit_cell_rmsd[5])) {
     out << "The same unit cell parameters.\n";
   } else {
     const UnitCell& mc = mi.unit_cell;
