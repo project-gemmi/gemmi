@@ -88,7 +88,21 @@ void add_elem(py::module& m) {
     });
 
   // resinfo.hpp
+  py::enum_<ResidueInfo::Kind>(m, "ResidueInfoKind")
+    .value("UNKNOWN", ResidueInfo::Kind::UNKNOWN)
+    .value("AA", ResidueInfo::Kind::AA)
+    .value("AAD", ResidueInfo::Kind::AAD)
+    .value("PAA", ResidueInfo::Kind::PAA)
+    .value("MAA", ResidueInfo::Kind::MAA)
+    .value("RNA", ResidueInfo::Kind::RNA)
+    .value("DNA", ResidueInfo::Kind::DNA)
+    .value("BUF", ResidueInfo::Kind::BUF)
+    .value("HOH", ResidueInfo::Kind::HOH)
+    .value("PYR", ResidueInfo::Kind::PYR)
+    .value("ELS", ResidueInfo::Kind::ELS);
+
   py::class_<ResidueInfo>(m, "ResidueInfo")
+    .def_readonly("kind", &ResidueInfo::kind)
     .def_readonly("one_letter_code", &ResidueInfo::one_letter_code)
     .def_readonly("hydrogen_count", &ResidueInfo::hydrogen_count)
     .def_readonly("weight", &ResidueInfo::weight)

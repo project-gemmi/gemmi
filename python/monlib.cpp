@@ -21,9 +21,11 @@ PYBIND11_MAKE_OPAQUE(std::vector<ChemComp::Atom>)
 using monomers_type = std::map<std::string, ChemComp>;
 using links_type = std::map<std::string, ChemLink>;
 using modifications_type = std::map<std::string, ChemMod>;
+using residue_infos_type = std::map<std::string, ResidueInfo>;
 PYBIND11_MAKE_OPAQUE(monomers_type)
 PYBIND11_MAKE_OPAQUE(links_type)
 PYBIND11_MAKE_OPAQUE(modifications_type)
+PYBIND11_MAKE_OPAQUE(residue_infos_type)
 
 void add_monlib(py::module& m) {
   py::class_<ChemMod> chemmod(m, "ChemMod");
@@ -48,6 +50,7 @@ void add_monlib(py::module& m) {
   py::bind_map<monomers_type>(m, "ChemCompMap");
   py::bind_map<links_type>(m, "ChemLinkMap");
   py::bind_map<modifications_type>(m, "ChemModMap");
+  py::bind_map<residue_infos_type>(m, "ResidueInfoMap");
 
   py::enum_<BondType>(m, "BondType")
     .value("Unspec", BondType::Unspec)
@@ -202,7 +205,11 @@ void add_monlib(py::module& m) {
 
   chemmod
     .def_readwrite("id", &ChemMod::id)
-    .def("__repr__", [](const ChemLink& self) {
+    .def_readwrite("name", &ChemMod::name)
+    .def_readwrite("comp_id", &ChemMod::comp_id)
+    .def_readwrite("group_id", &ChemMod::group_id)
+    .def_readwrite("rt", &ChemMod::rt)
+    .def("__repr__", [](const ChemMod& self) {
         return "<gemmi.ChemMod " + self.id + ">";
     });
 
@@ -211,7 +218,12 @@ void add_monlib(py::module& m) {
     .def_readonly("monomers", &MonLib::monomers)
     .def_readonly("links", &MonLib::links)
     .def_readonly("modifications", &MonLib::modifications)
+    .def_readonly("residue_infos", &MonLib::residue_infos)
     .def("find_link", &MonLib::find_link, py::arg("link_id"),
+         py::return_value_policy::reference_internal)
+    .def("find_mod", &MonLib::find_mod, py::arg("name"),
+         py::return_value_policy::reference_internal)
+    .def("find_residue_info", &MonLib::find_residue_info, py::arg("name"),
          py::return_value_policy::reference_internal)
     .def("match_link", &MonLib::match_link,
          py::arg("comp1"), py::arg("atom1"),
