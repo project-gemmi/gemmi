@@ -38,7 +38,17 @@ void add_meta(py::module& m) {
     .def("__str__", &SeqId::str)
     .def("__repr__", [](const SeqId& self) {
         return "<gemmi.SeqId " + self.str() + ">";
-    });
+    })
+    .def(py::pickle(
+        [](const SeqId &self) {
+            return py::make_tuple(self.num, self.icode);
+        },
+        [](py::tuple t) {
+            if (t.size() != 2)
+                throw std::runtime_error("invalid tuple size");
+            return SeqId(t[0].cast<int>(), t[1].cast<char>());
+        }
+    ));
 
   py::class_<ResidueId>(m, "ResidueId")
     .def(py::init<>())
@@ -48,7 +58,22 @@ void add_meta(py::module& m) {
     .def("__str__", &ResidueId::str)
     .def("__repr__", [](const ResidueId& self) {
         return "<gemmi.ResidueId " + self.str() + ">";
-    });
+    })
+    .def(py::pickle(
+        [](const ResidueId &self) {
+            return py::make_tuple(self.seqid, self.segment, self.name);
+        },
+        [](py::tuple t) {
+            if (t.size() != 3)
+                throw std::runtime_error("invalid tuple size");
+            ResidueId r;
+            r.seqid = t[0].cast<SeqId>();
+            r.segment = t[1].cast<std::string>();
+            r.name = t[2].cast<std::string>();
+            return r;
+        }
+    ));
+
 
   py::class_<AtomAddress>(m, "AtomAddress")
     .def(py::init<>())
@@ -63,9 +88,18 @@ void add_meta(py::module& m) {
     .def("__str__", &AtomAddress::str)
     .def("__repr__", [](const AtomAddress& self) {
         return tostr("<gemmi.AtomAddress ", self.str(), '>');
-    });
-
-
+    })
+    .def(py::pickle(
+        [](const AtomAddress &self) {
+            return py::make_tuple(self.chain_name, self.res_id, self.atom_name, self.altloc);
+        },
+        [](py::tuple t) {
+            if (t.size() != 4)
+                throw std::runtime_error("invalid tuple size");
+            return AtomAddress(t[0].cast<std::string>(), t[1].cast<ResidueId>(),
+                               t[2].cast<std::string>(), t[3].cast<char>());
+        }
+    ));
   // metadata.hpp
 
   py::class_<NcsOp>(m, "NcsOp")
