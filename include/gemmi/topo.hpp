@@ -423,22 +423,17 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
       continue;
     extra.alt1 = conn.partner1.altloc;
     extra.alt2 = conn.partner2.altloc;
+
+    // first try to find ChemLink by name (and check if it matches)
     const ChemLink* match = monlib.find_link(conn.link_id);
-    if (match) {
-      if (match->rt.bonds.empty())
-        match = nullptr;
-      else {
-        const ResidueInfo* resinfo1 = monlib.find_residue_info(extra.res1->name);
-        const ResidueInfo* resinfo2 = monlib.find_residue_info(extra.res2->name);
-        if (!((match->side1.comp == extra.res1->name ||
-               (resinfo1 && match->side1.matches_group(ChemLink::group_from_residue_info(*resinfo1)))) &&
-              (match->side2.comp == extra.res2->name ||
-               (resinfo2 && match->side2.matches_group(ChemLink::group_from_residue_info(*resinfo2)))) &&
-              match->rt.bonds[0].id1.atom == conn.partner1.atom_name &&
-              match->rt.bonds[0].id2.atom == conn.partner2.atom_name))
-          match = nullptr;
-      }
-    }
+    if (match && (
+          match->rt.bonds.empty() ||
+          match->rt.bonds[0].id1.atom != conn.partner1.atom_name ||
+          match->rt.bonds[0].id2.atom != conn.partner2.atom_name ||
+          !monlib.link_side_matches_residue(match->side1, *extra.res1) ||
+          !monlib.link_side_matches_residue(match->side2, *extra.res2)))
+      match = nullptr;
+    // if ChemLink was not found, use the first matching link (if any)
     if (!match)
       match = monlib.match_link(extra.res1->name, conn.partner1.atom_name,
                                 extra.res2->name, conn.partner2.atom_name);
@@ -450,12 +445,14 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
         std::swap(extra.alt1, extra.alt2);
       }
     }
+
     if (match) {
       extra.link_id = match->id;
       // add modifications from the link
       find_resinfo(extra.res1)->add_mod(match->side1.mod);
       find_resinfo(extra.res2)->add_mod(match->side2.mod);
     } else {
+      // create a new ChemLink and add it to the monomer library
       ChemLink cl;
       cl.side1.comp = extra.res1->name;
       cl.side2.comp = extra.res2->name;

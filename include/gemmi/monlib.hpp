@@ -580,6 +580,13 @@ struct MonLib {
     for (const cif::Block& block : doc.blocks)
       add_monomer_if_present(block);
   }
+
+  bool link_side_matches_residue(const ChemLink::Side& side, const ResidueId& res) const {
+    if (side.comp == res.name)
+      return true;
+    const ResidueInfo* resinfo = find_residue_info(res.name);
+    return resinfo && side.matches_group(ChemLink::group_from_residue_info(*resinfo));
+  }
 };
 
 typedef cif::Document (*read_cif_func)(const std::string&);
