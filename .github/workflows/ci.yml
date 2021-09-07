@@ -88,16 +88,16 @@ jobs:
         make check
 
 
-  clang35:
-    name: "Ubuntu 16.04, Clang 3.5"
-    runs-on: ubuntu-16.04
+  clang39:
+    name: "Ubuntu 18.04, Clang 3.9"
+    runs-on: ubuntu-18.04
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     env:
-      CC: clang-3.5
-      CXX: clang++-3.5
+      CC: clang-3.9
+      CXX: clang++-3.9
     steps:
     - uses: actions/checkout@v2
-    - run: sudo apt-get install libz-dev python3-pip clang-3.5 python3-setuptools python3-numpy
+    - run: sudo apt-get install libz-dev python3-pip clang-3.9 python3-setuptools python3-numpy
     - name: install pybind11
       run: |
         cmake --version
