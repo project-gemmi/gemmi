@@ -423,9 +423,25 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
       continue;
     extra.alt1 = conn.partner1.altloc;
     extra.alt2 = conn.partner2.altloc;
-    const ChemLink* match =
-        monlib.match_link(extra.res1->name, conn.partner1.atom_name,
-                          extra.res2->name, conn.partner2.atom_name);
+    const ChemLink* match = monlib.find_link(conn.link_id);
+    if (match) {
+      if (match->rt.bonds.empty())
+        match = nullptr;
+      else {
+        const ResidueInfo* resinfo1 = monlib.find_residue_info(extra.res1->name);
+        const ResidueInfo* resinfo2 = monlib.find_residue_info(extra.res2->name);
+        if (!((match->side1.comp == extra.res1->name ||
+               (resinfo1 && match->side1.matches_group(ChemLink::group_from_residue_info(*resinfo1)))) &&
+              (match->side2.comp == extra.res2->name ||
+               (resinfo2 && match->side2.matches_group(ChemLink::group_from_residue_info(*resinfo2)))) &&
+              match->rt.bonds[0].id1.atom == conn.partner1.atom_name &&
+              match->rt.bonds[0].id2.atom == conn.partner2.atom_name))
+          match = nullptr;
+      }
+    }
+    if (!match)
+      match = monlib.match_link(extra.res1->name, conn.partner1.atom_name,
+                                extra.res2->name, conn.partner2.atom_name);
     if (!match) {
       match = monlib.match_link(extra.res2->name, conn.partner2.atom_name,
                                 extra.res1->name, conn.partner1.atom_name);

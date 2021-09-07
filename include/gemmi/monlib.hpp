@@ -543,6 +543,10 @@ struct MonLib {
     auto modif = modifications.find(name);
     return modif != modifications.end() ? &modif->second : nullptr;
   }
+  const ResidueInfo* find_residue_info(const std::string& name) const {
+    auto resinfo = residue_infos.find(name);
+    return resinfo != residue_infos.end() ? &resinfo->second : nullptr;
+  }
   const ChemLink* match_link(
       const std::string& comp1, const std::string& atom1,
       const std::string& comp2, const std::string& atom2) const {
