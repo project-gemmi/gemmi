@@ -151,6 +151,7 @@ void add_mol(py::module& m) {
     .def_readonly("chain", &CRA::chain)
     .def_readonly("residue", &CRA::residue)
     .def_readonly("atom", &CRA::atom)
+    .def("atom_matches", [](const CRA& self, const AtomAddress& addr) { return atom_matches(self, addr); })
     .def("__str__", [](const CRA& self) { return atom_str(self); })
     .def("__repr__", [](const CRA& self) {
         return tostr("<gemmi.CRA ", atom_str(self), '>');
