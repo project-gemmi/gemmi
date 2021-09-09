@@ -678,7 +678,7 @@ void process(const std::string& input, const OptParser& p) {
 
   if (p.options[NoAniso]) {
     if (use_st) {
-      for (gemmi::CRA& cra : st.models[0].all())
+      for (gemmi::CRA cra : st.models[0].all())
         cra.atom->aniso.u11 = cra.atom->aniso.u22 = cra.atom->aniso.u33 = 0;
     } else {
       for (gemmi::SmallStructure::Site& site : small.sites)

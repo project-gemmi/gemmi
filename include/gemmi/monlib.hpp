@@ -647,7 +647,7 @@ struct BondIndex {
   std::map<int, std::vector<AtomImage>> index;
 
   BondIndex(const Model& model_) : model(model_) {
-    for (const_CRA& cra : model.all())
+    for (const_CRA cra : model.all())
       if (!index.emplace(cra.atom->serial, std::vector<AtomImage>()).second)
         fail("duplicated serial numbers");
   }

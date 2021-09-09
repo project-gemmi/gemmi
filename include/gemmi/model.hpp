@@ -624,7 +624,8 @@ inline AtomAddress make_address(const Chain& ch, const Residue& res, const Atom&
 template<typename CraT>
 class CraIterPolicy {
 public:
-  typedef CraT value_type;
+  using value_type = CraT;
+  using reference = const CraT;
   CraIterPolicy() : chains_end(nullptr), cra{nullptr, nullptr, nullptr} {}
   CraIterPolicy(const Chain* end, CraT cra_) : chains_end(end), cra(cra_) {}
   void increment() {
@@ -658,7 +659,7 @@ public:
     --cra.atom;
   }
   bool equal(const CraIterPolicy& o) const { return cra.atom == o.cra.atom; }
-  CraT& dereference() { return cra; }
+  CraT dereference() { return cra; }  // make copy b/c increment() modifies cra
   using const_policy = CraIterPolicy<const_CRA>;
   operator const_policy() const { return const_policy(chains_end, cra); }
 private:
