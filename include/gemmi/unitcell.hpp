@@ -113,6 +113,96 @@ struct NcsOp {
 using Miller = std::array<int, 3>;
 
 
+// G6 vector ("G" for Gruber). Used in cell reduction algorithms.
+// Originally, in B. Gruber, Acta Cryst. A29, 433 (1973), it was called
+// "characteristic" of a lattice/cell.
+struct Gruber6 {
+  //    a.a  b.b c.c 2b.c 2a.c 2a.b
+  double A, B, C, xi, eta, zeta;
+
+  bool is_normalized() const {
+    // eq(3) from Gruber 1973
+    return A <= B && B && C &&
+           (A != B || std::abs(xi) <= std::abs(eta)) &&
+           (B != C || std::abs(eta) <= std::abs(zeta)) &&
+           (xi > 0) == (eta > 0) && (xi > 0) == (zeta > 0);
+  }
+
+  bool is_buerger() const {
+    return is_normalized() &&
+      // eq (4) from Gruber 1973
+      std::abs(xi) <= B && std::abs(eta) <= A && std::abs(zeta) <= A;
+  }
+
+  // Algorithm N from Gruber (1973).
+  // Returns branch taken in N3.
+  bool normalize() {
+    if (A > B || (A == B && std::abs(xi) > std::abs(eta))) { // N1
+      std::swap(A, B);
+      std::swap(xi, eta);
+    }
+    if (B > C || (B == C && std::abs(eta) > std::abs(zeta))) { // N2
+      std::swap(B, C);
+      std::swap(eta, zeta);
+      if (A > B || (A == B && std::abs(xi) > std::abs(eta))) { // N1 again
+        std::swap(A, B);
+        std::swap(xi, eta);
+      }
+    }
+    // N3
+    bool cond = (xi * eta * zeta > 0);
+    double sgn =  cond ? 1 : -1;
+    xi = std::copysign(xi, sgn);
+    eta = std::copysign(eta, sgn);
+    zeta = std::copysign(zeta, sgn);
+    return cond;
+  }
+
+  // Algorithm B from Gruber (1973).
+  // Returns number of iterations.
+  int buerger_reduce() {
+    int n = 0;
+    while (++n < 100) {
+      normalize();
+      // B2
+      if (xi > B) {
+        double j = std::floor(0.5*xi/B + 0.5);
+        C += j * (j*B - xi);
+        xi -= 2 * j * B;
+        eta -= j * zeta;
+        continue;
+      }
+      // B3
+      if (eta > A) {
+        double j = std::floor(0.5*eta/A + 0.5);
+        C += j * (j*A - eta);
+        xi -= j * zeta;
+        eta -= 2 * j * A;
+        continue;
+      }
+      // B4
+      if (zeta > A) {
+        double j = std::floor(0.5*zeta/A + 0.5);
+        B += j * (j*A - zeta);
+        xi -= j * eta;
+        zeta -= 2 * j * A;
+        continue;
+      }
+      // B5
+      if (xi + eta + zeta + A + B < 0) {
+        double j = std::floor(0.5 * (xi + eta) / (A + B + zeta) + 0.5);
+        C += j * (j * (A + B + zeta) - (xi + eta));
+        xi -= j * (2*B + zeta);
+        eta -= j * (2*A + zeta);
+        continue;
+      }
+      break;
+    }
+    return n;
+  }
+};
+
+
 struct UnitCell {
   UnitCell() = default;
   UnitCell(double a_, double b_, double c_,
@@ -199,14 +289,15 @@ struct UnitCell {
     frac.vec = {0., 0., 0.};
   }
 
+  double cos_alpha() const { return alpha == 90. ? 0. : std::cos(rad(alpha)); }
+
   // B matrix following convention from Busing & Levy (1967), not from cctbx.
   // Cf. https://dials.github.io/documentation/conventions.html
   Mat33 calculate_matrix_B() const {
-    double cos_alpha = alpha == 90. ? 0. : std::cos(rad(alpha));
     double sin_gammar = std::sqrt(1 - cos_gammar * cos_gammar);
     double sin_betar = std::sqrt(1 - cos_betar * cos_betar);
     return Mat33(ar, br * cos_gammar, cr * cos_betar,
-                 0., br * sin_gammar, -cr * sin_betar * cos_alpha,
+                 0., br * sin_gammar, -cr * sin_betar * cos_alpha(),
                  0., 0., 1.0 / c);
   }
 
@@ -218,13 +309,13 @@ struct UnitCell {
     double aar = a * ar;
     double bbr = b * br;
     double ccr = c * cr;
-    double cos_alpha = alpha == 90. ? 0. : std::cos(rad(alpha));
+    // it could be optimized using orth.mat[0][1] and orth.mat[0][2]
     double cos_beta  = beta  == 90. ? 0. : std::cos(rad(beta));
     double cos_gamma = gamma == 90. ? 0. : std::cos(rad(gamma));
     return 1/3. * (sq(aar) * ani.u11 + sq(bbr) * ani.u22 + sq(ccr) * ani.u33 +
                    2 * (aar * bbr * cos_gamma * ani.u12 +
                         aar * ccr * cos_beta * ani.u13 +
-                        bbr * ccr * cos_alpha * ani.u23));
+                        bbr * ccr * cos_alpha() * ani.u23));
   }
 
   void set_matrices_from_fract(const Transform& f) {
@@ -471,9 +562,8 @@ struct UnitCell {
 
   // https://dictionary.iucr.org/Metric_tensor
   SMat33<double> metric_tensor() const {
-    double cos_alpha = alpha == 90. ? 0. : std::cos(rad(alpha));
     // note: SMat33 stores numbers in order not usual for metric tensor
-    return {a*a, b*b, c*c, a*orth.mat[0][1], a*orth.mat[0][2], b*c*cos_alpha};
+    return {a*a, b*b, c*c, a*orth.mat[0][1], a*orth.mat[0][2], b*c*cos_alpha()};
   }
 
   SMat33<double> reciprocal_metric_tensor() const {
@@ -488,6 +578,10 @@ struct UnitCell {
 
   Miller get_hkl_limits(double dmin) const {
     return {{int(a / dmin), int(b / dmin), int(c / dmin)}};
+  }
+
+  Gruber6 gruber_vector() {
+    return {a*a, b*b, c*c, 2*b*c*cos_alpha(), 2*a*orth.mat[0][2], 2*a*orth.mat[0][1]};
   }
 };
 
