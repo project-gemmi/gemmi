@@ -53,6 +53,8 @@ void add_topo(py::module& m) {
     .def_readonly("restr", &Topo::Chirality::restr)
     .def_readonly("atoms", &Topo::Chirality::atoms)
     .def("calculate", &Topo::Chirality::calculate)
+    .def("calculate_z", &Topo::Chirality::calculate_z,
+         py::arg("ideal_abs_vol"), py::arg("esd"))
     .def("check", &Topo::Chirality::check)
     ;
   py::class_<Topo::Plane>(topo, "Plane")
@@ -129,6 +131,7 @@ void add_topo(py::module& m) {
     .def_readonly("planes", &Topo::planes)
     .def_readonly("extras", &Topo::extras)
     .def_readonly("chain_infos", &Topo::chain_infos)
+    .def("ideal_chiral_abs_volume", &Topo::ideal_chiral_abs_volume)
     ;
 
   m.def("prepare_topology", &prepare_topology,
