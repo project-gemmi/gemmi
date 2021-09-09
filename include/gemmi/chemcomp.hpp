@@ -256,21 +256,7 @@ struct Restraints {
     return const_cast<Restraints*>(this)->find_chir(ctr, a, b, c);
   }
 
-  double chiral_abs_volume(const Restraints::Chirality& ch) const {
-    double mult = get_bond(ch.id_ctr, ch.id1).value *
-                  get_bond(ch.id_ctr, ch.id2).value *
-                  get_bond(ch.id_ctr, ch.id3).value;
-    double x = 1;
-    double y = 2;
-    for (double a : {get_angle(ch.id1, ch.id_ctr, ch.id2).value,
-                     get_angle(ch.id2, ch.id_ctr, ch.id3).value,
-                     get_angle(ch.id3, ch.id_ctr, ch.id1).value}) {
-      double cosine = a == 90. ? 0. : std::cos(rad(a));
-      x -= cosine * cosine;
-      y *= cosine;
-    }
-    return mult * std::sqrt(x + y);
-  }
+  double chiral_abs_volume(const Restraints::Chirality& ch) const;
 
   std::vector<Plane>::iterator get_plane(const std::string& label) {
     return std::find_if(planes.begin(), planes.end(),
@@ -289,6 +275,28 @@ struct Restraints {
 template<typename Restr>
 double angle_z(double value_rad, const Restr& restr, double full=360.) {
   return angle_abs_diff(deg(value_rad), restr.value, full) / restr.esd;
+}
+
+inline double chiral_abs_volume(double bond1, double bond2, double bond3,
+                                double angle1, double angle2, double angle3) {
+  double mult = bond1 * bond2 * bond3;
+  double x = 1;
+  double y = 2;
+  for (double a : {angle1, angle2, angle3}) {
+    double cosine = a == 90. ? 0. : std::cos(rad(a));
+    x -= cosine * cosine;
+    y *= cosine;
+  }
+  return mult * std::sqrt(x + y);
+}
+
+inline double Restraints::chiral_abs_volume(const Restraints::Chirality& ch) const {
+  return gemmi::chiral_abs_volume(get_bond(ch.id_ctr, ch.id1).value,
+                                  get_bond(ch.id_ctr, ch.id2).value,
+                                  get_bond(ch.id_ctr, ch.id3).value,
+                                  get_angle(ch.id1, ch.id_ctr, ch.id2).value,
+                                  get_angle(ch.id2, ch.id_ctr, ch.id3).value,
+                                  get_angle(ch.id3, ch.id_ctr, ch.id1).value);
 }
 
 struct ChemComp {

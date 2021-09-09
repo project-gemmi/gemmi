@@ -55,6 +55,13 @@ struct Topo {
       return calculate_chiral_volume(atoms[0]->pos, atoms[1]->pos,
                                      atoms[2]->pos, atoms[3]->pos);
     }
+    double calculate_z(double ideal_abs_vol, double esd) const {
+      double calc = calculate();
+      if (restr->sign == ChiralityType::Negative ||
+          (restr->sign == ChiralityType::Both && calc < 0))
+        ideal_abs_vol *= -1;
+      return std::abs(calc - ideal_abs_vol) / esd;
+    }
     bool check() const { return !restr->is_wrong(calculate()); }
   };
   struct Plane {
@@ -173,6 +180,19 @@ struct Topo {
       if (chir.atoms[0] == ctr)
         return &chir;
     return nullptr;
+  }
+
+  double ideal_chiral_abs_volume(const Chirality &ch) const {
+    const Restraints::Bond* bond_c1 = take_bond(ch.atoms[0], ch.atoms[1]);
+    const Restraints::Bond* bond_c2 = take_bond(ch.atoms[0], ch.atoms[2]);
+    const Restraints::Bond* bond_c3 = take_bond(ch.atoms[0], ch.atoms[3]);
+    const Restraints::Angle* angle_1c2 = take_angle(ch.atoms[1], ch.atoms[0], ch.atoms[2]);
+    const Restraints::Angle* angle_2c3 = take_angle(ch.atoms[2], ch.atoms[0], ch.atoms[3]);
+    const Restraints::Angle* angle_3c1 = take_angle(ch.atoms[3], ch.atoms[0], ch.atoms[1]);
+    if (bond_c1 && bond_c2 && bond_c3 && angle_1c2 && angle_2c3 && angle_3c1)
+      return chiral_abs_volume(bond_c1->value, bond_c2->value, bond_c3->value,
+                               angle_1c2->value, angle_2c3->value, angle_3c1->value);
+    return std::numeric_limits<double>::quiet_NaN();
   }
 
   std::vector<Rule> apply_restraints(const Restraints& rt,

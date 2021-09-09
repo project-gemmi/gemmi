@@ -157,6 +157,7 @@ void add_monlib(py::module& m) {
             return *it;
          }, py::return_value_policy::reference_internal)
     .def("find_shortest_path", &Restraints::find_shortest_path)
+    .def("chiral_abs_volume", &Restraints::chiral_abs_volume)
     ;
 
   chemcompatom
