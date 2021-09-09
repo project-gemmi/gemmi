@@ -53,7 +53,6 @@ void add_mol(py::module& m) {
   py::class_<Model> pyModel(m, "Model");
   py::class_<ResidueSpan> pyResidueSpan(m, "ResidueSpan");
   py::class_<ResidueGroup, ResidueSpan> pyResidueGroup(m, "ResidueGroup");
-  py::class_<CraProxy> pyCraGenerator(m, "CraGenerator");
 
   py::enum_<HowToNameCopiedChain>(m, "HowToNameCopiedChain")
     .value("Short", HowToNameCopiedChain::Short)
@@ -151,11 +150,17 @@ void add_mol(py::module& m) {
     .def_readonly("chain", &CRA::chain)
     .def_readonly("residue", &CRA::residue)
     .def_readonly("atom", &CRA::atom)
-    .def("atom_matches", [](const CRA& self, const AtomAddress& addr) { return atom_matches(self, addr); })
+    .def("atom_matches", [](const CRA& self, const AtomAddress& addr) {
+        return atom_matches(self, addr);
+    })
     .def("__str__", [](const CRA& self) { return atom_str(self); })
     .def("__repr__", [](const CRA& self) {
         return tostr("<gemmi.CRA ", atom_str(self), '>');
     });
+
+  py::class_<CraProxy>(m, "CraGenerator")
+    .def("__iter__", [](CraProxy& self) { return py::make_iterator(self); },
+         py::keep_alive<0, 1>());
 
   pyModel
     .def(py::init<std::string>())
@@ -243,10 +248,6 @@ void add_mol(py::module& m) {
     .def("__iter__", [](ResidueSpan::GroupingProxy& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
-
-  pyCraGenerator
-    .def("__iter__", [](CraProxy& self) { return py::make_iterator(self); },
-         py::keep_alive<0, 1>());
 
   pyChain
     .def(py::init<std::string>())
