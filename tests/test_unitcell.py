@@ -86,13 +86,13 @@ class TestUnitCell(unittest.TestCase):
         cctbx_mm = [1295.712016, 1730.643201, 2093.611536,
                     391.3591013825865, 646.1921687548228, 731.5043620154578]
         mt = cell.metric_tensor()
-        for a, b in zip(mt.elements(), cctbx_mm):
+        for a, b in zip(mt.elements_pdb(), cctbx_mm):
             self.assertAlmostEqual(a, b, delta=1e-12)
         #  uc.reciprocal_metrical_matrix()
         cctbx_rmm = [0.00092792089082916, 0.000689632633981, 0.0006277651322979,
                      -0.000104162588996, -0.000250008091601, -0.000208806754807]
         rmt = cell.reciprocal_metric_tensor()
-        for a, b in zip(rmt.elements(), cctbx_rmm):
+        for a, b in zip(rmt.elements_pdb(), cctbx_rmm):
             self.assertAlmostEqual(a, b, delta=1e-15)
 
     def test_change_of_basis(self):
@@ -122,7 +122,7 @@ class TestUnitCell(unittest.TestCase):
         # ucif = adptbx.u_cart_as_u_cif(uc, aniso)
         ucif = [11.537759976524049, 19.43436271641311, 11.1,
                 -8.078683096677723, 1.4787260755519491, -3.9018967241279157]
-        for a, b in zip(site.aniso.elements(), ucif):
+        for a, b in zip(site.aniso.elements_pdb(), ucif):
             self.assertAlmostEqual(a, b, delta=1e-6)
 
     def test_pickling(self):

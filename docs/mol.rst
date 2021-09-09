@@ -421,7 +421,9 @@ including calculations of eigenvalues and eigenvectors.
   >>> aniso = perovskite.sites[2].aniso
   >>> aniso.u11
   0.103
-  >>> aniso.elements()  # (u11, u22, u33, u12, u13, u23)
+  >>> aniso.elements_pdb()    # (u11, u22, u33, u12, u13, u23)
+  [0.103, 0.156, 0.156, 0.0, 0.0, 0.0]
+  >>> aniso.elements_voigt()  # (u11, u22, u33, u23, u13, u12)
   [0.103, 0.156, 0.156, 0.0, 0.0, 0.0]
   >>> aniso.trace()
   0.41500000000000004

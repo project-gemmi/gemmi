@@ -183,9 +183,10 @@ struct Mat33 {
 template<typename T> struct SMat33 {
   T u11, u22, u33, u12, u13, u23;
 
-  std::array<T, 6> elements() const {
-    return {{u11, u22, u33, u12, u13, u23}};
-  }
+  // The PDB ANISOU record has the above order, but in a different context
+  // (such as metric tensor) the order of Voigt notation may be preferred.
+  std::array<T, 6> elements_pdb() const   { return {{u11, u22, u33, u12, u13, u23}}; }
+  std::array<T, 6> elements_voigt() const { return {{u11, u22, u33, u23, u13, u12}}; }
 
   Mat33 as_mat33() const {
     return Mat33(u11, u12, u13, u12, u22, u23, u13, u23, u33);
