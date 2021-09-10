@@ -166,6 +166,9 @@ gemmi/neighbor.hpp
     Cell-linked lists method for atom searching (a.k.a. grid search, binning,
     bucketing, cell technique for neighbor search, etc).
 
+gemmi/niggli.hpp
+    Unit cell reduction to Buerger or Niggli cell.
+
 gemmi/numb.hpp
     Utilities for parsing CIF numbers (the CIF spec calls it 'numb').
 
