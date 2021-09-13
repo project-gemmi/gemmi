@@ -177,6 +177,10 @@ struct Mat33 {
            a[1][0] == 0 && a[1][1] == 1 && a[1][2] == 0 &&
            a[2][0] == 0 && a[2][1] == 0 && a[2][2] == 1;
   }
+
+  double column_dot(int i, int j) {
+    return a[0][i] * a[0][j] + a[1][i] * a[1][j] + a[2][i] * a[2][j];
+  }
 };
 
 // Symmetric matrix 3x3. Used primarily for an ADP tensor.
