@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include <array>
+#include "math.hpp"  // for deg
 
 namespace gemmi {
 
@@ -19,6 +20,18 @@ struct GruberVector {
 
   GruberVector(const std::array<double,6>& g6)
     : A(g6[0]), B(g6[1]), C(g6[2]), xi(g6[3]), eta(g6[4]), zeta(g6[5]) {}
+
+  std::array<double,6> parameters() { return {A, B, C, xi, eta, zeta}; }
+  std::array<double,6> cell_parameters() const {
+    // inverse of UnitCell::g6()
+    double a = std::sqrt(A);
+    double b = std::sqrt(B);
+    double c = std::sqrt(C);
+    return {a, b, c,
+            deg(std::acos(xi/(2*b*c))),
+            deg(std::acos(eta/(2*a*c))),
+            deg(std::acos(zeta/(2*a*b)))};
+  }
 
   bool is_normalized() const {
     // eq(3) from Gruber 1973
