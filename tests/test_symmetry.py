@@ -134,8 +134,8 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(len(gemmi_gops.cen_ops), cctbx_sg.n_ltr())
         self.assertEqual(len(gemmi_gops), cctbx_sg.order_z())
         self.assertEqual(gemmi_gops.is_centric(), cctbx_sg.is_centric())
-        self.assertEqual(gemmi_gops.find_centering(),
-                         cctbx_sg.conventional_centring_type_symbol())
+        ctr = gemmi_gops.find_centering()
+        self.assertEqual(ctr, cctbx_sg.conventional_centring_type_symbol())
         gemmi_triplets = set(m.triplet() for m in gemmi_gops)
         self.assertEqual(cctbx_triplets, gemmi_triplets)
         gemmi_sg = gemmi.find_spacegroup_by_ops(gemmi_gops)
@@ -149,6 +149,7 @@ class TestSymmetry(unittest.TestCase):
                              cctbx_sg.type().is_enantiomorphic())
             self.assertEqual(gemmi_sg.is_symmorphic(),
                              cctbx_sg.type().is_symmorphic())
+            self.assertEqual(gemmi_sg.centring_type(), ctr)
         else:
             self.assertIsNone(gemmi_sg)
 

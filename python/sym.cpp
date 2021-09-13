@@ -159,6 +159,7 @@ void add_symmetry(py::module& m) {
     }, "Hall symbol")
     .def_property_readonly("basisop", &SpaceGroup::basisop)
     .def("xhm", &SpaceGroup::xhm, "extended Hermann-Mauguin name")
+    .def("centring_type", &SpaceGroup::centring_type)
     .def("short_name", &SpaceGroup::short_name,
          "H-M name w/o spaces and with 1's removed in '1 ... 1'.")
     .def("is_enantiomorphic", &SpaceGroup::is_enantiomorphic)
