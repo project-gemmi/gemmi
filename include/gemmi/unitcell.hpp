@@ -14,12 +14,14 @@
 
 namespace gemmi {
 
-inline Mat33 rot_as_mat33(const Op& op) {
+inline Mat33 rot_as_mat33(const Op::Rot& rot) {
   double mult = 1.0 / Op::DEN;
-  return Mat33(mult * op.rot[0][0], mult * op.rot[0][1], mult * op.rot[0][2],
-               mult * op.rot[1][0], mult * op.rot[1][1], mult * op.rot[1][2],
-               mult * op.rot[2][0], mult * op.rot[2][1], mult * op.rot[2][2]);
+  return Mat33(mult * rot[0][0], mult * rot[0][1], mult * rot[0][2],
+               mult * rot[1][0], mult * rot[1][1], mult * rot[1][2],
+               mult * rot[2][0], mult * rot[2][1], mult * rot[2][2]);
 }
+inline Mat33 rot_as_mat33(const Op& op) { return rot_as_mat33(op.rot); }
+
 
 inline Vec3 tran_as_vec3(const Op& op) {
   double mult = 1.0 / Op::DEN;
@@ -116,6 +118,9 @@ struct UnitCell {
   UnitCell(double a_, double b_, double c_,
            double alpha_, double beta_, double gamma_) {
     set(a_, b_, c_, alpha_, beta_, gamma_);
+  }
+  UnitCell(const std::array<double, 6>& v) {
+    set(v[0], v[1], v[2], v[3], v[4], v[5]);
   }
   double a = 1.0, b = 1.0, c = 1.0;
   double alpha = 90.0, beta = 90.0, gamma = 90.0;
@@ -487,8 +492,15 @@ struct UnitCell {
   }
 
   // Gruber vector G6. See also niggli.hpp.
-  std::array<double,6> g6() const {
-    return {a*a, b*b, c*c, 2*b*c*cos_alpha(), 2*a*orth.mat[0][2], 2*a*orth.mat[0][1]};
+  std::array<double,6> g6(char centring_type) const {
+    if (centring_type == 'P')
+      return {a*a, b*b, c*c, 2*b*c*cos_alpha(), 2*a*orth.mat[0][2], 2*a*orth.mat[0][1]};
+    Op::Rot rot = centred_to_primitive_inv(centring_type);
+    Mat33 m = orth.mat.multiply(rot_as_mat33(rot).inverse());
+    return {{
+      m.column_dot(0,0), m.column_dot(1,1), m.column_dot(2,2),
+      2 * m.column_dot(1,2), 2 * m.column_dot(0,2), 2 * m.column_dot(0,1)
+    }};
   }
 };
 
