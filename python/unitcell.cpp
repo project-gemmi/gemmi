@@ -2,6 +2,7 @@
 
 #include "gemmi/unitcell.hpp"
 #include "gemmi/tostr.hpp"  // tostr
+#include "gemmi/gruber.hpp"  // GruberVector
 
 #include <cstdio>  // for snprintf
 #include <array>
@@ -284,6 +285,7 @@ void add_unitcell(py::module& m) {
     .def("reciprocal_metric_tensor", &UnitCell::reciprocal_metric_tensor)
     .def("reciprocal", &UnitCell::reciprocal)
     .def("get_hkl_limits", &UnitCell::get_hkl_limits, py::arg("dmin"))
+    .def("g6", &UnitCell::g6, py::arg("centring_type"))
     .def(py::self == py::self)
     .def("__repr__", [](const UnitCell& self) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
@@ -296,4 +298,29 @@ void add_unitcell(py::module& m) {
                              p[3].cast<double>(), p[4].cast<double>(), p[5].cast<double>());
          }
     ));
+
+  py::class_<GruberVector>(m, "GruberVector")
+    .def(py::init<const std::array<double,6>&>())
+    .def(py::init([](const UnitCell& u, const SpaceGroup* sg) {
+        return new GruberVector(u.g6(sg ? sg->centring_type() : 'P'));
+    }))
+    .def("parameters", &GruberVector::parameters)
+    .def_property_readonly("parameters", [](const GruberVector& g) {
+      return py::make_tuple(g.A, g.B, g.C, g.xi, g.eta, g.zeta);
+    })
+    .def("cell_parameters", [](const GruberVector& self) {
+      std::array<double,6> p = self.cell_parameters();
+      return py::make_tuple(p[0], p[1], p[2], p[3], p[4], p[5]);
+    })
+    .def("get_cell",
+         [](const GruberVector& self) { return new UnitCell(self.cell_parameters()); })
+    .def("is_normalized", &GruberVector::is_normalized)
+    .def("is_buerger", &GruberVector::is_buerger, py::arg("epsilon")=0.)
+    .def("normalize", &GruberVector::normalize)
+    .def("buerger_reduce", &GruberVector::buerger_reduce)
+    .def("__repr__", [](const GruberVector& self) {
+        return "<gemmi.GruberVector((" + triple(self.A, self.B, self.C)
+             + ", " + triple(self.xi, self.eta, self.zeta) + "))>";
+    })
+      ;
 }

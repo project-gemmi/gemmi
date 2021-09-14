@@ -1,9 +1,9 @@
 // Copyright 2021 Global Phasing Ltd.
 //
-// Unit cell reduction to Buerger or Niggli cell.
+// Unit cell reduction to Buerger or Niggli cell. Uses G6 (Gruber) vector.
 
-#ifndef GEMMI_NIGGLI_HPP_
-#define GEMMI_NIGGLI_HPP_
+#ifndef GEMMI_GRUBER_HPP_
+#define GEMMI_GRUBER_HPP_
 
 #include <cmath>
 #include <array>
@@ -41,10 +41,12 @@ struct GruberVector {
            (xi > 0) == (eta > 0) && (xi > 0) == (zeta > 0);
   }
 
-  bool is_buerger() const {
+  bool is_buerger(double epsilon=0) const {
     return is_normalized() &&
-      // eq (4) from Gruber 1973
-      std::abs(xi) <= B && std::abs(eta) <= A && std::abs(zeta) <= A;
+           // eq (4) from Gruber 1973
+           std::abs(xi) <= B + epsilon &&
+           std::abs(eta) <= A + epsilon &&
+           std::abs(zeta) <= A + epsilon;
   }
 
   // Algorithm N from Gruber (1973).
@@ -75,41 +77,48 @@ struct GruberVector {
   // Returns number of iterations.
   int buerger_reduce() {
     int n = 0;
-    while (++n < 100) {
+    double prev_sum = -1;
+    int stall_count = 0;
+    for (;;) {
+      ++n;
       normalize();
-      // B2
-      if (xi > B) {
+      printf(" %d sum=%.18g\n", n, std::sqrt(A) + std::sqrt(B) + std::sqrt(C));
+      if (std::abs(xi) > B) { // B2
         double j = std::floor(0.5*xi/B + 0.5);
         C += j * (j*B - xi);
         xi -= 2 * j * B;
         eta -= j * zeta;
-        continue;
-      }
-      // B3
-      if (eta > A) {
+      } else if (std::abs(eta) > A) { // B3
         double j = std::floor(0.5*eta/A + 0.5);
         C += j * (j*A - eta);
         xi -= j * zeta;
         eta -= 2 * j * A;
-        continue;
-      }
-      // B4
-      if (zeta > A) {
+      } else if (std::abs(zeta) > A) { // B4
         double j = std::floor(0.5*zeta/A + 0.5);
         B += j * (j*A - zeta);
         xi -= j * eta;
         zeta -= 2 * j * A;
-        continue;
-      }
-      // B5
-      if (xi + eta + zeta + A + B < 0) {
+      } else if (xi + eta + zeta + A + B < 0) { // B5
         double j = std::floor(0.5 * (xi + eta) / (A + B + zeta) + 0.5);
         C += j * (j * (A + B + zeta) - (xi + eta));
         xi -= j * (2*B + zeta);
         eta -= j * (2*A + zeta);
-        continue;
+      } else {
+        break;
       }
-      break;
+      // In rare cases numerical errors push the algorithm into infinite loop,
+      // as described in Grosse-Kunstleve et al, Acta Cryst. (2004) A60, 1.
+      // Ad-hoc solution: stop if a+b+c is stalled for 5 iterations.
+      if (n > 8) {  // don't waste time during the first few iterations
+        double sum = std::sqrt(A) + std::sqrt(B) + std::sqrt(C);
+        if (std::abs(sum - prev_sum) < sum * 1e-6) {
+          if (++stall_count == 5)
+            break;
+        } else {
+          stall_count = 0;
+        }
+        prev_sum = sum;
+      }
     }
     return n;
   }

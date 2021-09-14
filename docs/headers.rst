@@ -102,6 +102,9 @@ gemmi/fstream.hpp
 gemmi/grid.hpp
     3d grids used by CCP4 maps, cell-method search and hkl data.
 
+gemmi/gruber.hpp
+    Unit cell reduction to Buerger or Niggli cell. Uses G6 (Gruber) vector.
+
 gemmi/gz.hpp
     Functions for transparent reading of gzipped files. Uses zlib.
 
@@ -165,9 +168,6 @@ gemmi/mtz2cif.hpp
 gemmi/neighbor.hpp
     Cell-linked lists method for atom searching (a.k.a. grid search, binning,
     bucketing, cell technique for neighbor search, etc).
-
-gemmi/niggli.hpp
-    Unit cell reduction to Buerger or Niggli cell.
 
 gemmi/numb.hpp
     Utilities for parsing CIF numbers (the CIF spec calls it 'numb').
