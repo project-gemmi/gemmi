@@ -318,6 +318,7 @@ void add_unitcell(py::module& m) {
     .def("is_buerger", &GruberVector::is_buerger, py::arg("epsilon")=0.)
     .def("normalize", &GruberVector::normalize)
     .def("buerger_reduce", &GruberVector::buerger_reduce)
+    .def("niggli_reduce", &GruberVector::niggli_reduce)
     .def("__repr__", [](const GruberVector& self) {
         return "<gemmi.GruberVector((" + triple(self.A, self.B, self.C)
              + ", " + triple(self.xi, self.eta, self.zeta) + "))>";

@@ -32,6 +32,7 @@ struct GruberVector {
             deg(std::acos(eta/(2*a*c))),
             deg(std::acos(zeta/(2*a*b)))};
   }
+  std::array<double,6> niggli_parameters() { return {A, B, C, xi/2, eta/2, zeta/2}; }
 
   bool is_normalized() const {
     // eq(3) from Gruber 1973
@@ -82,7 +83,6 @@ struct GruberVector {
     for (;;) {
       ++n;
       normalize();
-      printf(" %d sum=%.18g\n", n, std::sqrt(A) + std::sqrt(B) + std::sqrt(C));
       if (std::abs(xi) > B) { // B2
         double j = std::floor(0.5*xi/B + 0.5);
         C += j * (j*B - xi);
@@ -112,12 +112,52 @@ struct GruberVector {
       if (n > 8) {  // don't waste time during the first few iterations
         double sum = std::sqrt(A) + std::sqrt(B) + std::sqrt(C);
         if (std::abs(sum - prev_sum) < sum * 1e-6) {
-          if (++stall_count == 5)
+          if (++stall_count == 5) {
+            normalize();
             break;
+          }
         } else {
           stall_count = 0;
         }
         prev_sum = sum;
+      }
+    }
+    return n;
+  }
+
+  // Algorithm from Krivy & Gruber, Acta Cryst. (1976) A32, 297.
+  int niggli_reduce() {
+    int n = 0;
+    for (;;) {
+      ++n;
+      normalize();
+      if (n == 100)
+        break;
+      if (std::abs(xi) > B || (xi == B && 2 * eta < zeta) ||
+                              (xi == -B && zeta < 0)) { // 5.
+        double sign_xi = xi >= 0 ? 1 : -1;
+        C += B - xi * sign_xi;
+        eta -= zeta * sign_xi;
+        xi -= 2 * B * sign_xi;
+      } else if (std::abs(eta) > A || (eta == A && 2 * xi < zeta) ||
+                                      (eta == -A && zeta < 0)) { // 6.
+        double sign_eta = eta >= 0 ? 1 : -1;
+        C += A - eta * sign_eta;
+        xi -= zeta * sign_eta;
+        eta -= 2 * A * sign_eta;
+      } else if (std::abs(zeta) > A || (zeta == A && 2 * xi < eta) ||
+                                       (zeta == -A && eta < 0)) { // 7.
+        double sign_zeta = zeta >= 0 ? 1 : -1;
+        B += A - zeta * sign_zeta;
+        xi -= eta * sign_zeta;
+        zeta -= 2 * A * sign_zeta;
+      } else if (xi + eta + zeta + A + B < 0 ||
+                 (xi + eta + zeta + A + B == 0 && 2 * (A + eta) + zeta > 0)) { // 8.
+        C += A + B + xi + eta + zeta;
+        xi += 2 * B + zeta;
+        eta += 2 * A + zeta;
+      } else {
+        break;
       }
     }
     return n;
