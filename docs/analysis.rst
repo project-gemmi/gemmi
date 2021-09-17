@@ -3,13 +3,74 @@
 Structure analysis
 ##################
 
+.. _niggli:
+
+Reduced unit cells
+==================
+
+Citing International Tables for Crystallography vol. A section 3.1.1.4:
+
+   Different procedures are in use to select special bases of lattices.
+   The reduction procedures employ metrical properties to develop a sequence
+   of basis transformations which lead to a *reduced basis* and *reduced cell*.
+
+The same ITC chapter lists (in 3.1.2.3) the two most important reductions as:
+
+- the Selling-Delaunay reduction (the second name is alternatively
+  transliterated as Delone),
+- the Eisenstein-Niggli reduction.
+
+The first names here are of 19th century mathematicians working
+on the reduction of quadratic forms, the second names are of people
+applying this math to crystallography. (More commonly, a single name
+is used -- such as "Niggli reduction".) In a similar manner we can add
+
+* Minkowski-Buerger reduction.
+
+All three methods lead to primitive basis with prescribed properties.
+The Buerger cell is any cell with minimal basis vector lengths.
+Unlike Niggli and Delaunay cells, the choice of Buerger cell is not unique.
+Niggli cell is always one of the Buerger cells,
+but Delaunay cell may not be -- it may not have minimal vector lengths.
+
+To complicate it more, the term reduced cell is understood differently
+in different papers. It can mean specifically Niggli reduction,
+or any method with a unique result (i.e. not Buerger),
+or any of the above cases.
+
+Gemmi implements separately the Niggli and Buerger reductions.
+They are iterative procedures. Most of the unit cells from the PDB
+need only 1-2 iterations (1.3 on average) to get reduced,
+but one can always construct a primitive cell with extremely long
+basis vectors that would require hundreds of iterations.
+
+This means that in practical cases both reductions are fast.
+The Buerger reduction is simpler and faster, but usually it's not important,
+because an iteration of the Niggli reduction takes only ~1μs.
+
+Gemmi implementation is based on the algorithms published by B. Gruber
+in 1970's: Gruber,
+`Acta Cryst. A29, 433 <https://doi.org/10.1107/S0567739473001063>`_ (1973),
+and Křivý & Gruber,
+`Acta Cryst. A32, 297 <https://doi.org/10.1107/S0567739476000636>`_ (1976).
+Additionally, Niggli reduction is using ε to compare numbers, as proposed
+by Grosse-Kunstleve et al,
+`Acta Cryst. A60, 1 <https://doi.org/10.1107/S010876730302186X>`_ (2004).
+
+Gruber's algorithms use vector G6 with six elements named:
+A, B, C, ξ (xi), η (eta) and ζ (zeta). This vector is
+`similar <https://dictionary.iucr.org/Metric_tensor>`_ to the metric tensor.
+
+TBC
+
 Neighbor search
 ===============
 
 Fixed-radius near neighbor search is usually implemented using
 the `cell lists <https://en.wikipedia.org/wiki/Cell_lists>`_ method,
 also known as binning, bucketing or cell technique
-(or cubing -- as it was called in an `article <https://web.stanford.edu/class/sbio228/public/readings/Molecular_Simulation_I_Lecture4/Levinthal_SCIAM_66_Protein_folding.pdf>`_ from 1966).
+(or cubing -- as it was called in an
+`article <https://web.stanford.edu/class/sbio228/public/readings/Molecular_Simulation_I_Lecture4/Levinthal_SCIAM_66_Protein_folding.pdf>`_ from 1966).
 The method is simple. The unit cell (or the area where the molecules are
 located) is divided into small cells. The size of these cells depends
 on the search radius. Each cell stores the list of atoms in its area;

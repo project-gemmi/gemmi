@@ -99,7 +99,6 @@ class TestUnitCell(unittest.TestCase):
         uc = gemmi.UnitCell(20, 30, 39, 73, 93, 99)
         op = gemmi.Op('y-x/2,-2/3*z+2/3*y,3*x')
         uc2 = uc.changed_basis(op, set_images=False)
-        print(uc.volume, uc2.volume)
         # compare with result from cctbx:
         #  from cctbx import sgtbx, uctbx
         #  u = uctbx.unit_cell((20,30,39, 73,93,99))
@@ -174,6 +173,47 @@ class TestAngles(unittest.TestCase):
         check_dihedral(p0, p1, p4, p5, -171.94319)
         check_dihedral(p1, p4, p5, p6, 60.82226)
         check_dihedral(p1, p4, p5, p7, -177.63641)
+
+class TestGruber(unittest.TestCase):
+    def assert_almost_equal_seq(self, a, b):
+        for x,y in zip(a, b):
+            self.assertAlmostEqual(x, y)
+
+    def test_reduction(self):
+        cell = gemmi.UnitCell(687.9, 687.9, 1933.3, 90.0, 90.0, 90.0)
+        sg = gemmi.SpaceGroup('I 4 2 2')
+        gv = gemmi.GruberVector(cell, sg)
+        gv.niggli_reduce()
+        self.assertTrue(gv.is_niggli())
+        self.assertTrue(gv.is_buerger())
+        self.assertTrue(gv.is_normalized())
+        p = cell.a
+        q = 1082.134662368783
+        t = 108.5325886
+        par = (p*p, p*p, q*q, -p*p, -p*p, 0)
+        self.assert_almost_equal_seq(gv.parameters, par)
+        self.assert_almost_equal_seq(gv.niggli_parameters(),
+                                     par[:3] + (-p*p/2, -p*p/2, 0))
+        print(gv.cell_parameters())
+        self.assertTrue(gv.cell_parameters(), (p, p, q, t, t, 0))
+
+    def test_near_degenerate(self):
+        cell = gemmi.UnitCell(15.53, 91.94, 4.35, 110.326, 7.337, 103.014)
+        gv = gemmi.GruberVector(cell.g6('P'))
+        self.assertFalse(gv.is_normalized())
+        gv.normalize()
+        self.assertTrue(gv.is_normalized())
+        self.assertFalse(gv.is_buerger())
+        self.assertFalse(gv.is_niggli())
+        n = gv.niggli_reduce(iteration_limit=100)
+        self.assertEqual(n, 100)
+        self.assertFalse(gv.is_niggli())
+        n = gv.niggli_reduce(iteration_limit=100)
+        self.assertTrue(n < 100)
+        self.assertTrue(gv.is_niggli())
+        expected = (2.814597242, 3.077205425, 7.408935896,
+                    100.42421409, 94.02885284, 95.07179187)
+        self.assert_almost_equal_seq(gv.cell_parameters(), expected)
 
 if __name__ == '__main__':
     unittest.main()

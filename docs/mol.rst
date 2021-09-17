@@ -479,34 +479,34 @@ Here are the most important properties and methods of the ``UnitCell`` class:
 
 .. doctest::
 
-    >>> cell = gemmi.UnitCell(25.14, 39.50, 45.07, 90, 90, 90)
+    >>> cell = gemmi.UnitCell(25.12, 39.50, 45.07, 90, 90, 90)
     >>> cell
-    <gemmi.UnitCell(25.14, 39.5, 45.07, 90, 90, 90)>
+    <gemmi.UnitCell(25.12, 39.5, 45.07, 90, 90, 90)>
     >>> cell.a, cell.b, cell.c
-    (25.14, 39.5, 45.07)
+    (25.12, 39.5, 45.07)
     >>> cell.alpha, cell.beta, cell.gamma
     (90.0, 90.0, 90.0)
     >>> cell.volume
-    44755.8621
+    44720.2568
     >>> cell.fractionalization_matrix
-    <gemmi.Mat33 [0.0397772, -0, -0]
+    <gemmi.Mat33 [0.0398089, -0, -0]
                  [0, 0.0253165, 0]
                  [0, 0, 0.0221877]>
     >>> cell.fractionalize(gemmi.Position(10, 10, 10))
-    <gemmi.Fractional(0.397772, 0.253165, 0.221877)>
+    <gemmi.Fractional(0.398089, 0.253165, 0.221877)>
     >>> cell.orthogonalization_matrix
-    <gemmi.Mat33 [25.14, 0, 0]
+    <gemmi.Mat33 [25.12, 0, 0]
                  [0, 39.5, -0]
                  [0, 0, 45.07]>
     >>> cell.orthogonalize(gemmi.Fractional(0.5, 0.5, 0.5))
-    <gemmi.Position(12.57, 19.75, 22.535)>
+    <gemmi.Position(12.56, 19.75, 22.535)>
 
 Next, we can obtain the reciprocal cell:
 
 .. doctest::
 
     >>> cell.reciprocal()
-    <gemmi.UnitCell(0.0397772, 0.0253165, 0.0221877, 90, 90, 90)>
+    <gemmi.UnitCell(0.0398089, 0.0253165, 0.0221877, 90, 90, 90)>
 
 and `metric tensors <https://dictionary.iucr.org/Metric_tensor>`_
 in the direct and reciprocal space:
@@ -517,6 +517,15 @@ in the direct and reciprocal space:
     1560.25
     >>> cell.reciprocal_metric_tensor().u23
     0.0
+
+We can also obtain the G6 vector, which is used to reduce primitive basis
+of the lattice (calculate the Niggli cell), as described in
+the :ref:`separate section <niggli>`.
+
+.. doctest::
+
+    >>> cell.g6('P')
+    [631.0144, 1560.25, 2031.3049, 0.0, 0.0, 0.0]
 
 The UnitCell object can also store a list of symmetry transformations.
 This list is populated automatically when reading a coordinate file.
@@ -576,7 +585,7 @@ need the latter you can calculate it directly:
 .. doctest::
 
     >>> cell.calculate_1_d2([8, -9, 10])
-    0.20240687828293985
+    0.20256818878283983
 
 When changing a symmetry setting of coordinates or reindexing reflections
 we need a new unit cell, which can be obtained with:
@@ -584,7 +593,7 @@ we need a new unit cell, which can be obtained with:
 .. doctest::
 
     >>> cell.changed_basis(gemmi.Op('y,z,x'), set_images=True)
-    <gemmi.UnitCell(45.07, 25.14, 39.5, 90, 90, 90)>
+    <gemmi.UnitCell(45.07, 25.12, 39.5, 90, 90, 90)>
 
 With ``set_images=False`` the ``images`` list in the new unit cell is empty.
 With ``True`` -- it contains transformed original list
