@@ -33,6 +33,10 @@ static py::tuple make_parameters_tuple(const UnitCell& u) {
   return py::make_tuple(u.a, u.b, u.c, u.alpha, u.beta, u.gamma);
 }
 
+static py::tuple make_six_tuple(const std::array<double,6>& v) {
+  return py::make_tuple(v[0], v[1], v[2], v[3], v[4], v[5]);
+}
+
 template<typename T> void add_smat33(py::module& m, const char* name) {
   using M = SMat33<T>;
   py::class_<M>(m, name)
@@ -306,19 +310,24 @@ void add_unitcell(py::module& m) {
     }))
     .def("parameters", &GruberVector::parameters)
     .def_property_readonly("parameters", [](const GruberVector& g) {
-      return py::make_tuple(g.A, g.B, g.C, g.xi, g.eta, g.zeta);
+      return make_six_tuple(g.parameters());
     })
     .def("cell_parameters", [](const GruberVector& self) {
-      std::array<double,6> p = self.cell_parameters();
-      return py::make_tuple(p[0], p[1], p[2], p[3], p[4], p[5]);
+      return make_six_tuple(self.cell_parameters());
+    })
+    .def("niggli_parameters", [](const GruberVector& self) {
+      return make_six_tuple(self.niggli_parameters());
     })
     .def("get_cell",
          [](const GruberVector& self) { return new UnitCell(self.cell_parameters()); })
     .def("is_normalized", &GruberVector::is_normalized)
-    .def("is_buerger", &GruberVector::is_buerger, py::arg("epsilon")=0.)
-    .def("normalize", &GruberVector::normalize)
+    .def("is_buerger", &GruberVector::is_buerger, py::arg("epsilon")=1e-9)
+    .def("normalize", &GruberVector::normalize, py::arg("epsilon")=1e-9)
     .def("buerger_reduce", &GruberVector::buerger_reduce)
-    .def("niggli_reduce", &GruberVector::niggli_reduce)
+    .def("niggli_step", &GruberVector::niggli_step, py::arg("epsilon"))
+    .def("niggli_reduce", &GruberVector::niggli_reduce,
+         py::arg("epsilon")=1e-9, py::arg("iteration_limit")=100)
+    .def("is_niggli", &GruberVector::is_niggli, py::arg("epsilon")=1e-9)
     .def("__repr__", [](const GruberVector& self) {
         return "<gemmi.GruberVector((" + triple(self.A, self.B, self.C)
              + ", " + triple(self.xi, self.eta, self.zeta) + "))>";
