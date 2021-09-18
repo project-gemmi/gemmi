@@ -140,13 +140,28 @@ class TestNeighborSearch(unittest.TestCase):
         self.assertEqual(len(marks2), 0)
 
 class TestContactSearch(unittest.TestCase):
-    def test_contact_search(self):
+    def test_radii_setting(self):
         cs = gemmi.ContactSearch(4.0)
         hg = gemmi.Element('Hg')
         self.assertEqual(cs.get_radius(hg), 0)
         cs.setup_atomic_radii(1, 0)
         cs.set_radius(hg, 1.5)
         self.assertEqual(cs.get_radius(hg), 1.5)
+
+    def test_ignore_flag(self):
+        st = gemmi.read_structure('tests/4oz7.pdb')
+        st.setup_entities()
+        ns = gemmi.NeighborSearch(st[0], st.cell, 5).populate()
+        cs = gemmi.ContactSearch(4.0)
+        cs.ignore = gemmi.ContactSearch.Ignore.SameResidue
+        results = cs.find_contacts(ns)
+        self.assertEqual(len(results), 607)
+        cs.ignore = gemmi.ContactSearch.Ignore.SameChain
+        results = cs.find_contacts(ns)
+        self.assertEqual(len(results), 190)
+        self.assertTrue(all(r.image_idx != 0 or
+                            r.partner1.chain is not r.partner2.chain
+                            for r in results))
 
 
 if __name__ == '__main__':
