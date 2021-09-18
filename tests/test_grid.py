@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 import math
-import os
 import unittest
 import gemmi
+from common import full_path
 try:
     import numpy
 except ImportError:
@@ -11,8 +11,7 @@ except ImportError:
 
 class TestFloatGrid(unittest.TestCase):
     def test_reading(self):
-        path = os.path.join(os.path.dirname(__file__), '5i55_tiny.ccp4')
-        m = gemmi.read_ccp4_map(path)
+        m = gemmi.read_ccp4_map(full_path('5i55_tiny.ccp4'))
         self.assertEqual(m.grid.nu, 8)
         self.assertEqual(m.grid.nv, 6)
         self.assertEqual(m.grid.nw, 10)
@@ -149,7 +148,7 @@ class TestContactSearch(unittest.TestCase):
         self.assertEqual(cs.get_radius(hg), 1.5)
 
     def test_ignore_flag(self):
-        st = gemmi.read_structure('tests/4oz7.pdb')
+        st = gemmi.read_structure(full_path('4oz7.pdb'))
         st.setup_entities()
         ns = gemmi.NeighborSearch(st[0], st.cell, 5).populate()
         cs = gemmi.ContactSearch(4.0)
