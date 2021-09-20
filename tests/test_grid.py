@@ -158,8 +158,8 @@ class TestContactSearch(unittest.TestCase):
         cs.ignore = gemmi.ContactSearch.Ignore.SameChain
         results = cs.find_contacts(ns)
         self.assertEqual(len(results), 190)
-        self.assertTrue(all(r.image_idx != 0 or
-                            r.partner1.chain is not r.partner2.chain
+        self.assertTrue(all(r.image_idx != 0
+                            or r.partner1.chain is not r.partner2.chain
                             for r in results))
 
 
