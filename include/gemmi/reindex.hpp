@@ -49,7 +49,12 @@ inline void reindex_mtz(Mtz& mtz, const Op& op, std::ostream* out) {
   }
   // change space group
   const SpaceGroup* sg_before = mtz.spacegroup;
-  mtz.spacegroup = find_spacegroup_by_change_of_basis(mtz.spacegroup, op.inverse());
+  if (sg_before) {
+    GroupOps gops = sg_before->operations();
+    gops.change_basis(op.inverse());
+    mtz.spacegroup = find_spacegroup_by_ops(gops);
+  }
+
   if (mtz.spacegroup) {
     if (mtz.spacegroup != sg_before) {
       if (out)

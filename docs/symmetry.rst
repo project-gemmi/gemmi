@@ -134,7 +134,7 @@ always the reference setting:
   >>> gemmi.get_spacegroup_reference_setting(48)
   <gemmi.SpaceGroup("P n n n:2")>
 
-The next function for searching the space group table checks
+The last function for searching the space group table checks
 symmetry operations:
 
 .. doctest::
@@ -152,20 +152,6 @@ Unfortunately, in a non-unique way.
 Different Hall symbols can be used to encode the same symmetry operations.
 In the example above "C 2y (x,y,-x+z)" is equivalent to "I 2y".
 That's why we compare operations not symbols.
-
-The last function for searching space group is also comparing operations.
-It takes two arguments: a space group and a change-of-basis operator,
-and searches for space group settings that match the transformed operations
-of the original space group:
-
-.. doctest::
-
-  >>> # I2 -> C2
-  >>> gemmi.find_spacegroup_by_change_of_basis(gemmi.SpaceGroup('I2'), gemmi.Op('x,y,x+z'))
-  <gemmi.SpaceGroup("C 1 2 1")>
-  >>> # enantiomorphic pair
-  >>> gemmi.find_spacegroup_by_change_of_basis(gemmi.SpaceGroup('P 41'), gemmi.Op('-x,-y,-z'))
-  <gemmi.SpaceGroup("P 43")>
 
 Finally, we may iterate over the space group table:
 
