@@ -207,6 +207,10 @@ It has the properties listed at the beginning of this section
   'trigonal'
   >>> sg.is_reference_setting()
   True
+  >>> sg.centring_type()          # lattice centering type
+  'R'
+  >>> sg.centred_to_primitive()   # change-of-basis operator to a primitive lattice
+  <gemmi.Op("2/3*x-y/3-z/3,x/3+y/3-2/3*z,x/3+y/3+z/3")>
   >>> # and the most important...
   >>> sg.operations()             #doctest: +ELLIPSIS
   <gemmi.GroupOps object at 0x...>

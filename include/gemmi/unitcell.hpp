@@ -495,8 +495,8 @@ struct UnitCell {
   std::array<double,6> g6(char centring_type) const {
     if (centring_type == 'P')
       return {a*a, b*b, c*c, 2*b*c*cos_alpha(), 2*a*orth.mat[0][2], 2*a*orth.mat[0][1]};
-    Op::Rot rot = centred_to_primitive_inv(centring_type);
-    Mat33 m = orth.mat.multiply(rot_as_mat33(rot).inverse());
+    Mat33 c2p = rot_as_mat33(centred_to_primitive(centring_type));
+    Mat33 m = orth.mat.multiply(c2p);
     return {{
       m.column_dot(0,0), m.column_dot(1,1), m.column_dot(2,2),
       2 * m.column_dot(1,2), 2 * m.column_dot(0,2), 2 * m.column_dot(0,1)

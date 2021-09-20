@@ -1014,20 +1014,21 @@ inline const char* get_basisop(int basisop_idx) {
   return basisops[basisop_idx];
 }
 
-// Returns the same operator for centred <-> primitive basis transformation
-// as sgtbx (z2p_op). Other libraries, such as spglib, use different operators.
-// The inverse of this matrix is used for centred -> primitive change-of-basis.
-inline Op::Rot centred_to_primitive_inv(char centring_type) {
+// Returns a change-of-basis operator for centred -> primitive transformation.
+// The same operator as inverse of z2p_op in sgtbx.
+inline Op::Rot centred_to_primitive(char centring_type) {
   constexpr int D = Op::DEN;
+  constexpr int H = Op::DEN / 2;
+  constexpr int T = Op::DEN / 3;
   switch (centring_type) {
     case 'P': return {D,0,0, 0,D,0, 0,0,D};
-    case 'A': return {-D,0,0, 0,-D,D, 0,D,D};
-    case 'B': return {-D,0,D, 0,-D,0, D,0,D};
-    case 'C': return {D,D,0, D,-D,0, 0,0,-D};
-    case 'I': return {0,D,D, D,0,D, D,D,0};
-    case 'R': return {D,0,D, -D,D,D, 0,-D,D};
-    case 'H': return {D,D,0, -D,2*D,0, 0,0,D};  // not used normally
-    case 'F': return {-D,D,D, D,-D,D, D,D,-D};
+    case 'A': return {-D,0,0, 0,-H,H, 0,H,H};
+    case 'B': return {-H,0,H, 0,-D,0, H,0,H};
+    case 'C': return {H,H,0, H,-H,0, 0,0,-D};
+    case 'I': return {-H,H,H, H,-H,H, H,H,-H};
+    case 'R': return {2*T,-T,-T, T,T,-2*T, T,T,T};
+    case 'H': return {2*T,-T,0, T,T,0, 0,0,D};  // not used normally
+    case 'F': return {0,H,H, H,0,H, H,H,0};
     default: fail("not a centring type: ", centring_type);
   }
 }
@@ -1090,8 +1091,8 @@ struct SpaceGroup { // typically 44 bytes
   Op basisop() const { return parse_triplet(basisop_str()); }
   bool is_reference_setting() const { return basisop_idx == 0; }
 
-  Op centred_to_primitive_inv() const {
-    return {gemmi::centred_to_primitive_inv(centring_type()), {0,0,0}};
+  Op centred_to_primitive() const {
+    return {gemmi::centred_to_primitive(centring_type()), {0,0,0}};
   }
 
   GroupOps operations() const { return symops_from_hall(hall); }

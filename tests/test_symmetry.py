@@ -176,9 +176,8 @@ class TestSymmetry(unittest.TestCase):
                                  cctbx_info.is_reference_setting())
                 #to_ref = cctbx_info.change_of_basis_op_to_reference_setting()
                 #from_ref = '%s' % cob_to_ref.inverse().c()
-                c2p_inv = sg.centred_to_primitive_inv()
-                self.assertEqual(c2p_inv.triplet(),
-                                 cctbx_sg.z2p_op().c().as_xyz())
+                c2p_sg = gemmi.Op(cctbx_sg.z2p_op().c().inverse().as_xyz())
+                self.assertEqual(sg.centred_to_primitive(), c2p_sg)
             ops = gemmi.get_spacegroup_reference_setting(sg.number).operations()
             ops.change_basis(sg.basisop)
             self.assertEqual(ops, sg.operations())
