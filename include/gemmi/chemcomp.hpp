@@ -436,6 +436,7 @@ inline ChiralityType chirality_from_string(const std::string& s) {
     case 'p': return ChiralityType::Positive;
     case 'n': return ChiralityType::Negative;
     case 'b': return ChiralityType::Both;
+    case '.': return ChiralityType::Both;
     default: throw std::out_of_range("Unexpected chirality: " + s);
   }
 }
