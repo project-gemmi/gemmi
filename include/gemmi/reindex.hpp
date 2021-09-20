@@ -51,7 +51,7 @@ inline void reindex_mtz(Mtz& mtz, const Op& op, std::ostream* out) {
   const SpaceGroup* sg_before = mtz.spacegroup;
   if (sg_before) {
     GroupOps gops = sg_before->operations();
-    gops.change_basis(op.inverse());
+    gops.change_basis_backward(op);
     mtz.spacegroup = find_spacegroup_by_ops(gops);
   }
 
@@ -70,11 +70,11 @@ inline void reindex_mtz(Mtz& mtz, const Op& op, std::ostream* out) {
     fail("reindexing: failed to determine new space group name");
   }
   // change unit cell parameters
-  mtz.cell = mtz.cell.changed_basis(real_space_op, false);
+  mtz.cell = mtz.cell.changed_basis_backward(real_space_op, false);
   for (Mtz::Dataset& ds : mtz.datasets)
-    ds.cell = ds.cell.changed_basis(real_space_op, false);
+    ds.cell = ds.cell.changed_basis_backward(real_space_op, false);
   for (Mtz::Batch& batch : mtz.batches)
-    batch.set_cell(batch.get_cell().changed_basis(real_space_op, false));
+    batch.set_cell(batch.get_cell().changed_basis_backward(real_space_op, false));
 
   if (mtz.is_merged())
     mtz.ensure_asu();

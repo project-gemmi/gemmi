@@ -255,7 +255,10 @@ void add_unitcell(py::module& m) {
     .def_property_readonly("orthogonalization_matrix",
                            [](const UnitCell& self) { return self.orth.mat; })
     .def("set", &UnitCell::set)
-    .def("changed_basis", &UnitCell::changed_basis, py::arg("op"), py::arg("set_images"))
+    .def("changed_basis_forward", &UnitCell::changed_basis_forward,
+         py::arg("op"), py::arg("set_images"))
+    .def("changed_basis_backward", &UnitCell::changed_basis_backward,
+         py::arg("op"), py::arg("set_images"))
     .def("is_compatible_with_spacegroup", &UnitCell::is_compatible_with_spacegroup,
          py::arg("sg"), py::arg("eps")=1e-3)
     .def("is_crystal", &UnitCell::is_crystal)

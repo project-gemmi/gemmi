@@ -179,7 +179,7 @@ class TestSymmetry(unittest.TestCase):
                 c2p_sg = gemmi.Op(cctbx_sg.z2p_op().c().inverse().as_xyz())
                 self.assertEqual(sg.centred_to_primitive(), c2p_sg)
             ops = gemmi.get_spacegroup_reference_setting(sg.number).operations()
-            ops.change_basis(sg.basisop)
+            ops.change_basis_forward(sg.basisop)
             self.assertEqual(ops, sg.operations())
         itb = gemmi.spacegroup_table_itb()
         if sgtbx:
@@ -232,9 +232,9 @@ class TestSymmetry(unittest.TestCase):
         a = gemmi.find_spacegroup_by_name(name_a)
         b = gemmi.find_spacegroup_by_name(name_b)
         ops = a.operations()
-        ops.change_basis(basisop)
+        ops.change_basis_forward(basisop)
         self.assertEqual(ops, b.operations())
-        ops.change_basis(basisop.inverse())
+        ops.change_basis_backward(basisop)
         self.assertEqual(ops, a.operations())
 
     def test_change_basis(self):

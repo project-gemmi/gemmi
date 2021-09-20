@@ -264,7 +264,7 @@ struct UnitCell {
         deg(vb.angle(vc)), deg(vc.angle(va)), deg(va.angle(vb)));
   }
 
-  UnitCell changed_basis(const Op& op, bool set_images) {
+  UnitCell changed_basis_backward(const Op& op, bool set_images) {
     Mat33 mat = orth.mat.multiply(rot_as_mat33(op));
     UnitCell new_cell;
     new_cell.set_from_vectors(mat.column_copy(0),
@@ -278,6 +278,10 @@ struct UnitCell {
         new_cell.images.push_back(tr.combine(im).combine(tr_inv));
     }
     return new_cell;
+  }
+
+  UnitCell changed_basis_forward(const Op& op, bool set_images) {
+    return changed_basis_backward(op.inverse(), set_images);
   }
 
   bool is_compatible_with_groupops(const GroupOps& gops, double eps=1e-3) {

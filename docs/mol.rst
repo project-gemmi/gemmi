@@ -588,11 +588,12 @@ need the latter you can calculate it directly:
     0.20256818878283983
 
 When changing a symmetry setting of coordinates or reindexing reflections
-we need a new unit cell, which can be obtained with:
+we need a new unit cell, which can be obtained with one of functions
+``changed_basis_forward()`` and ``changed_basis_backward()``:
 
 .. doctest::
 
-    >>> cell.changed_basis(gemmi.Op('y,z,x'), set_images=True)
+    >>> cell.changed_basis_backward(gemmi.Op('y,z,x'), set_images=True)
     <gemmi.UnitCell(45.07, 25.12, 39.5, 90, 90, 90)>
 
 With ``set_images=False`` the ``images`` list in the new unit cell is empty.

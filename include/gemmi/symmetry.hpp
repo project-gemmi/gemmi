@@ -470,10 +470,9 @@ struct GroupOps {
     return false;
   }
 
-  void change_basis(const Op& cob) {
+  void change_basis_impl(const Op& cob, const Op& inv) {
     if (sym_ops.empty() || cen_ops.empty())
       return;
-    Op inv = cob.inverse();
 
     // Apply change-of-basis to sym_ops.
     // Ignore the first item in sym_ops -- it's identity.
@@ -512,6 +511,9 @@ struct GroupOps {
           break;
         }
   }
+
+  void change_basis_forward(const Op& cob) { change_basis_impl(cob, cob.inverse()); }
+  void change_basis_backward(const Op& inv) { change_basis_impl(inv.inverse(), inv); }
 
   std::vector<Op> all_ops_sorted() const {
     std::vector<Op> ops;
@@ -811,7 +813,7 @@ inline GroupOps generators_from_hall(const char* hall) {
       fail("missing ')': " + std::string(hall));
     if (ops.sym_ops.empty())
       fail("misplaced translation: " + std::string(hall));
-    ops.change_basis(parse_hall_change_of_basis(part + 1, rb));
+    ops.change_basis_forward(parse_hall_change_of_basis(part + 1, rb));
 
     if (*impl::skip_blank(find_blank(rb + 1)) != '\0')
       fail("unexpected characters after ')': " + std::string(hall));

@@ -5,8 +5,8 @@ This section describes functionality related to the 3D space groups.
 
 In C++: ``#include <gemmi/symmetry.hpp>`` (it's header-only).
 
-Space groups
-============
+Space group table
+=================
 
 Gemmi tabulates 550+ settings of the 230 crystallographic space groups.
 Each entry includes:
@@ -30,11 +30,12 @@ with the old data from a CCP4 file named :file:`symop.lib`.
 The data from sgtbx is also available in the older SgInfo_ library,
 as well as in the `International Tables <http://it.iucr.org/>`_
 for Crystallography Vol. B ch. 1.4 (in 2010 ed.). It has 530 entries
-including 3 duplicates (different names for the same settings)
+including 2 duplicates (3 different names for the same settings)
 in the space group 68.
 
 Gemmi includes also settings from OpenBabel_ that are absent in
-:file:`syminfo.lib`. If needed we will add more entries in the future.
+:file:`syminfo.lib`. It does not include all possible settings,
+but if needed, more entries can be added.
 For example, we do not include all
 the C- and F-centred tetragonal space groups featured in
 `Crystallographic Space Group Diagrams and Tables <http://img.chem.ucl.ac.uk/sgp/mainmenu.htm>`_
@@ -49,10 +50,9 @@ For now this only includes new standard names introduced in 1990's by the IUCr
 committee. For example, the space group no. 39 is now officially, in the
 Volume A of the `International Tables <http://it.iucr.org/>`_,
 named Aem2 not Abm2.
-Most of the crystallographic software (as well as the Volume B of the Tables)
-still use the old names.
-(spglib_ uses new ones,
-sgtbx reads new names with the option ``ad_hoc_1992``).
+Most of the crystallographic software (as well as ITfC Vol.B)
+still uses the old names.
+(spglib_ uses new ones, sgtbx reads new names with the option ``ad_hoc_1992``).
 
 The usual way to access a space group from the table is to search
 it by name. In C++::
@@ -68,6 +68,9 @@ and in Python:
   >>> import gemmi
   >>> gemmi.find_spacegroup_by_name('I2')
   <gemmi.SpaceGroup("I 1 2 1")>
+  >>> # or just
+  >>> gemmi.SpaceGroup('I2')
+  <gemmi.SpaceGroup("I 1 2 1")>
 
 .. note::
 
@@ -76,7 +79,7 @@ and in Python:
 
 The name above is expected to be either a full international Hermann-Mauguin
 symbol or a short symbol (*I2* instead of *I 1 2 1*).
-This functions also searches the tabulated alternative names:
+It can be an "alternative" name:
 
 .. doctest::
 
@@ -86,7 +89,7 @@ This functions also searches the tabulated alternative names:
 Sometimes in the PDB, the setting of the hexagonal crystal family
 is not clear from the symmetry symbol alone. For instance, the H-M symbol
 "R 3" can mean either hexagonal or rhombohedral setting.
-Furthermore, ITC vol. A, PDB and SCALEPACK assign different meanings to
+Furthermore, ITfC vol. A, PDB and SCALEPACK assign different meanings to
 "H 3" and similar symbols, as described in
 `Fuzzy space group symbols: H3 and H32 <http://www.phenix-online.org/newsletter/CCN_2011_01.pdf>`_.
 This ambiguity can be resolved by comparing angles of the unit cell.
@@ -168,13 +171,42 @@ Finally, we may iterate over the space group table:
   <gemmi.SpaceGroup("R -3 m:H")>
   <gemmi.SpaceGroup("R -3 c:H")>
 
-``gemmi.SpaceGroup`` represents an entry in the space group table.
-It has the properties listed at the beginning of this section
-(``number``, ``ccp4``, ``hm``, ``ext``, ``hall``) and a few methods:
+If you would like to ignore entries that are absent in SgInfo, sgtbx, spglib
+and in the International Tables vol. B, use only the first 530 entries
+of the table. In Python, we have a helper function for this:
 
 .. doctest::
 
-  >>> sg = gemmi.SpaceGroup('R3') # equivalent to find_spacegroup_by_name()
+  >>> for sg in gemmi.spacegroup_table_itb():
+  ...     pass
+
+
+SpaceGroup
+==========
+
+``gemmi.SpaceGroup`` represents an entry in the space group table.
+It has the properties listed at the beginning of this section:
+
+.. doctest::
+
+  >>> sg = gemmi.SpaceGroup('R3')
+  >>> sg.number
+  146
+  >>> sg.ccp4
+  146
+  >>> sg.hm
+  'R 3'
+  >>> sg.ext
+  'H'
+  >>> sg.hall
+  'R 3'
+  >>> sg.basisop
+  <gemmi.Op("x,y,z")>
+
+and a few methods:
+
+.. doctest::
+
   >>> sg.xhm()                    # extended Hermann-Mauguin name
   'R 3:H'
   >>> sg.short_name()             # short name
@@ -197,12 +229,12 @@ It has the properties listed at the beginning of this section
   'R'
   >>> sg.centred_to_primitive()   # change-of-basis operator to a primitive lattice
   <gemmi.Op("2/3*x-y/3-z/3,x/3+y/3-2/3*z,x/3+y/3+z/3")>
-  >>> # and the most important...
+  >>> # and, most importantly, the symmetry operations
   >>> sg.operations()             #doctest: +ELLIPSIS
   <gemmi.GroupOps object at 0x...>
 
-Categories related to chirality can be confusing.
-Here, we follow the IUCr dictionary:
+Chirality-related functions ``is_enantiomorphic()`` and ``is_sohncke()``
+can be confusing. Here, we follow the IUCr dictionary:
 
 * `Sohncke groups <https://dictionary.iucr.org/Sohncke_groups>`_
   (a.k.a. non-enantiogenic space groups)
@@ -215,92 +247,6 @@ Here, we follow the IUCr dictionary:
   22 groups forming 11 enantiomorphic pairs.
   (So chiral structures can crystallize not only in the chiral space groups
   but also in 43 of the achiral ones.)
-
-If you would like to ignore entries that are absent in SgInfo, sgtbx, spglib
-and in the International Tables vol. B, use only the first 530 entries
-of the gemmi table. In Python, we have a helper function for this:
-
-.. doctest::
-
-  >>> for sg in gemmi.spacegroup_table_itb():
-  ...     pass
-  >>> sg.ccp4  # sg here is the last space group that was iterated
-  230
-
-
-Implementation notes
---------------------
-
-The choice between having an explicit list of all
-the operations and generating them from a smaller set of symbols is a
-trade-off between simplicity of the code and the amount of the tabulated data.
-
-The number of symmetry operations per space group is between 1 and 192,
-but they can be split into symmetry operations (max. 48 for point group m-3m)
-and so-called *centring vectors* (max. 4 for the face-centered lattice).
-
-* The simplest way of storing the operations is to list them all (i.e. 192
-  triplets for no. 228) in a text file.
-  This approach is used by OpenBabel_ (in :file:`space-groups.txt`).
-
-* It makes sense to keep the centring vectors separately
-  (192 becomes 48 + 4).
-  This is done in the CCP4 :file:`syminfo.lib` file (539 entries),
-  which is used by csymlib_ (part of libccp4) and a few other projects.
-
-* The operations can be as well tabulated in the code.
-  This approach is used (with one or two layers of indirection to reduce
-  the data size) by spglib_ (C library) and NGL_.
-
-* The inversion center (if applicable) can be kept separately,
-  to reduce the maximum number of stored operations (48 -> 24+1).
-  This is how the symmetry data is encoded in Fityk_.
-
-* Actually all the operations can be generated from only a few generators,
-  at the expense of more complex code.
-  Example: Mantid_ (:file:`SpaceGroupFactory.cpp`).
-
-* Finally, one can use one of the two computer-adapted descriptions from ITfC.
-  The so-called explicit notation (``ICC$I3Q000$P4C393$P2D933``) is the
-  longer of the two, but easier to parse by the computer.
-  It is used in the SPGGEN_ program.
-
-* The Hall notation (``-I 4bd 2c 3``), first proposed by Sydney R. Hall
-  in 1981, is shorter and more popular.
-  It can be interpreted by a few libraries:
-
-  * SgInfo_ and SgLite_ (old C libraries from Ralf W. Grosse-Kunstleve
-    recently re-licensed to BSD),
-  * sgtbx_ (successor of SgInfo written in C++/Python, part of cctbx),
-  * CCP4 Clipper_,
-
-  and by many programs.
-  On the bad side, the conciseness is achieved by complex
-  `rules <http://cci.lbl.gov/sginfo/hall_symbols.html>`_ of interpreting
-  the symbols; the choice of a Hall symbol for given settings
-  is not unambiguous and the symbols differ
-  between editions of ITfC, and between sgtbx and :file:`syminfo.lib`.
-
-After contemplating all the possibilities we ended up implementing
-the most complex solution: Hall symbols. The relative complexity
-does not mean it is slow: translating a Hall notation to generators
-takes less than a microsecond on a typical desktop machine.
-Closing a group is also below a microsecond for most of the groups,
-and up to a few microseconds for the highest symmetry group Fm3̅m
-(Gemmi uses Dimino's algorithm for this).
-
-.. _SgInfo: https://github.com/rwgk/sginfo
-.. _SgLite: https://github.com/rwgk/sglite
-.. _sgtbx: https://github.com/rwgk/sglite
-.. _csymlib: http://legacy.ccp4.ac.uk/html/C_library/csymlib_8h.html
-.. _spglib: https://atztogo.github.io/spglib/
-.. _Clipper: http://www.ysbl.york.ac.uk/~cowtan/clipper/doc/
-.. _OpenBabel: https://github.com/openbabel/openbabel
-.. _Mantid: https://github.com/mantidproject/mantid
-.. _Shmueli: http://dx.doi.org/10.1107/S0108767384001161
-.. _NGL: https://github.com/arose/ngl
-.. _Fityk: https://github.com/wojdyr/fityk
-.. _SPGGEN: http://dx.doi.org/10.1107/S1600576716007330
 
 
 Operations
@@ -415,6 +361,7 @@ the translational part -- phase shift.
     >>> op.phase_shift(hkl)  # -120 degrees in radians
     -2.0943951023931953
 
+
 Groups of Operations
 ====================
 
@@ -426,7 +373,8 @@ centring vectors (translation only) are stored separately:
 
 .. doctest::
 
-  >>> ops = gemmi.find_spacegroup_by_name('I2').operations()
+  >>> sg = gemmi.SpaceGroup('I2')
+  >>> ops = sg.operations()
   >>> ops  #doctest: +ELLIPSIS 
   <gemmi.GroupOps object at 0x...>
   >>> list(ops.sym_ops)
@@ -434,7 +382,7 @@ centring vectors (translation only) are stored separately:
   >>> list(ops.cen_ops)
   [[0, 0, 0], [12, 12, 12]]
 
-but they are be combined on the fly:
+but they can be combined on the fly:
 
 .. doctest::
 
@@ -452,9 +400,37 @@ We can apply a change-of-basis operator to GroupOps:
 
 .. doctest::
 
-  >>> ops.change_basis(gemmi.Op('x,y,x+z'))  # I2 -> C2
+  >>> sg.basisop  # I2 -> C2
+  <gemmi.Op("x,y,-x+z")>
+  >>> ops.change_basis_forward(sg.basisop)
   >>> gemmi.find_spacegroup_by_ops(ops)
   <gemmi.SpaceGroup("C 1 2 1")>
+  >>> ops.change_basis_backward(sg.basisop)  # and the other way around
+  >>> gemmi.find_spacegroup_by_ops(ops)
+  <gemmi.SpaceGroup("I 1 2 1")>
+
+In particular, we can switch between enantiomorphic pairs using inversion:
+
+.. doctest::
+
+  >>> ops = gemmi.SpaceGroup('P 41').operations()
+  >>> ops.change_basis_forward(gemmi.Op('-x,-y,-z'))
+  >>> gemmi.find_spacegroup_by_ops(ops)
+  <gemmi.SpaceGroup("P 43")>
+
+and change to primitive space group using ``centred_to_primitive()``:
+
+.. doctest::
+
+  >>> sg = gemmi.SpaceGroup('R 3:H')
+  >>> sg.centring_type()
+  'R'
+  >>> ops = sg.operations()
+  >>> ops.change_basis_backward(sg.centred_to_primitive())
+  >>> gemmi.find_spacegroup_by_ops(ops)
+  <gemmi.SpaceGroup("R 3:R")>
+  >>> _.centring_type()
+  'P'
 
 We can create GroupOps from a list of operations:
 
@@ -544,6 +520,7 @@ We also have a function that calculates ε ignoring centering vectors
   >>> new_ops.epsilon_factor_without_centering([2, 0, 2])
   2
 
+
 ASU
 ===
 
@@ -609,3 +586,78 @@ here we compensate it with one longer example in C++.
 .. literalinclude:: code/sym.cpp
    :language: cpp
 
+
+Implementation notes
+====================
+
+When creating a space group table, one can either store an explicit list
+of all the operations for each space group, or generate the operations
+from a smaller set of symbols. It is a
+trade-off between simplicity of the code and the amount of the tabulated data.
+
+The number of symmetry operations per space group is between 1 and 192,
+but they can be split into symmetry operations (max. 48 for point group m-3m)
+and so-called *centring vectors* (max. 4 for the face-centered lattice).
+
+* The simplest way of storing the operations is to list them all (i.e. 192
+  triplets for no. 228) in a text file.
+  This approach is used by OpenBabel_ (in :file:`space-groups.txt`).
+
+* It makes sense to keep the centring vectors separately
+  (192 becomes 48 + 4).
+  This is done in the CCP4 :file:`syminfo.lib` file (539 entries),
+  which is used by csymlib_ (part of libccp4) and a few other projects.
+
+* The operations can be as well tabulated in the code.
+  This approach is used (with one or two layers of indirection to reduce
+  the data size) by spglib_ (C library) and NGL_.
+
+* The inversion center (if applicable) can be kept separately,
+  to reduce the maximum number of stored operations (48 -> 24+1).
+  This is how the symmetry data is encoded in Fityk_.
+
+* Actually all the operations can be generated from only a few generators,
+  at the expense of more complex code.
+  Example: Mantid_ (:file:`SpaceGroupFactory.cpp`).
+
+* Finally, one can use one of the two computer-adapted descriptions from ITfC.
+  The so-called explicit notation (``ICC$I3Q000$P4C393$P2D933``) is the
+  longer of the two, but easier to parse by the computer.
+  It is used in the SPGGEN_ program.
+
+* The Hall notation (``-I 4bd 2c 3``), first proposed by Sydney R. Hall
+  in 1981, is shorter and more popular.
+  It can be interpreted by a few libraries:
+
+  * SgInfo_ and SgLite_ (old C libraries from Ralf W. Grosse-Kunstleve
+    recently re-licensed to BSD),
+  * sgtbx_ (successor of SgInfo written in C++/Python, part of cctbx),
+  * CCP4 Clipper_,
+
+  and by many programs.
+  On the bad side, the conciseness is achieved by complex
+  `rules <http://cci.lbl.gov/sginfo/hall_symbols.html>`_ of interpreting
+  the symbols; the choice of a Hall symbol for given settings
+  is not unambiguous and the symbols differ
+  between editions of ITfC, and between sgtbx and :file:`syminfo.lib`.
+
+After contemplating all the possibilities we ended up implementing
+the most complex solution: Hall symbols. The relative complexity
+does not mean it is slow: translating a Hall notation to generators
+takes less than a microsecond on a typical desktop machine.
+Closing a group is also below a microsecond for most of the groups,
+and up to a few microseconds for the highest symmetry group Fm3̅m
+(Gemmi uses Dimino's algorithm for this).
+
+.. _SgInfo: https://github.com/rwgk/sginfo
+.. _SgLite: https://github.com/rwgk/sglite
+.. _sgtbx: https://github.com/rwgk/sglite
+.. _csymlib: http://legacy.ccp4.ac.uk/html/C_library/csymlib_8h.html
+.. _spglib: https://atztogo.github.io/spglib/
+.. _Clipper: http://www.ysbl.york.ac.uk/~cowtan/clipper/doc/
+.. _OpenBabel: https://github.com/openbabel/openbabel
+.. _Mantid: https://github.com/mantidproject/mantid
+.. _Shmueli: http://dx.doi.org/10.1107/S0108767384001161
+.. _NGL: https://github.com/arose/ngl
+.. _Fityk: https://github.com/wojdyr/fityk
+.. _SPGGEN: http://dx.doi.org/10.1107/S1600576716007330

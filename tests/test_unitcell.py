@@ -6,6 +6,10 @@ from random import random
 import gemmi
 from gemmi import Position, UnitCell
 
+def assert_almost_equal_seq(self, a, b, delta=None):
+    for x,y in zip(a, b):
+        self.assertAlmostEqual(x, y, delta=delta)
+
 class TestMath(unittest.TestCase):
     def test_Vec3(self):
         a = gemmi.Vec3(-3, 3, 13)
@@ -86,19 +90,18 @@ class TestUnitCell(unittest.TestCase):
         cctbx_mm = [1295.712016, 1730.643201, 2093.611536,
                     391.3591013825865, 646.1921687548228, 731.5043620154578]
         mt = cell.metric_tensor()
-        for a, b in zip(mt.elements_pdb(), cctbx_mm):
-            self.assertAlmostEqual(a, b, delta=1e-12)
+        assert_almost_equal_seq(self, mt.elements_pdb(), cctbx_mm, delta=1e-12)
         #  uc.reciprocal_metrical_matrix()
         cctbx_rmm = [0.00092792089082916, 0.000689632633981, 0.0006277651322979,
                      -0.000104162588996, -0.000250008091601, -0.000208806754807]
         rmt = cell.reciprocal_metric_tensor()
-        for a, b in zip(rmt.elements_pdb(), cctbx_rmm):
-            self.assertAlmostEqual(a, b, delta=1e-15)
+        assert_almost_equal_seq(self, rmt.elements_pdb(), cctbx_rmm,
+                                delta=1e-15)
 
     def test_change_of_basis(self):
         uc = gemmi.UnitCell(20, 30, 39, 73, 93, 99)
         op = gemmi.Op('y-x/2,-2/3*z+2/3*y,3*x')
-        uc2 = uc.changed_basis(op, set_images=False)
+        uc2 = uc.changed_basis_backward(op, set_images=False)
         # compare with result from cctbx:
         #  from cctbx import sgtbx, uctbx
         #  u = uctbx.unit_cell((20,30,39, 73,93,99))
@@ -106,8 +109,9 @@ class TestUnitCell(unittest.TestCase):
         #  print(u.change_basis(cb_op=op).parameters())
         expected = (117.9468784563987, 25.977921933207348, 20.0,
                     130.5, 107.65517573180257, 82.63132106791868)
-        for (p, q) in zip(uc2.parameters, expected):
-            self.assertAlmostEqual(p, q)
+        assert_almost_equal_seq(self, uc2.parameters, expected)
+        uc3 = uc2.changed_basis_forward(op, set_images=True)
+        assert_almost_equal_seq(self, uc3.parameters, uc.parameters)
 
     def test_atom_to_site(self):
         cell = UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
@@ -121,8 +125,8 @@ class TestUnitCell(unittest.TestCase):
         # ucif = adptbx.u_cart_as_u_cif(uc, aniso)
         ucif = [11.537759976524049, 19.43436271641311, 11.1,
                 -8.078683096677723, 1.4787260755519491, -3.9018967241279157]
-        for a, b in zip(site.aniso.elements_pdb(), ucif):
-            self.assertAlmostEqual(a, b, delta=1e-6)
+        assert_almost_equal_seq(self, site.aniso.elements_pdb(), ucif,
+                                delta=1e-6)
 
     def test_pickling(self):
         try:
@@ -175,10 +179,6 @@ class TestAngles(unittest.TestCase):
         check_dihedral(p1, p4, p5, p7, -177.63641)
 
 class TestGruber(unittest.TestCase):
-    def assert_almost_equal_seq(self, a, b):
-        for x,y in zip(a, b):
-            self.assertAlmostEqual(x, y)
-
     def test_reduction(self):
         cell = gemmi.UnitCell(687.9, 687.9, 1933.3, 90.0, 90.0, 90.0)
         sg = gemmi.SpaceGroup('I 4 2 2')
@@ -191,9 +191,9 @@ class TestGruber(unittest.TestCase):
         q = 1082.134662368783
         t = 108.5325886
         par = (p*p, p*p, q*q, -p*p, -p*p, 0)
-        self.assert_almost_equal_seq(gv.parameters, par)
-        self.assert_almost_equal_seq(gv.niggli_parameters(),
-                                     par[:3] + (-p*p/2, -p*p/2, 0))
+        assert_almost_equal_seq(self, gv.parameters, par)
+        assert_almost_equal_seq(self, gv.niggli_parameters(),
+                                par[:3] + (-p*p/2, -p*p/2, 0))
         print(gv.cell_parameters())
         self.assertTrue(gv.cell_parameters(), (p, p, q, t, t, 0))
 
@@ -213,7 +213,7 @@ class TestGruber(unittest.TestCase):
         self.assertTrue(gv.is_niggli())
         expected = (2.814597242, 3.077205425, 7.408935896,
                     100.42421409, 94.02885284, 95.07179187)
-        self.assert_almost_equal_seq(gv.cell_parameters(), expected)
+        assert_almost_equal_seq(self, gv.cell_parameters(), expected)
 
 if __name__ == '__main__':
     unittest.main()
