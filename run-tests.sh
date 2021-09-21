@@ -6,9 +6,11 @@ BUILD_DIR="$(pwd)"
 [ -e build ] && BUILD_DIR="$(pwd)/build"
 PYTHON=`grep PYTHON_EXECUTABLE:FILEPATH= $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
 
-(cd $BUILD_DIR && make -j4 all gemmi-crdrst check)
-./tools/cmp-size.py build/gemmi build/gemmi.*.so
-./tools/docs-help.sh
+if [ $# = 0 ] || [ $1 != n ]; then
+    (cd $BUILD_DIR && make -j4 all gemmi-crdrst check)
+    ./tools/cmp-size.py build/gemmi build/gemmi.*.so
+    ./tools/docs-help.sh
+fi
 (cd docs && make -j4 html SPHINXOPTS="-q -n")
 export PYTHONPATH=$BUILD_DIR
 export PATH="$BUILD_DIR:$PATH"
