@@ -518,14 +518,29 @@ in the direct and reciprocal space:
     >>> cell.reciprocal_metric_tensor().u23
     0.0
 
-We can also obtain the G6 vector, which is used to reduce primitive basis
-of the lattice (calculate the Niggli cell), as described in
-the :ref:`separate section <niggli>`.
+We can also obtain the G6 vector, which is primarily used to
+:ref:`calculate reduced (Niggli) cell <niggli>`.
+For this use, the G6 vector is calculated from a primitive cell.
+Our ``g6`` function takes centring type (return value of
+``SpaceGroup.centring_type()``), uses matrix from ``centred_to_primitive()``
+to obtain primitive cell, and returns G6 vector of that primitive cell:
 
 .. doctest::
 
-    >>> cell.g6('P')
+    >>> cell.g6('P')  # 'P' -> no need to calculate primitive cell first
     [631.0144, 1560.25, 2031.3049, 0.0, 0.0, 0.0]
+
+Function ``is_compatible_with_spacegroup`` checks if the space group
+operations don't change the metric tensor elements by more than *ε*
+(*ε*\ =0.001 by default):
+
+.. doctest::
+
+    >>> cell.is_compatible_with_spacegroup(gemmi.SpaceGroup('I 2 2 2'))
+    True
+    >>> cell.is_compatible_with_spacegroup(gemmi.SpaceGroup('P 3'), eps=0.01)
+    False
+
 
 The UnitCell object can also store a list of symmetry transformations.
 This list is populated automatically when reading a coordinate file.

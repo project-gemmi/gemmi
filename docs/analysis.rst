@@ -1,5 +1,10 @@
 .. highlight:: cpp
 
+.. doctest::
+  :hide:
+
+  >>> import gemmi
+
 Structure analysis
 ##################
 
@@ -8,60 +13,175 @@ Structure analysis
 Reduced unit cells
 ==================
 
-Citing International Tables for Crystallography vol. A section 3.1.1.4:
-
-   Different procedures are in use to select special bases of lattices.
-   The reduction procedures employ metrical properties to develop a sequence
-   of basis transformations which lead to a *reduced basis* and *reduced cell*.
-
-The same ITC chapter lists (in 3.1.2.3) the two most important reductions as:
+This section is about finding special bases of lattices.
+As we can read in the International Tables for Crystallography (A 3.1.1.4),
+"the reduction procedures employ metrical properties to develop a sequence
+of basis transformations which lead to a *reduced basis* and *reduced cell*".
+And the two most important reductions (A 3.1.2.3) are:
 
 - the Selling-Delaunay reduction (the second name is alternatively
   transliterated as Delone),
 - the Eisenstein-Niggli reduction.
 
-The first names here are of 19th century mathematicians working
-on the reduction of quadratic forms, the second names are of people
-applying this math to crystallography. (More commonly, a single name
-is used -- such as "Niggli reduction".) In a similar manner we can add
+The first names here (Selling, Eisenstein) belong to 19th century
+mathematicians working on the reduction of quadratic forms,
+the second names are of people applying this math to crystallography.
+In a similar manner we can add
 
-* Minkowski-Buerger reduction.
+* the Minkowski-Buerger reduction,
 
-All three methods lead to primitive basis with prescribed properties.
-The Buerger cell is any cell with minimal basis vector lengths.
-Unlike Niggli and Delaunay cells, the choice of Buerger cell is not unique.
-Niggli cell is always one of the Buerger cells,
-but Delaunay cell may not be -- it may not have minimal vector lengths.
+although this reduction is different -- the result is not unique,
+it can be any cell with minimal vector lengths (a+b+c = min).
+The Niggli cell also has this property, so it is one of the Buerger cells.
+(As is common, from here we refer to the reductions using a single name only.)
 
-To complicate it more, the term reduced cell is understood differently
-in different papers. It can mean specifically Niggli reduction,
+Note: the term reduced cell is understood differently in different papers.
+It can mean specifically the Niggli reduction,
 or any method with a unique result (i.e. not Buerger),
-or any of the above cases.
+or it can cover all the cases above, like here.
 
 Gemmi implements separately the Niggli and Buerger reductions.
 They are iterative procedures. Most of the unit cells from the PDB
-need only 1-2 iterations (1.3 on average) to get reduced,
-but one can always construct a primitive cell with extremely long
-basis vectors that would require hundreds of iterations.
-
-This means that in practical cases both reductions are fast.
-The Buerger reduction is simpler and faster, but usually it's not important,
-because an iteration of the Niggli reduction takes only ~1μs.
+need only 1-2 iterations to get reduced (1.3 on average, if not counting
+the *normalization* steps as separate iterations).
+On the other hand, one can always construct a primitive cell with extremely
+long basis vectors that would require hundreds of iterations.
+The Buerger reduction is simpler and faster, but Niggli is also fast:
+one iteration takes below 1μs.
 
 Gemmi implementation is based on the algorithms published by B. Gruber
-in 1970's: Gruber,
-`Acta Cryst. A29, 433 <https://doi.org/10.1107/S0567739473001063>`_ (1973),
-and Křivý & Gruber,
-`Acta Cryst. A32, 297 <https://doi.org/10.1107/S0567739476000636>`_ (1976).
-Additionally, Niggli reduction is using ε to compare numbers, as proposed
-by Grosse-Kunstleve et al,
+in the 1970's: Gruber,
+`Acta Cryst. A29, 433 <https://doi.org/10.1107/S0567739473001063>`_ (1973)
+for the Buerger reduction, and Křivý & Gruber,
+`Acta Cryst. A32, 297 <https://doi.org/10.1107/S0567739476000636>`_ (1976)
+for the Niggli reduction.
+Additionally, the Niggli reduction is using ε to compare numbers, as proposed
+by Grosse-Kunstleve *et al*,
 `Acta Cryst. A60, 1 <https://doi.org/10.1107/S010876730302186X>`_ (2004).
 
-Gruber's algorithms use vector G6 with six elements named:
-A, B, C, ξ (xi), η (eta) and ζ (zeta). This vector is
-`similar <https://dictionary.iucr.org/Metric_tensor>`_ to the metric tensor.
+Gruber's algorithms use vector named G\ :sup:`6` with six elements named:
+A, B, C, ξ (xi), η (eta) and ζ (zeta), which correspond to:
 
-TBC
+    (**a**:sup:`2`, **b**:sup:`2`, **c**:sup:`2`, 2\ **b**\ ⋅\ **c**, 2\ **a**\ ⋅\ **c**, 2\ **a**\ ⋅\ **b**)
+
+(It is `similar <https://dictionary.iucr.org/Metric_tensor>`_ to the metric tensor.)
+
+In Gemmi we have a class named GruberVector that contains six numbers
+and have reduction algorithms implemented as methods.
+This class can be initialized with UnitCell and SpaceGroup:
+
+.. doctest::
+
+  >>> cell = gemmi.UnitCell(63.78, 63.86, 124.40, 90.0, 90.0, 90.0)
+  >>> sg = gemmi.SpaceGroup('I 2 2 2')
+  >>> gv = gemmi.GruberVector(cell, sg)
+
+or with 6-tuple corresponding to G\ :sup:`6` of a primitive cell.
+Such tuple can be obtained from ``UnitCell.g6()``:
+
+.. doctest::
+
+  >>> g6_param = cell.g6(sg.centring_type())
+  >>> gemmi.GruberVector(g6_param)
+  <gemmi.GruberVector((5905.34, 5905.34, 5905.34, -7742.79, -7732.57, 3664.69))>
+
+We can check if G\ :sup:`6` already corresponds to a Buerger and Niggli cell:
+
+.. doctest::
+
+  >>> gv.is_niggli()
+  False
+  >>> gv.is_buerger()
+  False
+
+We can access the G\ :sup:`6` parameters as a tuple:
+
+.. doctest::
+
+  >>> gv.parameters
+  (5905.337, 5905.337, 5905.337, -7742.7856, -7732.5744, 3664.686)
+
+and obtain the corresponding cell parameters (with angles in degrees):
+
+.. doctest::
+
+  >>> gv.cell_parameters()  # primitive cell
+  (76.84619053668177, 76.84619053668177, 76.84619053668177, 130.96328311485175, 130.89771578326727, 71.92353702711762)
+
+And most importantly, we can reduce the cell.
+``niggli_reduce()`` performs the Niggli reduction on G\ :sup:`6`,
+returning the number of iterations it took:
+
+.. doctest::
+
+  >>> gv.niggli_reduce()
+  3
+
+Now G\ :sup:`6` contains smaller numbers:
+
+.. doctest::
+
+  >>> gv
+  <gemmi.GruberVector((4067.89, 4078.10, 5905.34, -4078.10, -4067.89, -0.00))>
+
+To create a new UnitCell with reduced parameters do:
+
+.. doctest::
+
+  >>> gemmi.UnitCell(* gv.cell_parameters())
+  <gemmi.UnitCell(63.78, 63.86, 76.8462, 114.551, 114.518, 90)>
+
+or use a helper method:
+
+.. doctest::
+
+  >>> gv.get_cell()
+  <gemmi.UnitCell(63.78, 63.86, 76.8462, 114.551, 114.518, 90)>
+
+Similarly, we can perform the Buerger reduction:
+
+.. doctest::
+
+  >>> gv = gemmi.GruberVector(g6_param)
+  >>> gv.buerger_reduce()
+  3
+
+In this case both functions gave the same result.
+
+.. doctest::
+
+  >>> gv.is_niggli()
+  True
+  >>> gv.get_cell()
+  <gemmi.UnitCell(63.78, 63.86, 76.8462, 114.551, 114.518, 90)>
+
+Functions ``niggli_reduce``, ``is_niggli`` and ``is_buerger`` can take optional
+parameter ``epsilon`` (default: 1e-9) that is used for comparing numbers.
+Additionally, ``niggli_reduce`` can take ``iteration_limit`` (default: 100).
+To check how the computations would work without ε we can set it to 0:
+
+.. doctest::
+
+  >>> gv.is_buerger(epsilon=0)
+  True
+  >>> gv.is_niggli(epsilon=0)
+  False
+  >>> gv.niggli_reduce(epsilon=0, iteration_limit=100)
+  6
+  >>> gv.get_cell()
+  <gemmi.UnitCell(63.78, 63.86, 76.8462, 114.551, 114.518, 90)>
+
+Here, the Niggli conditions were initially found not fulfilled, because
+one expression that should be non-negative was about -5e-13.
+A few extra iterations sorted it out (without any real changes),
+but it's not always the case -- that's why we have ``iteration_limit``
+to prevent infinite loop.
+
+Note: comparing Niggli cells is not implemented yet.
+The Selling-Delaunay reduction, recently revisited by Andrews *et al* in
+`Acta Cryst. A75, 115 <https://doi.org/10.1107/S2053273318015413>`_ (2019),
+may also be implemented in the future.
+
 
 Neighbor search
 ===============

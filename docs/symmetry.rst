@@ -260,7 +260,7 @@ It can be created in C++ as::
 
   #include <gemmi/symmetry.hpp>
   ...
-  gemmi::Op op = gemmi::parse_triplet("-y,x-y,z");
+  gemmi::Op op = gemmi::parse_triplet("-y,x-y,z+1/3");
 
 and in Python as:
 

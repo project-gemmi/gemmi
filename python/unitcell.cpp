@@ -318,9 +318,6 @@ void add_unitcell(py::module& m) {
     .def("cell_parameters", [](const GruberVector& self) {
       return make_six_tuple(self.cell_parameters());
     })
-    .def("niggli_parameters", [](const GruberVector& self) {
-      return make_six_tuple(self.niggli_parameters());
-    })
     .def("get_cell",
          [](const GruberVector& self) { return new UnitCell(self.cell_parameters()); })
     .def("is_normalized", &GruberVector::is_normalized)
@@ -332,8 +329,10 @@ void add_unitcell(py::module& m) {
          py::arg("epsilon")=1e-9, py::arg("iteration_limit")=100)
     .def("is_niggli", &GruberVector::is_niggli, py::arg("epsilon")=1e-9)
     .def("__repr__", [](const GruberVector& self) {
-        return "<gemmi.GruberVector((" + triple(self.A, self.B, self.C)
-             + ", " + triple(self.xi, self.eta, self.zeta) + "))>";
-    })
-      ;
+        using namespace std;  // VS2015/17 doesn't like std::snprintf
+        char buf[256];
+        snprintf(buf, 256, "<gemmi.GruberVector((%.2f, %.2f, %.2f, %.2f, %.2f, %.2f))>",
+                 self.A, self.B, self.C, self.xi, self.eta, self.zeta);
+        return std::string(buf);
+    });
 }

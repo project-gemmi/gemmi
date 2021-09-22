@@ -299,7 +299,7 @@ struct UnitCell {
     return true;
   }
 
-  bool is_compatible_with_spacegroup(const SpaceGroup* sg, double eps=1e-6) {
+  bool is_compatible_with_spacegroup(const SpaceGroup* sg, double eps=1e-3) {
     return sg ? is_compatible_with_groupops(sg->operations(), eps) : false;
   }
 

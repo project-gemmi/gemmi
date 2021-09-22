@@ -34,7 +34,6 @@ struct GruberVector {
             deg(std::acos(eta/(2*a*c))),
             deg(std::acos(zeta/(2*a*b)))};
   }
-  std::array<double,6> niggli_parameters() const { return {A, B, C, xi/2, eta/2, zeta/2}; }
 
   bool is_normalized() const {
     // eq(3) from Gruber 1973
