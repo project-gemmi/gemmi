@@ -104,6 +104,7 @@ We can access the G\ :sup:`6` parameters as a tuple:
 and obtain the corresponding cell parameters (with angles in degrees):
 
 .. doctest::
+  :skipif: sys.platform == 'win32'  # the last digit differs with MSVC
 
   >>> gv.cell_parameters()  # primitive cell
   (76.84619053668177, 76.84619053668177, 76.84619053668177, 130.96328311485175, 130.89771578326727, 71.92353702711762)
