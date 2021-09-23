@@ -54,6 +54,19 @@ const option::Descriptor Usage[] = {
 
 using gemmi::Intensities;
 
+void output_intensity_statistics(const Intensities& intensities) {
+  size_t plus_count = 0;
+  size_t minus_count = 0;
+  for (const Intensities::Refl& refl : intensities.data) {
+    if (refl.isign > 0)
+      ++plus_count;
+    else if (refl.isign < 0)
+      ++minus_count;
+  }
+  std::fprintf(stderr, "Merging observations (%zu total, %zu for I+, %zu for I-) ...\n",
+               intensities.data.size(), plus_count, minus_count);
+}
+
 Intensities read_intensities(Intensities::Type itype, const char* input_path,
                              const char* block_name, bool verbose) {
   try {
@@ -255,18 +268,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     block_name = p.options[BlockName].arg;
   Intensities intensities = read_intensities(Intensities::Type::Unmerged,
                                              input_path, block_name, verbose);
-  if (verbose) {
-    size_t plus_count = 0;
-    size_t minus_count = 0;
-    for (const Intensities::Refl& refl : intensities.data) {
-      if (refl.isign > 0)
-        ++plus_count;
-      else if (refl.isign < 0)
-        ++minus_count;
-    }
-    std::fprintf(stderr, "Merging observations (%zu total, %zu for I+, %zu for I-) ...\n",
-                 intensities.data.size(), plus_count, minus_count);
-  }
+  if (verbose)
+    output_intensity_statistics(intensities);
   try {
     if (p.options[Compare]) {
       intensities.merge_in_place(ref.type);

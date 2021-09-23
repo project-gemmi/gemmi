@@ -366,11 +366,14 @@ private:
     for (size_t i = 0; i < proxy.size(); i += proxy.stride()) {
       Miller hkl = proxy.get_hkl(i);
       bool centric = gops.is_reflection_centric(hkl);
+
+      // sanity check
       if (mean_idx >= 0 && !std::isnan(proxy.get_num(i + mean_idx)) && !centric) {
         if (std::isnan(proxy.get_num(i + value_idx[0])) &&
             std::isnan(proxy.get_num(i + value_idx[1])))
           fail(miller_str(hkl), " has <I>, but I(+) and I(-) are both null");
       }
+
       add_if_valid(hkl, 1, proxy.get_num(i + value_idx[0]),
                            proxy.get_num(i + sigma_idx[0]));
       if (!centric)  // ignore I(-) of centric reflections
