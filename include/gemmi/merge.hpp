@@ -206,6 +206,8 @@ struct Intensities {
       fail("expected merged file");
     const Mtz::Column* colp = mtz.iplus_column();
     const Mtz::Column* colm = mtz.iminus_column();
+    if (!colp || !colm)
+      fail("anomalous intensities not found");
     size_t value_idx[2] = {colp->idx, colm->idx};
     size_t sigma_idx[2] = {mtz.get_column_with_label("SIG" + colp->label).idx,
                            mtz.get_column_with_label("SIG" + colm->label).idx};
