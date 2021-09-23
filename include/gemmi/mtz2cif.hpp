@@ -560,7 +560,11 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
         << scale * max_diff_r1->value << " vs " << max_diff_r2->value << '\n';
     out << differ_count << " of " << corr.n << " intensities differ too much (by >"
         << to_str(max_diff * 100) << "%).\n";
-    ok = false;
+    if (differ_count >= 0.001 * corr.n)
+      ok = false;
+    else
+      out << "(less than 0.1% of all intensities -"
+          << " probably outlier rejection during merging)\n";
   }
   if (missing_count != 0) {
     out << missing_count << " out of " << mi.data.size()
@@ -574,7 +578,8 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
         out << " But other problems were found (see above).";
       out << '\n';
     } else {
-      out << "ERROR. Intensities do not match.\n";
+      out << (ok ? "OK. Intensities almost match.\n"
+                 : "ERROR. Intensities do not match.\n");
     }
   }
   return ok;
