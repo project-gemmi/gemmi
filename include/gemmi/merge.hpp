@@ -149,7 +149,7 @@ struct Intensities {
     ReciprocalAsu asu(spacegroup);
     for (Refl& refl : data) {
       if (asu.is_in(refl.hkl)) {
-        if (!merged && refl.isign == -1 && gops.is_reflection_centric(refl.hkl))
+        if (!merged)  // I+ or centric
           refl.isign = 1;
         continue;
       }
