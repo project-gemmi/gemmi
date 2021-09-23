@@ -7,9 +7,12 @@ Options:
   -V, --version          Print version and exit.
   -v, --verbose          Verbose output.
   --write-anom           output I(+) and I(-) instead of IMEAN.
+  --no-sysabs            Do not output systematic absences.
+  --nobs                 Add MTZ column NOBS with the number of merged
+                         reflections.
   -b NAME, --block=NAME  output mmCIF block name: data_NAME (default: merged).
   --compare              compare unmerged and merged data (no output file).
   --print-all            print all compared reflections.
 
-The input file can be either SF-mmCIF with _diffrn_refln or MTZ.
+The input file can be SF-mmCIF with _diffrn_refln, MTZ or XDS_ASCII.HKL.
 The output file can be either SF-mmCIF or MTZ.

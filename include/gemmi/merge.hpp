@@ -32,7 +32,8 @@ struct Intensities {
 
   struct Refl {
     Miller hkl;
-    int isign;  // 1 for I(+), -1 for I(-), 0 for mean
+    short isign;  // 1 for I(+), -1 for I(-), 0 for mean
+    short nobs;
     double value;
     double sigma;
 
@@ -119,11 +120,14 @@ struct Intensities {
     std::vector<Refl>::iterator out = data.begin();
     double sum_wI = 0.;
     double sum_w = 0.;
+    int nobs = 0;
     for (auto in = data.begin(); in != data.end(); ++in) {
       if (out->hkl != in->hkl || out->isign != in->isign) {
         out->value = sum_wI / sum_w;
         out->sigma = 1.0 / std::sqrt(sum_w);
+        out->nobs = nobs;
         sum_wI = sum_w = 0.;
+        nobs = 0;
         ++out;
         out->hkl = in->hkl;
         out->isign = in->isign;
@@ -131,9 +135,11 @@ struct Intensities {
       double w = 1. / (in->sigma * in->sigma);
       sum_wI += w * in->value;
       sum_w += w;
+      ++nobs;
     }
     out->value = sum_wI / sum_w;
     out->sigma = 1.0 / std::sqrt(sum_w);
+    out->nobs = nobs;
     data.erase(++out, data.end());
   }
 
@@ -173,7 +179,7 @@ struct Intensities {
       fail("unknown space group");
     wavelength = mtz.dataset(col.dataset_id).wavelength;
     for (size_t i = 0; i < mtz.data.size(); i += mtz.columns.size()) {
-      int isign = ((int)mtz.data[i + 3] % 2 == 0 ? -1 : 1);
+      short isign = ((int)mtz.data[i + 3] % 2 == 0 ? -1 : 1);
       add_if_valid(mtz.get_hkl(i), isign, mtz.data[i + value_idx], mtz.data[i + sigma_idx]);
     }
     // Aimless >=0.7.6 (from 2021) has an option to output unmerged file
@@ -338,11 +344,11 @@ private:
       fail("unknown space group");
   }
 
-  void add_if_valid(const Miller& hkl, int isign, double value, double sigma) {
+  void add_if_valid(const Miller& hkl, short isign, double value, double sigma) {
     // XDS marks rejected reflections with negative sigma.
     // Sigma 0.0 is also problematic - it rarely happens (e.g. 5tkn).
     if (!std::isnan(value) && sigma > 0)
-      data.push_back({hkl, isign, value, sigma});
+      data.push_back({hkl, isign, /*nobs=*/0, value, sigma});
   }
 
   template<typename DataProxy>

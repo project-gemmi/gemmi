@@ -21,7 +21,9 @@
 
 namespace {
 
-enum OptionIndex { WriteAnom=4, BlockName, Compare, PrintAll };
+enum OptionIndex {
+  WriteAnom=4, NoSysAbs, NumObs, BlockName, Compare, PrintAll
+};
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -33,6 +35,10 @@ const option::Descriptor Usage[] = {
   CommonUsage[Verbose],
   { WriteAnom, 0, "a", "write-anom", Arg::None,
     "  --write-anom  \toutput I(+) and I(-) instead of IMEAN." },
+  { NoSysAbs, 0, "", "no-sysabs", Arg::None,
+    "  --no-sysabs  \tDo not output systematic absences." },
+  { NumObs, 0, "", "nobs", Arg::None,
+    "  --nobs  \tAdd MTZ column NOBS with the number of merged reflections." },
   { BlockName, 0, "b", "block", Arg::Required,
     "  -b NAME, --block=NAME  \toutput mmCIF block name: data_NAME (default: merged)." },
   { Compare, 0, "", "compare", Arg::None,
@@ -40,7 +46,7 @@ const option::Descriptor Usage[] = {
   { PrintAll, 0, "", "print-all", Arg::None,
     "  --print-all  \tprint all compared reflections." },
   { NoOp, 0, "", "", Arg::None,
-    "\nThe input file can be either SF-mmCIF with _diffrn_refln or MTZ."
+    "\nThe input file can be SF-mmCIF with _diffrn_refln, MTZ or XDS_ASCII.HKL."
     "\nThe output file can be either SF-mmCIF or MTZ."
   },
   { 0, 0, 0, 0, 0, 0 }
@@ -64,6 +70,10 @@ Intensities read_intensities(Intensities::Type itype, const char* input_path,
         itype = Intensities::Type::Anomalous;
       }
       intensities.read_mtz(mtz, itype);
+    } else if (gemmi::giends_with(input_path, ".hkl")) {
+      gemmi::XdsAscii xds_ascii;
+      xds_ascii.read_input(gemmi::MaybeGzipped(input_path));
+      intensities.read_unmerged_intensities_from_xds(xds_ascii);
     } else {
       auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(input_path).blocks);
       for (gemmi::ReflnBlock& rb : rblocks) {
@@ -94,7 +104,8 @@ Intensities read_intensities(Intensities::Type itype, const char* input_path,
   }
 }
 
-void write_merged_intensities(const Intensities& intensities, const char* output_path) {
+void write_merged_intensities(const Intensities& intensities, bool write_nobs,
+                              const char* output_path) {
   gemmi::Mtz mtz(/*with_base=*/true);
   mtz.spacegroup = intensities.spacegroup;
   mtz.set_cell_for_all(intensities.unit_cell);
@@ -102,11 +113,17 @@ void write_merged_intensities(const Intensities& intensities, const char* output
   if (intensities.type == Intensities::Type::Mean) {
     mtz.add_column("IMEAN", 'J');
     mtz.add_column("SIGIMEAN", 'Q');
+    if (write_nobs)
+      mtz.add_column("NOBS", 'I');
   } else if (intensities.type == Intensities::Type::Anomalous) {
     mtz.add_column("I(+)", 'K');
     mtz.add_column("SIGI(+)", 'M');
     mtz.add_column("I(-)", 'K');
     mtz.add_column("SIGI(-)", 'M');
+    if (write_nobs) {
+      mtz.add_column("NOBS(+)", 'I');
+      mtz.add_column("NOBS(-)", 'I');
+    }
   } else {
     return;
   }
@@ -123,6 +140,12 @@ void write_merged_intensities(const Intensities& intensities, const char* output
     size_t value_offset = offset + (refl.isign >= 0 ? 3 : 5);
     mtz.data[value_offset] = (float) refl.value;
     mtz.data[value_offset + 1] = (float) refl.sigma;
+    if (write_nobs) {
+      size_t nobs_offset = offset + 5;  // for "NOBS"
+      if (intensities.type == Intensities::Type::Anomalous)
+        nobs_offset += (refl.isign >= 0 ? 2 : 3);
+      mtz.data[nobs_offset] = (float) refl.nobs;
+    }
   }
   mtz.data.resize(offset + mtz.columns.size());
   mtz.nreflections = int(mtz.data.size() / mtz.columns.size());
@@ -250,10 +273,12 @@ int GEMMI_MAIN(int argc, char **argv) {
       compare_intensities(intensities, ref, p.options[PrintAll]);
     } else {
       intensities.merge_in_place(itype);
+      if (p.options[NoSysAbs])
+        intensities.remove_systematic_absences();
       if (verbose)
         std::fprintf(stderr, "Writing %zu reflections to %s ...\n",
                      intensities.data.size(), output_path);
-      write_merged_intensities(intensities, output_path);
+      write_merged_intensities(intensities, p.options[NumObs], output_path);
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());
