@@ -154,8 +154,14 @@ struct Intensities {
     ReciprocalAsu asu(spacegroup);
     for (Refl& refl : data) {
       if (asu.is_in(refl.hkl)) {
-        if (!merged)  // I+ or centric
-          refl.isign = 1;
+        if (!merged) {
+          // isign is 0 for original hkl (e.g. from XDS file)
+          if (refl.isign == 0)
+            refl.isign = 1;  // since it's in asu - I+ or centric
+          // when reading asu hkl from MTZ file - count centrics always as I+
+          else if (refl.isign == -1 && gops.is_reflection_centric(refl.hkl))
+            refl.isign = 1;
+        }
         continue;
       }
       auto hkl_isym = asu.to_asu(refl.hkl, gops);
