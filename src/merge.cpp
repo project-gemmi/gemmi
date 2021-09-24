@@ -207,6 +207,8 @@ void compare_intensities(Intensities& intensities, Intensities& ref, bool print_
   ref.sort();
   auto a = intensities.data.begin();
   gemmi::Correlation ci, cs; // correlation of <I>, Isigma, I+, I-
+  int different_intensity_count = 0;
+  int different_sigma_count = 0;
   for (const Intensities::Refl& r : ref.data) {
     if (r.hkl != a->hkl || r.isign != a->isign) {
       while (*a < r) {
@@ -226,6 +228,17 @@ void compare_intensities(Intensities& intensities, Intensities& ref, bool print_
     }
     ci.add_point(r.value, a->value);
     cs.add_point(r.sigma, a->sigma);
+
+    using gemmi::sq;
+    double sq_max = std::max(sq(r.value), sq(a->value));
+    double sq_diff = sq(r.value - a->value);
+    if (sq_diff > 1e-4 && sq_diff > sq(0.005) * sq_max)
+      different_intensity_count++;
+    sq_max = std::max(sq(r.sigma), sq(a->sigma));
+    sq_diff = sq(r.sigma - a->sigma);
+    if (sq_diff > 1e-4 && sq_diff > sq(0.005) * sq_max)
+      different_sigma_count++;
+
     if (print_all)
       print_reflection(&*a, &r);
     ++a;
@@ -233,6 +246,8 @@ void compare_intensities(Intensities& intensities, Intensities& ref, bool print_
       break;
   }
   printf("Common reflections: %d\n", ci.n);
+  printf("%d of intensities and %d of sigmas differ by >0.5%%.\n",
+         different_intensity_count, different_sigma_count);
   auto a_resol = intensities.resolution_range();
   ref.unit_cell = intensities.unit_cell;
   auto r_resol = ref.resolution_range();
