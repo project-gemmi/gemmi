@@ -521,7 +521,7 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   auto r1 = ui.data.begin();
   auto r2 = mi.data.begin();
   while (r1 != ui.data.end() && r2 != mi.data.end()) {
-    if (r1->hkl == r2->hkl) {
+    if (r1->hkl == r2->hkl && r1->isign == r2->isign) {
       double value1 = scale * r1->value;
       double sigma1 = scale * r1->sigma; // is this approximately correct
       double sq_value_max = std::max(sq(value1), sq(r2->value));
@@ -543,8 +543,7 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
       }
       ++r1;
       ++r2;
-    } else if (std::tie(r1->hkl[0], r1->hkl[1], r1->hkl[2]) <
-               std::tie(r2->hkl[0], r2->hkl[1], r2->hkl[2])) {
+    } else if (*r1 < *r2) {
       ++r1;
     } else {
       if (missing_count == 0)
