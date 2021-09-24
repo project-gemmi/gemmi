@@ -41,6 +41,11 @@ struct Intensities {
       return std::tie(hkl[0], hkl[1], hkl[2], isign) <
              std::tie(o.hkl[0], o.hkl[1], o.hkl[2], o.isign);
     }
+    const char* intensity_label() const {
+      if (isign == 0) return "<I>";
+      if (isign > 0) return "I(+)";
+      return "I(-)";
+    }
   };
 
   std::vector<Refl> data;

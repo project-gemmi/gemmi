@@ -520,21 +520,24 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   int missing_count = 0;
   auto r1 = ui.data.begin();
   auto r2 = mi.data.begin();
+  auto refln_str = [](const Intensities::Refl& r) {
+    return r.intensity_label() + std::string(" ") + miller_str(r.hkl);
+  };
   while (r1 != ui.data.end() && r2 != mi.data.end()) {
     if (r1->hkl == r2->hkl && r1->isign == r2->isign) {
       double value1 = scale * r1->value;
       double sigma1 = scale * r1->sigma; // is this approximately correct
       double sq_value_max = std::max(sq(value1), sq(r2->value));
       double sq_diff = sq(value1 - r2->value);
-      double weighted_sq_diff = sq_diff / (sq(sigma1) + sq(r2->sigma));
       // Intensities may happen to be rounded to two decimal places,
       // so if the absolute difference is <0.01 it's OK.
       if (!relaxed_check && sq_diff > 1e-4 && sq_diff > sq(max_diff) * sq_value_max) {
         if (differ_count == 0) {
-          out << "First difference: " << miller_str(r1->hkl)
+          out << "First difference: " << refln_str(*r1)
               << ' ' << value1 << " vs " << r2->value << '\n';
         }
         ++differ_count;
+        double weighted_sq_diff = sq_diff / (sq(sigma1) + sq(r2->sigma));
         if (weighted_sq_diff > max_weighted_sq_diff) {
           max_weighted_sq_diff = weighted_sq_diff;
           max_diff_r1 = &*r1;
@@ -547,15 +550,14 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
       ++r1;
     } else {
       if (missing_count == 0)
-        out << "First missing reflection in unmerged data: " << miller_str(r1->hkl) << '\n';
+        out << "First missing reflection in unmerged data: " << refln_str(*r1) << '\n';
       ++missing_count;
       ++r2;
     }
   }
 
   if (differ_count != 0) {
-    const Miller& hkl = max_diff_r1->hkl;
-    out << "Most significant difference: " << miller_str(hkl) << ' '
+    out << "Most significant difference: " << refln_str(*max_diff_r1) << ' '
         << scale * max_diff_r1->value << " vs " << max_diff_r2->value << '\n';
     out << differ_count << " of " << corr.n << " intensities differ too much (by >"
         << to_str(max_diff * 100) << "%).\n";
