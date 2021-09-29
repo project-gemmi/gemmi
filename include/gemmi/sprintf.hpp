@@ -12,6 +12,7 @@
 #else
 # ifdef GEMMI_WRITE_IMPLEMENTATION
 #  define STB_SPRINTF_IMPLEMENTATION
+#  define STB_SPRINTF_NOUNALIGNED 1
 # endif
 # define STB_SPRINTF_DECORATE(name) gstb_##name
 // To use system stb_sprintf.h (not recommended, but some Linux distros
