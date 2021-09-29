@@ -142,8 +142,24 @@ PERFORMANCE vs MSVC 2008 32-/64-bit (GCC is even slower than MSVC):
 "...512 char string..." ( 35.0x/32.5x faster!)
 */
 
-// Local modification: removed __attribute__((__no_sanitize_address__)) etc,
-// as we haven't had problems with address sanitizers.
+#if defined(__clang__)
+ #if defined(__has_feature) && defined(__has_attribute)
+  #if __has_feature(address_sanitizer)
+   #if __has_attribute(__no_sanitize__)
+    #define STBSP__ASAN __attribute__((__no_sanitize__("address")))
+   #elif __has_attribute(__no_sanitize_address__)
+    #define STBSP__ASAN __attribute__((__no_sanitize_address__))
+   #elif __has_attribute(__no_address_safety_analysis__)
+    #define STBSP__ASAN __attribute__((__no_address_safety_analysis__))
+   #endif
+  #endif
+ #endif
+#elif defined(__GNUC__) && (__GNUC__ >= 5 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8))
+ #if defined(__SANITIZE_ADDRESS__) && __SANITIZE_ADDRESS__
+  #define STBSP__ASAN __attribute__((__no_sanitize_address__))
+ #endif
+#endif
+
 #ifndef STBSP__ASAN
 #define STBSP__ASAN
 #endif
