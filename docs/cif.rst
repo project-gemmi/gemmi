@@ -112,6 +112,8 @@ Only the last one is freely available.
 
 PDBx/mmCIF is documented at `mmcif.pdb.org <http://mmcif.pdb.org/>`_.
 
+.. _what_is_parsed:
+
 What is parsed?
 ===============
 
@@ -563,6 +565,10 @@ Each item is one of:
 * name-value pair (Pair),
 * table, a.k.a loop (Loop)
 * or save frame (Block -- the same data structure as for block).
+
+(Although keyword ``global_`` and empty block name (``data_``) are
+not valid CIF, gemmi parses them as :ref:`exceptions <what_is_parsed>`
+and stores them as blocks with names, respectively, empty and ``#``.)
 
 C++
 ---
