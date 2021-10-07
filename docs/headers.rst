@@ -59,6 +59,9 @@ gemmi/cifdoc.hpp
 gemmi/contact.hpp
     Contact search, based on NeighborSearch from neighbor.hpp.
 
+gemmi/delaunay.hpp
+    Selling-Delaunay reduction of unit cell / lattice basis.
+
 gemmi/dencalc.hpp
     Tools to prepare a grid with values of electron density of a model.
 
