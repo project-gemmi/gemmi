@@ -2,7 +2,7 @@
 
 #include "gemmi/unitcell.hpp"
 #include "gemmi/tostr.hpp"  // tostr
-#include "gemmi/gruber.hpp"  // GruberVector
+#include "gemmi/cellred.hpp"  // GruberVector
 
 #include <cstdio>  // for snprintf
 #include <array>
@@ -292,7 +292,7 @@ void add_unitcell(py::module& m) {
     .def("reciprocal_metric_tensor", &UnitCell::reciprocal_metric_tensor)
     .def("reciprocal", &UnitCell::reciprocal)
     .def("get_hkl_limits", &UnitCell::get_hkl_limits, py::arg("dmin"))
-    .def("g6", &UnitCell::g6, py::arg("centring_type"))
+    .def("primitive_orth_matrix", &UnitCell::primitive_orth_matrix, py::arg("centring_type"))
     .def(py::self == py::self)
     .def("__repr__", [](const UnitCell& self) {
         return "<gemmi.UnitCell(" + triple(self.a, self.b, self.c)
@@ -306,12 +306,14 @@ void add_unitcell(py::module& m) {
          }
     ));
 
+  py::class_<SellingVector> selling_vector(m, "SellingVector");
+
   py::class_<GruberVector>(m, "GruberVector")
     .def(py::init<const std::array<double,6>&>())
     .def(py::init([](const UnitCell& u, const SpaceGroup* sg) {
-        return new GruberVector(u.g6(sg ? sg->centring_type() : 'P'));
+        Mat33 m = u.primitive_orth_matrix(sg ? sg->centring_type() : 'P');
+        return new GruberVector(m);
     }))
-    .def("parameters", &GruberVector::parameters)
     .def_property_readonly("parameters", [](const GruberVector& g) {
       return make_six_tuple(g.parameters());
     })
@@ -320,6 +322,7 @@ void add_unitcell(py::module& m) {
     })
     .def("get_cell",
          [](const GruberVector& self) { return new UnitCell(self.cell_parameters()); })
+    .def("selling", &GruberVector::selling)
     .def("is_normalized", &GruberVector::is_normalized)
     .def("is_buerger", &GruberVector::is_buerger, py::arg("epsilon")=1e-9)
     .def("normalize", &GruberVector::normalize, py::arg("epsilon")=1e-9)
@@ -333,6 +336,34 @@ void add_unitcell(py::module& m) {
         char buf[256];
         snprintf(buf, 256, "<gemmi.GruberVector((%.2f, %.2f, %.2f, %.2f, %.2f, %.2f))>",
                  self.A, self.B, self.C, self.xi, self.eta, self.zeta);
+        return std::string(buf);
+    });
+
+  selling_vector
+    .def(py::init<const std::array<double,6>&>())
+    .def(py::init([](const UnitCell& u, const SpaceGroup* sg) {
+        Mat33 m = u.primitive_orth_matrix(sg ? sg->centring_type() : 'P');
+        return new SellingVector(m);
+    }))
+    .def_property_readonly("parameters", [](const SellingVector& self) {
+      return make_six_tuple(self.s);
+    })
+    .def("cell_parameters", [](const SellingVector& self) {
+      return make_six_tuple(self.cell_parameters());
+    })
+    .def("get_cell",
+         [](const SellingVector& self) { return new UnitCell(self.cell_parameters()); })
+    .def("sum_b_squared", &SellingVector::sum_b_squared)
+    .def("gruber", &SellingVector::gruber)
+    .def("is_reduced", &SellingVector::is_reduced, py::arg("epsilon")=1e-9)
+    .def("reduce_step", &SellingVector::reduce_step, py::arg("epsilon")=1e-9)
+    .def("reduce", &SellingVector::reduce,
+         py::arg("epsilon")=1e-9, py::arg("iteration_limit")=100)
+    .def("__repr__", [](const SellingVector& self) {
+        using namespace std;  // VS2015/17 doesn't like std::snprintf
+        char buf[256];
+        snprintf(buf, 256, "<gemmi.SellingVector((%.2f, %.2f, %.2f, %.2f, %.2f, %.2f))>",
+                 self.s[0], self.s[1], self.s[2], self.s[3], self.s[4], self.s[5]);
         return std::string(buf);
     });
 }

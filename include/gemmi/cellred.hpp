@@ -1,15 +1,17 @@
 // Copyright 2021 Global Phasing Ltd.
 //
-// Unit cell reduction to Buerger or Niggli cell. Uses G6 (Gruber) vector.
+// Unit cell reductions: Buerger, Niggli, Selling-Delaunay.
 
-#ifndef GEMMI_GRUBER_HPP_
-#define GEMMI_GRUBER_HPP_
+#ifndef GEMMI_CELLRED_HPP_
+#define GEMMI_CELLRED_HPP_
 
 #include <cmath>
 #include <array>
 #include "math.hpp"  // for deg
 
 namespace gemmi {
+
+class SellingVector;
 
 // GruberVector contains G6 vector (G for Gruber) and cell reduction algorithms.
 // Originally, in B. Gruber, Acta Cryst. A29, 433 (1973), the vector was called
@@ -20,7 +22,16 @@ struct GruberVector {
   //    a.a  b.b c.c 2b.c 2a.c 2a.b
   double A, B, C, xi, eta, zeta;  // the 1973 paper uses names A B C ξ η ζ
 
-  GruberVector(const std::array<double,6>& g6)
+  // m - orthogonalization matrix of a primitive cell
+  explicit GruberVector(const Mat33& m)
+    : A(m.column_dot(0,0)),
+      B(m.column_dot(1,1)),
+      C(m.column_dot(2,2)),
+      xi(2 * m.column_dot(1,2)),
+      eta(2 * m.column_dot(0,2)),
+      zeta(2 * m.column_dot(0,1)) {}
+
+  explicit GruberVector(const std::array<double,6>& g6)
     : A(g6[0]), B(g6[1]), C(g6[2]), xi(g6[3]), eta(g6[4]), zeta(g6[5]) {}
 
   std::array<double,6> parameters() const { return {A, B, C, xi, eta, zeta}; }
@@ -34,6 +45,8 @@ struct GruberVector {
             deg(std::acos(eta/(2*a*c))),
             deg(std::acos(zeta/(2*a*b)))};
   }
+
+  SellingVector selling() const;
 
   bool is_normalized() const {
     // eq(3) from Gruber 1973
@@ -184,6 +197,127 @@ struct GruberVector {
     return is_normalized() && GruberVector(*this).niggli_step(epsilon);
   }
 };
+
+
+// Selling-Delaunay reduction. Based on:
+// - chapter "Delaunay reduction and standardization" in
+//   International Tables for Crystallography vol. A (2016), sec. 3.1.2.3.
+//   https://onlinelibrary.wiley.com/iucr/itc/Ac/ch3o1v0001/
+// - Patterson & Love (1957), Acta Cryst. 10, 111,
+//   "Remarks on the Delaunay reduction", doi:10.1107/s0365110x57000328
+// - Andrews et al (2019), Acta Cryst. A75, 115,
+//   "Selling reduction versus Niggli reduction for crystallographic lattices".
+struct SellingVector {
+  // b.c a.c a.b a.d b.d c.d
+  std::array<double,6> s;
+
+  explicit SellingVector(const std::array<double,6>& s_) : s(s_) {}
+
+  explicit SellingVector(const Mat33& orth) {
+    Vec3 b[4];
+    for (int i = 0; i < 3; ++i)
+      b[i] = orth.column_copy(i);
+    b[3]= -b[0] - b[1] - b[2];
+    s[0] = b[1].dot(b[2]);
+    s[1] = b[0].dot(b[2]);
+    s[2] = b[0].dot(b[1]);
+    s[3] = b[0].dot(b[3]);
+    s[4] = b[1].dot(b[3]);
+    s[5] = b[2].dot(b[3]);
+  }
+
+  // The reduction minimizes the sum b_i^2 which is equal to -2 sum s_i.
+  double sum_b_squared() const {
+    return -2 * (s[0] + s[1] + s[2] + s[3] + s[4] + s[5]);
+  }
+
+  bool is_reduced(double eps=1e-9) const {
+    return std::all_of(s.begin(), s.end(), [eps](double x) { return x <= eps; });
+  }
+
+  bool reduce_step(double eps=1e-9) {
+    //printf(" s = %g %g %g %g %g %g  sum=%g\n",
+    //       s[0], s[1], s[2], s[3], s[4], s[5], sum_b_squared());
+    const int table[6][5] = {
+      // When negating s[n] we need to apply operations from table[n]:
+      // 2 x add, subtract, 2 x swap&add
+      {2, 4, 3, 1, 5},  // 0
+      {2, 3, 4, 0, 5},  // 1
+      {1, 3, 5, 0, 4},  // 2
+      {1, 2, 0, 4, 5},  // 3
+      {0, 2, 1, 3, 5},  // 4
+      {0, 1, 2, 3, 4},  // 5
+    };
+
+    double max_s = eps;
+    int max_s_pos = -1;
+    for (int i = 0; i < 6; ++i)
+      if (s[i] > max_s) {
+        max_s = s[i];
+        max_s_pos = i;
+      }
+    if (max_s_pos < 0)
+      return false;
+    double v = s[max_s_pos];
+    const int (&indices)[5] = table[max_s_pos];
+    s[max_s_pos] = -v;
+    s[indices[0]] += v;
+    s[indices[1]] += v;
+    s[indices[2]] -= v;
+    std::swap(s[indices[3]], s[indices[4]]);
+    s[indices[3]] += v;
+    s[indices[4]] += v;
+    //printf("  s[%d]=%g  sum: %g\n", max_s_pos, max_s, sum_b_squared());
+    return true;
+  }
+
+  // Returns number of iterations.
+  int reduce(double eps=1e-9, int iteration_limit=100) {
+    int n = 0;
+    while (++n != iteration_limit)
+      if (!reduce_step(eps))
+        break;
+    sort_last();
+    return n;
+  }
+
+  std::array<double,6> g6_parameters() const {
+    return {-s[1]-s[2]-s[3], -s[0]-s[2]-s[4], -s[0]-s[1]-s[5], 2*s[0], 2*s[1], 2*s[2]};
+  }
+
+  GruberVector gruber() const { return GruberVector(g6_parameters()); }
+
+  void sort_last(double eps=1e-9) {
+    double abcd_sq_neg[4] = {
+      s[1]+s[2]+s[3], s[0]+s[2]+s[4], s[0]+s[1]+s[5], s[3]+s[4]+s[5]
+    };
+    int min_idx = 3;
+    for (int i = 2; i >= 0; --i)
+      if (abcd_sq_neg[i] < abcd_sq_neg[min_idx] - eps)
+        min_idx = i;
+    if (min_idx == 0) {         // a <-> d
+      std::swap(s[1], s[5]);
+      std::swap(s[2], s[4]);
+    } else if (min_idx == 1) {  // b <-> d
+      std::swap(s[0], s[5]);
+      std::swap(s[2], s[3]);
+    } else if (min_idx == 2) {  // c <-> d
+      std::swap(s[0], s[4]);
+      std::swap(s[1], s[3]);
+    }
+  }
+
+  std::array<double,6> cell_parameters() const {
+    return gruber().cell_parameters();
+  }
+};
+
+SellingVector GruberVector::selling() const {
+  double s0 = 0.5 * xi;
+  double s1 = 0.5 * eta;
+  double s2 = 0.5 * zeta;
+  return SellingVector({s0, s1, s2, -A - s1 - s2, -B - s0 - s2, -C - s0 - s1});
+}
 
 } // namespace gemmi
 #endif

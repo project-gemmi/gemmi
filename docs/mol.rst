@@ -518,17 +518,22 @@ in the direct and reciprocal space:
     >>> cell.reciprocal_metric_tensor().u23
     0.0
 
-We can also obtain the G6 vector, which is primarily used to
-:ref:`calculate reduced (Niggli) cell <niggli>`.
-For this use, the G6 vector is calculated from a primitive cell.
-Our ``g6`` function takes centring type (return value of
+If the lattice is centered, we can obtain a primitive cell.
+We have a function that takes centring type (return value of
 ``SpaceGroup.centring_type()``), uses matrix from ``centred_to_primitive()``
-to obtain primitive cell, and returns G6 vector of that primitive cell:
+and returns orthogonalization matrix of a primitive cell:
+of the primitive cell:
 
 .. doctest::
 
-    >>> cell.g6('P')  # 'P' -> no need to calculate primitive cell first
-    [631.0144, 1560.25, 2031.3049, 0.0, 0.0, 0.0]
+    >>> cell.primitive_orth_matrix('I')
+    <gemmi.Mat33 [-12.56, 12.56, 12.56]
+                 [19.75, -19.75, 19.75]
+                 [22.535, 22.535, -22.535]>
+
+
+This matrix can be used to obtain the G\ :sup:`6` and S\ :sup:`6` vectors,
+which are used in Niggli and Selling-Delaunay :ref:`cell reduction <niggli>`.
 
 Function ``is_compatible_with_spacegroup`` checks if the space group
 operations don't change the metric tensor elements by more than *ε*

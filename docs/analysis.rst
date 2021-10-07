@@ -14,7 +14,7 @@ Reduced unit cells
 ==================
 
 This section is about finding special bases of lattices.
-As we can read in the International Tables for Crystallography (A 3.1.1.4),
+As we read in the International Tables for Crystallography A 3.1.1.4 (2016),
 "the reduction procedures employ metrical properties to develop a sequence
 of basis transformations which lead to a *reduced basis* and *reduced cell*".
 And the two most important reductions (A 3.1.2.3) are:
@@ -28,17 +28,19 @@ mathematicians working on the reduction of quadratic forms,
 the second names are of people applying this math to crystallography.
 In a similar manner we can add
 
-* the Minkowski-Buerger reduction,
+- the Minkowski-Buerger reduction,
 
-although this reduction is different -- the result is not unique,
-it can be any cell with minimal vector lengths (a+b+c = min).
-The Niggli cell also has this property, so it is one of the Buerger cells.
+which leads to one of cells with minimal vector lengths (a+b+c = min).
+The Niggli cell also minimal lengths -- it is one of the Buerger cells.
 (As is common, from here we refer to the reductions using a single name only.)
 
 Note: the term reduced cell is understood differently in different papers.
 It can mean specifically the Niggli reduction,
 or any method with a unique result (i.e. not Buerger),
 or it can cover all the cases above, like here.
+
+Niggli and Buerger reductions
+-----------------------------
 
 Gemmi implements separately the Niggli and Buerger reductions.
 They are iterative procedures. Most of the unit cells from the PDB
@@ -59,15 +61,15 @@ Additionally, the Niggli reduction is using ε to compare numbers, as proposed
 by Grosse-Kunstleve *et al*,
 `Acta Cryst. A60, 1 <https://doi.org/10.1107/S010876730302186X>`_ (2004).
 
-Gruber's algorithms use vector named G\ :sup:`6` with six elements named:
+Gruber's algorithms use vector named G\ :sup:`6`. It is
+`somewhat similar <https://dictionary.iucr.org/Metric_tensor>`_
+to the metric tensor. G\ :sup:`6` has six elements named:
 A, B, C, ξ (xi), η (eta) and ζ (zeta), which correspond to:
 
     (**a**:sup:`2`, **b**:sup:`2`, **c**:sup:`2`, 2\ **b**\ ⋅\ **c**, 2\ **a**\ ⋅\ **c**, 2\ **a**\ ⋅\ **b**)
 
-(It is `similar <https://dictionary.iucr.org/Metric_tensor>`_ to the metric tensor.)
-
-In Gemmi we have a class named GruberVector that contains six numbers
-and have reduction algorithms implemented as methods.
+In Gemmi we have a class named GruberVector that contains these six numbers
+and has reduction algorithms implemented as methods.
 This class can be initialized with UnitCell and SpaceGroup:
 
 .. doctest::
@@ -76,12 +78,11 @@ This class can be initialized with UnitCell and SpaceGroup:
   >>> sg = gemmi.SpaceGroup('I 2 2 2')
   >>> gv = gemmi.GruberVector(cell, sg)
 
-or with 6-tuple corresponding to G\ :sup:`6` of a primitive cell.
-Such tuple can be obtained from ``UnitCell.g6()``:
+or with 6-tuple corresponding to G\ :sup:`6` of a primitive cell:
 
 .. doctest::
 
-  >>> g6_param = cell.g6(sg.centring_type())
+  >>> g6_param = gv.parameters  # obtain such a tuple
   >>> gemmi.GruberVector(g6_param)
   <gemmi.GruberVector((5905.34, 5905.34, 5905.34, -7742.79, -7732.57, 3664.69))>
 
@@ -178,11 +179,92 @@ A few extra iterations sorted it out (without any real changes),
 but it's not always the case -- that's why we have ``iteration_limit``
 to prevent infinite loop.
 
-Note: comparing Niggli cells is not implemented yet.
-The Selling-Delaunay reduction, recently revisited by Andrews *et al* in
-`Acta Cryst. A75, 115 <https://doi.org/10.1107/S2053273318015413>`_ (2019),
-may also be implemented in the future.
+Selling-Delaunay reduction
+--------------------------
 
+Gemmi implementation is based on
+
+- section `3.1.2.3 <https://onlinelibrary.wiley.com/iucr/itc/Ac/ch3o1v0001/>`_
+  "Delaunay reduction and standardization" in the Tables vol. A (2016),
+- Patterson & Love (1957), "Remarks on the Delaunay reduction",
+  `Acta Cryst. 10, 111 <https://doi.org/10.1107/S0365110X57000328>`_,
+- Andrews *et al* (2019),
+  "Selling reduction versus Niggli reduction for crystallographic lattices",
+  `Acta Cryst. A75, 115 <https://doi.org/10.1107/S2053273318015413>`_.
+
+Similarly to the GruberVector, here we have a class named SellingVector
+that contains six numbers of S\ :sup:`6`. These numbers are the inner products
+among the four vectors **a**, **b**, **c**
+and **d**\ =–(\ **a**\ +\ **b**\ +\ **c**\ ):
+
+    *s*\ :sub:`23`\ =\ **b**\ ⋅\ **c**,
+    *s*\ :sub:`13`\ =\ **a**\ ⋅\ **c**,
+    *s*\ :sub:`12`\ =\ **a**\ ⋅\ **b**,
+    *s*\ :sub:`14`\ =\ **a**\ ⋅\ **d**,
+    *s*\ :sub:`24`\ =\ **b**\ ⋅\ **d**,
+    *s*\ :sub:`34`\ =\ **c**\ ⋅\ **d**.
+
+SellingVector can be initialized with UnitCell and SpaceGroup:
+
+.. doctest::
+
+  >>> sv = gemmi.SellingVector(cell, sg)
+
+or with a tuple of six numbers S\ :sup:`6`:
+
+.. doctest::
+
+  >>> sv.parameters
+  (-3871.3928, -3866.2872, 1832.343, -3871.3928, -3866.2872, 1832.343)
+  >>> gemmi.SellingVector(_)
+  <gemmi.SellingVector((-3871.39, -3866.29, 1832.34, -3871.39, -3866.29, 1832.34))>
+
+Similarly as in the previous section, we can check if S\ :sup:`6`
+already corresponds to a Delaunay cell:
+
+.. doctest::
+
+  >>> sv.is_reduced()
+  False
+
+Each reduction step decreases Σ\ **b**\ :sub:`i`:sup:`2`
+(**b**\ :sub:`i` denotes the four vectors). That sum can be checked with:
+
+.. doctest::
+
+  >>> sv.sum_b_squared()
+  23621.348
+
+Like with ``niggli_reduce()``, the Selling reduction procedure takes
+optional arguments ``epsilon`` and ``iteration_limit``
+and returns the iteration count:
+
+.. doctest::
+
+  >>> sv.reduce()
+  2
+
+Now we can check the result:
+
+.. doctest::
+
+  >>> sv
+  <gemmi.SellingVector((-2033.94, -2033.94, -1832.34, -2039.05, -2039.05, 0.00))>
+  >>> sv.is_reduced()
+  True
+  >>> sv.sum_b_squared()
+  19956.662
+
+We can easily transform S\ :sup:`6` into G\ :sup:`6` and the other way around:
+
+.. doctest::
+
+  >>> sv.gruber()
+  <gemmi.GruberVector((5905.34, 5905.34, 4067.89, -4067.89, -4067.89, -3664.69))>
+  >>> _.selling()
+  <gemmi.SellingVector((-2033.94, -2033.94, -1832.34, -2039.05, -2039.05, 0.00))>
+
+TBC
 
 Neighbor search
 ===============

@@ -495,22 +495,11 @@ struct UnitCell {
     return {{int(a / dmin), int(b / dmin), int(c / dmin)}};
   }
 
-  Mat33 primitive_orth(char centring_type) const {
+  Mat33 primitive_orth_matrix(char centring_type) const {
     if (centring_type == 'P')
       return orth.mat;
     Mat33 c2p = rot_as_mat33(centred_to_primitive(centring_type));
     return orth.mat.multiply(c2p);
-  }
-
-  // Gruber vector G6. See also niggli.hpp.
-  std::array<double,6> g6(char centring_type) const {
-    if (centring_type == 'P')
-      return {a*a, b*b, c*c, 2*b*c*cos_alpha(), 2*a*orth.mat[0][2], 2*a*orth.mat[0][1]};
-    Mat33 m = primitive_orth(centring_type);
-    return {{
-      m.column_dot(0,0), m.column_dot(1,1), m.column_dot(2,2),
-      2 * m.column_dot(1,2), 2 * m.column_dot(0,2), 2 * m.column_dot(0,1)
-    }};
   }
 };
 

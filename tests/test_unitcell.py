@@ -197,7 +197,7 @@ class TestGruber(unittest.TestCase):
 
     def test_near_degenerate(self):
         cell = gemmi.UnitCell(15.53, 91.94, 4.35, 110.326, 7.337, 103.014)
-        gv = gemmi.GruberVector(cell.g6('P'))
+        gv = gemmi.GruberVector(cell, None)
         self.assertFalse(gv.is_normalized())
         gv.normalize()
         self.assertTrue(gv.is_normalized())
