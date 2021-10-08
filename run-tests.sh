@@ -47,6 +47,8 @@ if [ $1 = v -o $1 = a ]; then
     echo "running tests under valgrind"
     valgrind $BUILD_DIR/cpptest
     PYTHONMALLOC=malloc valgrind $PYTHON -m unittest discover -s tests
+    (cd docs && PYTHONMALLOC=malloc valgrind --trace-children=yes \
+        $PYTHON $(which sphinx-build) -M doctest . _build -q -E)
 fi
 
 if [ $1 = p -o $1 = a ]; then
