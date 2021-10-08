@@ -258,15 +258,14 @@ struct SellingVector {
       }
     if (max_s_pos < 0)
       return false;
-    double v = s[max_s_pos];
     const int (&indices)[5] = table[max_s_pos];
-    s[max_s_pos] = -v;
-    s[indices[0]] += v;
-    s[indices[1]] += v;
-    s[indices[2]] -= v;
+    s[max_s_pos] = -max_s;
+    s[indices[0]] += max_s;
+    s[indices[1]] += max_s;
+    s[indices[2]] -= max_s;
     std::swap(s[indices[3]], s[indices[4]]);
-    s[indices[3]] += v;
-    s[indices[4]] += v;
+    s[indices[3]] += max_s;
+    s[indices[4]] += max_s;
     //printf("  s[%d]=%g  sum: %g\n", max_s_pos, max_s, sum_b_squared());
     return true;
   }
@@ -277,7 +276,6 @@ struct SellingVector {
     while (++n != iteration_limit)
       if (!reduce_step(eps))
         break;
-    sort_last();
     return n;
   }
 
@@ -287,23 +285,47 @@ struct SellingVector {
 
   GruberVector gruber() const { return GruberVector(g6_parameters()); }
 
-  void sort_last(double eps=1e-9) {
+  // Swap values to make a <= b <= c <= d
+  void sort(double eps=1e-9) {
     double abcd_sq_neg[4] = {
+      // -a^2, -b^2, -c^2, -d^2 (negated - to be sorted in descending order)
       s[1]+s[2]+s[3], s[0]+s[2]+s[4], s[0]+s[1]+s[5], s[3]+s[4]+s[5]
     };
+    // First, make sure that d >= a,b,c (therefore -d^2 <= -a^2,...).
     int min_idx = 3;
-    for (int i = 2; i >= 0; --i)
+    for (int i = 0; i < 3; ++i)
       if (abcd_sq_neg[i] < abcd_sq_neg[min_idx] - eps)
         min_idx = i;
-    if (min_idx == 0) {         // a <-> d
-      std::swap(s[1], s[5]);
-      std::swap(s[2], s[4]);
-    } else if (min_idx == 1) {  // b <-> d
-      std::swap(s[0], s[5]);
-      std::swap(s[2], s[3]);
-    } else if (min_idx == 2) {  // c <-> d
-      std::swap(s[0], s[4]);
-      std::swap(s[1], s[3]);
+    switch (min_idx) {
+      case 0:  // a <-> d
+        std::swap(s[1], s[5]);
+        std::swap(s[2], s[4]);
+        break;
+      case 1:  // b <-> d
+        std::swap(s[0], s[5]);
+        std::swap(s[2], s[3]);
+        break;
+      case 2:  // c <-> d
+        std::swap(s[0], s[4]);
+        std::swap(s[1], s[3]);
+        break;
+    }
+    // we could stop here and not care about the order of a,b,c.
+    std::swap(abcd_sq_neg[min_idx], abcd_sq_neg[3]);
+    if (abcd_sq_neg[0] < abcd_sq_neg[1] - eps) {  // a <-> b
+      std::swap(s[0], s[1]);
+      std::swap(s[3], s[4]);
+      std::swap(abcd_sq_neg[0], abcd_sq_neg[1]);
+    }
+    if (abcd_sq_neg[1] < abcd_sq_neg[2] - eps) {  // b <-> c
+      std::swap(s[1], s[2]);
+      std::swap(s[4], s[5]);
+      std::swap(abcd_sq_neg[1], abcd_sq_neg[2]);
+    }
+    if (abcd_sq_neg[0] < abcd_sq_neg[1] - eps) {  // a <-> b
+      std::swap(s[0], s[1]);
+      std::swap(s[3], s[4]);
+      //std::swap(abcd_sq_neg[0], abcd_sq_neg[1]);
     }
   }
 

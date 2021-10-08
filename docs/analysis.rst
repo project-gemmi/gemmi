@@ -13,43 +13,41 @@ Structure analysis
 Reduced unit cells
 ==================
 
-This section is about finding special bases of lattices.
-As we read in the International Tables for Crystallography A 3.1.1.4 (2016),
+The reduction finds special bases of lattices. In practice, these bases are
+found by removing lattice centering (i.e. obtaining a primitive cell)
+and using a prescribed interative procedure.
+As it is worded in the International Tables for Crystallography A 3.1.1.4 (2016),
 "the reduction procedures employ metrical properties to develop a sequence
 of basis transformations which lead to a *reduced basis* and *reduced cell*".
-And the two most important reductions (A 3.1.2.3) are:
 
+There are three popular unit cell reductions:
+
+- the Minkowski-Buerger reduction, which minimizes *a*\ +\ *b*\ +\ *c*
+  (in special cases multiple, up to 6 different bases have the same
+  minimal sum *a*\ +\ *b*\ +\ *c*),
+- the Eisenstein-Niggli reduction, which adds extra conditions
+  to the previous one and makes the result unique,
 - the Selling-Delaunay reduction (the second name is alternatively
-  transliterated as Delone),
-- the Eisenstein-Niggli reduction.
+  transliterated as Delone), which minimizes
+  *a*:sup:`2`\ +\ *b*:sup:`2`\ +\ *c*:sup:`2`\ +\ (*a*\ +\ *b*\ +\ *c*)\ :sup:`2`.
 
-The first names here (Selling, Eisenstein) belong to 19th century
-mathematicians working on the reduction of quadratic forms,
-the second names are of people applying this math to crystallography.
-In a similar manner we can add
-
-- the Minkowski-Buerger reduction,
-
-which leads to one of cells with minimal vector lengths (a+b+c = min).
-The Niggli cell also minimal lengths -- it is one of the Buerger cells.
-(As is common, from here we refer to the reductions using a single name only.)
-
-Note: the term reduced cell is understood differently in different papers.
-It can mean specifically the Niggli reduction,
-or any method with a unique result (i.e. not Buerger),
-or it can cover all the cases above, like here.
+First names here (Minkowski, Eisenstein, Selling) belong to mathematicians
+working on the reduction of quadratic forms.
+The second names -- to people applying this math to crystallography.
+Usually, we use only the second name. The Niggli reduction is the most
+popular of the three.
 
 Niggli and Buerger reductions
 -----------------------------
 
 Gemmi implements separately the Niggli and Buerger reductions.
-They are iterative procedures. Most of the unit cells from the PDB
-need only 1-2 iterations to get reduced (1.3 on average, if not counting
+The procedures are iterative. Most of the unit cells from the PDB
+need only 1-2 iterations to get reduced (1.3 on average, not counting
 the *normalization* steps as separate iterations).
 On the other hand, one can always construct a primitive cell with extremely
 long basis vectors that would require hundreds of iterations.
-The Buerger reduction is simpler and faster, but Niggli is also fast:
-one iteration takes below 1μs.
+The Buerger reduction is simpler and faster than Niggli,
+but Niggli is also fast -- one iteration takes less than 1μs.
 
 Gemmi implementation is based on the algorithms published by B. Gruber
 in the 1970's: Gruber,
@@ -61,15 +59,15 @@ Additionally, the Niggli reduction is using ε to compare numbers, as proposed
 by Grosse-Kunstleve *et al*,
 `Acta Cryst. A60, 1 <https://doi.org/10.1107/S010876730302186X>`_ (2004).
 
-Gruber's algorithms use vector named G\ :sup:`6`. It is
+Gruber's algorithms use vector named G\ :sup:`6`, which is
 `somewhat similar <https://dictionary.iucr.org/Metric_tensor>`_
 to the metric tensor. G\ :sup:`6` has six elements named:
 A, B, C, ξ (xi), η (eta) and ζ (zeta), which correspond to:
 
     (**a**:sup:`2`, **b**:sup:`2`, **c**:sup:`2`, 2\ **b**\ ⋅\ **c**, 2\ **a**\ ⋅\ **c**, 2\ **a**\ ⋅\ **b**)
 
-In Gemmi we have a class named GruberVector that contains these six numbers
-and has reduction algorithms implemented as methods.
+Gemmi has a class named GruberVector that contains these six numbers
+and reduction algorithms implemented as methods.
 This class can be initialized with UnitCell and SpaceGroup:
 
 .. doctest::
@@ -193,7 +191,7 @@ Gemmi implementation is based on
   `Acta Cryst. A75, 115 <https://doi.org/10.1107/S2053273318015413>`_.
 
 Similarly to the GruberVector, here we have a class named SellingVector
-that contains six numbers of S\ :sup:`6`. These numbers are the inner products
+that contains the six elements of S\ :sup:`6` -- the inner products
 among the four vectors **a**, **b**, **c**
 and **d**\ =–(\ **a**\ +\ **b**\ +\ **c**\ ):
 
@@ -228,14 +226,16 @@ already corresponds to a Delaunay cell:
   False
 
 Each reduction step decreases Σ\ **b**\ :sub:`i`:sup:`2`
-(**b**\ :sub:`i` denotes the four vectors). That sum can be checked with:
+(**b**\ :sub:`1`, **b**\ :sub:`2`, **b**\ :sub:`3` and **b**\ :sub:`4`
+are alternative symbols for **a**, **b**, **c** and **d**).
+The sum Σ\ **b**\ :sub:`i`:sup:`2` can be calculated with:
 
 .. doctest::
 
   >>> sv.sum_b_squared()
   23621.348
 
-Like with ``niggli_reduce()``, the Selling reduction procedure takes
+Similarly to ``niggli_reduce()``, the Selling reduction procedure takes
 optional arguments ``epsilon`` and ``iteration_limit``
 and returns the iteration count:
 
@@ -255,14 +255,32 @@ Now we can check the result:
   >>> sv.sum_b_squared()
   19956.662
 
-We can easily transform S\ :sup:`6` into G\ :sup:`6` and the other way around:
+Now, the corresponding four vectors can be in any order.
+We may sort them so that *a*\ ≤\ *b*\ ≤\ *c*\ ≤\ *d*:
+
+.. doctest::
+
+  >>> sv.sort()
+  >>> sv
+  <gemmi.SellingVector((-2039.05, -2033.94, 0.00, -2033.94, -2039.05, -1832.34))>
+
+Finally, we can get the corresponding UnitCell:
+
+.. doctest::
+
+  >>> gemmi.UnitCell(* sv.cell_parameters())
+  <gemmi.UnitCell(63.78, 63.86, 76.8462, 114.551, 114.518, 90)>
+  >>> sv.get_cell()  # helper function that does the same
+  <gemmi.UnitCell(63.78, 63.86, 76.8462, 114.551, 114.518, 90)>
+
+S\ :sup:`6` can be used to calculate G\ :sup:`6`, and the other way around:
 
 .. doctest::
 
   >>> sv.gruber()
-  <gemmi.GruberVector((5905.34, 5905.34, 4067.89, -4067.89, -4067.89, -3664.69))>
+  <gemmi.GruberVector((4067.89, 4078.10, 5905.34, -4078.10, -4067.89, 0.00))>
   >>> _.selling()
-  <gemmi.SellingVector((-2033.94, -2033.94, -1832.34, -2039.05, -2039.05, 0.00))>
+  <gemmi.SellingVector((-2039.05, -2033.94, 0.00, -2033.94, -2039.05, -1832.34))>
 
 TBC
 

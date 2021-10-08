@@ -46,6 +46,10 @@ or clone the `project <https://github.com/project-gemmi/gemmi/>`_
 
     pip install .
 
+(Setuptools compile only one unit at a time and the whole process
+will take several minutes. To make it faster, use
+``cmake -D USE_PYTHON=1 .``).
+
 If gemmi is already installed, uninstall the old version first
 (``pip uninstall``) or add option ``--upgrade``.
 

@@ -359,6 +359,7 @@ void add_unitcell(py::module& m) {
     .def("reduce_step", &SellingVector::reduce_step, py::arg("epsilon")=1e-9)
     .def("reduce", &SellingVector::reduce,
          py::arg("epsilon")=1e-9, py::arg("iteration_limit")=100)
+    .def("sort", &SellingVector::sort, py::arg("epsilon")=1e-9)
     .def("__repr__", [](const SellingVector& self) {
         using namespace std;  // VS2015/17 doesn't like std::snprintf
         char buf[256];
