@@ -259,7 +259,8 @@ struct CifToMtz {
         for (const auto& sweep_pair : sweeps) {
           const SweepInfo& sweep_info = sweep_pair.second;
           Mtz::Batch batch;
-          batch.set_dataset_id(sweep_pair.first);
+          // Should we have separate mtz dataset (batch-set) for each diffrn_id?
+          batch.set_dataset_id(1);  // alternatively, use sweep_pair.first
           batch.set_cell(mtz.cell);
           batch.set_wavelength(sweep_info.wavelength);
           int min_frame = *sweep_info.frame_ids.begin();
