@@ -145,6 +145,8 @@ struct Mtz {
 
     int dataset_id() const { return ints[20]; }
     void set_dataset_id(int id) { ints[20] = id; }
+    float wavelength() const { return floats[86]; }
+    void set_wavelength(float lambda) { floats[86] = lambda; }
     float phi_start() const { return floats[36]; }
     float phi_end() const { return floats[37]; }
     Mat33 matrix_U() const {
