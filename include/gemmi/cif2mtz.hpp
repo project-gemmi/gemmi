@@ -188,7 +188,11 @@ struct CifToMtz {
     mtz.nreflections = (int) loop->length();
 
     std::unique_ptr<UnmergedHklMover> hkl_mover;
-    std::vector<std::pair<int,int>> batch_nums;
+    struct BatchInfo {
+      int sweep_id;
+      int frame_id;
+    };
+    std::vector<BatchInfo> batch_nums;
     if (unmerged) {
       hkl_mover.reset(new UnmergedHklMover(mtz.spacegroup));
       tag.replace(len, std::string::npos, "diffrn_id");
@@ -206,48 +210,69 @@ struct CifToMtz {
       } else {
         if (verbose)
           out << "  " << tag << " & diffrn_id -> BATCH\n";
+        struct SweepInfo {
+          std::set<int> frame_ids;
+          int offset;
+          float wavelength = 0.f;
+        };
+        std::map<int, SweepInfo> sweeps;
+        cif::Block& block = const_cast<cif::Block&>(rb.block);
+        cif::Table tab_w1 = block.find("_diffrn_radiation.",
+                                       {"diffrn_id", "wavelength_id"});
+        cif::Table tab_w2 = block.find("_diffrn_radiation_wavelength.",
+                                       {"id", "wavelength"});
         // store sweep and frame numbers corresponding to reflections
         batch_nums.reserve(loop->length());
         for (size_t i = 0; i < loop->values.size(); i += loop->tags.size()) {
-          int sweep_id = cif::as_int(loop->values[i + sweep_id_index], 0);
+          const std::string& sweep_str = loop->values[i + sweep_id_index];
+          int sweep_id = cif::as_int(sweep_str, 0);
           const std::string& frame_str = loop->values[i + image_id_index];
           int frame = 1;
           if (!cif::is_null(frame_str))
             frame = (int) std::ceil(cif::as_number(frame_str));
-          batch_nums.emplace_back(sweep_id, frame);
+          batch_nums.push_back({sweep_id, frame});
+          if (frame >= 0) {
+            SweepInfo& sweep = sweeps[sweep_id];
+            if (sweep.frame_ids.empty()) {
+              try {
+                const std::string& wave_id = tab_w1.find_row(sweep_str)[1];
+                const std::string& wavelen = tab_w2.find_row(wave_id)[1];
+                sweep.wavelength = (float) cif::as_number(wavelen, 0.);
+              } catch(std::exception&) {}
+            }
+            sweep.frame_ids.insert(frame);
+          }
         }
-        // store unique frame numbers
-        std::map<int, std::set<int>> sets;
-        for (const std::pair<int,int>& p : batch_nums)
-          if (p.second >= 0)
-            sets[p.first].insert(p.second);
-        // add offset to frame numbers to make them unique
-        std::map<int, int> offsets;
+
+        // determine offset (that makes frame numbers unique) and wavelength
         int cap = 0;
-        for (const auto& it : sets) {
-          offsets.emplace(it.first, cap);
-          cap += *--it.second.end() + 1100;
+        for (auto& it : sweeps) {
+          it.second.offset = cap;
+          cap += *--it.second.frame_ids.end() + 1100;
           cap -= cap % 1000;
         }
-        for (std::pair<int,int>& p : batch_nums)
-          if (p.first >= 0 && p.second >= 0)
-            p.second += offsets.at(p.first);
-        for (const auto& sweep_frames : sets) {
+        // add offset to BatchInfo::frame_id
+        for (BatchInfo& p : batch_nums)
+          if (p.sweep_id >= 0 && p.frame_id >= 0)
+            p.frame_id += sweeps.at(p.sweep_id).offset;
+
+        for (const auto& sweep_pair : sweeps) {
+          const SweepInfo& sweep_info = sweep_pair.second;
           Mtz::Batch batch;
-          batch.set_dataset_id(sweep_frames.first);
+          batch.set_dataset_id(sweep_pair.first);
           batch.set_cell(mtz.cell);
-          int min_frame = *sweep_frames.second.begin();
-          int max_frame = *--sweep_frames.second.end();
-          int offset = offsets.at(sweep_frames.first);
-          if (2 * sweep_frames.second.size() > size_t(max_frame - min_frame)) {
+          batch.set_wavelength(sweep_info.wavelength);
+          int min_frame = *sweep_info.frame_ids.begin();
+          int max_frame = *--sweep_info.frame_ids.end();
+          if (2 * sweep_info.frame_ids.size() > size_t(max_frame - min_frame)) {
             // probably consecutive range, even if some frames are missing
             for (int n = min_frame; n <= max_frame; ++n) {
-              batch.number = n + offset;
+              batch.number = n + sweep_info.offset;
               mtz.batches.push_back(batch);
             }
           } else {
-            for (int n : sweep_frames.second) {
-              batch.number = n + offset;
+            for (int n : sweep_info.frame_ids) {
+              batch.number = n + sweep_info.offset;
               mtz.batches.push_back(batch);
             }
           }
@@ -267,7 +292,7 @@ struct CifToMtz {
         for (int j = 0; j != 3; ++j)
           mtz.data[k++] = (float) hkl[j];
         mtz.data[k++] = (float) isym;
-        mtz.data[k++] = batch_nums.empty() ? 1.f : (float) batch_nums[row++].second;
+        mtz.data[k++] = batch_nums.empty() ? 1.f : (float) batch_nums[row++].frame_id;
       } else {
         for (int j = 0; j != 3; ++j)
           mtz.data[k++] = (float) cif::as_int(loop->values[i + indices[j]]);

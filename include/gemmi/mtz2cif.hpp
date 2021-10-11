@@ -494,6 +494,8 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   out << "Merged reflections: " << mi_size1 << ' ' << mi.type_str()
       << " (" << mi.data.size() << " w/o sysabs)\n";
 
+  // check_staraniso() sets u11=NAN if apparently older StarAniso version that
+  // doesn't store B tensor was used. In such case allow intensities to differ.
   bool relaxed_check = std::isnan(scale_aniso_b.u11);
 
   if (!relaxed_check && !scale_aniso_b.all_zero()) {
