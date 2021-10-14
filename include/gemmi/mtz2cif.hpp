@@ -146,11 +146,12 @@ private:
 
   // data corresponding to one sweep (dataset) in unmerged MTZ file
   struct SweepData {
-    int id;
-    int batch_count;
-    int offset;
-    const Mtz::Batch* first_batch;
-    const Mtz::Dataset* dataset;
+    int id = 0;
+    int batch_count = 0;
+    int offset = 0;
+    int crystal_id = 1;
+    const Mtz::Batch* first_batch = nullptr;
+    const Mtz::Dataset* dataset = nullptr;
   };
 
   std::vector<SweepData> sweeps;
@@ -168,10 +169,11 @@ private:
     return nullptr;
   }
 
-  void gather_sweep_data(const Mtz& mtz) {
+  bool gather_sweep_data(const Mtz& mtz) {
+    bool ok = true;
     int prev_number = INT_MIN;
     int prev_dataset = INT_MIN;
-    SweepData sweep{0, 0, 0, nullptr, nullptr};
+    SweepData sweep;
     for (const Mtz::Batch& batch : mtz.batches) {
       int dataset_id = batch.dataset_id();
       if (dataset_id != prev_dataset || batch.number != prev_number + 1) {
@@ -186,6 +188,7 @@ private:
           sweep.dataset = &mtz.dataset(dataset_id);
         } catch (std::runtime_error&) {
           sweep.dataset = nullptr;
+          ok = false;
           mtz.warn("Reference to absent dataset: " + std::to_string(dataset_id));
         }
       }
@@ -195,6 +198,7 @@ private:
     }
     if (sweep.id != 0)
       sweeps.push_back(sweep);
+    return ok;
   }
 
   // Get the first (non-zero) DWAVEL corresponding to an intensity, amplitude
@@ -616,42 +620,60 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
   write_special_marker_if_requested(os, merged);
 
   if (unmerged) {
-    os << "_exptl_crystal.id 1\n\n";
-    bool scaled = (unmerged->column_with_label("SCALEUSED") != nullptr);
-    gather_sweep_data(*unmerged);
+    bool ok = gather_sweep_data(*unmerged);
+    std::set<const Mtz::Dataset*> used_datasets;
+    std::vector<std::string> crystal_names;
+    // Prepare used_datasets, crystal_names and set SweepData::crystal_id.
+    for (SweepData& sweep : sweeps)
+      if (sweep.dataset) {
+        used_datasets.insert(sweep.dataset);
+        if (ok) {
+          auto it = std::find(crystal_names.begin(), crystal_names.end(),
+                              sweep.dataset->crystal_name);
+          sweep.crystal_id = int(it - crystal_names.begin()) + 1;
+          if (it == crystal_names.end())
+            crystal_names.push_back(sweep.dataset->crystal_name);
+        }
+      }
 
-    os << "loop_\n_diffrn.id\n_diffrn.crystal_id\n_diffrn.details\n";
+    if (crystal_names.empty()) {
+      os << "_exptl_crystal.id 1\n";
+    } else {
+      os << "loop_\n_exptl_crystal.id\n";
+      for (size_t i = 0; i < crystal_names.size(); ++i)
+        os << i+1 << " # " << crystal_names[i] << '\n';
+    }
+
+    bool scaled = (unmerged->column_with_label("SCALEUSED") != nullptr);
+
+    os << "\nloop_\n"
+          "_diffrn.id\n_diffrn.crystal_id\n_diffrn.details\n";
     for (const SweepData& sweep : sweeps) {
-      os << sweep.id << " 1 '";
+      os << sweep.id << ' ' << sweep.crystal_id << " '";
       if (scaled)
         os << "scaled ";
       os << "unmerged data'\n";
     }
-    os << '\n';
 
-    os << "loop_\n"
+    os << "\nloop_\n"
           "_diffrn_measurement.diffrn_id\n"
           "_diffrn_measurement.details\n";
     for (const SweepData& sweep : sweeps)
       os << sweep.id << " '" << sweep.batch_count << " frames'\n";
-    os << '\n';
 
-    os << "loop_\n"
+    os << "\nloop_\n"
           "_diffrn_radiation.diffrn_id\n"
           "_diffrn_radiation.wavelength_id\n";
-    std::set<const Mtz::Dataset*> used_datasets;
     for (const SweepData& sweep : sweeps) {
       os << sweep.id << ' ';
-      if (sweep.dataset) {
-        used_datasets.insert(sweep.dataset);
-        os << sweep.dataset->id << '\n';
-      } else {
-        os << "?\n";
-      }
+      if (sweep.dataset)
+        os << sweep.dataset->id;
+      else
+        os << '?';
+      os << '\n';
     }
-    os << '\n';
 
-    os << "loop_\n"
+    os << "\nloop_\n"
           "_diffrn_radiation_wavelength.id\n"
           "_diffrn_radiation_wavelength.wavelength\n";
     for (const Mtz::Dataset* ds : used_datasets)
@@ -850,9 +872,9 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
 
   write_special_marker_if_requested(os, false);
 
-  os << "_exptl_crystal.id 1\n\n";
+  os << "_exptl_crystal.id 1\n";
 
-  os << "loop_\n_diffrn.id\n_diffrn.crystal_id\n_diffrn.details\n";
+  os << "\nloop_\n_diffrn.id\n_diffrn.crystal_id\n_diffrn.details\n";
   for (const XdsAscii::Iset& iset : xds.isets)
     // We could write iset.input_info as details, but then local paths
     // could end up in the deposition.
