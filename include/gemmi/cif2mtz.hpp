@@ -55,12 +55,12 @@ struct CifToMtz {
       nullptr
     };
     static const char* unmerged[] = {
-      "intensity_meas I J 1",  // for unmerged data is category refln
-      "intensity_net I J 1",
-      "intensity_sigma SIGI Q 1",
-      "pdbx_detector_x XDET R 1",
-      "pdbx_detector_y YDET R 1",
-      "pdbx_scan_angle ROT R 1",
+      "intensity_meas I J 0",  // for unmerged data is category refln
+      "intensity_net I J 0",
+      "intensity_sigma SIGI Q 0",
+      "pdbx_detector_x XDET R 0",
+      "pdbx_detector_y YDET R 0",
+      "pdbx_scan_angle ROT R 0",
       nullptr
     };
     return for_merged ? merged : unmerged;
@@ -168,7 +168,8 @@ struct CifToMtz {
       column_added = true;
       indices.push_back(index);
       auto col = mtz.columns.emplace(mtz.columns.end());
-      col->dataset_id = entry.dataset_id;
+      // dataset_id is meaningless in unmerged MTZ files
+      col->dataset_id = unmerged ? 0 : entry.dataset_id;
       col->type = entry.col_type;
       if (col->type == 's') {
         col->type = 'I';
