@@ -105,7 +105,6 @@ struct CifToMtz {
     mtz.cell = rb.cell;
     mtz.spacegroup = rb.spacegroup;
     mtz.add_dataset("HKL_base");
-    mtz.add_dataset("unknown").wavelength = rb.wavelength;
     const cif::Loop* loop = rb.refln_loop ? rb.refln_loop : rb.diffrn_refln_loop;
     if (!loop)
       fail("_refln category not found in mmCIF block: " + rb.block.name);
@@ -155,6 +154,9 @@ struct CifToMtz {
       col->type = 'B';
       col->label = "BATCH";
     }
+
+    if (!unmerged)
+      mtz.add_dataset("unknown").wavelength = rb.wavelength;
 
     // other columns according to the spec
     bool column_added = false;
@@ -215,9 +217,12 @@ struct CifToMtz {
           std::set<int> frame_ids;
           int offset;
           float wavelength = 0.f;
+          std::string crystal_id;
+          int dataset_id;
         };
         std::map<int, SweepInfo> sweeps;
         cif::Block& block = const_cast<cif::Block&>(rb.block);
+        cif::Table tab_w0 = block.find("_diffrn.", {"id", "crystal_id"});
         cif::Table tab_w1 = block.find("_diffrn_radiation.",
                                        {"diffrn_id", "wavelength_id"});
         cif::Table tab_w2 = block.find("_diffrn_radiation_wavelength.",
@@ -235,6 +240,12 @@ struct CifToMtz {
           if (frame >= 0) {
             SweepInfo& sweep = sweeps[sweep_id];
             if (sweep.frame_ids.empty()) {
+              // new sweep was added - set crystal_id and wavelength
+              try {
+                sweep.crystal_id = tab_w0.find_row(sweep_str).str(1);
+              } catch(std::exception&) {
+                sweep.crystal_id = "unknown";
+              }
               try {
                 const std::string& wave_id = tab_w1.find_row(sweep_str)[1];
                 const std::string& wavelen = tab_w2.find_row(wave_id)[1];
@@ -245,7 +256,20 @@ struct CifToMtz {
           }
         }
 
-        // determine offset (that makes frame numbers unique) and wavelength
+        // add datasets and set SweepInfo::dataset_id
+        for (auto& sweep_pair : sweeps) {
+          SweepInfo& si = sweep_pair.second;
+          Mtz::Dataset* ds = mtz.dataset_with_name(si.crystal_id);
+          if (ds == nullptr) {
+            ds = &mtz.add_dataset(si.crystal_id);
+            // both crystal name and dataset name are set to crystal_id
+            ds->project_name = "unknown";
+            ds->wavelength = si.wavelength;
+          }
+          si.dataset_id = ds->id;
+        }
+
+        // determine offset that makes frame numbers unique
         int cap = 0;
         for (auto& it : sweeps) {
           it.second.offset = cap;
@@ -260,8 +284,7 @@ struct CifToMtz {
         for (const auto& sweep_pair : sweeps) {
           const SweepInfo& sweep_info = sweep_pair.second;
           Mtz::Batch batch;
-          // Should we have separate mtz dataset (batch-set) for each diffrn_id?
-          batch.set_dataset_id(1);  // alternatively, use sweep_pair.first
+          batch.set_dataset_id(sweep_info.dataset_id);
           batch.set_cell(mtz.cell);
           batch.set_wavelength(sweep_info.wavelength);
           int min_frame = *sweep_info.frame_ids.begin();
