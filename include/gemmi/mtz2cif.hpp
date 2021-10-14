@@ -967,22 +967,22 @@ inline void MtzToCif::write_cell_and_symmetry(const UnitCell& cell, double* rmsd
                                               const SpaceGroup* sg,
                                               char* buf, std::ostream& os) const {
   os << "_cell.entry_id " << entry_id << '\n';
-  WRITE("_cell.length_a    %8.3f\n", cell.a);
+  WRITE("_cell.length_a    %8.4f\n", cell.a);
   if (rmsds && rmsds[0] != 0.)
     WRITE("_cell.length_a_esd %7.3f\n", rmsds[0]);
-  WRITE("_cell.length_b    %8.3f\n", cell.b);
+  WRITE("_cell.length_b    %8.4f\n", cell.b);
   if (rmsds && rmsds[1] != 0.)
     WRITE("_cell.length_b_esd %7.3f\n", rmsds[1]);
-  WRITE("_cell.length_c    %8.3f\n", cell.c);
+  WRITE("_cell.length_c    %8.4f\n", cell.c);
   if (rmsds && rmsds[2] != 0.)
     WRITE("_cell.length_c_esd %7.3f\n", rmsds[2]);
-  WRITE("_cell.angle_alpha %8.3f\n", cell.alpha);
+  WRITE("_cell.angle_alpha %8.4f\n", cell.alpha);
   if (rmsds && rmsds[3] != 0.)
     WRITE("_cell.angle_alpha_esd %7.3f\n", rmsds[3]);
-  WRITE("_cell.angle_beta  %8.3f\n", cell.beta);
+  WRITE("_cell.angle_beta  %8.4f\n", cell.beta);
   if (rmsds && rmsds[4] != 0.)
     WRITE("_cell.angle_beta_esd %8.3f\n", rmsds[4]);
-  WRITE("_cell.angle_gamma %8.3f\n", cell.gamma);
+  WRITE("_cell.angle_gamma %8.4f\n", cell.gamma);
   if (rmsds && rmsds[5] != 0.)
     WRITE("_cell.angle_gamma_esd %7.3f\n", rmsds[5]);
   if (sg) {
