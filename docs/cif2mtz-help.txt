@@ -7,6 +7,7 @@ Options:
   -V, --version            Print version and exit.
   -v, --verbose            Verbose output.
   -b NAME, --block=NAME    mmCIF block to convert.
+  -l, --list               dry run and list blocks in mmCIF file.
   -d DIR, --dir=NAME       Output directory.
   --spec=FILE              Conversion spec.
   --print-spec             Print default spec and exit.

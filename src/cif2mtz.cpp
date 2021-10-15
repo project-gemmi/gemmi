@@ -19,7 +19,7 @@ namespace {
 
 using std::fprintf;
 
-enum OptionIndex { BlockName=4, Dir, Spec, PrintSpec, Title, History,
+enum OptionIndex { BlockName=4, List, Dir, Spec, PrintSpec, Title, History,
                    Unmerged, Sort };
 
 const option::Descriptor Usage[] = {
@@ -33,6 +33,8 @@ const option::Descriptor Usage[] = {
   CommonUsage[Verbose],
   { BlockName, 0, "b", "block", Arg::Required,
     "  -b NAME, --block=NAME  \tmmCIF block to convert." },
+  { List, 0, "l", "list", Arg::None,
+    "  -l, --list  \tdry run and list blocks in mmCIF file." },
   { Dir, 0, "d", "dir", Arg::Required,
     "  -d DIR, --dir=NAME  \tOutput directory." },
   { Spec, 0, "", "spec", Arg::Required,
@@ -65,6 +67,18 @@ gemmi::ReflnBlock& get_block_by_name(std::vector<gemmi::ReflnBlock>& rblocks,
   gemmi::fail("block not found: " + name);
 }
 
+void print_block_info(gemmi::ReflnBlock& rb, const gemmi::Mtz& mtz) {
+  std::printf("--block=%s - %.*s %zu x %zu ->",
+              rb.block.name.c_str(), rb.tag_offset() - 1,
+              rb.default_loop->tags.at(0).c_str(),
+              rb.default_loop->width(), rb.default_loop->length());
+  for (const gemmi::Mtz::Column& col : mtz.columns)
+    std::printf(" %s", col.label.c_str());
+  std::putchar('\n');
+  for (const std::string& d : rb.block.find_values("_diffrn.details"))
+    std::printf("  details: %s\n", d.c_str());
+}
+
 } // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
@@ -85,7 +99,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       std::printf("%s\n", *line);
     return 0;
   }
-  bool convert_all = p.options[Dir];
+
+  bool convert_all = p.options[Dir] || p.options[List];
   p.require_positional_args(convert_all ? 1 : 2);
 
   gemmi::CifToMtz cif2mtz;
@@ -105,12 +120,16 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (convert_all) {
       bool ok = true;
       for (gemmi::ReflnBlock& rb : rblocks) {
-        std::string path = p.options[Dir].arg;
-        path += '/';
-        path += rb.block.name;
-        path += ".mtz";
         try {
           gemmi::Mtz mtz = cif2mtz.convert_block_to_mtz(rb, std::cerr);
+          if (p.options[List]) {
+            print_block_info(rb, mtz);
+            continue;
+          }
+          std::string path = p.options[Dir].arg;
+          path += '/';
+          path += rb.block.name;
+          path += ".mtz";
           if (cif2mtz.verbose)
             fprintf(stderr, "Writing %s ...\n", path.c_str());
           mtz.write_to_file(path);
