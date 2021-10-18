@@ -39,6 +39,11 @@ jobs:
     - name: Python Tests
       run: python3 -m unittest discover -v -s tests/
 
+    - uses: actions/upload-artifact@v2
+      with:
+        name: gemmi-macos10_15
+        path: ${{runner.workspace}}/build/gemmi
+
 
   ubuntu2004:
     name: "Ubuntu 20.04"
@@ -154,3 +159,7 @@ jobs:
         pip3 install docutils==0.16
         cd docs
         PYTHONPATH=.. sphinx-build -M doctest . _build -n -E
+    - uses: actions/upload-artifact@v2
+      with:
+        name: gemmi-centos7
+        path: ./gemmi
