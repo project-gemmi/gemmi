@@ -19,8 +19,10 @@ namespace {
 
 using std::fprintf;
 
-enum OptionIndex { BlockName=4, List, Dir, Spec, PrintSpec, Title, History,
-                   Unmerged, Sort };
+enum OptionIndex {
+  BlockName=4, BlockNumber, List, Dir, Spec, PrintSpec,
+  Title, History, Unmerged, Sort
+};
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -32,7 +34,9 @@ const option::Descriptor Usage[] = {
   CommonUsage[Version],
   CommonUsage[Verbose],
   { BlockName, 0, "b", "block", Arg::Required,
-    "  -b NAME, --block=NAME  \tmmCIF block to convert." },
+    "  -b NAME, --block=NAME  \tmmCIF block to convert, by name." },
+  { BlockNumber, 0, "B", "", Arg::Int,
+    "  -B INDEX  \tmmCIF block to convert, by index (default: 1)." },
   { List, 0, "l", "list", Arg::None,
     "  -l, --list  \tdry run and list blocks in mmCIF file." },
   { Dir, 0, "d", "dir", Arg::Required,
@@ -84,6 +88,7 @@ void print_block_info(gemmi::ReflnBlock& rb, const gemmi::Mtz& mtz) {
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
+  p.check_exclusive_pair(BlockName, BlockNumber);
   if (p.options[PrintSpec]) {
     std::printf("# Each line in the spec contains four words:\n"
                 "# - tag (without category) from _refln or _diffrn_refln\n"
@@ -142,10 +147,18 @@ int GEMMI_MAIN(int argc, char **argv) {
         return 1;
     } else {
       const char* mtz_path = p.nonOption(1);
-      const gemmi::ReflnBlock& rb = p.options[BlockName]
-        ? get_block_by_name(rblocks, p.options[BlockName].arg)
-        : rblocks.at(0);
-      gemmi::Mtz mtz = cif2mtz.convert_block_to_mtz(rb, std::cerr);
+      const gemmi::ReflnBlock* rb;
+      if (p.options[BlockName]) {
+        rb = &get_block_by_name(rblocks, p.options[BlockName].arg);
+      } else if (p.options[BlockNumber]) {
+        int idx = std::atoi(p.options[BlockNumber].arg);
+        if (idx <= 0 || (size_t)idx > rblocks.size())
+          gemmi::fail("block index must be from 1 to ", std::to_string(rblocks.size()));
+        rb = &rblocks.at(idx - 1);
+      } else {
+        rb = &rblocks.at(0);
+      }
+      gemmi::Mtz mtz = cif2mtz.convert_block_to_mtz(*rb, std::cerr);
       if (p.options[Sort]) {
         bool reordered = mtz.sort();
         if (cif2mtz.verbose)
