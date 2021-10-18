@@ -108,5 +108,3 @@ int main(int argc, char* argv[]) {
       }
   }
 }
-
-// vim:sw=2:ts=2:et

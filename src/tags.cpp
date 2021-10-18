@@ -360,5 +360,3 @@ int GEMMI_MAIN(int argc, char **argv) {
   std::fprintf(stderr, "File count: %d\n", ctx.total_files);
   return 0;
 }
-
-// vim:sw=2:ts=2:et:path^=../include,../third_party

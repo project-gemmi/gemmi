@@ -125,5 +125,3 @@ void check_monomer_doc(const cif::Document& doc) {
       }
     }
 }
-
-// vim:sw=2:ts=2:et:path^=../include,../third_party

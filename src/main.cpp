@@ -151,5 +151,3 @@ int main(int argc, char** argv)
   }
   return (*func)(argc - 1, &argv[1]);
 }
-
-// vim:sw=2:ts=2:et

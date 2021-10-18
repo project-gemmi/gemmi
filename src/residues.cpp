@@ -93,4 +93,3 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   return 0;
 }
-// vim:sw=2:ts=2:et

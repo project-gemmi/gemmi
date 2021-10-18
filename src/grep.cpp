@@ -561,5 +561,3 @@ int GEMMI_MAIN(int argc, char **argv) {
     return 2;
   return params.total_count != 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
-
-// vim:sw=2:ts=2:et:path^=../include,../third_party
