@@ -29,6 +29,7 @@ const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n  " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
     "\n  " EXE_NAME " --compare [options] UNMERGED_FILE MERGED_FILE"
+    "\n  " EXE_NAME " --compare [options] MMCIF_FILE_WITH_BOTH"
     "\nOptions:"},
   CommonUsage[Help],
   CommonUsage[Version],
@@ -67,6 +68,30 @@ void output_intensity_statistics(const Intensities& intensities) {
                intensities.data.size(), plus_count, minus_count);
 }
 
+void read_intensities_from_rblocks(Intensities& intensities,
+                                   Intensities::Type itype,
+                                   std::vector<gemmi::ReflnBlock>& rblocks,
+                                   const char* block_name, bool verbose) {
+    for (gemmi::ReflnBlock& rb : rblocks) {
+      if (block_name && rb.block.name != block_name)
+        continue;
+      rb.use_unmerged(itype == Intensities::Type::Unmerged);
+      if (!rb.default_loop)
+        continue;
+      if (itype == Intensities::Type::Mean && rb.find_column_index("intensity_meas") < 0) {
+        if (rb.find_column_index("pdbx_I_plus") < 0)
+          gemmi::fail("merged intensities not found");
+        std::fprintf(stderr, "No _refln.intensity_meas, using pdbx_I_plus/minus ...\n");
+        itype = Intensities::Type::Anomalous;
+      }
+      if (verbose)
+        std::fprintf(stderr, "Reading %s from block %s ...\n",
+                     Intensities::type_str(itype), rb.block.name.c_str());
+      intensities.read_mmcif(rb, itype);
+      break;
+    }
+}
+
 Intensities read_intensities(Intensities::Type itype, const char* input_path,
                              const char* block_name, bool verbose) {
   try {
@@ -89,24 +114,7 @@ Intensities read_intensities(Intensities::Type itype, const char* input_path,
       intensities.read_unmerged_intensities_from_xds(xds_ascii);
     } else {
       auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(input_path).blocks);
-      for (gemmi::ReflnBlock& rb : rblocks) {
-        if (block_name && rb.block.name != block_name)
-          continue;
-        rb.use_unmerged(itype == Intensities::Type::Unmerged);
-        if (!rb.default_loop)
-          continue;
-        if (itype == Intensities::Type::Mean && rb.find_column_index("intensity_meas") < 0) {
-          if (rb.find_column_index("pdbx_I_plus") < 0)
-            gemmi::fail("merged intensities not found");
-          std::fprintf(stderr, "No _refln.intensity_meas, using pdbx_I_plus/minus ...\n");
-          itype = Intensities::Type::Anomalous;
-        }
-        if (verbose)
-          std::fprintf(stderr, "Reading %s from block %s ...\n",
-                       Intensities::type_str(itype), rb.block.name.c_str());
-        intensities.read_mmcif(rb, itype);
-        break;
-      }
+      read_intensities_from_rblocks(intensities, itype, rblocks, block_name, verbose);
     }
     if (intensities.data.empty())
       gemmi::fail("data not found");
@@ -192,12 +200,13 @@ void print_reflection(const Intensities::Refl* a, const Intensities::Refl* r) {
 }
 
 void compare_intensities(Intensities& intensities, Intensities& ref, bool print_all) {
+  printf("Comparing unmerged and merged reflections...\n");
   if (intensities.spacegroup == ref.spacegroup)
     printf("Space group: %s\n", intensities.spacegroup_str().c_str());
   else
     printf("Space groups: %s   %s\n", intensities.spacegroup_str().c_str(),
            ref.spacegroup_str().c_str());
-  printf("Reflections: %zu  %zu\n", intensities.data.size(), ref.data.size());
+  printf("Reflections after merging: %zu  %zu\n", intensities.data.size(), ref.data.size());
   intensities.remove_systematic_absences();
   ref.remove_systematic_absences();
   printf("Excluding sys. absences: %zu  %zu\n",
@@ -262,15 +271,25 @@ void compare_intensities(Intensities& intensities, Intensities& ref, bool print_
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
-  p.require_positional_args(2);
+  if (p.nonOptionsCount() != 2 &&
+      !(p.nonOptionsCount() == 1 && p.options[Compare])) {
+    fprintf(stderr, "%s requires 2 arguments (or single arg with --compare), got %d.",
+                    p.program_name, p.nonOptionsCount());
+    p.print_try_help_and_exit("");
+  }
   bool verbose = p.options[Verbose];
   const char* input_path = p.nonOption(0);
-  const char* output_path = p.nonOption(1);
+  const char* output_path = nullptr;
+  if (p.nonOptionsCount() == 2)
+    output_path = p.nonOption(1);
   Intensities::Type itype = p.options[WriteAnom] ? Intensities::Type::Anomalous
                                                  : Intensities::Type::Mean;
+  const char* block_name = nullptr;
+  if (p.options[BlockName])
+    block_name = p.options[BlockName].arg;
 
   Intensities ref;
-  if (p.options[Compare]) {
+  if (p.options[Compare] && output_path) {
     if (verbose)
       std::fprintf(stderr, "Reading merged reflections from %s ...\n", output_path);
     ref = read_intensities(itype, output_path, nullptr, verbose);
@@ -278,14 +297,24 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   if (verbose)
     std::fprintf(stderr, "Reading %s ...\n", input_path);
-  const char* block_name = nullptr;
-  if (p.options[BlockName])
-    block_name = p.options[BlockName].arg;
-  Intensities intensities = read_intensities(Intensities::Type::Unmerged,
-                                             input_path, block_name, verbose);
-  if (verbose)
-    output_intensity_statistics(intensities);
   try {
+    Intensities intensities;
+    if (output_path) {
+      intensities = read_intensities(Intensities::Type::Unmerged,
+                                     input_path, block_name, verbose);
+    } else { // special case of --compare with one mmCIF file
+      if (gemmi::giends_with(input_path, ".mtz") ||
+          gemmi::giends_with(input_path, ".hkl"))
+        gemmi::fail("`--compare ONE_FILE' make sense only with mmCIF.");
+      auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(input_path).blocks);
+      read_intensities_from_rblocks(ref, itype, rblocks, nullptr, verbose);
+      read_intensities_from_rblocks(intensities, Intensities::Type::Unmerged,
+                                    rblocks, block_name, verbose);
+      if (intensities.data.empty())
+        gemmi::fail("unmerged data not found");
+    }
+    if (verbose)
+      output_intensity_statistics(intensities);
     if (p.options[Compare]) {
       intensities.merge_in_place(ref.type);
       compare_intensities(intensities, ref, p.options[PrintAll]);
@@ -298,7 +327,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                      intensities.data.size(), output_path);
       write_merged_intensities(intensities, p.options[NumObs], output_path);
     }
-  } catch (std::runtime_error& e) {
+  } catch (std::exception& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }
