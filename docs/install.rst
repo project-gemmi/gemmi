@@ -112,10 +112,19 @@ first make sure you have git, cmake and C++ compiler installed
 Binaries are distributed with the CCP4 suite and with Global Phasing software.
 They are also included in
 `conda-forge packages <https://anaconda.org/conda-forge/gemmi/files>`_.
-Additionally, the very latest Windows builds (as well as older ones)
-can be downloaded from
-`AppVeyor CI <https://ci.appveyor.com/project/wojdyr/gemmi>`_: click
-the first (green) job, then in the Artifacts tab you should find gemmi.exe.
+
+The very latest builds (as well as a little older ones)
+can be downloaded from CI jobs:
+
+- for Windows --
+  click the first (green) job in
+  `AppVeyor CI <https://ci.appveyor.com/project/wojdyr/gemmi>`_
+  and find gemmi.exe in the Artifacts tab,
+- for Linux and Mac -- sign in to GitHub (no special permissions are needed,
+  but GitHub requires sign-in for artifacts),
+  click the first job (with ✅) in
+  `GitHub Actions <https://github.com/project-gemmi/gemmi/actions/workflows/ci.yml>`_
+  and download a zip file from the Artifacts section.
 
 Credits
 -------
