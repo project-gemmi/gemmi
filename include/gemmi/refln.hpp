@@ -136,6 +136,29 @@ struct ReflnBlock {
       d = 1.0 / std::sqrt(d);
     return vec;
   }
+
+  SMat33<double> make_diffraction_anisotropy_tensor() const {
+    cif::Table aniso_b_table = const_cast<cif::Block*>(&block)->find(
+        "_reflns.pdbx_aniso_B_tensor_eigen",
+        {"value_1", "value_2", "value_3",
+         "vector_1_ortho[1]", "vector_1_ortho[2]", "vector_1_ortho[3]",
+         "vector_2_ortho[1]", "vector_2_ortho[2]", "vector_2_ortho[3]",
+         "vector_3_ortho[1]", "vector_3_ortho[2]", "vector_3_ortho[3]"});
+    if (aniso_b_table.ok()) {
+      cif::Table::Row row = aniso_b_table.one();
+      using cif::as_number;
+      double eigval[3] = {as_number(row[0]), as_number(row[1]), as_number(row[2])};
+      double min_eigval = std::min(std::min(eigval[0], eigval[1]), eigval[2]);
+      Mat33 mat(as_number(row[3]), as_number(row[6]), as_number(row[9]),
+                as_number(row[4]), as_number(row[7]), as_number(row[10]),
+                as_number(row[5]), as_number(row[8]), as_number(row[11]));
+      Vec3 diag(eigval[0]-min_eigval, eigval[1]-min_eigval, eigval[2]-min_eigval);
+      Mat33 t = mat.multiply_by_diagonal(diag).multiply(mat.inverse());
+      // t is a symmetric tensor, so we return only 6 numbers
+      return {t[0][0], t[1][1], t[2][2], t[0][1], t[0][2], t[1][2]};
+    }
+    return {0., 0., 0., 0., 0., 0.};
+  }
 };
 
 // moves blocks from the argument to the return value
