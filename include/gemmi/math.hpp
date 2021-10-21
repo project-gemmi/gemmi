@@ -76,7 +76,8 @@ struct Vec3 {
   }
   double length_sq() const { return x * x + y * y + z * z; }
   double length() const { return std::sqrt(length_sq()); }
-  Vec3 normalized() const { return operator/(length()); }
+  Vec3 changed_magnitude(double m) const { return operator*(m / length()); }
+  Vec3 normalized() const { return changed_magnitude(1.0); }
   double dist_sq(const Vec3& o) const { return (*this - o).length_sq(); }
   double dist(const Vec3& o) const { return std::sqrt(dist_sq(o)); }
   double angle(const Vec3& o) const {
@@ -132,6 +133,12 @@ struct Mat33 {
     return {a[0][0] * p.x + a[1][0] * p.y + a[2][0] * p.z,
             a[0][1] * p.x + a[1][1] * p.y + a[2][1] * p.z,
             a[0][2] * p.x + a[1][2] * p.y + a[2][2] * p.z};
+  }
+  // p has elements from the main diagonal of a 3x3 diagonal matrix
+  Mat33 multiply_by_diagonal(const Vec3& p) const {
+    return Mat33(a[0][0] * p.x, a[0][1] * p.y, a[0][2] * p.z,
+                 a[1][0] * p.x, a[1][1] * p.y, a[1][2] * p.z,
+                 a[2][0] * p.x, a[2][1] * p.y, a[2][2] * p.z);
   }
   Mat33 multiply(const Mat33& b) const {
     Mat33 r;
@@ -223,10 +230,8 @@ template<typename T> struct SMat33 {
       2 * (r.x * r.y * u12 + r.x * r.z * u13 + r.y * r.z * u23);
   }
   double r_u_r(const std::array<int,3>& h) const {
+    // it's faster to first convert ints to doubles (Vec3)
     return r_u_r(Vec3(h));
-    // this is slower:
-    //return h[0] * h[0] * u11 + h[1] * h[1] * u22 + h[2] * h[2] * u33 +
-    //  2 * (h[0] * h[1] * u12 + h[0] * h[2] * u13 + h[1] * h[2] * u23);
   }
 
   // return M U M^T
