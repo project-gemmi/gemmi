@@ -42,7 +42,9 @@ jobs:
     - uses: actions/upload-artifact@v2
       with:
         name: gemmi-macos10_15
-        path: ${{runner.workspace}}/build/gemmi ${{runner.workspace}}/dist/gemmi*.egg
+        path: |
+          ${{runner.workspace}}/build/gemmi
+          ${{runner.workspace}}/dist/gemmi*.egg
 
 
   ubuntu2004:
@@ -74,6 +76,10 @@ jobs:
         sphinx-build -M doctest . _build -n -E
     - name: run tests under valgrind
       run: PYTHONMALLOC=malloc valgrind python3 -m unittest discover -v -s tests/
+    - uses: actions/upload-artifact@v2
+      with:
+        name: gemmi-linux
+        path: dist/gemmi*.egg
 
   ubuntu1804:
     name: "Ubuntu 18.04 with sdist"
@@ -159,5 +165,7 @@ jobs:
         PYTHONPATH=.. sphinx-build -M doctest . _build -n -E
     - uses: actions/upload-artifact@v2
       with:
-        name: gemmi-centos7
-        path: ./gemmi ./gemmi.cpython*.so
+        name: gemmi-linux
+        path: |
+          ./gemmi
+          ./gemmi.cpython*.so
