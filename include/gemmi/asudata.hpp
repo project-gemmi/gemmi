@@ -219,7 +219,8 @@ private:
   static void set_value_from_array(T& val, const T& nums) { val = nums; }
   template<typename R>
   static void set_value_from_array(std::complex<R>& val, const std::array<R,2>& nums) {
-    val = std::polar(nums[0], (R)gemmi::rad(nums[1]));
+    R theta = (R)rad(nums[1]);
+    val = {nums[0] * std::cos(theta), nums[0] * std::sin(theta)};
   }
   template<typename R>
   static void set_value_from_array(ValueSigma<R>& val, const std::array<R,2>& nums) {
