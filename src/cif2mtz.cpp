@@ -73,7 +73,7 @@ gemmi::ReflnBlock& get_block_by_name(std::vector<gemmi::ReflnBlock>& rblocks,
 
 void print_block_info(gemmi::ReflnBlock& rb, const gemmi::Mtz& mtz) {
   std::printf("--block=%s - %.*s %zu x %zu ->",
-              rb.block.name.c_str(), rb.tag_offset() - 1,
+              rb.block.name.c_str(), (int)rb.tag_offset() - 1,
               rb.default_loop->tags.at(0).c_str(),
               rb.default_loop->width(), rb.default_loop->length());
   for (const gemmi::Mtz::Column& col : mtz.columns)

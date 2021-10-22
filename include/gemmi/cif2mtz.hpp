@@ -113,7 +113,7 @@ struct CifToMtz {
     bool uses_status = false;
     std::vector<int> indices;
     std::string tag = loop->tags[0];
-    const size_t len = tag.find('.') + 1;
+    const size_t tag_offset = rb.tag_offset();
 
     bool unmerged = force_unmerged || !rb.refln_loop;
 
@@ -129,7 +129,7 @@ struct CifToMtz {
     }
 
     // always start with H, K, L
-    tag.replace(len, std::string::npos, "index_h");
+    tag.replace(tag_offset, std::string::npos, "index_h");
     for (char c : {'h', 'k', 'l'}) {
       tag.back() = c;
       int index = loop->find_tag(tag);
@@ -161,7 +161,7 @@ struct CifToMtz {
     // other columns according to the spec
     bool column_added = false;
     for (const Entry& entry : spec_entries) {
-      tag.replace(len, std::string::npos, entry.refln_tag);
+      tag.replace(tag_offset, std::string::npos, entry.refln_tag);
       int index = loop->find_tag(tag);
       if (index == -1)
         continue;
@@ -198,9 +198,9 @@ struct CifToMtz {
     std::vector<BatchInfo> batch_nums;
     if (unmerged) {
       hkl_mover.reset(new UnmergedHklMover(mtz.spacegroup));
-      tag.replace(len, std::string::npos, "diffrn_id");
+      tag.replace(tag_offset, std::string::npos, "diffrn_id");
       int sweep_id_index = loop->find_tag(tag);
-      tag.replace(len, std::string::npos, "pdbx_image_id");
+      tag.replace(tag_offset, std::string::npos, "pdbx_image_id");
       int image_id_index = loop->find_tag(tag);
       if (sweep_id_index == -1 || image_id_index == -1) {
         if (verbose)
