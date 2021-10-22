@@ -569,7 +569,7 @@ struct GroupOps {
   std::array<int, 3> find_grid_factors() const {
     const int T = Op::DEN;
     int r[3] = {T, T, T};
-    for (const Op& op : *this)
+    for (Op op : *this)
       for (int i = 0; i != 3; ++i)
         if (op.tran[i] != 0 && op.tran[i] < r[i])
           r[i] = op.tran[i];

@@ -29,7 +29,7 @@ const option::Descriptor Usage[] = {
 void print_symmetry_operations(const gemmi::GroupOps& ops) {
   printf("%zu x %zu symmetry operations:\n",
          ops.cen_ops.size(), ops.sym_ops.size());
-  for (const gemmi::Op& op : ops)
+  for (gemmi::Op op : ops)
     printf("    %s\n", op.triplet().c_str());
 }
 

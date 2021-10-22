@@ -153,7 +153,7 @@ struct Ccp4 : public Ccp4Base {
     std::memset(header_word(57), ' ', 800 + ops.order() * 80);
     set_header_str(57, "written by GEMMI");
     int n = 257;
-    for (const Op& op : ops) {
+    for (Op op : ops) {
       set_header_str(n, op.triplet());
       n += 20;
     }

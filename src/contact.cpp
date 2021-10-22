@@ -83,11 +83,11 @@ void print_contacts(Structure& st, const ContactParameters& params) {
       if (const SpaceGroup* sg = st.find_spacegroup()) {
         gemmi::GroupOps group_ops = sg->operations();
         int n = 0;
-        for (const gemmi::Op& op : group_ops)
+        for (gemmi::Op op : group_ops)
           printf("  %2d %s\n", ++n, op.triplet().c_str());
         for (const NcsOp& ncs_op : st.ncs)
           if (!ncs_op.given) {
-            for (const gemmi::Op& op : group_ops)
+            for (gemmi::Op op : group_ops)
               printf("  %2d NCS %s and %s\n", ++n, ncs_op.id.c_str(), op.triplet().c_str());
           }
       }

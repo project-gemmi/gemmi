@@ -173,7 +173,7 @@ inline void NeighborSearch::initialize(Model& model_, const UnitCell& cell,
       ncs.push_back(cell.images[n]);
     // The box needs include all NCS images as well.
     if (!ncs.empty()) {
-      for (const CRA& cra : model->all())
+      for (CRA cra : model->all())
         for (const Transform& tr : ncs)
           box.extend(Position(tr.apply(cra.atom->pos)));
     }

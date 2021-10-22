@@ -18,7 +18,7 @@ void add_write(py::module& m, py::class_<Structure>& structure) {
       MmcifOutputGroups g(all);
       if (kwargs) {
         py::object pyg = py::cast(&g);
-        for (const auto& kwarg : kwargs)
+        for (auto kwarg : kwargs)
           pyg.attr(kwarg.first) = kwarg.second.cast<bool>();
       }
       return g;

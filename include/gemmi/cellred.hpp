@@ -11,7 +11,7 @@
 
 namespace gemmi {
 
-class SellingVector;
+struct SellingVector;
 
 // GruberVector contains G6 vector (G for Gruber) and cell reduction algorithms.
 // Originally, in B. Gruber, Acta Cryst. A29, 433 (1973), the vector was called

@@ -311,7 +311,7 @@ struct UnitCell {
     GroupOps group_ops = sg->operations();
     cs_count = (short) group_ops.order() - 1;
     images.reserve(cs_count);
-    for (const Op& op : group_ops) {
+    for (Op op : group_ops) {
       if (op == Op::identity())
         continue;
       images.emplace_back(rot_as_mat33(op), tran_as_vec3(op));

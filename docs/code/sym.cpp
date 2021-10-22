@@ -24,7 +24,7 @@ int main() {
   assert(i2->xhm() == "I 1 2 1");
 
   gemmi::GroupOps ops = i2->operations();
-  for (const gemmi::Op& operation : ops)
+  for (gemmi::Op operation : ops)
     std::cout << "   " << operation.triplet();
   // output:   x,y,z   -x,y,-z   x+1/2,y+1/2,z+1/2   -x+1/2,y+1/2,-z+1/2
   ops.change_basis_forward(gemmi::parse_triplet("x,y,x+z"));
