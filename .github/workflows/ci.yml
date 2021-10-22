@@ -42,7 +42,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       with:
         name: gemmi-macos10_15
-        path: ${{runner.workspace}}/build/gemmi
+        path: ${{runner.workspace}}/build/gemmi ${{runner.workspace}}/dist/gemmi*.egg
 
 
   ubuntu2004:
@@ -160,4 +160,4 @@ jobs:
     - uses: actions/upload-artifact@v2
       with:
         name: gemmi-centos7
-        path: ./gemmi
+        path: ./gemmi ./gemmi.cpython*.so
