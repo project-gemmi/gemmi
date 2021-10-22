@@ -158,6 +158,7 @@ jobs:
         make -j2
         make -j2 check
         python3 -m unittest discover -v -s ./tests/
+        strip --strip-unneeded ./gemmi.cpython*.so
     - name: run doctest
       run: |
         pip3 install -U sphinx
