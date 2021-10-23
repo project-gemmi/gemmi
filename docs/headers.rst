@@ -70,6 +70,9 @@ gemmi/dirwalk.hpp
     in an alphabetical order.  It wraps the tinydir library (as we cannot
     depend on C++17 <filesystem> yet).
 
+gemmi/eig3.hpp
+    Eigen decomposition code for symmetric 3x3 matrices.
+
 gemmi/elem.hpp
     Elements from the periodic table.
 
