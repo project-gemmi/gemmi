@@ -136,6 +136,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   std::unique_ptr<gemmi::Mtz> mtz[2];
   std::unique_ptr<gemmi::XdsAscii> xds_ascii;
   if (gemmi::giends_with(mtz_paths[0], ".cif") ||
+      gemmi::giends_with(mtz_paths[0], ".mmcif") ||
       gemmi::giends_with(mtz_paths[0], ".ent")) {
     if (!mtz_paths[1]) {
       std::fprintf(stderr, "Error: no MTZ file was given\n");
