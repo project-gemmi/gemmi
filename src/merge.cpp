@@ -101,6 +101,8 @@ Intensities read_intensities(Intensities::Type itype, const char* input_path,
       if (verbose)
         mtz.warnings = stderr;
       mtz.read_input(gemmi::MaybeGzipped(input_path), /*with_data=*/true);
+      if (itype == Intensities::Type::None)
+        itype = mtz.batches.empty() ? Intensities::Type::Mean : Intensities::Type::Unmerged;
       if (itype == Intensities::Type::Mean && !mtz.imean_column()) {
         std::fprintf(stderr, "No IMEAN, using I(+) and I(-) ...\n");
         if (!mtz.iplus_column())
@@ -282,7 +284,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   const char* output_path = nullptr;
   if (p.nonOptionsCount() == 2)
     output_path = p.nonOption(1);
-  Intensities::Type itype = p.options[WriteAnom] ? Intensities::Type::Anomalous
+  Intensities::Type otype = p.options[WriteAnom] ? Intensities::Type::Anomalous
                                                  : Intensities::Type::Mean;
   const char* block_name = nullptr;
   if (p.options[BlockName])
@@ -292,7 +294,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (p.options[Compare] && output_path) {
     if (verbose)
       std::fprintf(stderr, "Reading merged reflections from %s ...\n", output_path);
-    ref = read_intensities(itype, output_path, nullptr, verbose);
+    ref = read_intensities(otype, output_path, nullptr, verbose);
   }
 
   if (verbose)
@@ -300,14 +302,17 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     Intensities intensities;
     if (output_path) {
-      intensities = read_intensities(Intensities::Type::Unmerged,
-                                     input_path, block_name, verbose);
+      Intensities::Type itype = Intensities::Type::Unmerged;
+      if (p.options[Compare] && gemmi::giends_with(input_path, ".mtz"))
+        // it's OK to compare also two merged files
+        itype = Intensities::Type::None;
+      intensities = read_intensities(itype, input_path, block_name, verbose);
     } else { // special case of --compare with one mmCIF file
       if (gemmi::giends_with(input_path, ".mtz") ||
           gemmi::giends_with(input_path, ".hkl"))
         gemmi::fail("`--compare ONE_FILE' make sense only with mmCIF.");
       auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(input_path).blocks);
-      read_intensities_from_rblocks(ref, itype, rblocks, nullptr, verbose);
+      read_intensities_from_rblocks(ref, otype, rblocks, nullptr, verbose);
       read_intensities_from_rblocks(intensities, Intensities::Type::Unmerged,
                                     rblocks, block_name, verbose);
       if (intensities.data.empty())
@@ -316,10 +321,11 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (verbose)
       output_intensity_statistics(intensities);
     if (p.options[Compare]) {
-      intensities.merge_in_place(ref.type);
+      if (intensities.type != ref.type)
+        intensities.merge_in_place(ref.type);
       compare_intensities(intensities, ref, p.options[PrintAll]);
     } else {
-      intensities.merge_in_place(itype);
+      intensities.merge_in_place(otype);
       if (p.options[NoSysAbs])
         intensities.remove_systematic_absences();
       if (verbose)
