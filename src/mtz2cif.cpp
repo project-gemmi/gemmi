@@ -243,12 +243,13 @@ int GEMMI_MAIN(int argc, char **argv) {
   bool ok = true;
   if (check_merged_columns && mtz[0])
     ok = gemmi::validate_merged_mtz_deposition_columns(*mtz[0], std::cerr);
+  if (mtz[0])
+    mtz_to_cif.check_staraniso(*mtz[0], std::cerr);
   if (validate && nargs == 3) {
     try {
       gemmi::Intensities mi, ui;
       if (mtz[0]) {
         mi.read_merged_intensities_from_mtz(*mtz[0]);
-        mtz_to_cif.check_staraniso(*mtz[0], std::cerr);
       } else {
         gemmi::ReflnBlock rblock = gemmi::get_refln_block(
             gemmi::read_cif_from_buffer(cif_buf, cif_input).blocks, {});

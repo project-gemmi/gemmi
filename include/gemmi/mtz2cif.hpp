@@ -16,6 +16,7 @@
 #include <set>
 #include <algorithm>     // for all_of
 #include "asudata.hpp"   // for calculate_hkl_value_correlation
+#include "eig3.hpp"      // for eigen_decomposition
 #include "mtz.hpp"       // for Mtz
 #include "xds_ascii.hpp" // for XdsAscii
 #include "atox.hpp"      // for read_word
@@ -718,6 +719,19 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
     double rmsds[6];
     UnitCell cell = unmerged->get_average_cell_from_batch_headers(rmsds);
     write_cell_and_symmetry(cell, rmsds, mtz.spacegroup, buf, os);
+  }
+
+  if (!std::isnan(staraniso_b.u11) && !staraniso_b.all_zero()) {
+    double eigenvalues[3];
+    Mat33 eigenvectors = eigen_decomposition(staraniso_b, eigenvalues);
+    const char* prefix = "\n_reflns.pdbx_aniso_B_tensor_eigen";
+    for (int i = 0; i < 3; ++i) {
+      double v = std::fabs(eigenvalues[i]) > 1e-4 ? eigenvalues[i] : 0;
+      WRITE("%svalue_%d %.5g", prefix, i+1, v);
+      for (int j = 0; j < 3; ++j)
+        WRITE("%svector_%d_ortho[%d] %.5g", prefix, i+1, j+1, eigenvectors[i][j]);
+    }
+    os << '\n';
   }
 
   if (merged)
