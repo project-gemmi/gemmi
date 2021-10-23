@@ -101,9 +101,9 @@ Intensities read_intensities(Intensities::Type itype, const char* input_path,
       if (verbose)
         mtz.warnings = stderr;
       mtz.read_input(gemmi::MaybeGzipped(input_path), /*with_data=*/true);
-      if (itype == Intensities::Type::Mean && !mtz.column_with_label("IMEAN")) {
+      if (itype == Intensities::Type::Mean && !mtz.imean_column()) {
         std::fprintf(stderr, "No IMEAN, using I(+) and I(-) ...\n");
-        if (!mtz.column_with_label("I(+)"))
+        if (!mtz.iplus_column())
           gemmi::fail("I(+) not found");
         itype = Intensities::Type::Anomalous;
       }
