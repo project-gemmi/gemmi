@@ -121,10 +121,11 @@ int GEMMI_MAIN(int argc, char **argv) {
     fprintf(stderr, "%s requires 2 or 3 arguments, got %d.", p.program_name, nargs);
     p.print_try_help_and_exit("");
   }
-  if (p.options[Deposition] && nargs != 3) {
-    fprintf(stderr, "Option --depo works only with 2 input files.\n");
-    return 1;
-  }
+  for (auto opt : {Deposition, Validate})
+    if (p.options[opt] && nargs != 3) {
+      fprintf(stderr, "Option -%s works only with 2 input files.\n", p.given_name(opt));
+      return 1;
+    }
   bool verbose = p.options[Verbose];
   const char* mtz_paths[2];
   const char* xds_path = nullptr;
@@ -188,9 +189,6 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (mtz[1]->is_merged())
       mtz[0].swap(mtz[1]);
   }
-
-  if (verbose)
-    std::fprintf(stderr, "Writing %s ...\n", cif_output);
 
   bool separate_blocks = p.options[Separate];
 
@@ -281,6 +279,8 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   if (p.options[Trim])
     mtz_to_cif.trim = std::atoi(p.options[Trim].arg);
+  if (verbose)
+    std::fprintf(stderr, "Writing %s ...\n", cif_output);
   try {
     gemmi::Ofstream os(cif_output, &std::cout);
     for (int i = 0; i < 2; ++i)
