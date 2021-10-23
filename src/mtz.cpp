@@ -19,8 +19,8 @@ using std::printf;
 namespace {
 
 enum OptionIndex { Headers=4, Dump, PrintBatch, PrintBatches,
-                   PrintAppendix, PrintTsv, PrintStats, CheckAsu, Compare,
-                   ToggleEndian, NoIsym, UpdateReso };
+                   PrintAppendix, PrintTsv, PrintStats, PrintCells,
+                   CheckAsu, Compare, ToggleEndian, NoIsym, UpdateReso };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -43,6 +43,8 @@ const option::Descriptor Usage[] = {
     "  --tsv  \tPrint all the data as tab-separated values." },
   { PrintStats, 0, "s", "stats", Arg::None,
     "  -s, --stats  \tPrint column statistics (completeness, mean, etc)." },
+  { PrintCells, 0, "", "cells", Arg::None,
+    "  --cells  \tPrint cell parameters only." },
   { CheckAsu, 0, "", "check-asu", Arg::None,
     "  --check-asu  \tCheck if reflections are in conventional ASU." },
   { Compare, 0, "", "compare", Arg::Required,
@@ -56,6 +58,11 @@ const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
+void print_cell_parameters(const char* prefix, const gemmi::UnitCell& cell) {
+  printf("%s %g %7g %7g  %6g %6g %6g\n", prefix,
+         cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma);
+}
+
 void dump(const Mtz& mtz) {
   printf("Title: %s\n", mtz.title.c_str());
   printf("Total Number of Datasets = %zu\n\n", mtz.datasets.size());
@@ -63,18 +70,14 @@ void dump(const Mtz& mtz) {
     printf("Dataset %4d   %s > %s > %s:\n",
            ds.id, ds.project_name.c_str(),
            ds.crystal_name.c_str(), ds.dataset_name.c_str());
-    printf("        cell  %g %7g %7g  %6g %6g %6g\n",
-           ds.cell.a, ds.cell.b, ds.cell.c,
-           ds.cell.alpha, ds.cell.beta, ds.cell.gamma);
+    print_cell_parameters("        cell ", ds.cell);
     printf("  wavelength  %g\n", ds.wavelength);
   }
   printf("\nNumber of Columns = %zu\n", mtz.columns.size());
   printf("Number of Reflections = %d\n", mtz.nreflections);
   printf("Number of Batches = %zu\n", mtz.batches.size());
   printf("Missing values marked as: %g\n", mtz.valm);
-  printf("Global Cell (obsolete):  %g %7g %7g  %6g %6g %6g\n",
-         mtz.cell.a, mtz.cell.b, mtz.cell.c,
-         mtz.cell.alpha, mtz.cell.beta, mtz.cell.gamma);
+  print_cell_parameters("Global Cell (obsolete): ", mtz.cell);
   printf("Resolution: %.2f - %.2f A\n",
          mtz.resolution_high(), mtz.resolution_low());
   printf("Sort Order: %d %d %d %d %d\n",
@@ -149,14 +152,21 @@ void print_batch(const Mtz::Batch& b) {
 
 void print_batch_extra_info(const Mtz::Batch& b) {
   gemmi::UnitCell uc = b.get_cell();
-  printf("    Unit cell parameters: %g %g %g   %g %g %g\n",
-         uc.a, uc.b, uc.c, uc.alpha, uc.beta, uc.gamma);
+  print_cell_parameters("    Unit cell parameters:", uc);
   printf("    Phi start - end: %g - %g\n", b.phi_start(), b.phi_end());
   gemmi::Mat33 u = b.matrix_U();
   for (int i = 0; i != 3; ++i)
     printf("    %s % 10.6f % 10.6f % 10.6f\n",
            i == 0 ? "Orientation matrix U:" : "                     ",
            u.a[i][0], u.a[i][1], u.a[i][2]);
+}
+
+void print_cells(const Mtz& mtz) {
+  print_cell_parameters("global:", mtz.cell);
+  for (const Mtz::Dataset& ds : mtz.datasets) {
+    printf("dataset %d %s:", ds.id, ds.dataset_name.c_str());
+    print_cell_parameters("", ds.cell);
+  }
 }
 
 void print_tsv(const Mtz& mtz) {
@@ -356,8 +366,8 @@ void print_mtz_info(Stream&& stream, const char* path,
     mtz.update_reso();
   if (options[Dump] ||
       !(options[PrintBatch] || options[PrintBatches] || options[PrintTsv] ||
-        options[PrintStats] || options[CheckAsu] || options[Compare] ||
-        options[Headers] || options[PrintAppendix]))
+        options[PrintStats] || options[PrintAppendix] || options[PrintCells] ||
+        options[CheckAsu] || options[Compare] || options[Headers]))
     dump(mtz);
   if (options[PrintBatch]) {
     for (const option::Option* o = options[PrintBatch]; o; o = o->next()) {
@@ -376,6 +386,8 @@ void print_mtz_info(Stream&& stream, const char* path,
     printf("%s", mtz.appended_text.c_str());
   if (mtz.has_data() && !options[NoIsym])
     mtz.switch_to_original_hkl();
+  if (options[PrintCells])
+    print_cells(mtz);
   if (options[PrintTsv])
     print_tsv(mtz);
   if (options[PrintStats])
