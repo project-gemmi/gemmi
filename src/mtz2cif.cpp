@@ -259,6 +259,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                   rblock.entry_id.c_str(), mtz_to_cif.entry_id.c_str());
           mtz_to_cif.entry_id = rblock.entry_id;
         }
+        mtz_to_cif.set_staraniso_b(rblock.make_diffraction_anisotropy_tensor());
         mi.read_merged_intensities_from_mmcif(rblock);
       }
       if (mtz[1])

@@ -134,6 +134,7 @@ public:
   }
 
   const SMat33<double>& get_staraniso_b() const { return staraniso_b; }
+  void set_staraniso_b(const SMat33<double>& b) { staraniso_b = b; }
 
 private:
   // describes which MTZ column is to be translated to what mmCIF column
