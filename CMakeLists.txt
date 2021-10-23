@@ -233,7 +233,7 @@ add_executable(gemmi-mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-mtz)
 
 add_executable(gemmi-mtz2cif EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/mtz2cif.cpp)
+               src/mtz2cif.cpp $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:output>)
 support_gz(gemmi-mtz2cif)
 
 add_executable(gemmi-reindex EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
