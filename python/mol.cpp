@@ -86,6 +86,8 @@ void add_mol(py::module& m) {
     .def_readwrite("resolution", &Structure::resolution)
     .def_readwrite("entities", &Structure::entities)
     .def_readwrite("connections", &Structure::connections)
+    .def_readwrite("helices", &Structure::helices)
+    .def_readwrite("sheets", &Structure::sheets)
     .def_readwrite("assemblies", &Structure::assemblies)
     .def_readwrite("info", &Structure::info)
     .def_readwrite("raw_remarks", &Structure::raw_remarks)

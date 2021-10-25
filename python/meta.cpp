@@ -174,6 +174,44 @@ void add_meta(py::module& m) {
     });
   py::bind_vector<std::vector<Connection>>(m, "ConnectionList");
 
+  py::class_<Helix> helix(m, "Helix");
+  py::enum_<Helix::HelixClass>(helix, "HelixClass")
+    .value("UnknownHelix", Helix::HelixClass::UnknownHelix)
+    .value("RAlpha", Helix::HelixClass::RAlpha)
+    .value("ROmega", Helix::HelixClass::ROmega)
+    .value("RPi", Helix::HelixClass::RPi)
+    .value("RGamma", Helix::HelixClass::RGamma)
+    .value("R310", Helix::HelixClass::R310)
+    .value("LAlpha", Helix::HelixClass::LAlpha)
+    .value("LOmega", Helix::HelixClass::LOmega)
+    .value("LGamma", Helix::HelixClass::LGamma)
+    .value("Helix27", Helix::HelixClass::Helix27)
+    .value("HelixPolyProlineNone", Helix::HelixClass::HelixPolyProlineNone);
+
+  helix
+    .def(py::init<>())
+    .def_readwrite("start", &Helix::start)
+    .def_readwrite("end", &Helix::end)
+    .def_readwrite("pdb_helix_class", &Helix::pdb_helix_class)
+    .def_readwrite("length", &Helix::length);
+  py::bind_vector<std::vector<Helix>>(m, "HelixList");
+
+  py::class_<Sheet> sheet(m, "Sheet");
+  py::class_<Sheet::Strand>(sheet, "Strand")
+    .def(py::init<>())
+    .def_readwrite("start", &Sheet::Strand::start)
+    .def_readwrite("end", &Sheet::Strand::end)
+    .def_readwrite("hbond_atom2", &Sheet::Strand::hbond_atom2)
+    .def_readwrite("hbond_atom1", &Sheet::Strand::hbond_atom1)
+    .def_readwrite("sense", &Sheet::Strand::sense)
+    .def_readwrite("name", &Sheet::Strand::name);
+  py::bind_vector<std::vector<Sheet::Strand>>(sheet, "StrandList");
+
+  sheet
+    .def(py::init<std::string>())
+    .def_readwrite("name", &Sheet::name)
+    .def_readwrite("strands", &Sheet::strands);
+  py::bind_vector<std::vector<Sheet>>(m, "SheetList");
 
   py::class_<Assembly> assembly(m, "Assembly");
   py::class_<Assembly::Operator>(assembly, "Operator")
