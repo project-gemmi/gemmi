@@ -8,6 +8,9 @@ namespace pybind11 { namespace detail {
     : optional_caster<gemmi::SeqId::OptionalNum> {};
 }} // namespace pybind11::detail
 
+PYBIND11_MAKE_OPAQUE(std::vector<gemmi::Helix>)
+PYBIND11_MAKE_OPAQUE(std::vector<gemmi::Sheet>)
+PYBIND11_MAKE_OPAQUE(std::vector<gemmi::Sheet::Strand>)
 PYBIND11_MAKE_OPAQUE(std::vector<gemmi::Assembly::Gen>)
 PYBIND11_MAKE_OPAQUE(std::vector<gemmi::Assembly::Operator>)
 PYBIND11_MAKE_OPAQUE(std::vector<gemmi::Assembly>)
