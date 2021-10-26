@@ -72,24 +72,26 @@ void read_intensities_from_rblocks(Intensities& intensities,
                                    Intensities::Type itype,
                                    std::vector<gemmi::ReflnBlock>& rblocks,
                                    const char* block_name, bool verbose) {
-    for (gemmi::ReflnBlock& rb : rblocks) {
-      if (block_name && rb.block.name != block_name)
-        continue;
-      rb.use_unmerged(itype == Intensities::Type::Unmerged);
-      if (!rb.default_loop)
-        continue;
-      if (itype == Intensities::Type::Mean && rb.find_column_index("intensity_meas") < 0) {
-        if (rb.find_column_index("pdbx_I_plus") < 0)
-          gemmi::fail("merged intensities not found");
-        std::fprintf(stderr, "No _refln.intensity_meas, using pdbx_I_plus/minus ...\n");
-        itype = Intensities::Type::Anomalous;
-      }
-      if (verbose)
-        std::fprintf(stderr, "Reading %s from block %s ...\n",
-                     Intensities::type_str(itype), rb.block.name.c_str());
-      intensities.read_mmcif(rb, itype);
-      break;
+  for (gemmi::ReflnBlock& rb : rblocks) {
+    if (block_name && rb.block.name != block_name)
+      continue;
+    rb.use_unmerged(itype == Intensities::Type::Unmerged);
+    if (!rb.default_loop)
+      continue;
+    if (itype == Intensities::Type::Mean && rb.find_column_index("intensity_meas") < 0) {
+      if (rb.find_column_index("pdbx_I_plus") < 0)
+        gemmi::fail("merged intensities not found");
+      std::fprintf(stderr, "No _refln.intensity_meas, using pdbx_I_plus/minus ...\n");
+      itype = Intensities::Type::Anomalous;
     }
+    if (verbose)
+      std::fprintf(stderr, "Reading %s from block %s ...\n",
+                   Intensities::type_str(itype), rb.block.name.c_str());
+    intensities.read_mmcif(rb, itype);
+    if (itype != Intensities::Type::Unmerged)
+      intensities.take_staraniso_b_from_mmcif(rb.block);
+    break;
+  }
 }
 
 Intensities read_intensities(Intensities::Type itype, const char* input_path,
@@ -110,6 +112,8 @@ Intensities read_intensities(Intensities::Type itype, const char* input_path,
         itype = Intensities::Type::Anomalous;
       }
       intensities.read_mtz(mtz, itype);
+      if (itype != Intensities::Type::Unmerged)
+        intensities.take_staraniso_b_from_mtz(mtz);
     } else if (gemmi::giends_with(input_path, ".hkl")) {
       gemmi::XdsAscii xds_ascii;
       xds_ascii.read_input(gemmi::MaybeGzipped(input_path));
@@ -180,7 +184,7 @@ void write_merged_intensities(const Intensities& intensities, bool write_nobs,
       mtz_to_cif.with_comments = false;
       mtz_to_cif.block_name = "merged";
       gemmi::Ofstream os(output_path, /*dash=*/&std::cout);
-      mtz_to_cif.write_cif(mtz, nullptr, os.ref());
+      mtz_to_cif.write_cif(mtz, nullptr, nullptr, os.ref());
     }
   } catch (std::exception& e) {
     std::fprintf(stderr, "ERROR while writing %s: %s\n", output_path, e.what());
@@ -216,8 +220,25 @@ void compare_intensities(Intensities& intensities, Intensities& ref, bool print_
   if (intensities.data.empty())
     return;
   ref.sort();
+  if (ref.staraniso_b.ok()) {
+    printf("Applying the same anisotropic scaling.\n");
+    for (Intensities::Refl& refl : intensities.data) {
+      double scale = ref.staraniso_b.scale(refl.hkl, intensities.unit_cell);
+      refl.value *= scale;
+      refl.sigma *= scale;
+    }
+  }
+
+  gemmi::Correlation ci = calculate_hkl_value_correlation(intensities.data, ref.data);
+  double intensity_ratio = ci.mean_ratio();
+  printf("Ratio of compared intensities (merged : unmerged): %g\n", intensity_ratio);
+  for (Intensities::Refl& refl : intensities.data) {
+    refl.value *= intensity_ratio;
+    refl.sigma *= intensity_ratio;
+  }
+
   auto a = intensities.data.begin();
-  gemmi::Correlation ci, cs; // correlation of <I>, Isigma, I+, I-
+  gemmi::Correlation cs; // correlation of sigma
   int different_intensity_count = 0;
   int different_sigma_count = 0;
   for (const Intensities::Refl& r : ref.data) {
@@ -237,7 +258,7 @@ void compare_intensities(Intensities& intensities, Intensities& ref, bool print_
         continue;
       }
     }
-    ci.add_point(r.value, a->value);
+    //ci.add_point(r.value, a->value);
     cs.add_point(r.sigma, a->sigma);
 
     using gemmi::sq;
@@ -247,8 +268,12 @@ void compare_intensities(Intensities& intensities, Intensities& ref, bool print_
       different_intensity_count++;
     sq_max = std::max(sq(r.sigma), sq(a->sigma));
     sq_diff = sq(r.sigma - a->sigma);
-    if (sq_diff > 1e-4 && sq_diff > sq(0.005) * sq_max)
+    if (sq_diff > 1e-4 && sq_diff > sq(0.005) * sq_max) {
+      if (different_sigma_count == 0)
+        printf("First difference: %s %g vs %g\n",
+               r.hkl_label().c_str(), a->value, r.value);
       different_sigma_count++;
+    }
 
     if (print_all)
       print_reflection(&*a, &r);
@@ -263,9 +288,8 @@ void compare_intensities(Intensities& intensities, Intensities& ref, bool print_
   ref.unit_cell = intensities.unit_cell;
   auto r_resol = ref.resolution_range();
   printf("Resolution: %g-%g    %g-%g\n", a_resol[0], a_resol[1], r_resol[0], r_resol[1]);
-  printf("%s CC: %.9g%% (mean ratio: %g)\n",
-         intensities.type_str(), 100 * ci.coefficient(), ci.mean_ratio());
-  printf("Sigma CC: %.9g%% (mean ratio: %g)\n", 100 * cs.coefficient(), cs.mean_ratio());
+  printf("%s CC: %.9g%%\n", intensities.type_str(), 100 * ci.coefficient());
+  printf("Sigma CC: %.9g%% (mean ratio: %g)\n", 100 * cs.coefficient(), 1./cs.mean_ratio());
 }
 
 } // anonymous namespace

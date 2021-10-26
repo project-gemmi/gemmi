@@ -26,20 +26,6 @@
 
 namespace gemmi {
 
-inline bool parse_voigt_notation(const char* start, const char* end, SMat33<double>& b) {
-  bool first = true;
-  for (double* u : {&b.u11, &b.u22, &b.u33, &b.u23, &b.u13, &b.u12}) {
-    if (*start != (first ? '(' : ','))
-      return false;
-    first = false;
-    auto result = fast_from_chars(++start, end, *u);
-    if (result.ec != std::errc())
-      return false;
-    start = skip_blank(result.ptr);
-  }
-  return *start == ')';
-}
-
 class MtzToCif {
 public:
   enum Var { Dot=-1, Qmark=-2, Counter=-3, DatasetId=-4, Image=-5 };
@@ -58,6 +44,7 @@ public:
   double wavelength = NAN;           // user-specified wavelength
   int trim = 0;                      // output only reflections -N<=h,k,l<=N
   int free_flag_value = -1;          // -1 = auto: 0 or (if we have >50% of 0's) 1
+  std::string staraniso_version;     // for _software.version in "special_marker"
 
   static const char** default_spec(bool for_merged) {
     static const char* merged[] = {
@@ -100,41 +87,9 @@ public:
     return for_merged ? merged : unmerged;
   }
 
-  void write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& os);
+  void write_cif(const Mtz& mtz, const Mtz* mtz2,
+                 SMat33<double>* staraniso_b, std::ostream& os);
   void write_cif_from_xds(const XdsAscii& xds, std::ostream& os);
-
-  void check_staraniso(const Mtz& mtz, std::ostream& out) {
-    size_t hlen = mtz.history.size();
-    for (size_t i = 0; i != hlen; ++i)
-      if (mtz.history[i].find("STARANISO") != std::string::npos) {
-        size_t version_pos = mtz.history[i].find("version:");
-        if (version_pos != std::string::npos)
-          staraniso_version = read_word(mtz.history[i].c_str() + version_pos + 8);
-        out << "History in merged MTZ includes scaling with STARANISO "
-            << staraniso_version << ".\n";
-        // StarAniso 2.3.74 (24-Apr-2021) and later write B tensor in history
-        bool got_b = false;
-        for (size_t j = i+1; j < std::min(i+4, hlen); ++j) {
-          const std::string& line = mtz.history[j];
-          if (starts_with(line, "B=(")) {
-            got_b = parse_voigt_notation(line.c_str() + 2,
-                                         line.c_str() + line.size(),
-                                         staraniso_b);
-            if (!got_b)
-              fail("failed to parse tensor Voigt notation: " + line);
-            break;
-          }
-        }
-        if (!got_b) {
-          out << "StarAniso B tensor not found. Intensities won't be checked.\n";
-          staraniso_b.u11 = NAN;
-        }
-        break;
-      }
-  }
-
-  const SMat33<double>& get_staraniso_b() const { return staraniso_b; }
-  void set_staraniso_b(const SMat33<double>& b) { staraniso_b = b; }
 
 private:
   // describes which MTZ column is to be translated to what mmCIF column
@@ -160,9 +115,6 @@ private:
   std::unordered_map<int, int> sweep_indices;
 
   std::vector<Trans> recipe;
-
-  SMat33<double> staraniso_b = {0., 0., 0., 0., 0., 0.};
-  std::string staraniso_version;
 
   const Trans* get_status_translation() const {
     for (const Trans& t: recipe)
@@ -419,6 +371,8 @@ private:
                                char* buf, std::ostream& os) const;
 
   void write_main_loop(const Mtz& mtz, char* buf, std::ostream& os);
+
+  void write_staraniso_b(const SMat33<double>& b, char* buf, std::ostream& os) const;
 };
 
 inline bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream& out) {
@@ -447,8 +401,7 @@ inline bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream&
 
 // note: both mi and ui get modified
 inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
-                                        const SMat33<double>& scale_aniso_b,
-                                        std::ostream& out) {
+                                        bool relaxed_check, std::ostream& out) {
   // XDS files have 4 significant digits. Using accuracy 5x the precision.
   const double max_diff = 0.005;
   out << "Checking if both files match...\n";
@@ -467,6 +420,7 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
       out << "(in the future, this app may recognize compatible space groups\n"
              "and reindex unmerged data if needed; for now, it's on you)\n";
   }
+
   auto eq = [](double x, double y, double rmsd) { return std::fabs(x - y) < rmsd + 0.02; };
   if(eq(mi.unit_cell.a,     ui.unit_cell.a,     ui.unit_cell_rmsd[0]) &&
      eq(mi.unit_cell.b,     ui.unit_cell.b,     ui.unit_cell_rmsd[1]) &&
@@ -500,17 +454,10 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   out << "Merged reflections: " << mi_size1 << ' ' << mi.type_str()
       << " (" << mi.data.size() << " w/o sysabs)\n";
 
-  // check_staraniso() sets u11=NAN if apparently older StarAniso version that
-  // doesn't store B tensor was used. In such case allow intensities to differ.
-  bool relaxed_check = std::isnan(scale_aniso_b.u11);
-
-  if (!relaxed_check && !scale_aniso_b.all_zero()) {
+  if (mi.staraniso_b.ok()) {
     out << "Taking into account the anisotropy tensor that was used for scaling.\n";
-    for (Intensities::Refl& refl : ui.data) {
-      Vec3 hkl(refl.hkl[0], refl.hkl[1], refl.hkl[2]);
-      Vec3 s = ui.unit_cell.frac.mat.multiply(hkl);
-      refl.value *= std::exp(0.5 * scale_aniso_b.r_u_r(s));
-    }
+    for (Intensities::Refl& refl : ui.data)
+      refl.value *= mi.staraniso_b.scale(refl.hkl, ui.unit_cell);
   }
 
   // first pass - calculate CC and scale
@@ -533,23 +480,25 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   };
   while (r1 != ui.data.end() && r2 != mi.data.end()) {
     if (r1->hkl == r2->hkl && r1->isign == r2->isign) {
-      double value1 = scale * r1->value;
-      double sigma1 = scale * r1->sigma; // is this approximately correct
-      double sq_value_max = std::max(sq(value1), sq(r2->value));
-      double sq_diff = sq(value1 - r2->value);
-      // Intensities may happen to be rounded to two decimal places,
-      // so if the absolute difference is <0.01 it's OK.
-      if (!relaxed_check && sq_diff > 1e-4 && sq_diff > sq(max_diff) * sq_value_max) {
-        if (differ_count == 0) {
-          out << "First difference: " << refln_str(*r1)
-              << ' ' << value1 << " vs " << r2->value << '\n';
-        }
-        ++differ_count;
-        double weighted_sq_diff = sq_diff / (sq(sigma1) + sq(r2->sigma));
-        if (weighted_sq_diff > max_weighted_sq_diff) {
-          max_weighted_sq_diff = weighted_sq_diff;
-          max_diff_r1 = &*r1;
-          max_diff_r2 = &*r2;
+      if (!relaxed_check) {
+        double value1 = scale * r1->value;
+        double sigma1 = scale * r1->sigma; // is this approximately correct
+        double sq_max = std::max(sq(value1), sq(r2->value));
+        double sq_diff = sq(value1 - r2->value);
+        // Intensities may happen to be rounded to two decimal places,
+        // so if the absolute difference is <0.01 it's OK.
+        if (sq_diff > 1e-4 && sq_diff > sq(max_diff) * sq_max) {
+          if (differ_count == 0) {
+            out << "First difference: " << r1->hkl_label()
+                << ' ' << value1 << " vs " << r2->value << '\n';
+          }
+          ++differ_count;
+          double weighted_sq_diff = sq_diff / (sq(sigma1) + sq(r2->sigma));
+          if (weighted_sq_diff > max_weighted_sq_diff) {
+            max_weighted_sq_diff = weighted_sq_diff;
+            max_diff_r1 = &*r1;
+            max_diff_r2 = &*r2;
+          }
         }
       }
       ++r1;
@@ -594,7 +543,8 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   return ok;
 }
 
-inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& os) {
+inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2,
+                                SMat33<double>* staraniso_b, std::ostream& os) {
   if (mtz2 && mtz.is_merged() == mtz2->is_merged())
     fail("If two MTZ files are given, one must be merged and one unmerged,\n"
          "got two ", mtz.is_merged() ? "merged" : "unmerged");
@@ -722,18 +672,8 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2, std::ostream& o
     write_cell_and_symmetry(cell, rmsds, mtz.spacegroup, buf, os);
   }
 
-  if (!std::isnan(staraniso_b.u11) && !staraniso_b.all_zero()) {
-    double eigenvalues[3];
-    Mat33 eigenvectors = eigen_decomposition(staraniso_b, eigenvalues);
-    const char* prefix = "\n_reflns.pdbx_aniso_B_tensor_eigen";
-    for (int i = 0; i < 3; ++i) {
-      double v = std::fabs(eigenvalues[i]) > 1e-4 ? eigenvalues[i] : 0;
-      WRITE("%svalue_%d %.5g", prefix, i+1, v);
-      for (int j = 0; j < 3; ++j)
-        WRITE("%svector_%d_ortho[%d] %.5g", prefix, i+1, j+1, eigenvectors[i][j]);
-    }
-    os << '\n';
-  }
+  if (staraniso_b)
+    write_staraniso_b(*staraniso_b, buf, os);
 
   if (merged)
     write_main_loop(*merged, buf, os);
@@ -1006,6 +946,20 @@ inline void MtzToCif::write_cell_and_symmetry(const UnitCell& cell, double* rmsd
           "_symmetry.Int_Tables_number " << sg->number << '\n';
     // could write _symmetry_equiv.pos_as_xyz, but would it be useful?
   }
+}
+
+inline void MtzToCif::write_staraniso_b(const SMat33<double>& b,
+                                        char* buf, std::ostream& os) const {
+  double eigenvalues[3];
+  Mat33 eigenvectors = eigen_decomposition(b, eigenvalues);
+  const char* prefix = "\n_reflns.pdbx_aniso_B_tensor_eigen";
+  for (int i = 0; i < 3; ++i) {
+    double v = std::fabs(eigenvalues[i]) > 1e-4 ? eigenvalues[i] : 0;
+    WRITE("%svalue_%d %.5g", prefix, i+1, v);
+    for (int j = 0; j < 3; ++j)
+      WRITE("%svector_%d_ortho[%d] %.5g", prefix, i+1, j+1, eigenvectors[i][j]);
+  }
+  os << '\n';
 }
 
 #undef WRITE

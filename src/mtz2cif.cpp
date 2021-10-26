@@ -244,11 +244,19 @@ int GEMMI_MAIN(int argc, char **argv) {
   bool ok = true;
   if (check_merged_columns && mtz[0])
     ok = gemmi::validate_merged_mtz_deposition_columns(*mtz[0], std::cerr);
-  if (mtz[0])
-    mtz_to_cif.check_staraniso(*mtz[0], std::cerr);
+  gemmi::Intensities mi;
+  if (mtz[0]) {
+    mtz_to_cif.staraniso_version = mi.take_staraniso_b_from_mtz(*mtz[0]);
+    if (!mtz_to_cif.staraniso_version.empty()) {
+      std::cerr << "Merged MTZ went through STARANISO " << mtz_to_cif.staraniso_version;
+      if (mi.staraniso_b.ok())
+        std::cerr << ". Taking into account anisotropic scaling.\n";
+      else
+        std::cerr << ". B tensor is unknown. Intensities won't be checked.\n";
+    }
+  }
   if (validate && nargs == 3) {
     try {
-      gemmi::Intensities mi, ui;
       if (mtz[0]) {
         mi.read_merged_intensities_from_mtz(*mtz[0]);
       } else {
@@ -259,15 +267,20 @@ int GEMMI_MAIN(int argc, char **argv) {
                   rblock.entry_id.c_str(), mtz_to_cif.entry_id.c_str());
           mtz_to_cif.entry_id = rblock.entry_id;
         }
-        mtz_to_cif.set_staraniso_b(rblock.make_diffraction_anisotropy_tensor());
+        mi.take_staraniso_b_from_mmcif(rblock.block);
         mi.read_merged_intensities_from_mmcif(rblock);
       }
+      gemmi::Intensities ui;
       if (mtz[1])
         ui.read_unmerged_intensities_from_mtz(*mtz[1]);
       else if (xds_ascii)
         ui.read_unmerged_intensities_from_xds(*xds_ascii);
-      if (!gemmi::validate_merged_intensities(mi, ui, mtz_to_cif.get_staraniso_b(),
-                                              std::cerr))
+
+      // If an old StarAniso version was used that doesn't store B tensor,
+      // allow intensities to differ.
+      bool relaxed_check = !mtz_to_cif.staraniso_version.empty() && !mi.staraniso_b.ok();
+
+      if (!gemmi::validate_merged_intensities(mi, ui, relaxed_check, std::cerr))
         ok = false;
     } catch (std::exception& e) {
       fprintf(stderr, "Error. Intensities could not be validated.\n%s.\n", e.what());
@@ -289,18 +302,19 @@ int GEMMI_MAIN(int argc, char **argv) {
     for (int i = 0; i < 2; ++i)
       if (mtz[i] && !mtz[i]->is_merged())
         mtz[i]->switch_to_original_hkl();
+    gemmi::SMat33<double>* staraniso_b = mi.staraniso_b.ok() ? &mi.staraniso_b.b : nullptr;
     if (mtz[0] && mtz[1] && !separate_blocks) {
-      mtz_to_cif.write_cif(*mtz[0], mtz[1].get(), os.ref());
+      mtz_to_cif.write_cif(*mtz[0], mtz[1].get(), staraniso_b, os.ref());
     } else {
       if (cif_input)
         os.ref().write(cif_buf.data(), cif_buf.size());
       else if (mtz[0])
-        mtz_to_cif.write_cif(*mtz[0], nullptr, os.ref());
+        mtz_to_cif.write_cif(*mtz[0], nullptr, staraniso_b, os.ref());
       if ((cif_input || mtz[0]) && (mtz[1] || xds_ascii))
         os.ref() << "\n\n";
       mtz_to_cif.block_name = "unmerged";
       if (mtz[1])
-        mtz_to_cif.write_cif(*mtz[1], nullptr, os.ref());
+        mtz_to_cif.write_cif(*mtz[1], nullptr, nullptr, os.ref());
       else if (xds_ascii)
         mtz_to_cif.write_cif_from_xds(*xds_ascii, os.ref());
     }

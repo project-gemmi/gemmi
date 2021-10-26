@@ -8,6 +8,7 @@
 #define GEMMI_MERGE_HPP_
 
 #include <cassert>
+#include "atof.hpp"     // for fast_from_chars
 #include "symmetry.hpp"
 #include "unitcell.hpp"
 #include "util.hpp"     // for vector_remove_if
@@ -26,6 +27,21 @@ inline std::string miller_str(const Miller& hkl) {
   s += ')';
   return s;
 }
+
+inline bool parse_voigt_notation(const char* start, const char* end, SMat33<double>& b) {
+  bool first = true;
+  for (double* u : {&b.u11, &b.u22, &b.u33, &b.u23, &b.u13, &b.u12}) {
+    if (*start != (first ? '(' : ','))
+      return false;
+    first = false;
+    auto result = fast_from_chars(++start, end, *u);
+    if (result.ec != std::errc())
+      return false;
+    start = skip_blank(result.ptr);
+  }
+  return *start == ')';
+}
+
 
 struct Intensities {
   enum class Type { None, Unmerged, Mean, Anomalous };
@@ -46,6 +62,23 @@ struct Intensities {
       if (isign > 0) return "I(+)";
       return "I(-)";
     }
+
+    std::string hkl_label() const {
+      std::string s = intensity_label();
+      s += ' ';
+      s += miller_str(hkl);
+      return s;
+    };
+  };
+
+  struct AnisoScaling {
+    SMat33<double> b = {0., 0., 0., 0., 0., 0.};
+
+    bool ok() const { return !b.all_zero(); }
+    double scale(const Miller& hkl, const UnitCell& cell) const {
+      Vec3 s = cell.frac.mat.multiply(Vec3(hkl[0], hkl[1], hkl[2]));
+      return std::exp(0.5 * b.r_u_r(s));
+    }
   };
 
   std::vector<Refl> data;
@@ -54,6 +87,8 @@ struct Intensities {
   double unit_cell_rmsd[6] = {0., 0., 0., 0., 0., 0.};
   double wavelength;
   Type type = Type::None;
+  AnisoScaling staraniso_b;
+
 
   static const char* type_str(Type itype) {
     switch (itype) {
@@ -346,6 +381,59 @@ struct Intensities {
       add_if_valid(in.hkl, 0, in.iobs, in.sigma);
     switch_to_asu_indices();
     type = Type::Unmerged;
+  }
+
+  // returns STARANISO version or empty string
+  std::string take_staraniso_b_from_mtz(const Mtz& mtz) {
+    std::string version;
+    size_t hlen = mtz.history.size();
+    for (size_t i = 0; i != hlen; ++i)
+      if (mtz.history[i].find("STARANISO") != std::string::npos) {
+        size_t version_pos = mtz.history[i].find("version:");
+        if (version_pos != std::string::npos)
+          version = read_word(mtz.history[i].c_str() + version_pos + 8);
+        else
+          version = "?";
+        // StarAniso 2.3.74 (24-Apr-2021) and later write B tensor in history
+        for (size_t j = i+1; j < std::min(i+4, hlen); ++j) {
+          const std::string& line = mtz.history[j];
+          if (starts_with(line, "B=(")) {
+            if (!parse_voigt_notation(line.c_str() + 2,
+                                      line.c_str() + line.size(),
+                                      staraniso_b.b))
+              fail("failed to parse tensor Voigt notation: " + line);
+            break;
+          }
+        }
+        break;
+      }
+    return version;
+  }
+
+  bool take_staraniso_b_from_mmcif(const cif::Block& block) {
+    // read what is written by MtzToCif::write_staraniso_b()
+    cif::Table table = const_cast<cif::Block*>(&block)->find(
+        "_reflns.pdbx_aniso_B_tensor_eigen",
+        {"value_1", "value_2", "value_3",
+         "vector_1_ortho[1]", "vector_1_ortho[2]", "vector_1_ortho[3]",
+         "vector_2_ortho[1]", "vector_2_ortho[2]", "vector_2_ortho[3]",
+         "vector_3_ortho[1]", "vector_3_ortho[2]", "vector_3_ortho[3]"});
+    if (!table.ok())
+      return false;
+    cif::Table::Row row = table.one();
+    using cif::as_number;
+    double eigval[3] = {as_number(row[0]), as_number(row[1]), as_number(row[2])};
+    double min_val = std::min(std::min(eigval[0], eigval[1]), eigval[2]);
+    Mat33 mat(as_number(row[3]), as_number(row[6]), as_number(row[9]),
+              as_number(row[4]), as_number(row[7]), as_number(row[10]),
+              as_number(row[5]), as_number(row[8]), as_number(row[11]));
+    Vec3 diag(eigval[0] - min_val, eigval[1] - min_val, eigval[2] - min_val);
+    // If the columns of mat are an orthonomal basis, mat^−1==mat^T.
+    // But just in case it isn't, we use mat^-1 here.
+    Mat33 t = mat.multiply_by_diagonal(diag).multiply(mat.inverse());
+    // t is a symmetric tensor, so we return only 6 numbers
+    staraniso_b.b = {t[0][0], t[1][1], t[2][2], t[0][1], t[0][2], t[1][2]};
+    return true;
   }
 
 private:
