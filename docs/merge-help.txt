@@ -7,7 +7,7 @@ Options:
   -h, --help             Print usage and exit.
   -V, --version          Print version and exit.
   -v, --verbose          Verbose output.
-  --write-anom           output I(+) and I(-) instead of IMEAN.
+  --anom                 output/compare I(+) and I(-) instead of IMEAN.
   --no-sysabs            Do not output systematic absences.
   --nobs                 Add MTZ column NOBS with the number of merged
                          reflections.
