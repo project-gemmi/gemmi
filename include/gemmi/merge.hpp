@@ -42,6 +42,32 @@ inline bool parse_voigt_notation(const char* start, const char* end, SMat33<doub
   return *start == ')';
 }
 
+inline bool read_staraniso_b_from_mmcif(const cif::Block& block, SMat33<double>& output) {
+  // read what is written by MtzToCif::write_staraniso_b()
+  cif::Table table = const_cast<cif::Block*>(&block)->find(
+      "_reflns.pdbx_aniso_B_tensor_eigen",
+      {"value_1", "value_2", "value_3",
+       "vector_1_ortho[1]", "vector_1_ortho[2]", "vector_1_ortho[3]",
+       "vector_2_ortho[1]", "vector_2_ortho[2]", "vector_2_ortho[3]",
+       "vector_3_ortho[1]", "vector_3_ortho[2]", "vector_3_ortho[3]"});
+  if (!table.ok())
+    return false;
+  cif::Table::Row row = table.one();
+  using cif::as_number;
+  double eigval[3] = {as_number(row[0]), as_number(row[1]), as_number(row[2])};
+  double min_val = std::min(std::min(eigval[0], eigval[1]), eigval[2]);
+  Mat33 mat(as_number(row[3]), as_number(row[6]), as_number(row[9]),
+            as_number(row[4]), as_number(row[7]), as_number(row[10]),
+            as_number(row[5]), as_number(row[8]), as_number(row[11]));
+  Vec3 diag(eigval[0] - min_val, eigval[1] - min_val, eigval[2] - min_val);
+  // If the columns of mat are an orthonomal basis, mat^−1==mat^T.
+  // But just in case it isn't, we use mat^-1 here.
+  Mat33 t = mat.multiply_by_diagonal(diag).multiply(mat.inverse());
+  // t is a symmetric tensor, so we return only 6 numbers
+  output = {t[0][0], t[1][1], t[2][2], t[0][1], t[0][2], t[1][2]};
+  return true;
+}
+
 
 struct Intensities {
   enum class Type { None, Unmerged, Mean, Anomalous };
@@ -411,29 +437,7 @@ struct Intensities {
   }
 
   bool take_staraniso_b_from_mmcif(const cif::Block& block) {
-    // read what is written by MtzToCif::write_staraniso_b()
-    cif::Table table = const_cast<cif::Block*>(&block)->find(
-        "_reflns.pdbx_aniso_B_tensor_eigen",
-        {"value_1", "value_2", "value_3",
-         "vector_1_ortho[1]", "vector_1_ortho[2]", "vector_1_ortho[3]",
-         "vector_2_ortho[1]", "vector_2_ortho[2]", "vector_2_ortho[3]",
-         "vector_3_ortho[1]", "vector_3_ortho[2]", "vector_3_ortho[3]"});
-    if (!table.ok())
-      return false;
-    cif::Table::Row row = table.one();
-    using cif::as_number;
-    double eigval[3] = {as_number(row[0]), as_number(row[1]), as_number(row[2])};
-    double min_val = std::min(std::min(eigval[0], eigval[1]), eigval[2]);
-    Mat33 mat(as_number(row[3]), as_number(row[6]), as_number(row[9]),
-              as_number(row[4]), as_number(row[7]), as_number(row[10]),
-              as_number(row[5]), as_number(row[8]), as_number(row[11]));
-    Vec3 diag(eigval[0] - min_val, eigval[1] - min_val, eigval[2] - min_val);
-    // If the columns of mat are an orthonomal basis, mat^−1==mat^T.
-    // But just in case it isn't, we use mat^-1 here.
-    Mat33 t = mat.multiply_by_diagonal(diag).multiply(mat.inverse());
-    // t is a symmetric tensor, so we return only 6 numbers
-    staraniso_b.b = {t[0][0], t[1][1], t[2][2], t[0][1], t[0][2], t[1][2]};
-    return true;
+    return read_staraniso_b_from_mmcif(block, staraniso_b.b);
   }
 
 private:

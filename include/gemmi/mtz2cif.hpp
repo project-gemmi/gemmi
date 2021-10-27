@@ -371,8 +371,6 @@ private:
                                char* buf, std::ostream& os) const;
 
   void write_main_loop(const Mtz& mtz, char* buf, std::ostream& os);
-
-  void write_staraniso_b(const SMat33<double>& b, char* buf, std::ostream& os) const;
 };
 
 inline bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream& out) {
@@ -543,6 +541,22 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   return ok;
 }
 
+#define WRITE(...) os.write(buf, gf_snprintf(buf, 255, __VA_ARGS__))
+
+inline void write_staraniso_b_in_mmcif(const SMat33<double>& b,
+                                       char* buf, std::ostream& os) {
+  double eigenvalues[3];
+  Mat33 eigenvectors = eigen_decomposition(b, eigenvalues);
+  const char* prefix = "\n_reflns.pdbx_aniso_B_tensor_eigen";
+  for (int i = 0; i < 3; ++i) {
+    double v = std::fabs(eigenvalues[i]) > 1e-4 ? eigenvalues[i] : 0;
+    WRITE("%svalue_%d %.5g", prefix, i+1, v);
+    for (int j = 0; j < 3; ++j)
+      WRITE("%svector_%d_ortho[%d] %.5g", prefix, i+1, j+1, eigenvectors[j][i]);
+  }
+  os << '\n';
+}
+
 inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2,
                                 SMat33<double>* staraniso_b, std::ostream& os) {
   if (mtz2 && mtz.is_merged() == mtz2->is_merged())
@@ -552,7 +566,6 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2,
   const Mtz* unmerged = mtz.is_merged() ? mtz2 : &mtz;
 
   char buf[256];
-#define WRITE(...) os.write(buf, gf_snprintf(buf, 255, __VA_ARGS__))
   if (with_comments) {
     os << "# Converted by gemmi-mtz2cif " GEMMI_VERSION "\n";
     for (const Mtz* m : {merged, unmerged})
@@ -673,7 +686,7 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2,
   }
 
   if (staraniso_b)
-    write_staraniso_b(*staraniso_b, buf, os);
+    write_staraniso_b_in_mmcif(*staraniso_b, buf, os);
 
   if (merged)
     write_main_loop(*merged, buf, os);
@@ -946,20 +959,6 @@ inline void MtzToCif::write_cell_and_symmetry(const UnitCell& cell, double* rmsd
           "_symmetry.Int_Tables_number " << sg->number << '\n';
     // could write _symmetry_equiv.pos_as_xyz, but would it be useful?
   }
-}
-
-inline void MtzToCif::write_staraniso_b(const SMat33<double>& b,
-                                        char* buf, std::ostream& os) const {
-  double eigenvalues[3];
-  Mat33 eigenvectors = eigen_decomposition(b, eigenvalues);
-  const char* prefix = "\n_reflns.pdbx_aniso_B_tensor_eigen";
-  for (int i = 0; i < 3; ++i) {
-    double v = std::fabs(eigenvalues[i]) > 1e-4 ? eigenvalues[i] : 0;
-    WRITE("%svalue_%d %.5g", prefix, i+1, v);
-    for (int j = 0; j < 3; ++j)
-      WRITE("%svector_%d_ortho[%d] %.5g", prefix, i+1, j+1, eigenvectors[i][j]);
-  }
-  os << '\n';
 }
 
 #undef WRITE
