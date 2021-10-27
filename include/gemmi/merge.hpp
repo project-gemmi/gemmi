@@ -68,6 +68,33 @@ inline bool read_staraniso_b_from_mmcif(const cif::Block& block, SMat33<double>&
   return true;
 }
 
+// returns STARANISO version or empty string
+inline std::string read_staraniso_b_from_mtz(const Mtz& mtz, SMat33<double>& output) {
+  std::string version;
+  size_t hlen = mtz.history.size();
+  for (size_t i = 0; i != hlen; ++i)
+    if (mtz.history[i].find("STARANISO") != std::string::npos) {
+      size_t version_pos = mtz.history[i].find("version:");
+      if (version_pos != std::string::npos)
+        version = read_word(mtz.history[i].c_str() + version_pos + 8);
+      else
+        version = "?";
+      // StarAniso 2.3.74 (24-Apr-2021) and later write B tensor in history
+      for (size_t j = i+1; j < std::min(i+4, hlen); ++j) {
+        const std::string& line = mtz.history[j];
+        if (starts_with(line, "B=(")) {
+          if (!parse_voigt_notation(line.c_str() + 2,
+                                    line.c_str() + line.size(),
+                                    output))
+            fail("failed to parse tensor Voigt notation: " + line);
+          break;
+        }
+      }
+      break;
+    }
+  return version;
+}
+
 
 struct Intensities {
   enum class Type { None, Unmerged, Mean, Anomalous };
@@ -411,29 +438,7 @@ struct Intensities {
 
   // returns STARANISO version or empty string
   std::string take_staraniso_b_from_mtz(const Mtz& mtz) {
-    std::string version;
-    size_t hlen = mtz.history.size();
-    for (size_t i = 0; i != hlen; ++i)
-      if (mtz.history[i].find("STARANISO") != std::string::npos) {
-        size_t version_pos = mtz.history[i].find("version:");
-        if (version_pos != std::string::npos)
-          version = read_word(mtz.history[i].c_str() + version_pos + 8);
-        else
-          version = "?";
-        // StarAniso 2.3.74 (24-Apr-2021) and later write B tensor in history
-        for (size_t j = i+1; j < std::min(i+4, hlen); ++j) {
-          const std::string& line = mtz.history[j];
-          if (starts_with(line, "B=(")) {
-            if (!parse_voigt_notation(line.c_str() + 2,
-                                      line.c_str() + line.size(),
-                                      staraniso_b.b))
-              fail("failed to parse tensor Voigt notation: " + line);
-            break;
-          }
-        }
-        break;
-      }
-    return version;
+    return read_staraniso_b_from_mtz(mtz, staraniso_b.b);
   }
 
   bool take_staraniso_b_from_mmcif(const cif::Block& block) {

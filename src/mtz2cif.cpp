@@ -245,19 +245,18 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (check_merged_columns && mtz[0])
     ok = gemmi::validate_merged_mtz_deposition_columns(*mtz[0], std::cerr);
   gemmi::Intensities mi;
-  if (mtz[0]) {
+  if (mtz[0])
     mtz_to_cif.staraniso_version = mi.take_staraniso_b_from_mtz(*mtz[0]);
-    if (!mtz_to_cif.staraniso_version.empty()) {
-      std::cerr << "Merged MTZ went through STARANISO " << mtz_to_cif.staraniso_version;
-      if (mi.staraniso_b.ok())
-        std::cerr << ". Taking into account anisotropic scaling.\n";
-      else
-        std::cerr << ". B tensor is unknown. Intensities won't be checked.\n";
-    }
-  }
   if (validate && nargs == 3) {
     try {
       if (mtz[0]) {
+        if (!mtz_to_cif.staraniso_version.empty()) {
+          std::cerr << "Merged MTZ went through STARANISO " << mtz_to_cif.staraniso_version;
+          if (mi.staraniso_b.ok())
+            std::cerr << ". Taking into account anisotropic scaling.\n";
+          else
+            std::cerr << ". B tensor is unknown. Intensities won't be checked.\n";
+        }
         mi.read_merged_intensities_from_mtz(*mtz[0]);
       } else {
         gemmi::ReflnBlock rblock = gemmi::get_refln_block(
