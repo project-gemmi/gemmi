@@ -102,7 +102,7 @@ struct Intensities {
 
     bool ok() const { return !b.all_zero(); }
     double scale(const Miller& hkl, const UnitCell& cell) const {
-      Vec3 s = cell.frac.mat.multiply(Vec3(hkl[0], hkl[1], hkl[2]));
+      Vec3 s = cell.frac.mat.left_multiply(Vec3(hkl[0], hkl[1], hkl[2]));
       return std::exp(0.5 * b.r_u_r(s));
     }
   };
