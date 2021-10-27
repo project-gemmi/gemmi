@@ -162,9 +162,9 @@ void print_batch_extra_info(const Mtz::Batch& b) {
 }
 
 void print_cells(const Mtz& mtz) {
-  print_cell_parameters("global:", mtz.cell);
+  print_cell_parameters("global cell param.:", mtz.cell);
   for (const Mtz::Dataset& ds : mtz.datasets) {
-    printf("dataset %d %s:", ds.id, ds.dataset_name.c_str());
+    printf("dataset %d %-8s:", ds.id, ds.dataset_name.c_str());
     print_cell_parameters("", ds.cell);
   }
 }
