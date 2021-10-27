@@ -3,7 +3,7 @@ import os
 
 # -- General configuration ------------------------------------------------
 
-needs_sphinx = '1.8.5'
+needs_sphinx = '2.4.4'
 
 extensions = ['sphinx.ext.doctest', 'sphinx.ext.githubpages']
 
