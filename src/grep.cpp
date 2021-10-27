@@ -540,6 +540,13 @@ int GEMMI_MAIN(int argc, char **argv) {
             grep_file(file, params, err_count);
             file_count++;
           }
+        } else if (!p.options[Recurse] && (gemmi::giends_with(path, ".cif") ||
+                                           gemmi::giends_with(path, ".mmcif"))) {
+          // Avoid tinydir_file_open (used by CifWalk) when not necessary.
+          // It was reported to fail on a Mac with files on network drive.
+          // Probably reading the parent directory failed, no idea why.
+          grep_file(path, params, err_count);
+          file_count++;
         } else {
           for (const std::string& file : gemmi::CifWalk(path)) {
             grep_file(file, params, err_count);
