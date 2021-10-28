@@ -458,6 +458,36 @@ In this example the "original" atom is in a different location:
   >>> cra.atom.pos
   <gemmi.Position(-0.028, 13.85, -17.645)>
 
+To find what symmetry operation relates the original atom and its
+symmetric image, use:
+
+.. doctest::
+
+  >>> st.cell.find_nearest_image(cra.atom.pos, mark.pos())
+  <gemmi.NearestImage 12_565 in distance 0.00>
+
+We already knew that the used symmetry operation has index 11
+(it was the value of ``mark.image_idx``). The transformation
+at this index is:
+
+.. doctest::
+
+  >>> ns.get_image_transformation(mark.image_idx)  # doctest: +ELLIPSIS
+  <gemmi.FTransform object at 0x...>
+  >>> _.mat
+  <gemmi.Mat33 [1, -1, 0]
+               [0, -1, 0]
+               [0, 0, -1]>
+
+If we know ``mark.image_idx`` we might use a slighly faster function
+that checks only unit cell shifts. It gives the same result:
+
+.. doctest::
+
+  >>> st.cell.find_nearest_pbc_image(cra.atom.pos, mark.pos(), mark.image_idx)
+  <gemmi.NearestImage 12_565 in distance 0.00>
+
+For more information see the :ref:`properties of NearestImage <nearestimage>`.
 
 The neighbor search can also be used with small molecule structures.
 

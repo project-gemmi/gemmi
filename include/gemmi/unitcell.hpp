@@ -74,19 +74,19 @@ struct Fractional : Vec3 {
 enum class Asu : unsigned char { Same, Different, Any };
 
 // Result of find_nearest_image
-struct SymImage {
+struct NearestImage {
   double dist_sq;
-  int box[3] = { 0, 0, 0 };
-  int sym_id = 0;
+  int pbc_shift[3] = { 0, 0, 0 };
+  int sym_idx = 0;
   double dist() const { return std::sqrt(dist_sq); }
   bool same_asu() const {
-    return box[0] == 0 && box[1] == 0 && box[2] == 0 && sym_id == 0;
+    return pbc_shift[0] == 0 && pbc_shift[1] == 0 && pbc_shift[2] == 0 && sym_idx == 0;
   }
   std::string symmetry_code(bool underscore) const {
     char nnn[4] = "555";
     for (int i = 0; i < 3; ++i)
-      nnn[i] -= box[i];
-    return std::to_string(sym_id + 1) + (underscore ? "_" : "") + nnn;
+      nnn[i] += pbc_shift[i];
+    return std::to_string(sym_idx + 1) + (underscore ? "_" : "") + nnn;
   }
 };
 
@@ -357,25 +357,24 @@ struct UnitCell {
   }
 
   // Helper function. PBC = periodic boundary conditions.
-  bool search_pbc_images(Fractional&& diff, SymImage& image) const {
-    int box[3] = { iround(diff.x), iround(diff.y), iround(diff.z) };
-    diff.x -= box[0];
-    diff.y -= box[1];
-    diff.z -= box[2];
+  bool search_pbc_images(Fractional&& diff, NearestImage& image) const {
+    int neg_shift[3] = { iround(diff.x), iround(diff.y), iround(diff.z) };
+    diff.x -= neg_shift[0];
+    diff.y -= neg_shift[1];
+    diff.z -= neg_shift[2];
     Position orth_diff = orthogonalize_difference(diff);
     double dsq = orth_diff.length_sq();
     if (dsq < image.dist_sq) {
       image.dist_sq = dsq;
       for (int j = 0; j < 3; ++j)
-        image.box[j] = box[j];
+        image.pbc_shift[j] = -neg_shift[j];
       return true;
     }
     return false;
   }
 
-  SymImage find_nearest_image(const Position& ref, const Position& pos,
-                              Asu asu) const {
-    SymImage image;
+  NearestImage find_nearest_image(const Position& ref, const Position& pos, Asu asu) const {
+    NearestImage image;
     if (asu == Asu::Different)
       image.dist_sq = INFINITY;
     else
@@ -386,11 +385,11 @@ struct UnitCell {
     Fractional fref = fractionalize(ref);
     search_pbc_images(fpos - fref, image);
     if (asu == Asu::Different &&
-        image.box[0] == 0 && image.box[1] == 0 && image.box[2] == 0)
+        image.pbc_shift[0] == 0 && image.pbc_shift[1] == 0 && image.pbc_shift[2] == 0)
       image.dist_sq = INFINITY;
     for (int n = 0; n != static_cast<int>(images.size()); ++n)
       if (search_pbc_images(images[n].apply(fpos) - fref, image))
-        image.sym_id = n + 1;
+        image.sym_idx = n + 1;
     return image;
   }
 
@@ -404,11 +403,11 @@ struct UnitCell {
     }
   }
 
-  SymImage find_nearest_pbc_image(const Position& ref, const Position& pos,
-                                  int image_idx) const {
-    SymImage sym_image;
+  NearestImage find_nearest_pbc_image(const Position& ref, const Position& pos,
+                                      int image_idx) const {
+    NearestImage sym_image;
     sym_image.dist_sq = INFINITY;
-    sym_image.sym_id = image_idx;
+    sym_image.sym_idx = image_idx;
     Fractional fref = fractionalize(ref);
     Fractional fpos = fractionalize(pos);
     apply_transform(fpos, image_idx, false);

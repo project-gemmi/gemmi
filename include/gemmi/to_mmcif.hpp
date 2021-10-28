@@ -404,7 +404,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
     const Atom* at2 = cra2.atom;
     std::string im_pdb_symbol = "?", im_dist_str = "?";
     if (at1 && at2) {
-      SymImage im = st.cell.find_nearest_image(at1->pos, at2->pos, con.asu);
+      NearestImage im = st.cell.find_nearest_image(at1->pos, at2->pos, con.asu);
       im_pdb_symbol = im.symmetry_code(true);
       im_dist_str = to_str_prec<4>(im.dist());
     }

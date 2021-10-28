@@ -140,6 +140,15 @@ struct NeighborSearch {
     return std::sqrt(dist_sq(pos1, pos2));
   }
 
+  FTransform get_image_transformation(int image_idx) const {
+    // 0 is for identity, other indices are shifted by one.
+    if (image_idx == 0)
+      return Transform{};
+    if ((size_t)image_idx <= grid.unit_cell.images.size())
+      return grid.unit_cell.images[image_idx-1];
+    fail("No such image index: " + std::to_string(image_idx));
+  }
+
 private:
   void set_grid_size() {
     grid.set_size_from_spacing(radius_specified, false);

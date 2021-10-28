@@ -28,8 +28,7 @@ static void check_struct_conn(cif::Block& block) {
     }
     if (!atom[0] || !atom[1])
       continue;
-    SymImage im = st.cell.find_nearest_image(atom[0]->pos,
-                                             atom[1]->pos, con.asu);
+    NearestImage im = st.cell.find_nearest_image(atom[0]->pos, atom[1]->pos, con.asu);
     double dist = std::sqrt(im.dist_sq);
     cif::Table::Row row = struct_conn.find_row(con.name);
     if (!starts_with(con.name, row.str(1)))

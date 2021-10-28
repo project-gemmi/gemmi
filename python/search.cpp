@@ -61,6 +61,7 @@ void add_search(py::module& m) {
          py::arg("atom"), py::arg("min_dist")=0, py::arg("max_dist")=0,
          py::return_value_policy::move, py::keep_alive<0, 1>())
     .def("dist", &NeighborSearch::dist)
+    .def("get_image_transformation", &NeighborSearch::get_image_transformation)
     .def_property_readonly("grid_cell",
         [](const NeighborSearch& self) { return self.grid.unit_cell; })
     .def("__repr__", [](const NeighborSearch& self) {

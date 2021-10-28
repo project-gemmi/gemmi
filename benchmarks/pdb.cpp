@@ -27,7 +27,7 @@ static void find_atom_image(benchmark::State& state) {
     for (const Chain& ch1 : model.chains)
       for (const Residue& res1 : ch1.residues)
         for (const Atom& a1 : res1.atoms) {
-          SymImage im = st.cell.find_nearest_image(ref, a1.pos, Asu::Any);
+          NearestImage im = st.cell.find_nearest_image(ref, a1.pos, Asu::Any);
           sum_dist += im.dist_sq;
         }
     benchmark::DoNotOptimize(sum_dist);

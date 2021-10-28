@@ -117,8 +117,8 @@ void print_contacts(Structure& st, const ContactParameters& params) {
         return;
       std::string sym1, sym2;
       if (!params.no_symmetry) {
-        SymImage im = st.cell.find_nearest_pbc_image(cra1.atom->pos,
-                                                     cra2.atom->pos, image_idx);
+        NearestImage im = st.cell.find_nearest_pbc_image(cra1.atom->pos,
+                                                         cra2.atom->pos, image_idx);
         sym1 = "1555";
         sym2 = im.symmetry_code(false);
       }

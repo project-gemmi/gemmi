@@ -561,8 +561,8 @@ inline void write_header(const Structure& st, std::ostream& os,
           const_CRA cra2 = st.models[0].find_cra(con.partner2, true);
           if (!cra1.atom || !cra2.atom)
             continue;
-          SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
-                                                   cra2.atom->pos, con.asu);
+          NearestImage im = st.cell.find_nearest_image(cra1.atom->pos,
+                                                       cra2.atom->pos, con.asu);
           if (++counter == 10000)
             counter = 0;
           WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  ",
@@ -588,8 +588,8 @@ inline void write_header(const Structure& st, std::ostream& os,
           std::string im_pdb_symbol, im_dist_str;
           bool im_same_asu = true;
           if (cra1.atom && cra2.atom) {
-            SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
-                                                     cra2.atom->pos, con.asu);
+            NearestImage im = st.cell.find_nearest_image(cra1.atom->pos,
+                                                         cra2.atom->pos, con.asu);
             im_pdb_symbol = im.symmetry_code(false);
             im_dist_str = to_str_prec<2>(im.dist());
             im_same_asu = im.same_asu();

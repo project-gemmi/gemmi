@@ -586,7 +586,7 @@ With this list we can use:
     >>> st.cell.is_special_position(cl.pos, max_dist=1.2)
     5
 
-* ``UnitCell::find_nearest_image(const Position& ref, const Position& pos, Asu asu) -> SymImage`` --
+* ``UnitCell::find_nearest_image(const Position& ref, const Position& pos, Asu asu) -> NearestImage`` --
   with the last argument set to ``Asu::Any``,
   it returns the symmetric image of ``pos`` that is nearest to ``ref``.
   The last argument can also be set to ``Asu::Same`` or ``Asu::Different``.
@@ -1786,8 +1786,8 @@ Each connection stores:
     >>> st.connections[-1].reported_distance
     2.22
 
-When the connection is written to a file, the symmetry image and the distance
-are recalculated like this:
+The symmetry image and the distance
+can be recalculated using function ``find_nearest_image()``:
 
 .. doctest::
 
@@ -1795,11 +1795,25 @@ are recalculated like this:
   >>> pos1 = st[0].find_cra(con.partner1).atom.pos
   >>> pos2 = st[0].find_cra(con.partner2).atom.pos
   >>> st.cell.find_nearest_image(pos1, pos2, con.asu)
-  <gemmi.SymImage box:[2, 1, 1] sym:5>
-  >>> _.dist()
-  2.221153304029239
+  <gemmi.NearestImage 6_344 in distance 2.22>
 
-The vast majority of connections is intramolecular, so usually you get:
+.. _nearestimage:
+
+The resulting NearestImage object has the following properties:
+
+.. doctest::
+
+  >>> im = st.cell.find_nearest_image(pos1, pos2, con.asu)
+  >>> im.dist()
+  2.221153304029239
+  >>> im.symmetry_code()
+  '6_344'
+  >>> im.sym_idx
+  5
+  >>> im.pbc_shift
+  (-2, -1, -1)
+
+The vast majority of connections is intramolecular, so usually you get 1_555:
 
 .. testcode::
   :hide:
@@ -1811,7 +1825,7 @@ The vast majority of connections is intramolecular, so usually you get:
 .. doctest::
 
   >>> st.cell.find_nearest_image(pos1, pos2, con.asu)
-  <gemmi.SymImage box:[0, 0, 0] sym:0>
+  <gemmi.NearestImage 1_555 in distance 2.03>
 
 The section about :ref:`AtomAddress <atom_address>`
 has an example that shows how to create a new connection.

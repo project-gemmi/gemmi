@@ -223,13 +223,19 @@ void add_unitcell(py::module& m) {
     .def("apply", &FTransform::apply);
 
 
-  py::class_<SymImage>(m, "SymImage")
-    .def("dist", &SymImage::dist)
-    .def("symmetry_code", &SymImage::symmetry_code)
-    .def("__repr__", [](const SymImage& self) {
-        return "<gemmi.SymImage box:[" +
-          triple(self.box[0], self.box[1], self.box[2]) +
-          "] sym:" + std::to_string(self.sym_id) + ">";
+  py::class_<NearestImage>(m, "NearestImage")
+    .def("dist", &NearestImage::dist)
+    .def("symmetry_code", &NearestImage::symmetry_code, py::arg("underscore")=true)
+    .def_readonly("sym_idx", &NearestImage::sym_idx)
+    .def_property_readonly("pbc_shift", [](const NearestImage& self) {
+        return py::make_tuple(self.pbc_shift[0], self.pbc_shift[1], self.pbc_shift[2]);
+    })
+    .def("__repr__", [](const NearestImage& self) {
+        using namespace std;  // VS2015/17 doesn't like std::snprintf
+        char buf[64];
+        snprintf(buf, 64, "<gemmi.NearestImage %s in distance %.2f>",
+                 self.symmetry_code(true).c_str(), self.dist());
+        return std::string(buf);
     });
 
   py::enum_<Asu>(m, "Asu")
