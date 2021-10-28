@@ -120,7 +120,7 @@ void print_contacts(Structure& st, const ContactParameters& params) {
         SymImage im = st.cell.find_nearest_pbc_image(cra1.atom->pos,
                                                      cra2.atom->pos, image_idx);
         sym1 = "1555";
-        sym2 = im.pdb_symbol(false);
+        sym2 = im.symmetry_code(false);
       }
       std::string conn_info;
       if (Connection* conn = st.find_connection_by_cra(cra1, cra2))

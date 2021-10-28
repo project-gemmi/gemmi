@@ -571,7 +571,7 @@ inline void write_header(const Structure& st, std::ostream& os,
              write_seq_id(buf8, cra1.residue->seqid),
              cra2.residue->name.c_str(), cra2.chain->name.c_str(),
              write_seq_id(buf8a, cra2.residue->seqid),
-             "1555", im.pdb_symbol(false).c_str(), im.dist());
+             "1555", im.symmetry_code(false).c_str(), im.dist());
         }
     }
 
@@ -590,7 +590,7 @@ inline void write_header(const Structure& st, std::ostream& os,
           if (cra1.atom && cra2.atom) {
             SymImage im = st.cell.find_nearest_image(cra1.atom->pos,
                                                      cra2.atom->pos, con.asu);
-            im_pdb_symbol = im.pdb_symbol(false);
+            im_pdb_symbol = im.symmetry_code(false);
             im_dist_str = to_str_prec<2>(im.dist());
             im_same_asu = im.same_asu();
           }

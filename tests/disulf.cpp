@@ -28,7 +28,7 @@ struct BondInfo {
     assert(fabs(dist_sq - im.dist_sq) < 1e-3);
     std::printf("%s - %s  im:%s  %.3f\n",
                 atom_str(cra1).c_str(), atom_str(cra2).c_str(),
-                im.pdb_symbol(true).c_str(), std::sqrt(dist_sq));
+                im.symmetry_code(true).c_str(), std::sqrt(dist_sq));
   }
 
 };

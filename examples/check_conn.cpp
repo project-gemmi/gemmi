@@ -45,7 +45,7 @@ static void check_struct_conn(cif::Block& block) {
       std::printf("%s %-9s %-14s %-14s im:%s  %.3f %c= %.3f (%s)%s\n",
                   block.name.c_str(), con.name.c_str(),
                   con.partner1.str().c_str(), con.partner2.str().c_str(),
-                  im.pdb_symbol(true).c_str(), dist, (differs ? '!' : '='),
+                  im.symmetry_code(true).c_str(), dist, (differs ? '!' : '='),
                   ref_dist, ref_sym.c_str(),
                   st.cell.explicit_matrices ? "  {fract}" : "");
     }

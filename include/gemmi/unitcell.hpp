@@ -82,7 +82,7 @@ struct SymImage {
   bool same_asu() const {
     return box[0] == 0 && box[1] == 0 && box[2] == 0 && sym_id == 0;
   }
-  std::string pdb_symbol(bool underscore) const {
+  std::string symmetry_code(bool underscore) const {
     char nnn[4] = "555";
     for (int i = 0; i < 3; ++i)
       nnn[i] -= box[i];

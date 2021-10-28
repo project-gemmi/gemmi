@@ -225,6 +225,7 @@ void add_unitcell(py::module& m) {
 
   py::class_<SymImage>(m, "SymImage")
     .def("dist", &SymImage::dist)
+    .def("symmetry_code", &SymImage::symmetry_code)
     .def("__repr__", [](const SymImage& self) {
         return "<gemmi.SymImage box:[" +
           triple(self.box[0], self.box[1], self.box[2]) +
