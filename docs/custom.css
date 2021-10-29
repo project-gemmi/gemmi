@@ -11,6 +11,8 @@
 
 /* overwrite 12px margin that adds extra spacing before a nested list */
 .rst-content .section ul p { margin-bottom: 0; }
+/* in sphinx_rtd_theme=1.0 this works, but only in Contents */
+.rst-content .section ul li > p { margin-bottom: 0; }
 
 /* roles used in mol.rst */
 .orange-fg { color:#d50; }
