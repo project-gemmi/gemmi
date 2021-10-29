@@ -45,6 +45,7 @@ jobs:
         path: |
           ${{runner.workspace}}/build/gemmi
           ${{runner.workspace}}/dist/gemmi*.egg
+        retention-days: 14
 
 
   ubuntu2004:
@@ -80,6 +81,7 @@ jobs:
       with:
         name: gemmi-linux
         path: dist/gemmi*.egg
+        retention-days: 14
 
   ubuntu1804:
     name: "Ubuntu 18.04 with sdist"
@@ -158,7 +160,7 @@ jobs:
         make -j2
         make -j2 check
         python3 -m unittest discover -v -s ./tests/
-        strip --strip-unneeded ./gemmi.cpython*.so
+        strip --strip-unneeded ./gemmi ./gemmi.cpython*.so
     - name: run doctest
       run: |
         pip3 install -U sphinx
@@ -170,3 +172,4 @@ jobs:
         path: |
           ./gemmi
           ./gemmi.cpython*.so
+        retention-days: 14
