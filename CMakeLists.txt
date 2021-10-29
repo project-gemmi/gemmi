@@ -7,6 +7,9 @@ option(INSTALL_EGG_INFO "Install .egg-info via setup.py" ON)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" ON)
 
+# uncomment to show compilation times for each compilation unit
+#set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "\"${CMAKE_COMMAND}\" -E time")
+
 if (DEFINED ENV{FC} OR CMAKE_Fortran_COMPILER)
   set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
 endif()
@@ -386,15 +389,15 @@ if (USE_PYTHON)
     find_package(pybind11 2.6 CONFIG REQUIRED)
     message(STATUS "Found pybind11 ${pybind11_VERSION}: ${pybind11_INCLUDE_DIRS}")
   endif()
-  pybind11_add_module(gemmi python/monlib.cpp
-                            python/gemmi.cpp python/align.cpp
-                            python/ccp4.cpp python/cif.cpp python/custom.cpp
-                            python/elem.cpp python/grid.cpp python/hkl.cpp
-                            python/meta.cpp python/mol.cpp
-                            python/mtz.cpp python/read.cpp python/recgrid.cpp
-                            python/scaling.cpp python/search.cpp
-                            python/sf.cpp python/sym.cpp python/topo.cpp
-                            python/unitcell.cpp python/write.cpp)
+  pybind11_add_module(gemmi
+          python/mol.cpp python/gemmi.cpp python/align.cpp
+          python/ccp4.cpp python/chemcomp.cpp python/cif.cpp python/custom.cpp
+          python/elem.cpp python/grid.cpp python/hkl.cpp
+          python/meta.cpp python/monlib.cpp
+          python/mtz.cpp python/read.cpp python/recgrid.cpp
+          python/scaling.cpp python/search.cpp
+          python/sf.cpp python/sym.cpp python/topo.cpp
+          python/unitcell.cpp python/write.cpp)
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
     target_compile_options(gemmi PRIVATE "-Wno-shadow")
   endif()
