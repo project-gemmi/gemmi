@@ -369,11 +369,12 @@ enum class HydrogenChange { None, Shift, Remove, ReAdd, ReAddButWater };
 
 inline std::unique_ptr<Topo>
 prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
-                 HydrogenChange h_change, bool reorder, bool raise_errors=false) {
+                 HydrogenChange h_change, bool reorder, bool raise_errors=false,
+                 bool ignore_unknown_links=false) {
   std::unique_ptr<Topo> topo(new Topo);
   if (model_index >= st.models.size())
     fail("no such model index: " + std::to_string(model_index));
-  topo->initialize_refmac_topology(st, st.models[model_index], monlib);
+  topo->initialize_refmac_topology(st, st.models[model_index], monlib, ignore_unknown_links);
 
   bool keep = (h_change == HydrogenChange::None || h_change == HydrogenChange::Shift);
   if (!keep || reorder) {
