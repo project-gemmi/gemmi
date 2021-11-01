@@ -318,7 +318,7 @@ struct Topo {
   // Because of the pointers, don't add or remove residues after this step.
   // Monlib may get modified by addition of extra links from the model.
   void initialize_refmac_topology(const Structure& st, Model& model0,
-                                  MonLib& monlib);
+                                  MonLib& monlib, bool ignore_unknown_links=false);
 
   // This step stores pointers to gemmi::Atom's from model0,
   // so after this step don't add or remove atoms.
@@ -403,7 +403,7 @@ inline void Topo::ChainInfo::add_refmac_builtin_modifications() {
 
 // Model is non-const b/c we store non-const pointers to residues in Topo.
 inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
-                                             MonLib& monlib) {
+                                             MonLib& monlib, bool ignore_unknown_links) {
   // initialize chains and residues
   for (Chain& chain : model0.chains)
     for (ResidueSpan& sub : chain.subchains()) {
@@ -465,6 +465,9 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
         std::swap(extra.alt1, extra.alt2);
       }
     }
+
+    if (!match && ignore_unknown_links)
+      continue;
 
     if (match) {
       extra.link_id = match->id;

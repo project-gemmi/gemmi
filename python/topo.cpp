@@ -137,5 +137,6 @@ void add_topo(py::module& m) {
   m.def("prepare_topology", &prepare_topology,
         py::arg("st"), py::arg("monlib"), py::arg("model_index")=0,
         py::arg("h_change")=HydrogenChange::None, py::arg("reorder")=false,
-        py::arg("raise_errors")=false);
+        py::arg("raise_errors")=false,
+        py::arg("ignore_unknown_links")=false);
 }
