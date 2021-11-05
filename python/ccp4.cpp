@@ -41,6 +41,8 @@ void add_ccp4(py::module& m) {
     .def("set_header_str", &Ccp4Base::set_header_str)
     .def("axis_positions", &Ccp4Base::axis_positions)
     .def("get_extent", &Ccp4Base::get_extent)
+    .def("has_skew_transformation", &Ccp4Base::has_skew_transformation)
+    .def("get_skew_transformation", &Ccp4Base::get_skew_transformation)
     ;
 
   add_ccp4_common<float>(m, "Ccp4Map")

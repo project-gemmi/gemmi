@@ -114,6 +114,25 @@ struct Ccp4Base {
     }
     return box;
   }
+
+  // Skew transformation (words 25-37) is supported by CCP4 maplib and PyMOL,
+  // but it's not in the MRC format and is not supported by most programs.
+  // From maplib.html: Skew transformation is from standard orthogonal
+  // coordinate frame (as used for atoms) to orthogonal map frame, as
+  //                            Xo(map) = S * (Xo(atoms) - t)
+  bool has_skew_transformation() const {
+    return header_i32(25) != 0;  // LSKFLG should be 0 or 1
+  }
+  Transform get_skew_transformation() const {
+    return {
+      // 26-34 SKWMAT
+      { header_float(26), header_float(27), header_float(28),
+        header_float(29), header_float(30), header_float(31),
+        header_float(32), header_float(33), header_float(34) },
+      // 35-37 SKWTRN
+      { header_float(35), header_float(36), header_float(37) }
+    };
+  }
 };
 
 template<typename T=float>

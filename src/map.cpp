@@ -77,6 +77,9 @@ gemmi::DataStats print_info(const gemmi::Ccp4<T>& map) {
   };
   if (origin[0] != 0 || origin[1] != 0 || origin[2] != 0)
     std::printf("Non-zero origin: %d %d %d\n", origin[0], origin[1], origin[2]);
+  if (map.has_skew_transformation())
+    std::printf("Defines skew transformation with translation length %.5g A.\n",
+                map.get_skew_transformation().vec.length());
 
   std::printf("\nStatistics from HEADER and DATA\n");
   gemmi::DataStats st = gemmi::calculate_data_statistics(grid.data);
