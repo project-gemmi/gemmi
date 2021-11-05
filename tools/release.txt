@@ -8,10 +8,12 @@
 
 - make, test and upload source package to PyPI:
   python3 setup.py sdist
+  twine check dist/gemmi-$VERSION.tar.gz
   python3 -m pip uninstall gemmi
   python3 -m pip install dist/gemmi-$VERSION.tar.gz
 
 - git commit -a -m "change version number to $VERSION"
+  git push
 
 - Run https://github.com/project-gemmi/gemmi/actions/workflows/wheels.yml
   download wheels.zip and unpack to wheelhouse/

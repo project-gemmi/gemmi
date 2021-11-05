@@ -1,6 +1,5 @@
-# Based on:
-# https://cibuildwheel.readthedocs.io/en/stable/setup/ and
-# https://github.com/pybind/python_example/blob/master/.github/workflows/wheels.yml
+# Use cibuildwheel v1 to build wheels for Python 2.7.
+# Based on https://cibuildwheel.readthedocs.io/en/1.x/setup/
 name: Wheels
 
 on:
@@ -8,12 +7,12 @@ on:
     inputs:
       cibw_build:
         description: 'CIBW_BUILD'
-        default: '*'
+        # Python 3 is built in wheels2.yml.
+        default: 'cp27-*'
       cibw_skip:
         description: 'CIBW_SKIP'
         # Python 2.7 on Windows requires a workaround for C++11 support,
-        # Python 3.5 is EOL, PyPy 2.7 is skipped to limit the number of builds.
-        default: 'cp27-win* cp35-* pp27-*'
+        default: 'cp27-win*'
 
 env:
   CIBW_TEST_COMMAND: python -m unittest discover -v -s {project}/tests/
@@ -46,7 +45,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, windows-2019, macos-10.15]
+        # don't include windows-2019, we skip Python2.7 for Windows
+        os: [ubuntu-20.04, macos-10.15]
 
     steps:
     - uses: actions/checkout@v2
