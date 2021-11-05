@@ -91,12 +91,14 @@ struct SupResult {
 };
 
 // helper function
-inline double qcp_inner_product(Mat33& mat, const Position* pos1, const Position* pos2,
+inline double qcp_inner_product(Mat33& mat,
+                                const Position* pos1, const Position& ctr1,
+                                const Position* pos2, const Position& ctr2,
                                 size_t len, const double* weight) {
   double G1 = 0.0, G2 = 0.0;
   for (size_t i = 0; i < len; ++i) {
-    const Position& f1 = pos1[i];
-    const Position& f2 = pos2[i];
+    Position f1 = pos1[i] - ctr1;
+    Position f2 = pos2[i] - ctr2;
     double w = (weight != nullptr ? weight[i] : 1.);
     Vec3 v1 = w * f1;
     G1 += v1.dot(f1);
@@ -279,7 +281,7 @@ inline int fast_calc_rmsd_and_rotation(Mat33* rot, const Mat33& A, double *rmsd,
 }
 
 // helper function
-inline Position qcp_center_coords(Position* pos, size_t len, const double *weight) {
+inline Position qcp_calculate_center(const Position* pos, size_t len, const double *weight) {
   double wsum = 0.0;
   Position ctr;
   for (size_t i = 0; i < len; ++i) {
@@ -287,23 +289,19 @@ inline Position qcp_center_coords(Position* pos, size_t len, const double *weigh
     ctr += w * pos[i];
     wsum += w;
   }
-  ctr /= wsum;
-  for (size_t i = 0; i < len; ++i)
-    pos[i] -= ctr;
-  return ctr;
+  return ctr / wsum;
 }
 
 // Calculate superposition of pos2 onto pos1 -- pos2 is movable.
 // Does not perform the superposition, only returns the operation to be used.
-// As a side effect, both pos1 and pos2 are shifted (centered at 0).
-inline SupResult superpose_positions(Position* pos1, Position *pos2,
-                                     size_t len, const double *weight) {
+inline SupResult superpose_positions(const Position* pos1, const Position* pos2,
+                                     size_t len, const double* weight) {
   SupResult result;
   result.count = len;
 
   /* center the structures -- if precentered you can omit this step */
-  result.center1 = qcp_center_coords(pos1, len, weight);
-  result.center2 = qcp_center_coords(pos2, len, weight);
+  result.center1 = qcp_calculate_center(pos1, len, weight);
+  result.center2 = qcp_calculate_center(pos2, len, weight);
 
   double wsum = 0.0;
   if (weight == nullptr)
@@ -314,7 +312,7 @@ inline SupResult superpose_positions(Position* pos1, Position *pos2,
 
   Mat33 A(0);
   /* calculate the (weighted) inner product of two structures */
-  double E0 = qcp_inner_product(A, pos1, pos2, len, weight);
+  double E0 = qcp_inner_product(A, pos1, result.center1, pos2, result.center2, len, weight);
 
   /* calculate the RMSD & rotational matrix */
   fast_calc_rmsd_and_rotation(&result.transform.mat, A, &result.rmsd, E0, wsum, -1);
@@ -324,14 +322,14 @@ inline SupResult superpose_positions(Position* pos1, Position *pos2,
 }
 
 // Similar to superpose_positions(), but calculates RMSD only.
-// As a side effect, both pos1 and pos2 are shifted (centered at 0).
-inline double calculate_rmsd_of_superposed_positions(Position* pos1, Position *pos2,
-                                                     size_t len, const double *weight) {
+inline double calculate_rmsd_of_superposed_positions(const Position* pos1,
+                                                     const Position* pos2,
+                                                     size_t len, const double* weight) {
   double result;
 
   // center the structures
-  qcp_center_coords(pos1, len, weight);
-  qcp_center_coords(pos2, len, weight);
+  Position ctr1 = qcp_calculate_center(pos1, len, weight);
+  Position ctr2 = qcp_calculate_center(pos2, len, weight);
 
   double wsum = 0.0;
   if (weight == nullptr)
@@ -342,7 +340,7 @@ inline double calculate_rmsd_of_superposed_positions(Position* pos1, Position *p
 
   // calculate the (weighted) inner product of two structures
   Mat33 A(0);
-  double E0 = qcp_inner_product(A, pos1, pos2, len, weight);
+  double E0 = qcp_inner_product(A, pos1, ctr1, pos2, ctr2, len, weight);
 
   // calculate the RMSD
   fast_calc_rmsd_and_rotation(nullptr, A, &result, E0, wsum, -1);
