@@ -116,9 +116,12 @@ void add_alignment(py::module& m) {
 
   m.def("calculate_superposition",
         [](const ResidueSpan& fixed, const ResidueSpan& movable,
-           PolymerType ptype, SupSelect sel, char altloc, bool current_rmsd) {
-          return calculate_superposition(fixed, movable, ptype, sel, altloc, current_rmsd);
+           PolymerType ptype, SupSelect sel, int trim_cycles, double trim_cutoff,
+           char altloc, bool current_rmsd) {
+          return calculate_superposition(fixed, movable, ptype, sel,
+                                         trim_cycles, trim_cutoff, altloc, current_rmsd);
         }, py::arg("fixed"), py::arg("movable"), py::arg("ptype"), py::arg("sel"),
+           py::arg("trim_cycles")=0, py::arg("trim_cutoff")=2.0,
            py::arg("altloc")='\0', py::arg("current_rmsd")=false);
 
   m.def("superpose_positions",

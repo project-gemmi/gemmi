@@ -154,6 +154,8 @@ inline SupResult calculate_superposition(ConstResidueSpan fixed,
                                          ConstResidueSpan movable,
                                          PolymerType ptype,
                                          SupSelect sel,
+                                         int trim_cycles=0,
+                                         double trim_cutoff=2.0,
                                          char altloc='\0',
                                          bool current_rmsd=false) {
   AlignmentScoring scoring;
@@ -203,8 +205,33 @@ inline SupResult calculate_superposition(ConstResidueSpan fixed,
     r.rmsd = std::sqrt(sd / r.count);
     return r;
   }
-  const double *weights = nullptr;
-  return superpose_positions(pos1.data(), pos2.data(), pos1.size(), weights);
+  const double* weights = nullptr;
+  size_t len = pos1.size();
+  SupResult sr = superpose_positions(pos1.data(), pos2.data(), len, weights);
+
+  for (int n = 0; n < trim_cycles; ++n) {
+    double max_dist_sq = sq(trim_cutoff * sr.rmsd);
+    size_t p = 0;
+    for (size_t i = 0; i != len; ++i) {
+      Vec3 m2 = sr.transform.apply(pos2[i]);
+      if (m2.dist_sq(pos1[i]) <= max_dist_sq) {
+        if (i != p) {
+          pos1[p] = pos1[i];
+          pos2[p] = pos2[i];
+        }
+        ++p;
+      }
+    }
+    if (p == len)
+      break;
+    len = p;
+    if (len < 3)
+      fail("in calculate_superposition(): only ", std::to_string(len),
+           " atoms after trimming");
+    sr = superpose_positions(pos1.data(), pos2.data(), len, weights);
+  }
+
+  return sr;
 }
 
 inline void apply_superposition(const SupResult& r, ResidueSpan span) {

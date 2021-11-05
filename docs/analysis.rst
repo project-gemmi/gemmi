@@ -743,6 +743,19 @@ The arguments to ``calculate_superposition()`` are:
   By default, atoms with non-blank altloc are ignored.
   With altloc='A', only the A conformer is considered
   (atoms with altloc either blank or A). Etc.
+- (optionally) trim_cycles (default: 0) --  maximum number of outlier
+  rejection cycles. This option was inspired by the align command in PyMOL.
+
+  .. doctest::
+
+    >>> sr = gemmi.calculate_superposition(polymer1, polymer2, ptype,
+    ...                                    gemmi.SupSelect.All, trim_cycles=5)
+    >>> sr.count
+    73
+    >>> sr.rmsd
+    0.18315488879658484
+
+- (optionally) trim_cutoff (default: 2.0) --  outlier rejection cutoff in RMSD,
 - (optionally) ``current_rmsd=true`` -- the functions does not perform
   the superposition, it returns the current RMSD between atoms that would be
   used for the superposition, and also the number of atoms that would be used.
