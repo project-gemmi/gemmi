@@ -378,6 +378,11 @@ In case of ``Mat33`` it is a nested list:
 Here is an example that shows a few other properties:
 
 .. doctest::
+  :hide:
+
+  >>> import math
+
+.. doctest::
 
     >>> # get NCS transformation from an example pdb file
     >>> ncs_op = gemmi.read_structure('../tests/1lzh.pdb.gz').ncs[0].tr
@@ -389,6 +394,10 @@ Here is an example that shows a few other properties:
                  [-0.03885, 0.15039, 0.98786]>
     >>> _.determinant()
     1.0000038877996669
+    >>> ncs_op.mat.trace()
+    2.93016
+    >>> math.degrees(math.acos((_ - 1) / 2))  # calculate rotation angle
+    15.186116047571074
     >>> ncs_op.vec
     <gemmi.Vec3(-14.1959, 0.72997, -30.5229)>
 

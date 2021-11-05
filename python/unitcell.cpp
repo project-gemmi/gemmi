@@ -145,6 +145,7 @@ void add_unitcell(py::module& m) {
     .def("multiply", (Vec3 (Mat33::*)(const Vec3&) const) &Mat33::multiply)
     .def("left_multiply", &Mat33::left_multiply)
     .def("transpose", &Mat33::transpose)
+    .def("trace", &Mat33::trace)
     .def("approx", &Mat33::approx, py::arg("other"), py::arg("epsilon"))
     .def("determinant", &Mat33::determinant)
     .def("inverse", &Mat33::inverse)
