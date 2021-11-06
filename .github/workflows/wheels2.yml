@@ -6,9 +6,14 @@ name: Wheels2
 on:
   workflow_dispatch:
     inputs:
+      cibw_build:
+        description: 'CIBW_BUILD'
+        default: '*'
       cibw_skip:
         description: 'CIBW_SKIP'
-        default: ''
+        # To limit the number of builds, skip most of musl-based versions
+        # and 32-bit builds.
+        default: 'cp{36,37,38}-musllinux* *_i686 *-win32'
 
 env:
   CIBW_TEST_COMMAND: python -m unittest discover -v -s {project}/tests/

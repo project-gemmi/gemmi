@@ -12,7 +12,8 @@ on:
       cibw_skip:
         description: 'CIBW_SKIP'
         # Python 2.7 on Windows requires a workaround for C++11 support,
-        default: 'cp27-win*'
+        # To limit the number of builds, skip 32-bit builds.
+        default: 'cp27-win* *linux_i686'
 
 env:
   CIBW_TEST_COMMAND: python -m unittest discover -v -s {project}/tests/
