@@ -510,7 +510,7 @@ struct Grid : GridBase<T> {
 
   void change_values(T old_value, T new_value) {
     for (auto& d : data)
-      if (d == old_value)
+      if (std::isnan(old_value) ? std::isnan(d) : d == old_value)
         d = new_value;
   }
 

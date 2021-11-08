@@ -98,6 +98,7 @@ void add_grid(py::module& m, const std::string& name) {
     .def("get_nearest_point", (GrPoint (Gr::*)(const Position&)) &Gr::get_nearest_point)
     .def("point_to_fractional", &Gr::point_to_fractional)
     .def("point_to_position", &Gr::point_to_position)
+    .def("change_values", &Gr::change_values, py::arg("old_value"), py::arg("new_value"))
     .def("interpolate_value",
          (T (Gr::*)(const Fractional&) const) &Gr::interpolate_value)
     .def("interpolate_value",
@@ -218,6 +219,7 @@ void add_grid(py::module& m) {
     .def("set_to_zero", &SolventMasker::set_to_zero)
     ;
 
+  // from blob.hpp
   py::class_<Blob>(m, "Blob")
     .def_readonly("volume", &Blob::volume)
     .def_readonly("score", &Blob::score)
