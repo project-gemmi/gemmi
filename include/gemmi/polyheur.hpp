@@ -323,7 +323,11 @@ template<> inline void remove_waters(Chain& ch) {
 }
 
 // Remove ligands and waters. It may leave empty chains.
-inline void remove_ligands_and_waters(Chain& ch) {
+template<class T> void remove_ligands_and_waters(T& obj) {
+  for (auto& child : obj.children())
+    remove_ligands_and_waters(child);
+}
+template<> inline void remove_ligands_and_waters(Chain& ch) {
   PolymerType ptype = check_polymer_type(ch.whole());
   vector_remove_if(ch.residues, [&](const Residue& res) {
       if (res.entity_type == EntityType::Unknown) {
@@ -332,12 +336,6 @@ inline void remove_ligands_and_waters(Chain& ch) {
       }
       return res.entity_type != EntityType::Polymer;
   });
-}
-
-inline void remove_ligands_and_waters(Structure& st) {
-  for (Model& model : st.models)
-    for (Chain& chain : model.chains)
-      remove_ligands_and_waters(chain);
 }
 
 // Trim to alanine. Returns true if trimmed, false if it's (likely) not AA.
