@@ -19,6 +19,18 @@
 
 namespace gemmi {
 
+namespace impl {
+
+template<typename T> bool is_same(T a, T b) { return a == b; }
+template<> inline bool is_same(float a, float b) {
+  return std::isnan(b) ? std::isnan(a) : a == b;
+}
+template<> inline bool is_same(double a, double b) {
+  return std::isnan(b) ? std::isnan(a) : a == b;
+}
+
+} // namespace impl
+
 inline int modulo(int a, int n) {
   if (a >= n)
     a %= n;
@@ -510,7 +522,7 @@ struct Grid : GridBase<T> {
 
   void change_values(T old_value, T new_value) {
     for (auto& d : data)
-      if (std::isnan(old_value) ? std::isnan(d) : d == old_value)
+      if (impl::is_same(d, old_value))
         d = new_value;
   }
 

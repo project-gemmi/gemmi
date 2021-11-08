@@ -372,18 +372,6 @@ void Ccp4<T>::read_ccp4_stream(Stream f, const std::string& path) {
   }
 }
 
-namespace impl {
-
-template<typename T> bool is_same(T a, T b) { return a == b; }
-template<> inline bool is_same(float a, float b) {
-  return std::isnan(b) ? std::isnan(a) : a == b;
-}
-template<> inline bool is_same(double a, double b) {
-  return std::isnan(b) ? std::isnan(a) : a == b;
-}
-
-} // namespace impl
-
 template<typename T>
 double Ccp4<T>::setup(GridSetup mode, T default_value) {
   double max_error = 0.0;
