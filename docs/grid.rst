@@ -89,6 +89,13 @@ The advantage of calling ``set_size()`` after a space group was set
 is that this function checks if the size is compatible with the space group
 (a symmetry operation cannot map a node to a point between nodes).
 
+You can create a copy of a grid with:
+
+.. doctest::
+
+  >>> grid3.clone()
+  <gemmi.FloatGrid(12, 12, 12)>
+
 Values are accessed with functions get_value() and set_value():
 
 .. doctest::

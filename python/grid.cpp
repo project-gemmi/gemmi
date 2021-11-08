@@ -146,6 +146,7 @@ void add_grid(py::module& m, const std::string& name) {
               ptr[idx++] = self.get_value(u0 + u, v0 + v, w0 + w);
         return arr;
     })
+    .def("clone", [](const Gr& self) { return new Gr(self); })
     .def("__repr__", [=](const Gr& self) {
         return tostr("<gemmi.", name, '(', self.nu, ", ", self.nv, ", ", self.nw, ")>");
     });
