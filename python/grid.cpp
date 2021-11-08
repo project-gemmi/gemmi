@@ -24,7 +24,7 @@ namespace py = pybind11;
 using namespace gemmi;
 
 template<typename T>
-void add_grid_base(py::module& m, const char* name) {
+py::class_<GridBase<T>, GridMeta> add_grid_base(py::module& m, const char* name) {
   using GrBase = GridBase<T>;
   using GrPoint = typename GridBase<T>::Point;
 
@@ -56,6 +56,7 @@ void add_grid_base(py::module& m, const char* name) {
     .def("__iter__", [](GrBase& self) { return py::make_iterator(self); },
          py::keep_alive<0, 1>())
     ;
+  return grid_base;
 }
 
 template<typename T>
@@ -194,7 +195,9 @@ void add_grid(py::module& m) {
 
   add_grid_base<int8_t>(m, "Int8GridBase");
   add_grid<int8_t>(m, "Int8Grid");
-  add_grid_base<float>(m, "FloatGridBase");
+  add_grid_base<float>(m, "FloatGridBase")
+    .def("calculate_correlation", &calculate_correlation<float>)
+    ;
   add_grid<float>(m, "FloatGrid");
   add_grid_base<std::complex<float>>(m, "ComplexGridBase");
   m.def("interpolate_positions", &interpolate_positions);

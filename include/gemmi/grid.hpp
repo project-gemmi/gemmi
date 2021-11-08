@@ -661,5 +661,17 @@ MaskedGrid<T> Grid<T>::asu() {
   return {*this, get_asu_mask<std::int8_t>()};
 }
 
+
+template<typename T>
+Correlation calculate_correlation(const GridBase<T>& a, const GridBase<T>& b) {
+  if (a.data.size() != b.data.size() || a.nu != b.nu || a.nv != b.nv || a.nw != b.nw)
+    fail("calculate_correlation(): grids have different sizes");
+  Correlation corr;
+  for (size_t i = 0; i != a.data.size(); ++i)
+    if (!std::isnan(a.data[i]) && !std::isnan(b.data[i]))
+      corr.add_point(a.data[i], b.data[i]);
+  return corr;
+}
+
 } // namespace gemmi
 #endif
