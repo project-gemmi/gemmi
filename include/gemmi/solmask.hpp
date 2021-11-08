@@ -246,8 +246,10 @@ struct SolventMasker {
   }
 
   template<typename T> void shrink(Grid<T>& grid) const {
-    set_margin_around(grid, rshrink, (T)1, (T)-1);
-    grid.change_values((T)-1, (T)1);
+    if (rshrink > 0) {
+      set_margin_around(grid, rshrink, (T)1, (T)-1);
+      grid.change_values((T)-1, (T)1);
+    }
   }
 
   template<typename T> void invert(Grid<T>& grid) const {
