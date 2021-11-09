@@ -773,7 +773,7 @@ changing the atomic positions in-place:
 
   >>> polymer2[2].sole_atom('CB')  # before
   <gemmi.Atom CB at (-30.3, -10.6, -11.6)>
-  >>> sup.apply(polymer2)
+  >>> polymer2.transform_pos_and_adp(sup.transform)
   >>> polymer2[2].sole_atom('CB')  # after
   <gemmi.Atom CB at (-28.5, -12.6, 11.2)>
   >>> # it is now nearby the corresponding atom in chain A:

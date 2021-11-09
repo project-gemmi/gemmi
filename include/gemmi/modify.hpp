@@ -72,11 +72,11 @@ template<> inline void ensure_anisou(Atom& atom) {
 }
 
 // apply Transform to both atom's position and ADP
-template<class T> void transform_position_and_adp(T& obj, const Transform& tr) {
+template<class T> void transform_pos_and_adp(T& obj, const Transform& tr) {
   for (auto& child : obj.children())
-    transform_position_and_adp(child, tr);
+    transform_pos_and_adp(child, tr);
 }
-template<> inline void transform_position_and_adp(Atom& atom, const Transform& tr) {
+template<> inline void transform_pos_and_adp(Atom& atom, const Transform& tr) {
   atom.pos = Position(tr.apply(atom.pos));
   if (atom.aniso.nonzero())
     atom.aniso = atom.aniso.transformed_by<float>(tr.mat);
