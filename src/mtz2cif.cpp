@@ -17,9 +17,11 @@
 
 namespace {
 
-enum OptionIndex { Spec=4, PrintSpec, BlockName, EntryId, SkipEmpty,
-                   NoComments, NoHistory, Wavelength, Validate,
-                   LessAnomalous, Separate, Deposition, Nfree, Trim };
+enum OptionIndex {
+  Spec=4, PrintSpec, BlockName, EntryId, SkipEmpty,
+  NoComments, NoHistory, NoStaranisoTensor, Wavelength, Validate,
+  LessAnomalous, Separate, Deposition, Nfree, Trim
+};
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -43,6 +45,8 @@ const option::Descriptor Usage[] = {
     "  --no-comments  \tDo not write comments in the mmCIF file." },
   { NoHistory, 0, "", "no-history", Arg::None,
     "  --no-history  \tDo not write MTZ history in the mmCIF file." },
+  { NoStaranisoTensor, 0, "", "no-staraniso-tensor", Arg::None,
+    "  --no-staraniso-tensor  \tDo not write _reflns.pdbx_aniso_B_tensor_*." },
   { Wavelength, 0, "", "wavelength", Arg::Float,
     "  --wavelength=LAMBDA  \tSet wavelengths (default: from input file)." },
   { Validate, 0, "", "validate", Arg::None,
@@ -206,6 +210,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   mtz_to_cif.with_comments = !p.options[NoComments];
   mtz_to_cif.with_history = !p.options[NoHistory];
+  mtz_to_cif.write_staraniso_tensor = !p.options[NoStaranisoTensor];
   mtz_to_cif.less_anomalous = p.options[LessAnomalous].count();
   if (p.options[Nfree])
     mtz_to_cif.free_flag_value = std::atoi(p.options[Nfree].arg);

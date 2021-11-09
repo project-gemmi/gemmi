@@ -38,6 +38,7 @@ public:
   bool with_history = true;          // write MTZ history in comments
   bool skip_empty = false;           // skip reflections with no values
   bool enable_UB = false;            // write _diffrn_orient_matrix.UB
+  bool write_staraniso_tensor = true; // write _reflns.pdbx_aniso_B_tensor_*
   bool write_special_marker_for_pdb = false;
   int less_anomalous = 0;            // skip (+)/(-) columns even if in spec
   std::string skip_empty_cols;       // columns used to determine "emptiness"
@@ -685,7 +686,7 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2,
     write_cell_and_symmetry(cell, rmsds, mtz.spacegroup, buf, os);
   }
 
-  if (staraniso_b)
+  if (write_staraniso_tensor && staraniso_b)
     write_staraniso_b_in_mmcif(*staraniso_b, buf, os);
 
   if (merged)
