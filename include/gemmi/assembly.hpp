@@ -9,6 +9,7 @@
 
 #include <ostream>      // std::ostream
 #include "model.hpp"
+#include "modify.hpp"   // transform_position_and_adp
 #include "util.hpp"
 
 namespace gemmi {
@@ -82,12 +83,6 @@ struct ChainNameGenerator {
   }
 };
 
-inline void transform_atom(Atom& atom, const Transform& tr) {
-  atom.pos = Position(tr.apply(atom.pos));
-  if (atom.aniso.nonzero())
-    atom.aniso = atom.aniso.transformed_by<float>(tr.mat);
-}
-
 inline void ensure_unique_chain_name(const Model& model, Chain& chain) {
   ChainNameGenerator namegen(HowToNameCopiedChain::Short);
   for (const Chain& ch : model.chains)
@@ -134,8 +129,7 @@ inline Model make_assembly(const Assembly& assembly, const Model& model,
               new_chain.name = name_iter->second;
             }
             for (Residue& res : new_chain.residues) {
-              for (Atom& a : res.atoms)
-                transform_atom(a, oper.transform);
+              transform_position_and_adp(res, oper.transform);
               if (!res.subchain.empty())
                 res.subchain = new_chain.name + ":" + res.subchain;
             }
@@ -161,8 +155,7 @@ inline Model make_assembly(const Assembly& assembly, const Model& model,
             new_chain->residues.push_back(res);
             Residue& new_res = new_chain->residues.back();
             new_res.subchain = new_chain->name + ":" + res.subchain;
-            for (Atom& a : new_res.atoms)
-              transform_atom(a, oper.transform);
+            transform_position_and_adp(new_res, oper.transform);
           }
         }
       }
@@ -258,8 +251,7 @@ inline void expand_ncs(Structure& st, HowToNameCopiedChain how) {
           }
 
           for (Residue& res : new_chain.residues) {
-            for (Atom& a : res.atoms)
-              transform_atom(a, op.tr);
+            transform_position_and_adp(res, op.tr);
             if (!res.subchain.empty())
               res.subchain = new_chain.name + ":" + res.subchain;
             if (how == HowToNameCopiedChain::Dup)

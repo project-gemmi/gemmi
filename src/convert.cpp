@@ -2,7 +2,8 @@
 
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
-#include "gemmi/polyheur.hpp"  // for setup_entities, remove_hydrogens, ...
+#include "gemmi/polyheur.hpp"  // for setup_entities, remove_waters, ...
+#include "gemmi/modify.hpp"    // for remove_hydrogens, remove_anisou
 #include "gemmi/align.hpp"     // for assign_label_seq_id
 #include "gemmi/to_pdb.hpp"    // for write_pdb, ...
 #include "gemmi/fstream.hpp"   // for Ofstream, Ifstream

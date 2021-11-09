@@ -3,6 +3,7 @@
 #include "gemmi/align.hpp"     // for align_sequence_to_polymer
 #include "gemmi/seqalign.hpp"  // for align_string_sequences
 #include "gemmi/select.hpp"
+#include "gemmi/modify.hpp"    // for transform_position_and_adp
 
 #include "common.h"
 #include <pybind11/stl.h>
@@ -111,7 +112,9 @@ void add_alignment(py::module& m) {
     .def_readonly("center1", &SupResult::center1)
     .def_readonly("center2", &SupResult::center2)
     .def_readonly("transform", &SupResult::transform)
-    .def("apply", &apply_superposition)
+    .def("apply", [](const SupResult& self, ResidueSpan span) {
+        transform_position_and_adp(span, self.transform);
+    })
     ;
 
   m.def("calculate_superposition",

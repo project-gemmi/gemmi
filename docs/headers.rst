@@ -158,6 +158,9 @@ gemmi/mmread.hpp
 gemmi/model.hpp
     Data structures to keep macromolecular structure model.
 
+gemmi/modify.hpp
+    Modify various properties of the model.
+
 gemmi/monlib.hpp
     Monomer library - (Refmac) restraints dictionary,
     which is made of monomers (chemical components), links and modifications.
@@ -186,7 +189,7 @@ gemmi/placeh.hpp
 
 gemmi/polyheur.hpp
     Heuristic methods for working with chains and polymers.
-    Includes also a few well-defined functions, such as removal of hydrogens.
+    Includes also a few well-defined functions, such as removal of waters.
 
 gemmi/qcp.hpp
     Structural superposition, the QCP method.

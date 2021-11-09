@@ -261,7 +261,9 @@ int GEMMI_MAIN(int argc, char **argv) {
 
         // this last part is not particularly useful
         auto mpoly2 = st2.models[0].find_chain(p.options[Target].arg)->get_polymer();
-        gemmi::apply_superposition(r, mpoly2);
+        for (gemmi::Residue& res : mpoly2)
+          for (gemmi::Atom& atom : res.atoms)
+            atom.pos = gemmi::Position(r.transform.apply(atom.pos));
         r = gemmi::calculate_superposition(poly1, mpoly2, ptype, gemmi::SupSelect::All,
                                            '\0', true);
         printf("   the same rotation+shift applied to %zu atoms: %g\n", r.count, r.rmsd);

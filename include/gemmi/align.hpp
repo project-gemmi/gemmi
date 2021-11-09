@@ -234,11 +234,5 @@ inline SupResult calculate_superposition(ConstResidueSpan fixed,
   return sr;
 }
 
-inline void apply_superposition(const SupResult& r, ResidueSpan span) {
-  for (Residue& res : span)
-    for (Atom& atom : res.atoms)
-      atom.pos = Position(r.transform.apply(atom.pos));
-}
-
 } // namespace gemmi
 #endif

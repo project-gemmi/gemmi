@@ -2,6 +2,7 @@
 
 #include "gemmi/model.hpp"
 #include "gemmi/calculate.hpp"  // for calculate_mass, count_atom_sites
+#include "gemmi/modify.hpp"     // for remove_alternative_conformations
 #include "gemmi/polyheur.hpp"   // for one_letter_code, trim_to_alanine
 #include "gemmi/assembly.hpp"   // for expand_ncs, HowToNameCopiedChain
 #include "gemmi/tostr.hpp"
@@ -223,10 +224,7 @@ void add_mol(py::module& m) {
     .def("calculate_center_of_mass", [](const Model& self) {
         return calculate_center_of_mass(self).get();
     })
-    .def("transform", [](Model& self, const Transform& tr) {
-        for (CRA cra : self.all())
-          transform_atom(*cra.atom, tr);
-    }, py::arg("tr"))
+    .def("transform", transform_position_and_adp<Model>, py::arg("tr"))
     .def("split_chains_by_segments", &split_chains_by_segments)
     .def("clone", [](const Model& self) { return new Model(self); })
     .def("__repr__", [](const Model& self) {

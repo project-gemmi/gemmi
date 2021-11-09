@@ -1,13 +1,12 @@
 // Copyright 2017-2018 Global Phasing Ltd.
 //
 // Heuristic methods for working with chains and polymers.
-// Includes also a few well-defined functions, such as removal of hydrogens.
+// Includes also a few well-defined functions, such as removal of waters.
 
 #ifndef GEMMI_POLYHEUR_HPP_
 #define GEMMI_POLYHEUR_HPP_
 
 #include <vector>
-#include <set>
 #include "model.hpp"
 #include "resinfo.hpp"   // for find_tabulated_residue
 #include "util.hpp"      // for vector_remove_if
@@ -275,43 +274,6 @@ inline void setup_entities(Structure& st) {
 }
 
 
-// Remove alternative conformations.
-template<class T> void remove_alternative_conformations(T& obj) {
-  for (auto& child : obj.children())
-    remove_alternative_conformations(child);
-}
-template<> inline void remove_alternative_conformations(Chain& chain) {
-  std::set<SeqId> seqids;
-  for (size_t i = 0; i < chain.residues.size(); ) {
-    if (seqids.insert(chain.residues[i].seqid).second)
-      ++i;
-    else
-      chain.residues.erase(chain.residues.begin() + i);
-  }
-  for (Residue& residue : chain.residues) {
-    std::set<std::string> names;
-    for (size_t i = 0; i < residue.atoms.size(); ) {
-      Atom& atom = residue.atoms[i];
-      atom.altloc = '\0';
-      if (names.insert(atom.name).second)
-        ++i;
-      else
-        residue.atoms.erase(residue.atoms.begin() + i);
-    }
-  }
-}
-
-// Remove hydrogens.
-template<class T> void remove_hydrogens(T& obj) {
-  for (auto& child : obj.children())
-    remove_hydrogens(child);
-}
-template<> inline void remove_hydrogens(Residue& res) {
-  vector_remove_if(res.atoms, [](const Atom& a) {
-    return a.element == El::H || a.element == El::D;
-  });
-}
-
 // Remove waters. It may leave empty chains.
 template<class T> void remove_waters(T& obj) {
   for (auto& child : obj.children())
@@ -358,27 +320,6 @@ inline bool trim_to_alanine(Residue& res) {
 inline void trim_to_alanine(Chain& chain) {
   for (Residue& res : chain.residues)
     trim_to_alanine(res);
-}
-
-// Remove anisotropic ADP
-template<class T> void remove_anisou(T& obj) {
-  for (auto& child : obj.children())
-    remove_anisou(child);
-}
-template<> inline void remove_anisou(Atom& atom) {
-  atom.aniso = {0, 0, 0, 0, 0, 0};
-}
-
-// Set absent ANISOU to value from B_iso
-template<class T> void ensure_anisou(T& obj) {
-  for (auto& child : obj.children())
-    ensure_anisou(child);
-}
-template<> inline void ensure_anisou(Atom& atom) {
-  if (!atom.aniso.nonzero()) {
-    float u = float(1. / gemmi::u_to_b() * atom.b_iso);
-    atom.aniso = {u, u, u, 0.f, 0.f, 0.f};
-  }
 }
 
 } // namespace gemmi

@@ -11,6 +11,7 @@
 #include "topo.hpp"      // for Topo
 #include "chemcomp.hpp"  // for ChemComp
 #include "calculate.hpp" // for calculate_angle
+#include "modify.hpp"    // for remove_hydrogens
 
 namespace gemmi {
 

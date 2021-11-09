@@ -11,7 +11,8 @@
 #include "gemmi/to_mmcif.hpp"  // for write_struct_conn
 #include "gemmi/sprintf.hpp"   // for to_str, to_str_prec
 #include "gemmi/calculate.hpp" // for find_best_plane
-#include "gemmi/polyheur.hpp"  // for remove_hydrogens
+#include "gemmi/modify.hpp"    // for remove_hydrogens
+#include "gemmi/polyheur.hpp"  // for setup_entities
 #include "gemmi/monlib.hpp"    // for MonLib, read_monomer_lib
 #include "gemmi/topo.hpp"      // for Topo
 #include "gemmi/placeh.hpp"    // for place_hydrogens

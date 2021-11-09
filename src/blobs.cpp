@@ -5,7 +5,8 @@
 #include <stdexcept>
 #include "gemmi/blob.hpp"
 #include "gemmi/assembly.hpp"  // for expand_ncs
-#include "gemmi/polyheur.hpp"  // for remove_hydrogens
+#include "gemmi/polyheur.hpp"  // for remove_waters
+#include "gemmi/modify.hpp"    // for remove_hydrogens
 #include "gemmi/math.hpp"      // for Variance
 #include "gemmi/neighbor.hpp"  // for NeighborSearch
 #include "gemmi/read_coor.hpp" // for read_structure_gz
