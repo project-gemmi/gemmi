@@ -111,5 +111,14 @@ $ gemmi mtz2cif tests/5e5z.mtz -
 1 2 2 38.249 0.3855 61.841 0.3117 f
 ''')
 
+    def test_contacts_4oz7(self):
+        self.do('''\
+$ gemmi contact --maxdist=2.5 --ignore=4 tests/4oz7.pdb
+metalc5      N   22Q A   1                CU   CU1 B 101     1555   6345  2.05
+metalc6      S   22Q A   1                CU   CU1 B 101     1555   6345  2.26
+metalc7      N   22Q B   1                CU   CU1 A 101     1555   6344  2.07
+metalc8      S   22Q B   1                CU   CU1 A 101     1555   6344  2.22
+''')
+
 if __name__ == '__main__':
     unittest.main()
