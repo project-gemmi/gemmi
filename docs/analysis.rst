@@ -284,6 +284,8 @@ S\ :sup:`6` can be used to calculate G\ :sup:`6`, and the other way around:
 
 TBC
 
+.. _neighbor_search:
+
 Neighbor search
 ===============
 
@@ -458,17 +460,13 @@ In this example the "original" atom is in a different location:
   >>> cra.atom.pos
   <gemmi.Position(-0.028, 13.85, -17.645)>
 
-To find what symmetry operation relates the original atom and its
-symmetric image, use:
+The symmetry operation that relates the original position and its
+image is composed of two parts: one of symmetry transformations
+in the unit cell and a shift of the unit cell that we often
+call here the PBC (periodic boundary conditions) shift.
 
-.. doctest::
-
-  >>> st.cell.find_nearest_image(cra.atom.pos, mark.pos())
-  <gemmi.NearestImage 12_565 in distance 0.00>
-
-We already knew that the used symmetry operation has index 11
-(it was the value of ``mark.image_idx``). The transformation
-at this index is:
+The first part is stored explicitely as ``mark.image_idx``.
+The corresponding transformation is:
 
 .. doctest::
 
@@ -479,13 +477,14 @@ at this index is:
                [0, -1, 0]
                [0, 0, -1]>
 
-If we know ``mark.image_idx`` we might use a slighly faster function
-that checks only unit cell shifts. It gives the same result:
+
+To find the full symmetry operation we need to determine the nearest
+image under PBC:
 
 .. doctest::
 
-  >>> st.cell.find_nearest_pbc_image(cra.atom.pos, mark.pos(), mark.image_idx)
-  <gemmi.NearestImage 12_565 in distance 0.00>
+  >>> st.cell.find_nearest_pbc_image(cra.atom.pos, point, mark.image_idx)
+  <gemmi.NearestImage 12_565 in distance 2.39>
 
 For more information see the :ref:`properties of NearestImage <nearestimage>`.
 
@@ -495,14 +494,14 @@ The neighbor search can also be used with small molecule structures.
 
   >>> small = gemmi.read_small_structure('../tests/2013551.cif')
   >>> mg_site = small.sites[0]
-  >>> mg_pos = small.cell.orthogonalize(mg_site.fract)
   >>> ns = gemmi.NeighborSearch(small, 4.0).populate()
   >>> for mark in ns.find_site_neighbors(mg_site, min_dist=0.1):
   ...   site = mark.to_site(small)
-  ...   dist = ns.dist(mark.pos(), mg_pos)
-  ...   print(site.label, 'image #%d' % mark.image_idx, 'dist=%.2f' % dist)
-  I image #0 dist=2.92
-  I image #3 dist=2.92
+  ...   nim = small.cell.find_nearest_pbc_image(site.fract, mg_site.fract, mark.image_idx)
+  ...   print(site.label, 'image #%d' % mark.image_idx, nim.symmetry_code(),
+  ...         'dist=%.2f' % nim.dist())
+  I image #0 1_555 dist=2.92
+  I image #3 4_467 dist=2.92
 
 
 Contact search

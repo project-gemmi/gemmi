@@ -600,6 +600,11 @@ With this list we can use:
   it returns the symmetric image of ``pos`` that is nearest to ``ref``.
   The last argument can also be set to ``Asu::Same`` or ``Asu::Different``.
 
+* ``UnitCell::find_nearest_pbc_image(const Position& ref, const Position& pos, int image_idx)`` --
+  similar to the function above, but takes the index of symmetry transformation
+  as an argument and finds only the unit cell shift. The section about
+  :ref:`neighbor search <neighbor_search>` has an example of usage.
+
 The unit cell can be used to determine interplanar spacing *d*:sub:`hkl`
 in the reciprocal space (the resolution corresponding to a reflection):
 

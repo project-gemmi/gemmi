@@ -276,7 +276,13 @@ void add_unitcell(py::module& m) {
     .def("volume_per_image", &UnitCell::volume_per_image)
     .def("find_nearest_image", &UnitCell::find_nearest_image,
          py::arg("ref"), py::arg("pos"), py::arg("asu")=Asu::Any)
-    .def("find_nearest_pbc_image", &UnitCell::find_nearest_pbc_image,
+    .def("find_nearest_pbc_image",
+         (NearestImage (UnitCell::*)(const Fractional&, Fractional, int) const)
+         &UnitCell::find_nearest_pbc_image,
+         py::arg("fref"), py::arg("fpos"), py::arg("image_idx"))
+    .def("find_nearest_pbc_image",
+         (NearestImage (UnitCell::*)(const Position&, const Position&, int) const)
+         &UnitCell::find_nearest_pbc_image,
          py::arg("ref"), py::arg("pos"), py::arg("image_idx"))
     .def("find_nearest_pbc_position", &UnitCell::find_nearest_pbc_position,
          py::arg("ref"), py::arg("pos"), py::arg("image_idx"), py::arg("inverse")=false)
