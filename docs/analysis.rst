@@ -483,8 +483,8 @@ image under PBC:
 
 .. doctest::
 
-  >>> st.cell.find_nearest_pbc_image(cra.atom.pos, point, mark.image_idx)
-  <gemmi.NearestImage 12_565 in distance 2.39>
+  >>> st.cell.find_nearest_pbc_image(point, cra.atom.pos, mark.image_idx)
+  <gemmi.NearestImage 12_665 in distance 2.39>
 
 For more information see the :ref:`properties of NearestImage <nearestimage>`.
 
@@ -497,7 +497,7 @@ The neighbor search can also be used with small molecule structures.
   >>> ns = gemmi.NeighborSearch(small, 4.0).populate()
   >>> for mark in ns.find_site_neighbors(mg_site, min_dist=0.1):
   ...   site = mark.to_site(small)
-  ...   nim = small.cell.find_nearest_pbc_image(site.fract, mg_site.fract, mark.image_idx)
+  ...   nim = small.cell.find_nearest_pbc_image(mg_site.fract, site.fract, mark.image_idx)
   ...   print(site.label, 'image #%d' % mark.image_idx, nim.symmetry_code(),
   ...         'dist=%.2f' % nim.dist())
   I image #0 1_555 dist=2.92
