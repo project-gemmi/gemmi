@@ -400,6 +400,16 @@ inline void Topo::ChainInfo::add_refmac_builtin_modifications() {
   }
 }
 
+inline Restraints::Bond bond_restraint_from_connection(const Connection& conn) {
+  Restraints::Bond bond;
+  bond.id1 = Restraints::AtomId{1, conn.partner1.atom_name};
+  bond.id2 = Restraints::AtomId{2, conn.partner2.atom_name};
+  bond.type = BondType::Unspec;
+  bond.aromatic = false;
+  bond.value = conn.reported_distance;
+  bond.esd = 0.02;
+  return bond;
+}
 
 // Model is non-const b/c we store non-const pointers to residues in Topo.
 inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
@@ -480,14 +490,8 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
       cl.side1.comp = extra.res1->name;
       cl.side2.comp = extra.res2->name;
       cl.id = cl.side1.comp + "-" + cl.side2.comp;
-      Restraints::Bond bond;
-      bond.id1 = Restraints::AtomId{1, conn.partner1.atom_name};
-      bond.id2 = Restraints::AtomId{2, conn.partner2.atom_name};
-      bond.type = BondType::Unspec;
-      bond.aromatic = false;
-      bond.value = conn.reported_distance;
-      bond.esd = 0.02;
-      cl.rt.bonds.push_back(bond);
+      cl.rt.bonds.push_back(bond_restraint_from_connection(conn));
+
       monlib.ensure_unique_link_name(cl.id);
       monlib.links.emplace(cl.id, cl);
       extra.link_id = cl.id;
