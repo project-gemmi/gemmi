@@ -552,12 +552,14 @@ struct MonLib {
       const std::string& comp2, const std::string& atom2) const {
     for (auto& ml : links) {
       const ChemLink& link = ml.second;
-      if (link.rt.bonds.empty())
-        continue;
-      const Restraints::Bond& bond = link.rt.bonds[0];
-      if (link.side1.comp == comp1 && link.side2.comp == comp2 &&
-          bond.id1.atom == atom1 && bond.id2.atom == atom2)
-        return &link;
+      // for now we don't have link definitions with >1 bonds
+      if (link.rt.bonds.size() == 1) {
+        const Restraints::Bond& bond = link.rt.bonds[0];
+        if (bond.id1.atom == atom1 && bond.id2.atom == atom2 &&
+            link_side_matches_residue(link.side1, comp1) &&
+            link_side_matches_residue(link.side2, comp2))
+          return &link;
+      }
     }
     return nullptr;
   }
@@ -581,10 +583,11 @@ struct MonLib {
       add_monomer_if_present(block);
   }
 
-  bool link_side_matches_residue(const ChemLink::Side& side, const ResidueId& res) const {
-    if (side.comp == res.name)
+  bool link_side_matches_residue(const ChemLink::Side& side,
+                                 const std::string& res_name) const {
+    if (side.comp == res_name)
       return true;
-    const ResidueInfo* resinfo = find_residue_info(res.name);
+    const ResidueInfo* resinfo = find_residue_info(res_name);
     return resinfo && side.matches_group(ChemLink::group_from_residue_info(*resinfo));
   }
 };

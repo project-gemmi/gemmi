@@ -460,8 +460,8 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
           match->rt.bonds.empty() ||
           match->rt.bonds[0].id1.atom != conn.partner1.atom_name ||
           match->rt.bonds[0].id2.atom != conn.partner2.atom_name ||
-          !monlib.link_side_matches_residue(match->side1, *extra.res1) ||
-          !monlib.link_side_matches_residue(match->side2, *extra.res2)))
+          !monlib.link_side_matches_residue(match->side1, extra.res1->name) ||
+          !monlib.link_side_matches_residue(match->side2, extra.res2->name)))
       match = nullptr;
     // if ChemLink was not found, use the first matching link (if any)
     if (!match)
