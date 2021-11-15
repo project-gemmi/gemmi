@@ -606,8 +606,11 @@ Structure read_pdb_from_input(Input&& infile, const std::string& source,
     } else if (is_record_type3(line, "END")) {
       break;
     } else if (is_record_type(line, "data")) {
-      if (line[4] == '_' && model && model->chains.empty())
+      if (line[4] == '_' && !model)
         fail("Incorrect file format (perhaps it is cif not pdb?): " + source);
+    } else if (is_record_type(line, "{\"da")) {
+      if (ialpha3_id(line+4) == ialpha3_id("ta_") && !model)
+        fail("Incorrect file format (perhaps it is mmJSON not pdb?): " + source);
     }
   }
 
