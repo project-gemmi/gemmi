@@ -280,7 +280,9 @@ inline void JsonWriter::write_json(const Document& d) {
   for (const Block& block : d.blocks) {
     if (&block != &d.blocks[0])
       os_.put(',');
-    os_ << linesep_;
+    // start mmJSON with {"data_ so it can be easily recognized
+    if (&block != &d.blocks[0] || comcifs || !with_data_keyword)
+      os_ << linesep_;
     write_map((with_data_keyword ? "data_" : "") + block.name, block.items);
   }
   if (comcifs)
