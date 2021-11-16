@@ -93,6 +93,7 @@ void add_monlib(py::module& m) {
     .def("insert_comp_list", [](MonLib &self, const cif::Document &doc) {
         insert_comp_list(doc, self.residue_infos);
     })
+    .def("path", &MonLib::path, py::arg("code")=nullptr)
     .def("__repr__", [](const MonLib& self) {
         return "<gemmi.MonLib with " +
                std::to_string(self.monomers.size()) + " monomers, " +

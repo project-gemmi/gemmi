@@ -1487,7 +1487,7 @@ Anyway, we provide bindings for CifWalk:
 
   >>> import gemmi
   >>> list(gemmi.CifWalk('../tests/'))[:2]
-  ['../tests/1011031.cif', '../tests/1pfe.cif.gz']
+  ['../tests/list/mon_lib_list.cif', '../tests/1011031.cif']
 
 We also have Python bindings for ``CoorFileWalk`` that picks macromolecular
 coordinate files.

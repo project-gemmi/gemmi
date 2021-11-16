@@ -590,6 +590,38 @@ struct MonLib {
     const ResidueInfo* resinfo = find_residue_info(res_name);
     return resinfo && side.matches_group(ChemLink::group_from_residue_info(*resinfo));
   }
+
+  std::string path(const char* code=nullptr) const {
+    size_t len = mon_lib_list.source.length();
+    // "list/mon_lib_list.cif" has 21 characters
+    if (len < 21)
+      return {};
+    std::string dir = mon_lib_list.source.substr(0, len-21);
+    if (code)
+      dir += relative_monomer_path(code);
+    return dir;
+  }
+
+  static std::string relative_monomer_path(const std::string& code) {
+    std::string path(1, std::tolower(code[0]));
+    path += '/';  // works also on Windows
+    path += code;
+    // On Windows several names are reserved (CON, PRN, AUX, ...), see
+    // https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+    // The workaround in CCP4 monomer libary is to use CON_CON.cif, etc.
+    if (code.size() == 3)
+      switch (ialpha3_id(code.c_str())) {
+        case ialpha3_id("AUX"):
+        case ialpha3_id("COM"):
+        case ialpha3_id("CON"):
+        case ialpha3_id("LPT"):
+        case ialpha3_id("PRN"):
+          path += '_';
+          path += code;
+      }
+    path += ".cif";
+    return path;
+  }
 };
 
 typedef cif::Document (*read_cif_func)(const std::string&);
@@ -617,12 +649,8 @@ inline MonLib read_monomer_lib(std::string monomer_dir,
                                    read_cif);
   std::string error;
   for (const std::string& name : resnames) {
-    std::string path = monomer_dir;
-    path += std::tolower(name[0]);
-    path += '/';
-    path += name + ".cif";
     try {
-      cif::Document doc = (*read_cif)(path);
+      cif::Document doc = (*read_cif)(monomer_dir + MonLib::relative_monomer_path(name));
       auto cc = make_chemcomp_from_cif(name, doc);
       monlib.monomers.emplace(name, cc);
     } catch(std::runtime_error& err) {

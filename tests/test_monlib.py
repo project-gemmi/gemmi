@@ -99,5 +99,12 @@ class TestChemComp(unittest.TestCase):
         self.assertEqual([aid.atom for aid in result],
                          ['FE', 'ND', 'C4D', 'C3D', 'C2D', 'CMD'])
 
+class TestMonLib(unittest.TestCase):
+    def test_path(self):
+        path = full_path('')
+        monlib = gemmi.read_monomer_lib(path, [])
+        self.assertEqual(monlib.path('ALA'), path + "a/ALA.cif")
+        self.assertEqual(monlib.path('CON'), path + "c/CON_CON.cif")
+
 if __name__ == '__main__':
     unittest.main()
