@@ -68,6 +68,7 @@ void add_monlib(py::module& m) {
 
   py::class_<MonLib>(m, "MonLib")
     .def(py::init<>())
+    .def_readonly("mon_lib_list", &MonLib::mon_lib_list)
     .def_readonly("monomers", &MonLib::monomers)
     .def_readonly("links", &MonLib::links)
     .def_readonly("modifications", &MonLib::modifications)
