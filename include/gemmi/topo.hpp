@@ -5,6 +5,7 @@
 #ifndef GEMMI_TOPO_HPP_
 #define GEMMI_TOPO_HPP_
 
+#include <unordered_map>
 #include "chemcomp.hpp"  // for ChemComp
 #include "monlib.hpp"    // for MonLib
 #include "model.hpp"     // for Residue, Atom
@@ -149,6 +150,13 @@ struct Topo {
   std::vector<Chirality> chirs;
   std::vector<Plane> planes;
 
+  std::unordered_multimap<const Atom*, Angle*> angle_index;
+
+  void create_angle_index() {
+    for (Angle& ang : angles)
+      angle_index.emplace(ang.atoms[1], &ang);
+  }
+
   ResInfo* find_resinfo(const Residue* res) {
     for (ChainInfo& ci : chain_infos)
       for (ResInfo& ri : ci.res_infos)
@@ -168,10 +176,20 @@ struct Topo {
   const Restraints::Angle* take_angle(const Atom* a,
                                       const Atom* b,
                                       const Atom* c) const {
-    for (const Angle& ang : angles)
-      if (ang.atoms[1] == b && ((ang.atoms[0] == a && ang.atoms[2] == c) ||
-                                (ang.atoms[0] == c && ang.atoms[2] == a)))
-        return ang.restr;
+    if (!angle_index.empty()) {
+      auto range = angle_index.equal_range(b);
+      for (auto i = range.first; i != range.second; ++i) {
+        const Angle* ang = i->second;
+        if ((ang->atoms[0] == a && ang->atoms[2] == c) ||
+            (ang->atoms[0] == c && ang->atoms[2] == a))
+          return ang->restr;
+      }
+    } else {
+      for (const Angle& ang : angles)
+        if (ang.atoms[1] == b && ((ang.atoms[0] == a && ang.atoms[2] == c) ||
+                                  (ang.atoms[0] == c && ang.atoms[2] == a)))
+          return ang.restr;
+    }
     return nullptr;
   }
 

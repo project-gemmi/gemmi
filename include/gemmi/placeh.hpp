@@ -134,6 +134,8 @@ inline void place_hydrogens(const Atom& atom, Topo::ResInfo& ri,
   // put atoms bonded to atom into two lists
   std::vector<BondedAtom> known; // heavy atoms with known positions
   std::vector<BondedAtom> hs;    // H atoms (unknown)
+  known.reserve(3);
+  hs.reserve(4);
   for (const Topo::Rule& rule : ri.rules)
     if (rule.rkind == Topo::RKind::Bond) {
       const Topo::Bond& t = topo.bonds[rule.index];
@@ -409,6 +411,7 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
   }
 
   topo->finalize_refmac_topology(monlib);
+  topo->create_angle_index();
 
   // the hydrogens added previously have positions not set
   if (h_change != HydrogenChange::None) {
