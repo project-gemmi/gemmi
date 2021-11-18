@@ -639,7 +639,10 @@ h
 ==
 
 Adds or removes hydrogens.
-Hydrogen are put in positions based only on restraints from a monomer library.
+
+Hydrogen positions are determined from restraints from a monomer library.
+If the restraints allow various directions to a hydrogen atom,
+that atom is assigned one of possible positions and its occupancy is zeroed.
 
 .. literalinclude:: h-help.txt
    :language: console

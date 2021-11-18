@@ -26,18 +26,37 @@ it is assumed to be in ASCII or UTF-8.
 Python 2.7/3.x module
 ---------------------
 
-From source
-~~~~~~~~~~~
+From PyPI
+~~~~~~~~~
 
-To install the gemmi module you need pip, git and not too old
-C++ compiler (GCC 4.8+, Clang 3.4+, MSVC 2015+, ICC 17+)::
+To install the gemmi module do::
 
     pip install gemmi
 
-(We have binary wheels for some Python versions on Windows, so the command
-above may actually download binaries).
+We have binary wheels for several Python versions, so the command
+usually downloads binaries. If a matching wheel is not available,
+the module is compiled from source -- it takes several minutes
+and requires C++ compiler (GCC 4.8+, Clang 3.4+, MSVC 2015+, ICC 17+).
 
-Alternatively, to install the latest version directly from the repository::
+Other binaries
+~~~~~~~~~~~~~~
+
+If you use the `CCP4 suite <https://www.ccp4.ac.uk/>`_,
+you can find gemmi there.
+
+If you use Anaconda Python, you can install
+`package conda <https://github.com/conda-forge/gemmi-feedstock>`_
+from conda-forge::
+
+    conda install -c conda-forge gemmi
+
+These distribution channels may have an older version of gemmi.
+
+From git
+~~~~~~~~
+
+The latest version can be installed directly from the repository.
+Either use::
 
     pip install git+https://github.com/project-gemmi/gemmi.git
 
@@ -46,12 +65,17 @@ or clone the `project <https://github.com/project-gemmi/gemmi/>`_
 
     pip install .
 
-(Setuptools compile only one unit at a time and the whole process
-will take several minutes. To make it faster, use
-``cmake -D USE_PYTHON=1 .``).
-
 If gemmi is already installed, uninstall the old version first
 (``pip uninstall``) or add option ``--upgrade``.
+
+Setuptools compile only one unit at a time and the whole process
+takes several minutes. To make it faster, build in parallel with CMake.
+Clone the project and do::
+
+    cmake -D USE_PYTHON=1 .
+    make -j4 py
+
+----
 
 On Windows Python 3.5+ should automatically find an appropriate compiler
 (MSVC 2015+) . If the compiler is not installed, pip shows a message
@@ -65,20 +89,6 @@ set the compiler environment with one of these commands::
 
 If you'd like to use PyPy instead of CPython -- PyPy2.7 >= 5.7 is supported
 (although only occasionally tested -- open an issue if it doesn't work).
-
-Binaries
-~~~~~~~~
-
-If you use the `CCP4 suite <https://www.ccp4.ac.uk/>`_,
-you can find gemmi there.
-
-If you use Anaconda Python, you can install
-`package conda <https://github.com/conda-forge/gemmi-feedstock>`_
-from conda-forge::
-
-    conda install -c conda-forge gemmi
-
-These distribution channels may have a previous version of gemmi.
 
 Fortran and C bindings
 ----------------------
@@ -97,17 +107,13 @@ If you use cmake to build the project
 you get a static library ``libcgemmi.a`` that can be used from C,
 together with the :file:`fortran/*.h` headers.
 
-Gemmi program
--------------
+Program
+-------
 
-The library comes with a command-line program. To build it from source,
-first make sure you have git, cmake and C++ compiler installed
-(on Ubuntu: ``sudo apt install git cmake make g++``), then::
+The library comes with a command-line program also named ``gemmi``.
 
-    git clone https://github.com/project-gemmi/gemmi.git
-    cd gemmi
-    cmake .
-    make
+Binaries
+~~~~~~~~
 
 Binaries are distributed with the CCP4 suite and with Global Phasing software.
 They are also included in
@@ -125,6 +131,17 @@ can be downloaded from CI jobs:
   click the first job (with ✅) in
   `GitHub Actions <https://github.com/project-gemmi/gemmi/actions/workflows/ci.yml>`_
   and download a zip file from the Artifacts section.
+
+From source
+~~~~~~~~~~~
+
+To build it from source, first make sure you have git, cmake and C++ compiler
+installed (on Ubuntu: ``sudo apt install git cmake make g++``), then::
+
+    git clone https://github.com/project-gemmi/gemmi.git
+    cd gemmi
+    cmake .
+    make
 
 Credits
 -------
