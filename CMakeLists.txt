@@ -274,7 +274,7 @@ add_executable(gemmi-wcn EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/wcn.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-wcn)
 
-add_executable(gemmi-prog
+add_executable(program
                src/align.cpp src/blobs.cpp
                src/cif2mtz.cpp src/cif2json.cpp src/contact.cpp
                src/contents.cpp src/convert.cpp src/fprime.cpp
@@ -288,15 +288,15 @@ add_executable(gemmi-prog
                $<TARGET_OBJECTS:input>
                $<TARGET_OBJECTS:output>
                $<TARGET_OBJECTS:options>)
-support_gz(gemmi-prog)
-target_compile_definitions(gemmi-prog PRIVATE GEMMI_ALL_IN_ONE=1)
-set_target_properties(gemmi-prog PROPERTIES OUTPUT_NAME gemmi)
+support_gz(program)
+target_compile_definitions(program PRIVATE GEMMI_ALL_IN_ONE=1)
+set_target_properties(program PROPERTIES OUTPUT_NAME gemmi)
 if (WIN32 AND USE_WMAIN)
   # _UNICODE=1 is now set globally
-  #target_compile_definitions(gemmi-prog PRIVATE _UNICODE=1)
+  #target_compile_definitions(program PRIVATE _UNICODE=1)
   if(MINGW)
     # target_link_options were added in cmake 3.13
-    set_target_properties(gemmi-prog PROPERTIES LINK_FLAGS "-municode")
+    set_target_properties(program PROPERTIES LINK_FLAGS "-municode")
   endif()
 endif()
 
@@ -339,7 +339,7 @@ support_gz(check_conn)
 enable_testing()
 
 add_custom_target(print-version
-  COMMAND gemmi-prog --version
+  COMMAND program --version
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   COMMENT "gemmi --version"
 )
@@ -389,7 +389,7 @@ if (USE_PYTHON)
     find_package(pybind11 2.6 CONFIG REQUIRED)
     message(STATUS "Found pybind11 ${pybind11_VERSION}: ${pybind11_INCLUDE_DIRS}")
   endif()
-  pybind11_add_module(gemmi
+  pybind11_add_module(py
           python/mol.cpp python/gemmi.cpp python/align.cpp
           python/ccp4.cpp python/chemcomp.cpp python/cif.cpp python/custom.cpp
           python/elem.cpp python/grid.cpp python/hkl.cpp
@@ -398,8 +398,9 @@ if (USE_PYTHON)
           python/scaling.cpp python/search.cpp
           python/sf.cpp python/sym.cpp python/topo.cpp
           python/unitcell.cpp python/write.cpp)
+  set_target_properties(py PROPERTIES OUTPUT_NAME gemmi)
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
-    target_compile_options(gemmi PRIVATE "-Wno-shadow")
+    target_compile_options(py PRIVATE "-Wno-shadow")
   endif()
   # avoid GCC warning: the ABI of passing structure with 'complex float' member
   # has changed in GCC 4.4
@@ -407,7 +408,7 @@ if (USE_PYTHON)
                               src/mtz.cpp
                               PROPERTIES COMPILE_FLAGS
                               $<$<CXX_COMPILER_ID:GNU>:-Wno-psabi>)
-  support_gz(gemmi)
+  support_gz(py)
   if (NOT DEFINED PYTHON_INSTALL_DIR)
     set(PYTHON_INSTALL_DIR ${PYTHON_SITE_PACKAGES})
   endif()
@@ -415,10 +416,10 @@ else()
   message(STATUS "Skipping Python module. Add -D USE_PYTHON=1 to build it.")
 endif()
 
-install(TARGETS gemmi-prog DESTINATION bin)
+install(TARGETS program DESTINATION bin)
 install(DIRECTORY include/gemmi DESTINATION include)
 if (USE_PYTHON AND DEFINED PYTHON_INSTALL_DIR)
-  install(TARGETS gemmi DESTINATION ${PYTHON_INSTALL_DIR})
+  install(TARGETS py DESTINATION ${PYTHON_INSTALL_DIR})
   install(DIRECTORY examples/ DESTINATION ${PYTHON_INSTALL_DIR}/gemmi-examples
           FILES_MATCHING PATTERN "*.py")
   if (INSTALL_EGG_INFO)
