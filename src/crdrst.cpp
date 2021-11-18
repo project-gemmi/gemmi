@@ -248,8 +248,7 @@ cif::Document make_crd(const gemmi::Structure& st,
   return crd;
 }
 
-void add_restraints(const Topo::Rule rule,
-                    const Topo& topo, const Restraints& rt,
+void add_restraints(const Topo::Rule rule, const Topo& topo,
                     cif::Loop& restr_loop, int (&counters)[5]) {
   //using gemmi::to_str;
   const auto& to_str = gemmi::to_str_prec<3>; // to make comparisons easier
@@ -297,7 +296,7 @@ void add_restraints(const Topo::Rule rule,
                         ".", ".", obs});
   } else if (rule.rkind == Topo::RKind::Chirality) {
     const Topo::Chirality& t = topo.chirs[rule.index];
-    double vol = rt.chiral_abs_volume(*t.restr);
+    double vol = topo.ideal_chiral_abs_volume(t);
     std::string obs = to_str3(t.calculate()) + " # " + t.atoms[0]->name +
                                                  " " + t.atoms[1]->name +
                                                  " " + t.atoms[2]->name +
@@ -351,7 +350,7 @@ cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
                                           ".", ".", ".", ".", ".", ".", ".", ".", "."});
           for (const Topo::Rule& rule : ri.rules)
             if (rule.provenance == Provenance::PrevLink)
-              add_restraints(rule, topo, link->rt, restr_loop, counters);
+              add_restraints(rule, topo, restr_loop, counters);
         }
       }
       // write monomer
@@ -370,7 +369,7 @@ cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
                                         ".", ".", ".", ".", ".", ".", ".", ".", "."});
         for (const Topo::Rule& rule : ri.rules)
           if (rule.provenance == Provenance::Monomer)
-            add_restraints(rule, topo, ri.chemcomp.rt, restr_loop, counters);
+            add_restraints(rule, topo, restr_loop, counters);
       }
     }
   }
@@ -383,7 +382,7 @@ cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
                                     cif::quote(chem_link->id), ".",
                                     ".", ".", ".", ".", ".", ".", ".", ".", "."});
     for (const Topo::Rule& rule : extra_link.rules)
-      add_restraints(rule, topo, chem_link->rt, restr_loop, counters);
+      add_restraints(rule, topo, restr_loop, counters);
   }
   return doc;
 }
