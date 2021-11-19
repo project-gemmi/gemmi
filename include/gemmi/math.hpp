@@ -235,6 +235,15 @@ template<typename T> struct SMat33 {
     return r_u_r(Vec3(h));
   }
 
+  Vec3 multiply(const Vec3& p) const {
+    return {u11 * p.x + u12 * p.y + u13 * p.z,
+            u12 * p.x + u22 * p.y + u23 * p.z,
+            u13 * p.x + u23 * p.y + u33 * p.z};
+  }
+
+  SMat33 operator-(const SMat33& o) const { return {u11-o.u11, u22-o.u22, u33-o.u33, u12-o.u12, u13-o.u13, u23-o.u23}; }
+  SMat33 operator+(const SMat33& o) const { return {u11+o.u11, u22+o.u22, u33+o.u33, u12+o.u12, u13+o.u13, u23+o.u23}; }
+
   // return M U M^T
   template<typename Real=double>
   SMat33<Real> transformed_by(const Mat33& m) const {
