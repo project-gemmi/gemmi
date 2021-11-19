@@ -284,7 +284,7 @@ Structure read_pdb_from_input(Input&& infile, const std::string& source,
   while (size_t len = copy_line_from_stream(line, max_line_length+1, infile)) {
     ++line_num;
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
-      if (len < 66)
+      if (len < 55)
         wrong("The line is too short to be correct:\n" + std::string(line));
       std::string chain_name = read_string(line+20, 2);
       ResidueId rid = read_res_id(line+22, line+17);
@@ -339,8 +339,10 @@ Structure read_pdb_from_input(Input&& infile, const std::string& source,
       atom.pos.x = read_double(line+30, 8);
       atom.pos.y = read_double(line+38, 8);
       atom.pos.z = read_double(line+46, 8);
-      atom.occ = (float) read_double(line+54, 6);
-      atom.b_iso = (float) read_double(line+60, 6);
+      if (len > 58)
+        atom.occ = (float) read_double(line+54, 6);
+      if (len > 64)
+        atom.b_iso = (float) read_double(line+60, 6);
       if (len > 76 && (std::isalpha(line[76]) || std::isalpha(line[77])))
         atom.element = Element(line + 76);
       // Atom names HXXX are ambiguous, but Hg, He, Hf, Ho and Hs (almost)
