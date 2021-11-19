@@ -49,6 +49,7 @@ docs/output.mtz
 # temporary files
 /out/
 /out.*
+/*.out.*
 /out?.*
 /tmp/
 /tmp.*
