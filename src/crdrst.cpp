@@ -51,12 +51,6 @@ const option::Descriptor Usage[] = {
 };
 
 
-// Topology: restraints applied to a model
-int count_provenance(const std::vector<Topo::Rule>& rules, Topo::Provenance p) {
-  return std::count_if(rules.begin(), rules.end(),
-                       [&](const Topo::Rule& r) { return r.provenance == p; });
-}
-
 bool has_anisou(const gemmi::Model& model) {
   for (const gemmi::Chain& chain : model.chains)
     for (const gemmi::Residue& res : chain.residues)
@@ -325,7 +319,6 @@ void add_restraints(const Topo::Rule rule, const Topo& topo,
 }
 
 cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
-  using Provenance = Topo::Provenance;
   cif::Document doc;
   doc.blocks.emplace_back("restraints");
   cif::Block& block = doc.blocks[0];
@@ -340,21 +333,19 @@ cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
       for (const Topo::ResInfo::Prev& prev : ri.prev) {
         const gemmi::Residue* prev_res = prev.get(&ri)->res;
         const gemmi::ChemLink* link = monlib.find_link(prev.link);
-        if (link && count_provenance(ri.rules, Provenance::PrevLink) > 0) {
+        if (link && !prev.link_rules.empty()) {
           std::string comment = " link " + prev.link + " " +
                                 prev_res->seqid.str() + " " +
                                 prev_res->name + " - " +
                                 ri.res->seqid.str() + " " + ri.res->name;
-          restr_loop.add_comment_and_row({comment, "LINK", ".",
-                                          cif::quote(prev.link), ".",
+          restr_loop.add_comment_and_row({comment, "LINK", ".", cif::quote(prev.link), ".",
                                           ".", ".", ".", ".", ".", ".", ".", ".", "."});
-          for (const Topo::Rule& rule : ri.rules)
-            if (rule.provenance == Provenance::PrevLink)
-              add_restraints(rule, topo, restr_loop, counters);
+          for (const Topo::Rule& rule : prev.link_rules)
+            add_restraints(rule, topo, restr_loop, counters);
         }
       }
       // write monomer
-      if (count_provenance(ri.rules, Provenance::Monomer) > 0) {
+      if (!ri.monomer_rules.empty()) {
         std::string res_info = " monomer " + chain_info.name + " " +
                                ri.res->seqid.str() + " " + ri.res->name;
         if (!ri.mods.empty())
@@ -367,9 +358,8 @@ cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
 
         restr_loop.add_comment_and_row({res_info, "MONO", ".", group, ".",
                                         ".", ".", ".", ".", ".", ".", ".", ".", "."});
-        for (const Topo::Rule& rule : ri.rules)
-          if (rule.provenance == Provenance::Monomer)
-            add_restraints(rule, topo, restr_loop, counters);
+        for (const Topo::Rule& rule : ri.monomer_rules)
+          add_restraints(rule, topo, restr_loop, counters);
       }
     }
   }
@@ -378,8 +368,7 @@ cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
     const gemmi::ChemLink* chem_link = monlib.find_link(extra_link.link_id);
     assert(chem_link);
     std::string comment = " link " + chem_link->id;
-    restr_loop.add_comment_and_row({comment, "LINK", ".",
-                                    cif::quote(chem_link->id), ".",
+    restr_loop.add_comment_and_row({comment, "LINK", ".", cif::quote(chem_link->id), ".",
                                     ".", ".", ".", ".", ".", ".", ".", ".", "."});
     for (const Topo::Rule& rule : extra_link.rules)
       add_restraints(rule, topo, restr_loop, counters);
@@ -463,19 +452,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     topo.finalize_refmac_topology(monlib);
 
     if (!p.options[KeepHydrogens] && !p.options[NoHydrogens])
-      for (Topo::ChainInfo& chain_info : topo.chain_infos)
-        for (Topo::ResInfo& ri : chain_info.res_infos)
-          for (gemmi::Atom& atom : ri.res->atoms)
-            if (!atom.is_hydrogen()) {
-              try {
-                place_hydrogens(atom, ri, topo);
-              } catch (const std::runtime_error& e) {
-                std::string loc = gemmi::atom_str(chain_info.name, *ri.res,
-                                                  atom.name, atom.altloc);
-                printf("Placing of hydrogen bonded to %s failed:\n  %s\n",
-                       loc.c_str(), e.what());
-              }
-            }
+      place_hydrogens_on_all_atoms(topo, false);
 
     cif::Document crd = make_crd(st, monlib, topo);
     if (p.options[Verbose])

@@ -15,12 +15,6 @@
 
 namespace gemmi {
 
-struct BondedAtom {
-  Atom* ptr;
-  Position& pos; // == ptr->pos;
-  double dist;
-};
-
 // Assumes no hydrogens in the residue.
 // Position and serial number are not assigned for new atoms.
 inline void add_hydrogens_without_positions(const ChemComp& cc, Residue& res) {
@@ -127,33 +121,35 @@ position_from_two_angles(const Position& p1,
 }
 
 
-inline void place_hydrogens(const Atom& atom, Topo::ResInfo& ri,
-                            const Topo& topo) {
+inline void place_hydrogens(const Topo& topo, const Atom& atom) {
   using Angle = Restraints::Angle;
+  struct BondedAtom {
+    Atom* ptr;
+    Position& pos; // == ptr->pos;
+    double dist;
+  };
 
   // put atoms bonded to atom into two lists
   std::vector<BondedAtom> known; // heavy atoms with known positions
   std::vector<BondedAtom> hs;    // H atoms (unknown)
   known.reserve(3);
   hs.reserve(4);
-  for (const Topo::Rule& rule : ri.rules)
-    if (rule.rkind == Topo::RKind::Bond) {
-      const Topo::Bond& t = topo.bonds[rule.index];
-      int n = Topo::has_atom(&atom, t);
-      if (n == 0 || n == 1) {
-        Atom* other = t.atoms[1-n];
-        if (other->altloc) {
-          if (atom.altloc && atom.altloc != other->altloc)
-            continue;
-          if (atom.altloc == '\0' &&
-              in_vector_f([&](const BondedAtom& a) { return a.ptr->name == other->name; },
-                          known))
-            continue;
-        }
-        auto& atom_list = other->is_hydrogen() ? hs : known;
-        atom_list.push_back({other, other->pos, t.restr->value});
-      }
+
+  auto range = topo.bond_index.equal_range(&atom);
+  for (auto i = range.first; i != range.second; ++i) {
+    const Topo::Bond* t = i->second;
+    Atom* other = t->atoms[t->atoms[0] == &atom ? 1 : 0];
+    if (other->altloc) {
+      if (atom.altloc && atom.altloc != other->altloc)
+        continue;
+      if (atom.altloc == '\0' &&
+          in_vector_f([&](const BondedAtom& a) { return a.ptr->name == other->name; },
+                      known))
+        continue;
     }
+    auto& atom_list = other->is_hydrogen() ? hs : known;
+    atom_list.push_back({other, other->pos, t->restr->value});
+  }
 
   if (hs.size() == 0)
     return;
@@ -218,8 +214,8 @@ inline void place_hydrogens(const Atom& atom, Topo::ResInfo& ri,
     int period = 0;
     const Atom* tau_end = nullptr;
     for (const Topo::Plane& plane : topo.planes) {
-      if (plane.atoms.size() > 3 &&
-          plane.has(h.ptr) && plane.has(&atom) && plane.has(heavy.ptr)) {
+      // only Topo::Plane with atoms.size() >= 4 is put into planes
+      if (plane.has(h.ptr) && plane.has(&atom) && plane.has(heavy.ptr)) {
         for (const Atom* a : plane.atoms) {
           if (!a->is_hydrogen() && a != &atom && a != heavy.ptr) {
             tau_end = a;
@@ -349,21 +345,37 @@ inline void place_hydrogens(const Atom& atom, Topo::ResInfo& ri,
   }
 }
 
-inline void adjust_hydrogen_distances(Topo& topo, Restraints::DistanceOf of, double default_scale=1.) {
+inline void adjust_hydrogen_distances(Topo& topo, Restraints::DistanceOf of,
+                                      double default_scale=1.) {
+  for (const Topo::Bond& t : topo.bonds) {
+    assert(t.atoms[0] != nullptr && t.atoms[1] != nullptr);
+    if (t.atoms[0]->is_hydrogen() || t.atoms[1]->is_hydrogen()) {
+      Position u = t.atoms[1]->pos - t.atoms[0]->pos;
+      double scale = t.restr->distance(of) / u.length();
+      if (std::isnan(scale))
+        scale = default_scale;
+      if (t.atoms[1]->is_hydrogen())
+        t.atoms[1]->pos = t.atoms[0]->pos + u * scale;
+      else
+        t.atoms[0]->pos = t.atoms[1]->pos - u * scale;
+    }
+  }
+}
+
+inline void place_hydrogens_on_all_atoms(Topo& topo, bool raise_errors) {
   for (Topo::ChainInfo& chain_info : topo.chain_infos)
     for (Topo::ResInfo& ri : chain_info.res_infos)
-      for (const Topo::Rule& rule : ri.rules)
-        if (rule.rkind == Topo::RKind::Bond) {
-          const Topo::Bond& t = topo.bonds[rule.index];
-          assert(t.atoms[0] != nullptr && t.atoms[1] != nullptr);
-          if (t.atoms[0]->is_hydrogen() || t.atoms[1]->is_hydrogen()) {
-            Position u = t.atoms[1]->pos - t.atoms[0]->pos;
-            double scale = t.restr->distance(of) / u.length();
-            if (std::isnan(scale)) scale = default_scale;
-            if (t.atoms[1]->is_hydrogen())
-              t.atoms[1]->pos = t.atoms[0]->pos + u * scale;
-            else
-              t.atoms[0]->pos = t.atoms[1]->pos - u * scale;
+      for (Atom& atom : ri.res->atoms)
+        if (!atom.is_hydrogen()) {
+          try {
+            place_hydrogens(topo, atom);
+          } catch (const std::runtime_error& e) {
+            std::string err = "Placing of hydrogen bonded to " +
+                              atom_str(chain_info.name, *ri.res, atom.name, atom.altloc) +
+                              " failed:\n  " + e.what();
+            if (raise_errors)
+              fail(err);
+            std::fprintf(stderr, "%s\n", err.c_str());
           }
         }
 }
@@ -411,26 +423,10 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
   }
 
   topo->finalize_refmac_topology(monlib);
-  topo->create_angle_index();
 
   // the hydrogens added previously have positions not set
-  if (h_change != HydrogenChange::None) {
-    for (Topo::ChainInfo& chain_info : topo->chain_infos)
-      for (Topo::ResInfo& ri : chain_info.res_infos)
-        for (Atom& atom : ri.res->atoms)
-          if (!atom.is_hydrogen()) {
-            try {
-              place_hydrogens(atom, ri, *topo);
-            } catch (const std::runtime_error& e) {
-              std::string err = "Placing of hydrogen bonded to " +
-                                atom_str(chain_info.name, *ri.res, atom.name, atom.altloc) +
-                                " failed:\n  " + e.what();
-              if (raise_errors)
-                fail(err);
-              std::fprintf(stderr, "%s\n", err.c_str());
-            }
-          }
-  }
+  if (h_change != HydrogenChange::None)
+    place_hydrogens_on_all_atoms(*topo, raise_errors);
 
   return topo;
 }

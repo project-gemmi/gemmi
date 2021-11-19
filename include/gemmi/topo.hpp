@@ -5,7 +5,7 @@
 #ifndef GEMMI_TOPO_HPP_
 #define GEMMI_TOPO_HPP_
 
-#include <unordered_map>
+#include <map>           // for multimap
 #include "chemcomp.hpp"  // for ChemComp
 #include "monlib.hpp"    // for MonLib
 #include "model.hpp"     // for Residue, Atom
@@ -73,10 +73,8 @@ struct Topo {
     }
   };
 
-  enum class Provenance { None, PrevLink, Monomer, NextLink, ExtraLink };
   enum class RKind { Bond, Angle, Torsion, Chirality, Plane };
   struct Rule {
-    Provenance provenance;
     RKind rkind;
     size_t index; // index in the respective vector (bonds, ...) in Topo
   };
@@ -85,7 +83,8 @@ struct Topo {
     Residue* res;
     struct Prev {
       std::string link;
-      int idx; // relative to current index
+      int idx = 0; // relative to current index
+      std::vector<Rule> link_rules;
       const ResInfo* get(const ResInfo* t) const { return t + idx; }
       ResInfo* get(ResInfo* t) const { return t + idx; }
     };
@@ -93,7 +92,7 @@ struct Topo {
     std::vector<Prev> prev;
     std::vector<std::string> mods;
     ChemComp chemcomp;
-    std::vector<Rule> rules;
+    std::vector<Rule> monomer_rules;
 
     ResInfo(Residue* r) : res(r) {}
     void add_mod(const std::string& m) {
@@ -150,12 +149,8 @@ struct Topo {
   std::vector<Chirality> chirs;
   std::vector<Plane> planes;
 
-  std::unordered_multimap<const Atom*, Angle*> angle_index;
-
-  void create_angle_index() {
-    for (Angle& ang : angles)
-      angle_index.emplace(ang.atoms[1], &ang);
-  }
+  std::multimap<const Atom*, Bond*> bond_index;
+  std::multimap<const Atom*, Angle*> angle_index;
 
   ResInfo* find_resinfo(const Residue* res) {
     for (ChainInfo& ci : chain_infos)
@@ -166,29 +161,25 @@ struct Topo {
   }
 
   const Restraints::Bond* take_bond(const Atom* a, const Atom* b) const {
-    for (const Bond& bond : bonds)
-      if ((bond.atoms[0] == a && bond.atoms[1] == b) ||
-          (bond.atoms[0] == b && bond.atoms[1] == a))
-        return bond.restr;
+    auto range = bond_index.equal_range(a);
+    for (auto i = range.first; i != range.second; ++i) {
+      const Bond* bond = i->second;
+      if ((bond->atoms[0] == b && bond->atoms[1] == a) ||
+          (bond->atoms[1] == b && bond->atoms[0] == a))
+        return bond->restr;
+    }
     return nullptr;
   }
 
   const Restraints::Angle* take_angle(const Atom* a,
                                       const Atom* b,
                                       const Atom* c) const {
-    if (!angle_index.empty()) {
-      auto range = angle_index.equal_range(b);
-      for (auto i = range.first; i != range.second; ++i) {
-        const Angle* ang = i->second;
-        if ((ang->atoms[0] == a && ang->atoms[2] == c) ||
-            (ang->atoms[0] == c && ang->atoms[2] == a))
-          return ang->restr;
-      }
-    } else {
-      for (const Angle& ang : angles)
-        if (ang.atoms[1] == b && ((ang.atoms[0] == a && ang.atoms[2] == c) ||
-                                  (ang.atoms[0] == c && ang.atoms[2] == a)))
-          return ang.restr;
+    auto range = angle_index.equal_range(b);
+    for (auto i = range.first; i != range.second; ++i) {
+      const Angle* ang = i->second;
+      if ((ang->atoms[0] == a && ang->atoms[2] == c) ||
+          (ang->atoms[0] == c && ang->atoms[2] == a))
+        return ang->restr;
     }
     return nullptr;
   }
@@ -227,12 +218,11 @@ struct Topo {
       altlocs += altloc;
 
     std::vector<Rule> rules;
-    Provenance pro = Provenance::None;
     for (const Restraints::Bond& bond : rt.bonds)
       for (char alt : altlocs)
         if (Atom* at1 = bond.id1.get_from(res, res2, alt))
           if (Atom* at2 = bond.id2.get_from(res, res2, alt)) {
-            rules.push_back({pro, RKind::Bond, bonds.size()});
+            rules.push_back({RKind::Bond, bonds.size()});
             bonds.push_back({&bond, {{at1, at2}}});
             if (!at1->altloc && !at2->altloc)
               break;
@@ -242,7 +232,7 @@ struct Topo {
         if (Atom* at1 = angle.id1.get_from(res, res2, alt))
           if (Atom* at2 = angle.id2.get_from(res, res2, alt))
             if (Atom* at3 = angle.id3.get_from(res, res2, alt)) {
-              rules.push_back({pro, RKind::Angle, angles.size()});
+              rules.push_back({RKind::Angle, angles.size()});
               angles.push_back({&angle, {{at1, at2, at3}}});
               if (!at1->altloc && !at2->altloc && !at3->altloc)
                 break;
@@ -253,7 +243,7 @@ struct Topo {
           if (Atom* at2 = tor.id2.get_from(res, res2, alt))
             if (Atom* at3 = tor.id3.get_from(res, res2, alt))
               if (Atom* at4 = tor.id4.get_from(res, res2, alt)) {
-                rules.push_back({pro, RKind::Torsion, torsions.size()});
+                rules.push_back({RKind::Torsion, torsions.size()});
                 torsions.push_back({&tor, {{at1, at2, at3, at4}}});
                 if (!at1->altloc && !at2->altloc &&
                     !at3->altloc && !at4->altloc)
@@ -265,7 +255,7 @@ struct Topo {
           if (Atom* at2 = chir.id1.get_from(res, res2, alt))
             if (Atom* at3 = chir.id2.get_from(res, res2, alt))
               if (Atom* at4 = chir.id3.get_from(res, res2, alt)) {
-                rules.push_back({pro, RKind::Chirality, chirs.size()});
+                rules.push_back({RKind::Chirality, chirs.size()});
                 chirs.push_back({&chir, {{at1, at2, at3, at4}}});
                 if (!at1->altloc && !at2->altloc &&
                     !at3->altloc && !at4->altloc)
@@ -278,7 +268,7 @@ struct Topo {
           if (Atom* atom = id.get_from(res, res2, alt))
             atoms.push_back(atom);
         if (atoms.size() >= 4) {
-          rules.push_back({pro, RKind::Plane, planes.size()});
+          rules.push_back({RKind::Plane, planes.size()});
           planes.push_back({&plane, atoms});
         }
         if (std::all_of(atoms.begin(), atoms.end(),
@@ -288,24 +278,21 @@ struct Topo {
     return rules;
   }
 
-  void apply_internal_restraints_to_residue(ResInfo& ri) {
-    auto rules = apply_restraints(ri.chemcomp.rt, *ri.res, nullptr);
-    for (const auto& rule : rules)
-      ri.rules.push_back({Provenance::Monomer, rule.rkind, rule.index});
-  }
-
   void apply_restraints_to_residue(ResInfo& ri, const MonLib& monlib) {
-    for (ResInfo::Prev& prev : ri.prev) {
+    // link restraints
+    for (ResInfo::Prev& prev : ri.prev)
       if (const ChemLink* link = monlib.find_link(prev.link)) {
         ResInfo* prev_ri = prev.get(&ri);
         auto rules = apply_restraints(link->rt, *prev_ri->res, ri.res);
-        for (const auto& rule : rules) {
-          ri.rules.push_back({Provenance::PrevLink, rule.rkind, rule.index});
-          prev_ri->rules.push_back({Provenance::NextLink, rule.rkind, rule.index});
-        }
+        vector_move_extend(prev.link_rules, std::move(rules));
       }
-    }
+    // monomer restraints
     apply_internal_restraints_to_residue(ri);
+  }
+
+  void apply_internal_restraints_to_residue(ResInfo& ri) {
+    auto rules = apply_restraints(ri.chemcomp.rt, *ri.res, nullptr);
+    vector_move_extend(ri.monomer_rules, std::move(rules));
   }
 
   void apply_restraints_to_extra_link(ExtraLink& link, const MonLib& monlib) {
@@ -319,17 +306,8 @@ struct Topo {
       printf("Warning: LINK between different conformers %c and %c.",
              link.alt1, link.alt2);
     char alt = link.alt1 ? link.alt1 : link.alt2;
-    ResInfo* ri1 = find_resinfo(link.res1);
-    ResInfo* ri2 = find_resinfo(link.res2);
     auto rules = apply_restraints(cl->rt, *link.res1, link.res2, alt);
-    for (Rule& rule : rules) {
-      rule.provenance = Provenance::ExtraLink;
-      link.rules.push_back(rule);
-      if (ri1)
-        ri1->rules.push_back(rule);
-      if (ri2)
-        ri2->rules.push_back(rule);
-    }
+    vector_move_extend(link.rules, std::move(rules));
   }
 
   // Model is non-const b/c we store non-const pointers to residues in Topo.
@@ -347,6 +325,15 @@ struct Topo {
         apply_restraints_to_residue(ri, monlib);
     for (ExtraLink& link : extras)
       apply_restraints_to_extra_link(link, monlib);
+
+    // create indices
+    for (Bond& bond : bonds) {
+      bond_index.emplace(bond.atoms[0], &bond);
+      if (bond.atoms[1] != bond.atoms[0])
+        bond_index.emplace(bond.atoms[1], &bond);
+    }
+    for (Angle& ang : angles)
+      angle_index.emplace(ang.atoms[1], &ang);
   }
 };
 
@@ -374,7 +361,7 @@ inline void Topo::ChainInfo::setup_polymer_links() {
     RGroup group = group_from(prev_group.end);
     for (auto ri = group.begin; ri != group.end; ++ri)
       for (auto prev_ri = prev_group.begin; prev_ri != prev_group.end; ++prev_ri) {
-        ResInfo::Prev p{{}, 0};
+        ResInfo::Prev p;
         if (are_connected(*prev_ri->res, *ri->res, polymer_type)) {
           p.idx = int(prev_ri - ri);
           if (is_polypeptide(polymer_type)) {

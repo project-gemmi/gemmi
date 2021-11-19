@@ -177,18 +177,20 @@ int GEMMI_MAIN(int argc, char **argv) {
       // but then we couldn't output the provenance (res or "link" below).
       for (const Topo::ChainInfo& chain_info : topo.chain_infos)
         for (const Topo::ResInfo& ri : chain_info.res_infos) {
-          std::string res = chain_info.name + " " + ri.res->str();
-          for (const Topo::Rule& rule : ri.rules)
-            if (rule.provenance == Topo::Provenance::PrevLink ||
-                rule.provenance == Topo::Provenance::Monomer)
-              check_restraint(rule, topo, cutoff, res.c_str(), &rmses,
-                              p.options[Verbose]);
+          for (const Topo::ResInfo::Prev& prev : ri.prev) {
+            std::string rtag = chain_info.name + " " +
+                               prev.get(&ri)->res->str() + "-" + ri.res->str();
+            for (const Topo::Rule& rule : prev.link_rules)
+              check_restraint(rule, topo, cutoff, rtag.c_str(), &rmses, p.options[Verbose]);
+          }
+          std::string rtag = chain_info.name + " " + ri.res->str();
+          for (const Topo::Rule& rule : ri.monomer_rules)
+            check_restraint(rule, topo, cutoff, rtag.c_str(), &rmses, p.options[Verbose]);
         }
-      for (const Topo::ExtraLink& link : topo.extras) {
+      for (const Topo::ExtraLink& link : topo.extras)
         for (const Topo::Rule& rule : link.rules)
-          check_restraint(rule, topo, cutoff, "link", &rmses,
-                          p.options[Verbose]);
-      }
+          check_restraint(rule, topo, cutoff, "link", &rmses, p.options[Verbose]);
+
       printf("Model rmsZ: "
              "bond: %.3f, angle: %.3f, torsion: %.3f, planarity %.3f\n"
              "Model rmsD: "
