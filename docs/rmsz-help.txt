@@ -8,6 +8,7 @@ Options:
   -h, --help       Print usage and exit.
   -V, --version    Print version and exit.
   -v, --verbose    Verbose output.
+  -q, --quiet      Show only summary.
   --monomers=DIR   Monomer library dir (default: $CLIBD_MON).
   --format=FORMAT  Input format (default: from the file extension).
   --cutoff=ZC      List bonds and angles with Z score > ZC (default: 2).

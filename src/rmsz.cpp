@@ -19,7 +19,7 @@ using gemmi::Topo;
 
 namespace {
 
-enum OptionIndex { Monomers=4, FormatIn, Cutoff };
+enum OptionIndex { Quiet=4, Monomers, FormatIn, Cutoff };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -30,6 +30,8 @@ const option::Descriptor Usage[] = {
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
+  { Quiet, 0, "q", "quiet", Arg::None,
+    "  -q, --quiet  \tShow only summary." },
   { Monomers, 0, "", "monomers", Arg::Required,
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
   { FormatIn, 0, "", "format", Arg::CoorFormat,
@@ -57,6 +59,10 @@ struct RMSes {
   RMS z_plane;
   int wrong_chirality = 0;
   int all_chiralities = 0;
+  int wrong_bond = 0;
+  int wrong_angle = 0;
+  int wrong_torsion = 0;
+  int wrong_plane = 0;
 };
 
 double check_restraint(const Topo::Rule rule,
@@ -64,17 +70,20 @@ double check_restraint(const Topo::Rule rule,
                        double cutoff,
                        const char* tag,
                        RMSes* rmses,
-                       bool verbose) {
+                       int verbosity) {
   switch (rule.rkind) {
     case Topo::RKind::Bond: {
       const Topo::Bond& t = topo.bonds[rule.index];
       double z = t.calculate_z();
       if (z > cutoff) {
-        int n = printf("%s bond %s: |Z|=%.1f", tag, t.restr->str().c_str(), z);
-        if (verbose)
-          printf(" %*.3f -> %.3f", std::max(50 - n, 7),
-                 t.restr->value, t.calculate());
-        puts("");
+        rmses->wrong_bond++;
+        if (verbosity >= 0) {
+          int n = printf("%s bond %s: |Z|=%.1f", tag, t.restr->str().c_str(), z);
+          if (verbosity > 0)
+            printf(" %*.3f -> %.3f", std::max(50 - n, 7),
+                   t.restr->value, t.calculate());
+          putchar('\n');
+        }
       }
       rmses->z_bond.put(z);
       rmses->d_bond.put(z * t.restr->esd);
@@ -84,11 +93,14 @@ double check_restraint(const Topo::Rule rule,
       const Topo::Angle& t = topo.angles[rule.index];
       double z = t.calculate_z();
       if (z > cutoff) {
-        int n = printf("%s angle %s: |Z|=%.1f", tag, t.restr->str().c_str(), z);
-        if (verbose)
-          printf(" %*.1f -> %.1f", std::max(50 - n, 7),
-                 t.restr->value, gemmi::deg(t.calculate()));
-        puts("");
+        rmses->wrong_angle++;
+        if (verbosity >= 0) {
+          int n = printf("%s angle %s: |Z|=%.1f", tag, t.restr->str().c_str(), z);
+          if (verbosity > 0)
+            printf(" %*.1f -> %.1f", std::max(50 - n, 7),
+                   t.restr->value, gemmi::deg(t.calculate()));
+          putchar('\n');
+        }
       }
       rmses->z_angle.put(z);
       rmses->d_angle.put(z * t.restr->esd);
@@ -98,12 +110,15 @@ double check_restraint(const Topo::Rule rule,
       const Topo::Torsion& t = topo.torsions[rule.index];
       double z = t.calculate_z();  // takes into account t.restr->period
       if (z > cutoff) {
-        int n = printf("%s torsion %s: |Z|=%.1f",
-                       tag, t.restr->str().c_str(), z);
-        if (verbose)
-          printf(" %*.1f -> %.1f", std::max(50 - n, 7),
-                 t.restr->value, gemmi::deg(t.calculate()));
-        puts("");
+        rmses->wrong_torsion++;
+        if (verbosity >= 0) {
+          int n = printf("%s torsion %s: |Z|=%.1f",
+                         tag, t.restr->str().c_str(), z);
+          if (verbosity > 0)
+            printf(" %*.1f -> %.1f", std::max(50 - n, 7),
+                   t.restr->value, gemmi::deg(t.calculate()));
+          putchar('\n');
+        }
       }
       rmses->z_torsion.put(z);
       rmses->d_torsion.put(z * t.restr->esd);
@@ -113,7 +128,8 @@ double check_restraint(const Topo::Rule rule,
       const Topo::Chirality& t = topo.chirs[rule.index];
       rmses->all_chiralities++;
       if (!t.check()) {
-        printf("%s wrong chirality of %s\n", tag, t.restr->str().c_str());
+        if (verbosity >= 0)
+          printf("%s wrong chirality of %s\n", tag, t.restr->str().c_str());
         rmses->wrong_chirality++;
         return 1.0;
       }
@@ -126,14 +142,17 @@ double check_restraint(const Topo::Rule rule,
       for (const gemmi::Atom* atom : t.atoms) {
         double dist = gemmi::get_distance_from_plane(atom->pos, coeff);
         double z = dist / t.restr->esd;
-        if (z > cutoff)
-          printf("%s atom %s not in plane %s, |Z|=%.1f\n", tag,
-                 atom->name.c_str(), t.restr->str().c_str(), z);
+        if (verbosity >= 0)
+          if (z > cutoff)
+            printf("%s atom %s not in plane %s, |Z|=%.1f\n", tag,
+                   atom->name.c_str(), t.restr->str().c_str(), z);
         if (z > max_z)
             max_z = z;
       }
       rmses->z_plane.put(max_z);
       rmses->d_plane.put(max_z * t.restr->esd);
+      if (max_z > cutoff)
+        rmses->wrong_plane++;
       return max_z;
     }
   }
@@ -155,6 +174,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   double cutoff = 2.0;
   if (p.options[Cutoff])
     cutoff = std::strtod(p.options[Cutoff].arg, nullptr);
+  int verbosity = p.options[Verbose].count() - p.options[Quiet].count();
   std::string input = p.coordinate_input_file(0);
   try {
     gemmi::CoorFormat format = coor_format_as_enum(p.options[FormatIn]);
@@ -181,15 +201,15 @@ int GEMMI_MAIN(int argc, char **argv) {
             std::string rtag = chain_info.name + " " +
                                prev.get(&ri)->res->str() + "-" + ri.res->str();
             for (const Topo::Rule& rule : prev.link_rules)
-              check_restraint(rule, topo, cutoff, rtag.c_str(), &rmses, p.options[Verbose]);
+              check_restraint(rule, topo, cutoff, rtag.c_str(), &rmses, verbosity);
           }
           std::string rtag = chain_info.name + " " + ri.res->str();
           for (const Topo::Rule& rule : ri.monomer_rules)
-            check_restraint(rule, topo, cutoff, rtag.c_str(), &rmses, p.options[Verbose]);
+            check_restraint(rule, topo, cutoff, rtag.c_str(), &rmses, verbosity);
         }
       for (const Topo::ExtraLink& link : topo.extras)
         for (const Topo::Rule& rule : link.rules)
-          check_restraint(rule, topo, cutoff, "link", &rmses, p.options[Verbose]);
+          check_restraint(rule, topo, cutoff, "link", &rmses, verbosity);
 
       printf("Model rmsZ: "
              "bond: %.3f, angle: %.3f, torsion: %.3f, planarity %.3f\n"
@@ -205,6 +225,16 @@ int GEMMI_MAIN(int argc, char **argv) {
              rmses.d_torsion.get_value(),
              rmses.d_plane.get_value(),
              rmses.wrong_chirality, rmses.all_chiralities);
+      printf("rmsZ > %g for:\n"
+             "  %d of %d bonds,\n"
+             "  %d of %d angles,\n"
+             "  %d of %d torsion angles,\n"
+             "  %d of %d planes.\n",
+             cutoff,
+             rmses.wrong_bond, rmses.z_bond.n,
+             rmses.wrong_angle, rmses.z_angle.n,
+             rmses.wrong_torsion, rmses.z_torsion.n,
+             rmses.wrong_plane, rmses.z_plane.n);
     }
   } catch (std::exception& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
