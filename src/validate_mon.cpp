@@ -97,17 +97,6 @@ void print_outliers(const Topo& topo, const char* tag) {
   }
 }
 
-static void check_xyz_consistency(const gemmi::ChemComp& cc,
-                                  gemmi::Residue& res) {
-  Topo topo;
-  topo.chain_infos.resize(1);
-  Topo::ResInfo ri(&res);
-  ri.chemcomp = cc;
-  topo.apply_internal_restraints_to_residue(ri);
-  topo.chain_infos[0].res_infos.push_back(ri);
-  print_outliers(topo, (cc.name + " [atom.xyz]").c_str());
-}
-
 void check_monomer_doc(const cif::Document& doc) {
   for (const cif::Block& block : doc.blocks)
     if (block.name != "comp_list") {
@@ -118,7 +107,9 @@ void check_monomer_doc(const cif::Document& doc) {
         // check consistency of _chem_comp_atom.x/y/z with restraints
         gemmi::Residue res = gemmi::make_residue_from_chemcomp_block(block,
                                                     gemmi::ChemCompModel::Xyz);
-        check_xyz_consistency(cc, res);
+        Topo topo;
+        topo.apply_restraints(cc.rt, res, nullptr);
+        print_outliers(topo, (cc.name + " [atom.xyz]").c_str());
       } catch (const std::exception& e) {
         fprintf(stderr, "Failed to interpret %s from %s:\n %s\n",
                 block.name.c_str(), doc.source.c_str(), e.what());
