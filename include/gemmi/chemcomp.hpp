@@ -338,7 +338,7 @@ struct ChemComp {
   int get_atom_index(const std::string& atom_id) const {
     auto it = find_atom(atom_id);
     if (it == atoms.end())
-      fail("Chemical componenent ", name, " has no atom ", atom_id);
+      fail("Chemical component ", name, " has no atom ", atom_id);
     return int(it - atoms.begin());
   }
 
