@@ -391,7 +391,10 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   std::string input = p.coordinate_input_file(0);
   std::string output = p.nonOption(1);
+  bool verbose = p.options[Verbose];
   try {
+    if (verbose)
+      printf("Reading %s ...\n", input.c_str());
     gemmi::Structure st = gemmi::read_structure_gz(input,
                                             gemmi::CoorFormat::UnknownAny);
     if (st.input_format == gemmi::CoorFormat::Pdb ||
@@ -402,14 +405,20 @@ int GEMMI_MAIN(int argc, char **argv) {
       return 1;
     }
     gemmi::Model& model0 = st.models[0];
+    if (verbose)
+      printf("Reading monomer library...\n");
     gemmi::MonLib monlib = gemmi::read_monomer_lib(monomer_dir,
                                                 model0.get_all_residue_names(),
                                                 gemmi::read_cif_gz);
 
     Topo topo;
+    if (verbose)
+      printf("Preparing topology...\n");
     topo.initialize_refmac_topology(st, model0, monlib);
 
     // add H, sort atoms in residues and assign serial numbers
+    if (verbose)
+      printf("Hydrogens, sorting...\n");
     int serial = 0;
     for (Topo::ChainInfo& chain_info : topo.chain_infos)
       for (Topo::ResInfo& ri : chain_info.res_infos) {
@@ -449,13 +458,20 @@ int GEMMI_MAIN(int argc, char **argv) {
           atom.serial = ++serial;
       }
 
+    if (verbose)
+      printf("Preparing restraints...\n");
     topo.finalize_refmac_topology(monlib);
 
-    if (!p.options[KeepHydrogens] && !p.options[NoHydrogens])
+    if (!p.options[KeepHydrogens] && !p.options[NoHydrogens]) {
+      if (verbose)
+        printf("Moving hydrogens to riding positions...\n");
       place_hydrogens_on_all_atoms(topo, false);
+    }
 
+    if (verbose)
+      printf("Preparing data for crd file...\n");
     cif::Document crd = make_crd(st, monlib, topo);
-    if (p.options[Verbose])
+    if (verbose)
       printf("Writing coordinates to: %s.crd\n", output.c_str());
     {
       gemmi::Ofstream os(output + ".crd");
@@ -467,14 +483,16 @@ int GEMMI_MAIN(int argc, char **argv) {
         for (gemmi::Residue& res : chain.residues)
           for (gemmi::Atom& atom : res.atoms)
             if (atom.occ <= 0) {
-              if (p.options[Verbose])
+              if (verbose)
                 printf("Atom with zero occupancy: %s\n",
                        gemmi::atom_str(chain, res, atom).c_str());
               atom.name += '?';  // hide the atom by mangling the name
             }
 
+    if (verbose)
+      printf("Preparing data for rst file...\n");
     cif::Document rst = make_rst(topo, monlib);
-    if (p.options[Verbose])
+    if (verbose)
       printf("Writing restraints to: %s.rst\n", output.c_str());
     {
       gemmi::Ofstream os(output + ".rst");
