@@ -287,10 +287,6 @@ struct Topo {
         vector_move_extend(prev.link_rules, std::move(rules));
       }
     // monomer restraints
-    apply_internal_restraints_to_residue(ri);
-  }
-
-  void apply_internal_restraints_to_residue(ResInfo& ri) {
     auto rules = apply_restraints(ri.chemcomp.rt, *ri.res, nullptr);
     vector_move_extend(ri.monomer_rules, std::move(rules));
   }
