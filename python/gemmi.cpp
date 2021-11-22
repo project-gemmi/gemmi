@@ -50,10 +50,12 @@ void add_misc(py::module& m) {
     .def_readwrite("spacegroup_hm", &SmallStructure::spacegroup_hm)
     .def_readonly("sites", &SmallStructure::sites)
     .def_readonly("atom_types", &SmallStructure::atom_types)
+    .def_readwrite("wavelength", &SmallStructure::wavelength)
     .def("add_site", [](SmallStructure& self, const SmallStructure::Site& site) {
         self.sites.push_back(site);
     })
     .def("find_spacegroup", &SmallStructure::find_spacegroup)
+    .def("get_atom_type", &SmallStructure::get_atom_type)
     .def("get_all_unit_cell_sites", &SmallStructure::get_all_unit_cell_sites)
     .def("remove_hydrogens", &SmallStructure::remove_hydrogens)
     .def("change_occupancies_to_crystallographic",
