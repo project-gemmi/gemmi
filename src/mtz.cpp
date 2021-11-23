@@ -10,6 +10,7 @@
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/input.hpp>    // for FileStream, MemoryStream
 #include <gemmi/reciproc.hpp> // for count_reflections
+#include "histogram.h"        // for print_histogram
 #define GEMMI_PROG mtz
 #include "options.h"
 
@@ -18,9 +19,11 @@ using std::printf;
 
 namespace {
 
-enum OptionIndex { Headers=4, Dump, PrintBatch, PrintBatches,
-                   PrintAppendix, PrintTsv, PrintStats, PrintCells,
-                   CheckAsu, Compare, ToggleEndian, NoIsym, UpdateReso };
+enum OptionIndex {
+  Headers=4, Dump, PrintBatch, PrintBatches, PrintAppendix,
+  PrintTsv, PrintStats, PrintHistogram, PrintCells, CheckAsu,
+  Compare, ToggleEndian, NoIsym, UpdateReso
+};
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -43,6 +46,8 @@ const option::Descriptor Usage[] = {
     "  --tsv  \tPrint all the data as tab-separated values." },
   { PrintStats, 0, "s", "stats", Arg::None,
     "  -s, --stats  \tPrint column statistics (completeness, mean, etc)." },
+  { PrintHistogram, 0, "", "histogram", Arg::Required,
+    "  --histogram=LABEL  \tPrint histogram of values in column LABEL." },
   { PrintCells, 0, "", "cells", Arg::None,
     "  --cells  \tPrint cell parameters only." },
   { CheckAsu, 0, "", "check-asu", Arg::None,
@@ -177,13 +182,12 @@ void print_tsv(const Mtz& mtz) {
     printf("%g%c", mtz.data[i], (i + 1) % ncol != 0 ? '\t' : '\n');
 }
 
-struct ColumnStats {
-  float min_value = INFINITY;
-  float max_value = -INFINITY;
-  gemmi::Variance var;
-};
-
 void print_stats(const Mtz& mtz) {
+  struct ColumnStats {
+    float min_value = INFINITY;
+    float max_value = -INFINITY;
+    gemmi::Variance var;
+  };
   std::vector<ColumnStats> column_stats(mtz.columns.size());
   for (size_t i = 0; i != mtz.data.size(); ++i) {
     float v = mtz.data[i];
@@ -236,6 +240,28 @@ void print_stats(const Mtz& mtz) {
     printf("from %d (in BATCH %d) to %d (in BATCH %d) reflections.\n",
            min_val, min_loc, max_val, max_loc);
   }
+}
+
+void print_column_statistics(const Mtz& mtz, const char* label) {
+  const Mtz::Column& col = mtz.get_column_with_label(label);
+  std::vector<float> data;
+  for (float v : col)
+    if (!std::isnan(v))
+      data.push_back(v);
+  std::printf("\nStatistics of column %s:\n", label);
+  std::printf("NaN count:  %d of %d\n", col.size() - (int)data.size(), col.size());
+  if (data.empty())
+    return;
+  gemmi::DataStats st = gemmi::calculate_data_statistics(data);
+  std::printf("Minimum: %12.5f\n", st.dmin);
+  std::printf("Maximum: %12.5f\n", st.dmax);
+  std::printf("Mean:    %12.5f\n", st.dmean);
+  std::printf("RMS:     %12.5f\n", st.rms);
+  size_t mpos = data.size() / 2;
+  std::nth_element(data.begin(), data.begin() + mpos, data.end());
+  std::printf("Median:  %12.5f\n", data[mpos]);
+  double margin = 0;
+  print_histogram(data, st.dmin - margin, st.dmax + margin);
 }
 
 void check_asu(const Mtz& mtz) {
@@ -359,14 +385,15 @@ void print_mtz_info(Stream&& stream, const char* path,
   mtz.read_main_headers(stream);
   mtz.read_history_and_batch_headers(stream);
   mtz.setup_spacegroup();
-  if (options[PrintTsv] || options[PrintStats] || options[CheckAsu] ||
-      options[Compare] || options[UpdateReso])
+  if (options[PrintTsv] || options[PrintStats] || options[PrintHistogram] ||
+      options[CheckAsu] || options[Compare] || options[UpdateReso])
     mtz.read_raw_data(stream);
   if (options[UpdateReso])
     mtz.update_reso();
   if (options[Dump] ||
       !(options[PrintBatch] || options[PrintBatches] || options[PrintTsv] ||
-        options[PrintStats] || options[PrintAppendix] || options[PrintCells] ||
+        options[PrintStats] || options[PrintHistogram] ||
+        options[PrintAppendix] || options[PrintCells] ||
         options[CheckAsu] || options[Compare] || options[Headers]))
     dump(mtz);
   if (options[PrintBatch]) {
@@ -388,6 +415,8 @@ void print_mtz_info(Stream&& stream, const char* path,
     mtz.switch_to_original_hkl();
   if (options[PrintCells])
     print_cells(mtz);
+  for (const option::Option* opt = options[PrintHistogram]; opt; opt = opt->next())
+    print_column_statistics(mtz, opt->arg);
   if (options[PrintTsv])
     print_tsv(mtz);
   if (options[PrintStats])
