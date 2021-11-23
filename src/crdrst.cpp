@@ -69,9 +69,7 @@ std::string get_ccp4_mod_id(const std::vector<std::string>& mods) {
   return ".";
 }
 
-cif::Document make_crd(const gemmi::Structure& st,
-                       const gemmi::MonLib& monlib,
-                       const Topo& topo) {
+cif::Document make_crd(const gemmi::Structure& st, const Topo& topo) {
   using gemmi::to_str;
   cif::Document crd;
   auto e_id = st.info.find("_entry.id");
@@ -203,18 +201,21 @@ cif::Document make_crd(const gemmi::Structure& st,
       atom_loop.tags.push_back(std::string("_atom_site.aniso_U") + idx);
   std::vector<std::string>& vv = atom_loop.values;
   vv.reserve(count_atom_sites(st) * atom_loop.tags.size());
-  for (const gemmi::Chain& chain : model0.chains) {
-    for (const gemmi::Residue& res : chain.residues) {
+
+
+  for (const Topo::ChainInfo& chain_info : topo.chain_infos)
+    for (const Topo::ResInfo& ri : chain_info.res_infos) {
+      const gemmi::ChemComp& cc = ri.chemcomp;
+      const gemmi::Residue& res = *ri.res;
       std::string auth_seq_id = res.seqid.num.str();
       //std::string ins_code(1, res.icode != ' ' ? res.icode : '?');
-      const gemmi::ChemComp& cc = monlib.monomers.at(res.name);
       for (const gemmi::Atom& a : res.atoms) {
         vv.emplace_back("ATOM");
         vv.emplace_back(std::to_string(a.serial));
         vv.emplace_back(a.name);
         vv.emplace_back(1, a.altloc ? a.altloc : '.');
         vv.emplace_back(res.name);
-        vv.emplace_back(cif::quote(chain.name));
+        vv.emplace_back(cif::quote(chain_info.chain_ref.name));
         vv.emplace_back(auth_seq_id);
         //vv.emplace_back(ins_code);
         vv.emplace_back(to_str(a.pos.x));
@@ -238,7 +239,6 @@ cif::Document make_crd(const gemmi::Structure& st,
         }
       }
     }
-  }
   return crd;
 }
 
@@ -422,7 +422,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     int serial = 0;
     for (Topo::ChainInfo& chain_info : topo.chain_infos)
       for (Topo::ResInfo& ri : chain_info.res_infos) {
-        const gemmi::ChemComp &cc = ri.chemcomp;
+        const gemmi::ChemComp& cc = ri.chemcomp;
         gemmi::Residue &res = *ri.res;
         if (!p.options[KeepHydrogens]) {
           gemmi::remove_hydrogens(res);
@@ -442,7 +442,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                                                 : a.altloc < b.altloc;
                   });
         if (1) {  // temporary addition for makecif/refmac compatibility
-          if (gemmi::in_vector(std::string("AA-STAND"),  ri.mods) &&
+          if (gemmi::in_vector(std::string("AA-STAND"), ri.mods) &&
               !ri.res->find_atom("OXT", '*')) {
             gemmi::Atom atom;
             atom.name = "OXT";
@@ -452,6 +452,7 @@ int GEMMI_MAIN(int argc, char **argv) {
             atom.occ = 0;
             atom.b_iso = 0;
             ri.res->atoms.push_back(atom);
+            ri.chemcomp.atoms.push_back({atom.name, gemmi::El::O, 0.0, "OC"});
           }
         }
         for (gemmi::Atom& atom : res.atoms)
@@ -470,7 +471,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
     if (verbose)
       printf("Preparing data for crd file...\n");
-    cif::Document crd = make_crd(st, monlib, topo);
+    cif::Document crd = make_crd(st, topo);
     if (verbose)
       printf("Writing coordinates to: %s.crd\n", output.c_str());
     {
