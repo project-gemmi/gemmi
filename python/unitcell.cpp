@@ -270,6 +270,7 @@ void add_unitcell(py::module& m) {
     .def("is_compatible_with_spacegroup", &UnitCell::is_compatible_with_spacegroup,
          py::arg("sg"), py::arg("eps")=1e-3)
     .def("is_crystal", &UnitCell::is_crystal)
+    .def("approx", &UnitCell::approx)
     .def("calculate_u_eq", &UnitCell::calculate_u_eq)
     .def("fractionalize", &UnitCell::fractionalize)
     .def("orthogonalize", &UnitCell::orthogonalize)
