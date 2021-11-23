@@ -55,6 +55,9 @@ template<typename T> void add_smat33(py::module& m, const char* name) {
     .def("as_mat33", &M::as_mat33)
     .def("trace", &M::trace)
     .def("nonzero", &M::nonzero)
+    .def("all_zero", &M::all_zero)
+    .def("scaled", &M::template scaled<double>)
+    .def("added_kI", &M::added_kI)
     .def("determinant", &M::determinant)
     .def("inverse", &M::inverse)
     .def("r_u_r", (double (M::*)(const Vec3&) const) &M::r_u_r)
@@ -70,8 +73,12 @@ template<typename T> void add_smat33(py::module& m, const char* name) {
            v.push_back((T)self.r_u_r(Vec3(r(row, 0), r(row, 1), r(row, 2))));
         return py_array_from_vector(std::move(v));
     }, py::arg().noconvert())
+    .def("multiply", &M::multiply)
+    .def(py::self + py::self)
+    .def(py::self - py::self)
     .def("transformed_by", &M::template transformed_by<double>)
     .def("calculate_eigenvalues", &M::calculate_eigenvalues)
+    .def("calculate_eigenvector", &M::calculate_eigenvector)
     .def("__repr__", [name](const M& m) {
         return tostr("<gemmi.", name, '(', m.u11, ", ", m.u22, ", ", m.u33, ", ",
                      m.u12, ", ", m.u13, ", ", m.u23, + ")>");
@@ -144,6 +151,7 @@ void add_unitcell(py::module& m) {
     .def("multiply", (Mat33 (Mat33::*)(const Mat33&) const) &Mat33::multiply)
     .def("multiply", (Vec3 (Mat33::*)(const Vec3&) const) &Mat33::multiply)
     .def("left_multiply", &Mat33::left_multiply)
+    .def("multiply_by_diagonal", &Mat33::multiply_by_diagonal)
     .def("transpose", &Mat33::transpose)
     .def("trace", &Mat33::trace)
     .def("approx", &Mat33::approx, py::arg("other"), py::arg("epsilon"))
