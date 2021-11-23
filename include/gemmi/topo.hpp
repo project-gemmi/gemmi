@@ -102,13 +102,14 @@ struct Topo {
   };
 
   struct ChainInfo {
+    const Chain& chain_ref;
     std::string name;
     std::string entity_id;
     bool polymer;
     PolymerType polymer_type;
     std::vector<ResInfo> res_infos;
 
-    void initialize(ResidueSpan& subchain, const Entity* ent);
+    ChainInfo(ResidueSpan& subchain, const Chain& chain, const Entity* ent);
     void setup_polymer_links();
     void add_refmac_builtin_modifications();
     struct RGroup {
@@ -333,9 +334,11 @@ struct Topo {
   }
 };
 
-inline void Topo::ChainInfo::initialize(ResidueSpan& subchain, const Entity* ent) {
-  res_infos.reserve(subchain.size());
+inline Topo::ChainInfo::ChainInfo(ResidueSpan& subchain,
+                                  const Chain& chain, const Entity* ent)
+  : chain_ref(chain) {
   name = subchain.at(0).subchain;
+  res_infos.reserve(subchain.size());
   if (ent) {
     entity_id = ent->name;
     polymer = ent->entity_type == EntityType::Polymer;
@@ -419,8 +422,7 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
   for (Chain& chain : model0.chains)
     for (ResidueSpan& sub : chain.subchains()) {
       const Entity* ent = st.get_entity_of(sub);
-      chain_infos.emplace_back();
-      chain_infos.back().initialize(sub, ent);
+      chain_infos.emplace_back(sub, chain, ent);
     }
   for (ChainInfo& ci : chain_infos) {
     // copy monomer description
