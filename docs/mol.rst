@@ -87,21 +87,26 @@ together with the unit cell and symmetry.
 
 .. literalinclude:: code/smcif.cpp
 
-
 .. doctest::
 
     >>> import gemmi
     >>> SiC = gemmi.read_small_structure('../tests/1011031.cif')
-    >>> SiC.cell.a
-    4.358
+    >>> SiC.cell
+    <gemmi.UnitCell(4.358, 4.358, 4.358, 90, 90, 90)>
+    >>> # content of _symmetry_space_group_name_H-M or _space_group_name_H-M_alt
     >>> SiC.spacegroup_hm
     'F -4 3 m'
-    >>> SiC.find_spacegroup()
+    >>> SiC.find_spacegroup()  # based on spacegroup_hm
     <gemmi.SpaceGroup("F -4 3 m")>
     >>> SiC.sites
     [<gemmi.SmallStructure.Site Si1>, <gemmi.SmallStructure.Site C1>]
     >>> len(SiC.get_all_unit_cell_sites())
     8
+
+Each atomic site has the following properties:
+
+.. doctest::
+
     >>> site = SiC.sites[0]
     >>> site.label
     'Si1'
@@ -155,6 +160,37 @@ We will need another cif file to show anisotropic ADPs and disorder_group:
     0.0
     >>> perovskite.sites[2].aniso.u23
     0.0
+
+----
+
+The Python examples above read CIF files using ``read_small_structure()``.
+Alternatively, the same can be done in two steps:
+
+.. doctest::
+
+    >>> cif_doc = gemmi.cif.read('../tests/1011031.cif')
+    >>> SiC = gemmi.make_small_structure_from_block(cif_doc.sole_block())
+
+Now you also have access to the CIF document.
+Let's use it obtain SpaceGroup from the symmetry operators
+and check if it is consistent with the H-M name.
+
+.. doctest::
+
+    >>> op_list = cif_doc[0].find_values('_symmetry_equiv_pos_as_xyz')
+    >>> gops = gemmi.GroupOps([gemmi.Op(o) for o in op_list])
+    >>> gemmi.find_spacegroup_by_ops(gops)
+    <gemmi.SpaceGroup("F -4 3 m")>
+    >>> # find_spacegroup() is based on the H-M name.
+    >>> _ is SiC.find_spacegroup()
+    True
+
+In C++ it would be similar, except that the following function
+would be used to make gemmi::GroupOps::
+
+    GroupOps split_centering_vectors(const std::vector<Op>& ops)
+
+----
 
 If your structure is stored in a macromolecular format (PDB, mmCIF)
 you can read it first as macromolecular :ref:`hierarchy <mcra>`
