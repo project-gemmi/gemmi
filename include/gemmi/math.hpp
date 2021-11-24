@@ -241,8 +241,12 @@ template<typename T> struct SMat33 {
             u13 * p.x + u23 * p.y + u33 * p.z};
   }
 
-  SMat33 operator-(const SMat33& o) const { return {u11-o.u11, u22-o.u22, u33-o.u33, u12-o.u12, u13-o.u13, u23-o.u23}; }
-  SMat33 operator+(const SMat33& o) const { return {u11+o.u11, u22+o.u22, u33+o.u33, u12+o.u12, u13+o.u13, u23+o.u23}; }
+  SMat33 operator-(const SMat33& o) const {
+    return {u11-o.u11, u22-o.u22, u33-o.u33, u12-o.u12, u13-o.u13, u23-o.u23};
+  }
+  SMat33 operator+(const SMat33& o) const {
+    return {u11+o.u11, u22+o.u22, u33+o.u33, u12+o.u12, u13+o.u13, u23+o.u23};
+  }
 
   // return M U M^T
   template<typename Real=double>
