@@ -23,7 +23,7 @@ class TestMath(unittest.TestCase):
         self.assertEqual(a.tolist(), [-3, 3, 13])
 
     def test_SMat33_transformed_by(self):
-        tensor = gemmi.SMat33f(random(), random(), random(),
+        tensor = gemmi.SMat33d(random(), random(), random(),
                                random(), random(), random())
         mat = gemmi.Mat33()
         mat.fromlist([[random() for _ in range(3)] for _ in range(3)])

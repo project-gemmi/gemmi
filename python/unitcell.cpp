@@ -73,7 +73,7 @@ template<typename T> void add_smat33(py::module& m, const char* name) {
     .def("multiply", &M::multiply)
     .def(py::self + py::self)
     .def(py::self - py::self)
-    .def("transformed_by", &M::template transformed_by<double>)
+    .def("transformed_by", &M::template transformed_by<T>)
     .def("calculate_eigenvalues", &M::calculate_eigenvalues)
     .def("__repr__", [name](const M& m) {
         return tostr("<gemmi.", name, '(', m.u11, ", ", m.u22, ", ", m.u33, ", ",
