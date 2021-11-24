@@ -70,6 +70,9 @@ template<typename T> void add_smat33(py::module& m, const char* name) {
            v.push_back((T)self.r_u_r(Vec3(r(row, 0), r(row, 1), r(row, 2))));
         return py_array_from_vector(std::move(v));
     }, py::arg().noconvert())
+    .def("multiply", &M::multiply)
+    .def(py::self + py::self)
+    .def(py::self - py::self)
     .def("transformed_by", &M::template transformed_by<double>)
     .def("calculate_eigenvalues", &M::calculate_eigenvalues)
     .def("__repr__", [name](const M& m) {
@@ -144,6 +147,7 @@ void add_unitcell(py::module& m) {
     .def("multiply", (Mat33 (Mat33::*)(const Mat33&) const) &Mat33::multiply)
     .def("multiply", (Vec3 (Mat33::*)(const Vec3&) const) &Mat33::multiply)
     .def("left_multiply", &Mat33::left_multiply)
+    .def("multiply_by_diagonal", &Mat33::multiply_by_diagonal)
     .def("transpose", &Mat33::transpose)
     .def("trace", &Mat33::trace)
     .def("approx", &Mat33::approx, py::arg("other"), py::arg("epsilon"))
