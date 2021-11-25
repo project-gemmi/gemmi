@@ -236,9 +236,13 @@ ReciprocalGrid<T> get_value_on_grid(const DataProxy& data, size_t column,
 
 template<typename T>
 void transform_f_phi_grid_to_map_(FPhiGrid<T>&& hkl, Grid<T>& map) {
-  // x -> conj(x) is equivalent to changing axis direction before FFT
+  // NaNs are not good for FFT, so we change them to 0.
+  // x -> conj(x) is equivalent to changing axis direction before FFT.
   for (std::complex<T>& x : hkl.data)
-    x.imag(-x.imag());
+    if (std::isnan(x.imag()))
+      x = 0;
+    else
+      x.imag(-x.imag());
   map.spacegroup = hkl.spacegroup;
   map.unit_cell = hkl.unit_cell;
   map.axis_order = hkl.axis_order;
