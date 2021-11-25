@@ -4,10 +4,9 @@
 // Uses Inverse-variance weighting.
 
 #include <cmath>              // for sqrt
-#include <cstdio>
+#include <cstdio>             // for fprintf
 #include <algorithm>          // for sort
-#include <iostream>
-#include <tuple>              // for tie
+#include <iostream>           // for cout
 #ifndef GEMMI_ALL_IN_ONE
 # define GEMMI_WRITE_IMPLEMENTATION 1
 #endif

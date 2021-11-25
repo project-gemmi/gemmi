@@ -3,7 +3,6 @@
 #include "gemmi/align.hpp"     // for align_sequence_to_polymer
 #include "gemmi/seqalign.hpp"  // for align_string_sequences
 #include "gemmi/select.hpp"
-#include "gemmi/modify.hpp"    // for transform_pos_and_adp
 
 #include "common.h"
 #include <pybind11/stl.h>

@@ -4,9 +4,7 @@
 #include "gemmi/fstream.hpp"  // for Ofstream
 #include "gemmi/read_cif.hpp" // for read_cif_gz
 
-#include <cstring>
 #include <iostream>
-#include <map>
 
 #define GEMMI_PROG json2cif
 #include "options.h"

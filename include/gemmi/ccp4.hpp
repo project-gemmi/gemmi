@@ -6,8 +6,8 @@
 #define GEMMI_CCP4_HPP_
 
 #include <cassert>
-#include <cmath>     // for NAN, sqrt
-#include <cstdint>   // for uint16_t, uint32_t
+#include <cmath>     // for ceil, fabs, floor, round
+#include <cstdint>   // for uint16_t, int32_t
 #include <cstdio>    // for FILE
 #include <cstring>   // for memcpy
 #include <array>

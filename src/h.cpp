@@ -4,7 +4,6 @@
 #include <cstdlib>   // for getenv
 #include <stdexcept>
 #include <iostream>  // for cout
-#include <gemmi/chemcomp.hpp>  // for ChemComp
 #include <gemmi/mmcif.hpp>     // for make_structure
 #include <gemmi/polyheur.hpp>  // for setup_entities
 #include <gemmi/modify.hpp>    // for remove_hydrogens

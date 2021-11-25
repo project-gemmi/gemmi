@@ -1,7 +1,6 @@
 // Copyright 2018 Global Phasing Ltd.
 
 #include "gemmi/ccp4.hpp"
-#include "gemmi/gz.hpp"  // for MaybeGzipped
 #include "gemmi/tostr.hpp"
 #include "common.h"
 #include <pybind11/stl.h>
