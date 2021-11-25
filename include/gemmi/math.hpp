@@ -430,17 +430,21 @@ struct DataStats {
   double dmax = NAN;
   double dmean = NAN;
   double rms = NAN;
+  size_t nan_count = 0;
 };
 
 template<typename T>
 DataStats calculate_data_statistics(const std::vector<T>& data) {
   DataStats stats;
-  if (data.empty())
-    return stats;
   double sum = 0;
   double sq_sum = 0;
-  stats.dmin = stats.dmax = data[0];
+  stats.dmin = INFINITY;
+  stats.dmax = -INFINITY;
   for (double d : data) {
+    if (std::isnan(d)) {
+      stats.nan_count++;
+      continue;
+    }
     sum += d;
     sq_sum += d * d;
     if (d < stats.dmin)
@@ -448,8 +452,13 @@ DataStats calculate_data_statistics(const std::vector<T>& data) {
     if (d > stats.dmax)
       stats.dmax = d;
   }
-  stats.dmean = sum / data.size();
-  stats.rms = std::sqrt(sq_sum / data.size() - stats.dmean * stats.dmean);
+  if (stats.nan_count != data.size()) {
+    stats.dmean = sum / data.size();
+    stats.rms = std::sqrt(sq_sum / data.size() - stats.dmean * stats.dmean);
+  } else {
+    stats.dmin = NAN;
+    stats.dmax = NAN;
+  }
   return stats;
 }
 

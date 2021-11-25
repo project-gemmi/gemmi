@@ -244,15 +244,12 @@ void print_stats(const Mtz& mtz) {
 
 void print_column_statistics(const Mtz& mtz, const char* label) {
   const Mtz::Column& col = mtz.get_column_with_label(label);
-  std::vector<float> data;
-  for (float v : col)
-    if (!std::isnan(v))
-      data.push_back(v);
-  std::printf("\nStatistics of column %s:\n", label);
-  std::printf("NaN count:  %d of %d\n", col.size() - (int)data.size(), col.size());
-  if (data.empty())
-    return;
+  std::vector<float> data(col.begin(), col.end());
   gemmi::DataStats st = gemmi::calculate_data_statistics(data);
+  std::printf("\nStatistics of column %s:\n", label);
+  std::printf("NaN count:  %zu of %zu\n", st.nan_count, data.size());
+  if (st.nan_count == data.size())
+    return;
   std::printf("Minimum: %12.5f\n", st.dmin);
   std::printf("Maximum: %12.5f\n", st.dmax);
   std::printf("Mean:    %12.5f\n", st.dmean);
