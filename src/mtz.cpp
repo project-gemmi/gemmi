@@ -244,7 +244,9 @@ void print_stats(const Mtz& mtz) {
 
 void print_column_statistics(const Mtz& mtz, const char* label) {
   const Mtz::Column& col = mtz.get_column_with_label(label);
-  std::vector<float> data(col.begin(), col.end());
+  std::vector<float> data(col.size());
+  for (size_t i = 0; i != data.size(); ++i)
+    data[i] = col[i];
   gemmi::DataStats st = gemmi::calculate_data_statistics(data);
   std::printf("\nStatistics of column %s:\n", label);
   std::printf("NaN count:  %zu of %zu\n", st.nan_count, data.size());
