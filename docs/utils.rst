@@ -350,6 +350,12 @@ map
 Shows a summary of a CCP4 map file, optionally performing simple
 transformations.
 
+It plots a histogram of values in the console.
+All histograms plotted by gemmi have a default width of 80 characters,
+which can be overridden by the environment variable COLUMNS.
+In Bash shell this variable is set automatically, but you need
+``export COLUMNS`` to pass it to the program.
+
 .. literalinclude:: map-help.txt
    :language: console
 
