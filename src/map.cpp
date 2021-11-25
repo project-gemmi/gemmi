@@ -81,20 +81,27 @@ gemmi::DataStats print_info(const gemmi::Ccp4<T>& map) {
     std::printf("Defines skew transformation with translation length %.5g A.\n",
                 map.get_skew_transformation().vec.length());
 
-  std::printf("\nStatistics from HEADER and DATA\n");
   gemmi::DataStats st = gemmi::calculate_data_statistics(grid.data);
+  if (st.nan_count != 0)
+    std::printf("\n*** Data includes NaNs: %zu of %zu points ***",
+                st.nan_count, grid.data.size());
+  std::printf("\nStatistics from HEADER and DATA\n");
   std::printf("Minimum: %12.5f  %12.5f\n", map.hstats.dmin, st.dmin);
   std::printf("Maximum: %12.5f  %12.5f\n", map.hstats.dmax, st.dmax);
   std::printf("Mean:    %12.5f  %12.5f\n", map.hstats.dmean, st.dmean);
   std::printf("RMS:     %12.5f  %12.5f\n", map.hstats.rms, st.rms);
   std::vector<T> data = grid.data;  // copy b/c nth_element() reorders data
-  size_t mpos = data.size() / 2;
-  std::nth_element(data.begin(), data.begin() + mpos, data.end());
-  std::printf("Median:                %12.5f\n", data[mpos]);
-  bool mask = std::all_of(data.begin(), data.end(),
-                          [&st](T x) { return x == st.dmin || x == st.dmax; });
-  double margin = mask ? 7 * (st.dmax - st.dmin) : 0;
-  print_histogram(data, st.dmin - margin, st.dmax + margin);
+  if (st.nan_count != 0)
+    gemmi::vector_remove_if(data, [](T x) { return std::isnan(x); });
+  if (!data.empty()) {
+    size_t mpos = data.size() / 2;
+    std::nth_element(data.begin(), data.begin() + mpos, data.end());
+    std::printf("Median:                %12.5f\n", data[mpos]);
+    bool mask = std::all_of(data.begin(), data.end(),
+                            [&st](T x) { return x == st.dmin || x == st.dmax; });
+    double margin = mask ? 7 * (st.dmax - st.dmin) : 0;
+    print_histogram(data, st.dmin - margin, st.dmax + margin);
+  }
   int nlabl = map.header_i32(56);
   if (nlabl != 0)
     std::printf("\n");
