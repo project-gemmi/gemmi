@@ -239,7 +239,7 @@ void add_cif_atoms(const Structure& st, cif::Block& block, bool use_group_pdb) {
           vv.emplace_back(atom.charge == 0 ? "?" : std::to_string(atom.charge));
           vv.emplace_back(auth_seq_id);
           vv.emplace_back(impl::qchain(chain.name));
-          vv.emplace_back(model.name);
+          vv.emplace_back(string_or_qmark(model.name));
           if (has_calc_flag)
             vv.emplace_back(&".\0d\0c\0dum"[2 * (int) atom.calc_flag]);
           if (has_tls_group_id)
