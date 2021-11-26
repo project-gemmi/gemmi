@@ -453,8 +453,8 @@ DataStats calculate_data_statistics(const std::vector<T>& data) {
       stats.dmax = d;
   }
   if (stats.nan_count != data.size()) {
-    stats.dmean = sum / data.size();
-    stats.rms = std::sqrt(sq_sum / data.size() - stats.dmean * stats.dmean);
+    stats.dmean = sum / (data.size() - stats.nan_count);
+    stats.rms = std::sqrt(sq_sum / (data.size() - stats.nan_count) - stats.dmean * stats.dmean);
   } else {
     stats.dmin = NAN;
     stats.dmax = NAN;
