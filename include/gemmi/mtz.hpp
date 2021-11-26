@@ -157,7 +157,7 @@ struct Mtz {
   std::string source_path;  // input file path, if known
   bool same_byte_order = true;
   bool indices_switched_to_original = false;
-  std::int32_t header_offset = 0;
+  std::int64_t header_offset = 0;
   std::string version_stamp;
   std::string title;
   int nreflections = 0;
@@ -449,14 +449,14 @@ struct Mtz {
 
   void toggle_endiannes() {
     same_byte_order = !same_byte_order;
-    swap_four_bytes(&header_offset);
+    swap_eight_bytes(&header_offset);
   }
 
   template<typename Stream>
   void read_first_bytes(Stream& stream) {
-    char buf[12] = {0};
+    char buf[20] = {0};
 
-    if (!stream.read(buf, 12))
+    if (!stream.read(buf, 20))
       fail("Could not read the MTZ file (is it empty?)");
     if (buf[0] != 'M' || buf[1] != 'T' || buf[2] != 'Z' || buf[3] != ' ')
       fail("Not an MTZ file - it does not start with 'MTZ '");
@@ -471,9 +471,19 @@ struct Mtz {
     if ((buf[9] & 0xf0) == (is_little_endian() ? 0x10 : 0x40))
       toggle_endiannes();
 
-    std::memcpy(&header_offset, buf + 4, 4);
+    std::int32_t tmp_header_offset;
+    std::memcpy(&tmp_header_offset, buf + 4, 4);
     if (!same_byte_order)
-      swap_four_bytes(&header_offset);
+      swap_four_bytes(&tmp_header_offset);
+
+    if (tmp_header_offset == -1) {
+      std::memcpy(&header_offset, buf + 12, 8);
+      if (!same_byte_order) {
+        swap_eight_bytes(&header_offset);
+      }
+    } else {
+      header_offset = (int64_t) tmp_header_offset;
+    }
   }
 
   static const char* skip_word(const char* line) {
@@ -1040,10 +1050,17 @@ void Mtz::write_to_stream(Write write) const {
   if (!spacegroup)
     fail("Cannot write Mtz which has no space group");
   char buf[81] = {'M', 'T', 'Z', ' ', '\0'};
-  std::int32_t header_start = (int) columns.size() * nreflections + 21;
+  std::int64_t real_header_start = (int64_t) columns.size() * nreflections + 21;
+  std::int32_t header_start = (int32_t) real_header_start;
+  if (real_header_start > std::numeric_limits<int32_t>::max()) {
+    header_start = -1;
+  } else {
+    real_header_start = 0;
+  }
   std::memcpy(buf + 4, &header_start, 4);
   std::int32_t machst = is_little_endian() ? 0x00004144 : 0x11110000;
   std::memcpy(buf + 8, &machst, 4);
+  std::memcpy(buf + 12, &real_header_start, 8);
   if (write(buf, 80, 1) != 1 ||
       write(data.data(), 4, data.size()) != data.size())
     fail("Writing MTZ file failed");
