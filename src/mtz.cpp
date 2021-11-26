@@ -256,6 +256,8 @@ void print_column_statistics(const Mtz& mtz, const char* label) {
   std::printf("Maximum: %12.5f\n", st.dmax);
   std::printf("Mean:    %12.5f\n", st.dmean);
   std::printf("RMS:     %12.5f\n", st.rms);
+  if (st.nan_count != 0)
+    gemmi::vector_remove_if(data, [](float x) { return std::isnan(x); });
   size_t mpos = data.size() / 2;
   std::nth_element(data.begin(), data.begin() + mpos, data.end());
   std::printf("Median:  %12.5f\n", data[mpos]);
