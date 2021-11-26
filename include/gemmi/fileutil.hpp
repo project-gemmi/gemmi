@@ -122,5 +122,13 @@ inline void swap_four_bytes(void* start) {
   std::swap(bytes[1], bytes[2]);
 }
 
+inline void swap_eight_bytes(void* start) {
+  char* bytes = static_cast<char*>(start);
+  std::swap(bytes[0], bytes[7]);
+  std::swap(bytes[1], bytes[6]);
+  std::swap(bytes[2], bytes[5]);
+  std::swap(bytes[3], bytes[4]);
+}
+
 } // namespace gemmi
 #endif
