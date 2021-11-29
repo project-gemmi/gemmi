@@ -207,6 +207,14 @@ void add_mtz(py::module& m) {
     .def("add_column", &Mtz::add_column, py::arg("label"), py::arg("type"),
          py::arg("dataset_id")=-1, py::arg("pos")=-1, py::arg("expand_data")=true,
          py::return_value_policy::reference_internal)
+    .def("replace_column", &Mtz::replace_column,
+         py::arg("dest_idx"), py::arg("src_col"),
+         py::arg("trailing_cols")=std::vector<std::string>(),
+         py::return_value_policy::reference_internal)
+    .def("copy_column", &Mtz::copy_column,
+         py::arg("dest_idx"), py::arg("src_col"),
+         py::arg("trailing_cols")=std::vector<std::string>(),
+         py::return_value_policy::reference_internal)
     .def("remove_column", &Mtz::remove_column, py::arg("index"))
     .def("set_data", [](Mtz& self, const AsuData<std::complex<float>>& asu_data) {
          if (self.columns.size() != 5)

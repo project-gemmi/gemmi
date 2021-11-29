@@ -929,11 +929,103 @@ struct Mtz {
     return *col;
   }
 
-  void remove_column(size_t idx) {
+  // helper_functions
+  void check_column(size_t idx, const char* msg) const {
     if (!has_data())
-      fail("remove_column(): data not read yet");
+      fail(msg, ": data not read yet");
     if (idx >= columns.size())
-      fail("remove_column(): no column with 0-based index " + std::to_string(idx));
+      fail(msg, ": no column with 0-based index ", std::to_string(idx));
+  }
+  void check_trailing_cols(const Column& src_col,
+                           const std::vector<std::string>& trailing_cols) const {
+    assert(src_col.parent == this);
+    if (!has_data())
+      fail("data in source mtz not read yet");
+    if (src_col.idx + trailing_cols.size() >= columns.size())
+      fail("Not enough columns after " + src_col.label);
+    for (size_t i = 0; i < trailing_cols.size(); ++i)
+      if (!trailing_cols[i].empty() &&
+          trailing_cols[i] != columns[src_col.idx + i + 1].label)
+        fail("expected trailing column ", trailing_cols[i], ", found ", src_col.label);
+  }
+  void do_replace_column(size_t dest_idx, const Column& src_col,
+                         const std::vector<std::string>& trailing_cols) {
+    const Mtz* src_mtz = src_col.parent;
+    for (size_t i = 0; i <= trailing_cols.size(); ++i) {
+      Column& dst = columns[dest_idx + i];
+      const Column& src = src_mtz->columns[src_col.idx + i];
+      dst.type = src.type;
+      dst.label = src.label;
+      dst.min_value = src.min_value;
+      dst.max_value = src.max_value;
+      dst.source = src.source;
+      if (src_mtz == this)
+        dst.dataset_id = src.dataset_id;
+    }
+    if (src_mtz == this) {
+      // internal copying
+      for (size_t n = 0; n < data.size(); n += columns.size())
+        for (size_t i = 0; i <= trailing_cols.size(); ++i)
+          data[n + dest_idx + i] = data[n + src_col.idx + i];
+    } else {
+      // external copying - need to match indices
+      std::vector<int> dst_indices = sorted_row_indices();
+      std::vector<int> src_indices = src_mtz->sorted_row_indices();
+      // cf. for_matching_reflections()
+      size_t dst_stride = columns.size();
+      size_t src_stride = src_mtz->columns.size();
+      auto dst = dst_indices.begin();
+      auto src = src_indices.begin();
+      Miller dst_hkl = get_hkl(*dst * dst_stride);
+      Miller src_hkl = src_mtz->get_hkl(*src * src_stride);
+      while (dst != dst_indices.end() && src != src_indices.end()) {
+        if (dst_hkl == src_hkl) {
+          // copy values
+          for (size_t i = 0; i <= trailing_cols.size(); ++i)
+            data[*dst * dst_stride + dest_idx + i] =
+              src_mtz->data[*src * src_stride + src_col.idx + i];
+          dst_hkl = get_hkl(*++dst * dst_stride);
+          src_hkl = src_mtz->get_hkl(*++src * src_stride);
+        } else if (std::tie(dst_hkl[0], dst_hkl[1], dst_hkl[2]) <
+                   std::tie(src_hkl[0], src_hkl[1], src_hkl[2])) {
+          dst_hkl = get_hkl(*++dst * dst_stride);
+        } else {
+          src_hkl = src_mtz->get_hkl(*++src * src_stride);
+        }
+      }
+    }
+  }
+
+  // extra_col are columns right after src_col that are also copied.
+  Column& replace_column(size_t dest_idx, const Column& src_col,
+                         const std::vector<std::string>& trailing_cols={}) {
+    src_col.parent->check_trailing_cols(src_col, trailing_cols);
+    check_column(dest_idx + trailing_cols.size(), "replace_column()");
+    do_replace_column(dest_idx, src_col, trailing_cols);
+    return columns[dest_idx];
+  }
+
+  // If dest_idx < 0 - columns are appended at the end
+  // append new column(s), otherwise overwrite existing ones.
+  Column& copy_column(int dest_idx, const Column& src_col,
+                      const std::vector<std::string>& trailing_cols={}) {
+    // check input consistency
+    if (!has_data())
+      fail("copy_column(): data not read yet");
+    src_col.parent->check_trailing_cols(src_col, trailing_cols);
+    // add new columns
+    if (dest_idx < 0)
+      dest_idx = (int) columns.size();
+    for (int i = 0; i <= (int) trailing_cols.size(); ++i)
+      add_column("", ' ', -1, dest_idx + i);
+    expand_data_rows(1 + trailing_cols.size(), dest_idx);
+    // copy the data
+    do_replace_column(dest_idx, src_col, trailing_cols);
+    return columns[dest_idx];
+  }
+
+  void remove_column(size_t idx) {
+    check_column(idx, "remove_column()");
     columns.erase(columns.begin() + idx);
     for (size_t i = idx; i < columns.size(); ++i)
       --columns[i].idx;
@@ -961,6 +1053,7 @@ struct Mtz {
       for (int j = pos; j-- != 0; )
         *--dst = data[i * old_row_size + j];
     }
+    assert(dst == data.begin());
   }
 
   void set_data(const float* new_data, size_t n) {

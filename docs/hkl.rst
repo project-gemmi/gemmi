@@ -531,6 +531,40 @@ where index is 0-based column index:
   3
   >>> mtz.remove_column(_)  # removes column 3 (FREE)
 
+We also have two functions for copying columns.
+The first function is overwriting the destination column,
+the second one is inserting a new column::
+
+  Column& Mtz::replace_column(size_t dest_idx, const Column& src_col,
+                              const std::vector<std::string>& trailing_cols={})
+  Column& Mtz::copy_column(int dest_idx, const Column& src_col,
+                           const std::vector<std::string>& trailing_cols={})
+
+The column can be copied from either the same or another Mtz object.
+Copying a column between objects is more involved: *hkl*\ s are compared,
+values for matching Miller indices are copied, the rest is filled with NaNs.
+``dest_idx`` is position of the resulting column.
+The second function can take negative ``dest_idx`` -- to add the copied column
+at the end. Often, two or four consecutive columns are handled together
+(value and sigma, absolute value and angle, the ABCD coefficients).
+In such case you can use ``trailing_cols``:
+
+.. doctest::
+
+  >>> mtz.column_with_label('FP')
+  <gemmi.Mtz.Column FP type F>
+  >>> mtz.copy_column(-1, _, trailing_cols=['SIGFP'])
+  <gemmi.Mtz.Column FP type F>
+  >>> [col.label for col in mtz.columns]
+  ['H', 'K', 'L', 'FP', 'SIGFP', 'I', 'SIGI', 'FP', 'SIGFP']
+  >>> # duplicated labels would need to be changed before saving the file
+
+This function checks if the next column has label SIGFP and copies it as well.
+To copy the next column without checking pass the empty string,
+i.e. ``trailing_cols=['']``.
+
+----
+
 To demonstrate other functions, we will create a complete ``Mtz`` object
 from scratch.
 The code below is in Python, but all the functions and properties have
@@ -542,7 +576,7 @@ We start from creating an object:
 
   >>> mtz = gemmi.Mtz(with_base=True)
 
-``with_base=True`` automatically added the base dataset (HKL_base)
+``with_base=True`` adds the base dataset (HKL_base)
 with columns H, K and L.
 
 Then we set its space group and unit cell:
