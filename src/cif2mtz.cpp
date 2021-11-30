@@ -88,6 +88,25 @@ void print_block_info(gemmi::ReflnBlock& rb, const gemmi::Mtz& mtz) {
     std::printf("  details: %s\n", d.c_str());
 }
 
+bool is_column_data_identical(const gemmi::Mtz& mtz, size_t i, size_t j) {
+  for (size_t n = 0; n < mtz.data.size(); n += mtz.columns.size())
+    if (!gemmi::impl::is_same(mtz.data[n + i], mtz.data[n + j]))
+      return false;
+  return true;
+}
+
+void change_label_to_unique(gemmi::Mtz::Column &col) {
+  size_t label_size = col.label.size();
+  const gemmi::Mtz::Dataset& ds = col.parent->dataset(col.dataset_id);
+  for (int appendix = 2; ; ++appendix) {
+    col.label += std::to_string(appendix);
+    if (col.parent->column_with_label(col.label, &ds) == &col)
+      break;
+    col.label.resize(label_size);
+    assert(appendix < 1000);
+  }
+}
+
 } // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
@@ -171,9 +190,24 @@ int GEMMI_MAIN(int argc, char **argv) {
           fprintf(stderr, "Reading %s ...\n", opt->arg);
         auto rblocks2 = gemmi::as_refln_blocks(gemmi::read_cif_gz(opt->arg).blocks);
         gemmi::Mtz mtz2 = cif2mtz.convert_block_to_mtz(rblocks2.at(0), std::cerr);
-        size_t ncol = mtz2.columns.size();
-        if (ncol > 3)
-          mtz.copy_column(-1, mtz2.columns[3], std::vector<std::string>(ncol-4));
+        size_t ncol = mtz.columns.size();
+        size_t ncol2 = mtz2.columns.size();
+        if (ncol2 < 4)
+          continue;
+        mtz.copy_column(-1, mtz2.columns[3], std::vector<std::string>(ncol2-4));
+        // avoid the same names: remove or rename
+        for (size_t i = ncol; i < mtz.columns.size(); ++i) {
+          gemmi::Mtz::Column& col = mtz.columns[i];
+          for (size_t j = 3; j < ncol; ++j)
+            if (col.label == mtz.columns[j].label &&
+                col.dataset_id == mtz.columns[j].dataset_id) {
+              if (is_column_data_identical(mtz, i, j))
+                mtz.remove_column(i--);
+              else
+                change_label_to_unique(col);
+              break;
+            }
+        }
       }
       if (p.options[Sort]) {
         bool reordered = mtz.sort();
