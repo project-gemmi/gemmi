@@ -976,21 +976,21 @@ struct Mtz {
       size_t src_stride = src_mtz->columns.size();
       auto dst = dst_indices.begin();
       auto src = src_indices.begin();
-      Miller dst_hkl = get_hkl(*dst * dst_stride);
-      Miller src_hkl = src_mtz->get_hkl(*src * src_stride);
       while (dst != dst_indices.end() && src != src_indices.end()) {
+        Miller dst_hkl = get_hkl(*dst * dst_stride);
+        Miller src_hkl = src_mtz->get_hkl(*src * src_stride);
         if (dst_hkl == src_hkl) {
           // copy values
           for (size_t i = 0; i <= trailing_cols.size(); ++i)
             data[*dst * dst_stride + dest_idx + i] =
               src_mtz->data[*src * src_stride + src_col.idx + i];
-          dst_hkl = get_hkl(*++dst * dst_stride);
-          src_hkl = src_mtz->get_hkl(*++src * src_stride);
+          ++dst;
+          ++src;
         } else if (std::tie(dst_hkl[0], dst_hkl[1], dst_hkl[2]) <
                    std::tie(src_hkl[0], src_hkl[1], src_hkl[2])) {
-          dst_hkl = get_hkl(*++dst * dst_stride);
+          ++dst;
         } else {
-          src_hkl = src_mtz->get_hkl(*++src * src_stride);
+          ++src;
         }
       }
     }
