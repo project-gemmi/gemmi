@@ -462,5 +462,16 @@ DataStats calculate_data_statistics(const std::vector<T>& data) {
   return stats;
 }
 
+// internally used functions
+namespace impl {
+template<typename T> bool is_same(T a, T b) { return a == b; }
+template<> inline bool is_same(float a, float b) {
+  return std::isnan(b) ? std::isnan(a) : a == b;
+}
+template<> inline bool is_same(double a, double b) {
+  return std::isnan(b) ? std::isnan(a) : a == b;
+}
+} // namespace impl
+
 } // namespace gemmi
 #endif
