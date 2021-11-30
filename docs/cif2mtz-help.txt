@@ -8,7 +8,8 @@ Options:
   -v, --verbose            Verbose output.
   -b NAME, --block=NAME    mmCIF block to convert, by name.
   -B INDEX                 mmCIF block to convert, by index (default: 1).
-  -l, --list               dry run and list blocks in mmCIF file.
+  --add CIF_FILE           Use additional input mmCIF file, first block.
+  -l, --list               Dry run and list blocks in mmCIF file.
   -d DIR, --dir=NAME       Output directory.
   --spec=FILE              Conversion spec.
   --print-spec             Print default spec and exit.
@@ -24,3 +25,7 @@ Second variant: converts each block of CIF_FILE to one MTZ file
 (block-name.mtz) in the specified DIRECTORY.
 
 If CIF_FILE is -, the input is read from stdin.
+
+To convert data from multiple CIF files into one MTZ file use:
+  gemmi cif2mtz [options] CIF1 --add CIF2 --add CIF3 MTZ_FILE
+It's for special cases, e.g. when map coefficients are in separate files.

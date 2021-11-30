@@ -20,7 +20,7 @@ namespace {
 using std::fprintf;
 
 enum OptionIndex {
-  BlockName=4, BlockNumber, List, Dir, Spec, PrintSpec,
+  BlockName=4, BlockNumber, Add, List, Dir, Spec, PrintSpec,
   Title, History, Unmerged, Sort
 };
 
@@ -37,8 +37,10 @@ const option::Descriptor Usage[] = {
     "  -b NAME, --block=NAME  \tmmCIF block to convert, by name." },
   { BlockNumber, 0, "B", "", Arg::Int,
     "  -B INDEX  \tmmCIF block to convert, by index (default: 1)." },
+  { Add, 0, "", "add", Arg::Required,
+    "  --add CIF_FILE  \tUse additional input mmCIF file, first block." },
   { List, 0, "l", "list", Arg::None,
-    "  -l, --list  \tdry run and list blocks in mmCIF file." },
+    "  -l, --list  \tDry run and list blocks in mmCIF file." },
   { Dir, 0, "d", "dir", Arg::Required,
     "  -d DIR, --dir=NAME  \tOutput directory." },
   { Spec, 0, "", "spec", Arg::Required,
@@ -59,6 +61,9 @@ const option::Descriptor Usage[] = {
     "\n\nSecond variant: converts each block of CIF_FILE to one MTZ file"
     "\n(block-name.mtz) in the specified DIRECTORY."
     "\n\nIf CIF_FILE is -, the input is read from stdin."
+    "\n\nTo convert data from multiple CIF files into one MTZ file use:"
+    "\n  " EXE_NAME " [options] CIF1 --add CIF2 --add CIF3 MTZ_FILE"
+    "\nIt's for special cases, e.g. when map coefficients are in separate files."
   },
   { 0, 0, 0, 0, 0, 0 }
 };
@@ -89,6 +94,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   p.check_exclusive_pair(BlockName, BlockNumber);
+  p.check_exclusive_pair(Add, Dir);
+  p.check_exclusive_pair(Add, List);
   if (p.options[PrintSpec]) {
     std::printf("# Each line in the spec contains four words:\n"
                 "# - tag (without category) from _refln or _diffrn_refln\n"
@@ -159,6 +166,15 @@ int GEMMI_MAIN(int argc, char **argv) {
         rb = &rblocks.at(0);
       }
       gemmi::Mtz mtz = cif2mtz.convert_block_to_mtz(*rb, std::cerr);
+      for (const option::Option* opt = p.options[Add]; opt; opt = opt->next()) {
+        if (cif2mtz.verbose)
+          fprintf(stderr, "Reading %s ...\n", opt->arg);
+        auto rblocks2 = gemmi::as_refln_blocks(gemmi::read_cif_gz(opt->arg).blocks);
+        gemmi::Mtz mtz2 = cif2mtz.convert_block_to_mtz(rblocks2.at(0), std::cerr);
+        size_t ncol = mtz2.columns.size();
+        if (ncol > 3)
+          mtz.copy_column(-1, mtz2.columns[3], std::vector<std::string>(ncol-4));
+      }
       if (p.options[Sort]) {
         bool reordered = mtz.sort();
         if (cif2mtz.verbose)
