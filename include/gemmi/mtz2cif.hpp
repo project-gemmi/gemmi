@@ -568,15 +568,16 @@ inline void reorder_staraniso_eigensystem(Mat33& vectors, double (&values)[3]) {
       }
     }
   }
-  auto reorder = [&](double (&v)[3]) {
-    double tmp[3];
-    for (int i = 0; i < 3; ++i)
-      tmp[i] = signs[sign_pos][i] * v[permut[permut_pos][i]];
-    std::memcpy(v, tmp, sizeof(tmp));
-  };
-  for (int i = 0; i < 3; ++i)
-    reorder(vectors.a[i]);
-  reorder(values);
+  const int8_t (&p)[3] = permut[permut_pos];
+  double tmp[3];
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j)
+      tmp[j] = signs[sign_pos][j] * vectors.a[i][p[j]];
+    std::memcpy(vectors.a[i], tmp, sizeof(tmp));
+  }
+  for (int j = 0; j < 3; ++j)
+    tmp[j] = values[p[j]];
+  std::memcpy(values, tmp, sizeof(tmp));
 }
 
 inline void write_staraniso_b_in_mmcif(const SMat33<double>& b,
