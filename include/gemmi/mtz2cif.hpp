@@ -544,10 +544,46 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
 
 #define WRITE(...) os.write(buf, gf_snprintf(buf, 255, __VA_ARGS__))
 
+// Reorder eigenvalues and change signs of eigenvectors in the STARANISO way.
+// It minimises the rotation angle from the basis vectors to the eigenvectors,
+// which is equivalent to maximising the trace of the eigenvector matrix.
+inline void reorder_staraniso_eigensystem(Mat33& vectors, double (&values)[3]) {
+  const int8_t permut[6][3] = {{0,1,2}, {1,2,0}, {2,0,1}, {1,0,2}, {2,1,0}, {0,2,1}};
+  const int8_t signs[8][3] = {{1,1,1}, {1,-1,-1}, {-1,1,-1}, {-1,-1,1},
+                              {-1,-1,-1}, {-1,1,1}, {1,-1,1}, {1,1,-1}};
+  double max_trace = -INFINITY;
+  int permut_pos = 0, sign_pos = 0;
+  bool det_neg = std::signbit(vectors.determinant());
+  for (int i = 0; i < 6; ++i) {
+    int jbase = det_neg == (i > 2) ? 0 : 4;
+    const int8_t (&p)[3] = permut[i];
+    for (int j = jbase; j < jbase+4; ++j) {
+      double trace = 0.;
+      for (int k = 0; k < 3; ++k)
+        trace += signs[j][k] * vectors[k][p[k]];
+      if (trace > max_trace) {
+        max_trace = trace;
+        permut_pos = i;
+        sign_pos = j;
+      }
+    }
+  }
+  auto reorder = [&](double (&v)[3]) {
+    double tmp[3];
+    for (int i = 0; i < 3; ++i)
+      tmp[i] = signs[sign_pos][i] * v[permut[permut_pos][i]];
+    std::memcpy(v, tmp, sizeof(tmp));
+  };
+  for (int i = 0; i < 3; ++i)
+    reorder(vectors.a[i]);
+  reorder(values);
+}
+
 inline void write_staraniso_b_in_mmcif(const SMat33<double>& b,
                                        char* buf, std::ostream& os) {
   double eigenvalues[3];
   Mat33 eigenvectors = eigen_decomposition(b, eigenvalues);
+  reorder_staraniso_eigensystem(eigenvectors, eigenvalues);
   const char* prefix = "\n_reflns.pdbx_aniso_B_tensor_eigen";
   for (int i = 0; i < 3; ++i) {
     double v = std::fabs(eigenvalues[i]) > 1e-4 ? eigenvalues[i] : 0;
