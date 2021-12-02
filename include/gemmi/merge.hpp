@@ -97,7 +97,7 @@ inline std::string read_staraniso_b_from_mtz(const Mtz& mtz, SMat33<double>& out
 
 
 struct Intensities {
-  enum class Type { None, Unmerged, Mean, Anomalous };
+  enum class Type { Unknown, Unmerged, Mean, Anomalous };
 
   struct Refl {
     Miller hkl;
@@ -139,13 +139,13 @@ struct Intensities {
   UnitCell unit_cell;
   double unit_cell_rmsd[6] = {0., 0., 0., 0., 0., 0.};
   double wavelength;
-  Type type = Type::None;
+  Type type = Type::Unknown;
   AnisoScaling staraniso_b;
 
 
   static const char* type_str(Type itype) {
     switch (itype) {
-      case Type::None: return "n/a";
+      case Type::Unknown: return "n/a";
       case Type::Unmerged: return "I";
       case Type::Mean: return "<I>";
       case Type::Anomalous: return "I+/I-";
@@ -338,7 +338,7 @@ struct Intensities {
       case Type::Anomalous:
         read_anomalous_intensities_from_mtz(mtz);
         break;
-      case Type::None:
+      case Type::Unknown:
         assert(0);
         break;
     }
@@ -420,7 +420,7 @@ struct Intensities {
       case Type::Anomalous:
         read_anomalous_intensities_from_mmcif(rb);
         break;
-      case Type::None:
+      case Type::Unknown:
         break;
     }
   }

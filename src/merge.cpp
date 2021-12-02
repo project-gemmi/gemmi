@@ -102,7 +102,7 @@ Intensities read_intensities(Intensities::Type itype, const char* input_path,
       if (verbose)
         mtz.warnings = stderr;
       mtz.read_input(gemmi::MaybeGzipped(input_path), /*with_data=*/true);
-      if (itype == Intensities::Type::None)
+      if (itype == Intensities::Type::Unknown)
         itype = mtz.batches.empty() ? Intensities::Type::Mean : Intensities::Type::Unmerged;
       if (itype == Intensities::Type::Mean && !mtz.imean_column()) {
         std::fprintf(stderr, "No IMEAN, using I(+) and I(-) ...\n");
@@ -328,7 +328,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       Intensities::Type itype = Intensities::Type::Unmerged;
       if (p.options[Compare] && gemmi::giends_with(input_path, ".mtz"))
         // it's OK to compare also two merged files
-        itype = Intensities::Type::None;
+        itype = Intensities::Type::Unknown;
       intensities = read_intensities(itype, input_path, block_name, verbose);
     } else { // special case of --compare with one mmCIF file
       if (gemmi::giends_with(input_path, ".mtz") ||

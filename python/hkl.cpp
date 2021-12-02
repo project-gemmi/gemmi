@@ -165,7 +165,7 @@ void add_hkl(py::module& m) {
   py::class_<Intensities> intensities(m, "Intensities");
 
   py::enum_<Intensities::Type>(intensities, "Type")
-    .value("None", Intensities::Type::None)
+    .value("Unknown", Intensities::Type::Unknown)
     .value("Unmerged", Intensities::Type::Unmerged)
     .value("Mean", Intensities::Type::Mean)
     .value("Anomalous", Intensities::Type::Anomalous)
