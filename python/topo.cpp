@@ -20,7 +20,7 @@ void add_topo(py::module& m) {
   py::class_<Topo> topo(m, "Topo");
 
   py::enum_<HydrogenChange>(m, "HydrogenChange")
-    .value("None", HydrogenChange::None)
+    .value("NoChange", HydrogenChange::NoChange)
     .value("Shift", HydrogenChange::Shift)
     .value("Remove", HydrogenChange::Remove)
     .value("ReAdd", HydrogenChange::ReAdd)
@@ -77,7 +77,7 @@ void add_topo(py::module& m) {
 
   m.def("prepare_topology", &prepare_topology,
         py::arg("st"), py::arg("monlib"), py::arg("model_index")=0,
-        py::arg("h_change")=HydrogenChange::None, py::arg("reorder")=false,
+        py::arg("h_change")=HydrogenChange::NoChange, py::arg("reorder")=false,
         py::arg("raise_errors")=false,
         py::arg("ignore_unknown_links")=false);
 }

@@ -1228,7 +1228,7 @@ In Python we have one function that does it all:
     gemmi.prepare_topology(st: gemmi.Structure,
                            monlib: gemmi.MonLib,
                            model_index: int = 0,
-                           h_change: gemmi.HydrogenChange = HydrogenChange.None,
+                           h_change: gemmi.HydrogenChange = HydrogenChange.NoChange,
                            reorder: bool = False,
                            raise_errors: bool = False) -> gemmi.Topo
 
@@ -1246,7 +1246,7 @@ where
 
 * ``h_change`` is one of:
 
-  * HydrogenChange.None -- no change,
+  * HydrogenChange.NoChange -- no change,
   * HydrogenChange.Shift -- shift existing hydrogens to ideal (riding) positions,
   * HydrogenChange.Remove -- remove all H and D atoms,
   * HydrogenChange.ReAdd -- discard and re-create hydrogens in ideal positions,

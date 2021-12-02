@@ -380,7 +380,7 @@ inline void place_hydrogens_on_all_atoms(Topo& topo, bool raise_errors) {
         }
 }
 
-enum class HydrogenChange { None, Shift, Remove, ReAdd, ReAddButWater };
+enum class HydrogenChange { NoChange, Shift, Remove, ReAdd, ReAddButWater };
 
 inline std::unique_ptr<Topo>
 prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
@@ -391,7 +391,7 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
     fail("no such model index: " + std::to_string(model_index));
   topo->initialize_refmac_topology(st, st.models[model_index], monlib, ignore_unknown_links);
 
-  bool keep = (h_change == HydrogenChange::None || h_change == HydrogenChange::Shift);
+  bool keep = (h_change == HydrogenChange::NoChange || h_change == HydrogenChange::Shift);
   if (!keep || reorder) {
     // remove/add hydrogens, sort atoms, set sequential serial numbers
     int serial = 0;
@@ -425,7 +425,7 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
   topo->finalize_refmac_topology(monlib);
 
   // the hydrogens added previously have positions not set
-  if (h_change != HydrogenChange::None)
+  if (h_change != HydrogenChange::NoChange)
     place_hydrogens_on_all_atoms(*topo, raise_errors);
 
   return topo;
