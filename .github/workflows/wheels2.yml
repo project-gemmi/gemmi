@@ -32,7 +32,9 @@ jobs:
     - name: Build wheels
       uses: pypa/cibuildwheel@v2.2.2
       env:
+        CIBW_BUILD: ${{ github.event.inputs.cibw_build }}
         CIBW_SKIP: ${{ github.event.inputs.cibw_skip }}
+        CIBW_ARCHS_MACOS: x86_64 arm64
         # increase pip debugging output
         CIBW_BUILD_VERBOSITY: 1
 
