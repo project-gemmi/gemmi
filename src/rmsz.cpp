@@ -1,7 +1,8 @@
 // Copyright 2018 Global Phasing Ltd.
 
 #include <stdio.h>
-#include <cstdlib> // for getenv
+#include <cstdlib>   // for getenv
+#include <iostream>  // for cerr
 #include <stdexcept>
 #include "gemmi/model.hpp"     // for Structure, Atom, etc
 #include "gemmi/chemcomp.hpp"  // for ChemComp
@@ -189,6 +190,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                                                   model.get_all_residue_names(),
                                                   gemmi::read_cif_gz);
       Topo topo;
+      topo.warnings = &std::cerr;
       topo.initialize_refmac_topology(st, model, monlib);
       topo.finalize_refmac_topology(monlib);
 

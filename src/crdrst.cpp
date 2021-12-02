@@ -1,8 +1,9 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include <stdio.h>
-#include <cstdlib> // for getenv
+#include <cstdlib>   // for getenv
 #include <algorithm> // for count_if
+#include <iostream>  // for cerr
 #include <stdexcept>
 #include "gemmi/chemcomp.hpp"  // for ChemComp
 #include "gemmi/to_cif.hpp"    // for write_cif_to_stream
@@ -412,6 +413,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                                                 gemmi::read_cif_gz);
 
     Topo topo;
+    topo.warnings = &std::cerr;
     if (verbose)
       printf("Preparing topology...\n");
     topo.initialize_refmac_topology(st, model0, monlib);

@@ -6,6 +6,7 @@
 #define GEMMI_TOPO_HPP_
 
 #include <map>           // for multimap
+#include <ostream>       // for ostream
 #include "chemcomp.hpp"  // for ChemComp
 #include "monlib.hpp"    // for MonLib
 #include "model.hpp"     // for Residue, Atom
@@ -101,6 +102,7 @@ struct Topo {
     }
   };
 
+  // corresponds to a sub-chain
   struct ChainInfo {
     const Chain& chain_ref;
     std::string name;
@@ -140,6 +142,7 @@ struct Topo {
     return -1;
   }
 
+  std::ostream* warnings = nullptr;
   std::vector<ChainInfo> chain_infos;
   std::vector<ExtraLink> extras;
 
@@ -295,13 +298,15 @@ struct Topo {
   void apply_restraints_to_extra_link(ExtraLink& link, const MonLib& monlib) {
     const ChemLink* cl = monlib.find_link(link.link_id);
     if (!cl) {
-      printf("Warning: ignoring link '%s' as it is not in the monomer library",
-             link.link_id.c_str());
+      if (warnings)
+        *warnings << "Warning: ignoring link '" << link.link_id
+                  << "' as it is not in the monomer library" << std::endl;
       return;
     }
     if (link.alt1 && link.alt2 && link.alt1 != link.alt2)
-      printf("Warning: LINK between different conformers %c and %c.",
-             link.alt1, link.alt2);
+      if (warnings)
+        *warnings << "Warning: LINK between different conformers "
+                  << link.alt1 << " and " << link.alt2 << '.' << std::endl;
     char alt = link.alt1 ? link.alt1 : link.alt2;
     auto rules = apply_restraints(cl->rt, *link.res1, link.res2, alt);
     vector_move_extend(link.rules, std::move(rules));
@@ -510,11 +515,12 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
           try {
             chem_mod->apply_to(ri.chemcomp);
           } catch(std::runtime_error& e) {
-            printf("Failed to apply modification %s to %s: %s\n",
-                   chem_mod->id.c_str(), ri.res->name.c_str(), e.what());
+            if (warnings)
+              *warnings << "Failed to apply modification " << chem_mod->id
+                        << " to " << ri.res->name << ": " << e.what() << std::endl;
           }
-        else
-          printf("Modification not found: %s\n", modif.c_str());
+        else if (warnings)
+          *warnings << "Modification not found: " << modif << std::endl;
       }
     }
 }

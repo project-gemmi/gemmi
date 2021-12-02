@@ -375,7 +375,8 @@ inline void place_hydrogens_on_all_atoms(Topo& topo, bool raise_errors) {
                               " failed:\n  " + e.what();
             if (raise_errors)
               fail(err);
-            std::fprintf(stderr, "%s\n", err.c_str());
+            if (topo.warnings)
+              *topo.warnings << err << std::endl;
           }
         }
 }
