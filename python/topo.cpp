@@ -88,8 +88,8 @@ void add_topo(py::module& m) {
         os.rdbuf(buffer.get());
         warnings = &os;
       }
-      prepare_topology(st, monlib, model_index, h_change, reorder,
-                       warnings, ignore_unknown_links);
+      return prepare_topology(st, monlib, model_index, h_change, reorder,
+                              warnings, ignore_unknown_links);
     }, py::arg("st"), py::arg("monlib"), py::arg("model_index")=0,
        py::arg("h_change")=HydrogenChange::NoChange, py::arg("reorder")=false,
        py::arg("warnings")=py::none(), py::arg("ignore_unknown_links")=false);
