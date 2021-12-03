@@ -334,7 +334,7 @@ struct Topo {
       angle_index.emplace(ang.atoms[1], &ang);
   }
 
-  void err(const std::string& msg) const {
+  GEMMI_NOINLINE void err(const std::string& msg) const {
     if (warnings == nullptr)
       fail(msg);
     *warnings << "Warning: " << msg << std::endl;
