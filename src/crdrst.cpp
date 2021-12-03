@@ -468,7 +468,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (!p.options[KeepHydrogens] && !p.options[NoHydrogens]) {
       if (verbose)
         printf("Moving hydrogens to riding positions...\n");
-      place_hydrogens_on_all_atoms(topo, false);
+      place_hydrogens_on_all_atoms(topo);
     }
 
     if (verbose)

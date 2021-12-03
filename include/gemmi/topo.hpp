@@ -298,15 +298,11 @@ struct Topo {
   void apply_restraints_to_extra_link(ExtraLink& link, const MonLib& monlib) {
     const ChemLink* cl = monlib.find_link(link.link_id);
     if (!cl) {
-      if (warnings)
-        *warnings << "Warning: ignoring link '" << link.link_id
-                  << "' as it is not in the monomer library" << std::endl;
+      err("ignoring link '" + link.link_id + "' as it is not in the monomer library");
       return;
     }
     if (link.alt1 && link.alt2 && link.alt1 != link.alt2)
-      if (warnings)
-        *warnings << "Warning: LINK between different conformers "
-                  << link.alt1 << " and " << link.alt2 << '.' << std::endl;
+      err(tostr("LINK between different conformers ", link.alt1, " and ", link.alt2, '.'));
     char alt = link.alt1 ? link.alt1 : link.alt2;
     auto rules = apply_restraints(cl->rt, *link.res1, link.res2, alt);
     vector_move_extend(link.rules, std::move(rules));
@@ -336,6 +332,12 @@ struct Topo {
     }
     for (Angle& ang : angles)
       angle_index.emplace(ang.atoms[1], &ang);
+  }
+
+  void err(const std::string& msg) const {
+    if (warnings == nullptr)
+      fail(msg);
+    *warnings << "Warning: " << msg << std::endl;
   }
 };
 
@@ -435,6 +437,9 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
       auto it = monlib.monomers.find(ri.res->name);
       if (it != monlib.monomers.end())
         ri.chemcomp = it->second;
+      else
+        err("unknown chemical component " + ri.res->name
+            + " in chain " +  ci.chain_ref.name);
     }
 
     ci.setup_polymer_links();
@@ -515,12 +520,11 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
           try {
             chem_mod->apply_to(ri.chemcomp);
           } catch(std::runtime_error& e) {
-            if (warnings)
-              *warnings << "Failed to apply modification " << chem_mod->id
-                        << " to " << ri.res->name << ": " << e.what() << std::endl;
+            err("failed to apply modification " + chem_mod->id
+                + " to " + ri.res->name + ": " + e.what());
           }
-        else if (warnings)
-          *warnings << "Modification not found: " << modif << std::endl;
+        else
+          err("modification not found: " + modif);
       }
     }
 }

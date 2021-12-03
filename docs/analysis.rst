@@ -1230,7 +1230,8 @@ In Python we have one function that does it all:
                            model_index: int = 0,
                            h_change: gemmi.HydrogenChange = HydrogenChange.NoChange,
                            reorder: bool = False,
-                           raise_errors: bool = False) -> gemmi.Topo
+                           warnings: object = None,
+                           ignore_unknown_links: bool = False) -> gemmi.Topo
 
 where
 
@@ -1255,9 +1256,12 @@ where
 * ``reorder`` -- changes the order of atoms inside each residue
   to match the order in the corresponding monomer cif file,
 
-* ``raise_errors`` --  raises an exception when the hydrogen adding
-  procedure comes across an unexpected configuration.
-  By default, a message is printed to stderr and the function continues.
+* ``warnings`` --  by default, exception is raised when a chemical component
+  is missing in the monomer library, or when link is missing,
+  or the hydrogen adding procedure comes across an unexpected configuration.
+  You can set warnings=sys.stderr to only print a warning to stderr
+  and continue. sys.stderr can be replaced with any object that has 
+  methods ``write(str)`` and ``flush()``.
 
 If hydrogen position is not uniquely determined its occupancy is set to zero.
 

@@ -6,6 +6,7 @@
 #include "common.h"
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
+#include <pybind11/iostream.h>  // for detail::pythonbuf
 
 namespace py = pybind11;
 using namespace gemmi;
@@ -75,9 +76,21 @@ void add_topo(py::module& m) {
     .def("ideal_chiral_abs_volume", &Topo::ideal_chiral_abs_volume)
     ;
 
-  m.def("prepare_topology", &prepare_topology,
-        py::arg("st"), py::arg("monlib"), py::arg("model_index")=0,
-        py::arg("h_change")=HydrogenChange::NoChange, py::arg("reorder")=false,
-        py::arg("raise_errors")=false,
-        py::arg("ignore_unknown_links")=false);
+  m.def("prepare_topology",
+    [](Structure& st, MonLib& monlib, size_t model_index,
+       HydrogenChange h_change, bool reorder,
+       const py::object& pywarnings, bool ignore_unknown_links) {
+      std::ostream* warnings = nullptr;
+      std::ostream os(nullptr);
+      std::unique_ptr<py::detail::pythonbuf> buffer;
+      if (!pywarnings.is_none()) {
+        buffer.reset(new py::detail::pythonbuf(pywarnings));
+        os.rdbuf(buffer.get());
+        warnings = &os;
+      }
+      prepare_topology(st, monlib, model_index, h_change, reorder,
+                       warnings, ignore_unknown_links);
+    }, py::arg("st"), py::arg("monlib"), py::arg("model_index")=0,
+       py::arg("h_change")=HydrogenChange::NoChange, py::arg("reorder")=false,
+       py::arg("warnings")=py::none(), py::arg("ignore_unknown_links")=false);
 }

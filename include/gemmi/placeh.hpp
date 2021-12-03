@@ -362,7 +362,7 @@ inline void adjust_hydrogen_distances(Topo& topo, Restraints::DistanceOf of,
   }
 }
 
-inline void place_hydrogens_on_all_atoms(Topo& topo, bool raise_errors) {
+inline void place_hydrogens_on_all_atoms(Topo& topo) {
   for (Topo::ChainInfo& chain_info : topo.chain_infos)
     for (Topo::ResInfo& ri : chain_info.res_infos)
       for (Atom& atom : ri.res->atoms)
@@ -370,13 +370,9 @@ inline void place_hydrogens_on_all_atoms(Topo& topo, bool raise_errors) {
           try {
             place_hydrogens(topo, atom);
           } catch (const std::runtime_error& e) {
-            std::string err = "Placing of hydrogen bonded to " +
-                              atom_str(chain_info.name, *ri.res, atom.name, atom.altloc) +
-                              " failed:\n  " + e.what();
-            if (raise_errors)
-              fail(err);
-            if (topo.warnings)
-              *topo.warnings << err << std::endl;
+            topo.err("Placing of hydrogen bonded to "
+                     + atom_str(chain_info.chain_ref, *ri.res, atom)
+                     + " failed:\n  " + e.what());
           }
         }
 }
@@ -385,9 +381,10 @@ enum class HydrogenChange { NoChange, Shift, Remove, ReAdd, ReAddButWater };
 
 inline std::unique_ptr<Topo>
 prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
-                 HydrogenChange h_change, bool reorder, bool raise_errors=false,
-                 bool ignore_unknown_links=false) {
+                 HydrogenChange h_change, bool reorder,
+                 std::ostream* warnings=nullptr, bool ignore_unknown_links=false) {
   std::unique_ptr<Topo> topo(new Topo);
+  topo->warnings = warnings;
   if (model_index >= st.models.size())
     fail("no such model index: " + std::to_string(model_index));
   topo->initialize_refmac_topology(st, st.models[model_index], monlib, ignore_unknown_links);
@@ -427,7 +424,7 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
 
   // the hydrogens added previously have positions not set
   if (h_change != HydrogenChange::NoChange)
-    place_hydrogens_on_all_atoms(*topo, raise_errors);
+    place_hydrogens_on_all_atoms(*topo);
 
   return topo;
 }
