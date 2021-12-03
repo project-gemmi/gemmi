@@ -640,7 +640,8 @@ inline MonLib read_monomer_cif(const std::string& path,
 
 inline MonLib read_monomer_lib(std::string monomer_dir,
                                const std::vector<std::string>& resnames,
-                               read_cif_func read_cif) {
+                               read_cif_func read_cif,
+                               bool ignore_missing=false) {
   if (monomer_dir.empty())
     fail("read_monomer_lib: monomer_dir not specified.");
   if (monomer_dir.back() != '/' && monomer_dir.back() != '\\')
@@ -654,9 +655,8 @@ inline MonLib read_monomer_lib(std::string monomer_dir,
       auto cc = make_chemcomp_from_cif(name, doc);
       monlib.monomers.emplace(name, cc);
     } catch(std::runtime_error& err) {
-      error += "The monomer " + name + " could not be read: ";
-      error += err.what();
-      error += ".\n";
+      if (!ignore_missing)
+        error += "The monomer " + name + " could not be read: " + err.what() + ".\n";
     }
   }
   if (!error.empty())

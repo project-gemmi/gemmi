@@ -103,9 +103,10 @@ void add_monlib(py::module& m) {
     });
 
   m.def("read_monomer_lib", [](const std::string& monomer_dir,
-                               const std::vector<std::string>& resnames) {
-    return read_monomer_lib(monomer_dir, resnames, gemmi::read_cif_gz);
-  });
+                               const std::vector<std::string>& resnames,
+                               bool ignore_missing) {
+    return read_monomer_lib(monomer_dir, resnames, gemmi::read_cif_gz, ignore_missing);
+  }, py::arg("monomer_dir"), py::arg("resnames"), py::arg("ignore_missing")=false);
   m.def("read_monomer_cif", [](const std::string& path) {
     return read_monomer_cif(path, gemmi::read_cif_gz);
   });
