@@ -105,10 +105,10 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::printf("Reading %zu monomers and all links from %s\n",
                     res_names.size(), input.c_str());
       gemmi::MonLib monlib = gemmi::read_monomer_lib(monomer_dir, res_names,
-                                                     gemmi::read_cif_gz);
+                                                     gemmi::read_cif_gz, true);
       for (size_t i = 0; i != st.models.size(); ++i)
         // preparing topology modifies hydrogens in the model
-        prepare_topology(st, monlib, i, h_change, p.options[Sort]);
+        prepare_topology(st, monlib, i, h_change, p.options[Sort], &std::cerr);
     }
     if (p.options[Verbose])
       std::printf("Hydrogen site count: %zu in input, %zu in output.\n",
