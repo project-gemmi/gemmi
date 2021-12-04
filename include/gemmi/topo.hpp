@@ -105,7 +105,7 @@ struct Topo {
   // corresponds to a sub-chain
   struct ChainInfo {
     const Chain& chain_ref;
-    std::string name;
+    std::string subchain_name;
     std::string entity_id;
     bool polymer;
     PolymerType polymer_type;
@@ -344,7 +344,7 @@ struct Topo {
 inline Topo::ChainInfo::ChainInfo(ResidueSpan& subchain,
                                   const Chain& chain, const Entity* ent)
   : chain_ref(chain) {
-  name = subchain.at(0).subchain;
+  subchain_name = subchain.at(0).subchain;
   res_infos.reserve(subchain.size());
   if (ent) {
     entity_id = ent->name;

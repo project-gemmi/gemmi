@@ -347,7 +347,7 @@ cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
       }
       // write monomer
       if (!ri.monomer_rules.empty()) {
-        std::string res_info = " monomer " + chain_info.name + " " +
+        std::string res_info = " monomer " + chain_info.subchain_name + " " +
                                ri.res->seqid.str() + " " + ri.res->name;
         if (!ri.mods.empty())
           res_info += " modified by " + gemmi::join_str(ri.mods, ", ");

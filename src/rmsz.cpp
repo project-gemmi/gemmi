@@ -200,12 +200,12 @@ int GEMMI_MAIN(int argc, char **argv) {
       for (const Topo::ChainInfo& chain_info : topo.chain_infos)
         for (const Topo::ResInfo& ri : chain_info.res_infos) {
           for (const Topo::ResInfo::Prev& prev : ri.prev) {
-            std::string rtag = chain_info.name + " " +
+            std::string rtag = chain_info.chain_ref.name + " " +
                                prev.get(&ri)->res->str() + "-" + ri.res->str();
             for (const Topo::Rule& rule : prev.link_rules)
               check_restraint(rule, topo, cutoff, rtag.c_str(), &rmses, verbosity);
           }
-          std::string rtag = chain_info.name + " " + ri.res->str();
+          std::string rtag = chain_info.chain_ref.name + " " + ri.res->str();
           for (const Topo::Rule& rule : ri.monomer_rules)
             check_restraint(rule, topo, cutoff, rtag.c_str(), &rmses, verbosity);
         }
