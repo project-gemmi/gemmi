@@ -199,9 +199,10 @@ int GEMMI_MAIN(int argc, char **argv) {
       // but then we couldn't output the provenance (res or "link" below).
       for (const Topo::ChainInfo& chain_info : topo.chain_infos)
         for (const Topo::ResInfo& ri : chain_info.res_infos) {
-          for (const Topo::ResInfo::Prev& prev : ri.prev) {
+          for (const Topo::Link& prev : ri.prev) {
+            assert(ri.res == prev.res2);
             std::string rtag = chain_info.chain_ref.name + " " +
-                               prev.get(&ri)->res->str() + "-" + ri.res->str();
+                               prev.res1->str() + "-" + ri.res->str();
             for (const Topo::Rule& rule : prev.link_rules)
               check_restraint(rule, topo, cutoff, rtag.c_str(), &rmses, verbosity);
           }

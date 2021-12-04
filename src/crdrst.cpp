@@ -109,12 +109,12 @@ cif::Document make_crd(const gemmi::Structure& st, const Topo& topo) {
     if (!chain_info.polymer)
       continue;
     for (const Topo::ResInfo& ri : chain_info.res_infos) {
-      const Topo::ResInfo::Prev* prev = ri.prev.empty() ? nullptr : &ri.prev[0];
+      const Topo::Link* prev = ri.prev.empty() ? nullptr : &ri.prev[0];
       poly_loop.add_row({ri.res->name,
                          ri.res->seqid.str(),
                          chain_info.entity_id,
-                         prev ? prev->link : ".",
-                         prev ? prev->get(&ri)->res->seqid.str() : "n/a",
+                         prev ? prev->link_id : ".",
+                         prev ? prev->res1->seqid.str() : "n/a",
                          get_ccp4_mod_id(ri.mods)});
     }
   }
@@ -331,15 +331,14 @@ cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
   for (const Topo::ChainInfo& chain_info : topo.chain_infos) {
     for (const Topo::ResInfo& ri : chain_info.res_infos) {
       // write link
-      for (const Topo::ResInfo::Prev& prev : ri.prev) {
-        const gemmi::Residue* prev_res = prev.get(&ri)->res;
-        const gemmi::ChemLink* link = monlib.find_link(prev.link);
+      for (const Topo::Link& prev : ri.prev) {
+        const gemmi::ChemLink* link = monlib.find_link(prev.link_id);
         if (link && !prev.link_rules.empty()) {
-          std::string comment = " link " + prev.link + " " +
-                                prev_res->seqid.str() + " " +
-                                prev_res->name + " - " +
+          std::string comment = " link " + prev.link_id + " " +
+                                prev.res1->seqid.str() + " " +
+                                prev.res1->name + " - " +
                                 ri.res->seqid.str() + " " + ri.res->name;
-          restr_loop.add_comment_and_row({comment, "LINK", ".", cif::quote(prev.link), ".",
+          restr_loop.add_comment_and_row({comment, "LINK", ".", cif::quote(prev.link_id), ".",
                                           ".", ".", ".", ".", ".", ".", ".", ".", "."});
           for (const Topo::Rule& rule : prev.link_rules)
             add_restraints(rule, topo, restr_loop, counters);
