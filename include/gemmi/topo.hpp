@@ -158,6 +158,13 @@ struct Topo {
     return nullptr;
   }
 
+  Bond* first_bond_in_link(Link& link) {
+    for (const Rule& rule : link.link_rules)
+      if (rule.rkind == RKind::Bond)
+        return &bonds[rule.index];
+    return nullptr;
+  }
+
   const Restraints::Bond* take_bond(const Atom* a, const Atom* b) const {
     auto range = bond_index.equal_range(a);
     for (auto i = range.first; i != range.second; ++i) {

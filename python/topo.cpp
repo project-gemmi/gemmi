@@ -16,6 +16,7 @@ PYBIND11_MAKE_OPAQUE(std::vector<Topo::Angle>)
 PYBIND11_MAKE_OPAQUE(std::vector<Topo::Torsion>)
 PYBIND11_MAKE_OPAQUE(std::vector<Topo::Chirality>)
 PYBIND11_MAKE_OPAQUE(std::vector<Topo::Plane>)
+PYBIND11_MAKE_OPAQUE(std::vector<Topo::Link>)
 
 void add_topo(py::module& m) {
   py::class_<Topo> topo(m, "Topo");
@@ -58,11 +59,19 @@ void add_topo(py::module& m) {
     .def_readonly("atoms", &Topo::Plane::atoms)
     .def("has", &Topo::Plane::has)
     ;
+  py::class_<Topo::Link>(topo, "Link")
+    .def_readonly("link_id", &Topo::Link::link_id)
+    .def_readonly("res1", &Topo::Link::res1)
+    .def_readonly("res2", &Topo::Link::res2)
+    .def_readonly("alt1", &Topo::Link::alt1)
+    .def_readonly("alt2", &Topo::Link::alt2)
+    ;
   py::bind_vector<std::vector<Topo::Bond>>(m, "TopoBonds");
   py::bind_vector<std::vector<Topo::Angle>>(m, "TopoAngles");
   py::bind_vector<std::vector<Topo::Torsion>>(m, "TopoTorsions");
   py::bind_vector<std::vector<Topo::Chirality>>(m, "TopoChirs");
   py::bind_vector<std::vector<Topo::Plane>>(m, "TopoPlanes");
+  py::bind_vector<std::vector<Topo::Link>>(m, "TopoLinks");
 
   topo
     .def(py::init<>())
@@ -73,7 +82,15 @@ void add_topo(py::module& m) {
     .def_readonly("torsions", &Topo::torsions)
     .def_readonly("chirs", &Topo::chirs)
     .def_readonly("planes", &Topo::planes)
+    .def_readonly("extras", &Topo::extras)
     .def("ideal_chiral_abs_volume", &Topo::ideal_chiral_abs_volume)
+    .def("links_to_previous", [](Topo& self, Residue* res) {
+        if (Topo::ResInfo* ri = self.find_resinfo(res))
+          return ri->prev;
+        fail("links_to_previous(): Residue not found");
+    }, py::return_value_policy::reference_internal)
+    .def("first_bond_in_link", &Topo::first_bond_in_link,
+         py::return_value_policy::reference_internal)
     ;
 
   m.def("prepare_topology",
