@@ -365,13 +365,13 @@ cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
     }
   }
   // explicit links
-  for (const Topo::ExtraLink& extra_link : topo.extras) {
-    const gemmi::ChemLink* chem_link = monlib.find_link(extra_link.link_id);
+  for (const Topo::Link& extra : topo.extras) {
+    const gemmi::ChemLink* chem_link = monlib.find_link(extra.link_id);
     assert(chem_link);
     std::string comment = " link " + chem_link->id;
     restr_loop.add_comment_and_row({comment, "LINK", ".", cif::quote(chem_link->id), ".",
                                     ".", ".", ".", ".", ".", ".", ".", ".", "."});
-    for (const Topo::Rule& rule : extra_link.rules)
+    for (const Topo::Rule& rule : extra.link_rules)
       add_restraints(rule, topo, restr_loop, counters);
   }
   return doc;

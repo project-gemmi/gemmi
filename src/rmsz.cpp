@@ -209,8 +209,8 @@ int GEMMI_MAIN(int argc, char **argv) {
           for (const Topo::Rule& rule : ri.monomer_rules)
             check_restraint(rule, topo, cutoff, rtag.c_str(), &rmses, verbosity);
         }
-      for (const Topo::ExtraLink& link : topo.extras)
-        for (const Topo::Rule& rule : link.rules)
+      for (const Topo::Link& link : topo.extras)
+        for (const Topo::Rule& rule : link.link_rules)
           check_restraint(rule, topo, cutoff, "link", &rmses, verbosity);
 
       printf("Model rmsZ: "

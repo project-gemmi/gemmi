@@ -80,6 +80,16 @@ struct Topo {
     size_t index; // index in the respective vector (bonds, ...) in Topo
   };
 
+  struct Link {
+    std::string link_id;
+    Residue* res1 = nullptr;
+    Residue* res2 = nullptr;
+    std::vector<Rule> link_rules;
+    // altloc is used only for ChainInfo::extras, not for ResInfo::prev
+    char alt1 = '\0';
+    char alt2 = '\0';
+  };
+
   struct ResInfo {
     Residue* res;
     struct Prev {
@@ -125,15 +135,6 @@ struct Topo {
     }
   };
 
-  struct ExtraLink {
-    Residue* res1;
-    Residue* res2;
-    char alt1 = '\0';
-    char alt2 = '\0';
-    std::string link_id;
-    std::vector<Rule> rules;
-  };
-
   template<typename T>
   static int has_atom(const Atom* a, const T& t) {
     for (int i = 0; (size_t) i != t.atoms.size(); ++i)
@@ -144,7 +145,7 @@ struct Topo {
 
   std::ostream* warnings = nullptr;
   std::vector<ChainInfo> chain_infos;
-  std::vector<ExtraLink> extras;
+  std::vector<Link> extras;
 
   // Restraints applied to Model
   std::vector<Bond> bonds;
@@ -295,7 +296,7 @@ struct Topo {
     vector_move_extend(ri.monomer_rules, std::move(rules));
   }
 
-  void apply_restraints_to_extra_link(ExtraLink& link, const MonLib& monlib) {
+  void apply_restraints_to_extra_link(Link& link, const MonLib& monlib) {
     const ChemLink* cl = monlib.find_link(link.link_id);
     if (!cl) {
       err("ignoring link '" + link.link_id + "' as it is not in the monomer library");
@@ -305,7 +306,7 @@ struct Topo {
       err(tostr("LINK between different conformers ", link.alt1, " and ", link.alt2, '.'));
     char alt = link.alt1 ? link.alt1 : link.alt2;
     auto rules = apply_restraints(cl->rt, *link.res1, link.res2, alt);
-    vector_move_extend(link.rules, std::move(rules));
+    vector_move_extend(link.link_rules, std::move(rules));
   }
 
   // Model is non-const b/c we store non-const pointers to residues in Topo.
@@ -321,7 +322,7 @@ struct Topo {
     for (ChainInfo& chain_info : chain_infos)
       for (ResInfo& ri : chain_info.res_infos)
         apply_restraints_to_residue(ri, monlib);
-    for (ExtraLink& link : extras)
+    for (Link& link : extras)
       apply_restraints_to_extra_link(link, monlib);
 
     // create indices
@@ -459,7 +460,7 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
     // ignoring hydrogen bonds and metal coordination
     if (conn.type == Connection::Hydrog || conn.type == Connection::MetalC)
       continue;
-    ExtraLink extra;
+    Link extra;
     extra.res1 = model0.find_cra(conn.partner1, true).residue;
     extra.res2 = model0.find_cra(conn.partner2, true).residue;
     if (!extra.res1 || !extra.res2)
