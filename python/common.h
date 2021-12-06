@@ -13,8 +13,9 @@ void add_meta(pybind11::module& m); // meta.cpp
 void add_mol(pybind11::module& m); // mol.cpp
 void add_mtz(pybind11::module& m); // mtz.cpp
 void add_cif(pybind11::module& cif); // cif.cpp
-void add_read_structure(pybind11::module& m); // read.cpp
 void add_cif_read(pybind11::module& cif); // read.cpp
+void add_read_structure(pybind11::module& m); // read.cpp
+void add_small(pybind11::module& m); // read.cpp
 void add_chemcomp(pybind11::module& m); // chemcomp.cpp
 void add_monlib(pybind11::module& m); // monlib.cpp
 void add_topo(pybind11::module& m); // topo.cpp

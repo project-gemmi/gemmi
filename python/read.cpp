@@ -5,6 +5,8 @@
 #include "gemmi/cif.hpp"
 #include "gemmi/json.hpp"
 #include "gemmi/smcif.hpp"         // for make_small_structure_from_block
+#include "gemmi/small.hpp"         // for SmallStructure
+#include "gemmi/interop.hpp"       // for atom_to_site, mx_to_sx_structure
 #include "gemmi/chemcomp_xyz.hpp"
 #include "gemmi/remarks.hpp"
 
@@ -14,6 +16,7 @@
 #include "gemmi/read_coor.hpp"  // for read_structure_gz
 
 #include "common.h"
+#include <pybind11/stl.h>
 
 namespace py = pybind11;
 using namespace gemmi;
@@ -94,6 +97,63 @@ void add_read_structure(py::module& m) {
   m.def("estimate_uncompressed_size", &estimate_uncompressed_size,
         py::arg("path"),
         "Returns uncompressed size of a .gz file (not always reliable)");
+}
+
+void add_small(py::module& m) {
+  using gemmi::SmallStructure;
+  py::class_<SmallStructure> small_structure(m, "SmallStructure");
+  py::class_<SmallStructure::Site>(small_structure, "Site")
+    .def(py::init<>())
+    .def(py::init(&gemmi::atom_to_site))
+    .def_readwrite("label", &SmallStructure::Site::label)
+    .def_readwrite("type_symbol", &SmallStructure::Site::type_symbol)
+    .def_readwrite("fract", &SmallStructure::Site::fract)
+    .def_readwrite("occ", &SmallStructure::Site::occ)
+    .def_readwrite("u_iso", &SmallStructure::Site::u_iso)
+    .def_readwrite("element", &SmallStructure::Site::element)
+    .def_readwrite("charge", &SmallStructure::Site::charge)
+    .def_readwrite("disorder_group", &SmallStructure::Site::disorder_group)
+    .def_readwrite("aniso", &SmallStructure::Site::aniso)
+    .def("orth", &SmallStructure::Site::orth)
+    .def("__repr__", [](const SmallStructure::Site& self) {
+        return "<gemmi.SmallStructure.Site " + self.label + ">";
+    });
+
+  using AtomType = SmallStructure::AtomType;
+  py::class_<AtomType>(small_structure, "AtomType")
+    .def_readonly("symbol", &AtomType::symbol)
+    .def_readonly("element", &AtomType::element)
+    .def_readwrite("dispersion_real", &AtomType::dispersion_real)
+    .def_readwrite("dispersion_imag", &AtomType::dispersion_imag)
+    .def("__repr__", [](const AtomType& self) {
+        return "<gemmi.SmallStructure.AtomType " + self.symbol + ">";
+    });
+
+  small_structure
+    .def(py::init<>())
+    .def_readwrite("name", &SmallStructure::name)
+    .def_readwrite("cell", &SmallStructure::cell)
+    .def_readwrite("spacegroup_hm", &SmallStructure::spacegroup_hm)
+    .def_readonly("sites", &SmallStructure::sites)
+    .def_readonly("atom_types", &SmallStructure::atom_types)
+    .def_readwrite("wavelength", &SmallStructure::wavelength)
+    .def("add_site", [](SmallStructure& self, const SmallStructure::Site& site) {
+        self.sites.push_back(site);
+    })
+    .def("find_spacegroup", &SmallStructure::find_spacegroup)
+    .def("get_atom_type", &SmallStructure::get_atom_type)
+    .def("get_all_unit_cell_sites", &SmallStructure::get_all_unit_cell_sites)
+    .def("remove_hydrogens", &SmallStructure::remove_hydrogens)
+    .def("change_occupancies_to_crystallographic",
+         &SmallStructure::change_occupancies_to_crystallographic,
+         py::arg("max_dist")=0.4)
+    .def("setup_cell_images", &SmallStructure::setup_cell_images)
+    .def("make_cif_block", &make_cif_block_from_small_structure)
+    .def("__repr__", [](const SmallStructure& self) {
+        return "<gemmi.SmallStructure: " + std::string(self.name) + ">";
+    });
+  m.def("mx_to_sx_structure", &gemmi::mx_to_sx_structure,
+        py::arg("st"), py::arg("n")=0);
 }
 
 // used in cif.cpp
