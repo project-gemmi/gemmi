@@ -85,7 +85,9 @@ void add_elem(py::module& m) {
     }, py::return_value_policy::reference_internal)
     .def("__repr__", [](const Element& self) {
         return "<gemmi.Element: " + std::string(self.name()) + ">";
-    });
+    })
+    .def("__hash__", [](const Element &self) { return std::hash<El>()(self.elem); })
+    ;
 
   // resinfo.hpp
   py::enum_<ResidueInfo::Kind>(m, "ResidueInfoKind")
