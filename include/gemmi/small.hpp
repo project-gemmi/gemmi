@@ -34,6 +34,15 @@ struct SmallStructure {
     Position orth(const gemmi::UnitCell& cell_) const {
       return cell_.orthogonalize(fract);
     }
+
+    std::string element_and_charge_symbol() const {
+      std::string s = element.name();
+      if (charge != 0) {
+        s += std::to_string(std::abs(charge));
+        s += charge > 0 ? '+' : '-';
+      }
+      return s;
+    }
   };
 
   struct AtomType {

@@ -138,19 +138,10 @@ inline cif::Block make_cif_block_from_small_structure(const SmallStructure& st) 
                                                          "occupancy",
                                                          "disorder_group"});
   for (const SmallStructure::Site& site: st.sites) {
-    std::string type_symbol;
-    if (!site.type_symbol.empty()) {
-      type_symbol = site.type_symbol;
-    } else {
-      type_symbol = site.element.name();
-      if (site.charge != 0) {
-        type_symbol += std::to_string(std::abs(site.charge));
-        type_symbol += site.charge > 0 ? '+' : '-';
-      }
-    }
     atom_loop.add_row({
         cif::quote(site.label),
-        cif::quote(site.type_symbol),
+        site.type_symbol.empty() ? site.element_and_charge_symbol()
+                                 : cif::quote(site.type_symbol),
         to_str(site.fract.x),
         to_str(site.fract.y),
         to_str(site.fract.z),
