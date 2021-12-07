@@ -83,6 +83,7 @@ void add_elem(py::module& m) {
     .def_property_readonly("c4322", [](const Element& self) {
         return C4322::get_ptr(self.elem);
     }, py::return_value_policy::reference_internal)
+    .def("__hash__", [](const Element &self) { return self.ordinal(); })
     .def("__repr__", [](const Element& self) {
         return "<gemmi.Element: " + std::string(self.name()) + ">";
     });
