@@ -85,6 +85,7 @@ void add_mol(py::module& m) {
     .def_readwrite("spacegroup_hm", &Structure::spacegroup_hm)
     .def_readwrite("ncs", &Structure::ncs)
     .def_readwrite("resolution", &Structure::resolution)
+    .def_readwrite("input_format", &Structure::input_format)
     .def_readwrite("entities", &Structure::entities)
     .def_readwrite("connections", &Structure::connections)
     .def_readwrite("helices", &Structure::helices)
