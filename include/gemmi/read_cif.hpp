@@ -49,7 +49,7 @@ cif::Document read_mmjson_gz(const std::string& path) {
 }
 
 CharArray read_into_buffer_gz(const std::string& path) {
-  return cif::read_into_buffer(MaybeGzipped(path));
+  return read_into_buffer(MaybeGzipped(path));
 }
 
 cif::Document read_cif_from_buffer(const CharArray& buffer, const char* name) {
