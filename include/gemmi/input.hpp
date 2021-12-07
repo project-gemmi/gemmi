@@ -110,6 +110,8 @@ public:
   size_t size() const { return size_; }
   void set_size(size_t n) { size_ = n; }
 
+  MemoryStream stream() const { return MemoryStream(data(), size()); }
+
   void resize(size_t n) {
     char* new_ptr = (char*) std::realloc(ptr_.get(), n);
     if (!new_ptr)

@@ -446,8 +446,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (input.is_stdin()) {
         print_mtz_info(gemmi::FileStream{stdin}, path, p.options);
       } else if (gemmi::CharArray mem = input.uncompress_into_buffer()) {
-        gemmi::MemoryStream stream(mem.data(), mem.size());
-        print_mtz_info(std::move(stream), path, p.options);
+        print_mtz_info(mem.stream(), path, p.options);
       } else {
         gemmi::fileptr_t f = gemmi::file_open(input.path().c_str(), "rb");
         print_mtz_info(gemmi::FileStream{f.get()}, path, p.options);
