@@ -259,9 +259,9 @@ inline bool same_str(const std::string& s, const char (&literal)[N]) {
   return s.size() == N - 1 && std::strcmp(s.c_str(), literal) == 0;
 }
 
-template<typename Input>
-Structure read_pdb_from_input(Input&& infile, const std::string& source,
-                              const PdbReadOptions& options) {
+template<typename Stream>
+Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
+                               const PdbReadOptions& options) {
   using namespace pdb_impl;
   int line_num = 0;
   auto wrong = [&line_num](const std::string& msg) {
@@ -281,7 +281,7 @@ Structure read_pdb_from_input(Input&& infile, const std::string& source,
   bool after_ter = false;
   Transform matrix;
   std::unordered_map<ResidueId, int> resmap;
-  while (size_t len = copy_line_from_stream(line, max_line_length+1, infile)) {
+  while (size_t len = copy_line_from_stream(line, max_line_length+1, stream)) {
     ++line_num;
     if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
       if (len < 55)
@@ -644,13 +644,13 @@ Structure read_pdb_from_input(Input&& infile, const std::string& source,
 inline Structure read_pdb_file(const std::string& path,
                                PdbReadOptions options=PdbReadOptions()) {
   auto f = file_open(path.c_str(), "rb");
-  return pdb_impl::read_pdb_from_input(FileStream{f.get()}, path, options);
+  return pdb_impl::read_pdb_from_stream(FileStream{f.get()}, path, options);
 }
 
 inline Structure read_pdb_from_memory(const char* data, size_t size,
                                       const std::string& name,
                                       PdbReadOptions options=PdbReadOptions()) {
-  return pdb_impl::read_pdb_from_input(MemoryStream(data, size), name, options);
+  return pdb_impl::read_pdb_from_stream(MemoryStream(data, size), name, options);
 }
 
 inline Structure read_pdb_string(const std::string& str,
@@ -663,10 +663,10 @@ inline Structure read_pdb_string(const std::string& str,
 template<typename T>
 inline Structure read_pdb(T&& input, PdbReadOptions options=PdbReadOptions()) {
   if (input.is_stdin())
-    return pdb_impl::read_pdb_from_input(FileStream{stdin}, "stdin", options);
+    return pdb_impl::read_pdb_from_stream(FileStream{stdin}, "stdin", options);
   if (input.is_compressed())
-    return pdb_impl::read_pdb_from_input(input.get_uncompressing_stream(),
-                                         input.path(), options);
+    return pdb_impl::read_pdb_from_stream(input.get_uncompressing_stream(),
+                                          input.path(), options);
   return read_pdb_file(input.path(), options);
 }
 
