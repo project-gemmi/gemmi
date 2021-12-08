@@ -448,13 +448,13 @@ inline ResidueSpan::GroupingProxy ResidueSpan::residue_groups() {
 namespace impl {
 template<typename T, typename Ch> std::vector<T> chain_subchains(Ch* ch) {
   std::vector<T> v;
-  auto span_start = ch->residues.begin();
-  for (auto i = span_start; i != ch->residues.end(); ++i)
-    if (i->subchain != span_start->subchain) {
-      v.push_back(ch->whole().sub(span_start, i));
-      span_start = i;
-    }
-  v.push_back(ch->whole().sub(span_start, ch->residues.end()));
+  for (auto start = ch->residues.begin(); start != ch->residues.end(); ) {
+    auto end = start + 1;
+    while (end != ch->residues.end() && end->subchain == start->subchain)
+      ++end;
+    v.push_back(ch->whole().sub(start, end));
+    start = end;
+  }
   return v;
 }
 } // namespace impl
