@@ -482,9 +482,14 @@ struct Chain {
   }
 
   ResidueSpan get_polymer() {
-    return get_residue_span([](const Residue& r) {
-        return r.entity_type == EntityType::Polymer;
-    });
+    auto begin = residues.begin();
+    while (begin != residues.end() && begin->entity_type != EntityType::Polymer)
+      ++begin;
+    auto end = begin;
+    while (end != residues.end() && end->entity_type == EntityType::Polymer
+                                 && end->subchain == begin->subchain)
+      ++end;
+    return ResidueSpan(residues, &*begin, end - begin);
   }
   ConstResidueSpan get_polymer() const {
     return const_cast<Chain*>(this)->get_polymer();
