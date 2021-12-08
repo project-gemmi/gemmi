@@ -842,17 +842,17 @@ struct Model {
   const std::vector<Chain>& children() const { return chains; }
 };
 
-inline Entity* find_entity(const std::string& subchain_id,
-                           std::vector<Entity>& entities) {
+inline Entity* find_entity_of_subchain(const std::string& subchain_id,
+                                       std::vector<Entity>& entities) {
   if (!subchain_id.empty())
     for (Entity& ent : entities)
       if (in_vector(subchain_id, ent.subchains))
         return &ent;
   return nullptr;
 }
-inline const Entity* find_entity(const std::string& subchain_id,
-                                 const std::vector<Entity>& entities) {
-  return find_entity(subchain_id, const_cast<std::vector<Entity>&>(entities));
+inline const Entity* find_entity_of_subchain(const std::string& subchain_id,
+                                             const std::vector<Entity>& entities) {
+  return find_entity_of_subchain(subchain_id, const_cast<std::vector<Entity>&>(entities));
 }
 
 struct Structure {
@@ -924,7 +924,7 @@ struct Structure {
   }
 
   Entity* get_entity_of(const ConstResidueSpan& sub) {
-    return sub ? find_entity(sub.subchain_id(), entities) : nullptr;
+    return sub ? find_entity_of_subchain(sub.subchain_id(), entities) : nullptr;
   }
   const Entity* get_entity_of(const ConstResidueSpan& sub) const {
     return const_cast<Structure*>(this)->get_entity_of(sub);

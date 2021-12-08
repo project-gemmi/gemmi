@@ -217,7 +217,7 @@ void add_cif_atoms(const Structure& st, cif::Block& block, bool use_group_pdb) {
         std::string label_seq_id = res.label_seq.str('.');
         std::string auth_seq_id = res.seqid.num.str();
         std::string entity_id(1, '.');
-        if (const Entity* ent = gemmi::find_entity(res.subchain, st.entities))
+        if (const Entity* ent = gemmi::find_entity_of_subchain(res.subchain, st.entities))
           entity_id = cif::quote(ent->name);
         for (const Atom& atom : res.atoms) {
           if (use_group_pdb)
