@@ -69,7 +69,7 @@ void add_mol(py::module& m) {
 
   py::enum_<CoorFormat>(m, "CoorFormat")
     .value("Unknown", CoorFormat::Unknown)
-    .value("UnknownAny", CoorFormat::UnknownAny)
+    .value("Detect", CoorFormat::Detect)
     .value("Pdb", CoorFormat::Pdb)
     .value("Mmcif", CoorFormat::Mmcif)
     .value("Mmjson", CoorFormat::Mmjson)

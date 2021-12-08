@@ -73,10 +73,10 @@ template<typename T, typename M> std::vector<T> model_subchains(M* model) {
 } // namespace impl
 
 
-// File format with macromolecular model.
-// Unknown = unknown coordinate format (not ChemComp)
-// UnknownAny = any format (coordinate file for a monomer/ligand/chemcomp)
-enum class CoorFormat { Unknown, UnknownAny, Pdb, Mmcif, Mmjson, ChemComp };
+// File format of a macromolecular model. When passed to read_structure():
+// Unknown = guess format from the extension,
+// Detect = guess format from the content.
+enum class CoorFormat { Unknown, Detect, Pdb, Mmcif, Mmjson, ChemComp };
 
 // corresponds to _atom_site.calc_flag in mmCIF
 enum class CalcFlag : signed char { NotSet=0, Determined, Calculated, Dummy };

@@ -140,7 +140,7 @@ const option::Descriptor Usage[] = {
 std::string format_as_string(CoorFormat format) {
   switch (format) {
     case CoorFormat::Unknown: return "unknown";
-    case CoorFormat::UnknownAny: return "unknown";
+    case CoorFormat::Detect: return "unknown";
     case CoorFormat::Pdb: return "pdb";
     case CoorFormat::Mmcif: return "mmcif";
     case CoorFormat::Mmjson: return "mmjson";
@@ -317,7 +317,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                                               {"mmjson", CoorFormat::Mmjson},
                                               {"ccd", CoorFormat::ChemComp}};
   CoorFormat in_type = p.options[FormatIn] ? filetypes[p.options[FormatIn].arg]
-                                           : CoorFormat::UnknownAny;
+                                           : CoorFormat::Detect;
 
   char pdb_code_type = in_type == CoorFormat::Pdb ? 'P' : 'M';
   std::string input = p.coordinate_input_file(0, pdb_code_type);

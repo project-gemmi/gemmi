@@ -70,24 +70,23 @@ inline Structure read_structure_from_char_array(char* data, size_t size,
 
 template<typename T>
 Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown) {
-  bool any = (format == CoorFormat::UnknownAny);
-  if (format == CoorFormat::Unknown || any)
-    format = coor_format_from_ext(input.basepath());
-  if (format == CoorFormat::Unknown && any) { // detect using the content
+  if (format == CoorFormat::Detect) {
     CharArray mem = read_into_buffer(input);
     return read_structure_from_char_array(mem.data(), mem.size(), input.path());
   }
+  if (format == CoorFormat::Unknown)
+    format = coor_format_from_ext(input.basepath());
   switch (format) {
     case CoorFormat::Pdb:
       return read_pdb(input);
     case CoorFormat::Mmcif:
-      return make_structure_from_doc(cif::read(input), any);
+      return make_structure(cif::read(input));
     case CoorFormat::Mmjson:
       return make_structure(cif::read_mmjson(input));
     case CoorFormat::ChemComp:
       return make_structure_from_chemcomp_doc(cif::read(input));
     case CoorFormat::Unknown:
-    case CoorFormat::UnknownAny:
+    case CoorFormat::Detect:
       fail("Unknown format of " +
            (input.path().empty() ? "coordinate file" : input.path()) + ".");
   }

@@ -395,8 +395,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     if (verbose)
       printf("Reading %s ...\n", input.c_str());
-    gemmi::Structure st = gemmi::read_structure_gz(input,
-                                            gemmi::CoorFormat::UnknownAny);
+    gemmi::Structure st = gemmi::read_structure_gz(input, gemmi::CoorFormat::Detect);
     if (st.input_format == gemmi::CoorFormat::Pdb ||
         st.input_format == gemmi::CoorFormat::ChemComp)
       gemmi::setup_entities(st);

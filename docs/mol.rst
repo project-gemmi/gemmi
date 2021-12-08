@@ -680,9 +680,26 @@ Gemmi support the following coordinate file formats:
     * mmJSON,
     * a binary format (MMTF, binary CIF, or own format) is to be considered.
 
+It can also read coordinates from the chemical components dictionary
+(CCD) and from Refmac monomer library -- these are not really coordinate
+files, but they contain example coordinates of a single residue.
+
+All the files can be compressed with gzip (with extension .gz).
+In Python, the reading function expects that a file can be gzipped.
+In C++, separate functions are used for reading possibly-gzipped files,
+and you must link the zlib library if you use them.
+
+To read a coordinate file without knowing the format of the file,
+call read_structure*() with format:
+
+* ``CoorFormat.Unknown`` -- to guess the format from the file extension,
+* ``CoorFormat.Detect`` -- to guess the format from the file content
+  (PDB is assumed if it's neither CIF nor JSON; it also
+  recognizes monomer (ligand/CCD) files).
+
 In this section we show how to read a coordinate file in Gemmi.
 In the next sections we will go into details of the individual formats.
-Finally, we will show what can be done with a structural model.
+Further on, we will show what can be done with a structural model.
 
 C++
 ---
@@ -693,7 +710,7 @@ using::
   Structure read_structure_file(const std::string& path, CoorFormat format=CoorFormat::Unknown)
 
   // where CoorFormat is defined as
-  enum class CoorFormat { Unknown, Pdb, Mmcif, Mmjson };
+  enum class CoorFormat { Unknown, Detect, Pdb, Mmcif, Mmjson, ChemComp };
 
 For example::
 
@@ -742,8 +759,8 @@ shows how to read just a PDB file (``read_pdb_file(path)``).
 Python
 ------
 
-Any of the macromolecular coordinate files supported by Gemmi (gzipped
-or not) can be opened using:
+Any of the macromolecular coordinate files supported by Gemmi (possibly
+gzipped) can be opened using:
 
 .. doctest::
   :hide:
@@ -757,12 +774,18 @@ or not) can be opened using:
   <gemmi.Structure ...>
 
 If the file format is not specified (example above) it is determined from
-the file extension. If the extension is not canonical you can specify
-the format explicitly:
+the file extension. Alternatively, you can specify the format explicitly:
 
 .. doctest::
 
   >>> gemmi.read_structure(path, format=gemmi.CoorFormat.Pdb)  #doctest: +ELLIPSIS
+  <gemmi.Structure ...>
+
+or detect it from the content of the file:
+
+.. doctest::
+
+  >>> gemmi.read_structure(path, format=gemmi.CoorFormat.Detect)  #doctest: +ELLIPSIS
   <gemmi.Structure ...>
 
 The file form
