@@ -310,7 +310,8 @@ struct ConstResidueSpan : Span<const Residue> {
     if (this->empty())
       throw std::out_of_range("subchain_id(): empty span");
     if (this->size() > 1 && this->front().subchain != this->back().subchain)
-      fail("subchain id varies");
+      fail("subchain id varies in a residue span: ", this->front().subchain,
+           " vs ", this->back().subchain);
     return this->begin()->subchain;
   }
 
