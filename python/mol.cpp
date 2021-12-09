@@ -344,7 +344,14 @@ void add_mol(py::module& m) {
     .def("transform_pos_and_adp", transform_pos_and_adp<ResidueSpan>)
     .def("__repr__", [](const ResidueSpan& self) {
         int N = (int) self.size();
-        std::string r = "<gemmi.ResidueSpan of " + std::to_string(N) + ": [";
+        std::string r = "<gemmi.ResidueSpan of " + std::to_string(N) + ": ";
+        if (N > 0) {
+          r += self.front().subchain;
+          if (self.back().subchain != self.front().subchain)
+            r += " - " + self.back().subchain;
+          r += ' ';
+        }
+        r += '[';
         for (int i = 0; i < (N < 5 ? N : 3); ++i) {
           if (i != 0) r += ' ';
           r += self[i].str();

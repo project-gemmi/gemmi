@@ -2200,7 +2200,7 @@ and calculate the Matthews coefficient:
   >>> # because of the missing TER record in this file. We need to call:
   >>> st.setup_entities()  # it should sort out chain parts
   >>> chain.get_polymer()
-  <gemmi.ResidueSpan of 141: [17(ALA) 18(ALA) 19(ALA) ... 157(SER)]>
+  <gemmi.ResidueSpan of 141: Apoly [17(ALA) 18(ALA) 19(ALA) ... 157(SER)]>
   >>> st.get_entity_of(_)  # doctest: +ELLIPSIS
   <gemmi.Entity 'A' polymer polypeptide(L) object at 0x...>
   >>> weight = gemmi.calculate_sequence_weight(_.full_sequence)
@@ -2491,7 +2491,7 @@ If you want to access a subchain with the specified ``label_asym_id``, use::
 
   >>> model = gemmi.read_structure('../tests/1pfe.cif.gz')[0]
   >>> model.get_subchain('A')
-  <gemmi.ResidueSpan of 8: [1(DG) 2(DC) 3(DG) ... 8(DC)]>
+  <gemmi.ResidueSpan of 8: A [1(DG) 2(DC) 3(DG) ... 8(DC)]>
 
 To get the list of all subchains in the model, use::
 
@@ -2626,11 +2626,11 @@ that return ``ResidueSpan``::
 .. doctest::
 
   >>> chain_a.get_polymer()
-  <gemmi.ResidueSpan of 8: [1(DG) 2(DC) 3(DG) ... 8(DC)]>
+  <gemmi.ResidueSpan of 8: A [1(DG) 2(DC) 3(DG) ... 8(DC)]>
   >>> chain_a.get_ligands()
-  <gemmi.ResidueSpan of 1: [20(CL)]>
+  <gemmi.ResidueSpan of 1: C [20(CL)]>
   >>> chain_a.get_waters()
-  <gemmi.ResidueSpan of 70: [2001(HOH) 2002(HOH) 2003(HOH) ... 2070(HOH)]>
+  <gemmi.ResidueSpan of 70: F [2001(HOH) 2002(HOH) 2003(HOH) ... 2070(HOH)]>
 
 .. note::
 
@@ -2646,7 +2646,7 @@ We also have a function that returns the whole chain as a residue span::
 .. doctest::
 
   >>> chain_a.whole()
-  <gemmi.ResidueSpan of 79: [1(DG) 2(DC) 3(DG) ... 2070(HOH)]>
+  <gemmi.ResidueSpan of 79: A - F [1(DG) 2(DC) 3(DG) ... 2070(HOH)]>
 
 ``Chain`` has also functions ``get_subchain()`` and ``subchains()``
 that do the same as the functions of ``Model`` with the same names:
@@ -2736,7 +2736,7 @@ Both allow addressing residue by (0-based) index:
 
   >>> # in the following examples we use polymer_b from the previous section
   >>> polymer_b
-  <gemmi.ResidueSpan of 10: [1(DSN) 2(ALA) 3(N2C) ... 8(MVA)]>
+  <gemmi.ResidueSpan of 10: B [1(DSN) 2(ALA) 3(N2C) ... 8(MVA)]>
   >>> polymer_b[1]   # gets residue by index
   <gemmi.Residue 2(ALA) with 5 atoms>
 
