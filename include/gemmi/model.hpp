@@ -163,6 +163,7 @@ struct Residue : public ResidueId {
   static const char* what() { return "Residue"; }
 
   std::string subchain;   // mmCIF _atom_site.label_asym_id
+  std::string entity_id;  // mmCIF _atom_site.label_entity_id
   OptionalNum label_seq;  // mmCIF _atom_site.label_seq_id
   EntityType entity_type = EntityType::Unknown;
   char het_flag = '\0';   // 'A' = ATOM, 'H' = HETATM, 0 = unspecified

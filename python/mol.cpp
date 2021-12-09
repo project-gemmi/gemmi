@@ -387,6 +387,7 @@ void add_mol(py::module& m) {
   pyResidue
     .def(py::init<>())
     .def_readwrite("subchain", &Residue::subchain)
+    .def_readonly("entity_id", &Residue::entity_id)
     .def_readwrite("entity_type", &Residue::entity_type)
     .def_readwrite("het_flag", &Residue::het_flag)
     .def_readwrite("flag", &Residue::flag)

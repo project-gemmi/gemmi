@@ -216,9 +216,11 @@ void add_cif_atoms(const Structure& st, cif::Block& block, bool use_group_pdb) {
       for (const Residue& res : chain.residues) {
         std::string label_seq_id = res.label_seq.str('.');
         std::string auth_seq_id = res.seqid.num.str();
-        std::string entity_id(1, '.');
+        std::string entity_id;
         if (const Entity* ent = gemmi::find_entity_of_subchain(res.subchain, st.entities))
           entity_id = cif::quote(ent->name);
+        else
+          entity_id = string_or_dot(res.entity_id);
         for (const Atom& atom : res.atoms) {
           if (use_group_pdb)
             vv.emplace_back(res.het_flag != 'H' ? "ATOM" : "HETATM");

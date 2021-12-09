@@ -558,7 +558,8 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
 
   // atom list
   enum { kId=0, kGroupPdb, kSymbol, kLabelAtomId, kAltId, kLabelCompId,
-         kLabelAsymId, kLabelSeqId, kInsCode, kX, kY, kZ, kOcc, kBiso, kCharge,
+         kLabelAsymId, kLabelEntityId, kLabelSeqId, kInsCode,
+         kX, kY, kZ, kOcc, kBiso, kCharge,
          kAuthSeqId, kAuthCompId, kAuthAsymId, kAuthAtomId, kModelNum,
          kCalcFlag, kTlsGroupId };
   cif::Table atom_table = block.find("_atom_site.",
@@ -569,6 +570,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
                                       "label_alt_id",
                                       "?label_comp_id",
                                       "label_asym_id",
+                                      "?label_entity_id",
                                       "?label_seq_id",
                                       "?pdbx_PDB_ins_code",
                                       "Cartn_x",
@@ -621,6 +623,8 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
           if (row.has2(kLabelSeqId))
             resi->label_seq = cif::as_int(row[kLabelSeqId]);
           resi->subchain = row.str(kLabelAsymId);
+          if (row.has2(kLabelEntityId))
+            resi->entity_id = row.str(kLabelEntityId);
           // don't check if group_PDB is consistent, it's not that important
           if (row.has2(kGroupPdb))
             for (int i = 0; i < 2; ++i) { // first character could be " or '
