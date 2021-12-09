@@ -743,9 +743,20 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
     }
   }
 
-  for (auto row : block.find("_struct_asym.", {"id", "entity_id"}))
-    if (Entity* ent = st.get_entity(row.str(1)))
-      ent->subchains.push_back(row.str(0));
+  cif::Table s_asym_table = block.find("_struct_asym.", {"id", "entity_id"});
+  if (s_asym_table.ok()) {
+    for (auto row : s_asym_table)
+      if (Entity* ent = st.get_entity(row.str(1)))
+        ent->subchains.push_back(row.str(0));
+  } else if (!st.models.empty()) {
+    for (const Chain& chain : st.models[0].chains)
+      for (const ConstResidueSpan sub : chain.subchains()) {
+        const Residue& r = sub.front();
+        if (Entity* ent = st.get_entity(r.entity_id))
+          if (!in_vector(r.subchain, ent->subchains))
+            ent->subchains.push_back(r.subchain);
+      }
+  }
 
   fill_residue_entity_type(st);
 
