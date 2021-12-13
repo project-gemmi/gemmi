@@ -750,7 +750,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
         ent->subchains.push_back(row.str(0));
   } else if (!st.models.empty()) {
     for (const Chain& chain : st.models[0].chains)
-      for (const ConstResidueSpan sub : chain.subchains()) {
+      for (const ConstResidueSpan& sub : chain.subchains()) {
         const Residue& r = sub.front();
         if (Entity* ent = st.get_entity(r.entity_id))
           if (!in_vector(r.subchain, ent->subchains))

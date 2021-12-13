@@ -1019,9 +1019,9 @@ struct Mtz {
     // if src_col is from this Mtz it may get invalidated when adding columns
     int col_idx = -1;
     if (src_col.parent == this) {
-      col_idx = src_col.idx;
+      col_idx = (int) src_col.idx;
       if (col_idx >= dest_idx)
-        col_idx += 1 + trailing_cols.size();
+        col_idx += 1 + (int)trailing_cols.size();
     }
     for (int i = 0; i <= (int) trailing_cols.size(); ++i)
       add_column("", ' ', -1, dest_idx + i);
