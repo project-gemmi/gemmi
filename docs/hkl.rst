@@ -1464,7 +1464,7 @@ which means multiplying them by a factor between 0.99995 and 1.00113.
 .. doctest::
 
   >>> # let's store the original values first
-  >>> orig_coefs = {i : gemmi.Element(i).it92.get_coefs() for i in range(1, 98)}
+  >>> orig_coefs = {i : gemmi.Element(i).it92.get_coefs() for i in range(1, 99)}
   >>> # now we normalize the values
   >>> gemmi.IT92_normalize()
   >>> # and we can see that the values has changed
@@ -1476,7 +1476,7 @@ to the original values:
 
 .. doctest::
 
-  >>> for i in range(1, 98):
+  >>> for i in range(1, 99):
   ...     gemmi.Element(i).it92.set_coefs(orig_coefs[i])
 
 The coefficients can be used to directly calculate the sum of Gaussians --

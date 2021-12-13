@@ -32,6 +32,19 @@ class TestElem(unittest.TestCase):
     def test_properties(self):
         self.assertEqual(Element('K').vdw_r, 2.75)
 
+    def test_coef(self):
+        h = Element('H')
+        d = Element('D')
+        cf = Element('Cf')
+        es = Element('Es')
+        self.assertIsNotNone(cf.it92)
+        self.assertIsNotNone(cf.c4322)
+        self.assertIsNone(es.it92)
+        self.assertIsNone(es.c4322)
+        self.assertEqual(h.it92.get_coefs(), d.it92.get_coefs())
+        self.assertEqual(h.c4322.get_coefs(), d.c4322.get_coefs())
+        self.assertIsNone(Element('X').it92)
+
 
 ELEMENT_MASS = {
     'H': 1.00794, 'He': 4.0026, 'Li': 6.941, 'Be': 9.012182, 'B': 10.811,
