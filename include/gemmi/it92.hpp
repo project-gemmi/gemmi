@@ -29,7 +29,7 @@ struct IT92 {
   static Coef data[99];
 
   static bool has(El el) {
-    return it92_pos(el) != 0;
+    return (unsigned char)el < 99 || el == El::D;
   }
 
   static Coef& get(El el) {

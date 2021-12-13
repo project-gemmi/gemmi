@@ -43,7 +43,7 @@ class TestElem(unittest.TestCase):
         self.assertIsNone(es.c4322)
         self.assertEqual(h.it92.get_coefs(), d.it92.get_coefs())
         self.assertEqual(h.c4322.get_coefs(), d.c4322.get_coefs())
-        self.assertIsNone(Element('X').it92)
+        self.assertEqual(Element('X').it92.get_coefs(), [0.0]*9)
 
 
 ELEMENT_MASS = {

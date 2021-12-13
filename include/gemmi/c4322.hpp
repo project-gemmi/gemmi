@@ -26,11 +26,11 @@ struct C4322 {
   static Coef data[99];
 
   static bool has(El el) {
-    // We have here the same elements as in it92.hpp, hence it92_pos().
-    return it92_pos(el) != 0;
+    return (unsigned char)el < 99 || el == El::D;
   }
 
   static Coef& get(El el) {
+    // We have here the same elements as in it92.hpp, hence it92_pos().
     return data[it92_pos(el)];
   }
 
