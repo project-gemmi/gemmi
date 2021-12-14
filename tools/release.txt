@@ -3,7 +3,7 @@
   https://cibuildwheel.readthedocs.io/en/stable/setup/
 
 - update version in include/gemmi/version.hpp
-- ./run-tests.sh a
+- bash ./run-tests.sh a
 - VERSION=$(grep -Po '\d\.\d\.\d' include/gemmi/version.hpp)
 
 - make, test and upload source package to PyPI:

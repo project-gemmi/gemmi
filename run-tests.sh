@@ -63,3 +63,9 @@ if [ $1 = p -o $1 = a ]; then
         #echo -n .
     done
 fi
+
+if [ $1 = w -o $1 = a ]; then
+    [ -z ${EMSDK+x} ] && . $HOME/local/emsdk/emsdk_env.sh
+    (cd wasm/mtz && ./compile.sh)
+    (cd ../wasm/convert && make clean && make)
+fi
