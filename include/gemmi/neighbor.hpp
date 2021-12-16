@@ -75,6 +75,8 @@ struct NeighborSearch {
   }
   void initialize(Model& model, const UnitCell& cell, double max_radius);
   NeighborSearch& populate(bool include_h_=true);
+  void add_chain(const Chain& chain, bool include_h_=true);
+  void add_chain_n(const Chain& chain, int n_ch);
   void add_atom(const Atom& atom, int n_ch, int n_res, int n_atom);
   void add_site(const SmallStructure::Site& site, int n);
 
@@ -201,17 +203,8 @@ inline void NeighborSearch::initialize(Model& model_, const UnitCell& cell,
 inline NeighborSearch& NeighborSearch::populate(bool include_h_) {
   include_h = include_h_;
   if (model) {
-    for (int n_ch = 0; n_ch != (int) model->chains.size(); ++n_ch) {
-      const Chain& chain = model->chains[n_ch];
-      for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
-        const Residue& res = chain.residues[n_res];
-        for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
-          const Atom& atom = res.atoms[n_atom];
-          if (include_h || !atom.is_hydrogen())
-            add_atom(atom, n_ch, n_res, n_atom);
-        }
-      }
-    }
+    for (int n_ch = 0; n_ch != (int) model->chains.size(); ++n_ch)
+      add_chain_n(model->chains[n_ch], n_ch);
   } else if (small_structure) {
     for (int n = 0; n != (int) small_structure->sites.size(); ++n) {
       SmallStructure::Site& site = small_structure->sites[n];
@@ -222,6 +215,30 @@ inline NeighborSearch& NeighborSearch::populate(bool include_h_) {
     fail("NeighborSearch not initialized");
   }
   return *this;
+}
+
+inline void NeighborSearch::add_chain(const Chain& chain, bool include_h_) {
+  if (!model)
+    fail("NeighborSearch.add_chain(): model not initialized yet");
+  // to be safe avoid (&chain - model.chains[0]) which could be UB
+  for (int n_ch = 0; n_ch != (int) model->chains.size(); ++n_ch)
+    if (&model->chains[n_ch] == &chain) {
+      include_h = include_h_;
+      add_chain_n(chain, n_ch);
+      return;
+    }
+  fail("NeighborSearch.add_chain(): chain not in this model");
+}
+
+inline void NeighborSearch::add_chain_n(const Chain& chain, int n_ch) {
+  for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
+    const Residue& res = chain.residues[n_res];
+    for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
+      const Atom& atom = res.atoms[n_atom];
+      if (include_h || !atom.is_hydrogen())
+        add_atom(atom, n_ch, n_res, n_atom);
+    }
+  }
 }
 
 inline void NeighborSearch::add_atom(const Atom& atom,

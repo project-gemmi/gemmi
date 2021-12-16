@@ -36,6 +36,7 @@ void add_search(py::module& m) {
     });
   py::bind_vector<std::vector<NeighborSearch::Mark*>>(m, "VectorMarkPtr");
   neighbor_search
+    .def_readonly("radius_specified", &NeighborSearch::radius_specified)
     .def(py::init<Model&, const UnitCell&, double>(),
          py::arg("model"), py::arg("cell"), py::arg("max_radius")/*,
          py::keep_alive<1, 2>()*/)
@@ -48,6 +49,8 @@ void add_search(py::module& m) {
          py::keep_alive<1, 2>())
     .def("populate", &NeighborSearch::populate, py::arg("include_h")=true,
          "Usually run after constructing NeighborSearch.")
+    .def("add_chain", &NeighborSearch::add_chain,
+         py::arg("chain"), py::arg("include_h")=true)
     .def("add_atom", &NeighborSearch::add_atom,
          py::arg("atom"), py::arg("n_ch"), py::arg("n_res"), py::arg("n_atom"),
          "Lower-level alternative to populate()")
@@ -57,6 +60,8 @@ void add_search(py::module& m) {
     .def("find_neighbors", &NeighborSearch::find_neighbors,
          py::arg("atom"), py::arg("min_dist")=0, py::arg("max_dist")=0,
          py::return_value_policy::move, py::keep_alive<0, 1>())
+    .def("find_nearest_atom", &NeighborSearch::find_nearest_atom,
+         py::return_value_policy::reference_internal)
     .def("find_site_neighbors", &NeighborSearch::find_site_neighbors,
          py::arg("atom"), py::arg("min_dist")=0, py::arg("max_dist")=0,
          py::return_value_policy::move, py::keep_alive<0, 1>())

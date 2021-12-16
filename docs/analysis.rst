@@ -337,6 +337,10 @@ Then the cell lists need to be populated with items either by calling::
 
   void NeighborSearch::populate(bool include_h=true)
 
+or by adding individual chains::
+
+  void NeighborSearch::add_chain(const Chain& chain, bool include_h=true)
+
 or by adding individual atoms::
 
   void NeighborSearch::add_atom(const Atom& atom, int n_ch, int n_res, int n_atom)
@@ -351,10 +355,17 @@ An example in Python:
 
   >>> import gemmi
   >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
-  >>> ns = gemmi.NeighborSearch(st[0], st.cell, 3).populate()
+  >>> ns = gemmi.NeighborSearch(st[0], st.cell, 3).populate(include_h=False)
 
-If we'd like to choose which atoms to add, for example to ignore hydrogens,
-we could use ``add_atom()`` instead of ``populate()``:
+Here we do the same using ``add_chain()`` instead of ``populate()``:
+
+.. doctest::
+
+  >>> ns = gemmi.NeighborSearch(st[0], st.cell, 3)
+  >>> for chain in st[0]:
+  ...     ns.add_chain(chain, include_h=False)
+
+And again the same, with complete control over which atoms are included:
 
 .. doctest::
 
