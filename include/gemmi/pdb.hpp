@@ -353,6 +353,9 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
       // Some MD files use similar names for other elements ("1C4A" -> C).
       else if (is_digit(line[12]))
         atom.element = impl::find_single_letter_element(line[13]);
+      // ... or it can be "C210"
+      else if (is_digit(line[13]))
+        atom.element = impl::find_single_letter_element(line[12]);
       else
         atom.element = Element(line + 12);
       atom.charge = (len > 78 ? read_charge(line[78], line[79]) : 0);
