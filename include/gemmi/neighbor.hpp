@@ -126,10 +126,14 @@ struct NeighborSearch {
   Mark* find_nearest_atom(const Position& pos) {
     Mark* mark = nullptr;
     float nearest_dist_sq = float(radius_specified * radius_specified);
-    for_each(pos, '\0', nearest_dist_sq, [&](Mark& a, float dist_sq) {
-        if (dist_sq < nearest_dist_sq) {
-          mark = &a;
-          nearest_dist_sq = dist_sq;
+    for_each_cell(pos, [&](std::vector<Mark>& marks, const Fractional& fr) {
+        Position p = grid.unit_cell.orthogonalize(fr);
+        for (Mark& m : marks) {
+          float dist_sq = m.dist_sq(p);
+          if (dist_sq < nearest_dist_sq) {
+            mark = &m;
+            nearest_dist_sq = dist_sq;
+          }
         }
     });
     return mark;
