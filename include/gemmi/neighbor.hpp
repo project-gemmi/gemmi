@@ -417,5 +417,41 @@ inline void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell,
   remove_cras(model, to_be_deleted);
 }
 
+
+// simple map alignment - this function may change in the future
+template<typename T>
+void interpolate_grid_of_aligned_model(Grid<T>& dest, const Grid<T>& src,
+                                       const Transform& tr, NeighborSearch& ns,
+                                       double radius=0.) {
+  if (radius <= 0.)
+    radius = ns.radius_specified;
+  else if (radius > ns.radius_specified)
+    fail("set_grid_values_interpolated_from(): radius exceeds NeighborSearch radius");
+  // mask model or its part that was used for NeighborSearch
+  std::vector<bool> mask(dest.data.size(), false);
+  for (const std::vector<NeighborSearch::Mark>& marks : ns.grid.data)
+    for (const NeighborSearch::Mark& mark : marks)
+      if (mark.image_idx == 0)  // leave out symmetry mates
+        dest.template use_points_around<true>(
+            ns.grid.unit_cell.fractionalize(mark.pos()),
+            radius,
+            [&](T& point, double) { mask[&point - dest.data.data()] = true; });
+  size_t idx = 0;
+  for (int w = 0; w != dest.nw; ++w)
+    for (int v = 0; v != dest.nv; ++v)
+      for (int u = 0; u != dest.nu; ++u, ++idx) {
+        if (!mask[idx])
+          continue;
+        Position pos2 = dest.get_position(u, v, w);
+        // in contacts use only nodes that are nearer to the original molecule
+        NeighborSearch::Mark* mark = ns.find_nearest_atom(pos2);
+        if (mark && mark->image_idx == 0) {
+          Position delta = mark->to_cra(*ns.model).atom->pos - mark->pos();
+          Position pos1 = Position(tr.apply(pos2 + delta));
+          dest.data[idx] = src.interpolate_value(pos1);
+        }
+      }
+}
+
 } // namespace gemmi
 #endif
