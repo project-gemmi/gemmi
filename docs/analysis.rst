@@ -748,7 +748,7 @@ The arguments to ``calculate_superposition()`` are:
   it helps in rare cases when the sequence alignment alone is ambiguous),
   and it decides whether to use Cα or P atoms (see the next point),
 - atom selection: one of ``SupSelect.CaP`` (only Cα or P atoms),
-  ``SupSelect.All`` (all atoms),
+  ``SupSelect.MainChain`` or ``SupSelect.All`` (all atoms),
 - (optionally) altloc -- the conformer choice.
   By default, atoms with non-blank altloc are ignored.
   With altloc='A', only the A conformer is considered

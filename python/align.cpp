@@ -103,6 +103,7 @@ void add_alignment(py::module& m) {
   // structure superposition
   py::enum_<SupSelect>(m, "SupSelect")
     .value("CaP", SupSelect::CaP)
+    .value("MainChain", SupSelect::MainChain)
     .value("All", SupSelect::All);
 
   py::class_<SupResult>(m, "SupResult")

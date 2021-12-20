@@ -147,6 +147,7 @@ inline void assign_label_seq_id(Structure& st, bool force) {
 
 enum class SupSelect {
   CaP,  // only Ca (aminoacids) or P (nucleotides) atoms
+  MainChain,  // only main chain atoms
   All
 };
 
@@ -164,22 +165,27 @@ inline SupResult calculate_superposition(ConstResidueSpan fixed,
   std::vector<Position> pos1, pos2;
   auto it1 = fixed.first_conformer().begin();
   auto it2 = movable.first_conformer().begin();
-  std::string name = "CA";
-  El el = El::C;
-  if (is_polynucleotide(ptype)) {
-    name = "P";
-    el = El::P;
-  };
+  std::vector<AtomNameElement> used_atoms;
+  if (sel == SupSelect::CaP) {
+    if (is_polynucleotide(ptype))
+      used_atoms.push_back({"P", El::P});
+    else
+      used_atoms.push_back({"CA", El::C});
+  } else if (sel == SupSelect::MainChain) {
+    used_atoms = get_mainchain_atoms(ptype);
+  }
   for (AlignmentResult::Item item : result.cigar) {
     char op = item.op();
     for (uint32_t i = 0; i < item.len(); ++i) {
       if (op == 'M' && it1->name == it2->name) {
-        if (sel == SupSelect::CaP) {
-          const Atom* a1 = it1->find_atom(name, altloc, el);
-          const Atom* a2 = it2->find_atom(name, altloc, el);
-          if (a1 && a2) {
-            pos1.push_back(a1->pos);
-            pos2.push_back(a2->pos);
+        if (!used_atoms.empty()) {
+          for (const AtomNameElement& ane : used_atoms) {
+            const Atom* a1 = it1->find_atom(ane.atom_name, altloc, ane.el);
+            const Atom* a2 = it2->find_atom(ane.atom_name, altloc, ane.el);
+            if (a1 && a2) {
+              pos1.push_back(a1->pos);
+              pos2.push_back(a2->pos);
+            }
           }
         } else {
           for (const Atom& a1 : it1->atoms)

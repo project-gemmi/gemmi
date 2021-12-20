@@ -94,6 +94,16 @@ inline bool is_polymer_residue(const Residue& res, PolymerType ptype) {
   }
 }
 
+struct AtomNameElement { std::string atom_name; El el; };
+
+inline std::vector<AtomNameElement> get_mainchain_atoms(PolymerType ptype) {
+  if (is_polynucleotide(ptype))
+    return {{"P", El::P}, {"O5'", El::O}, {"C5'", El::C},
+            {"C4'", El::C}, {"O4'", El::O}, {"C3'", El::C}, {"O3'", El::O},
+            {"C2'", El::C}, {"O2'", El::O}, {"C1'", El::C}};
+  return {{"N", El::N}, {"CA", El::C}, {"C", El::C}, {"O", El::O}};
+}
+
 inline bool are_connected(const Residue& r1, const Residue& r2, PolymerType ptype) {
   if (is_polypeptide(ptype)) {
     const Atom* a1 = r1.get_c();
