@@ -766,14 +766,14 @@ The arguments to ``calculate_superposition()`` are:
     0.18315488879658484
 
 - (optionally) trim_cutoff (default: 2.0) --  outlier rejection cutoff in RMSD,
-- (optionally) ``current_rmsd=true`` -- the functions does not perform
-  the superposition, it returns the current RMSD between atoms that would be
-  used for the superposition, and also the number of atoms that would be used.
+
+To calculate current RMSD between atoms (without superposition)
+use function ``calculate_current_rmsd()`` that takes the same arguments
+except the ones for trimming:
 
   .. doctest::
   
-    >>> gemmi.calculate_superposition(polymer1, polymer2, ptype,
-    ...                               gemmi.SupSelect.CaP, current_rmsd=True).rmsd
+    >>> gemmi.calculate_current_rmsd(polymer1, polymer2, ptype, gemmi.SupSelect.CaP).rmsd
     19.660883858565462
 
 The calculated superposition can be applied to a span of residues,
@@ -790,6 +790,12 @@ changing the atomic positions in-place:
   >>> polymer1[2].sole_atom('CB')
   <gemmi.Atom CB at (-28.6, -12.7, 11.3)>
 
+.. doctest::
+  :hide:
+  :skipif: sys.platform == 'win32'
+
+  >>> gemmi.calculate_current_rmsd(polymer1, polymer2, ptype, gemmi.SupSelect.CaP).rmsd
+  0.14626891689940602
 
 .. _selections:
 

@@ -264,8 +264,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         for (gemmi::Residue& res : mpoly2)
           for (gemmi::Atom& atom : res.atoms)
             atom.pos = gemmi::Position(r.transform.apply(atom.pos));
-        r = gemmi::calculate_superposition(poly1, mpoly2, ptype, gemmi::SupSelect::All,
-                                           '\0', true);
+        r = gemmi::calculate_current_rmsd(poly1, mpoly2, ptype, gemmi::SupSelect::All);
         printf("   the same rotation+shift applied to %zu atoms: %g\n", r.count, r.rmsd);
       }
       return 0;

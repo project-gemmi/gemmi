@@ -151,18 +151,16 @@ enum class SupSelect {
   All
 };
 
-inline SupResult calculate_superposition(ConstResidueSpan fixed,
-                                         ConstResidueSpan movable,
-                                         PolymerType ptype,
-                                         SupSelect sel,
-                                         int trim_cycles=0,
-                                         double trim_cutoff=2.0,
-                                         char altloc='\0',
-                                         bool current_rmsd=false) {
+inline void prepare_positions_for_superposition(std::vector<Position>& pos1,
+                                                std::vector<Position>& pos2,
+                                                ConstResidueSpan fixed,
+                                                ConstResidueSpan movable,
+                                                PolymerType ptype,
+                                                SupSelect sel,
+                                                char altloc='\0') {
   AlignmentScoring scoring;
   AlignmentResult result = align_sequence_to_polymer(fixed.extract_sequence(),
                                                      movable, ptype, scoring);
-  std::vector<Position> pos1, pos2;
   auto it1 = fixed.first_conformer().begin();
   auto it2 = movable.first_conformer().begin();
   std::vector<AtomNameElement> used_atoms;
@@ -202,15 +200,33 @@ inline SupResult calculate_superposition(ConstResidueSpan fixed,
         ++it2;
     }
   }
-  if (current_rmsd) {
-    SupResult r;
-    r.count = pos1.size();
-    double sd = 0;
-    for (size_t i = 0; i != pos1.size(); ++i)
-      sd += pos1[i].dist_sq(pos2[i]);
-    r.rmsd = std::sqrt(sd / r.count);
-    return r;
-  }
+}
+
+inline SupResult calculate_current_rmsd(ConstResidueSpan fixed,
+                                        ConstResidueSpan movable,
+                                        PolymerType ptype,
+                                        SupSelect sel,
+                                        char altloc='\0') {
+  std::vector<Position> pos1, pos2;
+  prepare_positions_for_superposition(pos1, pos2, fixed, movable, ptype, sel, altloc);
+  SupResult r;
+  r.count = pos1.size();
+  double sd = 0;
+  for (size_t i = 0; i != pos1.size(); ++i)
+    sd += pos1[i].dist_sq(pos2[i]);
+  r.rmsd = std::sqrt(sd / r.count);
+  return r;
+}
+
+inline SupResult calculate_superposition(ConstResidueSpan fixed,
+                                         ConstResidueSpan movable,
+                                         PolymerType ptype,
+                                         SupSelect sel,
+                                         int trim_cycles=0,
+                                         double trim_cutoff=2.0,
+                                         char altloc='\0') {
+  std::vector<Position> pos1, pos2;
+  prepare_positions_for_superposition(pos1, pos2, fixed, movable, ptype, sel, altloc);
   const double* weights = nullptr;
   size_t len = pos1.size();
   SupResult sr = superpose_positions(pos1.data(), pos2.data(), len, weights);

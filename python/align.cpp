@@ -114,15 +114,20 @@ void add_alignment(py::module& m) {
     .def_readonly("transform", &SupResult::transform)
     ;
 
+  m.def("calculate_current_rmsd",
+        [](const ResidueSpan& fixed, const ResidueSpan& movable, PolymerType ptype,
+           SupSelect sel, char altloc) {
+          return calculate_current_rmsd(fixed, movable, ptype, sel, altloc);
+        }, py::arg("fixed"), py::arg("movable"), py::arg("ptype"), py::arg("sel"),
+           py::arg("altloc")='\0');
   m.def("calculate_superposition",
-        [](const ResidueSpan& fixed, const ResidueSpan& movable,
-           PolymerType ptype, SupSelect sel, int trim_cycles, double trim_cutoff,
-           char altloc, bool current_rmsd) {
+        [](const ResidueSpan& fixed, const ResidueSpan& movable, PolymerType ptype,
+           SupSelect sel, int trim_cycles, double trim_cutoff, char altloc) {
           return calculate_superposition(fixed, movable, ptype, sel,
-                                         trim_cycles, trim_cutoff, altloc, current_rmsd);
+                                         trim_cycles, trim_cutoff, altloc);
         }, py::arg("fixed"), py::arg("movable"), py::arg("ptype"), py::arg("sel"),
            py::arg("trim_cycles")=0, py::arg("trim_cutoff")=2.0,
-           py::arg("altloc")='\0', py::arg("current_rmsd")=false);
+           py::arg("altloc")='\0');
 
   m.def("superpose_positions",
         [](std::vector<Position> pos1, std::vector<Position> pos2,
