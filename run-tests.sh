@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# I use this script for building, testing and updating docs.
+# Running Python scripts with locally built gemmi module requires setting
+# PYTHONPATH. I'm using the following alias (bash function actually) to set it:
+# echo "import gemmi" > $HOME/.import-gemmi.py
+# gpy() { PYTHONPATH=$HOME/gemmi/gemmi/build PYTHONSTARTUP=$HOME/.import-gemmi.py python3 -q "$@"; }
+
 set -eu
 cd "$(dirname "$0")"
 BUILD_DIR="$(pwd)"

@@ -181,7 +181,7 @@ inline void NeighborSearch::initialize(Model& model_, const UnitCell& cell,
     // We need to take into account strict NCS from MTRIXn.
     // To avoid additional function parameter that would pass Structure::ncs,
     // here we reconstruct ncs transforms from cell.images.
-    // images store fractional ttransforms, but for non-crystal it should be
+    // images store fractional transforms, but for non-crystal it should be
     // the same as Cartesian transform.
     std::vector<Transform> ncs;
     for (size_t n = cell.cs_count; n < cell.images.size(); n += cell.cs_count + 1)
