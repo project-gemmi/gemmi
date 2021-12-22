@@ -9,7 +9,7 @@
 #ifndef GEMMI_ALL_IN_ONE
 # define GEMMI_WRITE_IMPLEMENTATION 1
 #endif
-#include <gemmi/read_cif.hpp> // for read_cif_gz
+#include <gemmi/read_cif.hpp> // for read_cif_gz, read_first_block_gz
 #include <gemmi/cif2mtz.hpp>  // for CifToMtz
 
 #define GEMMI_PROG cif2mtz
@@ -147,7 +147,16 @@ int GEMMI_MAIN(int argc, char **argv) {
     const char* cif_path = p.nonOption(0);
     if (cif2mtz.verbose)
       fprintf(stderr, "Reading %s ...\n", cif_path);
-    auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(cif_path).blocks);
+    // If the file is gzipped and huge, reading it will result in error,
+    // but if we are interested only in the first block we can recover.
+    gemmi::cif::Document doc;
+    // this limit is used only for when reading first block from gzipped file
+    constexpr int block_limit = 1073741824;  // 1GB, used only for gz files
+    if (convert_all || p.options[BlockName] || p.options[BlockNumber])
+      doc = gemmi::read_cif_gz(cif_path);
+    else  // optimization: ignore other blocks
+      doc = gemmi::read_first_block_gz(cif_path, block_limit);
+    auto rblocks = gemmi::as_refln_blocks(std::move(doc.blocks));
     if (convert_all) {
       bool ok = true;
       for (gemmi::ReflnBlock& rb : rblocks) {
@@ -188,7 +197,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       for (const option::Option* opt = p.options[Add]; opt; opt = opt->next()) {
         if (cif2mtz.verbose)
           fprintf(stderr, "Reading %s ...\n", opt->arg);
-        auto rblocks2 = gemmi::as_refln_blocks(gemmi::read_cif_gz(opt->arg).blocks);
+        auto rblocks2 = gemmi::as_refln_blocks(
+                          gemmi::read_first_block_gz(opt->arg, block_limit).blocks);
         gemmi::Mtz mtz2 = cif2mtz.convert_block_to_mtz(rblocks2.at(0), std::cerr);
         size_t ncol = mtz.columns.size();
         size_t ncol2 = mtz2.columns.size();

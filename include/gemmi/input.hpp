@@ -114,11 +114,18 @@ public:
 
   void resize(size_t n) {
     char* new_ptr = (char*) std::realloc(ptr_.get(), n);
-    if (!new_ptr)
+    if (!new_ptr && n != 0)
       fail("Out of memory.");
     (void) ptr_.release();
     ptr_.reset(new_ptr);
     size_ = n;
+  }
+
+  // Remove first n bytes making space for more text at the returned position.
+  char* roll(size_t n) {
+    assert(n <= size());
+    std::memmove(data(), data() + n, n);
+    return data() + n;
   }
 };
 
@@ -138,7 +145,7 @@ public:
   bool is_compressed() const { return false; }
   FileStream get_uncompressing_stream() const { assert(0); unreachable(); }
   // for reading (uncompressing into memory) the whole file at once
-  CharArray uncompress_into_buffer() { return {}; }
+  CharArray uncompress_into_buffer(size_t=0) { return {}; }
 
 private:
   std::string path_;

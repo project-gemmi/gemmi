@@ -102,20 +102,21 @@ public:
     return is_compressed() ? path().substr(0, path().size() - 3) : path();
   }
 
-  CharArray uncompress_into_buffer() {
+  CharArray uncompress_into_buffer(size_t limit=0) {
     if (!is_compressed())
       return BasicInput::uncompress_into_buffer();
-    size_t size = estimate_uncompressed_size(path());
+    size_t size = (limit == 0 ? estimate_uncompressed_size(path()) : limit);
     open();
     if (size > 3221225471)
+      // if this exception is changed adjust src/cif2mtz.cpp
       fail("For now gz files above 3 GiB uncompressed are not supported.\n"
            "To read " + path() + " first uncompress it.");
     CharArray mem(size);
     size_t read_bytes = gzread_checked(mem.data(), size);
     // if the file is shorter than the size from header, adjust size
     if (read_bytes < size) {
-      mem.set_size(read_bytes);
-    } else { // read_bytes == size
+      mem.set_size(read_bytes);  // should we call resize() here
+    } else if (limit == 0) { // read_bytes == size
     // if the file is longer than the size from header, read in the rest
       int next_char;
       while (!gzeof(file_) && (next_char = gzgetc(file_)) != -1) {
