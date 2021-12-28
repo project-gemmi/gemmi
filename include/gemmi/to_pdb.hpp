@@ -500,9 +500,10 @@ inline void write_header(const Structure& st, std::ostream& os,
             col = 0;
           }
         }
-        if (col != 0)
+        if (col != 0) {
           buf[80] = '\n';
           os.write(buf, 81);
+        }
       }
   }
 
