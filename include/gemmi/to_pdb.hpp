@@ -327,6 +327,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
                     a.aniso.u33*1e4 + eps, a.aniso.u12*1e4 + eps,
                     a.aniso.u13*1e4 + eps, a.aniso.u23*1e4 + eps);
         buf[28+42] = ' ';
+        buf[80] = '\n';
         os.write(buf, 81);
       }
     }
@@ -342,6 +343,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
                     impl::encode_serial_in_hybrid36(buf8, ++serial));
         std::memset(buf+11, ' ', 6);
         std::memset(buf+28, ' ', 52);
+        buf[80] = '\n';
         os.write(buf, 81);
       } else {
         WRITE("%-80s", "TER");
@@ -470,6 +472,7 @@ inline void write_header(const Structure& st, std::ostream& os,
             gf_snprintf(buf+33, 82-33, "              %-33s\n",
                         dbref.id_code.c_str());
           }
+          buf[80] = '\n';
           os.write(buf, 81);
           if (!short_record)
             WRITE("DBREF2 %4s%2s     %-22s     %10d  %10d             ",
@@ -497,8 +500,10 @@ inline void write_header(const Structure& st, std::ostream& os,
             col = 0;
           }
         }
-        if (col != 0)
+        if (col != 0) {
+          buf[80] = '\n';
           os.write(buf, 81);
+        }
       }
   }
 
@@ -520,6 +525,7 @@ inline void write_header(const Structure& st, std::ostream& os,
             (int) helix.pdb_helix_class, helix.length);
       if (helix.length < 0) // make 72-76 blank if the length is not given
         std::memset(buf+71, ' ', 5);
+      buf[80] = '\n';
       os.write(buf, 81);
     }
   }
@@ -619,6 +625,7 @@ inline void write_header(const Structure& st, std::ostream& os,
             // overwrite distance with link_id
             gf_snprintf(buf+72, 82-72, "%-8s\n", con.link_id.c_str());
           }
+          buf[80] = '\n';
           os.write(buf, 81);
         }
 
