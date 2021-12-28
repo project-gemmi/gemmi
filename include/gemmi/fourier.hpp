@@ -78,14 +78,6 @@ bool data_fits_into(const DataProxy& data, std::array<int, 3> size) {
   return true;
 }
 
-inline float friedel_mate_value(float v) { return v; }
-inline double friedel_mate_value(double v) { return v; }
-
-template<typename T>
-std::complex<T> friedel_mate_value(const std::complex<T>& v) {
-  return std::conj(v);
-}
-
 template<typename T>
 void add_friedel_mates(ReciprocalGrid<T>& grid) {
   const T default_val = T(); // initialized to 0 or 0+0i
