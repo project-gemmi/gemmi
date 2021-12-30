@@ -157,30 +157,34 @@ inline void prepare_positions_for_superposition(std::vector<Position>& pos1,
                                                 ConstResidueSpan movable,
                                                 PolymerType ptype,
                                                 SupSelect sel,
-                                                char altloc='\0') {
+                                                char altloc='\0',
+                                                std::vector<int>* ca_offsets=nullptr) {
   AlignmentScoring scoring;
   AlignmentResult result = align_sequence_to_polymer(fixed.extract_sequence(),
                                                      movable, ptype, scoring);
   auto it1 = fixed.first_conformer().begin();
   auto it2 = movable.first_conformer().begin();
   std::vector<AtomNameElement> used_atoms;
+  bool is_na = is_polynucleotide(ptype);
+  const AtomNameElement* ca_p = nullptr;
   if (sel == SupSelect::CaP) {
-    if (is_polynucleotide(ptype))
-      used_atoms.push_back({"P", El::P});
-    else
-      used_atoms.push_back({"CA", El::C});
+    used_atoms.push_back({is_na ? "P" : "CA", is_na ? El::P : El::C});
   } else if (sel == SupSelect::MainChain) {
     used_atoms = get_mainchain_atoms(ptype);
+    ca_p = &used_atoms[is_na ? 0 : 1];
   }
   for (AlignmentResult::Item item : result.cigar) {
     char op = item.op();
     for (uint32_t i = 0; i < item.len(); ++i) {
+      int ca_offset = -1;
       if (op == 'M' && it1->name == it2->name) {
         if (!used_atoms.empty()) {
           for (const AtomNameElement& ane : used_atoms) {
             const Atom* a1 = it1->find_atom(ane.atom_name, altloc, ane.el);
             const Atom* a2 = it2->find_atom(ane.atom_name, altloc, ane.el);
             if (a1 && a2) {
+              if (&ane == ca_p)
+                ca_offset = (int)pos1.size();
               pos1.push_back(a1->pos);
               pos2.push_back(a2->pos);
             }
@@ -194,8 +198,11 @@ inline void prepare_positions_for_superposition(std::vector<Position>& pos1,
               }
         }
       }
-      if (op == 'M' || op == 'I')
+      if (op == 'M' || op == 'I') {
         ++it1;
+        if (ca_offsets)
+          ca_offsets->push_back(ca_offset);
+      }
       if (op == 'M' || op == 'D')
         ++it2;
     }
@@ -254,6 +261,39 @@ inline SupResult calculate_superposition(ConstResidueSpan fixed,
   }
 
   return sr;
+}
+
+// Returns superpositions for all residues in fixed.first_conformer(),
+// performed by superposing backbone in radius=10.0 from residue's Ca.
+inline std::vector<SupResult> calculate_superpositions_in_moving_window(
+                                      ConstResidueSpan fixed,
+                                      ConstResidueSpan movable,
+                                      PolymerType ptype,
+                                      double radius=10.0) {
+  const double radius_sq = radius * radius;
+  std::vector<Position> pos1, pos2;
+  char altloc = '\0';
+  SupSelect sel = SupSelect::MainChain;
+  std::vector<int> ca_offsets;
+  prepare_positions_for_superposition(pos1, pos2, fixed, movable, ptype,
+                                      sel, altloc, &ca_offsets);
+  const double* weights = nullptr;
+  std::vector<SupResult> result;
+  for (int offset : ca_offsets) {
+    if (offset == -1) {
+      result.push_back(SupResult{NAN, 0, {}, {}, {}});
+      continue;
+    }
+    const Position& ca_pos = pos1[offset];
+    int a = offset;
+    while (a > 0 && ca_pos.dist_sq(pos1[a-1]) < radius_sq)
+      --a;
+    int b = offset;
+    while (b+1 < (int)pos1.size() && ca_pos.dist_sq(pos1[b+1]) < radius_sq)
+      ++b;
+    result.push_back(superpose_positions(&pos1[a], &pos2[a], b-a+1, weights));
+  }
+  return result;
 }
 
 } // namespace gemmi

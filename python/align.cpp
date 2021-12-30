@@ -128,6 +128,11 @@ void add_alignment(py::module& m) {
         }, py::arg("fixed"), py::arg("movable"), py::arg("ptype"), py::arg("sel"),
            py::arg("trim_cycles")=0, py::arg("trim_cutoff")=2.0,
            py::arg("altloc")='\0');
+  m.def("calculate_superpositions_in_moving_window",
+        [](const ResidueSpan& fixed, const ResidueSpan& movable, PolymerType ptype,
+           double radius) {
+          return calculate_superpositions_in_moving_window(fixed, movable, ptype, radius);
+        }, py::arg("fixed"), py::arg("movable"), py::arg("ptype"), py::arg("radius")=10.0);
 
   m.def("superpose_positions",
         [](std::vector<Position> pos1, std::vector<Position> pos2,
