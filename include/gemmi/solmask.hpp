@@ -313,5 +313,62 @@ struct SolventMasker {
 #endif
 };
 
+template<typename T>
+void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
+                                        const Transform& tr, const Model& dest_model,
+                                        double radius) {
+  // We need to keep track if the nearest atom is from model and image_idx=0.
+  // Then, before interpolating the map, we'll need delta between atom position
+  // and it's PBC image near the grid node.
+  struct NodeInfo {
+    double r_sq;
+    const Atom* a;
+  };
+
+  // populate node_list that assigns Atom or null to each node
+  std::vector<NodeInfo> node_list(dest.data.size(), NodeInfo{radius*radius, nullptr});
+  const UnitCell& gcell = dest.unit_cell;
+  for (const Chain& chain : dest_model.chains)
+    for (const Residue& res : chain.residues)
+      for (const Atom& atom : res.atoms) {
+        Fractional frac0 = gcell.fractionalize(atom.pos);
+        dest.template use_points_around<true>(frac0, radius,
+          [&](T& point, double d2) {
+            NodeInfo& ni = node_list[&point - dest.data.data()];
+            if (d2 < ni.r_sq) {
+              ni.r_sq = d2;
+              ni.a = &atom;
+            }
+          });
+        // If a node is closer to symmetry mate than to an atom of the original
+        // molecule - mark it with a=nullptr so it's ignored.
+        // Most of the time is spent here, and it hardly makes any difference.
+        for (int n_im = 0; n_im != (int) gcell.images.size(); ++n_im) {
+          Fractional frac = gcell.images[n_im].apply(frac0);
+          dest.template use_points_around<true>(frac, radius,
+            [&](T& point, double d2) {
+              NodeInfo& ni = node_list[&point - dest.data.data()];
+              if (d2 < ni.r_sq) {
+                ni.r_sq = d2;
+                ni.a = nullptr;
+              }
+            });
+        }
+      }
+
+  // interpolate values for those nodes that have Atom assigned
+  size_t idx = 0;
+  for (int w = 0; w != dest.nw; ++w)
+    for (int v = 0; v != dest.nv; ++v)
+      for (int u = 0; u != dest.nu; ++u, ++idx)
+        if (const Atom* a = node_list[idx].a) {
+          Position dest_pos = dest.get_position(u, v, w);
+          Fractional fdelta = gcell.fractionalize_difference(a->pos - dest_pos);
+          Position delta = gcell.orthogonalize_difference(fdelta.round());
+          Position src_pos(tr.apply(dest_pos + delta));
+          dest.data[idx] = src.interpolate_value(src_pos);
+        }
+}
+
 } // namespace gemmi
 #endif

@@ -222,6 +222,10 @@ void add_grid(py::module& m) {
     .def("put_mask_on_float_grid", &SolventMasker::put_mask_on_grid<float>)
     .def("set_to_zero", &SolventMasker::set_to_zero)
     ;
+  m.def("interpolate_grid_of_aligned_model2", &interpolate_grid_of_aligned_model2<float>,
+        py::arg("dest"), py::arg("src"), py::arg("tr"),
+        py::arg("dest_model"), py::arg("radius"));
+
 
   // from blob.hpp
   py::class_<Blob>(m, "Blob")
