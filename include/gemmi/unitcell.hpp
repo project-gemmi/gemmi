@@ -64,6 +64,9 @@ struct Fractional : Vec3 {
   Fractional wrap_to_zero() const {
     return {x - std::round(x), y - std::round(y), z - std::round(z)};
   }
+  Fractional round() const {
+    return {std::round(x), std::round(y), std::round(z)};
+  }
   void move_toward_zero_by_one() {
     if (x > 0.5) x -= 1.0; else if (x < -0.5) x += 1.0;
     if (y > 0.5) y -= 1.0; else if (y < -0.5) y += 1.0;
@@ -342,6 +345,10 @@ struct UnitCell {
   // just do not apply it here.
   Position orthogonalize_difference(const Fractional& delta) const {
     return Position(orth.mat.multiply(delta));
+  }
+  // similarly, fractionalize_difference
+  Fractional fractionalize_difference(const Position& delta) const {
+    return Fractional(frac.mat.multiply(delta));
   }
 
   double distance_sq(const Fractional& pos1, const Fractional& pos2) const {
