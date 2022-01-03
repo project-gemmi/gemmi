@@ -440,6 +440,8 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
 
 template<typename T>
 void Ccp4<T>::set_extent(const Box<Fractional>& box) {
+  if (ccp4_header.empty())
+    fail("set_extent(): no header in the map. Call update_ccp4_header() first");
   if (!full_cell())
     fail("Ccp4::set_extent() works only after setup()");
   if (grid.axis_order != AxisOrder::XYZ)
