@@ -442,18 +442,13 @@ struct Grid : GridBase<T> {
 
   void set_value(int u, int v, int w, T x) { data[index_s(u, v, w)] = x; }
 
-  template <bool UsePbc, typename Func>
-  void use_points_in_box(Fractional fctr, int du, int dv, int dw,
-                         Func&& func, bool fail_on_too_large_radius=true) {
+  template <bool UsePbc>
+  void check_size_for_points_in_box(int& du, int& dv, int& dw,
+                                    bool fail_on_too_large_radius) const {
     if (fail_on_too_large_radius) {
       if (2 * du >= nu || 2 * dv >= nv || 2 * dw >= nw)
         fail("grid operation failed: radius bigger than half the unit cell?");
     }
-    if (UsePbc)
-      fctr = fctr.wrap_to_unit();
-    int u0 = iround(fctr.x * nu);
-    int v0 = iround(fctr.y * nv);
-    int w0 = iround(fctr.z * nw);
     if (UsePbc && !fail_on_too_large_radius) {
       // If we'd use the minimum image convention the max would be (nu-1)/2.
       // The limits set here are necessary for index_n() that is used below.
@@ -461,6 +456,15 @@ struct Grid : GridBase<T> {
       dv = std::min(dv, nv - 1);
       dw = std::min(dw, nw - 1);
     }
+  }
+
+  template <bool UsePbc, typename Func>
+  void do_use_points_in_box(Fractional fctr, int du, int dv, int dw, Func&& func) {
+    if (UsePbc)
+      fctr = fctr.wrap_to_unit();
+    int u0 = iround(fctr.x * nu);
+    int v0 = iround(fctr.y * nv);
+    int w0 = iround(fctr.z * nw);
     int u_lo = u0 - du;
     int u_hi = u0 + du;
     int v_lo = v0 - dv;
@@ -483,6 +487,13 @@ struct Grid : GridBase<T> {
           size_t idx = UsePbc ? index_n(u, v, w) : this->index_q(u, v, w);
           func(data[idx], delta);
         }
+  }
+
+  template <bool UsePbc, typename Func>
+  void use_points_in_box(Fractional fctr, int du, int dv, int dw,
+                         Func&& func, bool fail_on_too_large_radius=true) {
+    check_size_for_points_in_box<UsePbc>(du, dv, dw, fail_on_too_large_radius);
+    do_use_points_in_box<UsePbc>(fctr, du, dv, dw, func);
   }
 
   template <bool UsePbc, typename Func>

@@ -327,32 +327,39 @@ void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
 
   // populate node_list that assigns Atom or null to each node
   std::vector<NodeInfo> node_list(dest.data.size(), NodeInfo{radius*radius, nullptr});
+  // cf. use_points_around()
+  int du = (int) std::ceil(radius / dest.spacing[0]);
+  int dv = (int) std::ceil(radius / dest.spacing[1]);
+  int dw = (int) std::ceil(radius / dest.spacing[2]);
+  dest.template check_size_for_points_in_box<true>(du, dv, dw, true);
   const UnitCell& gcell = dest.unit_cell;
   for (const Chain& chain : dest_model.chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms) {
         Fractional frac0 = gcell.fractionalize(atom.pos);
-        dest.template use_points_around<true>(frac0, radius,
-          [&](T& point, double d2) {
-            NodeInfo& ni = node_list[&point - dest.data.data()];
-            if (d2 < ni.r_sq) {
-              ni.r_sq = d2;
-              ni.a = &atom;
-            }
-          });
+        dest.template do_use_points_in_box<true>(frac0, du, dv, dw,
+                      [&](T& point, const Position& delta) {
+                        double d2 = delta.length_sq();
+                        NodeInfo& ni = node_list[&point - dest.data.data()];
+                        if (d2 < ni.r_sq) {
+                          ni.r_sq = d2;
+                          ni.a = &atom;
+                        }
+                      });
         // If a node is closer to symmetry mate than to an atom of the original
         // molecule - mark it with a=nullptr so it's ignored.
         // Most of the time is spent here, and it hardly makes any difference.
         for (int n_im = 0; n_im != (int) gcell.images.size(); ++n_im) {
           Fractional frac = gcell.images[n_im].apply(frac0);
-          dest.template use_points_around<true>(frac, radius,
-            [&](T& point, double d2) {
-              NodeInfo& ni = node_list[&point - dest.data.data()];
-              if (d2 < ni.r_sq) {
-                ni.r_sq = d2;
-                ni.a = nullptr;
-              }
-            });
+          dest.template do_use_points_in_box<true>(frac, du, dv, dw,
+                        [&](T& point, const Position& delta) {
+                          double d2 = delta.length_sq();
+                          NodeInfo& ni = node_list[&point - dest.data.data()];
+                          if (d2 < ni.r_sq) {
+                            ni.r_sq = d2;
+                            ni.a = nullptr;
+                          }
+                        });
         }
       }
 
