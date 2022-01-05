@@ -228,6 +228,12 @@ void add_meta(py::module& m) {
     .def_readonly("operators", &Assembly::Gen::operators);
   py::bind_vector<std::vector<Assembly::Gen>>(assembly, "GenList");
 
+  py::enum_<Assembly::SpecialKind>(m, "AssemblySpecialKind")
+    .value("NA", Assembly::SpecialKind::NA)
+    .value("CompleteIcosahedral", Assembly::SpecialKind::CompleteIcosahedral)
+    .value("RepresentativeHelical", Assembly::SpecialKind::RepresentativeHelical)
+    .value("CompletePoint", Assembly::SpecialKind::CompletePoint);
+
   assembly
     .def(py::init<const std::string&>())
     .def_readwrite("name", &Assembly::name)
@@ -238,12 +244,4 @@ void add_meta(py::module& m) {
     .def_readwrite("special_kind", &Assembly::special_kind)
     ;
   py::bind_vector<std::vector<Assembly>>(m, "AssemblyList");
-
-  py::enum_<Assembly::SpecialKind>(m, "AssemblySpecialKind")
-    .value("NA", Assembly::SpecialKind::NA)
-    .value("CompleteIcosahedral", Assembly::SpecialKind::CompleteIcosahedral)
-    .value("RepresentativeHelical", Assembly::SpecialKind::RepresentativeHelical)
-    .value("CompletePoint", Assembly::SpecialKind::CompletePoint);
-
-
 }
