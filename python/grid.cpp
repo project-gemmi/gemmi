@@ -131,7 +131,7 @@ void add_grid(py::module& m, const std::string& name) {
     .def("symmetrize_max", &Gr::symmetrize_max)
     .def("symmetrize_abs_max", &Gr::symmetrize_abs_max)
     .def("symmetrize_sum", &Gr::symmetrize_sum)
-    .def("asu", &Gr::asu)
+    .def("masked_asu", &Gr::masked_asu, py::keep_alive<0, 1>())
     .def("mask_points_in_constant_radius", &mask_points_in_constant_radius<T>,
          py::arg("model"), py::arg("radius"), py::arg("value"))
     .def("get_subarray",
@@ -154,7 +154,12 @@ void add_grid(py::module& m, const std::string& name) {
 
   masked_grid
     .def_readonly("grid", &Masked::grid, py::return_value_policy::reference)
-    .def_readonly("mask", &Masked::mask)
+    .def_property_readonly("mask_array", [](const Masked& self) {
+      const Gr& gr = *self.grid;
+      py::array::ShapeContainer shape({gr.nu, gr.nv, gr.nw});
+      py::array::StridesContainer strides({gr.nv * gr.nw, gr.nw, 1});
+      return py::array_t<std::int8_t>(shape, strides, self.mask.data(), py::cast(self));
+    }, py::return_value_policy::reference_internal)
     .def("__iter__", [](Masked& self) { return py::make_iterator(self); },
          py::keep_alive<0, 1>())
     ;

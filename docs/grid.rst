@@ -350,24 +350,26 @@ ASU and MaskedGrid
 ------------------
 
 Sometimes we want to focus on a part of the grid only.
-For this, we have class MaskedGrid that combines two Grid objects,
-using one of them as a mask for the other.
+For this, we have class MaskedGrid that contains vector marking masked
+positions and a reference to the original grid.
 
 When an element of the mask is 0 (false), the corresponding element
-of the other grid is unmasked and is to be used. This is the same convention
+of the grid is unmasked and is to be used. This is the same convention
 as in NumPy MaskedArray.
 
 The primary use for MaskedGrid is working with asymmetric unit (asu) only:
 
 .. doctest::
 
-  >>> asu = grid.asu()
+  >>> asu = grid.masked_asu()
   >>> asu  # doctest: +ELLIPSIS
   <gemmi.MaskedFloatGrid object at 0x...>
   >>> asu.grid is grid
   True
-  >>> asu.mask
-  <gemmi.Int8Grid(12, 12, 12)>
+  >>> asu.mask_array  # doctest: +ELLIPSIS
+  array([[[0, 0, 0, ..., 1, 1, 1],
+         ...
+          [1, 1, 1, ..., 1, 1, 1]]], dtype=int8)
   >>> sum(point.value for point in asu)
   7.125
   >>> for point in asu:

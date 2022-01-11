@@ -624,18 +624,13 @@ struct Grid : GridBase<T> {
     return mask;
   }
 
-  MaskedGrid<T> asu();
+  MaskedGrid<T> masked_asu();
 };
 
 
 template<typename T, typename V> struct MaskedGrid {
+  std::vector<V> mask;
   Grid<T>* grid;
-  Grid<V> mask; // should we simply store the mask as vector?
-
-  MaskedGrid(Grid<T>& grid_, std::vector<V>&& mask_data) : grid(&grid_) {
-    mask.copy_metadata_from(grid_);
-    mask.data = mask_data;
-  }
 
   struct iterator {
     MaskedGrid& parent;
@@ -653,8 +648,7 @@ template<typename T, typename V> struct MaskedGrid {
             ++w;
           }
         }
-      } while (index != parent.mask.data.size() &&
-               parent.mask.data[index] != 0);
+      } while (index != parent.mask.size() && parent.mask[index] != 0);
       return *this;
     }
     typename GridBase<T>::Point operator*() {
@@ -664,12 +658,11 @@ template<typename T, typename V> struct MaskedGrid {
     bool operator!=(const iterator &o) const { return index != o.index; }
   };
   iterator begin() { return {*this, 0}; }
-  iterator end() { return {*this, mask.data.size()}; }
+  iterator end() { return {*this, mask.size()}; }
 };
 
-template<typename T>
-MaskedGrid<T> Grid<T>::asu() {
-  return {*this, get_asu_mask<std::int8_t>()};
+template<typename T> MaskedGrid<T> Grid<T>::masked_asu() {
+  return {get_asu_mask<std::int8_t>(), this};
 }
 
 
