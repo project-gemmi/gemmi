@@ -115,9 +115,7 @@ private:
   std::vector<SweepData> sweeps;
   std::unordered_map<int, int> sweep_indices;
 
-  std::vector<Trans> recipe;
-
-  const Trans* get_status_translation() const {
+  static const Trans* get_status_translation(const std::vector<Trans>& recipe) {
     for (const Trans& t: recipe)
       if (t.is_status)
         return &t;
@@ -225,16 +223,16 @@ private:
     bool discard_next_line = false;
   };
 
-  void prepare_recipe(const Mtz& mtz) {
+  void prepare_recipe(const Mtz& mtz, std::vector<Trans>& recipe) const {
     recipe.clear();
     SpecParserState state;
     if (!spec_lines.empty()) {
       for (const std::string& line : spec_lines)
-        parse_spec_line(line.c_str(), mtz, state);
+        parse_spec_line(recipe, line.c_str(), mtz, state);
     } else {
       const char** lines = default_spec(/*for_merged=*/mtz.batches.empty());
       for (; *lines != nullptr; ++lines)
-        parse_spec_line(*lines, mtz, state);
+        parse_spec_line(recipe, *lines, mtz, state);
     }
     if (recipe.empty())
       fail("empty translation recipe");
@@ -254,7 +252,8 @@ private:
   }
 
   // adds results to recipe
-  void parse_spec_line(const char* line, const Mtz& mtz, SpecParserState& state) {
+  void parse_spec_line(std::vector<Trans>& recipe, const char* line,
+                       const Mtz& mtz, SpecParserState& state) const {
     Trans tr;
     const char* p = line;
     if (*p == '&') {
@@ -371,7 +370,8 @@ private:
                                const SpaceGroup* sg,
                                char* buf, std::ostream& os) const;
 
-  void write_main_loop(const Mtz& mtz, char* buf, std::ostream& os);
+  void write_main_loop(const Mtz& mtz, const std::vector<Trans>& recipe,
+                       char* buf, std::ostream& os);
 };
 
 inline bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream& out) {
@@ -622,6 +622,10 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2,
 
   write_special_marker_if_requested(os, merged);
 
+  std::vector<Trans> recipe;
+  if (merged)
+    prepare_recipe(*merged, recipe);
+
   if (unmerged) {
     bool ok = gather_sweep_data(*unmerged);
     std::set<const Mtz::Dataset*> used_datasets;
@@ -706,7 +710,7 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2,
       }
       os << '\n';
     }
-  } else {
+  } else {  // not unmerged
     double w = std::isnan(wavelength) ? get_wavelength(mtz, recipe) : wavelength;
     if (w > 0.)
       os << "_diffrn_radiation.diffrn_id 1\n"
@@ -727,13 +731,15 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2,
     write_staraniso_b_in_mmcif(*staraniso_b, buf, os);
 
   if (merged)
-    write_main_loop(*merged, buf, os);
-  if (unmerged)
-    write_main_loop(*unmerged, buf, os);
+    write_main_loop(*merged, recipe, buf, os);
+  if (unmerged) {
+    prepare_recipe(*unmerged, recipe);
+    write_main_loop(*unmerged, recipe, buf, os);
+  }
 }
 
-inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& os) {
-  prepare_recipe(mtz);
+inline void MtzToCif::write_main_loop(const Mtz& mtz, const std::vector<Trans>& recipe,
+                                      char* buf, std::ostream& os) {
   // prepare indices
   std::vector<int> value_indices;  // used for --skip_empty
   std::vector<int> sigma_indices;  // used for status 'x'
@@ -776,7 +782,7 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, char* buf, std::ostream& o
   if (free_flag_value < 0) {
     // CCP4 uses flags 0,...N-1 (usually N=20), with default free set 0
     // PHENIX uses 0/1 flags with free set 1
-    if (const Trans* tr_status = get_status_translation()) {
+    if (const Trans* tr_status = get_status_translation(recipe)) {
       int count = 0;
       for (float val : mtz.columns[tr_status->col_idx])
         if (val == 0.f)
