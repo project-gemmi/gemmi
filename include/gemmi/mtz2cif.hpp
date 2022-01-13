@@ -46,6 +46,7 @@ public:
   int trim = 0;                      // output only reflections -N<=h,k,l<=N
   int free_flag_value = -1;          // -1 = auto: 0 or (if we have >50% of 0's) 1
   std::string staraniso_version;     // for _software.version in "special_marker"
+  std::string gemmi_run_from;        // added to gemmi as _software.description
 
   static const char** default_spec(bool for_merged) {
     static const char* merged[] = {
@@ -344,20 +345,28 @@ private:
     if (!write_special_marker_for_pdb)
       return;
     os << "### IF YOU MODIFY THIS FILE, REMOVE THIS SIGNATURE: ###\n";
+    std::string desc;
+    if (!gemmi_run_from.empty())
+      desc = " 'run from " + gemmi_run_from + "'";
     if (!merged || staraniso_version.empty()) {
       os << "_software.pdbx_ordinal 1\n"
             "_software.classification 'data extraction'\n"
             "_software.name gemmi\n"
             "_software.version " GEMMI_VERSION "\n";
+      if (!desc.empty())
+        os << "_software.description" << desc << '\n';
     } else {
       os << "loop_\n"
             "_software.pdbx_ordinal\n"
             "_software.classification\n"
             "_software.name\n"
-            "_software.version\n"
-            "1 'data extraction' gemmi " GEMMI_VERSION "\n";
+            "_software.version\n";
+      if (!desc.empty())
+        os << "_software.description\n";
+      os << "1 'data extraction' gemmi " GEMMI_VERSION << desc << '\n';
       // STARANISO here tells that intensities were scaled anisotropically.
-      os << "2 'data scaling' STARANISO '" << staraniso_version << "'\n";
+      os << "2 'data scaling' STARANISO '" << staraniso_version
+         << (!desc.empty() ? "' .\n" : "'\n");
     }
     os << "_pdbx_audit_conform.dict_name mmcif_pdbx.dic\n"
           "_pdbx_audit_conform.dict_version 5.339\n"
