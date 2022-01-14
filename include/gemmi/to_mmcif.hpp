@@ -228,7 +228,7 @@ void add_cif_atoms(const Structure& st, cif::Block& block, bool use_group_pdb) {
           vv.emplace_back(atom.element.uname());
           vv.emplace_back(cif::quote(atom.name));
           vv.emplace_back(1, atom.altloc_or('.'));
-          vv.emplace_back(res.name);
+          vv.emplace_back(cif::quote(res.name));
           vv.emplace_back(subchain_or_dot(res));
           vv.emplace_back(entity_id);
           vv.emplace_back(label_seq_id);
@@ -613,7 +613,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
         resnames.insert(Entity::first_mon(item));
     cif::Loop& chem_comp_loop = block.init_mmcif_loop("_chem_comp.", {"id", "type"});
     for (const std::string& name : resnames)
-      chem_comp_loop.add_row({name, "."});
+      chem_comp_loop.add_row({cif::quote(name), "."});
   }
 
   if (groups.exptl) {
