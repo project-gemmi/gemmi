@@ -103,7 +103,8 @@ TEST_CASE("aniso_b_tensor_eigen") {
   std::ostringstream os;
   os << "data_a\n";
   char buf[256];
-  gemmi::write_staraniso_b_in_mmcif(b1, buf, os);
+  gemmi::MtzToCif mtz2cif;
+  mtz2cif.write_staraniso_b_in_mmcif(b1, buf, os);
   cif::Document doc = cif::read_string(os.str());
   ok = gemmi::read_staraniso_b_from_mmcif(doc.blocks[0], b2);
   CHECK(ok);

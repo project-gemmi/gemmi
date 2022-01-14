@@ -93,6 +93,8 @@ public:
                  SMat33<double>* staraniso_b, std::ostream& os);
   void write_cif_from_xds(const XdsAscii& xds, std::ostream& os);
 
+  void write_staraniso_b_in_mmcif(const SMat33<double>& b, char* buf, std::ostream& os);
+
 private:
   // describes which MTZ column is to be translated to what mmCIF column
   struct Trans {
@@ -589,15 +591,22 @@ inline void reorder_staraniso_eigensystem(Mat33& vectors, double (&values)[3]) {
   std::memcpy(values, tmp, sizeof(tmp));
 }
 
-inline void write_staraniso_b_in_mmcif(const SMat33<double>& b,
-                                       char* buf, std::ostream& os) {
+inline void MtzToCif::write_staraniso_b_in_mmcif(const SMat33<double>& b,
+                                                 char* buf, std::ostream& os) {
   double eigenvalues[3];
   Mat33 eigenvectors = eigen_decomposition(b, eigenvalues);
   reorder_staraniso_eigensystem(eigenvectors, eigenvalues);
+  // three mandatory items in _reflns
+  os << "\n_reflns.entry_id " << entry_id
+     << "\n_reflns.pdbx_ordinal 1"
+        "\n_reflns.pdbx_diffrn_id 1";
   const char* prefix = "\n_reflns.pdbx_aniso_B_tensor_eigen";
   for (int i = 0; i < 3; ++i) {
-    double v = std::fabs(eigenvalues[i]) > 1e-4 ? eigenvalues[i] : 0;
-    WRITE("%svalue_%d %.5g", prefix, i+1, v);
+    // According to the mmCIF spec eigenvalues must be positive.
+    // But we don't have the original eigenvalues, we have values after
+    // subtracting the smallest eigenvalue. So at least one of them is 0.
+    // As a workaround, add an arbitrary number to all eigenvalues.
+    WRITE("%svalue_%d %.5g", prefix, i+1, eigenvalues[i] + 1.0);
     for (int j = 0; j < 3; ++j)
       WRITE("%svector_%d_ortho[%d] %.5g", prefix, i+1, j+1, eigenvectors[j][i]);
   }
