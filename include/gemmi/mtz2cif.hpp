@@ -728,12 +728,10 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2,
       }
       os << '\n';
     }
-  } else {  // not unmerged
+  } else {  // not unmerged, i.e. only merged data
     double w = std::isnan(wavelength) ? get_wavelength(mtz, recipe) : wavelength;
     if (w > 0.)
-      os << "_diffrn_radiation.diffrn_id 1\n"
-         << "_diffrn_radiation.wavelength_id 1\n"
-         << "_diffrn_radiation_wavelength.id 1\n"
+      os << "_diffrn_radiation_wavelength.id 1\n"
          << "_diffrn_radiation_wavelength.wavelength " << to_str(w) << "\n\n";
   }
 
