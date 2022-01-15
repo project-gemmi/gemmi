@@ -453,7 +453,10 @@ all the operations. If you'd wonder what generators are encoded, use:
 
 .. doctest::
 
-    >>> list(gemmi.generators_from_hall('P 4w 2c'))  # no.93
+    >>> gen = gemmi.generators_from_hall('P 4w 2c')  # no.93
+    >>> gen.cen_ops  # centering P
+    [[0, 0, 0]]
+    >>> gen.sym_ops
     [<gemmi.Op("x,y,z")>, <gemmi.Op("-y,x,z+1/4")>, <gemmi.Op("x,-y,-z+1/2")>]
 
 Combining these 3 generators reconstructs all the 8 symmetry operations.
