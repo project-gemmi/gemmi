@@ -459,7 +459,13 @@ all the operations. If you'd wonder what generators are encoded, use:
     >>> gen.sym_ops
     [<gemmi.Op("x,y,z")>, <gemmi.Op("-y,x,z+1/4")>, <gemmi.Op("x,-y,-z+1/2")>]
 
-Combining these 3 generators reconstructs all the 8 symmetry operations.
+Combining these 3 generators reconstructs all the 8 symmetry operations:
+
+.. doctest::
+
+    >>> gen.add_missing_elements()
+    >>> len(gen)
+    8
 
 A GroupOps object can be used to search the space group table for a matching
 space group:
