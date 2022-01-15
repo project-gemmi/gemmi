@@ -110,6 +110,7 @@ void add_symmetry(py::module& m) {
     .def_readwrite("sym_ops", &GroupOps::sym_ops,
                "Symmetry operations (to be combined with centering vectors).")
     .def_readwrite("cen_ops", &GroupOps::cen_ops, "Centering vectors.")
+    .def("add_missing_elements", &GroupOps::add_missing_elements)
     .def("find_centering", &GroupOps::find_centering)
     .def("has_same_centring", &GroupOps::has_same_centring)
     .def("has_same_rotations", &GroupOps::has_same_rotations)
