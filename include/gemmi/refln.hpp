@@ -193,7 +193,7 @@ inline ReflnBlock hkl_cif_as_refln_block(cif::Block& block) {
   rb.entry_id = rb.block.name;
   impl::set_cell_from_mmcif(rb.block, rb.cell, /*mmcif=*/false);
   const char* hm_tag = "_symmetry_space_group_name_H-M";
-  if (const std::string* hm = block.find_value(hm_tag))
+  if (const std::string* hm = rb.block.find_value(hm_tag))
     rb.spacegroup = find_spacegroup_by_name(cif::as_string(*hm),
                                             rb.cell.alpha, rb.cell.gamma);
   rb.cell.set_cell_images_from_spacegroup(rb.spacegroup);
