@@ -44,9 +44,9 @@ the density, and using the fast Fourier transform to switch between
 the so-called direct space and the reciprocal space.
 
 GEMMI is written in C++. It has Python bindings and, for selected functions,
-also C and Fortran bindings.
-The library can be compiled to WebAssembly for use in web applications.
-For example, UglyMol [@Wojdyr:2017] uses it to read MTZ files.
+also C and Fortran bindings. Interestingly, the library can be compiled to
+WebAssembly for use in web applications. For example, UglyMol [@Wojdyr:2017]
+uses it to read MTZ files inside the web browser.
 
 # Statement of need
 
@@ -58,15 +58,15 @@ then the scope was expanded to other areas.
 
 The library has a significant overlap with other libraries used
 in this field: CCTBX [@cctbx] and Clipper [@clipper].
-But even similar functions implemented again often add something new,
-because different trade-offs can be made:
-between the speed of calculations and the accuracy of results,
+But even when two functions from different libraries have similar purpose,
+they usually differ in some aspects, for example, by making a different
+trade-off between the speed of calculations and the accuracy of results,
 or between the simplicity of the code and the number of provided options.
 
 GEMMI is used in a number of projects, including
 autoBUSTER [@autoBUSTER], CCP4i2 [@Potterton:2018],
 CCP4 Cloud [@Krissinel:2018], Servalcat [@Yamashita:2021],
-an analysis of covalent linkages in structural models [@Nicholls:2021],
+an analysis of covalent linkages [@Nicholls:2021],
 reciprocalspaceship [@Greisman:2021], and many others.
 
 # Acknowledgements
