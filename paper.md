@@ -13,6 +13,7 @@ affiliations:
    index: 1
 date: 17 January 2022
 bibliography: paper.bib
+
 ---
 
 # Summary
@@ -43,7 +44,7 @@ which involves Fourier transform.
 
 GEMMI is written in C++. It has Python bindings and limited Fortran bindings.
 Parts of the library have been compiled to WebAssembly for use in web
-applications. For example, UglyMol [Wojdyr:2017] uses it to read MTZ files.
+applications. For example, UglyMol [@Wojdyr:2017] uses it to read MTZ files.
 
 # Statement of need
 
@@ -53,28 +54,33 @@ Initially, it was focused on working with the PDBx/mmCIF file format,
 then it expanded to other areas.
 
 The library has a significant overlap with two more mature libraries
-in this field: cctbx [cctbx] and Clipper [clipper].
+in this field: cctbx [@cctbx] and Clipper [@clipper].
 Nevertheless, even when the same functionality is implemented again,
 there is often a chance to make a different trade-off
 between the speed of calculations and the accuracy of results,
 or between the simplicity of the code and the number of provided options.
 
 GEMMI is used in a number of projects, including
-autoBUSTER [autoBUSTER], CCP4i2 [Potterton:2018],
-CCP4 Cloud [Krissinel:2018], Servalcat [Yamashita:2021],
-an analysis of covalent linkages in structural models [Nicholls:2021],
-reciprocalspaceship [Greisman:2021], and many others.
+autoBUSTER [@autoBUSTER], CCP4i2 [@Potterton:2018],
+CCP4 Cloud [@Krissinel:2018], Servalcat [@Yamashita:2021],
+an analysis of covalent linkages in structural models [@Nicholls:2021],
+reciprocalspaceship [@Greisman:2021], and many others.
 
 # Acknowledgements
 
 The library contains contributions from Keitaro Yamashita, Claus Flensburg
 and other users. It uses third-party libraries:
-PocketFFT [pocketfft] for Fast Fourier Transform,
-KSW2 [ksw2] for sequence alignement,
-QCProt [qcp] for structure superposition,
-Cromer-Liberman routine from Larch [larch],
-PEGTL for creating PEG parsers,
-as well as sajson, stb_sprintf, fast_float, tinydir, zlib and pybind11.
+PocketFFT [@pocketfft] for Fast Fourier Transform,
+KSW2 [@ksw2] for sequence alignement,
+QCProt [@qcp] for structure superposition,
+Cromer-Liberman routine from Larch [@larch],
+[PEGTL](https://github.com/taocpp/PEGTL) for creating PEG parsers,
+as well as [sajson](https://github.com/chadaustin/sajson),
+[stb_sprintf](https://github.com/nothings/stb),
+[fast_float](https://github.com/fastfloat/fast_float),
+[tinydir](https://github.com/cxong/tinydir),
+[zlib](http://zlib.net/)
+and [pybind11](https://github.com/pybind/pybind11).
 
 The project would not be possible without Eugene Krissinel, Gerard Bricogne
 and Garib Murshudov, who initiated it, and without many discussions with
