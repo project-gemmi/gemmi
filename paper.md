@@ -9,7 +9,7 @@ authors:
     orcid: 0000-0003-3980-4092
     affiliation: 1
 affiliations:
- - name: Global Phasing Ltd, Cambridge, UK
+ - name: Global Phasing Ltd., Cambridge, UK
    index: 1
 date: 17 January 2022
 bibliography: paper.bib
@@ -54,7 +54,7 @@ Initially, it was focused on working with the PDBx/mmCIF file format,
 then it expanded to other areas.
 
 The library has a significant overlap with two more mature libraries
-in this field: cctbx [@cctbx] and Clipper [@clipper].
+in this field: CCTBX [@cctbx] and Clipper [@clipper].
 Nevertheless, even when the same functionality is implemented again,
 there is often a chance to make a different trade-off
 between the speed of calculations and the accuracy of results,
@@ -71,7 +71,7 @@ reciprocalspaceship [@Greisman:2021], and many others.
 The library contains contributions from Keitaro Yamashita, Claus Flensburg
 and other users. It uses third-party libraries:
 PocketFFT [@pocketfft] for Fast Fourier Transform,
-KSW2 [@ksw2] for sequence alignement,
+KSW2 [@ksw2] for sequence alignment,
 QCProt [@qcp] for structure superposition,
 Cromer-Liberman routine from Larch [@larch],
 [PEGTL](https://github.com/taocpp/PEGTL) for creating PEG parsers,
@@ -84,6 +84,6 @@ and [pybind11](https://github.com/pybind/pybind11).
 
 The project would not be possible without Eugene Krissinel, Gerard Bricogne
 and Garib Murshudov, who initiated it, and without many discussions with
-users and with collegues from Global Phasing Ltd and CCP4.
+users and with colleagues from Global Phasing and CCP4.
 
 # References
