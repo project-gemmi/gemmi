@@ -266,6 +266,24 @@ the number of hydrogens and molecular weight:
     >>> gemmi.find_tabulated_residue('MSE').is_standard()
     False
 
+One-letter code is an upper case letter if it is a standard residue.
+Otherwise, it can be the letter for the parent residue in lower case,
+or a space. It is common to use ``X`` for non-standard residue --
+for this we have helper function ``fasta_code()``:
+
+.. doctest::
+
+    >>> gemmi.find_tabulated_residue('MET').one_letter_code
+    'M'
+    >>> gemmi.find_tabulated_residue('MSE').one_letter_code
+    'm'
+    >>> gemmi.find_tabulated_residue('HOH').one_letter_code
+    ' '
+    >>> gemmi.find_tabulated_residue('MET').fasta_code()
+    'M'
+    >>> gemmi.find_tabulated_residue('MSE').fasta_code()
+    'X'
+
 
 .. _CCD_etc:
 

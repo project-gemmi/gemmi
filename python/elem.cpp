@@ -109,6 +109,7 @@ void add_elem(py::module& m) {
     .def_readonly("weight", &ResidueInfo::weight)
     .def("found", &ResidueInfo::found)
     .def("is_standard", &ResidueInfo::is_standard)
+    .def("fasta_code", &ResidueInfo::fasta_code)
     .def("is_water", &ResidueInfo::is_water)
     .def("is_nucleic_acid", &ResidueInfo::is_nucleic_acid)
     .def("is_amino_acid", &ResidueInfo::is_amino_acid);
