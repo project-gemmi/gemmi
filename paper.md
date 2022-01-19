@@ -70,7 +70,7 @@ reciprocalspaceship [@Greisman:2021], and many others.
 
 The library contains contributions from Keitaro Yamashita, Claus Flensburg
 and other users. It uses third-party libraries:
-PocketFFT [@pocketfft] for Fast Fourier Transform,
+[PocketFFT](https://gitlab.mpcdf.mpg.de/mtr/pocketfft) for Fast Fourier Transform,
 KSW2 [@ksw2] for sequence alignment,
 QCProt [@qcp] for structure superposition,
 Cromer-Liberman routine from Larch [@larch],
