@@ -11,14 +11,14 @@ authors:
 affiliations:
  - name: Global Phasing Ltd., Cambridge, UK
    index: 1
-date: 17 January 2022
+date: 19 January 2022
 bibliography: paper.bib
 
 ---
 
 # Summary
 
-GEMMI is a library, accompanied by a set of programs, developed primarily
+GEMMI is a library, accompanied by a set of small programs, developed primarily
 for use in the field of macromolecular crystallography (MX).
 Parts of this library are useful also in structural bioinformatics
 and in chemical crystallography.
@@ -34,29 +34,32 @@ using prior knowledge about monomers in the model.
 
 The second area is working with crystallographic data – experimentally
 observed reflections. This includes reading and writing files in the MTZ
-and mmCIF formats and performing commonly used operations on the reflections.
+and mmCIF formats and performing various operations on the reflections.
 
 The third area is working with electron density maps – real or complex
 values on a 3D grid. Electron density can be calculated from both the
 structural model and experimental data. The functionality here includes
-switching between the so-called direct space and the reciprocal space,
-which involves Fourier transform.
+reading and writing files in the MRC/CCP4 map format, analysing and modifying
+the density, and using the fast Fourier transform to switch between
+the so-called direct space and the reciprocal space.
 
-GEMMI is written in C++. It has Python bindings and limited Fortran bindings.
-Parts of the library have been compiled to WebAssembly for use in web
-applications. For example, UglyMol [@Wojdyr:2017] uses it to read MTZ files.
+GEMMI is written in C++. It has Python bindings and, for selected functions,
+also C and Fortran bindings.
+The library can be compiled to WebAssembly for use in web applications.
+For example, UglyMol [@Wojdyr:2017] uses it to read MTZ files.
 
 # Statement of need
 
-GEMMI is funded by CCP4 and Global Phasing Ltd., providers of MX software,
-to deliver functionality needed in other projects of these organizations.
-Initially, it was focused on working with the PDBx/mmCIF file format,
-then it expanded to other areas.
+GEMMI is funded by two organizations that develop MX software:
+CCP4 and Global Phasing Ltd. The aim is to deliver functionality
+needed in other projects of these organizations.
+Initially, the focus was on working with the PDBx/mmCIF file format,
+then the scope was expanded to other areas.
 
-The library has a significant overlap with two more mature libraries
+The library has a significant overlap with other libraries used
 in this field: CCTBX [@cctbx] and Clipper [@clipper].
-Nevertheless, even when the same functionality is implemented again,
-there is often a chance to make a different trade-off
+But even similar functions implemented again often add something new,
+because different trade-offs can be made:
 between the speed of calculations and the accuracy of results,
 or between the simplicity of the code and the number of provided options.
 
@@ -82,7 +85,7 @@ as well as [sajson](https://github.com/chadaustin/sajson),
 [zlib](http://zlib.net/)
 and [pybind11](https://github.com/pybind/pybind11).
 
-The project would not be possible without Eugene Krissinel, Gerard Bricogne
+This project would not be possible without Eugene Krissinel, Gérard Bricogne
 and Garib Murshudov, who initiated it, and without many discussions with
 users and with colleagues from Global Phasing and CCP4.
 
