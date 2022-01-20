@@ -34,7 +34,7 @@ jobs:
       run: cmake --build . --config ${{ matrix.build }} --target check
 
     - name: Python Setup
-      run: python3 setup.py install --user --prefix=
+      run: python3 setup.py install --user
 
     - name: Python Tests
       run: python3 -m unittest discover -v -s tests/
