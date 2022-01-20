@@ -109,6 +109,12 @@ class TestBlock(unittest.TestCase):
         tab = block.find_or_add('_u.', ['d', 'c'])
         self.assertEqual((tab.width(), len(tab)), (2, 0))
 
+    def test_erase(self):
+        block = cif.read_string('data_a _a_a 1 _a_b 2 _a_c 3 loop_ _x 4')[0]
+        block.find('_a_', ['a', '?x', '?c', '?bb']).erase()
+        self.assertEqual(block.as_string().split(),
+                         ['data_a', '_a_b', '2', 'loop_', '_x', '4'])
+
     def test_setitem(self):
         block = cif.read_string('data_a _a 1 _b 2 _c 3')[0]
         self.assertEqual(block.find_value('_b'), '2')

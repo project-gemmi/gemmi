@@ -686,13 +686,15 @@ inline Column Table::column_at_pos(int pos) {
 }
 
 inline void Table::erase() {
-  if (loop_item)
+  if (loop_item) {
     loop_item->erase();
-  else
+    loop_item = nullptr;
+  } else {
     for (int pos : positions)
-      bloc.items[pos].erase();
+      if (pos >= 0)
+        bloc.items[pos].erase();
+  }
   positions.clear();
-  loop_item = nullptr;
 }
 
 inline void Table::convert_pair_to_loop() {
