@@ -1163,6 +1163,14 @@ We can append a row to Table (function ``Table::append_row``):
   >>> _.row_index
   18
 
+move a row to a different position:
+
+.. doctest::
+
+  >>> table.move_row(old_pos=-1, new_pos=0)  # move the last row to the front
+  >>> table[0]
+  <gemmi.cif.Table.Row: 3 4 new>
+
 and remove a row from Table (function ``Table::remove_row``):
 
 .. doctest::

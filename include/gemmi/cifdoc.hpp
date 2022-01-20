@@ -171,6 +171,17 @@ struct Loop {
     values.resize(values.size() - tags.size());
   }
 
+  // the arguments must be valid row indices
+  void move_row(int old_pos, int new_pos) {
+    size_t w = width();
+    auto src = values.begin() + old_pos * w;
+    auto dst = values.begin() + new_pos * w;
+    if (src < dst)
+      std::rotate(src, src+w, dst+w);
+    else
+      std::rotate(dst, src, src+w);
+  }
+
   void set_all_values(std::vector<std::vector<std::string>> columns);
 };
 
@@ -304,11 +315,14 @@ struct Table {
   Row tags() { return Row{*this, -1}; }
   Row operator[](int n) { return Row{*this, n}; }
 
-  Row at(int n) {
+  void at_check(int& n) {
     if (n < 0)
       n += length();
     if (n < 0 || static_cast<size_t>(n) >= length())
       throw std::out_of_range("No row with index " + std::to_string(n));
+  }
+  Row at(int n) {
+    at_check(n);
     return (*this)[n];
   }
 
@@ -340,6 +354,13 @@ struct Table {
     if (pos == -1)
       fail("Cannot access absent column");
     return column_at_pos(pos);
+  }
+
+  void move_row(int old_pos, int new_pos) {
+    at_check(old_pos);
+    at_check(new_pos);
+    if (Loop* loop = get_loop())
+      loop->move_row(old_pos, new_pos);
   }
 
   // prefix is optional
