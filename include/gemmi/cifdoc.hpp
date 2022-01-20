@@ -691,6 +691,8 @@ inline void Table::erase() {
   else
     for (int pos : positions)
       bloc.items[pos].erase();
+  positions.clear();
+  loop_item = nullptr;
 }
 
 inline void Table::convert_pair_to_loop() {
