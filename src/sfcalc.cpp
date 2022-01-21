@@ -344,7 +344,7 @@ void print_structure_factors_sm(const gemmi::SmallStructure& small,
     for (int k = -max_k; k <= max_k; ++k)
       for (int l = 0; l <= max_l; ++l) {
         gemmi::Miller hkl{{h, k, l}};
-        if (!asu.is_in(hkl))
+        if (!asu.is_in(hkl) || (hkl[0] == 0 && hkl[1] == 0 && hkl[2] == 0))
           continue;
         double hkl_1_d2 = small.cell.calculate_1_d2(hkl);
         if (hkl_1_d2 < max_1_d * max_1_d) {
