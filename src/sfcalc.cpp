@@ -27,10 +27,11 @@
 
 namespace {
 
-enum OptionIndex { Hkl=4, Dmin, For, Rate, Blur, RCut, Test, ToMtz, Compare,
-                   CifFp, Wavelength, Unknown, NoAniso, ScaleTo, FLabel,
-                   PhiLabel, Ksolv, Bsolv, Baniso, RadiiSet, Rprobe, Rshrink,
-                   WriteMap };
+enum OptionIndex {
+  Hkl=4, Dmin, For, NormalizeIt92, Rate, Blur, RCut, Test, ToMtz, Compare,
+  CifFp, Wavelength, Unknown, NoAniso, ScaleTo, FLabel,
+  PhiLabel, Ksolv, Bsolv, Baniso, RadiiSet, Rprobe, Rshrink, WriteMap
+};
 
 struct SfCalcArg: public Arg {
   static option::ArgStatus FormFactors(const option::Option& option, bool msg) {
@@ -78,6 +79,8 @@ const option::Descriptor Usage[] = {
     "  --dmin=NUM  \tCalculate structure factors up to given resolution." },
   { For, 0, "", "for", SfCalcArg::FormFactors,
     "  --for=TYPE  \tTYPE is xray (default), electron or mott-bethe." },
+  { NormalizeIt92, 0, "", "normalize-it92", Arg::None,
+    "  --normalize-it92  \tNormalize X-ray form factors (a tiny change)." },
   { CifFp, 0, "", "ciffp", Arg::None,
     "  --ciffp  \tRead f' from _atom_type_scat_dispersion_real in CIF." },
   { Wavelength, 0, "w", "wavelength", Arg::Float,
@@ -723,6 +726,8 @@ void process(const std::string& input, const OptParser& p) {
   if (p.options[CifFp] && table != 'x')
     gemmi::fail("Electron scattering has no dispersive part (--ciffp)");
   if (table == 'x' || table == 'm') {
+    if (p.options[NormalizeIt92])
+      gemmi::IT92<double>::normalize();
     process_with_table<gemmi::IT92<double>>(use_st, st, small, wavelength,
                                             table == 'm', p);
   } else if (table == 'e') {
