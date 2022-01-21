@@ -1205,13 +1205,13 @@ void Mtz::write_to_stream(Write write) const {
   };
   for (const Column& col : columns) {
     auto minmax = calculate_min_max_disregarding_nans(col.begin(), col.end());
+    const char* label = !col.label.empty() ? col.label.c_str() : "_";
     WRITE("COLUMN %-30s %c %17s %17s %4d",
-          col.label.c_str(), col.type,
+          label, col.type,
           format17(minmax[0]).c_str(), format17(minmax[1]).c_str(),
           col.dataset_id);
     if (!col.source.empty())
-      WRITE("COLSRC %-30s %-36s  %4d",
-            col.label.c_str(), col.source.c_str(), col.dataset_id);
+      WRITE("COLSRC %-30s %-36s  %4d", label, col.source.c_str(), col.dataset_id);
   }
   WRITE("NDIF %8zu", datasets.size());
   for (const Dataset& ds : datasets) {
