@@ -379,7 +379,7 @@ struct Mtz {
 
   Column* rfree_column() {
     return column_with_type_and_one_of_labels('I',
-        {"FREE", "RFREE", "FREER", "FreeR_flag", "R-free-flags"});
+        {"FREE", "RFREE", "FREER", "FreeR_flag", "R-free-flags", "FreeRflag"});
   }
   const Column* rfree_column() const {
     return const_cast<Mtz*>(this)->rfree_column();
