@@ -385,6 +385,33 @@ private:
                        char* buf, std::ostream& os);
 };
 
+// remove '_dataset_name' that can appended to column names in ccp4i
+inline void remove_appendix_from_column_names(Mtz& mtz, std::ostream& out) {
+  std::string appendix;
+  for (char type : {'J', 'F'}) {  // intensity, amplitude
+    auto cols = mtz.columns_with_type(type);
+    // Remove the appendix only in clear cases. If mtz has multiple
+    // intensity columns they could have IMEAN_this and IMEAN.
+    if (cols.size() == 1) {
+      auto pos = cols[0]->label.find('_');
+      if (pos == std::string::npos)
+        return;
+      appendix.assign(cols[0]->label, pos);
+      break;
+    }
+  }
+  out << "Ignoring '" << appendix << "' appended to column names.\n";
+  for (Mtz::Column& col : mtz.columns) {
+    size_t from_end  = appendix.size();
+    // the appendix can before (+)/(-), i.e. I_appendix(+)
+    if (!col.label.empty() && col.label.back() == ')')
+      from_end += 3;
+    if (from_end < col.label.size() &&
+        col.label.compare(col.label.size() - from_end, appendix.size(), appendix) == 0)
+      col.label.erase(col.label.size() - from_end, appendix.size());
+  }
+}
+
 inline bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream& out) {
   bool ok = true;
   if (!mtz.rfree_column()) {

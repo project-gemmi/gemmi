@@ -251,6 +251,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
 
   bool ok = true;
+  if (mtz[0] && mtz_to_cif.spec_lines.empty())
+    remove_appendix_from_column_names(*mtz[0], std::cerr);
   if (check_merged_columns && mtz[0])
     ok = gemmi::validate_merged_mtz_deposition_columns(*mtz[0], std::cerr);
   gemmi::Intensities mi;
