@@ -396,7 +396,7 @@ inline void remove_appendix_from_column_names(Mtz& mtz, std::ostream& out) {
       auto pos = cols[0]->label.find('_');
       if (pos == std::string::npos)
         return;
-      appendix.assign(cols[0]->label, pos);
+      appendix = cols[0]->label.substr(pos);
       break;
     }
   }
