@@ -97,8 +97,6 @@ inline std::string read_staraniso_b_from_mtz(const Mtz& mtz, SMat33<double>& out
 
 
 struct Intensities {
-  enum class Type { Unknown, Unmerged, Mean, Anomalous };
-
   struct Refl {
     Miller hkl;
     short isign;  // 1 for I(+), -1 for I(-), 0 for mean
@@ -139,16 +137,16 @@ struct Intensities {
   UnitCell unit_cell;
   double unit_cell_rmsd[6] = {0., 0., 0., 0., 0., 0.};
   double wavelength;
-  Type type = Type::Unknown;
+  DataType type = DataType::Unknown;
   AnisoScaling staraniso_b;
 
 
-  static const char* type_str(Type itype) {
-    switch (itype) {
-      case Type::Unknown: return "n/a";
-      case Type::Unmerged: return "I";
-      case Type::Mean: return "<I>";
-      case Type::Anomalous: return "I+/I-";
+  static const char* type_str(DataType data_type) {
+    switch (data_type) {
+      case DataType::Unknown: return "n/a";
+      case DataType::Unmerged: return "I";
+      case DataType::Mean: return "<I>";
+      case DataType::Anomalous: return "I+/I-";
     }
     unreachable();
   }
@@ -201,11 +199,11 @@ struct Intensities {
 
   void sort() { std::sort(data.begin(), data.end()); }
 
-  void merge_in_place(Type itype) {
-    type = itype;
+  void merge_in_place(DataType data_type) {
+    type = data_type;
     if (data.empty())
       return;
-    if (itype == Type::Mean)
+    if (data_type == DataType::Mean)
       // discard signs so that merging produces Imean
       for (Refl& refl : data)
         refl.isign = 0;
@@ -284,7 +282,7 @@ struct Intensities {
     // Aimless >=0.7.6 (from 2021) has an option to output unmerged file
     // with original indices instead of reduced indices, with all ISYM = 1.
     switch_to_asu_indices();
-    type = Type::Unmerged;
+    type = DataType::Unmerged;
   }
 
   void read_mean_intensities_from_mtz(const Mtz& mtz) {
@@ -297,7 +295,7 @@ struct Intensities {
     copy_metadata(mtz);
     wavelength = mtz.dataset(col->dataset_id).wavelength;
     read_data(MtzDataProxy{mtz}, col->idx, sigma_idx);
-    type = Type::Mean;
+    type = DataType::Mean;
   }
 
   void read_anomalous_intensities_from_mtz(const Mtz& mtz, bool check_complete=false) {
@@ -317,7 +315,7 @@ struct Intensities {
     copy_metadata(mtz);
     wavelength = mtz.dataset(colp->dataset_id).wavelength;
     read_anomalous_data(MtzDataProxy{mtz}, mean_idx, value_idx, sigma_idx);
-    type = Type::Anomalous;
+    type = DataType::Anomalous;
   }
 
   void read_merged_intensities_from_mtz(const Mtz& mtz) {
@@ -327,18 +325,18 @@ struct Intensities {
       read_mean_intensities_from_mtz(mtz);
   }
 
-  void read_mtz(const Mtz& mtz, Type itype) {
-    switch (itype) {
-      case Type::Unmerged:
+  void read_mtz(const Mtz& mtz, DataType data_type) {
+    switch (data_type) {
+      case DataType::Unmerged:
         read_unmerged_intensities_from_mtz(mtz);
         break;
-      case Type::Mean:
+      case DataType::Mean:
         read_mean_intensities_from_mtz(mtz);
         break;
-      case Type::Anomalous:
+      case DataType::Anomalous:
         read_anomalous_intensities_from_mtz(mtz);
         break;
-      case Type::Unknown:
+      case DataType::Unknown:
         assert(0);
         break;
     }
@@ -351,7 +349,7 @@ struct Intensities {
     wavelength = rb.wavelength;
     read_data(ReflnDataProxy(rb), value_idx, sigma_idx);
     switch_to_asu_indices();
-    type = Type::Unmerged;
+    type = DataType::Unmerged;
   }
 
   void read_mean_intensities_from_mmcif(const ReflnBlock& rb) {
@@ -360,7 +358,7 @@ struct Intensities {
     copy_metadata(rb);
     wavelength = rb.wavelength;
     read_data(ReflnDataProxy(rb), value_idx, sigma_idx);
-    type = Type::Mean;
+    type = DataType::Mean;
   }
 
   void read_anomalous_intensities_from_mmcif(const ReflnBlock& rb,
@@ -375,7 +373,7 @@ struct Intensities {
     copy_metadata(rb);
     wavelength = rb.wavelength;
     read_anomalous_data(ReflnDataProxy(rb), mean_idx, value_idx, sigma_idx);
-    type = Type::Anomalous;
+    type = DataType::Anomalous;
   }
 
   void read_merged_intensities_from_mmcif(const ReflnBlock& rb) {
@@ -406,21 +404,21 @@ struct Intensities {
       r.value *= r.value;
       r.sigma *= 2 * r.value;
     }
-    type = Type::Mean;
+    type = DataType::Mean;
   }
 
-  void read_mmcif(const ReflnBlock& rb, Type itype) {
-    switch (itype) {
-      case Type::Unmerged:
+  void read_mmcif(const ReflnBlock& rb, DataType data_type) {
+    switch (data_type) {
+      case DataType::Unmerged:
         read_unmerged_intensities_from_mmcif(rb);
         break;
-      case Type::Mean:
+      case DataType::Mean:
         read_mean_intensities_from_mmcif(rb);
         break;
-      case Type::Anomalous:
+      case DataType::Anomalous:
         read_anomalous_intensities_from_mmcif(rb);
         break;
-      case Type::Unknown:
+      case DataType::Unknown:
         break;
     }
   }
@@ -433,7 +431,7 @@ struct Intensities {
     for (const XdsAscii::Refl& in : xds.data)
       add_if_valid(in.hkl, 0, in.iobs, in.sigma);
     switch_to_asu_indices();
-    type = Type::Unmerged;
+    type = DataType::Unmerged;
   }
 
   // returns STARANISO version or empty string

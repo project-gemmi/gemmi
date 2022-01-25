@@ -162,16 +162,14 @@ void add_hkl(py::module& m) {
     })
     ;
 
-  py::class_<Intensities> intensities(m, "Intensities");
-
-  py::enum_<Intensities::Type>(intensities, "Type")
-    .value("Unknown", Intensities::Type::Unknown)
-    .value("Unmerged", Intensities::Type::Unmerged)
-    .value("Mean", Intensities::Type::Mean)
-    .value("Anomalous", Intensities::Type::Anomalous)
+  py::enum_<DataType>(m, "Type")
+    .value("Unknown", DataType::Unknown)
+    .value("Unmerged", DataType::Unmerged)
+    .value("Mean", DataType::Mean)
+    .value("Anomalous", DataType::Anomalous)
     ;
 
-  intensities
+  py::class_<Intensities>(m, "Intensities")
     .def(py::init<>())
     .def_readwrite("spacegroup", &Intensities::spacegroup)
     .def_readwrite("unit_cell", &Intensities::unit_cell)
@@ -230,7 +228,7 @@ void add_hkl(py::module& m) {
           self.data.push_back({{{h(i, 0), h(i, 1), h(i, 2)}}, 1, 0, v(i), s(i)});
 
       self.switch_to_asu_indices();
-      self.type = Intensities::Type::Unmerged;
+      self.type = DataType::Unmerged;
     }, py::arg("cell"), py::arg("sg").none(false),
        py::arg("miller_array"), py::arg("value_array"), py::arg("sigma_array"))
     ;

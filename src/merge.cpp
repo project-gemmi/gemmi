@@ -53,6 +53,7 @@ const option::Descriptor Usage[] = {
 };
 
 using gemmi::Intensities;
+using gemmi::DataType;
 
 void output_intensity_statistics(const Intensities& intensities) {
   size_t plus_count = 0;
@@ -68,32 +69,32 @@ void output_intensity_statistics(const Intensities& intensities) {
 }
 
 void read_intensities_from_rblocks(Intensities& intensities,
-                                   Intensities::Type itype,
+                                   DataType data_type,
                                    std::vector<gemmi::ReflnBlock>& rblocks,
                                    const char* block_name, bool verbose) {
   for (gemmi::ReflnBlock& rb : rblocks) {
     if (block_name && rb.block.name != block_name)
       continue;
-    rb.use_unmerged(itype == Intensities::Type::Unmerged);
+    rb.use_unmerged(data_type == DataType::Unmerged);
     if (!rb.default_loop)
       continue;
-    if (itype == Intensities::Type::Mean && rb.find_column_index("intensity_meas") < 0) {
+    if (data_type == DataType::Mean && rb.find_column_index("intensity_meas") < 0) {
       if (rb.find_column_index("pdbx_I_plus") < 0)
         gemmi::fail("merged intensities not found");
       std::fprintf(stderr, "No _refln.intensity_meas, using pdbx_I_plus/minus ...\n");
-      itype = Intensities::Type::Anomalous;
+      data_type = DataType::Anomalous;
     }
     if (verbose)
       std::fprintf(stderr, "Reading %s from block %s ...\n",
-                   Intensities::type_str(itype), rb.block.name.c_str());
-    intensities.read_mmcif(rb, itype);
-    if (itype != Intensities::Type::Unmerged)
+                   Intensities::type_str(data_type), rb.block.name.c_str());
+    intensities.read_mmcif(rb, data_type);
+    if (data_type != DataType::Unmerged)
       intensities.take_staraniso_b_from_mmcif(rb.block);
     break;
   }
 }
 
-Intensities read_intensities(Intensities::Type itype, const char* input_path,
+Intensities read_intensities(DataType data_type, const char* input_path,
                              const char* block_name, bool verbose) {
   try {
     Intensities intensities;
@@ -102,16 +103,16 @@ Intensities read_intensities(Intensities::Type itype, const char* input_path,
       if (verbose)
         mtz.warnings = stderr;
       mtz.read_input(gemmi::MaybeGzipped(input_path), /*with_data=*/true);
-      if (itype == Intensities::Type::Unknown)
-        itype = mtz.batches.empty() ? Intensities::Type::Mean : Intensities::Type::Unmerged;
-      if (itype == Intensities::Type::Mean && !mtz.imean_column()) {
+      if (data_type == DataType::Unknown)
+        data_type = mtz.batches.empty() ? DataType::Mean : DataType::Unmerged;
+      if (data_type == DataType::Mean && !mtz.imean_column()) {
         std::fprintf(stderr, "No IMEAN, using I(+) and I(-) ...\n");
         if (!mtz.iplus_column())
           gemmi::fail("I(+) not found");
-        itype = Intensities::Type::Anomalous;
+        data_type = DataType::Anomalous;
       }
-      intensities.read_mtz(mtz, itype);
-      if (itype != Intensities::Type::Unmerged)
+      intensities.read_mtz(mtz, data_type);
+      if (data_type != DataType::Unmerged)
         intensities.take_staraniso_b_from_mtz(mtz);
     } else if (gemmi::giends_with(input_path, ".hkl")) {
       gemmi::XdsAscii xds_ascii;
@@ -119,7 +120,7 @@ Intensities read_intensities(Intensities::Type itype, const char* input_path,
       intensities.read_unmerged_intensities_from_xds(xds_ascii);
     } else {
       auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(input_path).blocks);
-      read_intensities_from_rblocks(intensities, itype, rblocks, block_name, verbose);
+      read_intensities_from_rblocks(intensities, data_type, rblocks, block_name, verbose);
     }
     if (intensities.data.empty())
       gemmi::fail("data not found");
@@ -136,12 +137,12 @@ void write_merged_intensities(const Intensities& intensities, bool write_nobs,
   mtz.spacegroup = intensities.spacegroup;
   mtz.set_cell_for_all(intensities.unit_cell);
   mtz.add_dataset("unknown").wavelength = intensities.wavelength;
-  if (intensities.type == Intensities::Type::Mean) {
+  if (intensities.type == DataType::Mean) {
     mtz.add_column("IMEAN", 'J');
     mtz.add_column("SIGIMEAN", 'Q');
     if (write_nobs)
       mtz.add_column("NOBS", 'I');
-  } else if (intensities.type == Intensities::Type::Anomalous) {
+  } else if (intensities.type == DataType::Anomalous) {
     mtz.add_column("I(+)", 'K');
     mtz.add_column("SIGI(+)", 'M');
     mtz.add_column("I(-)", 'K');
@@ -168,7 +169,7 @@ void write_merged_intensities(const Intensities& intensities, bool write_nobs,
     mtz.data[value_offset + 1] = (float) refl.sigma;
     if (write_nobs) {
       size_t nobs_offset = offset + 5;  // for "NOBS"
-      if (intensities.type == Intensities::Type::Anomalous)
+      if (intensities.type == DataType::Anomalous)
         nobs_offset += (refl.isign >= 0 ? 2 : 3);
       mtz.data[nobs_offset] = (float) refl.nobs;
     }
@@ -307,8 +308,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   const char* output_path = nullptr;
   if (p.nonOptionsCount() == 2)
     output_path = p.nonOption(1);
-  Intensities::Type otype = p.options[WriteAnom] ? Intensities::Type::Anomalous
-                                                 : Intensities::Type::Mean;
+  DataType otype = p.options[WriteAnom] ? DataType::Anomalous : DataType::Mean;
   const char* block_name = nullptr;
   if (p.options[BlockName])
     block_name = p.options[BlockName].arg;
@@ -325,18 +325,18 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     Intensities intensities;
     if (output_path) {
-      Intensities::Type itype = Intensities::Type::Unmerged;
+      DataType data_type = DataType::Unmerged;
       if (p.options[Compare] && gemmi::giends_with(input_path, ".mtz"))
         // it's OK to compare also two merged files
-        itype = Intensities::Type::Unknown;
-      intensities = read_intensities(itype, input_path, block_name, verbose);
+        data_type = DataType::Unknown;
+      intensities = read_intensities(data_type, input_path, block_name, verbose);
     } else { // special case of --compare with one mmCIF file
       if (gemmi::giends_with(input_path, ".mtz") ||
           gemmi::giends_with(input_path, ".hkl"))
         gemmi::fail("`--compare ONE_FILE' make sense only with mmCIF.");
       auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(input_path).blocks);
       read_intensities_from_rblocks(ref, otype, rblocks, nullptr, verbose);
-      read_intensities_from_rblocks(intensities, Intensities::Type::Unmerged,
+      read_intensities_from_rblocks(intensities, DataType::Unmerged,
                                     rblocks, block_name, verbose);
       if (intensities.data.empty())
         gemmi::fail("unmerged data not found");

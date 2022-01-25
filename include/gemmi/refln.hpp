@@ -15,6 +15,8 @@
 
 namespace gemmi {
 
+enum class DataType { Unknown, Unmerged, Mean, Anomalous };
+
 struct ReflnBlock {
   cif::Block block;
   std::string entry_id;
