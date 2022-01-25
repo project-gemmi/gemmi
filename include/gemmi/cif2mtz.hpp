@@ -18,6 +18,36 @@
 
 namespace gemmi {
 
+template<typename DataProxy>
+DataType check_data_type_under_symmetry(const DataProxy& proxy) {
+  struct MillerHash {
+    std::size_t operator()(const Miller& hkl) const noexcept {
+      return std::size_t((hkl[0] * 1024 + hkl[1]) * 1024 + hkl[2]);
+    }
+  };
+  const SpaceGroup* sg = proxy.spacegroup();
+  if (!sg)
+    return DataType::Unknown;
+  std::unordered_map<Op::Miller, int, MillerHash> seen;
+  ReciprocalAsu asu(sg);
+  GroupOps gops = sg->operations();
+  bool centric = gops.is_centric();
+  DataType data_type = DataType::Mean;
+  for (size_t i = 0; i < proxy.size(); i += proxy.stride()) {
+    auto hkl_isym = asu.to_asu(proxy.get_hkl(i), gops);
+    int sign = hkl_isym.second % 2 + 1;  // 2=positive, 1=negative
+    auto r = seen.emplace(hkl_isym.first, sign);
+    if (!r.second) {
+      if ((r.first->second & sign) != 0 || centric)
+        return DataType::Unmerged;
+      r.first->second |= sign;
+      data_type = DataType::Anomalous;
+    }
+  }
+  return data_type;
+}
+
+
 struct CifToMtz {
   static const char** default_spec(bool for_merged) {
     static const char* merged[] = {

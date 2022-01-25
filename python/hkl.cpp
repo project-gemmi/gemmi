@@ -162,12 +162,18 @@ void add_hkl(py::module& m) {
     })
     ;
 
-  py::enum_<DataType>(m, "Type")
+  py::enum_<DataType>(m, "DataType")
     .value("Unknown", DataType::Unknown)
     .value("Unmerged", DataType::Unmerged)
     .value("Mean", DataType::Mean)
     .value("Anomalous", DataType::Anomalous)
     ;
+  m.def("check_data_type_under_symmetry", [](const ReflnBlock& data) {
+      return check_data_type_under_symmetry(ReflnDataProxy(data));
+  });
+  m.def("check_data_type_under_symmetry", [](const Mtz& data) {
+      return check_data_type_under_symmetry(MtzDataProxy{data});
+  });
 
   py::class_<Intensities>(m, "Intensities")
     .def(py::init<>())
