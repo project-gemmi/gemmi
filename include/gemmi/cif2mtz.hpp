@@ -8,6 +8,7 @@
 #include <ostream>
 #include <map>
 #include <set>
+#include <unordered_map>
 #include <utility>
 #include "cifdoc.hpp"   // for Loop, as_int, ...
 #include "fail.hpp"     // for fail
