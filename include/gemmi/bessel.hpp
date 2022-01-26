@@ -19,70 +19,82 @@
 namespace gemmi {
 
 template<int N>
-inline float evaluate_polynomial(const float(&poly)[N], float x) {
+inline double evaluate_polynomial(const double(&poly)[N], double x) {
   static_assert(N > 1, "");
-  float result = poly[N-1];
+  double result = poly[N-1];
   for (int i = N-2; i >= 0; --i)
     result = result * x + poly[i];
   return result;
 }
 
-inline float bessel_i1_over_i0(float x) {
-  static const float P1[] = {
-    8.333333221e-02f,
-    6.944453712e-03f,
-    3.472097211e-04f,
-    1.158047174e-05f,
-    2.739745142e-07f,
-    5.135884609e-09f,
-    5.262251502e-11f,
-    1.331933703e-12f
-  };
-  static const float Q1[] = {
-    1.00000003928615375e+00f,
-    2.49999576572179639e-01f,
-    2.77785268558399407e-02f,
-    1.73560257755821695e-03f,
-    6.96166518788906424e-05f,
-    1.89645733877137904e-06f,
-    4.29455004657565361e-08f,
-    3.90565476357034480e-10f,
-    1.48095934745267240e-11f
-  };
-  static const float P2[] = {
-    3.98942115977513013e-01f,
-    -1.49581264836620262e-01f,
-    -4.76475741878486795e-02f,
-    -2.65157315524784407e-02f,
-    -1.47148600683672014e-01f
-  };
-  static const float Q2[] = {
-    3.98942651588301770e-01f,
-    4.98327234176892844e-02f,
-    2.91866904423115499e-02f,
-    1.35614940793742178e-02f,
-    1.31409251787866793e-01f
-  };
-  static const float Q3[] = {
-    3.98942391532752700e-01f,
-    4.98455950638200020e-02f,
-    2.94835666900682535e-02f
-  };
+template<class Dummy>
+struct BesselTables_
+{
+  static const double P1[8];
+  static const double Q1[9];
+  static const double P2[5];
+  static const double Q2[5];
+  static const double Q3[3];
+};
+template<class Dummy> const double BesselTables_<Dummy>::P1[8] = {
+  8.333333221e-02,
+  6.944453712e-03,
+  3.472097211e-04,
+  1.158047174e-05,
+  2.739745142e-07,
+  5.135884609e-09,
+  5.262251502e-11,
+  1.331933703e-12
+};
+template<class Dummy> const double BesselTables_<Dummy>::Q1[9] = {
+  1.00000003928615375e+00,
+  2.49999576572179639e-01,
+  2.77785268558399407e-02,
+  1.73560257755821695e-03,
+  6.96166518788906424e-05,
+  1.89645733877137904e-06,
+  4.29455004657565361e-08,
+  3.90565476357034480e-10,
+  1.48095934745267240e-11
+};
+template<class Dummy> const double BesselTables_<Dummy>::P2[5] = {
+  3.98942115977513013e-01,
+  -1.49581264836620262e-01,
+  -4.76475741878486795e-02,
+  -2.65157315524784407e-02,
+  -1.47148600683672014e-01
+};
+template<class Dummy> const double BesselTables_<Dummy>::Q2[5] = {
+  3.98942651588301770e-01,
+  4.98327234176892844e-02,
+  2.91866904423115499e-02,
+  1.35614940793742178e-02,
+  1.31409251787866793e-01
+};
+template<class Dummy> const double BesselTables_<Dummy>::Q3[3] = {
+  3.98942391532752700e-01,
+  4.98455950638200020e-02,
+  2.94835666900682535e-02
+};
+
+
+inline double bessel_i1_over_i0(double x) {
+  using B = BesselTables_<void>;
 
   if (x < 0)
     return -bessel_i1_over_i0(-x);
 
   if (x < 7.75) {
-     float a = x * x / 4;
-     float bessel0 = a * evaluate_polynomial(Q1, a) + 1;
-     float R[3] = { 1, 0.5f, evaluate_polynomial(P1, a) };
-     float bessel1 = x * evaluate_polynomial(R, a) / 2;
+     double a = x * x / 4;
+     double bessel0 = a * evaluate_polynomial(B::Q1, a) + 1;
+     double R[3] = { 1, 0.5f, evaluate_polynomial(B::P1, a) };
+     double bessel1 = x * evaluate_polynomial(R, a) / 2;
      return bessel1 / bessel0;
   }
 
-  float p = evaluate_polynomial(P2, 1 / x);
-  float q = x < 50 ? evaluate_polynomial(Q2, 1 / x)
-                   : evaluate_polynomial(Q3, 1 / x);
+  double p = evaluate_polynomial(B::P2, 1 / x);
+  double q = x < 50 ? evaluate_polynomial(B::Q2, 1 / x)
+                    : evaluate_polynomial(B::Q3, 1 / x);
   return p / q;
 }
 
