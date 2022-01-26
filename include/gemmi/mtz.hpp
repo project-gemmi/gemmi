@@ -827,7 +827,7 @@ struct Mtz {
       if (no_special_columns)
         continue;
       int isym = result.second;
-      if (!phase_columns.empty()) {
+      if (!phase_columns.empty() || !abcd_columns.empty()) {
         const Op& op = gops.sym_ops[(isym - 1) / 2];
         double shift = op.phase_shift(hkl);
         if (shift != 0) {
@@ -836,6 +836,22 @@ struct Mtz {
           double shift_deg = deg(shift);
           for (int col : phase_columns)
             data[n + col] = float(data[n + col] + shift_deg);
+          for (auto i = abcd_columns.begin(); i+3 < abcd_columns.end(); i += 4) {
+            double sinx = std::sin(shift);
+            double cosx = std::cos(shift);
+            double sin2x = 2 * sinx * cosx;
+            double cos2x = sq(cosx)- sq(sinx);
+            double a = data[n + *(i+0)];
+            double b = data[n + *(i+1)];
+            double c = data[n + *(i+2)];
+            double d = data[n + *(i+3)];
+            // a sin(x+y) + b cos(x+y) = a sin(x) cos(y) - b sin(x) sin(y)
+            //                         + a cos(x) sin(y) + b cos(x) cos(y)
+            data[n + *(i+0)] = float(a * cosx - b * sinx);
+            data[n + *(i+1)] = float(a * sinx + b * cosx);
+            data[n + *(i+2)] = float(c * cos2x - d * sin2x);
+            data[n + *(i+3)] = float(c * sin2x + d * cos2x);
+          }
         }
       }
       if (isym % 2 == 0 && !centric) {
@@ -844,7 +860,6 @@ struct Mtz {
         for (int col : dano_columns)
           data[n + col] = -data[n + col];
       }
-      // TODO handle abcd_columns
     }
   }
 
