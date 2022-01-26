@@ -1,5 +1,5 @@
 
-- update .github/workflows/wheels.yml
+- update .github/workflows/wheels2.yml
   https://cibuildwheel.readthedocs.io/en/stable/setup/
 
 - update version in include/gemmi/version.hpp
