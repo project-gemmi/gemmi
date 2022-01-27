@@ -23,7 +23,7 @@ gemmi/atox.hpp
     equivalents of standard isspace and isdigit, and a few helper functions.
 
 gemmi/bessel.hpp
-    Ratio of modified Bessel functions I1(x)/I0(x).
+    Functions derived from modified Bessel functions I1(x) and I0(x).
 
 gemmi/blob.hpp
     Finding maxima or "blobs" in a Grid (map).

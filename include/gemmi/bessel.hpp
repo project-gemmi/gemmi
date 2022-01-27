@@ -1,6 +1,5 @@
-// Ratio of modified Bessel functions I1(x)/I0(x).
+// Functions derived from modified Bessel functions I1(x) and I0(x).
 //
-// When gemmi requires C++17 we might use std::cyl_bessel_if.
 // Crystallographic codes (including Refmac and cctbx) often use polynomial
 // approximation of I0 and I1 from p. 378 of Abramowitz and Stegun.
 // Gemmi uses approximation based on polynomial coefficients from bessel_i0
@@ -10,6 +9,7 @@
 // building on the work of Pavel Holoborodko:
 // https://www.advanpix.com/2015/11/11/rational-approximations-for-the-modified-bessel-function-of-the-first-kind-i0-computations-double-precision/
 // The efficiency is similar to that of scitbx.math.bessel_i1_over_i0.
+// Using std::cyl_bessel_if was not considered, because it requires C++17,
 
 #ifndef GEMMI_BESSEL_HPP_
 #define GEMMI_BESSEL_HPP_
@@ -80,10 +80,8 @@ template<class Dummy> const double BesselTables_<Dummy>::Q3[3] = {
 
 inline double bessel_i1_over_i0(double x) {
   using B = BesselTables_<void>;
-
   if (x < 0)
     return -bessel_i1_over_i0(-x);
-
   if (x < 7.75) {
      double a = x * x / 4;
      double bessel0 = a * evaluate_polynomial(B::Q1, a) + 1;
@@ -91,11 +89,39 @@ inline double bessel_i1_over_i0(double x) {
      double bessel1 = x * evaluate_polynomial(R, a) / 2;
      return bessel1 / bessel0;
   }
-
   double p = evaluate_polynomial(B::P2, 1 / x);
   double q = x < 50 ? evaluate_polynomial(B::Q2, 1 / x)
                     : evaluate_polynomial(B::Q3, 1 / x);
   return p / q;
+}
+
+// Simplified function from Boost.Math.
+// Similar to std::cyl_bessel_i(0, x), but much faster, less exact and doesn't
+// throw out_of_range on negative argument. Relative error < 5.02e-08.
+inline double bessel_i0(double x) {
+  using B = BesselTables_<void>;
+  x = std::fabs(x);
+  if (x < 7.75) {
+    double a = x * x / 4;
+    return a * evaluate_polynomial(B::Q1, a) + 1;
+  }
+  if (x < 50)
+    return std::exp(x) * evaluate_polynomial(B::Q2, 1 / x) / std::sqrt(x);
+  double ex = std::exp(x / 2);
+  return ex * evaluate_polynomial(B::Q3, 1 / x) / std::sqrt(x) * ex;
+}
+
+// Relative error < 4e-08.
+inline double log_bessel_i0(double x) {
+  using B = BesselTables_<void>;
+  x = std::fabs(x);
+  if (x < 7.75) {
+    double a = x * x / 4;
+    return std::log1p(a * evaluate_polynomial(B::Q1, a));
+  }
+  double q = x < 50 ? evaluate_polynomial(B::Q2, 1 / x)
+                    : evaluate_polynomial(B::Q3, 1 / x);
+  return x + std::log(q / std::sqrt(x));
 }
 
 } // namespace gemmi

@@ -29,6 +29,7 @@ void add_misc(py::module& m) {
         py::arg("code"), py::arg("filetype")='M');
   m.attr("hc") = py::float_(gemmi::hc());
   m.def("bessel_i1_over_i0", py::vectorize(gemmi::bessel_i1_over_i0));
+  m.def("log_bessel_i0", py::vectorize(gemmi::log_bessel_i0));
 }
 
 PYBIND11_MODULE(gemmi, mg) {
