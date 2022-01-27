@@ -30,6 +30,11 @@ void add_misc(py::module& m) {
   m.attr("hc") = py::float_(gemmi::hc());
   m.def("bessel_i1_over_i0", py::vectorize(gemmi::bessel_i1_over_i0));
   m.def("log_bessel_i0", py::vectorize(gemmi::log_bessel_i0));
+  m.def("log_cosh", py::vectorize([](double x) {
+        // ln(cosh(x)) = ln(e^x + e^-x) - ln(2) = ln(e^x * (1 + e^-2x)) - ln(2)
+        x = std::abs(x);
+        return x + std::log1p(std::exp(-2 * x)) - std::log(2);
+  }));
 }
 
 PYBIND11_MODULE(gemmi, mg) {
