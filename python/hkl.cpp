@@ -7,7 +7,8 @@
 #include "gemmi/fprime.hpp"
 #include "gemmi/reciproc.hpp" // for count_reflections, make_miller_vector
 #include "gemmi/cif2mtz.hpp"  // for CifToMtz
-#include "gemmi/merge.hpp"  // for Intensities
+#include "gemmi/merge.hpp"    // for Intensities
+#include "gemmi/binner.hpp"   // for Binner
 
 #include "common.h"
 #include "arrvec.h"  // py_array_from_vector
@@ -215,8 +216,8 @@ void add_hkl(py::module& m) {
       return py::array_t<short>({(py::ssize_t)self.data.size()}, {stride},
                                 &data->isign, py::cast(self));
     }, py::return_value_policy::reference_internal)
-    .def("set_data", [](Intensities& self, const UnitCell& unit_cell, 
-                        const SpaceGroup* sg, py::array_t<int> hkl, 
+    .def("set_data", [](Intensities& self, const UnitCell& unit_cell,
+                        const SpaceGroup* sg, py::array_t<int> hkl,
                         py::array_t<double> values, py::array_t<double> sigmas) {
       auto h = hkl.unchecked<2>();
       if (h.shape(1) != 3)
@@ -237,5 +238,32 @@ void add_hkl(py::module& m) {
       self.type = DataType::Unmerged;
     }, py::arg("cell"), py::arg("sg").none(false),
        py::arg("miller_array"), py::arg("value_array"), py::arg("sigma_array"))
+    ;
+
+  py::class_<Binner> binner(m, "Binner");
+  py::enum_<Binner::Method>(binner, "Method")
+      .value("Dstar3", Binner::Method::Dstar3)
+      .value("Dstar2", Binner::Method::Dstar2)
+      .value("Dstar", Binner::Method::Dstar)
+      .value("LogDstar", Binner::Method::LogDstar)
+      .value("EqualCount", Binner::Method::EqualCount)
+      .value("Refmac", Binner::Method::Refmac)
+      ;
+  binner
+    .def(py::init<>())
+    .def("setup", [](Binner& self, int nbins, Binner::Method method, const Mtz& mtz) {
+        return self.setup(nbins, method, MtzDataProxy{mtz});
+    })
+    .def("setup", [](Binner& self, int nbins, Binner::Method method, const ReflnBlock& r) {
+        return self.setup(nbins, method, ReflnDataProxy(r));
+    })
+    .def("get_bin_number", &Binner::get_bin_number)
+    .def("get_bin_numbers", [](Binner& self, const Mtz& mtz) {
+        return py_array_from_vector(self.get_bin_numbers(MtzDataProxy{mtz}));
+    })
+    .def("get_bin_numbers", [](Binner& self, const ReflnBlock& r) {
+        return py_array_from_vector(self.get_bin_numbers(ReflnDataProxy(r)));
+    })
+    .def("bin_count", &Binner::bin_count)
     ;
 }

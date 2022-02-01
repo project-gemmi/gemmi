@@ -25,6 +25,9 @@ gemmi/atox.hpp
 gemmi/bessel.hpp
     Functions derived from modified Bessel functions I1(x) and I0(x).
 
+gemmi/binner.hpp
+    Binning - resolution shells for reflections.
+
 gemmi/blob.hpp
     Finding maxima or "blobs" in a Grid (map).
     Similar to CCP4 PEAKMAX and COOT's "Unmodelled blobs".
