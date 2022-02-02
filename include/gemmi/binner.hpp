@@ -21,30 +21,52 @@ struct Binner {
     Refmac,
   };
 
-  int setup_from_1_d2(int nbins, Method method, std::vector<double> dm2) {
+  int setup_from_1_d2(int nbins, Method method, std::vector<double>&& dm2) {
     if (nbins < 2)
       fail("Binner: at least two bins are needed");
     if (dm2.empty())
       fail("Binner: no data");
-    bins.resize(nbins);
-    std::sort(dm2.begin(), dm2.end());
-    min_1_d2 = dm2.front();
-    max_1_d2 = dm2.back();
+    bin_limits.resize(nbins);
+    if (method == Method::EqualCount) {
+      std::sort(dm2.begin(), dm2.end());
+      min_1_d2 = dm2.front();
+      max_1_d2 = dm2.back();
+    } else {
+      min_1_d2 = max_1_d2 = dm2.front();
+      for (double x : dm2) {
+        if (x < min_1_d2)
+          min_1_d2 = x;
+        if (x > max_1_d2)
+          max_1_d2 = x;
+      }
+    }
     if (method == Method::EqualCount) {
       double avg_count = double(dm2.size()) / nbins;
       for (int i = 1; i < nbins; ++i)
-        bins[i-1] = dm2[int(avg_count * i)];
+        bin_limits[i-1] = dm2[int(avg_count * i)];
     } else if (method == Method::Dstar2) {
-      double step = (dm2.back() - dm2.front()) / nbins;
+      double step = (max_1_d2 - min_1_d2) / nbins;
       for (int i = 1; i < nbins; ++i)
-        bins[i-1] = i * step;
-    } else if (method == Method::Dstar3) {
+        bin_limits[i-1] = min_1_d2 + i * step;
     } else if (method == Method::Dstar) {
+      double min_1_d = std::sqrt(min_1_d2);
+      double max_1_d = std::sqrt(max_1_d2);
+      double step = (max_1_d - min_1_d) / nbins;
+      for (int i = 1; i < nbins; ++i)
+        bin_limits[i-1] = sq(min_1_d + i * step);
+    } else if (method == Method::Dstar3) {
+      double min_1_d3 = min_1_d2 * std::sqrt(min_1_d2);
+      double max_1_d3 = max_1_d2 * std::sqrt(max_1_d2);
+      double step = (max_1_d3 - min_1_d3) / nbins;
+      for (int i = 1; i < nbins; ++i)
+        bin_limits[i-1] = sq(std::cbrt(min_1_d3 + i * step));
     } else if (method == Method::LogDstar) {
+      // TODO
     } else if (method == Method::Refmac) {
+      // TODO
     }
-    bins.back() = std::numeric_limits<double>::infinity();
-    return (int) bins.size();
+    bin_limits.back() = std::numeric_limits<double>::infinity();
+    return (int) bin_limits.size();
   }
 
   template<typename DataProxy>
@@ -53,49 +75,51 @@ struct Binner {
     std::vector<double> dm2(proxy.size() / proxy.stride());
     for (size_t i = 0, offset = 0; i < dm2.size(); ++i, offset += proxy.stride())
       dm2[i] = cell.calculate_1_d2(proxy.get_hkl(offset));
-    return setup_from_1_d2(nbins, method, dm2);
+    return setup_from_1_d2(nbins, method, std::move(dm2));
   }
 
   // Generic. Method-specific versions could be faster.
   int get_bin_number(const Miller& hkl) {
-    if (bins.empty())
+    if (bin_limits.empty())
       fail("Binner not set up");
     double inv_d2 = cell.calculate_1_d2(hkl);
-    auto it = std::lower_bound(bins.begin(), bins.end(), inv_d2);
-    // it can't be bins.end() b/c bins.back() is +inf
-    return int(it - bins.begin());
+    auto it = std::lower_bound(bin_limits.begin(), bin_limits.end(), inv_d2);
+    // it can't be bin_limits.end() b/c bin_limits.back() is +inf
+    return int(it - bin_limits.begin());
   }
 
   // We assume that the bin number is seeked mostly for sorted reflections,
   // so it's usually either the same bin as previously, or the next one.
   int get_bin_number_hinted(const Miller& hkl, int& hint) const {
     double inv_d2 = cell.calculate_1_d2(hkl);
-    if (inv_d2 <= bins[hint]) {
-      while (hint != 0 && bins[hint-1] > inv_d2)
+    if (inv_d2 <= bin_limits[hint]) {
+      while (hint != 0 && bin_limits[hint-1] > inv_d2)
         --hint;
     } else {
-      while (hint + 1 < (int)bins.size() && bins[++hint] < inv_d2) {}
+      // bin_limits.back() is +inf, so we won't overrun
+      while (bin_limits[hint] < inv_d2)
+        ++hint;
     }
     return hint;
   }
 
   template<typename DataProxy>
   std::vector<int> get_bin_numbers(const DataProxy& proxy) const {
-    if (bins.empty())
+    if (bin_limits.empty())
       fail("Binner not set up");
-    int hint = (int)bins.size() - 1;
+    int hint = (int)bin_limits.size() - 1;
     std::vector<int> nums(proxy.size() / proxy.stride());
     for (size_t i = 0, offset = 0; i < nums.size(); ++i, offset += proxy.stride())
       nums[i] = get_bin_number_hinted(proxy.get_hkl(offset), hint);
     return nums;
   }
 
-  size_t bin_count() const { return bins.size(); }
+  size_t bin_count() const { return bin_limits.size(); }
 
   UnitCell cell;
   double min_1_d2;
   double max_1_d2;
-  std::vector<double> bins;  // upper limit of each bin
+  std::vector<double> bin_limits;  // upper limit of each bin
 };
 
 } // namespace gemmi

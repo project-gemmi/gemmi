@@ -265,5 +265,6 @@ void add_hkl(py::module& m) {
         return py_array_from_vector(self.get_bin_numbers(ReflnDataProxy(r)));
     })
     .def("bin_count", &Binner::bin_count)
+    .def_readonly("bin_limits", &Binner::bin_limits)
     ;
 }
