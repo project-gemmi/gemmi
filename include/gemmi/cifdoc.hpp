@@ -131,11 +131,13 @@ struct Loop {
   std::vector<std::string> values;
 
   // search and access
-  int find_tag(std::string tag) const {
-    tag = gemmi::to_lower(tag);
+  int find_tag_lc(const std::string& lctag) const {
     auto f = std::find_if(tags.begin(), tags.end(),
-               [&tag](const std::string& t) { return gemmi::iequal(t, tag); });
+        [&lctag](const std::string& t) { return gemmi::iequal(t, lctag); });
     return f == tags.end() ? -1 : f - tags.begin();
+  }
+  int find_tag(const std::string& tag) const {
+    return find_tag_lc(gemmi::to_lower(tag));
   }
   bool has_tag(const std::string& tag) const { return find_tag(tag) != -1; }
   size_t width() const { return tags.size(); }
@@ -365,10 +367,12 @@ struct Table {
 
   // prefix is optional
   int find_column_position(const std::string& tag) const {
+    std::string lctag = gemmi::to_lower(tag);
     Row tag_row = const_cast<Table*>(this)->tags();
     for (int pos : positions) {
       const std::string& v = tag_row.value_at_unsafe(pos);
-      if (v == tag || v.compare(prefix_length, std::string::npos, tag) == 0)
+      if (v.length() == lctag.length() ? gemmi::iequal(v, lctag)
+                                       : gemmi::iequal_from(v, prefix_length, lctag))
         return pos;
     }
     fail("Column name not found: " + tag);
@@ -713,8 +717,9 @@ inline void Table::convert_pair_to_loop() {
 }
 
 inline const Item* Block::find_pair_item(const std::string& tag) const {
+  std::string lctag = gemmi::to_lower(tag);
   for (const Item& i : items)
-    if (i.type == ItemType::Pair && i.pair[0] == tag)
+    if (i.type == ItemType::Pair && gemmi::iequal(i.pair[0], lctag))
       return &i;
   return nullptr;
 }
@@ -726,12 +731,13 @@ inline const Pair* Block::find_pair(const std::string& tag) const {
 
 inline void Block::set_pair(const std::string& tag, const std::string& value) {
   assert_tag(tag);
+  std::string lctag = gemmi::to_lower(tag);
   for (Item& i : items) {
-    if (i.type == ItemType::Pair && i.pair[0] == tag) {
+    if (i.type == ItemType::Pair && gemmi::iequal(i.pair[0], lctag)) {
       i.pair[1] = value;
       return;
     }
-    if (i.type == ItemType::Loop && i.loop.find_tag(tag) != -1) {
+    if (i.type == ItemType::Loop && i.loop.find_tag_lc(lctag) != -1) {
       i.set_value(Item(tag, value));
       return;
     }
@@ -745,20 +751,22 @@ inline Column Block::find_loop(const std::string& tag) {
 }
 
 inline const Item* Block::find_loop_item(const std::string& tag) const {
+  std::string lctag = gemmi::to_lower(tag);
   for (const Item& i : items)
-    if (i.type == ItemType::Loop && i.loop.find_tag(tag) != -1)
+    if (i.type == ItemType::Loop && i.loop.find_tag_lc(tag) != -1)
       return &i;
   return nullptr;
 }
 
 inline Column Block::find_values(const std::string& tag) {
+  std::string lctag = gemmi::to_lower(tag);
   for (Item& i : items)
     if (i.type == ItemType::Loop) {
-      int pos = i.loop.find_tag(tag);
+      int pos = i.loop.find_tag_lc(lctag);
       if (pos != -1)
         return Column{&i, static_cast<size_t>(pos)};
     } else if (i.type == ItemType::Pair) {
-      if (i.pair[0] == tag)
+      if (gemmi::iequal(i.pair[0], lctag))
         return Column{&i, 0};
     }
   return Column{nullptr, 0};
@@ -782,10 +790,11 @@ inline Table Block::item_as_table(Item& item) {
 }
 
 inline size_t Block::get_index(const std::string& tag) const {
+  std::string lctag = gemmi::to_lower(tag);
   for (size_t i = 0; i != items.size(); ++i) {
     const Item& item = items[i];
-    if ((item.type == ItemType::Pair && item.pair[0] == tag) ||
-        (item.type == ItemType::Loop && item.loop.find_tag(tag) != -1))
+    if ((item.type == ItemType::Pair && gemmi::iequal(item.pair[0], lctag)) ||
+        (item.type == ItemType::Loop && item.loop.find_tag_lc(lctag) != -1))
       return i;
   }
   fail(tag + " not found in block");

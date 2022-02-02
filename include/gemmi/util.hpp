@@ -38,6 +38,12 @@ inline bool iequal(const std::string& str, const std::string& low) {
                     [](char c1, char c2) { return c1 == std::tolower(c2); });
 }
 
+inline bool iequal_from(const std::string& str, size_t offset, const std::string& low) {
+  return str.length() == low.length() + offset &&
+         std::equal(std::begin(low), std::end(low), str.begin() + offset,
+                    [](char c1, char c2) { return c1 == std::tolower(c2); });
+}
+
 inline bool istarts_with(const std::string& str, const std::string& prefix) {
   return str.length() >= prefix.length() &&
          std::equal(std::begin(prefix), std::end(prefix), str.begin(),

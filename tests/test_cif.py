@@ -285,6 +285,24 @@ class TestBlock(unittest.TestCase):
         table = block.item_as_table(item)
         self.assertEqual(table[1][3], '10501')
 
+    def test_case_sensitivity(self):
+        block = cif.read_string("""
+            daTA_test
+            _One 1 _two 2 _thrEE 3
+            _NonLoop_a alpha
+            _nonloop_B beta
+            loop_ _laAa _lbBb _ln A B 1 C D 2
+        """).sole_block()
+        values = block.find_values('_laaA')
+        self.assertEqual(list(values), ['A', 'C'])
+
+        rows = list(block.find(['_lBbb', '_lAaa']))  # changed order
+        self.assertEqual(list(rows[0]), ['B', 'A'])
+
+        self.assertEqual(block.get_index('_nonlOOp_b'), 4)
+        self.assertEqual(block.get_index('_lBBB'), 5)
+        self.assertEqual(block.find_pair('_Three'), ['_thrEE', '3'])
+
 class TestQuote(unittest.TestCase):
     def test_quote(self):
         self.assertEqual(cif.quote('a.b-c'), 'a.b-c')
