@@ -221,11 +221,11 @@ void add_hkl(py::module& m) {
                         py::array_t<double> values, py::array_t<double> sigmas) {
       auto h = hkl.unchecked<2>();
       if (h.shape(1) != 3)
-        throw std::domain_error("error: the size of the second dimension != 3");
+        throw std::domain_error("the hkl array must have size N x 3");
       auto v = values.template unchecked<1>();
       auto s = sigmas.template unchecked<1>();
       if (h.shape(0) != v.shape(0) || h.shape(0) != s.shape(0))
-        throw std::domain_error("error: arrays have different lengths");
+        throw std::domain_error("arrays have different lengths");
 
       self.unit_cell = unit_cell;
       self.spacegroup = sg;
@@ -256,6 +256,17 @@ void add_hkl(py::module& m) {
     })
     .def("setup", [](Binner& self, int nbins, Binner::Method method, const ReflnBlock& r) {
         return self.setup(nbins, method, ReflnDataProxy(r));
+    })
+    .def("setup", [](Binner& self, int nbins, Binner::Method method,
+                     UnitCell& cell, py::array_t<int> hkl) {
+        auto h = hkl.unchecked<2>();
+        if (h.shape(1) != 3)
+          throw std::domain_error("the hkl array must have size N x 3");
+        self.cell = cell;
+        std::vector<double> dm2(h.shape(0));
+        for (size_t i = 0; i < dm2.size(); ++i)
+          dm2[i] = cell.calculate_1_d2_double(h(i, 0), h(i, 1), h(i, 2));
+        return self.setup_from_1_d2(nbins, method, std::move(dm2));
     })
     .def("get_bin_number", &Binner::get_bin_number)
     .def("get_bin_numbers", [](Binner& self, const Mtz& mtz) {
