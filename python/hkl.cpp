@@ -275,6 +275,20 @@ void add_hkl(py::module& m) {
     .def("get_bin_numbers", [](Binner& self, const ReflnBlock& r) {
         return py_array_from_vector(self.get_bin_numbers(ReflnDataProxy(r)));
     })
+    .def("get_bin_numbers", [](Binner& self, py::array_t<int> hkl) {
+        auto h = hkl.unchecked<2>();
+        if (h.shape(1) != 3)
+          throw std::domain_error("the hkl array must have size N x 3");
+        int len = h.shape(0);
+        if (len == 0)
+          throw std::domain_error("the hkl array is empty");
+        int hint = 0;
+        py::array_t<double> arr(len);
+        double* ptr = (double*) arr.request().ptr;
+        for (int i = 0; i < len; ++i)
+          ptr[i] = self.get_bin_number_hinted({{h(i, 0), h(i, 1), h(i, 2)}}, hint);
+        return arr;
+    })
     .def("bin_count", &Binner::bin_count)
     .def_readonly("bin_limits", &Binner::bin_limits)
     ;
