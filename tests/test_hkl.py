@@ -230,11 +230,13 @@ class TestBinner(unittest.TestCase):
         binner = gemmi.Binner()
         binner.setup(17, method, mtz, cell=mtz.cell)
         check_limits_17(binner.bin_limits)
+        self.assertEqual(binner.get_bin_number([3,3,3]), 9)
+        if numpy is None:
+            return
         binner.setup(17, method, mtz.make_miller_array(), cell=mtz.cell)
         check_limits_17(binner.bin_limits)
         binner.setup_from_1_d2(17, method, mtz.make_1_d2_array(), mtz.cell)
         check_limits_17(binner.bin_limits)
-        self.assertEqual(binner.get_bin_number([3,3,3]), 9)
         hkls = [[0,0,1], [3,3,3], [10,10,10]]
         bins = [0,9,16]
         self.assertEqual(list(binner.get_bin_numbers(hkls)), bins)
