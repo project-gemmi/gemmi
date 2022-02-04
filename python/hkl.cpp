@@ -268,6 +268,7 @@ void add_hkl(py::module& m) {
           dm2[i] = cell.calculate_1_d2_double(h(i, 0), h(i, 1), h(i, 2));
         return self.setup_from_1_d2(nbins, method, std::move(dm2));
     })
+    .def("setup_from_1_d2", &Binner::setup_from_1_d2)
     .def("get_bin_number", &Binner::get_bin_number)
     .def("get_bin_numbers", [](Binner& self, const Mtz& mtz) {
         return py_array_from_vector(self.get_bin_numbers(MtzDataProxy{mtz}));
@@ -283,10 +284,22 @@ void add_hkl(py::module& m) {
         if (len == 0)
           throw std::domain_error("the hkl array is empty");
         int hint = 0;
-        py::array_t<double> arr(len);
-        double* ptr = (double*) arr.request().ptr;
+        py::array_t<int> arr(len);
+        int* ptr = (int*) arr.request().ptr;
         for (int i = 0; i < len; ++i)
           ptr[i] = self.get_bin_number_hinted({{h(i, 0), h(i, 1), h(i, 2)}}, hint);
+        return arr;
+    })
+    .def("get_bin_numbers_from_1_d2", [](Binner& self, py::array_t<double> inv_d2) {
+        auto v = inv_d2.unchecked<1>();
+        int len = v.shape(0);
+        if (len == 0)
+          throw std::domain_error("the inv_d2 array is empty");
+        int hint = 0;
+        py::array_t<int> arr(len);
+        int* ptr = (int*) arr.request().ptr;
+        for (int i = 0; i < len; ++i)
+          ptr[i] = self.get_bin_number_from_1_d2_hinted(v(i), hint);
         return arr;
     })
     .def("bin_count", &Binner::bin_count)

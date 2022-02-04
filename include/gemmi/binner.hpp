@@ -79,19 +79,22 @@ struct Binner {
   }
 
   // Generic. Method-specific versions could be faster.
-  int get_bin_number(const Miller& hkl) {
+  int get_bin_number_from_1_d2(double inv_d2) {
     if (bin_limits.empty())
       fail("Binner not set up");
-    double inv_d2 = cell.calculate_1_d2(hkl);
     auto it = std::lower_bound(bin_limits.begin(), bin_limits.end(), inv_d2);
     // it can't be bin_limits.end() b/c bin_limits.back() is +inf
     return int(it - bin_limits.begin());
   }
 
+  int get_bin_number(const Miller& hkl) {
+    double inv_d2 = cell.calculate_1_d2(hkl);
+    return get_bin_number_from_1_d2(inv_d2);
+  }
+
   // We assume that the bin number is seeked mostly for sorted reflections,
   // so it's usually either the same bin as previously, or the next one.
-  int get_bin_number_hinted(const Miller& hkl, int& hint) const {
-    double inv_d2 = cell.calculate_1_d2(hkl);
+  int get_bin_number_from_1_d2_hinted(double inv_d2, int& hint) const {
     if (inv_d2 <= bin_limits[hint]) {
       while (hint != 0 && bin_limits[hint-1] > inv_d2)
         --hint;
@@ -103,11 +106,16 @@ struct Binner {
     return hint;
   }
 
+  int get_bin_number_hinted(const Miller& hkl, int& hint) const {
+    double inv_d2 = cell.calculate_1_d2(hkl);
+    return get_bin_number_from_1_d2_hinted(inv_d2, hint);
+  }
+
   template<typename DataProxy>
   std::vector<int> get_bin_numbers(const DataProxy& proxy) const {
     if (bin_limits.empty())
       fail("Binner not set up");
-    int hint = (int)bin_limits.size() - 1;
+    int hint = 0;
     std::vector<int> nums(proxy.size() / proxy.stride());
     for (size_t i = 0, offset = 0; i < nums.size(); ++i, offset += proxy.stride())
       nums[i] = get_bin_number_hinted(proxy.get_hkl(offset), hint);
