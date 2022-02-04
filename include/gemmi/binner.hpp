@@ -21,19 +21,24 @@ struct Binner {
     Refmac,
   };
 
-  int setup_from_1_d2(int nbins, Method method, std::vector<double>&& dm2) {
-    if (nbins < 2)
-      fail("Binner: at least two bins are needed");
-    if (dm2.empty())
+  int setup_from_1_d2(int nbins, Method method, std::vector<double>&& inv_d2,
+                      const UnitCell* cell_) {
+    if (nbins < 1)
+      fail("Binner: nbins argument must be positive");
+    if (inv_d2.empty())
       fail("Binner: no data");
+    if (cell_)
+      cell = *cell_;
+    if (!cell.is_crystal())
+      fail("Binner: unknown unit cell");
     bin_limits.resize(nbins);
     if (method == Method::EqualCount) {
-      std::sort(dm2.begin(), dm2.end());
-      min_1_d2 = dm2.front();
-      max_1_d2 = dm2.back();
+      std::sort(inv_d2.begin(), inv_d2.end());
+      min_1_d2 = inv_d2.front();
+      max_1_d2 = inv_d2.back();
     } else {
-      min_1_d2 = max_1_d2 = dm2.front();
-      for (double x : dm2) {
+      min_1_d2 = max_1_d2 = inv_d2.front();
+      for (double x : inv_d2) {
         if (x < min_1_d2)
           min_1_d2 = x;
         if (x > max_1_d2)
@@ -41,9 +46,9 @@ struct Binner {
       }
     }
     if (method == Method::EqualCount) {
-      double avg_count = double(dm2.size()) / nbins;
+      double avg_count = double(inv_d2.size()) / nbins;
       for (int i = 1; i < nbins; ++i)
-        bin_limits[i-1] = dm2[int(avg_count * i)];
+        bin_limits[i-1] = inv_d2[int(avg_count * i)];
     } else if (method == Method::Dstar2) {
       double step = (max_1_d2 - min_1_d2) / nbins;
       for (int i = 1; i < nbins; ++i)
@@ -70,18 +75,22 @@ struct Binner {
   }
 
   template<typename DataProxy>
-  int setup(int nbins, Method method, const DataProxy& proxy) {
-    cell = proxy.unit_cell();
-    std::vector<double> dm2(proxy.size() / proxy.stride());
-    for (size_t i = 0, offset = 0; i < dm2.size(); ++i, offset += proxy.stride())
-      dm2[i] = cell.calculate_1_d2(proxy.get_hkl(offset));
-    return setup_from_1_d2(nbins, method, std::move(dm2));
+  int setup(int nbins, Method method, const DataProxy& proxy, const UnitCell* cell_) {
+    cell = cell_ ? *cell_ : proxy.unit_cell();
+    std::vector<double> inv_d2(proxy.size() / proxy.stride());
+    for (size_t i = 0, offset = 0; i < inv_d2.size(); ++i, offset += proxy.stride())
+      inv_d2[i] = cell.calculate_1_d2(proxy.get_hkl(offset));
+    return setup_from_1_d2(nbins, method, std::move(inv_d2), nullptr);
+  }
+
+  void ensure_limits_are_set() const {
+    if (bin_limits.empty())
+      fail("Binner not set up");
   }
 
   // Generic. Method-specific versions could be faster.
   int get_bin_number_from_1_d2(double inv_d2) {
-    if (bin_limits.empty())
-      fail("Binner not set up");
+    ensure_limits_are_set();
     auto it = std::lower_bound(bin_limits.begin(), bin_limits.end(), inv_d2);
     // it can't be bin_limits.end() b/c bin_limits.back() is +inf
     return int(it - bin_limits.begin());
@@ -113,8 +122,7 @@ struct Binner {
 
   template<typename DataProxy>
   std::vector<int> get_bin_numbers(const DataProxy& proxy) const {
-    if (bin_limits.empty())
-      fail("Binner not set up");
+    ensure_limits_are_set();
     int hint = 0;
     std::vector<int> nums(proxy.size() / proxy.stride());
     for (size_t i = 0, offset = 0; i < nums.size(); ++i, offset += proxy.stride())

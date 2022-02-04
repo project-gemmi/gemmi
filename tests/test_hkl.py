@@ -215,5 +215,31 @@ class TestSfMmcif(unittest.TestCase):
         #st = gemmi.read_structure(full_path('5wkd.pdb'))
         #fmask = ...
 
+class TestBinner(unittest.TestCase):
+    def test_binner(self):
+        path = full_path('5e5z.mtz')
+        def check_limits_17(limits):
+            self.assertEqual(len(limits), 17)
+            self.assertAlmostEqual(limits[10], 0.27026277234462415)
+        mtz = gemmi.read_mtz_file(path)
+        binner = gemmi.Binner()
+        method = gemmi.Binner.Method.Dstar3
+        binner.setup(17, method, mtz)
+        check_limits_17(binner.bin_limits)
+        self.assertEqual(binner.bin_count(), 17)
+        binner = gemmi.Binner()
+        binner.setup(17, method, mtz, cell=mtz.cell)
+        check_limits_17(binner.bin_limits)
+        binner.setup(17, method, mtz.make_miller_array(), cell=mtz.cell)
+        check_limits_17(binner.bin_limits)
+        binner.setup_from_1_d2(17, method, mtz.make_1_d2_array(), mtz.cell)
+        check_limits_17(binner.bin_limits)
+        self.assertEqual(binner.get_bin_number([3,3,3]), 9)
+        hkls = [[0,0,1], [3,3,3], [10,10,10]]
+        bins = [0,9,16]
+        self.assertEqual(list(binner.get_bin_numbers(hkls)), bins)
+        inv_d2 = [mtz.cell.calculate_1_d2(h) for h in hkls]
+        self.assertEqual(list(binner.get_bin_numbers_from_1_d2(inv_d2)), bins)
+
 if __name__ == '__main__':
     unittest.main()

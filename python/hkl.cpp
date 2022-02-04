@@ -251,24 +251,31 @@ void add_hkl(py::module& m) {
       ;
   binner
     .def(py::init<>())
-    .def("setup", [](Binner& self, int nbins, Binner::Method method, const Mtz& mtz) {
-        return self.setup(nbins, method, MtzDataProxy{mtz});
-    })
-    .def("setup", [](Binner& self, int nbins, Binner::Method method, const ReflnBlock& r) {
-        return self.setup(nbins, method, ReflnDataProxy(r));
-    })
     .def("setup", [](Binner& self, int nbins, Binner::Method method,
-                     UnitCell& cell, py::array_t<int> hkl) {
+                     const Mtz& mtz, const UnitCell* cell) {
+        return self.setup(nbins, method, MtzDataProxy{mtz}, cell);
+    }, py::arg("nbins"), py::arg("method"), py::arg("mtz"), py::arg("cell")=nullptr)
+    .def("setup", [](Binner& self, int nbins, Binner::Method method,
+                     const ReflnBlock& r, const UnitCell* cell) {
+        return self.setup(nbins, method, ReflnDataProxy(r), cell);
+    }, py::arg("nbins"), py::arg("method"), py::arg("r"), py::arg("cell")=nullptr)
+    .def("setup", [](Binner& self, int nbins, Binner::Method method,
+                     py::array_t<int> hkl, const UnitCell* cell) {
         auto h = hkl.unchecked<2>();
         if (h.shape(1) != 3)
           throw std::domain_error("the hkl array must have size N x 3");
-        self.cell = cell;
-        std::vector<double> dm2(h.shape(0));
-        for (size_t i = 0; i < dm2.size(); ++i)
-          dm2[i] = cell.calculate_1_d2_double(h(i, 0), h(i, 1), h(i, 2));
-        return self.setup_from_1_d2(nbins, method, std::move(dm2));
-    })
-    .def("setup_from_1_d2", &Binner::setup_from_1_d2)
+        std::vector<double> inv_d2(h.shape(0));
+        if (cell)
+          for (size_t i = 0; i < inv_d2.size(); ++i)
+            inv_d2[i] = cell->calculate_1_d2_double(h(i, 0), h(i, 1), h(i, 2));
+        return self.setup_from_1_d2(nbins, method, std::move(inv_d2), cell);
+    }, py::arg("nbins"), py::arg("method"), py::arg("hkl"), py::arg("cell"))
+    .def("setup_from_1_d2", [](Binner& self, int nbins, Binner::Method method,
+                               py::array_t<double> inv_d2, const UnitCell* cell) {
+        double* ptr = (double*) inv_d2.request().ptr;
+        auto len = inv_d2.shape(0);
+        return self.setup_from_1_d2(nbins, method, std::vector<double>(ptr, ptr+len), cell);
+    }, py::arg("nbins"), py::arg("method"), py::arg("inv_d2"), py::arg("cell"))
     .def("get_bin_number", &Binner::get_bin_number)
     .def("get_bin_numbers", [](Binner& self, const Mtz& mtz) {
         return py_array_from_vector(self.get_bin_numbers(MtzDataProxy{mtz}));
@@ -277,12 +284,11 @@ void add_hkl(py::module& m) {
         return py_array_from_vector(self.get_bin_numbers(ReflnDataProxy(r)));
     })
     .def("get_bin_numbers", [](Binner& self, py::array_t<int> hkl) {
+        self.ensure_limits_are_set();
         auto h = hkl.unchecked<2>();
         if (h.shape(1) != 3)
           throw std::domain_error("the hkl array must have size N x 3");
         int len = h.shape(0);
-        if (len == 0)
-          throw std::domain_error("the hkl array is empty");
         int hint = 0;
         py::array_t<int> arr(len);
         int* ptr = (int*) arr.request().ptr;
@@ -291,10 +297,9 @@ void add_hkl(py::module& m) {
         return arr;
     })
     .def("get_bin_numbers_from_1_d2", [](Binner& self, py::array_t<double> inv_d2) {
+        self.ensure_limits_are_set();
         auto v = inv_d2.unchecked<1>();
         int len = v.shape(0);
-        if (len == 0)
-          throw std::domain_error("the inv_d2 array is empty");
         int hint = 0;
         py::array_t<int> arr(len);
         int* ptr = (int*) arr.request().ptr;
@@ -304,5 +309,6 @@ void add_hkl(py::module& m) {
     })
     .def("bin_count", &Binner::bin_count)
     .def_readonly("bin_limits", &Binner::bin_limits)
+    .def_readwrite("cell", &Binner::cell)
     ;
 }
