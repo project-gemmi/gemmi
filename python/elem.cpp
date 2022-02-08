@@ -5,6 +5,7 @@
 #include "gemmi/resinfo.hpp"
 #include "gemmi/it92.hpp"
 #include "gemmi/c4322.hpp"
+#include "gemmi/neutron92.hpp"
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 
@@ -58,6 +59,16 @@ void add_elem(py::module& m) {
          py::arg("r2"), py::arg("B"))
     ;
 
+  // neutron92.hpp
+  using Neutron92 = gemmi::Neutron92<double>;
+  py::class_<Neutron92::Coef>(m, "Neutron92")
+    .def("get_coefs", [](const Neutron92::Coef &self) { return self.coefs; })
+    // the same arguments as above - for consistency
+    .def("calculate_sf", &Neutron92::Coef::calculate_sf, py::arg("stol2"))
+    .def("calculate_density_iso", &Neutron92::Coef::calculate_density_iso,
+         py::arg("r2"), py::arg("B"))
+    ;
+
   // elem.hpp
   py::class_<Element>(m, "Element")
     .def(py::init<const std::string &>())
@@ -83,6 +94,9 @@ void add_elem(py::module& m) {
     .def_property_readonly("c4322", [](const Element& self) {
         return C4322::get_ptr(self.elem);
     }, py::return_value_policy::reference_internal)
+    .def_property_readonly("neutron92", [](const Element& self) {
+        return Neutron92::get(self.elem);  // a copy is created
+    })
     .def("__hash__", [](const Element &self) { return self.ordinal(); })
     .def("__repr__", [](const Element& self) {
         return "<gemmi.Element: " + std::string(self.name()) + ">";

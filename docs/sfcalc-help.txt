@@ -15,7 +15,7 @@ Options:
   -v, --verbose        Verbose output.
   --hkl=H,K,L          Calculate structure factor F_hkl.
   --dmin=NUM           Calculate structure factors up to given resolution.
-  --for=TYPE           TYPE is xray (default), electron or mott-bethe.
+  --for=TYPE           TYPE is xray (default), electron, neutron or mott-bethe.
   --normalize-it92     Normalize X-ray form factors (a tiny change).
   --ciffp              Read f' from _atom_type_scat_dispersion_real in CIF.
   --wavelength=NUM     Wavelength [A] for calculation of f' (use --wavelength=0

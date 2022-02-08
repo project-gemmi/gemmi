@@ -1610,6 +1610,33 @@ structure factors and density:
 
 Unlike for X-ray form factors, we do not add anomalous scattering here.
 
+Neutron scattering
+------------------
+
+For neutrons, we use bound coherent scattering lengths
+`from NCNR <https://www.ncnr.nist.gov/resources/n-lengths/list.html>`_,
+which are based on Neutron News, Vol. 3, No. 3, 1992.
+
+In C++, this data is in the :file:`neutron92.hpp` header.
+In Python, it can be accessed as a property of an element:
+
+.. doctest::
+
+  >>> h_neut = gemmi.Element('H').neutron92
+  >>> h_neut.get_coefs()  # bound coherent scat. length in fm (10^-15 m)
+  [-3.739]
+  >>> h_neut.calculate_sf(0)  # the argument is ignored
+  -3.739
+  >>> h_neut.calculate_density_iso(r2=1.3, B=25)
+  -0.17104358254308388
+
+We don't store data for individual isotopes, except for deuterium.
+
+.. doctest::
+
+  >>> gemmi.Element('D').neutron92.get_coefs()
+  [6.671]
+
 
 Direct summation
 ----------------
@@ -1624,6 +1651,7 @@ are not included.
 
 In Python classes StructureFactorCalculatorX and StructureFactorCalculatorE
 perform direct summation using X-ray and electron form factors, respectively.
+Class StructureFactorCalculatorN does calculations for neutrons.
 The C++ interface is similar, although it uses a single templated class
 StructureFactorCalculator.
 These classes are constructed with UnitCell as a parameter (we don't pass
@@ -1728,7 +1756,8 @@ density of the scatterer (usually electrons) on a grid. For this we use
 
 * in C++ -- class DensityCalculator templated with a form factor table,
 * in Python -- classes DensityCalculatorX (corresponding to X-ray
-  form factors) and DensityCalculatorE (electron form factors).
+  form factors), DensityCalculatorE (electron form factors)
+  and DensityCalculatorN (neutrons).
 
 DensityCalculator contains a grid. The size of the grid is determined
 from two parameters that we need to set: ``d_min`` which corresponds to

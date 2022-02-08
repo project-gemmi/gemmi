@@ -5,6 +5,7 @@
 #include <pybind11/complex.h>
 #include "gemmi/it92.hpp"
 #include "gemmi/c4322.hpp"
+#include "gemmi/neutron92.hpp"
 #include "gemmi/sfcalc.hpp"   // for StructureFactorCalculator
 #include "gemmi/dencalc.hpp"  // for DensityCalculator
 #include "gemmi/fprime.hpp"   // for add_cl_fprime_for_all_elements
@@ -78,9 +79,12 @@ void add_sf(py::module& m) {
 
   using IT92 = gemmi::IT92<double>;
   using C4322 = gemmi::C4322<double>;
+  using Neutron92 = gemmi::Neutron92<double>;
   add_sfcalc<IT92>(m, "StructureFactorCalculatorX", true);
   add_sfcalc<C4322>(m, "StructureFactorCalculatorE", false);
+  add_sfcalc<Neutron92>(m, "StructureFactorCalculatorN", false);
   add_dencalc<IT92>(m, "DensityCalculatorX");
   add_dencalc<C4322>(m, "DensityCalculatorE");
+  add_dencalc<Neutron92>(m, "DensityCalculatorN");
   m.def("IT92_normalize", &IT92::normalize);
 }

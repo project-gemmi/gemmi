@@ -11,6 +11,7 @@
 #include <gemmi/gz.hpp>        // for MaybeGzipped
 #include <gemmi/it92.hpp>      // for IT92
 #include <gemmi/c4322.hpp>     // for C4322
+#include <gemmi/neutron92.hpp> // for Neutron92
 #include <gemmi/math.hpp>      // for sq
 #include <gemmi/mtz.hpp>       // for Mtz
 #include <gemmi/dencalc.hpp>   // for DensityCalculator
@@ -35,7 +36,7 @@ enum OptionIndex {
 
 struct SfCalcArg: public Arg {
   static option::ArgStatus FormFactors(const option::Option& option, bool msg) {
-    return Arg::Choice(option, msg, {"xray", "electron", "mott-bethe"});
+    return Arg::Choice(option, msg, {"xray", "electron", "neutron", "mott-bethe"});
   }
   static option::ArgStatus Radii(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"vdw", "cctbx", "refmac"});
@@ -78,7 +79,7 @@ const option::Descriptor Usage[] = {
   { Dmin, 0, "", "dmin", Arg::Float,
     "  --dmin=NUM  \tCalculate structure factors up to given resolution." },
   { For, 0, "", "for", SfCalcArg::FormFactors,
-    "  --for=TYPE  \tTYPE is xray (default), electron or mott-bethe." },
+    "  --for=TYPE  \tTYPE is xray (default), electron, neutron or mott-bethe." },
   { NormalizeIt92, 0, "", "normalize-it92", Arg::None,
     "  --normalize-it92  \tNormalize X-ray form factors (a tiny change)." },
   { CifFp, 0, "", "ciffp", Arg::None,
@@ -757,6 +758,8 @@ void process(const std::string& input, const OptParser& p) {
                                             table == 'm', p);
   } else if (table == 'e') {
     process_with_table<gemmi::C4322<double>>(use_st, st, small, 0., false, p);
+  } else if (table == 'n') {
+    process_with_table<gemmi::Neutron92<double>>(use_st, st, small, 0., false, p);
   }
 }
 
