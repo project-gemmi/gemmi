@@ -29,7 +29,7 @@ using gemmi::Restraints;
 
 namespace {
 
-enum OptionIndex { Monomers=4, NoHydrogens, KeepHydrogens, NoZeroOccRestr };
+enum OptionIndex { Monomers=4, Libin, NoHydrogens, KeepHydrogens, NoZeroOccRestr };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -42,6 +42,8 @@ const option::Descriptor Usage[] = {
   CommonUsage[Verbose],
   { Monomers, 0, "", "monomers", Arg::Required,
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
+  { Libin, 0, "", "libin", Arg::Required,
+    "  --libin=CIF  \tCustom additions to the monomer library." },
   { NoHydrogens, 0, "H", "no-hydrogens", Arg::None,
     "  -H, --no-hydrogens  \tRemove or do not add hydrogens." },
   { KeepHydrogens, 0, "", "keep-hydrogens", Arg::None,
@@ -404,11 +406,15 @@ int GEMMI_MAIN(int argc, char **argv) {
       return 1;
     }
     gemmi::Model& model0 = st.models[0];
+    std::string libin;
+    if (p.options[Libin])
+      libin = p.options[Libin].arg;
     if (verbose)
       printf("Reading monomer library...\n");
     gemmi::MonLib monlib = gemmi::read_monomer_lib(monomer_dir,
-                                                model0.get_all_residue_names(),
-                                                gemmi::read_cif_gz);
+                                                   model0.get_all_residue_names(),
+                                                   gemmi::read_cif_gz,
+                                                   libin);
 
     Topo topo;
     topo.warnings = &std::cerr;

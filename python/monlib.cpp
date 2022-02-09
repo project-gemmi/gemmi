@@ -94,6 +94,9 @@ void add_monlib(py::module& m) {
     .def("insert_comp_list", [](MonLib &self, const cif::Document &doc) {
         insert_comp_list(doc, self.residue_infos);
     })
+    .def("read_monomer_cif", [](MonLib& self, const std::string& path) {
+      return self.read_monomer_cif(path, gemmi::read_cif_gz);
+    })
     .def("path", &MonLib::path, py::arg("code")=nullptr)
     .def("__repr__", [](const MonLib& self) {
         return "<gemmi.MonLib with " +
@@ -104,12 +107,11 @@ void add_monlib(py::module& m) {
 
   m.def("read_monomer_lib", [](const std::string& monomer_dir,
                                const std::vector<std::string>& resnames,
+                               const std::string& libin,
                                bool ignore_missing) {
-    return read_monomer_lib(monomer_dir, resnames, gemmi::read_cif_gz, ignore_missing);
-  }, py::arg("monomer_dir"), py::arg("resnames"), py::arg("ignore_missing")=false);
-  m.def("read_monomer_cif", [](const std::string& path) {
-    return read_monomer_cif(path, gemmi::read_cif_gz);
-  });
+    return read_monomer_lib(monomer_dir, resnames, gemmi::read_cif_gz, libin, ignore_missing);
+  }, py::arg("monomer_dir"), py::arg("resnames"), py::arg("libin")=std::string(),
+     py::arg("ignore_missing")=false);
 
   py::class_<BondIndex>(m, "BondIndex")
     .def(py::init<const Model&>(), py::keep_alive<1, 2>())

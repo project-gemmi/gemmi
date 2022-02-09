@@ -21,6 +21,8 @@
 
 namespace gemmi {
 
+typedef cif::Document (*read_cif_func)(const std::string&);
+
 inline void add_distinct_altlocs(const Residue& res, std::string& altlocs) {
   for (const Atom& atom : res.atoms)
     if (atom.altloc && altlocs.find(atom.altloc) == std::string::npos)
@@ -533,7 +535,6 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
     }
 }
 
-
 struct MonLib {
   cif::Document mon_lib_list;
   std::map<std::string, ChemComp> monomers;
@@ -628,32 +629,30 @@ struct MonLib {
     path += ".cif";
     return path;
   }
+
+  void read_monomer_cif(const std::string& path, read_cif_func read_cif) {
+    mon_lib_list = (*read_cif)(path);
+    for (const cif::Block& block : mon_lib_list.blocks)
+      add_monomer_if_present(block);
+    insert_chemlinks(mon_lib_list, links);
+    insert_chemmods(mon_lib_list, modifications);
+    insert_comp_list(mon_lib_list, residue_infos);
+  }
 };
-
-typedef cif::Document (*read_cif_func)(const std::string&);
-
-inline MonLib read_monomer_cif(const std::string& path,
-                               read_cif_func read_cif) {
-  MonLib monlib;
-  monlib.mon_lib_list = (*read_cif)(path);
-  for (const cif::Block& block : monlib.mon_lib_list.blocks)
-    monlib.add_monomer_if_present(block);
-  insert_chemlinks(monlib.mon_lib_list, monlib.links);
-  insert_chemmods(monlib.mon_lib_list, monlib.modifications);
-  insert_comp_list(monlib.mon_lib_list, monlib.residue_infos);
-  return monlib;
-}
 
 inline MonLib read_monomer_lib(std::string monomer_dir,
                                const std::vector<std::string>& resnames,
                                read_cif_func read_cif,
+                               const std::string& libin="",
                                bool ignore_missing=false) {
   if (monomer_dir.empty())
     fail("read_monomer_lib: monomer_dir not specified.");
   if (monomer_dir.back() != '/' && monomer_dir.back() != '\\')
     monomer_dir += '/';
-  MonLib monlib = read_monomer_cif(monomer_dir + "list/mon_lib_list.cif",
-                                   read_cif);
+  MonLib monlib;
+  if (!libin.empty())
+    monlib.read_monomer_cif(libin, read_cif);
+  monlib.read_monomer_cif(monomer_dir + "list/mon_lib_list.cif", read_cif);
   std::string error;
   for (const std::string& name : resnames) {
     try {
