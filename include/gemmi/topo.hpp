@@ -116,6 +116,7 @@ struct Topo {
 
     ChainInfo(ResidueSpan& subchain, const Chain& chain, const Entity* ent);
     void setup_polymer_links();
+    void disable_polymer_link(const Connection& conn);
     void add_refmac_builtin_modifications();
     struct RGroup {
       std::vector<ResInfo>::iterator begin, end;
@@ -392,6 +393,22 @@ inline void Topo::ChainInfo::setup_polymer_links() {
   }
 }
 
+inline void Topo::ChainInfo::disable_polymer_link(const Connection& conn) {
+  const AtomAddress& a1 = conn.partner1;
+  const AtomAddress& a2 = conn.partner2;
+  if (a1.chain_name == chain_ref.name && a2.chain_name == chain_ref.name)
+    for (ResInfo& ri : res_infos)
+      for (Link& link : ri.prev) {
+        assert(link.res1 && link.res2);
+        if ((a1.res_id.matches_noseg(*link.res1) && a2.res_id.matches_noseg(*link.res2)) ||
+            (a2.res_id.matches_noseg(*link.res1) && a1.res_id.matches_noseg(*link.res2))) {
+          // don't assign the actual name here to avoid applying it twice
+          link.link_id = "?";
+          break;
+        }
+      }
+}
+
 inline void Topo::ChainInfo::add_refmac_builtin_modifications() {
   if (polymer && !res_infos.empty()) {
     // we try to get exactly the same numbers that makecif produces
@@ -447,6 +464,11 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
     }
 
     ci.setup_polymer_links();
+
+    // If a polymer links is given explicitly (LINK/struct_conn),
+    // don't use the standard link.
+    for (const Connection& conn : st.connections)
+      ci.disable_polymer_link(conn);
 
     ci.add_refmac_builtin_modifications();
 
