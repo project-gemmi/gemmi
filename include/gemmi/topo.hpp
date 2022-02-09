@@ -421,6 +421,8 @@ inline Restraints::Bond bond_restraint_from_connection(const Connection& conn) {
   bond.aromatic = false;
   bond.value = conn.reported_distance;
   bond.esd = 0.02;
+  bond.value_nucleus = conn.reported_distance;
+  bond.esd_nucleus = 0.02;
   return bond;
 }
 
