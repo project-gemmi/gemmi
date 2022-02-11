@@ -66,7 +66,7 @@ public:
       "& SIG{prev}                L pdbx_F_plus_sigma",
       "? F(-)|FOBS(-)|F-obs(-)    G pdbx_F_minus",
       "& SIG{prev}                L pdbx_F_minus_sigma",
-      "? FREE|RFREE|FREER|FreeR_flag|R-free-flags I status S",
+      "? FREE|RFREE|FREER|FreeR_flag|R-free-flags|FreeRflag I status S",
       "? FWT|2FOFCWT              F pdbx_FWT",
       "& PHWT|PH2FOFCWT           P pdbx_PHWT .3f",
       "? DELFWT|FOFCWT            F pdbx_DELFWT",
