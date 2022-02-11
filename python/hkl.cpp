@@ -288,7 +288,7 @@ void add_hkl(py::module& m) {
         auto h = hkl.unchecked<2>();
         if (h.shape(1) != 3)
           throw std::domain_error("the hkl array must have size N x 3");
-        int len = h.shape(0);
+        auto len = h.shape(0);
         int hint = 0;
         py::array_t<int> arr(len);
         int* ptr = (int*) arr.request().ptr;
@@ -299,7 +299,7 @@ void add_hkl(py::module& m) {
     .def("get_bin_numbers_from_1_d2", [](Binner& self, py::array_t<double> inv_d2) {
         self.ensure_limits_are_set();
         auto v = inv_d2.unchecked<1>();
-        int len = v.shape(0);
+        auto len = v.shape(0);
         int hint = 0;
         py::array_t<int> arr(len);
         int* ptr = (int*) arr.request().ptr;

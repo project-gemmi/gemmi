@@ -378,6 +378,7 @@ struct Mtz {
   }
 
   Column* rfree_column() {
+    // cf. MtzToCif::default_spec in mtz2cif.hpp
     return column_with_type_and_one_of_labels('I',
         {"FREE", "RFREE", "FREER", "FreeR_flag", "R-free-flags", "FreeRflag"});
   }
@@ -1058,22 +1059,21 @@ struct Mtz {
     data.resize(columns.size() * nreflections);
   }
 
-  void expand_data_rows(int added, int pos=-1) {
-    int old_row_size = (int) columns.size() - added;
-    if (added < 0 || (int) data.size() != old_row_size * nreflections)
+  void expand_data_rows(size_t added, int pos_=-1) {
+    size_t old_row_size = columns.size() - added;
+    if (data.size() != old_row_size * nreflections)
       fail("Internal error");
     data.resize(columns.size() * nreflections);
-    if (pos == -1)
-      pos = old_row_size;
-    else if (pos < 0 || pos > old_row_size)
+    size_t pos = pos_ == -1 ? old_row_size : (size_t) pos_;
+    if (pos > old_row_size)
       fail("expand_data_rows(): pos out of range");
     std::vector<float>::iterator dst = data.end();
     for (int i = nreflections; i-- != 0; ) {
-      for (int j = old_row_size; j-- != pos; )
+      for (size_t j = old_row_size; j-- != pos; )
         *--dst = data[i * old_row_size + j];
-      for (int j = added; j-- != 0; )
+      for (size_t j = added; j-- != 0; )
         *--dst = NAN;
-      for (int j = pos; j-- != 0; )
+      for (size_t j = pos; j-- != 0; )
         *--dst = data[i * old_row_size + j];
     }
     assert(dst == data.begin());
