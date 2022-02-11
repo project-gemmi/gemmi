@@ -110,15 +110,10 @@ jobs:
       CXX: clang++-3.9
     steps:
     - uses: actions/checkout@v2
-    - run: sudo apt-get install libz-dev python3-pip clang-3.9 python3-setuptools python3-numpy
+    - run: sudo apt-get install libz-dev clang-3.9
     - name: install pybind11
       run: |
-        cmake --version
-        git clone --depth=1 https://github.com/pybind/pybind11.git
-        cd pybind11
-        cmake -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python -DPYBIND11_TEST=OFF .
-        make
-        sudo make install
+        sudo /usr/bin/python -m pip install "pybind11[global]"
     - name: build and test
       run: |
         $CXX --version
