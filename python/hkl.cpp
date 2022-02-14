@@ -242,12 +242,10 @@ void add_hkl(py::module& m) {
 
   py::class_<Binner> binner(m, "Binner");
   py::enum_<Binner::Method>(binner, "Method")
-      .value("Dstar3", Binner::Method::Dstar3)
-      .value("Dstar2", Binner::Method::Dstar2)
-      .value("Dstar", Binner::Method::Dstar)
-      .value("LogDstar", Binner::Method::LogDstar)
       .value("EqualCount", Binner::Method::EqualCount)
-      .value("Refmac", Binner::Method::Refmac)
+      .value("Dstar", Binner::Method::Dstar)
+      .value("Dstar2", Binner::Method::Dstar2)
+      .value("Dstar3", Binner::Method::Dstar3)
       ;
   binner
     .def(py::init<>())

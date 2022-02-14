@@ -13,12 +13,10 @@ namespace gemmi {
 
 struct Binner {
   enum class Method {
-    Dstar3,
-    Dstar2,
-    Dstar,
-    LogDstar,
     EqualCount,
-    Refmac,
+    Dstar,
+    Dstar2,
+    Dstar3,
   };
 
   int setup_from_1_d2(int nbins, Method method, std::vector<double>&& inv_d2,
@@ -45,30 +43,35 @@ struct Binner {
           max_1_d2 = x;
       }
     }
-    if (method == Method::EqualCount) {
-      double avg_count = double(inv_d2.size()) / nbins;
-      for (int i = 1; i < nbins; ++i)
-        bin_limits[i-1] = inv_d2[int(avg_count * i)];
-    } else if (method == Method::Dstar2) {
-      double step = (max_1_d2 - min_1_d2) / nbins;
-      for (int i = 1; i < nbins; ++i)
-        bin_limits[i-1] = min_1_d2 + i * step;
-    } else if (method == Method::Dstar) {
-      double min_1_d = std::sqrt(min_1_d2);
-      double max_1_d = std::sqrt(max_1_d2);
-      double step = (max_1_d - min_1_d) / nbins;
-      for (int i = 1; i < nbins; ++i)
-        bin_limits[i-1] = sq(min_1_d + i * step);
-    } else if (method == Method::Dstar3) {
-      double min_1_d3 = min_1_d2 * std::sqrt(min_1_d2);
-      double max_1_d3 = max_1_d2 * std::sqrt(max_1_d2);
-      double step = (max_1_d3 - min_1_d3) / nbins;
-      for (int i = 1; i < nbins; ++i)
-        bin_limits[i-1] = sq(std::cbrt(min_1_d3 + i * step));
-    } else if (method == Method::LogDstar) {
-      // TODO
-    } else if (method == Method::Refmac) {
-      // TODO
+    switch (method) {
+      case Method::EqualCount: {
+        double avg_count = double(inv_d2.size()) / nbins;
+        for (int i = 1; i < nbins; ++i)
+          bin_limits[i-1] = inv_d2[int(avg_count * i)];
+        break;
+      }
+      case Method::Dstar2: {
+        double step = (max_1_d2 - min_1_d2) / nbins;
+        for (int i = 1; i < nbins; ++i)
+          bin_limits[i-1] = min_1_d2 + i * step;
+        break;
+      }
+      case Method::Dstar: {
+        double min_1_d = std::sqrt(min_1_d2);
+        double max_1_d = std::sqrt(max_1_d2);
+        double step = (max_1_d - min_1_d) / nbins;
+        for (int i = 1; i < nbins; ++i)
+          bin_limits[i-1] = sq(min_1_d + i * step);
+        break;
+      }
+      case Method::Dstar3: {
+        double min_1_d3 = min_1_d2 * std::sqrt(min_1_d2);
+        double max_1_d3 = max_1_d2 * std::sqrt(max_1_d2);
+        double step = (max_1_d3 - min_1_d3) / nbins;
+        for (int i = 1; i < nbins; ++i)
+          bin_limits[i-1] = sq(std::cbrt(min_1_d3 + i * step));
+        break;
+      }
     }
     bin_limits.back() = std::numeric_limits<double>::infinity();
     return (int) bin_limits.size();

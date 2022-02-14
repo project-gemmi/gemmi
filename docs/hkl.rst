@@ -1003,7 +1003,7 @@ TBD
 .. _asu_data:
 
 AsuData: merged reflections
-=============================
+===========================
 
 AsuData is an array of symmetry-unique Miller indices and values.
 
@@ -1109,6 +1109,22 @@ object. In this example we exclude low-resolution data:
   ...                      asu_data.value_array[d<8])
   <gemmi.ComplexAsuData with 399 values>
 
+
+Resolution bins
+===============
+
+Reflections are often analysed in resolution shells (bins).
+For this, we have a class that first, during setup, calculates bin boundaries.
+Then it can map Miller indices to bin numbers.
+
+We have four methods (Binner.Method) to set up bins:
+
+* EqualCount -- each bin has (if possible) equal number of reflections,
+* Dstar  -- bin widths are uniform in *d*:sup:`-1`,
+* Dstar2 -- bin widths are uniform in *d*:sup:`-2`,
+* Dstar3 -- bin widths are uniform in *d*:sup:`-3`.
+
+TBC
 
 Reciprocal-space grid
 =====================
