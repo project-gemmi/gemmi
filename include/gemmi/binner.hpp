@@ -133,6 +133,13 @@ struct Binner {
     return nums;
   }
 
+  double get_bin_dmin(int n) const {
+    return 1. / std::sqrt(n == 0 ? min_1_d2 : bin_limits.at(n-1));
+  }
+  double get_bin_dmax(int n) const {
+    return 1. / std::sqrt(bin_limits.at(n));
+  }
+
   size_t bin_count() const { return bin_limits.size(); }
 
   UnitCell cell;

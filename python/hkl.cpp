@@ -305,6 +305,8 @@ void add_hkl(py::module& m) {
           ptr[i] = self.get_bin_number_from_1_d2_hinted(v(i), hint);
         return arr;
     })
+    .def("get_bin_dmin", &Binner::get_bin_dmin)
+    .def("get_bin_dmax", &Binner::get_bin_dmax)
     .def("bin_count", &Binner::bin_count)
     .def_readonly("bin_limits", &Binner::bin_limits)
     .def_readwrite("cell", &Binner::cell)
