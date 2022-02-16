@@ -3,6 +3,7 @@
 #include "common.h"
 #include <pybind11/stl.h>
 #include <pybind11/complex.h>
+#include <pybind11/numpy.h>    // for vectorize
 #include "gemmi/scaling.hpp"
 
 namespace py = pybind11;
@@ -24,7 +25,18 @@ void add_scaling(py::module& m) {
     .def("fit_isotropic_b_approximately", &Scaling::fit_isotropic_b_approximately)
     .def("fit_parameters", &Scaling::fit_parameters)
     .def("get_overall_scale_factor", &Scaling::get_overall_scale_factor, py::arg("hkl"))
-    .def("get_solvent_scale", &Scaling::get_solvent_scale, py::arg("stol2"))
+    .def("get_overall_scale_factor", [](const Scaling& self, py::array_t<int> hkl) {
+        auto h = hkl.unchecked<2>();
+        if (h.shape(1) != 3)
+          throw std::domain_error("the hkl array must have size N x 3");
+        int len = h.shape(0);
+        py::array_t<double> arr(len);
+        double* ptr = (double*) arr.request().ptr;
+        for (int i = 0; i < len; ++i)
+          ptr[i] = self.get_overall_scale_factor({{h(i, 0), h(i, 1), h(i, 2)}});
+        return arr;
+    })
+    .def("get_solvent_scale", py::vectorize(&Scaling::get_solvent_scale), py::arg("stol2"))
     .def("scale_data", &Scaling::scale_data,
          py::arg("asu_data"), py::arg("mask_data")=FPhiData())
     .def("scale_value", &Scaling::scale_value,
