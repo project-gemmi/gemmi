@@ -1060,7 +1060,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   if (groups.conn)
     impl::write_struct_conn(st, block);
 
-  if ( groups.cis) {  // _struct_mon_prot_cis
+  if (groups.cis) {  // _struct_mon_prot_cis
     cif::Loop& prot_cis_loop = block.init_mmcif_loop("_struct_mon_prot_cis.",
         {"pdbx_id", "pdbx_PDB_model_num", "label_asym_id", "label_seq_id",
          "auth_asym_id", "auth_seq_id", "pdbx_PDB_ins_code",
@@ -1071,7 +1071,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
           if (res.is_cis)
             prot_cis_loop.add_row({to_string(prot_cis_loop.length()+1),
                                    model.name, impl::subchain_or_dot(res),
-                                   res.label_seq.str(), impl::qchain(chain.name),
+                                   res.label_seq.str('.'), impl::qchain(chain.name),
                                    res.seqid.num.str(), impl::pdbx_icode(res),
                                    res.name, "."});
   }
