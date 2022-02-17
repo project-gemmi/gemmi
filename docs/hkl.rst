@@ -982,6 +982,7 @@ files. The latter is often included in the coordinate cif file,
 as a text value of _shelx_hkl_file:
 
 .. doctest::
+  :skipif: sys.platform == 'win32'  # autocrlf could add '\r'
 
   >>> cif_doc = gemmi.cif.read('../tests/4003024.cif')
   >>> hkl_str = gemmi.cif.as_string(cif_doc[0].find_value('_shelx_hkl_file'))
