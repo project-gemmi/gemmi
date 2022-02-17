@@ -60,7 +60,13 @@ jobs:
     - name: build and test
       run: |
         python -m pip install -v .
+        python -m pip install numpy
         python -m unittest discover -v -s tests/
+    - name: run doctest
+      working-directory: ./docs
+      run: |
+        python -m pip install sphinx
+        sphinx-build -M doctest . _build -n -E
 
 
   ubuntu2004:

@@ -1162,8 +1162,8 @@ The unit cell and the upper bin boundaries (in Å\ :sup:`--2`) are stored intern
 
   >>> binner.cell
   <gemmi.UnitCell(50.347, 4.777, 14.746, 90, 101.73, 90)>
-  >>> binner.limits
-  [0.12224713046942721, 0.19395414269012246, 0.25410766637941556, inf]
+  >>> binner.limits  # doctest: +ELLIPSIS
+  [0.12224713046942721, 0.19395414269012246, 0.254107666379415..., inf]
   >>> binner.size  # number of bins
   4
 
@@ -1198,7 +1198,7 @@ Similarly to the setup functions above, the argument can be Mtz,
 ReflnBlock, array of Miller indices or array of *d*:sup:`--2`:
 
 .. doctest::
-  :skipif: numpy is None
+  :skipif: numpy is None or sys.platform == 'win32'
 
   >>> binner.get_bins(mtz)
   array([3, 3, 3, ..., 3, 3, 3], dtype=int32)
