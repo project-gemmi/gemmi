@@ -225,23 +225,23 @@ class TestBinner(unittest.TestCase):
         binner = gemmi.Binner()
         method = gemmi.Binner.Method.Dstar3
         binner.setup(17, method, mtz)
-        check_limits_17(binner.bin_limits)
-        self.assertEqual(binner.bin_count(), 17)
+        check_limits_17(binner.limits)
+        self.assertEqual(binner.size, 17)
         binner = gemmi.Binner()
         binner.setup(17, method, mtz, cell=mtz.cell)
-        check_limits_17(binner.bin_limits)
-        self.assertEqual(binner.get_bin_number([3,3,3]), 9)
+        check_limits_17(binner.limits)
+        self.assertEqual(binner.get_bin([3,3,3]), 9)
         if numpy is None:
             return
         binner.setup(17, method, mtz.make_miller_array(), cell=mtz.cell)
-        check_limits_17(binner.bin_limits)
+        check_limits_17(binner.limits)
         binner.setup_from_1_d2(17, method, mtz.make_1_d2_array(), mtz.cell)
-        check_limits_17(binner.bin_limits)
+        check_limits_17(binner.limits)
         hkls = [[0,0,1], [3,3,3], [10,10,10]]
         bins = [0,9,16]
-        self.assertEqual(list(binner.get_bin_numbers(hkls)), bins)
+        self.assertEqual(list(binner.get_bins(hkls)), bins)
         inv_d2 = [mtz.cell.calculate_1_d2(h) for h in hkls]
-        self.assertEqual(list(binner.get_bin_numbers_from_1_d2(inv_d2)), bins)
+        self.assertEqual(list(binner.get_bins_from_1_d2(inv_d2)), bins)
 
 if __name__ == '__main__':
     unittest.main()

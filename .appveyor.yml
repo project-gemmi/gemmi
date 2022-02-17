@@ -5,7 +5,7 @@
       - arch: x64
         CMAKE_GENERATOR: Visual Studio 17 2022
         CMAKE_CONFIG: Release
-        CMAKE_ARGS: -DCMAKE_CXX_STANDARD=14 -DUSE_PYTHON=1 -DPYTHON_EXECUTABLE="C:\\Python310-x64\\python.exe"
+        CMAKE_ARGS: -DCMAKE_CXX_STANDARD=20 -DUSE_PYTHON=1 -DPYTHON_EXECUTABLE="C:\\Python310-x64\\python.exe"
         APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
         PY_PYTHON: 3.10
         USE_PIP: 1

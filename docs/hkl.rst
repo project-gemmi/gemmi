@@ -1113,18 +1113,236 @@ object. In this example we exclude low-resolution data:
 Resolution bins
 ===============
 
-Reflections are often analysed in resolution shells (bins).
-For this, we have a class that first, during setup, calculates bin boundaries.
-Then it can map Miller indices to bin numbers.
+To analyse reflections in resolution shells (bins),
+we need to first calculate bin boundaries.
+Class Binner provides four ways (Binner.Method) of
+determining the boundaries:
 
-We have four methods (Binner.Method) to set up bins:
+* EqualCount -- each bin has (almost) equal number of reflections,
+* Dstar  -- bin widths are uniform in *d*:sup:`--1`,
+* Dstar2 -- bin widths are uniform in *d*:sup:`--2`,
+* Dstar3 -- bin widths are uniform in *d*:sup:`--3`.
 
-* EqualCount -- each bin has (if possible) equal number of reflections,
-* Dstar  -- bin widths are uniform in *d*:sup:`-1`,
-* Dstar2 -- bin widths are uniform in *d*:sup:`-2`,
-* Dstar3 -- bin widths are uniform in *d*:sup:`-3`.
+As a toy example, we will use a tiny MTZ file and 4 bins.
+The boundaries are set by one of the setup functions:
 
-TBC
+.. doctest::
+
+  >>> mtz = gemmi.read_mtz_file('../tests/5wkd_phases.mtz.gz')
+  >>> binner = gemmi.Binner()
+  >>> binner.setup(4, gemmi.Binner.Method.Dstar3, mtz)
+  4
+
+The MTZ file may contain multiple datasets with different unit cells.
+In such case we may explicitely specify the unit cell:
+
+.. doctest::
+
+  >>> binner.setup(4, gemmi.Binner.Method.Dstar3, mtz, cell=mtz.get_cell(1))
+  4
+
+Alternatively, the binner can be set up with ReflnBlock or with an array
+of *hkl* or *d*:sup:`--2`:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> binner.setup(4, gemmi.Binner.Method.Dstar3, rblock)
+  4
+  >>> binner.setup(4, gemmi.Binner.Method.Dstar3,
+  ...              mtz.make_miller_array(), mtz.get_cell())
+  4
+  >>> binner.setup_from_1_d2(4, gemmi.Binner.Method.Dstar3,
+  ...                        mtz.make_1_d2_array(), mtz.get_cell())
+  4
+
+The unit cell and the upper bin boundaries (in Å\ :sup:`--2`) are stored internally:
+
+.. doctest::
+
+  >>> binner.cell
+  <gemmi.UnitCell(50.347, 4.777, 14.746, 90, 101.73, 90)>
+  >>> binner.limits
+  [0.12224713046942721, 0.19395414269012246, 0.25410766637941556, inf]
+  >>> binner.size  # number of bins
+  4
+
+The minimum and maximum of *d*:sup:`--2` in the setup data is also stored,
+but it is not used when mapping *hkl* to bins. Reflections from outside
+the resolution range are put into the first or the last bin.
+
+.. doctest::
+
+  >>> print('%g %g' % (binner.min_1_d2, binner.max_1_d2))
+  0.00164605 0.307803
+
+Helper functions can return the limits of each bin in Å:
+
+.. doctest::
+
+  >>> print('%g - %g' % (binner.dmin_of_bin(2), binner.dmax_of_bin(2)))
+  1.98377 - 2.27065
+
+After the limits and the unit cell are set, the binner can assign
+reflections to bins:
+
+.. doctest::
+
+  >>> binner.get_bin((2,1,2))
+  0
+  >>> binner.get_bin((1,2,2))
+  2
+
+It is more efficient to get bin numbers for all reflections at once.
+Similarly to the setup functions above, the argument can be Mtz,
+ReflnBlock, array of Miller indices or array of *d*:sup:`--2`:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> binner.get_bins(mtz)
+  array([3, 3, 3, ..., 3, 3, 3], dtype=int32)
+  >>> # note: there are also 0's, 1's and 2's, but they are in the middle
+  >>> binner.get_bins(mtz.make_miller_array())
+  array([3, 3, 3, ..., 3, 3, 3], dtype=int32)
+  >>> binner.get_bins_from_1_d2(mtz.make_1_d2_array())
+  array([3, 3, 3, ..., 3, 3, 3], dtype=int32)
+
+These are all Binner's functions.
+Now we will show how the bin numbers can be used.
+First, let use ``numpy.bincount()`` to find out how many reflections
+are in each bin.
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> bins = binner.get_bins(mtz)
+  >>> counts = numpy.bincount(bins)
+  >>> for i in range(binner.size):
+  ...     print('bin %d d= %6.3f - %5.3f  count: %d' %
+  ...         (i+1, binner.dmax_of_bin(i), binner.dmin_of_bin(i), counts[i]))
+  bin 1 d= 24.648 - 2.860  count: 108
+  bin 2 d=  2.860 - 2.271  count: 86
+  bin 3 d=  2.271 - 1.984  count: 93
+  bin 4 d=  1.984 - 0.000  count: 80
+
+Now let's calculate R\ :sub:`work` and R\ :sub:`free` of the whole dataset.
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> # First find the needed MTZ columns and access them as NumPy arrays.
+  >>> fc = mtz.column_with_label('FC_ALL').array
+  >>> fo = mtz.column_with_label('FP').array
+  >>> sigma = mtz.column_with_label('SIGFP').array
+  >>> rfree = mtz.rfree_column().array
+  >>>
+  >>> # Then define a function to calculate R-factor.
+  >>> def calculate_rfactor(fo, fc):
+  ...   return numpy.nansum(numpy.abs(fo-fc)) / numpy.nansum(fo)
+  ...
+  >>> # And calculate the values (the free flags are 0/1 here).
+  >>> print('Rwork', calculate_rfactor(fo[rfree==0], fc[rfree==0]))
+  Rwork 0.16427532
+  >>> print('Rfree', calculate_rfactor(fo[rfree==1], fc[rfree==1]))
+  Rfree 0.19464952
+
+In the example above we use ``nansum`` to handle correctly NaN values
+that can be present in the data (missing observations).
+Sometimes it is easier to remove these NaNs first:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> present = ~numpy.isnan(fo)
+  >>> fc = fc[present]
+  >>> fo = fo[present]
+  >>> sigma = sigma[present]
+  >>> rfree = rfree[present]
+  >>> bins = bins[present]
+
+Before we get to calculation of R-factors in bins, let's try to calculate
+mean *F*:sub:`obs`/σ. We can use bincount with weights for this:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> numpy.bincount(bins, weights=fo/sigma) / numpy.bincount(bins) 
+  array([17.45109335, 14.27616408, 11.48073644,  9.47130558])
+
+The bincount function here would not handle correctly NaNs, and it can perform
+only summations. That's why gemmi provides similar bin-functions for the most
+common scenarios.
+For calculation of the mean (the same as above, but it skips NaNs):
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> gemmi.binmean(bins, fo/sigma)
+  array([17.45109335, 14.27616408, 11.48073644,  9.47130558])
+
+For calculation of the R-factors between two columns:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> gemmi.binrfactor(bins, obs=fo, calc=fc)
+  array([0.15737026, 0.20364942, 0.21249298, 0.2510972 ])
+
+And for calculation of the Pearson's correlations.
+This one returns a list of Correlation objects:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> correlations = gemmi.bincorr(bins, obs=fo, calc=fc)
+  >>> for n, c in enumerate(correlations):
+  ...    print('bin %d  n=%3d  CC=%g  <Fc>/<Fo>=%g' %
+  ...          (n+1, c.n, c.coefficient(), c.mean_ratio()))
+  bin 1  n=108  CC=0.968352  <Fc>/<Fo>=0.942802
+  bin 2  n= 86  CC=0.947074  <Fc>/<Fo>=0.944833
+  bin 3  n= 93  CC=0.871931  <Fc>/<Fo>=0.920127
+  bin 4  n= 80  CC=0.895339  <Fc>/<Fo>=0.97123
+
+Note that the bin numbers passed to these functions don't need to
+correspond to resolution shells.
+We could use the free flag value (which is here 0 or 1)
+as a bin number to calculate R\ :sub:`work`
+and R\ :sub:`free`:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> gemmi.binrfactor(rfree, obs=fo, calc=fc)
+  array([0.16427531, 0.19464953])
+
+And we could combine bin numbers and free flags to calculate R\ :sub:`work`
+and R\ :sub:`free` in each shell:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> n = binner.size
+  >>> bins_and_rfree = bins + n * (rfree == 0)
+  >>> r = gemmi.binrfactor(bins_and_rfree, fo, fc)
+  >>> for i in range(n):
+  ...   print('bin %d Rwork=%.4f Rfree=%.4f' % (i+1, r[i], r[n+i]))
+  ...
+  bin 1 Rwork=0.1545 Rfree=0.2898
+  bin 2 Rwork=0.2099 Rfree=0.1244
+  bin 3 Rwork=0.2208 Rfree=0.1349
+  bin 4 Rwork=0.2552 Rfree=0.1819
+
+The same trick works with bincount.
+One can calculate % of free reflections in shells as:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> counts = numpy.bincount(bins_and_rfree)
+  >>> 100. * counts[n:] / counts[:n]
+  array([6.93069307, 3.61445783, 9.41176471, 5.26315789])
+
 
 Reciprocal-space grid
 =====================
@@ -1597,7 +1815,7 @@ The electron form factors are parametrized as 5 Gaussians,
 using coefficients from International Tables for Crystallography
 Volume C, edition 2011, table 4.3.2.2 (pp. 282-283),
 "Elastic atomic scattering factors of electrons for neutral atoms
-and *s* up to 2.0 A\ :sup:`-1`".
+and *s* up to 2.0 A\ :sup:`--1`".
 The same parametrization is used in cctbx and in CCP4.
 
 In gemmi, were refer to these coefficients as C4322 (after the volume and

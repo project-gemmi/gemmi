@@ -274,14 +274,14 @@ void add_hkl(py::module& m) {
         auto len = inv_d2.shape(0);
         return self.setup_from_1_d2(nbins, method, std::vector<double>(ptr, ptr+len), cell);
     }, py::arg("nbins"), py::arg("method"), py::arg("inv_d2"), py::arg("cell"))
-    .def("get_bin_number", &Binner::get_bin_number)
-    .def("get_bin_numbers", [](Binner& self, const Mtz& mtz) {
-        return py_array_from_vector(self.get_bin_numbers(MtzDataProxy{mtz}));
+    .def("get_bin", &Binner::get_bin)
+    .def("get_bins", [](Binner& self, const Mtz& mtz) {
+        return py_array_from_vector(self.get_bins(MtzDataProxy{mtz}));
     })
-    .def("get_bin_numbers", [](Binner& self, const ReflnBlock& r) {
-        return py_array_from_vector(self.get_bin_numbers(ReflnDataProxy(r)));
+    .def("get_bins", [](Binner& self, const ReflnBlock& r) {
+        return py_array_from_vector(self.get_bins(ReflnDataProxy(r)));
     })
-    .def("get_bin_numbers", [](Binner& self, py::array_t<int> hkl) {
+    .def("get_bins", [](Binner& self, py::array_t<int> hkl) {
         self.ensure_limits_are_set();
         auto h = hkl.unchecked<2>();
         if (h.shape(1) != 3)
@@ -291,10 +291,10 @@ void add_hkl(py::module& m) {
         py::array_t<int> arr(len);
         int* ptr = (int*) arr.request().ptr;
         for (int i = 0; i < len; ++i)
-          ptr[i] = self.get_bin_number_hinted({{h(i, 0), h(i, 1), h(i, 2)}}, hint);
+          ptr[i] = self.get_bin_hinted({{h(i, 0), h(i, 1), h(i, 2)}}, hint);
         return arr;
     })
-    .def("get_bin_numbers_from_1_d2", [](Binner& self, py::array_t<double> inv_d2) {
+    .def("get_bins_from_1_d2", [](Binner& self, py::array_t<double> inv_d2) {
         self.ensure_limits_are_set();
         auto v = inv_d2.unchecked<1>();
         auto len = v.shape(0);
@@ -302,13 +302,15 @@ void add_hkl(py::module& m) {
         py::array_t<int> arr(len);
         int* ptr = (int*) arr.request().ptr;
         for (int i = 0; i < len; ++i)
-          ptr[i] = self.get_bin_number_from_1_d2_hinted(v(i), hint);
+          ptr[i] = self.get_bin_from_1_d2_hinted(v(i), hint);
         return arr;
     })
-    .def("get_bin_dmin", &Binner::get_bin_dmin)
-    .def("get_bin_dmax", &Binner::get_bin_dmax)
-    .def("bin_count", &Binner::bin_count)
-    .def_readonly("bin_limits", &Binner::bin_limits)
+    .def("dmin_of_bin", &Binner::dmin_of_bin)
+    .def("dmax_of_bin", &Binner::dmax_of_bin)
+    .def_property_readonly("size", &Binner::size)
+    .def_readonly("limits", &Binner::limits)
     .def_readwrite("cell", &Binner::cell)
+    .def_readonly("min_1_d2", &Binner::min_1_d2)
+    .def_readonly("max_1_d2", &Binner::max_1_d2)
     ;
 }
