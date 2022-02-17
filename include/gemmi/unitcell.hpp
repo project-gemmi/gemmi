@@ -86,10 +86,16 @@ struct NearestImage {
     return pbc_shift[0] == 0 && pbc_shift[1] == 0 && pbc_shift[2] == 0 && sym_idx == 0;
   }
   std::string symmetry_code(bool underscore) const {
-    char nnn[4] = "555";
-    for (int i = 0; i < 3; ++i)
-      nnn[i] += pbc_shift[i];
-    return std::to_string(sym_idx + 1) + (underscore ? "_" : "") + nnn;
+    std::string s = std::to_string(sym_idx + 1);
+    if (underscore)
+      s += '_';
+    for (int i = 0; i < 3; ++i) {
+      if (std::abs(pbc_shift[i]) < 4)
+        s += char('5' + pbc_shift[i]);  // quick path
+      else
+        s += "(" + std::to_string(5 + pbc_shift[i]) + ")";
+    }
+    return s;
   }
 };
 
