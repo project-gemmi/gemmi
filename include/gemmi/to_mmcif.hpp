@@ -256,12 +256,13 @@ void add_cif_atoms(const Structure& st, cif::Block& block, bool use_group_pdb) {
     block.find_mmcif_category("_atom_site_anisotrop.").erase();
   } else {
     cif::Loop& aniso_loop = block.init_mmcif_loop("_atom_site_anisotrop.", {
-                                    "id", "U[1][1]", "U[2][2]", "U[3][3]",
-                                    "U[1][2]", "U[1][3]", "U[2][3]"});
+                                  "id", "type_symbol", "U[1][1]", "U[2][2]",
+                                  "U[3][3]", "U[1][2]", "U[1][3]", "U[2][3]"});
     std::vector<std::string>& aniso_val = aniso_loop.values;
     aniso_val.reserve(aniso_loop.tags.size() * aniso.size());
     for (const auto& a : aniso) {
       aniso_val.emplace_back(std::to_string(a.first));
+      aniso_val.emplace_back(a.second->element.uname());
       aniso_val.emplace_back(to_str(a.second->aniso.u11));
       aniso_val.emplace_back(to_str(a.second->aniso.u22));
       aniso_val.emplace_back(to_str(a.second->aniso.u33));
