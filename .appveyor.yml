@@ -55,12 +55,12 @@
   - py -c "import sys; print(sys.version+'\n'+sys.executable)"
   - if defined USE_SETUP_PY (py setup.py install)
   - cmd: '"%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
-  - if defined USE_PIP (py -m pip install --verbose --upgrade .)
 
   test_script:
   - ctest -C "%CMAKE_CONFIG%" --output-on-failure
   - py -m pip install numpy
   - if defined USE_PIP (py -m pip install pandas)
+  - set PYTHONPATH=.
   - py -m unittest discover -v -s tests/
   - if "%PY_PYTHON%"=="2.7-32" (appveyor exit)
   - cd docs
