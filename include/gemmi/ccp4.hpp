@@ -301,6 +301,12 @@ struct Ccp4 : public Ccp4Base {
 
 namespace impl {
 
+template<typename From, typename To>
+To translate_map_point(From f) { return static_cast<To>(f); }
+// We convert map 2 to 0 by translating non-zero values to 1.
+template<> inline
+std::int8_t translate_map_point<float,std::int8_t>(float f) { return f != 0; }
+
 template<typename Stream, typename TFile, typename TMem>
 void read_data(Stream& f, std::vector<TMem>& content) {
   if (typeid(TFile) == typeid(TMem)) {
@@ -315,7 +321,7 @@ void read_data(Stream& f, std::vector<TMem>& content) {
       if (!f.read(work.data(), sizeof(TFile) * len))
         fail("Failed to read all the data from the map file.");
       for (size_t j = 0; j < len; ++j)
-        content[i+j] = static_cast<TMem>(work[j]);
+        content[i+j] = translate_map_point<TFile,TMem>(work[j]);
     }
   }
 }
