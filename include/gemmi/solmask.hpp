@@ -283,8 +283,8 @@ struct SolventMasker {
     assert(!grid.data.empty());
     mask_points(grid, model);
     symmetrize(grid);
-    shrink(grid);
     remove_islands(grid);
+    shrink(grid);
   }
 
   void set_to_zero(Grid<float>& grid, const Model& model) const {
