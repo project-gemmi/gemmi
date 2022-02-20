@@ -2,6 +2,8 @@
 - update .github/workflows/wheels2.yml
   https://cibuildwheel.readthedocs.io/en/stable/setup/
 
+- check ./tools/upstream-check.py
+
 - update version in include/gemmi/version.hpp
 - bash ./run-tests.sh a
 - VERSION=$(grep -Po '\d\.\d\.\d' include/gemmi/version.hpp)
