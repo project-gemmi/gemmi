@@ -10,7 +10,7 @@ from urllib.request import urlopen
 TAGGED_REPOS = {
     'pybind/pybind11': 'v2.6.1',
     'taocpp/PEGTL': '2.4.0',
-    'cxong/tinydir': '1.2.4',
+    'cxong/tinydir': '1.2.5',
     #'madler/zlib': 'v1.2.11',
 }
 

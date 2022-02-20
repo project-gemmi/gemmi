@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2013-2018, tinydir authors:
+Copyright (c) 2013-2021, tinydir authors:
 - Cong Xu
 - Lautis Sun
 - Baudouin Feildel
@@ -125,8 +125,13 @@ extern "C" {
 # define _TINYDIR_FUNC static __inline
 #elif !defined __STDC_VERSION__ || __STDC_VERSION__ < 199901L
 # define _TINYDIR_FUNC static __inline__
-#else
+#elif defined(__cplusplus)
 # define _TINYDIR_FUNC static inline
+#elif defined(__GNUC__)
+/* Suppress unused function warning */
+# define _TINYDIR_FUNC __attribute__((unused)) static
+#else
+# define _TINYDIR_FUNC static
 #endif
 
 /* readdir_r usage; define TINYDIR_USE_READDIR_R to use it (if supported) */
@@ -534,7 +539,8 @@ int tinydir_readfile(const tinydir_dir *dir, tinydir_file *file)
 	}
 
 	_tinydir_strcpy(file->path, dir->path);
-	_tinydir_strcat(file->path, TINYDIR_STRING("/"));
+	if (_tinydir_strcmp(dir->path, TINYDIR_STRING("/")) != 0)
+		_tinydir_strcat(file->path, TINYDIR_STRING("/"));
 	_tinydir_strcpy(file->name, filename);
 	_tinydir_strcat(file->path, filename);
 #ifndef _MSC_VER
@@ -543,7 +549,8 @@ int tinydir_readfile(const tinydir_dir *dir, tinydir_file *file)
 #elif (defined _BSD_SOURCE) || (defined _DEFAULT_SOURCE)	\
 	|| ((defined _XOPEN_SOURCE) && (_XOPEN_SOURCE >= 500))	\
 	|| ((defined _POSIX_C_SOURCE) && (_POSIX_C_SOURCE >= 200112L)) \
-  || (defined __APPLE__)  // local addition
+	|| ((defined __APPLE__) && (defined __MACH__)) \
+	|| (defined BSD)
 	if (lstat(
 #else
 	if (stat(
@@ -658,32 +665,32 @@ int tinydir_file_open(tinydir_file *file, const _tinydir_char_t *path)
 	/* Get the parent path */
 #if (defined _MSC_VER || defined __MINGW32__)
 #if ((defined _MSC_VER) && (_MSC_VER >= 1400))
-		errno = _tsplitpath_s(
-			path,
-			drive_buf, _TINYDIR_DRIVE_MAX,
-			dir_name_buf, _TINYDIR_FILENAME_MAX,
-			file_name_buf, _TINYDIR_FILENAME_MAX,
-			ext_buf, _TINYDIR_FILENAME_MAX);
+	errno = _tsplitpath_s(
+		path,
+		drive_buf, _TINYDIR_DRIVE_MAX,
+		dir_name_buf, _TINYDIR_FILENAME_MAX,
+		file_name_buf, _TINYDIR_FILENAME_MAX,
+		ext_buf, _TINYDIR_FILENAME_MAX);
 #else
-		_tsplitpath(
-			path,
-			drive_buf,
-			dir_name_buf,
-			file_name_buf,
-			ext_buf);
+	_tsplitpath(
+		path,
+		drive_buf,
+		dir_name_buf,
+		file_name_buf,
+		ext_buf);
 #endif
 
-if (errno)
-{
-	return -1;
-}
+	if (errno)
+	{
+		return -1;
+	}
 
 /* _splitpath_s not work fine with only filename and widechar support */
 #ifdef _UNICODE
-		if (drive_buf[0] == L'\xFEFE')
-			drive_buf[0] = '\0';
-		if (dir_name_buf[0] == L'\xFEFE')
-			dir_name_buf[0] = '\0';
+	if (drive_buf[0] == L'\xFEFE')
+		drive_buf[0] = '\0';
+	if (dir_name_buf[0] == L'\xFEFE')
+		dir_name_buf[0] = '\0';
 #endif
 
 	/* Emulate the behavior of dirname by returning "." for dir name if it's
@@ -698,21 +705,27 @@ if (errno)
 	/* Concatenate the file name and extension to form base name */
 	_tinydir_strcat(file_name_buf, ext_buf);
 	base_name = file_name_buf;
-	if (base_name[0] == '\0')
-	{
-		_tinydir_strcpy(file->path, dir_name);
-		file->name[0] = '\0';
-		file->extension = file->name;
-		file->is_dir = 1;
-		file->is_reg = 0;
-		return 0;
-	}
 #else
 	_tinydir_strcpy(dir_name_buf, path);
 	dir_name = dirname(dir_name_buf);
 	_tinydir_strcpy(file_name_buf, path);
-	base_name =basename(file_name_buf);
+	base_name = basename(file_name_buf);
 #endif
+
+	/* Special case: if the path is a root dir, open the parent dir as the file */
+#if (defined _MSC_VER || defined __MINGW32__)
+	if (_tinydir_strlen(base_name) == 0)
+#else
+	if ((_tinydir_strcmp(base_name, TINYDIR_STRING("/"))) == 0)
+#endif
+	{
+		memset(file, 0, sizeof * file);
+		file->is_dir = 1;
+		file->is_reg = 0;
+		_tinydir_strcpy(file->path, dir_name);
+		file->extension = file->path + _tinydir_strlen(file->path);
+		return 0;
+	}
 
 	/* Open the parent directory */
 	if (tinydir_open(&dir, dir_name) == -1)
