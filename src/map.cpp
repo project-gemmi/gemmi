@@ -218,7 +218,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           std::nth_element(data.begin(), data.begin() + n, data.end());
           threshold = data[n];
         } else {
-          std::fprintf(stderr, "You need to use --threshold or --fraction.\n");
+          std::fprintf(stderr, "ERROR: you need to use --threshold or --fraction.\n");
           return 2;
         }
         gemmi::Ccp4<std::int8_t> mask;
