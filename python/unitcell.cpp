@@ -184,7 +184,7 @@ void add_unitcell(py::module& m) {
     .def("inverse", &Transform::inverse)
     .def("apply", &Transform::apply)
     .def("is_identity", &Transform::is_identity)
-    .def("approx", &Transform::approx);
+    .def("approx", &Transform::approx, py::arg("other"), py::arg("epsilon"));
 
   py::class_<Correlation>(m, "Correlation")
     .def_readonly("n", &Correlation::n)
@@ -274,7 +274,7 @@ void add_unitcell(py::module& m) {
     .def("is_compatible_with_spacegroup", &UnitCell::is_compatible_with_spacegroup,
          py::arg("sg"), py::arg("eps")=1e-3)
     .def("is_crystal", &UnitCell::is_crystal)
-    .def("approx", &UnitCell::approx)
+    .def("approx", &UnitCell::approx, py::arg("other"), py::arg("epsilon"))
     .def("calculate_u_eq", &UnitCell::calculate_u_eq)
     .def("fractionalize", &UnitCell::fractionalize)
     .def("orthogonalize", &UnitCell::orthogonalize)
