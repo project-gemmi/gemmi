@@ -59,12 +59,21 @@ struct FloodFill {
       int u_ = r.lines[i].u;
       int v_ = r.lines[i].v;
       int w_ = r.lines[i].w;
-      int ulen = r.lines[i].ulen;
+      int ustart = u_ != 0 ? u_ - 1 : mask.nu - 1;
+      int ulen = std::min(mask.nu, r.lines[i].ulen + 2);
       // add adjacent lines
-      add_lines(u_, v_ != 0 ? v_ - 1 : mask.nv - 1, w_, ulen, r);
-      add_lines(u_, v_ + 1 != mask.nv ? v_ + 1 : 0, w_, ulen, r);
-      add_lines(u_, v_, w_ != 0 ? w_ - 1 : mask.nw - 1, ulen, r);
-      add_lines(u_, v_, w_ + 1 != mask.nw ? w_ + 1 : 0, ulen, r);
+      int vl = v_ != 0 ? v_ - 1 : mask.nv - 1;
+      int vh = v_ + 1 != mask.nv ? v_ + 1 : 0;
+      int wl = w_ != 0 ? w_ - 1 : mask.nw - 1;
+      int wh = w_ + 1 != mask.nw ? w_ + 1 : 0;
+      add_lines(ustart, vl, wl, ulen, r);
+      add_lines(ustart, vl, w_, ulen, r);
+      add_lines(ustart, vl, wh, ulen, r);
+      add_lines(ustart, v_, wl, ulen, r);
+      add_lines(ustart, v_, wh, ulen, r);
+      add_lines(ustart, vh, wl, ulen, r);
+      add_lines(ustart, vh, w_, ulen, r);
+      add_lines(ustart, vh, wh, ulen, r);
     }
     return r;
   }
