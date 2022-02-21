@@ -42,13 +42,18 @@ py::class_<GridBase<T>, GridMeta> add_grid_base(py::module& m, const char* name)
     });
 
   grid_base
-    .def_buffer([](GrBase &g) {
+    .def_buffer([](GrBase& g) {
       return py::buffer_info(g.data.data(),
                              {g.nu, g.nv, g.nw},       // dimensions
                              {sizeof(T),               // strides
                               sizeof(T) * g.nu,
                               sizeof(T) * g.nu * g.nv});
     })
+    .def_property_readonly("array", [](const GrBase& g) {
+      return py::array_t<T>({g.nu, g.nv, g.nw},
+                            {sizeof(T), sizeof(T) * g.nu, sizeof(T) * g.nu * g.nv},
+                            g.data.data(), py::cast(g));
+    }, py::return_value_policy::reference_internal)
     .def("point_to_index", &GrBase::point_to_index)
     .def("index_to_point", &GrBase::index_to_point)
     .def("fill", &GrBase::fill, py::arg("value"))

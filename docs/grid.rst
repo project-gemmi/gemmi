@@ -126,9 +126,16 @@ without copying the data:
   >>> numpy.argwhere(array == 7.0)
   array([[1, 1, 1]])
 
-(It does not make gemmi dependent on NumPy -- gemmi talks with NumPy
-through the buffer protocol, and it can talk with any other Python library
-that supports this protocol.)
+The buffer protocol is not specific to NumPy -- any other Python library
+that supports this protocol can directly access the grid data.
+Alternatively, the grid can be viewed as a NumPy array through
+the ``array`` property:
+
+.. doctest::
+  :skipif: numpy is None or sys.platform == 'win32'
+
+  >>> grid.array.shape
+  (12, 12, 12)
 
 Symmetry
 --------
