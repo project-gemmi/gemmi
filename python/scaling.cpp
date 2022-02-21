@@ -29,7 +29,7 @@ void add_scaling(py::module& m) {
         auto h = hkl.unchecked<2>();
         if (h.shape(1) != 3)
           throw std::domain_error("the hkl array must have size N x 3");
-        int len = h.shape(0);
+        auto len = h.shape(0);
         py::array_t<double> arr(len);
         double* ptr = (double*) arr.request().ptr;
         for (int i = 0; i < len; ++i)

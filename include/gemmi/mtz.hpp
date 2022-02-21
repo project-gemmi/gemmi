@@ -92,10 +92,10 @@ struct Mtz {
     bool has_data() const { return parent->has_data(); }
     int size() const { return has_data() ? parent->nreflections : 0; }
     size_t stride() const { return parent->columns.size(); }
-    float& operator[](int n) { return parent->data[idx + n * stride()]; }
-    float operator[](int n) const { return parent->data[idx + n * stride()]; }
-    float& at(int n) { return parent->data.at(idx + n * stride()); }
-    float at(int n) const { return parent->data.at(idx + n * stride()); }
+    float& operator[](std::size_t n) { return parent->data[idx + n * stride()]; }
+    float operator[](std::size_t n) const { return parent->data[idx + n * stride()]; }
+    float& at(std::size_t n) { return parent->data.at(idx + n * stride()); }
+    float at(std::size_t n) const { return parent->data.at(idx + n * stride()); }
     bool is_integer() const {
       return type == 'H' || type == 'B' || type == 'Y' || type == 'I';
     }
