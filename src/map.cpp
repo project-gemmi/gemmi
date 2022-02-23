@@ -173,12 +173,12 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (p.options[Deltas])
         print_deltas(map.grid, stats.dmin, stats.dmax);
       if (p.options[Reorder]) {
-        map.setup(gemmi::GridSetup::ReorderOnly, NAN);
+        map.setup(NAN, gemmi::MapSetup::ReorderOnly);
         map.write_ccp4_map(p.options[Reorder].arg);
       }
       if (p.options[CheckSym]) {
         // TODO check labels vs group numbers
-        double max_err = map.setup(gemmi::GridSetup::ResizeOnly, NAN);
+        double max_err = map.setup(NAN, gemmi::MapSetup::NoSymmetry);
         if (max_err != 0.0)
           std::printf("Max. difference for point images in P1: %g\n", max_err);
         const double eps = 0.01;
@@ -197,7 +197,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           std::printf("Max. difference in symmetry images: %g\n", max_err);
       }
       if (p.options[Full] || p.options[Mask]) {
-        double err = map.setup(gemmi::GridSetup::FullCheck, NAN);
+        double err = map.setup(NAN, gemmi::MapSetup::Full);
         if (err != 0.0)
           std::fprintf(stderr, "WARNING: different values for equivalent "
                                "points, max diff: %g\n", err);

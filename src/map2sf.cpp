@@ -59,7 +59,7 @@ void transform_map_to_sf(OptParser& p) {
     fprintf(stderr, "Reading %s ...\n", map_path);
   gemmi::Ccp4<float> map;
   map.read_ccp4(gemmi::MaybeGzipped(map_path));
-  map.setup(gemmi::GridSetup::Full, NAN);
+  map.setup(NAN);
   if (std::any_of(map.grid.data.begin(), map.grid.data.end(),
                   [](float x) { return std::isnan(x); }))
     gemmi::fail("Map does not cover all the ASU");

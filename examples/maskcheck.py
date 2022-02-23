@@ -13,8 +13,7 @@ import gemmi
 
 def maskcheck(mask_path, coor_path, output_diff_map=None):
     # read mask
-    mask = gemmi.read_ccp4_mask(mask_path)
-    mask.setup()
+    mask = gemmi.read_ccp4_mask(mask_path, setup=True)
     grid = mask.grid
 
     # read coordinates

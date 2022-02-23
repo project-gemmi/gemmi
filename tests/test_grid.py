@@ -21,7 +21,7 @@ class TestFloatGrid(unittest.TestCase):
         dmax = m.header_float(21)
         self.assertEqual(dmax, max(p.value for p in m.grid))
         self.assertNotEqual(m.grid.axis_order, gemmi.AxisOrder.XYZ)
-        m.setup()
+        m.setup(float('nan'))
         self.assertEqual(m.grid.axis_order, gemmi.AxisOrder.XYZ)
         self.assertEqual(m.grid.nu, 60)
         self.assertEqual(m.grid.nv, 24)

@@ -5,11 +5,9 @@ import numpy
 import gemmi
 
 def maskdiff(path1, path2):
-    mask1 = gemmi.read_ccp4_mask(path1)
-    mask1.setup()
+    mask1 = gemmi.read_ccp4_mask(path1, setup=True)
     arr1 = numpy.array(mask1.grid, copy=False)
-    mask2 = gemmi.read_ccp4_mask(path2)
-    mask2.setup()
+    mask2 = gemmi.read_ccp4_mask(path2, setup=True)
     arr2 = numpy.array(mask2.grid, copy=False)
     print("Size: %d x %d x %d  and  %d x %d x %d" % (arr1.shape + arr2.shape))
     if arr1.shape != arr2.shape:

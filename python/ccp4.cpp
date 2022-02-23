@@ -17,6 +17,8 @@ py::class_<T> add_ccp4_common(py::module& m, const char* name) {
   return py::class_<Map, Ccp4Base>(m, name)
     .def(py::init<>())
     .def_readwrite("grid", &Map::grid)
+    .def("setup", &Map::setup,
+         py::arg("default_value"), py::arg("mode")=MapSetup::Full)
     .def("update_ccp4_header", &Map::update_ccp4_header,
          py::arg("mode")=-1, py::arg("update_stats")=true)
     .def("full_cell", &Map::full_cell)
@@ -31,6 +33,11 @@ py::class_<T> add_ccp4_common(py::module& m, const char* name) {
 }
 
 void add_ccp4(py::module& m) {
+  py::enum_<MapSetup>(m, "MapSetup")
+    .value("Full", MapSetup::Full)
+    .value("NoSymmetry", MapSetup::NoSymmetry)
+    .value("ReorderOnly", MapSetup::ReorderOnly);
+
   py::class_<Ccp4Base>(m, "Ccp4Base")
     .def("header_i32", &Ccp4Base::header_i32)
     .def("header_float", &Ccp4Base::header_float)
@@ -44,14 +51,8 @@ void add_ccp4(py::module& m) {
     .def("get_skew_transformation", &Ccp4Base::get_skew_transformation)
     ;
 
-  add_ccp4_common<float>(m, "Ccp4Map")
-    .def("setup", [](Ccp4<float>& self, float default_value) {
-            self.setup(GridSetup::Full, default_value);
-         }, py::arg("default_value")=NAN);
-  add_ccp4_common<int8_t>(m, "Ccp4Mask")
-    .def("setup", [](Ccp4<int8_t>& self, int8_t default_value) {
-            self.setup(GridSetup::Full, default_value);
-         }, py::arg("default_value")=-1);
+  add_ccp4_common<float>(m, "Ccp4Map");
+  add_ccp4_common<int8_t>(m, "Ccp4Mask");
   m.def("read_ccp4_map", &read_ccp4_map,
         py::arg("path"), py::arg("setup")=false, py::return_value_policy::move,
         "Reads a CCP4 file, mode 2 (floating-point data).");

@@ -25,11 +25,10 @@ namespace gemmi {
 using std::int32_t;
 
 // options for Ccp4<>::setup
-enum class GridSetup {
-  ReorderOnly,  // reorder axes to X, Y, Z
-  ResizeOnly,   // reorder and resize to the whole cell, but no symmetry ops
+enum class MapSetup {
   Full,         // reorder and expand to the whole unit cell
-  FullCheck     // additionally, check consistency of redundant data
+  NoSymmetry,   // reorder and resize to the whole cell, but no symmetry ops
+  ReorderOnly   // reorder axes to X, Y, Z
 };
 
 struct Ccp4Base {
@@ -269,7 +268,7 @@ struct Ccp4 : public Ccp4Base {
     }
   }
 
-  double setup(GridSetup mode, T default_value);
+  double setup(T default_value, MapSetup mode=MapSetup::Full);
   void set_extent(const Box<Fractional>& box);
 
   template<typename Stream>
@@ -379,7 +378,7 @@ void Ccp4<T>::read_ccp4_stream(Stream f, const std::string& path) {
 }
 
 template<typename T>
-double Ccp4<T>::setup(GridSetup mode, T default_value) {
+double Ccp4<T>::setup(T default_value, MapSetup mode) {
   double max_error = 0.0;
   if (grid.axis_order == AxisOrder::XYZ || ccp4_header.empty())
     return max_error;
@@ -390,7 +389,7 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
   std::array<int, 3> start = header_3i32(5);
   int end[3] = { start[0] + grid.nu, start[1] + grid.nv, start[2] + grid.nw };
   // set new metadata
-  if (mode == GridSetup::ReorderOnly) {
+  if (mode == MapSetup::ReorderOnly) {
     set_header_3i32(5, start[pos[0]], start[pos[1]], start[pos[2]]);
     for (int i = 0; i < 3; ++i) {
       end[i] -= start[i];
@@ -420,12 +419,7 @@ double Ccp4<T>::setup(GridSetup mode, T default_value) {
         full[new_index] = val;
       }
   grid.data = std::move(full);
-  if (mode == GridSetup::Full) {
-    grid.axis_order = AxisOrder::XYZ;
-    grid.symmetrize([&default_value](T a, T b) {
-        return impl::is_same(a, default_value) ? b : a;
-    });
-  } else if (mode == GridSetup::FullCheck) {
+  if (mode == MapSetup::Full) {
     grid.axis_order = AxisOrder::XYZ;
     grid.symmetrize([&max_error, &default_value](T a, T b) {
         if (impl::is_same(a, default_value))

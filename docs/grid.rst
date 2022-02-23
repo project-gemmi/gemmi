@@ -691,36 +691,48 @@ If the grid changes, you may update the map header by calling
 setup()
 -------
 
-``read_ccp4_map()`` reads the data from file into a Grid class,
-keeping the same axis order and the same dimensions as in the file.
+``read_ccp4_map()`` and ``read_ccp4_mask()`` read the data from file
+into a Grid class, by default keeping the same axis order and the same
+dimensions as in the file.
 But the functions that operate on the grid data (such as ``get_position()``,
 ``interpolate_value()``, ``symmetrize()``) expect that the grid covers
 the whole unit cell and that the axes are in the X,Y,Z order.
 So before calling a function that uses either the symmetry or the unit
-cell parameters we need to setup the grid as required.
+cell parameters we need to *setup* the grid as required.
+You do this either by calling the reading function with the optional
+argument ``setup=True``, or by calling the ``setup()`` method afterwards.
 
-We do this by calling function ``setup()`` with two arguments.
-The first argument is one of:
+The setup function has two arguments.
+The first one is a value to be used for unknown values.
+It is used only when the input file does not cover a complete asymmetric unit.
+(If you used CCP4 program MAPMASK -- it is keyword PAD there).
+When you call a read function with setup=True,
+this argument is NaN for maps and -1 for masks.
 
-* ReorderOnly -- only reorders axes to X, Y, Z (usually not sufficient),
-* Full -- reorders and expands the grid to cover to the whole unit cell,
-* FullCheck --  additionally, checks consistency of redundant data.
+The second argument is optional and can be used to perform
+a partial setup only.
 
-The second argument is a value to be used for unknown values.
-It is used only when ``setup()`` expands the grid to cover the whole unit cell,
-but the input file does not cover the whole asymmetric unit.
+* MapSetup.Full -- (default value) reorders and resizes the grid to cover
+  the whole unit cell, applying symmetry.
+* MapSetup.NoSymmetry -- does not use symmetry when extending the map.
+* MapSetup.ReorderOnly -- only reorders axes to X, Y, Z.
+
+The setup function in the default mode checks the consistency of the data.
+If the data is redundant, the returned value is the biggest difference between
+equivalent points. In all other cases, it returns 0.
 
 **C++**
 
 ::
 
-    map.setup(GridSetup::Full, NAN);
+    map.setup(NAN);
 
 **Python**
 
 .. doctest::
 
-    >>> m.setup()  # gemmi.GridSetup.Full and NaN are the defaults
+    >>> m.setup(float('nan'))
+    0.0
     >>> # the grid dimensions were 8x6x10, now they are:
     >>> m.grid
     <gemmi.FloatGrid(60, 24, 60)>
@@ -779,7 +791,8 @@ To write a map that covers the same area as the original map, do:
 
     >>> m = gemmi.read_ccp4_map('../tests/5i55_tiny.ccp4')
     >>> box = m.get_extent()
-    >>> m.setup()
+    >>> m.setup(float('nan'))
+    0.0
     >>> # ... here the map gets modified ...
     >>> m.set_extent(box)
     >>> m.write_ccp4_map('out.ccp4')
@@ -795,8 +808,8 @@ set the grid, call ``update_ccp4_header()`` and write the file.
 
   >>> ccp4 = gemmi.Ccp4Map()
   >>> ccp4.grid = gemmi.FloatGrid(numpy.zeros((10, 10, 10), dtype=numpy.float32))
-  >>> ccp4.grid.spacegroup = gemmi.find_spacegroup_by_name('P1')
   >>> ccp4.grid.unit_cell.set(20, 20, 20, 90, 90, 90)
+  >>> ccp4.grid.spacegroup = gemmi.SpaceGroup('P1')
   >>> ccp4.update_ccp4_header()
   >>> ccp4.write_ccp4_map('out.ccp4')
 

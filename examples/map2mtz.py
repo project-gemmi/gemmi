@@ -9,8 +9,7 @@ RESOLUTION_LIMIT = 1.5  # set 0 for no limit
 if len(sys.argv) != 3:
     sys.exit('Usage: map2mtz.py input.ccp4 output.mtz')
 
-m = gemmi.read_ccp4_map(sys.argv[1])
-m.setup()
+m = gemmi.read_ccp4_map(sys.argv[1], setup=True)
 sf = gemmi.transform_map_to_f_phi(m.grid, half_l=True)
 data = sf.prepare_asu_data(dmin=RESOLUTION_LIMIT)
 
