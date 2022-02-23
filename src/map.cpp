@@ -13,7 +13,9 @@
 
 namespace {
 
-enum OptionIndex { Deltas=4, CheckSym, Reorder, Full, Mask, Threshold, Fraction };
+enum OptionIndex {
+  Dump=4, Deltas, CheckSym, Reorder, Full, Mask, Threshold, Fraction
+};
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -21,6 +23,8 @@ const option::Descriptor Usage[] = {
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
+  { Dump, 0, "d", "dump", Arg::None,
+    "  -d, --dump  \tPrint a map summary (default action)." },
   { Deltas, 0, "", "deltas", Arg::None,
     "  --deltas  \tStatistics of dx, dy and dz." },
   { CheckSym, 0, "", "check-symmetry", Arg::None,
@@ -40,7 +44,7 @@ const option::Descriptor Usage[] = {
 };
 
 template<typename T>
-gemmi::DataStats print_info(const gemmi::Ccp4<T>& map) {
+void print_info(const gemmi::Ccp4<T>& map, const gemmi::DataStats& st) {
   const gemmi::Grid<T>& grid = map.grid;
   std::printf("Map mode: %d\n", map.header_i32(4));
   std::printf("Endiannes: %snative\n", map.same_byte_order ? "" : "NOT ");
@@ -81,7 +85,6 @@ gemmi::DataStats print_info(const gemmi::Ccp4<T>& map) {
     std::printf("Defines skew transformation with translation length %.5g A.\n",
                 map.get_skew_transformation().vec.length());
 
-  gemmi::DataStats st = gemmi::calculate_data_statistics(grid.data);
   if (st.nan_count != 0)
     std::printf("\n*** Data includes NaNs: %zu of %zu points ***",
                 st.nan_count, grid.data.size());
@@ -116,7 +119,6 @@ gemmi::DataStats print_info(const gemmi::Ccp4<T>& map) {
     std::string symop = map.header_str(256 + i * 20 /*words not bytes*/, 80);
     std::printf("Sym op #%d: %s\n", i + 1, gemmi::trim_str(symop).c_str());
   }
-  return st;
 }
 
 template<typename T>
@@ -154,15 +156,20 @@ int GEMMI_MAIN(int argc, char **argv) {
     return 1;
   }
 
+  bool dump = (p.options[Dump] ||
+               !(p.options[Deltas] || p.options[CheckSym] ||
+                 p.options[Reorder] || p.options[Full] || p.options[Mask]));
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       const char* input = p.nonOption(i);
       gemmi::Ccp4<> map;
       if (i != 0)
         std::printf("\n\n");
-      std::printf("File: %s\n", input);
+      std::printf("Reading file: %s\n", input);
       map.read_ccp4(gemmi::MaybeGzipped(input));
-      gemmi::DataStats stats = print_info(map);
+      gemmi::DataStats stats = gemmi::calculate_data_statistics(map.grid.data);
+      if (dump)
+        print_info(map, stats);
       if (p.options[Deltas])
         print_deltas(map.grid, stats.dmin, stats.dmax);
       if (p.options[Reorder]) {
