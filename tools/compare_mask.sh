@@ -2,7 +2,7 @@
 
 # Compares bulk solvent masks from Refmac and Gemmi.
 # Requires PDB_DIR set to a local copy of the PDB archive,
-# and PDB_SF_DIR set to a local copy of structure_factors dir.
+# with directories pdb and structure_factors in $PDB_DIR/structures/divided.
 # Example usage: ./compare_mask.sh 1keb
 
 set -eu
@@ -26,8 +26,8 @@ zcat "$LOCAL_COPY/$pdb_tail" > "$uncompressed_pdb"
 
 mtz="$TEMPDIR/$code.mtz"
 echo "create $mtz"
-sf_tail="${code:1:2}/r${code}sf.ent.gz"
-gemmi cif2mtz $PDB_SF_DIR/$sf_tail $mtz
+sf_tail="structure_factors/${code:1:2}/r${code}sf.ent.gz"
+gemmi cif2mtz $LOCAL_COPY/$sf_tail $mtz
 
 refmac_mask=$TEMPDIR/out.msk
 
