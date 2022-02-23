@@ -188,6 +188,7 @@ Grid<float> interpolate_positions(const Grid<float>& moving_map,
 
 void add_grid(py::module& m) {
   py::enum_<AxisOrder>(m, "AxisOrder")
+    .value("Unknown", AxisOrder::Unknown)
     .value("XYZ", AxisOrder::XYZ)
     .value("ZYX", AxisOrder::ZYX);
 

@@ -3,12 +3,7 @@
 import os
 import unittest
 import gemmi
-from common import full_path, get_path_for_tempfile
-try:
-    import numpy
-    numpy_version = tuple(int(n) for n in numpy.__version__.split('.')[:2])
-except ImportError:
-    numpy = None
+from common import full_path, get_path_for_tempfile, assert_numpy_equal, numpy
 
 def compare_maps(self, a, b, atol):
     #print(abs(numpy.array(a) - b).max())
@@ -79,12 +74,6 @@ def fft_test(self, data, f, phi, size, order=gemmi.AxisOrder.XYZ):
 
 
 class TestMtz(unittest.TestCase):
-
-    def assert_numpy_equal(self, arr1, arr2):
-        # equal_nan arg was added in NumPy 1.19.0
-        if numpy and numpy_version >= (1,19):
-            self.assertTrue(numpy.array_equal(arr1, arr2, equal_nan=True))
-
     def test_read_write(self):
         path = full_path('5e5z.mtz')
         mtz = gemmi.read_mtz_file(path)
@@ -95,8 +84,8 @@ class TestMtz(unittest.TestCase):
         os.remove(out_name)
         self.assertEqual(mtz2.spacegroup.hm, 'P 1 21 1')
         if numpy is not None:
-            self.assert_numpy_equal(numpy.array(mtz, copy=False), mtz.array)
-            self.assert_numpy_equal(mtz.array, mtz2.array)
+            assert_numpy_equal(self, numpy.array(mtz, copy=False), mtz.array)
+            assert_numpy_equal(self, mtz.array, mtz2.array)
 
     def test_remove_and_add_column(self):
         path = full_path('5e5z.mtz')
@@ -107,7 +96,7 @@ class TestMtz(unittest.TestCase):
         ncol = len(mtz.columns)
         if numpy is None:
             return
-        self.assert_numpy_equal(col.array, numpy.array(col, copy=False))
+        assert_numpy_equal(self, col.array, numpy.array(col, copy=False))
         arr = col.array.copy()
         mtz_data = numpy.array(mtz, copy=True)
         self.assertEqual(mtz_data.shape, (mtz.nreflections, ncol))
@@ -117,7 +106,7 @@ class TestMtz(unittest.TestCase):
                          (mtz.nreflections, ncol-1))
         col = mtz.add_column(col_name, 'I', dataset_id=0, pos=col_idx)
         numpy.array(col, copy=False)[:] = arr
-        self.assert_numpy_equal(mtz_data, numpy.array(mtz, copy=False))
+        assert_numpy_equal(self, mtz_data, numpy.array(mtz, copy=False))
 
     def asu_data_test(self, grid):
         asu = grid.prepare_asu_data()
