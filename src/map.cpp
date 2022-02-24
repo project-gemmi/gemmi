@@ -105,6 +105,7 @@ void print_info(const gemmi::Ccp4<T>& map, const gemmi::DataStats& st) {
     double margin = mask ? 7 * (st.dmax - st.dmin) : 0;
     print_histogram(data, st.dmin - margin, st.dmax + margin);
   }
+
   int nlabl = map.header_i32(56);
   if (nlabl != 0)
     std::printf("\n");
@@ -113,11 +114,33 @@ void print_info(const gemmi::Ccp4<T>& map, const gemmi::DataStats& st) {
     std::printf("Label #%d\n%s\n", i, label.c_str());
   }
   int nsymbt = map.header_i32(24);
-  if (nsymbt != 0)
+  if (nsymbt != 0) {
     std::printf("\n");
-  for (int i = 0; i * 80 < nsymbt; i++) {
-    std::string symop = map.header_str(256 + i * 20 /*words not bytes*/, 80);
-    std::printf("Sym op #%d: %s\n", i + 1, gemmi::trim_str(symop).c_str());
+    std::vector<gemmi::Op> ops;
+    int bad_counter = 0;
+    for (int i = 0; i * 80 < nsymbt; i++) {
+      std::string symop = map.header_str(256 + i * 20 /*words not bytes*/, 80);
+      try {
+        gemmi::Op op = gemmi::parse_triplet(symop);
+        ops.push_back(op);
+      } catch (std::exception&) {
+        ++bad_counter;
+      }
+      std::printf("Sym op #%d: %s\n", i + 1, gemmi::trim_str(symop).c_str());
+    }
+    if (bad_counter == 0) {
+      gemmi::GroupOps gops = gemmi::split_centering_vectors(ops);
+      const gemmi::SpaceGroup* sg2 = gemmi::find_spacegroup_by_ops(gops);
+      std::printf("Space group from the operators: ");
+      if (sg2)
+        std::printf("%d  (%s)\n", sg->ccp4, sg->xhm().c_str());
+      else
+        std::printf("unknown\n");
+      if (sg2 && sg && sg != sg2)
+        std::printf("NOTE: different than from the ISPG header.\n");
+    } else {
+      std::printf("NOTE: %d of symmetry lines do not parse as operators.\n", bad_counter);
+    }
   }
 }
 
@@ -177,7 +200,6 @@ int GEMMI_MAIN(int argc, char **argv) {
         map.write_ccp4_map(p.options[Reorder].arg);
       }
       if (p.options[CheckSym]) {
-        // TODO check labels vs group numbers
         double max_err = map.setup(NAN, gemmi::MapSetup::NoSymmetry);
         if (max_err != 0.0)
           std::printf("Max. difference for point images in P1: %g\n", max_err);

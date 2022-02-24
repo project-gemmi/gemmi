@@ -714,7 +714,8 @@ a partial setup only.
 
 * MapSetup.Full -- (default value) reorders and resizes the grid to cover
   the whole unit cell, applying symmetry.
-* MapSetup.NoSymmetry -- does not use symmetry when extending the map.
+* MapSetup.NoSymmetry -- does not use symmetry operations, only
+  cell repeat (periodic boundary conditions, PBC) when extending the map.
 * MapSetup.ReorderOnly -- only reorders axes to X, Y, Z.
 
 The setup function in the default mode checks the consistency of the data.
