@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import contextlib
+import io
 import os
 import sys
 import unittest
@@ -9,6 +11,8 @@ PDB_FILE = os.path.join(TOP_DIR, "tests", "1orc.pdb")
 CIF_FILE = os.path.join(TOP_DIR, "tests", "5i55.cif")
 JSON_FILE = os.path.join(TOP_DIR, "tests", "1pfe.json")
 MAP_FILE = os.path.join(TOP_DIR, "tests", "5i55_tiny.ccp4")
+PDB_1PFE_FILE = os.path.join(TOP_DIR, "tests", "1pfe.cif.gz")
+MASK_1PFE_FILE = os.path.join(TOP_DIR, "tests", "1pfe_asu.msk.gz")
 EXAMPLE_DIR = os.path.join(TOP_DIR, "examples")
 sys.path.insert(0, EXAMPLE_DIR)
 
@@ -51,6 +55,31 @@ class TestExamples2(unittest.TestCase):
         sys.stdout = open(os.devnull, 'w')
         import multiproc  # noqa: F401
         multiproc.main(PDB_FILE)
+
+    # In this example we use file produced with two commands:
+    # $ cctbx.python -m mmtbx.command_line.mask 1pfe.pdb
+    # $ mapmask mapin mask.ccp4 mskout 1pfe_asu.msk << eof
+    # XYZLIM ASU
+    # MASK CUT 0.5
+    # AXIS X Z Y
+    # MODE mapin
+    # eof
+    @unittest.skipIf(sys.version_info[0] == 2, 'this example is Py3 only')
+    def test_maskcheck(self):
+        import maskcheck
+        with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+            maskcheck.maskcheck(MASK_1PFE_FILE, PDB_1PFE_FILE)
+            output = buf.getvalue()
+        expected_output = '''\
+Generating CCTBX-compatible mask ...
+Size: 72 x 72 x 150, total 777600 points
+File-Gemmi Count Fraction
+0-0       511128  65.73%
+1-1       265740  34.17%
+0-1            0   0.00%
+1-0          732   0.09%
+'''
+        self.assertEqual(output.splitlines(), expected_output.splitlines())
 
 if __name__ == '__main__':
     unittest.main()
