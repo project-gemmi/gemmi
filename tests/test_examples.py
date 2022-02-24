@@ -5,6 +5,10 @@ import io
 import os
 import sys
 import unittest
+try:
+    import numpy
+except ImportError:
+    numpy = None
 
 TOP_DIR = os.path.join(os.path.dirname(__file__), "..")
 PDB_FILE = os.path.join(TOP_DIR, "tests", "1orc.pdb")
@@ -64,7 +68,8 @@ class TestExamples2(unittest.TestCase):
     # AXIS X Z Y
     # MODE mapin
     # eof
-    @unittest.skipIf(sys.version_info[0] == 2, 'this example is Py3 only')
+    @unittest.skipIf(numpy is None or sys.version_info[0] == 2,
+                     'this example is Py3 only, requires NumPy')
     def test_maskcheck(self):
         import maskcheck
         with io.StringIO() as buf, contextlib.redirect_stdout(buf):
