@@ -141,6 +141,12 @@ struct GridMeta {
   AxisOrder axis_order = AxisOrder::Unknown;
 
   size_t point_count() const { return (size_t)nu * nv * nw; }
+  Fractional get_fractional(int u, int v, int w) const {
+    return {u * (1.0 / nu), v * (1.0 / nv), w * (1.0 / nw)};
+  }
+  Position get_position(int u, int v, int w) const {
+    return unit_cell.orthogonalize(get_fractional(u, v, w));
+  }
 };
 
 template<typename T>
@@ -310,13 +316,6 @@ struct Grid : GridBase<T> {
     return {u, v, w, &data[index_s(u, v, w)]};
   }
 
-  Fractional get_fractional(int u, int v, int w) const {
-    return {u * (1.0 / nu), v * (1.0 / nv), w * (1.0 / nw)};
-  }
-  Position get_position(int u, int v, int w) const {
-    return unit_cell.orthogonalize(get_fractional(u, v, w));
-  }
-
   Point get_nearest_point(const Fractional& f) {
     return get_point(iround(f.x * nu), iround(f.y * nv), iround(f.z * nw));
   }
@@ -326,10 +325,10 @@ struct Grid : GridBase<T> {
   }
 
   Fractional point_to_fractional(const Point& p) const {
-    return get_fractional(p.u, p.v, p.w);
+    return this->get_fractional(p.u, p.v, p.w);
   }
   Position point_to_position(const Point& p) const {
-    return get_position(p.u, p.v, p.w);
+    return this->get_position(p.u, p.v, p.w);
   }
 
   static double grid_modulo(double x, int n, int* iptr) {
@@ -482,7 +481,7 @@ struct Grid : GridBase<T> {
     for (int w = w_lo; w <= w_hi; ++w)
       for (int v = v_lo; v <= v_hi; ++v)
         for (int u = u_lo; u <= u_hi; ++u) {
-          Fractional fdelta = fctr - get_fractional(u, v, w);
+          Fractional fdelta = fctr - this->get_fractional(u, v, w);
           Position delta = unit_cell.orthogonalize_difference(fdelta);
           size_t idx = UsePbc ? index_n(u, v, w) : this->index_q(u, v, w);
           func(data[idx], delta);

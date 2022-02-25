@@ -92,15 +92,13 @@ void add_grid(py::module& m, const std::string& name) {
         grid->spacegroup = sg;
       return grid;
     }), py::arg().noconvert(), py::arg("cell")=nullptr, py::arg("spacegroup")=nullptr)
-    .def_property_readonly("spacing", [](const Gr& self){
+    .def_property_readonly("spacing", [](const Gr& self) {
         return py::make_tuple(self.spacing[0], self.spacing[1], self.spacing[2]);
     })
     .def("set_size", &Gr::set_size)
     .def("get_value", &Gr::get_value)
     .def("set_value", &Gr::set_value)
     .def("get_point", &Gr::get_point)
-    .def("get_position", &Gr::get_position)
-    .def("get_fractional", &Gr::get_fractional)
     .def("get_nearest_point", (GrPoint (Gr::*)(const Position&)) &Gr::get_nearest_point)
     .def("point_to_fractional", &Gr::point_to_fractional)
     .def("point_to_position", &Gr::point_to_position)
@@ -200,7 +198,9 @@ void add_grid(py::module& m) {
     .def_readonly("nw", &GridMeta::nw, "size in the third (slowest-changing) dim")
     .def_readonly("axis_order", &GridMeta::axis_order)
     .def_property_readonly("point_count", &GridMeta::point_count)
-    .def_property_readonly("shape", [](const GridMeta& self){
+    .def("get_position", &GridMeta::get_position)
+    .def("get_fractional", &GridMeta::get_fractional)
+    .def_property_readonly("shape", [](const GridMeta& self) {
       return py::make_tuple(self.nu, self.nv, self.nw);
     });
 
