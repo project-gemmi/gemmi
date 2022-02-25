@@ -20,10 +20,10 @@ struct Blob {
 };
 
 struct BlobCriteria {
+  double cutoff;
   double min_volume = 10.0;
   double min_score = 15.0;
   double min_peak = 0.0;
-  double cutoff;
 };
 
 namespace impl {
@@ -34,7 +34,7 @@ struct GridConstPoint {
 };
 
 inline Blob make_blob_of_points(const std::vector<GridConstPoint>& points,
-                                const gemmi::Grid<float>& grid,
+                                const GridMeta& grid,
                                 const BlobCriteria& criteria) {
   Blob blob;
   if (points.size() < 3)
@@ -73,8 +73,10 @@ inline Blob make_blob_of_points(const std::vector<GridConstPoint>& points,
 
 } // namespace impl
 
+// with negate=true grid negatives of grid values are used
 inline std::vector<Blob> find_blobs_by_flood_fill(const gemmi::Grid<float>& grid,
-                                                  const BlobCriteria& criteria) {
+                                                  const BlobCriteria& criteria,
+                                                  bool negate=false) {
   std::vector<Blob> blobs;
   std::array<std::array<int, 3>, 6> moves = {{{{-1, 0, 0}}, {{1, 0, 0}},
                                               {{0 ,-1, 0}}, {{0, 1, 0}},
@@ -91,6 +93,8 @@ inline std::vector<Blob> find_blobs_by_flood_fill(const gemmi::Grid<float>& grid
         if (mask[idx] != 0)
           continue;
         float value = grid.data[idx];
+        if (negate)
+          value = -value;
         if (value < criteria.cutoff)
           continue;
         std::vector<impl::GridConstPoint> points;
@@ -105,6 +109,8 @@ inline std::vector<Blob> find_blobs_by_flood_fill(const gemmi::Grid<float>& grid
             if (mask[nabe_idx] == -1)
               continue;
             float nabe_value = grid.data[nabe_idx];
+            if (negate)
+              nabe_value = -nabe_value;
             if (nabe_value > criteria.cutoff) {
               if (mask[nabe_idx] != 0)
                 for (const gemmi::GridOp& op : ops) {

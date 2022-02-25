@@ -247,14 +247,14 @@ void add_grid(py::module& m) {
     .def_readonly("peak_pos", &Blob::peak_pos)
     ;
   m.def("find_blobs_by_flood_fill",
-        [](const Grid<float>& grid, double cutoff,
-           double min_volume, double min_score, double min_peak) {
+        [](const Grid<float>& grid, double cutoff, double min_volume,
+           double min_score, double min_peak, bool negate) {
        BlobCriteria crit;
        crit.cutoff = cutoff;
        crit.min_volume = min_volume;
        crit.min_score = min_score;
        crit.min_peak = min_peak;
-       return find_blobs_by_flood_fill(grid, crit);
-    }, py::arg("grid"), py::arg("cutoff")=true,
-       py::arg("min_volume")=10., py::arg("min_score")=15, py::arg("min_peak")=0.);
+       return find_blobs_by_flood_fill(grid, crit, negate);
+    }, py::arg("grid"), py::arg("cutoff"), py::arg("min_volume")=10.,
+       py::arg("min_score")=15., py::arg("min_peak")=0., py::arg("negate")=false);
 }
