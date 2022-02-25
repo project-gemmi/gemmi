@@ -6,12 +6,14 @@
 #   cctbx.python -m mmtbx.command_line.mask file.pdb
 #   maskcheck.py mask.ccp4 file.pdb
 
+'Usage: maskcheck.py [-v] MAP_FILE COORDINATE_FILE [OUTPUT_MAP]'
+
 import os
 import sys
 import numpy
 import gemmi
 
-def maskcheck(mask_path, coor_path, output_diff_map=None):
+def maskcheck(mask_path, coor_path, output_diff_map=None, verbose=False):
     # read mask
     mask = gemmi.read_ccp4_mask(mask_path, setup=True)
     grid = mask.grid
@@ -40,7 +42,8 @@ def maskcheck(mask_path, coor_path, output_diff_map=None):
     masker.put_mask_on_int8_grid(grid2, st[0])
 
     compare_mask_arrays(grid, grid2)
-    #print_nearby_atoms(st, grid, grid2)
+    if verbose:
+        print_nearby_atoms(st, grid, grid2)
     if output_diff_map:
         write_diff_map(grid, grid2, output_diff_map)
 
@@ -61,23 +64,35 @@ def compare_mask_arrays(grid1, grid2):
 # Print nearby atom for each differing point
 def print_nearby_atoms(st, grid1, grid2):
     ns = gemmi.NeighborSearch(st[0], st.cell, 4).populate()
-    for (p1, p2) in zip(grid1, grid2):
-        if p1.value != p2.value:
-            pos = grid2.point_to_position(p2)
-            mark = ns.find_nearest_atom(pos)
-            cra = mark.to_cra(st[0])
-            print('%d-%d near %s' % (p1.value, p2.value, cra))
+    diff_grid = get_diff_grid(grid1, grid2)
+    for negate in (True, False):
+        blobs = gemmi.find_blobs_by_flood_fill(diff_grid, cutoff=0,
+                                               min_volume=0, min_score=0,
+                                               negate=negate)
+        blobs.sort(key=lambda a: a.volume, reverse=True)
+        print('\n%s %d blobs' % ((negate and '0-1' or '1-0'), len(blobs)))
+        for blob in blobs:
+            cra = ns.find_nearest_atom(blob.centroid).to_cra(st[0])
+            print('    %.1f A^3 near %s' % (blob.volume, cra))
+
+def get_diff_grid(grid1, grid2):
+    arr = (grid1.array - grid2.array).astype(dtype=numpy.float32)
+    return gemmi.FloatGrid(arr, grid1.unit_cell, grid1.spacegroup)
 
 def write_diff_map(grid1, grid2, output_diff_map):
-    arr_out = numpy.array(grid1, copy=False) - numpy.array(grid2, copy=False)
     map_out = gemmi.Ccp4Map()
-    map_out.grid = gemmi.FloatGrid(arr_out.astype(dtype=numpy.float32))
-    map_out.grid.copy_metadata_from(grid1)
+    map_out.grid = get_diff_grid(grid1, grid2)
     map_out.update_ccp4_header()
     map_out.write_ccp4_map(output_diff_map)
 
+def main():
+    args = sys.argv[1:]
+    verbose = ('-v' in args)
+    if verbose:
+        args.remove('-v')
+    if len(args) not in (2, 3):
+        sys.exit(__doc__)
+    maskcheck(*args, verbose=verbose)
 
 if __name__ == '__main__':
-    if len(sys.argv) not in (3, 4):
-        sys.exit("Usage: maskcheck.py MAP_FILE COORDINATE_FILE [OUTPUT_MAP]")
-    maskcheck(*sys.argv[1:])
+    main()
