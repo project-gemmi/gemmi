@@ -267,6 +267,9 @@ gemmi/sprintf.hpp
 gemmi/symmetry.hpp
     Crystallographic Symmetry. Space Groups. Coordinate Triplets.
 
+gemmi/to_chemcomp.hpp
+    Create a monomer libary cif::Block from ChemComp.
+
 gemmi/to_cif.hpp
     Writing cif::Document or its parts to std::ostream.
 
