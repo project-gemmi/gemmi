@@ -117,20 +117,20 @@ inline bool should_be_separated_(const Item& a, const Item& b) {
 
 inline void write_cif_block_to_stream(std::ostream& os, const Block& block,
                                       Style style=Style::Simple) {
-    os << "data_" << block.name << '\n';
-    if (style == Style::Pdbx)
-      os << "#\n";
-    const Item* prev = nullptr;
-    for (const Item& item : block.items)
-      if (item.type != ItemType::Erased) {
-        if (prev && style != Style::NoBlankLines &&
-            should_be_separated_(*prev, item))
-          os << (style == Style::Pdbx ? "#\n" : "\n");
-        write_out_item(os, item, style);
-        prev = &item;
-      }
-    if (style == Style::Pdbx)
-      os << "#\n";
+  os << "data_" << block.name << '\n';
+  if (style == Style::Pdbx)
+    os << "#\n";
+  const Item* prev = nullptr;
+  for (const Item& item : block.items)
+    if (item.type != ItemType::Erased) {
+      if (prev && style != Style::NoBlankLines &&
+          should_be_separated_(*prev, item))
+        os << (style == Style::Pdbx ? "#\n" : "\n");
+      write_out_item(os, item, style);
+      prev = &item;
+    }
+  if (style == Style::Pdbx)
+    os << "#\n";
 }
 
 inline void write_cif_to_stream(std::ostream& os, const Document& doc,
