@@ -1,6 +1,6 @@
 // Copyright 2020 Global Phasing Ltd.
 //
-// Reciprocal space utilities.
+// Reciprocal space helper functions.
 
 #ifndef GEMMI_RECIPROC_HPP_
 #define GEMMI_RECIPROC_HPP_

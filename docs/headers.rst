@@ -126,7 +126,8 @@ gemmi/it92.hpp
     for Crystallography Volume C, edition from 1992 or later.
 
 gemmi/iterator.hpp
-    Iterators. Currently each of them is a BidirectionalIterator.
+    Bidirectional iterators (over elements of any container) that can filter,
+    uniquify, group, or iterate with a stride.
 
 gemmi/json.hpp
     Reading CIF-JSON (COMCIFS) and mmJSON (PDBj) formats into cif::Document.
@@ -217,7 +218,7 @@ gemmi/recgrid.hpp
     ReciprocalGrid -- grid for reciprocal space data.
 
 gemmi/reciproc.hpp
-    Reciprocal space utilities.
+    Reciprocal space helper functions.
 
 gemmi/refln.hpp
     Reads reflection data from the mmCIF format.
@@ -268,7 +269,8 @@ gemmi/symmetry.hpp
     Crystallographic Symmetry. Space Groups. Coordinate Triplets.
 
 gemmi/to_chemcomp.hpp
-    Create a monomer libary cif::Block from ChemComp.
+    Create cif::Block with monomer library _chem_comp* categories
+    from struct ChemComp.
 
 gemmi/to_cif.hpp
     Writing cif::Document or its parts to std::ostream.

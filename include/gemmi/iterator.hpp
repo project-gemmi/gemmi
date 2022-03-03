@@ -1,6 +1,7 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// Iterators. Currently each of them is a BidirectionalIterator.
+// Bidirectional iterators (over elements of any container) that can filter,
+// uniquify, group, or iterate with a stride.
 
 #ifndef GEMMI_ITERATOR_HPP_
 #define GEMMI_ITERATOR_HPP_

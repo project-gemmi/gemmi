@@ -1,6 +1,7 @@
 // Copyright 2022 Global Phasing Ltd.
 //
-// Create a monomer libary cif::Block from ChemComp.
+// Create cif::Block with monomer library _chem_comp* categories
+// from struct ChemComp.
 
 #ifndef GEMMI_TO_CHEMCOMP_HPP_
 #define GEMMI_TO_CHEMCOMP_HPP_
