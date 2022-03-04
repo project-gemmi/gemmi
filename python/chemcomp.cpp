@@ -1,7 +1,8 @@
 // Copyright 2018 Global Phasing Ltd.
 
-#include "gemmi/chemcomp.hpp"
-#include "gemmi/tostr.hpp"
+#include "gemmi/chemcomp.hpp"    // for ChemComp
+#include "gemmi/to_chemcomp.hpp" // for add_chemcomp_to_block
+#include "gemmi/tostr.hpp"       // for tostr
 
 #include "common.h"
 #include <pybind11/stl.h>
@@ -159,4 +160,6 @@ void add_chemcomp(py::module& m) {
     .def("remove_hydrogens", &ChemComp::remove_hydrogens)
     ;
   m.def("make_chemcomp_from_block", &make_chemcomp_from_block);
+  m.def("add_chemcomp_to_block", &add_chemcomp_to_block);
+  m.def("make_chemcomp_with_restraints", &make_chemcomp_with_restraints);
 }

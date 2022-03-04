@@ -86,7 +86,7 @@ struct Restraints {
 
   struct Angle {
     AtomId id1, id2, id3;
-    double value;
+    double value;  // degrees
     double esd;
     double radians() const { return rad(value); }
     std::string str() const {

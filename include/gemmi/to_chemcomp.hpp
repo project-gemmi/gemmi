@@ -8,6 +8,7 @@
 
 #include "chemcomp.hpp"  // for ChemComp
 #include "sprintf.hpp"   // for to_str
+#include "calculate.hpp" // for calculate_angle
 
 namespace gemmi {
 
@@ -62,6 +63,72 @@ inline void add_chemcomp_to_block(const ChemComp& cc, cif::Block& block) {
       for (const Restraints::AtomId& atom_id : p.ids)
         tab.append_row({cc.name, p.label, atom_id.atom, to_str(p.esd)});
   }
+}
+
+inline ChemComp make_chemcomp_with_restraints(const Residue& res) {
+  ChemComp cc;
+  cc.name = res.name;
+  // add atoms
+  cc.atoms.reserve(res.atoms.size());
+  for (const Atom& a : res.atoms) {
+    const std::string& chem_type = a.name;
+    cc.atoms.push_back(ChemComp::Atom{a.name, a.element, float(a.charge), chem_type});
+  }
+  // prepare pairs of atoms
+  struct Pair {
+    size_t n1, n2;
+    double dist;
+  };
+  std::vector<Pair> pairs;
+  for (size_t i = 0; i != res.atoms.size(); ++i) {
+    double r1_with_margin = res.atoms[i].element.covalent_r() + 0.5;
+    for (size_t j = i+1; j != res.atoms.size(); ++j) {
+      double d2 = res.atoms[i].pos.dist_sq(res.atoms[j].pos);
+      if (d2 < sq(r1_with_margin + res.atoms[j].element.covalent_r()))
+        pairs.push_back(Pair{i, j, std::sqrt(d2)});
+    }
+  }
+  // add bonds
+  for (const Pair& p : pairs) {
+    Restraints::Bond bond;
+    bond.id1 = Restraints::AtomId{1, res.atoms[p.n1].name};
+    bond.id2 = Restraints::AtomId{1, res.atoms[p.n2].name};
+    bond.type = BondType::Unspec;
+    bond.aromatic = false;
+    double rounded_dist = 0.001 * std::round(1000 * p.dist);
+    bond.value = bond.value_nucleus = rounded_dist;
+    bond.esd = bond.esd_nucleus = 0.02;
+    cc.rt.bonds.push_back(bond);
+  }
+  // add angles
+  struct Triple {
+    size_t n1, n2, n3;
+  };
+  std::vector<Triple> triples;
+  for (size_t i = 0; i != pairs.size(); ++i)
+    for (size_t j = i+1; j != pairs.size(); ++j) {
+      if (pairs[i].n1 == pairs[j].n1)
+        triples.push_back(Triple{pairs[i].n2, pairs[i].n1, pairs[j].n2});
+      else if (pairs[i].n1 == pairs[j].n2)
+        triples.push_back(Triple{pairs[i].n2, pairs[i].n1, pairs[j].n1});
+      else if (pairs[i].n2 == pairs[j].n1)
+        triples.push_back(Triple{pairs[i].n1, pairs[i].n2, pairs[j].n2});
+      else if (pairs[i].n2 == pairs[j].n2)
+        triples.push_back(Triple{pairs[i].n1, pairs[i].n2, pairs[j].n1});
+    }
+  for (const Triple& triple : triples) {
+    Restraints::Angle angle;
+    angle.id1 = Restraints::AtomId{1, res.atoms[triple.n1].name};
+    angle.id2 = Restraints::AtomId{1, res.atoms[triple.n2].name};
+    angle.id3 = Restraints::AtomId{1, res.atoms[triple.n3].name};
+    double angle_rad = calculate_angle(res.atoms[triple.n1].pos,
+                                       res.atoms[triple.n2].pos,
+                                       res.atoms[triple.n3].pos);
+    angle.value = 0.01 * std::round(100 * deg(angle_rad));
+    angle.esd = 3.0;
+    cc.rt.angles.push_back(angle);
+  }
+  return cc;
 }
 
 } // namespace gemmi

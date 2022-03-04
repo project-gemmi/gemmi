@@ -9,7 +9,7 @@
 #include "gemmi/chemcomp.hpp"     // for ChemComp
 #include "gemmi/chemcomp_xyz.hpp" // for make_residue_from_chemcomp_block
 #include "gemmi/topo.hpp"         // for Topo
-#include "gemmi/calculate.hpp"    // for calculate_angle
+#include "gemmi/calculate.hpp"    // for find_best_plane
 
 namespace cif = gemmi::cif;
 using gemmi::Restraints;
