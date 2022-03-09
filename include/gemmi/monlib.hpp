@@ -63,6 +63,7 @@ struct ChemLink {
         ++cstr;
       switch (ialpha4_id(cstr)) {
         case ialpha4_id("pept"): return Group::Peptide;
+        case ialpha4_id("l-pe"): return Group::Peptide;
         case ialpha4_id("p-pe"): return Group::PPeptide;
         case ialpha4_id("m-pe"): return Group::MPeptide;
         case ialpha4_id("pyra"): return Group::Pyranose;
@@ -221,6 +222,7 @@ inline ResidueInfo::Kind chemcomp_group_to_kind(const std::string& group) {
     switch (ialpha4_id(str)) {
       case ialpha4_id("non-"): return ResidueInfo::ELS;
       case ialpha4_id("pept"): return ResidueInfo::AA;
+      case ialpha4_id("l-pe"): return ResidueInfo::AA;
       case ialpha4_id("p-pe"): return ResidueInfo::PAA;
       case ialpha4_id("m-pe"): return ResidueInfo::MAA;
       case ialpha4_id("dna"): return ResidueInfo::DNA;
