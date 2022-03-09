@@ -407,7 +407,7 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
           for (Atom& atom : res.atoms) {
             auto it = cc.find_atom(atom.name);
             if (it == cc.atoms.end())
-              topo->err("definition not found for" + atom_str(chain_info.chain_ref, *ri.res, atom));
+              topo->err("definition not found for " + atom_str(chain_info.chain_ref, *ri.res, atom));
             atom.serial = int(it - cc.atoms.begin()); // temporary, for sorting only
           }
           std::sort(res.atoms.begin(), res.atoms.end(), [](const Atom& a, const Atom& b) {
