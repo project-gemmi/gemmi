@@ -90,7 +90,7 @@ class TestCcp4Map(unittest.TestCase):
         tmp_path = get_path_for_tempfile(suffix='.ccp4')
         m.write_ccp4_map(tmp_path)
         with open(tmp_path, 'rb') as f:
-            self.assertEqual(zlib.crc32(f.read()), 4078044323)
+            self.assertEqual(zlib.crc32(f.read()) % 4294967296, 4078044323)
 
         box = gemmi.FractionalBox()
         box.minimum = gemmi.Fractional(0.5/5, 1.5/6, 3.5/7)
