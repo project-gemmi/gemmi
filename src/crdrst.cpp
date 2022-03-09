@@ -63,6 +63,18 @@ bool has_anisou(const gemmi::Model& model) {
   return false;
 }
 
+std::string refmac_calc_flag(const gemmi::Atom& a) {
+  switch (a.calc_flag) {
+    case gemmi::CalcFlag::NotSet: return ".";
+    // Refmac seems to be using only flags R and M
+    case gemmi::CalcFlag::Calculated: return a.is_hydrogen() ? "R" : "M";
+    // I think these are not used
+    case gemmi::CalcFlag::Determined: return "d";
+    case gemmi::CalcFlag::Dummy: return "dum";
+  }
+  gemmi::unreachable();
+}
+
 // for compatibility with makecif, not sure what ccp4_mod_id is really used for
 std::string get_ccp4_mod_id(const std::vector<std::string>& mods) {
   for (const std::string& m : mods)
@@ -227,7 +239,7 @@ cif::Document make_crd(const gemmi::Structure& st, const Topo& topo) {
         vv.emplace_back(to_str(a.occ));
         vv.emplace_back(to_str(a.b_iso));
         vv.emplace_back(a.element.uname());
-        vv.emplace_back(1, a.flag ? a.flag : '.'); // calc_flag
+        vv.emplace_back(refmac_calc_flag(a));
         vv.emplace_back(1, '.'); // label_seg_id
         vv.emplace_back(a.name); // again
         vv.emplace_back(cc.get_atom(a.name).chem_type); // label_chem_id
@@ -247,12 +259,15 @@ cif::Document make_crd(const gemmi::Structure& st, const Topo& topo) {
 
 void add_restraints(const Topo::Rule rule, const Topo& topo,
                     cif::Loop& restr_loop, int (&counters)[5]) {
+  constexpr bool ignore_zero_occ = true;
   //using gemmi::to_str;
   const auto& to_str = gemmi::to_str_prec<3>; // to make comparisons easier
   const auto& to_str3 = gemmi::to_str_prec<3>;
   auto to_str_dot = [&](double x) { return std::isnan(x) ? "." : to_str(x); };
   if (rule.rkind == Topo::RKind::Bond) {
     const Topo::Bond& t = topo.bonds[rule.index];
+    if (ignore_zero_occ && (t.atoms[0]->occ == 0 || t.atoms[1]->occ == 0))
+      return;
     std::string obs = to_str3(t.calculate()) +
                       " # " + t.atoms[0]->name + " " + t.atoms[1]->name;
     restr_loop.add_row({"BOND", std::to_string(++counters[0]),
@@ -266,6 +281,9 @@ void add_restraints(const Topo::Rule rule, const Topo& topo,
                         obs});
   } else if (rule.rkind == Topo::RKind::Angle) {
     const Topo::Angle& t = topo.angles[rule.index];
+    if (ignore_zero_occ &&
+        (t.atoms[0]->occ == 0 || t.atoms[1]->occ == 0 || t.atoms[2]->occ == 0))
+      return;
     std::string obs = to_str3(gemmi::deg(t.calculate()));
     obs += " # " + t.atoms[0]->name + " " +
                    t.atoms[1]->name + " " +
@@ -433,8 +451,15 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (!p.options[KeepHydrogens]) {
           gemmi::remove_hydrogens(res);
           if (!p.options[NoHydrogens])
-            if (cc.name != "HOH") // for compatibility with refmac/makecif
+            if (cc.name != "HOH") { // for compatibility with refmac/makecif
               add_hydrogens_without_positions(cc, res);
+              // Refmac is doing the same for HIS
+              if (cc.name == "HIS") {
+                for (gemmi::Atom& atom : ri.res->atoms)
+                  if (atom.name == "HD1" || atom.name == "HE2")
+                    atom.occ = 0;
+              }
+            }
         }
         for (gemmi::Atom& atom : res.atoms) {
           auto it = cc.find_atom(atom.name);
@@ -447,7 +472,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                     return a.serial != b.serial ? a.serial < b.serial
                                                 : a.altloc < b.altloc;
                   });
-        if (1) {  // temporary addition for makecif/refmac compatibility
+        if (0) {  // temporary addition for makecif/refmac compatibility
           if (gemmi::in_vector(std::string("AA-STAND"), ri.mods) &&
               !ri.res->find_atom("OXT", '*')) {
             gemmi::Atom atom;

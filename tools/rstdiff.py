@@ -35,6 +35,21 @@ def read_crd(path):
         real_serial[a[0]] = len(real_serial) - 1
     return Crd(atoms, real_serial)
 
+def get_crd_atom_row(crd, atom_id):
+    idx = crd.real_serial[atom_id] - 1
+    return crd.atoms[idx]
+
+def crd_atom_name(crd, atom_id):
+    return get_crd_atom_row(crd, atom_id)[1]
+
+def can_have_wrong_val_obs(crd1, rst1):
+    # hydrogen distances in Refmac may not be ideal
+    if rst1.record == 'bond':
+        return crd_atom_name(crd1, rst1.atom_id_2).startswith('H')
+    if rst1.record == 'angl':
+        return crd_atom_name(crd1, rst1.atom_id_3).startswith('H')
+    return False
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', action='store_true', help='verbose output')
@@ -82,8 +97,7 @@ def main():
         if atom_id is None:
             return '.'
         crd = (crd1 if n == 1 else crd2)
-        idx = crd.real_serial[atom_id] - 1
-        atom = crd.atoms[idx]
+        atom = get_crd_atom_row(crd, atom_id)
         alt = ''
         if atom[2] != '.':
             alt = '.' + atom[2]
@@ -132,14 +146,15 @@ def main():
             elif not same_nums(rst1.dev, rst2.dev):
                 print('Different dev for %s (%s vs %s) in:\n%s\n' %
                       (r_str, rst1.dev, rst2.dev, fmt(rst1)))
-            elif not same_nums(rst1.val_obs, rst2.val_obs,
-                               eps=val_obs_eps(rst1.record),
-                               mod360=(rst1.record == 'tors')):
-                print('Different val_obs for %s (%s vs %s) in:\n%s\n' %
-                      (r_str, rst1.val_obs, rst2.val_obs, fmt(rst1)))
             elif rst1.number != rst2.number:
                 print('Serial number differs in %s: %s -> %s' %
                       (r_str, rst1[1], rst2[1]))
+            elif not same_nums(rst1.val_obs, rst2.val_obs,
+                               eps=val_obs_eps(rst1.record),
+                               mod360=(rst1.record == 'tors')) \
+                 and not can_have_wrong_val_obs(crd1, rst1):
+                print('Different val_obs for %s (%s vs %s) in:\n%s\n' %
+                      (r_str, rst1.val_obs, rst2.val_obs, fmt(rst1)))
 
 def val_obs_eps(record):
     if record == 'tors':
@@ -149,4 +164,8 @@ def val_obs_eps(record):
     else:
         return 0.004
 
-main()
+if __name__ == '__main__':
+    try:
+        main()
+    except BrokenPipeError:
+        pass
