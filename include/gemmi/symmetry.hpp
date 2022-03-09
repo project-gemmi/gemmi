@@ -9,8 +9,9 @@
 #define GEMMI_SYMMETRY_HPP_
 
 #include <cstdint>
-#include <cstdlib>    // for strtol
+#include <cstdlib>    // for strtol, abs
 #include <cstring>    // for memchr, strchr
+#include <cmath>      // for fabs
 #include <array>
 #include <algorithm>  // for count, sort, remove
 #include <functional> // for hash
@@ -201,6 +202,27 @@ inline Op Op::inverse() const {
                    -tran[1] * inv.rot[i][1]
                    -tran[2] * inv.rot[i][2]) / Op::DEN;
   return inv;
+}
+
+// inverse of Op::float_seitz()
+inline Op seitz_to_op(const std::array<std::array<double,4>, 4>& t) {
+  static_assert(Op::DEN == 24, "");
+  auto check_round = [](double d) {
+    double r = std::round(d * Op::DEN);
+    if (std::fabs(r - d * Op::DEN) > 0.05)
+      fail("all numbers in Seitz matrix must be equal Z/24");
+    return static_cast<int>(r);
+  };
+  Op op;
+  if (std::fabs(t[3][0]) + std::fabs(t[3][1]) + std::fabs(t[3][2]) +
+      std::fabs(t[3][3] - 1) > 1e-3)
+    fail("the last row in Seitz matrix must be [0 0 0 1]");
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j)
+      op.rot[i][j] = check_round(t[i][j]);
+    op.tran[i] = check_round(t[i][3]);
+  }
+  return op;
 }
 
 
