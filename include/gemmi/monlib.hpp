@@ -592,8 +592,8 @@ struct MonLib {
 
   bool link_side_matches_residue(const ChemLink::Side& side,
                                  const std::string& res_name) const {
-    if (side.comp == res_name)
-      return true;
+    if (side.comp != "")
+      return side.comp == res_name;
     const ResidueInfo* resinfo = find_residue_info(res_name);
     return resinfo && side.matches_group(ChemLink::group_from_residue_info(*resinfo));
   }
