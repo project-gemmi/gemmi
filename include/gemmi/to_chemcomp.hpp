@@ -81,10 +81,10 @@ inline ChemComp make_chemcomp_with_restraints(const Residue& res) {
   };
   std::vector<Pair> pairs;
   for (size_t i = 0; i != res.atoms.size(); ++i) {
-    double r1_with_margin = res.atoms[i].element.covalent_r() + 0.5;
+    double r1 = res.atoms[i].element.covalent_r();
     for (size_t j = i+1; j != res.atoms.size(); ++j) {
       double d2 = res.atoms[i].pos.dist_sq(res.atoms[j].pos);
-      if (d2 < sq(r1_with_margin + res.atoms[j].element.covalent_r()))
+      if (d2 < sq(1.3 * (r1 + res.atoms[j].element.covalent_r())))
         pairs.push_back(Pair{i, j, std::sqrt(d2)});
     }
   }
