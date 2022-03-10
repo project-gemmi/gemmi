@@ -660,7 +660,7 @@ inline MonLib read_monomer_lib(std::string monomer_dir,
     try {
       cif::Document doc = (*read_cif)(monomer_dir + MonLib::relative_monomer_path(name));
       auto cc = make_chemcomp_from_cif(name, doc);
-      monlib.monomers.emplace(name, cc);
+      monlib.monomers.emplace(name, std::move(cc));
     } catch(std::runtime_error& err) {
       if (!ignore_missing)
         error += "The monomer " + name + " could not be read: " + err.what() + ".\n";
