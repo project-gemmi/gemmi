@@ -354,19 +354,6 @@ inline void insert_chemmods(const cif::Document& doc,
   }
 }
 
-namespace impl {
-template <typename T>
-T& add_or_set(std::vector<T>& items, typename std::vector<T>::iterator it,
-              const T& x) {
-  if (it == items.end()) {
-    items.push_back(x);
-    return items.back();
-  }
-  *it = x;
-  return *it;
-}
-} // namespace impl
-
 inline void ChemMod::apply_to(ChemComp& chemcomp) const {
   // _chem_mod_atom
   for (const AtomMod& mod : atom_mods) {
@@ -425,7 +412,11 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
     auto it = chemcomp.rt.find_bond(mod.id1.atom, mod.id2.atom);
     switch (mod.id1.comp) {
       case 'a':
-        impl::add_or_set(chemcomp.rt.bonds, it, mod).id1.comp = 1;
+        if (it == chemcomp.rt.bonds.end()) {
+          chemcomp.rt.bonds.push_back(mod);
+          // id1.comp was temporarily set to 'a', set it back to 1
+          chemcomp.rt.bonds.back().id1.comp = 1;
+        }
         break;
       case 'd':
         if (it != chemcomp.rt.bonds.end())
@@ -453,7 +444,10 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
     auto it = chemcomp.rt.find_angle(mod.id1.atom, mod.id2.atom, mod.id3.atom);
     switch (mod.id1.comp) {
       case 'a':
-        impl::add_or_set(chemcomp.rt.angles, it, mod).id1.comp = 1;
+        if (it == chemcomp.rt.angles.end()) {
+          chemcomp.rt.angles.push_back(mod);
+          chemcomp.rt.angles.back().id1.comp = 1;
+        }
         break;
       case 'd':
         if (it != chemcomp.rt.angles.end())
@@ -476,7 +470,10 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
                                        mod.id3.atom, mod.id4.atom);
     switch (mod.id1.comp) {
       case 'a':
-        impl::add_or_set(chemcomp.rt.torsions, it, mod).id1.comp = 1;
+        if (it == chemcomp.rt.torsions.end()) {
+          chemcomp.rt.torsions.push_back(mod);
+          chemcomp.rt.torsions.back().id1.comp = 1;
+        }
         break;
       case 'd':
         if (it != chemcomp.rt.torsions.end())
@@ -503,7 +500,10 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
                                     mod.id2.atom, mod.id3.atom);
     switch (mod.id1.comp) {
       case 'a':
-        impl::add_or_set(chemcomp.rt.chirs, it, mod).id1.comp = 1;
+        if (it == chemcomp.rt.chirs.end()) {
+          chemcomp.rt.chirs.push_back(mod);
+          chemcomp.rt.chirs.back().id1.comp = 1;
+        }
         break;
       case 'd':
         if (it != chemcomp.rt.chirs.end())
