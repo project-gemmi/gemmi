@@ -110,6 +110,11 @@ def main():
                fmt_atom_id(r.atom_id_3, n), fmt_atom_id(r.atom_id_4, n),
                r.value, r.dev, r.val_obs)
 
+    def has_same_ids(rst1, rst2):
+        return (rst1.record == rst2.record
+                and all(crd1.real_serial[u] == crd2.real_serial[v]
+                        for u, v in zip(rst1[4:8], rst2[4:8])))
+
     for n, (a, b) in enumerate(zip_longest(r1, r2, fillvalue=[None, None, []])):
         if a[:2] != b[:2]:
             print('item', n, 'differs:', a[:2], 'vs', b[:2])
@@ -122,10 +127,32 @@ def main():
         if len(a[2]) != len(b[2]):
             print('Item %d has different restr count: %d vs %d' %
                   (n, len(a[2]), len(b[2])))
-        fillvalue = Restraint(*[None]*11)
-        for m, (rst1, rst2) in enumerate(zip_longest(a[2], b[2],
-                                                     fillvalue=fillvalue)):
-            r_str = '%s/%s restraint %d:%d' % (b[0], b[1], n, m)
+        n_rst1 = 0
+        n_rst2 = 0
+        while n_rst1 < len(a[2]) or n_rst2 < len(b[2]):
+            r_str = '%s/%s restraint %d:%d/%d' % (b[0], b[1], n, n_rst1, n_rst2)
+            if n_rst1 >= len(a[2]):
+                rst2 = b[2][n_rst2]
+                print('ADDED record %s:\n%s\n' % (r_str, fmt(rst2)))
+                n_rst2 += 1
+                continue
+            if n_rst2 >= len(b[2]):
+                rst1 = a[2][n_rst1]
+                print('REMOVED record %s:\n%s\n' % (r_str, fmt(rst1)))
+                n_rst1 += 1
+                continue
+            rst1 = a[2][n_rst1]
+            rst2 = b[2][n_rst2]
+            same_ids = has_same_ids(rst1, rst2)
+            if not same_ids:
+                if has_same_ids(rst1, b[2][n_rst2+1]):
+                    print('ADDED record %s:\n%s\n' % (r_str, fmt(rst2)))
+                    n_rst2 += 1
+                    continue
+                if has_same_ids(a[2][n_rst1+1], rst2):
+                    print('REMOVED record %s:\n%s\n' % (r_str, fmt(rst1)))
+                    n_rst1 += 1
+                    continue
             if rst1.record != rst2.record:
                 print('Different records %s:\n%s\nvs\n%s\n' %
                       (r_str, fmt(rst1), fmt(rst2, 2)))
@@ -136,8 +163,7 @@ def main():
             elif rst1.period != rst2.period:
                 print('Different period in %s:\n%s\nvs\n%s\n' %
                       (r_str, fmt(rst1), fmt(rst2, 2)))
-            elif not all(crd1.real_serial[u] == crd2.real_serial[v]
-                         for u, v in zip(rst1[4:8],rst2[4:8])):
+            elif not same_ids:
                 print('Different atom id in %s:\n%s\nvs\n%s\n' %
                       (r_str, fmt(rst1), fmt(rst2, 2)))
             elif not same_nums(rst1.value, rst2.value):
@@ -149,12 +175,14 @@ def main():
             elif rst1.number != rst2.number:
                 print('Serial number differs in %s: %s -> %s' %
                       (r_str, rst1[1], rst2[1]))
-            elif not same_nums(rst1.val_obs, rst2.val_obs,
-                               eps=val_obs_eps(rst1.record),
-                               mod360=(rst1.record == 'tors')) \
-                 and not can_have_wrong_val_obs(crd1, rst1):
+            elif not (same_nums(rst1.val_obs, rst2.val_obs,
+                                eps=val_obs_eps(rst1.record),
+                                mod360=(rst1.record == 'tors'))
+                      or can_have_wrong_val_obs(crd1, rst1)):
                 print('Different val_obs for %s (%s vs %s) in:\n%s\n' %
                       (r_str, rst1.val_obs, rst2.val_obs, fmt(rst1)))
+            n_rst1 += 1
+            n_rst2 += 1
 
 def val_obs_eps(record):
     if record == 'tors':
