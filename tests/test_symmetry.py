@@ -73,6 +73,8 @@ class TestSymmetry(unittest.TestCase):
             self.assertEqual(op.triplet(), triplet)
             op2 = gemmi.seitz_to_op(op.float_seitz())
             self.assertEqual(op2.triplet(), triplet)
+            op3 = gemmi.seitz_to_op(op.seitz())
+            self.assertEqual(op3.triplet(), triplet)
         self.assertEqual(gemmi.Op(' x , - y, + z ').triplet(), 'x,-y,z')
 
     def test_combine(self):
