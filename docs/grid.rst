@@ -54,6 +54,10 @@ The data point can be accessed with::
   T Grid<T>::get_value(int u, int v, int w) const
   void Grid<T>::set_value(int u, int v, int w, T x)
 
+(This class has a number of other functions that are not documented yet.
+The majority of Gemmi users use it from Python, so that's also where most of
+the documentation effort goes.)
+
 Python
 ~~~~~~
 
@@ -93,7 +97,7 @@ You can create a copy of a grid with:
 
 .. doctest::
 
-  >>> grid3.clone()
+  >>> grid.clone()
   <gemmi.FloatGrid(12, 12, 12)>
 
 Values are accessed with functions get_value() and set_value():
@@ -136,6 +140,15 @@ the ``array`` property:
 
   >>> grid.array.shape
   (12, 12, 12)
+
+The Grid class is often used for electron density maps.
+A common operation on such maps is normalization -- scaling
+that changes the mean to 0 and RMSD to 1:
+
+.. doctest::
+
+    >>> grid2 = grid.clone()
+    >>> grid2.normalize()
 
 Symmetry
 --------

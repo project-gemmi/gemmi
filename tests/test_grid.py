@@ -132,5 +132,16 @@ class TestCcp4Map(unittest.TestCase):
         self.assertEqual(mcut.grid.axis_order, gemmi.AxisOrder.XYZ)
         assert_numpy_equal(self, mcut.grid.array, expanded_data)
 
+    def test_normalize(self):
+        yzx_path = full_path('iota_yzx.ccp4.gz')
+        m = gemmi.read_ccp4_map(full_path(yzx_path), setup=True)
+        m.grid.normalize()
+        m.update_ccp4_header()
+        mean = m.header_float(22)
+        rms = m.header_float(55)
+        self.assertAlmostEqual(mean, 0)
+        self.assertAlmostEqual(rms, 1)
+
+
 if __name__ == '__main__':
     unittest.main()

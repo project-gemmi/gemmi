@@ -268,7 +268,6 @@ struct Grid : GridBase<T> {
     set_size_without_checking(m[0], m[1], m[2]);
   }
 
-
   void set_unit_cell(double a, double b, double c,
                      double alpha, double beta, double gamma) {
     unit_cell.set(a, b, c, alpha, beta, gamma);
@@ -674,6 +673,14 @@ Correlation calculate_correlation(const GridBase<T>& a, const GridBase<T>& b) {
     if (!std::isnan(a.data[i]) && !std::isnan(b.data[i]))
       corr.add_point(a.data[i], b.data[i]);
   return corr;
+}
+
+// scale the data to get mean == 0 and rmsd == 1
+template<typename T>
+void normalize_grid(Grid<T>& grid) {
+  DataStats stats = calculate_data_statistics(grid.data);
+  for (auto i = grid.data.begin(); i != grid.data.end(); ++i)
+    *i = static_cast<T>((*i - stats.dmean) / stats.rms);
 }
 
 } // namespace gemmi

@@ -65,13 +65,14 @@ py::class_<GridBase<T>, GridMeta> add_grid_base(py::module& m, const char* name)
 }
 
 template<typename T>
-void add_grid(py::module& m, const std::string& name) {
+py::class_<Grid<T>, GridBase<T>> add_grid(py::module& m, const std::string& name) {
   using Gr = Grid<T>;
   using GrPoint = typename GridBase<T>::Point;
   using Masked = MaskedGrid<T>;
+  py::class_<Gr, GridBase<T>> grid(m, name.c_str());
   py::class_<Masked> masked_grid (m, ("Masked" + name).c_str());
 
-  py::class_<Gr, GridBase<T>>(m, name.c_str())
+  grid
     .def(py::init<>())
     .def(py::init([](int nx, int ny, int nz) {
       Gr* grid = new Gr();
@@ -166,6 +167,7 @@ void add_grid(py::module& m, const std::string& name) {
     .def("__iter__", [](Masked& self) { return py::make_iterator(self); },
          py::keep_alive<0, 1>())
     ;
+    return grid;
 }
 
 // for pandda-2
@@ -209,7 +211,9 @@ void add_grid(py::module& m) {
   add_grid_base<float>(m, "FloatGridBase")
     .def("calculate_correlation", &calculate_correlation<float>)
     ;
-  add_grid<float>(m, "FloatGrid");
+  add_grid<float>(m, "FloatGrid")
+    .def("normalize", &normalize_grid<float>)
+    ;
   add_grid_base<std::complex<float>>(m, "ComplexGridBase");
   m.def("interpolate_positions", &interpolate_positions);
 
