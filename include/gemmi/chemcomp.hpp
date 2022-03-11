@@ -441,6 +441,16 @@ inline ChiralityType chirality_from_string(const std::string& s) {
   }
 }
 
+inline ChiralityType chirality_from_flag_and_volume(const std::string& s,
+                                                    double volume) {
+  switch (s[0] | 0x20) {
+    case 's': return volume > 0 ? ChiralityType::Positive
+                                : ChiralityType::Negative;
+    case 'n': return ChiralityType::Both;
+    default: throw std::out_of_range("Unexpected volume_flag: " + s);
+  }
+}
+
 inline const char* chirality_to_string(ChiralityType chir_type) {
   switch (chir_type) {
     case ChiralityType::Positive: return "positive";
@@ -502,6 +512,24 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
       cc.rt.chirs.push_back({{1, row.str(0)},
                              {1, row.str(1)}, {1, row.str(2)}, {1, row.str(3)},
                              chirality_from_string(row[4])});
+  // mmCIF compliant
+  cif::Table chir_tab = block.find("_chem_comp_chir_atom.",
+                                   {"chir_id", "atom_id"});
+  if (chir_tab.ok()) {
+    std::map<std::string, std::vector<std::string>> chir_atoms;
+    for (auto chir : chir_tab)
+      chir_atoms[chir[0]].push_back(chir[1]);
+    for (auto row : block.find("_chem_comp_chir.",
+                               {"id", "atom_id", "volume_flag", "volume_three"})) {
+        auto atoms = chir_atoms.find(row.str(0));
+        if (atoms != chir_atoms.end() && atoms->second.size() == 3)
+          cc.rt.chirs.push_back({{1, row.str(1)},
+                                 {1, atoms->second[0]}, {1, atoms->second[1]},
+                                 {1, atoms->second[2]}, 
+                                 chirality_from_flag_and_volume(row[2],
+                                                                cif::as_number(row[3]))});
+    }
+  }
   for (auto row : block.find("_chem_comp_plane_atom.",
                              {"plane_id", "atom_id" , "dist_esd"})) {
     Restraints::Plane& plane = cc.rt.get_or_add_plane(row.str(0));
