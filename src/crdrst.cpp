@@ -298,6 +298,8 @@ void add_restraints(const Topo::Rule rule, const Topo& topo,
                         ".", ".", obs});
   } else if (rule.rkind == Topo::RKind::Torsion) {
     const Topo::Torsion& t = topo.torsions[rule.index];
+    if (ignore_zero_occ && (t.atoms[0]->occ == 0 || t.atoms[3]->occ == 0))
+      return;
     std::string obs = to_str3(gemmi::deg(t.calculate()));
     obs += " # " + t.atoms[0]->name + " " + t.atoms[1]->name +
            " " + t.atoms[2]->name + " " + t.atoms[3]->name;

@@ -40,14 +40,22 @@ def get_crd_atom_row(crd, atom_id):
     return crd.atoms[idx]
 
 def crd_atom_name(crd, atom_id):
-    return get_crd_atom_row(crd, atom_id)[1]
+    return cif.as_string(get_crd_atom_row(crd, atom_id)[1])
 
+# hydrogen distances in Refmac may not be ideal
 def can_have_wrong_val_obs(crd1, rst1):
-    # hydrogen distances in Refmac may not be ideal
+    def is_hydrogen(atom_id):
+        return crd_atom_name(crd1, atom_id).startswith('H')
     if rst1.record == 'bond':
-        return crd_atom_name(crd1, rst1.atom_id_2).startswith('H')
-    if rst1.record == 'angl':
-        return crd_atom_name(crd1, rst1.atom_id_3).startswith('H')
+        return is_hydrogen(rst1.atom_id_2)
+    elif rst1.record == 'angl':
+        return is_hydrogen(rst1.atom_id_3)
+    elif rst1.record == 'tors':
+        return is_hydrogen(rst1.atom_id_4)
+    elif rst1.record == 'plan':
+        # we can't easily check here if there are H's in the plane
+        return True
+        #return is_hydrogen(rst1.atom_id_1)
     return False
 
 def main():
@@ -172,15 +180,15 @@ def main():
             elif not same_nums(rst1.dev, rst2.dev):
                 print('Different dev for %s (%s vs %s) in:\n%s\n' %
                       (r_str, rst1.dev, rst2.dev, fmt(rst1)))
-            elif rst1.number != rst2.number:
-                print('Serial number differs in %s: %s -> %s' %
-                      (r_str, rst1[1], rst2[1]))
             elif not (same_nums(rst1.val_obs, rst2.val_obs,
                                 eps=val_obs_eps(rst1.record),
                                 mod360=(rst1.record == 'tors'))
                       or can_have_wrong_val_obs(crd1, rst1)):
-                print('Different val_obs for %s (%s vs %s) in:\n%s\n' %
+                print('val_obs differs for %s (%s vs %s) in:\n%s\n' %
                       (r_str, rst1.val_obs, rst2.val_obs, fmt(rst1)))
+            #elif rst1.number != rst2.number:
+            #    print('Serial number differs in %s: %s -> %s' %
+            #          (r_str, rst1[1], rst2[1]))
             n_rst1 += 1
             n_rst2 += 1
 
