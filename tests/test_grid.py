@@ -142,6 +142,14 @@ class TestCcp4Map(unittest.TestCase):
         self.assertAlmostEqual(mean, 0)
         self.assertAlmostEqual(rms, 1)
 
+    def test_get_subarray(self):
+        data = numpy.arange(5*6*7, dtype=numpy.float32).reshape((5,6,7))
+        grid = gemmi.FloatGrid(data)
+        sub = grid.get_subarray([4,-3,20], [5,10,4])
+        self.assertEqual(sub[0][0][0], 195.)
+        self.assertEqual(sub[2][2][2], 78.)
+        self.assertEqual(sub[-1][-1][-1], 128.)
+
 
 if __name__ == '__main__':
     unittest.main()

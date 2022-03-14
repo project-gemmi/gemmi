@@ -139,16 +139,10 @@ py::class_<Grid<T>, GridBase<T>> add_grid(py::module& m, const std::string& name
     .def("mask_points_in_constant_radius", &mask_points_in_constant_radius<T>,
          py::arg("model"), py::arg("radius"), py::arg("value"))
     .def("get_subarray",
-         [](const Gr& self, int u0, int v0, int w0, int new_nu, int new_nv, int new_nw) {
-        py::array_t<T> arr({new_nu, new_nv, new_nw},
-                           {sizeof(T), sizeof(T)*new_nu, sizeof(T)*new_nu*new_nv});
-        py::buffer_info buf = arr.request();
-        T* ptr = (T*) buf.ptr;
-        int idx = 0;
-        for (int w = 0; w < new_nw; w++)
-          for (int v = 0; v < new_nv; v++)
-            for (int u = 0; u < new_nu; u++)
-              ptr[idx++] = self.get_value(u0 + u, v0 + v, w0 + w);
+         [](const Gr& self, std::array<int,3> start, std::array<int,3> shape) {
+        py::array_t<T> arr({shape[0], shape[1], shape[2]},
+                           {sizeof(T), sizeof(T)*shape[0], sizeof(T)*shape[0]*shape[1]});
+        self.get_subarray((T*) arr.request().ptr, start, shape);
         return arr;
     })
     .def("clone", [](const Gr& self) { return new Gr(self); })
