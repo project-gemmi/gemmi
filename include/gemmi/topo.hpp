@@ -483,8 +483,8 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
   }
   // add extra links
   for (const Connection& conn : st.connections) {
-    // ignoring hydrogen bonds and metal coordination
-    if (conn.type == Connection::Hydrog || conn.type == Connection::MetalC)
+    // ignoring hydrogen bonds
+    if (conn.type == Connection::Hydrog)
       continue;
     Link extra;
     extra.res1 = model0.find_cra(conn.partner1, true).residue;
