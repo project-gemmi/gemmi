@@ -76,7 +76,7 @@ void add_misc(py::module& m) {
   }, py::arg("nbins"), py::arg("values"));
 
   m.def("binrfactor", [](py::array_t<int> bins, py::array_t<double> obs,
-                                                py::array_t<double> calc) {
+                         py::array_t<double> calc, bool riso) {
       auto bins_ = bins.unchecked<1>();
       auto obs_ = obs.unchecked<1>();
       auto calc_ = calc.unchecked<1>();
@@ -93,13 +93,12 @@ void add_misc(py::module& m) {
         if (!std::isnan(obs_(i)) && !std::isnan(calc_(i))) {
           int n = bins_(i);
           retp[n] += std::fabs(obs_(i) - calc_(i));
-          // Fobs should be positive, but just in case use fabs
-          sum_fobs[n] += std::fabs(obs_(i));
+          sum_fobs[n] += riso ? (obs_(i) + calc_(i)) : obs_(i);
         }
       for (int i = 0; i != ret_size; ++i)
-        retp[i] /= sum_fobs[i];
+        retp[i] /= (riso ? 0.5 * sum_fobs[i] : sum_fobs[i]);
       return ret;
-  }, py::arg("nbins"), py::arg("obs"), py::arg("calc"));
+  }, py::arg("nbins"), py::arg("obs"), py::arg("calc"), py::arg("riso")=false);
 
   m.def("bincorr", [](py::array_t<int> bins, py::array_t<double> obs,
                                              py::array_t<double> calc) {

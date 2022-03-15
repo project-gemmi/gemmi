@@ -1289,6 +1289,9 @@ For calculation of the R-factors between two columns:
 
   >>> gemmi.binrfactor(bins, obs=fo, calc=fc)
   array([0.15737026, 0.20364942, 0.21249298, 0.2510972 ])
+  >>> # alternatively, we can use R_iso formula - mean value in denominator
+  >>> gemmi.binrfactor(bins, fo, fc, riso=True)
+  array([0.16200339, 0.20942611, 0.22133223, 0.25476191])
 
 And for calculation of the Pearson's correlations.
 This one returns a list of Correlation objects:
