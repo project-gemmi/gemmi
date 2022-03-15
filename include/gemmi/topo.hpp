@@ -117,7 +117,6 @@ struct Topo {
     ChainInfo(ResidueSpan& subchain, const Chain& chain, const Entity* ent);
     void setup_polymer_links();
     void disable_polymer_link(const Connection& conn);
-    void add_refmac_builtin_modifications();
     struct RGroup {
       std::vector<ResInfo>::iterator begin, end;
     };
@@ -409,27 +408,6 @@ inline void Topo::ChainInfo::disable_polymer_link(const Connection& conn) {
       }
 }
 
-inline void Topo::ChainInfo::add_refmac_builtin_modifications() {
-  if (polymer && !res_infos.empty()) {
-    // we try to get exactly the same numbers that makecif produces
-    for (Topo::ResInfo& ri : res_infos)
-      if (polymer_type == PolymerType::PeptideL)
-        ri.mods.emplace_back("AA-STAND");
-    Topo::ResInfo& front = res_infos.front();
-    Topo::ResInfo& back = res_infos.back();
-    if (is_polypeptide(polymer_type)) {
-      if (front.chemcomp.group == "P-peptide")
-        front.mods.emplace_back("NH2");
-      else if (front.chemcomp.group != "M-peptide")
-        front.mods.emplace_back("NH3");
-      back.mods.emplace_back(back.res->find_atom("OXT", '*') ? "COO" : "TERMINUS");
-    } else if (is_polynucleotide(polymer_type)) {
-      front.mods.emplace_back(front.res->find_atom("P", '*') ? "p5*END" : "5*END");
-      back.mods.emplace_back("TERMINUS");
-    }
-  }
-}
-
 inline Restraints::Bond bond_restraint_from_connection(const Connection& conn) {
   Restraints::Bond bond;
   bond.id1 = Restraints::AtomId{1, conn.partner1.atom_name};
@@ -469,8 +447,6 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
     // don't use the standard link.
     for (const Connection& conn : st.connections)
       ci.disable_polymer_link(conn);
-
-    ci.add_refmac_builtin_modifications();
 
     // add modifications from standard links
     for (ResInfo& ri : ci.res_infos)
