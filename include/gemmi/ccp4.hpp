@@ -453,13 +453,8 @@ void Ccp4<T>::set_extent(const Box<Fractional>& box) {
   int nv = (int)std::floor(box.maximum.y * grid.nv) - v0 + 1;
   int nw = (int)std::floor(box.maximum.z * grid.nw) - w0 + 1;
   // set the data
-  std::vector<T> data((size_t)nu * nv * nw);
-  int idx = 0;
-  for (int w = 0; w < nw; w++) // sections
-    for (int v = 0; v < nv; v++) // rows
-      for (int u = 0; u < nu; u++) // cols
-        data[idx++] = grid.get_value(u0 + u, v0 + v, w0 + w);
-  grid.data = std::move(data);
+  grid.data.resize((size_t)nu * nv * nw);
+  grid.get_subarray(grid.data.data(), {u0, v0, w0}, {nu, nv, nw});
   // and metadata
   grid.nu = nu;
   grid.nv = nv;
