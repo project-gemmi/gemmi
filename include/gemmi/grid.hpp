@@ -472,6 +472,32 @@ struct Grid : GridBase<T> {
     }
   }
 
+  void set_subarray(const T* src, std::array<int,3> start, std::array<int,3> shape) {
+    check_not_empty();
+    if (this->axis_order != AxisOrder::XYZ)
+      fail("get_subarray() is for Grids in XYZ order");
+    const int u_start0 = modulo(start[0], nu);
+    for (int w = 0; w < shape[2]; w++) {
+      const int w0 = modulo(start[2] + w, nw);
+      for (int v = 0; v < shape[1]; v++) {
+        const int v0 = modulo(start[1] + v, nv);
+        int u_start = u_start0;
+        T* dst0 = &data[this->index_q(u_start, v0, w0)];
+        int len = shape[0];
+        while (len > nu - u_start) {
+          int elem = nu - u_start;
+          std::copy(src, src + elem, dst0);
+          dst0 -= u_start;
+          src += elem;
+          len -= elem;
+          u_start = 0;
+        }
+        std::copy(src, src + len, dst0);
+        src += len;
+      }
+    }
+  }
+
   void set_value(int u, int v, int w, T x) { data[index_s(u, v, w)] = x; }
 
   template <bool UsePbc>

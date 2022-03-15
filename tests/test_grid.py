@@ -142,13 +142,17 @@ class TestCcp4Map(unittest.TestCase):
         self.assertAlmostEqual(mean, 0)
         self.assertAlmostEqual(rms, 1)
 
+    @unittest.skipIf(numpy is None, "NumPy not installed.")
     def test_get_subarray(self):
         data = numpy.arange(5*6*7, dtype=numpy.float32).reshape((5,6,7))
         grid = gemmi.FloatGrid(data)
         sub = grid.get_subarray([4,-3,20], [5,10,4])
         self.assertEqual(sub[0][0][0], 195.)
-        self.assertEqual(sub[2][2][2], 78.)
+        self.assertEqual(sub[1][2][3], 37.)
         self.assertEqual(sub[-1][-1][-1], 128.)
+        grid.set_subarray(-sub, [4,-3,20])
+        sub2 = grid.get_subarray([4,-3,20], [5,10,4])
+        assert_numpy_equal(self, -sub, sub2)
 
 
 if __name__ == '__main__':

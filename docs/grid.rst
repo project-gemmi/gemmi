@@ -141,15 +141,6 @@ the ``array`` property:
   >>> grid.array.shape
   (12, 12, 12)
 
-The Grid class is often used for electron density maps.
-A common operation on such maps is normalization -- scaling
-that changes the mean to 0 and RMSD to 1:
-
-.. doctest::
-
-    >>> grid2 = grid.clone()
-    >>> grid2.normalize()
-
 Symmetry
 --------
 
@@ -194,7 +185,7 @@ Python bindings provide the following specializations:
   >>> grid.symmetrize_min()      # minimum of equivalent values
   >>> grid.symmetrize_max()      # maximum
   >>> grid.symmetrize_abs_max()  # value corresponding to max(|x|)
-  >>> #grid.symmetrize_sum()     # sum symmetry-equivalent nodes
+  >>> grid2.symmetrize_sum()     # sum symmetry-equivalent nodes
 
 Unit cell
 ---------
@@ -278,6 +269,64 @@ The other way around, we can find the grid point nearest to a position:
   <gemmi.FloatGridBase.Point (6, 6, 6) -> 0>
 
 
+Common operations
+-----------------
+
+The Grid class is often used for electron density maps.
+A common operation on such maps is normalization -- scaling
+that changes the mean to 0 and RMSD to 1:
+
+.. doctest::
+
+    >>> gr = grid.clone()
+    >>> gr.normalize()
+
+----
+
+To extract a block-shaped sub-array data as a Fortran-contiguous array,
+or to set data in a block in a grid, use functions get/set_subarray.
+Unlike array slicing, these functions are aware of the cell repeat
+(PBC) -- the block area is not limited by the unit cell boundaries.
+
+.. doctest::
+
+  >>> sub = gr.get_subarray(start=[3,3,3], shape=[2,3,4])
+  >>> sub.shape
+  (2, 3, 4)
+  >>> gr.set_subarray(sub, start=[0,0,0])
+
+----
+
+To set the whole grid to the same value use:
+
+.. doctest::
+
+  >>> gr.fill(0)
+
+To set the grid points in a certain radius from a specified position use::
+
+  void Grid<T>::set_points_around(const Position& ctr, double radius, T value)
+
+.. doctest::
+  :skipif: numpy is None or sys.platform == 'win32'
+
+  >>> gr.set_points_around(gemmi.Position(25, 25, 25), radius=3, value=10)
+  >>> numpy.argwhere(gr.array == 10)
+  array([[6, 6, 7],
+         [6, 7, 7]])
+
+This function, to be efficient, ignores symmetry.
+At the end we should call one of the *symmetrizing* functions:
+
+.. doctest::
+
+  >>> gr.symmetrize_max()
+
+While we could use the above functions for masking the molecule
+(or bulk solvent) area, we have specialized functions to create
+a bulk :ref:`solvent mask <solventmask>`.
+
+
 Interpolation
 -------------
 
@@ -314,7 +363,7 @@ or tricubic interpolation that uses 64 nodes.
   >>> grid.tricubic_interpolation_der(gemmi.Fractional(1/24, 1/24, 1/24))
   [1.283477783203125, 35.523193359375, 36.343505859375, 35.523193359375]
 
-The cubic interpolation is smoother than linear, but may increase the noise.
+The cubic interpolation is smoother than linear, but may amplify the noise.
 This is illustrated on the plots below, which shows density along two lines
 in a grid that was filled with random numbers from [0, 1).
 Trilinear interpolation is blue, tricubic -- red.
@@ -397,38 +446,6 @@ The primary use for MaskedGrid is working with asymmetric unit (asu) only:
   <gemmi.FloatGridBase.Point (0, 0, 0) -> 0.125>
   <gemmi.FloatGridBase.Point (1, 1, 1) -> 7>
 
-
-Setting value in areas
-----------------------
-
-First, to set the whole grid to the same value use:
-
-.. doctest::
-
-  >>> grid.fill(0)
-
-To set the grid points in a certain radius from a specified position use::
-
-  void Grid<T>::set_points_around(const Position& ctr, double radius, T value)
-
-.. doctest::
-  :skipif: numpy is None or sys.platform == 'win32'
-
-  >>> grid.set_points_around(gemmi.Position(25, 25, 25), radius=3, value=10)
-  >>> numpy.argwhere(array == 10)
-  array([[6, 6, 7],
-         [6, 7, 7]])
-
-This function, to be efficient, ignores symmetry.
-At the end we should call one of the *symmetrizing* functions:
-
-.. doctest::
-
-  >>> grid.symmetrize_max()
-
-While we could use the above functions for masking the molecule
-(or bulk solvent) area, we have specialized functions to create
-a bulk solvent mask.
 
 .. _solventmask:
 

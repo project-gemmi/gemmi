@@ -144,7 +144,13 @@ py::class_<Grid<T>, GridBase<T>> add_grid(py::module& m, const std::string& name
                            {sizeof(T), sizeof(T)*shape[0], sizeof(T)*shape[0]*shape[1]});
         self.get_subarray((T*) arr.request().ptr, start, shape);
         return arr;
-    })
+    }, py::arg("start"), py::arg("shape"))
+    .def("set_subarray",
+         [](Gr& self, py::array_t<T, py::array::f_style | py::array::forcecast> arr,
+            std::array<int,3> start) {
+        self.set_subarray((T*) arr.request().ptr, start,
+                          {(int)arr.shape(0), (int)arr.shape(1), (int)arr.shape(2)});
+    }, py::arg("arr"), py::arg("start"))
     .def("clone", [](const Gr& self) { return new Gr(self); })
     .def("__repr__", [=](const Gr& self) {
         return tostr("<gemmi.", name, '(', self.nu, ", ", self.nv, ", ", self.nw, ")>");
