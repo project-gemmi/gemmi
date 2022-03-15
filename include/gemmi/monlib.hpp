@@ -575,7 +575,7 @@ struct MonLib {
 
   void ensure_unique_link_name(std::string& name) const {
     size_t orig_len = name.size();
-    for (int n = 1; find_link(name) != nullptr; ++n)
+    for (int n = 0; find_link(name) != nullptr; ++n)
       name.replace(orig_len, name.size(), std::to_string(n));
   }
 
