@@ -111,9 +111,9 @@ class TestCcp4Map(unittest.TestCase):
         expanded_data[1:5, 2:3, 4:6] = cut_data
 
         mcut = gemmi.read_ccp4_map(yzx_path, setup=False)
-        self.assertTrue(mcut.axis_positions(), [1, 2, 0])
+        self.assertEqual(mcut.axis_positions(), [2, 0, 1])
         mcut.setup(float('nan'), gemmi.MapSetup.ReorderOnly)
-        self.assertTrue(mcut.axis_positions(), [0, 1, 2])
+        self.assertEqual(mcut.axis_positions(), [0, 1, 2])
         self.assertFalse(mcut.full_cell())
         self.assertEqual(mcut.grid.axis_order, gemmi.AxisOrder.Unknown)
         self.assertTrue(numpy.array_equal(mcut.grid.array, cut_data))
