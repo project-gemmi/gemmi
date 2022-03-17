@@ -218,7 +218,7 @@ inline void read_connectivity(cif::Block& block, Structure& st) {
     if (row.has2(kSym1) && row.has2(kSym2)) {
       c.asu = (row.str(kSym1) == row.str(kSym2) ? Asu::Same : Asu::Different);
     }
-    copy_double(row, 16, c.reported_distance);
+    copy_double(row, kDistValue, c.reported_distance);
     for (int i = 0; i < 2; ++i) {
       AtomAddress& a = (i == 0 ? c.partner1 : c.partner2);
       if (row.has(kAuthAsymId+i) && row.has(kAuthSeqId+i)) {
