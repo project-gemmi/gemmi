@@ -82,6 +82,11 @@ struct Restraints {
     double distance(DistanceOf of) const {
       return of == DistanceOf::ElectronCloud ? value : value_nucleus;
     }
+    template<typename T> const AtomId* other(const T& a) const {
+      if (id1 == a) return &id2;
+      if (id2 == a) return &id1;
+      return nullptr;
+    }
   };
 
   struct Angle {
@@ -162,27 +167,10 @@ struct Restraints {
 
   template<typename T>
   const AtomId* first_bonded_atom(const T& a) const {
-    for (const Bond& bond : bonds) {
-      if (bond.id1 == a)
-        return &bond.id2;
-      if (bond.id2.atom == a)
-        return &bond.id1;
-    }
+    for (const Bond& bond : bonds)
+      if (const AtomId* other = bond.other(a))
+        return other;
     return nullptr;
-  }
-
-  template<typename A, typename T>
-  void for_each_bonded_atom(const A& a, const T& func) const {
-    for (const Bond& bond : bonds) {
-      const AtomId* other = nullptr;
-      if (bond.id1 == a)
-        other = &bond.id2;
-      else if (bond.id2 == a)
-        other = &bond.id1;
-      if (other != nullptr)
-        if (!func(*other))
-          break;
-    }
   }
 
   // BFS
@@ -193,15 +181,15 @@ struct Restraints {
     visited.push_back(b);
     std::vector<int> parent(visited.size(), -1);
     for (int n = start; end == -1 && n != (int) visited.size(); ++n) {
-      for_each_bonded_atom(AtomId(visited[n]), [&](const AtomId& id) {
-          if (id == a)
+      for (const Bond& bond : bonds)
+        if (const AtomId* id = bond.other(visited[n])) {
+          if (*id == a)
             end = (int) visited.size();
-          if (!in_vector(id, visited)) {
-            visited.push_back(id);
+          if (!in_vector(*id, visited)) {
+            visited.push_back(*id);
             parent.push_back(n);
           }
-          return true;
-      });
+        }
     }
     std::vector<AtomId> path;
     for (int n = end; n != -1; n = parent[n])
