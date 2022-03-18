@@ -360,7 +360,7 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
     auto it = chemcomp.find_atom(mod.old_id);
     switch (mod.func) {
       case 'a':
-        if (chemcomp.find_atom(mod.new_id) == chemcomp.atoms.end())
+        if (!chemcomp.has_atom(mod.new_id))
           chemcomp.atoms.push_back({mod.new_id, mod.el,
                                     std::isnan(mod.charge) ? mod.charge : 0,
                                     mod.chem_type});

@@ -331,8 +331,11 @@ struct ChemComp {
     return std::find_if(atoms.begin(), atoms.end(),
                         [&](const Atom& a) { return a.id == atom_id; });
   }
-  std::vector<Atom>::const_iterator find_atom(const std::string& atom_id) const{
+  std::vector<Atom>::const_iterator find_atom(const std::string& atom_id) const {
     return const_cast<ChemComp*>(this)->find_atom(atom_id);
+  }
+  bool has_atom(const std::string& atom_id) const {
+    return find_atom(atom_id) == atoms.end();
   }
 
   int get_atom_index(const std::string& atom_id) const {
@@ -348,29 +351,29 @@ struct ChemComp {
 
   void remove_nonmatching_restraints() {
     vector_remove_if(rt.bonds, [&](const Restraints::Bond& x) {
-      return find_atom(x.id1.atom) == atoms.end() ||
-             find_atom(x.id2.atom) == atoms.end();
+      return !has_atom(x.id1.atom) ||
+             !has_atom(x.id2.atom);
     });
     vector_remove_if(rt.angles, [&](const Restraints::Angle& x) {
-      return find_atom(x.id1.atom) == atoms.end() ||
-             find_atom(x.id2.atom) == atoms.end() ||
-             find_atom(x.id3.atom) == atoms.end();
+      return !has_atom(x.id1.atom) ||
+             !has_atom(x.id2.atom) ||
+             !has_atom(x.id3.atom);
     });
     vector_remove_if(rt.torsions, [&](const Restraints::Torsion& x) {
-      return find_atom(x.id1.atom) == atoms.end() ||
-             find_atom(x.id2.atom) == atoms.end() ||
-             find_atom(x.id3.atom) == atoms.end() ||
-             find_atom(x.id4.atom) == atoms.end();
+      return !has_atom(x.id1.atom) ||
+             !has_atom(x.id2.atom) ||
+             !has_atom(x.id3.atom) ||
+             !has_atom(x.id4.atom);
     });
     vector_remove_if(rt.chirs, [&](const Restraints::Chirality& x) {
-      return find_atom(x.id_ctr.atom) == atoms.end() ||
-             find_atom(x.id1.atom) == atoms.end() ||
-             find_atom(x.id2.atom) == atoms.end() ||
-             find_atom(x.id3.atom) == atoms.end();
+      return !has_atom(x.id_ctr.atom) ||
+             !has_atom(x.id1.atom) ||
+             !has_atom(x.id2.atom) ||
+             !has_atom(x.id3.atom);
     });
     for (Restraints::Plane& plane : rt.planes)
       vector_remove_if(plane.ids, [&](const Restraints::AtomId& x) {
-        return find_atom(x.atom) == atoms.end();
+        return !has_atom(x.atom);
       });
   }
 

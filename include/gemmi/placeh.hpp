@@ -23,7 +23,8 @@ inline void add_hydrogens_without_positions(const ChemComp& cc, Residue& res) {
       continue;
     Atom atom = it->to_full_atom();
     if (const Restraints::AtomId* bonded = cc.rt.first_bonded_atom(atom.name))
-      // avoid range-based-for here because res.atoms may get re-allocated
+      // Add H atom for each conformation (altloc) of the parent atom.
+      // Avoid range-based-for here because res.atoms may get re-allocated.
       for (size_t i = 0, size = res.atoms.size(); i != size; ++i)
         if (res.atoms[i].name == bonded->atom) {
           const Atom& parent = res.atoms[i];
@@ -407,7 +408,8 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
           for (Atom& atom : res.atoms) {
             auto it = cc.find_atom(atom.name);
             if (it == cc.atoms.end())
-              topo->err("definition not found for " + atom_str(chain_info.chain_ref, *ri.res, atom));
+              topo->err("definition not found for " +
+                        atom_str(chain_info.chain_ref, *ri.res, atom));
             atom.serial = int(it - cc.atoms.begin()); // temporary, for sorting only
           }
           std::sort(res.atoms.begin(), res.atoms.end(), [](const Atom& a, const Atom& b) {
