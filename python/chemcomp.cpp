@@ -157,6 +157,10 @@ void add_chemcomp(py::module& m) {
     .def_readonly("atoms", &ChemComp::atoms)
     .def_readonly("rt", &ChemComp::rt)
     .def("get_atom", &ChemComp::get_atom)
+    .def("find_atom", [](ChemComp& self, const std::string& atom_id) {
+        auto it = self.find_atom(atom_id);
+        return it != self.atoms.end() ? &*it : nullptr;
+    }, py::return_value_policy::reference_internal)
     .def("remove_hydrogens", &ChemComp::remove_hydrogens)
     ;
   m.def("make_chemcomp_from_block", &make_chemcomp_from_block);
