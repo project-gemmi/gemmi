@@ -464,7 +464,11 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
   ChemComp cc;
   cc.name = block_.name.substr(starts_with(block_.name, "comp_") ? 5 : 0);
   cif::Block& block = const_cast<cif::Block&>(block_);
+  // CCD uses _chem_comp.type, monomer libraries use .group in separate block,
+  // but just in case check for the presence of _chem_comp.group here.
   cif::Column group_col = block.find_values("_chem_comp.group");
+  if (!group_col)
+    group_col = block.find_values("_chem_comp.type");
   if (group_col)
     cc.group = group_col.str(0);
   for (auto row : block.find("_chem_comp_atom.",
@@ -525,7 +529,7 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
         if (atoms != chir_atoms.end() && atoms->second.size() == 3)
           cc.rt.chirs.push_back({{1, row.str(1)},
                                  {1, atoms->second[0]}, {1, atoms->second[1]},
-                                 {1, atoms->second[2]}, 
+                                 {1, atoms->second[2]},
                                  chirality_from_flag_and_volume(row[2],
                                                                 cif::as_number(row[3]))});
     }
