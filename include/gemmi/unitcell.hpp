@@ -121,6 +121,11 @@ struct NcsOp {
 // a synonym for convenient passing of hkl
 using Miller = std::array<int, 3>;
 
+struct MillerHash {
+  std::size_t operator()(const Miller& hkl) const noexcept {
+    return std::size_t((hkl[0] * 1024 + hkl[1]) * 1024 + hkl[2]);
+  }
+};
 
 struct UnitCell {
   UnitCell() = default;
