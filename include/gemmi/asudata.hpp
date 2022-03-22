@@ -6,7 +6,6 @@
 #define GEMMI_ASUDATA_HPP_
 
 #include <complex>       // for arg, abs
-#include <tuple>         // for tie
 #include <algorithm>     // for sort, is_sorted
 #include "unitcell.hpp"
 #include "symmetry.hpp"
@@ -52,8 +51,7 @@ void for_matching_reflections(const std::vector<T>& a,
       func(*r1, *r2);
       ++r1;
       ++r2;
-    } else if (std::tie(r1->hkl[0], r1->hkl[1], r1->hkl[2]) <
-               std::tie(r2->hkl[0], r2->hkl[1], r2->hkl[2])) {
+    } else if (r1->hkl < r2->hkl) {
       ++r1;
     } else {
       ++r2;
@@ -99,9 +97,7 @@ struct HklValue {
   Miller hkl;
   T value;
 
-  bool operator<(const Miller& m) const {
-    return std::tie(hkl[0], hkl[1], hkl[2]) < std::tie(m[0], m[1], m[2]);
-  }
+  bool operator<(const Miller& m) const { return hkl < m; }
   bool operator<(const HklValue& o) const { return operator<(o.hkl); }
 };
 

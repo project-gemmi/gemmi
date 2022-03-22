@@ -1002,8 +1002,7 @@ struct Mtz {
               src_mtz->data[*src * src_stride + src_col.idx + i];
           ++dst;
           ++src;
-        } else if (std::tie(dst_hkl[0], dst_hkl[1], dst_hkl[2]) <
-                   std::tie(src_hkl[0], src_hkl[1], src_hkl[2])) {
+        } else if (dst_hkl < src_hkl) {
           ++dst;
         } else {
           ++src;
