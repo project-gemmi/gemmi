@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <limits>        // for numeric_limits
+#include <unordered_map> // for unordered_map
 #include "unitcell.hpp"  // for UnitCell
 
 namespace gemmi {
@@ -147,6 +148,47 @@ struct Binner {
   double min_1_d2;
   double max_1_d2;
   std::vector<double> limits;  // upper limit of each bin
+};
+
+struct HklMatch {
+  std::vector<int> pos;
+  size_t hkl_size;
+
+  HklMatch(const std::vector<Miller>& hkl, const std::vector<Miller>& ref)
+      : pos(ref.size(), -1), hkl_size(hkl.size()) {
+    // Usually, both datasets are sorted. This make things faster.
+    if (std::is_sorted(hkl.begin(), hkl.end()) &&
+        std::is_sorted(ref.begin(), ref.end())) {
+      // cf. for_matching_reflections()
+      auto a = hkl.begin();
+      auto b = ref.begin();
+      while (a != hkl.end() && b != ref.end()) {
+        if (*a == *b)
+          pos[b++ - ref.begin()] = static_cast<int>(a++ - hkl.begin());
+        else if (*a < *b)
+          ++a;
+        else
+          ++b;
+      }
+    } else {
+      std::unordered_map<Miller, int, MillerHash> hkl_index;
+      for (int i = 0; i != (int)hkl.size(); ++i)
+        hkl_index.emplace(hkl[i], i);
+      for (size_t i = 0; i != ref.size(); ++i) {
+        auto it = hkl_index.find(ref[i]);
+        if (it != hkl_index.end())
+          pos[i] = it->second;
+      }
+    }
+  }
+  template <typename T> std::vector<T> aligned(const std::vector<T>& v, T nan) {
+    if (v.size() != hkl_size)
+      fail("HklMatch.aligned(): wrong data, size differs");
+    std::vector<T> result(pos.size());
+    for (size_t i = 0; i != pos.size(); ++i)
+      result[i] = pos[i] >= 0 ? v[pos[i]] : nan;
+    return result;
+  }
 };
 
 } // namespace gemmi
