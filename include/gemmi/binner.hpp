@@ -176,17 +176,17 @@ struct HklMatch {
   std::vector<int> pos;
   size_t hkl_size;
 
-  HklMatch(const std::vector<Miller>& hkl, const std::vector<Miller>& ref)
-      : pos(ref.size(), -1), hkl_size(hkl.size()) {
+  HklMatch(const Miller* hkl, size_t hkl_size_, const Miller* ref, size_t ref_size)
+      : pos(ref_size, -1), hkl_size(hkl_size_) {
     // Usually, both datasets are sorted. This make things faster.
-    if (std::is_sorted(hkl.begin(), hkl.end()) &&
-        std::is_sorted(ref.begin(), ref.end())) {
+    if (std::is_sorted(hkl, hkl + hkl_size) &&
+        std::is_sorted(ref, ref + ref_size)) {
       // cf. for_matching_reflections()
-      auto a = hkl.begin();
-      auto b = ref.begin();
-      while (a != hkl.end() && b != ref.end()) {
+      auto a = hkl;
+      auto b = ref;
+      while (a != hkl + hkl_size && b != ref + ref_size) {
         if (*a == *b)
-          pos[b++ - ref.begin()] = static_cast<int>(a++ - hkl.begin());
+          pos[b++ - ref] = static_cast<int>(a++ - hkl);
         else if (*a < *b)
           ++a;
         else
@@ -194,15 +194,19 @@ struct HklMatch {
       }
     } else {
       std::unordered_map<Miller, int, MillerHash> hkl_index;
-      for (int i = 0; i != (int)hkl.size(); ++i)
+      for (int i = 0; i != (int)hkl_size; ++i)
         hkl_index.emplace(hkl[i], i);
-      for (size_t i = 0; i != ref.size(); ++i) {
+      for (size_t i = 0; i != ref_size; ++i) {
         auto it = hkl_index.find(ref[i]);
         if (it != hkl_index.end())
           pos[i] = it->second;
       }
     }
   }
+
+  HklMatch(const std::vector<Miller>& hkl, const std::vector<Miller>& ref)
+    : HklMatch(hkl.data(), hkl.size(), ref.data(), ref.size()) {}
+
   template <typename T> std::vector<T> aligned(const std::vector<T>& v, T nan) {
     if (v.size() != hkl_size)
       fail("HklMatch.aligned(): wrong data, size differs");

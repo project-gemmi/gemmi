@@ -313,4 +313,30 @@ void add_hkl(py::module& m) {
     .def_readonly("min_1_d2", &Binner::min_1_d2)
     .def_readonly("max_1_d2", &Binner::max_1_d2)
     ;
+
+  m.def("combine_correlations", &combine_correlations);
+
+  py::class_<HklMatch>(m, "HklMatch")
+    .def(py::init([](py::array_t<int, py::array::c_style> hkl,
+                     py::array_t<int, py::array::c_style> ref) {
+        auto hkl_ = hkl.unchecked<2>();
+        if (hkl_.shape(1) != 3)
+          throw std::domain_error("the hkl array must have size N x 3");
+        auto ref_ = ref.unchecked<2>();
+        if (ref_.shape(1) != 3)
+          throw std::domain_error("the ref array must have size N x 3");
+        return new HklMatch((Miller*)hkl.request().ptr, hkl.shape(0),
+                            (Miller*)ref.request().ptr, ref.shape(0));
+    }), py::arg("hkl"), py::arg("ref"))
+    .def("aligned", [](HklMatch& self, py::array_t<double> vec) {
+        auto v = vec.unchecked<1>();
+        if (v.shape(0) != (py::ssize_t) self.hkl_size)
+          fail("HklMatch.aligned(): wrong data, size differs");
+        py::array_t<double> result(self.pos.size());
+        double* ptr = (double*) result.request().ptr;
+        for (size_t i = 0; i != self.pos.size(); ++i)
+          ptr[i] = self.pos[i] >= 0 ? v(self.pos[i]) : NAN;
+        return result;
+    })
+    ;
 }
