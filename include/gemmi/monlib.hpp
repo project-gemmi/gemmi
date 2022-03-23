@@ -265,7 +265,7 @@ inline void insert_chemlinks(const cif::Document& doc,
       link.side2.group = ChemLink::read_group(row[7]);
       const cif::Block* block = doc.find_block("link_" + link.id);
       if (!block)
-        fail("inconsisted data_link_list");
+        fail("inconsistent data_link_list");
       link.rt = read_link_restraints(*block);
       links.emplace(link.id, link);
     }
@@ -339,7 +339,7 @@ inline void insert_chemmods(const cif::Document& doc,
       mod.group_id = row.str(3);
       const cif::Block* block = doc.find_block("mod_" + mod.id);
       if (!block)
-        fail("inconsisted data_mod_list");
+        fail("inconsistent data_mod_list");
       for (auto ra : const_cast<cif::Block*>(block)->find("_chem_mod_atom.",
                                   {"function", "atom_id", "new_atom_id",
                                    "new_type_symbol", "new_type_energy",
