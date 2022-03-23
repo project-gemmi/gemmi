@@ -405,7 +405,7 @@ struct Correlation {
   double mean_y = 0.;
   void add_point(double x, double y) {
     ++n;
-    double weight = (n - 1.0) / n;
+    double weight = (double)(n - 1) / n;
     double dx = x - mean_x;
     double dy = y - mean_y;
     sum_xx += weight * dx * dx;

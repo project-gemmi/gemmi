@@ -150,6 +150,28 @@ struct Binner {
   std::vector<double> limits;  // upper limit of each bin
 };
 
+// the result is in a
+inline Correlation combine_two_correlations(const Correlation& a, const Correlation& b) {
+  Correlation r;
+  r.n = a.n + b.n;
+  r.mean_x = (a.n * a.mean_x + b.n * b.mean_x) / r.n;
+  r.mean_y = (a.n * a.mean_y + b.n * b.mean_y) / r.n;
+  r.sum_xx = a.sum_xx + a.n * sq(a.mean_x - r.mean_x)
+           + b.sum_xx + b.n * sq(b.mean_x - r.mean_x);
+  r.sum_yy = a.sum_yy + a.n * sq(a.mean_y - r.mean_y)
+           + b.sum_yy + b.n * sq(b.mean_y - r.mean_y);
+  r.sum_xy = a.sum_xy + a.n * (a.mean_x - r.mean_x) * (a.mean_y - r.mean_y)
+           + b.sum_xy + b.n * (b.mean_x - r.mean_x) * (b.mean_y - r.mean_y);
+  return r;
+}
+
+inline Correlation combine_correlations(const std::vector<Correlation>& cors) {
+  Correlation result;
+  for (const Correlation& cor : cors)
+    result = combine_two_correlations(result, cor);
+  return result;
+}
+
 struct HklMatch {
   std::vector<int> pos;
   size_t hkl_size;
