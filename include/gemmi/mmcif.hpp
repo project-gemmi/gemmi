@@ -402,6 +402,10 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
   add_info("_struct_keywords.pdbx_keywords");
   add_info("_struct_keywords.text");
 
+  for (const std::string& v : block.find_values("_audit_author.name"))
+    if (!cif::is_null(v))
+      st.meta.authors.push_back(cif::as_string(v));
+
   for (auto row : block.find("_refine.", {"pdbx_refine_id",           // 0
                                           "?ls_d_res_high",           // 1
                                           "?ls_d_res_low",            // 2

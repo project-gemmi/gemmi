@@ -30,6 +30,7 @@ void add_write(py::module& m, py::class_<Structure>& structure) {
     DEF_BIT_PROPERTY(block_name)
     DEF_BIT_PROPERTY(entry)
     DEF_BIT_PROPERTY(database_status)
+    DEF_BIT_PROPERTY(author)
     DEF_BIT_PROPERTY(cell)
     DEF_BIT_PROPERTY(symmetry)
     DEF_BIT_PROPERTY(entity)

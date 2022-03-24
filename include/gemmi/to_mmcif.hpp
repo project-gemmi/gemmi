@@ -16,6 +16,7 @@ struct MmcifOutputGroups {
   bool block_name:1;
   bool entry:1;
   bool database_status:1;
+  bool author:1;
   bool cell:1;
   bool symmetry:1;
   bool entity:1;
@@ -45,7 +46,7 @@ struct MmcifOutputGroups {
 
   explicit MmcifOutputGroups(bool all)
     : atoms(all), block_name(all), entry(all), database_status(all),
-      cell(all), symmetry(all), entity(all),
+      author(all), cell(all), symmetry(all), entity(all),
       entity_poly(false),  // see the comment under "if (groups.entity_poly)"
       struct_ref(all), chem_comp(all), exptl(all), diffrn(all),
       reflns(all), refine(all), title_keywords(all), ncs(all),
@@ -503,13 +504,19 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
     id = *val;
 
   if (groups.database_status) {
-    auto initial_date =
-           st.info.find("_pdbx_database_status.recvd_initial_deposition_date");
+    auto initial_date = st.info.find("_pdbx_database_status.recvd_initial_deposition_date");
     if (initial_date != st.info.end() && !initial_date->second.empty()) {
       impl::ItemSpan span(block.items, "_pdbx_database_status.");
       span.set_pair("_pdbx_database_status.entry_id", id);
       span.set_pair(initial_date->first, initial_date->second);
     }
+  }
+
+  if (groups.author && !st.meta.authors.empty()) {
+    cif::Loop& loop = block.init_mmcif_loop("_audit_author.", {"pdbx_ordinal", "name"});
+    int n = 0;
+    for (const std::string& author : st.meta.authors)
+      loop.add_row({std::to_string(++n), cif::quote(author)});
   }
 
   if (groups.cell) {
