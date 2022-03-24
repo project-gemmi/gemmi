@@ -39,6 +39,8 @@ void add_meta(py::module& m) {
     .def("__repr__", [](const SeqId& self) {
         return "<gemmi.SeqId " + self.str() + ">";
     })
+    .def(py::self == py::self)
+    .def(py::self < py::self)
     .def(py::pickle(
         [](const SeqId &self) {
             return py::make_tuple(self.num, self.icode);
@@ -59,6 +61,7 @@ void add_meta(py::module& m) {
     .def("__repr__", [](const ResidueId& self) {
         return "<gemmi.ResidueId " + self.str() + ">";
     })
+    .def(py::self == py::self)
     .def(py::pickle(
         [](const ResidueId &self) {
             return py::make_tuple(self.seqid, self.segment, self.name);
@@ -89,6 +92,7 @@ void add_meta(py::module& m) {
     .def("__repr__", [](const AtomAddress& self) {
         return tostr("<gemmi.AtomAddress ", self.str(), '>');
     })
+    .def(py::self == py::self)
     .def(py::pickle(
         [](const AtomAddress &self) {
             return py::make_tuple(self.chain_name, self.res_id, self.atom_name, self.altloc);
