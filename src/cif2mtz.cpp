@@ -21,7 +21,7 @@ using std::fprintf;
 
 enum OptionIndex {
   BlockName=4, BlockNumber, Add, List, Dir, Spec, PrintSpec,
-  Title, History, Unmerged, Sort
+  Title, History, Unmerged, Sort, Local
 };
 
 const option::Descriptor Usage[] = {
@@ -55,6 +55,9 @@ const option::Descriptor Usage[] = {
     "  -u, --unmerged  \tWrite unmerged MTZ file(s)." },
   { Sort, 0, "", "sort", Arg::None,
     "  --sort  \tOrder reflections according to Miller indices." },
+  { Local, 0, "", "local", Arg::None,
+    "  --local  \tTake file from local copy of the PDB archive in "
+    "$PDB_DIR/structures/divided/structure_factors/" },
   { NoOp, 0, "", "", Arg::None,
     "\nFirst variant: converts the first block of CIF_FILE, or the block"
     "\nspecified with --block=NAME, to MTZ file with given name."
@@ -151,9 +154,16 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     if (p.options[Spec])
       read_spec_file(p.options[Spec].arg, cif2mtz.spec_lines);
-    const char* cif_path = p.nonOption(0);
+    std::string cif_path = p.nonOption(0);
+    if (p.options[Local]) {
+      if (!gemmi::is_pdb_code(cif_path))
+        gemmi::fail("Not a PDB ID: " + cif_path);
+      cif_path = gemmi::expand_pdb_code_to_path(cif_path, 'S');
+      if (cif_path.empty())
+        gemmi::fail("To use option --local set $PDB_DIR.");
+    }
     if (cif2mtz.verbose)
-      fprintf(stderr, "Reading %s ...\n", cif_path);
+      fprintf(stderr, "Reading %s ...\n", cif_path.c_str());
     // If the file is gzipped and huge, reading it will result in error,
     // but if we are interested only in the first block we can recover.
     gemmi::cif::Document doc;

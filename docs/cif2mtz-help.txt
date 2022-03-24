@@ -17,6 +17,8 @@ Options:
   -H LINE, --history=LINE  Add a history line.
   -u, --unmerged           Write unmerged MTZ file(s).
   --sort                   Order reflections according to Miller indices.
+  --local                  Take file from local copy of the PDB archive in
+                           $PDB_DIR/structures/divided/structure_factors/
 
 First variant: converts the first block of CIF_FILE, or the block
 specified with --block=NAME, to MTZ file with given name.
