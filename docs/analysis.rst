@@ -1289,9 +1289,9 @@ TBC
 Local copy of the PDB archive
 =============================
 
-Some examples in this documentation work on a local copy
-of the Protein Data Bank archive. This subsection is actually
-a footnote describing our setup.
+Some of the examples in this documentation work with a local copy
+of the Protein Data Bank archive. This subsection describes
+the assumed setup.
 
 Like in BioJava, we assume that the ``$PDB_DIR`` environment variable
 points to a directory that contains ``structures/divided/mmCIF`` -- the same
@@ -1326,6 +1326,30 @@ once a week:
     #rsync_subdir structures/divided/pdb
     #rsync_subdir structures/divided/structure_factors
 
+Gemmi has a helper function for using the local archive copy.
+It takes a PDB code (case insensitive) and a symbol denoting what file
+is requested: P for PDB, M for mmCIF, S for SF-mmCIF.
+
+.. doctest::
+
+  >>> os.environ['PDB_DIR'] = '/copy'
+  >>> gemmi.expand_if_pdb_code('1ABC', 'P') # PDB file
+  '/copy/structures/divided/pdb/ab/pdb1abc.ent.gz'
+  >>> gemmi.expand_if_pdb_code('1abc', 'M') # mmCIF file
+  '/copy/structures/divided/mmCIF/ab/1abc.cif.gz'
+  >>> gemmi.expand_if_pdb_code('1abc', 'S') # SF-mmCIF file
+  '/copy/structures/divided/structure_factors/ab/r1abcsf.ent.gz'
+
+If the first argument is not in the PDB code format (4 characters for now)
+the function returns the first argument.
+
+.. doctest::
+
+  >>> arg = 'file.cif'
+  >>> gemmi.is_pdb_code(arg)
+  False
+  >>> gemmi.expand_if_pdb_code(arg, 'M')
+  'file.cif'
 
 Multiprocessing
 ===============
