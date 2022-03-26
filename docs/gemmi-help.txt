@@ -27,6 +27,7 @@ Commands:
  mondiff       compare two monomer CIF files
  mtz           print info about MTZ reflection file
  mtz2cif       convert MTZ to structure factor mmCIF
+ prep          prepare topology file (.crd) for Refmac
  reindex       reindex MTZ file
  residues      list residues from a coordinate file
  rmsz          validate geometry using monomer library

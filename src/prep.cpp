@@ -1,4 +1,4 @@
-// Copyright 2017 Global Phasing Ltd.
+// Copyright 2017-2022 Global Phasing Ltd.
 
 #include <stdio.h>
 #include <cstdlib>   // for getenv
@@ -20,7 +20,7 @@
 #include "gemmi/read_cif.hpp"  // for read_cif_gz
 #include "gemmi/read_coor.hpp" // for read_structure_gz
 
-#define GEMMI_PROG crdrst
+#define GEMMI_PROG prep
 #include "options.h"
 
 namespace cif = gemmi::cif;

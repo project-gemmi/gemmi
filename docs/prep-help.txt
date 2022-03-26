@@ -1,0 +1,15 @@
+$ gemmi prep -h
+Usage:
+ gemmi prep [options] INPUT_FILE OUTPUT_BASENAME
+
+Make intermediate files from one of PDB, mmCIF or mmJSON formats.
+
+Options:
+  -h, --help          Print usage and exit.
+  -V, --version       Print version and exit.
+  -v, --verbose       Verbose output.
+  --monomers=DIR      Monomer library dir (default: $CLIBD_MON).
+  --libin=CIF         Custom additions to the monomer library.
+  -H, --no-hydrogens  Remove or do not add hydrogens.
+  --keep-hydrogens    Preserve hydrogens from the input file.
+  --no-zero-occ       No restraints for zero-occupancy atoms.

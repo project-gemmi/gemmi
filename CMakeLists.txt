@@ -188,11 +188,6 @@ add_executable(gemmi-convert EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/convert.cpp $<TARGET_OBJECTS:output> $<TARGET_OBJECTS:input>)
 support_gz(gemmi-convert)
 
-add_executable(gemmi-crdrst EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/crdrst.cpp $<TARGET_OBJECTS:output>
-               $<TARGET_OBJECTS:input>)
-support_gz(gemmi-crdrst)
-
 add_executable(gemmi-fprime EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/fprime.cpp)
 
@@ -239,6 +234,11 @@ add_executable(gemmi-mtz2cif EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/mtz2cif.cpp $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:output>)
 support_gz(gemmi-mtz2cif)
 
+add_executable(gemmi-prep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               src/prep.cpp $<TARGET_OBJECTS:output>
+               $<TARGET_OBJECTS:input>)
+support_gz(gemmi-prep)
+
 add_executable(gemmi-reindex EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                src/reindex.cpp)
 support_gz(gemmi-reindex)
@@ -281,7 +281,7 @@ add_executable(program
                src/grep.cpp src/h.cpp src/json2cif.cpp
                src/main.cpp src/map.cpp src/map2sf.cpp src/mask.cpp
                src/merge.cpp src/mondiff.cpp src/mtz.cpp src/mtz2cif.cpp
-               src/reindex.cpp src/residues.cpp src/rmsz.cpp
+               src/prep.cpp src/reindex.cpp src/residues.cpp src/rmsz.cpp
                src/sf2map.cpp src/sfcalc.cpp src/sg.cpp
                src/tags.cpp src/validate.cpp src/validate_mon.cpp src/wcn.cpp
                $<TARGET_OBJECTS:mapcoef>

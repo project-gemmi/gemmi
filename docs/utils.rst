@@ -667,6 +667,26 @@ This format is supported by all major macromolecular refinement programs.
 .. literalinclude:: mondiff-help.txt
    :language: console
 
+prep
+====
+
+Prepares intermediate files for Refmac.
+It reads a coordinate file, a monomer library and, optionally,
+additional monomer CIF files, and combines it into an intermediate
+file that can be used as input (XYZIN) to Refmac.
+
+Such intermediate step is always present in Refmac, even if it is not visible
+to the user. In normal operation, Refmac writes, reads and deletes temporary
+files with extensions crd and rst. Gemmi-prep by default writes a single file
+with the content of both crd and rst.
+
+Refmac developers call this file an *intermediate* or *prepared* file.
+We sometimes call it also a *topology* file, because that's how similar
+intermediate file is called in GROMACS (molecular dynamics software).
+
+.. literalinclude:: prep-help.txt
+   :language: console
+
 wcn
 ===
 
