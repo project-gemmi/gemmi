@@ -855,8 +855,9 @@ The records that are interpreted can be converted from/to mmCIF:
 - KEYWDS
 - EXPDTA
 - NUMMDL
+- AUTHOR (read-only, i.e. only in PDB -> mmCIF conversion)
 - REMARK 2
-- REMARK 3 (read-only, i.e. only in PDB -> mmCIF conversion)
+- REMARK 3 (read-only)
 - REMARK 200/230/240 (read-only)
 - REMARK 290 (partly-read, but not by default)
 - REMARK 300 (read-only)

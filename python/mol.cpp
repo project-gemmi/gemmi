@@ -91,6 +91,7 @@ void add_mol(py::module& m) {
     .def_readwrite("helices", &Structure::helices)
     .def_readwrite("sheets", &Structure::sheets)
     .def_readwrite("assemblies", &Structure::assemblies)
+    .def_readwrite("meta", &Structure::meta)
     .def_readwrite("info", &Structure::info)
     .def_readwrite("raw_remarks", &Structure::raw_remarks)
     .def("find_spacegroup", &Structure::find_spacegroup)

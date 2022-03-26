@@ -248,4 +248,8 @@ void add_meta(py::module& m) {
     .def_readwrite("special_kind", &Assembly::special_kind)
     ;
   py::bind_vector<std::vector<Assembly>>(m, "AssemblyList");
+
+  py::class_<Metadata>(m, "Metadata")
+    .def_readwrite("authors", &Metadata::authors)
+    ;
 }

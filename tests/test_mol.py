@@ -377,6 +377,8 @@ class TestMol(unittest.TestCase):
         self.assertAlmostEqual(st.cell.a, 34.77)
         self.assertEqual(st.cell.alpha, 90)
         self.assertEqual(len(st.ncs), 0)
+        self.assertEqual(st.meta.authors,
+                         ['ALBRIGHT, R.A.', 'MOSSING, M.C.', 'MATTHEWS, B.W.'])
         model = st[0]
         self.assertEqual(len(model), 1)
         self.assertEqual(len(model.subchains()), 2)
