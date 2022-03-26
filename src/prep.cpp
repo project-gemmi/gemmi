@@ -90,13 +90,11 @@ std::string get_ccp4_mod_id(const std::vector<std::string>& mods) {
   return ".";
 }
 
-cif::Document make_crd(const gemmi::Structure& st, const Topo& topo) {
+cif::Block make_crd(const gemmi::Structure& st, const Topo& topo) {
   using gemmi::to_str;
-  cif::Document crd;
   auto e_id = st.info.find("_entry.id");
   std::string id = cif::quote(e_id != st.info.end() ? e_id->second : st.name);
-  crd.blocks.emplace_back("structure_" + id);
-  cif::Block& block = crd.blocks[0];
+  cif::Block block("structure_" + id);
   auto& items = block.items;
 
   items.emplace_back("_entry.id", id);
@@ -260,7 +258,7 @@ cif::Document make_crd(const gemmi::Structure& st, const Topo& topo) {
         }
       }
     }
-  return crd;
+  return block;
 }
 
 void add_restraints(const Topo::Rule rule, const Topo& topo,
@@ -347,10 +345,8 @@ void add_restraints(const Topo::Rule rule, const Topo& topo,
   }
 }
 
-cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
-  cif::Document doc;
-  doc.blocks.emplace_back("restraints");
-  cif::Block& block = doc.blocks[0];
+cif::Block make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
+  cif::Block block("restraints");
   cif::Loop& restr_loop = block.init_mmcif_loop("_restr.", {
               "record", "number", "label", "period",
               "atom_id_1", "atom_id_2", "atom_id_3", "atom_id_4",
@@ -401,7 +397,7 @@ cif::Document make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
     for (const Topo::Rule& rule : extra.link_rules)
       add_restraints(rule, topo, restr_loop, counters);
   }
-  return doc;
+  return block;
 }
 
 } // anonymous namespace
@@ -510,13 +506,13 @@ int GEMMI_MAIN(int argc, char **argv) {
 
     if (verbose)
       printf("Preparing structure data...\n");
-    cif::Document crd = make_crd(st, topo);
+    cif::Block crd = make_crd(st, topo);
     if (p.options[Split])
       output += ".crd";
     if (verbose)
       printf("Writing coordinates to: %s\n", output.c_str());
     gemmi::Ofstream os(output);
-    write_cif_to_stream(os.ref(), crd, cif::Style::NoBlankLines);
+    write_cif_block_to_stream(os.ref(), crd, cif::Style::NoBlankLines);
 
     if (p.options[NoZeroOccRestr])
       for (gemmi::Chain& chain : model0.chains)
@@ -531,7 +527,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
     if (verbose)
       printf("Preparing restraint data...\n");
-    cif::Document rst = make_rst(topo, monlib);
+    cif::Block rst = make_rst(topo, monlib);
     if (p.options[Split])
       output.replace(output.size()-3, 3, "rst");
     if (verbose)
@@ -540,7 +536,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       os = gemmi::Ofstream(output);
     else
       os->write("\n\n", 2);
-    write_cif_to_stream(os.ref(), rst, cif::Style::NoBlankLines);
+    write_cif_block_to_stream(os.ref(), rst, cif::Style::NoBlankLines);
   } catch (std::exception& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
