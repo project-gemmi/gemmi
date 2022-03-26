@@ -29,17 +29,23 @@ using gemmi::Restraints;
 
 namespace {
 
-enum OptionIndex { Monomers=4, Libin, NoHydrogens, KeepHydrogens, NoZeroOccRestr };
+enum OptionIndex {
+  Split=4, Monomers, Libin, NoHydrogens, KeepHydrogens, NoZeroOccRestr
+};
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
-    "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_BASENAME"
-    "\n\nMake intermediate files from one of PDB, mmCIF or mmJSON formats."
+    "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
+    "\n " EXE_NAME " --split [options] INPUT_FILE OUTPUT_BASENAME"
+    "\n\nPrepare intermediate Refmac files."
+    "\nINPUT_FILE can be in PDB, mmCIF or mmJSON format."
     "\n\nOptions:" },
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
+  { Split, 0, "", "split", Arg::None,
+    "  --split  \tSplit output into two files: crd and rst." },
   { Monomers, 0, "", "monomers", Arg::Required,
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
   { Libin, 0, "", "libin", Arg::Required,
@@ -503,14 +509,14 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
 
     if (verbose)
-      printf("Preparing data for crd file...\n");
+      printf("Preparing structure data...\n");
     cif::Document crd = make_crd(st, topo);
+    if (p.options[Split])
+      output += ".crd";
     if (verbose)
-      printf("Writing coordinates to: %s.crd\n", output.c_str());
-    {
-      gemmi::Ofstream os(output + ".crd");
-      write_cif_to_stream(os.ref(), crd, cif::Style::NoBlankLines);
-    }
+      printf("Writing coordinates to: %s\n", output.c_str());
+    gemmi::Ofstream os(output);
+    write_cif_to_stream(os.ref(), crd, cif::Style::NoBlankLines);
 
     if (p.options[NoZeroOccRestr])
       for (gemmi::Chain& chain : model0.chains)
@@ -524,14 +530,17 @@ int GEMMI_MAIN(int argc, char **argv) {
             }
 
     if (verbose)
-      printf("Preparing data for rst file...\n");
+      printf("Preparing restraint data...\n");
     cif::Document rst = make_rst(topo, monlib);
+    if (p.options[Split])
+      output.replace(output.size()-3, 3, "rst");
     if (verbose)
-      printf("Writing restraints to: %s.rst\n", output.c_str());
-    {
-      gemmi::Ofstream os(output + ".rst");
-      write_cif_to_stream(os.ref(), rst, cif::Style::NoBlankLines);
-    }
+      printf("Writing restraints to: %s\n", output.c_str());
+    if (p.options[Split])
+      os = gemmi::Ofstream(output);
+    else
+      os->write("\n\n", 2);
+    write_cif_to_stream(os.ref(), rst, cif::Style::NoBlankLines);
   } catch (std::exception& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
