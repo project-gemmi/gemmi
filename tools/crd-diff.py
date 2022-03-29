@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Show differences between two Refmac intermediate files.
-# Usage: ./rstdiff.py first.rst second.rst
+# The intermediate files should have content of both crd and rst files.
+# Usage: ./crd-diff.py first.crd second.crd
 
 import argparse
 from collections import namedtuple
@@ -14,9 +15,9 @@ COLUMNS = ['record', 'number', 'label', 'period',
 Restraint = namedtuple('Restraint', COLUMNS)
 Crd = namedtuple('Crd', ['atoms', 'real_serial'])
 
-def read_rst(path):
+def read_rst(doc):
     result = []
-    for row in cif.read(path)['restraints'].find('_restr.', COLUMNS):
+    for row in doc['restraints'].find('_restr.', COLUMNS):
         if row[0] in ['MONO', 'LINK']:
             result.append((row[0].lower(), row[2].lower(), []))
         else:
@@ -24,8 +25,8 @@ def read_rst(path):
             result[-1][2].append(data)
     return [r for r in result if r[2]]
 
-def read_crd(path):
-    block = cif.read(path).sole_block()
+def read_crd(doc):
+    block = doc[0]
     sites = block.find('_atom_site.', ['id', 'label_atom_id', 'label_alt_id',
                                        'label_comp_id', 'occupancy',
                                        'calc_flag'])
@@ -61,12 +62,15 @@ def can_have_wrong_val_obs(crd1, rst1):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', action='store_true', help='verbose output')
-    parser.add_argument('file1_rst', metavar='file1.rst')
-    parser.add_argument('file2_rst', metavar='file2.rst')
+    parser.add_argument('file1_crd', metavar='file1.crd')
+    parser.add_argument('file2_crd', metavar='file2.crd')
     args = parser.parse_args()
 
-    crd1 = read_crd(args.file1_rst[:-4] + '.crd')
-    crd2 = read_crd(args.file2_rst[:-4] + '.crd')
+    doc1 = cif.read(args.file1_crd)
+    doc2 = cif.read(args.file2_crd)
+
+    crd1 = read_crd(doc1)
+    crd2 = read_crd(doc2)
     if len(crd1.atoms) != len(crd2.atoms):
         print('_atom_site count differs: %d vs %d' %
               (len(crd1.atoms), len(crd2.atoms)))
@@ -80,8 +84,8 @@ def main():
             print('ATOM %s %s %s %s occupancy %s vs %s' % (
                   a1[0], a1.str(1), a1[2], a1[3], a1[4], a2[4]))
 
-    r1 = read_rst(args.file1_rst)
-    r2 = read_rst(args.file2_rst)
+    r1 = read_rst(doc1)
+    r2 = read_rst(doc2)
     mono_count_1 = sum(t[0] == 'mono' for t in r1)
     mono_count_2 = sum(t[0] == 'mono' for t in r2)
     if mono_count_1 == mono_count_2:
@@ -153,11 +157,11 @@ def main():
             rst2 = b[2][n_rst2]
             same_ids = has_same_ids(rst1, rst2)
             if not same_ids:
-                if has_same_ids(rst1, b[2][n_rst2+1]):
+                if n_rst2+1 < len(b[2]) and has_same_ids(rst1, b[2][n_rst2+1]):
                     print('ADDED record %s:\n%s\n' % (r_str, fmt(rst2)))
                     n_rst2 += 1
                     continue
-                if has_same_ids(a[2][n_rst1+1], rst2):
+                if n_rst1+1 < len(a[2]) and has_same_ids(a[2][n_rst1+1], rst2):
                     print('REMOVED record %s:\n%s\n' % (r_str, fmt(rst1)))
                     n_rst1 += 1
                     continue

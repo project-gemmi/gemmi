@@ -379,6 +379,8 @@ cif::Block make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
         std::string group = cif::quote(ri.chemcomp.group.substr(0, 8));
         if (group == "peptide" || group == "P-peptid" || group == "M-peptid")
           group = "L-peptid";
+        else if (group == "NON-POLY")
+          group = ".";
 
         restr_loop.add_comment_and_row({res_info, "MONO", ".", group, ".",
                                         ".", ".", ".", ".", ".", ".", ".", ".", "."});
