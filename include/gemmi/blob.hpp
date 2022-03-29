@@ -126,6 +126,8 @@ inline std::vector<Blob> find_blobs_by_flood_fill(const gemmi::Grid<float>& grid
         if (Blob blob = impl::make_blob_of_points(points, grid, criteria))
           blobs.push_back(blob);
       }
+  std::sort(blobs.begin(), blobs.end(),
+            [](const Blob& a, const Blob& b) { return a.score > b.score; });
   return blobs;
 }
 

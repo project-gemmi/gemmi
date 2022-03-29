@@ -160,8 +160,6 @@ int run(OptParser& p) {
   std::vector<gemmi::Blob> blobs = gemmi::find_blobs_by_flood_fill(grid, criteria);
   if (p.options[Verbose])
     printf("%zu blob%s found.\n", blobs.size(), blobs.size() == 1 ? "" : "s");
-  std::sort(blobs.begin(), blobs.end(),
-            [](const gemmi::Blob& a, const gemmi::Blob& b) { return a.score > b.score; });
 
   gemmi::NeighborSearch ns(model, grid.unit_cell, 10.0);
   ns.populate();
