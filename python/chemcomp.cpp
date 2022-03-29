@@ -152,8 +152,8 @@ void add_chemcomp(py::module& m) {
     .def("is_hydrogen", &ChemComp::Atom::is_hydrogen)
     ;
   chemcomp
-    .def_readonly("name", &ChemComp::name)
-    .def_readonly("group", &ChemComp::group)
+    .def_readwrite("name", &ChemComp::name)
+    .def_readwrite("group", &ChemComp::group)
     .def_readonly("atoms", &ChemComp::atoms)
     .def_readonly("rt", &ChemComp::rt)
     .def("get_atom", &ChemComp::get_atom)
