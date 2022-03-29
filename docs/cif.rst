@@ -996,7 +996,14 @@ therefore the category name should end with a separator
 
 
 In the example above, all the tags are required. If one of them is absent,
-the returned ``Table`` is empty. Tags (all except the first one) can be marked
+the returned Table is empty.
+
+.. doctest::
+
+  >>> block.find('_entity_poly_seq.', ['entity_id', 'num', 'non_existent'])
+  <gemmi.cif.Table nil>
+
+Tags (all except the first one) can be marked
 as *optional* by adding prefix ``?``::
 
   Table table = block.find({"_required_tag", "?_optional_tag"})
@@ -1066,8 +1073,8 @@ See an example in the :ref:`CCD section <ccd_example>` below.
 Row-wise access
 ---------------
 
-Most importantly, ``Table`` provides access to rows (``Table::Row``)
-that in turn provide access to value strings::
+Most importantly, the Table provides access to data in rows and columns.
+We can get a row (``Table::Row``) that in turn provides access to value strings::
 
   Row Table::operator[](int n)  // access Row
   Row Table::at(int n)          // the same but with bounds checking
@@ -1100,6 +1107,17 @@ as well as to the tags::
   >>> table.tags
   <gemmi.cif.Table.Row: _entity_poly_seq.entity_id _entity_poly_seq.num _entity_poly_seq.mon_id>
 
+Tags in the table (in the C++ layer) are references to tags in the CIF block.
+If the requested tags are not found, the returned *nil* table has no tags.
+Such table has 0 rows, but it can be iterated like an empty list:
+
+.. doctest::
+
+  >>> block.find(['_absent_tag']).tags
+  <gemmi.cif.Table.Row:>
+  >>> for row in block.find(['_absent_tag']): print(row)
+  ... # nothing gets printed, but there is no error
+
 
 ``Table::Row`` has functions for accessing the values::
 
@@ -1118,9 +1136,9 @@ as well as to the tags::
   2,2,ALA,
   >>> row[2]
   'ALA'
-  >>> row[-1]  # the same
+  >>> row[-1]  # the same, because this table has two rows
   'ALA'
-  >>> row.get(2) # the same, but returns None instead of IndexError
+  >>> row.get(2) # the same, but would return None instead of IndexError
   'ALA'
   >>> row['mon_id']  # the same, but slightly slower than numeric index
   'ALA'
@@ -1178,7 +1196,7 @@ and remove a row from Table (function ``Table::remove_row``):
   >>> table.remove_row(18)  # or: del table[18]
 
 To efficiently remove multiple consecutive rows use
-C++ function ``Table::remove_row`` or in Python:
+C++ function ``Table::remove_rows`` or Python ``__delitem__`` with slice:
 
 .. doctest::
 
