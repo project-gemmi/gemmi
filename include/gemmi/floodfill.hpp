@@ -50,7 +50,7 @@ struct FloodFill {
   }
 
   // Find all connected points with value Land. Change them to this_island().
-  Result find_volume(int u, int v, int w) {
+  Result find_all_connected_points(int u, int v, int w) {
     Result r;
     T* ptr = &mask.data[mask.index_q(u, v, w)];
     r.lines.push_back(line_from_point(u, v, w, ptr));
@@ -87,7 +87,7 @@ struct FloodFill {
           assert(idx == mask.index_q(u, v, w));
           if (mask.data[idx] == Land) {
             // it temporarily marks current island as this_island()
-            Result r = find_volume(u, v, w);
+            Result r = find_all_connected_points(u, v, w);
             func(r);
           }
         }
@@ -137,6 +137,24 @@ inline void mask_nodes_above_threshold(Grid<std::int8_t>& mask, const Grid<float
   size_t n = 0;
   for (float d : grid.data)
     mask.data[n++] = std::int8_t((negate ? -d : d) > threshold);
+}
+
+inline Grid<std::int8_t> flood_fill_from_position(const Grid<float>& grid,
+                                                  const std::vector<Position>& seeds,
+                                                  double threshold,
+                                                  bool negate=false) {
+  grid.check_not_empty();
+  Grid<std::int8_t> mask;
+  mask_nodes_above_threshold(mask, grid, threshold, negate);
+  FloodFill<std::int8_t, 1> flood_fill{mask};
+  for (const Position& pos : seeds) {
+    auto point = mask.get_nearest_point(pos);
+    if (*point.value == 1)
+      flood_fill.find_all_connected_points(point.u, point.v, point.w);
+  }
+  for (std::int8_t& d : mask.data)
+    d = std::int8_t(d == flood_fill.this_island());
+  return mask;
 }
 
 } // namespace gemmi

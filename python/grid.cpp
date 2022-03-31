@@ -11,6 +11,7 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 }
 
 #include "gemmi/grid.hpp"
+#include "gemmi/floodfill.hpp"  // for flood_fill_from_position
 #include "gemmi/solmask.hpp"  // for SolventMasker, mask_points_in_constant_radius
 #include "gemmi/blob.hpp"     // for Blob, find_blobs_by_flood_fill
 #include "gemmi/tostr.hpp"
@@ -261,4 +262,8 @@ void add_grid(py::module& m) {
        return find_blobs_by_flood_fill(grid, crit, negate);
     }, py::arg("grid"), py::arg("cutoff"), py::arg("min_volume")=10.,
        py::arg("min_score")=15., py::arg("min_peak")=0., py::arg("negate")=false);
+
+  // from floodfill.hpp
+  m.def("flood_fill_from_position", &flood_fill_from_position,
+        py::arg("grid"), py::arg("seeds"), py::arg("threshold"), py::arg("negate")=false);
 }

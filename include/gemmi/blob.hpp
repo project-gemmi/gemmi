@@ -2,6 +2,10 @@
 //
 // Finding maxima or "blobs" in a Grid (map).
 // Similar to CCP4 PEAKMAX and COOT's "Unmodelled blobs".
+//
+// Implementation of the flood fill algorithm in find_blobs_by_flood_fill()
+// differs from from FloodFill in floodfill.hpp.
+// FloodFill uses more efficient scanline fill, but doesn't use symmetry.
 
 #ifndef GEMMI_BLOB_HPP_
 #define GEMMI_BLOB_HPP_
