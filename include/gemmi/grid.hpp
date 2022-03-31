@@ -322,6 +322,8 @@ struct Grid : GridBase<T> {
   }
 
   Point get_nearest_point(const Fractional& f) {
+    if (this->axis_order != AxisOrder::XYZ)
+      fail("grid is not fully setup");
     return get_point(iround(f.x * nu), iround(f.y * nv), iround(f.z * nw));
   }
 
@@ -475,7 +477,7 @@ struct Grid : GridBase<T> {
   void set_subarray(const T* src, std::array<int,3> start, std::array<int,3> shape) {
     check_not_empty();
     if (this->axis_order != AxisOrder::XYZ)
-      fail("get_subarray() is for Grids in XYZ order");
+      fail("set_subarray() is for Grids in XYZ order");
     const int u_start0 = modulo(start[0], nu);
     for (int w = 0; w < shape[2]; w++) {
       const int w0 = modulo(start[2] + w, nw);
@@ -585,8 +587,12 @@ struct Grid : GridBase<T> {
 
   // operations re-scaled for faster later calculations; identity not included
   std::vector<GridOp> get_scaled_ops_except_id() const {
-    GroupOps gops = spacegroup->operations();
     std::vector<GridOp> grid_ops;
+    if (!spacegroup || spacegroup->number == 1)
+      return grid_ops;
+    if (this->axis_order != AxisOrder::XYZ)
+      fail("grid can use symmetries only if it is setup in the XYZ order");
+    GroupOps gops = spacegroup->operations();
     grid_ops.reserve(gops.order());
     for (const Op& so : gops.sym_ops)
       for (const Op::Tran& co : gops.cen_ops) {
@@ -607,6 +613,8 @@ struct Grid : GridBase<T> {
 
   template<typename Func>
   void symmetrize_using_ops(const std::vector<GridOp>& ops, Func func) {
+    if (ops.empty())
+      return;
     std::vector<size_t> mates(ops.size(), 0);
     std::vector<bool> visited(data.size(), false);
     size_t idx = 0;
@@ -640,12 +648,7 @@ struct Grid : GridBase<T> {
   // grid point, then assign the result to all the points.
   template<typename Func>
   void symmetrize(Func func) {
-    if (spacegroup && spacegroup->number != 1) {
-      if (this->axis_order == AxisOrder::XYZ)
-        symmetrize_using_ops(get_scaled_ops_except_id(), func);
-      else
-        fail("cannot 'symmetrize' grid in order other than XYZ");
-    }
+    symmetrize_using_ops(get_scaled_ops_except_id(), func);
   }
 
   // two most common symmetrize functions
