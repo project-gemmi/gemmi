@@ -7,6 +7,7 @@
 #include "gemmi/gz.hpp"    // for MaybeGzipped
 #include "gemmi/util.hpp"  // for trim_str
 #include "gemmi/symmetry.hpp"
+#include "gemmi/floodfill.hpp"  // for mask_points_above_threshold
 #include "histogram.h"     // for print_histogram
 #define GEMMI_PROG map
 #include "options.h"
@@ -250,10 +251,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           return 2;
         }
         gemmi::Ccp4<std::int8_t> mask;
-        mask.grid.copy_metadata_from(map.grid);
-        mask.grid.data.reserve(map.grid.data.size());
-        for (auto& d : map.grid.data)
-          mask.grid.data.push_back(d > threshold ? 1 : 0);
+        gemmi::mask_nodes_above_threshold(mask.grid, map.grid, threshold);
         size_t ones = std::count(mask.grid.data.begin(), mask.grid.data.end(), 1);
         size_t all = mask.grid.data.size();
         std::fprintf(stderr, "Masked %zu of %zu points (%.1f%%) above %g\n",

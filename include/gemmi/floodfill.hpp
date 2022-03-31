@@ -130,5 +130,14 @@ private:
   }
 };
 
+inline void mask_nodes_above_threshold(Grid<std::int8_t>& mask, const Grid<float>& grid,
+                                       double threshold, bool negate=false) {
+  mask.copy_metadata_from(grid);
+  mask.data.resize(grid.data.size());
+  size_t n = 0;
+  for (float d : grid.data)
+    mask.data[n++] = std::int8_t((negate ? -d : d) > threshold);
+}
+
 } // namespace gemmi
 #endif
