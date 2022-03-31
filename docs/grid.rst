@@ -574,6 +574,36 @@ with the model masked out. In this example we do the latter.
   <gemmi.Position(12.307, 0, 0)>
 
 
+Flood fill
+----------
+
+`Flood fill <https://en.wikipedia.org/wiki/Flood_fill>`_
+is an algorithm that determines the area connected to a *seed* point,
+the area of all connected points which match a certain condition.
+Here, the criterium for grid points is having the value above
+(or, alternatively, below) a given threshold value.
+
+The blob search from the previous section uses flood fill and returns Blob
+objects that contain a few statistics for each blob. To get a mask
+corresponding to a Blob we need to run the flood fill algorithm again,
+using peak_pos as the seed:
+
+.. doctest::
+
+  >>> seed = blobs[0].peak_pos
+  >>> gemmi.flood_fill_above(grid, [seed], threshold=0.6)
+  <gemmi.Int8Grid(90, 8, 30)>
+  >>> _.sum()  # == number of masked points
+  62
+  >>> _ * grid.unit_cell.volume / grid.point_count  # cf. blobs[0].volume
+  9.967250538023837
+
+The second argument of flood_fill_above() is a list of positions used as seeds.
+We could use multiple seeds to obtain a single mask for all blobs together.
+
+To find area with values below a certain value,
+run flood_fill_above() with optional argument ``negate=True``.
+
 MRC/CCP4 maps
 =============
 

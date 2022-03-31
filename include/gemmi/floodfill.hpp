@@ -139,10 +139,10 @@ inline void mask_nodes_above_threshold(Grid<std::int8_t>& mask, const Grid<float
     mask.data[n++] = std::int8_t((negate ? -d : d) > threshold);
 }
 
-inline Grid<std::int8_t> flood_fill_from_position(const Grid<float>& grid,
-                                                  const std::vector<Position>& seeds,
-                                                  double threshold,
-                                                  bool negate=false) {
+inline Grid<std::int8_t> flood_fill_above(const Grid<float>& grid,
+                                          const std::vector<Position>& seeds,
+                                          double threshold,
+                                          bool negate=false) {
   grid.check_not_empty();
   Grid<std::int8_t> mask;
   mask_nodes_above_threshold(mask, grid, threshold, negate);
