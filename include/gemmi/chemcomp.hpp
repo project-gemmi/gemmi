@@ -337,6 +337,16 @@ struct ChemComp {
     return atoms[get_atom_index(atom_id)];
   }
 
+  // Check if the group is peptide* or X-peptide*
+  bool is_peptide_group() const {
+    return group.size() > 6 && alpha_up(group[2]) == 'P';
+  }
+
+  // Check if the group is DNA or RNA
+  bool is_nucleotide_group() const {
+    return group.size() == 3 && alpha_up(group[1]) == 'N';
+  }
+
   void remove_nonmatching_restraints() {
     vector_remove_if(rt.bonds, [&](const Restraints::Bond& x) {
       return !has_atom(x.id1.atom) ||

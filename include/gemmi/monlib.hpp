@@ -41,8 +41,9 @@ struct ChemLink {
     std::string mod;
     Group group;
     bool matches_group(Group res) const {
-      return res == group ||
-             (group == Group::Peptide && (int) res <= (int) Group::MPeptide);
+      return group != Group::Null &&
+             (res == group ||
+              (group == Group::Peptide && (int) res <= (int) Group::MPeptide));
     }
     int specificity() const {
       if (!comp.empty())
@@ -617,7 +618,7 @@ struct MonLib {
     path += code;
     // On Windows several names are reserved (CON, PRN, AUX, ...), see
     // https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
-    // The workaround in CCP4 monomer libary is to use CON_CON.cif, etc.
+    // The workaround in CCP4 monomer library is to use CON_CON.cif, etc.
     if (code.size() == 3)
       switch (ialpha3_id(code.c_str())) {
         case ialpha3_id("AUX"):

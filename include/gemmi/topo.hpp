@@ -387,13 +387,16 @@ inline void Topo::ChainInfo::setup_polymer_links() {
         p.res2 = ri->res;
         assert(prev_ri - ri == p.res1 - p.res2);
         if (are_connected(*prev_ri->res, *ri->res, polymer_type)) {
-          if (is_polypeptide(polymer_type)) {
-            if (ri->chemcomp.group == "P-peptide")
+          if (is_polypeptide(polymer_type) && ri->chemcomp.is_peptide_group() &&
+                                         prev_ri->chemcomp.is_peptide_group()) {
+            int id = ialpha4_id(ri->chemcomp.group.c_str());
+            if (id == ialpha4_id("p-pe"))
               p.link_id = "P";  // PCIS, PTRANS
-            else if (ri->chemcomp.group == "M-peptide")
+            else if (id == ialpha4_id("m-pe"))
               p.link_id = "NM"; // NMCIS, NMTRANS
             p.link_id += prev_ri->res->is_cis ? "CIS" : "TRANS";
-          } else if (is_polynucleotide(polymer_type)) {
+          } else if (is_polynucleotide(polymer_type) && ri->chemcomp.is_nucleotide_group() &&
+                                                   prev_ri->chemcomp.is_nucleotide_group()) {
             p.link_id = "p";
           } else {
             p.link_id = "?";
@@ -480,14 +483,13 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
 
     // If a polymer link is also given in LINK/struct_conn,
     // use only one of them. If LINK has explicit name (ccp4_link_id),
-    // or if it matches residue-specific link from monomer libary, use it;
+    // or if it matches residue-specific link from monomer library, use it;
     // otherwise, LINK is repetition of TRANS/CIS, so ignore LINK.
     if (Link* polymer_link = find_polymer_link(conn.partner1, conn.partner2)) {
-      if (conn.link_id.empty() &&
+      if (conn.link_id.empty() && !cif::is_null(polymer_link->link_id) &&
           (!match || (match->side1.comp.empty() && match->side2.comp.empty())))
         continue;
-      else
-        polymer_link->link_id = "?";  // disable polymer link
+      polymer_link->link_id = "?";  // disable polymer link
     }
 
     if (!match && ignore_unknown_links)
