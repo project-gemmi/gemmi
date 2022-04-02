@@ -24,6 +24,7 @@ fi
 
 export CCP_SUPPRESS_HTML=1
 $REFMAC xyzin "$1" xyzout $CCP4_SCR/refmac5_.pdb $libstr << EOF
+${REFMAC_EXTRA_RECORDS:-}
 make exit yes
 make form formatted
 end

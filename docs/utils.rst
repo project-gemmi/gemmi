@@ -681,7 +681,7 @@ files with extensions crd and rst. Gemmi-prep by default writes a single file
 with the content of both crd and rst.
 
 Refmac developers call this file an *intermediate* or *prepared* file.
-We sometimes call it also a *topology* file, because that's how similar
+We sometimes call it also a *topology* file, because that's how a similar
 intermediate file is called in GROMACS (molecular dynamics software).
 
 .. literalinclude:: prep-help.txt
