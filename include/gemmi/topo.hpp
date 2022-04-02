@@ -116,7 +116,6 @@ struct Topo {
 
     ChainInfo(ResidueSpan& subchain, const Chain& chain, const Entity* ent);
     void setup_polymer_links();
-    void disable_polymer_link(const Connection& conn);
     struct RGroup {
       std::vector<ResInfo>::iterator begin, end;
     };
@@ -334,6 +333,22 @@ struct Topo {
       angle_index.emplace(ang.atoms[1], &ang);
   }
 
+  Link* find_polymer_link(const AtomAddress& a1, const AtomAddress& a2) {
+    for (ChainInfo& ci : chain_infos)
+      if (a1.chain_name == ci.chain_ref.name && a2.chain_name == ci.chain_ref.name) {
+        for (ResInfo& ri : ci.res_infos)
+          for (Link& link : ri.prev) {
+            assert(link.res1 && link.res2);
+            if ((a1.res_id.matches_noseg(*link.res1) &&
+                 a2.res_id.matches_noseg(*link.res2)) ||
+                (a2.res_id.matches_noseg(*link.res1) &&
+                 a1.res_id.matches_noseg(*link.res2)))
+              return &link;
+          }
+      }
+    return nullptr;
+  }
+
   GEMMI_NOINLINE void err(const std::string& msg) const {
     if (warnings == nullptr)
       fail(msg);
@@ -392,22 +407,6 @@ inline void Topo::ChainInfo::setup_polymer_links() {
   }
 }
 
-inline void Topo::ChainInfo::disable_polymer_link(const Connection& conn) {
-  const AtomAddress& a1 = conn.partner1;
-  const AtomAddress& a2 = conn.partner2;
-  if (a1.chain_name == chain_ref.name && a2.chain_name == chain_ref.name)
-    for (ResInfo& ri : res_infos)
-      for (Link& link : ri.prev) {
-        assert(link.res1 && link.res2);
-        if ((a1.res_id.matches_noseg(*link.res1) && a2.res_id.matches_noseg(*link.res2)) ||
-            (a2.res_id.matches_noseg(*link.res1) && a1.res_id.matches_noseg(*link.res2))) {
-          // don't assign the actual name here to avoid applying it twice
-          link.link_id = "?";
-          break;
-        }
-      }
-}
-
 inline Restraints::Bond bond_restraint_from_connection(const Connection& conn) {
   Restraints::Bond bond;
   bond.id1 = Restraints::AtomId{1, conn.partner1.atom_name};
@@ -442,21 +441,8 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
     }
 
     ci.setup_polymer_links();
-
-    // If a polymer links is given explicitly (LINK/struct_conn),
-    // don't use the standard link.
-    for (const Connection& conn : st.connections)
-      ci.disable_polymer_link(conn);
-
-    // add modifications from standard links
-    for (ResInfo& ri : ci.res_infos)
-      for (Link& prev : ri.prev)
-        if (const ChemLink* link = monlib.find_link(prev.link_id)) {
-          ResInfo* ri_prev = &ri + (prev.res1 - prev.res2);
-          ri_prev->add_mod(link->side1.mod);
-          ri.add_mod(link->side2.mod);
-        }
   }
+
   // add extra links
   for (const Connection& conn : st.connections) {
     // ignoring hydrogen bonds
@@ -492,6 +478,18 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
       }
     }
 
+    // If a polymer link is also given in LINK/struct_conn,
+    // use only one of them. If LINK has explicit name (ccp4_link_id),
+    // or if it matches residue-specific link from monomer libary, use it;
+    // otherwise, LINK is repetition of TRANS/CIS, so ignore LINK.
+    if (Link* polymer_link = find_polymer_link(conn.partner1, conn.partner2)) {
+      if (conn.link_id.empty() &&
+          (!match || (match->side1.comp.empty() && match->side2.comp.empty())))
+        continue;
+      else
+        polymer_link->link_id = "?";  // disable polymer link
+    }
+
     if (!match && ignore_unknown_links)
       continue;
 
@@ -514,6 +512,17 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
     }
     extras.push_back(extra);
   }
+
+  // Add modifications from standard links.
+  // We do it here b/c polymer links could be disabled (link_id = "?") above.
+  for (ChainInfo& ci : chain_infos)
+    for (ResInfo& ri : ci.res_infos)
+      for (Link& prev : ri.prev)
+        if (const ChemLink* link = monlib.find_link(prev.link_id)) {
+          ResInfo* ri_prev = &ri + (prev.res1 - prev.res2);
+          ri_prev->add_mod(link->side1.mod);
+          ri.add_mod(link->side2.mod);
+        }
 
   for (ChainInfo& chain_info : chain_infos)
     for (ResInfo& ri : chain_info.res_infos) {
