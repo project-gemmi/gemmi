@@ -30,4 +30,4 @@ or email wojdyr+gemmi@gmail.com. If you consider a major code contribution,
 please get in touch beforehand.
 
 License: MPLv2, or (at your option) LGPLv3.
-© 2017-2021 Global Phasing Ltd.
+© 2017-2022 Global Phasing Ltd.

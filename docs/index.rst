@@ -43,7 +43,7 @@ Source code repository: https://github.com/project-gemmi/gemmi
 
 .. note::
 
-    As of 2021 the library is under intensive development and not
+    As of 2022 the library is under intensive development and not
     everything is documented yet. Just ask questions.
     It's OK to drop me_ an email asking how to implement this and that,
     but add some context (is it for a student assignment, research project,
