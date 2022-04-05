@@ -400,6 +400,8 @@ inline void remove_appendix_from_column_names(Mtz& mtz, std::ostream& out) {
       break;
     }
   }
+  if (appendix.empty())
+    return;
   out << "Ignoring '" << appendix << "' appended to column names.\n";
   for (Mtz::Column& col : mtz.columns) {
     size_t from_end  = appendix.size();
