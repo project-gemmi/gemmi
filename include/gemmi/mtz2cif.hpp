@@ -1042,7 +1042,7 @@ inline void MtzToCif::write_cell_and_symmetry(const UnitCell& cell, double* rmsd
     WRITE("_cell.angle_gamma_esd %7.3f\n", rmsds[5]);
   if (sg) {
     os << "\n_symmetry.entry_id " << entry_id << "\n"
-          "_symmetry.space_group_name_H-M '" << sg->hm << "'\n"
+          "_symmetry.space_group_name_H-M '" << sg->pdb_name() << "'\n"
           "_symmetry.Int_Tables_number " << sg->number << '\n';
     // could write _symmetry_equiv.pos_as_xyz, but would it be useful?
   }

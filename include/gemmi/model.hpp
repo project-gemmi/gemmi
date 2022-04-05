@@ -859,7 +859,7 @@ inline const Entity* find_entity_of_subchain(const std::string& subchain_id,
 struct Structure {
   std::string name;
   UnitCell cell;
-  std::string spacegroup_hm;
+  std::string spacegroup_hm;  // usually pdb symbol, cf. SpaceGroup::pdb_name()
   std::vector<Model> models;
   std::vector<NcsOp> ncs;
   std::vector<Entity> entities;
