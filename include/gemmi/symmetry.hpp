@@ -1095,6 +1095,15 @@ struct SpaceGroup { // typically 44 bytes
     return s;
   }
 
+  // As explained in Phenix newsletter CCN_2011_01.pdf#page=12
+  // the PDB uses own, non-standard symbols for rhombohedral space groups.
+  std::string pdb_name() const {
+    std::string s;
+    s += ccp4_lattice_type();
+    s += hm+1;
+    return s;
+  }
+
   bool is_sohncke() const { return gemmi::is_sohncke(number); }
   bool is_enantiomorphic() const { return gemmi::is_enantiomorphic(number); }
   bool is_symmorphic() const { return gemmi::is_symmorphic(number); }
