@@ -47,16 +47,16 @@ struct MinDelta {
 };
 
 std::string str(const ChemComp& cc, const Restraints::Bond& b) {
-  return gemmi::tostr("bond ", b.id1.atom, '-', b.id2.atom,
-                      " (", cc.get_atom(b.id1.atom).chem_type,
-                      '-', cc.get_atom(b.id2.atom).chem_type, ')');
+  return gemmi::cat("bond ", b.id1.atom, '-', b.id2.atom,
+                    " (", cc.get_atom(b.id1.atom).chem_type,
+                    '-', cc.get_atom(b.id2.atom).chem_type, ')');
 }
 
 std::string str(const ChemComp& cc, const Restraints::Angle& a) {
-  return gemmi::tostr("angle ", a.id1.atom, '-', a.id2.atom, '-', a.id3.atom,
-                      " (", cc.get_atom(a.id1.atom).chem_type,
-                      '-', cc.get_atom(a.id2.atom).chem_type,
-                      '-', cc.get_atom(a.id3.atom).chem_type, ')');
+  return gemmi::cat("angle ", a.id1.atom, '-', a.id2.atom, '-', a.id3.atom,
+                    " (", cc.get_atom(a.id1.atom).chem_type,
+                    '-', cc.get_atom(a.id2.atom).chem_type,
+                    '-', cc.get_atom(a.id3.atom).chem_type, ')');
 }
 
 std::string str(const ChemComp&, const Restraints::Torsion& a) {
