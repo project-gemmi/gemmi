@@ -262,33 +262,47 @@ cif::Block make_crd(const gemmi::Structure& st, const Topo& topo) {
 }
 
 void add_restraints(const Topo::Rule rule, const Topo& topo,
-                    cif::Loop& restr_loop, int (&counters)[5]) {
+                    cif::Loop& restr_loop, int (&counters)[6],
+                    const gemmi::UnitCell* cell=nullptr) {
+  using namespace gemmi;
   constexpr bool ignore_zero_occ = true;
-  //using gemmi::to_str;
-  const auto& to_str = gemmi::to_str_prec<3>; // to make comparisons easier
-  const auto& to_str3 = gemmi::to_str_prec<3>;
+  const auto& to_str = to_str_prec<3>; // to make comparisons easier
+  const auto& to_str3 = to_str_prec<3>;
   auto to_str_dot = [&](double x) { return std::isnan(x) ? "." : to_str(x); };
   if (rule.rkind == Topo::RKind::Bond) {
     const Topo::Bond& t = topo.bonds[rule.index];
     if (ignore_zero_occ && (t.atoms[0]->occ == 0 || t.atoms[1]->occ == 0))
       return;
-    std::string obs = to_str3(t.calculate()) +
-                      " # " + t.atoms[0]->name + " " + t.atoms[1]->name;
-    restr_loop.add_row({"BOND", std::to_string(++counters[0]),
-                        bond_type_to_string(t.restr->type), ".",
+    double obs;
+    std::string label;
+    int counter_idx;
+    if (cell == nullptr) {  // don't use symmetry
+      counter_idx = 0;
+      obs = t.calculate();
+      label = bond_type_to_string(t.restr->type);
+    } else {
+      counter_idx = 5;
+      NearestImage im = cell->find_nearest_image(t.atoms[0]->pos, t.atoms[1]->pos,
+                                                 Asu::Different);
+      obs = std::sqrt(im.dist_sq);
+      label = im.symmetry_code(true);
+    }
+    restr_loop.add_row({cell == nullptr ? "BOND" : "BNDS",
+                        std::to_string(++counters[counter_idx]),
+                        label, ".",
                         std::to_string(t.atoms[0]->serial),
                         std::to_string(t.atoms[1]->serial),
                         ".", ".",
                         to_str(t.restr->value), to_str(t.restr->esd),
                         to_str_dot(t.restr->value_nucleus),
                         to_str_dot(t.restr->esd_nucleus),
-                        obs});
+                        to_str3(obs) + " # " + t.atoms[0]->name + " " + t.atoms[1]->name});
   } else if (rule.rkind == Topo::RKind::Angle) {
     const Topo::Angle& t = topo.angles[rule.index];
     if (ignore_zero_occ &&
         (t.atoms[0]->occ == 0 || t.atoms[1]->occ == 0 || t.atoms[2]->occ == 0))
       return;
-    std::string obs = to_str3(gemmi::deg(t.calculate()));
+    std::string obs = to_str3(deg(t.calculate()));
     obs += " # " + t.atoms[0]->name + " " +
                    t.atoms[1]->name + " " +
                    t.atoms[2]->name;
@@ -304,7 +318,7 @@ void add_restraints(const Topo::Rule rule, const Topo& topo,
     const Topo::Torsion& t = topo.torsions[rule.index];
     if (ignore_zero_occ && (t.atoms[0]->occ == 0 || t.atoms[3]->occ == 0))
       return;
-    std::string obs = to_str3(gemmi::deg(t.calculate()));
+    std::string obs = to_str3(deg(t.calculate()));
     obs += " # " + t.atoms[0]->name + " " + t.atoms[1]->name +
            " " + t.atoms[2]->name + " " + t.atoms[3]->name;
     restr_loop.add_row({"TORS", std::to_string(++counters[2]),
@@ -323,7 +337,7 @@ void add_restraints(const Topo::Rule rule, const Topo& topo,
                                                  " " + t.atoms[2]->name +
                                                  " " + t.atoms[3]->name;
     restr_loop.add_row({"CHIR", std::to_string(++counters[3]),
-                        gemmi::chirality_to_string(t.restr->sign), ".",
+                        chirality_to_string(t.restr->sign), ".",
                         std::to_string(t.atoms[0]->serial),
                         std::to_string(t.atoms[1]->serial),
                         std::to_string(t.atoms[2]->serial),
@@ -334,8 +348,8 @@ void add_restraints(const Topo::Rule rule, const Topo& topo,
     const Topo::Plane& t = topo.planes[rule.index];
     ++counters[4];
     auto coeff = find_best_plane(t.atoms);
-    for (const gemmi::Atom* atom : t.atoms) {
-      double dist = gemmi::get_distance_from_plane(atom->pos, coeff);
+    for (const Atom* atom : t.atoms) {
+      double dist = get_distance_from_plane(atom->pos, coeff);
       std::string obs = to_str3(dist) + " # " + atom->name;
       restr_loop.add_row({"PLAN", std::to_string(counters[4]), t.restr->label,
                           ".", std::to_string(atom->serial), ".", ".", ".",
@@ -345,13 +359,14 @@ void add_restraints(const Topo::Rule rule, const Topo& topo,
   }
 }
 
-cif::Block make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
+cif::Block make_rst(const Topo& topo, const gemmi::MonLib& monlib,
+                    const gemmi::UnitCell& cell) {
   cif::Block block("restraints");
   cif::Loop& restr_loop = block.init_mmcif_loop("_restr.", {
               "record", "number", "label", "period",
               "atom_id_1", "atom_id_2", "atom_id_3", "atom_id_4",
               "value", "dev", "value_nucleus", "dev_nucleus", "val_obs"});
-  int counters[5] = {0, 0, 0, 0, 0};
+  int counters[6] = {0, 0, 0, 0, 0, 0};
   for (const Topo::ChainInfo& chain_info : topo.chain_infos) {
     for (const Topo::ResInfo& ri : chain_info.res_infos) {
       // write link
@@ -391,6 +406,8 @@ cif::Block make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
   }
   // explicit links
   for (const Topo::Link& extra : topo.extras) {
+    if (extra.asu == gemmi::Asu::Different) // symmetry links are left for later
+      continue;
     const gemmi::ChemLink* chem_link = monlib.find_link(extra.link_id);
     assert(chem_link);
     std::string comment = " link " + chem_link->id;
@@ -399,6 +416,21 @@ cif::Block make_rst(const Topo& topo, const gemmi::MonLib& monlib) {
     for (const Topo::Rule& rule : extra.link_rules)
       add_restraints(rule, topo, restr_loop, counters);
   }
+
+  // special symmetry related links
+  for (const Topo::Link& extra : topo.extras) {
+    if (extra.asu != gemmi::Asu::Different)
+      continue;
+    const gemmi::ChemLink* chem_link = monlib.find_link(extra.link_id);
+    assert(chem_link);
+    std::string comment = " link (symmetry) " + chem_link->id;
+    restr_loop.add_comment_and_row({comment, "LINK", ".", "symmetry", ".",
+                                    ".", ".", ".", ".", ".", ".", ".", ".", "."});
+    for (const Topo::Rule& rule : extra.link_rules)
+      if (rule.rkind == Topo::RKind::Bond)
+        add_restraints(rule, topo, restr_loop, counters, &cell);
+  }
+
   return block;
 }
 
@@ -529,7 +561,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
     if (verbose)
       printf("Preparing restraint data...\n");
-    cif::Block rst = make_rst(topo, monlib);
+    cif::Block rst = make_rst(topo, monlib, st.cell);
     if (p.options[Split])
       output.replace(output.size()-3, 3, "rst");
     if (verbose)

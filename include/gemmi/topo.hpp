@@ -85,9 +85,10 @@ struct Topo {
     Residue* res1 = nullptr;
     Residue* res2 = nullptr;
     std::vector<Rule> link_rules;
-    // altloc is used only for ChainInfo::extras, not for ResInfo::prev
+    // altloc and asu are used only for ChainInfo::extras, not for ResInfo::prev
     char alt1 = '\0';
     char alt2 = '\0';
+    Asu asu = Asu::Any;
   };
 
   struct ResInfo {
@@ -458,6 +459,7 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
       continue;
     extra.alt1 = conn.partner1.altloc;
     extra.alt2 = conn.partner2.altloc;
+    extra.asu = conn.asu;
 
     // first try to find ChemLink by name (and check if it matches)
     const ChemLink* match = monlib.find_link(conn.link_id);
