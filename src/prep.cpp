@@ -261,101 +261,91 @@ cif::Block make_crd(const gemmi::Structure& st, const Topo& topo) {
   return block;
 }
 
+void add_restraint_row(cif::Loop& restr_loop, const char* record, int counter,
+                       const std::string& label, const std::string& period,
+                       std::initializer_list<const gemmi::Atom*> atoms,
+                       double value, double dev,
+                       double value_nucleus, double dev_nucleus,
+                       double obs) {
+  using namespace gemmi;
+  for (const Atom* a : atoms)
+    if (a->occ == 0)
+      return;
+  auto& values = restr_loop.values;
+  auto to_str_dot = [&](double x) { return std::isnan(x) ? "." : to_str_prec<3>(x); };
+  values.emplace_back(record);  // record
+  values.emplace_back(std::to_string(counter));  // number
+  values.emplace_back(label);  // label
+  values.emplace_back(period);  // period
+  for (const Atom* a : atoms)
+    values.emplace_back(std::to_string(a->serial));  // atom_id_i
+  for (size_t i = atoms.size(); i < 4; ++i)
+    values.emplace_back(".");
+  values.emplace_back(to_str_dot(value));  // value
+  values.emplace_back(to_str_dot(dev));  // dev
+  values.emplace_back(to_str_dot(value_nucleus));  // value_nucleus
+  values.emplace_back(to_str_dot(dev_nucleus));  // dev_nucleus
+  values.emplace_back(to_str_prec<3>(obs));  // val_obs
+  std::string& last = values.back();
+  last += " #";
+  for (const Atom* a : atoms) {
+    last += ' ';
+    last += a->name;
+  }
+}
+
 void add_restraints(const Topo::Rule rule, const Topo& topo,
                     cif::Loop& restr_loop, int (&counters)[6],
                     const gemmi::UnitCell* cell=nullptr) {
   using namespace gemmi;
-  constexpr bool ignore_zero_occ = true;
-  const auto& to_str = to_str_prec<3>; // to make comparisons easier
-  const auto& to_str3 = to_str_prec<3>;
-  auto to_str_dot = [&](double x) { return std::isnan(x) ? "." : to_str(x); };
   if (rule.rkind == Topo::RKind::Bond) {
     const Topo::Bond& t = topo.bonds[rule.index];
-    if (ignore_zero_occ && (t.atoms[0]->occ == 0 || t.atoms[1]->occ == 0))
-      return;
-    double obs;
-    std::string label;
-    int counter_idx;
     if (cell == nullptr) {  // don't use symmetry
-      counter_idx = 0;
-      obs = t.calculate();
-      label = bond_type_to_string(t.restr->type);
+      add_restraint_row(restr_loop, "BOND", ++counters[0],
+                        bond_type_to_string(t.restr->type), ".",
+                        {t.atoms[0], t.atoms[1]},
+                        t.restr->value, t.restr->esd,
+                        t.restr->value_nucleus, t.restr->esd_nucleus,
+                        t.calculate());
     } else {
-      counter_idx = 5;
       NearestImage im = cell->find_nearest_image(t.atoms[0]->pos, t.atoms[1]->pos,
                                                  Asu::Different);
-      obs = std::sqrt(im.dist_sq);
-      label = im.symmetry_code(true);
+      add_restraint_row(restr_loop, "BNDS", ++counters[5],
+                        im.symmetry_code(true), ".",
+                        {t.atoms[0], t.atoms[1]},
+                        t.restr->value, t.restr->esd,
+                        t.restr->value_nucleus, t.restr->esd_nucleus,
+                        std::sqrt(im.dist_sq));
     }
-    restr_loop.add_row({cell == nullptr ? "BOND" : "BNDS",
-                        std::to_string(++counters[counter_idx]),
-                        label, ".",
-                        std::to_string(t.atoms[0]->serial),
-                        std::to_string(t.atoms[1]->serial),
-                        ".", ".",
-                        to_str(t.restr->value), to_str(t.restr->esd),
-                        to_str_dot(t.restr->value_nucleus),
-                        to_str_dot(t.restr->esd_nucleus),
-                        to_str3(obs) + " # " + t.atoms[0]->name + " " + t.atoms[1]->name});
   } else if (rule.rkind == Topo::RKind::Angle) {
     const Topo::Angle& t = topo.angles[rule.index];
-    if (ignore_zero_occ &&
-        (t.atoms[0]->occ == 0 || t.atoms[1]->occ == 0 || t.atoms[2]->occ == 0))
-      return;
-    std::string obs = to_str3(deg(t.calculate()));
-    obs += " # " + t.atoms[0]->name + " " +
-                   t.atoms[1]->name + " " +
-                   t.atoms[2]->name;
-    restr_loop.add_row({"ANGL", std::to_string(++counters[1]),
-                        ".", ".",
-                        std::to_string(t.atoms[0]->serial),
-                        std::to_string(t.atoms[1]->serial),
-                        std::to_string(t.atoms[2]->serial),
-                        ".",
-                        to_str(t.restr->value), to_str(t.restr->esd),
-                        ".", ".", obs});
+    add_restraint_row(restr_loop, "ANGL", ++counters[1], ".", ".",
+                      {t.atoms[0], t.atoms[1], t.atoms[2]},
+                       t.restr->value, t.restr->esd, NAN, NAN,
+                       deg(t.calculate()));
   } else if (rule.rkind == Topo::RKind::Torsion) {
     const Topo::Torsion& t = topo.torsions[rule.index];
-    if (ignore_zero_occ && (t.atoms[0]->occ == 0 || t.atoms[3]->occ == 0))
-      return;
-    std::string obs = to_str3(deg(t.calculate()));
-    obs += " # " + t.atoms[0]->name + " " + t.atoms[1]->name +
-           " " + t.atoms[2]->name + " " + t.atoms[3]->name;
-    restr_loop.add_row({"TORS", std::to_string(++counters[2]),
-                        t.restr->label, std::to_string(t.restr->period),
-                        std::to_string(t.atoms[0]->serial),
-                        std::to_string(t.atoms[1]->serial),
-                        std::to_string(t.atoms[2]->serial),
-                        std::to_string(t.atoms[3]->serial),
-                        to_str(t.restr->value), to_str(t.restr->esd),
-                        ".", ".", obs});
+    add_restraint_row(restr_loop, "TORS", ++counters[2],
+                      t.restr->label, std::to_string(t.restr->period),
+                      {t.atoms[0], t.atoms[1], t.atoms[2], t.atoms[3]},
+                      t.restr->value, t.restr->esd, NAN, NAN,
+                      deg(t.calculate()));
   } else if (rule.rkind == Topo::RKind::Chirality) {
     const Topo::Chirality& t = topo.chirs[rule.index];
-    double vol = topo.ideal_chiral_abs_volume(t);
-    std::string obs = to_str3(t.calculate()) + " # " + t.atoms[0]->name +
-                                                 " " + t.atoms[1]->name +
-                                                 " " + t.atoms[2]->name +
-                                                 " " + t.atoms[3]->name;
-    restr_loop.add_row({"CHIR", std::to_string(++counters[3]),
-                        chirality_to_string(t.restr->sign), ".",
-                        std::to_string(t.atoms[0]->serial),
-                        std::to_string(t.atoms[1]->serial),
-                        std::to_string(t.atoms[2]->serial),
-                        std::to_string(t.atoms[3]->serial),
-                        to_str3(vol), "0.020",
-                        ".", ".", obs});
+    add_restraint_row(restr_loop, "CHIR", ++counters[3],
+                      chirality_to_string(t.restr->sign), ".",
+                      {t.atoms[0], t.atoms[1], t.atoms[2], t.atoms[3]},
+                      topo.ideal_chiral_abs_volume(t), 0.02, NAN, NAN,
+                      t.calculate());
   } else if (rule.rkind == Topo::RKind::Plane) {
     const Topo::Plane& t = topo.planes[rule.index];
     ++counters[4];
     auto coeff = find_best_plane(t.atoms);
-    for (const Atom* atom : t.atoms) {
-      double dist = get_distance_from_plane(atom->pos, coeff);
-      std::string obs = to_str3(dist) + " # " + atom->name;
-      restr_loop.add_row({"PLAN", std::to_string(counters[4]), t.restr->label,
-                          ".", std::to_string(atom->serial), ".", ".", ".",
-                          to_str(t.restr->esd), ".",
-                          ".", ".", obs});
-    }
+    for (const Atom* atom : t.atoms)
+      add_restraint_row(restr_loop, "PLAN", counters[4], t.restr->label, ".",
+                        {atom},
+                        t.restr->esd, NAN, NAN, NAN,
+                        get_distance_from_plane(atom->pos, coeff));
   }
 }
 
