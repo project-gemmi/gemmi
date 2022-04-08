@@ -81,19 +81,28 @@ struct NearestImage {
   double dist_sq;
   int pbc_shift[3] = { 0, 0, 0 };
   int sym_idx = 0;
+
   double dist() const { return std::sqrt(dist_sq); }
   bool same_asu() const {
     return pbc_shift[0] == 0 && pbc_shift[1] == 0 && pbc_shift[2] == 0 && sym_idx == 0;
   }
+
+  // return string such as 1555 or 1_555
   std::string symmetry_code(bool underscore) const {
     std::string s = std::to_string(sym_idx + 1);
     if (underscore)
       s += '_';
-    for (int i = 0; i < 3; ++i) {
-      if (std::abs(pbc_shift[i]) < 4)
-        s += char('5' + pbc_shift[i]);  // quick path
-      else
-        s += "(" + std::to_string(5 + pbc_shift[i]) + ")";
+    if (unsigned(5 + pbc_shift[0]) <= 9 &&
+        unsigned(5 + pbc_shift[1]) <= 9 &&
+        unsigned(5 + pbc_shift[2]) <= 9) {  // normal, quick path
+      for (int shift : pbc_shift)
+        s += char('5' + shift);
+    } else {                                // problematic, non-standard path
+      for (int i = 0; i < 3; ++i) {
+        if (i != 0 && underscore)
+          s += '_';
+        s += std::to_string(5 + pbc_shift[i]);
+      }
     }
     return s;
   }
