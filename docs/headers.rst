@@ -290,9 +290,6 @@ gemmi/to_pdb.hpp
 gemmi/topo.hpp
     Topo(logy) - restraints (from a monomer library) applied to a model.
 
-gemmi/tostr.hpp
-    gemmi::tostr() - converts a list of arguments to string (uses ostringstream).
-
 gemmi/unitcell.hpp
     Unit cell.
 

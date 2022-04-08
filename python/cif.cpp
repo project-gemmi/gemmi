@@ -1,7 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/cifdoc.hpp"
-#include "gemmi/tostr.hpp"
+#include "tostr.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/fstream.hpp"

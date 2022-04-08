@@ -2,7 +2,6 @@
 
 #include "gemmi/chemcomp.hpp"    // for ChemComp
 #include "gemmi/to_chemcomp.hpp" // for add_chemcomp_to_block
-#include "gemmi/tostr.hpp"       // for tostr
 
 #include "common.h"
 #include <pybind11/stl.h>
@@ -70,7 +69,7 @@ void add_chemcomp(py::module& m) {
          py::arg("res1"), py::arg("res2"), py::arg("altloc"),
          py::return_value_policy::reference)
     .def("__repr__", [](const Restraints::AtomId& self) {
-        return tostr("<gemmi.Restraints.AtomId ", self.comp, ' ', self.atom, '>');
+        return cat("<gemmi.Restraints.AtomId ", self.comp, ' ', self.atom, '>');
     });
   restraintsbond
     .def_readwrite("id1", &Restraints::Bond::id1)

@@ -302,7 +302,7 @@ struct Topo {
       return;
     }
     if (link.alt1 && link.alt2 && link.alt1 != link.alt2)
-      err(tostr("LINK between different conformers ", link.alt1, " and ", link.alt2, '.'));
+      err(cat("LINK between different conformers ", link.alt1, " and ", link.alt2, '.'));
     char alt = link.alt1 ? link.alt1 : link.alt2;
     auto rules = apply_restraints(cl->rt, *link.res1, link.res2, alt);
     vector_move_extend(link.link_rules, std::move(rules));

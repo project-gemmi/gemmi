@@ -4,7 +4,7 @@
 #include "gemmi/reindex.hpp"  // for reindex_mtz
 #include "gemmi/fourier.hpp"
 #include "gemmi/gz.hpp"
-#include "gemmi/tostr.hpp"
+#include "tostr.hpp"
 
 #include "common.h"
 #include <pybind11/stl.h>

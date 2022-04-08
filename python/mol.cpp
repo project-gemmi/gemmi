@@ -5,7 +5,7 @@
 #include "gemmi/modify.hpp"     // for remove_alternative_conformations
 #include "gemmi/polyheur.hpp"   // for one_letter_code, trim_to_alanine
 #include "gemmi/assembly.hpp"   // for expand_ncs, HowToNameCopiedChain
-#include "gemmi/tostr.hpp"
+#include "tostr.hpp"
 
 #include "common.h"
 #include <pybind11/stl.h>

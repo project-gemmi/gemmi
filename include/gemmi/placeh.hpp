@@ -289,7 +289,7 @@ inline void place_hydrogens(const Topo& topo, const Atom& atom) {
     const Angle* ang3 = topo.take_angle(known[0].ptr, &atom, known[1].ptr);
 
     if (!ang1 || !ang2)
-      giveup(tostr("Missing angle restraint ", hs[0].ptr->name, '-', atom.name,
+      giveup(cat("Missing angle restraint ", hs[0].ptr->name, '-', atom.name,
                    '-', known[ang1 ? 1 : 0].ptr->name, ".\n"));
     double theta1 = ang1->radians();
     double theta2 = ang2->radians();

@@ -2,7 +2,6 @@
 
 #include "gemmi/neighbor.hpp"
 #include "gemmi/linkhunt.hpp"
-#include "gemmi/tostr.hpp"
 #include "common.h"
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
@@ -30,9 +29,9 @@ void add_search(py::module& m) {
     .def("to_site", (SmallStructure::Site& (NeighborSearch::Mark::*)(SmallStructure&) const)
                     &NeighborSearch::Mark::to_site)
     .def("__repr__", [](const NeighborSearch::Mark& self) {
-        return tostr("<gemmi.NeighborSearch.Mark ", self.element.name(),
-                     " of atom ", self.chain_idx, '/', self.residue_idx, '/',
-                     self.atom_idx, '>');
+        return cat("<gemmi.NeighborSearch.Mark ", self.element.name(),
+                   " of atom ", self.chain_idx, '/', self.residue_idx, '/',
+                   self.atom_idx, '>');
     });
   py::bind_vector<std::vector<NeighborSearch::Mark*>>(m, "VectorMarkPtr");
   neighbor_search
@@ -70,8 +69,8 @@ void add_search(py::module& m) {
     .def_property_readonly("grid_cell",
         [](const NeighborSearch& self) { return self.grid.unit_cell; })
     .def("__repr__", [](const NeighborSearch& self) {
-        return tostr("<gemmi.NeighborSearch with grid ",
-                     self.grid.nu, ", ", self.grid.nv, ", ", self.grid.nw, '>');
+        return cat("<gemmi.NeighborSearch with grid ",
+                   self.grid.nu, ", ", self.grid.nv, ", ", self.grid.nw, '>');
     });
   m.def("merge_atoms_in_expanded_model", &merge_atoms_in_expanded_model,
         py::arg("model"), py::arg("cell"), py::arg("max_dist")=0.2);

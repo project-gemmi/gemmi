@@ -1,6 +1,7 @@
 // Copyright 2019 Global Phasing Ltd.
 //
 // gemmi::tostr() - converts a list of arguments to string (uses ostringstream).
+// It was replaced with cat() and currently it's used only in Python bindings.
 
 #ifndef GEMMI_TOSTR_HPP_
 #define GEMMI_TOSTR_HPP_

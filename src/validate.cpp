@@ -4,7 +4,6 @@
 #include "gemmi/gz.hpp"
 #include "gemmi/cifdoc.hpp"
 #include "gemmi/numb.hpp"
-#include "gemmi/tostr.hpp"
 #include <cstdio>
 #include <cmath>      // for INFINITY
 #include <algorithm>  // for find
@@ -91,7 +90,6 @@ std::string format_7zd(size_t k) {
 }
 
 std::string token_stats(const cif::Document& d) {
-  std::string info;
   size_t nframes = 0, nvals = 0, nloops = 0, nlooptags = 0, nloopvals = 0;
   size_t vals_by_type[5] = {0};
   size_t looptags_by_type[5] = {0};
@@ -129,20 +127,19 @@ std::string token_stats(const cif::Document& d) {
       }
     }
   }
-  info += format_7zd(d.blocks.size()) + " block(s)\n";
-  info += format_7zd(nframes) + " frames\n";
-  info += format_7zd(nvals) + " non-loop items:";
+  std::string info;
+  gemmi::cat_to(info, format_7zd(d.blocks.size()), " block(s)\n");
+  gemmi::cat_to(info, format_7zd(nframes), " frames\n");
+  gemmi::cat_to(info, format_7zd(nvals), " non-loop items:");
   for (int i = 1; i != 5; ++i)
-    info += gemmi::tostr("  ", value_type_to_str(static_cast<ValueType>(i)),
-                         ':', vals_by_type[i]);
-  info += "\n";
-  info += format_7zd(nloops) + " loops w/\n";
-  info += "        " + format_7zd(nlooptags) + " tags:";
+    gemmi::cat_to(info, "  ", value_type_to_str(static_cast<ValueType>(i)),
+                  ':', vals_by_type[i]);
+  gemmi::cat_to(info, '\n', format_7zd(nloops), " loops w/"
+                "\n        ", format_7zd(nlooptags), " tags:");
   for (int i = 1; i != 5; ++i)
-    info += gemmi::tostr("  ", value_type_to_str(static_cast<ValueType>(i)),
-                         ':', looptags_by_type[i]);
-  info += "\n";
-  info += "        " + format_7zd(nloopvals) + " values\n";
+    gemmi::cat_to(info, "  ", value_type_to_str(static_cast<ValueType>(i)),
+                  ':', looptags_by_type[i]);
+  gemmi::cat_to(info, "\n        ", format_7zd(nloopvals), " values\n");
   return info;
 }
 

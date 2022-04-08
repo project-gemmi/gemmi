@@ -1,7 +1,6 @@
 // Copyright 2018 Global Phasing Ltd.
 
 #include "gemmi/ccp4.hpp"
-#include "gemmi/tostr.hpp"
 #include "common.h"
 #include <pybind11/stl.h>
 
@@ -26,9 +25,9 @@ py::class_<T> add_ccp4_common(py::module& m, const char* name) {
     .def("set_extent", &Map::set_extent)
     .def("__repr__", [=](const Map& self) {
         const SpaceGroup* sg = self.grid.spacegroup;
-        return tostr("<gemmi.", name, " with grid ",
-                     self.grid.nu, 'x', self.grid.nv, 'x', self.grid.nw,
-                     " in SG #", sg ? std::to_string(sg->ccp4) : "?", '>');
+        return cat("<gemmi.", name, " with grid ",
+                   self.grid.nu, 'x', self.grid.nv, 'x', self.grid.nw,
+                   " in SG #", sg ? std::to_string(sg->ccp4) : "?", '>');
     });
 }
 

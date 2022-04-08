@@ -2,7 +2,7 @@
 
 #include "gemmi/recgrid.hpp"
 #include "gemmi/fourier.hpp"  // for get_size_for_hkl, get_f_phi_on_grid
-#include "gemmi/tostr.hpp"
+#include "tostr.hpp"
 
 #include "common.h"
 #include <pybind11/numpy.h>

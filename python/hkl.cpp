@@ -3,7 +3,7 @@
 #include "gemmi/unitcell.hpp"
 #include "gemmi/refln.hpp"
 #include "gemmi/fourier.hpp"  // for get_size_for_hkl, get_f_phi_on_grid, ...
-#include "gemmi/tostr.hpp"
+#include "tostr.hpp"
 #include "gemmi/fprime.hpp"
 #include "gemmi/reciproc.hpp" // for count_reflections, make_miller_vector
 #include "gemmi/cif2mtz.hpp"  // for CifToMtz

@@ -14,7 +14,7 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 #include "gemmi/floodfill.hpp"  // for flood_fill_above
 #include "gemmi/solmask.hpp"  // for SolventMasker, mask_points_in_constant_radius
 #include "gemmi/blob.hpp"     // for Blob, find_blobs_by_flood_fill
-#include "gemmi/tostr.hpp"
+#include "tostr.hpp"
 
 #include "common.h"
 #include <pybind11/complex.h>

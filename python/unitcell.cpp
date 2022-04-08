@@ -1,7 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/unitcell.hpp"
-#include "gemmi/tostr.hpp"  // tostr
+#include "tostr.hpp"  // tostr
 #include "gemmi/cellred.hpp"  // GruberVector
 
 #include <cstdio>  // for snprintf

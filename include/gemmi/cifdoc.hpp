@@ -8,8 +8,7 @@
 #include "iterator.hpp"  // for StrideIter, IndirectIter
 #include "atox.hpp"  // for string_to_int
 #include "fail.hpp"  // for fail
-#include "util.hpp"  // for starts_with, to_lower
-#include "tostr.hpp"  // for tostr
+#include "util.hpp"  // for starts_with, to_lower, cat
 #include <cassert>
 #include <cstring>   // for memchr
 #include <algorithm> // for move, find_if, all_of, min, rotate
@@ -164,7 +163,7 @@ struct Loop {
     if (ss.size() != tags.size() + 1)
       fail("add_comment_and_row(): wrong row length.");
     std::vector<std::string> vec(ss.begin() + 1, ss.end());
-    vec[0] = "#" + *ss.begin() + "\n" + vec[0];
+    vec[0] = cat('#', *ss.begin(), '\n', vec[0]);
     return add_row(vec);
   }
   void pop_row() {
@@ -564,7 +563,7 @@ private:
 inline void Loop::set_all_values(std::vector<std::vector<std::string>> columns){
   size_t w = columns.size();
   if (w != width())
-    fail(tostr("set_all_values(): expected ", width(), " columns, got ", w));
+    fail(cat("set_all_values(): expected ", width(), " columns, got ", w));
   if (w == 0)
     return;
   size_t h = columns[0].size();
@@ -999,7 +998,7 @@ struct Document {
 [[noreturn]]
 inline void cif_fail(const std::string& source, const Block& b,
                      const Item& item, const std::string& s) {
-  fail(tostr(source, ':', item.line_number, " in data_", b.name, ": ", s));
+  fail(cat(source, ':', item.line_number, " in data_", b.name, ": ", s));
 }
 
 inline void check_for_missing_values_in_block(const Block& block,

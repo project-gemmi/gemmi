@@ -8,7 +8,7 @@
 #include "gemmi/seqid.hpp"
 #include "gemmi/metadata.hpp"
 #include "gemmi/enumstr.hpp"
-#include "gemmi/tostr.hpp"
+#include "tostr.hpp"
 #include "meta.h"
 
 namespace py = pybind11;
