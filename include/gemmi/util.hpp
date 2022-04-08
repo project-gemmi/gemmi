@@ -16,6 +16,24 @@ namespace gemmi {
 
 //   #####   string helpers   #####
 
+inline void append_to_str(std::string& out, int v) { out += std::to_string(v); }
+inline void append_to_str(std::string& out, size_t v) { out += std::to_string(v); }
+template<typename T>
+void append_to_str(std::string& out, const T& v) { out += v; }
+
+inline void cat_to(std::string&) {}
+template <typename T, typename... Args>
+void cat_to(std::string& out, const T& value, Args const&... args) {
+  append_to_str(out, value);
+  cat_to(out, args...);
+}
+template <class... Args>
+std::string cat(Args const&... args) {
+  std::string out;
+  cat_to(out, args...);
+  return out;
+}
+
 inline bool starts_with(const std::string& str, const std::string& prefix) {
   size_t sl = prefix.length();
   return str.length() >= sl && str.compare(0, sl, prefix) == 0;
