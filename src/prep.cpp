@@ -81,10 +81,10 @@ std::string refmac_calc_flag(const gemmi::Atom& a) {
   gemmi::unreachable();
 }
 
-// for compatibility with makecif, not sure what ccp4_mod_id is really used for
+// Get value of _entity_poly_seq.ccp4_mod_id compatible with makecif.
 std::string get_ccp4_mod_id(const std::vector<std::string>& mods) {
   for (const std::string& m : mods)
-    if (m != "AA-STAND" && !gemmi::starts_with(m, "DEL-OXT") &&
+    if (!gemmi::starts_with(m, "DEL-OXT") &&
         !gemmi::starts_with(m, "DEL-HN") && m != "DEL-NMH")
       return m;
   return ".";
@@ -500,20 +500,6 @@ int GEMMI_MAIN(int argc, char **argv) {
                     return a.serial != b.serial ? a.serial < b.serial
                                                 : a.altloc < b.altloc;
                   });
-        if (0) {  // temporary addition for makecif/refmac compatibility
-          if (gemmi::in_vector(std::string("AA-STAND"), ri.mods) &&
-              !ri.res->find_atom("OXT", '*')) {
-            gemmi::Atom atom;
-            atom.name = "OXT";
-            atom.element = gemmi::El::O;
-            atom.pos = gemmi::Position(0, 0, 0);
-            atom.flag = 'M';
-            atom.occ = 0;
-            atom.b_iso = 0;
-            ri.res->atoms.push_back(atom);
-            ri.chemcomp.atoms.push_back({atom.name, gemmi::El::O, 0.0, "OC"});
-          }
-        }
         for (gemmi::Atom& atom : res.atoms)
           atom.serial = ++serial;
       }
