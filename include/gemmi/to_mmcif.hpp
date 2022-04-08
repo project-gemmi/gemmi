@@ -489,7 +489,6 @@ bool is_valid_block_name(const std::string& name) {
 } // namespace impl
 
 void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroups groups) {
-  using std::to_string;
   if (st.models.empty())
     return;
 
@@ -534,7 +533,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
     span.set_pair("_symmetry.space_group_name_H-M",
                    cif::quote(st.spacegroup_hm));
     if (const SpaceGroup* sg = st.find_spacegroup())
-      span.set_pair("_symmetry.Int_Tables_number", to_string(sg->number));
+      span.set_pair("_symmetry.Int_Tables_number", std::to_string(sg->number));
   }
 
   if (groups.entity) {
@@ -918,13 +917,16 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
     if (st.has_origx && !st.origx.is_identity()) {
       impl::ItemSpan span(block.items, "_database_PDB_matrix.");
       span.set_pair("_database_PDB_matrix.entry_id", id);
-      std::string prefix = "_database_PDB_matrix.origx";
+      std::string tag_mat = "_database_PDB_matrix.origx[0][0]";
+      std::string tag_vec = "_database_PDB_matrix.origx_vector[0]";
       for (int i = 0; i < 3; ++i) {
-        std::string s = "[" + to_string(i+1) + "]";
-        span.set_pair(prefix + s + "[1]", to_str(st.origx.mat[i][0]));
-        span.set_pair(prefix + s + "[2]", to_str(st.origx.mat[i][1]));
-        span.set_pair(prefix + s + "[3]", to_str(st.origx.mat[i][2]));
-        span.set_pair(prefix + "_vector" + s, to_str(st.origx.vec.at(i)));
+        tag_mat[27] += 1;  // origx[0] -> origx[1] -> origx[2]
+        tag_vec[34] += 1;
+        for (int j = 0; j < 3; ++j) {
+          tag_mat[30] = '1' + j;
+          span.set_pair(tag_mat, to_str(st.origx.mat[i][j]));
+        }
+        span.set_pair(tag_vec, to_str(st.origx.vec.at(i)));
       }
     }
   }
@@ -1077,7 +1079,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
       for (const Chain& chain : model.chains)
         for (const Residue& res : chain.residues)
           if (res.is_cis)
-            prot_cis_loop.add_row({to_string(prot_cis_loop.length()+1),
+            prot_cis_loop.add_row({std::to_string(prot_cis_loop.length()+1),
                                    model.name, impl::subchain_or_dot(res),
                                    res.label_seq.str('.'), impl::qchain(chain.name),
                                    res.seqid.num.str(), impl::pdbx_icode(res),
