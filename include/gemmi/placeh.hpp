@@ -392,7 +392,7 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
 
   bool keep = (h_change == HydrogenChange::NoChange || h_change == HydrogenChange::Shift);
   if (!keep || reorder) {
-    // remove/add hydrogens, sort atoms, set sequential serial numbers
+    // remove/add hydrogens, sort atoms in residues, assign serial numbers
     int serial = 0;
     for (Topo::ChainInfo& chain_info : topo->chain_infos)
       for (Topo::ResInfo& ri : chain_info.res_infos) {
@@ -401,8 +401,17 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
         if (!keep) {
           remove_hydrogens(res);
           if (h_change == HydrogenChange::ReAdd ||
-              (h_change == HydrogenChange::ReAddButWater && !res.is_water()))
+              (h_change == HydrogenChange::ReAddButWater && !res.is_water())) {
             add_hydrogens_without_positions(cc, res);
+            if (h_change == HydrogenChange::ReAddButWater) {
+              // a special handling of HIS for compatibility with Refmac
+              if (cc.name == "HIS") {
+                for (gemmi::Atom& atom : ri.res->atoms)
+                  if (atom.name == "HD1" || atom.name == "HE2")
+                    atom.occ = 0;
+              }
+            }
+          }
         }
         if (reorder) {
           for (Atom& atom : res.atoms) {

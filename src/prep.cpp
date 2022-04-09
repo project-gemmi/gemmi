@@ -447,11 +447,13 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (st.input_format == gemmi::CoorFormat::Pdb ||
         st.input_format == gemmi::CoorFormat::ChemComp)
       gemmi::setup_entities(st);
+
     if (st.models.empty()) {
       fprintf(stderr, "No models found in the input file.\n");
       return 1;
     }
     gemmi::Model& model0 = st.models[0];
+
     std::string libin;
     if (p.options[Libin])
       libin = p.options[Libin].arg;
@@ -462,61 +464,23 @@ int GEMMI_MAIN(int argc, char **argv) {
                                                    gemmi::read_cif_gz,
                                                    libin);
 
-    Topo topo;
-    topo.warnings = &std::cerr;
     if (verbose)
-      printf("Preparing topology...\n");
-    topo.initialize_refmac_topology(st, model0, monlib);
-
-    // add H, sort atoms in residues and assign serial numbers
-    if (verbose)
-      printf("Hydrogens, sorting...\n");
-    int serial = 0;
-    for (Topo::ChainInfo& chain_info : topo.chain_infos)
-      for (Topo::ResInfo& ri : chain_info.res_infos) {
-        const gemmi::ChemComp& cc = ri.chemcomp;
-        gemmi::Residue &res = *ri.res;
-        if (!p.options[KeepHydrogens]) {
-          gemmi::remove_hydrogens(res);
-          if (!p.options[NoHydrogens])
-            if (cc.name != "HOH") { // for compatibility with refmac/makecif
-              add_hydrogens_without_positions(cc, res);
-              // Refmac is doing the same for HIS
-              if (cc.name == "HIS") {
-                for (gemmi::Atom& atom : ri.res->atoms)
-                  if (atom.name == "HD1" || atom.name == "HE2")
-                    atom.occ = 0;
-              }
-            }
-        }
-        for (gemmi::Atom& atom : res.atoms) {
-          auto it = cc.find_atom(atom.name);
-          if (it == cc.atoms.end())
-            gemmi::fail("No atom " + atom.name + " expected in " + res.name);
-          atom.serial = it - cc.atoms.begin(); // temporary, for sorting only
-        }
-        std::sort(res.atoms.begin(), res.atoms.end(),
-                  [](const gemmi::Atom& a, const gemmi::Atom& b) {
-                    return a.serial != b.serial ? a.serial < b.serial
-                                                : a.altloc < b.altloc;
-                  });
-        for (gemmi::Atom& atom : res.atoms)
-          atom.serial = ++serial;
-      }
-
-    if (verbose)
-      printf("Preparing restraints...\n");
-    topo.finalize_refmac_topology(monlib);
-
-    if (!p.options[KeepHydrogens] && !p.options[NoHydrogens]) {
-      if (verbose)
-        printf("Moving hydrogens to riding positions...\n");
-      place_hydrogens_on_all_atoms(topo);
-    }
+      printf("Preparing topology, hydrogens, restraints...\n");
+    bool reorder = true;
+    bool ignore_unknown_links = false;
+    gemmi::HydrogenChange h_change;
+    if (p.options[NoHydrogens])
+      h_change = gemmi::HydrogenChange::Remove;
+    else if (p.options[KeepHydrogens])
+      h_change = gemmi::HydrogenChange::NoChange;
+    else
+      h_change = gemmi::HydrogenChange::ReAddButWater;
+    auto topo = gemmi::prepare_topology(st, monlib, 0, h_change, reorder,
+                                        &std::cerr, ignore_unknown_links);
 
     if (verbose)
       printf("Preparing structure data...\n");
-    cif::Block crd = make_crd(st, topo);
+    cif::Block crd = make_crd(st, *topo);
     if (p.options[Split])
       output += ".crd";
     if (verbose)
@@ -537,7 +501,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
     if (verbose)
       printf("Preparing restraint data...\n");
-    cif::Block rst = make_rst(topo, monlib, st.cell);
+    cif::Block rst = make_rst(*topo, monlib, st.cell);
     if (p.options[Split])
       output.replace(output.size()-3, 3, "rst");
     if (verbose)
