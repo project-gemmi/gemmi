@@ -65,6 +65,9 @@ gemmi/cifdoc.hpp
 gemmi/contact.hpp
     Contact search, based on NeighborSearch from neighbor.hpp.
 
+gemmi/crd.hpp
+    Generate Refmac intermediate (prepared) files crd and rst
+
 gemmi/dencalc.hpp
     Tools to prepare a grid with values of electron density of a model.
 
