@@ -506,7 +506,7 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
       ChemLink cl;
       cl.side1.comp = extra.res1->name;
       cl.side2.comp = extra.res2->name;
-      cl.id = cl.side1.comp + "-" + cl.side2.comp;
+      cl.id = cl.side1.comp + cl.side2.comp;
       cl.rt.bonds.push_back(bond_restraint_from_connection(conn));
 
       monlib.ensure_unique_link_name(cl.id);
