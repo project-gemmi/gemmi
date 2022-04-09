@@ -361,7 +361,7 @@ cif::Block make_rst(const Topo& topo, const gemmi::MonLib& monlib,
     for (const Topo::ResInfo& ri : chain_info.res_infos) {
       // write link
       for (const Topo::Link& prev : ri.prev) {
-        const gemmi::ChemLink* link = monlib.find_link(prev.link_id);
+        const gemmi::ChemLink* link = monlib.get_link(prev.link_id);
         if (link && !prev.link_rules.empty()) {
           std::string comment = " link " + prev.link_id + " " +
                                 prev.res1->seqid.str() + " " +
@@ -398,7 +398,7 @@ cif::Block make_rst(const Topo& topo, const gemmi::MonLib& monlib,
   for (const Topo::Link& extra : topo.extras) {
     if (extra.asu == gemmi::Asu::Different) // symmetry links are left for later
       continue;
-    const gemmi::ChemLink* chem_link = monlib.find_link(extra.link_id);
+    const gemmi::ChemLink* chem_link = monlib.get_link(extra.link_id);
     assert(chem_link);
     std::string comment = " link " + chem_link->id;
     restr_loop.add_comment_and_row({comment, "LINK", ".", cif::quote(chem_link->id), ".",
@@ -411,7 +411,7 @@ cif::Block make_rst(const Topo& topo, const gemmi::MonLib& monlib,
   for (const Topo::Link& extra : topo.extras) {
     if (extra.asu != gemmi::Asu::Different)
       continue;
-    const gemmi::ChemLink* chem_link = monlib.find_link(extra.link_id);
+    const gemmi::ChemLink* chem_link = monlib.get_link(extra.link_id);
     assert(chem_link);
     std::string comment = " link (symmetry) " + chem_link->id;
     restr_loop.add_comment_and_row({comment, "LINK", ".", "symmetry", ".",

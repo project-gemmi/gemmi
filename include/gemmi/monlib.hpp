@@ -545,7 +545,7 @@ struct MonLib {
   std::map<std::string, ChemMod> modifications;
   std::map<std::string, ResidueInfo> residue_infos;
 
-  const ChemLink* find_link(const std::string& link_id) const {
+  const ChemLink* get_link(const std::string& link_id) const {
     auto link = links.find(link_id);
     return link != links.end() ? &link->second : nullptr;
   }
@@ -599,7 +599,7 @@ struct MonLib {
 
   void ensure_unique_link_name(std::string& name) const {
     size_t orig_len = name.size();
-    for (int n = 0; find_link(name) != nullptr; ++n)
+    for (int n = 0; get_link(name) != nullptr; ++n)
       name.replace(orig_len, name.size(), std::to_string(n));
   }
 

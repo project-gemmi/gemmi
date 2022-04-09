@@ -286,7 +286,7 @@ struct Topo {
   void apply_restraints_to_residue(ResInfo& ri, const MonLib& monlib) {
     // link restraints
     for (Link& prev : ri.prev)
-      if (const ChemLink* link = monlib.find_link(prev.link_id)) {
+      if (const ChemLink* link = monlib.get_link(prev.link_id)) {
         auto rules = apply_restraints(link->rt, *prev.res1, ri.res);
         vector_move_extend(prev.link_rules, std::move(rules));
       }
@@ -296,7 +296,7 @@ struct Topo {
   }
 
   void apply_restraints_to_extra_link(Link& link, const MonLib& monlib) {
-    const ChemLink* cl = monlib.find_link(link.link_id);
+    const ChemLink* cl = monlib.get_link(link.link_id);
     if (!cl) {
       err("ignoring link '" + link.link_id + "' as it is not in the monomer library");
       return;
@@ -462,7 +462,7 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
     extra.asu = conn.asu;
 
     // first try to find ChemLink by name (and check if it matches)
-    const ChemLink* match = monlib.find_link(conn.link_id);
+    const ChemLink* match = monlib.get_link(conn.link_id);
     if (match && (
           match->rt.bonds.empty() ||
           match->rt.bonds[0].id1.atom != conn.partner1.atom_name ||
@@ -521,7 +521,7 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
   for (ChainInfo& ci : chain_infos)
     for (ResInfo& ri : ci.res_infos)
       for (Link& prev : ri.prev)
-        if (const ChemLink* link = monlib.find_link(prev.link_id)) {
+        if (const ChemLink* link = monlib.get_link(prev.link_id)) {
           ResInfo* ri_prev = &ri + (prev.res1 - prev.res2);
           ri_prev->add_mod(link->side1.mod);
           ri.add_mod(link->side2.mod);

@@ -73,7 +73,7 @@ void add_monlib(py::module& m) {
     .def_readonly("links", &MonLib::links)
     .def_readonly("modifications", &MonLib::modifications)
     .def_readonly("residue_infos", &MonLib::residue_infos)
-    .def("find_link", &MonLib::find_link, py::arg("link_id"),
+    .def("get_link", &MonLib::get_link, py::arg("link_id"),
          py::return_value_policy::reference_internal)
     .def("find_mod", &MonLib::find_mod, py::arg("name"),
          py::return_value_policy::reference_internal)
