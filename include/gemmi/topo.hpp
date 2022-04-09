@@ -470,14 +470,13 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
           !monlib.link_side_matches_residue(match->side1, extra.res1->name) ||
           !monlib.link_side_matches_residue(match->side2, extra.res2->name)))
       match = nullptr;
-    // if ChemLink was not found, use the first matching link (if any)
-    if (!match)
-      match = monlib.match_link(extra.res1->name, conn.partner1.atom_name,
-                                extra.res2->name, conn.partner2.atom_name);
+
+    // if ChemLink was not found, use the best matching link (if any)
     if (!match) {
-      match = monlib.match_link(extra.res2->name, conn.partner2.atom_name,
-                                extra.res1->name, conn.partner1.atom_name);
-      if (match) {
+      auto r = monlib.match_link(extra.res1->name, conn.partner1.atom_name,
+                                 extra.res2->name, conn.partner2.atom_name);
+      match = r.first;
+      if (match && r.second) {
         std::swap(extra.res1, extra.res2);
         std::swap(extra.alt1, extra.alt2);
       }

@@ -557,21 +557,44 @@ struct MonLib {
     auto resinfo = residue_infos.find(name);
     return resinfo != residue_infos.end() ? &resinfo->second : nullptr;
   }
-  const ChemLink* match_link(
-      const std::string& comp1, const std::string& atom1,
-      const std::string& comp2, const std::string& atom2) const {
+
+  // Returns the most specific link and a flag that is true
+  // if the order is comp2-comp1 in the link definition.
+  // We don't check chirality here (cf. calculate_score).
+  std::pair<const ChemLink*, bool>
+  match_link(const std::string& comp1, const std::string& atom1,
+             const std::string& comp2, const std::string& atom2) const {
+    const ChemLink* best_link = nullptr;
+    int best_score = -1;
+    bool inverted = false;
     for (auto& ml : links) {
       const ChemLink& link = ml.second;
+      if (link.rt.bonds.empty())
+        continue;
       // for now we don't have link definitions with >1 bonds
-      if (link.rt.bonds.size() == 1) {
-        const Restraints::Bond& bond = link.rt.bonds[0];
-        if (bond.id1.atom == atom1 && bond.id2.atom == atom2 &&
-            link_side_matches_residue(link.side1, comp1) &&
-            link_side_matches_residue(link.side2, comp2))
-          return &link;
+      const Restraints::Bond& bond = link.rt.bonds[0];
+      if (bond.id1.atom == atom1 && bond.id2.atom == atom2 &&
+          link_side_matches_residue(link.side1, comp1) &&
+          link_side_matches_residue(link.side2, comp2)) {
+        int score = link.side1.specificity() + link.side2.specificity();
+        if (score > best_score) {
+          best_link = &link;
+          best_score = score;
+          inverted = false;
+        }
+      }
+      if (bond.id1.atom == atom2 && bond.id2.atom == atom1 &&
+          link_side_matches_residue(link.side1, comp2) &&
+          link_side_matches_residue(link.side2, comp1)) {
+        int score = link.side1.specificity() + link.side2.specificity();
+        if (score > best_score) {
+          best_link = &link;
+          best_score = score;
+          inverted = true;
+        }
       }
     }
-    return nullptr;
+    return {best_link, inverted};
   }
 
   void ensure_unique_link_name(std::string& name) const {
