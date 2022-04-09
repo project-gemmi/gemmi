@@ -168,12 +168,12 @@ def main():
                 a2 = a[2]
                 b2 = b[2]
                 if any(n_rst2+k < len(b2) and has_same_ids(rst1, b2[n_rst2+k])
-                       for k in (1,2)):
+                       for k in range(1,10)):
                     print('ADDED record %s:\n%s\n' % (r_str, fmt(rst2, crd2)))
                     n_rst2 += 1
                     continue
                 if any(n_rst1+k < len(a2) and has_same_ids(a2[n_rst1+k], rst2)
-                       for k in (1,2)):
+                       for k in range(1,10)):
                     print('REMOVED record %s:\n%s\n' % (r_str, fmt(rst1, crd1)))
                     n_rst1 += 1
                     continue
