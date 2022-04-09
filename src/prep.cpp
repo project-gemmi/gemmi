@@ -54,8 +54,8 @@ const option::Descriptor Usage[] = {
     "  -H, --no-hydrogens  \tRemove or do not add hydrogens." },
   { KeepHydrogens, 0, "", "keep-hydrogens", Arg::None,
     "  --keep-hydrogens  \tPreserve hydrogens from the input file." },
-  { NoZeroOccRestr, 0, "", "no-zero-occ", Arg::None,
-    "  --no-zero-occ  \tNo restraints for zero-occupancy atoms." },
+  //{ NoZeroOccRestr, 0, "", "no-zero-occ", Arg::None,
+  //  "  --no-zero-occ  \tNo restraints for zero-occupancy atoms." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -268,9 +268,12 @@ void add_restraint_row(cif::Loop& restr_loop, const char* record, int counter,
                        double value_nucleus, double dev_nucleus,
                        double obs) {
   using namespace gemmi;
+  // Ignore restraints with zero-occupancy atoms (NoZeroOccRestr)
+  // Perhaps it could be done earlier, in Topo::apply_restraints().
   for (const Atom* a : atoms)
     if (a->occ == 0)
       return;
+
   auto& values = restr_loop.values;
   auto to_str_dot = [&](double x) { return std::isnan(x) ? "." : to_str_prec<3>(x); };
   values.emplace_back(record);  // record
@@ -487,17 +490,6 @@ int GEMMI_MAIN(int argc, char **argv) {
       printf("Writing coordinates to: %s\n", output.c_str());
     gemmi::Ofstream os(output);
     write_cif_block_to_stream(os.ref(), crd, cif::Style::NoBlankLines);
-
-    if (p.options[NoZeroOccRestr])
-      for (gemmi::Chain& chain : model0.chains)
-        for (gemmi::Residue& res : chain.residues)
-          for (gemmi::Atom& atom : res.atoms)
-            if (atom.occ <= 0) {
-              if (verbose)
-                printf("Atom with zero occupancy: %s\n",
-                       gemmi::atom_str(chain, res, atom).c_str());
-              atom.name += '?';  // hide the atom by mangling the name
-            }
 
     if (verbose)
       printf("Preparing restraint data...\n");

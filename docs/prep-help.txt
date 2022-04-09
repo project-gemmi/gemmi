@@ -15,4 +15,3 @@ Options:
   --libin=CIF         Custom additions to the monomer library.
   -H, --no-hydrogens  Remove or do not add hydrogens.
   --keep-hydrogens    Preserve hydrogens from the input file.
-  --no-zero-occ       No restraints for zero-occupancy atoms.
