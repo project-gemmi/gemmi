@@ -1,4 +1,4 @@
-include python/*.h
+include python/*.h*
 recursive-include include/gemmi *.hpp
 include include/gemmi/third_party/pocketfft_hdronly.h
 include include/gemmi/third_party/sajson.h
