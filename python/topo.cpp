@@ -2,6 +2,7 @@
 
 #include "gemmi/topo.hpp"
 #include "gemmi/placeh.hpp"  // for adjust_hydrogen_distances
+#include "gemmi/crd.hpp"     // for prepare_crd, prepare_rst
 
 #include "common.h"
 #include <pybind11/stl.h>
@@ -110,4 +111,8 @@ void add_topo(py::module& m) {
     }, py::arg("st"), py::arg("monlib"), py::arg("model_index")=0,
        py::arg("h_change")=HydrogenChange::NoChange, py::arg("reorder")=false,
        py::arg("warnings")=py::none(), py::arg("ignore_unknown_links")=false);
+
+  // crd.hpp
+  m.def("prepare_crd", &prepare_crd);
+  m.def("prepare_rst", &prepare_rst);
 }
