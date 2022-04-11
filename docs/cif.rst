@@ -427,6 +427,7 @@ Instead, we have a few choices for "styling" of the output:
   wwPDB archive. It enables diff-ing original and modified files with
   option ``--ignore-space-change``.
 * ``Style::Indent35`` writes values from pairs from 35th column,
+* ``Style::Aligned`` left-align columns in loops, pairs as in Indent35.
 
 
 C++

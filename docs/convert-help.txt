@@ -14,7 +14,8 @@ General options:
   --to=FORMAT             Output format (default: from the file extension).
 
 CIF output options:
-  --pdbx-style            Similar styling (formatting) as in wwPDB.
+  --style=STYLE           one of: default, pdbx (categories separated with #),
+                          aligned (left-aligned columns).
   -b NAME, --block=NAME   Set block name and default _entry.id
   --sort                  Sort tags in alphabetical order.
   --skip-category=CAT     Do not output tags starting with _CAT

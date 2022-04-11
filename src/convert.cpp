@@ -47,10 +47,14 @@ struct ConvArg: public Arg {
   static option::ArgStatus NcsChoice(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"dup", "num", "x"});
   }
+
+  static option::ArgStatus StyleChoice(const option::Option& option, bool msg) {
+    return Arg::Choice(option, msg, {"plain", "pdbx", "aligned"});
+  }
 };
 
 enum OptionIndex {
-  FormatIn=AfterCifModOptions, FormatOut, PdbxStyle, BlockName,
+  FormatIn=AfterCifModOptions, FormatOut, CifStyle, BlockName,
   ExpandNcs, AsAssembly,
   RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove,
   ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain, SetSeq, Anisou,
@@ -74,8 +78,9 @@ const option::Descriptor Usage[] = {
     "  --to=FORMAT  \tOutput format (default: from the file extension)." },
 
   { NoOp, 0, "", "", Arg::None, "\nCIF output options:" },
-  { PdbxStyle, 0, "", "pdbx-style", Arg::None,
-    "  --pdbx-style  \tSimilar styling (formatting) as in wwPDB." },
+  { CifStyle, 0, "", "style", ConvArg::StyleChoice,
+    "  --style=STYLE  \tone of: default, pdbx (categories separated with #),"
+                     " aligned (left-aligned columns)." },
   { BlockName, 0, "b", "block", Arg::Required,
     "  -b NAME, --block=NAME  \tSet block name and default _entry.id" },
   CifModUsage[SortCif],
@@ -282,8 +287,13 @@ void convert(gemmi::Structure& st,
     apply_cif_doc_modifications(doc, options);
 
     if (output_type == CoorFormat::Mmcif) {
-      auto style = options[PdbxStyle] ? cif::Style::Pdbx
-                                      : cif::Style::PreferPairs;
+      auto style = cif::Style::PreferPairs;
+      if (options[CifStyle])
+        switch (options[CifStyle].arg[0]) {
+          case 'd'/*default*/: break;
+          case 'p'/*pdbx*/: style = cif::Style::Pdbx; break;
+          case 'a'/*aligned*/: style = cif::Style::Aligned; break;
+        }
       write_cif_to_stream(os.ref(), doc, style);
     } else /*output_type == CoorFormat::Mmjson*/ {
       cif::JsonWriter writer(os.ref());

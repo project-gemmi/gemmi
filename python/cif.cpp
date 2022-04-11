@@ -67,7 +67,8 @@ void add_cif(py::module& cif) {
     .value("NoBlankLines", Style::NoBlankLines)
     .value("PreferPairs", Style::PreferPairs)
     .value("Pdbx", Style::Pdbx)
-    .value("Indent35", Style::Indent35);
+    .value("Indent35", Style::Indent35)
+    .value("Aligned", Style::Aligned);
   py::class_<Document>(cif, "Document")
     .def(py::init<>())
     .def_readwrite("source", &Document::source)
