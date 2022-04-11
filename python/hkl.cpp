@@ -338,5 +338,6 @@ void add_hkl(py::module& m) {
           ptr[i] = self.pos[i] >= 0 ? v(self.pos[i]) : NAN;
         return result;
     })
+    .def_readonly("pos", &HklMatch::pos)
     ;
 }
