@@ -97,8 +97,11 @@ struct DensityCalculator {
   double requested_grid_spacing() const { return d_min / (2 * rate); }
 
   void set_refmac_compatible_blur(const Model& model) {
+    double spacing = requested_grid_spacing();
+    if (spacing <= 0)
+      spacing = grid.min_spacing();
     double b_min = get_minimum_b_iso(model);
-    blur = std::max(u_to_b() / 1.1 * sq(requested_grid_spacing()) - b_min, 0.);
+    blur = std::max(u_to_b() / 1.1 * sq(spacing) - b_min, 0.);
   }
 
   // pre: check if Table::has(atom.element)
@@ -153,10 +156,17 @@ struct DensityCalculator {
 
   void initialize_grid() {
     grid.data.clear();
-    grid.set_size_from_spacing(requested_grid_spacing(), true);
+    double spacing = requested_grid_spacing();
+    if (spacing > 0)
+      grid.set_size_from_spacing(spacing, true);
+    else if (grid.point_count() > 0)
+      grid.fill(0.);
+    else
+      fail("initialize_grid(): d_min is not set");
   }
 
   void add_model_density_to_grid(const Model& model) {
+    grid.check_not_empty();
     for (const Chain& chain : model.chains)
       for (const Residue& res : chain.residues)
         for (const Atom& atom : res.atoms)

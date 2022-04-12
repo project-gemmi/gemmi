@@ -230,7 +230,8 @@ struct Grid : GridBase<T> {
   using GridBase<T>::spacegroup;
   using GridBase<T>::data;
 
-  double spacing[3];  // spacing between virtual planes, not between points
+  // spacing between virtual planes, not between points
+  double spacing[3] = {0., 0., 0.};
 
   void copy_metadata_from(const GridMeta& g) {
     unit_cell = g.unit_cell;
@@ -246,6 +247,10 @@ struct Grid : GridBase<T> {
     spacing[0] = 1.0 / (nu * unit_cell.ar);
     spacing[1] = 1.0 / (nv * unit_cell.br);
     spacing[2] = 1.0 / (nw * unit_cell.cr);
+  }
+
+  double min_spacing() const {
+    return std::min(std::min(spacing[0], spacing[1]), spacing[2]);
   }
 
   void set_size_without_checking(int u, int v, int w) {

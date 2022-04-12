@@ -2033,7 +2033,10 @@ Calling ``put_model_density_on_grid`` is equivalent to these three functions:
   >>> dencalc.add_model_density_to_grid(st[0])
   >>> dencalc.grid.symmetrize_sum()
 
-Now we have density calculated on the grid:
+Function initialize_grid(), in this case, uses ``d_min`` and ``rate``
+to determine required grid spacing and uses this spacing to setup the grid.
+If ``d_min`` would not be set and the grid size would be set, initialize_grid()
+would only zero the grid values.
 
 .. doctest::
 
@@ -2052,7 +2055,7 @@ into a structure factor grid:
   (54.52764892578125+53.418941497802734j)
 
 In addition to ``d_min`` and ``rate``, which govern the grid density,
-DensityCalculator have two more parameters that affect accuracy
+DensityCalculator has two more parameters that affect accuracy
 of the calculated structure factors:
 
 * ``cutoff`` (default: 1e-5) -- density cut-off in the same unit as the map.
@@ -2085,7 +2088,8 @@ Additionally, increasing the dampening makes the computations slower
 
   >>> dencalc.blur = 10
 
-or using the formula from Refmac:
+or using the formula from Refmac (which is a function of the grid spacing
+and *B*\ :sub:`min`):
 
 .. doctest::
 
