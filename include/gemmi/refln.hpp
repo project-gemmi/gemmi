@@ -143,19 +143,27 @@ struct ReflnBlock {
 // moves blocks from the argument to the return value
 inline
 std::vector<ReflnBlock> as_refln_blocks(std::vector<cif::Block>&& blocks) {
-  std::vector<ReflnBlock> r;
-  r.reserve(blocks.size());
+  std::vector<ReflnBlock> rvec;
+  rvec.reserve(blocks.size());
   for (cif::Block& block : blocks)
-    r.emplace_back(std::move(block));
+    rvec.emplace_back(std::move(block));
   blocks.clear();
-  // Some blocks miss space group tag, try to fill it in.
+  // Some blocks miss space group or unit cell, try to fill it in.
   const SpaceGroup* first_sg = nullptr;
-  for (ReflnBlock& rblock : r)
+  const UnitCell* first_cell = nullptr;
+  for (ReflnBlock& rblock : rvec) {
     if (!first_sg)
       first_sg = rblock.spacegroup;
     else if (!rblock.spacegroup)
       rblock.spacegroup = first_sg;
-  return r;
+    if (rblock.cell.is_crystal()) {
+      if (!first_cell)
+        first_cell = &rblock.cell;
+    } else if (first_cell) {
+      rblock.cell = *first_cell;
+    }
+  }
+  return rvec;
 }
 
 // Get the first (merged) block with required labels.
