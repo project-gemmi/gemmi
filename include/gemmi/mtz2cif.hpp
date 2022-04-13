@@ -667,7 +667,11 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2,
 
   os << "\n\n_entry.id " << entry_id << "\n\n";
 
-  write_special_marker_if_requested(os, merged);
+  // If we have user-provided spec file, we don't take responsibility
+  // for the result. (The spec is used for merged data only, so we can
+  // add the merker in unmerged block).
+  if (spec_lines.empty() || !merged)
+    write_special_marker_if_requested(os, merged);
 
   std::vector<Trans> recipe;
   if (merged)
@@ -778,6 +782,9 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2,
   if (merged)
     write_main_loop(*merged, recipe, buf, os);
   if (unmerged) {
+    // if --depo flag is used, the spec file is for the merged data only
+    if (write_special_marker_for_pdb)
+      spec_lines.clear();
     prepare_recipe(*unmerged, recipe);
     write_main_loop(*unmerged, recipe, buf, os);
   }
