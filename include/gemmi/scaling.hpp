@@ -196,7 +196,8 @@ struct Scaling {
         fmask = m.value;
       }
       double stol2 = cell.calculate_stol_sq(o.hkl);
-      points.push_back({o.hkl, stol2, c->value, fmask, o.value.value, o.value.sigma});
+      if (!std::isnan(o.value.value) && !std::isnan(o.value.sigma))
+        points.push_back({o.hkl, stol2, c->value, fmask, o.value.value, o.value.sigma});
       ++c;
       if (c == calc.v.end())
         break;
