@@ -11,9 +11,9 @@ on:
         default: '*'
       cibw_skip:
         description: 'CIBW_SKIP'
-        # To limit the number of builds, skip most of musl-based versions
-        # and 32-bit builds.
-        default: 'pp37-* cp{36,37,38}-musllinux* *_i686 *-win32'
+        # To limit the number of builds, skip most of musl-based versions,
+        # older PyPy versions, and 32-bit builds.
+        default: 'pp{37,38}-* cp{36,37,38}-musllinux* *_i686 *-win32'
 
 env:
   CIBW_TEST_COMMAND: python -m unittest discover -v -s {project}/tests/
