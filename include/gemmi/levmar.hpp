@@ -45,7 +45,7 @@ inline void jordan_solve(std::vector<double>& a, std::vector<double>& b) {
       // If it's the same about i-th row, and b[i]==0, let x[i]==0.
       for (int j = i; j < n; j++)
         if (a[n * i + j] != 0. || b[i] != 0.)
-          fail("Trying to reverse singular matrix. Column ", i, " is zeroed.");
+          fail("Trying to reverse singular matrix. Column ", std::to_string(i), " is zeroed.");
       continue; // x[i]=b[i], b[i]==0
     }
     // interchanging rows
