@@ -306,7 +306,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (p.options[Trim])
     mtz_to_cif.trim = std::atoi(p.options[Trim].arg);
   if (verbose)
-    std::fprintf(stderr, "Writing %s ...\n", cif_output);
+    std::fprintf(stderr, "Opening output file %s ...\n", cif_output);
   try {
     gemmi::Ofstream os(cif_output, &std::cout);
     for (int i = 0; i < 2; ++i)
@@ -314,19 +314,31 @@ int GEMMI_MAIN(int argc, char **argv) {
         mtz[i]->switch_to_original_hkl();
     gemmi::SMat33<double>* staraniso_b = mi.staraniso_b.ok() ? &mi.staraniso_b.b : nullptr;
     if (mtz[0] && mtz[1] && !separate_blocks) {
+      if (verbose)
+        std::fprintf(stderr, "Writing merged and unmerged MTZ data as mmCIF block...\n");
       mtz_to_cif.write_cif(*mtz[0], mtz[1].get(), staraniso_b, os.ref());
     } else {
-      if (cif_input)
+      if (cif_input) {
+        if (verbose)
+          std::fprintf(stderr, "Copying input mmCIF file to output...\n");
         os.ref().write(cif_buf.data(), cif_buf.size());
-      else if (mtz[0])
+      } else if (mtz[0]) {
+        if (verbose)
+          std::fprintf(stderr, "Writing merged MTZ data as mmCIF block...\n");
         mtz_to_cif.write_cif(*mtz[0], nullptr, staraniso_b, os.ref());
+      }
       if ((cif_input || mtz[0]) && (mtz[1] || xds_ascii))
         os.ref() << "\n\n";
       mtz_to_cif.block_name = "unmerged";
-      if (mtz[1])
+      if (mtz[1]) {
+        if (verbose)
+          std::fprintf(stderr, "Writing unmerged MTZ data as mmCIF block...\n");
         mtz_to_cif.write_cif(*mtz[1], nullptr, nullptr, os.ref());
-      else if (xds_ascii)
+      } else if (xds_ascii) {
+        if (verbose)
+          std::fprintf(stderr, "Writing unmerged XDS data as mmCIF block...\n");
         mtz_to_cif.write_cif_from_xds(*xds_ascii, os.ref());
+      }
     }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR writing %s: %s\n", cif_output, e.what());
