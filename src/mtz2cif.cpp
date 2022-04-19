@@ -18,7 +18,7 @@
 namespace {
 
 enum OptionIndex {
-  Spec=4, PrintSpec, BlockName, EntryId, SkipEmpty,
+  Spec=4, PrintSpec, BlockName, EntryId, SkipEmpty, SkipNegativeSigI,
   NoComments, NoHistory, NoStaranisoTensor, RunFrom, Wavelength, Validate,
   LessAnomalous, Separate, Deposition, Nfree, Trim
 };
@@ -41,6 +41,8 @@ const option::Descriptor Usage[] = {
   { SkipEmpty, 0, "", "skip-empty", Arg::Optional,
     "  --skip-empty[=COLS]  \tSkip reflections with no values. If COLS are "
     "given, eg. 'I(+),I(-)', only values in those columns are checked." },
+  { SkipNegativeSigI, 0, "", "skip-negative-sigi", Arg::Optional,
+    "  --skip-negative-sigi  \tSkip reflections with sigma(I)<0 in unmerged data." },
   { NoComments, 0, "", "no-comments", Arg::None,
     "  --no-comments  \tDo not write comments in the mmCIF file." },
   { NoHistory, 0, "", "no-history", Arg::None,
@@ -222,6 +224,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   bool check_merged_columns = false;
   if (p.options[Deposition]) {
     mtz_to_cif.write_special_marker_for_pdb = true;
+    mtz_to_cif.skip_negative_sigi = true;
     mtz_to_cif.with_history = false;
     mtz_to_cif.less_anomalous = std::max(mtz_to_cif.less_anomalous, 1);
     separate_blocks = true;
@@ -233,6 +236,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (p.options[SkipEmpty].arg)
       mtz_to_cif.skip_empty_cols = p.options[SkipEmpty].arg;
   }
+  if (p.options[SkipNegativeSigI])
+    mtz_to_cif.skip_negative_sigi = true;
   if (p.options[BlockName])
     mtz_to_cif.block_name = p.options[BlockName].arg;
   if (p.options[EntryId])

@@ -11,6 +11,7 @@ Options:
   --id=ID                value for _entry.id (default: xxxx).
   --skip-empty[=COLS]    Skip reflections with no values. If COLS are given, eg.
                          'I(+),I(-)', only values in those columns are checked.
+  --skip-negative-sigi   Skip reflections with sigma(I)<0 in unmerged data.
   --no-comments          Do not write comments in the mmCIF file.
   --no-history           Do not write MTZ history in the mmCIF file.
   --no-staraniso-tensor  Do not write _reflns.pdbx_aniso_B_tensor_*.

@@ -37,6 +37,7 @@ public:
   bool with_comments = true;         // write comments
   bool with_history = true;          // write MTZ history in comments
   bool skip_empty = false;           // skip reflections with no values
+  bool skip_negative_sigi = false;   // skip refl. with sigma(I) < 0 in unmerged
   bool enable_UB = false;            // write _diffrn_orient_matrix.UB
   bool write_staraniso_tensor = true; // write _reflns.pdbx_aniso_B_tensor_*
   bool write_special_marker_for_pdb = false;
@@ -668,8 +669,8 @@ inline void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2,
   os << "\n\n_entry.id " << entry_id << "\n\n";
 
   // If we have user-provided spec file, we don't take responsibility
-  // for the result. (The spec is used for merged data only, so we can
-  // add the merker in unmerged block).
+  // for the result. The spec in such case (write_special_marker_for_pdb==true)
+  // is used for merged data only, so we can add the marker in unmerged block.
   if (spec_lines.empty() || !merged)
     write_special_marker_if_requested(os, merged);
 
@@ -794,7 +795,7 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, const std::vector<Trans>& 
                                       char* buf, std::ostream& os) {
   // prepare indices
   std::vector<int> value_indices;  // used for --skip_empty
-  std::vector<int> sigma_indices;  // used for status 'x'
+  std::vector<int> sigma_indices;  // used for status 'x' and --skip-negative-sigi
   for (const Trans& tr : recipe) {
     if (tr.col_idx < 0)
       continue;
@@ -867,6 +868,10 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, const std::vector<Trans>& 
     int batch_number = 0;
     SweepData* sweep = nullptr;
     if (unmerged) {
+      if (skip_negative_sigi &&
+          std::any_of(sigma_indices.begin(), sigma_indices.end(),
+                      [&](int n) { return row[n] < 0; }))
+        continue;
       if (batch_idx == -1)
         fail("BATCH column not found");
       batch_number = (int) row[batch_idx];
@@ -1011,7 +1016,7 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
   os << "\n_diffrn_refln.pdbx_image_id\n";
   int idx = 0;
   for (const XdsAscii::Refl& refl : xds.data) {
-    if (refl.sigma < 0)  // misfit
+    if (refl.sigma < 0 && skip_negative_sigi)  // misfit
       continue;
     char* ptr = buf;
     ptr += gf_snprintf(ptr, 128, "%d %d %d %d %d %g %.5g ",
