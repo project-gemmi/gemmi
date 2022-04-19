@@ -804,7 +804,7 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, const std::vector<Trans>& 
                                   : is_in_list(col.label, skip_empty_cols))
         value_indices.push_back(tr.col_idx);
     }
-    if (col.type != 'Q' && col.type != 'L' && col.type != 'M')
+    if (col.type == 'Q' || col.type == 'L' || col.type == 'M')
       sigma_indices.push_back(tr.col_idx);
   }
 
