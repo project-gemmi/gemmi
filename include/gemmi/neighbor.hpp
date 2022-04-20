@@ -370,7 +370,7 @@ inline void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell,
       Residue& res = chain.residues[n_res];
       for (int n_atom = 0; n_atom != (int) res.atoms.size(); ++n_atom) {
         Atom& atom = res.atoms[n_atom];
-        std::vector<CRA> equiv;
+        std::vector<std::pair<CRA, int>> equiv;
         ns.for_each_cell(atom.pos, [&](std::vector<Mark>& marks, const Fractional& fr) {
             for (Mark& m : marks) {
               // We look for the same atoms, but copied to a different chain.
@@ -386,32 +386,25 @@ inline void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell,
                   cra.atom->b_iso == atom.b_iso &&
                   cra.residue->matches_noseg(res) &&
                   m.dist_sq_(ns.grid.unit_cell.orthogonalize(fr)) < sq(max_dist))
-                equiv.push_back(cra);
+                equiv.emplace_back(cra, m.image_idx);
             }
         });
         if (!equiv.empty()) {
-          // calculate new occupancy and position for the first atom
-          int n = 1;
-          if (cell.is_crystal())
-            n += cell.is_special_position(atom.pos, max_dist);
-          double occ_sum = n * atom.occ;
-          if (occ_sum > 0) {
-            atom.pos *= occ_sum;
-            for (CRA& cra : equiv) {
-              atom.pos += cra.atom->occ * cra.atom->pos;
-              occ_sum += cra.atom->occ;
-            }
-            atom.pos /= occ_sum;
-            atom.occ = float(occ_sum / n);
-          }
-          // discard overlapping equivalent atoms
-          for (CRA& cra : equiv) {
-            // change atoms to avoid processing them again
-            cra.atom->serial = -1;
-            cra.atom->name.clear();
-            // deleting now would invalidate indices in NeighborSearch
+          Position pos_sum = atom.pos;
+          for (auto& t : equiv) {
+            CRA& cra = t.first;
+            pos_sum += ns.grid.unit_cell.find_nearest_pbc_position(
+                                          atom.pos, cra.atom->pos, t.second);
+            // The atoms in equiv are to be discarded later.
+            // Deleting now would invalidate indices in NeighborSearch.
             to_be_deleted.push_back(cra);
+            // Modify the atoms to avoid processing them again.
+            cra.atom->serial = -1;  // this should be enough
+            cra.atom->name.clear(); // this is just in case
           }
+          size_t n = 1 + equiv.size();
+          atom.pos = pos_sum / n;
+          atom.occ = std::min(1.f, n * atom.occ);
         }
       }
     }
