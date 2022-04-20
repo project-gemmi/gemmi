@@ -35,6 +35,11 @@ template<typename P, typename C> C& get_child(P& parent, int index) {
   return children[normalize_index(index, children)];
 }
 
+template<typename P, typename C> void set_child(P& parent, int index, C& child) {
+  auto& children = parent.children();
+  children[normalize_index(index, children)] = child;
+}
+
 template<typename P> void remove_child(P& parent, int index) {
   auto& children = parent.children();
   children.erase(children.begin() + normalize_index(index, children));
@@ -113,6 +118,7 @@ void add_mol(py::module& m) {
     .def("__delitem__", &remove_child<Structure>, py::arg("index"))
     .def("__delitem__", &remove_children<Structure>)
     .def("__delitem__", &Structure::remove_model, py::arg("name"))
+    .def("__setitem__", &set_child<Structure, Model>)
     .def("find_connection", &Structure::find_connection,
          py::arg("partner1"), py::arg("partner2"),
          py::return_value_policy::reference_internal)
