@@ -45,6 +45,7 @@ DataType check_data_type_under_symmetry(const DataProxy& proxy) {
 
 
 struct CifToMtz {
+  // Alternative mmCIF tags for the same MTZ label should be consecutive
   static const char** default_spec(bool for_merged) {
     static const char* merged[] = {
       "pdbx_r_free_flag FreeR_flag I 0",
@@ -114,7 +115,6 @@ struct CifToMtz {
     }
   };
 
-  // Alternative mmCIF tags for the same MTZ label should be consecutive
   bool verbose = false;
   bool force_unmerged = false;
   std::string title;

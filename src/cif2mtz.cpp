@@ -21,7 +21,7 @@ using std::fprintf;
 
 enum OptionIndex {
   BlockName=4, BlockNumber, Add, List, Dir, Spec, PrintSpec,
-  Title, History, Unmerged, Sort, Local
+  Title, History, Unmerged, Sort, SkipNegativeSigma, Local
 };
 
 const option::Descriptor Usage[] = {
@@ -55,6 +55,8 @@ const option::Descriptor Usage[] = {
     "  -u, --unmerged  \tWrite unmerged MTZ file(s)." },
   { Sort, 0, "", "sort", Arg::None,
     "  --sort  \tOrder reflections according to Miller indices." },
+  { SkipNegativeSigma, 0, "", "skip-negative-sigma", Arg::Optional,
+    "  --skip-negative-sigma  \tSkip reflections with sigma<0 (in any Q column)." },
   { Local, 0, "", "local", Arg::None,
     "  --local  \tTake file from local copy of the PDB archive in "
     "$PDB_DIR/structures/divided/structure_factors/" },
@@ -235,6 +237,11 @@ int GEMMI_MAIN(int argc, char **argv) {
               break;
             }
         }
+      }
+      if (p.options[SkipNegativeSigma]) {
+        for (const gemmi::Mtz::Column& col : mtz.columns)
+          if (col.type == 'Q')  // typically, we'll find one Q column here
+            mtz.remove_rows_if([&](const float* row) { return row[col.idx] < 0; });
       }
       if (p.options[Sort]) {
         bool reordered = mtz.sort();

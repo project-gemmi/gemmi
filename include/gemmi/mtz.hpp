@@ -1058,6 +1058,22 @@ struct Mtz {
     data.resize(columns.size() * nreflections);
   }
 
+  template <typename Func>
+  void remove_rows_if(Func condition) {
+    if (!has_data())
+      fail("No data.");
+    auto out = data.begin();
+    size_t width = columns.size();
+    for (auto r = data.begin(); r < data.end(); r += width)
+      if (!condition(&*r)) {
+        if (r != out)
+          std::copy(r, r + width, out);
+        out += width;
+      }
+    data.erase(out, data.end());
+    nreflections = int(data.size() / width);
+  }
+
   void expand_data_rows(size_t added, int pos_=-1) {
     size_t old_row_size = columns.size() - added;
     if (data.size() != old_row_size * nreflections)
