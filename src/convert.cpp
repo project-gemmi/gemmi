@@ -235,7 +235,7 @@ void convert(gemmi::Structure& st,
     // Should they be preserved anyway or removed? Currently - removing.
     st.assemblies.clear();
     for (gemmi::Model& model : st.models)
-      gemmi::merge_atoms_in_expanded_model(model, st.cell);
+      gemmi::merge_atoms_in_expanded_model(model, gemmi::UnitCell());
   }
 
   if (options[ExpandNcs]) {
