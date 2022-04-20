@@ -51,7 +51,9 @@ struct NeighborSearch {
     const SmallStructure::Site& to_site(const SmallStructure& small) const {
       return small.sites.at(atom_idx);
     }
-    float dist_sq(const Position& p) const {
+    // Here the point p must not be across PBC boundary,
+    // typically p is orthogonalized Fractional in for_each_cell.
+    float dist_sq_(const Position& p) const {
       return sq((float)p.x - x) + sq((float)p.y - y) + sq((float)p.z - z);
     }
   };
@@ -129,7 +131,7 @@ struct NeighborSearch {
     for_each_cell(pos, [&](std::vector<Mark>& marks, const Fractional& fr) {
         Position p = grid.unit_cell.orthogonalize(fr);
         for (Mark& m : marks) {
-          float dist_sq = m.dist_sq(p);
+          float dist_sq = m.dist_sq_(p);
           if (dist_sq < nearest_dist_sq) {
             mark = &m;
             nearest_dist_sq = dist_sq;
@@ -323,8 +325,8 @@ void NeighborSearch::for_each(const Position& pos, char alt, float radius,
   for_each_cell(pos, [&](std::vector<Mark>& marks, const Fractional& fr) {
       Position p = grid.unit_cell.orthogonalize(fr);
       for (Mark& m : marks) {
-        float dist_sq = m.dist_sq(p);
-        if (m.dist_sq(p) < sq(radius) && is_same_conformer(alt, m.altloc))
+        float dist_sq = m.dist_sq_(p);
+        if (dist_sq < sq(radius) && is_same_conformer(alt, m.altloc))
           func(m, dist_sq);
       }
   });
@@ -383,8 +385,8 @@ inline void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell,
                   cra.atom->name == atom.name &&
                   cra.atom->b_iso == atom.b_iso &&
                   cra.residue->matches_noseg(res) &&
-                  m.dist_sq(ns.grid.unit_cell.orthogonalize(fr)) < sq(max_dist))
-              equiv.push_back(cra);
+                  m.dist_sq_(ns.grid.unit_cell.orthogonalize(fr)) < sq(max_dist))
+                equiv.push_back(cra);
             }
         });
         if (!equiv.empty()) {
