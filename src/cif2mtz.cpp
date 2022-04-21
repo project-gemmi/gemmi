@@ -21,7 +21,7 @@ using std::fprintf;
 
 enum OptionIndex {
   BlockName=4, BlockNumber, Add, List, Dir, Spec, PrintSpec,
-  Title, History, Unmerged, Sort, SkipNegativeSigma, Local
+  Title, History, Unmerged, Sort, SkipNegativeSigma, ZeroToMnf, Local
 };
 
 const option::Descriptor Usage[] = {
@@ -55,8 +55,10 @@ const option::Descriptor Usage[] = {
     "  -u, --unmerged  \tWrite unmerged MTZ file(s)." },
   { Sort, 0, "", "sort", Arg::None,
     "  --sort  \tOrder reflections according to Miller indices." },
-  { SkipNegativeSigma, 0, "", "skip-negative-sigma", Arg::Optional,
-    "  --skip-negative-sigma  \tSkip reflections with sigma<0 (in any Q column)." },
+  { SkipNegativeSigma, 0, "", "skip-negative-sigma", Arg::None,
+    "  --skip-negative-sigma  \tSkip reflections with sigma<0 (in any MTZ Q column)." },
+  { ZeroToMnf, 0, "", "zero-to-mnf", Arg::None,
+    "  --zero-to-mnf  \tIf value and sigma are 0, set both to MNF." },
   { Local, 0, "", "local", Arg::None,
     "  --local  \tTake file from local copy of the PDB archive in "
     "$PDB_DIR/structures/divided/structure_factors/" },
@@ -79,6 +81,23 @@ gemmi::ReflnBlock& get_block_by_name(std::vector<gemmi::ReflnBlock>& rblocks,
     if (rb.block.name == name)
       return rb;
   gemmi::fail("block not found: " + name);
+}
+
+void zero_to_mnf(gemmi::Mtz& mtz) {
+  std::vector<size_t> cols;
+  for (size_t i = 3; i < mtz.columns.size() - 1; ++i) {
+    // find consecutive value and sigma columns
+    char t1 = mtz.columns[i].type;
+    char t2 = mtz.columns[i+1].type;
+    if ((t1 == 'J' || t1 == 'F' || t1 == 'D' || t1 == 'G' || t1 == 'K') &&
+        (t2 == 'Q' || t2 == 'L' || t2 == 'M'))
+      cols.push_back(i);
+  }
+  for (size_t n = 0; n < mtz.data.size(); n += mtz.columns.size()) {
+    for (size_t idx : cols)
+      if (mtz.data[n+idx] == 0 && mtz.data[n+idx+1] == 0)
+        mtz.data[n+idx] = mtz.data[n+idx+1] = NAN;
+  }
 }
 
 void print_block_info(gemmi::ReflnBlock& rb, const gemmi::Mtz& mtz) {
@@ -243,6 +262,8 @@ int GEMMI_MAIN(int argc, char **argv) {
           if (col.type == 'Q')  // typically, we'll find one Q column here
             mtz.remove_rows_if([&](const float* row) { return row[col.idx] < 0; });
       }
+      if (p.options[ZeroToMnf])
+        zero_to_mnf(mtz);
       if (p.options[Sort]) {
         bool reordered = mtz.sort();
         if (cif2mtz.verbose)

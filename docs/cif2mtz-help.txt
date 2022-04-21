@@ -17,7 +17,8 @@ Options:
   -H LINE, --history=LINE  Add a history line.
   -u, --unmerged           Write unmerged MTZ file(s).
   --sort                   Order reflections according to Miller indices.
-  --skip-negative-sigma    Skip reflections with sigma<0 (in any Q column).
+  --skip-negative-sigma    Skip reflections with sigma<0 (in any MTZ Q column).
+  --zero-to-mnf            If value and sigma are 0, set both to MNF.
   --local                  Take file from local copy of the PDB archive in
                            $PDB_DIR/structures/divided/structure_factors/
 
