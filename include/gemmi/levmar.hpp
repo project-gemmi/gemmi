@@ -153,7 +153,7 @@ struct LevMar {
 
         if (wssr == 0)
           break;
-        // termination criterium: negligible change of wssr
+        // termination criterion: negligible change of wssr
         if (rel_change < stop_rel_change) {
           if (++small_change_counter >= 2)
             break;
@@ -163,7 +163,7 @@ struct LevMar {
         this->compute_derivatives(target);
         lambda *= lambda_down_factor;
       } else { // worse fitting
-        if (lambda > lambda_limit) // termination criterium: large lambda
+        if (lambda > lambda_limit) // termination criterion: large lambda
           break;
         lambda *= lambda_up_factor;
       }

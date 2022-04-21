@@ -580,7 +580,7 @@ Flood fill
 `Flood fill <https://en.wikipedia.org/wiki/Flood_fill>`_
 is an algorithm that determines the area connected to a *seed* point,
 the area of all connected points which match a certain condition.
-Here, the criterium for grid points is having the value above
+Here, the criterion for grid points is having the value above
 (or, alternatively, below) a given threshold value.
 
 The blob search from the previous section uses flood fill and returns Blob
