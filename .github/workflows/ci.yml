@@ -36,6 +36,9 @@ jobs:
     - name: Python Setup
       run: python3 -m pip install -v .
 
+    - name: List all files
+      run: find .
+
     - name: Python Tests
       run: python3 -m unittest discover -v -s tests/
 
@@ -44,7 +47,7 @@ jobs:
         name: gemmi-macos10_15
         path: |
           ${{runner.workspace}}/build/gemmi
-          ${{runner.workspace}}/dist/gemmi*.egg
+          ${{runner.workspace}}/dist/gemmi-*.whl
         retention-days: 14
 
 
