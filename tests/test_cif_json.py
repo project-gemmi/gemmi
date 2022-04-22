@@ -1,29 +1,28 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
 import io
 import json
 import unittest
 
 from gemmi import cif
+from common import full_path
 
 def nonempty_lines(s):
     return [line for line in s.splitlines() if line and line[0] != '#']
 
 class TestCifAsJson(unittest.TestCase):
-    def setUp(self):
-        self.basename = os.path.join(os.path.dirname(__file__), 'misc')
     def test_misc(self):
-        cif_doc = cif.read_file(self.basename + '.cif')
+        basename = full_path('misc')
+        cif_doc = cif.read_file(basename + '.cif')
         json_str = cif_doc.as_json()
         json_from_cif = json.loads(json_str)
-        with io.open(self.basename + '.json', encoding='utf-8') as f:
+        with io.open(basename + '.json', encoding='utf-8') as f:
             reference_json = json.load(f)
         self.assertEqual(json_from_cif, reference_json)
 
     def test_cif_as_string(self):
-        with open(self.basename + '.cif', 'rb') as f:
+        with open(full_path('misc.cif'), 'rb') as f:
             cif_orig = f.read().decode('utf-8').replace('\r\n', '\n')
         cif_doc = cif.read_string(cif_orig)
         formatting_changes = {
@@ -45,8 +44,8 @@ class TestCifAsJson(unittest.TestCase):
         self.assertEqual(j2, {'OnE': {'_TwO': [2], '_ZeRo': 0}})
 
 class TestMmjson(unittest.TestCase):
-    def test_read(self):
-        path = os.path.join(os.path.dirname(__file__), '1pfe.json')
+    def test_read_1pfe(self):
+        path = full_path('1pfe.json')
         doc = cif.read_mmjson(path)
         self.assertEqual(doc[0].find_value('_entry.id'), '1PFE')
         output_json = json.loads(doc.as_json(mmjson=True))
@@ -64,6 +63,11 @@ class TestMmjson(unittest.TestCase):
                         if value is not None:
                             values[n] = str(value)
         self.assertEqual(output_json, input_json)
+
+    def test_read_3wup(self):
+        path = full_path('3wup.json.gz')
+        doc = cif.read_mmjson(path)
+        self.assertEqual(doc[0].find_value('_entry.id'), '3WUP')
 
 if __name__ == '__main__':
     unittest.main()

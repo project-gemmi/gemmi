@@ -286,6 +286,33 @@ class TestMol(unittest.TestCase):
                 n_images = st.cell.is_special_position(atom.pos)
                 self.assertEqual(atom.occ * (n_images + 1), 1.0)
 
+    def test_3wup(self):
+        st = gemmi.read_structure(full_path('3wup.json.gz'))
+        self.assertEqual(st.info['_entry.id'], '3WUP')
+        model = st[0]
+        self.assertEqual(len(model), 1)
+        self.assertEqual(len(st.assemblies), 2)
+
+        special_count = 0
+        for res in st[0]['A'].get_ligands():
+            for atom in res:
+                n_images = st.cell.is_special_position(atom.pos)
+                if n_images:
+                    special_count += 1
+                    self.assertEqual(round(atom.occ, 6), 0.33)
+        self.assertEqual(special_count, 2)
+
+        site_count = model.count_atom_sites()
+        self.assertEqual(site_count, 279)
+        how = gemmi.HowToNameCopiedChain.Short
+        a1 = gemmi.make_assembly(st.assemblies[0], model, how)
+        self.assertEqual(a1.count_atom_sites(), site_count)
+        a2 = gemmi.make_assembly(st.assemblies[1], model, how)
+        self.assertEqual(a2.count_atom_sites(), site_count * 3)
+        gemmi.merge_atoms_in_expanded_model(a2, gemmi.UnitCell())
+        # 3 atoms are on a 3-fold rotation axis
+        self.assertEqual(a2.count_atom_sites(), (site_count - 3) * 3 + 3 * 1)
+
     def test_software_category(self):
         doc = gemmi.cif.read_file(full_path('3dg1_final.cif'))
         input_block = doc.sole_block()
