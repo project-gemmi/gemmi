@@ -388,6 +388,11 @@ double Ccp4<T>::setup(T default_value, MapSetup mode) {
   auto pos = axis_positions();
   std::array<int, 3> start = header_3i32(5);
   int end[3] = { start[0] + grid.nu, start[1] + grid.nv, start[2] + grid.nw };
+  // if it's sufficient to transpose the map, switch to ReorderOnly mode
+  if (mode != MapSetup::ReorderOnly &&
+      start[0] == 0 && start[1] == 0 && start[2] == 0 &&
+      end[pos[0]] == sampl[0] && end[pos[1]] == sampl[1] && end[pos[2]] == sampl[2])
+    mode = MapSetup::ReorderOnly;
   // set new metadata
   if (mode == MapSetup::ReorderOnly) {
     set_header_3i32(5, start[pos[0]], start[pos[1]], start[pos[2]]);
