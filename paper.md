@@ -18,8 +18,8 @@ bibliography: paper.bib
 
 # Summary
 
-GEMMI is a library, accompanied by a set of small programs, developed primarily
-for use in the field of macromolecular crystallography (MX).
+GEMMI is a cross-platform library, accompanied by a set of small programs,
+developed primarily for use in the field of macromolecular crystallography (MX).
 Parts of this library are useful also in structural bioinformatics
 and in chemical crystallography.
 
