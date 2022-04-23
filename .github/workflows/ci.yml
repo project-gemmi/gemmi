@@ -34,10 +34,9 @@ jobs:
       run: cmake --build . --config ${{ matrix.build }} --target check
 
     - name: Python Setup
-      run: python3 -m pip install -v .
-
-    - name: List all files
-      run: find .
+      run: |
+        python3 -m pip wheel -v .
+        python3 -m pip install gemmi-*.whl
 
     - name: Python Tests
       run: python3 -m unittest discover -v -s tests/
@@ -47,7 +46,7 @@ jobs:
         name: gemmi-macos10_15
         path: |
           ${{runner.workspace}}/build/gemmi
-          ${{runner.workspace}}/dist/gemmi-*.whl
+          ${{runner.workspace}}/gemmi-*.whl
         retention-days: 14
 
 
