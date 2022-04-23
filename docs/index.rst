@@ -67,3 +67,4 @@ Contents
    hkl
    utils
    Python API reference <https://project-gemmi.github.io/python-api/>
+   C++ API reference <https://project-gemmi.github.io/cxx-api/>
