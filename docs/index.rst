@@ -16,7 +16,8 @@ For working with:
 
 Parts of this library can be useful in structural bioinformatics
 (for symmetry-aware analysis of protein models),
-and in other molecular-structure sciences that use CIF files
+in chemical crystallography and in other molecular-structure sciences
+that use CIF files
 (we have the `fastest <https://github.com/project-gemmi/mmcif-benchmark>`_
 open-source CIF parser).
 
@@ -45,7 +46,10 @@ Source code repository: https://github.com/project-gemmi/gemmi
 
     As of 2022 the library is under intensive development and not
     everything is documented yet. Just ask questions.
-    It's OK to drop me_ an email asking how to implement this and that,
+    You can ask in
+    `Discussions <https://github.com/project-gemmi/gemmi/discussions>`_
+    or `Issues <https://github.com/project-gemmi/gemmi/issues>`_ on GitHub.
+    Alternatively, send me_ an email asking how to implement this and that,
     but add some context (is it for a student assignment, research project,
     in-house software?).
 
