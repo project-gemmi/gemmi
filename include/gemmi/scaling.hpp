@@ -220,6 +220,7 @@ struct Scaling {
   // quick linear fit (ignoring sigma) to get initial parameters
   void fit_isotropic_b_approximately() {
     double sx = 0, sy = 0, sxx = 0, sxy = 0;
+    int n = 0;
     for (const Point& p : points) {
       if (p.fobs < 1 || p.fobs < p.sigma)  // skip weak reflections
         continue;
@@ -231,14 +232,14 @@ struct Scaling {
       sy += y;
       sxx += x * x;
       sxy += x * y;
+      n += 1;
     }
-    if (points.size() <= 5)  // this is not expected to happen
+    if (n <= 5)  // this is not expected to happen
       return;
-    double n = (double) points.size();
     double slope = (n * sxy - sx * sy) / (n * sxx - sx * sx);
     double intercept = (sy - slope * sx) / n;
     double b_iso = -slope;
-    k_overall = exp(intercept);
+    k_overall = std::exp(intercept);
     set_b_overall({b_iso, b_iso, b_iso, 0, 0, 0});
   }
 
