@@ -143,6 +143,16 @@ installed (on Ubuntu: ``sudo apt install git cmake make g++``), then::
     cmake .
     make
 
+Testing
+-------
+
+The main automated tests are in Python::
+
+    python3 -m unittest discover -v tests/
+
+We also have doctest tests in the documentation, and some others.
+All of them can be run from the ``run-tests.sh`` script in the repository.
+
 Credits
 -------
 
