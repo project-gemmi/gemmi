@@ -177,26 +177,46 @@ A few extra iterations sorted it out (without any real changes),
 but it's not always the case -- that's why we have ``iteration_limit``
 to prevent infinite loop.
 
-The original Křivý-Gruber algorithm doesn't output the change-of-basis
-transformation that leads to the reduced cell. Keeping track of the
-transformation requires more computations, so currently it's not done
-by default, but this may change, because it seems to be fast enough
-for all practical uses. The transformation is obtained as proposed
-in the 2004 paper from Grosse-Kunstleve *et al*: the change-of-basis
-matrix is updated in each step that changes the Gruber vector.
-(Currently, this is implemented only for Niggli reduction,
-not for Buerger and Selling reductions).
+The original Křivý-Gruber algorithm doesn't calculate the change-of-basis
+transformation that leads to the reduced cell. In gemmi,
+this transformation can be obtained as proposed in the 2004 paper
+of Grosse-Kunstleve *et al*: the change-of-basis matrix is updated
+in each step together with the Gruber vector.
+Updating this matrix makes the reduction twice slower
+(but it's still in tens of ns, so it's fast enough for any purpose).
+To track the change of basis, pass the following option:
 
 .. doctest::
 
   >>> gv = gemmi.GruberVector(cell, sg, track_change_of_basis=True)
+
+After the Niggli reduction, the transformation will be available
+in the ``change_of_basis`` property:
+
+.. doctest::
+
   >>> gv.niggli_reduce()
   3
-  >>> gv.change_of_basis
+  >>> cob = gv.change_of_basis
+  >>> cob
   <gemmi.Op("x-z/2,y-z/2,z/2")>
-  >>> # the operator transforms Niggli cell to the original cell
-  >>> gv.get_cell().changed_basis_forward(_, set_images=False)
+
+This operator transforms Niggli cell to the original cell:
+
+.. doctest::
+
+  >>> gv.get_cell().changed_basis_forward(cob, set_images=False)
   <gemmi.UnitCell(63.78, 63.86, 124.4, 90, 90, 90)>
+
+and the other way around:
+
+.. doctest::
+
+  >>> cell.changed_basis_backward(cob, set_images=False)
+  <gemmi.UnitCell(63.78, 63.86, 76.8462, 114.551, 114.518, 90)>
+
+Currently, tracking is implemented only for the Niggli reduction,
+not for the Buerger reduction.
 
 Selling-Delaunay reduction
 --------------------------
